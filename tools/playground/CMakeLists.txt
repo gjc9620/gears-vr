@@ -201,6 +201,8 @@ add_executable(HandAnimationObservationTest ../vr-common/hand_animation_observat
 target_compile_options(HandAnimationObservationTest PRIVATE /W4 /WX /EHsc /UNDEBUG)
 add_executable(HandIkStreamLeaseTest ../vr-common/hand_ik_stream_lease_test.cpp)
 target_compile_options(HandIkStreamLeaseTest PRIVATE /W4 /WX /EHsc /UNDEBUG)
+add_executable(HandTailTranslationLeaseTest ../vr-common/hand_tail_translation_lease_test.cpp)
+target_compile_options(HandTailTranslationLeaseTest PRIVATE /W4 /WX /EHsc /UNDEBUG)
 add_executable(HandStreamGripBindingTest ../vr-common/hand_stream_grip_binding_test.cpp)
 target_compile_options(HandStreamGripBindingTest PRIVATE /W4 /WX /EHsc /UNDEBUG)
 add_executable(HandStreamTicketPolicyTest ../vr-common/hand_stream_ticket_policy_test.cpp)

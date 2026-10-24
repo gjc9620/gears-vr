@@ -452,3 +452,13 @@ root 源审 `06bf5166…b4a29`、关闭开关的一组两次 /EP 完整非空行
 正式 cleanup_passed=true；三组组件、完整8控件、44字节挂接、入口恢复，8音频会话恢复且pending0。原Native／XR独立子会话passed与XR exit0分开保留，root只读Win32核对确切owner／game／XR均不存在。后处理记录器曾把 acquired 错当区间数，首个断言失败保留；按现有计数语义核对 acquired=10提交、restored=2区间后记录成功，不改原游戏审计。AH93文件封存 `2eac19f5…3952b`，root-result `4600defc…b373`，实际几何在忽略的 `analysis/hand-reach-root-review-20261024ah/actual-reach-result.json`；旧AF84项封存和AG离线结果均不改。
 
 后续最小候选为单独默认关闭的尾部 SingleBone 世界位置实验，先取得实际平移字段、空间／加法模式与 Bool mask 的 typed schema，再把原值、owned值与部分写 pending 纳入完整扩展 journal；不能只放宽 bApplyTranslation 检查，也不能替换原 Limb 位置通道。必须验证动作前恢复、原Plan、精确写后值、手—枪关系、前臂蒙皮及后坐力，再决定臂长校准。全部12种武器、体感装填与真实0.7／1.0伤害入口仍未完成，本记录不构成发布或头显验收。
+
+## 2026-10-24 — AI 平移类型实测与扩展事务 CPU 检查
+
+只运行一局静音、置后、observe-only 的购买版，沿用 AH 私有 DLL，新增外部只读类型观察。左右末端 SingleBone 的 BoneTranslation 均为 12 字节 Vector，X／Y／Z 为实际 FloatProperty；BoneTranslationSpace 为 1 字节 ByteProperty，并与 BoneRotationSpace 指向同一个已认证 EBoneControlSpace。原值均为零向量、World 空间和 None 空间骨名。bApplyTranslation／bAddTranslation 为同一 4 字节字中的不重叠 mask 1／2，原字仍含旋转位 4，故写入不能覆盖整个字。此处为实际类型和值观察，偏移没有作为生产 writer 常量；尚未证明原生平移消费与画面效果。
+
+AI 在原有 hand_reauthorize_after_component 步骤以终态8停止：初始／收枪六条姿态命令完成，双手16次应用／16次恢复，含hand_only11；枪体两区间累计6次提交／2次恢复。first_failure=8，有限诊断环只保存前8条、丢弃9条，没有取得失败重授权的完整子条件，不能猜定原因。正式 passed=false、cleanup_passed=false 保留：原审计拒绝失败状态，旧严格结构也不接受附加的 translation_observation 元数据，失败路径没有正常计划 Stop 的完整次序。独立比较确认8个控制器（连同新增只读平移观察）、三组枪组件與44字节挂接前后相等；failureStop0／Shutdown0、入口恢复、8音频会话恢复且pending0，自有owner／game／XR均已退出。独立Native／XR子会话通过不替代整局结论。AI63文件封存 `85b33978…0475f`，typed报告 `21664f58…ba37b`；不修改 AH／AF 原回执。
+
+新增 `hand_tail_translation_lease.h` 保存两个手的原值、owned、单步暂态与部分写 pending，在精确+0强度下按字段准备与反向恢复；未知或外部值永久撤销该手 journal 的恢复写权限，另一手仍须尝试清理。`hand_ik_tail_lease.h` 将它与原四通道 Lease 组合，先准备扩展字段再激活，始终先恢复原通道再恢复扩展；最后一个setter中的重入／上下文关闭也不能被正确数值读回掩盖。真实 backend 仍须逐次认证对象／schema／原Plan／mask和expected字节，不能用aggregate fault借用primary内部回滚的写入旁路。
+
+root与Astra完成源码审查后，仅构建并运行新增实际CMake目标 HandTailTranslationLeaseTest 一次，C++17／W4／WX／EHsc／MT 与实际Release工程核对，28类／370项检查通过。测试直接使用三个实际头文件及声明过的内存服务，覆盖false-before／after、四字段未知／外部／torn、精确+0、共享字保留、输入冻结、单双手、嵌套恢复、最后setter和双层清理。冻结782源／27依赖；结果 `ef3c3b38…0a01` 保存在忽略的 `analysis/hand-tail-policy-build-20261024ai/`。旧539项和已通过OFF／PG构建未重复执行。当前只新增两个策略、单一测试和CMake注册，没有游戏写入接线、Native／XR重建或默认安装；物理位置修复、0.7伤害和完整12武器仍未完成。
