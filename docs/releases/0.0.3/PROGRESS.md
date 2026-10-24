@@ -696,3 +696,11 @@ BA实测补记：d71ac22源码冻结为788源／27依赖／659工件候选4a7ec1
 按用户要求，后续自主后台测试采用每边0.4的渲染比例，继续静音、窗口置后和tiny-output只读观察。新增纯规划器 `tools/test-support/background_render_policy.py`，并接入 `tools/multi-instance/start.py` 的 `prepare(..., background_test=True)`；`--playtest` 自动启用。仅在新私有实例内设置render_scale并调整EngineUserSettings的8个ClientSettings启动尺寸，先验证所有计划、保留原始INI，再写私有副本；缺失、重复或未知尺寸语法会中止启动。普通实例、用户配置及已封存历史输入保持原样。XR测试仍须传递 `--render-scale 0.4`，不通过移动或缩放现有窗口实现。
 
 精确启动器比例校验与两个真实历史INI副本的字节逆变换通过；实际prepare函数的本地文件模型覆盖普通路径不变、后台0.4与两份原INI完整备份、第二份非法INI在任何计划写入和manifest发布前拒绝，三类检查通过。游戏验证／置后构建检查在该模型中是明确host服务，不算实机验证。记录位于忽略的 `analysis/background-test-scale-20261024bb/` 和 `analysis/background-test-scale-integration-20261024bb/`。本次没有启动游戏，实际渲染尺寸尚待下次空闲运行核对；不据此声称FPS、GPU或头显通过，完整6DoF目标仍未完成。
+
+## 2026-10-24 — BC 伤害查询的直接调用者观察
+
+继续推进枪械单手0.7／有效双手1.0且只应用一次的要求。先检索KB并核对历史快照身份，只提取CallFunction的两个已知chunk共3012字节，组合hash与原artifact1相同，在独立小型IDA库中机械导出。首次raw loader段基址和第二次默认调用约定不适用，原输出与限制分别保留；修正为flat VA与显式寄存器位置后，汇编显示原R8保存后在脚本返回表达式调用中原样传入，没有增加ReturnOffset。类型名称、历史伪代码或这一条数据流仍不能证明当前零售完整函数字节、原生float类型或逐发归属。自有IDA lease已关闭，原库不改写；证据在忽略的 `analysis/weapon-grip-damage-native-call-20261024bc/`。
+
+新增默认OFF开关 `GEARS_PLAYGROUND_WEAPON_GRIP_CALL_CONTEXT_PROBE`，依赖原raw Result观察器。仅在原记录行的pre／正常返回post采集直接caller FFrame、完整身份／Name外链、脚本范围内最多64字节原始窗口，以及caller／callee的原始flags／native index／exec地址。locals和previous只记录地址，不解参数或追栈；不新增hook、原函数调用、时钟、引擎调用或游戏内存写入。读失败清空部分payload并独立报unknown，不改变原raw4采样和异常收尾；输出使用新前缀，不修改原日志协议。固定Snapshot12848字节，最终重读身份、frame、代码、函数字段和表头后才发布。
+
+实际完整context／metadata reader与原SEH copy在本地模型中首次严格编译运行通过10类／70项，覆盖真实不可读页、边界、完整输出和读取期间变化；不是零售ABI或开火证明。789源／27依赖的唯一完整PG严格构建、23导出、旧11／新12份实际运行源在新开关OFF的一组两次/EP非空行相等通过，DLL c19daba1…36d69；三份旧源raw逆变换精确相等。记录在忽略的 `analysis/weapon-grip-call-context-cpu-20261024bc/` 与 `analysis/weapon-grip-call-context-build-20261024bc/`。此条记录时尚未购买版运行，不安装默认启动器，实际0.7伤害、双手完整运动、全武器和GPU／头显仍未完成。

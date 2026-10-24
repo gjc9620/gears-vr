@@ -10,6 +10,9 @@
 #include <vector>
 #include <algorithm>
 #include <cmath>
+#if defined(GEARS_PLAYGROUND_WEAPON_GRIP_CALL_CONTEXT_PROBE) && !defined(GEARS_PLAYGROUND_WEAPON_GRIP_DAMAGE_RESULT_PROBE)
+#error Damage caller context requires the existing raw Result observer
+#endif
 #if defined(GEARS_PLAYGROUND_WEAPON_GRIP_DAMAGE_RESULT_PROBE)
 #if !defined(GEARS_PLAYGROUND_HAND_ANIMATION_PROBE) || !defined(GEARS_PLAYGROUND_HAND_ANIMATION_CALL_PROBE)
 #error Damage Result observer requires both existing animation observation boundaries
@@ -853,6 +856,9 @@ bool invoke_component_forward(Request* request,ComponentForwardGate& gate){
 #include "playground_controller.inl"
 #if defined(GEARS_PLAYGROUND_WEAPON_GRIP_DAMAGE_RESULT_PROBE)
 #include "weapon_grip_damage_metadata.inl"
+#if defined(GEARS_PLAYGROUND_WEAPON_GRIP_CALL_CONTEXT_PROBE)
+#include "weapon_grip_call_context.inl"
+#endif
 #include "weapon_grip_damage_result_probe.inl"
 #endif
 #if defined(GEARS_PLAYGROUND_HAND_ANIMATION_PROBE)

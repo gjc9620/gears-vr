@@ -11,6 +11,9 @@ struct Row {
     Token token{};unsigned parent{};
     uptr receiver{},caller{},result{},callee{};
     gripdamage_metadata::Snapshot before{},after{};
+#if defined(GEARS_PLAYGROUND_WEAPON_GRIP_CALL_CONTEXT_PROBE)
+    gripdamage_context::Snapshot before_context{},after_context{};
+#endif
     unsigned before_bits{},after_bits{};
     bool before_schema_known{},before_bytes_known{},original_returned{},closed{},
         after_bytes_known{},after_schema_known{},session_unchanged{},schema_unchanged{},stable_layout_candidate{},typed_candidate{},
@@ -80,6 +83,9 @@ Token enter(uptr receiver,uptr caller,uptr result,uptr callee) noexcept{
     row.before_schema_known=gripdamage_metadata::read(receiver,callee,state.pawn,row.before);
     if(row.before_schema_known)row.before_bytes_known=bytes(result,row.before_bits);
     else increment(state.schema_unknown);
+#if defined(GEARS_PLAYGROUND_WEAPON_GRIP_CALL_CONTEXT_PROBE)
+    gripdamage_context::read(caller,callee,state.pawn,row.before_context);
+#endif
     return row.token;
 }
 void leave(Token const& token,bool returned) noexcept{
@@ -105,6 +111,9 @@ void leave(Token const& token,bool returned) noexcept{
         // The complete native property type has not yet been bound by retail
         // evidence. Preserve arbitrary raw bits; never classify them as float.
         row.typed_candidate=false;
+#if defined(GEARS_PLAYGROUND_WEAPON_GRIP_CALL_CONTEXT_PROBE)
+        gripdamage_context::read(row.caller,row.callee,state.pawn,row.after_context);
+#endif
     }else row.incomplete=true; // No fabricated post value/schema on unwind.
     row.closed=true;state.stack[--state.depth]=0;
 }
@@ -130,6 +139,10 @@ void pump(){
             unsigned(r.abandoned_after_callback_drain));
         dump_metadata(r.before,r.token.call,L"pre");
         if(r.original_returned)dump_metadata(r.after,r.token.call,L"post");
+#if defined(GEARS_PLAYGROUND_WEAPON_GRIP_CALL_CONTEXT_PROBE)
+        gripdamage_context::dump(r.before_context,state.generation,r.token.call,L"pre");
+        if(r.original_returned)gripdamage_context::dump(r.after_context,state.generation,r.token.call,L"post");
+#endif
     }
     fwprintf(log_file,L"weapon_grip_damage_probe_end generation=%u finish_code=%u rows=%u depth=%u "
         L"filtered_unknown=%u schema_unknown=%u gap_count=%u capacity_gap=%u depth_gap=%u pairing_gap=%u "
