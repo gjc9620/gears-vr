@@ -404,3 +404,17 @@ AD runner仅变更AC的OUT／TAG，auditor原字节2be21ee5…1470；已通过�
 本局新prewrite_rejection行数为0，因此不能称新写前取消分支已在游戏中演练；它仍由13类／350主机检查覆盖，AC原准确拒绝原因也仍未知。此次实际成功证明当前有界Lancer owner可以跟随新输入、正常关闭并恢复；不是生产会话重新开区间、原生重新消费、完整动作交还、流畅度、全武器、0.7真实伤害或头显结论。
 
 root另外比较原组件Key／links／资产身份、三组值、完整8控制器与44字节挂接，入口证书审计通过；8音频session恢复，pending／read_failed／mute_failed均0。用Win32只读PID＋精确creation time核对owner／game／XR确切对象均退出，无终止或窗口动作。Native／XR独立子会话passed与XR exit0保留，不扩展CONT范围。AD共87项含seal5a7c27c0…bc90，root-result35ceafb8…db5b，外部Native／waiter证据已复制入封存并逐字核对；AC110项及其失败不改写。普通启动器未安装未完成的6DoF候选。
+
+## 2026-10-24 — 持续组件会话源码、关闭路径和严格构建
+
+新默认关闭开关 `GEARS_PLAYGROUND_WEAPON_COMPONENT_PERSISTENT_SESSION_TRIAL` 依赖原 CONT。四文件新增211行，把一次 Start 的 session 与可结束／重开的组件 interval 分开；正常可同步交还的动作先撤销旧 Plan、恢复手和组件，再按原 ABI 执行动作。下一个真实 pre_tick 仅在零操作深度、双方已干净且没有故障／撤权／Stop 时重置该 interval；等待原稳定条件和新票据后取得新的原值，不重启会话或清空累计计数。
+
+可恢复的年龄暂停限无 receipt、历史 binding_age 且证书没有失败的路径，同 Key／资产／动作代次和有效绑定继续核对；实际收到的拒绝证书、写前授权过期、unknown／foreign 和部分写失败仍终止。原100ms写前门、getter、typed schema、四参数 Permit、原动作转发和 sticky failure 保持。15秒／256次只结束诊断录制，寿命继续由显式停止等条件控制。此轮仍为同固定Lancer，phase2／无右手Plan会暂停整组writer，尚未在组件暂停期间独立驱动自由双手；空Weapon／更换实例也没有开放。
+
+root已读新增路径并核对其余775份作者源原字节不变。新OFF唯一一组两次MSVC /EP均0，严格完整非空行源文本相同，proof07bd2b6a…e6f4；它不证明完整TU／ABI。首次完整PG构建遇到新局部pending隐藏已有请求队列的C4459，失败目录保留。仅将新开关内部两个标识符改为pause_deferred，源码提交014cebec…b0ba／修正3fb9ae4f…eef5；完整逆向两token比较与其余三源原字节相同支持沿用已执行的OFF结果，没有重跑该通过项，reuse ce960489…266a。最终源树037f8837…b5d0。
+
+修正后独立目录完整PG严格构建通过，C++17／W4／WX／EHsc／MT与实际vcxproj核对，23导出保持；DLL2ff0ef1a…7b42。新模式缺少CONT依赖的配置按预期拒绝。此构建与受影响CPU准备并行，CPU结果和实际游戏尚待记录；没有重建Native／XR／loader、启动游戏或安装默认入口。构建器位于忽略的analysis/weapon-component-persistent-session-build-r2-20261024ae/，首次失败与元数据修正均保留。
+
+本轮另完成12种武器的接线边界与伤害属性静态复核。扩武器还受库存挂接、固定Marcus八控件、同实例Start及非零Origin等条件限制，不能只放宽枪名；Hammerburst作为下一种普通手持枪仍须自己的实际资源和恢复证据。伤害表确认base／Gnasher getter返回为浮点属性，表内序列化Offset不等于运行时ABI；Gnasher实际脚本候选先汇总一发的命中再结算。单双手0.7／1.0仍属已确认需求，实际返回值与逐发／投射物归属尚待接线，不宣称真实伤害已改变。
+
+随后受影响生命周期主机检查首编首跑均0：7类／505项，CPU result a1bfe680…5162，fixture root审a0f908cd…364f。17个实际源码片段与38份完整输入逐字绑定，使用实际hand Lease／Backend、certified Policy和Session；覆盖正常action交还／fresh rearm、busy原动作撤权、PostTick延后单次drain、真实no-receipt历史年龄、fault不可复活、Stop及15秒／256录制与寿命分离。组件物理恢复、asset／stability与原动作正文仍为声明的host服务，admission_probe没有执行真实A2 acquire／setter，也不是完整诊断ring或引擎消费证明。没有重跑旧suite／通过的OFF对比，没有启动游戏。组件暂停时的独立自由双手已形成原三inl内的最小接线计划；后续必须处理手部新journal不能被旧组件drain成功记录跳过，再做实际联调。另将设计表中武器1与原库存编号分清：VR右肩武器1对应原库存槽3，手枪为0、手雷为1、左肩武器2为2，与已有body_slots实现一致。
