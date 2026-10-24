@@ -1,7 +1,7 @@
 """UNSHIPPED hand-only left/right 4cm translation-and-return runner.
 
 Default execution is an intentionally rejected preflight. No project/runtime/SDK
-helper is imported, prepared or launched until the exact reviewed Rig/GHW1,
+helper is imported, prepared or launched until the exact reviewed typed RigV1,
 PG/Native/XR, current renderer/config and runtime binding has passed. Source 0
 means RuntimeTracked (including an explicitly selected simulator runtime), never
 MetaOperator source 1 or physical-headset acceptance. Sealed AX is read-only.
@@ -31,6 +31,12 @@ AX_AUDIT_PATH = WORK / "analysis/hand-mesh-runtime-1024ax/audit.py"
 AX_AUDIT_SHA = "6bbfcd395eaf2ab699f6617b857afb5e15acf2191f181f101f31e2dd5b5fa77b"
 BRIDGE_PATH = WORK / "tools/playground/hand_independent_motion_bridge.py"
 BRIDGE_SHA = "2872bbe56c96f95fc6f617a4f772c4f16a66140a6ee2525f802882ca7c00f039"
+RIG_LAYOUT_PATH = WORK / "analysis/hand-rig-policy-20261025br/pg-cpu-attempt1/layout.json"
+RIG_LAYOUT_SHA = "a2f5d5e13230caa5cfe7fd70e3b6dd79a456ec7e90a5bce47050b323dae2c9e7"
+RIG_HEADER_PATH = WORK / "tools/vr-common/rig_tracking_frame.h"
+RIG_HEADER_SHA = "58cbb26f4c9745138040478070c9e5ac50976ee6c1feed094524ce87cdc976b0"
+CONNECT_HEADER_PATH = WORK / "tools/playground/hand_rig_connect_request.h"
+CONNECT_HEADER_SHA = "b9742be987c68cb8cf653cdbfa921c5b0275f89b3d1489b244770fa2d54bd66b"
 DEFAULT_NATIVE_BASE = "4752801af933d3a4773020052716ff5af093baf7a4cb07c8c9a164ea1ad1ae14"
 DEFAULT_XR_BASE = "37f463121e4b90d70c76a77417e9e9736aed4da925bb88c51ce8d08345e3ea4d"
 TEST_ENV = {"GEARSVR_TEST_WINDOWS_BEHIND": "1", "GEARSVR_TEST_TINY_OUTPUT_OBSERVE_ONLY": "1", "GEARSVR_TEST_MUTE_GAME": "1"}
@@ -38,9 +44,13 @@ BUDGET_SECONDS, CLEANUP_RESERVE = 15.0, 3.0
 SOURCE_AGE_NS, POSITION_LIMIT, ROTATION_LIMIT_DEG = 100_000_000, 0.1, 0.1
 TRANSLATION_METRES = 0.04
 RUNTIME_NAMES = {"runtime_probe", "resolve_camera", "start_capture", "run_stereo_probe", "run_stereo_continuous", "runtime"}
-COHORT = ("session", "space_epoch", "input_epoch", "world_generation", "stream_epoch", "reference_epoch", "reference_generation", "left_loss_epoch", "right_loss_epoch", "profile_generation", "action_epoch", "equipment_phase", "units_per_metre", "native_activation", "xr_pid", "xr_start", "source")
+RIG_COHORT = ("game_pid", "game_start", "gt", "native_cookie", "native_activation", "world_generation", "binding_generation",
+              "xr_pid", "xr_start", "source", "raw_session", "space_epoch", "input_epoch", "profile_generation", "producer_stream",
+              "tracking_left", "tracking_right", "native_reference_epoch", "reference_flags", "reference_generation",
+              "observed_stream", "observed_reference", "observed_head", "observed_left", "observed_right", "units_per_metre", "view_policy")
 REQUIRED_ARTIFACTS = {"pg", "native", "xr", "loader", "source_manifest", "release_manifest", "source_config", "sim_runtime_manifest", "sim_runtime_dll", "audio_guard"}
 READ_ONLY_FUNCTIONS = frozenset({"GetWeaponInSlot", "GetStateName", "ShouldLeftHandIKBeOn", "IsComponentAttached", "CanSwitchWeapons", "DoingAnimationTransition", "IsReloading"})
+EXECUTION_GATES = ("sole_native_cf_owner", "cf_handoff_ready", "normal_frame_stage_ready")
 
 
 class BindingError(ValueError):
@@ -83,17 +93,19 @@ def pin(row):
 
 def binding_template():
     missing = lambda: {"path": "UNBOUND", "sha256": "UNBOUND"}
-    return {"schema": 1, "scope": SCOPE, "authorized": False, "producer_ready": False,
+    return {"schema": 1, "scope": SCOPE, "authorized": False, "producer_ready": False, **{name: False for name in EXECUTION_GATES},
             "runner_sha256": "UNBOUND", "run_directory": str(EVIDENCE / "runner-UNBOUND"),
             "renderer_lineage": {"release": "0.0.4-development", "preserve_default": True,
                 "native_base_sha256": DEFAULT_NATIVE_BASE, "xr_base_sha256": DEFAULT_XR_BASE},
             "source_profile": {"wire_source": 0, "name": "RuntimeTracked", "simulator_runtime": True, "physical_tracking_acceptance": False},
             "artifacts": {name: missing() for name in sorted(REQUIRED_ARTIFACTS)},
             "source_files": [], "runtime_helpers": [], "extra_native_artifacts": [],
-            "helpers": {name: missing() for name in ("base", "discovery", "mesh_preflight", "freshness", "work_profile", "instance", "idle_gui", "retained_bridge")},
+            "helpers": {name: missing() for name in ("base", "discovery", "mesh_preflight", "freshness", "work_profile", "instance", "idle_gui", "retained_bridge", "rig_layout")},
             "early_pg_build_relative": "UNBOUND", "game_path": "UNBOUND", "retail_root": "UNBOUND",
             "rig": {"start_export": "UNBOUND", "status_export": "UNBOUND", "stop_export": "UNBOUND",
-                "start_payload": "GHW1Start304", "hand_only_first": True, "terminal_phase": 6, "native_world_generation_field": "UNBOUND"},
+                "start_payload": "RigV1Start304", "frame_contract": "RigV1", "hand_only_first": True, "terminal_phase": 6,
+                "connect_export": "PlaygroundHandRigConnect", "client_status_export": "PlaygroundWeaponHandStatus",
+                "connect_payload": "RigConnect24", "native_world_generation_field": "UNBOUND"},
             "initial_controller_poses": {str(hand): {name: None for name in ("posX", "posY", "posZ", "yaw", "pitch", "trigger", "buttonA")} for hand in range(2)},
             "native_session_options": {"render_scale": None, "stereo_units_per_metre": None},
             "limits": {"budget_seconds": BUDGET_SECONDS, "cleanup_reserve_seconds": CLEANUP_RESERVE, "source_age_ns": SOURCE_AGE_NS,
@@ -105,7 +117,8 @@ def require_bindings(path):
     # Keep this ahead of any project import, inventory, copy, prepare or Win32/SDK.
     bound = load(path)
     need(bound.get("schema") == 1 and bound.get("scope") == SCOPE and bound.get("authorized") is True, "UNBOUND/unauthorized hand-only profile; no imports, prepare or run")
-    need(bound.get("producer_ready") is True, "Native Rig/GHW1 producer is not ready; preflight only")
+    need(bound.get("producer_ready") is True, "Native typed RigV1 producer is not ready; preflight only")
+    rig_contract(bound.get("rig", {}))
     need(bound.get("runner_sha256") == digest(__file__), "Runner bytes are not exactly bound")
     template = binding_template()
     need(bound.get("limits") == template["limits"] and bound.get("physical_background_input") is False, "Original 15s/100ms/0.1/background limits differ")
@@ -116,25 +129,37 @@ def require_bindings(path):
     need(type(profile.get("simulator_runtime")) is bool and profile.get("physical_tracking_acceptance") is False, "Explicit simulator/MetaOperator provenance required; no physical acceptance")
     need(bound.get("test_environment") == {**TEST_ENV, "GEARSVR_TEST_HAND_INDEPENDENT_MOTION": "1", "GEARSVR_TEST_HAND_MOTION_SOURCE": str(profile["wire_source"])}, "Exact independent-motion environment/source character required")
     need(set(bound.get("artifacts", {})) == REQUIRED_ARTIFACTS, "Exact PG/Native/XR/loader/current manifest/config/runtime set required")
+    need(all(bound.get(name) is True for name in EXECUTION_GATES),
+         "UNBOUND execution readiness: sole_native_cf_owner/cf_handoff_ready/normal_frame_stage_ready are required; compilation and Rig data are not setter permission")
+    # Read only the pinned source manifest first. The current compile-only PG
+    # profiles have not resolved CF ownership/handoff and Native normal-frame
+    # permission, so their successful builds cannot enter artifact preparation.
+    source = load(pin(bound["artifacts"]["source_manifest"]))
+    need(all(source.get(name) is True for name in EXECUTION_GATES),
+         "Actual source manifest does not prove sole_native_cf_owner/cf_handoff_ready/normal_frame_stage_ready; no artifact imports/prepare")
     for item in bound["artifacts"].values():
         pin(item)
-    source = load(bound["artifacts"]["source_manifest"]["path"])
-    need(source.get("hand_independent_motion_trial") is True and source.get("hand_only_first") is True and source.get("ghw1_rig_producer") is True,
-         "Actual selected build manifest lacks the new hand-only Rig/GHW1 profile")
+    need(source.get("hand_independent_motion_trial") is True and source.get("hand_only_first") is True and source.get("hand_rig_tracking_trial") is True,
+         "Actual selected build manifest lacks the typed hand-only RigV1 profile")
     need(type(source.get("hand_wire_source")) is int and type(source.get("hand_motion_expected_source")) is int and
          source["hand_wire_source"] == source["hand_motion_expected_source"] == profile["wire_source"] and
-         source.get("renderer_lineage") == bound["renderer_lineage"], "Actual compile-bound source/GHW1/renderer mismatch")
+         source.get("renderer_lineage") == bound["renderer_lineage"], "Actual compile-bound source/RigV1/renderer mismatch")
     for name in ("pg", "native", "xr", "loader"):
         need(source.get(name + "_sha256") == bound["artifacts"][name]["sha256"], "Selected artifact/build manifest mismatch: " + name)
     need(bound.get("source_files") and source.get("source_files") == bound["source_files"], "Exact live sources must be bound; no sealed AX source fallback")
     for row in bound["source_files"] + bound.get("extra_native_artifacts", []):
         pin(row)
+    for path, expected in ((RIG_HEADER_PATH, RIG_HEADER_SHA), (CONNECT_HEADER_PATH, CONNECT_HEADER_SHA)):
+        need(any(Path(row["path"]).resolve() == path.resolve() and row["sha256"] == expected for row in bound["source_files"]),
+             "Actual typed Rig/Connect header must be in the exact source manifest: " + path.name)
     helpers = bound.get("helpers", {})
     need(set(helpers) == set(template["helpers"]), "Complete explicit helper origins required")
     for row in helpers.values():
         pin(row)
     need(pin(helpers["retained_bridge"]) == BRIDGE_PATH.resolve() and helpers["retained_bridge"]["sha256"] == BRIDGE_SHA,
          "Exact reviewed retained-export/Submit adapter required; ordinary Bridge is unsafe")
+    need(pin(helpers["rig_layout"]) == RIG_LAYOUT_PATH.resolve() and helpers["rig_layout"]["sha256"] == RIG_LAYOUT_SHA,
+         "Actual compiled typed RigV1 layout receipt must be exactly bound")
     need({row.get("name") for row in bound.get("runtime_helpers", [])} == RUNTIME_NAMES and len(bound["runtime_helpers"]) == len(RUNTIME_NAMES), "Exact current runtime helper set required")
     for row in bound["runtime_helpers"]:
         need(pin(row).is_relative_to(WORK), "Runtime helper must be in this worktree")
@@ -145,7 +170,7 @@ def require_bindings(path):
     need(not early.is_absolute() and ".." not in early.parts and early.parts[:2] == ("tools", "playground") and "UNBOUND" not in early.parts, "Exact staged PG build required")
     need(pin(bound["artifacts"]["pg"]).parent == (WORK / early).resolve(), "PG must be the actually staged early build")
     rig = bound.get("rig", {})
-    need(rig.get("hand_only_first") is True and rig.get("start_payload") == "GHW1Start304" and rig.get("terminal_phase") == 6, "Unbound hand-only Start/status/Stop contract")
+    rig_contract(rig)
     for key in ("start_export", "status_export", "stop_export"):
         need(isinstance(rig.get(key), str) and re.fullmatch("Playground[A-Za-z0-9]+", rig[key]) and "UNBOUND" not in rig[key], "Exact Rig export required: " + key)
     need(source.get("rig") == rig, "Exact selected Rig export/payload contract differs")
@@ -161,6 +186,15 @@ def require_bindings(path):
     command_plan(bound)
     need(Path(bound.get("game_path", "")).is_file() and Path(bound.get("retail_root", "")).is_dir(), "Exact purchased game/private runtime roots required")
     return bound
+
+
+def rig_contract(rig):
+    need(rig.get("hand_only_first") is True and rig.get("start_payload") == "RigV1Start304" and
+         rig.get("frame_contract") == "RigV1" and rig.get("terminal_phase") == 6,
+         "Typed RigV1Start304 required; legacy GHW1/certificate recipes are rejected")
+    need(rig.get("connect_export") == "PlaygroundHandRigConnect" and
+         rig.get("client_status_export") == "PlaygroundWeaponHandStatus" and rig.get("connect_payload") == "RigConnect24",
+         "Exact owned RigConnect24/status export contract required")
 
 
 def command_plan(bound):
@@ -210,10 +244,12 @@ def reusable_helpers(bound, out, *, runtime=False):
         setattr(ax, field, Path(bound["helpers"][name]["path"]))
         setattr(ax, field + "_SHA", bound["helpers"][name]["sha256"])
     ax.H_MATH, ax.H_MATH_SHA = MATH_PATH, MATH_SHA
-    ax.ALLOW = {bound["rig"][key] for key in ("start_export", "status_export", "stop_export")} | {"PlaygroundInitialize", "PlaygroundEnable", "PlaygroundTestEnter", "PlaygroundVrFireStatus", "PlaygroundVrAimStatus", "PlaygroundEquipmentStowStatus", "PlaygroundEquipmentSwitchStatus", "PlaygroundShutdown"}
+    ax.ALLOW = {bound["rig"][key] for key in ("start_export", "status_export", "stop_export", "connect_export", "client_status_export")} | {"PlaygroundInitialize", "PlaygroundEnable", "PlaygroundTestEnter", "PlaygroundVrFireStatus", "PlaygroundVrAimStatus", "PlaygroundEquipmentStowStatus", "PlaygroundEquipmentSwitchStatus", "PlaygroundShutdown"}
     ax.AUDIO, ax.AUDIO_SHA = Path(bound["artifacts"]["audio_guard"]["path"]), bound["artifacts"]["audio_guard"]["sha256"]
     bridge_adapter = import_pinned("independent_retained_bridge", BRIDGE_PATH, BRIDGE_SHA) if runtime else None
-    return SimpleNamespace(ax=ax, h=h, audit=audit, rt=ax.runtime_modules() if runtime else None, bridge_adapter=bridge_adapter)
+    rt = ax.runtime_modules() if runtime else None
+    return SimpleNamespace(ax=ax, h=h, audit=audit, rt=rt, bridge_adapter=bridge_adapter,
+                           native_modules=sys.modules["start_capture"].modules if runtime else None)
 
 
 def checked_reservation_birth(row, expected_image):
@@ -282,6 +318,79 @@ def settle_reservation_before_exact_cleanup(launch, read_birth, adopt, identity,
             cleanup_observation_error(receipt, "reservation_cleanup_wait_errors")
 
 
+def loaded_native_base(bridge, list_modules, selected_native, identity):
+    selected_native = Path(selected_native).resolve()
+    need(selected_native.name.casefold() == "gearscapture.dll" and bridge.identity == identity and bridge.handle,
+         "Exact selected Native/game handle identity required")
+    handle = bridge.handle
+    bridge.verify()
+    rows = list_modules(handle)  # The exact already-owned game handle, never an inventory PID or LoadLibrary.
+    bridge.verify()
+    need(bridge.handle == handle and bridge.identity == identity and isinstance(rows, dict), "Game handle/identity changed during Native module read")
+    matches = []
+    for value in rows.values():
+        need(isinstance(value, (tuple, list)) and len(value) == 2, "Malformed loaded module observation")
+        address, path = value
+        if str(Path(path).resolve()).casefold() == str(selected_native).casefold():
+            need(type(address) is int and 0 < address < 1 << 64 and not address & 7, "Invalid actual loaded Native module base")
+            matches.append(address)
+    need(len(matches) == 1, "Exact selected/native/GearsCapture.dll is not uniquely already loaded")
+    return matches[0]
+
+
+def connect_typed_rig(bridge, rig, identity, selected_native, native_sha, list_modules, live_native,
+                      expected_activation, deadline, receipt, *, clock=time.monotonic):
+    rig_contract(rig)
+    need(not receipt.get("rig_connect_attempted"), "Rig Connect is one-shot; no replay")
+    need(type(expected_activation) is int and 0 < expected_activation < 1 << 64, "Exact positive Native incarnation required")
+    need(clock() < deadline, "Original startup deadline exhausted before Rig Connect")
+    bridge.set_deadline(deadline)
+    before = live_native()
+    need(before and positive(before, "started_qpc") == expected_activation, "Native incarnation changed before Rig Connect")
+    selected_native = Path(selected_native).resolve()
+    need(selected_native.is_file() and digest(selected_native) == native_sha, "Selected private Native bytes differ before Connect")
+    address = loaded_native_base(bridge, list_modules, selected_native, identity)
+    payload = struct.pack("<IIQQ", 1, 24, address, expected_activation)
+    need(clock() < deadline, "Original startup deadline exhausted during Native module observation")
+    receipt["rig_connect"] = {"payload": "RigConnect24", "payload_hex": payload.hex(), "native_module": address,
+                              "native_path": str(selected_native), "native_sha256": native_sha,
+                              "native_started_qpc": expected_activation, "startup_deadline_monotonic": deadline,
+                              "native_before": before, "data_registration_only": True, "grip_or_engine_grant": False}
+    receipt["rig_connect_attempted"] = True  # Dispatch obligation exists even if owned_export raises.
+    value = bridge.owned_export(rig["connect_export"], payload)
+    receipt["rig_connect"]["reply"] = value
+    need(type(value) is int and value == 0, "Typed Rig Connect was not accepted")
+    status_value = bridge.export(rig["client_status_export"])
+    receipt["rig_connect"]["client_status"] = status_value
+    need(type(status_value) is int and 0 <= status_value <= 0xffffffff and status_value & 0xff == 2,
+         "Typed Rig client is not active; armed is not a required/grip grant")
+    after = live_native()
+    need(after and positive(after, "started_qpc") == expected_activation, "Native incarnation changed across Rig Connect")
+    need(clock() < deadline, "Original startup deadline exhausted by Rig Connect")
+    receipt["rig_connect"]["native_after"] = after
+    return address
+
+
+def owned_xr_identity(report, control, selected_xr):
+    value = report.get("xr_identity")
+    need(isinstance(value, dict) and type(value.get("pid")) is int and value["pid"] > 0 and
+         type(value.get("creation_time")) is int and value["creation_time"] > 0 and isinstance(value.get("image"), str) and
+         str(Path(value["image"]).resolve()).casefold() == str(Path(selected_xr).resolve()).casefold(), "Exact selected owned XR report identity is missing/different")
+    need(control.identity(value["pid"]) == value, "Owned XR process identity changed")
+    return dict(value)
+
+
+def start_object_identities(headers):
+    need(len(headers) == 6 and all(type(address) is int and len(raw) == 0x58 for address, raw in headers), "Complete actual Start object headers required")
+    result = []
+    for index in (0, 2, 3, 4, 5):  # Same five object roles as the typed Rig Frame; level is Start-only.
+        address, raw = headers[index]
+        result.append(struct.pack("<QQQ4I", address, struct.unpack_from("<Q", raw, 0x40)[0],
+            struct.unpack_from("<Q", raw, 0x50)[0], struct.unpack_from("<I", raw, 8)[0],
+            *struct.unpack_from("<II", raw, 0x48), 1).hex())
+    return tuple(result)
+
+
 def fields(text):
     result = {}
     for token in text.split()[1:]:
@@ -297,10 +406,114 @@ def positive(row, key):
     return int(value)
 
 
+def verified_rig_layout():
+    # This is a real MSVC sizeof/offsetof receipt over the exact current typed
+    # header. No runtime/AX import or guessed packed-layout fallback exists.
+    need(digest(RIG_LAYOUT_PATH) == RIG_LAYOUT_SHA and digest(RIG_HEADER_PATH) == RIG_HEADER_SHA,
+         "Typed RigV1 layout/header changed; no decoding fallback")
+    value = load(RIG_LAYOUT_PATH)
+    need(value["frame_bytes"] == 1824 and value["frame_alignment"] == value["pointer_bytes"] == 8,
+         "Actual compiled RigV1 recipe differs")
+    return value
+
+
+def decode_rig_receipt(row, pose, bound, layout):
+    need(row.get("schema") == "1" and row.get("continuity") == "RigV1" and row.get("stage") == "before_write",
+         "Actual before-write typed RigV1 sidecar required")
+    count = positive(row, "bytes")
+    need(count == layout["frame_bytes"] and re.fullmatch(r"[0-9a-f]{" + str(2 * count) + r"}", row.get("frame_hex", "")),
+         "Complete exact-size RigV1 Frame bytes required")
+    raw = bytes.fromhex(row["frame_hex"])
+    get = lambda fmt, offset: struct.unpack_from(fmt, raw, offset)[0]
+    field = lambda name, fmt="<Q": get(fmt, layout["frame_" + name])
+    size, abi, status_value, flags = struct.unpack_from("<IIII", raw)
+    need(size == count and abi == 1 and status_value == 1 and flags & 3 == 3 and not flags & ~7,
+         "RigV1 Frame header/status/producer continuity is not ready")
+    game_pid, gt, game_start, activation, cookie = struct.unpack_from("<IIQQQ", raw, layout["frame_native"])
+    rig = {"game_pid": game_pid, "gt": gt, "game_start": game_start, "native_activation": activation, "native_cookie": cookie,
+           "publication": field("publication_sequence"), "scene": field("scene_invocation"),
+           "world_generation": field("world_generation"), "binding_generation": field("binding_generation"),
+           "reference_generation": field("reference_generation"), "published_ns": field("published_ns"),
+           "scene_qpc": field("scene_qpc", "<q"), "qpc_frequency": field("qpc_frequency", "<q"),
+           "xr_pid": field("controller_publisher_pid", "<I"), "xr_start": field("controller_publisher_start"),
+           "units_per_metre": field("units_per_metre", "<d"), "view_policy": field("view_policy", "<I")}
+    for key, value in zip(("observed_stream", "observed_reference", "observed_head", "observed_left", "observed_right"),
+                          struct.unpack_from("<5Q", raw, layout["frame_observed"])):
+        rig[key] = value
+    for key, value in zip(("producer_stream", "tracking_left", "tracking_right"),
+                          struct.unpack_from("<3Q", raw, layout["frame_producer"])):
+        rig[key] = value
+    rig["native_reference_epoch"], rig["reference_flags"], reference_reserved = struct.unpack_from("<QII", raw, layout["frame_native_reference"])
+    need(rig["reference_flags"] == 1 and reference_reserved == 0 and field("reserved", "<I") == 0 and
+         field("world_pose_mask", "<I") == 7, "RigV1 reference/both world grips are not complete")
+    stereo, controllers = layout["frame_stereo"], layout["frame_controllers"]
+    for key, member, fmt in (("source", "source", "<I"), ("raw_session", "session", "<Q"),
+                             ("raw_sequence", "sequence", "<Q"), ("stereo_ns", "received_ns", "<q"), ("space_epoch", "space_epoch", "<Q")):
+        rig[key] = get(fmt, stereo + layout["stereo_" + member])
+    for member in ("source", "session", "sequence", "space_epoch"):
+        target = {"session": "raw_session", "sequence": "raw_sequence"}.get(member, member)
+        need(get("<I" if member == "source" else "<Q", controllers + layout["controllers_" + member]) == rig[target],
+             "RigV1 controller/stereo frame pairing differs")
+    for key, fmt in (("input_epoch", "<Q"), ("profile_generation", "<Q"), ("input_ns", "<q"), ("sync_ns", "<q")):
+        member = "received_ns" if key == "input_ns" else key
+        rig[key] = get(fmt, controllers + layout["controllers_" + member])
+    # Text fields are observations of this same complete Frame; disagreement
+    # rejects the record instead of preferring a convenient representation.
+    for key in ("publication", "scene", "native_cookie", "native_activation", "game_pid", "game_start", "gt", "world_generation",
+                "binding_generation", "xr_pid", "xr_start", "raw_session", "raw_sequence", "producer_stream", "tracking_left", "tracking_right",
+                "native_reference_epoch", "reference_generation", "observed_stream", "observed_reference", "observed_head", "observed_left",
+                "observed_right", "stereo_ns", "input_ns", "published_ns"):
+        need(positive(row, key) == rig[key], "RigV1 sidecar/Frame bytes differ: " + key)
+    need(int(row["source"]) == rig["source"] == bound["source_profile"]["wire_source"] and int(row["reference_flags"]) == rig["reference_flags"],
+         "RigV1 actual source/reference differs")
+    need(row.get("current_tick_equivalence") == row.get("engine_permission") == "0" and row.get("handworld_adapter_only") == "1",
+         "Prepared Rig receipt must not claim current-Tick equivalence or engine permission")
+    for key in RIG_COHORT:
+        if key not in ("source", "units_per_metre", "view_policy"):
+            need(rig[key] > 0, "Unknown typed RigV1 cohort field: " + key)
+    game, xr = bound.get("_game_identity", {}), bound.get("_xr_identity", {})
+    need((rig["game_pid"], rig["game_start"]) == (game.get("pid"), game.get("creation_time")) and
+         rig["native_activation"] == bound.get("_native_started_qpc") and rig["world_generation"] == bound.get("_native_world_generation"),
+         "Typed Rig receipt belongs to another game/Native incarnation/world")
+    need((rig["xr_pid"], rig["xr_start"]) == (xr.get("pid"), xr.get("creation_time")), "Typed Rig controller publisher differs from the owned XR child")
+    units = rig["units_per_metre"]
+    need(math.isfinite(units) and 10 <= units <= 500 and units == bound["native_session_options"]["stereo_units_per_metre"] and
+         math.isclose(float(pose["units_per_metre"]), units, rel_tol=1e-8, abs_tol=1e-8), "Actual typed Rig world scale differs")
+    for key, typed in (("publication", "publication"), ("serial", "publication"), ("scene", "scene"), ("sequence", "raw_sequence"),
+                       ("session", "raw_session"), ("space_epoch", "space_epoch"), ("input_epoch", "input_epoch"), ("world_generation", "world_generation")):
+        need(positive(pose, key) == rig[typed], "Pose geometry adapter/Rig Frame pairing differs: " + key)
+    need(pose.get("created_ms_is_local_receipt") == pose.get("handworld_adapter_only") == "1" and pose.get("current_tick_equivalence") == "0",
+         "Rig pose local receipt/source semantics differ")
+    observed = positive(row, "receipt_ns")
+    need(observed == positive(pose, "receipt_ns") and positive(row, "receipt_ms") == positive(pose, "created_ms"), "Rig local observation differs")
+    need(0 < rig["sync_ns"] <= rig["input_ns"] <= rig["published_ns"] <= observed and rig["scene_qpc"] > 0 and
+         rig["qpc_frequency"] == bound.get("_qpc_frequency") and rig["qpc_frequency"] > 0,
+         "Actual Rig publication/clock receipt is invalid")
+    for key, label in (("stereo_ns", "stereo_age_ns"), ("input_ns", "input_age_ns")):
+        need(0 < rig[key] <= rig["published_ns"] and 0 <= observed - rig[key] <= SOURCE_AGE_NS and
+             int(pose[label]) == observed - rig[key], "Original 100ms actual Rig source age differs/exceeded")
+    need(observed - rig["published_ns"] <= SOURCE_AGE_NS, "Actual Rig publication is stale")
+    identities = tuple(raw[layout["frame_" + name]:layout["frame_" + name] + layout["object_bytes"]].hex()
+                       for name in ("world", "controller", "pawn", "mesh", "weapon"))
+    need(identities == bound.get("_rig_object_identity_hex"), "Rig complete object identities differ from the actual Start snapshot")
+    cover = raw[layout["frame_cover_link"]:layout["frame_cover_link"] + layout["object_bytes"]].hex(), field("cover_slot", "<i"), field("cover_type", "<I")
+    reference = raw[layout["frame_reference"]:layout["frame_reference"] + layout["pose_bytes"]].hex()
+    grips = [struct.unpack_from("<7d", raw, layout["frame_world_grip"] + hand * layout["pose_bytes"]) for hand in range(2)]
+    need(all(math.isfinite(x) for grip in grips for x in grip), "Nonfinite actual Rig world-grip data")
+    for hand in range(2):
+        need(math.dist(grips[hand][:3], pose["grip" + str(hand) + "_pose"][:3]) <= POSITION_LIMIT,
+             "Logged geometry adapter position differs from its actual Rig world grip")
+    rig.update(world_grips=grips, object_identity_hex=identities, cover_key=cover, reference_hex=reference,
+               receipt_ns=observed, receipt_ms=positive(row, "receipt_ms"), sidecar=row, frame_hex=row["frame_hex"],
+               cohort=tuple(rig[key] for key in RIG_COHORT) + identities + cover + (reference,))
+    return rig
+
+
 def sample_id(item):
-    pose = item["pose"]
+    pose, rig = item["pose"], item["rig"]
     return {"lease": item["lease"], "sequence": item["sequence"], "serial": positive(pose, "serial"),
-            "input_ns": positive(pose, "input_ns"), "stereo_ns": positive(pose, "stereo_ns"),
+            "publication": rig["publication"], "scene": rig["scene"], "published_ns": rig["published_ns"],
+            "input_ns": rig["input_ns"], "stereo_ns": rig["stereo_ns"],
             "line": item["written"]["line"], "pose_line": pose["line"], "before_line": item["before"]["line"],
             "pre_line": item["pre"]["line"], "restore_line": item["restore"]["line"],
             "action_epoch": positive(pose, "action_epoch")}
@@ -309,6 +522,7 @@ def sample_id(item):
 def completed_hand_only(text, h, bound, audit, *, after_line=0):
     # Reuse sealed parsing/rigid math only, not AX's phase2/joint/whole-run gates.
     _, samples, poses, restores, written = h.parse(text.splitlines())
+    lines, layout = text.splitlines(), verified_rig_layout()
     result = []
     for lease, (key, w) in sorted(written.items()):
         group, pose, restore = samples[key], poses.get(key), restores.get(lease)
@@ -319,19 +533,24 @@ def completed_hand_only(text, h, bound, audit, *, after_line=0):
             continue
         need(b["line"] < pose["line"] < w["line"] < p["line"] < restore["line"], "Actual hand sample/restore order differs")
         phase = int(pose["equipment_phase"])
-        need(phase in (1, 2) and pose.get("hand_only") == "1" and pose.get("continuity") == "GHW1", "Only actual phase1/2 hand-only leases qualify")
+        need(phase in (1, 2) and pose.get("hand_only") == "1" and pose.get("continuity") == "RigV1", "Only actual typed RigV1 phase1/2 hand-only leases qualify")
+        if pose["line"] >= len(lines) or not lines[pose["line"]].startswith("hand_rig_receipt "):
+            continue  # Missing/interleaved sidecar remains pending, never nearest-neighbour paired.
+        sidecar = {**fields(lines[pose["line"]]), "line": pose["line"] + 1}
+        if sidecar.get("stage") != "before_write":
+            continue
+        rig = decode_rig_receipt(sidecar, pose, bound, layout)
+        need(sidecar["line"] < w["line"], "Rig before-write sidecar is not before the written sample")
         need(pose.get("tracked_mask") == pose.get("planned_mask") == w.get("trial_apply_mask") == p.get("trial_apply_mask") == "3", "Both actual hands must participate")
         need(b.get("trial_apply_mask") == "0" and all(row.get("action_epoch") == pose.get("action_epoch") for row in (b, w, p)), "Hand lease epoch/clean-before sample differs")
         need(all(row.get("equipment_phase") == str(phase) and row.get("mesh_tick_known") == "1" for row in (b, w, p)), "Unknown/cross-phase actual bone evidence")
         need(int(p["mesh_tick"]) > int(w["mesh_tick"]), "No later mesh Tick/pre-restore evidence")
         need(restore.get("dirty_before") == restore.get("restored") == "1" and restore.get("dirty_after") == "0", "Actual exact-control restore receipt is missing/unclean")
         need(0 <= int(w["ms"]) - int(pose["created_ms"]) <= 100, "Original 100ms pose limit exceeded")
-        for name in ("native_activation", "xr_pid", "xr_start", "stream_epoch", "reference_epoch", "reference_generation", "left_loss_epoch", "right_loss_epoch", "profile_generation", "stereo_ns", "input_ns"):
-            positive(pose, name)
-        need(positive(pose, "xr_pid") <= 0xffffffff, "Unknown XR publisher identity")
-        need(positive(pose, "native_activation") == bound.get("_native_started_qpc") and
-             positive(pose, "world_generation") == bound.get("_native_world_generation"), "Actual source does not belong to the authenticated Native/world")
-        need(int(pose["source"]) == bound["source_profile"]["wire_source"], "Actual GHW1 certificate source differs from compile-bound source")
+        qpc, frequency = positive(w, "qpc"), rig["qpc_frequency"]
+        written_ns = (qpc // frequency) * 1_000_000_000 + (qpc % frequency) * 1_000_000_000 // frequency
+        need(written_ns >= rig["receipt_ns"] and all(0 <= written_ns - rig[key] <= SOURCE_AGE_NS for key in ("stereo_ns", "input_ns")),
+             "Original 100ms actual source age exceeded by the written sample")
         for channel in range(4):
             target = "target" + str(channel)
             need(b[target] == w[target] == p[target], "Logged writer targets changed within lease")
@@ -343,9 +562,10 @@ def completed_hand_only(text, h, bound, audit, *, after_line=0):
             rotation_error = h.angle(h.axes(p[name + "_matrix"]), h.rotator_axes(rotation))
             need(position_error <= POSITION_LIMIT and rotation_error <= ROTATION_LIMIT_DEG, "Actual later-Tick bone residual exceeds original 0.1 limits")
             residuals[name] = {"position_raw_units": position_error, "rotation_degrees": rotation_error}
-        result.append({"lease": lease, "sequence": key[1], "pose": pose, "before": b, "written": w, "pre": p,
+        result.append({"lease": lease, "sequence": key[1], "pose": pose, "rig": rig, "before": b, "written": w, "pre": p,
                        "restore": restore, "restored_world_bones": {"proved": False, "reason": "No same-lease post-restore bone getter/sample exists"},
-                       "cohort": tuple(pose[name] for name in COHORT), "residuals": residuals})
+                       "cohort": rig["cohort"] + (pose["action_epoch"], phase), "residuals": residuals,
+                       "after_written_source_age_ns": {name: written_ns - rig[name] for name in ("stereo_ns", "input_ns")}})
     if result:
         # The immediate matrix need not have reevaluated. Validate the actual
         # typed tail bytes against baseline/targets, then the later-Tick bones.
@@ -369,6 +589,7 @@ def binding_group(text, h, bound, cursor, audit):
         pose = fields(raw)
         if pose.get("hand_only") != "1" or pose.get("equipment_phase") not in ("1", "2"):
             continue
+        need(pose.get("continuity") == "RigV1", "Legacy GHW1 pose cannot satisfy typed RigV1 selection")
         key = (positive(pose, "lease"), positive(pose, "sequence"))
         if int(pose["bind_mask"]):
             binding, group = by_key.get(key), []
@@ -385,7 +606,7 @@ def pure_translation(previous, current, hand, h, *, baseline=None, returning=Fal
     need(previous["cohort"] == current["cohort"], "Hand binding/source cohort changed")
     other = 1 - hand
     channel, other_channel = (2, 0) if hand == 0 else (0, 2)
-    a, b = (row["pose"]["grip" + str(hand) + "_pose"] for row in (previous, current))
+    a, b = (row["rig"]["world_grips"][hand] for row in (previous, current))
     need(a[3:] == b[3:], "Pure translation changed grip rotation")
     for c in (channel + 1, other_channel, other_channel + 1):
         need(previous["written"]["target" + str(c)] == current["written"]["target" + str(c)], "Rotation/other-hand target changed during independent translation")
@@ -393,14 +614,15 @@ def pure_translation(previous, current, hand, h, *, baseline=None, returning=Fal
     tail = lambda item: next(row for row in item["typed_tail_rows"] if row["phase"] == "written" and int(row["control"]) == other_control)
     need(all(tail(previous)[name] == tail(current)[name] for name in ("translation", "space", "space_bone", "flags", "raw_flags")), "Actual other-hand typed tail parameters changed")
     need(previous["pose"]["grip" + str(other) + "_pose"] == current["pose"]["grip" + str(other) + "_pose"], "Other controller pose changed")
-    units = float(current["pose"]["units_per_metre"])
+    need(previous["rig"]["world_grips"][other] == current["rig"]["world_grips"][other], "Actual other Rig world grip changed")
+    units = current["rig"]["units_per_metre"]
     displacement = [b[i] - a[i] for i in range(3)]
     need(abs(math.sqrt(sum(x*x for x in displacement)) - TRANSLATION_METRES * units) <= POSITION_LIMIT, "Actual source translation is not 4cm")
     ta, tb = (struct.unpack("<3f", h.hexbytes(row["written"]["target" + str(channel)], 12)) for row in (previous, current))
     need(math.dist([tb[i] - ta[i] for i in range(3)], displacement) <= POSITION_LIMIT, "Actual parameter translation does not follow the same hand source")
     if returning:
         need(baseline is not None, "Return has no actual baseline")
-        base = baseline["pose"]["grip" + str(hand) + "_pose"]
+        base = baseline["rig"]["world_grips"][hand]
         base_target = struct.unpack("<3f", h.hexbytes(baseline["written"]["target" + str(channel)], 12))
         need(math.dist(base[:3], b[:3]) <= POSITION_LIMIT and base[3:] == b[3:] and math.dist(base_target, tb) <= POSITION_LIMIT, "Actual hand source/parameters did not return to baseline")
     return {"hand": hand, "pure_translation": True, "returned": returning, "source_delta_world": displacement,
@@ -439,7 +661,7 @@ def wait_response(io, budget, receipt, helpers, bound, cursor, *, binding=None, 
                 if command:
                     if min(identity[name] for name in ("before_line", "pose_line", "line", "pre_line", "restore_line")) <= command["ack_line"]:
                         continue
-                    if any(identity[name] <= command["barrier"][name] for name in ("lease", "sequence", "serial", "input_ns", "stereo_ns")):
+                    if any(identity[name] <= command["barrier"][name] for name in ("lease", "sequence", "serial", "scene", "published_ns", "input_ns", "stereo_ns")):
                         continue
                     if any(identity[name] <= command["ack_qpc_boundary"]["ns"] for name in ("input_ns", "stereo_ns")):
                         continue
@@ -718,13 +940,13 @@ def run(bound, binding_path, prepared_sha):
         thread = threading.Thread(target=session, name="independent-owned-native-xr")
         thread.start()
         startup_deadline = time.monotonic() + 100
-        native_started = None
+        native_started = xr_identity = None
         k = control.k
         k.GetTickCount64.restype = ctypes.c_ulonglonglong
         frequency = ctypes.c_longlong()
         need(k.QueryPerformanceFrequency(ctypes.byref(frequency)) and frequency.value > 0, "QPF unavailable")
         def live_native():
-            nonlocal native_started
+            nonlocal native_started, xr_identity
             need(thread.is_alive(), "Owned Native/XR session ended")
             report = ax.maybe(session_paths[0]) if session_paths else None
             if not report or report.get("phase") != "running":
@@ -733,6 +955,9 @@ def run(bound, binding_path, prepared_sha):
             actual = ax.trusted_native_started(report, identity, owner)
             need(native_started is None or native_started == actual, "Native incarnation changed")
             native_started = actual
+            current_xr = owned_xr_identity(report, control, out / "artifacts/xr/OpenXRPoseProbe.exe")
+            need(xr_identity is None or xr_identity == current_xr, "Owned XR incarnation changed")
+            xr_identity = current_xr
             def qpc():
                 ticks = ctypes.c_longlong()
                 need(k.QueryPerformanceCounter(ctypes.byref(ticks)), "QPC unavailable")
@@ -746,8 +971,11 @@ def run(bound, binding_path, prepared_sha):
                     return stream.buffer.read()
             state = ax.record_native_freshness(rt.freshness, r, read=read_status, qpc=qpc, clock=time.monotonic, sleep=time.sleep,
                     cancel=cancel.is_set, remaining=lambda: ax.freshness_remaining(budget, startup_deadline), identity=identity, owner=owner, expected_started=native_started)
+            need(control.identity(xr_identity["pid"]) == xr_identity, "Owned XR exited/changed during Native freshness read")
             return state if int(state.get("activation_ready_qpc", 0)) > 0 else False
         r["native_baseline"] = rt.base.prior.wait_for(live_native, max(.001, startup_deadline - time.monotonic()), "No authenticated fresh Native session")
+        connect_typed_rig(bridge, rig, identity, native / "GearsCapture.dll", bound["artifacts"]["native"]["sha256"],
+                          helpers.native_modules, live_native, native_started, startup_deadline, r)
         need(control.signal(f'Local\\GearsVR.FirstPersonToggle.{identity["pid"]}'), "Selected FPP toggle absent")
         tick = readbacks.scalar(readbacks.mesh, "TickTag", "IntProperty", "<i")
         until = time.monotonic() + 3
@@ -777,7 +1005,9 @@ def run(bound, binding_path, prepared_sha):
         need(r["trial_start"] == 0, "Actual independent hand-only Start rejected")
         io = SimpleNamespace(live_native=live_native, status=lambda: export(bridge, rig["status_export"]),
                              log_text=lambda: ax.complete_log(log), command_path=sim_data / "OpenXR-Simulator/controller_pose_command.json")
-        live_bound = {**bound, "_native_started_qpc": native_started, "_native_world_generation": generation, "_tail_baseline": tail_baseline}
+        live_bound = {**bound, "_native_started_qpc": native_started, "_native_world_generation": generation, "_tail_baseline": tail_baseline,
+                      "_game_identity": dict(identity), "_xr_identity": dict(xr_identity), "_rig_object_identity_hex": start_object_identities(headers),
+                      "_qpc_frequency": frequency.value}
         r["native_source_binding"] = {"native_started_qpc": native_started, "world_generation": generation,
                                       "status_field": rig["native_world_generation_field"]}
         run_motion(io, budget, r, helpers, live_bound, cursor)
@@ -934,7 +1164,7 @@ def main(argv=None):
     try:
         need(sum((args.preflight, args.prepare, args.run)) <= 1, "Choose one operation")
         if args.binding is None:
-            raise BindingError("UNBOUND Native Rig/GHW1/PG/XR/runtime profile; no imports, prepare or run")
+            raise BindingError("UNBOUND typed Native RigV1/PG/XR/runtime profile; no imports, prepare or run")
         bound = require_bindings(args.binding)
         report["profile_bound"] = True
         if args.run:
