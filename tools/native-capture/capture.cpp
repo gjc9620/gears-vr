@@ -79,6 +79,7 @@ gears_support::Recorder support_diagnostics;
 #include "../vr-common/cover_input_owner.h"
 #include "../vr-common/controller_input_bridge.h"
 #include "weapon_hand_broker.h"
+#include "cover_surface_getters.h"
 #include "../vr-common/weapon_hand_owner_adapter.h"
 #include <new>
 #include "first_person_view.h"
@@ -914,6 +915,7 @@ void request_stop() noexcept;bool cleanup_ready() noexcept;bool retained() noexc
 bool begin_call(uintptr_t,uintptr_t,uintptr_t,uintptr_t,gears_weapon_hand::CallScope&) noexcept;
 void finish_call(gears_weapon_hand::CallScope&,bool,uint64_t) noexcept;
 }
+namespace cover_geometry_observer_live {void print(FILE*);void summary(FILE*);}
 #if defined(GEARS_COVER_BODY_PROTOTYPE) && GEARS_COVER_BODY_PROTOTYPE
 std::atomic<unsigned> cover_body_stop_record{};
 SessionStop cover_body_stop_reason=SessionStop::none;
@@ -1197,6 +1199,7 @@ void print_stereo(FILE* file) {
     first_person_live::print(file);
     cover_camera_live::print(file);
     cover_input_live::print(file);
+    cover_geometry_observer_live::print(file);
     cover_shared_input_live::summary(file);weapon_hand_runtime::summary(file);fprintf(file,"\n");
 #if defined(GEARS_SIXDOF_TICKET_DIAGNOSTICS) && GEARS_SIXDOF_TICKET_DIAGNOSTICS
     // Final requests remain serviceable even if rendering stopped immediately
@@ -1259,6 +1262,8 @@ bool read_attested_hook_entry(void* output,void const* source,size_t size);
 #include "weapon_hand_scene_binding.inl"
 #include "cover_neutral_eye_live.inl"
 #include "cover_camera_live.inl"
+#include "cover_geometry_live.inl"
+#include "cover_geometry_observer_live.inl"
 #include "cover_input_live.inl"
 #include "weapon_hand_runtime.inl"
 #include "cover_shared_input_live.inl"
@@ -1824,7 +1829,7 @@ void write_session_status(bool resources_retained=true,bool entries_restored=fal
     path_choice_layout_observer::progress(output);
     path_choice_close_observer::progress(output);
     cover_body_live::progress(output);
-    {std::lock_guard<std::mutex> lock(stereo_mutex);cover_camera_live::summary(output);cover_input_live::summary(output);cover_shared_input_live::summary(output);}
+    {std::lock_guard<std::mutex> lock(stereo_mutex);cover_camera_live::summary(output);cover_input_live::summary(output);cover_shared_input_live::summary(output);cover_geometry_observer_live::summary(output);}
     weapon_hand_runtime::summary(output);
     // Diagnostic rates use this sample's QPC, not the owner's polling time.
     // Existing bound/top-level Present observations exclude DXGI_PRESENT_TEST
@@ -3179,6 +3184,7 @@ bool try_submit_pair(void* destination,void* family,void* canvas,void* transform
         }
         const bool first_person_view_owned=first_person_live::prepare(anchor,view);
         const bool cover_view_owned=cover_shared_input_live::prepare(anchor,view,result);
+        cover_geometry_observer_live::observe(anchor);
         if(camera_closer_metres>0&&!first_person_view_owned&&!cover_view_owned){
             const bool gameplay=anchor&&!anchor->anchor.unpossessed&&anchor_config.cinematic_enabled&&!anchor_config.mounted_enabled&&
                 !anchor->anchor.cinematic&&anchor->anchor.target_identity.address==anchor->anchor.pawn;
@@ -4835,6 +4841,8 @@ DWORD WINAPI worker(void*) {
         fprintf(status,"rejected: cover camera preview requires continuous stereo XR and enabled body prototype\n");fclose(status);return 2;}
     if(!cover_input_live::configure(ini,status)){
         fprintf(status,"rejected: cover input prototype requires the camera preview, top live target and explicit measured height curve\n");fclose(status);return 2;}
+    if(!cover_geometry_observer_live::configure(ini,status)){
+        fprintf(status,"rejected: cover geometry observer requires compiled body support and continuous stereo anchors\n");fclose(status);return 2;}
     if(!weapon_hand_runtime::configure(ini,status)){
         fprintf(status,"rejected: weapon hand participant requires compiled Scene support and continuous stereo anchors\n");fclose(status);return 2;}
 #if !defined(GEARS_UI_CALL_BOUNDARY_OBSERVER) || !GEARS_UI_CALL_BOUNDARY_OBSERVER

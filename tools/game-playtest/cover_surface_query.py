@@ -212,7 +212,8 @@ def _function(q, receiver, owner_name, name, module, structures, row):
     entry = struct.unpack_from('<Q', header, 0x114)[0]
     row.update(identity=function, declaring_class=owner, receiver=receiver, header_bytes=header.hex(),
                header_sha256=hashlib.sha256(header).hexdigest(), native_index=native, parms_size=size,
-               return_offset=return_offset, function_flags=struct.unpack_from('<I', header, 0xfc)[0],
+               return_offset=return_offset, function_flags=struct.unpack_from('<I', header, 0xf4)[0],
+               function_flags_offset=0xf4,
                entry=entry, entry_rva=hex(entry - module['base']), fields=[])
     if not 0 < size <= PARAM_CAP or not 0 <= return_offset < size:
         raise RuntimeError('Surface current UFunction parameter header bounds rejected')

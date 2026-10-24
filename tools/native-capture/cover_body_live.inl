@@ -23,6 +23,9 @@ std::array<void**,2> originals{{&GearsCoverBlendOriginal,&GearsCoverChildOrigina
 bool reserved{},enabled{};
 enum class PoseProfile {top,side};
 PoseProfile pose_profile=PoseProfile::top; // Immutable after configure.
+// Private fixed-direction A/B only. This is NOT an authenticated native
+// left/right selector; the native ancestor mirror baseline must stay fixed.
+bool side_mirror_trial{}; // Immutable after configure; default is unchanged.
 TargetSource target_source=TargetSource::advance;
 bool live_source(){return target_source==TargetSource::live;}
 const char* source_name(TargetSource source){return source==TargetSource::live?"live":"advance";}
@@ -93,6 +96,7 @@ struct Layout {
     std::array<Source,2048> sources{};unsigned source_count{};
     std::array<gears_anchor::Identity,64> ids{};unsigned id_count{};
     unsigned children{},anim{},weight{},total{},skel{},owner{},mesh{},cover{},special{},world{};
+    unsigned mirror_word{};uint32_t mirror_mask{};
 } layout;
 bool remember(gears_anchor::Identity const& id){
     for(unsigned i=0;i<layout.id_count;++i)if(layout.ids[i].address==id.address)return same(layout.ids[i],id);
@@ -141,6 +145,32 @@ bool pointer_property(uintptr_t cls,const wchar_t* name,Property& out){
     // pointer fields, and no other property type is accepted.
     return property(cls,name,L"ObjectProperty",8,out)||property(cls,name,L"ComponentProperty",8,out);
 }
+bool mirror_descriptor(Property const& mirror,uint32_t mask,unsigned stride){
+    // Typed reflection is required first. These equalities additionally bind
+    // that property to the saved F7940 consumer, not an arbitrary bool field.
+    return mirror.dimension==1&&mirror.width==4&&mirror.offset==0x3c&&
+        !(mirror.offset&3)&&mirror.offset+mirror.width<=stride&&mask==1;
+}
+template<size_t N> bool mirror_code_source(uintptr_t rva,std::array<unsigned char,N> const& bytes){
+    std::array<unsigned char,N> actual{};
+    if(!read(actual,base+rva)||actual!=bytes)return false;
+    for(size_t i=0;i<N;++i){unsigned char value{};if(!source(value,base+rva+i)||value!=bytes[i])return false;}
+    return true;
+}
+bool mirror_consumer_sources(){
+    // Read-only cache fields + both child-edge tests from the saved/current
+    // byte-matched generic engine method. No extra hook or cache mutation.
+    return mirror_code_source(0xf79a8,std::array<unsigned char,23>{{0x4c,0x8b,0x41,0x60,0x41,0x8b,0x80,0x38,0x03,0x00,0x00,0x39,0x81,0xbc,0x00,0x00,0x00,0x0f,0x84,0xf5,0x05,0x00,0x00}})&&
+        mirror_code_source(0xf7a47,std::array<unsigned char,6>{{0x41,0xf6,0x44,0x11,0x3c,0x01}})&&
+        mirror_code_source(0xf7bbe,std::array<unsigned char,6>{{0x42,0xf6,0x44,0x1a,0x3c,0x01}});
+}
+bool prepare_mirror_layout(uintptr_t structure,unsigned stride){
+    Property mirror{};uint32_t mask{};
+    if(pose_profile!=PoseProfile::side||!property(structure,L"bMirrorSkeleton",L"BoolProperty",4,mirror)||
+       !source(mask,mirror.id.address+0xd0)||!mirror_descriptor(mirror,mask,stride)){layout_failure=L"mirror_reflection_mismatch";return false;}
+    if(!mirror_consumer_sources()){layout_failure=L"mirror_consumer_bytes";return false;}
+    layout.mirror_word=mirror.offset;layout.mirror_mask=mask;return true;
+}
 bool prepare_layout(gears_anchor::Identity const& node,gears_anchor::PawnBinding const& binding){
     layout={};Property children{},inner{},anim{},weight{},total{},skel{},owner{},mesh{},cover{},special{},world{};
     uintptr_t inner_address{},structure{};gears_anchor::Identity structure_id{};unsigned stride{};
@@ -155,6 +185,7 @@ bool prepare_layout(gears_anchor::Identity const& node,gears_anchor::PawnBinding
        !property(binding.pawn.cls,L"WorldInfo",L"ObjectProperty",8,world))return false;
     if(children.offset!=0xe4||anim.offset!=8||weight.offset!=0x10||total.offset!=0x14||skel.offset!=0x60||owner.offset!=0x128||
        anim.offset+anim.width>stride||weight.offset+weight.width>stride||total.offset+total.width>stride){layout_failure=L"native_layout_mismatch";return false;}
+    if(side_mirror_trial&&!prepare_mirror_layout(structure,stride))return false;
     layout.children=children.offset;layout.anim=anim.offset;layout.weight=weight.offset;layout.total=total.offset;layout.skel=skel.offset;
     layout.owner=owner.offset;layout.mesh=mesh.offset;layout.cover=cover.offset;layout.special=special.offset;layout.world=world.offset;layout_failure=L"none";return true;
 }
@@ -199,6 +230,15 @@ static_assert(sizeof(Children)==16);
 bool children_at(uintptr_t node,Children& children){return field(children,node,layout.children)&&children.data&&!(children.data&7)&&children.count>=5&&children.count<=int(child_limit)&&
     children.capacity>=children.count&&children.capacity<=64&&range(children.data,size_t(children.capacity)*0x44);}
 bool equal(Children const& a,Children const& b){return a.data==b.data&&a.count==b.count&&a.capacity==b.capacity;}
+enum class MirrorReason:unsigned {none,await_neutral,await_fresh_epoch,cache_unreadable,already_cached,epoch_changed,native_side_nonzero,
+    baseline_changed,completed,ready,layout,conflict,write_failed,source_changed,child_changed,repeated_epoch};
+struct CacheTags {uint32_t node{},mesh{};};
+struct MirrorLease {
+    bool captured{},owned{},native_visible{},conflict{},started{},completed{},neutral_pending{},neutral_verified{},round_trial{},cache_read_ok{},initial_cache_seen{};
+    uint32_t offset{},mask{},original_word{},native_bits{},installed_bits{},neutral_epoch{},round_epoch{},activation_epoch{},pose_epoch{};
+    uintptr_t address{},child_anim{},pawn{},mesh{},world{};uint64_t generation{};TargetSource source=TargetSource::advance;CacheTags initial_tags{},last_tags{};
+    unsigned installs{},restores{},samples{},rejected{};MirrorReason reason=MirrorReason::none;
+};
 struct Journal {
     bool used{};gears_anchor::Identity id{};uintptr_t pawn{},mesh{},world{};uint64_t generation{};Children children{};
     std::array<uint32_t,child_limit> native{},installed{};std::array<bool,child_limit> owned{};
@@ -212,6 +252,7 @@ struct Journal {
     std::array<std::array<unsigned,7>,7> logged{};
     std::array<unsigned,7> step_injections{},step_writes{},step_restores{};
     int previous_child=-1;float previous_incoming{},previous_weight{};
+    MirrorLease mirror{};
 };
 std::array<Journal,node_limit> journals{};
 struct Row {long long qpc{};uintptr_t node{};uint64_t world{};unsigned thread{},kind{},step{};int child{};float u{},incoming{},weight{},total{},predicted{};TargetSource source{};uint64_t target_frame{};long long target_qpc{};};
@@ -226,7 +267,7 @@ void row(unsigned kind_value,Journal& j,int child=-1,float incoming=0,float weig
     if(step_rows[sample_step]>=18||row_count==rows.size()){++rows_dropped;return;}++step_rows[sample_step];
     rows[row_count++]={now(),j.id.address,j.generation,GetCurrentThreadId(),kind_value,sample_step,child,j.target_u,incoming,weight,total,incoming*weight,j.source,j.target.frame,j.target.timestamp_qpc};
 }
-void recount(){unsigned fields{},nodes{};for(auto const& j:journals){unsigned n{};for(bool b:j.owned)if(b)++n;fields+=n;if(n)++nodes;}pending=fields;pending_nodes=nodes;}
+void recount(){unsigned fields{},nodes{};for(auto const& j:journals){unsigned n=j.mirror.owned?1u:0u;for(bool b:j.owned)if(b)++n;fields+=n;if(n)++nodes;}pending=fields;pending_nodes=nodes;}
 // CAS touches exactly one aligned reflected Weight. An external value is never
 // overwritten. No DesiredWeights, TotalWeight, Pawn/root or transition writes.
 __declspec(noinline) bool exchange(uintptr_t address,uint32_t expected,uint32_t desired,uint32_t& observed){
@@ -237,8 +278,96 @@ __declspec(noinline) bool exchange(uintptr_t address,uint32_t expected,uint32_t 
     __try{observed=static_cast<uint32_t>(InterlockedCompareExchange(reinterpret_cast<volatile LONG*>(address),static_cast<LONG>(desired),static_cast<LONG>(expected)));return true;}
     __except(EXCEPTION_EXECUTE_HANDLER){return false;}
 }
-bool any(Journal const& j){for(bool value:j.owned)if(value)return true;return false;}
-void retire(Journal& j){for(auto& owned:j.owned)if(owned){owned=false;++retired;++j.retire_count;}j.native_visible.fill(false);j.previous_child=-1;row(3,j);}
+enum class MaskExchange {changed,conflict,unavailable};
+MaskExchange exchange_mask(uintptr_t address,uint32_t mask,uint32_t expected,uint32_t desired){
+    if(!mask||(mask&(mask-1))||(expected&~mask)||(desired&~mask))return MaskExchange::unavailable;
+    // Bounded retries only for unrelated bits. Never compare/write a saved
+    // whole word over an external update to another packed bool.
+    for(unsigned attempt=0;attempt<4;++attempt){uint32_t current{},observed{};
+        if(!read(current,address))return MaskExchange::unavailable;
+        if((current&mask)!=expected)return MaskExchange::conflict;
+        if(!exchange(address,current,(current&~mask)|desired,observed))return MaskExchange::unavailable;
+        if(observed==current)return MaskExchange::changed;
+        if((observed&mask)!=expected)return MaskExchange::conflict;
+    }
+    return MaskExchange::unavailable;
+}
+bool mirror_reject(Journal& j,MirrorReason reason){j.mirror.reason=reason;++j.mirror.rejected;return false;}
+bool cache_tags(Journal& j){
+    // Equality is a completed-cache observation, not an evaluation lock. This
+    // private trial does not certify concurrent/in-progress GetBoneAtoms.
+    CacheTags first{},second{};auto& m=j.mirror;++m.samples;
+    m.cache_read_ok=field(first.node,j.id.address,0xbc)&&field(first.mesh,j.mesh,0x338)&&
+        field(second.node,j.id.address,0xbc)&&field(second.mesh,j.mesh,0x338)&&first.node==second.node&&first.mesh==second.mesh;
+    m.last_tags=first;
+    if(m.cache_read_ok&&!m.initial_cache_seen){m.initial_tags=first;m.initial_cache_seen=true;}
+    return m.cache_read_ok||mirror_reject(j,MirrorReason::cache_unreadable);
+}
+bool mirror_zero_weight(Journal const& j){float value{};return field(value,j.children.data+uintptr_t(j.endpoint)*0x44,layout.weight)&&value==0.f;}
+bool mirror_epoch_current(Journal& j){
+    if(!side_mirror_trial)return true;
+    if(!cache_tags(j))return false;
+    if(j.mirror.last_tags.mesh!=j.mirror.round_epoch)return mirror_reject(j,MirrorReason::epoch_changed);
+    if(j.mirror.last_tags.node==j.mirror.last_tags.mesh)return mirror_reject(j,MirrorReason::already_cached);
+    return true;
+}
+bool mirror_begin_round(Journal& j,uintptr_t child_anim){
+    if(!side_mirror_trial)return true;
+    auto& m=j.mirror;m.round_trial=false;
+    if(pose_profile!=PoseProfile::side||j.endpoint!=5||layout.mirror_word!=0x3c||layout.mirror_mask!=1)return mirror_reject(j,MirrorReason::layout);
+    if(!mirror_zero_weight(j))return mirror_reject(j,MirrorReason::native_side_nonzero);
+    uint32_t word{};const auto address=j.children.data+uintptr_t(j.endpoint)*0x44+layout.mirror_word;
+    if(!read(word,address))return mirror_reject(j,MirrorReason::write_failed);
+    if(!m.captured){m.captured=true;m.address=address;m.offset=layout.mirror_word;m.mask=layout.mirror_mask;m.original_word=word;
+        m.native_bits=word&m.mask;m.installed_bits=m.native_bits^m.mask;m.child_anim=child_anim;m.source=j.source;
+        m.pawn=j.pawn;m.mesh=j.mesh;m.world=j.world;m.generation=j.generation;
+    }else if(m.address!=address||m.child_anim!=child_anim||m.pawn!=j.pawn||m.mesh!=j.mesh||m.world!=j.world||m.generation!=j.generation)
+        return mirror_reject(j,MirrorReason::child_changed);
+    if(m.source!=j.source)return mirror_reject(j,MirrorReason::source_changed);
+    if((word&m.mask)!=m.native_bits)return mirror_reject(j,MirrorReason::baseline_changed);
+    if(!cache_tags(j))return false;
+    if(m.last_tags.node==m.last_tags.mesh)return mirror_reject(j,MirrorReason::already_cached);
+    // A completed neutral Tick alone is insufficient. Observe that exact
+    // node cache tag on a subsequent fresh mesh epoch before the first trial.
+    if(m.neutral_pending&&m.last_tags.node==m.neutral_epoch&&m.last_tags.mesh!=m.neutral_epoch)m.neutral_verified=true;
+    m.round_epoch=m.last_tags.mesh;
+    if(j.target_u==0){if(m.started)m.completed=true;return true;}
+    if(m.completed)return mirror_reject(j,MirrorReason::completed);
+    if(!m.neutral_verified)return mirror_reject(j,m.neutral_pending?MirrorReason::await_fresh_epoch:MirrorReason::await_neutral);
+    if(m.started&&m.pose_epoch==m.round_epoch)return mirror_reject(j,MirrorReason::repeated_epoch);
+    m.round_trial=true;m.reason=MirrorReason::ready;return true;
+}
+bool mirror_install(Journal& j){
+    auto& m=j.mirror;if(!side_mirror_trial||!m.round_trial)return true;
+    if(!mirror_epoch_current(j)||!mirror_zero_weight(j)){if(m.reason==MirrorReason::ready)mirror_reject(j,MirrorReason::native_side_nonzero);return false;}
+    const auto result=exchange_mask(m.address,m.mask,m.native_bits,m.installed_bits);
+    if(result!=MaskExchange::changed){
+        // An unknown write remains owed. A masked conflict after ownership is
+        // acquired is sticky debt; the bit is never silently abandoned.
+        if(result==MaskExchange::conflict&&m.owned){m.conflict=true;external_change=true;++external;}
+        return mirror_reject(j,result==MaskExchange::conflict?MirrorReason::conflict:MirrorReason::write_failed);
+    }
+    m.owned=true;m.native_visible=false;if(!m.started)m.activation_epoch=m.round_epoch;m.started=true;++m.installs;
+    ++writes;++j.write_count;++j.step_writes[j.installed_step];recount();return true;
+}
+bool mirror_restore(Journal& j,bool retain){
+    auto& m=j.mirror;if(!m.owned)return true;
+    if(m.conflict){stopping=true;return false;}
+    if(!mirror_zero_weight(j)){stopping=true;return mirror_reject(j,MirrorReason::native_side_nonzero);}
+    if(m.native_visible){uint32_t word{};
+        if(!read(word,m.address)){failed=true;stopping=true;return mirror_reject(j,MirrorReason::write_failed);}
+        if((word&m.mask)!=m.native_bits){m.conflict=true;external_change=true;++external;stopping=true;return mirror_reject(j,MirrorReason::conflict);}
+    }else{
+        const auto result=exchange_mask(m.address,m.mask,m.installed_bits,m.native_bits);
+        if(result!=MaskExchange::changed){failed=true;stopping=true;if(result==MaskExchange::conflict){m.conflict=true;external_change=true;++external;}
+            return mirror_reject(j,result==MaskExchange::conflict?MirrorReason::conflict:MirrorReason::write_failed);}
+        m.native_visible=true;++m.restores;++restores;++j.restore_count;++j.step_restores[j.installed_step];
+    }
+    if(!retain)m.owned=false;return true;
+}
+bool any(Journal const& j){if(j.mirror.owned)return true;for(bool value:j.owned)if(value)return true;return false;}
+void retire(Journal& j){for(auto& owned:j.owned)if(owned){owned=false;++retired;++j.retire_count;}
+    if(j.mirror.owned){j.mirror.owned=false;++retired;++j.retire_count;}j.native_visible.fill(false);j.previous_child=-1;row(3,j);}
 void propagation(Journal& j){
     if(j.previous_child<0)return;Children current{};float total{};
     if(children_at(j.id.address,current)&&equal(current,j.children)&&field(total,j.children.data+uintptr_t(j.previous_child)*0x44,layout.total))
@@ -289,7 +418,10 @@ bool native_weights(Journal& j,bool retain){
             else{j.owned[i]=false;++external;external_change=true;stopping=true;}
         }
     }
-    row(2,j);recount();return true;
+    // W5 must reach zero before the local mirror bit can change. A failed
+    // Weight restore therefore also retains the mirror field's obligation.
+    const bool mirror_ok=mirror_restore(j,retain);
+    row(2,j);recount();return mirror_ok;
 }
 void restore_journals(uintptr_t self,bool all){
     for(auto& j:journals){if(!j.used||!any(j)||j.round_open||(!all&&j.id.address!=self))continue;
@@ -324,7 +456,7 @@ bool rounds_open(){for(auto const& j:journals)if(j.round_open)return true;return
 // neutral: an actual .05 target may share bucket 0 with the neutral endpoint.
 bool neutral_pose_for(uintptr_t pawn,uintptr_t mesh){
     if(rounds_open()||transactions.load())return false;
-    for(auto const& j:journals)if(j.used&&j.pawn==pawn&&j.mesh==mesh&&any(j)&&j.target_u!=0)return false;
+    for(auto const& j:journals)if(j.used&&j.pawn==pawn&&j.mesh==mesh&&any(j)&&(j.target_u!=0||j.mirror.owned))return false;
     if(!enabled)return true;
     if(live_source())return !live_state.valid||live_state.target.pawn.address!=pawn||live_state.target.mesh.address!=mesh||live_state.target.u==0;
     const auto s=step.load();return !injecting||(s<steps.size()&&steps[s]==0);
@@ -345,7 +477,11 @@ void events(){
 // their own previous injection; only an explicit withdrawal may release peers.
 void service_entry(uintptr_t self){
     events();
+    if(side_mirror_trial)for(auto& j:journals)if(j.mirror.captured&&j.mirror.source!=target_source){
+        j.mirror.reason=MirrorReason::source_changed;injecting=false;withdrawing=true;
+    }
     if(stopping.load()||withdrawing){
+        for(auto& j:journals){if(j.mirror.started)j.mirror.completed=true;j.mirror.neutral_pending=j.mirror.neutral_verified=false;}
         restore_all();tick={};
         if(!pending.load()&&!rounds_open())withdrawing=false;
     }else{
@@ -436,10 +572,13 @@ void child_before(uintptr_t self,int child,float incoming,Scope const& scope,Cal
         gears_anchor::Identity again{};Children after{};
         if(!identity(self,again,true)||!same(again,j.id)||!children_at(self,after)||!equal(current,after))return;
         if(j.source==TargetSource::live&&!target_current(j.target)){withdraw_target();return;}
+        if(!mirror_begin_round(j,animations[endpoint]))return;
+        if(!mirror_install(j)){failed=true;stopping=true;native_weights(j,false);return;}
         for(unsigned i=0;i<unsigned(current.count);++i)if(j.native[i]!=j.installed[i]){
             uint32_t observed{};if(!exchange(current.data+uintptr_t(i)*0x44+layout.weight,j.native[i],j.installed[i],observed)){failed=true;stopping=true;break;}
             if(observed!=j.native[i]){external_change=true;++external;stopping=true;break;}j.owned[i]=true;++writes;++j.write_count;++j.step_writes[j.installed_step];
         }
+        if(side_mirror_trial&&!mirror_epoch_current(j)){failed=true;stopping=true;}
         recount();
         if(stopping.load()){native_weights(j,false);return;}
         tick.injected=true;tick.journal=&j;tick.animations=animations;tick.next_child=child;
@@ -462,6 +601,7 @@ void child_after(Call& call,bool returned){
         // completed. Native CoverBlend post-tests must now see its own weights.
         if(!native_weights(j,true)){poison();return;}
         for(unsigned i=0;i<unsigned(j.children.count);++i)if(j.owned[i]&&!j.native_visible[i]){poison();return;}
+        if(j.mirror.owned&&!j.mirror.native_visible){poison();return;}
         j.propagating=false;tick.propagated=true;tick.next_child=-1;++native_posts;phase_rows(j,5);
     }else{
         tick.next_child=-1;for(int i=call.child+1;i<j.children.count;++i)if(tick.animations[unsigned(i)]){tick.next_child=i;break;}
@@ -473,6 +613,7 @@ void rearm(Journal& j){
     if(!journal_current(j))return;
     unsigned char ct{},sm{};
     if(!field(ct,j.pawn,layout.cover)||ct!=2||!field(sm,j.pawn,layout.special)||sm!=0){stopping=true;native_weights(j,false);return;}
+    if(side_mirror_trial&&(!mirror_epoch_current(j)||!mirror_install(j))){poison();native_weights(j,false);return;}
     for(unsigned i=0;i<unsigned(j.children.count);++i)if(j.owned[i]){
         if(!j.native_visible[i]){poison();break;}
         uint32_t observed{};
@@ -480,7 +621,14 @@ void rearm(Journal& j){
         if(observed!=j.native[i]){j.owned[i]=false;++external;external_change=true;stopping=true;break;}
         j.native_visible[i]=false;++writes;++j.write_count;++j.step_writes[j.installed_step];
     }
-    if(stopping.load()||external_change)native_weights(j,false);else{++pose_rearms;phase_rows(j,6);}
+    if(side_mirror_trial&&!mirror_epoch_current(j))poison();
+    if(stopping.load()||external_change)native_weights(j,false);else{
+        if(side_mirror_trial){auto& m=j.mirror;
+            if(j.target_u==0){m.neutral_epoch=m.round_epoch;m.neutral_pending=true;m.neutral_verified=false;if(!m.started)m.reason=MirrorReason::await_fresh_epoch;}
+            else m.pose_epoch=m.round_epoch;
+        }
+        ++pose_rearms;phase_rows(j,6);
+    }
     recount();
 }
 Call* token_call(uintptr_t token){
@@ -521,7 +669,7 @@ void finish_call(uintptr_t token,bool returned){
         auto& j=*tick.journal;events();
         if(!tick.propagated){if(returned)++abandoned;poison();}
         if(returned&&tick.propagated&&!c->poisoned&&!stopping.load()&&!withdrawing&&injecting&&!external_change)rearm(j);
-        else native_weights(j,false);
+        else {native_weights(j,false);if(j.mirror.started)j.mirror.completed=true;j.mirror.neutral_pending=j.mirror.neutral_verified=false;}
         j.propagating=j.round_open=false;recount();
     }
     c->finished=true;
@@ -581,9 +729,14 @@ bool read_source(const wchar_t* ini,TargetSource& out){
     if(!wcscmp(text,L"advance")){out=TargetSource::advance;return true;}
     if(!wcscmp(text,L"live")){out=TargetSource::live;return true;}return false;
 }
+bool read_mirror_trial(const wchar_t* ini,bool& out){
+    wchar_t text[4]{};const auto length=GetPrivateProfileStringW(L"CoverBodyPrototype",L"side_mirror_trial",L"0",text,4,ini);
+    if(length!=1||(text[0]!=L'0'&&text[0]!=L'1'))return false;out=text[0]==L'1';return true;
+}
 bool configure(const wchar_t* ini,FILE* file){
     PoseProfile profile{};if(!read_profile(ini,profile))return false;
     TargetSource source{};if(!read_source(ini,source))return false;
+    bool mirror_trial{};if(!read_mirror_trial(ini,mirror_trial)||(mirror_trial&&profile!=PoseProfile::side))return false;
     const auto requested=GetPrivateProfileIntW(L"CoverBodyPrototype",L"enabled",0,ini);if(!requested)return true;
     if(requested!=1||enabled||!reserved||!continuous_session||!anchor_observer_enabled)return false;
     metadata=anchor_config;initial_world=committed_world_generation.load();
@@ -592,8 +745,10 @@ bool configure(const wchar_t* ini,FILE* file){
     auto event=[&](HANDLE& handle,const wchar_t* action){swprintf_s(name,L"Local\\GearsVR.CoverBodyPrototype.%s.%lu",action,GetCurrentProcessId());SetLastError(0);
         handle=CreateEventW(nullptr,FALSE,FALSE,name);const auto error=GetLastError();return handle&&error!=ERROR_ALREADY_EXISTS;};
     if((source==TargetSource::advance&&!event(advance_event,L"Advance"))||!event(reset_event,L"Reset")){if(advance_event)CloseHandle(advance_event);if(reset_event)CloseHandle(reset_event);advance_event=reset_event=nullptr;return false;}
-    pose_profile=profile;target_source=source;live_state={};enabled=true;
-    fprintf(file,"cover_body_config enabled=1 experimental=1 pose_profile=%s endpoint_child=%u target_source=%s live_ttl_ms=100 reflected_lookup=actual_receiver bounded_nodes=4 cover_type=2 special_move=0 positive_incoming_only=1 advance_timeout_ms=10000 stop_drain_ms=5000 native_post_weight_separation=1 mirror_written=0 side_direction_acceptance=0 two_dimensional_blend=0 firing_acceptance=0\n",profile_name(pose_profile),endpoint_for(pose_profile),source_name(target_source));return true;
+    pose_profile=profile;target_source=source;side_mirror_trial=mirror_trial;live_state={};enabled=true;
+    // Preserve the legacy startup mirror_written=0 receipt: configuration has
+    // made no game-memory write. Later node receipts report actual installs.
+    fprintf(file,"cover_body_config enabled=1 experimental=1 pose_profile=%s endpoint_child=%u target_source=%s live_ttl_ms=100 reflected_lookup=actual_receiver bounded_nodes=4 cover_type=2 special_move=0 positive_incoming_only=1 advance_timeout_ms=10000 stop_drain_ms=5000 native_post_weight_separation=1 mirror_written=0 mirror_write_opt_in=%u side_mirror_trial=%u mirror_fixed_child5_toggle=1 mirror_single_activation=1 mirror_cache_gate=1 mirror_native_switch_certified=0 mirror_pose_concurrency_verified=0 side_direction_acceptance=0 two_dimensional_blend=0 firing_acceptance=0\n",profile_name(pose_profile),endpoint_for(pose_profile),source_name(target_source),side_mirror_trial?1:0,side_mirror_trial?1:0);return true;
 }
 void request_drain(){if(!enabled)return;std::lock_guard<std::mutex> lock(mutex);stopping=true;ULONGLONG empty{};drain_tick.compare_exchange_strong(empty,GetTickCount64());}
 unsigned pending_count(){return pending.load()+in_flight.load()+transactions.load();}
@@ -606,7 +761,11 @@ void print(FILE* file,bool disabled){
     fprintf(file,"cover_body compiled=1 layout_ready=%u layout_attempts=%u layout_failure=%ls metadata_sources=%u metadata_identities=%u prewrite_rebinds=%llu blend_calls=%llu child_calls=%llu child_posts=%llu native_posts=%llu pose_rearms=%llu abandoned=%llu reentries=%llu rejected=%llu writes=%llu restores=%llu retired_fields=%llu external_changes=%llu timeout=%u rows=%u dropped=%llu native_post_weight_separation=1 firing_acceptance=0 gpu_or_exposure_acceptance=0\n",
         layout_ready?1:0,layout_attempts,layout_failure,layout.source_count,layout.id_count,prewrite_rebinds,blend_calls,child_calls,child_posts,native_posts,pose_rearms,abandoned,reentries,rejected,writes,restores,retired,external,timed_out.load()?1:0,row_count,rows_dropped);
     for(unsigned i=0;i<journals.size();++i){auto const& j=journals[i];if(j.used){unsigned native_fields{};for(unsigned n=0;n<child_limit;++n)if(j.owned[n]&&j.native_visible[n])++native_fields;
-        fprintf(file,"cover_body_node index=%u node=%p pawn=%p mesh=%p world=%p generation=%llu endpoint_child=%u target_u=%.9g target_source=%s target_frame=%llu target_qpc=%lld injections=%u writes=%u restores=%u retired=%u pending=%u round_open=%u propagating=%u native_visible_fields=%u\n",i,reinterpret_cast<void*>(j.id.address),reinterpret_cast<void*>(j.pawn),reinterpret_cast<void*>(j.mesh),reinterpret_cast<void*>(j.world),j.generation,j.endpoint,double(j.target_u),source_name(j.source),static_cast<unsigned long long>(j.target.frame),j.target.timestamp_qpc,j.injections,j.write_count,j.restore_count,j.retire_count,any(j)?1:0,j.round_open?1:0,j.propagating?1:0,native_fields);}}
+        fprintf(file,"cover_body_node index=%u node=%p pawn=%p mesh=%p world=%p generation=%llu endpoint_child=%u target_u=%.9g target_source=%s target_frame=%llu target_qpc=%lld injections=%u writes=%u restores=%u retired=%u pending=%u round_open=%u propagating=%u native_visible_fields=%u\n",i,reinterpret_cast<void*>(j.id.address),reinterpret_cast<void*>(j.pawn),reinterpret_cast<void*>(j.mesh),reinterpret_cast<void*>(j.world),j.generation,j.endpoint,double(j.target_u),source_name(j.source),static_cast<unsigned long long>(j.target.frame),j.target.timestamp_qpc,j.injections,j.write_count,j.restore_count,j.retire_count,any(j)?1:0,j.round_open?1:0,j.propagating?1:0,native_fields);
+        if(side_mirror_trial){auto const& m=j.mirror;
+            fprintf(file,"cover_body_mirror_trial node_index=%u experimental=1 native_switch_certified=0 captured=%u word_offset=0x%x mask=0x%08x original_word=0x%08x native_bits=0x%08x trial_bits=0x%08x initial_cache_seen=%u initial_node_cache_tag=%u initial_mesh_cache_tag=%u cache_read_ok=%u node_cache_tag=%u mesh_cache_tag=%u neutral_pending=%u neutral_verified=%u neutral_epoch=%u round_epoch=%u activation_epoch=%u pose_epoch=%u started=%u completed=%u pending=%u native_visible=%u sticky_conflict=%u reason=%u samples=%u rejected=%u installs=%u restores=%u\n",
+                i,m.captured?1:0,m.offset,m.mask,m.original_word,m.native_bits,m.installed_bits,m.initial_cache_seen?1:0,m.initial_tags.node,m.initial_tags.mesh,m.cache_read_ok?1:0,m.last_tags.node,m.last_tags.mesh,m.neutral_pending?1:0,m.neutral_verified?1:0,m.neutral_epoch,m.round_epoch,m.activation_epoch,m.pose_epoch,m.started?1:0,m.completed?1:0,m.owned?1:0,m.native_visible?1:0,m.conflict?1:0,unsigned(m.reason),m.samples,m.rejected,m.installs,m.restores);
+        }}}
     for(unsigned i=0;i<journals.size();++i){auto const& j=journals[i];if(j.used)for(unsigned s=0;s<steps.size();++s)
         fprintf(file,"cover_body_step node_index=%u step=%u u=%.9g u_is_advance_only=1 diagnostic_bucket=%u injections=%u writes=%u restores=%u\n",i,s,steps[s],j.source==TargetSource::live?1:0,j.step_injections[s],j.step_writes[s],j.step_restores[s]);}
     for(unsigned i=0;i<row_count;++i){auto const& r=rows[i];fprintf(file,"cover_body_row index=%u qpc=%lld node=%p world=%llu thread=%u kind=%u step=%u u=%.9g child=%d incoming=%.9g weight=%.9g child_total=%.9g predicted=%.9g target_source=%s target_frame=%llu target_qpc=%lld total_sample_is_after_previous_native_call=%u native_post=%u pose_rearm=%u\n",i,r.qpc,reinterpret_cast<void*>(r.node),r.world,r.thread,r.kind,r.step,r.u,r.child,r.incoming,r.weight,r.total,r.predicted,source_name(r.source),static_cast<unsigned long long>(r.target_frame),r.target_qpc,r.kind==4?1:0,r.kind==5?1:0,r.kind==6?1:0);}
@@ -621,7 +780,8 @@ bool reserve(){return true;}
 bool reserved_target(void*){return false;}
 bool configure(const wchar_t* ini,FILE*){wchar_t profile[2]{};return GetPrivateProfileIntW(L"CoverBodyPrototype",L"enabled",0,ini)==0&&
     GetPrivateProfileStringW(L"CoverBodyPrototype",L"pose_profile",L"",profile,2,ini)==0&&
-    GetPrivateProfileStringW(L"CoverBodyPrototype",L"target_source",L"",profile,2,ini)==0;}
+    GetPrivateProfileStringW(L"CoverBodyPrototype",L"target_source",L"",profile,2,ini)==0&&
+    GetPrivateProfileStringW(L"CoverBodyPrototype",L"side_mirror_trial",L"",profile,2,ini)==0;}
 void request_drain(){}
 bool draining(){return false;}
 bool drain_failed(){return false;}

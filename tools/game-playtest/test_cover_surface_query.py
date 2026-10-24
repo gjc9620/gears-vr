@@ -83,7 +83,8 @@ class SurfaceMemory(BoneMemory):
         self.put(address, bytes(surface.HEADER_SIZE))
         self.add_object(address, name, self.FUNCTION_CLASS, outer=owner)
         self.put(address + 0xf8, struct.pack('<H', native))
-        self.put(address + 0xfc, struct.pack('<I', 0x400))
+        self.put(address + 0xf4, struct.pack('<I', 0x400))
+        self.put(address + 0xfc, struct.pack('<I', 17))
         self.put(address + 0x106, struct.pack('<HH', size, return_offset))
         self.put(address + 0x114, struct.pack('<Q', self.BASE + rva))
         for label, kind, width, offset, target in fields:

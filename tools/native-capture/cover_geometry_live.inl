@@ -1,6 +1,9 @@
 // Read-only candidate geometry, included after cover_neutral_eye_live.inl.
 // Caller owns stereo_mutex and the current admitted Scene GT Scope/Receipt.
-// No engine function, game write, collision query or grab admission exists here.
+// sample_with remains a CPU candidate transform. The separate explicit
+// sample_native_with calls only the two certified RO slot getters. Include
+// cover_surface_getters.h at GLOBAL scope before including this .inl.
+// Neither path writes game memory, queries collision or admits a grab.
 #include <array>
 #include <cmath>
 #include <cstdint>
@@ -14,9 +17,9 @@ using EyeSample=neutral::EyeSample;
 using Vector=std::array<float,3>;
 using Rotator=std::array<int32_t,3>;
 enum class Reason:unsigned {ready,body_unavailable,no_scene,nested_scene,wrong_thread,body_guard,neutral_proof,
-    eye_binding,layout_wait,layout_rejected,layout_changed,read,world,slots,nonfinite,changed,exception};
+    eye_binding,layout_wait,layout_rejected,layout_changed,read,world,slots,nonfinite,changed,exception,native_layout,native_getter};
 const char* reason_name(Reason reason){static constexpr const char* names[]={"ready","body_unavailable","no_scene","nested_scene",
-    "wrong_thread","body_guard","neutral_proof","eye_binding","layout_wait","layout_rejected","layout_changed","read","world","slots","nonfinite","changed","exception"};
+    "wrong_thread","body_guard","neutral_proof","eye_binding","layout_wait","layout_rejected","layout_changed","read","world","slots","nonfinite","changed","exception","native_layout","native_getter"};
     const auto n=unsigned(reason);return n<sizeof(names)/sizeof(*names)?names[n]:"unknown";}
 Reason last_reason=Reason::body_unavailable;
 const wchar_t* rejected_field=L"none";
@@ -39,6 +42,7 @@ struct Geometry {
     EyeSample binding{};Vector link_location{},pawn_location{},standing_lean_offset{},crouch_lean_offset{};
     Rotator link_rotation{},pawn_rotation{};float mid_height{},stand_height{};
     Array slots{};unsigned slot_stride{};Slot selected{};Candidates candidates{};
+    gears_vr::Vector native_slot_world{};Rotator native_slot_rotation{};
     unsigned metadata_sources{},metadata_identities{};
     bool candidate_only=true,collision_verified=false,native_getter_verified=false,atomic_snapshot_verified=false;
 };
@@ -209,7 +213,8 @@ gears_vr::Vector apply(Axes const& a,gears_vr::Vector const& v){return {a[0].x*v
 Candidates candidates(Values const& v){const auto a=axes(v.rotation),b=axes(v.rotation_offset);const auto offset=apply(a,{v.offset[0],v.offset[1],v.offset[2]});Candidates result{};
     result.slot_world={v.location[0]+offset.x,v.location[1]+offset.y,v.location[2]+offset.z};result.forward=apply(a,b[0]);result.right=apply(a,b[1]);result.up=apply(a,b[2]);
     result.mid_top_z=result.slot_world.z+v.mid;result.stand_top_z=result.slot_world.z+v.stand;return result;}
-bool sample_with(gears_anchor::Receipt const* scene,EyeSample const& eye,Geometry& out){
+template<class Finalize>
+bool sample_with_impl(gears_anchor::Receipt const* scene,EyeSample const& eye,Geometry& out,Finalize finalize){
     try{
         std::lock_guard<std::mutex> lock(body::mutex);stage="scene_binding";
         if(!scene||!scene->invocation||scene->scene_qpc<=0||scene->family_qpc<scene->scene_qpc||scene->renderer_qpc<scene->family_qpc||eye.scene_invocation!=scene->invocation)return reject(Reason::no_scene);
@@ -218,11 +223,11 @@ bool sample_with(gears_anchor::Receipt const* scene,EyeSample const& eye,Geometr
         if(!neutral::proof.ready||!neutral::proof_current())return reject(Reason::neutral_proof);
         const EyeSample key=eye;neutral::Context before{},after{},last{};
         if(!neutral::context(*scene,before)||!matches(before,key)||!calibration_matches(before,key))return reject(Reason::eye_binding);
-        gears_anchor::Identity pawn_class{},link_class{},controller{},controller_class{};
-        if(!body::identity(before.binding.pawn.cls,pawn_class)||!body::identity(before.link.cls,link_class)||
-           !body::identity(before.binding.controller,controller)||!body::identity(controller.cls,controller_class))return reject(Reason::eye_binding);
-        if(!body::same(proof.pawn_class,pawn_class)||!body::same(proof.link_class,link_class)||!body::same(proof.controller_class,controller_class)){
-            proof={};proof.pawn_class=pawn_class;proof.link_class=link_class;proof.controller_class=controller_class;}
+        gears_anchor::Identity selected_pawn_class{},selected_link_class{},selected_controller{},selected_controller_class{};
+        if(!body::identity(before.binding.pawn.cls,selected_pawn_class)||!body::identity(before.link.cls,selected_link_class)||
+           !body::identity(before.binding.controller,selected_controller)||!body::identity(selected_controller.cls,selected_controller_class))return reject(Reason::eye_binding);
+        if(!body::same(proof.pawn_class,selected_pawn_class)||!body::same(proof.link_class,selected_link_class)||!body::same(proof.controller_class,selected_controller_class)){
+            proof={};proof.pawn_class=selected_pawn_class;proof.link_class=selected_link_class;proof.controller_class=selected_controller_class;}
         stage="geometry_metadata";
         if(proof.ready&&!proof_current()){proof.ready=false;return reject(Reason::layout_changed);}
         if(!proof.ready){const auto now=GetTickCount64();if(proof.attempts>=8)return reject(Reason::layout_rejected);
@@ -243,11 +248,67 @@ bool sample_with(gears_anchor::Receipt const* scene,EyeSample const& eye,Geometr
         candidate.selected.index=key.slot;candidate.selected.location_offset=first.offset;candidate.selected.rotation_offset=first.rotation_offset;candidate.selected.cover_type=first.cover_type;
         for(unsigned n=0;n<4;++n)candidate.selected.permissions[n]={first.words[n],proof.masks[n],(first.words[n]&proof.masks[n])!=0};
         candidate.candidates=candidates(first);candidate.metadata_sources=proof.source_count;candidate.metadata_identities=proof.identity_count;
+        if(!finalize(before,first,key,candidate))return false;
         out=candidate;stage="ready";last_reason=Reason::ready;return true;
     }catch(...){return reject(Reason::exception);}
 }
+bool sample_with(gears_anchor::Receipt const* scene,EyeSample const& eye,Geometry& out){
+    return sample_with_impl(scene,eye,out,[](neutral::Context const&,Values const&,EyeSample const&,Geometry&){return true;});
+}
+bool native_layout_matches(){
+    // Saved implementation dataflow, additionally required to agree with this
+    // current reflected proof. No guessed layout or legacy candidate fallback.
+    return proof.ready&&proof.link[0].offset==0x130&&proof.link[1].offset==0x13c&&
+        proof.link[6].offset==gears_cover_surface::slots_offset&&proof.slot[5].offset==0xc&&
+        proof.slot[6].offset==0x18&&proof.stride==gears_cover_surface::slot_stride;
+}
+struct NativeQuery {
+    template<class Read,class Guard>
+    bool operator()(uintptr_t module,uintptr_t link,int slot,unsigned thread,Read read,Guard guard,gears_cover_surface::Result& out)const{
+        return gears_cover_surface::query(module,link,slot,thread,read,guard,out);
+    }
+};
+template<class Query>
+bool sample_native_with(gears_anchor::Receipt const* scene,EyeSample const& eye,Geometry& out,Query query){
+    std::array<unsigned char,sizeof(gears_anchor::Receipt)> receipt_bytes{};
+    if(scene)memcpy(receipt_bytes.data(),scene,receipt_bytes.size());
+    return sample_with_impl(scene,eye,out,[&](neutral::Context const& before,Values const& first,EyeSample const& key,Geometry& candidate){
+        stage="native_layout";if(!native_layout_matches())return reject(Reason::native_layout);
+        // Both callbacks execute under the ALREADY held body mutex. They must
+        // not recursively call sample_with/sample_native_with or take it again.
+        bool guard_failed=false;
+        auto guard=[&](){
+            neutral::Context current{};Values observed{};
+            if(memcmp(receipt_bytes.data(),scene,receipt_bytes.size())||scene->thread!=GetCurrentThreadId()||
+               body::game_thread.load()!=scene->thread||!neutral::body_ready()||!neutral::proof.ready||!neutral::proof_current()||
+               !native_layout_matches()||!proof_current()||!neutral::context(*scene,current)||!neutral::same_values(before,current)||
+               !matches(current,key)||!matches(current,eye)||!calibration_matches(current,key)||!calibration_matches(current,eye)||
+               eye.scene_invocation!=key.scene_invocation||!values(current,observed)||!same_values(first,observed)){
+                guard_failed=true;return false;
+            }
+            return true;
+        };
+        stage="native_query";if(!guard())return reject(Reason::changed);
+        gears_cover_surface::Result native{};
+        if(!query(base,before.link.address,before.slot,scene->thread,safe_copy,guard,native))
+            return reject(guard_failed?Reason::changed:Reason::native_getter);
+        stage="native_closing_guard";if(!guard()||guard_failed)return reject(Reason::changed);
+        if(native.slot!=before.slot||native.slots.data!=first.slots.data||native.slots.count!=first.slots.count||
+           native.slots.capacity!=first.slots.capacity||!gears_cover_surface::valid(native.location))return reject(Reason::native_getter);
+        candidate.native_slot_world={native.location.x,native.location.y,native.location.z};
+        for(unsigned n=0;n<3;++n)candidate.native_slot_rotation[n]=native.rotation.values[n];
+        // Verification refers ONLY to these native getter outputs. Candidate
+        // std::sin/cos axes/top heights remain separate and uncertified.
+        candidate.native_getter_verified=true;return true;
+    });
+}
+bool sample_native_with(gears_anchor::Receipt const* scene,EyeSample const& eye,Geometry& out){
+    return sample_native_with(scene,eye,out,NativeQuery{});
+}
 #else
 bool sample_with(gears_anchor::Receipt const*,EyeSample const&,Geometry&){return reject(Reason::body_unavailable);}
+template<class Query>bool sample_native_with(gears_anchor::Receipt const*,EyeSample const&,Geometry&,Query){return reject(Reason::body_unavailable);}
+bool sample_native_with(gears_anchor::Receipt const*,EyeSample const&,Geometry&){return reject(Reason::body_unavailable);}
 #endif
 bool sample(EyeSample const& eye,Geometry& out){
     if(current_scene&&current_scene->poisoned())return reject(Reason::nested_scene);

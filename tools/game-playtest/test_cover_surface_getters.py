@@ -165,12 +165,26 @@ class GetterTests(unittest.TestCase):
                 if defect=='parms':f.put(f.LOCATION_FN+0x106,struct.pack('<H',20))
                 if defect=='return':f.put(f.LOCATION_FN+0x108,struct.pack('<H',8))
                 if defect=='entry':f.put(f.LOCATION_FN+0x114,struct.pack('<Q',f.BASE+0x2100))
-                if defect=='flags':f.put(f.LOCATION_FN+0xfc,bytes(4))
+                if defect=='flags':f.put(f.LOCATION_FN+0xf4,bytes(4))
                 if defect=='argwidth':f.put(p+0x74,struct.pack('<I',8))
                 if defect=='dimension':f.put(p+0x70,struct.pack('<I',2))
                 if defect=='component':f.objects[f.properties[f.VECTOR,'X']['address']]['cls']=f.kind_classes['IntProperty']
                 if defect=='d0':f.put(f.properties[f.LOCATION_FN,'ReturnValue']['address']+0xd0,struct.pack('<Q',f.ROTATOR))
                 out=self.result(f,False);self.assertEqual(f.bridges[0].submissions,[])
+
+    def test_name_index_bits_do_not_authorize_a_non_native_function(self):
+        f=GetterMemory()
+        f.put(f.LOCATION_FN+0xf4,bytes(4))
+        f.put(f.LOCATION_FN+0xfc,struct.pack('<I',0x400))
+        self.result(f,False)
+        self.assertEqual(f.bridges[0].submissions,[])
+        self.assertEqual(f.bridges[0].allocations,{})
+
+    def test_native_flags_are_read_from_the_consumer_verified_field(self):
+        out=self.result(GetterMemory(),True)
+        for call in out['calls']:
+            self.assertEqual(call['function']['function_flags'],0x400)
+            self.assertEqual(call['function']['function_flags_offset'],0xf4)
 
     def test_transport_unknown_and_partial_write_retain_never_retry(self):
         for error in ('write','create_thread','submit_timeout','read'):

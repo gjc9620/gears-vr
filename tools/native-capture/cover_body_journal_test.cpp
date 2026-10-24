@@ -39,11 +39,12 @@ struct Scope {gears_world::RecursiveAdmission admission{world_thread,world_gate}
  Scope(){++active;try{if(throw_scope){throw_scope=false;throw OwnCppFailure{};}++scope_entries;++scope_live;}catch(...){--active;throw;}}
  ~Scope(){--scope_live;--active;}bool world()const{return admitted&&bool(admission);}};
 uintptr_t denied{},changing_text{};unsigned text_reads{};
+uintptr_t mask_race_read{};uint32_t mask_race_xor{};unsigned mask_races{};
 bool safe_copy(void* out,void const* from,size_t n){
  auto a=reinterpret_cast<uintptr_t>(from);if(a==denied)return false;
  if(a==throwing_read){throwing_read=0;throw OwnCppFailure{};}
  if(a==changing_text&&++text_reads==2)*reinterpret_cast<wchar_t*>(changing_text)=L'X';
- __try {memcpy(out,from,n);return true;} __except(EXCEPTION_EXECUTE_HANDLER){return false;}
+ __try {memcpy(out,from,n);if(a==mask_race_read&&mask_races&&n==4){--mask_races;*reinterpret_cast<uint32_t*>(a)^=mask_race_xor;}return true;} __except(EXCEPTION_EXECUTE_HANDLER){return false;}
 }
 long long now(){return static_cast<long long>(GetTickCount64());}
 // Stub only: the test never reserves or installs a hook.
@@ -84,8 +85,8 @@ void setup(){
  b::enabled=false;b::game_thread=0;b::tick={};b::injecting=false;b::withdrawing=false;b::timed_out=false;b::last_advance=0;b::next_step=0;b::step=0;scope_entries=scope_live=0;scope_admitted=true;active=0;
  b::calls={};b::call_depth=0;b::current_blend=nullptr;b::transactions=0;b::in_flight=0;fixture_parent={};
  b::child_posts=b::native_posts=b::pose_rearms=b::abandoned=b::reentries=0;b::layout_ready=false;b::initial_world=1;
- throw_scope=false;throwing_read=0;
- b::pose_profile=b::PoseProfile::top;fixture_endpoint=4;
+ throw_scope=false;throwing_read=0;mask_race_read=0;mask_race_xor=mask_races=0;
+ b::pose_profile=b::PoseProfile::top;b::side_mirror_trial=false;fixture_endpoint=4;
  b::target_source=b::TargetSource::advance;b::target_clock=b::system_live_time;b::live_state={};b::live_published=b::live_rejected=b::live_expired=b::live_invalidated=0;b::live_last_frame=0;b::live_last_u=0;b::live_last_reject=b::TargetReject::none;
  round_after_first=round_after_post=nullptr;
 }
@@ -415,6 +416,7 @@ void neutral_target_tests(){
  prepare_live(0);{std::lock_guard<std::mutex> lock(b::mutex);C(b::neutral_pose_for(pawn,mesh));b::transactions=1;C(!b::neutral_pose_for(pawn,mesh));b::transactions=0;b::journals[0].round_open=true;C(!b::neutral_pose_for(pawn,mesh));b::journals[0].round_open=false;}invoke_round();balanced();{std::lock_guard<std::mutex> lock(b::mutex);C(b::neutral_pose_for(pawn,mesh));}
  setup();{std::lock_guard<std::mutex> lock(b::mutex);C(!b::neutral_pose_for(pawn,mesh));}b::restore_all();{std::lock_guard<std::mutex> lock(b::mutex);C(b::neutral_pose_for(pawn,mesh));}
 }
+#include "cover_body_side_mirror_test.inl"
 int main(){
  arena=reinterpret_cast<uintptr_t>(VirtualAlloc(nullptr,1024*1024,MEM_COMMIT|MEM_RESERVE,PAGE_READWRITE));if(!arena)return 99;
  // Owned fields restore; native TotalWeight stays untouched.
@@ -506,8 +508,10 @@ int main(){
  const auto legacy_checks=checks;side_profile_tests();profile_configuration_tests();
  const auto added_checks=checks-legacy_checks;
  const auto before_live=checks;live_target_tests();live_configuration_tests();neutral_target_tests();const auto live_checks=checks-before_live;
+ const auto before_mirror=checks;side_mirror_trial_tests();const auto mirror_checks=checks-before_mirror;
  C(VirtualFree(reinterpret_cast<void*>(arena),0,MEM_RELEASE)!=0);
  printf("cover_body_live_journal: legacy_checks=%u side_and_config_checks=%u\n",legacy_checks+1,added_checks);
  printf("cover_body_live_journal: live_target_checks=%u\n",live_checks);
+ printf("cover_body_live_journal: side_mirror_trial_checks=%u\n",mirror_checks);
  printf("cover_body_live_journal: %u checks, %u failures\n",checks,failures);return failures?1:0;
 }

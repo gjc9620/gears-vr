@@ -16,6 +16,7 @@
 #include <cwchar>
 #include <limits>
 #include "anchor_observer.h"
+#include "cover_surface_getters.h"
 #include "../vr-common/pose_math.h"
 #include "MinHook.h"
 uintptr_t base=0x140000000;
@@ -138,6 +139,88 @@ void plan(uintptr_t watched,unsigned nth,uintptr_t target,uint64_t value,size_t 
  trigger=watched;trigger_count=0;trigger_nth=nth;change_address=target;change_value=value;change_size=size;throw_read=change_generation=false;change_eye=nullptr;read_hook=changing_read;
 }
 bool close(double a,double b){return std::abs(a-b)<1e-8;}
+unsigned native_queries{},native_guards{},native_mode{};n::EyeSample* native_eye{};
+void native_setup(){
+ setup();const auto pawn_location=get<g::Vector>(fixture_pawn+b::metadata.pawn_location),link_location=get<g::Vector>(fixture_link+0x1a0);
+ const auto pawn_rotation=get<g::Rotator>(fixture_pawn+b::metadata.pawn_rotation),link_rotation=get<g::Rotator>(fixture_link+0x1c0);
+ b::metadata.pawn_location=0x130;b::metadata.pawn_rotation=0x13c;put(actor_properties[0]+0x94,0x130u);put(actor_properties[1]+0x94,0x13cu);
+ put(fixture_pawn+0x130,pawn_location);put(fixture_pawn+0x13c,pawn_rotation);put(fixture_link+0x130,link_location);put(fixture_link+0x13c,link_rotation);
+ put(slots_property+0x94,0x340u);put(fixture_link+0x340,get<g::Array>(fixture_link+0x240));anchor_config=b::metadata;refresh_scene();
+ native_queries=native_guards=native_mode=0;native_eye=nullptr;
+}
+struct NativeQuery {
+ template<class Read,class Guard>
+ bool operator()(uintptr_t module,uintptr_t link,int slot,unsigned thread,Read,Guard guard,gears_cover_surface::Result& result)const{
+  ++native_queries;C(module==base&&link==fixture_link&&slot==1&&thread==GetCurrentThreadId());
+  ++native_guards;if(!guard())return false;
+  result={};result.location={700,800,900};result.rotation={{-123,456,789}};result.slot=slot;
+  const auto array=get<g::Array>(fixture_link+0x340);result.slots={array.data,array.count,array.capacity};
+  if(native_mode==1)return false;
+  if(native_mode==2)result.location.x=std::numeric_limits<float>::quiet_NaN();
+  if(native_mode==3)result.slot++;
+  if(native_mode==4)result.slots.capacity++;
+  if(native_mode==5)throw 7;
+  if(native_mode==6)put(fixture_link+0x220,84.25f);
+  if(native_mode==7)scene.invocation++;
+  if(native_mode==8)committed_world_generation=2;
+  if(native_mode==9)put(fixture_link+0x188,fixture_world+8);
+  if(native_mode==10&&native_eye)native_eye->neutral_offset.z++;
+  if(native_mode==11)put(slot_properties[5]+0x94,16u);
+  if(native_mode==12)put(fixture_pawn+0x208,2);
+  if(native_mode==13)put(array.data+212+12,g::Vector{3,3,4});
+  if(native_mode==14)entries_valid=false;
+  if(native_mode==15)scene.key.stamp++;
+  if(native_mode==16){const auto previous=get<float>(fixture_link+0x220);put(fixture_link+0x220,previous+1);
+   ++native_guards;C(!guard());put(fixture_link+0x220,previous);return true;}
+  // Even a faulty injected Query that omits its own closing Guard cannot
+  // bypass the production sample's independent final bracket.
+  if(native_mode>=6)return true;
+  ++native_guards;return guard();
+ }
+};
+bool take_native(n::EyeSample const& e,g::Geometry& out,bool arena_unchanged=true){
+ std::array<unsigned char,sizeof(b::Layout)> saved{};memcpy(saved.data(),&b::layout,sizeof b::layout);
+ std::array<unsigned char,sizeof(g::Geometry)> output_before{};memcpy(output_before.data(),&out,sizeof out);
+ if(arena_unchanged)memcpy(original_arena.data(),reinterpret_cast<void*>(arena),original_arena.size());const auto bone_queries=queries;
+ const bool accepted=g::sample_native_with(&scene,e,out,NativeQuery{});
+ if(!accepted)C(!memcmp(output_before.data(),&out,sizeof out));
+ C(!memcmp(saved.data(),&b::layout,sizeof b::layout)&&queries==bone_queries);
+ if(arena_unchanged)C(!memcmp(original_arena.data(),reinterpret_cast<void*>(arena),original_arena.size()));return accepted;
+}
+void native_tests(){
+ native_setup();auto e=eye();g::Geometry out{};C(take_native(e,out));
+ C(out.native_getter_verified&&out.native_slot_world.x==700&&out.native_slot_world.y==800&&out.native_slot_world.z==900&&out.native_slot_rotation==g::Rotator({-123,456,789}));
+ C(out.candidate_only&&!out.collision_verified&&!out.atomic_snapshot_verified&&out.candidates.candidate_only&&!out.candidates.native_getter_verified&&!out.candidates.collision_verified);
+ C(close(out.candidates.slot_world.x,7)&&close(out.candidates.slot_world.y,22)&&close(out.candidates.slot_world.z,34)&&close(out.candidates.mid_top_z,117.25));
+ C(native_queries==1&&native_guards==2&&out.link_location==g::Vector({10,20,30})&&out.selected.index==1);
+ C(take(e,out)&&!out.native_getter_verified&&out.native_slot_world.x==0&&out.native_slot_rotation==g::Rotator({0,0,0}));
+ // The legacy synthetic offsets are a valid candidate, never a native ABI.
+ setup();e=eye();C(take(e,out));out.selected.index=999;native_queries=0;C(!take_native(e,out)&&out.selected.index==999&&native_queries==0&&g::last_reason==g::Reason::native_layout);
+ for(unsigned which=0;which<6;++which){
+  native_setup();
+  if(which==0){const auto value=get<g::Vector>(fixture_pawn+0x130);b::metadata.pawn_location=0x134;put(actor_properties[0]+0x94,0x134u);put(fixture_pawn+0x134,value);}
+  if(which==1){const auto value=get<g::Rotator>(fixture_pawn+0x13c);b::metadata.pawn_rotation=0x140;put(actor_properties[1]+0x94,0x140u);put(fixture_pawn+0x140,value);}
+  if(which==2){const auto value=get<g::Array>(fixture_link+0x340);put(slots_property+0x94,0x344u);put(fixture_link+0x344,value);}
+  if(which==3)put(slot_properties[5]+0x94,16u);
+  if(which==4)put(slot_properties[6]+0x94,28u);
+  if(which==5)put(inner_property+0x74,208u);
+  anchor_config=b::metadata;refresh_scene();e=eye();out.selected.index=999;C(!take_native(e,out)&&out.selected.index==999&&native_queries==0);
+ }
+ for(unsigned mode=1;mode<=16;++mode){
+  native_setup();e=eye();native_mode=mode;native_eye=&e;out.selected.index=999;out.native_slot_world={111,222,333};out.native_getter_verified=false;
+  C(!take_native(e,out,mode<6||mode==7||mode==8||mode==10||mode==14||mode==15||mode==16)&&out.selected.index==999&&out.native_slot_world.x==111&&!out.native_getter_verified);
+  C(native_queries==1);if(mode==5){C(g::last_reason==g::Reason::exception);C(b::mutex.try_lock());b::mutex.unlock();}
+  else C(g::last_reason==(mode>=6?g::Reason::changed:g::Reason::native_getter));
+ }
+ // Changes during the shared prefix are still rejected against the original
+ // receipt, before the injected getter can claim any native values.
+ native_setup();e=eye();C(take(e,out));plan(fixture_link+0x220,1,reinterpret_cast<uintptr_t>(&scene.key.stamp),scene.key.stamp+1,sizeof(scene.key.stamp));
+ out.selected.index=999;C(!take_native(e,out)&&native_queries==0&&out.selected.index==999&&g::last_reason==g::Reason::changed);read_hook=nullptr;
+ // Default adapter is wired but synthetic code memory has no current hashes;
+ // it rejects before invoking any engine function.
+ native_setup();e=eye();out.selected.index=999;C(!g::sample_native_with(&scene,e,out)&&out.selected.index==999&&g::last_reason==g::Reason::native_getter);
+ C(b::mutex.try_lock());b::mutex.unlock();
+}
 int main(){
  arena=reinterpret_cast<uintptr_t>(VirtualAlloc(nullptr,original_arena.size(),MEM_COMMIT|MEM_RESERVE,PAGE_READWRITE));if(!arena)return 99;
  setup();auto e=eye();g::Geometry out{};const auto first_reads=reads;C(take(e,out));const auto cold_reads=reads-first_reads;C(out.link_location==g::Vector({10,20,30})&&out.link_rotation==g::Rotator({0,16384,0}));
@@ -196,8 +279,10 @@ int main(){
  setup();e=eye();denied=fixture_link+0x224;C(!take(e,out)&&g::last_reason==g::Reason::read);denied=0;C(take(e,out));
  setup();e=eye();entries_valid=false;C(!take(e,out)&&g::last_reason==g::Reason::body_guard);
  unsigned overflow{};C(!g::source_field(overflow,UINTPTR_MAX-2,4));
+ // The original final VirtualFree check remains below the added native suite.
+ printf("geometry legacy candidate checks including final teardown: %u\n",checks+1);native_tests();
  C(VirtualFree(reinterpret_cast<void*>(arena),0,MEM_RELEASE)!=0);printf("cover_geometry_live: %u checks, %u failures\n",checks,failures);return failures?1:0;
 }
 #else
-int main(){g::Geometry out{};out.selected.index=999;g::EyeSample e{};C(!g::sample_with(nullptr,e,out)&&g::last_reason==g::Reason::body_unavailable&&out.selected.index==999);C(!g::sample(e,out));printf("cover_geometry_live disabled: %u checks, %u failures\n",checks,failures);return failures?1:0;}
+int main(){g::Geometry out{};out.selected.index=999;g::EyeSample e{};C(!g::sample_with(nullptr,e,out)&&!g::sample_native_with(nullptr,e,out)&&g::last_reason==g::Reason::body_unavailable&&out.selected.index==999);C(!g::sample(e,out));printf("cover_geometry_live disabled: %u checks, %u failures\n",checks,failures);return failures?1:0;}
 #endif
