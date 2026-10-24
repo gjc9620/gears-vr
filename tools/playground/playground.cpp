@@ -11,6 +11,9 @@
 #include <algorithm>
 #include <cmath>
 #include <type_traits>
+#if defined(GEARS_PLAYGROUND_WEAPON_ACTION_ENTRY_TRIAL) && !defined(GEARS_PLAYGROUND_WEAPON_ACTION_BOUNDARY_TRIAL)
+#error Private entry routing requires the exact external boundary registration
+#endif
 #if defined(GEARS_PLAYGROUND_HAND_IK_STREAM_TRIAL) || defined(GEARS_PLAYGROUND_EQUIPMENT_STOW_TEST) || defined(GEARS_PLAYGROUND_WEAPON_ACTION_BOUNDARY_TRIAL)
 #define GEARS_PLAYGROUND_RESTORE_STAGE_CORE 1
 #include "../vr-common/weapon_action_boundary.h"
@@ -479,6 +482,16 @@ void record(uptr object,uptr function){
 #if defined(GEARS_PLAYGROUND_HAND_ANIMATION_PROBE)
 namespace handanim {unsigned bridge_before(Request*);void bridge_after(Request*,unsigned);}
 #endif
+#if defined(GEARS_PLAYGROUND_WEAPON_ACTION_ENTRY_TRIAL)
+class ComponentForwardGate;
+namespace weaponentry {
+bool invoke_owned(Request*);
+#if defined(GEARS_PLAYGROUND_WEAPON_COMPONENT_CONTINUOUS_TRIAL)
+bool invoke_forward(Request*,ComponentForwardGate&);
+#endif
+bool revoke_call(uptr,uptr,bool&) noexcept;
+}
+#endif
 #if defined(GEARS_PLAYGROUND_HAND_IK_STREAM_TRIAL)
 namespace handstream {
 #if defined(GEARS_PLAYGROUND_HAND_WEAPON_MESH_PHASE1_TRIAL)
@@ -549,6 +562,9 @@ bool invoke_engine(Request* r){
     __except(EXCEPTION_EXECUTE_HANDLER){return false;}
 }
 bool invoke(Request* r){
+#if defined(GEARS_PLAYGROUND_WEAPON_ACTION_ENTRY_TRIAL)
+    return weaponentry::invoke_owned(r);
+#else
 #if defined(GEARS_PLAYGROUND_RESTORE_STAGE_CORE)
     if(!weaponrestore::healthy())return false;
 #endif
@@ -578,6 +594,7 @@ bool invoke(Request* r){
     handanim::bridge_after(r,observation);
 #endif
     return result;
+#endif
 }
 // Revision 2. Insert after unchanged invoke(Request*) and before playground_controller.inl.
 // Only the three supported component setters; old revision 4ebb was not tested.
@@ -902,6 +919,9 @@ bool invoke_component_forward_engine(Request* request,ComponentForwardGate& gate
 }
 
 bool invoke_component_forward(Request* request,ComponentForwardGate& gate){
+#if defined(GEARS_PLAYGROUND_WEAPON_ACTION_ENTRY_TRIAL)
+    return weaponentry::invoke_forward(request,gate);
+#else
     if(!weaponrestore::healthy())return false;
     if(!gate.enter_route(request))return false;
     if(GetCurrentThreadId()!=game_thread.load(std::memory_order_acquire))return false;
@@ -927,6 +947,7 @@ bool invoke_component_forward(Request* request,ComponentForwardGate& gate){
     handanim::bridge_after(request,observation);
 #endif
     return result;
+#endif
 }
 #endif // GEARS_PLAYGROUND_WEAPON_COMPONENT_CONTINUOUS_TRIAL
 #include "playground_controller.inl"
@@ -1007,7 +1028,7 @@ namespace handstream {
 #include "vr_hand_weapon_mesh_phase1.inl"
 }
 #endif
-#if defined(GEARS_PLAYGROUND_HAND_IK_STREAM_TRIAL) || defined(GEARS_PLAYGROUND_EQUIPMENT_STOW_TEST)
+#if defined(GEARS_PLAYGROUND_HAND_IK_STREAM_TRIAL) || defined(GEARS_PLAYGROUND_EQUIPMENT_STOW_TEST) || defined(GEARS_PLAYGROUND_WEAPON_ACTION_ENTRY_TRIAL)
 #include "weapon_action_handoff.inl"
 #endif
 #if defined(GEARS_PLAYGROUND_WEAPON_ACTION_GATE_TRIAL)
@@ -1016,11 +1037,19 @@ namespace handstream {
 #if defined(GEARS_PLAYGROUND_WEAPON_ACTION_BOUNDARY_TRIAL)
 #include "weapon_action_boundary_client.inl"
 #endif
-#if defined(GEARS_PLAYGROUND_HAND_IK_STREAM_TRIAL) || defined(GEARS_PLAYGROUND_EQUIPMENT_STOW_TEST)
+#if defined(GEARS_PLAYGROUND_HAND_IK_STREAM_TRIAL) || defined(GEARS_PLAYGROUND_EQUIPMENT_STOW_TEST) || defined(GEARS_PLAYGROUND_WEAPON_ACTION_ENTRY_TRIAL)
 #include "weapon_restore_backend.inl"
 #endif
+#if defined(GEARS_PLAYGROUND_WEAPON_ACTION_ENTRY_TRIAL)
+void __fastcall event_hook_legacy(uptr,uptr,void*);
+#include "weapon_action_entry.inl"
+void __fastcall event_hook_legacy(uptr object,uptr function,void* params){
+    const auto original_dispatch=&weaponentry::legacy_original;
+#else
 void __fastcall event_hook(uptr object,uptr function,void* params){
     struct Active {Active(){++callbacks;}~Active(){--callbacks;}} active;
+    const auto original_dispatch=original;
+#endif
 #if defined(GEARS_PLAYGROUND_WEAPON_COMPONENT_HOLD_TRIAL)
     handstream::component_hold::Token component_hold_token(object,function);
 #endif
@@ -1033,11 +1062,11 @@ void __fastcall event_hook(uptr object,uptr function,void* params){
 #if defined(GEARS_PLAYGROUND_HAND_EQUIPMENT_COMBINED_TRIAL)
     handstream::EquipmentTimingHookScope equipment_timing_dump;
 #endif
-#if defined(GEARS_PLAYGROUND_HAND_IK_STREAM_TRIAL)
+#if defined(GEARS_PLAYGROUND_HAND_IK_STREAM_TRIAL) && !defined(GEARS_PLAYGROUND_WEAPON_ACTION_ENTRY_TRIAL)
     // Release before any original action dispatch, including recursive calls.
     handstream::before_action(object,function);
 #endif
-#if defined(GEARS_PLAYGROUND_EQUIPMENT_STOW_TEST)
+#if defined(GEARS_PLAYGROUND_EQUIPMENT_STOW_TEST) && !defined(GEARS_PLAYGROUND_WEAPON_ACTION_ENTRY_TRIAL)
     vrequip::stow::before_action(object,function);
 #endif
 #if defined(GEARS_PLAYGROUND_HAND_ANIMATION_PROBE)
@@ -1048,10 +1077,10 @@ void __fastcall event_hook(uptr object,uptr function,void* params){
 #if defined(GEARS_PLAYGROUND_HAND_IK_CONTROLLED_TRIAL)
     handikcontrolled::TickScope controlled_ik_tick_observation(object,function);
 #endif
-    if(inside||!enabled.load(std::memory_order_acquire)){original(object,function,params);return;}
+    if(inside||!enabled.load(std::memory_order_acquire)){original_dispatch(object,function,params);return;}
     if(playground::automatic&&object!=playground::viewport&&object!=playground::menu_button&&
         get<Name>(function+0x48).index!=playground::player_tick_index){
-        original(object,function,params);return;
+        original_dispatch(object,function,params);return;
     }
     inside=true;
     if(!playground::automatic)record(object,function);
@@ -1149,14 +1178,14 @@ void __fastcall event_hook(uptr object,uptr function,void* params){
 #endif
     {
         handstream::EquipmentTimingScope timing(handstream::EquipmentTiming::original_player_tick,post_stream_hand_ik_tick);
-        original(object,function,params);
+        original_dispatch(object,function,params);
     }
 #if defined(GEARS_PLAYGROUND_WEAPON_COMPONENT_HOLD_TRIAL)
     if(post_stream_hand_ik_tick){handstream::component_hold::ObserverScope hold_observer;
         handstream::component_hold::after_original(component_hold_token,true);}
 #endif
 #else
-    original(object,function,params);
+    original_dispatch(object,function,params);
 #endif
 #if defined(GEARS_PLAYGROUND_HAND_ANIMATION_PROBE)
     if(post_hand_animation_tick&&enabled.load(std::memory_order_acquire)&&
@@ -1178,7 +1207,11 @@ void __fastcall event_hook(uptr object,uptr function,void* params){
 #endif
 #if defined(GEARS_PLAYGROUND_HAND_IK_STREAM_TRIAL)
     if(post_stream_hand_ik_tick&&enabled.load(std::memory_order_acquire)&&
-       game_thread.load()==GetCurrentThreadId()){
+       game_thread.load()==GetCurrentThreadId()
+#if defined(GEARS_PLAYGROUND_WEAPON_ACTION_ENTRY_TRIAL)
+       &&weaponentry::post_allowed()
+#endif
+       ){
 #if defined(GEARS_PLAYGROUND_HAND_WEAPON_MESH_PHASE1_TRIAL) && defined(GEARS_PLAYGROUND_HAND_CERTIFIED_CONTINUITY_TRIAL)
         inside=true;handstream::post_tick(object,tick_diagnostic);inside=false;
 #else
@@ -1212,6 +1245,9 @@ void __fastcall event_hook(uptr object,uptr function,void* params){
     }
 #endif
 }
+#if defined(GEARS_PLAYGROUND_WEAPON_ACTION_ENTRY_TRIAL)
+void __fastcall event_hook(uptr object,uptr function,void* params){weaponentry::process_event(object,function,params);}
+#endif
 }
 
 static DWORD reserve_playground_hook(){

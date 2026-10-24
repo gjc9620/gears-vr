@@ -191,8 +191,8 @@ int main(){
         passed("mesh releasing dual-drain and matching self never exempt CF PE");}
 #else
     {reset();dirty_hand();handstream::trial.releasing=true;const auto seen=weaponaction_handoff::inspect(1,2);
-        assert(seen.hands_restore_echo&&!seen.hands_required&&seen.owned_restore_echo);fenced(seen);
-        assert(handstream::trial.epoch==3&&!handstream::stop_requested&&handstream::trial.lease.dirty());passed("non-mesh original releasing guard suppresses extra obligation only");}
+        assert(seen.hands_restore_echo&&seen.hands_required&&seen.owned_restore_echo);fenced(seen);
+        assert(handstream::trial.epoch==4&&handstream::stop_requested&&handstream::trial.lease.dirty());passed("non-mesh releasing is observation, not an initial bridge proof");}
 #endif
 #endif
 #if defined(GEARS_PLAYGROUND_EQUIPMENT_STOW_TEST)
@@ -212,12 +212,12 @@ int main(){
     {reset();dirty_stow();stow_match=false;const auto seen=weaponaction_handoff::inspect(1,2);assert(!seen.stow_required);
         fenced(seen);assert(!vrequip::stow::lease.revoked()&&!vrequip::stow::stop_requested);passed("stow association remains participant specific");}
     {reset();dirty_stow();vrequip::stow::mutating=true;const auto seen=weaponaction_handoff::inspect(1,2);
-        assert(seen.stow_restore_echo&&!seen.stow_required&&seen.owned_restore_echo);fenced(seen);
-        assert(vrequip::stow::lease.dirty()&&!vrequip::stow::lease.revoked()&&!vrequip::stow::stop_requested&&vrequip::stow::epoch==9);
+        assert(seen.stow_restore_echo&&seen.stow_required&&seen.owned_restore_echo);fenced(seen);
+        assert(vrequip::stow::lease.dirty()&&vrequip::stow::lease.revoked()&&vrequip::stow::stop_requested&&vrequip::stow::epoch==10);
 #if defined(GEARS_PLAYGROUND_HAND_IK_STREAM_TRIAL)
         assert(seen.hands_required&&handstream::trial.epoch==4);
 #endif
-        passed("stow mutating echo preserves its lease and cannot exempt hands");}
+        passed("stow mutating is observation only and cannot exempt either participant");}
     {reset();pending_stow();vrequip::stow::epoch=(std::numeric_limits<std::uint64_t>::max)();const auto seen=weaponaction_handoff::inspect(1,2);fenced(seen);
         assert(vrequip::stow::epoch==(std::numeric_limits<std::uint64_t>::max)()&&vrequip::stow::stop_requested);
         passed("stow epoch does not wrap");}

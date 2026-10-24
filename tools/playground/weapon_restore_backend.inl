@@ -5,15 +5,18 @@ namespace weaponrestore {
 struct ForwardDisarm {
     uptr object{},function{};DWORD thread{};unsigned hand_epoch{};bool known{};
 };
-inline ForwardDisarm prepare_forward_no_engine(weaponaction_handoff::Seen const& seen) noexcept {
-    ForwardDisarm out{};
-    const auto gt=game_thread.load(std::memory_order_acquire);
-    if(!healthy()||!seen.gt||!gt||seen.thread!=gt||GetCurrentThreadId()!=gt||(!seen.hands&&!seen.stow))return out;
+inline void revoke_publication_no_engine() noexcept {
 #if defined(GEARS_PLAYGROUND_WEAPON_HAND_PARTICIPANT_TRIAL)
     auto registration=weaponhand::client.registration();gears_weapon_hand::Invalidation invalidation{};
     invalidation.registration_cookie=weaponhand::client.cookie();invalidation.native_started_qpc=weaponhand::client.native_started_qpc();
     invalidation.reason=gears_weapon_hand::InvalidateReason::context_lost;registration.invalidate(registration.context,&invalidation);
 #endif
+}
+inline ForwardDisarm prepare_forward_no_engine(weaponaction_handoff::Seen const& seen,bool invalidate_publication=true) noexcept {
+    ForwardDisarm out{};
+    const auto gt=game_thread.load(std::memory_order_acquire);
+    if(!healthy()||!seen.gt||!gt||seen.thread!=gt||GetCurrentThreadId()!=gt||(!seen.hands&&!seen.stow))return out;
+    if(invalidate_publication)revoke_publication_no_engine();
 #if defined(GEARS_PLAYGROUND_HAND_IK_STREAM_TRIAL)
     if(seen.hands_required){
         namespace hand=handstream;
@@ -44,6 +47,9 @@ struct BoundaryBackend {
     struct Snapshot {
         bool inside{},hand_releasing{},dual{},finishing{},stow_mutating{},stow_yielding{},reach_busy{};
         unsigned action_depth{},operation_depth{},timing_open{};
+#if defined(GEARS_PLAYGROUND_WEAPON_ACTION_ENTRY_TRIAL) && defined(GEARS_PLAYGROUND_EQUIPMENT_STOW_TEST)
+        vrequip::stow::InitialSelf stow_self{};
+#endif
 #if defined(GEARS_PLAYGROUND_HAND_WEAPON_MESH_PHASE1_TRIAL)
         handstream::component::SelfSetter self{};
 #if defined(GEARS_PLAYGROUND_WEAPON_COMPONENT_CONTINUOUS_TRIAL)
@@ -58,6 +64,9 @@ struct BoundaryBackend {
     weaponaction_handoff::Seen seen{};ForwardDisarm disarmed{};
 #if defined(GEARS_PLAYGROUND_WEAPON_ACTION_BOUNDARY_TRIAL)
     gears_weapon_boundary::Admission::Entry const* lifetime{};
+#if defined(GEARS_PLAYGROUND_WEAPON_ACTION_ENTRY_TRIAL)
+    weaponboundary::Transport const* transport{};std::uintptr_t stage_address{};
+#endif
 #endif
     bool hold{},guard_mismatch{},stow_exempt{};
     bool admissible()const noexcept {
@@ -74,6 +83,11 @@ struct BoundaryBackend {
            receipt.thread_id!=gt||!receipt.scope_id||!receipt.revocation_generation||
            receipt.flags!=(abi::scope_active|abi::engine_calls_allowed))return false;
         if(!lifetime)return false;
+#if defined(GEARS_PLAYGROUND_WEAPON_ACTION_ENTRY_TRIAL)
+        if(!transport||lifetime!=&transport->entry||!gears_weapon_boundary::pool_same_request(request,transport->request)||
+           !gears_weapon_boundary::pool_same_receipt(receipt,transport->receipt)||
+           !weaponboundary::stage_grant_matches(*transport,stage_address))return false;
+#endif
         if(!weaponboundary::grant_matches(*lifetime,request,receipt,open_reply))return false;
 #if defined(GEARS_PLAYGROUND_HAND_IK_STREAM_TRIAL)
         if(handstream::trial.releasing||handstream::trial.epoch!=disarmed.hand_epoch)return false;
@@ -117,14 +131,26 @@ struct BoundaryBackend {
 #endif
 #if defined(GEARS_PLAYGROUND_EQUIPMENT_STOW_TEST)
         out.stow_mutating=vrequip::stow::mutating;out.stow_yielding=vrequip::stow::yielding;
+#if defined(GEARS_PLAYGROUND_WEAPON_ACTION_ENTRY_TRIAL)
+        out.stow_self=vrequip::stow::initial_self;
+#endif
 #endif
         return true;
     }
-    void begin(){
+    bool begin(){
+#if defined(GEARS_PLAYGROUND_WEAPON_ACTION_ENTRY_TRIAL)
+        if(!transport||active_stage!=reinterpret_cast<void*>(stage_address)||
+           !gears_weapon_boundary::pool_same_request(request,transport->request)||
+           !gears_weapon_boundary::pool_same_receipt(receipt,transport->receipt)||
+           !weaponboundary::stage_grant_matches(*transport,stage_address)){
+            guard_mismatch=true;weaponrestore::poison(*this);return false;
+        }
+#endif
         inside=true;
 #if defined(GEARS_PLAYGROUND_WEAPON_COMPONENT_CONTINUOUS_TRIAL)
         handstream::component_continuous::state.action_depth=1;hold=true;
 #endif
+        return true;
     }
     Step hands(){
 #if defined(GEARS_PLAYGROUND_HAND_IK_STREAM_TRIAL)
@@ -220,7 +246,7 @@ struct BoundaryBackend {
         invalidation.reason=gears_weapon_hand::InvalidateReason::callback_fault;registration.invalidate(registration.context,&invalidation);
 #endif
     }
-    bool cleanup_no_engine(Snapshot const& saved,bool normal) noexcept {
+    bool cleanup_no_engine(Snapshot const& saved,[[maybe_unused]] bool normal) noexcept {
         bool exact=inside;
 #if defined(GEARS_PLAYGROUND_HAND_IK_STREAM_TRIAL)
         exact=exact&&(!normal||handstream::trial.releasing==saved.hand_releasing);handstream::trial.releasing=saved.hand_releasing;
@@ -261,6 +287,10 @@ struct BoundaryBackend {
 #if defined(GEARS_PLAYGROUND_EQUIPMENT_STOW_TEST)
         exact=exact&&(!normal||(vrequip::stow::mutating==saved.stow_mutating&&vrequip::stow::yielding==saved.stow_yielding));
         vrequip::stow::mutating=saved.stow_mutating;vrequip::stow::yielding=saved.stow_yielding;
+#if defined(GEARS_PLAYGROUND_WEAPON_ACTION_ENTRY_TRIAL)
+        exact=exact&&(!normal||vrequip::stow::same_initial_self(vrequip::stow::initial_self,saved.stow_self));
+        vrequip::stow::initial_self=saved.stow_self;
+#endif
 #endif
         inside=saved.inside;return exact;
     }

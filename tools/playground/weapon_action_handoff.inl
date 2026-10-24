@@ -73,10 +73,10 @@ inline Seen inspect(uptr object,uptr function) {
     if(hand_live&&handstream::trial.anchored&&(hand_watched||!seen.name_known)&&handstream::related(object)){
         seen.hands=true;
 #if !defined(GEARS_PLAYGROUND_HAND_WEAPON_MESH_PHASE1_TRIAL)
-        // Only the old non-mesh path had this unconditional resource guard.
+        // Observation only. A resource guard is not an exact initial bridge.
         seen.hands_restore_echo=handstream::trial.releasing;
 #endif
-        seen.hands_required=!seen.hands_restore_echo;
+        seen.hands_required=true;
     }
     // Deliberately do not inspect/consume component::self. Two addresses do
     // not prove the initial owned Args->invoke bridge; CF/PE cannot borrow it.
@@ -88,7 +88,7 @@ inline Seen inspect(uptr object,uptr function) {
     seen.recognized=seen.recognized||stow_watched;
     if((stow::dirty_visible.load(std::memory_order_acquire)||stow::pending_visible.load(std::memory_order_acquire))&&
        (seen.stow_dirty||seen.pending)&&(stow_watched||!seen.name_known)&&stow::related(object)){
-        seen.stow=true;seen.stow_restore_echo=stow::mutating;seen.stow_required=!seen.stow_restore_echo;
+        seen.stow=true;seen.stow_restore_echo=stow::mutating;seen.stow_required=true;
         // The old Hammerburst exemption needs GetStateName/can_wait. NoAuth
         // retains this as an unresolved pending obligation; no state query.
         seen.pending_state_boundary=seen.pending&&seen.name_known&&

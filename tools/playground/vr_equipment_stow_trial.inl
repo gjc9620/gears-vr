@@ -24,6 +24,28 @@ std::uint64_t epoch{};
 uptr controller{};
 ULONGLONG deadline{};
 bool mutating{},yielding{};
+#if defined(GEARS_PLAYGROUND_WEAPON_ACTION_ENTRY_TRIAL)
+struct InitialSelf {
+    Request const* request{};uptr object{},function{};bool armed{};
+};
+InitialSelf initial_self;
+inline bool same_initial_self(InitialSelf const& a,InitialSelf const& b) noexcept {
+    return a.request==b.request&&a.object==b.object&&a.function==b.function&&a.armed==b.armed;
+}
+struct InitialSelfScope {
+    InitialSelf saved;
+    explicit InitialSelfScope(Request const* request) noexcept:saved(initial_self){
+        initial_self={request,request->object,request->function,true};
+    }
+    ~InitialSelfScope(){initial_self=saved;}
+};
+inline bool consume_initial_self(Request const* request) noexcept {
+    const auto gt=game_thread.load(std::memory_order_acquire);
+    if(!gt||GetCurrentThreadId()!=gt||!request||!initial_self.armed||initial_self.request!=request||
+       initial_self.object!=request->object||initial_self.function!=request->function)return false;
+    initial_self.armed=false;return true;
+}
+#endif
 gears_weapon::WeaponEquipmentModel pending_model;
 unsigned pending_slot=4;
 unsigned pending_down_mask{};
@@ -236,7 +258,15 @@ struct Backend {
         // acquire pre-journals dirty before entering this backend. If no true
         // was attempted, a newly detached mesh must never grant rollback false.
         if(!allowed)lease.revoke();
-        const bool called=allowed&&weaponrestore::healthy()&&call.run();
+        bool called=false;
+        if(allowed&&weaponrestore::healthy()){
+#if defined(GEARS_PLAYGROUND_WEAPON_ACTION_ENTRY_TRIAL)
+            // The exact initial Args hop only. Commit queries above and any
+            // subsequent recursive PE/CF cannot borrow this one-shot token.
+            InitialSelfScope own_call(&call.r);
+#endif
+            called=call.run();
+        }
         if(log_file){fwprintf(log_file,L"equipment_stow_helper phase=after holstered=%u called=%u epoch=%llu commit_allowed=%u\n",
             unsigned(value),unsigned(called),epoch,unsigned(allowed));fflush(log_file);}
         return called;

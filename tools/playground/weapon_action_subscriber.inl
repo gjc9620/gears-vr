@@ -72,6 +72,26 @@ actionabi::BeginReply begin_body(void* context,actionabi::Invocation const* call
     if(depth>=maximum_depth){mark_unresolved(state);return actionabi::BeginReply::handback_unresolved;}
     journal.prior_state=reinterpret_cast<std::uintptr_t>(top);journal.depth=depth+1;journal.flags|=linked;
     store(state,journal);top=state;++depth;
+#if defined(GEARS_PLAYGROUND_WEAPON_ACTION_ENTRY_TRIAL)
+    // This is always the independent NoAuth CF path. Neither Native's outer
+    // flag nor an owned bridge's consumed self token is inherited here.
+    if(weaponhand::current_gt(nullptr)&&call->hand_cookie==weaponhand::client.cookie()&&
+       call->native_started_qpc==weaponhand::client.native_started_qpc()){
+        // Keep the original Gate's invalid nested-permission check ahead of
+        // the related NoAuth early return, with its original active context.
+        if(enabled.load(std::memory_order_acquire)&&matches(*call)&&
+           (call->flags&actionabi::engine_calls_allowed)&&journal.depth!=1){
+            mark_unresolved(state);return actionabi::BeginReply::handback_unresolved;
+        }
+        bool related{};const bool clean=weaponentry::revoke_call(call->self,call->callee,related);
+        if(related){
+            journal.flags|=ignored|begin_done;if(!clean)journal.flags|=unresolved;
+            store(state,journal);
+            if(!clean){poison();return actionabi::BeginReply::handback_unresolved;}
+            return actionabi::BeginReply::unrelated;
+        }
+    }
+#endif
     if(!enabled.load(std::memory_order_acquire)||!weaponhand::current_gt(nullptr)||!matches(*call)){
         journal.flags|=ignored|begin_done;store(state,journal);return actionabi::BeginReply::unrelated;
     }

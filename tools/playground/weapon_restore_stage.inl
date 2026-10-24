@@ -28,7 +28,9 @@ template<class Backend>void body_cpp(Backend& backend,Journal<typename Backend::
     try{
         // begin records a local action-depth hold BEFORE an old helper can
         // invoke the engine. Its Action destructor then cannot finish/drain.
-        backend.begin();
+        if constexpr(std::is_same_v<decltype(backend.begin()),bool>){
+            if(!backend.begin()){journal.result.outcome=Outcome::unresolved;return;}
+        }else backend.begin();
         journal.result.hands=backend.hands();
         journal.result.hands_finished=backend.finish_hands();
         journal.result.stow=backend.stow();

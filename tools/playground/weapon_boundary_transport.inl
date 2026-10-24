@@ -7,7 +7,7 @@ enum TransportFlags:unsigned {
     started=1,entry_owned=2,revoke_attempted=4,revoke_normal=8,cell_owned=16,
     open_attempted=32,open_normal=64,native_active=128,notice_attempted=256,
     close_attempted=512,finish_attempted=1024,entry_release_attempted=2048,
-    finished=4096,transport_fault=8192
+    finished=4096,transport_fault=8192,stage_claimed=16384
 };
 struct Transport {
     boundaryabi::Admission::Entry entry{};
@@ -15,6 +15,7 @@ struct Transport {
     boundaryabi::Request request{};
     boundaryabi::Receipt receipt{}; // Frozen Open receipt, never a global generation.
     std::uintptr_t address{};
+    std::uintptr_t stage_address{}; // One caller journal at a stable address.
     std::uint64_t revoked_generation{};
     unsigned flags{},exception_code{};
     gears_weapon_hand::Reply revoke_reply{gears_weapon_hand::Reply::invalid};
@@ -45,6 +46,29 @@ inline void transport_poison(Transport& scope) noexcept {
 inline bool transport_shape(Transport const& scope) noexcept {
     return scope.address==reinterpret_cast<std::uintptr_t>(&scope)&&(scope.flags&started);
 }
+#if defined(GEARS_PLAYGROUND_WEAPON_ACTION_ENTRY_TRIAL)
+// This is a local association with the already accepted Native cell, never
+// ambient permission. The adapter rechecks it for its exact stage journal.
+inline bool stage_grant_matches(Transport const& scope,std::uintptr_t journal) noexcept {
+    if(!weaponhand::current_gt(nullptr)||!transport_shape(scope)||!journal||scope.stage_address!=journal||
+       !(scope.flags&stage_claimed)||!(scope.flags&native_active)||!(scope.flags&cell_owned)||
+       !(scope.flags&open_normal)||!(scope.flags&revoke_normal)||
+       (scope.flags&(finish_attempted|transport_fault))||scope.delivery!=Delivery::active)return false;
+    boundaryabi::PoolDiagnostic diagnostic{};
+    return states.describe(scope.cell,diagnostic)&&diagnostic.phase==boundaryabi::PoolPhase::active&&
+        diagnostic.receipt_frozen&&boundaryabi::pool_same_request(diagnostic.request,scope.request)&&
+        boundaryabi::pool_same_receipt(diagnostic.receipt,scope.receipt)&&
+        grant_matches(scope.entry,scope.request,scope.receipt,scope.open_reply);
+}
+inline bool claim_stage(Transport& scope,std::uintptr_t journal) noexcept {
+    if(!transport_shape(scope)||!journal||(scope.flags&stage_claimed)){
+        transport_poison(scope);return false;
+    }
+    scope.stage_address=journal;scope.flags|=stage_claimed;
+    if(!stage_grant_matches(scope,journal)){transport_poison(scope);return false;}
+    return true;
+}
+#endif
 // A noexcept provider may still raise SEH. Catch only that export's fault;
 // original PE/bridge exceptions never pass through one of these barriers.
 inline bool transport_revoke(boundaryabi::Revoke call,boundaryabi::Request const& request,
