@@ -3,6 +3,11 @@
 // the current controlled Pawn's class chains. No registry-wide object scan.
 #include <new>
 namespace cover_body_live {
+enum class TargetSource {advance,live};
+struct LiveTarget {
+    gears_anchor::Identity pawn{},mesh{},world{};
+    uint64_t world_generation{},frame{};long long timestamp_qpc{};unsigned thread{};float u{};
+};
 #if defined(GEARS_COVER_BODY_PROTOTYPE) && GEARS_COVER_BODY_PROTOTYPE
 extern "C" void GearsCoverBlendTickHook();
 extern "C" void GearsCoverChildPropagateHook();
@@ -18,6 +23,9 @@ std::array<void**,2> originals{{&GearsCoverBlendOriginal,&GearsCoverChildOrigina
 bool reserved{},enabled{};
 enum class PoseProfile {top,side};
 PoseProfile pose_profile=PoseProfile::top; // Immutable after configure.
+TargetSource target_source=TargetSource::advance;
+bool live_source(){return target_source==TargetSource::live;}
+const char* source_name(TargetSource source){return source==TargetSource::live?"live":"advance";}
 constexpr unsigned endpoint_for(PoseProfile profile){return profile==PoseProfile::side?5u:4u;}
 const char* profile_name(PoseProfile profile){return profile==PoseProfile::side?"side":"top";}
 bool own_entries(); // Defined after the existing immutable hook-entry manifest.
@@ -41,6 +49,16 @@ std::atomic<bool> external_change{};
 const wchar_t* layout_failure=L"not_attempted";
 unsigned long long blend_calls{},child_calls{},rejected{},writes{},restores{},retired{},external{},rows_dropped{},prewrite_rebinds{};
 unsigned long long child_posts{},native_posts{},pose_rearms{},abandoned{},reentries{};
+struct LiveTime {long long qpc{},frequency{};};
+LiveTime system_live_time(){LARGE_INTEGER qpc{},frequency{};if(!QueryPerformanceCounter(&qpc)||!QueryPerformanceFrequency(&frequency))return {};return {qpc.QuadPart,frequency.QuadPart};}
+// Private clock seam for standalone tests; production keeps the system QPC.
+LiveTime (*target_clock)()=system_live_time;
+struct LiveState {LiveTarget target{};bool valid{};uint64_t frame_watermark{};long long time_watermark{};} live_state;
+enum class TargetReject:unsigned {none,not_live,stopped,thread,order,range,time,context,exception};
+std::atomic<unsigned long long> live_published{},live_rejected{},live_expired{},live_invalidated{};
+std::atomic<uint64_t> live_last_frame{};std::atomic<float> live_last_u{};std::atomic<TargetReject> live_last_reject{TargetReject::none};
+bool fresh_target(LiveTarget const& target,LiveTime clock){return target.timestamp_qpc>0&&clock.qpc>=target.timestamp_qpc&&clock.frequency>=10&&
+    clock.qpc-target.timestamp_qpc<=clock.frequency/10;}
 
 template<class T> bool read(T& out,uintptr_t address){return address&&address<=UINTPTR_MAX-sizeof(T)&&safe_copy(&out,reinterpret_cast<void const*>(address),sizeof(T));}
 template<class T> bool field(T& out,uintptr_t address,unsigned offset){return address<=UINTPTR_MAX-offset&&read(out,address+offset);}
@@ -146,6 +164,36 @@ bool metadata_current(bool membership=true){
         if(!safe_copy(bytes.data(),reinterpret_cast<void const*>(s.address),s.size)||memcmp(bytes.data(),s.bytes.data(),s.size))return false;}
     return true;
 }
+bool live_context(LiveTarget const& target){
+    if(!enabled||!live_source()||!layout_ready.load()||!recording.load()||stopping.load()||external_change.load()||
+       target.thread!=GetCurrentThreadId()||game_thread.load()!=target.thread||!target.world_generation||
+       target.world_generation!=initial_world||target.world_generation!=committed_world_generation.load()||!own_entries()||!metadata_current(false))return false;
+    gears_anchor::PawnBinding binding{};gears_anchor::Identity mesh_id{},world_id{};uintptr_t component{},world{};unsigned char ct{},sm{};
+    auto capture=[&](){return gears_anchor::capture_pawn_binding(metadata,safe_copy,binding)&&!binding.unpossessed&&!binding.cinematic&&same(binding.pawn,target.pawn)&&
+        field(component,binding.pawn.address,layout.mesh)&&component==target.mesh.address&&identity(component,mesh_id,true)&&same(mesh_id,target.mesh)&&
+        field(world,binding.pawn.address,layout.world)&&world==target.world.address&&identity(world,world_id,true)&&same(world_id,target.world)&&world_id.outer==binding.level&&
+        field(ct,binding.pawn.address,layout.cover)&&ct==2&&field(sm,binding.pawn.address,layout.special)&&!sm;};
+    return capture()&&capture()&&target.world_generation==committed_world_generation.load()&&metadata_current(false)&&own_entries();
+}
+void withdraw_target(){if(live_state.valid)++live_invalidated;live_state.valid=false;injecting=false;withdrawing=true;}
+bool target_current(LiveTarget const& target){return fresh_target(target,target_clock())&&live_context(target);}
+bool reject_target(TargetReject reason){++live_rejected;live_last_reject=reason;return false;}
+// Scene GT caller already owns its admitted Scope/current certified context.
+// This API takes body::mutex itself; callers MUST NOT already hold that mutex.
+// Publication only stages CPU metadata. An open propagation keeps its own u.
+bool publish_target(LiveTarget const& target){
+    try{std::lock_guard<std::mutex> lock(mutex);
+        if(!enabled||!live_source())return reject_target(TargetReject::not_live);
+        if(stopping.load()||failed.load()||external_change.load()||!recording.load())return reject_target(TargetReject::stopped);
+        if(target.thread!=GetCurrentThreadId()||game_thread.load()!=target.thread)return reject_target(TargetReject::thread);
+        if(!target.frame||target.frame<=live_state.frame_watermark||target.timestamp_qpc<=live_state.time_watermark)return reject_target(TargetReject::order);
+        if(!std::isfinite(target.u)||target.u<0||target.u>1)return reject_target(TargetReject::range);
+        if(!fresh_target(target,target_clock()))return reject_target(TargetReject::time);
+        if(!live_context(target)){withdraw_target();return reject_target(TargetReject::context);}
+        live_state.target=target;live_state.valid=true;live_state.frame_watermark=target.frame;live_state.time_watermark=target.timestamp_qpc;
+        ++live_published;live_last_frame=target.frame;live_last_u=target.u;live_last_reject=TargetReject::none;return true;
+    }catch(...){failed=true;stopping=true;return reject_target(TargetReject::exception);}
+}
 struct Children {uintptr_t data{};int count{},capacity{};};
 static_assert(sizeof(Children)==16);
 bool children_at(uintptr_t node,Children& children){return field(children,node,layout.children)&&children.data&&!(children.data&7)&&children.count>=5&&children.count<=int(child_limit)&&
@@ -160,12 +208,13 @@ struct Journal {
     bool round_open{},propagating{};
     unsigned injections{},write_count{},restore_count{},retire_count{};
     unsigned installed_step{},endpoint=4;
+    float target_u{};TargetSource source=TargetSource::advance;LiveTarget target{};
     std::array<std::array<unsigned,7>,7> logged{};
     std::array<unsigned,7> step_injections{},step_writes{},step_restores{};
     int previous_child=-1;float previous_incoming{},previous_weight{};
 };
 std::array<Journal,node_limit> journals{};
-struct Row {long long qpc{};uintptr_t node{};uint64_t world{};unsigned thread{},kind{},step{};int child{};float u{},incoming{},weight{},total{},predicted{};};
+struct Row {long long qpc{};uintptr_t node{};uint64_t world{};unsigned thread{},kind{},step{};int child{};float u{},incoming{},weight{},total{},predicted{};TargetSource source{};uint64_t target_frame{};long long target_qpc{};};
 std::array<Row,row_limit> rows{};unsigned row_count{};
 std::array<unsigned,7> step_rows{}; // Reserve room for every later Advance step.
 void row(unsigned kind_value,Journal& j,int child=-1,float incoming=0,float weight=0,float total=0){
@@ -175,7 +224,7 @@ void row(unsigned kind_value,Journal& j,int child=-1,float incoming=0,float weig
     auto& logged=j.logged[sample_step][kind_value];const unsigned limit=child_row?2:1;
     if(logged>=limit)return;++logged;
     if(step_rows[sample_step]>=18||row_count==rows.size()){++rows_dropped;return;}++step_rows[sample_step];
-    rows[row_count++]={now(),j.id.address,j.generation,GetCurrentThreadId(),kind_value,sample_step,child,steps[sample_step],incoming,weight,total,incoming*weight};
+    rows[row_count++]={now(),j.id.address,j.generation,GetCurrentThreadId(),kind_value,sample_step,child,j.target_u,incoming,weight,total,incoming*weight,j.source,j.target.frame,j.target.timestamp_qpc};
 }
 void recount(){unsigned fields{},nodes{};for(auto const& j:journals){unsigned n{};for(bool b:j.owned)if(b)++n;fields+=n;if(n)++nodes;}pending=fields;pending_nodes=nodes;}
 // CAS touches exactly one aligned reflected Weight. An external value is never
@@ -215,9 +264,12 @@ bool journal_current(Journal& j){
         if(!field(pawn,metadata.identities[metadata.role_controller].address,metadata.controller_pawn)||!field(owner,j.id.address,layout.owner)||
            !field(mesh,j.id.address,layout.skel)||!field(world,j.pawn,layout.world)||!read(table,j.id.address)){stopping=true;return false;}
         if(pawn!=j.pawn||owner!=j.pawn||mesh!=j.mesh||world!=j.world||table!=base+0x13d0080){stopping=true;return false;}
+        if(j.source==TargetSource::live){gears_anchor::Identity world_id{},mesh_id{};
+            if(!identity(world,world_id,true)||!same(world_id,j.target.world)||!identity(mesh,mesh_id,true)||!same(mesh_id,j.target.mesh)){stopping=true;return false;}}
         Children current{};if(!field(current,j.id.address,layout.children)||!equal(current,j.children)){stopping=true;return false;}
         if(!metadata_current(false)||!own_entries()){stopping=true;return false;}
         gears_anchor::PawnBinding binding{};if(!gears_anchor::capture_pawn_binding(metadata,safe_copy,binding)||binding.unpossessed||binding.cinematic||binding.pawn.address!=j.pawn){stopping=true;return false;}
+        if(j.source==TargetSource::live&&!same(binding.pawn,j.target.pawn)){stopping=true;return false;}
         return true;
 }
 // retain=true is the native-post window, not a completed restoration. Keep the
@@ -268,10 +320,23 @@ thread_local unsigned call_depth{};
 thread_local Call* current_blend{};
 void poison(){failed=true;stopping=true;if(current_blend)current_blend->poisoned=true;}
 bool rounds_open(){for(auto const& j:journals)if(j.round_open)return true;return false;}
+// Read-only; caller MUST hold body::mutex. Diagnostic buckets never certify
+// neutral: an actual .05 target may share bucket 0 with the neutral endpoint.
+bool neutral_pose_for(uintptr_t pawn,uintptr_t mesh){
+    if(rounds_open()||transactions.load())return false;
+    for(auto const& j:journals)if(j.used&&j.pawn==pawn&&j.mesh==mesh&&any(j)&&j.target_u!=0)return false;
+    if(!enabled)return true;
+    if(live_source())return !live_state.valid||live_state.target.pawn.address!=pawn||live_state.target.mesh.address!=mesh||live_state.target.u==0;
+    const auto s=step.load();return !injecting||(s<steps.size()&&steps[s]==0);
+}
 void events(){
     const auto clock=GetTickCount64();
-    if(reset_event&&WaitForSingleObject(reset_event,0)==WAIT_OBJECT_0){injecting=false;withdrawing=true;next_step=0;step=0;}
+    if(reset_event&&WaitForSingleObject(reset_event,0)==WAIT_OBJECT_0){injecting=false;withdrawing=true;next_step=0;step=0;if(live_source())withdraw_target();}
     if(stopping.load()){injecting=false;return;}
+    if(live_source()){
+        if(live_state.valid&&!target_current(live_state.target)){if(!fresh_target(live_state.target,target_clock()))++live_expired;withdraw_target();}
+        injecting=live_state.valid&&!withdrawing;return;
+    }
     // Preserve a queued Advance until every old owned field has been released.
     if(!withdrawing&&advance_event&&WaitForSingleObject(advance_event,0)==WAIT_OBJECT_0){step=next_step;next_step=(next_step+1)%unsigned(steps.size());last_advance=clock;injecting=true;timed_out=false;}
     if(injecting&&clock-last_advance>=10000){injecting=false;withdrawing=true;timed_out=true;}
@@ -347,6 +412,14 @@ void child_before(uintptr_t self,int child,float incoming,Scope const& scope,Cal
        !children_at(self,current)||current.count<=int(endpoint_for(pose_profile))||!equal(current,tick.children)){++rejected;if(tick.injected)poison();return;}
     if(child<0||child>=current.count)return;
     if(!tick.injected){
+        LiveTarget round_target{};float u{};const auto source_mode=target_source;unsigned bucket=step.load();
+        if(live_source()){
+            if(!live_state.valid||!target_current(live_state.target)){withdraw_target();return;}
+            round_target=live_state.target;u=round_target.u;
+            if(round_target.pawn.address!=tick.pawn||round_target.mesh.address!=tick.mesh||round_target.world.address!=tick.world||round_target.world_generation!=tick.generation){withdraw_target();return;}
+            // Diagnostic buckets only; installed Weight uses the exact u.
+            bucket=static_cast<unsigned>(std::lround(u*4));
+        }else{if(bucket>=steps.size())return;u=steps[bucket];}
         unsigned first=child_limit;std::array<uint32_t,child_limit> native{};std::array<uintptr_t,child_limit> animations{};
         for(unsigned i=0;i<unsigned(current.count);++i){float weight{};
             if(!field(animations[i],current.data+uintptr_t(i)*0x44,layout.anim)||!field(weight,current.data+uintptr_t(i)*0x44,layout.weight)||!std::isfinite(weight)||weight<0||weight>1)return;
@@ -355,12 +428,14 @@ void child_before(uintptr_t self,int child,float incoming,Scope const& scope,Cal
         if(first!=unsigned(child)||!animations[0]||!animations[endpoint])return;
         if(!journal){for(auto& j:journals)if(!j.used){journal=&j;j.used=true;j.id=tick.id;break;}}
         if(!journal||any(*journal)||journal->round_open){++rejected;return;}
-        auto& j=*journal;j.pawn=tick.pawn;j.mesh=tick.mesh;j.world=tick.world;j.generation=tick.generation;j.children=current;j.native=native;j.installed_step=step.load();j.endpoint=endpoint;
+        auto& j=*journal;j.pawn=tick.pawn;j.mesh=tick.mesh;j.world=tick.world;j.generation=tick.generation;j.children=current;j.native=native;j.installed_step=bucket;j.endpoint=endpoint;
+        j.target_u=u;j.source=source_mode;j.target=round_target;
         j.native_visible.fill(false);
-        for(unsigned i=0;i<unsigned(current.count);++i){float weight=i==0?1.f-steps[j.installed_step]:(i==j.endpoint?steps[j.installed_step]:0.f);memcpy(&j.installed[i],&weight,4);}
+        for(unsigned i=0;i<unsigned(current.count);++i){float weight=i==0?1.f-j.target_u:(i==j.endpoint?j.target_u:0.f);memcpy(&j.installed[i],&weight,4);}
         // A final header/identity bracket before the first field CAS.
         gears_anchor::Identity again{};Children after{};
         if(!identity(self,again,true)||!same(again,j.id)||!children_at(self,after)||!equal(current,after))return;
+        if(j.source==TargetSource::live&&!target_current(j.target)){withdraw_target();return;}
         for(unsigned i=0;i<unsigned(current.count);++i)if(j.native[i]!=j.installed[i]){
             uint32_t observed{};if(!exchange(current.data+uintptr_t(i)*0x44+layout.weight,j.native[i],j.installed[i],observed)){failed=true;stopping=true;break;}
             if(observed!=j.native[i]){external_change=true;++external;stopping=true;break;}j.owned[i]=true;++writes;++j.write_count;++j.step_writes[j.installed_step];
@@ -394,6 +469,7 @@ void child_after(Call& call,bool returned){
     }
 }
 void rearm(Journal& j){
+    if(j.source==TargetSource::live&&(!live_state.valid||!target_current(j.target)||!target_current(live_state.target))){withdraw_target();native_weights(j,false);return;}
     if(!journal_current(j))return;
     unsigned char ct{},sm{};
     if(!field(ct,j.pawn,layout.cover)||ct!=2||!field(sm,j.pawn,layout.special)||sm!=0){stopping=true;native_weights(j,false);return;}
@@ -499,8 +575,15 @@ bool read_profile(const wchar_t* ini,PoseProfile& out){
     if(!wcscmp(text,L"side")){out=PoseProfile::side;return true;}
     return false;
 }
+bool read_source(const wchar_t* ini,TargetSource& out){
+    wchar_t text[16]{};const auto length=GetPrivateProfileStringW(L"CoverBodyPrototype",L"target_source",L"advance",text,16,ini);
+    if(!length||length>=15)return false;
+    if(!wcscmp(text,L"advance")){out=TargetSource::advance;return true;}
+    if(!wcscmp(text,L"live")){out=TargetSource::live;return true;}return false;
+}
 bool configure(const wchar_t* ini,FILE* file){
     PoseProfile profile{};if(!read_profile(ini,profile))return false;
+    TargetSource source{};if(!read_source(ini,source))return false;
     const auto requested=GetPrivateProfileIntW(L"CoverBodyPrototype",L"enabled",0,ini);if(!requested)return true;
     if(requested!=1||enabled||!reserved||!continuous_session||!anchor_observer_enabled)return false;
     metadata=anchor_config;initial_world=committed_world_generation.load();
@@ -508,32 +591,37 @@ bool configure(const wchar_t* ini,FILE* file){
     wchar_t name[128]{};
     auto event=[&](HANDLE& handle,const wchar_t* action){swprintf_s(name,L"Local\\GearsVR.CoverBodyPrototype.%s.%lu",action,GetCurrentProcessId());SetLastError(0);
         handle=CreateEventW(nullptr,FALSE,FALSE,name);const auto error=GetLastError();return handle&&error!=ERROR_ALREADY_EXISTS;};
-    if(!event(advance_event,L"Advance")||!event(reset_event,L"Reset")){if(advance_event)CloseHandle(advance_event);if(reset_event)CloseHandle(reset_event);advance_event=reset_event=nullptr;return false;}
-    pose_profile=profile;enabled=true;fprintf(file,"cover_body_config enabled=1 experimental=1 pose_profile=%s endpoint_child=%u reflected_lookup=actual_receiver bounded_nodes=4 cover_type=2 special_move=0 positive_incoming_only=1 advance_timeout_ms=10000 stop_drain_ms=5000 native_post_weight_separation=1 mirror_written=0 side_direction_acceptance=0 two_dimensional_blend=0 firing_acceptance=0\n",profile_name(pose_profile),endpoint_for(pose_profile));return true;
+    if((source==TargetSource::advance&&!event(advance_event,L"Advance"))||!event(reset_event,L"Reset")){if(advance_event)CloseHandle(advance_event);if(reset_event)CloseHandle(reset_event);advance_event=reset_event=nullptr;return false;}
+    pose_profile=profile;target_source=source;live_state={};enabled=true;
+    fprintf(file,"cover_body_config enabled=1 experimental=1 pose_profile=%s endpoint_child=%u target_source=%s live_ttl_ms=100 reflected_lookup=actual_receiver bounded_nodes=4 cover_type=2 special_move=0 positive_incoming_only=1 advance_timeout_ms=10000 stop_drain_ms=5000 native_post_weight_separation=1 mirror_written=0 side_direction_acceptance=0 two_dimensional_blend=0 firing_acceptance=0\n",profile_name(pose_profile),endpoint_for(pose_profile),source_name(target_source));return true;
 }
 void request_drain(){if(!enabled)return;std::lock_guard<std::mutex> lock(mutex);stopping=true;ULONGLONG empty{};drain_tick.compare_exchange_strong(empty,GetTickCount64());}
 unsigned pending_count(){return pending.load()+in_flight.load()+transactions.load();}
 bool draining(){return enabled&&pending_count()&&GetTickCount64()-drain_tick.load()<5000;}
 bool drain_failed(){return enabled&&stopping.load()&&drain_tick.load()&&pending_count()&&!draining();}
 bool proof_failed(){return failed.load()||external_change.load();}
-void progress(FILE* file){fprintf(file,"cover_body_enabled=%u cover_body_pose_profile=%s cover_body_endpoint_child=%u cover_body_layout_ready=%u cover_body_pending=%u cover_body_pending_fields=%u cover_body_pending_nodes=%u cover_body_in_flight=%u cover_body_transactions=%u cover_body_stopping=%u cover_body_failed=%u cover_body_step=%u ",enabled?1:0,profile_name(pose_profile),endpoint_for(pose_profile),layout_ready.load()?1:0,pending_count(),pending.load(),pending_nodes.load(),in_flight.load(),transactions.load(),stopping.load()?1:0,failed.load()?1:0,step.load());}
+void progress(FILE* file){fprintf(file,"cover_body_enabled=%u cover_body_pose_profile=%s cover_body_endpoint_child=%u cover_body_target_source=%s cover_body_live_published=%llu cover_body_live_rejected=%llu cover_body_live_expired=%llu cover_body_live_invalidated=%llu cover_body_live_frame=%llu cover_body_live_u=%.9g cover_body_live_reject=%u cover_body_layout_ready=%u cover_body_pending=%u cover_body_pending_fields=%u cover_body_pending_nodes=%u cover_body_in_flight=%u cover_body_transactions=%u cover_body_stopping=%u cover_body_failed=%u cover_body_step=%u ",enabled?1:0,profile_name(pose_profile),endpoint_for(pose_profile),source_name(target_source),live_published.load(),live_rejected.load(),live_expired.load(),live_invalidated.load(),static_cast<unsigned long long>(live_last_frame.load()),double(live_last_u.load()),unsigned(live_last_reject.load()),layout_ready.load()?1:0,pending_count(),pending.load(),pending_nodes.load(),in_flight.load(),transactions.load(),stopping.load()?1:0,failed.load()?1:0,step.load());}
 void print(FILE* file,bool disabled){
     std::lock_guard<std::mutex> lock(mutex);progress(file);
     fprintf(file,"cover_body compiled=1 layout_ready=%u layout_attempts=%u layout_failure=%ls metadata_sources=%u metadata_identities=%u prewrite_rebinds=%llu blend_calls=%llu child_calls=%llu child_posts=%llu native_posts=%llu pose_rearms=%llu abandoned=%llu reentries=%llu rejected=%llu writes=%llu restores=%llu retired_fields=%llu external_changes=%llu timeout=%u rows=%u dropped=%llu native_post_weight_separation=1 firing_acceptance=0 gpu_or_exposure_acceptance=0\n",
         layout_ready?1:0,layout_attempts,layout_failure,layout.source_count,layout.id_count,prewrite_rebinds,blend_calls,child_calls,child_posts,native_posts,pose_rearms,abandoned,reentries,rejected,writes,restores,retired,external,timed_out.load()?1:0,row_count,rows_dropped);
     for(unsigned i=0;i<journals.size();++i){auto const& j=journals[i];if(j.used){unsigned native_fields{};for(unsigned n=0;n<child_limit;++n)if(j.owned[n]&&j.native_visible[n])++native_fields;
-        fprintf(file,"cover_body_node index=%u node=%p pawn=%p mesh=%p world=%p generation=%llu endpoint_child=%u injections=%u writes=%u restores=%u retired=%u pending=%u round_open=%u propagating=%u native_visible_fields=%u\n",i,reinterpret_cast<void*>(j.id.address),reinterpret_cast<void*>(j.pawn),reinterpret_cast<void*>(j.mesh),reinterpret_cast<void*>(j.world),j.generation,j.endpoint,j.injections,j.write_count,j.restore_count,j.retire_count,any(j)?1:0,j.round_open?1:0,j.propagating?1:0,native_fields);}}
+        fprintf(file,"cover_body_node index=%u node=%p pawn=%p mesh=%p world=%p generation=%llu endpoint_child=%u target_u=%.9g target_source=%s target_frame=%llu target_qpc=%lld injections=%u writes=%u restores=%u retired=%u pending=%u round_open=%u propagating=%u native_visible_fields=%u\n",i,reinterpret_cast<void*>(j.id.address),reinterpret_cast<void*>(j.pawn),reinterpret_cast<void*>(j.mesh),reinterpret_cast<void*>(j.world),j.generation,j.endpoint,double(j.target_u),source_name(j.source),static_cast<unsigned long long>(j.target.frame),j.target.timestamp_qpc,j.injections,j.write_count,j.restore_count,j.retire_count,any(j)?1:0,j.round_open?1:0,j.propagating?1:0,native_fields);}}
     for(unsigned i=0;i<journals.size();++i){auto const& j=journals[i];if(j.used)for(unsigned s=0;s<steps.size();++s)
-        fprintf(file,"cover_body_step node_index=%u step=%u u=%.9g injections=%u writes=%u restores=%u\n",i,s,steps[s],j.step_injections[s],j.step_writes[s],j.step_restores[s]);}
-    for(unsigned i=0;i<row_count;++i){auto const& r=rows[i];fprintf(file,"cover_body_row index=%u qpc=%lld node=%p world=%llu thread=%u kind=%u step=%u u=%.9g child=%d incoming=%.9g weight=%.9g child_total=%.9g predicted=%.9g total_sample_is_after_previous_native_call=%u native_post=%u pose_rearm=%u\n",i,r.qpc,reinterpret_cast<void*>(r.node),r.world,r.thread,r.kind,r.step,r.u,r.child,r.incoming,r.weight,r.total,r.predicted,r.kind==4?1:0,r.kind==5?1:0,r.kind==6?1:0);}
+        fprintf(file,"cover_body_step node_index=%u step=%u u=%.9g u_is_advance_only=1 diagnostic_bucket=%u injections=%u writes=%u restores=%u\n",i,s,steps[s],j.source==TargetSource::live?1:0,j.step_injections[s],j.step_writes[s],j.step_restores[s]);}
+    for(unsigned i=0;i<row_count;++i){auto const& r=rows[i];fprintf(file,"cover_body_row index=%u qpc=%lld node=%p world=%llu thread=%u kind=%u step=%u u=%.9g child=%d incoming=%.9g weight=%.9g child_total=%.9g predicted=%.9g target_source=%s target_frame=%llu target_qpc=%lld total_sample_is_after_previous_native_call=%u native_post=%u pose_rearm=%u\n",i,r.qpc,reinterpret_cast<void*>(r.node),r.world,r.thread,r.kind,r.step,r.u,r.child,r.incoming,r.weight,r.total,r.predicted,source_name(r.source),static_cast<unsigned long long>(r.target_frame),r.target_qpc,r.kind==4?1:0,r.kind==5?1:0,r.kind==6?1:0);}
     if(disabled&&!pending_count()){if(advance_event){CloseHandle(advance_event);advance_event=nullptr;}if(reset_event){CloseHandle(reset_event);reset_event=nullptr;}}
 }
 #else
 constexpr bool enabled=false;
+bool live_source(){return false;}
+bool neutral_pose_for(uintptr_t,uintptr_t){return true;}
+bool publish_target(LiveTarget const&){return false;}
 bool reserve(){return true;}
 bool reserved_target(void*){return false;}
 bool configure(const wchar_t* ini,FILE*){wchar_t profile[2]{};return GetPrivateProfileIntW(L"CoverBodyPrototype",L"enabled",0,ini)==0&&
-    GetPrivateProfileStringW(L"CoverBodyPrototype",L"pose_profile",L"",profile,2,ini)==0;}
+    GetPrivateProfileStringW(L"CoverBodyPrototype",L"pose_profile",L"",profile,2,ini)==0&&
+    GetPrivateProfileStringW(L"CoverBodyPrototype",L"target_source",L"",profile,2,ini)==0;}
 void request_drain(){}
 bool draining(){return false;}
 bool drain_failed(){return false;}

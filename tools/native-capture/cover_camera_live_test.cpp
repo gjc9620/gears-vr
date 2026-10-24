@@ -46,7 +46,7 @@ extern "C" void GearsCoverRawInvoke(cover_body_live::CallPacket*,void*) noexcept
 namespace b=cover_body_live;namespace n=cover_neutral_eye_live;namespace camera=cover_camera_live;
 unsigned checks{},failures{},queries{};uint64_t clock_ms{};
 #define C(x) do{++checks;if(!(x)){++failures;printf("FAIL %u: %s\n",__LINE__,#x);}}while(0)
-uintptr_t fixture_pawn{},fixture_mesh{},fixture_link{},fixture_world{},pawn_class{},link_class{},props[5]{};
+uintptr_t fixture_pawn{},fixture_mesh{},fixture_link{},fixture_world{},pawn_class{},link_class{},fixture_actor_class{},fixture_world_class{},fixture_pc_class{},fixture_world_prop{},props[5]{};
 gears_anchor::Receipt fixture_scene;gears_vr::Vector head_offset{2,3,35};
 template<class T>void put(uintptr_t address,T const& value){memcpy(reinterpret_cast<void*>(address),&value,sizeof value);}
 template<class T>T get(uintptr_t address){T value{};memcpy(&value,reinterpret_cast<void const*>(address),sizeof value);return value;}
@@ -71,14 +71,19 @@ void setup(){
     auto mesh_class=arena+0x60c00;object(mesh_class,13,meta,0,L"SkeletalMeshComponent");link_class=arena+0x61000;object(link_class,14,meta,0,L"CoverLink");
     const wchar_t* types[]={L"ObjectProperty",L"IntProperty",L"ByteProperty",L"BoolProperty"};uintptr_t type_classes[4]{};
     for(unsigned i=0;i<4;++i){type_classes[i]=arena+0x61400+uintptr_t(i)*0x400;object(type_classes[i],15+i,meta,0,types[i]);}
+    fixture_actor_class=arena+0x62400;fixture_world_class=arena+0x62800;fixture_pc_class=arena+0x62c00;fixture_world_prop=arena+0x63000;
+    object(fixture_actor_class,19,meta,0,L"Actor");object(fixture_world_class,20,meta,0,L"WorldInfo");object(fixture_pc_class,21,meta,0,L"WarPC");
+    for(auto cls:{pawn_class,link_class,fixture_pc_class,fixture_world_class}){put(cls+0x60,fixture_actor_class);put(cls+0x88,0x1000u);}put(fixture_actor_class+0x60,generic);put(fixture_actor_class+0x88,0x1000u);
+    object(fixture_world_prop,22,type_classes[0],fixture_actor_class,L"WorldInfo");put(fixture_actor_class+0x80,fixture_world_prop);put(fixture_world_prop+0x70,1u);put(fixture_world_prop+0x74,8u);put(fixture_world_prop+0x94,0x188u);put(fixture_world_prop+0xd0,fixture_world_class);
     auto level=arena+0x38000;const uintptr_t addresses[]={arena+0x32000,arena+0x34000,arena+0x36000,arena+0x30000,level};
     const wchar_t* labels[]={L"SyntheticPC",L"SyntheticLocal",L"SyntheticCamera",L"SyntheticPawn",L"SyntheticLevel"};
-    for(unsigned i=0;i<5;++i)config.identities[i]=object(addresses[i],i,i==3?pawn_class:generic,i==3?level:0,labels[i]);
+    for(unsigned i=0;i<5;++i)config.identities[i]=object(addresses[i],i,i==3?pawn_class:(i==0?fixture_pc_class:generic),i==3?level:0,labels[i]);
     fixture_pawn=addresses[3];fixture_world=arena+0x3a000;fixture_mesh=arena+0x3c000;fixture_link=arena+0x3e000;
-    object(fixture_world,5,generic,level,L"SyntheticWorld");object(fixture_mesh,6,mesh_class,fixture_pawn,L"SyntheticMesh");object(fixture_link,7,link_class,level,L"SyntheticLink");
+    object(fixture_world,5,fixture_world_class,level,L"SyntheticWorld");object(fixture_mesh,6,mesh_class,fixture_pawn,L"SyntheticMesh");object(fixture_link,7,link_class,level,L"SyntheticLink");
     put(addresses[0]+config.controller_pawn,fixture_pawn);put(addresses[0]+config.player_camera,addresses[2]);put(addresses[0]+config.player,addresses[1]);
     put(fixture_pawn+config.pawn_controller,addresses[0]);put(addresses[2]+config.camera_view_target,fixture_pawn);put(addresses[2]+config.pc_owner,addresses[0]);
     b::layout={};b::layout.mesh=0x180;b::layout.world=0x188;b::layout.cover=0x190;b::layout.special=0x191;
+    put(fixture_link+0x188,fixture_world);put(addresses[0]+0x188,fixture_world);
     put(fixture_pawn+0x180,fixture_mesh);put(fixture_pawn+0x188,fixture_world);put(fixture_pawn+0x190,static_cast<unsigned char>(2));put(fixture_pawn+0x191,static_cast<unsigned char>(0));put(fixture_pawn+config.pawn_location,std::array<float,3>{100,200,300});put(fixture_pawn+config.pawn_rotation,std::array<int32_t,3>{17000,-31858,12345});
     for(unsigned i=0;i<n::field_count;++i){props[i]=arena+0x65000+uintptr_t(i)*0x400;auto type=type_classes[i==0?0:(i==1?1:(i==4?3:2))];object(props[i],30+i,type,pawn_class,n::specs[i].name);
         put(props[i]+0x70,1u);put(props[i]+0x74,n::specs[i].width);put(props[i]+0x94,i==0?0x200u:(i==1?0x208u:(i==2?0x20cu:(i==3?0x20du:0x210u))));put(props[i]+0x68,i+1<n::field_count?props[i]+0x400:uintptr_t(0));}
@@ -124,10 +129,21 @@ int main(){
     C(close_enough(fixed_forward.x,std::cos(expected_yaw),1e-12)&&close_enough(fixed_forward.y,std::sin(expected_yaw),1e-12)&&fixed_forward.z==0);
     C(camera::diagnostics.latest_calibration.original_eye_height==76&&camera::diagnostics.latest_calibration.head_index==27);
     C(!memcmp(arena_baseline.data(),reinterpret_cast<void*>(arena),arena_baseline.size()));C(!memcmp(&body_layout,&b::layout,sizeof body_layout));
+    // Real ah failure: streamed Link and Persistent WorldInfo can have a
+    // different Level Outer while all three Actor.WorldInfo fields agree.
+    setup();const auto streamed=arena+0x39000;object(streamed,23,get<uintptr_t>(fixture_scene.anchor.level+80),0,L"StreamedLevel");put(fixture_link+64,streamed);put(fixture_world+64,streamed);view=input_view();
+    memcpy(arena_baseline.data(),reinterpret_cast<void*>(arena),arena_baseline.size());const auto streamed_layout=b::layout;
+    C(calibrate(view)&&camera::diagnostics.applied==1&&camera::facing.key.link.outer!=fixture_scene.anchor.level);
+    C(close_enough(gears_vr::stereo_camera_position(view),{102,203,335})&&n::proof.shared_actor_world);
+    C(!memcmp(arena_baseline.data(),reinterpret_cast<void*>(arena),arena_baseline.size())&&!memcmp(&streamed_layout,&b::layout,sizeof streamed_layout));
+    for(unsigned role=0;role<3;++role){setup();const auto alien=arena+0x3f000;object(alien,8,fixture_world_class,fixture_scene.anchor.level,L"OtherWorld");put((role==0?fixture_pawn:(role==1?fixture_link:b::metadata.identities[0].address))+0x188,alien);view=input_view();ordinary=view;C(!preview(view)&&view==ordinary&&!queries&&!camera::diagnostics.applied);}
+    setup();view=input_view();C(calibrate(view));put(fixture_world_prop+0x94,0x198u);ordinary=input_view();view=ordinary;C(!preview(view)&&view==ordinary&&camera::diagnostics.last_neutral==n::Reason::layout_changed);
+    setup();view=input_view();C(calibrate(view));
     // Native LT/pose/camera changes do not requery animated Head or rotate the
     // base. Only legitimate current Pawn root translation is composed.
     put(fixture_pawn+0x1a0,std::array<float,3>{110,220,330});put(fixture_pawn+0x1c0,std::array<int32_t,3>{0,2000,0});put(fixture_pawn+0x20c,static_cast<unsigned char>(7));put(fixture_pawn+0x20d,static_cast<unsigned char>(7));put(fixture_pawn+0x191,static_cast<unsigned char>(12));put(fixture_pawn+0x210,0x821u);b::injecting=true;b::step=3;head_offset.z=180;clock_ms=200;
     C(preview(view)&&queries==1&&close_enough(gears_vr::stereo_camera_position(view),{112,223,365}));C(close_enough(camera::facing.forward,fixed_forward,1e-12)&&camera::diagnostics.bindings==1);
+    C(close_enough(camera::diagnostics.latest_base_eye,{112,223,365})&&close_enough(camera::diagnostics.latest_matrix_eye,{112,223,365})&&camera::diagnostics.latest_invocation==fixture_scene.invocation);
     ordinary=input_view();view=ordinary;fixture_scene.thread=GetCurrentThreadId()+1;C(!preview(view)&&view==ordinary&&camera::diagnostics.last_neutral==n::Reason::wrong_thread);fixture_scene.thread=GetCurrentThreadId();C(preview(view)&&queries==1&&close_enough(camera::facing.forward,fixed_forward,1e-12));
     // The stereo reference/head/eye mapping is composed once after the base.
     setup();view=input_view();C(calibrate(view));const auto base_view=view;const auto origin=gears_vr::stereo_camera_position(view);const auto f=camera::facing.forward,r=camera::facing.right;
@@ -141,7 +157,7 @@ int main(){
         if(which==0){committed_world_generation=2;b::initial_world=2;}
         if(which==1){const auto replacement=arena+0x31000,new_mesh=arena+0x3f000;memcpy(reinterpret_cast<void*>(replacement),reinterpret_cast<void*>(fixture_pawn),0x400);object(replacement,8,pawn_class,fixture_scene.anchor.level,L"SyntheticPawn2");object(new_mesh,9,get<uintptr_t>(fixture_mesh+80),replacement,L"SyntheticMesh2");put(replacement+0x180,new_mesh);put(b::metadata.identities[0].address+b::metadata.controller_pawn,replacement);put(b::metadata.identities[2].address+b::metadata.camera_view_target,replacement);fixture_pawn=replacement;fixture_mesh=new_mesh;refresh_scene();}
         if(which==2){const auto replacement=arena+0x3f000;object(replacement,8,get<uintptr_t>(fixture_mesh+80),fixture_pawn,L"SyntheticMesh2");put(fixture_pawn+0x180,replacement);}
-        if(which==3){const auto replacement=arena+0x3f000;object(replacement,8,link_class,fixture_scene.anchor.level,L"SyntheticLink2");put(fixture_pawn+0x200,replacement);}
+        if(which==3){const auto replacement=arena+0x3f000;object(replacement,8,link_class,fixture_scene.anchor.level,L"SyntheticLink2");put(replacement+0x188,fixture_world);put(fixture_pawn+0x200,replacement);}
         if(which==4)put(fixture_pawn+0x208,1);
         put(fixture_pawn+0x1c0,std::array<int32_t,3>{0,12000,0});clock_ms=1200;view=ordinary;C(!preview(view)&&view==ordinary);clock_ms=1300;C(preview(view)&&queries==2&&camera::diagnostics.bindings==2);C(!close_enough(camera::facing.forward,fixed_forward,.01));}
     setup();C(calibrate(view));committed_world_generation=2;view=ordinary;C(!preview(view)&&view==ordinary&&camera::diagnostics.last_neutral==n::Reason::link);

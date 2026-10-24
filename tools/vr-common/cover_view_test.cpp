@@ -29,6 +29,9 @@ int main(){
     for(double yaw:{-3.,-1.5707963267948966,0.,1.5707963267948966,3.}){
         CoverViewAnchor a{{1000,-2000,-39.16},{std::cos(yaw),std::sin(yaw),0},{-std::sin(yaw),std::cos(yaw),0}};
         const Pose reference{{.4,1.55,-.2},{0,std::sin(.37),0,std::cos(.37)}};
+        CoverTrackingBasis tracking{};CHECK(cover_tracking_basis(reference,tracking));
+        CHECK(near(transform(transpose(rotation_matrix(reference.orientation)),tracking.right),{1,0,0}));
+        CHECK(near(transform(transpose(rotation_matrix(reference.orientation)),tracking.up),{0,1,0}));
         for(CoverOffset offset: {CoverOffset{},CoverOffset{-.3,0},CoverOffset{.25,.4}}){
             CoverViewResult base{};CHECK(prepare_cover_view(a,offset,100,base));
             CHECK(near(base.base_eye_world,{a.neutral_eye_world.x+a.right_world.x*offset.right*100,
@@ -57,6 +60,15 @@ int main(){
                 const Vector expected{base.base_eye_world.x+100*(a.right_world.x*local.x-a.forward_world.x*local.z),
                     base.base_eye_world.y+100*(a.right_world.y*local.x-a.forward_world.y*local.z),base.base_eye_world.z+100*local.y};
                 CHECK(near(midpoint(eyes),expected));
+                Vector mapped_head{};CHECK(cover_tracking_point(a,base,reference,head.position,100,mapped_head));
+                CHECK(near(mapped_head,midpoint(eyes)));
+                // A hand beside the same physical head is mapped directly.
+                // Physical head movement must not be added a second time.
+                const auto hand_delta=transform(rotation_matrix(reference.orientation),{-.3,-.25,-.4});
+                Vector hand{head.position.x+hand_delta.x,head.position.y+hand_delta.y,head.position.z+hand_delta.z},mapped_hand{};
+                CHECK(cover_tracking_point(a,base,reference,hand,100,mapped_hand));
+                CHECK(near(mapped_hand,{expected.x+100*(-.3*a.right_world.x+.4*a.forward_world.x),
+                    expected.y+100*(-.3*a.right_world.y+.4*a.forward_world.y),expected.z-25}));
                 CoverViewResult unchanged{};CHECK(prepare_cover_view(a,offset,100,unchanged));
                 CHECK(unchanged.base_view==base.base_view); // Real motion never mutates the held virtual base.
             }
@@ -83,5 +95,11 @@ int main(){
     CHECK(!prepare_cover_view(wrong,{},0,sentinel));
     CoverPhysicalDisplacement displacement{7,8,9};Pose invalid{{0,0,0},{0,0,0,0}};
     CHECK(!cover_physical_displacement(invalid,Pose{},displacement)&&displacement.right==7&&displacement.up==8&&displacement.forward==9);
+    CoverTrackingBasis bad_basis{{7,8,9},{4,5,6}};
+    CHECK(!cover_tracking_basis(invalid,bad_basis)&&bad_basis.right.x==7&&bad_basis.up.x==4);
+    Vector unchanged_point{7,8,9};CoverViewAnchor valid_anchor{{},{1,0,0},{0,1,0}};CoverViewResult valid_base{};
+    CHECK(prepare_cover_view(valid_anchor,{},100,valid_base));
+    CHECK(!cover_tracking_point(valid_anchor,valid_base,invalid,{},100,unchanged_point)&&unchanged_point.x==7);
+    CHECK(!cover_tracking_point(valid_anchor,valid_base,Pose{}, {},0,unchanged_point)&&unchanged_point.x==7);
     std::printf("cover_view: %u checks, %u failures\n",checks,failures);return failures?1:0;
 }

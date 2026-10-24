@@ -27,6 +27,7 @@ const char* context_stage="not_sampled";
 namespace body=cover_body_live;
 struct ProofSource {uintptr_t address{};unsigned size{};bool membership{};std::array<unsigned char,8> bytes{};};
 struct Property {gears_anchor::Identity id{};unsigned dimension{},width{},offset{};};
+enum WorldRole:unsigned {pawn_world,link_world,controller_world,world_role_count};
 enum Field:unsigned {current_link,current_slot,cover_action,last_action,transition,field_count};
 struct Spec {const wchar_t* name;const wchar_t* kind;unsigned width;};
 constexpr std::array<Spec,field_count> specs{{{L"CurrentLink",L"ObjectProperty",8},{L"CurrentSlotIdx",L"IntProperty",4},
@@ -34,7 +35,9 @@ constexpr std::array<Spec,field_count> specs{{{L"CurrentLink",L"ObjectProperty",
 struct Proof {
     std::array<ProofSource,4096> sources{};unsigned source_count{};
     std::array<gears_anchor::Identity,96> identities{};unsigned identity_count{};
-    std::array<Property,field_count> fields{};gears_anchor::Identity pawn_class{},link_class{};
+    std::array<Property,field_count> fields{};gears_anchor::Identity pawn_class{},link_class{},controller_class{},world_class{};
+    std::array<Property,world_role_count> world_fields{};std::array<gears_anchor::Identity,world_role_count> world_owners{};
+    bool shared_actor_world{};
     unsigned mask{};bool ready{};unsigned attempts{};uint64_t last_attempt{};bool attempted{};
 } proof;
 bool remember(gears_anchor::Identity const& id){
@@ -53,18 +56,50 @@ template<class T> bool source(T& value,uintptr_t address,bool membership=false){
 template<class T> bool source_field(T& value,uintptr_t address,unsigned offset,bool membership=false){
     return address<=UINTPTR_MAX-offset&&source(value,address+offset,membership);
 }
-bool property(uintptr_t address,uintptr_t owner,unsigned owner_size,unsigned n,Property& out){
-    auto const& spec=specs[n];Property p{};rejected_field=spec.name;
+bool typed_property(uintptr_t address,uintptr_t owner,unsigned owner_size,Spec const& spec,Property& out){
+    Property p{};rejected_field=spec.name;
     if(!certified_id(address,p.id)||p.id.number||p.id.outer!=owner||wcscmp(p.id.name.data(),spec.name)||!kind(p.id,spec.kind)||
        !source_field(p.dimension,address,0x70)||!source_field(p.width,address,0x74)||!source_field(p.offset,address,0x94)||p.dimension!=1||p.width!=spec.width||
        owner_size>0x10000||p.width>owner_size||p.offset>owner_size-p.width)return false;
     out=p;return true;
 }
+bool property(uintptr_t address,uintptr_t owner,unsigned owner_size,unsigned n,Property& out){return typed_property(address,owner,owner_size,specs[n],out);}
+// Each role certifies its own inheritance path and selected ObjectProperty.
+// The retained sources/identities belong to this neutral Proof, never body Layout.
+bool world_property(gears_anchor::Identity const& start,unsigned role){
+    static constexpr Spec spec{L"WorldInfo",L"ObjectProperty",8};
+    rejected_field=spec.name;std::array<uintptr_t,32> owners{};unsigned owner_count{};
+    for(auto owner=start.address;owner&&owner_count<owners.size();){
+        for(unsigned i=0;i<owner_count;++i)if(owners[i]==owner)return false;owners[owner_count++]=owner;
+        gears_anchor::Identity owner_id{};unsigned owner_size{};
+        if(!certified_id(owner,owner_id)||!kind(owner_id,L"Class")||!source_field(owner_size,owner,0x88)||!owner_size||owner_size>0x10000)return false;
+        uintptr_t child{};if(!source_field(child,owner,0x80,true))return false;
+        std::array<uintptr_t,4096> visited{};unsigned count{},matches{};Property selected{};
+        while(child&&count<visited.size()){
+            for(unsigned i=0;i<count;++i)if(visited[i]==child)return false;visited[count++]=child;
+            gears_anchor::Identity id{};if(!body::identity(child,id,false,true)||id.outer!=owner)return false;
+            if(!wcscmp(id.name.data(),spec.name)){
+                if(id.number||++matches!=1||!typed_property(child,owner,owner_size,spec,selected))return false;
+            }
+            if(matches){if(!body::field(child,child,0x68))return false;}
+            else if(!source_field(child,child,0x68,true))return false;
+        }
+        if(child)return false;
+        if(matches){
+            uintptr_t reference{},world_super{};gears_anchor::Identity world_class{};
+            if(!source_field(reference,selected.id.address,0xd0)||!certified_id(reference,world_class)||
+               !kind(world_class,L"Class")||!body::named(world_class,L"WorldInfo")||!source_field(world_super,reference,body::metadata.field_super))return false;
+            if(proof.world_class.address&&!body::same(proof.world_class,world_class))return false;
+            proof.world_class=world_class;proof.world_fields[role]=selected;proof.world_owners[role]=owner_id;return true;
+        }
+        if(!source_field(owner,owner,body::metadata.field_super))return false;
+    }return false;
+}
 // One bounded owner traversal discovers all five fields. Retain only the Next
 // prefix needed to reach selected properties, as in body; later unrelated
 // numbered/long names do not enlarge the hot proof or become selected fields.
-bool prepare(gears_anchor::Identity const& pawn_class){
-    proof.ready=false;proof.source_count=proof.identity_count=0;proof.fields={};proof.mask=0;proof.pawn_class=pawn_class;
+bool prepare(gears_anchor::Identity const& pawn_class,gears_anchor::Identity const& controller_class){
+    proof.ready=false;proof.source_count=proof.identity_count=0;proof.fields={};proof.world_fields={};proof.world_owners={};proof.world_class={};proof.shared_actor_world=false;proof.mask=0;proof.pawn_class=pawn_class;proof.controller_class=controller_class;
     unsigned found{};std::array<uintptr_t,32> owners{};unsigned owner_count{};
     for(auto owner=pawn_class.address;owner&&found<field_count&&owner_count<owners.size();){
         for(unsigned i=0;i<owner_count;++i)if(owners[i]==owner)return false;owners[owner_count++]=owner;
@@ -91,6 +126,11 @@ bool prepare(gears_anchor::Identity const& pawn_class){
        !kind(proof.link_class,L"Class")||!body::named(proof.link_class,L"CoverLink"))return false;
     rejected_field=specs[transition].name;
     if(!source_field(proof.mask,proof.fields[transition].id.address,0xd0)||!proof.mask||(proof.mask&(proof.mask-1)))return false;
+    if(!world_property(pawn_class,pawn_world)||!world_property(proof.link_class,link_world)||!world_property(controller_class,controller_world)||
+       proof.world_fields[pawn_world].offset!=body::layout.world)return false;
+    proof.shared_actor_world=body::named(proof.world_owners[pawn_world],L"Actor")&&
+        body::same(proof.world_owners[pawn_world],proof.world_owners[link_world])&&body::same(proof.world_owners[pawn_world],proof.world_owners[controller_world])&&
+        body::same(proof.world_fields[pawn_world].id,proof.world_fields[link_world].id)&&body::same(proof.world_fields[pawn_world].id,proof.world_fields[controller_world].id);
     rejected_field=L"none";proof.ready=true;return true;
 }
 bool proof_current(bool membership=true){
@@ -115,12 +155,12 @@ bool skeletal_mesh(uintptr_t cls){
     }return false;
 }
 struct Context {
-    gears_anchor::PawnBinding binding{};gears_anchor::Identity mesh{},link{},world{};
+    gears_anchor::PawnBinding binding{};gears_anchor::Identity mesh{},link{},world{},world_type{};
     gears_anchor::Registry objects{},names{};uint64_t generation{};int slot=-1;unsigned char ct{},ca{},sm{},last{};
     uint32_t transition_word{};gears_vr::Vector location{};
 };
 bool same_key(Context const& a,Context const& b){return a.generation==b.generation&&gears_anchor::equal_binding(a.binding,b.binding)&&
-    body::same(a.mesh,b.mesh)&&body::same(a.link,b.link)&&body::same(a.world,b.world)&&a.slot==b.slot;}
+    body::same(a.mesh,b.mesh)&&body::same(a.link,b.link)&&body::same(a.world,b.world)&&body::same(a.world_type,b.world_type)&&a.slot==b.slot;}
 bool same_values(Context const& a,Context const& b){return same_key(a,b)&&a.ct==b.ct&&a.ca==b.ca&&a.sm==b.sm&&a.last==b.last&&
     ((a.transition_word^b.transition_word)&proof.mask)==0&&a.location.x==b.location.x&&a.location.y==b.location.y&&a.location.z==b.location.z&&
     body::cohort(a.objects,b.objects)&&body::cohort(a.names,b.names);}
@@ -133,16 +173,23 @@ void clear_binding(){calibration.have_key=calibration.ready=calibration.stable=c
 bool body_ready(){return body::layout_ready.load()&&body::game_thread.load()==GetCurrentThreadId()&&
     recording.load()&&body::own_entries()&&!body::failed.load()&&!body::external_change.load()&&body::metadata_current(false);}
 bool context(gears_anchor::Receipt const& scene,Context& out){
-    Context c{};c.generation=committed_world_generation.load();uintptr_t mesh{},link{},world{};std::array<float,3> location{};
+    Context c{};c.generation=committed_world_generation.load();uintptr_t mesh{},link{},world{},link_world_value{},controller_world_value{};std::array<float,3> location{};
     context_stage="world_generation";if(!c.generation||c.generation!=body::initial_world)return false;
     context_stage="registry";if(!body::read(c.objects,body::metadata.objects_header)||!body::read(c.names,body::metadata.names_header)||
        !body::cohort(c.objects,c.objects)||!body::cohort(c.names,c.names))return false;
     context_stage="scene_pawn_binding";if(!gears_anchor::capture_pawn_binding(body::metadata,safe_copy,c.binding)||
        c.binding.cinematic||c.binding.unpossessed||!gears_anchor::scene_binding_matches(c.binding,scene.anchor))return false;
     context_stage="mesh";if(!body::field(mesh,c.binding.pawn.address,body::layout.mesh)||!body::identity(mesh,c.mesh,true)||!skeletal_mesh(c.mesh.cls))return false;
-    context_stage="world_info";if(!body::field(world,c.binding.pawn.address,body::layout.world)||!body::identity(world,c.world,true)||c.world.outer!=c.binding.level)return false;
+    gears_anchor::Identity controller_id{},controller_class{};
+    context_stage="controller_class";if(!body::identity(c.binding.controller,controller_id,true)||!body::identity(controller_id.cls,controller_class)||!body::same(controller_class,proof.controller_class))return false;
+    context_stage="world_info";if(proof.world_fields[pawn_world].offset!=body::layout.world||!body::field(world,c.binding.pawn.address,proof.world_fields[pawn_world].offset)||
+       !body::identity(world,c.world,true)||!body::identity(c.world.cls,c.world_type)||!derives(c.world.cls,proof.world_class.address))return false;
     context_stage="current_link";if(!body::field(link,c.binding.pawn.address,proof.fields[current_link].offset)||!body::identity(link,c.link,true)||
-       c.link.outer!=c.binding.level||!derives(c.link.cls,proof.link_class.address))return false;
+       !derives(c.link.cls,proof.link_class.address)||(!proof.shared_actor_world&&c.link.cls!=proof.link_class.address))return false;
+    // Streaming CoverLinks and WorldInfo may belong to different Levels from
+    // this Pawn. Their certified current world relation is the authority here.
+    context_stage="link_world_info";if(!body::field(link_world_value,link,proof.world_fields[link_world].offset)||link_world_value!=world)return false;
+    context_stage="controller_world_info";if(!body::field(controller_world_value,c.binding.controller,proof.world_fields[controller_world].offset)||controller_world_value!=world)return false;
     context_stage="current_slot";if(!body::field(c.slot,c.binding.pawn.address,proof.fields[current_slot].offset)||c.slot<0)return false;
     context_stage="typed_fields";if(!body::field(c.ct,c.binding.pawn.address,body::layout.cover)||!body::field(c.sm,c.binding.pawn.address,body::layout.special)||
        !body::field(c.ca,c.binding.pawn.address,proof.fields[cover_action].offset)||!body::field(c.last,c.binding.pawn.address,proof.fields[last_action].offset)||
@@ -156,6 +203,7 @@ bool context(gears_anchor::Receipt const& scene,Context& out){
 }
 bool neutral(Context const& c){
     if(c.ct!=2||c.sm||c.ca||c.last||(c.transition_word&proof.mask)||body::stopping.load()||body::rounds_open()||body::transactions.load())return false;
+    if(!body::neutral_pose_for(c.binding.pawn.address,c.mesh.address))return false;
     const unsigned s=body::step.load();if(body::injecting&&(s>=body::steps.size()||body::steps[s]!=0))return false;
     // A released global input flag cannot make an old owned driven pose neutral.
     for(auto const& j:body::journals)if(j.used&&j.pawn==c.binding.pawn.address&&j.mesh==c.mesh.address&&body::any(j)){
@@ -190,16 +238,17 @@ template<class Clock,class Query> bool sample_with(gears_anchor::Receipt const* 
         if(!scene||!scene->invocation||scene->scene_qpc<=0||scene->family_qpc<scene->scene_qpc||scene->renderer_qpc<scene->family_qpc)return reject(Reason::no_scene);
         if(scene->thread!=GetCurrentThreadId()||body::game_thread.load()!=scene->thread)return reject(Reason::wrong_thread);
         if(!body_ready())return reject(Reason::body_guard);
-        gears_anchor::PawnBinding binding{};gears_anchor::Identity cls{};
-        if(!gears_anchor::capture_pawn_binding(body::metadata,safe_copy,binding)||!gears_anchor::scene_binding_matches(binding,scene->anchor)||!body::identity(binding.pawn.cls,cls))return reject(Reason::binding);
+        gears_anchor::PawnBinding binding{};gears_anchor::Identity cls{},controller{},controller_class{};
+        if(!gears_anchor::capture_pawn_binding(body::metadata,safe_copy,binding)||!gears_anchor::scene_binding_matches(binding,scene->anchor)||!body::identity(binding.pawn.cls,cls)||
+           !body::identity(binding.controller,controller,true)||!body::identity(controller.cls,controller_class))return reject(Reason::binding);
         const uint64_t time=clock();
-        if(!proof.pawn_class.address||!body::same(proof.pawn_class,cls)){proof.ready=false;proof.attempts=0;proof.attempted=false;clear_binding();proof.pawn_class=cls;}
+        if(!proof.pawn_class.address||!body::same(proof.pawn_class,cls)||!body::same(proof.controller_class,controller_class)){proof.ready=false;proof.attempts=0;proof.attempted=false;clear_binding();proof.pawn_class=cls;proof.controller_class=controller_class;}
         if(proof.ready&&!proof_current()){proof.ready=false;calibration.ready=false;return reject(Reason::layout_changed);}
         if(!proof.ready){
             if(proof.attempts>=8)return reject(Reason::layout_rejected);
             if(proof.attempted&&(time<proof.last_attempt||time-proof.last_attempt<1000))return reject(Reason::layout_wait);
             proof.last_attempt=time;proof.attempted=true;++proof.attempts;
-            if(!prepare(cls)||!proof_current(true))return reject(Reason::layout_rejected);
+            if(!prepare(cls,controller_class)||!proof_current(true))return reject(Reason::layout_rejected);
         }
         Context first{};if(!context(*scene,first)){calibration.ready=false;return reject(Reason::link);}
         if(!calibration.have_key||!same_key(calibration.key,first)){clear_binding();calibration.have_key=true;calibration.key=first;}

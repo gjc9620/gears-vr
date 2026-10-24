@@ -113,6 +113,20 @@ def children(q, node, selected):
             for name in ('Weight', 'DesiredWeight'):
                 row[name] = scalar(q, typ, name, 'FloatProperty', structure=True,
                                    base=base, stride=stride)
+            mirror = prop(q, typ, 'bMirrorSkeleton', 'BoolProperty', structure=True, optional=True)
+            if mirror is None:
+                row['bMirrorSkeleton'] = unavailable('bMirrorSkeleton is not reflected')
+            else:
+                if mirror['size'] != 4 or mirror['offset'] < 0 or mirror['offset'] + 4 > stride:
+                    raise RuntimeError('Animation child mirror escapes element')
+                mask_raw = q.read(mirror['address'] + 0xd0, 4)
+                mask = struct.unpack('<I', mask_raw)[0]
+                if not mask or mask & (mask - 1):
+                    raise RuntimeError('Animation child mirror Bool mask rejected')
+                raw = q.read(base + mirror['offset'], 4)
+                row['bMirrorSkeleton'] = dict(available=True, value=bool(struct.unpack('<I', raw)[0] & mask),
+                    word=raw.hex(), mask=mask, mask_bytes=mask_raw.hex(), property=mirror,
+                    field_offset=mirror['offset'], child_stride=stride, native_consumer_verified=False)
         rows.append(row)
     return rows
 

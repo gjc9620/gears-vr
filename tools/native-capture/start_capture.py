@@ -631,6 +631,10 @@ def main():
             config+='\n[CoverBodyPrototype]\nenabled=1\n'
             if os.environ.get('GEARSVR_TEST_COVER_BODY_SIDE_PROTOTYPE')=='1':
                 config+='pose_profile=side\n'
+            if os.environ.get('GEARSVR_TEST_COVER_INPUT_PROTOTYPE')=='1':
+                config+='target_source=live\n'
+                # Explicit ag test calibration; not a universal cover curve.
+                config+='\n[CoverInputPrototype]\nenabled=1\nheight_half_metres=0.35015923\nheight_top_metres=0.67047669\n'
         # Test-only opt-in; ordinary startup has no cover-camera INI section.
         if os.environ.get('GEARSVR_TEST_COVER_CAMERA_PREVIEW')=='1':
             config+='\n[CoverCameraPreview]\nenabled=1\n'

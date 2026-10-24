@@ -63,6 +63,31 @@ inline bool cover_physical_displacement(Pose const& reference,Pose const& head,
     out={delta.x,delta.y,-delta.z};return true;
 }
 
+struct CoverTrackingBasis {Vector right,up;};
+// The grab axes live in raw OpenXR tracking coordinates. They follow the
+// frozen heading reference, never the current head or controller rotation.
+inline bool cover_tracking_basis(Pose const& reference,CoverTrackingBasis& out){
+    if(!stereo_pose_valid(reference))return false;
+    const auto rotation=rotation_matrix(reference.orientation);
+    CoverTrackingBasis candidate{transform(rotation,{1,0,0}),transform(rotation,{0,1,0})};
+    if(!finite(candidate.right)||!finite(candidate.up))return false;
+    out=candidate;return true;
+}
+// Map one raw tracking point to the same world as the frozen stereo ticket.
+// base contains only the neutral eye plus virtual drag. Do not add the head's
+// physical displacement: it is already present in point-reference.position.
+inline bool cover_tracking_point(CoverViewAnchor const& anchor,CoverViewResult const& base_view,
+                                 Pose const& reference,Vector point,double units_per_metre,Vector& out){
+    if(!cover_view_basis(anchor)||!finite(base_view.base_eye_world)||!stereo_pose_valid(reference)||!finite(point)||
+       !std::isfinite(units_per_metre)||units_per_metre<10||units_per_metre>500)return false;
+    const auto local=transform(transpose(rotation_matrix(reference.orientation)),
+        {point.x-reference.position.x,point.y-reference.position.y,point.z-reference.position.z});
+    Vector candidate{base_view.base_eye_world.x+units_per_metre*(anchor.right_world.x*local.x-anchor.forward_world.x*local.z),
+        base_view.base_eye_world.y+units_per_metre*(anchor.right_world.y*local.x-anchor.forward_world.y*local.z),
+        base_view.base_eye_world.z+units_per_metre*local.y};
+    if(!finite(candidate))return false;out=candidate;return true;
+}
+
 // A measured monotonic neutral-to-top curve, in metres ABOVE its neutral head.
 // These are caller-owned measurements, not assumed native game constants.
 // The bounded driver can saturate its animation while real HMD motion remains

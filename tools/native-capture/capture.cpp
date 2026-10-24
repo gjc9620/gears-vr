@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <atomic>
 #include <cstdio>
+#include <cstdlib>
 #include <cwchar>
 #include <cstring>
 #include <share.h>
@@ -75,6 +76,8 @@ gears_support::Recorder support_diagnostics;
 #endif
 #include "camera_closer.h"
 #include "../vr-common/cover_view.h"
+#include "../vr-common/cover_input_owner.h"
+#include "../vr-common/controller_input_bridge.h"
 #include "first_person_view.h"
 #include "first_person_weapon.h"
 #if defined(GEARS_COVER_CALL_OBSERVER) && GEARS_COVER_CALL_OBSERVER
@@ -1147,6 +1150,7 @@ void print_stereo_pose(FILE* file,const gears_vr::Pose& pose) {
 unsigned foreground();
 namespace first_person_live {void print(FILE*);void close();}
 namespace cover_camera_live {void print(FILE*);}
+namespace cover_input_live {void print(FILE*);}
 bool create_stereo_recenter_event() {
     if(!stereo_xr)return true;
     wchar_t name[128];swprintf_s(name,L"Local\\GearsVR.Stereo.Recenter.%lu",GetCurrentProcessId());
@@ -1182,6 +1186,7 @@ void print_stereo(FILE* file) {
     std::lock_guard<std::mutex> lock(stereo_mutex);
     first_person_live::print(file);
     cover_camera_live::print(file);
+    cover_input_live::print(file);
 #if defined(GEARS_SIXDOF_TICKET_DIAGNOSTICS) && GEARS_SIXDOF_TICKET_DIAGNOSTICS
     // Final requests remain serviceable even if rendering stopped immediately
     // after the last GPU snapshot. Output is bounded to eight pinned tickets.
@@ -1241,6 +1246,7 @@ bool read_attested_hook_entry(void* output,void const* source,size_t size);
 #include "cover_body_live.inl"
 #include "cover_neutral_eye_live.inl"
 #include "cover_camera_live.inl"
+#include "cover_input_live.inl"
 uintptr_t canonical_identity(IUnknown* object) {
     IUnknown* identity{};
     if(!object || FAILED(object->QueryInterface(IID_PPV_ARGS(&identity))))return 0;
@@ -1802,7 +1808,7 @@ void write_session_status(bool resources_retained=true,bool entries_restored=fal
     path_choice_layout_observer::progress(output);
     path_choice_close_observer::progress(output);
     cover_body_live::progress(output);
-    cover_camera_live::progress(output);
+    {std::lock_guard<std::mutex> lock(stereo_mutex);cover_camera_live::summary(output);cover_input_live::summary(output);}
     // Diagnostic rates use this sample's QPC, not the owner's polling time.
     // Existing bound/top-level Present observations exclude DXGI_PRESENT_TEST
     // separately; they are not compositor display or engine-update counts.
@@ -3154,7 +3160,7 @@ bool try_submit_pair(void* destination,void* family,void* canvas,void* transform
             view=frame.origin.base;
         }
         const bool first_person_view_owned=first_person_live::prepare(anchor,view);
-        const bool cover_view_owned=cover_camera_live::prepare(anchor,view);
+        const bool cover_view_owned=cover_input_live::enabled?cover_input_live::prepare(anchor,view,result):cover_camera_live::prepare(anchor,view);
         if(camera_closer_metres>0&&!first_person_view_owned&&!cover_view_owned){
             const bool gameplay=anchor&&!anchor->anchor.unpossessed&&anchor_config.cinematic_enabled&&!anchor_config.mounted_enabled&&
                 !anchor->anchor.cinematic&&anchor->anchor.target_identity.address==anchor->anchor.pawn;
@@ -4809,6 +4815,8 @@ DWORD WINAPI worker(void*) {
         fprintf(status,"rejected: cover body prototype requires compiled support, early reservations and current anchors\n");fclose(status);return 2;}
     if(!cover_camera_live::configure(ini,status)){
         fprintf(status,"rejected: cover camera preview requires continuous stereo XR and enabled body prototype\n");fclose(status);return 2;}
+    if(!cover_input_live::configure(ini,status)){
+        fprintf(status,"rejected: cover input prototype requires the camera preview, top live target and explicit measured height curve\n");fclose(status);return 2;}
     if(ui_observer_enabled&&(!ui_reserved||!continuous_session||!anchor_observer_enabled||!load_ui_config(ini))){
         fprintf(status,"rejected: UI observer requires reserved entries, continuous stereo and fresh UI identities\n");fclose(status);return 2;}
     crosshair_live::enabled=GetPrivateProfileIntW(L"Capture",L"crosshair_assignment_observer",0,ini)==1;
@@ -5410,7 +5418,7 @@ DWORD WINAPI worker(void*) {
         shadow_state_enabled,state_attempted.load(),state_created.load(),state_release_returned.load(),state_done,state_original_preserved.load(),
         state_done?state_delete_flags:0,state_done?state_delete_thread:0,
         static_cast<unsigned long long>(state_done?state_delete_caller:0),static_cast<unsigned long long>(state_temporary.load()));
-    stereo_bridge.close();
+    cover_input_live::close();stereo_bridge.close();
     diagnostic_status=nullptr;fclose(file);fclose(status);
     // Terminal publication promises the complete, formerly exclusive report is readable.
     if(continuous_session){observe_session_owner(continuous_owner.state());session_phase=SessionPhase::stopped;

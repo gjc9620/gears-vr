@@ -324,6 +324,40 @@ class CoverAnimationTests(unittest.TestCase):
         f.at_verify = mutate
         self.result(f, True)
 
+    def test_optional_child_mirror_uses_typed_word_and_d0_mask(self):
+        f = AnimationMemory()
+        f.add_property(f.CHILD, 'bMirrorSkeleton', 'BoolProperty', 28, 4, mask=1)
+        data = f.arrays[f.COVER, 'Children']
+        f.put(data + 28, struct.pack('<I', 0x80000001))
+        f.put(data + 32 + 28, struct.pack('<I', 0x80000000))
+        row = self.result(f, True)
+        cover = next(n for n in row['nodes'] if n['identity']['address'] == f.COVER)
+        values = [child['bMirrorSkeleton'] for child in cover['children']]
+        self.assertEqual([v['value'] for v in values], [True, False])
+        self.assertTrue(all(v['mask'] == 1 and v['field_offset'] == 28 and v['child_stride'] == 32 for v in values))
+        self.assertTrue(all(v['native_consumer_verified'] is False for v in values))
+
+    def test_child_mirror_invalid_mask_and_element_extent_reject(self):
+        for mask, offset, kind in ((0, 28, 'BoolProperty'), (3, 28, 'BoolProperty'),
+                                   (1, 32, 'BoolProperty'), (1, 28, 'IntProperty')):
+            with self.subTest(mask=mask, offset=offset, kind=kind):
+                f = AnimationMemory()
+                f.add_property(f.CHILD, 'bMirrorSkeleton', kind, offset, 4, mask=mask)
+                self.result(f, False)
+
+    def test_child_mirror_closing_mask_or_word_change_reject(self):
+        for change_mask in (False, True):
+            with self.subTest(change_mask=change_mask):
+                f = AnimationMemory()
+                f.add_property(f.CHILD, 'bMirrorSkeleton', 'BoolProperty', 28, 4, mask=1)
+                def mutate(call):
+                    if call == 2:
+                        address = (f.properties[f.CHILD, 'bMirrorSkeleton']['address'] + 0xd0
+                                   if change_mask else f.arrays[f.COVER, 'Children'] + 28)
+                        f.put(address, struct.pack('<I', 2 if change_mask else 1))
+                f.at_verify = mutate
+                self.result(f, False)
+
 
 if __name__ == '__main__':
     unittest.main()

@@ -29,6 +29,7 @@ struct Diagnostics {
     std::array<RejectionRow,unsigned(Reason::count)+neutral_reason_count> rejections{};unsigned rejection_count{};
     Reason last=Reason::disabled;neutral::Reason last_neutral=neutral::Reason::body_unavailable;
     const char* stage="not_sampled";const wchar_t* field=L"none";
+    gears_vr::Vector latest_base_eye{},latest_matrix_eye{};uint64_t latest_invocation{};
 } diagnostics;
 bool same_key(neutral::EyeSample const& a,neutral::EyeSample const& b){return
     gears_anchor::equal_identity(a.pawn,b.pawn)&&gears_anchor::equal_identity(a.mesh,b.mesh)&&gears_anchor::equal_identity(a.link,b.link)&&
@@ -105,7 +106,9 @@ template<class Sample> bool prepare_with(gears_anchor::Receipt const* scene,gear
         // Physical tracking is deliberately absent here. The one frozen stereo
         // ticket applies the reference/head/eye mapping after this base view.
         if(!gears_vr::prepare_cover_view({eye.neutral_eye_world,facing.forward,facing.right},{0,0},stereo_units_per_metre,result))return reject(Reason::matrix,scene);
-        view=result.base_view;++diagnostics.applied;diagnostics.last=Reason::applied;return true;
+        view=result.base_view;diagnostics.latest_base_eye=result.base_eye_world;
+        diagnostics.latest_matrix_eye=gears_vr::stereo_camera_position(view);diagnostics.latest_invocation=eye.scene_invocation;
+        ++diagnostics.applied;diagnostics.last=Reason::applied;return true;
     }catch(...){return reject(Reason::exception,scene);}
 }
 bool prepare(gears_anchor::Receipt const* scene,gears_vr::StereoMatrix& view){return prepare_with(scene,view,neutral::sample);}
@@ -125,6 +128,10 @@ void summary(FILE* file){
     fprintf(file,"cover_camera_enabled=%u cover_camera_ready=%u cover_camera_attempts=%llu cover_camera_provider_ready=%llu cover_camera_calibrating=%llu cover_camera_rejected=%llu cover_camera_applied=%llu cover_camera_bindings=%llu cover_camera_last_reason=%s cover_camera_neutral_reason=%s cover_camera_context_stage=%s cover_camera_rejected_field=%ls ",
         unsigned(enabled),unsigned(facing.ready&&diagnostics.last==Reason::applied),diagnostics.attempts,diagnostics.provider_ready,diagnostics.calibrating,diagnostics.rejected,diagnostics.applied,diagnostics.bindings,
         reason_name(diagnostics.last),neutral::reason_name(diagnostics.last_neutral),diagnostics.stage,diagnostics.field);
+    if(diagnostics.applied)fprintf(file,"cover_camera_base_origin=%.9g,%.9g,%.9g cover_camera_matrix_origin=%.9g,%.9g,%.9g cover_camera_applied_invocation=%llu ",
+        diagnostics.latest_base_eye.x,diagnostics.latest_base_eye.y,diagnostics.latest_base_eye.z,
+        diagnostics.latest_matrix_eye.x,diagnostics.latest_matrix_eye.y,diagnostics.latest_matrix_eye.z,
+        static_cast<unsigned long long>(diagnostics.latest_invocation));
     if(diagnostics.bindings){auto const& row=diagnostics.latest_calibration;
         fprintf(file,"cover_camera_neutral_origin=%.9g,%.9g,%.9g cover_camera_fixed_forward=%.9g,%.9g,%.9g cover_camera_original_eye_height=%.9g cover_camera_head_index=%d cover_camera_world=%llu cover_camera_slot=%d ",
             row.neutral_eye.x,row.neutral_eye.y,row.neutral_eye.z,row.forward.x,row.forward.y,row.forward.z,row.original_eye_height,row.head_index,static_cast<unsigned long long>(row.world),row.slot);}
