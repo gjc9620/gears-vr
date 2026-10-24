@@ -112,6 +112,48 @@ bool object_key(uptr object,ObjectKey& key){
     key.name_index=n.index;key.name_number=n.number;
     return registered(object)&&!(delete_property?lookup::deleted_at(object,delete_property,delete_class):lookup::deleted(object));
 }
+#if defined(GEARS_PLAYGROUND_HAND_TAIL_TRANSLATION_TRIAL)
+constexpr const wchar_t* pawn_link_labels[]={L"Controller",L"InvManager",L"Mesh",L"Weapon"};
+// Four addresses live only within one non-invoking pawn-link observation.
+// Keep lookup's stricter typed reader: dimension1, registered descriptors,
+// exact ComponentProperty for Mesh, current extent and known value copy.
+struct PawnLinkFields {
+    uptr object{},cls{};std::array<uptr,4> addresses{};
+    explicit PawnLinkFields(uptr owner):object(owner){}
+    bool begin(){
+        if(!registered(object))return false;
+        cls=get<uptr>(object+0x50);
+        return playground::fields(cls,pawn_link_labels,addresses)&&registered(object)&&get<uptr>(object+0x50)==cls;
+    }
+    bool pointer(unsigned index,uptr& value)const{
+        return index<addresses.size()&&registered(object)&&get<uptr>(object+0x50)==cls&&
+            lookup::field_at(object,addresses[index],index==2?L"ComponentProperty":L"ObjectProperty",&value,sizeof(value));
+    }
+    bool finish()const{
+        std::array<uptr,4> current{};
+        return registered(object)&&get<uptr>(object+0x50)==cls&&
+            playground::fields(cls,pawn_link_labels,current)&&current==addresses&&
+            registered(object)&&get<uptr>(object+0x50)==cls;
+    }
+};
+bool pawn_links(uptr pawn,std::array<uptr,4> const& expected,bool fast){
+    uptr value{};
+    if(!fast||!component_names::enabled){
+        const auto link=[fast](uptr object,const wchar_t* label,uptr& result,bool component=false){
+            return fast?lookup::pointer(object,label,result,component):stow::pointer(object,label,result,component);};
+        return link(pawn,L"Controller",value)&&value==expected[0]&&
+            link(pawn,L"InvManager",value)&&value==expected[1]&&
+            link(pawn,L"Mesh",value,true)&&value==expected[2]&&
+            link(pawn,L"Weapon",value)&&value==expected[3];
+    }
+    PawnLinkFields fields(pawn);
+    if(!fields.begin())return false;
+    for(unsigned i=0;i<expected.size();++i)
+        if(!fields.pointer(i,value)||value!=expected[i])return false;
+    // No descriptor survives this return, the later weapon links or slot VMs.
+    return fields.finish();
+}
+#endif
 } // namespace lookup
 
 using Value=gears_weapon::WeaponMeshComponentValue;
@@ -212,10 +254,14 @@ bool current(Key const& expected,bool fast=false){
     uptr pointer{};
     if(!link(address(2),L"WorldInfo",pointer)||pointer!=address(0)||
        !link(address(2),L"Pawn",pointer)||pointer!=address(3)||
+#if defined(GEARS_PLAYGROUND_HAND_TAIL_TRANSLATION_TRIAL)
+       !lookup::pawn_links(address(3),std::array<uptr,4>{{address(2),address(4),address(5),address(6)}},fast)||
+#else
        !link(address(3),L"Controller",pointer)||pointer!=address(2)||
        !link(address(3),L"InvManager",pointer)||pointer!=address(4)||
        !link(address(3),L"Mesh",pointer,true)||pointer!=address(5)||
        !link(address(3),L"Weapon",pointer)||pointer!=address(6)||
+#endif
        !link(address(6),L"Instigator",pointer)||pointer!=address(3)||
        !link(address(6),L"Mesh",pointer,true)||pointer!=address(7)||
        !link(address(7),L"SkeletalMesh",pointer)||pointer!=expected.asset.address||
@@ -415,10 +461,14 @@ bool current_direct(Key const& expected){
     uptr pointer{};
     if(!lookup::pointer(address(2),L"WorldInfo",pointer)||pointer!=address(0)||
        !lookup::pointer(address(2),L"Pawn",pointer)||pointer!=address(3)||
+#if defined(GEARS_PLAYGROUND_HAND_TAIL_TRANSLATION_TRIAL)
+       !lookup::pawn_links(address(3),std::array<uptr,4>{{address(2),address(4),address(5),address(6)}},true)||
+#else
        !lookup::pointer(address(3),L"Controller",pointer)||pointer!=address(2)||
        !lookup::pointer(address(3),L"InvManager",pointer)||pointer!=address(4)||
        !lookup::pointer(address(3),L"Mesh",pointer,true)||pointer!=address(5)||
        !lookup::pointer(address(3),L"Weapon",pointer)||pointer!=address(6)||
+#endif
        !lookup::pointer(address(6),L"Instigator",pointer)||pointer!=address(3)||
        !lookup::pointer(address(6),L"Mesh",pointer,true)||pointer!=address(7)||
        !lookup::pointer(address(7),L"SkeletalMesh",pointer)||pointer!=expected.asset.address)return false;

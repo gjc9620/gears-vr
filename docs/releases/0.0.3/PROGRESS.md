@@ -644,3 +644,11 @@ AW实测补记：提交 `1448030` 的786源／27依赖／635工件候选 `5f6994
 第二次acquire seq815／rev33／lease8／interval2，group0／1／2通过，group4 ordinal724在原早期MS check1拒绝：known67／checked3／rejected2、mask0；live_now距ticket109ms、比原cutoff晚9ms。commit_now／authorize_ns／commit_ns仍0，后续Policy和NS检查未执行，不能再称本局最终NS拒绝。四组新增read_before实测1.4473／1.5416／1.4049／1.4802ms，read_after1.4532／1.4610／1.4014／1.5402ms，均closed和原bool true，合计11.7298ms；prepare6.9330／6.9164／6.7226／6.8304ms、hand_direct2.3653／2.1035／2.0869／2.1511ms。仅是该局单次真实测量，无受控提速结论。原generic故障锁存，组件2尝试／1提交／2恢复、setter11、fault／cleanup_failed1，最终dirty／owned／revoked0；正式passed／cleanup仍false。
 
 独立8控制器／3组件／44挂接／入口恢复、Stop0／Shutdown0、音频8恢复pending0、确切自有owner／game／XR退出均通过，Native／XR子会话独立通过。77文件封存 `6c0eb53b…965f`、root结果 `a0e8aaec…28e3` 在忽略的 `analysis/hand-mesh-runtime-1024aw/`，保留原失败。下一最小候选的Astra静态建议 `3ca7d9f7…1db2d` 只合并pawn的Controller／InvManager／Mesh／Weapon四个地址查找，scope在PC两项后结束于weapon／slot VM前；保留lookup::field_at全部严格检查、精确ComponentProperty及原非fast／未启用names路径，不承诺耗时收益。本条记录时该优化尚未接线，完整目标、真实0.7伤害和默认／全武器／头显仍未完成。
+
+## 2026-10-24 — AX 同次 pawn 四个关联字段的地址批查
+
+只在TAIL且fast／names启用时，current及current_direct把Controller／InvManager／Mesh／Weapon四项地址定位合为局部PawnLinkFields。每项仍调用原lookup::field_at，保留当前owner／class、property／class注册、dimension1、bytes8、精确属性类型、offset／class extent和copy；Mesh严格ComponentProperty，无ObjectProperty回退。首尾按原derived→base首同名规则重解析并比较地址／class，四项值仍按原顺序读取比较；scope在PC两项后建立，返回销毁后才进入weapon／asset关联和原slot VM。fast=false、names未启用和OFF原路保持，原engine／slot调用数、Plan／Permit／100ms／恢复不变，无新撤权或析构读取。首批遍历可能更早拒绝，末次增加保守拒绝；地址相等不是全metadata末次复核／原子性证明。Astra四输入窄审 `261b7212…48ab` 通过，raw inverse恢复原件7f2af93d…ba48，CRLF保持。
+
+mono只准备5份原始输入／27实际raw片段／36pins，root审查后唯一严格编译运行首次通过12类／131项；实际结果与准备时未执行报告分开保留，在忽略的 `analysis/hand-pawn-link-cpu-20261024ax/`。包括真实lookup／playground批查／stow fallback／SEH copy和原新九关联后缀，覆盖继承／大小写／首错误类型、精确component类型、维度／注册／边界／未知／错值、begin后metadata变化、finish前class或地址替换、当前新调用重读、PC／pawn／weapon短路及真实保护页Name边界。宏只机械改copy／pointer函数名以统计，实际body执行；完整GT／身份前门、slot VM与engine不在此fixture范围，不作假成功服务或性能证明。
+
+冻结786源／27依赖，唯一完整PG严格构建、23导出与七实际运行源OFF一组两次/EP非空行相等通过，DLL `14555b80…e5105`、build结果 `a11ff380…f3c1d` 在忽略的 `analysis/hand-pawn-link-build-20261024ax/`。构建与CPU独立进行，运行前须两者通过；未重跑未变旧套件。本条记录时购买版尚未运行，AW的11.7298ms是整个两read总成本，未隔离pawn4，不承诺本候选可省多少或完整8动作通过。无默认安装／Native／XR／loader重建，真实0.7伤害和完整全武器／头显仍待接线与验收。
