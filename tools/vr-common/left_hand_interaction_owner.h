@@ -63,6 +63,14 @@ struct LeftHandInteractionDecision {
 // incumbent or changing requests under the same frame is a rejected mutation.
 class LeftHandInteractionOwner {
 public:
+    // A failed external commit is a terminal interruption, not a second
+    // arbitration of the same frame. Keep frame/token history and poison the
+    // cached grant so retries cannot resurrect it. No incumbent is freed by
+    // this logical decision: its participant still owns cleanup responsibility.
+    LeftHandInteractionDecision invalidate() noexcept {
+        return reject(LeftHandInteractionStatus::inactive,true);
+    }
+
     LeftHandInteractionDecision update(LeftHandInteractionFrame const& input){
         if(!input.lifecycle||!input.frame)return reject(LeftHandInteractionStatus::invalid,true);
         const bool initial=!last_;

@@ -78,6 +78,9 @@ gears_support::Recorder support_diagnostics;
 #include "../vr-common/cover_view.h"
 #include "../vr-common/cover_input_owner.h"
 #include "../vr-common/controller_input_bridge.h"
+#include "weapon_hand_broker.h"
+#include "../vr-common/weapon_hand_owner_adapter.h"
+#include <new>
 #include "first_person_view.h"
 #include "first_person_weapon.h"
 #if defined(GEARS_COVER_CALL_OBSERVER) && GEARS_COVER_CALL_OBSERVER
@@ -906,6 +909,7 @@ const char* path_position_stop_file{};
 unsigned path_position_stop_line{};
 #endif
 namespace cover_body_live {void request_drain();bool draining();bool drain_failed();unsigned pending_count();}
+namespace weapon_hand_runtime {void request_stop() noexcept;bool cleanup_ready() noexcept;bool retained() noexcept;void summary(FILE*) noexcept;}
 #if defined(GEARS_COVER_BODY_PROTOTYPE) && GEARS_COVER_BODY_PROTOTYPE
 std::atomic<unsigned> cover_body_stop_record{};
 SessionStop cover_body_stop_reason=SessionStop::none;
@@ -914,6 +918,7 @@ unsigned cover_body_stop_line{};
 #endif
 void request_session_stop_at(SessionStop reason,const char* source_file,unsigned source_line) {
     if(!continuous_session)return;
+    weapon_hand_runtime::request_stop();
     // Let the animation thread release its exact owned Weight fields before
     // closing admission. A failed bounded drain remains an explicit obligation.
     cover_body_live::request_drain();
@@ -1019,7 +1024,7 @@ struct SessionBuildScope {
     ~SessionBuildScope(){if(enabled){--session_build_depth;service_session_stop_native();}}
 };
 bool session_native_cleanup_ready() {
-    return !cover_body_live::pending_count()&&submitted_lifetime.is_closed()&&!submitted_lifetime.pending()&&!submit_retained.load()&&left_view_history.retired()&&
+    return weapon_hand_runtime::cleanup_ready()&&!cover_body_live::pending_count()&&submitted_lifetime.is_closed()&&!submitted_lifetime.pending()&&!submit_retained.load()&&left_view_history.retired()&&
         (!state_created.load()||(state_release_returned.load()==1&&state_destroyed.load()==1&&(state_delete_flags&1)));
 }
 bool session_cleanup_expired() {
@@ -1151,6 +1156,7 @@ unsigned foreground();
 namespace first_person_live {void print(FILE*);void close();}
 namespace cover_camera_live {void print(FILE*);}
 namespace cover_input_live {void print(FILE*);}
+namespace cover_shared_input_live {void summary(FILE*);}
 bool create_stereo_recenter_event() {
     if(!stereo_xr)return true;
     wchar_t name[128];swprintf_s(name,L"Local\\GearsVR.Stereo.Recenter.%lu",GetCurrentProcessId());
@@ -1187,6 +1193,7 @@ void print_stereo(FILE* file) {
     first_person_live::print(file);
     cover_camera_live::print(file);
     cover_input_live::print(file);
+    cover_shared_input_live::summary(file);weapon_hand_runtime::summary(file);fprintf(file,"\n");
 #if defined(GEARS_SIXDOF_TICKET_DIAGNOSTICS) && GEARS_SIXDOF_TICKET_DIAGNOSTICS
     // Final requests remain serviceable even if rendering stopped immediately
     // after the last GPU snapshot. Output is bounded to eight pinned tickets.
@@ -1244,9 +1251,12 @@ bool read_attested_hook_entry(void* output,void const* source,size_t size);
 #include "first_person_live.inl"
 #include "path_choice_close_observer.inl"
 #include "cover_body_live.inl"
+#include "weapon_hand_scene_binding.inl"
 #include "cover_neutral_eye_live.inl"
 #include "cover_camera_live.inl"
 #include "cover_input_live.inl"
+#include "weapon_hand_runtime.inl"
+#include "cover_shared_input_live.inl"
 uintptr_t canonical_identity(IUnknown* object) {
     IUnknown* identity{};
     if(!object || FAILED(object->QueryInterface(IID_PPV_ARGS(&identity))))return 0;
@@ -1780,6 +1790,7 @@ void write_session_status(bool resources_retained=true,bool entries_restored=fal
     resources_retained=resources_retained||native_owned_probe_retained();
     resources_retained=resources_retained||native_owned_scene_retained();
     resources_retained=resources_retained||cover_body_live::pending_count()!=0;
+    resources_retained=resources_retained||weapon_hand_runtime::retained();
     if(!continuous_session)return;
     write_swapchain_output_status(recording.load()&&session_phase.load()==SessionPhase::running,"running");
     wchar_t path[MAX_PATH];swprintf_s(path,L"%s\\session-status.txt",directory);
@@ -1808,7 +1819,8 @@ void write_session_status(bool resources_retained=true,bool entries_restored=fal
     path_choice_layout_observer::progress(output);
     path_choice_close_observer::progress(output);
     cover_body_live::progress(output);
-    {std::lock_guard<std::mutex> lock(stereo_mutex);cover_camera_live::summary(output);cover_input_live::summary(output);}
+    {std::lock_guard<std::mutex> lock(stereo_mutex);cover_camera_live::summary(output);cover_input_live::summary(output);cover_shared_input_live::summary(output);}
+    weapon_hand_runtime::summary(output);
     // Diagnostic rates use this sample's QPC, not the owner's polling time.
     // Existing bound/top-level Present observations exclude DXGI_PRESENT_TEST
     // separately; they are not compositor display or engine-update counts.
@@ -3138,13 +3150,14 @@ bool try_submit_pair(void* destination,void* family,void* canvas,void* transform
         // use this frozen ticket, never a second live sample.
         std::lock_guard<std::mutex> lock(stereo_mutex);gears_vr::StereoSample sample{};
         poll_stereo_recenter();
-        if(!stereo_bridge.read(sample)){++stereo_rejections[8];return false;}
+        if(!stereo_bridge.read(sample)){++stereo_rejections[8];if(weapon_hand_runtime::enabled)cover_shared_input_live::invalidate(gears_weapon_hand::InvalidateReason::input_lost);return false;}
 #if defined(GEARS_RUNTIME_RENDER_SIZE) && GEARS_RUNTIME_RENDER_SIZE
         if(!gears_native_render_size::matches_session(sample.session)){++stereo_rejections[8];return false;}
 #endif
         auto result=stereo_gate.update(sample,gears_vr::monotonic_ns(),simulator_operator);
         if(result.heading_deferred)++stereo_heading_deferred;
         if(!result){++stereo_rejections[static_cast<unsigned>(result.status)];
+            if(weapon_hand_runtime::enabled)cover_shared_input_live::invalidate(gears_weapon_hand::InvalidateReason::input_lost);
             if(continuous_session&&(result.status==gears_vr::StereoStatus::session_changed||result.status==gears_vr::StereoStatus::invalid)){
                 request_session_stop(SessionStop::proof_failure);service_session_stop_native();}
             return false;}
@@ -3160,7 +3173,7 @@ bool try_submit_pair(void* destination,void* family,void* canvas,void* transform
             view=frame.origin.base;
         }
         const bool first_person_view_owned=first_person_live::prepare(anchor,view);
-        const bool cover_view_owned=cover_input_live::enabled?cover_input_live::prepare(anchor,view,result):cover_camera_live::prepare(anchor,view);
+        const bool cover_view_owned=cover_shared_input_live::prepare(anchor,view,result);
         if(camera_closer_metres>0&&!first_person_view_owned&&!cover_view_owned){
             const bool gameplay=anchor&&!anchor->anchor.unpossessed&&anchor_config.cinematic_enabled&&!anchor_config.mounted_enabled&&
                 !anchor->anchor.cinematic&&anchor->anchor.target_identity.address==anchor->anchor.pawn;
@@ -4817,6 +4830,8 @@ DWORD WINAPI worker(void*) {
         fprintf(status,"rejected: cover camera preview requires continuous stereo XR and enabled body prototype\n");fclose(status);return 2;}
     if(!cover_input_live::configure(ini,status)){
         fprintf(status,"rejected: cover input prototype requires the camera preview, top live target and explicit measured height curve\n");fclose(status);return 2;}
+    if(!weapon_hand_runtime::configure(ini,status)){
+        fprintf(status,"rejected: weapon hand participant requires compiled Scene support and continuous stereo anchors\n");fclose(status);return 2;}
     if(ui_observer_enabled&&(!ui_reserved||!continuous_session||!anchor_observer_enabled||!load_ui_config(ini))){
         fprintf(status,"rejected: UI observer requires reserved entries, continuous stereo and fresh UI identities\n");fclose(status);return 2;}
     crosshair_live::enabled=GetPrivateProfileIntW(L"Capture",L"crosshair_assignment_observer",0,ini)==1;
@@ -5156,13 +5171,19 @@ DWORD WINAPI worker(void*) {
     fprintf(status,"capturing pid=%lu seconds=%u\n",GetCurrentProcessId(),seconds);fflush(status);
     const ULONGLONG deadline=GetTickCount64()+static_cast<ULONGLONG>(seconds)*1000;
     if(continuous_session){
-        session_started_qpc=now();write_session_status();
+        session_started_qpc=now();
+        {FILETIME created{},exited{},kernel{},user{};
+            const bool identified=GetProcessTimes(GetCurrentProcess(),&created,&exited,&kernel,&user)!=FALSE;
+            if(weapon_hand_runtime::enabled&&!weapon_hand_runtime::initialize(identified?gears_session::creation_time(created):0,uint64_t(session_started_qpc),GetCurrentThreadId()))
+                request_session_stop(SessionStop::proof_failure);}
+        write_session_status();
         WorldRebindPrepareRequest world_rebind_request;
         if(!session_status_available||!stop_event)request_session_stop(SessionStop::proof_failure);
         publish_session_activation_ready(session_status_available&&stop_event);
         ULONGLONG next_status=0;
         gears_world::StatusCadence world_status;
         for(;;){
+            weapon_hand_runtime::worker_tick();
 #if defined(GEARS_COVER_BODY_PROTOTYPE) && GEARS_COVER_BODY_PROTOTYPE
             if(cover_body_stop_record.load(std::memory_order_acquire)==2)
                 request_session_stop_at(cover_body_stop_reason,cover_body_stop_file,cover_body_stop_line);
@@ -5198,6 +5219,11 @@ DWORD WINAPI worker(void*) {
             {std::lock_guard<FrameHookMutex> lock(frame_hook_mutex);owned_scene_gpu::poll();
                 if(owned_scene_gpu::publication_failed())request_session_stop(SessionStop::proof_failure);}
             if(submitted_lifetime.stopping()){
+                if(!weapon_hand_runtime::cleanup_ready()&&session_cleanup_expired()){
+                    session_cleanup_timeout=true;write_session_status(true,false);weapon_hand_runtime::summary(status);
+                    fprintf(status,"weapon_hand_stop_incomplete hooks_retained=1 resources_retained=1\n");
+                    diagnostic_status=nullptr;fclose(file);fclose(status);return ERROR_BUSY;
+                }
                 if(cover_body_live::drain_failed()){
                     // Disabling these entry patches would remove the only GT
                     // restoration boundary. Retain all resident ownership and
@@ -5418,7 +5444,7 @@ DWORD WINAPI worker(void*) {
         shadow_state_enabled,state_attempted.load(),state_created.load(),state_release_returned.load(),state_done,state_original_preserved.load(),
         state_done?state_delete_flags:0,state_done?state_delete_thread:0,
         static_cast<unsigned long long>(state_done?state_delete_caller:0),static_cast<unsigned long long>(state_temporary.load()));
-    cover_input_live::close();stereo_bridge.close();
+    cover_shared_input_live::close();cover_input_live::close();stereo_bridge.close();
     diagnostic_status=nullptr;fclose(file);fclose(status);
     // Terminal publication promises the complete, formerly exclusive report is readable.
     if(continuous_session){observe_session_owner(continuous_owner.state());session_phase=SessionPhase::stopped;
@@ -5449,6 +5475,13 @@ void __fastcall fake_continuous_release(void*){
     if(!continuous_test_destroy_returned)continuous_test_release_order_bad=true;
     ++continuous_test_release_calls;continuous_test_release_thread=GetCurrentThreadId();
     state_delete_flags=1;state_destroyed=1;
+}
+extern "C" __declspec(dllexport) gears_weapon_hand::Reply __cdecl GearsVrRegisterWeaponHandParticipantV1(
+    gears_weapon_hand::Registration const* registration,gears_weapon_hand::RegistrationResult* result) noexcept {
+    return weapon_hand_runtime::register_participant(registration,result);
+}
+extern "C" __declspec(dllexport) gears_weapon_hand::Reply __cdecl GearsVrUnregisterWeaponHandParticipantV1(uint64_t cookie) noexcept {
+    return weapon_hand_runtime::unregister(cookie);
 }
 extern "C" __declspec(dllexport) DWORD WINAPI GearsCaptureContinuousCheck(void*) {
     // CPU-only: actual production stop/native destroy helpers with fake native

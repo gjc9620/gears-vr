@@ -90,6 +90,13 @@ public:
             throw std::invalid_argument("Invalid cover interaction configuration");
     }
 
+    // Abort publication without replaying or changing an already consumed
+    // hand sample. Retain only the last committed offset; a later observation
+    // must certify it again, and a valid release must precede another grip.
+    CoverResult suspend() noexcept {
+        offset_certified_=false;interrupt();return result(CoverStatus::inactive);
+    }
+
     // Both producers and now_ns must use the same monotonic clock. Cover
     // sequences are monotonic for this owner's lifetime; hand sequences may
     // restart only on a new session/space epoch. Exact newest-sample repeats
