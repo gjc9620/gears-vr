@@ -734,3 +734,13 @@ BD零售补记：提交6536805的候选e2d4925a…0e30已完成唯一实际运�
 原GameViewportClient查询确认实际1536×864，与私有3840×2160每边0.4一致；未启动XR，不据此声明GPU双眼target或性能／头显通过。episode至release约0.275秒，Stop0／Shutdown0、朝向精确恢复、CallFunction32／ProcessEvent64原字节恢复、确切自有游戏及owner退出均通过；音频9会话恢复pending0，原10配置／存档hash不变。窗口已明确交回掩体，不并发运行。回执54011376…e5845，28文件封存62d87636…2d10a，汇总b3109532…91d2b，证据位于忽略的 `analysis/weapon-grip-write-runtime-1024bd-r3/` 与 `analysis/weapon-grip-damage-write-closeout-20261024bd/`。
 
 下一步接真实主手归属／副手抓握与权威每发执行快照，移出诊断容量限制，再接ProjectileFire原调用前的launch／Init归属和延迟／多目标伤害。共用掩体Native GT唯一左手owner，不另建PG仲裁器；Bolo／Smoke手抛效果保持原版。完整6DoF目标继续active，未安装此受控实验到默认启动器，仍须保留全武器、手部运动、换弹、瞄准／弹道、默认合流及GPU／头显验收工作。
+
+## 2026-10-24 — BE 统一左手请求与有效握持状态
+
+与掩体会话确认复用Native游戏线程的唯一LeftHandInteractionOwner。新增共享v1同步回调契约 `weapon_hand_participant.h`，Frame携带同一Scene invocation／lifecycle、游戏进程与Native incarnation、完整world／PC／pawn／mesh／weapon身份、冻结ControllerInputFrame与StereoSample/reference，以及Native共享adapter在prepare前解码一次的逻辑LGrip／单调press token。weapon prepare只提交几何候选和真实incumbents，同一stack frame的唯一仲裁结果再commit；接口要求全Scene覆盖，包含掩体外。注册变化必须使owner失效或lifecycle前进，失败不能当作空手；callback模块pin、停止admission、invalidate、确切cookie drain到quiescent后才允许释放，禁止在持锁回调内引擎调用／重入。固定ABI尺寸和offset严格检查通过：Frame1384、Proposal136、Decision128、Registration56字节。此时只有契约，跨DLL注册与Native运行接线尚未完成。
+
+新增无arbiter实例的SupportGripParticipant：用同一XR ticket的左右grip相对位置、每枪认证mount、距离／角度检查提出副握，10cm获得／18cm保持；右手使用装备模型的按键锁定，不要求持续RGrip。只接受当前Frame／Proposal／nonce与冻结逻辑press一致的decision；支撑租约、实际ammo／magazine租约和cover互斥，保留incumbent优先于新请求。失跟踪／未知／动画占手为unknown，无主手或未持枪也能正常提交unknown而不阻断cover；未认证mount只会single，手抛为excluded。新增Native转换helper去重合并真实incumbents，保留现有cover holder，两个不同holder暴露冲突。共享owner头从掩体已提交5052f13原字节导入，武器运行代码没有创建第二实例。
+
+Astra初审指出两个具体P2：正确Frame／Proposal上的假grant未绑定逻辑press，以及append覆盖Native已有cover holder；已修复并保留原反例，复核关闭F1/F2。实际common源码和共享owner在明确本地Host模型通过15类严格检查，涵盖原样Frame／Proposal假grant、真实ammo占用、retained冲突、cover合并、失跟踪、代次变化、重新抓握及grenade passthrough。直接CL检查通过后，真实CMake配置／WeaponSupportGripTest目标构建／运行均0；测试源码禁止NDEBUG，确保断言有效。第一次Host遗漏space_epoch的失败记录保留。证据位于忽略的 `analysis/weapon-support-grip-cpu-20261024be/`、`analysis/weapon-support-grip-cmake-20261024be/`、`analysis/weapon-support-grip-review-20261024be/`。这些不是实际游戏抓握、真实模型mount或头显验收；本轮没有启动游戏，默认Native／XR／loader未替换。
+
+每发入口的有界审查确认可复用现有四参CallFunction owner，在WarWeapon.InstantFire／ProjectileFire原调用前冻结GripSnapshot；已认证的显式super调用复用同shot，各即时命中packet仍独立处理。保存脚本的Engine.InstantFire ImpactList循环及ProjectileFire Spawn→Init→return顺序要求支持同发多包和返回前投射物绑定。Gnasher CustomFire／FireAllPellets与queued client hit另有入口，不能把trigger边沿或getter次数当每发。此处是接线依据，尚未实现完整ShotScope／projectile registry；完整6DoF目标继续active。
