@@ -50,6 +50,36 @@ struct EquipmentTimingState {
     bool dumped{};
 };
 #endif
+#if defined(GEARS_PLAYGROUND_WEAPON_COMPONENT_PERSISTENT_SESSION_TRIAL)
+namespace reach_diagnostic {
+// Session-owned POD only. Static Marcus parent edges are NOT live verified.
+constexpr unsigned capacity=16;
+struct Key {
+    uptr object{},outer{},klass{};
+    unsigned index{},name_index{},name_number{},reserved{};
+};
+enum class Status:unsigned {not_attempted,unsafe_context,snapshot_unknown,identity_changed,
+    context_changed,index_unknown,index_mismatch,matrix_unknown,end_unknown,tick_changed,complete,matrix_nonrigid};
+struct Row {
+    std::array<Key,7> keys{}; // World, PC, pawn, mesh, tree, weapon, asset.
+    std::array<std::array<float,16>,4> bones{};
+    std::array<float,16> mesh{},left{},right{};
+    std::array<policy::Target,4> targets{};
+    std::array<int,4> actual{{-1,-1,-1,-1}};
+    std::uint64_t sequence{},interval{},session_began{},sample_ms{};
+    unsigned lease{},sample{},epoch{},tick_epoch{},mask{},operation_depth{},known{};
+    unsigned index_known{},index_match{},matrix_known{},matrix_rigid{},failed_bone{4};
+    DWORD thread{};int tick_before{},tick_after{};
+    bool tick_before_known{},dual{},reentered{},closed{};
+    Status status{Status::not_attempted};
+};
+struct State {
+    std::array<Row,capacity> rows{};
+    unsigned count{};
+    bool busy{},full{},dumped{};
+};
+} // namespace reach_diagnostic
+#endif
 struct Trial {
     unsigned phase{},restored{},action_yields{},setter_calls{},target_writes{},epoch{},tick_epoch{};
     unsigned quiet_slots{},samples{};
@@ -63,6 +93,9 @@ struct Trial {
     gears_weapon::FreeHandControl consumer;
     std::array<gears_vr::Viewpoint,2> bind{};
     std::array<policy::Target,4> targets{};
+#if defined(GEARS_PLAYGROUND_WEAPON_COMPONENT_PERSISTENT_SESSION_TRIAL)
+    reach_diagnostic::State reach;
+#endif
     std::array<uptr,320> action_objects{};
     unsigned action_object_count{};
 #if defined(GEARS_PLAYGROUND_HAND_IK_XR_STREAM_TRIAL)
@@ -872,6 +905,160 @@ void sample(const wchar_t* phase,Snapshot const& value,unsigned lease,unsigned m
         for(const auto byte:trial.targets[i])fwprintf(log_file,L"%02x",unsigned(byte));}
     fwprintf(log_file,L"\n");fflush(log_file);
 }
+#if defined(GEARS_PLAYGROUND_WEAPON_COMPONENT_PERSISTENT_SESSION_TRIAL)
+namespace reach_diagnostic {
+constexpr const wchar_t* bone_names[]={L"b_MF_UpperArm_L",L"b_MF_Forearm_L",L"b_MF_UpperArm_R",L"b_MF_Forearm_R"};
+constexpr int expected_indices[]={8,10,32,34};
+bool snapshot_keys(Snapshot const& value,Row& row){
+    // Exact leading handik::identity encoding, not its vector object or padding.
+    constexpr std::size_t stride=sizeof(uptr)*3+sizeof(unsigned)+sizeof(Name);
+    static_assert(sizeof(uptr)==8&&sizeof(Name)==8&&stride==36);
+    if(value.identity.size()<stride*row.keys.size())return false;
+    for(unsigned i=0;i<row.keys.size();++i){
+        auto const* bytes=value.identity.data()+stride*i;auto& key=row.keys[i];Name label{};
+        std::memcpy(&key.object,bytes,8);std::memcpy(&key.index,bytes+8,4);
+        std::memcpy(&key.outer,bytes+12,8);std::memcpy(&label,bytes+20,8);
+        std::memcpy(&key.klass,bytes+28,8);key.name_index=label.index;key.name_number=label.number;
+        if(!key.object||!key.klass)return false;
+    }
+    return row.keys[1].object==value.pc&&row.keys[2].object==value.pawn&&
+        row.keys[3].object==value.mesh&&row.keys[4].object==value.tree&&row.keys[5].object==value.weapon;
+}
+bool identity_matches(Row const& row){
+    for(auto const& key:row.keys){
+        unsigned index{};uptr outer{},klass{};Name label{};
+        if(!registered(key.object)||!copy(&index,key.object+8,sizeof(index))||
+           !copy(&outer,key.object+0x40,sizeof(outer))||!copy(&label,key.object+0x48,sizeof(label))||
+           !copy(&klass,key.object+0x50,sizeof(klass))||index!=key.index||outer!=key.outer||
+           klass!=key.klass||label.index!=key.name_index||label.number!=key.name_number)return false;
+    }
+    uptr asset{},tree{};
+    return freehands::read_field(row.keys[3].object,L"SkeletalMesh",L"ObjectProperty",&asset,sizeof(asset))&&
+        freehands::read_field(row.keys[3].object,L"Animations",L"ObjectProperty",&tree,sizeof(tree))&&
+        asset==row.keys[6].object&&tree==row.keys[4].object&&
+        playground::named(asset,L"COG_Marcus_Fenix_CamSkel");
+}
+bool context_matches(Row const& row){
+    auto const& state=component_continuous::state;
+    return GetCurrentThreadId()==row.thread&&game_thread.load(std::memory_order_acquire)==row.thread&&
+        !row.reentered&&trial.releasing&&!trial.ended&&trial.record_lease&&trial.xr_equipment_phase==2&&
+        trial.began==row.session_began&&leases.load()==row.lease&&trial.sequence==row.sequence&&
+        trial.epoch==row.epoch&&trial.tick_epoch==row.tick_epoch&&trial.applied_mask==row.mask&&
+        trial.lease_anchor.pc==row.keys[1].object&&trial.lease_anchor.pawn==row.keys[2].object&&
+        trial.lease_anchor.mesh==row.keys[3].object&&trial.lease_anchor.tree==row.keys[4].object&&
+        trial.lease_anchor.weapon==row.keys[5].object&&state.interval_id==row.interval&&
+        state.operation_depth==row.operation_depth&&row.operation_depth==1&&!state.action_depth&&
+        !state.finishing&&!state.terminal&&!state.deferred&&!state.failure_known&&!state.cleanup_failed&&
+        dual_draining==row.dual&&!hand_writes_relinquished&&trial.lease.dirty()&&!trial.lease.faulted()&&
+        !component_faulted()&&!stop_requested.load(std::memory_order_acquire)&&
+        !shutdown_requested.load(std::memory_order_acquire)&&
+        !std::memcmp(trial.targets.data(),row.targets.data(),sizeof(row.targets));
+}
+struct Busy {
+    State& state;
+    explicit Busy(State& value):state(value){state.busy=true;}
+    ~Busy(){state.busy=false;}
+    Busy(Busy const&)=delete;Busy& operator=(Busy const&)=delete;
+};
+void capture(Snapshot const& value,unsigned lease){
+    // All existing action hooks still run. A nested action may revoke/terminate;
+    // this diagnostic then abandons its observation, never the original restore.
+    if(GetCurrentThreadId()!=game_thread.load(std::memory_order_acquire))return;
+    auto& state=trial.reach;
+    if(state.busy){if(state.count)state.rows[state.count-1].reentered=true;return;}
+    if(!trial.record_lease||trial.xr_equipment_phase!=2||state.dumped)return;
+    if(state.count==capacity){state.full=true;return;}
+    auto& row=state.rows[state.count++];Busy busy(state);
+    component_names::Scope reach_names(true);
+    component_cost::InvokePause cost_pause; // No new scan clocks/aggregate ownership.
+    row.lease=lease;row.sample=trial.samples?trial.samples-1:0;row.sequence=trial.sequence;
+    row.interval=component_continuous::state.interval_id;row.session_began=trial.began;row.sample_ms=value.ms;
+    row.epoch=trial.epoch;row.tick_epoch=trial.tick_epoch;row.mask=trial.applied_mask;
+    row.operation_depth=component_continuous::state.operation_depth;row.thread=GetCurrentThreadId();
+    row.dual=dual_draining;row.tick_before=value.mesh_tick;row.tick_before_known=value.mesh_tick_known;
+    row.mesh=value.mesh_world;row.left=value.left;row.right=value.right;row.targets=trial.targets;
+    const auto collect=[&](){
+        if(!snapshot_keys(value,row)||!row.tick_before_known)return Status::snapshot_unknown;
+        row.known|=1;
+        // Normal pre_tick restore has depth 1 and dual_draining=true. Neither is
+        // changed here. Action/final cleanup paths stay inert/unknown.
+        if(!context_matches(row))return Status::unsafe_context;
+        row.known|=2;
+        if(!identity_matches(row))return Status::identity_changed;
+        for(unsigned i=0;i<4;++i){
+            row.failed_bone=i;
+            const bool index_ok=freehands::bone_index(row.keys[3].object,bone_names[i],row.actual[i]);
+            if(index_ok)row.index_known|=1u<<i;
+            if(!context_matches(row))return Status::context_changed;
+            if(!index_ok)return Status::index_unknown;
+            if(row.actual[i]!=expected_indices[i])return Status::index_mismatch;
+            row.index_match|=1u<<i;
+            if(!identity_matches(row))return Status::identity_changed;
+            const bool matrix_ok=freehands::bone_matrix(row.keys[3].object,row.actual[i],row.bones[i]);
+            if(matrix_ok)row.matrix_known|=1u<<i;
+            if(!context_matches(row))return Status::context_changed;
+            if(!matrix_ok)return Status::matrix_unknown;
+            gears_vr::Viewpoint ignored{};
+            if(!matrix_pose(row.bones[i],ignored))return Status::matrix_nonrigid;
+            row.matrix_rigid|=1u<<i;
+            if(!identity_matches(row))return Status::identity_changed;
+        }
+        row.failed_bone=4;return Status::complete;
+    };
+    row.status=collect();
+    // Pure reads only after the final VM. TickTag is not a new clock sample.
+    if(row.known&1){
+        if(context_matches(row))row.known|=4;
+        if(identity_matches(row))row.known|=8;
+        if(freehands::read_field(row.keys[3].object,L"TickTag",L"IntProperty",&row.tick_after,sizeof(row.tick_after))){
+            row.known|=16;if(row.tick_after==row.tick_before)row.known|=32;
+        }
+        if(row.status==Status::complete&&row.known!=63)
+            row.status=(row.known&16)&&!(row.known&32)?Status::tick_changed:Status::end_unknown;
+    }
+    row.closed=true;
+}
+void dump(bool clean){
+    auto& state=trial.reach;
+    if(!clean||!log_file||state.busy||state.dumped||!trial.ended||trial.releasing||dual_draining||
+       component_continuous::state.operation_depth||component_continuous::state.action_depth||
+       component_continuous::state.finishing||!component_continuous::state.finalized)return;
+    state.dumped=true;
+    fwprintf(log_file,L"hand_reach_diagnostic_begin schema=1 capacity=%u count=%u full=%u "
+        L"parent_edges_live_verified=0 static_chain_left=11,10,8,6 static_chain_right=35,34,32,30 "
+        L"matrix_order=upper_left,fore_left,upper_right,fore_right atomic_snapshot=0 writes=0\n",
+        capacity,state.count,unsigned(state.full));
+    constexpr const wchar_t* key_names[]={L"world",L"pc",L"pawn",L"mesh",L"tree",L"weapon",L"asset"};
+    constexpr const wchar_t* matrix_names[]={L"upper_left",L"fore_left",L"upper_right",L"fore_right"};
+    for(unsigned n=0;n<state.count;++n){auto const& row=state.rows[n];
+        fwprintf(log_file,L"hand_reach_diagnostic schema=1 row=%u lease=%u sample=%u sequence=%llu "
+            L"component_interval=%llu sample_ms=%llu action_epoch=%u tick_epoch=%u apply_mask=%u "
+            L"thread=%lu operation_depth=%u dual_draining=%u known=%u status=%u closed=%u reentered=%u "
+            L"tick_before_known=%u tick_before=%d tick_after_known=%u tick_after=%d "
+            L"index_known=%u index_match=%u matrix_known=%u matrix_rigid=%u failed_bone=%u "
+            L"expected_indices=8,10,32,34 actual_indices=%d,%d,%d,%d",
+            n,row.lease,row.sample,row.sequence,row.interval,row.sample_ms,row.epoch,row.tick_epoch,row.mask,
+            row.thread,row.operation_depth,unsigned(row.dual),row.known,unsigned(row.status),unsigned(row.closed),
+            unsigned(row.reentered),unsigned(row.tick_before_known),row.tick_before,unsigned((row.known&16)!=0),row.tick_after,
+            row.index_known,row.index_match,row.matrix_known,row.matrix_rigid,row.failed_bone,
+            row.actual[0],row.actual[1],row.actual[2],row.actual[3]);
+        for(unsigned k=0;k<row.keys.size();++k){auto const& key=row.keys[k];
+            fwprintf(log_file,L" %ls_key=%p,%u,%u,%u,%p,%p,%u",key_names[k],reinterpret_cast<void*>(key.object),
+                key.index,key.name_index,key.name_number,reinterpret_cast<void*>(key.klass),
+                reinterpret_cast<void*>(key.outer),key.reserved);
+        }
+        freehands::print_matrix(L"mesh",row.mesh);freehands::print_matrix(L"left",row.left);freehands::print_matrix(L"right",row.right);
+        for(unsigned i=0;i<4;++i){
+            if(row.matrix_known&(1u<<i))freehands::print_matrix(matrix_names[i],row.bones[i]);
+            else fwprintf(log_file,L" %ls=unknown",matrix_names[i]);
+            fwprintf(log_file,L" target%u=",i);for(const auto byte:row.targets[i])fwprintf(log_file,L"%02x",unsigned(byte));
+        }
+        fwprintf(log_file,L"\n");
+    }
+    fwprintf(log_file,L"hand_reach_diagnostic_end schema=1 count=%u writes=0\n",state.count);fflush(log_file);
+}
+} // namespace reach_diagnostic
+#endif
 void end(unsigned code,const wchar_t* reason){
 #if defined(GEARS_PLAYGROUND_WEAPON_COMPONENT_CONTINUOUS_TRIAL)
     component_continuous::terminal(code,reason);
@@ -1173,6 +1360,9 @@ bool restore(const wchar_t* reason){
 #endif
     const bool sampled=handik::snapshot(trial.lease_anchor.pc,current);
     if(sampled)sample(L"pre_restore",current,lease,trial.applied_mask);
+#if defined(GEARS_PLAYGROUND_WEAPON_COMPONENT_PERSISTENT_SESSION_TRIAL)
+    if(sampled&&log_file&&!ferror(log_file))reach_diagnostic::capture(current,lease);
+#endif
     Backend backend{};
     const bool clean=trial.lease.restore(backend);trial.releasing=false;
     if(clean)count_add(trial.restored);

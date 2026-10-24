@@ -1070,6 +1070,9 @@ void component_dump_end(){
     component_hold::dump();
 #endif
     const bool first_bind_clean=!journals_dirty();
+#if defined(GEARS_PLAYGROUND_WEAPON_COMPONENT_PERSISTENT_SESSION_TRIAL)
+    reach_diagnostic::dump(first_bind_clean);
+#endif
     component_cost::dump(first_bind_clean);
     component_tail_cost::dump(!journals_dirty());
     component::dump_first_bind(first_bind_clean);
