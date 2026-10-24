@@ -494,3 +494,9 @@ Astra 源审发现并修正两点：原 restore 保留历史 applied_mask，因�
 冻结786源／27依赖，唯一新OFF两次/EP的五份实际运行源非空行相等；完整PG严格构建与23导出均通过，DLL `884d9f0b…9356a`。root构建记录器在最后源树复核处误用路径下标而报错，四条实际构建／OFF／导出命令均已返回0；首次错误保留，仅修正记录环节并核对冻结与实际源字节，不重复构建／预处理／CPU。最终结果 `d35b1905…85c95` 在忽略的 `analysis/hand-tail-post-cutoff-build-20261024al/result-r2.json`。修后候选尚未运行游戏，不声称解决100ms耗时来源、手掌位置或实际平移消费；无Native／XR／loader重建或默认安装。
 
 并行有界伤害证据盘点仅使用33份已存直接输入，定位瞬发原 getter 经原修改／整数转换到 TakeDamage，以及 Gnasher按命中对象汇总和投射物返回前Init／爆炸多目标的关联边界；实际 ReturnParm／Result ABI与逐发身份未证实，未写0.7 hook。报告 `846c15a8…68e29` 位于忽略的 `analysis/weapon-grip-damage-evidence-20261024ak/`，不是实际伤害验证。
+
+AL实际运行补记：源码提交 `b8bd6abb…eb98` 后，唯一修后候选冻结786源／27依赖／523工件，PG884d9f0b…9356a，原Native／XR／loader保持。runner全部函数／类AST与已封存AK相同，仅隔离目录／tag及新诊断前缀变化；原审计器与已通过46项检查原样沿用，未重复执行。新freezer生成首轮曾因误改继承的AK证据名称断言停止，未生成候选／prepare／启动游戏；保留错误，仅完成尚未生成的后半段。冻结、prepare核对和三次新鲜空闲后，静音／behind／observe-only的Steam购买版运行一次，物理后台手柄输入关闭。
+
+这局在更早的 `component_acquire_failed` 终态8停止：组件1次acquire尝试、0次提交、5次setter尝试、恢复计数1，faulted与cleanup_failed保持1，最终dirty／owned／revoked均0；不能把恢复计数称作成功提交。hand leases／setter／target和扩展字段写入均0、姿态命令0，没有进入after-component授权，新early cutoff交还分支与独立首包都未被实际触发。最后保留的prewrite Auth为3／无拒绝，实际失败事件被后续恢复日志覆盖；中间pure_acquire_value差异记录也不能用作具体失败原因。目前不将失败归因于某个时钟或reader步骤。
+
+独立8控件（含完整新增typed观察）、3组component、44字节挂接前后相同，入口无恢复错误；failure Stop0／Shutdown0，音频8会话恢复且pending0，确切owner／game／XR均不存在。正式passed／cleanup_passed仍false；独立Native／XR子会话通过且XR exit0不替代该结论。AL79文件封存 `ad31db33…a6c3ee`，root-result `f04b25a7…3986d`，回执位于忽略的 `analysis/hand-mesh-runtime-1024al/`。下一步先保留组件内部实际授权拒绝及完整成本，保留门限，不直接扩展暂停分类；无默认安装、物理位置、后坐力或完整12武器验收。
