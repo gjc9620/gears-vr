@@ -10,6 +10,12 @@
 #include <vector>
 #include <algorithm>
 #include <cmath>
+#if defined(GEARS_PLAYGROUND_WEAPON_SHOT_SCOPE_TRIAL)
+#if !defined(GEARS_PLAYGROUND_WEAPON_HAND_PARTICIPANT_TRIAL) || !defined(GEARS_PLAYGROUND_HAND_ANIMATION_CALL_PROBE)
+#error Fire-invocation scope requires the shared-hand client and existing CallFunction owner
+#endif
+#include "../vr-common/weapon_shot_scope.h"
+#endif
 #if defined(GEARS_PLAYGROUND_WEAPON_HAND_PARTICIPANT_TRIAL)
 #if !defined(GEARS_PLAYGROUND_EQUIPMENT_OBSERVE)
 #error Shared weapon-hand participant requires the latched equipment model
@@ -871,6 +877,15 @@ bool invoke_component_forward(Request* request,ComponentForwardGate& gate){
 }
 #endif // GEARS_PLAYGROUND_WEAPON_COMPONENT_CONTINUOUS_TRIAL
 #include "playground_controller.inl"
+#if defined(GEARS_PLAYGROUND_WEAPON_SHOT_SCOPE_TRIAL)
+namespace weaponshot {
+gears_weapon_shot::Token enter(uptr,uptr,uptr) noexcept;
+void leave(gears_weapon_shot::Token const&) noexcept;
+bool packet(uptr,uptr,gears_weapon_shot::Packet&) noexcept;
+bool current(gears_weapon_shot::Packet const&,uptr,uptr) noexcept;
+bool write_admitted(gears_weapon_shot::Packet const&) noexcept;
+}
+#endif
 #if defined(GEARS_PLAYGROUND_WEAPON_GRIP_DAMAGE_RESULT_PROBE) || defined(GEARS_PLAYGROUND_WEAPON_HAND_PARTICIPANT_TRIAL)
 #include "weapon_grip_damage_metadata.inl"
 #endif
@@ -924,6 +939,9 @@ namespace weaponhand {void equipment_hold_committed(uptr,gears_weapon::Equipment
 #endif
 #if defined(GEARS_PLAYGROUND_WEAPON_HAND_PARTICIPANT_TRIAL)
 #include "weapon_hand_client.inl"
+#endif
+#if defined(GEARS_PLAYGROUND_WEAPON_SHOT_SCOPE_TRIAL)
+#include "weapon_shot_scope.inl"
 #endif
 #if defined(GEARS_PLAYGROUND_EXPERIMENTAL_VR_R2)
 #include "vr_fire_adapter.inl"

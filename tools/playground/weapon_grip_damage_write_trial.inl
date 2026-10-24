@@ -6,6 +6,11 @@ namespace metadata=gripdamage_metadata;
 namespace context=gripdamage_context;
 using U32=metadata::U32;
 enum class Grip:U32 {unknown,single,two,excluded};
+#if defined(GEARS_PLAYGROUND_WEAPON_SHOT_SCOPE_TRIAL)
+static_assert(unsigned(Grip::unknown)==unsigned(gears_weapon_hand::Grip::unknown)&&
+    unsigned(Grip::single)==unsigned(gears_weapon_hand::Grip::single)&&
+    unsigned(Grip::two)==unsigned(gears_weapon_hand::Grip::two)&&unsigned(Grip::excluded)==unsigned(gears_weapon_hand::Grip::excluded));
+#endif
 enum class Outcome:U32 {pending,disarmed,pre_unknown,post_unknown,scope_changed,
     unknown_grip,excluded,dual_passthrough,invalid_value,unchanged,applied,
     compare_changed,write_fault,readback_unknown,unwind,expired,closed_by_fault};
@@ -15,6 +20,9 @@ struct Gate {
     U32 extent{},offset{},field_count{},script_size{},code_offset{};
 };
 struct Entry {
+#if defined(GEARS_PLAYGROUND_WEAPON_SHOT_SCOPE_TRIAL)
+    gears_weapon_shot::Packet packet{};
+#endif
     gripdamage::Token token{};Grip grip{};Gate before{},after{};Outcome outcome{};
     U32 original_bits{},desired_bits{},observed_bits{},readback_bits{};
     bool closed{},attempted{},exchanged{},readback_known{};
@@ -33,9 +41,11 @@ void begin(unsigned value) noexcept {
     state={};state.generation=value;
     state.armed=gripdamage::environment()&&playground::automatic&&playground::ready&&
         environment_value(L"GEARSVR_TEST_GRIP_DAMAGE_WRITE",L"1");
+#if !defined(GEARS_PLAYGROUND_WEAPON_SHOT_SCOPE_TRIAL)
     if(environment_value(L"GEARSVR_TEST_GRIP_DAMAGE_FIXTURE",L"single"))state.grip=Grip::single;
     else if(environment_value(L"GEARSVR_TEST_GRIP_DAMAGE_FIXTURE",L"two"))state.grip=Grip::two;
     else if(environment_value(L"GEARSVR_TEST_GRIP_DAMAGE_FIXTURE",L"excluded"))state.grip=Grip::excluded;
+#endif
 }
 bool named(metadata::Reader const& reader,U32 slot,wchar_t const* literal) noexcept {
     auto const& s=reader.result;
@@ -133,6 +143,10 @@ void enter(gripdamage::Token const& token) noexcept {
     auto& e=state.rows[token.row];e={};e.token=token;e.grip=state.grip;
     if(!state.armed){e.outcome=Outcome::disarmed;return;}
     if(state.faulted){e.outcome=Outcome::closed_by_fault;return;}
+#if defined(GEARS_PLAYGROUND_WEAPON_SHOT_SCOPE_TRIAL)
+    auto const& row=gripdamage::state.rows[token.row];
+    if(weaponshot::packet(row.receiver,row.caller,e.packet))e.grip=static_cast<Grip>(e.packet.grip.grip);
+#endif
     if(!qualify(gripdamage::state.rows[token.row],false,e.before))e.outcome=Outcome::pre_unknown;
 }
 void abandon(gripdamage::Token const& token) noexcept {
@@ -166,6 +180,9 @@ void complete(gripdamage::Token const& token) noexcept {
         e->outcome=Outcome::post_unknown;return;
     }
     e->original_bits=row.after_bits;e->desired_bits=row.after_bits;
+#if defined(GEARS_PLAYGROUND_WEAPON_SHOT_SCOPE_TRIAL)
+    if(!weaponshot::current(e->packet,row.receiver,row.caller)){e->outcome=Outcome::scope_changed;return;}
+#endif
     if(e->grip==Grip::unknown){e->outcome=Outcome::unknown_grip;return;}
     if(e->grip==Grip::excluded){e->outcome=Outcome::excluded;return;}
     if(e->grip==Grip::two){e->outcome=Outcome::dual_passthrough;return;}
@@ -173,6 +190,9 @@ void complete(gripdamage::Token const& token) noexcept {
     if(!std::isfinite(original_damage)||original_damage<0){e->outcome=Outcome::invalid_value;return;}
     const float scaled=original_damage*0.7f;std::memcpy(&e->desired_bits,&scaled,4);
     if(e->desired_bits==e->original_bits){e->outcome=Outcome::unchanged;return;}
+#if defined(GEARS_PLAYGROUND_WEAPON_SHOT_SCOPE_TRIAL)
+    if(!weaponshot::write_admitted(e->packet)){e->outcome=Outcome::scope_changed;return;}
+#endif
     e->attempted=true;
     if(!exchange(row.result,e->original_bits,e->desired_bits,e->observed_bits,e->exchanged)){
         e->outcome=Outcome::write_fault;state.faulted=true;return;
@@ -185,10 +205,26 @@ void complete(gripdamage::Token const& token) noexcept {
     e->outcome=Outcome::applied;
 }
 void dump(){
+#if defined(GEARS_PLAYGROUND_WEAPON_SHOT_SCOPE_TRIAL)
+    fwprintf(log_file,L"weapon_grip_write_begin schema=2 generation=%u armed=%u "
+        L"grip_source=native_shared_owner grip_scope=fire_invocation fixture_ignored=1 "
+        L"shot_entry_runtime_verified=0 projectile_supported=0 default_enabled=0 faulted=%u\n",
+        state.generation,unsigned(state.armed),unsigned(state.faulted));
+#else
     fwprintf(log_file,L"weapon_grip_write_begin schema=1 generation=%u armed=%u fixture_grip=%u "
         L"grip_source=test_fixture fixture_scope=observer_epoch actual_grip_adapter=0 authoritative_shot_proved=0 "
         L"projectile_supported=0 default_enabled=0 faulted=%u\n",state.generation,unsigned(state.armed),unsigned(state.grip),unsigned(state.faulted));
+#endif
     for(auto const& e:state.rows)if(e.token){
+#if defined(GEARS_PLAYGROUND_WEAPON_SHOT_SCOPE_TRIAL)
+        fwprintf(log_file,L"weapon_grip_write_shot generation=%u call=%u row=%u shot=%llu scope_call=%llu "
+            L"root=%u mode=%u mode_function=%p script_hash=%llx owner_frame=%llu input_sequence=%llu "
+            L"cookie=%llu native_started=%llu world_generation=%llu\n",
+            e.token.generation,e.token.call,e.token.row,e.packet.shot,e.packet.call,unsigned(e.packet.root),unsigned(e.packet.mode),
+            reinterpret_cast<void*>(e.packet.mode_function.address),e.packet.script_hash,e.packet.grip.key.frame,
+            e.packet.grip.input_sequence,e.packet.grip.key.registration_cookie,e.packet.grip.key.native_started_qpc,
+            e.packet.grip.key.world_generation);
+#endif
         fwprintf(log_file,L"weapon_grip_write_result generation=%u call=%u row=%u grip=%u outcome=%u closed=%u "
             L"pre_qualified=%u post_qualified=%u node=%p local_property=%p float_class=%p locals=%p result=%p "
             L"extent=%u offset=%u pre_code=%u post_code=%u original_bits=%08x desired_bits=%08x "

@@ -31,6 +31,21 @@ uptr invoke_observed(uptr self,uptr caller,uptr result,uptr callee){
     return value;
 }
 #endif
+#if defined(GEARS_PLAYGROUND_WEAPON_SHOT_SCOPE_TRIAL)
+// Keep the fire scope through original and normal damage completion, including
+// the raw observer's unwind cleanup. POD token; never swallow original SEH.
+uptr invoke_scoped(uptr self,uptr caller,uptr result,uptr callee){
+    const auto scope=weaponshot::enter(self,caller,callee);uptr value{};
+    __try{
+#if defined(GEARS_PLAYGROUND_WEAPON_GRIP_DAMAGE_RESULT_PROBE)
+        value=invoke_observed(self,caller,result,callee);
+#else
+        value=original(self,caller,result,callee);
+#endif
+    }__finally{weaponshot::leave(scope);}
+    return value;
+}
+#endif
 uptr __fastcall hook(uptr self,uptr caller,uptr result,uptr callee){
     struct Active {Active(){++callbacks;}~Active(){--callbacks;}} active;
 #if defined(GEARS_PLAYGROUND_HAND_IK_STREAM_TRIAL)
@@ -40,7 +55,9 @@ uptr __fastcall hook(uptr self,uptr caller,uptr result,uptr callee){
     vrequip::stow::before_action(self,callee);
 #endif
     const auto token=handanim::enter(self,callee,nullptr,handanim::Source::call_function,caller);
-#if defined(GEARS_PLAYGROUND_WEAPON_GRIP_DAMAGE_RESULT_PROBE)
+#if defined(GEARS_PLAYGROUND_WEAPON_SHOT_SCOPE_TRIAL)
+    const auto value=invoke_scoped(self,caller,result,callee);
+#elif defined(GEARS_PLAYGROUND_WEAPON_GRIP_DAMAGE_RESULT_PROBE)
     const auto value=invoke_observed(self,caller,result,callee);
 #else
     const auto value=original(self,caller,result,callee);

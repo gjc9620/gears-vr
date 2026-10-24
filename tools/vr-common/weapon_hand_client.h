@@ -141,6 +141,13 @@ public:
     ClientPhase phase() const noexcept {return phase_.load(std::memory_order_acquire);}
     std::uint64_t cookie() const noexcept {return cookie_.load(std::memory_order_acquire);}
     std::uint64_t native_started_qpc() const noexcept {return native_.load(std::memory_order_acquire);}
+    // An already-issued shot retains its frozen grip after soft input loss.
+    // A terminal registration may never authorize a new packet/write. This is
+    // an admission check; final stop still drains enclosing PG callbacks.
+    bool registration_alive(std::uint64_t cookie,std::uint64_t native) const noexcept {
+        return cookie&&native&&phase()==ClientPhase::active&&!terminal_.load(std::memory_order_acquire)&&
+            cookie_.load(std::memory_order_acquire)==cookie&&native_.load(std::memory_order_acquire)==native;
+    }
     bool armed() const noexcept {
         const auto p=published_.load(std::memory_order_acquire);return p&&active(p);
     }

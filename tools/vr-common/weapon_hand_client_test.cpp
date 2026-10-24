@@ -136,5 +136,10 @@ int main(){
         h.invalidate(InvalidateReason::native_stopping);RegistrationResult r{};r.cookie=33;r.native_started_qpc=22;
         assert(c.connected(Reply::accepted,r)==Reply::draining);assert(!c.armed());
         assert(c.finish_disconnect(33)==Reply::quiescent);++cases;}
+    {Host h;HandClient c(h.adapter());h.connect(c);h.ready();assert(c.registration_alive(33,22));
+        h.invalidate(InvalidateReason::input_lost);assert(!c.armed()&&c.registration_alive(33,22));
+        h.invalidate(InvalidateReason::native_stopping);assert(c.phase()==ClientPhase::active&&!c.registration_alive(33,22));
+        assert(c.begin_disconnect()==Reply::draining&&!c.registration_alive(33,22));
+        assert(c.finish_disconnect(33)==Reply::quiescent);++cases;}
     std::printf("WeaponHandClientTest passed: %u cases; local host/adapter only\n",cases);
 }

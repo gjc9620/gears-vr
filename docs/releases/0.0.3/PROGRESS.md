@@ -756,3 +756,15 @@ Shutdown先取得exact-cookie quiescent，失败返回53并保留状态／引用
 实际CMake严格构建／运行通过14类client与唯一shared-owner本地模型、21类直接包含生产PG adapter及实际SEH copy／metadata reader的人工内存检查，并通过修改后的原装备模型回归。覆盖早到回调、并发失效、重入、drain、过期／换枪、已知false与不可读、第一同名错误类型、ComponentProperty、完整身份替换、跨world、reset／pickup代次及失败捕获。继承BD已有双手／组件／伤害writer全部开关再启用client的完整PG严格构建通过，保留原23导出并仅新增3个client控制导出，DLL 0de80ced…fadd9。全部私有开关OFF的原／新源及两次新预处理输出一致；此比较不覆盖开启EquipmentObserve的配置。前两次合并构建driver选错历史命令／源目录的失败收据保留，未运行游戏或修改历史源。证据位于忽略的 `analysis/weapon-hand-client-build-20261024bf/` 与 `analysis/weapon-hand-client-review-20261024bf/`，末次复核dc7579b2…89e32。
 
 本轮没有启动游戏／XR或替换默认Native／XR／loader；后台每边0.4、静音、behind、tiny-output只读政策继续适用。实际per-asset controller／palm mount尚未认证，adapter明确mount_known=false，不能把暂时mesh跟随或IK显示认作真实双手支撑。实际ammo／magazine participant、逐发ShotScope／投射物、伤害consumer、完整自由手与全武器交互、默认合流及GPU／Quest验收仍未完成。原single fixture的受控0.7证明未因此变为真实抓握／逐发验收，完整6DoF目标继续active。
+
+## 2026-10-24 — BG 开火执行作用域与冻结握持伤害消费
+
+新增默认OFF的 `GEARS_PLAYGROUND_WEAPON_SHOT_SCOPE_TRIAL`，在已有四参CallFunction边界的实际InstantFire／ProjectileFire／Gnasher CustomFire进入前冻结共享hand client的GripSnapshot。只认证即时父body／self／previous／PC与完整函数身份匹配的War→Engine InstantFire、CustomFire→FireAllPellets别名；独立嵌套根获得新Shot，未知候选、孤立pellets与超过12层的调用遮蔽外层授权。每包验证其caller ancestry确实经过当前mode body，Packet包含不可变Shot／完整weapon／grip及自身mode函数、脚本hash。不是按R2边沿、getter次数或Result地址生成Shot，同发多包独立完成各自一次CAS。Projectile仅建立执行作用域，Spawn／Init和延迟伤害关联尚未接线。
+
+在明确启用此选项时，已有受控Lancer writer改从真实client／唯一owner的冻结Snapshot读取single／two，忽略旧测试fixture；原显式写入许可、私有arena、64行容量和完整typed Result资格保持。post qualification后重验完整Packet，CAS前再次检查作用域及注册是否存活。普通input_lost不改变已经发出的同发握持状态；Astra发现终止invalidate仍可能保留active phase的具体问题，新增exact cookie／Native incarnation及terminal检查修复，复核关闭BG1。写入已获准后发生的并发终止仍以外层PG callback drain作为最终停止边界，未声称瞬时取消CAS。
+
+实际CMake／严格构建与执行通过9类scope模型、更新后的15类client检查、21类包含生产adapter的人工内存回归，以及4种直接包含生产client／唯一owner模型／作用域／四参hook／writer的完整人工链路。同一Result存储的四包均100→70，推进最新Scene仍保留原Shot frame；soft loss后三包继续70，terminal在第一getter返回前发生则四包均100且无CAS；未知嵌套的包不借旧Shot，其余恢复，根返回后的裸getter也保持100。SEH检查执行实际invoke_scoped wrapper，验证原四参、单次original、RAX以及原异常穿过finally并清理scope；不扩大为零售异常验收。前两次集成测试失败是Host在terminal后仍要求prepare accepted，第三次改为要求unavailable；失败日志与产物保留。
+
+已有双手／组件／writer全选项合并PG与ShotScope开启、Raw／writer关闭的最小PG均构建通过；合并DLL为0d927319…11c7d，保留原26导出。全部私有选项OFF的main预处理，以及ShotScope OFF的实际call／writer源预处理均与BF一致，两次新预处理一致；没有声称完整EquipmentObserve开启配置逐字等价。最终14项源码／全部日志及产物hash经Astra复核匹配，审查1af93c63…5e70a。证据位于忽略的 `analysis/weapon-shot-scope-build-20261024bg/` 与 `analysis/weapon-shot-scope-review-20261024bg/`。没有启动游戏／XR、占用测试窗口或安装默认版本。
+
+与掩体确认正常UI的Native也拥有CallFunction同一入口，不能同时启用PG第二patch。UIoff私有配置只能作限定验证；下一步由Native唯一wrapper提供同hand cookie的版本化pre／normal／unwind通知，Native保留original恰好一次、四参／RAX／异常，PG订阅现有作用域与writer，pin／drain涵盖pre→original→end整个间隙与未清债务。该共享入口接线、实际注册／Scene抓握、每枪mount、投射物、完整全武器手部／换弹／瞄准／体感交互、默认合流与GPU／Quest验收仍未完成。后续自动测试继续每边0.4、静音、behind及tiny-output只读，完整6DoF目标保持active。
