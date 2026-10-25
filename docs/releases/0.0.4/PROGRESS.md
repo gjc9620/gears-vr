@@ -2,6 +2,30 @@
 
 本文件保留武器与掩体两个分支的开发历史，便于共用 Native 手部实现合流。各条记录仍以其原始验证范围为准；私有候选、只读采样或离线检查不代表完整功能、默认构建更新或头显验收。
 
+## 2026-10-26 — DY否定单纯消费顺序交换，撤回该候选并消除重复鲜Game观察
+
+下节记录的调度尝试已实跑DY，行为失败，不作为完成的修复保留。首次R2 press成功后，下一Frame的前序sync年龄达到109.3368ms；保护正确执行原版release，物理模拟扳机仍down时正确不重放。仅356→355，主动松开步骤等不到对应owned release，第二press及持按停止未触达。装备gap减少不能补偿R2失效，整轮complete=false保留。DY的disable0、无pending、控制器恢复、HandStop／quiescent、88项独立恢复、Native／entry、XR0／PG0、原十文件、音频10/10及准确PID／fresh CIM正常；正常清理后释放窗口。证据为ignored analysis/equipment-native-rgrip-runtime-20261026dy/。
+
+已按实际DY构建manifest的逐文件hash保存六份候选源到analysis/lancer-native-r2-20261026dw/rejected-dy-source/，然后把Runtime／PG调度／backend／相关测试全部恢复e70174f。保留DX通过的原始先R2顺序；不把Astra静态无finding或CPU回归通过当作运行顺序验收。
+
+下一窄增量仅在weapon_lancer_r2_native.inl：原tick的current调用Client.source_current_on_gt，而它已调用完整fresh observe，随后read_game又观察before／after，扔掉第一份有效Game。改用同一Client.source_game_on_gt的真实输出作为before，保留原精确key／epoch／注册存活／前后源龄校验，typed R2两次读取、全对象／结构复核、最终独立observe和same_game比较仍在。source_current输出只在原来源证明确认后置true；后续typed元数据失败保持原unknown分类，不转成source-loss释放重试。null-source的独立安全交还路径不变，不缓存跨帧Game、不刷新Frame时间、不改100ms。另保留ammo_queried的有界同值诊断日志。
+
+首版严格PG及原受影响快速检查通过，755份源码／vendor稳定，PG `2739de07…be6ff`；Runtime／Input已恢复原用例，420项R2检查仍过。但Astra窄审查发现P2：若对所有read_game(source)都新增Frame freshness，tick见证后元数据耗时可使源过期，随后owned release会因这项新增条件被拒。DZ已准备但从未执行，保留原pins与二进制并标记DO-NOT-EXECUTE。
+
+修正为只有tick传source_current输出指针时才请求并复用真实来源见证；execute／ammo／装备交接所有旧调用均不传该指针，保持原XR-independent fresh observe路径，即使release收到先前的Frame也不新增source限制。Astra仅复核该分支与调用点，明确关闭P2，无新具体问题。最终完整PG及原受影响检查通过，PG `6aedb359…c8f83`。EA从已通过DX复用原host／协调器／全部动作和安全门，仅换精确PG；原Native29／XR／sim／reader均未变。当前仍待实跑，不将预期减少一次观察当作已测性能改善。共用身体／主握接口继续冻结，无默认替换或发布。
+
+## 2026-10-26 — Lancer原版R2短闭环通过，定位并调整抓握／射击消费顺序
+
+DX沿用DW的实际host／Native29sim／XR／simulator／reader，只选择PG `cb187cdf…6e18e`及诊断后新鲜UP观察门。实际首次扣下／独立原版key down／松开key up通过，原版总弹药356→348，两个新post-release读数均348／up；随后第二次DOWN得到owned press，保持物理模拟trigger down时Disable0，独立原版PC key已up。runtime-review.complete和behavior_complete均true，errors为空、无pending export。仍沿用原版瞄准，耗弹8不是逐发或命中数；主握／枪管权威射线／伤害／头显未验。
+
+DX控制器恢复、HandStop／quiescent／bridge close、88项独立恢复、Native／entry、XR0／PG0、原十文件、音频10/10及准确PID／新鲜CIM无Game／XR均通过，窗口已交还身体会话。证据为ignored analysis/equipment-native-rgrip-runtime-20261026dx/runtime-review.json与runtime-final.json，pins `291cda1b…79b5`。DW原失败及独立scope说明保留。新增R2代码与诊断阶段已提交e70174f，保持默认关闭。
+
+DX仍有两次装备previous_sync_stale。精确配对相同Frame／当前sync／前序sync后，R2消费时前序年龄91.3954／98.9844ms均合格，到后续装备输入消费已100.7385／106.8725ms，晚了9.3431／7.8881ms。记录到的R2游戏读取8.3–13.4ms、两次press约16.1／17.2ms、已记录的弹药查询约11ms；这些是稀疏状态变化样本，不是完整帧分析，第二次同值ammo查询在该版未输出耗时。不能把所有间隔或DW失败归结为ammo查询。配对与证据哈希保存于DX/timing-review.json。
+
+据此新增仅PG-local的同步调度点：稳定held的RGrip仍在Runtime内先采样，再调用R2消费者，随后复核原始Frame current并执行原库存／身份／附着／动作年龄检查。三参数Runtime::tick走原空消费者，不增加额外current；四参数只借用同栈时机，不授引擎／writer权限或保留Frame。装备在派发前早退时，event_hook必须补调R2一次，确保真正源丢失仍能交还owned press；已派发后任何早退均不重复。原切枪前yield保持。另补ammo_queried的有界日志，避免同值第二样本漏记耗时。
+
+新增真实Input＋Runtime顺序回归：相同90ms前序样本，旧顺序先做20ms其他工作会拒绝；先采样再同步工作可正常切换，但工作61ms使原Frame过期仍必须拒绝且不跨帧重放。覆盖consumer后current失效、suspend、重入、baseline顺序与派发前早退。原受影响测试与420项R2测试、完整PG严格编译通过，72 cases／764项Input检查，755份源码与vendor闭包稳定。Astra／High仅审阅该五文件调度增量，无具体P1／P2；未重审旧控制器或重跑Game。最终PG `f8ca11ee…e86a6`。DY原host／动作及所有安全门不变，已准备等待身体B18运行窗口；此处还不能声称调整后的实际连续输入稳定性通过。
+
 ## 2026-10-26 — Lancer接入Native帧的原版R2，首次扣弹与松开通过
 
 新增默认关闭的PG私有Native Lancer R2消费者，直接使用当前注册的真实Hand Frame；旧Hammerburst bridge保留。仅支持已认证、实际右手附着且已握持的Lancer，经原版typed ButtonPress／ButtonRelease(Name R2)输入，不改枪口、瞄准、伤害、Native ABI或骨骼。切枪前必须交还自有按下；跟踪失效后不重放旧边沿。完整五对象身份不符或原版释放失败时保留未交还状态，不重置掩盖。私有控制沿用旧R2三个导出，生命周期与现有PG callback drain结合。

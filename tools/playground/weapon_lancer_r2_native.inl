@@ -35,15 +35,30 @@ bool name_current() noexcept {
         copy(&entry,names.data+size_t(r2.index)*8,8)&&entry&&copy(&index,entry,4)&&index==r2.index&&
         copy(text,entry+20,sizeof text)&&text[0]==L'R'&&text[1]==L'2'&&!text[2];
 }
-bool read_game(lr::Actors const& expected,wh::Frame const* source,lr::Game& out) noexcept {
-    out={};if(!weaponhand::current_gt(nullptr)||!lr::valid(expected))return false;
+bool read_game(lr::Actors const& expected,wh::Frame const* source,lr::Game& out,bool* source_current=nullptr) noexcept {
+    out={};if(source_current)*source_current=false;
+    if(!weaponhand::current_gt(nullptr)||!lr::valid(expected))return false;
     // This identity-only value is solely for fresh metadata observation. It
     // is never published, passed to Input, or used to renew tracking lifetime.
     wh::Frame identity{};identity.world=expected.world;identity.controller=expected.controller;
     identity.pawn=expected.pawn;identity.mesh=expected.mesh;identity.weapon=expected.weapon;
     if(source){if(!lr::same(expected,actors(*source)))return false;identity=*source;}
     wh::GripGameState before{},after{};
-    if(!weaponhand::observe(nullptr,identity,weaponhand::clock_ns(nullptr),before)||!before.known)return false;
+    if(source_current){
+        // source_current_on_gt already performs a fresh full observe. Keep its
+        // actual output instead of discarding it and immediately observing
+        // again. The exact key/lifetime and post-observe age checks are still
+        // inside this same Client call; no cached game state is accepted.
+        // Only tick requests this witness. Original-call/owned-release reads
+        // retain their old XR-independent metadata path, even with a Frame.
+        if(!source||!enabled.load(std::memory_order_acquire)||!nativeequipment::domain_ready()||
+            !weaponhand::client.source_game_on_gt(source->key,before)||
+            !wh::frame_active(*source,weaponhand::clock_ns(nullptr)))return false;
+        // Preserve source-vs-metadata failure classification: a later typed
+        // R2/schema failure must not become a source-loss fallback/retry.
+        if(source_current)*source_current=true;
+    }else if(!weaponhand::observe(nullptr,identity,weaponhand::clock_ns(nullptr),before))return false;
+    if(!before.known)return false;
     meta::Snapshot schema{};schema.module_base=base;meta::Reader r{schema,meta::Stage::final_check};
     weaponhand::BoolField held{},again{};bool known{};
     if(!meta::tables(base,schema.objects,schema.names)||!weaponhand::object(r,expected.controller)||
@@ -103,10 +118,9 @@ void tick(uptr pc) noexcept {
     if(!lr::tick_admitted(quiet,pc,have_source?frame.controller.address:0,
         input.has_actors()?input.actors().controller.address:0))return;
     const auto observation_started=weaponhand::clock_ns(nullptr);
-    const bool current=have_source&&nativeequipment::current(nullptr,frame);
-    lr::Game game{};
-    if(current)read_game(actors(frame),&frame,game);
-    else if(input.has_actors()&&input.actors().controller.address==pc)read_game(input.actors(),nullptr,game);
+    bool current{};lr::Game game{};
+    if(have_source)read_game(actors(frame),&frame,game,&current);
+    if(!current&&input.has_actors()&&input.actors().controller.address==pc)read_game(input.actors(),nullptr,game);
     const auto now=weaponhand::clock_ns(nullptr);
     const auto previous_sync=input.last_sync_ns(),previous_observed=input.last_observed_ns();
     const auto result=input.advance(current?&frame:nullptr,current,game,now,
@@ -136,7 +150,7 @@ void tick(uptr pc) noexcept {
     }
     const auto diagnostic_finished=weaponhand::clock_ns(nullptr);
     if(log_file&&logs<64&&(previous_status!=unsigned(result)||previous_source!=unsigned(input.source_status())||
-        ready_after_ammo||(ammo_known&&count!=last_ammo))){
+        ready_after_ammo||ammo_queried||(ammo_known&&count!=last_ammo))){
         fwprintf(log_file,L"native_lancer_r2 status=%u source_status=%u mode=%u owned=%u game_known=%u game_r2=%u before_action=1 frame=%llu sequence=%llu trigger_pressed=%u trigger_released=%u input_sync_ns=%lld observed_ns=%lld ammo_known=%u ammo=%d previous_sync_ns=%lld previous_observed_ns=%lld game_elapsed_ns=%lld action_elapsed_ns=%lld ammo_queried=%u diagnostic_elapsed_ns=%lld ready_after_ammo_read=%u\n",
             unsigned(result),unsigned(input.source_status()),state,unsigned(input.owns_press()),unsigned(game.known),unsigned(game.r2_held),
             current?frame.key.frame:0,current?frame.controllers.sequence:0,
