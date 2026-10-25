@@ -269,7 +269,7 @@ abi::Reply start(HMODULE requested) noexcept {
     const auto completed=call_register(reinterpret_cast<abi::Register>(register_address),&registration,&result,reply);
     const auto outcome=client.connected(reply,result,completed);
     if(client.phase()==abi::ClientPhase::off){FreeLibrary(native_module);native_module=nullptr;host_unregister=nullptr;}
-#if defined(GEARS_PLAYGROUND_HAND_RIG_TRACKING_TRIAL)
+#if defined(GEARS_PLAYGROUND_HAND_RIG_TRACKING_TRIAL) || defined(GEARS_PLAYGROUND_NATIVE_EQUIPMENT_RIG_READER)
     if(outcome==abi::Reply::accepted){
         const auto attached=handrig::attach(held,birth,game_thread.load(std::memory_order_acquire));
         if(attached!=abi::Reply::accepted){client.begin_disconnect();return attached;}
@@ -291,7 +291,7 @@ abi::Reply start(HMODULE requested) noexcept {
     return outcome;
 }
 abi::Reply stop() noexcept {
-#if defined(GEARS_PLAYGROUND_HAND_RIG_TRACKING_TRIAL)
+#if defined(GEARS_PLAYGROUND_HAND_RIG_TRACKING_TRIAL) || defined(GEARS_PLAYGROUND_NATIVE_EQUIPMENT_RIG_READER)
     if(current_gt(nullptr))return abi::Reply::reentrant;
     handrig::seal();
 #endif
@@ -301,7 +301,7 @@ abi::Reply stop() noexcept {
 #endif
     const auto begun=client.begin_disconnect();
     if(begun==abi::Reply::quiescent){
-#if defined(GEARS_PLAYGROUND_HAND_RIG_TRACKING_TRIAL)
+#if defined(GEARS_PLAYGROUND_HAND_RIG_TRACKING_TRIAL) || defined(GEARS_PLAYGROUND_NATIVE_EQUIPMENT_RIG_READER)
         if(!handrig::quiescent()||!handrig::detached())return abi::Reply::draining;
 #endif
 #if defined(GEARS_PLAYGROUND_RESTORE_STAGE_CORE)
@@ -347,12 +347,12 @@ abi::Reply stop() noexcept {
 #if defined(GEARS_PLAYGROUND_RESTORE_STAGE_CORE)
     if(!weaponrestore::healthy())return abi::Reply::draining;
 #endif
-#if defined(GEARS_PLAYGROUND_HAND_RIG_TRACKING_TRIAL)
+#if defined(GEARS_PLAYGROUND_HAND_RIG_TRACKING_TRIAL) || defined(GEARS_PLAYGROUND_NATIVE_EQUIPMENT_RIG_READER)
     if(!handrig::quiescent())return abi::Reply::draining;
 #endif
     const auto finished=client.finish_disconnect(cookie);
     if(finished!=abi::Reply::quiescent)return finished;
-#if defined(GEARS_PLAYGROUND_HAND_RIG_TRACKING_TRIAL)
+#if defined(GEARS_PLAYGROUND_HAND_RIG_TRACKING_TRIAL) || defined(GEARS_PLAYGROUND_NATIVE_EQUIPMENT_RIG_READER)
     if(!handrig::detached())return abi::Reply::draining;
 #endif
 #if defined(GEARS_PLAYGROUND_WEAPON_CALL_SUBSCRIBER_TRIAL)

@@ -2,6 +2,22 @@
 
 本文件保留武器与掩体两个分支的开发历史，便于共用 Native 手部实现合流。各条记录仍以其原始验证范围为准；私有候选、只读采样或离线检查不代表完整功能、默认构建更新或头显验收。
 
+## 2026-10-25 — 普通装备消费者读通共用Rig，Lancer固定主握映射就绪
+
+本轮继续Lancer握持接线，没有扩展其他武器或新增writer。新增默认关闭的NativeEquipmentRigReader，将现有hand_rig_client从旧独立IK测试profile解耦，沿同一个已保留Native登记读取GearsVrReadRigTrackingFrameV1；旧两参数读取保留原编译期来源，新消费者显式使用认证Frame的来源。五处attach／seal／quiescent／detach生命周期条件复用原Admission与Native pin，停止／重连围栏保持。数据不跨帧缓存，不产生scope、武器／手部所有权或写入权限；新的开关没有启用旧骨骼／组件writer，V1布局和导出数量未改变。
+
+新绑定器同时要求Native手部Frame与Rig有效、原100ms内、同PID／GT／birth／Native started／cookie、world generation、五个完整对象身份、参考代数与姿态、原Stereo和完整GVC逐字段一致，并保留producer continuity要求。右Grip必需；对出现的左右Grip按实际final pre-HMD base／reference／units重算核验，不能把render-camera forward或HMD方向代作武器方向。读取前后仍核当前GT与原实际对象链接，记录时间再核绑定。世界Grip是准备后的跟踪坐标，不是实际已写手腕或枪矩阵。
+
+DP购买版普通场景在实际右肩Grip→held后取得5个不同publication的ready记录，原输入源龄43.4153–60.3024ms、发布龄35.9553–49.3073ms，units=100；协调器complete／behavior_complete均true、无错误，仅表示本轮“持枪时读取匹配准备姿态”目标通过。使用PG `b000d7ca…64a3c`、原Native29sim／XR／reader，仅私有RigTracking enabled=1数据发布，Body／IK／component writers仍全0。Root当前与Native29冻结RigFrame／HandV1头哈希一致。本轮不是Native35双手写入、持续枪体跟手、权威射击或头显验收，实际记录在ignored `analysis/equipment-native-rgrip-runtime-20261025dp/runtime-review.json`。
+
+已新增designer-authored `marcus115-lancer-held-grip-v1`／revision1固定映射，复用既有Marcus115几何签名、实际modelScale／units和同一掌心marker；held右腕改为UE F/R/U对齐，并相应换算Grip→Wrist位移，避免只转手腕而令掌心接触点移动。已查看既有LOD0侧面图，模型枪管沿mesh +Y、up +Z；原挂接约-90°gun-in-wrist方向关系仅用于数学核验，传给后继唯一writer的是Calibration，不是gun目标／额外组件旋转。该profile不证明物理校准、当前武器资产认证、枪口／权威弹道或support mount，不能仅凭它设置WeaponMount.valid。Native执行仍保留51／52原动画增量和子链。
+
+严格完整PG编译及受影响检查通过；新Rig绑定429项和固定Lancer映射752项仅为合成CPU数据检查。实际hand_rig_client源码另以Windows线程／事件测试旧wrapper、显式来源拒绝、重入、读取期间seal／拒绝detach、登记变化清空输出和drain后detach，19项通过；provider为合成，不能称为真实Native pin并发试验。一次有界源级复核未发现新生命周期缺口。构建回执为ignored `analysis/lancer-rig-consumer-20261025do/pg-build/attempt-1792941739671401900/receipt.json`，Windows测试为同目录`reader-check-1792941532680971100/receipt.json`；两个私有harness缺include／include顺序的首次编译失败也保留。
+
+DP控制器恢复、HandStop4→5／quiescent、88独立恢复（含八完整Pose chunks）、Native／entry／XR exit0／PG shutdown0、音频10恢复与原十文件保持通过，随后新鲜CIM无Game／XR，窗口已交还。0.4／幕后／observe-only／静音策略和默认启动器保持。本轮未发布／打tag。
+
+双方已对齐后继最小内容：main_hand_held、当前weapon身份、按资产固定Grip→Wrist Calibration、provider revision，沿现有登记／Frame关联，在同一C0 body plan后、Kernel.prepare前由身体唯一负责人消费；V1只读不动。共享小幅版本合同待身体会话freehands可用后落实，Root负责实际资产认证和发送适配。身体B10已正常清理，但其双腕baseline不可达、无hand commit，不算双手交付。Root下一可玩检查点仍是同一双手候选上的Lancer实际持枪／瞄准／射击；预计有效工作时间和累计窗口等待未知，完整最终范围保留。
+
 ## 2026-10-25 — Lancer取得合格同帧骨／枪读数，确认末端与枪体方向存在偏移
 
 继续同一个Lancer交付。骨名查找现按认证GT帧分步准备，每步最多512项、扫描循环3ms预算；原身份／源时效检查在循环前后独立执行，整个准备步骤实测约5–6ms，不声称总用时被硬限制为3ms。只保留名字索引，不缓存姿态／Frame；名字表变化、源过龄与缓存名字内容变化会阻止旧进度用于调用。新增冷表60000项、耗时身份检查、过龄、表替换、非零NUL后填充及未终止字符串的直接回归。曾把身份检查计入扫描预算导致DK游标0，又曾误要求读取缓冲末格0而漏掉有效短名字导致DL超时；两处均修正，失败及源／编译回执保留。

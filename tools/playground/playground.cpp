@@ -84,6 +84,23 @@ bool local_quiescent() noexcept;
 #include "weapon_equipment_native_config.h"
 #include "weapon_equipment_input.h"
 #endif
+#if defined(GEARS_PLAYGROUND_HAND_RIG_TRACKING_TRIAL) || defined(GEARS_PLAYGROUND_NATIVE_EQUIPMENT_RIG_READER)
+#include "../vr-common/rig_tracking_reader.h"
+#include "../vr-common/weapon_boundary_admission.h"
+#if defined(GEARS_PLAYGROUND_NATIVE_EQUIPMENT_RIG_READER)
+#include "weapon_rig_binding.h"
+#endif
+namespace {namespace handrig {
+gears_weapon_hand::Reply attach(void*,std::uint64_t,std::uint32_t) noexcept;
+void seal() noexcept;
+bool quiescent() noexcept;
+bool detached() noexcept;
+gears_rig_tracking::ReadResult read(gears_rig_tracking::Frame&,std::uint64_t,std::uint32_t) noexcept;
+#if defined(GEARS_PLAYGROUND_HAND_RIG_TRACKING_TRIAL)
+gears_rig_tracking::ReadResult read(gears_rig_tracking::Frame&,std::uint64_t) noexcept;
+#endif
+}}
+#endif
 #if defined(GEARS_PLAYGROUND_WEAPON_GRIP_DAMAGE_WRITE_TRIAL)
 #include <cwchar>
 #include <initializer_list>
@@ -161,16 +178,7 @@ bool local_quiescent() noexcept;
 #include "../vr-common/hand_stream_ticket_policy.h"
 #if defined(GEARS_PLAYGROUND_HAND_RIG_TRACKING_TRIAL)
 #include "../vr-common/hand_rig_ticket_policy.h"
-#include "../vr-common/rig_tracking_reader.h"
 #include "hand_rig_connect_request.h"
-#include "../vr-common/weapon_boundary_admission.h"
-namespace {namespace handrig {
-gears_weapon_hand::Reply attach(void*,std::uint64_t,std::uint32_t) noexcept;
-void seal() noexcept;
-bool quiescent() noexcept;
-bool detached() noexcept;
-gears_rig_tracking::ReadResult read(gears_rig_tracking::Frame&,std::uint64_t) noexcept;
-}}
 #endif
 #include "hand_ik_xr_stream_request.h"
 #if defined(GEARS_PLAYGROUND_HAND_CONTINUOUS_SESSION_TRIAL)
@@ -1042,7 +1050,7 @@ namespace weaponhand {void equipment_hold_committed(uptr,gears_weapon::Equipment
 namespace nativeequipment {bool configure_native(HMODULE) noexcept;}
 #endif
 #include "weapon_hand_client.inl"
-#if defined(GEARS_PLAYGROUND_HAND_RIG_TRACKING_TRIAL)
+#if defined(GEARS_PLAYGROUND_HAND_RIG_TRACKING_TRIAL) || defined(GEARS_PLAYGROUND_NATIVE_EQUIPMENT_RIG_READER)
 #include "hand_rig_client.inl"
 #endif
 #endif
@@ -1053,6 +1061,12 @@ namespace nativeequipment {bool configure_native(HMODULE) noexcept;}
 #include "weapon_call_subscriber.inl"
 #endif
 #if defined(GEARS_PLAYGROUND_NATIVE_EQUIPMENT_TRIAL)
+#if defined(GEARS_PLAYGROUND_NATIVE_EQUIPMENT_RIG_READER)
+namespace nativeequipment_rig {
+void tick(gears_weapon_hand::Frame const&) noexcept;
+void reset_after_drain() noexcept;
+}
+#endif
 #if defined(GEARS_PLAYGROUND_NATIVE_EQUIPMENT_ATTACHMENT_OBSERVER)
 namespace nativeequipment_attachment {
 void tick(gears_weapon_hand::Frame const&) noexcept;
@@ -1060,6 +1074,9 @@ void reset_after_drain() noexcept;
 }
 #endif
 #include "weapon_equipment_backend.inl"
+#if defined(GEARS_PLAYGROUND_NATIVE_EQUIPMENT_RIG_READER)
+#include "weapon_equipment_rig.inl"
+#endif
 #if defined(GEARS_PLAYGROUND_NATIVE_EQUIPMENT_ATTACHMENT_OBSERVER)
 #include "weapon_equipment_attachment_observer.inl"
 #endif

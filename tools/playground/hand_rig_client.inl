@@ -40,7 +40,7 @@ gears_weapon_hand::Reply attach(void* image,std::uint64_t birth,std::uint32_t gt
         reinterpret_cast<lifetime::Close>(close_address)};
     return admission.connect(binding)?Reply::accepted:Reply::busy;
 }
-wire::ReadResult read(wire::Frame& out,std::uint64_t minimum_sequence) noexcept {
+wire::ReadResult read(wire::Frame& out,std::uint64_t minimum_sequence,std::uint32_t expected_source) noexcept {
     out={};wire::ReadResult result{};
     if(reading)return result;
     struct Local {
@@ -58,7 +58,7 @@ wire::ReadResult read(wire::Frame& out,std::uint64_t minimum_sequence) noexcept 
        weaponhand::client.phase()!=gears_weapon_hand::ClientPhase::active||
        weaponhand::client.cookie()!=key.registration_cookie||
        weaponhand::client.native_started_qpc()!=key.native_started_qpc)return result;
-    const wire::ReaderBinding reader{key,GEARS_PLAYGROUND_HAND_MOTION_EXPECTED_SOURCE,provider_read,clock_ns};
+    const wire::ReaderBinding reader{key,expected_source,provider_read,clock_ns};
     result=wire::read_frame(reader,minimum_sequence,out);
     if(weaponhand::client.phase()!=gears_weapon_hand::ClientPhase::active||
        weaponhand::client.cookie()!=key.registration_cookie||
@@ -72,4 +72,9 @@ wire::ReadResult read(wire::Frame& out,std::uint64_t minimum_sequence) noexcept 
     local.held=false;
     return result;
 }
+#if defined(GEARS_PLAYGROUND_HAND_RIG_TRACKING_TRIAL)
+wire::ReadResult read(wire::Frame& out,std::uint64_t minimum_sequence) noexcept {
+    return read(out,minimum_sequence,GEARS_PLAYGROUND_HAND_MOTION_EXPECTED_SOURCE);
+}
+#endif
 } // namespace handrig

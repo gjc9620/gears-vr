@@ -180,11 +180,17 @@ void tick(uptr pc) noexcept {
 #if defined(GEARS_PLAYGROUND_NATIVE_EQUIPMENT_ATTACHMENT_OBSERVER)
     nativeequipment_attachment::tick(frame);
 #endif
+#if defined(GEARS_PLAYGROUND_NATIVE_EQUIPMENT_RIG_READER)
+    nativeequipment_rig::tick(frame);
+#endif
 }
 void reset_after_drain() noexcept {
     state.reset_after_drain(backend,vrequip::model);have_status=false;
 #if defined(GEARS_PLAYGROUND_NATIVE_EQUIPMENT_ATTACHMENT_OBSERVER)
     nativeequipment_attachment::reset_after_drain();
+#endif
+#if defined(GEARS_PLAYGROUND_NATIVE_EQUIPMENT_RIG_READER)
+    nativeequipment_rig::reset_after_drain();
 #endif
     calibration={};input_evidence={};
     if(log_file&&ticks){
