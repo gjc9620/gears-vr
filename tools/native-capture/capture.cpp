@@ -88,7 +88,10 @@ gears_support::Recorder support_diagnostics;
 #include "../vr-common/controller_continuity_bridge.h"
 #include "../vr-common/rig_tracking_frame.h"
 #include "../vr-common/native_rig_tracking_frame.h"
+#pragma push_macro("small")
+#undef small
 #include "hand_core_target_adapter.h"
+#pragma pop_macro("small")
 #include "weapon_hand_broker.h"
 #include "cover_surface_getters.h"
 #include "../vr-common/weapon_hand_owner_adapter.h"
@@ -943,6 +946,10 @@ void tick_end(cover_pose_phase_live::Scope const&,bool) noexcept;
 void control(cover_control_observer_live::Row const&) noexcept;
 void request_drain();unsigned pending_count();void summary(FILE*);
 }
+namespace hand_goal_observer_live {
+void observe(cover_control_observer_live::Row const&,gears_native_rig_tracking::CoreSnapshot const&) noexcept;
+void request_drain();unsigned pending_count();void summary(FILE*);
+}
 namespace rig_tracking_live {void stop() noexcept;void summary(FILE*);}
 namespace weapon_hand_runtime {
 void request_stop() noexcept;bool cleanup_ready() noexcept;bool retained() noexcept;void summary(FILE*) noexcept;
@@ -961,6 +968,7 @@ unsigned cover_body_stop_line{};
 #endif
 void request_session_stop_at(SessionStop reason,const char* source_file,unsigned source_line) {
     if(!continuous_session)return;
+    hand_goal_observer_live::request_drain();
     cover_native_rig_observer_live::request_drain();
     rig_tracking_live::stop();
     weapon_hand_runtime::request_stop();
@@ -1071,7 +1079,7 @@ struct SessionBuildScope {
     ~SessionBuildScope(){if(enabled){--session_build_depth;service_session_stop_native();}}
 };
 bool session_native_cleanup_ready() {
-    return weapon_hand_runtime::cleanup_ready()&&!cover_body_live::pending_count()&&!cover_pose_phase_live::pending_count()&&!cover_control_observer_live::pending_count()&&!cover_native_rig_observer_live::pending_count()&&submitted_lifetime.is_closed()&&!submitted_lifetime.pending()&&!submit_retained.load()&&left_view_history.retired()&&
+    return weapon_hand_runtime::cleanup_ready()&&!cover_body_live::pending_count()&&!cover_pose_phase_live::pending_count()&&!cover_control_observer_live::pending_count()&&!cover_native_rig_observer_live::pending_count()&&!hand_goal_observer_live::pending_count()&&submitted_lifetime.is_closed()&&!submitted_lifetime.pending()&&!submit_retained.load()&&left_view_history.retired()&&
         (!state_created.load()||(state_release_returned.load()==1&&state_destroyed.load()==1&&(state_delete_flags&1)));
 }
 bool session_cleanup_expired() {
@@ -1316,6 +1324,7 @@ bool read_attested_hook_entry(void* output,void const* source,size_t size);
 #include "cover_shared_input_live.inl"
 #include "rig_tracking_live.inl"
 #include "cover_native_rig_observer_live.inl"
+#include "hand_goal_observer_live.inl"
 #include "cover_full_goal_live.inl"
 uintptr_t canonical_identity(IUnknown* object) {
     IUnknown* identity{};
@@ -1866,7 +1875,7 @@ void write_session_status(bool resources_retained=true,bool entries_restored=fal
     resources_retained=resources_retained||support_startup.call("native_owned_scene_retained",[&]{return native_owned_scene_retained();});
     resources_retained=resources_retained||cover_body_live::pending_count()!=0;
     resources_retained=resources_retained||cover_pose_phase_live::pending_count()!=0;
-    resources_retained=resources_retained||cover_control_observer_live::pending_count()!=0||cover_native_rig_observer_live::pending_count()!=0;
+    resources_retained=resources_retained||cover_control_observer_live::pending_count()!=0||cover_native_rig_observer_live::pending_count()!=0||hand_goal_observer_live::pending_count()!=0;
     resources_retained=resources_retained||weapon_hand_runtime::retained();
     if(!continuous_session){support_startup.record("session_status","exit");return;}
     support_startup.call("swapchain_status",[&]{write_swapchain_output_status(recording.load()&&session_phase.load()==SessionPhase::running,"running");});
@@ -1897,7 +1906,7 @@ void write_session_status(bool resources_retained=true,bool entries_restored=fal
     support_startup.call("path_choice_layout_observer_progress",[&]{path_choice_layout_observer::progress(output);});
     support_startup.call("path_choice_close_observer_progress",[&]{path_choice_close_observer::progress(output);});
     cover_body_live::progress(output);
-    {std::lock_guard<decltype(stereo_mutex)> lock(stereo_mutex);cover_camera_live::summary(output);cover_input_live::summary(output);cover_shared_input_live::summary(output);cover_geometry_observer_live::summary(output);cover_full_goal_live::summary(output);run_camera_live::summary(output);cover_pose_phase_live::summary(output);cover_control_observer_live::summary(output);rig_tracking_live::summary(output);cover_native_rig_observer_live::summary(output);}
+    {std::lock_guard<decltype(stereo_mutex)> lock(stereo_mutex);cover_camera_live::summary(output);cover_input_live::summary(output);cover_shared_input_live::summary(output);cover_geometry_observer_live::summary(output);cover_full_goal_live::summary(output);run_camera_live::summary(output);cover_pose_phase_live::summary(output);cover_control_observer_live::summary(output);rig_tracking_live::summary(output);cover_native_rig_observer_live::summary(output);hand_goal_observer_live::summary(output);}
     weapon_hand_runtime::summary(output);
     // Diagnostic rates use this sample's QPC, not the owner's polling time.
     // Existing bound/top-level Present observations exclude DXGI_PRESENT_TEST
@@ -3993,7 +4002,7 @@ bool install(void* target,void* detour,void** original) {
     return created==MH_OK && queued==MH_OK;
 }
 bool session_hooks_restored() {
-    if(active.load()||cover_body_live::pending_count()||cover_pose_phase_live::pending_count()||cover_control_observer_live::pending_count()||cover_native_rig_observer_live::pending_count())return false;
+    if(active.load()||cover_body_live::pending_count()||cover_pose_phase_live::pending_count()||cover_control_observer_live::pending_count()||cover_native_rig_observer_live::pending_count()||hand_goal_observer_live::pending_count())return false;
     for(unsigned i=0;i<session_hook_entry_count;++i){std::array<unsigned char,32> bytes{};
         if(!safe_copy(bytes.data(),session_hook_entries[i].target,bytes.size())||bytes!=session_hook_entries[i].bytes)return false;}
     if(prime_ready.load())for(unsigned i=0;i<prime_targets.size();++i){std::array<unsigned char,32> bytes{};
@@ -4971,6 +4980,8 @@ DWORD WINAPI worker(void*) {
         fprintf(status,"rejected: prepared rig tracking requires the hand participant and continuous stereo anchors\n");fclose(status);return 2;}
     if(!cover_native_rig_observer_live::configure(ini,status)){
         fprintf(status,"rejected: native rig observer requires passive pose/control and configured Core provider\n");fclose(status);return 2;}
+    if(!hand_goal_observer_live::configure(ini,status)){
+        fprintf(status,"rejected: hand goal observer requires data-only Core event support and explicit length policy\n");fclose(status);return 2;}
     if(rig_tracking_live::enabled)stereo_gate.set_continuity_observer(rig_tracking_live::reference_observer,nullptr);
 #if !defined(GEARS_UI_CALL_BOUNDARY_OBSERVER) || !GEARS_UI_CALL_BOUNDARY_OBSERVER
     if(weapon_hand_runtime::enabled){
@@ -5468,6 +5479,7 @@ DWORD WINAPI worker(void*) {
     cover_pose_phase_live::print(status,disabled==MH_OK);
     cover_control_observer_live::print(status,disabled==MH_OK);
     cover_native_rig_observer_live::print(status,disabled==MH_OK);
+    hand_goal_observer_live::print(status,disabled==MH_OK);
     print_native_surface_probe(status);
     print_native_owned_probe(status);
     print_native_owned_scene(status);

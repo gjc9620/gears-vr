@@ -93,6 +93,9 @@ void control_impl(control_live::Row const& row){
     // tick_end; these records do not certify a later Compose outcome.
     const bool okay=frame.attempted&&rig::read_tick(frame.key,frame.latch,record.snapshot)&&current_owner(frame.owner);
     if(okay){record.flags=1;++read_ok;}else{record.snapshot={};++read_reject;reject(Failure::latch);}
+#if defined(GEARS_HAND_GOAL_OBSERVER) && GEARS_HAND_GOAL_OBSERVER
+    if(okay)hand_goal_observer_live::observe(row,record.snapshot);
+#endif
     std::lock_guard<std::mutex> lock(mutex);records[record_count++]=record;
 }
 void control(control_live::Row const& row) noexcept {Call call;try{control_impl(row);}catch(...){try{reject(Failure::exception);}catch(...){failed=true;frame.sticky=true;}}}
