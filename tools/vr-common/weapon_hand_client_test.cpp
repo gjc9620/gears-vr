@@ -1,8 +1,10 @@
 #include "weapon_hand_client.h"
 #include "weapon_hand_owner_adapter.h"
 #include <cassert>
+#include <chrono>
 #include <condition_variable>
 #include <cstdio>
+#include <cstring>
 #include <mutex>
 #include <thread>
 #ifdef NDEBUG
@@ -16,7 +18,7 @@ struct GT {GT(){local_thread=55;}~GT(){local_thread=99;}};
 // acceptance. Run the real client, support kernel and sole shared owner.
 struct Host {
     Frame frame{},live{};GripGameState game{};
-    std::int64_t now=1001000000;bool metadata_known=true,reenter{},invalidate_read{};
+    std::int64_t now=1001000000,advance_read{};bool metadata_known=true,reenter{},reenter_frame{},reenter_source{},invalidate_read{};
     unsigned reads{};HandClient* client{};Registration registration{};
     std::mutex mutex;std::condition_variable changed;bool block{},entered{},release{};
     gears_vr::LeftHandInteractionOwner owner;
@@ -46,10 +48,13 @@ struct Host {
             h.changed.wait(lock,[&]{return h.release;});}
         if(h.reenter){h.reenter=false;Proposal proposal{};
             assert(h.registration.prepare(h.registration.context,&f,&proposal)==unsigned(Reply::busy));}
+        if(h.reenter_frame){h.reenter_frame=false;Frame copy=h.frame;
+            assert(!h.client->copy_frame_on_gt(copy)&&same_frame(copy,Frame{}));}
+        if(h.reenter_source){h.reenter_source=false;assert(!h.client->source_current_on_gt(f.key));}
         if(h.invalidate_read){h.invalidate_read=false;h.invalidate();}
         if(!h.metadata_known||!same(f.world,h.live.world)||!same(f.controller,h.live.controller)||
            !same(f.pawn,h.live.pawn)||!same(f.mesh,h.live.mesh)||!same(f.weapon,h.live.weapon))return false;
-        out=h.game;return true;
+        out=h.game;if(h.advance_read){h.now+=h.advance_read;h.advance_read=0;}return true;
     }
     static std::uint32_t thread(void*) noexcept {return local_thread==55?55u:0u;}
     static std::int64_t clock(void* p) noexcept {return static_cast<Host*>(p)->now;}
@@ -84,7 +89,147 @@ struct Host {
     }
     void ready(){step();next();assert(step()==Grip::single);next(true);assert(step()==Grip::two);}
     bool snapshot(){GT gt;GripSnapshot s{};return client->snapshot_on_gt(s);}
+    bool copy(Frame& out){GT gt;return client->copy_frame_on_gt(out);}
+    bool current(FrameKey const& expected){GT gt;return client->source_current_on_gt(expected);}
 };
+unsigned frame_copy_cases(){
+    unsigned cases{};
+    for(bool unarmed:{false,true}){
+        Host h;HandClient c(h.adapter());h.connect(c);h.game.main_hand_held=h.game.mount_known=false;
+        if(unarmed){h.frame.weapon=h.live.weapon={};h.game.kind=WeaponKind::unknown;}
+        assert(h.step()==Grip::unknown&&c.armed());
+        Frame out{};const auto reads=h.reads;assert(h.copy(out));
+        assert(h.reads==reads+1&&same_frame(out,h.frame)&&!std::memcmp(&out,&h.frame,sizeof(out)));
+        assert(out.now_ns==h.frame.now_ns&&out.stereo.received_ns==h.frame.stereo.received_ns&&
+            out.controllers.received_ns==h.frame.controllers.received_ns&&out.controllers.sync_ns==h.frame.controllers.sync_ns);
+        // Data availability does not establish a held weapon or support grant.
+        assert(!h.snapshot()&&c.armed());++cases;
+    }
+    {Host h;HandClient c(h.adapter());h.connect(c);h.game.busy=h.game.animation_owns_hands=true;
+        assert(h.step()==Grip::unknown);Frame out{};assert(h.copy(out)&&same_frame(out,h.frame)&&!h.snapshot());
+        h.game.busy=h.game.animation_owns_hands=false;out=h.frame;
+        assert(!h.copy(out)&&same_frame(out,Frame{}));
+        h.next();assert(h.step()==Grip::single&&h.copy(out));++cases;}
+    {Host h;HandClient c(h.adapter());h.connect(c);Frame out=h.frame;
+        assert(!h.copy(out)&&same_frame(out,Frame{}));h.step();assert(h.copy(out));
+        h.next();Proposal proposal{};{GT gt;assert(h.prepare(proposal)==Reply::accepted);}
+        out=h.frame;const auto reads=h.reads;
+        assert(!h.copy(out)&&same_frame(out,Frame{})&&h.reads==reads);
+        {GT gt;assert(h.commit(proposal)==Reply::accepted);}
+        assert(h.copy(out)&&same_frame(out,h.frame));++cases;}
+    {Host h;HandClient c(h.adapter());h.connect(c);h.ready();Frame out=h.frame;
+        assert(!c.copy_frame_on_gt(out)&&same_frame(out,Frame{})&&c.armed());
+        assert(h.copy(out)&&same_frame(out,h.frame)&&h.snapshot());++cases;}
+    for(auto reason:{InvalidateReason::context_lost,InvalidateReason::input_lost}){
+        Host h;HandClient c(h.adapter());h.connect(c);h.ready();Frame out{};
+        h.invalidate(reason,32);assert(h.copy(out));h.invalidate(reason);out=h.frame;
+        assert(!h.copy(out)&&same_frame(out,Frame{})&&!c.armed());
+        h.next();h.step();assert(h.copy(out));++cases;
+    }
+    for(auto reason:{InvalidateReason::native_stopping,InvalidateReason::unregistering,InvalidateReason::callback_fault}){
+        Host h;HandClient c(h.adapter());h.connect(c);h.ready();h.invalidate(reason);Frame out=h.frame;
+        assert(!h.copy(out)&&same_frame(out,Frame{})&&!c.armed());
+        h.next();Proposal proposal{};{GT gt;assert(h.prepare(proposal)==Reply::unavailable);}++cases;
+    }
+    for(unsigned changed=0;changed<5;++changed){
+        Host h;HandClient c(h.adapter());h.connect(c);h.ready();
+        ObjectIdentity* identities[]={&h.live.world,&h.live.controller,&h.live.pawn,&h.live.mesh,&h.live.weapon};
+        ++identities[changed]->name_number;Frame out=h.frame;
+        assert(!h.copy(out)&&same_frame(out,Frame{})&&!c.armed());
+        h.live=h.frame;assert(!h.copy(out));++cases;
+    }
+    for(bool unknown:{false,true}){
+        Host h;HandClient c(h.adapter());h.connect(c);h.ready();
+        if(unknown)h.metadata_known=false;else ++h.game.mount_revision;
+        Frame out=h.frame;assert(!h.copy(out)&&same_frame(out,Frame{})&&!c.armed());++cases;
+    }
+    for(unsigned invalid_key=0;invalid_key<5;++invalid_key){
+        Host h;HandClient c(h.adapter());h.connect(c);h.ready();h.next();
+        switch(invalid_key){case 0:++h.frame.key.registration_cookie;break;case 1:++h.frame.key.native_started_qpc;break;
+            case 2:++h.frame.key.game_start;break;case 3:++h.frame.key.game_pid;break;case 4:++h.frame.key.thread_id;break;}
+        Proposal proposal{};{GT gt;assert(h.prepare(proposal)==Reply::unavailable);}
+        Frame out=h.frame;assert(!h.copy(out)&&same_frame(out,Frame{})&&!c.armed());++cases;
+    }
+    for(bool stale_stereo:{false,true}){
+        Host h;HandClient c(h.adapter());h.connect(c);
+        if(stale_stereo){h.frame.controllers.received_ns=h.frame.now_ns;h.frame.controllers.sync_ns=h.frame.now_ns-1;}
+        else h.frame.stereo.received_ns=h.frame.now_ns;
+        h.step();h.now=h.frame.now_ns+91000000;assert(h.now-h.frame.now_ns<=100000000);
+        Frame out=h.frame;const auto reads=h.reads;
+        assert(!h.copy(out)&&same_frame(out,Frame{})&&h.reads==reads);++cases;
+    }
+    {Host h;HandClient c(h.adapter());h.connect(c);h.ready();h.advance_read=91000000;
+        Frame out=h.frame;const auto reads=h.reads;
+        assert(!h.copy(out)&&same_frame(out,Frame{})&&h.reads==reads+1);
+        assert(!h.copy(out));++cases;}
+    {Host h;HandClient c(h.adapter());h.connect(c);h.ready();h.invalidate_read=true;Frame out=h.frame;
+        assert(!h.copy(out)&&same_frame(out,Frame{})&&!c.armed());assert(!h.copy(out));++cases;}
+    {Host h;HandClient c(h.adapter());h.connect(c);h.ready();h.reenter_frame=true;Frame out=h.frame;
+        assert(!h.copy(out)&&same_frame(out,Frame{})&&!c.armed());assert(!h.copy(out));++cases;}
+    {Host h;HandClient c(h.adapter());h.connect(c);h.ready();h.block=true;Frame out=h.frame;bool copied=true;
+        std::thread worker([&]{GT gt;copied=c.copy_frame_on_gt(out);});
+        {std::unique_lock<std::mutex> lock(h.mutex);assert(h.changed.wait_for(lock,std::chrono::seconds(2),[&]{return h.entered;}));}
+        assert(c.begin_disconnect()==Reply::draining&&c.finish_disconnect(33)==Reply::draining);
+        {std::lock_guard<std::mutex> lock(h.mutex);h.release=true;}h.changed.notify_all();worker.join();
+        assert(!copied&&same_frame(out,Frame{})&&c.finish_disconnect(33)==Reply::quiescent);
+        out=h.frame;assert(!h.copy(out)&&same_frame(out,Frame{}));++cases;}
+    return cases;
+}
+unsigned source_current_cases(){
+    unsigned cases{};
+    {Host h;HandClient c(h.adapter());h.connect(c);h.game.main_hand_held=false;
+        assert(h.step()==Grip::unknown);const auto key=h.frame.key;
+        h.game.main_hand_held=h.game.busy=h.game.animation_owns_hands=true;
+        const auto reads=h.reads;assert(h.current(key)&&h.reads==reads+1&&c.armed());
+        assert(h.current(key));Frame out=h.frame;
+        // Source validation must not rewrite the originally committed game.
+        assert(!h.copy(out)&&same_frame(out,Frame{}));++cases;}
+    {Host h;HandClient c(h.adapter());h.connect(c);h.ready();h.game.main_hand_held=false;h.game.busy=true;
+        assert(h.current(h.frame.key)&&c.armed());
+        // It must not refresh/authorize an existing frozen two-hand snapshot.
+        assert(!h.snapshot()&&!c.armed());++cases;}
+    {Host h;HandClient c(h.adapter());h.connect(c);h.ready();const auto old=h.frame.key;
+        h.next();h.step();assert(!h.current(old)&&c.armed());Frame out{};
+        assert(h.current(h.frame.key)&&h.copy(out)&&same_frame(out,h.frame));++cases;}
+    {Host h;HandClient c(h.adapter());h.connect(c);h.ready();const auto key=h.frame.key;
+        for(unsigned field=0;field<8;++field){auto wrong=key;
+            switch(field){case 0:++wrong.game_start;break;case 1:++wrong.native_started_qpc;break;case 2:++wrong.registration_cookie;break;
+                case 3:++wrong.lifecycle;break;case 4:++wrong.frame;break;case 5:++wrong.world_generation;break;
+                case 6:++wrong.game_pid;break;case 7:++wrong.thread_id;break;}
+            const auto reads=h.reads;assert(!h.current(wrong)&&c.armed()&&h.reads==reads);
+            Frame out{};assert(h.copy(out)&&same_frame(out,h.frame));}
+        assert(h.current(key));++cases;}
+    {Host h;HandClient c(h.adapter());h.connect(c);h.ready();
+        assert(!c.source_current_on_gt(h.frame.key)&&c.armed());Frame out{};
+        assert(h.current(h.frame.key)&&h.copy(out));++cases;}
+    {Host h;HandClient c(h.adapter());h.connect(c);assert(!h.current(h.frame.key));
+        h.step();h.next();Proposal proposal{};{GT gt;assert(h.prepare(proposal)==Reply::accepted);}
+        assert(!h.current(h.frame.key));{GT gt;assert(h.commit(proposal)==Reply::accepted);}
+        assert(h.current(h.frame.key));++cases;}
+    for(unsigned changed=0;changed<5;++changed){
+        Host h;HandClient c(h.adapter());h.connect(c);h.ready();
+        ObjectIdentity* identities[]={&h.live.world,&h.live.controller,&h.live.pawn,&h.live.mesh,&h.live.weapon};
+        ++identities[changed]->registry_index;
+        assert(!h.current(h.frame.key)&&!c.armed());++cases;
+    }
+    {Host h;HandClient c(h.adapter());h.connect(c);h.ready();h.game.known=false;
+        assert(!h.current(h.frame.key)&&!c.armed());++cases;}
+    {Host h;HandClient c(h.adapter());h.connect(c);h.ready();h.invalidate_read=true;
+        assert(!h.current(h.frame.key)&&!c.armed());assert(!h.current(h.frame.key));++cases;}
+    {Host h;HandClient c(h.adapter());h.connect(c);h.ready();h.reenter_source=true;
+        assert(!h.current(h.frame.key)&&!c.armed());++cases;}
+    for(bool stale_stereo:{false,true}){
+        Host h;HandClient c(h.adapter());h.connect(c);
+        if(stale_stereo){h.frame.controllers.received_ns=h.frame.now_ns;h.frame.controllers.sync_ns=h.frame.now_ns-1;}
+        else h.frame.stereo.received_ns=h.frame.now_ns;
+        h.step();h.now=h.frame.now_ns+91000000;const auto reads=h.reads;
+        assert(!h.current(h.frame.key)&&!c.armed()&&h.reads==reads);++cases;
+    }
+    {Host h;HandClient c(h.adapter());h.connect(c);h.ready();const auto original=h.frame;
+        h.advance_read=91000000;assert(!h.current(original.key));
+        assert(same_frame(h.frame,original));++cases;}
+    return cases;
+}
 }
 int main(){
     unsigned cases{};
@@ -141,5 +286,7 @@ int main(){
         h.invalidate(InvalidateReason::native_stopping);assert(c.phase()==ClientPhase::active&&!c.registration_alive(33,22));
         assert(c.begin_disconnect()==Reply::draining&&!c.registration_alive(33,22));
         assert(c.finish_disconnect(33)==Reply::quiescent);++cases;}
-    std::printf("WeaponHandClientTest passed: %u cases; local host/adapter only\n",cases);
+    const auto frame_cases=frame_copy_cases();
+    const auto source_cases=source_current_cases();
+    std::printf("WeaponHandClientTest passed: %u existing + %u Frame-copy + %u source-current cases; local host/adapter only, no equipment/write authority\n",cases,frame_cases,source_cases);
 }

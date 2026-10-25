@@ -69,6 +69,7 @@ endif()
 option(GEARS_PLAYGROUND_EQUIPMENT_SWITCH_TEST "Private test-only original slot switch from a validated inventory snapshot" OFF)
 option(GEARS_PLAYGROUND_EQUIPMENT_STOW_TEST "Private bounded original weapon stow with owned trigger hand-back" OFF)
 option(GEARS_PLAYGROUND_EQUIPMENT_INTENT_TEST "Private XR grip to original slot switch, with game-thread identity checks" OFF)
+option(GEARS_PLAYGROUND_NATIVE_EQUIPMENT_TRIAL "Native-frame-bound normal-gameplay RGrip inventory consumer" OFF)
 option(GEARS_PLAYGROUND_LANCER_RELOAD_HOLD_TEST "Private Lancer R3 original reload timer hold and explicit completion trial" OFF)
 option(GEARS_PLAYGROUND_LANCER_CHAINSAW_HOLD_TEST "Private Lancer original B hold with auto-target timer suppressed" OFF)
 option(GEARS_PLAYGROUND_LANCER_BLADE_PROBE_TEST "Private same-tick original Lancer blade-bone read-only sample" OFF)
@@ -258,6 +259,26 @@ if(GEARS_PLAYGROUND_WEAPON_CALL_SUBSCRIBER_TRIAL)
     target_compile_definitions(WeaponCallSubscriberProtocolTest PRIVATE WIN32_LEAN_AND_MEAN NOMINMAX GEARS_PLAYGROUND_WEAPON_CALL_SUBSCRIBER_TRIAL=1)
     target_compile_options(WeaponCallSubscriberProtocolTest PRIVATE /W4 /WX /EHsc /UNDEBUG)
 endif()
+if(GEARS_PLAYGROUND_NATIVE_EQUIPMENT_TRIAL)
+    if(NOT GEARS_PLAYGROUND_WEAPON_HAND_PARTICIPANT_TRIAL OR NOT GEARS_PLAYGROUND_EQUIPMENT_OBSERVE OR
+       NOT GEARS_PLAYGROUND_WEAPON_CALL_SUBSCRIBER_TRIAL)
+        message(FATAL_ERROR "Native equipment requires current hand registration, inventory queries and sole Native call owner")
+    endif()
+    if(GEARS_PLAYGROUND_EQUIPMENT_SWITCH_TEST OR GEARS_PLAYGROUND_EQUIPMENT_INTENT_TEST OR
+       GEARS_PLAYGROUND_EQUIPMENT_STOW_TEST OR GEARS_PLAYGROUND_HAND_IK_STREAM_TRIAL)
+        message(FATAL_ERROR "Native equipment cannot share an inventory model with old arena switch/stow/stream writers")
+    endif()
+    if(GEARS_PLAYGROUND_WEAPON_ACTION_GATE_TRIAL AND NOT GEARS_PLAYGROUND_WEAPON_ACTION_ENTRY_TRIAL)
+        message(FATAL_ERROR "Native equipment with ActionGate requires actual entry routing to exclude original-call NoAuth recursion")
+    endif()
+    target_compile_definitions(GearsPlayground PRIVATE GEARS_PLAYGROUND_NATIVE_EQUIPMENT_TRIAL=1)
+    target_compile_options(GearsPlayground PRIVATE /W4 /WX /EHsc)
+    add_executable(NativeEquipmentRuntimeTest weapon_equipment_runtime_test.cpp)
+    target_compile_definitions(NativeEquipmentRuntimeTest PRIVATE WIN32_LEAN_AND_MEAN NOMINMAX)
+    target_compile_options(NativeEquipmentRuntimeTest PRIVATE /W4 /WX /EHsc /UNDEBUG)
+    enable_testing()
+    add_test(NAME NativeEquipmentRuntimeTest COMMAND NativeEquipmentRuntimeTest)
+endif()
 if(GEARS_PLAYGROUND_WEAPON_ACTION_GATE_TRIAL)
     if(NOT GEARS_PLAYGROUND_WEAPON_CALL_SUBSCRIBER_TRIAL)
         message(FATAL_ERROR "ActionGate requires the same hand/call registration and sole Native wrapper")
@@ -298,6 +319,7 @@ if(GEARS_PLAYGROUND_HAND_IK_CONTROLLED_TRIAL)
     if(GEARS_PLAYGROUND_HAND_IK_TRIAL OR GEARS_PLAYGROUND_EXPERIMENTAL_VR_R2 OR
        GEARS_PLAYGROUND_EXPERIMENTAL_VR_L2 OR GEARS_PLAYGROUND_VR_R2_SIM_TEST OR
        GEARS_PLAYGROUND_EQUIPMENT_SWITCH_TEST OR GEARS_PLAYGROUND_EQUIPMENT_INTENT_TEST OR
+       GEARS_PLAYGROUND_NATIVE_EQUIPMENT_TRIAL OR
        GEARS_PLAYGROUND_WEAPON_MESH_FOLLOW_TEST OR GEARS_PLAYGROUND_LANCER_MAGAZINE_FOLLOW_TEST OR
        GEARS_PLAYGROUND_LANCER_RELOAD_HOLD_TEST OR GEARS_PLAYGROUND_LANCER_CHAINSAW_HOLD_TEST OR
        GEARS_PLAYGROUND_LANCER_SAW_GESTURE_TRIAL OR GEARS_PLAYGROUND_LANCER_SAW_XR_PULL_TEST OR

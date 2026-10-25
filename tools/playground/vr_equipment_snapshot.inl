@@ -463,7 +463,7 @@ bool changed(gears_weapon::EquipmentSnapshot const& a,
         a.animation_busy!=b.animation_busy||a.throwable_count!=b.throwable_count||
         a.throwable_count_known!=b.throwable_count_known;
 }
-#if defined(GEARS_PLAYGROUND_EQUIPMENT_SWITCH_TEST)
+#if defined(GEARS_PLAYGROUND_EQUIPMENT_SWITCH_TEST) || defined(GEARS_PLAYGROUND_NATIVE_EQUIPMENT_TRIAL)
 bool play_empty_slot_sound(gears_weapon::EquipmentSnapshot const& game,unsigned slot){
     // The original slot function skips feedback when the slot has no actor.
     // Reuse a real equipped/slot weapon's own empty-clip cue, locally only.

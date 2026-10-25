@@ -7,6 +7,9 @@ namespace meta=gripdamage_metadata;
 using U32=std::uint32_t;
 struct HoldBinding {
     abi::ObjectIdentity world{},controller{},pawn{},weapon{};std::uint64_t generation{};bool known{};
+#if defined(GEARS_PLAYGROUND_NATIVE_EQUIPMENT_TRIAL)
+    std::uint64_t native_cookie{},native_started{},world_generation{};
+#endif
 };
 HoldBinding held_binding; // GT-only; created by an actual equipment commit.
 std::uint32_t current_gt(void*) noexcept {
@@ -146,6 +149,10 @@ bool observe(void*,abi::Frame const& f,std::int64_t,abi::GripGameState& out) noe
         held_binding.known&&held_binding.generation&&held_binding.generation==vrequip::model.hold_generation()&&
         abi::same(held_binding.world,f.world)&&abi::same(held_binding.controller,f.controller)&&
         abi::same(held_binding.pawn,f.pawn)&&abi::same(held_binding.weapon,f.weapon);
+#if defined(GEARS_PLAYGROUND_NATIVE_EQUIPMENT_TRIAL)
+    game.main_hand_held=game.main_hand_held&&held_binding.native_cookie==f.key.registration_cookie&&
+        held_binding.native_started==f.key.native_started_qpc&&held_binding.world_generation==f.key.world_generation;
+#endif
     game.animation_owns_hands=vrequip::model.animation_owns_hands();
     game.busy=vrequip::model.switch_pending()||(flags[4].bits&flags[4].mask)||(flags[5].bits&flags[5].mask);
     if(f.weapon.address){bool known{};

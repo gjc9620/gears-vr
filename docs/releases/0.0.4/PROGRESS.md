@@ -2,6 +2,18 @@
 
 本文件保留武器与掩体两个分支的开发历史，便于共用 Native 手部实现合流。各条记录仍以其原始验证范围为准；私有候选、只读采样或离线检查不代表完整功能、默认构建更新或头显验收。
 
+## 2026-10-25 — 正常游戏RGrip库存消费者完成实现与离线验证
+
+新增默认关闭的`GEARS_PLAYGROUND_NATIVE_EQUIPMENT_TRIAL`，在原PlayerTick返回后处理Native既有GVE6身体槽位事件；不依赖测试场、旧switch/intent导出或预先提交的拿枪模型。每次以当前Native注册、进程出生、world generation、完整World／PC／Pawn／Mesh身份和原始XR输入时间绑定，成功建立cursor基线后才处理新抓握。重复press不重复切换或提示，最多保留一条原样future事件；同actor已发出的原版切枪在输入暂失时只继续观察，不取消、回滚或重发。
+
+不同槽位只调用一次原版`SetWeaponFromSlot`，其返回仅表示开始等待；五秒内还需观察目标完整身份、实际当前Weapon、原切换动画结束和真实挂接，才提交held。当前槽位也必须确认唯一可见Weapon.Mesh挂在当前Pawn.Mesh的`b_MF_Weapon_R_End`；HiddenGame通过严格typed Reader读取，读失败不能当作可见。请求槽位无枪／无可用弹药时沿用原empty cue。新增`copy_frame_on_gt`读取既有严格publication，以及仅复核原source的`source_current_on_gt`，后者不授予动作许可、不更新committed_game、不刷新追踪时间；它允许软件拿枪状态在本次提交后与旧publication暂时不同。私有held binding补Native incarnation／cookie／world generation，防止旧注册继续满足握枪判定；公开wire和client数据布局不改。
+
+库存原调用仍只发生在正常PG边界。新domain门在任何frame／inventory工作前排除CF／NoAuth栈和ActionGate递归；CMake拒绝与controlled IK或旧库存writer混用，并要求NativeEquipment+ActionGate配套实际Entry路由。初始化重置仅在client off且callbacks为零时执行，关闭重置在Native quiescence、停用PE hook和PG callbacks排空之后。纯诊断计数在排空后输出，区分无Frame、非本PC、域拒绝及inventory查询阶段，未新增引擎写入或后台轮询器。
+
+实际Runtime编排的严格MSVC测试为84 cases／685 checks；真实client读帧／source复核共60组通过。冻结734份项目源的完整PG候选及四个相关既有host、四种实际CallSubscriber协议模式通过，包含递归域拒绝断言。六组真实CMake组合检查与Gate+Entry完整PG构建通过；Sol只读复核关闭此前HiddenGame P1和两个配置／递归P2。最终补诊断后的完整构建及相关测试仍通过，候选`GearsPlaygroundNativeEquipment.dll` SHA256 `2617d3226b616dd392545dafcd28d11c75d4a22e9e78d6ca4cf633e228ed81a8`。证据位于忽略的`analysis/equipment-native-rgrip-20261025cw/`；此前缺snapshot include、命名／WX编译失败，以及protocol harness漏argv的失败均保留，未覆盖成通过。
+
+本记录只证明实现、离线编译与协议／逻辑检查。真实XR Grip到实际库存／挂接的实验正在另行准备，尚未执行；当前保留原版切换动画，stow明确返回unsupported并保留原握持，尚未达到用户要求的无切换动画取／收枪。持续自由双手、身体对齐、动画交还、全武器换弹／射击／伤害及头显体验仍未完成，完整目标继续active，默认冻结Native／XR和启动器均未替换。
+
 ## 2026-10-25 — 校准卡实际模拟器合成、状态变化与正常退出
 
 与掩体Native28测试协调独立窗口后，使用未改字节的c84a0e7d候选和固定9abbeae4置后模拟器运行约98.5秒。此局只有自有Python显示fixture与XR41548，没有Game／Native／PG，不调用个人测量或保存。0.4参数产生每眼1440×1280的计划，日志明确这不是游戏GPU分配证据；实际唯一UI swapchain为768×256。全部8818帧有模拟器追踪，日志game_input_injected=false；CSV source0仅是常规XR来源编码，运行时明确simulation_not_physical_tracking=true，不能当物理测量。

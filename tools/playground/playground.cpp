@@ -76,6 +76,12 @@ bool local_quiescent() noexcept;
 #include <type_traits>
 #include "../vr-common/weapon_hand_client.h"
 #endif
+#if defined(GEARS_PLAYGROUND_NATIVE_EQUIPMENT_TRIAL)
+#if !defined(GEARS_PLAYGROUND_WEAPON_HAND_PARTICIPANT_TRIAL) || !defined(GEARS_PLAYGROUND_WEAPON_CALL_SUBSCRIBER_TRIAL)
+#error Native equipment requires the current hand registration and sole Native call owner
+#endif
+#include "weapon_equipment_runtime.h"
+#endif
 #if defined(GEARS_PLAYGROUND_WEAPON_GRIP_DAMAGE_WRITE_TRIAL)
 #include <cwchar>
 #include <initializer_list>
@@ -1041,6 +1047,9 @@ namespace weaponhand {void equipment_hold_committed(uptr,gears_weapon::Equipment
 #if defined(GEARS_PLAYGROUND_WEAPON_CALL_SUBSCRIBER_TRIAL)
 #include "weapon_call_subscriber.inl"
 #endif
+#if defined(GEARS_PLAYGROUND_NATIVE_EQUIPMENT_TRIAL)
+#include "weapon_equipment_backend.inl"
+#endif
 #if defined(GEARS_PLAYGROUND_EXPERIMENTAL_VR_R2)
 #include "vr_fire_adapter.inl"
 #endif
@@ -1054,6 +1063,9 @@ namespace handstream {
 #endif
 #if defined(GEARS_PLAYGROUND_WEAPON_ACTION_GATE_TRIAL)
 #include "weapon_action_subscriber.inl"
+#endif
+#if defined(GEARS_PLAYGROUND_NATIVE_EQUIPMENT_TRIAL)
+#include "weapon_equipment_domain.inl"
 #endif
 #if defined(GEARS_PLAYGROUND_WEAPON_ACTION_BOUNDARY_TRIAL)
 #include "weapon_action_boundary_client.inl"
@@ -1102,7 +1114,17 @@ void __fastcall event_hook(uptr object,uptr function,void* params){
     handikcontrolled::TickScope controlled_ik_tick_observation(object,function);
 #endif
     if(inside||!enabled.load(std::memory_order_acquire)){original_dispatch(object,function,params);return;}
+#if defined(GEARS_PLAYGROUND_NATIVE_EQUIPMENT_TRIAL)
+    // Normal gameplay cannot depend on the private arena's cached PlayerTick
+    // name/index. This is dispatch selection only; the post-Tick adapter still
+    // requires the exact current Native controller and original input source.
+    wchar_t f[128]{};name(function,f,128);
+    const bool native_player_tick=!wcscmp(f,L"PlayerTick");
+#endif
     if(playground::automatic&&object!=playground::viewport&&object!=playground::menu_button&&
+#if defined(GEARS_PLAYGROUND_NATIVE_EQUIPMENT_TRIAL)
+        !native_player_tick&&
+#endif
         get<Name>(function+0x48).index!=playground::player_tick_index){
         original_dispatch(object,function,params);return;
     }
@@ -1111,7 +1133,11 @@ void __fastcall event_hook(uptr object,uptr function,void* params){
     if(playground::clicked(object,function,params)){inside=false;return;}
     // Tick/PlayerTick are dispatched by the main game loop in menu and gameplay.
     // Bind once, then never execute a request on another thread.
+#if !defined(GEARS_PLAYGROUND_NATIVE_EQUIPMENT_TRIAL)
     wchar_t f[128]{};name(function,f,128);
+#else
+    bool post_native_equipment_tick=false;
+#endif
 #if defined(GEARS_PLAYGROUND_WEAPON_MESH_FOLLOW_TEST)
     bool post_weapon_tick=false;
 #endif
@@ -1132,9 +1158,15 @@ void __fastcall event_hook(uptr object,uptr function,void* params){
 #endif
     if((!wcscmp(f,L"PlayerTick")||!wcscmp(f,L"Tick"))&&
         (!playground::automatic||object==playground::viewport||
+#if defined(GEARS_PLAYGROUND_NATIVE_EQUIPMENT_TRIAL)
+            native_player_tick||
+#endif
             (!wcscmp(f,L"PlayerTick")&&object==playground::pointer(playground::player,L"Actor")))){
         DWORD zero=0;game_thread.compare_exchange_strong(zero,GetCurrentThreadId());
         if(game_thread.load()==GetCurrentThreadId()){
+#if defined(GEARS_PLAYGROUND_NATIVE_EQUIPMENT_TRIAL)
+            post_native_equipment_tick=native_player_tick;
+#endif
 #if defined(GEARS_PLAYGROUND_HAND_IK_STREAM_TRIAL)
             post_stream_hand_ik_tick=playground::automatic&&!wcscmp(f,L"PlayerTick")&&
                 object==playground::pointer(playground::player,L"Actor");
@@ -1178,7 +1210,7 @@ void __fastcall event_hook(uptr object,uptr function,void* params){
             if(auto r=pending.exchange(nullptr)){
                 const auto ok=invoke(r);InterlockedExchange(&r->state,ok?2:-1);
             }
-#if defined(GEARS_PLAYGROUND_EQUIPMENT_OBSERVE)
+#if defined(GEARS_PLAYGROUND_EQUIPMENT_OBSERVE) && !defined(GEARS_PLAYGROUND_NATIVE_EQUIPMENT_TRIAL)
             if(playground::automatic&&!wcscmp(f,L"PlayerTick")&&
                object==playground::pointer(playground::player,L"Actor")){
                 vrequip::tick(object);
@@ -1210,6 +1242,11 @@ void __fastcall event_hook(uptr object,uptr function,void* params){
 #endif
 #else
     original_dispatch(object,function,params);
+#endif
+#if defined(GEARS_PLAYGROUND_NATIVE_EQUIPMENT_TRIAL)
+    if(post_native_equipment_tick&&enabled.load(std::memory_order_acquire)&&game_thread.load()==GetCurrentThreadId()){
+        inside=true;nativeequipment::tick(object);inside=false;
+    }
 #endif
 #if defined(GEARS_PLAYGROUND_HAND_ANIMATION_PROBE)
     if(post_hand_animation_tick&&enabled.load(std::memory_order_acquire)&&
@@ -1331,6 +1368,10 @@ extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundInitialize(void*){
     if(enabled.load())return 0;
 #if defined(GEARS_PLAYGROUND_WEAPON_HAND_PARTICIPANT_TRIAL)
     if(weaponhand::client.phase()!=gears_weapon_hand::ClientPhase::off||weaponhand::native_module)return 53;
+#endif
+#if defined(GEARS_PLAYGROUND_NATIVE_EQUIPMENT_TRIAL)
+    if(callbacks.load(std::memory_order_acquire))return 31;
+    nativeequipment::reset_after_drain();
 #endif
 #if defined(GEARS_PLAYGROUND_WEAPON_GRIP_DAMAGE_RESULT_PROBE)
     if(callbacks.load(std::memory_order_acquire))return 31;
@@ -2069,6 +2110,9 @@ extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundShutdown(void*){
     const auto until=GetTickCount64()+2000;
     while(callbacks.load()&&GetTickCount64()<until)Sleep(1);
     if(callbacks.load())return 2;
+#if defined(GEARS_PLAYGROUND_NATIVE_EQUIPMENT_TRIAL)
+    nativeequipment::reset_after_drain();
+#endif
 #if defined(GEARS_PLAYGROUND_HAND_ANIMATION_PROBE)
     // All callbacks are drained. Finalize the read-only observation before
     // closing its log; no game-thread cleanup or engine call is required.

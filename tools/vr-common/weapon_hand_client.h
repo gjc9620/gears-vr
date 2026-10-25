@@ -1,6 +1,7 @@
 #pragma once
 #include "weapon_support_grip.h"
 #include <atomic>
+#include <cstring>
 
 namespace gears_weapon_hand {
 // The adapter runs on the certified game thread. It must freshly validate the
@@ -199,6 +200,42 @@ public:
         Gate gate(gate_);if(!gate.held)return Reply::draining;
         clear_gt();participant_=SupportGripParticipant{};cookie_.store(0);native_.store(0);
         phase_.store(ClientPhase::off,std::memory_order_release);return Reply::quiescent;
+    }
+    // Requires the enclosing PG hook callback lifetime lease even on an early
+    // return, just like snapshot_on_gt. Copy only the current committed Native
+    // data after a fresh GT identity/game observation. No held/support lease is
+    // required: first-grab, busy and animation-owned states are observable.
+    // This does not grant equipment calls, ownership, or pose-write permission.
+    bool copy_frame_on_gt(Frame& out) noexcept {
+        out={};if(!on_gt()||!armed())return false;
+        Gate gate(gate_);if(!gate.held){disarm();return false;}
+        const auto epoch=epoch_.load(std::memory_order_acquire);
+        if(!active(epoch)||published_.load(std::memory_order_acquire)!=epoch)return false;
+        auto now=adapter_.clock_ns(adapter_.context);GripGameState current{};
+        if(!key_valid(committed_)||!fresh(committed_,now)||
+           !adapter_.observe(adapter_.context,committed_,now,current)||!same_game(current,committed_game_)){
+            clear_gt();return false;
+        }
+        now=adapter_.clock_ns(adapter_.context);
+        if(!active(epoch)||published_.load(std::memory_order_acquire)!=epoch||!fresh(committed_,now))return false;
+        std::memcpy(&out,&committed_,sizeof(out));return true;
+    }
+    // Same callback lifetime lease requirement. Revalidate the exact existing
+    // publication after a caller changes its software equipment model. Fresh
+    // observe must still certify the committed actors, but held/busy state may
+    // differ. Do not change committed_game_, refresh a grip or return data.
+    // A stale caller key cannot revoke a different healthy current publication.
+    // This source-current witness is not equipment or pose-write permission.
+    bool source_current_on_gt(FrameKey const& expected) noexcept {
+        if(!on_gt()||!armed())return false;
+        Gate gate(gate_);if(!gate.held){disarm();return false;}
+        const auto epoch=epoch_.load(std::memory_order_acquire);
+        if(!active(epoch)||published_.load(std::memory_order_acquire)!=epoch||!same(committed_.key,expected))return false;
+        auto now=adapter_.clock_ns(adapter_.context);GripGameState current{};
+        if(!key_valid(committed_)||!fresh(committed_,now)||
+           !adapter_.observe(adapter_.context,committed_,now,current)||!current.known){clear_gt();return false;}
+        now=adapter_.clock_ns(adapter_.context);
+        return active(epoch)&&published_.load(std::memory_order_acquire)==epoch&&fresh(committed_,now);
     }
     // Requires the enclosing PG hook callback lifetime lease even on an early
     // return. Freeze this at the outer actual fire invocation. Do not reread it
