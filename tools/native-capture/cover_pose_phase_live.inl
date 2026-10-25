@@ -129,9 +129,16 @@ void release_guarded(Scope const& scope){try{release(scope);}catch(...){failed=t
 extern "C" __declspec(noinline) void GearsCoverPoseInvokeProtected(pose::CallPacket* packet,unsigned kind,uintptr_t ra) noexcept(false){
     Scope scope{};bool returned{};++active;++in_flight;++calls;
     __try{begin_guarded(*packet,kind,ra,scope);
+#if defined(GEARS_COVER_CONTROL_OBSERVER) && GEARS_COVER_CONTROL_OBSERVER
+        cover_control_observer_live::compose_begin(scope);
+#endif
         if(kind<3)cover_body_live::GearsCoverRawInvoke(reinterpret_cast<cover_body_live::CallPacket*>(packet),originals[kind]);else failed=true;
         returned=true;
-    }__finally{__try{finish_guarded(scope,returned&&!AbnormalTermination());}__finally{release_guarded(scope);--in_flight;--active;}}
+    }__finally{__try{finish_guarded(scope,returned&&!AbnormalTermination());}__finally{
+#if defined(GEARS_COVER_CONTROL_OBSERVER) && GEARS_COVER_CONTROL_OBSERVER
+        cover_control_observer_live::compose_end(scope,returned&&!AbnormalTermination());
+#endif
+        release_guarded(scope);--in_flight;--active;}}
 }
 void request_drain(){stopping=true;}
 unsigned pending_count(){return in_flight.load()+unsigned(capturing.load()!=0);}

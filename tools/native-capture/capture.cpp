@@ -627,7 +627,12 @@ constexpr unsigned ngx_stereo_host_hooks=3;
 #else
 constexpr unsigned ngx_stereo_host_hooks=0;
 #endif
-std::array<SessionHookEntry,ngx_mv_compute_hooks+ngx_mv_descriptor_hooks+ngx_stereo_host_hooks+session_hook_capacity+dxgi_resize_hooks+game_material_hooks+crosshair_assignment_hooks+ui_call_boundary_hooks+cover_body_hooks+cover_pose_hooks+ui_scene_root_hooks+path_layout_hooks+path_close_hooks+death_constant_hooks+dlss_route_hooks+dlss_input_bind_hooks+ngx_route_hooks+death_pso_hooks+death_dof_hooks+vr_dof_hooks> session_hook_entries{};
+#if defined(GEARS_COVER_CONTROL_OBSERVER) && GEARS_COVER_CONTROL_OBSERVER
+constexpr unsigned cover_control_hooks=3;
+#else
+constexpr unsigned cover_control_hooks=0;
+#endif
+std::array<SessionHookEntry,ngx_mv_compute_hooks+ngx_mv_descriptor_hooks+ngx_stereo_host_hooks+session_hook_capacity+dxgi_resize_hooks+game_material_hooks+crosshair_assignment_hooks+ui_call_boundary_hooks+cover_body_hooks+cover_pose_hooks+cover_control_hooks+ui_scene_root_hooks+path_layout_hooks+path_close_hooks+death_constant_hooks+dlss_route_hooks+dlss_input_bind_hooks+ngx_route_hooks+death_pso_hooks+death_dof_hooks+vr_dof_hooks> session_hook_entries{};
 unsigned session_hook_entry_count{};
 gears_submitted::Lifetime submitted_lifetime;
 std::atomic<bool> world_quiesce_requested{};
@@ -923,6 +928,12 @@ unsigned path_position_stop_line{};
 #endif
 namespace cover_body_live {void request_drain();bool draining();bool drain_failed();unsigned pending_count();}
 namespace cover_pose_phase_live {void request_drain();unsigned pending_count();void summary(FILE*);}
+namespace cover_pose_phase_live {struct Scope;}
+namespace cover_control_observer_live {
+void compose_begin(cover_pose_phase_live::Scope const&) noexcept;
+void compose_end(cover_pose_phase_live::Scope const&,bool) noexcept;
+void request_drain();unsigned pending_count();void summary(FILE*);
+}
 namespace rig_tracking_live {void stop() noexcept;void summary(FILE*);}
 namespace weapon_hand_runtime {
 void request_stop() noexcept;bool cleanup_ready() noexcept;bool retained() noexcept;void summary(FILE*) noexcept;
@@ -943,6 +954,7 @@ void request_session_stop_at(SessionStop reason,const char* source_file,unsigned
     if(!continuous_session)return;
     rig_tracking_live::stop();
     weapon_hand_runtime::request_stop();
+    cover_control_observer_live::request_drain();
     cover_pose_phase_live::request_drain();
     // Let the animation thread release its exact owned Weight fields before
     // closing admission. A failed bounded drain remains an explicit obligation.
@@ -1049,7 +1061,7 @@ struct SessionBuildScope {
     ~SessionBuildScope(){if(enabled){--session_build_depth;service_session_stop_native();}}
 };
 bool session_native_cleanup_ready() {
-    return weapon_hand_runtime::cleanup_ready()&&!cover_body_live::pending_count()&&!cover_pose_phase_live::pending_count()&&submitted_lifetime.is_closed()&&!submitted_lifetime.pending()&&!submit_retained.load()&&left_view_history.retired()&&
+    return weapon_hand_runtime::cleanup_ready()&&!cover_body_live::pending_count()&&!cover_pose_phase_live::pending_count()&&!cover_control_observer_live::pending_count()&&submitted_lifetime.is_closed()&&!submitted_lifetime.pending()&&!submit_retained.load()&&left_view_history.retired()&&
         (!state_created.load()||(state_release_returned.load()==1&&state_destroyed.load()==1&&(state_delete_flags&1)));
 }
 bool session_cleanup_expired() {
@@ -1283,6 +1295,7 @@ bool read_attested_hook_entry(void* output,void const* source,size_t size);
 #include "cover_body_live.inl"
 #include "weapon_hand_scene_binding.inl"
 #include "cover_pose_phase_live.inl"
+#include "cover_control_observer_live.inl"
 #include "run_camera_live.inl"
 #include "cover_neutral_eye_live.inl"
 #include "cover_camera_live.inl"
@@ -1872,7 +1885,7 @@ void write_session_status(bool resources_retained=true,bool entries_restored=fal
     support_startup.call("path_choice_layout_observer_progress",[&]{path_choice_layout_observer::progress(output);});
     support_startup.call("path_choice_close_observer_progress",[&]{path_choice_close_observer::progress(output);});
     cover_body_live::progress(output);
-    {std::lock_guard<decltype(stereo_mutex)> lock(stereo_mutex);cover_camera_live::summary(output);cover_input_live::summary(output);cover_shared_input_live::summary(output);cover_geometry_observer_live::summary(output);cover_full_goal_live::summary(output);run_camera_live::summary(output);cover_pose_phase_live::summary(output);rig_tracking_live::summary(output);}
+    {std::lock_guard<decltype(stereo_mutex)> lock(stereo_mutex);cover_camera_live::summary(output);cover_input_live::summary(output);cover_shared_input_live::summary(output);cover_geometry_observer_live::summary(output);cover_full_goal_live::summary(output);run_camera_live::summary(output);cover_pose_phase_live::summary(output);cover_control_observer_live::summary(output);rig_tracking_live::summary(output);}
     weapon_hand_runtime::summary(output);
     // Diagnostic rates use this sample's QPC, not the owner's polling time.
     // Existing bound/top-level Present observations exclude DXGI_PRESENT_TEST
@@ -3939,6 +3952,7 @@ bool install(void* target,void* detour,void** original) {
           graphics_lock_observer_reserved_target(target)||
           cover_body_live::reserved_target(target)||
           cover_pose_phase_live::reserved_target(target)||
+          cover_control_observer_live::reserved_target(target)||
           (ui_reserved&&(std::find(ui_targets.begin(),ui_targets.end(),target)!=ui_targets.end()||target==ui_execute_target||target==ui_subtitle_target
 #if defined(GEARS_UI_SCENE_ROOT_OBSERVER) && GEARS_UI_SCENE_ROOT_OBSERVER
              ||target==ui_scene_root_live::target
@@ -3967,7 +3981,7 @@ bool install(void* target,void* detour,void** original) {
     return created==MH_OK && queued==MH_OK;
 }
 bool session_hooks_restored() {
-    if(active.load()||cover_body_live::pending_count()||cover_pose_phase_live::pending_count())return false;
+    if(active.load()||cover_body_live::pending_count()||cover_pose_phase_live::pending_count()||cover_control_observer_live::pending_count())return false;
     for(unsigned i=0;i<session_hook_entry_count;++i){std::array<unsigned char,32> bytes{};
         if(!safe_copy(bytes.data(),session_hook_entries[i].target,bytes.size())||bytes!=session_hook_entries[i].bytes)return false;}
     if(prime_ready.load())for(unsigned i=0;i<prime_targets.size();++i){std::array<unsigned char,32> bytes{};
@@ -3989,6 +4003,14 @@ bool cover_pose_phase_live::own_entries(){
     if(!hook_entry_manifest_ready.load(std::memory_order_acquire))return false;
     for(unsigned i=0;i<targets.size();++i){std::array<unsigned char,32> original{};
         if(!read_attested_hook_entry(original.data(),targets[i],original.size())||original!=certificate::hooks[i].prefix)return false;}
+    return true;
+}
+#endif
+#if defined(GEARS_COVER_CONTROL_OBSERVER) && GEARS_COVER_CONTROL_OBSERVER
+bool cover_control_observer_live::own_entries(){
+    if(!hook_entry_manifest_ready.load(std::memory_order_acquire))return false;
+    for(unsigned i=0;i<targets.size();++i){std::array<unsigned char,32> original{};
+        if(!read_attested_hook_entry(original.data(),targets[i],original.size())||original!=gears_cover_control_certificate::hooks[i].prefix)return false;}
     return true;
 }
 #endif
@@ -4922,6 +4944,8 @@ DWORD WINAPI worker(void*) {
     // the immutable startup INI/anchor settings are available on the worker.
     if(!cover_pose_phase_live::configure(ini,status)||!cover_pose_phase_live::reserve()){
         fprintf(status,"rejected: cover pose observer requires current full code certificates and reserved entries\n");fclose(status);return 2;}
+    if(!cover_control_observer_live::configure(ini,status)||!cover_control_observer_live::reserve()){
+        fprintf(status,"rejected: control observer requires passive pose support and matching current control code\n");fclose(status);return 2;}
     if(!cover_camera_live::configure(ini,status)){
         fprintf(status,"rejected: cover camera preview requires continuous stereo XR and enabled body prototype\n");fclose(status);return 2;}
     if(!cover_input_live::configure(ini,status)){
@@ -5216,6 +5240,14 @@ DWORD WINAPI worker(void*) {
             ok=install(cover_pose_phase_live::targets[i],pose_detours[i],&cover_pose_phase_live::originals[i]);
     }
 #endif
+#if defined(GEARS_COVER_CONTROL_OBSERVER) && GEARS_COVER_CONTROL_OBSERVER
+    if(ok&&cover_control_observer_live::enabled){
+        const std::array<void*,3> control_detours{{reinterpret_cast<void*>(cover_control_observer_live::GearsCoverControlLimbHook),
+            reinterpret_cast<void*>(cover_control_observer_live::GearsCoverControlSingleHook),reinterpret_cast<void*>(cover_control_observer_live::GearsCoverControlWeightHook)}};
+        for(unsigned i=0;i<cover_control_observer_live::targets.size()&&ok;++i)
+            ok=install(cover_control_observer_live::targets[i],control_detours[i],&cover_control_observer_live::originals[i]);
+    }
+#endif
 #if defined(GEARS_CROSSHAIR_ASSIGNMENT_OBSERVER) && GEARS_CROSSHAIR_ASSIGNMENT_OBSERVER
     if(ok&&crosshair_live::enabled)ok=install(crosshair_live::target,reinterpret_cast<void*>(crosshair_live::hook),reinterpret_cast<void**>(&crosshair_live::original));
 #endif
@@ -5419,6 +5451,7 @@ DWORD WINAPI worker(void*) {
     crosshair_live::print(status);
     cover_body_live::print(status,disabled==MH_OK);
     cover_pose_phase_live::print(status,disabled==MH_OK);
+    cover_control_observer_live::print(status,disabled==MH_OK);
     print_native_surface_probe(status);
     print_native_owned_probe(status);
     print_native_owned_scene(status);
