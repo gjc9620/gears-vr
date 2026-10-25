@@ -156,12 +156,13 @@ void compose_begin_impl(phase::Scope const& scope){
     frame.admitted=true;
 }
 void compose_begin(phase::Scope const& scope) noexcept {try{compose_begin_impl(scope);}catch(...){failed=true;stopping=true;}}
+namespace post_weight_scale {void on_compose_end(uint64_t,bool,bool,bool) noexcept;}
 void compose_end(phase::Scope const& scope,bool returned) noexcept {
     try{if(!enabled||scope.kind!=0)return;if(thread.overflow){--thread.overflow;--compose_in_flight;return;}
         if(!thread.depth||thread.frames[thread.depth-1].address!=&scope||thread.frames[thread.depth-1].scope.invocation!=scope.invocation){++protocol_errors;failed=true;stopping=true;return;}
         const auto frame=thread.frames[thread.depth-1];bool concurrent{},nested=frame.nested;
         if(frame.admitted){{std::lock_guard<std::mutex> lock(phase::mutex);if(scope.episode&&scope.episode<=phase::episode_count){concurrent=phase::episodes[scope.episode-1].concurrent;nested=nested||phase::episodes[scope.episode-1].nested;}}
-            mark_rows(scope.invocation,returned,nested,concurrent);}
+            mark_rows(scope.invocation,returned,nested,concurrent);post_weight_scale::on_compose_end(scope.invocation,returned,nested,concurrent);}
         --thread.depth;thread.frames[thread.depth]={};--compose_in_flight;
     }catch(...){failed=true;stopping=true;}
 }
@@ -192,8 +193,9 @@ void finish_call(Call& call,pose::CallPacket const& packet,bool returned){
     if(row.failure!=Failure::okay)++rejected;
     {std::lock_guard<std::mutex> lock(mutex);rows[call.index-1]=row;}
 }
+#include "cover_post_weight_scale_observer.inl"
 void begin_guarded(pose::CallPacket const& packet,unsigned kind,uintptr_t ra,uintptr_t rsp,Call& call) noexcept {try{begin_call(packet,kind,ra,rsp,call);}catch(...){failed=true;stopping=true;call.row.failure=Failure::protocol;}}
-void finish_guarded(Call& call,pose::CallPacket const& packet,bool returned) noexcept {try{finish_call(call,packet,returned);
+void finish_guarded(Call& call,pose::CallPacket const& packet,bool returned) noexcept {try{finish_call(call,packet,returned);post_weight_scale::observe(call,packet,returned);
 #if defined(GEARS_COVER_NATIVE_RIG_OBSERVER) && GEARS_COVER_NATIVE_RIG_OBSERVER
     if(call.index&&call.row.kind<2)cover_native_rig_observer_live::control(call.row);
 #endif
@@ -252,12 +254,14 @@ bool configure(wchar_t const* ini,FILE* file){wchar_t value[16]{};GetPrivateProf
     reserve_stage="configure_value";if(wcscmp(value,L"0")&&wcscmp(value,L"1"))return false;
     if(!wcscmp(value,L"1")){reserve_stage="configure_context";if(enabled||!phase::enabled||!continuous_session||!stereo_xr||!anchor_observer_enabled)return false;enabled=true;}
     reserve_stage=enabled?"configured":"disabled";
+    if(!post_weight_scale::configure(ini,file))return false;
     if(file)fprintf(file,"cover_control_enabled=%u read_only=1 rows_max=128 first_pose_episode_only=1 atomic_verified=0 writer=0\n",unsigned(enabled));return true;
 }
 void request_drain(){stopping=true;}
 unsigned pending_count(){return in_flight.load()+compose_in_flight.load();}
 void summary(FILE* file){std::lock_guard<std::mutex> lock(mutex);if(file)fprintf(file,"cover_control_reserve_stage=%s cover_control_reserve_rva=0x%llx cover_control_reserve_mh_status=%d cover_control_enabled=%u cover_control_certified=%u cover_control_reserved_mask=%u cover_control_calls=%llu cover_control_inflight=%u cover_control_compose_inflight=%u cover_control_rows=%u cover_control_episode=%u cover_control_dropped=%llu cover_control_rejected=%llu cover_control_nested=%llu cover_control_protocol=%llu cover_control_failed=%u cover_control_file_written=%u cover_control_file_error=%lu ",reserve_stage,static_cast<unsigned long long>(reserve_rva),reserve_mh_status,unsigned(enabled),unsigned(certified),reserved_mask,calls.load(),in_flight.load(),compose_in_flight.load(),row_count,selected_episode,dropped.load(),rejected.load(),nested_calls.load(),protocol_errors.load(),unsigned(failed.load()),unsigned(file_written.load()),file_error.load());}
 void print(FILE* file,bool disabled){
+    post_weight_scale::print(file,disabled);
     if(enabled&&disabled&&stopping.load()&&!pending_count()&&!file_attempted.exchange(true)){wchar_t path[MAX_PATH]{};Header header{};memcpy(header.magic,"CCTRL001",8);
         header.version=1;header.header_size=sizeof(Header);header.row_size=sizeof(Row);header.count=row_count;header.capacity=row_limit;header.session=uint64_t(session_started_qpc);header.module_base=base;header.pid=GetCurrentProcessId();header.pose_episode=selected_episode;header.read_only=1;
         if(directory[0]&&swprintf_s(path,L"%s\\control-node-phases.bin",directory)>0){HANDLE out=CreateFileW(path,GENERIC_WRITE,0,nullptr,CREATE_NEW,FILE_ATTRIBUTE_NORMAL,nullptr);
@@ -270,7 +274,7 @@ void print(FILE* file,bool disabled){
 }
 #else
 bool prepare(){return true;}bool reserve(){return true;}bool reserved_target(void*){return false;}
-bool configure(wchar_t const* ini,FILE*){wchar_t value[16]{};GetPrivateProfileStringW(L"CoverControlObserver",L"enabled",L"0",value,16,ini);return !wcscmp(value,L"0");}
+bool configure(wchar_t const* ini,FILE*){wchar_t value[16]{};GetPrivateProfileStringW(L"CoverControlObserver",L"enabled",L"0",value,16,ini);if(wcscmp(value,L"0"))return false;GetPrivateProfileStringW(L"CoverPostWeightScaleObserver",L"enabled",L"0",value,16,ini);return !wcscmp(value,L"0");}
 void compose_begin(phase::Scope const&) noexcept {}void compose_end(phase::Scope const&,bool) noexcept {}
 void request_drain(){}unsigned pending_count(){return 0;}void summary(FILE* file){if(file)fprintf(file,"cover_control_enabled=0 cover_control_compiled=0 ");}
 void print(FILE* file,bool){summary(file);}
