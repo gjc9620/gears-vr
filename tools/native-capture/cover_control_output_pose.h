@@ -22,6 +22,10 @@ struct LimbInput {
     arm::LengthMode mode{arm::LengthMode::preserve};
     arm::Pole authored{},previous{}; // World-space points, explicitly supplied.
     OriginalMatrixPolicy original_matrix_policy{OriginalMatrixPolicy::strict_unit};
+    // Explicit fixed personal calibration over the measured input bone lengths.
+    // These do not rescale matrices, world units, the head or controller poses.
+    // A caller supplies stored calibration; target distance is not calibration.
+    double upper_length_scale{1},lower_length_scale{1};
 };
 struct SingleInput {Matrix64 component{},component_to_world{};Quaternion world_orientation{};};
 enum class Status {solved,alias,invalid_matrix,invalid_target,invalid_policy,degenerate,unreachable,numerical_failure};
@@ -112,12 +116,15 @@ inline Status solve(LimbInput const& input,Workspace& work,Matrix64* output) noe
     const ik::detail::Range ranges[]={ik::detail::range(&input,sizeof(input)),ik::detail::range(&work,sizeof(work)),ik::detail::range(output,3*sizeof(Matrix64))};
     if(!ik::detail::disjoint(ranges,3))return Status::alias;
     if(input.original_matrix_policy!=OriginalMatrixPolicy::strict_unit&&input.original_matrix_policy!=OriginalMatrixPolicy::bounded_near_rigid)return Status::invalid_policy;
+    if(!std::isfinite(input.upper_length_scale)||!std::isfinite(input.lower_length_scale)||
+       input.upper_length_scale<=0||input.lower_length_scale<=0)return Status::invalid_policy;
     if(!detail::transform(input.component_to_world,work))return Status::invalid_matrix;
     Quaternion target{};if(!ik::detail::finite_vector(input.wrist_world.position)||!detail::unit(input.wrist_world.orientation,target))return Status::invalid_target;
     for(unsigned i=0;i<3;++i){work.component[i]=detail::unpack(input.component[i]);if(!detail::original_matrix(work.component[i],input.original_matrix_policy))return Status::invalid_matrix;
         work.world[i]=ik::detail::multiply(work.component[i],work.to_world);
         if(ik::world_pose(work.world[i],work.world_pose[i])!=ik::Status::okay)return Status::invalid_matrix;}
-    work.input={work.world_pose[0],work.world_pose[1],work.world_pose[2],{input.wrist_world.position,target},input.authored,input.previous,{input.mode,1,1}};
+    work.input={work.world_pose[0],work.world_pose[1],work.world_pose[2],{input.wrist_world.position,target},input.authored,input.previous,
+        {input.mode,input.upper_length_scale,input.lower_length_scale}};
     const auto result=arm::solve(work.input,work.solution);if(result!=arm::Status::solved)return detail::status(result);
     for(unsigned i=0;i<3;++i){const Pose& pose=i==0?work.solution.shoulder:i==1?work.solution.elbow:work.solution.wrist;
         if(!detail::encode(pose,work,work.candidate[i]))return Status::numerical_failure;}
