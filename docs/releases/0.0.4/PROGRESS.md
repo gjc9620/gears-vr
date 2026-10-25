@@ -2,6 +2,18 @@
 
 本文件保留武器与掩体两个分支的开发历史，便于共用 Native 手部实现合流。各条记录仍以其原始验证范围为准；私有候选、只读采样或离线检查不代表完整功能、默认构建更新或头显验收。
 
+## 2026-10-26 — EJ排除Native计算热点，先核实源龄预算再选择改动
+
+EJ由身体会话以冻结Native42／PG0ec1／BQ／CY及原动作独占执行，Native ready17、held commits0，首门仍未通过。此次HandStop后的自由双手继续更新与106完整正常恢复通过；EI同项超时仍保留，不能用EJ覆盖旧失败或据单轮证明稳定性。预算二进制11880B、24个query及1个无query源龄拒绝记录，SHA256 `a5656dacaf91b57a8d1615b8a4c818d0d01825d464ed9f3485bc8e92ceb092b7`，实际PID45644／Native incarnation2288270726650。Body严格解码与Root独立原字节／身份／阶段比对一致。
+
+17个ready样本的Compose入口→query为0.9256–1.1539ms，query为6.3464–6.8692ms；sync在Compose入口已老36.5061–39.1390ms。身体侧源码与原时标说明Scene中发布的同一快照经缓存被后续真实Mesh Tick消费，publication→Compose为28.2771–30.1130ms；读取不会更新来源时标。该区间尚未细分为CPU／GPU或精确游戏帧，不能称Native模型计算30ms或靠缓存模型修复。
+
+Root从同一binary逐条复算原40ms预算：query入口剩余-0.0922–2.4939ms，中位0.6156ms，2条已超限；再扣实际query结束→first40检查的0.1007–0.1962ms后，3条即使query耗时为0也无余量。其余14条要求query墙时减少64.0%–97.4%，各自所需倍率中位9.21；17条允许query耗时的中位0.5119ms，且未包含后续hands／final40或安全余量。此为保存样本的反事实预算上界，不是性能预测、FPS或最终提交证明。原始stage／identity与解码报告逐项相同，计算及独立回执在ignored `analysis/weapon-parser-budget-20261026/`。
+
+PG源码存在同次名称逐字重复读取及字段链线性查重，但解析优化尚无覆盖上述预算的实测证据。新增独立owned-memory计数夹具，除copy入口计数两处外与原fixture逆向逐字一致，使用未改的实际observe：普通例11025次copy／515次fresh_name／27个entry，加64个同名ignored前缀为15761／643／28；两次观察均接受。假设完美的同query长度界限命中且仍fresh读取全部字符和NUL，最多省总copy调用33.01%／40.82%，字符字节不减；未实现此优化，也未测visited-set或零售墙时，不能将调用比例变成实际耗时比例或宣称达到所需倍率。证据为ignored `analysis/weapon-parser-cost-20261026/result.json`，SHA256 `19739a31b6bd495a6cef9d1a67db0978592a0b8057df3d14d93081d46aef8f94`。
+
+先保留PG0ec1，不叠加小候选实跑。已将预算与计数交Body及统筹，用于选择保留原40／50ms、完整可变值与身份重读、独立末次Game观察的最小合法方向。消费者源码另确认parent已提交Hand Frame、retained Rig与BodyContext必须属于同一真实Scene／publication／generation／reference和原始输入，不能只替换一侧controller或把C0当Scene。真正新来源须有独立来源证明，不能延后发布旧值、重标时或在当前C0偷换cohort。Root未改Native／PG生产源码、默认启动器或启动新Game；完整武器功能和实体头显验收仍未完成。
+
 ## 2026-10-26 — EI的27次持枪query全部有效，剩余阻碍转实际C0预算阶段
 
 EI以a54d592／PG0ec1、原Native41／BQ／CY及同动作实际运行。正常退出后的PG记录29／29无截断，query1–2为真实unheld；query3–29全部context／retained／response ready、source bind／资产检查通过并正常publish。当前样本的27个持枪回调为6.2567–6.8577ms，最终sync源龄43.9903–46.9392ms；Native稳定ready27、stale／fault／context拒绝0，commits仍0、post-admission拒绝27。该组是实际查询样本，不是匹配FPS基准或无限期稳定性结论，也不将独立累计计数伪装成逐query的后续提交trace。
