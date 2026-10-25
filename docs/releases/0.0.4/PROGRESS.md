@@ -14,6 +14,10 @@ PG源码存在同次名称逐字重复读取及字段链线性查重，但解析
 
 先保留PG0ec1，不叠加小候选实跑。已将预算与计数交Body及统筹，用于选择保留原40／50ms、完整可变值与身份重读、独立末次Game观察的最小合法方向。消费者源码另确认parent已提交Hand Frame、retained Rig与BodyContext必须属于同一真实Scene／publication／generation／reference和原始输入，不能只替换一侧controller或把C0当Scene。真正新来源须有独立来源证明，不能延后发布旧值、重标时或在当前C0偷换cohort。Root未改Native／PG生产源码、默认启动器或启动新Game；完整武器功能和实体头显验收仍未完成。
 
+已有Astra／High仅审新来源的消费者协议决策，未重审旧矩阵、开IDA或改代码：现V1不能把Tick冒充Scene，但main-mount回复仅含固定grip-to-wrist校准／身份／revision，因此可考虑显式区分“同步query-correlated的原Scene校准来源”和“独立Tick姿态来源”。PG V1布局与reader可保持，前者继续原50ms完整资格检查，后者须由Native新契约独立证明真实整包tracking、base／reference及原sync／receive时标，并在最终使用复核40ms。此方案尚未实施，不能称旧Scene的40ms检查已通过。
+
+新组合契约必须在同一实际C0连接相同parent／lifecycle、当前world／controller／pawn／mesh／weapon／component／asset、hold/model generation、geometry／scale／units／basis和reference continuity，分别保留两份来源身份；不重写旧response key／binding generation，不跨query缓存ready，不二次解码Grip、取得Scene support lease、授权fire或增加writer，失效路径需明确。整体Hand／Rig迁为Tick语义的影响更大，必须显式协商新协议；若Body能将真正一致的Scene生产／消费提前，则可保留现协议。此窄决策已交共享Native唯一负责人及统筹，Root保持PG冻结，等待具体来源／join实现后接收验证。
+
 ## 2026-10-26 — EI的27次持枪query全部有效，剩余阻碍转实际C0预算阶段
 
 EI以a54d592／PG0ec1、原Native41／BQ／CY及同动作实际运行。正常退出后的PG记录29／29无截断，query1–2为真实unheld；query3–29全部context／retained／response ready、source bind／资产检查通过并正常publish。当前样本的27个持枪回调为6.2567–6.8577ms，最终sync源龄43.9903–46.9392ms；Native稳定ready27、stale／fault／context拒绝0，commits仍0、post-admission拒绝27。该组是实际查询样本，不是匹配FPS基准或无限期稳定性结论，也不将独立累计计数伪装成逐query的后续提交trace。
