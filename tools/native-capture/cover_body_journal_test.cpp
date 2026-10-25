@@ -1,0 +1,517 @@
+// Repeatable synthetic cleanup regression tests. No game process, snapshots,
+// hook installation or engine calls are used. Configuration uses an owned
+// temporary INI and this test process's events. All object/registry names
+// and addresses below belong to the private VirtualAlloc fixture.
+//
+// Compile the tested module even when the product CMake option is OFF. World
+// entry attestation and selected reflection proofs are fixture inputs; the real
+// RecursiveAdmission gate is exercised across original/post/SEH boundaries.
+// These tests verify journal/guard behavior, not retail metadata discovery.
+#define WIN32_LEAN_AND_MEAN
+#define NOMINMAX
+#ifdef GEARS_COVER_BODY_PROTOTYPE
+#undef GEARS_COVER_BODY_PROTOTYPE
+#endif
+#define GEARS_COVER_BODY_PROTOTYPE 1
+#include <windows.h>
+#include <array>
+#include <atomic>
+#include <mutex>
+#include <cstdio>
+#include <cstdint>
+#include <cstring>
+#include <cwchar>
+#include <cmath>
+#include "anchor_observer.h"
+#include "world_epoch_gate.h"
+#include "MinHook.h"
+uintptr_t base=0x140000000;
+std::atomic<uint64_t> committed_world_generation{1};
+std::atomic<bool> recording{true};
+bool continuous_session=true,anchor_observer_enabled=true;
+gears_anchor::Config anchor_config;
+std::atomic<unsigned> active{};
+unsigned scope_entries{},scope_live{};bool scope_admitted=true;
+struct OwnCppFailure {};
+bool throw_scope{};uintptr_t throwing_read{};
+gears_world::EpochGate world_gate;thread_local gears_world::ThreadState world_thread;
+struct Scope {gears_world::RecursiveAdmission admission{world_thread,world_gate};bool admitted=scope_admitted;
+ Scope(){++active;try{if(throw_scope){throw_scope=false;throw OwnCppFailure{};}++scope_entries;++scope_live;}catch(...){--active;throw;}}
+ ~Scope(){--scope_live;--active;}bool world()const{return admitted&&bool(admission);}};
+uintptr_t denied{},changing_text{};unsigned text_reads{};
+uintptr_t mask_race_read{};uint32_t mask_race_xor{};unsigned mask_races{};
+bool safe_copy(void* out,void const* from,size_t n){
+ auto a=reinterpret_cast<uintptr_t>(from);if(a==denied)return false;
+ if(a==throwing_read){throwing_read=0;throw OwnCppFailure{};}
+ if(a==changing_text&&++text_reads==2)*reinterpret_cast<wchar_t*>(changing_text)=L'X';
+ __try {memcpy(out,from,n);if(a==mask_race_read&&mask_races&&n==4){--mask_races;*reinterpret_cast<uint32_t*>(a)^=mask_race_xor;}return true;} __except(EXCEPTION_EXECUTE_HANDLER){return false;}
+}
+long long now(){return static_cast<long long>(GetTickCount64());}
+// Stub only: the test never reserves or installs a hook.
+extern "C" MH_STATUS WINAPI MH_CreateHook(void*,void*,void**){return MH_ERROR_UNSUPPORTED_FUNCTION;}
+#include "cover_body_live.inl"
+namespace cover_body_live {bool own_entries(){return true;}}
+extern "C" void GearsCoverBlendTickHook(){}
+extern "C" void GearsCoverChildPropagateHook(){}
+namespace b=cover_body_live;
+// Fixed synthetic register packet invocation only; the separate MASM test
+// verifies the actual ABI bridge. No real code address is called by this test.
+extern "C" void GearsCoverRawInvoke(b::CallPacket* packet,void* original) noexcept(false){reinterpret_cast<void(*)(b::CallPacket*)>(original)(packet);}
+unsigned checks{},failures{};
+#define C(x) do{++checks;if(!(x)){++failures;printf("FAIL %u: %s\n",__LINE__,#x);}}while(0)
+uintptr_t arena{},node{},pawn{},mesh{},fixture_world{},records{},node_text{};
+b::Call fixture_parent{};
+unsigned fixture_endpoint=4;
+void (*round_after_first)(){},(*round_after_post)(){};
+template<class T>void put(uintptr_t a,T const& v){memcpy(reinterpret_cast<void*>(a),&v,sizeof v);}
+void setup(){
+ memset(reinterpret_cast<void*>(arena),0,1024*1024);b::metadata={};auto& c=b::metadata;
+ c.objects_header=arena+0x100;c.names_header=arena+0x200;c.identity_count=5;c.object_internal_index=8;c.object_name=72;c.object_class=80;c.object_outer=64;c.name_entry_index=0;c.name_entry_text=20;c.field_super=96;
+ c.role_controller=0;c.role_local=1;c.role_camera=2;c.role_pawn=3;c.role_level=4;c.controller_pawn=0x100;c.pawn_controller=0x100;c.player_camera=0x108;c.pc_owner=0x108;c.player=0x110;c.camera_view_target=0x100;
+ gears_anchor::Registry objects{arena+0x1000,2001,2100},names{arena+0x6000,2001,2100};put(c.objects_header,objects);put(c.names_header,names);
+ for(unsigned i=0;i<9;++i){gears_anchor::Identity id{};id.address=arena+0x30000+uintptr_t(i)*0x400;id.index=id.name_index=i;id.cls=arena+0x48000+uintptr_t(i)*0x100;id.outer=i==3?arena+0x31000:0;
+  swprintf_s(id.name.data(),id.name.size(),L"Synthetic%u",i);put(id.address+8,id.index);put(id.address+72,id.name_index);put(id.address+76,id.number);put(id.address+80,id.cls);put(id.address+64,id.outer);
+  put(objects.data+uintptr_t(i)*8,id.address);auto e=arena+0x20000+uintptr_t(i)*0x200;put(names.data+uintptr_t(i)*8,e);put(e,id.name_index);put(e+20,id.name);
+  if(i<5)c.identities[i]=id;if(i==5){node=id.address;node_text=e+20;}if(i==6)mesh=id.address;if(i==7)fixture_world=id.address;
+ }
+ auto pc=c.identities[0].address,local=c.identities[1].address,camera=c.identities[2].address; pawn=c.identities[3].address;
+ put(pc+c.controller_pawn,pawn);put(pc+c.player_camera,camera);put(pc+c.player,local);put(pawn+c.pawn_controller,pc);put(camera+c.camera_view_target,pawn);put(camera+c.pc_owner,pc);
+ b::layout={};b::layout.children=0xe4;b::layout.anim=8;b::layout.weight=0x10;b::layout.total=0x14;b::layout.skel=0x60;b::layout.owner=0x128;b::layout.mesh=0x108;b::layout.world=0x110;b::layout.cover=0x118;
+ put(node,base+0x13d0080);put(node+0x60,mesh);put(node+0x128,pawn);put(pawn+0x108,mesh);put(pawn+0x110,fixture_world);put(pawn+0x118,static_cast<unsigned char>(2));
+ records=arena+0x50000;b::Children children{records,5,5};put(node+0xe4,children);
+ b::journals={};auto& j=b::journals[0];j.used=true;C(b::identity(node,j.id,true));j.pawn=pawn;j.mesh=mesh;j.world=fixture_world;j.generation=1;j.children=children;j.installed_step=2;j.target_u=.5f;
+ for(unsigned i=0;i<5;++i){float native=i==0?1.f:0.f,installed=i==0||i==4?.5f:0.f;put(records+uintptr_t(i)*0x44+0x10,installed);put(records+uintptr_t(i)*0x44+0x14,123.25f);memcpy(&j.native[i],&native,4);memcpy(&j.installed[i],&installed,4);j.owned[i]=i==0||i==4;}
+ b::stopping=false;b::failed=false;b::external_change=false;b::drain_tick=0;b::writes=2;b::restores=0;b::retired=0;b::external=0;b::row_count=0;b::step_rows={};b::recount();denied=changing_text=0;text_reads=0;committed_world_generation=1;
+ b::enabled=false;b::game_thread=0;b::tick={};b::injecting=false;b::withdrawing=false;b::timed_out=false;b::last_advance=0;b::next_step=0;b::step=0;scope_entries=scope_live=0;scope_admitted=true;active=0;
+ b::calls={};b::call_depth=0;b::current_blend=nullptr;b::transactions=0;b::in_flight=0;fixture_parent={};
+ b::child_posts=b::native_posts=b::pose_rearms=b::abandoned=b::reentries=0;b::layout_ready=false;b::initial_world=1;
+ throw_scope=false;throwing_read=0;mask_race_read=0;mask_race_xor=mask_races=0;
+ b::pose_profile=b::PoseProfile::top;b::side_mirror_trial=false;fixture_endpoint=4;
+ b::target_source=b::TargetSource::advance;b::target_clock=b::system_live_time;b::live_state={};b::live_published=b::live_rejected=b::live_expired=b::live_invalidated=0;b::live_last_frame=0;b::live_last_u=0;b::live_last_reject=b::TargetReject::none;
+ round_after_first=round_after_post=nullptr;
+}
+float weight(unsigned i){float v{};memcpy(&v,reinterpret_cast<void*>(records+uintptr_t(i)*0x44+0x10),4);return v;}
+void bind_target(){
+ b::enabled=true;b::game_thread=GetCurrentThreadId();b::step=2;b::injecting=true;b::last_advance=GetTickCount64();
+ b::tick={node,pawn,mesh,fixture_world,b::journals[0].id,b::journals[0].children,1,true};
+ fixture_parent={};fixture_parent.live=fixture_parent.selected=true;fixture_parent.self=node;b::current_blend=&fixture_parent;
+}
+void before_blend(uintptr_t self){Scope scope;std::lock_guard<std::mutex> lock(b::mutex);b::blend_before(self,scope);}
+// A synthetic FA680 invocation consumes the selected Weight exactly once.
+void child(uintptr_t self,int index,float incoming){
+ b::CallPacket packet{};packet.gpr[1]=self;packet.gpr[2]=uint32_t(index);memcpy(packet.xmm[2].data(),&incoming,4);uintptr_t token{};
+ b::begin_call(packet,1,token);
+ if(token&&b::token_call(token)->tracked_child){float w=weight(unsigned(index)),total=incoming*w;put(records+uintptr_t(index)*0x44+0x14,total);}
+ b::finish_call(token,true);b::release_call(token);
+}
+void fixture_finish(){
+ auto& c=b::calls[0];c=fixture_parent;c.live=true;c.kind=0;c.saved_tick={};c.previous_blend=nullptr;c.scope=nullptr;b::call_depth=1;b::current_blend=&c;b::transactions=1;
+ const auto token=reinterpret_cast<uintptr_t>(&c);b::finish_call(token,true);b::release_call(token);
+}
+uintptr_t npc_node(){
+ gears_anchor::Registry objects{},names{};memcpy(&objects,reinterpret_cast<void*>(b::metadata.objects_header),sizeof objects);memcpy(&names,reinterpret_cast<void*>(b::metadata.names_header),sizeof names);
+ auto object=[&](uintptr_t address,unsigned index,uintptr_t cls,uintptr_t outer,const wchar_t* label){
+  put(address+8,index);put(address+72,index);put(address+76,0u);put(address+80,cls);put(address+64,outer);put(objects.data+uintptr_t(index)*8,address);
+  auto entry=arena+0x20000+uintptr_t(index)*0x200;put(names.data+uintptr_t(index)*8,entry);put(entry,index);std::array<wchar_t,64> text{};std::copy_n(label,wcslen(label)+1,text.begin());put(entry+20,text);
+ };
+ const auto cover_class=b::journals[0].id.cls,npc=arena+0x32000,npc_pawn=arena+0x36000,npc_mesh=arena+0x36400;
+ object(cover_class,10,arena+0x49f00,0,L"WarAnim_CoverBlend");
+ object(npc_pawn,11,b::metadata.identities[b::metadata.role_pawn].cls,b::metadata.identities[b::metadata.role_level].address,L"NPC_Pawn");
+ object(npc_mesh,12,arena+0x49e00,npc_pawn,L"NPC_Mesh");object(npc,8,cover_class,npc_mesh,L"NPC_CoverBlend");
+ put(npc,base+0x13d0080);put(npc+0x128,npc_pawn);put(npc+0x60,npc_mesh);return npc;
+}
+enum class Mode {normal,npc,reentrant,reset,reset_npc,expiry,external_post,own_post,own_post_seh,seh_before,seh_after_first,seh_after_last,cpp_after_first,out_of_order};
+Mode mode{};uintptr_t other_node{};unsigned original_depth{},original_blends{},original_children{},native_test_count{};
+float native_test_weight{},total_first{},total_last{};bool native_test_transition{};
+constexpr DWORD synthetic_exception=0xe042c012;
+struct SyntheticCpp {unsigned marker;};
+HANDLE phase_entered{},phase_release{};unsigned barrier_phase{};
+bool barrier_unknown_header{},barrier_wait_ok{},barrier_timeout{},barrier_draining{},barrier_failed{},barrier_gate_blocked{};unsigned barrier_fields{},barrier_busy{};float barrier_w0{},barrier_w4{};
+b::CallPacket packet_for(uintptr_t self,int index=0,float incoming=.8f){b::CallPacket p{};p.gpr[1]=self;p.gpr[2]=uint32_t(index);memcpy(p.xmm[2].data(),&incoming,4);return p;}
+void phase(unsigned value){
+ if(barrier_phase!=value)return;
+ C(SetEvent(phase_entered)!=0);C(WaitForSingleObject(phase_release,2000)==WAIT_OBJECT_0);
+}
+DWORD WINAPI stop_at_phase(void*){
+ barrier_wait_ok=WaitForSingleObject(phase_entered,2000)==WAIT_OBJECT_0;if(!barrier_wait_ok)return 1;
+ {std::lock_guard<std::mutex> lock(b::mutex);barrier_fields=b::pending.load();barrier_busy=b::pending_count();barrier_w0=weight(0);barrier_w4=weight(fixture_endpoint);}
+ b::request_drain();
+ gears_world::EpochGate::CloseToken close{};barrier_gate_blocked=!world_gate.try_close(close);if(!barrier_gate_blocked)world_gate.open(close);
+ barrier_draining=b::draining();if(barrier_timeout){b::drain_tick=GetTickCount64()-5001;barrier_failed=b::drain_failed();}
+ if(barrier_unknown_header){auto header=b::journals[0].children;header.data+=0x1000;put(node+0xe4,header);}
+ SetEvent(phase_release);return 0;
+}
+void synthetic_child(b::CallPacket* packet){
+ ++original_children;const auto self=uintptr_t(packet->gpr[1]);if(self!=node)return;
+ const auto index=unsigned(packet->gpr[2]);float incoming{};memcpy(&incoming,packet->xmm[2].data(),4);
+ C(active.load()>0&&b::in_flight.load()>0);C(scope_live>0||!b::enabled||!scope_admitted);
+ float total=incoming*weight(index);put(records+uintptr_t(index)*0x44+0x14,total);
+ if(original_depth==1&&((mode==Mode::seh_after_first&&index==0)||(mode==Mode::seh_after_last&&index==fixture_endpoint)))RaiseException(synthetic_exception,0,0,nullptr);
+ if(original_depth==1&&mode==Mode::cpp_after_first&&index==0)throw SyntheticCpp{0xaabbccdd};
+}
+void invoke_child(uintptr_t self,int index){auto p=packet_for(self,index);b::GearsCoverInvokeProtected(&p,1);}
+void invoke_tail(uintptr_t self){
+ b::Children header{};memcpy(&header,reinterpret_cast<void*>(node+b::layout.children),sizeof header);
+ for(int i=1;i<header.count&&i<int(b::child_limit);++i){uintptr_t anim{};memcpy(&anim,reinterpret_cast<void*>(records+uintptr_t(i)*0x44+b::layout.anim),sizeof anim);if(anim)invoke_child(self,i);}
+}
+void synthetic_blend(b::CallPacket* packet){
+ ++original_blends;const auto self=uintptr_t(packet->gpr[1]);
+ C(active.load()>0&&b::in_flight.load()>0);C(scope_live>0||!b::enabled);
+ if(self!=node){invoke_child(self,0);return;}
+ ++original_depth;
+ if(mode==Mode::seh_before)RaiseException(synthetic_exception,0,0,nullptr);
+ if(original_depth>1){invoke_child(self,0);invoke_tail(self);--original_depth;return;}
+ invoke_child(self,0);phase(1);if(round_after_first)round_after_first();
+ if(mode==Mode::npc){const auto before=scope_entries;auto p=packet_for(other_node);b::GearsCoverInvokeProtected(&p,0);C(scope_entries==before+1);C(weight(0)==.5f&&weight(fixture_endpoint)==.5f&&b::tick.node==node);}
+ if(mode==Mode::reset_npc){C(SetEvent(b::reset_event)!=0);C(SetEvent(b::advance_event)!=0);auto p=packet_for(other_node);b::GearsCoverInvokeProtected(&p,0);C(b::withdrawing&&b::rounds_open());}
+ if(mode==Mode::reentrant){auto p=packet_for(node);b::GearsCoverInvokeProtected(&p,0);C(weight(0)==.5f&&weight(fixture_endpoint)==.5f&&b::tick.node==node);}
+ if(mode==Mode::reset){C(SetEvent(b::reset_event)!=0);}
+ if(mode==Mode::expiry)b::last_advance=GetTickCount64()-10001;
+ if(mode==Mode::out_of_order)invoke_child(self,0);
+ invoke_tail(self);
+ // This models the native CoverBlend post test. Weight must be native here;
+ // TotalWeight must remain the sole original child propagation's W product.
+ native_test_weight=weight(0);native_test_transition=native_test_weight<.999f;++native_test_count;
+ memcpy(&total_first,reinterpret_cast<void*>(records+0x14),4);memcpy(&total_last,reinterpret_cast<void*>(records+uintptr_t(fixture_endpoint)*0x44+0x14),4);
+ C(b::transactions.load()>0||!b::enabled||!scope_admitted||!b::current_blend||!b::current_blend->selected);C(scope_live>0||!b::enabled);phase(2);
+ if(round_after_post)round_after_post();
+ if(mode==Mode::external_post)put(records+uintptr_t(fixture_endpoint)*0x44+0x10,.33f);
+ if(mode==Mode::own_post||mode==Mode::own_post_seh)throwing_read=node+8;
+ if(mode==Mode::own_post_seh)RaiseException(synthetic_exception,0,0,nullptr);
+ --original_depth;
+}
+void prepare_round(unsigned target_step=2,b::PoseProfile profile=b::PoseProfile::top){
+ setup();b::restore_all();other_node=npc_node();put(fixture_world+64,b::metadata.identities[b::metadata.role_level].address);
+ b::pose_profile=profile;fixture_endpoint=b::endpoint_for(profile);
+ if(profile==b::PoseProfile::side){b::Children header{records,6,6};put(node+0xe4,header);b::journals[0].children=header;}
+ b::layout.special=0x119;put(pawn+0x119,static_cast<unsigned char>(0));b::layout_ready=true;b::initial_world=1;anchor_config=b::metadata;
+ put(records+8,arena+0x3c000);put(records+uintptr_t(fixture_endpoint)*0x44+8,arena+0x3c400);
+ b::enabled=true;b::game_thread=GetCurrentThreadId();b::injecting=true;b::last_advance=GetTickCount64();b::step=target_step;
+ b::writes=b::restores=b::external=b::blend_calls=b::child_calls=0;
+ b::GearsCoverBlendOriginal=reinterpret_cast<void*>(&synthetic_blend);b::GearsCoverChildOriginal=reinterpret_cast<void*>(&synthetic_child);
+ mode=Mode::normal;original_depth=original_blends=original_children=native_test_count=0;native_test_weight=total_first=total_last=0;native_test_transition=false;
+ phase_entered=phase_release=nullptr;barrier_phase=0;barrier_unknown_header=barrier_wait_ok=barrier_timeout=barrier_draining=barrier_failed=barrier_gate_blocked=false;barrier_fields=barrier_busy=0;
+}
+void invoke_round(){auto p=packet_for(node);b::GearsCoverInvokeProtected(&p,0);}
+bool catch_round(){
+ __try{invoke_round();}
+ __except(GetExceptionCode()==synthetic_exception?EXCEPTION_EXECUTE_HANDLER:EXCEPTION_CONTINUE_SEARCH){return GetExceptionCode()==synthetic_exception;}
+ return false;
+}
+void balanced(){C(!active.load()&&!scope_live&&!b::call_depth&&!b::current_blend&&!b::in_flight.load()&&!b::transactions.load()&&!world_thread.depth);
+ gears_world::EpochGate::CloseToken close{};C(world_gate.try_close(close));C(world_gate.open(close));}
+void unlocked(){const bool acquired=b::mutex.try_lock();C(acquired);if(acquired)b::mutex.unlock();}
+void forward_only(b::CallPacket*){++original_blends;C(active.load()>0&&b::in_flight.load()>0);}
+void phase_stop(unsigned target_step,unsigned at,bool unknown_header=false,bool timeout=false,b::PoseProfile profile=b::PoseProfile::top){
+ prepare_round(target_step,profile);barrier_phase=at;barrier_unknown_header=unknown_header;barrier_timeout=timeout;
+ phase_entered=CreateEventW(nullptr,FALSE,FALSE,nullptr);phase_release=CreateEventW(nullptr,FALSE,FALSE,nullptr);C(phase_entered&&phase_release);
+ auto worker=CreateThread(nullptr,0,stop_at_phase,nullptr,0,nullptr);C(worker!=nullptr);invoke_round();C(WaitForSingleObject(worker,2000)==WAIT_OBJECT_0);C(barrier_wait_ok);
+ C(CloseHandle(worker)!=0);C(CloseHandle(phase_entered)!=0);C(CloseHandle(phase_release)!=0);phase_entered=phase_release=nullptr;barrier_phase=0;
+ balanced();C(barrier_busy>0&&barrier_draining&&barrier_gate_blocked&&b::stopping.load()&&!b::pose_rearms&&original_blends==1&&original_children==2);if(timeout)C(barrier_failed);
+ C(native_test_count==1&&native_test_weight==1&&!native_test_transition);
+ if(at==1&&target_step==2)C(barrier_w0==.5f&&barrier_w4==.5f&&barrier_fields==2);
+ if(at==2)C(barrier_w0==1&&barrier_w4==0&&barrier_fields==(target_step?2u:0u));
+ if(unknown_header){
+  C(b::pending.load()==2&&b::pending_count()==2&&b::journals[0].native_visible[0]&&b::journals[0].native_visible[fixture_endpoint]);
+  b::drain_tick=GetTickCount64()-5001;C(b::drain_failed());C(weight(0)==1&&weight(fixture_endpoint)==0);
+  put(node+0xe4,b::journals[0].children);before_blend(other_node);C(!b::pending_count()&&b::restores==2&&!b::retired);
+ }else C(!b::pending_count()&&weight(0)==1&&weight(fixture_endpoint)==0);
+}
+void protected_tests(){
+ // Normal parent post sees native weights; pose evaluation receives W after
+ // return. TotalWeight is written by the synthetic native exactly once/child.
+ prepare_round();std::array<unsigned char,0x400> pawn_bytes{},node_bytes{};memcpy(pawn_bytes.data(),reinterpret_cast<void*>(pawn),pawn_bytes.size());memcpy(node_bytes.data(),reinterpret_cast<void*>(node),node_bytes.size());
+ invoke_round();balanced();C(original_blends==1&&original_children==2&&native_test_count==1);
+ C(!memcmp(pawn_bytes.data(),reinterpret_cast<void*>(pawn),pawn_bytes.size())&&!memcmp(node_bytes.data(),reinterpret_cast<void*>(node),node_bytes.size()));
+ C(native_test_weight==1&&!native_test_transition&&total_first==.4f&&total_last==.4f);
+ C(weight(0)==.5f&&weight(4)==.5f&&b::pending_count()==2&&b::writes==4&&b::restores==2&&b::native_posts==1&&b::pose_rearms==1);
+ C(!b::journals[0].round_open&&!b::journals[0].native_visible[0]);b::request_drain();before_blend(other_node);C(!b::pending_count()&&weight(0)==1&&weight(4)==0);
+ // All seven experimental steps retain their first native-post/pose samples;
+ // repeated frames must not consume a later step's fixed evidence budget.
+ prepare_round(0);
+ for(unsigned s=0;s<b::steps.size();++s){b::step=s;invoke_round();invoke_round();balanced();C(native_test_weight==1&&!native_test_transition);}
+ C(b::row_count<=126&&!b::rows_dropped&&!b::pending_count());
+ for(unsigned s=0;s<b::steps.size();++s){C(b::journals[0].logged[s][5]==2&&b::journals[0].logged[s][6]==2&&b::step_rows[s]<=18);
+  for(unsigned i=0;i<b::row_count;++i){auto const& r=b::rows[i];if(r.step!=s)continue;
+   if(r.kind==5)C(r.weight==(r.child==0?1.f:0.f));
+   if(r.kind==6)C(r.weight==(r.child==0?1.f-b::steps[s]:b::steps[s]));}}
+ // Stop between children and in the native-post window. A neutral no-op round
+ // owns no fields but still cannot report cleanup until its transaction ends.
+ phase_stop(2,1);phase_stop(2,2);phase_stop(0,2);phase_stop(2,2,true);phase_stop(2,1,false,true);phase_stop(0,2,false,true);
+ prepare_round();mode=Mode::reset;b::reset_event=CreateEventW(nullptr,FALSE,FALSE,nullptr);C(b::reset_event!=nullptr);invoke_round();balanced();
+ C(!b::pending_count()&&!b::pose_rearms&&native_test_weight==1&&total_first==.4f&&total_last==.4f&&b::withdrawing);C(CloseHandle(b::reset_event)!=0);b::reset_event=nullptr;
+ prepare_round(0);mode=Mode::reset_npc;b::reset_event=CreateEventW(nullptr,FALSE,FALSE,nullptr);b::advance_event=CreateEventW(nullptr,FALSE,FALSE,nullptr);C(b::reset_event&&b::advance_event);
+ invoke_round();balanced();C(!b::pending_count()&&!b::pose_rearms&&b::withdrawing&&native_test_weight==1);C(WaitForSingleObject(b::advance_event,0)==WAIT_OBJECT_0);
+ C(CloseHandle(b::reset_event)!=0);C(CloseHandle(b::advance_event)!=0);b::reset_event=b::advance_event=nullptr;
+ prepare_round();mode=Mode::expiry;invoke_round();balanced();C(b::timed_out.load()&&!b::pending_count()&&!b::pose_rearms&&native_test_weight==1&&total_first==.4f&&total_last==.4f);
+ // Nested NPCs preserve the target's phase. Same-journal recursion poisons
+ // only rearm authority and forwards every original once without half-restore.
+ prepare_round();mode=Mode::npc;invoke_round();balanced();C(original_blends==2&&original_children==3&&b::child_calls==2&&b::pose_rearms==1&&weight(0)==.5f);
+ b::request_drain();before_blend(other_node);C(!b::pending_count());
+ prepare_round();mode=Mode::reentrant;invoke_round();balanced();C(original_blends==2&&original_children==4&&b::reentries==1&&b::child_calls==2);
+ C(b::stopping.load()&&b::failed.load()&&!b::pose_rearms&&!b::pending_count()&&weight(0)==1&&weight(4)==0&&native_test_weight==1);
+ // External modification in native post causes a failed expected-value CAS;
+ // any already rearmed peer rolls back, and the external field survives.
+ prepare_round();mode=Mode::external_post;invoke_round();balanced();C(b::external_change.load()&&b::external==1&&!b::pending_count()&&weight(0)==1&&weight(4)==.33f&&!b::pose_rearms);
+ prepare_round();mode=Mode::out_of_order;invoke_round();balanced();C(original_children==3&&b::failed.load()&&b::stopping.load()&&!b::pose_rearms&&!b::pending_count()&&weight(0)==1&&weight(4)==0);
+ // Original SEH before injection / after native propagation continues outward;
+ // finally releases Scope/TLS exactly once and never reinstalls pose weights.
+ for(auto value:{Mode::seh_before,Mode::seh_after_first,Mode::seh_after_last}){prepare_round();mode=value;C(catch_round());balanced();C(b::failed.load()&&b::stopping.load()&&!b::pending_count()&&!b::pose_rearms&&weight(0)==1&&weight(4)==0);}
+ prepare_round();mode=Mode::cpp_after_first;bool caught{};try{invoke_round();}catch(SyntheticCpp const& e){caught=e.marker==0xaabbccdd;}
+ C(caught);balanced();C(b::failed.load()&&!b::pending_count()&&!b::pose_rearms&&weight(0)==1&&weight(4)==0);
+ // Closed admission / disabled policy still call each original once while
+ // keeping code residency, without constructing any unrelated child Scope.
+ prepare_round();gears_world::EpochGate::CloseToken closed{};C(world_gate.try_close(closed));scope_admitted=false;invoke_round();C(world_gate.open(closed));balanced();C(original_blends==1&&original_children==2&&scope_entries==1&&!b::pending_count()&&!b::writes);
+ prepare_round();invoke_round();const auto before_writes=b::writes,before_restores=b::restores;const auto before_scopes=scope_entries;
+ C(world_gate.try_close(closed));scope_admitted=false;invoke_round();C(world_gate.open(closed));balanced();C(b::pending_count()==2&&b::writes==before_writes&&b::restores==before_restores&&scope_entries==before_scopes+1&&weight(0)==.5f&&weight(4)==.5f);
+ scope_admitted=true;b::request_drain();before_blend(other_node);C(!b::pending_count()&&weight(0)==1&&weight(4)==0);
+ prepare_round();b::enabled=false;invoke_round();balanced();C(original_blends==1&&original_children==2&&!scope_entries&&!b::pending_count()&&!b::writes);
+ // Only our own ordinary C++ preparation/post failures are contained. A
+ // constructor throw unwinds its admission; a metadata throw under the mutex
+ // destroys lock_guard before the catch. None suppresses/duplicates original.
+ prepare_round();b::GearsCoverBlendOriginal=reinterpret_cast<void*>(&forward_only);throw_scope=true;invoke_round();balanced();unlocked();
+ C(b::failed.load()&&b::stopping.load()&&original_blends==1&&!b::pending_count()&&!b::writes&&!scope_entries);
+ prepare_round();b::GearsCoverBlendOriginal=reinterpret_cast<void*>(&forward_only);throwing_read=node+8;invoke_round();balanced();unlocked();
+ C(b::failed.load()&&b::stopping.load()&&original_blends==1&&!b::pending_count()&&!b::writes&&scope_entries==1);
+ prepare_round();mode=Mode::own_post;invoke_round();balanced();unlocked();C(b::failed.load()&&b::stopping.load()&&original_blends==1&&original_children==2&&!b::pose_rearms&&b::pending_count()==2&&weight(0)==1&&weight(4)==0);
+ before_blend(other_node);C(!b::pending_count()&&b::restores==2);
+ prepare_round();mode=Mode::own_post_seh;C(catch_round());balanced();unlocked();C(b::failed.load()&&original_blends==1&&original_children==2&&!b::pose_rearms&&b::pending_count()==2&&weight(0)==1&&weight(4)==0);
+ before_blend(other_node);C(!b::pending_count()&&b::restores==2);
+}
+void side_profile_tests(){
+ constexpr auto side=b::PoseProfile::side;
+ // Even with all six children nonnull, exactly W0/W5 receive the pose. The
+ // sole original propagation owns TotalWeight, including each zero peer.
+ prepare_round(2,side);
+ for(unsigned i=0;i<6;++i){put(records+uintptr_t(i)*0x44+8,arena+0x3c000+uintptr_t(i)*0x100);put(records+uintptr_t(i)*0x44+0x3c,0x12345670u+i);}
+ std::array<unsigned char,0x400> pawn_before{},node_before{};std::array<unsigned char,6*0x44> expected_records{};
+ memcpy(pawn_before.data(),reinterpret_cast<void*>(pawn),pawn_before.size());memcpy(node_before.data(),reinterpret_cast<void*>(node),node_before.size());memcpy(expected_records.data(),reinterpret_cast<void*>(records),expected_records.size());
+ for(unsigned i=0;i<6;++i){float w=i==0||i==5?.5f:0.f,total=.8f*w;memcpy(expected_records.data()+i*0x44+0x10,&w,4);memcpy(expected_records.data()+i*0x44+0x14,&total,4);}
+ invoke_round();balanced();C(original_blends==1&&original_children==6&&b::child_calls==6&&b::child_posts==6);
+ C(native_test_count==1&&native_test_weight==1&&!native_test_transition&&total_first==.4f&&total_last==.4f);
+ C(weight(0)==.5f&&weight(5)==.5f&&weight(4)==0&&b::pending_count()==2&&b::journals[0].endpoint==5&&b::native_posts==1&&b::pose_rearms==1);
+ C(!memcmp(pawn_before.data(),reinterpret_cast<void*>(pawn),pawn_before.size())&&!memcmp(node_before.data(),reinterpret_cast<void*>(node),node_before.size()));
+ C(!memcmp(expected_records.data(),reinterpret_cast<void*>(records),expected_records.size()));
+ before_blend(other_node);C(b::pending_count()==2&&weight(5)==.5f);b::request_drain();before_blend(other_node);C(!b::pending_count()&&weight(0)==1&&weight(5)==0);
+ // Every experimental step retains endpoint-5 post/pose rows. Top child 4,
+ // peer flags/mirroring and unrelated TotalWeights are never pose targets.
+ prepare_round(0,side);
+ for(unsigned s=0;s<b::steps.size();++s){b::step=s;invoke_round();balanced();C(original_blends==s+1&&original_children==2*(s+1));C(native_test_weight==1&&!native_test_transition&&weight(0)==1.f-b::steps[s]&&weight(5)==b::steps[s]&&weight(4)==0);}
+ C(b::row_count<=126&&!b::rows_dropped&&!b::pending_count());
+ for(unsigned s=0;s<b::steps.size();++s){C(b::journals[0].logged[s][5]==2&&b::journals[0].logged[s][6]==2);
+  for(unsigned i=0;i<b::row_count;++i){auto const& r=b::rows[i];if(r.step!=s||r.kind<4)continue;C(r.child==0||r.child==5);if(r.kind==5)C(r.weight==(r.child==0?1.f:0.f));if(r.kind==6)C(r.weight==(r.child==0?1.f-b::steps[s]:b::steps[s]));}}
+ // Side qualification cannot write with only five children or a missing
+ // endpoint Anim, even though top's existing child 4 is still present.
+ prepare_round(2,side);put(node+0xe4,b::Children{records,5,5});invoke_round();balanced();C(!b::writes&&!b::pending_count()&&weight(0)==1&&weight(5)==0);
+ prepare_round(2,side);put(records+5*0x44+8,uintptr_t(0));put(records+4*0x44+8,arena+0x3c400);invoke_round();balanced();C(!b::writes&&!b::pending_count()&&weight(0)==1&&weight(5)==0&&original_children==2);
+ // Native post sees the actual captured baseline, including a baseline that
+ // already favors side. We neither force a transition result nor change CA/CD.
+ prepare_round(2,side);put(records+0x10,.25f);put(records+5*0x44+0x10,.75f);invoke_round();balanced();C(native_test_weight==.25f&&native_test_transition&&weight(0)==.5f&&weight(5)==.5f);
+ b::request_drain();before_blend(other_node);C(!b::pending_count()&&weight(0)==.25f&&weight(5)==.75f);
+ // The same stop barriers retain logical pending through the original/post
+ // window. Unknown storage keeps responsibility, including after timeout.
+ phase_stop(2,1,false,false,side);phase_stop(2,2,false,false,side);phase_stop(0,2,false,false,side);phase_stop(2,2,true,true,side);
+ prepare_round(2,side);mode=Mode::reset;b::reset_event=CreateEventW(nullptr,FALSE,FALSE,nullptr);C(b::reset_event!=nullptr);invoke_round();balanced();C(!b::pending_count()&&!b::pose_rearms&&weight(0)==1&&weight(5)==0&&total_first==.4f&&total_last==.4f);C(CloseHandle(b::reset_event)!=0);b::reset_event=nullptr;
+ prepare_round(2,side);mode=Mode::expiry;invoke_round();balanced();C(b::timed_out.load()&&!b::pending_count()&&!b::pose_rearms&&weight(0)==1&&weight(5)==0);
+ prepare_round(2,side);mode=Mode::external_post;invoke_round();balanced();C(b::external_change.load()&&b::external==1&&!b::pending_count()&&weight(0)==1&&weight(5)==.33f&&!b::pose_rearms);
+ prepare_round(2,side);mode=Mode::seh_after_last;C(catch_round());balanced();C(b::failed.load()&&b::stopping.load()&&!b::pending_count()&&!b::pose_rearms&&weight(0)==1&&weight(5)==0);
+ // A still-live old instance after world change remains pending in side too.
+ prepare_round(2,side);invoke_round();committed_world_generation=2;b::request_drain();before_blend(other_node);C(b::pending_count()==2&&!b::retired&&weight(0)==.5f&&weight(5)==.5f);
+ b::drain_tick=GetTickCount64()-5001;C(b::drain_failed());committed_world_generation=1;before_blend(other_node);C(!b::pending_count()&&weight(0)==1&&weight(5)==0);
+}
+void profile_configuration_tests(){
+ setup();b::restore_all();anchor_config=b::metadata;b::reserved=true;
+ wchar_t directory[MAX_PATH]{},ini[MAX_PATH]{};C(GetTempPathW(MAX_PATH,directory)>0);C(GetTempFileNameW(directory,L"gbs",0,ini)!=0);FILE* log{};C(tmpfile_s(&log)==0&&log);
+ auto value=[&](const wchar_t* key,const wchar_t* text){C(WritePrivateProfileStringW(L"CoverBodyPrototype",key,text,ini)!=0);};
+ value(L"enabled",L"1");b::PoseProfile parsed=b::PoseProfile::side;C(b::read_profile(ini,parsed)&&parsed==b::PoseProfile::top);
+ for(const wchar_t* text:{L"left",L"right",L"SIDE",L"sideways",L"side0123456789012345",L""}){value(L"pose_profile",text);C(!b::configure(ini,log)&&!b::enabled&&!b::advance_event&&!b::reset_event);}
+ value(L"enabled",L"0");value(L"pose_profile",L"left");C(!b::configure(ini,log)&&!b::enabled);value(L"enabled",L"1");
+ value(L"pose_profile",L"side");C(b::configure(ini,log)&&b::enabled&&b::pose_profile==b::PoseProfile::side&&b::endpoint_for(b::pose_profile)==5&&b::advance_event&&b::reset_event);
+ C(!b::configure(ini,log));b::print(log,true);C(!b::advance_event&&!b::reset_event);b::enabled=false;
+ value(L"pose_profile",L"top");C(b::configure(ini,log)&&b::pose_profile==b::PoseProfile::top&&b::endpoint_for(b::pose_profile)==4);b::print(log,true);C(!b::advance_event&&!b::reset_event);b::enabled=false;
+ value(L"pose_profile",nullptr);C(b::configure(ini,log)&&b::pose_profile==b::PoseProfile::top);b::print(log,true);b::enabled=false;
+ C(fclose(log)==0);C(DeleteFileW(ini)!=0);b::reserved=false;
+}
+b::LiveTime live_time{100000,1000};b::LiveTarget staged_target;bool staged_result{};
+b::LiveTime fake_live_time(){return live_time;}
+b::LiveTarget target(float u,uint64_t frame=1){
+ b::LiveTarget value{};C(b::identity(pawn,value.pawn,true));C(b::identity(mesh,value.mesh,true));C(b::identity(fixture_world,value.world,true));
+ value.world_generation=committed_world_generation.load();value.frame=frame;value.timestamp_qpc=live_time.qpc;value.thread=GetCurrentThreadId();value.u=u;return value;
+}
+void prepare_live(float u=.333f,b::PoseProfile profile=b::PoseProfile::side){
+ prepare_round(0,profile);b::row_count=0;b::step_rows={};b::journals[0].logged={};b::target_source=b::TargetSource::live;b::target_clock=fake_live_time;live_time={100000,1000};b::injecting=false;C(b::publish_target(target(u)));
+}
+void publish_in_round(){
+ const auto before_writes=b::writes,before_restores=b::restores;const float before0=weight(0),before_end=weight(fixture_endpoint);staged_result=b::publish_target(staged_target);
+ C(staged_result&&b::journals[0].round_open&&b::journals[0].target_u==.333f);C(weight(0)==before0&&weight(fixture_endpoint)==before_end&&b::writes==before_writes&&b::restores==before_restores);
+}
+void expire_in_round(){C(b::pending_count()>0&&b::journals[0].round_open);live_time.qpc+=101;}
+void reset_in_round(){C(SetEvent(b::reset_event)!=0);}
+void context_reject_in_round(){staged_result=b::publish_target(staged_target);C(!staged_result&&b::journals[0].round_open&&weight(0)==1.f-.333f&&weight(fixture_endpoint)==.333f);}
+void stop_in_round(){b::request_drain();staged_result=b::publish_target(staged_target);C(!staged_result&&b::pending_count()>0&&weight(fixture_endpoint)==.333f);}
+DWORD WINAPI wrong_thread_publish(void*){staged_result=b::publish_target(staged_target);return 0;}
+void live_target_tests(){
+ // Arbitrary u is stored precisely, including in rows. The diagnostic bucket
+ // at .333 is 1, but neither the actual Weight nor propagated Total is .25.
+ prepare_live();std::array<unsigned char,0x400> pawn_bytes{},node_bytes{};memcpy(pawn_bytes.data(),reinterpret_cast<void*>(pawn),pawn_bytes.size());memcpy(node_bytes.data(),reinterpret_cast<void*>(node),node_bytes.size());invoke_round();balanced();
+ auto& j=b::journals[0];C(j.source==b::TargetSource::live&&j.target_u==.333f&&j.installed_step==1&&j.endpoint==5&&j.target.frame==1);
+ C(weight(0)==1.f-.333f&&weight(5)==.333f&&weight(4)==0&&total_first==.8f*(1.f-.333f)&&total_last==.8f*.333f&&native_test_weight==1);
+ C(!memcmp(pawn_bytes.data(),reinterpret_cast<void*>(pawn),pawn_bytes.size())&&!memcmp(node_bytes.data(),reinterpret_cast<void*>(node),node_bytes.size()));
+ for(unsigned i=0;i<b::row_count;++i){auto const& r=b::rows[i];C(r.source==b::TargetSource::live&&r.target_frame==1&&r.target_qpc==100000&&r.u==.333f);}
+ const auto writes_before=b::writes;auto duplicate=target(.9f);live_time.qpc+=90;duplicate.timestamp_qpc=live_time.qpc;C(!b::publish_target(duplicate)&&b::live_last_reject==b::TargetReject::order&&b::live_published==1&&b::writes==writes_before);
+ live_time.qpc+=11;before_blend(other_node);C(!b::pending_count()&&!b::live_state.valid&&b::live_expired==1&&weight(0)==1&&weight(5)==0);
+ // A new frame/time can use a precise new value. Replayed frames and stale,
+ // future, invalid-range or unknown-clock requests never refresh the deadline.
+ prepare_live();auto candidate=target(.9f,2);C(!b::publish_target(candidate)&&b::live_last_reject==b::TargetReject::order);++live_time.qpc;candidate.timestamp_qpc=live_time.qpc+1;C(!b::publish_target(candidate)&&b::live_last_reject==b::TargetReject::time);
+ candidate.timestamp_qpc=live_time.qpc-101;C(!b::publish_target(candidate));candidate.timestamp_qpc=live_time.qpc;
+ for(float value:{-.01f,1.01f,std::numeric_limits<float>::quiet_NaN()}){candidate.u=value;C(!b::publish_target(candidate)&&b::live_last_reject==b::TargetReject::range);}
+ candidate.u=.6f;auto clock_saved=live_time;live_time.frequency=0;C(!b::publish_target(candidate));live_time=clock_saved;C(b::live_published==1&&b::publish_target(candidate)&&b::live_published==2);
+ // A publication in the first-child or native-post phase stages only the
+ // following round. Both children in this round retain the captured .333.
+ for(unsigned at=0;at<2;++at){prepare_live();++live_time.qpc;staged_target=target(.813f,2);staged_result=false;if(!at)round_after_first=publish_in_round;else round_after_post=publish_in_round;
+  invoke_round();balanced();C(staged_result&&weight(5)==.333f&&b::journals[0].target_u==.333f&&total_last==.8f*.333f);round_after_first=round_after_post=nullptr;invoke_round();balanced();C(weight(5)==.813f&&weight(0)==1.f-.813f&&b::journals[0].target.frame==2&&native_test_weight==1);}
+ // Expiry after first propagation cannot half-switch W. Expiry after the
+ // final child likewise prevents pose rearm while retaining the open Scope.
+ for(unsigned at=0;at<2;++at){prepare_live();if(!at)round_after_first=expire_in_round;else round_after_post=expire_in_round;invoke_round();balanced();C(native_test_weight==1&&total_first==.8f*(1.f-.333f)&&total_last==.8f*.333f&&!b::pending_count()&&!b::pose_rearms&&weight(5)==0&&b::live_expired==1);}
+ prepare_live(0);round_after_post=expire_in_round;invoke_round();balanced();C(!b::pending_count()&&!b::pose_rearms&&!b::journals[0].round_open&&weight(0)==1&&weight(5)==0);
+ prepare_live();++live_time.qpc;staged_target=target(.7f,2);staged_target.mesh.number++;round_after_first=context_reject_in_round;invoke_round();balanced();C(!b::pose_rearms&&!b::pending_count()&&weight(0)==1&&weight(5)==0&&total_last==.8f*.333f&&native_test_weight==1);
+ prepare_live();++live_time.qpc;staged_target=target(.7f,2);round_after_first=stop_in_round;invoke_round();balanced();C(b::stopping.load()&&!b::pose_rearms&&!b::pending_count()&&weight(0)==1&&weight(5)==0);
+ // Wrong GT cannot publish; correct-thread but wrong certified context
+ // withdraws CPU authority and lets the next admitted entry safely restore.
+ prepare_live();invoke_round();++live_time.qpc;staged_target=target(.5f,2);auto worker=CreateThread(nullptr,0,wrong_thread_publish,nullptr,0,nullptr);C(worker!=nullptr);C(WaitForSingleObject(worker,2000)==WAIT_OBJECT_0);C(CloseHandle(worker)!=0);C(!staged_result&&b::live_published==1&&b::live_state.valid&&weight(5)==.333f);
+ for(unsigned which=0;which<4;++which){prepare_live();invoke_round();++live_time.qpc;candidate=target(.5f,2);if(which==0)candidate.pawn.name_index++;if(which==1)candidate.mesh.number++;if(which==2)candidate.world.number++;if(which==3)candidate.world_generation++;
+  C(!b::publish_target(candidate)&&b::live_last_reject==b::TargetReject::context&&!b::live_state.valid&&b::pending_count()==2&&weight(5)==.333f);before_blend(other_node);C(!b::pending_count()&&weight(5)==0);}
+ // Reset discards live authority but preserves both monotonic watermarks.
+ // Advance remains untouched in live mode; source modes cannot mix.
+ prepare_live();invoke_round();b::reset_event=CreateEventW(nullptr,FALSE,TRUE,nullptr);b::advance_event=CreateEventW(nullptr,FALSE,TRUE,nullptr);C(b::reset_event&&b::advance_event);before_blend(other_node);C(!b::pending_count()&&!b::live_state.valid&&weight(5)==0);C(WaitForSingleObject(b::advance_event,0)==WAIT_OBJECT_0);
+ ++live_time.qpc;C(!b::publish_target(target(.4f)));C(b::publish_target(target(.4f,2)));invoke_round();balanced();C(weight(5)==.4f&&b::journals[0].target.frame==2);C(CloseHandle(b::reset_event)!=0);C(CloseHandle(b::advance_event)!=0);b::reset_event=b::advance_event=nullptr;
+ prepare_live();b::reset_event=CreateEventW(nullptr,FALSE,FALSE,nullptr);C(b::reset_event!=nullptr);round_after_first=reset_in_round;invoke_round();balanced();C(!b::live_state.valid&&!b::pending_count()&&!b::pose_rearms&&total_last==.8f*.333f&&weight(5)==0);C(CloseHandle(b::reset_event)!=0);b::reset_event=nullptr;round_after_first=nullptr;++live_time.qpc;C(!b::publish_target(target(.6f)));C(b::publish_target(target(.6f,2)));
+ prepare_round();auto not_live=target(.5f);C(!b::publish_target(not_live)&&b::live_last_reject==b::TargetReject::not_live&&!b::live_source());
+ // No incoming frames: an exact 100ms target is allowed; 101ms is stale and
+ // a prolonged outage cannot cause new writes or resurrect the old target.
+ prepare_live();live_time.qpc+=100;invoke_round();C(weight(5)==.333f);live_time.qpc++;before_blend(other_node);C(!b::pending_count()&&!b::live_state.valid&&weight(5)==0);const auto before_outage=b::writes;live_time.qpc+=100000;invoke_round();balanced();C(b::writes==before_outage&&!b::pending_count());
+ // Full World identity recycling differs from pointer equality. A still-live
+ // node remains pending until its own identity is positively gone.
+ prepare_live();invoke_round();put(fixture_world+76,1u);before_blend(other_node);C(b::stopping.load()&&b::pending_count()==2&&!b::retired&&weight(5)==.333f);
+ gears_anchor::Registry registry{};memcpy(&registry,reinterpret_cast<void*>(b::metadata.objects_header),sizeof registry);put(registry.data+uintptr_t(b::journals[0].id.index)*8,uintptr_t(0));before_blend(other_node);C(!b::pending_count()&&b::retired==2);
+ prepare_live();invoke_round();put(mesh+76,1u);before_blend(other_node);C(b::stopping.load()&&b::pending_count()==2&&!b::retired&&weight(5)==.333f);put(mesh+76,0u);before_blend(other_node);C(!b::pending_count()&&weight(5)==0);
+ prepare_live();invoke_round();committed_world_generation=2;before_blend(other_node);C(b::pending_count()==2&&b::stopping.load()&&weight(5)==.333f);committed_world_generation=1;before_blend(other_node);C(!b::pending_count()&&weight(5)==0);
+ prepare_live();invoke_round();recording=false;before_blend(other_node);C(!b::pending_count()&&weight(5)==0);recording=true;
+ // Zero/one endpoints and top profile use the same transaction, not a seven
+ // step conversion. A no-op still keeps its original/post admission alive.
+ for(float value:{0.f,1.f}){prepare_live(value,b::PoseProfile::top);invoke_round();balanced();C(weight(4)==value&&weight(0)==1.f-value&&b::journals[0].target_u==value);b::request_drain();before_blend(other_node);C(!b::pending_count()&&weight(0)==1&&weight(4)==0);}
+ prepare_live();++live_time.qpc;candidate=target(.4f,2);throwing_read=fixture_world+8;C(!b::publish_target(candidate)&&b::failed.load()&&b::stopping.load()&&b::live_last_reject==b::TargetReject::exception);unlocked();
+}
+void live_configuration_tests(){
+ setup();b::restore_all();anchor_config=b::metadata;b::reserved=true;wchar_t directory[MAX_PATH]{},ini[MAX_PATH]{};C(GetTempPathW(MAX_PATH,directory)>0);C(GetTempFileNameW(directory,L"gbl",0,ini)!=0);FILE* log{};C(tmpfile_s(&log)==0&&log);
+ auto value=[&](const wchar_t* text){C(WritePrivateProfileStringW(L"CoverBodyPrototype",L"target_source",text,ini)!=0);};C(WritePrivateProfileStringW(L"CoverBodyPrototype",L"enabled",L"1",ini)!=0);
+ for(const wchar_t* text:{L"both",L"LIVE",L"live0123456789012345",L""}){value(text);C(!b::configure(ini,log)&&!b::enabled&&!b::advance_event&&!b::reset_event);}
+ value(L"live");C(b::configure(ini,log)&&b::live_source()&&!b::advance_event&&b::reset_event);b::print(log,true);b::enabled=false;C(!b::advance_event&&!b::reset_event);
+ value(L"advance");C(b::configure(ini,log)&&!b::live_source()&&b::advance_event&&b::reset_event);b::print(log,true);b::enabled=false;C(!b::advance_event&&!b::reset_event);C(fclose(log)==0);C(DeleteFileW(ini)!=0);b::reserved=false;
+}
+void neutral_target_tests(){
+ prepare_live(.05f);{std::lock_guard<std::mutex> lock(b::mutex);C(!b::neutral_pose_for(pawn,mesh));}invoke_round();balanced();C(b::journals[0].installed_step==0&&b::journals[0].target_u==.05f);
+ {std::lock_guard<std::mutex> lock(b::mutex);C(!b::neutral_pose_for(pawn,mesh));b::live_state.valid=false;b::injecting=false;C(!b::neutral_pose_for(pawn,mesh));}
+ b::request_drain();before_blend(other_node);{std::lock_guard<std::mutex> lock(b::mutex);C(b::neutral_pose_for(pawn,mesh));}
+ prepare_live(0);{std::lock_guard<std::mutex> lock(b::mutex);C(b::neutral_pose_for(pawn,mesh));b::transactions=1;C(!b::neutral_pose_for(pawn,mesh));b::transactions=0;b::journals[0].round_open=true;C(!b::neutral_pose_for(pawn,mesh));b::journals[0].round_open=false;}invoke_round();balanced();{std::lock_guard<std::mutex> lock(b::mutex);C(b::neutral_pose_for(pawn,mesh));}
+ setup();{std::lock_guard<std::mutex> lock(b::mutex);C(!b::neutral_pose_for(pawn,mesh));}b::restore_all();{std::lock_guard<std::mutex> lock(b::mutex);C(b::neutral_pose_for(pawn,mesh));}
+}
+#include "cover_body_side_mirror_test.inl"
+int main(){
+ arena=reinterpret_cast<uintptr_t>(VirtualAlloc(nullptr,1024*1024,MEM_COMMIT|MEM_RESERVE,PAGE_READWRITE));if(!arena)return 99;
+ // Owned fields restore; native TotalWeight stays untouched.
+ setup();C(b::pending_count()==2);b::restore_all();C(!b::pending_count()&&b::restores==2);C(weight(0)==1&&weight(4)==0);float total{};memcpy(&total,reinterpret_cast<void*>(records+0x14),4);C(total==123.25f);
+ // An external Weight change releases that field without overwriting it.
+ setup();put(records+0x10,.33f);b::restore_all();C(!b::pending_count()&&b::restores==1&&b::external==1&&b::external_change.load());C(weight(0)==.33f&&weight(4)==0);
+ // Positive identity change may retire; an unknown read must retain pending.
+ setup();put(node+76,1u);b::restore_all();C(!b::pending_count()&&b::restores==0&&b::retired==2);C(weight(0)==.5f&&weight(4)==.5f);
+ setup();denied=node+8;b::restore_all();C(b::pending_count()==2&&b::restores==0&&b::stopping.load());denied=0;b::restore_all();C(!b::pending_count()&&b::restores==2);
+ // Still-live old objects keep their obligation when context/storage changes.
+ setup();put(node+0x60,mesh+0x400);b::restore_all();C(b::pending_count()==2&&b::retired==0&&b::restores==0&&b::stopping.load());C(weight(0)==.5f&&weight(4)==.5f);put(node+0x60,mesh);b::restore_all();C(!b::pending_count()&&b::restores==2);
+ setup();b::Children replacement{records+0x1000,5,5};put(node+0xe4,replacement);b::restore_all();C(b::pending_count()==2&&b::retired==0&&b::restores==0&&b::stopping.load());C(weight(0)==.5f&&weight(4)==.5f);put(node+0xe4,b::journals[0].children);b::restore_all();C(!b::pending_count()&&b::restores==2);
+ // Even after a world change, only later proven slot loss permits retirement.
+ setup();committed_world_generation=2;b::restore_all();C(b::pending_count()==2&&b::retired==0&&b::restores==0&&b::stopping.load());C(weight(0)==.5f&&weight(4)==.5f);
+ b::enabled=true;b::request_drain();b::drain_tick=GetTickCount64()-5001;C(b::drain_failed()&&b::pending_count()==2);
+ gears_anchor::Registry registry{};memcpy(&registry,reinterpret_cast<void*>(b::metadata.objects_header),sizeof registry);put(registry.data+uintptr_t(b::journals[0].id.index)*8,uintptr_t(0));b::restore_all();C(!b::pending_count()&&b::retired==2&&b::restores==0);
+ setup();put(b::metadata.identities[b::metadata.role_controller].address+b::metadata.controller_pawn,arena+0x32000);b::restore_all();C(b::pending_count()==2&&b::retired==0&&b::restores==0&&b::stopping.load());C(weight(0)==.5f&&weight(4)==.5f);
+ gears_anchor::Identity live_old{};C(b::identity(node,live_old)&&b::same(live_old,b::journals[0].id));put(b::metadata.identities[b::metadata.role_controller].address+b::metadata.controller_pawn,pawn);b::restore_all();C(!b::pending_count()&&b::restores==2);
+ setup();put(node+0x128,pawn+0x400);b::restore_all();C(b::pending_count()==2&&b::retired==0&&b::restores==0&&b::stopping.load());C(weight(0)==.5f&&weight(4)==.5f);
+ setup();put(pawn+0x110,fixture_world+0x400);b::restore_all();C(b::pending_count()==2&&b::retired==0&&b::restores==0&&b::stopping.load());C(weight(0)==.5f&&weight(4)==.5f);
+ setup();put(node,base+0x13d0088);b::restore_all();C(b::pending_count()==2&&b::retired==0&&b::restores==0&&b::stopping.load());C(weight(0)==.5f&&weight(4)==.5f);
+ // No ownership grants no restore authority; CAS preserves mismatching values.
+ setup();auto& j=b::journals[0];j.owned.fill(false);b::recount();b::restore_all();C(!b::pending_count()&&b::restores==0&&weight(0)==.5f);
+ setup();uint32_t expected{},observed{};float half=.5f,quarter=.25f;memcpy(&expected,&half,4);uint32_t desired{};memcpy(&desired,&quarter,4);C(b::exchange(records+0x10,expected,desired,observed)&&observed==expected&&weight(0)==quarter);C(b::exchange(records+0x10,expected,0,observed)&&observed==desired&&weight(0)==quarter);C(!b::exchange(records+0x11,expected,0,observed));
+ // FName padding is irrelevant; changed text and overlong selected names reject.
+ setup();put(node_text+sizeof(L"Synthetic5"),uint64_t(0xffffffffffffffff));gears_anchor::Identity id{};C(b::identity(node,id,true));changing_text=node_text;text_reads=0;C(!b::identity(node,id,true));changing_text=0;
+ setup();for(unsigned i=0;i<64;++i)put(node_text+uintptr_t(i)*2,wchar_t(L'A'));put(node_text+128,wchar_t(0));C(!b::identity(node,id));C(b::identity(node,id,false,true));
+ // Drain is bounded and never clears pending by timing out.
+ setup();b::enabled=true;b::request_drain();C(b::stopping.load()&&b::draining());b::drain_tick=GetTickCount64()-5001;C(b::drain_failed()&&b::pending_count()==2);b::restore_all();C(!b::drain_failed()&&!b::pending_count());
+
+ // Exercise real child_before guard/write logic with synthetic selected layout.
+ setup();b::restore_all();b::enabled=true;b::game_thread=GetCurrentThreadId();b::layout.special=0x119;put(pawn+0x119,static_cast<unsigned char>(0));
+ b::tick={node,pawn,mesh,fixture_world,b::journals[0].id,b::journals[0].children,1,false};b::injecting=true;b::last_advance=GetTickCount64();b::step=2;fixture_parent.selected=true;fixture_parent.self=node;b::current_blend=&fixture_parent;
+ put(records+8,arena+0x3c000);put(records+uintptr_t(4)*0x44+8,arena+0x3c400);b::writes=0;
+ child(node,0,0.f);C(!b::pending_count()&&weight(0)==1&&weight(4)==0&&b::writes==0);
+ put(pawn+0x119,static_cast<unsigned char>(12));child(node,0,1.f);C(!b::pending_count()&&b::writes==0);put(pawn+0x119,static_cast<unsigned char>(0));
+ b::layout.sources[0].address=arena+0x80000;b::layout.sources[0].size=4;uint32_t source_value=100;put(arena+0x80000,source_value);memcpy(b::layout.sources[0].bytes.data(),&source_value,4);b::layout.source_count=1;put(arena+0x80000,uint32_t(101));
+ child(node,0,1.f);C(!b::pending_count()&&b::writes==0);b::layout.source_count=0;
+ child(node,0,1.f);C(b::pending_count()==2&&weight(0)==.5f&&weight(4)==.5f&&b::writes==2);
+ put(records+0x14,.5f);child(node,4,1.f);put(records+uintptr_t(4)*0x44+0x14,.5f);C(b::pending_count()==2&&weight(0)==1&&weight(4)==0);fixture_finish();before_blend(node);C(!b::pending_count()&&weight(0)==1&&weight(4)==0);
+ setup();b::restore_all();b::enabled=true;b::game_thread=GetCurrentThreadId();b::layout.special=0x119;put(pawn+0x119,static_cast<unsigned char>(0));
+ // Make only the second changed field unwritable: the first CAS must roll back.
+ auto split_records=arena+0x51fe8;memcpy(reinterpret_cast<void*>(split_records),reinterpret_cast<void*>(records),5*0x44);records=split_records;b::Children split_header{records,5,5};put(node+0xe4,split_header);b::journals[0].children=split_header;
+ put(records+8,arena+0x3c000);put(records+uintptr_t(4)*0x44+8,arena+0x3c400);b::tick={node,pawn,mesh,fixture_world,b::journals[0].id,split_header,1,false};b::injecting=true;b::last_advance=GetTickCount64();b::step=2;fixture_parent.selected=true;fixture_parent.self=node;b::current_blend=&fixture_parent;b::writes=0;b::restores=0;
+ DWORD old_protection{};C(VirtualProtect(reinterpret_cast<void*>(arena+0x52000),4096,PAGE_READONLY,&old_protection)!=0);
+ child(node,0,1.f);C(b::writes==1&&b::restores==1&&!b::pending_count()&&b::failed.load()&&weight(0)==1&&weight(4)==0);
+ DWORD ignored_protection{};C(VirtualProtect(reinterpret_cast<void*>(arena+0x52000),4096,old_protection,&ignored_protection)!=0);
+ // Normal NPC entries leave another node's installed Weight and TLS context
+ // intact until the target's own next entry, independent of NPC qualification.
+ setup();bind_target();auto npc=npc_node();auto saved_tick=b::tick;
+ before_blend(npc);C(b::pending_count()==2&&b::restores==0&&weight(0)==.5f&&weight(4)==.5f);
+ C(b::tick.node==saved_tick.node&&b::tick.pawn==saved_tick.pawn&&b::tick.generation==saved_tick.generation&&b::tick.injected);
+ before_blend(node);C(!b::pending_count()&&b::restores==2&&weight(0)==1&&weight(4)==0);C(!b::tick.node);
+
+ // Both the C entry and direct helper must reject unrelated child receivers
+ // before Scope, mutex, and selected-call counting.
+ setup();bind_target();npc=npc_node();auto old_calls=b::child_calls;auto old_scopes=scope_entries;
+ child(npc,0,1.f);child(npc,0,1.f);
+ C(b::child_calls==old_calls&&scope_entries==old_scopes);C(b::pending_count()==2&&b::restores==0&&b::tick.node==node);
+ b::enabled=false;child(node,0,1.f);child(node,0,1.f);C(b::child_calls==old_calls&&scope_entries==old_scopes);
+ b::enabled=true;child(node,0,0.f);C(b::child_calls==old_calls+1&&scope_entries==old_scopes+1);C(b::pending_count()==2&&weight(0)==.5f);
+
+ // Reset is an explicit all-node withdrawal, but only an already-bound thread
+ // may consume it. The queued event survives unknown/wrong-thread entries.
+ setup();bind_target();npc=npc_node();b::reset_event=CreateEventW(nullptr,FALSE,TRUE,nullptr);C(b::reset_event!=nullptr);b::game_thread=0;
+ before_blend(npc);C(b::pending_count()==2&&b::restores==0&&!b::game_thread.load()&&b::tick.node==node);
+ b::game_thread=GetCurrentThreadId()+1;before_blend(npc);C(b::pending_count()==2&&b::restores==0&&b::tick.node==node);
+ b::game_thread=GetCurrentThreadId();before_blend(npc);C(!b::pending_count()&&b::restores==2&&!b::injecting&&!b::withdrawing&&!b::tick.node);
+ C(CloseHandle(b::reset_event)!=0);b::reset_event=nullptr;
+
+ // Expiry and stop/drain also service peers on the bound thread. Neither path
+ // treats a still-live old instance in a changed world as restored/retired.
+ setup();bind_target();npc=npc_node();b::last_advance=GetTickCount64()-10001;before_blend(npc);
+ C(!b::pending_count()&&b::restores==2&&b::timed_out.load()&&!b::injecting&&!b::withdrawing);
+ setup();bind_target();npc=npc_node();b::request_drain();before_blend(npc);C(!b::pending_count()&&b::restores==2&&b::stopping.load());
+ setup();bind_target();npc=npc_node();committed_world_generation=2;b::request_drain();before_blend(npc);
+ C(b::pending_count()==2&&b::restores==0&&b::retired==0&&weight(0)==.5f);b::drain_tick=GetTickCount64()-5001;C(b::drain_failed()&&b::pending_count()==2);
+ memcpy(&registry,reinterpret_cast<void*>(b::metadata.objects_header),sizeof registry);put(registry.data+uintptr_t(b::journals[0].id.index)*8,uintptr_t(0));before_blend(npc);
+ C(!b::pending_count()&&b::retired==2&&b::restores==0);
+
+ // A withdrawal blocked by unknown storage keeps the journal and a queued
+ // Advance. It cannot inject a new step over an unreleased old field.
+ setup();bind_target();npc=npc_node();replacement={records+0x1000,5,5};put(node+0xe4,replacement);
+ b::reset_event=CreateEventW(nullptr,FALSE,TRUE,nullptr);b::advance_event=CreateEventW(nullptr,FALSE,TRUE,nullptr);C(b::reset_event&&b::advance_event);
+ before_blend(npc);C(b::pending_count()==2&&b::restores==0&&b::retired==0&&b::withdrawing&&b::stopping.load()&&!b::injecting);
+ C(WaitForSingleObject(b::advance_event,0)==WAIT_OBJECT_0);C(CloseHandle(b::reset_event)!=0);C(CloseHandle(b::advance_event)!=0);b::reset_event=b::advance_event=nullptr;
+
+ protected_tests();
+ const auto legacy_checks=checks;side_profile_tests();profile_configuration_tests();
+ const auto added_checks=checks-legacy_checks;
+ const auto before_live=checks;live_target_tests();live_configuration_tests();neutral_target_tests();const auto live_checks=checks-before_live;
+ const auto before_mirror=checks;side_mirror_trial_tests();const auto mirror_checks=checks-before_mirror;
+ C(VirtualFree(reinterpret_cast<void*>(arena),0,MEM_RELEASE)!=0);
+ printf("cover_body_live_journal: legacy_checks=%u side_and_config_checks=%u\n",legacy_checks+1,added_checks);
+ printf("cover_body_live_journal: live_target_checks=%u\n",live_checks);
+ printf("cover_body_live_journal: side_mirror_trial_checks=%u\n",mirror_checks);
+ printf("cover_body_live_journal: %u checks, %u failures\n",checks,failures);return failures?1:0;
+}

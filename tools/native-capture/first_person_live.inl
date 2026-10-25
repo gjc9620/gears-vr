@@ -1,7 +1,7 @@
 // Included after crosshair_live and before stereo pair construction. All state
 // is owned by stereo_mutex; the requested mode persists across world recovery.
 namespace first_person_live {
-bool enabled{};gears_first_person::Toggle toggle;
+bool enabled{},preview_current{};gears_first_person::Toggle toggle;
 HANDLE event{};HMODULE xinput_module{};
 struct Pad {unsigned packet{};unsigned short buttons{};unsigned char lt{},rt{};short lx{},ly{},rx{},ry{};};
 using GetPad=DWORD(WINAPI*)(DWORD,Pad*);GetPad get_pad{};
@@ -34,6 +34,7 @@ bool weapon_state(gears_anchor::Receipt const* anchor,gears_first_person::Weapon
 #endif
 }
 bool prepare(gears_anchor::Receipt const* anchor,gears_vr::StereoMatrix& view){
+    preview_current=false;
     if(!enabled)return false;
     const bool context=ordinary(anchor);
     const bool focused=foreground();
@@ -56,7 +57,7 @@ bool prepare(gears_anchor::Receipt const* anchor,gears_vr::StereoMatrix& view){
     gears_first_person::Result result{};
     if(!gears_first_person::prepare(view,{a.location[0],a.location[1],double(a.location[2])+a.eye_height},stereo_units_per_metre,result)){
         ++rejected;return false;}
-    view=result.view;++applied;if(weapon.sniper)++sniper_applied;return true;
+    view=result.view;preview_current=true;++applied;if(weapon.sniper)++sniper_applied;return true;
 }
 void print(FILE* file){fprintf(file,"first_person_preview enabled=%u requested=%u transitions=%llu applied=%llu excluded=%llu rejected=%llu weapon_unknown=%llu sniper_applied=%llu sniper_scoped=%llu anchor_forward_metres=.35 anchor_up_metres=.10 pitch_height_coupling=0 weapon_animation_modified=0\n",
     unsigned(enabled),unsigned(toggle.requested()),transitions,applied,excluded,rejected,weapon_unknown,sniper_applied,sniper_scoped);}

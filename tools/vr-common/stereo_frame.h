@@ -88,27 +88,59 @@ struct StereoResult {
     explicit operator bool() const {return status==StereoStatus::accepted||status==StereoStatus::initial;}
 };
 class StereoGate {
+public:
+    // Native-only observer; install before concurrent consumers start and keep
+    // callback/context immutable thereafter. Callback is noexcept, atomic-only:
+    // no VM/Playground/engine calls, mutexes, reentry, or permission decisions.
+    using ContinuityObserver=void (*)(void*,ReferenceContinuity) noexcept;
+private:
+    friend struct StereoContinuityObserverTestAccess;
     std::optional<StereoSample> last_;
     std::optional<Pose> reference_;
     std::uint64_t reference_generation_{};
     std::int64_t minimum_sample_ns_{};
     bool recenter_pending_{};
     ReferenceContinuityCounter continuity_;
+    ContinuityObserver continuity_observer_{};
+    void* continuity_observer_context_{};
+    void notify_continuity(ReferenceContinuity value) const noexcept {
+        if(continuity_observer_)continuity_observer_(continuity_observer_context_,value);
+    }
+    static bool same_continuity(ReferenceContinuity a,ReferenceContinuity b) noexcept {
+        return a.epoch==b.epoch&&a.stable==b.stable&&a.pending==b.pending&&a.exhausted==b.exhausted;
+    }
+    void continuity_boundary(bool have_reference,bool pending) noexcept {
+        auto next=continuity_;next.boundary();
+        // Revoke an old published frame before source state can change.
+        notify_continuity(next.snapshot(have_reference,pending));continuity_=next;
+    }
+    void continuity_break() noexcept {
+        auto next=continuity_;next.break_observed();const auto value=next.snapshot(reference_.has_value(),recenter_pending_);
+        if(!same_continuity(continuity(),value))notify_continuity(value);
+        continuity_=next;
+    }
+    void continuity_accepted() noexcept {
+        const auto before=continuity();continuity_.accepted();const auto after=continuity();
+        if(!same_continuity(before,after))notify_continuity(after);
+    }
 public:
-    void reset(){continuity_.boundary();last_.reset();reference_.reset();reference_generation_=0;minimum_sample_ns_=0;recenter_pending_=false;}
-    void request_recenter(){continuity_.boundary();recenter_pending_=true;}
+    void set_continuity_observer(ContinuityObserver observer,void* context) noexcept {
+        continuity_observer_=observer;continuity_observer_context_=context;notify_continuity(continuity());
+    }
+    void reset(){continuity_boundary(false,false);last_.reset();reference_.reset();reference_generation_=0;minimum_sample_ns_=0;recenter_pending_=false;}
+    void request_recenter(){continuity_boundary(reference_.has_value(),true);recenter_pending_=true;}
     ReferenceContinuity continuity() const noexcept {return continuity_.snapshot(reference_.has_value(),recenter_pending_);}
     // A native world commit retains session/replay guards. Its old XR sample
     // must not consume the pending recenter or allocate a new-world renderer.
     bool advance_world(std::int64_t minimum_sample_ns){
         if(minimum_sample_ns<=minimum_sample_ns_)return false;
         // Old-world hand continuity must end before a fresh heading arrives.
-        continuity_.boundary();
+        continuity_boundary(reference_.has_value(),true);
         minimum_sample_ns_=minimum_sample_ns;recenter_pending_=true;return true;
     }
     StereoResult update(StereoSample const& s,std::int64_t now_ns,bool allow_sim=false) {
         auto reject=[&](StereoStatus status){StereoResult result;result.status=status;
-            if(status!=StereoStatus::stale)continuity_.break_observed();
+            if(status!=StereoStatus::stale)continuity_break();
             if(reference_)result.reference=*reference_;
             result.reference_generation=reference_generation_;return result;};
         if(last_&&s.session!=last_->session)return reject(StereoStatus::session_changed);
@@ -122,26 +154,26 @@ public:
         if(!stereo_render_active(s))return reject(StereoStatus::inactive);
         if(!stereo_tracking_valid(s,allow_sim))return reject(StereoStatus::untracked);
         if(now_ns<=0||s.received_ns<=0||s.received_ns>now_ns){
-            continuity_.break_observed();return reject(StereoStatus::stale);
+            continuity_break();return reject(StereoStatus::stale);
         }
         if(now_ns-s.received_ns>100000000){
             // Preserve the old status order, but only a genuinely age-only
             // failure may keep a continuity certificate. Already observed bad
             // geometry or a different LOCAL origin cannot hide behind age.
             if(!stereo_geometry_valid(s)||(last_&&s.space_epoch!=last_->space_epoch))
-                continuity_.break_observed();
+                continuity_break();
             return reject(StereoStatus::stale);
         }
         if(!stereo_geometry_valid(s))return reject(StereoStatus::invalid);
         if(s.received_ns<=minimum_sample_ns_)return reject(StereoStatus::stale);
         const bool new_space=last_&&s.space_epoch!=last_->space_epoch;
-        if(new_space){continuity_.boundary();reference_.reset();} // No old-origin reference survives this boundary.
+        if(new_space){continuity_boundary(false,recenter_pending_);reference_.reset();} // No old-origin reference survives this boundary.
         bool first=!reference_,recentered=false,deferred=false;
         last_=s; // Even an unavailable initial heading cannot erase replay guards.
         if(first||recenter_pending_){
             Pose heading{};
             if(stereo_heading_reference(s.head,heading)){
-                continuity_.boundary();
+                continuity_boundary(true,false);
                 reference_=heading;++reference_generation_;recentered=!first||new_space;
                 // A request before initialization is satisfied by generation1.
                 recenter_pending_=false;
@@ -149,7 +181,7 @@ public:
         }
         if(!reference_){auto result=reject(StereoStatus::heading_unavailable);
             result.sample=s;result.heading_deferred=true;return result;}
-        if(!deferred&&!recenter_pending_)continuity_.accepted();
+        if(!deferred&&!recenter_pending_)continuity_accepted();
         return {first?StereoStatus::initial:StereoStatus::accepted,s,*reference_,reference_generation_,recentered,deferred};
     }
 };

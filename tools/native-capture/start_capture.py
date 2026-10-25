@@ -8,6 +8,7 @@ import ctypes as c
 from ctypes import wintypes as w
 import json
 import math
+import os
 import pathlib
 import subprocess
 import sys
@@ -640,10 +641,25 @@ def main():
         config+=f'submit_duplicate_control={int(args.submit_duplicate_control)}\n'
         config+=anchor_section
         config+=ui_section
+        if os.environ.get('GEARSVR_TEST_COVER_CALL_OBSERVER')=='1':
+            from cover_call_setup import prepare_ini
+            config+=prepare_ini(args.pid,profile,dll,camera,check_live=check_preparation)
         if ui_metadata is not None:
             dll.with_name('ui-observer-config.json').write_text(json.dumps(ui_metadata,indent=2,allow_nan=False)+'\n',encoding='utf-8')
         if anchor_metadata is not None:
             dll.with_name('anchor-observer-config.json').write_text(json.dumps(anchor_metadata,indent=2,allow_nan=False)+'\n',encoding='utf-8')
+        # Test-only opt-in; ordinary startup has no body-prototype INI section.
+        if os.environ.get('GEARSVR_TEST_COVER_BODY_PROTOTYPE')=='1':
+            config+='\n[CoverBodyPrototype]\nenabled=1\n'
+            if os.environ.get('GEARSVR_TEST_COVER_BODY_SIDE_PROTOTYPE')=='1':
+                config+='pose_profile=side\n'
+            if os.environ.get('GEARSVR_TEST_COVER_INPUT_PROTOTYPE')=='1':
+                config+='target_source=live\n'
+                # Explicit ag test calibration; not a universal cover curve.
+                config+='\n[CoverInputPrototype]\nenabled=1\nheight_half_metres=0.35015923\nheight_top_metres=0.67047669\n'
+        # Test-only opt-in; ordinary startup has no cover-camera INI section.
+        if os.environ.get('GEARSVR_TEST_COVER_CAMERA_PREVIEW')=='1':
+            config+='\n[CoverCameraPreview]\nenabled=1\n'
         dll.with_name('capture.ini').write_text(config,encoding='utf-16')
         check_preparation()
         # GetProcAddress may forward LoadLibraryW into KernelBase. Identify its

@@ -105,11 +105,13 @@ HRESULT STDMETHODCALLTYPE hook(IDXGISwapChain* chain,UINT count,UINT width,UINT 
     const auto boundary=begin(chain,0,count,width,height,format,flags);
 #endif
     const auto dimensions=gears_swapchain_startup::prepare_resize(startup,chain,width,height,depth==1);
+    support_diagnostics.event(3,canonical_identity(chain),width,height,unsigned(format),count);
     MirrorResizeBoundary mirror_boundary(chain);
     SetLastError(error.value);
     const auto result=mirror_boundary.ready?original(chain,count,dimensions.width,dimensions.height,format,flags):DXGI_ERROR_WAS_STILL_DRAWING;
     error.value=GetLastError();
     gears_swapchain_startup::finish(startup,result,chain);
+    support_diagnostics.event(4,canonical_identity(chain),dimensions.width,dimensions.height,unsigned(format),count,result);
 #if GEARS_DXGI_RESIZE_TRANSPORT
     finish(boundary,chain,result);
 #endif
@@ -118,6 +120,7 @@ HRESULT STDMETHODCALLTYPE hook(IDXGISwapChain* chain,UINT count,UINT width,UINT 
 HRESULT STDMETHODCALLTYPE hook1(IDXGISwapChain3* chain,UINT count,UINT width,UINT height,DXGI_FORMAT format,UINT flags,
                                 const UINT* nodes,IUnknown* const* queues){
     LastErrorBoundary error;Scope scope;Depth nested;
+    support_diagnostics.event(3,canonical_identity(chain),width,height,unsigned(format),count);
     const auto startup=gears_swapchain_startup::begin_resize(gears_swapchain_startup::resize1,chain,count,width,height,format,flags,
         _ReturnAddress(),prime_recording.load(),recording.load(),nodes,queues);
 #if GEARS_DXGI_RESIZE_TRANSPORT
@@ -134,6 +137,7 @@ HRESULT STDMETHODCALLTYPE hook1(IDXGISwapChain3* chain,UINT count,UINT width,UIN
     SetLastError(error.value);
     const auto result=mirror_boundary.ready?original1(chain,count,dimensions.width,dimensions.height,format,flags,nodes,queues):DXGI_ERROR_WAS_STILL_DRAWING;
     error.value=GetLastError();
+    support_diagnostics.event(4,canonical_identity(chain),dimensions.width,dimensions.height,unsigned(format),count,result);
     gears_swapchain_startup::finish(startup,result,chain);
 #if GEARS_DXGI_RESIZE_TRANSPORT
     finish(boundary,chain,result,same_queue);

@@ -26,6 +26,23 @@ class Control:
     def signal(self,name):self.signals.append(name);return True
 
 
+class CameraPolicy:
+    def __init__(self, close_ready=lambda:True, events=None, tick_error=False):
+        self.identity=identity(123);self.close_ready=close_ready;self.events=events if events is not None else []
+        self.tick_error=tick_error;self.ticks=0
+        self.report=dict(applied=False,applications=0,writes=0,restored=0,closed=False,released=True,pending_fields=[],errors=[])
+    def tick(self):
+        self.ticks+=1
+        if self.tick_error:raise RuntimeError('synthetic camera tick error')
+        if self.ticks<2:self.report['errors']=['synthetic mesh not ready'];return
+        self.report.update(applied=True,applications=1,writes=2,released=False,pending_fields=['owned'])
+    def close(self):
+        ready=self.close_ready();self.events.append(('camera_close',ready))
+        self.report.update(applied=False,closed=ready,released=ready,pending_fields=[] if ready else ['owned'])
+        if ready:self.report['restored']=self.report['writes']
+        return dict(self.report)
+
+
 def terminal(phase='stopped'):
     return dict(pid='123',continuous_session='1',phase=phase,closed='1',pending='0',active='0',
                 owner_pid=str(os.getpid()),owner_creation_time=str(identity(os.getpid())['creation_time']),
@@ -61,6 +78,127 @@ class ContinuousTests(unittest.TestCase):
             with contextlib.redirect_stderr(io.StringIO()),self.assertRaises(SystemExit):
                 runner.main(base+['--remeasure-armspan'])
             run.assert_not_called()
+
+    def test_run_camera_cli_is_explicit_default_off_and_not_forwarded_to_native_or_xr(self):
+        base=['start','--pid','123','--build-dir','native','--dll-name','Continuous.dll','--xr-build-dir','xr']
+        with mock.patch.object(runner,'run_session',return_value=0) as run:
+            runner.main(base);self.assertFalse(run.call_args.args[0].run_camera_stabilization)
+            runner.main(base+['--run-camera-stabilization']);args=run.call_args.args[0]
+            self.assertTrue(args.run_camera_stabilization)
+            self.assertNotIn('--run-camera-stabilization',runner.native_command(args,identity(100)))
+            self.assertNotIn('--run-camera-stabilization',runner.xr_command(args,pathlib.Path('unused.csv'),identity(100)))
+        import run_camera_session
+        with mock.patch.object(run_camera_session,'RunCameraSession') as start:
+            code,state,*_=self.run_mock()
+        self.assertEqual(code,0);start.assert_not_called()
+        self.assertFalse(state['run_camera_stabilization_enabled'])
+        self.assertNotIn('run_camera_policy',state)
+
+    def test_run_camera_direct_flag_must_be_boolean_before_lock_or_process(self):
+        for value in ('false','true',1,None):
+            control=mock.Mock()
+            with self.subTest(value=value),self.assertRaisesRegex(ValueError,'explicit boolean'):
+                runner.run_session(types.SimpleNamespace(run_camera_stabilization=value),control)
+            control.owner_lock.assert_not_called()
+
+    def camera_session_factory(self,sessions=None):
+        import run_camera_session
+        actual=run_camera_session.RunCameraSession
+        ticks=iter(range(1000))
+        def construct(*args,**kwargs):
+            session=actual(*args,**kwargs,clock=lambda:next(ticks),retry_wait=lambda _:__import__('threading').Event().wait(.01))
+            if sessions is not None:sessions.append(session)
+            return session
+        return construct
+
+    def test_run_camera_unready_first_tick_retries_without_stopping_stereo(self):
+        import run_camera_runtime,run_camera_session
+        policy=CameraPolicy()
+        with mock.patch.object(run_camera_runtime,'RuntimePolicy',return_value=policy) as create,\
+             mock.patch.object(run_camera_session,'RunCameraSession',side_effect=self.camera_session_factory()):
+            code,state,*_=self.run_mock(run_camera=True,owner_ticks=1)
+        self.assertEqual(code,0)
+        create.assert_called_once()
+        self.assertGreaterEqual(policy.ticks,2)
+        self.assertTrue(state['run_camera_stabilization_enabled'])
+        self.assertTrue(state['requested_configuration']['run_camera_stabilization'])
+        self.assertEqual(state['run_camera_policy']['applications'],1)
+        self.assertIn('synthetic mesh not ready',state['run_camera_policy']['errors'])
+        self.assertTrue(state['run_camera_policy']['closed'])
+        self.assertFalse(state['run_camera_cleanup_pending'])
+
+    def test_run_camera_constructor_tick_and_guardian_errors_are_nonfatal_diagnostics(self):
+        import run_camera_runtime,run_camera_session
+        with mock.patch.object(run_camera_runtime,'RuntimePolicy',side_effect=OSError('synthetic identity unavailable')):
+            code,state,*_=self.run_mock(run_camera=True)
+        self.assertEqual(code,0)
+        self.assertIn('identity unavailable',state['run_camera_policy']['session_errors'][0]['reason'])
+        with mock.patch.object(run_camera_runtime,'RuntimePolicy',return_value=CameraPolicy(tick_error=True)):
+            code,state,*_=self.run_mock(run_camera=True)
+        self.assertEqual(code,0)
+        self.assertIn('camera tick error',state['run_camera_policy']['session_errors'][0]['reason'])
+        with mock.patch.object(run_camera_session,'RunCameraSession',side_effect=RuntimeError('guardian start failed')):
+            code,state,*_=self.run_mock(run_camera=True)
+        self.assertEqual(code,0)
+        self.assertIn('guardian start failed',state['run_camera_policy_start_error'])
+
+    def test_run_camera_pending_is_retried_after_native_and_xr_cleanup(self):
+        import run_camera_runtime
+        events=[];ready=[False]
+        policy=CameraPolicy(close_ready=lambda:ready[0],events=events)
+        actual=runner.cleanup_owned_xr
+        def cleanup(*args,**kwargs):
+            actual(*args,**kwargs)
+            events.append(('xr_cleanup_done',));ready[0]=True
+        with mock.patch.object(run_camera_runtime,'RuntimePolicy',return_value=policy),\
+             mock.patch.object(runner,'cleanup_owned_xr',side_effect=cleanup):
+            code,state,*_=self.run_mock(run_camera=True)
+        self.assertEqual(code,0)
+        self.assertLess(events.index(('camera_close',False)),events.index(('xr_cleanup_done',)))
+        self.assertLess(events.index(('xr_cleanup_done',)),events.index(('camera_close',True)))
+        self.assertFalse(state['run_camera_cleanup_pending'])
+
+    def test_run_camera_last_bounded_close_can_complete_the_cleanup_gate(self):
+        import run_camera_runtime
+        calls=[]
+        def ready():
+            calls.append(1)
+            return len(calls)>=4
+        with mock.patch.object(run_camera_runtime,'RuntimePolicy',return_value=CameraPolicy(close_ready=ready)):
+            code,state,*_=self.run_mock(run_camera=True)
+        self.assertEqual(len(calls),4)
+        self.assertEqual(code,0)
+        self.assertEqual(state['phase'],'stopped')
+        self.assertFalse(state['run_camera_cleanup_pending'])
+
+    def test_run_camera_pending_transfers_original_lock_and_cannot_pass(self):
+        import run_camera_runtime,run_camera_session,threading
+        allowed=threading.Event();sessions=[]
+        policy=CameraPolicy(close_ready=allowed.is_set)
+        def pending_return(code,state,control,_child):
+            try:
+                self.assertEqual(code,1);self.assertEqual(state['phase'],'incomplete')
+                self.assertFalse(state['passed'])
+                self.assertTrue(state['run_camera_cleanup_pending'])
+                self.assertTrue(state['run_camera_cleanup']['owner_retained'])
+                self.assertEqual(state['run_camera_cleanup']['session_id'],state['session_id'])
+                self.assertFalse(control.closed)
+                self.assertTrue(sessions[0].thread.is_alive())
+                self.assertFalse(sessions[0].thread.daemon)
+            finally:
+                # Finish before TemporaryDirectory removes the private report:
+                # Windows correctly refuses deletion while the guardian reads it.
+                allowed.set()
+                self.assertTrue(sessions[0].done.wait(2.));sessions[0].thread.join(2.)
+        try:
+            with mock.patch.object(run_camera_runtime,'RuntimePolicy',return_value=policy),\
+                 mock.patch.object(run_camera_session,'RunCameraSession',side_effect=self.camera_session_factory(sessions)):
+                code,state,_,_,control,_=self.run_mock(run_camera=True,after_session=pending_return)
+        finally:
+            allowed.set()
+            for session in sessions:
+                self.assertTrue(session.done.wait(2.));session.thread.join(2.)
+        self.assertTrue(control.closed)
 
     def test_native_failure_snapshots_survive_incomplete_cleanup(self):
         code,state,*_=self.run_mock(clean=False)
@@ -591,7 +729,7 @@ class ContinuousTests(unittest.TestCase):
             self.assertEqual(diagnostic['reason'],'stale_file')
             self.assertEqual(runner.read_session_status(path,123,old_time+1000000000)['generation'],'B')
 
-    def run_mock(self,clean=True,xr_timeout=False,early_exit=False,cancel_at=0,diagnostics=False,origin_trial=False,image_ticket_diagnostics=False,startup_callback=None,startup_menu=False,panel_submitted=True,ui_hud_plane=False,first_stereo=False,world_recovery=False,crosshair=False,hud_layout=None,path_center=False,hook_manifest=False,owner_ticks=0):
+    def run_mock(self,clean=True,xr_timeout=False,early_exit=False,cancel_at=0,diagnostics=False,origin_trial=False,image_ticket_diagnostics=False,startup_callback=None,startup_menu=False,panel_submitted=True,ui_hud_plane=False,first_stereo=False,world_recovery=False,crosshair=False,hud_layout=None,path_center=False,hook_manifest=False,owner_ticks=0,run_camera=False,after_session=None):
         with tempfile.TemporaryDirectory() as folder:
             root=pathlib.Path(folder);build=root/'native';build.mkdir()
             (build/'capture-status.txt').write_text('capturing pid=123 stopped disable_status=0 active=0')
@@ -602,6 +740,7 @@ class ContinuousTests(unittest.TestCase):
             if diagnostics:args.outage_diagnostics=True;args.shutdown_diagnostics=True
             if origin_trial:args.origin_trial=True;args.anchor_observer=True
             if image_ticket_diagnostics:args.image_ticket_diagnostics=True
+            if run_camera:args.run_camera_stabilization=True
             if ui_hud_plane:args.ui_hud_plane=True;args.ui_observer=True;args.anchor_observer=True
             if hud_layout:args.hud_element_scale,args.hud_center_scale=hud_layout
             if startup_menu:args.startup_menu_window=789
@@ -655,11 +794,14 @@ class ContinuousTests(unittest.TestCase):
                 checks+=1
                 return checks==cancel_at
             with mock.patch.object(runner,'ROOT',root),mock.patch.object(runner.subprocess,'Popen',side_effect=spawn) as popen, \
+                 mock.patch.object(runner,'SupportJournal') as support, \
                  mock.patch.object(runner.subprocess,'run',side_effect=native) as native_run, \
                  mock.patch.object(runner,'read_session_status',side_effect=stages),contextlib.redirect_stdout(io.StringIO()):
+                support.return_value.start.return_value.close.return_value={}
                 code=runner.run_session(args,control,on_report=report,cancel_requested=cancelled if cancel_at else None,
                                         before_native_activation=startup_callback)
             state=json.loads(pathlib.Path(reports[0]).read_text())
+            if after_session:after_session(code,state,control,child)
             return code,state,popen.call_args,native_run,control,child
 
     def test_one_owner_orders_native_cleanup_before_xr_and_verifies_entries(self):

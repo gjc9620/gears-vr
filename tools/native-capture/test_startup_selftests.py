@@ -51,6 +51,7 @@ class StartupSelftestTests(unittest.TestCase):
                  mock.patch.object(reserve,'run_hidden',side_effect=run),mock.patch.object(reserve,'k') as native,\
                  mock.patch.object(reserve.pefile,'PE',side_effect=RuntimeError('stop after prelaunch tests')),\
                  mock.patch.object(reserve.instance_policy,'context',return_value=None),\
+                 mock.patch.object(reserve.instance_policy,'running_game_pids',return_value=[]),\
                  mock.patch.object(reserve.instance_policy,'shared_game_pids',return_value=[]),\
                  mock.patch.object(reserve,'run_game_startup',side_effect=AssertionError('No game launch')) as launch,\
                  mock.patch.object(reserve,'WindowsControl',return_value=SimpleNamespace(identity=lambda pid:dict(pid=7,creation_time=8))):

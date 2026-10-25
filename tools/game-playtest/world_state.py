@@ -1,5 +1,6 @@
 """Bounded current objectives, interaction and PawnList observations; no input."""
 import argparse
+import copy
 import hashlib
 import json
 import math
@@ -23,6 +24,7 @@ class Query:
         if self.r is None or self.s is None:
             raise RuntimeError('World-state query requires fresh live readers')
         self.identities, self.metadata, self.properties = {}, {}, {}
+        self.closing_rejection = None
         self.started = time.monotonic()
         self.reads = self.bytes = 0
         self.headers = [(self.r.objects_header, self.r.read(self.r.objects_header, 16)),
@@ -176,12 +178,32 @@ class Query:
         return result
 
     def finish(self, *, allow_registry_growth=False):
+        self.closing_rejection = None
         self.observer.verify()
-        if (any(self.s.fresh(p) != v for p, v in self.identities.items()) or
-                any(self.r.read(p, n) != raw for (p, n), raw in self.metadata.items()) or
-                any(not (current == raw or (allow_registry_growth and registry_append_only(raw, current)))
-                    for p, raw in self.headers for current in (self.r.read(p, len(raw)),))):
-            raise RuntimeError('World-state metadata/registry changed at closing boundary')
+        for p, value in self.identities.items():
+            current = self.s.fresh(p)
+            if current != value:
+                self.closing_rejection = dict(kind='identity', address=p, size=None,
+                                              before=copy.deepcopy(value), after=copy.deepcopy(current))
+                raise RuntimeError('World-state metadata/registry changed at closing boundary')
+        for (p, size), raw in self.metadata.items():
+            current = self.r.read(p, size)
+            if current != raw:
+                self.closing_rejection = dict(kind='metadata', address=p, size=size,
+                                              before=raw.hex(), after=current.hex())
+                raise RuntimeError('World-state metadata/registry changed at closing boundary')
+        for p, raw in self.headers:
+            current = self.r.read(p, len(raw))
+            if not (current == raw or (allow_registry_growth and registry_append_only(raw, current))):
+                def decoded(header):
+                    if len(header) != 16:
+                        return None
+                    data, count, capacity = struct.unpack('<Qii', header)
+                    return dict(data=data, count=count, capacity=capacity)
+                self.closing_rejection = dict(kind='registry', address=p, size=len(raw),
+                                              before=raw.hex(), after=current.hex(),
+                                              before_header=decoded(raw), after_header=decoded(current))
+                raise RuntimeError('World-state metadata/registry changed at closing boundary')
 
 
 def combat_control(q, pawn, world):

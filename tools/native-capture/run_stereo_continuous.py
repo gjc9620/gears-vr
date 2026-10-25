@@ -23,6 +23,7 @@ from run_stereo_probe import ROOT, complete_csv_rows, collect_xr_evidence
 from camera_closer_options import camera_closer_metres
 import weapon_calibration
 from session_telemetry import SessionTelemetry
+from support_diagnostics import SupportJournal
 
 class WindowsControl:
     def __init__(self):
@@ -72,7 +73,9 @@ class WindowsControl:
             raise RuntimeError('A continuous owner already exists for this game PID')
         return handle
 
-    def close_lock(self,handle):self.k.CloseHandle(handle)
+    def close_lock(self,handle):
+        if not self.k.CloseHandle(handle):
+            raise ctypes.WinError(ctypes.get_last_error())
 
     def signal(self,name):
         handle=self.k.OpenEventW(2,False,name)
@@ -179,6 +182,8 @@ def validate_render_scale(args):
 def validate_ui_hud_plane(args):
     validate_render_scale(args)
     camera_closer_metres(args)
+    if type(getattr(args,'run_camera_stabilization',False)) is not bool:
+        raise ValueError('run_camera_stabilization must be an explicit boolean')
     if getattr(args,'ui_reticle_late_sample',False) and not all(getattr(args,key,False) for key in ('ui_observer','ui_hud_plane')):
         raise ValueError('Late reticle sampling requires UI observer and HUD plane in a continuous session')
     if getattr(args,'path_choice_center',False) and not all(getattr(args,k,False) for k in ('menu_recovery','ui_observer','anchor_observer')):
@@ -412,6 +417,7 @@ def continuous_passed(state):
                 and evidence.get('shutdown_completed') is True and evidence.get('structural_failure') is False
                 and evidence.get('submitted_frames',0)>0 and evidence.get('scene_copies',0)>0
                 and not state.get('error') and not state.get('unsafe_xr_teardown')
+                and not state.get('run_camera_cleanup_pending',False)
                 and not state.get('native_cleanup_error') and not state.get('xr_cleanup_error'))
 
 
@@ -544,13 +550,19 @@ def run_session(args,control=None,on_report=None,cancel_requested=None,before_na
            'armspan_calibration_loaded':bool(getattr(args,'armspan_calibration',None)),
            'hud_horizontal_fov_degrees':getattr(args,'hud_horizontal_fov_degrees',None),
            'camera_closer_metres':camera_closer_metres(args),
+           'run_camera_stabilization_enabled':bool(getattr(args,'run_camera_stabilization',False)),
            'gpu_snapshot_requested':bool(getattr(args,'gpu_snapshot',False)),
            'owner_identity':None,'game_identity':None,
            'session_report':str(state_path),'native_started':False,
            'limits':'Explicit persistent session lifecycle; exit0 does not assert uninterrupted frame rate or physical headset acceptance.'}
     state.update({key:getattr(args,key) for key in ('hud_element_scale','hud_center_scale') if getattr(args,key,None) is not None})
     state['diagnostics_artifacts']=getattr(args,'diagnostics_artifacts',{})
-    child=None;activation_attempted=False;menu_monitor=None;world_monitor=None;world_log=None;telemetry=None;path_center=None;right_stick_policy=None
+    state['requested_configuration']={key:getattr(args,key) for key in
+        ('render_scale','stereo_units_per_metre','camera_closer_metres','first_person_preview','right_stick_deadzone_percent','run_camera_stabilization',
+         'hud_horizontal_fov_degrees','hud_element_scale','hud_center_scale')
+        if isinstance(getattr(args,key,None),(bool,int,float))}
+    child=None;activation_attempted=False;menu_monitor=None;world_monitor=None;world_log=None;telemetry=None;path_center=None;right_stick_policy=None;support=None
+    run_camera_session=None;camera_lock_transferred=False
     state['path_choice_center_enabled']=bool(getattr(args,'path_choice_center',False))
     native_status=args.build_dir.resolve()/'session-status.txt'
     floor=0
@@ -575,6 +587,7 @@ def run_session(args,control=None,on_report=None,cancel_requested=None,before_na
         state['owner_identity']=control.identity(os.getpid());state['game_identity']=control.identity(args.pid)
         floor=native_status.stat().st_mtime_ns if native_status.exists() else 0
         if not state['game_identity'] or not state['owner_identity']:raise RuntimeError('Live owner/game identity required')
+        support=SupportJournal(prefix,state['game_identity'],args.build_dir.resolve(),owner=state['owner_identity']).start()
         telemetry=SessionTelemetry(prefix.with_suffix('.telemetry.jsonl'),prefix.with_suffix('.csv'),
             args.build_dir.resolve()/'swapchain-output-status.txt',state['game_identity'],state['owner_identity'])
         state['diagnostics']=telemetry.summary()
@@ -596,6 +609,7 @@ def run_session(args,control=None,on_report=None,cancel_requested=None,before_na
                 state['xr_owned_pid']=child.pid
                 state['xr_identity']=control.identity(child.pid)
                 if not state['xr_identity']:raise RuntimeError('Owned XR identity could not be established')
+                support.bind_xr(state['xr_identity'])
                 write_state(state_path,state)
                 deadline=time.monotonic()+args.startup_timeout
                 while time.monotonic()<deadline and child.poll() is None:
@@ -676,13 +690,35 @@ def run_session(args,control=None,on_report=None,cancel_requested=None,before_na
                     state['right_stick_policy']=dict(right_stick_policy.report)
                     if not right_stick_policy.report['applied']:
                         raise RuntimeError('Right-stick dead zone was not applied: '+repr(right_stick_policy.report['errors']))
+                if state['run_camera_stabilization_enabled']:
+                    try:
+                        from run_camera_session import RunCameraSession
+                        run_camera_session=RunCameraSession(state['game_identity'],control.identity,
+                            session_path=state_path,session_id=token,owner=state['owner_identity'],publish=write_state)
+                        run_camera_session.tick()
+                        state['run_camera_policy']=run_camera_session.snapshot()
+                        state['run_camera_cleanup_path']=str(run_camera_session.sidecar)
+                        try:write_state(state_path,state)
+                        except Exception as error:state['run_camera_policy_report_error']=repr(error)
+                    except Exception as error:
+                        state['run_camera_policy_start_error']=repr(error)
                 while child.poll() is None:
                     if right_stick_policy:right_stick_policy.tick()
+                    if run_camera_session:
+                        if run_camera_session.tick():
+                            state['run_camera_policy']=run_camera_session.snapshot()
+                            try:write_state(state_path,state)
+                            except Exception as error:state['run_camera_policy_report_error']=repr(error)
                     observe_first_stereo(native_started)
                     if cancel_requested and cancel_requested():
                         state['stop_requested_by']='launcher_cancel';break
                     status=read_session_status(native_status,args.pid,floor)
-                    if status and status.get('phase')!='running':break
+                    if status and status.get('phase')!='running':
+                        state['stop_requested_by']='native_'+status.get('reason','unknown')
+                        support.write('controller','native_stop_observed',reason=status.get('reason'),phase=status.get('phase'))
+                        if status.get('reason') in ('proof_failure','owner_error'):
+                            support.failure('native','native_stop',status.get('reason'))
+                        break
                     checked_identity(control,state['game_identity'])
                     if menu_monitor:menu_monitor.poll()
                     if path_center:
@@ -699,13 +735,21 @@ def run_session(args,control=None,on_report=None,cancel_requested=None,before_na
                     ordinary_interval=.1 if getattr(args,'movie_display',False) else .25
                     if world_monitor:world_monitor.wait(ordinary_interval)
                     else:time.sleep(ordinary_interval)
+                if child.poll() is not None and not state.get('stop_requested_by'):
+                    state['stop_requested_by']='xr_process_exit'
+                    support.write('controller','child_exit',exit_code=child.returncode)
+                    if child.returncode:support.failure('xr','process_exit','XR child exited',exit_code=child.returncode)
             except StartupCancelled:
                 state['stop_requested_by']='startup_cancel'
             except KeyboardInterrupt:
                 state['stop_requested_by']='keyboard_interrupt'
             except Exception as error:
+                if support:support.failure('controller','session_exception',repr(error),phase=state.get('phase'))
                 state['error']=repr(error)
             finally:
+                if run_camera_session:
+                    run_camera_session.close(attempts=1)
+                    state['run_camera_policy']=run_camera_session.snapshot()
                 if right_stick_policy:
                     try:state['right_stick_policy']=right_stick_policy.close()
                     except Exception as error:state['right_stick_policy_close_error']=repr(error)
@@ -767,6 +811,10 @@ def run_session(args,control=None,on_report=None,cancel_requested=None,before_na
                 if child:
                     cleanup_owned_xr(child,state['xr_owned_pid'],args.pid,args.cleanup_timeout,control,state)
                 finish_path_choice_position(path_center,state,control)
+                if run_camera_session:
+                    run_camera_session.close(attempts=2)
+                    state['run_camera_policy']=run_camera_session.snapshot()
+                    state['run_camera_cleanup_pending']=run_camera_session.pending
         if activation_attempted:observe_first_stereo(native_started)
         collect_xr_evidence(out_path,state)
         for line in out_path.read_text(encoding='utf-8',errors='replace').splitlines():
@@ -797,13 +845,36 @@ def run_session(args,control=None,on_report=None,cancel_requested=None,before_na
             and (child is None or xr_shutdown) and not state.get('error') and not state.get('xr_cleanup_error'))
         state['phase']='cancelled' if state['startup_cancelled'] else 'stopped' if state['passed'] else 'incomplete'
     except Exception as error:
+        if support:support.failure('controller','owner_exception',repr(error),phase=state.get('phase'))
         state['error']=repr(error);state['phase']='incomplete'
     finally:
-        if telemetry:
-            telemetry.close(state['phase'],passed=state.get('passed',False),native_cleanup_verified=state.get('native_cleanup_verified',False),
-                xr_exit_code=state.get('xr_exit_code'),error=state.get('error'))
-            state['diagnostics']=telemetry.summary()
-        write_state(state_path,state);control.close_lock(lock)
+        try:
+            if run_camera_session:
+                # Last bounded attempt also covers exceptional cleanup paths. A live
+                # pending transaction is retained by the already running guardian.
+                camera_was_pending=state.get('run_camera_cleanup_pending',False)
+                run_camera_session.close(attempts=1)
+                state['run_camera_policy']=run_camera_session.snapshot()
+                state['run_camera_cleanup_pending']=run_camera_session.pending
+                if run_camera_session.pending:
+                    state.update(passed=False,phase='incomplete',run_camera_cleanup=run_camera_session.cleanup_link())
+                elif camera_was_pending:
+                    state['passed']=continuous_passed(state)
+                    state['phase']='stopped' if state['passed'] else 'incomplete'
+            if support:
+                if state.get('error'):support.failure('controller','session_error',state['error'])
+                for key in ('native_cleanup_error','xr_cleanup_error'):
+                    if state.get(key):support.failure('controller',key,state[key])
+                state['support_diagnostics']=support.close()
+            if telemetry:
+                telemetry.close(state['phase'],passed=state.get('passed',False),native_cleanup_verified=state.get('native_cleanup_verified',False),
+                    xr_exit_code=state.get('xr_exit_code'),error=state.get('error'))
+                state['diagnostics']=telemetry.summary()
+            write_state(state_path,state)
+        finally:
+            if run_camera_session:
+                camera_lock_transferred=run_camera_session.finish(lambda:control.close_lock(lock))
+            if not camera_lock_transferred:control.close_lock(lock)
     print(json.dumps(state),flush=True)
     return 0 if state['passed'] or state.get('startup_cancelled') else 1
 
@@ -821,6 +892,7 @@ def main(argv=None):
     start.add_argument('--camera-closer-metres',type=float,default=0.)
     start.add_argument('--first-person-preview',action='store_true')
     start.add_argument('--right-stick-deadzone-percent',type=float)
+    start.add_argument('--run-camera-stabilization',action='store_true',help='Opt-in guarded CameraBone gait stabilization; restores session-owned fields on stop')
     start.add_argument('--startup-timeout',type=float,default=45.)
     start.add_argument('--cleanup-timeout',type=float,default=35.)
     start.add_argument('--anchor-observer','--anchor-diagnostics',dest='anchor_observer',action='store_true')

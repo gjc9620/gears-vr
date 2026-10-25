@@ -8,14 +8,20 @@
 #include <fstream>
 #include <iterator>
 #include <thread>
+#include <vector>
 
 namespace fs=std::filesystem;
 std::string logical(std::string value){value.erase(std::remove(value.begin(),value.end(),'\r'),value.end());return value;}
 std::string read(fs::path const& p){std::ifstream in(p,std::ios::binary);return logical({std::istreambuf_iterator<char>(in),{}});}
 void publish(fs::path const& p,const char* text){gears_status::AtomicFile file(p.c_str());assert(file.get());std::fputs(text,file.get());static unsigned sequence=0;++sequence;const bool committed=file.commit();if(!committed)std::fprintf(stderr,"publish %u failed error=%lu\n",sequence,GetLastError());assert(committed);}
-int fail_flush(FILE*){return EOF;}
-int fail_close(FILE* file){std::fclose(file);return EOF;}
+int fail_flush(FILE*){errno=ENOSPC;return EOF;}
+int fail_close(FILE* file){std::fclose(file);errno=EIO;return EOF;}
 BOOL fail_replace(LPCWSTR,LPCWSTR){SetLastError(ERROR_SHARING_VIOLATION);return FALSE;}
+struct Observation {std::string stage;bool entering,good;int crt_error;DWORD winerror;};
+std::vector<Observation> observations;
+void observe(const char* stage,bool entering,bool good,int crt_error,DWORD winerror){
+    observations.push_back({stage,entering,good,crt_error,winerror});errno=EDOM;SetLastError(4321);
+}
 int wmain(int argc,wchar_t** argv){
     wchar_t root[MAX_PATH]{};assert(GetTempPathW(MAX_PATH,root));
     auto dir=(argc==2?fs::path(argv[1]):fs::path(root))/(L"gears-status-test-"+std::to_wstring(GetCurrentProcessId()));
@@ -33,10 +39,18 @@ int wmain(int argc,wchar_t** argv){
     char raw[128]{};DWORD count{};assert(ReadFile(old,raw,sizeof(raw),&count,nullptr));assert(logical(std::string(raw,count))==a);
     assert(CloseHandle(old));assert(read(path)==b);
     for(unsigned failure=0;failure<3;++failure){
-        publish(path,a);gears_status::FileApi api{};
+        publish(path,a);gears_status::FileApi api{};api.observe=observe;observations.clear();
         if(failure==0)api.flush=fail_flush;if(failure==1)api.close=fail_close;if(failure==2)api.replace=fail_replace;
         gears_status::AtomicFile file(path.c_str(),api);assert(file.get());std::fputs(b,file.get());assert(!file.commit());assert(read(path)==a);
+        const char* stages[]={"status_flush","status_close","status_replace"};
+        const auto error=std::find_if(observations.begin(),observations.end(),[&](auto const& row){return row.stage==stages[failure]&&!row.entering&&!row.good;});
+        assert(error!=observations.end());
+        if(failure==0)assert(error->crt_error==ENOSPC);if(failure==1)assert(error->crt_error==EIO);
+        if(failure==2)assert(error->winerror==ERROR_SHARING_VIOLATION);
     }
+    {observations.clear();gears_status::FileApi api{};api.observe=observe;
+        gears_status::AtomicFile missing((dir/L"missing"/L"session.txt").c_str(),api);assert(!missing.get());
+        assert(!observations.back().good&&observations.back().stage=="status_open"&&observations.back().crt_error==ENOENT);}
     {gears_status::AtomicFile file(path.c_str());assert(file.get());std::fputs(b,file.get());}assert(read(path)==a);
     // A legacy reader without delete sharing may prevent replacement. It must
     // never cause truncation of the old final file or a fallback write.
