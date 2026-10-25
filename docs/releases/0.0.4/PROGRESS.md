@@ -2,6 +2,14 @@
 
 本文件保留武器与掩体两个分支的开发历史，便于共用 Native 手部实现合流。各条记录仍以其原始验证范围为准；私有候选、只读采样或离线检查不代表完整功能、默认构建更新或头显验收。
 
+## 2026-10-25 — 真实Grip完成手枪与Lancer库存往返
+
+DG沿同一个PG `41ef279a…879ee`、Native29sim、Source1 XR与DC reader，仅将目标改为当前场景的手枪槽0和右肩步枪槽3。右手到左裤兜的press1经正常生产消费者请求原版切换，实际当前武器由Weap_AssaultRifle变为Weap_COGPistol；右肩press2随后切回原来的同一个Weap_AssaultRifle实例。两次均经历switch_requested／pending到held，独立读取的PC／Pawn／Weapon／两个Mesh身份、当前武器链接、唯一b_MF_Weapon_R_End挂接及HiddenGame=false一致；Grip松开为0后仍完成持枪。协调器complete／behavior_complete均true、两条episode、无错误，未进入arena或通过模型提交导出来替代原版库存动作。
+
+这证明当前零售场景的“真实模拟器Grip→正确库存切换→实际挂接与软件握持”往返已经打通。它仍使用原版切枪过渡，尚不证明枪体持续6DoF、原切枪动画移除、自由双手、射击／后坐力／伤害、双眼图像或实体控制器验收；DF的不可用槽结果及其脚本假设失败仍保留。完整最终需求不缩减，下一步消费共用双手执行基础并完成Lancer握持和权威射击。
+
+自有控制器原状态已恢复，HandStop5／quiescent及bridge关闭通过；正常finalizer的88项独立恢复含八完整Pose chunks全部匹配，Native／entry／XR exit0／PG shutdown0／音频10恢复及原十文件hash保持，准确自有PID与随后新鲜CIM均为空。完整行为与清理证据分别保存在ignored `analysis/equipment-native-rgrip-runtime-20261025dg/runtime-review.json`和`runtime-final.json`。窗口已交还共用身体会话，当前候选没有替换默认启动器。
+
 ## 2026-10-25 — 普通游戏取得认证手柄帧与库存，修正取枪消费者的旧通道依赖
 
 本轮唯一玩法目标是Grip导致正确库存切换并实际持枪。DD已在购买版普通场景取得真实Source1 GVC3／Stereo匹配，初始样本原源龄约1.47ms；HandStart及唯一Native CF登记成功，正常PostPlayerTick消费者取得当前Frame并完成实际库存读取。但输入始终baseline_waiting，三秒后停止，未发肩部Grip。首个确定失败为消费者依赖了另一个历史Root分支的EquipmentIntentBridge v6，而实际冻结Native29sim源码根本没有该producer／头；不是实际手柄样本无效，也不是已发生的库存切换失败。
