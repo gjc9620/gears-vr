@@ -508,6 +508,17 @@ public:
     ~Broker()=default; // Caller must keep this object/context alive through drain+collect.
     std::uint64_t lifecycle_revision() const noexcept {return revision_.load(std::memory_order_acquire);}
     std::uint64_t cookie() const noexcept {return cookie_.load(std::memory_order_acquire);}
+    // Pure registration receipt, not hand/frame authorization. A reserved cookie
+    // is visible while registering, before output publication or even failure.
+    // State::active is published only after a successful result copy. SC loads
+    // bracket that transition with the nonwrapping cookie/lifecycle counters.
+    bool registration_current(std::uint64_t expected_cookie,std::uint64_t native_started_qpc) const noexcept {
+        if(!expected_cookie||!native_started_qpc||native_started_qpc!=session_.native_started_qpc)return false;
+        const auto revision=revision_.load(std::memory_order_seq_cst);
+        if(state_.load(std::memory_order_seq_cst)!=State::active||cookie_.load(std::memory_order_seq_cst)!=expected_cookie)return false;
+        return state_.load(std::memory_order_seq_cst)==State::active&&cookie_.load(std::memory_order_seq_cst)==expected_cookie&&
+            revision_.load(std::memory_order_seq_cst)==revision;
+    }
     Availability availability() const noexcept {return availability_.load(std::memory_order_acquire);}
     bool authorized() const noexcept {return authorization_.load(std::memory_order_acquire)&&!action_barrier()&&
         revocation_.frame_current({action_auth(),authorized_frame_.load(),authorized_generation_.load()});}

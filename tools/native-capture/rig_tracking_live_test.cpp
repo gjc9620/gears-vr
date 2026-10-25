@@ -1,6 +1,7 @@
 // True Shared consumer/Broker/controller mapping, synthetic actor sampler.
 // Separate client output memory. No game/XR/engine call or real module unpin.
 #include "../vr-common/rig_tracking_frame.h"
+#include "../vr-common/native_rig_tracking_frame.h"
 #include <thread>
 #define main RigTrackingSharedFixtureMain
 #include "cover_shared_input_live_test.cpp"
@@ -121,4 +122,6 @@ int main_test(const char* mode){
     finish();printf("rig_tracking_live %s: %u checks, %u failures; no Game/XR\n",mode,checks,failures);return failures?1:0;
 }
 }
+#ifndef GEARS_RIG_TRACKING_NO_ENTRY
 int main(int argc,char** argv){return main_test(argc>1?argv[1]:"normal");}
+#endif

@@ -120,7 +120,8 @@ w::Broker broker(binding,backend());
 w::Broker* current(){return &broker;}w::BrokerSession session(){return binding;}
 void request_stop() noexcept {try{broker.invalidate(w::InvalidateReason::native_stopping);}catch(...){}}
 }
-bool PG::pin(void*,w::Registration const&,w::ModulePin& value) noexcept {++pg.pins;value={0x9000,0x9000};return true;}
+void (*pg_pin_hook)() noexcept{}; // Private host fixture only, never production.
+bool PG::pin(void*,w::Registration const&,w::ModulePin& value) noexcept {++pg.pins;value={0x9000,0x9000};if(pg_pin_hook)pg_pin_hook();return true;}
 bool PG::unpin(void*,w::ModulePin value) noexcept {++pg.unpins;if(!as_worker||value.handle!=0x9000||weapon_hand_runtime::broker.pending_callbacks()||weapon_hand_runtime::broker.pending_transactions())++pg.violations;return pg.unpin_ok;}
 void revoke(w::Frame const& frame){
     gears_weapon_boundary::Request r{};r.source=gears_weapon_boundary::Source::process_event;r.flags=gears_weapon_boundary::related;
