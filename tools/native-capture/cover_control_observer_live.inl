@@ -5,6 +5,7 @@ namespace cover_control_observer_live {
 namespace phase=cover_pose_phase_live;namespace pose=gears_cover_pose_phase;
 namespace certificate=gears_cover_control_certificate;namespace binding=weapon_hand_scene_binding;
 bool enabled{},reserved{},certified{};std::array<void*,3> targets{},originals{};
+char const* reserve_stage="idle";uintptr_t reserve_rva{};int reserve_mh_status{};
 bool own_entries(); // Root owns immutable manifest/current-owned-entry attestation.
 unsigned reserved_mask{};
 #if defined(GEARS_COVER_CONTROL_OBSERVER) && GEARS_COVER_CONTROL_OBSERVER && defined(GEARS_COVER_BODY_PROTOTYPE) && GEARS_COVER_BODY_PROTOTYPE
@@ -197,23 +198,34 @@ extern "C" __declspec(noinline) void GearsCoverControlInvokeProtected(pose::Call
         __finally{if(call.linked)thread.call=call.previous;--in_flight;--active;}}
 }
 extern "C" void GearsCoverControlLimbHook();extern "C" void GearsCoverControlSingleHook();extern "C" void GearsCoverControlWeightHook();
-bool prepare(){if(!enabled)return true;if(certified||reserved)return certified;for(auto const& c:certificate::chunks)if(!phase::digest(c)||!phase::digest(c)){failed=true;return false;}certified=true;return true;}
-bool reserve(){if(!enabled)return true;if(reserved_mask||!prepare())return false;
+bool prepare(){if(!enabled)return true;if(certified||reserved)return certified;
+    for(auto const& c:certificate::chunks){reserve_rva=c.rva;reserve_stage="code_hash_first";
+        if(!phase::digest(c)){failed=true;return false;}reserve_stage="code_hash_repeat";
+        if(!phase::digest(c)){failed=true;return false;}}
+    certified=true;reserve_stage="code_certified";return true;}
+bool reserve(){if(!enabled)return true;if(reserved_mask){reserve_stage="reserve_reentry";return false;}if(!prepare())return false;
     const std::array<void*,3> detours{{reinterpret_cast<void*>(GearsCoverControlLimbHook),reinterpret_cast<void*>(GearsCoverControlSingleHook),reinterpret_cast<void*>(GearsCoverControlWeightHook)}};
     for(unsigned i=0;i<3;++i){targets[i]=reinterpret_cast<void*>(base+certificate::hooks[i].rva);std::array<unsigned char,32> before{},after{};
-        if(!safe_copy(before.data(),targets[i],32)||before!=certificate::hooks[i].prefix||MH_CreateHook(targets[i],detours[i],&originals[i])!=MH_OK){failed=true;return false;}
-        reserved_mask|=1u<<i;if(!safe_copy(after.data(),targets[i],32)||before!=after){failed=true;return false;}}
-    reserved=true;return true;
+        reserve_rva=certificate::hooks[i].rva;reserve_stage="prefix_read_before";
+        if(!safe_copy(before.data(),targets[i],32)){failed=true;return false;}reserve_stage="prefix_match";
+        if(before!=certificate::hooks[i].prefix){failed=true;return false;}reserve_stage="minhook_create";
+        reserve_mh_status=int(MH_CreateHook(targets[i],detours[i],&originals[i]));
+        if(reserve_mh_status!=int(MH_OK)){failed=true;return false;}
+        reserved_mask|=1u<<i;reserve_stage="prefix_read_after";
+        if(!safe_copy(after.data(),targets[i],32)){failed=true;return false;}reserve_stage="prefix_unchanged";
+        if(before!=after){failed=true;return false;}}
+    reserved=true;reserve_stage="ready";reserve_rva=0;return true;
 }
 bool reserved_target(void* target){for(unsigned i=0;i<3;++i)if((reserved_mask&(1u<<i))&&targets[i]==target)return true;return false;}
 bool configure(wchar_t const* ini,FILE* file){wchar_t value[16]{};GetPrivateProfileStringW(L"CoverControlObserver",L"enabled",L"0",value,16,ini);
-    if(wcscmp(value,L"0")&&wcscmp(value,L"1"))return false;
-    if(!wcscmp(value,L"1")){if(enabled||!phase::enabled||!continuous_session||!stereo_xr||!anchor_observer_enabled)return false;enabled=true;}
+    reserve_stage="configure_value";if(wcscmp(value,L"0")&&wcscmp(value,L"1"))return false;
+    if(!wcscmp(value,L"1")){reserve_stage="configure_context";if(enabled||!phase::enabled||!continuous_session||!stereo_xr||!anchor_observer_enabled)return false;enabled=true;}
+    reserve_stage=enabled?"configured":"disabled";
     if(file)fprintf(file,"cover_control_enabled=%u read_only=1 rows_max=128 first_pose_episode_only=1 atomic_verified=0 writer=0\n",unsigned(enabled));return true;
 }
 void request_drain(){stopping=true;}
 unsigned pending_count(){return in_flight.load()+compose_in_flight.load();}
-void summary(FILE* file){std::lock_guard<std::mutex> lock(mutex);if(file)fprintf(file,"cover_control_enabled=%u cover_control_certified=%u cover_control_reserved_mask=%u cover_control_calls=%llu cover_control_inflight=%u cover_control_compose_inflight=%u cover_control_rows=%u cover_control_episode=%u cover_control_dropped=%llu cover_control_rejected=%llu cover_control_nested=%llu cover_control_protocol=%llu cover_control_failed=%u cover_control_file_written=%u cover_control_file_error=%lu ",unsigned(enabled),unsigned(certified),reserved_mask,calls.load(),in_flight.load(),compose_in_flight.load(),row_count,selected_episode,dropped.load(),rejected.load(),nested_calls.load(),protocol_errors.load(),unsigned(failed.load()),unsigned(file_written.load()),file_error.load());}
+void summary(FILE* file){std::lock_guard<std::mutex> lock(mutex);if(file)fprintf(file,"cover_control_reserve_stage=%s cover_control_reserve_rva=0x%llx cover_control_reserve_mh_status=%d cover_control_enabled=%u cover_control_certified=%u cover_control_reserved_mask=%u cover_control_calls=%llu cover_control_inflight=%u cover_control_compose_inflight=%u cover_control_rows=%u cover_control_episode=%u cover_control_dropped=%llu cover_control_rejected=%llu cover_control_nested=%llu cover_control_protocol=%llu cover_control_failed=%u cover_control_file_written=%u cover_control_file_error=%lu ",reserve_stage,static_cast<unsigned long long>(reserve_rva),reserve_mh_status,unsigned(enabled),unsigned(certified),reserved_mask,calls.load(),in_flight.load(),compose_in_flight.load(),row_count,selected_episode,dropped.load(),rejected.load(),nested_calls.load(),protocol_errors.load(),unsigned(failed.load()),unsigned(file_written.load()),file_error.load());}
 void print(FILE* file,bool disabled){
     if(enabled&&disabled&&stopping.load()&&!pending_count()&&!file_attempted.exchange(true)){wchar_t path[MAX_PATH]{};Header header{};memcpy(header.magic,"CCTRL001",8);
         header.version=1;header.header_size=sizeof(Header);header.row_size=sizeof(Row);header.count=row_count;header.capacity=row_limit;header.session=uint64_t(session_started_qpc);header.module_base=base;header.pid=GetCurrentProcessId();header.pose_episode=selected_episode;header.read_only=1;

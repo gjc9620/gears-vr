@@ -4945,6 +4945,7 @@ DWORD WINAPI worker(void*) {
     if(!cover_pose_phase_live::configure(ini,status)||!cover_pose_phase_live::reserve()){
         fprintf(status,"rejected: cover pose observer requires current full code certificates and reserved entries\n");fclose(status);return 2;}
     if(!cover_control_observer_live::configure(ini,status)||!cover_control_observer_live::reserve()){
+        cover_control_observer_live::summary(status);fputc('\n',status);
         fprintf(status,"rejected: control observer requires passive pose support and matching current control code\n");fclose(status);return 2;}
     if(!cover_camera_live::configure(ini,status)){
         fprintf(status,"rejected: cover camera preview requires continuous stereo XR and enabled body prototype\n");fclose(status);return 2;}

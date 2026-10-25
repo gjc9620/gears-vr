@@ -50,7 +50,7 @@ bool digest(gears_cover_pose_certificate::Chunk const&){++digest_calls;return di
 }
 struct Code {uintptr_t address{};std::array<unsigned char,32> bytes{};};std::array<Code,6> code{};
 std::array<unsigned char,0x20000> memory{};std::array<p::Matrix,3> output_matrices{};std::array<int32_t,3> affected{{8,10,11}};
-bool memory_ok=true,change_matrix_on_read{};unsigned game_reads{};bool entry_ok=true;unsigned creates{};
+bool memory_ok=true,change_matrix_on_read{};unsigned game_reads{};bool entry_ok=true;unsigned creates{};bool hook_reject{};
 bool span(uintptr_t at,size_t size,uintptr_t start,size_t length){return at>=start&&at-start<=length&&size<=length-(at-start);}
 bool safe_copy(void* out,void const* in,size_t size){const auto at=reinterpret_cast<uintptr_t>(in);if(!memory_ok)return false;
     for(auto const& c:code)if(span(at,size,c.address,c.bytes.size())){++game_reads;memcpy(out,c.bytes.data()+at-c.address,size);return true;}
@@ -61,7 +61,7 @@ bool safe_copy(void* out,void const* in,size_t size){const auto at=reinterpret_c
 }
 template<class T>void put(uintptr_t at,T const& value){C(span(at,sizeof value,game,memory.size()));memcpy(memory.data()+at-game,&value,sizeof value);}
 constexpr int MH_OK=0;
-int MH_CreateHook(void* target,void*,void** original){++creates;for(unsigned i=0;i<3;++i)if(reinterpret_cast<uintptr_t>(target)==code[i].address){*original=reinterpret_cast<void*>(uintptr_t(i+1));return MH_OK;}return 1;}
+int MH_CreateHook(void* target,void*,void** original){++creates;if(hook_reject)return 8;for(unsigned i=0;i<3;++i)if(reinterpret_cast<uintptr_t>(target)==code[i].address){*original=reinterpret_cast<void*>(uintptr_t(i+1));return MH_OK;}return 1;}
 namespace cover_body_live {using CallPacket=p::CallPacket;extern "C" void GearsCoverRawInvoke(CallPacket*,void*) noexcept(false);}
 #include "cover_control_observer_live.inl"
 namespace live=cover_control_observer_live;namespace phase=cover_pose_phase_live;
@@ -184,8 +184,15 @@ int wmain(int argc,wchar_t** argv){C(argc==2);if(argc!=2)return 1;
 #if GEARS_COVER_CONTROL_OBSERVER && GEARS_COVER_BODY_PROTOTYPE
     for(unsigned i=0;i<3;++i){code[i].address=base+gears_cover_control_certificate::hooks[i].rva;code[i].bytes=gears_cover_control_certificate::hooks[i].prefix;}
     for(unsigned i=3;i<6;++i){code[i].address=base+0x700000+(i-3)*0x100;code[i].bytes.fill(0xcc);}
-    C(live::configure(ini,nullptr));phase::digest_ok=false;C(!live::prepare()&&!creates);phase::digest_ok=true;live::failed=false;
-    const bool hooks_ready=live::reserve()&&creates==3&&live::reserved_mask==7;C(hooks_ready);if(!hooks_ready)return 1;
+    C(live::configure(ini,nullptr));phase::digest_ok=false;C(!live::prepare()&&!creates);
+    C(!strcmp(live::reserve_stage,"code_hash_first")&&live::reserve_rva==gears_cover_control_certificate::chunks[0].rva);
+    phase::digest_ok=true;live::failed=false;code[0].bytes[0]^=1;
+    C(!live::reserve()&&!creates&&!live::reserved_mask&&!strcmp(live::reserve_stage,"prefix_match"));
+    code[0].bytes=gears_cover_control_certificate::hooks[0].prefix;live::failed=false;hook_reject=true;
+    C(!live::reserve()&&creates==1&&!live::reserved_mask&&!strcmp(live::reserve_stage,"minhook_create")&&live::reserve_mh_status==8);
+    hook_reject=false;live::failed=false;
+    const bool hooks_ready=live::reserve()&&creates==4&&live::reserved_mask==7;C(hooks_ready);if(!hooks_ready)return 1;
+    C(!strcmp(live::reserve_stage,"ready")&&!live::reserve_rva&&live::reserve_mh_status==0);
     C(phase::digest_calls==11);C(live::reserved_target(live::targets[1]));
     for(unsigned i=0;i<3;++i)code[i].bytes[0]=0xe9; // Synthetic owned entry patch, never executed.
     collect_cases();live::print(nullptr,true);C(live::file_written.load());
