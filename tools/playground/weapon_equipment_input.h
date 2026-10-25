@@ -38,7 +38,19 @@ struct Evidence {
     // current sync. created_ms is the conservative earlier bound, NOT a new
     // input timestamp. Keep the original ns/sequence evidence beside it.
     std::int64_t previous_sync_ns{},sync_ns{},received_ns{};
+    std::int64_t observed_ns{},previous_observed_ns{};
+    enum class Gap : std::uint8_t {none,current_sync_future,current_sync_stale,sync_not_advancing,previous_sync_stale} gap{};
 };
+inline char const* gap_name(Evidence::Gap gap) noexcept {
+    switch(gap){
+    case Evidence::Gap::none:return "none";
+    case Evidence::Gap::current_sync_future:return "current_sync_future";
+    case Evidence::Gap::current_sync_stale:return "current_sync_stale";
+    case Evidence::Gap::sync_not_advancing:return "sync_not_advancing";
+    case Evidence::Gap::previous_sync_stale:return "previous_sync_stale";
+    }
+    return "invalid_gap";
+}
 
 class Input {
     struct Cohort {
@@ -94,6 +106,9 @@ class Input {
     bool reject(Status status,std::uint64_t& cursor) noexcept {
         bound_=false;router_.reset();cursor=UINT64_MAX;evidence_.status=status;return false;
     }
+    bool reject_gap(Evidence::Gap gap,std::uint64_t& cursor) noexcept {
+        evidence_.gap=gap;return reject(Status::source_gap,cursor);
+    }
 public:
     Input()=default;Input(Input const&)=delete;Input& operator=(Input const&)=delete;
     // Drop the input baseline; never reuse a previously emitted serial.
@@ -103,7 +118,7 @@ public:
               std::uint64_t now_ms,std::uint64_t& cursor,Event& out) noexcept {
         evidence_={Status::quiet,serial_,f.controllers.sequence,f.controllers.hands[1].last_squeeze_press_sequence,
             f.controllers.hands[1].pressed[gears_vr::control_squeeze],0,bound_?sync_ns_:0,
-            f.controllers.sync_ns,f.controllers.received_ns};
+            f.controllers.sync_ns,f.controllers.received_ns,now_ns,bound_?last_ns_:0};
         if(!gears_weapon_hand::frame_active(f,now_ns))return reject(Status::invalid_frame,cursor);
         if(!calibration.valid())return reject(Status::invalid_calibration,cursor);
         auto const& c=f.controllers;auto const& r=c.hands[1];
@@ -111,7 +126,8 @@ public:
             return reject(Status::invalid_grip,cursor);
         // received_ns can be fresh while an old sync is repeated. Both original
         // clocks must be current; neither is replaced with this poll's clock.
-        if(c.sync_ns>now_ns||now_ns-c.sync_ns>maximum_gap_ns)return reject(Status::source_gap,cursor);
+        if(c.sync_ns>now_ns)return reject_gap(Evidence::Gap::current_sync_future,cursor);
+        if(now_ns-c.sync_ns>maximum_gap_ns)return reject_gap(Evidence::Gap::current_sync_stale,cursor);
         if(bound_&&(now_ns<last_ns_||now_ms<last_ms_))return reject(Status::invalid_clock,cursor);
         const auto key=cohort(f,calibration);
         const gears_vr::Pose body{f.stereo.head.position,f.reference.orientation};
@@ -134,7 +150,8 @@ public:
                r.last_squeeze_press_sequence!=press_sequence_)return reject(Status::source_regressed,cursor);
             last_ns_=now_ns;last_ms_=now_ms;return false;
         }
-        if(c.sync_ns<=sync_ns_||now_ns-sync_ns_>maximum_gap_ns)return reject(Status::source_gap,cursor);
+        if(c.sync_ns<=sync_ns_)return reject_gap(Evidence::Gap::sync_not_advancing,cursor);
+        if(now_ns-sync_ns_>maximum_gap_ns)return reject_gap(Evidence::Gap::previous_sync_stale,cursor);
         const auto previous_sync=sync_ns_;
         const bool new_press=press>pressed_;
         if(new_press&&(!r.last_squeeze_press_sequence||r.last_squeeze_press_sequence<=sequence_||
@@ -166,7 +183,7 @@ public:
         event.world_generation=f.key.world_generation;event.controller=f.controller.address;
         event.pawn=f.pawn.address;event.weapon=f.weapon.address;event.inventory_slot=*inventory_slot;
         evidence_={Status::event,event.serial,c.sequence,r.last_squeeze_press_sequence,press,event.created_ms,
-            previous_sync,c.sync_ns,c.received_ns};
+            previous_sync,c.sync_ns,c.received_ns,now_ns,evidence_.previous_observed_ns};
         cursor=event.serial;out=event;return true;
     }
 };

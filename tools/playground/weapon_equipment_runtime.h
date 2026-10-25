@@ -233,6 +233,20 @@ public:
             input_status=state_.baseline_ready?Status::baseline:Status::baseline_waiting;
         }
 
+        // A held weapon requires fresh inventory/identity/attachment work
+        // below. Sample its input before that work, at the same early boundary
+        // used by a new baseline. This local event grants no authority: every
+        // currentness, inventory, attachment and action-age check still runs.
+        // It is discarded on every early return and never retained/retried.
+        EquipmentIntentEvent held_input{};
+        const bool sampled_held=input_status==Status::idle&&!state_.pending&&model.held()&&!state_.future_known;
+        std::uint64_t held_cursor{};bool have_held_input{};
+        if(sampled_held){
+            held_cursor=state_.cursor;
+            have_held_input=b.next(b.context,f,state_.cursor,held_input);
+            if(!current(f,b))return lost(b);
+        }
+
         EquipmentSnapshot game{};
         if(!b.inventory(b.context,f,game)){
             clear_binding(b);return {Status::inventory_unavailable};
@@ -296,9 +310,13 @@ public:
         EquipmentIntentEvent event{};
         if(state_.future_known){event=state_.future;state_.future_known=false;state_.future={};}
         else {
-            const auto cursor=state_.cursor;
-            const bool have_event=b.next(b.context,f,state_.cursor,event);
-            if(!current(f,b))return lost(b);
+            const auto cursor=sampled_held?held_cursor:state_.cursor;
+            bool have_event{};
+            if(sampled_held){event=held_input;have_event=have_held_input;}
+            else {
+                have_event=b.next(b.context,f,state_.cursor,event);
+                if(!current(f,b))return lost(b);
+            }
             if(!have_event){
                 // The local Frame input can discover a source gap/calibration
                 // boundary independently of Runtime's cohort. Drop old presses

@@ -2,6 +2,24 @@
 
 本文件保留武器与掩体两个分支的开发历史，便于共用 Native 手部实现合流。各条记录仍以其原始验证范围为准；私有候选、只读采样或离线检查不代表完整功能、默认构建更新或头显验收。
 
+## 2026-10-26 — 定位持枪后输入消费过晚，提前同tick读取Grip
+
+在995fd2f之后继续追踪DQ／DR的第二次Grip失败。旧记录只有sync／received，没有实际Input::next消费时刻，无法区分两处source_gap。新增纯诊断Gap细分、observed_ns与previous_observed_ns，在真实next拒绝位置最多记录16条，同时保留原始Frame.now、sync、received和sequence；没有替换时间公式或扩大100ms阈值。严格PG编译和原Runtime／实际Input→Runtime定向回归通过，复用原Native29sim／XR／host执行DS同两个动作。
+
+DS实际取得两条previous_sync_stale：当前样本源龄44.4435／45.8568ms，而前同步点到消费时刻为122.224／101.3919ms；消费相对该Frame.now延迟37.5691／43.2679ms。两条并非当前样本源龄超过100ms，也不是源次序倒退。DS第二次切枪仍失败，complete=false；这次取证把具体拒绝分支和实际消费时刻补齐，不把调查进展写成玩法完成。原日志与机械运算在ignored analysis/equipment-native-rgrip-runtime-20261026ds/runtime-input-gap-review.json。正常88项恢复、Native／entry／XR0／PG0、原十文件、音频12/12和随后新鲜CIM无Game／XR通过，运行窗口已正常释放。
+
+源级核对确认：baseline在库存前读取输入，已持枪路径却先做库存、身份、附件和多次完整observe，再读取同一Frame输入。修正只在稳定held且没有pending／future时，沿baseline附近的现有边界读取一次，并立即重核current；结果只存于本tick栈上。原位置使用同一结果和原cursor，不二次读取或重放。后续库存、持枪身份、附件、当前Frame源龄、event tuple／age和动作前检查全部保留；任何提前返回都丢弃局部事件，原pending／future路径顺序不变。不会用旧结果授权下一帧。
+
+新回归使用真实Input→Runtime→模型，模拟40ms当前源龄、50ms同步推进和28ms后续库存／附件耗时：旧Runtime在同一新增时序断言实际失败，新版通过；库存失败、附件失败和源过期都不切枪，恢复后无重放，新按压才执行。严格PG编译、原Runtime与69例733项输入检查通过；一次Sol/Medium仅复核该顺序差异，无具体finding。新PG为2eb6b5fc…a0bfa，750份源／vendor闭包稳定，未重建Native／XR或修改默认启动器。回执为ignored analysis/equipment-input-early-20261026dt/pg-build/attempt-1792949065954512600/receipt.json；旧Runtime的预期失败保存在同区old-runtime-check-1792949119833556300/receipt.json。
+
+DT真实同两动作运行中，没有记录到source_gap或baseline重建，Lancer认证1条／11.9059ms；第二次按压仍未切枪，complete=false保留。进一步核对发现私有脚本从DQ继承了错误裤兜坐标：vertical=-.72／depth=0，不是原DG已通过的-.55／.02。真实按压位置约比中心低17cm，距离约17.1cm，超过生产半径16cm。将DT记录的实际head／last-press grip送进实际编译的body_slot函数，在受控中立reference下返回none；原DG位置返回pistol。回执为ignored analysis/equipment-input-early-20261026dt/slot-check-1792949450884873600/receipt.json。这是独立测试输入错误，不能把先前所有失败都归因于消费延迟，不能扩大生产槽位来适配错误坐标。
+
+DT正常88项恢复、Native／entry／XR0／PG0、原十文件、音频12/12及随后新鲜CIM为空通过。DU仅恢复私有脚本的DG裤兜坐标，PG／Native／XR／两动作目标和所有时效守卫不变；预检首次因私有coordinator在artifacts／extraArtifacts中的两份旧hash未同步而拒绝，未启动游戏，保留失败后只更新这两个精确派生工件条目，完整预检通过。历史DQ／DR／DS／DT和各自封存输入不改写。
+
+DU随后真实完成两个检查点，complete／behavior_complete均true、两段episode、errors为空：frame470右肩slot3取得Lancer held及实际资产／唯一右手附件认证，耗时14.0466ms；frame505左裤兜slot0实际切到Snub且held，hold generation从1变2，资产准备返回unsupported_asset／unsupported_weapon（status3），未延续Lancer认证。所有记录candidate／body_binding仍0。输入顺序修正没有被用来放宽保护：本局仍记录3次previous_sync_stale，源龄分别29.3905／46.5215／24.7161ms，前同步点累计107.1264／113.1679／113.5128ms；恢复基线后完成了目标。不能将本局通过扩张成所有卡顿情况下输入均稳定，也不能单凭前后对照声称消费延迟是DQ／DR全部失败的唯一原因。
+
+DU正常停止完成控制器恢复、HandStop4→5／quiescent、88项独立恢复、Native／entry／XR exit0／PG shutdown0、原十文件保持、音频12/12和准确自有PID退出，随后新鲜CIM无Game／XR，窗口已交还。行为、拒绝实值和清理分别在ignored analysis/equipment-native-rgrip-runtime-20261026du/runtime-review.json、runtime-input-gap-review.json、runtime-final.json；pins为3eeb3b10…e5779。下一检查点回到共用C0上的Lancer实际主握／瞄准／射击；当前只完成输入消费修正与切枪后的资产认证失效验证，实际腕部、权威弹道及头显验收仍未完成，无新发布／tag／默认构建替换。
+
 ## 2026-10-26 — Lancer实际资产与主握候选认证，诊断预览减负
 
 本轮保持单一目标：在正常GT装备消费者内，按当前真实持枪状态认证Lancer资产，为共用身体执行点准备固定Grip→Wrist标定。新增默认关闭的NativeEquipmentMainMountTrial，不新增Native登记／导出／共享ABI或骨骼／组件writer。现有source_current_on_gt提取为可返回当前GripGameState的source_game_on_gt，保留原GT、登记、精确FrameKey、身份、源龄与调用末尾检查；失败清空输出，不发布新Frame或产生写入权限。

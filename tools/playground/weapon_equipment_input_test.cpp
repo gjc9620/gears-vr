@@ -73,6 +73,8 @@ void routes(){
         C(h.out.created_ms==998&&h.out.created_ms<h.sample.ms);
         C(h.input.evidence().previous_sync_ns==previous&&h.input.evidence().sync_ns==h.sample.f.controllers.sync_ns);
         C(h.input.evidence().received_ns==h.sample.f.controllers.received_ns&&h.input.evidence().press_counter==1);
+        C(h.input.evidence().gap==ei::Evidence::Gap::none&&h.input.evidence().observed_ns==h.sample.ns);
+        C(h.input.evidence().previous_observed_ns==1000000000);
         const auto before=h.out;C(!h.next());C(!std::memcmp(&before,&h.out,sizeof(before)));
         h.sample.ns+=5000000;h.sample.ms+=5;C(!h.next());C(h.out.created_ms==998);
         h.sample.advance();C(!h.next());C(h.cursor==1);
@@ -151,13 +153,33 @@ void invalids(){
 }
 void times(){
     ++cases;Direct gap;gap.baseline();gap.sample.advance(101);gap.sample.press();gap.unchanged_failure(ei::Status::source_gap);
+    C(gap.input.evidence().gap==ei::Evidence::Gap::previous_sync_stale);
+    C(gap.input.evidence().observed_ns==gap.sample.ns&&gap.input.evidence().previous_observed_ns==1000000000);
     gap.baseline();C(!gap.next());gap.sample.press(3);C(gap.next());C(gap.input.evidence().press_counter==2);
+    C(gap.input.evidence().gap==ei::Evidence::Gap::none);
     ++cases;Direct edge;edge.baseline();edge.sample.advance(88);edge.sample.press();C(edge.next());
     C(edge.sample.ns-edge.input.evidence().previous_sync_ns==100000000&&edge.out.created_ms==998);
     ++cases;Direct past;past.baseline();past.sample.advance(88);past.sample.press();++past.sample.ns;
     past.unchanged_failure(ei::Status::source_gap);
+    C(past.input.evidence().gap==ei::Evidence::Gap::previous_sync_stale);
     ++cases;Direct stale;stale.baseline();const auto sync=stale.sample.f.controllers.sync_ns;
     stale.sample.advance(101);stale.sample.f.controllers.sync_ns=sync;stale.unchanged_failure(ei::Status::source_gap);
+    C(stale.input.evidence().gap==ei::Evidence::Gap::current_sync_stale);
+    ++cases;Direct same_sync;same_sync.baseline();same_sync.sample.advance();
+    same_sync.sample.f.controllers.sync_ns=same_sync.input.evidence().sync_ns;
+    same_sync.unchanged_failure(ei::Status::source_gap);
+    C(same_sync.input.evidence().gap==ei::Evidence::Gap::sync_not_advancing);
+    // Current sample is 60ms old, while the earlier observed sync is 110ms
+    // old. The extra age is NOT the 50ms difference between the two syncs.
+    ++cases;Direct accumulated;accumulated.sample.f.controllers.sync_ns=accumulated.sample.ns-60000000;
+    accumulated.baseline();const auto previous=accumulated.sample.f.controllers.sync_ns;
+    accumulated.sample.advance(50);accumulated.sample.f.controllers.sync_ns=accumulated.sample.ns-60000000;
+    accumulated.unchanged_failure(ei::Status::source_gap);
+    const auto& evidence=accumulated.input.evidence();
+    C(evidence.gap==ei::Evidence::Gap::previous_sync_stale);
+    C(evidence.observed_ns-evidence.sync_ns==60000000&&evidence.sync_ns-previous==50000000);
+    C(evidence.observed_ns-evidence.previous_sync_ns==110000000);
+    C(evidence.previous_observed_ns==1000000000);
     ++cases;Direct repeat;repeat.baseline();repeat.sample.f.controllers.hands[1].pressed[vr::control_squeeze]=1;
     repeat.unchanged_failure(ei::Status::source_regressed);
     ++cases;Direct backwards;backwards.baseline();backwards.sample.advance();backwards.sample.f.controllers.sync_ns=1;
@@ -171,7 +193,8 @@ void times(){
 // callbacks are a synchronous owned-data seam; no mapping or event injection.
 struct Integrated {
     Sample sample;ei::Input input;er::Runtime runtime;gw::WeaponEquipmentModel model;gw::EquipmentSnapshot game{};
-    unsigned switches{},holds{},sounds{},resets{};bool attached{true},current_ok{true};
+    unsigned switches{},holds{},sounds{},resets{},next_calls{};bool attached{true},current_ok{true},inventory_ok{true};
+    std::int64_t inventory_ns{},attachment_ns{},last_next_ns{};
     Integrated(){game.world=sample.f.world.address;game.pawn=sample.f.pawn.address;game.current_weapon=sample.f.weapon.address;
         game.weapon_in_slot={0x5000,0x6000,0x7000,0x7800};game.can_switch=true;game.ammo_known.fill(true);
         game.ammo_available.fill(true);game.throwable_count_known=true;game.throwable_count=2;}
@@ -180,9 +203,13 @@ struct Integrated {
     static std::int64_t clock_ns(void* p) noexcept {return h(p).sample.ns;}
     static bool current(void* p,wh::Frame const& f) noexcept {return h(p).current_ok&&!std::memcmp(&f,&h(p).sample.f,sizeof(f));}
     static bool next(void* p,wh::Frame const& f,std::uint64_t& cursor,ei::Event& out) noexcept {
-        auto& x=h(p);return x.input.next(f,x.sample.calibration,x.sample.ns,x.sample.ms,cursor,out);}
-    static bool inventory(void* p,wh::Frame const&,gw::EquipmentSnapshot& out) noexcept {out=h(p).game;return true;}
-    static bool is_attached(void* p,wh::Frame const&,gw::EquipmentSnapshot const&) noexcept {return h(p).attached;}
+        auto& x=h(p);++x.next_calls;x.last_next_ns=x.sample.ns;
+        return x.input.next(f,x.sample.calibration,x.sample.ns,x.sample.ms,cursor,out);}
+    static void work(Integrated& x,std::int64_t ns) noexcept {x.sample.ns+=ns;x.sample.ms+=std::uint64_t(ns/1000000);}
+    static bool inventory(void* p,wh::Frame const&,gw::EquipmentSnapshot& out) noexcept {
+        auto& x=h(p);work(x,x.inventory_ns);out=x.game;return x.inventory_ok;}
+    static bool is_attached(void* p,wh::Frame const&,gw::EquipmentSnapshot const&) noexcept {
+        auto& x=h(p);work(x,x.attachment_ns);return x.attached;}
     static bool identify(void*,std::uint64_t address,wh::ObjectIdentity& out) noexcept {out=Sample::id(address);return true;}
     static bool forward(void* p,wh::Frame const&,gw::EquipmentSnapshot const&,unsigned) noexcept {++h(p).switches;return true;}
     static bool sound(void* p,wh::Frame const&,gw::EquipmentSnapshot const&,unsigned) noexcept {++h(p).sounds;return true;}
@@ -221,7 +248,43 @@ void integration(){
     missing.sample.calibration={1,1.7,-.15};C(missing.tick().status==er::Status::baseline);
     missing.sample.press(0);C(missing.tick().status==er::Status::held);C(missing.holds==1&&missing.switches==0);
 }
+void held_timing(){
+    for(unsigned failure=0;failure<4;++failure){
+        ++cases;Integrated h;h.baseline();h.sample.press(0);C(h.tick().status==er::Status::held);
+        C(h.model.held()&&h.switches==0);
+        auto old_source=[&]{
+            h.sample.f.controllers.sync_ns=h.sample.ns-40000000;
+            h.sample.f.controllers.received_ns=h.sample.f.stereo.received_ns=h.sample.ns-39999000;
+        };
+        h.sample.advance(60);old_source();C(h.tick().status==er::Status::idle);
+        h.sample.advance(40);h.sample.press(2);old_source();
+        const auto input_now=h.sample.ns,earlier_sync=h.input.evidence().sync_ns;
+        C(input_now-earlier_sync==90000000);
+        h.inventory_ns=failure==3?61000000:20000000;h.attachment_ns=8000000;
+        if(failure==1)h.inventory_ok=false;
+        if(failure==2)h.attached=false;
+        const auto calls=h.next_calls;const auto result=h.tick();
+        C(h.next_calls==calls+1&&h.last_next_ns==input_now);
+        C(h.input.evidence().gap==ei::Evidence::Gap::none); // suspend clears diagnostics on source expiry.
+        if(!failure){
+            C(result.status==er::Status::switch_requested&&h.switches==1);
+            C(h.runtime.state().pending&&h.model.switch_pending());
+            C(h.input.evidence().previous_sync_ns==earlier_sync&&h.input.evidence().observed_ns==input_now);
+            C(h.input.evidence().created_ms==std::uint64_t(earlier_sync/1000000));
+            C(h.sample.ns-h.sample.f.controllers.sync_ns==68000000);
+        }else{
+            const auto expected=failure==1?er::Status::inventory_unavailable:
+                failure==2?er::Status::attachment_unavailable:er::Status::unavailable;
+            C(result.status==expected&&h.switches==0&&!h.runtime.state().pending);
+            h.inventory_ok=h.attached=true;h.inventory_ns=h.attachment_ns=0;
+            h.sample.advance();const auto recovered=h.tick();
+            C(recovered.status==er::Status::idle||recovered.status==er::Status::baseline);
+            h.sample.advance();C(h.tick().status==er::Status::idle&&h.switches==0);
+            h.sample.press(2);C(h.tick().status==er::Status::switch_requested&&h.switches==1);
+        }
+    }
 }
-int main(){routes();boundaries();invalids();times();integration();
+}
+int main(){routes();boundaries();invalids();times();integration();held_timing();
     std::printf("NativeEquipmentInputTest: %u cases / %u checks passed; actual Native Frame input/router + Runtime/model, controlled backend seam; no Game/XR/mapping/engine acceptance\n",cases,checks);
 }

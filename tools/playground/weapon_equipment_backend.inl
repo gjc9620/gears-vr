@@ -15,6 +15,7 @@ std::array<std::uint64_t,static_cast<std::size_t>(runtime::Status::clock_invalid
 runtime::Runtime state;
 runtime::Status last_status{};
 bool have_status{};
+unsigned input_gap_logs{};
 
 bool configure_native(HMODULE native) noexcept {
     const bool loaded=runtime::load_native_armspan(native,calibration);
@@ -35,7 +36,16 @@ bool next(void*,abi::Frame const& frame,std::uint64_t& cursor,gears_weapon::Equi
     const bool available=input.next(frame,calibration,clock_ns(nullptr),clock_ms(nullptr),cursor,event);
     // Runtime may drop its baseline immediately after next rejects. Retain
     // only diagnostics, never another frame or an action to retry.
-    input_evidence=input.evidence();return available;
+    input_evidence=input.evidence();
+    // Bounded timing evidence at the actual input rejection. This is not a new
+    // poll, timestamp substitution, event retry or freshness allowance.
+    if(log_file&&input_gap_logs<16&&input_evidence.status==gears_equipment_input::Status::source_gap){
+        const auto& s=input_evidence;
+        fwprintf(log_file,L"native_equipment_input_gap reason=%hs frame=%llu source_sequence=%llu observed_ns=%lld previous_observed_ns=%lld previous_sync_ns=%lld sync_ns=%lld received_ns=%lld frame_now_ns=%lld\n",
+            gears_equipment_input::gap_name(s.gap),frame.key.frame,s.sequence,s.observed_ns,s.previous_observed_ns,
+            s.previous_sync_ns,s.sync_ns,s.received_ns,frame.now_ns);fflush(log_file);++input_gap_logs;
+    }
+    return available;
 }
 void clear_hold(void*) noexcept {weaponhand::held_binding={};}
 bool identify(void*,std::uint64_t address,abi::ObjectIdentity& out) noexcept {
@@ -202,7 +212,7 @@ void reset_after_drain() noexcept {
 #if defined(GEARS_PLAYGROUND_NATIVE_EQUIPMENT_MAIN_MOUNT_TRIAL)
     nativeequipment_main_mount::reset_after_drain();
 #endif
-    calibration={};input_evidence={};
+    calibration={};input_evidence={};input_gap_logs=0;
     if(log_file&&ticks){
         fwprintf(log_file,L"native_equipment_summary ticks=%llu frames=%llu frame_unavailable=%llu other_controller=%llu domain_rejected=%llu\n",
             ticks,frames,frame_unavailable,other_controller,domain_rejected);
