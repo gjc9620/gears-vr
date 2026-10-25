@@ -665,6 +665,7 @@ def start(config,manifest,backend,index=INDEX,clock=time.monotonic,sleep=time.sl
             args.startup_selftest_proof=handshake['path'];args.startup_selftest_digest=handshake['digest'];args.startup_selftest_nonce=handshake['nonce']
         for key in SESSION_OPTIONS:setattr(args,key,manifest.get(key,False))
         args.remeasure_armspan=bool(remeasure_armspan)
+        args.launcher_language=config.get('launcher_language','en')
         hud_fov=hud_horizontal_fov(config,manifest)
         if hud_fov is not None:args.hud_horizontal_fov_degrees=hud_fov
         for key,value in hud_layout(config,manifest).items():setattr(args,key,value)

@@ -108,6 +108,13 @@ class Measurement:
     def progress(self):
         return min(1., (self.last_ns - self.started) / 2e9, len(self.spans) / 60) if self.spans else 0.
 
+    def expire(self, now_ns):
+        # An idle reader must not leave a partial hold visible indefinitely.
+        # UI polling never supplies samples or advances measurement progress.
+        if self.result is None and self.spans and (type(now_ns) is not int or
+                now_ns < self.last_ns or now_ns - self.last_ns > 100_000_000):
+            self.reset_window()
+
     def observe(self, sample, now_ns):
         if self.result is not None:
             return self.result

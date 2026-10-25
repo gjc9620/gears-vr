@@ -8,6 +8,7 @@ import uuid
 
 from armspan_calibration import Session, default_path
 from armspan_wire import Reader, Unavailable
+from armspan_ui import Publisher, wait_saved
 
 
 def event(phase, progress=0):
@@ -15,7 +16,8 @@ def event(phase, progress=0):
 
 
 def prepare(args, game, owner, control, runner, cancel, root, *, path=None,
-            reader_factory=Reader, popen=subprocess.Popen, clock=time.monotonic, sleep=time.sleep, timeout=90):
+            reader_factory=Reader, ui_factory=Publisher, wait_presented=wait_saved,
+            popen=subprocess.Popen, clock=time.monotonic, sleep=time.sleep, timeout=90):
     path = Path(path) if path is not None else default_path()
     session = Session(path, bool(getattr(args, 'remeasure_armspan', False)))
     if not session.required:
@@ -33,11 +35,14 @@ def prepare(args, game, owner, control, runner, cancel, root, *, path=None,
                '--stereo-game-pid', str(game['pid']), '--continuous-session', '--controller-input',
                '--owner-pid', str(owner['pid']), '--owner-creation-time', str(owner['creation_time']),
                '--startup-menu-window', str(args.startup_menu_window), str(game['pid'])]
-    child = reader = None
+    child = reader = ui = None
     cleanup = {}
     cancelled = False
+    feedback = None
     event('waiting')
     try:
+        ui = ui_factory(game, owner, getattr(args, 'launcher_language', 'en'))
+        command += ['--armspan-ui', ui.token, '--armspan-game-creation', str(game['creation_time'])]
         with prefix.with_suffix('.out.jsonl').open('w', encoding='utf-8') as stdout, \
                 prefix.with_suffix('.err.txt').open('w', encoding='utf-8') as stderr:
             child = popen(command, stdout=stdout, stderr=stderr, env=runner.xr_environment(os.environ),
@@ -46,10 +51,11 @@ def prepare(args, game, owner, control, runner, cancel, root, *, path=None,
             if (publisher is None or Path(publisher['image']).resolve() != Path(command[0]).resolve()):
                 raise RuntimeError('Owned calibration XR identity unavailable')
             reader = reader_factory(game, publisher, control.identity)
-            deadline, last_percent = clock() + timeout, -1
+            deadline, last_percent, last_content, last_pulse = clock() + timeout, -1, None, clock()
             while clock() < deadline:
                 if cancel():
                     cancelled = True
+                    ui.publish('cancelled', 0)
                     break
                 if child.poll() is not None:
                     raise RuntimeError('Calibration XR exited before measurement')
@@ -66,28 +72,50 @@ def prepare(args, game, owner, control, runner, cancel, root, *, path=None,
                     # Commit a completed measurement immediately. A later XR
                     # cleanup failure blocks Native without rolling back this record.
                     session.observe(sample, reader.now())
+                session.measurement.expire(reader.now())
                 percent = int(session.measurement.progress * 10)
                 if percent != last_percent:
                     event('holding' if percent else 'waiting', percent / 10)
                     last_percent = percent
                 if session.saved:
+                    sequence = ui.publish('saved', 1000)
                     event('saved', 1)
+                    feedback = wait_presented(prefix.with_suffix('.out.jsonl'), ui.token, sequence, child,
+                        lambda:control.identity(owner['pid']) == owner, cancel, ui, clock=clock, sleep=sleep)
+                    if feedback is None:
+                        cancelled = True
+                        ui.publish('cancelled', 0)
                     break
+                content = ('holding', min(999, int(session.measurement.progress * 1000))) if session.measurement.progress else ('waiting', 0)
+                if content != last_content or clock() - last_pulse >= .25:
+                    ui.publish(*content)
+                    last_content, last_pulse = content, clock()
                 sleep(.01)
             else:
                 raise TimeoutError('Armspan measurement timed out; prior record preserved')
+    except BaseException:
+        if ui is not None:
+            try:
+                ui.publish('failed', 0)
+            except Exception:
+                pass  # Preserve the original measurement/child failure.
+        raise
     finally:
         try:
-            if reader is not None:
-                reader.close()
+            try:
+                if reader is not None:
+                    reader.close()
+            finally:
+                if child is not None:
+                    runner.cleanup_owned_xr(child, child.pid, game['pid'], args.cleanup_timeout, control, cleanup)
+                    if (cleanup.get('xr_exit_code') != 0 or cleanup.get('xr_cleanup_error') or
+                            cleanup.get('xr_forced_cleanup_reason')):
+                        raise RuntimeError('Calibration XR did not close cleanly; Native remains inactive')
         finally:
-            if child is not None:
-                runner.cleanup_owned_xr(child, child.pid, game['pid'], args.cleanup_timeout, control, cleanup)
-                if (cleanup.get('xr_exit_code') != 0 or cleanup.get('xr_cleanup_error') or
-                        cleanup.get('xr_forced_cleanup_reason')):
-                    raise RuntimeError('Calibration XR did not close cleanly; Native remains inactive')
+            if ui is not None:
+                ui.close()
     if cancelled:
         event('cancelled')
         return None
     return dict(path=str(path), mode='measured', saved=True, record_state=session.previous.state,
-                xr_cleanup=cleanup, log=str(prefix.with_suffix('.out.jsonl')))
+                xr_cleanup=cleanup, headset_feedback=feedback, log=str(prefix.with_suffix('.out.jsonl')))

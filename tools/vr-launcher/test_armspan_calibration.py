@@ -97,6 +97,21 @@ class MeasurementTests(unittest.TestCase):
                 self.assertIsNone(measure.observe(sample(), now))
                 self.assertEqual(measure.progress, 0)
 
+    def test_idle_reader_expires_partial_hold_without_creating_samples(self):
+        measure = calibration.Measurement()
+        hold(measure, count=100)
+        last_ns, count = measure.last_ns, len(measure.spans)
+        measure.expire(last_ns+100_000_000)
+        self.assertEqual(len(measure.spans), count)
+        self.assertGreater(measure.progress, 0)
+        measure.expire(last_ns+100_000_001)
+        self.assertEqual(measure.progress, 0)
+        self.assertEqual(len(measure.spans), 0)
+        self.assertIsNotNone(hold(measure, start=4_000_000_000, first=202))
+        completed = measure.result
+        measure.expire(99_000_000_000)
+        self.assertEqual(measure.result, completed)
+
 
 class PersistenceTests(unittest.TestCase):
     def setUp(self):

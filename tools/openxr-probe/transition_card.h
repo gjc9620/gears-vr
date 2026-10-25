@@ -20,7 +20,8 @@ extern XrSpace view_space;
 extern bool xr_gpu_teardown_unsafe;
 
 // A literal UI card, never a reconstructed or stale game frame. Create/destroy
-// on the XR thread, with destruction before the owning session is destroyed.
+// All methods run on the XR thread; destroy before the owning session. The
+// custom-pixel overload is optional and never changes the three static cards.
 class TransitionCard {
     template<class T> using Ptr=Microsoft::WRL::ComPtr<T>;
     const XrSession owner_session;
@@ -37,8 +38,14 @@ class TransitionCard {
     D3D12_PLACED_SUBRESOURCE_FOOTPRINT footprint{};
     std::uint64_t serial{};
     bool acquired{},waited{},in_flight{},current{},failed{},retained{},release_failed{};
-    const std::vector<std::uint8_t> pixels;
+    const bool dynamic;
+    bool owner_lost{},dirty{true};std::size_t upload_bytes{};
+    std::vector<std::uint8_t> pixels,uploaded_pixels;
+    static constexpr std::size_t pixel_bytes=std::size_t(transition_card_pixels::width)*transition_card_pixels::height*4;
 
+    static std::vector<std::uint8_t> const& checked_pixels(std::vector<std::uint8_t> const& value){
+        if(value.size()!=pixel_bytes)throw std::runtime_error("Transition-card RGBA size mismatch");return value;
+    }
     static void exact(XrResult result,char const* action){
         if(result!=XR_SUCCESS)throw std::runtime_error(std::string(action)+": "+std::to_string(result));
     }
@@ -51,10 +58,20 @@ class TransitionCard {
         // UINT64_MAX denotes device removal, not a completed submission.
         return value!=(std::numeric_limits<std::uint64_t>::max)()&&value>=serial;
     }
+    bool owner_current()noexcept{
+        if(session!=owner_session)owner_lost=true;
+        return !owner_lost;
+    }
+    void require_idle(){
+        if(in_flight||serial){
+            if(!completed()){in_flight=true;throw std::runtime_error("Transition-card previous GPU completion unconfirmed");}
+            in_flight=false;
+        }
+    }
     void teardown()noexcept{
         if(retained)return;
         if(in_flight&&completed())in_flight=false;
-        bool unsafe=in_flight||release_failed;
+        bool unsafe=in_flight||release_failed||(chain&&(owner_lost||session!=owner_session));
         if(acquired&&!unsafe){
             if(!waited)unsafe=true;
             else{
@@ -81,18 +98,43 @@ class TransitionCard {
         value.Transition.pResource=image;value.Transition.Subresource=D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
         value.Transition.StateBefore=before;value.Transition.StateAfter=after;commands->ResourceBarrier(1,&value);
     }
-    void upload_once(){
+    void map_pixels(){
+        require_idle();
+        void* mapped{};D3D12_RANGE read{0,0};dx(upload->Map(0,&read,&mapped),"Map transition-card upload");
+        std::memset(mapped,0,upload_bytes);
+        for(unsigned y=0;y<transition_card_pixels::height;++y){
+            auto* destination=static_cast<unsigned char*>(mapped)+footprint.Offset+std::size_t(y)*footprint.Footprint.RowPitch;
+            const auto* source=pixels.data()+std::size_t(y)*transition_card_pixels::width*4;
+            for(unsigned x=0;x<transition_card_pixels::width;++x){const bool bgra=menu_swapchain_format::bgra(format);
+                destination[x*4]=source[x*4+(bgra?2:0)];destination[x*4+1]=source[x*4+1];
+                destination[x*4+2]=source[x*4+(bgra?0:2)];destination[x*4+3]=source[x*4+3];}
+        }
+        D3D12_RANGE written{0,upload_bytes};upload->Unmap(0,&written);
+    }
+    void upload_current(){
+        require_idle();
+        if(serial>=(std::numeric_limits<std::uint64_t>::max)()-1)throw std::runtime_error("Transition-card fence exhausted");
         std::uint32_t index{};
         XrSwapchainImageAcquireInfo acquire{XR_TYPE_SWAPCHAIN_IMAGE_ACQUIRE_INFO};
-        exact(xrAcquireSwapchainImage(chain,&acquire,&index),"Acquire transition card");acquired=true;
+        const auto result=xrAcquireSwapchainImage(chain,&acquire,&index);
+        // SESSION_LOSS_PENDING is a nonnegative acquire result: ownership may
+        // already have transferred. Retain without wait/write/release unless
+        // exact success lets us continue; never destroy as if no image is held.
+        if(XR_SUCCEEDED(result))acquired=true;
+        exact(result,"Acquire transition card");
+        if(!owner_current())throw std::runtime_error("Transition-card owning session changed");
         XrSwapchainImageWaitInfo wait{XR_TYPE_SWAPCHAIN_IMAGE_WAIT_INFO};wait.timeout=1000000000;
         // XR_TIMEOUT_EXPIRED is a positive result, but never authorizes writes
         // or release. Only an exact success transfers image-write authority.
         exact(xrWaitSwapchainImage(chain,&wait),"Wait transition card");waited=true;
+        if(!owner_current())throw std::runtime_error("Transition-card owning session changed");
         if(index>=images.size()||!images[index].texture)throw std::runtime_error("Invalid transition-card image index");
         auto* image=images[index].texture;const auto desc=image->GetDesc();
         if(!transition_card_layout::valid_image(desc,format,transition_card_pixels::width,transition_card_pixels::height))
             throw std::runtime_error("Transition-card image layout changed");
+        // Dynamic CPU content becomes GPU-visible only after exact XR wait and
+        // confirmed completion of ALL previous use of this upload/allocator.
+        require_idle();if(dynamic)map_pixels();
         dx(allocator->Reset(),"Reset transition-card allocator");dx(commands->Reset(allocator.Get(),nullptr),"Reset transition-card commands");
         barrier(image,D3D12_RESOURCE_STATE_RENDER_TARGET,D3D12_RESOURCE_STATE_COPY_DEST);
         D3D12_TEXTURE_COPY_LOCATION destination{},source{};
@@ -101,25 +143,29 @@ class TransitionCard {
         commands->CopyTextureRegion(&destination,0,0,0,&source,nullptr);
         barrier(image,D3D12_RESOURCE_STATE_COPY_DEST,D3D12_RESOURCE_STATE_RENDER_TARGET);
         dx(commands->Close(),"Close transition-card commands");
-        ID3D12CommandList* lists[]{commands.Get()};in_flight=true;
+        ID3D12CommandList* lists[]{commands.Get()};++serial;in_flight=true;
         queue->ExecuteCommandLists(1,lists);
-        dx(queue->Signal(fence.Get(),++serial),"Signal transition-card fence");
+        dx(queue->Signal(fence.Get(),serial),"Signal transition-card fence");
         if(!completed()){
             dx(fence->SetEventOnCompletion(serial,event),"Set transition-card fence event");
             if(WaitForSingleObject(event,3000)!=WAIT_OBJECT_0||!completed())
                 throw std::runtime_error("Transition-card GPU completion unconfirmed");
         }
         in_flight=false;
+        if(!owner_current())throw std::runtime_error("Transition-card owning session changed");
         XrSwapchainImageReleaseInfo release{XR_TYPE_SWAPCHAIN_IMAGE_RELEASE_INFO};
         const auto released=xrReleaseSwapchainImage(chain,&release);
         if(released!=XR_SUCCESS){release_failed=true;exact(released,"Release transition card");}
-        acquired=waited=false;current=true;++uploads;
+        acquired=waited=false;
+        if(!owner_current())throw std::runtime_error("Transition-card owning session changed");
+        if(dynamic)std::memcpy(uploaded_pixels.data(),pixels.data(),pixel_bytes);
+        current=true;dirty=false;++uploads;
     }
 public:
     unsigned uploads{},rendered{};
-    TransitionCard(ID3D12Device* d,ID3D12CommandQueue* q,
-        transition_card_pixels::Variant variant=transition_card_pixels::Variant::returning_to_game):
-        owner_session(session),device(d),queue(q),pixels(transition_card_pixels::rgba(variant)){
+private:
+    TransitionCard(ID3D12Device* d,ID3D12CommandQueue* q,std::vector<std::uint8_t> const& rgba,bool dynamic_content):
+        owner_session(session),device(d),queue(q),dynamic(dynamic_content),pixels(checked_pixels(rgba)),uploaded_pixels(dynamic_content?pixel_bytes:0){
         try{
             if(!owner_session||!d||!q||q->GetDesc().Type!=D3D12_COMMAND_LIST_TYPE_DIRECT)
                 throw std::runtime_error("Transition-card session/device/direct queue required");
@@ -130,7 +176,7 @@ public:
             format=menu_swapchain_format::choose(formats);
             if(!format)throw std::runtime_error("No transition-card 8-bit SDR format");
             std::printf("{\"xr_color_policy\":\"%s\",\"path\":\"transition_card\",\"selected_format\":%u}\n",menu_swapchain_format::srgb(format)?"srgb":"unorm",unsigned(format));std::fflush(stdout);
-            XrSwapchainCreateInfo create{XR_TYPE_SWAPCHAIN_CREATE_INFO};create.createFlags=XR_SWAPCHAIN_CREATE_STATIC_IMAGE_BIT;
+            XrSwapchainCreateInfo create{XR_TYPE_SWAPCHAIN_CREATE_INFO};create.createFlags=dynamic?0:XR_SWAPCHAIN_CREATE_STATIC_IMAGE_BIT;
             create.usageFlags=XR_SWAPCHAIN_USAGE_COLOR_ATTACHMENT_BIT|XR_SWAPCHAIN_USAGE_TRANSFER_DST_BIT;
             create.format=format;create.sampleCount=1;create.width=transition_card_pixels::width;create.height=transition_card_pixels::height;
             create.faceCount=create.arraySize=create.mipCount=1;
@@ -156,20 +202,12 @@ public:
                 throw std::runtime_error("Invalid transition-card image layout");
             if(!transition_card_layout::valid_footprint(footprint,bytes,format,transition_card_pixels::width,transition_card_pixels::height,rows,row_size))
                 throw std::runtime_error("Invalid transition-card upload footprint");
+            upload_bytes=std::size_t(bytes);
             D3D12_HEAP_PROPERTIES properties{};properties.Type=D3D12_HEAP_TYPE_UPLOAD;
             D3D12_RESOURCE_DESC buffer{};buffer.Dimension=D3D12_RESOURCE_DIMENSION_BUFFER;buffer.Width=bytes;buffer.Height=1;
             buffer.DepthOrArraySize=buffer.MipLevels=1;buffer.SampleDesc.Count=1;buffer.Layout=D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
             dx(device->CreateCommittedResource(&properties,D3D12_HEAP_FLAG_NONE,&buffer,D3D12_RESOURCE_STATE_GENERIC_READ,nullptr,IID_PPV_ARGS(&upload)),"Create transition-card upload");
-            void* mapped{};D3D12_RANGE read{0,0};dx(upload->Map(0,&read,&mapped),"Map transition-card upload");
-            std::memset(mapped,0,std::size_t(bytes));
-            for(unsigned y=0;y<transition_card_pixels::height;++y){
-                auto* destination=static_cast<unsigned char*>(mapped)+footprint.Offset+std::size_t(y)*footprint.Footprint.RowPitch;
-                const auto* source=pixels.data()+std::size_t(y)*transition_card_pixels::width*4;
-                for(unsigned x=0;x<transition_card_pixels::width;++x){const bool bgra=menu_swapchain_format::bgra(format);
-                    destination[x*4]=source[x*4+(bgra?2:0)];destination[x*4+1]=source[x*4+1];
-                    destination[x*4+2]=source[x*4+(bgra?0:2)];destination[x*4+3]=source[x*4+3];}
-            }
-            D3D12_RANGE written{0,std::size_t(bytes)};upload->Unmap(0,&written);
+            if(!dynamic)map_pixels(); // Keep the original static initialization.
             dx(device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT,IID_PPV_ARGS(&allocator)),"Create transition-card allocator");
             dx(device->CreateCommandList(0,D3D12_COMMAND_LIST_TYPE_DIRECT,allocator.Get(),nullptr,IID_PPV_ARGS(&commands)),"Create transition-card commands");
             dx(commands->Close(),"Initial transition-card command close");
@@ -177,13 +215,27 @@ public:
             event=CreateEventW(nullptr,FALSE,FALSE,nullptr);if(!event)throw std::runtime_error("Transition-card fence event unavailable");
         }catch(...){teardown();throw;}
     }
+public:
+    TransitionCard(ID3D12Device* d,ID3D12CommandQueue* q,
+        transition_card_pixels::Variant variant=transition_card_pixels::Variant::returning_to_game):
+        TransitionCard(d,q,transition_card_pixels::rgba(variant),false){}
+    TransitionCard(ID3D12Device* d,ID3D12CommandQueue* q,std::vector<std::uint8_t> const& rgba):
+        TransitionCard(d,q,rgba,true){}
     TransitionCard(TransitionCard const&)=delete;
     TransitionCard& operator=(TransitionCard const&)=delete;
     ~TransitionCard(){teardown();}
+    // CPU pending content only. True includes an accepted identical image;
+    // false means unsupported static card, wrong length or unavailable owner.
+    // Buffer sizes never change, so publication performs no allocation.
+    bool set_pixels(std::vector<std::uint8_t> const& rgba){
+        if(!dynamic||rgba.size()!=pixel_bytes||failed||retained||!owner_current())return false;
+        if(pixels==rgba)return true;
+        std::memcpy(pixels.data(),rgba.data(),pixel_bytes);dirty=!current||pixels!=uploaded_pixels;return true;
+    }
     bool save_source_preview(std::string const& path)const{return transition_card_pixels::save_ppm(path,pixels);}
     bool render(XrCompositionLayerQuad& quad){
-        if(failed||retained||session!=owner_session||!view_space)return false;
-        try{if(!current)upload_once();}catch(...){failed=true;teardown();throw;}
+        if(failed||retained||!owner_current()||!view_space)return false;
+        try{if(!current||dirty)upload_current();}catch(...){failed=true;teardown();throw;}
         XrCompositionLayerQuad result{XR_TYPE_COMPOSITION_LAYER_QUAD};result.space=view_space;result.eyeVisibility=XR_EYE_VISIBILITY_BOTH;
         result.pose.orientation.w=1;result.pose.position.z=-2;
         result.size={1.4f,1.4f*transition_card_pixels::height/transition_card_pixels::width};

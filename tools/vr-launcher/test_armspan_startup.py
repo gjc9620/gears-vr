@@ -35,6 +35,11 @@ class StartupTests(unittest.TestCase):
                                       close=lambda:self.order.append('reader_closed'))
         self.reader_factory = mock.Mock(return_value=self.reader)
         self.popen = mock.Mock(return_value=self.child)
+        self.ui_updates = []
+        self.ui = SimpleNamespace(token='12'*16, publish=self.publish_ui,
+                                  close=lambda:self.order.append('ui_closed'))
+        self.ui_factory = mock.Mock(return_value=self.ui)
+        self.wait_presented = mock.Mock(side_effect=self.present_saved)
         self.number = 0
         self.environment = mock.patch.dict(os.environ, GEARSVR_TEST_WINDOWS_BEHIND='')
         self.environment.start()
@@ -47,6 +52,18 @@ class StartupTests(unittest.TestCase):
         self.number += 1
         return sample(self.number, int(self.ticks[0]*1e9))
 
+    def publish_ui(self, phase, progress):
+        self.ui_updates.append((phase, progress))
+        return len(self.ui_updates)
+
+    def present_saved(self, path, token, sequence, child, owner_alive, cancel, ui, **kwargs):
+        self.assertEqual(calibration.load(self.path).state, 'valid')
+        self.assertEqual(self.ui_updates[-1], ('saved', 1000))
+        self.assertNotIn('ui_closed', self.order)
+        self.assertEqual((token, child, ui), (self.ui.token, self.child, self.ui))
+        self.assertTrue(owner_alive())
+        return dict(armspan_ui_presented=True, token=token, phase='saved', sequence=sequence, end_frame_succeeded=True)
+
     def cleanup(self, child, pid, game_pid, timeout, control, receipt):
         self.assertEqual((child, pid, game_pid, timeout, control), (self.child, 50, 10, 2, self.control))
         self.assertEqual(self.order, ['reader_closed'])
@@ -57,7 +74,8 @@ class StartupTests(unittest.TestCase):
         with contextlib.redirect_stdout(io.StringIO()):
             return startup.prepare(self.args, self.game, self.owner, self.control, self.runner,
                 kwargs.pop('cancel', lambda:False), self.root, path=self.path,
-                reader_factory=self.reader_factory, popen=self.popen, clock=lambda:self.ticks[0],
+                reader_factory=self.reader_factory, ui_factory=self.ui_factory,
+                wait_presented=self.wait_presented, popen=self.popen, clock=lambda:self.ticks[0],
                 sleep=self.sleep, timeout=kwargs.pop('timeout', 3), **kwargs)
 
     def test_first_run_saves_before_child_cleanup_and_returns_only_after_wait(self):
@@ -68,10 +86,14 @@ class StartupTests(unittest.TestCase):
         receipt = self.prepare()
         self.assertEqual(receipt['mode'], 'measured')
         self.assertTrue(receipt['saved'])
-        self.assertEqual(self.order, ['reader_closed', 'child_waited'])
+        self.assertEqual(self.order, ['reader_closed', 'child_waited', 'ui_closed'])
         command = self.popen.call_args.args[0]
         self.assertIn('--controller-input', command)
         self.assertIn('--startup-menu-window', command)
+        self.assertEqual(command[command.index('--armspan-ui')+1], self.ui.token)
+        self.assertEqual(command[command.index('--armspan-game-creation')+1], '20')
+        self.assertTrue(receipt['headset_feedback']['end_frame_succeeded'])
+        self.wait_presented.assert_called_once()
         self.assertNotIn('--allow-simulated', command)
         self.assertAlmostEqual(calibration.load(self.path).value['armspan_metres'], 1.7)
 
@@ -82,6 +104,7 @@ class StartupTests(unittest.TestCase):
         self.assertEqual(receipt['mode'], 'reused')
         self.popen.assert_not_called()
         self.reader_factory.assert_not_called()
+        self.ui_factory.assert_not_called()
         self.assertEqual(self.path.read_bytes(), before)
 
     def test_missing_or_bad_record_cannot_pass_without_a_completed_hold(self):
@@ -95,7 +118,7 @@ class StartupTests(unittest.TestCase):
                 self.reader.read = mock.Mock(side_effect=FileNotFoundError('not published'))
                 with self.assertRaises(TimeoutError):
                     self.prepare(timeout=.03)
-                self.assertEqual(self.order, ['reader_closed', 'child_waited'])
+                self.assertEqual(self.order, ['reader_closed', 'child_waited', 'ui_closed'])
                 self.assertEqual(self.path.read_bytes() if self.path.exists() else None, before)
 
     def test_remeasure_cancel_or_tracking_timeout_preserves_old_record_and_cleans_child(self):
@@ -116,7 +139,7 @@ class StartupTests(unittest.TestCase):
                     with self.assertRaises(error):
                         self.prepare(timeout=.03)
                 self.assertEqual(self.path.read_bytes(), before)
-                self.assertEqual(self.order, ['reader_closed', 'child_waited'])
+                self.assertEqual(self.order, ['reader_closed', 'child_waited', 'ui_closed'])
 
     def test_failed_identity_or_reader_setup_always_waits_own_child(self):
         for failure in ('publisher', 'reader'):
@@ -127,7 +150,7 @@ class StartupTests(unittest.TestCase):
                 self.runner.cleanup_owned_xr = lambda *args: (self.order.append('child_waited'), args[-1].update(xr_exit_code=0))
                 with self.assertRaises(RuntimeError):
                     self.prepare()
-                self.assertEqual(self.order, ['child_waited'])
+                self.assertEqual(self.order, ['child_waited', 'ui_closed'])
                 self.assertFalse(self.path.exists())
 
     def test_reader_close_failure_still_waits_child_and_blocks_activation(self):
@@ -135,7 +158,7 @@ class StartupTests(unittest.TestCase):
         self.runner.cleanup_owned_xr = lambda *args: (self.order.append('child_waited'), args[-1].update(xr_exit_code=0))
         with self.assertRaisesRegex(RuntimeError, 'reader close'):
             self.prepare(cancel=lambda:True)
-        self.assertEqual(self.order, ['child_waited'])
+        self.assertEqual(self.order, ['child_waited', 'ui_closed'])
 
     def test_forced_or_failed_xr_exit_blocks_activation_even_after_saving(self):
         for receipt in (dict(xr_exit_code=1), dict(xr_exit_code=0, xr_forced_cleanup_reason='timeout'),
@@ -147,7 +170,7 @@ class StartupTests(unittest.TestCase):
                 self.runner.cleanup_owned_xr = lambda *args: args[-1].update(receipt)
                 with self.assertRaisesRegex(RuntimeError, 'did not close cleanly'):
                     self.prepare()
-                self.assertEqual(self.order, ['reader_closed'])
+                self.assertEqual(self.order, ['reader_closed', 'ui_closed'])
                 self.assertEqual(calibration.load(self.path).state, 'valid')
 
     def test_unowned_startup_and_background_measurement_refused_before_xr(self):
@@ -162,6 +185,40 @@ class StartupTests(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, 'identity changed'):
             self.prepare()
         self.popen.assert_not_called()
+        self.ui_factory.assert_not_called()
+
+    def test_ui_creation_and_child_start_failure_cannot_skip_cleanup(self):
+        self.ui_factory.side_effect = RuntimeError('ui create')
+        with self.assertRaisesRegex(RuntimeError, 'ui create'):
+            self.prepare()
+        self.popen.assert_not_called()
+        self.assertEqual(self.order, [])
+        self.ui_factory.side_effect = None
+        self.popen.side_effect = OSError('child start')
+        with self.assertRaisesRegex(OSError, 'child start'):
+            self.prepare()
+        self.assertEqual(self.order, ['ui_closed'])
+        self.assertEqual(self.ui_updates[-1], ('failed', 0))
+
+    def test_missing_saved_card_feedback_blocks_handoff_without_removing_saved_record(self):
+        self.wait_presented.side_effect = TimeoutError('feedback')
+        with self.assertRaisesRegex(TimeoutError, 'feedback'):
+            self.prepare()
+        self.assertEqual(calibration.load(self.path).state, 'valid')
+        self.assertEqual(self.order, ['reader_closed', 'child_waited', 'ui_closed'])
+
+    def test_cancel_during_saved_feedback_preserves_completed_record(self):
+        self.wait_presented.side_effect = None
+        self.wait_presented.return_value = None
+        self.assertIsNone(self.prepare())
+        self.assertEqual(calibration.load(self.path).state, 'valid')
+        self.assertEqual(self.ui_updates[-1], ('cancelled', 0))
+        self.assertEqual(self.order, ['reader_closed', 'child_waited', 'ui_closed'])
+
+    def test_launcher_language_reaches_owned_ui(self):
+        self.args.launcher_language = 'zh-CN'
+        self.prepare()
+        self.ui_factory.assert_called_once_with(self.game, self.owner, 'zh-CN')
 
 
 class LauncherGateTests(unittest.TestCase):

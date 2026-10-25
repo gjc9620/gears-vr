@@ -32,6 +32,8 @@
 #include "window_fallback_policy.h"
 #include "menu_display_reader.h"
 #include "xr_wait_diagnostics.h"
+#include "armspan_ui_bridge.h"
+#include "armspan_card_pixels.h"
 #include "xr_delivery_counter.h"
 #include "../vr-common/support_diagnostics.h"
 ID3D12Device* support_device{}; // Observed only while the owning local device is alive.
@@ -392,6 +394,8 @@ int main(int argc, char** argv) {
     bool test_render=false;DWORD bridge_pid=0,stereo_pid=0,stereo_game_pid=0,game_pid=0,gpu_pid=0;HWND game_window=nullptr;const char* gpu_snapshot=nullptr;
     HWND startup_window=nullptr;DWORD startup_game_pid=0;
     const char* menu_state_file=nullptr;std::uint64_t menu_game_creation=0;
+    const char* armspan_ui_token=nullptr;std::uint64_t armspan_game_creation=0;
+    gears_armspan_ui::Nonce armspan_ui_nonce{};
     unsigned stereo_producer_seconds=30;bool explicit_stereo_duration=false;
     double render_scale{};bool explicit_render_scale=false;
     bool simulator_operator=false,continuous_session=false,diagnostic_shutdown=false,diagnostic_outage=false,diagnostic_image_tickets=false,movie_display=false;
@@ -403,6 +407,15 @@ int main(int argc, char** argv) {
             if(explicit_render_scale||!parse_render_scale(argv[++i],render_scale))return 2;explicit_render_scale=true;
         }
         else if(!strcmp(argv[i],"--menu-state-file")&&i+1<argc){if(menu_state_file)return 2;menu_state_file=argv[++i];if(!*menu_state_file)return 2;}
+        else if(!strcmp(argv[i],"--armspan-ui")&&i+1<argc){
+            if(armspan_ui_token)return 2;armspan_ui_token=argv[++i];
+            if(!gears_armspan_ui::decode_nonce(armspan_ui_token,armspan_ui_nonce))return 2;
+        }
+        else if(!strcmp(argv[i],"--armspan-game-creation")&&i+1<argc){
+            if(armspan_game_creation)return 2;const char* value=argv[++i];char* end{};errno=0;
+            armspan_game_creation=strtoull(value,&end,10);
+            if(*value<'0'||*value>'9'||*end||errno==ERANGE||!armspan_game_creation)return 2;
+        }
         else if(!strcmp(argv[i],"--movie-display")){if(movie_display)return 2;movie_display=true;}
         else if(!strcmp(argv[i],"--menu-game-creation")&&i+1<argc){
             if(menu_game_creation)return 2;const char* value=argv[++i];char* end{};errno=0;
@@ -472,9 +485,16 @@ int main(int argc, char** argv) {
     if(startup_window&&(!continuous_session||!stereo_game_pid||startup_game_pid!=stereo_game_pid||game_window||gpu_pid||bridge_pid))return 2;
     if((menu_state_file!=nullptr)!=(menu_game_creation!=0)||(menu_state_file&&!startup_window))return 2;
     if(movie_display&&(!continuous_session||!menu_state_file))return 2;
+    const bool armspan_ui_mode=armspan_ui_token!=nullptr;
+    if(armspan_ui_mode!=(armspan_game_creation!=0)||
+       (armspan_ui_mode&&(!continuous_session||!controller_input||!startup_window||menu_state_file||movie_display||gpu_snapshot)))return 2;
     if(diagnostic_shutdown)shutdown_diagnostics::enable();
     ContinuousSessionControl continuous_control;
     if(continuous_session){try{continuous_control.open(stereo_game_pid,continuous_owner_pid,continuous_owner_creation);}catch(const std::exception& error){fprintf(stderr,"%s\n",error.what());return 2;}}
+    armspan_ui_bridge::Consumer armspan_ui;
+    if(armspan_ui_mode&&!armspan_ui.open({stereo_game_pid,armspan_game_creation,continuous_owner_pid,continuous_owner_creation,armspan_ui_nonce})){
+        fprintf(stderr,"Owned calibration display publication unavailable\n");return 2;
+    }
     if(game_window||startup_window){SetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);winrt::init_apartment(winrt::apartment_type::multi_threaded);}
     gears_vr::PoseBridge bridge;
     if(bridge_pid && !bridge.open(bridge_pid,true)){fprintf(stderr,"Pose bridge creation rejected\n");return 2;}
@@ -595,7 +615,7 @@ int main(int argc, char** argv) {
         std::unique_ptr<GameScreen,shutdown_diagnostics::DeleteMarker<GameScreen>> screen{nullptr,{"screen_reset_enter","screen_reset_completed"}};
         if(game_window)screen.reset(new GameScreen(device.Get(),queue.Get(),game_window,game_pid,argv[2]));
         std::unique_ptr<GameScreen,shutdown_diagnostics::DeleteMarker<GameScreen>> startup_screen{nullptr,{"startup_screen_reset_enter","startup_screen_reset_completed"}};
-        if(startup_window){
+        if(startup_window&&!armspan_ui_mode){
             shutdown_diagnostics::initialization("startup_game_screen_enter");
             startup_screen.reset(new GameScreen(device.Get(),queue.Get(),startup_window,startup_game_pid,argv[2],true,menu_game_creation));
             if(diagnostic_outage)startup_screen->enable_performance_diagnostics();
@@ -613,12 +633,22 @@ int main(int argc, char** argv) {
         WorldHandoffDisplay::State last_world_handoff_panel{};
         std::unique_ptr<TransitionCard,shutdown_diagnostics::DeleteMarker<TransitionCard>> startup_wait_card{
             nullptr,{"startup_wait_card_reset_enter","startup_wait_card_reset_completed"}};
-        if(startup_window)startup_wait_card.reset(new TransitionCard(device.Get(),queue.Get(),transition_card_pixels::Variant::starting_vr));
+        if(startup_window&&!armspan_ui_mode)startup_wait_card.reset(new TransitionCard(device.Get(),queue.Get(),transition_card_pixels::Variant::starting_vr));
         unsigned startup_wait_card_layers{};
         std::unique_ptr<TransitionCard,shutdown_diagnostics::DeleteMarker<TransitionCard>> tracking_recovery_card{
             nullptr,{"tracking_recovery_card_reset_enter","tracking_recovery_card_reset_completed"}};
-        if(stereo_game_pid)tracking_recovery_card.reset(new TransitionCard(device.Get(),queue.Get(),transition_card_pixels::Variant::tracking_lost));
+        if(stereo_game_pid&&!armspan_ui_mode)tracking_recovery_card.reset(new TransitionCard(device.Get(),queue.Get(),transition_card_pixels::Variant::tracking_lost));
         unsigned tracking_recovery_card_layers{};
+        std::unique_ptr<TransitionCard,shutdown_diagnostics::DeleteMarker<TransitionCard>> armspan_card{
+            nullptr,{"armspan_card_reset_enter","armspan_card_reset_completed"}};
+        gears_armspan_ui::Content armspan_content{gears_armspan_ui::Phase::waiting,0,armspan_ui.language()};
+        armspan_card_pixels::Metadata armspan_pixels_metadata{};
+        unsigned armspan_card_layers{},armspan_content_updates{};bool armspan_saved_presented=false;
+        if(armspan_ui_mode){
+            std::vector<std::uint8_t> pixels;
+            if(!armspan_card_pixels::rgba(armspan_content,pixels,&armspan_pixels_metadata))throw std::runtime_error("Calibration display pixels unavailable");
+            armspan_card.reset(new TransitionCard(device.Get(),queue.Get(),pixels));
+        }
         MenuDisplayReader menu_display(menu_state_file,stereo_game_pid,menu_game_creation,continuous_owner_pid,continuous_owner_creation,movie_display);
         unsigned menu_quad_layers=0,menu_entries=0,menu_recoveries=0;
         unsigned main_menu_quad_layers=0,last_main_menu_entry=0,main_menu_snapshots=0;
@@ -751,6 +781,7 @@ int main(int argc, char** argv) {
             const XrCompositionLayerBaseHeader* game_layers[]={reinterpret_cast<const XrCompositionLayerBaseHeader*>(&quad)};
             ProjectionStatus projection_frame_status=ProjectionStatus::producer_unavailable;
             bool outage_render_attempted=false,startup_quad_queued=false,startup_handoff_queued=false,pause_menu_queued=false,transition_panel_queued=false,startup_wait_card_queued=false,world_handoff_panel_queued=false,window_fallback_queued=false,tracking_recovery_card_queued=false;
+            bool armspan_card_queued=false;gears_armspan_ui::Packet armspan_submission{};
             WorldHandoffDisplay::State world_handoff_panel_state{};
             const auto menu_now=gears_vr::monotonic_ns();
             const auto menu_mode=menu_display.poll(menu_now);
@@ -786,7 +817,7 @@ int main(int argc, char** argv) {
                 pattern->render(views,projection_views);projection.space=local;projection.viewCount=2;projection.views=projection_views;
                 end.layerCount=1;end.layers=layers;
             }
-            if(stereo_game_pid){
+            if(stereo_game_pid&&!armspan_ui_mode){
                 const auto current=std::chrono::steady_clock::now();
                 if(stereo_screen&&stereo_screen->reconfiguring()){
                     const auto generation=stereo_screen->resource_generation();
@@ -963,16 +994,66 @@ int main(int argc, char** argv) {
             if(tracking_card_eligible()&&tracking_recovery_card->render(quad)&&tracking_card_eligible()){
                 tracking_recovery_card_queued=true;end.layerCount=1;end.layers=game_layers;
             }
+            if(armspan_card){
+                // This dedicated pre-Native session displays calibration only.
+                // Controller sampling above remains authoritative and independent.
+                end.layerCount=0;
+                window_fallback_queued=tracking_recovery_card_queued=world_handoff_panel_queued=startup_wait_card_queued=
+                    transition_panel_queued=startup_handoff_queued=startup_quad_queued=pause_menu_queued=false;
+                const auto read_ui=[&](gears_armspan_ui::Packet& packet){
+                    const auto result=armspan_ui.read(gears_vr::monotonic_ns(),packet);
+                    if(result==armspan_ui_bridge::Read::invalid||result==armspan_ui_bridge::Read::publisher_stopped){
+                        stop_reason=result==armspan_ui_bridge::Read::invalid?"calibration_display_invalid":"calibration_display_publisher_stopped";
+                        exiting=true;
+                    }
+                    return result;
+                };
+                const auto eligible=[&]{return frame.shouldRender&&projection_session_visible(state)&&running&&!exiting&&
+                    stop_reason.empty()&&!session_exit.loss_observed&&!session_exit.terminal_exiting;};
+                const auto displayed=[&](armspan_ui_bridge::Read result,gears_armspan_ui::Packet const& packet){
+                    return result==armspan_ui_bridge::Read::current?packet.content:
+                        gears_armspan_ui::Content{gears_armspan_ui::Phase::waiting,0,armspan_ui.language()};
+                };
+                gears_armspan_ui::Packet before{};
+                const auto read_before=read_ui(before);
+                const auto content=displayed(read_before,before);
+                if(eligible()){
+                    if(!gears_armspan_ui::same(content,armspan_content)){
+                        std::vector<std::uint8_t> pixels;
+                        if(!armspan_card_pixels::rgba(content,pixels,&armspan_pixels_metadata)||!armspan_card->set_pixels(pixels))
+                            throw std::runtime_error("Calibration display update rejected");
+                        armspan_content=content;++armspan_content_updates;
+                    }
+                    if(armspan_card->render(quad)){
+                        // Upload may wait. Re-read the display lease and never
+                        // submit stale holding/saved pixels after it expires.
+                        gears_armspan_ui::Packet after{};const auto read_after=read_ui(after);
+                        if(eligible()&&gears_armspan_ui::same(content,displayed(read_after,after))){
+                            armspan_card_queued=true;armspan_submission=after;
+                            end.layerCount=1;end.layers=game_layers;
+                        }
+                    }
+                }
+            }
             // A first upload can wait. Honor a stop which arrived during it,
             // still balancing the already begun XR frame with zero layers.
             if(continuous_session){if(const auto* reason=continuous_control.requested()){
                 startup_panel.cancel();stop_reason=reason;exiting=true;end.layerCount=0;
                 tracking_recovery_card_queued=world_handoff_panel_queued=startup_wait_card_queued=transition_panel_queued=startup_handoff_queued=startup_quad_queued=pause_menu_queued=false;
+                armspan_card_queued=false;
             }}
             const auto ended=xr_wait_diagnostics::recorder.measure(xr_wait_diagnostics::Operation::end_frame,
                 [&]{return xrEndFrame(session,&end);},[]{return xr_wait_diagnostics::current_context;},
                 [](XrResult r){return r==XR_TIMEOUT_EXPIRED?xr_wait_diagnostics::Outcome::timeout:XR_FAILED(r)?xr_wait_diagnostics::Outcome::error:xr_wait_diagnostics::Outcome::success;});
             xr_check(ended,"xrEndFrame");
+            if(armspan_card_queued&&ended==XR_SUCCESS&&end.layerCount==1&&end.layers==game_layers){
+                ++armspan_card_layers;
+                if(!armspan_saved_presented&&armspan_submission.content.phase==gears_armspan_ui::Phase::saved){
+                    armspan_saved_presented=true;
+                    printf("{\"armspan_ui_presented\":true,\"token\":\"%s\",\"phase\":\"saved\",\"sequence\":%llu,\"end_frame_succeeded\":true,\"physical_headset_acceptance\":false}\n",
+                        armspan_ui_token,armspan_submission.sequence);fflush(stdout);
+                }
+            }
 #if defined(GEARS_SIXDOF_TICKET_DIAGNOSTICS) && GEARS_SIXDOF_TICKET_DIAGNOSTICS
             if(stereo_screen&&projection_frame_status==ProjectionStatus::submitted)
                 stereo_screen->observe_sixdof_submission(ended,end,projection,space_epoch.epoch());
@@ -1228,11 +1309,18 @@ int main(int argc, char** argv) {
         if(menu_state_file)printf("{\"world_handoff_card_evidence\":true,\"quad_layers\":%u,\"source\":\"session_owned_card\",\"panel_counts_as_stereo\":false}\n",world_handoff_panel_layers);
         display_ok=display_ok && (!gpu_screen || (gpu_screen->rendered && gpu_screen->copies));
         const auto scene_copies=retired_stereo_copies+(stereo_screen?stereo_screen->copies:0);
-        display_ok=display_ok && (!stereo_game_pid || (stereo_screen && stereo_screen->projection_rendered && scene_copies &&
+        display_ok=display_ok && (!stereo_game_pid || armspan_ui_mode || (stereo_screen && stereo_screen->projection_rendered && scene_copies &&
             last_submitted_space_epoch==space_epoch.epoch()&&
             last_submitted_resource_generation==stereo_screen->resource_generation()&&
             (continuous_session?!projection_evidence.structural_failure:projection_evidence.sustained()&&!stereo_space_changed)));
+        if(armspan_ui_mode){
+            printf("{\"armspan_ui_evidence\":true,\"quad_layers\":%u,\"uploads\":%u,\"content_updates\":%u,\"saved_submitted\":%s,\"rendered_language\":\"%s\",\"font_fallback\":%s,\"source\":\"session_owned_calibration_card\",\"panel_counts_as_stereo\":false}\n",
+                armspan_card_layers,armspan_card?armspan_card->uploads:0,armspan_content_updates,armspan_saved_presented?"true":"false",
+                armspan_pixels_metadata.rendered_language==gears_armspan_ui::Language::chinese?"zh-CN":"en",armspan_pixels_metadata.fallback?"true":"false");
+            display_ok=display_ok&&armspan_card_layers>0;
+        }
         stereo_screen.reset();
+        armspan_card.reset();
         tracking_recovery_card.reset();
         startup_wait_card.reset();
         transition_card.reset();
