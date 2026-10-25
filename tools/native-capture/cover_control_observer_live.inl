@@ -207,16 +207,27 @@ extern "C" __declspec(noinline) void GearsCoverControlInvokeProtected(pose::Call
     Call call{};bool returned{};++active;++in_flight;++calls;
 #endif
 #if defined(GEARS_CONTINUOUS_HAND_OWNER) && GEARS_CONTINUOUS_HAND_OWNER
+#if defined(GEARS_BODY_RECOIL_OBSERVER) && GEARS_BODY_RECOIL_OBSERVER
+    body_recoil_observer_live::WeightCall recoil_call{};
+#endif
     entry.kind=kind;entry.rcx=packet->gpr[1];entry.rdx=packet->gpr[2];entry.r8=packet->gpr[3];entry.r9=packet->gpr[4];entry.ra=ra;entry.rsp=entry_rsp;
 #endif
 #if defined(GEARS_CONTINUOUS_HAND_OWNER) && GEARS_CONTINUOUS_HAND_OWNER
-    __try{continuous_hand_owner_live::control_begin(entry);begin_guarded(*packet,kind,ra,entry_rsp,call);
+    __try{continuous_hand_owner_live::control_begin(entry);
+#if defined(GEARS_BODY_RECOIL_OBSERVER) && GEARS_BODY_RECOIL_OBSERVER
+        body_recoil_observer_live::weight_begin(entry,recoil_call);
+#endif
+        begin_guarded(*packet,kind,ra,entry_rsp,call);
 #else
     __try{begin_guarded(*packet,kind,ra,entry_rsp,call);
 #endif
         if(kind<3&&originals[kind]){cover_body_live::GearsCoverRawInvoke(reinterpret_cast<cover_body_live::CallPacket*>(packet),originals[kind]);returned=true;}else{failed=true;stopping=true;}
 #if defined(GEARS_CONTINUOUS_HAND_OWNER) && GEARS_CONTINUOUS_HAND_OWNER
-    }__finally{__try{continuous_hand_owner_live::control_end(entry,returned&&!AbnormalTermination());finish_guarded(call,*packet,returned&&!AbnormalTermination());}
+    }__finally{__try{
+#if defined(GEARS_BODY_RECOIL_OBSERVER) && GEARS_BODY_RECOIL_OBSERVER
+        body_recoil_observer_live::weight_end(recoil_call,*packet,returned&&!AbnormalTermination());
+#endif
+        continuous_hand_owner_live::control_end(entry,returned&&!AbnormalTermination());finish_guarded(call,*packet,returned&&!AbnormalTermination());}
 #else
     }__finally{__try{finish_guarded(call,*packet,returned&&!AbnormalTermination());}
 #endif

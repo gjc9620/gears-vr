@@ -144,7 +144,11 @@ extern "C" __declspec(noinline) void GearsCoverPoseInvokeProtected(pose::CallPac
     entry.kind=kind;entry.rcx=packet->gpr[1];entry.rdx=packet->gpr[2];entry.r8=packet->gpr[3];entry.r9=packet->gpr[4];entry.ra=ra;
 #endif
 #if defined(GEARS_CONTINUOUS_HAND_OWNER) && GEARS_CONTINUOUS_HAND_OWNER
-    __try{continuous_hand_owner_live::pose_begin(entry);begin_guarded(*packet,kind,ra,scope);
+    __try{continuous_hand_owner_live::pose_begin(entry);
+#if defined(GEARS_BODY_RECOIL_OBSERVER) && GEARS_BODY_RECOIL_OBSERVER
+        body_recoil_observer_live::compose_begin(entry);
+#endif
+        begin_guarded(*packet,kind,ra,scope);
 #else
     __try{begin_guarded(*packet,kind,ra,scope);
 #endif
@@ -164,6 +168,9 @@ extern "C" __declspec(noinline) void GearsCoverPoseInvokeProtected(pose::CallPac
         if(scope.kind==2&&scope.started)cover_native_rig_observer_live::tick_end(scope,returned&&!AbnormalTermination());
 #endif
 #if defined(GEARS_CONTINUOUS_HAND_OWNER) && GEARS_CONTINUOUS_HAND_OWNER
+#if defined(GEARS_BODY_RECOIL_OBSERVER) && GEARS_BODY_RECOIL_OBSERVER
+        body_recoil_observer_live::compose_end(entry,returned&&!AbnormalTermination());
+#endif
         continuous_hand_owner_live::pose_end(entry,returned&&!AbnormalTermination());
 #endif
         release_guarded(scope);--in_flight;--active;}}
