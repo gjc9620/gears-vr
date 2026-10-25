@@ -177,9 +177,15 @@ void tick(uptr pc) noexcept {
             frame.key.frame,frame.controllers.sequence,frame.key.registration_cookie,inventory_stage,
             gears_equipment_input::status_name(source.status),source.previous_sync_ns,source.sync_ns,source.received_ns);fflush(log_file);}
     }
+#if defined(GEARS_PLAYGROUND_NATIVE_EQUIPMENT_ATTACHMENT_OBSERVER)
+    nativeequipment_attachment::tick(frame);
+#endif
 }
 void reset_after_drain() noexcept {
     state.reset_after_drain(backend,vrequip::model);have_status=false;
+#if defined(GEARS_PLAYGROUND_NATIVE_EQUIPMENT_ATTACHMENT_OBSERVER)
+    nativeequipment_attachment::reset_after_drain();
+#endif
     calibration={};input_evidence={};
     if(log_file&&ticks){
         fwprintf(log_file,L"native_equipment_summary ticks=%llu frames=%llu frame_unavailable=%llu other_controller=%llu domain_rejected=%llu\n",

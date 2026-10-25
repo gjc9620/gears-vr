@@ -1053,7 +1053,16 @@ namespace nativeequipment {bool configure_native(HMODULE) noexcept;}
 #include "weapon_call_subscriber.inl"
 #endif
 #if defined(GEARS_PLAYGROUND_NATIVE_EQUIPMENT_TRIAL)
+#if defined(GEARS_PLAYGROUND_NATIVE_EQUIPMENT_ATTACHMENT_OBSERVER)
+namespace nativeequipment_attachment {
+void tick(gears_weapon_hand::Frame const&) noexcept;
+void reset_after_drain() noexcept;
+}
+#endif
 #include "weapon_equipment_backend.inl"
+#if defined(GEARS_PLAYGROUND_NATIVE_EQUIPMENT_ATTACHMENT_OBSERVER)
+#include "weapon_equipment_attachment_observer.inl"
+#endif
 #endif
 #if defined(GEARS_PLAYGROUND_EXPERIMENTAL_VR_R2)
 #include "vr_fire_adapter.inl"

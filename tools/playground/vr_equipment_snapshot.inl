@@ -6,6 +6,42 @@ gears_weapon::EquipmentSnapshot previous{};
 const wchar_t* previous_error{};
 bool have_previous{};
 ULONGLONG next_probe{};
+bool read_bool(uptr object,const wchar_t* field,bool& value);
+// Shared read-only component metadata. The normal Native equipment observer
+// needs this without enabling the old arena switch or component writers.
+struct MeshPoseProbe {
+    uptr mesh{},weapon_mesh{},asset{};
+    wchar_t component_name[96]{},asset_name[96]{};
+    playground::Vector translation{};
+    playground::Rotation rotation{};
+    float local_to_world[16]{};
+    bool transform_known{},absolute_translation{},absolute_rotation{},absolute_scale{},hidden{};
+};
+bool mesh_pose_probe(uptr weapon,MeshPoseProbe& out){
+    out={};
+    if(!playground::instance(weapon,L"WarWeapon")||playground::deleted(weapon))return false;
+    out.mesh=playground::pointer(weapon,L"Mesh");
+    out.weapon_mesh=playground::pointer(weapon,L"WeaponMesh");
+    if(!playground::instance(out.mesh,L"SkeletalMeshComponent")||playground::deleted(out.mesh))return false;
+    name(out.mesh,out.component_name,96);
+    out.asset=playground::pointer(out.mesh,L"SkeletalMesh");
+    if(out.asset)name(out.asset,out.asset_name,96);
+    const auto read_struct=[&](const wchar_t* field,void* destination,unsigned bytes){
+        const auto property=playground::property(out.mesh,field);
+        if(!property)return false;
+        const auto cls=get<uptr>(out.mesh+0x50);
+        const auto offset=get<unsigned>(property+0x94);
+        const auto size=get<unsigned>(cls+0x88);
+        return get<unsigned>(property+0x74)==bytes&&playground::named(get<uptr>(property+0x50),L"StructProperty")&&
+            offset<=size&&bytes<=size-offset&&copy(destination,out.mesh+offset,bytes);
+    };
+    out.transform_known=read_struct(L"Translation",&out.translation,sizeof(out.translation))&&
+        read_struct(L"Rotation",&out.rotation,sizeof(out.rotation))&&
+        read_struct(L"LocalToWorld",out.local_to_world,sizeof(out.local_to_world));
+    return out.transform_known&&read_bool(out.mesh,L"AbsoluteTranslation",out.absolute_translation)&&
+        read_bool(out.mesh,L"AbsoluteRotation",out.absolute_rotation)&&read_bool(out.mesh,L"AbsoluteScale",out.absolute_scale)&&
+        read_bool(out.mesh,L"HiddenGame",out.hidden);
+}
 #if defined(GEARS_PLAYGROUND_EQUIPMENT_SWITCH_TEST)
 gears_weapon::EquipmentSwitchMailbox switch_requests;
 ULONGLONG switch_deadline{};
@@ -26,46 +62,6 @@ bool test_environment(){
     wchar_t behind[4]{},muted[4]{};
     return GetEnvironmentVariableW(L"GEARSVR_TEST_WINDOWS_BEHIND",behind,4)==1&&behind[0]==L'1'&&
         GetEnvironmentVariableW(L"GEARSVR_TEST_MUTE_GAME",muted,4)==1&&muted[0]==L'1';
-}
-bool read_bool(uptr object,const wchar_t* field,bool& value);
-// Read only: identify which original component is being rendered before any
-// attempt to move the weapon. A named WeaponMesh default subobject need not be
-// the current actor's Mesh property in every equip state.
-struct MeshPoseProbe {
-    uptr mesh{},weapon_mesh{},asset{};
-    wchar_t component_name[96]{},asset_name[96]{};
-    playground::Vector translation{};
-    playground::Rotation rotation{};
-    float local_to_world[16]{};
-    bool transform_known{},absolute_translation{},absolute_rotation{},absolute_scale{},hidden{};
-};
-bool mesh_pose_probe(uptr weapon,MeshPoseProbe& out){
-    out={};
-    if(!playground::instance(weapon,L"WarWeapon")||playground::deleted(weapon))return false;
-    out.mesh=playground::pointer(weapon,L"Mesh");
-    out.weapon_mesh=playground::pointer(weapon,L"WeaponMesh");
-    if(!playground::instance(out.mesh,L"SkeletalMeshComponent")||
-       playground::deleted(out.mesh))return false;
-    name(out.mesh,out.component_name,96);
-    out.asset=playground::pointer(out.mesh,L"SkeletalMesh");
-    if(out.asset)name(out.asset,out.asset_name,96);
-    const auto read_struct=[&](const wchar_t* field,void* destination,unsigned bytes){
-        const auto property=playground::property(out.mesh,field);
-        if(!property)return false;
-        const auto cls=get<uptr>(out.mesh+0x50);
-        const auto offset=get<unsigned>(property+0x94);
-        const auto size=get<unsigned>(cls+0x88);
-        return get<unsigned>(property+0x74)==bytes&&
-            playground::named(get<uptr>(property+0x50),L"StructProperty")&&
-            offset<=size&&bytes<=size-offset&&copy(destination,out.mesh+offset,bytes);
-    };
-    out.transform_known=read_struct(L"Translation",&out.translation,sizeof(out.translation))&&
-        read_struct(L"Rotation",&out.rotation,sizeof(out.rotation))&&
-        read_struct(L"LocalToWorld",out.local_to_world,sizeof(out.local_to_world));
-    return out.transform_known&&read_bool(out.mesh,L"AbsoluteTranslation",out.absolute_translation)&&
-        read_bool(out.mesh,L"AbsoluteRotation",out.absolute_rotation)&&
-        read_bool(out.mesh,L"AbsoluteScale",out.absolute_scale)&&
-        read_bool(out.mesh,L"HiddenGame",out.hidden);
 }
 // The shipped weapon can own both a skinned magazine on its gun mesh and a
 // separate StaticMeshComponent for the left hand. Observe the latter before
