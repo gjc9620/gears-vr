@@ -84,7 +84,7 @@ bool local_quiescent() noexcept;
 #include "weapon_equipment_native_config.h"
 #include "weapon_equipment_input.h"
 #if defined(GEARS_PLAYGROUND_NATIVE_EQUIPMENT_MAIN_MOUNT_TRIAL)
-#include "weapon_main_mount_candidate.h"
+#include "weapon_main_mount_source.h"
 #endif
 #endif
 #if defined(GEARS_PLAYGROUND_HAND_RIG_TRACKING_TRIAL) || defined(GEARS_PLAYGROUND_NATIVE_EQUIPMENT_RIG_READER)

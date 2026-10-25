@@ -43,7 +43,7 @@ struct Fixture {
             h.last_squeeze_press_grip={{1,2,3},{0,0,.6,.8}};}
         f.world_pose_mask=rt::head_pose|rt::left_grip_pose|rt::right_grip_pose;recompute();
         hand.flags=wh::scene_owned|wh::input_matched|wh::gameplay_interactable|(source?wh::allow_sim:0u);
-        hand.key={41,51,61,1,1,91,21,31};hand.now_ns=now-1000000;
+        hand.key={41,51,61,1,f.scene_invocation,91,21,31};hand.now_ns=now-1000000;
         hand.world=f.world;hand.controller=f.controller;hand.pawn=f.pawn;hand.mesh=f.mesh;hand.weapon=f.weapon;
         hand.reference_generation=f.reference_generation;hand.reference=f.reference;hand.stereo=f.stereo;hand.controllers=f.controllers;
         hand.stereo_status=unsigned(gears_vr::StereoStatus::accepted);hand.left_grip_known=hand.left_tracked=1;
@@ -66,6 +66,12 @@ int main(){
     for(unsigned field=0;field<5;++field)rejected([field](auto& f){auto& n=f.rig.native;
         if(field==0)++n.game_pid;if(field==1)++n.game_thread;if(field==2)++n.game_start;
         if(field==3)++n.native_started_qpc;if(field==4)++n.registration_cookie;},er::Status::native_mismatch);
+    rejected([](auto& f){++f.hand.key.frame;},er::Status::scene_mismatch);
+    rejected([](auto& f){++f.rig.scene_invocation;},er::Status::scene_mismatch);
+    // Same original input and timestamps can be reused by separate Scenes.
+    // Neither the public publication serial nor a C0 counter can substitute.
+    rejected([](auto& f){f.hand.key.frame=f.rig.publication_sequence;},er::Status::scene_mismatch);
+    {Fixture f;f.rig.publication_sequence+=10;CHECK(f.status()==er::Status::matched);}
     for(unsigned object=0;object<5;++object)for(unsigned field=0;field<7;++field)
         rejected([object,field](auto& f){wh::ObjectIdentity* objects[]={&f.rig.world,&f.rig.controller,&f.rig.pawn,&f.rig.mesh,&f.rig.weapon};
             auto& o=*objects[object];if(field==0)o.address+=8;if(field==1)o.outer+=8;if(field==2)o.klass+=8;

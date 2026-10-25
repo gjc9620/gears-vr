@@ -2,6 +2,22 @@
 
 本文件保留武器与掩体两个分支的开发历史，便于共用 Native 手部实现合流。各条记录仍以其原始验证范围为准；私有候选、只读采样或离线检查不代表完整功能、默认构建更新或头显验收。
 
+## 2026-10-26 — Lancer主握发送端绑定同一Scene，补齐身体来源适配
+
+继续Lancer实际主握接线。先核对B14实际Native37sim的冻结源，而非通用tools目录：Scene中的WeaponHand prepare／commit尝试先于Rig发布；稍后的C0保留那份Scene来源，body::plan之后才做hands::compose／Kernel.prepare。因此后继同步查询可使用那份Scene已成功commit的Root Frame，但Rig有效本身不能证明武器commit成功。C0／Kernel调用编号和publication_sequence不能代替hand.FrameKey.frame。五份实际冻结源、source37-before-build清单与37sim DLL哈希已独立核对，静态来源回执为ignored analysis/lancer-main-source-20261026dv/source-order-review.json；不将通用源码里未发现live Kernel的早期检查扩张到实际37，也不声明38时序已验。
+
+修正Root的weapon_rig_binding：原来匹配Native身份、全对象、原Stereo／GVC和reference，但漏了显式hand.key.frame==rig.scene_invocation。新增scene_mismatch拒绝，保留原状态枚举序号。旧DP真实ready记录两编号本来一致；新增回归特意保持所有输入样本／时间不变、只改Scene，确认仍拒绝，publication序号则可独立推进。测试fixture也修正为同一个Scene，而不让原错误的独立常量继续掩盖漏检。
+
+新增PG-local BodyContext／bind，要求Native键、publication／Scene／world／binding／reference五来源代数、完整Mesh、Rig单位、实际几何／scale、basis2／revision2均匹配，再从真实已commit Hand Frame复制BodyBinding.key；不构造C0 Frame、不写任何pose或授权。Native仍负责真实C0几何认证与使用前后有效性检查，known布尔值不是认证证明。prepare_retained入口先冻结调用者自有Rig／BodyContext，调用原Client.copy_frame_on_gt取得已提交帧，再绑定、执行原完整held／asset／attachment准备、最后复核来源时效。所有拒绝清空候选，不保留跨帧结果。
+
+该入口仍是PG本地函数，没有导出或新登记，不改变Native／Hand V1。当前调用要求已有PG callback lifetime lease；后继Native调用必须由身体唯一负责人纳入既有broker的准入、同cookie在途计数和退出／quiescent流程，不能仅靠模块pin调用。实际消费位置应在同C0 body plan之后、右手目标组成之前；51／52原动画增量继续由唯一writer保留，不能额外给标定加90°。本轮未修改身体会话源码或安装另一个writer。
+
+严格完整PG编译以及受影响的453项Rig绑定／328项Body来源绑定检查通过，752份源与vendor闭包稳定；后者使用合成数据，覆盖各来源／几何／基准拒绝、清空旧输出，以及绑定后进入现有Lancer候选策略，不等于实际Native几何或回调生命周期验收。一次有界Sol/Medium复核Root新增适配入口，无具体finding。PG c89070b7…174dd，回执为ignored analysis/lancer-main-source-20261026dv/pg-build/attempt-1792950587535241200/receipt.json。未重建Native／XR，旧非相关检查复用。
+
+DV购买版普通场景复用DP原host／Native29sim／XR，实际右肩Grip→Lancer held后取得4个不同publication的ready记录（原协调器门为4；DP上一局观察到5并不等于门槛为5）。四条均frame==scene，完整绑定仍由实际函数核验；源龄50.4155–66.1822ms、发布龄35.3064–50.6330ms，units100。complete／behavior_complete true、无错误，仅证明强化后的持枪准备姿态读取通过，不是37的C0写入测试。额外主握预览认证Lancer一次12.6ms，但body_binding／candidate始终0，prepare_retained尚未被Native调用。证据为ignored analysis/equipment-native-rgrip-runtime-20261026dv/runtime-review.json，pins470bcef8…72ba4。
+
+DV控制器恢复、HandStop／quiescent、88项独立恢复、Native／entry／XR exit0／PG shutdown0、原十文件保持、音频10/10与准确自有PID退出通过，随后新鲜CIM无Game／XR，窗口已交还身体会话。当前下一可玩检查点仍为唯一C0执行点上的Lancer跟手／瞄准／射击；Native查询准入和实际腕部覆盖修复仍待双方接通，不把本地适配／准备数据当作真实手腕或枪体运动。无新发布／tag或默认替换。
+
 ## 2026-10-26 — 定位持枪后输入消费过晚，提前同tick读取Grip
 
 在995fd2f之后继续追踪DQ／DR的第二次Grip失败。旧记录只有sync／received，没有实际Input::next消费时刻，无法区分两处source_gap。新增纯诊断Gap细分、observed_ns与previous_observed_ns，在真实next拒绝位置最多记录16条，同时保留原始Frame.now、sync、received和sequence；没有替换时间公式或扩大100ms阈值。严格PG编译和原Runtime／实际Input→Runtime定向回归通过，复用原Native29sim／XR／host执行DS同两个动作。

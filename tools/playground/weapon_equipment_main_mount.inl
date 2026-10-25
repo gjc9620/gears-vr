@@ -3,6 +3,7 @@
 namespace nativeequipment_main_mount {
 namespace policy=::gears_weapon_main_mount;
 namespace hand=::gears_weapon_hand;
+namespace source=::gears_weapon_main_mount_source;
 struct Diagnostic {
     lancermain_asset::Status asset_status{lancermain_asset::Status::invalid_identity};
     policy::AssetBinding asset{};
@@ -39,6 +40,43 @@ policy::Status prepare(hand::Frame const& frame,policy::BodyBinding const& body,
     asset.weapon=frame.weapon;asset.component=evidence.component;asset.asset=evidence.asset;
     diagnostic.asset=asset;diagnostic.observed_ns=finished;diagnostic.elapsed_ns=finished-started;
     return policy::prepare(frame,after,generation,asset,body,finished,out);
+}
+struct RetainedDiagnostic {
+    source::SourceStatus binding{source::SourceStatus::source_mismatch};
+    gears_equipment_rig::Status agreement{gears_equipment_rig::Status::inactive_hand};
+    Diagnostic mount{};
+};
+policy::Status source_rejection(source::SourceStatus value) noexcept {
+    switch(value){
+    case source::SourceStatus::body_unavailable:return policy::Status::body_unavailable;
+    case source::SourceStatus::body_mismatch:return policy::Status::body_mismatch;
+    case source::SourceStatus::unsupported_geometry:return policy::Status::unsupported_geometry;
+    default:return policy::Status::inactive;
+    }
+}
+// PG-local sender entry, not an export or new Native callback. The caller must
+// hold the existing PG callback lifetime lease. A future Native invocation must
+// first gain explicit admission/drain through the shared broker; a module pin
+// or this payload alone is insufficient. Native alone certifies C0 geometry.
+// The retained Scene source is data, never a C0 counter turned into a Frame.
+[[maybe_unused]] policy::Status prepare_retained(gears_rig_tracking::Frame const& retained,
+    source::BodyContext const& native_body,policy::Candidate& out,RetainedDiagnostic& diagnostic) noexcept {
+    out={};diagnostic={};
+    if(!weaponhand::current_gt(nullptr)||!nativeequipment::domain_ready())return policy::Status::inactive;
+    // Freeze caller-owned data once; do not reread a mutable publication or
+    // manufacture/retimestamp a hand Frame if this exact Scene is unavailable.
+    const auto rig=retained;const auto context=native_body;hand::Frame frame{};
+    if(!weaponhand::client.copy_frame_on_gt(frame))return policy::Status::inactive;
+    policy::BodyBinding body{};
+    const auto expected=static_cast<std::uint32_t>(frame.stereo.source);
+    diagnostic.binding=source::bind(frame,rig,context,nativeequipment::clock_ns(nullptr),expected,body,diagnostic.agreement);
+    if(diagnostic.binding!=source::SourceStatus::ready)return source_rejection(diagnostic.binding);
+    const auto result=prepare(frame,body,out,diagnostic.mount);
+    if(result!=policy::Status::ready)return result;
+    policy::BodyBinding final_body{};
+    diagnostic.binding=source::bind(frame,rig,context,nativeequipment::clock_ns(nullptr),expected,final_body,diagnostic.agreement);
+    if(diagnostic.binding!=source::SourceStatus::ready){out={};return source_rejection(diagnostic.binding);}
+    return result;
 }
 const char* status_name(policy::Status value) noexcept {
     switch(value){

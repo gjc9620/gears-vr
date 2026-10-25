@@ -10,7 +10,7 @@ enum class Status : std::uint32_t {
     matched, invalid_source, source_mismatch, inactive_hand, invalid_rig,
     missing_continuity, native_mismatch, objects_mismatch, reference_mismatch,
     reference_transition, stereo_mismatch, controllers_mismatch,
-    missing_right_grip, inconsistent_world_pose
+    missing_right_grip, inconsistent_world_pose, scene_mismatch
 };
 namespace detail {
 // Recomputed convenience transforms admit 1e-5 game units per position
@@ -42,6 +42,10 @@ inline Status match(gears_weapon_hand::Frame const& hand,gears_rig_tracking::Fra
     const auto& k=hand.key;const auto& n=rig.native;
     if(k.game_pid!=n.game_pid||k.thread_id!=n.game_thread||k.game_start!=n.game_start||
        k.native_started_qpc!=n.native_started_qpc||k.registration_cookie!=n.registration_cookie)return Status::native_mismatch;
+    // Both producers bind to the retained Scene invocation. A repeated GVC
+    // sample alone cannot certify the same Scene, and publication_sequence or
+    // the later mesh/C0 invocation is not this identity.
+    if(k.frame!=rig.scene_invocation)return Status::scene_mismatch;
     if(k.world_generation!=rig.world_generation||!wh::same(hand.world,rig.world)||
        !wh::same(hand.controller,rig.controller)||!wh::same(hand.pawn,rig.pawn)||
        !wh::same(hand.mesh,rig.mesh)||!wh::same(hand.weapon,rig.weapon))return Status::objects_mismatch;
