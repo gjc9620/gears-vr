@@ -2,6 +2,16 @@
 
 本文件保留武器与掩体两个分支的开发历史，便于共用 Native 手部实现合流。各条记录仍以其原始验证范围为准；私有候选、只读采样或离线检查不代表完整功能、默认构建更新或头显验收。
 
+## 2026-10-25 — 正常游戏与XR启动通过，RGrip派发前的依赖路径修正
+
+DA实际使用购买版、Source1模拟输入、0.4缩放、置后窗口、tiny只观察及自有游戏静音，保持原启动窗口门，成功进入连续Native／XR并发布ready。Quiet六次真实只读查询均完成原线程退休、有效读取及关闭，无待处理调用；这补足此前受控OS seam测试的实际查询证据。单局启动通过不能说明cx原窗口失败的根因已修复，也不代表身体或武器交互通过。
+
+RGrip协调器随后在构造Bridge之前因子进程缺少已有pefile库的搜索路径而退出，未调用HandStart，也未发送Grip。原会话正常停止：Native cleanup、入口恢复、XR exit0、PG shutdown0／入口恢复、音频10项恢复和原配置／存档10份hash保持均通过；独立读取80项全匹配，原host结束瞬间的进程仍在退出记录保留，后续新鲜CIM确认准确自有PID及Game／XR为空。继承的finalizer还要求八段完整Pose代码证据，但本局Pose模块关闭时旧targets未包含它们，故`runtime-final.json`的accepted=false及空pose_checks保持；不能将80项结果写成完整八段验收或99项。
+
+新DB仅在私有host接入J盘现有pefile／ordlookup五文件，导入前核对hash、导入后核对精确module origin，不安装依赖；实际独立导入已通过且未构造Bridge。只读停止验证器在原stopped／进程／manifest守卫之后，将既有三个固定Pose入口加入原targets，沿用原八段完整范围及预期hash；没有启用Pose、改变允许的hook清单或降低finalizer条件。Sol有限只读审查未发现必须修复项，30份Python、12个fresh namespace、6个CLI help及3个retained CPU场景预检通过。DB pins为`c9fc59bf24877106c31174209471a5c4bd1baf16f3e37f23b850eeeab914708d`；当前候选仍独立于默认启动器。
+
+DB随后实际完成第二次Native／XR启动和Bridge attachment，但初始只读reader返回66，export_history／commands／episodes均为空，未HandStart／Grip。Root与Sol由实际冻结源码确认：66对应bridge open失败，而ControllerInputBridge消费者明确要求目标PID等于本进程；独立reader传入GamePID违反该调用合同，即使Stereo打开也会被拒。这是Root测试reader的确定接线错误，尚未执行时效或Source1匹配，不能归因于实际追踪生产失败。后续修正限制在私有跨进程只读observer，不改生产bridge进程guard。DB正常finalizer accepted=true严格限host／清理范围：88项独立读取全匹配，包含八段完整Pose chunks；Native／entry、XR exit0、PG shutdown0、音频10项恢复、原十文件hash及准确自有PID退出通过，随后新鲜CIM确认Game／XR为空。原DB行为结果complete=false与错误保留，完整功能进度仍不计取枪成功。
+
 ## 2026-10-25 — 启动诊断阶段判断修正，保留两次未执行交互的实跑
 
 cx的prime原始记录进一步确认：同一真实交换链HWND在ResizeBuffers前被观察为iconic、client0×0，而desc／buffer仍1280×720；早先通过的掩体tree1父局也有该中间状态，因此不能把它直接定为cx失败原因。后续cz保持原可见／640×360／30秒门，仅加OwnPID窗口元数据和已有Quiet诊断导出的有限查询。查询模块使用原retained adapter，限定固定Quiet DLL／两个只读导出，原线程返回后才读回并释放自有输出；每次派发前重核原module path／base／SHA／executable image，未知不重发。九个受控OS seam场景覆盖有效非空记录、超时、exact exit、readback／decode／写入／回调保存失败；Astra关闭其1P1／1P2。它们不构成实际Quiet／窗口验收。
