@@ -1,4 +1,5 @@
 // Read-only, ordinary PostPlayerTick only. No retry of a dispatched getter.
+#include "weapon_equipment_names.h"
 namespace nativeequipment_attachment {
 namespace abi=::gears_weapon_hand;
 using Matrix=std::array<float,16>;
@@ -62,26 +63,31 @@ bool bone_name(Name n,const wchar_t* wanted) {
     const auto bytes=(wcslen(wanted)+1)*sizeof(wchar_t);
     return entry&&bytes<=sizeof text&&get<unsigned>(entry)==n.index&&copy(text,entry+20,bytes)&&!std::memcmp(text,wanted,bytes);
 }
-constexpr const wchar_t* bone_names[]={L"b_MF_Hand_R",L"b_MF_Weapon_R",L"b_MF_Weapon_R_End"};
-std::array<Name,3> cached_names{};bool names_known{};
-bool resolve_names(abi::Frame const& f,std::array<Name,3>& out) {
-    if(!nativeequipment::current(nullptr,f))return false;
-    if(names_known){bool valid=true;for(unsigned i=0;i<3;++i)valid=valid&&bone_name(cached_names[i],bone_names[i]);
-        if(valid){out=cached_names;return nativeequipment::current(nullptr,f);}names_known=false;cached_names={};}
-    const auto table=get<Array>(base+0x1c34800);
-    if(!table.data||table.count<1000||table.count>table.capacity||table.capacity>4000000)return false;
-    unsigned found{};std::array<Name,3> candidate{};
-    for(int i=0;i<table.count&&found!=7;++i){
-        if((i&255)==0&&!nativeequipment::current(nullptr,f))return false;
-        const auto entry=get<uptr>(table.data+size_t(i)*8);wchar_t text[32]{};
-        if(!entry||get<unsigned>(entry)!=unsigned(i)||!copy(text,entry+20,sizeof(wchar_t))||text[0]!=L'b')continue;
-        bool complete=false;for(unsigned n=1;n<32;++n){if(!copy(text+n,entry+20+n*2,2))break;if(!text[n]){complete=true;break;}}
-        if(!complete)continue;for(unsigned n=0;n<3;++n)if(!wcscmp(text,bone_names[n])){candidate[n]={unsigned(i),0};found|=1u<<n;}
-    }
-    const auto after=get<Array>(base+0x1c34800);
-    if(found!=7||std::memcmp(&table,&after,sizeof table)||!nativeequipment::current(nullptr,f))return false;
-    for(unsigned i=0;i<3;++i)if(!bone_name(candidate[i],bone_names[i]))return false;
-    cached_names=candidate;names_known=true;out=candidate;return nativeequipment::current(nullptr,f);
+constexpr auto& bone_names=gears_equipment_names::Lookup::wanted;
+gears_equipment_names::Lookup name_lookup;
+abi::FrameKey preparation_key{};bool have_preparation_key{};
+gears_equipment_names::State preparation_state=gears_equipment_names::State::pending;
+unsigned preparation_logs{};
+unsigned preparation_cursor{};
+gears_equipment_names::State resolve_names(abi::Frame const& f,std::array<Name,3>& out) {
+    std::int64_t scan_started{};
+    std::array<unsigned,3> indices{};
+    const auto result=name_lookup.step(
+        [](gears_equipment_names::Table& out_table){
+            const auto table=get<Array>(base+0x1c34800);
+            out_table={table.data,unsigned(table.count),unsigned(table.capacity)};return table.count>=0&&table.capacity>=0;
+        },
+        [](gears_equipment_names::Table table,unsigned index,std::array<wchar_t,32>& text){
+            const auto entry=get<uptr>(table.data+size_t(index)*8);unsigned observed_index{};
+            return entry&&copy(&observed_index,entry,4)&&observed_index==index&&copy(text.data(),entry+20,sizeof text);
+        },
+        [&](){return nativeequipment::current(nullptr,f);},
+        [&](){const auto now=nativeequipment::clock_ns(nullptr);
+            if(!scan_started){scan_started=now;return now>0;}
+            return now>=scan_started&&now-scan_started<3000000;},indices);
+    if(result==gears_equipment_names::State::ready)
+        for(unsigned i=0;i<3;++i)out[i]={indices[i],0};
+    return result;
 }
 struct Attachment {Array entries{};std::array<unsigned char,128*52> bytes{};};
 bool attachment(abi::Frame const& f,nativeequipment::Snapshot const& s,Attachment& out) {
@@ -102,10 +108,25 @@ void print_matrix(const wchar_t* label,float const* m) {
     fwprintf(log_file,L" %ls=",label);for(unsigned i=0;i<16;++i)fwprintf(log_file,L"%ls%.9g",i?L",":L"",m[i]);
 }
 void tick(abi::Frame const& f) noexcept {
-    if(!log_file||!nativeequipment::current(nullptr,f)||!vrequip::model.held_for(f.world.address,f.pawn.address,f.weapon.address))return;
+    if(!log_file||!nativeequipment::current(nullptr,f))return;
+    // Prepare global names in small steps before a held-weapon sample. Only
+    // indices persist; every actual getter still uses this tick's Frame.
+    std::array<Name,3> names{};
+    if(have_preparation_key&&abi::same(preparation_key,f.key))return;
+    preparation_key=f.key;have_preparation_key=true;
+    const auto preparation_started=nativeequipment::clock_ns(nullptr);
+    const auto prepared=resolve_names(f,names);
+    if(preparation_logs<8&&(!preparation_logs||prepared!=preparation_state||name_lookup.cursor()-preparation_cursor>=8192)){
+        fwprintf(log_file,L"native_equipment_attachment_prepare state=%u cursor=%u found=%u elapsed_ns=%lld cookie=%llu frame=%llu pid=%u game_start=%llu\n",
+            unsigned(prepared),name_lookup.cursor(),name_lookup.found(),nativeequipment::clock_ns(nullptr)-preparation_started,
+            f.key.registration_cookie,f.key.frame,f.key.game_pid,f.key.game_start);
+        fflush(log_file);++preparation_logs;preparation_cursor=name_lookup.cursor();
+    }
+    preparation_state=prepared;
+    if(prepared!=gears_equipment_names::State::ready||!vrequip::model.held_for(f.world.address,f.pawn.address,f.weapon.address))return;
     const auto now=GetTickCount64();if(now<next_sample||(have_key&&abi::same(last_key,f.key)))return;
     next_sample=now+100;last_key=f.key;have_key=true;
-    const wchar_t* reason=L"qualification";unsigned attempt{};bool accepted=false;
+    const wchar_t* reason=L"qualification";unsigned attempt{},selected{};bool accepted=false;
     vrequip::MeshPoseProbe gun{},again{};std::array<Matrix,3> bones{};Matrix pawn{},pawn_after{};
     try {
         Identity id{},after{};nativeequipment::Snapshot game{};Attachment attached{},attached_after{};
@@ -114,42 +135,52 @@ void tick(abi::Frame const& f) noexcept {
         unsigned slot=0;for(;slot<identities;++slot){bool match=true;
             for(unsigned i=0;i<5;++i)match=match&&abi::same(budgets[slot].id.objects[i],id.objects[i]);if(match)break;}
         if(slot==identities){if(identities==budgets.size())return;budgets[slot].id=id;++identities;}
-        if(budgets[slot].used==16)return;attempt=++budgets[slot].used;
+        if(budgets[slot].used==24)return;attempt=++budgets[slot].used;selected=(attempt+1)%3;
         const auto sample=[&]() {
             if(!nativeequipment::inventory(nullptr,f,game)||!attachment(f,game,attached)||gun.hidden)return false;
             reason=L"nonfinite_gun_transform";
             for(float v:gun.local_to_world)if(!std::isfinite(v))return false;
             if(!std::isfinite(gun.translation.x)||!std::isfinite(gun.translation.y)||!std::isfinite(gun.translation.z))return false;
             reason=L"component_matrix";if(!component(f.mesh.address,pawn))return false;
-            const int indices[]={35,51,52};std::array<Name,3> names{};reason=L"bone_names_missing_or_source_expired";
-            if(!resolve_names(f,names))return false;
-            for(unsigned i=0;i<3;++i){int actual=-1;reason=L"match_ref_bone_getter_or_identity";
+            const int indices[]={35,51,52};
+            // Each record compares ONE original bone with the gun on this
+            // exact Frame. Never combine independently sampled bones into a
+            // fictitious same-frame chain. Two original calls, not six, leave
+            // room for all existing before/after identity and age checks.
+            {const auto i=selected;int actual=-1;reason=L"match_ref_bone_getter_or_identity";
                 if(!bone_name(names[i],bone_names[i])||!getter(f,id,gun.mesh,gun.asset,indices[i],false,&actual,names[i]))return false;
                 reason=L"match_ref_bone_index_mismatch";if(actual!=indices[i])return false;
                 reason=L"bone_matrix_getter_or_identity";if(!getter(f,id,gun.mesh,gun.asset,indices[i],true,bones[i].data()))return false;
                 for(float v:bones[i])if(!std::isfinite(v)){reason=L"nonfinite_bone_matrix";return false;}}
-            reason=L"changed_before_record";
-            if(!component(f.mesh.address,pawn_after)||pawn!=pawn_after||!vrequip::mesh_pose_probe(f.weapon.address,again)||
-                gun.mesh!=again.mesh||gun.asset!=again.asset||gun.hidden!=again.hidden||
+            reason=L"body_component_changed";
+            if(!component(f.mesh.address,pawn_after)||pawn!=pawn_after)return false;
+            reason=L"gun_component_changed";
+            if(!vrequip::mesh_pose_probe(f.weapon.address,again)||gun.mesh!=again.mesh||gun.asset!=again.asset||gun.hidden!=again.hidden||
                 gun.absolute_translation!=again.absolute_translation||gun.absolute_rotation!=again.absolute_rotation||
                 gun.absolute_scale!=again.absolute_scale||std::memcmp(&gun.translation,&again.translation,sizeof gun.translation)||
                 std::memcmp(&gun.rotation,&again.rotation,sizeof gun.rotation)||
-                std::memcmp(gun.local_to_world,again.local_to_world,sizeof gun.local_to_world)||
-                !attachment(f,game,attached_after)||std::memcmp(&attached.entries,&attached_after.entries,sizeof(Array))||
-                attached.bytes!=attached_after.bytes||!identity(f,gun.mesh,gun.asset,after)||!same(id,after))return false;
+                std::memcmp(gun.local_to_world,again.local_to_world,sizeof gun.local_to_world))return false;
+            reason=L"attachment_changed_or_source_expired";
+            if(!attachment(f,game,attached_after)||std::memcmp(&attached.entries,&attached_after.entries,sizeof(Array))||
+                attached.bytes!=attached_after.bytes)return false;
+            reason=L"final_identity_or_source_expired";
+            if(!identity(f,gun.mesh,gun.asset,after)||!same(id,after))return false;
             reason=L"qualified";return true;
         };
         accepted=sample();
     }catch(...){reason=L"cpp_exception";}
     if(!attempt)return;
     const auto sampled_after_ns=nativeequipment::clock_ns(nullptr);
-    fwprintf(log_file,L"native_equipment_attachment accepted=%u reason=%ls attempt=%u game_start=%llu native_started=%llu cookie=%llu lifecycle=%llu frame=%llu world_generation=%llu pid=%u thread=%u source_sequence=%llu source_now_ns=%lld source_received_ns=%lld source_sync_ns=%lld observed_ns=%lld asset=%ls absolute=%u,%u,%u hidden=%u translation=%.9g,%.9g,%.9g rotation=%d,%d,%d",
-        unsigned(accepted),reason,attempt,f.key.game_start,f.key.native_started_qpc,f.key.registration_cookie,f.key.lifecycle,f.key.frame,
+    if(accepted&&!abi::frame_active(f,sampled_after_ns)){accepted=false;reason=L"source_expired_at_record";}
+    const unsigned sampled_indices[]={35,51,52};
+    fwprintf(log_file,L"native_equipment_attachment accepted=%u reason=%ls attempt=%u bone=%u game_start=%llu native_started=%llu cookie=%llu lifecycle=%llu frame=%llu world_generation=%llu pid=%u thread=%u source_sequence=%llu source_now_ns=%lld source_received_ns=%lld source_sync_ns=%lld observed_ns=%lld asset=%ls absolute=%u,%u,%u hidden=%u translation=%.9g,%.9g,%.9g rotation=%d,%d,%d",
+        unsigned(accepted),reason,attempt,sampled_indices[selected],f.key.game_start,f.key.native_started_qpc,f.key.registration_cookie,f.key.lifecycle,f.key.frame,
         f.key.world_generation,f.key.game_pid,f.key.thread_id,f.controllers.sequence,f.now_ns,f.controllers.received_ns,f.controllers.sync_ns,sampled_after_ns,gun.asset_name,
         unsigned(gun.absolute_translation),unsigned(gun.absolute_rotation),unsigned(gun.absolute_scale),unsigned(gun.hidden),
         gun.translation.x,gun.translation.y,gun.translation.z,gun.rotation.pitch,gun.rotation.yaw,gun.rotation.roll);
-    if(accepted){print_matrix(L"bone35",bones[0].data());print_matrix(L"bone51",bones[1].data());print_matrix(L"bone52",bones[2].data());print_matrix(L"gun_LocalToWorld",gun.local_to_world);}
+    if(accepted){const wchar_t* labels[]={L"bone35",L"bone51",L"bone52"};
+        print_matrix(labels[selected],bones[selected].data());print_matrix(L"gun_LocalToWorld",gun.local_to_world);}
     fwprintf(log_file,L"\n");fflush(log_file);
 }
-void reset_after_drain() noexcept {budgets={};identities=0;next_sample=0;last_key={};have_key=false;cached_names={};names_known=false;}
+void reset_after_drain() noexcept {budgets={};identities=0;next_sample=0;last_key={};have_key=false;name_lookup.reset();preparation_key={};have_preparation_key=false;preparation_state=gears_equipment_names::State::pending;preparation_logs=0;preparation_cursor=0;}
 } // namespace nativeequipment_attachment

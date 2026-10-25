@@ -2,11 +2,25 @@
 
 本文件保留武器与掩体两个分支的开发历史，便于共用 Native 手部实现合流。各条记录仍以其原始验证范围为准；私有候选、只读采样或离线检查不代表完整功能、默认构建更新或头显验收。
 
+## 2026-10-25 — Lancer取得合格同帧骨／枪读数，确认末端与枪体方向存在偏移
+
+继续同一个Lancer交付。骨名查找现按认证GT帧分步准备，每步最多512项、扫描循环3ms预算；原身份／源时效检查在循环前后独立执行，整个准备步骤实测约5–6ms，不声称总用时被硬限制为3ms。只保留名字索引，不缓存姿态／Frame；名字表变化、源过龄与缓存名字内容变化会阻止旧进度用于调用。新增冷表60000项、耗时身份检查、过龄、表替换、非零NUL后填充及未终止字符串的直接回归。曾把身份检查计入扫描预算导致DK游标0，又曾误要求读取缓冲末格0而漏掉有效短名字导致DL超时；两处均修正，失败及源／编译回执保留。
+
+DM在第27573项集齐三名，原MatchRefBone35、GetBoneMatrix35、MatchRefBone51已实际成功；接着读取51矩阵前身份／时效守卫拒绝，记录时源龄约101.14ms。六次原getter加完整前后核验不能稳定放在同一100ms认证帧内，因此改为每帧一个骨与同帧Gun的独立比较，轮转52／35／51，不把不同帧骨矩阵拼成同一帧骨链，不取消任何守卫或延长源龄。
+
+DN候选PG `75730158…3fe82`在真实肩部Grip→held后得到4组合格读数：52两组、35与51各一组，独立分析原源龄92.18–99.49ms，矩阵有限／非退化且无反射，Absolute三项全0。两组End52与Gun世界原点完全相同，但End52_in_Gun方向均为约+90°yaw；Hand_R35_in_Gun原点约(-2.3226,0,0)，方向也约+90°yaw。该结果证明当前原版挂接含固定方向偏移，不能由组件相对Translation／Rotation为零推导世界矩阵相等，也不能将wrist矩阵直接用作gun矩阵。原始矩阵仅存ignored `analysis/equipment-native-rgrip-runtime-20261025dn/attachment-analysis.json`，没有将游戏派生矩阵加入公开源或包。
+
+DN第5组被聚合changed_before_record拒绝，记录时源龄约101.5975ms；旧日志没有细分首先失败的是哪个最终稳定性守卫，不能据此认定组件真实跳变。协调器complete=false、未达到各骨8组配额的结果保留，四组合格证据不等于整轮通过，更不等于控制器驱动枪体、射击／双眼／实体头显验收。之后源码仅细分最终拒绝原因，并在实际记录时间再验证Frame有效性；最后诊断PG `961f7cf2…68001`的严格完整编译和受影响检查通过，构建回执为ignored `analysis/lancer-native-attachment-20261025dh/pg-build/attempt-1792939680249726900/receipt.json`，此版本未启动Game／XR，须与DN实际游戏版本区分。当前不为了静止样本配额继续开局，下一次动态测试随共用双手候选进行。
+
+DK／DL／DM／DN均完成控制器原状态恢复、HandStop4→5／quiescent和正常退出；各自88独立恢复含八完整Pose chunks、Native／entry／XR exit0／PG shutdown0、原十文件与音频10项恢复通过，各轮随后新鲜CIM均无Game／XR，窗口已交还身体会话。四轮都复用Native29sim、XR和reader；0.4／幕后／observe-only／静音与存档保护保持，默认启动器未变。
+
+已把实际方向偏移及下一契约缺口交给身体会话：保留35→51→52自然子链及51／52原动画增量，由唯一共用writer执行；Root负责Lancer握持映射与发送端。现有WeaponHandParticipant仅含左手候选，尚不能传main_hand_held／武器专属右腕mount，不能假装已有可消费接口。当前下一可玩检查点为共用双手＋Lancer持枪瞄准／权威射击，等待身体会话最小双手及消费接点；预计有效工作时间与累计运行窗口等待时间均未知。完整最终需求保留。
+
 ## 2026-10-25 — Lancer右手挂接只读采样，首失败保留
 
 本轮唯一目标是取得同一普通游戏GT帧中的Hand_R35、Weapon_R51、Weapon_R_End52与实际枪组件矩阵，核验原挂接链，供共用双手后续消费；没有新增骨骼／组件writer。私有AttachmentObserver默认关闭，沿现有NativeEquipment消费者执行，逐次核对Frame时效、实际对象身份、唯一挂接、反射参数契约和采样前后组件稳定性。只将既有只读MeshPoseProbe移出旧arena开关以便复用，未启用旧组件写入。当前PG候选a38b51e7…c43e对应ignored `analysis/lancer-native-attachment-20261025dh/pg-build/attempt-1792936667671300600/receipt.json`；完整PG翻译单元及受影响快速检查通过，Native29sim、XR和reader均复用原产物。
 
-DI先在真实Lancer读到AbsoluteTranslation／Rotation／Scale均0、挂接位置／旋转为0，但预期GetBoneName并未反射暴露，因此未取得骨矩阵。随后改用项目已有的MatchRefBone（现有辅助函数名为bone_index，实际调用不是GetBoneIndex），保留完整类型及身份检查。DJ右肩Grip仍成功进入实际held，首个骨名冷查找尚未完成即触发原100ms源时效限制：记录observed_ns减sync_ns约101.7704ms，reason=bone_names_missing_or_source_expired。该结果只确定查找步骤被时效拒绝，不能断言三骨名不存在；没有合格矩阵，也没有动态跟随验收。DI、DJ的complete=false均保留，没有用正常清理accepted替代玩法成功。
+DI先在真实Lancer读到AbsoluteTranslation／Rotation／Scale均0、组件相对位置／旋转为0，但预期GetBoneName并未反射暴露，因此未取得骨矩阵。随后改用项目已有的MatchRefBone（现有辅助函数名为bone_index，实际调用不是GetBoneIndex），保留完整类型及身份检查。DJ右肩Grip仍成功进入实际held，首个骨名冷查找尚未完成即触发原100ms源时效限制：记录observed_ns减sync_ns约101.7704ms，reason=bone_names_missing_or_source_expired。该结果只确定查找步骤被时效拒绝，不能断言三骨名不存在；没有合格矩阵，也没有动态跟随验收。DI、DJ的complete=false均保留，没有用正常清理accepted替代玩法成功。
 
 DJ控制器状态恢复、HandStop4→5／quiescent、bridge关闭、88项独立恢复（含八完整Pose chunks）、Native／entry／XR exit0／PG shutdown0、音频10项恢复及原十文件保持均通过；新鲜CIM无Game／XR。证据位于ignored `analysis/equipment-native-rgrip-runtime-20261025dj/runtime-review.json`、`runtime-final.json`和`attachment-analysis.json`。0.4、后台不激活／不调窗、静音测试策略保持，候选未替换默认启动器。
 
