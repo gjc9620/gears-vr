@@ -13,6 +13,7 @@ namespace two=gears_hand_two_bone;
 namespace rig=gears_hand_authored_mount;
 using Vec=ik::Vec;using Quat=ik::Quat;using Pose=ik::Pose;using Atom=ik::Atom;
 constexpr unsigned bones=115;
+constexpr double max_body_yaw_delta=3.141592653589793238462643383279502884;
 // Verified names/parents: fixture-provenance.json, complete canonical digest.
 constexpr unsigned root=0,pelvis=1,head=55;
 constexpr std::array<unsigned,5> spine{{3,4,5,54,55}};
@@ -30,16 +31,25 @@ struct Frame {
 };
 enum class Scope {stationary,fixed_cover};
 enum class Posture {preserve_c0,reference_neutral};
+enum class BodyTargetMode {source_relative,world_absolute};
+struct RootWorldOrientation {Quat value{0,0,0,1};};
+struct WorldAbsoluteBody {Vec neutral_pelvis_world{};RootWorldOrientation root_orientation{};};
 struct Goal {
     Scope scope{Scope::stationary};Posture posture{Posture::preserve_c0};
     // Actual physical delta and the ALREADY committed persistent Grip offset,
     // both in the same UE world units. Neither is accumulated by this planner.
     Vec physical_world{},committed_grip_world{};
-    // Heading is supplied by body policy (wall heading in Cover), not HMD yaw.
+    // Explicit shortest signed heading in [-pi,+pi], supplied by body policy
+    // (wall heading in Cover), not HMD yaw. Feet remain the supplied anchors;
+    // an entering/turning policy must explicitly provide its new foot placement.
     double body_yaw_delta{};
     // Absolute head BONE pose. Eye/HMD marker conversion is explicitly upstream;
     // no animated wrist/head auto-calibration or eye==bone assumption is made.
     Pose head_world{},feet_world[2]{};
+    // Opt-in stable actor/Cover reference supplied upstream, never inferred from
+    // current animation, camera, or prior Output. Physical/Grip are added once.
+    BodyTargetMode target_mode{BodyTargetMode::source_relative};
+    WorldAbsoluteBody absolute{};
 };
 enum class Status {solved,alias,count,reference,model_scale,atom,component,goal,policy,
     feet_incompatible,leg_unreachable,spine_unreachable,spine_iterations,numerical,residual,pelvis_iterations};
@@ -140,7 +150,11 @@ inline Report plan(Model const& model,Frame const& frame,Goal const& goal,Worksp
            std::memcmp(model.reference[i].translation,work.canonical.data()+i*36+24,12)||model.reference[i].scale!=1)return fail(Status::reference,i);}
     if((goal.scope!=Scope::stationary&&goal.scope!=Scope::fixed_cover)||(goal.posture!=Posture::preserve_c0&&goal.posture!=Posture::reference_neutral))return fail(Status::policy);
     if(!finite_vector(goal.physical_world)||!finite_vector(goal.committed_grip_world)||!std::isfinite(goal.body_yaw_delta)||
-       std::abs(goal.body_yaw_delta)>1.047197551196598||!goal_pose(goal.head_world)||!goal_pose(goal.feet_world[0])||!goal_pose(goal.feet_world[1]))return fail(Status::goal);
+       std::abs(goal.body_yaw_delta)>max_body_yaw_delta||!goal_pose(goal.head_world)||!goal_pose(goal.feet_world[0])||!goal_pose(goal.feet_world[1]))return fail(Status::goal);
+    if(goal.target_mode!=BodyTargetMode::source_relative&&goal.target_mode!=BodyTargetMode::world_absolute)return fail(Status::policy);
+    const bool absolute=goal.target_mode==BodyTargetMode::world_absolute;Quat absolute_root{};
+    if(absolute&&(goal.body_yaw_delta!=0||!finite_vector(goal.absolute.neutral_pelvis_world)||
+       !normalized(goal.absolute.root_orientation.value,absolute_root)))return fail(Status::goal);
     for(unsigned j=0;j<16;++j)work.component.m[j]=frame.component_to_world.values[j];
     if(!similarity(work.component)||std::abs(length(row(work.component,0))-1)>2e-5)return fail(Status::component);
     const auto checked=validate(frame.local.data(),model.parents.data(),bones,work.component);
@@ -148,15 +162,20 @@ inline Report plan(Model const& model,Frame const& frame,Goal const& goal,Worksp
     for(unsigned i=0;i<bones;++i)if(frame.local[i].scale!=1)return fail(Status::model_scale,i);
     std::memcpy(work.pose.local,frame.local.data(),sizeof(frame.local));if(!rebuild(model,work))return fail(Status::numerical);
     std::copy_n(work.pose.world,bones,work.original_world.data());
-    const Vec base_pelvis=position(work.pose.world[pelvis]);const Quat heading=yaw(goal.body_yaw_delta);
-    if(goal.body_yaw_delta!=0&&!world_rotation(model,work,root,product(heading,rotation(work.pose.world[root]))))return fail(Status::numerical);
+    const Vec base_pelvis=position(work.pose.world[pelvis]);Quat heading=yaw(goal.body_yaw_delta);
+    if(absolute){const auto current_root=rotation(work.pose.world[root]);
+        // This delta only rotates the current knee-pole vector. It is not a
+        // new accumulated heading or physical displacement. Root target is fixed.
+        heading=product(absolute_root,d::inverse(current_root));
+        if(!same_rotation(current_root,absolute_root)&&!world_rotation(model,work,root,absolute_root))return fail(Status::numerical);
+    }else if(goal.body_yaw_delta!=0&&!world_rotation(model,work,root,product(heading,rotation(work.pose.world[root]))))return fail(Status::numerical);
     if(goal.posture==Posture::reference_neutral){
         // Static Ref rotations only. No replacement of animated translation,
         // segment length, scale, foot anchor, head goal or hand mount.
         for(unsigned i:{1u,3u,4u,5u,6u,30u,54u})std::memcpy(work.pose.local[i].q,model.reference[i].q,16);
         if(!rebuild(model,work))return fail(Status::numerical);
     }
-    const Vec desired_pelvis=add(base_pelvis,add(goal.physical_world,goal.committed_grip_world));
+    const Vec desired_pelvis=add(absolute?goal.absolute.neutral_pelvis_world:base_pelvis,add(goal.physical_world,goal.committed_grip_world));
     Vec centres[2]{},correction[2]{},point=desired_pelvis;double radii[2]{};
     for(unsigned side=0;side<2;++side){
         const auto hip=position(work.pose.world[legs[side][0]]),knee=position(work.pose.world[legs[side][1]]),foot=position(work.pose.world[legs[side][2]]);
