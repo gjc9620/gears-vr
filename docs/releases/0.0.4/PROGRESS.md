@@ -10,7 +10,9 @@ DC私有只读读取器已完成真正独立target／publisher／reader三进程
 
 生产修正改为在已有普通GT路径直接消费同一认证Native Frame，只路由右Grip四槽；使用当前head位置与稳定reference朝向、记录的last-press pose及明确校准，不创建新Native producer／hook／骨骼或相机writer。连续原始sync与序列夹住最新按压，created_ms从较早原sync保守折算，原始时间继续保留；失效或长间隔重建基线而不重放旧按压，空中按压不妨碍下一次肩部按压。Native注册前从已认证并pin住的模块旁capture.ini读取两项实际校准，缺失或非法即拒绝，不猜臂展；重连前检查PG callbacks已退，避免旧GT仍借用配置时worker重写。Sol复核关闭该生命周期缺口。
 
-实际新输入→Runtime→模型定向检查、原Runtime回归与Windows模块路径／UTF16配置检查通过。完整PG TU及相关hand／shot／CF／protocol检查随后通过，737份编译输入保持原hash；候选`GearsPlaygroundNativeEquipment.dll`为`41ef279a3c8b7d83a8a214879082bea0d11d3a4dccf26a286152b0556ad879ee`，13导出、Gate／Entry仍OFF。构建回执在ignored `analysis/equipment-native-rgrip-20261025cw/pg-build/attempt-1792931495360835400/receipt.json`。新DF复用DD host／原Native29sim／XR／DC reader，仅换PG与独立场次，定向子进程／导入／INI预检通过；实际Grip→库存→attachment／held仍待此候选实跑，未替换默认启动器。近期顺序同步到武器规格，完整最终需求保留。
+实际新输入→Runtime→模型定向检查、原Runtime回归与Windows模块路径／UTF16配置检查通过。完整PG TU及相关hand／shot／CF／protocol检查随后通过，737份编译输入保持原hash；候选`GearsPlaygroundNativeEquipment.dll`为`41ef279a3c8b7d83a8a214879082bea0d11d3a4dccf26a286152b0556ad879ee`，13导出、Gate／Entry仍OFF。构建回执在ignored `analysis/equipment-native-rgrip-20261025cw/pg-build/attempt-1792931495360835400/receipt.json`。DF复用DD host／原Native29sim／XR／DC reader，仅换PG与独立场次，近期顺序同步到武器规格，完整最终需求保留。
+
+DF首次真正触达目标Grip：右肩press1经生产输入进入slot3 held，独立读回同一个实际Weap_AssaultRifle、当前Pawn／PC／两个Mesh、唯一b_MF_Weapon_R_End挂接及HiddenGame=false均通过。该枪原本已是当前武器，证明同槽建立握持，尚不能声称换另一把枪。第二次左肩press2被正确识别为slot2，生产返回empty_slot并沿原反馈路径完成；它表示该槽没有可用物品，现有记录尚未区分无对象与不可选的空弹武器。脚本原假定该槽会held而超时，原complete=false保留。不得为通过脚本而生成物品或跳过可用性检查。HandStop5／quiescent、控制器恢复、bridge关闭、88独立恢复及原十文件／音频通过，fresh CIM无Game／XR。下一DG沿用同一个PG／Native／XR／reader，改测左裤兜手枪0与右肩步枪3，核对实际不同武器切换；尚未替换默认启动器，也不代表枪体6DoF或头显通过。
 
 ## 2026-10-25 — 正常游戏与XR启动通过，RGrip派发前的依赖路径修正
 
