@@ -2,6 +2,20 @@
 
 本文件保留武器与掩体两个分支的开发历史，便于共用 Native 手部实现合流。各条记录仍以其原始验证范围为准；私有候选、只读采样或离线检查不代表完整功能、默认构建更新或头显验收。
 
+## 2026-10-26 — 主握附加query的PG入口／映射／父注册接线完成，待Native联调
+
+身体会话已正式冻结weapon_main_mount_provider.h SHA `3f20163b…2f2cc`，Root按同字节复制；实际x64布局RigFrame1824、Body112、Request1968（body偏1856）、Response504、Registration48。附加注册复用同一Hand parent cookie／Native incarnation／context和已pin模块，只有新的Native attach导出，不增加PG导出或独立detach。Body独自负责Native broker、C0消费和写入，V1及原51／52增量不改。首轮R2 mode OFF。四份b58524c主握发送源保持原hash。
+
+新增默认OFF的GEARS_PLAYGROUND_NATIVE_MAIN_MOUNT_PROVIDER_TRIAL，要求既有Native装备／主握准备。HandStart在创建parent前验证新Native导出属于该已持有模块；parent和既有CF attach成功后才做child attach，精确校验回执cookie／incarnation并在返回前再次确认registration_alive。限定协议测试发现中途失联窗口后已补该末尾检查；任何partial attach错误都走原begin_disconnect，保留父注册等正常Stop，而非提前卸载。
+
+PG回调所有入口计入原callbacks，使用SEH __finally关闭计数、清空持久工作区和释放原子重入标志。新增Wire Request／Response／Candidate／Diagnostic均在独占持久工作区；只允许一个已认领调用使用，重入返回非法status交Native fault路径，不清掉外层数据。legacy parser只有原flag存在时才临时禁用并在finally恢复，不编入第二writer。回调不做Engine调用、日志、Native重入、等待或GT LifecycleScope。既有有界Rig／Hand／metadata局部快照按双方确认继续保留，不扩改Reader或冻结四源。
+
+纯mapper把Native已认证的保留Scene／body数据映射现有BodyContext，调用真实prepare_retained，再逐字段返回实际Candidate。独立检查query id／hand lifecycle／parent／Scene／完整对象／hold generation／geometry／scale／units／basis／revision与固定Lancer calibration。进入与返回都用原始Rig／stereo／controller sync时戳检查50ms，不靠重新读取或helper时间刷新来源；失败外部Response为空且仅保留size/version，ready只返回标定数据，不返回writer lease、wrist世界目标、aim或support权限。Native仍须按它的parent revision／operation／revocation及40/50ms窗口做返回端复核。
+
+299项纯字段映射／时效与owned fixture检查、289项实际provider.inl回调／attach协议检查通过，后者覆盖wrong context／GT／disabled／domain、soft/hard revoke、真实重入、SEH finally恢复和父回执错误，不冒充真实asset read或Native admission。原装备受影响检查及完整PG严格编译通过，760份源码／vendor稳定，PG `a4657e0d…44472`。第一次完整PG因parser命名空间仅在旧flag中存在而失败，已按原ifdef修正并保留失败源／回执；协议fixture单独打开parser stub分支，不启用实际旧writer。关闭新provider guard后，两处接入文件与0b0aaf6旧路径文本机械完全一致，非二进制等价或Game声明。
+
+Astra／High仅审阅本次新callback／映射／父注册危险边界，无具体P1/P2；依赖已确认的Native锁外调用／module pin／统一inflight/drain合同，未重审旧R2或把CPU测试视为C0验收。Native／XR未由Root重建，实际query调用、枪体／手腕跟随、联调清理和头显仍待。源码及验证在Root分支，ignored回执为analysis/lancer-native-r2-20261026dw/pg-build/attempt-1792960173173668200/与provider-off-equivalence.json。无默认替换、发布或额外身体writer。
+
 ## 2026-10-26 — EB通过严格停止交还，Lancer扳机短闭环收口并交接主握query
 
 EB使用a09767e／PG `a3087ecb…24707`及收紧后的协调器，实际首次R2按下、原版key down、主动松开key up、356→347和两个新347／up通过；第二owned press后仍owned1，随后明确在mode2／source9执行status4、game_r2=1→owned0，没有running source-loss提前替代。runtime-review.complete／behavior_complete和独立r2-behavior-audit均true，errors为空，无pending export。本短动作内装备input_gap和R2来源拒绝日志均0；这不是全程或物理头显稳定性证明，仍原版瞄准，未测逐发数／命中／枪管射线／伤害。

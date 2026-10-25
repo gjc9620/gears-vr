@@ -1055,6 +1055,10 @@ namespace weaponhand {void equipment_hold_committed(uptr,gears_weapon::Equipment
 #if defined(GEARS_PLAYGROUND_NATIVE_EQUIPMENT_TRIAL)
 namespace nativeequipment {bool configure_native(HMODULE) noexcept;}
 #endif
+#if defined(GEARS_PLAYGROUND_NATIVE_MAIN_MOUNT_PROVIDER_TRIAL)
+#include "weapon_main_mount_sender.h"
+namespace mainmountprovider {gears_weapon_hand::Reply attach(HMODULE) noexcept;}
+#endif
 #include "weapon_hand_client.inl"
 #if defined(GEARS_PLAYGROUND_NATIVE_EQUIPMENT_MAIN_MOUNT_TRIAL)
 #include "weapon_lancer_asset_read.inl"
@@ -1118,6 +1122,9 @@ namespace handstream {
 #endif
 #if defined(GEARS_PLAYGROUND_NATIVE_EQUIPMENT_TRIAL)
 #include "weapon_equipment_domain.inl"
+#endif
+#if defined(GEARS_PLAYGROUND_NATIVE_MAIN_MOUNT_PROVIDER_TRIAL)
+#include "weapon_main_mount_provider.inl"
 #endif
 #if defined(GEARS_PLAYGROUND_WEAPON_ACTION_BOUNDARY_TRIAL)
 #include "weapon_action_boundary_client.inl"
