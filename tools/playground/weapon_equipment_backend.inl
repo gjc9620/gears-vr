@@ -1,5 +1,6 @@
-// Normal PostPlayerTick adapter. Never invoke from Native prepare/commit,
-// observe, an ActionGate rollback/NoAuth callback, or an input worker.
+// Equipment action adapters run on normal PostPlayerTick, never Native
+// prepare/commit, observe, rollback/NoAuth or input workers. The dedicated
+// read_attached_frame helper is metadata only and grants no action permission.
 namespace nativeequipment {
 namespace runtime=::gears_equipment_runtime;
 namespace abi=::gears_weapon_hand;
@@ -83,9 +84,12 @@ bool hand_bone(Name value) noexcept {
 // Exact existing retail Attachments layout, already used by the stow trial.
 // This is a read, not a cached "mesh is somewhere on Pawn" assertion: require
 // a unique attachment to the actual right-hand weapon bone and a visible mesh.
-bool attached_frame(abi::Frame const& frame,uptr expected_mesh=0) noexcept {
+// Metadata only, no source/ownership permission. The retained main-mount
+// caller encloses this read in its actual before/after Game observations;
+// standalone callers must continue through attached_frame below.
+bool read_attached_frame(abi::Frame const& frame,uptr expected_mesh) noexcept {
     try{
-        if(!frame.weapon.address||!current(nullptr,frame))return false;
+        if(!frame.weapon.address)return false;
         const auto mesh=playground::pointer(frame.weapon.address,L"Mesh");
         if(expected_mesh&&mesh!=expected_mesh)return false;
         if(!playground::instance(mesh,L"SkeletalMeshComponent")||playground::deleted(mesh)||
@@ -122,8 +126,11 @@ bool attached_frame(abi::Frame const& frame,uptr expected_mesh=0) noexcept {
         Array after{};std::array<unsigned char,52> again{};
         return copy(&after,frame.mesh.address+offset,sizeof after)&&
             !std::memcmp(&after,&entries,sizeof after)&&copy(again.data(),entry_address,again.size())&&again==selected&&
-            playground::pointer(frame.weapon.address,L"Mesh")==mesh&&current(nullptr,frame);
+            playground::pointer(frame.weapon.address,L"Mesh")==mesh;
     }catch(...){return false;}
+}
+bool attached_frame(abi::Frame const& frame,uptr expected_mesh=0) noexcept {
+    return frame.weapon.address&&current(nullptr,frame)&&read_attached_frame(frame,expected_mesh)&&current(nullptr,frame);
 }
 bool attached(void*,abi::Frame const& frame,Snapshot const& game) noexcept {
     return game.world==frame.world.address&&game.pawn==frame.pawn.address&&game.current_weapon==frame.weapon.address&&

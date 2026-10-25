@@ -15,12 +15,14 @@ namespace source=gears_weapon_main_mount_source;
 FILE* log_file{};
 enum class Injection {none,copy_fail,soft_after_copy,source_fail,changed_game,
     attachment_fail,asset_fail,asset_changed,component_changed,generation_at_attach,
-    generation_at_final_asset,soft_at_final_asset,age_at_final_asset,age_at_final_bind};
+    generation_at_final_asset,soft_at_final_asset,age_at_final_asset,age_at_final_bind,
+    game_at_core,soft_at_core};
 Injection injection{};unsigned game_field{};
 wh::Frame committed{};wh::GripGameState observed{};
 policy::Candidate* active_output{};
 std::int64_t clock_value=fixture_now;
 unsigned dual_copies{},single_copies{},source_reads{},asset_reads{},attachment_reads{},clock_reads{};
+unsigned core_attachment_reads{},standalone_attachment_reads{};
 bool on_gt=true,domain=true,armed=true,registration=true;
 std::uint64_t fixture_generation=9;
 namespace weaponhand {
@@ -67,10 +69,20 @@ std::int64_t clock_ns(void*) noexcept {
     if(injection==Injection::age_at_final_bind&&active_output&&active_output->right.known)clock_value=fixture_now+100000001;
     return clock_value;
 }
-bool attached_frame(wh::Frame const& frame,std::uintptr_t expected) noexcept {
+bool attachment_result(wh::Frame const& frame,std::uintptr_t expected) noexcept {
     ++attachment_reads;CHECK(wh::same(frame.key,committed.key)&&expected==0x7000);
     if(injection==Injection::generation_at_attach)++fixture_generation;
     return injection!=Injection::attachment_fail;
+}
+bool read_attached_frame(wh::Frame const& frame,std::uintptr_t expected) noexcept {
+    ++core_attachment_reads;
+    if(injection==Injection::game_at_core)observed.busy=true;
+    if(injection==Injection::soft_at_core)::armed=false;
+    return attachment_result(frame,expected);
+}
+bool attached_frame(wh::Frame const& frame,std::uintptr_t expected) noexcept {
+    ++standalone_attachment_reads;
+    return attachment_result(frame,expected);
 }
 }
 namespace lancermain_asset {
@@ -102,6 +114,7 @@ struct Trial {
     explicit Trial(unsigned selected=0):fixture(selected){
         injection=Injection::none;game_field=0;clock_value=fixture_now;fixture_generation=9;
         dual_copies=single_copies=source_reads=asset_reads=attachment_reads=clock_reads=0;
+        core_attachment_reads=standalone_attachment_reads=0;
         on_gt=domain=::armed=registration=true;
         committed=fixture.hand;observed={};observed.known=observed.main_hand_held=true;observed.kind=wh::WeaponKind::firearm;
         const auto& r=fixture.rig;context.known=true;context.native=r.native;
@@ -123,11 +136,13 @@ int main(){
     for(unsigned selected=0;selected<2;++selected){Trial t(selected);
         CHECK(t.retained()==policy::Status::ready&&t.output.right.known);
         CHECK(dual_copies==1&&single_copies==0&&source_reads==1&&asset_reads==2&&attachment_reads==1);
+        CHECK(core_attachment_reads==1&&standalone_attachment_reads==0);
         CHECK(wh::same(t.output.key,committed.key)&&t.output.hold_generation==9&&t.output.body_revision==t.context.revision);
         CHECK(t.diagnostic.mount.observed_ns==fixture_now&&t.diagnostic.mount.elapsed_ns==0);
         CHECK(!observed.mount_known);}
     {Trial t;CHECK(t.preview()==policy::Status::ready&&t.output.right.known);
-        CHECK(dual_copies==0&&single_copies==0&&source_reads==2&&asset_reads==2&&attachment_reads==1);}
+        CHECK(dual_copies==0&&single_copies==0&&source_reads==2&&asset_reads==2&&attachment_reads==1);
+        CHECK(standalone_attachment_reads==1&&core_attachment_reads==0);}
     for(auto fault:{Injection::copy_fail,Injection::soft_after_copy}){Trial t;t.output.right.known=true;
         injection=fault;CHECK(t.retained()==policy::Status::inactive&&cleared(t.output));
         CHECK(dual_copies==1&&source_reads==0&&asset_reads==0&&attachment_reads==0);
@@ -137,6 +152,16 @@ int main(){
     for(auto fault:{Injection::source_fail,Injection::generation_at_attach,Injection::generation_at_final_asset,
         Injection::soft_at_final_asset,Injection::age_at_final_asset}){Trial t;injection=fault;t.output.right.known=true;
         CHECK(t.retained()==policy::Status::inactive&&cleared(t.output));CHECK(source_reads==1);}
+    {Trial t;injection=Injection::game_at_core;t.output.right.known=true;
+        CHECK(t.retained()==policy::Status::inactive&&cleared(t.output));
+        CHECK(core_attachment_reads==1&&standalone_attachment_reads==0&&source_reads==1&&asset_reads==1);}
+    {Trial t;injection=Injection::generation_at_attach;t.output.right.known=true;
+        CHECK(t.retained()==policy::Status::inactive&&cleared(t.output));
+        CHECK(core_attachment_reads==1&&standalone_attachment_reads==0&&source_reads==1&&asset_reads==1);}
+    {Trial t;injection=Injection::soft_at_core;t.output.right.known=true;
+        CHECK(t.retained()==policy::Status::not_attached&&cleared(t.output));
+        CHECK(core_attachment_reads==1&&standalone_attachment_reads==0&&source_reads==0&&asset_reads==1);
+        CHECK(weaponhand::client.registration_alive(committed.key.registration_cookie,committed.key.native_started_qpc));}
     {Trial t;injection=Injection::attachment_fail;t.output.right.known=true;
         CHECK(t.retained()==policy::Status::not_attached&&cleared(t.output)&&source_reads==0&&asset_reads==1);}
     for(auto fault:{Injection::asset_fail,Injection::asset_changed,Injection::component_changed}){Trial t;injection=fault;t.output.right.known=true;

@@ -2,6 +2,14 @@
 
 本文件保留武器与掩体两个分支的开发历史，便于共用 Native 手部实现合流。各条记录仍以其原始验证范围为准；私有候选、只读采样或离线检查不代表完整功能、默认构建更新或头显验收。
 
+## 2026-10-26 — EH取得首次有效主握回复，继续收口附着检查中的重复Game观察
+
+EH实际取Lancer仍成功，held首门未过且commits0；首次Native ready1。PG正常drain后16／16未截断记录明确：q1–3真实unheld；q4–11及13–16初始context ready、retained complete且bind／资产均ready，最终response返回source_mismatch；q12成功publish并被Native接受。held查询约11.2–11.9ms，开始sync年龄约38–40ms，q16末sync50.905ms；Native stale12全部source_after，post-admission14，projection／pre-source／C0-current0。一次ready不算身体提交；与EG的稀疏max差异不当作匹配性能基准。106及原全部正常清理通过，EH原现场／日志保留。
+
+进一步源码核对发现attached_frame内部前后current各再执行一次完整Game观察，因而上轮retained仍有四次观察。仅retained路径改用元数据core：将旧attachment读取主体原样提取read_attached_frame，old attached_frame保留weapon非空→current→core→current短路顺序，R2／其他调用及preview不变。retained通过prepare_observed的编译期分支使用core，仍由同次copy-frame真实Game与末尾独立source_game／完整same_game包围，并在core前后增加廉价GT／domain／armed／注册／frame_active栅栏。资产两读、typed schema、唯一right-bone／可见性、array／entry／Mesh selector复核、generation、eligibility及final bind均保留，无跨帧缓存／新权限／时标续写。
+
+实际adapter318项通过，含retained-core／preview-wrapper路由、core内Game／generation变化及softinvalidate；完整严格PG构建通过，761源／vendor稳定。源文本证明metadata主体除签名和两次current外逐字保留，wrapper顺序固定；该证明不是二进制或实跑等价。Astra只复核此新增提取／retained分支，无具体finding，旧537 provider和其余矩阵复用。PG `0ec1cf1e…c88415`，attempt1792966517339153800；Native41／XR／sim继续冻结。身体端Astra预算审阅提示PG-only未必足够，若下一轮仍commits0再用原C0阶段时间定位实际成本，不根据publication间隔臆造Native热点或放宽40／50ms。
+
 ## 2026-10-26 — EG定位post-source过期，PG复用同次真实观察并保留阶段记录
 
 EG由身体端唯一实跑并正常清理，取Lancer成功、held首门仍失败。稳定Native41显示stale6全部broker source_after；projection／source_before／C0-current拒绝均0，post-admission拒绝另有9次。最后source failure_query10、mask1541，六源龄为46.0638／51.8660／52.1526／52.9531／52.9305／52.9508ms。末值raw callback12=source_mismatch，但last_query被后续unavailable归零，二者不视为同query关联。原50ms来源限制和40ms admission不变，106完整恢复及其余退出保护通过。稳定数据解码保存在ignored analysis/lancer-main-mount-ec-rejection-20261026ef/eg-native41-diagnostics.json。
