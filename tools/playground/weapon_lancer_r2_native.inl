@@ -35,7 +35,8 @@ bool name_current() noexcept {
         copy(&entry,names.data+size_t(r2.index)*8,8)&&entry&&copy(&index,entry,4)&&index==r2.index&&
         copy(text,entry+20,sizeof text)&&text[0]==L'R'&&text[1]==L'2'&&!text[2];
 }
-bool read_game(lr::Actors const& expected,wh::Frame const* source,lr::Game& out,bool* source_current=nullptr) noexcept {
+bool read_game(lr::Actors const& expected,wh::Frame const* source,lr::Game& out,bool* source_current=nullptr,
+    wh::GripGameState const* copied_game=nullptr) noexcept {
     out={};if(source_current)*source_current=false;
     if(!weaponhand::current_gt(nullptr)||!lr::valid(expected))return false;
     // This identity-only value is solely for fresh metadata observation. It
@@ -45,15 +46,15 @@ bool read_game(lr::Actors const& expected,wh::Frame const* source,lr::Game& out,
     if(source){if(!lr::same(expected,actors(*source)))return false;identity=*source;}
     wh::GripGameState before{},after{};
     if(source_current){
-        // source_current_on_gt already performs a fresh full observe. Keep its
-        // actual output instead of discarding it and immediately observing
-        // again. The exact key/lifetime and post-observe age checks are still
-        // inside this same Client call; no cached game state is accepted.
-        // Only tick requests this witness. Original-call/owned-release reads
-        // retain their old XR-independent metadata path, even with a Frame.
-        if(!source||!enabled.load(std::memory_order_acquire)||!nativeequipment::domain_ready()||
-            !weaponhand::client.source_game_on_gt(source->key,before)||
+        // Only tick supplies the two outputs of its immediately preceding
+        // successful copy_frame_on_gt. No engine/wait/republication occurs
+        // between that copy and this use. armed() still catches worker-side
+        // soft invalidation; a live registration alone is insufficient.
+        // This is never a seed for execute/ammo/owned-release reads.
+        if(!source||!copied_game||!copied_game->known||!weaponhand::client.armed()||
+            !enabled.load(std::memory_order_acquire)||!nativeequipment::domain_ready()||
             !wh::frame_active(*source,weaponhand::clock_ns(nullptr)))return false;
+        before=*copied_game;
         // Preserve source-vs-metadata failure classification: a later typed
         // R2/schema failure must not become a source-loss fallback/retry.
         if(source_current)*source_current=true;
@@ -76,6 +77,7 @@ bool read_game(lr::Actors const& expected,wh::Frame const* source,lr::Game& out,
         (held.bits&held.mask)!=(again.bits&again.mask)||!meta::tables(base,objects,names)||
         !meta::same_table(objects,schema.objects)||!meta::same_table(names,schema.names)||
         !weaponhand::observe(nullptr,identity,weaponhand::clock_ns(nullptr),after)||!wh::same_game(before,after))return false;
+    if(source_current&&!weaponhand::client.armed()){*source_current=false;return false;}
     out={expected,true,lancer,after.main_hand_held,after.animation_owns_hands,after.busy,true,bool(held.bits&held.mask)};
     return true;
 }
@@ -111,7 +113,10 @@ void tick(uptr pc) noexcept {
     const auto state=mode.load(std::memory_order_acquire);if(state!=running&&state!=stopping)return;
     const bool quiet=weaponhand::current_gt(nullptr)&&nativeequipment::domain_ready();
     if(!lr::tick_admitted(quiet,pc,0,0))return;
-    wh::Frame frame{};const bool have_source=state==running&&weaponhand::client.copy_frame_on_gt(frame);
+    const auto source_started=weaponhand::clock_ns(nullptr);
+    wh::Frame frame{};wh::GripGameState copied_game{};
+    const bool have_source=state==running&&weaponhand::client.copy_frame_on_gt(frame,copied_game);
+    const auto copy_finished=weaponhand::clock_ns(nullptr);
     // Other PlayerControllers do not consume or invalidate this player's R2.
     // A freshly authenticated change of owner still reaches the policy below
     // so an owed release cannot be silently adopted by the new controller.
@@ -119,7 +124,7 @@ void tick(uptr pc) noexcept {
         input.has_actors()?input.actors().controller.address:0))return;
     const auto observation_started=weaponhand::clock_ns(nullptr);
     bool current{};lr::Game game{};
-    if(have_source)read_game(actors(frame),&frame,game,&current);
+    if(have_source)read_game(actors(frame),&frame,game,&current,&copied_game);
     if(!current&&input.has_actors()&&input.actors().controller.address==pc)read_game(input.actors(),nullptr,game);
     const auto now=weaponhand::clock_ns(nullptr);
     const auto previous_sync=input.last_sync_ns(),previous_observed=input.last_observed_ns();
@@ -151,13 +156,14 @@ void tick(uptr pc) noexcept {
     const auto diagnostic_finished=weaponhand::clock_ns(nullptr);
     if(log_file&&logs<64&&(previous_status!=unsigned(result)||previous_source!=unsigned(input.source_status())||
         ready_after_ammo||ammo_queried||(ammo_known&&count!=last_ammo))){
-        fwprintf(log_file,L"native_lancer_r2 status=%u source_status=%u mode=%u owned=%u game_known=%u game_r2=%u before_action=1 frame=%llu sequence=%llu trigger_pressed=%u trigger_released=%u input_sync_ns=%lld observed_ns=%lld ammo_known=%u ammo=%d previous_sync_ns=%lld previous_observed_ns=%lld game_elapsed_ns=%lld action_elapsed_ns=%lld ammo_queried=%u diagnostic_elapsed_ns=%lld ready_after_ammo_read=%u\n",
+        fwprintf(log_file,L"native_lancer_r2 status=%u source_status=%u mode=%u owned=%u game_known=%u game_r2=%u before_action=1 frame=%llu sequence=%llu trigger_pressed=%u trigger_released=%u input_sync_ns=%lld observed_ns=%lld ammo_known=%u ammo=%d previous_sync_ns=%lld previous_observed_ns=%lld game_elapsed_ns=%lld action_elapsed_ns=%lld ammo_queried=%u diagnostic_elapsed_ns=%lld ready_after_ammo_read=%u copy_elapsed_ns=%lld input_elapsed_ns=%lld\n",
             unsigned(result),unsigned(input.source_status()),state,unsigned(input.owns_press()),unsigned(game.known),unsigned(game.r2_held),
             current?frame.key.frame:0,current?frame.controllers.sequence:0,
             current?frame.controllers.hands[1].pressed[gears_vr::control_trigger]:0,
             current?frame.controllers.hands[1].released[gears_vr::control_trigger]:0,
             current?frame.controllers.sync_ns:0,now,unsigned(ammo_known),count,previous_sync,previous_observed,
-            now-observation_started,action_finished-now,unsigned(ammo_queried),diagnostic_finished-action_finished,ready_after_ammo);
+            now-observation_started,action_finished-now,unsigned(ammo_queried),diagnostic_finished-action_finished,ready_after_ammo,
+            copy_finished-source_started,now-source_started);
         fflush(log_file);++logs;
     }
     previous_status=unsigned(result);previous_source=unsigned(input.source_status());if(ammo_known)last_ammo=count;

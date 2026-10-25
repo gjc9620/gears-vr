@@ -207,7 +207,12 @@ public:
     // required: first-grab, busy and animation-owned states are observable.
     // This does not grant equipment calls, ownership, or pose-write permission.
     bool copy_frame_on_gt(Frame& out) noexcept {
-        out={};if(!on_gt()||!armed())return false;
+        GripGameState ignored{};return copy_frame_on_gt(out,ignored);
+    }
+    // Return this call's actual fresh observation together with its Frame.
+    // Both are caller-owned, synchronous data, not a reusable source permit.
+    bool copy_frame_on_gt(Frame& out,GripGameState& observed) noexcept {
+        out={};observed={};if(!on_gt()||!armed())return false;
         Gate gate(gate_);if(!gate.held){disarm();return false;}
         const auto epoch=epoch_.load(std::memory_order_acquire);
         if(!active(epoch)||published_.load(std::memory_order_acquire)!=epoch)return false;
@@ -218,7 +223,7 @@ public:
         }
         now=adapter_.clock_ns(adapter_.context);
         if(!active(epoch)||published_.load(std::memory_order_acquire)!=epoch||!fresh(committed_,now))return false;
-        std::memcpy(&out,&committed_,sizeof(out));return true;
+        std::memcpy(&out,&committed_,sizeof(out));observed=current;return true;
     }
     // Same callback lifetime lease requirement. Revalidate the exact existing
     // publication after a caller changes its software equipment model. Fresh

@@ -2,6 +2,18 @@
 
 本文件保留武器与掩体两个分支的开发历史，便于共用 Native 手部实现合流。各条记录仍以其原始验证范围为准；私有候选、只读采样或离线检查不代表完整功能、默认构建更新或头显验收。
 
+## 2026-10-26 — 独立判读纠正EA假绿，Client同次返回真实Frame／Game
+
+EA实际首次按下／主动松开及356→347通过，第二press也得到owned；但frame350在running mode1／source_status4先交还，后面的stopping mode2只有accepted、game_r2=0。协调器原complete／behavior_complete虽为true，未证明“停止时交还仍自有的射击输入”，不能作为完整目标通过。原始review／final不改，新增独立r2-behavior-audit.json：以实际日志的第二owned press为界，要求后续mode2／source9／status4／game_r2=1→owned0，且中间没有running hand-back。直接复用DW／DX／DY／EA四局原件哈希，独立目标判定依次false／true／false／false；DX真实停止交还保留，不重跑。四局清理均通过。
+
+EA的入口去重复观察后仍有装备前序sync年龄111ms和R2前序100.3851ms，后一项触发正确安全释放。不能把game_elapsed的局部下降推为整体性能或稳定性修复。EA正常88项独立恢复、Native／entry、XR0／PG0、原十文件、音频10/10、准确PID及fresh CIM无Game／XR后交还窗口；故障和语义缺口均保留。
+
+下一窄增量为PG C++ HandClient.copy_frame_on_gt双输出重载，返回同一成功调用的局部current Game，而非committed_game缓存。旧单输出入口委托同一实现；两个输出先清空，所有原GT／gate／key／epoch／publication／前后freshness／same_game检查均保持，全部成功后才一起输出。没有类字段、Registration／Frame、Native ABI或writer改变。R2 tick立即同栈使用这份Frame＋Game，期间只有controller admission／clock等无引擎步骤；使用点检查armed以拒worker soft invalidation，registration_alive不能替代。typed R2两次读取／对象结构复核和最终独立observe／same_game仍在；source已确认后的元数据失败保持unknown分类，不转loss-fallback重试。最终观察成功后再检查armed。execute／ammo／安全release均不接这份seed，继续原独立元数据路径。
+
+复用原Client fixture覆盖双输出的全部Frame-copy失效／过期／重入／disconnect竞争，两输出失败清空、成功一次observe、旧单输出一次observe，以及copy后soft invalidation仍保registration但armed=false。15既有＋30 Frame-copy＋17 source-current＋8 Game-output案例通过，原84 cases／900项Runtime、69 cases／733项Input及420项R2检查、完整PG严格编译通过；755源码／vendor稳定。PG `a3087ecb…24707`，Client头SHA `d41e2e98…db996`。新增copy_elapsed_ns／input_elapsed_ns用于明确包含copy的计时范围，不能只比较被缩小的game_elapsed。设计问题仅由已有Astra限定回答，没有额外全量审计或新测试体系。
+
+EB沿用原host／Native29／XR／sim／reader和原动作，协调器已收紧上述owned stopping语义；实际函数用DX正例、EA反例及去掉停止行的DX反例通过，全部清理和来源门不变。候选pins `bf6d0583…9db46`，实跑待窗口。身体端B18连续双腕与B19限定交还／重新跟踪已给出通过范围，双方开始独立主握query交接：Root发送端仍b58524c原四文件未改，Native端由身体会话唯一负责；已给精确路径／哈希及DX比较PG，强调现有prepare_retained未导出、同cookie admission／inflight／drain尚需正式合同，module pin不构成PG调用准入。无默认替换／发布／头显验收。
+
 ## 2026-10-26 — DY否定单纯消费顺序交换，撤回该候选并消除重复鲜Game观察
 
 下节记录的调度尝试已实跑DY，行为失败，不作为完成的修复保留。首次R2 press成功后，下一Frame的前序sync年龄达到109.3368ms；保护正确执行原版release，物理模拟扳机仍down时正确不重放。仅356→355，主动松开步骤等不到对应owned release，第二press及持按停止未触达。装备gap减少不能补偿R2失效，整轮complete=false保留。DY的disable0、无pending、控制器恢复、HandStop／quiescent、88项独立恢复、Native／entry、XR0／PG0、原十文件、音频10/10及准确PID／fresh CIM正常；正常清理后释放窗口。证据为ignored analysis/equipment-native-rgrip-runtime-20261026dy/。

@@ -89,7 +89,10 @@ struct Host {
     }
     void ready(){step();next();assert(step()==Grip::single);next(true);assert(step()==Grip::two);}
     bool snapshot(){GT gt;GripSnapshot s{};return client->snapshot_on_gt(s);}
-    bool copy(Frame& out){GT gt;return client->copy_frame_on_gt(out);}
+    bool copy(Frame& out){
+        GT gt;GripGameState observed=game;const bool copied=client->copy_frame_on_gt(out,observed);
+        assert(same_game(observed,copied?game:GripGameState{}));return copied;
+    }
     bool current(FrameKey const& expected){GT gt;return client->source_current_on_gt(expected);}
     bool current_game(FrameKey const& expected,GripGameState& out){GT gt;return client->source_game_on_gt(expected,out);}
 };
@@ -103,6 +106,9 @@ unsigned frame_copy_cases(){
         assert(h.reads==reads+1&&same_frame(out,h.frame)&&!std::memcmp(&out,&h.frame,sizeof(out)));
         assert(out.now_ns==h.frame.now_ns&&out.stereo.received_ns==h.frame.stereo.received_ns&&
             out.controllers.received_ns==h.frame.controllers.received_ns&&out.controllers.sync_ns==h.frame.controllers.sync_ns);
+        Frame legacy{};const auto legacy_reads=h.reads;
+        {GT gt;assert(c.copy_frame_on_gt(legacy));}
+        assert(h.reads==legacy_reads+1&&same_frame(legacy,out));
         // Data availability does not establish a held weapon or support grant.
         assert(!h.snapshot()&&c.armed());++cases;
     }
@@ -167,13 +173,20 @@ unsigned frame_copy_cases(){
         assert(!h.copy(out)&&same_frame(out,Frame{})&&!c.armed());assert(!h.copy(out));++cases;}
     {Host h;HandClient c(h.adapter());h.connect(c);h.ready();h.reenter_frame=true;Frame out=h.frame;
         assert(!h.copy(out)&&same_frame(out,Frame{})&&!c.armed());assert(!h.copy(out));++cases;}
-    {Host h;HandClient c(h.adapter());h.connect(c);h.ready();h.block=true;Frame out=h.frame;bool copied=true;
-        std::thread worker([&]{GT gt;copied=c.copy_frame_on_gt(out);});
+    {Host h;HandClient c(h.adapter());h.connect(c);h.ready();h.block=true;Frame out=h.frame;bool copied=true;GripGameState observed=h.game;
+        std::thread worker([&]{GT gt;copied=c.copy_frame_on_gt(out,observed);});
         {std::unique_lock<std::mutex> lock(h.mutex);assert(h.changed.wait_for(lock,std::chrono::seconds(2),[&]{return h.entered;}));}
         assert(c.begin_disconnect()==Reply::draining&&c.finish_disconnect(33)==Reply::draining);
         {std::lock_guard<std::mutex> lock(h.mutex);h.release=true;}h.changed.notify_all();worker.join();
-        assert(!copied&&same_frame(out,Frame{})&&c.finish_disconnect(33)==Reply::quiescent);
+        assert(!copied&&same_frame(out,Frame{})&&same_game(observed,GripGameState{})&&c.finish_disconnect(33)==Reply::quiescent);
         out=h.frame;assert(!h.copy(out)&&same_frame(out,Frame{}));++cases;}
+    {Host h;HandClient c(h.adapter());h.connect(c);h.ready();Frame out{};
+        assert(h.copy(out)&&c.armed());h.invalidate(InvalidateReason::context_lost);
+        assert(!c.armed()&&c.registration_alive(33,22)); // registration does not keep a copied observation current.
+        GripGameState observed=h.game;{GT gt;assert(!c.copy_frame_on_gt(out,observed));}
+        assert(same_frame(out,Frame{})&&same_game(observed,GripGameState{}));++cases;}
+    {Host h;HandClient c(h.adapter());h.connect(c);h.ready();Frame out=h.frame;GripGameState observed=h.game;
+        assert(!c.copy_frame_on_gt(out,observed)&&same_frame(out,Frame{})&&same_game(observed,GripGameState{})&&c.armed());++cases;}
     return cases;
 }
 unsigned source_current_cases(){
