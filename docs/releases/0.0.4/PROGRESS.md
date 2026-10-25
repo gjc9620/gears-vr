@@ -2,6 +2,16 @@
 
 本文件保留武器与掩体两个分支的开发历史，便于共用 Native 手部实现合流。各条记录仍以其原始验证范围为准；私有候选、只读采样或离线检查不代表完整功能、默认构建更新或头显验收。
 
+## 2026-10-26 — EB通过严格停止交还，Lancer扳机短闭环收口并交接主握query
+
+EB使用a09767e／PG `a3087ecb…24707`及收紧后的协调器，实际首次R2按下、原版key down、主动松开key up、356→347和两个新347／up通过；第二owned press后仍owned1，随后明确在mode2／source9执行status4、game_r2=1→owned0，没有running source-loss提前替代。runtime-review.complete／behavior_complete和独立r2-behavior-audit均true，errors为空，无pending export。本短动作内装备input_gap和R2来源拒绝日志均0；这不是全程或物理头显稳定性证明，仍原版瞄准，未测逐发数／命中／枪管射线／伤害。
+
+EB记录了copy与后续读取分段：示例两份后段有效输入的input_elapsed分别6.5542／6.5237ms，含copy；不能用game_elapsed约3ms直接对比旧版约6ms来宣称一半总耗时。额外的第二press action仍17.889ms，后续优化不得把它忽略。当前只确认这次原版输入闭环及严格停止语义通过，不作FPS收益结论。
+
+EB控制器恢复、HandStop／quiescent／bridge close、88项独立恢复、Native／entry、XR0／PG0、原十文件、音频10/10、准确自有PID和fresh CIM无Game／XR全部通过，已交还运行窗口。证据为ignored analysis/equipment-native-rgrip-runtime-20261026eb/runtime-review.json、runtime-final.json、r2-behavior-audit.json；pins `bf6d0583…9db46`，原DW／DY失败、EA假绿判读及DX既有通过均保留，没有重跑旧成功用例。
+
+当前下一主交付转为实际Lancer主握。身体会话已给出B18连续双腕和B19限定ownership fallthrough／reacquire通过范围，正在实现同parent cookie／ModulePin／统一inflight／drain的可选附加query注册；正式合同确认后Root仅接PG端，Body唯一负责Native消费／写入。主握发送端四源仍b58524c未改，未导出prepare_retained不能直接调用；query首轮R2 mode OFF，失败退stock mount，V1 Frame和51／52原增量保持。最新Client双输出仅PG C++访问器，不改变query lease／bridge admission，旧单输出行为经回归保持。无默认替换／新发布／头显验收。
+
 ## 2026-10-26 — 独立判读纠正EA假绿，Client同次返回真实Frame／Game
 
 EA实际首次按下／主动松开及356→347通过，第二press也得到owned；但frame350在running mode1／source_status4先交还，后面的stopping mode2只有accepted、game_r2=0。协调器原complete／behavior_complete虽为true，未证明“停止时交还仍自有的射击输入”，不能作为完整目标通过。原始review／final不改，新增独立r2-behavior-audit.json：以实际日志的第二owned press为界，要求后续mode2／source9／status4／game_r2=1→owned0，且中间没有running hand-back。直接复用DW／DX／DY／EA四局原件哈希，独立目标判定依次false／true／false／false；DX真实停止交还保留，不重跑。四局清理均通过。
