@@ -73,11 +73,11 @@ bool hand_bone(Name value) noexcept {
 // Exact existing retail Attachments layout, already used by the stow trial.
 // This is a read, not a cached "mesh is somewhere on Pawn" assertion: require
 // a unique attachment to the actual right-hand weapon bone and a visible mesh.
-bool attached(void*,abi::Frame const& frame,Snapshot const& game) noexcept {
+bool attached_frame(abi::Frame const& frame,uptr expected_mesh=0) noexcept {
     try{
-        if(game.world!=frame.world.address||game.pawn!=frame.pawn.address||game.current_weapon!=frame.weapon.address||
-           !frame.weapon.address||!current(nullptr,frame))return false;
+        if(!frame.weapon.address||!current(nullptr,frame))return false;
         const auto mesh=playground::pointer(frame.weapon.address,L"Mesh");
+        if(expected_mesh&&mesh!=expected_mesh)return false;
         if(!playground::instance(mesh,L"SkeletalMeshComponent")||playground::deleted(mesh)||
            playground::pointer(frame.weapon.address,L"Instigator")!=frame.pawn.address)return false;
         weaponhand::meta::Snapshot schema{};schema.module_base=base;
@@ -114,6 +114,10 @@ bool attached(void*,abi::Frame const& frame,Snapshot const& game) noexcept {
             !std::memcmp(&after,&entries,sizeof after)&&copy(again.data(),entry_address,again.size())&&again==selected&&
             playground::pointer(frame.weapon.address,L"Mesh")==mesh&&current(nullptr,frame);
     }catch(...){return false;}
+}
+bool attached(void*,abi::Frame const& frame,Snapshot const& game) noexcept {
+    return game.world==frame.world.address&&game.pawn==frame.pawn.address&&game.current_weapon==frame.weapon.address&&
+        attached_frame(frame);
 }
 bool switch_slot(void*,abi::Frame const& frame,Snapshot const& game,unsigned slot) noexcept {
     try{
@@ -183,6 +187,9 @@ void tick(uptr pc) noexcept {
 #if defined(GEARS_PLAYGROUND_NATIVE_EQUIPMENT_RIG_READER)
     nativeequipment_rig::tick(frame);
 #endif
+#if defined(GEARS_PLAYGROUND_NATIVE_EQUIPMENT_MAIN_MOUNT_TRIAL)
+    nativeequipment_main_mount::tick(frame);
+#endif
 }
 void reset_after_drain() noexcept {
     state.reset_after_drain(backend,vrequip::model);have_status=false;
@@ -191,6 +198,9 @@ void reset_after_drain() noexcept {
 #endif
 #if defined(GEARS_PLAYGROUND_NATIVE_EQUIPMENT_RIG_READER)
     nativeequipment_rig::reset_after_drain();
+#endif
+#if defined(GEARS_PLAYGROUND_NATIVE_EQUIPMENT_MAIN_MOUNT_TRIAL)
+    nativeequipment_main_mount::reset_after_drain();
 #endif
     calibration={};input_evidence={};
     if(log_file&&ticks){

@@ -2,6 +2,22 @@
 
 本文件保留武器与掩体两个分支的开发历史，便于共用 Native 手部实现合流。各条记录仍以其原始验证范围为准；私有候选、只读采样或离线检查不代表完整功能、默认构建更新或头显验收。
 
+## 2026-10-26 — Lancer实际资产与主握候选认证，诊断预览减负
+
+本轮保持单一目标：在正常GT装备消费者内，按当前真实持枪状态认证Lancer资产，为共用身体执行点准备固定Grip→Wrist标定。新增默认关闭的NativeEquipmentMainMountTrial，不新增Native登记／导出／共享ABI或骨骼／组件writer。现有source_current_on_gt提取为可返回当前GripGameState的source_game_on_gt，保留原GT、登记、精确FrameKey、身份、源龄与调用末尾检查；失败清空输出，不发布新Frame或产生写入权限。
+
+实际资产读取要求当前Weap_AssaultRifle、Instigator／Pawn链接、类型正确且可见的枪Mesh与COGAssaultRifle SkeletalMesh；重复核对属性选择、对象身份和链接后才返回。沿既有唯一b_MF_Weapon_R_End附件验证，附加预期枪Mesh一致性；准备函数在前后重新读取当前游戏状态、hold generation、资产和登记／时间。候选还必须收到身体唯一负责人认证的同帧几何、modelScale／units和marcus115-ref-eyes-face-forward-y-authored-v2基准，才能输出固定右腕Calibration。无身体绑定时输出为空，不假定默认Marcus／比例，不设置WeaponMount.valid，不改变51／52子链或后坐力。身体基准的面向修正不等于骨骼局部轴改变，不能再给固定腕标定叠加90°。
+
+DQ购买版普通场景实际完成右肩RGrip→Lancer held，取得6条真实资产与右手附件认证；准备耗时12.9455–14.9817ms。由于预览故意未提供身体绑定，6条均为body_unavailable／candidate=0。随后左裤兜RGrip→Snub未完成，complete=false与source_gap／baseline重建原记录保留。原输入最大间隔为100ms，既检查连续sync间隔，也检查当前时间距上次sync；不能只凭相邻sync约55–66ms排除拒绝。每帧重复深读确实增加负担，但尚未证明它是本次切枪失败的唯一原因。证据为ignored analysis/equipment-native-rgrip-runtime-20261026dq/runtime-review.json。
+
+DQ正常停止、控制器恢复、HandStop4→5／quiescent、88项独立恢复（含八完整Pose chunks）、Native／entry／XR exit0／PG shutdown0、原十文件保持及音频12/12恢复通过，随后新鲜CIM无Game／XR。原host退出瞬间的no_remaining_games=false保留，不改写历史。清理accepted=true仅限正常退出与恢复，不代表两个目标动作通过。
+
+减负改动只限制诊断tick：按登记／世界／五对象身份／持枪代数／动画与切换状态变化重置有限预算，间隔至少100ms、最多8次，取得认证或确定拒绝后停止。预算不保存或复用任何认证结果、几何、Calibration或pose；实际prepare每次仍执行完整新鲜校验。受影响严格PG编译、资产读取42例、候选118项、真实Client当前状态回归及既有相关Runtime／Hand／Shot／CF／protocol检查通过。最早候选测试因合成fixture漏填眼部单位四元数失败，已只修fixture并保留原失败；没有降低生产检查。最新私有PG为574160cc…bf0cc，750份编译源及vendor闭包稳定，Native／XR未重建。回执为ignored analysis/lancer-main-mount-20261026dq/pg-build/attempt-1792947521251763900/receipt.json。
+
+DR已按统筹建议完成同两个动作的对照，保持原输入时效、八命令上限和正常恢复。持有Lancer取得1条实际认证，单次15.0932ms，之后该持枪状态不再重复深读；candidate／body_binding均0。第二次切Snub仍在source_gap／baseline重建中超时，complete=false，没有取得实际Snub拒绝样本，因此旧Lancer认证不延续到手枪这一目标尚未通过。此对照不支持将原连续诊断负担当作唯一原因，也不证明它没有影响。证据为ignored analysis/equipment-native-rgrip-runtime-20261026dr/runtime-review.json，pins为7c207b3d…7461a。
+
+DR正常finalizer accepted=true，88项独立恢复、Native／entry／XR exit0／PG shutdown0、原十文件、音频12/12和准确自有PID退出通过，随后新鲜CIM无Game／XR，运行窗口已交还身体会话。下一步离线核对实际输入消费顺序与两个source_gap时间边界，必要时只补有限实值日志，不继续重复同一动作累计、不放宽100ms。共享身体／腕部执行仍由身体会话负责；其B14证据已把六根手臂骨的变化缩小到原Compose调用内部，尚未修复实际腕部偏差，因此本轮不能算自由双手、枪体跟手、射击或真机交付。完整需求和默认启动器不变，未发布／打tag。
+
 ## 2026-10-25 — 普通装备消费者读通共用Rig，Lancer固定主握映射就绪
 
 本轮继续Lancer握持接线，没有扩展其他武器或新增writer。新增默认关闭的NativeEquipmentRigReader，将现有hand_rig_client从旧独立IK测试profile解耦，沿同一个已保留Native登记读取GearsVrReadRigTrackingFrameV1；旧两参数读取保留原编译期来源，新消费者显式使用认证Frame的来源。五处attach／seal／quiescent／detach生命周期条件复用原Admission与Native pin，停止／重连围栏保持。数据不跨帧缓存，不产生scope、武器／手部所有权或写入权限；新的开关没有启用旧骨骼／组件writer，V1布局和导出数量未改变。

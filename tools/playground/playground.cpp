@@ -83,6 +83,9 @@ bool local_quiescent() noexcept;
 #include "weapon_equipment_runtime.h"
 #include "weapon_equipment_native_config.h"
 #include "weapon_equipment_input.h"
+#if defined(GEARS_PLAYGROUND_NATIVE_EQUIPMENT_MAIN_MOUNT_TRIAL)
+#include "weapon_main_mount_candidate.h"
+#endif
 #endif
 #if defined(GEARS_PLAYGROUND_HAND_RIG_TRACKING_TRIAL) || defined(GEARS_PLAYGROUND_NATIVE_EQUIPMENT_RIG_READER)
 #include "../vr-common/rig_tracking_reader.h"
@@ -1050,6 +1053,9 @@ namespace weaponhand {void equipment_hold_committed(uptr,gears_weapon::Equipment
 namespace nativeequipment {bool configure_native(HMODULE) noexcept;}
 #endif
 #include "weapon_hand_client.inl"
+#if defined(GEARS_PLAYGROUND_NATIVE_EQUIPMENT_MAIN_MOUNT_TRIAL)
+#include "weapon_lancer_asset_read.inl"
+#endif
 #if defined(GEARS_PLAYGROUND_HAND_RIG_TRACKING_TRIAL) || defined(GEARS_PLAYGROUND_NATIVE_EQUIPMENT_RIG_READER)
 #include "hand_rig_client.inl"
 #endif
@@ -1061,6 +1067,12 @@ namespace nativeequipment {bool configure_native(HMODULE) noexcept;}
 #include "weapon_call_subscriber.inl"
 #endif
 #if defined(GEARS_PLAYGROUND_NATIVE_EQUIPMENT_TRIAL)
+#if defined(GEARS_PLAYGROUND_NATIVE_EQUIPMENT_MAIN_MOUNT_TRIAL)
+namespace nativeequipment_main_mount {
+void tick(gears_weapon_hand::Frame const&) noexcept;
+void reset_after_drain() noexcept;
+}
+#endif
 #if defined(GEARS_PLAYGROUND_NATIVE_EQUIPMENT_RIG_READER)
 namespace nativeequipment_rig {
 void tick(gears_weapon_hand::Frame const&) noexcept;
@@ -1074,6 +1086,9 @@ void reset_after_drain() noexcept;
 }
 #endif
 #include "weapon_equipment_backend.inl"
+#if defined(GEARS_PLAYGROUND_NATIVE_EQUIPMENT_MAIN_MOUNT_TRIAL)
+#include "weapon_equipment_main_mount.inl"
+#endif
 #if defined(GEARS_PLAYGROUND_NATIVE_EQUIPMENT_RIG_READER)
 #include "weapon_equipment_rig.inl"
 #endif

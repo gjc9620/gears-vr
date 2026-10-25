@@ -223,10 +223,11 @@ public:
     // Same callback lifetime lease requirement. Revalidate the exact existing
     // publication after a caller changes its software equipment model. Fresh
     // observe must still certify the committed actors, but held/busy state may
-    // differ. Do not change committed_game_, refresh a grip or return data.
+    // differ. Do not change committed_game_, refresh a grip or return a Frame.
     // A stale caller key cannot revoke a different healthy current publication.
     // This source-current witness is not equipment or pose-write permission.
-    bool source_current_on_gt(FrameKey const& expected) noexcept {
+    bool source_game_on_gt(FrameKey const& expected,GripGameState& out) noexcept {
+        out={};
         if(!on_gt()||!armed())return false;
         Gate gate(gate_);if(!gate.held){disarm();return false;}
         const auto epoch=epoch_.load(std::memory_order_acquire);
@@ -235,7 +236,13 @@ public:
         if(!key_valid(committed_)||!fresh(committed_,now)||
            !adapter_.observe(adapter_.context,committed_,now,current)||!current.known){clear_gt();return false;}
         now=adapter_.clock_ns(adapter_.context);
-        return active(epoch)&&published_.load(std::memory_order_acquire)==epoch&&fresh(committed_,now);
+        if(!active(epoch)||published_.load(std::memory_order_acquire)!=epoch||!fresh(committed_,now))return false;
+        out=current;return true;
+    }
+    // Reuse the same witness when only liveness is requested. The optional
+    // current game data above is not a new publication or a held/support grant.
+    bool source_current_on_gt(FrameKey const& expected) noexcept {
+        GripGameState ignored{};return source_game_on_gt(expected,ignored);
     }
     // Requires the enclosing PG hook callback lifetime lease even on an early
     // return. Freeze this at the outer actual fire invocation. Do not reread it

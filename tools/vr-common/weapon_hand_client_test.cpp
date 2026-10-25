@@ -91,6 +91,7 @@ struct Host {
     bool snapshot(){GT gt;GripSnapshot s{};return client->snapshot_on_gt(s);}
     bool copy(Frame& out){GT gt;return client->copy_frame_on_gt(out);}
     bool current(FrameKey const& expected){GT gt;return client->source_current_on_gt(expected);}
+    bool current_game(FrameKey const& expected,GripGameState& out){GT gt;return client->source_game_on_gt(expected,out);}
 };
 unsigned frame_copy_cases(){
     unsigned cases{};
@@ -230,6 +231,27 @@ unsigned source_current_cases(){
         assert(same_frame(h.frame,original));++cases;}
     return cases;
 }
+unsigned source_game_cases(){
+    unsigned cases{};
+    {Host h;HandClient c(h.adapter());h.connect(c);h.game.main_hand_held=false;h.step();
+        h.game.main_hand_held=h.game.busy=h.game.animation_owns_hands=true;GripGameState out{};const auto before=h.reads;
+        assert(h.current_game(h.frame.key,out)&&h.reads==before+1&&out.known&&out.main_hand_held&&out.busy&&out.animation_owns_hands);
+        assert(c.armed());Frame copy{};assert(!h.copy(copy));++cases;}
+    for(unsigned failure=0;failure<6;++failure){
+        Host h;HandClient c(h.adapter());h.connect(c);h.ready();GripGameState out=h.game;auto key=h.frame.key;
+        if(failure==0)++key.frame;
+        if(failure==1)h.metadata_known=false;
+        if(failure==2)h.invalidate_read=true;
+        if(failure==3)h.advance_read=110000000;
+        if(failure==4)++h.live.weapon.registry_index;
+        if(failure==5)h.game.known=false;
+        assert(!h.current_game(key,out)&&!out.known&&!out.main_hand_held&&!out.mount_revision&&!out.mount_asset.address);
+        if(failure==0)assert(c.armed());++cases;
+    }
+    {Host h;HandClient c(h.adapter());h.connect(c);h.ready();GripGameState out=h.game;
+        assert(!c.source_game_on_gt(h.frame.key,out)&&!out.known&&c.armed());++cases;}
+    return cases;
+}
 }
 int main(){
     unsigned cases{};
@@ -288,5 +310,7 @@ int main(){
         assert(c.finish_disconnect(33)==Reply::quiescent);++cases;}
     const auto frame_cases=frame_copy_cases();
     const auto source_cases=source_current_cases();
+    const auto game_cases=source_game_cases();
     std::printf("WeaponHandClientTest passed: %u existing + %u Frame-copy + %u source-current cases; local host/adapter only, no equipment/write authority\n",cases,frame_cases,source_cases);
+    std::printf("Source game-state output: %u cases; no publication or grant\n",game_cases);
 }
