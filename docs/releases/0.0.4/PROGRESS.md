@@ -2,6 +2,14 @@
 
 本文件保留武器与掩体两个分支的开发历史，便于共用 Native 手部实现合流。各条记录仍以其原始验证范围为准；私有候选、只读采样或离线检查不代表完整功能、默认构建更新或头显验收。
 
+## 2026-10-25 — 启动诊断阶段判断修正，保留两次未执行交互的实跑
+
+cx的prime原始记录进一步确认：同一真实交换链HWND在ResizeBuffers前被观察为iconic、client0×0，而desc／buffer仍1280×720；早先通过的掩体tree1父局也有该中间状态，因此不能把它直接定为cx失败原因。后续cz保持原可见／640×360／30秒门，仅加OwnPID窗口元数据和已有Quiet诊断导出的有限查询。查询模块使用原retained adapter，限定固定Quiet DLL／两个只读导出，原线程返回后才读回并释放自有输出；每次派发前重核原module path／base／SHA／executable image，未知不重发。九个受控OS seam场景覆盖有效非空记录、超时、exact exit、readback／decode／写入／回调保存失败；Astra关闭其1P1／1P2。它们不构成实际Quiet／窗口验收。
+
+cz实际启动时，新增诊断guard错误地要求birth receipt的injection_attempted一直为false，正常false→true推进被当成异常，watch在约两个窗口样本后提前取消。连续Native／XR、Quiet RPC、Grip及participant均未启动，不能用这局解释原启动窗口问题。已修的driver terminal／join记录路径确实执行并保存原失败。host结束瞬间game仍在正常退出，原no_remaining_games=false保留；Root另行新鲜CIM确认Game／XR／原owner已退出，并核prime取消／入口恢复、PG预留shutdown0／PE恢复、音频1项恢复、原配置存档10份hash一致、tiny monitor与watch已join。独立pre-session清理回执位于忽略的`analysis/equipment-native-rgrip-runtime-20261025cz/startup-closeout.json`，SHA256 `9ce4e6304a963e09122a0c8c8f995ed7f1d92c9b376da764ee61d535aaca4a08`；不覆写原host的瞬时false。
+
+新DA保留cx／cz和全部冻结输入，仅删除只读诊断对该可变阶段位的要求；kind、完整进程身份、精确image、当前PID／birth核对与后续incarnation检查保持，原启动Prompt点击仍仅限pre-injection。直接提取实际guard AST验证同身份false／true及三类坏身份共5例；Sol独立窄审无新遗漏。另将Root额外19工件纳入实际verify_pins强制校验，避免只验证40个host文件。全套新namespace预检通过30份Python、12个fresh child、6个help、实际CLI／INI及3个既有retained用例，未启动Game／XR。首次派生后的AST验证器误选外层if而停止，实际源已派生；保留失败并由独立验证器只重验同一字节，没有重拷贝或启动。DA pins为`cf91c76871aceeff0b269edaaccfbc1f59553b0a49223c04c2945f63f0fcb46a`；本条落盘时等待掩体Native30实跑正常收尾后协调下一窗口。
+
 ## 2026-10-25 — RGrip实测在启动窗口门前停止，尚未执行交互
 
 为验证正常输入消费者，冻结独立cx host、实际13导出PG／42导出Native29sim、原Source1 XR及私有cy模拟器。cy只补既有文件命令的可选有限数值grip；完整DLL、588项实际parser／赋值检查和68项既有behind策略检查通过。Root逐项核25份cy源、365份实际compiler includes及每个delta的内存逆向恢复，原9abbeae4模拟器不变；另确认PG／29sim实际六份wire头仅CRLF表示差异，只读GVC3／Stereo helper使用六份真实headers编译，保留原publisher与source时间检查。host的27份Python、12个私有namespace、3个actual retained-adapter用例及实际CLI／INI／导出预检通过。Astra关闭协调器1P1／2P2后才执行，不把预检称为游戏动作成功。
