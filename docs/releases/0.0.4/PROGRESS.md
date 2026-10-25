@@ -6,7 +6,9 @@
 
 EI以a54d592／PG0ec1、原Native41／BQ／CY及同动作实际运行。正常退出后的PG记录29／29无截断，query1–2为真实unheld；query3–29全部context／retained／response ready、source bind／资产检查通过并正常publish。当前样本的27个持枪回调为6.2567–6.8577ms，最终sync源龄43.9903–46.9392ms；Native稳定ready27、stale／fault／context拒绝0，commits仍0、post-admission拒绝27。该组是实际查询样本，不是匹配FPS基准或无限期稳定性结论，也不将独立累计计数伪装成逐query的后续提交trace。
 
-取Lancer、Source1和同次metadata／身份校验继续有效；held40首门仍未通过，降枪／移转未触达，不能宣称枪体跟随完成。HandStop、可达姿态下freehand继续、两手恢复、bridge close及106完整恢复／Native-entry／XR0／PG0／原十文件／音频／ownedPID正常清理通过。原EI输入和所有结果保留。
+取Lancer、Source1和同次metadata／身份校验继续有效；held40首门仍未通过，降枪／移转未触达，不能宣称枪体跟随完成。HandStop4→5／quiescent、两手恢复、bridge close及106完整恢复／Native-entry／XR0／PG0／原十文件／音频／ownedPID正常清理通过。原EI输入和所有结果保留。
+
+后续逐项核对纠正本节原先的freehand通过表述：实际runtime-review的bridge_error为post-quiescent继续提交超时，body_continues_after_stop并非true，body_hands最终0；该行为检查未过，cleanup-only accepted不能代替它。after_quiescent_baseline为attempts159／solved0／commits0／status8=158／cookie0，没有成功的after_hand_stop_native快照。主门失败后右手仍在肩部，未到right-ready，因此该停止姿态的freehand可达性也未独立证明；当前不把此超时归因于PG parent未交还或特定solver缺陷。EJ保持原输入如实复测，结果另验。
 
 阶段／原时标／exact parent关联及稳定计数已保存ignored analysis/lancer-main-mount-ec-rejection-20261026ef/ei-query-ready.json与ei-native41-diagnostics.json。此后冻结PG0ec1，不继续猜测或叠加PG改动；身体会话将定位compose／capture／model／Goal／gate／query／post／hands／CAS实际时间，再决定Native的具体修正。Root不改Native、不并发Game、不更改40／50ms或源标记，完整武器功能及头显验收仍待后续实现。
 
