@@ -2,6 +2,16 @@
 
 本文件保留武器与掩体两个分支的开发历史，便于共用 Native 手部实现合流。各条记录仍以其原始验证范围为准；私有候选、只读采样或离线检查不代表完整功能、默认构建更新或头显验收。
 
+## 2026-10-25 — 普通游戏取得认证手柄帧与库存，修正取枪消费者的旧通道依赖
+
+本轮唯一玩法目标是Grip导致正确库存切换并实际持枪。DD已在购买版普通场景取得真实Source1 GVC3／Stereo匹配，初始样本原源龄约1.47ms；HandStart及唯一Native CF登记成功，正常PostPlayerTick消费者取得当前Frame并完成实际库存读取。但输入始终baseline_waiting，三秒后停止，未发肩部Grip。首个确定失败为消费者依赖了另一个历史Root分支的EquipmentIntentBridge v6，而实际冻结Native29sim源码根本没有该producer／头；不是实际手柄样本无效，也不是已发生的库存切换失败。
+
+DC私有只读读取器已完成真正独立target／publisher／reader三进程回归，保留公共same-process guard、原六头、匹配循环和最终双源100ms检查；它在DD实际会话中已成功，后续复用。DD的原失败保留，正常停止取得HandStop5／quiescent、控制器恢复及bridge关闭；独立88项含八完整Pose chunks、Native／entry／XR exit0、PG shutdown0、音频10项及原十文件hash、准确PID退出通过，随后新鲜CIM无Game／XR。该清理accepted不代表取枪成功。
+
+生产修正改为在已有普通GT路径直接消费同一认证Native Frame，只路由右Grip四槽；使用当前head位置与稳定reference朝向、记录的last-press pose及明确校准，不创建新Native producer／hook／骨骼或相机writer。连续原始sync与序列夹住最新按压，created_ms从较早原sync保守折算，原始时间继续保留；失效或长间隔重建基线而不重放旧按压，空中按压不妨碍下一次肩部按压。Native注册前从已认证并pin住的模块旁capture.ini读取两项实际校准，缺失或非法即拒绝，不猜臂展；重连前检查PG callbacks已退，避免旧GT仍借用配置时worker重写。Sol复核关闭该生命周期缺口。
+
+实际新输入→Runtime→模型定向检查、原Runtime回归与Windows模块路径／UTF16配置检查通过。完整PG TU及相关hand／shot／CF／protocol检查随后通过，737份编译输入保持原hash；候选`GearsPlaygroundNativeEquipment.dll`为`41ef279a3c8b7d83a8a214879082bea0d11d3a4dccf26a286152b0556ad879ee`，13导出、Gate／Entry仍OFF。构建回执在ignored `analysis/equipment-native-rgrip-20261025cw/pg-build/attempt-1792931495360835400/receipt.json`。新DF复用DD host／原Native29sim／XR／DC reader，仅换PG与独立场次，定向子进程／导入／INI预检通过；实际Grip→库存→attachment／held仍待此候选实跑，未替换默认启动器。近期顺序同步到武器规格，完整最终需求保留。
+
 ## 2026-10-25 — 正常游戏与XR启动通过，RGrip派发前的依赖路径修正
 
 DA实际使用购买版、Source1模拟输入、0.4缩放、置后窗口、tiny只观察及自有游戏静音，保持原启动窗口门，成功进入连续Native／XR并发布ready。Quiet六次真实只读查询均完成原线程退休、有效读取及关闭，无待处理调用；这补足此前受控OS seam测试的实际查询证据。单局启动通过不能说明cx原窗口失败的根因已修复，也不代表身体或武器交互通过。

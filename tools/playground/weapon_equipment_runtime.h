@@ -21,7 +21,7 @@ struct Backend {
     std::uint64_t (*clock_ms)(void*) noexcept{};
     std::int64_t (*clock_ns)(void*) noexcept{};
     bool (*current)(void*,Frame const&) noexcept{};
-    bool (*next)(void*,std::uint64_t&,EquipmentIntentEvent&) noexcept{};
+    bool (*next)(void*,Frame const&,std::uint64_t&,EquipmentIntentEvent&) noexcept{};
     bool (*inventory)(void*,Frame const&,EquipmentSnapshot&) noexcept{};
     bool (*attached)(void*,Frame const&,EquipmentSnapshot const&) noexcept{};
     bool (*identify)(void*,std::uint64_t,ObjectIdentity&) noexcept{};
@@ -224,10 +224,10 @@ public:
         Status input_status=Status::idle;
         if(!state_.baseline_ready){
             EquipmentIntentEvent discarded{};
-            (void)b.next(b.context,state_.cursor,discarded);
+            (void)b.next(b.context,f,state_.cursor,discarded);
             if(!current(f,b))return lost(b);
-            // read_next intentionally returns false after a successful baseline.
-            // A failed/contended open leaves MAX intact and MUST NOT arm input.
+            // next intentionally returns false after a successful baseline.
+            // Missing/invalid input leaves MAX intact and MUST NOT arm input.
             state_.baseline_ready=state_.cursor!=UINT64_MAX;
             if(state_.baseline_ready)state_.consumed_press=press;
             input_status=state_.baseline_ready?Status::baseline:Status::baseline_waiting;
@@ -297,7 +297,15 @@ public:
         if(state_.future_known){event=state_.future;state_.future_known=false;state_.future={};}
         else {
             const auto cursor=state_.cursor;
-            if(!b.next(b.context,state_.cursor,event))return state_.pending?pending_out(Status::switch_pending):Outcome{};
+            const bool have_event=b.next(b.context,f,state_.cursor,event);
+            if(!current(f,b))return lost(b);
+            if(!have_event){
+                // The local Frame input can discover a source gap/calibration
+                // boundary independently of Runtime's cohort. Drop old presses
+                // and require a successful fresh baseline; retain game pending.
+                if(state_.cursor==UINT64_MAX){input_boundary(b);return {Status::baseline_waiting};}
+                return state_.pending?pending_out(Status::switch_pending):Outcome{};
+            }
             if(state_.cursor==UINT64_MAX||state_.cursor<=cursor||event.serial!=state_.cursor)return {Status::invalid_event};
         }
         Outcome out{Status::invalid_event,event.inventory_slot,0,event.serial,press};

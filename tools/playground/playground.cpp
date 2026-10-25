@@ -81,6 +81,8 @@ bool local_quiescent() noexcept;
 #error Native equipment requires the current hand registration and sole Native call owner
 #endif
 #include "weapon_equipment_runtime.h"
+#include "weapon_equipment_native_config.h"
+#include "weapon_equipment_input.h"
 #endif
 #if defined(GEARS_PLAYGROUND_WEAPON_GRIP_DAMAGE_WRITE_TRIAL)
 #include <cwchar>
@@ -1036,6 +1038,9 @@ namespace weaponhand {void equipment_hold_committed(uptr,gears_weapon::Equipment
 #include "vr_equipment_snapshot.inl"
 #endif
 #if defined(GEARS_PLAYGROUND_WEAPON_HAND_PARTICIPANT_TRIAL)
+#if defined(GEARS_PLAYGROUND_NATIVE_EQUIPMENT_TRIAL)
+namespace nativeequipment {bool configure_native(HMODULE) noexcept;}
+#endif
 #include "weapon_hand_client.inl"
 #if defined(GEARS_PLAYGROUND_HAND_RIG_TRACKING_TRIAL)
 #include "hand_rig_client.inl"

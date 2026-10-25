@@ -4,8 +4,9 @@ namespace nativeequipment {
 namespace runtime=::gears_equipment_runtime;
 namespace abi=::gears_weapon_hand;
 using Snapshot=::gears_weapon::EquipmentSnapshot;
-gears_weapon::EquipmentIntentBridge input;
-bool input_open{};
+gears_equipment_input::Input input;
+gears_equipment_input::Evidence input_evidence;
+gears_weapon::ArmspanCalibration calibration;
 bool domain_ready() noexcept;
 std::uint64_t domain_rejected{};
 std::uint64_t ticks{},frame_unavailable{},frames{},other_controller{};
@@ -15,16 +16,26 @@ runtime::Runtime state;
 runtime::Status last_status{};
 bool have_status{};
 
+bool configure_native(HMODULE native) noexcept {
+    const bool loaded=runtime::load_native_armspan(native,calibration);
+    if(log_file){fwprintf(log_file,L"native_equipment_calibration loaded=%u armspan=%.9g hands_below_head=%.9g source=bound_native_capture_ini\n",
+        unsigned(loaded),calibration.armspan_metres,calibration.hands_below_head_metres);fflush(log_file);}
+    return loaded;
+}
+
 std::uint64_t clock_ms(void*) noexcept {return GetTickCount64();}
 std::int64_t clock_ns(void*) noexcept {return weaponhand::clock_ns(nullptr);}
 bool current(void*,abi::Frame const& frame) noexcept {
     return enabled.load(std::memory_order_acquire)&&weaponhand::current_gt(nullptr)&&domain_ready()&&
         weaponhand::client.source_current_on_gt(frame.key)&&abi::frame_active(frame,clock_ns(nullptr));
 }
-void reset_input(void*) noexcept {input.close();input_open=false;}
-bool next(void*,std::uint64_t& cursor,gears_weapon::EquipmentIntentEvent& event) noexcept {
-    if(!input_open)input_open=input.open(false);
-    return input_open&&input.read_next(cursor,event);
+void reset_input(void*) noexcept {input.reset();}
+bool next(void*,abi::Frame const& frame,std::uint64_t& cursor,gears_weapon::EquipmentIntentEvent& event) noexcept {
+    if(!current(nullptr,frame))return false;
+    const bool available=input.next(frame,calibration,clock_ns(nullptr),clock_ms(nullptr),cursor,event);
+    // Runtime may drop its baseline immediately after next rejects. Retain
+    // only diagnostics, never another frame or an action to retry.
+    input_evidence=input.evidence();return available;
 }
 void clear_hold(void*) noexcept {weaponhand::held_binding={};}
 bool identify(void*,std::uint64_t address,abi::ObjectIdentity& out) noexcept {
@@ -160,13 +171,16 @@ void tick(uptr pc) noexcept {
     if(status<outcomes.size())++outcomes[status];
     if(!have_status||outcome.status!=last_status||outcome.event_serial){
         have_status=true;last_status=outcome.status;
-        if(log_file){fwprintf(log_file,L"native_equipment status=%hs slot=%u target=%llx event=%llu press=%llu frame=%llu source_sequence=%llu cookie=%llu inventory_stage=%ls\n",
+        const auto& source=input_evidence;
+        if(log_file){fwprintf(log_file,L"native_equipment status=%hs slot=%u target=%llx event=%llu press=%llu frame=%llu source_sequence=%llu cookie=%llu inventory_stage=%ls input_status=%hs input_previous_sync_ns=%lld input_sync_ns=%lld input_received_ns=%lld\n",
             runtime::status_name(outcome.status),outcome.slot,outcome.target,outcome.event_serial,outcome.press_counter,
-            frame.key.frame,frame.controllers.sequence,frame.key.registration_cookie,inventory_stage);fflush(log_file);}
+            frame.key.frame,frame.controllers.sequence,frame.key.registration_cookie,inventory_stage,
+            gears_equipment_input::status_name(source.status),source.previous_sync_ns,source.sync_ns,source.received_ns);fflush(log_file);}
     }
 }
 void reset_after_drain() noexcept {
     state.reset_after_drain(backend,vrequip::model);have_status=false;
+    calibration={};input_evidence={};
     if(log_file&&ticks){
         fwprintf(log_file,L"native_equipment_summary ticks=%llu frames=%llu frame_unavailable=%llu other_controller=%llu domain_rejected=%llu\n",
             ticks,frames,frame_unavailable,other_controller,domain_rejected);

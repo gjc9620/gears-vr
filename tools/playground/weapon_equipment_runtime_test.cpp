@@ -89,7 +89,8 @@ struct Host {
     static bool current(void* p,wh::Frame const& f) noexcept {
         auto& h=host(p);return h.current_ok&&!std::memcmp(&f,&h.live,sizeof(f));
     }
-    static bool next(void* p,std::uint64_t& cursor,gw::EquipmentIntentEvent& out) noexcept {
+    static bool next(void* p,wh::Frame const& f,std::uint64_t& cursor,gw::EquipmentIntentEvent& out) noexcept {
+        C(!std::memcmp(&f,&host(p).frame,sizeof(f)));
         auto& h=host(p);++h.next_calls;h.fault(Callback::next);
         if(cursor==UINT64_MAX){if(!h.baseline_blocked)cursor=h.latest;return false;}
         for(auto const& e:h.events)if(e.serial==cursor+1){cursor=e.serial;out=e;return true;}

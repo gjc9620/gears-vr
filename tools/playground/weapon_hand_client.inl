@@ -235,6 +235,11 @@ abi::Reply start(HMODULE requested) noexcept {
     if(current_gt(nullptr))return abi::Reply::reentrant;
     if(!enabled.load(std::memory_order_acquire)||!requested||requested==module)return abi::Reply::unavailable;
     if(client.phase()!=abi::ClientPhase::off||native_module)return abi::Reply::busy;
+#if defined(GEARS_PLAYGROUND_NATIVE_EQUIPMENT_TRIAL)
+    // An earlier normal PG tick can outlive Native unregister. Its borrowed
+    // calibration must retire before a reconnect replaces that configuration.
+    if(callbacks.load(std::memory_order_acquire))return abi::Reply::busy;
+#endif
     HMODULE held{};
     if(!GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS,reinterpret_cast<LPCWSTR>(requested),&held))return abi::Reply::unavailable;
     const auto register_address=GetProcAddress(held,abi::register_export),unregister_address=GetProcAddress(held,abi::unregister_export);
@@ -250,6 +255,9 @@ abi::Reply start(HMODULE requested) noexcept {
 #if defined(GEARS_PLAYGROUND_WEAPON_ACTION_BOUNDARY_TRIAL)
     for(auto export_name:{gears_weapon_boundary::revoke_export,gears_weapon_boundary::open_export,gears_weapon_boundary::close_export})
         if(!executable(GetProcAddress(held,export_name),held)){FreeLibrary(held);return abi::Reply::unavailable;}
+#endif
+#if defined(GEARS_PLAYGROUND_NATIVE_EQUIPMENT_TRIAL)
+    if(!nativeequipment::configure_native(held)){FreeLibrary(held);return abi::Reply::unavailable;}
 #endif
     FILETIME created{},exited{},kernel{},user{};
     if(!GetProcessTimes(GetCurrentProcess(),&created,&exited,&kernel,&user)){FreeLibrary(held);return abi::Reply::unavailable;}
