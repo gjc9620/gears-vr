@@ -37,7 +37,20 @@ class PathChoiceRunnerTests(unittest.TestCase):
             self.assertEqual(close.name,'path-choice-close-observer.ini')
             self.assertIs(session,state);self.assertIs(identity,control.identity)
             self.assertEqual(read_status(),{'fresh':True})
-            read.assert_called_once_with('status',123,42)
+            diagnostic=read.call_args.kwargs['diagnostic']
+            self.assertIsInstance(diagnostic,dict)
+            self.assertEqual(diagnostic,{})
+            read.assert_called_once_with('status',123,42,diagnostic=diagnostic)
+            def missing(path,pid,floor,*,diagnostic):
+                diagnostic.update(reason='synthetic_stale_status',path=path,expected_pid=pid,expected_floor=floor)
+                return None
+            read.reset_mock();read.side_effect=missing
+            with self.assertRaisesRegex(ValueError,'synthetic_stale_status') as raised:
+                read_status()
+            diagnostic=read.call_args.kwargs['diagnostic']
+            read.assert_called_once_with('status',123,42,diagnostic=diagnostic)
+            self.assertIs(raised.exception.native_status_diagnostic,diagnostic)
+            self.assertEqual(diagnostic,dict(reason='synthetic_stale_status',path='status',expected_pid=123,expected_floor=42))
 
     def test_cleanup_proofs_and_unknown_sidecar_retention(self):
         # Exercise the real ownership guard through the runner's lifecycle seam.
