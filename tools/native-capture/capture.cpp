@@ -101,6 +101,7 @@ gears_support::Recorder support_diagnostics;
 #pragma push_macro("small")
 #undef small
 #include "hand_core_target_adapter.h"
+#include "continuous_hand_owner_entry.h"
 #pragma pop_macro("small")
 #include "weapon_hand_broker.h"
 #include "cover_surface_getters.h"
@@ -975,6 +976,15 @@ unsigned path_position_stop_line{};
 namespace cover_body_live {void request_drain();bool draining();bool drain_failed();unsigned pending_count();}
 namespace cover_pose_phase_live {void request_drain();unsigned pending_count();void summary(FILE*);}
 namespace cover_pose_phase_live {struct Scope;}
+namespace continuous_hand_owner_live {
+extern bool requested;
+bool preconfigure(wchar_t const*) noexcept;bool configure(wchar_t const*,FILE*);
+void pose_begin(gears_continuous_hand_entry::Entry&) noexcept;void pose_end(gears_continuous_hand_entry::Entry const&,bool) noexcept;
+void control_begin(gears_continuous_hand_entry::Entry&) noexcept;void control_end(gears_continuous_hand_entry::Entry const&,bool) noexcept;
+bool control_current(cover_pose_phase_live::Scope const&) noexcept;
+void request_drain();unsigned pending_count();void summary(FILE*);void print(FILE*,bool);
+}
+
 namespace cover_control_observer_live {
 struct Row;
 void compose_begin(cover_pose_phase_live::Scope const&) noexcept;
@@ -1010,6 +1020,7 @@ unsigned cover_body_stop_line{};
 void request_session_stop_at(SessionStop reason,const char* source_file,unsigned source_line) {
     if(!continuous_session)return;
     hand_goal_observer_live::request_drain();
+    continuous_hand_owner_live::request_drain();
     cover_native_rig_observer_live::request_drain();
     rig_tracking_live::stop();
     weapon_hand_runtime::request_stop();
@@ -1120,7 +1131,7 @@ struct SessionBuildScope {
     ~SessionBuildScope(){if(enabled){--session_build_depth;service_session_stop_native();}}
 };
 bool session_native_cleanup_ready() {
-    return weapon_hand_runtime::cleanup_ready()&&!cover_body_live::pending_count()&&!cover_pose_phase_live::pending_count()&&!cover_control_observer_live::pending_count()&&!cover_native_rig_observer_live::pending_count()&&!hand_goal_observer_live::pending_count()&&submitted_lifetime.is_closed()&&!submitted_lifetime.pending()&&!submit_retained.load()&&left_view_history.retired()&&
+    return weapon_hand_runtime::cleanup_ready()&&!cover_body_live::pending_count()&&!cover_pose_phase_live::pending_count()&&!cover_control_observer_live::pending_count()&&!continuous_hand_owner_live::pending_count()&&!cover_native_rig_observer_live::pending_count()&&!hand_goal_observer_live::pending_count()&&submitted_lifetime.is_closed()&&!submitted_lifetime.pending()&&!submit_retained.load()&&left_view_history.retired()&&
         (!state_created.load()||(state_release_returned.load()==1&&state_destroyed.load()==1&&(state_delete_flags&1)));
 }
 bool session_cleanup_expired() {
@@ -1395,6 +1406,7 @@ bool read_attested_hook_entry(void* output,void const* source,size_t size);
 #include "rig_tracking_live.inl"
 #include "cover_native_rig_observer_live.inl"
 #include "hand_goal_observer_live.inl"
+#include "continuous_hand_owner_live.inl"
 #include "cover_full_goal_live.inl"
 uintptr_t canonical_identity(IUnknown* object) {
     IUnknown* identity{};
@@ -1945,7 +1957,7 @@ void write_session_status(bool resources_retained=true,bool entries_restored=fal
     resources_retained=resources_retained||support_startup.call("native_owned_scene_retained",[&]{return native_owned_scene_retained();});
     resources_retained=resources_retained||cover_body_live::pending_count()!=0;
     resources_retained=resources_retained||cover_pose_phase_live::pending_count()!=0;
-    resources_retained=resources_retained||cover_control_observer_live::pending_count()!=0||cover_native_rig_observer_live::pending_count()!=0||hand_goal_observer_live::pending_count()!=0;
+    resources_retained=resources_retained||continuous_hand_owner_live::pending_count()!=0||cover_control_observer_live::pending_count()!=0||cover_native_rig_observer_live::pending_count()!=0||hand_goal_observer_live::pending_count()!=0;
     resources_retained=resources_retained||weapon_hand_runtime::retained();
     if(!continuous_session){support_startup.record("session_status","exit");return;}
     support_startup.call("swapchain_status",[&]{write_swapchain_output_status(recording.load()&&session_phase.load()==SessionPhase::running,"running");});
@@ -1976,7 +1988,7 @@ void write_session_status(bool resources_retained=true,bool entries_restored=fal
     support_startup.call("path_choice_layout_observer_progress",[&]{path_choice_layout_observer::progress(output);});
     support_startup.call("path_choice_close_observer_progress",[&]{path_choice_close_observer::progress(output);});
     cover_body_live::progress(output);
-    {std::lock_guard<decltype(stereo_mutex)> lock(stereo_mutex);cover_camera_live::summary(output);cover_input_live::summary(output);cover_shared_input_live::summary(output);cover_geometry_observer_live::summary(output);cover_full_goal_live::summary(output);run_camera_live::summary(output);cover_pose_phase_live::summary(output);cover_control_observer_live::summary(output);rig_tracking_live::summary(output);cover_native_rig_observer_live::summary(output);hand_goal_observer_live::summary(output);}
+    {std::lock_guard<decltype(stereo_mutex)> lock(stereo_mutex);cover_camera_live::summary(output);cover_input_live::summary(output);cover_shared_input_live::summary(output);cover_geometry_observer_live::summary(output);cover_full_goal_live::summary(output);run_camera_live::summary(output);cover_pose_phase_live::summary(output);cover_control_observer_live::summary(output);rig_tracking_live::summary(output);continuous_hand_owner_live::summary(output);cover_native_rig_observer_live::summary(output);hand_goal_observer_live::summary(output);}
     weapon_hand_runtime::summary(output);
     // Diagnostic rates use this sample's QPC, not the owner's polling time.
     // Existing bound/top-level Present observations exclude DXGI_PRESENT_TEST
@@ -4215,7 +4227,7 @@ bool install(void* target,void* detour,void** original) {
     return created==MH_OK && queued==MH_OK;
 }
 bool session_hooks_restored() {
-    if(active.load()||cover_body_live::pending_count()||cover_pose_phase_live::pending_count()||cover_control_observer_live::pending_count()||cover_native_rig_observer_live::pending_count()||hand_goal_observer_live::pending_count())return false;
+    if(active.load()||cover_body_live::pending_count()||cover_pose_phase_live::pending_count()||cover_control_observer_live::pending_count()||continuous_hand_owner_live::pending_count()||cover_native_rig_observer_live::pending_count()||hand_goal_observer_live::pending_count())return false;
     for(unsigned i=0;i<session_hook_entry_count;++i){std::array<unsigned char,32> bytes{};
         if(!safe_copy(bytes.data(),session_hook_entries[i].target,bytes.size())||bytes!=session_hook_entries[i].bytes)return false;}
     if(prime_ready.load())for(unsigned i=0;i<prime_targets.size();++i){std::array<unsigned char,32> bytes{};
@@ -5195,7 +5207,7 @@ DWORD WINAPI worker(void*) {
         fprintf(status,"rejected: run camera stabilizer requires compiled Scene support and continuous stereo anchors\n");fclose(status);return 2;}
     // Reservations do not enable a hook. At this point MH is initialized and
     // the immutable startup INI/anchor settings are available on the worker.
-    if(!cover_pose_phase_live::configure(ini,status)||!cover_pose_phase_live::reserve()){
+    if(!continuous_hand_owner_live::preconfigure(ini)||!cover_pose_phase_live::configure(ini,status)||!cover_pose_phase_live::reserve()){
         fprintf(status,"rejected: cover pose observer requires current full code certificates and reserved entries\n");fclose(status);return 2;}
     if(!cover_control_observer_live::configure(ini,status)||!cover_control_observer_live::reserve()){
         cover_control_observer_live::summary(status);fputc('\n',status);
@@ -5212,7 +5224,7 @@ DWORD WINAPI worker(void*) {
         fprintf(status,"rejected: prepared rig tracking requires the hand participant and continuous stereo anchors\n");fclose(status);return 2;}
     if(!cover_native_rig_observer_live::configure(ini,status)){
         fprintf(status,"rejected: native rig observer requires passive pose/control and configured Core provider\n");fclose(status);return 2;}
-    if(!hand_goal_observer_live::configure(ini,status)){
+    if(!continuous_hand_owner_live::configure(ini,status)||!hand_goal_observer_live::configure(ini,status)){
         fprintf(status,"rejected: hand goal observer requires data-only Core event support and explicit length policy\n");fclose(status);return 2;}
     if(rig_tracking_live::enabled)stereo_gate.set_continuity_observer(rig_tracking_live::reference_observer,nullptr);
 #if !defined(GEARS_UI_CALL_BOUNDARY_OBSERVER) || !GEARS_UI_CALL_BOUNDARY_OBSERVER
@@ -5503,7 +5515,7 @@ DWORD WINAPI worker(void*) {
 #if defined(GEARS_COVER_BODY_PROTOTYPE) && GEARS_COVER_BODY_PROTOTYPE
     if(ok&&cover_body_live::enabled)for(unsigned i=0;i<cover_body_live::targets.size()&&ok;++i)
         ok=install(cover_body_live::targets[i],cover_body_live::detours[i],cover_body_live::originals[i]);
-    if(ok&&cover_pose_phase_live::enabled){
+    if(ok&&(cover_pose_phase_live::enabled||continuous_hand_owner_live::requested)){
         const std::array<void*,3> pose_detours{{reinterpret_cast<void*>(cover_pose_phase_live::GearsCoverPoseComposeHook),
             reinterpret_cast<void*>(cover_pose_phase_live::GearsCoverPosePhysicsHook),reinterpret_cast<void*>(cover_pose_phase_live::GearsCoverPoseTickHook)}};
         for(unsigned i=0;i<cover_pose_phase_live::targets.size()&&ok;++i)
@@ -5511,7 +5523,7 @@ DWORD WINAPI worker(void*) {
     }
 #endif
 #if defined(GEARS_COVER_CONTROL_OBSERVER) && GEARS_COVER_CONTROL_OBSERVER
-    if(ok&&cover_control_observer_live::enabled){
+    if(ok&&(cover_control_observer_live::enabled||continuous_hand_owner_live::requested)){
         const std::array<void*,3> control_detours{{reinterpret_cast<void*>(cover_control_observer_live::GearsCoverControlLimbHook),
             reinterpret_cast<void*>(cover_control_observer_live::GearsCoverControlSingleHook),reinterpret_cast<void*>(cover_control_observer_live::GearsCoverControlWeightHook)}};
         for(unsigned i=0;i<cover_control_observer_live::targets.size()&&ok;++i)
@@ -5727,7 +5739,7 @@ DWORD WINAPI worker(void*) {
     cover_body_live::print(status,disabled==MH_OK);
     cover_pose_phase_live::print(status,disabled==MH_OK);
     cover_control_observer_live::print(status,disabled==MH_OK);
-    cover_native_rig_observer_live::print(status,disabled==MH_OK);
+    continuous_hand_owner_live::print(status,disabled==MH_OK);cover_native_rig_observer_live::print(status,disabled==MH_OK);
     hand_goal_observer_live::print(status,disabled==MH_OK);
     print_native_surface_probe(status);
     print_native_owned_probe(status);
