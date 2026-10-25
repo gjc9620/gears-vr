@@ -189,7 +189,11 @@ void finish_call(Call& call,pose::CallPacket const& packet,bool returned){
     {std::lock_guard<std::mutex> lock(mutex);rows[call.index-1]=row;}
 }
 void begin_guarded(pose::CallPacket const& packet,unsigned kind,uintptr_t ra,uintptr_t rsp,Call& call) noexcept {try{begin_call(packet,kind,ra,rsp,call);}catch(...){failed=true;stopping=true;call.row.failure=Failure::protocol;}}
-void finish_guarded(Call& call,pose::CallPacket const& packet,bool returned) noexcept {try{finish_call(call,packet,returned);}catch(...){failed=true;stopping=true;}}
+void finish_guarded(Call& call,pose::CallPacket const& packet,bool returned) noexcept {try{finish_call(call,packet,returned);
+#if defined(GEARS_COVER_NATIVE_RIG_OBSERVER) && GEARS_COVER_NATIVE_RIG_OBSERVER
+    if(call.index&&call.row.kind<2)cover_native_rig_observer_live::control(call.row);
+#endif
+    }catch(...){failed=true;stopping=true;}}
 extern "C" __declspec(noinline) void GearsCoverControlInvokeProtected(pose::CallPacket* packet,unsigned kind,uintptr_t ra,uintptr_t entry_rsp) noexcept(false){
     Call call{};bool returned{};++active;++in_flight;++calls;
     __try{begin_guarded(*packet,kind,ra,entry_rsp,call);
