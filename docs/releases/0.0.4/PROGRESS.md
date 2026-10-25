@@ -12,6 +12,8 @@ Body19实际INI配置保留FP、C0 hands、arm-control ownership、CCTRL／phase
 
 离线host-preflight通过33份编译、12个私有namespace入口、4项原API检查；完整范围验证实际函数54项完整读取／截断／尾损检查通过；实际phase的Native-only／Pose-only／错误marker负例、固定范围覆盖负例、双手旋转恢复等11项及原watch finally6项通过。有界Sol／Medium仅审这次Python胶水，无其他具体finding。最终pins `2bd3cef6…9ad4`、coordinator `9e7e8937…74aa`，准确路径、运行步骤和边界见EC/JOINT-README.md，已交身体会话唯一运行。此处不新增联合游戏、可见枪体跟随、权威射线、散布／后坐力或头显验收，不据胶水交付增加成熟度。
 
+交付后离线复核修正一个具体误拒风险：原左右控制器z=-.4可能不可达，先恢复再检查自由双手提交会将正常交还判失败。EC revision2仅调整停止顺序：在当前可达姿态HandStop，等待真实cookie0状态后取计数基线，验证自由双手继续提交和held计数不增，再用原预留两条命令恢复手柄并close／normal stop。实际finally AST的正常路径、诊断读取失败仍Stop／restore／close、未知导出不重放／不close三例通过。最终pins更新为 `71c4fdf0…0233b`、coordinator `ce4e0091…f4773`，先前seal／源／结果原样留存；总输入／安全门／Native均不变，修正前后均未启动EC游戏。
+
 同时更新历史瞄准链文档，区分EB真实R2闭环与尚缺的逐发数值链：主握Response只是腕部标定，不能直接补齐完整枪口Pose、逐发Grip或射击写入权限。后续从现有CallFunction所有者关联实际Lancer原调用的基础瞄准／误差后方向与起点／终点／碰撞，不额外调用随机瞄准函数。
 
 ## 2026-10-26 — 主握附加query的PG入口／映射／父注册接线完成，待Native联调
