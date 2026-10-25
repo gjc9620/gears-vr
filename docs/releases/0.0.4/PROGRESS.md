@@ -515,3 +515,13 @@ B9总1405次plan均solved／commit成功，1次额外admission skip；无观察�
 当前唯一后继交付转为把已有controller arm／wrist目标合入同一C0 Output／Kernel，保留Hand_R35→Weapon_R51→Weapon_R_End52传播，并验证正常动画接管和恢复；最小手部可消费版本尚未提供，有效工作时长未知。已验证的typed freshness、事务Failure／no-CAS分类和memory Backend边界先保存到本分支；tracked Backend继续保持原未接receipt的边界，实际Native34 live／receipt／camera组合仍在冻结私有候选，未整包覆盖Root最新default或声称运行时默认集成完成。
 
 本分支实际tracked源码已由主实现者重新编译5个受影响Host目标并运行21个定向进程，全部通过；没有借私有候选的includes替代当前tracked头。回执`analysis/native-c0-transient-recovery-candidate1/tracked-host1/receipt.json` SHA256 `07912d32a64048c911d593479a2b3186fff1a651e3f97054b6841692fe34b4ff`。保留用户自行更新的AGENTS／工作方式配置，退役的overlay trial未纳入提交。
+
+2026-10-26：双手进入同一C0 Output／Kernel的私有候选35，纯组合器与实际CAS／Registry Host接线检查通过，但B10实际控制器baseline后hands solved／commit为0，571次unreachable。右腕目标距肩57.171u，真实固定双骨长度46.995u；不能缩骨长或放宽拒绝来凑通过。完整Ref115证据显示Marcus模型实际+Y朝前、-X向右，旧作者Eye profile的+X前向偏90°。候选36保留旧profile，新增明确Basis=2、`marcus115-ref-eyes-face-forward-y-authored-v2`，同时修正Head→Eye旋转为inverseHead×EyeRef；骨局部轴与Grip→Wrist语义不变，不给武器再叠一次yaw。实际C0离线重放、64组独立刚体与相关36个Host进程通过，原段长及50ms守卫保持。36sim DLL SHA256 `ff40e1efd9567dd5c973a4aadefaa410aa319363b012cf4dcf7a9ea9771e6b78`，仍为原flags／42exports／23预检／实际22startup；未替换默认。
+
+B11失败在连续Native激活前：Attract确认后真实菜单一直显示“Contacting Gears of War services / Establishing Uplink”，保留原60s超时和错误用于该阶段的finalizer false。另立pre-session-closeout，核实prime取消入口恢复、PG shutdown0／入口恢复、原十文件与音频10恢复、host及随后CIM无Game／XR；XR退出1如实保留，不凑106项body hook覆盖。B12只沿用相同Native36／XR，控制器baseline前伸由25cm改15cm，未改启动超时或后台保护；本次成功进入目标场景，11条controller命令按metres／radians消费，39个coherent异步Space样本、735次观察期joint commit增量，journal共755条正常原函数返回记录。末步neutral命令已到，但32s窗口内结束标记未完成，`sweep_finished=false`保留。
+
+B12手部验收仍失败：38个样本与target journal存在唯一mesh／epoch匹配，24个settled样本最大腕位置误差32.4766u、方向161.954°。该journal只有target，异步probe时间戳在读取前，不能将“相同epoch”冒充“原Compose返回后”的时序证明，尚未定位误差产生阶段。限定源码及实际失败candidate复核确认arm Q确实进入同一Output、完整Local字节diff、Backend检查与CAS，没有发现mask／索引漏接；失败candidate不能代替成功提交读回。35→51→52的异步Space相对关系在样本间几乎不变，但还没有逐次匹配的原Local字节证明。独立报告`body-live-standing12/runtime-hands-review1.json` SHA256 `1ebb925f12ea3683d2dc2df1248f6bf1601909806983f2a04b0ae97fa76d24cd`。
+
+新face的first-C0基准对照另见Eye约2.07u／5.60°差；该first-C0尚未证明就是neutral真实初始化帧，不据此接受或定位新Head／Eye基准。B9原候选的相对运动结果保留，不能继承为新profile朝向或新Head baseline通过。B12正常106项恢复／Native／entry／XR0／PG0、原十文件及音频12/12恢复；host结束瞬间no_remaining_games=false原值保留，最终准确自有PID检查及随后CIM为空，已向武器会话交还窗口。
+
+当前唯一后继：在现有同一C0 hook增加有界只读记录，关联成功计划、consumer验证与Local、原Compose刚返回的Local／Space和前后QPC；只跑一个中立静止双手目标，先区分Local未保持与Local正确但Space不符，再决定下一处调查。没有增加第二writer，不开展完整轨迹或Cover矩阵，不把commit／cleanup计数当双手完成。实际手部、动画交还、完整Cover／Grip、跑步稳定、碰撞／受击／射击、双眼画面和实体头显仍待完成，有效完工时间未知。
