@@ -300,7 +300,7 @@ if(MSVC AND CMAKE_SIZEOF_VOID_P EQUAL 8)
         if(NOT EXISTS "${GEARS_CONTINUOUS_HAND_CALLER_TEST_IMAGE}")
             message(FATAL_ERROR "Private ContinuousHand caller fixture does not exist")
         endif()
-        foreach(CONTINUOUS_MODE IN ITEMS caller configure continuous exception metadata nested new-scene revoke stop wrong-end compose-wrong-end control-wrong-end abi)
+        foreach(CONTINUOUS_MODE IN ITEMS caller configure continuous exception metadata nested new-scene revoke stop wrong-end compose-wrong-end control-wrong-end address-contract abi)
             add_test(NAME ContinuousHandOwner-${CONTINUOUS_MODE} COMMAND ContinuousHandOwnerTest ${CONTINUOUS_MODE}
                 "${GEARS_HAND_GOAL_TEST_MATRICES}" "${GEARS_HAND_GOAL_TEST_REFERENCE}" "${GEARS_CONTINUOUS_HAND_CALLER_TEST_IMAGE}")
         endforeach()

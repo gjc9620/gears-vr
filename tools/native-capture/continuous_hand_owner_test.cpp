@@ -88,15 +88,17 @@ struct Node {p::Metadata metadata{};};
 struct Row {p::OwnerKey owner{};uint64_t compose{},outer_tick{},ordinal{},compute_ordinal{};unsigned kind{},thread{};
     uintptr_t node_argument{},raw_rdx{},mesh_argument{},out_argument{},entry_rsp{},caller{};int64_t before_qpc{},after_qpc{};
     Failure failure{};bool before_valid{},after_valid{},returned{};Node before{},after{};std::array<int32_t,3> affected{};std::array<p::Matrix,3> matrices{};};
-struct Compose {cover_pose_phase_live::Scope scope{};uint64_t outer_tick{};bool continuous{},admitted{};};
+struct Compose {cover_pose_phase_live::Scope const* address{};cover_pose_phase_live::Scope scope{};uint64_t outer_tick{};bool continuous{},admitted{};};
 bool own_entries(){return true;}
 template<class T>bool read(T& out,uintptr_t at){return safe_copy(&out,reinterpret_cast<void const*>(at),sizeof(T));}
 bool same_metadata(p::Metadata const& a,p::Metadata const& b){return a.asset==b.asset&&a.master==b.master&&
     p::header_equal(a.reference,b.reference)&&p::header_equal(a.local,b.local)&&p::header_equal(a.space,b.space)&&p::header_equal(a.desired,b.desired)&&!memcmp(&a.component,&b.component,64);}
-Failure before(Compose const& f,Row& row){if(!continuous_hand_owner_live::control_current(f.scope)||row.caller!=base+0x1290e5||row.out_argument!=row.entry_rsp+0x80)return Failure::invalid;
+// Canonical Scope address contract used by the shared arm-control consumer.
+bool current(Compose const& f){return f.admitted&&own_entries()&&f.address&&continuous_hand_owner_live::control_current(*f.address);}
+Failure before(Compose const& f,Row& row){if(!current(f)||row.caller!=base+0x1290e5||row.out_argument!=row.entry_rsp+0x80)return Failure::invalid;
     row.before.metadata=model_metadata;const unsigned side=row.raw_rdx==11?0u:1u;
     row.affected=row.kind?std::array<int32_t,3>{int32_t(row.raw_rdx),0,0}:side?std::array<int32_t,3>{32,34,35}:std::array<int32_t,3>{8,10,11};return Failure::okay;}
-Failure after(Compose const& f,Row& row){if(!continuous_hand_owner_live::control_current(f.scope))return Failure::invalid;
+Failure after(Compose const& f,Row& row){if(!current(f))return Failure::invalid;
     row.after.metadata=model_metadata;const unsigned side=row.raw_rdx==11?0u:1u;
     memcpy(row.matrices.data(),row.kind?&observed[side].single:observed[side].limb,row.kind?64:192);return Failure::okay;}
 }
@@ -174,6 +176,22 @@ int exercise(char const* mode){start();
         else C(live::slot.verify.status==api::Status::unavailable&&!live::slot.verify.publication_sequence);
         C(!live::same_source(&why)&&why==rig::TickFailure::hard);
         live::pose_end(tick,true);drained();C(live::completed==0);
+    }else if(!strcmp(mode,"address-contract")){
+        Entry tick=tick_entry(),compose=compose_entry();live::pose_begin(tick);live::pose_begin(compose);
+        C(live::slot.compose.address==&live::slot.compose.scope);C(cover_control_observer_live::current(live::slot.compose));
+        const auto old_scope=live::slot.compose.scope;const auto old_invocation=old_scope.invocation;
+        auto wrong_scope=old_scope;const auto canonical=live::slot.compose.address;
+        live::slot.compose.address=&wrong_scope;C(!cover_control_observer_live::current(live::slot.compose));
+        live::slot.compose.address=nullptr;C(!cover_control_observer_live::current(live::slot.compose));live::slot.compose.address=canonical;
+        four();printf("address-contract producer_address=%p canonical=%p sticky=%u failure=%u seen=%u planned=%u\n",static_cast<void const*>(live::slot.compose.address),static_cast<void const*>(&live::slot.compose.scope),unsigned(live::slot.sticky),unsigned(live::slot.data.record.failure),live::slot.data.record.seen,live::slot.data.record.planned);
+        C(!live::slot.sticky&&live::slot.data.record.seen==15&&live::slot.data.record.planned==15);
+        live::pose_end(compose,true);C(!live::slot.compose.address&&!live::slot.compose.admitted&&!cover_control_observer_live::current(live::slot.compose));
+        C(!live::control_current(old_scope));live::pose_end(tick,true);drained();C(live::completed==1);
+        selected();C(publish());Entry next_tick=tick_entry(),next_compose=compose_entry();live::pose_begin(next_tick);live::pose_begin(next_compose);
+        C(live::slot.compose.address==&live::slot.compose.scope&&live::slot.compose.scope.invocation!=old_invocation&&cover_control_observer_live::current(live::slot.compose));
+        C(!live::control_current(old_scope));auto stale=live::slot.compose;stale.address=&old_scope;C(!cover_control_observer_live::current(stale));
+        live::request_drain();C(!cover_control_observer_live::current(live::slot.compose));live::pose_end(next_compose,true);live::pose_end(next_tick,true);drained();
+        C(!live::slot.compose.address&&!live::slot.compose.admitted);
     }else if(!strcmp(mode,"continuous")){
         for(unsigned i=0;i<40;++i){selected();C(publish());Entry tick=tick_entry(),compose=compose_entry();live::pose_begin(tick);
             gears_world::EpochGate::CloseToken token{};C(!test_world_gate.try_close(token));const auto source=live::slot.data.record.source;

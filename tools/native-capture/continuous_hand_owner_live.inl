@@ -136,6 +136,8 @@ void compose_begin(Entry& e){if(!slot.active)return;e.compose_depth=true;e.depth
     slot.compose.scope.kind=0;slot.compose.scope.caller=gears_cover_pose_phase::compose_caller;
     slot.compose.scope.arguments=e.ra==base+gears_cover_pose_phase::compose_caller&&e.rcx==slot.data.owner.key.mesh.address&&
         e.rdx==e.rcx+0x27c&&e.r8==e.rcx+0x28c;
+    // CCTRL continuous validation consumes this exact canonical Scope address.
+    slot.compose.address=&slot.compose.scope;
     slot.compose.continuous=true;slot.compose.admitted=true;slot.compose.outer_tick=slot.tick;slot.data.record.compose=e.invocation;
     if(!control_current(slot.compose.scope)||!same_source()||!metadata(true)||!geometry())reject(Failure::metadata);
     else{slot.data.record.asset=rig::object(slot.data.asset);slot.data.record.geometry_signature=slot.data.signature;slot.data.record.reference=slot.data.metadata.reference;}
@@ -146,7 +148,7 @@ void save_record(){std::lock_guard<std::mutex> lock(records_mutex);records[recor
 void pose_end(Entry const& e,bool returned) noexcept {Call call;try{
     if(e.compose_depth){if(!slot.compose_depth||slot.compose_depth!=e.depth){failed=true;reject(Failure::end);return;}
         if(e.selected&&slot.compose_address!=&e){failed=true;reject(Failure::end);return;}
-        if(slot.compose_address==&e){if(!returned)reject(Failure::exception);slot.compose_address=nullptr;slot.compose.admitted=false;}
+        if(slot.compose_address==&e){if(!returned)reject(Failure::exception);slot.compose_address=nullptr;slot.compose.admitted=false;slot.compose.address=nullptr;}
         --slot.compose_depth;}
     if(!e.tick_depth)return;
     if(!slot.tick_depth||slot.tick_depth!=e.depth){failed=true;reject(Failure::end);return;}
