@@ -525,3 +525,7 @@ B12手部验收仍失败：38个样本与target journal存在唯一mesh／epoch�
 新face的first-C0基准对照另见Eye约2.07u／5.60°差；该first-C0尚未证明就是neutral真实初始化帧，不据此接受或定位新Head／Eye基准。B9原候选的相对运动结果保留，不能继承为新profile朝向或新Head baseline通过。B12正常106项恢复／Native／entry／XR0／PG0、原十文件及音频12/12恢复；host结束瞬间no_remaining_games=false原值保留，最终准确自有PID检查及随后CIM为空，已向武器会话交还窗口。
 
 当前唯一后继：在现有同一C0 hook增加有界只读记录，关联成功计划、consumer验证与Local、原Compose刚返回的Local／Space和前后QPC；只跑一个中立静止双手目标，先区分Local未保持与Local正确但Space不符，再决定下一处调查。没有增加第二writer，不开展完整轨迹或Cover矩阵，不把commit／cleanup计数当双手完成。实际手部、动画交还、完整Cover／Grip、跑步稳定、碰撞／受击／射击、双眼画面和实体头显仍待完成，有效完工时间未知。
+
+Native37已完成上述被动观测，仅一旧.inl相对36变化，first32记录version2／2064B；原38个受影响Host回归和3个定向观测模式通过，reader能区分Local改动与Local正确但Space改动。纯Host的两次测试fixture断言错误已修正，原失败日志保留，未改生产守卫；窄审确认无新的authority／债务／越界／GT文件I/O或生命周期阻断。37sim SHA256 `01f8a2915526ed52b33fa6039607e3178c64f208f19bb69828b09969a71aba82`，同flags／42exports／23预检／22实际startup。生成器误保留的旧Body36文件标签及原构建回执保留，正确Body37 alias逐字节一致并做所选路径smoke，未重编相同内容。
+
+B13复用原XR、只发一个中立baseline的两手命令；本局542次尝试中541次unreachable／0 solved／0 joint commit，version2 journal仅72B空header，所以没有成功原返回边界可分析，目标验收false。正常106恢复／Native／entry／XR0／PG0、原十文件、音频11/11、自有PID与fresh CIM空成立，窗口再次交还武器。下一步先用本局完整C0／Goal、规划后肩位及final base做完整当前planner／composer离线重放，明确两侧可达裕量与精确单一输入，再复用37取证；只看异步肩距或缩短轨迹不能替代这一步，不改骨长或固定标定来迎合测试。B12原偏差仍未定位，B9新基准与手部仍不加验收分。
