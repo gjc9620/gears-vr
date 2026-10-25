@@ -281,3 +281,11 @@ Native owner的22私有候选完成 `cover-host-1025core1` 单event只读取数�
 Root在忽略的 `analysis/hand-native-core-actual-20261025cg/` 固定三份实际bin及五份最终报告，用22冻结源的12份真实依赖重新严格CL导出Header112／Record1920／Core1832及所需offset。布局构建／运行0，依赖前后相同，回执193a0c8a…b34d。随后独立读取7792字节Core原件：四份完整snapshot逐bytes相同，Native／Scene／outerTick／Compose／ordinal／node／endbone／原时序精确关联到CCTRL原始row hash和字段；另对冻结输入重跑保留的owner纯checker，结果与其parse逐字段相同。Root未重写该checker算法，也未重测游戏生命周期。
 
 实际Core文件为24ab74c4…662c，Root核验回执47e1fc85…b4a4；原始输入前后不变。四份实际publication262／sourceTicket263／referenceRevision6／原published_ns一致，但world_pose_mask=1、flags=0，只有头部世界姿态，不能将其计为双手追踪或运动成功。下一步由唯一Native执行端接入前述已冻结手部适配器，再用实际matched左右手grip与完整姿态验证持续跟手；原动画、权限、输出寿命、最终physics和头显验收边界保持。Root本轮未启动Game／XR／IDA，未修改Native22冻结源或默认启动器。
+
+## 2026-10-25 — 当前骨架对应与独立XR手柄发布准备
+
+Root继续核对core1实际CPOSE：五个有效阶段中全部115骨q/T／parent均与默认定位模板canonical 3b3c978c…5193逐bytes相同；没有把缺失的Pmain0／1补成有效，也未使用跨session的GNames。当前C1参考骨副本及核验保存在 `analysis/hand-native-core-actual-20261025cg/`，`current-model-binding-v1.json` 为d5e58475…04d4。此项支持当前样本的模板选择，未来live asset身份、模型倍率和当前执行许可仍由Native caller核对。
+
+core1的私有host明确配置no_xr_controller_producer，实际XR命令factory未传`--controller-input`，因此上一轮没有手部世界姿态；这是该只读测试的设置，不是已经定位到的追踪故障。既有BQ sim XR 1a059d2d…b4e9包含该CLI与Source1连续性发布，Native Shared tracking读取也不依赖旧Native controller_input_observer开关。Root在 `analysis/hand-xr-controller-producer-20261025ch/` 准备仅给XR factory追加该token的私有差分，原Native factory逐字节不变；只执行实际factory的AST dry-run，使用伪PID，确认全部原参数保留并仍为0.4。回执e34523bc…0e62已发Native owner。
+
+该副本只是下一派生profile的差分载体，保留父profile路径，不能直接当新runtime-ready运行；由Native owner并入下一私有runner后按原流程冻结。没有修改core1原件、重建XR或启动Game／XR／IDA，也未增加Native observer／writer参数。实际sim controller active／flags15、与同Stereo精确匹配、手骨移动和动画恢复仍须实采；后台置后、物理后台输入关闭、静音及observe-only要求保持。
