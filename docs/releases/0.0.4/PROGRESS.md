@@ -289,3 +289,25 @@ Root继续核对core1实际CPOSE：五个有效阶段中全部115骨q/T／parent
 core1的私有host明确配置no_xr_controller_producer，实际XR命令factory未传`--controller-input`，因此上一轮没有手部世界姿态；这是该只读测试的设置，不是已经定位到的追踪故障。既有BQ sim XR 1a059d2d…b4e9包含该CLI与Source1连续性发布，Native Shared tracking读取也不依赖旧Native controller_input_observer开关。Root在 `analysis/hand-xr-controller-producer-20261025ch/` 准备仅给XR factory追加该token的私有差分，原Native factory逐字节不变；只执行实际factory的AST dry-run，使用伪PID，确认全部原参数保留并仍为0.4。回执e34523bc…0e62已发Native owner。
 
 该副本只是下一派生profile的差分载体，保留父profile路径，不能直接当新runtime-ready运行；由Native owner并入下一私有runner后按原流程冻结。没有修改core1原件、重建XR或启动Game／XR／IDA，也未增加Native observer／writer参数。实际sim controller active／flags15、与同Stereo精确匹配、手骨移动和动画恢复仍须实采；后台置后、物理后台输入关闭、静音及observe-only要求保持。
+
+## 2026-10-25 — 游戏内真实双手Core接收与身体原点问题
+
+Native owner已将共用Core基础、event观察及默认手部定位分别提交为d051cfe／822d525／f80433b；其实际本地依赖下默认定位699、适配器603及原数学417项均通过，接收回执29e19472…1c05b。Root已核三生产头实际hash，没有把它们安装到普通启动器。其后Native23完整接线编译遇到Windows RPC的small宏命中共用solver局部名，owner仅在capture全局adapter include处push／undef／pop该宏，保留共用数学hash和失败原件，修正候选为23b。
+
+Core2使用原Native22sim／原BQ XR和原静止模拟器，唯一输入变化是给XR命令追加controller-input。购买版实采四份完整Core逐bytes相同，实际左右grip flags15／active1，world mask7／flags3，来源MetaOperatorSimulated1；Native session和XR session分别保留，没有混同。Root子任务在 `analysis/hand-native-core-input-20261025cj/core2-v1/` 从实际Native22类型严格CL导出controller等offset，核四条Compute和C0／C1的完整cohort、原始range hash与QPC bracket。Pmain0／1缺失保持，原owner纯checker明确按同算法重跑，不冒称新的独立payload实现。
+
+原Core为34ad0b06…6cf6，四snapshot共同hash14f856a0…e44b；最终核验57bd5c01…d40e2，整体交付37dc1fbe…d6cb。Root另重hash全部32项输入／源，31d73013…fe61。原publication／Scene／stereo／controller时间未刷新，最后Compute的源龄均小于15毫秒；这仅是本次样本时效，不是性能或连续运动结论。owner原final的Native／entry96、XR0、音频10与原10文件清理通过，Root本轮没有启动Game／XR／SDK／IDA。
+
+实际空间核验揭示首个需修复的问题：u100／模型倍率1时，两段臂长左46.99497022、右46.99497366原始单位；真实grip加已知authored mount后的肩到腕目标距离分别144.45525572／126.48935208。实际共用control::solve两侧preserve均返回unreachable且输出不变，没有用adaptive或动画配对校准掩盖距离。当前115骨canonical仍与3b3c978c…5193对应。实测回执 `reach-v1/attempt-1792899149053572100/receipt.json` 为9de6f1fa…8f2f。
+
+进一步从实际Core和C0／C1定位：world_head、base camera和source camera位置相同；相对C1头骨55的距离为1.742732米，按实际base forward／right／up投影为−1.678775／+0.460439／+0.082604米；与肩中点距离1.716038米，C0结论相近。头骨语义来自已完整几何对应的静态模板，不读跨session GNames。最终space回执6bffb941…034f3、space-handoff d388325d…c406a；原7db版本数值相同，另留存起始self-pin改进。此项证实当前样本原点明显偏离身体，尚未证明具体修复方式。
+
+双方据此保留Native23只读adaptive规划的限定用途，先测真实FP状态下的头／肩差及preserve可达性，再进入持续手骨输出。旧first_person_view预览使用anchor.location加eye_height，再沿forward加0.35米／向上加0.10米；实际Rig取view_owned而非开关bool，不能仅凭打开FP推断已对齐，也不能在未配对测量时断言这些常数错误。固定模拟器姿态、原始校准与源时间保持，避免改握持偏置凑通过。完整自由双手及武器目标继续进行。
+
+## 2026-10-25 — 独立手腕roll测试输入候选
+
+当前冻结模拟器的controller命令只有yaw／pitch。Root为后续完整旋转验证另复制其24份源，仅修改runtime.cpp／mcp_integration.h，新增可选roll弧度／单手内部字段。默认roll0走原两角路径保持pose浮点位，省略roll保留已有值，显式0复原；其他字段继续父协议默认。原head-relative语义、源类型／epochs、tracking、后台输入、渲染与export均保留；父runtime／当前测试和默认选择不变。
+
+实际parser及机械抽取的原／新pose和赋值块以W4／WX／UTF8编译，83项检查通过，4915b8d1…a452。头部globals是明示host输入，未创建SDK会话。完整DLL沿用原Ninja／Release／MSVC14.51.36231与原flags，构建及父5项CTest通过，95ea815f…6c97；两条编译和链接命令仅规范化source路径后逐字符相同，审计e7c24bda…f653，原export ordinal／name一致。早期GBK／Windows near宏的测试fixture失败及一次命令过滤失败均保留，生产差分未因此扩大。
+
+Astra在静态pose范围窄审无P1／P2，08af6cab…23e2。冻结交付 `analysis/hand-simulator-roll-20261025ci/delivery-v1.json` 为9ca672c5…4a43，DLL为50d61004…a803，已发Native owner按后续私有profile采用。隔离roll必须每次带完整固定posXYZ／yaw／pitch／按钮状态，并固定头pose；只发hand和roll会触发父字段缺省重置。角速度仍是父yaw／pitch近似且z=0，不能用于动态roll速度、投掷或physics验收。尚无该新runtime的实时roll、手骨写入或头显结果。
