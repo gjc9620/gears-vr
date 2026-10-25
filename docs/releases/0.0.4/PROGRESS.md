@@ -2,6 +2,16 @@
 
 本文件保留武器与掩体两个分支的开发历史，便于共用 Native 手部实现合流。各条记录仍以其原始验证范围为准；私有候选、只读采样或离线检查不代表完整功能、默认构建更新或头显验收。
 
+## 2026-10-25 — 校准卡实际模拟器合成、状态变化与正常退出
+
+与掩体Native28测试协调独立窗口后，使用未改字节的c84a0e7d候选和固定9abbeae4置后模拟器运行约98.5秒。此局只有自有Python显示fixture与XR41548，没有Game／Native／PG，不调用个人测量或保存。0.4参数产生每眼1440×1280的计划，日志明确这不是游戏GPU分配证据；实际唯一UI swapchain为768×256。全部8818帧有模拟器追踪，日志game_input_injected=false；CSV source0仅是常规XR来源编码，运行时明确simulation_not_physical_tracking=true，不能当物理测量。
+
+真实compositor截取英文等待、中文50%、绿色保存及停止显示心跳后回等待四种状态，MCP诊断log PID与实际child41548一致，FOCUSED、无errors／warnings。成功提交8817层UI，只有4次GPU上传；saved序号356取得对应exact成功xrEndFrame ack，游戏立体提交／scene copies均为0。正常stop_event后同句柄wait到exit0，无force；实际terminal EXITING路径未调用endSession，既有session_exit政策仍确认objects_destroyed／shutdown_completed。UI／session／instance按正常顺序清理，前后台焦点句柄前后相同，新鲜CIM确认Game／XR均为空后释放窗口；不把前后焦点快照当作全程Z-order观测。
+
+截图中卡片偏扁已按固定runtime源码和本次CSV FOV解释：quad-only D3D12按1920×348预览客户区创建画布，Fill不保持内容比例，每眼viewport960×348；tangent投影预测3:1卡片变为约8.7975:1，再按截图缩小到约202×23像素，与实图吻合。保留产品1.4×0.4667m尺寸，不反向补偿模拟器预览，也未修改模拟器设置／源码。该结论限定本次超宽Fill预览，物理头显比例与可读性仍待验收。
+
+实际日志、四份原样JPEG、显示harness、比例审查及收尾回执位于忽略的`analysis/armspan-hmd-ui-20261025cv/`，总审计`closeout-v1.json` SHA256 `8c47f79c8e6dc1e727ef333fbf1ab3aefa28dc20dd0f5f6d1ff4b281523283bb`。本组证明真实模拟器显示及生命周期，未证明完整首测流程、玩家臂展、游戏内双手／动画交还或全武器玩法。
+
 ## 2026-10-25 — 武器分支接收完整C0身体内核
 
 在头显校准UI独立提交f5e2884后，接收掩体c1ed4bf的完整纯数组body planner／测试及16行CMake注册。唯一冲突为历史进度记录，保留双方内容并明确Native26c／27原实跑属于掩体工作树；未复制其capture.cpp或其他未提交Native接线。原头／脚目标、Root／脊柱／腿与输出新肩位的接口保持，不把尚未接入的身体输出称为实际跟手。当前范围仍为Marcus115、scale1、固定脚和yaw±60度；HMD眼位到头骨目标转换、走路换脚、完整掩体角度与实际writer均未完成。
