@@ -8,7 +8,7 @@
 
 双方共用 Native 唯一执行端，按身体、手臂与武器顺序处理最终姿态。当前优先在原生手部控制返回的临时矩阵处接入共用求解器，再让原 Compose 生成正式 Local／Space 并沿原链传播；直接覆盖 C1 数组的草案仅保留私有验证，仍有未闭合的恢复来源问题。原 PG 手部路径继续作为历史候选，不另开 normal Tick 写入许可，也不安装第二个 CallFunction hook。实际骨名／父链及纯求解已通过限定检查，最终姿态发布、动画交还和游戏内独立跟手仍待验证。
 
-供 Native 内部使用的追踪数据采用独立 CoreSnapshot 和不含客户端注册 cookie 的 NativeSessionKey；对外 V1 Frame 保留原真实注册校验与全部布局。两者复用同一份 payload 校验，保存同次 Scene 选定的双手、最终 pre-HMD base、实际来源／reference／continuity 和原始时间。发布／缓存／内部 getter 及 outer meshTick 内四节点共用一次快照的候选已实现，原16组回归、新26组669项及真实 Broker 注册中途暂停的32项 host 检查通过，已交 Native owner 最小集成；全局 include、真实 Tick／节点调用和游戏内跟手仍待接线。数据有效不授写入权限，不刷新来源时间，也不把 Scene 改名为 meshTick。
+供 Native 内部使用的追踪数据采用独立 CoreSnapshot 和不含客户端注册 cookie 的 NativeSessionKey；对外 V1 Frame 保留原真实注册校验与全部布局。两者复用同一份 payload 校验，保存同次 Scene 选定的双手、最终 pre-HMD base、实际来源／reference／continuity 和原始时间。发布／缓存／内部 getter 及 outer meshTick 内四节点共用一次快照的候选已实现，原16组回归、新26组669项及真实 Broker 注册中途暂停的32项 host 检查通过。Native owner已接到真实入口并完成一次游戏内只读验证：四个控制计算记录中的完整1832字节Core相同，正常清理通过。该样本world_pose_mask=1，仍只有头部世界姿态，尚未证明有效左右手输入或连续跟手。数据有效不授写入权限，不刷新来源时间，也不把Scene改名为meshTick。
 
 购买版的 Native21 只读样本现已取得同一次 Compose 的两条 Limb→SingleBone 链、8条计算／权重记录，4组实际权重均为1，独立解析和阶段关联通过。记录确认计算输出与权重调用中的 R9 指向不同位置；后续接入必须绑定原计算输出并重新核对其寿命与内容。现有样本没有采到权重返回后的 pose／scale header，不能凭零字段或静态参数值跳过这项核对，也不能把矩阵端点相同当作最终渲染／物理或写入许可。
 
