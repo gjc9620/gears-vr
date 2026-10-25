@@ -2,6 +2,16 @@
 
 本文件保留武器与掩体两个分支的开发历史，便于共用 Native 手部实现合流。各条记录仍以其原始验证范围为准；私有候选、只读采样或离线检查不代表完整功能、默认构建更新或头显验收。
 
+## 2026-10-25 — RGrip实测在启动窗口门前停止，尚未执行交互
+
+为验证正常输入消费者，冻结独立cx host、实际13导出PG／42导出Native29sim、原Source1 XR及私有cy模拟器。cy只补既有文件命令的可选有限数值grip；完整DLL、588项实际parser／赋值检查和68项既有behind策略检查通过。Root逐项核25份cy源、365份实际compiler includes及每个delta的内存逆向恢复，原9abbeae4模拟器不变；另确认PG／29sim实际六份wire头仅CRLF表示差异，只读GVC3／Stereo helper使用六份真实headers编译，保留原publisher与source时间检查。host的27份Python、12个私有namespace、3个actual retained-adapter用例及实际CLI／INI／导出预检通过。Astra关闭协调器1P1／2P2后才执行，不把预检称为游戏动作成功。
+
+本机原默认游戏工作副本已不存在，选择与掩体近期实验相同、哈希仍为bdc6705d…8fa4的现存购买版Steam EXE；配置与存档使用新的私有实例。与掩体协调并确认Game／XR空闲后，执行cx一次后台启动：0.4、静音、置后、tiny-output只读、物理手柄后台输入关闭。原启动门在30秒内未找到可见且客户区至少640×360的游戏窗口。末次只读诊断有两个该PID的HWND：一个visible但client为0×0，一个hidden且未读取rect；尚无class／title，不能由此判定原因。
+
+实际Native只完成启动预留／prime，连续session尚未激活，XR未启动，PG仍为reservation-only；host与等待协调器均已terminal，未生成ready、未StartParticipant、未发送Grip或切枪。0.4每眼1440×1280仍只是启动计划，不是本次GPU尺寸证据。本次不能计入取枪、自由双手、游戏立体或头显验收，也不能归因于尚未运行的新装备路径或cy Grip代码。
+
+Root独立核定本次pre-session收尾：prime cancelled且entry_restore_verified、watchdog无pending；PG reservation shutdown0／PE restored；音频10项恢复无pending，原配置／存档10份hash一致，tiny monitor已join，新鲜CIM确认Game／XR及原owner均不存在。此范围的cleanup_verified为true，保留startup_passed=false／RGrip_accepted=false；未套用要求完整Native／XR会话的99项验收。所有失败及原冻结文件留在忽略的`analysis/equipment-native-rgrip-runtime-20261025cx/`，专门收尾为`startup-closeout.json`。下一步只读定位原启动窗口未就绪的原因，并补齐host在driver先结束时遗漏的watch终态记录；不放宽窗口门、不前置激活或调整用户窗口。
+
 ## 2026-10-25 — 正常游戏RGrip库存消费者完成实现与离线验证
 
 新增默认关闭的`GEARS_PLAYGROUND_NATIVE_EQUIPMENT_TRIAL`，在原PlayerTick返回后处理Native既有GVE6身体槽位事件；不依赖测试场、旧switch/intent导出或预先提交的拿枪模型。每次以当前Native注册、进程出生、world generation、完整World／PC／Pawn／Mesh身份和原始XR输入时间绑定，成功建立cursor基线后才处理新抓握。重复press不重复切换或提示，最多保留一条原样future事件；同actor已发出的原版切枪在输入暂失时只继续观察，不取消、回滚或重发。
