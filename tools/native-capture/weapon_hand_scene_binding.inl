@@ -223,6 +223,30 @@ bool same_context(Context const& a,Context const& b){auto const& x=a.binding;aut
     for(unsigned i=0;i<a.paths.size();++i)if(!same_path(a.paths[i],b.paths[i]))return false;return true;
 }
 bool proofs_current(bool weapon){return current(base_proof)&&(!weapon||current(instigator_proof));}
+// Existing certified fields only; no fabricated Receipt and no engine call.
+bool current_actor(Binding const& expected){
+    try{
+        std::unique_lock<std::mutex> lock(mutex,std::try_to_lock);
+        if(!lock.owns_lock()||!context_ready()||!expected.context_valid||!expected.weapon_known||
+           expected.world_generation!=committed_world_generation.load()||!proofs_current(expected.weapon.address!=0))return false;
+        auto check=[&](gears_anchor::PawnBinding& possession){
+            gears_anchor::Identity pc{},pawn{},world{},mesh{},weapon{};uintptr_t pw{},cw{},m{},w{},instigator{};unsigned char sm{};
+            if(!gears_anchor::capture_pawn_binding(metadata,safe_copy,possession)||possession.cinematic||possession.unpossessed||
+               possession.controller!=expected.controller.address||!same(possession.pawn,expected.pawn)||
+               !identity(possession.controller,pc,true)||!same(pc,expected.controller)||
+               !identity(possession.pawn.address,pawn,true)||!same(pawn,expected.pawn))return false;
+            auto const& p=base_proof;
+            return field(pw,pawn.address,p.fields[0].offset)&&field(cw,pc.address,p.fields[1].offset)&&pw==cw&&pw==expected.world.address&&
+                identity(pw,world,true)&&same(world,expected.world)&&field(m,pawn.address,p.fields[3].offset)&&m==expected.mesh.address&&
+                identity(m,mesh,true)&&same(mesh,expected.mesh)&&field(w,pawn.address,p.fields[2].offset)&&w==expected.weapon.address&&
+                (!w||(identity(w,weapon,true)&&same(weapon,expected.weapon)&&field(instigator,w,instigator_proof.fields[0].offset)&&instigator==pawn.address))&&
+                field(sm,pawn.address,p.fields[4].offset)&&sm==expected.special_move;
+        };
+        gears_anchor::PawnBinding a{},b{};
+        return check(a)&&check(b)&&gears_anchor::equal_binding(a,b)&&context_ready()&&proofs_current(expected.weapon.address!=0)&&
+            expected.world_generation==committed_world_generation.load();
+    }catch(...){return false;}
+}
 bool sample(gears_anchor::Receipt const* scene,Binding& out){
     try{
         std::lock_guard<std::mutex> lock(mutex);stage="scene_admission";

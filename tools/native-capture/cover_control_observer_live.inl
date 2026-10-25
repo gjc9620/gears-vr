@@ -36,7 +36,7 @@ std::atomic<bool> stopping{},failed{},file_attempted{},file_written{};std::atomi
 std::atomic<uint64_t> calls{},dropped{},rejected{},nested_calls{},unmatched{},protocol_errors{};
 struct Compose {
     phase::Scope const* address{};phase::Scope scope{};uint64_t outer_tick{},ordinal{},last_ordinal{};uintptr_t last_node{};
-    pose::Identity last_identity{};unsigned last_row{};bool admitted{},nested{},last_valid{};
+    pose::Identity last_identity{};unsigned last_row{};bool admitted{},nested{},last_valid{},continuous{};
 };
 struct Call {Row row{};unsigned index{},frame{};Call* previous{};bool linked{};};
 struct Thread {std::array<Compose,scope_limit> frames{};unsigned depth{},overflow{};Call* call{};};
@@ -62,7 +62,11 @@ bool episode_current(Compose const& frame){
         e.rows[0].snapshot_valid&&pose::request_valid(request)&&request.phase==pose::Phase::C0&&request.kind==pose::Kind::compose&&
         request.invocation==frame.scope.invocation&&request.thread==frame.scope.owner.thread&&phase::same(request.owner,frame.scope.owner.key);
 }
+#if defined(GEARS_CONTINUOUS_HAND_OWNER) && GEARS_CONTINUOUS_HAND_OWNER
+bool current(Compose const& frame){if(frame.continuous)return frame.admitted&&own_entries()&&continuous_hand_owner_live::control_current(frame.scope);return frame.admitted&&phase::thread.ticks==1&&frame.scope.owner.thread==GetCurrentThreadId()&&
+#else
 bool current(Compose const& frame){return frame.admitted&&phase::thread.ticks==1&&frame.scope.owner.thread==GetCurrentThreadId()&&
+#endif
     own_entries()&&episode_current(frame)&&phase::current(frame.scope.owner);}
 bool node_state(Compose const& frame,uintptr_t address,NodeState& state){
     if(!current(frame))return false;std::unique_lock<std::mutex> lock(binding::mutex,std::try_to_lock);if(!lock.owns_lock()||!binding::metadata_current())return false;
@@ -195,19 +199,42 @@ void finish_guarded(Call& call,pose::CallPacket const& packet,bool returned) noe
 #endif
     }catch(...){failed=true;stopping=true;}}
 extern "C" __declspec(noinline) void GearsCoverControlInvokeProtected(pose::CallPacket* packet,unsigned kind,uintptr_t ra,uintptr_t entry_rsp) noexcept(false){
+#if defined(GEARS_CONTINUOUS_HAND_OWNER) && GEARS_CONTINUOUS_HAND_OWNER
+    Call call{};gears_continuous_hand_entry::Entry entry{};bool returned{};++active;++in_flight;++calls;
+#else
     Call call{};bool returned{};++active;++in_flight;++calls;
+#endif
+#if defined(GEARS_CONTINUOUS_HAND_OWNER) && GEARS_CONTINUOUS_HAND_OWNER
+    entry.kind=kind;entry.rcx=packet->gpr[1];entry.rdx=packet->gpr[2];entry.r8=packet->gpr[3];entry.r9=packet->gpr[4];entry.ra=ra;entry.rsp=entry_rsp;
+#endif
+#if defined(GEARS_CONTINUOUS_HAND_OWNER) && GEARS_CONTINUOUS_HAND_OWNER
+    __try{continuous_hand_owner_live::control_begin(entry);begin_guarded(*packet,kind,ra,entry_rsp,call);
+#else
     __try{begin_guarded(*packet,kind,ra,entry_rsp,call);
+#endif
         if(kind<3&&originals[kind]){cover_body_live::GearsCoverRawInvoke(reinterpret_cast<cover_body_live::CallPacket*>(packet),originals[kind]);returned=true;}else{failed=true;stopping=true;}
+#if defined(GEARS_CONTINUOUS_HAND_OWNER) && GEARS_CONTINUOUS_HAND_OWNER
+    }__finally{__try{continuous_hand_owner_live::control_end(entry,returned&&!AbnormalTermination());finish_guarded(call,*packet,returned&&!AbnormalTermination());}
+#else
     }__finally{__try{finish_guarded(call,*packet,returned&&!AbnormalTermination());}
+#endif
         __finally{if(call.linked)thread.call=call.previous;--in_flight;--active;}}
 }
 extern "C" void GearsCoverControlLimbHook();extern "C" void GearsCoverControlSingleHook();extern "C" void GearsCoverControlWeightHook();
+#if defined(GEARS_CONTINUOUS_HAND_OWNER) && GEARS_CONTINUOUS_HAND_OWNER
+bool prepare(){if(!enabled&&!continuous_hand_owner_live::requested)return true;if(certified||reserved)return certified;
+#else
 bool prepare(){if(!enabled)return true;if(certified||reserved)return certified;
+#endif
     for(auto const& c:certificate::chunks){reserve_rva=c.rva;reserve_stage="code_hash_first";
         if(!phase::digest(c)){failed=true;return false;}reserve_stage="code_hash_repeat";
         if(!phase::digest(c)){failed=true;return false;}}
     certified=true;reserve_stage="code_certified";return true;}
+#if defined(GEARS_CONTINUOUS_HAND_OWNER) && GEARS_CONTINUOUS_HAND_OWNER
+bool reserve(){if(!enabled&&!continuous_hand_owner_live::requested)return true;if(reserved_mask){reserve_stage="reserve_reentry";return false;}if(!prepare())return false;
+#else
 bool reserve(){if(!enabled)return true;if(reserved_mask){reserve_stage="reserve_reentry";return false;}if(!prepare())return false;
+#endif
     const std::array<void*,3> detours{{reinterpret_cast<void*>(GearsCoverControlLimbHook),reinterpret_cast<void*>(GearsCoverControlSingleHook),reinterpret_cast<void*>(GearsCoverControlWeightHook)}};
     for(unsigned i=0;i<3;++i){targets[i]=reinterpret_cast<void*>(base+certificate::hooks[i].rva);std::array<unsigned char,32> before{},after{};
         reserve_rva=certificate::hooks[i].rva;reserve_stage="prefix_read_before";

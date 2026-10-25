@@ -6,6 +6,7 @@ namespace api=gears_rig_tracking;namespace rt=weapon_hand_runtime;namespace shar
 namespace binding=weapon_hand_scene_binding;namespace hand=gears_weapon_hand;
 namespace core=::gears_native_rig_tracking;
 bool enabled{};std::atomic<bool> stopped{};std::mutex mutex;
+binding::Binding scene_owner_binding{};
 core::CoreSnapshot value{},previous_payload{};api::ObservedContinuity observed{};
 uint64_t value_version{1}; // Cache invalidation only; not a source/Scene epoch.
 uint64_t sequence{},binding_generation{},source_ticket{};bool have_previous{},loss_seen{};
@@ -29,11 +30,11 @@ bool reference_matches(gears_vr::ReferenceContinuity const& frozen,uint64_t revi
 unsigned long long attempts{},published{},rejected{},duplicates{},reads{},read_rejected{};
 unsigned long long core_reads{},core_read_rejected{};
 int64_t (*clock_ns)()=gears_vr::monotonic_ns;
-bool changed(){if(value_version==UINT64_MAX){stopped=true;value={};return false;}++value_version;return true;}
-bool increment(uint64_t& v){if(v==UINT64_MAX){stopped=true;value={};changed();return false;}++v;return true;}
+bool changed(){if(value_version==UINT64_MAX){stopped=true;value={};scene_owner_binding={};return false;}++value_version;return true;}
+bool increment(uint64_t& v){if(v==UINT64_MAX){stopped=true;value={};scene_owner_binding={};changed();return false;}++v;return true;}
 bool bump(api::ObservedContinuity& e){return increment(e.stream)&&increment(e.reference)&&increment(e.head_tracking)&&increment(e.hand_tracking[0])&&increment(e.hand_tracking[1]);}
 bool all_epochs(){return bump(observed);}
-bool fail(){std::lock_guard<std::mutex> lock(mutex);++rejected;value={};changed();
+bool fail(){std::lock_guard<std::mutex> lock(mutex);++rejected;value={};scene_owner_binding={};changed();
     if(have_previous&&!loss_seen){loss_seen=true;all_epochs();}return false;}
 hand::ObjectIdentity object(gears_anchor::Identity const& id){return id.address?hand::ObjectIdentity{id.address,id.outer,id.cls,id.index,id.name_index,id.number,1}:hand::ObjectIdentity{};}
 bool actor_same(binding::Binding const& a,binding::Binding const& b){return binding::same_key(a,b)&&a.special_move==b.special_move&&a.scene_invocation==b.scene_invocation;}
@@ -97,7 +98,7 @@ bool publish(gears_anchor::Receipt const* scene_receipt,gears_vr::StereoMatrix c
         std::lock_guard<std::mutex> lock(mutex);if(stopped.load()||!native_session_current(broker,session)||!reference_matches(frozen,reference_stamp))return false;
         if(have_previous&&next.scene_invocation==previous_payload.scene_invocation&&core::same(next.native,previous_payload.native)){
             if(value.status!=api::Status::ready||loss_seen||memcmp(&next,&previous_payload,sizeof next)||!shared::tracking_ticket_current(source_ticket)){
-                ++rejected;value={};changed();if(!loss_seen){loss_seen=true;all_epochs();}return false;}
+                ++rejected;value={};scene_owner_binding={};changed();if(!loss_seen){loss_seen=true;all_epochs();}return false;}
             ++duplicates;return true; // No publication, epoch or timestamp refresh.
         }
         auto epochs=observed;auto generation=binding_generation;auto publication=sequence;
@@ -114,9 +115,9 @@ bool publish(gears_anchor::Receipt const* scene_receipt,gears_vr::StereoMatrix c
         next.publication_sequence=publication;next.binding_generation=generation;next.observed=epochs;next.published_ns=uint64_t(clock_ns());
         if(!core::core_snapshot_valid(next,clock_ns(),api::maximum_age_ns,simulator_operator)||
            (selected.matched&&!source_fresh(next.controllers.received_ns,clock_ns(),api::maximum_age_ns))||!reference_matches(frozen,reference_stamp)||!shared::tracking_ticket_current(selected.ticket)){
-            ++rejected;value={};changed();if(have_previous&&!loss_seen){loss_seen=true;all_epochs();}return false;}
+            ++rejected;value={};scene_owner_binding={};changed();if(have_previous&&!loss_seen){loss_seen=true;all_epochs();}return false;}
         sequence=publication;binding_generation=generation;observed=epochs;previous_payload=payload;have_previous=true;loss_seen=false;source_ticket=selected.ticket;value_reference_revision=reference_stamp;
-        value=next;if(!changed())return false;if(!reference_matches(frozen,reference_stamp)){value={};changed();++rejected;return false;}++published;return true;
+        value=next;if(!changed())return false;if(!reference_matches(frozen,reference_stamp)){value={};scene_owner_binding={};changed();++rejected;return false;}scene_owner_binding=last;++published;return true;
     }catch(...){return fail();}
 }
 // Internal C++ data request, not a public wire type or owner authentication.
@@ -170,6 +171,23 @@ bool read_core_revision(CoreReadRequest const& request,core::CoreSnapshot& outpu
             output={};std::lock_guard<std::mutex> lock(mutex);++core_read_rejected;return false;}
         revision=captured;return true;
     }catch(...){output={};revision=0;return false;}
+}
+// Copy the owner captured by the SAME successful admitted Scene publication.
+// No actor reads, no new Scene, and no admission/permission is granted here.
+bool copy_scene_owner(binding::Binding& actor,CoreReadRequest& request) noexcept {
+    actor={};request={};try {
+        core::CoreSnapshot copy{};binding::Binding owner{};uint64_t revision{};
+        {std::lock_guard<std::mutex> lock(mutex);copy=value;owner=scene_owner_binding;revision=value_version;}
+        if(copy.status!=api::Status::ready||!owner.context_valid||owner.scene_invocation!=copy.scene_invocation||
+           owner.world_generation!=copy.world_generation||!hand::same(object(owner.world),copy.world)||
+           !hand::same(object(owner.pawn),copy.pawn)||!hand::same(object(owner.mesh),copy.mesh)||
+           !current_copy(copy,revision,50000000))return false;
+        CoreReadRequest next{};next.native=copy.native;next.world=copy.world;next.pawn=copy.pawn;next.mesh=copy.mesh;
+        next.world_generation=copy.world_generation;next.scene_invocation=copy.scene_invocation;next.scene_qpc=copy.scene_qpc;
+        next.minimum_publication_sequence=copy.publication_sequence;
+        if(!request_shape(next)||!current_copy(copy,revision,next.maximum_source_age_ns))return false;
+        actor=owner;request=next;return true;
+    }catch(...){return false;}
 }
 // Thread-safe cached data only. A successful read grants no body/hand writer.
 bool read_core(CoreReadRequest const& request,core::CoreSnapshot& output) noexcept {
@@ -232,7 +250,7 @@ api::Reply read(api::ReadRequest const* input,api::Frame* output) noexcept {
         return api::Reply::accepted;
     }catch(...){hand::weapon_broker_win32::copy(output,&empty,sizeof empty);return api::Reply::unavailable;}
 }
-void stop() noexcept {stopped.store(true);try{std::lock_guard<std::mutex> lock(mutex);value={};changed();}catch(...){}}
+void stop() noexcept {stopped.store(true);try{std::lock_guard<std::mutex> lock(mutex);value={};scene_owner_binding={};changed();}catch(...){}}
 bool configure(const wchar_t* ini,FILE* file){const auto request=GetPrivateProfileIntW(L"RigTracking",L"enabled",0,ini);if(!request)return !enabled;
 #if defined(GEARS_COVER_BODY_PROTOTYPE) && GEARS_COVER_BODY_PROTOTYPE
     if(request!=1||enabled||stopped.load()||!rt::enabled||!continuous_session||!stereo_xr||!anchor_observer_enabled)return false;

@@ -48,10 +48,18 @@ bool digest(certificate::Chunk const& c){
     if(h)BCryptDestroyHash(h);if(a)BCryptCloseAlgorithmProvider(a,0);
     constexpr char hex[]="0123456789abcdef";if(okay)for(unsigned i=0;i<32;++i)if(c.sha256[i*2]!=hex[value[i]>>4]||c.sha256[i*2+1]!=hex[value[i]&15])return false;return okay;
 }
+#if defined(GEARS_CONTINUOUS_HAND_OWNER) && GEARS_CONTINUOUS_HAND_OWNER
+bool prepare(){if(!enabled&&!continuous_hand_owner_live::requested)return true;if(certified||reserved)return certified;
+#else
 bool prepare(){if(!enabled)return true;if(certified||reserved)return certified;
+#endif
     for(auto const& c:certificate::chunks)if(!digest(c)||!digest(c)){failed=true;return false;}certified=true;return true;}
 extern "C" void GearsCoverPoseComposeHook();extern "C" void GearsCoverPosePhysicsHook();extern "C" void GearsCoverPoseTickHook();
+#if defined(GEARS_CONTINUOUS_HAND_OWNER) && GEARS_CONTINUOUS_HAND_OWNER
+bool reserve(){if(!enabled&&!continuous_hand_owner_live::requested)return true;if(reserved||!prepare())return false;
+#else
 bool reserve(){if(!enabled)return true;if(reserved||!prepare())return false;
+#endif
     const std::array<void*,3> detours{{reinterpret_cast<void*>(GearsCoverPoseComposeHook),reinterpret_cast<void*>(GearsCoverPosePhysicsHook),reinterpret_cast<void*>(GearsCoverPoseTickHook)}};
     for(unsigned i=0;i<3;++i){targets[i]=reinterpret_cast<void*>(base+certificate::hooks[i].rva);std::array<unsigned char,32> before{},after{};
         if(!safe_copy(before.data(),targets[i],32)||before!=certificate::hooks[i].prefix||MH_CreateHook(targets[i],detours[i],&originals[i])!=MH_OK||!safe_copy(after.data(),targets[i],32)||before!=after){failed=true;return false;}}
@@ -127,8 +135,19 @@ void begin_guarded(pose::CallPacket const& packet,unsigned kind,uintptr_t ra,Sco
 void finish_guarded(Scope const& scope,bool returned){try{finish(scope,returned);}catch(...){failed=true;stopping=true;}}
 void release_guarded(Scope const& scope){try{release(scope);}catch(...){failed=true;stopping=true;}}
 extern "C" __declspec(noinline) void GearsCoverPoseInvokeProtected(pose::CallPacket* packet,unsigned kind,uintptr_t ra) noexcept(false){
+#if defined(GEARS_CONTINUOUS_HAND_OWNER) && GEARS_CONTINUOUS_HAND_OWNER
+    Scope scope{};gears_continuous_hand_entry::Entry entry{};bool returned{};++active;++in_flight;++calls;
+#else
     Scope scope{};bool returned{};++active;++in_flight;++calls;
+#endif
+#if defined(GEARS_CONTINUOUS_HAND_OWNER) && GEARS_CONTINUOUS_HAND_OWNER
+    entry.kind=kind;entry.rcx=packet->gpr[1];entry.rdx=packet->gpr[2];entry.r8=packet->gpr[3];entry.r9=packet->gpr[4];entry.ra=ra;
+#endif
+#if defined(GEARS_CONTINUOUS_HAND_OWNER) && GEARS_CONTINUOUS_HAND_OWNER
+    __try{continuous_hand_owner_live::pose_begin(entry);begin_guarded(*packet,kind,ra,scope);
+#else
     __try{begin_guarded(*packet,kind,ra,scope);
+#endif
 #if defined(GEARS_COVER_NATIVE_RIG_OBSERVER) && GEARS_COVER_NATIVE_RIG_OBSERVER
         if(scope.kind==2&&scope.started)cover_native_rig_observer_live::tick_begin(scope);
 #endif
@@ -143,6 +162,9 @@ extern "C" __declspec(noinline) void GearsCoverPoseInvokeProtected(pose::CallPac
 #endif
 #if defined(GEARS_COVER_NATIVE_RIG_OBSERVER) && GEARS_COVER_NATIVE_RIG_OBSERVER
         if(scope.kind==2&&scope.started)cover_native_rig_observer_live::tick_end(scope,returned&&!AbnormalTermination());
+#endif
+#if defined(GEARS_CONTINUOUS_HAND_OWNER) && GEARS_CONTINUOUS_HAND_OWNER
+        continuous_hand_owner_live::pose_end(entry,returned&&!AbnormalTermination());
 #endif
         release_guarded(scope);--in_flight;--active;}}
 }
