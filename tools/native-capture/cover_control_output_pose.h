@@ -1,4 +1,5 @@
 #pragma once
+#include <limits>
 #include "cover_skeleton_ik.h"
 #include "../vr-common/hand_two_bone_pose.h"
 
@@ -41,6 +42,15 @@ inline bool rigid(ik::Matrix const& matrix) noexcept {
     return std::abs(ik::detail::dot(ik::detail::row(matrix,0),ik::detail::row(matrix,1)))<=2e-5&&
         std::abs(ik::detail::dot(ik::detail::row(matrix,0),ik::detail::row(matrix,2)))<=2e-5&&
         std::abs(ik::detail::dot(ik::detail::row(matrix,1),ik::detail::row(matrix,2)))<=2e-5;
+}
+inline bool single_rigid(ik::Matrix const& matrix) noexcept {
+    // Actual SingleBone output can carry float accumulation in m[15]. Permit
+    // only this bounded affine-tail error for rotation replacement. All other
+    // rigid checks stay unchanged, including exact zero projection entries.
+    constexpr double tail_tolerance=2.0*std::numeric_limits<float>::epsilon();
+    if(!std::isfinite(matrix.m[15])||std::abs(matrix.m[15]-1.0)>tail_tolerance)return false;
+    auto validation=matrix;validation.m[15]=1.0;
+    return rigid(validation); // Validation copy only; never normalize output.
 }
 inline bool unit(Quaternion q,Quaternion& out) noexcept {
     const double n=std::hypot(std::hypot(q.x,q.y),std::hypot(q.z,q.w));
@@ -97,10 +107,10 @@ inline Status solve(LimbInput const& input,Workspace& work,Matrix64* output) noe
 inline Status replace_wrist_rotation(SingleInput const& input,Workspace& work,Matrix64* output) noexcept {
     const ik::detail::Range ranges[]={ik::detail::range(&input,sizeof(input)),ik::detail::range(&work,sizeof(work)),ik::detail::range(output,sizeof(Matrix64))};
     if(!ik::detail::disjoint(ranges,3))return Status::alias;
-    if(!detail::transform(input.component_to_world,work)||!detail::rigid(detail::unpack(input.component)))return Status::invalid_matrix;
+    if(!detail::transform(input.component_to_world,work)||!detail::single_rigid(detail::unpack(input.component)))return Status::invalid_matrix;
     Quaternion q{};if(!detail::unit(input.world_orientation,q))return Status::invalid_target;
     work.candidate[0]=input.component;
-    if(!detail::rotation(q,work,work.candidate[0])||!detail::rigid(detail::unpack(work.candidate[0])))return Status::numerical_failure;
+    if(!detail::rotation(q,work,work.candidate[0])||!detail::single_rigid(detail::unpack(work.candidate[0])))return Status::numerical_failure;
     *output=work.candidate[0];return Status::solved;
 }
 } // namespace gears_cover_control_output_pose

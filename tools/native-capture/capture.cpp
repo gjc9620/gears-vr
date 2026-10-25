@@ -88,6 +88,7 @@ gears_support::Recorder support_diagnostics;
 #include "../vr-common/controller_continuity_bridge.h"
 #include "../vr-common/rig_tracking_frame.h"
 #include "../vr-common/native_rig_tracking_frame.h"
+#include "hand_core_target_adapter.h"
 #include "weapon_hand_broker.h"
 #include "cover_surface_getters.h"
 #include "../vr-common/weapon_hand_owner_adapter.h"
