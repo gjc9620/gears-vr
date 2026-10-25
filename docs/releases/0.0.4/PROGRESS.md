@@ -2,6 +2,16 @@
 
 本文件保留武器与掩体两个分支的开发历史，便于共用 Native 手部实现合流。各条记录仍以其原始验证范围为准；私有候选、只读采样或离线检查不代表完整功能、默认构建更新或头显验收。
 
+## 2026-10-25 — 共用固定个人段长接口与最新组合完整构建
+
+以独立三文件提交35a4497向共用LimbInput／LimbData增加upper_length_scale与lower_length_scale，默认均1，adapter每次显式传入已有LengthPolicy；control检查finite／positive，无效或数值溢出不改输出。preserve保持本次原始输入段长乘以固定比例，adaptive仍可按原规则伸长／重分配；调用者必须绑定正确模型与保存的校准，并使用原始基线，不能把改过的结果继续当作原长。未从腕距、眼骨或IPD推比例，未改头手／世界单位，也未加入live LocalScale写入。
+
+独立严格CL检查为Adapter9组820项及Control24 cases／417项通过，包含非均匀1.25／0.9、三个目标距离下固定1.5、复用工作区恢复默认、非法值／溢出不改输出及旧回归。Core／grip／个人比例仍明确为synthetic，矩阵使用原RO3样本。Astra限定审未发现P1／P2，报告395a5829…3f65。private LimbInput／LimbData及嵌入Workspace的C++布局确实变大，须同步重编消费者；公开Frame／ReadRequest／Core头未改，不能将私有C++布局称为ABI不变。
+
+随后在武器实际工作树上冻结完整组合：掩体fa283ca（f5矩阵策略、连续只读owner、post-weight只读观察）加武器输入／唯一wrapper及新段长接口。完整capture.cpp TU编译、链接通过，私有Native为ec9b5b75…ee628e；727份C/C++／ASM／CMake输入与当前源码相同，原42导出一致。198项相关CTest通过；继承的25 cache未提供caller fixture，另构建实际ContinuousHandOwnerTest并使用原pin样本／argv执行14个模式，全部通过，已成功Native DLL字节未变。没有把这14次直接执行改称CTest，也没有重新执行已通过组来覆盖缺少fixture的注册范围。
+
+完整组合审计为忽略的 `analysis/hand-shared-native-build-20261025cp/closeout-v1.json`，60dbe936…b1d8d；主构建／CTest回执10aedf9a…24699，14模式回执7d8d3f7a…e9471e。独立接口交付 `analysis/hand-fixed-length-calibration-20261025co/handoff-v1.json` 为925ef815…57ea8，已交掩体会话按单一版本接收。Root没有启动Game／XR或替换默认二进制；旧24b／25冻结源与旧2bc实跑结果保留。玩家首次臂展采集到此接口的连接、身体／眼位对齐、真实连续手骨跟随、动画交还与头显验收仍未完成，完整武器目标继续active。
+
 ## 2026-10-25 — 接收连续只读手部 owner 与 null 身份复核修复
 
 在f5基础合流cf0383d之后接收掩体独立提交ac03bd4，11份原生源和两份文档同时保留，未使用其两个未跟踪旧C3文件。此路径不依赖Pose事件，在真实outer Tick锁存一次Core并让四个原生手控节点复用；cap-OFF路径保留实际no-op语义。它仍是只读计划，不发布正式手骨姿态，也不提供writer或physics fence许可。
