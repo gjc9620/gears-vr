@@ -2,6 +2,14 @@
 
 本文件保留武器与掩体两个分支的开发历史，便于共用 Native 手部实现合流。各条记录仍以其原始验证范围为准；私有候选、只读采样或离线检查不代表完整功能、默认构建更新或头显验收。
 
+## 2026-10-26 — EC实际取Lancer成功，主握首门拒绝，106正常恢复通过
+
+身体会话独占执行EC revision2后已正常释放窗口。实际右肩pulse3、生产held回执及独立Live.held附着认证通过；38／38一致postFK骨骼采样可读。shoulder-fixed-first32首门超时，Native mount ready0／commits0／stale14／last_query15／max15.2285ms，无fault或context_rejected；v3 held记录0。未到降枪／小移转，不能宣称持枪跟随完成。
+
+HandStop4→5、cookie0后自由双手继续、原两手恢复、bridge close及normal stop通过。身体端一次finalize的accepted=true仅为cleanup：独立106完整范围恢复、Native／entry、XR0／PG0、原十文件、音频、ownedPID及fresh CIM通过；宿主瞬时no_remaining_games=false原值保留，不覆盖成true。Root没有并发Game或改动本次EC／Native／PG。
+
+Root按交接只读保存PG证据和真实生产路径：普通tick preview的held行已认证Lancer资产及右手附着，body_unavailable来自其故意提供空BodyBinding；该行不是Native supplemental callback，不能据此定位失败。实际provider的context→retained(copy／bind／完整资产检查／final bind)→response阶段没有持久日志，scratch清理后无法用这次PG文件区分具体拒绝。Native stale是汇总分类，15.2ms也不是完整C0耗时。证据／输入摘要保存于ignored analysis/lancer-main-mount-ec-rejection-20261026ef/evidence.json；身体会话查Native首拒分支，Root暂不重跑旧矩阵、不放宽鲜度或预算，等具体条件后再修。
+
 ## 2026-10-26 — Lancer主握联合用例EC离线交付，运行窗口归身体会话
 
 按身体会话及统筹要求，从已通过EB复用私有宿主、实际RGrip边沿／装备回执、独立Source1读取器及保留pending导出的API，只准备ignored `analysis/equipment-native-rgrip-runtime-20261026ec/` 联调胶水。Native40 `f146c542…de8ce`、PG3715853 `a4657e0d…44472`、BQ XR `1a059d2d…2b4e9`、CY simulator `378e785f…14894` 均绑定准确成品；采用身体端已修正XR选择的联合manifest629c92。没有修改或重建身体／渲染／XR／模拟器／PG源码，没有由Root启动Game或XR。
