@@ -2,6 +2,18 @@
 
 本文件保留武器与掩体两个分支的开发历史，便于共用 Native 手部实现合流。各条记录仍以其原始验证范围为准；私有候选、只读采样或离线检查不代表完整功能、默认构建更新或头显验收。
 
+## 2026-10-26 — Lancer主握联合用例EC离线交付，运行窗口归身体会话
+
+按身体会话及统筹要求，从已通过EB复用私有宿主、实际RGrip边沿／装备回执、独立Source1读取器及保留pending导出的API，只准备ignored `analysis/equipment-native-rgrip-runtime-20261026ec/` 联调胶水。Native40 `f146c542…de8ce`、PG3715853 `a4657e0d…44472`、BQ XR `1a059d2d…2b4e9`、CY simulator `378e785f…14894` 均绑定准确成品；采用身体端已修正XR选择的联合manifest629c92。没有修改或重建身体／渲染／XR／模拟器／PG源码，没有由Root启动Game或XR。
+
+Body19实际INI配置保留FP、C0 hands、arm-control ownership、CCTRL／phase、Fresh／Atom／Goal，并启用held_main_mount及selected-only诊断。动作限定为左手可达基线、右肩pulse3取Lancer和独立Live.held认证；肩部固定输入必须再取得至少40个新Native held-selector joint commits及一致腕部采样，才降枪并小移2cm／转10度（明确转换为弧度）。总输入上限八条包含最后双手原状态恢复。HandStop后另取quiescent基线，要求自由双手继续提交、not-ready fallback增长且held commits不再增长；未知pending输入／导出不覆盖或重放。R2保持OFF，无额外枪械RPC。原45秒协调窗口、300秒宿主、.4／behind／observe-only／测试静音恢复／physical-background OFF／十文件保护不变。
+
+恢复核对发现EB验证器已有Control8／Fresh3分支，只是Native29未启用；因此保留其无条件固定Pose8 union，仅从实际Body19增加Atom7完整范围分支，避免直接覆盖丢失旧保护。独立验证器SHA `6c88c33c…a2a2`，finalizer进一步要求固定26范围的source／target-RVA／完整长度／固定摘要全部匹配、总106及原Native／entry／XR0／PG0／音频／十文件／PID清理条件。Body19旧provenance摘要与当前源不符的事实保留；采用实际源摘要，不据旧清单宣称覆盖。正常停止后有界保存v3 first32原始二进制并检查header72／record2120／Game PID／Native incarnation；腕部／枪体数值比较仍由身体会话执行。
+
+离线host-preflight通过33份编译、12个私有namespace入口、4项原API检查；完整范围验证实际函数54项完整读取／截断／尾损检查通过；实际phase的Native-only／Pose-only／错误marker负例、固定范围覆盖负例、双手旋转恢复等11项及原watch finally6项通过。有界Sol／Medium仅审这次Python胶水，无其他具体finding。最终pins `2bd3cef6…9ad4`、coordinator `9e7e8937…74aa`，准确路径、运行步骤和边界见EC/JOINT-README.md，已交身体会话唯一运行。此处不新增联合游戏、可见枪体跟随、权威射线、散布／后坐力或头显验收，不据胶水交付增加成熟度。
+
+同时更新历史瞄准链文档，区分EB真实R2闭环与尚缺的逐发数值链：主握Response只是腕部标定，不能直接补齐完整枪口Pose、逐发Grip或射击写入权限。后续从现有CallFunction所有者关联实际Lancer原调用的基础瞄准／误差后方向与起点／终点／碰撞，不额外调用随机瞄准函数。
+
 ## 2026-10-26 — 主握附加query的PG入口／映射／父注册接线完成，待Native联调
 
 身体会话已正式冻结weapon_main_mount_provider.h SHA `3f20163b…2f2cc`，Root按同字节复制；实际x64布局RigFrame1824、Body112、Request1968（body偏1856）、Response504、Registration48。附加注册复用同一Hand parent cookie／Native incarnation／context和已pin模块，只有新的Native attach导出，不增加PG导出或独立detach。Body独自负责Native broker、C0消费和写入，V1及原51／52增量不改。首轮R2 mode OFF。四份b58524c主握发送源保持原hash。

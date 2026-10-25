@@ -1,5 +1,7 @@
 # 当前步枪的瞄准、命中链与右手接入位置
 
+本文主体记录2026-10-16的历史核对；最新6DoF私有接线状态见末节。文中的PID、地址与配置只属于当时会话。
+
 2026-10-16。已确认当前玩家武器的代码关系、当前进程反射身份和候选接入边界；尚未记录一次真实开火的完整调用轨迹，也没有安装武器 Hook 或接入控制器。
 
 本轮复用现有知识库和伪代码，只补充选定函数的离线字节码 token 导出及当前进程只读核对。原生反编译新增数为 0，未打开 IDA 数据库。所有原始脚本、地址证书、字节和逐项比较保存在被忽略的 `analysis/weapon-chain/`。
@@ -73,3 +75,13 @@ flowchart TD
 - `analysis/weapon-chain/inspect_live.py`、`verify_tokens.py`、`ExportTokens.cs`：本轮有界只读采集/核对脚本；复用时需更新显式 PID/输出目录，历史脚本不能自动选一个新进程。
 
 首次 token 对比误用了 UELib NativeFunctionToken 未初始化的 OpCode 字段；修正为 NativeItem.ByteToken 后全部通过。初版比较保留且已明确被 v2 取代。AmmoCount 不在该对象的反射字段中，工具如实记录缺失；本轮没有得出弹药计数结论。
+
+## 2026-10-26 — Lancer后继瞄准消费端的证据边界
+
+最新EB私有实跑已证明原版瞄准下的R2按下／主动松开／自有停止交还与耗弹，现有Native CallFunction所有者也确实接受并完成了订阅调用；这些不是逐发记录。EB保存的native-status没有旧weapon_call_row数值行，不能从注册计数、六函数配置或耗弹推导GetAdjustedAimFor、最终Start／End／Impact已经关联。主握PG query已交付Native消费者，实际C0持枪接线仍在验证，不在此重复启动或修改Hook。
+
+主握Response只携带当前来源／身份和右腕标定。当前weapon_lancer_wrist_mount明确只有静态朝向关系，不是挂点平移／完整枪体Pose，更不能据此把控制器位置当成枪口。原生产observe仍明确mount_known=false，现有shot packet又要求已知的逐发冻结Grip；query ready不会自动补齐WeaponMount、双手支撑或射击写入权限。后续需明确这条独立数据链，不能为了取到packet而把未知Grip标为single或two。
+
+KB及已保存脚本继续支持“Pawn基础／辅助瞄准返回之后，由WarWeapon.GetAdjustedAim追加射击误差”的静态关系，但导出仍含类型／native token未解析标记，不是当前返回ABI证明。一次原调用的前后观察不能变成额外调用GetAdjustedAim来采样，以免再消耗随机状态；保留散布也不等于已证明保留所有相机或骨骼后坐力。
+
+主握接通后的最小射击记录应从现有CallFunction所有者关联实际Lancer InstantFire、直接嵌套的两级瞄准返回、物理／回缩／前推起点及最终碰撞。结果缓冲和caller Frame须分别认证，HUD、AI及其他调用不混入；先取得原版数值，再比较右手方向覆盖、原版散布及后坐力。当前没有新增原生反编译、IDA会话、射线修改或头显结论。保存证据与源码哈希位于ignored analysis/lancer-aim-prerequisites-20261026ed/source-evidence.json。
