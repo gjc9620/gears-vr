@@ -103,6 +103,8 @@ gears_support::Recorder support_diagnostics;
 #include "hand_core_target_adapter.h"
 #include "continuous_hand_owner_entry.h"
 #pragma pop_macro("small")
+#include "hand_personal_reference.h"
+#include "hand_personal_calibration_live.inl"
 #include "weapon_hand_broker.h"
 #include "cover_surface_getters.h"
 #include "../vr-common/weapon_hand_owner_adapter.h"
@@ -5177,20 +5179,17 @@ DWORD WINAPI worker(void*) {
 #if !defined(GEARS_CROSSHAIR_ASSIGNMENT_OBSERVER) || !GEARS_CROSSHAIR_ASSIGNMENT_OBSERVER
     if(controller_input_observer){fprintf(status,"rejected: controller input observer requires certified tick build\n");fclose(status);return 3;}
 #endif
-    {wchar_t armspan[64]{},height[64]{};
-        GetPrivateProfileStringW(L"Capture",L"weapon_armspan_metres",L"",armspan,64,ini);
-        GetPrivateProfileStringW(L"Capture",L"weapon_hands_below_head_metres",L"",height,64,ini);
-        if((armspan[0]!=0)!=(height[0]!=0)||((armspan[0]||height[0])&&!controller_input_observer)){
-            fprintf(status,"rejected: incomplete or inactive stored armspan calibration\n");fclose(status);return 3;}
-        if(armspan[0]){
-            wchar_t *span_end{},*height_end{};
-            gears_weapon::ArmspanCalibration measured{1,wcstod(armspan,&span_end),wcstod(height,&height_end)};
-            if(span_end==armspan||*span_end||height_end==height||*height_end||!measured.valid()){
-                fprintf(status,"rejected: invalid stored armspan calibration\n");fclose(status);return 3;}
-            controller_armspan_saved=measured;
-            controller_input_mailbox_calibration=measured;
-        }
-    }
+    // Preconfigure only reads the requested flag. It neither authenticates an
+    // owner nor enables a hook, and lets a shared hand consumer load its saved
+    // calibration independently of the legacy controller observer.
+    if(!continuous_hand_owner_live::preconfigure(ini)){
+        fprintf(status,"rejected: continuous hand owner configuration is invalid\n");fclose(status);return 2;}
+    if(!hand_personal_calibration_live::configure(ini,stereo_xr,
+        controller_input_observer||continuous_hand_owner_live::requested,status)){
+        fclose(status);return 3;}
+    {auto const& saved=hand_personal_calibration_live::saved;
+        controller_armspan_saved={saved.version,saved.armspan_metres,saved.hands_below_head_metres};
+        controller_input_mailbox_calibration=controller_armspan_saved;}
     simulator_operator=GetPrivateProfileIntW(L"Capture",L"simulator_operator",0,ini)==1;
     frame_link_diagnostics=GetPrivateProfileIntW(L"Capture",L"frame_link_diagnostics",0,ini)==1;
     stereo_gpu_publish=GetPrivateProfileIntW(L"Capture",L"stereo_gpu_publish",0,ini)==1;
@@ -5207,7 +5206,7 @@ DWORD WINAPI worker(void*) {
         fprintf(status,"rejected: run camera stabilizer requires compiled Scene support and continuous stereo anchors\n");fclose(status);return 2;}
     // Reservations do not enable a hook. At this point MH is initialized and
     // the immutable startup INI/anchor settings are available on the worker.
-    if(!continuous_hand_owner_live::preconfigure(ini)||!cover_pose_phase_live::configure(ini,status)||!cover_pose_phase_live::reserve()){
+    if(!cover_pose_phase_live::configure(ini,status)||!cover_pose_phase_live::reserve()){
         fprintf(status,"rejected: cover pose observer requires current full code certificates and reserved entries\n");fclose(status);return 2;}
     if(!cover_control_observer_live::configure(ini,status)||!cover_control_observer_live::reserve()){
         cover_control_observer_live::summary(status);fputc('\n',status);

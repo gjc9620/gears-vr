@@ -1,11 +1,14 @@
 // Continuous observation/planning only. Include after Rig/adapter/CCTRL.
 #include "continuous_hand_caller_certificate.h"
+#include "hand_personal_reference.h"
 namespace continuous_hand_owner_live {
 using Entry=gears_continuous_hand_entry::Entry;
 namespace phase=cover_pose_phase_live;namespace controls=cover_control_observer_live;
 namespace rig=rig_tracking_live;namespace binding=weapon_hand_scene_binding;
 namespace adapter=gears_hand_core_target;namespace mount=gears_hand_authored_mount;
 namespace math=gears_cover_control_output_pose;namespace core=gears_native_rig_tracking;
+namespace personal=gears_hand_personal;namespace personal_reference=gears_hand_personal_reference;
+namespace saved_personal=hand_personal_calibration_live;
 bool requested{},enabled{};
 #if defined(GEARS_CONTINUOUS_HAND_OWNER) && GEARS_CONTINUOUS_HAND_OWNER
 static constexpr unsigned capacity=32;
@@ -22,10 +25,19 @@ struct Data {TickRecord record{};phase::Owner owner{};gears_anchor::Identity ass
     gears_cover_pose_phase::Metadata metadata{};std::array<mount::ReferenceRecord68,115> reference{};
     mount::CanonicalGeometry canonical{};mount::Signature signature{};
     Hand hands[2]{};adapter::LimbData limb{};adapter::SingleData single{};adapter::Workspace math_work{};};
+// Persistent data cache, separate from the per-Tick record and its authority.
+// No Scene ticket, target distance or animated segment length enters this key.
+struct PersonalKey {
+    personal::Measurement measurement{};personal::ModelKey model{};core::NativeSessionKey native{};
+    gears_weapon_hand::ObjectIdentity asset{},mesh{};uint64_t world_generation{};
+    unsigned estimator_version{1},mode{};std::array<char,sizeof(mount::profile_id)> mount_profile{};
+};
+struct PersonalCache {PersonalKey key{};personal::Profile profile{};personal::Status status{personal::Status::invalid_profile};bool attempted{},valid{};};
 struct Slot {
     Entry const* tick_address{};Entry const* compose_address{};Entry const* control_address{};
     uint64_t tick{},conflict{},ordinal{};unsigned tick_depth{},compose_depth{},control_depth{};
     rig::TickKey key{};rig::TickLatch latch{};core::CoreSnapshot verify{};controls::Compose compose{};controls::Row row{};Data data{};
+    PersonalCache personal{};
     alignas(::Scope) unsigned char lease_storage[sizeof(::Scope)]{};::Scope* lease{};
     bool active{},attempted{},sticky{},control_valid{};
     Slot()=default;Slot(Slot const&)=delete;Slot& operator=(Slot const&)=delete;
@@ -36,9 +48,69 @@ std::atomic<unsigned> callbacks{},live_frames{},matching_ticks{};std::atomic<DWO
 std::atomic<uint64_t> serial{1},conflicts{},ticks{},completed{},rejected{},preparations[2]{};
 std::mutex records_mutex;std::array<TickRecord,capacity> records{};uint64_t record_sequence{};unsigned record_count{};
 using LengthMode=gears_hand_two_bone::LengthMode;LengthMode length_mode=LengthMode::preserve;
+struct PersonalDiagnostic {bool bound{};personal::Status status{personal::Status::okay};double scale{1};std::array<double,2> upper{},lower{};};
+std::mutex personal_mutex;PersonalDiagnostic personal_diagnostic{};
+std::atomic<uint64_t> personal_binding_attempts{},personal_bindings{},personal_binding_failures{},personal_apply_failures{},personal_applied{};
 struct Call {Call(){++callbacks;}~Call(){--callbacks;}};
 bool passive(){return !cover_body_live::enabled&&!cover_input_live::enabled&&!weapon_hand_runtime::detail::engine_restore_enabled;}
 void reject(Failure why){slot.sticky=true;if(slot.data.record.failure==Failure::none)slot.data.record.failure=why;++rejected;}
+bool same_model(personal::ModelKey const& a,personal::ModelKey const& b){return a.model==b.model&&a.geometry_signature==b.geometry_signature&&
+    a.bone_count==b.bone_count&&a.model_to_world_scale==b.model_to_world_scale&&a.units_per_metre==b.units_per_metre;}
+bool same_personal_key(PersonalKey const& a,PersonalKey const& b){return a.measurement.version==b.measurement.version&&
+    a.measurement.armspan_metres==b.measurement.armspan_metres&&a.measurement.hands_below_head_metres==b.measurement.hands_below_head_metres&&
+    same_model(a.model,b.model)&&core::same(a.native,b.native)&&gears_weapon_hand::same(a.asset,b.asset)&&gears_weapon_hand::same(a.mesh,b.mesh)&&
+    a.world_generation==b.world_generation&&a.estimator_version==b.estimator_version&&a.mode==b.mode&&a.mount_profile==b.mount_profile;}
+PersonalKey personal_key(){auto const& d=slot.data;auto const& source=d.record.source;PersonalKey key{};
+    key.measurement=saved_personal::saved;key.model={mount::Model::marcus115,d.signature,115,1,source.units_per_metre};
+    key.native=source.native;key.asset=rig::object(d.asset);key.mesh=source.mesh;key.world_generation=source.world_generation;key.mode=unsigned(length_mode);
+    memcpy(key.mount_profile.data(),mount::profile_id,sizeof(mount::profile_id));return key;}
+void personal_diagnose(personal::Status status,personal::Profile const* profile){std::lock_guard<std::mutex> lock(personal_mutex);
+    personal_diagnostic={};personal_diagnostic.status=status;if(profile){personal_diagnostic.bound=true;personal_diagnostic.scale=profile->scale;
+        personal_diagnostic.upper=profile->upper_metres;personal_diagnostic.lower=profile->lower_metres;}}
+bool bind_personal(){auto& cache=slot.personal;
+    if(!saved_personal::loaded){cache={};return true;}
+    const auto key=personal_key();if(cache.attempted&&same_personal_key(cache.key,key))return cache.valid;
+    cache={};cache.key=key;cache.attempted=true;++personal_binding_attempts;
+    mount::Mount left{},right{};personal::Dimensions dimensions{};
+    if(length_mode!=LengthMode::preserve)cache.status=personal::Status::invalid_profile;
+    else if(!mount::marcus115(key.model.geometry_signature,mount::Side::left,key.model.model_to_world_scale,key.model.units_per_metre,left)||
+            !mount::marcus115(key.model.geometry_signature,mount::Side::right,key.model.model_to_world_scale,key.model.units_per_metre,right))cache.status=personal::Status::invalid_model;
+    else{cache.status=personal_reference::dimensions(slot.data.canonical,left,right,dimensions);
+        if(cache.status==personal::Status::okay)cache.status=personal::derive(key.measurement,dimensions,cache.profile);}
+    cache.valid=cache.status==personal::Status::okay;if(cache.valid)++personal_bindings;else ++personal_binding_failures;
+    personal_diagnose(cache.status,cache.valid?&cache.profile:nullptr);return cache.valid;
+}
+adapter::Status personal_failure(personal::Status why,adapter::Status result){++personal_apply_failures;
+    personal_diagnose(why,slot.personal.valid?&slot.personal.profile:nullptr);return result;}
+adapter::Status apply_personal(adapter::Target const& target,adapter::LimbData& data){
+    if(!saved_personal::loaded)return adapter::Status::okay;
+    auto const& cache=slot.personal;auto const& b=target.binding;auto const& model=cache.profile.model.key;
+    if(length_mode!=LengthMode::preserve)return personal_failure(personal::Status::invalid_profile,adapter::Status::invalid_policy);
+    if(!cache.valid||!same_personal_key(cache.key,personal_key())||!same_model(model,cache.key.model)||
+       !core::same(target.source.native,cache.key.native)||!gears_weapon_hand::same(target.source.mesh,cache.key.mesh)||
+       target.source.world_generation!=cache.key.world_generation||!gears_weapon_hand::same(b.asset,cache.key.asset)||!gears_weapon_hand::same(data.asset,cache.key.asset)||
+       b.model!=model.model||b.geometry_signature!=model.geometry_signature||b.bone_count!=model.bone_count||data.bone_count!=model.bone_count||
+       b.model_to_world_scale!=model.model_to_world_scale||b.authored_mount.model_to_world_scale!=model.model_to_world_scale||
+       target.source.units_per_metre!=model.units_per_metre||b.authored_mount.units_per_metre!=model.units_per_metre)
+        return personal_failure(personal::Status::invalid_model,adapter::Status::binding_mismatch);
+    if(data.original_matrix_policy!=math::OriginalMatrixPolicy::strict_unit&&data.original_matrix_policy!=math::OriginalMatrixPolicy::bounded_near_rigid)
+        return personal_failure(personal::Status::invalid_geometry,adapter::Status::invalid_policy);
+    // Mirror the existing control validation on this call's ORIGINAL output.
+    // Reuse TLS scratch; never touch planned output or infer from wrist reach.
+    auto& work=slot.data.math_work.control_work;if(!math::detail::transform(data.component_to_world,work))
+        return personal_failure(personal::Status::invalid_geometry,adapter::Status::invalid_matrix);
+    for(unsigned i=0;i<3;++i){work.component[i]=math::detail::unpack(data.component[i]);
+        if(!math::detail::original_matrix(work.component[i],data.original_matrix_policy))return personal_failure(personal::Status::invalid_geometry,adapter::Status::invalid_matrix);
+        work.world[i]=math::ik::detail::multiply(work.component[i],work.to_world);
+        if(math::ik::world_pose(work.world[i],work.world_pose[i])!=math::ik::Status::okay)return personal_failure(personal::Status::invalid_geometry,adapter::Status::invalid_matrix);}
+    const auto distance=[](gears_vr::Vector a,gears_vr::Vector b){return std::hypot(std::hypot(a.x-b.x,a.y-b.y),a.z-b.z);};
+    const double upper=distance(work.world_pose[0].position,work.world_pose[1].position)/model.units_per_metre;
+    const double lower=distance(work.world_pose[1].position,work.world_pose[2].position)/model.units_per_metre;double up{},low{};
+    const auto status=personal::scales(cache.profile,target.side,upper,lower,up,low);
+    if(status!=personal::Status::okay)return personal_failure(status,status==personal::Status::invalid_geometry?adapter::Status::degenerate:
+        status==personal::Status::numerical_failure?adapter::Status::numerical_failure:adapter::Status::invalid_policy);
+    data.upper_length_scale=up;data.lower_length_scale=low;personal_diagnose(personal::Status::okay,&cache.profile);return adapter::Status::okay;
+}
 template<size_t N>bool code_bytes(uintptr_t rva,std::array<unsigned char,N> const& expected){
     if(base>UINTPTR_MAX-rva||!gears_cover_pose_phase::span(base+rva,N))return false;
     std::array<unsigned char,N> copy{};
@@ -128,7 +200,8 @@ void compose_begin(Entry& e){if(!slot.active)return;e.compose_depth=true;e.depth
         e.rdx==e.rcx+0x27c&&e.r8==e.rcx+0x28c;
     slot.compose.continuous=true;slot.compose.admitted=true;slot.compose.outer_tick=slot.tick;slot.data.record.compose=e.invocation;
     if(!control_current(slot.compose.scope)||!same_source()||!metadata(true)||!geometry())reject(Failure::metadata);
-    else{slot.data.record.asset=rig::object(slot.data.asset);slot.data.record.geometry_signature=slot.data.signature;slot.data.record.reference=slot.data.metadata.reference;}
+    else{slot.data.record.asset=rig::object(slot.data.asset);slot.data.record.geometry_signature=slot.data.signature;slot.data.record.reference=slot.data.metadata.reference;
+        if(!bind_personal())reject(Failure::model);}
 }
 void pose_begin(Entry& e) noexcept {Call call;try{if(!enabled||!next(e))return;if(e.kind==2)tick_begin(e);else if(e.kind==0)compose_begin(e);}catch(...){failed=true;reject(Failure::exception);}}
 void save_record(){std::lock_guard<std::mutex> lock(records_mutex);records[record_sequence%capacity]=slot.data.record;
@@ -184,12 +257,14 @@ void plan(){auto& d=slot.data;auto const& row=slot.row;auto const& source=d.reco
     if(!adapter::same_source(hand.target,source)){reject(Failure::prepare);return;}out.wrist=hand.target.wrist_world;
     if(!row.kind){d.limb={};d.limb.asset=hand.binding.asset;d.limb.bone_count=115;d.limb.affected_count=3;d.limb.affected=profile.chain;
         memcpy(d.limb.component,out.original,192);d.limb.component_to_world=out.component;
-        out.solve=adapter::solve_limb(hand.target,d.limb,length_mode,d.math_work,out.planned);
+        out.solve=apply_personal(hand.target,d.limb);
+        if(out.solve==adapter::Status::okay)out.solve=adapter::solve_limb(hand.target,d.limb,length_mode,d.math_work,out.planned);
     }else{d.single={};d.single.asset=hand.binding.asset;d.single.bone_count=115;d.single.affected_count=1;d.single.affected=profile.hand_bone;
         d.single.component=out.original[0];d.single.component_to_world=out.component;out.solve=adapter::replace_wrist_rotation(hand.target,d.single,d.math_work,out.planned);}
     if(out.solve!=adapter::Status::okay){reject(Failure::math);return;}
     if(!metadata(false,&row)||!same_source()){memset(out.planned,0,sizeof(out.planned));reject(Failure::metadata);return;}
     d.record.planned|=1u<<index;
+    if(!row.kind&&saved_personal::loaded)++personal_applied;
 }
 void control_end(Entry const& e,bool returned) noexcept {Call call;
     if(!e.control_depth)return;if(!slot.control_depth||slot.control_depth!=e.depth){failed=true;reject(Failure::end);return;}
@@ -206,12 +281,17 @@ bool preconfigure(wchar_t const* ini) noexcept {wchar_t value[8]{};GetPrivatePro
     if(wcscmp(value,L"0")&&wcscmp(value,L"1"))return false;requested=!wcscmp(value,L"1");return true;}
 bool configure(wchar_t const* ini,FILE* file){wchar_t mode[16]{};GetPrivateProfileStringW(L"ContinuousHandOwner",L"length_mode",L"preserve",mode,16,ini);
     if(wcscmp(mode,L"preserve")&&wcscmp(mode,L"adaptive"))return false;
+    if(requested&&saved_personal::loaded&&(!saved_personal::saved.valid()||wcscmp(mode,L"preserve")))return false;
     if(requested){if(enabled||stopping.load()||!rig::enabled||!weapon_hand_runtime::enabled||!continuous_session||!stereo_xr||!anchor_observer_enabled||
         !passive()||!phase::certified||!controls::certified||!certify_caller())return false;
         length_mode=!wcscmp(mode,L"adaptive")?LengthMode::adaptive:LengthMode::preserve;caller_certified=true;enabled=true;}
     if(file)fprintf(file,"continuous_hand_enabled=%u caller_certified=%u continuous_hand_length_mode=%u read_only=1 writer=0 event_required=0 c0_snapshot_required=0\n",unsigned(enabled),unsigned(caller_certified.load()),unsigned(length_mode));return true;}
 void request_drain(){stopping=true;}unsigned pending_count(){return callbacks.load()+live_frames.load();}
-void summary(FILE* file){if(file)fprintf(file,"continuous_hand_enabled=%u continuous_hand_ticks=%llu continuous_hand_completed=%llu continuous_hand_rejected=%llu continuous_hand_prepare_left=%llu continuous_hand_prepare_right=%llu continuous_hand_pending=%u continuous_hand_failed=%u continuous_hand_file_written=%u continuous_hand_file_error=%lu ",unsigned(enabled),ticks.load(),completed.load(),rejected.load(),preparations[0].load(),preparations[1].load(),pending_count(),unsigned(failed.load()),unsigned(file_written.load()),file_error.load());}
+void summary(FILE* file){if(file){fprintf(file,"continuous_hand_enabled=%u continuous_hand_ticks=%llu continuous_hand_completed=%llu continuous_hand_rejected=%llu continuous_hand_prepare_left=%llu continuous_hand_prepare_right=%llu continuous_hand_pending=%u continuous_hand_failed=%u continuous_hand_file_written=%u continuous_hand_file_error=%lu ",unsigned(enabled),ticks.load(),completed.load(),rejected.load(),preparations[0].load(),preparations[1].load(),pending_count(),unsigned(failed.load()),unsigned(file_written.load()),file_error.load());
+    PersonalDiagnostic diagnostic{};{std::lock_guard<std::mutex> lock(personal_mutex);diagnostic=personal_diagnostic;}
+    if(!saved_personal::loaded)diagnostic={};fprintf(file,"continuous_hand_personal_loaded=%u continuous_hand_personal_estimate=%u continuous_hand_personal_status=%u continuous_hand_personal_scale=%.17g continuous_hand_personal_upper_left_metres=%.17g continuous_hand_personal_lower_left_metres=%.17g continuous_hand_personal_upper_right_metres=%.17g continuous_hand_personal_lower_right_metres=%.17g continuous_hand_personal_binding_attempts=%llu continuous_hand_personal_bindings=%llu continuous_hand_personal_binding_failures=%llu continuous_hand_personal_apply_failures=%llu continuous_hand_personal_applied=%llu ",
+        unsigned(saved_personal::loaded),unsigned(diagnostic.bound),unsigned(diagnostic.status),diagnostic.scale,diagnostic.upper[0],diagnostic.lower[0],diagnostic.upper[1],diagnostic.lower[1],
+        personal_binding_attempts.load(),personal_bindings.load(),personal_binding_failures.load(),personal_apply_failures.load(),personal_applied.load());}}
 void print(FILE* file,bool disabled){if(enabled&&disabled&&stopping.load()&&!pending_count()&&!file_attempted.exchange(true)){
     std::lock_guard<std::mutex> lock(records_mutex);Header header{};memcpy(header.magic,"CHOWNER1",8);header.version=1;header.header_size=sizeof(Header);header.record_size=sizeof(TickRecord);
     header.count=record_count;header.capacity_value=capacity;header.read_only=1;header.length_mode_value=unsigned(length_mode);header.ticks=ticks;header.completed=completed;header.rejected=rejected;header.preparations[0]=preparations[0];header.preparations[1]=preparations[1];

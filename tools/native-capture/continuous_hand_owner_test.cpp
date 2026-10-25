@@ -7,6 +7,7 @@
 #include <windows.h>
 #include "world_epoch_gate.h"
 #include "hand_core_target_adapter.h"
+#include "hand_personal_reference.h"
 #include "cover_pose_phase.h"
 #include "continuous_hand_owner_entry.h"
 #include "continuous_hand_caller_certificate.h"
@@ -15,6 +16,9 @@
 #include <fstream>
 #include <bcrypt.h>
 #include <new>
+// Host storage seam only. Production loads these once through its actual INI
+// reader; that separate reader has its own configure tests. No live file read.
+namespace hand_personal_calibration_live {gears_hand_personal::Measurement saved{};bool loaded{};}
 gears_world::EpochGate test_world_gate;
 thread_local gears_world::ThreadState test_world_thread;
 unsigned constructed{},destroyed{};
@@ -135,8 +139,146 @@ void record_checks(live::TickRecord const& r){C(r.complete&&r.planned==15&&r.see
         for(unsigned index:{3u,7u,11u,12u,13u,14u,15u})C(!memcmp(single.original[0].values+index,single.planned[0].values+index,4));}}
 __declspec(noinline) void original_exception(Entry* e){__try{live::pose_begin(*e);RaiseException(0xe0421111,0,0,nullptr);}__finally{live::pose_end(*e,!AbnormalTermination());}}
 void catch_original(Entry* e){__try{original_exception(e);}__except(EXCEPTION_EXECUTE_HANDLER){}}
+namespace personal=gears_hand_personal;namespace personal_saved=hand_personal_calibration_live;
+gears_vr::Pose owner_world(co::Matrix64 const& matrix,co::Matrix64 const& component){gears_vr::Pose result{};
+    const auto world=co::ik::detail::multiply(co::detail::unpack(matrix),co::detail::unpack(component));
+    C(co::ik::world_pose(world,result)==co::ik::Status::okay);return result;}
+double owner_distance(gears_vr::Vector a,gears_vr::Vector b){return std::hypot(std::hypot(a.x-b.x,a.y-b.y),a.z-b.z);}
+personal::Profile expected_personal(){m::CanonicalGeometry canonical{};m::Mount left{},right{};personal::Dimensions dimensions{};personal::Profile result{};
+    C(m::canonical_geometry(reference.data(),reference.size(),canonical));
+    C(m::marcus115(m::marcus115_signature,m::Side::left,1,stereo_units_per_metre,left));
+    C(m::marcus115(m::marcus115_signature,m::Side::right,1,stereo_units_per_metre,right));
+    C(gears_hand_personal_reference::dimensions(canonical,left,right,dimensions)==personal::Status::okay);
+    C(personal::derive(personal_saved::saved,dimensions,result)==personal::Status::okay);return result;}
+// Set synthetic tracking input through the REAL publisher, never edit Core or
+// owner output. Invert the existing rigid mapping for a reachable wrist point;
+// identity raw grip orientation is retained, including the authored offset.
+void place_personal_grips(personal::Profile const* profile,double fraction){const auto view_matrix=base_view();
+    const auto origin=gears_vr::stereo_camera_position(view_matrix);const auto reference_rotation=gears_vr::rotation_matrix(stereo.reference.orientation);
+    const auto x=gears_vr::rig_tracking::map_vector(view_matrix,{1,0,0}),y=gears_vr::rig_tracking::map_vector(view_matrix,{0,1,0}),z=gears_vr::rig_tracking::map_vector(view_matrix,{0,0,1});
+    const auto dot=[](gears_vr::Vector a,gears_vr::Vector b){return a.x*b.x+a.y*b.y+a.z*b.z;};
+    for(unsigned side=0;side<2;++side){const auto shoulder=owner_world(observed[side].limb[0],observed[side].component);
+        const auto elbow=owner_world(observed[side].limb[1],observed[side].component),wrist=owner_world(observed[side].limb[2],observed[side].component);
+        const double length=profile?(profile->upper_metres[side]+profile->lower_metres[side])*stereo_units_per_metre:
+            owner_distance(shoulder.position,elbow.position)+owner_distance(elbow.position,wrist.position);
+        const double factor=fraction*length/owner_distance(shoulder.position,wrist.position);
+        const gears_vr::Vector wanted{shoulder.position.x+(wrist.position.x-shoulder.position.x)*factor,
+            shoulder.position.y+(wrist.position.y-shoulder.position.y)*factor,shoulder.position.z+(wrist.position.z-shoulder.position.z)*factor};
+        m::Mount mount{};C(m::marcus115(m::marcus115_signature,static_cast<m::Side>(side),1,stereo_units_per_metre,mount));
+        gears_vr::Pose mapped{};C(gears_vr::rig_tracking::pose(view_matrix,stereo.reference,{{0,0,0},{0,0,0,1}},stereo_units_per_metre,mapped));
+        const auto offset=gears_vr::transform(gears_vr::rotation_matrix(mapped.orientation),mount.calibration.grip_to_wrist_metres);
+        const gears_vr::Vector delta{(wanted.x-origin.x)/stereo_units_per_metre-offset.x,
+            (wanted.y-origin.y)/stereo_units_per_metre-offset.y,(wanted.z-origin.z)/stereo_units_per_metre-offset.z};
+        const auto raw=gears_vr::transform(reference_rotation,{dot(delta,x),dot(delta,y),dot(delta,z)});
+        hands.hands[side].grip={{stereo.reference.position.x+raw.x,stereo.reference.position.y+raw.y,stereo.reference.position.z+raw.z},{0,0,0,1}};
+    }
+}
+void personal_tick(){selected();C(publish());Entry tick=tick_entry(),compose=compose_entry();live::pose_begin(tick);C(tick.selected);
+    const auto source=live::slot.data.record.source;live::pose_begin(compose);four();
+    C(!memcmp(&source,&live::slot.data.record.source,sizeof source));live::pose_end(compose,true);live::pose_end(tick,true);drained();}
+void personal_record(live::TickRecord const& record,personal::Profile const& profile){record_checks(record);
+    for(unsigned side=0;side<2;++side){const auto& plan=record.plans[side*2];
+        const auto shoulder=owner_world(plan.planned[0],plan.component),elbow=owner_world(plan.planned[1],plan.component),wrist=owner_world(plan.planned[2],plan.component);
+        C(std::abs(owner_distance(shoulder.position,elbow.position)/record.source.units_per_metre-profile.upper_metres[side])<2e-6);
+        C(std::abs(owner_distance(elbow.position,wrist.position)/record.source.units_per_metre-profile.lower_metres[side])<2e-6);
+        C(owner_distance(wrist.position,plan.wrist.position)<2e-4);
+        C(!memcmp(plan.original[0].values+12,plan.planned[0].values+12,3*sizeof(float)));}}
+void personal_summary(){FILE* file{};C(tmpfile_s(&file)==0&&file);if(!file)return;live::summary(file);rewind(file);char output[4096]{};
+    const auto count=fread(output,1,sizeof(output)-1,file);C(count>0&&count<sizeof(output)-1);C(fclose(file)==0);
+    C(strstr(output,"continuous_hand_personal_loaded=1 ")&&strstr(output,"continuous_hand_personal_estimate=1 "));
+    C(strstr(output,"continuous_hand_personal_scale=")&&strstr(output,"continuous_hand_personal_upper_left_metres=")&&
+        strstr(output,"continuous_hand_personal_lower_right_metres=")&&strstr(output,"continuous_hand_personal_bindings=")&&strstr(output,"continuous_hand_personal_applied="));}
+void personal_cases(char const* mode){
+    if(!strcmp(mode,"personal-configure")){wchar_t folder[MAX_PATH]{},path[MAX_PATH]{};C(GetTempPathW(MAX_PATH,folder)>0);C(GetTempFileNameW(folder,L"hpc",0,path)>0);
+        // Each enabled=false below is a host startup seam, not reconfiguration
+        // of an active production owner or its immutable saved measurement.
+        live::enabled=false;C(WritePrivateProfileStringW(L"ContinuousHandOwner",L"length_mode",L"adaptive",path)!=0);
+        C(live::configure(path,nullptr)&&live::enabled&&live::length_mode==live::LengthMode::adaptive);
+        live::enabled=false;personal_saved::loaded=true;personal_saved::saved={1,1.8,-.2};
+        C(!live::configure(path,nullptr)&&!live::enabled&&live::length_mode==live::LengthMode::adaptive);
+        C(WritePrivateProfileStringW(L"ContinuousHandOwner",L"length_mode",L"preserve",path)!=0);
+        C(live::configure(path,nullptr)&&live::enabled&&live::length_mode==live::LengthMode::preserve);
+        live::enabled=false;personal_saved::saved.armspan_metres=0;C(!live::configure(path,nullptr)&&!live::enabled);
+        personal_saved::loaded=false;C(live::configure(path,nullptr)&&live::enabled&&live::length_mode==live::LengthMode::preserve);
+        C(DeleteFileW(path)!=0);C(live::personal_binding_attempts==0);drained();return;
+    }
+    personal_saved::loaded=true;personal_saved::saved={1,1.8,-.2};live::length_mode=live::LengthMode::preserve;
+    auto expected=expected_personal();std::array<Observed,2> original{};memcpy(original.data(),observed,sizeof observed);
+    if(!strcmp(mode,"personal-calibrated")){
+        for(unsigned i=0;i<3;++i){memcpy(observed,original.data(),sizeof observed);
+            // Different ORIGINAL segment translations, not previous plans.
+            // The absolute personal lengths remain fixed; the input ratios vary.
+            for(unsigned side=0;side<2;++side)for(unsigned j=1;j<3;++j)for(unsigned axis=12;axis<15;++axis)
+                observed[side].limb[j].values[axis]=original[side].limb[0].values[axis]+(original[side].limb[j].values[axis]-original[side].limb[0].values[axis])*(1.0f+.1f*float(i));
+            place_personal_grips(&expected,.5+.15*i);personal_tick();personal_record(live::records[i],expected);
+            C(live::personal_bindings==1&&live::personal_binding_attempts==1);
+            C(live::slot.personal.profile.upper_metres==expected.upper_metres&&live::slot.personal.profile.lower_metres==expected.lower_metres);
+        }
+        C(live::personal_applied==6&&live::personal_apply_failures==0&&live::personal_binding_failures==0);personal_summary();
+    }else if(!strcmp(mode,"personal-cache")){
+        for(unsigned i=0;i<4;++i){if(i==1)personal_saved::saved.armspan_metres=1.9;
+            if(i==2)stereo_units_per_metre=125;if(i==3)++native::asset.number;
+            expected=expected_personal();place_personal_grips(&expected,.65);personal_tick();personal_record(live::records[i],expected);C(live::personal_bindings==i+1);}
+        place_personal_grips(&expected,.75);personal_tick();personal_record(live::records[4],expected);C(live::personal_bindings==4&&live::personal_applied==10);
+        const auto key=live::slot.personal.key;auto changed=key;changed.model.model_to_world_scale=2;C(!live::same_personal_key(key,changed));
+        changed=key;changed.model.geometry_signature[0]^=1;C(!live::same_personal_key(key,changed));changed=key;++changed.native.native_started_qpc;C(!live::same_personal_key(key,changed));
+        changed=key;++changed.estimator_version;C(!live::same_personal_key(key,changed));changed=key;changed.mount_profile[0]^=1;C(!live::same_personal_key(key,changed));
+        C(live::personal_binding_attempts==4&&live::personal_binding_failures==0);personal_summary();
+    }else if(!strcmp(mode,"personal-defaults")){
+        place_personal_grips(&expected,.6);personal_tick();personal_record(live::records[0],expected);C(live::personal_bindings==1&&live::personal_applied==2);
+        personal_saved::loaded=false;live::length_mode=live::LengthMode::adaptive;place_personal_grips(nullptr,1.2);personal_tick();record_checks(live::records[1]);
+        C(!live::slot.personal.attempted&&!live::slot.personal.valid&&live::slot.data.limb.upper_length_scale==1&&live::slot.data.limb.lower_length_scale==1);
+        C(live::slot.data.math_work.limb.upper_length_scale==1&&live::slot.data.math_work.limb.lower_length_scale==1&&live::personal_bindings==1&&live::personal_applied==2);
+        live::length_mode=live::LengthMode::preserve;place_personal_grips(nullptr,.6);personal_tick();record_checks(live::records[2]);
+        C(live::slot.data.limb.upper_length_scale==1&&live::slot.data.limb.lower_length_scale==1&&live::personal_bindings==1);
+    }else if(!strcmp(mode,"personal-reject")){
+        for(unsigned fault=0;fault<9;++fault){memcpy(observed,original.data(),sizeof observed);place_personal_grips(&expected,.6);selected();C(publish());
+            Entry tick=tick_entry(),compose=compose_entry();live::pose_begin(tick);live::pose_begin(compose);C(!live::slot.sticky&&live::slot.personal.valid);
+            const auto cache=live::slot.personal;compute(0,1);C(!live::slot.sticky);auto& target=live::slot.data.hands[0].target;
+            if(fault==0)observed[0].limb[0].values[15]=std::nextafter(1.0f,2.0f);
+            if(fault==1)memcpy(observed[0].limb[1].values+12,observed[0].limb[0].values+12,3*sizeof(float));
+            if(fault==2)observed[0].limb[0].values[12]=std::numeric_limits<float>::quiet_NaN();
+            if(fault==3)target.binding.model_to_world_scale=2;
+            if(fault==4)target.binding.authored_mount.units_per_metre+=1;
+            if(fault==5)live::slot.personal.profile.scale+=.1;
+            if(fault==6)target.binding.model=m::Model::unknown;
+            if(fault>=7){
+                // Existing strict CTW rejection, NOT a new model-scale guard.
+                // Exercise the actual conversion helper and preserve ALL of its
+                // data output, including non-default scale sentinels.
+                gears_hand_core_target::LimbData data{};data.asset=target.binding.asset;data.bone_count=115;data.affected_count=3;
+                data.affected=target.binding.authored_mount.chain;memcpy(data.component,observed[0].limb,sizeof data.component);
+                data.component_to_world=observed[0].component;const float uniform=fault==7?1.1f:1.2f;
+                for(unsigned row=0;row<3;++row)for(unsigned column=0;column<3;++column)data.component_to_world.values[row*4+column]*=uniform;
+                data.upper_length_scale=1.125;data.lower_length_scale=.875;
+                std::array<unsigned char,sizeof(data)> unchanged{};memcpy(unchanged.data(),&data,sizeof data);
+                co::Workspace strict{};C(!co::detail::transform(data.component_to_world,strict));
+                C(live::apply_personal(target,data)==gears_hand_core_target::Status::invalid_matrix);
+                C(!memcmp(unchanged.data(),&data,sizeof data)&&data.upper_length_scale==1.125&&data.lower_length_scale==.875);
+                // The same CTW enters the real owner reader/metadata path;
+                // its earlier strict rejection must also leave plans untouched.
+                memcpy(&model_metadata.component,&data.component_to_world,64);memcpy(mesh_memory.data()+0xa0,&model_metadata.component,64);
+            }
+            auto& plan=live::slot.data.record.plans[0];memset(plan.planned,0x5a,sizeof plan.planned);std::array<co::Matrix64,3> sentinel{};memcpy(sentinel.data(),plan.planned,sizeof plan.planned);
+            compute(0,0);C(live::slot.sticky&&!memcmp(sentinel.data(),plan.planned,sizeof plan.planned));C(!(live::slot.data.record.planned&1));
+            if(fault<7)C(plan.solve==(fault==0||fault==2?gears_hand_core_target::Status::invalid_matrix:fault==1?gears_hand_core_target::Status::degenerate:
+                fault==5?gears_hand_core_target::Status::invalid_policy:gears_hand_core_target::Status::binding_mismatch));
+            else C(live::slot.data.record.failure==live::Failure::metadata);
+            live::pose_end(compose,true);live::pose_end(tick,true);drained();C(!live::records[fault].complete);live::slot.personal=cache;
+            memcpy(&model_metadata.component,&original[0].component,64);memcpy(mesh_memory.data()+0xa0,&model_metadata.component,64);
+        }
+        C(live::personal_bindings==1&&live::personal_apply_failures==9&&live::personal_applied==0);
+        memcpy(observed,original.data(),sizeof observed);personal_saved::saved.armspan_metres=0;selected();C(publish());
+        Entry tick=tick_entry(),compose=compose_entry();live::pose_begin(tick);live::pose_begin(compose);
+        C(live::slot.sticky&&!live::slot.personal.valid&&live::slot.personal.status==personal::Status::invalid_measurement&&live::slot.data.record.planned==0);
+        live::pose_end(compose,true);live::pose_end(tick,true);drained();C(live::personal_binding_failures==1);
+        personal_saved::saved={1,1.8,-.2};place_personal_grips(&expected,.65);personal_tick();personal_record(live::records[10],expected);C(live::personal_bindings==2&&live::personal_applied==2);
+    }else C(false);
+    memcpy(observed,original.data(),sizeof observed);
+}
 int exercise(char const* mode){start();
-    if(!strcmp(mode,"configure")){
+    if(!strncmp(mode,"personal-",9))personal_cases(mode);
+    else if(!strcmp(mode,"configure")){
         wchar_t folder[MAX_PATH]{},path[MAX_PATH]{};C(GetCurrentDirectoryW(MAX_PATH,folder)>0);C(swprintf_s(path,L"%s\\owner-config.ini",folder)>0);
         live::enabled=false;live::requested=false;live::caller_certified=false;
         C(live::preconfigure(path)&&!live::requested&&live::configure(path,nullptr)&&!live::enabled);

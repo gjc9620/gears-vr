@@ -2,6 +2,20 @@
 
 本文件保留武器与掩体两个分支的开发历史，便于共用 Native 手部实现合流。各条记录仍以其原始验证范围为准；私有候选、只读采样或离线检查不代表完整功能、默认构建更新或头显验收。
 
+## 2026-10-25 — 保存臂展接到共用计划，修复重复帧测量重置
+
+原C++ArmspanCalibrator把同sequence重复观察与倒序一起清空并重开计数；游戏帧率高于输入采样率时可能测不完。独立提交cb32e45改为：同key且实际测量字段完全相同的重复样本不推进样本数／时间、不清窗口；倒序或同seq内容改变则清空并返回，失效与T-pose检查仍先执行。字段逐项比，无padding memcmp或整Frame栈副本。严格CL新增1616项及原断言通过；同新测试对冻结旧头在重复进度处失败的反例保留，Python11项亦通过。此修复属于武器分支原有legacy测量路径，掩体无需引入其body-slot模块。
+
+新增共用个人校准数据／参考尺寸／配置模块，把原schema1的两字段从单次启动读取接到连续只读owner。加载不再要求legacy controller observer必须开启，已请求的共用手部模块也能消费；requested预读取仍不启用Hook或授予owner。启动器已有校准文件不改格式，Native不保存文件，legacy/mailbox仅复制该次启动snapshot。真实Windows临时INI的75项检查通过，覆盖空值、部分字段、坏数值、consumer/stereo条件、截断、失败不变及自有文件删除；首次测试错误断言INI flush返回值的失败原件保留，生产reader未因此改动。
+
+从同源已核对canonical115参考父链求8/32肩根间距及两条8→10→11、32→34→35段长，仅乘一次model_scale／units。v1估计s=(保存span−参考肩宽−双mount偏移模之和)／四段原长和，保存四段绝对米长；mount偏移最大向外共线延伸是可能估短的authoring假设，不恢复真实grip朝向、肩宽或人体比例。纯模块175项、带真实RO3参考189项通过，与既有Native pure-buffer FK的最大尺寸差2.5176e−8m。未知模型、坏几何、单位、非有限值、溢出及别名不改输出，不夹比例或修改完整腕定位。
+
+连续owner跨Tick按记录、模型／units／scale、mount／估计版本及实际session／asset／mesh／world generation绑定缓存；每次把保存的绝对段长除以本次原始component→world段长，再传既有接口。目标腕距不进入派生或cache key，有记录时拒绝adaptive；没有记录仍保留原只读诊断默认1。当前实际owner仍只接纳model_scale=1、Marcus115；既有unit CTW和strict／near-rigid输入策略未放宽。CHOWNER1 Header／TickRecord／Plan／Failure定义不变，新诊断仅报告估计、四段目标长度与绑定／应用计数；仍不写Native输出数组或手骨。
+
+完整Native CR1已实际编译链接，DLL64929eeb…974ce，201项已注册相关CTest通过。继承25的cache漏了RO3 matrices/reference，首次未注册owner专门模式；Root在独立CS host build补齐三份fixture并强制核对测试名，再执行额外46项：全部19个连续owner模式、真实参考测试及新增可注册HandGoal用例均通过，未重编或覆盖已成功的Native DLL。新五模式覆盖多目标／原始段长变化下四段长度固定、缓存复用与变化重绑、默认值及错误保持。只新增测试证明实际uniform CTW1.1／1.2按既有strict早拒，没有把Root最初混淆similarity与control::rigid的静态判断误记为生产修复。
+
+证据在忽略的 `analysis/hand-personal-calibration-20261025cq/`、`hand-personal-native-build-20261025cr/` 与 `hand-personal-owner-host-20261025cs/`。主构建／CTest回执40c89597…9cc43，额外46项回执bc8b1045…3c8f0fb；独立接线窄审c558866c…144eba7未发现P1/P2。Root本轮没有启动Game／XR或替换默认二进制，Source1／host值不冒充玩家物理测量；首次HMD校准界面、实际跟手／身体对齐、骨写入、动画交还与头显验收继续推进，完整目标仍active。
+
 ## 2026-10-25 — 共用固定个人段长接口与最新组合完整构建
 
 以独立三文件提交35a4497向共用LimbInput／LimbData增加upper_length_scale与lower_length_scale，默认均1，adapter每次显式传入已有LengthPolicy；control检查finite／positive，无效或数值溢出不改输出。preserve保持本次原始输入段长乘以固定比例，adaptive仍可按原规则伸长／重分配；调用者必须绑定正确模型与保存的校准，并使用原始基线，不能把改过的结果继续当作原长。未从腕距、眼骨或IPD推比例，未改头手／世界单位，也未加入live LocalScale写入。
