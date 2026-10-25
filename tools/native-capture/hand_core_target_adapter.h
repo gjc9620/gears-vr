@@ -52,6 +52,7 @@ struct LimbData {
     std::array<std::uint32_t,3> affected{};
     control::Matrix64 component[3]{},component_to_world{};
     arm::Pole authored{},previous{}; // Caller-supplied world points, unchanged.
+    control::OriginalMatrixPolicy original_matrix_policy{control::OriginalMatrixPolicy::strict_unit};
 };
 struct SingleData {
     hand::ObjectIdentity asset{};
@@ -160,6 +161,9 @@ inline Status solve_limb(Target const& target,LimbData const& data,arm::LengthMo
     for(unsigned i=0;i<3;++i)work.limb.component[i]=data.component[i];
     work.limb.component_to_world=data.component_to_world;work.limb.wrist_world=target.wrist_world;
     work.limb.mode=mode;work.limb.authored=data.authored;work.limb.previous=data.previous;
+    // Every call chooses its own input policy; reusable scratch must never
+    // carry a prior caller's opt-in into a default-strict request.
+    work.limb.original_matrix_policy=data.original_matrix_policy;
     return detail::convert(control::solve(work.limb,work.control_work,output));
 }
 inline Status replace_wrist_rotation(Target const& target,SingleData const& data,Workspace& work,control::Matrix64* output) noexcept {

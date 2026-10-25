@@ -315,10 +315,38 @@ void wrapper_rejection_cases(){
     C(a::replace_wrist_rotation(target,single,work,nullptr)==a::Status::alias);
     target.wrist_world.orientation={0,0,0,0};C(a::replace_wrist_rotation(target,single,work,output)==a::Status::invalid_target);C(unchanged(output,before));
 }
+void original_matrix_policy_cases(){
+    ++groups;
+    using Policy=p::OriginalMatrixPolicy;
+    auto source=host_core();
+    host_grip_for_wrist(source,a::Side::left,world(ro3[0].limb[2],ro3[0].component));
+    const auto target=prepared(source,a::Side::left);auto data=limb_data(target,ro3[0]);a::Workspace work{};
+    for(unsigned i=0;i<3;++i)for(unsigned row=0;row<3;++row)for(unsigned column=0;column<3;++column)
+        data.component[i].values[row*4+column]*=1.00002f;
+    const auto original=saved(data);p::Matrix64 output[3]{};std::memset(output,0x5a,sizeof output);const auto untouched=saved(output);
+    C(data.original_matrix_policy==Policy::strict_unit);
+    work.limb.original_matrix_policy=Policy::bounded_near_rigid;
+    C(a::solve_limb(target,data,a::arm::LengthMode::preserve,work,output)==a::Status::invalid_matrix);
+    C(work.limb.original_matrix_policy==Policy::strict_unit);C(unchanged(output,untouched));C(unchanged(data,original));
+    // This tiny genuine scale lies inside the explicit approximation budget.
+    // Accepting it is intentional and is not proof of native LocalScale=1.
+    auto approximate=data;approximate.original_matrix_policy=Policy::bounded_near_rigid;const auto approximate_before=saved(approximate);
+    C(a::solve_limb(target,approximate,a::arm::LengthMode::preserve,work,output)==a::Status::okay);
+    C(work.limb.original_matrix_policy==Policy::bounded_near_rigid);C(unchanged(approximate,approximate_before));
+    for(auto const& matrix:output)C(p::detail::rigid(p::detail::unpack(matrix)));
+    std::memset(output,0x5a,sizeof output);
+    C(a::solve_limb(target,data,a::arm::LengthMode::preserve,work,output)==a::Status::invalid_matrix);
+    C(work.limb.original_matrix_policy==Policy::strict_unit);C(unchanged(output,untouched));
+    auto bad=approximate;bad.original_matrix_policy=static_cast<Policy>(99);
+    C(a::solve_limb(target,bad,a::arm::LengthMode::preserve,work,output)==a::Status::invalid_policy);C(unchanged(output,untouched));
+    bad=approximate;for(unsigned row=0;row<3;++row)for(unsigned column=0;column<3;++column)
+        bad.component_to_world.values[row*4+column]*=1.00002f;
+    C(a::solve_limb(target,bad,a::arm::LengthMode::preserve,work,output)==a::Status::invalid_matrix);C(unchanged(output,untouched));
+}
 } // namespace
 int main(int argc,char** argv){
     if(argc!=2||!read_ro3(argv[1])){std::fprintf(stderr,"Expected pinned RO3 matrix fixture HCTRO3V1\n");return 2;}
-    prepare_cases();age_tracking_cases();binding_cases();units_source_cases();limb_single_cases();single_tail_cases();wrapper_rejection_cases();
+    prepare_cases();age_tracking_cases();binding_cases();units_source_cases();limb_single_cases();single_tail_cases();wrapper_rejection_cases();original_matrix_policy_cases();
     std::printf("hand_core_target_adapter: %u groups, %u checks, %u failures; max_position=%.17g max_basis_rotation=%.17g; HOST Core/binding + observed RO3 matrices, CPU math only\n",
         groups,checks,failures,worst_position,worst_rotation);return failures?1:0;
 }
