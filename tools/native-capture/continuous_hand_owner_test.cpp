@@ -162,6 +162,18 @@ int exercise(char const* mode){start();
         C(live::slot.control_depth==1&&live::slot.control_address==&control);
         live::control_end(control,true);C(live::slot.control_depth==0&&!live::slot.control_address&&live::slot.active);
         live::pose_end(compose,true);live::pose_end(tick,true);drained();C(live::completed==0&&live::record_count==1);
+    }else if(!strncmp(mode,"typed-age",9)){
+        Entry tick=tick_entry();live::pose_begin(tick);C(tick.selected&&!live::slot.sticky);
+        rig::TickFailure why=rig::TickFailure::hard;C(live::same_source(&why)&&why==rig::TickFailure::none);
+        const auto source=live::slot.data.record.source;fake_clock=source.stereo.received_ns+50000001;
+        if(!strcmp(mode,"typed-age-owner"))bad_owner=true;
+        if(!strcmp(mode,"typed-age-cohort"))++live::slot.data.record.source.controllers.sequence;
+        const bool hard=strcmp(mode,"typed-age")!=0;
+        C(!live::same_source(&why)&&why==(hard?rig::TickFailure::hard:rig::TickFailure::source_age_only));
+        if(!hard)C(!memcmp(&live::slot.verify,&source,sizeof(source)));
+        else C(live::slot.verify.status==api::Status::unavailable&&!live::slot.verify.publication_sequence);
+        C(!live::same_source(&why)&&why==rig::TickFailure::hard);
+        live::pose_end(tick,true);drained();C(live::completed==0);
     }else if(!strcmp(mode,"continuous")){
         for(unsigned i=0;i<40;++i){selected();C(publish());Entry tick=tick_entry(),compose=compose_entry();live::pose_begin(tick);
             gears_world::EpochGate::CloseToken token{};C(!test_world_gate.try_close(token));const auto source=live::slot.data.record.source;

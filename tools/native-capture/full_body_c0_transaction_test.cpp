@@ -32,14 +32,14 @@ __declspec(noinline) tx::Cas actual_cas(std::uintptr_t address,tx::Block const& 
     __try{return _InterlockedCompareExchange128(reinterpret_cast<volatile __int64*>(address),__int64(after.high),__int64(after.low),comparand)?tx::Cas::exchanged:tx::Cas::mismatch;}
     __except(EXCEPTION_EXECUTE_HANDLER){return tx::Cas::fault_unknown;}
 }
-enum class Inject {none,mismatch,fault_before,fault_after,real_access_fault};
+enum class Inject {none,mismatch,fault_before,fault_after,real_access_fault,source_age};
 struct Host final:tx::Backend {
     body::Frame const& source;body::Output const& planned;
     body::Atom* memory{};tx::Stamp current{};tx::Desired desired{};
     tx::Stage stage{};unsigned index{},forward{},backward{},cas_calls{},guard_calls{};
-    int fail_forward{-1},fail_backward{-1},metadata_at{-1},stop_after{-1};
+    int fail_forward{-1},fail_backward{-1},metadata_at{-1},stop_after{-1},age_validate_at{-1};
     Inject forward_fault{Inject::none},backward_fault{Inject::none};
-    tx::Kernel* stop_kernel{};bool deny{};
+    tx::Kernel* stop_kernel{};bool deny{},deny_rollback{},deny_end{};unsigned actual_calls{};
     std::vector<unsigned> forward_bits,rollback_bits;tx::FreshEvidence produced{};bool have_receipt{};
     Host(body::Frame const& f,body::Output const& p):source(f),planned(p){
         memory=static_cast<body::Atom*>(VirtualAlloc(nullptr,4096,MEM_COMMIT|MEM_RESERVE,PAGE_READWRITE));if(!memory)std::terminate();
@@ -52,7 +52,7 @@ struct Host final:tx::Backend {
     tx::Verdict validate(tx::View const& v,tx::Stage s,unsigned i) noexcept override {
         stage=s;index=i;++guard_calls;
         if(s==tx::Stage::commit&&int(i)==metadata_at)++current.binding.metadata_generation;
-        if(deny||!tx::same(v.stamp,current)||v.desired.count!=desired.count||v.desired.indices!=desired.indices)return tx::Verdict::denied;
+        if(deny||(s==tx::Stage::rollback&&deny_rollback)||(s==tx::Stage::scope_end&&deny_end)||!tx::same(v.stamp,current)||v.desired.count!=desired.count||v.desired.indices!=desired.indices)return tx::Verdict::denied;
         if(std::memcmp(v.source.local.data(),source.local.data(),sizeof source.local)||std::memcmp(v.source.reference.data(),source.reference.data(),sizeof source.reference)||
            std::memcmp(v.plan.local.data(),planned.local.data(),sizeof planned.local))return tx::Verdict::denied;
         // Rollback permits unknown data elsewhere but retains exact scope/header
@@ -66,6 +66,7 @@ struct Host final:tx::Backend {
                 unknown=v.units[n].state==tx::UnitState::uncertain||v.units[n].state==tx::UnitState::conflict;break;}
             if(!unknown&&std::memcmp(reinterpret_cast<unsigned char const*>(&memory[bone])+half*16,expected,16))return tx::Verdict::denied;
         }
+        if(s==tx::Stage::commit&&int(i)==age_validate_at)return tx::Verdict::source_age_expired;
         return tx::Verdict::verified;
     }
     tx::Cas exchange(std::uintptr_t address,tx::Block const& before,tx::Block const& after) noexcept override {
@@ -73,9 +74,10 @@ struct Host final:tx::Backend {
         if(stage==tx::Stage::rollback){rollback_bits.push_back(bit);if(int(backward)==fail_backward)injection=backward_fault;++backward;}
         else{forward_bits.push_back(bit);if(int(forward)==fail_forward)injection=forward_fault;++forward;}
         if(injection==Inject::mismatch){tx::Block foreign=before;foreign.low^=0x55aa55aa55aa55aaULL;C(actual_cas(address,before,foreign)==tx::Cas::exchanged);}
+        if(injection==Inject::source_age)return tx::Cas::source_age_no_write;
         if(injection==Inject::fault_before)return tx::Cas::fault_unknown;
         if(injection==Inject::real_access_fault){DWORD prior{},ignored{};C(VirtualProtect(memory,4096,PAGE_NOACCESS,&prior)!=FALSE);auto r=actual_cas(address,before,after);C(VirtualProtect(memory,4096,prior,&ignored)!=FALSE);C(r==tx::Cas::fault_unknown);return r;}
-        const auto answer=actual_cas(address,before,after);
+        ++actual_calls;const auto answer=actual_cas(address,before,after);
         if(stage==tx::Stage::commit&&int(forward-1)==stop_after&&stop_kernel)stop_kernel->request_stop();
         return injection==Inject::fault_after?tx::Cas::fault_unknown:answer;
     }
@@ -111,11 +113,46 @@ int main(int argc,char** argv){
     for(unsigned n=0;n<count;++n)for(auto injection:{Inject::mismatch,Inject::fault_before,Inject::fault_after}){
         Host h(*f,plan);tx::Kernel k;tx::Lease l;h.fail_forward=int(n);h.forward_fault=injection;
         C(k.prepare(h,h.current,*f,plan,h.desired,l).code==tx::Code::prepared);auto r=k.commit(h,l,h.current);C(r.code==(injection==Inject::mismatch?tx::Code::compare_mismatch:tx::Code::cas_fault));
+        C(k.failure()==tx::Failure::hard&&!k.settled_source_age());
         reverse_is(h.rollback_bits,bits,injection==Inject::mismatch?n:n+1);
         C(k.outstanding_fields()==unsigned(injection==Inject::fault_before));
         for(unsigned bit=0;bit<230;++bit){const bool equal=std::memcmp(reinterpret_cast<unsigned char const*>(h.memory)+bit*16,reinterpret_cast<unsigned char const*>(f->local.data())+bit*16,16)==0;C(equal==(injection!=Inject::mismatch||bit!=bits[n]));}
         k.finish(h,l,h.current,tx::End::before_consumer);C(k.pending()==unsigned(injection==Inject::fault_before));
         if(injection==Inject::fault_before){C(h.original());C(k.retire_fresh(h,{999999}).code==tx::Code::bad_receipt);C(k.pending()==1);auto receipt=h.producer(whole());C(k.retire_fresh(h,receipt).code==tx::Code::fresh_retired);C(!k.pending());}
+    }
+    // Deadline rejection is recoverable only once the exact scope is closed
+    // and all prior writes have actually been restored. The failing unit is
+    // known unwritten only for the dedicated no-CAS exchange result.
+    for(unsigned at:{0u,3u})for(bool exchange:{false,true}){
+        Host h(*f,plan);tx::Kernel k(70);tx::Lease l;
+        if(exchange){h.fail_forward=int(at);h.forward_fault=Inject::source_age;}else h.age_validate_at=int(at);
+        C(k.serial()==70);C(k.prepare(h,h.current,*f,plan,h.desired,l).code==tx::Code::prepared);C(k.serial()==71);
+        const auto r=k.commit(h,l,h.current);C(r.code==tx::Code::guard_rejected&&r.unit==at);
+        C(k.failure()==tx::Failure::source_age_only&&k.failed()&&k.stopping());
+        C(!k.settled_source_age()&&k.outstanding_fields()==0&&k.pending()==1&&h.original());
+        C(h.forward==at+unsigned(exchange)&&h.actual_calls==at*2);reverse_is(h.rollback_bits,bits,at);
+        C(k.finish(h,l,h.current,at?tx::End::original_returned:tx::End::before_consumer).code==tx::Code::scope_closed);
+        C(k.pending()==0&&k.settled_source_age()&&k.failure()==tx::Failure::source_age_only&&h.original());
+        tx::Lease fresh;C(k.prepare(h,h.current,*f,plan,h.desired,fresh).code==tx::Code::stopped);
+        k.request_stop();C(k.failure()==tx::Failure::hard&&!k.settled_source_age());
+    }
+    // A source deadline cannot excuse later hard refusal, CAS uncertainty,
+    // wrong scope, an explicit stop, or an original-consumer exception.
+    for(unsigned hard=0;hard<7;++hard){
+        Host h(*f,plan);tx::Kernel k;tx::Lease l;h.fail_forward=3;h.forward_fault=Inject::source_age;
+        if(hard==0)h.deny_rollback=true;
+        if(hard==1){h.fail_backward=0;h.backward_fault=Inject::mismatch;}
+        if(hard==2){h.fail_backward=0;h.backward_fault=Inject::fault_before;}
+        C(k.prepare(h,h.current,*f,plan,h.desired,l).code==tx::Code::prepared);
+        C(k.commit(h,l,h.current).code==tx::Code::guard_rejected);C(!k.settled_source_age());
+        if(hard<3){C(k.failure()==tx::Failure::hard&&k.outstanding_fields()>0);}
+        else C(k.failure()==tx::Failure::source_age_only&&h.original());
+        auto key=h.current;auto ending=tx::End::before_consumer;
+        if(hard==3)h.deny_end=true;
+        if(hard==4)k.request_stop();
+        if(hard==5)++key.scope;
+        if(hard==6)ending=tx::End::original_threw;
+        k.finish(h,l,key,ending);C(k.failure()==tx::Failure::hard&&!k.settled_source_age());
     }
     std::printf("forward every-unit mismatch/fault-before/fault-after: %u units\n",count);
     for(unsigned n=0;n<count;++n)for(auto injection:{Inject::mismatch,Inject::fault_before,Inject::fault_after}){

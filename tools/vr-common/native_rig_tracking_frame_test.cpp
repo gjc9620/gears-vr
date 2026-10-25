@@ -202,6 +202,16 @@ int main(){
         }
 #undef ZERO
     });
+    run("non-age-shape-retains-payload-and-future-clock-guards",[]{
+        const auto c=core(frame());const auto before=bytes(c);
+        CHECK(nr::core_snapshot_non_age_valid(c,now,age));
+        CHECK(nr::core_snapshot_non_age_valid(c,now+200000000,50000000));
+        CHECK(!nr::core_snapshot_valid(c,now+200000000,50000000));
+        auto bad=c;bad.pawn.known=0;CHECK(!nr::core_snapshot_non_age_valid(bad,now+200000000,50000000));
+        bad=c;++bad.controllers.sequence;CHECK(!nr::core_snapshot_non_age_valid(bad,now+200000000,50000000));
+        CHECK(!nr::core_snapshot_non_age_valid(c,0,age));CHECK(!nr::core_snapshot_non_age_valid(c,now-10000000,age));
+        CHECK(!nr::core_snapshot_non_age_valid(c,now,0));CHECK(!nr::core_snapshot_non_age_valid(c,now,age+1));CHECK(bytes(c)==before);
+    });
     run("original-age-boundaries-source-profiles-and-head-only-semantics",[]{
         const auto f=frame();const auto c=core(f);
         for(auto delta:{std::int64_t(-1),std::int64_t(0),std::int64_t(96000000),std::int64_t(97000000),std::int64_t(98000000),std::int64_t(100000000)})

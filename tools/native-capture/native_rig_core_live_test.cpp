@@ -107,9 +107,26 @@ void invalidation_case(char const* mode){
 }
 void age_case(){
     start_case();auto r=request();const auto first=get(r);
-    controlled_clock=first.stereo.received_ns+50000001;rejected(r,first);
-    r.maximum_source_age_ns=100000000;C(same_bytes(get(r),first));
-    controlled_clock=first.stereo.received_ns+100000001;rejected(r,first);cleanup();
+    rig::TickFailure why=rig::TickFailure::hard;
+    const rig::TickKey key{r,7101};rig::TickLatch latch;Core out{};
+    C(rig::begin_tick(key,latch));
+    C(rig::read_tick(key,latch,out,&why)&&why==rig::TickFailure::none&&same_bytes(out,first));
+    controlled_clock=first.stereo.received_ns+50000001;
+    C(!rig::read_tick(key,latch,out,&why)&&why==rig::TickFailure::source_age_only&&same_bytes(out,first));
+    out=first;C(!rig::read_tick(key,latch,out,&why)&&why==rig::TickFailure::hard&&empty(out));C(rig::end_tick(key,latch));
+    rejected(r,first);r.maximum_source_age_ns=100000000;C(same_bytes(get(r),first));
+    controlled_clock=first.stereo.received_ns+100000001;rejected(r,first);
+    // Legacy bool still clears output. A stale source never becomes writable.
+    controlled_clock=fake_clock;rig::TickLatch legacy;C(rig::begin_tick(key,legacy));
+    controlled_clock=first.stereo.received_ns+50000001;out=first;
+    C(!rig::read_tick(key,legacy,out)&&empty(out));C(rig::end_tick(key,legacy));
+    controlled_clock=fake_clock;rig::TickLatch identity;C(rig::begin_tick(key,identity));
+    controlled_clock=first.stereo.received_ns+50000001;auto wrong=key;++wrong.request.pawn.name_number;out=first;
+    C(!rig::read_tick(wrong,identity,out,&why)&&why==rig::TickFailure::hard&&empty(out));C(rig::end_tick(key,identity));
+    controlled_clock=fake_clock;rig::TickLatch reference;C(rig::begin_tick(key,reference));
+    controlled_clock=first.stereo.received_ns+50000001;rig::reference_changed({2,false,true,false});out=first;
+    C(!rig::read_tick(key,reference,out,&why)&&why==rig::TickFailure::hard&&empty(out));C(rig::end_tick(key,reference));
+    cleanup();
 }
 void tick_case(char const* mode){
     static_assert(!std::is_copy_constructible_v<rig::TickLatch>&&!std::is_copy_assignable_v<rig::TickLatch>);

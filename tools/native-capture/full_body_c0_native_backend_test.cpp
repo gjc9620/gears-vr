@@ -19,7 +19,17 @@ struct Page {unsigned char* data;size_t size;
     ~Page(){VirtualFree(data,0,MEM_RELEASE);}uintptr_t address()const{return reinterpret_cast<uintptr_t>(data);}
     template<class T>void put(size_t offset,T const& v){std::memcpy(data+offset,&v,sizeof v);}
 };
-struct HostContext final:n::Context {bool allowed{true};unsigned calls{};bool current(tx::Stage)noexcept override{++calls;return allowed;}};
+struct HostContext final:n::Context {
+    bool allowed{true};unsigned calls{},commit_calls{};int expire_commit_call{-1};
+    tx::Verdict last{tx::Verdict::denied};
+    bool current(tx::Stage stage)noexcept override{
+        ++calls;last=tx::Verdict::denied;
+        if(!allowed)return false;
+        if(stage==tx::Stage::commit&&int(++commit_calls)==expire_commit_call){last=tx::Verdict::source_age_expired;return false;}
+        return true;
+    }
+    tx::Verdict rejection()const noexcept override{return last;}
+};
 struct Fixture {
     Page mesh{4096},asset{4096},local{4096},reference{8192},desired{4096},space{8192};
     HostContext context{};n::Backend backend{};body::Frame captured{};tx::Desired desired_copy{};tx::Stamp seed{};p::OwnerKey owner{};
@@ -49,7 +59,55 @@ int main(int argc,char**argv){if(argc!=2)return 2;std::string directory=argv[1];
         C(!std::memcmp(f.local.data,output.local.data(),sizeof output.local));C(k.rollback(f.backend,lease,key).code==tx::Code::rolled_back);
         C(!std::memcmp(f.local.data,frame->local.data(),sizeof frame->local));C(k.finish(f.backend,lease,key,tx::End::before_consumer).pending==0);
         C(!std::memcmp(f.mesh.data,mesh_before.data(),4096)&&!std::memcmp(f.asset.data,asset_before.data(),4096)&&!std::memcmp(f.reference.data,frame->reference.data(),sizeof frame->reference));
-        for(size_t i=0;i<f.space.size;++i)if(f.space.data[i]!=0x5a){C(false);break;}C(f.context.calls>units*3);}
+        for(size_t i=0;i<f.space.size;++i)if(f.space.data[i]!=0x5a){C(false);break;}C(f.context.calls==units*4+4&&f.context.commit_calls==units*2);}
+    // Complete Context validation is called once at the end of validate,
+    // followed once at exchange. Expiry at either boundary must never mark
+    // the failing unit uncertain or leave any bytes from prior units installed.
+    for(unsigned at:{0u,3u})for(bool exchange:{false,true}){
+        Fixture f(*frame);tx::Kernel k;tx::Lease lease;C(f.capture());const auto key=f.backend.stamp();
+        C(k.prepare(f.backend,key,f.captured,output,f.desired_copy,lease).code==tx::Code::prepared);
+        f.context.expire_commit_call=int(at*2+(exchange?2:1));
+        const auto r=k.commit(f.backend,lease,key);C(r.code==tx::Code::guard_rejected&&r.unit==at);
+        C(f.context.commit_calls==unsigned(f.context.expire_commit_call));
+        C(k.failure()==tx::Failure::source_age_only&&k.outstanding_fields()==0&&k.pending()==1&&!k.settled_source_age());
+        C(!std::memcmp(f.local.data,frame->local.data(),sizeof frame->local));
+        C(k.finish(f.backend,lease,key,tx::End::before_consumer).code==tx::Code::scope_closed);
+        C(k.pending()==0&&k.settled_source_age());
+    }
+    // A hard non-age readback failure must win without consuming or consulting
+    // the Context's stale-source reason. All memory remains unchanged.
+    {Fixture f(*frame);C(f.capture());tx::Unit u{};u.bone=0;std::memcpy(&u.before,frame->local.data(),16);std::memcpy(&u.ours,output.local.data(),16);
+        tx::View view{f.backend.stamp(),f.captured,output,f.desired_copy,&u,1};
+        f.context.expire_commit_call=1;f.reference.data[1]^=1;const auto calls=f.context.calls;
+        C(f.backend.validate(view,tx::Stage::commit,0)==tx::Verdict::denied&&f.context.calls==calls);
+        C(!std::memcmp(f.local.data,frame->local.data(),sizeof frame->local));}
+    // An out-of-range commit unit is a hard permit-shape rejection even if
+    // Context would report expiry. It must not consume the Context boundary.
+    {Fixture f(*frame);C(f.capture());tx::Unit u{};u.bone=0;std::memcpy(&u.before,frame->local.data(),16);std::memcpy(&u.ours,output.local.data(),16);
+        tx::View view{f.backend.stamp(),f.captured,output,f.desired_copy,&u,1};f.context.expire_commit_call=1;const auto calls=f.context.calls;
+        C(f.backend.validate(view,tx::Stage::commit,1)==tx::Verdict::denied&&f.context.calls==calls);
+        C(!std::memcmp(f.local.data,frame->local.data(),sizeof frame->local));}
+    // Only an exact armed permit can prove no-CAS expiry. Wrong address,
+    // comparison, replacement, reused permit, and stop remain unknown.
+    for(unsigned wrong=0;wrong<5;++wrong){Fixture f(*frame);C(f.capture());tx::Unit u{};u.bone=0;std::memcpy(&u.before,frame->local.data(),16);std::memcpy(&u.ours,output.local.data(),16);
+        tx::View view{f.backend.stamp(),f.captured,output,f.desired_copy,&u,1};const auto prior=f.context.calls;
+        C(f.backend.validate(view,tx::Stage::commit,0)==tx::Verdict::verified&&f.context.calls==prior+1);
+        f.context.expire_commit_call=int(f.context.commit_calls+1);auto expected=u.before,replacement=u.ours;auto address=f.local.address();
+        if(wrong==0)address=f.reference.address();if(wrong==1)expected.low^=1;if(wrong==2)replacement.high^=1;
+        if(wrong==3)f.backend.invalidate();if(wrong==4)f.backend.request_stop();const auto calls=f.context.calls;
+        C(f.backend.exchange(address,expected,replacement)==tx::Cas::fault_unknown&&f.context.calls==calls);
+        C(!std::memcmp(f.local.data,frame->local.data(),sizeof frame->local));
+        C(f.backend.exchange(f.local.address(),u.before,u.ours)==tx::Cas::fault_unknown);}
+    {Fixture f(*frame);C(f.capture());tx::Unit u{};u.bone=0;std::memcpy(&u.before,frame->local.data(),16);std::memcpy(&u.ours,output.local.data(),16);
+        tx::View view{f.backend.stamp(),f.captured,output,f.desired_copy,&u,1};C(f.backend.validate(view,tx::Stage::commit,0)==tx::Verdict::verified);
+        f.context.expire_commit_call=int(f.context.commit_calls+1);const auto calls=f.context.calls;
+        // If atomic_exchange were reached this inaccessible page would return
+        // fault_unknown. source_age_no_write is therefore direct no-CAS proof.
+        DWORD protection{},ignored{};C(VirtualProtect(f.local.data,4096,PAGE_NOACCESS,&protection)!=FALSE);
+        C(f.backend.exchange(f.local.address(),u.before,u.ours)==tx::Cas::source_age_no_write&&f.context.calls==calls+1);
+        C(VirtualProtect(f.local.data,4096,protection,&ignored)!=FALSE);
+        C(!std::memcmp(f.local.data,frame->local.data(),sizeof frame->local));
+        C(f.backend.exchange(f.local.address(),u.before,u.ours)==tx::Cas::fault_unknown);}
     for(unsigned bad=0;bad<6;++bad){Fixture f(*frame);tx::Kernel k;tx::Lease l;C(f.capture());const auto key=f.backend.stamp();
         if(bad==0)f.atoms()[114].translation[0]+=.25f;if(bad==1)f.reference.data[1]^=1;if(bad==2)std::swap(f.desired.data[0],f.desired.data[1]);
         if(bad==3)f.mesh.put(0x27c,p::ArrayHeader{f.local.address(),114,115});if(bad==4)f.mesh.put(0xa0,body::Matrix64{});if(bad==5)f.context.allowed=false;

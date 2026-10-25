@@ -30,9 +30,10 @@ enum class UnitState:unsigned char {unwritten,applied,uncertain,conflict,restore
 struct Unit {std::uint16_t bone{};unsigned char half{};UnitState state{};unsigned char reserved[12]{};Block before{},ours{};};
 static_assert(sizeof(Unit)==48&&offsetof(Unit,before)==16&&offsetof(Unit,ours)==32);
 enum class Stage {prepare,commit,rollback,consumer_entry,scope_end};
-enum class Verdict {verified,denied,fault};
-enum class Cas {exchanged,mismatch,fault_unknown};
+enum class Verdict {verified,denied,fault,source_age_expired};
+enum class Cas {exchanged,mismatch,fault_unknown,source_age_no_write};
 enum class End {before_consumer,original_returned,original_threw};
+enum class Failure {none,source_age_only,hard};
 enum class Code {prepared,committed,rolled_back,consumer_marked,scope_closed,fresh_retired,
     invalid_plan,unavailable,busy,wrong_lease,wrong_thread,stopped,guard_rejected,
     compare_mismatch,cas_fault,rollback_pending,already_consumed,bad_receipt};
@@ -84,11 +85,15 @@ class Kernel {
     std::atomic<std::uint64_t> thread_{};
     std::atomic<unsigned> outstanding_{},active_{},protocol_{};
     std::atomic<bool> stopping_{},failed_{},consumed_{},original_exception_{};
-    bool commit_finished_{};
+    std::atomic<Failure> failure_{};
+    End ending_{};bool ended_{},commit_finished_{};
     View view() const noexcept{return {stamp_,source_,plan_,desired_,units_.data(),count_};}
     static bool owes(UnitState s) noexcept {return s==UnitState::applied||s==UnitState::uncertain||s==UnitState::conflict;}
     void sync() noexcept {unsigned n{};for(unsigned i=0;i<count_;++i)n+=unsigned(owes(units_[i].state));outstanding_=n;}
-    void debt() noexcept {failed_=true;stopping_=true;unsigned x=protocol_.load();while(x!=UINT_MAX&&!protocol_.compare_exchange_weak(x,x+1)){};}
+    void fail(Failure why) noexcept {failed_=true;stopping_=true;
+        if(why==Failure::hard)failure_=why;
+        else {auto expected=Failure::none;failure_.compare_exchange_strong(expected,why);}}
+    void debt() noexcept {fail(Failure::hard);unsigned x=protocol_.load();while(x!=UINT_MAX&&!protocol_.compare_exchange_weak(x,x+1)){};}
     Result result(Code code,unsigned unit=0) const noexcept{return {code,unit,pending()};}
     Code exact(Backend& b,Lease const& l,Stamp const& actual) noexcept {
         const auto t=b.thread_token();
@@ -142,22 +147,28 @@ class Kernel {
     Result rollback_impl() noexcept {
         if(consumed_.load())return result(Code::already_consumed);
         for(unsigned i=count_;i>0;--i){auto& u=units_[i-1];if(!owes(u.state))continue;
-            if(backend_->validate(view(),Stage::rollback,i-1)!=Verdict::verified){failed_=true;stopping_=true;sync();return result(Code::rollback_pending,i-1);}
+            if(backend_->validate(view(),Stage::rollback,i-1)!=Verdict::verified){fail(Failure::hard);sync();return result(Code::rollback_pending,i-1);}
             const auto c=backend_->exchange(stamp_.binding.local+std::uintptr_t(u.bone)*32+u.half*16,u.ours,u.before);
+            if(c!=Cas::exchanged)fail(Failure::hard);
             u.state=c==Cas::exchanged?UnitState::restored:c==Cas::mismatch?UnitState::conflict:UnitState::uncertain;sync();
         }
         return result(outstanding_.load()?Code::rollback_pending:Code::rolled_back);
     }
 public:
-    Kernel()=default;Kernel(Kernel const&)=delete;Kernel& operator=(Kernel const&)=delete;
+    explicit Kernel(std::uint64_t serial=0) noexcept:serial_(serial){};Kernel(Kernel const&)=delete;Kernel& operator=(Kernel const&)=delete;
     Kernel(Kernel&&)=delete;Kernel& operator=(Kernel&&)=delete;
     unsigned pending() const noexcept {const auto n=std::uint64_t(outstanding_.load())+active_.load()+protocol_.load();return n>UINT_MAX?UINT_MAX:unsigned(n);}
     unsigned outstanding_fields() const noexcept{return outstanding_.load();}
     unsigned protocol_debt() const noexcept{return protocol_.load();}
     bool failed() const noexcept{return failed_.load();}
+    bool stopping() const noexcept{return stopping_.load();} // read-only first-failure diagnostics
     bool consumed() const noexcept{return consumed_.load();}
     bool original_exception() const noexcept{return original_exception_.load();}
-    void request_stop() noexcept {stopping_=true;} // never clears obligations
+    Failure failure() const noexcept{return failure_.load();}
+    std::uint64_t serial() const noexcept{return serial_;}
+    bool settled_source_age() const noexcept {return failure_.load()==Failure::source_age_only&&failed_.load()&&stopping_.load()&&
+        ended_&&ending_!=End::original_threw&&!original_exception_.load()&&!pending();}
+    void request_stop() noexcept {fail(Failure::hard);} // never clears obligations
     Result prepare(Backend& b,Stamp const& stamp,body::Frame const& source,body::Output const& plan,Desired const& desired,Lease& lease) noexcept {
         const auto t=b.thread_token();if(!t)return result(Code::unavailable);
         auto previous=thread_.load();if(!previous){thread_.compare_exchange_strong(previous,t);previous=thread_.load();}
@@ -166,7 +177,7 @@ public:
         if(stopping_.load())return result(Code::stopped);
         const body::d::Range ranges[]={body::d::range(this,sizeof *this),body::d::range(&source,sizeof source),body::d::range(&plan,sizeof plan),body::d::range(&stamp,sizeof stamp),body::d::range(&desired,sizeof desired),body::d::range(&lease,sizeof lease),{stamp.binding.local,body::bones*sizeof(body::Atom)}};
         if(!body::d::disjoint(ranges,7)||lease.kernel_||lease.closed_||lease.self_!=reinterpret_cast<std::uintptr_t>(&lease)||!shape(stamp,source,plan,desired))return result(Code::invalid_plan);
-        stamp_=stamp;source_=source;plan_=plan;desired_=desired;count_=0;units_={};consumed_=false;commit_finished_=false;
+        stamp_=stamp;source_=source;plan_=plan;desired_=desired;count_=0;units_={};consumed_=false;commit_finished_=false;ended_=false;
         for(unsigned bone=0;bone<body::bones;++bone)for(unsigned half=0;half<2;++half){
             const auto* before=reinterpret_cast<unsigned char const*>(&source_.local[bone])+half*16;const auto* after=reinterpret_cast<unsigned char const*>(&plan_.local[bone])+half*16;
             if(!std::memcmp(before,after,16))continue;
@@ -182,11 +193,16 @@ public:
         if(consumed_.load())return result(Code::already_consumed);
         if(commit_finished_){debt();return result(Code::wrong_lease);}
         for(unsigned i=0;i<count_;++i){
-            if(stopping_.load()||b.validate(view(),Stage::commit,i)!=Verdict::verified){failed_=true;stopping_=true;rollback_impl();return result(Code::guard_rejected,i);}
+            if(stopping_.load()){fail(Failure::hard);rollback_impl();return result(Code::guard_rejected,i);}
+            const auto verdict=b.validate(view(),Stage::commit,i);
+            if(verdict!=Verdict::verified){fail(verdict==Verdict::source_age_expired?Failure::source_age_only:Failure::hard);
+                rollback_impl();return result(Code::guard_rejected,i);}
             auto& u=units_[i];u.state=UnitState::uncertain;sync(); // BEFORE CAS/fault
             const auto r=b.exchange(stamp_.binding.local+std::uintptr_t(u.bone)*32+u.half*16,u.before,u.ours);
             if(r==Cas::exchanged){u.state=UnitState::applied;sync();continue;}
-            if(r==Cas::mismatch)u.state=UnitState::unwritten;sync();failed_=true;stopping_=true;rollback_impl();
+            if(r==Cas::mismatch||r==Cas::source_age_no_write)u.state=UnitState::unwritten;sync();
+            fail(r==Cas::source_age_no_write?Failure::source_age_only:Failure::hard);rollback_impl();
+            if(r==Cas::source_age_no_write)return result(Code::guard_rejected,i);
             return result(r==Cas::mismatch?Code::compare_mismatch:Code::cas_fault,i);
         }
         commit_finished_=true;return result(Code::committed);
@@ -201,19 +217,19 @@ public:
         const bool already=consumed_.exchange(true); // fail closed BEFORE any rejection
         auto c=exact(b,lease,actual);if(c!=Code::prepared)return result(c);
         if(already){debt();return result(Code::already_consumed);}
-        if(b.validate(view(),Stage::consumer_entry,0)!=Verdict::verified){failed_=true;stopping_=true;return result(Code::guard_rejected);}
+        if(b.validate(view(),Stage::consumer_entry,0)!=Verdict::verified){fail(Failure::hard);return result(Code::guard_rejected);}
         return result(Code::consumer_marked);
     }
     Result finish(Backend& b,Lease& lease,Stamp const& actual,End ending) noexcept {
         // A finally that knows original returned/threw is also an irreversible
         // consumption notification, even if its scope/owner validation fails.
         if(ending!=End::before_consumer)consumed_=true;
+        if(ending==End::original_threw){original_exception_=true;fail(Failure::hard);}
         auto c=exact(b,lease,actual);if(c!=Code::prepared)return result(c);
         if(ending!=End::before_consumer&&ending!=End::original_returned&&ending!=End::original_threw){debt();return result(Code::wrong_lease);}
         if(b.validate(view(),Stage::scope_end,0)!=Verdict::verified){debt();return result(Code::guard_rejected);}
-        if(ending==End::original_threw)original_exception_=true;
         if(!consumed_.load())rollback_impl();
-        lease.closed_=true;lease_=nullptr;active_=0;sync();return result(Code::scope_closed);
+        lease.closed_=true;lease_=nullptr;active_=0;ending_=ending;ended_=true;sync();return result(Code::scope_closed);
     }
     Result retire_fresh(Backend& b,ReceiptRef receipt) noexcept {
         if(!thread_.load()||b.thread_token()!=thread_.load()){debt();return result(Code::wrong_thread);}

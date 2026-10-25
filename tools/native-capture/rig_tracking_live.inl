@@ -141,24 +141,36 @@ bool same_request(CoreReadRequest const& a,CoreReadRequest const& b){return core
     a.maximum_source_age_ns==b.maximum_source_age_ns;}
 // Does not read an actor, bridge, module or current game pose. The version is a
 // private cache revision; unchanged timestamps/Scene/source epochs remain raw.
-bool current_copy(core::CoreSnapshot const& copy,uint64_t revision,uint64_t age){
+enum class TickFailure {none,source_age_only,hard};
+// A classified failure is observed at these same guards, never inferred later.
+bool current_copy(core::CoreSnapshot const& copy,uint64_t revision,uint64_t age,TickFailure* failure=nullptr){
+    if(failure)*failure=TickFailure::hard;
     const auto stamp=clock_ns();const auto session=rt::session();auto* broker=rt::current();
     api::NativeReference reference{};uint64_t reference_stamp{};
     if(!enabled||stopped.load()||!recording.load()||!native_session_current(broker,session)||
        copy.native.game_pid!=session.game_pid||copy.native.game_start!=session.game_start||copy.native.native_started_qpc!=session.native_started_qpc||
        committed_world_generation.load()!=copy.world_generation||!reference_snapshot(reference,reference_stamp)||reference_stamp!=copy.native_reference_revision||
        reference.epoch!=copy.native_reference.epoch||reference.flags!=copy.native_reference.flags||!shared::tracking_ticket_current(copy.source_ticket)||
-       !core::core_snapshot_valid(copy,stamp,age,simulator_operator)||!scene_fresh(copy.scene_qpc,copy.qpc_frequency,stamp,age)||
-       ((copy.flags&api::controllers_matched)&&!source_fresh(copy.controllers.received_ns,stamp,age)))return false;
+       !core::core_snapshot_non_age_valid(copy,stamp,age,simulator_operator)||!scene_fresh(copy.scene_qpc,copy.qpc_frequency,stamp,UINT64_MAX)||
+       ((copy.flags&api::controllers_matched)&&!source_fresh(copy.controllers.received_ns,stamp,UINT64_MAX)))return false;
+    const bool first_fresh=core::core_snapshot_valid(copy,stamp,age,simulator_operator)&&
+        scene_fresh(copy.scene_qpc,copy.qpc_frequency,stamp,age)&&
+        (!(copy.flags&api::controllers_matched)||source_fresh(copy.controllers.received_ns,stamp,age));
     std::lock_guard<std::mutex> lock(mutex);
     const auto final_stamp=clock_ns();
-    return !stopped.load()&&recording.load()&&native_session_current(broker,session)&&committed_world_generation.load()==copy.world_generation&&
+    const bool hard_valid=!stopped.load()&&recording.load()&&native_session_current(broker,session)&&committed_world_generation.load()==copy.world_generation&&
         revision==value_version&&value.status==api::Status::ready&&value.publication_sequence==copy.publication_sequence&&source_ticket==copy.source_ticket&&
         value_reference_revision==copy.native_reference_revision&&shared::tracking_ticket_current(copy.source_ticket)&&
         reference_snapshot(reference,reference_stamp)&&reference_stamp==copy.native_reference_revision&&
         reference.epoch==copy.native_reference.epoch&&reference.flags==copy.native_reference.flags&&
-        core::core_snapshot_valid(copy,final_stamp,age,simulator_operator)&&scene_fresh(copy.scene_qpc,copy.qpc_frequency,final_stamp,age)&&
+        core::core_snapshot_non_age_valid(copy,final_stamp,age,simulator_operator)&&scene_fresh(copy.scene_qpc,copy.qpc_frequency,final_stamp,UINT64_MAX)&&
+        (!(copy.flags&api::controllers_matched)||source_fresh(copy.controllers.received_ns,final_stamp,UINT64_MAX));
+    if(!hard_valid)return false;
+    const bool fresh=first_fresh&&core::core_snapshot_valid(copy,final_stamp,age,simulator_operator)&&
+        scene_fresh(copy.scene_qpc,copy.qpc_frequency,final_stamp,age)&&
         (!(copy.flags&api::controllers_matched)||source_fresh(copy.controllers.received_ns,final_stamp,age));
+    if(failure)*failure=fresh?TickFailure::none:TickFailure::source_age_only;
+    return fresh;
 }
 bool read_core_revision(CoreReadRequest const& request,core::CoreSnapshot& output,uint64_t& revision) noexcept {
     rt::detail::Call call;output={};revision=0;
@@ -197,7 +209,7 @@ struct TickKey {CoreReadRequest request{};uint64_t outer_tick{};};
 class TickLatch {
     TickKey key_{};core::CoreSnapshot frame_{};uint64_t revision_{};bool active_{},valid_{};
     friend bool begin_tick(TickKey const&,TickLatch&) noexcept;
-    friend bool read_tick(TickKey const&,TickLatch&,core::CoreSnapshot&) noexcept;
+    friend bool read_tick(TickKey const&,TickLatch&,core::CoreSnapshot&,TickFailure*) noexcept;
     friend bool end_tick(TickKey const&,TickLatch&) noexcept;
 public:
     TickLatch()=default;TickLatch(TickLatch const&)=delete;TickLatch& operator=(TickLatch const&)=delete;
@@ -212,17 +224,31 @@ bool begin_tick(TickKey const& key,TickLatch& latch) noexcept {
     if(!key.outer_tick||!read_core_revision(key.request,latch.frame_,latch.revision_))return false;
     latch.valid_=true;return true;
 }
-bool read_tick(TickKey const& key,TickLatch& latch,core::CoreSnapshot& output) noexcept {
-    output={};if(GetCurrentThreadId()!=key.request.native.game_thread)return false;
+// Explicit classification may return the original immutable copy on age-only
+// failure for cohort diagnostics. It remains false, grants no writer, and burns
+// the latch just like every original failed same-thread read. Untyped failures
+// preserve the original empty-output contract.
+bool read_tick(TickKey const& key,TickLatch& latch,core::CoreSnapshot& output,TickFailure* failure=nullptr) noexcept {
+    output={};if(failure)*failure=TickFailure::hard;
+    if(GetCurrentThreadId()!=key.request.native.game_thread)return false;
     try{
         if(!latch.active_||!latch.valid_)return false;
-        if(!same_tick(key,latch.key_)||!owner_matches(key.request,latch.frame_)||!current_copy(latch.frame_,latch.revision_,key.request.maximum_source_age_ns)){
+        if(!same_tick(key,latch.key_)||!owner_matches(key.request,latch.frame_)){
             latch.valid_=false;latch.frame_={};return false;}
-        std::memcpy(&output,&latch.frame_,sizeof output);
-        if(!current_copy(latch.frame_,latch.revision_,key.request.maximum_source_age_ns)){
-            output={};latch.valid_=false;latch.frame_={};return false;}
+        TickFailure why{};
+        bool fresh=current_copy(latch.frame_,latch.revision_,key.request.maximum_source_age_ns,&why);
+        if(fresh){
+            std::memcpy(&output,&latch.frame_,sizeof output);
+            fresh=current_copy(latch.frame_,latch.revision_,key.request.maximum_source_age_ns,&why);
+        }
+        if(!fresh){
+            if(failure){*failure=why;if(why==TickFailure::source_age_only)std::memcpy(&output,&latch.frame_,sizeof output);else output={};}
+            else output={};
+            latch.valid_=false;latch.frame_={};return false;
+        }
+        if(failure)*failure=TickFailure::none;
         return true;
-    }catch(...){output={};latch.valid_=false;latch.frame_={};return false;}
+    }catch(...){output={};if(failure)*failure=TickFailure::hard;latch.valid_=false;latch.frame_={};return false;}
 }
 bool end_tick(TickKey const& key,TickLatch& latch) noexcept {
     if(GetCurrentThreadId()!=key.request.native.game_thread)return false;

@@ -13,6 +13,8 @@ class Context {
 public:
     virtual ~Context()=default;
     virtual bool current(tx::Stage) noexcept=0;
+    // Only the exact last failed current() may classify a pure source deadline.
+    virtual tx::Verdict rejection() const noexcept{return tx::Verdict::denied;}
 };
 inline bool read_memory(void* out,std::uintptr_t address,std::size_t size) noexcept {
     if(!pose::span(address,size)||!out)return false;
@@ -90,7 +92,8 @@ public:
         permit_.armed=false;
         if(!captured_||!context_||GetCurrentThreadId()!=thread_||!tx::same(v.stamp,stamp_)||
            !source_equal(v.source)||v.desired.count!=115||v.desired.indices!=desired_.indices||v.count>tx::max_units||
-           ((stage==tx::Stage::prepare||stage==tx::Stage::commit)&&stopped_)||!context_->current(stage))return tx::Verdict::denied;
+           ((stage==tx::Stage::prepare||stage==tx::Stage::commit)&&stopped_))return tx::Verdict::denied;
+        if((stage==tx::Stage::commit||stage==tx::Stage::rollback)&&unit>=v.count)return tx::Verdict::denied;
         pose::Metadata now{},again{};
         if(!read_metadata(now)||!pose::metadata_equal(now,metadata_)||!immutable_readback())return tx::Verdict::denied;
         // Original Compose may legitimately mutate Local. Scope-end authenticates
@@ -115,9 +118,14 @@ public:
                 if(!skip&&std::memcmp(reinterpret_cast<unsigned char const*>(&repeated_.local[bone])+half*16,expected,16))return tx::Verdict::denied;
             }
         }
-        if(!immutable_readback()||!read_metadata(again)||!pose::metadata_equal(now,again)||!context_->current(stage))return tx::Verdict::denied;
+        if(!immutable_readback()||!read_metadata(again)||!pose::metadata_equal(now,again))return tx::Verdict::denied;
+        // Readback cannot grant permission. Check the complete current context
+        // once at the final boundary, after every non-age readback check. An
+        // age failure burns its source latch; do not call it again and erase
+        // the exact reason with the now-invalid latch's generic rejection.
+        if(!context_->current(stage))return context_->rejection();
         if(stage==tx::Stage::commit||stage==tx::Stage::rollback){
-            if(unit>=v.count)return tx::Verdict::denied;auto const& u=v.units[unit];
+            auto const& u=v.units[unit];
             permit_.address=metadata_.local.data+std::uintptr_t(u.bone)*32+u.half*16;permit_.stage=stage;
             permit_.expected=stage==tx::Stage::commit?u.before:u.ours;permit_.replacement=stage==tx::Stage::commit?u.ours:u.before;permit_.armed=true;
         }
@@ -126,7 +134,9 @@ public:
     tx::Cas exchange(std::uintptr_t address,tx::Block const& expected,tx::Block const& replacement) noexcept override {
         const auto ticket=permit_;permit_.armed=false;
         if(!ticket.armed||address!=ticket.address||std::memcmp(&expected,&ticket.expected,16)||std::memcmp(&replacement,&ticket.replacement,16)||
-           !context_||GetCurrentThreadId()!=thread_||(ticket.stage==tx::Stage::commit&&stopped_)||!context_->current(ticket.stage))return tx::Cas::fault_unknown;
+           !context_||GetCurrentThreadId()!=thread_||(ticket.stage==tx::Stage::commit&&stopped_))return tx::Cas::fault_unknown;
+        if(!context_->current(ticket.stage))return ticket.stage==tx::Stage::commit&&context_->rejection()==tx::Verdict::source_age_expired?
+            tx::Cas::source_age_no_write:tx::Cas::fault_unknown;
         return atomic_exchange(address,expected,replacement);
     }
     tx::Verdict fresh(tx::View const&,tx::ReceiptRef,tx::FreshEvidence&) noexcept override {

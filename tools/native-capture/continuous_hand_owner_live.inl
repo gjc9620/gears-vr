@@ -67,8 +67,18 @@ bool owner_current(){auto const& f=slot;auto const& o=f.data.owner;
 }
 bool control_current(phase::Scope const& scope) noexcept {try{return owner_current()&&slot.compose_depth==1&&
     &scope==&slot.compose.scope&&scope.invocation==slot.data.record.compose&&scope.arguments;}catch(...){return false;}}
-bool same_source(){return slot.attempted&&rig::read_tick(slot.key,slot.latch,slot.verify)&&
-    !memcmp(&slot.verify,&slot.data.record.source,sizeof(slot.verify))&&owner_current();}
+bool same_source(rig::TickFailure* failure=nullptr){
+    if(failure)*failure=rig::TickFailure::hard;
+    if(!slot.attempted)return false;
+    rig::TickFailure why{};
+    const bool fresh=rig::read_tick(slot.key,slot.latch,slot.verify,failure?&why:nullptr);
+    if(!fresh&&(!failure||why!=rig::TickFailure::source_age_only))return false;
+    // Even an age failure must pass the complete immutable cohort and live
+    // owner checks before the caller is allowed to call it age-only.
+    if(memcmp(&slot.verify,&slot.data.record.source,sizeof(slot.verify))||!owner_current()){if(failure)slot.verify={};return false;}
+    if(failure)*failure=why;
+    return fresh;
+}
 bool metadata(bool initial,controls::Row const* row=nullptr){auto& d=slot.data;
     auto reader=[](void* out,void const* in,size_t n){return safe_copy(out,in,n);};
     std::unique_lock<std::mutex> lock(binding::mutex,std::try_to_lock);if(!lock.owns_lock()||!binding::metadata_current())return false;

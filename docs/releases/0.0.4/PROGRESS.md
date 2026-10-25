@@ -493,3 +493,25 @@ Native31仅在30上增加首失败诊断、Kernel的const停止状态getter及�
 `body-live-standing2`购买版实际取得首失败16896B快照，SHA256 `e607f48d4d17e8910dac1488f25dc90b8ff21f4fb0069731482231775657383a`。Root实际CPU重放得到plan solved、saved report完全一致、head error约7.93e-6u；真实第一次拒绝为commit stage／guard_rejected／unit6，Kernel failed+stopping，fields0／protocol0，随后337次prepare=stopped。快照记录apply约23.85ms，其中commit含回滚约22.64ms；Core源龄24.52→48.37ms，Stereo29.03→52.89ms、controller29.01→52.86ms，后两者在快照结束时超过原50ms门。`same_source→read_tick→current_copy`前后验证这些年龄；精确拒绝瞬间的年龄未单独采样，不将结束时间冒充该瞬间。下一步仅优化重复7chunk完整SHA／provider热路径：保留每次完整当前字节／hook／caller验证和50ms门，再实测连续行为，不以重置Kernel或重新校neutral换通过。
 
 B2在模拟头动前被独立standing样本条件拒绝，未发送HeadPose命令；第一处原生失败仍在早先C0处理中被有效记录。正常106项独立恢复、Native／entry／XR0、原十文件、音频10及自有PID退出全部通过，`accepted=false`与watch终止记录保留。私有精简审查`body-live-standing2/runtime-first-failure-review1.json` SHA256 `1586a92cf392426046723cd9ed01d27c688956f555fefef0bded5287d80d5b7c`。当前优先级依已获用户认可的`J:/gearsVr/docs/6dof-implementation-roadmap-20261025.md`收敛到固定站立场景连续身体／相机／双手闭环；Cover live候选冻结保存，暂不扩大复杂状态。总目标仍为完整6DoF掩体，不把此中间交付视为完成。
+
+Native32保留原50ms、每次完整代码字节／hook／caller认证，仅将已验证7chunk SHA/provider初始化从每单元热路径移到注册阶段。B3因私有包遗漏CaptureSelfTest而在任何Game／XR前失败，已保留该失败；补齐原字节9个helpers，并从实际将启动的目录执行22项startup检查。B4购买版0.4后台静止观察约31.9秒取得1663次commit／publish增量、146份有效post-FK样本；聚合accepted=true仅适用于静止连续路径，未发送HMD位移。其首个cas_fault发生于正常stop请求后约113.8ms，最终责任全部结清；不能作为观察期硬件CAS故障结论。
+
+B5的8个私有模拟头显命令（中立、右3cm、左3cm、上2cm、下2cm、yaw、pitch、回中）全部被当前隔离runtime消费并逐项读回，但body在轨迹前已永久停写，commit／publish仍各1；43份post-FK样本不构成运动响应通过，accepted=false保留。首失败位于commit／unit1，apply约1.20ms，Stereo源龄49.1487→50.3476ms。当前backend会将原子操作前Context拒绝与真正未知CAS故障同算fault_unknown，Kernel随后永久停止；该具体问题与B2热路径开销分开记录。B4／B5均完成106项独立恢复、Native／entry／XR0、音频10、原十文件和精确自有PID清理。
+
+后继私有Native33／34增加精确age-only分类、有效permit且未调用CAS的no-write结果、hard优先及准确End／零债务后的新Kernel episode；所有owner／ref／storage／source basis及registry重新认证，serial续号，跨线程drain只操作永久stop标志。额外40ms准入为原50ms逐单元门预留预算；不能将旧时间改成新时间。中立camera基准独立于旧Core寿命与本次apply结果，仍检查当前Scene／Ref／CTW／新鲜Stereo，HMD只由原stereo路径应用一次；held view不代表body写入成功。窄审发现恢复候选自己再次超时可能误升hard，34以函数内okay／defer／hard和Host模式27修正，33原源与回执保留。
+
+typed／transaction／真实Backend定向Host及34个live集成模式通过，包含部分写入后超时回滚、未调用CAS证明、身份／错scope／真实fault／exception／stop不恢复、恢复再次超时延期和旧body跳帧时current-CTW camera基准。34sim实际TU／DLL、42exports、原flags、23预检及实际包22项startup通过，DLL SHA256 `111b0404ff6d01106c8a6d2d459f7930dbb22696947d4671ac44cdb9da983539`。证据在ignored `analysis/native-c0-transient-recovery-candidate1/`；B7使用原0.4／behind／observe-only／mute保护和既有8步轨迹开始目标游戏验证，尚未据此接受运动body、双手、完整Cover或实体头显。没有替换默认冻结构建。
+
+B7在头动前被旧FP toggle的三条件后台guard拒绝，正常106项恢复，未发HMD命令；短世界阶段171次commit／publish不能代替运动验收。B8只加具体只读guard回执，沿用完全相同Native34／XR，后台／唯一Game／无遮挡均成立；21.005秒观察内941次commit／publish增量、43份有效post-FK，8条HMD命令均消费并读回。baseline及左右3cm／上下2cm各5份settled样本，Eye和Pelvis对应位移最大误差约1.56e-5／7.63e-6原单位；0.4／后台保护和正常106恢复保持。聚合accepted=true来自旧连续计数条件，完整运动接受仍false；独立审查`body-live-standing8/runtime-motion-review1.json` SHA256 `ef4c382a463c9115c73120919ae79bc52e3bce2c5fc9c35554bb76c7c238723c`。
+
+B8旋转阶段380次spine_unreachable首样本可逐字重放，但已定位测试脚本单位错误：隔离runtime文件命令yaw／pitch直接进入sin/cos半角，单位rad；旧脚本将10°直接写为10rad，Eye Q差147.042°与该值规范化吻合。不能据此宣称正常10°旋转有缺陷。对同一首失败完整C0，仅恢复baseline Eye Q后plan通过，±10°／±30° yaw和pitch八个正确角度也全部通过；未改planner／marker／骨长／可达边界，证据`analysis/continuous-rotation-first-failure1/`。旧失败源与源龄保留；最后neutral缺少settle样本也不算回中接受。
+
+当前唯一检查点：用同一Native34／XR重测显式radians的正常转头／抬头及回中，B9仅修轨迹角度、公差和末步settle，不重建Native／XR。当前等待武器DJ正常释放窗口，等待时间不折算进有效实现时间；准备与一次目标验证预计20–40分钟有效工作，非完整功能完工承诺。正常轨迹游戏读回与画面闭环后再接同一写入端的双手；原动画交还、完整Cover／Grip、跑步视角、碰撞／受击／射击及实体头显仍待完成，不凭view-held或测试数上调完整功能百分比。
+
+B9已完成上述游戏骨骼读回检查点：仍为同一Native34／XR，22.338秒、1303次commit／publish增量，8条命令均按metres／radians消费并逐项读回；49份有效post-FK中41份settled样本逐份核对通过。左右±3cm、上下±2cm、原地yaw／pitch10°与neutral全部对应；最大Eye位置误差3.31e-5原单位、Pelvis7.63e-6原单位，转角约9.99998–10.00002°，固定feet最大漂移.000793原单位。纯旋转Eye／Pelvis不额外平移，最后回中已有settle样本。独立matrix／quaternion reader先与B8 C++ authored-marker oracle对齐后计算，未改源时间或混用eye与head bone。审查`body-live-standing9/runtime-motion-review1.json` SHA256 `57468bcbe3cc7c5a17705e053c8aa07f1c4eb47c1c3d20f1f56d6811a0611ca4`。
+
+B9总1405次plan均solved／commit成功，1次额外admission skip；无观察期提交故障，age-recovery计数0，所以这局证明连续运动与跳帧后继续，并未真实触发新episode重开路径，后者仍仅有定向Host证据。最终body／Goal／Atom责任全0，106独立恢复／Native／entry／XR0／PG0、原十文件、音频10和精确自有PID及fresh CIM通过。该接受范围是固定standing的头／身体运动；双眼画面／实体头显、正常动画交还、双手写入和完整Cover均未接受。窗口已正常交还武器会话。
+
+当前唯一后继交付转为把已有controller arm／wrist目标合入同一C0 Output／Kernel，保留Hand_R35→Weapon_R51→Weapon_R_End52传播，并验证正常动画接管和恢复；最小手部可消费版本尚未提供，有效工作时长未知。已验证的typed freshness、事务Failure／no-CAS分类和memory Backend边界先保存到本分支；tracked Backend继续保持原未接receipt的边界，实际Native34 live／receipt／camera组合仍在冻结私有候选，未整包覆盖Root最新default或声称运行时默认集成完成。
+
+本分支实际tracked源码已由主实现者重新编译5个受影响Host目标并运行21个定向进程，全部通过；没有借私有候选的includes替代当前tracked头。回执`analysis/native-c0-transient-recovery-candidate1/tracked-host1/receipt.json` SHA256 `07912d32a64048c911d593479a2b3186fff1a651e3f97054b6841692fe34b4ff`。保留用户自行更新的AGENTS／工作方式配置，退役的overlay trial未纳入提交。
