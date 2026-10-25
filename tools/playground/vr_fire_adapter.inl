@@ -1,3 +1,6 @@
+#if defined(GEARS_PLAYGROUND_NATIVE_LANCER_R2_TRIAL)
+#include "weapon_lancer_r2_native.inl"
+#else
 // Private opt-in bridge from an exact XR input frame to the game's own R2
 // semantic. This is deliberately limited to the Hammerburst proved in the
 // retail playground. Other weapons require their own release/abort checks.
@@ -297,3 +300,4 @@ DWORD disable(){
     playground::message(L"vr_r2_disabled");return 0;
 }
 }
+#endif // Native Lancer variant / original Hammerburst-only bridge

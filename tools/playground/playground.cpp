@@ -200,6 +200,9 @@ gears_rig_tracking::ReadResult read(gears_rig_tracking::Frame&,std::uint64_t) no
 #if defined(GEARS_PLAYGROUND_EXPERIMENTAL_VR_R2)
 #include "../vr-common/controller_input_bridge.h"
 #include "../vr-common/original_r2_fire.h"
+#if defined(GEARS_PLAYGROUND_NATIVE_LANCER_R2_TRIAL)
+#include "weapon_lancer_r2.h"
+#endif
 #if defined(GEARS_PLAYGROUND_EXPERIMENTAL_VR_L2)
 #include "../vr-common/original_l2_aim.h"
 #endif
@@ -1067,6 +1070,9 @@ namespace nativeequipment {bool configure_native(HMODULE) noexcept;}
 #include "weapon_call_subscriber.inl"
 #endif
 #if defined(GEARS_PLAYGROUND_NATIVE_EQUIPMENT_TRIAL)
+#if defined(GEARS_PLAYGROUND_NATIVE_LANCER_R2_TRIAL)
+namespace vrfire {bool yield_for_native_equipment(gears_weapon_hand::Frame const&) noexcept;}
+#endif
 #if defined(GEARS_PLAYGROUND_NATIVE_EQUIPMENT_MAIN_MOUNT_TRIAL)
 namespace nativeequipment_main_mount {
 void tick(gears_weapon_hand::Frame const&) noexcept;
@@ -1265,7 +1271,7 @@ void __fastcall event_hook(uptr object,uptr function,void* params){
 #endif
             }
 #endif
-#if defined(GEARS_PLAYGROUND_EXPERIMENTAL_VR_R2)
+#if defined(GEARS_PLAYGROUND_EXPERIMENTAL_VR_R2) && !defined(GEARS_PLAYGROUND_NATIVE_LANCER_R2_TRIAL)
             if(playground::automatic&&!wcscmp(f,L"PlayerTick")&&
                object==playground::pointer(playground::player,L"Actor"))vrfire::tick(object);
 #endif
@@ -1291,7 +1297,11 @@ void __fastcall event_hook(uptr object,uptr function,void* params){
 #endif
 #if defined(GEARS_PLAYGROUND_NATIVE_EQUIPMENT_TRIAL)
     if(post_native_equipment_tick&&enabled.load(std::memory_order_acquire)&&game_thread.load()==GetCurrentThreadId()){
-        inside=true;nativeequipment::tick(object);inside=false;
+        inside=true;
+#if defined(GEARS_PLAYGROUND_NATIVE_LANCER_R2_TRIAL)
+        vrfire::tick(object);
+#endif
+        nativeequipment::tick(object);inside=false;
     }
 #endif
 #if defined(GEARS_PLAYGROUND_HAND_ANIMATION_PROBE)
@@ -1976,9 +1986,17 @@ extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundTestEnter(void*){
 }
 #if defined(GEARS_PLAYGROUND_EXPERIMENTAL_VR_R2)
 extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundVrFireEnable(void*){
+#if defined(GEARS_PLAYGROUND_NATIVE_LANCER_R2_TRIAL)
+    if(weaponhand::current_gt(nullptr))return 1;
+    LifecycleScope lifecycle;
+#endif
     return vrfire::enable();
 }
 extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundVrFireDisable(void*){
+#if defined(GEARS_PLAYGROUND_NATIVE_LANCER_R2_TRIAL)
+    if(weaponhand::current_gt(nullptr))return 1;
+    LifecycleScope lifecycle;
+#endif
     return vrfire::disable();
 }
 extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundVrFireStatus(void*){

@@ -143,6 +143,9 @@ bool switch_slot(void*,abi::Frame const& frame,Snapshot const& game,unsigned slo
         uptr item{};bool can_switch{};
         if(!vrequip::read_slot(inv,static_cast<std::uint8_t>(slot),item)||item!=game.weapon_in_slot[slot]||
            !vrequip::read_can_switch(frame.controller.address,can_switch)||!can_switch||!current(nullptr,frame))return false;
+#if defined(GEARS_PLAYGROUND_NATIVE_LANCER_R2_TRIAL)
+        if(!vrfire::yield_for_native_equipment(frame)||!current(nullptr,frame))return false;
+#endif
         // Normal original inventory API. Completion is observed later; there
         // is no silent model commit, skip-animation claim, or retry here.
         return call.run();

@@ -2,6 +2,18 @@
 
 本文件保留武器与掩体两个分支的开发历史，便于共用 Native 手部实现合流。各条记录仍以其原始验证范围为准；私有候选、只读采样或离线检查不代表完整功能、默认构建更新或头显验收。
 
+## 2026-10-26 — Lancer接入Native帧的原版R2，首次扣弹与松开通过
+
+新增默认关闭的PG私有Native Lancer R2消费者，直接使用当前注册的真实Hand Frame；旧Hammerburst bridge保留。仅支持已认证、实际右手附着且已握持的Lancer，经原版typed ButtonPress／ButtonRelease(Name R2)输入，不改枪口、瞄准、伤害、Native ABI或骨骼。切枪前必须交还自有按下；跟踪失效后不重放旧边沿。完整五对象身份不符或原版释放失败时保留未交还状态，不重置掩盖。私有控制沿用旧R2三个导出，生命周期与现有PG callback drain结合。
+
+有界Sol／Medium实现纯策略测试，Astra／High仅审查危险的输入所有权及退出增量。审查发现其他PlayerController和不适合处理输入的嵌套Tick原会被误记成源丢失，已改为在消费前跳过，并覆盖原owner仍能释放、真实新owner不能接管旧债。两个早期编译的纯测试失败来自fixture未递增release计数，原件保留；只修fixture，没有放宽生产输入结构。最终DW构建PG `6d8fea67…ea809`、真实wrapper与原ledger的380 checks及原受影响装备检查通过，755份源码和vendor闭包稳定，Native／XR未重建。
+
+DW购买版实际右肩Grip取出Lancer，首次R2按下／松开和独立原版bHoldingButton_R2读回通过；GetTotalAmmoInGun从356到347，松开后两份新样本均347且key up。耗弹9不是逐发计数，也未测命中或伤害。第二次DOWN落在输入重建基线时，未得到owned press；整轮complete=false保持，持按停止未触达。原回执scope沿用DU的认证／Snub文字且shots=0不是实测计数，已另写绑定原review／final哈希的behavior-scope-addendum.json，保留原件，不为文案重跑。首次耗弹仅证明原版瞄准下输入链路，不是枪管权威射线或6DoF握枪验收。
+
+DW的R2 disable0且无pending export、控制器恢复、HandStop／quiescent、Native／entry／88项独立恢复、XR0／PG0、原十文件和音频10/10通过，准确自有PID与新鲜CIM无Game／XR，窗口交还身体会话。ignored证据为analysis/equipment-native-rgrip-runtime-20261026dw/。runtime-final.accepted指恢复闭包通过，不能覆盖runtime-review.complete=false。
+
+针对第二次DOWN，先加真实wrapper回放：previous-sync gap后即使当前帧新鲜也必须丢弃旧DOWN，直至真实UP后新按下，source0／1均覆盖。再补有界source状态变化日志和game／action／ammo各阶段实际耗时；弹药查询后报告真正推进的新鲜UP，供测试协调器等待后发送第二DOWN，不改100ms限制、账本或引擎权限。420 checks与完整PG编译通过，PG `cb187cdf…6e18e`，源码闭包稳定。DX仅派生协调器的查询后观察门与修正scope，复用原host／Native／XR／sim／reader；原全预检和已审cleanup门复用，变化的真实lambda与cleanup门离线检查通过。DX实跑和耗时原因定位仍待运行窗口；当前不把查询耗时假设当根因。身体端唯一writer及主握发送端b58524c保持冻结，无默认替换／发布／tag。
+
 ## 2026-10-26 — Lancer主握发送端绑定同一Scene，补齐身体来源适配
 
 继续Lancer实际主握接线。先核对B14实际Native37sim的冻结源，而非通用tools目录：Scene中的WeaponHand prepare／commit尝试先于Rig发布；稍后的C0保留那份Scene来源，body::plan之后才做hands::compose／Kernel.prepare。因此后继同步查询可使用那份Scene已成功commit的Root Frame，但Rig有效本身不能证明武器commit成功。C0／Kernel调用编号和publication_sequence不能代替hand.FrameKey.frame。五份实际冻结源、source37-before-build清单与37sim DLL哈希已独立核对，静态来源回执为ignored analysis/lancer-main-source-20261026dv/source-order-review.json；不将通用源码里未发现live Kernel的早期检查扩张到实际37，也不声明38时序已验。
