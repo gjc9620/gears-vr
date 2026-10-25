@@ -32,11 +32,16 @@ struct ArmspanCalibration {
     }
 };
 
-// A two-second, uninterrupted, tracked T-pose grip hold. The caller saves a
-// completed value only after the user accepts the calibration screen.
+// A two-second, uninterrupted, tracked T-pose grip hold. After completion the
+// caller atomically saves the completed value.
 class ArmspanCalibrator {
     std::uint64_t session_{},epoch_{},profile_{},input_epoch_{},last_sequence_{};
     std::int64_t started_ns_{},last_ns_{};
+    gears_vr::StereoSource last_source_{};
+    std::int64_t last_predicted_time_{},last_received_ns_{},last_sync_ns_{},last_stereo_received_ns_{};
+    Pose last_head_{},last_grips_[2]{};
+    std::uint64_t last_grip_flags_[2]{};
+    float last_squeeze_[2]{};
     unsigned samples_{};
     double span_sum_{},hand_y_sum_{};
     Vector first_left_{},first_right_{};
@@ -44,6 +49,19 @@ class ArmspanCalibrator {
     void clear_window() noexcept {
         session_=epoch_=profile_=input_epoch_=last_sequence_=0;
         started_ns_=last_ns_=0;samples_=0;span_sum_=hand_y_sum_=0;
+    }
+    bool same_measurement(gears_vr::ControllerInputFrame const& hands,
+                          gears_vr::StereoSample const& stereo) const noexcept {
+        if(hands.source!=last_source_||hands.predicted_time!=last_predicted_time_||
+           hands.received_ns!=last_received_ns_||hands.sync_ns!=last_sync_ns_||
+           stereo.received_ns!=last_stereo_received_ns_||
+           !gears_vr::stereo_same_pose(stereo.head,last_head_))return false;
+        for(unsigned i=0;i<2;++i){
+            if(!gears_vr::stereo_same_pose(hands.hands[i].grip,last_grips_[i])||
+               hands.hands[i].grip_flags!=last_grip_flags_[i]||
+               hands.hands[i].squeeze!=last_squeeze_[i])return false;
+        }
+        return true;
     }
 public:
     void reset() noexcept {clear_window();result_.reset();}
@@ -78,16 +96,30 @@ public:
         if(left.x>-.35||right.x<.35||span<.9||span>2.4||
            std::abs(left.y-right.y)>.15||hand_y<-.35||hand_y>.1||
            std::abs(left.z)>.45||std::abs(right.z)>.45){clear_window();return false;}
-        if(samples_&&(hands.session!=session_||hands.space_epoch!=epoch_||
-                      hands.profile_generation!=profile_||hands.input_epoch!=input_epoch_||
-                      hands.sequence<=last_sequence_||
-                      now_ns<=last_ns_||now_ns-last_ns_>100000000||
-                      gears_vr::stereo_distance(left,first_left_)>.08||
-                      gears_vr::stereo_distance(right,first_right_)>.08))clear_window();
+        if(samples_){
+            const bool same_key=hands.session==session_&&hands.space_epoch==epoch_&&
+                hands.profile_generation==profile_&&hands.input_epoch==input_epoch_;
+            if(same_key&&hands.sequence<=last_sequence_){
+                // Rendering an immutable input ticket again contributes neither
+                // a sample nor elapsed hold time. All live guards ran above.
+                if(hands.sequence==last_sequence_&&same_measurement(hands,stereo))return false;
+                clear_window();return false;
+            }
+            if(!same_key||now_ns<=last_ns_||now_ns-last_ns_>100000000||
+               gears_vr::stereo_distance(left,first_left_)>.08||
+               gears_vr::stereo_distance(right,first_right_)>.08)clear_window();
+        }
         if(!samples_){session_=hands.session;epoch_=hands.space_epoch;
             profile_=hands.profile_generation;input_epoch_=hands.input_epoch;
             started_ns_=now_ns;first_left_=left;first_right_=right;}
         last_sequence_=hands.sequence;last_ns_=now_ns;++samples_;
+        last_source_=hands.source;last_predicted_time_=hands.predicted_time;
+        last_received_ns_=hands.received_ns;last_sync_ns_=hands.sync_ns;
+        last_stereo_received_ns_=stereo.received_ns;last_head_=stereo.head;
+        for(unsigned i=0;i<2;++i){
+            last_grips_[i]=hands.hands[i].grip;last_grip_flags_[i]=hands.hands[i].grip_flags;
+            last_squeeze_[i]=hands.hands[i].squeeze;
+        }
         span_sum_+=span;hand_y_sum_+=hand_y;
         if(samples_<60||now_ns-started_ns_<2000000000)return false;
         ArmspanCalibration value{1,span_sum_/samples_,hand_y_sum_/samples_};
