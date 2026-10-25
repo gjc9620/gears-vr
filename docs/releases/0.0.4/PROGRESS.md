@@ -2,6 +2,14 @@
 
 本文件保留武器与掩体两个分支的开发历史，便于共用 Native 手部实现合流。各条记录仍以其原始验证范围为准；私有候选、只读采样或离线检查不代表完整功能、默认构建更新或头显验收。
 
+## 2026-10-26 — EG保留原动作，仅绑定Native41被动阶段诊断
+
+EC失败后按身体会话交接，先从冻结EC派生ignored analysis/equipment-native-rgrip-runtime-20261026eg，并用实际runtime-slot执行门禁止未完成选择时启动；准确Native41交付后再解除该私有staging状态。最终Native `2d8de020…2a69`，PG仍 `a4657e0d…44472`、BQ XR仍 `1a059d2d…2b4e9`、CY仍 `378e785f…14894`。没有全抄native-only manifest中的旧XR：只替换Native字段／provenance及实际Native PE元数据，43导出同集合。原coordinator `ce4e0091…f4773`、host、PG、106验证器和全部动作／时效／背景保护同字节复用，不重跑旧PG矩阵。
+
+现有host动态收集body_main_mount_*，无需改代码即可保存新增26字段：projection／broker／C0拒绝、post-admission拒绝、query branch、callback raw status、来源失败mask与六种原时标源龄。统计末值不视为逐query一致trace，不把不同query的raw status和last failure强行关联。另备独立有界只读解码器，校验保存的session-status与精确Game／Native incarnation；旧Native40无字段时明确available=false，不伪造零。
+
+最终EG pins `f19afb69…e1bd6`，选择回执及NATIVE41-README已交身体会话；身体端确认依赖及新鲜CIM后接管唯一实际运行。Root没有并发Game/XR、没有修改EC原失败输入／结果或PG／Native源码。此条是被动诊断选择交付，不是拒绝原因或修复验收；等待该轮稳定实跑字段决定具体代码修正。
+
 ## 2026-10-26 — EC实际取Lancer成功，主握首门拒绝，106正常恢复通过
 
 身体会话独占执行EC revision2后已正常释放窗口。实际右肩pulse3、生产held回执及独立Live.held附着认证通过；38／38一致postFK骨骼采样可读。shoulder-fixed-first32首门超时，Native mount ready0／commits0／stale14／last_query15／max15.2285ms，无fault或context_rejected；v3 held记录0。未到降枪／小移转，不能宣称持枪跟随完成。
