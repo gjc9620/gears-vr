@@ -2,6 +2,16 @@
 
 本文件保留武器与掩体两个分支的开发历史，便于共用 Native 手部实现合流。各条记录仍以其原始验证范围为准；私有候选、只读采样或离线检查不代表完整功能、默认构建更新或头显验收。
 
+## 2026-10-26 — EG定位post-source过期，PG复用同次真实观察并保留阶段记录
+
+EG由身体端唯一实跑并正常清理，取Lancer成功、held首门仍失败。稳定Native41显示stale6全部broker source_after；projection／source_before／C0-current拒绝均0，post-admission拒绝另有9次。最后source failure_query10、mask1541，六源龄为46.0638／51.8660／52.1526／52.9531／52.9305／52.9508ms。末值raw callback12=source_mismatch，但last_query被后续unavailable归零，二者不视为同query关联。原50ms来源限制和40ms admission不变，106完整恢复及其余退出保护通过。稳定数据解码保存在ignored analysis/lancer-main-mount-ec-rejection-20261026ef/eg-native41-diagnostics.json。
+
+PG源码进一步确认wire source_mismatch只直接来自sender::context或最终sender::response；retained bind失败会翻译为inactive，而非12。新增first32 claimed callback的有界POD阶段／实际返回／原时标记录，包含query／parent cookie／Native incarnation／lifecycle，区分context、retained细分阶段和response。GT不做日志IO、分配或额外游戏调用，原entered／finally／callback计数不变；仅原PGShutdown完成parent quiescent、停准入及PG drain后输出，Initialize在同样已停条件下重置。无新增Native导出／V1布局／源发布或写入权限。
+
+只在retained链减少一次重复初读：原Client.copy_frame_on_gt丢弃同次真实Game，prepare随后又source_game_on_gt；现改用原双输出overload并同步传入私有prepare_observed。preview保留原初读，helper入口仍检查GT／domain／armed／同cookie注册存活；末尾独立source_game和完整same_game、两次typed资产读取、附着、hold generation、最终eligibility及retained bind全部保留。没有跨帧缓存、假Frame或续写时间；公共Client／wire／source／candidate／rig binding头的原摘要未变。原b58524c四文件中仅实际adapter inl因这次具体实跑问题作上述窄修改。
+
+Sol／Medium新增直接包含实际adapter的owned-seam检查；前两次严格构建的测试夹具类型／命名错误已修正并原样留档，没有放宽生产检查。最终完整PG严格构建通过，761份源码／vendor闭包稳定；实际provider537项、实际adapter284项通过。Astra／High仅审本次增量，无P1／P2，发现正常publish失败被误记成未正常返回的P3，已让其经过共同诊断epilogue，并用owned VirtualProtect失败路径回归关闭。新PG `bed19e2b…2b2a9c`，构建attempt1792965623362730100；Native41／XR／sim不重建、旧PG矩阵复用。减少观察和离线通过不是已测性能改善或实际held验收，下一轮仍比较同一动作。
+
 ## 2026-10-26 — EG保留原动作，仅绑定Native41被动阶段诊断
 
 EC失败后按身体会话交接，先从冻结EC派生ignored analysis/equipment-native-rgrip-runtime-20261026eg，并用实际runtime-slot执行门禁止未完成选择时启动；准确Native41交付后再解除该私有staging状态。最终Native `2d8de020…2a69`，PG仍 `a4657e0d…44472`、BQ XR仍 `1a059d2d…2b4e9`、CY仍 `378e785f…14894`。没有全抄native-only manifest中的旧XR：只替换Native字段／provenance及实际Native PE元数据，43导出同集合。原coordinator `ce4e0091…f4773`、host、PG、106验证器和全部动作／时效／背景保护同字节复用，不重跑旧PG矩阵。

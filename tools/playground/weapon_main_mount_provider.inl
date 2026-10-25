@@ -16,6 +16,38 @@ struct Workspace {
 Workspace scratch;std::atomic_flag entered=ATOMIC_FLAG_INIT;
 const wire::Response empty_response{};
 static_assert(std::is_trivially_copyable_v<Workspace>);
+// First32 claimed callbacks, POD only on the GT. These observations neither
+// extend source age nor survive as a permission. Output occurs after the
+// existing parent/PG drain on the normal lifecycle worker, never in C0.
+struct Receipt {
+    std::uint64_t query{},scene{},publication{},cookie{},native_started{},lifecycle{};
+    std::int64_t begin_ns{},context_ns{},retained_ns{},response_ns{},finish_ns{},sync_ns{},received_ns{},published_ns{};
+    unsigned stage{},returned{},status{UINT32_MAX},context_status{UINT32_MAX},retained_status{UINT32_MAX},response_status{UINT32_MAX};
+    unsigned retained_stage{},binding{},agreement{},asset_status{};
+};
+Receipt active_receipt{};std::array<Receipt,32> receipts{};unsigned receipt_count{};
+std::uint64_t receipt_attempts{};
+bool diagnostics_written{};
+bool diagnostics_drained() noexcept {
+    return !enabled.load(std::memory_order_acquire)&&!callbacks.load(std::memory_order_acquire)&&
+        !weaponhand::native_module&&!weaponhand::current_gt(nullptr);
+}
+void reset_diagnostics_after_drain() noexcept {
+    if(!diagnostics_drained())return;
+    active_receipt={};receipts={};receipt_count=0;receipt_attempts=0;diagnostics_written=false;
+}
+void write_diagnostics_after_drain() noexcept {
+    if(!diagnostics_drained()||!log_file||diagnostics_written)return;
+    diagnostics_written=true;
+    for(unsigned i=0;i<receipt_count;++i){const auto& r=receipts[i];
+        fwprintf(log_file,L"native_main_mount_query query=%llu scene=%llu publication=%llu cookie=%llu native_started=%llu lifecycle=%llu stage=%u returned=%u status=%u context_status=%u retained_status=%u response_status=%u retained_stage=%u binding=%u agreement=%u asset_status=%u begin_ns=%lld context_ns=%lld retained_ns=%lld response_ns=%lld finish_ns=%lld sync_ns=%lld received_ns=%lld published_ns=%lld\n",
+            r.query,r.scene,r.publication,r.cookie,r.native_started,r.lifecycle,r.stage,r.returned,r.status,r.context_status,r.retained_status,r.response_status,
+            r.retained_stage,r.binding,r.agreement,r.asset_status,r.begin_ns,r.context_ns,r.retained_ns,r.response_ns,r.finish_ns,
+            r.sync_ns,r.received_ns,r.published_ns);
+    }
+    fwprintf(log_file,L"native_main_mount_query_summary attempts=%llu retained=%u truncated=%u\n",receipt_attempts,receipt_count,unsigned(receipt_attempts>receipts.size()));
+    fflush(log_file);
+}
 bool publish(wire::Response* out,wire::Response const& value) noexcept {
     __try{if(!out)return false;std::memcpy(out,&value,sizeof(value));return true;}
     __except(GetExceptionCode()==0xe06d7363ul||GetExceptionCode()==EXCEPTION_STACK_OVERFLOW?
@@ -27,22 +59,39 @@ bool running(sender::Parent const& parent) noexcept {
         weaponhand::client.armed();
 }
 std::uint32_t prepare_data(wire::Request const* request) noexcept {
+    active_receipt.stage=1;
     std::uint32_t header[2]{};
     if(!request||!copy(header,reinterpret_cast<uptr>(request),sizeof(header)))return ~0u;
     if(header[0]!=sizeof(wire::Request)||header[1]!=wire::version)return unsigned(wire::Status::source_mismatch);
     if(!copy(&scratch.request,reinterpret_cast<uptr>(request),sizeof(scratch.request)))return ~0u;
+    active_receipt.query=scratch.request.query_id;active_receipt.scene=scratch.request.retained.scene_invocation;
+    active_receipt.publication=scratch.request.retained.publication_sequence;
+    active_receipt.sync_ns=scratch.request.retained.controllers.sync_ns;
+    active_receipt.received_ns=scratch.request.retained.controllers.received_ns;
+    active_receipt.published_ns=scratch.request.retained.published_ns<=std::uint64_t(INT64_MAX)?
+        static_cast<std::int64_t>(scratch.request.retained.published_ns):-1;
+    active_receipt.cookie=scratch.request.retained.native.registration_cookie;
+    active_receipt.native_started=scratch.request.retained.native.native_started_qpc;
+    active_receipt.lifecycle=scratch.request.hand_lifecycle;
     scratch.response=empty_response;
     const sender::Parent parent{weaponhand::client.cookie(),weaponhand::client.native_started_qpc(),
         GetCurrentProcessId(),weaponhand::current_gt(nullptr)};
     if(!running(parent))return unsigned(wire::Status::inactive);
-    const auto request_status=sender::context(scratch.request,parent,weaponhand::clock_ns(nullptr),scratch.body);
+    active_receipt.stage=2;active_receipt.context_ns=weaponhand::clock_ns(nullptr);
+    const auto request_status=sender::context(scratch.request,parent,active_receipt.context_ns,scratch.body);
+    active_receipt.context_status=unsigned(request_status);
     if(request_status!=wire::Status::ready)return unsigned(request_status);
+    active_receipt.stage=3;
     const auto status=nativeequipment_main_mount::prepare_retained(scratch.request.retained,scratch.body,
         scratch.candidate,scratch.diagnostic);
+    active_receipt.retained_ns=weaponhand::clock_ns(nullptr);active_receipt.retained_status=unsigned(status);
+    active_receipt.retained_stage=unsigned(scratch.diagnostic.stage);active_receipt.binding=unsigned(scratch.diagnostic.binding);
+    active_receipt.agreement=unsigned(scratch.diagnostic.agreement);active_receipt.asset_status=unsigned(scratch.diagnostic.mount.asset_status);
     if(!running(parent))return unsigned(wire::Status::inactive);
     if(status!=gears_weapon_main_mount::Status::ready)return unsigned(sender::translate(status));
-    const auto result=sender::response(scratch.request,parent,scratch.candidate,
-        weaponhand::clock_ns(nullptr),scratch.response);
+    active_receipt.stage=4;active_receipt.response_ns=weaponhand::clock_ns(nullptr);
+    const auto result=sender::response(scratch.request,parent,scratch.candidate,active_receipt.response_ns,scratch.response);
+    active_receipt.response_status=unsigned(result);
     if(!running(parent)){scratch.response=empty_response;return unsigned(wire::Status::inactive);}
     return unsigned(result);
 }
@@ -61,19 +110,26 @@ std::uint32_t __cdecl prepare(void* context,wire::Request const* request,wire::R
             !enabled.load(std::memory_order_acquire)||!nativeequipment::domain_ready())return result;
         if(entered.test_and_set(std::memory_order_acquire))return ~0u;
         claimed=true;
+        active_receipt={};active_receipt.begin_ns=weaponhand::clock_ns(nullptr);
+        if(receipt_attempts!=UINT64_MAX)++receipt_attempts;
 #if defined(GEARS_PLAYGROUND_HAND_WEAPON_MESH_PHASE1_TRIAL)
         saved_parser=component_names::enabled;parser_saved=true;component_names::enabled=false;
 #endif
         result=prepare_data(request);
         if(wire::status_valid(result)&&result==unsigned(wire::Status::ready)){
-            if(!publish(out,scratch.response))return ~0u;
+            active_receipt.stage=5;
+            if(!publish(out,scratch.response))result=~0u;
         }
+        active_receipt.status=result;active_receipt.returned=1;active_receipt.finish_ns=weaponhand::clock_ns(nullptr);
         return result;
     }__finally{
 #if defined(GEARS_PLAYGROUND_HAND_WEAPON_MESH_PHASE1_TRIAL)
         if(parser_saved)component_names::enabled=saved_parser;
 #endif
-        if(claimed){std::memset(&scratch,0,sizeof(scratch));entered.clear(std::memory_order_release);}
+        if(claimed){
+            if(receipt_count<receipts.size())receipts[receipt_count++]=active_receipt;
+            std::memset(&scratch,0,sizeof(scratch));entered.clear(std::memory_order_release);
+        }
         callbacks.fetch_sub(1,std::memory_order_release);
     }
 }

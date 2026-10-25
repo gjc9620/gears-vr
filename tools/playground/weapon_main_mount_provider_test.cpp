@@ -13,6 +13,7 @@ namespace policy=gears_weapon_main_mount;
 namespace source=gears_weapon_main_mount_source;
 std::atomic<unsigned> callbacks{};
 std::atomic<bool> enabled{true};
+FILE* log_file{};
 namespace component_names {thread_local bool enabled=true;}
 namespace weaponhand {
 struct Client {
@@ -37,13 +38,17 @@ bool copy(void* out,uptr from,std::size_t size) noexcept {
     __try{std::memcpy(out,reinterpret_cast<void const*>(from),size);return true;}
     __except(EXCEPTION_EXECUTE_HANDLER){return false;}
 }
-enum class ReaderMode {ready,unheld,busy,revoke,soft_revoke,reenter,seh};
+enum class ReaderMode {ready,unheld,busy,revoke,soft_revoke,reenter,seh,wrong_candidate,publish_fail};
 ReaderMode reader_mode=ReaderMode::ready;
 wire::Request const* active_request{};wh::Frame active_hand{};
 constexpr DWORD custom_exception=0xe0424781;
 std::uint32_t nested_status{};wire::Response nested_response{};
+wire::Response* protected_response{};
 namespace nativeequipment_main_mount {
-struct RetainedDiagnostic {unsigned marker{};};
+struct RetainedDiagnostic {
+    unsigned marker{},stage{};source::SourceStatus binding{};gears_equipment_rig::Status agreement{};
+    struct {unsigned asset_status{};} mount{};
+};
 policy::Status prepare_retained(rt::Frame const&,source::BodyContext const&,policy::Candidate&,RetainedDiagnostic&) noexcept;
 }
 unsigned receipt_fault{};bool revoke_on_attach{},attach_seh{},resolve_missing{};
@@ -92,6 +97,9 @@ policy::Status prepare_retained(rt::Frame const& retained,source::BodyContext co
     out.basis=body.basis;out.geometry=body.geometry;out.model_scale=body.model_scale;out.units_per_metre=body.units_per_metre;
     policy::lancer::Profile profile{};CHECK(policy::lancer::marcus115(body.geometry,body.model_scale,body.units_per_metre,profile));
     out.right=profile.mount.calibration;diagnostic.marker=17;
+    if(reader_mode==ReaderMode::wrong_candidate)++out.key.frame;
+    if(reader_mode==ReaderMode::publish_fail){DWORD old{};
+        CHECK(protected_response&&VirtualProtect(protected_response,sizeof(wire::Response),PAGE_READONLY,&old));}
     return reader_mode==ReaderMode::unheld?policy::Status::unheld:reader_mode==ReaderMode::busy?policy::Status::busy:policy::Status::ready;
 }
 }
@@ -165,5 +173,37 @@ int main(){
     {Trial t;weaponhand::on_gt=false;attach_seh=true;CHECK(mainmountprovider::attach(weaponhand::native_module)==wh::Reply::unavailable);}
     {Trial t;weaponhand::on_gt=false;revoke_on_attach=true;
         CHECK(mainmountprovider::attach(weaponhand::native_module)!=wh::Reply::accepted);}
+    mainmountprovider::receipt_count=0;mainmountprovider::receipt_attempts=0;
+    {Trial t;const auto before=mainmountprovider::receipt_count;
+        CHECK(t.call()==unsigned(wire::Status::ready));
+        CHECK(mainmountprovider::receipt_count==before+1);const auto& r=mainmountprovider::receipts[before];
+        CHECK(r.returned==1&&r.stage==5&&r.status==unsigned(wire::Status::ready)&&r.context_status==0&&r.retained_status==0&&r.response_status==0);
+        CHECK(r.query==t.request.query_id&&r.cookie==61&&r.native_started==51&&r.lifecycle==t.request.hand_lifecycle);}
+    {Trial t;mainmountprovider::receipt_count=0;++t.request.maximum_age_ns;
+        CHECK(t.call()==unsigned(wire::Status::source_mismatch));const auto& r=mainmountprovider::receipts[0];
+        CHECK(r.returned==1&&r.stage==2&&r.context_status==12&&r.retained_status==UINT32_MAX&&reader_calls==0);}
+    {Trial t;mainmountprovider::receipt_count=0;reader_mode=ReaderMode::wrong_candidate;
+        CHECK(t.call()==unsigned(wire::Status::source_mismatch));const auto& r=mainmountprovider::receipts[0];
+        CHECK(r.returned==1&&r.stage==4&&r.context_status==0&&r.retained_status==0&&r.response_status==12);}
+    {Trial t;mainmountprovider::receipt_count=0;reader_mode=ReaderMode::seh;
+        CHECK(caught_custom(&t.request,&t.response));const auto& r=mainmountprovider::receipts[0];
+        CHECK(r.returned==0&&r.stage==3&&r.finish_ns==0&&callbacks.load()==0&&scratch_empty());}
+    {Trial t;mainmountprovider::receipt_count=0;reader_mode=ReaderMode::publish_fail;
+        protected_response=static_cast<wire::Response*>(VirtualAlloc(nullptr,4096,MEM_COMMIT|MEM_RESERVE,PAGE_READWRITE));
+        CHECK(protected_response);CHECK(mainmountprovider::prepare(&weaponhand::client,&t.request,protected_response)==~0u);
+        const auto& r=mainmountprovider::receipts[0];CHECK(r.returned==1&&r.stage==5&&r.status==UINT32_MAX&&r.finish_ns>0);
+        CHECK(callbacks.load()==0&&scratch_empty()&&empty(*protected_response));
+        CHECK(VirtualFree(protected_response,0,MEM_RELEASE));protected_response=nullptr;}
+    {Trial t;mainmountprovider::receipt_count=0;const auto before=mainmountprovider::receipt_attempts;
+        for(unsigned i=0;i<34;++i)CHECK(t.call()==unsigned(wire::Status::ready));
+        CHECK(mainmountprovider::receipt_count==32&&mainmountprovider::receipt_attempts==before+34);}
+    {Trial t;mainmountprovider::receipt_count=0;CHECK(t.call()==unsigned(wire::Status::ready));
+        mainmountprovider::reset_diagnostics_after_drain();CHECK(mainmountprovider::receipt_count==1);
+        CHECK(tmpfile_s(&log_file)==0&&log_file);mainmountprovider::write_diagnostics_after_drain();CHECK(std::ftell(log_file)==0);
+        enabled=false;weaponhand::native_module=nullptr;weaponhand::on_gt=false;
+        mainmountprovider::write_diagnostics_after_drain();const auto bytes=std::ftell(log_file);CHECK(bytes>0);
+        mainmountprovider::write_diagnostics_after_drain();CHECK(std::ftell(log_file)==bytes);
+        CHECK(std::fclose(log_file)==0);log_file=nullptr;
+        mainmountprovider::reset_diagnostics_after_drain();CHECK(mainmountprovider::receipt_count==0&&!mainmountprovider::diagnostics_written);}
     std::printf("WeaponMainMountProviderTest: %u checks passed; actual callback/attach wrapper, owned data and synthetic host only\n",checks);return 0;
 }

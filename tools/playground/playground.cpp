@@ -1436,6 +1436,9 @@ extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundInitialize(void*){
     if(callbacks.load(std::memory_order_acquire))return 31;
     nativeequipment::reset_after_drain();
 #endif
+#if defined(GEARS_PLAYGROUND_NATIVE_MAIN_MOUNT_PROVIDER_TRIAL)
+    mainmountprovider::reset_diagnostics_after_drain();
+#endif
 #if defined(GEARS_PLAYGROUND_WEAPON_GRIP_DAMAGE_RESULT_PROBE)
     if(callbacks.load(std::memory_order_acquire))return 31;
     gripdamage::callbacks_drained();
@@ -2181,6 +2184,9 @@ extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundShutdown(void*){
     const auto until=GetTickCount64()+2000;
     while(callbacks.load()&&GetTickCount64()<until)Sleep(1);
     if(callbacks.load())return 2;
+#if defined(GEARS_PLAYGROUND_NATIVE_MAIN_MOUNT_PROVIDER_TRIAL)
+    mainmountprovider::write_diagnostics_after_drain();
+#endif
 #if defined(GEARS_PLAYGROUND_NATIVE_EQUIPMENT_TRIAL)
     nativeequipment::reset_after_drain();
 #endif

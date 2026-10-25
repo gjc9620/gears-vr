@@ -10,13 +10,16 @@ struct Diagnostic {
     std::uint64_t hold_generation{};bool held{},asset_attempted{};
     std::int64_t observed_ns{},elapsed_ns{};
 };
-policy::Status prepare(hand::Frame const& frame,policy::BodyBinding const& body,
-    policy::Candidate& out,Diagnostic& diagnostic) noexcept {
-    out={};diagnostic={};const auto started=nativeequipment::clock_ns(nullptr);
+// Private synchronous continuation. game is the actual observation returned
+// with this call's Frame, not a cached witness or a new source permission.
+policy::Status prepare_observed(hand::Frame const& frame,policy::BodyBinding const& body,
+    hand::GripGameState const& game,policy::Candidate& out,Diagnostic& diagnostic,
+    std::int64_t started) noexcept {
+    out={};diagnostic={};
     diagnostic.observed_ns=started;
-    hand::GripGameState game{};
     if(!weaponhand::current_gt(nullptr)||!nativeequipment::domain_ready()||
-       !weaponhand::client.source_game_on_gt(frame.key,game))return policy::Status::inactive;
+       !weaponhand::client.armed()||!weaponhand::client.registration_alive(
+           frame.key.registration_cookie,frame.key.native_started_qpc))return policy::Status::inactive;
     const auto generation=vrequip::model.hold_generation();
     diagnostic.hold_generation=generation;diagnostic.held=game.main_hand_held;
     const auto allowed=policy::eligibility(frame,game,generation,nativeequipment::clock_ns(nullptr));
@@ -41,10 +44,19 @@ policy::Status prepare(hand::Frame const& frame,policy::BodyBinding const& body,
     diagnostic.asset=asset;diagnostic.observed_ns=finished;diagnostic.elapsed_ns=finished-started;
     return policy::prepare(frame,after,generation,asset,body,finished,out);
 }
+policy::Status prepare(hand::Frame const& frame,policy::BodyBinding const& body,
+    policy::Candidate& out,Diagnostic& diagnostic) noexcept {
+    out={};diagnostic={};const auto started=nativeequipment::clock_ns(nullptr);
+    diagnostic.observed_ns=started;hand::GripGameState game{};
+    if(!weaponhand::current_gt(nullptr)||!nativeequipment::domain_ready()||
+       !weaponhand::client.source_game_on_gt(frame.key,game))return policy::Status::inactive;
+    return prepare_observed(frame,body,game,out,diagnostic,started);
+}
 struct RetainedDiagnostic {
+    enum class Stage:unsigned {entry,copy_frame,initial_bind,prepare,final_bind,complete};
     source::SourceStatus binding{source::SourceStatus::source_mismatch};
     gears_equipment_rig::Status agreement{gears_equipment_rig::Status::inactive_hand};
-    Diagnostic mount{};
+    Diagnostic mount{};Stage stage{};
 };
 policy::Status source_rejection(source::SourceStatus value) noexcept {
     switch(value){
@@ -65,18 +77,22 @@ policy::Status source_rejection(source::SourceStatus value) noexcept {
     if(!weaponhand::current_gt(nullptr)||!nativeequipment::domain_ready())return policy::Status::inactive;
     // Freeze caller-owned data once; do not reread a mutable publication or
     // manufacture/retimestamp a hand Frame if this exact Scene is unavailable.
-    const auto rig=retained;const auto context=native_body;hand::Frame frame{};
-    if(!weaponhand::client.copy_frame_on_gt(frame))return policy::Status::inactive;
+    const auto rig=retained;const auto context=native_body;hand::Frame frame{};hand::GripGameState game{};
+    diagnostic.stage=RetainedDiagnostic::Stage::copy_frame;
+    if(!weaponhand::client.copy_frame_on_gt(frame,game))return policy::Status::inactive;
     policy::BodyBinding body{};
     const auto expected=static_cast<std::uint32_t>(frame.stereo.source);
+    diagnostic.stage=RetainedDiagnostic::Stage::initial_bind;
     diagnostic.binding=source::bind(frame,rig,context,nativeequipment::clock_ns(nullptr),expected,body,diagnostic.agreement);
     if(diagnostic.binding!=source::SourceStatus::ready)return source_rejection(diagnostic.binding);
-    const auto result=prepare(frame,body,out,diagnostic.mount);
+    diagnostic.stage=RetainedDiagnostic::Stage::prepare;
+    const auto result=prepare_observed(frame,body,game,out,diagnostic.mount,nativeequipment::clock_ns(nullptr));
     if(result!=policy::Status::ready)return result;
     policy::BodyBinding final_body{};
+    diagnostic.stage=RetainedDiagnostic::Stage::final_bind;
     diagnostic.binding=source::bind(frame,rig,context,nativeequipment::clock_ns(nullptr),expected,final_body,diagnostic.agreement);
     if(diagnostic.binding!=source::SourceStatus::ready){out={};return source_rejection(diagnostic.binding);}
-    return result;
+    diagnostic.stage=RetainedDiagnostic::Stage::complete;return result;
 }
 const char* status_name(policy::Status value) noexcept {
     switch(value){

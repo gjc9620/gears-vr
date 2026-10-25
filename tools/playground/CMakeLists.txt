@@ -281,10 +281,11 @@ if(GEARS_PLAYGROUND_NATIVE_MAIN_MOUNT_PROVIDER_TRIAL)
     target_compile_definitions(GearsPlayground PRIVATE GEARS_PLAYGROUND_NATIVE_MAIN_MOUNT_PROVIDER_TRIAL=1)
     add_executable(WeaponMainMountSenderTest weapon_main_mount_sender_test.cpp)
     add_executable(WeaponMainMountProviderTest weapon_main_mount_provider_test.cpp)
+    add_executable(WeaponEquipmentMainMountTest weapon_equipment_main_mount_test.cpp)
     # The protocol fixture owns a parser stub and exercises its optional
     # disable/finally-restore branch, without compiling any legacy writer.
     target_compile_definitions(WeaponMainMountProviderTest PRIVATE GEARS_PLAYGROUND_HAND_WEAPON_MESH_PHASE1_TRIAL=1)
-    foreach(PROVIDER_TEST WeaponMainMountSenderTest WeaponMainMountProviderTest)
+    foreach(PROVIDER_TEST WeaponMainMountSenderTest WeaponMainMountProviderTest WeaponEquipmentMainMountTest)
         target_compile_definitions(${PROVIDER_TEST} PRIVATE WIN32_LEAN_AND_MEAN NOMINMAX)
         target_compile_options(${PROVIDER_TEST} PRIVATE /W4 /WX /EHsc /UNDEBUG)
     endforeach()
