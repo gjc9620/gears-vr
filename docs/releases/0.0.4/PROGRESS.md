@@ -2,6 +2,14 @@
 
 本文件保留武器与掩体两个分支的开发历史，便于共用 Native 手部实现合流。各条记录仍以其原始验证范围为准；私有候选、只读采样或离线检查不代表完整功能、默认构建更新或头显验收。
 
+## 2026-10-26 — PG typed Tick／C0装备观察源码与有界Host通过，待Source47联合构建
+
+Body共享头按SHA `6ad0a08fb3633bb0cc3d39841634a69c2a65771ed29886e7c32ceeb9c03b4b3d`逐字接入，Root新增独立identity-only Game／asset／attachment入口、Client单Gate／epoch同步metadata操作和typed sender／provider，新flag默认OFF且依赖原provider。原V1 Client／Frame fresh方法与读取函数体不改；新旧provider共享entered／callbacks／parent pin／drain。两Game包住双asset与唯一attachment，再验holdGeneration／held_binding／domain／epoch；真实begin计metadata50，新raw／capture40与原Scene50各自验证。Native reference_revision仅非0偶数shape／echo，与原StereoGate reference_generation明确不同；pub／ticket／action为Native认证关联，PG不伪称独立观测，不造Frame／world pose／grant。
+
+严格定向结果：sender272 checks、实际Client新操作80 checks、actual typed Game／asset24 checks、actual attachment9 cases（owned解析seams）、actual provider+equipment编排271 checks（owned metadata／Client seams）及原Client15+30+17+8 cases通过。实际PG完整TU同f85 flags加新flag通过`/Zs /W4 /WX`，没有生成obj／DLL。一次Astra PG增量风险审查无具体P1/P2；Native实际source认证仍是独立前提。差分证明原V1在去掉纯新增／flag围栏后逐字还原，typed reader除入口签名外逻辑与原版逐字一致，f85／EO保持冻结。见`docs/weapon-body-main-mount-implementation-20261026.md`与ignored `analysis/body-mount-pg-candidate-20261026/`。
+
+此轮未构建PG／Native DLL、建case或Game／XR。等待Body冻结Source47／新export后再一次联合构建与原40／6秒动作；源码／Host与语法接受不能抬升持续玩法成熟度，整体36%／W2 40%不变。AGENTS外部修改保留不入本提交。
+
 ## 2026-10-26 — 整理typed Tick／C0查询的独立装备观察边界，等待共享头
 
 按Body／Astra收窄方向，仅整理Client／PG只读方案：在同parent callback、actualGT、Client epoch／Gate内提取exact committed key／五对象作历史关联；新raw40负责右Grip资格，PG以当次Game／heldGeneration／双typed asset／attachment／全部末读形成query-bound metadata witness。旧V1 tracking确实参与frame_active／右Grip／world_grip资格，不能删sync检查或伪造Frame；原copy_frame_on_gt／source_game_on_gt／PG V1和f85／EO不动。方案额外明确Hand committed本身无publication／binding_generation，不能假称从Client读出；domain_ready只有ready／depth围栏，没有可导出的actionGeneration，须等Body明确共享action语义。

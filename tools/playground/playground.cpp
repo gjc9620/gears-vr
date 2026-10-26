@@ -1059,6 +1059,10 @@ namespace nativeequipment {bool configure_native(HMODULE) noexcept;}
 #include "weapon_main_mount_sender.h"
 namespace mainmountprovider {gears_weapon_hand::Reply attach(HMODULE) noexcept;}
 #endif
+#if defined(GEARS_PLAYGROUND_BODY_MAIN_MOUNT_PROVIDER_TRIAL)
+#include "body_main_mount_sender.h"
+namespace bodymountprovider {gears_weapon_hand::Reply attach(HMODULE) noexcept;}
+#endif
 #include "weapon_hand_client.inl"
 #if defined(GEARS_PLAYGROUND_NATIVE_EQUIPMENT_MAIN_MOUNT_TRIAL)
 #include "weapon_lancer_asset_read.inl"
@@ -1125,6 +1129,11 @@ namespace handstream {
 #endif
 #if defined(GEARS_PLAYGROUND_NATIVE_MAIN_MOUNT_PROVIDER_TRIAL)
 #include "weapon_main_mount_provider.inl"
+#endif
+#if defined(GEARS_PLAYGROUND_BODY_MAIN_MOUNT_PROVIDER_TRIAL)
+#include "body_mount_metadata_read.inl"
+#include "body_mount_equipment.inl"
+#include "body_main_mount_provider.inl"
 #endif
 #if defined(GEARS_PLAYGROUND_WEAPON_ACTION_BOUNDARY_TRIAL)
 #include "weapon_action_boundary_client.inl"
@@ -1438,6 +1447,9 @@ extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundInitialize(void*){
 #endif
 #if defined(GEARS_PLAYGROUND_NATIVE_MAIN_MOUNT_PROVIDER_TRIAL)
     mainmountprovider::reset_diagnostics_after_drain();
+#endif
+#if defined(GEARS_PLAYGROUND_BODY_MAIN_MOUNT_PROVIDER_TRIAL)
+    bodymountprovider::reset_diagnostics_after_drain();
 #endif
 #if defined(GEARS_PLAYGROUND_WEAPON_GRIP_DAMAGE_RESULT_PROBE)
     if(callbacks.load(std::memory_order_acquire))return 31;
@@ -2186,6 +2198,9 @@ extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundShutdown(void*){
     if(callbacks.load())return 2;
 #if defined(GEARS_PLAYGROUND_NATIVE_MAIN_MOUNT_PROVIDER_TRIAL)
     mainmountprovider::write_diagnostics_after_drain();
+#endif
+#if defined(GEARS_PLAYGROUND_BODY_MAIN_MOUNT_PROVIDER_TRIAL)
+    bodymountprovider::write_diagnostics_after_drain();
 #endif
 #if defined(GEARS_PLAYGROUND_NATIVE_EQUIPMENT_TRIAL)
     nativeequipment::reset_after_drain();

@@ -1,5 +1,6 @@
 #pragma once
 #include "weapon_support_grip.h"
+#include "weapon_equipment_observation.h"
 #include <atomic>
 #include <cstring>
 
@@ -76,6 +77,25 @@ class HandClient {
     }
     bool fresh(Frame const& f,std::int64_t now) const noexcept {
         return now>=f.now_ns&&now-f.now_ns<=100000000&&frame_active(f,now);
+    }
+    template<class Reader>
+    bool equipment_locked(EquipmentIdentity const& expected,Reader& reader,EquipmentObservation& out) noexcept {
+        const auto epoch=epoch_.load(std::memory_order_acquire);
+        const auto current=[&]() noexcept {
+            constexpr auto required=scene_owned|input_matched|gameplay_interactable;
+            return on_gt()&&active(epoch)&&published_.load(std::memory_order_acquire)==epoch&&
+                key_valid(committed_)&&frame_shape_valid(committed_)&&
+                (committed_.flags&required)==required&&!committed_.recentered&&!committed_.heading_deferred&&
+                equipment_matches(committed_,expected);
+        };
+        // Historical association only. The reader independently qualifies the
+        // actual typed tracking source; no old Frame freshness is renewed.
+        if(!equipment_identity_valid(expected)||!current())return false;
+        const auto begin=adapter_.clock_ns(adapter_.context);
+        if(begin<=0||!reader(expected,current,out)||!current())return false;
+        const auto end=adapter_.clock_ns(adapter_.context);
+        if(end<begin||std::uint64_t(end-begin)>50000000||!current())return false;
+        out.begin_ns=begin;out.end_ns=end;return true;
     }
     Reply prepare(Frame const* frame,Proposal* out) noexcept {
         if(!frame||!out)return Reply::invalid;
@@ -154,6 +174,24 @@ public:
     }
     Registration registration() noexcept {
         Registration r{};r.context=this;r.prepare=prepare_callback;r.commit=commit_callback;r.invalidate=invalidate_callback;return r;
+    }
+    // Existing parent callback lifetime is required, including early returns.
+    // A fixed PG metadata continuation executes synchronously under one Gate;
+    // it may not recursively call another Client method or enter Native.
+    // No Frame, publication, participant state or reusable permit is returned.
+    template<class Reader>
+    bool observe_equipment_on_gt(EquipmentIdentity const& expected,Reader& reader,EquipmentObservation& out) noexcept {
+        out={};
+        if(!on_gt()||!armed())return false;
+        if(gate_.test_and_set(std::memory_order_acquire)){disarm();return false;}
+        bool okay{};
+#if defined(_MSC_VER)
+        __try{okay=equipment_locked(expected,reader,out);}
+        __finally{if(!okay)out={};gate_.clear(std::memory_order_release);}
+#else
+        okay=equipment_locked(expected,reader,out);gate_.clear(std::memory_order_release);
+#endif
+        if(!okay)out={};return okay;
     }
     // Call before invoking Native register; callbacks can arrive before that
     // export returns, but cannot publish until its receipt has been validated.

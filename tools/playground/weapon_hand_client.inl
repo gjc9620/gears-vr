@@ -255,6 +255,11 @@ abi::Reply start(HMODULE requested) noexcept {
         FreeLibrary(held);return abi::Reply::unavailable;
     }
 #endif
+#if defined(GEARS_PLAYGROUND_BODY_MAIN_MOUNT_PROVIDER_TRIAL)
+    if(!executable(GetProcAddress(held,gears_body_main_mount_provider::attach_export),held)){
+        FreeLibrary(held);return abi::Reply::unavailable;
+    }
+#endif
 #if defined(GEARS_PLAYGROUND_WEAPON_ACTION_GATE_TRIAL)
     if(!executable(GetProcAddress(held,gears_weapon_action::attach_export),held)){FreeLibrary(held);return abi::Reply::unavailable;}
 #endif
@@ -294,6 +299,9 @@ abi::Reply start(HMODULE requested) noexcept {
         // Optional pure-data child shares the exact parent cookie/pin/drain.
         // On any partial attach failure retain the parent for normal stop.
         if(attached==abi::Reply::accepted)attached=mainmountprovider::attach(held);
+#endif
+#if defined(GEARS_PLAYGROUND_BODY_MAIN_MOUNT_PROVIDER_TRIAL)
+        if(attached==abi::Reply::accepted)attached=bodymountprovider::attach(held);
 #endif
         if(attached!=abi::Reply::accepted)client.begin_disconnect();
         return attached;
