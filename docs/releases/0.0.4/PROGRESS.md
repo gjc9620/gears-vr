@@ -2,6 +2,14 @@
 
 本文件保留武器与掩体两个分支的开发历史，便于共用 Native 手部实现合流。各条记录仍以其原始验证范围为准；私有候选、只读采样或离线检查不代表完整功能、默认构建更新或头显验收。
 
+## 2026-10-27 — Body Goal epoch B触发并记录瞬态uncaptured；持枪原门超时，旧ES持续停滞未复现
+
+Body私有`analysis/body-goal-epoch-runtime-20261027b`已单次0.4后台运行，原武器源码／父ES均未改。Root仅接收summary及ready／review／final保存回执，核session、输入hash和失败阶段字段，没有运行Game／测试／编译／IDA或合并Native。Game62936／Native2930735530854，诊断Native `40d2063db8fb32b7180f4c99740eae15a15fc9c5bd258a084a2735d52ee741e3`，PG仍`7e927e17…61aa`，pins `5baed00ba3acebdd342c5a4cefe01edc6857ada4da47ed4f1222bb77ab36d9bd`。阶段前后诊断absent epoch0，Stop后epoch1，实际触发已观察到；first reason4按Body冻结定义为uncaptured，记录没有可用source／key（相关字段0），不将这些0当有效来源或key相等证据。
+
+本轮整轮不通过：`shoulder-fixed-first32`原40提交／6秒期限门超时，失败阶段累计held MainMount0→10、context rejects3→48、post-admission rejects3→49、source age rejects38→153、Native commits180→190；coherent=null。它们是同局失败区间的聚合计数，没有per-query／C0配对，不能由此认定独立来源修复失败或选定根因，亦不能降低原门或用后续恢复覆盖持枪失败。
+
+Stop本次直接返回[5]并quiescent，随后Native commits206→235、hands27→56、Goal plans291→320，held MainMount10不变，Goal rejects128→129；observed stream/reference/head保持1。首拒后能继续+29，故本轮只是瞬态uncaptured和续更通过，没有复现旧ES代数2后的持续规划前拒绝，也没有解释或修复该旧失败。finalizer一次cleanup接受，原106／full chunks／Native、entry、PG／XR0／十文件／audio／准确PID恢复通过。Body已交窗FPS，无武器侧代码合并、默认集成或进度加分。接收回执ignored `analysis/lancer-component-readback-20261026/goal-epoch-b-received-20261027.json`，Body summary原SHA `0efe28b424e5368ba5efd506c97cc6fde9765851c36a226ce933ff98b4affe6b`；保留早先所有通过与失败记录。
+
 ## 2026-10-26 — Body诊断派生局续更通过，原ES失败未复现；首拒诊断覆盖未证
 
 Body在其worktree从ES私有派生`analysis/body-goal-first-reject-runtime-20261026a`，使用其只读Goal first-reject候选Native `efdf83825f28a7a23b8a30d01338aa55aa9cbafefb7d17986bf492cc46f47462`，原动作与Stop恢复门运行一次。Root仅读其ready／runtime-review／runtime-final三保存回执及精确PID／Native，未重复其构建／测试或启动Game。Game59052／Native2854251650177，Stop4→5、quiescent、coordinator complete/errors0，基线后Native commits302→332、hands75→105、Goal plans349→379，held MainMount56不变、Goal rejected86不变；observed stream/reference/head均保持1。原106／full chunks／Native、entry、PG、XR0／十文件／audio／准确PID恢复通过。
