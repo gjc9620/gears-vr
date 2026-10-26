@@ -11,7 +11,10 @@ int main() {
         assert(show_command(command,false)==SW_SHOWNOACTIVATE);
     }
     assert(show_command(SW_HIDE,true)==SW_HIDE);
-    assert(show_command(SW_SHOWMINIMIZED,true)==SW_SHOWMINNOACTIVE);
+    for(int command:{SW_SHOWMINIMIZED,SW_MINIMIZE,SW_SHOWMINNOACTIVE}) {
+        assert(show_command(command,true)==SW_SHOWNA);
+        assert(show_command(command,false)==SW_SHOWMINNOACTIVE);
+    }
     assert(startup_show(false,false)==SW_SHOWNOACTIVATE);
     assert(startup_show(false,true)==SW_SHOWNA);
     assert(startup_show(true,true)==SW_SHOWMINNOACTIVE);

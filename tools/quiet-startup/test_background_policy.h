@@ -8,7 +8,7 @@ inline int show_command(int command, bool behind) noexcept {
     case SW_SHOWNORMAL:case SW_SHOWMAXIMIZED:case SW_SHOW:case SW_RESTORE:case SW_SHOWDEFAULT:
         return behind?SW_SHOWNA:SW_SHOWNOACTIVATE;
     case SW_SHOWNOACTIVATE:return behind?SW_SHOWNA:command;
-    case SW_SHOWMINIMIZED:case SW_MINIMIZE:return SW_SHOWMINNOACTIVE;
+    case SW_SHOWMINIMIZED:case SW_MINIMIZE:case SW_SHOWMINNOACTIVE:return behind?SW_SHOWNA:SW_SHOWMINNOACTIVE;
     default:return command;
     }
 }

@@ -40,7 +40,7 @@ def prepare(name, manifest_path, config_path):
     manifest = json.loads(manifest_path.read_text(encoding='utf-8-sig'))
     config = json.loads(config_path.read_text(encoding='utf-8-sig'))
     game = validate_game(manifest['game_path'], expected=manifest['game_sha256'])
-    quiet = ROOT / 'tools/quiet-startup/build-instance4'
+    quiet = ROOT / 'tools/quiet-startup/build-instance5'
     verify_test_behind_build(quiet)
     original = Path(os.environ.get('LOCALAPPDATA', str(Path.home() / 'AppData/Local'))).resolve()
     source_data = original / 'Coalition/WarGame'
