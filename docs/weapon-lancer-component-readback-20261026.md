@@ -1,4 +1,10 @@
-# Lancer原枪组件读回：下一最小验证
+# Lancer原枪组件读回与骨骼配对观察
+
+EQ实际运行更新：Root在Body明确交出空窗口后完成原动作一次并正常finalize，Game20012、原持枪门与后续ready／移转提交通过。9条组件观察各自有效，包含约10°对应旋转；同small-move输入和epochs的后继样本却又偏移14.93523游戏单位／24.06287°，距离阶段结束尚640.34ms。角色CTW相同；这些数据既不能宣布稳定跟手，也不能把分叉直接解释为GPU闪烁、动画覆盖或Native回退。正常清理与恢复通过，窗口已交回。原件和分析在ignored `analysis/lancer-component-readback-20261026/eq-saved-component-review.json`。下文“待运行”保留为先前封存时的历史说明。
+
+当前唯一后继为外部只读配对观察。生产入口`tools/game-playtest/weapon_component_observation.py::wrap_probe`包住既有私有`body_observation.probe`，不改原函数体、原host调用和成功条件。两次原骨骼观察包围实际枪组件、Avatar矩阵、typed资产、唯一实际weapon_end attachment读回；再对属性选择、反射布局、身份、动态字段、Ref115、骨骼epoch／Space／Local／CTW及全局注册表做结束重复检查。成功记录原枪矩阵、weapon_end世界矩阵及枪相对骨骼矩阵；失败仅附加拒绝原因，返回原成功姿态。有限顺序读取只能筛掉观察到的变化，显式保留`same_C0_not_proved`与`final_render_phase_not_proved`，没有调用引擎getter或写游戏，不生成射击权限。
+
+16项owned定向测试使用实际pair reader和原`world_state.Query`、假的memory／resolver／pose callback验证正常、读取中变化拒绝和错误隔离等边界；原live骨骼算法和游戏／GPU不在此测试范围。命令为`python -B tools/game-playtest/weapon_component_observation_test.py`。不为这次Python观察器重建未改Native／PG／XR；ER只复制该helper并在既有私有入口追加wrapper，再运行原取枪／移转动作。详细结果持续记录在`docs/releases/0.0.4/PROGRESS.md`。
 
 EP已经通过原40／6秒持枪门及right-ready、小幅平移＋10°转枪的后续提交。Root复核保存的BMS／v3／alpha原件头和32条sequence／tick／Compose关联，独立重算v3腕FK位置与Local精确一致，并直接计到四角色各32次Applied、640事件无drop。BMS完整来源与新source目标派生复用Body严格reader，未冒充又做一次独立来源数学证明；前32条不能扩充成全部62条会话提交。Root没有为此重跑游戏。记录在ignored `analysis/body-mount-pg-candidate-20261026/ep-saved-root-review.json`。
 

@@ -2,7 +2,17 @@
 
 本文件保留武器与掩体两个分支的开发历史，便于共用 Native 手部实现合流。各条记录仍以其原始验证范围为准；私有候选、只读采样或离线检查不代表完整功能、默认构建更新或头显验收。
 
-## 2026-10-26 — EQ原枪组件只读候选已构建封存，复用EP原动作待运行
+## 2026-10-26 — EQ原动作已完成，固定输入下组件姿态分叉；配对观察离线通过
+
+更新：Body明确交出空窗口后，Root仅执行一次已冻结EQ及原finalizer；Game20012／Native2635598176705，原shoulder40／6秒门通过，三个阶段实际新增43／9／10次coherent held提交，8命令完成、errors为空。9条组件记录各自重复读取通过，ready→small-move的一组相邻样本旋转约9.99998°；但small-move输入与epochs完全相同的后两条样本，组件位置差14.93523游戏单位、角度差24.06287°。最后样本在该阶段结束前640.34ms，不能归因于Stop清理。Avatar矩阵9条相同；只能确认组件响应，尚未证明稳定跟手或分叉原因。旧异步骨骼样本距这些行24–105ms，不能硬配成同次姿态。每条组件采样约4.96–5.23ms，包含普通tick的33–37ms跨度不能全归于probe。保存证据与Root只读复核位于ignored `analysis/lancer-component-readback-20261026/eq-saved-component-review.json`。
+
+正常HandStop5、quiescent后自由双手继续、控制器恢复／bridgeclose、Native与entry恢复、原106／完整保护块、XR0／PG0、十文件／audio和精确PID收尾通过；host瞬时`no_remaining_games=false`原值保留，不覆盖最终清理结果。运行窗口已交回Body，当前FPS随后使用窗口，Root不抢占。
+
+针对分叉，新增`tools/game-playtest/weapon_component_observation.py`，在原`probe(observer)`外包`wrap_probe`：原骨骼读回→typed枪／角色组件／唯一weapon_end attachment→第二次原骨骼读回→实际Query身份／属性选择／字段与注册表末读→骨骼epoch／Space／Local／CTW末读→再末读Query。附加记录失败仍返回第一次原姿态结果；第一次原姿态本身失败仍原样抛出。不会放宽原40／6秒成功条件，不写游戏、不调用engine getter、不改Native／PG／XR。有限顺序重复读取明确不是同C0原子快照，也不证明最终GPU阶段、枪口或射击。
+
+实际生产pair reader＋现有`world_state.Query`在owned内存fixture上16项定向测试通过，含稳定相对矩阵、epoch／Space／Local／reference变化、组件迟变、两次末读、属性选择／身份／注册表变化、错误／重复attachment、不可读、附加与原姿态失败区别、discovery hints拒绝和仿射逆矩阵。fixture姿态callback是seam，未冒称又验证一次原live骨骼算法。接下来仅将wrapper加到新ER私有`body_observation.probe`入口，封存后按独占窗口交接运行原动作。未重建未变Native／PG／XR，也未重新运行旧检查；稳定跟手、sameC0／画面／枪口／射击及头显接受均待验。
+
+以下保留EQ封存时的历史交付说明；“待运行／Root不launch”描述的是该时刻，已被上方实际运行记录更新。
 
 源码`28babdd`经单次PG-only完整编译／链接，得DLL `38d897b4ff4f355b958874235327a1851a9acb5fc9c7bfa05be91774d3a68912`，783源及vendor不变；实际生产defines相对EP仅加`GEARS_PLAYGROUND_LANCER_COMPONENT_PROBE=1`，原flags及16个PG导出名称保持。新flag OFF后原tick／playground文本还原，Native／共享合同／typed provider未改，旧检查不重测。精确build在ignored `analysis/lancer-component-readback-20261026/pg-build/attempt-1792999696227354400/`。
 
