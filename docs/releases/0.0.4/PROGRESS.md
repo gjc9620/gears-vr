@@ -2,6 +2,12 @@
 
 本文件保留武器与掩体两个分支的开发历史，便于共用 Native 手部实现合流。各条记录仍以其原始验证范围为准；私有候选、只读采样或离线检查不代表完整功能、默认构建更新或头显验收。
 
+## 2026-10-26 — 整理typed Tick／C0查询的独立装备观察边界，等待共享头
+
+按Body／Astra收窄方向，仅整理Client／PG只读方案：在同parent callback、actualGT、Client epoch／Gate内提取exact committed key／五对象作历史关联；新raw40负责右Grip资格，PG以当次Game／heldGeneration／双typed asset／attachment／全部末读形成query-bound metadata witness。旧V1 tracking确实参与frame_active／右Grip／world_grip资格，不能删sync检查或伪造Frame；原copy_frame_on_gt／source_game_on_gt／PG V1和f85／EO不动。方案额外明确Hand committed本身无publication／binding_generation，不能假称从Client读出；domain_ready只有ready／depth围栏，没有可导出的actionGeneration，须等Body明确共享action语义。
+
+最小本地操作建议单Gate内执行固定metadata reader，禁止递归调用旧Client source方法；两次fresh Game包围双asset／实际attachment，保留各reader内部末读及最后epoch／holdGeneration／domain／time检查，返回真实观察范围而非Frame／world pose／grant。具体提案见`docs/weapon-tick-mount-equipment-witness-plan-20261026.md`。本轮仅源码依赖分析／文档，无生产改动、构建、case或Game；等待Body唯一共享typed头及hash后才实施PG路径，不抬成熟度。
+
 ## 2026-10-26 — EO实际查询耗时缩短，持续门仍失败，转查生产消费时序
 
 Body独占完成EO及原finalize一次并交回空窗口。其报告Game1500／Native2480512716131，19 held全部完整pose通过、四角色实际应用各19、380event0drop；原firstheld40／6秒仍失败，未移手，HandStop5／quiescent／freehand继续／输入恢复／bridgeclose与正常106／Native／entry／XR0／PG0／十文件／audio10／准确PID恢复通过，host瞬时false保留。Root本次仅核对保存的PG／预算时标与清理字段，不重算19条姿态，不扩大对身体侧结果的独立验证声称。
