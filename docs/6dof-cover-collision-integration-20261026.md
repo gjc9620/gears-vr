@@ -8,6 +8,10 @@
 
 Native 中只实现绑定当前零售版本的 Actor.Trace 查询。先在现有 Scene 持锁位置进行 **observation-only** 调用，记录同步引擎调用耗时、回调重入、嵌套 Scene、锁和退出清理结果；通过后才允许它参与抓边许可。调用前后核对当前模块、Actor.Trace 的 NativeIndex 277、116 字节参数结构及原始字段链、GNatives277、完整代码字节和所有被用对象的注册槽。区分命中、有效空返回、证书失败与调用结果不明。Python／Playground 继续用于取证，不能成为生产帧的异步授权者。
 
+私有观察原型candidate1的现场入口仍有已确认缺口：它先调用旧 `neutral::sample` 和 `geometry::sample_with_impl`，要求旧body的metadata/layout/GT与hook所有权；旧 `CoverBodyPrototype.enabled=0` 时这些条件不会建立，而且neutral路径还可能调用原生头骨getter。不能只跳过 `body_ready` 或打开旧姿态writer来取得读权限。后继独立 `CoverTraceContext` 应从 `weapon_hand_scene_binding` 成功的真实Scene绑定取得调用者持有的metadata快照，另行认证少量CoverType/Link/slot/世界/位置字段；完全绕开neutral校准、geometry变换和骨getter。共享binding mutex只用于采样/快照，不应被带入未来引擎查询调用；Scene/stereo锁的调用安全仍需独立验证。
+
+针对历史运行时代码的9个窄函数机械导出保留在 ignored `analysis/cover-native-trace-lock-audit1/`。包装函数完整chunks与CT17证书相符；导出仍有21处未解析间接调用，并明确包含引擎临时全局写入。查询语义不能证明整个调用无副作用或无回调；这些静态记录不构成当前进程helper身份、Scene锁安全或异常恢复证明。
+
 每次使用前后复核 Scene invocation、GT、World generation、Controller、Pawn、Mesh、Link／slot、特殊动作、XR session／space／reference 及共享手 owner 的 cookie、revision、action generation。限制每帧射线数、距离、搜索层数和总耗时；缓存只供同一 Scene 的重复渲染读取。同步引擎调用一旦卡住，普通超时计时无法中断它，因此时间预算只限制后续调用和许可。
 
 ## 2. 几何与位移许可
