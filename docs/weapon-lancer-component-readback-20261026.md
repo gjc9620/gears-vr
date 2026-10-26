@@ -1,5 +1,7 @@
 # Lancer原枪组件读回与骨骼配对观察
 
+ER实际运行更新：原动作45／8／8次held提交与正常恢复通过，39条原coherent姿态均保留；新增外部pair 0／39接受，38次前后骨骼比较变化、1次Query结束字段／registry变化。配对区间中位35.4808ms（28.7729–55.0061ms）；拒绝记录不含after字段，不能倒推具体变化项。原PG组件9条均接受，但没有同骨骼稳定配对。ER保留原件，不重跑；下一候选收窄到既有PG组件采样点内的只读骨骼数据，保留sameC0／GPU／枪口／射击边界。结果在ignored `er-saved-pair-review.json`及PROGRESS。
+
 EQ实际运行更新：Root在Body明确交出空窗口后完成原动作一次并正常finalize，Game20012、原持枪门与后续ready／移转提交通过。9条组件观察各自有效，包含约10°对应旋转；同small-move输入和epochs的后继样本却又偏移14.93523游戏单位／24.06287°，距离阶段结束尚640.34ms。角色CTW相同；这些数据既不能宣布稳定跟手，也不能把分叉直接解释为GPU闪烁、动画覆盖或Native回退。正常清理与恢复通过，窗口已交回。原件和分析在ignored `analysis/lancer-component-readback-20261026/eq-saved-component-review.json`。下文“待运行”保留为先前封存时的历史说明。
 
 当前唯一后继为外部只读配对观察。生产入口`tools/game-playtest/weapon_component_observation.py::wrap_probe`包住既有私有`body_observation.probe`，不改原函数体、原host调用和成功条件。两次原骨骼观察包围实际枪组件、Avatar矩阵、typed资产、唯一实际weapon_end attachment读回；再对属性选择、反射布局、身份、动态字段、Ref115、骨骼epoch／Space／Local／CTW及全局注册表做结束重复检查。成功记录原枪矩阵、weapon_end世界矩阵及枪相对骨骼矩阵；失败仅附加拒绝原因，返回原成功姿态。有限顺序读取只能筛掉观察到的变化，显式保留`same_C0_not_proved`与`final_render_phase_not_proved`，没有调用引擎getter或写游戏，不生成射击权限。

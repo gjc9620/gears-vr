@@ -2,6 +2,12 @@
 
 本文件保留武器与掩体两个分支的开发历史，便于共用 Native 手部实现合流。各条记录仍以其原始验证范围为准；私有候选、只读采样或离线检查不代表完整功能、默认构建更新或头显验收。
 
+## 2026-10-26 — ER原动作与恢复通过，外部配对39次全部拒绝
+
+Body CT8完整收尾并明确交窗后，Root仅执行已封存ER一次：host12792／coordinator39259均exit0，原finalizer一次exit0。Game23040／Native2694171951921，shoulder／ready／small-move实际45／8／8次held提交、原8命令complete且errors为空，39条原coherent姿态继续保留。9条原PG组件观察各自接受；外部新增pair却0／39接受：38次两次原骨骼观察比较发生变化，1次Query结束metadata／registry检查变化。pair开始到拒绝耗时28.7729–55.0061ms，中位35.4808ms；拒绝记录没有保留after字段，因此无法从现存数据定位哪项变化，更不能直接解释成原动画覆盖、attachment延迟或GPU闪烁。这次没有得到稳定配对，而非枪体稳定通过。保持现有拒绝条件，不重跑同一输入、不删失败。
+
+HandStop[4,5]、quiescent／自由双手继续、控制器恢复／bridgeclose、Native／entry／原106及完整块、XR0／PG0／十文件／audio／准确PID恢复通过，final accepted的scope仅host／正常清理；host瞬时no_remaining_games=false保留。fresh CIM无Game／XR／执行worker，窗口已交Body。保存复核`analysis/lancer-component-readback-20261026/er-saved-pair-review.json`。下一最小候选只将骨骼与枪组件读取收进现有PG组件只读采样点，先做有界owned检查；不新增Hook、不改Native或身体writer、不扩展其他枪，不把同PlayerTick误称同C0或最终GPU阶段。稳定跟手、枪口／射击与头显接受继续待验。
+
 ## 2026-10-26 — EQ原动作已完成，固定输入下组件姿态分叉；配对观察离线通过
 
 更新：Body明确交出空窗口后，Root仅执行一次已冻结EQ及原finalizer；Game20012／Native2635598176705，原shoulder40／6秒门通过，三个阶段实际新增43／9／10次coherent held提交，8命令完成、errors为空。9条组件记录各自重复读取通过，ready→small-move的一组相邻样本旋转约9.99998°；但small-move输入与epochs完全相同的后两条样本，组件位置差14.93523游戏单位、角度差24.06287°。最后样本在该阶段结束前640.34ms，不能归因于Stop清理。Avatar矩阵9条相同；只能确认组件响应，尚未证明稳定跟手或分叉原因。旧异步骨骼样本距这些行24–105ms，不能硬配成同次姿态。每条组件采样约4.96–5.23ms，包含普通tick的33–37ms跨度不能全归于probe。保存证据与Root只读复核位于ignored `analysis/lancer-component-readback-20261026/eq-saved-component-review.json`。
