@@ -4,6 +4,10 @@
 
 ## 2026-10-27 — he首份非空journal解码：取枪一次，阶段首个已记录拒绝在Kernel commit；原门与Stop续更失败
 
+Body补充既有budget／Goal保存分析，Root仅核该同局摘要与三个共享回执hash并关联精确IDs，不重解raw／重审来源。Body `analysis/body-held-outcome-runtime-20261027e/goal-budget-saved-summary.json` SHA `985c5d9ac40791d8cf65b9286da9618c5175ffd789e6c0cef1638f9f1dd46b7e`记录实际budget9条query／no_query0，phase中只有exact query8／9。首query8的既有prepare_end／commit_end返回边界给出原Scene age48.9722／50.5291ms；这些不是首个Kernel失败谓词时刻或其Context verdict，仍不唯一归因age。全局first-failure tick29620／Compose29621发生phase前1172.3921ms，不匹配query8／9，不能填补当前Kernel拒绝。
+
+后继Stop首拒reason10、keybits0x7e3ff，只有observed stream/reference/head从1→3不等，其余16项（含实际XR space、Native reference与参考记录）一致；实际时点在phase末后146.0534ms，只证明后继阻断，不能倒推首个无input entry index2／tick33464／Compose33465为何早退。Body准备在同一有界journal追加实际Goal返回原因及已计算keybits，不加guard／clock／engine读取；Root要求冻结新header hash／version／Record／Header及layout回执后再增量适配，UNKNOWN／valid位必须区分未到达与默认0，旧520 decoder和原件不覆盖。Body隔离PG1336并以真实guard CPU三路验证的dfd995e4…904669仅为CPU artifact；Root不重复测试、不宣称实跑修复。接收记录ignored `he-existing-budget-received.json`保留范围和摘要hash，无新Game／构建／来源门变更或进度加分。
+
 Body唯一he局正常drain后交首份非空`body-held-outcomes.bin`，Game68132／Native3072491780786，PG `1336a597f7c7d47115e364e8c688fdba2c40ac3b9746ca13e902b3286c63990d`。Root直接复用已交decoder，以同局PID／Native及phase `[307257894873500,307263918239700]`调用，56800字节＝Header120＋109×Record520，errors0／invalid0，dropped／nested／foreign均0。未启动Game／测试／编译／IDA或全量重审。记录从phase起点晚37.116ms开始，虽然总span约6.094s并延伸至阶段末后107.7466ms，仍不完整覆盖请求phase；不能从容量或span提升为6秒验收。
 
 本局确实记录一次Grip held(slot3,event1,press1,frame307,source2684)，原阶段Native mount只+1／40，整轮不通过。指定阶段完整落入窗口的106条中，第一条tick33250／Compose33251／query8：两个SourceGate均okay、三次实际Tick admission均okay／passed、选择held_lancer、Kernel prepare=prepared(0)，commit=guard_rejected(12)。下一条tick33357／Compose33358／query9记录commit=committed(1)、held_counter1／trace_sequence1。其余104条本阶段entry未记录input/query/guard/admission/Kernel结果（UNKNOWN），不能把默认值当通过，也不能仅凭未到达字段选定Goal早退原因；全journal此类107条。已记录首拒不是phase开始缺失37ms内所有可能失败的首个原因。
