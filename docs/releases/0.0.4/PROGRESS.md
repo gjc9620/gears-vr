@@ -4,6 +4,8 @@
 
 ## 2026-10-27 — HI取得两组真实Muzzle几何，均早于held阶段；后继采样间隔候选只准备
 
+Body后续窄分析已封存`analysis/body-held-outcome-runtime-20261027i/held-restore-saved-summary.json` SHA `c34acbb80d7ecf21ff8b532a7752f858b7be0a45ba57e201574c1b6100c218c6`（Body文档a250e7d）。Root仅核交付hash并引用，不重解持枪／restore：journal因late arm仅有1条recorded commit，不能当全phase总数；首已记录阻断backend_capture的内部首拒子条件未存。右恢复66已确认stereo.open，但缺内部子原因／调用clock，不能证明同案fresh gap。采样b4c1b0a／5fdc2f候选继续只暂存，待共享定位后串行组合；中间b768不选、不立即开局，原所有失败与Muzzle证据保持。
+
 Body唯一HI／PG207实跑Game29688／Native3144730156562已结束，Root只消费49675B／SHA `7fb11641f10e35cad2653b27a952851ff0d9726fff6fbf79eedd78facf909770`原PG小日志。3行全部socket before／after completed20／pass2／Reason0，2行完整component＋Avatar＋Muzzle配对接受，另1行被原game_or_generation拒绝而未发布derived world。实际唯一socket与当前Ref9的bone0匹配、相对位置 `(72.6682053,-0.00669687986,11.25)`／rotation0；9位打印恢复原binary32后独立矩阵重放与两个原derived世界位置double误差0。这证明精确Core.Object schema在这些当前点已有效，不反推HH唯一早退。Root回执`hi-saved-muzzle-review.json` SHA `c468aa12d1d77cb2b15f2ff42857401d22894fd9aef3ef7255247152cd5dc327`保留全部raw／时标／名字与身份scope／原件hash。
 
 两有效区间结束在原held phase前261.8747／86.4689ms，固定raw输入下Muzzle位置相差0.53072u；没有phase内或ready／move观察，不能提升稳定可见跟随／同C0／原getter／bore／权威射击或GPU证明。原40／6秒＋pose门失败，status0→1只是观测；Stop后body继续，但右控制器恢复未验证、both=false，首32验收header_valid=false／trace仅1。106／full／音频9／9和fresh空的accepted只属cleanup。Body交接指出恢复66为reader_open/stereo发生在Source1／age匹配循环前，不能因文案含fresh而断言过期；共享协议／restore分析由Body独占，Root不重解held或另读reader。
