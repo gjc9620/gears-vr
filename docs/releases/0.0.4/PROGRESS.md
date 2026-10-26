@@ -8,6 +8,8 @@ Body独占完成EL及一次正常finalize后释放窗口并确认fresh CIM空。
 
 Root独立核对两份原binary的header、29条sequence／tick／Compose及PG response／parent query／原Scene key，另直接由v3 SpaceBases×CTW重算两腕位置误差，与Body reader一致。更具体的阶段证据是29／29进入原consumer时九骨均逐字等planned（mask511），消费结束后仅1条仍全相等；alpha grant mask的0／1／3／7／15分别为4／7／10／7／1条，与after_local保留mask448／451／455／479／511逐条对应。29条中head／腿51／52／55保留，alpha四角色分别对应8/10、11、32/34、35的保留；这是本轮精确相关，不替代具体拒绝分支或修复证据。右腕后FK位置误差中位31.8073u，左腕中位0.0001067u但部分明显偏离，旋转也须按reader完整检查，不能只取接近的位置样本。
 
+Body后续仅扩读现有POD的el-pose2进一步明确这些是owner grant，发生在CCTRL最终后置检查和XMM／packet改写之前，不能等同实际applied。Root将29条新增mask／count／original bits与原v3逐条核对一致，pose_pass仍1；回执为el-owner-grant-recheck.json。下一最小诊断为同32条held关联的alpha sidecar，区分既有单次sample Reject、Native deny stage与最终packet应用，不复用旧first128容量，不放宽alpha1／Scale／40／50；该sidecar尚未有实跑证据。
+
 原记录的29次normal_consumer_end均通过，本轮HandStop4→5／quiescent、两controller恢复、bridgeclose及cookie0后freehand继续实际通过；EK／EI的超时原件保持。完整106／Native／entry／XR0／PG0／原十文件／音频／exact PID正常清理通过，host瞬时false仍保留。committed_ns为postcommit观察，原sync在该观察时刻超过50ms不单独证明任何一次CAS超龄；Root没有将该时刻冒作最后检查时间。独立结果在ignored `analysis/lancer-native44-consumption-20261026/` 的el-consumption-root与el-alpha-role-correlation，源场景未修改、未重跑或重建。Body下一步只定位原control alpha交接拒绝，PG／40／50／原行为门保持。
 
 ## 2026-10-26 — EL绑定Native44显式typed消费者，原行为门保持
