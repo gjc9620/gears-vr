@@ -2,6 +2,14 @@
 
 本文件保留武器与掩体两个分支的开发历史，便于共用 Native 手部实现合流。各条记录仍以其原始验证范围为准；私有候选、只读采样或离线检查不代表完整功能、默认构建更新或头显验收。
 
+## 2026-10-27 — 私有reader的Stereo-open准确子阶段诊断完成，未启动联合游戏
+
+按统筹独立分工，Root从实际0c707 reader冻结9源／原flags派生候选，仅私有`stereo_bridge.h`／`reader.cpp`改变；共享Native／XR／headers不动，原7源／测试及旧exe逐hash保持。原OpenMutex→OpenFileMapping（即使前者失败仍执行后者）、MapView、0等待、原复制／释放／QPF／packet短路次序保留，WAIT_ABANDONED仍释放拒绝，正常复制后ReleaseMutex失败也不新增拒绝条件。仅在原初读期间记录实际调用即时失败Win32、已有wait返回和已复制packet首拒；无额外open／sample／read／QPC／retry／权限。旧stderr行及stdout／exit66／400ms匹配和age尾部不变，只追加一行`reader_stereo_open_v1`。未执行／未复制和成功调用的旧LastError不能当有效失败，后续普通read不覆盖open记录。
+
+完整严格reader编译、19个baseline／candidate API替身场景、原／新各3个只针对本Python PID的CLI64／64／66小检查通过；实际缺自有Stereo对象时错误2即时记录、stdout为空。无Game／XR、bridge producer、目标RAM或旧右手命令重放；不重跑未改controller整套。一轮窄Astra只读两文件审阅无P1／P2。实际`/sourceDependencies`包含所选7个私有headers，原9源前后hash保持。
+
+选定exe ignored `analysis/stereo-reader-open-diagnostic-20261027/validation-1793056273353595900/reader.exe` SHA `01d8b9db36bfa57b580dc98d47e0969eec1b31be32d44e8b03759fcfc11ffc83`；`candidate-manifest.json` SHA `0dac77b18fde597cadac1660f246be2757c89093683e61b1ab30a0e2951c649b`、`result.json` SHA `b66b388aa1e9234e957d2d733d3de405af30d10c01ad6d6f242bb3f8769ea0fb`、差分SHA `098147ac281eac3b975355d7d0b010c0955b2964eb1ad644c45445def069e846`已交统筹和Body复用。说明为`docs/weapon-reader-stereo-open-diagnostic-20261027.md`。这是诊断交付，不能认定HI根因／fresh gap或玩法完成；新Native BHELD003／capture首拒候选由Body独占，现v2 reader继续严格拒新magic，待统筹安排最小适配后与5fdc cadence按原门一次串行组合，无默认替换／加分。
+
 ## 2026-10-27 — HI取得两组真实Muzzle几何，均早于held阶段；后继采样间隔候选只准备
 
 Body后续窄分析已封存`analysis/body-held-outcome-runtime-20261027i/held-restore-saved-summary.json` SHA `c34acbb80d7ecf21ff8b532a7752f858b7be0a45ba57e201574c1b6100c218c6`（Body文档a250e7d）。Root仅核交付hash并引用，不重解持枪／restore：journal因late arm仅有1条recorded commit，不能当全phase总数；首已记录阻断backend_capture的内部首拒子条件未存。右恢复66已确认stereo.open，但缺内部子原因／调用clock，不能证明同案fresh gap。采样b4c1b0a／5fdc2f候选继续只暂存，待共享定位后串行组合；中间b768不选、不立即开局，原所有失败与Muzzle证据保持。
