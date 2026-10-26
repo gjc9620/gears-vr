@@ -2,6 +2,14 @@
 
 本文件保留武器与掩体两个分支的开发历史，便于共用 Native 手部实现合流。各条记录仍以其原始验证范围为准；私有候选、只读采样或离线检查不代表完整功能、默认构建更新或头显验收。
 
+## 2026-10-26 — EL绑定Native44显式typed消费者，原行为门保持
+
+Body交付真正typed消费者Native44后，Root从EK派生EL，选择实际build-cover-body44sim2的DLL `1dafeb65f369e01b38b3b961f25bad5f3dfa27ff2930cd9fd9550b91f100e180`、最终source44-before-build2来源`3df45c10…92140`；PG0ec1／BQ XR1a05／CY simulator378不变。INI只移除BodyTickTrackingProbe、增加BodyTickInput enabled1；不是只读探针，明确新Tick／当前C0基准最终每写40ms、原Scene资格50ms，原Core／PG／wire语义保留，不宣称旧Scene40门通过。Body原完整TU／43exports／22startup／23preflight及其定向typed／真实C0Host验证按对应receipt复用，Root未重编或另跑Game／旧矩阵。
+
+最终EL pins `0a2e635328e5408853d56121f087835c3587fc532da9ff1374131f034c6fcb8f`，coordinator仍`1b4f9f2a…7da95`；namespace证明在ignored case的native44-selection-preflight.json。host／coordinator／runtime_support／finalizer／106验证器／dispatcher仅case/instance替换，profile去掉各自唯一新section后逐字一致；first-held门、原8命令、R2 OFF、所有身份／输入／存档／音频／后台／退出保护保持。EK原输入、结果及SHA69266c…d1b9的探针原件未变。两次派生recipe在创建case前分别因多余转义断言、旧manifest文件名拒绝，失败版本保留；最终另修继承的diagnostic-only描述并重新封印，未改变可执行host。
+
+EL原启动三命令及当前选择已交Body主会独占运行，Root冻结case、不并发；交付时没有instances／ready，尚无实跑接受。新的成功关联原件为native/body-tick-commits.bin，BTICMT01／Header64／sizeof新POD／前32条，须由Body严格reader与原body-hands-commits.bin v3按sequence／tick／Compose逐条关联；包含独立Input、当前base／CTW、avatarAsset、原PGResponse与parent receipt。committed_ns仅postcommit观察，不是CAS精确时刻。Root finalizer仍只验证原v3及正常清理，新的日志不代替持续held／小移转／交还或实体头显接受。
+
 ## 2026-10-26 — EK实际证明真实Tick新输入可取得，旧held／交还行为仍未通过
 
 Body独占完成EK及一次正常finalize，释放窗口并确认fresh CIM无Game/XR。BTIPRB01原件122176B、Header64／Record3816／32条，SHA256 `69266cbe43418984477a5ab3208e474ce295234cbca664f58e8738d336a2d1b9`，实际Game55712／Native incarnation2333248191503；Body严格reader关联通过。32／32 valid、newer及可选真实C0 basis存在，raw sequence比原Scene前进2–4；新hands.sync源龄0.2243–10.8548ms（中位7.36925），原sync29.3217–47.2362ms（中位41.1907），采集0.0251–0.0558ms。basis观察在采集结束后0.891–11.3381ms，原时标未更新。首32可能在held之前，仅证明本轮同真实Tick的新成组来源及当前基准可取得，不推为持枪轨迹／目标计算或稳定性能结论。
