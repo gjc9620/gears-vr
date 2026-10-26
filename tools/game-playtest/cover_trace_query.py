@@ -12,6 +12,7 @@ import struct
 import time
 
 from cover_state import CoverQuery
+from world_state import registry_append_only
 from cover_geometry_state import _geometry
 from cover_bone_query import _AttachedBridge, _module, _ownership, SubmitFailure
 import cover_surface_query as surface
@@ -28,6 +29,106 @@ PARAMS = (
     ('HitInfo', 64, 40, '0x190'), ('ExtraTraceFlags', 104, 4, '0x90'),
     ('ReturnValue', 108, 8, '0x580'),
 )
+
+
+class TraceQuery(CoverQuery):
+    """Permit registry tail growth only with all selected Trace dependencies fixed.
+
+    CoverQuery remains strict for ordinary cover state. Actor.Trace may register
+    unrelated objects while executing, so this query certifies the old object
+    slots and names it actually uses rather than demanding a frozen global count.
+    """
+
+    def __init__(self, observer):
+        super().__init__(observer)
+        self.object_header = self.headers[0][1]
+        self.name_header = self.headers[1][1]
+        objects, count, capacity = struct.unpack('<Qii', self.object_header)
+        names, name_count, name_capacity = struct.unpack('<Qii', self.name_header)
+        if (objects != self.r.objects_data or capacity != self.r.object_capacity or
+                not 0 < self.r.object_count <= count <= capacity <= 4000000 or
+                names != self.r.names_data or name_capacity != self.r.name_capacity or
+                not 0 < self.r.name_count <= name_count <= name_capacity <= 4000000):
+            raise RuntimeError('Cover Trace initial registry/resolver binding differs')
+        self.initial_object_count = self.r.object_count
+        self.initial_name_count = self.r.name_count
+        self.last_object_count = count
+        self.registry_observations = []
+        self.slot_witnesses = {}
+
+    def obj(self, address):
+        value = super().obj(address)
+        if address in self.slot_witnesses:
+            return value
+        index = value['internal_index']
+        if not 0 <= index < self.initial_object_count:
+            raise RuntimeError('Cover Trace used object from newly registered tail')
+        profile = self.r.profile
+        raw_index = struct.unpack('<I', self.read(address + profile['object_internal_index'], 4))[0]
+        name_index, number = struct.unpack('<II', self.read(address + profile['object_name'], 8))
+        if (raw_index != index or number != value['number'] or
+                not 0 <= name_index < self.initial_name_count):
+            raise RuntimeError('Cover Trace selected object identity/raw name differs')
+        cls = struct.unpack('<Q', self.read(address + profile['object_class'], 8))[0]
+        outer = struct.unpack('<Q', self.read(address + profile['object_outer'], 8))[0]
+        object_slot = struct.unpack('<Q', self.read(self.r.objects_data + index * 8, 8))[0]
+        name_entry = struct.unpack('<Q', self.read(self.r.names_data + name_index * 8, 8))[0]
+        if (cls != value['cls'] or outer != value['outer'] or object_slot != address or
+                not name_entry or name_entry != self.r.name_pointers[name_index]):
+            raise RuntimeError('Cover Trace selected registry slot/identity differs')
+        entry_index = struct.unpack('<I', self.read(name_entry + profile['name_entry_index'], 4))[0]
+        expected_name = value['name'].encode('utf-16-le') + b'\0\0'
+        if (entry_index != name_index or len(expected_name) > 128 or
+                self.read(name_entry + profile['name_entry_text'], len(expected_name)) != expected_name):
+            raise RuntimeError('Cover Trace selected name entry differs')
+        self.slot_witnesses[address] = dict(index=index, name_index=name_index,
+                                           object_slot=object_slot, name_entry=name_entry)
+        return value
+
+    def _check_registry(self):
+        object_raw = self.r.read(self.r.objects_header, 16)
+        name_raw = self.r.read(self.r.names_header, 16)
+        _, count, _ = struct.unpack('<Qii', object_raw)
+        if (not registry_append_only(self.object_header, object_raw) or
+                count < self.last_object_count or name_raw != self.name_header):
+            self.closing_rejection = dict(kind='selected_dependency_registry',
+                                          before=self.object_header.hex(),
+                                          after=object_raw.hex(),
+                                          initial_names=self.name_header.hex(),
+                                          current_names=name_raw.hex(),
+                                          previous_object_count=self.last_object_count)
+            raise RuntimeError('Cover Trace selected registry growth certificate differs')
+        self.last_object_count = count
+        self.registry_observations.append(dict(object_count=count,
+                                               selected_objects=len(self.slot_witnesses),
+                                               name_header_unchanged=True))
+
+    def _check_selected_dependencies(self):
+        # Keep Query.finish's identity/metadata order, but use only this one
+        # registry reader. A parent finish could observe growth and then let
+        # a later header reread hide a count rollback.
+        self.closing_rejection = None
+        self.observer.verify()
+        for address, expected in self.identities.items():
+            current = self.s.fresh(address)
+            if current != expected:
+                self.closing_rejection = dict(kind='identity', address=address, size=None,
+                                              before=copy.deepcopy(expected), after=copy.deepcopy(current))
+                raise RuntimeError('World-state metadata/registry changed at closing boundary')
+        for (address, size), expected in self.metadata.items():
+            current = self.r.read(address, size)
+            if current != expected:
+                self.closing_rejection = dict(kind='metadata', address=address, size=size,
+                                              before=expected.hex(), after=current.hex())
+                raise RuntimeError('World-state metadata/registry changed at closing boundary')
+        self._check_registry()
+
+    def finish(self):
+        self._check_selected_dependencies()
+        for (address, size), expected in list(self.values.items()):
+            if self.read(address, size) != expected:
+                raise RuntimeError('Cover Trace selected value changed at closing boundary')
+        self._check_selected_dependencies()
 
 
 def _remaining(deadline):
@@ -106,7 +207,7 @@ def _certificate(q, roles, module, expected_chunks):
 
 def capture(observer, dll_path, dll_sha256, start, end, *, extent=(0, 0, 0), trace_actors=True,
             extra_flags=TRACE_FLAGS,
-            bridge_factory=_AttachedBridge, query_factory=CoverQuery):
+            bridge_factory=_AttachedBridge, query_factory=TraceQuery):
     """Run at most one existing GT queue item; unknown pending is never retried."""
     report = dict(schema=1, accepted=False, diagnostic_only=True, trace_calls=0,
                   collision_verified=False, grab_authorized=False, body_modified=False,
@@ -219,6 +320,12 @@ def capture(observer, dll_path, dll_sha256, start, end, *, extent=(0, 0, 0), tra
             report['query_budget'] = dict(reads=q.reads, bytes=q.bytes)
             if q.closing_rejection:
                 report['closing_rejection'] = copy.deepcopy(q.closing_rejection)
+            if isinstance(q, TraceQuery):
+                report['selected_dependency_registry'] = dict(
+                    initial_object_count=q.initial_object_count,
+                    initial_name_count=q.initial_name_count,
+                    slot_witnesses=copy.deepcopy(q.slot_witnesses),
+                    observations=copy.deepcopy(q.registry_observations))
         if bridge is not None:
             try:
                 bridge.close()
