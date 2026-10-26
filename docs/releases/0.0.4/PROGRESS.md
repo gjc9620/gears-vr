@@ -2,6 +2,16 @@
 
 本文件保留武器与掩体两个分支的开发历史，便于共用 Native 手部实现合流。各条记录仍以其原始验证范围为准；私有候选、只读采样或离线检查不代表完整功能、默认构建更新或头显验收。
 
+## 2026-10-27 — 独立交付held journal离线decoder；hb真实空头正确判无持枪条目
+
+按统筹分工，Root仅在ignored `analysis/lancer-component-readback-20261026/`完成`decode_held_outcomes.py`／合成fixture／最小检查和交付说明。先查Body held候选／runtime／相关saved-analysis，只有生产原始导出和Host布局证据，无BHELD001 decoder；旧reader.exe为controller bridge格式，未混用。读取合同精确pin `held_outcome_journal.h` SHA `a18b7a947b876260adbf3f6b61de6bb5f5bf7b4c0847014479c9bbefb2bd5be1`，复用Body原Host20／0的Record520／Header120，不重建Native／XR／PG。
+
+入口保留全部raw来源／capture／新Tick时标、两个before／after SourceGate与Context、三次实际admission及第四预留槽、mount、Kernel prepare／commit code和held／trace sequence；默认零／UNKNOWN／未到达／实际失败分开。首拒仅按冻结阶段的实际已记录结果归类，不把commit_end调用边界、旧Scene年龄或未知时间变成通过／唯一根因。PID／Native身份、尺寸／截断／尾部、枚举／时钟／slot丢失与容量overflow明确输出；依据实际span和可选原阶段范围标窗口不完整，128容量／7秒armed不证明6秒覆盖，`gameplay_acceptance`与完整phase证明始终不置真。6项合成定向检查通过，新增首拒摘要后相关2项复验通过，未扩矩阵／加助手／启动游戏或改武器、Native源码。
+
+合成1680字节样例明确标SYNTHETIC，输出source_after拒绝、Kernel prepare拒绝、held commit记录三类且窗口不完整。Body hb正常drain后提供的真实`body-held-outcomes.bin`为120字节，SHA `b57c6bbf0543b8702f58b789d3f08214e2d9da74d17866400a5756a49e990561`，以同case PID73444／Native3029853403801实际调用CLI，正确输出0条、errors=[]、`empty_or_not_armed_no_runtime_outcome`，未把解码exit0当动作通过。当前仍无实际held阶段日志条目。
+
+准确命令、输入合同与结果例在analysis的`HELD-JOURNAL-READER.md`；parser SHA `e86ee2cc0a9eccf53787433b79f4db039cfc86c04ec92fadaac16011557a4084`；交付回执`held-journal-reader-delivery.json` SHA `9fdc8dab6183ea819ce8015fd6e426df9261610a7a0c4045d91cab4e7fdfef8b`封存源码／synthetic与真实空文件结果／Host和enum来源hash。交Body后，下一检查点为以后合法原动作且正常drain的actual-held journal，不为reader重开一局。hb更早未取得equipment held结果、未进入原40／6秒门的首阻碍，依统筹新分工转由武器侧只读保存输入／装备回执及冻结consumer定位；不重复Body启动调查或生产侧时序采样，不改共享Native／放宽门／新增游戏、编译或助手。
+
 ## 2026-10-27 — Body held-journal A启动窗口拒绝；无持枪日志运行证据
 
 Body在其私有`analysis/body-held-outcome-runtime-20261027a`单次0.4后台尝试，未到ready、Native未激活、XR未起、控制命令0，真实held日志采样／Stop／Goal epoch均未验证。保存WindowDetails为可见HWND处于iconic=true、rect约(-16000,-16000)、client0×0，原30秒／可见且client至少640×360门拒绝；此结果不证明Native／XR／新journal导致最小化。没有绕开原门、抢焦点、移动／恢复／调整窗口或重放原样持枪局。
