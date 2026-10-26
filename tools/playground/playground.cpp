@@ -1099,6 +1099,12 @@ void tick(gears_weapon_hand::Frame const&) noexcept;
 void reset_after_drain() noexcept;
 }
 #endif
+#if defined(GEARS_PLAYGROUND_LANCER_COMPONENT_PROBE)
+namespace nativeequipment_component {
+void tick(gears_weapon_hand::Frame const&,gears_weapon_hand::GripGameState const&,std::int64_t) noexcept;
+void reset_after_drain() noexcept;
+}
+#endif
 #include "weapon_equipment_backend.inl"
 #if defined(GEARS_PLAYGROUND_NATIVE_EQUIPMENT_MAIN_MOUNT_TRIAL)
 #include "weapon_equipment_main_mount.inl"
@@ -1134,6 +1140,9 @@ namespace handstream {
 #include "body_mount_metadata_read.inl"
 #include "body_mount_equipment.inl"
 #include "body_main_mount_provider.inl"
+#endif
+#if defined(GEARS_PLAYGROUND_LANCER_COMPONENT_PROBE)
+#include "weapon_lancer_component_probe.inl"
 #endif
 #if defined(GEARS_PLAYGROUND_WEAPON_ACTION_BOUNDARY_TRIAL)
 #include "weapon_action_boundary_client.inl"

@@ -185,7 +185,12 @@ void tick(uptr pc) noexcept {
     // not the ordinary game-loop boundary. Do not enter inventory there.
     if(!domain_ready()){++domain_rejected;return;}
     abi::Frame frame{};
+#if defined(GEARS_PLAYGROUND_LANCER_COMPONENT_PROBE)
+    const auto copy_begin_ns=clock_ns(nullptr);abi::GripGameState copied_game{};
+    if(!weaponhand::current_gt(nullptr)||!weaponhand::client.copy_frame_on_gt(frame,copied_game)){
+#else
     if(!weaponhand::current_gt(nullptr)||!weaponhand::client.copy_frame_on_gt(frame)){
+#endif
         ++frame_unavailable;state.suspend(backend);return;
     }
     if(pc!=frame.controller.address){++other_controller;return;}
@@ -210,9 +215,15 @@ void tick(uptr pc) noexcept {
 #if defined(GEARS_PLAYGROUND_NATIVE_EQUIPMENT_MAIN_MOUNT_TRIAL)
     nativeequipment_main_mount::tick(frame);
 #endif
+#if defined(GEARS_PLAYGROUND_LANCER_COMPONENT_PROBE)
+    nativeequipment_component::tick(frame,copied_game,copy_begin_ns);
+#endif
 }
 void reset_after_drain() noexcept {
     state.reset_after_drain(backend,vrequip::model);have_status=false;
+#if defined(GEARS_PLAYGROUND_LANCER_COMPONENT_PROBE)
+    nativeequipment_component::reset_after_drain();
+#endif
 #if defined(GEARS_PLAYGROUND_NATIVE_EQUIPMENT_ATTACHMENT_OBSERVER)
     nativeequipment_attachment::reset_after_drain();
 #endif

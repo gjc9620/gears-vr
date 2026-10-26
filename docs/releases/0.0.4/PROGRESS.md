@@ -2,6 +2,12 @@
 
 本文件保留武器与掩体两个分支的开发历史，便于共用 Native 手部实现合流。各条记录仍以其原始验证范围为准；私有候选、只读采样或离线检查不代表完整功能、默认构建更新或头显验收。
 
+## 2026-10-26 — EP原持枪门与移转通过，接续原枪组件只读验证
+
+Body以Native47／PG5a34完成EP原动作并正常退出：原40／6秒门、right-ready8次、小移＋10°10次提交均有coherent post-FK。Root只读复核三raw头及32条sequence／tick／Compose／thread关联，独立重算v3腕FK位置／Local，最大重算位置误差0.000255116游戏单位；四角色实际Applied各32、640event0drop。Body严格新BMS reader的完整source／ready回声关联与新目标派生按其证据复用，不冒充Root重新推导全部来源；32条也不扩充为全程62条姿态。HandStop5／quiescent／自由双手继续／bridgeclose与正常106等通过，cleanup-only不替代玩法。PG保留first32前缀6 unheld／15 ready／11 inactive，与BMS成功提交集合不同，均保留。现存证据只读复核，未重跑Game。
+
+Root下一单项交付为原Lancer组件位置／方向读回：新增默认OFF的有界normal PlayerTick probe，保存原copy_frame真实Game输出、直接反射读枪／角色Matrix并前后重复、双typed资产／唯一attachment／末Game／hold／domain／Frame资格检查，不调用原bone/socket getter、不写枪／相机／射线、不以新metadata witness授权普通GT动作。运动触发采样给后继ready／移转保留预算；47预算断言、实际Matrix reader8 owned案例与完整PG TU严格语法通过，旧Body／Client检查复用。具体边界在`docs/weapon-lancer-component-readback-20261026.md`，源码候选尚不代表GPU画面跟随／真实枪口／瞄准射击／Cover／头显通过。
+
 ## 2026-10-26 — Native47／PG typed联合候选EP封存并交Body，尚未运行
 
 Body交付Native47 `78705ddd823a79a88aed943d559decb3bc873ce32eaf6d05ae9bba7c3d731348`后，Root仅对已封存`f611000`源码做一次PG feature DLL完整编译／链接，得`5a34a2808a1fb066091841f2d08b474650fda142cda55fb3cdb61870e4f3be0b`。778源与vendor保持，实际Ninja生产defines相对f85只增BodyMainMount新flag、原flags不变，无test-stats宏；既有Host结果直接复用，没有重建Native／XR或为报告重测。唯一构建及receipt在ignored `analysis/body-mount-pg-candidate-20261026/pg-build/attempt-1792994530678841000/`。
