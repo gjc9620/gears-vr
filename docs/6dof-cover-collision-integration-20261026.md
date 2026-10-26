@@ -10,6 +10,8 @@ Native 中只实现绑定当前零售版本的 Actor.Trace 查询。先在现有
 
 私有观察原型candidate1的现场入口仍有已确认缺口：它先调用旧 `neutral::sample` 和 `geometry::sample_with_impl`，要求旧body的metadata/layout/GT与hook所有权；旧 `CoverBodyPrototype.enabled=0` 时这些条件不会建立，而且neutral路径还可能调用原生头骨getter。不能只跳过 `body_ready` 或打开旧姿态writer来取得读权限。后继独立 `CoverTraceContext` 应从 `weapon_hand_scene_binding` 成功的真实Scene绑定取得调用者持有的metadata快照，另行认证少量CoverType/Link/slot/世界/位置字段；完全绕开neutral校准、geometry变换和骨getter。共享binding mutex只用于采样/快照，不应被带入未来引擎查询调用；Scene/stereo锁的调用安全仍需独立验证。
 
+candidate2已实现这条独立被动路径，完整假Scene在旧body metadata/layout/GT均为初始且三个旧运行时开关关闭时可达 `scene_lock_unproven/called=0`；20次CT0等待也不会耗掉进入CT2后的证书尝试。但它尚有已发现的注册表观察历史缺口：identity内部每次header只两两比较，没有把全部实际读取纳入统一count历史，可能掩盖已见增长后的回退。该已编译候选保留为待修正证据。另有静态预算问题：历史WarfareGame包中的WarPawn直接声明为933项，而candidate2的find会保存全部遍历身份，容量为512，并为多个目标重复扫描；历史规模不等于当前runtime身份，但已足以要求先优化有界遍历与证据存储，不能仅凭小假Scene宣称真实证书可达。后继私有candidate3先修观察历史并保留初始依赖范围，实际规模与成本仍须验证。
+
 针对历史运行时代码的9个窄函数机械导出保留在 ignored `analysis/cover-native-trace-lock-audit1/`。包装函数完整chunks与CT17证书相符；导出仍有21处未解析间接调用，并明确包含引擎临时全局写入。查询语义不能证明整个调用无副作用或无回调；这些静态记录不构成当前进程helper身份、Scene锁安全或异常恢复证明。
 
 每次使用前后复核 Scene invocation、GT、World generation、Controller、Pawn、Mesh、Link／slot、特殊动作、XR session／space／reference 及共享手 owner 的 cookie、revision、action generation。限制每帧射线数、距离、搜索层数和总耗时；缓存只供同一 Scene 的重复渲染读取。同步引擎调用一旦卡住，普通超时计时无法中断它，因此时间预算只限制后续调用和许可。
