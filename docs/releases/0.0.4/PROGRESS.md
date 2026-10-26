@@ -10,6 +10,8 @@
 
 算法示例的8,390,656次线性比较降为6,153次哈希探测、LivePawn字符读取9次降为1次只说明减少操作，不能换算真实游戏节省毫秒。原EN回复需省0.9208–6.1447ms且后续仍需Native消费，是否足够须由Body独占同原动作验证；保留原firstheld40／6秒与106完整恢复，收益不足则回查生产消费时序，不连续堆微候选。尚无本轮Game／XR／GPU／头显验收，成熟度不增加。原EN held日志标签另有补充：前缀10次PG ready对应6条held记录，其中5条pose通过、query30失败；原回执保持，日志成员关系不能叫姿态成功。
 
+源码提交`73076dd`后，从原EN派生唯一EO并交Body独占运行。最终pins `365adfc4d3fa5df273c5c986e5b1cb6c2a6a00fb1bed3a422cd535342985341e`，coordinator `27bed41e965077d0c0cd3821df7845b1953baee3390583c7888e5d8349138d2a`；Native46／BQ／CY和所有动作／门槛／后台保护保留，manifest只改PG摘要，私有Python只必要namespace／PG摘要／coordinator校验摘要替换，16个PG导出名称保持。PG PE及当前选择元数据已更新，所有pins与原EN保护通过；封存时无instances、无Root Game／XR。完整原两session与一次normal finalize命令在ignored EO的`PG-PARSER-README.md`，交付后不再改case。此为可运行候选交接，尚非实际收益或持续玩法通过。
+
 ## 2026-10-26 — EN保住27／28条完整姿态，继续收口PG原来源50ms成本
 
 Body独占完成EN及原finalize一次并交还空窗口。实际Game20148／Native2447539276000，新typed／v3／alpha分别SHA a987aa5a…858f、da05cc27…0004、5e1e7150…c1af；28条中27条consumer/end、Local、FK及四角色actualApplied通过，552个事件无drop。Root直接核对三原件、逐条sequence／tick／Compose／thread／PG query，独立重算原矩阵腕位置误差一致。异常准确为sequence5／query30，四角色no-token，不能忽略或说成最后序号；q30本身PG ready，不能混作PG source_mismatch。原fixedheld40／6秒门仍失败（ready43／held28），未到后续移手、射击或头显接受。本轮HandStop5／quiescent、cookie0后freehand继续、controller恢复、bridgeclose及106／Native／entry／XR0／PG0／十文件／audio10正常恢复通过，host瞬时false保留，EM旧freehand失败不覆盖。
