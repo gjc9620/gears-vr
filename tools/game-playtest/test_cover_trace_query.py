@@ -28,7 +28,7 @@ class Memory:
     def object(self, *, address=0x5000, index=3, name_index=4, name='CoverLink'):
         entry = 0x6000
         identity = dict(address=address, internal_index=index, name=name,
-                        number=1, cls=0x7000, outer=0x8000)
+                        name_index=name_index, number=1, cls=0x7000, outer=0x8000)
         self.put(address, struct.pack('<I', index))
         self.put(address + 4, struct.pack('<II', name_index, 1))
         self.put(address + 16, struct.pack('<Q', identity['cls']))
@@ -41,16 +41,33 @@ class Memory:
         return identity
 
 
-class Observer:
+class LiveRegistryAnchorSampler:
+    """Fixture with the selected slot/name checks required of the real sampler."""
+    __module__ = 'anchor_config'
+
     def __init__(self, resolver, identity):
-        self.resolver = resolver
-        self.sampler = self
-        self.identity = identity
+        self.r, self.identity = resolver, identity
 
     def fresh(self, address):
         if address != self.identity['address']:
             raise RuntimeError('Unknown selected object')
+        index, name_index = self.identity['internal_index'], self.identity['name_index']
+        if (struct.unpack('<Q', self.r.read(self.r.objects_data + index * 8, 8))[0] != address or
+                struct.unpack('<Q', self.r.read(self.r.names_data + name_index * 8, 8))[0] !=
+                self.r.name_pointers[name_index]):
+            raise RuntimeError('Selected registry slot changed')
+        entry = self.r.name_pointers[name_index]
+        expected_text = self.identity['name'].encode('utf-16-le') + b'\0\0'
+        if (struct.unpack('<I', self.r.read(entry, 4))[0] != name_index or
+                self.r.read(entry + 20, len(expected_text)) != expected_text):
+            raise RuntimeError('Selected name entry changed')
         return dict(self.identity)
+
+
+class Observer:
+    def __init__(self, resolver, identity):
+        self.resolver = resolver
+        self.sampler = LiveRegistryAnchorSampler(resolver, identity)
 
     def verify(self):
         return None
@@ -71,7 +88,7 @@ class TraceRegistryTests(unittest.TestCase):
         query.finish()
         self.assertEqual(query.last_object_count, 11)
         self.assertTrue(query.registry_observations)
-        self.assertEqual(len(query.slot_witnesses), 1)
+        self.assertEqual(len(query.identities), 1)
 
     def test_name_growth_and_count_rollback_are_rejected(self):
         resolver, query = self.fixture()

@@ -35,12 +35,15 @@ class TraceQuery(CoverQuery):
     """Permit registry tail growth only with all selected Trace dependencies fixed.
 
     CoverQuery remains strict for ordinary cover state. Actor.Trace may register
-    unrelated objects while executing, so this query certifies the old object
-    slots and names it actually uses rather than demanding a frozen global count.
+    unrelated objects while executing. The required LiveRegistryAnchorSampler
+    fresh() already checks every used object's old registry slot, live name
+    entry index/text, and raw identity at each Query identity revisit.
     """
 
     def __init__(self, observer):
         super().__init__(observer)
+        if (type(self.s).__module__, type(self.s).__name__) != ('anchor_config', 'LiveRegistryAnchorSampler'):
+            raise RuntimeError('Cover Trace requires the certified live registry sampler')
         self.object_header = self.headers[0][1]
         self.name_header = self.headers[1][1]
         objects, count, capacity = struct.unpack('<Qii', self.object_header)
@@ -54,35 +57,13 @@ class TraceQuery(CoverQuery):
         self.initial_name_count = self.r.name_count
         self.last_object_count = count
         self.registry_observations = []
-        self.slot_witnesses = {}
 
     def obj(self, address):
         value = super().obj(address)
-        if address in self.slot_witnesses:
-            return value
-        index = value['internal_index']
-        if not 0 <= index < self.initial_object_count:
+        if not 0 <= value['internal_index'] < self.initial_object_count:
             raise RuntimeError('Cover Trace used object from newly registered tail')
-        profile = self.r.profile
-        raw_index = struct.unpack('<I', self.read(address + profile['object_internal_index'], 4))[0]
-        name_index, number = struct.unpack('<II', self.read(address + profile['object_name'], 8))
-        if (raw_index != index or number != value['number'] or
-                not 0 <= name_index < self.initial_name_count):
-            raise RuntimeError('Cover Trace selected object identity/raw name differs')
-        cls = struct.unpack('<Q', self.read(address + profile['object_class'], 8))[0]
-        outer = struct.unpack('<Q', self.read(address + profile['object_outer'], 8))[0]
-        object_slot = struct.unpack('<Q', self.read(self.r.objects_data + index * 8, 8))[0]
-        name_entry = struct.unpack('<Q', self.read(self.r.names_data + name_index * 8, 8))[0]
-        if (cls != value['cls'] or outer != value['outer'] or object_slot != address or
-                not name_entry or name_entry != self.r.name_pointers[name_index]):
-            raise RuntimeError('Cover Trace selected registry slot/identity differs')
-        entry_index = struct.unpack('<I', self.read(name_entry + profile['name_entry_index'], 4))[0]
-        expected_name = value['name'].encode('utf-16-le') + b'\0\0'
-        if (entry_index != name_index or len(expected_name) > 128 or
-                self.read(name_entry + profile['name_entry_text'], len(expected_name)) != expected_name):
-            raise RuntimeError('Cover Trace selected name entry differs')
-        self.slot_witnesses[address] = dict(index=index, name_index=name_index,
-                                           object_slot=object_slot, name_entry=name_entry)
+        if not 0 <= value['name_index'] < self.initial_name_count:
+            raise RuntimeError('Cover Trace used name from newly registered tail')
         return value
 
     def _check_registry(self):
@@ -100,7 +81,7 @@ class TraceQuery(CoverQuery):
             raise RuntimeError('Cover Trace selected registry growth certificate differs')
         self.last_object_count = count
         self.registry_observations.append(dict(object_count=count,
-                                               selected_objects=len(self.slot_witnesses),
+                                               selected_objects=len(self.identities),
                                                name_header_unchanged=True))
 
     def _check_selected_dependencies(self):
@@ -324,7 +305,8 @@ def capture(observer, dll_path, dll_sha256, start, end, *, extent=(0, 0, 0), tra
                 report['selected_dependency_registry'] = dict(
                     initial_object_count=q.initial_object_count,
                     initial_name_count=q.initial_name_count,
-                    slot_witnesses=copy.deepcopy(q.slot_witnesses),
+                    selected_object_count=len(q.identities),
+                    sampler='anchor_config.LiveRegistryAnchorSampler',
                     observations=copy.deepcopy(q.registry_observations))
         if bridge is not None:
             try:
