@@ -2,6 +2,14 @@
 
 本文件保留武器与掩体两个分支的开发历史，便于共用 Native 手部实现合流。各条记录仍以其原始验证范围为准；私有候选、只读采样或离线检查不代表完整功能、默认构建更新或头显验收。
 
+## 2026-10-26 — EK选择Native43只读Tick探针，原消费者／动作／清理保持
+
+Body交付Native43真实outer-Tick只读探针后，Root从原EJ精确派生私有EK，仅替换Native build／DLL／hash／provenance及PE元数据，向原native_sections追加`[BodyTickTrackingProbe] enabled=1`。新Native SHA256 `1517cfb04235655c03e4345df9afc13fc903d4185286aace15d549d2c02dc426`，PG仍a54d592／0ec1、BQ XR1a05、CY simulator378。43个导出名称、构建receipt／冻结source43来源已核对；Body原完整构建／22startup／23preflight按明确来源复用，Root未重编、未运行旧矩阵或Game。
+
+EK pins为`b6f1820a87eaa660c2813ddda7404d4af13a24f3d04c373ff0a297286469f104`，coordinator仍`1b4f9f2ab451d8a37232033ac00f3fc32e5a71c16da630a610c53abf5997da95`。host／coordinator／runtime_support／finalizer／106完整验证器／dispatcher逐字保留，仅必要case/instance namespace不同；profile去掉新探针section后与EJ一致。原first-held门、最多8命令、R2 OFF、40/50、0.4／behind／observe-only／mute-restore／physical-background-OFF／原十文件保护均保持，EJ原输入、结果及预算原件未变。离线封印及完整启动命令在ignored `analysis/equipment-native-rgrip-runtime-20261026ek/` 的native43-selection-preflight与NATIVE43-README。
+
+Body确认fresh CIM无Game/XR后已接管唯一EK运行窗口，Root冻结case、不并发启动；本条尚无该轮实跑结果。正常drain后探针原件为实例native/body-tick-probe.bin，BTIPRB01／Header64／Record3816／最多32条122176B，ABI及严格reader由Body实际构建验证。前32个真实Tick可能在持枪前，只可用于判断真实新整包／原时标／来源与可选C0基准是否可取得，不当作同次held、消费者切换、持续跟手或头显接受；Root finalizer保持原清理范围，不新增探针成功门。来源只读证据通过后才接新typed消费与原持枪小移转／交还验证。
+
 ## 2026-10-26 — EJ排除Native计算热点，先核实源龄预算再选择改动
 
 EJ由身体会话以冻结Native42／PG0ec1／BQ／CY及原动作独占执行，Native ready17、held commits0，首门仍未通过。此次HandStop后的自由双手继续更新与106完整正常恢复通过；EI同项超时仍保留，不能用EJ覆盖旧失败或据单轮证明稳定性。预算二进制11880B、24个query及1个无query源龄拒绝记录，SHA256 `a5656dacaf91b57a8d1615b8a4c818d0d01825d464ed9f3485bc8e92ceb092b7`，实际PID45644／Native incarnation2288270726650。Body严格解码与Root独立原字节／身份／阶段比对一致。
