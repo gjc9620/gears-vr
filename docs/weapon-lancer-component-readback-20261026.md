@@ -1,5 +1,11 @@
 # Lancer原枪组件读回与骨骼配对观察
 
+HJ联合原协议通过，但稳定跟手仍未证明（2026-10-27）：Game60808／Native3165621632666、PG5fdc的40791B原日志取得9／9完整component／Avatar／Muzzle配对，正式phase内2held／3ready／3move，另1行prephase。初始观察实际间隔536.1317／538.1829ms，后继保持50ms配置，原预算不变。9行实际Ref9 bone0／Socket几何一致，原binary32重放socket→boneSpace→gunCTW最大double误差1.78e-15，枪相对Avatar bone52固定-90°关系最大元素残差0.0002301，角色CTW逐字一致。Root只消费PG文件，私有`hj-saved-muzzle-review.json` SHA `5bd618475033a183b453f854f781c5916431b5eb2bd4e4e668665e99f91882ba`保留逐行raw／phase时标／矩阵与原件hash，没有重复Body的v3／Native分析。
+
+仍有可复核的同raw右手姿态差异：ready样本4／5／6（Avatar epoch1359／1360／1362）的腕／枪／枪口一起切换，第4与6很近而第5偏离，枪口最大相邻距离39.54088原单位；move样本7／8近，第9又变，最大枪旋转差32.54642°。每行本身的前后骨骼／metadata读取稳定，变化不支持枪组件独自脱骨；顺序采样不能定责Native、动画或最终renderer，也不能假设整套头／左手／view输入均相同。已把具体epoch与点位交Body，仅复用已有目标／consumer／end可覆盖部分做有限关联，超出prefix报缺证，不另造writer／重开局或直接放行射击。
+
+Body交付`runtime-handoff-summary.json` SHA `693a9be13ee40b06112d8aee93d29290ada21cde8c6bc944fcd1b0c4f18613a6`记录原8动作、三phase（status0→41／4.485336s、41→50／1.075517s、50→59／0.8634748s）、Stop后bodycontinue／双控制器restore／bridgeclose及正常106／full／音频／文件恢复通过，首32handtrace有效。本局reader_failures为空，仅表未记录66失败，不是旧恢复缺陷已修证明；多项候选组合的一次通过也不证明某个被动probe的因果作用。实际稳定可见跟随、原getter等价、bore／原散布／回缩／前推／命中和头显仍待证，R2保持OFF，默认未替换。
+
 HI实际Muzzle数据与后继仅准备（2026-10-27）：Game29688／Native3144730156562、PG207的49675B日志中有3行，全部socket前后completed(step20)／pass2／Reason0，2行完整component／Avatar／Muzzle配对接受，另1行被原game_or_generation拒绝且未发布世界位置。实际socket唯一匹配Ref9的bone0，RelativeLocation `(72.6682053,-0.00669687986,11.25)`、Rotator0；将9位文本round-trip回原binary32，重放socket→boneSpace→gunCTW与两个原derived world位置的double误差均0。两个有效区间结束早于held phase261.8747／86.4689ms，同raw输入下点位仍相差0.53072u；只闭合这些顺序观察点的实际几何，不证明phase内持续跟随、移动／转枪、原getter、bore或renderer。Root私有`hi-saved-muzzle-review.json` SHA `c468aa12d1d77cb2b15f2ff42857401d22894fd9aef3ef7255247152cd5dc327`保留原件与精确边界。
 
 HI原持枪联合门仍失败，status0→1仅观测值，不能代替实际提交统计；后继ready／move未达。Stop后body继续，但controller1恢复无验证、both_controllers_restored=false、首32验收header_valid=false／实际trace1。原finalizer accepted仅106／full／音频9／9等清理，不算完整双手恢复。Body后续交接说明66来自reader_open的stereo阶段，发生在Source1／age匹配循环前，故错误文案含fresh也不能据此断言过期；这项源／恢复证据继续由Body唯一处理，Root不另解reader。

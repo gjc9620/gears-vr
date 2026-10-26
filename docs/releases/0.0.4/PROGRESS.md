@@ -2,6 +2,14 @@
 
 本文件保留武器与掩体两个分支的开发历史，便于共用 Native 手部实现合流。各条记录仍以其原始验证范围为准；私有候选、只读采样或离线检查不代表完整功能、默认构建更新或头显验收。
 
+## 2026-10-27 — HJ三phase与恢复通过，8个phase内Muzzle配对；同raw腕／枪姿态仍变化
+
+Body唯一HJ组合710756／reader01d8／PG5fdc已完成并释放：Game60808／Native3165621632666。原review complete=true、8动作三phase通过（status0→41／4.485336s、ready41→50／1.075517s、move50→59／0.8634748s），Stop后bodycontinue／bothrestore／bridgeclose均true，原finalizer一次106／full／Native-entry-PG／XR0／十文件／音频与fresh空通过，32handtrace有效。Root核交接摘要SHA `693a9be13ee40b06112d8aee93d29290ada21cde8c6bc944fcd1b0c4f18613a6`并复用协议结果，不重复Body v3／Native解码。reader_failures=[]只表本局没有记录66失败stderr，不把旧66判修复或给组合被动诊断宣称单一因果。
+
+Root独占40791B原PG日志（SHA `89e837fbf5c5ddc90d9845c81f52365c97f5d1c96937e7ca08bd5d61b15bac3f`）：9／9组件＋Avatar＋Muzzle配对有效，其中2held／3ready／3move完整落在原phase，1行prephase。初始实际间隔536.1317／538.1829ms，后继仍50ms配置；actual Ref9 bone0／socket相对几何全相同。binary32数学重放最大误差1.78e-15，gun相对Avatar bone52固定关系残差0.0002301，Avatar CTW逐字不变。私有`analysis/lancer-component-readback-20261026/hj-saved-muzzle-review.json` SHA `5bd618475033a183b453f854f781c5916431b5eb2bd4e4e668665e99f91882ba`保存完整raw／source scope／实际phase窗口与矩阵。
+
+原协议通过仍不能判稳定跟手：ready同raw右手的样本4／5／6（Avatar epoch1359／1360／1362）腕／枪／枪口一起变化，4与6近而5偏离，最大Muzzle位移39.54088u；move的7／8近而9再切，最大枪旋转差32.54642°。每条内部前后读取稳定，当前不支持枪组件单独脱骨，但顺序观察不是同C0或最终GPU，且raw右手相同不替代全head／left／view来源证明。已给Body exact epochs，要求只利用已有source-target／consumer／end能覆盖的点做有限对应，超prefix明确缺证，不开新局／扩矩阵／新writer或归因原动画。R2关闭，getter／权威bore／散布／回缩／前推／实际命中／物理头显未验，默认不替换；功能计分仍由统筹依固定节点核定，不能按9个sample推整项完成。
+
 ## 2026-10-27 — BHELD003最小消费扩展交齐，等待唯一HJ联合实跑
 
 按统筹明确分工，Root新增ignored `analysis/lancer-component-readback-20261026/decode_held_captures_v3.py`，SHA `54ef375080ece0cae984a72fdb16710b60241488d558fb0e304bab135c679a90`。只沿未改v2／v1做内存共同字段投影，显式BHELD003／version3／Header120／Record600，capture reason392／Context400，旧guards／admission移至408；原文件／时标／身份／late-arm／coverage保持，不保存冒充原件的投影文件。合同683f5b95／header256cf9b2／Backend48e173b8均按准确hash校验，旧v2 reader与全部旧交付source不变并严格拒新magic，新v3拒旧v2，不覆盖旧证据。
