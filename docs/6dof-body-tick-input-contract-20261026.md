@@ -48,7 +48,7 @@ EJ 的17个 ready 样本中，进入 Compose 时原 controller sync 已有36.506
 | 世界／camera basis新鲜性 | 原Scene view来源随同Core≤40ms | 用本次实际C0 capture的CTW和actor-local neutral构造同一base，真实capture开始时间≤40ms；目标计算不读旧Scene base_view/world_head/world_grip |
 | Scene／parent资格 | 原同Scene、原身份及生命周期 | 原Scene Core和query完整50ms，parent／world／actor／weapon／reference关联仍检查；这是metadata依赖，不宣称旧Scene40ms通过 |
 | 同包一致性 | 原TickLatch同一Core、版本和原字节 | 原Scene latch原样保留；另一个私有Tick latch在真实Tick建立后只读，所有head／hands使用同一新包和同一base/reference |
-| 每写身份／时间／元数据 | 原ActualContext、validate／exchange、CAS、回读 | 全部保留，再加新Tick输入不可变与50ms检查；当前CTW／reference／stop等失效仍拒绝，不缓存current成功结果 |
+| 每写身份／时间／元数据 | 原ActualContext、validate／exchange、CAS、回读 | 全部保留；新Tick原时标和当前身体基准在最终使用／每写前仍检查≤40ms，原Scene标定依赖仍完整≤50ms。当前CTW／reference／stop等失效仍拒绝，不缓存current成功结果 |
 | source-age失败与恢复 | 原burn、normal end、零债务后真实新episode | 两依赖任一失败均不再CAS；不在C0换包或重开。沿用原rollback／finally／retirement／debt规则，实际Tick end清两份latch |
 
 当前实现阶段不启用表中的新写入规则；先验证只读来源，再让纯goal／hand adapter接受显式新类型。不能构造一份改时间／controller的CoreSnapshot喂旧接口。
