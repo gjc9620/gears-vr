@@ -6,6 +6,8 @@ EQ实际运行更新：Root在Body明确交出空窗口后完成原动作一次�
 
 16项owned定向测试使用实际pair reader和原`world_state.Query`、假的memory／resolver／pose callback验证正常、读取中变化拒绝和错误隔离等边界；原live骨骼算法和游戏／GPU不在此测试范围。命令为`python -B tools/game-playtest/weapon_component_observation_test.py`。不为这次Python观察器重建未改Native／PG／XR；ER只复制该helper并在既有私有入口追加wrapper，再运行原取枪／移转动作。详细结果持续记录在`docs/releases/0.0.4/PROGRESS.md`。
 
+ER已完成该接线并封存，准确源码`59e2cca`，pins `4618c3bd9ac62e0ad4d32f50cb7fe24b55aaf5465eee817a2ceb99465e5a4f3b`；实际import验到私有helper／Query和保留的原pose函数。Body后继共享query变化使首次clone被guard拒绝，ER转而私有pin完全相同的原EQ旧字节，保留拒绝记录且不修改共享代码。所有旧保护、8命令、40／6秒、DLL及finalizer保持；无Game／XR新运行。等FPS及Body按既有路线交接独占窗口后再执行，不能把封存当作分叉已定位。
+
 EP已经通过原40／6秒持枪门及right-ready、小幅平移＋10°转枪的后续提交。Root复核保存的BMS／v3／alpha原件头和32条sequence／tick／Compose关联，独立重算v3腕FK位置与Local精确一致，并直接计到四角色各32次Applied、640事件无drop。BMS完整来源与新source目标派生复用Body严格reader，未冒充又做一次独立来源数学证明；前32条不能扩充成全部62条会话提交。Root没有为此重跑游戏。记录在ignored `analysis/body-mount-pg-candidate-20261026/ep-saved-root-review.json`。
 
 下一项只验证实际Lancer组件的`LocalToWorld`读回是否随同一组右手移转变化，继续复用Native47／BQ／CY和原动作。它不改枪体、骨骼、相机、准星或射线，不开火，也不把当前仅有静态腕标定的profile标成完整WeaponMount。屏幕视觉、真实枪口／散布／回缩／前推及最终命中保持待验。

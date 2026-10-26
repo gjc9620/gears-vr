@@ -8,9 +8,11 @@
 
 正常HandStop5、quiescent后自由双手继续、控制器恢复／bridgeclose、Native与entry恢复、原106／完整保护块、XR0／PG0、十文件／audio和精确PID收尾通过；host瞬时`no_remaining_games=false`原值保留，不覆盖最终清理结果。运行窗口已交回Body，当前FPS随后使用窗口，Root不抢占。
 
-针对分叉，新增`tools/game-playtest/weapon_component_observation.py`，在原`probe(observer)`外包`wrap_probe`：原骨骼读回→typed枪／角色组件／唯一weapon_end attachment→第二次原骨骼读回→实际Query身份／属性选择／字段与注册表末读→骨骼epoch／Space／Local／CTW末读→再末读Query。附加记录失败仍返回第一次原姿态结果；第一次原姿态本身失败仍原样抛出。不会放宽原40／6秒成功条件，不写游戏、不调用engine getter、不改Native／PG／XR。有限顺序重复读取明确不是同C0原子快照，也不证明最终GPU阶段、枪口或射击。
+针对分叉，源码`59e2cca`新增`tools/game-playtest/weapon_component_observation.py`，在原`probe(observer)`外包`wrap_probe`：原骨骼读回→typed枪／角色组件／唯一weapon_end attachment→第二次原骨骼读回→实际Query身份／属性选择／字段与注册表末读→骨骼epoch／Space／Local／CTW末读→再末读Query。附加记录失败仍返回第一次原姿态结果；第一次原姿态本身失败仍原样抛出。不会放宽原40／6秒成功条件，不写游戏、不调用engine getter、不改Native／PG／XR。有限顺序重复读取明确不是同C0原子快照，也不证明最终GPU阶段、枪口或射击。
 
-实际生产pair reader＋现有`world_state.Query`在owned内存fixture上16项定向测试通过，含稳定相对矩阵、epoch／Space／Local／reference变化、组件迟变、两次末读、属性选择／身份／注册表变化、错误／重复attachment、不可读、附加与原姿态失败区别、discovery hints拒绝和仿射逆矩阵。fixture姿态callback是seam，未冒称又验证一次原live骨骼算法。接下来仅将wrapper加到新ER私有`body_observation.probe`入口，封存后按独占窗口交接运行原动作。未重建未变Native／PG／XR，也未重新运行旧检查；稳定跟手、sameC0／画面／枪口／射击及头显接受均待验。
+实际生产pair reader＋现有`world_state.Query`在owned内存fixture上16项定向测试通过，含稳定相对矩阵、epoch／Space／Local／reference变化、组件迟变、两次末读、属性选择／身份／注册表变化、错误／重复attachment、不可读、附加与原姿态失败区别、discovery hints拒绝和仿射逆矩阵。fixture姿态callback是seam，未冒称又验证一次原live骨骼算法。回执`analysis/lancer-component-readback-20261026/pair-observer-offline-receipt.json`，SHA256 `5e8a5899ca52390ef64c9c7ee0363e3ee70f0215c5b6846bb881ce2c0672018a`。
+
+ER已接入口并封存：`analysis/equipment-native-rgrip-runtime-20261026er`，pins `4618c3bd9ac62e0ad4d32f50cb7fe24b55aaf5465eee817a2ceb99465e5a4f3b`，原coordinator摘要仍`0cb264965702af66b83796c29297c2fd7bbfad1d51c6c73ec225827287f83b08`。原`body_observation.py`字节完整保留为前缀，仅末尾追加alias／wrapper；实际私有import确认`probe.__wrapped__`就是原函数。helper／world_state各自复制并pin，全部私有Python AST、原host／轨迹／gate／finalizer除namespace外相同、原件不变通过。首次clone因Body共享cover_surface_query后继改动被guard拒绝，未启动游戏；ER保留该拒绝，将hash完全等于原EQ的旧文件复制为私有同名依赖，按现有import优先级使用且准确pin，不回写Body、不接纳无关后继差异。完整最小证明在ignored `er-pair-sealed.json`及ER `PAIR-README.md`。未重建未变Native／PG／XR，也未重新运行旧检查；等待现有独占窗口交接，只跑原动作。稳定跟手、sameC0／画面／枪口／射击及头显接受均待验。
 
 以下保留EQ封存时的历史交付说明；“待运行／Root不launch”描述的是该时刻，已被上方实际运行记录更新。
 
