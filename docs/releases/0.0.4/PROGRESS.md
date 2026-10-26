@@ -635,3 +635,7 @@ EP原动作在正版0.4后台完成，Game55200／Native2559925659979，测试�
 掩体抓边的碰撞证据新增单次诊断入口`tools/game-playtest/cover_trace_query.py`。它只在已由本会话持有、已加载Playground且处于当前有效CoverLink的Game中，核对当前Actor.Trace反射、GNatives277和完整历史代码片段后，限时提交一次靠近Pawn的有界Trace；未知排队状态不重试，未确认完成的私有请求保留到原进程退出。保存样本上的参数布局与8项拒绝检查、Python编译／导入通过，记录在ignored `analysis/cover-trace-diagnostic-candidate1/offline-contract1.json`。目前没有调用实际Game；Trace单射线结果也不等于边缘碰撞体或LGrip合法性，不据此启用抓边或调整36%。运行窗口仍由帧率会话持有，待其结束后才做0.4后台命中验证。
 
 随后的限定审阅发现参数证书缺少原始`UField.Next`顺序，而Playground的`EX_NativeParm`实际按此顺序发出。现已在Trace调用前要求原始链与九个反射参数顺序完全一致，离线故意交换前两项可稳定拒绝，见ignored `analysis/cover-trace-diagnostic-candidate1/offline-order2.json`。此修正没有引擎执行或碰撞结论；之前记录的运行窗口已释放，正在准备新的私有0.4后台掩体场景。
+
+CT1私有0.4后台正版局实际到达`CoverType=2`／`SpecialMove=0`，cover与geometry只读采样均accepted；slot0允许左右及上探，候选slot前向约`(-0.9962,-0.0869,0)`，并未验证它是碰撞墙面。外部采样最初两次因工作树缺省`pefile`依赖导入失败，随后使用现有主工作区依赖路径读到真实掩体数据；五分钟会话上限先进入stopping，`Actor.Trace`调用数仍为0。停止命令与自动停止交错且无command-11回执，保留为控制流程限制。最终session stopped/passed、Native／入口恢复、XR exit0、Playground shutdown0／entry恢复、原十文件一致，fresh CIM Game/XR空；host较早的`no_remaining_games=false`瞬时快照不冒充最终残留。原回执及精简结论在ignored `analysis/cover-trace-diagnostic-candidate1/ct1-runtime-summary.json`。这没有提升碰撞、抓边或总体36%。
+
+为下一次短测，CT2在ignored `analysis/cover-trace-diagnostic-candidate1/ct2-prepared.json`固定了fresh私有脚本、精确Native／XR／PG及当前只读源哈希；`run-ct2.py`把原进入掩体、一次world-only有界射线及正常停机串在同一五分钟预算内，先验离线语法／无执行入口检查通过。`bTraceActors`现在必须是显式布尔值，两种参数打包均通过离线核对。尚未启动CT2，射线即使命中也只能证明所测一段的实际返回，不直接授权LGrip或身体穿越。当前游戏窗口已交帧率会话做其一次无Game构建，待其释放后运行CT2。

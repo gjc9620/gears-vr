@@ -46,7 +46,7 @@ def _point(value, label, *, extent=False):
     return values
 
 
-def _parameters(function, start, end, extent):
+def _parameters(function, start, end, extent, *, trace_actors=True):
     """Pack only this exact reflected Trace parameter cohort, not guessed ABI."""
     fields = function['fields']
     if (function['native_index'], function['parms_size'], function['return_offset'],
@@ -56,16 +56,18 @@ def _parameters(function, start, end, extent):
         raise RuntimeError('Current Actor.Trace typed parameter layout differs')
     if next(f for f in fields if f['name'] == 'bTraceActors')['bool_mask'] != 1:
         raise RuntimeError('Current Actor.Trace Boolean bit mask differs')
+    if type(trace_actors) is not bool:
+        raise ValueError('bTraceActors requires an explicit Boolean')
     start, end, extent = _point(start, 'TraceStart'), _point(end, 'TraceEnd'), _point(extent, 'Extent', extent=True)
     if not .001 <= math.dist(start, end) <= 300:
         raise ValueError('Cover Trace diagnostic segment length outside 0.001..300 game units')
     params = bytearray(function['parms_size'])
     struct.pack_into('<3f', params, 24, *end)
     struct.pack_into('<3f', params, 36, *start)
-    struct.pack_into('<I', params, 48, 1)
+    struct.pack_into('<I', params, 48, int(trace_actors))
     struct.pack_into('<3f', params, 52, *extent)
     struct.pack_into('<I', params, 104, TRACE_FLAGS)
-    return bytes(params), dict(start=start, end=end, extent=extent, trace_actors=True, extra_flags=TRACE_FLAGS)
+    return bytes(params), dict(start=start, end=end, extent=extent, trace_actors=trace_actors, extra_flags=TRACE_FLAGS)
 
 
 def _certificate(q, roles, module, expected_chunks):
@@ -95,7 +97,7 @@ def _certificate(q, roles, module, expected_chunks):
     return row, dict(gnatives_slot_rva=hex(slot_rva), chunks=chunks, structures=structures)
 
 
-def capture(observer, dll_path, dll_sha256, start, end, *, extent=(0, 0, 0),
+def capture(observer, dll_path, dll_sha256, start, end, *, extent=(0, 0, 0), trace_actors=True,
             bridge_factory=_AttachedBridge, query_factory=CoverQuery):
     """Run at most one existing GT queue item; unknown pending is never retried."""
     report = dict(schema=1, accepted=False, diagnostic_only=True, trace_calls=0,
@@ -126,7 +128,7 @@ def capture(observer, dll_path, dll_sha256, start, end, *, extent=(0, 0, 0),
         if module['sha256'] != surface.GAME_SHA256 or Path(module['path']).resolve() != Path(disk['path']).resolve():
             raise RuntimeError('Cover Trace disk/current module identity differs')
         function, proof = _certificate(q, roles, module, expected)
-        params, inputs = _parameters(function, start, end, extent)
+        params, inputs = _parameters(function, start, end, extent, trace_actors=trace_actors)
         pawn_position = tuple(_geometry(q, roles['pawn'], 'Location', 'Vector')['value'])
         if math.dist(inputs['start'], pawn_position) > 300 or math.dist(inputs['end'], pawn_position) > 500:
             raise ValueError('Cover Trace ray must remain near current controlled Pawn')
