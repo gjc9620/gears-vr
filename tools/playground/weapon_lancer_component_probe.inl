@@ -2,6 +2,7 @@
 // No engine getter, Native call, bridge read, writer or shot permission.
 #include "weapon_component_sample_budget.h"
 #include "weapon_component_matrix_read.inl"
+#include "weapon_component_pose_read.inl"
 namespace nativeequipment_component {
 sampling::Budget budget;ULONGLONG next_sample{};
 void print_matrix(wchar_t const* label,Matrix const& m) noexcept {
@@ -25,10 +26,12 @@ void tick(hand::Frame const& f,hand::GripGameState const& copied_game,std::int64
     const wchar_t* reason=L"asset_first";bool accepted=false;
     lancermain_asset::Evidence first{},last{};Matrix gun{},gun_after{},avatar{},avatar_after{};
     vrequip::MeshPoseProbe pose{},pose_after{};
+    cohort::Snapshot bones_before{},bones_after{};bool bones_before_valid=false,bones_after_valid=false;
     const auto sample=[&]() {
         if(lancermain_asset::read(f,first)!=lancermain_asset::Status::ready)return false;
-        reason=L"gun_matrix";if(!matrix(first.component,L"LocalToWorld",gun))return false;
         reason=L"avatar_matrix";if(!matrix(f.mesh,L"LocalToWorld",avatar))return false;
+        bones_before_valid=pose_cohort(f.mesh,avatar,bones_before);
+        reason=L"gun_matrix";if(!matrix(first.component,L"LocalToWorld",gun))return false;
         reason=L"mesh_probe";if(!vrequip::mesh_pose_probe(f.weapon.address,pose)||pose.mesh!=first.component.address||
            pose.asset!=first.asset.address||pose.hidden||std::memcmp(pose.local_to_world,gun.data(),64))return false;
         reason=L"attachment";if(!nativeequipment::read_attached_frame(f,first.component.address))return false;
@@ -41,6 +44,7 @@ void tick(hand::Frame const& f,hand::GripGameState const& copied_game,std::int64
            pose_after.absolute_rotation!=pose.absolute_rotation||pose_after.absolute_scale!=pose.absolute_scale||
            std::memcmp(&pose_after.translation,&pose.translation,sizeof(pose.translation))||
            std::memcmp(&pose_after.rotation,&pose.rotation,sizeof(pose.rotation))||std::memcmp(pose_after.local_to_world,gun.data(),64))return false;
+        bones_after_valid=pose_cohort(f.mesh,avatar_after,bones_after);
         reason=L"game_or_generation";hand::GripGameState final_game{};
         if(!weaponhand::client.source_game_on_gt(f.key,final_game)||!hand::same_game(copied_game,final_game)||
            vrequip::model.hold_generation()!=generation||!nativeequipment::domain_ready()||!weaponhand::client.armed())return false;
@@ -59,7 +63,19 @@ void tick(hand::Frame const& f,hand::GripGameState const& copied_game,std::int64
     fwprintf(log_file,L" reference_generation=%llu input_session=%llu space_epoch=%llu profile_generation=%llu input_epoch=%llu input_source=%u",
         id.reference_generation,id.input_session,id.space_epoch,id.profile_generation,id.input_epoch,id.source);
     fwprintf(log_file,L" right_grip_flags=%llu right_grip_active=%u",right.grip_flags,right.grip_active);
-    print_matrix(L"gun_LocalToWorld",gun);print_matrix(L"avatar_LocalToWorld",avatar);fwprintf(log_file,L" observation_only=1 source_is_parent_V1=1 same_C0_not_proved=1\n");fflush(log_file);
+    print_matrix(L"gun_LocalToWorld",gun);print_matrix(L"avatar_LocalToWorld",avatar);
+    const auto changed=bones_before_valid&&bones_after_valid?pose_change_mask(bones_before,bones_after):0u;
+    const auto paired=accepted&&bones_before_valid&&bones_after_valid&&!changed;
+    fwprintf(log_file,L" pose_pair_accepted=%u pose_before_valid=%u pose_after_valid=%u pose_change_mask=%u pose_epoch_before=%u pose_epoch_after=%u",
+        unsigned(paired),unsigned(bones_before_valid),unsigned(bones_after_valid),changed,bones_before.epoch,bones_after.epoch);
+    std::uint64_t bone_name_before{},bone_name_after{};
+    if(bones_before_valid)std::memcpy(&bone_name_before,bones_before.reference_values.data()+52*68,8);
+    if(bones_after_valid)std::memcpy(&bone_name_after,bones_after.reference_values.data()+52*68,8);
+    fwprintf(log_file,L" pose_avatar_mesh=%llx pose_avatar_asset_before=%llx pose_avatar_asset_after=%llx pose_ref52_before=%llx pose_ref52_after=%llx",
+        f.mesh.address,bones_before.asset,bones_after.asset,bone_name_before,bone_name_after);
+    if(bones_before_valid){print_matrix(L"weapon_end_before",cohort::world(bones_before,52));print_matrix(L"weapon_r_before",cohort::world(bones_before,51));print_matrix(L"right_wrist_before",cohort::world(bones_before,35));}
+    if(bones_after_valid){print_matrix(L"weapon_end_after",cohort::world(bones_after,52));print_matrix(L"weapon_r_after",cohort::world(bones_after,51));print_matrix(L"right_wrist_after",cohort::world(bones_after,35));}
+    fwprintf(log_file,L" observation_only=1 source_is_parent_V1=1 same_C0_not_proved=1 final_render_phase_not_proved=1\n");fflush(log_file);
 }
 void reset_after_drain() noexcept {budget={};next_sample=0;}
 } // namespace nativeequipment_component

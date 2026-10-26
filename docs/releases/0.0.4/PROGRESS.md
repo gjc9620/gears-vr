@@ -4,6 +4,10 @@
 
 ## 2026-10-26 — ER原动作与恢复通过，外部配对39次全部拒绝
 
+后继最小源码：在既有默认OFF的PG组件probe内加入Ref115／Space／Local／epoch／CTW两个有界快照，typed读实际角色SkeletalMesh资产并前后复核descriptor／identity／全局表，无引擎调用或新增Hook。两个快照包围枪组件重复读取，记录bone35／51／52前后世界矩阵、epoch、实际角色资产及Ref52的FName、变化位图；附加pair失败仍分别保留原组件读取结果，不把组件accepted偷换成pair accepted。采样24／8／三次／50ms预算、原Game／Frame时间资格及typed provider不变。此处仍是同PlayerTick的顺序只读cohort，非同C0／GPU或挂枪／射线许可。
+
+新核心18个owned案例、实际typed适配器5个owned案例通过，覆盖稳定读取与world乘法、不可读、资产／master／数组bounds与地址溢出／NaN、结束epoch／header／asset／CTW变化、两次snapshot的bone35/52／Local／Ref／epoch／CTW变化，以及descriptor偏移／类型／读中selector变化。实际PG完整TU同原flags严格`/Zs /W4 /WX`通过；适配器fixture最初使用错误成员名的编译失败保留后修正，未运行该失败二进制。旧预算、Matrix、Body等检查直接复用，未重测。准确回执在ignored `pose-owned-1793010260063126400`（核心18通过／adapter初次编译失败）、`pose-adapter-owned-1793010288688309800`（5通过）及`pose-pg-syntax-1793010340722190600`。尚未构建新的PG DLL、运行新case或判断分叉原因。
+
 Body CT8完整收尾并明确交窗后，Root仅执行已封存ER一次：host12792／coordinator39259均exit0，原finalizer一次exit0。Game23040／Native2694171951921，shoulder／ready／small-move实际45／8／8次held提交、原8命令complete且errors为空，39条原coherent姿态继续保留。9条原PG组件观察各自接受；外部新增pair却0／39接受：38次两次原骨骼观察比较发生变化，1次Query结束metadata／registry检查变化。pair开始到拒绝耗时28.7729–55.0061ms，中位35.4808ms；拒绝记录没有保留after字段，因此无法从现存数据定位哪项变化，更不能直接解释成原动画覆盖、attachment延迟或GPU闪烁。这次没有得到稳定配对，而非枪体稳定通过。保持现有拒绝条件，不重跑同一输入、不删失败。
 
 HandStop[4,5]、quiescent／自由双手继续、控制器恢复／bridgeclose、Native／entry／原106及完整块、XR0／PG0／十文件／audio／准确PID恢复通过，final accepted的scope仅host／正常清理；host瞬时no_remaining_games=false保留。fresh CIM无Game／XR／执行worker，窗口已交Body。保存复核`analysis/lancer-component-readback-20261026/er-saved-pair-review.json`。下一最小候选只将骨骼与枪组件读取收进现有PG组件只读采样点，先做有界owned检查；不新增Hook、不改Native或身体writer、不扩展其他枪，不把同PlayerTick误称同C0或最终GPU阶段。稳定跟手、枪口／射击与头显接受继续待验。
