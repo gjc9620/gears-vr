@@ -2,6 +2,16 @@
 
 本文件保留武器与掩体两个分支的开发历史，便于共用 Native 手部实现合流。各条记录仍以其原始验证范围为准；私有候选、只读采样或离线检查不代表完整功能、默认构建更新或头显验收。
 
+## 2026-10-27 — hd早采样候选实际生效但未修复；按下前gap后首次press被baseline吸收
+
+Body在其私有`analysis/body-held-outcome-runtime-20261027d`只运行一次不同候选：PG `013c39f377b1fff7dec2897778004f6839c8b98ee995d19990a2028d444adc43`将已有early输入资格从held扩大到普通unheld，仍在真实当前clock执行原100ms，保守event.created、后续inventory／current／身份／attachment／250ms、baseline／pending／future保持，局部event早退丢弃、不重播。复用Body一次Astra增量审查及原CPU Input72case／778、Runtime84case／901验证，Root不重复。Native／XR未重编，不改40-6s或按住时长。
+
+Game44240／Native3056117722988的窗口通过，但无装备结果／episodes0／未进held40-6s，journal120字节。仅关联两个目标帧：frame342／source3173在实际press3178之前，rawpress0／lastpress0已出现previous_sync_stale，next_after_inventory0；旧sync age102.8921ms、current25.1187ms、相邻sync差77.7734ms、Frame now→Input23.8938ms、consumer前后观察差66.9259ms。该gap观察还早于press命令写入7.5696ms；随后frame343／source3178第一条press1／lastpress3178成为baseline，previous_bound0、evidence_valid1、event0。故本候选早路径确实运行但未修复，此局为“先无按下gap，再新press遇到baseline”，不能回填成hc“按下所在帧被拒”的同一具体事件。只排除本Tick**后继**inventory是该early拒绝的唯一耗时；不定位前置工作、上一Tick、copy/current/binding或CPU／GPU成本。
+
+Body原finalizer一次106／full／Native、entry、PG／XR0／十文件／audio9/9／fresh空恢复通过，仅cleanup。实际代码范围在清理后独立澄清并保留旧manifest／hd pins／原回执：相对hc当前仅`weapon_equipment_runtime.h`一个生产文件和`weapon_equipment_input_test.cpp`测试变化；历史“两个生产诊断字段文件”是更早diagnostic差分，不是当前early delta。澄清文件`analysis/equipment-input-early-admission-candidate1/source-manifest-scope-clarification.json` SHA `33c270d805a67a9e307b7a1669f07942936a6150ff10328e89283d99ffd7164d`；Root核该hash、原manifest和hd pins hash，不重建或重审全部source。
+
+Root有界接收记录ignored `analysis/lancer-component-readback-20261026/hd-early-input-failure-received-20261027.json`。未将失败候选默认整合或增加玩法进度；原hc机制证据、hb缺证和旧ES均保留。Body后继只核共享binding读取成本候选与当前acquisition/current实际路径关系，Root不重复该调查、不新增泛日志、助手、编译或Game。
+
 ## 2026-10-27 — hc补齐同帧raw counter，具体RGrip边沿在时效拒绝／baseline吸收的链路闭合
 
 Body私有`analysis/body-held-outcome-runtime-20261027c`已单次原动作运行并清理，原100ms／40-6s与脉冲时长不变。Root仅关联保存的两个目标帧（gap／同帧outcome／后继baseline三行），不新开Game／测试／编译或重审整套源码。Game64604／Native3046028507935，诊断PG `3eb4932cdc17e43a1889b51778d63a6033f58f5b976443466e7aa0ef2b8927ac`；复用Body私有PG仅加诊断字段／校验的证据，不把它视作输入修复。
