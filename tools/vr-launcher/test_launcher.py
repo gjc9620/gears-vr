@@ -950,7 +950,7 @@ class LauncherTests(unittest.TestCase):
     def test_window_wait_keeps_30s_last_snapshot_and_cancellation_identity_guards(self):
         for scenario in ('timeout','cancel','identity'):
             with self.subTest(scenario=scenario),tempfile.TemporaryDirectory() as directory:
-                backend=FakeBackend();index=pathlib.Path(directory)/'index.json';ticks=[0.];calls=[]
+                backend=FakeBackend();index=pathlib.Path(directory)/'index.json';ticks=[0.];calls=[];details=[]
                 def window(pid,*,diagnostic):
                     calls.append(ticks[0]);diagnostic.clear()
                     diagnostic.update(reason='no_eligible_window',candidates=[dict(hwnd=123,visible=True,
@@ -958,6 +958,7 @@ class LauncherTests(unittest.TestCase):
                         sample=len(calls))
                     return None
                 backend.game_window=window
+                backend.startup_window_details=lambda pid,diagnostic:(details.append((pid,diagnostic['sample'])) or [dict(hwnd=123,iconic=True)])
                 if scenario=='cancel':backend.cancelled=lambda handle:ticks[0]>=10
                 if scenario=='identity':
                     identify=backend.control.identity
@@ -977,8 +978,12 @@ class LauncherTests(unittest.TestCase):
                     self.assertEqual(ticks[0],30);self.assertEqual(calls,[0,5,10,15,20,25])
                     self.assertEqual(state['startup_window_last_diagnostic']['sample'],6)
                     self.assertEqual(state['startup_window_last_diagnostic']['candidates'][0]['rejection'],'client_too_small')
+                    self.assertEqual(details,[(55,6)])
+                    self.assertEqual(state['startup_window_details'],[dict(hwnd=123,iconic=True)])
                     self.assertTrue(state['no_automatic_retry'])
-                else:self.assertEqual(calls,[0,5]);self.assertNotIn('startup_window_last_diagnostic',state)
+                else:
+                    self.assertEqual(calls,[0,5]);self.assertNotIn('startup_window_last_diagnostic',state)
+                    self.assertEqual(details,[])
 
     def test_startup_menu_opens_xr_before_waiting_for_player_without_legacy_deadline(self):
         with tempfile.TemporaryDirectory() as directory:
