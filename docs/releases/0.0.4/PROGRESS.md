@@ -4,6 +4,10 @@
 
 ## 2026-10-27 — Body Goal epoch B触发并记录瞬态uncaptured；持枪原门超时，旧ES持续停滞未复现
 
+Body随后对同局保存片段作逐entry分析，Root仅核四原件hash并复用，未重跑／重解raw。26／26姿态样本读取成功、0 pose错误；`coherent=null`是原`mount>=40`谓词未满足后未选样，不能解释为姿态缺失或全数读取失败。10条v3 partial held trace按Body实际reader，9个planned atoms均与consumer／end相同、三个返回状态均1；仍未满32，不提升成完整验收。前32 budget只有25条落入该阶段，覆盖phase+0.0558至+2.0687秒，不能解释6秒后段。14条code3／branch7为回调后`body_mount_current` false，后续postquery admission age拒绝，未到hands；11条ready中1条final age拒绝、10条到commit调用结束边界，仅3条有精确tick／compose关联成功held trace；另7条没有逐entry Kernel结果／实际mount选择，不能用累计commit-code倒推。14条原Scene末age50.2164–51.665ms，但其bool资格包含多条件且没首错，新Tick raw年龄不在旧预算里，因此不能唯一归因于age或宣称新来源修复失败。
+
+Body保存分析为其worktree `analysis/body-goal-epoch-runtime-20261027b/held-phase-saved-analysis.json`，SHA256 `1a04aac6549a5f8baeb3ebd6d5df31b9fcfb9f1c124686bfd511161a6582ae43`；Root接收记录ignored `goal-epoch-b-held-analysis-received-20261027.json`。下一步由Body只准备actual held阶段被动有界首错／admission／mount／Kernel结果journal，按tick／Compose／query连接，并保留原时间和结果，不追加guard评估、renew／重采样、GT I/O或放宽任何门；正常drain后导出。此处仅诊断准备方向，没有新局或代码合并／玩法验收结论。
+
 Body私有`analysis/body-goal-epoch-runtime-20261027b`已单次0.4后台运行，原武器源码／父ES均未改。Root仅接收summary及ready／review／final保存回执，核session、输入hash和失败阶段字段，没有运行Game／测试／编译／IDA或合并Native。Game62936／Native2930735530854，诊断Native `40d2063db8fb32b7180f4c99740eae15a15fc9c5bd258a084a2735d52ee741e3`，PG仍`7e927e17…61aa`，pins `5baed00ba3acebdd342c5a4cefe01edc6857ada4da47ed4f1222bb77ab36d9bd`。阶段前后诊断absent epoch0，Stop后epoch1，实际触发已观察到；first reason4按Body冻结定义为uncaptured，记录没有可用source／key（相关字段0），不将这些0当有效来源或key相等证据。
 
 本轮整轮不通过：`shoulder-fixed-first32`原40提交／6秒期限门超时，失败阶段累计held MainMount0→10、context rejects3→48、post-admission rejects3→49、source age rejects38→153、Native commits180→190；coherent=null。它们是同局失败区间的聚合计数，没有per-query／C0配对，不能由此认定独立来源修复失败或选定根因，亦不能降低原门或用后续恢复覆盖持枪失败。
