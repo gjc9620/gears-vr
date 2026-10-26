@@ -67,6 +67,15 @@ struct CoverInputOwnerCandidate {
     CoverControllerStatus controller_status=CoverControllerStatus::unavailable;
     bool accepted=false;
 };
+struct CoverInputOwnerMovement {
+    // Read-only candidate for the collision gate in this exact GT ticket.
+    // Matching bases and certified offsets are not collision certificates.
+    CoverOffset committed_offset{},candidate_offset{};
+    CoverEpochs current_epochs{};
+    CoverViewResult candidate_view{};
+    CoverPhysicalDisplacement physical{};
+    bool committed_basis_matches=false,candidate_offset_certified=false,candidate_view_valid=false,accepted=false;
+};
 
 // Cover's participant in the sole GT left-hand owner. The supplied owner is
 // shared with weapon requests/results; no second arbiter lives in this class.
@@ -175,12 +184,30 @@ public:
         return candidate_;
     }
 
+    CoverInputOwnerMovement pending_movement(CoverInputOwnerTicket ticket) const {
+        if(!current(ticket)||phase_!=Phase::decided||!candidate_.accepted)return {};
+        auto const& epochs=frozen_.cover.epochs;
+        CoverInputOwnerMovement out{};
+        out.committed_offset=interaction_.stored_offset();
+        out.candidate_offset=pending_result_.interaction.offset;
+        out.current_epochs=epochs;
+        out.candidate_view=pending_result_.view;
+        out.physical=pending_result_.physical;
+        out.committed_basis_matches=frozen_.cover.cover_valid&&committed_basis_valid_&&committed_lifecycle_==lifecycle_&&
+            committed_basis_.world==epochs.world&&committed_basis_.pawn==epochs.pawn&&committed_basis_.cover==epochs.cover;
+        out.candidate_offset_certified=pending_result_.interaction.offset_certified;
+        out.candidate_view_valid=pending_result_.view_valid;
+        out.accepted=true;
+        return out;
+    }
+
     CoverInputOwnerResult complete(CoverInputOwnerTicket ticket,bool committed,LeftHandInteractionOwner& owner){
         if(!bind(owner)||!current(ticket))return {};
         if(phase_==Phase::aborted||(phase_==Phase::committed&&committed))return result_;
         if(phase_==Phase::committed){abort_current(owner);return result_;}
         if(!committed||phase_!=Phase::decided||!candidate_.accepted){abort_current(owner,true);return result_;}
         interaction_=pending_interaction_;cover_lease_=pending_lease_;result_=pending_result_;
+        remember_committed_basis(result_);
         phase_=Phase::committed;return result_;
     }
 
@@ -210,6 +237,11 @@ public:
 
 private:
     enum class Phase {empty,decoded,decided,committed,aborted};
+    void remember_committed_basis(CoverInputOwnerResult const& result){
+        if(!frozen_.cover.cover_valid){committed_basis_valid_=false;return;}
+        if(result.interaction.offset_certified){committed_basis_=frozen_.cover.epochs;
+            committed_lifecycle_=lifecycle_;committed_basis_valid_=true;}
+    }
     bool bind(LeftHandInteractionOwner& owner){
         if(!owner_)owner_=&owner;
         if(owner_==&owner)return true;
@@ -244,8 +276,10 @@ private:
             cover.interaction_enabled=false;
             hand.input_active=hand.position_valid=hand.position_tracked=hand.lgrip_down=false;
             result_.interaction=certified.update(cover,hand,{CoverLeftHandOwner::other,0},frozen_.now_ns);
-            if(result_.interaction.offset_certified||result_.interaction.status==CoverStatus::no_cover)
+            if(result_.interaction.offset_certified||result_.interaction.status==CoverStatus::no_cover){
                 interaction_=certified;
+                remember_committed_basis(result_);
+            }
             // Stereo time/geometry/reference validation uses only frozen time.
             // Invalidations, mutated snapshots, old tickets and abandoned
             // frames never enter this path or rebuild a cached world/view.
@@ -364,9 +398,10 @@ private:
     CoverInputOwnerDecoded decoded_;
     CoverInputOwnerCandidate candidate_;
     CoverInputOwnerResult result_,pending_result_;
-    std::uint64_t lifecycle_=0,frame_=0,press_token_=0,serial_=0;
+    CoverEpochs committed_basis_{};
+    std::uint64_t lifecycle_=0,frame_=0,press_token_=0,serial_=0,committed_lifecycle_=0;
     Phase phase_=Phase::empty;
-    bool previous_down_=true,snapshot_valid_=false,has_controllers_=false,has_curve_=false;
+    bool previous_down_=true,snapshot_valid_=false,has_controllers_=false,has_curve_=false,committed_basis_valid_=false;
     bool barrier_=false,barrier_next_=false;
 };
 } // namespace gears_vr
