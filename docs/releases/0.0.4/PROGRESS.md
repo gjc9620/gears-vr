@@ -2,6 +2,16 @@
 
 本文件保留武器与掩体两个分支的开发历史，便于共用 Native 手部实现合流。各条记录仍以其原始验证范围为准；私有候选、只读采样或离线检查不代表完整功能、默认构建更新或头显验收。
 
+## 2026-10-26 — ES取得9条骨骼／枪稳定配对；整组腕骨姿态分叉与放手续传仍失败
+
+Body CT10正常退出后明确交窗，Root仅运行已封存ES一次：Game31188／Native2701965669072，原shoulder门45次、ready9次、移转9次held提交。实际PG原组件9／9及新增pose pair9／9接受，前后epoch／全115 Space、Local、Ref／角色CTW相同、变化位图0，区间5.0517–5.7871ms，中位5.2277ms；不是ER外部两次顺序读的35.4808ms方法。每条实际角色asset／Ref52名及原source／hold／input关联一致。
+
+保存矩阵按row-vector重算`gun_world * inverse(bone52_world)`，9条均同固定旋转矩阵`[0,-1,0; 1,0,0; 0,0,1]`与近零位移，最大元素差0.000029427游戏单位（旋转元素误差亦远小于该量）。ready同raw的样本4／5／6，腕35的z为1.54785／-12.62361／1.54778，bone52与枪z同步1.54783／-12.39745／1.54775；small-move同raw样本7／8／9也见整组高低姿态切换。角色CTW九条一致。这里直接支持“这些观察点枪没有单独偏离骨骼，而是腕35／骨51／52整组姿态变化”，不能由此定位动画／writer／attachment更新阶段的最终原因，更不能推出全程或GPU效果。原EQ分叉仍是待修问题，只是定位范围缩小。
+
+本轮动作**不通过**：host83942 exit0、coordinator15041 exit1，report complete=false、errors=[]，首个失败单独保留为`No post-quiescent continuing free-hand commits / stable held counter`超时。HandStop[4,5]与quiescent通过后，baseline held68／hands70／handsAttempts474／NativeCommits464；后12条原pose观察这四个计数不增长，continuous_hand_ticks仍552→630。不能把tick继续等同自由双手继续，也不能被空errors列表或finalizer accepted掩盖该失败。Root将具体采样epoch／时间／矩阵和此计数交Body唯一writer所有者，对照保存的Native／BMS数据，不新增writer或放宽成功门。
+
+原finalizer正常执行一次exit0；Native／entry／XR0／PG0／原106及完整块／十文件／audio／准确PID恢复全部通过，final accepted的scope仍仅host／cleanup。fresh CIM空，窗口已交回Body；没有重跑。Root独立保存数据复核`analysis/lancer-component-readback-20261026/es-saved-pose-review.json`，保留所有ER失败与原EQ记录。没有新Native构建、默认合流、稳定跟手／枪口射击／GPU／头显接受或进度加分。
+
 ## 2026-10-26 — ER原动作与恢复通过，外部配对39次全部拒绝
 
 后继最小源码：在既有默认OFF的PG组件probe内加入Ref115／Space／Local／epoch／CTW两个有界快照，typed读实际角色SkeletalMesh资产并前后复核descriptor／identity／全局表，无引擎调用或新增Hook。两个快照包围枪组件重复读取，记录bone35／51／52前后世界矩阵、epoch、实际角色资产及Ref52的FName、变化位图；附加pair失败仍分别保留原组件读取结果，不把组件accepted偷换成pair accepted。采样24／8／三次／50ms预算、原Game／Frame时间资格及typed provider不变。此处仍是同PlayerTick的顺序只读cohort，非同C0／GPU或挂枪／射线许可。
