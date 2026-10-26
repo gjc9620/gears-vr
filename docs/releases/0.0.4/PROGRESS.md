@@ -4,11 +4,13 @@
 
 ## 2026-10-27 — HJ三phase与恢复通过，8个phase内Muzzle配对；同raw腕／枪姿态仍变化
 
+Body后续仅对现存hand／BMS首32做有限join（`pg-first32-finite-join.json` SHA `22a3548822811b9cc2d53797a666da46f484a92460ae28d9e9608fde6ece138f`），9个PG实际mesh＋epoch／end精确对应均0。prefix1272..1337中没有1280／1290实际记录，邻近epoch不替代；ready／move超出prefix，PG读区间也未被已存query区间包含。因此现有资料不能定位差异到Native target／consumer／end；Root未重解或重算矩阵，新接收`hj-finite-join-received.json`保留原件hash与界限。相位角度归属按原Root逐项数值明确为ready最大32.54642°、move8→9约23.60479°，旧PG JSON不改。下一最小需求是覆盖这些实际差异点的有限精确观察，交统筹／唯一共享Native owner安排，当前无新Game／编译／测试／候选或writer。
+
 Body唯一HJ组合710756／reader01d8／PG5fdc已完成并释放：Game60808／Native3165621632666。原review complete=true、8动作三phase通过（status0→41／4.485336s、ready41→50／1.075517s、move50→59／0.8634748s），Stop后bodycontinue／bothrestore／bridgeclose均true，原finalizer一次106／full／Native-entry-PG／XR0／十文件／音频与fresh空通过，32handtrace有效。Root核交接摘要SHA `693a9be13ee40b06112d8aee93d29290ada21cde8c6bc944fcd1b0c4f18613a6`并复用协议结果，不重复Body v3／Native解码。reader_failures=[]只表本局没有记录66失败stderr，不把旧66判修复或给组合被动诊断宣称单一因果。
 
 Root独占40791B原PG日志（SHA `89e837fbf5c5ddc90d9845c81f52365c97f5d1c96937e7ca08bd5d61b15bac3f`）：9／9组件＋Avatar＋Muzzle配对有效，其中2held／3ready／3move完整落在原phase，1行prephase。初始实际间隔536.1317／538.1829ms，后继仍50ms配置；actual Ref9 bone0／socket相对几何全相同。binary32数学重放最大误差1.78e-15，gun相对Avatar bone52固定关系残差0.0002301，Avatar CTW逐字不变。私有`analysis/lancer-component-readback-20261026/hj-saved-muzzle-review.json` SHA `5bd618475033a183b453f854f781c5916431b5eb2bd4e4e668665e99f91882ba`保存完整raw／source scope／实际phase窗口与矩阵。
 
-原协议通过仍不能判稳定跟手：ready同raw右手的样本4／5／6（Avatar epoch1359／1360／1362）腕／枪／枪口一起变化，4与6近而5偏离，最大Muzzle位移39.54088u；move的7／8近而9再切，最大枪旋转差32.54642°。每条内部前后读取稳定，当前不支持枪组件单独脱骨，但顺序观察不是同C0或最终GPU，且raw右手相同不替代全head／left／view来源证明。已给Body exact epochs，要求只利用已有source-target／consumer／end能覆盖的点做有限对应，超prefix明确缺证，不开新局／扩矩阵／新writer或归因原动画。R2关闭，getter／权威bore／散布／回缩／前推／实际命中／物理头显未验，默认不替换；功能计分仍由统筹依固定节点核定，不能按9个sample推整项完成。
+原协议通过仍不能判稳定跟手：ready同raw右手的样本4／5／6（Avatar epoch1359／1360／1362）腕／枪／枪口一起变化，4与6近而5偏离，最大Muzzle位移39.54088u；move的7／8近而9再切，8→9枪旋转差23.60479°；32.54642°属于ready阶段。每条内部前后读取稳定，当前不支持枪组件单独脱骨，但顺序观察不是同C0或最终GPU，且raw右手相同不替代全head／left／view来源证明。已给Body exact epochs，要求只利用已有source-target／consumer／end能覆盖的点做有限对应，超prefix明确缺证，不开新局／扩矩阵／新writer或归因原动画。R2关闭，getter／权威bore／散布／回缩／前推／实际命中／物理头显未验，默认不替换；功能计分仍由统筹依固定节点核定，不能按9个sample推整项完成。
 
 ## 2026-10-27 — BHELD003最小消费扩展交齐，等待唯一HJ联合实跑
 

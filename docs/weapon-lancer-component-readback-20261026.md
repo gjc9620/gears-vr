@@ -1,8 +1,10 @@
 # Lancer原枪组件读回与骨骼配对观察
 
+HJ现存记录的有限join已经结束：Body `pg-first32-finite-join.json` SHA `22a3548822811b9cc2d53797a666da46f484a92460ae28d9e9608fde6ece138f`核同PID／Native-start／mesh，首32 hand／BMS实际epochs1272..1337。PG1270在前，1280／1290虽在数值范围却没有这些实际记录（仅邻近1279／1281、1289／1291），ready／move全部在后；9点exact join均0，也没有PG读取区间被已存BMS query区间包含。不能据此推没有执行，更不能拿邻近pose补为目标／consumer／end证据。Root只复用该有限结果，新增接收回执`hj-finite-join-received.json`，原PG分析不改；下一交付须补能覆盖实际差异点的有限精确对应，由统筹／唯一Native owner选最小观察改法，当前不新开局或新建writer。
+
 HJ联合原协议通过，但稳定跟手仍未证明（2026-10-27）：Game60808／Native3165621632666、PG5fdc的40791B原日志取得9／9完整component／Avatar／Muzzle配对，正式phase内2held／3ready／3move，另1行prephase。初始观察实际间隔536.1317／538.1829ms，后继保持50ms配置，原预算不变。9行实际Ref9 bone0／Socket几何一致，原binary32重放socket→boneSpace→gunCTW最大double误差1.78e-15，枪相对Avatar bone52固定-90°关系最大元素残差0.0002301，角色CTW逐字一致。Root只消费PG文件，私有`hj-saved-muzzle-review.json` SHA `5bd618475033a183b453f854f781c5916431b5eb2bd4e4e668665e99f91882ba`保留逐行raw／phase时标／矩阵与原件hash，没有重复Body的v3／Native分析。
 
-仍有可复核的同raw右手姿态差异：ready样本4／5／6（Avatar epoch1359／1360／1362）的腕／枪／枪口一起切换，第4与6很近而第5偏离，枪口最大相邻距离39.54088原单位；move样本7／8近，第9又变，最大枪旋转差32.54642°。每行本身的前后骨骼／metadata读取稳定，变化不支持枪组件独自脱骨；顺序采样不能定责Native、动画或最终renderer，也不能假设整套头／左手／view输入均相同。已把具体epoch与点位交Body，仅复用已有目标／consumer／end可覆盖部分做有限关联，超出prefix报缺证，不另造writer／重开局或直接放行射击。
+仍有可复核的同raw右手姿态差异：ready样本4／5／6（Avatar epoch1359／1360／1362）的腕／枪／枪口一起切换，第4与6很近而第5偏离，枪口最大相邻距离39.54088原单位；move样本7／8近，第9又变，8→9的枪旋转差23.60479°；32.54642°属于ready的4→5／5→6。每行本身的前后骨骼／metadata读取稳定，变化不支持枪组件独自脱骨；顺序采样不能定责Native、动画或最终renderer，也不能假设整套头／左手／view输入均相同。已把具体epoch与点位交Body，仅复用已有目标／consumer／end可覆盖部分做有限关联，超出prefix报缺证，不另造writer／重开局或直接放行射击。
 
 Body交付`runtime-handoff-summary.json` SHA `693a9be13ee40b06112d8aee93d29290ada21cde8c6bc944fcd1b0c4f18613a6`记录原8动作、三phase（status0→41／4.485336s、41→50／1.075517s、50→59／0.8634748s）、Stop后bodycontinue／双控制器restore／bridgeclose及正常106／full／音频／文件恢复通过，首32handtrace有效。本局reader_failures为空，仅表未记录66失败，不是旧恢复缺陷已修证明；多项候选组合的一次通过也不证明某个被动probe的因果作用。实际稳定可见跟随、原getter等价、bore／原散布／回缩／前推／命中和头显仍待证，R2保持OFF，默认未替换。
 
