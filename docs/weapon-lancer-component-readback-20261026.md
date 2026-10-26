@@ -1,5 +1,11 @@
 # Lancer原枪组件读回与骨骼配对观察
 
+当前Muzzle观察候选（2026-10-27，尚未实跑）：新增默认OFF的`GEARS_PLAYGROUND_LANCER_MUZZLE_PROBE`，必须复用已有component probe。普通PlayerTick在同一个有界采样中认证实际weapon.MuzzleSocketName、asset.Sockets及唯一SkeletalMeshSocket、真实Core.Vector／Rotator描述符和相对值，并读取当前9骨Ref／Local／Space／epoch前后副本；再按实际BoneName唯一匹配骨index，以UE3行向量关系计算挂点位置。名称、指针、字段selector／descriptor、动态值、完整身份／结构／table均复核，失败输出不变；非Actor对象只认证当前注册身份，不声称未知pending-kill flags已验。没有引擎getter、骨骼写入或新的持续观察平台。
+
+新`muzzle_pair_accepted`独立于原component／Avatar配对，只有原观察、socket前后与枪骨前后均一致才给出derived world位置；默认值／未知不当成功。raw配置名、socket名、BoneName、相对location／rotation、当前骨index／count／Space矩阵和原枪CTW一起记录。旋转只保留原始Rotator，未擅自设定bore；getter等价／权威枪轴／sameC0／最终renderer仍明确未证明，mount_known=false与R2门不变。
+
+候选直接从HG failclosed PG `dfd995e4…904669`的实际frozen source2及原17份vendor源派生，只变2既有／加5文件，811份闭包稳定；原FLAGS保持，DEFINES只增Muzzle观察。完整PG严格构建、12个9骨／位置owned-memory案例及31个真实typed socket-reader案例通过，16导出保持。PG SHA `80b826235774f6b9126db0017fdc24f1867cc2127e99b68bb6ddfb436a3db150`，回执ignored `analysis/lancer-muzzle-observation-20261027/attempt-1793053485363798500/receipt.json` SHA `63bde1d5b8f4de45c1dcd344af6461977b65a5102dfcda6e23a5d7464c662809`。预处理去除新OFF块后的probe文本精确等于实际HG父源；未重跑旧suite或重建Native／XR。首次stage遗漏manifest独列vendor导致configure失败，下一stage的路径规范化断言也拒绝，原失败目录保留，均未到编译／Game；只修build driver后才得到本候选。上述CPU产物尚无实际Muzzle观察或玩法通过，不替换默认。
+
 HG更新（2026-10-27）：Body已通过原持续持枪／Stop续更／正常恢复协议，Root仅消费该局现成32715B PG日志，不重解128条held journal。9／9组件观察与骨骼前后配对接受，间隔4.9722–5.6081ms；gun相对bone52继续维持原固定-90°关系，最大矩阵元素残差0.00024615（世界坐标文本9位有效数字）。同raw输入相邻样本最大枪位移32.43099原单位／旋转32.77917°，腕35／骨52与枪一起变化，角色CTW相同；仍不支持枪组件单独脱离，也不能把协议通过当最终稳定可见跟随。新证据为ignored `analysis/lancer-component-readback-20261026/hg-saved-component-review.json`，SHA `bbe78ada3f355fad5990b13b0aad000ab949a1aa59dd612c2fad9c246a38d01b`。原v1／v2导出、局部非阻断拒绝及旧EQ／ES结果保持。
 
 Body从既有HG hand-v3／BMS前缀确认：PG epoch1295／1297分别可与同mesh的Native seq1／2有序关联，实际consumer／end已验证，PG读回发生在对应Native end之后；其余ready／move六个epoch1395..1420均超出32条前缀末1363。该匹配不是原子同C0或最终renderer证明，当前没有以非原子summary推定后继writer原因。下一最小观察缺口为当前实际Muzzle socket对象／BoneName／RelativeLocation／Rotation及骨index/count和对应枪骨姿态，继续复用唯一现有PG有界读路径，不另造骨骼writer。
