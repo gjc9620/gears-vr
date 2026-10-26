@@ -18,7 +18,7 @@ PG只保留first32／总111次callback（truncated1），原Native预算也正�
 
 16条失败均为初始context ready、retained complete、独立Game／typed资产／附着／bind检查ready，最终sender::response里的context返回source_mismatch。**在response入口时16条原sync都已经超过50ms**，不是仅在最后打印时越界。`weapon_main_mount_sender.h::context`要求Rig有效且原controllers.sync≤50ms，response再次调用它；这是足够解释本组拒绝的实际年龄条件。末次Native failure_query110／mask1025／旧tracking约53.76ms与last_query111／raw0不是同query，不能强配。
 
-仅使这16条PG回复赶在50ms以内，就分别需要省0.9208–6.1447ms，中位3.2709ms；尚未包含后续Native current／Kernel逐写复核。first32中10条PG ready只有6条出现在成功held记录，query10／13／21／27没有成功held记录；不能把budget commit_end当成功或精确CAS时点。当前C0→query约1ms，把查询小幅提前不足以覆盖上述缺口。新Tick40消费与原Scene50资格必须继续分开，不能用新Tick时标更新旧包。
+仅使这16条PG回复赶在50ms以内，就分别需要省0.9208–6.1447ms，中位3.2709ms；尚未包含后续Native current／Kernel逐写复核。first32中10条PG ready有6条held commit记录，其中5条pose通过、query30姿态失败；query10／13／21／27没有held记录。旧分析字段appears_in_successful_held_log仅表示query在全部held记录中的membership，不能当作pose成功，后续视图已改为held_commit_record_present并另列pose_pass，原结果保留。不能把budget commit_end当成功或精确CAS时点。当前C0→query约1ms，把查询小幅提前不足以覆盖上述缺口。新Tick40消费与原Scene50资格必须继续分开，不能用新Tick时标更新旧包。
 
 ## 推荐的最小可改范围
 

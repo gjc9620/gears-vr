@@ -68,9 +68,10 @@ template<std::size_t N,std::size_t K>bool field(meta::Reader& r,uptr object_addr
         parents[depth++]=cls;meta::Structure s{};if(!r.structure(cls,s))return false;
         if(depth==1)extent=s.extent;
         auto property_address=s.children;std::array<uptr,meta::max_search> seen{};U32 count{};
+        weapon_metadata_parse::Walk traversal;
         while(property_address){
             if(count==seen.size())return false;
-            for(U32 i=0;i<count;++i)if(seen[i]==property_address)return false;
+            if(traversal.seen(property_address,seen.data(),count))return false;
             seen[count++]=property_address;meta::Identity id{};meta::NameText text{};
             if(!meta::raw_identity(r.result.objects,r.result.names,property_address,id,text))return false;
             if(meta::exact_text(text,label)){

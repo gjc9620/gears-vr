@@ -2,6 +2,14 @@
 
 本文件保留武器与掩体两个分支的开发历史，便于共用 Native 手部实现合流。各条记录仍以其原始验证范围为准；私有候选、只读采样或离线检查不代表完整功能、默认构建更新或头显验收。
 
+## 2026-10-26 — PG单次查询解析优化完成源码与定向验证，待原动作验证实际收益
+
+按统筹确认的唯一候选范围，Root在PG provider取得独占entered后安装本次查询的解析工作区，finally恢复原TLS并清空工作区。FName只记本次查询内的长度界限；命中时仍重新读取slot、index、全部字符和终止NUL，同长文字变化仍由原快照见证捕获，长度或可读性变化拒绝。三个原field扫描器将重复地址查重改为精确地址哈希集合，原前缀数组／4096上限／首个同名字段及类型／所有读取与末读保持，嵌套扫描或容量不足回退原线性查重。保留两次fresh Game观察、两种typed资产、独立最终观察、原身份／资格／时间戳／40与50ms及默认非trial路径；未改Native、wire或R2运行开关。
+
+新PG完整TU严格构建通过，SHA256 `f85a00dda92f09c0c7548151b676c7cb37dc5ec0879472201855ad0248615650`；实际callback／attach定向933个断言与实际三个scanner／fresh_name定向8330个断言均通过，覆盖重入、工作线程TLS、SEH恢复、查询清空、碰撞、循环与4096边界、文字／指针变化和读取失败。8330是断言数，不能写作8330个场景。独立Astra增量审查无P1/P2发现，审查本身未执行测试。沿用PG0ec1相同编译flags和vendor，763份源与构建receipt一致，生产侧无test-stats宏；准确增量为六份已有构建／源码／测试文件和两份新头文件／测试，证明及唯一build位于ignored `analysis/weapon-parser-candidate-20261026/`。
+
+算法示例的8,390,656次线性比较降为6,153次哈希探测、LivePawn字符读取9次降为1次只说明减少操作，不能换算真实游戏节省毫秒。原EN回复需省0.9208–6.1447ms且后续仍需Native消费，是否足够须由Body独占同原动作验证；保留原firstheld40／6秒与106完整恢复，收益不足则回查生产消费时序，不连续堆微候选。尚无本轮Game／XR／GPU／头显验收，成熟度不增加。原EN held日志标签另有补充：前缀10次PG ready对应6条held记录，其中5条pose通过、query30失败；原回执保持，日志成员关系不能叫姿态成功。
+
 ## 2026-10-26 — EN保住27／28条完整姿态，继续收口PG原来源50ms成本
 
 Body独占完成EN及原finalize一次并交还空窗口。实际Game20148／Native2447539276000，新typed／v3／alpha分别SHA a987aa5a…858f、da05cc27…0004、5e1e7150…c1af；28条中27条consumer/end、Local、FK及四角色actualApplied通过，552个事件无drop。Root直接核对三原件、逐条sequence／tick／Compose／thread／PG query，独立重算原矩阵腕位置误差一致。异常准确为sequence5／query30，四角色no-token，不能忽略或说成最后序号；q30本身PG ready，不能混作PG source_mismatch。原fixedheld40／6秒门仍失败（ready43／held28），未到后续移手、射击或头显接受。本轮HandStop5／quiescent、cookie0后freehand继续、controller恢复、bridgeclose及106／Native／entry／XR0／PG0／十文件／audio10正常恢复通过，host瞬时false保留，EM旧freehand失败不覆盖。

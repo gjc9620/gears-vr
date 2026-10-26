@@ -28,9 +28,10 @@ private:
             parents[depth++]=cls;meta::Structure s{};if(!r.structure(cls,s))return false;
             if(depth==1)extent=s.extent;
             auto address=s.children;std::array<uptr,meta::max_search> seen{};U32 searched{};
+            weapon_metadata_parse::Walk traversal;
             while(address){
                 if(searched==seen.size())return false;
-                for(U32 i=0;i<searched;++i)if(seen[i]==address)return false;
+                if(traversal.seen(address,seen.data(),searched))return false;
                 seen[searched++]=address;meta::Identity id{};meta::NameText text{};
                 if(!meta::raw_identity(r.result.objects,r.result.names,address,id,text))return false;
                 const auto index=label(text);

@@ -1,6 +1,7 @@
 // Optional data-only callback on the existing parent Hand registration.
 // Native owns the supplemental admission/pin/inflight; PG additionally counts
 // every entry, including rejection/fault, in its existing callback lifetime.
+#include "weapon_metadata_parse.h"
 namespace mainmountprovider {
 namespace wire=gears_weapon_main_mount_provider;
 namespace sender=gears_weapon_main_mount_sender;
@@ -11,6 +12,7 @@ struct Workspace {
     source::BodyContext body{};
     gears_weapon_main_mount::Candidate candidate{};
     nativeequipment_main_mount::RetainedDiagnostic diagnostic{};
+    weapon_metadata_parse::Workspace parsing{};
 };
 // These are caller-owned scratch values, never a cross-query permit/cache.
 Workspace scratch;std::atomic_flag entered=ATOMIC_FLAG_INIT;
@@ -97,7 +99,8 @@ std::uint32_t prepare_data(wire::Request const* request) noexcept {
 }
 std::uint32_t __cdecl prepare(void* context,wire::Request const* request,wire::Response* out) noexcept {
     callbacks.fetch_add(1,std::memory_order_acq_rel);
-    bool claimed{};
+    bool claimed{},parse_installed{};
+    weapon_metadata_parse::Workspace* previous_parse{};
 #if defined(GEARS_PLAYGROUND_HAND_WEAPON_MESH_PHASE1_TRIAL)
     bool parser_saved{},saved_parser{};
 #endif
@@ -112,6 +115,7 @@ std::uint32_t __cdecl prepare(void* context,wire::Request const* request,wire::R
         claimed=true;
         active_receipt={};active_receipt.begin_ns=weaponhand::clock_ns(nullptr);
         if(receipt_attempts!=UINT64_MAX)++receipt_attempts;
+        previous_parse=weapon_metadata_parse::activate(scratch.parsing);parse_installed=true;
 #if defined(GEARS_PLAYGROUND_HAND_WEAPON_MESH_PHASE1_TRIAL)
         saved_parser=component_names::enabled;parser_saved=true;component_names::enabled=false;
 #endif
@@ -127,6 +131,7 @@ std::uint32_t __cdecl prepare(void* context,wire::Request const* request,wire::R
         if(parser_saved)component_names::enabled=saved_parser;
 #endif
         if(claimed){
+            if(parse_installed)weapon_metadata_parse::restore(previous_parse);
             if(receipt_count<receipts.size())receipts[receipt_count++]=active_receipt;
             std::memset(&scratch,0,sizeof(scratch));entered.clear(std::memory_order_release);
         }

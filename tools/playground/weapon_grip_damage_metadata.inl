@@ -2,6 +2,7 @@
 // Include where uptr/base/copy and playground::arena_pawn already exist.
 // Requires C++17 <array>, <cstdint>, <cstddef>, <cstring>, <type_traits>.
 // No engine call, Result read, heap, output, clock or game-memory write.
+#include "weapon_metadata_parse.h"
 namespace gripdamage_metadata {
 using U32=std::uint32_t;
 using U64=std::uint64_t;
@@ -69,9 +70,26 @@ bool fresh_name(Table const& names,U32 index,NameText& text) noexcept {
     text={};text.index=index;U32 entry_index{};
     if(index>=U32(names.count)||!read_at(names.data,uptr(index)*8,text.entry)||!text.entry||
        !read_at(text.entry,0,entry_index)||entry_index!=index)return false;
+#if defined(GEARS_PLAYGROUND_NATIVE_MAIN_MOUNT_PROVIDER_TRIAL)
+    static_assert(max_name_units==weapon_metadata_parse::name_units);
+    const auto bound=weapon_metadata_parse::length_bound(text.entry,index);
+    if(bound&&bound<max_name_units){
+        // The length is only a read bound. Slot/index and ALL actual text,
+        // including the terminator, are fresh. No cached characters select a
+        // property. A changed termination rejects rather than reusing text.
+        if(!read_bytes(text.entry,20,text.units.data(),(std::size_t(bound)+1)*sizeof(wchar_t)))return false;
+        for(U32 i=0;i<bound;++i)if(!text.units[i])return false;
+        if(text.units[bound])return false;
+        text.length=bound;return true;
+    }
+#endif
     for(U32 i=0;i<max_name_units;++i){
         if(!read_at(text.entry,20+uptr(i)*sizeof(wchar_t),text.units[i]))return false;
-        if(!text.units[i]){text.length=i;return i!=0;}
+        if(!text.units[i]){text.length=i;
+#if defined(GEARS_PLAYGROUND_NATIVE_MAIN_MOUNT_PROVIDER_TRIAL)
+            if(i)weapon_metadata_parse::remember_length(text.entry,index,i);
+#endif
+            return i!=0;}
     }
     return false; // Never manufacture the terminating NUL.
 }
@@ -216,9 +234,10 @@ struct Reader {
             parents[parent_count++]=current;Structure structure_value{};if(!structure(current,structure_value))return false;
             if(parent_count==1)object_extent=structure_value.extent;
             auto field=structure_value.children;std::array<uptr,max_search> seen{};U32 count{};
+            weapon_metadata_parse::Walk traversal;
             while(field){
                 if(count==max_search)return fail(Reason::field_limit,field,count);
-                for(U32 i=0;i<count;++i)if(seen[i]==field)return fail(Reason::field_cycle,field,count);
+                if(traversal.seen(field,seen.data(),count))return fail(Reason::field_cycle,field,count);
                 seen[count++]=field;Identity field_identity{};NameText field_text{};
                 if(!raw_identity(result.objects,result.names,field,field_identity,field_text))return fail(Reason::identity_unknown,field);
                 if(exact_text(field_text,label)){

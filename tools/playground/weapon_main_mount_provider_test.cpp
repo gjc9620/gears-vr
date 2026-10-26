@@ -1,5 +1,6 @@
 #include <windows.h>
 #include <atomic>
+#include <memory>
 #include <thread>
 #include "weapon_main_mount_sender.h"
 #define main weapon_main_mount_provider_owned_fixture
@@ -78,6 +79,13 @@ policy::Status prepare_retained(rt::Frame const& retained,source::BodyContext co
     policy::Candidate& out,RetainedDiagnostic& diagnostic) noexcept {
     ++reader_calls;CHECK(callbacks.load()==1&&!component_names::enabled);
     CHECK(active_request&&retained.scene_invocation==active_request->retained.scene_invocation&&body.known);
+    CHECK(weapon_metadata_parse::active==&mainmountprovider::scratch.parsing);
+    CHECK(!mainmountprovider::scratch.parsing.walk_owned);
+    CHECK(weapon_metadata_parse::length_bound(0xf000,17)==0); // Every query starts cold.
+    weapon_metadata_parse::remember_length(0xf000,17,7);
+    CHECK(weapon_metadata_parse::length_bound(0xf000,17)==7);
+    {weapon_metadata_parse::Walk walk;std::array<uptr,1> seen{};
+        CHECK(!walk.seen(0xf000,seen.data(),0));seen[0]=0xf000;CHECK(walk.seen(0xf000,seen.data(),1));}
     const auto query=mainmountprovider::scratch.request.query_id;
     if(reader_mode==ReaderMode::reenter){
         const auto outer=mainmountprovider::scratch;
@@ -86,8 +94,17 @@ policy::Status prepare_retained(rt::Frame const& retained,source::BodyContext co
         CHECK(nested_status==~0u&&callbacks.load()==1&&!component_names::enabled);
         CHECK(mainmountprovider::scratch.request.query_id==query); // Inner entry did not erase outer scratch.
         CHECK(!std::memcmp(&outer,&mainmountprovider::scratch,sizeof outer));
+        CHECK(weapon_metadata_parse::active==&mainmountprovider::scratch.parsing);
+        std::thread other([]{
+            CHECK(weapon_metadata_parse::active==nullptr&&weapon_metadata_parse::length_bound(0xf000,17)==0);
+            wire::Response nested{};
+            CHECK(mainmountprovider::prepare(&weaponhand::client,active_request,&nested)==~0u);
+            CHECK(weapon_metadata_parse::active==nullptr);
+        });other.join();
+        CHECK(weapon_metadata_parse::active==&mainmountprovider::scratch.parsing);
+        CHECK(weapon_metadata_parse::length_bound(0xf000,17)==7);
     }
-    if(reader_mode==ReaderMode::seh)RaiseException(custom_exception,0,0,nullptr);
+    if(reader_mode==ReaderMode::seh){mainmountprovider::scratch.parsing.walk_owned=true;RaiseException(custom_exception,0,0,nullptr);}
     if(reader_mode==ReaderMode::revoke){std::thread worker([]{weaponhand::client.alive.store(false);});worker.join();}
     if(reader_mode==ReaderMode::soft_revoke){std::thread worker([]{weaponhand::client.armed_value.store(false);});worker.join();}
     out={};out.key=active_hand.key;out.world=active_hand.world;out.controller=active_hand.controller;
@@ -123,8 +140,10 @@ struct Trial {
         request.body.basis=wire::Basis::marcus_mesh_face_forward_y;active_request=&request;
     }
     std::uint32_t call(void* context=&weaponhand::client){response.query_id=999;
+        auto* previous=weapon_metadata_parse::active;
         const auto result=mainmountprovider::prepare(context,&request,&response);
-        CHECK(callbacks.load()==0&&component_names::enabled&&scratch_empty());return result;}
+        CHECK(callbacks.load()==0&&component_names::enabled&&scratch_empty());
+        CHECK(weapon_metadata_parse::active==previous);return result;}
 };
 bool caught_custom(wire::Request const* request,wire::Response* response) noexcept {
     __try{mainmountprovider::prepare(&weaponhand::client,request,response);return false;}
@@ -153,7 +172,18 @@ int main(){
     {Trial t;reader_mode=ReaderMode::reenter;CHECK(t.call()==unsigned(wire::Status::ready)&&empty(nested_response)&&reader_calls==1);}
     for(bool parser:{false,true}){Trial t;component_names::enabled=parser;reader_mode=ReaderMode::seh;
         CHECK(caught_custom(&t.request,&t.response));CHECK(callbacks.load()==0&&component_names::enabled==parser&&scratch_empty()&&empty(t.response));
+        CHECK(weapon_metadata_parse::active==nullptr);
         reader_mode=ReaderMode::ready;component_names::enabled=true;CHECK(t.call()==unsigned(wire::Status::ready));}
+    for(bool fault:{false,true}){
+        auto previous=std::make_unique<weapon_metadata_parse::Workspace>();
+        auto* saved=weapon_metadata_parse::activate(*previous);
+        weapon_metadata_parse::remember_length(0xf000,17,9);
+        Trial t;reader_mode=fault?ReaderMode::seh:ReaderMode::ready;
+        if(fault){CHECK(caught_custom(&t.request,&t.response));CHECK(callbacks.load()==0&&scratch_empty());}
+        else CHECK(t.call()==unsigned(wire::Status::ready));
+        CHECK(weapon_metadata_parse::active==previous.get()&&weapon_metadata_parse::length_bound(0xf000,17)==9);
+        weapon_metadata_parse::restore(saved);
+    }
     {Trial t;unreadable=reinterpret_cast<uptr>(&t.request);CHECK(t.call()==~0u&&empty(t.response)&&reader_calls==0);}
     {Trial t;++t.request.size;CHECK(t.call()==unsigned(wire::Status::source_mismatch)&&empty(t.response)&&reader_calls==0);}
     {Trial t;CHECK(mainmountprovider::prepare(&weaponhand::client,&t.request,nullptr)==~0u&&callbacks.load()==0&&reader_calls==0);}
