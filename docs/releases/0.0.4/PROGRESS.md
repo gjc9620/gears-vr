@@ -2,6 +2,12 @@
 
 本文件保留武器与掩体两个分支的开发历史，便于共用 Native 手部实现合流。各条记录仍以其原始验证范围为准；私有候选、只读采样或离线检查不代表完整功能、默认构建更新或头显验收。
 
+## 2026-10-26 — EN封存Native46同次已提交消费认证候选
+
+Body冻结Native46最终build-cover-body46sim2后，Root仅从EM派生EN，准确选DLL `65f55c25b111bea5c7e818dfb3bdaf0acd8a7bb2ef243abdd1440450c67a951b`、manifest `d523040f…cea80`、receipt `4b1fa4b9…bb6e0`与最终source46-before-build2 `459c7671…94709`。该候选改变同次已提交消费认证并将hard故障独立；写入40／Scene资格50／原alpha1-Scale0和PG／wire不变，已有alpha侧录保留。Body实际完整TU／43exports／22startup／23preflight、32红例／真实owner-Rig-Kernel与ActualContext/Kernel wrapper定向结果及Astra关闭记录按其receipt来源复用，Root未重建、扩矩阵或Game。
+
+最终EN pins `0866765458013f065b78db11602ed2518d6dabafe603a1ab16345a11f2976fa6`，coordinator仍`1b4f9f2a…7da95`。PG0ec1／BQ／CY、控制器原8轨迹、firstheld40／6秒及106完整保护保持；INI逐字等EM，所有私有Python仅case/instance替换，证明在ignored case的native46-selection-preflight.json。原EM输入／结果及alpha／typed／v3三原件保持。已向Body交精确原两retained session及一次normal finalize命令并冻结EN，交付时无instances／ready，Root不自行Game/XR。尚无该轮行为接受；仍以实际Local/FK／持续held／移转／交还验收，不把新消费候选、原grant或返回时标当作最终姿态证明。
+
 ## 2026-10-26 — EM诊断取得右臂prior-compute拒绝链，保留返回时标解释边界
 
 Body独占完成EM及一次normal finalize，完整106／Native／entry／XR0／PG0／原十文件／音频／exact PID正常恢复并fresh CIM空；本轮HandStop4→5／quiescent、双controller恢复与bridgeclose通过，但cookie0后freehand继续超时，独立保留，不用正常清理或EL成功覆盖。first-held门仍失败，未进入后移转；Native45只是被动诊断，未当修复或跟随接受。
