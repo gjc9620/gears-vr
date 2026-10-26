@@ -2,6 +2,16 @@
 
 本文件保留武器与掩体两个分支的开发历史，便于共用 Native 手部实现合流。各条记录仍以其原始验证范围为准；私有候选、只读采样或离线检查不代表完整功能、默认构建更新或头显验收。
 
+## 2026-10-27 — hc补齐同帧raw counter，具体RGrip边沿在时效拒绝／baseline吸收的链路闭合
+
+Body私有`analysis/body-held-outcome-runtime-20261027c`已单次原动作运行并清理，原100ms／40-6s与脉冲时长不变。Root仅关联保存的两个目标帧（gap／同帧outcome／后继baseline三行），不新开Game／测试／编译或重审整套源码。Game64604／Native3046028507935，诊断PG `3eb4932cdc17e43a1889b51778d63a6033f58f5b976443466e7aa0ef2b8927ac`；复用Body私有PG仅加诊断字段／校验的证据，不把它视作输入修复。
+
+frame278／source3553的rawpress1、release0、lastpress3550，存储的previous_bound1／source3547／press0／release0／lastpress0，实际reason previous_sync_stale且`next_after_inventory=1`；同帧outcome `input_evidence_valid=1`／sequence3553、baseline_waiting／event0，排除了旧evidence或把Outcome默认press0误当raw0。frame279／source3558实际baseline evidence_valid1／rawpress1／lastpress3550、previous_bound0／event0、`next_after_inventory=0`。本局slot3-press回执也为pressed1／lastpress3550，source/session/space/profile/input与gap行一致，3550位于3547与3553之间。因而特定边沿已进入consumer，在intent前的旧sync门被拒，重置后被baseline吸收；不是设备未发布按下，也不是intent生成后的装备动作门拒绝。这是hc本局闭合，不倒填hb缺失的raw字段。
+
+hc旧sync age111.4226ms、current47.4542ms、相邻sync差63.9684ms，触发的是原100ms old-sync门；Frame now至input observation39.557ms，`next_after_inventory=1`只证明采样在inventory之后，不把整段时间宣称为inventory／CPU／GPU函数耗时。仍未equipment held／未进入原40-6s；Root没有改门、替换clock或重播press。Body原finalizer一次106／full／Native、entry、PG／XR0／十文件／audio9/9及fresh空恢复通过，Root复用其恢复回执；整轮无装备结果超时仍保留。
+
+有界关联回执ignored `analysis/lancer-component-readback-20261026/hc-input-edge-closed-20261027.json`含目标行、同局身份／command关联及原件SHA。已交Body／统筹；Body按人类授权使用一位Astra作最小安全修复或唯一必要时标的窄问，Root不重复开助手或重跑。实际延迟归因与安全修复尚待结论，无默认合流或玩法进度加分。
+
 ## 2026-10-27 — hb第一轮RGrip首断点：输入旧sync门拒绝后重建baseline，尚未生成装备intent
 
 完成统筹追加的窄任务，仅用hb命令／输入／装备回执及实际PG7e927e17…61aa冻结源码；核实际私有PG bytes与build receipt的Input／Runtime／backend／router四源码hash。Game73444／Native3029853403801，Body producer-timeline原件SHA `eaca4af6e22410167b9565b11a1f5ea7ef95473943a225e23bd3d2c3bffdef8c`复用，不重复XR来源／窗口调查。position／press／release的source/session/space/profile/input不变，producer pressed0→1→1、released0→0→1、lastpress2969；按下已在producer观察到。
