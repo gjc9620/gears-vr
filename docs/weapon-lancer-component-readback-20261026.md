@@ -1,5 +1,11 @@
 # Lancer原枪组件读回与骨骼配对观察
 
+HG更新（2026-10-27）：Body已通过原持续持枪／Stop续更／正常恢复协议，Root仅消费该局现成32715B PG日志，不重解128条held journal。9／9组件观察与骨骼前后配对接受，间隔4.9722–5.6081ms；gun相对bone52继续维持原固定-90°关系，最大矩阵元素残差0.00024615（世界坐标文本9位有效数字）。同raw输入相邻样本最大枪位移32.43099原单位／旋转32.77917°，腕35／骨52与枪一起变化，角色CTW相同；仍不支持枪组件单独脱离，也不能把协议通过当最终稳定可见跟随。新证据为ignored `analysis/lancer-component-readback-20261026/hg-saved-component-review.json`，SHA `bbe78ada3f355fad5990b13b0aad000ab949a1aa59dd612c2fad9c246a38d01b`。原v1／v2导出、局部非阻断拒绝及旧EQ／ES结果保持。
+
+Body从既有HG hand-v3／BMS前缀确认：PG epoch1295／1297分别可与同mesh的Native seq1／2有序关联，实际consumer／end已验证，PG读回发生在对应Native end之后；其余ready／move六个epoch1395..1420均超出32条前缀末1363。该匹配不是原子同C0或最终renderer证明，当前没有以非原子summary推定后继writer原因。下一最小观察缺口为当前实际Muzzle socket对象／BoneName／RelativeLocation／Rotation及骨index/count和对应枪骨姿态，继续复用唯一现有PG有界读路径，不另造骨骼writer。
+
+枪口资料边界另收紧：历史实际武器仅确认MuzzleSocketName=Muzzle；静态9骨盘点、作者+Y前向或旧Magazine socket getter均不足证明当前Muzzle的骨绑定／相对几何，更不授权威bore／最终射线。先闭合实际元数据／姿态与原getter，再沿现有CallFunction所有者接逐发观察。当前mount_known=false和逐发输入资格不因组件观察而放开，R2／散布／回缩／前推／命中仍未验收。
+
 ES更新：在现有PG采样点取得9／9稳定骨骼／枪配对（约5.05–5.79ms），实际重算枪相对bone52矩阵在9条中恒定，最大元素差0.000029427。固定手柄输入下，腕35、bone51／52和枪姿态一起切换，Avatar CTW一致；当前观察不支持枪组件单独偏离骨骼。最终writer／动画更新阶段与GPU原因仍未知，已把保存样本交Body唯一共享writer所有者继续定位。ES动作整体仍失败：Stop quiescent后12条采样没有新的hands提交／尝试，连续tick却552→630，原coordinator返回1。正常finalizer一次及106／十文件／audio／入口恢复通过仅属cleanup。详细证据见`es-saved-pose-review.json`与PROGRESS；未重跑或放宽门。
 
 Body返回保存数据对照：rows4–6附近joint观察的MainMount提交计数保持45，rows7–9附近保持54，hands／Native提交计数也未变；前32条journal已在epoch1612结束，早这些PG样本约1.75–2.93秒，不覆盖当前姿态。回执`analysis/cover-implementation-20261024/es-native47-pose-timing-review.json`（Body worktree，SHA256 `3054388d…3af81a`）及其三份输入hash已由Root核对。约0.2秒的非原子摘要括号不能证明精确PG采样点没有实际写入；不能用它给动画／另一writer定责。这里只追加已有证据，不重复分析或新开游戏。

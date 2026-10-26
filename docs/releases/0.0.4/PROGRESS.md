@@ -2,6 +2,14 @@
 
 本文件保留武器与掩体两个分支的开发历史，便于共用 Native 手部实现合流。各条记录仍以其原始验证范围为准；私有候选、只读采样或离线检查不代表完整功能、默认构建更新或头显验收。
 
+## 2026-10-27 — HG原持枪与交还协议通过；复用9组腕／枪配对，实际枪口仍缺证
+
+Body交HG已封存实跑：Game64176／Native3118170081683，Native `22268f8a…313b6`／PG failclosed `dfd995e4…904669`／XR `1a059d2d…a2b4e9`／quiet `19b355db…15ef3`。同局原8动作、首40／6秒门0→46（约5.232秒）、两后继阶段+8／+10、Stop后hands89→124且held68不变、正常106／full及音频9／9恢复均通过；复用Body `runtime-review.json` SHA `2d73d4b0b67fd80546d319492e1d000d99238154ea022f7ad128ac0b3612e89d`、`runtime-final.json` SHA `c574abf9c20a6bb87fc818091f80a55130825aabea7327f7a59564bb2d445431`及保存摘要，不重解其128条v2／丢3或追未阻断协议的局部拒绝。R2关闭，实际可见跟随／权威瞄准／默认整合仍未证明，⑤保持统筹40%。后继新case须重基09e0554的build5后台策略与准确19b355／c12172选择，旧HF／HG pins不改。
+
+Root在HG现成32715B PG日志取得9／9稳定before-after腕骨／枪体配对（4.9722–5.6081ms），gun相对bone52的固定-90°矩阵最大元素残差0.00024615；同raw输入时腕35／骨52／枪一起变化，最大相邻枪位移32.43099u／旋转32.77917°，角色CTW一致。只证明这些顺序观察点的附件关系，不能把非原子summary计数当精确writer时点或升为GPU稳定。新私有回执`analysis/lancer-component-readback-20261026/hg-saved-component-review.json` SHA `bbe78ada3f355fad5990b13b0aad000ab949a1aa59dd612c2fad9c246a38d01b`及入口保留所有raw、scope、原时标与EQ／ES旧证据hash。
+
+Body复用既有hand-v3／BMS，确认仅PG epoch1295／1297分别能匹配Native seq1／2同mesh，consumer／end通过且PG发生其后；ready／move六个epoch均超出前32末1363，没有exact post-consumer join。Root未重复解码该前缀。单个既有助手只读现有aim／socket资料：历史MuzzleSocketName与静态9骨已知，当前Muzzle的实际Socket／BoneName／相对几何仍缺，不能用旧Magazine探针或+Y静态轴代替。下一交付在既有有界PG只读路径闭合当前枪口数据，必要共享Native改动交Body，继续保留mount_known=false及原CallFunction逐发消费者边界；本轮无新Game／编译／旧suite／Native修改或进度加分。
+
 ## 2026-10-27 — BHELD002早退解码交付；保留旧520合同，尚无新局修复结论
 
 Body冻结仅追加实际Native／Goal返回观察的journal合同，header SHA `0abf184b0d3f2ab13ad9e36a45e0ee1132962447fd84f35c0bf5b131bc60d881`，BHELD002／version2，Header120／Record584，容量128／7秒不改。Root新增ignored `analysis/lancer-component-readback-20261026/decode_held_returns_v2.py`，SHA `3724aeb179f5a4e93a7b101f30d6d37b52cca9af0863a12b1af0d6ace9ad2401`；旧v1 reader及其交付全部source hash保持。共同字段通过去除新增8个U64的临时内存投影复用旧reader，原时标／身份逐字保留，未生成冒充原件的投影文件；两版相互拒绝不匹配的magic／version／layout，输出独占创建不覆盖旧证据。
