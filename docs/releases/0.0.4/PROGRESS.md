@@ -2,6 +2,14 @@
 
 本文件保留武器与掩体两个分支的开发历史，便于共用 Native 手部实现合流。各条记录仍以其原始验证范围为准；私有候选、只读采样或离线检查不代表完整功能、默认构建更新或头显验收。
 
+## 2026-10-26 — EM冻结Native45同held alpha诊断，原消费行为不变
+
+Body交付唯一被动alpha诊断后，Root从EL派生EM，准确选择Native45 `7d0d2d542d2c661a04f4b352a5c9ad791a3db049ea95b9c6b27273c3f9813be2`、receipt `36e9be28…8ed91`与冻结source45 `c7fc7c4c…a7baa`。PG0ec1／BQ XR1a05／CY378及BodyTickInput1全部保留；所有私有Python只必要namespace替换，native_sections与EL逐字相同，43个导出名称相同。原8命令、firstheld40／6秒、alpha1／Scale／40／50／PG／wire／实际XMM编辑、0.4后台与106完整恢复保护不变。Body原完整TU、startup／preflight及定向owner／CCTRL结果按receipt复用，Root只做选择／封印，不重建或加矩阵。
+
+最终EM pins `05f347344c5b7f6f903364602556515dd94f759b3a6562dc4b4059a3bd89d1bc`、coordinator仍`1b4f9f2a…7da95`；namespace与INI证明在ignored case的native45-selection-preflight.json，原EL输入／结果及typed／v3原件保持。NATIVE45-README给原两retained session和一次normal finalizer完整命令，Root已交Body独占窗口并冻结EM，交付时未启动Game/XR、无instances／ready。
+
+新sidecar为native/body-arm-alpha.bin，ARMALP01／Header64／Record9256（40＋64×144）／first32成功held，每条64 events，最大296256B；Header末u32是event_capacity64。它按hand_record sequence／tick／Compose／thread关联原typed4424与v32120，不使用旧first128容量冒充held。Body／Hand／CCTRL stopped且全drained后CREATE_NEW导出，sample Reject／owner deny／最终applied分别记录，qpc多为原return观察，不能排序或当阶段耗时。Body严格reader已就绪，Root finalizer仍保留原范围。尚无EM实跑结果，诊断选择不是修复或持续跟随接受。
+
 ## 2026-10-26 — EL取得29次held提交，原控制消费后覆盖仍阻断持续跟随
 
 Body独占完成EL及一次正常finalize后释放窗口并确认fresh CIM空。新typed输入361次取得均有效并正常Tick end；主握ready49，实际held commit29，原first-held40／6秒门仍失败，未到后续降枪／移转，未降低门槛或重跑碰运气。实际Game51152／Native incarnation2350130212567，新日志128360B（Header64＋29×4424），原v3为61552B（Header72＋29×2120）。Body严格reader验证输入／PG／Native join及重算数学目标：29条腕目标误差全0，head goal约8e-6u，但只有1条完整pose_pass，不能说持枪跟随通过。
