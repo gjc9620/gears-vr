@@ -1,6 +1,6 @@
 # Lancer原枪组件读回与骨骼配对观察
 
-HH阴性与修正候选（2026-10-27）：PG80b826实跑只取得肩部3行，3／3原component／Avatar配对有效，Muzzle前后均未录，没有derived world；socket0／bonecount0等默认值不能解成场景原点或合法枪骨。两个样本早于原phase起点179.369／70.1742ms，第三个开始只晚0.2454ms，不能外推整段。原40／6秒门0→35／6.0179205s且Stop续更超时，正常106／音频9／9恢复仅cleanup；原失败与Body交付保留。Root只解此局21648B PG日志，没有重解held或调查非阻断Native拒绝，回执`hh-muzzle-negative-saved.json` SHA `df7d7cacc300a7871781330796e62bbb92c8a1d3a1efeab8ccec56a176381636`。
+HH阴性与修正候选（2026-10-27）：PG80b826实跑只取得肩部3行，3／3原component／Avatar配对有效，Muzzle前后均未录，没有derived world；socket0／bonecount0等默认值不能解成场景原点或合法枪骨。两个样本早于原phase起点179.369／70.1742ms，第三个开始只晚0.2454ms，不能外推整段。原40／6秒联合门status观测0→35／6.0179205s且Stop续更超时；35不是实际提交总数，Body随后在该局v2的phase范围数到42条held commit markers（counter2..43），但原联合predicate仍未成立，正常106／音频9／9恢复仅cleanup；原失败与Body交付保留。Root只解此局21648B PG日志，没有重解held或调查非阻断Native拒绝，回执`hh-muzzle-negative-saved.json` SHA `df7d7cacc300a7871781330796e62bbb92c8a1d3a1efeab8ccec56a176381636`。
 
 随后确认新增reader存在具体schema错误：实际保存反射／Core盘点显示Vector、Rotator的owner链是`Core.Object.Vector/Rotator`，旧reader及合成正例却要求直接Core package。限定修正为精确ScriptStruct→真实Core.Class的Object→无outer的Core，保留extent12、所有selector／身份／动态值复核；旧直接Core或假owner不接受。这是真实过严条件的源码修复，HH没有实际分支记录，尚不能把它认定为该局首个／唯一拒绝，亦不归因身体协议失败。仅追加已有实际返回的step／pass／metadata Reason，诊断不增加Game读／clock／guard，未创建Reader保持UNKNOWN、实际none保留0；失败Socket不发布。
 
