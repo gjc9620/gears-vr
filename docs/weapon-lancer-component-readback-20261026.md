@@ -2,6 +2,8 @@
 
 ES更新：在现有PG采样点取得9／9稳定骨骼／枪配对（约5.05–5.79ms），实际重算枪相对bone52矩阵在9条中恒定，最大元素差0.000029427。固定手柄输入下，腕35、bone51／52和枪姿态一起切换，Avatar CTW一致；当前观察不支持枪组件单独偏离骨骼。最终writer／动画更新阶段与GPU原因仍未知，已把保存样本交Body唯一共享writer所有者继续定位。ES动作整体仍失败：Stop quiescent后12条采样没有新的hands提交／尝试，连续tick却552→630，原coordinator返回1。正常finalizer一次及106／十文件／audio／入口恢复通过仅属cleanup。详细证据见`es-saved-pose-review.json`与PROGRESS；未重跑或放宽门。
 
+Body返回保存数据对照：rows4–6附近joint观察的MainMount提交计数保持45，rows7–9附近保持54，hands／Native提交计数也未变；前32条journal已在epoch1612结束，早这些PG样本约1.75–2.93秒，不覆盖当前姿态。回执`analysis/cover-implementation-20261024/es-native47-pose-timing-review.json`（Body worktree，SHA256 `3054388d…3af81a`）及其三份输入hash已由Root核对。约0.2秒的非原子摘要括号不能证明精确PG采样点没有实际写入；不能用它给动画／另一writer定责。这里只追加已有证据，不重复分析或新开游戏。
+
 ER实际运行更新：原动作45／8／8次held提交与正常恢复通过，39条原coherent姿态均保留；新增外部pair 0／39接受，38次前后骨骼比较变化、1次Query结束字段／registry变化。配对区间中位35.4808ms（28.7729–55.0061ms）；拒绝记录不含after字段，不能倒推具体变化项。原PG组件9条均接受，但没有同骨骼稳定配对。ER保留原件，不重跑；下一候选收窄到既有PG组件采样点内的只读骨骼数据，保留sameC0／GPU／枪口／射击边界。结果在ignored `er-saved-pair-review.json`及PROGRESS。
 
 EQ实际运行更新：Root在Body明确交出空窗口后完成原动作一次并正常finalize，Game20012、原持枪门与后续ready／移转提交通过。9条组件观察各自有效，包含约10°对应旋转；同small-move输入和epochs的后继样本却又偏移14.93523游戏单位／24.06287°，距离阶段结束尚640.34ms。角色CTW相同；这些数据既不能宣布稳定跟手，也不能把分叉直接解释为GPU闪烁、动画覆盖或Native回退。正常清理与恢复通过，窗口已交回。原件和分析在ignored `analysis/lancer-component-readback-20261026/eq-saved-component-review.json`。下文“待运行”保留为先前封存时的历史说明。

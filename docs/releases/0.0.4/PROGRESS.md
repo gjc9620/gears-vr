@@ -12,6 +12,8 @@
 
 ## 2026-10-26 — ES取得9条骨骼／枪稳定配对；整组腕骨姿态分叉与放手续传仍失败
 
+Body后继仅复用保存原件完成时标对照：PG rows4／5／6（epoch1644／1645／1647）被同局joint obs26→27／26→27／27→28括住，保存状态的MainMount commits均45→45；rows7／8／9（epoch1662／1664／1666）被obs30→31／31→32／31→32括住，均54→54；hands attempts／commits及Native commits也各自不变。v3／BMS前32条末epoch1612、perf_ns270208184290100，早于这些点1754.78–2932.96ms，不能配成当前epoch的C0。Root仅核对Body回执的PID／Native和三份输入hash，复用其结论，没有重复矩阵／journal推导。回执为Body worktree `analysis/cover-implementation-20261024/es-native47-pose-timing-review.json`，SHA256 `3054388dfe3ed3099f9e0627db1f3e2b0dd80b0ffca52538cc337728c63af81a`。这些是非原子、约0.2秒且可能滞后的状态摘要括号，只能说所保存计数未变，不能证明每个PG采样点绝无新的实际GT提交，更不能定位原动画／其他writer／GPU阶段。该限制与Body原回执一致；没有新实验、源码修复或进度加分。
+
 Body CT10正常退出后明确交窗，Root仅运行已封存ES一次：Game31188／Native2701965669072，原shoulder门45次、ready9次、移转9次held提交。实际PG原组件9／9及新增pose pair9／9接受，前后epoch／全115 Space、Local、Ref／角色CTW相同、变化位图0，区间5.0517–5.7871ms，中位5.2277ms；不是ER外部两次顺序读的35.4808ms方法。每条实际角色asset／Ref52名及原source／hold／input关联一致。
 
 保存矩阵按row-vector重算`gun_world * inverse(bone52_world)`，9条均同固定旋转矩阵`[0,-1,0; 1,0,0; 0,0,1]`与近零位移，最大元素差0.000029427游戏单位（旋转元素误差亦远小于该量）。ready同raw的样本4／5／6，腕35的z为1.54785／-12.62361／1.54778，bone52与枪z同步1.54783／-12.39745／1.54775；small-move同raw样本7／8／9也见整组高低姿态切换。角色CTW九条一致。这里直接支持“这些观察点枪没有单独偏离骨骼，而是腕35／骨51／52整组姿态变化”，不能由此定位动画／writer／attachment更新阶段的最终原因，更不能推出全程或GPU效果。原EQ分叉仍是待修问题，只是定位范围缩小。
