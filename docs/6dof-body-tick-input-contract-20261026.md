@@ -53,6 +53,16 @@ EJ 的17个 ready 样本中，进入 Compose 时原 controller sync 已有36.506
 
 只读来源已由购买版EK确认：32次实际Tick均取得更新2–4个序号的成组原包和当前C0基准。私有Native44已按表中合同接入独立类型及同一C0消费者，完成定向Host与完整TU构建；默认仍保留旧路径，新模式仅通过显式编译／INI启用，实际持枪检查另记。不能构造一份改时间／controller的CoreSnapshot喂旧接口。
 
+## 已提交姿态的同次动画消费
+
+每次骨骼写入前的40／50ms与同次写入资格不变。写入完成、原Kernel成功notify并验证consumer之后，原Compose余下的arm alpha仲裁使用单独typed retained接口认证这份已经写入的Local；它不能再prepare／commit、产生CAS、刷新源、重notify或延长lease。必须仍是精确backend／Kernel lease／stamp／GT、canonical Scope地址和Tick／Compose，且未finish、stop、exception或protocol fault。
+
+该消费接口每次独立检查actor／当前metadata／Marcus签名、原Core与reference／ticket的硬连续性、typed latch原字节和Parent生命周期。仅elapsed age不能撤销同次已提交姿态的消费，也不能授权下一次写入。适用的typed接口若denied，不得回退旧owner_current；not_applicable仅用于模式未启用。实际finish后、wrong lease／thread／scope等均立即失效。
+
+原只读手部观察器仍保留原失败和sticky。只有命名观察点首次明确判定source_age_only且retained认证通过，才可记observer_source_expired而不设置永久hard-control-fault；原TickLatch照旧烧毁，随后不再重读或恢复，也不再求解旧tracking的假设plan。原Compute before／after继续验证node／stack／headers等；它们的硬失败、嵌套、异常或stop仍永久拒绝，本Tick内恢复字段或正常解嵌不能重新授权。不得按粗粒度latch／metadata／prepare失败一概豁免。
+
+Native46／EN已在28条held记录中关联27条完整consumer／after Local／FK匹配和四角色实际packet applied；sequence5／query30仍失败并原样保留。原连续held门40／6s未过，后继移手未执行，因此这只确认有覆盖的同次消费修正，不构成完整held跟随或掩体验收。构建、Host边界、原字节和运行证据记录于`docs/releases/0.0.4/PROGRESS.md`及ignored候选目录。
+
 ## 失效与接受边界
 
 采集缺失、锁争用、无匹配双手或continuity、reference改变、stop、身份／geometry／query关联失败、任一来源过期：本Tick不生成新身体写入许可，使用现有无写入／原动画让位路径。新模式下不悄悄退回旧tracking来伪装成功；普通无held资格与硬故障仍按现有分类处理。
