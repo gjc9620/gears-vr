@@ -2,6 +2,14 @@
 
 本文件保留武器与掩体两个分支的开发历史，便于共用 Native 手部实现合流。各条记录仍以其原始验证范围为准；私有候选、只读采样或离线检查不代表完整功能、默认构建更新或头显验收。
 
+## 2026-10-26 — EN保住27／28条完整姿态，继续收口PG原来源50ms成本
+
+Body独占完成EN及原finalize一次并交还空窗口。实际Game20148／Native2447539276000，新typed／v3／alpha分别SHA a987aa5a…858f、da05cc27…0004、5e1e7150…c1af；28条中27条consumer/end、Local、FK及四角色actualApplied通过，552个事件无drop。Root直接核对三原件、逐条sequence／tick／Compose／thread／PG query，独立重算原矩阵腕位置误差一致。异常准确为sequence5／query30，四角色no-token，不能忽略或说成最后序号；q30本身PG ready，不能混作PG source_mismatch。原fixedheld40／6秒门仍失败（ready43／held28），未到后续移手、射击或头显接受。本轮HandStop5／quiescent、cookie0后freehand继续、controller恢复、bridgeclose及106／Native／entry／XR0／PG0／十文件／audio10正常恢复通过，host瞬时false保留，EM旧freehand失败不覆盖。
+
+PG实际只保留first32／总111次，truncated1；与Native原预算query1–32的Scene／publication／cookie／原sync逐条关联一致。该前缀6 unheld、10 held-ready、16 held在完整retained／Game／资产／bind通过后由sender::response最终context返回12；16条response入口原sync已50.9203–56.1443ms。其PG耗时6.3998–7.3612ms，仅使回复≤50就需省0.9208–6.1447ms（中3.2709），尚需后续Native逐写复核。全程broker source_after63不能由此32条全部分类，末failure110与last_query111/raw0也不强配；budget commit_end不是成功或精确CAS时刻。
+
+按Body要求，本轮止于已有日志／源码分析，未改PG／Native、派生、构建或重跑。Root给出下一最小可改边界为claimed单次PG callback内纯解析工作区：长度界限辅助fresh全名读取、精确地址集合加速field cycle查重，保留原全部fresh Game／typed资产／独立末读／身份／generation／50ms与默认其他路径；先前copy比例不充作零售墙时收益，现无收益承诺。具体范围、缺口与禁止续时／放宽门槛在`docs/weapon-en-pg-budget-review-20261026.md`，独立回执为ignored `analysis/lancer-native46-review-20261026/`。仍须另保留seq5 token异常，下一原动作必须有真实增量，不能重复同46碰运气。
+
 ## 2026-10-26 — EN封存Native46同次已提交消费认证候选
 
 Body冻结Native46最终build-cover-body46sim2后，Root仅从EM派生EN，准确选DLL `65f55c25b111bea5c7e818dfb3bdaf0acd8a7bb2ef243abdd1440450c67a951b`、manifest `d523040f…cea80`、receipt `4b1fa4b9…bb6e0`与最终source46-before-build2 `459c7671…94709`。该候选改变同次已提交消费认证并将hard故障独立；写入40／Scene资格50／原alpha1-Scale0和PG／wire不变，已有alpha侧录保留。Body实际完整TU／43exports／22startup／23preflight、32红例／真实owner-Rig-Kernel与ActualContext/Kernel wrapper定向结果及Astra关闭记录按其receipt来源复用，Root未重建、扩矩阵或Game。
