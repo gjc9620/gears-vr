@@ -2,6 +2,14 @@
 
 本文件保留武器与掩体两个分支的开发历史，便于共用 Native 手部实现合流。各条记录仍以其原始验证范围为准；私有候选、只读采样或离线检查不代表完整功能、默认构建更新或头显验收。
 
+## 2026-10-27 — Body held-journal A启动窗口拒绝；无持枪日志运行证据
+
+Body在其私有`analysis/body-held-outcome-runtime-20261027a`单次0.4后台尝试，未到ready、Native未激活、XR未起、控制命令0，真实held日志采样／Stop／Goal epoch均未验证。保存WindowDetails为可见HWND处于iconic=true、rect约(-16000,-16000)、client0×0，原30秒／可见且client至少640×360门拒绝；此结果不证明Native／XR／新journal导致最小化。没有绕开原门、抢焦点、移动／恢复／调整窗口或重放原样持枪局。
+
+原finalizer只执行一次，`accepted=false`及`KeyError('session_report')`原样保留；Body另立startup-cleanup-audit，而非改成运行会话通过。该审计记录prime取消／入口恢复、PG reservation-only shutdown0／entry恢复、十文件／设置存档不变、准确owner/Game及审计时fresh Game/XR空；本局音频实际2／2恢复、pending0（以本局审计为准）。`startup_cleanup_observed=true`不等于active Native／XR exit0或正常运行验收。Root仅核该审计四输入hash及音频原件hash，复用Body结论，没有启动Game／测试／编译／IDA或修改武器／共享Native。
+
+审计SHA256 `8537d0f31c6cda317af6aa98c8bdd725413932775eef8dbd90d327112b762509`，Root接收记录ignored `analysis/lancer-component-readback-20261026/held-journal-startup-a-received-20261027.json`。原ES及B失败、Goal／来源缺证均保持开放；新journal仍仅离线候选，无默认合流、修复或进度加分。Body后继只离线比较quiet_startup窗口序列与成功B，FPS仍由人类暂停，Root不恢复它或另开GPU局。
+
 ## 2026-10-27 — Body Goal epoch B触发并记录瞬态uncaptured；持枪原门超时，旧ES持续停滞未复现
 
 Body随后对同局保存片段作逐entry分析，Root仅核四原件hash并复用，未重跑／重解raw。26／26姿态样本读取成功、0 pose错误；`coherent=null`是原`mount>=40`谓词未满足后未选样，不能解释为姿态缺失或全数读取失败。10条v3 partial held trace按Body实际reader，9个planned atoms均与consumer／end相同、三个返回状态均1；仍未满32，不提升成完整验收。前32 budget只有25条落入该阶段，覆盖phase+0.0558至+2.0687秒，不能解释6秒后段。14条code3／branch7为回调后`body_mount_current` false，后续postquery admission age拒绝，未到hands；11条ready中1条final age拒绝、10条到commit调用结束边界，仅3条有精确tick／compose关联成功held trace；另7条没有逐entry Kernel结果／实际mount选择，不能用累计commit-code倒推。14条原Scene末age50.2164–51.665ms，但其bool资格包含多条件且没首错，新Tick raw年龄不在旧预算里，因此不能唯一归因于age或宣称新来源修复失败。
