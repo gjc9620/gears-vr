@@ -4,7 +4,7 @@
 
 ## 2026-10-27 — HH无有效Muzzle数据；修正已证实的Core.Object字段owner并加入实际早退记录
 
-计数口径更正：Body随后独占核同局v2，合法111条／drop0，phase内实际有42个held commit markers（counter2..43）；26条带pose的joint／status观测最高35，因此不能将35说成Native只提交35，也不能仅以42条marker把原双计数>=40联合门改判通过。Root复用Body交接结论，不重解该111条；held阶段无Goal10／11与postStop后独立reason10的定位仍由Body处理，不扩为Muzzle旁支调查。新分析尚在Body封存，本条先保留明确口径，原HH小日志／阴性回执与全部历史pins不改。
+计数口径更正：Body随后独占核同局v2，合法111条／drop0，phase内实际有42个held commit markers（counter2..43）；26条带pose的joint／status观测最高35，因此不能将35说成Native只提交35，也不能仅以42条marker把原双计数>=40联合门改判通过。Root复用Body交接结论，不重解该111条；held阶段无Goal10／11与postStop后独立reason10的定位仍由Body处理，不扩为Muzzle旁支调查。Body随后已封存`analysis/body-held-outcome-runtime-20261027h/two-blockers-saved-summary.json` SHA `585b1703ca6a21b520b3202c844a633dc97733872409422213c7b7d59a96e3e8`；Root仅核这份交付hash并复用标量，不重复统计。第40个distinct in-phase held marker正常end在marker后5.7116094s，live producer/status的freshness仍缺证，原联合门保持失败；postStop独立reason10在phase末后142.1621ms，只三项observed epoch1→2不等，16实际空间／身份项一致，其后2.406s attempts／reject各+87而plans／body提交不动。这些保存证据不把两项阻断判为同一根因，也不归因Muzzle。原HH小日志／阴性回执与全部历史pins不改。
 
 Body唯一HH局Game50892／Native3134767077917已结束：启动门／Grip／episodes1通过，但原shoulder-fixed40／6秒联合门status观测0→35、6.0179205s，后续ready／move未到，Stop quiescent成立而body续更超时。原finalizer一次accepted只证明106／full／Native-entry-PG／XR0／十文件／audio9／9及fresh空恢复；不把cleanup当动作通过。Root复用Body `runtime-handoff-summary.json` SHA `b64799c8db911de7d9728aa256f26e3e516801578c25aa4eb1a23d7c57568058`，只消费其21648B／SHA `64a1dc290faf28c7a4e917f82e3267d0f0caeb54fef3becf965e8f886f3bcf28`PG日志：肩部3／3component与Avatar配对接受，Muzzle前后／pair均0，无derived_world；所有socket0／count0等是未录默认值。两行早于phase179.369／70.1742ms，第三行只始于phase后0.2454ms，不补整段。私有`hh-muzzle-negative-saved.json` SHA `df7d7cacc300a7871781330796e62bbb92c8a1d3a1efeab8ccec56a176381636`保留原件和边界。
 
