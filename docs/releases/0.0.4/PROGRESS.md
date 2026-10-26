@@ -2,6 +2,14 @@
 
 本文件保留武器与掩体两个分支的开发历史，便于共用 Native 手部实现合流。各条记录仍以其原始验证范围为准；私有候选、只读采样或离线检查不代表完整功能、默认构建更新或头显验收。
 
+## 2026-10-27 — BHELD002早退解码交付；保留旧520合同，尚无新局修复结论
+
+Body冻结仅追加实际Native／Goal返回观察的journal合同，header SHA `0abf184b0d3f2ab13ad9e36a45e0ee1132962447fd84f35c0bf5b131bc60d881`，BHELD002／version2，Header120／Record584，容量128／7秒不改。Root新增ignored `analysis/lancer-component-readback-20261026/decode_held_returns_v2.py`，SHA `3724aeb179f5a4e93a7b101f30d6d37b52cca9af0863a12b1af0d6ace9ad2401`；旧v1 reader及其交付全部source hash保持。共同字段通过去除新增8个U64的临时内存投影复用旧reader，原时标／身份逐字保留，未生成冒充原件的投影文件；两版相互拒绝不匹配的magic／version／layout，输出独占创建不覆盖旧证据。
+
+raw captured／key flags不直接授本entry身份：actual Goal reason1..6及19(exception)的derived source／key均保持未记录，只有7..18已通过原wrong_entry／same_entry检查，且key再需rawsource1／rawkey1／initialized1及合法已记录19位。reason7本身未通过current_prepare，不能当freshness成功；adapter只在actual reason14解释，reason10等rawadapter0保留但显示未记录。NativeBegin0才是实际captured结果，UNKNOWN不当成功；Goal缺reason也不当成功。无新分支clock，at_ns仍null，后继apply／exception不替换已有guard／Kernel首拒。新增first_no_input_after_held_commit精确关联首个成功held后无input entry的index／tick／Compose与边界，仍不证明phase完整或复现旧HE历史帧。
+
+复用Body Host29／0的584／120布局证据，Root不重建Native／PG／XR或重跑v1。v2定向10个合成方法一次通过（0.026s），覆盖上述reason5／6假有效flags、reason10默认adapter0、版本交叉拒绝、截断／身份／未知枚举、零mask与独占CLI等；2456B四记录样例明确标SYNTHETIC，非实际HF。说明`HELD-RETURN-V2-READER.md`和交付`held-return-v2-reader-delivery.json` SHA `08028f735f8734f24182f208cd851cc73b9d53927a4ae24687c41e03f952bee1`已交Body与统筹复用。Root没有新游戏／助手／玩法通过或默认替换，整体36%保持；后续只读Body唯一新候选正常drain的真实同局导出，不提前称修复。
+
 ## 2026-10-27 — he首份非空journal解码：取枪一次，阶段首个已记录拒绝在Kernel commit；原门与Stop续更失败
 
 Body补充既有budget／Goal保存分析，Root仅核该同局摘要与三个共享回执hash并关联精确IDs，不重解raw／重审来源。Body `analysis/body-held-outcome-runtime-20261027e/goal-budget-saved-summary.json` SHA `985c5d9ac40791d8cf65b9286da9618c5175ffd789e6c0cef1638f9f1dd46b7e`记录实际budget9条query／no_query0，phase中只有exact query8／9。首query8的既有prepare_end／commit_end返回边界给出原Scene age48.9722／50.5291ms；这些不是首个Kernel失败谓词时刻或其Context verdict，仍不唯一归因age。全局first-failure tick29620／Compose29621发生phase前1172.3921ms，不匹配query8／9，不能填补当前Kernel拒绝。
