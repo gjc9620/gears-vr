@@ -2,6 +2,14 @@
 
 本文件保留武器与掩体两个分支的开发历史，便于共用 Native 手部实现合流。各条记录仍以其原始验证范围为准；私有候选、只读采样或离线检查不代表完整功能、默认构建更新或头显验收。
 
+## 2026-10-27 — 实际Muzzle观察PG已交Body复用HG动作，CPU通过但尚无实跑结果
+
+Root／单个既有助手分别实现9骨纯数组位置观察与实际typed Socket读取，集成为`83140a9`。默认OFF的Muzzle probe依赖既有bounded component probe，只读当前MuzzleSocketName／Sockets唯一对象／BoneName／RelativeLocation／Rotation及枪9骨Ref／Local／Space／epoch前后；原Frame、身份、时效、附件、原component／Avatar配对和采样上限均保留。`muzzle_pair_accepted`与旧观察分别记录，getter等价／权威bore／sameC0／最终renderer均未证明，没有新骨骼writer、引擎getter或mount_known／R2放行。非Actor对象只认证当前注册身份，不认证未知pending-kill flags。
+
+直接以HG failclosed PG dfd995的实际source2及17 vendor源为父，只变2既有／加5源，811份source闭包不变；原FLAGS保持、DEFINES仅加Muzzle观察。严格完整PG构建、12个枪骨／位置与31个typed Socket owned案例通过，16导出保持。PG SHA `80b826235774f6b9126db0017fdc24f1867cc2127e99b68bb6ddfb436a3db150`；ignored `analysis/lancer-muzzle-observation-20261027/attempt-1793053485363798500/receipt.json` SHA `63bde1d5b8f4de45c1dcd344af6461977b65a5102dfcda6e23a5d7464c662809`。只读工件审计`artifact-audit.json` SHA `bbf633081f3076c9aad9c7c7deb0e30dffeba1e62de04001ce9f8391a14d2eb3`证明OFF去块后probe与逆除新增CMake文本精确等于父源。首次漏独列vendor的configure失败和后一次vendor路径键规范化拒绝保留；均未到编译／Game，只修driver后才取得上述成功产物。
+
+Root已将Body后台09e0554最小3文件修正cherry-pick为`f567793`，不回旧build4／不改历史HF／HG pins。候选已交Body唯一runtime owner：后继只换PG，复用HG准确Native22268／XR1a059／quiet19b355／EarlyLaunch c12172及原8动作、40-6s／Stop／106／音频存档保护，0.4置后静音，R2继续OFF；Body确认正在准备。Root不另开Game、重复旧suite／held解码或重建Native／XR。当前只到构建与新CPU检查，实际枪口位置／持续可见跟随／原权威射击和默认整合均待证，⑤按统筹40%保持。
+
 ## 2026-10-27 — HG原持枪与交还协议通过；复用9组腕／枪配对，实际枪口仍缺证
 
 Body交HG已封存实跑：Game64176／Native3118170081683，Native `22268f8a…313b6`／PG failclosed `dfd995e4…904669`／XR `1a059d2d…a2b4e9`／quiet `19b355db…15ef3`。同局原8动作、首40／6秒门0→46（约5.232秒）、两后继阶段+8／+10、Stop后hands89→124且held68不变、正常106／full及音频9／9恢复均通过；复用Body `runtime-review.json` SHA `2d73d4b0b67fd80546d319492e1d000d99238154ea022f7ad128ac0b3612e89d`、`runtime-final.json` SHA `c574abf9c20a6bb87fc818091f80a55130825aabea7327f7a59564bb2d445431`及保存摘要，不重解其128条v2／丢3或追未阻断协议的局部拒绝。R2关闭，实际可见跟随／权威瞄准／默认整合仍未证明，⑤保持统筹40%。后继新case须重基09e0554的build5后台策略与准确19b355／c12172选择，旧HF／HG pins不改。
