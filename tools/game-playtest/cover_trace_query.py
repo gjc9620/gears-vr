@@ -71,6 +71,12 @@ def _parameters(function, start, end, extent):
 def _certificate(q, roles, module, expected_chunks):
     row, structures = {}, {}
     surface._function(q, roles['controller'], 'Actor', 'Trace', module, structures, row)
+    # Playground.invoke emits EX_NativeParm tokens in the raw UField.Next order.
+    # surface._function intentionally normalizes fields by name, so its row
+    # cannot by itself certify the order the native wrapper will consume.
+    children = surface._children(q, row['identity'])
+    if [child['name'] for child in children] != [field[0] for field in PARAMS]:
+        raise RuntimeError('Current Actor.Trace raw parameter chain order differs')
     if row['entry'] != module['base'] + surface.TRACE_RVA:
         raise RuntimeError('Current Actor.Trace reflected entry differs')
     _parameters(row, (0, 0, 0), (1, 0, 0), (0, 0, 0))
