@@ -2,6 +2,16 @@
 
 本文件保留武器与掩体两个分支的开发历史，便于共用 Native 手部实现合流。各条记录仍以其原始验证范围为准；私有候选、只读采样或离线检查不代表完整功能、默认构建更新或头显验收。
 
+## 2026-10-26 — EM诊断取得右臂prior-compute拒绝链，保留返回时标解释边界
+
+Body独占完成EM及一次normal finalize，完整106／Native／entry／XR0／PG0／原十文件／音频／exact PID正常恢复并fresh CIM空；本轮HandStop4→5／quiescent、双controller恢复与bridgeclose通过，但cookie0后freehand继续超时，独立保留，不用正常清理或EL成功覆盖。first-held门仍失败，未进入后移转；Native45只是被动诊断，未当修复或跟随接受。
+
+ARMALP01原件SHA256 `dc9f4e15411f070b51c83ac6180598f44a421b584dbeda39a0bffcc2acff3e62`，实际Game53920／Native incarnation2410681145942；24条held记录、330个事件，dropped0。Root直接按144B结构核对全部raw字段与修正后的em-alpha2，并逐条绑定typed4424／v32120的sequence／tick／Compose／thread，一致。RH limb／single各24次tokenRejected1，均对应compute_failure6（identity）／weight_failure12（prior_compute），尚未进入sample／owner；LH limb16与single5次真实sample okay、alpha1、Scale0、readmask127，继而owner通过并记录actualApplied。
+
+统筹指出的覆盖解释已由Body修正reader标签：Compute与owner中的零填不当作最终packet观察；原em-alpha1保留，Native和游戏未重跑。Root只使用em-alpha2的修正语义，并独立用v3真实QPC频率及typed原sync复算96次Compute RETURN源龄；RH失败为50.0018–50.9297ms。按failure分组，code1的21条返回观察为47.8729–50.0303ms，code6的75条为49.9995–50.9297ms，有边界重叠；这不是精确早先拒绝时点，也不将qpc排序为阶段耗时。
+
+源码链显示continuous_hand_owner control_begin／plan仍依赖旧same_source50，拒绝可令scope sticky，使CCTRL.current依赖的hand.control_current失效；已提交body在owns内部另用retained consumer_current。此静态链与运行拒绝相符，但具体因果及原检查不松的retained消费接口仍待Body的Astra设计／actual Host复现，当前没有据返回时标单独认定修复点或接受新行为。Root不派生新case、不改PG／Native、不Game；独立raw/年龄/完整清理结果在ignored `analysis/lancer-native45-alpha-20261026/` 的em-alpha-root及em-closure-and-return-ages，EM原件和host瞬时false均保持。
+
 ## 2026-10-26 — EM冻结Native45同held alpha诊断，原消费行为不变
 
 Body交付唯一被动alpha诊断后，Root从EL派生EM，准确选择Native45 `7d0d2d542d2c661a04f4b352a5c9ad791a3db049ea95b9c6b27273c3f9813be2`、receipt `36e9be28…8ed91`与冻结source45 `c7fc7c4c…a7baa`。PG0ec1／BQ XR1a05／CY378及BodyTickInput1全部保留；所有私有Python只必要namespace替换，native_sections与EL逐字相同，43个导出名称相同。原8命令、firstheld40／6秒、alpha1／Scale／40／50／PG／wire／实际XMM编辑、0.4后台与106完整恢复保护不变。Body原完整TU、startup／preflight及定向owner／CCTRL结果按receipt复用，Root只做选择／封印，不重建或加矩阵。
