@@ -472,6 +472,30 @@ class Backend:
         if len(windows)>1:raise RuntimeError('Multiple game windows; cannot select startup panel')
         return windows[0] if windows else None
 
+    def startup_window_details(self,pid,diagnostic):
+        """One read-only window snapshot after the startup panel gate times out."""
+        from ctypes import wintypes
+        user=ctypes.WinDLL('user32',use_last_error=True)
+        user.GetWindowThreadProcessId.argtypes=[wintypes.HWND,ctypes.POINTER(wintypes.DWORD)]
+        user.GetWindowRect.argtypes=[wintypes.HWND,ctypes.POINTER(wintypes.RECT)]
+        user.GetWindowRect.restype=wintypes.BOOL
+        user.GetWindowLongPtrW.argtypes=[wintypes.HWND,ctypes.c_int]
+        user.GetWindowLongPtrW.restype=ctypes.c_ssize_t
+        user.IsIconic.argtypes=[wintypes.HWND];user.IsIconic.restype=wintypes.BOOL
+        user.IsZoomed.argtypes=[wintypes.HWND];user.IsZoomed.restype=wintypes.BOOL
+        rows=[]
+        for candidate in diagnostic.get('candidates',[]):
+            hwnd=wintypes.HWND(candidate['hwnd']);owner=wintypes.DWORD()
+            thread=user.GetWindowThreadProcessId(hwnd,ctypes.byref(owner))
+            if not thread or owner.value!=pid:continue
+            rect=wintypes.RECT();has_rect=bool(user.GetWindowRect(hwnd,ctypes.byref(rect)))
+            rows.append(dict(hwnd=candidate['hwnd'],thread_id=thread,
+                window_rect=dict(left=rect.left,top=rect.top,right=rect.right,bottom=rect.bottom) if has_rect else None,
+                iconic=bool(user.IsIconic(hwnd)),zoomed=bool(user.IsZoomed(hwnd)),
+                style=user.GetWindowLongPtrW(hwnd,-16)&0xffffffff,
+                extended_style=user.GetWindowLongPtrW(hwnd,-20)&0xffffffff))
+        return rows
+
     def start_playground(self,manifest,identity,check_live):
         from playground_loader import start
         return start(manifest,identity,check_live=check_live,
@@ -674,6 +698,11 @@ def start(config,manifest,backend,index=INDEX,clock=time.monotonic,sleep=time.sl
                 sleep(.1)
             else:
                 state['startup_window_last_diagnostic']=last_window_diagnostic
+                details=getattr(backend,'startup_window_details',None)
+                if details is not None:
+                    try:state['startup_window_details']=details(pid,last_window_diagnostic)
+                    except Exception as diagnostic_error:
+                        state['startup_window_details_error']=repr(diagnostic_error)
                 raise TimeoutError('Game window unavailable for startup VR panel')
         def on_report(path,reported_owner,reported_game):
             report=pathlib.Path(path).resolve()
