@@ -2,6 +2,14 @@
 
 本文件保留武器与掩体两个分支的开发历史，便于共用 Native 手部实现合流。各条记录仍以其原始验证范围为准；私有候选、只读采样或离线检查不代表完整功能、默认构建更新或头显验收。
 
+## 2026-10-26 — EO实际查询耗时缩短，持续门仍失败，转查生产消费时序
+
+Body独占完成EO及原finalize一次并交回空窗口。其报告Game1500／Native2480512716131，19 held全部完整pose通过、四角色实际应用各19、380event0drop；原firstheld40／6秒仍失败，未移手，HandStop5／quiescent／freehand继续／输入恢复／bridgeclose与正常106／Native／entry／XR0／PG0／十文件／audio10／准确PID恢复通过，host瞬时false保留。Root本次仅核对保存的PG／预算时标与清理字段，不重算19条姿态，不扩大对身体侧结果的独立验证声称。
+
+Root按query及全部来源身份关联EN／EO原件。PG握枪样本EN26／EO27条的callback中位6.5356→3.7464ms，实际样本缩短2.7892ms；EO进入PG时原sync年龄中位反而44.87425→47.0972ms。两边各16条最终response12均在response入口已超50，EO范围50.3525–53.4922ms。EO Native前缀含query0，只关联PG1–31；失败的15条关联样本在compose进入原sync已45.6674–48.0854ms，compose→query中位0.983ms。不能错按行关联PG32，不能用独立运行计数或算法次数宣称配对因果／全场景保证，也不能用前缀解释全65 stale_broker。详细范围见`docs/weapon-en-eo-query-timing-20261026.md`及ignored `analysis/weapon-parser-candidate-20261026/en-eo-saved-query-comparison.json`。
+
+冻结候选与EO，不追加同类解析微优化、新case或Game；身体侧继续回查生产消费时序，保留40／50与原门。原19条姿态通过不代表持续握枪／移手／射击通过，整体36%与W2 40%保持，无默认集成或头显接受。
+
 ## 2026-10-26 — PG单次查询解析优化完成源码与定向验证，待原动作验证实际收益
 
 按统筹确认的唯一候选范围，Root在PG provider取得独占entered后安装本次查询的解析工作区，finally恢复原TLS并清空工作区。FName只记本次查询内的长度界限；命中时仍重新读取slot、index、全部字符和终止NUL，同长文字变化仍由原快照见证捕获，长度或可读性变化拒绝。三个原field扫描器将重复地址查重改为精确地址哈希集合，原前缀数组／4096上限／首个同名字段及类型／所有读取与末读保持，嵌套扫描或容量不足回退原线性查重。保留两次fresh Game观察、两种typed资产、独立最终观察、原身份／资格／时间戳／40与50ms及默认非trial路径；未改Native、wire或R2运行开关。
