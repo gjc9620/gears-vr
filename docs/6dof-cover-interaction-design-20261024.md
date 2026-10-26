@@ -144,6 +144,8 @@ stateDiagram-v2
 
 知识库候选包括 `WarPawn.SetCoverAction`、`PickClosestCoverSlot`、`ReachedCoverSlot`、`WarPC.CoverAcquired`、`TryToCoverSlip`，以及 `WarCam_Cover`／`WarCam_CoverTargeting` 的相机入口。它们只用于缩小调查范围；`CoverSlip` 的命名不能直接证明它就是用户所说的普通侧面退出。限定搜索没有返回已命名 native 函数，也不意味着不存在原生实现。
 
+旧脚本另有两条需要分别核对的动作分派：`WarPC.PlayerTakingCover.DetermineLeanDirection`（历史导出SHA256 `11c412d0…b2`）按掩体槽位、瞄准／开火和摇杆方向写出 `OutPawnCA`／`OutPawnCD`，`WarPC.PlayerTakingCover_Stationary.DetermineLeanDirection`（`33ea50c8…4e`）也可写出上探动作。当前正版矮掩体实测瞄准时曾出现 `CoverAction=7`／`CoverDirection=3`，与脚本候选相符，但导出仍有未解析的脚本运算符，也未证明当前执行的是哪一个函数。取消自动探身必须在当前进程分别确认实际入口、动作状态和后续相机／动画效应，不能只清零一个字段或屏蔽 LT／RT。
+
 原始检索回执放在 ignored `analysis/6dof-cover-planning-20261024/kb-*.json`。脚本条目、历史运行时字符串与磁盘 EXE 是不同来源；后续按[知识库规则](58-reverse-engineering-knowledge-base.md)核对来源哈希、模块基址、调用者和当前进程身份，必要时才开展最小 IDA 调查。本轮没有打开 IDA 或导出新的游戏伪代码。
 
 ## 8. 拟定实现结构
