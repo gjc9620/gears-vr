@@ -2,6 +2,16 @@
 
 本文件保留武器与掩体两个分支的开发历史，便于共用 Native 手部实现合流。各条记录仍以其原始验证范围为准；私有候选、只读采样或离线检查不代表完整功能、默认构建更新或头显验收。
 
+## 2026-10-26 — Native47／PG typed联合候选EP封存并交Body，尚未运行
+
+Body交付Native47 `78705ddd823a79a88aed943d559decb3bc873ce32eaf6d05ae9bba7c3d731348`后，Root仅对已封存`f611000`源码做一次PG feature DLL完整编译／链接，得`5a34a2808a1fb066091841f2d08b474650fda142cda55fb3cdb61870e4f3be0b`。778源与vendor保持，实际Ninja生产defines相对f85只增BodyMainMount新flag、原flags不变，无test-stats宏；既有Host结果直接复用，没有重建Native／XR或为报告重测。唯一构建及receipt在ignored `analysis/body-mount-pg-candidate-20261026/pg-build/attempt-1792994530678841000/`。
+
+从EO派生EP，最终pins `fc3c560f3d6cebe6305347154fc1cd8d70fe2a09ffb52f6cbb024d8b26e08885`，coordinator `91bd06a0ad0a6cb3ef8780c02e7e1963ff23b479854cb2ab4f41e07df47664c9`。Native receipt `cae944a5…60ed`、manifest `6ed5c005…bf75`、source47-before-build3 `b14c684b…a4af`及source2全部787源hash复核，14改5增；Native44导出只比46多独立Attach，原defines只加新source开关，PG16导出名称保持。BQ／CY保持，不采用Native generic manifest内旧XR／PG选择。INI仅新增`BodyMainMountSource=1`，保留BodyTickInput1／旧probe0，启动guard确认新节及实际enabled状态；动作coordinator只PG摘要替换，原轨迹／8命令／40held-6秒／106／0.4后台保护不变。
+
+新typed原件为BMSCOM01／Header64／Record8616，`body-mount-source-commits.bin`，禁止套旧Tick reader；v3／alpha与cleanup-only finalizer不变。封存时Body独立reader尚pending，随后交付reader `d3a21d45…0aaa`及actual schema头`2eb74168…901c`，Root只验hash并在area补`bms-reader-supplement.json`，不重封或修改EP；Body自行读取，不把shape／source join或postcommit年龄当精确CAS／真实GT／Kernel证明。
+
+EP已交Body独立审动作diff后独占运行，交付时无instances／ready，Root未启动Game／XR，EO输入／结果／三raw完整保留。完整命令在EP的NATIVE47-README，实际源码与联合构建交付在area的delivery-source／joint-build-delivery和EP native47-selection-preflight。联合源码／链接通过仍非持续玩法或头显通过，整体36%／W2 40%不变，无默认集成或发布。
+
 ## 2026-10-26 — PG typed Tick／C0装备观察源码与有界Host通过，待Source47联合构建
 
 Body共享头按SHA `6ad0a08fb3633bb0cc3d39841634a69c2a65771ed29886e7c32ceeb9c03b4b3d`逐字接入，Root新增独立identity-only Game／asset／attachment入口、Client单Gate／epoch同步metadata操作和typed sender／provider，新flag默认OFF且依赖原provider。原V1 Client／Frame fresh方法与读取函数体不改；新旧provider共享entered／callbacks／parent pin／drain。两Game包住双asset与唯一attachment，再验holdGeneration／held_binding／domain／epoch；真实begin计metadata50，新raw／capture40与原Scene50各自验证。Native reference_revision仅非0偶数shape／echo，与原StereoGate reference_generation明确不同；pub／ticket／action为Native认证关联，PG不伪称独立观测，不造Frame／world pose／grant。

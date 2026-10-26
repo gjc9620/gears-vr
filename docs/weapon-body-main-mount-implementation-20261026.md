@@ -2,6 +2,8 @@
 
 武器侧已经实现独立的query-bound装备观察及typed provider／sender。该实现等待Body的Native Source47后进行一次联合构建和原动作验证，尚未生成新的PG DLL、建立新case或运行Game／XR。旧f85／EO保持冻结，旧V1检查与行为保持。
 
+后续构建状态：Native47准确产物到位后，源码`f611000`已一次编译／链接成PG `5a34a2808a1fb066091841f2d08b474650fda142cda55fb3cdb61870e4f3be0b`，原f85生产defines只增加新BodyMainMount flag；778源及vendor不变。EP已封存交Body，pins `fc3c560f3d6cebe6305347154fc1cd8d70fe2a09ffb52f6cbb024d8b26e08885`；Root未运行Game。以下源码／Host记录保留原验证范围，联合链接不等于原40／6秒动作通过。BMSCOM01的新Record为8616字节，Body另有独立reader，旧Tick reader不适用；v3／alpha／106及原动作不变。完整后续交付见PROGRESS的EP记录。
+
 共享头来自Body唯一封存的`tools/vr-common/body_main_mount_provider.h`，逐字复制SHA256 `6ad0a08fb3633bb0cc3d39841634a69c2a65771ed29886e7c32ceeb9c03b4b3d`。新namespace为`gears_body_main_mount_provider`，新export为`GearsVrAttachBodyMainMountProviderV1`，旧wire不改。PG新开关`GEARS_PLAYGROUND_BODY_MAIN_MOUNT_PROVIDER_TRIAL`默认OFF，要求既有main-mount provider；新旧孩子共用原parent cookie／image pin／callback计数／entered／stop与drain，新增attach失败仍沿原parent断开流程，不能自行卸载或另造registrar。
 
 ## 观察与来源的具体分工
