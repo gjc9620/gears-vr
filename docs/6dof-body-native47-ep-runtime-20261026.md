@@ -28,4 +28,6 @@
 
 装备主握这一共同前提可继续推进掩体接线。仍需实际认证高／矮掩体的侧边与上边、碰撞合法范围、面向掩体的中立眼点、LT/RT 原自动探身替换、LGrip 左／右／上拉拽与保持、真实头动／站起、身体受击／枪口／权威射击、跑步视角 R01–R04、双眼画面及实体头显。不得把本轮 cleanup-only `accepted=true` 或局部骨骼移动提升成这些项目的验收。
 
+Native47 的可运行源码仍封存在忽略目录的精确 Native46 派生 `source2`。它的 14 个修改文件与当前跟踪源码比较，有 5 个当前不存在、9 个内容不同；另有 4 个新增 native 文件尚未落入跟踪源码。当前默认的 Support3、菜单、左眼历史和其他独立修复也仍在根工作区。正式集成要按共同父源逐文件移植并重编、复测，不能把私有 `capture.cpp` 或整份旧快照直接覆盖当前默认。
+
 原始与派生证据：EP 的 `runtime-review.json`、`runtime-final.json`、`instances/equipment-native-rgrip-1026ep/native/`；本 worktree 忽略目录 `analysis/body-tick-mount-source-candidate1/ep-source1.json`、`ep-alpha1.json`、`ep-pose1.json`、`ep-budget1.json`、`ep-runtime1.json`。首次严格 Reader 调用使用了相对武器路径，因当前工作目录在掩体 worktree 而以 `open` 错误退出；`ep-source-reader-attempt1.json` 保留该尝试。随后的调用改用同一原包绝对路径并通过，未重跑游戏。
