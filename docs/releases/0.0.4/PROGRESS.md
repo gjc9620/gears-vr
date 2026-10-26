@@ -2,6 +2,14 @@
 
 本文件保留武器与掩体两个分支的开发历史，便于共用 Native 手部实现合流。各条记录仍以其原始验证范围为准；私有候选、只读采样或离线检查不代表完整功能、默认构建更新或头显验收。
 
+## 2026-10-27 — ready同entry目标／提交／原返回观察合同对齐，尚无新候选运行
+
+统筹将下一唯一交付限定为稳定跟随：Body独占准确HJ Native中的最小被动ready观察，武器会话只交字段／坐标合同与最小消费。双方已确认默认OFF Source1 fixture，full inverse(head)*grip的ready识别仅为诊断（1mm／1e-3rad），原writer／source资格不变。明确ready启动后有限64条不轮转，捕获失败与未知资格也保留entry／UNKNOWN，直到声明的非ready／身份变化／容量停止；未知不能当非ready漏掉，旧first32不改，不再赌异步近邻epoch。
+
+最小骨35／51／52复用旧hand9槽5／6／7：本entry compose成功的world wrist目标、实际Kernel结果及planned／consumer-pre Local、原called＋returned后的Local／Space35／52＋CTW，normal scope_close独立；未计算／未到达／未认证组有valid位，不用旧workspace或默认0冒充。consumer_pre准确位于before_original，不是原调用返回；capture成功但prepare失败路径可由Body单独认证后做被动读，不能绕原保护借旧model。枪体／Muzzle同步字段本轮UNKNOWN，不额外读资产或用旧PG几何填同entry。所有数学按原UE行向量world=Space*CTW、game原单位，raw XR米空间单列；不以相同raw右手替代整个head／left／view／basis来源相同。
+
+Root逻辑合同`analysis/lancer-ready-same-entry-20261027/consumer-contract-v1.json` SHA `b860b295ee1a35e86d89adf931260074c533a8281bf77d5b3c34e4366eaa8e32`及`docs/weapon-ready-same-entry-observation-contract-20261027.md`已交Body／统筹，不预先猜binary offsets。Body已确认开始实现并将交冻结布局／有效性／Host证据，Root随后最小file-only消费；当前只有合同／文档，无新Native／PG／collector／writer／Game、编译或测试，不扩大枪械／射击许可或默认整合。
+
 ## 2026-10-27 — HJ三phase与恢复通过，8个phase内Muzzle配对；同raw腕／枪姿态仍变化
 
 Body后续仅对现存hand／BMS首32做有限join（`pg-first32-finite-join.json` SHA `22a3548822811b9cc2d53797a666da46f484a92460ae28d9e9608fde6ece138f`），9个PG实际mesh＋epoch／end精确对应均0。prefix1272..1337中没有1280／1290实际记录，邻近epoch不替代；ready／move超出prefix，PG读区间也未被已存query区间包含。因此现有资料不能定位差异到Native target／consumer／end；Root未重解或重算矩阵，新接收`hj-finite-join-received.json`保留原件hash与界限。相位角度归属按原Root逐项数值明确为ready最大32.54642°、move8→9约23.60479°，旧PG JSON不改。下一最小需求是覆盖这些实际差异点的有限精确观察，交统筹／唯一共享Native owner安排，当前无新Game／编译／测试／候选或writer。
