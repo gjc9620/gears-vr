@@ -13,3 +13,5 @@ EP已经通过原40／6秒持枪门及right-ready、小幅平移＋10°转枪的
 输出为有界`lancer_component_observation`行，包含完整parent时间／进程／注册／Frame关联、实际component／asset地址、源raw right Grip、source／session／space／profile／input／reference代数、原枪与角色矩阵、时间和拒绝原因。`accepted`只表示这次metadata重复读取及原Frame复核通过；每行明确`observation_only=1 source_is_parent_V1=1 same_C0_not_proved=1`。它不是同C0原子姿态、GPU已画出该矩阵、真实枪口位置或射击许可。分析必须按输入阶段及真实时间关联，不能仅凭source_sequence相同认定同步。
 
 定向验证：采样预算47个断言通过（静止Frame推进、q符号、微小抖动、纯旋转、24／8硬上限、换reference／input epoch及非法pose）；实际typed矩阵reader的8个owned metadata案例覆盖正常读取、错误尺寸／属性类型／struct类型、不可读、NaN和读取中descriptor／矩阵变化。实际PG完整TU加唯一新probe flag严格`/Zs /W4 /WX`通过；本轮没有重复未改的Body／Client／source tests。准确最终回执在ignored `analysis/lancer-component-readback-20261026/`；完整PG构建和实际原动作结果应另行追加。
+
+后继交付：源码`28babdd`已完整编译／链接为PG `38d897b4ff4f355b958874235327a1851a9acb5fc9c7bfa05be91774d3a68912`，783源与vendor稳定，实际生产只增加上述只读probe flag。EQ以原EP动作封存交Body，pins `2e8591fa29b289d62d572cdcdf7c5a3c4957b61e18dff0e00bc98951947986ac`。Native47／BQ／CY／INI、原40／6秒门和106保护均不变；Root未启动Game。现阶段仍等待实际读回，不能因组件采样已交付就把枪体／枪口／视觉／射击标作通过。

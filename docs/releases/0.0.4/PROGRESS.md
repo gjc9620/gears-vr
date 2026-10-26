@@ -2,6 +2,14 @@
 
 本文件保留武器与掩体两个分支的开发历史，便于共用 Native 手部实现合流。各条记录仍以其原始验证范围为准；私有候选、只读采样或离线检查不代表完整功能、默认构建更新或头显验收。
 
+## 2026-10-26 — EQ原枪组件只读候选已构建封存，复用EP原动作待运行
+
+源码`28babdd`经单次PG-only完整编译／链接，得DLL `38d897b4ff4f355b958874235327a1851a9acb5fc9c7bfa05be91774d3a68912`，783源及vendor不变；实际生产defines相对EP仅加`GEARS_PLAYGROUND_LANCER_COMPONENT_PROBE=1`，原flags及16个PG导出名称保持。新flag OFF后原tick／playground文本还原，Native／共享合同／typed provider未改，旧检查不重测。精确build在ignored `analysis/lancer-component-readback-20261026/pg-build/attempt-1792999696227354400/`。
+
+从EP派生EQ，最终pins `2e8591fa29b289d62d572cdcdf7c5a3c4957b61e18dff0e00bc98951947986ac`，coordinator `0cb264965702af66b83796c29297c2fd7bbfad1d51c6c73ec225827287f83b08`。Native47／BQ／CY、INI及原8动作／40held-6秒／106／R2 OFF／0.4后台保护不变，全部private Python只必要namespace和PG／coordinator摘要替换，原EP输入／成功结果／BMS-v3-alpha原件保留。Body独立reader的实际Record8616与准确exe摘要记入选择元数据，不修改动作或finalizer。
+
+EQ已交Body独立审diff后独占执行，Root不launch，交付时无instances／ready，交付后冻结。组件采样将按shoulder／ready／small-move实际marker与时间分析；每条只代表parent V1元数据观察，显式不证明同C0、GPU、枪口或射击许可。COMPONENT-README与component-selection-preflight在ignored case给出完整原两session／normal finalize及保护证明。源码／链接／本地检查不是实际组件跟随通过，等待唯一原动作读回。
+
 ## 2026-10-26 — EP原持枪门与移转通过，接续原枪组件只读验证
 
 Body以Native47／PG5a34完成EP原动作并正常退出：原40／6秒门、right-ready8次、小移＋10°10次提交均有coherent post-FK。Root只读复核三raw头及32条sequence／tick／Compose／thread关联，独立重算v3腕FK位置／Local，最大重算位置误差0.000255116游戏单位；四角色实际Applied各32、640event0drop。Body严格新BMS reader的完整source／ready回声关联与新目标派生按其证据复用，不冒充Root重新推导全部来源；32条也不扩充为全程62条姿态。HandStop5／quiescent／自由双手继续／bridgeclose与正常106等通过，cleanup-only不替代玩法。PG保留first32前缀6 unheld／15 ready／11 inactive，与BMS成功提交集合不同，均保留。现存证据只读复核，未重跑Game。
