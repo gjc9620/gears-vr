@@ -2,6 +2,14 @@
 
 本文件保留武器与掩体两个分支的开发历史，便于共用 Native 手部实现合流。各条记录仍以其原始验证范围为准；私有候选、只读采样或离线检查不代表完整功能、默认构建更新或头显验收。
 
+## 2026-10-26 — EL取得29次held提交，原控制消费后覆盖仍阻断持续跟随
+
+Body独占完成EL及一次正常finalize后释放窗口并确认fresh CIM空。新typed输入361次取得均有效并正常Tick end；主握ready49，实际held commit29，原first-held40／6秒门仍失败，未到后续降枪／移转，未降低门槛或重跑碰运气。实际Game51152／Native incarnation2350130212567，新日志128360B（Header64＋29×4424），原v3为61552B（Header72＋29×2120）。Body严格reader验证输入／PG／Native join及重算数学目标：29条腕目标误差全0，head goal约8e-6u，但只有1条完整pose_pass，不能说持枪跟随通过。
+
+Root独立核对两份原binary的header、29条sequence／tick／Compose及PG response／parent query／原Scene key，另直接由v3 SpaceBases×CTW重算两腕位置误差，与Body reader一致。更具体的阶段证据是29／29进入原consumer时九骨均逐字等planned（mask511），消费结束后仅1条仍全相等；alpha grant mask的0／1／3／7／15分别为4／7／10／7／1条，与after_local保留mask448／451／455／479／511逐条对应。29条中head／腿51／52／55保留，alpha四角色分别对应8/10、11、32/34、35的保留；这是本轮精确相关，不替代具体拒绝分支或修复证据。右腕后FK位置误差中位31.8073u，左腕中位0.0001067u但部分明显偏离，旋转也须按reader完整检查，不能只取接近的位置样本。
+
+原记录的29次normal_consumer_end均通过，本轮HandStop4→5／quiescent、两controller恢复、bridgeclose及cookie0后freehand继续实际通过；EK／EI的超时原件保持。完整106／Native／entry／XR0／PG0／原十文件／音频／exact PID正常清理通过，host瞬时false仍保留。committed_ns为postcommit观察，原sync在该观察时刻超过50ms不单独证明任何一次CAS超龄；Root没有将该时刻冒作最后检查时间。独立结果在ignored `analysis/lancer-native44-consumption-20261026/` 的el-consumption-root与el-alpha-role-correlation，源场景未修改、未重跑或重建。Body下一步只定位原control alpha交接拒绝，PG／40／50／原行为门保持。
+
 ## 2026-10-26 — EL绑定Native44显式typed消费者，原行为门保持
 
 Body交付真正typed消费者Native44后，Root从EK派生EL，选择实际build-cover-body44sim2的DLL `1dafeb65f369e01b38b3b961f25bad5f3dfa27ff2930cd9fd9550b91f100e180`、最终source44-before-build2来源`3df45c10…92140`；PG0ec1／BQ XR1a05／CY simulator378不变。INI只移除BodyTickTrackingProbe、增加BodyTickInput enabled1；不是只读探针，明确新Tick／当前C0基准最终每写40ms、原Scene资格50ms，原Core／PG／wire语义保留，不宣称旧Scene40门通过。Body原完整TU／43exports／22startup／23preflight及其定向typed／真实C0Host验证按对应receipt复用，Root未重编或另跑Game／旧矩阵。
