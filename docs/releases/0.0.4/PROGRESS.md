@@ -2,6 +2,16 @@
 
 本文件保留武器与掩体两个分支的开发历史，便于共用 Native 手部实现合流。各条记录仍以其原始验证范围为准；私有候选、只读采样或离线检查不代表完整功能、默认构建更新或头显验收。
 
+## 2026-10-27 — BHELD003最小消费扩展交齐，等待唯一HJ联合实跑
+
+按统筹明确分工，Root新增ignored `analysis/lancer-component-readback-20261026/decode_held_captures_v3.py`，SHA `54ef375080ece0cae984a72fdb16710b60241488d558fb0e304bab135c679a90`。只沿未改v2／v1做内存共同字段投影，显式BHELD003／version3／Header120／Record600，capture reason392／Context400，旧guards／admission移至408；原文件／时标／身份／late-arm／coverage保持，不保存冒充原件的投影文件。合同683f5b95／header256cf9b2／Backend48e173b8均按准确hash校验，旧v2 reader与全部旧交付source不变并严格拒新magic，新v3拒旧v2，不覆盖旧证据。
+
+UNKNOWN是本entry未观测，不转零成功；0仅证明capture返回true。原因1..24保留首个实际原操作数，后继未执行不当通过；只有11／24可携Context，其他非UNKNOWN组合及未知枚举拒绝，11／24缺verdict仍missing不verified。四个helper标签只代表边界，不猜内部条件；新首拒只细化已记录的Native backend_capture，不编造分支时间或抢先替换原guard／Kernel结果。capture拒绝与held commit并存判矛盾无效，首个无input与统计只用trusted记录。late arm／容量／导出跨度不能扩为完整phase、总提交数、consumer／GPU／aim通过。
+
+8个v3专用合成方法0.031s通过；追加上述矛盾边界后只复验相关1方法0.006s通过。未重跑v1／v2套件或实际128条，未启动Game／重建Native／XR；复用Body原journal36／Backend245布局证据。交付`held-capture-v3-reader-delivery.json` SHA `a8f64c5854fa63e273b5beae86ebac2b40f797e5aa177c7029483e8644186bc9`与`HELD-CAPTURE-V3-READER.md`，2520B四记录例明确SYNTHETIC非实机。已交Body／统筹复用CLI／hash，Body独占下一实际v3解码／Native分析，Root只消费实际PG Muzzle与Stereo-open stderr，不双路重复。
+
+组合候选保持准确Native710756／reader01d8／PG5fdc，b768不选。Body已报告新DLL原startup22／preflight23实际45／0及HJ38／12／4案例预检完成；这些是新候选的检查，未冒充父通过。Root没有新Game、玩法加分、默认替换或另开接收平台；核交付后由Body按既有授权唯一HJ原动作／原统计／恢复门运行。
+
 ## 2026-10-27 — 私有reader的Stereo-open准确子阶段诊断完成，未启动联合游戏
 
 按统筹独立分工，Root从实际0c707 reader冻结9源／原flags派生候选，仅私有`stereo_bridge.h`／`reader.cpp`改变；共享Native／XR／headers不动，原7源／测试及旧exe逐hash保持。原OpenMutex→OpenFileMapping（即使前者失败仍执行后者）、MapView、0等待、原复制／释放／QPF／packet短路次序保留，WAIT_ABANDONED仍释放拒绝，正常复制后ReleaseMutex失败也不新增拒绝条件。仅在原初读期间记录实际调用即时失败Win32、已有wait返回和已复制packet首拒；无额外open／sample／read／QPC／retry／权限。旧stderr行及stdout／exit66／400ms匹配和age尾部不变，只追加一行`reader_stereo_open_v1`。未执行／未复制和成功调用的旧LastError不能当有效失败，后续普通read不覆盖open记录。
