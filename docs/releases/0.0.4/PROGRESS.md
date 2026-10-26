@@ -2,6 +2,14 @@
 
 本文件保留武器与掩体两个分支的开发历史，便于共用 Native 手部实现合流。各条记录仍以其原始验证范围为准；私有候选、只读采样或离线检查不代表完整功能、默认构建更新或头显验收。
 
+## 2026-10-26 — 仅复用 ER／ES 保存记录，Stop 续更差异缩到 Goal 规划前条件
+
+按统筹19点有界交付，仅比较实际ER PID23040／Native2694171951921与ES PID31188／Native2701965669072，各自独立时间线和增量，不按行号／累计计数跨局硬配。两局Stop均4→5且quiescent基线cookie0／revision4／callbacks、transactions、pin0／admission与fault0。差异为ES此时内部observed stream/reference/head/hand代数由先前1变为2，ER实际续更通过窗口仍1；Native reference epoch2／flags1／failed0相同。ES后12条观察中ticks／Native captures／Goal attempts均+78、Goal rejects+78，但plans／MainMount查询／hands attempts与commits全0；ER通过窗口上述规划／查询／hands提交均+34，held提交0。`body_goal_view_held` ES+78是旧缓存视图使用计数，不能误称握枪。
+
+冻结Native47源码`body_c0_goal_policy_live`的same_source_basis将observed stream／reference／head纳入中性基准key，初始化后key变化的pose_begin分支会poison并在规划前拒绝；运行计数与此路径相容，但没有保存实际origin key／poisoned／拒绝分支，尚不能定因或排除其他规划前条件。ES最早在quiescent后完整基线观察到代数2；前后live状态读取只是可能滞后的摘要，不是精确连续性事件时标。ER更晚的正常退出摘要也升为2、ES最终升3，不能把final摘要当Stop基线。
+
+按实际头和session核对，ER／ES BMS都只是1–32前缀，最后记录分别早于quiescent基线4625.04／4519.46ms；single first-failure分别早8145.20／7867.91ms，均不覆盖Stop。只解既有头和leading时标，不重算来源／矩阵、不外推first32。差异表及缺证见`docs/weapon-stop-freehand-er-es-20261026.md`，机器回执ignored `analysis/lancer-component-readback-20261026/stop-er-es-saved-review.json`。交Body最小下一动作是在既有pose_begin首个Stop后拒绝处记录具体谓词及old/current key与session/tick/Compose，不增加Hook／writer或放宽资格。本次没有Game／XR／测试／编译／IDA或共享Native更改；ES整轮仍失败，原finalizer成功仅恢复通过，进度分不变。
+
 ## 2026-10-26 — ES取得9条骨骼／枪稳定配对；整组腕骨姿态分叉与放手续传仍失败
 
 Body CT10正常退出后明确交窗，Root仅运行已封存ES一次：Game31188／Native2701965669072，原shoulder门45次、ready9次、移转9次held提交。实际PG原组件9／9及新增pose pair9／9接受，前后epoch／全115 Space、Local、Ref／角色CTW相同、变化位图0，区间5.0517–5.7871ms，中位5.2277ms；不是ER外部两次顺序读的35.4808ms方法。每条实际角色asset／Ref52名及原source／hold／input关联一致。
