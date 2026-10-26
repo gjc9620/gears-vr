@@ -2,6 +2,18 @@
 
 本文件保留武器与掩体两个分支的开发历史，便于共用 Native 手部实现合流。各条记录仍以其原始验证范围为准；私有候选、只读采样或离线检查不代表完整功能、默认构建更新或头显验收。
 
+## 2026-10-27 — he首份非空journal解码：取枪一次，阶段首个已记录拒绝在Kernel commit；原门与Stop续更失败
+
+Body唯一he局正常drain后交首份非空`body-held-outcomes.bin`，Game68132／Native3072491780786，PG `1336a597f7c7d47115e364e8c688fdba2c40ac3b9746ca13e902b3286c63990d`。Root直接复用已交decoder，以同局PID／Native及phase `[307257894873500,307263918239700]`调用，56800字节＝Header120＋109×Record520，errors0／invalid0，dropped／nested／foreign均0。未启动Game／测试／编译／IDA或全量重审。记录从phase起点晚37.116ms开始，虽然总span约6.094s并延伸至阶段末后107.7466ms，仍不完整覆盖请求phase；不能从容量或span提升为6秒验收。
+
+本局确实记录一次Grip held(slot3,event1,press1,frame307,source2684)，原阶段Native mount只+1／40，整轮不通过。指定阶段完整落入窗口的106条中，第一条tick33250／Compose33251／query8：两个SourceGate均okay、三次实际Tick admission均okay／passed、选择held_lancer、Kernel prepare=prepared(0)，commit=guard_rejected(12)。下一条tick33357／Compose33358／query9记录commit=committed(1)、held_counter1／trace_sequence1。其余104条本阶段entry未记录input/query/guard/admission/Kernel结果（UNKNOWN），不能把默认值当通过，也不能仅凭未到达字段选定Goal早退原因；全journal此类107条。已记录首拒不是phase开始缺失37ms内所有可能失败的首个原因。
+
+首条原Scene age在final admission为48.8083ms，entry end为50.8076ms；此时新controller age约12.3798ms、capture约9.1784ms。entry end还包含原Compose等后继工作，不是Kernel失败时刻；格式没有该时刻的Context首错／verdict和Kernel操作时标，不能仅凭末age越50ms认定唯一age根因。将精确tick／Compose／query交Body，若已有budget／first-failure可精确同局关联则复用，不能外推前缀或另开实验。
+
+Stop后free-hand续更也超时，`body_continues_after_stop`没有赋真、bridge_error保留；原finalizer一次106／full／Native-entry-PG／XR0／十文件／audio9/9与fresh空接受仅cleanup。另Body／统筹指出实验PG1336的bulk失败转scalar fallback有PAGE_GUARD自动清除差分，Body独占真实CPU对照与失败即拒修正；该候选不具默认整合资格，也不将此差分冒充he根因。event行追加的previous_bound等扩展字段在Input尾部Evidence聚合重赋中变为默认0，不能当真实prior unbound／counter0；gap／baseline原已验证扩展字段不受该event重赋影响。此限制随本局事件证据保留，不为它另行重编。
+
+Root产物ignored `analysis/lancer-component-readback-20261026/he-held-journal-decoded.json`及`he-phase-first-outcome-saved.json`，后者保留原件hash／两个实际Kernel结果／phase边界／缺证与安全限制，生成入口`analyze_he_phase_first_outcome.py`。一次取枪不等于稳定跟手、40-6s／Stop／射击或GPU验收，无默认替换、修复结论或玩法进度加分。
+
 ## 2026-10-27 — hd早采样候选实际生效但未修复；按下前gap后首次press被baseline吸收
 
 Body在其私有`analysis/body-held-outcome-runtime-20261027d`只运行一次不同候选：PG `013c39f377b1fff7dec2897778004f6839c8b98ee995d19990a2028d444adc43`将已有early输入资格从held扩大到普通unheld，仍在真实当前clock执行原100ms，保守event.created、后续inventory／current／身份／attachment／250ms、baseline／pending／future保持，局部event早退丢弃、不重播。复用Body一次Astra增量审查及原CPU Input72case／778、Runtime84case／901验证，Root不重复。Native／XR未重编，不改40-6s或按住时长。
