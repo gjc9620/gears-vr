@@ -44,7 +44,7 @@ def prepare(name, manifest_path, config_path, *, background_test=False):
     if background_test:
         config = background_render_policy.configuration(config)
     game = validate_game(manifest['game_path'], expected=manifest['game_sha256'])
-    quiet = ROOT / 'tools/quiet-startup/build-instance4'
+    quiet = ROOT / 'tools/quiet-startup/build-instance5'
     verify_test_behind_build(quiet)
     original = Path(os.environ.get('LOCALAPPDATA', str(Path.home() / 'AppData/Local'))).resolve()
     source_data = original / 'Coalition/WarGame'
