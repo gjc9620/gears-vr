@@ -49,9 +49,12 @@ def _point(value, label, *, extent=False):
 def _parameters(function, start, end, extent, *, trace_actors=True):
     """Pack only this exact reflected Trace parameter cohort, not guessed ABI."""
     fields = function['fields']
-    if (function['native_index'], function['parms_size'], function['return_offset'],
-            function['function_flags'], function['entry_rva']) != (277, 116, 108, 23578, '0xcdacc'):
-        raise RuntimeError('Current Actor.Trace function header differs from certified cohort')
+    observed_header = (function['native_index'], function['parms_size'], function['return_offset'],
+                       function['function_flags'], function['entry_rva'])
+    expected_header = (277, 116, 108, 23578, '0xcdacc')
+    if observed_header != expected_header:
+        raise RuntimeError('Current Actor.Trace function header differs from certified cohort: '
+                           f'observed={observed_header!r}; expected={expected_header!r}')
     if [(f['name'], f['offset'], f['size'], f['flags_hex']) for f in fields] != list(PARAMS):
         raise RuntimeError('Current Actor.Trace typed parameter layout differs')
     if next(f for f in fields if f['name'] == 'bTraceActors')['bool_mask'] != 1:
