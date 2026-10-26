@@ -1,0 +1,31 @@
+# 6DoF 掩体碰撞接入顺序
+
+本文件把[交互规格](6dof-cover-interaction-design-20261024.md)中的抓边与探身约束落实到当前 Native Scene 事务。它是实施门槛，不代表功能已开放。当前 `cover_shared_input_live::prepare` 仍向输入 owner 传入零范围和空边缘；CT12 只证实了一处矮墙的零尺寸射线命中。
+
+## 1. 调用与事务边界
+
+沿用现有的唯一 GT Scene：`cover_shared_input_live::prepare` 在 `participant.begin` 前获取本帧合法边缘和活动范围，在 `participant.update_with_decoded` 后、武器 broker `commit` 前检查已提交身体位置到候选位置的连续扫掠。使用该 Scene 已冻结的 Pawn、CoverLink、slot、双眼、头显和左手样本，不增加 Tick 或 ProcessEvent 写入阶段。
+
+Native 中只实现绑定当前零售版本的 Actor.Trace 查询。先在现有 Scene 持锁位置进行 **observation-only** 调用，记录同步引擎调用耗时、回调重入、嵌套 Scene、锁和退出清理结果；通过后才允许它参与抓边许可。调用前后核对当前模块、Actor.Trace 的 NativeIndex 277、116 字节参数结构及原始字段链、GNatives277、完整代码字节和所有被用对象的注册槽。区分命中、有效空返回、证书失败与调用结果不明。Python／Playground 继续用于取证，不能成为生产帧的异步授权者。
+
+每次使用前后复核 Scene invocation、GT、World generation、Controller、Pawn、Mesh、Link／slot、特殊动作、XR session／space／reference 及共享手 owner 的 cookie、revision、action generation。限制每帧射线数、距离、搜索层数和总耗时；缓存只供同一 Scene 的重复渲染读取。同步引擎调用一旦卡住，普通超时计时无法中断它，因此时间预算只限制后续调用和许可。
+
+## 2. 几何与位移许可
+
+先在同一局、同一个 Link／slot／墙面 Actor 与组件下，用下方命中和上方有效空返回夹逼一个上沿。结合原生 `CanPopUp`、低掩体资格、手到边缘的抓取距离、接近侧及手部路径，形成单一边缘身份；多个候选或任何身份变化均拒绝。边缘身份绑定 World generation、完整 Link 身份、slot、实体 Actor／组件及几何版本。已有低位墙命中和跨会话的约 80–113 单位顶沿候选范围，不能直接授予 LGrip。
+
+先只开放经连续体积验证的一条轴；另一轴固定为零。现有 `CoverObservation.range` 合同要求整个二维范围有效且包含中立点，稀疏射线和只查四角不能证明它。以后开放左右与上下同时拉拽时，要证明整个组合范围的身体体积合法，或先明确修改并测试该合同。
+
+抓取只在新按下沿且手处于 acquisition reach 内成立。抓住后锁定该边缘与操作轴，手离开初始抓取距离属于合法拉拽，不应每帧自动释放。每帧从上一次已提交身体位置向候选位置做非零 extent 连续扫掠；只在有可靠接触距离和余量时提交已证明的连续前缀，否则拒绝本次虚拟位移。静态墙面、动态 Actor、可破坏物、起点穿透及枪口／眼点遮挡分别验证。真实头显平移继续直接生效，虚拟位移限速不能裁剪它。
+
+`CoverInputOwnerCandidate` 需按当前 ticket 暴露不可变 pending offset／view，并允许同一 ticket 接受已认证的裁剪结果，使内部交互状态、视点和身体目标共同提交。`complete(false)` 的旧偏移 fallback 也必须有本 Scene 当前占用的独立碰撞证书；原有范围再认证不等于无碰撞。证书失败、命中歧义、预算用尽或身份变化时，不授予新的抓取或位移，不把失败的手租约带入下一帧。
+
+## 3. 开放前证据
+
+1. 在 Native Scene 持锁点验证只读 Trace 可安全同步执行，记录引擎调用本身的耗时与正常清理。
+2. 用后继运行补 CT12 缺少的所选名称槽指针见证；旧 CT12 记录不追认。
+3. 同局完成上沿命中／空返回夹逼、合法与非法手部接近、手到边缘路径对照。
+4. 对实际选定的身体保守体积验证非零 extent：有效阻挡、完整空扫、起点重叠和接触点语义，并确认动态阻挡范围。
+5. CPU 回归覆盖拒绝扫掠时 lease／offset 无泄漏、裁剪后交互／视点／身体一致、失败 fallback 不绕过碰撞门、同 Scene 重试不重复调用，以及 slot／epoch／action barrier 撤销旧证书。
+
+这些证据仍不能替代实体头显、受击区域、权威枪口遮挡和完整左右／上探玩法验收。
