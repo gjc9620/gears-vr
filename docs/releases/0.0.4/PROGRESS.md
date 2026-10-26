@@ -2,6 +2,14 @@
 
 本文件保留武器与掩体两个分支的开发历史，便于共用 Native 手部实现合流。各条记录仍以其原始验证范围为准；私有候选、只读采样或离线检查不代表完整功能、默认构建更新或头显验收。
 
+## 2026-10-26 — EK实际证明真实Tick新输入可取得，旧held／交还行为仍未通过
+
+Body独占完成EK及一次正常finalize，释放窗口并确认fresh CIM无Game/XR。BTIPRB01原件122176B、Header64／Record3816／32条，SHA256 `69266cbe43418984477a5ab3208e474ce295234cbca664f58e8738d336a2d1b9`，实际Game55712／Native incarnation2333248191503；Body严格reader关联通过。32／32 valid、newer及可选真实C0 basis存在，raw sequence比原Scene前进2–4；新hands.sync源龄0.2243–10.8548ms（中位7.36925），原sync29.3217–47.2362ms（中位41.1907），采集0.0251–0.0558ms。basis观察在采集结束后0.891–11.3381ms，原时标未更新。首32可能在held之前，仅证明本轮同真实Tick的新成组来源及当前基准可取得，不推为持枪轨迹／目标计算或稳定性能结论。
+
+Root直接核对原binary完整header与32条tick／thread／cookie／起止时标／failure／valid／newer／basis prefix，逐条与Body严格reader一致，另独立重算其聚合指标及准确session；不冒称重做全部字段语义解析。回执为ignored `analysis/weapon-parser-budget-20261026/ek-source-availability-root.json`，旧消费者stable状态另解为`analysis/lancer-main-mount-ec-rejection-20261026ef/ek-native43-diagnostics.json`。
+
+原消费者未切换，first-held门仍失败：ready16、stale／fault／context拒绝0、held commits0、post40拒绝17，降枪和小移转未触达。HandStop4→5／quiescent、两手恢复、bridge close正常，但停止后自由双手继续更新检查超时，不能称交还行为通过；正常106／Native／entry／XR0／PG0／原十文件／音频／exact PID全部恢复通过，host瞬时no_remaining_games=false保持原值。EK现场与PG0ec1冻结；Body继续实现真实新typed输入和同C0关联，不改旧Core／PG wire，后续候选再沿原门验证持续held、移动与交还。
+
 ## 2026-10-26 — EK选择Native43只读Tick探针，原消费者／动作／清理保持
 
 Body交付Native43真实outer-Tick只读探针后，Root从原EJ精确派生私有EK，仅替换Native build／DLL／hash／provenance及PE元数据，向原native_sections追加`[BodyTickTrackingProbe] enabled=1`。新Native SHA256 `1517cfb04235655c03e4345df9afc13fc903d4185286aace15d549d2c02dc426`，PG仍a54d592／0ec1、BQ XR1a05、CY simulator378。43个导出名称、构建receipt／冻结source43来源已核对；Body原完整构建／22startup／23preflight按明确来源复用，Root未重编、未运行旧矩阵或Game。
