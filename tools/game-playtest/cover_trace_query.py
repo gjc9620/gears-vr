@@ -37,7 +37,8 @@ class TraceQuery(CoverQuery):
     CoverQuery remains strict for ordinary cover state. Actor.Trace may register
     unrelated objects while executing. The required LiveRegistryAnchorSampler
     fresh() already checks every used object's old registry slot, live name
-    entry index/text, and raw identity at each Query identity revisit.
+    entry index/text, and raw identity at each Query identity revisit. The
+    name-slot pointer itself has a separate first-witness reread below.
     """
 
     def __init__(self, observer):
@@ -57,6 +58,7 @@ class TraceQuery(CoverQuery):
         self.initial_name_count = self.r.name_count
         self.last_object_count = count
         self.registry_observations = []
+        self.name_slot_witnesses = {}
 
     def obj(self, address):
         value = super().obj(address)
@@ -64,6 +66,12 @@ class TraceQuery(CoverQuery):
             raise RuntimeError('Cover Trace used object from newly registered tail')
         if not 0 <= value['name_index'] < self.initial_name_count:
             raise RuntimeError('Cover Trace used name from newly registered tail')
+        name_index = value['name_index']
+        if name_index not in self.name_slot_witnesses:
+            entry = struct.unpack('<Q', self.read(self.r.names_data + name_index * 8, 8))[0]
+            if not entry or entry != self.r.name_pointers[name_index]:
+                raise RuntimeError('Cover Trace selected name slot differs from resolver')
+            self.name_slot_witnesses[name_index] = entry
         return value
 
     def _check_registry(self):
@@ -82,6 +90,7 @@ class TraceQuery(CoverQuery):
         self.last_object_count = count
         self.registry_observations.append(dict(object_count=count,
                                                selected_objects=len(self.identities),
+                                               selected_names=len(self.name_slot_witnesses),
                                                name_header_unchanged=True))
 
     def _check_selected_dependencies(self):
@@ -306,6 +315,7 @@ def capture(observer, dll_path, dll_sha256, start, end, *, extent=(0, 0, 0), tra
                     initial_object_count=q.initial_object_count,
                     initial_name_count=q.initial_name_count,
                     selected_object_count=len(q.identities),
+                    selected_name_count=len(q.name_slot_witnesses),
                     sampler='anchor_config.LiveRegistryAnchorSampler',
                     observations=copy.deepcopy(q.registry_observations))
         if bridge is not None:

@@ -1,6 +1,9 @@
 """Focused selected-dependency registry checks for bounded Actor.Trace reads."""
 import struct
 import unittest
+from pathlib import Path
+from types import SimpleNamespace
+import sys
 
 from cover_trace_query import TraceQuery
 
@@ -52,14 +55,18 @@ class LiveRegistryAnchorSampler:
         if address != self.identity['address']:
             raise RuntimeError('Unknown selected object')
         index, name_index = self.identity['internal_index'], self.identity['name_index']
-        if (struct.unpack('<Q', self.r.read(self.r.objects_data + index * 8, 8))[0] != address or
-                struct.unpack('<Q', self.r.read(self.r.names_data + name_index * 8, 8))[0] !=
-                self.r.name_pointers[name_index]):
-            raise RuntimeError('Selected registry slot changed')
-        entry = self.r.name_pointers[name_index]
+        if struct.unpack('<Q', self.r.read(self.r.objects_data + index * 8, 8))[0] != address:
+            raise RuntimeError('Selected object registry slot changed')
+        # Production fresh() validates the *current* entry's index/text, but
+        # does not compare its address to the resolver's original name slot.
+        entry = struct.unpack('<Q', self.r.read(self.r.names_data + name_index * 8, 8))[0]
         expected_text = self.identity['name'].encode('utf-16-le') + b'\0\0'
-        if (struct.unpack('<I', self.r.read(entry, 4))[0] != name_index or
-                self.r.read(entry + 20, len(expected_text)) != expected_text):
+        try:
+            valid = (struct.unpack('<I', self.r.read(entry, 4))[0] == name_index and
+                     self.r.read(entry + 20, len(expected_text)) == expected_text)
+        except KeyError:
+            valid = False
+        if not valid:
             raise RuntimeError('Selected name entry changed')
         return dict(self.identity)
 
@@ -136,6 +143,41 @@ class TraceRegistryTests(unittest.TestCase):
                 resolver.put(address, struct.pack('<Q', 0x9999))
                 with self.assertRaises(RuntimeError):
                     query.finish()
+
+    def test_same_name_text_at_a_new_entry_pointer_is_rejected(self):
+        resolver, query = self.fixture()
+        replacement = 0x6100
+        resolver.put(replacement, struct.pack('<I', 4))
+        resolver.put(replacement + 20, 'CoverLink'.encode('utf-16-le') + b'\0\0')
+        resolver.put(resolver.names_data + 4 * 8, struct.pack('<Q', replacement))
+        # The fixture's sampler still accepts this same-index/same-text entry.
+        self.assertEqual(query.s.fresh(0x5000)['name'], 'CoverLink')
+        with self.assertRaises(RuntimeError):
+            query.finish()
+
+    def test_actual_live_sampler_accepts_same_text_swap_but_trace_rejects(self):
+        root = Path(__file__).resolve().parents[2]
+        sys.path[:0] = [str(root / 'tools/native-capture'),
+                        str(root / 'tools/package-inspector')]
+        from anchor_config import LiveRegistryAnchorSampler as ActualSampler
+        from test_anchor_config import Fixture as ActualResolverFixture
+
+        resolver = ActualResolverFixture()
+        # The real Resolver caches this pointer tuple during discovery.
+        resolver.name_pointers = tuple(resolver.u64(resolver.names_data + i * 8)
+                                       for i in range(resolver.name_count))
+        sampler = ActualSampler(resolver)
+        query = TraceQuery(SimpleNamespace(resolver=resolver, sampler=sampler,
+                                           verify=lambda: None))
+        address = 0x20000
+        original = query.obj(address)
+        name_index = original['name_index']
+        replacement = 0x900000
+        resolver.put(replacement, resolver.read(resolver.name_pointers[name_index], 148))
+        resolver.put(resolver.names_data + name_index * 8, struct.pack('<Q', replacement))
+        self.assertEqual(sampler.fresh(address), original)
+        with self.assertRaises(RuntimeError):
+            query.finish()
 
     def test_new_tail_object_cannot_become_trace_dependency(self):
         resolver = Memory()
