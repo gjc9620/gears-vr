@@ -27,6 +27,11 @@ void tick(hand::Frame const& f,hand::GripGameState const& copied_game,std::int64
         f.controllers.session,f.controllers.space_epoch,f.controllers.profile_generation,f.controllers.input_epoch,unsigned(f.controllers.source)};
     unsigned attempt{};
     const auto& grip=right.grip;if(!budget.claim(id,grip,attempt))return;next_sample=ms+50;
+#if defined(GEARS_PLAYGROUND_LANCER_MUZZLE_PROBE) && GEARS_PLAYGROUND_LANCER_MUZZLE_PROBE
+    // Spread only the initial3 samples so they can extend beyond Grip setup.
+    // Later input changes keep the original50ms cadence for short move stages.
+    next_sample=ms+(attempt<=3?500:50);
+#endif
     const wchar_t* reason=L"asset_first";bool accepted=false;
     lancermain_asset::Evidence first{},last{};Matrix gun{},gun_after{},avatar{},avatar_after{};
     vrequip::MeshPoseProbe pose{},pose_after{};
@@ -95,6 +100,7 @@ void tick(hand::Frame const& f,hand::GripGameState const& copied_game,std::int64
     if(bones_after_valid){print_matrix(L"weapon_end_after",cohort::world(bones_after,52));print_matrix(L"weapon_r_after",cohort::world(bones_after,51));print_matrix(L"right_wrist_after",cohort::world(bones_after,35));}
 #if defined(GEARS_PLAYGROUND_LANCER_MUZZLE_PROBE) && GEARS_PLAYGROUND_LANCER_MUZZLE_PROBE
     unsigned muzzle_bone=9;std::array<double,3> muzzle_location{};
+    fwprintf(log_file,L" muzzle_next_sample_spacing_ms=%u",attempt<=3?500u:50u);
     const bool muzzle_paired=paired&&muzzle_before_valid&&muzzle_after_valid&&
         muzzle::same(socket_before,socket_after)&&muzzle::same(gun_pose_before,gun_pose_after)&&
         muzzle::location(gun_pose_before,socket_before,muzzle_bone,muzzle_location);

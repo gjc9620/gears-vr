@@ -2,6 +2,14 @@
 
 本文件保留武器与掩体两个分支的开发历史，便于共用 Native 手部实现合流。各条记录仍以其原始验证范围为准；私有候选、只读采样或离线检查不代表完整功能、默认构建更新或头显验收。
 
+## 2026-10-27 — HI取得两组真实Muzzle几何，均早于held阶段；后继采样间隔候选只准备
+
+Body唯一HI／PG207实跑Game29688／Native3144730156562已结束，Root只消费49675B／SHA `7fb11641f10e35cad2653b27a952851ff0d9726fff6fbf79eedd78facf909770`原PG小日志。3行全部socket before／after completed20／pass2／Reason0，2行完整component＋Avatar＋Muzzle配对接受，另1行被原game_or_generation拒绝而未发布derived world。实际唯一socket与当前Ref9的bone0匹配、相对位置 `(72.6682053,-0.00669687986,11.25)`／rotation0；9位打印恢复原binary32后独立矩阵重放与两个原derived世界位置double误差0。这证明精确Core.Object schema在这些当前点已有效，不反推HH唯一早退。Root回执`hi-saved-muzzle-review.json` SHA `c468aa12d1d77cb2b15f2ff42857401d22894fd9aef3ef7255247152cd5dc327`保留全部raw／时标／名字与身份scope／原件hash。
+
+两有效区间结束在原held phase前261.8747／86.4689ms，固定raw输入下Muzzle位置相差0.53072u；没有phase内或ready／move观察，不能提升稳定可见跟随／同C0／原getter／bore／权威射击或GPU证明。原40／6秒＋pose门失败，status0→1只是观测；Stop后body继续，但右控制器恢复未验证、both=false，首32验收header_valid=false／trace仅1。106／full／音频9／9和fresh空的accepted只属cleanup。Body交接指出恢复66为reader_open/stereo发生在Source1／age匹配循环前，不能因文案含fresh而断言过期；共享协议／restore分析由Body独占，Root不重解held或另读reader。
+
+Root仅在MUZZLE ON路径调整最初3个sample的原间隔50→500ms，后继attempt4..24仍50ms；3／pose、24／identity、8identity上限及所有source／metadata／权限／原动作／门保持。它只把初始有限观察分散，不是phase触发器，仍须实时时标关联。完整PG编译得到 `5fdc2f59037db4fc06055d5ca9344c79eb89873403f9c9b706a734d090b223cd`，相对207仅一个probe文件，原flags／16导出／OFF父源保持，原Pose12／Socket42因源／相关定义不变复用不重跑。回执`analysis/lancer-muzzle-observation-20261027/attempt-1793055422892249000/receipt.json` SHA `a4b53aa3b7337f65dac50382a7960190c039ec46eb13fdbd961895357b946213`，审计SHA `6f3d2e1e15941d64d93faa5f8d975adb684c0293a7d6b9ab591b441126927ac3`；中间b768全阶段500ms候选未选／未实跑。新候选只准备，等待共享门定位和协调后的串行组合，不立即另开Game，不加玩法分或替换默认。
+
 ## 2026-10-27 — HH无有效Muzzle数据；修正已证实的Core.Object字段owner并加入实际早退记录
 
 计数口径更正：Body随后独占核同局v2，合法111条／drop0，phase内实际有42个held commit markers（counter2..43）；26条带pose的joint／status观测最高35，因此不能将35说成Native只提交35，也不能仅以42条marker把原双计数>=40联合门改判通过。Root复用Body交接结论，不重解该111条；held阶段无Goal10／11与postStop后独立reason10的定位仍由Body处理，不扩为Muzzle旁支调查。Body随后已封存`analysis/body-held-outcome-runtime-20261027h/two-blockers-saved-summary.json` SHA `585b1703ca6a21b520b3202c844a633dc97733872409422213c7b7d59a96e3e8`；Root仅核这份交付hash并复用标量，不重复统计。第40个distinct in-phase held marker正常end在marker后5.7116094s，live producer/status的freshness仍缺证，原联合门保持失败；postStop独立reason10在phase末后142.1621ms，只三项observed epoch1→2不等，16实际空间／身份项一致，其后2.406s attempts／reject各+87而plans／body提交不动。这些保存证据不把两项阻断判为同一根因，也不归因Muzzle。原HH小日志／阴性回执与全部历史pins不改。

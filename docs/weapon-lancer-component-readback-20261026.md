@@ -1,5 +1,11 @@
 # Lancer原枪组件读回与骨骼配对观察
 
+HI实际Muzzle数据与后继仅准备（2026-10-27）：Game29688／Native3144730156562、PG207的49675B日志中有3行，全部socket前后completed(step20)／pass2／Reason0，2行完整component／Avatar／Muzzle配对接受，另1行被原game_or_generation拒绝且未发布世界位置。实际socket唯一匹配Ref9的bone0，RelativeLocation `(72.6682053,-0.00669687986,11.25)`、Rotator0；将9位文本round-trip回原binary32，重放socket→boneSpace→gunCTW与两个原derived world位置的double误差均0。两个有效区间结束早于held phase261.8747／86.4689ms，同raw输入下点位仍相差0.53072u；只闭合这些顺序观察点的实际几何，不证明phase内持续跟随、移动／转枪、原getter、bore或renderer。Root私有`hi-saved-muzzle-review.json` SHA `c468aa12d1d77cb2b15f2ff42857401d22894fd9aef3ef7255247152cd5dc327`保留原件与精确边界。
+
+HI原持枪联合门仍失败，status0→1仅观测值，不能代替实际提交统计；后继ready／move未达。Stop后body继续，但controller1恢复无验证、both_controllers_restored=false、首32验收header_valid=false／实际trace1。原finalizer accepted仅106／full／音频9／9等清理，不算完整双手恢复。Body后续交接说明66来自reader_open的stereo阶段，发生在Source1／age匹配循环前，故错误文案含fresh也不能据此断言过期；这项源／恢复证据继续由Body唯一处理，Root不另解reader。
+
+为让有限初始样本不全消耗在Grip确认前，Muzzle ON后继只把每hold identity最初3次的既有next_sample间隔50→500ms，attempt4..24仍50ms，原每pose3／每identity24／最多8identity预算不改。它不是phase触发器，必须继续按实际时标关联；没有新增读／clock／source重标／writer或输入／验收门变化。此单文件候选PG `5fdc2f59037db4fc06055d5ca9344c79eb89873403f9c9b706a734d090b223cd`已完整编译，16导出／原flags与OFF父源保持；42个Socket与12个Pose源／日志按hash复用、不重跑。回执`analysis/lancer-muzzle-observation-20261027/attempt-1793055422892249000/receipt.json` SHA `a4b53aa3b7337f65dac50382a7960190c039ec46eb13fdbd961895357b946213`、审计SHA `6f3d2e1e15941d64d93faa5f8d975adb684c0293a7d6b9ab591b441126927ac3`。只准备，等待共享协议／恢复定位和串行交接，未请求立即另一局或替换默认；中间全阶段500ms的b768候选未选用／未实跑，保留原产物。
+
 HH原联合门的后续Body分析已封存为`two-blockers-saved-summary.json`（Body HH目录，SHA `585b1703ca6a21b520b3202c844a633dc97733872409422213c7b7d59a96e3e8`）。Root复用其结论：42条phase内held markers中，第40条正常end在5.7116094s；实时status／pose联合观测最高35且freshness未证，原门仍未过。postStop的reason10与held阶段分开，不能解释为原持枪未发生或归因Muzzle。Root没有重新解码／计数，下一项仍是207cb537修正候选的实际Muzzle读取。
 
 HH阴性与修正候选（2026-10-27）：PG80b826实跑只取得肩部3行，3／3原component／Avatar配对有效，Muzzle前后均未录，没有derived world；socket0／bonecount0等默认值不能解成场景原点或合法枪骨。两个样本早于原phase起点179.369／70.1742ms，第三个开始只晚0.2454ms，不能外推整段。原40／6秒联合门status观测0→35／6.0179205s且Stop续更超时；35不是实际提交总数，Body随后在该局v2的phase范围数到42条held commit markers（counter2..43），但原联合predicate仍未成立，正常106／音频9／9恢复仅cleanup；原失败与Body交付保留。Root只解此局21648B PG日志，没有重解held或调查非阻断Native拒绝，回执`hh-muzzle-negative-saved.json` SHA `df7d7cacc300a7871781330796e62bbb92c8a1d3a1efeab8ccec56a176381636`。
@@ -8,7 +14,7 @@ HH阴性与修正候选（2026-10-27）：PG80b826实跑只取得肩部3行，3�
 
 修正后PG SHA `207cb5373f5ac675a24efb64a6f08237f17c72b2662fb6d046b80b0855f8f231`，相对80b826只变4个观察文件，原compiler flags与16导出保持，OFF probe仍精确HG父源。完整PG构建与42个受影响Socket owned案例通过；未改的枪骨位置数学及原测试源逐hash相同，12例复用不重跑。ignored `analysis/lancer-muzzle-observation-20261027/attempt-1793054247587862700/receipt.json` SHA `be549385365f5f786b94f7fb11832ff1b9d5025aa7e5fb7a7851ebfa6ee4f012`，`artifact-audit.json` SHA `90be72f306dbe4c7715960d9aeeb5a8f78917c6b489ed9827e5152412d481d17`封存历史资料hash、四文件增量、旧阴性及诊断限制。尚无修正后的实际Muzzle／玩法或默认整合结论。
 
-当前Muzzle观察候选（2026-10-27，尚未实跑）：新增默认OFF的`GEARS_PLAYGROUND_LANCER_MUZZLE_PROBE`，必须复用已有component probe。普通PlayerTick在同一个有界采样中认证实际weapon.MuzzleSocketName、asset.Sockets及唯一SkeletalMeshSocket、真实Core.Vector／Rotator描述符和相对值，并读取当前9骨Ref／Local／Space／epoch前后副本；再按实际BoneName唯一匹配骨index，以UE3行向量关系计算挂点位置。名称、指针、字段selector／descriptor、动态值、完整身份／结构／table均复核，失败输出不变；非Actor对象只认证当前注册身份，不声称未知pending-kill flags已验。没有引擎getter、骨骼写入或新的持续观察平台。
+首版Muzzle观察候选（2026-10-27，下文保留HH实跑前记录）：新增默认OFF的`GEARS_PLAYGROUND_LANCER_MUZZLE_PROBE`，必须复用已有component probe。普通PlayerTick在同一个有界采样中认证实际weapon.MuzzleSocketName、asset.Sockets及唯一SkeletalMeshSocket、真实Core.Vector／Rotator描述符和相对值，并读取当前9骨Ref／Local／Space／epoch前后副本；再按实际BoneName唯一匹配骨index，以UE3行向量关系计算挂点位置。名称、指针、字段selector／descriptor、动态值、完整身份／结构／table均复核，失败输出不变；非Actor对象只认证当前注册身份，不声称未知pending-kill flags已验。没有引擎getter、骨骼写入或新的持续观察平台。
 
 新`muzzle_pair_accepted`独立于原component／Avatar配对，只有原观察、socket前后与枪骨前后均一致才给出derived world位置；默认值／未知不当成功。raw配置名、socket名、BoneName、相对location／rotation、当前骨index／count／Space矩阵和原枪CTW一起记录。旋转只保留原始Rotator，未擅自设定bore；getter等价／权威枪轴／sameC0／最终renderer仍明确未证明，mount_known=false与R2门不变。
 
