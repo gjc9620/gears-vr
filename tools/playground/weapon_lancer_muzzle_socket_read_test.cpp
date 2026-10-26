@@ -11,7 +11,7 @@ unsigned socket_cases{};
 struct SocketMemory:AssetMemory {
     uptr name_type{},array_type{},struct_type{},script_type{},socket_class{},socket{},second{};
     uptr configured_property{},sockets_property{},inner{},socket_name_property{},bone_property{},location_property{},rotation_property{};
-    uptr vector{},rotator{};std::array<uptr,2> socket_array{};la::Evidence evidence{};
+    uptr object_owner{},vector{},rotator{};std::array<uptr,2> socket_array{};la::Evidence evidence{};
     SocketMemory(){
         name_type=node(L"NameProperty",class_type,core);array_type=node(L"ArrayProperty",class_type,core);
         struct_type=node(L"StructProperty",class_type,core);script_type=node(L"ScriptStruct",class_type,core);
@@ -24,7 +24,8 @@ struct SocketMemory:AssetMemory {
         bone_property=property(socket_class,L"BoneName",name_type,0x108,8);
         location_property=property(socket_class,L"RelativeLocation",struct_type,0x110,12);
         rotation_property=property(socket_class,L"RelativeRotation",struct_type,0x120,12);
-        vector=node(L"Vector",script_type,core);rotator=node(L"Rotator",script_type,core);
+        object_owner=cls(L"Object",core);
+        vector=node(L"Vector",script_type,object_owner);rotator=node(L"Rotator",script_type,object_owner);
         put(vector,0x88,12u);put(rotator,0x88,12u);put(location_property,0xd0,vector);put(rotation_property,0xd0,rotator);
         socket=node(L"LiveMuzzleSocket",socket_class,asset);second=node(L"LiveMagazineSocket",socket_class,asset);
         put(weapon,0x130,text(L"Muzzle"));put(socket,0x100,text(L"Muzzle"));put(socket,0x108,text(L"b_AR_Root"));
@@ -33,7 +34,8 @@ struct SocketMemory:AssetMemory {
         put(asset,0x140,meta::Table{reinterpret_cast<uptr>(socket_array.data()),2,2});tables();
         assert(read_asset(evidence)==la::Status::ready);
     }
-    bool read_socket(muzzle::Socket& out){return nativeequipment_component::muzzle_socket(frame,evidence,out);}
+    bool read_socket(muzzle::Socket& out,muzzle::SocketDiagnostic* diagnostic=nullptr){
+        return nativeequipment_component::muzzle_socket(frame,evidence,out,diagnostic);}
     void after_first(std::function<void()> action){mutate_read=socket+0x120;mutation=std::move(action);}
 };
 void socket_reject(SocketMemory& memory){muzzle::Socket out{};out.object=0x1234;out.location={9,8,7};const auto before=out;
@@ -41,9 +43,28 @@ void socket_reject(SocketMemory& memory){muzzle::Socket out{};out.object=0x1234;
 template<class Change>void socket_rejection(Change change){auto memory=std::make_unique<SocketMemory>();change(*memory);socket_reject(*memory);}
 }
 int main(){
-    {auto memory=std::make_unique<SocketMemory>();muzzle::Socket out{};
-        assert(memory->read_socket(out)&&out.object==memory->socket&&out.configured_name.index==out.socket_name.index&&
+    {auto memory=std::make_unique<SocketMemory>();muzzle::Socket out{};muzzle::SocketDiagnostic diagnostic{};
+        assert(memory->read_socket(out,&diagnostic)&&out.object==memory->socket&&out.configured_name.index==out.socket_name.index&&
             out.bone_name.index==memory->text(L"b_AR_Root").index&&out.location[0]==1.25f&&out.rotation[1]==-20);++socket_cases;}
+    {auto memory=std::make_unique<SocketMemory>();muzzle::Socket out{};muzzle::SocketDiagnostic diagnostic{};
+        assert(memory->read_socket(out,&diagnostic)&&diagnostic.step==muzzle::SocketStep::completed&&diagnostic.pass==2&&
+            diagnostic.metadata_reason==static_cast<unsigned>(meta::Reason::none));++socket_cases;}
+    {auto memory=std::make_unique<SocketMemory>();muzzle::Socket out{};out.object=17;const auto before=out;
+        muzzle::SocketDiagnostic diagnostic{};game_thread.store(0);
+        assert(!memory->read_socket(out,&diagnostic)&&muzzle::same(out,before)&&diagnostic.step==muzzle::SocketStep::entry&&
+            diagnostic.pass==0&&diagnostic.metadata_reason==UINT32_MAX);++socket_cases;}
+    {auto memory=std::make_unique<SocketMemory>();muzzle::Socket out{};out.object=17;const auto before=out;
+        muzzle::SocketDiagnostic diagnostic{};auto name=memory->text(L"Muzzle");name.number=1;Memory::put(memory->weapon,0x130,name);
+        assert(!memory->read_socket(out,&diagnostic)&&muzzle::same(out,before)&&diagnostic.step==muzzle::SocketStep::configured_name&&
+            diagnostic.pass==1&&diagnostic.metadata_reason==static_cast<unsigned>(meta::Reason::none));++socket_cases;}
+    {auto memory=std::make_unique<SocketMemory>();muzzle::Socket out{};out.object=17;const auto before=out;
+        muzzle::SocketDiagnostic diagnostic{};fail_read=memory->socket+0x120;
+        assert(!memory->read_socket(out,&diagnostic)&&muzzle::same(out,before)&&diagnostic.step==muzzle::SocketStep::rotation&&
+            diagnostic.pass==1&&diagnostic.metadata_reason==static_cast<unsigned>(meta::Reason::unreadable));++socket_cases;}
+    {auto memory=std::make_unique<SocketMemory>();muzzle::Socket out{};out.object=17;const auto before=out;
+        muzzle::SocketDiagnostic diagnostic{};memory->after_first([&memory]{Memory::put(memory->socket,0x110,std::array<float,3>{9,2,3});});
+        assert(!memory->read_socket(out,&diagnostic)&&muzzle::same(out,before)&&diagnostic.step==muzzle::SocketStep::location&&
+            diagnostic.pass==2&&diagnostic.metadata_reason==static_cast<unsigned>(meta::Reason::none));++socket_cases;}
     socket_rejection([](auto& m){++m.frame.weapon.registry_index;});
     socket_rejection([](auto& m){++m.evidence.component.name_number;});
     socket_rejection([](auto& m){++m.evidence.asset.registry_index;});
@@ -60,6 +81,14 @@ int main(){
     socket_rejection([](auto& m){Memory::put(m.socket,0x48,m.text(L"Default__Muzzle"));m.tables();});
     socket_rejection([](auto& m){Memory::put(m.socket,0x108,meta::RawName{999999,0});});
     socket_rejection([](auto& m){Memory::put(m.vector,0x50,m.class_type);});
+    socket_rejection([](auto& m){Memory::put(m.vector,0x40,m.core);});
+    socket_rejection([](auto& m){Memory::put(m.object_owner,0x40,m.engine);});
+    socket_rejection([](auto& m){Memory::put(m.object_owner,0x48,m.text(L"OtherObject"));m.tables();});
+    socket_rejection([](auto& m){Memory::put(m.object_owner,0x50,m.script_type);});
+    socket_rejection([](auto& m){const auto fake_core=m.node(L"FakeCore",m.package_type);
+        const auto fake_class=m.node(L"Class",m.class_type,fake_core);
+        Memory::put(m.object_owner,0x50,fake_class);m.tables();});
+    socket_rejection([](auto& m){auto name=m.text(L"Object");name.number=1;Memory::put(m.object_owner,0x48,name);});
     socket_rejection([](auto& m){Memory::put(m.rotator,0x40,m.engine);});
     socket_rejection([](auto& m){Memory::put(m.vector,0x88,16u);});
     socket_rejection([](auto& m){Memory::put(m.socket,0x110,std::array<float,3>{std::numeric_limits<float>::quiet_NaN(),0,0});});

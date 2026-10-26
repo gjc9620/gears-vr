@@ -42,49 +42,68 @@ template<std::size_t N>bool name_field(meta::Reader& r,Reads& reads,uptr object,
 }
 template<std::size_t N,std::size_t K,class T>bool vector_field(meta::Reader& r,Reads& reads,uptr object,
     wchar_t const(&label)[N],wchar_t const(&structure_name)[K],T& out) noexcept {
-    weaponhand::BoolField field{};uptr structure{};U32 slot{},type{},package{},extent{};
+    weaponhand::BoolField field{};uptr structure{};U32 slot{},type{},owner{},owner_type{},package{},extent{};
     if(!reads.field(r,object,label,L"StructProperty",12,field)||
        !reads.at(r,r.result.identities[field.property.identity].address,0xd0,structure)||
        !r.path(structure,slot)||!r.named(slot,structure_name)||
        !r.path(r.result.identities[slot].klass,type)||!weaponhand::core_type(r,type,L"ScriptStruct")||
-       !r.path(r.result.identities[slot].outer,package)||!r.named(package,L"Core")||r.result.identities[package].outer||
+       // Saved reflected types are Core.Object.Vector / Core.Object.Rotator,
+       // not structs directly owned by the Core package.
+       !r.path(r.result.identities[slot].outer,owner)||!r.named(owner,L"Object")||
+       !r.path(r.result.identities[owner].klass,owner_type)||!weaponhand::core_type(r,owner_type,L"Class")||
+       !r.path(r.result.identities[owner].outer,package)||!r.named(package,L"Core")||r.result.identities[package].outer||
        !reads.at(r,structure,0x88,extent)||extent!=12)return false;
     return reads.at(r,object,field.property.offset,out);
 }
 bool pass(meta::Reader& r,Reads& reads,gears_weapon_hand::Frame const& frame,lancermain_asset::Evidence const& asset,
-    gears_weapon_lancer_muzzle::Socket& candidate) noexcept {
+    gears_weapon_lancer_muzzle::Socket& candidate,gears_weapon_lancer_muzzle::SocketDiagnostic& diagnostic) noexcept {
+    using Step=gears_weapon_lancer_muzzle::SocketStep;
+    diagnostic.step=Step::identity;
     if(!weaponhand::object(r,frame.weapon)||!weaponhand::object(r,asset.component)||!weaponhand::object(r,asset.asset))return false;
     weaponhand::BoolField deleted{};U32 mask{},bits{};
+    diagnostic.step=Step::deleted;
     if(!reads.field(r,frame.weapon.address,L"bDeleteMe",L"BoolProperty",4,deleted)||
        !reads.at(r,r.result.identities[deleted.property.identity].address,0xd0,mask)||!mask||(mask&(mask-1))||
        !reads.at(r,frame.weapon.address,deleted.property.offset,bits)||(bits&mask))return false;
     meta::RawName configured{};meta::NameText configured_text{};
+    diagnostic.step=Step::configured_name;
     if(!name_field(r,reads,frame.weapon.address,L"MuzzleSocketName",configured,configured_text)||
        !meta::exact_text(configured_text,L"Muzzle"))return false;
     weaponhand::BoolField array_field{};meta::Table sockets{};uptr inner{};meta::Property inner_property{};
     U32 inner_slot{};
-    if(!reads.field(r,asset.asset.address,L"Sockets",L"ArrayProperty",16,array_field)||
-       !reads.at(r,r.result.identities[array_field.property.identity].address,0xd0,inner)||
+    diagnostic.step=Step::array_descriptor;
+    if(!reads.field(r,asset.asset.address,L"Sockets",L"ArrayProperty",16,array_field))return false;
+    diagnostic.step=Step::array_inner;
+    if(!reads.at(r,r.result.identities[array_field.property.identity].address,0xd0,inner)||
        !r.property(inner,inner_property)||!weaponhand::core_type(r,inner_property.type,L"ObjectProperty")||
        r.result.identities[inner_property.identity].outer!=r.result.identities[array_field.property.identity].address||
        inner_property.dimension!=1||inner_property.element_bytes!=8||
-       !r.path(inner,inner_slot)||!reads.at(r,asset.asset.address,array_field.property.offset,sockets)||
+       !r.path(inner,inner_slot))return false;
+    diagnostic.step=Step::array_value;
+    if(!reads.at(r,asset.asset.address,array_field.property.offset,sockets)||
        !sockets.data||sockets.count<1||sockets.count>32||sockets.capacity<sockets.count||sockets.capacity>32)return false;
     // Reader.property does not retain descriptors. Retain the inner explicitly too.
+    diagnostic.step=Step::array_inner;
     weaponhand::BoolField inner_witness{};inner_witness.object=inner;inner_witness.property=inner_property;
     if(reads.repeat){if(reads.field_cursor==reads.field_count)return false;auto const& old=reads.fields[reads.field_cursor++];
         if(old.object!=inner||!meta::same_property(old.property,inner_property))return false;}
     else {if(reads.field_count==reads.fields.size())return false;reads.fields[reads.field_count++]=inner_witness;}
     bool selected=false;
     for(int i=0;i<sockets.count;++i){uptr socket{};meta::RawName socket_name{};meta::NameText text{};
+        diagnostic.step=Step::socket_identity;
         if(!reads.at(r,sockets.data,uptr(i)*8,socket)||!live(r,socket)||
-           !weaponhand::derives(r,socket,L"SkeletalMeshSocket",L"Engine")||
-           !name_field(r,reads,socket,L"SocketName",socket_name,text))return false;
+           !weaponhand::derives(r,socket,L"SkeletalMeshSocket",L"Engine"))return false;
+        diagnostic.step=Step::socket_name;
+        if(!name_field(r,reads,socket,L"SocketName",socket_name,text))return false;
         if(socket_name.index!=configured.index||socket_name.number!=configured.number)continue;
         if(selected)return false;selected=true;meta::RawName bone{};meta::NameText bone_text{};
-        if(!name_field(r,reads,socket,L"BoneName",bone,bone_text)||
-           !vector_field(r,reads,socket,L"RelativeLocation",L"Vector",candidate.location)||
-           !vector_field(r,reads,socket,L"RelativeRotation",L"Rotator",candidate.rotation))return false;
+        diagnostic.step=Step::bone_name;
+        if(!name_field(r,reads,socket,L"BoneName",bone,bone_text))return false;
+        diagnostic.step=Step::location;
+        if(!vector_field(r,reads,socket,L"RelativeLocation",L"Vector",candidate.location))return false;
+        diagnostic.step=Step::rotation;
+        if(!vector_field(r,reads,socket,L"RelativeRotation",L"Rotator",candidate.rotation))return false;
+        diagnostic.step=Step::location;
         for(float value:candidate.location)if(!std::isfinite(value))return false;
         candidate.object=socket;candidate.configured_name={configured.index,configured.number};
         candidate.socket_name={socket_name.index,socket_name.number};candidate.bone_name={bone.index,bone.number};
@@ -93,28 +112,45 @@ bool pass(meta::Reader& r,Reads& reads,gears_weapon_hand::Frame const& frame,lan
 }
 } // namespace muzzle_detail
 bool muzzle_socket(gears_weapon_hand::Frame const& frame,lancermain_asset::Evidence const& asset,
-    gears_weapon_lancer_muzzle::Socket& out) noexcept {
+    gears_weapon_lancer_muzzle::Socket& out,gears_weapon_lancer_muzzle::SocketDiagnostic* diagnostic=nullptr) noexcept {
     namespace md=muzzle_detail;namespace meta=weaponhand::meta;
+    using Step=gears_weapon_lancer_muzzle::SocketStep;
+    gears_weapon_lancer_muzzle::SocketDiagnostic local{};auto& detail=diagnostic?*diagnostic:local;
+    detail={};detail.step=Step::entry;
     const auto gt=weaponhand::current_gt(nullptr);if(!gt||(frame.key.thread_id&&frame.key.thread_id!=gt))return false;
     meta::Snapshot schema{};schema.module_base=base;meta::Reader r{schema,meta::Stage::final_check};md::Reads reads{};
+    struct ReasonOnReturn {gears_weapon_lancer_muzzle::SocketDiagnostic& detail;meta::Snapshot const& schema;
+        ~ReasonOnReturn(){detail.metadata_reason=static_cast<std::uint32_t>(schema.failure.reason);}} reason_on_return{detail,schema};
     gears_weapon_lancer_muzzle::Socket candidate{},fresh{};
+    detail.step=Step::identity;
     if(!gears_weapon_hand::identity_valid(frame.weapon)||!gears_weapon_hand::identity_valid(asset.component)||
-       !gears_weapon_hand::identity_valid(asset.asset)||!meta::tables(base,schema.objects,schema.names)||
-       !md::pass(r,reads,frame,asset,candidate))return false;
+       !gears_weapon_hand::identity_valid(asset.asset))return false;
+    detail.step=Step::tables;
+    if(!meta::tables(base,schema.objects,schema.names))return false;
+    detail.pass=1;
+    if(!md::pass(r,reads,frame,asset,candidate,detail))return false;
     reads.repeat=true;
-    if(!md::pass(r,reads,frame,asset,fresh)||!gears_weapon_lancer_muzzle::same(candidate,fresh)||
+    detail.pass=2;
+    if(!md::pass(r,reads,frame,asset,fresh,detail))return false;
+    detail.step=Step::repeat_complete;
+    if(!gears_weapon_lancer_muzzle::same(candidate,fresh)||
        reads.cursor!=reads.count||reads.field_cursor!=reads.field_count||reads.name_cursor!=reads.name_count)return false;
     const auto identities=schema.identity_count,structures=schema.structure_count;
+    detail.step=Step::final_identity;
     for(unsigned i=0;i<identities;++i){unsigned slot{};if(!r.identity(schema.identities[i].address,slot)||slot!=i)return false;}
+    detail.step=Step::final_structure;
     for(unsigned i=0;i<structures;++i){meta::Structure current{};
         if(!r.structure(schema.identities[schema.structures[i].identity].address,current)||!meta::same_structure(current,schema.structures[i]))return false;}
+    detail.step=Step::final_property;
     for(unsigned i=0;i<reads.field_count;++i){meta::Property current{};auto const& field=reads.fields[i].property;
         if(!r.property(schema.identities[field.identity].address,current)||!meta::same_property(field,current))return false;}
+    detail.step=Step::final_name;
     for(unsigned i=0;i<reads.name_count;++i){meta::NameText current{};
         if(!meta::fresh_name(schema.names,reads.names[i].index,current)||!meta::same_name_text(reads.names[i],current))return false;}
     meta::Table objects{},names{};
+    detail.step=Step::final_tables;
     if(!meta::tables(base,objects,names)||!meta::same_table(objects,schema.objects)||!meta::same_table(names,schema.names)||
        base!=schema.module_base||weaponhand::current_gt(nullptr)!=gt||r.result.failure.reason!=meta::Reason::none)return false;
-    out=candidate;return true;
+    out=candidate;detail.step=Step::completed;return true;
 }
 } // namespace nativeequipment_component

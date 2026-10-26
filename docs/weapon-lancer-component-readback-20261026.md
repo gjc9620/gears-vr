@@ -1,5 +1,11 @@
 # Lancer原枪组件读回与骨骼配对观察
 
+HH阴性与修正候选（2026-10-27）：PG80b826实跑只取得肩部3行，3／3原component／Avatar配对有效，Muzzle前后均未录，没有derived world；socket0／bonecount0等默认值不能解成场景原点或合法枪骨。两个样本早于原phase起点179.369／70.1742ms，第三个开始只晚0.2454ms，不能外推整段。原40／6秒门0→35／6.0179205s且Stop续更超时，正常106／音频9／9恢复仅cleanup；原失败与Body交付保留。Root只解此局21648B PG日志，没有重解held或调查非阻断Native拒绝，回执`hh-muzzle-negative-saved.json` SHA `df7d7cacc300a7871781330796e62bbb92c8a1d3a1efeab8ccec56a176381636`。
+
+随后确认新增reader存在具体schema错误：实际保存反射／Core盘点显示Vector、Rotator的owner链是`Core.Object.Vector/Rotator`，旧reader及合成正例却要求直接Core package。限定修正为精确ScriptStruct→真实Core.Class的Object→无outer的Core，保留extent12、所有selector／身份／动态值复核；旧直接Core或假owner不接受。这是真实过严条件的源码修复，HH没有实际分支记录，尚不能把它认定为该局首个／唯一拒绝，亦不归因身体协议失败。仅追加已有实际返回的step／pass／metadata Reason，诊断不增加Game读／clock／guard，未创建Reader保持UNKNOWN、实际none保留0；失败Socket不发布。
+
+修正后PG SHA `207cb5373f5ac675a24efb64a6f08237f17c72b2662fb6d046b80b0855f8f231`，相对80b826只变4个观察文件，原compiler flags与16导出保持，OFF probe仍精确HG父源。完整PG构建与42个受影响Socket owned案例通过；未改的枪骨位置数学及原测试源逐hash相同，12例复用不重跑。ignored `analysis/lancer-muzzle-observation-20261027/attempt-1793054247587862700/receipt.json` SHA `be549385365f5f786b94f7fb11832ff1b9d5025aa7e5fb7a7851ebfa6ee4f012`，`artifact-audit.json` SHA `90be72f306dbe4c7715960d9aeeb5a8f78917c6b489ed9827e5152412d481d17`封存历史资料hash、四文件增量、旧阴性及诊断限制。尚无修正后的实际Muzzle／玩法或默认整合结论。
+
 当前Muzzle观察候选（2026-10-27，尚未实跑）：新增默认OFF的`GEARS_PLAYGROUND_LANCER_MUZZLE_PROBE`，必须复用已有component probe。普通PlayerTick在同一个有界采样中认证实际weapon.MuzzleSocketName、asset.Sockets及唯一SkeletalMeshSocket、真实Core.Vector／Rotator描述符和相对值，并读取当前9骨Ref／Local／Space／epoch前后副本；再按实际BoneName唯一匹配骨index，以UE3行向量关系计算挂点位置。名称、指针、字段selector／descriptor、动态值、完整身份／结构／table均复核，失败输出不变；非Actor对象只认证当前注册身份，不声称未知pending-kill flags已验。没有引擎getter、骨骼写入或新的持续观察平台。
 
 新`muzzle_pair_accepted`独立于原component／Avatar配对，只有原观察、socket前后与枪骨前后均一致才给出derived world位置；默认值／未知不当成功。raw配置名、socket名、BoneName、相对location／rotation、当前骨index／count／Space矩阵和原枪CTW一起记录。旋转只保留原始Rotator，未擅自设定bore；getter等价／权威枪轴／sameC0／最终renderer仍明确未证明，mount_known=false与R2门不变。

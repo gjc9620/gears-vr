@@ -2,6 +2,14 @@
 
 本文件保留武器与掩体两个分支的开发历史，便于共用 Native 手部实现合流。各条记录仍以其原始验证范围为准；私有候选、只读采样或离线检查不代表完整功能、默认构建更新或头显验收。
 
+## 2026-10-27 — HH无有效Muzzle数据；修正已证实的Core.Object字段owner并加入实际早退记录
+
+Body唯一HH局Game50892／Native3134767077917已结束：启动门／Grip／episodes1通过，但原shoulder-fixed40／6秒门0→35、6.0179205s，后续ready／move未到，Stop quiescent成立而body续更超时。原finalizer一次accepted只证明106／full／Native-entry-PG／XR0／十文件／audio9／9及fresh空恢复；不把cleanup当动作通过。Root复用Body `runtime-handoff-summary.json` SHA `b64799c8db911de7d9728aa256f26e3e516801578c25aa4eb1a23d7c57568058`，只消费其21648B／SHA `64a1dc290faf28c7a4e917f82e3267d0f0caeb54fef3becf965e8f886f3bcf28`PG日志：肩部3／3component与Avatar配对接受，Muzzle前后／pair均0，无derived_world；所有socket0／count0等是未录默认值。两行早于phase179.369／70.1742ms，第三行只始于phase后0.2454ms，不补整段。私有`hh-muzzle-negative-saved.json` SHA `df7d7cacc300a7871781330796e62bbb92c8a1d3a1efeab8ccec56a176381636`保留原件和边界。
+
+单个既有助手与Root从保存metadata确认新增reader的具体源码错误：`Vector/Rotator`属于`Core.Object`而非直接`Core`。旧31例的合成正例也错误构造直接Core，不能证明真实owner兼容。修正只接受准确ScriptStruct→真实Core.Class Object→根Core链，extent12和原所有身份／字段／动态值门保留，假owner和旧直接Core新增拒绝。历史`live.json` SHA `65bcb1c55b619cf5f8014a411b8269a4d5d1e5c96c929b67a9ee59307ae57e66`与Core `objects.tsv` SHA `636376e841f7c82b639e1480885edc650554a4df0d995f99d3faef2c9efb139a`为依据，不是当前Game getter／调用证书。HH未记实际失败step，故不将此缺陷认定为HH唯一首拒或35／Stop失败原因。
+
+同时只给现有返回加入step／pass／actual metadata Reason，无额外诊断Game读取／clock／guard；未进入Reader时Reason未知，实际none=0，失败Socket仍不发布。新PG `207cb5373f5ac675a24efb64a6f08237f17c72b2662fb6d046b80b0855f8f231`相对80b826只变4个观察文件；完整严格PG构建、受影响Socket42例通过，原位姿数学／测试源逐hash相同并复用旧12例。16导出／原flags保持；OFF probe精确父源。回执`analysis/lancer-muzzle-observation-20261027/attempt-1793054247587862700/receipt.json` SHA `be549385365f5f786b94f7fb11832ff1b9d5025aa7e5fb7a7851ebfa6ee4f012`、工件审计SHA `90be72f306dbe4c7715960d9aeeb5a8f78917c6b489ed9827e5152412d481d17`。这是有具体变化的候选，尚无实跑／Muzzle或玩法完成，不重建Native／XR、不重解held／旧suite、不放宽门或替换默认。
+
 ## 2026-10-27 — 实际Muzzle观察PG已交Body复用HG动作，CPU通过但尚无实跑结果
 
 Root／单个既有助手分别实现9骨纯数组位置观察与实际typed Socket读取，集成为`83140a9`。默认OFF的Muzzle probe依赖既有bounded component probe，只读当前MuzzleSocketName／Sockets唯一对象／BoneName／RelativeLocation／Rotation及枪9骨Ref／Local／Space／epoch前后；原Frame、身份、时效、附件、原component／Avatar配对和采样上限均保留。`muzzle_pair_accepted`与旧观察分别记录，getter等价／权威bore／sameC0／最终renderer均未证明，没有新骨骼writer、引擎getter或mount_known／R2放行。非Actor对象只认证当前注册身份，不认证未知pending-kill flags。

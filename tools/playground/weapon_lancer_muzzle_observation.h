@@ -5,6 +5,14 @@
 // Observation data only. No mount/aim, getter-equivalence or firing grant.
 namespace gears_weapon_lancer_muzzle {
 using Address=std::uint64_t;
+enum class SocketStep:std::uint32_t {not_run,entry,tables,identity,deleted,configured_name,
+    array_descriptor,array_inner,array_value,socket_identity,socket_name,bone_name,
+    location,rotation,repeat_complete,final_identity,final_structure,final_property,
+    final_name,final_tables,completed};
+struct SocketDiagnostic {
+    SocketStep step{SocketStep::not_run};
+    std::uint32_t pass{},metadata_reason{UINT32_MAX};
+};
 struct Name {std::uint32_t index{},number{};};
 struct Socket {
     Address object{};

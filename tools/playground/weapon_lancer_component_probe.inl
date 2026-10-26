@@ -34,6 +34,7 @@ void tick(hand::Frame const& f,hand::GripGameState const& copied_game,std::int64
 #if defined(GEARS_PLAYGROUND_LANCER_MUZZLE_PROBE) && GEARS_PLAYGROUND_LANCER_MUZZLE_PROBE
     namespace muzzle=::gears_weapon_lancer_muzzle;
     muzzle::Socket socket_before{},socket_after{};muzzle::Pose gun_pose_before{},gun_pose_after{};
+    muzzle::SocketDiagnostic muzzle_before_diagnostic{},muzzle_after_diagnostic{};
     bool muzzle_before_valid=false,muzzle_after_valid=false;
 #endif
     const auto sample=[&]() {
@@ -44,7 +45,7 @@ void tick(hand::Frame const& f,hand::GripGameState const& copied_game,std::int64
         reason=L"mesh_probe";if(!vrequip::mesh_pose_probe(f.weapon.address,pose)||pose.mesh!=first.component.address||
            pose.asset!=first.asset.address||pose.hidden||std::memcmp(pose.local_to_world,gun.data(),64))return false;
 #if defined(GEARS_PLAYGROUND_LANCER_MUZZLE_PROBE) && GEARS_PLAYGROUND_LANCER_MUZZLE_PROBE
-        muzzle_before_valid=muzzle_socket(f,first,socket_before)&&muzzle::capture(
+        muzzle_before_valid=muzzle_socket(f,first,socket_before,&muzzle_before_diagnostic)&&muzzle::capture(
             [](muzzle::Address a,void* b,std::size_t n){return copy(b,a,n);},first.component.address,first.asset.address,gun,gun_pose_before);
 #endif
         reason=L"attachment";if(!nativeequipment::read_attached_frame(f,first.component.address))return false;
@@ -58,7 +59,7 @@ void tick(hand::Frame const& f,hand::GripGameState const& copied_game,std::int64
            std::memcmp(&pose_after.translation,&pose.translation,sizeof(pose.translation))||
            std::memcmp(&pose_after.rotation,&pose.rotation,sizeof(pose.rotation))||std::memcmp(pose_after.local_to_world,gun.data(),64))return false;
 #if defined(GEARS_PLAYGROUND_LANCER_MUZZLE_PROBE) && GEARS_PLAYGROUND_LANCER_MUZZLE_PROBE
-        muzzle_after_valid=muzzle_socket(f,last,socket_after)&&muzzle::capture(
+        muzzle_after_valid=muzzle_socket(f,last,socket_after,&muzzle_after_diagnostic)&&muzzle::capture(
             [](muzzle::Address a,void* b,std::size_t n){return copy(b,a,n);},last.component.address,last.asset.address,gun_after,gun_pose_after);
 #endif
         bones_after_valid=pose_cohort(f.mesh,avatar_after,bones_after);
@@ -97,6 +98,9 @@ void tick(hand::Frame const& f,hand::GripGameState const& copied_game,std::int64
     const bool muzzle_paired=paired&&muzzle_before_valid&&muzzle_after_valid&&
         muzzle::same(socket_before,socket_after)&&muzzle::same(gun_pose_before,gun_pose_after)&&
         muzzle::location(gun_pose_before,socket_before,muzzle_bone,muzzle_location);
+    fwprintf(log_file,L" muzzle_before_step=%u muzzle_before_pass=%u muzzle_before_metadata_reason=%u muzzle_after_step=%u muzzle_after_pass=%u muzzle_after_metadata_reason=%u",
+        unsigned(muzzle_before_diagnostic.step),muzzle_before_diagnostic.pass,muzzle_before_diagnostic.metadata_reason,
+        unsigned(muzzle_after_diagnostic.step),muzzle_after_diagnostic.pass,muzzle_after_diagnostic.metadata_reason);
     fwprintf(log_file,L" muzzle_before_valid=%u muzzle_after_valid=%u muzzle_pair_accepted=%u muzzle_socket=%llx muzzle_config_name=%u,%u muzzle_socket_name=%u,%u muzzle_bone_name=%u,%u muzzle_bone_index=%u muzzle_bone_count=%u muzzle_pose_epoch_before=%u muzzle_pose_epoch_after=%u muzzle_relative_location=%.9g,%.9g,%.9g muzzle_relative_rotation=%d,%d,%d",
         unsigned(muzzle_before_valid),unsigned(muzzle_after_valid),unsigned(muzzle_paired),socket_before.object,
         socket_before.configured_name.index,socket_before.configured_name.number,socket_before.socket_name.index,socket_before.socket_name.number,
