@@ -50,8 +50,10 @@ def _parameters(function, start, end, extent, *, trace_actors=True):
     """Pack only this exact reflected Trace parameter cohort, not guessed ABI."""
     fields = function['fields']
     observed_header = (function['native_index'], function['parms_size'], function['return_offset'],
-                       function['function_flags'], function['entry_rva'])
-    expected_header = (277, 116, 108, 23578, '0xcdacc')
+                       function['function_flags_offset'], function['function_flags'], function['entry_rva'])
+    # The saved retail header has 0x424401 at 0xf4. An older reader used 0xfc
+    # and reported 0x5c1a from a different field as FunctionFlags.
+    expected_header = (277, 116, 108, 0xf4, 0x424401, '0xcdacc')
     if observed_header != expected_header:
         raise RuntimeError('Current Actor.Trace function header differs from certified cohort: '
                            f'observed={observed_header!r}; expected={expected_header!r}')
@@ -211,6 +213,8 @@ def capture(observer, dll_path, dll_sha256, start, end, *, extent=(0, 0, 0), tra
                 report.update(accepted=False, free_error=str(error), free_error_type=type(error).__name__)
         if q is not None:
             report['query_budget'] = dict(reads=q.reads, bytes=q.bytes)
+            if q.closing_rejection:
+                report['closing_rejection'] = copy.deepcopy(q.closing_rejection)
         if bridge is not None:
             try:
                 bridge.close()

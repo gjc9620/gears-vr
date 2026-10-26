@@ -306,5 +306,7 @@ def capture(observer, *, historical_blob=DEFAULT_BLOB, query_factory=CoverQuery)
         out.update(rejection=str(error), rejection_type=type(error).__name__)
     if q is not None:
         out['query_budget'] = dict(reads=q.reads, bytes=q.bytes, limits=dict(reads=16384, bytes=2 * 1024 * 1024, seconds=3))
+        if q.closing_rejection:
+            out['closing_rejection'] = q.closing_rejection
     out['finished_perf_counter_ns'] = time.perf_counter_ns()
     return out
