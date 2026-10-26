@@ -2,6 +2,12 @@
 
 本文件保留武器与掩体两个分支的开发历史，便于共用 Native 手部实现合流。各条记录仍以其原始验证范围为准；私有候选、只读采样或离线检查不代表完整功能、默认构建更新或头显验收。
 
+## 2026-10-26 — Body诊断派生局续更通过，原ES失败未复现；首拒诊断覆盖未证
+
+Body在其worktree从ES私有派生`analysis/body-goal-first-reject-runtime-20261026a`，使用其只读Goal first-reject候选Native `efdf83825f28a7a23b8a30d01338aa55aa9cbafefb7d17986bf492cc46f47462`，原动作与Stop恢复门运行一次。Root仅读其ready／runtime-review／runtime-final三保存回执及精确PID／Native，未重复其构建／测试或启动Game。Game59052／Native2854251650177，Stop4→5、quiescent、coordinator complete/errors0，基线后Native commits302→332、hands75→105、Goal plans349→379，held MainMount56不变、Goal rejected86不变；observed stream/reference/head均保持1。原106／full chunks／Native、entry、PG、XR0／十文件／audio／准确PID恢复通过。
+
+诊断`body_goal_first_state`前后均0，且本轮Stop后没有新的Goal拒绝，不能据此证实首拒触发已正确覆盖。Body提出“cookie1→0与absent_quiescent隔帧使同帧epoch触发漏记”的源码推测，尚待其定向验证，Root不把它作为已证原因。此局是一次续更通过与原ES失败未复现，不是修复证明：ES在observed代数2后的Goal规划前持续拒绝仍开着，不能用新局覆盖它，也不跨进程硬配累计值。Root接收回执ignored `analysis/lancer-component-readback-20261026/goal-first1-received.json`记录三原件hash与范围；Body已交窗口给FPS，Root无Game／测试／编译／IDA或共享Native更改，没有默认合流或进度加分。
+
 ## 2026-10-26 — 仅复用 ER／ES 保存记录，Stop 续更差异缩到 Goal 规划前条件
 
 按统筹19点有界交付，仅比较实际ER PID23040／Native2694171951921与ES PID31188／Native2701965669072，各自独立时间线和增量，不按行号／累计计数跨局硬配。两局Stop均4→5且quiescent基线cookie0／revision4／callbacks、transactions、pin0／admission与fault0。差异为ES此时内部observed stream/reference/head/hand代数由先前1变为2，ER实际续更通过窗口仍1；Native reference epoch2／flags1／failed0相同。ES后12条观察中ticks／Native captures／Goal attempts均+78、Goal rejects+78，但plans／MainMount查询／hands attempts与commits全0；ER通过窗口上述规划／查询／hands提交均+34，held提交0。`body_goal_view_held` ES+78是旧缓存视图使用计数，不能误称握枪。
