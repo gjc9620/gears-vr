@@ -2,6 +2,16 @@
 
 本文件保留武器与掩体两个分支的开发历史，便于共用 Native 手部实现合流。各条记录仍以其原始验证范围为准；私有候选、只读采样或离线检查不代表完整功能、默认构建更新或头显验收。
 
+## 2026-10-27 — hb第一轮RGrip首断点：输入旧sync门拒绝后重建baseline，尚未生成装备intent
+
+完成统筹追加的窄任务，仅用hb命令／输入／装备回执及实际PG7e927e17…61aa冻结源码；核实际私有PG bytes与build receipt的Input／Runtime／backend／router四源码hash。Game73444／Native3029853403801，Body producer-timeline原件SHA `eaca4af6e22410167b9565b11a1f5ea7ef95473943a225e23bd3d2c3bffdef8c`复用，不重复XR来源／窗口调查。position／press／release的source/session/space/profile/input不变，producer pressed0→1→1、released0→0→1、lastpress2969；按下已在producer观察到。
+
+只查看已知press附近267–278帧装备标签（上限48KiB），实际frame273／source2972进入`Input::next`的`previous_sync_stale`分支：实际观察302993948340200、previous sync302993840423700、current sync302993895962000；旧sync age107.9165ms触发原100ms门，当前sync age52.3782ms、相邻sync差55.5383ms，不能宣称XR sync间隔大于100ms。同期Outcome为baseline_waiting／source_gap／event0，frame274为baseline／event0。冻结Input:154在new_press／router／event生成前return，reject重置router／bound／cursorMAX；Runtime:324随后input_boundary。故已证首断点是消费者已进入、在intent生成前被时间门拒绝并重建baseline，不是消费者未运行或生成intent后被装备动作门拒绝。inventory_stage=ok只证明metadata步骤，不替代后续tap／switch。
+
+当帧原始press_counter／last_press_sequence虽已复制到Evidence但未打印，前一基线counter／source sequence和后一基线consumed counter也缺；Outcome.press=0不是raw counter。因此机制与该按下被baseline吸收相容，尚未把特定边沿逐字段闭合。frame.now→input observed41.5446ms也只是一对原时标差，不是某函数／CPU／GPU已定位耗时；early-held／late-unheld next路径未逐帧记录。禁止用新2975替换保存2972或改写时钟让旧门通过。最小缺证点已交Body关联现有生产／消费边界，只需既有有界log保留owned counter／sequence、baseline消费值和采样路径；本任务没有实现该改动、重放输入或放宽门。
+
+机器回执ignored `analysis/lancer-component-readback-20261026/hb-input-first-break-saved.json`，解释与源行号在`HB-INPUT-FIRST-BREAK.md`，生成入口`analyze_hb_input_first_break.py`。没有Game／测试／编译／IDA／助手或共享Native、武器源码更改；交接停在这个首断点。原hb装备结果超时／episodes0、真实journal仅空头、原ES及持枪40／6门问题仍开放；没有修复或玩法进度加分。
+
 ## 2026-10-27 — 独立交付held journal离线decoder；hb真实空头正确判无持枪条目
 
 按统筹分工，Root仅在ignored `analysis/lancer-component-readback-20261026/`完成`decode_held_outcomes.py`／合成fixture／最小检查和交付说明。先查Body held候选／runtime／相关saved-analysis，只有生产原始导出和Host布局证据，无BHELD001 decoder；旧reader.exe为controller bridge格式，未混用。读取合同精确pin `held_outcome_journal.h` SHA `a18b7a947b876260adbf3f6b61de6bb5f5bf7b4c0847014479c9bbefb2bd5be1`，复用Body原Host20／0的Record520／Header120，不重建Native／XR／PG。
