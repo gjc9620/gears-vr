@@ -1526,3 +1526,6 @@ HO后续Body既有记录明确：90attempt／90query前not_ready、query0，fall
 
 
 2026-10-27 针对HS新增pair门48次0接受（47跨组件发现body推进/1closing拒绝），完成单文件只读pair动态窗口候选4b473368…a8ca5／manifest e78e71f3…ab013。完整typed/身份/附件/Ref发现+预关闭在前，第二次未改原coherent probe取fresh body，短window内gun raw重复、AvatarCTW+未改115骨骼_close_pose闭合，完整static/selector/identity/ref/registry后关闭移到window外；动态值不再跨慢关闭pin，成功返回fresh保存cohort，失败原样fallback，明确window时点及sameC0/render未证。22 CPU方法分20/.159s+2/.014s通过，一次窄Sol审无P1/P2并补窗口后body推进fixture；原provider/字节/epoch/typed guards不放宽。只改Python模块和必要fixture，Native851d/PG/XR/held-RWENT消费者冻结，无Game/构建/collector或HS原件修改。已交Body下一唯一后继实跑，CPU结果不称运行修复或增加功能分。
+
+
+2026-10-27 HT完成Lancer全动作／Stop续更／106正常恢复，武器侧仅消费本局已存3JSON。Game23504／Native3385921311899，分析dcbd1f5e…3a83c。新pair4b473实际取得48/62有效配对，动态窗中位6.54125ms（外层87.7139ms）；按完全包含phase计shoulder12/ready3/translation6/+10 3/−10 3/return5，未混门完成时4。48份附件/weapon/component/asset/relative参数与AvatarCTW保持，但同marker读回仍跳：obs4→5右腕31.461657u/34.28°；首直接gun/bone52关系大偏差obs14 epoch1336 gap31.002087u/34.402633°，另obs21 epoch1378 gap16.645682u/33.995248°。不筛样本，ready/+10/return两组姿态交替，6cm尚无干净响应证据，−10三份单独稳定不扩全程；左输入未改、无support grip，不强求跟右平移。已交Body两个精确epoch作既存证据关联，缺链保持未知，不命名写者/渲染原因。截图五freshness门超时、仅最后retained BMP待单独像素检查；typed配对非sameC0/非firing/非GPU/头显接受。无新wire/旧案解码、源审、collector、构建或Game，稳定跟随仍未通过，百分比由统筹按证据处理。

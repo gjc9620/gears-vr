@@ -63,3 +63,27 @@ EP已经通过原40／6秒持枪门及right-ready、小幅平移＋10°转枪的
 定向验证：采样预算47个断言通过（静止Frame推进、q符号、微小抖动、纯旋转、24／8硬上限、换reference／input epoch及非法pose）；实际typed矩阵reader的8个owned metadata案例覆盖正常读取、错误尺寸／属性类型／struct类型、不可读、NaN和读取中descriptor／矩阵变化。实际PG完整TU加唯一新probe flag严格`/Zs /W4 /WX`通过；本轮没有重复未改的Body／Client／source tests。准确最终回执在ignored `analysis/lancer-component-readback-20261026/`；完整PG构建和实际原动作结果应另行追加。
 
 后继交付：源码`28babdd`已完整编译／链接为PG `38d897b4ff4f355b958874235327a1851a9acb5fc9c7bfa05be91774d3a68912`，783源与vendor稳定，实际生产只增加上述只读probe flag。EQ以原EP动作封存交Body，pins `2e8591fa29b289d62d572cdcdf7c5a3c4957b61e18dff0e00bc98951947986ac`。Native47／BQ／CY／INI、原40／6秒门和106保护均不变；Root未启动Game。现阶段仍等待实际读回，不能因组件采样已交付就把枪体／枪口／视觉／射击标作通过。
+
+
+## HT连续跟随：有效配对恢复，但稳定跟随未证（2026-10-27）
+
+HT复用Native851d／PG5fdc／XR1a059及新的单文件pair4b473，完成原取枪／shoulder／ready、6cm纯平移、同位置+10／−10度和return-ready；原协议／Stop后身体续更／106清理均通过。Root本轮只消费三份已存JSON，不重解wire／HP／HR，不改源／构建或开Game。handoff SHA256 `1802adeaa6ba7f18efda224bc3f0b54a3c5f5779aa3e255996c75700d481b4dc`，observations `e6133c067807eeafc6d6286be2f85fe2c48b022215fd82fbcfb43f945d9e52d9`、runtime-review `b1d1316b0ea0b563956755320315fb34d478f528ba92f5ab4adb15ade10bfb5e`、summary `4775c65ef5646a8a85c6e4d077dbcea15ce7b0af45f0649265e72126d932e8eb`均核验；Game23504／creation134375525739801428／Native3385921311899。独立结果为ignored `analysis/lancer-continuous-follow-20261027/ht-continuous-follow-review.json` SHA256 `dcbd1f5eaae3295dd8c2382c40a3a93e297a8844c7f468cbaefbc224e483a83c`，保留全部accepted矩阵与各阶段所有pairwise范围。
+
+62次观察中48份pair通过、14拒绝（11 Pose-close／3metadata）。动态窗口5.4491..10.2156ms，中位6.54125ms；外层观察中位87.7139ms，二者不混成骨骼冻结要求。按完整动态窗口包含原phase归属，accepted计shoulder12／ready3／translation6／+10为3／−10为3／return5；return门完成时4与最终JSON的5口径分开。其余accepted在phase间隙等处，未塞进动作阶段。
+
+所有48份weapon／component／asset完整身份、unique attachment字节／BoneName／relative transform／absolute flags、Avatar CTW均保持，相对矩阵以原gun×inverse(bone52 world)重算一致。第一组显著同marker／同Avatar读回跳变是obs4／epoch1279→obs5／1284，右腕31.461657游戏单位／34.2787度，左腕25.299966单位；marker固定不补足未序列化的全部Native target／basis或逐帧writer资格。第一处直接gun CTW／bone52关系大偏差为obs14／epoch1336／shoulder：平移gap31.002087单位，相对首accepted关系角差34.402633度；obs21／epoch1378／ready另有gap16.645682单位／33.995248度。这里>1单位只作数量级显著差异的诊断筛选，不是游戏验收误差阈值；全部样本数值原样保留。
+
+| phase内全部accepted | 数量 | 右腕最大pairwise位置差（游戏单位） | 右腕最大pairwise旋转差（度） |
+|---|---:|---:|---:|
+| shoulder | 12 | 31.46179 | 34.46259 |
+| ready | 3 | 16.90201 | 33.41225 |
+| 纯6cm平移 | 6 | 1.72447 | 4.22281 |
+| +10度 | 3 | 15.50978 | 24.24197 |
+| −10度 | 3 | 0.0000754 | 0.0000325 |
+| 回ready | 5 | 16.48890 | 34.63610 |
+
+ready／+10／return片段仍有两组姿态交替，不能筛掉不合预期样本后称稳定。平移六点都处于另一组腕高度，未获得干净6cm控制响应证明；现有JSON缺同entry完整目标／units／basis，不编造应有UE位移。实际+10和−10命令使用同位置；全部cross-sample右腕角差约20..43.40335度，不能只选约20度的两点宣布连续旋转通过。右腕可能因作者grip-to-wrist偏移在纯手柄旋转时产生位置变化，不错误要求腕位置恒定。左手实际输入和squeeze0未改，没有请求support grip，不要求左腕随右手平移；其若干片段大幅变化仍如实记录，未冒称双手绑定成立。
+
+这些是typed前后闭合和短动态窗口内的外部重复读一致性，不证明同一C0、逐pair成功Native提交、最终枪缓存更新阶段或GPU已画出。因此显著关系差异不直接命名detach／solver／animation／具体写者／并发排除。下一准确关联点已交Body：在现有HT证据中按PID／Native／mesh／实际epoch1336和1378寻找已存姿态与枪CTW更新边界，缺exact来源链则保持UNKNOWN，不用邻epoch填补。
+
+五个phase截图post-request freshness门均超时；虽最后BMP／status保留captureFrame6318／request6319，只有最后return-ready retained图可单独检查，不能当全部phase视觉通过。原动作到达／协议／恢复清理与稳定跟随、权威瞄准／射击、物理／GPU／头显／默认合流分别保留。
