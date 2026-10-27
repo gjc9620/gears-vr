@@ -27,3 +27,14 @@ computed_wrist是已映射的UE game-world pose，原游戏单位、+X前／+Y�
 消费先报告同表示Local是否逐bits一致，以及世界位置／角度误差；若引用原`.002`游戏单位／`1e-4`弧度政策，必须确认producer使用该政策，否则只报数值。目标变化可能来自上游输入或basis，不直接叫solver错误；提交未执行、原返回或读取缺证则边界未知。只有准确同案mesh／实际epoch／end来源链才能和后继PG关联，不能用近邻或区间包含推断。
 
 可复用入口是已有hand/BMS字段及其严格reader、`weapon_component_observation.py::mul/inverse_affine`、`weapon_lancer_muzzle_pose.h::location`和Body纯数学例程。旧BMS reader只读其原格式，PG saved-case分析也不能冒充新Native ABI。Body冻结新magic／version／Header／Record／offsets／valid位／enum／clock及Host布局后，武器会话只做所需解析与窄fixture，不重做旧v3解码、Game或Native构建。
+
+
+## RWENT001 最小消费者交付（2026-10-27）
+
+Body最终source3合同已冻结为 `27493ce7a286cb69ef87dcd1bfec354e59043fcfe913370e7e4f385c051e3520`，Header128／Record2024／Key240／Stage328、容量64。武器会话的纯文件解析器保存在 ignored `analysis/lancer-ready-same-entry-20261027/read_ready_wrist_v1.py`，SHA256 `821d0167bc054ec7ca4169b2fbfbd376f7c6bff464fe92f714d3b3b81bd8ddea`；交付回执 `consumer-delivery-v1.json` SHA256 `26a8c3aa6bee317ceee243aa791687380a0c78d5444b465055869a8e4ed92940`。调用为 `python read_ready_wrist_v1.py INPUT.bin NEW_OUTPUT.json`；输出CREATE_NEW语义，不覆盖旧结果。输入合同及原始header／compiler-layout文件必须通过精确哈希。
+
+消费者逐组应用valid位，未尝试／失败阶段保留状态但不解释partial数组，拒绝坏magic／版本／大小／截断／尾随数据、未知enum与矛盾旗标。保留选择窗口内失败调用、不同mount／prepare／commit和缺少target的记录。Local依35／51／52顺序比较before→planned→commit→consumer_pre→returned_end的逐bit差异、位置／旋转／scale数值；q与−q等价。returned_end独有Space35／52，用row-vector的Space×CTW计算world，再与已为UE世界单位的目标比较，不重复乘units_per_metre。跨阶段epoch允许前进。
+
+相邻entry只在原始head／right／reference、实际base、component、units、mount可用且cohort匹配时报告target数值变化，并同时报告已记录映射输入是否完全相同；不以rawRight相同推出目标必须相同，也不输出自动因果结论。raw XR位移误差单位为米，world／target位移为游戏单位。源ns保留原值，Stage QPC仅用Header频率计算读取时长。没有套用未经确认的误差通过阈值，没有新增gun／Muzzle或借用旧PG数据。合同文字有“six contiguous double scalars”笔误；实际源码五个double及编译器offset552..584一致，解析按准确布局。
+
+必要验证：独立ctypes定义的Header／Key／Record／Stage每个字段与冻结的编译器布局比较；12项方法全部通过（0.020秒），覆盖有效位／UNKNOWN／失败partial、阶段变化、q符号、世界矩阵与旋转、跨entry映射缺失／cohort改变、空记录／64条溢出和坏输入。CLI合成解析exit0，已存在输出及截断输入exit2且截断不生成输出。未重跑旧suite，未改建Native／PG／XR或启动Game。已交给Body以准确67b513候选运行唯一K案例；实际K解析和定位结果仍待该局完成，以上不是跟手修复或玩法／GPU／真机验收。
