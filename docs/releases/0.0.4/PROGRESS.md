@@ -1529,3 +1529,6 @@ HO后续Body既有记录明确：90attempt／90query前not_ready、query0，fall
 
 
 2026-10-27 HT完成Lancer全动作／Stop续更／106正常恢复，武器侧仅消费本局已存3JSON。Game23504／Native3385921311899，分析dcbd1f5e…3a83c。新pair4b473实际取得48/62有效配对，动态窗中位6.54125ms（外层87.7139ms）；按完全包含phase计shoulder12/ready3/translation6/+10 3/−10 3/return5，未混门完成时4。48份附件/weapon/component/asset/relative参数与AvatarCTW保持，但同marker读回仍跳：obs4→5右腕31.461657u/34.28°；首直接gun/bone52关系大偏差obs14 epoch1336 gap31.002087u/34.402633°，另obs21 epoch1378 gap16.645682u/33.995248°。不筛样本，ready/+10/return两组姿态交替，6cm尚无干净响应证据，−10三份单独稳定不扩全程；左输入未改、无support grip，不强求跟右平移。已交Body两个精确epoch作既存证据关联，缺链保持未知，不命名写者/渲染原因。截图五freshness门超时、仅最后retained BMP待单独像素检查；typed配对非sameC0/非firing/非GPU/头显接受。无新wire/旧案解码、源审、collector、构建或Game，稳定跟随仍未通过，百分比由统筹按证据处理。
+
+
+2026-10-27 HT两个异常点现存RWENT004一次消费完成（原件4fe331a8…1b5ab／parsed f6fb4b18…a781d／focus review77aadd63…b9f1a）。obs14 epoch1336不覆盖，保持UNKNOWN。obs21 epoch1378 exact同mesh保存seq16/T41489/C41490，valid127 commit1，pre/commit窗前、4weight/raw/end读取位于pair窗口内，epoch/CTW一致；planned→commit→pre→右腕weight→raw→end Local35/51/52逐bit保持，raw/end world35/52与外部body世界矩阵精确同。4实际alpha最终0，原sample/cache0/实际常量齐也不作两个store归因。这条排除已观察selected Local在这些边界被改回的说法，外部gunCTW关系差异未解释；wire无gun更新时点及全Ref/Local/Space SHA，不作完整hash或sameC0/render/写者结论。64saved/65selected/drop1保持，无其它wire/PG-Muzzle/age/源码/建/Game或collector。已交Body/统筹，稳定跟随未通过。

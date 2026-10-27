@@ -87,3 +87,16 @@ ready／+10／return片段仍有两组姿态交替，不能筛掉不合预期样
 这些是typed前后闭合和短动态窗口内的外部重复读一致性，不证明同一C0、逐pair成功Native提交、最终枪缓存更新阶段或GPU已画出。因此显著关系差异不直接命名detach／solver／animation／具体写者／并发排除。下一准确关联点已交Body：在现有HT证据中按PID／Native／mesh／实际epoch1336和1378寻找已存姿态与枪CTW更新边界，缺exact来源链则保持UNKNOWN，不用邻epoch填补。
 
 五个phase截图post-request freshness门均超时；虽最后BMP／status保留captureFrame6318／request6319，只有最后return-ready retained图可单独检查，不能当全部phase视觉通过。原动作到达／协议／恢复清理与稳定跟随、权威瞄准／射击、物理／GPU／头显／默认合流分别保留。
+
+
+## HT两个异常点的现存Native边界关联（2026-10-27）
+
+按Body具体后继，只用冻结RWENT004 reader3d9ce0cb对新HT原件 `4fe331a8ec3c792fe07a54128babe5271fc74271d16878a7ea08bc69ad51b5ab`／1050752B解析一次。ignored `analysis/lancer-ready-same-entry-20261027/ht-ready-wrist-parsed-v4.json` SHA256 `f6fb4b1863121ea04ac2e1a9de690a3cf2cb721d1a5c852a4b6be3d4b38a781d`；只从该输出与原三JSON整理 `ht-exact-pose-boundary-review-v4.json` SHA256 `77aadd63f789c919d7b933d3f61fa143eef998476e3a69e7a0b49eaffa2b9f1a`，没有重解其他wire／旧案。Header64saved／65selected／drop1，Game23504／Native3385921311899，记录的实际capture epochs1364..1563。
+
+obs14／epoch1336没有exact mesh+epoch的capture／阶段／weight命中，发生在此ready观察实际记录之前；保持UNKNOWN，不借相邻epoch或旧HN。obs21／epoch1378则有唯一已保存同mesh记录seq16／Tick41489／Compose41490／thread37380／entry14674320／cookie1，Game creation134375525739801428，mesh16061517328。valid127、prepare0／commit1／finish4、original_called／returned1且normal scope。所有已提供stage和4weight snapshot均status1／epoch1378，CTW与外部focus逐值一致。
+
+用原Header10MHz将读取QPC按同案Windows perf-counter时间域作比例关联：commit／pre在pair window之前；4weight、raw-return338603324207200..338603324247200和end338603324387300..338603324426000均位于外部pair window338603320410500..338603326493300内。它们只是读取时段，不制造失败branch／写入时刻，不能把整个Native entry说成被窗口包含。
+
+planned→commit→pre→两个角色合格的end35 weight→raw→end的Local35／51／52逐bit相同；仅before→planned的Local35有意发生规划变化。Native raw／end world35与world52列表与外部paired body相应世界矩阵精确相等（比较已有输出，没有另做矩阵重算），末腕到target误差1.92025e−5游戏单位／5.99715e−7弧度，仅报告数值。4个实际最终packet alpha均+0；两个end35角色各有原sample4/reason0、前后cacheflag0、当前constants mask3，仍不给零alpha做full/fractional写入归因。
+
+这条没有观测到成功提交后selected Local被覆盖，外部gun CTW／bone52差异仍存在。wire没有gun CTW／attachment更新时点，不能从body边界一致推具体枪缓存／渲染原因；也未存完整Pawn身份、Ref115 SHA或全115 Local／Space SHA，不能将外部三SHA冒充完整Native join。只关联实际保存的PID／Native／mesh／epoch／CTW／选定world及读取区间，sameC0／原子性／GPU仍未证。64有限窗口和drop保持，不新增采集器／源码审查／改动／构建／Game或扩BHELD／PG-Muzzle／age。
