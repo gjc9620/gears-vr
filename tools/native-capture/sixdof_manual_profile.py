@@ -1,6 +1,8 @@
 """Explicit owner-started first-person/free-hands profile. No test runner."""
 
-CAPTURE = ('first_person_preview=1\nfirst_person_initial_requested=1\n'
+# first_person_preview is emitted once by start_capture.hud_size_ini, including
+# the manual profile's required True value. Keep only body-specific keys here.
+CAPTURE = ('first_person_initial_requested=1\n'
            'first_person_body_basis=1\nfirst_person_near_clip_mm=120\nsixdof_unified=1\n')
 
 SECTIONS = '''

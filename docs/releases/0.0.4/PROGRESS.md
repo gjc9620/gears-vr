@@ -2193,3 +2193,12 @@ Root修正anonymous namespace include造成的ABI forward遮蔽与局部original
 唯一生产源码差分playground.cpp：HAND_ANIMATION_CALL_PROBE下的test_environment门仅对明确UNIFIED_MANUAL_PROFILE=1且使用Native WEAPON_CALL_SUBSCRIBER的手动档不要求测试环境；旧实验门、EXE/进程/64字节入口/注册/生命周期等保护保留。顺查Reserve/Initialize/Enable/WeaponHandStart/VrFireEnable相邻手动链；R2已有手动档分支，其余未启用实验/诊断入口仍保留原门。没有向正常启动器注入静音或置后变量。
 
 仅编译受影响GearsPlayground目标，最终exit0；新PG 4f8a5dfaab0d191d45f2867fb084a6f414172933d43d1f1487844a14620b1036。Native458cdf…ba36b、XR6db1b9…3d727复用未改产物，未运行任何Game/XR/Simulator/test/selftest/replay/preflight。候选6dof-unified-20261028-3保留用户全部config与旧包/日志，固定入口继续6dof-unified。源码拒绝条件已修正，下一次真实启动及玩法仍待用户确认；既有HUD/左手unknown/socket轴限制不变。详见docs/6dof-unified-startup34-fix-20261028.md。
+
+
+### 2026-10-28：用户v3会话退出——重复Capture键的Python修正
+
+v3真实手动记录continuous-stereo-60532-20261028-021200-e9bfcdb8顶层error为Capture.first_person_preview重复，实际UTF16 INI第22/55行各一次。Native已激活、PG读到level_player、XR随后正常停机、Native cleanup_verified=true；旧34已越过，但不据此声称画面/头显通过或断言原生crash。修改前完整v3/logs/config/失败INI保存到ignored analysis/6dof-unified-duplicate-ini-20261028/。
+
+只修两处Python生成方：hud_size_ini唯一写first_person_preview，手动档明确True；sixdof_manual_profile.CAPTURE移除该共享键，仅留四个身体专属键。未改strict ConfigParser，未跳过world_rebind。实际INI顺查无其他重复键/节，AST读取常量确认profile键/节唯一；没有执行生成器/测试用例。v4身份与manifest/metadata/inventory同步，三个Native458cdf…ba36b/XR6db1b9…3d727/PG4f8a5d…b1036原样复用，无重编译及Game/XR/Sim/test/selftest/replay/preflight运行。
+
+当前Steam路径、全部用户config/路径历史/FOV65逐字节保留，旧包和日志保留；发布不停止用户进程。候选6dof-unified-20261028-4仍为源码/打包修复，下一次用户启动与原四步真机表现pending。详见docs/6dof-unified-duplicate-ini-fix-20261028.md。

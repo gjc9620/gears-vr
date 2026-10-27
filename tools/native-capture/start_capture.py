@@ -333,6 +333,7 @@ def hud_size_ini(args):
     from camera_closer_options import camera_closer_metres
     preview=getattr(args,'first_person_preview',False)
     if type(preview) is not bool:raise ValueError('First person preview must be boolean')
+    if getattr(args,'sixdof_manual',False):preview=True
     if preview and not all(getattr(args,key,False) for key in ('anchor_observer','cinematic_camera','crosshair_assignment_observer','continuous_session','stereo_xr')):
         raise ValueError('First person preview requires continuous stereo and certified gameplay/weapon observers')
     result='first_person_preview=1\n' if preview else ''
