@@ -52,6 +52,16 @@ PATH_CLOSE_CHUNKS = ((0x346574, 62),)
 PATH_CLOSE_SHA256 = 'b8c82a830ef05c50a88489351c469e591b65a154310a2fefec91e57f66fb7b3a'
 PATH_CLOSE_EXEC_CHUNKS = ((0x34698c, 128), (0x90dbe6, 32))
 PATH_CLOSE_EXEC_SHA256 = '1f03d742fcd859a664004bb62ff35c327d80b1364b235701e64184eee53e55c1'
+FIRST_PERSON_HEAD_RANGES = {
+    0xdfb50: (
+        (0xdfb50, 1485, '77aa1db06718230a1f0bc4492392753f48434e670f630da77a2062c472712ad3'),
+        (0x89cb4e, 725, '388d5977468b288faf972ce6ee739cec0503038e64990be169e874b41624d2a2'),
+    ),
+    0x19f860: (
+        (0x19f860, 853, 'af52790ec6457aeaa1c1bb6436d4cf95b57c0bbe8f4be836d2875f7666ab8ee4'),
+        (0x8bf246, 487, 'b4de6a4af4951fb85df14ac0bb21a577b8f4a9a274bcceb104cb64e8f2e9733d'),
+    ),
+}
 
 
 def check_runtime_ranges(read, base, target, ranges, source):
@@ -97,8 +107,9 @@ def hook_targets(status):
     # capture.cpp: largest base 60 + owned UI 4 + optional hook slots 38.
     # This is only an inventory bound; every entry still requires independent
     # byte verification below. The combined owned/NGX candidate installs 91
-    # unique entries; mutually exclusive options make 102 a capacity bound.
-    if not 2 <= len(targets) <= 102 or len(set(targets)) != len(targets):
+    # unique entries; the two optional local-head skin hooks raise the
+    # mutually exclusive combined capacity bound to 104.
+    if not 2 <= len(targets) <= 104 or len(set(targets)) != len(targets):
         raise RuntimeError('Unexpected hook target inventory')
     return targets
 
@@ -426,6 +437,10 @@ def main():
                 checks.append(dict(target=hex(target), source='artifact 1 runtime snapshot full known chunks',
                                    bytes_checked=len(current), expected_sha256=expected_hash,
                                    actual_sha256=current_hash, matches=current_hash == expected_hash))
+                continue
+            if rva in FIRST_PERSON_HEAD_RANGES:
+                checks.extend(check_runtime_ranges(resolver.read, resolver.base, target,
+                    FIRST_PERSON_HEAD_RANGES[rva], 'certified first-person head skin full chunks'))
                 continue
             if rva in camera:
                 expected = camera[rva]
