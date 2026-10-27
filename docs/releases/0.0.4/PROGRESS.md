@@ -2202,3 +2202,7 @@ v3真实手动记录continuous-stereo-60532-20261028-021200-e9bfcdb8顶层error�
 只修两处Python生成方：hud_size_ini唯一写first_person_preview，手动档明确True；sixdof_manual_profile.CAPTURE移除该共享键，仅留四个身体专属键。未改strict ConfigParser，未跳过world_rebind。实际INI顺查无其他重复键/节，AST读取常量确认profile键/节唯一；没有执行生成器/测试用例。v4身份与manifest/metadata/inventory同步，三个Native458cdf…ba36b/XR6db1b9…3d727/PG4f8a5d…b1036原样复用，无重编译及Game/XR/Sim/test/selftest/replay/preflight运行。
 
 当前Steam路径、全部用户config/路径历史/FOV65逐字节保留，旧包和日志保留；发布不停止用户进程。候选6dof-unified-20261028-4仍为源码/打包修复，下一次用户启动与原四步真机表现pending。详见docs/6dof-unified-duplicate-ini-fix-20261028.md。
+
+### Unified candidate v5 (2026-10-28)
+
+Owner v4 reached Native/PG/player readiness then exited on HandStart busy (3). The Python session now retires both off-state and partial starts through the existing exact-cookie Stop/quiescence path before bounded reconnect (16 busy attempts, 5-second drain deadline). Exhausted clean retries disable equipment activation for this session while first-person/free hands continue; actual identity/ABI/cookie/cleanup errors remain explicit. Failed starts participate in final cleanup. Existing Native/XR/PG binaries and user configuration are preserved. Source/packaging inspection only; no automated runtime/tests; owner acceptance pending.

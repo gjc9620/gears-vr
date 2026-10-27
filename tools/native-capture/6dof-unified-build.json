@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "candidate_id": "6dof-unified-20261028-4",
+  "candidate_id": "6dof-unified-20261028-5",
   "source_branch": "codex/6dof-unified",
   "merge_commit": "9a41f92",
   "native": {
@@ -134,6 +134,7 @@
   "manifest": "tools/vr-launcher/manifest-6dof-unified.json",
   "fixed_entry": "J:/gearsVr/candidates/6dof-unified/GearsVR Launcher.exe",
   "unified_fire_ready": true,
-  "source_parent": "183cb10",
-  "binary_changes": "none; reuse exact v3 Native/XR/Playground"
+  "source_parent": "09ba9c4641e79b656dc97018f0f2b2b6cd96d1ae",
+  "binary_changes": "none; exact v4 binaries reused",
+  "python_change": "busy start drains same registration before bounded reconnect; partial start cleanup retained"
 }
