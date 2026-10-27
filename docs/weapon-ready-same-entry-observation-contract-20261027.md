@@ -81,3 +81,14 @@ HM边界补充（Body源码位置核对）：returned_end snapshot位于本次Ke
 
 
 Body已封存并接收hash核验的源码边界证据：HM `successful-path-source-boundary-audit.json` SHA256 `52c7d98fcdf64fcd9c7e35411d5d1f900b8ab41134dffd4bc09d93124906d668`；五个实际commit return与BHELD准确关联汇总 `actual-commit-source-return-summary.json` SHA256 `729741b4bca865e73e6b39147ccbc762b1bfa9e0fbada361f256b50436e52e41`。Root只接收引用，回执为ignored同目录 `hm-body-boundary-audit-received.json` SHA256 `6f83b3f6ab2c5573328fe5b317afe981ddd6bf9954abe2dae5a667141ff3aae1`；没有重复源码审计／解码／RE／Game。BHELD容量drop5与RWENT drop0属于不同collector，不互相覆盖。
+
+
+## RWENT003 原函数返回边界消费者（2026-10-27）
+
+Body为HM seq13成功后Local35首次变化区间追加唯一raw_return Stage：准确合同 `671b56da794fa3238e04af21abd120d91f799006370ea194874544ddc35c3c42`，RWENT003／version3／Header128／Record2368／cap64，原2040前缀保持，Stage328在offset2040且内部offset完全继承。采样在实际raw invoke正常返回之后、returned=true及所有finally/end callbacks之前；本边界与returned_end分别保留。
+
+Root新reader为ignored同目录 `read_ready_wrist_v3.py` SHA256 `235875fca7e1d47eb858e76225607068be69a9b466d6b9d5686ebfeeb4c42122`，交付 `consumer-delivery-v3.json` SHA256 `6fabad75c421d46b7f017a13a62707cbe097fe61295e463fb036078adbed558e`。复用冻结v2／v1及原Stage／矩阵逻辑，核准确合同、source header、compiler和parent hash；原文件version／SHA保留，前缀投影仅自有内存且显式标记。旧v1／v2结果原样返回、不补raw；原reader及K／HM parsed哈希复核未变，没有重解旧案。
+
+新增阶段独立status和Space规则：UNKNOWN不采样，failed partial不可信；已观察要求最终original_called／returned1。只在对应两端有效时比较pre→raw、raw→returned_end的Local35／51／52，附各自pose_epoch和component是否一致；并计算target→raw的world腕误差、raw→end的world35／52数值差。缺证独立null，不代用邻entry或从一个有效区间推另一区间。world仍Space×CTW、原游戏单位。快照描述读取区间，不能确定具体native指令、writer、写入瞬间或排除并发写者。
+
+7项必要增量方法全部通过（0.008秒），独立ctypes对新Record和Stage布局、分段变化、UNKNOWN／失败partial、未正常返回／身份矛盾、epoch／CTW上下文、旧格式兼容及坏格式；原数学套件未重跑。CLI新合成exit0，覆盖旧输出／截断拒绝2，v1／v2合成结果完全一致。已交Body和统筹，无Game／RE／PG-Muzzle分析或Native-XR构建；新候选实际验证仍待统一安排。

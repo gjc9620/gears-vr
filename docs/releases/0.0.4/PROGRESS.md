@@ -1496,3 +1496,6 @@ Native27从26c2的710文件最小派生718文件（5既有／8新增），82defi
 
 
 HM采样边界补充：Body核对returned_end早于THIS Kernel.finish，排除其后的finish／rollback解释该已采Local35变化；原调用返回至snapshot尚有wrapper收尾及Goal读取，暂不能归单一原函数内写者。仍只定位pre→returned_end区间，原parsed／review不改，不新增Game／RE。
+
+
+2026-10-27 完成RWENT003原函数刚返回边界的窄file-only消费者：reader235875fc…42122／回执6fabad75…d558e／合同671b56da…c3c42。H128／R2368，原2040前缀及Stage布局不改，只加raw_return328；分别比较pre→raw和raw→end，记录epoch／CTW资格及world误差，不推具体写者／写入瞬间。7项必要方法／0（0.008秒），CLI新合成与旧v1／v2兼容通过，覆盖／截断拒绝；旧数学套件复用、旧K／HM不重解或回填，原reader／parsed hash保持。已交Body／统筹，未开Game或Native-XR构建，准确新候选验证由统一窗口安排；定位准备不增加功能百分比。
