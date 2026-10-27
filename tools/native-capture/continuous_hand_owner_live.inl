@@ -301,7 +301,15 @@ void control_begin(Entry& e) noexcept {Call call;try{
     e.control_depth=true;e.depth=++slot.control_depth;
     if(e.depth!=1||slot.control_address){reject(Failure::nested);return;}
     slot.control_address=&e;e.selected=true;slot.control_valid=false;
-    if(slot.observer_source_expired){
+    // The body C0 owner has already planned both wrists from the final eye
+    // and committed the only joint pose. Its consumed exact lease, including
+    // hard tracking/reference/owner continuity, authenticates these downstream
+    // controls. The older third-person hypothetical planner must not revoke
+    // that owner merely because its unrelated target is unreachable.
+    const auto retained=full_body_c0_native_live::retained_control_current(slot.compose.scope,slot.tick);
+    if(retained!=gears_body_c0_arm_alpha::RetainedControl::not_applicable){
+        if(retained!=gears_body_c0_arm_alpha::RetainedControl::verified){reject(Failure::owner);return;}
+    }else if(slot.observer_source_expired){
         // The original age failure burned the old latch. Keep structural
         // begin/end plus the ORIGINAL before/after node/stack validators and
         // independently authenticate hard consumer boundaries;
@@ -356,7 +364,15 @@ void control_end(Entry const& e,bool returned) noexcept {Call call;
     try{if(owned){
         if(!returned)reject(Failure::exception);
         if(returned&&slot.control_valid&&!failed.load()&&!slot.hard_control_fault&&(!slot.sticky||slot.observer_source_expired)){auto& row=slot.row;row.returned=true;row.after_qpc=phase::qpc();row.failure=controls::after(slot.compose,row);
-            row.after_valid=row.failure==controls::Failure::okay;if(!row.after_valid)reject(Failure::control);else if(!slot.observer_source_expired)plan();}
+            row.after_valid=row.failure==controls::Failure::okay;if(!row.after_valid)reject(Failure::control);
+            else {
+                const auto retained=full_body_c0_native_live::retained_control_current(slot.compose.scope,slot.tick);
+                if(retained==gears_body_c0_arm_alpha::RetainedControl::denied)reject(Failure::owner);
+                else if(retained==gears_body_c0_arm_alpha::RetainedControl::not_applicable&&!slot.observer_source_expired)plan();
+                // Verified body consumers keep the original structural
+                // before/after observations but do not run a second target
+                // planner or acquire another source/write permission.
+            }}
     }}catch(...){failed=true;reject(Failure::exception);}
     if(owned){slot.control_address=nullptr;slot.control_valid=false;}--slot.control_depth;
 }

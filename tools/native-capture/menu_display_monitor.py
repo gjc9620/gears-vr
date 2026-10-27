@@ -237,6 +237,22 @@ def classify(sample):
     # grant input permission or gameplay/death-menu recovery permission.
     if type(blocked) is not int or blocked not in (0, 1):
         return UNKNOWN
+    # Playground removes its last modal scene entirely on Resume. There is
+    # then no UIScene from which to read LastPlayerIndex. An authenticated,
+    # consistently empty scene/focus stack is display-only gameplay context;
+    # the native producer and fresh stereo ticket still authorize projection.
+    # Do not turn a missing/partial reader result into the same permission.
+    empty_fields = {'client', 'active_scenes', 'focus_chain', 'top', 'focused_leaf', 'player_index', 'verified_reads'}
+    if (blocked == 0 and empty_fields <= sample.keys()
+            and isinstance(sample['client'], str)
+            and re.fullmatch(r'0x[0-9a-fA-F]{1,16}', sample['client']) is not None
+            and int(sample['client'], 16) != 0
+            and sample['active_scenes'] == [] and sample['focus_chain'] == []
+            and sample['top'] is None and sample['focused_leaf'] is None and sample['player_index'] is None
+            and type(sample['verified_reads']) is int and sample['verified_reads'] > 0
+            and sample.get('active_scenes_truncated', False) is False
+            and sample.get('focus_chain_truncated', False) is False):
+        return GAMEPLAY
     # MenuReader reports UIScene.LastPlayerIndex, not a LocalPlayer identity.
     # The persistent nonmodal scene also reports -1 during real gameplay.
     player = sample.get('player_index')
