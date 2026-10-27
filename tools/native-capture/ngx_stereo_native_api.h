@@ -1,5 +1,4 @@
 #pragma once
-#include "ngx_native_optimal_settings.h"
 #include "ngx_stereo_adapter.h"
 #include <stdexcept>
 #include <cmath>
@@ -23,6 +22,17 @@ using NativeReleaseDispatch=NativeResult(GEARS_NGX_NATIVE_CALL*)(uint64_t);
 using NativeOptimalQuery=NativeResult(GEARS_NGX_NATIVE_CALL*)(uint32_t,uint32_t,uint32_t,uint32_t,
     uint32_t*,uint32_t*,uint32_t*,uint32_t*,uint32_t*,uint32_t*,float*);
 #undef GEARS_NGX_NATIVE_CALL
+struct NativeOptimalSettings {
+    Extent output{},optimal{},maximum{},minimum{};uint32_t quality{};float sharpness{};
+    NativeResult result{dispatch_unavailable};bool called{};
+    bool supports(Extent input)const{
+        return called&&native_result_accepted(result)&&bounded(output)&&bounded(optimal)&&bounded(maximum)&&bounded(minimum)&&
+            std::isfinite(sharpness)&&minimum.width<=optimal.width&&minimum.height<=optimal.height&&
+            optimal.width<=maximum.width&&optimal.height<=maximum.height&&bounded(input)&&
+            input.width>=minimum.width&&input.height>=minimum.height&&input.width<=maximum.width&&input.height<=maximum.height&&
+            input.width<=output.width&&input.height<=output.height;
+    }
+};
 struct NativeDispatchFunctions {
     NativeCreateDispatch create{};NativeEvaluateDispatch evaluate{};NativeReleaseDispatch release{};
     // Host closes over the typed original CopyTextureRegion arguments at the
@@ -31,8 +41,6 @@ struct NativeDispatchFunctions {
     void* copy_context{};void (*copy)(void*,CopyPlan const&){};
     // Optional for a raw dispatcher backend; mandatory for a live ControlOwner.
     NativeOptimalQuery optimal{};
-    void* trace_context{};
-    void (*trace)(void*,char const*,uint64_t,uint64_t,NativeResult){};
     bool ready()const{return create&&evaluate&&release&&copy;}
 };
 class NativeDispatchBackend final:public AdapterBackend {
@@ -40,9 +48,6 @@ class NativeDispatchBackend final:public AdapterBackend {
     std::atomic<uint64_t> create_attempts_{};
 public:
     explicit NativeDispatchBackend(NativeDispatchFunctions functions):functions_(functions){}
-    void trace(char const* stage,uint64_t command,uint64_t value,NativeResult result=0){
-        if(functions_.trace)functions_.trace(functions_.trace_context,stage,command,value,result);
-    }
     NativeOptimalSettings optimal(Extent output,uint32_t quality){
         NativeOptimalSettings out;out.output=output;out.quality=quality;
         if(!functions_.optimal||!bounded(output))return out;
@@ -53,19 +58,13 @@ public:
     }
     NativeResult create(uint64_t command,uint32_t feature,uint64_t parameters,uint64_t* handle)override{
         if(functions_.create)++create_attempts_;
-        if(functions_.trace)functions_.trace(functions_.trace_context,"create_enter",command,feature,0);
-        const auto result=functions_.create?functions_.create(command,feature,parameters,handle):dispatch_unavailable;
-        if(functions_.trace)functions_.trace(functions_.trace_context,"create_leave",command,handle?*handle:0,result);return result;
+        return functions_.create?functions_.create(command,feature,parameters,handle):dispatch_unavailable;
     }
     NativeResult evaluate(uint64_t command,uint64_t handle,uint64_t parameters,uint64_t callback)override{
-        if(functions_.trace)functions_.trace(functions_.trace_context,"eval_enter",command,handle,0);
-        const auto result=functions_.evaluate?functions_.evaluate(command,handle,parameters,callback):dispatch_unavailable;
-        if(functions_.trace)functions_.trace(functions_.trace_context,"eval_leave",command,handle,result);return result;
+        return functions_.evaluate?functions_.evaluate(command,handle,parameters,callback):dispatch_unavailable;
     }
     NativeResult release(uint64_t handle)override{
-        trace("release_enter",0,handle);
-        const auto result=functions_.release?functions_.release(handle):dispatch_unavailable;
-        trace("release_return",0,handle,result);return result;
+        return functions_.release?functions_.release(handle):dispatch_unavailable;
     }
     void copy(CopyPlan const& plan)override{
         if(!functions_.copy)throw std::logic_error("NGX typed copy boundary unavailable");

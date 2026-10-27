@@ -178,6 +178,9 @@ bool derives(uintptr_t cls,const wchar_t* expected,uintptr_t reference,ClassPath
 bool same_path(ClassPath const& a,ClassPath const& b){if(a.count!=b.count)return false;
     for(unsigned i=0;i<a.count;++i)if(!same(a.ids[i],b.ids[i]))return false;return true;}
 bool context_ready(){const auto gt=game_thread.load();return recording.load()&&(!gt||gt==GetCurrentThreadId())&&metadata_current();}
+// Only the recording admission is omitted. The caller must still own its
+// registered World lease; actor/proof/metadata checks below remain identical.
+bool retained_context_ready(){const auto gt=game_thread.load();return (!gt||gt==GetCurrentThreadId())&&metadata_current();}
 struct Context {
     gears_anchor::PawnBinding possession{};Binding binding{};gears_anchor::Registry objects{},names{};
     std::array<ClassPath,4> paths{};uintptr_t instigator{};
@@ -224,11 +227,12 @@ bool same_context(Context const& a,Context const& b){auto const& x=a.binding;aut
 }
 bool proofs_current(bool weapon){return current(base_proof)&&(!weapon||current(instigator_proof));}
 // Existing certified fields only; no fabricated Receipt and no engine call.
-bool current_actor(Binding const& expected){
+bool current_actor_checked(Binding const& expected,bool retained,bool storage_only=false){
     try{
+        auto ready=[&](){return retained?retained_context_ready():context_ready();};
         std::unique_lock<std::mutex> lock(mutex,std::try_to_lock);
-        if(!lock.owns_lock()||!context_ready()||!expected.context_valid||!expected.weapon_known||
-           expected.world_generation!=committed_world_generation.load()||!proofs_current(expected.weapon.address!=0))return false;
+        if(!lock.owns_lock()||!ready()||!expected.context_valid||(!storage_only&&!expected.weapon_known)||
+            expected.world_generation!=committed_world_generation.load()||!proofs_current(!storage_only&&expected.weapon.address!=0))return false;
         auto check=[&](gears_anchor::PawnBinding& possession){
             gears_anchor::Identity pc{},pawn{},world{},mesh{},weapon{};uintptr_t pw{},cw{},m{},w{},instigator{};unsigned char sm{};
             if(!gears_anchor::capture_pawn_binding(metadata,safe_copy,possession)||possession.cinematic||possession.unpossessed||
@@ -236,17 +240,22 @@ bool current_actor(Binding const& expected){
                !identity(possession.controller,pc,true)||!same(pc,expected.controller)||
                !identity(possession.pawn.address,pawn,true)||!same(pawn,expected.pawn))return false;
             auto const& p=base_proof;
-            return field(pw,pawn.address,p.fields[0].offset)&&field(cw,pc.address,p.fields[1].offset)&&pw==cw&&pw==expected.world.address&&
+            const bool storage=field(pw,pawn.address,p.fields[0].offset)&&field(cw,pc.address,p.fields[1].offset)&&pw==cw&&pw==expected.world.address&&
                 identity(pw,world,true)&&same(world,expected.world)&&field(m,pawn.address,p.fields[3].offset)&&m==expected.mesh.address&&
-                identity(m,mesh,true)&&same(mesh,expected.mesh)&&field(w,pawn.address,p.fields[2].offset)&&w==expected.weapon.address&&
+                identity(m,mesh,true)&&same(mesh,expected.mesh);
+            if(storage_only)return storage; // existing overwritten storage; no new policy permission
+            return storage&&field(w,pawn.address,p.fields[2].offset)&&w==expected.weapon.address&&
                 (!w||(identity(w,weapon,true)&&same(weapon,expected.weapon)&&field(instigator,w,instigator_proof.fields[0].offset)&&instigator==pawn.address))&&
                 field(sm,pawn.address,p.fields[4].offset)&&sm==expected.special_move;
         };
         gears_anchor::PawnBinding a{},b{};
-        return check(a)&&check(b)&&gears_anchor::equal_binding(a,b)&&context_ready()&&proofs_current(expected.weapon.address!=0)&&
+        return check(a)&&check(b)&&gears_anchor::equal_binding(a,b)&&ready()&&proofs_current(!storage_only&&expected.weapon.address!=0)&&
             expected.world_generation==committed_world_generation.load();
     }catch(...){return false;}
 }
+bool current_actor(Binding const& expected){return current_actor_checked(expected,false);}
+bool current_actor_retained(Binding const& expected){return current_actor_checked(expected,true);}
+bool current_actor_storage(Binding const& expected){return current_actor_checked(expected,true,true);}
 bool sample(gears_anchor::Receipt const* scene,Binding& out){
     try{
         std::lock_guard<std::mutex> lock(mutex);stage="scene_admission";

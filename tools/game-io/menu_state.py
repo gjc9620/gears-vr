@@ -461,10 +461,22 @@ class MenuReader:
         result['docking'] = docking
         return result
 
+    def sample_display(self):
+        """Authenticate scene/focus ownership without acquiring optional dialog strings.
+
+        Display routing depends on the scene, not its translated or rebuilding
+        labels. Navigation keeps the default full semantic-text verification.
+        """
+        return self.sample(include_dialog_text=False)
+
     def sample(self, *, include_tree=False, include_layout=False, include_layout_details=False, include_owner=False,
+               include_dialog_text=True,
                expected_controller=None, expected_local_player=None):
         include_layout = include_layout or include_layout_details
         options = dict(include_tree=include_tree or include_layout)
+        if include_dialog_text is not True:
+            if type(include_dialog_text) is not bool:raise ValueError('include_dialog_text must be boolean')
+            options['include_dialog_text'] = False
         if include_layout:options['include_layout'] = True
         if include_layout_details:options['include_layout_details'] = True
         if include_owner:
@@ -502,6 +514,7 @@ class MenuReader:
             raise
 
     def _sample_once(self, *, include_tree=False, include_layout=False, include_layout_details=False, include_owner=False,
+                     include_dialog_text=True,
                      expected_controller=None, expected_local_player=None):
         include_tree = include_tree or include_layout
         self.refresh()
@@ -611,7 +624,7 @@ class MenuReader:
                                 row['layout_details'] = self.layout_details(obj, proof, scene_root=parent is None)
                         for child in children:visit(child,address,depth+1)
                     visit(top['address'],None,1)
-                if result['top']['tag'] == 'WarfareConfirmation' and r.class_name(top) == 'UIScene_Confirmation':
+                if include_dialog_text and result['top']['tag'] == 'WarfareConfirmation' and r.class_name(top) == 'UIScene_Confirmation':
                     result['dialog_text'] = self.dialog_text(top)
             # Re-acquire current source strings; obsolete wrapping allocations are
             # not UI identity. Changed semantic text still rejects this snapshot.

@@ -136,7 +136,7 @@ void finish_guarded(Scope const& scope,bool returned){try{finish(scope,returned)
 void release_guarded(Scope const& scope){try{release(scope);}catch(...){failed=true;stopping=true;}}
 extern "C" __declspec(noinline) void GearsCoverPoseInvokeProtected(pose::CallPacket* packet,unsigned kind,uintptr_t ra) noexcept(false){
 #if defined(GEARS_CONTINUOUS_HAND_OWNER) && GEARS_CONTINUOUS_HAND_OWNER
-    Scope scope{};gears_continuous_hand_entry::Entry entry{};bool returned{};++active;++in_flight;++calls;
+    Scope scope{};gears_continuous_hand_entry::Entry entry{};bool returned{},body_original_called{};++active;++in_flight;++calls;
 #else
     Scope scope{};bool returned{};++active;++in_flight;++calls;
 #endif
@@ -145,6 +145,9 @@ extern "C" __declspec(noinline) void GearsCoverPoseInvokeProtected(pose::CallPac
 #endif
 #if defined(GEARS_CONTINUOUS_HAND_OWNER) && GEARS_CONTINUOUS_HAND_OWNER
     __try{continuous_hand_owner_live::pose_begin(entry);
+#if defined(GEARS_FRESH_POSE_PRODUCER_OBSERVER) && GEARS_FRESH_POSE_PRODUCER_OBSERVER
+        fresh_pose_producer_live::pose_begin(entry);
+#endif
 #if defined(GEARS_BODY_RECOIL_OBSERVER) && GEARS_BODY_RECOIL_OBSERVER
         body_recoil_observer_live::compose_begin(entry);
 #endif
@@ -158,7 +161,17 @@ extern "C" __declspec(noinline) void GearsCoverPoseInvokeProtected(pose::CallPac
 #if defined(GEARS_COVER_CONTROL_OBSERVER) && GEARS_COVER_CONTROL_OBSERVER
         cover_control_observer_live::compose_begin(scope);
 #endif
-        if(kind<3)cover_body_live::GearsCoverRawInvoke(reinterpret_cast<cover_body_live::CallPacket*>(packet),originals[kind]);else failed=true;
+#if defined(GEARS_FULL_BODY_C0_NATIVE_BACKEND) && GEARS_FULL_BODY_C0_NATIVE_BACKEND
+        full_body_c0_native_live::pose_begin(entry);
+        body_c0_goal_policy_live::pose_begin(entry);
+        full_body_c0_native_live::before_original(entry);
+        body_original_called=kind<3;
+#endif
+        if(kind<3){cover_body_live::GearsCoverRawInvoke(reinterpret_cast<cover_body_live::CallPacket*>(packet),originals[kind]);
+#if defined(GEARS_FULL_BODY_C0_NATIVE_BACKEND) && GEARS_FULL_BODY_C0_NATIVE_BACKEND
+            full_body_c0_native_live::after_original(entry);
+#endif
+        }else failed=true;
         returned=true;
     }__finally{__try{finish_guarded(scope,returned&&!AbnormalTermination());}__finally{
 #if defined(GEARS_COVER_CONTROL_OBSERVER) && GEARS_COVER_CONTROL_OBSERVER
@@ -170,6 +183,12 @@ extern "C" __declspec(noinline) void GearsCoverPoseInvokeProtected(pose::CallPac
 #if defined(GEARS_CONTINUOUS_HAND_OWNER) && GEARS_CONTINUOUS_HAND_OWNER
 #if defined(GEARS_BODY_RECOIL_OBSERVER) && GEARS_BODY_RECOIL_OBSERVER
         body_recoil_observer_live::compose_end(entry,returned&&!AbnormalTermination());
+#endif
+#if defined(GEARS_FRESH_POSE_PRODUCER_OBSERVER) && GEARS_FRESH_POSE_PRODUCER_OBSERVER
+        fresh_pose_producer_live::pose_end(entry,returned&&!AbnormalTermination());
+#endif
+#if defined(GEARS_FULL_BODY_C0_NATIVE_BACKEND) && GEARS_FULL_BODY_C0_NATIVE_BACKEND
+        body_c0_goal_policy_live::pose_end(entry,returned&&!AbnormalTermination(),body_original_called);
 #endif
         continuous_hand_owner_live::pose_end(entry,returned&&!AbnormalTermination());
 #endif

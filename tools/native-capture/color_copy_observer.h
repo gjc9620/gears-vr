@@ -110,10 +110,6 @@ void observe_color_copy(ID3D12GraphicsCommandList* list,const D3D12_TEXTURE_COPY
 }
 void STDMETHODCALLTYPE hook_color_copy(ID3D12GraphicsCommandList* list,const D3D12_TEXTURE_COPY_LOCATION* destination,UINT x,UINT y,UINT z,
     const D3D12_TEXTURE_COPY_LOCATION* source,const D3D12_BOX* box){
-#if defined(GEARS_NGX_STEREO_HOST_OBSERVER) && GEARS_NGX_STEREO_HOST_OBSERVER
-    NativeOwnedShutdownRhiScope::Activity ngx_api_activity;
-    ngx_stereo_host::ApiOrderScope ngx_api_order;
-#endif
     if(stereo_publish_bypass){original_color_copy(list,destination,x,y,z,source,box);return;}
     Scope scope;if(!scope.world()){auto unknown=frame_lock();frame_link.invalidate();return original_color_copy(list,destination,x,y,z,source,box);}
 #if defined(GEARS_NATIVE_OWNED_PIXELS) && GEARS_NATIVE_OWNED_PIXELS
@@ -131,9 +127,6 @@ void STDMETHODCALLTYPE hook_color_copy(ID3D12GraphicsCommandList* list,const D3D
     auto pixel_guard=death_hdr_pixels::execution_lock();
     const auto pixel_token=death_hdr_pixels::prepare_copy(list,destination,x,y,z,source,box,reinterpret_cast<uintptr_t>(_ReturnAddress())-base);
     owned_source_pixels::copy_passthrough(list,destination,x,y,z,source,box,reinterpret_cast<uintptr_t>(_ReturnAddress())-base,original_color_copy);
-#if defined(GEARS_NGX_OWNED_SCENE_TRIAL) && GEARS_NGX_OWNED_SCENE_TRIAL
-    ngx_capture_control::owned_copy_observe(list,destination,x,y,z,source,box,reinterpret_cast<uintptr_t>(_ReturnAddress()),1);
-#endif
     death_hdr_pixels::append_after_original(pixel_token,list,destination,source);
 }
 void print_color_copy(FILE* file){

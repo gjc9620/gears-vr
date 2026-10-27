@@ -18,7 +18,6 @@ std::atomic<bool> recording{true};std::atomic<uint64_t> committed_world_generati
 thread_local void* consuming_renderer{};thread_local uint64_t consuming_frame_ticket=7;
 struct Frozen {bool enabled=true;uint64_t id=7,world_generation=9;};thread_local Frozen consuming_frozen_frame;
 std::recursive_mutex frame_hook_mutex;bool admitted=true;
-using FrameHookMutex=decltype(frame_hook_mutex); // Offline fixture for the production lock abstraction.
 std::atomic<unsigned> active{};
 struct Scope {Scope(){++active;}~Scope(){--active;}bool world()const{return admitted;}};
 long long ticks{};long long now(){return ++ticks;}
@@ -68,35 +67,6 @@ void query_bound_resource(uintptr_t object,ResourceIdentity& out){
 uint32_t test_control_output();void run_control_cases();
 #endif
 }
-#if defined(GEARS_DLSS_OWNED_DOF_CONTROL_TEST)
-// Offline seams for the real owned controller; these are never compiled into
-// capture.cpp. They do not simulate SDK, GPU completion or native DOF memory.
-FILE* diagnostic_status{};
-namespace ngx_capture_control {
-gears_ngx_stereo::RecordedOutput fixture;bool available{},fresh{};
-gears_dlss_output::NativeGap gap;bool gap_available{},gap_fresh{};
-bool native_output_ticket(uint64_t world,uint64_t ticket,uintptr_t renderer,uintptr_t view,gears_dlss_output::NativeGap& out){
-    if(!gap_available||!gap_fresh||world!=gap.world||ticket!=gap.ticket||renderer!=gap.renderer||(view!=gap.views[0]&&view!=gap.views[1]))return false;
-    out=gap;return true;
-}
-bool native_output_current(gears_dlss_output::NativeGap const& out){return gap_fresh&&gears_dlss_output::same(out,gap);}
-bool output_route_sample_ready(){return available;}
-bool final_output_current(gears_ngx_stereo::RecordedOutput const& out){return fresh&&gears_ngx_stereo::same(out.identity,fixture.identity)&&out.ticket==fixture.ticket;}
-bool final_output_ticket(uint64_t world,uint64_t ticket,uintptr_t renderer,uintptr_t view,gears_ngx_stereo::RecordedOutput& out){
-    if(!available||!fresh||world!=fixture.identity.world||ticket!=fixture.ticket||!renderer||!view)return false;
-    out=fixture;return true;
-}
-}
-namespace vr_dof_compat {
-bool zero{};unsigned checks{};
-bool current_quad_zero_proved(uint64_t world,uint64_t ticket,unsigned eye,uintptr_t caller){
-    ++checks;return zero&&world==9&&ticket==7&&eye<2&&gears_vr_dof::quad_caller(caller);
-}
-}
-bool native_owned_scene_dlss_target(uintptr_t target,uint64_t world,uint64_t ticket,unsigned width,unsigned height){
-    return target==0x5678&&world==9&&ticket==7&&width==2560&&height==1080;
-}
-#endif
 #define GEARS_DLSS_ROUTE_OBSERVER 1
 #define __readgsqword test_readgsqword
 #define _ReturnAddress test_return_address
@@ -245,5 +215,4 @@ int main(){
     run_input_bind_cases();
 #endif
     std::puts("DlssRouteObserverTest passed (actual wrappers; synthetic TLS/memory only)");
-    return 0;
 }

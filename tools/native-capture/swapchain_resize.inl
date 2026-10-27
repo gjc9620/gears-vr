@@ -62,7 +62,7 @@ Boundary begin(IDXGISwapChain* chain,unsigned method,UINT count,UINT width,UINT 
         out.begun=swapchain_bindings.begin_resize(out.identity);
         frame_link.invalidate_all();retire_stereo_window();frame_target_stats.clear_bindings();
         if(!out.begun){++rejected;return out;}
-        if(stereo_gpu_publish&&!ngx_final_xr::enabled()&&!stereo_publish_counts.stopped.load()){
+        if(stereo_gpu_publish&&!stereo_publish_counts.stopped.load()){
             StereoPublishBypass bypass;out.publisher=stereo_publisher.begin_resize(chain);
             if(!out.publisher){++rejected;swapchain_bindings.invalidate();}
         }

@@ -95,7 +95,7 @@ def camera_closer(config,manifest):
 
 def gameplay_controls(config,manifest):
     result={}
-    for capability in ('first_person_preview','right_stick_deadzone_control','run_camera_stabilization'):
+    for capability in ('first_person_preview','right_stick_deadzone_control'):
         if type(manifest.get(capability,False)) is not bool:raise ValueError('Gameplay capability must be boolean: '+capability)
     requested=config.get('first_person_preview',manifest.get('first_person_preview',False))
     if type(requested) is not bool:raise ValueError('First person preview must be boolean')
@@ -106,7 +106,6 @@ def gameplay_controls(config,manifest):
             ('anchor_observer','cinematic_camera','crosshair_assignment_observer')):
         raise ValueError('First person preview requires a supported build and gameplay/weapon observers')
     result['first_person_preview']=preview
-    if manifest.get('run_camera_stabilization',False):result['run_camera_stabilization']=True
     if manifest.get('right_stick_deadzone_control',False) or 'right_stick_deadzone_percent' in config:
         value=config.get('right_stick_deadzone_percent',2.)
         if isinstance(value,bool) or not isinstance(value,(int,float)) or not math.isfinite(value) or not 0<=value<=50:
@@ -157,7 +156,10 @@ def settings(config,manifest,root=ROOT):
     # Per-install settings bindings are validated by graphics_policy.locate().
     unknown=set(config)-{'game_path','game_path_history','game_settings_paths','stereo_units_per_metre','hud_horizontal_fov_degrees','launcher_language','hud_element_scale','hud_center_scale','camera_closer_metres','render_scale','first_person_preview','right_stick_deadzone_percent'}
     if unknown:raise ValueError('Unknown configuration field: '+', '.join(sorted(unknown)))
-    gameplay_controls(config,manifest)
+    controls=gameplay_controls(config,manifest)
+    if manifest.get('sixdof_manual',False) and (not controls.get('first_person_preview') or
+                                              manifest.get('startup_selftests_prelaunch',False)):
+        raise ValueError('This manual 6DoF candidate requires First person enabled and automatic self-tests disabled')
     camera_closer(config,manifest)
     render_scale(config,manifest)
     if 'launcher_language' in config and config['launcher_language'] not in ('zh-CN','en'):
@@ -308,6 +310,7 @@ class Backend:
              '--dll-name',manifest['native_dll'],'--prime-targets','--check-shadow-state','--check-mask-control','--check-frame-link',
              '--launch-receipt',str(receipt),'--startup-diagnostics',str(trace_path)]
         if game_path is not None:cmd+=['--game-path',str(game_path)]
+        if manifest.get('sixdof_manual',False):cmd.append('--sixdof-manual')
         if manifest.get('playground_early_reserve',False):
             from playground_loader import artifact
             artifact(manifest)
@@ -471,30 +474,6 @@ class Backend:
                        'no_eligible_window' if matched else 'no_pid_window')
         if len(windows)>1:raise RuntimeError('Multiple game windows; cannot select startup panel')
         return windows[0] if windows else None
-
-    def startup_window_details(self,pid,diagnostic):
-        """One read-only window snapshot after the startup panel gate times out."""
-        from ctypes import wintypes
-        user=ctypes.WinDLL('user32',use_last_error=True)
-        user.GetWindowThreadProcessId.argtypes=[wintypes.HWND,ctypes.POINTER(wintypes.DWORD)]
-        user.GetWindowRect.argtypes=[wintypes.HWND,ctypes.POINTER(wintypes.RECT)]
-        user.GetWindowRect.restype=wintypes.BOOL
-        user.GetWindowLongPtrW.argtypes=[wintypes.HWND,ctypes.c_int]
-        user.GetWindowLongPtrW.restype=ctypes.c_ssize_t
-        user.IsIconic.argtypes=[wintypes.HWND];user.IsIconic.restype=wintypes.BOOL
-        user.IsZoomed.argtypes=[wintypes.HWND];user.IsZoomed.restype=wintypes.BOOL
-        rows=[]
-        for candidate in diagnostic.get('candidates',[]):
-            hwnd=wintypes.HWND(candidate['hwnd']);owner=wintypes.DWORD()
-            thread=user.GetWindowThreadProcessId(hwnd,ctypes.byref(owner))
-            if not thread or owner.value!=pid:continue
-            rect=wintypes.RECT();has_rect=bool(user.GetWindowRect(hwnd,ctypes.byref(rect)))
-            rows.append(dict(hwnd=candidate['hwnd'],thread_id=thread,
-                window_rect=dict(left=rect.left,top=rect.top,right=rect.right,bottom=rect.bottom) if has_rect else None,
-                iconic=bool(user.IsIconic(hwnd)),zoomed=bool(user.IsZoomed(hwnd)),
-                style=user.GetWindowLongPtrW(hwnd,-16)&0xffffffff,
-                extended_style=user.GetWindowLongPtrW(hwnd,-20)&0xffffffff))
-        return rows
 
     def start_playground(self,manifest,identity,check_live):
         from playground_loader import start
@@ -679,6 +658,7 @@ def start(config,manifest,backend,index=INDEX,clock=time.monotonic,sleep=time.sl
         if handshake:
             args.startup_selftest_proof=handshake['path'];args.startup_selftest_digest=handshake['digest'];args.startup_selftest_nonce=handshake['nonce']
         for key in SESSION_OPTIONS:setattr(args,key,manifest.get(key,False))
+        args.sixdof_manual=manifest.get('sixdof_manual',False)
         hud_fov=hud_horizontal_fov(config,manifest)
         if hud_fov is not None:args.hud_horizontal_fov_degrees=hud_fov
         for key,value in hud_layout(config,manifest).items():setattr(args,key,value)
@@ -698,11 +678,6 @@ def start(config,manifest,backend,index=INDEX,clock=time.monotonic,sleep=time.sl
                 sleep(.1)
             else:
                 state['startup_window_last_diagnostic']=last_window_diagnostic
-                details=getattr(backend,'startup_window_details',None)
-                if details is not None:
-                    try:state['startup_window_details']=details(pid,last_window_diagnostic)
-                    except Exception as diagnostic_error:
-                        state['startup_window_details_error']=repr(diagnostic_error)
                 raise TimeoutError('Game window unavailable for startup VR panel')
         def on_report(path,reported_owner,reported_game):
             report=pathlib.Path(path).resolve()

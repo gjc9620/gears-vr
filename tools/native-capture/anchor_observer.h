@@ -7,6 +7,7 @@
 #include <limits>
 #include <algorithm>
 #include "crosshair_scene_evidence.h"
+#include "mounted_actor_type.h"
 
 namespace gears_anchor {
 struct Identity {std::uintptr_t address{},cls{},outer{},super{};unsigned index{},name_index{},number{},check_super{};
@@ -313,7 +314,7 @@ template<class Read> bool strict_guard(Config const& c,Read read,Anchor& out,std
     auto derives=[&](std::uintptr_t cls,const wchar_t* name){for(unsigned n=0;n<64&&cls;++n){auto id=identity(cls);
         if(!id||!id->check_super)return false;if(!std::wcscmp(id->name.data(),name))return true;cls=id->super;}return false;};
     if(!std::wcsncmp(c.identities[c.role_pawn].name.data(),L"Default__",9)||
-        !derives(c.identities[c.role_pawn].cls,c.mounted_enabled?L"Turret":L"WarPawn")||!derives(c.identities[c.role_level].cls,L"Level")||
+        !(c.mounted_enabled?gears_mounted::supported([&](auto name){return derives(c.identities[c.role_pawn].cls,name);}):derives(c.identities[c.role_pawn].cls,L"WarPawn"))||!derives(c.identities[c.role_level].cls,L"Level")||
         !derives(c.identities[c.role_local].cls,L"WarLocalPlayer")||!derives(c.identities[c.role_camera].cls,L"WarPlayerCamera"))return false;
     auto outer=c.identities[c.role_pawn].outer;bool inlevel=false;
     for(unsigned n=0;n<16&&outer;++n){if(outer==level){inlevel=true;break;}auto id=identity(outer);if(!id)break;outer=id->outer;}

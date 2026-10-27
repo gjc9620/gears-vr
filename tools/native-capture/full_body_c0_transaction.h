@@ -166,6 +166,15 @@ public:
     bool original_exception() const noexcept{return original_exception_.load();}
     Failure failure() const noexcept{return failure_.load();}
     std::uint64_t serial() const noexcept{return serial_;}
+    // Read-only consumption identity. This cannot prepare/commit, refresh a
+    // source, notify again, mutate debt or extend the lease past exact finish.
+    bool retained_consumer(Backend& backend,Lease const& lease,Stamp const& actual) const noexcept {
+        const auto thread=backend.thread_token();
+        return thread&&thread==thread_.load()&&backend_==&backend&&active_.load()&&lease_==&lease&&
+            lease.self_==reinterpret_cast<std::uintptr_t>(&lease)&&lease.kernel_==this&&lease.serial_==serial_&&!lease.closed_&&
+            same(actual,stamp_)&&consumed_.load()&&commit_finished_&&!ended_&&!failed_.load()&&!stopping_.load()&&
+            !original_exception_.load()&&!protocol_.load();
+    }
     bool settled_source_age() const noexcept {return failure_.load()==Failure::source_age_only&&failed_.load()&&stopping_.load()&&
         ended_&&ending_!=End::original_threw&&!original_exception_.load()&&!pending();}
     void request_stop() noexcept {fail(Failure::hard);} // never clears obligations

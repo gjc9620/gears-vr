@@ -142,6 +142,30 @@ void binding_cases(){
     auto s=source;s.units_per_metre=200;reject(s,original);
     s=source;s.world_grip[0].position.x=std::numeric_limits<double>::infinity();reject(s,original);
 }
+// Fixed authored held profile, with explicit HOST input only. No runtime query
+// or equipment/permission inference is made by selecting MountKind here.
+void held_mount_cases(){
+    ++groups;auto source=host_core();const auto source_before=saved(source);
+    auto stock=binding(source,a::Side::right);C(stock.mount_kind==a::MountKind::free_hand);
+    auto held=stock;held.mount_kind=a::MountKind::held_lancer;gears_weapon_lancer_wrist_mount::Profile profile{};
+    C(gears_weapon_lancer_wrist_mount::marcus115(held.geometry_signature,1,source.units_per_metre,profile));held.authored_mount=profile.mount;
+    const auto binding_before=saved(held);a::Target target{};
+    C(a::prepare_hand(source,held,a::Side::right,now,age,false,{true},target)==a::Status::okay);
+    // RH=I means full wrist Q equals Grip Q, including nonzero roll. Expected
+    // position uses the free profile's fixed wrist-local palm marker relation.
+    const auto& free=stock.authored_mount.calibration;
+    const auto fixed=v::transform(v::transpose(v::rotation_matrix(free.grip_to_wrist_rotation)),free.grip_to_wrist_metres);
+    const auto offset=v::transform(v::rotation_matrix(source.world_grip[1].orientation),{fixed.x*source.units_per_metre,fixed.y*source.units_per_metre,fixed.z*source.units_per_metre});
+    near_pose(target.wrist_world,{add(source.world_grip[1].position,offset),source.world_grip[1].orientation});
+    C(a::same_source(target,source)&&unchanged(source,source_before)&&unchanged(held,binding_before));
+    auto masquerade=stock;masquerade.mount_kind=a::MountKind::held_lancer;reject(source,masquerade,a::Side::right);
+    masquerade=held;masquerade.mount_kind=a::MountKind::free_hand;reject(source,masquerade,a::Side::right);
+    auto left=binding(source,a::Side::left);left.mount_kind=a::MountKind::held_lancer;reject(source,left,a::Side::left);
+    left.authored_mount=held.authored_mount;reject(source,left,a::Side::left);
+    auto unknown=held;unknown.mount_kind=static_cast<a::MountKind>(99);reject(source,unknown,a::Side::right);
+    auto tampered=held;tampered.authored_mount.calibration.grip_to_wrist_metres.x+=.001;reject(source,tampered,a::Side::right);
+    C(unchanged(source,source_before));
+}
 void units_source_cases(){
     ++groups;const auto original=host_core();const auto reference=prepared(original,a::Side::left);
     auto s=original;s.units_per_metre=200;const auto twice_units=prepared(s,a::Side::left);
@@ -315,107 +339,10 @@ void wrapper_rejection_cases(){
     C(a::replace_wrist_rotation(target,single,work,nullptr)==a::Status::alias);
     target.wrist_world.orientation={0,0,0,0};C(a::replace_wrist_rotation(target,single,work,output)==a::Status::invalid_target);C(unchanged(output,before));
 }
-void original_matrix_policy_cases(){
-    ++groups;
-    using Policy=p::OriginalMatrixPolicy;
-    auto source=host_core();
-    host_grip_for_wrist(source,a::Side::left,world(ro3[0].limb[2],ro3[0].component));
-    const auto target=prepared(source,a::Side::left);auto data=limb_data(target,ro3[0]);a::Workspace work{};
-    for(unsigned i=0;i<3;++i)for(unsigned row=0;row<3;++row)for(unsigned column=0;column<3;++column)
-        data.component[i].values[row*4+column]*=1.00002f;
-    const auto original=saved(data);p::Matrix64 output[3]{};std::memset(output,0x5a,sizeof output);const auto untouched=saved(output);
-    C(data.original_matrix_policy==Policy::strict_unit);
-    work.limb.original_matrix_policy=Policy::bounded_near_rigid;
-    C(a::solve_limb(target,data,a::arm::LengthMode::preserve,work,output)==a::Status::invalid_matrix);
-    C(work.limb.original_matrix_policy==Policy::strict_unit);C(unchanged(output,untouched));C(unchanged(data,original));
-    // This tiny genuine scale lies inside the explicit approximation budget.
-    // Accepting it is intentional and is not proof of native LocalScale=1.
-    auto approximate=data;approximate.original_matrix_policy=Policy::bounded_near_rigid;const auto approximate_before=saved(approximate);
-    C(a::solve_limb(target,approximate,a::arm::LengthMode::preserve,work,output)==a::Status::okay);
-    C(work.limb.original_matrix_policy==Policy::bounded_near_rigid);C(unchanged(approximate,approximate_before));
-    for(auto const& matrix:output)C(p::detail::rigid(p::detail::unpack(matrix)));
-    std::memset(output,0x5a,sizeof output);
-    C(a::solve_limb(target,data,a::arm::LengthMode::preserve,work,output)==a::Status::invalid_matrix);
-    C(work.limb.original_matrix_policy==Policy::strict_unit);C(unchanged(output,untouched));
-    auto bad=approximate;bad.original_matrix_policy=static_cast<Policy>(99);
-    C(a::solve_limb(target,bad,a::arm::LengthMode::preserve,work,output)==a::Status::invalid_policy);C(unchanged(output,untouched));
-    bad=approximate;for(unsigned row=0;row<3;++row)for(unsigned column=0;column<3;++column)
-        bad.component_to_world.values[row*4+column]*=1.00002f;
-    C(a::solve_limb(target,bad,a::arm::LengthMode::preserve,work,output)==a::Status::invalid_matrix);C(unchanged(output,untouched));
-}
-void fixed_length_calibration_cases(){
-    ++groups;
-    // Known synthetic calibration, never inferred from a controller distance.
-    // The input matrices remain the observed RO3 originals throughout.
-    for(unsigned index=0;index<2;++index){
-        const auto side=static_cast<a::Side>(index);auto source=host_core();
-        const auto original_wrist=world(ro3[index].limb[2],ro3[index].component);
-        host_grip_for_wrist(source,side,original_wrist);
-        const auto target=prepared(source,side);const auto data=limb_data(target,ro3[index]);
-        const auto source_before=saved(source);const auto target_before=saved(target);const auto data_before=saved(data);
-        a::Workspace work{};p::Matrix64 baseline[3]{},output[3]{};
-        C(data.upper_length_scale==1&&data.lower_length_scale==1);
-        C(a::solve_limb(target,data,a::arm::LengthMode::preserve,work,baseline)==a::Status::okay);
-        const double original_upper=work.control_work.solution.upper_length;
-        const double original_lower=work.control_work.solution.lower_length;
-        auto calibrated=data;calibrated.upper_length_scale=1.25;calibrated.lower_length_scale=.9;
-        const auto calibrated_before=saved(calibrated);
-        C(a::solve_limb(target,calibrated,a::arm::LengthMode::preserve,work,output)==a::Status::okay);
-        C(work.limb.upper_length_scale==1.25&&work.limb.lower_length_scale==.9);
-        C(work.control_work.input.lengths.mode==a::arm::LengthMode::preserve);
-        C(work.control_work.input.lengths.upper_scale==1.25&&work.control_work.input.lengths.lower_scale==.9);
-        C(std::abs(work.control_work.solution.upper_length-original_upper*1.25)<1e-10);
-        C(std::abs(work.control_work.solution.lower_length-original_lower*.9)<1e-10);
-        C(work.control_work.solution.length_adjusted&&work.control_work.solution.lengths==a::arm::LengthResolution::calibrated);
-        near_pose(world(output[2],data.component_to_world),target.wrist_world,8e-5,3e-6);
-        C(std::memcmp(output[0].values+12,data.component[0].values+12,3*sizeof(float))==0);
-        C(unchanged(calibrated,calibrated_before));
-        // A direct control caller receives the same independently supplied pair.
-        p::LimbInput direct=work.limb;p::Workspace direct_work{};p::Matrix64 direct_output[3]{};
-        C(p::solve(direct,direct_work,direct_output)==p::Status::solved);C(bytes(output,direct_output));
-        // Reusing scratch cannot carry calibration into a default request.
-        C(a::solve_limb(target,data,a::arm::LengthMode::preserve,work,output)==a::Status::okay);
-        C(work.limb.upper_length_scale==1&&work.limb.lower_length_scale==1);
-        C(work.control_work.input.lengths.upper_scale==1&&work.control_work.input.lengths.lower_scale==1);
-        C(bytes(output,baseline));C(!work.control_work.solution.length_adjusted);
-        const auto shoulder=world(data.component[0],data.component_to_world).position;
-        const auto direction=a::arm::detail::scaled(sub(original_wrist.position,shoulder),1/distance(original_wrist.position,shoulder));
-        auto extended=data;extended.upper_length_scale=1.5;extended.lower_length_scale=1.5;
-        const auto extended_before=saved(extended);
-        for(double fraction:{1.1,1.25,1.35}){
-            auto moved_source=source;auto wanted=original_wrist;
-            wanted.position=add(shoulder,a::arm::detail::scaled(direction,(original_upper+original_lower)*fraction));
-            host_grip_for_wrist(moved_source,side,wanted);const auto moved=prepared(moved_source,side);
-            std::memset(output,0x5a,sizeof output);const auto unchanged_output=saved(output);
-            C(a::solve_limb(moved,data,a::arm::LengthMode::preserve,work,output)==a::Status::unreachable);
-            C(unchanged(output,unchanged_output));
-            C(a::solve_limb(moved,extended,a::arm::LengthMode::preserve,work,output)==a::Status::okay);
-            near_pose(world(output[2],data.component_to_world),wanted,8e-5,3e-6);
-            C(std::abs(work.control_work.solution.upper_length-original_upper*1.5)<1e-10);
-            C(std::abs(work.control_work.solution.lower_length-original_lower*1.5)<1e-10);
-            C(work.control_work.solution.lengths==a::arm::LengthResolution::calibrated);
-            C(unchanged(extended,extended_before));
-        }
-        for(double invalid:{0.0,-1.0,std::numeric_limits<double>::quiet_NaN(),std::numeric_limits<double>::infinity()}){
-            for(unsigned segment=0;segment<2;++segment){
-                auto bad=data;(segment?bad.lower_length_scale:bad.upper_length_scale)=invalid;
-                const auto bad_before=saved(bad);std::memset(output,0x5a,sizeof output);const auto untouched=saved(output);
-                C(a::solve_limb(target,bad,a::arm::LengthMode::preserve,work,output)==a::Status::invalid_policy);
-                C(unchanged(output,untouched));C(unchanged(bad,bad_before));
-            }
-        }
-        auto overflow=data;overflow.upper_length_scale=(std::numeric_limits<double>::max)();
-        std::memset(output,0x5a,sizeof output);const auto untouched=saved(output);
-        C(a::solve_limb(target,overflow,a::arm::LengthMode::preserve,work,output)==a::Status::numerical_failure);
-        C(unchanged(output,untouched));
-        C(a::solve_limb(target,data,a::arm::LengthMode::preserve,work,output)==a::Status::okay);C(bytes(output,baseline));
-        C(unchanged(source,source_before));C(unchanged(target,target_before));C(unchanged(data,data_before));
-    }
-}
 } // namespace
 int main(int argc,char** argv){
     if(argc!=2||!read_ro3(argv[1])){std::fprintf(stderr,"Expected pinned RO3 matrix fixture HCTRO3V1\n");return 2;}
-    prepare_cases();age_tracking_cases();binding_cases();units_source_cases();limb_single_cases();single_tail_cases();wrapper_rejection_cases();original_matrix_policy_cases();fixed_length_calibration_cases();
+    prepare_cases();held_mount_cases();age_tracking_cases();binding_cases();units_source_cases();limb_single_cases();single_tail_cases();wrapper_rejection_cases();
     std::printf("hand_core_target_adapter: %u groups, %u checks, %u failures; max_position=%.17g max_basis_rotation=%.17g; HOST Core/binding + observed RO3 matrices, CPU math only\n",
         groups,checks,failures,worst_position,worst_rotation);return failures?1:0;
 }

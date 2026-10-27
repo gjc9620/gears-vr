@@ -42,6 +42,7 @@ inline thread_local Frame frame{};
 std::array<Record,capacity> records{};std::mutex records_mutex;uint64_t sequence{};unsigned record_count{};
 std::atomic<unsigned> callbacks{},frames{};std::atomic<bool> stopping{},protocol_failed{},file_attempted{},file_written{};
 std::atomic<DWORD> file_error{};std::atomic<uint64_t> composes{},natural_calls{},rejections{};
+std::atomic<bool> freeze_on_first_natural_output{},ring_frozen{};
 bool certified{};std::array<std::array<unsigned char,32>,3> certified_prefix{};
 struct Callback {Callback(){++callbacks;}~Callback(){--callbacks;}};
 #if defined(GEARS_BODY_RECOIL_OBSERVER_TEST)
@@ -185,15 +186,23 @@ void compose_end(Entry const& e,bool returned) noexcept {Callback call;try{
     if(!returned)fail(Failure::exception);else if(stopping.load())fail(Failure::stopped);
     else if(r.failure==Failure::none){Mapping again{};if(!current()||!model()||!code_current()||!mapping(again)||!same_map(r.mapping,again)||!node(r.end))fail(Failure::changed);else r.read_mask|=end_read;}
     r.qualified=r.failure==Failure::none&&(r.read_mask&end_read)&&(r.no_natural_call||(r.read_mask&output_read));
-    {std::lock_guard<std::mutex> lock(records_mutex);records[sequence%capacity]=r;++sequence;if(record_count<capacity)++record_count;}
+    {std::lock_guard<std::mutex> lock(records_mutex);if(!ring_frozen.load()){
+        records[sequence%capacity]=r;++sequence;if(record_count<capacity)++record_count;
+        // Freeze only AFTER this fully qualified natural output was stored.
+        // Admission, original calls, callbacks/Core, counters and drain remain live.
+        if(freeze_on_first_natural_output.load()&&r.qualified&&r.natural_calls==1&&(r.read_mask&output_read))ring_frozen=true;
+    }}
     frame.address=nullptr;frame.active=false;--frames;
 }catch(...){protocol_failed=true;fail(Failure::exception);}}
-bool configure(wchar_t const* ini,FILE* file){wchar_t value[8]{};GetPrivateProfileStringW(L"BodyRecoilObserver",L"enabled",L"0",value,8,ini);
-    if(wcscmp(value,L"0")&&wcscmp(value,L"1"))return false;
-    if(!wcscmp(value,L"1")){if(enabled||stopping.load()||!hand::enabled||!hand::passive()||!phase::certified||!cover_control_observer_live::certified||!certify())return false;certified=true;enabled=true;}
-    if(file)fprintf(file,"body_recoil_enabled=%u read_only=1 writer=0 event_required=0\n",unsigned(enabled));return true;}
+bool configure(wchar_t const* ini,FILE* file){wchar_t value[8]{},freeze[8]{};GetPrivateProfileStringW(L"BodyRecoilObserver",L"enabled",L"0",value,8,ini);
+    GetPrivateProfileStringW(L"BodyRecoilObserver",L"freeze_on_first_natural_output",L"0",freeze,8,ini);
+    if((wcscmp(value,L"0")&&wcscmp(value,L"1"))||(wcscmp(freeze,L"0")&&wcscmp(freeze,L"1")))return false;
+    const bool want_enabled=!wcscmp(value,L"1"),want_freeze=!wcscmp(freeze,L"1");
+    if((want_freeze&&!want_enabled)||enabled)return false;
+    if(want_enabled){if(stopping.load()||!hand::enabled||!hand::passive()||!phase::certified||!cover_control_observer_live::certified||!certify())return false;certified=true;freeze_on_first_natural_output=want_freeze;enabled=true;}
+    if(file)fprintf(file,"body_recoil_enabled=%u body_recoil_freeze_on_first_natural_output=%u body_recoil_frozen=%u read_only=1 writer=0 event_required=0\n",unsigned(enabled),unsigned(freeze_on_first_natural_output.load()),unsigned(ring_frozen.load()));return true;}
 void request_drain(){stopping=true;}unsigned pending_count(){return callbacks.load()+frames.load();}
-void summary(FILE* file){if(file)fprintf(file,"body_recoil_enabled=%u body_recoil_composes=%llu body_recoil_natural_calls=%llu body_recoil_rejections=%llu body_recoil_pending=%u body_recoil_protocol_failed=%u body_recoil_file_written=%u body_recoil_file_error=%lu ",unsigned(enabled),composes.load(),natural_calls.load(),rejections.load(),pending_count(),unsigned(protocol_failed.load()),unsigned(file_written.load()),file_error.load());}
+void summary(FILE* file){if(file)fprintf(file,"body_recoil_enabled=%u body_recoil_freeze_on_first_natural_output=%u body_recoil_frozen=%u body_recoil_composes=%llu body_recoil_natural_calls=%llu body_recoil_rejections=%llu body_recoil_pending=%u body_recoil_protocol_failed=%u body_recoil_file_written=%u body_recoil_file_error=%lu ",unsigned(enabled),unsigned(freeze_on_first_natural_output.load()),unsigned(ring_frozen.load()),composes.load(),natural_calls.load(),rejections.load(),pending_count(),unsigned(protocol_failed.load()),unsigned(file_written.load()),file_error.load());}
 void print(FILE* file,bool disabled){if(enabled&&disabled&&stopping.load()&&!pending_count()&&!file_attempted.exchange(true)){
     Header header{};memcpy(header.magic,"RCOBS001",8);header.version=1;header.header_size=sizeof header;header.record_size=sizeof(Record);header.count=record_count;header.capacity_value=capacity;
     header.read_only=1;header.session=uint64_t(session_started_qpc);header.module_base=base;header.sequence=sequence;header.composes=composes.load();header.natural_calls=natural_calls.load();header.rejections=rejections.load();
@@ -205,7 +214,7 @@ void print(FILE* file,bool disabled){if(enabled&&disabled&&stopping.load()&&!pen
 #else
 void compose_begin(Entry const&) noexcept {}void compose_end(Entry const&,bool) noexcept {}
 void weight_begin(Entry const&,WeightCall&) noexcept {}void weight_end(WeightCall const&,pose::CallPacket const&,bool) noexcept {}
-bool configure(wchar_t const* ini,FILE*){wchar_t value[8]{};GetPrivateProfileStringW(L"BodyRecoilObserver",L"enabled",L"0",value,8,ini);return !wcscmp(value,L"0");}
+bool configure(wchar_t const* ini,FILE*){wchar_t value[8]{};GetPrivateProfileStringW(L"BodyRecoilObserver",L"enabled",L"0",value,8,ini);if(wcscmp(value,L"0"))return false;GetPrivateProfileStringW(L"BodyRecoilObserver",L"freeze_on_first_natural_output",L"0",value,8,ini);return !wcscmp(value,L"0");}
 void request_drain(){}unsigned pending_count(){return 0;}void summary(FILE* file){if(file)fprintf(file,"body_recoil_enabled=0 body_recoil_compiled=0 ");}void print(FILE* file,bool){summary(file);}
 #endif
 }

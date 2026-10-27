@@ -1,10 +1,12 @@
 // Include weapon_hand_broker.h, <new> and <cstdio> at global scope first.
 // Native worker configures/initializes before Scene admission or exports can
 // register. This module creates one stable Broker, never an input/hand owner.
+namespace full_body_c0_native_live {bool body_mount_source_current(gears_body_main_mount_provider::Source const&) noexcept;}
 namespace weapon_hand_runtime {
 namespace api=::gears_weapon_hand;
 namespace call_api=::gears_weapon_call;
 namespace action_api=::gears_weapon_action;
+namespace mount_api=::gears_weapon_main_mount_provider;namespace body_mount_api=::gears_body_main_mount_provider;namespace rig_api=::gears_rig_tracking;
 namespace boundary_api=::gears_weapon_boundary;
 bool enabled{}; // Startup-only configuration; immutable after configure.
 namespace detail {
@@ -30,7 +32,11 @@ inline api::BrokerBackend make_backend() {
 #if defined(GEARS_WEAPON_HAND_RUNTIME_TEST_BACKEND)
     return GEARS_WEAPON_HAND_RUNTIME_TEST_BACKEND();
 #else
-    return api::weapon_hand_win32_backend();
+    auto result=api::weapon_hand_win32_backend();
+#if defined(GEARS_BODY_MAIN_MOUNT_SOURCE) && GEARS_BODY_MAIN_MOUNT_SOURCE
+    result.body_mount_current=[](void*,body_mount_api::Source const& source)noexcept{return full_body_c0_native_live::body_mount_source_current(source);};
+#endif
+    return result;
 #endif
 }
 // Only own C++ failures / failed short POD copies reach this path. Do NOT put
@@ -141,6 +147,46 @@ api::Reply unregister(std::uint64_t cookie) noexcept {
     detail::Call call;++detail::unregister_attempts;
     auto* b=current();if(!b)return api::Reply::wrong_cookie;
     try {return b->unregister(cookie);}catch(...){detail::fault();return api::Reply::invalid;}
+}
+
+api::Reply attach_main_mount_provider(mount_api::Registration const* input,api::RegistrationResult* output,bool consumer_owned) noexcept {
+    detail::Call call;
+    if(detail::admission_closed.load()||detail::stop_requested.load())return detail::stop_requested.load()?api::Reply::draining:api::Reply::unavailable;
+    auto* b=current();if(!b)return api::Reply::unavailable;
+    mount_api::Registration registration{};api::RegistrationResult result{};
+    if(!api::weapon_broker_win32::copy(&registration,input,sizeof registration)||!api::weapon_broker_win32::copy(&result,output,sizeof result)){detail::fault();return api::Reply::invalid;}
+    try{const auto reply=b->attach_main_mount_provider(&registration,&result,consumer_owned);
+        if(reply==api::Reply::accepted&&!api::weapon_broker_win32::copy(output,&result,sizeof result)){detail::fault();return api::Reply::invalid;}
+        return reply;
+    }catch(...){detail::fault();return api::Reply::invalid;}
+}
+api::MainMountQueryResult query_main_mount(rig_api::Frame const& retained,mount_api::BodyGeometry const& body,mount_api::Response& output) noexcept {
+    detail::Call call;output={};api::MainMountQueryResult result{};
+    if(detail::admission_closed.load()||detail::stop_requested.load())return result;
+    auto* b=current();if(!b)return result;
+    result=b->query_main_mount(retained,body,output);
+    if(detail::admission_closed.load()||detail::stop_requested.load()){output={};result.code=api::MainMountQueryResult::Code::unavailable;result.status=mount_api::Status::inactive;}
+    return result;
+}
+
+api::Reply attach_body_mount_provider(body_mount_api::Registration const* input,api::RegistrationResult* output,bool consumer_owned) noexcept {
+    detail::Call call;
+    if(detail::admission_closed.load()||detail::stop_requested.load())return detail::stop_requested.load()?api::Reply::draining:api::Reply::unavailable;
+    auto* b=current();if(!b)return api::Reply::unavailable;
+    body_mount_api::Registration registration{};api::RegistrationResult result{};
+    if(!api::weapon_broker_win32::copy(&registration,input,sizeof registration)||!api::weapon_broker_win32::copy(&result,output,sizeof result)){detail::fault();return api::Reply::invalid;}
+    try{const auto reply=b->attach_body_mount_provider(&registration,&result,consumer_owned);
+        if(reply==api::Reply::accepted&&!api::weapon_broker_win32::copy(output,&result,sizeof result)){detail::fault();return api::Reply::invalid;}
+        return reply;
+    }catch(...){detail::fault();return api::Reply::invalid;}
+}
+api::MainMountQueryResult query_body_mount(body_mount_api::Source const& source,body_mount_api::Response& output) noexcept {
+    detail::Call call;output={};api::MainMountQueryResult result{};
+    if(detail::admission_closed.load()||detail::stop_requested.load())return result;
+    auto* b=current();if(!b)return result;
+    result=b->query_body_mount(source,output);
+    if(detail::admission_closed.load()||detail::stop_requested.load()){output={};result.code=api::MainMountQueryResult::Code::unavailable;result.status=mount_api::Status::inactive;}
+    return result;
 }
 
 api::Reply attach_call_participant(call_api::Registration const* input,api::RegistrationResult* output,bool wrapper_owned) noexcept {

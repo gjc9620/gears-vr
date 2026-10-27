@@ -29,21 +29,6 @@ Sample sample(Row const& row,bool world){
     for(unsigned i=0;i<value_offsets.size();++i)if(read(out.values[i],row.structure,value_offsets[i]))out.fields_mask|=1u<<(i+4);
     return out;
 }
-#if defined(GEARS_NGX_NATIVE_MONO_REFERENCE) && GEARS_NGX_NATIVE_MONO_REFERENCE
-FILE* native_reference{};unsigned native_reference_count{};
-std::atomic<bool> native_reference_active{};
-void reference_sample(bool eval,bool owned,uintptr_t caller,void const* structure,bool returned,uint64_t result){
-    std::lock_guard<FrameHookMutex> lock(frame_hook_mutex);if(!native_reference||!recording.load()||self_testing||native_reference_count>=64)return;
-    Row row;row.evaluate=eval;row.structure=reinterpret_cast<uintptr_t>(structure);auto const s=sample(row,owned);auto const& o=s.ownership;
-    std::array<float,4> source{},sampling{};std::array<int32_t,4> target{};unsigned mask{};
-    if(o.view&&safe_copy(source.data(),reinterpret_cast<void const*>(o.view+0x48),16))mask|=1;
-    if(o.view&&safe_copy(target.data(),reinterpret_cast<void const*>(o.view+0x58),16))mask|=2;
-    if(o.view&&safe_copy(sampling.data(),reinterpret_cast<void const*>(o.view+0x3d0),16))mask|=4;
-    fprintf(native_reference,"sample=%u eval=%u returned=%u result=%llx caller=%llx renderer=%llx count=%d view=%llx fields=%u source=%.9g,%.9g,%.9g,%.9g target=%d,%d,%d,%d sampling=%.9g,%.9g,%.9g,%.9g create=%u,%u,%u,%u,%u,%u,%u render=%u,%u bases=%u,%u,%u,%u,%u,%u output_base=%u,%u source_changed=0 sdk_shadow=0\n",
-        ++native_reference_count,unsigned(eval),unsigned(returned),result,caller,o.renderer,o.count,o.view,mask,source[0],source[1],source[2],source[3],target[0],target[1],target[2],target[3],sampling[0],sampling[1],sampling[2],sampling[3],
-        s.create[0],s.create[1],s.create[2],s.create[3],s.create[4],s.create[5],s.create[6],s.values[0],s.values[1],s.values[7],s.values[8],s.values[9],s.values[10],s.values[11],s.values[12],s.values[13],s.values[14]);fflush(native_reference);
-}
-#endif
 struct Call {
     Row* row{};Row* parent{};unsigned previous_depth{};bool world{};int exceptions{};
     Call(bool eval,bool owned,uintptr_t caller,std::array<uintptr_t,5> args,const void* structure)
@@ -62,26 +47,12 @@ struct Call {
     Call(Call const&)=delete;Call& operator=(Call const&)=delete;
 };
 uint64_t __fastcall hook_create(uintptr_t first,uintptr_t second,uintptr_t third,uintptr_t fourth,uintptr_t fifth,const void* structure){
-    const auto caller=reinterpret_cast<uintptr_t>(_ReturnAddress());Scope scope;[[maybe_unused]] ngx_stereo_host::ParameterScope parameter_scope;
-#if defined(GEARS_NGX_ISOLATED_STEREO_TRIAL) && GEARS_NGX_ISOLATED_STEREO_TRIAL
-    if(!ngx_capture_control::trial_before_create())return gears_ngx_stereo::dispatch_unavailable;
-#endif
-    ngx_stereo_host::WrapperScope host(false,scope.world(),caller,first,structure);ngx_output_pixels::CreateScope pixels(scope.world(),caller,first,structure);Call call(false,scope.world(),caller,{first,second,third,fourth,fifth},structure);
-#if defined(GEARS_NGX_NATIVE_MONO_REFERENCE) && GEARS_NGX_NATIVE_MONO_REFERENCE
-    reference_sample(false,scope.world(),caller,structure,false,0);
-#endif
+    const auto caller=reinterpret_cast<uintptr_t>(_ReturnAddress());Scope scope;ngx_stereo_host::WrapperScope host(false,scope.world(),caller,first,structure);ngx_output_pixels::CreateScope pixels(scope.world(),caller,first,structure);Call call(false,scope.world(),caller,{first,second,third,fourth,fifth},structure);
     const auto result=ngx_stereo_host::create_passthrough(first,second,third,fourth,fifth,structure,original_create);host.normal_return(result);pixels.normal_return();if(call.row){call.row->result=result;call.row->returned=true;}return result;
 }
 uint64_t __fastcall hook_evaluate(uintptr_t first,uintptr_t second,uintptr_t third,const void* structure){
-    const auto caller=reinterpret_cast<uintptr_t>(_ReturnAddress());Scope scope;[[maybe_unused]] ngx_stereo_host::ParameterScope parameter_scope;ngx_stereo_host::WrapperScope host(true,scope.world(),caller,first,structure);ngx_output_pixels::EvalScope pixels(scope.world(),caller,first,structure);Call call(true,scope.world(),caller,{first,second,third,0,0},structure);
-#if defined(GEARS_NGX_NATIVE_MONO_REFERENCE) && GEARS_NGX_NATIVE_MONO_REFERENCE
-    reference_sample(true,scope.world(),caller,structure,false,0);
-#endif
-    const auto result=ngx_stereo_host::evaluate_passthrough(scope.world(),first,second,third,structure,original_evaluate);host.normal_return(result);pixels.normal_return(result);if(call.row){call.row->result=result;call.row->returned=true;}
-#if defined(GEARS_NGX_NATIVE_MONO_REFERENCE) && GEARS_NGX_NATIVE_MONO_REFERENCE
-    reference_sample(true,scope.world(),caller,structure,true,result);
-#endif
-    return result;
+    const auto caller=reinterpret_cast<uintptr_t>(_ReturnAddress());Scope scope;ngx_stereo_host::WrapperScope host(true,scope.world(),caller,first,structure);ngx_output_pixels::EvalScope pixels(scope.world(),caller,first,structure);Call call(true,scope.world(),caller,{first,second,third,0,0},structure);
+    const auto result=ngx_stereo_host::evaluate_passthrough(scope.world(),first,second,third,structure,original_evaluate);host.normal_return(result);pixels.normal_return(result);if(call.row){call.row->result=result;call.row->returned=true;}return result;
 }
 bool verify(FILE* file,uintptr_t rva,unsigned size,const char* expected){
     // Host contracts include complete compute helpers larger than the NGX
@@ -102,15 +73,6 @@ bool verify(FILE* file,uintptr_t rva,unsigned size,const char* expected){
 bool enable(FILE* file){
     attested=false;printed=false;recorder={};create_target=reinterpret_cast<void*>(base+create_rva);evaluate_target=reinterpret_cast<void*>(base+evaluate_rva);
     if(self_testing||!continuous_session||!frame_link_diagnostics)return false;
-#if defined(GEARS_NGX_NATIVE_MONO_REFERENCE) && GEARS_NGX_NATIVE_MONO_REFERENCE
-    auto flag=[](wchar_t const* name){wchar_t value[8]{};return GetEnvironmentVariableW(name,value,8)==1&&value[0]==L'1';};
-    if(!flag(L"GEARSVR_TEST_WINDOWS_BEHIND")||!flag(L"GEARSVR_TEST_MUTE_GAME")||!flag(L"GEARSVR_TEST_TINY_OUTPUT_OBSERVE_ONLY"))return false;
-    wchar_t path[MAX_PATH]{};auto length=GetModuleFileNameW(own_module,path,MAX_PATH);if(!length||length>=MAX_PATH)return false;auto* sep=wcsrchr(path,L'\\');if(!sep)return false;
-    wcscpy_s(sep+1,MAX_PATH-size_t(sep+1-path),L"ngx-native-reference.txt");if(GetFileAttributesW(path)!=INVALID_FILE_ATTRIBUTES)return false;
-    native_reference=_wfsopen(path,L"w",_SH_DENYNO);if(!native_reference)return false;
-    native_reference_active.store(true,std::memory_order_release);
-    fprintf(file,"ngx_native_mono_reference enabled=1 original_renderer_arguments=1 original_sdk_arguments=1 xr_publication_compiled_out=1\n");
-#endif
     const bool create=verify(file,create_rva,create_size,create_sha256),eval=verify(file,evaluate_rva,evaluate_size,evaluate_sha256);
     attested=create&&eval;return attested;
 }

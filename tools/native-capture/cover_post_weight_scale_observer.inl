@@ -38,7 +38,7 @@ bool enabled{};std::mutex record_mutex;std::array<Record,capacity> records{};uns
 std::atomic<bool> attempted{},written{};std::atomic<DWORD> file_error{};
 struct Workspace {Record record{};};inline thread_local Workspace workspace{};
 
-bool linked(Compose const& frame,Call const& call,Row const& compute){
+bool linked(Compose const& frame,Call const& call,Row const& compute,bool realtime=false){
     const auto& weight=call.row;
     return compute.kind<2&&compute.failure==Failure::okay&&compute.before_valid&&compute.after_valid&&compute.returned&&
         !compute.exception&&!compute.nested&&!compute.concurrent&&!compute.compose_returned&&!compute.compose_exception&&
@@ -47,7 +47,7 @@ bool linked(Compose const& frame,Call const& call,Row const& compute){
         weight.outer_tick==frame.outer_tick&&compute.episode==weight.episode&&weight.episode==frame.scope.episode&&
         compute.thread==weight.thread&&weight.thread==GetCurrentThreadId()&&weight.thread==frame.scope.owner.thread&&
         compute.ordinal==weight.compute_ordinal&&weight.ordinal==compute.ordinal+1&&
-        frame.ordinal==weight.ordinal&&frame.last_ordinal==compute.ordinal&&frame.last_row==weight.linked_row&&
+        frame.ordinal==weight.ordinal&&frame.last_ordinal==compute.ordinal&&(realtime||frame.last_row==weight.linked_row)&&
         compute.node_argument==weight.node_argument&&frame.last_node==compute.node_argument&&
         phase::same(frame.last_identity,compute.after.node)&&compute.mesh_argument==weight.owner.mesh.address&&
         compute.caller==base+0x1290e5&&weight.caller==base+0x12911f&&compute.entry_rsp==weight.entry_rsp&&
@@ -106,10 +106,10 @@ Reject payload(Record const& r,Readback& out){
     if(safe_copy(out.matrices.data(),reinterpret_cast<void const*>(out.output.data),r.matrix_count*64))out.read_mask|=matrices_read;
     return (out.read_mask&96)==96?Reject::okay:Reject::read;
 }
-Reject sample(Compose const& frame,Call const& call,Record& r){
+Reject sample(Compose const& frame,Call const& call,Record& r,bool realtime=false){
     if(!r.original_returned)return Reject::exception;
     r.scope_open=scope(frame,call);if(!r.scope_open)return Reject::call_scope;
-    if(!r.linked_source||!linked(frame,call,r.compute)||!role(r.compute))return Reject::source;
+    if(!r.linked_source||!linked(frame,call,r.compute,realtime)||!role(r.compute))return Reject::source;
     r.matrix_count=r.compute.kind?1:3;
     if(!pose::add(r.weight.entry_rsp,0x48,r.has_scale_address)||!pose::add(r.weight.entry_rsp,0x70,r.scale_address)||
         !pose::add(r.weight.entry_rsp,0x80,r.output_address)||!pose::add(r.weight.entry_rsp,0x90,r.affected_address)||

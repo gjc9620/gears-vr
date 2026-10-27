@@ -5,6 +5,7 @@ namespace w=gears_weapon_hand;
 namespace {
 unsigned checks{},failures{};
 #define C(x) do{++checks;if(!(x)){++failures;std::printf("FAIL %u: %s\n",__LINE__,#x);}}while(0)
+void configure_main_test_backend(w::BrokerBackend&) noexcept;
 thread_local std::uint32_t test_thread=1;
 constexpr std::uint32_t worker=1,gt=2;
 enum class Mutate {none,frame,proposal,decision,key,nonce,candidate,cover,duplicate,reserved,size,version,reenter,fault};
@@ -78,7 +79,8 @@ struct Fake {
         if(f.invalidate_mutation==Mutate::reenter)f.reentered=f.broker->unregister(value->registration_cookie);
     }
     w::BrokerBackend backend() noexcept {
-        return {this,pin,unpin,clock,thread,w::weapon_broker_win32::prepare,w::weapon_broker_win32::commit,w::weapon_broker_win32::invalidate};
+        w::BrokerBackend b{this,pin,unpin,clock,thread,w::weapon_broker_win32::prepare,w::weapon_broker_win32::commit,w::weapon_broker_win32::invalidate};
+        configure_main_test_backend(b);return b;
     }
     void start_barrier(unsigned phase){entered=CreateEventW(nullptr,TRUE,FALSE,nullptr);resume=CreateEventW(nullptr,TRUE,FALSE,nullptr);block=phase;C(entered&&resume);}
     void end_barrier(){CloseHandle(entered);CloseHandle(resume);entered=resume=nullptr;block=0;}
@@ -418,10 +420,11 @@ void retired_cookie_tests(){
     }
 }
 #include "weapon_hand_call_broker_test.inl"
+#include "main_mount_broker_test.inl"
 } // namespace
 int main(){
     registration_tests();normal_and_retry_tests();temporary_loss_tests();bad_callback_tests();
     bad_frame_and_decision_tests();transaction_drain_tests();concurrent_tests();clock_thread_and_pin_tests();retired_cookie_tests();
-    auxiliary_tests();
+    auxiliary_tests();main_mount_tests();
     std::printf("weapon_hand_broker: %u checks, %u failures\n",checks,failures);return failures?1:0;
 }

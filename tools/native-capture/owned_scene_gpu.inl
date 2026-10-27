@@ -104,9 +104,6 @@ struct Publication {uint64_t ticket{},pose{},session{},serial{};unsigned reason{
  uint64_t slot_serial_before{},slot_serial_after{},ready_completed{},done_completed{};};
 std::array<Publication,frame_limit> publications{};unsigned publication_count{};
 uint64_t publication_attempts{},published_count{};Publication latest_publication{};
-#if defined(GEARS_NGX_OWNED_SCENE_TRIAL) && GEARS_NGX_OWNED_SCENE_TRIAL
-uint64_t ngx_candidate_discarded{};
-#endif
 uint64_t retained_images{},duplicate_images{};
 // Unlike the current TLS frame, this identity survives deferred Canvas/GPU
 // submission and remains attached to the one admitted owned scene.
@@ -316,22 +313,6 @@ bool publish_image(){
 #if defined(GEARS_VR_DOF_COMPAT) && GEARS_VR_DOF_COMPAT
  if(publication_ticket!=image.id||!publication_world||publication_world!=committed_world_generation.load()||
     !vr_dof_compat::publication(publication_world,image.id)){fault(22);return false;}
-#endif
-#if defined(GEARS_NGX_OWNED_SCENE_TRIAL) && GEARS_NGX_OWNED_SCENE_TRIAL
- // The owned proof covers real scene/UI submission. DLSS additionally needs
- // both complete native Output scopes from this exact world/ticket.
- const auto sdk=ngx_capture_control::owned_publication(publication_world,image.id);
- if(sdk==gears_ngx_owned::Publication::rejected){fault(24);return false;}
- if(sdk==gears_ngx_owned::Publication::discard_candidate){
-  // Real owned/UI/queue proof permits retiring this image, not publishing it.
-  if(!image_tickets.retire_through(image.id)){fault(20);return false;}
-  if(!vr_dof_compat::retire_owned(publication_world,image.id)){fault(23);return false;}
-  ++ngx_candidate_discarded;
-  if(diagnostic_status){fprintf(diagnostic_status,"ngx_owned_candidate_discarded ticket=%llu world=%llu count=%llu submitted_to_publisher=0\n",
-      image.id,publication_world,ngx_candidate_discarded);fflush(diagnostic_status);}
-  return true;
- }
- if(!dlss_output_control::publication(publication_world,image.id,sdk==gears_ngx_owned::Publication::controlled)){fault(24);return false;}
 #endif
  gears_vr::GpuCaptureTrace trace{};bool published=false;
 #if defined(GEARS_DESKTOP_MIRROR) && GEARS_DESKTOP_MIRROR
@@ -631,9 +612,6 @@ void print_progress(FILE* file){
  auto lock=support_startup.acquire("owned_gpu_frame_lock",frame_hook_mutex);
  const bool pending=support_startup.call("owned_gpu_pending_query",[&]{return tracker.has_unsubmitted_owned_events(resource);});
  support_startup.record("owned_gpu_status_output","enter");
-#if defined(GEARS_NGX_OWNED_SCENE_TRIAL) && GEARS_NGX_OWNED_SCENE_TRIAL
- fprintf(file,"ngx_owned_candidate_discarded=%llu ",ngx_candidate_discarded);
-#endif
  fprintf(file,"owned_shutdown_started=%u owned_shutdown_closed=%u owned_shutdown_fence=%u owned_shutdown_hr=%ld owned_shutdown_unsubmitted=%u ",
   shutdown_started?1:0,shutdown_closed?1:0,shutdown_fence.state(),long(shutdown_fence.error()),pending?1:0);
  fprintf(file,"owned_resource_cycles=%llu owned_resource_frames=%llu owned_handoff_prepared=%u owned_handoff_retired=%u owned_handoff_fault=%u ",
@@ -648,6 +626,7 @@ void print_progress(FILE* file){
  fprintf(file,"owned_execute_failure_qpc=%lld owned_execute_failure_count=%u owned_execute_failure_caller=%llx owned_execute_failure_missing=%llx owned_execute_failure_certified=%u ",
   execute_ready?execute_failure.qpc:0,execute_ready?execute_failure.count:0,execute_ready?execute_failure.caller:0,
   execute_ready?execute_failure.missing_list:0,execute_ready&&execute_failure.previously_certified?1u:0u);
+
  // The full diagnostic print runs only after native cleanup. A proof failure
  // can retain GPU resources, so keep the first list-creation fault in the
  // continuously written session status as well.

@@ -68,7 +68,14 @@ int main(int argc,char** argv){
             offsetof(recoil::Record,has_scale),offsetof(recoil::Record,scale_header),offsetof(recoil::Record,pose_header),offsetof(recoil::Record,affected_header),offsetof(recoil::Record,affected),offsetof(recoil::Record,matrix));return 0;}
     if(argc!=6||!fixtures(argv[2],argv[3])||!load_caller(argv[4]))return 2;start();if(!recoil_fixture(argv[5]))return 2;
     const std::string mode=argv[1];if(mode=="active"){C(recoil::certify());image[0x3a3d2c+300]^=1;C(!recoil::certify());image[0x3a3d2c+300]^=1;}
+    if(mode=="freeze-config"){wchar_t folder[MAX_PATH]{},path[MAX_PATH]{};C(GetCurrentDirectoryW(MAX_PATH,folder)>0);C(swprintf_s(path,L"%s\\body-freeze-config-%lu-%llu.ini",folder,GetCurrentProcessId(),GetTickCount64())>0);
+        C(recoil::configure(path,nullptr)&&!recoil::enabled&&!recoil::freeze_on_first_natural_output.load());
+        C(WritePrivateProfileStringW(L"BodyRecoilObserver",L"freeze_on_first_natural_output",L"1",path)!=FALSE);C(!recoil::configure(path,nullptr)&&!recoil::enabled);
+        C(WritePrivateProfileStringW(L"BodyRecoilObserver",L"enabled",L"1",path)!=FALSE);C(WritePrivateProfileStringW(L"BodyRecoilObserver",L"freeze_on_first_natural_output",L"invalid",path)!=FALSE);C(!recoil::configure(path,nullptr)&&!recoil::enabled);
+        C(WritePrivateProfileStringW(L"BodyRecoilObserver",L"freeze_on_first_natural_output",L"1",path)!=FALSE);C(recoil::configure(path,nullptr)&&recoil::enabled&&recoil::freeze_on_first_natural_output.load()&&!recoil::ring_frozen.load());
+        printf("body_recoil freeze-config: %u checks %u failures\n",checks,failures);return failures?1:0;}
     setup_recoil(mode!="inactive");
+    recoil::freeze_on_first_natural_output=(mode=="freeze"||mode=="freeze-opaque"||mode=="freeze-exception");
     if(mode=="mapping")map_memory[4]=255;
     Entry tick=tick_entry(),compose=compose_entry();live::pose_begin(tick);live::pose_begin(compose);recoil::compose_begin(compose);
     C(recoil::frame.active&&recoil::pending_count()==1);const auto hand_before=live::slot.data.record.source;
@@ -77,12 +84,12 @@ int main(int argc,char** argv){
     const uintptr_t rsp=reinterpret_cast<uintptr_t>(stack_memory.data())+8;
     p::ArrayHeader output{reinterpret_cast<uintptr_t>(&matrix),1,1},list{reinterpret_cast<uintptr_t>(&affected),1,1};
     memcpy(reinterpret_cast<void*>(rsp+0x80),&output,16);memcpy(reinterpret_cast<void*>(rsp+0x90),&list,16);
-    if(mode=="opaque"){const p::ArrayHeader opaque{0xbad00000,1,1};const uint32_t has=1;memcpy(reinterpret_cast<void*>(rsp+0x70),&opaque,16);memcpy(reinterpret_cast<void*>(rsp+0x48),&has,4);}
+    if((mode=="opaque"||mode=="freeze-opaque")){const p::ArrayHeader opaque{0xbad00000,1,1};const uint32_t has=1;memcpy(reinterpret_cast<void*>(rsp+0x70),&opaque,16);memcpy(reinterpret_cast<void*>(rsp+0x48),&has,4);}
     Entry weight{};weight.kind=2;weight.rcx=node_at;weight.ra=base+0x12911f;weight.rsp=rsp;weight.rdx=0x111;weight.r8=0x222;weight.r9=0x333;
     p::CallPacket packet{};memset(&packet,0x5a,sizeof packet);float alpha=1;memcpy(packet.xmm[0].data(),&alpha,4);const auto expected_packet=packet;
     recoil::WeightCall call{};
     if(mode!="inactive"&&mode!="mapping"){
-        if(mode=="exception")recoil_catch_exception(&weight,&call,&packet);
+        if((mode=="exception"||mode=="freeze-exception"))recoil_catch_exception(&weight,&call,&packet);
         else{recoil::weight_begin(weight,call);C(call.selected);
             if(mode=="mismatch"){auto wrong=call;recoil::weight_end(wrong,packet,true);C(recoil::frame.weight==&call&&recoil::frame.weight_depth==1);
                 Entry wrong_compose=compose;recoil::compose_end(wrong_compose,true);C(recoil::frame.active);}
@@ -101,10 +108,23 @@ int main(int argc,char** argv){
     recoil::compose_end(compose,true);live::pose_end(compose,true);live::pose_end(tick,true);drained();
     C(!recoil::pending_count()&&recoil::record_count==1);C(live::completed==1&&live::records[0].planned==15&&rig::core_reads==1);
     auto const& r=recoil::records[0];
-    if(mode=="active"){C(r.qualified&&r.natural_calls==1&&!r.no_natural_call&&(r.read_mask&recoil::output_read));C(r.affected==4&&r.pose_header.count==1&&r.original_rcx==node_at&&r.original_rsp==rsp);C(!memcmp(&matrix,&r.matrix,64));}
+    if(mode=="active"||mode=="freeze"||mode=="ring-default"){C(r.qualified&&r.natural_calls==1&&!r.no_natural_call&&(r.read_mask&recoil::output_read));C(r.affected==4&&r.pose_header.count==1&&r.original_rcx==node_at&&r.original_rsp==rsp);C(!memcmp(&matrix,&r.matrix,64));}
     else if(mode=="inactive"){C(r.qualified&&r.no_natural_call&&r.natural_calls==0&&r.begin.flags140==0);C(!(r.read_mask&recoil::output_read));}
-    else{C(!r.qualified&&r.failure!=recoil::Failure::none);if(mode=="exception")C(r.failure==recoil::Failure::exception);if(mode=="stop")C(r.failure==recoil::Failure::stopped);}
-    if(mode=="opaque"){C(r.failure==recoil::Failure::shape&&!r.qualified);C((r.read_mask&recoil::headers_read)&&!(r.read_mask&recoil::output_read));C(r.scale_header.data==0xbad00000&&r.scale_header.count==1&&r.scale_header.capacity==1&&r.has_scale==1);C(!recoil::opaque_reads);}
+    else{C(!r.qualified&&r.failure!=recoil::Failure::none);if((mode=="exception"||mode=="freeze-exception"))C(r.failure==recoil::Failure::exception);if(mode=="stop")C(r.failure==recoil::Failure::stopped);}
+    if((mode=="opaque"||mode=="freeze-opaque")){C(r.failure==recoil::Failure::shape&&!r.qualified);C((r.read_mask&recoil::headers_read)&&!(r.read_mask&recoil::output_read));C(r.scale_header.data==0xbad00000&&r.scale_header.count==1&&r.scale_header.capacity==1&&r.has_scale==1);C(!recoil::opaque_reads);}
+    if(mode=="freeze"||mode=="ring-default"||mode=="freeze-opaque"||mode=="freeze-exception"){
+        const bool frozen=mode=="freeze";const auto first_record=recoil::records[0];C(recoil::ring_frozen.load()==frozen);
+        for(unsigned i=0;i<40;++i){selected();C(publish());setup_recoil(false);Entry next_tick=tick_entry(),next_compose=compose_entry();
+            live::pose_begin(next_tick);live::pose_begin(next_compose);recoil::compose_begin(next_compose);four();recoil::compose_end(next_compose,true);live::pose_end(next_compose,true);live::pose_end(next_tick,true);drained();}
+        C(recoil::composes==41&&recoil::natural_calls==1&&live::completed==41&&rig::core_reads==41);C(!recoil::pending_count()&&recoil::ring_frozen.load()==frozen);
+        if(frozen){C(recoil::sequence==1&&recoil::record_count==1);C(!memcmp(&first_record,&recoil::records[0],sizeof(first_record)));}
+        else{C(recoil::sequence==41&&recoil::record_count==32);for(auto const& row:recoil::records)C(row.no_natural_call&&row.qualified&&!row.natural_calls);}
+        wchar_t folder[MAX_PATH]{};C(GetCurrentDirectoryW(MAX_PATH,folder)>0);C(swprintf_s(directory,L"%s\\recoil-freeze-%lu-%llu",folder,GetCurrentProcessId(),GetTickCount64())>0);C(CreateDirectoryW(directory,nullptr)!=FALSE);
+        recoil::request_drain();C(!recoil::pending_count());recoil::print(nullptr,true);C(recoil::file_written.load());wchar_t path[MAX_PATH]{};C(swprintf_s(path,L"%s\\body-recoil-observations.bin",directory)>0);
+        HANDLE f=CreateFileW(path,GENERIC_READ,FILE_SHARE_READ,nullptr,OPEN_EXISTING,FILE_ATTRIBUTE_NORMAL,nullptr);C(f!=INVALID_HANDLE_VALUE);recoil::Header header{};DWORD got{};
+        if(f!=INVALID_HANDLE_VALUE){C(ReadFile(f,&header,sizeof header,&got,nullptr)&&got==sizeof header);C(CloseHandle(f)!=FALSE);}
+        C(header.header_size==88&&header.record_size==5168&&header.composes==41&&header.sequence==(frozen?1u:41u)&&header.count==(frozen?1u:32u));
+    }
     printf("body_recoil %s: %u checks %u failures; actual24b owner/Rig/World; host identity/control-memory seams; packet unchanged\n",argv[1],checks,failures);
     return failures?1:0;
 }
@@ -113,6 +133,9 @@ int main(int argc,char** argv){
 int main(int argc,char** argv){if(argc!=2)return 2;wchar_t path[MAX_PATH]{};C(swprintf_s(path,L"%S\\recoil-off-%lu-%llu.ini",argv[1],GetCurrentProcessId(),GetTickCount64())>0);
     C(recoil::configure(path,nullptr));C(WritePrivateProfileStringW(L"BodyRecoilObserver",L"enabled",L"1",path)!=FALSE);C(!recoil::configure(path,nullptr));
     C(WritePrivateProfileStringW(L"BodyRecoilObserver",L"enabled",L"invalid",path)!=FALSE);C(!recoil::configure(path,nullptr));
+    C(WritePrivateProfileStringW(L"BodyRecoilObserver",L"enabled",L"0",path)!=FALSE);C(WritePrivateProfileStringW(L"BodyRecoilObserver",L"freeze_on_first_natural_output",L"1",path)!=FALSE);C(!recoil::configure(path,nullptr));
+    C(WritePrivateProfileStringW(L"BodyRecoilObserver",L"freeze_on_first_natural_output",L"invalid",path)!=FALSE);C(!recoil::configure(path,nullptr));
+    C(WritePrivateProfileStringW(L"BodyRecoilObserver",L"freeze_on_first_natural_output",L"0",path)!=FALSE);C(recoil::configure(path,nullptr));
     C(!recoil::enabled&&!recoil::pending_count());printf("body_recoil OFF: %u checks %u failures\n",checks,failures);return failures?1:0;
 }
 #endif

@@ -971,3 +971,20 @@ ac Game52500启动通过，但协调器第一次initial=episode.sample使用原0
 准确01d8源窄审证return2仅表示原400ms匹配窗口耗尽，open66／process-current65分别保留；原短路循环未导出各原条件，因此现存记录不能指定失败项。后继只给现有Weapon一个必要读器增量：记录原已执行stage／首次末次和现成observer reason／已读字段，失败末stderr一次；成功stdout、exitcodes、400ms／Sleep5／100ms、短路及身份门保持，不复读、不重新匹配、不刷新clock或等价重刷。只同flags一次CPU构建与针对检查，Root仍唯一Game运行者；不改眼点／Native／默认，不扩展W2前置。
 
 人类经统筹再次明确第一人称先成立：ac现存capture-status实际为 `first_person_preview enabled=1 requested=0 transitions=0 applied=0 excluded=497 rejected=0`，不能把config True说成已切第一人称；Native body_goal_applied／published／view_used及hands均0，因此也没有新的body view接管。原body_observation.capture会调用owned `fp_toggle.apply`，但本轮runtime-host.watch只采cohort，确实遗漏原实际切换步骤。准确55ac选择逻辑先legacy FP prepare、后body read_view若owned覆盖整份base_view，非叠加两套位置。下一同候选在真实受控场景、ready前复用原单次owned FirstPersonToggle事件／背景身份与physical-input保护，并先取实际XR左右眼图，再读手输入与接管；最终requested／applied来自实际capture-status、图像与body-view计数分列。无图的ac只承认未接管时段，不能将普通监视画面直接当XR双眼结论；优先B1.01／09、B2.01、B3.02／18，不改相机常量或新增助手。
+
+
+## 2026-10-27：按用户最新指令交付第一人称／双手手动候选
+
+本节取代此前仍要求继续自动验证的执行顺序。用户通过统筹明确停止自动 Game／XR／模拟器、测试用例、自测及回放，只继续源码、编译、链接和打包；首失败诊断保留冻结，不再作为交付门槛。先交第一人称与共用身体基准，再接完整位置／旋转的自由双手，使用同一候选，用户真机反馈前暂停后续射击／换弹／掩体扩展。未把源码或编译成功计成玩法通过，原 30.23% 证据口径未提高。
+
+此前 ad／ae 原型实际启用第一人称后，手臂仍不可达且画面有近距离遮挡；ae 的 reference_neutral 试验没有解决这些问题，不能当作通过。未继续运行 first-rejection 新游戏案例。已有自动测试进程正常结束，之后没有启动 Game、XR、模拟器或测试程序。
+
+源码整合以最新 Junker Native `23621917…7590` 冻结树为底，并入已有 body prototype；不是用旧 Support1 整棵覆盖当前默认。最新 focus1 与物理 RuntimeTracked BQ controller／continuity 源同父三方合并，保留 focus、菜单、颜色，物理 producer 五文件逐字匹配原 BQ 源。Junker Playground `75e54302…61581` 原样保留。J 主默认 manifest 和公开包没有替换。
+
+A：候选显式初始化第一人称请求；身体模式去掉预览固定前移／抬高；静态 Ref115 eye/root/pelvis 配合原实际脚部接触，避免首帧武器动画扭身成为共同基准；增加候选第一人称 0.12m 近裁剪。近裁剪会影响所有很近的几何，尚不能声称已证明只遮头网格或画面已修好。A 编译链接 exit0 后才接 B。
+
+B：武器提供纯变换 helper `93e2c62d…84d1`，由 Root 接入同次 `prepared.desired_eye`、完整原始 tick key、HMD 和 controller，位置与完整四元数只转换一次。固定原骨长，超臂展只投影腕位置到可达壳；左右 solved mask 分开，失跟踪侧不给 alpha 控制权，沿用原版动画／单写入恢复。B、最终 Native 及物理 XR 都编译链接 exit0。只构建目标，无测试或运行验收。构建记录保留初次失败和修正，源码/选项有快照。
+
+交付目录 `J:/gearsVr/candidates/6dof-manual-20261027-1`，正常 GUI，默认 0.4、相机拉近 0、第一人称勾选；已配置购买版路径。Native `322d8733291660a26445d8646d18a39d1aa32dc4f499d8d66f8b624fdd3f209b`，XR `9356fff38724d42141723285cf3c90445163aedfe2a6c51fd058b504ad3666cf`。显式 `sixdof_manual=true`，不含自动自测 EXE 和模拟器；原身份、新鲜度、启动、恢复和停止保护保留。说明见 `docs/6dof-manual-candidate-20261027.md`，包内 README／CANDIDATE／candidate-state／inventory 分列实现、编译、打包和待真机状态。
+
+当前状态：**代码实现／编译／打包已完成；实际启动、清晰双眼、持续双手、停止及真机验收未确认。等待用户反馈，暂停后续功能，不继续自动测试。** 回退使用正常停止并退出游戏后，再打开 J 主目录的原正常启动器。

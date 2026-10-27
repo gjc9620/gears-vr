@@ -518,8 +518,8 @@ private:
         return true;
     }
 public:
-    bool render_pause_menu(XrCompositionLayerProjection& layer,XrCompositionLayerProjectionView (&views)[2],uint64_t expected_session,ProjectionStatus& status,int64_t menu_enter_ns,uint64_t space_epoch,int64_t space_change_time){
-        // Pause preserves the native pair, including the HUD's per-eye plane
+    bool render_menu(XrCompositionLayerProjection& layer,XrCompositionLayerProjectionView (&views)[2],uint64_t expected_session,ProjectionStatus& status,int64_t menu_enter_ns,uint64_t space_epoch,int64_t space_change_time){
+        // In-game menus preserve the native pair, including the HUD's per-eye plane
         // transform and world parallax. Never reuse one eye as a common quad.
         if(menu_enter_ns<=0){status=ProjectionStatus::menu_recovery_pending;return false;}
         return render_projection(layer,views,expected_session,status,menu_enter_ns,space_epoch,space_change_time);

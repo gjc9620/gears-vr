@@ -93,7 +93,7 @@ bool own_entries(){return true;}
 template<class T>bool read(T& out,uintptr_t at){return safe_copy(&out,reinterpret_cast<void const*>(at),sizeof(T));}
 bool same_metadata(p::Metadata const& a,p::Metadata const& b){return a.asset==b.asset&&a.master==b.master&&
     p::header_equal(a.reference,b.reference)&&p::header_equal(a.local,b.local)&&p::header_equal(a.space,b.space)&&p::header_equal(a.desired,b.desired)&&!memcmp(&a.component,&b.component,64);}
-// Canonical Scope address contract used by the shared arm-control consumer.
+// Same exact-address consumer contract as production CCTRL current().
 bool current(Compose const& f){return f.admitted&&own_entries()&&f.address&&continuous_hand_owner_live::control_current(*f.address);}
 Failure before(Compose const& f,Row& row){if(!current(f)||row.caller!=base+0x1290e5||row.out_argument!=row.entry_rsp+0x80)return Failure::invalid;
     row.before.metadata=model_metadata;const unsigned side=row.raw_rdx==11?0u:1u;

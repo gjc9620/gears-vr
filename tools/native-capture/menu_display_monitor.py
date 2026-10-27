@@ -93,17 +93,48 @@ def pause_settings(sample, top):
     return pause_seen and name == 'DeltaPause-Options'
 
 
-def pause_return_confirmation(sample, top):
-    if (top.get('tag') != 'WarfareConfirmation' or
-            not scene_context(top, 'WarfareConfirmation', 'UIScene_Confirmation') or
-            sample.get('dialog_text') not in ({
-                'Title':'<Strings:WarfareGame.Generic.ConfirmSurrender_Title>',
-                'MessageText':'<Strings:WarfareGame.Generic.ConfirmSurrender>'}, {
-                'Title':'<Strings:WarfareGame.Generic.ConfirmCheckPointLoad_Title>',
-                'MessageText':'<Strings:WarfareGame.Generic.ConfirmCheckPointLoad>'})):
-        return False
+def confirmation_display(sample, top):
+    """Route an authenticated modal scene, independently of dialog wording.
+
+    The reader verifies registered objects, the scene-client backlink, focus
+    ownership and a fresh read ledger. This grants display only; input still
+    requires its separate semantic rules and full dialog-text acquisition.
+    """
+    if (top.get('cls') != 'UIScene_Confirmation' or
+            type(top.get('input_mode')) is not int or top['input_mode'] not in (1, 4) or
+            top.get('tag') != top.get('name') or
+            type(top.get('tag_number')) is not int or top['tag_number'] < 0 or
+            sample.get('active_scenes_truncated', False) is not False):
+        return UNKNOWN
     scenes = active_top(sample, top)
-    return scenes is not None and any(scene_context(scene, 'DeltaPause-Campaign-Host') for scene in scenes[:-1])
+    if scenes is None or len(scenes) > 32:return UNKNOWN
+    def pointer(value):
+        return (type(value) is str and re.fullmatch(r'0x[0-9a-fA-F]{1,16}', value) is not None
+                and int(value, 16) > 0)
+    for scene in scenes:
+        if (not isinstance(scene, dict) or not pointer(scene.get('address')) or
+                not pointer(scene.get('outer')) or scene['outer'] != top.get('outer') or
+                type(scene.get('number')) is not int or scene['number'] < 0 or
+                type(scene.get('name')) is not str or not scene['name'] or
+                type(scene.get('cls')) is not str or not scene['cls'] or
+                type(scene.get('input_mode')) is not int or scene['input_mode'] not in (0, 1, 2, 4)):
+            return UNKNOWN
+    if (len({int(scene['address'], 16) for scene in scenes}) != len(scenes) or
+            any(top.get(key) != scenes[-1].get(key) for key in ('number', 'outer'))):
+        return UNKNOWN
+    # The most recent known background determines the image path. In-game
+    # prompts already contain the native HUD-plane transform in both eyes;
+    # menu/startup prompts use the existing full-client menu capture.
+    for scene in reversed(scenes[:-1]):
+        if scene_context(scene, 'DeltaPause-Campaign-Host'):return PAUSE_MENU
+        if scene_context(scene, 'DeltaGameover'):return DEATH_MENU
+        if (scene['name'], scene['cls'], scene['input_mode']) == ('DeltaMainMenu', 'WarUIScene_MainMenu', 4):
+            return MAIN_MENU
+    # The persistent nonmodal popup also exists before gameplay. It cannot
+    # establish that a native stereo producer has handed off; without an
+    # explicit in-game menu parent, keep startup/system prompts on full-client
+    # capture instead of waiting indefinitely for a nonexistent stereo ticket.
+    return MAIN_MENU
 
 
 def main_menu(sample, top):
@@ -117,8 +148,7 @@ def main_menu(sample, top):
              ('DeltaCampaignMenu_ContinueGame', 'WarUIScene_Campaign', 4),
              ('DeltaSelectAct', 'WarUIScene', 1),
              ('DeltaSelectMap', 'WarUIScene', 1),
-             ('DeltaSelectDifficulty', 'WarUIScene', 1),
-             ('WarfareConfirmation', 'UIScene_Confirmation', 1)]
+             ('DeltaSelectDifficulty', 'WarUIScene', 1)]
     name = top.get('tag')
     depth = next((i+1 for i, (scene_name, _, _) in enumerate(chain) if scene_name == name), 0)
     if not depth:
@@ -227,11 +257,8 @@ def classify(sample):
     # Only observed settings scenes under their ordered campaign Pause context.
     if player == 0 and pause_settings(sample, top):
         return PAUSE_MENU
-    # Display only: the exact observed surrender/checkpoint prompts under Pause
-    # are not authenticated input choices. Title/message pairs cannot mix;
-    # no generic confirmation/dialog admission or input permission is granted.
-    if player == 0 and pause_return_confirmation(sample, top):
-        return PAUSE_MENU
+    if player == 0 and top.get('cls') == 'UIScene_Confirmation':
+        return confirmation_display(sample, top)
     # This persistent nonmodal scene was observed atop gameplay; it is not
     # sufficient to render stereo. Native identity and XR ticket gates still apply.
     if blocked == 0 and player in (-1, 0) and (top.get('name'), top.get('cls'), top.get('input_mode')) == (
@@ -321,7 +348,7 @@ class MenuDisplayMonitor:
                     if self.reader_identity(self.reader) != (self.game['pid'],self.game['creation_time']):
                         raise RuntimeError('Movie reader process identity changed after attestation')
             sampling = True
-            sample = self.reader.sample()
+            sample = self.reader.sample_display()
             sampling = False
             if sample.get('pid') != self.game['pid']:
                 raise RuntimeError('Menu sample PID mismatch')

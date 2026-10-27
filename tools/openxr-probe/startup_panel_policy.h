@@ -27,10 +27,11 @@ public:
         return false;
     }
     bool show_panel() const {return enabled_&&!cancelled_&&mode_!=gears_menu::Mode::loading_display&&
-        (mode_==gears_menu::Mode::death_menu||mode_==gears_menu::Mode::main_menu||(!handed_off_&&!resume_required_));}
-    // Pause uses a native stereo projection but retains the menu epoch. It
+        (mode_==gears_menu::Mode::main_menu||(!handed_off_&&!resume_required_));}
+    // In-game menus use native stereo projection but retain the menu epoch. It
     // cannot retire the fresh-image boundary required when gameplay resumes.
-    bool show_pause_projection()const{return enabled_&&!cancelled_&&mode_==gears_menu::Mode::pause_menu;}
+    bool show_menu_projection()const{return enabled_&&!cancelled_&&
+        (mode_==gears_menu::Mode::pause_menu||mode_==gears_menu::Mode::death_menu);}
     // Producer readiness alone must never retire the initial fallback capture.
     bool suspend_window_capture()const{return handed_off_&&!show_panel();}
     void menu_rendered(){

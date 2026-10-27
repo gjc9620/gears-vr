@@ -148,34 +148,6 @@ uint32_t test_control_output(){
 void eye(unsigned index){expected_view=views.data()+index*0xd30;put(context,0x14c0,reinterpret_cast<uintptr_t>(expected_view));assert(call()==0xfedcba98u);}
 void run_control_cases(){
     using namespace gears_dlss_output;
-    control_reset();
-    {dlss_output_control::ConsumeScope consume(9,7,true);eye(0);eye(1);
-        assert(!dlss_output_control::publication(9,7));
-        consume.finish();assert(dlss_output_control::publication(9,7,true));
-        assert(dlss_output_control::store.finishes==1&&!dlss_output_control::active_key);
-        consume.finish();assert(dlss_output_control::store.finishes==1);}
-    assert(dlss_output_control::publication(9,7)&&dlss_output_control::store.finishes==1);
-    {
-        gears_ngx_stereo::RecordedOutput output;output.identity={1,9,3,4,5};output.ticket=7;output.color=0x1234;
-        auto& l=output.layout;l.full_output={2560,1080};l.input={853,720};l.eye_output={1280,1080};l.stride=1280;
-        l.input_base[1]={1280,0};for(auto& physical:l.physical)physical=l.full_output;
-        for(unsigned i=0;i<2;++i){auto& c=output.copies[i];c.source_box={0,0,0,1280,1080,1};c.destination={i*1280,0,0};
-            c.source=0x7890;c.target=output.color;c.list=10+i;c.generation=4;c.ticket=7;c.ordinal=i;}
-        for(unsigned eye=0;eye<2;++eye){
-            View v;v.mask=31;v.eye_valid=v.same_current=v.native.eye_valid=true;v.eye=v.native.eye=eye;v.native.read_mask=7;v.marker=1;
-            v.source={float(eye*1280),0,853,720};v.target={int32_t(eye*1280),0,853,720};Args forwarded{};
-            assert(sdk_geometry(v,{2560,1080,2560,1080},output,9,7,0x1234,forwarded));
-            assert(forwarded==Args({float(eye*1280),0,1280,1080,float(eye*1280),0,1280,1080}));
-            for(unsigned mutation=0;mutation<9;++mutation){auto view=v;auto receipt=output;Dimensions dims{2560,1080,2560,1080};
-                uint64_t world=9,ticket=7,color=0x1234;
-                switch(mutation){case 0:world=10;break;case 1:ticket=8;break;case 2:++color;break;
-                    case 3:++view.source[2];break;case 4:++view.target[2];break;case 5:--dims[2];break;
-                    case 6:++receipt.copies[1].destination[0];break;case 7:receipt.layout.packed_input=true;break;
-                    case 8:view.same_current=false;break;}
-                assert(!sdk_geometry(view,dims,receipt,world,ticket,color,forwarded));
-            }
-        }
-    }
     assert(!gears_final_transfer::eye_caller(0xd83cbf,true));
     assert(gears_final_transfer::eye_caller(0xd83cbf,false,true));
     gears_viewport::TargetDraw binding{0,1,{0x5678,2560,1080,24,0},0};
@@ -253,7 +225,6 @@ void run_control_cases(){
     }
     control_reset();mode=83;{dlss_output_control::ConsumeScope consume(9,7,true);eye(0);eye(1);}
     assert(dlss_output_control::publication(9,7)&&!control_forward_count&&!control_draw_count&&!dlss_output_control::exit_failure_ready.load(std::memory_order_acquire));
-    assert(!dlss_output_control::publication(9,7,true)); // Ordinary no-site is not an SDK final-output proof.
     control_reset();gears_dlss_route::InputBind raw;raw.shader_owner=reinterpret_cast<uintptr_t>(control_shader.data());raw.view_address=reinterpret_cast<uintptr_t>(views.data());
     raw.descriptor_address=reinterpret_cast<uintptr_t>(control_descriptor());raw.tracked_slot_known=true;raw.tracked_slot=5;
     put(views,0x3e8,uint32_t(1));

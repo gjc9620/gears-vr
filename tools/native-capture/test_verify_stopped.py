@@ -18,10 +18,10 @@ class VerifyStoppedTests(unittest.TestCase):
     def test_full_owned_inventory_keeps_every_entry_and_rejects_duplicates(self):
         def status(count):
             return ''.join(f'hook_target={0x140000000+i*32:x} create=MH_OK queue=MH_OK\n' for i in range(count))
-        for count in (2, 65, 87, 91, 102):
+        for count in (2, 65, 87):
             self.assertEqual(verify_stopped.hook_targets(status(count)),
                              [0x140000000+i*32 for i in range(count)])
-        for raw in (status(1), status(103), status(65)+status(2)):
+        for raw in (status(1), status(88), status(65)+status(2)):
             with self.assertRaises(RuntimeError):verify_stopped.hook_targets(raw)
 
     # Historical artifact 1 entry bytes, independent of status-file contents.
@@ -50,11 +50,8 @@ class VerifyStoppedTests(unittest.TestCase):
         if stopped:text += 'stopped disable_status=0 active=0\n'
         self.status.write_text(text)
 
-    def invoke(self, loaded=None, prime_status=None, hook_manifest=None, game_creation_time=None):
+    def invoke(self, loaded=None):
         args = ['verify_stopped.py', '--pid', '321', '--status', str(self.status), '--output', str(self.output)]
-        if prime_status is not None:args += ['--prime-status', str(prime_status)]
-        if hook_manifest is not None:args += ['--hook-manifest', str(hook_manifest)]
-        if game_creation_time is not None:args += ['--game-creation-time', str(game_creation_time)]
         with mock.patch.object(sys, 'argv', args), \
                 mock.patch.object(verify_stopped, 'Resolver', return_value=self.resolver) as factory, \
                 mock.patch.object(verify_stopped, 'modules', return_value={} if loaded is None else loaded) as modules, \
@@ -69,123 +66,6 @@ class VerifyStoppedTests(unittest.TestCase):
                            get_data=mock.Mock(return_value=raw),close=mock.Mock())
         pe.DIRECTORY_ENTRY_BASERELOC=[SimpleNamespace(entries=[SimpleNamespace(rva=rva,type=kind) for rva,kind in relocs])]
         return pe
-
-    def cover_body_fixture(self):
-        ranges, originals = {}, {}
-        for entry, chunks in verify_stopped.COVER_BODY_RESTORE_RANGES.items():
-            ranges[entry] = []
-            for rva, size, _ in chunks:
-                raw = bytes((i + rva) % 251 for i in range(size))
-                self.memory[self.base + rva] = originals[rva] = raw
-                ranges[entry].append((rva, size, hashlib.sha256(raw).hexdigest()))
-            ranges[entry] = tuple(ranges[entry])
-        self.write_status(tuple(ranges))
-        return ranges, originals
-
-    def test_cover_body_restore_contract_has_only_two_entries_and_all_three_complete_chunks(self):
-        self.assertEqual(verify_stopped.COVER_BODY_RESTORE_RANGES, {
-            0x2a85a8: (
-                (0x2a85a8, 889, '8c42951597545b095f60d725d81547173b000255dd69e99172a4359163c3f521'),
-                (0x8ed5ca, 79, '73e614ba91365631e33d25d355ec20c22cb4611a48ec97ad611facefa379ca81')),
-            0xfa680: (
-                (0xfa680, 61, 'aee998dc1117d028904e7f2016dcb7b9ea7ca100ec622de4c8dfe3536bacd52f'),),
-        })
-
-    def test_cover_body_restore_reads_complete_chunks_with_independent_report_hashes(self):
-        ranges, _ = self.cover_body_fixture()
-        with mock.patch.object(verify_stopped, 'COVER_BODY_RESTORE_RANGES', ranges), \
-                mock.patch.object(verify_stopped.SystemEntryCache, 'expected') as system_expected:
-            self.invoke()
-        system_expected.assert_not_called()
-        report = json.loads(self.output.read_text())
-        self.assertTrue(report['all_match'])
-        self.assertEqual([row['range_rva'] for row in report['checks']], ['0x2a85a8', '0x8ed5ca', '0xfa680'])
-        self.assertEqual([row['bytes_checked'] for row in report['checks']], [889, 79, 61])
-        self.assertEqual([row['target'] for row in report['checks']],
-                         [hex(self.base + 0x2a85a8)] * 2 + [hex(self.base + 0xfa680)])
-        for row in report['checks']:
-            self.assertTrue(row['matches'])
-            self.assertEqual(row['actual_sha256'], row['expected_sha256'])
-            self.assertEqual(row['bytes_checked'], row['expected_size'])
-            self.assertEqual(row['module_base'], hex(self.base))
-            self.assertEqual(row['historical_module_base'], '0x140000000')
-            self.assertEqual(row['source_snapshot_sha256'],
-                             '911ab9bcb24cc078420400369a78ffd3f747d915e42c4935a5c82c2dcecc6ae6')
-            self.assertIn('full known chunks', row['source'])
-            self.read.assert_any_call(self.base + int(row['range_rva'], 16), row['expected_size'])
-        self.closed.assert_called_once()
-
-    def test_cover_body_main_cold_or_child_drift_and_short_reads_reject_native_and_manifest_claims(self):
-        ranges, originals = self.cover_body_fixture()
-        manifest = Path(self.directory.name) / 'body-hook-manifest.json'
-        for rva, raw in originals.items():
-            for defect in ('first', 'tail', 'short'):
-                with self.subTest(rva=hex(rva), defect=defect):
-                    self.closed.reset_mock();self.resolver.prepare.reset_mock()
-                    for old_rva, old_raw in originals.items():self.memory[self.base + old_rva] = old_raw
-                    changed = bytearray(raw)
-                    if defect == 'short':changed = changed[:-1]
-                    else:changed[0 if defect == 'first' else -1] ^= 1
-                    self.memory[self.base + rva] = bytes(changed)
-                    # These self-reported originals deliberately agree with the
-                    # possibly damaged entry prefixes. Full historical chunks
-                    # must still decide restoration, including the cold tail.
-                    self.write_status(tuple(ranges))
-                    text = 'continuous_owner_verified=1 owner_pid=123 owner_creation_time=456\n' + self.status.read_text()
-                    entries = []
-                    for entry in ranges:
-                        prefix = self.memory[self.base + entry][:32]
-                        entries.append(dict(target=self.base + entry, original=prefix.hex()))
-                        text += (f'prime_entry target={self.base + entry:016X} before={prefix.hex()}\n'
-                                 f'prime_entry target={self.base + entry:016X} restored=1 before={prefix.hex()}\n')
-                    text += 'entries_restored=1 cover_body_identity match=1\n'
-                    self.status.write_text(text)
-                    manifest.write_text(json.dumps(dict(schema=1, pid=321, game_creation=789, owner_pid=123,
-                                                        owner_creation=456, entries=entries)))
-                    with mock.patch.object(verify_stopped, 'COVER_BODY_RESTORE_RANGES', ranges):
-                        with self.assertRaises(SystemExit) as error:
-                            self.invoke(hook_manifest=manifest, game_creation_time=789)
-                    self.assertEqual(error.exception.code, 1)
-                    report = json.loads(self.output.read_text())
-                    self.assertFalse(report['all_match'])
-                    self.assertEqual([row['range_rva'] for row in report['checks'] if not row['matches']], [hex(rva)])
-                    self.closed.assert_called_once()
-
-    def test_cover_body_allowlist_does_not_open_nearby_cold_or_other_game_targets(self):
-        for rva in (0x2a85a9, 0x8ed5ca, 0xfa53c, 0xfa681):
-            with self.subTest(rva=hex(rva)):
-                self.closed.reset_mock();self.resolver.prepare.reset_mock();self.read.reset_mock()
-                self.write_status((rva, 0x15cf08))
-                original = b'X' * 32
-                with self.status.open('a') as stream:
-                    stream.write(f'prime_entry target={self.base + rva:016X} before={original.hex()}\n'
-                                 f'prime_entry target={self.base + rva:016X} restored=1 before={original.hex()}\n'
-                                 'entries_restored=1\n')
-                with mock.patch.object(verify_stopped, 'check_runtime_ranges', wraps=verify_stopped.check_runtime_ranges) as check:
-                    with self.assertRaisesRegex(RuntimeError, 'Target not in an allowed graphics system module'):
-                        self.invoke()
-                check.assert_not_called()
-                self.read.assert_not_called()
-                self.closed.assert_called_once()
-
-    def test_cover_body_verification_keeps_prepare_and_preinstall_identity_gates(self):
-        self.cover_body_fixture()
-        self.resolver.prepare.side_effect = RuntimeError('Executable hash differs from validated build')
-        with self.assertRaisesRegex(RuntimeError, 'Executable hash differs'):
-            self.invoke()
-        self.read.assert_not_called()
-        self.closed.assert_called_once()
-        self.resolver.prepare.side_effect = None
-        self.closed.reset_mock()
-        manifest = Path(self.directory.name) / 'wrong-body-owner.json'
-        manifest.write_text(json.dumps(dict(schema=1, pid=321, game_creation=790, owner_pid=123,
-                                            owner_creation=456, entries=[dict(target=self.base + 0x2a85a8,
-                                                                            original=(b'X' * 32).hex())])))
-        self.status.write_text('continuous_owner_verified=1 owner_pid=123 owner_creation_time=456\n' + self.status.read_text())
-        with self.assertRaisesRegex(RuntimeError, 'identity mismatch'):
-            self.invoke(hook_manifest=manifest, game_creation_time=789)
-        self.read.assert_not_called()
-        self.closed.assert_not_called()  # Identity rejection precedes attach.
 
     def test_system_main_reuses_pe_and_closes_all_with_full_32byte_comparison(self):
         dxgi=self.fake_pe();core=self.fake_pe(raw=b'C'*32,image_base=0x71000000)
@@ -206,99 +86,6 @@ class VerifyStoppedTests(unittest.TestCase):
                 report=json.loads(self.output.read_text());self.assertEqual(report['all_match'],not corrupt)
                 self.assertTrue(all(row['bytes_checked']==32 for row in report['checks']))
                 self.closed.assert_called_once();dxgi.close.assert_called_once();core.close.assert_called_once()
-
-    def test_preexisting_system_detour_requires_matching_preinstall_and_remote_bytes(self):
-        address = 0x70000100
-        disk = bytes(range(32))
-        preinstalled = b'\xe9\x01\x02\x03\x04' + disk[5:]
-        changed = preinstalled[:-1] + b'X'
-        cases = (
-            ('restored', preinstalled, '1', False, True),
-            ('different_after_stop', changed, '1', False, False),
-            ('native_restore_failed', preinstalled, '0', False, False),
-            ('duplicate_snapshot', preinstalled, '1', True, False),
-        )
-        for name, observed, native_restored, duplicate, accepted in cases:
-            with self.subTest(name=name):
-                self.closed.reset_mock();self.resolver.prepare.reset_mock()
-                self.memory[address] = observed
-                self.write_status((0x296178, address - self.base))
-                initial = f'prime_entry target={address:016X} before={preinstalled.hex()}\n'
-                final = (f'prime_entry target={address:016X} restored={native_restored} '
-                         f'before={preinstalled.hex()}\n')
-                text = self.status.read_text().replace('stopped disable_status=0 active=0\n',
-                                                       initial + (initial if duplicate else '') + final
-                                                       + 'stopped disable_status=0 active=0\n')
-                self.status.write_text(text)
-                with mock.patch.object(verify_stopped.pefile, 'PE', return_value=self.fake_pe(disk)):
-                    if accepted:self.invoke({'dxgi.dll':(0x70000000, 'dxgi.dll')})
-                    else:
-                        with self.assertRaises(SystemExit):
-                            self.invoke({'dxgi.dll':(0x70000000, 'dxgi.dll')})
-                report = json.loads(self.output.read_text())
-                system = report['checks'][-1]
-                self.assertEqual(report['all_match'], accepted)
-                self.assertFalse(system['matches_disk'])
-                self.assertEqual(system['matches_preinstall'], accepted)
-                self.assertEqual(system['matches'], accepted)
-                self.closed.assert_called_once()
-
-    def test_split_prime_status_requires_matching_process_and_owner(self):
-        address=0x70000100
-        disk=bytes(range(32))
-        before=b'\xe9\x01\x02\x03\x04'+disk[5:]
-        prime=Path(self.directory.name)/'target-prime-status.txt'
-        self.memory[address]=before
-        self.write_status((0x296178,address-self.base))
-        self.status.write_text(
-            self.status.read_text().replace('capturing pid=321 flags=fixture\n',
-                'capturing pid=321 flags=fixture\n'
-                'continuous_owner_verified=1 owner_pid=123 owner_creation_time=456\n')
-            +f'prime_entry target={address:016X} restored=1 before={before.hex()}\n')
-        content=(f'prime_entry target={address:016X} before={before.hex()}\n'
-                 'capturing pid=321 lifetime=owner owner_pid=123 owner_creation_time=456 native_hooks_enabled=4\n')
-        prime.write_text(content)
-        with mock.patch.object(verify_stopped.pefile,'PE',return_value=self.fake_pe(disk)):
-            self.invoke({'dxgi.dll':(0x70000000,'dxgi.dll')},prime)
-        report=json.loads(self.output.read_text())
-        self.assertTrue(report['all_match'])
-        self.assertTrue(report['checks'][-1]['matches_preinstall'])
-        self.assertEqual(verify_stopped.prime_preinstall_entries(self.status.read_text(),content),
-                         {address:before})
-        prime.write_text(content.replace('owner_creation_time=456','owner_creation_time=457'))
-        with self.assertRaisesRegex(RuntimeError,'identity does not match'):
-            self.invoke({'dxgi.dll':(0x70000000,'dxgi.dll')},prime)
-
-    def test_hook_manifest_restores_preexisting_system_detours_with_exact_identity(self):
-        address=0x70000100
-        disk=bytes(range(32))
-        before=b'\xe9\x01\x02\x03\x04'+disk[5:]
-        manifest=Path(self.directory.name)/'hook-entry-manifest.json'
-        payload={'schema':1,'pid':321,'game_creation':789,'owner_pid':123,
-                 'owner_creation':456,'entries':[{'target':address,'original':before.hex()}]}
-        self.memory[address]=before
-        self.write_status((0x296178,address-self.base))
-        self.status.write_text('continuous_owner_verified=1 owner_pid=123 owner_creation_time=456\n'
-                               +self.status.read_text())
-        manifest.write_text(json.dumps(payload))
-        loaded={'dxgi.dll':(0x70000000,'dxgi.dll')}
-        with mock.patch.object(verify_stopped.pefile,'PE',return_value=self.fake_pe(disk)):
-            self.invoke(loaded,hook_manifest=manifest,game_creation_time=789)
-        report=json.loads(self.output.read_text())
-        self.assertTrue(report['all_match'])
-        self.assertTrue(report['checks'][-1]['matches_preinstall'])
-        self.memory[address]=before[:-1]+b'X'
-        with mock.patch.object(verify_stopped.pefile,'PE',return_value=self.fake_pe(disk)):
-            with self.assertRaises(SystemExit):
-                self.invoke(loaded,hook_manifest=manifest,game_creation_time=789)
-        self.assertFalse(json.loads(self.output.read_text())['all_match'])
-        self.memory[address]=before
-        for key,value in [('owner_creation',457),('game_creation',790),('pid',322)]:
-            with self.subTest(key=key):
-                altered=dict(payload,**{key:value})
-                manifest.write_text(json.dumps(altered))
-                with self.assertRaisesRegex(RuntimeError,'identity mismatch'):
-                    self.invoke(loaded,hook_manifest=manifest,game_creation_time=789)
 
     def test_relocation_index_preserves_original_rules_and_application_order(self):
         offset=0x100;raw=bytes(range(32))
@@ -495,7 +282,7 @@ class VerifyStoppedTests(unittest.TestCase):
 
     def test_clean_status_and_inventory_preconditions_remain_required(self):
         cases = [dict(pid=322), dict(stopped=False), dict(rvas=(0x296178,)),
-                 dict(rvas=(0x296178, 0x296178)), dict(rvas=tuple(range(103)))]
+                 dict(rvas=(0x296178, 0x296178)), dict(rvas=tuple(range(88)))]
         for values in cases:
             with self.subTest(values=values):
                 self.write_status(**values)
@@ -507,37 +294,12 @@ class VerifyStoppedTests(unittest.TestCase):
                 self.assertFalse(self.output.exists())
 
     def test_dlss_default_ranges_are_fixed_complete_historical_chunks(self):
-        self.assertEqual(verify_stopped.DLSS_OWNED_DOF_RANGES, (
-            (0xd7fd14, 0xe61, '62ceae022db3ea1d7fd0994520e2cbff6c1b1dca288023d1a56bd957fbca7d5c'),))
         self.assertEqual(verify_stopped.DLSS_OUTPUT_RANGES, (
             (0xd82f58, 0xc78, '1efb10541bf56d87b31aae4f452da0d281afd552da16b4bfd16d653f2cd425ea'),
             (0xd83bd0, 0x1e9, 'e051a2d325a4d5ebc12be670d63cd8eae1eead437f33dfa39946de852e61e724'),
         ))
         self.assertEqual(verify_stopped.DLSS_INPUT_BIND_CHUNKS, ((0x1665dc, 0x1cc), (0x8b492c, 0x2b)))
         self.assertEqual(verify_stopped.DLSS_INPUT_BIND_SHA256, '566929fd4f84a21529de0ecb749d2dc75a1bf2ab3cc04876a65f65517222a339')
-
-    def test_owned_dof_full_body_and_tail_are_verified_independently(self):
-        rva, size, _ = verify_stopped.DLSS_OWNED_DOF_RANGES[0]
-        original = bytes(i % 251 for i in range(size))
-        ranges = ((rva, size, hashlib.sha256(original).hexdigest()),)
-        for changed_at in (None, 0, size - 1, 'short'):
-            with self.subTest(changed_at=changed_at):
-                current = bytearray(original)
-                if isinstance(changed_at, int):current[changed_at] ^= 1
-                if changed_at == 'short':current = current[:-1]
-                self.memory[self.base + rva] = bytes(current)
-                self.write_status((rva, 0x15cf08))
-                with self.status.open('a') as stream:stream.write('entries_restored=1 dlss_route_identity match=1\n')
-                with mock.patch.object(verify_stopped, 'DLSS_OWNED_DOF_RANGES', ranges):
-                    if changed_at is None:self.invoke()
-                    else:
-                        with self.assertRaises(SystemExit):self.invoke()
-                report = json.loads(self.output.read_text())
-                self.assertEqual(report['all_match'], changed_at is None)
-                self.assertEqual(report['checks'][0]['expected_size'], 0xe61)
-                self.assertEqual(report['checks'][0]['source_snapshot_sha256'],
-                                 '911ab9bcb24cc078420400369a78ffd3f747d915e42c4935a5c82c2dcecc6ae6')
-                self.read.assert_any_call(self.base + rva, size)
 
     def dlss_fixture(self):
         # Synthetic test bytes and real SHA256; do not check proprietary chunks

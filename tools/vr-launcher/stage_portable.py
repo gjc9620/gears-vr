@@ -18,9 +18,9 @@ PROJECT_MODULES = {
     'debug-launch': 'game_install background_launch quiet_launch configure_startup graphics_policy steam_account tiny_output_recovery instance_policy',
     'game-io': 'background_input game_io menu_state menu_control movie_state scene_owner_snapshot',
     'package-inspector': 'runtime_probe resolve_camera inspect_ui_state sample_player_anchor',
-    'native-capture': ('anchor_config cinematic_anchor mounted_context mounted_read_pass crosshair_assignment_config hook_entry_attestation native_class_discovery camera_closer_options right_stick_policy run_camera_policy run_camera_runtime run_camera_session '
+    'native-capture': ('anchor_config cinematic_anchor mounted_context mounted_read_pass crosshair_assignment_config hook_entry_attestation native_class_discovery camera_closer_options right_stick_policy '
         'launch_reserve menu_display_monitor prime_owner run_stereo_continuous run_stereo_probe startup_selftests '
-        'session_telemetry support_diagnostics start_capture ui_observer_config verify_stopped world_rebind world_rebind_monitor world_rebind_runtime '
+        'session_telemetry support_diagnostics thread_wait_diagnostics xr_preflight_diagnostics start_capture ui_observer_config verify_stopped world_rebind world_rebind_monitor world_rebind_runtime '
         'path_choice_center_monitor path_choice_layout path_choice_trial_config '
         'path_choice_position_monitor path_choice_position_collect path_choice_position_config path_choice_group_fit '
         'path_choice_close_config path_choice_owned_sidecar'),
@@ -81,7 +81,9 @@ def payload_paths(manifest):
     result = ['GearsVR Launcher.exe', 'tools/debug-launch/Start-DebugGame.ps1',
               'tools/package-inspector/reloaded-profile.json']
     result += [f'tools/{folder}/{name}.py' for folder, names in PROJECT_MODULES.items() for name in names.split()]
-    result += [(native / name).as_posix() for name in (dll, *NATIVE_TESTS)]
+    tests=() if manifest.get('sixdof_manual',False) else NATIVE_TESTS
+    result += [(native / name).as_posix() for name in (dll, *tests)]
+    if manifest.get('sixdof_manual',False):result.append('tools/native-capture/sixdof_manual_profile.py')
     result += [(xr / name).as_posix() for name in ('OpenXRPoseProbe.exe', 'openxr_loader.dll')]
     result += [f'{QUIET_BUILD}/{name}' for name in QUIET_HASHES]
     result += [AUDIO_HELPER, AUDIO_PROVENANCE]

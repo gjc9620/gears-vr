@@ -46,7 +46,7 @@ struct Fixture {
     NativeResult original_eval(uint64_t,uint64_t,uint64_t,uint64_t){++fallback;return 7;}
     WrapperOutcome start(){return bridge.create_wrapper(id(),layout(),command(),&cell,source,source.bytes.data(),[&](void const* ptr)->uint64_t{
         ++wrappers;assert(ptr!=source.bytes.data());std::memcpy(backend.create_shadow.bytes.data(),ptr,create_consumed_span);
-        for(size_t i=16;i<source.bytes.size();++i)assert(backend.create_shadow.bytes[i]==(i==0x18?1:source.bytes[i]));
+        for(size_t i=16;i<source.bytes.size();++i)assert(backend.create_shadow.bytes[i]==source.bytes[i]);
         if(throw_wrapper)throw std::runtime_error("wrapper");if(omit_dispatch)return 1;
         uint64_t wrong_cell{};
         auto invoke=[&](){return bridge.create_dispatch(command().raw,1,4,bad_slot?&wrong_cell:&cell,

@@ -145,6 +145,7 @@ def main():
     parser.add_argument('--graphics-startup-lock',action='store_true',help='Require three certified graphics settings hooks during owned priming')
     parser.add_argument('--graphics-menu-lock',action='store_true',help='Also require the certified AA selection hook')
     parser.add_argument('--check-mask-control',action='store_true',help='Self-test and reserve the optional first-view mask trampoline without enabling it; requires a DLL with that export')
+    parser.add_argument('--sixdof-manual',action='store_true',help='Owner-started manual 6DoF profile; omit automatic self-test executables')
     parser.add_argument('--check-frame-link',action='store_true',help='Require frame-association self-tests and startup target/binding priming')
     args=parser.parse_args()
     if args.experimental_preserve_upscaler and (args.graphics_startup_lock or args.graphics_menu_lock):
@@ -181,7 +182,10 @@ def reserve(args,owned,trace,command_started):
     trace.begin('selftests')
     startup_proof=None
     scheduled=[]
-    def schedule(command,**kwargs):scheduled.append((command,kwargs))
+    if args.sixdof_manual and (not owned or args.startup_preflight_nonce is not None):
+        raise RuntimeError('Manual 6DoF requires owned startup without automatic self-test handshake')
+    def schedule(command,**kwargs):
+        if not args.sixdof_manual:scheduled.append((command,kwargs))
     if args.graphics_menu_lock:schedule([str(build/'GraphicsMenuLockTest.exe')],check=True)
     for mode in ([],['--family'],['--clone'],['--renderer'],['--lifetime'],['--prepare']):schedule([str(build/'CaptureSelfTest.exe'),str(dll),*mode],check=True)
     schedule([str(build/'CaptureSelfTest.exe'),str(dll),'--geometry'],check=True)

@@ -97,7 +97,7 @@ template<class Read> bool possession_environment(Config const& c,Reader<Read> co
         if(!std::wcscmp(id->name.data(),name))return derives(c,controlled.cls,id->address);bool found=false;
         for(unsigned i=0;i<c.super_count;++i)if(c.supers[i].identity<c.identity_count&&c.identities[c.supers[i].identity].address==cls){cls=c.supers[i].parent;found=true;break;}
         if(!found)return false;}return false;};
-    if(!has_class(controlled.cls,L"Turret")||!has_class(controlled.cls,L"Vehicle"))return false;
+    if(!gears_mounted::supported([&](auto name){return has_class(controlled.cls,name);}))return false;
     const unsigned props[]={c.controlled_driver_property,c.pawn_driven_vehicle_property,c.controlled_controller_property};
     const unsigned offsets[]={c.controlled_driver,c.pawn_driven_vehicle,c.controlled_controller};
     const wchar_t* labels[]={L"Driver",L"DrivenVehicle",L"Controller"};

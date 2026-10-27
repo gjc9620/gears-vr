@@ -1,7 +1,8 @@
 // Included after crosshair_live and before stereo pair construction. All state
 // is owned by stereo_mutex; the requested mode persists across world recovery.
 namespace first_person_live {
-bool enabled{},preview_current{};gears_first_person::Toggle toggle;
+bool enabled{},preview_current{},initial_requested{},body_basis{};gears_first_person::Toggle toggle;
+double near_clip_metres{};
 HANDLE event{};HMODULE xinput_module{};
 struct Pad {unsigned packet{};unsigned short buttons{};unsigned char lt{},rt{};short lx{},ly{},rx{},ry{};};
 using GetPad=DWORD(WINAPI*)(DWORD,Pad*);GetPad get_pad{};
@@ -10,6 +11,7 @@ gears_first_person::ZoomHint zoom_hint{};
 void close(){if(event){CloseHandle(event);event=nullptr;}}
 bool initialize(){
     if(!enabled)return true;
+    toggle.initialize(initial_requested);
     wchar_t name[128]{};swprintf_s(name,L"Local\\GearsVR.FirstPersonToggle.%lu",GetCurrentProcessId());
     event=CreateEventW(nullptr,FALSE,FALSE,name);
     if(!event||GetLastError()==ERROR_ALREADY_EXISTS){close();return false;}
@@ -55,7 +57,7 @@ bool prepare(gears_anchor::Receipt const* anchor,gears_vr::StereoMatrix& view){
     }
     const auto& a=anchor->anchor;
     gears_first_person::Result result{};
-    if(!gears_first_person::prepare(view,{a.location[0],a.location[1],double(a.location[2])+a.eye_height},stereo_units_per_metre,result)){
+    if(!gears_first_person::prepare(view,{a.location[0],a.location[1],double(a.location[2])+a.eye_height},stereo_units_per_metre,result,body_basis)){
         ++rejected;return false;}
     view=result.view;preview_current=true;++applied;if(weapon.sniper)++sniper_applied;return true;
 }

@@ -19,7 +19,7 @@ MAX_ARCHIVE_BYTES = 32 * 1024 * 1024
 MAX_ARCHIVE_FILES = 32
 MAX_DEBUG_INPUT_BYTES = 4 * 1024 * 1024
 MAX_DEBUG_RECORDS = 8192
-EXPORT_REVISION = 'support-evidence-3'
+EXPORT_REVISION = 'support-evidence-6'
 MAX_SCAN = 200000
 MAX_CANDIDATES = 512
 SESSION_NAME = re.compile(r'continuous-stereo-\d+-\d{8}-\d{6}-[a-f0-9]{8}\.json\Z')
@@ -740,10 +740,10 @@ _POINTER_FIELDS = set(('target queue buffer resource family renderer view canvas
     'camera actor component world handle path image command commands filename directory').split())
 _DEBUG_TEXT_FIELDS = set(('error message exception_type runtime_name runtime_version operator_runtime '
     'native_prepare_stage native_preparation_waiting_for_camera reason last_reason stop_reason phase stage '
-    'event clock kind record cause error_reported stop_requested_by xr_cleanup_actions').split())
+    'event clock kind record cause error_reported stop_requested_by xr_cleanup_actions scope last_session_state xr_preflight_diagnostic_error').split())
 _DEBUG_SUFFIXES = ('.native-start.log', '.session-status.txt', '.native-status.txt', '.stdout.txt', '.stderr.txt', '.csv',
     '.menu.jsonl', '.world.jsonl', '.telemetry.2.jsonl', '.telemetry.1.jsonl', '.telemetry.jsonl',
-    '.support.jsonl.1', '.support.jsonl', '.first-failure.json', '.native-live-status.txt')
+    '.support.jsonl.1', '.support.jsonl', '.first-failure.json', '.native-live-status.txt', '.native-startup.jsonl', '.thread-waits.jsonl', '.xr-preflight.jsonl')
 
 
 def _support_record(data, depth=0):
@@ -752,18 +752,25 @@ def _support_record(data, depth=0):
     roles=('controller','native','xr','game','environment','observer')
     events=('context','system','adapter','adapter_required','adapter_comparison','graphics_event','graphics_snapshot',
             'software_inventory','loaded_modules','process_state','first_failure','pipeline_progress',
-            'observer_error','native_snapshot','native_stop_observed','child_exit')
+            'observer_error','native_snapshot','native_stop_observed','child_exit','startup_stage','startup_wait','thread_wait','startup_trace_gap',
+            'xr_focus_capability','xr_focus_event','xr_focus_snapshot')
     out=dict(support_diagnostics=True,schema=1,role=data.get('role') if data.get('role') in roles else 'unknown',
              event=data.get('event') if data.get('event') in events else 'unknown')
     numeric=set(('pid creation_time observed_qpc qpc_frequency observed_ns event_qpc game_pid game_creation_time '
         'adapter_luid_high adapter_luid_low vendor_id device_id maximum_width maximum_height '
         'hresult error_code device_removed_reason winerror event_code chain_id generation width height format '
         'buffer_count flags accepted source_line snapshot_index present_entries present1_entries present_failures '
-        'overflow lock_skips write_failures presents tests unbound resizing rotations exit_code total_modules_observed').split())
+        'overflow lock_skips write_failures presents tests unbound resizing rotations exit_code total_modules_observed '
+        'thread_id sequence crt_errno skipped trace_io_error elapsed_ms thread_creation_time kernel_100ns user_100ns '
+        'thread_cycles cpu_qpc node_count cpu_winerror object_type object_status context_switches '
+        'thread_cpu_delta_100ns sample_interval_ms previous_sequence '
+        'event_type session_state previous_session_state reported_session_state xr_event_time presence_state events_lost omitted frames focused_frames visible_frames events_observed').split())
     boolean=set(('available adapter_match binding_accepted first_observed_failure software_adapter position_tracking_supported orientation_tracking_supported '
-                 'truncated gpu_query_available').split())
+                 'truncated gpu_query_available succeeded cpu_available wait_chain_available cycle_detected '
+                 'identity_verified thread_alive in_game_process extension_advertised presence_extension_enabled '
+                 'presence_system_supported session_matches should_render final').split())
     texts=set(('system_name adapter_name module_name file_version component version source scope category '
-               'message action phase reason state exception_type connection_method error_domain ordering').split())
+               'message action phase stage reason state exception_type connection_method error_domain ordering').split())
     for key in numeric:
         if key in data:
             value=_number(data[key])
@@ -771,13 +778,14 @@ def _support_record(data, depth=0):
             elif data[key] is None:out[key]=None
     for key in boolean:
         if type(data.get(key)) is bool:out[key]=data[key]
+        elif key=='cycle_detected' and key in data and data[key] is None:out[key]=None
     for key in texts:
         if isinstance(data.get(key),str):out[key]=_debug_text(data[key])
         elif key=='file_version' and key in data and data[key] is None:out[key]=None
-    for key in ('modules','software','chains'):
+    for key in ('modules','software','chains','wait_nodes'):
         if isinstance(data.get(key),list):
             out[key]=[]
-            for row in data[key][:512]:
+            for row in data[key][:(16 if key=='wait_nodes' else 512)]:
                 if not isinstance(row,dict):continue
                 clean=_support_record(dict(row,support_diagnostics=True,schema=1,role=out['role'],event=out['event']),depth+1)
                 out[key].append({k:v for k,v in clean.items() if k not in ('schema','support_diagnostics','role','event')})
@@ -789,7 +797,7 @@ def _support_record(data, depth=0):
                 'owned_list_failure_hr owned_execute_failure_count').split())
             out[key]=_pick(data[key],allowed,numeric=True)
     if isinstance(data.get('runtime_event'),dict):out['runtime_event']=_support_record(data['runtime_event'],depth+1)
-    known=numeric|boolean|texts|{'schema','support_diagnostics','role','event','modules','software','chains','counters','unchanged_ms','runtime_event'}
+    known=numeric|boolean|texts|{'schema','support_diagnostics','role','event','modules','software','chains','wait_nodes','counters','unchanged_ms','runtime_event'}
     unknown=[key for key in data if key not in known and isinstance(key,str) and re.fullmatch(r'[A-Za-z][A-Za-z0-9_]{0,79}',key) and not _PRIVATE_FIELD.search(key)]
     if unknown:out['unrecognized_field_names']=unknown[:32]
     return out
@@ -1057,7 +1065,7 @@ def _debug_session(collector, path, label):
         'native_status session_exit_evidence continuous_session_evidence continuous_owner_evidence '
         'startup_menu_evidence startup_menu_handoff menu_recovery_evidence startup_timings '
         'menu_observation_worker native_diagnostics support_diagnostics requested_configuration path_choice_center_close_error '
-        'path_choice_center_start_error unsafe_xr_teardown error').split())
+        'path_choice_center_start_error unsafe_xr_teardown error xr_preflight_diagnostics xr_preflight_diagnostic_error').split())
     controller = _debug_clean({key:data[key] for key in fields if key in data})
     result = {'recognized':True, 'source_session':path.name, 'controller':controller,
             'not_an_atomic_process_snapshot':True,
@@ -1079,6 +1087,11 @@ def _observation_coverage(result):
         'swapchain_progress':any(row.get('event')=='graphics_snapshot' for row in records),
         'first_failure_file':result['artifacts']['.first-failure.json']['status'],
         'native_live_snapshot':result['artifacts']['.native-live-status.txt']['status'],
+        'native_startup_timeline':result['artifacts']['.native-startup.jsonl']['status'],
+        'thread_wait_evidence':result['artifacts']['.thread-waits.jsonl']['status'],
+        'xr_focus_events':any(row.get('event')=='xr_focus_event' for row in records),
+        'xr_presence_capability':any(row.get('event')=='xr_focus_capability' for row in records),
+        'xr_preflight_checks':result['artifacts']['.xr-preflight.jsonl']['status'],
         'scope':'false means not captured in retained evidence; it does not mean the feature/device is absent'}
 
 
@@ -1101,13 +1114,9 @@ def _session(collector, path, label):
         out['stop_requested_by'] = _debug_text(data['stop_requested_by'])
     out['support_collection'] = _debug_clean(data.get('support_diagnostics',{}))
     out['requested_configuration']={key:value for key,value in _pick(data.get('requested_configuration'),
-        ('render_scale','stereo_units_per_metre','camera_closer_metres','first_person_preview','right_stick_deadzone_percent','run_camera_stabilization',
+        ('render_scale','stereo_units_per_metre','camera_closer_metres','first_person_preview','right_stick_deadzone_percent',
          'hud_horizontal_fov_degrees','hud_element_scale','hud_center_scale')).items() if isinstance(value,(bool,int,float))}
     out['native_lifecycle'] = _debug_clean(data.get('native_status', {}))
-    out['run_camera_policy'] = _pick(data.get('run_camera_policy'),
-        ('applied','applications','writes','restored','ownership_lost','released','closed','suspended',
-         'session_stopping','session_closed'), numeric=True)
-    out['run_camera_cleanup_pending'] = data.get('run_camera_cleanup_pending') is True
     out['errors'] = {k:_text(data[k]) for k in ERROR_FIELDS if isinstance(data.get(k), str)}
     out['native_counters'] = _pick(data.get('native_status'), COUNTERS, numeric=True)
     out['lifecycle'] = _pick(data.get('session_exit_evidence'), ('last_state', 'stopping_observed', 'end_session_succeeded',

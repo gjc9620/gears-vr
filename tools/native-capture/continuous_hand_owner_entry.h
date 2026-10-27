@@ -1,4 +1,9 @@
 #pragma once
+#include "body_c0_budget.h"
+#include "body_tick_tracking_probe.h"
+#include "body_tick_input_live.h"
+#include "body_tick_source_live.h"
+#include "body_tick_commit.h"
 #include <cstdint>
 #include <type_traits>
 namespace gears_continuous_hand_entry {

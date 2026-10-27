@@ -17,6 +17,13 @@ from sample_player_anchor import AnchorRejected, _check_registry_header
 from mounted_read_pass import MountedReadPass
 
 
+def supported_mounted_type(has):
+    """Exact supported class families; does not replace the possession proof."""
+    return has('Vehicle') and (has('Turret') or
+        (has('Vehicle_Junker') and has('WarVehicle')) or
+        (has('WarJunkerSpotlightPawn') and has('WarWeaponPawn')))
+
+
 class MountedTimestampChanged(AnchorRejected):
     """Camera time/frame changed while all non-camera capture evidence agrees."""
 
@@ -231,7 +238,8 @@ class MountedContextCertificate:
                 raise AnchorRejected('Invalid mounted registry header')
         pc, camera, local = identity(s.controller), identity(s.camera), identity(s.local)
         controlled = identity(link('controlled', pc, 'Pawn', 'Controller'))
-        derives(controlled, 'Turret')
+        if not supported_mounted_type(lambda name: any(identities[x]['name']==name for x in chain(controlled['cls']))):
+            raise AnchorRejected('Unsupported mounted vehicle class')
         derives(controlled, 'Vehicle')
         driver = identity(link('driver', controlled, 'Driver', 'Vehicle'))
         derives(driver, 'WarPawn')
@@ -513,7 +521,9 @@ def validate_mounted_config(config):
         return False
     pawn=ids[roles['pawn']];driver=ids[m['role_driver']];inventory=ids[m['role_inventory']]
     world=ids[m['role_world_info']];level=ids[roles['level']]
-    for item,name in ((pawn,'Turret'),(pawn,'Vehicle'),(driver,'WarPawn'),(inventory,'WarInventoryManager'),(world,'WorldInfo')):
+    if not supported_mounted_type(lambda name: ancestry(pawn['cls'],name)):
+        raise AnchorRejected('Unsupported mounted vehicle class')
+    for item,name in ((pawn,'Vehicle'),(driver,'WarPawn'),(inventory,'WarInventoryManager'),(world,'WorldInfo')):
         if item['name'].startswith('Default__') or not ancestry(item['cls'],name):raise AnchorRejected('Mounted role class mismatch')
     if pawn['outer']!=level['address'] or inventory['outer']!=driver['outer']:
         raise AnchorRejected('Mounted role owner mismatch')

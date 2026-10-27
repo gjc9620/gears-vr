@@ -8,7 +8,6 @@ import ctypes as c
 from ctypes import wintypes as w
 import json
 import math
-import os
 import pathlib
 import subprocess
 import sys
@@ -392,6 +391,7 @@ def main():
     parser.add_argument('--build-dir',type=pathlib.Path,default=pathlib.Path(__file__).with_name('build'))
     parser.add_argument('--dll-name',default='GearsCapture.dll',help='Name of an independently built diagnostic DLL')
     parser.add_argument('--startup-selftest-proof',type=pathlib.Path,help=argparse.SUPPRESS)
+    parser.add_argument('--sixdof-manual',action='store_true',help='Owner-started first-person/free-hands candidate; no automatic self-test executables')
     parser.add_argument('--startup-selftest-digest',help=argparse.SUPPRESS)
     parser.add_argument('--startup-selftest-nonce',help=argparse.SUPPRESS)
     parser.add_argument('--use-reserved',action='store_true',help='Activate the same DLL whose unenabled trampolines were reserved during fresh startup')
@@ -499,7 +499,7 @@ def main():
         raise RuntimeError('DLL name must be a basename ending in .dll')
     dll=args.build_dir.resolve()/args.dll_name
     test=dll.with_name('CaptureSelfTest.exe')
-    if not dll.is_file() or not test.is_file():raise RuntimeError('Build capture DLL and self-test first')
+    if not dll.is_file() or (not args.sixdof_manual and not test.is_file()):raise RuntimeError('Build capture DLL and self-test first')
     selftests_started=time.perf_counter_ns()
     from startup_selftests import capture_suite,continuous_suite,run_suite,consume_proof
     startup_proof=None
@@ -518,7 +518,9 @@ def main():
             game=game,nonce=args.startup_selftest_nonce)
         check()
         preparation_timing('self_tests_proof_verification',selftests_started)
-    else:run_suite(dll,capture_suite(args),run_hidden)
+    else:
+        from sixdof_manual_profile import validate
+        if not validate(args):run_suite(dll,capture_suite(args),run_hidden)
     preparation_timing('self_tests_total',selftests_started)
     profile=json.loads((ROOT/'tools/package-inspector/reloaded-profile.json').read_text())
     check_preparation=preparation_live_guard(args.pid,args.continuous_owner_pid,args.continuous_owner_creation_time)
@@ -619,25 +621,17 @@ def main():
         config+=f'submit_duplicate_control={int(args.submit_duplicate_control)}\n'
         config+=anchor_section
         config+=ui_section
-        if os.environ.get('GEARSVR_TEST_COVER_CALL_OBSERVER')=='1':
-            from cover_call_setup import prepare_ini
-            config+=prepare_ini(args.pid,profile,dll,camera,check_live=check_preparation)
         if ui_metadata is not None:
             dll.with_name('ui-observer-config.json').write_text(json.dumps(ui_metadata,indent=2,allow_nan=False)+'\n',encoding='utf-8')
         if anchor_metadata is not None:
             dll.with_name('anchor-observer-config.json').write_text(json.dumps(anchor_metadata,indent=2,allow_nan=False)+'\n',encoding='utf-8')
-        # Test-only opt-in; ordinary startup has no body-prototype INI section.
-        if os.environ.get('GEARSVR_TEST_COVER_BODY_PROTOTYPE')=='1':
-            config+='\n[CoverBodyPrototype]\nenabled=1\n'
-            if os.environ.get('GEARSVR_TEST_COVER_BODY_SIDE_PROTOTYPE')=='1':
-                config+='pose_profile=side\n'
-            if os.environ.get('GEARSVR_TEST_COVER_INPUT_PROTOTYPE')=='1':
-                config+='target_source=live\n'
-                # Explicit ag test calibration; not a universal cover curve.
-                config+='\n[CoverInputPrototype]\nenabled=1\nheight_half_metres=0.35015923\nheight_top_metres=0.67047669\n'
-        # Test-only opt-in; ordinary startup has no cover-camera INI section.
-        if os.environ.get('GEARSVR_TEST_COVER_CAMERA_PREVIEW')=='1':
-            config+='\n[CoverCameraPreview]\nenabled=1\n'
+        from sixdof_manual_profile import validate,CAPTURE,SECTIONS
+        if validate(args):
+            # CAPTURE keys must precede the first subsequent INI section.
+            boundary=config.find('\n[',len('[Capture]'))
+            if boundary<0:config+='\n'+CAPTURE
+            else:config=config[:boundary]+'\n'+CAPTURE+config[boundary:]
+            config+=SECTIONS
         dll.with_name('capture.ini').write_text(config,encoding='utf-16')
         check_preparation()
         # GetProcAddress may forward LoadLibraryW into KernelBase. Identify its

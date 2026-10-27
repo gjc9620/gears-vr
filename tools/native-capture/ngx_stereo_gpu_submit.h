@@ -21,7 +21,7 @@ private:
     Ptr<ID3D12Device> device_;Ptr<ID3D12Fence> fence_;
     std::array<Member,6> recordings_{};
     std::array<Seen,128> seen_{};std::array<Flight,8> flights_{};
-    uint64_t value_{},order_{};bool failed_{};unsigned failure_line_{};
+    uint64_t value_{},order_{};bool failed_{};
     bool bind(ID3D12CommandQueue* queue){
         Ptr<IUnknown> qid,did;Ptr<ID3D12Device> device;
         if(!queue||queue->GetDesc().Type!=D3D12_COMMAND_LIST_TYPE_DIRECT||
@@ -31,8 +31,7 @@ private:
         if(FAILED(device->CreateFence(0,D3D12_FENCE_FLAG_NONE,IID_PPV_ARGS(&fence)))||FAILED(fence.As(&fid)))return false;
         queue_=queue;queue_id_=qid;device_=device;device_id_=did;fence_=fence;fence_id_=fid;return true;
     }
-    void mark_failed(unsigned line){if(!failure_line_)failure_line_=line;failed_=true;}
-    void fail(StereoAdapter& adapter,unsigned line){mark_failed(line);auto entry=adapter.enter();if(entry)adapter.invalidate(entry);}
+    void fail(StereoAdapter& adapter){failed_=true;auto entry=adapter.enter();if(entry)adapter.invalidate(entry);}
     bool seen(Member const& member)const{
         for(auto const& s:seen_)if(reinterpret_cast<uintptr_t>(s.identity.Get())==member.id&&
             (member.generation<=s.generation||!s.reset))return true;
@@ -55,7 +54,7 @@ private:
         return true;
     }
     bool pending(StereoAdapter& adapter,std::array<PendingRecording,5>& out,unsigned& count){
-        auto entry=adapter.enter();if(!entry){mark_failed(__LINE__);return false;}count=adapter.pending_recordings(entry,out);return true;
+        auto entry=adapter.enter();if(!entry){failed_=true;return false;}count=adapter.pending_recordings(entry,out);return true;
     }
     void prune(std::array<PendingRecording,5> const& pending,unsigned n){
         for(auto& r:recordings_)if(r.object){bool needed{};
@@ -65,7 +64,6 @@ private:
     }
 public:
     bool failed()const{return failed_;}
-    unsigned failure_line()const{return failure_line_;}
     size_t retained_recordings()const{size_t n{};for(auto const& r:recordings_)if(r.object)++n;return n;}
     size_t submitted_generations()const{size_t n{};for(auto const& s:seen_)if(s.identity)++n;return n;}
     size_t inflight_batches()const{size_t n{};for(auto const& f:flights_)if(f.value)++n;return n;}
@@ -76,14 +74,14 @@ public:
         std::array<PendingRecording,5> records{};unsigned n{};Ptr<IUnknown> identity;
         if(failed_||!list||!id||!gen||list->GetType()!=D3D12_COMMAND_LIST_TYPE_DIRECT||
            FAILED(list->QueryInterface(IID_PPV_ARGS(&identity)))||reinterpret_cast<uintptr_t>(identity.Get())!=id||
-           !pending(adapter,records,n)||!collect()){fail(adapter,__LINE__);return false;}
+           !pending(adapter,records,n)||!collect()){fail(adapter);return false;}
         Member next;next.object=list;next.id=id;next.generation=gen;
-        if(seen(next)){fail(adapter,__LINE__);return false;}
-        for(unsigned i=0;i<n;++i)if(records[i].list==id&&records[i].generation!=gen){fail(adapter,__LINE__);return false;}
+        if(seen(next)){fail(adapter);return false;}
+        for(unsigned i=0;i<n;++i)if(records[i].list==id&&records[i].generation!=gen){fail(adapter);return false;}
         prune(records,n);
         for(auto const& r:recordings_)if(r.id==id&&r.generation==gen)return true;
         for(auto& r:recordings_)if(!r.object){r=std::move(next);return true;}
-        fail(adapter,__LINE__);return false;
+        fail(adapter);return false;
     }
     // Only the hook AFTER successful native Reset may call this. A new tracker
     // generation without this event cannot bypass duplicate submission checks.
@@ -96,12 +94,12 @@ public:
         if(!tracked)return true;
         Ptr<IUnknown> identity;std::array<PendingRecording,5> records{};unsigned n{};
         if(!list||!gen||FAILED(list->QueryInterface(IID_PPV_ARGS(&identity)))||reinterpret_cast<uintptr_t>(identity.Get())!=id||
-           !pending(adapter,records,n)){fail(adapter,__LINE__);return false;}
-        for(unsigned i=0;i<n;++i)if(records[i].list==id){fail(adapter,__LINE__);return false;}
-        for(auto const& s:seen_)if(reinterpret_cast<uintptr_t>(s.identity.Get())==id&&s.identity&&s.generation>=gen){fail(adapter,__LINE__);return false;}
+           !pending(adapter,records,n)){fail(adapter);return false;}
+        for(unsigned i=0;i<n;++i)if(records[i].list==id){fail(adapter);return false;}
+        for(auto const& s:seen_)if(reinterpret_cast<uintptr_t>(s.identity.Get())==id&&s.identity&&s.generation>=gen){fail(adapter);return false;}
         for(auto& s:seen_)if(reinterpret_cast<uintptr_t>(s.identity.Get())==id&&s.identity)s.reset=true;
         for(auto& r:recordings_)if(r.object&&r.id==id)r={};
-        if(!collect()){fail(adapter,__LINE__);return false;}return true;
+        if(!collect()){fail(adapter);return false;}return true;
     }
     Completion completion(){
         if(!collect()||!fence_||!value_)return {};const auto value=fence_->GetCompletedValue();
@@ -140,25 +138,25 @@ public:
             for(UINT i=0;valid&&i<batch.count;++i)if(!remember(batch.members[i],value_+1))valid=false;
             if(valid){batch.value=value_+1;*retained=std::move(batch);}
         }
-        if(!valid)fail(adapter,__LINE__);
-        try{original(queue,count,lists);}catch(...){fail(adapter,__LINE__);throw;}
+        if(!valid)fail(adapter);
+        try{original(queue,count,lists);}catch(...){fail(adapter);throw;}
         if(!valid)return false;if(!retained)return true;
         // A concurrent Reset must not certify a replacement recording.
-        for(UINT i=0;i<retained->count;++i)if(generation(retained->members[i].object.Get(),retained->members[i].id)!=retained->members[i].generation){fail(adapter,__LINE__);return false;}
-        ++value_;++order_;if(FAILED(queue_->Signal(fence_.Get(),value_))){fail(adapter,__LINE__);return false;}
+        for(UINT i=0;i<retained->count;++i)if(generation(retained->members[i].object.Get(),retained->members[i].id)!=retained->members[i].generation){fail(adapter);return false;}
+        ++value_;++order_;if(FAILED(queue_->Signal(fence_.Get(),value_))){fail(adapter);return false;}
         for(UINT member=0;member<retained->count;++member){
             auto const& m=retained->members[member];
             ExecuteReceipt receipt{{reinterpret_cast<uintptr_t>(device_id_.Get()),m.id,m.generation,reinterpret_cast<uintptr_t>(queue_id_.Get()),reinterpret_cast<uintptr_t>(fence_id_.Get()),value_,true},order_,m.index};
             // Same-list Eval may discharge Copy too; refresh after each receipt.
             for(unsigned slot=0;slot<5;++slot){
-                auto entry=adapter.enter();if(!entry){mark_failed(__LINE__);return false;}
+                auto entry=adapter.enter();if(!entry){failed_=true;return false;}
                 std::array<PendingRecording,5> fresh{};const auto fresh_count=adapter.pending_recordings(entry,fresh);bool found{};
                 for(unsigned j=0;j<fresh_count;++j){auto const& r=fresh[j];if(r.list!=m.id||r.generation!=m.generation)continue;
                     found=true;bool ok{};
                     if(r.kind==RecordingKind::creation)ok=adapter.submitted_creation(entry,receipt);
                     else if(r.kind==RecordingKind::evaluate)ok=adapter.submitted_eye(entry,r.eye,receipt);
                     else ok=adapter.submitted_copy(entry,r.eye,receipt);
-                    if(!ok){mark_failed(__LINE__);adapter.invalidate(entry);return false;}break;
+                    if(!ok){failed_=true;adapter.invalidate(entry);return false;}break;
                 }
                 if(!found)break;
             }

@@ -1,6 +1,5 @@
 #include "cover_input_owner.h"
 #include <cstdio>
-#include <utility>
 using namespace gears_vr;
 unsigned checks{},failures{};
 #define C(x) do{++checks;if(!(x)){++failures;std::printf("FAIL %u: %s\n",__LINE__,#x);}}while(0)
@@ -32,11 +31,10 @@ struct Fixture {
         edges.update(hands);C(controller_frame_shape_valid(hands));
     }
     CoverInputOwnerResult run(){result=kernel.update(frame,owner);return result;}
-    void advance(float squeeze){
+    CoverInputOwnerResult next(float squeeze){
         ++frame.frame;++frame.cover.sequence;++frame.stereo.sample.sequence;frame.now_ns+=10000000;
-        frame.cover.observed_ns=frame.now_ns;hands.hands[0].squeeze=squeeze;publish();
+        frame.cover.observed_ns=frame.now_ns;hands.hands[0].squeeze=squeeze;publish();return run();
     }
-    CoverInputOwnerResult next(float squeeze){advance(squeeze);return run();}
 };
 int main(){
     Fixture f;auto r=f.run();C(r.accepted&&r.view_valid&&r.body_weight_valid&&r.requested_up_weight==0);
@@ -82,41 +80,5 @@ int main(){
         lateral.hands.hands[0].grip.position.x+=edge==CoverEdgeKind::left?.2:-.2;r=lateral.next(.8f);
         C(r.interaction.owns_left_hand&&close(r.interaction.offset.right,edge==CoverEdgeKind::left?-.2:.2));
     }
-    // The collision gate can inspect only a same-ticket tentative movement.
-    // Aborting after inspection must leave neither its drag nor its hand grant.
-    Fixture gated;
-    CoverWeaponContribution ready{};ready.state=CoverWeaponState::ready;
-    auto transact=[&](bool commit){
-        auto decoded=gated.kernel.begin(gated.frame,gated.owner);
-        C(decoded.accepted);
-        auto candidate=gated.kernel.update_with_decoded(decoded.ticket,ready,gated.owner);
-        C(candidate.accepted);
-        auto movement=gated.kernel.pending_movement(decoded.ticket);
-        auto result=gated.kernel.complete(decoded.ticket,commit,gated.owner);
-        C(!gated.kernel.pending_movement(decoded.ticket).accepted);
-        return std::pair<CoverInputOwnerMovement,CoverInputOwnerResult>{movement,result};
-    };
-    auto [neutral_candidate,neutral_result]=transact(true);
-    C(neutral_candidate.accepted&&!neutral_candidate.committed_basis_matches&&neutral_candidate.candidate_offset_certified);
-    C(neutral_result.accepted);
-    gated.advance(.8f);auto [pressed,press_result]=transact(true);
-    C(pressed.committed_basis_matches&&close(pressed.committed_offset.up,0)&&close(pressed.candidate_offset.up,0));
-    C(press_result.interaction.owns_left_hand);
-    gated.hands.hands[0].grip.position.y=.9;gated.advance(.8f);
-    auto [drag,aborted]=transact(false);
-    C(drag.committed_basis_matches&&drag.candidate_offset_certified&&drag.candidate_view_valid&&
-      close(drag.committed_offset.up,0)&&close(drag.candidate_offset.up,.3)&&
-      close(drag.candidate_view.base_eye_world.z,-10)&&close(drag.physical.up,0));
-    C(!aborted.accepted&&aborted.view_valid&&close(aborted.interaction.offset.up,0)&&
-      aborted.left_hand.lease.kind==LeftHandInteraction::none);
-    gated.advance(.8f);auto [held,recovered]=transact(true);
-    C(held.committed_basis_matches&&close(held.candidate_offset.up,0)&&
-      !recovered.interaction.owns_left_hand);
-    gated.frame.cover.epochs.cover++;gated.advance(0);auto [changed,after_change]=transact(true);
-    C(changed.accepted&&!changed.committed_basis_matches&&close(changed.candidate_offset.up,0));
-    C(after_change.accepted);
-    gated.frame.lifecycle++;gated.advance(0);auto [new_lifecycle,after_restart]=transact(true);
-    C(new_lifecycle.accepted&&!new_lifecycle.committed_basis_matches);
-    C(after_restart.accepted);
     std::printf("cover_input_owner: %u checks, %u failures\n",checks,failures);return failures?1:0;
 }

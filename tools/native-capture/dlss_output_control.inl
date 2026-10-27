@@ -20,10 +20,6 @@ struct Receipt {bool valid{},complete{},site{};Key key{};unsigned decision{},fai
 Receipt last_allowed{},last_rejected{};
 OutputExitReceipt first_exit_failure;
 std::atomic<bool> exit_failure_claimed{},exit_failure_ready{};
-void print_exit_receipt(FILE*,OutputExitReceipt const&);
-#if defined(GEARS_NGX_OWNED_SCENE_TRIAL) && GEARS_NGX_OWNED_SCENE_TRIAL
-std::atomic<bool> native_exit_dumped{};
-#endif
 void publish_exit_failure(OutputExitReceipt const& receipt){bool empty=false;
     if(!exit_failure_claimed.compare_exchange_strong(empty,true))return;
     first_exit_failure=receipt;exit_failure_ready.store(true,std::memory_order_release);
@@ -40,41 +36,12 @@ ListPath list_path(uintptr_t context){
 bool list_matches(ListPath const& path,uintptr_t raw,gears_frame_link::ListRef ref){
     return path.valid&&path.raw==raw&&path.canonical==ref.identity&&path.generation==ref.generation;
 }
-bool other_controls(){
-#if defined(GEARS_NGX_OWNED_SCENE_TRIAL) && GEARS_NGX_OWNED_SCENE_TRIAL
-    // The separate native-owned target/ticket predicate below is mandatory.
-    constexpr bool owned_conflict=false;
-#else
-    const bool owned_conflict=owned_bindings_enabled||owned_xr_probe;
-#endif
-    return owned_conflict||quad_source_control_enabled()||first_view_mask_control||submit_duplicate_control||
+bool other_controls(){return owned_bindings_enabled||owned_xr_probe||quad_source_control_enabled()||first_view_mask_control||submit_duplicate_control||
     submit_mono_control||submit_mono_independent_state||projection_control||origin_trial_enabled;}
 bool current(Key key){return attested&&recording.load()&&!other_controls()&&key&&active_key==key&&consuming_renderer&&consuming_frozen_frame.enabled&&
     consuming_frame_ticket==key.id&&consuming_frozen_frame.id==key.id&&consuming_frozen_frame.world_generation==key.world&&committed_world_generation.load()==key.world;}
-bool sdk_current(Output const& o){
-#if defined(GEARS_NGX_ISOLATED_STEREO_TRIAL) && GEARS_NGX_ISOLATED_STEREO_TRIAL
-    return !o.sdk_output||ngx_capture_control::final_output_current(*o.sdk_output);
-#else
-    return !o.sdk_output;
-#endif
-}
-bool zero_dof(Output const& o,uintptr_t caller){
-    if(!o.owned_dof)return true;
-#if defined(GEARS_NGX_OWNED_SCENE_TRIAL) && GEARS_NGX_OWNED_SCENE_TRIAL
-    return vr_dof_compat::current_quad_zero_proved(o.key.world,o.key.id,o.before.eye,caller);
-#else
-    (void)caller;return false;
-#endif
-}
-bool native_current(Output const& o){
-#if defined(GEARS_NGX_OWNED_SCENE_TRIAL) && GEARS_NGX_OWNED_SCENE_TRIAL
-    return !o.native_gap||ngx_capture_control::native_output_current(*o.native_gap);
-#else
-    return !o.native_gap;
-#endif
-}
 bool stable(Output const& o){
-    uint32_t flags{};return current(o.key)&&sdk_current(o)&&native_current(o)&&o.renderer==reinterpret_cast<uintptr_t>(consuming_renderer)&&o.thread==GetCurrentThreadId()&&
+    uint32_t flags{};return current(o.key)&&o.renderer==reinterpret_cast<uintptr_t>(consuming_renderer)&&o.thread==GetCurrentThreadId()&&
         dlss_route_observer::read(flags,o.pass,8)&&flags==o.flags&&(flags&8)&&same(o.before,dlss_route_observer::view(o.view));
 }
 bool descriptor_stable(Output const& o){Descriptor d{};return o.descriptor&&dlss_route_observer::read(d,o.descriptor)&&d==o.expected&&noop(d,0);}
@@ -84,7 +51,7 @@ void participate(Output& o){o.site=true;std::lock_guard<FrameHookMutex> lock(fra
     if(!store.participate(o.key))o.failed=true;}
 bool named_sample(Output const& o,gears_dlss_route::InputSample const& s,uintptr_t vtable){
     auto const& r=s.resource;
-    return (!o.sdk_output||r.canonical==o.sdk_output->color)&&same(o.before,s.view)&&s.mask==1023&&vtable&&s.shader_handle&&s.descriptor[1]&&s.slot<32&&s.highwater<=32&&s.slot<s.highwater&&
+    return same(o.before,s.view)&&s.mask==1023&&vtable&&s.shader_handle&&s.descriptor[1]&&s.slot<32&&s.highwater<=32&&s.slot<s.highwater&&
         s.public_object&&s.public_object==r.object&&r.queried&&SUCCEEDED(r.result)&&r.native&&r.canonical&&r.dimension==3&&r.format==26&&
         r.width&&r.width<=8192&&!(r.width%2)&&r.height&&r.height<=8192&&r.depth==1&&r.mips==1&&r.samples==1;
 }
@@ -160,8 +127,7 @@ bool output_tail_current(Output const& o,OutputExitReceipt& r){
 void binding_fail(Output& o){o.binding_failed=true;if(o.site)fail(o,Failure::identity_changed);}
 BindScope::BindScope(bool world,uintptr_t caller,const uint16_t* descriptor,void* view,void* owner,uint32_t selection,int32_t alternate)
     :output(current_output),exceptions(std::uncaught_exceptions()){
-    if(!output||!output->key||caller!=gears_dlss_output::bind_caller(output->owned_dof)||
-       (output->owned_dof&&!output->sdk_output&&!output->native_gap))return;
+    if(!output||!output->key||caller!=0xd831c8)return;
     if(++output->binds!=1){binding_fail(*output);return;}tracking=true;
     auto& b=output->binding_capture;b.present=true;b.caller=caller;b.descriptor_address=reinterpret_cast<uintptr_t>(descriptor);
     b.view_address=reinterpret_cast<uintptr_t>(view);b.shader_owner=reinterpret_cast<uintptr_t>(owner);b.selection=selection;b.alternate=alternate;
@@ -183,34 +149,16 @@ ConsumeScope::ConsumeScope(uint64_t world,uint64_t ticket,bool enabled):previous
     const Key next{world,ticket};if(enabled&&attested&&recording.load()&&world&&world==committed_world_generation.load()&&ticket==consuming_frame_ticket&&ticket){
         key=next;active_key=next;store.begin(next);}
 }
-ConsumeScope::~ConsumeScope(){finish();}
-void ConsumeScope::finish(){if(finished)return;std::lock_guard<FrameHookMutex> lock(frame_hook_mutex);
+ConsumeScope::~ConsumeScope(){std::lock_guard<FrameHookMutex> lock(frame_hook_mutex);
     if(std::uncaught_exceptions()>exceptions)if(auto* e=store.find(key))e->fail(Failure::identity_changed);
-    store.finish(key);active_key=previous;finished=true;
+    store.finish(key);active_key=previous;
 }
-OutputScope::OutputScope(bool world,uintptr_t pass,uintptr_t input,bool owned_dof):previous(current_output),exceptions(std::uncaught_exceptions()){
+OutputScope::OutputScope(bool world,uintptr_t pass,uintptr_t input):previous(current_output),exceptions(std::uncaught_exceptions()){
     current_output=&value;value.key=active_key;value.pass=pass;value.view=input;value.renderer=reinterpret_cast<uintptr_t>(consuming_renderer);value.thread=GetCurrentThreadId();
-    value.owned_dof=owned_dof;
-#if defined(GEARS_NGX_OWNED_SCENE_TRIAL) && GEARS_NGX_OWNED_SCENE_TRIAL
-    // This transport proves SDK/native-gap output at the owned DOF pass.
-    // Ordinary Output still runs afterward, including flag4 native startup
-    // passes. Its different binding must not participate in that proof store.
-    // Keep an empty local scope so its setters cannot borrow an outer proof.
-    if(!owned_dof){value.key={};return;}
-#endif
     if(previous){previous->nested=true;value.nested=true;if(previous->site)fail(*previous,Failure::identity_changed);}
     if(!world||!current(value.key)||value.nested)return;
     value.before=dlss_route_observer::view(input);uint32_t flags{};
     value.valid=dlss_route_observer::read(flags,pass,8)&&(flags&8)&&valid_view(value.before);value.flags=flags;
-#if defined(GEARS_NGX_ISOLATED_STEREO_TRIAL) && GEARS_NGX_ISOLATED_STEREO_TRIAL
-    if(value.valid){gears_ngx_stereo::RecordedOutput output;
-        if(ngx_capture_control::final_output_ticket(value.key.world,value.key.id,value.renderer,input,output))value.sdk_output=output;}
-#endif
-#if defined(GEARS_NGX_OWNED_SCENE_TRIAL) && GEARS_NGX_OWNED_SCENE_TRIAL
-    if(value.valid&&value.owned_dof&&!value.sdk_output){NativeGap gap;
-        if(ngx_capture_control::native_output_ticket(value.key.world,value.key.id,value.renderer,input,gap))value.native_gap=gap;}
-#endif
-    if(value.owned_dof&&!value.sdk_output&&!value.native_gap)value.valid=false; // Unobserved AA-off remains passthrough/no-site.
 }
 OutputScope::~OutputScope(){
     if(value.site){
@@ -235,11 +183,6 @@ OutputScope::~OutputScope(){
             r.setter_proved&&r.quad_complete&&r.stable&&r.descriptor_stable&&(r.binding_current||r.tail_transition_validated);
         r.output_admitted=valid;
         if(!valid||!r.binding_current)publish_exit_failure(r); // Retain strict failure even for a separately proved tail.
-#if defined(GEARS_NGX_OWNED_SCENE_TRIAL) && GEARS_NGX_OWNED_SCENE_TRIAL
-        if(!valid&&value.native_gap&&!native_exit_dumped.exchange(true)&&diagnostic_status){
-            fprintf(diagnostic_status,"owned_gap_first_exit_failure ticket=%llu world=%llu diagnostics_authorize=0\n",value.key.id,value.key.world);
-            print_exit_receipt(diagnostic_status,r);fflush(diagnostic_status);}
-#endif
         std::lock_guard<FrameHookMutex> lock(frame_hook_mutex);if(auto* e=store.find(value.key)){
             if(!valid)e->fail(Failure::identity_changed);
             else{auto& eye=e->payload.eyes[value.before.eye];eye=value.proof;eye.output_complete=true;eye.tail_transition_validated=r.tail_transition_validated;e->proved(value.before.eye,false,true);++output_proved;}}
@@ -248,10 +191,9 @@ OutputScope::~OutputScope(){
 }
 SetterScope::SetterScope(bool world,uintptr_t caller,const uint16_t* descriptor,unsigned index):output(current_output),exceptions(std::uncaught_exceptions()){
     if(!output||!output->key)return;
-    if(output->owned_dof&&!output->sdk_output&&!output->native_gap)return;
-    if(!gears_dlss_output::setter_caller(output->owned_dof,caller)){std::lock_guard<FrameHookMutex> lock(frame_hook_mutex);++other_setters;
+    if(caller!=0xd83b69){std::lock_guard<FrameHookMutex> lock(frame_hook_mutex);++other_setters;
         ++non_target_setters[caller==0xd8388e?0u:caller==0xd8397d?1u:2u];return;}
-    ++output->setters;output->setter_caller=caller;tracking=true;participate(*output);
+    ++output->setters;tracking=true;participate(*output);
     if(!world||!output->valid||output->nested||!stable(*output)){fail(*output,Failure::identity_changed);return;}
     {std::lock_guard<FrameHookMutex> lock(frame_hook_mutex);auto* e=store.find(output->key);
         if(!e||!e->reserve(output->before.eye,true)){output->failed=true;return;}}
@@ -264,16 +206,12 @@ SetterScope::~SetterScope(){if(!tracking||!output)return;
         if(!valid)e->fail(Failure::post_setter);else{e->proved(output->before.eye,true,true);output->setter_proved=true;}}
 }
 QuadScope::QuadScope(bool world,uintptr_t caller,Args const&,Dimensions const& sizes):output(current_output),previous(current_quad),dimensions(sizes),exceptions(std::uncaught_exceptions()){
-    site=caller;
     current_quad=nullptr;if(previous&&previous->output){previous->output->nested=true;fail(*previous->output,Failure::duplicate_quad);}
     if(!output||!output->key)return;
-    if(output->owned_dof&&!output->sdk_output&&!output->native_gap)return;
-    if(!gears_dlss_output::quad_caller(output->owned_dof,output->setter_caller,caller)){std::lock_guard<FrameHookMutex> lock(frame_hook_mutex);++non_target_quads[caller==0x194c93?0u:1u];return;}
+    if(caller!=0xd83cbf){std::lock_guard<FrameHookMutex> lock(frame_hook_mutex);++non_target_quads[caller==0x194c93?0u:1u];return;}
     ++output->quads;participate(*output);
-    if(!world||!output->valid||output->failed||output->nested||output->setters!=1||output->quads!=1||!output->setter_proved||!stable(*output)||!descriptor_stable(*output)||!zero_dof(*output,caller)||
-       !(output->sdk_output?sdk_geometry(output->before,dimensions,*output->sdk_output,output->key.world,output->key.id,output->binding.resource.canonical,forwarded):
-         output->native_gap?native_geometry(output->before,dimensions,*output->native_gap,output->key.world,output->key.id,output->renderer,forwarded):geometry(output->before,dimensions,forwarded))||
-       !binding_current(*output)||output->binding.resource.width!=dimensions[2]||output->binding.resource.height!=dimensions[3]){fail(*output,Failure::prequad);return;}
+    if(!world||!output->valid||output->failed||output->nested||output->setters!=1||output->quads!=1||!output->setter_proved||!stable(*output)||!descriptor_stable(*output)||
+       !geometry(output->before,dimensions,forwarded)||!binding_current(*output)||output->binding.resource.width!=dimensions[2]||output->binding.resource.height!=dimensions[3]){fail(*output,Failure::prequad);return;}
     {
         std::lock_guard<FrameHookMutex> lock(frame_hook_mutex);auto* e=store.find(output->key);
         if(!e||!e->reserve(output->before.eye,false)){output->failed=true;return;}
@@ -281,9 +219,6 @@ QuadScope::QuadScope(bool world,uintptr_t caller,Args const&,Dimensions const& s
     }
     output->proof={};output->proof.binding=output->binding;output->proof.renderer=output->renderer;output->proof.view=output->view;output->proof.context=output->before.context;
     output->proof.pass=output->pass;output->proof.descriptor=output->descriptor;output->proof.forwarded=forwarded;output->proof.dimensions=dimensions;
-    output->proof.owned_dof=output->owned_dof;output->proof.sdk_output=output->sdk_output.has_value();
-    if(output->sdk_output)output->proof.owned_epoch=output->sdk_output->identity;
-    if(output->native_gap){output->proof.owned_epoch=output->native_gap->epoch;output->proof.unpublished_sdk=output->native_gap->unpublished_sdk;}
     changed=true;current_quad=this;
 }
 QuadScope::~QuadScope(){
@@ -294,19 +229,6 @@ QuadScope::~QuadScope(){
 }
 bool QuadScope::candidate()const{return changed&&current_quad==this&&output&&!output->failed&&current(output->key);}
 bool scoped(){return current_quad&&current_quad->candidate();}
-bool sdk_scoped(){return current_output&&current_output->sdk_output.has_value();}
-bool native_scoped(){return current_output&&current_output->native_gap.has_value();}
-void print_current_gap(FILE* file){
-    auto* o=current_output;if(!o){fprintf(file,"owned_gap_output_scope present=0 diagnostics_authorize=0\n");return;}
-    auto const& v=o->before;
-    fprintf(file,"owned_gap_output_scope present=1 world=%llu ticket=%llu owned_dof=%u valid=%u sdk_output=%u native_gap=%u flags=%x eye=%u view=%llx source=%.9g,%.9g,%.9g,%.9g target=%d,%d,%d,%d setters=%u setter_caller=%llx quads=%u draws=%u binding_proved=%u failed=%u diagnostics_authorize=0\n",
-        o->key.world,o->key.id,unsigned(o->owned_dof),unsigned(o->valid),unsigned(bool(o->sdk_output)),unsigned(bool(o->native_gap)),o->flags,v.eye,v.address,
-        v.source[0],v.source[1],v.source[2],v.source[3],v.target[0],v.target[1],v.target[2],v.target[3],o->setters,o->setter_caller,o->quads,o->draws,unsigned(o->binding_proved),unsigned(o->failed));
-    if(o->native_gap){auto const& n=*o->native_gap;
-        fprintf(file,"owned_gap_geometry prior_sdk_ticket=%llu unpublished_sdk=%u output=%u,%u texture=%u,%u left=%u,%u,%u,%u right=%u,%u,%u,%u setter_proved=%u descriptor=%u,%u,%u diagnostics_authorize=0\n",
-            n.prior_sdk_ticket,unsigned(n.unpublished_sdk),n.output[0],n.output[1],n.texture[0],n.texture[1],n.input[0][0],n.input[0][1],n.input[0][2],n.input[0][3],
-            n.input[1][0],n.input[1][1],n.input[1][2],n.input[1][3],unsigned(o->setter_proved),o->expected[0],o->expected[1],o->expected[2]);}
-}
 DrawCompletion::DrawCompletion(uintptr_t raw):list(raw),exceptions(std::uncaught_exceptions()){
     if(scoped())output=current_quad->output;
 }
@@ -322,7 +244,7 @@ gears_final_transfer::EyeDrawEvidence draw(uintptr_t list,uintptr_t caller,unsig
     gears_final_transfer::EyeDrawEvidence proof;auto* quad=current_quad;if(!quad||!quad->output)return proof;auto& o=*quad->output;++o.draws;
     if(!quad->candidate()||o.draws!=1||!stable(o)||!descriptor_stable(o)||caller!=base+0x1af92b||kind!=1||elements!=6||instances!=1||
        !list||!ref.identity||!ref.generation||frame_target_stats.descriptor_capacity_lost()||
-       !late_quad_candidate.active||late_quad_candidate.caller!=quad->site||!zero_dof(o,quad->site)||late_quad_candidate.args!=quad->forwarded||late_quad_candidate.dimensions!=quad->dimensions){
+       !late_quad_candidate.active||late_quad_candidate.caller!=0xd83cbf||late_quad_candidate.args!=quad->forwarded||late_quad_candidate.dimensions!=quad->dimensions){
         fail(o,Failure::prequad);return proof;}
     // Bind the TLS resource context to this actual list before querying its SRV.
     // This is the same owner/list/system-method chain as final_transfer::entry.
@@ -345,16 +267,9 @@ gears_final_transfer::EyeDrawEvidence draw(uintptr_t list,uintptr_t caller,unsig
     }
     if(!list_stable){fail(o,Failure::identity_changed);return proof;}
     auto const& sizes=quad->dimensions;
-    bool target_format=binding.target.format==24;
-#if defined(GEARS_NGX_OWNED_SCENE_TRIAL) && GEARS_NGX_OWNED_SCENE_TRIAL
-    // RGBA8 is admitted only for the active native Owner and renderer ticket.
-    // An unrelated RGBA8 RTV cannot replace the attested final output.
-    target_format=(o.sdk_output||o.native_gap)&&binding.target.format==28&&
-        native_owned_scene_dlss_target(binding.target.resource,o.key.world,o.key.id,sizes[0],sizes[1]);
-#endif
     const bool resource=bound&&named.list==list&&named.canonical_list==ref.identity&&named.generation==ref.generation&&source.canonical!=binding.target.resource&&
         source.width==sizes[2]&&source.height==sizes[3]&&source.format==26&&binding.targets==1&&binding.target.resource&&!binding.target.mip&&
-        target_format&&binding.target.width==sizes[0]&&binding.target.height==sizes[1];
+        binding.target.format==24&&binding.target.width==sizes[0]&&binding.target.height==sizes[1];
     auto const& v=rectangles.viewport;auto const& s=rectangles.scissor;const unsigned eye=o.before.eye;
     const bool rects=rectangles.tracked&&rectangles.viewport_count==1&&rectangles.scissor_count==1&&rectangles.depth_known&&rectangles.min_depth==0&&rectangles.max_depth==1&&
         v==gears_viewport::Rect{0,0,float(sizes[0]),float(sizes[1])}&&std::isfinite(s.x)&&std::isfinite(s.y)&&std::isfinite(s.width)&&std::isfinite(s.height)&&
@@ -368,29 +283,20 @@ bool enable(FILE* file,bool observer_attested){
     const bool binding_attested=dlss_route_observer::verify_input_chunks(file,"566929fd4f84a21529de0ecb749d2dc75a1bf2ab3cc04876a65f65517222a339");
     attested=observer_attested&&binding_attested&&config;store={};
     exit_failure_ready.store(false);exit_failure_claimed.store(false);first_exit_failure={};
-#if defined(GEARS_NGX_OWNED_SCENE_TRIAL) && GEARS_NGX_OWNED_SCENE_TRIAL
-    native_exit_dumped.store(false);
-#endif
     fprintf(file,"dlss_output_identity enabled=1 observer_full_ranges_attested=%u input_full_chunks_attested=%u configuration=%u attested=%u generated_caller=d83cbf setter=d83b69 sentinel=ffff,ffff,0 original_setter_unchanged=1 geometry_memory_written=0 binding_evidence_required=1 shader_sampling_verified=0 ngx_sr_verified=0\n",unsigned(observer_attested),unsigned(binding_attested),unsigned(config),unsigned(attested));return attested;
 }
-bool publication(uint64_t world,uint64_t ticket,bool require_site){std::lock_guard<FrameHookMutex> lock(frame_hook_mutex);const Key key{world,ticket};const auto decision=store.decision(key);
+bool publication(uint64_t world,uint64_t ticket){std::lock_guard<FrameHookMutex> lock(frame_hook_mutex);const Key key{world,ticket};const auto decision=store.decision(key);
     ++decisions[static_cast<unsigned>(decision)];auto* e=store.find(key);
-    bool allow=(!require_site&&decision==Decision::no_site)||(decision==Decision::zero_proved&&e&&complete(*e));
-    // The SDK publication caller cannot use a native gap's geometry witness.
-    // Ordinary non-owned Output control retains its existing site semantics.
-    if(allow&&e)for(auto const& eye:e->payload.eyes)if(eye.unpublished_sdk||(require_site&&eye.owned_dof&&!eye.sdk_output))allow=false;
+    const bool allow=decision==Decision::no_site||(decision==Decision::zero_proved&&e&&complete(*e));
     Receipt receipt;receipt.valid=true;receipt.key=key;receipt.decision=static_cast<unsigned>(decision);
     if(e){receipt.complete=e->complete;receipt.site=e->site;receipt.failure=static_cast<unsigned>(e->failure);receipt.setters=e->setter_mask;receipt.quads=e->quad_mask;receipt.proof=e->payload;}
     (allow?last_allowed:last_rejected)=receipt;if(!allow)++rejected;return allow;
 }
 void retire(){std::lock_guard<FrameHookMutex> lock(frame_hook_mutex);store.retire_window();}
-bool unpublished(uint64_t world,uint64_t ticket,gears_ngx_stereo::Identity epoch){
-    std::lock_guard<FrameHookMutex> lock(frame_hook_mutex);auto* e=store.find({world,ticket});
-    if(!e||!complete(*e)||!gears_ngx_stereo::same(e->payload.eyes[0].owned_epoch,epoch))return false;
-    for(auto const& eye:e->payload.eyes)if(eye.unpublished_sdk)return true;return false;
-}
 void progress(FILE* file){std::lock_guard<FrameHookMutex> lock(frame_hook_mutex);fprintf(file,"dlss_output_forwarded=%llu dlss_output_draw_proved=%llu dlss_output_completed=%llu dlss_output_publication_rejected=%llu ",forwarded,draw_proved,output_proved,rejected);}
-void print_exit_receipt(FILE* file,OutputExitReceipt const& r){
+void print_exit_failure(FILE* file){
+    if(!exit_failure_ready.load(std::memory_order_acquire))return;
+    auto const& r=first_exit_failure;
     fprintf(file,"dlss_output_exit_failure world=%llu ticket=%llu valid=%u failed=%u nested=%u exception=%u setters=%u quads=%u draws=%u binds=%u setter_proved=%u quad_complete=%u draw_candidate=%u draw_complete=%u stable=%u descriptor_stable=%u binding_current=%u binding_snapshot=%u binding_equal=%u binding_proved=%u binding_failed=%u current=%u thread_same=%u flags_read=%u flags=%u fresh_flags=%u descriptor_read=%u descriptor=%u,%u,%u fresh_descriptor=%u,%u,%u diagnostics_authorize=0\n",
         r.key.world,r.key.id,unsigned(r.valid),unsigned(r.failed),unsigned(r.nested),unsigned(r.exception),r.setters,r.quads,r.draws,r.binds,
         unsigned(r.setter_proved),unsigned(r.quad_complete),unsigned(r.draw_candidate),unsigned(r.draw_complete),unsigned(r.stable),unsigned(r.descriptor_stable),unsigned(r.binding_current),
@@ -417,7 +323,6 @@ void print_exit_receipt(FILE* file,OutputExitReceipt const& r){
         static_cast<unsigned long long>(b.owner),static_cast<unsigned long long>(b.raw),static_cast<unsigned long long>(b.table),static_cast<unsigned long long>(b.method),static_cast<unsigned long long>(b.canonical),b.generation,unsigned(b.valid),
         unsigned(r.trace.chain),unsigned(r.trace.vtable_read),static_cast<unsigned long long>(r.trace.vtable),unsigned(r.trace.named));
 }
-void print_exit_failure(FILE* file){if(exit_failure_ready.load(std::memory_order_acquire))print_exit_receipt(file,first_exit_failure);}
 void print(FILE* file){std::lock_guard<FrameHookMutex> lock(frame_hook_mutex);
     print_exit_failure(file);
     fprintf(file,"dlss_output_control enabled=1 attested=%u forwarded=%llu actual_draw_proved=%llu output_completed=%llu publication_rejected=%llu no_site=%llu scope_proved=%llu missing=%llu incomplete=%llu rejected=%llu overflow=%llu capacity_lost=%u retired=%llu source_queries=%llu source_rejected=%llu other_setters=%llu list_rejected=%llu rows_limit_independent=1 ngx_sr_verified=0 history_verified=0\n",
@@ -452,20 +357,15 @@ void print(FILE* file){std::lock_guard<FrameHookMutex> lock(frame_hook_mutex);
 }
 #else
 ConsumeScope::ConsumeScope(uint64_t,uint64_t,bool){}ConsumeScope::~ConsumeScope(){}
-void ConsumeScope::finish(){}
-OutputScope::OutputScope(bool,uintptr_t,uintptr_t,bool){}OutputScope::~OutputScope(){}
+OutputScope::OutputScope(bool,uintptr_t,uintptr_t){}OutputScope::~OutputScope(){}
 BindScope::BindScope(bool,uintptr_t,const uint16_t*,void*,void*,uint32_t,int32_t){}BindScope::~BindScope(){}
 SetterScope::SetterScope(bool,uintptr_t,const uint16_t*,unsigned){}SetterScope::~SetterScope(){}
 QuadScope::QuadScope(bool,uintptr_t,Args const&,Dimensions const&){}QuadScope::~QuadScope(){}
 DrawCompletion::DrawCompletion(uintptr_t){}DrawCompletion::~DrawCompletion(){}
 bool QuadScope::candidate()const{return false;}
 void QuadScope::forward(float&,float&,float&,float&,float&,float&,float&,float&)const{}
-bool enable(FILE*,bool){return true;}bool publication(uint64_t,uint64_t,bool){return true;}
+bool enable(FILE*,bool){return true;}bool publication(uint64_t,uint64_t){return true;}
 bool scoped(){return false;}
-bool sdk_scoped(){return false;}
-bool native_scoped(){return false;}
-bool unpublished(uint64_t,uint64_t,gears_ngx_stereo::Identity){return false;}
-void print_current_gap(FILE*){}
 void retire(){}void progress(FILE*){}void print(FILE*){}
 gears_final_transfer::EyeDrawEvidence draw(uintptr_t,uintptr_t,unsigned,unsigned,unsigned,gears_viewport::TargetDraw const&,gears_frame_link::ListRef,gears_viewport::DrawState const&){return {};}
 #endif

@@ -94,6 +94,18 @@ int main(int argc,char** argv){
     }
     mount::Marker absent{};const auto old_head=bytes(head);C(mount::head_from_eye(absent,model,*frame,eye,head)==mount::Status::unprepared&&bytes(head)==old_head);
     head.pose.orientation={0,0,0,0};const auto old_eye=bytes(roundtrip);C(mount::eye_from_head(marker,model,*frame,head,roundtrip)==mount::Status::pose&&bytes(roundtrip)==old_eye);
+
+    mount::Marker face{};C(mount::prepare(model,*frame,mount::Basis::marcus_mesh_face_forward_y,*work,face)==mount::Status::okay);
+    const Q face_q=euler(1.57079632679489661923,0,0);const auto ref_face=face.reference_eye_model();
+    C(qdiff(ref_face.orientation,face_q)<1e-12&&dist(ref_face.position,reference_eye.position)<1e-12);
+    C(dist(face.head_to_eye_local().position,marker_local.position)<1e-12);
+    C(dist(turn(ref_face.orientation,{1,0,0}),{0,1,0})<1e-12&&dist(turn(ref_face.orientation,{0,1,0}),{-1,0,0})<1e-12);
+    for(unsigned i=0;i<64;++i){const Q orientation=euler(next()*3.141592653589793,next()*1.2,next()*1.2);mount::EyeHmdWorld input{{{-31,14,27},orientation}},again{};mount::HeadBoneWorld result{};
+        C(mount::head_from_eye(face,model,*frame,input,result)==mount::Status::okay);C(mount::eye_from_head(face,model,*frame,result,again)==mount::Status::okay);
+        C(dist(again.pose.position,input.pose.position)<1e-10&&qdiff(again.pose.orientation,input.pose.orientation)<1e-12);
+        const auto rigid=mul(orientation,inv(face_q));const auto expected=sum(input.pose.position,turn(rigid,sum(fk[55].position,neg(midpoint))));
+        C(dist(result.pose.position,expected)<1e-4&&qdiff(result.pose.orientation,mul(rigid,fk[55].orientation))<1e-6);
+    }
     C(bytes(model)==model_before&&bytes(*frame)==frame_before);
     std::printf("{\"Marker\":%zu,\"Workspace\":%zu,\"EyeHmdWorld\":%zu,\"HeadBoneWorld\":%zu,\"head_to_eye_translation\":[%.17g,%.17g,%.17g],\"head_to_eye_xyzw\":[%.17g,%.17g,%.17g,%.17g],\"reference_eye_model\":[%.17g,%.17g,%.17g],\"max_roundtrip_position\":%.17g,\"max_roundtrip_q_component\":%.17g,\"max_independent_FK_error\":%.17g}\n",sizeof(marker),sizeof(*work),sizeof(eye),sizeof(head),marker_local.position.x,marker_local.position.y,marker_local.position.z,marker_local.orientation.x,marker_local.orientation.y,marker_local.orientation.z,marker_local.orientation.w,reference_eye.position.x,reference_eye.position.y,reference_eye.position.z,max_position,max_quaternion,max_oracle);
     std::printf("body_head_authored_mount: %u checks, %u failures; designer_authored=1 visual_HMD_acceptance=0 Game=0\n",checks,failures);return failures?1:0;

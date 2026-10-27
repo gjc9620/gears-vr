@@ -8,7 +8,7 @@ import time
 import datetime
 import math
 from sample_player_anchor import AnchorSampler, AnchorRejected, RegistryHeaderChanged
-from mounted_context import MountedTimestampChanged
+from mounted_context import MountedTimestampChanged, supported_mounted_type
 
 LAYOUT = ('object_internal_index','object_name','object_class','object_outer',
           'field_super','name_entry_index','name_entry_text')
@@ -61,8 +61,8 @@ class LiveRegistryAnchorSampler(AnchorSampler):
 
     def validate_controlled(self,pawn):
         if self.derives(pawn['cls'],'WarPawn'):return
-        if not self.derives(pawn['cls'],'Turret'):
-            raise AnchorRejected('Controlled object is neither WarPawn nor certified Turret')
+        if not supported_mounted_type(lambda name: self.derives(pawn['cls'],name)):
+            raise AnchorRejected('Controlled object is neither WarPawn nor supported mounted vehicle')
 
     def controlled_identity(self,controller):
         if self.pawn:return super().controlled_identity(controller)

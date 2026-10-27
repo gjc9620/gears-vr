@@ -28,7 +28,6 @@ static std::array<RetainedOutputObservation,2> observations(uint64_t ticket=10,u
 static void accept(StereoAdapter& a,uint64_t ticket=10,uint64_t completed=3){auto entry=a.enter();
     assert(a.accept_candidate(entry,observations(ticket,completed))&&a.phase(entry)==AcceptancePhase::accepted);}
 static uint32_t word(std::array<unsigned char,evaluate_initialized_span> const& b,size_t offset){uint32_t v{};std::memcpy(&v,b.data()+offset,4);return v;}
-static float scalar(std::array<unsigned char,evaluate_initialized_span> const& b,size_t offset){float v{};std::memcpy(&v,b.data()+offset,4);return v;}
 struct Fake final:AdapterBackend {
     unsigned creates{},evaluates{},releases{},copies{};unsigned fail_create{99},zero_create{99},fail_eval{99};
     NativeResult accepted_result{named_result_success},release_result{named_result_success};
@@ -37,7 +36,6 @@ struct Fake final:AdapterBackend {
     alignas(8) std::array<unsigned char,evaluate_initialized_span> eval_structure{};
     std::array<unsigned char,evaluate_initialized_span> opaque_expected{};
     std::array<unsigned,2> histories{};
-    Extent expected_input{853,720};
     std::vector<unsigned char> color=std::vector<unsigned char>(2560*1080,0),output=color;
     Fake(){for(size_t i=0;i<eval_structure.size();++i)eval_structure[i]=static_cast<unsigned char>((i*37+0x5b)%256);
         opaque_expected=eval_structure;}
@@ -53,8 +51,7 @@ struct Fake final:AdapterBackend {
         if(nested){auto entry=nested->enter();assert(!entry);}
         if(throw_eval)throw std::runtime_error("eval");
         if(index==fail_eval)return dispatch_unavailable;
-        assert(word(eval_structure,0x30)==expected_input.width&&word(eval_structure,0x34)==expected_input.height);
-        assert(scalar(eval_structure,0x3c)==float(expected_input.width)&&scalar(eval_structure,0x40)==float(expected_input.height));
+        assert(word(eval_structure,0x30)==853&&word(eval_structure,0x34)==720);
         unsigned x=word(eval_structure,0x60);assert(x==eye*1280&&word(eval_structure,0x68)==x&&word(eval_structure,0x70)==x);
         assert(word(eval_structure,0x88)==0&&word(eval_structure,0x8c)==0);
         for(size_t i=0x90;i<evaluate_initialized_span;++i)assert(eval_structure[i]==opaque_expected[i]);
@@ -63,7 +60,7 @@ struct Fake final:AdapterBackend {
         // Synthetic SDK consumes reduced input, writes a COMPLETE eye image at
         // Output origin, and leaves the unused physical right half untouched.
         for(unsigned y=0;y<1080;++y)for(unsigned xx=0;xx<1280;++xx)
-            output[y*2560+xx]=color[(y*expected_input.height/1080)*2560+x+xx*expected_input.width/1280];
+            output[y*2560+xx]=color[(y*720/1080)*2560+x+xx*853/1280];
         return accepted_result;
     }
     NativeResult release(uint64_t handle)override{++releases;released.push_back(handle);if(throw_release)throw std::runtime_error("release");return failed_release?dispatch_unavailable:release_result;}
@@ -88,18 +85,17 @@ static void patch_boundaries(){
     static_assert(alignof(CreateShadow)>=8&&alignof(EvaluateShadow)>=8);
     CreateShadow minimal_original{},minimal_owned{};minimal_original.bytes.fill(0xcd);
     assert(patch_create(minimal_original.bytes,minimal_owned.bytes,layout()));
-    for(size_t i=16;i<create_consumed_span;++i)assert(minimal_owned.bytes[i]==(i==0x18?1:0xcd));
+    for(size_t i=16;i<create_consumed_span;++i)assert(minimal_owned.bytes[i]==0xcd);
     unsigned eye=99;assert(select_input_eye(layout(),{853,720},{Point{1280,0},Point{1280,0},Point{1280,0}},eye)&&eye==1);
     assert(!select_input_eye(layout(),{853,720},{Point{1280,0},Point{0,0},Point{1280,0}},eye));
     assert(!select_input_eye(layout(),{1280,1080},{Point{1280,0},Point{1280,0},Point{1280,0}},eye));
     std::array<unsigned char,0x24> original;original.fill(0xcd);auto owned=original;assert(patch_create(original,owned,layout()));
-    assert(original[0]==0xcd);for(size_t i=16;i<owned.size();++i)assert(owned[i]==(i==0x18?1:0xcd));
+    assert(original[0]==0xcd);for(size_t i=16;i<owned.size();++i)assert(owned[i]==0xcd);
     std::array<unsigned char,evaluate_initialized_span> input;
     for(size_t i=0;i<input.size();++i)input[i]=static_cast<unsigned char>((i*37+0x5b)%256);auto output=input;
     assert(patch_evaluate(input,output,layout(),1,false));assert(word(output,0x30)==853&&word(output,0x34)==720&&word(output,0x38)==0);
-    assert(scalar(output,0x3c)==853.0f&&scalar(output,0x40)==720.0f);
     assert(word(output,0x60)==1280&&word(output,0x68)==1280&&word(output,0x70)==1280);
-    for(size_t i=0;i<input.size();++i){bool patched=(i>=0x30&&i<0x44)||(i>=0x60&&i<0x78)||(i>=0x88&&i<0x90);
+    for(size_t i=0;i<input.size();++i){bool patched=(i>=0x30&&i<0x3c)||(i>=0x60&&i<0x78)||(i>=0x88&&i<0x90);
         if(!patched)assert(output[i]==input[i]);assert(input[i]==static_cast<unsigned char>((i*37+0x5b)%256));}
     auto bad=layout();bad.input_base[1].x=853;auto prior=output;assert(!patch_evaluate(input,output,bad,1,true)&&output==prior);
 }
@@ -140,13 +136,9 @@ static void independent_images_and_histories(){
         submit(a,0,2*ticket,2*ticket);submit(a,1,2*ticket+1,2*ticket+1);}
     assert(f.histories[0]==2&&f.histories[1]==2);assert(f.creates==2&&f.evaluates==8&&f.copies==8);
     {auto entry=a.enter();a.invalidate(entry);NativeResult raw{};assert(!a.release_completed(entry,100,completion(25),raw));
-        assert(a.release_completed(entry,100,completion(27),raw)&&raw==named_result_success);
-        assert(a.complete_candidate_transport(entry,completion(27))==TransportCompletion::rejected); // One eye still owned.
-        assert(a.release_completed(entry,101,completion(27),raw));
-        assert(a.complete_candidate_transport(entry,completion(27))==TransportCompletion::retired);
-        RecordedOutput retired_output;assert(!a.recorded_output(entry,retired_output));
+        assert(a.release_completed(entry,100,completion(27),raw)&&raw==named_result_success);assert(a.release_completed(entry,101,completion(27),raw));
         assert(!a.release_completed(entry,100,completion(99),raw)&&a.drained(entry));assert(a.begin_epoch(entry,{2,2,3,4,6},layout()));
-        assert(a.phase(entry)==AcceptancePhase::candidate&&a.failure_line()==0);RecordedOutput out;assert(!a.recorded_output(entry,out));}
+        assert(a.phase(entry)==AcceptancePhase::candidate);RecordedOutput out;assert(!a.recorded_output(entry,out));}
 }
 static void create_failures_and_gpu_retirement(){
     for(unsigned failure=0;failure<4;++failure){Fake f;f.fail_create=failure<2?failure:99;f.duplicate=failure==2;f.throw_create=failure==3;
@@ -385,63 +377,7 @@ static void transport_admission(){
     {Fake f;StereoAdapter a(f,ready());transport_pair(a,f);auto e=a.enter();
         assert(a.admit_ticket(e,3,11,completion(5))==TicketAdmission::rejected);}
 }
-static void dynamic_inputs(){
-    NativeOptimalSettings settings{{1280,1080},{853,720},{1280,1080},{640,540},2,0.0f,1,true};
-    Fake f;StereoAdapter a(f,ready());
-    {auto e=a.enter();assert(a.begin_epoch(e,identity(),layout(),&settings));assert(a.create(e,command(),1,4).admitted);}
-    submit_create(a);
-    const Extent sizes[]{{1280,1080},{853,720},{853,720},{640,540}};
-    for(unsigned frame=0;frame<4;++frame){
-        const uint64_t ticket=10+frame;const bool expected_reset=frame!=2;
-        for(unsigned eye=0;eye<2;++eye){
-            auto p=producer(eye,ticket);for(auto& r:p.rendered){r.width=sizes[frame].width;r.height=sizes[frame].height;}
-            auto e=a.enter();assert(a.observe_producer(e,p));Layout bound;assert(a.bound_layout(e,bound)&&same(bound.input,sizes[frame]));
-            bool reset{};assert(a.prepare_evaluate(e,use(eye,ticket),command(eye),100,4,false,reset)&&reset==expected_reset);
-            f.expected_input=sizes[frame];assert(patch_evaluate(f.eval_structure,f.eval_structure,bound,eye,reset));
-            assert(a.evaluate(e,command(eye).raw,100,4,0).admitted);
-            auto copied=facts(eye,ticket);copied.list=90+eye;copied.generation=30+eye;assert(a.copy(e,copied,eye));
-        }
-        for(unsigned eye=0;eye<2;++eye){const uint64_t order=2+4*frame+2*eye;
-            submit(a,eye,order,order);auto copied=copy_execution(eye);copied.order=order+1;copied.submission.value=order+1;
-            auto e=a.enter();assert(a.submitted_copy(e,eye,copied));
-        }
-        auto e=a.enter();assert(a.complete_candidate_transport(e,completion(5+4*frame))==TransportCompletion::accepted);
-    }
-    assert(f.creates==2&&f.evaluates==8&&f.histories[0]==1&&f.histories[1]==1);
-    for(unsigned bad=0;bad<4;++bad){Fake invalid;StereoAdapter rejected(invalid,ready());auto e=rejected.enter();
-        assert(rejected.begin_epoch(e,identity(),layout(),&settings)&&rejected.create(e,command(),1,4).admitted);
-        auto p=producer(0);if(bad==0)for(auto& r:p.rendered)r.width=639;
-        if(bad==1)for(auto& r:p.rendered)r.width=1281;
-        if(bad==2)for(auto& r:p.rendered)r.height=539;
-        if(bad==3)p.rendered[1].width=854;
-        assert(!rejected.observe_producer(e,p)&&!invalid.evaluates);
-    }
-    {Fake invalid;StereoAdapter rejected(invalid,ready());start(rejected);auto e=rejected.enter();auto p=producer(0);
-        for(auto& r:p.rendered){r.width=1280;r.height=1080;}assert(!rejected.observe_producer(e,p));} // No query, no dynamic allowance.
-}
-static void unpublished_transition(){
-    Fake f;auto prerequisites=ready();prerequisites.allow_native_transition_bootstrap=true;StereoAdapter a(f,prerequisites);start(a);submit_create(a);
-    for(unsigned eye=0;eye<2;++eye){auto p=producer(eye);p.rendered[2]={};auto e=a.enter();
-        const Point base{eye*1280,0};assert(a.observe_native_transition(e,p,{base,base,base}));bool reset{};
-        assert(a.prepare_evaluate(e,use(eye),command(eye),100,4,false,reset)&&reset);
-        assert(patch_evaluate(f.eval_structure,f.eval_structure,layout(),eye,reset));assert(a.evaluate(e,command(eye).raw,100,4,0).admitted);
-        auto copied=facts(eye);copied.list=90+eye;copied.generation=30+eye;assert(a.copy(e,copied,eye));}
-    submit(a,0,2,2);{auto e=a.enter();assert(a.submitted_copy(e,0,copy_execution(0)));}
-    submit(a,1,4,4);{auto e=a.enter();assert(a.submitted_copy(e,1,copy_execution(1)));
-        RecordedOutput output;assert(!a.recorded_output(e,output)&&!a.ordered_output(e,output));
-        assert(a.admit_ticket(e,2,11,completion(4))==TicketAdmission::hold);
-        assert(a.admit_ticket(e,2,11,completion(5))==TicketAdmission::admitted);
-        assert(a.phase(e)==AcceptancePhase::candidate&&!a.recorded_output(e,output));}
-    // The transition's completed SDK work never authorizes publication. Both
-    // independent histories must reset on the first fully observed pair.
-    assert(eval(a,f,0,11,false,true));copy(a,0,11);assert(eval(a,f,1,11,false,true));copy(a,1,11);
-    submit(a,0,6,6);submit(a,1,7,7);{auto e=a.enter();assert(a.complete_candidate_transport(e,completion(7))==TransportCompletion::accepted);
-        RecordedOutput output;assert(a.recorded_output(e,output)&&output.ticket==11);}
-    assert(f.creates==2&&f.evaluates==4&&f.histories[0]==1&&f.histories[1]==1);
-    {Fake denied;StereoAdapter fixed(denied,ready());start(fixed);auto e=fixed.enter();auto p=producer(0);p.rendered[2]={};
-        assert(!fixed.observe_native_transition(e,p,{Point{},Point{},Point{}})&&denied.evaluates==0);}
-}
-int main(){unpublished_transition();dynamic_inputs();transport_admission();native_create_before_resources();patch_boundaries();disabled_and_prerequisites();independent_images_and_histories();create_failures_and_gpu_retirement();
+int main(){transport_admission();native_create_before_resources();patch_boundaries();disabled_and_prerequisites();independent_images_and_histories();create_failures_and_gpu_retirement();
     failed_recorded_eval_and_copy();bad_order_and_concurrency();boundary_rejections();result_mask_contract();candidate_observations_and_quarantine();zero_handle_creation_retirement();
     std::cout<<"NGX adapter SDK/copy/retirement boundary tests passed\n";}
 

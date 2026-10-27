@@ -17,8 +17,7 @@ uintptr_t base=0x140000000;bool self_testing{},continuous_session=true,frame_lin
 std::atomic<bool> recording{true};std::atomic<unsigned> active{};std::atomic<uint64_t> committed_world_generation{9};
 thread_local void* consuming_renderer{};thread_local uint64_t consuming_frame_ticket=7;
 struct Frozen {bool enabled=true;uint64_t id=7,world_generation=9;ngx_stereo_host::NativeCreateSource ngx_constructor_source{};};thread_local Frozen consuming_frozen_frame;
-using FrameHookMutex=std::recursive_mutex;
-FrameHookMutex frame_hook_mutex;
+std::recursive_mutex frame_hook_mutex;
 struct Scope {Scope(){++active;}~Scope(){--active;}bool world()const{return admitted;}};
 long long ticks{};long long now(){return ++ticks;}
 alignas(8) std::array<unsigned char,0xd8> renderer{};

@@ -202,7 +202,7 @@ def build_ui_observer_config(resolver, camera, *, entry_reader=None,mounted_anch
             # acquisition. Classify only this null live link, after rechecking
             # its source identity and reflected field; discard all certificates.
             controller=ids[by_address[source]];field=ids[field_ids[label]]
-            if fresh_read(source)!=controller or fresh_read(field['address'])!=field:
+            if fresh(source)!=controller or fresh(field['address'])!=field:
                 raise UIConfigRejected('UI identity changed during assembly')
             if r.u32(field['address']+p['property_offset_internal'])!=offset:
                 raise UIConfigRejected('UI field/link/entry changed during assembly')

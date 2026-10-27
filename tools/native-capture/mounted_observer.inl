@@ -35,7 +35,7 @@ template<class Read> bool mounted_links(Config const& c,Read read){
     auto owns=[&](std::uintptr_t cls,std::uintptr_t owner){for(unsigned n=0;n<64&&cls;++n){auto id=known(cls);
         if(!id||!id->check_super)return false;if(cls==owner)return true;cls=id->super;}return false;};
     for(auto role:roles){auto const& id=c.identities[role];if(!id.address||!id.name[0]||!std::wcsncmp(id.name.data(),L"Default__",9))return false;}
-    if(!inherits(controlled.cls,L"Turret")||!inherits(controlled.cls,L"Vehicle")||!inherits(driver.cls,L"WarPawn")||
+    if(!gears_mounted::supported([&](auto name){return inherits(controlled.cls,name);})||!inherits(driver.cls,L"WarPawn")||
        !inherits(inventory.cls,L"WarInventoryManager")||!inherits(world.cls,L"WorldInfo")||
        controlled.outer!=level||inventory.outer!=driver.outer)return false;
     // Each streamed actor's immediate Level is part of the immutable identity

@@ -39,6 +39,30 @@ bool seal_session_hook_manifest(FILE* status){
         if(!found){fprintf(status,"hook_entry_manifest available=0 missing_cover_body=%u\n",i);return false;}
     }
 #endif
+#if defined(GEARS_COVER_FUTURE_G_OBSERVER) && GEARS_COVER_FUTURE_G_OBSERVER
+    if(cover_control_observer_live::future_g::enabled){bool found=false;
+        for(unsigned i=0;i<hook_entry_proof_count;++i){auto const& proof=hook_entry_proofs[i];
+            if(proof.target==reinterpret_cast<uintptr_t>(cover_control_observer_live::future_g::target)&&
+                proof.detour==reinterpret_cast<uintptr_t>(cover_control_observer_live::future_g::GearsCoverFutureGHook)&&
+                std::equal(gears_cover_future_g_certificate::prefix.begin(),gears_cover_future_g_certificate::prefix.end(),proof.original32.begin()))found=true;
+        }
+        if(!found){fprintf(status,"hook_entry_manifest available=0 missing_future_g=1\n");return false;}
+    }
+#endif
+#if defined(GEARS_FRESH_POSE_PRODUCER_OBSERVER) && GEARS_FRESH_POSE_PRODUCER_OBSERVER
+    if(fresh_pose_producer_live::enabled)for(unsigned n=0;n<2;++n){bool found=false;
+        for(unsigned i=0;i<hook_entry_proof_count;++i){auto const& p=hook_entry_proofs[i];
+            if(p.target==reinterpret_cast<uintptr_t>(fresh_pose_producer_live::targets[n])&&
+                p.detour==reinterpret_cast<uintptr_t>(fresh_pose_producer_live::detours[n])&&p.original32==gears_fresh_pose_certificate::prefixes[n])found=true;}
+        if(!found){fprintf(status,"hook_entry_manifest available=0 missing_fresh_pose=%u\n",n);return false;}}
+#endif
+#if defined(GEARS_NATIVE_ATOM_OVERWRITE_RECEIPT) && GEARS_NATIVE_ATOM_OVERWRITE_RECEIPT
+    if(native_atom_overwrite_live::enabled){bool found=false;
+        for(unsigned i=0;i<hook_entry_proof_count;++i){auto const&p=hook_entry_proofs[i];
+            if(p.target==reinterpret_cast<uintptr_t>(native_atom_overwrite_live::target)&&
+               p.detour==reinterpret_cast<uintptr_t>(native_atom_overwrite_live::GearsAtomOverwriteHook)&&p.original32==gears_atom_overwrite_certificate::prefix)found=true;}
+        if(!found){fprintf(status,"hook_entry_manifest available=0 missing_atom_overwrite=1\n");return false;}}
+#endif
     FILETIME creation{},exit{},kernel{},user{};
     if(!hook_entry_proof_count||!GetProcessTimes(GetCurrentProcess(),&creation,&exit,&kernel,&user))return false;
     wchar_t temporary[MAX_PATH]{},destination[MAX_PATH]{};

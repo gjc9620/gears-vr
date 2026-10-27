@@ -1,7 +1,10 @@
 #pragma once
 #include "../vr-common/native_rig_tracking_frame.h"
 #include "../vr-common/hand_authored_mount_profile.h"
+#include "../vr-common/weapon_lancer_wrist_mount.h"
 #include "cover_control_output_pose.h"
+#include "body_tick_input.h"
+#include "body_tick_source.h"
 
 // Private caller-owned data and mathematics only. The caller authenticates the
 // current Native/Tick/owner/asset and the selected nodes before using any output.
@@ -15,6 +18,9 @@ namespace arm=gears_hand_two_bone;
 namespace hand=gears_weapon_hand;
 using Side=mount::Side;
 using Pose=gears_vr::Pose;
+// Internal, explicitly selected authored data. Selecting this is not a held
+// equipment proof; the live C0 caller independently admits the current query.
+enum class MountKind:std::uint32_t {free_hand,held_lancer};
 
 struct ModelBinding {
     core::NativeSessionKey native{};
@@ -25,6 +31,7 @@ struct ModelBinding {
     std::uint32_t bone_count{};
     double model_to_world_scale{};
     mount::Mount authored_mount{};
+    MountKind mount_kind{MountKind::free_hand};
 };
 // Always supplied explicitly. Missing companion continuity is valid Core data;
 // only a caller selecting this stricter preparation policy requires it here.
@@ -41,6 +48,25 @@ struct Target {
     bool allow_sim{};
     PreparationPolicy policy{};
 };
+struct TickTarget {
+    gears_body_tick_input::Input input{};
+    ModelBinding binding{};
+    gears_vr::StereoMatrix render_base{};
+    Side side{Side::unknown};
+    Pose wrist_world{};
+    std::int64_t checked_at_ns{};
+    bool allow_sim{};
+};
+struct SourceTarget {
+    gears_body_tick_source::Input input{};
+    ModelBinding binding{};
+    gears_vr::StereoMatrix render_base{};
+    Side side{Side::unknown};
+    Pose wrist_world{};
+    std::int64_t checked_at_ns{};
+    bool allow_sim{};
+};
+
 enum class Status : std::uint32_t {
     okay,alias,invalid_core,stale_scene,stale_controller,binding_mismatch,
     unknown_mount,missing_continuity,hand_untracked,invalid_node,invalid_target,
@@ -52,10 +78,6 @@ struct LimbData {
     std::array<std::uint32_t,3> affected{};
     control::Matrix64 component[3]{},component_to_world{};
     arm::Pole authored{},previous{}; // Caller-supplied world points, unchanged.
-    control::OriginalMatrixPolicy original_matrix_policy{control::OriginalMatrixPolicy::strict_unit};
-    // Fixed caller-supplied personal calibration, independent of current reach.
-    // The live owner must bind a saved calibration to the current body model.
-    double upper_length_scale{1},lower_length_scale{1};
 };
 struct SingleData {
     hand::ObjectIdentity asset{};
@@ -97,8 +119,15 @@ inline Status binding_valid(core::CoreSnapshot const& source,ModelBinding const&
        !hand::identity_valid(binding.asset)||source.world_generation!=binding.world_generation||
        source.binding_generation!=binding.binding_generation)return Status::binding_mismatch;
     mount::Mount expected{};
-    if(binding.model!=mount::Model::marcus115||
-       !mount::marcus115(binding.geometry_signature,side,binding.model_to_world_scale,source.units_per_metre,expected)||
+    bool supported{};
+    if(binding.mount_kind==MountKind::free_hand)
+        supported=mount::marcus115(binding.geometry_signature,side,binding.model_to_world_scale,source.units_per_metre,expected);
+    else if(binding.mount_kind==MountKind::held_lancer&&side==Side::right){
+        gears_weapon_lancer_wrist_mount::Profile held{};
+        supported=gears_weapon_lancer_wrist_mount::marcus115(binding.geometry_signature,binding.model_to_world_scale,source.units_per_metre,held);
+        if(supported)expected=held.mount;
+    }
+    if(binding.model!=mount::Model::marcus115||!supported||
        binding.bone_count!=expected.bone_count||!same_mount(binding.authored_mount,expected))return Status::unknown_mount;
     return Status::okay;
 }
@@ -146,6 +175,39 @@ inline Status prepare_hand(core::CoreSnapshot const& source,ModelBinding const& 
     output.wrist_world=wrist;output.side=side;output.checked_at_ns=now;output.maximum_source_age_ns=max_age;
     output.allow_sim=allow_sim;output.policy=policy;return Status::okay;
 }
+
+namespace detail {
+template<class Input,class Target>
+inline Status prepare_tracking_math(Input const& input,gears_body_tick_input::Input const& tracking,
+    ModelBinding const& binding,Side side,gears_vr::StereoMatrix const& render_base,
+    std::int64_t now,bool allow_sim,Target& output) noexcept {
+    const auto& source=tracking.parent_scene;
+    const auto bound=detail::binding_valid(source,binding,side);if(bound!=Status::okay)return bound;
+    Pose grip{},wrist{};
+    if(!gears_vr::rig_tracking::pose(render_base,source.reference,tracking.controllers.hands[static_cast<unsigned>(side)].grip,
+        source.units_per_metre,grip)||gears_hand_wrist::native_wrist_target(grip,binding.authored_mount.calibration,
+        source.units_per_metre,wrist)!=gears_hand_wrist::Status::okay)return Status::invalid_target;
+    std::memcpy(&output.input,&input,sizeof input);std::memcpy(&output.binding,&binding,sizeof binding);
+    output.render_base=render_base;output.side=side;output.wrist_world=wrist;output.checked_at_ns=now;output.allow_sim=allow_sim;
+    return Status::okay;
+}
+} // namespace detail
+inline Status prepare_hand(gears_body_tick_input::Input const& input,ModelBinding const& binding,Side side,
+    gears_vr::StereoMatrix const& render_base,std::int64_t now,bool allow_sim,TickTarget& output) noexcept {
+    using namespace control::ik::detail;
+    const Range ranges[]={range(&input,sizeof input),range(&binding,sizeof binding),range(&render_base,sizeof render_base),range(&output,sizeof output)};
+    if(!disjoint(ranges,4))return Status::alias;
+    if(gears_body_tick_input::classify(input,input.parent_scene,now,allow_sim)!=gears_body_tick_input::Verdict::okay)return Status::invalid_core;
+    return detail::prepare_tracking_math(input,input,binding,side,render_base,now,allow_sim,output);
+}
+inline Status prepare_hand(gears_body_tick_source::Input const& input,ModelBinding const& binding,Side side,
+    gears_vr::StereoMatrix const& render_base,std::int64_t now,bool allow_sim,SourceTarget& output) noexcept {
+    using namespace control::ik::detail;
+    const Range ranges[]={range(&input,sizeof input),range(&binding,sizeof binding),range(&render_base,sizeof render_base),range(&output,sizeof output)};
+    if(!disjoint(ranges,4))return Status::alias;
+    if(gears_body_tick_source::classify(input,input.observed.parent_scene,now,allow_sim)!=gears_body_tick_source::Verdict::okay)return Status::invalid_core;
+    return detail::prepare_tracking_math(input,input.observed,binding,side,render_base,now,allow_sim,output);
+}
 // Exact object representation from the same immutable latch, not a nearest or
 // reconstructed sample comparison. No stamp, epoch or source value is updated.
 inline bool same_source(Target const& target,core::CoreSnapshot const& source) noexcept {
@@ -164,11 +226,6 @@ inline Status solve_limb(Target const& target,LimbData const& data,arm::LengthMo
     for(unsigned i=0;i<3;++i)work.limb.component[i]=data.component[i];
     work.limb.component_to_world=data.component_to_world;work.limb.wrist_world=target.wrist_world;
     work.limb.mode=mode;work.limb.authored=data.authored;work.limb.previous=data.previous;
-    // Every call chooses its own input policy; reusable scratch must never
-    // carry a prior caller's opt-in into a default-strict request.
-    work.limb.original_matrix_policy=data.original_matrix_policy;
-    work.limb.upper_length_scale=data.upper_length_scale;
-    work.limb.lower_length_scale=data.lower_length_scale;
     return detail::convert(control::solve(work.limb,work.control_work,output));
 }
 inline Status replace_wrist_rotation(Target const& target,SingleData const& data,Workspace& work,control::Matrix64* output) noexcept {
@@ -183,6 +240,7 @@ inline Status replace_wrist_rotation(Target const& target,SingleData const& data
     return detail::convert(control::replace_wrist_rotation(work.single,work.control_work,output));
 }
 static_assert(std::is_standard_layout_v<ModelBinding>&&std::is_trivially_copyable_v<ModelBinding>);
+static_assert(std::is_standard_layout_v<SourceTarget>&&std::is_trivially_copyable_v<SourceTarget>);
 static_assert(std::is_standard_layout_v<Target>&&std::is_trivially_copyable_v<Target>);
 static_assert(std::is_standard_layout_v<PreparationPolicy>&&std::is_trivially_copyable_v<PreparationPolicy>);
 } // namespace gears_hand_core_target

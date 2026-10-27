@@ -1,7 +1,32 @@
 #include "startup_panel_policy.h"
 #include <cassert>
 #include <initializer_list>
+void verify_stereo_menu_epoch(gears_menu::Mode mode){
+    using gears_menu::Mode;
+    StartupPanelPolicy policy(true,true);
+    assert(policy.projection_rendered(true));
+    assert(policy.observe(mode,100));
+    assert(policy.show_menu_projection()&&!policy.show_panel());
+    assert(!policy.allow_projection()&&!policy.projection_rendered(true));
+    policy.menu_rendered();
+    assert(policy.minimum_sample_ns()==100); // A menu is not a gameplay handoff.
+    assert(!policy.observe(mode,200)&&policy.minimum_sample_ns()==100);
+    policy.observe(Mode::unknown,300); // Expired/changed owner lease revokes it.
+    assert(!policy.show_menu_projection()&&!policy.allow_projection());
+    assert(policy.observe(mode,400)&&policy.minimum_sample_ns()==400);
+    policy.menu_rendered();
+    policy.observe(Mode::loading_display,500); // Checkpoint reload needs a new image.
+    assert(!policy.show_menu_projection()&&!policy.allow_projection());
+    policy.observe(Mode::gameplay,600);
+    assert(policy.minimum_sample_ns()==600&&policy.show_transition_panel());
+    assert(!policy.projection_rendered(false)&&policy.minimum_sample_ns()==600);
+    assert(policy.projection_rendered(true)&&policy.minimum_sample_ns()==0);
+    policy.observe(mode,700);policy.cancel();
+    assert(!policy.show_menu_projection()&&!policy.show_panel()&&!policy.allow_projection());
+}
 int main(){
+    verify_stereo_menu_epoch(gears_menu::Mode::pause_menu);
+    verify_stereo_menu_epoch(gears_menu::Mode::death_menu);
     using Wait=StartupPanelPolicy::StartupWaitContext;
     const Wait ready{0,true,true,true,false,false,false,false,true};
     StartupPanelPolicy waiting(true,true);
@@ -56,9 +81,9 @@ int main(){
     capture.observe(Mode::main_menu,5);
     assert(!capture.suspend_window_capture()); // Heartbeat keeps the binding.
     capture.observe(Mode::pause_menu,6);
-    assert(capture.show_pause_projection()&&capture.suspend_window_capture());
+    assert(capture.show_menu_projection()&&capture.suspend_window_capture());
     capture.observe(Mode::death_menu,7);
-    assert(capture.show_panel()&&!capture.suspend_window_capture());
+    assert(capture.show_menu_projection()&&!capture.show_panel()&&capture.suspend_window_capture());
     capture.observe(Mode::loading_display,8);
     assert(capture.suspend_window_capture());
     capture.observe(Mode::gameplay,9);
@@ -67,7 +92,7 @@ int main(){
     StartupPanelPolicy reversible(true,true);
     assert(reversible.projection_rendered(true)&&!reversible.show_panel());
     assert(reversible.observe(Mode::death_menu,100));
-    assert(reversible.show_panel()&&!reversible.allow_projection()&&!reversible.projection_rendered(true));
+    assert(reversible.show_menu_projection()&&!reversible.show_panel()&&!reversible.allow_projection()&&!reversible.projection_rendered(true));
     assert(!reversible.observe(Mode::death_menu,101)); // Heartbeat does not reset capture epoch.
     assert(!reversible.observe(Mode::unknown,200));
     assert(!reversible.show_panel()&&!reversible.allow_projection()); // Expired state cannot display old menu.
@@ -76,37 +101,37 @@ int main(){
     assert(!reversible.projection_rendered(false)&&reversible.minimum_sample_ns()==300);
     assert(reversible.projection_rendered(true)&&reversible.minimum_sample_ns()==0);
     assert(reversible.observe(Mode::death_menu,400));
-    assert(reversible.show_panel()&&!reversible.allow_projection());
+    assert(reversible.show_menu_projection()&&!reversible.show_panel()&&!reversible.allow_projection());
     reversible.cancel();assert(!reversible.show_panel()&&!reversible.allow_projection());
     StartupPanelPolicy legacy(true);
     assert(!legacy.observe(Mode::death_menu,100)&&legacy.allow_projection());
     StartupPanelPolicy pause(true,true);
     assert(pause.observe(Mode::pause_menu,500));
-    assert(pause.show_pause_projection()&&!pause.show_panel()&&!pause.allow_projection());
+    assert(pause.show_menu_projection()&&!pause.show_panel()&&!pause.allow_projection());
     assert(!pause.projection_rendered(true)); // Pause stereo is not a gameplay handoff.
     pause.menu_rendered();
-    assert(pause.show_pause_projection()&&pause.minimum_sample_ns()==500);
+    assert(pause.show_menu_projection()&&pause.minimum_sample_ns()==500);
     assert(!pause.projection_rendered(false)&&pause.minimum_sample_ns()==500);
     assert(!pause.projection_rendered(true)&&pause.minimum_sample_ns()==500);
     assert(!pause.observe(Mode::pause_menu,600)&&pause.minimum_sample_ns()==500);
     assert(!pause.observe(Mode::unknown,700));
-    assert(!pause.show_pause_projection()&&!pause.show_panel()&&!pause.allow_projection());
+    assert(!pause.show_menu_projection()&&!pause.show_panel()&&!pause.allow_projection());
     assert(!pause.observe(Mode::gameplay,800)&&pause.minimum_sample_ns()==800);
-    assert(pause.show_transition_panel()&&!pause.show_pause_projection());
+    assert(pause.show_transition_panel()&&!pause.show_menu_projection());
     assert(!pause.projection_rendered(false)&&pause.minimum_sample_ns()==800);
     assert(pause.projection_rendered(true)&&pause.minimum_sample_ns()==0&&pause.allow_projection());
     assert(pause.observe(Mode::pause_menu,900));
-    assert(pause.observe(Mode::death_menu,1000)&&pause.show_panel()&&!pause.show_pause_projection());
-    assert(pause.observe(Mode::pause_menu,1100)&&!pause.show_panel()&&pause.show_pause_projection());
-    pause.cancel();assert(!pause.show_pause_projection()&&!pause.allow_projection());
+    assert(pause.observe(Mode::death_menu,1000)&&!pause.show_panel()&&pause.show_menu_projection());
+    assert(pause.observe(Mode::pause_menu,1100)&&!pause.show_panel()&&pause.show_menu_projection());
+    pause.cancel();assert(!pause.show_menu_projection()&&!pause.allow_projection());
     StartupPanelPolicy main(true,true);
     assert(main.projection_rendered(true));
     assert(main.observe(Mode::main_menu,1200));
-    assert(main.show_panel()&&!main.show_pause_projection()&&!main.allow_projection());
+    assert(main.show_panel()&&!main.show_menu_projection()&&!main.allow_projection());
     assert(!main.projection_rendered(true)&&main.minimum_sample_ns()==1200);
     assert(!main.observe(Mode::main_menu,1300)&&main.minimum_sample_ns()==1200);
     assert(!main.observe(Mode::unknown,1400));
-    assert(!main.show_panel()&&!main.show_pause_projection()&&!main.allow_projection());
+    assert(!main.show_panel()&&!main.show_menu_projection()&&!main.allow_projection());
     assert(!main.projection_rendered(true)&&main.minimum_sample_ns()==1400);
     assert(main.observe(Mode::main_menu,1500)&&main.show_panel()); // New capture epoch.
     assert(!main.observe(Mode::gameplay,1600)&&main.minimum_sample_ns()==1600);
@@ -114,9 +139,9 @@ int main(){
     assert(!main.observe(Mode::gameplay,1700)&&main.minimum_sample_ns()==1600);
     assert(!main.projection_rendered(false)&&main.minimum_sample_ns()==1600);
     assert(main.projection_rendered(true)&&main.minimum_sample_ns()==0);
-    assert(main.observe(Mode::pause_menu,1800)&&main.show_pause_projection()&&!main.show_panel());
-    assert(main.observe(Mode::main_menu,1900)&&main.show_panel()&&!main.show_pause_projection());
-    assert(main.observe(Mode::pause_menu,2000)&&main.show_pause_projection()&&!main.show_panel());
+    assert(main.observe(Mode::pause_menu,1800)&&main.show_menu_projection()&&!main.show_panel());
+    assert(main.observe(Mode::main_menu,1900)&&main.show_panel()&&!main.show_menu_projection());
+    assert(main.observe(Mode::pause_menu,2000)&&main.show_menu_projection()&&!main.show_panel());
     assert(main.observe(Mode::main_menu,2100)&&main.show_panel());
     main.cancel();assert(!main.show_panel()&&!main.allow_projection());
     StartupPanelPolicy main_before_handoff(true,true);
@@ -153,7 +178,7 @@ int main(){
     // loading observed before the first projection or before a menu witness.
     StartupPanelPolicy loading_startup(true,true);
     assert(!loading_startup.observe(Mode::loading_display,4200));
-    assert(!loading_startup.allow_projection()&&!loading_startup.show_panel()&&!loading_startup.show_pause_projection());
+    assert(!loading_startup.allow_projection()&&!loading_startup.show_panel()&&!loading_startup.show_menu_projection());
     assert(!loading_startup.projection_rendered(true)&&!loading_startup.show_transition_panel());
     assert(loading_startup.show_startup_wait(ready)&&loading_startup.minimum_sample_ns()==4200);
     loading_startup.menu_rendered();assert(!loading_startup.show_transition_panel()); // No fabricated menu witness.
@@ -167,14 +192,14 @@ int main(){
     assert(!loading_startup.projection_rendered(false)&&loading_startup.show_startup_wait(ready));
     assert(loading_startup.projection_rendered(true)&&!loading_startup.show_startup_wait(ready));
     loading_startup.observe(Mode::loading_display,4500);
-    assert(!loading_startup.allow_projection()&&!loading_startup.show_panel()&&!loading_startup.show_pause_projection());
+    assert(!loading_startup.allow_projection()&&!loading_startup.show_panel()&&!loading_startup.show_menu_projection());
     assert(!loading_startup.show_transition_panel()&&!loading_startup.show_startup_wait(ready));
     StartupPanelPolicy loading_bridge(true,true);
     assert(loading_bridge.projection_rendered(true));
     loading_bridge.observe(Mode::main_menu,4600);loading_bridge.menu_rendered();
     loading_bridge.observe(Mode::loading_display,4700);
     assert(loading_bridge.show_transition_panel()&&!loading_bridge.allow_projection());
-    assert(!loading_bridge.show_panel()&&!loading_bridge.show_pause_projection()&&!loading_bridge.show_startup_wait(ready));
+    assert(!loading_bridge.show_panel()&&!loading_bridge.show_menu_projection()&&!loading_bridge.show_startup_wait(ready));
     assert(!loading_bridge.projection_rendered(true)&&loading_bridge.minimum_sample_ns()==4700);
     loading_bridge.observe(Mode::loading_display,4800);assert(loading_bridge.minimum_sample_ns()==4700);
     // Actual packet lease expiration yields UNKNOWN and revokes the generic card.
@@ -201,7 +226,7 @@ int main(){
     assert(acquisition_play.projection_rendered(true));
     assert(!acquisition_play.observe(Mode::acquisition_wait,6000));
     assert(acquisition_play.allow_projection()&&acquisition_play.minimum_sample_ns()==0);
-    assert(!acquisition_play.show_transition_panel()&&!acquisition_play.show_panel()&&!acquisition_play.show_pause_projection());
+    assert(!acquisition_play.show_transition_panel()&&!acquisition_play.show_panel()&&!acquisition_play.show_menu_projection());
     acquisition_play.menu_rendered();assert(!acquisition_play.show_transition_panel());
     assert(!acquisition_play.transition_menu_requested_wait()&&!acquisition_play.transition_authorized(Mode::acquisition_wait));
     acquisition_play.observe(Mode::gameplay,6100);

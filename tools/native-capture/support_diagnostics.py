@@ -7,9 +7,10 @@ from pathlib import Path
 import re
 import threading
 import time
+from thread_wait_diagnostics import sample_thread
 
 MAX_SOURCE = 4*1024*1024
-GRAPHICS = re.compile(r'openxr|xr_api|xrdriver|dxgi|d3d|nv|amd|ati|pimax|pvr|sboys|virtualdesktop|vrclient|steam|reshade|vorpx|gearscapture|gameoverlay|rtss|renderdoc', re.I)
+GRAPHICS = re.compile(r'openxr|xr_api|xrdriver|dxgi|d3d|nv|amd|ati|pimax|pvr|sboys|virtualdesktop|vrclient|steam|reshade|vorpx|gearscapture|gameoverlay|rtss|renderdoc|msvcp|vcruntime|ucrtbase|msvcr', re.I)
 
 
 def message(value):
@@ -152,7 +153,7 @@ class WindowsInventory:
 
 
 class SupportJournal:
-    def __init__(self,prefix,game,build,*,owner=None,provider_factory=WindowsInventory,clock=time.perf_counter_ns):
+    def __init__(self,prefix,game,build,*,owner=None,provider_factory=WindowsInventory,clock=time.perf_counter_ns,thread_sampler=sample_thread):
         self.prefix,self.game,self.build=Path(prefix),dict(game),Path(build)
         self.path=self.prefix.with_suffix('.support.jsonl');self.first=self.prefix.with_suffix('.first-failure.json')
         self.clock=clock;self.provider_factory=provider_factory;self.targets={'game':dict(game)}
@@ -162,6 +163,9 @@ class SupportJournal:
         self.context_rows={}
         self.last_progress={}
         self.native_snapshot_state=None
+        self.startup_pending={};self.startup_records=0;self.startup_source_state=None
+        self.startup_last_sequence=None;self.startup_skipped=0
+        self.thread_sampler=thread_sampler;self.thread_samples=0;self.thread_sample_keys={};self.thread_cpu={}
         self.owner=owner
         try:self.native_floor=(self.build/'session-status.txt').stat().st_mtime_ns
         except OSError:self.native_floor=0
@@ -172,7 +176,7 @@ class SupportJournal:
             with self.lock:
                 # Repeat immutable observations with their original timestamps
                 # after rotation, so a long session retains its device context.
-                if event in ('system','adapter','adapter_required','software_inventory','adapter_comparison'):
+                if event in ('system','adapter','adapter_required','software_inventory','adapter_comparison','xr_focus_capability'):
                     key=(role,event,fields.get('chain_id',0))
                     if key in self.context_rows or len(self.context_rows)<128:self.context_rows[key]=row
                 if self.path.exists() and self.path.stat().st_size>2*1024*1024:
@@ -212,14 +216,18 @@ class SupportJournal:
             with path.open('rb') as stream:stream.seek(offset);data=stream.read(MAX_SOURCE)
             complete=data.rfind(b'\n')+1
             self.cursors[str(path)]=(identity,offset+complete)
+            matching_identity=mismatched_identity=0
             for line in data[:complete].splitlines():
                 if len(line)>65536:continue
                 try:row=json.loads(line)
                 except (ValueError,UnicodeError):continue
                 if not isinstance(row,dict) or row.get('support_diagnostics') is not True:continue
-                if expected and (row.get('pid')!=expected['pid'] or row.get('creation_time')!=expected['creation_time']):continue
+                if expected and (row.get('pid')!=expected['pid'] or row.get('creation_time')!=expected['creation_time']):
+                    mismatched_identity+=1;continue
+                matching_identity+=1
                 event=row.get('event');fields={k:v for k,v in row.items() if k not in ('role','event','schema','support_diagnostics','observed_ns')}
                 self.write(role,event,**fields)
+                if event=='startup_stage':self.startup_record(row)
                 if event=='adapter':
                     adapter=(row.get('adapter_luid_high'),row.get('adapter_luid_low'))
                     self.adapter_ids.setdefault(role,set()).add(adapter)
@@ -229,8 +237,66 @@ class SupportJournal:
                             self.write('controller','adapter_comparison',chain_id=chain,adapter_match=selected in self.adapter_ids['xr'],scope='per_observed_chain_inspect_binding_and_present_progress')
                 if event=='first_failure' or (event=='graphics_event' and row.get('hresult',0)<0):
                     self.failure(role,'runtime_failure',row.get('action',event),runtime_event=row)
+            # PID-named files can predate this process. Do not advance beyond
+            # their stale contents before CREATE_ALWAYS reuses the same inode.
+            if expected and mismatched_identity and not matching_identity:self.cursors[str(path)]=(identity,0)
         except FileNotFoundError:pass
         except OSError as error:self.write('observer','observer_error',component=role,exception_type=type(error).__name__)
+
+    def startup_record(self,row):
+        # Keep the bounded startup timeline separately, so a later long session
+        # cannot rotate away the evidence preceding its first running status.
+        if self.startup_records<1024:
+            try:
+                with self.prefix.with_suffix('.native-startup.jsonl').open('a',encoding='utf-8') as stream:
+                    stream.write(json.dumps(row,separators=(',',':'))+'\n')
+                self.startup_records+=1
+            except OSError as error:self.write('observer','observer_error',component='startup_trace',exception_type=type(error).__name__)
+        stage,phase,thread=row.get('stage'),row.get('phase'),row.get('thread_id')
+        sequence,skipped=row.get('sequence'),row.get('skipped',self.startup_skipped)
+        if ((isinstance(sequence,int) and self.startup_last_sequence is not None and sequence!=self.startup_last_sequence+1)
+                or skipped!=self.startup_skipped):
+            self.startup_pending.clear()
+            self.write('observer','startup_trace_gap',sequence=sequence,previous_sequence=self.startup_last_sequence,skipped=skipped,
+                scope='pending_entries_invalidated_after_lost_records_no_hang_inferred')
+        if isinstance(sequence,int):self.startup_last_sequence=sequence
+        self.startup_skipped=skipped
+        if stage=='trace_budget' and phase=='complete':self.startup_pending.clear();return
+        if not isinstance(stage,str) or not isinstance(thread,int):return
+        stack=self.startup_pending.setdefault(thread,[])
+        if phase=='enter' and len(stack)<64:stack.append((stage,self.clock(),row.get('sequence')))
+        if phase=='exit':
+            for index in range(len(stack)-1,-1,-1):
+                if stack[index][0]==stage:del stack[index:];break
+        if row.get('succeeded') is False:
+            self.failure('native','startup_step_failure',stage,runtime_event=row)
+
+    def startup_waits(self):
+        for thread,stack in self.startup_pending.items():
+            if stack:
+                stage,received,sequence=stack[-1];elapsed=(self.clock()-received)//1_000_000
+                if elapsed>=2000:
+                    self.write('observer','startup_wait',thread_id=thread,stage=stage,sequence=sequence,elapsed_ms=elapsed,
+                        scope='time_since_entry_was_received_without_matching_exit_not_root_cause_or_stack_trace')
+                    key=(thread,sequence);samples=self.thread_sample_keys.get(key,0)
+                    if not self.stop_event.is_set() and self.thread_samples<3 and samples<3 and elapsed>=(2500,6500,11000)[samples]:
+                        self.thread_samples+=1;self.thread_sample_keys[key]=samples+1
+                        try:result=self.thread_sampler(self.game,thread)
+                        except Exception as error:result=dict(available=False,reason='thread_sampler_exception',exception_type=type(error).__name__)
+                        if not isinstance(result,dict):result=dict(available=False,reason='thread_sampler_invalid_output')
+                        fields=dict(result,thread_id=thread,stage=stage,sequence=sequence,elapsed_ms=elapsed)
+                        identity=(thread,result.get('thread_creation_time'))
+                        if result.get('cpu_available') and result.get('qpc_frequency',0)>0:
+                            cpu=result.get('kernel_100ns',0)+result.get('user_100ns',0);qpc=result.get('cpu_qpc',0)
+                            previous=self.thread_cpu.get(identity)
+                            if previous and cpu>=previous[0] and qpc>previous[1]:
+                                fields.update(thread_cpu_delta_100ns=cpu-previous[0],sample_interval_ms=(qpc-previous[1])*1000//result['qpc_frequency'])
+                            self.thread_cpu[identity]=(cpu,qpc)
+                        row=self.write('observer','thread_wait',**fields)
+                        try:
+                            with self.prefix.with_suffix('.thread-waits.jsonl').open('a',encoding='utf-8') as stream:
+                                stream.write(json.dumps(row,separators=(',',':'))+'\n')
+                        except OSError as error:self.write('observer','observer_error',component='thread_wait_storage',exception_type=type(error).__name__)
 
     def tick(self,provider):
         with self.lock:targets=dict(self.targets)
@@ -246,6 +312,9 @@ class SupportJournal:
         self.consume(self.build/f"support-native-{self.game['pid']}.jsonl.1",'native',self.game)
         self.consume(self.build/f"support-native-{self.game['pid']}.jsonl",'native',self.game)
         self.consume(self.build/f"support-native-{self.game['pid']}.jsonl.first.json",'native',self.game)
+        startup=self.build/f"support-startup-{self.game['pid']}.jsonl"
+        self.consume(startup,'native',self.game)
+        self.startup_waits()
         # Persist the live native snapshot as it advances, before cleanup/crash.
         source=self.build/'session-status.txt'
         try:
@@ -308,5 +377,5 @@ class SupportJournal:
     def close(self):
         self.stop_event.set()
         if self.thread:self.thread.join(timeout=3)
-        return dict(records=self.records,rotations=self.rotations,observer_error=self.error,
+        return dict(records=self.records,rotations=self.rotations,observer_error=self.error,thread_wait_samples=self.thread_samples,
                     worker_joined=not self.thread or not self.thread.is_alive(),first_failure_available=self.first_written)

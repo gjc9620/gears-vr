@@ -18,6 +18,11 @@
 #include "../vr-common/pose_bridge.h"
 #include "reference_space_epoch.h"
 #include "../vr-common/stereo_bridge.h"
+#include "../vr-common/controller_input_bridge.h"
+#if defined(GEARS_HAND_CONTINUITY_CANDIDATE) && GEARS_HAND_CONTINUITY_CANDIDATE
+#include "../vr-common/controller_continuity_bridge.h"
+#endif
+#include "controller_actions.h"
 #include "../vr-common/render_size_bridge.h"
 #include "continuous_session.h"
 #include "shutdown_diagnostics.h"
@@ -29,6 +34,7 @@
 #include "xr_wait_diagnostics.h"
 #include "xr_delivery_counter.h"
 #include "../vr-common/support_diagnostics.h"
+#include "focus_diagnostics.h"
 ID3D12Device* support_device{}; // Observed only while the owning local device is alive.
 
 using Microsoft::WRL::ComPtr;
@@ -36,6 +42,44 @@ XrInstance instance = XR_NULL_HANDLE;
 XrSession session = XR_NULL_HANDLE;
 XrSpace local = XR_NULL_HANDLE;
 XrSpace view_space = XR_NULL_HANDLE;
+gears_controller_xr::Actions controller_actions;
+void controller_count(std::uint64_t& value) {
+    if(value==(std::numeric_limits<std::uint64_t>::max)())
+        throw std::runtime_error("Controller input diagnostic counter exhausted");
+    ++value;
+}
+#if defined(GEARS_HAND_CONTINUITY_CANDIDATE) && GEARS_HAND_CONTINUITY_CANDIDATE
+// One actual source tracker for the complete sampling loop. Publication skips
+// never erase source loss/focus history and never supply a receiver-made epoch.
+struct HandContinuityCandidate {
+    gears_hand_continuity::InputBridge bridge;
+    gears_hand_continuity::SourceTracker tracker;
+    std::uint64_t sampled{},published{},skipped{},rejected{},stream_epoch{},tracking_epoch[2]{},last_sequence{};
+    bool requested{},opened{};
+    bool open(DWORD pid) {requested=true;opened=bridge.open(pid,true);return opened;}
+    void observe_and_publish(gears_vr::ControllerInputFrame const& input) {
+        controller_count(sampled);
+        gears_hand_continuity::TrackedInput tracked{};
+        if(!tracker.update(input,tracked)){
+            controller_count(rejected);
+            throw std::runtime_error("Hand continuity candidate source tracker rejected or overflowed");
+        }
+        stream_epoch=tracked.stream_epoch;
+        for(unsigned hand=0;hand<2;++hand)tracking_epoch[hand]=tracked.tracking_epoch[hand];
+        last_sequence=tracked.input.sequence;
+        if(bridge.publish(tracked))controller_count(published);else controller_count(skipped);
+    }
+    ~HandContinuityCandidate() {
+        bridge.close();
+        if(requested){
+            printf("{\"hand_continuity_candidate\":true,\"opened\":%s,\"expected_source\":0,\"source_samples\":%llu,\"published\":%llu,\"publish_skipped\":%llu,\"tracker_rejected\":%llu,\"stream_epoch\":%llu,\"left_tracking_epoch\":%llu,\"right_tracking_epoch\":%llu,\"last_tracked_sequence\":%llu,\"game_input_injected\":false,\"hand_application_proved\":false}\n",
+                opened?"true":"false",sampled,published,skipped,rejected,stream_epoch,
+                tracking_epoch[0],tracking_epoch[1],last_sequence);
+            fflush(stdout);
+        }
+    }
+};
+#endif
 bool xr_gpu_teardown_unsafe=false;
 void xr_check(XrResult result, const char* action) {
     if (XR_FAILED(result)) {
@@ -122,6 +166,7 @@ bool projection_end_succeeded(bool queued,XrResult result,unsigned layer_count,b
 }
 bool cleanup() {
     shutdown_diagnostics::marker("cleanup_enter");
+    controller_actions.close();
     if(xr_gpu_teardown_unsafe){fprintf(stderr,"Unsafe XR teardown: submitted image GPU work is unconfirmed; XR objects retained until process exit\n");
         printf("{\"unsafe_xr_teardown\":true,\"xr_objects_destroyed\":false}\n");fflush(stdout);shutdown_diagnostics::marker("cleanup_retained_unsafe");return false;}
     bool ok=true;
@@ -350,6 +395,7 @@ int main(int argc, char** argv) {
     if(argc<3) {fprintf(stderr,"Usage: OpenXRPoseProbe SECONDS OUTPUT.csv [--render] [--bridge-pid PID]\n");return 2;}
     bool test_render=false;DWORD bridge_pid=0,stereo_pid=0,stereo_game_pid=0,game_pid=0,gpu_pid=0;HWND game_window=nullptr;const char* gpu_snapshot=nullptr;
     HWND startup_window=nullptr;DWORD startup_game_pid=0;
+    bool controller_input=false;
     const char* menu_state_file=nullptr;std::uint64_t menu_game_creation=0;
     unsigned stereo_producer_seconds=30;bool explicit_stereo_duration=false;
     double render_scale{};bool explicit_render_scale=false;
@@ -367,6 +413,7 @@ int main(int argc, char** argv) {
             menu_game_creation=strtoull(value,&end,10);
             if(*value<'0'||*value>'9'||*end||errno==ERANGE||!menu_game_creation)return 2;
         }
+        else if(!strcmp(argv[i],"--controller-input")){if(controller_input)return 2;controller_input=true;}
         else if(!strcmp(argv[i],"--simulator-operator")){if(simulator_operator)return 2;simulator_operator=true;}
         else if(!strcmp(argv[i],"--continuous-session")){if(continuous_session)return 2;continuous_session=true;}
         else if(!strcmp(argv[i],"--shutdown-diagnostics")){if(diagnostic_shutdown)return 2;diagnostic_shutdown=true;}
@@ -415,6 +462,10 @@ int main(int argc, char** argv) {
     if(!continuous_session&&(continuous_owner_pid||continuous_owner_creation))return 2;
     if(explicit_stereo_duration&&(!stereo_game_pid||seconds<int(stereo_producer_seconds+10)))return 2;
     if(simulator_operator&&!stereo_game_pid)return 2;
+    if(controller_input&&!stereo_pid)return 2;
+#if defined(GEARS_HAND_CONTINUITY_CANDIDATE) && GEARS_HAND_CONTINUITY_CANDIDATE
+    if(controller_input&&simulator_operator){fprintf(stderr,"Normal hand continuity candidate requires RuntimeTracked source 0\n");return 2;}
+#endif
     if(explicit_render_scale&&!stereo_game_pid)return 2;
     if(diagnostic_outage&&!stereo_game_pid)return 2;
     if(diagnostic_image_tickets&&!stereo_game_pid)return 2;
@@ -437,8 +488,15 @@ int main(int argc, char** argv) {
     gears_vr::RenderSizeBridge render_size_bridge;
     gears_vr::StereoBridge stereo_bridge;
     if(stereo_pid && !stereo_bridge.open(stereo_pid,true)){fprintf(stderr,"Stereo bridge creation rejected\n");return 2;}
+    gears_vr::ControllerInputBridge controller_bridge;
+    if(controller_input&&!controller_bridge.open(stereo_pid,true)){fprintf(stderr,"Controller input bridge creation rejected\n");return 2;}
+#if defined(GEARS_HAND_CONTINUITY_CANDIDATE) && GEARS_HAND_CONTINUITY_CANDIDATE
+    HandContinuityCandidate hand_continuity;
+    if(controller_input&&!hand_continuity.open(stereo_pid)){fprintf(stderr,"Hand continuity candidate bridge creation rejected\n");return 2;}
+#endif
     const uint64_t stereo_session=static_cast<uint64_t>(gears_vr::monotonic_ns());
     uint64_t stereo_published=0,stereo_publish_skipped=0;
+    std::uint64_t controller_published{},controller_publish_skipped{};
     bool stereo_space_changed=false;
     gears_xr::ReferenceSpaceEpoch space_epoch;
     std::uint64_t last_submitted_space_epoch{};
@@ -457,14 +515,28 @@ int main(int argc, char** argv) {
     outage.enabled=diagnostic_outage;
     image_ticket_diagnostics::Recorder image_tickets;
     projection_evidence.producer_seconds=stereo_producer_seconds;
+    gears_focus::Diagnostics focus_diagnostics(stdout);
     try {
         if(diagnostic_image_tickets&&!image_tickets.enable())throw std::runtime_error("Image ticket diagnostics allocation failed");
-        const char* extensions[]={XR_KHR_D3D12_ENABLE_EXTENSION_NAME};
+        std::vector<const char*> extensions{XR_KHR_D3D12_ENABLE_EXTENSION_NAME};
+        uint32_t extension_count{};
+        auto extension_result=xrEnumerateInstanceExtensionProperties(nullptr,0,&extension_count,nullptr);
+        bool user_presence_advertised=false;
+        if(XR_SUCCEEDED(extension_result)&&extension_count<=1024){
+            std::vector<XrExtensionProperties> available_extensions(extension_count);
+            for(auto& item:available_extensions)item.type=XR_TYPE_EXTENSION_PROPERTIES;
+            extension_result=xrEnumerateInstanceExtensionProperties(nullptr,extension_count,&extension_count,available_extensions.data());
+            if(XR_SUCCEEDED(extension_result))for(const auto& item:available_extensions)
+                if(!strcmp(item.extensionName,XR_EXT_USER_PRESENCE_EXTENSION_NAME))user_presence_advertised=true;
+        }else if(XR_SUCCEEDED(extension_result))extension_result=XR_ERROR_LIMIT_REACHED;
+        const bool user_presence_enabled=user_presence_advertised;
+        if(user_presence_enabled)extensions.push_back(XR_EXT_USER_PRESENCE_EXTENSION_NAME);
+        focus_diagnostics.capabilities(extension_result,user_presence_advertised,user_presence_enabled,false,"extension_enumeration");
         XrInstanceCreateInfo create{XR_TYPE_INSTANCE_CREATE_INFO};
         strcpy_s(create.applicationInfo.applicationName,"GearsVR Pose Probe");
         strcpy_s(create.applicationInfo.engineName,"GearsVR Research");
         create.applicationInfo.apiVersion=XR_API_VERSION_1_0;
-        create.enabledExtensionCount=1;create.enabledExtensionNames=extensions;
+        create.enabledExtensionCount=static_cast<uint32_t>(extensions.size());create.enabledExtensionNames=extensions.data();
         shutdown_diagnostics::initialization("xr_create_instance_enter");
         xr_check(xrCreateInstance(&create,&instance),"xrCreateInstance");
         shutdown_diagnostics::initialization("xr_create_instance_completed");
@@ -477,7 +549,13 @@ int main(int argc, char** argv) {
             throw std::runtime_error("Synthetic input requires verified Meta simulator runtime and loaded Operator layer");
         XrSystemGetInfo system_info{XR_TYPE_SYSTEM_GET_INFO};system_info.formFactor=XR_FORM_FACTOR_HEAD_MOUNTED_DISPLAY;
         XrSystemId system{};xr_check(xrGetSystem(instance,&system_info,&system),"xrGetSystem");
-        {XrSystemProperties observed{XR_TYPE_SYSTEM_PROPERTIES};if(XR_SUCCEEDED(xrGetSystemProperties(instance,system,&observed)))
+        {XrSystemProperties observed{XR_TYPE_SYSTEM_PROPERTIES};
+            XrSystemUserPresencePropertiesEXT presence_properties{XR_TYPE_SYSTEM_USER_PRESENCE_PROPERTIES_EXT};
+            if(user_presence_enabled)observed.next=&presence_properties;
+            const auto properties_result=xrGetSystemProperties(instance,system,&observed);
+            focus_diagnostics.capabilities(properties_result,user_presence_advertised,user_presence_enabled,
+                XR_SUCCEEDED(properties_result)&&presence_properties.supportsUserPresence==XR_TRUE,"system_properties");
+            if(XR_SUCCEEDED(properties_result))
             gears_support::system(stdout,observed.systemName,observed.vendorId,observed.trackingProperties.positionTracking==XR_TRUE,
                 observed.trackingProperties.orientationTracking==XR_TRUE,observed.graphicsProperties.maxSwapchainImageWidth,observed.graphicsProperties.maxSwapchainImageHeight);}
         gears_eye_chain::Limits stereo_limits{};
@@ -534,6 +612,7 @@ int main(int argc, char** argv) {
         XrReferenceSpaceCreateInfo space{XR_TYPE_REFERENCE_SPACE_CREATE_INFO};space.poseInReferenceSpace.orientation.w=1;
         space.referenceSpaceType=XR_REFERENCE_SPACE_TYPE_LOCAL;xr_check(xrCreateReferenceSpace(session,&space,&local),"LOCAL space");
         space.referenceSpaceType=XR_REFERENCE_SPACE_TYPE_VIEW;xr_check(xrCreateReferenceSpace(session,&space,&view_space),"VIEW space");
+        if(controller_input)controller_actions.initialize(instance,session);
         std::unique_ptr<TestPattern,shutdown_diagnostics::DeleteMarker<TestPattern>> pattern{nullptr,{"pattern_reset_enter","pattern_reset_completed"}};
         if(test_render&&!continuous_session)pattern.reset(new TestPattern(device.Get(),queue.Get(),argv[2]));
         std::unique_ptr<GameScreen,shutdown_diagnostics::DeleteMarker<GameScreen>> screen{nullptr,{"screen_reset_enter","screen_reset_completed"}};
@@ -567,6 +646,7 @@ int main(int argc, char** argv) {
         unsigned menu_quad_layers=0,menu_entries=0,menu_recoveries=0;
         unsigned main_menu_quad_layers=0,last_main_menu_entry=0,main_menu_snapshots=0;
         unsigned pause_menu_projection_layers=0,last_pause_menu_entry=0;
+        unsigned death_menu_projection_layers=0,last_death_menu_entry=0;
         unsigned startup_quad_layers=0;
         std::unique_ptr<GameGpuScreen,shutdown_diagnostics::DeleteMarker<GameGpuScreen>> gpu_screen{nullptr,{"gpu_screen_reset_enter","gpu_screen_reset_completed"}};
         if(gpu_pid)gpu_screen.reset(new GameGpuScreen(device.Get(),queue.Get(),gpu_pid,gpu_snapshot));
@@ -586,6 +666,16 @@ int main(int argc, char** argv) {
             XrEventDataBuffer event{XR_TYPE_EVENT_DATA_BUFFER};
             XrResult poll;
             while((poll=xrPollEvent(instance,&event))==XR_SUCCESS) {
+                if(event.type==XR_TYPE_EVENT_DATA_SESSION_STATE_CHANGED){
+                    const auto* observed=reinterpret_cast<const XrEventDataSessionStateChanged*>(&event);
+                    focus_diagnostics.event(event.type,observed->session==session,int(observed->state),observed->time);
+                }else if(event.type==XR_TYPE_EVENT_DATA_USER_PRESENCE_CHANGED_EXT&&user_presence_enabled){
+                    const auto* observed=reinterpret_cast<const XrEventDataUserPresenceChangedEXT*>(&event);
+                    focus_diagnostics.event(event.type,observed->session==session,-1,0,observed->isUserPresent==XR_TRUE?1:0);
+                }else if(event.type==XR_TYPE_EVENT_DATA_EVENTS_LOST){
+                    const auto* observed=reinterpret_cast<const XrEventDataEventsLost*>(&event);
+                    focus_diagnostics.event(event.type,false,-1,0,-1,observed->lostEventCount);
+                }else focus_diagnostics.event(event.type,false);
                 if(event.type==XR_TYPE_EVENT_DATA_SESSION_STATE_CHANGED) {
                     auto change=reinterpret_cast<XrEventDataSessionStateChanged*>(&event);
                     if(change->session!=session)continue;
@@ -593,8 +683,9 @@ int main(int argc, char** argv) {
                     fprintf(stderr,"session_state=%d\n",int(state));
                     if(state==XR_SESSION_STATE_READY) {
                         XrSessionBeginInfo begin{XR_TYPE_SESSION_BEGIN_INFO};begin.primaryViewConfigurationType=XR_VIEW_CONFIGURATION_TYPE_PRIMARY_STEREO;
-                        xr_check(xrBeginSession(session,&begin),"xrBeginSession");running=true;
-                    } else if(state==XR_SESSION_STATE_STOPPING) {xr_check(xrEndSession(session),"xrEndSession");session_exit.mark_end_success();running=false;
+                        const auto begin_result=xrBeginSession(session,&begin);focus_diagnostics.call("xrBeginSession",begin_result);
+                        xr_check(begin_result,"xrBeginSession");running=true;
+                    } else if(state==XR_SESSION_STATE_STOPPING) {const auto end_result=xrEndSession(session);focus_diagnostics.call("xrEndSession",end_result);xr_check(end_result,"xrEndSession");session_exit.mark_end_success();running=false;
                         if(continuous_session){stop_reason="runtime_stopping";exiting=true;}}
                     else if(state==XR_SESSION_STATE_EXITING || state==XR_SESSION_STATE_LOSS_PENDING){exiting=true;
                         stop_reason=state==XR_SESSION_STATE_LOSS_PENDING?"session_lost":"runtime_exiting";
@@ -603,6 +694,10 @@ int main(int argc, char** argv) {
                     session_exit.loss_observed=true;
                     stop_reason="instance_lost";
                     if(stereo_game_pid)projection_evidence.record(ProjectionStatus::session_lost,gears_vr::monotonic_ns());}
+                else if(event.type==XR_TYPE_EVENT_DATA_INTERACTION_PROFILE_CHANGED && controller_input){
+                    const auto* change=reinterpret_cast<const XrEventDataInteractionProfileChanged*>(&event);
+                    if(change->session==session)controller_actions.profile_changed();
+                }
                 else if(event.type==XR_TYPE_EVENT_DATA_REFERENCE_SPACE_CHANGE_PENDING && stereo_pid){
                     const auto* change=reinterpret_cast<const XrEventDataReferenceSpaceChangePending*>(&event);
                     if(change->session==session&&change->referenceSpaceType==XR_REFERENCE_SPACE_TYPE_LOCAL){
@@ -627,6 +722,7 @@ int main(int argc, char** argv) {
                 [&]{return frame_wait_result==XR_SUCCESS?xr_wait_diagnostics::context(int(state),frame.shouldRender!=0):xr_wait_diagnostics::Context::unknown;},
                 [](XrResult r){return r==XR_TIMEOUT_EXPIRED?xr_wait_diagnostics::Outcome::timeout:XR_FAILED(r)?xr_wait_diagnostics::Outcome::error:xr_wait_diagnostics::Outcome::success;});
             xr_check(waited_frame,"xrWaitFrame");
+            focus_diagnostics.snapshot(gears_vr::monotonic_ns(),frame.shouldRender==XR_TRUE);
             xr_wait_diagnostics::current_context=xr_wait_diagnostics::context(int(state),frame.shouldRender!=0);
             if(continuous_session&&stereo_pid){
                 if(space_epoch.advance(frame.predictedDisplayTime)){
@@ -648,7 +744,9 @@ int main(int argc, char** argv) {
                 bridge.publish(sample);
             }
             gears_vr::StereoSample stereo_sample{};bool stereo_sent=false;
-            if(stereo_pid && (!stereo_space_changed||continuous_session)){
+            if(stereo_pid && (controller_input||!stereo_space_changed||continuous_session)){
+                if(controller_input&&frames==(std::numeric_limits<unsigned>::max)())
+                    throw std::runtime_error("Controller source sequence exhausted");
                 auto pose=[](const XrPosef& p){return gears_vr::Pose{{p.position.x,p.position.y,p.position.z},
                     {p.orientation.x,p.orientation.y,p.orientation.z,p.orientation.w}};};
                 stereo_sample.session=stereo_session;stereo_sample.sequence=frames+1;
@@ -661,8 +759,25 @@ int main(int argc, char** argv) {
                 stereo_sample.head=pose(head.pose);
                 for(unsigned i=0;i<2;++i){const auto& f=views[i].fov;
                     stereo_sample.eyes[i]={pose(views[i].pose),{f.angleLeft,f.angleRight,f.angleUp,f.angleDown}};}
-                stereo_sent=stereo_bridge.publish(stereo_sample);
-                if(stereo_sent)++stereo_published;else ++stereo_publish_skipped;
+                if(controller_input){
+                    gears_vr::ControllerInputFrame hands{};
+                    hands.source=stereo_sample.source;hands.session=stereo_sample.session;
+                    hands.sequence=stereo_sample.sequence;hands.space_epoch=stereo_sample.space_epoch;
+                    hands.profile_generation=controller_actions.profile_generation();hands.predicted_time=stereo_sample.predicted_time;
+                    if(!controller_actions.sample(local,frame.predictedDisplayTime,state==XR_SESSION_STATE_FOCUSED,hands))
+                        throw std::runtime_error("Controller input sampling rejected");
+#if defined(GEARS_HAND_CONTINUITY_CANDIDATE) && GEARS_HAND_CONTINUITY_CANDIDATE
+                    hand_continuity.observe_and_publish(hands);
+#endif
+                    if(controller_bridge.publish(hands))controller_count(controller_published);
+                    else controller_count(controller_publish_skipped);
+                }
+                // Attempt both hand publications before the eyes. A nonblocking
+                // skip remains a skip; no second action read or receipt is made.
+                if(!stereo_space_changed||continuous_session){
+                    stereo_sent=stereo_bridge.publish(stereo_sample);
+                    if(stereo_sent)++stereo_published;else ++stereo_publish_skipped;
+                }
             }
             XrFrameEndInfo end{XR_TYPE_FRAME_END_INFO};end.displayTime=frame.predictedDisplayTime;end.environmentBlendMode=XR_ENVIRONMENT_BLEND_MODE_OPAQUE;
             XrCompositionLayerProjectionView projection_views[2];
@@ -671,13 +786,13 @@ int main(int argc, char** argv) {
             XrCompositionLayerQuad quad{XR_TYPE_COMPOSITION_LAYER_QUAD};
             const XrCompositionLayerBaseHeader* game_layers[]={reinterpret_cast<const XrCompositionLayerBaseHeader*>(&quad)};
             ProjectionStatus projection_frame_status=ProjectionStatus::producer_unavailable;
-            bool outage_render_attempted=false,startup_quad_queued=false,startup_handoff_queued=false,pause_menu_queued=false,transition_panel_queued=false,startup_wait_card_queued=false,world_handoff_panel_queued=false,window_fallback_queued=false,tracking_recovery_card_queued=false;
+            bool outage_render_attempted=false,startup_quad_queued=false,startup_handoff_queued=false,stereo_menu_queued=false,transition_panel_queued=false,startup_wait_card_queued=false,world_handoff_panel_queued=false,window_fallback_queued=false,tracking_recovery_card_queued=false;
             WorldHandoffDisplay::State world_handoff_panel_state{};
             const auto menu_now=gears_vr::monotonic_ns();
             const auto menu_mode=menu_display.poll(menu_now);
             const auto observe_menu=[&](gears_menu::Mode mode,std::int64_t observed){
                 if(!startup_panel.observe(mode,observed))return;
-                if((mode==gears_menu::Mode::death_menu||mode==gears_menu::Mode::main_menu)&&startup_screen)
+                if(mode==gears_menu::Mode::main_menu&&startup_screen)
                     startup_screen->begin_menu_epoch();
                 ++menu_entries;
                 printf("{\"menu_display_enter\":true,\"epoch\":%u,\"mode\":\"%s\",\"observed_ns\":%lld}\n",
@@ -740,23 +855,23 @@ int main(int argc, char** argv) {
                 if(stereo_space_changed&&!continuous_session)result=ProjectionStatus::reference_space_changed;
                 else if(stereo_screen&&stereo_screen->reconfiguring())result=ProjectionStatus::source_reconfiguration;
                 else if(stereo_screen&&stereo_screen->producer_stopped())result=ProjectionStatus::producer_stopped;
-                else if(!startup_panel.allow_projection(window_fallback_enabled)&&!startup_panel.show_pause_projection())result=(menu_mode==gears_menu::Mode::death_menu||menu_mode==gears_menu::Mode::main_menu)?ProjectionStatus::menu_requested:ProjectionStatus::menu_recovery_pending;
+                else if(!startup_panel.allow_projection(window_fallback_enabled)&&!startup_panel.show_menu_projection())result=menu_mode==gears_menu::Mode::main_menu?ProjectionStatus::menu_requested:ProjectionStatus::menu_recovery_pending;
                 else result=projection_current_status(frame.shouldRender,projection_session_visible(state),view_count,head.locationFlags,view_state.viewStateFlags,simulator_operator);
                 bool submitted=false;
                 if(result==ProjectionStatus::submitted){
                     if(!stereo_screen)result=ProjectionStatus::producer_unavailable;
                     else {outage_render_attempted=true;outage_copies_before=stereo_screen->copies;
-                        if(startup_panel.show_pause_projection()){
+                        if(startup_panel.show_menu_projection()){
                             const auto menu_boundary=startup_panel.minimum_sample_ns();
-                            pause_menu_queued=stereo_screen->render_pause_menu(projection,projection_views,stereo_session,result,menu_boundary,space_epoch.epoch(),space_epoch.last_change_time());
-                            if(pause_menu_queued){
+                            stereo_menu_queued=stereo_screen->render_menu(projection,projection_views,stereo_session,result,menu_boundary,space_epoch.epoch(),space_epoch.last_change_time());
+                            if(stereo_menu_queued){
                                 // A GPU copy can wait. Reject a changed/expired menu
                                 // lease and any new menu epoch before submission.
                                 const auto after_copy=gears_vr::monotonic_ns();
                                 const auto authorized=menu_display.poll(after_copy);
                                 observe_menu(authorized,after_copy);
-                                pause_menu_queued=startup_panel.show_pause_projection()&&startup_panel.minimum_sample_ns()==menu_boundary;
-                                if(pause_menu_queued){end.layerCount=1;end.layers=layers;}
+                                stereo_menu_queued=authorized==menu_mode&&startup_panel.show_menu_projection()&&startup_panel.minimum_sample_ns()==menu_boundary;
+                                if(stereo_menu_queued){end.layerCount=1;end.layers=layers;}
                                 else result=ProjectionStatus::menu_recovery_pending;
                             }
                         }else submitted=stereo_screen->render_projection(projection,projection_views,stereo_session,result,startup_panel.minimum_sample_ns(),space_epoch.epoch(),space_epoch.last_change_time());}
@@ -888,7 +1003,7 @@ int main(int argc, char** argv) {
             // still balancing the already begun XR frame with zero layers.
             if(continuous_session){if(const auto* reason=continuous_control.requested()){
                 startup_panel.cancel();stop_reason=reason;exiting=true;end.layerCount=0;
-                tracking_recovery_card_queued=world_handoff_panel_queued=startup_wait_card_queued=transition_panel_queued=startup_handoff_queued=startup_quad_queued=pause_menu_queued=false;
+                tracking_recovery_card_queued=world_handoff_panel_queued=startup_wait_card_queued=transition_panel_queued=startup_handoff_queued=startup_quad_queued=stereo_menu_queued=false;
             }}
             const auto ended=xr_wait_diagnostics::recorder.measure(xr_wait_diagnostics::Operation::end_frame,
                 [&]{return xrEndFrame(session,&end);},[]{return xr_wait_diagnostics::current_context;},
@@ -958,13 +1073,15 @@ int main(int argc, char** argv) {
                     gears_vr::monotonic_ns(),ended==XR_SUCCESS&&end.layerCount==1&&end.layers==layers?"true":"false");fflush(stdout);
             }
             transition_panel_active=transition_shown;
-            if(pause_menu_queued&&ended==XR_SUCCESS&&end.layerCount==1&&end.layers==layers){
+            if(stereo_menu_queued&&ended==XR_SUCCESS&&end.layerCount==1&&end.layers==layers){
                 startup_panel.menu_rendered();
-                ++pause_menu_projection_layers;
-                if(last_pause_menu_entry!=menu_entries){
-                    last_pause_menu_entry=menu_entries;const auto snapshot=stereo_screen->diagnostic_snapshot();
-                    printf("{\"pause_menu_first_frame\":true,\"epoch\":%u,\"end_frame_succeeded\":true,\"layer_type\":\"projection\",\"view_count\":%u,\"both_eyes_common_panel\":false,\"ticket\":%llu,\"sample_ns\":%lld,\"minimum_sample_ns\":%lld,\"eye_extent\":[%d,%d]}\n",
-                        menu_entries,projection.viewCount,snapshot.ticket_id,snapshot.received_ns,startup_panel.minimum_sample_ns(),
+                const bool death=menu_mode==gears_menu::Mode::death_menu;
+                ++(death?death_menu_projection_layers:pause_menu_projection_layers);
+                auto& last_entry=death?last_death_menu_entry:last_pause_menu_entry;
+                if(last_entry!=menu_entries){
+                    last_entry=menu_entries;const auto snapshot=stereo_screen->diagnostic_snapshot();
+                    printf("{\"%s_menu_first_frame\":true,\"epoch\":%u,\"end_frame_succeeded\":true,\"layer_type\":\"projection\",\"view_count\":%u,\"both_eyes_common_panel\":false,\"ticket\":%llu,\"sample_ns\":%lld,\"minimum_sample_ns\":%lld,\"eye_extent\":[%d,%d]}\n",
+                        death?"death":"pause",menu_entries,projection.viewCount,snapshot.ticket_id,snapshot.received_ns,startup_panel.minimum_sample_ns(),
                         projection_views[0].subImage.imageRect.extent.width,projection_views[0].subImage.imageRect.extent.height);fflush(stdout);
                 }
             }
@@ -1004,8 +1121,6 @@ int main(int argc, char** argv) {
                         }
                     }
                 }
-                if(menu_mode==gears_menu::Mode::death_menu){++menu_quad_layers;
-                    if(menu_quad_layers==1){printf("{\"death_menu_first_frame\":true,\"end_frame_succeeded\":true,\"panel_counts_as_stereo\":false}\n");fflush(stdout);}}
                 if(startup_quad_layers==1){printf("{\"startup_menu_first_frame\":true,\"end_frame_succeeded\":true,\"panel_counts_as_stereo\":false}\n");fflush(stdout);}
             }
             if(startup_handoff_queued){
@@ -1033,7 +1148,7 @@ int main(int argc, char** argv) {
                 // stereo projection evidence. Keep the ticket recorder below
                 // on its original projection-only contract.
                 const char* layer_kind=end.layerCount==0?"none":
-                    end.layers==layers?(pause_menu_queued?"pause_menu_projection":"projection"):
+                    end.layers==layers?(stereo_menu_queued?(menu_mode==gears_menu::Mode::death_menu?"death_menu_projection":"pause_menu_projection"):"projection"):
                     end.layers==game_layers?(tracking_recovery_card_queued?"tracking_recovery_card":world_handoff_panel_queued?"world_handoff_card":startup_wait_card_queued?"startup_wait_card":transition_panel_queued?"transition_panel":
                         (startup_quad_queued?"startup_panel":"quad")):"other";
                 row.menu_mode=static_cast<unsigned>(menu_mode);row.session_state=static_cast<int>(state);
@@ -1103,6 +1218,7 @@ int main(int argc, char** argv) {
                     auto change=reinterpret_cast<XrEventDataSessionStateChanged*>(&event);
                     if(change->session!=session)continue;
                     state=change->state;session_exit.observe(state);
+                    focus_diagnostics.event(event.type,true,int(change->state),change->time);
                     shutdown_diagnostics::marker("exit_session_state",true,int(state));
                     if(change->state==XR_SESSION_STATE_STOPPING) {shutdown_diagnostics::marker("end_session_enter");xr_check(xrEndSession(session),"end stopped session");
                         shutdown_diagnostics::marker("end_session_returned");session_exit.mark_end_success();running=false;}
@@ -1111,11 +1227,14 @@ int main(int argc, char** argv) {
                 } else std::this_thread::sleep_for(std::chrono::milliseconds(5));
             }
         }
+        focus_diagnostics.snapshot(gears_vr::monotonic_ns(),false,true);
         printf("{\"frames\":%u,\"valid_pose_frames\":%u,\"tracked_pose_frames\":%u,\"should_render_frames\":%u,\"focused_frames\":%u,\"last_session_state\":%d,\"submitted_image_layers\":%u,\"left_checksum\":%llu,\"right_checksum\":%llu}\n",
                frames,valid,tracked,render,focused,int(state),pattern?pattern->rendered:0,
                pattern?pattern->checksums[0]:0,pattern?pattern->checksums[1]:0);
         if(screen)printf("{\"game_quad_layers\":%u,\"game_texture_uploads\":%u,\"game_image_changes\":%u,\"first_source_hash\":%llu,\"last_source_hash\":%llu,\"gpu_pixels_verified\":%s,\"stereo_scene_rendering\":false}\n",screen->rendered,screen->uploads,screen->changes,screen->first_hash,screen->last_hash,screen->gpu_pixels_verified?"true":"false");
         if(gpu_screen)printf("{\"gpu_game_quad_layers\":%u,\"gpu_game_copies\":%u,\"per_frame_cpu_readback\":false,\"stereo_scene_rendering\":false}\n",gpu_screen->rendered,gpu_screen->copies);
+        if(controller_input)printf("{\"controller_input_bridge\":true,\"published\":%llu,\"publish_skipped\":%llu,\"profile_generation\":%llu,\"game_input_injected\":false}\n",
+            controller_published,controller_publish_skipped,controller_actions.profile_generation());
         if(stereo_pid)printf("{\"stereo_bridge_session\":%llu,\"published\":%llu,\"publish_skipped\":%llu,\"reference_space_changed\":%s,\"game_projection_layer\":%s}\n",
             stereo_session,stereo_published,stereo_publish_skipped,stereo_space_changed?"true":"false",stereo_screen&&stereo_screen->projection_rendered?"true":"false");
         if(stereo_game_pid)printf("{\"stereo_game_projection_layers\":%u,\"stereo_game_copies\":%u,\"matching_render_ticket_required\":true}\n",
@@ -1141,6 +1260,7 @@ int main(int argc, char** argv) {
         if(menu_state_file)printf("{\"menu_recovery_evidence\":true,\"entries\":%u,\"quad_layers\":%u,\"recoveries\":%u,\"panel_counts_as_stereo\":false}\n",menu_entries,menu_quad_layers,menu_recoveries);
         if(menu_state_file)printf("{\"main_menu_evidence\":true,\"quad_layers\":%u,\"source\":\"wgc_full_client\",\"panel_counts_as_stereo\":false}\n",main_menu_quad_layers);
         if(menu_state_file)printf("{\"pause_menu_evidence\":true,\"projection_layers\":%u,\"view_count\":2,\"both_eyes_common_panel\":false}\n",pause_menu_projection_layers);
+        if(menu_state_file)printf("{\"death_menu_evidence\":true,\"projection_layers\":%u,\"view_count\":2,\"both_eyes_common_panel\":false}\n",death_menu_projection_layers);
         if(startup_window)printf("{\"startup_wait_card_evidence\":true,\"quad_layers\":%u,\"uploads\":%u,\"source\":\"session_owned_card\",\"panel_counts_as_stereo\":false}\n",
             startup_wait_card_layers,startup_wait_card?startup_wait_card->uploads:0);
         if(menu_state_file)printf("{\"transition_panel_evidence\":true,\"quad_layers\":%u,\"uploads\":%u,\"source\":\"session_owned_card\",\"panel_counts_as_stereo\":false}\n",transition_panel_layers,transition_card?transition_card->uploads:0);
@@ -1177,7 +1297,7 @@ int main(int argc, char** argv) {
         }
         fclose(csv);const int code=frames && display_ok && shutdown_completed?0:1;
         shutdown_diagnostics::marker("main_return_pending",true,code);return code;
-    }catch(std::exception const& error) {support_device=nullptr;fprintf(stderr,"Pose probe error: %s\n",error.what());fflush(stderr);
+    }catch(std::exception const& error) {focus_diagnostics.snapshot(gears_vr::monotonic_ns(),false,true);support_device=nullptr;fprintf(stderr,"Pose probe error: %s\n",error.what());fflush(stderr);
         outage.dump();
         image_tickets.dump();
         shutdown_diagnostics::marker("main_exception_handler");

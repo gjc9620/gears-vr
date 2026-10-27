@@ -154,14 +154,10 @@ bool owned_scene_gpu_install(ID3D12Device* device,ID3D12GraphicsCommandList* lis
  add(11,dev[27],reinterpret_cast<void*>(owned_hook_committed),reinterpret_cast<void**>(&owned_original_committed));
  add(12,dev[29],reinterpret_cast<void*>(owned_hook_placed),reinterpret_cast<void**>(&owned_original_placed));
  add(13,tab[48],reinterpret_cast<void*>(owned_hook_clear),reinterpret_cast<void**>(&owned_original_clear));
-#if !GEARS_NGX_MV_TARGET_CAPTURE
  add(14,tab[17],reinterpret_cast<void*>(owned_hook_copy),reinterpret_cast<void**>(&owned_original_copy));
-#endif
  add(15,tab[19],reinterpret_cast<void*>(owned_hook_resolve),reinterpret_cast<void**>(&owned_original_resolve));
  add(16,tab[51],reinterpret_cast<void*>(owned_hook_discard),reinterpret_cast<void**>(&owned_original_discard));
-#if !GEARS_NGX_MV_TARGET_CAPTURE
  add(17,tab[27],reinterpret_cast<void*>(owned_hook_bundle),reinterpret_cast<void**>(&owned_original_bundle));
-#endif
  add(18,tab[59],reinterpret_cast<void*>(owned_hook_indirect),reinterpret_cast<void**>(&owned_original_indirect));
  ID3D12GraphicsCommandList1* list1{};if(SUCCEEDED(list->QueryInterface(IID_PPV_ARGS(&list1)))){
   add(19,(*reinterpret_cast<void***>(list1))[64],reinterpret_cast<void*>(owned_hook_resolve_region),reinterpret_cast<void**>(&owned_original_resolve_region));list1->Release();}

@@ -90,10 +90,6 @@ public:
             throw std::invalid_argument("Invalid cover interaction configuration");
     }
 
-    // Stored virtual offset only. Callers must certify its current cover
-    // basis and occupancy before using it as a body-sweep origin.
-    CoverOffset stored_offset() const noexcept {return offset_;}
-
     // Abort publication without replaying or changing an already consumed
     // hand sample. Retain only the last committed offset; a later observation
     // must certify it again, and a valid release must precede another grip.

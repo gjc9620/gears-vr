@@ -9,7 +9,7 @@ bool color_copy_diagnostics=true;
 #include "ngx_output_pixels.inl"
 namespace ngx_output_pixels {
 struct FakeBackend final:Backend {
-    bool typed=true,same_device=true,signal_ok=true,complete=true,start_ok=true,publish_ok=true,unknown_identity{},removed{},before_throw{};
+    bool typed=true,same_device=true,signal_ok=true,complete=true,start_ok=true,publish_ok=true,unknown_identity{},removed{};
     unsigned prepared{},appended{},released{},mapped{},signals{},publications{};unsigned format=26,width=2560,height=1080,destination_format=26,destination_width=2560,destination_height=1080;
     uint64_t generation=4;uintptr_t queue_id=0x900;
     bool start()override{return start_ok;}
@@ -17,7 +17,6 @@ struct FakeBackend final:Backend {
         s.source_desc={0x101,width,height,format,3,1,1,1,0};s.destination_desc={0x102,destination_width,destination_height,destination_format,3,1,1,1,0};
         s.life.list={reinterpret_cast<uintptr_t>(s.raw_list),0x700,generation};s.life.held_identity=0x700;
         return typed&&same_device&&textures_supported(s.source_desc,s.destination_desc);}
-    void append_before(unsigned,Slot&,CopyFn)override{if(before_throw)throw std::runtime_error("pre-copy recording");}
     void append(unsigned,Slot& s,CopyFn forward)override{++appended;D3D12_TEXTURE_COPY_LOCATION own{};own.Type=D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;
         forward(s.raw_list,&own,0,0,0,&s.source,nullptr);}
     uintptr_t list_identity(ID3D12CommandList* list)override{return list&&!unknown_identity?0x700:0;}
@@ -77,19 +76,6 @@ void execute(){ID3D12CommandList* member=pixel_list;ngx_output_pixels::execute_p
 void retire(){assert(ngx_output_pixels::reset_passthrough(pixel_list,nullptr,nullptr,pixel_original_reset)==reset_result);}
 void paired(bool inside,bool same_base=false){pixel_mode=inside?1:0;for(unsigned i=0;i<2;++i){put(evaluation,0x60,uint32_t(same_base?0:i*1280));assert(invoke_evaluate()==evaluate_result);if(!inside)copy();}}
 void pixel_cases(){using namespace ngx_output_pixels;
-    {
-        gears_death_hdr_pixels::Texture color{1,1280,720,26,3,1,1,1,0};auto final=color;final.canonical=2;final.format=24;
-        assert(final_textures_supported(final,color)&&!textures_supported(final,color));
-        assert(final_footprint_valid(final,3686400,0,5120,720,5120,1280,720,1,24));
-        for(unsigned mutation=0;mutation<5;++mutation){auto source=final,paired=color;
-            switch(mutation){case 0:source.format=26;break;case 1:source.samples=2;break;case 2:source.mips=2;break;
-                case 3:source.width=1279;break;case 4:paired.canonical=source.canonical;break;}
-            assert(!final_textures_supported(source,paired));
-        }
-        assert(!final_footprint_valid(final,3686399,0,5120,720,5120,1280,720,1,24));
-        assert(!final_footprint_valid(final,3686400,0,5119,720,5120,1280,720,1,24));
-        assert(!final_footprint_valid(final,3686400,0,5120,720,5120,1280,720,1,26));
-    }
     for(bool inside:{false,true}){pixel_reset();ngx_route_observer::recorder.evaluate_count=8;paired(inside);
         assert(count==2&&!failure&&original_copies==2&&extra_copies==2&&pixel_eval_calls==2&&published&&fake_backend.publications==1);
         assert(slots[0].before.values[7]==0&&slots[1].before.values[7]==1280&&slots[0].before.resources==slots[1].before.resources);
@@ -110,24 +96,13 @@ void pixel_cases(){using namespace ngx_output_pixels;
     for(unsigned exception:{3u,4u,5u}){pixel_reset();pixel_mode=exception;try{invoke_evaluate();assert(false);}catch(std::runtime_error const&){}
         assert(original_copies==1&&!slots[0].normal&&!published);
         assert(ngx_output_pixels::active_eval==-1&&ngx_route_observer::current==nullptr&&active.load()==0);
-        // A native call or preceding diagnostic may already have recorded GPU
-        // commands before throwing. Quarantine rather than release its leases.
-        assert(!fake_backend.released&&slots[0].life.appended);}
-    pixel_reset();pixel_mode=1;fake_backend.before_throw=true;
-    try{invoke_evaluate();assert(false);}catch(std::runtime_error const&){}
-    assert(!original_copies&&!fake_backend.released&&slots[0].life.appended&&failure==copy_exception);
+        assert(fake_backend.released==(exception==4?1u:0u));}
     pixel_reset();paired(false);execute();execute();poll();assert(!fake_backend.mapped&&!fake_backend.released&&slots[0].life.failure==gears_death_hdr_pixels::duplicate_execution);
     pixel_reset();paired(false);execute();fake_backend.queue_id=0x901;execute();assert(slots[0].life.failure==gears_death_hdr_pixels::cross_queue&&!fake_backend.released);
     pixel_reset();paired(false);fake_backend.signal_ok=false;execute();retire();poll();assert(!fake_backend.mapped&&!fake_backend.released&&slots[0].life.failure==gears_death_hdr_pixels::signal_failed);
     pixel_reset();paired(false);execute();reset_result=E_FAIL;retire();poll();assert(!fake_backend.mapped&&!fake_backend.released&&slots[0].life.failure==gears_death_hdr_pixels::reset_failed);
     pixel_reset();paired(false);retire();assert(slots[0].life.failure==gears_death_hdr_pixels::reset_before_execute&&!fake_backend.released);
     pixel_reset();paired(false);fake_backend.generation=5;execute();poll();assert(original_executes==1&&!fake_backend.signals&&!fake_backend.mapped&&slots[0].life.failure==gears_death_hdr_pixels::unknown_membership);
-    pixel_reset();assert(invoke_evaluate()==evaluate_result);copy();slots[0].transition_probe=true;fake_backend.generation=0;
-    execute();retire();execute();poll();assert(fake_backend.mapped==1&&fake_backend.released==1&&original_executes==2&&fake_backend.signals==1);
-    pixel_reset();assert(invoke_evaluate()==evaluate_result);copy();slots[0].transition_probe=true;fake_backend.generation=0;
-    execute();execute();retire();poll();assert(!fake_backend.mapped&&!fake_backend.released&&slots[0].life.failure==gears_death_hdr_pixels::duplicate_execution);
-    pixel_reset();assert(invoke_evaluate()==evaluate_result);copy();slots[0].transition_probe=true;fake_backend.generation=0;
-    retire();execute();poll();assert(!fake_backend.mapped&&!fake_backend.released&&slots[0].life.failure==gears_death_hdr_pixels::reset_before_execute);
     pixel_reset();paired(false);fake_backend.unknown_identity=true;execute();assert(slots[0].life.failure==gears_death_hdr_pixels::unknown_membership&&!fake_backend.released);
     pixel_reset();paired(false);execute();fake_backend.unknown_identity=true;retire();assert(slots[0].life.failure==gears_death_hdr_pixels::unknown_membership&&!fake_backend.released);
     pixel_reset();paired(false);execute();retire();fake_backend.removed=true;poll();assert(slots[0].life.failure==gears_death_hdr_pixels::device_removed&&!fake_backend.released);

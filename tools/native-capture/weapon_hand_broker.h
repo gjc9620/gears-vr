@@ -2,6 +2,9 @@
 #include "../vr-common/weapon_hand_participant.h"
 #include "../vr-common/weapon_call_boundary.h"
 #include "../vr-common/weapon_action_gate.h"
+#include "../vr-common/weapon_main_mount_provider.h"
+#include "../vr-common/body_main_mount_provider.h"
+#include "../vr-common/weapon_lancer_wrist_mount.h"
 #include "weapon_action_boundary_state.h"
 #include <atomic>
 #include <chrono>
@@ -23,6 +26,16 @@ namespace action=::gears_weapon_action;
 namespace boundary=::gears_weapon_boundary;
 namespace boundary_state=::gears_weapon_boundary_state;
 namespace context=::gears_native_context;
+namespace mount=::gears_weapon_main_mount_provider;namespace body_mount=::gears_body_main_mount_provider;namespace rig=::gears_rig_tracking;
+struct MainMountQueryResult {
+    enum class Code {unavailable,ready,not_ready,context_rejected,stale,fault};
+    // Internal observation only. This is not part of the supplemental wire ABI.
+    enum class Branch:std::uint32_t {not_run,unavailable,context,source_before,body,callback_fault,changed,source_after,reply,exception,query_limit,reentrant,count};
+    Code code{Code::unavailable};mount::Status status{mount::Status::inactive};std::uint64_t query_id{};
+    Branch branch{Branch::unavailable};std::uint32_t callback_status{UINT32_MAX},source_failure_mask{};
+    // Rig publication, committed now, Scene, stereo receive, controller receive, sync.
+    std::array<std::int64_t,6> source_ages_ns{{-1,-1,-1,-1,-1,-1}};
+};
 class Broker;
 // Pure classification; Native GT certification is supplied by the Scene owner,
 // never by an invocation/request's claimed thread. This grants no field rights.
@@ -78,6 +91,13 @@ struct BrokerBackend {
     bool (*action_begin)(void*,action::Registration const&,action::Invocation*,action::State*,std::uint32_t&) noexcept{};
     bool (*action_returned)(void*,action::Registration const&,action::Invocation*,action::State*,std::uint64_t,std::uint32_t&) noexcept{};
     bool (*action_unwind)(void*,action::Registration const&,action::Invocation*,action::State*,action::UnwindReason,std::uint32_t&) noexcept{};
+    bool (*main_mount_module)(void*,mount::Registration const&,ModulePin) noexcept{};
+    bool (*main_mount_prepare)(void*,mount::Registration const&,mount::Request const*,mount::Response*,std::uint32_t&) noexcept{};
+    bool (*body_mount_module)(void*,body_mount::Registration const&,ModulePin) noexcept{};
+    bool (*body_mount_prepare)(void*,body_mount::Registration const&,body_mount::Request const*,body_mount::Response*,std::uint32_t&) noexcept{};
+    // Fixed Native-private validator, never a callback supplied by PG or by
+    // Request. Called outside mutex with exact query lifetime reserved.
+    bool (*body_mount_current)(void*,body_mount::Source const&) noexcept{};
 };
 
 namespace weapon_broker_win32 {
@@ -236,12 +256,46 @@ inline bool call_unwind(void*,call::Registration const& r,call::Invocation* invo
     result=static_cast<std::uint32_t>(r.unwind(r.context,invocation,state,reason));return true;
 #endif
 }
+inline bool main_mount_module(void*,mount::Registration const& r,ModulePin pin_value) noexcept {
+#if defined(_WIN32)
+    std::uintptr_t module{};return pin_value.handle&&pin_value.module&&
+        executable_image(reinterpret_cast<std::uintptr_t>(r.prepare),module)&&module==pin_value.module;
+#else
+    (void)r;(void)pin_value;return false;
+#endif
+}
+inline bool main_mount_prepare(void*,mount::Registration const& r,mount::Request const* input,mount::Response* output,std::uint32_t& reply) noexcept {
+#if defined(_WIN32) && defined(_MSC_VER)
+    __try {reply=r.prepare(r.context,input,output);return true;}
+    __except(filter(GetExceptionCode())){return false;}
+#else
+    reply=r.prepare(r.context,input,output);return true;
+#endif
+}
+inline bool body_mount_module(void*,body_mount::Registration const& r,ModulePin pin_value) noexcept {
+#if defined(_WIN32)
+    std::uintptr_t module{};return pin_value.handle&&pin_value.module&&
+        executable_image(reinterpret_cast<std::uintptr_t>(r.prepare),module)&&module==pin_value.module;
+#else
+    (void)r;(void)pin_value;return false;
+#endif
+}
+inline bool body_mount_prepare(void*,body_mount::Registration const& r,body_mount::Request const* input,body_mount::Response* output,std::uint32_t& reply) noexcept {
+#if defined(_WIN32) && defined(_MSC_VER)
+    __try {reply=r.prepare(r.context,input,output);return true;}
+    __except(filter(GetExceptionCode())){return false;}
+#else
+    reply=r.prepare(r.context,input,output);return true;
+#endif
+}
 } // namespace weapon_broker_win32
 inline BrokerBackend weapon_hand_win32_backend() noexcept {
     return {nullptr,weapon_broker_win32::pin,weapon_broker_win32::unpin,weapon_broker_win32::clock_ns,
         weapon_broker_win32::thread,weapon_broker_win32::prepare,weapon_broker_win32::commit,weapon_broker_win32::invalidate,
         weapon_broker_win32::call_module,weapon_broker_win32::call_begin,weapon_broker_win32::call_returned,weapon_broker_win32::call_unwind,
-        weapon_broker_win32::action_module,weapon_broker_win32::action_begin,weapon_broker_win32::action_returned,weapon_broker_win32::action_unwind};
+        weapon_broker_win32::action_module,weapon_broker_win32::action_begin,weapon_broker_win32::action_returned,weapon_broker_win32::action_unwind,
+        weapon_broker_win32::main_mount_module,weapon_broker_win32::main_mount_prepare,
+        weapon_broker_win32::body_mount_module,weapon_broker_win32::body_mount_prepare,nullptr};
 }
 
 class Broker {
@@ -287,6 +341,15 @@ class Broker {
     bool final_invalidate_{};InvalidateReason phase_reason_{};
     bool have_attempt_{},have_commit_{},commit_started_{};
     Frame attempt_{},frozen_{};Proposal proposal_{};Decision committed_{};
+    mount::Registration main_mount_registration_{};bool main_mount_attached_{};std::uint64_t next_main_mount_query_{1};
+    // Single admitted GT query; counters exclude other operations while these
+    // large immutable/request/response buffers are live. Never on hook stack.
+    struct MainMountWork {mount::Request request{},shadow{};mount::Response response{};Frame committed{};};
+    MainMountWork main_mount_work_{};
+    body_mount::Registration body_mount_registration_{};bool body_mount_attached_{};std::uint64_t next_body_mount_query_{1};
+    struct BodyMountWork {body_mount::Request request{},shadow{};body_mount::Response response{};Frame committed{};};
+    BodyMountWork body_mount_work_{};
+    inline static const body_mount::Response empty_body_mount_response_{};
     struct RetiredCookie {
         std::uint64_t cookie{},native_started_qpc{},game_start{};std::uint32_t game_pid{};
     };
@@ -326,6 +389,112 @@ class Broker {
     }
     template<class T> static bool equal_bytes(T const& a,T const& b) noexcept {return std::memcmp(&a,&b,sizeof(T))==0;}
     template<class T> static void snapshot(T& out,T const& value) noexcept {std::memcpy(&out,&value,sizeof(T));}
+    bool main_mount_context_clear() const noexcept {
+        return !current_&&!call_top_&&!action_top_&&context::engine_context_clear(context::thread_ledger,
+            game_thread_&&backend_.thread(backend_.context)==game_thread_&&game_thread_!=session_.owner_worker_thread);
+    }
+    bool main_mount_idle_locked() const noexcept {
+        return main_mount_context_clear()&&!callbacks_.load()&&!normal_calls_&&!transactions_.load()&&!aux_scopes_.load()&&!aux_debt_.load()&&
+            !action_scopes_.load()&&!external_scopes_.load()&&!action_barriers_.load()&&!action_pending()&&
+            !invalidate_running_&&!invalidate_failed_&&!final_invalidate_&&!phase_invalid_&&invalidate_done_;
+    }
+    bool main_mount_source(rig::Frame const& r,Frame const& f,std::int64_t now) const noexcept {
+        const bool sim=(f.flags&allow_sim)!=0;
+        return rig::frame_valid(r,now,mount::maximum_source_age_ns,sim)&&active_now(f,now)&&
+            now>=f.now_ns&&std::uint64_t(now-f.now_ns)<=mount::maximum_source_age_ns&&
+            r.native.game_pid==f.key.game_pid&&r.native.game_thread==f.key.thread_id&&r.native.game_start==f.key.game_start&&
+            r.native.native_started_qpc==f.key.native_started_qpc&&r.native.registration_cookie==f.key.registration_cookie&&
+            r.scene_invocation==f.key.frame&&r.world_generation==f.key.world_generation&&
+            same(r.world,f.world)&&same(r.controller,f.controller)&&same(r.pawn,f.pawn)&&same(r.mesh,f.mesh)&&same(r.weapon,f.weapon)&&
+            r.reference_generation==f.reference_generation&&equal_bytes(r.reference,f.reference)&&
+            equal_bytes(r.stereo,f.stereo)&&equal_bytes(r.controllers,f.controllers)&&
+            counter_fresh(r.scene_qpc,r.qpc_frequency,now)&&
+            r.controllers.sync_ns>0&&now>=r.controllers.sync_ns&&std::uint64_t(now-r.controllers.sync_ns)<=mount::maximum_source_age_ns;
+    }
+    static bool counter_fresh(std::int64_t ticks,std::int64_t frequency,std::int64_t now) noexcept {
+        const auto stamp=weapon_broker_win32::counter_ns(ticks,frequency);return stamp>0&&now>=stamp&&std::uint64_t(now-stamp)<=mount::maximum_source_age_ns;
+    }
+    void observe_main_mount_source(rig::Frame const& r,Frame const& f,std::int64_t now,MainMountQueryResult& result) const noexcept {
+        // Called only after the ORIGINAL predicate rejected. Re-evaluating pure
+        // POD predicates at that same clock records causes, never authorization.
+        const bool sim=(f.flags&allow_sim)!=0;
+        const bool checks[]={rig::frame_valid(r,now,mount::maximum_source_age_ns,sim),active_now(f,now),
+            now>=f.now_ns&&std::uint64_t(now-f.now_ns)<=mount::maximum_source_age_ns,
+            r.native.game_pid==f.key.game_pid&&r.native.game_thread==f.key.thread_id&&r.native.game_start==f.key.game_start&&r.native.native_started_qpc==f.key.native_started_qpc&&r.native.registration_cookie==f.key.registration_cookie,
+            r.scene_invocation==f.key.frame,r.world_generation==f.key.world_generation&&same(r.world,f.world)&&same(r.controller,f.controller)&&same(r.pawn,f.pawn)&&same(r.mesh,f.mesh)&&same(r.weapon,f.weapon),
+            r.reference_generation==f.reference_generation&&equal_bytes(r.reference,f.reference),equal_bytes(r.stereo,f.stereo),equal_bytes(r.controllers,f.controllers),
+            counter_fresh(r.scene_qpc,r.qpc_frequency,now),r.controllers.sync_ns>0&&now>=r.controllers.sync_ns&&std::uint64_t(now-r.controllers.sync_ns)<=mount::maximum_source_age_ns};
+        result.source_failure_mask=0;
+        for(unsigned i=0;i<std::size(checks);++i)if(!checks[i])result.source_failure_mask|=1u<<i;
+        const auto age=[now](std::int64_t stamp){return stamp>0&&now>=stamp?now-stamp:std::int64_t(-1);};
+        result.source_ages_ns={{age(r.published_ns<=INT64_MAX?std::int64_t(r.published_ns):0),age(f.now_ns),
+            age(weapon_broker_win32::counter_ns(r.scene_qpc,r.qpc_frequency)),age(r.stereo.received_ns),age(r.controllers.received_ns),age(r.controllers.sync_ns)}};
+    }
+    static bool main_mount_body(mount::BodyGeometry const& b,rig::Frame const& r) noexcept {
+        return same(b.mesh,r.mesh)&&b.geometry==gears_hand_authored_mount::marcus115_signature&&b.model_scale==1&&b.units_per_metre==r.units_per_metre&&
+            b.revision&&b.revision==r.binding_generation&&b.basis==mount::Basis::marcus_mesh_face_forward_y&&
+            b.basis_revision==mount::supported_basis_revision&&!b.reserved;
+    }
+    bool main_mount_response(std::uint32_t raw) const noexcept {
+        auto const& r=main_mount_work_.response;auto const& q=main_mount_work_.shadow;auto const& f=main_mount_work_.committed;
+        if(!mount::status_valid(raw)||r.size!=sizeof r||r.abi_version!=mount::version)return false;
+        if(raw!=unsigned(mount::Status::ready)){
+            // Response has no padding on this ABI. Still use explicit fields
+            // rather than allowing unread bytes to stand for an empty payload.
+            const mount::Signature empty_geometry{};
+            return !r.query_id&&same(r.key,FrameKey{})&&same(r.world,ObjectIdentity{})&&same(r.controller,ObjectIdentity{})&&
+                same(r.pawn,ObjectIdentity{})&&same(r.mesh,ObjectIdentity{})&&same(r.weapon,ObjectIdentity{})&&same(r.component,ObjectIdentity{})&&same(r.asset,ObjectIdentity{})&&
+                !r.hold_generation&&!r.provider_revision&&!r.body_revision&&!r.basis_revision&&r.basis==mount::Basis::unknown&&!r.reserved&&
+                r.geometry==empty_geometry&&r.model_scale==0&&r.units_per_metre==0&&!r.calibration_known&&!r.calibration_reserved&&
+                r.grip_to_wrist_metres.x==0&&r.grip_to_wrist_metres.y==0&&r.grip_to_wrist_metres.z==0&&
+                r.grip_to_wrist_rotation.x==0&&r.grip_to_wrist_rotation.y==0&&r.grip_to_wrist_rotation.z==0&&r.grip_to_wrist_rotation.w==0;
+        }
+        gears_weapon_lancer_wrist_mount::Profile profile{};
+        if(!gears_weapon_lancer_wrist_mount::marcus115(q.body.geometry,q.body.model_scale,q.body.units_per_metre,profile))return false;
+        auto const& c=profile.mount.calibration;
+        return r.query_id==q.query_id&&same(r.key,f.key)&&same(r.world,f.world)&&same(r.controller,f.controller)&&same(r.pawn,f.pawn)&&
+            same(r.mesh,f.mesh)&&same(r.weapon,f.weapon)&&identity_valid(r.weapon)&&identity_valid(r.component)&&identity_valid(r.asset)&&r.component.outer==r.weapon.address&&
+            r.hold_generation&&r.provider_revision==mount::provider_revision&&r.body_revision==q.body.revision&&r.basis_revision==q.body.basis_revision&&r.basis==q.body.basis&&
+            !r.reserved&&r.geometry==q.body.geometry&&r.model_scale==q.body.model_scale&&r.units_per_metre==q.body.units_per_metre&&
+            r.calibration_known==1&&!r.calibration_reserved&&r.grip_to_wrist_metres.x==c.grip_to_wrist_metres.x&&r.grip_to_wrist_metres.y==c.grip_to_wrist_metres.y&&r.grip_to_wrist_metres.z==c.grip_to_wrist_metres.z&&
+            r.grip_to_wrist_rotation.x==c.grip_to_wrist_rotation.x&&r.grip_to_wrist_rotation.y==c.grip_to_wrist_rotation.y&&r.grip_to_wrist_rotation.z==c.grip_to_wrist_rotation.z&&r.grip_to_wrist_rotation.w==c.grip_to_wrist_rotation.w;
+    }
+    bool body_mount_parent(body_mount::Source const& s,Frame const& f,std::int64_t now) const noexcept {
+        auto const& r=s.original_scene;
+        // Historical old packets are compared exactly, never declared fresh.
+        // The private Native validator separately authenticates the full
+        // original metadata source plus the genuine new raw/capture source.
+        return frame_shape_valid(f)&&now>=f.now_ns&&std::uint64_t(now-f.now_ns)<=body_mount::scene_age_ns&&
+            r.size==sizeof r&&r.abi_version==rig::version&&r.status==rig::Status::ready&&
+            r.published_ns&&r.published_ns<=std::uint64_t(now)&&std::uint64_t(now)-r.published_ns<=body_mount::scene_age_ns&&
+            counter_fresh(r.scene_qpc,r.qpc_frequency,now)&&s.scene_ticket&&s.scene_cache_revision&&
+            s.tracking.parent_cookie==cookie_.load()&&s.tracking.thread==game_thread_&&s.basis.compose&&
+            r.native.game_pid==f.key.game_pid&&r.native.game_thread==f.key.thread_id&&r.native.game_start==f.key.game_start&&
+            r.native.native_started_qpc==f.key.native_started_qpc&&r.native.registration_cookie==f.key.registration_cookie&&
+            r.scene_invocation==f.key.frame&&r.world_generation==f.key.world_generation&&
+            same(r.world,f.world)&&same(r.controller,f.controller)&&same(r.pawn,f.pawn)&&same(r.mesh,f.mesh)&&same(r.weapon,f.weapon)&&
+            r.reference_generation==f.reference_generation&&equal_bytes(r.reference,f.reference)&&
+            equal_bytes(r.stereo,f.stereo)&&equal_bytes(r.controllers,f.controllers)&&main_mount_body(s.basis.geometry,r);
+    }
+    bool body_mount_response(std::uint32_t raw,std::int64_t now) const noexcept {
+        auto const& outer=body_mount_work_.response;auto const& q=body_mount_work_.shadow;auto const& f=body_mount_work_.committed;
+        if(!mount::status_valid(raw)||outer.size!=sizeof outer||outer.abi_version!=body_mount::version)return false;
+        if(raw!=unsigned(mount::Status::ready))return equal_bytes(outer,empty_body_mount_response_);
+        auto const& r=outer.mount;auto const& b=q.source.basis.geometry;
+        if(outer.query_id!=q.query_id||outer.hand_lifecycle!=q.hand_lifecycle||outer.action_generation!=q.action_generation||
+           !body_mount::same(outer.source,body_mount::source_key(q.source))||
+           outer.equipment_begin_ns<=0||outer.equipment_end_ns<outer.equipment_begin_ns||now<outer.equipment_end_ns||
+           r.size!=sizeof r||r.abi_version!=mount::version)return false;
+        gears_weapon_lancer_wrist_mount::Profile profile{};
+        if(!gears_weapon_lancer_wrist_mount::marcus115(b.geometry,b.model_scale,b.units_per_metre,profile))return false;
+        auto const& c=profile.mount.calibration;
+        return r.query_id==q.query_id&&same(r.key,f.key)&&r.key.lifecycle==q.hand_lifecycle&&same(r.world,f.world)&&same(r.controller,f.controller)&&same(r.pawn,f.pawn)&&
+            same(r.mesh,f.mesh)&&same(r.weapon,f.weapon)&&identity_valid(r.weapon)&&identity_valid(r.component)&&identity_valid(r.asset)&&r.component.outer==r.weapon.address&&
+            r.hold_generation&&r.provider_revision==mount::provider_revision&&r.body_revision==b.revision&&r.basis_revision==b.basis_revision&&r.basis==b.basis&&
+            !r.reserved&&r.geometry==b.geometry&&r.model_scale==b.model_scale&&r.units_per_metre==b.units_per_metre&&
+            r.calibration_known==1&&!r.calibration_reserved&&r.grip_to_wrist_metres.x==c.grip_to_wrist_metres.x&&r.grip_to_wrist_metres.y==c.grip_to_wrist_metres.y&&r.grip_to_wrist_metres.z==c.grip_to_wrist_metres.z&&
+            r.grip_to_wrist_rotation.x==c.grip_to_wrist_rotation.x&&r.grip_to_wrist_rotation.y==c.grip_to_wrist_rotation.y&&r.grip_to_wrist_rotation.z==c.grip_to_wrist_rotation.z&&r.grip_to_wrist_rotation.w==c.grip_to_wrist_rotation.w;
+    }
     bool backend_valid() const noexcept {return backend_.pin&&backend_.unpin&&backend_.clock_ns&&backend_.thread&&backend_.prepare&&backend_.commit&&backend_.invalidate;}
     bool session_valid() const noexcept {return session_.game_pid&&session_.game_start&&session_.native_started_qpc&&session_.owner_worker_thread;}
     bool bump_locked() noexcept {
@@ -545,6 +714,129 @@ public:
     bool quiescent() const noexcept {const auto s=state_.load();return (s==State::empty||s==State::quiescent)&&!callbacks_.load()&&!transactions_.load()&&!aux_scopes_.load()&&!aux_debt_.load()&&!action_pending();}
     bool draining() const noexcept {const auto s=state_.load();return s==State::draining||s==State::quiescent||s==State::collecting||action_debt();}
     bool pending() const noexcept {const auto s=state_.load();return callbacks_.load()||transactions_.load()||aux_scopes_.load()||aux_debt_.load()||action_pending()||(s!=State::empty&&s!=State::active);}
+
+    Reply attach_main_mount_provider(mount::Registration const* input,RegistrationResult* output,bool consumer_owned) {
+        if(reentrant())return Reply::reentrant;
+        mount::Registration r{};RegistrationResult result{};
+        if(!consumer_owned||!weapon_broker_win32::copy(&r,input,sizeof r)||!weapon_broker_win32::copy(&result,output,sizeof result)||
+           !mount::registration_shape_valid(r)||result.size!=sizeof result||result.abi_version!=version||!backend_.main_mount_module||!backend_.main_mount_prepare)return Reply::invalid;
+        std::lock_guard<std::mutex> lock(mutex_);
+        if(!published_||r.hand_cookie!=cookie_.load()||r.native_started_qpc!=session_.native_started_qpc)return Reply::wrong_cookie;
+        if(stopping_||state_.load()!=State::active||aux_debt_.load()||action_debt())return Reply::draining;
+        if(r.context!=registration_.context||!backend_.main_mount_module(backend_.context,r,pin_))return Reply::invalid;
+        if(main_mount_attached_&&!mount::same(r,main_mount_registration_))return Reply::busy;
+        result.cookie=cookie_.load();result.native_started_qpc=session_.native_started_qpc;
+        if(!weapon_broker_win32::copy(output,&result,sizeof result))return Reply::invalid;
+        main_mount_registration_=r;main_mount_attached_=true;return Reply::accepted;
+    }
+    MainMountQueryResult query_main_mount(rig::Frame const& retained,mount::BodyGeometry const& body,mount::Response& output) noexcept {
+        using Code=MainMountQueryResult::Code;output={};MainMountQueryResult result{};InvalidateCall invalidation{};bool counted{};
+        if(current_){for(auto* p=current_;p;p=p->previous)p->violated=true;result.code=Code::fault;result.branch=MainMountQueryResult::Branch::reentrant;return result;}
+        mount::Registration registration{};std::uint64_t revision{},epoch{},generation{},parent_cookie{};
+        try{
+            {std::lock_guard<std::mutex> lock(mutex_);
+                if(!main_mount_attached_||!published_||stopping_||state_.load()!=State::active||!have_commit_||phase_invalid_)return result;
+                if(!main_mount_idle_locked()||!revocation_.frame_current(frame_stamp_)){result.code=Code::context_rejected;result.branch=MainMountQueryResult::Branch::context;return result;}
+                const auto now=backend_.clock_ns(backend_.context);
+                if(!main_mount_source(retained,frozen_,now)){result.code=Code::stale;result.branch=MainMountQueryResult::Branch::source_before;observe_main_mount_source(retained,frozen_,now,result);return result;}
+                if(!main_mount_body(body,retained)){result.code=Code::context_rejected;result.branch=MainMountQueryResult::Branch::body;return result;}
+                if(next_main_mount_query_==(std::numeric_limits<std::uint64_t>::max)()){
+                    invalidate_locked(InvalidateReason::callback_fault,true,invalidation);result.code=Code::fault;result.branch=MainMountQueryResult::Branch::query_limit;
+                }else{
+                    auto& w=main_mount_work_;w.request={};w.request.query_id=next_main_mount_query_++;w.request.hand_lifecycle=frozen_.key.lifecycle;
+                    snapshot(w.request.retained,retained);snapshot(w.request.body,body);snapshot(w.shadow,w.request);snapshot(w.committed,frozen_);w.response={};
+                    registration=main_mount_registration_;parent_cookie=cookie_.load();revision=revision_.load();epoch=operation_epoch_;generation=revocation_.generation();
+                    ++callbacks_;++normal_calls_;counted=true;result.query_id=w.request.query_id;
+                }
+            }
+            if(!counted){run_invalidate(invalidation);return result;}
+            bool okay{},violated{};std::uint32_t raw=UINT32_MAX;
+            {CallbackMark mark(this);okay=!mark.violated&&backend_.main_mount_prepare(backend_.context,registration,&main_mount_work_.request,&main_mount_work_.response,raw);violated=mark.violated;}
+            result.callback_status=raw;
+            {std::lock_guard<std::mutex> lock(mutex_);--callbacks_;--normal_calls_;counted=false;
+                const bool malformed=!okay||violated||!main_mount_context_clear()||!equal_bytes(main_mount_work_.request,main_mount_work_.shadow)||!main_mount_response(raw);
+                if(malformed){invalidate_locked(InvalidateReason::callback_fault,true,invalidation);result.code=Code::fault;result.branch=MainMountQueryResult::Branch::callback_fault;}
+                else if(stopping_||state_.load()!=State::active||cookie_.load()!=parent_cookie||revision_.load()!=revision||operation_epoch_!=epoch||revocation_.generation()!=generation||
+                    !have_commit_||phase_invalid_||!main_mount_idle_locked()||!revocation_.frame_current(frame_stamp_)||!same(frozen_.key,main_mount_work_.committed.key)||!equal_bytes(frozen_,main_mount_work_.committed)){result.code=Code::unavailable;result.branch=MainMountQueryResult::Branch::changed;}
+                else{
+                    const auto now=backend_.clock_ns(backend_.context);
+                    if(!main_mount_source(main_mount_work_.shadow.retained,frozen_,now)){result.code=Code::stale;result.branch=MainMountQueryResult::Branch::source_after;observe_main_mount_source(main_mount_work_.shadow.retained,frozen_,now,result);}
+                    else{result.status=static_cast<mount::Status>(raw);result.code=result.status==mount::Status::ready?Code::ready:Code::not_ready;result.branch=MainMountQueryResult::Branch::reply;
+                        if(result.code==Code::ready)snapshot(output,main_mount_work_.response);}
+                }
+                if(phase_invalid_&&final_invalidate_&&!invalidate_running_&&!invalidate_failed_)invalidate_locked(phase_reason_,state_.load()==State::draining,invalidation);
+                refresh_locked();
+            }
+            run_invalidate(invalidation);return result;
+        }catch(...){
+            try{std::lock_guard<std::mutex> lock(mutex_);if(counted){--callbacks_;--normal_calls_;}invalidate_locked(InvalidateReason::callback_fault,true,invalidation);refresh_locked();}catch(...){}
+            try{run_invalidate(invalidation);}catch(...){}output={};result.code=Code::fault;result.branch=MainMountQueryResult::Branch::exception;return result;
+        }
+    }
+
+    Reply attach_body_mount_provider(body_mount::Registration const* input,RegistrationResult* output,bool consumer_owned) {
+        if(reentrant())return Reply::reentrant;
+        body_mount::Registration r{};RegistrationResult result{};
+        if(!consumer_owned||!weapon_broker_win32::copy(&r,input,sizeof r)||!weapon_broker_win32::copy(&result,output,sizeof result)||
+           !body_mount::registration_shape_valid(r)||result.size!=sizeof result||result.abi_version!=version||
+           !backend_.body_mount_module||!backend_.body_mount_prepare||!backend_.body_mount_current)return Reply::invalid;
+        std::lock_guard<std::mutex> lock(mutex_);
+        if(!published_||r.hand_cookie!=cookie_.load()||r.native_started_qpc!=session_.native_started_qpc)return Reply::wrong_cookie;
+        if(stopping_||state_.load()!=State::active||aux_debt_.load()||action_debt())return Reply::draining;
+        if(r.context!=registration_.context||!backend_.body_mount_module(backend_.context,r,pin_))return Reply::invalid;
+        if(body_mount_attached_&&!body_mount::same(r,body_mount_registration_))return Reply::busy;
+        result.cookie=cookie_.load();result.native_started_qpc=session_.native_started_qpc;
+        if(!weapon_broker_win32::copy(output,&result,sizeof result))return Reply::invalid;
+        body_mount_registration_=r;body_mount_attached_=true;return Reply::accepted;
+    }
+    MainMountQueryResult query_body_mount(body_mount::Source const& source,body_mount::Response& output) noexcept {
+        using Code=MainMountQueryResult::Code;output={};MainMountQueryResult result{};InvalidateCall invalidation{};bool counted{};
+        if(current_){for(auto* p=current_;p;p=p->previous)p->violated=true;result.code=Code::fault;result.branch=MainMountQueryResult::Branch::reentrant;return result;}
+        body_mount::Registration registration{};std::uint64_t revision{},epoch{},generation{},parent_cookie{};
+        try{
+            {std::lock_guard<std::mutex> lock(mutex_);
+                if(!body_mount_attached_||!published_||stopping_||state_.load()!=State::active||!have_commit_||phase_invalid_||!backend_.body_mount_current)return result;
+                if(!main_mount_idle_locked()||!revocation_.frame_current(frame_stamp_)){result.code=Code::context_rejected;result.branch=MainMountQueryResult::Branch::context;return result;}
+                if(!body_mount_parent(source,frozen_,backend_.clock_ns(backend_.context))){result.code=Code::stale;result.branch=MainMountQueryResult::Branch::source_before;return result;}
+                if(next_body_mount_query_==(std::numeric_limits<std::uint64_t>::max)()){
+                    invalidate_locked(InvalidateReason::callback_fault,true,invalidation);result.code=Code::fault;result.branch=MainMountQueryResult::Branch::query_limit;
+                }else{
+                    auto& w=body_mount_work_;w.request={};w.request.query_id=next_body_mount_query_++;w.request.hand_lifecycle=frozen_.key.lifecycle;
+                    w.request.action_generation=revocation_.generation();snapshot(w.request.source,source);snapshot(w.shadow,w.request);snapshot(w.committed,frozen_);w.response={};
+                    registration=body_mount_registration_;parent_cookie=cookie_.load();revision=revision_.load();epoch=operation_epoch_;generation=revocation_.generation();
+                    ++callbacks_;++normal_calls_;counted=true;result.query_id=w.request.query_id;
+                }
+            }
+            if(!counted){run_invalidate(invalidation);return result;}
+            // Reserved lifetime prevents collect/unpin; these source checks
+            // must run OUTSIDE mutex and must not demand zero callbacks from
+            // their own exact reservation. They do not grant a pose writer.
+            const bool source_before=backend_.body_mount_current(backend_.context,body_mount_work_.shadow.source);
+            bool okay=true,violated=false;std::uint32_t raw=unsigned(mount::Status::source_mismatch);
+            if(source_before){CallbackMark mark(this);okay=!mark.violated&&backend_.body_mount_prepare(backend_.context,registration,&body_mount_work_.request,&body_mount_work_.response,raw);violated=mark.violated;}
+            const bool source_after=source_before&&backend_.body_mount_current(backend_.context,body_mount_work_.shadow.source);
+            result.callback_status=source_before?raw:UINT32_MAX;
+            {std::lock_guard<std::mutex> lock(mutex_);--callbacks_;--normal_calls_;counted=false;
+                const auto now=backend_.clock_ns(backend_.context);
+                const bool malformed=!okay||violated||!main_mount_context_clear()||!equal_bytes(body_mount_work_.request,body_mount_work_.shadow)||
+                    (source_before&&!body_mount_response(raw,now));
+                if(malformed){invalidate_locked(InvalidateReason::callback_fault,true,invalidation);result.code=Code::fault;result.branch=MainMountQueryResult::Branch::callback_fault;}
+                else if(stopping_||state_.load()!=State::active||cookie_.load()!=parent_cookie||revision_.load()!=revision||operation_epoch_!=epoch||revocation_.generation()!=generation||
+                    !have_commit_||phase_invalid_||!main_mount_idle_locked()||!revocation_.frame_current(frame_stamp_)||!same(frozen_.key,body_mount_work_.committed.key)||!equal_bytes(frozen_,body_mount_work_.committed)){result.code=Code::unavailable;result.branch=MainMountQueryResult::Branch::changed;}
+                else if(!source_before||!source_after){result.code=Code::context_rejected;result.branch=source_before?MainMountQueryResult::Branch::source_after:MainMountQueryResult::Branch::source_before;}
+                else if(!body_mount_parent(body_mount_work_.shadow.source,frozen_,now)){result.code=Code::stale;result.branch=MainMountQueryResult::Branch::source_after;}
+                else if(raw==unsigned(mount::Status::ready)&&std::uint64_t(now-body_mount_work_.response.equipment_begin_ns)>body_mount::equipment_age_ns){result.code=Code::stale;result.branch=MainMountQueryResult::Branch::source_after;}
+                else{result.status=static_cast<mount::Status>(raw);result.code=result.status==mount::Status::ready?Code::ready:Code::not_ready;result.branch=MainMountQueryResult::Branch::reply;
+                    if(result.code==Code::ready)snapshot(output,body_mount_work_.response);}
+                if(phase_invalid_&&final_invalidate_&&!invalidate_running_&&!invalidate_failed_)invalidate_locked(phase_reason_,state_.load()==State::draining,invalidation);
+                refresh_locked();
+            }
+            run_invalidate(invalidation);return result;
+        }catch(...){
+            try{std::lock_guard<std::mutex> lock(mutex_);if(counted){--callbacks_;--normal_calls_;}invalidate_locked(InvalidateReason::callback_fault,true,invalidation);refresh_locked();}catch(...){}
+            try{run_invalidate(invalidation);}catch(...){}output={};result.code=Code::fault;result.branch=MainMountQueryResult::Branch::exception;return result;
+        }
+    }
 
     Reply attach_call_participant(call::Registration const* input,RegistrationResult* output,bool wrapper_owned) {
         if(reentrant())return Reply::reentrant;
@@ -915,7 +1207,7 @@ public:
         std::lock_guard<std::mutex> lock(mutex_);
         if(!released){state_.store(State::quiescent);refresh_locked();return Reply::unavailable;}
         remember_retired_locked();
-        pin_={};registration_={};call_registration_={};call_attached_.store(false);action_registration_={};action_attached_.store(false);
+        pin_={};registration_={};main_mount_registration_={};main_mount_attached_=false;body_mount_registration_={};body_mount_attached_=false;call_registration_={};call_attached_.store(false);action_registration_={};action_attached_.store(false);
         (void)revocation_.publish({});action_context_.store(0);published_=false;cookie_.store(0);pin_retained_.store(false);authorization_.store(false);
         phase_invalid_=invalidate_running_=invalidate_failed_=final_invalidate_=false;invalidate_done_=true;have_attempt_=have_commit_=false;
         state_.store(State::empty);refresh_locked();return Reply::quiescent;

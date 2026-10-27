@@ -54,12 +54,6 @@ void fault(uint64_t ticket,unsigned reason){
  if(first_fault_claimed.compare_exchange_strong(empty,true)){
   first_fault={ticket,now(),GetCurrentThreadId(),reason};first_route_fault=reason;
   first_fault_ready.store(true,std::memory_order_release);
-#if defined(GEARS_NGX_OWNED_SCENE_TRIAL) && GEARS_NGX_OWNED_SCENE_TRIAL
-  // The process may exit before the periodic status sample. Preserve only the
-  // first exact UI refusal; this diagnostic grants no rendering permission.
-  if(diagnostic_status){fprintf(diagnostic_status,"ngx_owned_ui_first_fault ticket=%llu reason=%u name=%s thread=%lu consume_ticket=%llu\n",
-      ticket,reason,fault_name(reason),GetCurrentThreadId(),consuming_frame_ticket);fflush(diagnostic_status);}
-#endif
  }
  request_session_stop(SessionStop::proof_failure);
 }

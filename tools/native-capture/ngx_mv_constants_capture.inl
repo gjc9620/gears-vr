@@ -9,10 +9,10 @@ struct Upload {
     bool valid{};uint64_t world{},ticket{},serial{},gpu{};uintptr_t renderer{},context{},bank{},meta{},data{},mapped{},ring{},resource{},cpu{};
     uint32_t offset{},used{},size{},stride{};Data source{},upload{};
 };
-struct Binding {bool valid{};Upload upload;uintptr_t raw{},canonical{},view{};uint64_t generation{},gpu{},serial{};unsigned context_index{};std::array<float,4> source_rectangle{};std::array<int32_t,4> target_rectangle{};};
+struct Binding {bool valid{};Upload upload;uintptr_t raw{},canonical{},view{};uint64_t generation{},gpu{},serial{};unsigned eye{};std::array<float,8> rectangles{};};
 Upload pending;Binding current;uint64_t serial{},writes{},matches{},copies{},bindings{},read_failures{};
 template<class T> bool read(T& out,uintptr_t ptr,size_t offset=0){return ptr&&offset<=UINTPTR_MAX-ptr&&sizeof(T)-1<=UINTPTR_MAX-(ptr+offset)&&safe_copy(&out,reinterpret_cast<void const*>(ptr+offset),sizeof(T));}
-bool observing(){return ngx_stereo_host::attested&&(ngx_mv_target_capture::pending()||ngx_trial_producer::active())&&recording.load()&&consuming_renderer&&consuming_frame_ticket&&consuming_frozen_frame.enabled;}
+bool observing(){return ngx_stereo_host::attested&&ngx_mv_target_capture::pending()&&recording.load()&&consuming_renderer&&consuming_frame_ticket&&consuming_frozen_frame.enabled;}
 uintptr_t context(){uintptr_t slot{},out{};const auto tls=__readgsqword(0x58);return read(slot,tls)&&read(out,slot,0x20)?out:0;}
 bool capture(Upload& out){
     out.context=context();uintptr_t table{},ring_owner{},ring_resource{},cpu_base{};uint64_t gpu_base{};
@@ -77,8 +77,8 @@ void table(uintptr_t raw,uintptr_t canonical,uint64_t generation,UINT index,uint
     // renderer+68 owns contiguous native views, not an array of pointers.
     // Use the same exact two-view/0xd30-stride check as renderer ownership;
     // the constructor also verifies these addresses against family_views.
-    if(!gears_unpossessed_quad::native_eye_index(b.view,views,int(count),b.context_index)||
-       !read(b.source_rectangle,b.view,0x48)||!read(b.target_rectangle,b.view,0x58)){reject(5);return;}
+    if(!gears_unpossessed_quad::native_eye_index(b.view,views,int(count),b.eye)||
+       !read(b.rectangles,b.view,0x48)){reject(5);return;}
     failure.view_list={views,views+0xd30};
     b.valid=true;current=b;++bindings;
 }

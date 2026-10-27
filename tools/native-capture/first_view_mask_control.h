@@ -123,10 +123,6 @@ void close_first_view_mask_events(){
     for(auto& event:first_view_mask_events)if(event){CloseHandle(event);event=nullptr;}
 }
 #include "view_union_mask_fix.h"
-#if defined(GEARS_NGX_ISOLATED_STEREO_TRIAL) && GEARS_NGX_ISOLATED_STEREO_TRIAL
-namespace ngx_stereo_host {bool native_create_matches(gears_ngx_create::NativeCreateSource const&);}
-namespace ngx_capture_control {bool input_union_mask_trial(uint64_t,uint64_t,uintptr_t,uintptr_t);}
-#endif
 void __fastcall hook_first_view_mask(float value){
     Scope scope;if(!scope.world())return original_first_view_mask(value);using namespace gears_first_view_mask;
     Gate gate{first_view_mask_hook_enabled(),recording.load(),viewport_diagnostics,trial_draw_scope,consuming_renderer!=nullptr,
@@ -140,25 +136,10 @@ void __fastcall hook_first_view_mask(float value){
     if(view_union_mask_fix){
         gears_view_union_mask::Decision union_decision;
         bool owned_height_padding=false;
-        gears_view_union_mask::ReducedGeometry reduced;bool reduced_valid=false;
-#if defined(GEARS_NGX_ISOLATED_STEREO_TRIAL) && GEARS_NGX_ISOLATED_STEREO_TRIAL
-        auto const& frozen=consuming_frozen_frame;auto const& source=frozen.ngx_constructor_source;
-        if(frozen.enabled&&frozen.id==consuming_frame_ticket&&frozen.world_generation==committed_world_generation.load()&&
-           source.revision&&source.world==frozen.world_generation&&
-           ngx_capture_control::input_union_mask_trial(frozen.world_generation,frozen.id,reinterpret_cast<uintptr_t>(consuming_renderer),sample.storage)&&
-           ngx_stereo_host::native_create_matches(source)){
-            reduced.color_dimensions={source.fields[2],source.fields[3]};reduced.source=frozen.ngx_constructor_rectangles;
-            reduced_valid=true;
-            for(auto const& r:reduced.source){
-                if(!std::isfinite(r[2])||!std::isfinite(r[3])||r[2]<1||r[3]<1||r[2]>8192||r[3]>8192||
-                   std::floor(r[2])!=r[2]||std::floor(r[3])!=r[3]||!source.eye_optimal.supports({uint32_t(r[2]),uint32_t(r[3])}))reduced_valid=false;
-            }
-        }
-#endif
 #if defined(GEARS_NATIVE_RESIZE_REUSE) && GEARS_NATIVE_RESIZE_REUSE
         owned_height_padding=consuming_owned_scene&&consuming_frame_ticket&&consuming_renderer;
 #endif
-        {std::lock_guard<std::mutex> lock(view_union_mask_mutex);union_decision=gears_view_union_mask::decide_union(value,gate,sample,now(),qpc_frequency,view_union_mask_origin,owned_height_padding,reduced_valid?&reduced:nullptr);}
+        {std::lock_guard<std::mutex> lock(view_union_mask_mutex);union_decision=gears_view_union_mask::decide_union(value,gate,sample,now(),qpc_frequency,view_union_mask_origin,owned_height_padding);}
         original_first_view_mask(union_decision.forwarded);
         complete_view_union_mask(value,union_decision,sample);return;
     }

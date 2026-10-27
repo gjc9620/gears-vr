@@ -26,10 +26,6 @@ gears_ngx_mv::Scope target_lifetime{};
 bool armed{},accepting{},failed{},released{};
 bool source_failed{};
 bool source_frozen{},target_attempted{},target_seeded{},target_failed{},target_stopped{};
-bool control_epochs{};gears_ngx_stereo::Extent control_extent{};
-uint64_t control_reseeds{};
-struct RetiredTargets {std::array<std::unique_ptr<TargetBank>,8> banks;std::array<gears_ngx_stereo::TypedResourceLease,8> mv;unsigned count{};};
-RetiredTargets& retired_targets=*new RetiredTargets; // Private replacement scopes stay pinned through test-process exit.
 unsigned final_loss{};size_t final_heaps{},final_cells{};
 Bank::CellCounts final_cell_counts{};Bank::Saturation final_saturation{};
 unsigned source_final_loss{};size_t source_final_heaps{},source_final_cells{};
@@ -63,19 +59,13 @@ void source_fail(){if(!source_live())return;source_failed=true;++source_uncertai
 void target_fail(){if(!accepting||target_failed)return;target_failed=true;++target_uncertainties;if(target_bank&&!target_bank->failed())target_bank->uncertain();}
 // Future window end/timeout may freeze admission without detaching any lease.
 // Only existing close/drain retirement below releases native ownership.
-void stop_target(){std::lock_guard<std::recursive_mutex> lock(mutex);
-#if defined(GEARS_NGX_ISOLATED_STEREO_TRIAL) && GEARS_NGX_ISOLATED_STEREO_TRIAL
-    if(self_testing||!ngx_trial_producer::enabled)target_stopped=true;
-#else
-    target_stopped=true;
-#endif
-}
+void stop_target(){std::lock_guard<std::recursive_mutex> lock(mutex);target_stopped=true;}
 // Copy only an already seeded retained identity. The scheduler calls this
 // under frame_hook_mutex, then validates Create after this lock is released.
 // This API never invokes host/frame callbacks while owning descriptor mutex.
 bool snapshot_target_seed(uint64_t& observation,gears_ngx_mv_census::Use& use,gears_ngx_stereo::TypedResourceLease& mv){
     std::lock_guard<std::recursive_mutex> lock(mutex);
-    if(control_reseeds||!target_live()||!target_mv.retained()||!source_join.summary.present)return false;
+    if(!target_live()||!target_mv.retained()||!source_join.summary.present)return false;
     observation=target_lifetime.epoch;use=source_join.summary.use;mv=target_mv;return true;
 }
 #if GEARS_NGX_MV_TARGET_CAPTURE
@@ -130,9 +120,9 @@ bool target_selected(ID3D12Device* device){
     const auto identity=canonical_identity(device);if(!identity){target_fail();return false;}
     if(identity!=target_lifetime.device){++target_other_devices;return false;}return true;
 }
-void seed_selected_mv(gears_ngx_stereo::TypedResourceLease const* mv,size_t expected_matches,bool control_seed){
+void seed_target(gears_ngx_stereo::TypedResourceLease const* mv){
     if(target_attempted||target_stopped)return;target_attempted=true;
-    if(!source_live()||!source_bank||!mv||!mv->retained()||mv->device!=source_lifetime.device||(!control_seed&&!expected_matches))return;
+    if(!source_live()||!source_bank||!mv||!mv->retained()||mv->device!=source_lifetime.device||!source_join.summary.matches)return;
     target_attempt([&]{
         // Independent CPU observation generation, not a future consume ticket.
         target_lifetime=gears_ngx_mv::lifetime_scope(2,mv->device);target_mv=*mv;target_bank=std::make_unique<TargetBank>();
@@ -142,56 +132,9 @@ void seed_selected_mv(gears_ngx_stereo::TypedResourceLease const* mv,size_t expe
         bool complete=true;
         const auto matches=source_bank->visit_mv(source_lifetime,*mv,[&](SourceBank::Snapshot const& snapshot){
             if(complete){complete=target_bank->seed_current_mv(target_lifetime,*source_bank,snapshot,*mv);if(complete)++target_seed_count;}});
-        if(!complete||!matches||matches!=target_seed_count||(!control_seed&&matches!=expected_matches)||target_bank->failed()){target_fail();return;}
-        target_seeded=true;source_frozen=!control_epochs;
+        if(!complete||!matches||matches!=target_seed_count||matches!=source_join.summary.matches||target_bank->failed()){target_fail();return;}
+        target_seeded=true;source_frozen=true;
     });
-}
-void seed_target(gears_ngx_stereo::TypedResourceLease const* mv){seed_selected_mv(mv,source_join.summary.matches,false);}
-#if defined(GEARS_NGX_ISOLATED_STEREO_TRIAL) && GEARS_NGX_ISOLATED_STEREO_TRIAL
-uint64_t control_seed_calls{};
-bool enable_control_epochs(){
-    std::lock_guard<std::recursive_mutex> lock(mutex);
-    if(!source_live()||source_frozen||target_attempted||control_epochs)return false;
-    control_epochs=true;return true;
-}
-bool set_control_extent(gears_ngx_stereo::Extent value){
-    std::lock_guard<std::recursive_mutex> lock(mutex);
-    if(!control_epochs)return true;
-    if(!gears_ngx_stereo::bounded(value)||value.width%2)return false;
-    if(control_extent.width&&!gears_ngx_stereo::same(control_extent,value))return false;
-    control_extent=value;return true;
-}
-void print_control_seed(FILE* file,gears_ngx_stereo::TypedResourceLease const& mv,bool replacement){
-    std::lock_guard<std::recursive_mutex> lock(mutex);
-    fprintf(file,"mv_control_seed requested=%llx current=%llx device=%llx replacement=%u control_epochs=%u reseeds=%llu source_live=%u source_frozen=%u source_failed=%u source_loss=%u source_cells=%zu target_live=%u target_stopped=%u target_failed=%u target_loss=%u\n",
-        mv.canonical,target_mv.canonical,mv.device,unsigned(replacement),unsigned(control_epochs),control_reseeds,unsigned(source_live()),unsigned(source_frozen),unsigned(source_failed),
-        source_bank?unsigned(source_bank->loss()):0,source_bank?source_bank->cells():0,unsigned(target_live()),unsigned(target_stopped),unsigned(target_failed),target_bank?unsigned(target_bank->loss()):0);fflush(file);
-}
-bool seed_control_mv(gears_ngx_stereo::TypedResourceLease const& mv,bool replacement_epoch){
-    std::lock_guard<std::recursive_mutex> lock(mutex);++control_seed_calls;
-    if(!mv.retained())return false;
-    if(!target_attempted)seed_selected_mv(&mv,0,true);
-    if(target_live()&&target_mv.retained()&&target_mv.canonical==mv.canonical&&target_mv.device==mv.device)return true;
-    // A different MV needs an explicitly retired prior feature epoch and an
-    // independent current birth/copy ledger. Never repair a failed source or
-    // selected-target bank, or seed a GPU-visible copy that was not observed.
-    if(!replacement_epoch||!control_epochs||!source_live()||!source_bank||!target_live()||!target_mv.retained()||
-       mv.device!=target_mv.device||mv.device!=source_lifetime.device||retired_targets.count==retired_targets.banks.size()||
-       target_lifetime.epoch==UINT64_MAX)return false;
-    auto next=std::make_unique<TargetBank>();const auto next_scope=gears_ngx_mv::lifetime_scope(target_lifetime.epoch+1,mv.device);
-    if(!next->begin(next_scope)||!source_bank->visit_heap_leases(source_lifetime,[&](gears_ngx_mv::HeapLease const& h){return next->observe_heap_lease(next_scope,h);}))return false;
-    bool complete=true;size_t seeded{};
-    const auto matches=source_bank->visit_mv(source_lifetime,mv,[&](SourceBank::Snapshot const& row){
-        if(complete){complete=next->seed_current_mv(next_scope,*source_bank,row,mv);if(complete)++seeded;}});
-    if(!complete||!matches||matches!=seeded||next->failed())return false;
-    const auto old=retired_targets.count++;retired_targets.banks[old]=std::move(target_bank);retired_targets.mv[old]=std::move(target_mv);
-    target_bank=std::move(next);target_mv=mv;target_lifetime=next_scope;target_seed_count=seeded;++control_reseeds;return true;
-}
-#endif
-bool control_candidate(ID3D12Resource* resource){
-    if(!control_epochs)return true;if(!resource)return false;const auto d=resource->GetDesc();
-    return d.Dimension==D3D12_RESOURCE_DIMENSION_TEXTURE2D&&d.Format==DXGI_FORMAT_R16G16_FLOAT&&d.DepthOrArraySize==1&&d.MipLevels==1&&d.SampleDesc.Count==1&&
-        d.Width>=64&&d.Width<=8192&&d.Height>=64&&d.Height<=8192&&(!control_extent.width||(d.Width==control_extent.width&&d.Height==control_extent.height));
 }
 void target_uav(ID3D12Resource* resource,ID3D12Resource* counter,gears_ngx_mv::ViewDescription const& view,uint64_t cpu){
     if(!view.readable){target_fail();return;}
@@ -394,8 +337,7 @@ void STDMETHODCALLTYPE uav(ID3D12Device* device,ID3D12Resource* resource,ID3D12R
             bank->write_uav(lifetime,handle.ptr,resource,counter,before);}});
     if(call.source())source_attempt([&]{++source_uavs;if(!source_bank){++source_missing_birth;source_fail();return;}
         if(source_selected(device)){if(!source_bank->contains_cpu(handle.ptr))++source_missing_birth;
-            if(control_candidate(resource))source_bank->write_uav(source_lifetime,handle.ptr,resource,counter,before);
-            else source_bank->invalidate_if_tracked(source_lifetime,handle.ptr);}});
+            source_bank->write_uav(source_lifetime,handle.ptr,resource,counter,before);}});
     if(call.target())target_attempt([&]{++target_uavs;if(target_selected(device))target_uav(resource,counter,before,handle.ptr);});
 }
 // Dedicated self-test only. All writes below enter the real patched D3D12
@@ -406,8 +348,8 @@ DWORD native_check(Bank::Snapshot& retained){
     Microsoft::WRL::ComPtr<ID3D12Resource> first,second,constant;
     if(FAILED(D3D12CreateDevice(nullptr,D3D_FEATURE_LEVEL_11_0,IID_PPV_ARGS(&device))))return 302;
     auto table=*reinterpret_cast<void***>(device.Get());
-    const unsigned slots[]{14,17,18,19,16,21};
-    for(unsigned i=0;i<6;++i)if(table[slots[i]]!=prime_targets[prime_hook_base_count+i])return 303;
+    const unsigned slots[]{14,17,18,19,16};
+    for(unsigned i=0;i<5;++i)if(table[slots[i]]!=prime_targets[prime_hook_base_count+i])return 303;
     if(table[23]!=prime_targets[1]||table[24]!=prime_targets[2])return 304;
     {std::lock_guard<std::recursive_mutex> lock(mutex);
         if(!armed||!accepting||failed||bank||heap_calls||uav_calls||copies||source_failed||source_bank||source_heaps||source_uavs||source_copies||
@@ -577,7 +519,6 @@ DWORD native_check(Bank::Snapshot& retained){
            target_bank->lookup(target_lifetime,cpu.ptr).version!=frozen_target.version)return 346;
         if(source_heaps!=2||source_uavs!=4||source_copies!=7||source_invalidations!=5||source_bank->cells()!=3||
            bank->loss()!=gears_ngx_mv::Loss::unreadable||heap_calls!=2||uav_calls!=2||copies!=4||invalidations!=4)return 347;}
-    if(const auto depth_check=ngx_depth_capture::native_check(device.Get()))return depth_check;
     return 0;
 }
 DWORD native_closed_check(Bank::Snapshot const& retained){

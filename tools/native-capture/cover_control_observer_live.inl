@@ -1,5 +1,8 @@
-// Include after cover_pose_phase_live. Passive observations only; no pose writer.
+// Include after cover_pose_phase_live. Original-value observations plus optional
+// Native-owned arm alpha arbitration; no pose/storage writer.
+#include "body_c0_arm_alpha_policy.h"
 #include "cover_control_code_certificate.h"
+#include "cover_future_g_code_certificate.h"
 namespace cover_pose_phase_live {struct Scope;}
 namespace cover_control_observer_live {
 namespace phase=cover_pose_phase_live;namespace pose=gears_cover_pose_phase;
@@ -33,14 +36,29 @@ static_assert(std::is_trivially_copyable_v<Row>&&std::is_trivially_destructible_
 std::mutex mutex;std::array<Row,row_limit> rows{};unsigned row_count{},selected_episode{};uint64_t selected_session{},selected_compose{};
 std::atomic<unsigned> in_flight{},compose_in_flight{};
 std::atomic<bool> stopping{},failed{},file_attempted{},file_written{};std::atomic<DWORD> file_error{};
+bool retained_boundary_current()noexcept{return enabled&&certified&&!stopping.load()&&!failed.load()&&own_entries();}
 std::atomic<uint64_t> calls{},dropped{},rejected{},nested_calls{},unmatched{},protocol_errors{};
+bool arm_policy_enabled() noexcept {
+#if defined(GEARS_FULL_BODY_C0_NATIVE_BACKEND) && GEARS_FULL_BODY_C0_NATIVE_BACKEND
+    return full_body_c0_native_live::arm_control_policy_enabled();
+#else
+    return false;
+#endif
+}
+std::atomic<uint64_t> arm_alpha_applied{},arm_alpha_rejected{};
 struct Compose {
-    phase::Scope const* address{};phase::Scope scope{};uint64_t outer_tick{},ordinal{},last_ordinal{};uintptr_t last_node{};
+    phase::Scope const* address{};phase::Scope const* end_address{};uint64_t end_invocation{};phase::Scope scope{};uint64_t outer_tick{},ordinal{},last_ordinal{};uintptr_t last_node{};
     pose::Identity last_identity{};unsigned last_row{};bool admitted{},nested{},last_valid{},continuous{};
+    Row live_compute{};uint64_t live_token{};bool live_armed{};
+    // Last attempted compute only. Never consumed by token/permission logic.
+    struct LastComputeDiagnostic {uint64_t ordinal{};uintptr_t node{},raw_rdx{};unsigned kind{},failure{};} diag_last{};
+
 };
-struct Call {Row row{};unsigned index{},frame{};Call* previous{};bool linked{};};
+struct Call {Row row{};unsigned index{},frame{};Call* previous{};uint64_t arm_token{};bool linked{},live_checked{};};
 struct Thread {std::array<Compose,scope_limit> frames{};unsigned depth{},overflow{};Call* call{};};
 inline thread_local Thread thread{};
+void clear_arm(Compose& frame) noexcept {frame.live_armed=false;frame.live_token=0;}
+void clear_arms() noexcept {for(auto& frame:thread.frames)clear_arm(frame);}
 
 template<class T> bool read(T& value,uintptr_t address){return pose::span(address,sizeof(T))&&safe_copy(&value,reinterpret_cast<void const*>(address),sizeof(T));}
 bool stack_range(uintptr_t address,size_t size){ULONG_PTR low{},high{};GetCurrentThreadStackLimits(&low,&high);
@@ -63,7 +81,14 @@ bool episode_current(Compose const& frame){
         request.invocation==frame.scope.invocation&&request.thread==frame.scope.owner.thread&&phase::same(request.owner,frame.scope.owner.key);
 }
 #if defined(GEARS_CONTINUOUS_HAND_OWNER) && GEARS_CONTINUOUS_HAND_OWNER
-bool current(Compose const& frame){if(frame.continuous)return frame.admitted&&own_entries()&&continuous_hand_owner_live::control_current(frame.scope);return frame.admitted&&phase::thread.ticks==1&&frame.scope.owner.thread==GetCurrentThreadId()&&
+bool current(Compose const& frame){if(frame.continuous){
+    if(!frame.admitted||!own_entries()||!frame.address)return false;
+#if defined(GEARS_FULL_BODY_C0_NATIVE_BACKEND) && GEARS_FULL_BODY_C0_NATIVE_BACKEND
+    const auto retained=full_body_c0_native_live::retained_control_current(*frame.address,frame.outer_tick);
+    if(retained!=gears_body_c0_arm_alpha::RetainedControl::not_applicable)return retained==gears_body_c0_arm_alpha::RetainedControl::verified;
+#endif
+    return continuous_hand_owner_live::control_current(*frame.address);
+}return frame.admitted&&phase::thread.ticks==1&&frame.scope.owner.thread==GetCurrentThreadId()&&
 #else
 bool current(Compose const& frame){return frame.admitted&&phase::thread.ticks==1&&frame.scope.owner.thread==GetCurrentThreadId()&&
 #endif
@@ -140,8 +165,17 @@ void compose_begin_impl(phase::Scope const& scope){
     if(!enabled||scope.kind!=0)return;++compose_in_flight;
     if(thread.depth==scope_limit){++thread.overflow;failed=true;stopping=true;return;}
     if(thread.overflow){++thread.overflow;return;}
-    auto& frame=thread.frames[thread.depth++];frame={};frame.address=&scope;frame.scope=scope;
-    if(thread.depth!=1){++nested_calls;for(unsigned i=0;i+1<thread.depth;++i){thread.frames[i].nested=true;mark_rows(thread.frames[i].scope.invocation,false,true);}return;}
+    auto& frame=thread.frames[thread.depth++];frame={};frame.address=&scope;frame.end_address=&scope;frame.end_invocation=scope.invocation;frame.scope=scope;
+    if(thread.depth!=1){clear_arms();++nested_calls;for(unsigned i=0;i+1<thread.depth;++i){thread.frames[i].nested=true;mark_rows(thread.frames[i].scope.invocation,false,true);}return;}
+#if defined(GEARS_FULL_BODY_C0_NATIVE_BACKEND) && GEARS_FULL_BODY_C0_NATIVE_BACKEND && defined(GEARS_CONTINUOUS_HAND_OWNER) && GEARS_CONTINUOUS_HAND_OWNER
+    if(arm_policy_enabled()){
+        phase::Scope const* exact_scope{};uint64_t outer_tick{};
+        if(stopping.load()||!full_body_c0_native_live::arm_control_scope(exact_scope,outer_tick)||!exact_scope||!outer_tick||
+           exact_scope->kind!=0||!exact_scope->arguments||exact_scope->owner.thread!=GetCurrentThreadId()||
+           !own_entries()||!continuous_hand_owner_live::control_current(*exact_scope))return;
+        frame.address=exact_scope;frame.scope=*exact_scope;frame.outer_tick=outer_tick;frame.continuous=true;frame.admitted=true;return;
+    }
+#endif
     if(stopping.load()||!scope.episode||phase::thread.episode!=scope.episode||!scope.arguments||phase::thread.ticks!=1||scope.owner.thread!=GetCurrentThreadId())return;
     {std::lock_guard<std::mutex> lock(mutex);if(selected_compose||(selected_episode&&(selected_episode!=scope.episode||selected_session!=scope.owner.key.session)))return;}
     {std::lock_guard<std::mutex> lock(phase::mutex);if(scope.episode>phase::episode_count)return;const auto& e=phase::episodes[scope.episode-1];
@@ -155,51 +189,166 @@ void compose_begin_impl(phase::Scope const& scope){
         selected_episode=scope.episode;selected_session=scope.owner.key.session;selected_compose=scope.invocation;}
     frame.admitted=true;
 }
-void compose_begin(phase::Scope const& scope) noexcept {try{compose_begin_impl(scope);}catch(...){failed=true;stopping=true;}}
+void compose_begin(phase::Scope const& scope) noexcept {try{compose_begin_impl(scope);}catch(...){clear_arms();failed=true;stopping=true;}}
 namespace post_weight_scale {void on_compose_end(uint64_t,bool,bool,bool) noexcept;}
+namespace future_g {void on_compose_end(uint64_t,bool,bool,bool) noexcept;}
 void compose_end(phase::Scope const& scope,bool returned) noexcept {
     try{if(!enabled||scope.kind!=0)return;if(thread.overflow){--thread.overflow;--compose_in_flight;return;}
-        if(!thread.depth||thread.frames[thread.depth-1].address!=&scope||thread.frames[thread.depth-1].scope.invocation!=scope.invocation){++protocol_errors;failed=true;stopping=true;return;}
+        if(!thread.depth||thread.frames[thread.depth-1].end_address!=&scope||thread.frames[thread.depth-1].end_invocation!=scope.invocation){clear_arms();++protocol_errors;failed=true;stopping=true;return;}
         const auto frame=thread.frames[thread.depth-1];bool concurrent{},nested=frame.nested;
         if(frame.admitted){{std::lock_guard<std::mutex> lock(phase::mutex);if(scope.episode&&scope.episode<=phase::episode_count){concurrent=phase::episodes[scope.episode-1].concurrent;nested=nested||phase::episodes[scope.episode-1].nested;}}
-            mark_rows(scope.invocation,returned,nested,concurrent);post_weight_scale::on_compose_end(scope.invocation,returned,nested,concurrent);}
+            mark_rows(scope.invocation,returned,nested,concurrent);post_weight_scale::on_compose_end(scope.invocation,returned,nested,concurrent);future_g::on_compose_end(scope.invocation,returned,nested,concurrent);}
         --thread.depth;thread.frames[thread.depth]={};--compose_in_flight;
     }catch(...){failed=true;stopping=true;}
 }
 void begin_call(pose::CallPacket const& packet,unsigned kind,uintptr_t ra,uintptr_t entry_rsp,Call& call){
     call.previous=thread.call;call.linked=true;thread.call=&call;
-    if(!enabled||stopping.load()||kind>2||!thread.depth||thread.overflow)return;
-    auto& frame=thread.frames[thread.depth-1];if(!frame.admitted||thread.depth!=1)return;
-    if(call.previous){call.previous->row.nested=true;++nested_calls;return;}
+    if(!enabled||stopping.load()||kind>2||!thread.depth||thread.overflow){clear_arms();return;}
+    auto& frame=thread.frames[thread.depth-1];if(!frame.admitted||thread.depth!=1){clear_arms();return;}
+    if(call.previous){clear_arms();call.previous->row.nested=true;++nested_calls;return;}
     auto& row=call.row;row.owner=frame.scope.owner.key;row.compose=frame.scope.invocation;row.outer_tick=frame.outer_tick;row.episode=frame.scope.episode;
     row.kind=kind;row.thread=GetCurrentThreadId();row.ordinal=++frame.ordinal;if(!row.ordinal){failed=true;stopping=true;return;}
     row.node_argument=packet.gpr[1];row.raw_rdx=packet.gpr[2];row.mesh_argument=packet.gpr[3];row.out_argument=packet.gpr[4];row.entry_rsp=entry_rsp;row.caller=ra;row.before_qpc=phase::qpc();
-    {std::lock_guard<std::mutex> lock(mutex);if(row_count==row_limit){++dropped;return;}call.index=++row_count;}
+    const bool realtime=arm_policy_enabled();call.live_checked=realtime;if(!realtime)clear_arm(frame);
     call.frame=thread.depth-1;
+    if(realtime){
+        if(kind==2&&frame.live_armed&&frame.live_token&&row.ordinal==frame.live_token+1&&frame.live_compute.node_argument==row.node_argument)
+            call.arm_token=frame.live_token;
+        // Consume on entry even if this weight's before/after later rejects.
+        frame.live_armed=false;if(kind!=2||!call.arm_token)clear_arm(frame);
+    }
+    {std::lock_guard<std::mutex> lock(mutex);if(row_count==row_limit){++dropped;if(!realtime)return;}else call.index=++row_count;}
     if(kind==2){row.compute_ordinal=frame.last_ordinal;row.linked_row=frame.last_row;
-        if(!frame.last_valid||frame.last_node!=row.node_argument){row.failure=Failure::prior_compute;return;}}
+        if(!frame.last_valid||frame.last_node!=row.node_argument||(realtime&&!call.arm_token)){row.failure=Failure::prior_compute;return;}}
     else row.compute_ordinal=row.ordinal;
     row.failure=before(frame,row);row.before_valid=row.failure==Failure::okay;
 }
 void finish_call(Call& call,pose::CallPacket const& packet,bool returned){
-    if(!call.index)return;auto& row=call.row;row.returned=returned;row.exception=!returned;row.after_qpc=phase::qpc();row.result_rax=packet.gpr[0];row.result_xmm0=packet.xmm[0];
+    if(!call.index&&!call.live_checked)return;auto& row=call.row;row.returned=returned;row.exception=!returned;row.after_qpc=phase::qpc();row.result_rax=packet.gpr[0];row.result_xmm0=packet.xmm[0];
     if(row.kind==2){memcpy(&row.weight_bits,packet.xmm[0].data(),4);memcpy(&row.weight,&row.weight_bits,4);}
     auto& frame=thread.frames[call.frame];if(!returned)row.failure=Failure::exception;
     else if(row.before_valid){row.failure=after(frame,row);row.after_valid=row.failure==Failure::okay;}
-    {std::lock_guard<std::mutex> lock(phase::mutex);if(row.episode<=phase::episode_count)row.concurrent=phase::episodes[row.episode-1].concurrent;}
+    {std::lock_guard<std::mutex> lock(phase::mutex);if(row.episode&&row.episode<=phase::episode_count)row.concurrent=phase::episodes[row.episode-1].concurrent;}
     if(row.nested||frame.nested){row.nested=true;row.after_valid=false;row.failure=Failure::nested;}
     if(row.concurrent){row.after_valid=false;row.failure=Failure::concurrent;}
     if(row.kind<2){frame.last_node=row.node_argument;frame.last_ordinal=row.ordinal;frame.last_row=call.index;frame.last_identity=row.after.node;frame.last_valid=row.after_valid&&returned;}
+    if(call.live_checked&&row.kind<2){
+        clear_arm(frame);
+        if(row.after_valid&&returned&&!row.nested&&!row.concurrent&&!stopping.load()&&current(frame)){
+            frame.live_compute=row;frame.live_token=row.ordinal;frame.live_armed=true;}}
+    if(call.live_checked&&(row.failure!=Failure::okay||stopping.load()))clear_arm(frame);
+    if(row.kind<2){
+        frame.diag_last={row.ordinal,row.node_argument,row.raw_rdx,row.kind,unsigned(row.failure)};
+#if defined(GEARS_FULL_BODY_C0_NATIVE_BACKEND) && GEARS_FULL_BODY_C0_NATIVE_BACKEND
+        gears_body_c0_arm_alpha::Diagnostic d{};d.compose=row.compose;d.outer_tick=row.outer_tick;d.compute_ordinal=row.ordinal;
+        d.node_argument=row.node_argument;d.scope_address=reinterpret_cast<uintptr_t>(frame.address);d.raw_rdx=row.raw_rdx;d.qpc=row.after_qpc;d.thread=row.thread;
+        d.kind=row.kind;d.end=row.raw_rdx==11?11u:row.raw_rdx==35?35u:0u;d.stage=unsigned(gears_body_c0_arm_alpha::Stage::compute);
+        d.compute_failure=unsigned(row.failure);d.flags=(call.live_checked?4u:0u)|(returned?8u:0u);
+        full_body_c0_native_live::arm_alpha_diagnostic(d);
+#endif
+    }
     if(row.failure!=Failure::okay)++rejected;
-    {std::lock_guard<std::mutex> lock(mutex);rows[call.index-1]=row;}
+    if(call.index){std::lock_guard<std::mutex> lock(mutex);rows[call.index-1]=row;}
 }
 #include "cover_post_weight_scale_observer.inl"
-void begin_guarded(pose::CallPacket const& packet,unsigned kind,uintptr_t ra,uintptr_t rsp,Call& call) noexcept {try{begin_call(packet,kind,ra,rsp,call);}catch(...){failed=true;stopping=true;call.row.failure=Failure::protocol;}}
-void finish_guarded(Call& call,pose::CallPacket const& packet,bool returned) noexcept {try{finish_call(call,packet,returned);post_weight_scale::observe(call,packet,returned);
+#include "cover_future_g_observer_live.inl"
+// Separate TLS scratch: observer capacity and exported row indices never grant
+// or limit eligibility. The original-value observers run before this decision.
+inline thread_local post_weight_scale::Workspace arm_alpha_workspace{};
+void arbitrate_arm_alpha(Call const& call,pose::CallPacket& packet,bool returned){
+    if(!call.live_checked||call.row.kind!=2)return;
+    if(call.frame>=scope_limit){clear_arms();return;}auto& frame=thread.frames[call.frame];
+    const bool token=call.arm_token&&call.arm_token==frame.live_token&&
+        frame.live_compute.ordinal==call.arm_token&&call.row.ordinal==call.arm_token+1;
+    gears_body_c0_arm_alpha::Diagnostic diagnostic{};
+    const auto& last=frame.diag_last;const bool adjacent=last.ordinal&&last.node==call.row.node_argument&&call.row.ordinal==last.ordinal+1;
+    diagnostic.compose=call.row.compose;diagnostic.outer_tick=call.row.outer_tick;diagnostic.compute_ordinal=last.ordinal;
+    diagnostic.weight_ordinal=call.row.ordinal;diagnostic.token=call.arm_token;diagnostic.node_argument=call.row.node_argument;
+    diagnostic.scope_address=reinterpret_cast<uintptr_t>(frame.address);diagnostic.raw_rdx=last.raw_rdx;diagnostic.qpc=call.row.after_qpc;diagnostic.thread=call.row.thread;
+    diagnostic.kind=adjacent?last.kind:UINT32_MAX;diagnostic.end=adjacent&&last.kind<2?(last.raw_rdx==11?11u:last.raw_rdx==35?35u:0u):0u;
+    diagnostic.compute_failure=last.failure;diagnostic.weight_failure=unsigned(call.row.failure);
+    diagnostic.original_alpha_bits=call.row.weight_bits;memcpy(&diagnostic.final_alpha_bits,packet.xmm[0].data(),4);
+    diagnostic.flags=(adjacent?1u:0u)|(token?2u:0u)|4u|(returned?8u:0u);
+    auto event=[&](gears_body_c0_arm_alpha::Stage stage,unsigned reason=0u)noexcept{
+        diagnostic.stage=unsigned(stage);diagnostic.reason=reason;
+#if defined(GEARS_FULL_BODY_C0_NATIVE_BACKEND) && GEARS_FULL_BODY_C0_NATIVE_BACKEND
+        full_body_c0_native_live::arm_alpha_diagnostic(diagnostic);
+#endif
+    };
+    event(gears_body_c0_arm_alpha::Stage::entry);
+    // Clear before invoking any further validator/Native owner. This exact
+    // compute->weight pair has already consumed its one opportunity.
+    clear_arm(frame);
+    unsigned denied{};
+    if(!token)denied=1;else if(!arm_policy_enabled())denied=2;else if(stopping.load())denied=3;
+    else if(failed.load())denied=4;else if(in_flight.load()!=1)denied=5;else if(!returned)denied=6;
+    if(denied){event(gears_body_c0_arm_alpha::Stage::token,denied);++arm_alpha_rejected;return;}
+    auto& r=arm_alpha_workspace.record;r={};r.weight=call.row;r.compute=frame.live_compute;
+    r.linked_source=true;r.original_returned=returned;r.original_return_packet=packet;
+    const auto sampled=post_weight_scale::sample(frame,call,r,true);
+    diagnostic.read_mask=r.before.read_mask;diagnostic.read_mask_after=r.after.read_mask;
+    diagnostic.cached_scale_word=r.before.has_scale_word;diagnostic.cached_scale_word_after=r.after.has_scale_word;
+    diagnostic.scale_count=r.before.scale.count;diagnostic.scale_count_after=r.after.scale.count;
+    diagnostic.original_alpha_bits=r.weight.weight_bits;diagnostic.compute_failure=unsigned(r.compute.failure);diagnostic.weight_failure=unsigned(r.weight.failure);
+    event(gears_body_c0_arm_alpha::Stage::sample,sampled==post_weight_scale::Reject::okay?0u:unsigned(sampled));
+    if(sampled!=post_weight_scale::Reject::okay){++arm_alpha_rejected;return;}
+    gears_body_c0_arm_alpha::Proof proof{};proof.owner=frame.scope.owner.key;proof.compose=frame.scope.invocation;proof.outer_tick=frame.outer_tick;
+    proof.token=call.arm_token;proof.compute_ordinal=r.compute.ordinal;proof.weight_ordinal=r.weight.ordinal;
+    proof.thread=GetCurrentThreadId();proof.side=r.compute.raw_rdx==11?0u:1u;proof.kind=r.compute.kind;proof.affected_count=r.matrix_count;
+    proof.original_alpha_bits=r.weight.weight_bits;proof.cached_scale_flag=r.after.has_scale_word;
+    proof.scope_address=reinterpret_cast<uintptr_t>(frame.address);proof.node_argument=r.weight.node_argument;proof.entry_rsp=r.weight.entry_rsp;
+    proof.metadata=r.node_after.metadata;proof.node=r.node_after.node;proof.root=r.node_after.root;proof.affected=r.after.bones;
+    proof.output=r.after.output;proof.affected_header=r.after.affected;proof.scale=r.after.scale;proof.normal_return=returned;
+#if defined(GEARS_FULL_BODY_C0_NATIVE_BACKEND) && GEARS_FULL_BODY_C0_NATIVE_BACKEND
+    diagnostic.flags|=16u;const bool owned=full_body_c0_native_live::owns_arm_control(proof);if(owned)diagnostic.flags|=32u;
+    unsigned post_denied{};
+    if(!owned)post_denied=1;else if(stopping.load())post_denied=2;else if(failed.load())post_denied=3;
+    else if(!arm_policy_enabled())post_denied=4;else if(!full_body_c0_native_live::arm_control_policy_active())post_denied=5;
+    if(post_denied){event(gears_body_c0_arm_alpha::Stage::post_owner,post_denied);++arm_alpha_rejected;return;}
+    // Last possible rejection precedes this single exact bit edit. No other
+    // register, flag, XMM byte, node, output matrix, Local or Space is written.
+    const uint32_t positive_zero=0;memcpy(packet.xmm[0].data(),&positive_zero,4);++arm_alpha_applied;
+    memcpy(&diagnostic.final_alpha_bits,packet.xmm[0].data(),4);event(gears_body_c0_arm_alpha::Stage::applied);
+#else
+    (void)proof;++arm_alpha_rejected;
+#endif
+}
+
+// Pure copies already obtained by existing callbacks. No validator is rerun.
+void observe_ready_weight_return(Call const& call,pose::CallPacket const& packet,bool returned) noexcept {
+#if defined(GEARS_FULL_BODY_C0_NATIVE_BACKEND) && GEARS_FULL_BODY_C0_NATIVE_BACKEND
+    if(call.row.kind!=2||call.frame>=scope_limit)return;
+    auto const& frame=thread.frames[call.frame];auto const& weight=call.row;auto const& compute=frame.live_compute;
+    gears_body_c0_arm_alpha::WeightReturn input{};
+    input.compose=weight.compose;input.outer_tick=weight.outer_tick;input.weight_ordinal=weight.ordinal;
+    input.node_argument=weight.node_argument;input.mesh=weight.owner.mesh.address;
+    input.scope_address=reinterpret_cast<uintptr_t>(frame.address);input.entry_rsp=weight.entry_rsp;
+    input.caller=weight.caller;input.thread=weight.thread;input.original_alpha_bits=weight.weight_bits;
+    uint32_t bits{};memcpy(&bits,packet.xmm[0].data(),4);input.final_alpha_bits=bits;
+    input.flags=(returned?1u:0u)|(call.live_checked?2u:0u)|(call.linked?4u:0u)|
+        (weight.before_valid?128u:0u)|(weight.after_valid?256u:0u)|(weight.weight_finite?512u:0u);
+    auto const& last=frame.diag_last;
+    if(last.ordinal&&compute.ordinal==last.ordinal&&compute.compose==weight.compose&&compute.outer_tick==weight.outer_tick&&
+       compute.node_argument==weight.node_argument&&weight.ordinal==compute.ordinal+1&&compute.thread==weight.thread){
+        input.flags|=8u;input.compute_ordinal=compute.ordinal;input.kind=compute.kind;input.end=compute.raw_rdx;
+        input.flags|=(compute.before_valid?16u:0u)|(compute.after_valid?32u:0u)|(compute.returned?64u:0u);
+        input.node=compute.after.node;input.root=compute.after.root;input.output=compute.out_after;
+        input.affected_header=compute.affected_after;input.affected=compute.affected;
+    }
+    full_body_c0_native_live::arm_weight_return(input);
+#else
+    (void)call;(void)packet;(void)returned;
+#endif
+}
+void begin_guarded(pose::CallPacket const& packet,unsigned kind,uintptr_t ra,uintptr_t rsp,Call& call) noexcept {try{begin_call(packet,kind,ra,rsp,call);}catch(...){clear_arms();failed=true;stopping=true;call.row.failure=Failure::protocol;}}
+void finish_guarded(Call& call,pose::CallPacket& packet,bool returned) noexcept {try{finish_call(call,packet,returned);post_weight_scale::observe(call,packet,returned);future_g::arm(call);
 #if defined(GEARS_COVER_NATIVE_RIG_OBSERVER) && GEARS_COVER_NATIVE_RIG_OBSERVER
     if(call.index&&call.row.kind<2)cover_native_rig_observer_live::control(call.row);
 #endif
-    }catch(...){failed=true;stopping=true;}}
+    arbitrate_arm_alpha(call,packet,returned);
+    }catch(...){clear_arms();failed=true;stopping=true;}
+    observe_ready_weight_return(call,packet,returned);
+}
 extern "C" __declspec(noinline) void GearsCoverControlInvokeProtected(pose::CallPacket* packet,unsigned kind,uintptr_t ra,uintptr_t entry_rsp) noexcept(false){
 #if defined(GEARS_CONTINUOUS_HAND_OWNER) && GEARS_CONTINUOUS_HAND_OWNER
     Call call{};gears_continuous_hand_entry::Entry entry{};bool returned{};++active;++in_flight;++calls;
@@ -258,34 +407,35 @@ bool reserve(){if(!enabled)return true;if(reserved_mask){reserve_stage="reserve_
         reserved_mask|=1u<<i;reserve_stage="prefix_read_after";
         if(!safe_copy(after.data(),targets[i],32)){failed=true;return false;}reserve_stage="prefix_unchanged";
         if(before!=after){failed=true;return false;}}
-    reserved=true;reserve_stage="ready";reserve_rva=0;return true;
+    reserved=true;reserve_stage="ready";reserve_rva=0;return future_g::reserve();
 }
-bool reserved_target(void* target){for(unsigned i=0;i<3;++i)if((reserved_mask&(1u<<i))&&targets[i]==target)return true;return false;}
+bool reserved_target(void* target){for(unsigned i=0;i<3;++i)if((reserved_mask&(1u<<i))&&targets[i]==target)return true;return future_g::reserved_target(target);}
 bool configure(wchar_t const* ini,FILE* file){wchar_t value[16]{};GetPrivateProfileStringW(L"CoverControlObserver",L"enabled",L"0",value,16,ini);
     reserve_stage="configure_value";if(wcscmp(value,L"0")&&wcscmp(value,L"1"))return false;
     if(!wcscmp(value,L"1")){reserve_stage="configure_context";if(enabled||!phase::enabled||!continuous_session||!stereo_xr||!anchor_observer_enabled)return false;enabled=true;}
     reserve_stage=enabled?"configured":"disabled";
-    if(!post_weight_scale::configure(ini,file))return false;
-    if(file)fprintf(file,"cover_control_enabled=%u read_only=1 rows_max=128 first_pose_episode_only=1 atomic_verified=0 writer=0\n",unsigned(enabled));return true;
+    if(!post_weight_scale::configure(ini,file)||!future_g::configure(ini,file))return false;
+    if(file)fprintf(file,"cover_control_enabled=%u read_only=%u rows_max=128 first_pose_episode_only=1 atomic_verified=0 writer=0 arm_alpha_behavior_policy=%u\n",unsigned(enabled),unsigned(!arm_policy_enabled()),unsigned(arm_policy_enabled()));return true;
 }
-void request_drain(){stopping=true;}
-unsigned pending_count(){return in_flight.load()+compose_in_flight.load();}
-void summary(FILE* file){std::lock_guard<std::mutex> lock(mutex);if(file)fprintf(file,"cover_control_reserve_stage=%s cover_control_reserve_rva=0x%llx cover_control_reserve_mh_status=%d cover_control_enabled=%u cover_control_certified=%u cover_control_reserved_mask=%u cover_control_calls=%llu cover_control_inflight=%u cover_control_compose_inflight=%u cover_control_rows=%u cover_control_episode=%u cover_control_dropped=%llu cover_control_rejected=%llu cover_control_nested=%llu cover_control_protocol=%llu cover_control_failed=%u cover_control_file_written=%u cover_control_file_error=%lu ",reserve_stage,static_cast<unsigned long long>(reserve_rva),reserve_mh_status,unsigned(enabled),unsigned(certified),reserved_mask,calls.load(),in_flight.load(),compose_in_flight.load(),row_count,selected_episode,dropped.load(),rejected.load(),nested_calls.load(),protocol_errors.load(),unsigned(failed.load()),unsigned(file_written.load()),file_error.load());}
+void request_drain(){stopping=true;clear_arms();future_g::request_drain();}
+unsigned pending_count(){const uint64_t sum=uint64_t(in_flight.load())+compose_in_flight.load()+future_g::pending_count();return sum>UINT_MAX?UINT_MAX:unsigned(sum);}
+void summary(FILE* file){std::lock_guard<std::mutex> lock(mutex);if(file)fprintf(file,"cover_control_reserve_stage=%s cover_control_reserve_rva=0x%llx cover_control_reserve_mh_status=%d cover_control_enabled=%u cover_control_certified=%u cover_control_reserved_mask=%u cover_control_calls=%llu cover_control_inflight=%u cover_control_compose_inflight=%u cover_control_rows=%u cover_control_episode=%u cover_control_dropped=%llu cover_control_rejected=%llu cover_control_nested=%llu cover_control_protocol=%llu cover_control_failed=%u cover_control_file_written=%u cover_control_file_error=%lu ",reserve_stage,static_cast<unsigned long long>(reserve_rva),reserve_mh_status,unsigned(enabled),unsigned(certified),reserved_mask,calls.load(),in_flight.load(),compose_in_flight.load(),row_count,selected_episode,dropped.load(),rejected.load(),nested_calls.load(),protocol_errors.load(),unsigned(failed.load()),unsigned(file_written.load()),file_error.load());if(file)fprintf(file,"arm_alpha_policy_requested=%u arm_alpha_behavior_changes=%llu arm_alpha_rejected=%llu ",unsigned(arm_policy_enabled()),arm_alpha_applied.load(),arm_alpha_rejected.load());future_g::summary(file);}
 void print(FILE* file,bool disabled){
-    post_weight_scale::print(file,disabled);
+    future_g::print(file,disabled);post_weight_scale::print(file,disabled);
     if(enabled&&disabled&&stopping.load()&&!pending_count()&&!file_attempted.exchange(true)){wchar_t path[MAX_PATH]{};Header header{};memcpy(header.magic,"CCTRL001",8);
-        header.version=1;header.header_size=sizeof(Header);header.row_size=sizeof(Row);header.count=row_count;header.capacity=row_limit;header.session=uint64_t(session_started_qpc);header.module_base=base;header.pid=GetCurrentProcessId();header.pose_episode=selected_episode;header.read_only=1;
+        header.version=1;header.header_size=sizeof(Header);header.row_size=sizeof(Row);header.count=row_count;header.capacity=row_limit;header.session=uint64_t(session_started_qpc);header.module_base=base;header.pid=GetCurrentProcessId();header.pose_episode=selected_episode;header.read_only=unsigned(!arm_policy_enabled()&&!arm_alpha_applied.load());
         if(directory[0]&&swprintf_s(path,L"%s\\control-node-phases.bin",directory)>0){HANDLE out=CreateFileW(path,GENERIC_WRITE,0,nullptr,CREATE_NEW,FILE_ATTRIBUTE_NORMAL,nullptr);
             if(out!=INVALID_HANDLE_VALUE){DWORD written{};bool okay=WriteFile(out,&header,sizeof header,&written,nullptr)&&written==sizeof header;
                 const auto n=DWORD(row_count*sizeof(Row));if(okay&&n)okay=WriteFile(out,rows.data(),n,&written,nullptr)&&written==n;
                 if(!okay)file_error=GetLastError();if(!CloseHandle(out)){file_error=GetLastError();okay=false;}file_written=okay;
             }else file_error=GetLastError();}else file_error=ERROR_INVALID_NAME;
     }
-    summary(file);if(file)fprintf(file,"read_only=1 atomic_verified=0 writer=0\n");
+    summary(file);if(file)fprintf(file,"read_only=%u atomic_verified=0 writer=0 arm_alpha_behavior_changes=%llu\n",unsigned(!arm_policy_enabled()&&!arm_alpha_applied.load()),arm_alpha_applied.load());
 }
 #else
+bool retained_boundary_current()noexcept{return false;}
 bool prepare(){return true;}bool reserve(){return true;}bool reserved_target(void*){return false;}
-bool configure(wchar_t const* ini,FILE*){wchar_t value[16]{};GetPrivateProfileStringW(L"CoverControlObserver",L"enabled",L"0",value,16,ini);if(wcscmp(value,L"0"))return false;GetPrivateProfileStringW(L"CoverPostWeightScaleObserver",L"enabled",L"0",value,16,ini);return !wcscmp(value,L"0");}
+bool configure(wchar_t const* ini,FILE*){wchar_t value[16]{};GetPrivateProfileStringW(L"CoverControlObserver",L"enabled",L"0",value,16,ini);if(wcscmp(value,L"0"))return false;GetPrivateProfileStringW(L"CoverPostWeightScaleObserver",L"enabled",L"0",value,16,ini);if(wcscmp(value,L"0"))return false;GetPrivateProfileStringW(L"CoverFutureGObserver",L"enabled",L"0",value,16,ini);return !wcscmp(value,L"0");}
 void compose_begin(phase::Scope const&) noexcept {}void compose_end(phase::Scope const&,bool) noexcept {}
 void request_drain(){}unsigned pending_count(){return 0;}void summary(FILE* file){if(file)fprintf(file,"cover_control_enabled=0 cover_control_compiled=0 ");}
 void print(FILE* file,bool){summary(file);}

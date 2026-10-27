@@ -21,6 +21,10 @@ struct Diagnostics {
     uint64_t lifecycle{1},frame{},cookie{},revision{};unsigned last_prepare{},last_commit{};
     binding::Reason binding_reason=binding::Reason::body_unavailable;
 } diagnostics;
+// Diagnostic only: the GT records a real registered-cookie -> quiescent
+// transition, never a cookie-zero observation by itself. The first Goal
+// rejection may occur in a later Scene.
+std::atomic<uint64_t> goal_absent_epoch{};
 bool have_previous{},interrupted=true,cached_owned{},cached_action_fallback{};
 gears_vr::StereoResult cached_stereo{};
 gears_vr::StereoMatrix cached_view{};
@@ -187,6 +191,7 @@ bool prepare(gears_anchor::Receipt const* scene,gears_vr::StereoMatrix& view,gea
         next.session=stereo.sample.session;next.space=stereo.sample.space_epoch;next.reference=stereo.reference_generation;
         next.cookie=broker->cookie();next.revision=broker->lifecycle_revision();
         next.action_generation=action_generation;next.action_blocked=action_blocked;
+        const auto prior_cookie=have_previous?previous.cookie:0;
         if(have_previous&&!same_global(previous,next)){
             if(!action_barrier)broker->invalidate(wire::InvalidateReason::context_lost);
             next.revision=broker->lifecycle_revision();
@@ -226,6 +231,10 @@ bool prepare(gears_anchor::Receipt const* scene,gears_vr::StereoMatrix& view,gea
         const auto action_current=[&](){return action_generation==broker->action_generation()&&!broker->action_barrier();};
         const bool action_allowed=!action_blocked&&action_current();
         bool absent=action_allowed&&broker->availability()==wire::Availability::absent_quiescent;
+        if(absent&&prior_cookie&&!next.cookie){
+            const auto epoch=goal_absent_epoch.load(std::memory_order_relaxed);
+            if(epoch!=UINT64_MAX)goal_absent_epoch.store(epoch+1,std::memory_order_release);
+        }
         if(absent){weapon.state=gears_vr::CoverWeaponState::absent_quiescent;++diagnostics.absent;}
         else if(action_allowed&&next.cookie&&!broker->draining()){
             const auto session=runtime::session();

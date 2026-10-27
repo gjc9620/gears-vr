@@ -1,14 +1,12 @@
 // A bounded, same-family horizontal view-union correction. This deliberately
-// accepts integer, unscaled, adjacent source/target rectangles by default.
-// Reduced SR inputs require a separate current constructor geometry receipt.
-// Height padding remains opt-in for a certified owned consumer.
+// accepts only integer, unscaled, adjacent source/target rectangles. Height
+// padding is opt-in for a certified owned consumer, never a generic fallback.
 namespace gears_view_union_mask {
 using Snapshot=gears_first_view_mask::Snapshot;
 using Gate=gears_first_view_mask::Gate;
 enum Reject : unsigned { accepted,disabled,scope,caller,read_failed,vtable,views,dimensions,rectangles,viewport,argument,clock,reject_count };
 constexpr const char* reject_names[]={"accepted","disabled","scope","caller","read_failed","vtable","views","dimensions","rectangles","viewport","argument","clock"};
 struct Decision {float forwarded{},expected{},union_t{};unsigned rejection{disabled};int union_right{};bool modified{};};
-struct ReducedGeometry {std::array<unsigned,2> color_dimensions{};std::array<std::array<float,4>,2> source{};};
 uint32_t bits(float value){uint32_t result{};memcpy(&result,&value,4);return result;}
 float boundary(float extent,float width){
     // Match 119bd0 VADDSS, 119bd4 VDIVSS, 119bd8 VSUBSS. Separate
@@ -16,7 +14,7 @@ float boundary(float extent,float width){
     // would be an inappropriate validator for the incoming float ABI.
     const float doubled=extent+extent;const float ratio=doubled/width;return ratio-1.f;
 }
-Decision decide_union(float value,const Gate& gate,const Snapshot& sample,long long tick,long long frequency,long long& origin,bool owned_height_padding=false,ReducedGeometry const* reduced=nullptr){
+Decision decide_union(float value,const Gate& gate,const Snapshot& sample,long long tick,long long frequency,long long& origin,bool owned_height_padding=false){
     Decision result;result.forwarded=value;
     if(!gate.enabled)return result;
     result.rejection=scope;if(!gate.recording||!gate.diagnostics||!gate.trial||!gate.renderer)return result;
@@ -27,28 +25,15 @@ Decision decide_union(float value,const Gate& gate,const Snapshot& sample,long l
     const auto width=sample.color_dimensions[0],height=sample.color_dimensions[1];
     result.rejection=dimensions;if(width<2||width>16384||height<1||height>16384)return result;
     result.rejection=rectangles;
-    if(reduced){
-        if(reduced->color_dimensions!=sample.color_dimensions||reduced->source!=sample.source)return result;
-        for(auto const& source:reduced->source){
-            for(auto v:source)if(!std::isfinite(v)||v<0||v>16384||std::floor(v)!=v)return result;
-            if(source[2]<=0||source[3]<=0||source[0]+source[2]>width||source[1]+source[3]>height)return result;
-        }
-        auto const& first=reduced->source[0];
-        for(unsigned eye=0;eye<2;++eye){auto const& source=reduced->source[eye];
-            if(source[1]!=first[1]||source[2]!=first[2]||source[3]!=first[3]||source[0]<first[0])return result;
-            const std::array<int,4> expected{int(source[0]-first[0]),0,int(source[2]),int(source[3])};
-            if(sample.target[eye]!=expected)return result;
-        }
-    }
     for(unsigned eye=0;eye<2;++eye){const auto& target=sample.target[eye];const auto& source=sample.source[eye];
         // The dimension cap guarantees these integers and sums convert to
         // float exactly. Avoid converting untrusted NaN/overflowing floats.
-        const auto effective_height=(owned_height_padding||reduced)?sample.target[0][3]:static_cast<int>(height);
+        const auto effective_height=owned_height_padding?sample.target[0][3]:static_cast<int>(height);
         if(target[0]<0||target[1]!=0||target[2]<=0||effective_height<=0||effective_height>static_cast<int>(height)||target[3]!=effective_height||
            int64_t(target[0])+target[2]>width)return result;
-        if(!reduced)for(unsigned i=0;i<4;++i)if(!std::isfinite(source[i])||source[i]!=static_cast<float>(target[i]))return result;
+        for(unsigned i=0;i<4;++i)if(!std::isfinite(source[i])||source[i]!=static_cast<float>(target[i]))return result;
     }
-    if(sample.target[0][0]!=0||sample.target[1][0]<sample.target[0][2]||(!reduced&&sample.target[1][0]!=sample.target[0][2]))return result;
+    if(sample.target[0][0]!=0||sample.target[1][0]!=sample.target[0][2])return result;
     const auto right=int64_t(sample.target[1][0])+sample.target[1][2];
     if(right<=sample.target[0][2]||right>width)return result;
     result.union_right=static_cast<int>(right);
@@ -92,33 +77,6 @@ bool self_test(){
     if(decide_union(0,valid,padded,20000,1000,origin).rejection!=rectangles)return false;
     const auto padding=decide_union(0,valid,padded,20000,1000,origin,true);
     if(padding.rejection||!padding.modified||padding.forwarded!=1.f)return false;
-    for(bool packed:{false,true}){
-        const int input=packed?426:427,right_x=packed?426:640;
-        auto sr=sample_for(1280,720,input,input);
-        sr.target={std::array<int,4>{0,0,input,480},std::array<int,4>{right_x,0,input,480}};
-        sr.source={std::array<float,4>{packed?213.f:0.f,packed?120.f:0.f,float(input),480},
-                   std::array<float,4>{packed?639.f:640.f,packed?120.f:0.f,float(input),480}};
-        ReducedGeometry proof{sr.color_dimensions,sr.source};const auto incoming=boundary(float(input),1280.f);
-        if(decide_union(incoming,valid,sr,20000,1000,origin).rejection!=rectangles)return false;
-        const auto accepted_sr=decide_union(incoming,valid,sr,20000,1000,origin,false,&proof);
-        if(accepted_sr.rejection||!accepted_sr.modified||accepted_sr.union_right!=right_x+input||
-           bits(accepted_sr.forwarded)!=bits(boundary(float(right_x+input),1280.f)))return false;
-        for(unsigned mutation=0;mutation<9;++mutation){auto s=sr;auto p=proof;float value=incoming;
-            switch(mutation){
-                case 0:++p.color_dimensions[0];break;
-                case 1:++p.source[1][0];break;
-                case 2:++s.source[1][1];break;
-                case 3:++s.target[1][0];break;
-                case 4:s.target[1][3]=720;break;
-                case 5:s.source[1][0]=p.source[1][0]=s.source[0][0];s.target[1][0]=0;break;
-                case 6:s.source[0][0]=p.source[0][0]=-1;break;
-                case 7:s.viewport[3]=480;break;
-                case 8:value=0;break;
-            }
-            const auto rejected_sr=decide_union(value,valid,s,20000,1000,origin,false,&p);
-            if(!rejected_sr.rejection||rejected_sr.modified||bits(rejected_sr.forwarded)!=bits(value))return false;
-        }
-    }
     for(unsigned i=0;i<8;++i){auto s=padded;
         switch(i){case 0:s.target[1][3]=2047;s.source[1][3]=2047;break;
         case 1:for(unsigned e=0;e<2;++e){s.target[e][3]=2161;s.source[e][3]=2161;}break;

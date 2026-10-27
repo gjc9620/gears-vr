@@ -109,13 +109,6 @@ void quad(uintptr_t caller,bool world){
     entry->proved(now.eye,false,proof);if(proof){entry->payload.eyes[now.eye].quad_caller=caller;
         ++quad_proved[now.eye];++quad_site_proved[site][now.eye];} // No old R8 memory is read here.
 }
-bool current_quad_zero_proved(uint64_t world,uint64_t ticket,unsigned eye,uintptr_t caller){
-    std::lock_guard<FrameHookMutex> lock(frame_hook_mutex);const Key key{world,ticket};
-    auto* entry=store.find(key);if(eye>1||!current(key)||!entry||entry->complete||entry->failure!=Failure::none||
-       !(entry->setter_mask&(1u<<eye))||!(entry->quad_mask&(1u<<eye)))return false;
-    auto const& e=entry->payload.eyes[eye];const auto live=view();const auto path=destination();
-    return e.quad_caller==caller&&e.after==live&&path.same(e.post)&&finite(path.value)&&path.value[0]==0&&equal(path.value,e.forwarded);
-}
 bool publication(uint64_t world,uint64_t ticket){
     std::lock_guard<FrameHookMutex> lock(frame_hook_mutex);const Key key{world,ticket};const auto decision=store.decision(key);++decisions[static_cast<unsigned>(decision)];
     Receipt receipt;receipt.valid=true;receipt.world=world;receipt.ticket=ticket;receipt.decision=static_cast<unsigned>(decision);

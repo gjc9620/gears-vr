@@ -56,16 +56,6 @@ thread_local WrapperScope* source_create_scope{};
 thread_local WrapperScope* target_wrapper{};
 #endif
 std::shared_ptr<ControlOwner> control_owner;
-std::recursive_mutex control_api_mutex;
-std::recursive_mutex parameter_mutex;
-ApiOrderScope::ApiOrderScope():lock(control_api_mutex){}
-ParameterScope::ParameterScope():lock(parameter_mutex){}
-gears_ngx_stereo::NativeOptimalSettings last_eye_optimal;
-uint64_t eye_query_calls{},eye_query_failures{},eye_query_revision{},eye_query_world{};
-void record_eye_query(NativeCreateSource const& source,gears_ngx_stereo::NativeOptimalSettings const& query,bool accepted){
-    std::lock_guard<FrameHookMutex> lock(frame_hook_mutex);++eye_query_calls;if(!accepted)++eye_query_failures;
-    last_eye_optimal=query;eye_query_revision=source.revision;eye_query_world=source.world;
-}
 bool attach_control(std::shared_ptr<ControlOwner> const& owner){
     std::lock_guard<FrameHookMutex> lock(frame_hook_mutex);
     if(!attested||!recording.load()||in_wrappers||control_owner||!owner||!owner->configured())return false;
@@ -97,9 +87,12 @@ bool pending_create_current(NativeCreateSource const& source){
 }
 uint64_t ControlOwner::create(NativeCreateSource const& family,uintptr_t command,
     gears_ngx_stereo::CreateShadow const& source,void const* original_pointer,std::function<uint64_t(void const*)> const& original){
-    using namespace gears_ngx_stereo;ControlCreateBinding binding;NativeCreateSource resolved=family;
-    backend_.trace("create_wrapper_enter",command,family.revision);
-    if(!configured_||family.fields[2]%2||!bounded({family.fields[2]/2,family.fields[3]})){invalidate();return dispatch_unavailable;}
+    using namespace gears_ngx_stereo;ControlCreateBinding binding;
+    if(!configured_||!callbacks_.create(callbacks_.lifetime.get(),family,command,binding)||
+       binding.identity.world!=family.world||binding.identity.parameters!=family.parameters||
+       binding.command.raw!=command||!valid_create_layout(binding.layout)||family.fields[0]!=2*binding.layout.input.width||
+       family.fields[1]!=binding.layout.input.height||family.fields[2]!=binding.layout.full_output.width||
+       family.fields[3]!=binding.layout.full_output.height){invalidate();return dispatch_unavailable;}
     // Query the actual per-eye output/Quality, never divide family min/max.
     // The adapter gate serializes parameter-consuming owned wrappers. It is
     // deliberately released before bridge_.create_wrapper takes its own gate;
@@ -109,70 +102,41 @@ uint64_t ControlOwner::create(NativeCreateSource const& family,uintptr_t command
         if(!pending_create_current(family)||source_create_scope->source_command!=command||
            source_create_scope->source_structure!=reinterpret_cast<uintptr_t>(original_pointer)){
             adapter_.invalidate(entry);return dispatch_unavailable;}
-        try{binding.optimal=backend_.optimal({family.fields[2]/2,family.fields[3]},family.fields[4]);}
+        try{binding.optimal=backend_.optimal(binding.layout.eye_output,family.fields[4]);}
         catch(...){adapter_.invalidate(entry);throw;}
-        const bool accepted=pending_create_current(family)&&binding.optimal.supports(binding.optimal.optimal);
-        record_eye_query(family,binding.optimal,accepted);
-        if(!accepted){
+        if(!pending_create_current(family)||!binding.optimal.supports(binding.layout.input)){
             adapter_.invalidate(entry);
             return binding.optimal.called&&!native_result_accepted(binding.optimal.result)?binding.optimal.result:dispatch_unavailable;
         }
-        resolved.eye_optimal=binding.optimal;
-        {std::lock_guard<FrameHookMutex> lock(frame_hook_mutex);source_create_scope->source.eye_optimal=binding.optimal;}
     }
-    Layout expected;if(!resolved.create_layout(expected)){invalidate();return dispatch_unavailable;}
-    if(packed_input_){expected.packed_input=true;expected.input_base[1]={expected.input.width,0};}
-    if(!callbacks_.create(callbacks_.lifetime.get(),resolved,command,binding)||
-       binding.identity.world!=resolved.world||binding.identity.parameters!=resolved.parameters||binding.command.raw!=command||
-       !same(binding.layout,expected)){backend_.trace("create_binding_rejected",command,family.revision,dispatch_unavailable);invalidate();return dispatch_unavailable;}
-    binding.optimal=resolved.eye_optimal; // Callback returns geometry/command, not a substitute query receipt.
     {std::lock_guard<std::mutex> lock(metadata_mutex_);creation_=binding;}
     return bridge_.create_wrapper(binding.identity,binding.layout,binding.command,
         reinterpret_cast<uint64_t*>(base+gears_ngx_route::handle_cell_rva),source,original_pointer,[&](void const* owned){
-            return pending_create_current(resolved)?original(owned):uint64_t(dispatch_unavailable);
-        },&binding.optimal).raw;
+            return pending_create_current(family)?original(owned):uint64_t(dispatch_unavailable);
+        }).raw;
 }
 uint64_t ControlOwner::evaluate(ControlConsumption consumed,uintptr_t command,uintptr_t handle,uintptr_t parameters,
     gears_ngx_stereo::EvaluateShadow const& source,void const* original_pointer,std::function<uint64_t(void const*)> const& original){
     using namespace gears_ngx_stereo;ControlCreateBinding created;
-    backend_.trace("eval_wrapper_enter",command,handle);
     {std::lock_guard<std::mutex> lock(metadata_mutex_);created=creation_;}
     ControlInputTicket ticket;unsigned eye{};std::array<Point,3> bases{};
     for(unsigned i=0;i<3;++i)std::memcpy(&bases[i],source.bytes.data()+0x60+8*i,8);
     if(!configured_||!consumed.world||!consumed.ticket||!consumed.renderer||created.identity.world!=consumed.world||
-       created.identity.parameters!=parameters||(!created.layout.packed_input&&!select_input_eye(created.layout,created.layout.input,bases,eye))||
+       created.identity.parameters!=parameters||!select_input_eye(created.layout,created.layout.input,bases,eye)||
        !callbacks_.admit(callbacks_.lifetime.get(),consumed)||
        !callbacks_.input(callbacks_.lifetime.get(),consumed,source,command,ticket)||
        ticket.consumption.world!=consumed.world||ticket.consumption.ticket!=consumed.ticket||ticket.consumption.renderer!=consumed.renderer||
        !ticket.original_views[0]||!ticket.original_views[1]||ticket.original_views[0]==ticket.original_views[1]||ticket.command.raw!=command){
-        backend_.trace("eval_binding_rejected",command,handle,dispatch_unavailable);invalidate();return dispatch_unavailable;}
-    if(created.layout.packed_input&&!select_input_eye(created.layout,{ticket.producers[0].rendered[0].width,ticket.producers[0].rendered[0].height},bases,eye)){invalidate();return dispatch_unavailable;}
+        invalidate();return dispatch_unavailable;}
     auto const& producer=ticket.producers[eye];auto const& use=producer.use;
-    if(!created.optimal.supports({producer.rendered[0].width,producer.rendered[0].height})||
-       !same(use.identity,created.identity)||use.ticket!=consumed.ticket||use.eye!=eye||
+    if(!same(use.identity,created.identity)||use.ticket!=consumed.ticket||use.eye!=eye||
        use.list!=ticket.command.list||use.generation!=ticket.command.generation||producer.view!=ticket.original_views[eye]){
         invalidate();return dispatch_unavailable;}
-    EvaluationBinding binding{producer,ticket.command,handle,ticket.raw_resources,ticket.native_transition};
+    EvaluationBinding binding{producer,ticket.command,handle,ticket.raw_resources};
     return bridge_.evaluate_wrapper(binding,source,original_pointer,original).raw;
 }
 uint64_t create_passthrough(uintptr_t a,uintptr_t b,uintptr_t c,uintptr_t d,uintptr_t e,void const* structure,CreateWrapperFn forward){
-    auto owner=current_control();
-#if defined(GEARS_NGX_INPUT_RECT_EXPERIMENT) && GEARS_NGX_INPUT_RECT_EXPERIMENT && !defined(GEARS_NGX_STEREO_HOST_TEST)
-    if(!owner&&!self_testing){auto* observed=source_create_scope;
-        if(observed&&!observed->source_bad&&pending_create_current(observed->source)){
-            auto const before=observed->source;gears_ngx_stereo::NativeDispatchFunctions functions;functions.optimal=native_optimal_query();
-            gears_ngx_stereo::NativeDispatchBackend backend(functions);
-            auto query=backend.optimal({before.fields[2]/2,before.fields[3]},before.fields[4]);
-            const bool accepted=!(before.fields[2]%2)&&pending_create_current(before)&&query.supports(query.optimal);
-            record_eye_query(before,query,accepted);
-            if(accepted){std::lock_guard<FrameHookMutex> lock(frame_hook_mutex);observed->source.eye_optimal=query;}
-            else{observed->source_bad=true;request_session_stop(SessionStop::proof_failure);}
-        }
-        // The unfiltered complete Create wrapper follows the query and writes
-        // all its normal Create parameters before the actual SDK Create.
-    }
-#endif
-    if(!owner)return forward(a,b,c,d,e,structure);
+    auto owner=current_control();if(!owner)return forward(a,b,c,d,e,structure);
     gears_ngx_stereo::CreateShadow source;auto* observed=source_create_scope;
     if(!observed||observed->source_bad||!safe_copy(source.bytes.data(),structure,source.bytes.size())){
         owner->invalidate();return gears_ngx_stereo::dispatch_unavailable;}
@@ -250,9 +214,6 @@ bool select_bank(){if(!available())return false;auto owner=ngx_route_observer::o
     return true;
 }
 void barriers(ID3D12GraphicsCommandList* command,UINT count,D3D12_RESOURCE_BARRIER const* values,uintptr_t caller){
-#if GEARS_NGX_MV_TARGET_CAPTURE
-    ngx_mv_compute_capture::sdk_barrier(command,caller);
-#endif
     std::lock_guard<FrameHookMutex> lock(frame_hook_mutex);if(!select_bank())return;auto ref=list(command);
     if(!valid(ref)||count>64||(count&&!values)){++bank.dropped;return;}
     for(unsigned i=0;i<count;++i){D3D12_RESOURCE_BARRIER b{};if(!safe_copy(&b,values+i,sizeof(b))){++bank.dropped;return;}
@@ -286,9 +247,6 @@ void targets(ID3D12GraphicsCommandList* command,UINT count,D3D12_CPU_DESCRIPTOR_
     bank.bindings[slot]=out;if(!out.complete)++bank.dropped;
 }
 void draw(ID3D12GraphicsCommandList* command,uintptr_t caller,unsigned elements,unsigned instances){
-#if GEARS_NGX_MV_TARGET_CAPTURE
-    ngx_mv_compute_capture::raster_draw(command,caller,elements,instances);
-#endif
     if(!elements||!instances)return;std::lock_guard<FrameHookMutex> lock(frame_hook_mutex);if(!select_bank())return;
     auto ref=list(command);Bind const* bound{};for(unsigned i=0;i<bank.binds;++i)if(same(bank.bindings[i].list,ref)){bound=&bank.bindings[i];break;}
     if(!bound||!bound->complete){++bank.dropped;return;}auto rect=frame_target_stats.draw_state(ref.raw);
@@ -453,7 +411,7 @@ uint32_t __fastcall hook_evaluate(uintptr_t command,uintptr_t handle,uintptr_t p
 #endif
     return result;
 }
-uint32_t __fastcall hook_release(uintptr_t handle){Scope active_scope;ParameterScope parameters_scope;int selected=-1;
+uint32_t __fastcall hook_release(uintptr_t handle){Scope active_scope;int selected=-1;
     {std::lock_guard<FrameHookMutex> lock(frame_hook_mutex);
 #if GEARS_NGX_MV_TARGET_CAPTURE
         if(handle==latest_native_create.handle||in_wrappers)ngx_mv_target_capture::invalidate(2);
@@ -484,9 +442,6 @@ void copy_passthrough(ID3D12GraphicsCommandList* command,D3D12_TEXTURE_COPY_LOCA
     if(!ngx_capture_control::copy(command,destination,x,y,z,source,box,caller,forward))
 #endif
         forward(command,destination,x,y,z,source,box);
-#if GEARS_NGX_MV_TARGET_CAPTURE
-    if(!current_control())ngx_mv_compute_capture::texture_copy(command,destination,x,y,z,source,box,caller);
-#endif
 #if defined(GEARS_NGX_EPOCH_PAIR_OBSERVER) && GEARS_NGX_EPOCH_PAIR_OBSERVER
     epoch_copy.returned(command,destination,source,box);
 #endif
@@ -509,11 +464,6 @@ void execute_passthrough(ID3D12CommandQueue* queue,UINT count,ID3D12CommandList*
 #endif
 #if defined(GEARS_NGX_EPOCH_PAIR_OBSERVER) && GEARS_NGX_EPOCH_PAIR_OBSERVER
     epoch_execute.returned();
-#endif
-#if GEARS_NGX_MV_TARGET_CAPTURE
-    std::array<ngx_mv_compute_capture::ExecuteList,64> selected_members{};
-    for(unsigned i=0;readable&&i<count;++i)selected_members[i]={members[i].raw,members[i].canonical,members[i].generation};
-    ngx_mv_compute_capture::executed(queue,count,selected_members.data(),readable);
 #endif
     if(!order)return;std::lock_guard<FrameHookMutex> lock(frame_hook_mutex);const auto queue_id=canonical_identity(queue);
     for(unsigned i=0;readable&&i<row_count;++i){auto& row=rows[i];
@@ -577,7 +527,6 @@ bool enable(FILE* file){if(current_control())return false; // Never reset a reta
 #endif
     attested=false;printed=false;bank={};rows={};releases={};row_count=epoch_evals=epochs=in_wrappers=release_count=0;
     latest_native_create={};native_create_revision=0;source_create_scope=nullptr;
-    last_eye_optimal={};eye_query_calls=eye_query_failures=eye_query_revision=eye_query_world=0;
     sampled_tickets=typed_observations=total_sampled_tickets=total_typed_observations=0;
     sequence=execute_sequence=limited=foreign_dispatches=read_failures=0;current_row=pending_row=-1;
     if(self_testing||!continuous_session||!frame_link_diagnostics||!color_copy_diagnostics)return false;
@@ -586,25 +535,17 @@ bool enable(FILE* file){if(current_control())return false; // Never reset a reta
 #if defined(GEARS_NGX_EPOCH_PAIR_WIRING) && GEARS_NGX_EPOCH_PAIR_WIRING
     ngx_epoch_pair::reset_capture(matched);
 #endif
-    fprintf(file,"ngx_stereo_host_identity enabled=1 attested=%u chunks=%zu mode=host_hooks default_sdk_passthrough=1 extra_query_requires_control_or_input_experiment=1 parameter_wrappers_serialized=1 host_adds_render_commands=0 queue_fence_observer_separate=1\n",unsigned(attested),sizeof(contracts)/sizeof(contracts[0]));return attested;
+    fprintf(file,"ngx_stereo_host_identity enabled=1 attested=%u chunks=%zu mode=readonly sdk_mutation=0 gpu_commands_added=0\n",unsigned(attested),sizeof(contracts)/sizeof(contracts[0]));return attested;
 }
 bool install_hooks(){return attested&&install(reinterpret_cast<void*>(base+0x7c82f0),reinterpret_cast<void*>(hook_create),reinterpret_cast<void**>(&original_create))&&
     install(reinterpret_cast<void*>(base+0x7c8440),reinterpret_cast<void*>(hook_evaluate),reinterpret_cast<void**>(&original_evaluate))&&
     install(reinterpret_cast<void*>(base+0x7c87e0),reinterpret_cast<void*>(hook_release),reinterpret_cast<void**>(&original_release));}
 void print(FILE* file){std::lock_guard<FrameHookMutex> lock(frame_hook_mutex);
-#if defined(GEARS_NGX_ISOLATED_STEREO_TRIAL) && GEARS_NGX_ISOLATED_STEREO_TRIAL
-    ngx_capture_control::print_trial(file);
-#endif
 #if defined(GEARS_NGX_EPOCH_PAIR_WIRING) && GEARS_NGX_EPOCH_PAIR_WIRING
     ngx_epoch_pair::print(file);
 #endif
     if(printed)return;printed=true;
     const bool drained=!recording.load()&&active.load()==0;
-    auto const& optimal=last_eye_optimal;
-    fprintf(file,"ngx_native_eye_optimal calls=%llu failures=%llu revision=%llu world=%llu called=%u result=%x output=%u,%u optimal=%u,%u maximum=%u,%u minimum=%u,%u quality=%u sharpness=%.9g supported=%u complete_native_create_setters_follow_query=1 gpu_verified=0\n",
-        eye_query_calls,eye_query_failures,eye_query_revision,eye_query_world,unsigned(optimal.called),optimal.result,
-        optimal.output.width,optimal.output.height,optimal.optimal.width,optimal.optimal.height,optimal.maximum.width,optimal.maximum.height,
-        optimal.minimum.width,optimal.minimum.height,optimal.quality,optimal.sharpness,unsigned(optimal.supports(optimal.optimal)));
     fprintf(file,"ngx_stereo_host_budget sampled_tickets=%u ticket_limit_per_epoch=8 typed_observations=%u typed_limit_per_epoch=512 total_sampled_tickets=%u total_ticket_limit=32 total_typed_observations=%u total_typed_limit=2048 per_ticket_resources=64 per_ticket_draw_groups=64 draw_candidates_per_input=2\n",sampled_tickets,typed_observations,total_sampled_tickets,total_typed_observations);
     fprintf(file,"ngx_stereo_host enabled=1 attested=%u rows=%u epochs=%u limited=%llu foreign_dispatches=%llu read_failures=%llu rows_unavailable=%u gpu_completion_verified=0 producer_draw_is_write_proof=0 typed_resource_leases=1 depth_stencil_descriptor_resolved=0\n",
         unsigned(attested),row_count,epochs,limited,foreign_dispatches,read_failures,unsigned(!drained));if(!drained)return;

@@ -52,20 +52,6 @@ PATH_CLOSE_CHUNKS = ((0x346574, 62),)
 PATH_CLOSE_SHA256 = 'b8c82a830ef05c50a88489351c469e591b65a154310a2fefec91e57f66fb7b3a'
 PATH_CLOSE_EXEC_CHUNKS = ((0x34698c, 128), (0x90dbe6, 32))
 PATH_CLOSE_EXEC_SHA256 = '1f03d742fcd859a664004bb62ff35c327d80b1364b235701e64184eee53e55c1'
-# Artifact 1 exports: ida-body1/audited-methods.json and
-# child-propagation.json. Only these two installed entries are recognized;
-# the CoverBlend cold continuation is checked with its entry, never allowed as
-# another hook target. Current V evidence matched all three complete chunks.
-# Expected digests are fixed here, not learned from native status/own manifests.
-COVER_BODY_RESTORE_RANGES = {
-    0x2a85a8: (
-        (0x2a85a8, 889, '8c42951597545b095f60d725d81547173b000255dd69e99172a4359163c3f521'),
-        (0x8ed5ca, 79, '73e614ba91365631e33d25d355ec20c22cb4611a48ec97ad611facefa379ca81'),
-    ),
-    0xfa680: (
-        (0xfa680, 61, 'aee998dc1117d028904e7f2016dcb7b9ea7ca100ec622de4c8dfe3536bacd52f'),
-    ),
-}
 
 
 def check_runtime_ranges(read, base, target, ranges, source):
@@ -314,17 +300,6 @@ def main():
         camera[0xc7f63c]=bytes.fromhex('48895c240848896c24104889742418574883ec308bda488bf93b91d80500000f')
         for target in targets:
             rva = target - resolver.base
-            if rva in COVER_BODY_RESTORE_RANGES:
-                # The ordinary resolver.prepare image hash/context gates above
-                # and all preinstall identity checks remain in force. Read the
-                # stopped process independently across every fixed chunk.
-                values = check_runtime_ranges(resolver.read, resolver.base, target, COVER_BODY_RESTORE_RANGES[rva],
-                              'artifact 1 runtime snapshot cover body full known chunks')
-                for check in values:
-                    check.update(module_base=hex(resolver.base), historical_module_base='0x140000000',
-                                 source_snapshot_sha256='911ab9bcb24cc078420400369a78ffd3f747d915e42c4935a5c82c2dcecc6ae6')
-                checks.extend(values)
-                continue
             if rva == 0x346574:
                 addresses=sorted(set(int(value) for value in re.findall(r'path_close_loaded [^\n]*?native_pointer=(\d+)',status)))
                 if len(addresses)>16 or any(not 0<address<(1<<64)-8 for address in addresses):
@@ -474,7 +449,7 @@ def main():
         try:system_entries.close()
         finally:resolver.p.close()
     report = dict(pid=args.pid, checks=checks, all_match=all(item['matches'] for item in checks),
-                  limitation='Only the listed entry bytes and complete known chunks were checked; DLLs and trampolines remain resident until game exit.')
+                  limitation='Only checked entry bytes; DLLs and trampolines remain resident until game exit.')
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(report, indent=2), encoding='utf-8')
     print(json.dumps(report, indent=2))

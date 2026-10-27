@@ -8,7 +8,7 @@ namespace gears_dlss_route {
 using gears_death_constants::Descriptor;
 using gears_death_constants::Float4;
 using gears_death_constants::Destination;
-inline unsigned setter_role(uintptr_t caller,bool owned_dof=false){return owned_dof?(caller==0xd8084e?0u:caller==0xd80925?1u:2u):caller==0xd83a92?0u:caller==0xd83b69?1u:2u;}
+inline unsigned setter_role(uintptr_t caller){return caller==0xd83a92?0u:caller==0xd83b69?1u:2u;}
 inline bool eligible(bool world,bool enabled,bool recording,bool frame_link,bool renderer,bool frozen,
                      uint64_t ticket,uint64_t frozen_ticket,uint64_t generation,uint64_t frozen_world){
     return world&&enabled&&recording&&frame_link&&renderer&&frozen&&ticket&&ticket==frozen_ticket&&generation&&generation==frozen_world;
@@ -53,13 +53,13 @@ struct Row {
     long long entry{},exit{};bool flags_read{},exited{},unwinding{};View before{},after{};
     std::array<Setter,2> setters{};std::array<Quad,2> quads{};
     InputBind input{};
-    unsigned setter_count{},quad_count{},setter_overflow{},quad_overflow{};bool owned_dof{};
+    unsigned setter_count{},quad_count{},setter_overflow{},quad_overflow{};
 };
 struct Recorder {
     std::array<Row,8> rows{};unsigned size{};uint64_t missing{},nested{},limited{};
     Row* reserve(bool ready){if(!ready){++missing;return nullptr;}if(size==rows.size()){++limited;return nullptr;}return &rows[size++];}
 };
-struct Context {uintptr_t pass{},view{};Row* row{};bool owned_dof{};};
+struct Context {uintptr_t pass{},view{};Row* row{};};
 // Even bypassed/nested entries replace TLS until exit, preventing inner calls
 // from attaching to an outer row. Stack restoration also runs on C++ unwinding.
 struct Binding {

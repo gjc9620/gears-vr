@@ -79,9 +79,7 @@ uintptr_t native_owned_scene_candidate(){using namespace gears_owned_scene_live;
  if(shutdown.stopping()||submitted_lifetime.stopping()||pipeline_failed)return 0;
  if(!pipeline.pending.ticket&&trial.complete()&&healthy()&&owned_scene_gpu::can_advance(trial.ticket)){
   const auto completed_ticket=trial.ticket;
-  // The output can precede the CPU tail; certify warm-up again once both
-  // proofs are complete, before advance clears this ticket.
-  pipeline.output_boundary(completed_ticket);
+  pipeline.output_boundary(completed_ticket); // CPU and exact output proofs now both hold.
   if(!trial.advance(completed_ticket,true)){trial.error=12;return 0;}
   // The queued pipeline and active proof must advance together when overlap
   // is disabled after a consumer-thread change.
@@ -271,8 +269,6 @@ void native_owned_scene_copy(){using namespace gears_owned_scene_live;
  owned_scene_gpu::copy(healthy()&&trial.returned&&trial.destroyed&&trial.submitted_mask==3&&!trial.unknown_draws&&owned_ui_ready(trial.ticket),trial.ticket);
 #if defined(GEARS_OWNED_UI_ROUTE_PROBE) && GEARS_OWNED_UI_ROUTE_PROBE
  if(owned_scene_gpu::consumed_count>consumed_before){
-  // The GPU/output proof above, not a thread identifier from the previous
-  // world, permits overlap after resource recreation.
   pipeline.output_boundary(trial.ticket); // An incomplete CPU tail keeps overlap disabled.
   if(owned_scene_gpu::published_count>published_before&&owned_scene_gpu::latest_publication.ticket==trial.ticket)
    owned_ui_published(trial.ticket);
@@ -292,31 +288,14 @@ void native_owned_scene_destroyed(void* renderer,uint64_t ticket){using namespac
  std::lock_guard<FrameHookMutex> lock(frame_hook_mutex);
  if(auto* row=pipeline.find(reinterpret_cast<uintptr_t>(renderer),ticket))row->retire(reinterpret_cast<uintptr_t>(renderer));
  if(trial.renderer==reinterpret_cast<uintptr_t>(renderer)&&trial.ticket==ticket)owned_scene_gpu::destroyed(trial.ticket);native_owned_scene_copy();}
-#if defined(GEARS_NGX_OWNED_SCENE_TRIAL) && GEARS_NGX_OWNED_SCENE_TRIAL
-bool native_owned_scene_dlss_target(uintptr_t target,uint64_t world,uint64_t ticket,unsigned width,unsigned height){
- using namespace gears_owned_scene_live;
- return target&&target==trial.resource&&!trial.error&&trial.built&&trial.entered&&!trial.returned&&
-  trial.renderer==reinterpret_cast<uintptr_t>(consuming_renderer)&&ticket&&ticket==trial.ticket&&
-  world&&world==resource_world&&world==committed_world_generation.load()&&!shutdown.stopping()&&
-  width==gears_native_render_size::width()&&height==gears_native_render_size::height();
-}
-#endif
 void native_owned_scene_draw(ID3D12GraphicsCommandList* list,gears_viewport::TargetDraw const& binding,
- uintptr_t caller,unsigned kind,unsigned elements,unsigned instances,gears_final_transfer::EyeDrawEvidence const& output={}){using namespace gears_owned_scene_live;
+ uintptr_t caller,unsigned kind,unsigned elements,unsigned instances){using namespace gears_owned_scene_live;
  if(shutdown.phase()==gears_owned_retirement::Phase::released)return;
  if(!trial.resource||binding.target.resource!=trial.resource)return;
  if(shutdown.stopping()){shutdown_conflict=true;return;}
  const auto state=owned_bindings_enabled?owned_target_stats.draw_state(canonical_identity(list)):
   frame_target_stats.draw_state(reinterpret_cast<uintptr_t>(list));
- bool output_valid=true;
-#if defined(GEARS_NGX_OWNED_SCENE_TRIAL) && GEARS_NGX_OWNED_SCENE_TRIAL
- if(final_eye_candidate.caller==0xd83cbf||dlss_output_control::sdk_scoped()||dlss_output_control::native_scoped())output_valid=output.candidate&&output.world==resource_world&&
-  output.ticket==trial.ticket&&output.eye==final_eye.eye&&output.target==trial.resource&&
-  output.list==canonical_identity(list)&&output.generation==frame_link.current(output.list).generation;
-#else
- (void)output;
-#endif
- const bool exact=output_valid&&final_eye.valid&&binding.targets==1&&!binding.target.mip&&final_eye.width==gears_native_render_size::width()&&final_eye.height==gears_native_render_size::height()&&
+ const bool exact=final_eye.valid&&binding.targets==1&&!binding.target.mip&&final_eye.width==gears_native_render_size::width()&&final_eye.height==gears_native_render_size::height()&&
   binding.target.width==gears_native_render_size::width()&&binding.target.height==gears_native_render_size::height()&&verified_stereo_draw(
    state,final_eye,caller,kind,elements,instances);
  trial.draw(binding.target.resource,owned_scene_gpu::list_ref(canonical_identity(list)),consuming_frame_ticket,final_eye.eye,exact);
@@ -462,7 +441,7 @@ bool native_owned_scene_begin(void*,uint64_t,uint64_t,bool){return true;}
 bool native_owned_scene_consuming(void*,uint64_t){return false;}
 void native_owned_scene_end(void*,uint64_t){}
 void native_owned_scene_destroyed(void*,uint64_t){}
-void native_owned_scene_draw(ID3D12GraphicsCommandList*,gears_viewport::TargetDraw const&,uintptr_t,unsigned,unsigned,unsigned,gears_final_transfer::EyeDrawEvidence const& ={}){}
+void native_owned_scene_draw(ID3D12GraphicsCommandList*,gears_viewport::TargetDraw const&,uintptr_t,unsigned,unsigned,unsigned){}
 gears_owned_scene::Receipt native_owned_scene_prepare(ID3D12CommandQueue*,UINT,ID3D12CommandList* const*){return {};}
 void native_owned_scene_commit(gears_owned_scene::Receipt const&){}
 bool native_owned_scene_retained(){return false;}

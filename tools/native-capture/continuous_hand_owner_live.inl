@@ -1,6 +1,10 @@
 // Continuous observation/planning only. Include after Rig/adapter/CCTRL.
 #include "continuous_hand_caller_certificate.h"
+#include "body_c0_arm_alpha_policy.h"
+#include "body_tick_source_live.h"
+#include "held_outcome_journal.h"
 namespace continuous_hand_owner_live {
+namespace budget=::gears_body_c0_budget;
 using Entry=gears_continuous_hand_entry::Entry;
 namespace phase=cover_pose_phase_live;namespace controls=cover_control_observer_live;
 namespace rig=rig_tracking_live;namespace binding=weapon_hand_scene_binding;
@@ -25,9 +29,9 @@ struct Data {TickRecord record{};phase::Owner owner{};gears_anchor::Identity ass
 struct Slot {
     Entry const* tick_address{};Entry const* compose_address{};Entry const* control_address{};
     uint64_t tick{},conflict{},ordinal{};unsigned tick_depth{},compose_depth{},control_depth{};
-    rig::TickKey key{};rig::TickLatch latch{};core::CoreSnapshot verify{};controls::Compose compose{};controls::Row row{};Data data{};
+    rig::TickKey key{};rig::TickLatch latch{};rig::SceneMetadataLatch metadata_latch{};uint64_t metadata_revision{};core::CoreSnapshot verify{};controls::Compose compose{};controls::Row row{};Data data{};
     alignas(::Scope) unsigned char lease_storage[sizeof(::Scope)]{};::Scope* lease{};
-    bool active{},attempted{},sticky{},control_valid{};
+    bool active{},attempted{},sticky{},control_valid{},hard_control_fault{},observer_source_expired{};
     Slot()=default;Slot(Slot const&)=delete;Slot& operator=(Slot const&)=delete;
 };
 inline thread_local Slot slot{};
@@ -38,7 +42,7 @@ std::mutex records_mutex;std::array<TickRecord,capacity> records{};uint64_t reco
 using LengthMode=gears_hand_two_bone::LengthMode;LengthMode length_mode=LengthMode::preserve;
 struct Call {Call(){++callbacks;}~Call(){--callbacks;}};
 bool passive(){return !cover_body_live::enabled&&!cover_input_live::enabled&&!weapon_hand_runtime::detail::engine_restore_enabled;}
-void reject(Failure why){slot.sticky=true;if(slot.data.record.failure==Failure::none)slot.data.record.failure=why;++rejected;}
+void reject(Failure why){slot.hard_control_fault=true;slot.sticky=true;if(slot.data.record.failure==Failure::none)slot.data.record.failure=why;++rejected;}
 template<size_t N>bool code_bytes(uintptr_t rva,std::array<unsigned char,N> const& expected){
     if(base>UINTPTR_MAX-rva||!gears_cover_pose_phase::span(base+rva,N))return false;
     std::array<unsigned char,N> copy{};
@@ -60,10 +64,10 @@ bool tick_target(uintptr_t mesh){uintptr_t table{},target{},again{};
         controls::read(again,table+0x260)&&again==target;
 }
 bool owner_current(){auto const& f=slot;auto const& o=f.data.owner;
-    return enabled&&!stopping.load()&&recording.load()&&passive()&&f.active&&!f.sticky&&f.lease&&f.lease->world()&&
+    return enabled&&!stopping.load()&&recording.load()&&passive()&&f.active&&!(body_tick_source_live::enabled?f.hard_control_fault:f.sticky)&&f.lease&&f.lease->world()&&
         f.tick_depth==1&&GetCurrentThreadId()==o.thread&&GetCurrentThreadId()==f.key.request.native.game_thread&&
         conflicts.load()==f.conflict&&matching_ticks.load()==1&&o.key.world_generation==committed_world_generation.load()&&
-        o.key.session==uint64_t(session_started_qpc)&&binding::current_actor(o.binding)&&tick_target(o.key.mesh.address);
+        o.key.session==uint64_t(session_started_qpc)&&budget::observe(budget::Op::owner_actor,[&]{return binding::current_actor(o.binding);})&&tick_target(o.key.mesh.address);
 }
 bool control_current(phase::Scope const& scope) noexcept {try{return owner_current()&&slot.compose_depth==1&&
     &scope==&slot.compose.scope&&scope.invocation==slot.data.record.compose&&scope.arguments;}catch(...){return false;}}
@@ -71,7 +75,11 @@ bool same_source(rig::TickFailure* failure=nullptr){
     if(failure)*failure=rig::TickFailure::hard;
     if(!slot.attempted)return false;
     rig::TickFailure why{};
-    const bool fresh=rig::read_tick(slot.key,slot.latch,slot.verify,failure?&why:nullptr);
+    uint64_t revision{};
+    const bool fresh=budget::observe(budget::Op::read_tick,[&]{return body_tick_source_live::enabled?
+        rig::read_scene_metadata_tick(slot.key,slot.metadata_latch,slot.verify,revision,failure?&why:nullptr):
+        rig::read_tick(slot.key,slot.latch,slot.verify,failure?&why:nullptr);});
+    if(fresh&&body_tick_source_live::enabled&&revision!=slot.metadata_revision)return false;
     if(!fresh&&(!failure||why!=rig::TickFailure::source_age_only))return false;
     // Even an age failure must pass the complete immutable cohort and live
     // owner checks before the caller is allowed to call it age-only.
@@ -79,7 +87,23 @@ bool same_source(rig::TickFailure* failure=nullptr){
     if(failure)*failure=why;
     return fresh;
 }
-bool metadata(bool initial,controls::Row const* row=nullptr){auto& d=slot.data;
+// The read-only planner retains OLD tracking eligibility. Metadata mode never
+// creates or revives a legacy TickLatch; current_copy classifies the unchanged
+// original Core against its own original clocks and complete hard guards.
+bool observer_same_source(rig::TickFailure* failure=nullptr){
+    if(!body_tick_source_live::enabled)return same_source(failure);
+    if(failure)*failure=rig::TickFailure::hard;
+    if(!slot.attempted||!slot.metadata_revision||!owner_current())return false;
+    // Full immutable-byte comparison is still required. A shape-valid edited
+    // record must not bypass the original latch cohort just because it is old.
+    rig::TickFailure metadata_why{};
+    if(!same_source(&metadata_why)&&metadata_why!=rig::TickFailure::source_age_only)return false;
+    rig::TickFailure why{};
+    const bool fresh=budget::observe(budget::Op::read_tick,[&]{return rig::current_copy(slot.data.record.source,slot.metadata_revision,50000000,&why);});
+    if(!owner_current()||(!fresh&&why!=rig::TickFailure::source_age_only))return false;
+    if(failure)*failure=why;return fresh;
+}
+bool metadata(bool initial,controls::Row const* row=nullptr){budget::Span measured(initial?budget::Op::metadata_initial:budget::Op::metadata_repeat);auto& d=slot.data;
     auto reader=[](void* out,void const* in,size_t n){return safe_copy(out,in,n);};
     std::unique_lock<std::mutex> lock(binding::mutex,std::try_to_lock);if(!lock.owns_lock()||!binding::metadata_current())return false;
     gears_cover_pose_phase::Request request{};request.owner=d.owner.key;
@@ -100,7 +124,7 @@ bool metadata(bool initial,controls::Row const* row=nullptr){auto& d=slot.data;
     if(row&&(!controls::same_metadata(first,row->before.metadata)||!controls::same_metadata(first,row->after.metadata)))return false;
     if(initial){d.asset=a;d.metadata=first;}return true;
 }
-bool geometry(){auto& d=slot.data;if(!mount::canonical_geometry(d.reference.data(),d.reference.size(),d.canonical))return false;
+bool geometry(){budget::Span measured(budget::Op::geometry);auto& d=slot.data;if(!mount::canonical_geometry(d.reference.data(),d.reference.size(),d.canonical))return false;
     BCRYPT_ALG_HANDLE algorithm{};BCRYPT_HASH_HANDLE hash{};bool ok=BCryptOpenAlgorithmProvider(&algorithm,BCRYPT_SHA256_ALGORITHM,nullptr,0)>=0;
     if(ok)ok=BCryptCreateHash(algorithm,&hash,nullptr,0,nullptr,0,0)>=0;
     if(ok)ok=BCryptHashData(hash,d.canonical.data(),DWORD(d.canonical.size()),0)>=0;
@@ -113,11 +137,11 @@ bool next(Entry& e){e.thread=GetCurrentThreadId();e.invocation=serial.fetch_add(
 void tick_begin(Entry& e){e.tick_depth=true;e.depth=++slot.tick_depth;
     if(slot.active){reject(Failure::nested);return;}if(e.depth!=1||stopping.load())return;
     binding::Binding actor{};rig::CoreReadRequest request{};
-    if(!rig::copy_scene_owner(actor,request)||e.rcx!=actor.mesh.address||e.thread!=request.native.game_thread)return;
+    if(!(body_tick_source_live::enabled?rig::copy_scene_metadata_owner(actor,request):rig::copy_scene_owner(actor,request))||e.rcx!=actor.mesh.address||e.thread!=request.native.game_thread)return;
     // Only cached owner + code here. Actor/vtable reads require the lease below.
     if(e.ra!=base+0x12e537||!caller_certified.load()||!phase::own_entries()||!controls::own_entries()){++rejected;return;}
     slot.active=true;e.selected=true;slot.tick_address=&e;slot.tick=e.invocation;++live_frames;++ticks;
-    slot.sticky=false;slot.attempted=false;slot.data={};slot.compose={};slot.ordinal=0;
+    slot.sticky=false;slot.hard_control_fault=false;slot.observer_source_expired=false;slot.attempted=false;slot.metadata_revision=0;slot.data={};slot.compose={};slot.ordinal=0;
     slot.data.record.tick=e.invocation;slot.data.record.thread=e.thread;slot.data.record.begin_qpc=phase::qpc();
     auto& owner=slot.data.owner;owner.binding=actor;owner.thread=e.thread;owner.valid=true;
     auto& k=owner.key;k.world=phase::compact(actor.world);k.pawn=phase::compact(actor.pawn);k.mesh=phase::compact(actor.mesh);
@@ -128,9 +152,20 @@ void tick_begin(Entry& e){e.tick_depth=true;e.depth=++slot.tick_depth;
     if(!slot.lease->world()){reject(Failure::lease);return;}
     if(!owner_current()){reject(Failure::owner);return;}
     slot.attempted=true;
-    if(!rig::begin_tick(slot.key,slot.latch)||!rig::read_tick(slot.key,slot.latch,slot.data.record.source)||!owner_current())reject(Failure::latch);
+    if(body_tick_source_live::enabled){
+        if(!rig::begin_scene_metadata_tick(slot.key,slot.metadata_latch)||
+           !rig::read_scene_metadata_tick(slot.key,slot.metadata_latch,slot.data.record.source,slot.metadata_revision)||!owner_current())reject(Failure::latch);
+        else body_tick_source_live::begin(e.invocation,e.thread,slot.data.record.source,slot.metadata_revision);
+    }else{
+        if(!rig::begin_tick(slot.key,slot.latch)||!rig::read_tick(slot.key,slot.latch,slot.data.record.source)||!owner_current())reject(Failure::latch);
+        else {body_tick_tracking_probe_live::sample(e.invocation,e.thread,slot.data.record.source);
+            body_tick_input_live::begin(e.invocation,e.thread,slot.data.record.source);}
+    }
 }
-void compose_begin(Entry& e){if(!slot.active)return;e.compose_depth=true;e.depth=++slot.compose_depth;
+void compose_begin(Entry& e){if(!slot.active)return;
+    gears_body_held_outcome::recorder.begin(reinterpret_cast<uintptr_t>(&e),e.invocation,slot.tick,e.thread,slot.data.record.source);
+    budget::recorder.begin(reinterpret_cast<uintptr_t>(&e),e.invocation,slot.tick,slot.data.record.begin_qpc,e.thread,slot.data.record.source);
+    e.compose_depth=true;e.depth=++slot.compose_depth;
     if(e.depth!=1||slot.compose_address||slot.data.record.compose){reject(Failure::compose);return;}
     slot.compose_address=&e;e.selected=true;slot.compose.scope.owner=slot.data.owner;slot.compose.scope.invocation=e.invocation;
     slot.compose.scope.kind=0;slot.compose.scope.caller=gears_cover_pose_phase::compose_caller;
@@ -140,12 +175,15 @@ void compose_begin(Entry& e){if(!slot.active)return;e.compose_depth=true;e.depth
     slot.compose.address=&slot.compose.scope;
     slot.compose.continuous=true;slot.compose.admitted=true;slot.compose.outer_tick=slot.tick;slot.data.record.compose=e.invocation;
     if(!control_current(slot.compose.scope)||!same_source()||!metadata(true)||!geometry())reject(Failure::metadata);
-    else{slot.data.record.asset=rig::object(slot.data.asset);slot.data.record.geometry_signature=slot.data.signature;slot.data.record.reference=slot.data.metadata.reference;}
+    else{slot.data.record.asset=rig::object(slot.data.asset);slot.data.record.geometry_signature=slot.data.signature;slot.data.record.reference=slot.data.metadata.reference;budget::recorder.admitted();}
 }
 void pose_begin(Entry& e) noexcept {Call call;try{if(!enabled||!next(e))return;if(e.kind==2)tick_begin(e);else if(e.kind==0)compose_begin(e);}catch(...){failed=true;reject(Failure::exception);}}
 void save_record(){std::lock_guard<std::mutex> lock(records_mutex);records[record_sequence%capacity]=slot.data.record;
     ++record_sequence;if(record_count<capacity)++record_count;}
-void pose_end(Entry const& e,bool returned) noexcept {Call call;try{
+void pose_end(Entry const& e,bool returned) noexcept {Call call;
+    if(e.kind==0){budget::recorder.finish(reinterpret_cast<uintptr_t>(&e),e.invocation,returned);
+        gears_body_held_outcome::recorder.finish(reinterpret_cast<uintptr_t>(&e),e.invocation,returned);}
+    try{
     if(e.compose_depth){if(!slot.compose_depth||slot.compose_depth!=e.depth){failed=true;reject(Failure::end);return;}
         if(e.selected&&slot.compose_address!=&e){failed=true;reject(Failure::end);return;}
         if(slot.compose_address==&e){if(!returned)reject(Failure::exception);slot.compose_address=nullptr;slot.compose.admitted=false;slot.compose.address=nullptr;}
@@ -156,8 +194,16 @@ void pose_end(Entry const& e,bool returned) noexcept {Call call;try{
         if(!slot.active||slot.tick_address!=&e||slot.tick!=e.invocation||GetCurrentThreadId()!=slot.key.request.native.game_thread||
            slot.compose_depth||slot.control_depth||slot.compose_address||slot.control_address){failed=true;reject(Failure::end);return;}
         if(!returned)reject(Failure::exception);if(stopping.load())reject(Failure::stopped);
-        if(slot.attempted&&!slot.sticky&&!same_source())reject(Failure::latch);
-        if(slot.attempted&&!rig::end_tick(slot.key,slot.latch)){failed=true;reject(Failure::end);return;}
+        if(body_tick_source_live::enabled){
+            if(slot.attempted&&!slot.hard_control_fault&&!same_source())reject(Failure::latch);
+            const bool ended=!slot.attempted||rig::end_scene_metadata_tick(slot.key,slot.metadata_latch);
+            body_tick_source_live::end(e.invocation);slot.metadata_revision=0;
+            if(!ended){failed=true;reject(Failure::end);return;}
+        }else{
+            if(slot.attempted&&!slot.sticky&&!same_source())reject(Failure::latch);
+            if(slot.attempted&&!rig::end_tick(slot.key,slot.latch)){failed=true;reject(Failure::end);return;}
+            body_tick_tracking_probe_live::end_tick(e.invocation);body_tick_input_live::end(e.invocation);
+        }
         auto& r=slot.data.record;r.end_qpc=phase::qpc();r.returned=returned;r.complete=returned&&!slot.sticky&&r.seen==15&&r.planned==15;
         if(r.complete)++completed;
         if(slot.lease){slot.lease->~Scope();slot.lease=nullptr;}
@@ -166,11 +212,36 @@ void pose_end(Entry const& e,bool returned) noexcept {Call call;try{
     }
     --slot.tick_depth;
 }catch(...){failed=true;reject(Failure::exception);}}
+bool observe_source(Failure failure){
+    // Legacy checks retain their original call pattern. Only a positively
+    // classified observational expiry in an exact consumed typed scope differs.
+    if(!body_tick_source_live::enabled&&!body_tick_input_live::enabled){if(same_source())return true;reject(failure);return false;}
+    rig::TickFailure why{};if(observer_same_source(&why))return true;
+    if(why==rig::TickFailure::source_age_only&&
+       full_body_c0_native_live::retained_control_current(slot.compose.scope,slot.tick)==gears_body_c0_arm_alpha::RetainedControl::verified){
+        slot.observer_source_expired=true;slot.sticky=true;
+        if(slot.data.record.failure==Failure::none)slot.data.record.failure=failure;++rejected;return false;
+    }
+    reject(failure);return false;
+}
 void control_begin(Entry& e) noexcept {Call call;try{
     if(!enabled||!slot.active||e.kind>1||!next(e))return;
     e.control_depth=true;e.depth=++slot.control_depth;
     if(e.depth!=1||slot.control_address){reject(Failure::nested);return;}
-    slot.control_address=&e;e.selected=true;slot.control_valid=false;if(!control_current(slot.compose.scope)||!same_source()){reject(Failure::latch);return;}
+    slot.control_address=&e;e.selected=true;slot.control_valid=false;
+    if(slot.observer_source_expired){
+        // The original age failure burned the old latch. Keep structural
+        // begin/end plus the ORIGINAL before/after node/stack validators and
+        // independently authenticate hard consumer boundaries;
+        // do not query/revive that source again or run its hypothetical plan.
+        if(full_body_c0_native_live::retained_control_current(slot.compose.scope,slot.tick)!=gears_body_c0_arm_alpha::RetainedControl::verified){reject(Failure::owner);return;}
+    }else{
+        if(!control_current(slot.compose.scope)){reject(Failure::latch);return;}
+        if(!observe_source(Failure::latch)){
+            if(!slot.observer_source_expired||slot.hard_control_fault||
+               full_body_c0_native_live::retained_control_current(slot.compose.scope,slot.tick)!=gears_body_c0_arm_alpha::RetainedControl::verified)return;
+        }
+    }
     auto& row=slot.row;row={};row.owner=slot.data.owner.key;row.compose=slot.data.record.compose;row.outer_tick=slot.tick;
     row.ordinal=row.compute_ordinal=++slot.ordinal;row.kind=e.kind;row.thread=e.thread;
     row.node_argument=e.rcx;row.raw_rdx=e.rdx;row.mesh_argument=e.r8;row.out_argument=e.r9;row.entry_rsp=e.rsp;row.caller=e.ra;row.before_qpc=phase::qpc();
@@ -183,7 +254,7 @@ void plan(){auto& d=slot.data;auto const& row=slot.row;auto const& source=d.reco
     if(hand.seen[row.kind]){reject(Failure::role);return;}hand.seen[row.kind]=true;d.record.seen|=1u<<index;
     out.node=row.node_argument;out.ordinal=row.ordinal;out.side=side;out.kind=row.kind;out.count=row.kind?1u:3u;
     memcpy(out.original,row.matrices.data(),out.count*64);memcpy(&out.component,&row.before.metadata.component,64);
-    if(!metadata(false,&row)||!same_source()){reject(Failure::metadata);return;}
+    if(!metadata(false,&row)){reject(Failure::metadata);return;}if(!observe_source(Failure::metadata))return;
     if(!hand.attempted){hand.attempted=true;++preparations[side];auto& b=hand.binding;b.native=source.native;b.world=source.world;b.pawn=source.pawn;b.mesh=source.mesh;
         b.asset=rig::object(d.asset);b.world_generation=source.world_generation;b.binding_generation=source.binding_generation;b.model=mount::Model::marcus115;
         b.geometry_signature=d.signature;b.bone_count=115;b.model_to_world_scale=1;
@@ -200,7 +271,8 @@ void plan(){auto& d=slot.data;auto const& row=slot.row;auto const& source=d.reco
     }else{d.single={};d.single.asset=hand.binding.asset;d.single.bone_count=115;d.single.affected_count=1;d.single.affected=profile.hand_bone;
         d.single.component=out.original[0];d.single.component_to_world=out.component;out.solve=adapter::replace_wrist_rotation(hand.target,d.single,d.math_work,out.planned);}
     if(out.solve!=adapter::Status::okay){reject(Failure::math);return;}
-    if(!metadata(false,&row)||!same_source()){memset(out.planned,0,sizeof(out.planned));reject(Failure::metadata);return;}
+    if(!metadata(false,&row)){memset(out.planned,0,sizeof(out.planned));reject(Failure::metadata);return;}
+    if(!observe_source(Failure::metadata)){memset(out.planned,0,sizeof(out.planned));return;}
     d.record.planned|=1u<<index;
 }
 void control_end(Entry const& e,bool returned) noexcept {Call call;
@@ -209,8 +281,8 @@ void control_end(Entry const& e,bool returned) noexcept {Call call;
     const bool owned=slot.control_address==&e;
     try{if(owned){
         if(!returned)reject(Failure::exception);
-        if(returned&&slot.control_valid&&!slot.sticky){auto& row=slot.row;row.returned=true;row.after_qpc=phase::qpc();row.failure=controls::after(slot.compose,row);
-            row.after_valid=row.failure==controls::Failure::okay;if(row.after_valid)plan();else reject(Failure::control);}
+        if(returned&&slot.control_valid&&!failed.load()&&!slot.hard_control_fault&&(!slot.sticky||slot.observer_source_expired)){auto& row=slot.row;row.returned=true;row.after_qpc=phase::qpc();row.failure=controls::after(slot.compose,row);
+            row.after_valid=row.failure==controls::Failure::okay;if(!row.after_valid)reject(Failure::control);else if(!slot.observer_source_expired)plan();}
     }}catch(...){failed=true;reject(Failure::exception);}
     if(owned){slot.control_address=nullptr;slot.control_valid=false;}--slot.control_depth;
 }

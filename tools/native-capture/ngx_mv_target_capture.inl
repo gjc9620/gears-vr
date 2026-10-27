@@ -81,7 +81,6 @@ void eval_enter(ngx_stereo_host::WrapperScope& scope,bool owned,uintptr_t caller
     if(window.eval_enter(c,reinterpret_cast<uintptr_t>(&scope),GetTickCount64())){
         scope.target_admitted=true;scope.target_context=c;scope.target_structure=address;
         scope.target_ordinal=window.snapshot().eval_count-1;
-        ngx_mv_compute_capture::sdk_eval(command,scope.target_ordinal);
         scope.target_receipt.begin(command,c.handle,c.parameters);
     }
     terminal();

@@ -1,6 +1,7 @@
 #pragma once
 #include "full_body_c0_transaction.h"
 #include "cover_pose_phase.h"
+#include "native_atom_overwrite_receipt.h"
 #include <windows.h>
 #include <intrin.h>
 
@@ -28,7 +29,17 @@ inline tx::Cas atomic_exchange(std::uintptr_t address,tx::Block const& expected,
         static_cast<__int64>(replacement.high),static_cast<__int64>(replacement.low),comparand)?tx::Cas::exchanged:tx::Cas::mismatch;}
     __except(EXCEPTION_EXECUTE_HANDLER){return tx::Cas::fault_unknown;}
 }
+// Diagnostic output only; no extra Backend members or game reads.
+enum class CaptureReject:std::uint64_t {captured,stopped,already_captured,seed_owner,seed_model,
+    seed_metadata_generation,seed_frame,seed_producer,seed_scope,owner_session,owner_world,
+    initial_current,metadata_read,metadata_shape,reference_read,local_read,desired_read,
+    desired_index_range,desired_index_duplicate,immutable_readback,repeated_local_read,
+    local_changed,final_metadata_read,metadata_changed,final_current};
+struct CaptureObservation {
+    std::uint64_t reason{UINT64_MAX},context_verdict{UINT64_MAX};
+};
 class Backend final:public tx::Backend {
+    gears_atom_overwrite::ReceiptSource* receipts_{};
     Context* context_{};pose::Request request_{};pose::Metadata metadata_{};tx::Stamp stamp_{};
     body::Frame source_{};tx::Desired desired_{};DWORD thread_{};bool captured_{};std::atomic<bool> stopped_{};
     struct Permit {tx::Block expected{},replacement{};std::uintptr_t address{};tx::Stage stage{};bool armed{};unsigned char reserved[3]{};} permit_{};
@@ -67,32 +78,57 @@ public:
     void invalidate() noexcept {permit_.armed=false;context_=nullptr;}
     // Seed IDs are registrations supplied only by the actual C0 adapter; Local
     // binding/header values are read here, never accepted from the seed.
-    bool capture(Context& context,pose::OwnerKey const& owner,tx::Stamp seed,body::Frame& out,tx::Desired& desired) noexcept {
-        if(stopped_||captured_||!seed.binding.owner||!seed.binding.model||!seed.binding.metadata_generation||
-           !seed.frame||!seed.producer||!seed.scope||owner.session!=seed.binding.session||owner.world_generation!=seed.binding.world_generation||
-           !context.current(tx::Stage::prepare))return false;
+    bool capture(Context& context,pose::OwnerKey const& owner,tx::Stamp seed,body::Frame& out,tx::Desired& desired,
+                 CaptureObservation* observation=nullptr) noexcept {
+        if(observation)*observation={};
+        const auto reject=[&](CaptureReject reason) noexcept {
+            if(observation)observation->reason=std::uint64_t(reason);return true;
+        };
+        const auto reject_current=[&](CaptureReject reason) noexcept {
+            if(observation){observation->reason=std::uint64_t(reason);
+                observation->context_verdict=std::uint64_t(context.rejection());}return true;
+        };
+        if((stopped_&&reject(CaptureReject::stopped))||
+           (captured_&&reject(CaptureReject::already_captured))||
+           (!seed.binding.owner&&reject(CaptureReject::seed_owner))||
+           (!seed.binding.model&&reject(CaptureReject::seed_model))||
+           (!seed.binding.metadata_generation&&reject(CaptureReject::seed_metadata_generation))||
+           (!seed.frame&&reject(CaptureReject::seed_frame))||
+           (!seed.producer&&reject(CaptureReject::seed_producer))||
+           (!seed.scope&&reject(CaptureReject::seed_scope))||
+           (owner.session!=seed.binding.session&&reject(CaptureReject::owner_session))||
+           (owner.world_generation!=seed.binding.world_generation&&reject(CaptureReject::owner_world))||
+           (!context.current(tx::Stage::prepare)&&reject_current(CaptureReject::initial_current)))return false;
         request_={};request_.owner=owner;request_.kind=pose::Kind::compose;request_.phase=pose::Phase::C0;
         request_.invocation=seed.scope;request_.thread=GetCurrentThreadId();request_.caller_rva=pose::compose_caller;
         context_=&context;thread_=GetCurrentThreadId();pose::Metadata after{};
-        if(!read_metadata(metadata_)||!shape(metadata_))return false;
+        if((!read_metadata(metadata_)&&reject(CaptureReject::metadata_read))||
+           (!shape(metadata_)&&reject(CaptureReject::metadata_shape)))return false;
         source_={};source_.count=115;source_.model_scale=1;source_.units_per_metre=100;
         std::memcpy(&source_.component_to_world,&metadata_.component,64);
         desired_={};desired_.count=115;
-        if(!read_memory(source_.reference.data(),metadata_.reference.data,sizeof source_.reference)||
-           !read_memory(source_.local.data(),metadata_.local.data,sizeof source_.local)||
-           !read_memory(desired_.indices.data(),metadata_.desired.data,115))return false;
-        std::array<bool,115> seen{};for(auto index:desired_.indices){if(index>=115||seen[index])return false;seen[index]=true;}
-        if(!immutable_readback()||!read_memory(repeated_.local.data(),metadata_.local.data,sizeof repeated_.local)||
-           std::memcmp(repeated_.local.data(),source_.local.data(),sizeof source_.local)||
-           !read_metadata(after)||!pose::metadata_equal(after,metadata_)||!context.current(tx::Stage::prepare))return false;
+        if((!read_memory(source_.reference.data(),metadata_.reference.data,sizeof source_.reference)&&reject(CaptureReject::reference_read))||
+           (!read_memory(source_.local.data(),metadata_.local.data,sizeof source_.local)&&reject(CaptureReject::local_read))||
+           (!read_memory(desired_.indices.data(),metadata_.desired.data,115)&&reject(CaptureReject::desired_read)))return false;
+        std::array<bool,115> seen{};for(auto index:desired_.indices){
+            if((index>=115&&reject(CaptureReject::desired_index_range))||
+               (seen[index]&&reject(CaptureReject::desired_index_duplicate)))return false;seen[index]=true;}
+        if((!immutable_readback()&&reject(CaptureReject::immutable_readback))||
+           (!read_memory(repeated_.local.data(),metadata_.local.data,sizeof repeated_.local)&&reject(CaptureReject::repeated_local_read))||
+           (std::memcmp(repeated_.local.data(),source_.local.data(),sizeof source_.local)&&reject(CaptureReject::local_changed))||
+           (!read_metadata(after)&&reject(CaptureReject::final_metadata_read))||
+           (!pose::metadata_equal(after,metadata_)&&reject(CaptureReject::metadata_changed))||
+           (!context.current(tx::Stage::prepare)&&reject_current(CaptureReject::final_current)))return false;
         seed.binding.local=metadata_.local.data;seed.binding.count=115;seed.binding.capacity=unsigned(metadata_.local.capacity);
-        stamp_=seed;out=source_;desired=desired_;captured_=true;return true;
+        stamp_=seed;out=source_;desired=desired_;captured_=true;
+        if(observation)observation->reason=std::uint64_t(CaptureReject::captured);return true;
     }
     tx::Verdict validate(tx::View const& v,tx::Stage stage,unsigned unit) noexcept override {
         permit_.armed=false;
         if(!captured_||!context_||GetCurrentThreadId()!=thread_||!tx::same(v.stamp,stamp_)||
            !source_equal(v.source)||v.desired.count!=115||v.desired.indices!=desired_.indices||v.count>tx::max_units||
            ((stage==tx::Stage::prepare||stage==tx::Stage::commit)&&stopped_))return tx::Verdict::denied;
+        if(stage==tx::Stage::commit&&(!metadata_.pose_epoch||metadata_.pose_epoch==UINT32_MAX))return tx::Verdict::denied;
         if((stage==tx::Stage::commit||stage==tx::Stage::rollback)&&unit>=v.count)return tx::Verdict::denied;
         pose::Metadata now{},again{};
         if(!read_metadata(now)||!pose::metadata_equal(now,metadata_)||!immutable_readback())return tx::Verdict::denied;
@@ -139,10 +175,21 @@ public:
             tx::Cas::source_age_no_write:tx::Cas::fault_unknown;
         return atomic_exchange(address,expected,replacement);
     }
-    tx::Verdict fresh(tx::View const&,tx::ReceiptRef,tx::FreshEvidence&) noexcept override {
-        // Actual completed leaf coverage is not yet known. No endpoint equality,
-        // newer tick, cache-miss return or arbitrary caller token can retire debt.
-        return tx::Verdict::denied;
+    void receipt_source(gears_atom_overwrite::ReceiptSource* p)noexcept{receipts_=p;}
+    std::uint32_t installation_epoch()const noexcept{return metadata_.pose_epoch;}
+    bool retirement_metadata(pose::Metadata& now)noexcept {
+        if(!captured_||GetCurrentThreadId()!=thread_||!read_metadata(now))return false;
+        auto storage_same=[&](pose::Metadata const&x){return x.asset==metadata_.asset&&x.master==metadata_.master&&
+            x.physics_asset==metadata_.physics_asset&&x.physics_instance==metadata_.physics_instance&&
+            pose::header_equal(x.reference,metadata_.reference)&&pose::header_equal(x.local,metadata_.local)&&
+            pose::header_equal(x.desired,metadata_.desired)&&pose::header_equal(x.space,metadata_.space);};
+        pose::Metadata again{};return storage_same(now)&&immutable_readback()&&read_metadata(again)&&
+            pose::metadata_equal(now,again)&&storage_same(again)&&immutable_readback();
+    }
+    tx::Verdict fresh(tx::View const&v,tx::ReceiptRef r,tx::FreshEvidence&e) noexcept override {
+        if(!captured_||!receipts_||GetCurrentThreadId()!=thread_||!tx::same(v.stamp,stamp_)||!source_equal(v.source)||
+            v.desired.count!=115||v.desired.indices!=desired_.indices)return tx::Verdict::denied;
+        return receipts_->verify(v,r,e);
     }
 };
 } // namespace gears_full_body_c0_native

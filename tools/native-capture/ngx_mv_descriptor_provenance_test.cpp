@@ -480,63 +480,6 @@ void retained_heap_import_validation_and_authoritative_seed(){
     source.bank.uncertain();size_t visited{};assert(!source.bank.visit_heap_leases(scope,[&](HeapLease const&){++visited;return true;})&&!visited);
 }
 }
-void replacement_mv_scope_requires_new_lineage(){
-    using Source=gears_ngx_mv::SourceDescriptorLedger<ResourceLease,HeapLease>;
-    using Target=gears_ngx_mv::SelectedMvDescriptorBank<ResourceLease,HeapLease>;
-    const auto birth=gears_ngx_mv::lifetime_scope(1,7),first=gears_ngx_mv::lifetime_scope(2,7),second=gears_ngx_mv::lifetime_scope(3,7);
-    HeapFixture cpu{},gpu{202,7,2000,10000,8,32,true,true};ResourceFixture a{},b{102,7,true};
-    Source source;assert(source.begin(birth)&&source.observe_heap(birth,typed(cpu))&&source.observe_heap(birth,typed(gpu)));
-    assert(source.write_uav(birth,1000,typed(a),nullptr,{}));auto a_lease=ResourceLease::observe(typed(a));auto old_birth=source.lookup(birth,1000);
-    Target old;assert(old.begin(first));
-    assert(source.visit_heap_leases(birth,[&](HeapLease const& h){return old.observe_heap_lease(first,h);}));
-    assert(old.seed_current_mv(first,source,old_birth,a_lease)&&old.copy_simple_sparse(first,2000,1000,1));
-    const auto old_gpu=old.lookup(first,10000,true);assert(old_gpu.same_mv(a_lease));
-    // An observed replacement write invalidates the old source version. The
-    // old selected-MV scope must lose its old visible alias as well.
-    assert(source.write_uav(birth,1000,typed(b),nullptr,{}));auto b_lease=ResourceLease::observe(typed(b));auto new_birth=source.lookup(birth,1000);
-    assert(!source.current(old_birth)&&!new_birth.same_mv(a_lease)&&new_birth.same_mv(b_lease));
-    assert(old.unknown_write(first,1000)&&old.copy_simple_sparse(first,2000,1000,1)&&!old.current(old_gpu));
-    Target replacement;assert(replacement.begin(second));
-    assert(source.visit_heap_leases(birth,[&](HeapLease const& h){return replacement.observe_heap_lease(second,h);}));
-    assert(replacement.seed_current_mv(second,source,new_birth,b_lease));
-    assert(!replacement.lookup(second,10000,true).version&&!replacement.current(old_gpu));
-    // A new visible descriptor requires a subsequent explicit copy observation;
-    // resource dimensions or an old alias cannot supply that lineage.
-    assert(replacement.copy_simple_sparse(second,2000,1000,1));auto current=replacement.lookup(second,10000,true);
-    assert(current.same_mv(b_lease)&&current.seed&&current.seed->version==new_birth.version&&current.seed->origin==new_birth.origin);
-    source.uncertain();Target denied;auto third=gears_ngx_mv::lifetime_scope(4,7);assert(denied.begin(third));
-    assert(denied.observe_heap(third,typed(cpu))&&!denied.seed_current_mv(third,source,new_birth,b_lease));
-}
-template<class TestedBank> void single_copy_range_equivalence(){
-    for(bool sparse:{false,true})for(bool implicit_size:{false,true})for(unsigned variant=0;variant<12;++variant){
-        TestedBank single,general;HeapFixture cpu{},gpu{202,7,2000,10000,8,32,true,true};ResourceFixture mv{},other{102,7,true};
-        for(auto* bank:{&single,&general}){
-            assert(bank->begin(scope)&&bank->observe_heap(scope,typed(cpu))&&bank->observe_heap(scope,typed(gpu)));
-            assert(bank->write_uav(scope,1000,typed(mv),nullptr,{}));
-            if(variant==2)assert(bank->write_uav(scope,2000,typed(other),nullptr,{}));
-            if(variant==3)assert(bank->write_uav(scope,1016,typed(other),nullptr,{}));
-            if(variant==10)for(unsigned i=1;i<8;++i)assert(bank->write_uav(scope,1000+16*i,typed(mv),nullptr,{}));
-            if(variant==11)assert(bank->write_uav(scope,1000,nullptr,nullptr,{}));
-        }
-        uint64_t dst=1016,src=1000;
-        switch(variant){case 1:case 2:case 10:dst=2000;break;case 3:case 4:src=1032;break;
-            case 5:src=2000;break;case 6:dst=1000;break;case 7:++dst;break;case 8:++src;break;case 9:dst=0;break;}
-        typename TestedBank::CopyRanges d{},s{};d.count=s.count=1;d.starts[0]=dst;s.starts[0]=src;
-        d.sizes_present=s.sizes_present=!implicit_size;d.sizes[0]=s.sizes[0]=1;
-        auto rd=d,rs=s;rd.count=rs.count=2;rd.sizes_present=rs.sizes_present=true;
-        // A trailing empty range forces the original multi-range algorithm
-        // with exactly the same effective descriptor operation and ordering.
-        rd.sizes[1]=rs.sizes[1]=0;
-        const bool a=sparse?single.copy_sparse(scope,d,s):single.copy(scope,d,s);
-        const bool b=sparse?general.copy_sparse(scope,rd,rs):general.copy(scope,rd,rs);
-        assert(a==b&&single.loss()==general.loss()&&single.cells()==general.cells());
-        for(unsigned i=0;i<16;++i){const uint64_t handle=i<8?1000+16*i:2000+32*(i-8);
-            const auto x=single.lookup(scope,handle),y=general.lookup(scope,handle);
-            assert(x.version==y.version&&x.origin==y.origin&&x.source_handle==y.source_handle&&x.source_version==y.source_version);
-            assert(x.known_uav==y.known_uav&&x.resource.canonical==y.resource.canonical&&x.counter.canonical==y.counter.canonical);
-        }
-    }
-}
 int main(){_set_abort_behavior(0,_WRITE_ABORT_MSG|_CALL_REPORTFAULT);
     static_assert(!Bank::Snapshot::producer_authorized,"observation must not authorize producer");
     rewrite_and_lifetime();ranges();invalid_ranges();scope_capacity_and_heap_aba();typed_boundaries();
@@ -547,9 +490,5 @@ int main(){_set_abort_behavior(0,_WRITE_ABORT_MSG|_CALL_REPORTFAULT);
     production_cell_and_copy_boundaries();
     source_ledger_aliases_fanout_and_rewrites();source_ledger_independence_and_failed_no_join();source_ledger_skipped_copy_validation();
     lease_only_seed_and_source_retirement();seed_rejects_stale_owner_failure_device_and_non_mv();retained_heap_import_validation_and_authoritative_seed();
-    replacement_mv_scope_requires_new_lineage();
-    single_copy_range_equivalence<Bank>();
-    single_copy_range_equivalence<gears_ngx_mv::DescriptorBank<ResourceLease,HeapLease,3,8,true,8>>();
-    single_copy_range_equivalence<gears_ngx_mv::DescriptorBank<ResourceLease,HeapLease,3,8,true,8,true>>();
     std::puts("NGX MV descriptor CPU provenance tests passed; no GPU/Dispatch/producer proof");
 }

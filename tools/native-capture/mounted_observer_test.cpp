@@ -168,5 +168,19 @@ int main(){unsigned checks{};Fixture f;CHECK(f.load(L"mounted"));auto read=[&](v
         CHECK(f.load(name,cached));CHECK(gears_anchor::guard(f.anchor,read,anchor,stamp));
         CHECK(gears_ui_binding::acquire(f.ui,f.anchor,read,binding));
     }
+    for(auto name:{L"junker_driver",L"junker_gunner"}){
+        CHECK(f.load(name));CHECK(gears_anchor::guard(f.anchor,read,anchor,stamp));
+        CHECK(gears_ui_binding::acquire(f.ui,f.anchor,read,binding));
+        const auto memory=f.memory;
+        for(auto address:{std::uintptr_t(0x10224),std::uintptr_t(0x20810),std::uintptr_t(0x8108c),std::uintptr_t(0x30500)}){
+            f.memory=memory;f.put(address,std::uintptr_t(0));
+            CHECK(!gears_anchor::guard(f.anchor,read,anchor,stamp));
+            CHECK(!gears_ui_binding::acquire(f.ui,f.anchor,read,binding));
+        }
+        f.memory=memory;f.put(0x20250,std::uintptr_t(0x10000));
+        CHECK(!gears_anchor::guard(f.anchor,read,anchor,stamp));
+        f.memory=memory;f.put(0x800d0,std::uintptr_t(0x80000));
+        CHECK(!gears_anchor::guard(f.anchor,read,anchor,stamp));
+    }
     std::printf("mounted anchor/UI/config, link/layout races and dismount restoration: %u checks passed\n",checks);return 0;
 }
