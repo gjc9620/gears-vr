@@ -1484,3 +1484,6 @@ Native27从26c2的710文件最小派生718文件（5既有／8新增），82defi
 
 
 2026-10-27 武器会话完成RWENT001纯文件最小消费者交付。准确source3合同27493ce7…3520，reader821d0167…8ddea，回执26a8c3aa…92940，私有件在ignored `analysis/lancer-ready-same-entry-20261027/`。独立ctypes逐字段对compiler ABI，12项必要检查／0失败（0.020秒），CLI成功及覆盖／截断拒绝通过。valid组和read-status分别约束可信字段，失败记录保留；比较Local35／51／52四个相邻阶段以及returned_end的Space×CTW世界手腕误差，raw米与target游戏单位分开，不套未认证阈值或自动归因。跨entry必须有完整映射观测和相同cohort，rawRight单独固定不充当目标固定证明；原ns和QPC频率边界保持，gun／Muzzle缺证不补。Body准确67b513候选与K预检已由其交付，消费者已通知Body可开原独占一局。未动／构建Native、PG、XR，未重跑旧套件或旧案例；K实跑结果待收，不计跟手功能完成度。详见 `docs/weapon-ready-same-entry-observation-contract-20261027.md`。
+
+
+2026-10-27 武器会话完成唯一K新RWENT原件的一次实际解析：Game74284／Native3200498446623，18条=9提交成功／3guard拒绝／3mount0／3seed_model捕获失败。9成功样本planned→commit→pre→end的Local35／51／52逐bit一致；3拒绝seq7／13／15(code12/unit17／3／9)在pre仍逐bit等于before，end腕离target约15.77..16.18u；known-ready的11份有效target均相同，完整相邻mapping相同仍发生成功／拒绝分流。优先交Body定位capture／mount／commit准入，不能归因为成功写后动画覆盖。解析原件SHAb3563225…ab28b、输出f0c0d74b…4723b、派生review fc7cf1c5…9e7a5，均见ignored `analysis/lancer-ready-same-entry-20261027/`及同次观测文档。原ready phase仅15capturepoint／7成功；新观测不覆盖肩／移动，启用期unavailable293不当ready丢失。Body原动作／恢复／106清理通过，不增加功能完成百分比；未重复v3／PG解码或新Game／Native构建。

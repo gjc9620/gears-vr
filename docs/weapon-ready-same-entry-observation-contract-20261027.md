@@ -38,3 +38,16 @@ Body最终source3合同已冻结为 `27493ce7a286cb69ef87dcd1bfec354e59043fcfe91
 相邻entry只在原始head／right／reference、实际base、component、units、mount可用且cohort匹配时报告target数值变化，并同时报告已记录映射输入是否完全相同；不以rawRight相同推出目标必须相同，也不输出自动因果结论。raw XR位移误差单位为米，world／target位移为游戏单位。源ns保留原值，Stage QPC仅用Header频率计算读取时长。没有套用未经确认的误差通过阈值，没有新增gun／Muzzle或借用旧PG数据。合同文字有“six contiguous double scalars”笔误；实际源码五个double及编译器offset552..584一致，解析按准确布局。
 
 必要验证：独立ctypes定义的Header／Key／Record／Stage每个字段与冻结的编译器布局比较；12项方法全部通过（0.020秒），覆盖有效位／UNKNOWN／失败partial、阶段变化、q符号、世界矩阵与旋转、跨entry映射缺失／cohort改变、空记录／64条溢出和坏输入。CLI合成解析exit0，已存在输出及截断输入exit2且截断不生成输出。未重跑旧suite，未改建Native／PG／XR或启动Game。已交给Body以准确67b513候选运行唯一K案例；实际K解析和定位结果仍待该局完成，以上不是跟手修复或玩法／GPU／真机验收。
+
+
+## K：同次更新实跑结果（2026-10-27）
+
+Body唯一K已正常完成原8动作、三个门、松手后的身体续更、双控制器还原和正常清理；本会话未启动第二实例。身份为Game74284／creation134375340335681979／Native3200498446623，准确Native67b513候选。新原件 `body-ready-wrist.bin` 36560B、SHA256 `b3563225378946723d82e7f91bd15062bc54a02216bba330f04f3dfe648ab28b`，Header128／Record2024，共18条，selected18／drop0／nested0／unmatched0。冻结解析器仅对该新原件运行一次exit0，原始输出 `k-ready-wrist-parsed-v1.json` SHA256 `f0c0d74befd7a5d9bdc18989e23669c9d424d2f27810daf61cfcc520ade4723b`；随后从已解析JSON整理 `k-ready-wrist-review-v1.json` SHA256 `fc7cf1c50e34e9ec76e2e15b7b59ac23c111fb287c979292d862218dace9e7a5`，均在ignored同目录。未重解旧BHELD003或PG Muzzle。
+
+18条分为9个成功提交、3个guard_rejected、3个实际mount0但无target／prepare／commit、3个capture seed_model失败；17条known-ready和1条nonready closing都保留。成功seq1／3／5／8／10／12／14／16／18中，planned→commit→consumer_pre→returned_end的Local35／51／52全部逐bit一致，最终world腕到target的位置误差为2.90473e−5至2.35253e−4游戏单位，角度2.07531e−7至7.46121e−7弧度。这是该9份样本的数值，未套未认证的通过阈值。
+
+提交拒绝为seq7／epoch1295／unit17、seq13／epoch1301／unit3、seq15／epoch1303／unit9，均code12；这三份consumer_pre的Local35／51／52与本次before逐bit相同，而pre到end发生变化。返回腕目标误差分别15.77156／16.08712／16.17715游戏单位、0.603902／0.599980／0.596448弧度。另seq9／11／17实际mount0，seq2／4／6 capture reason4；其未知字段未填补。11份known-ready有效target位置和角度差均0；相邻seq7→8、12→13→14→15→16具有完整且相同的已记录mapping输入、base、CTW、units、mount，但存在成功／拒绝分流。
+
+因此当前优先定位提交前的capture／mount／commit准入分叉。成功路径未观察到原流程将已提交的这三根Local改回；拒绝路径的后续变化不能作为成功写后动画覆盖的证据。准确seed_model子条件、guard unit对应的失败判定及mount0原因由Native owner继续定位，不为增加通过率放宽保护。尚不能宣称完整故障根因或跟手修复。
+
+覆盖按原capture_ns与原phase ns比较，不从QPC猜branch时钟：原ready区间320060142564400..320060994053000内只有seq2..16的15个capture点，其中7成功；seq1的capture点约早于ready marker13.549微秒，该点不等于整次entry区间；seq17／18在ready结束与move开始之间，18为nonready closing。肩和移动phase没有此新观测的capture点，不声称其阶段覆盖。Header unavailable_input293是整个启用期的尝试统计，不能当293条ready遗漏或失败。106清理、XR0和原文件／音频恢复沿Body原handoff证据，不能替代玩法或真机验收。
