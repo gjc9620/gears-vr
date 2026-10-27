@@ -677,7 +677,7 @@ constexpr unsigned atom_overwrite_hooks=1;
 #else
 constexpr unsigned atom_overwrite_hooks=0;
 #endif
-std::array<SessionHookEntry,atom_overwrite_hooks+fresh_pose_hooks+ngx_mv_compute_hooks+ngx_mv_descriptor_hooks+ngx_stereo_host_hooks+session_hook_capacity+dxgi_resize_hooks+game_material_hooks+crosshair_assignment_hooks+ui_call_boundary_hooks+cover_body_hooks+cover_pose_hooks+cover_control_hooks+cover_future_g_hooks+ui_scene_root_hooks+path_layout_hooks+path_close_hooks+death_constant_hooks+dlss_route_hooks+dlss_input_bind_hooks+ngx_route_hooks+death_pso_hooks+death_dof_hooks+vr_dof_hooks> session_hook_entries{};
+std::array<SessionHookEntry,atom_overwrite_hooks+fresh_pose_hooks+ngx_mv_compute_hooks+ngx_mv_descriptor_hooks+ngx_stereo_host_hooks+session_hook_capacity+dxgi_resize_hooks+game_material_hooks+crosshair_assignment_hooks+ui_call_boundary_hooks+cover_body_hooks+cover_pose_hooks+cover_control_hooks+cover_future_g_hooks+ui_scene_root_hooks+path_layout_hooks+path_close_hooks+death_constant_hooks+dlss_route_hooks+dlss_input_bind_hooks+ngx_route_hooks+death_pso_hooks+death_dof_hooks+vr_dof_hooks+2> session_hook_entries{};
 unsigned session_hook_entry_count{};
 gears_submitted::Lifetime submitted_lifetime;
 std::atomic<bool> world_quiesce_requested{};
@@ -1397,6 +1397,7 @@ bool read_attested_hook_entry(void* output,void const* source,size_t size);
 #include "path_choice_close_observer.inl"
 #include "cover_body_live.inl"
 #include "weapon_hand_scene_binding.inl"
+#include "first_person_authored_eye.inl"
 #include "cover_pose_phase_live.inl"
 #include "cover_control_observer_live.inl"
 #include "run_camera_live.inl"
@@ -1419,6 +1420,7 @@ bool read_attested_hook_entry(void* output,void const* source,size_t size);
 #include "native_atom_overwrite_live.inl"
 #include "full_body_c0_native_live.inl"
 #include "body_c0_goal_policy_live.inl"
+#include "first_person_head_render_live.inl"
 #include "cover_full_goal_live.inl"
 uintptr_t canonical_identity(IUnknown* object) {
     IUnknown* identity{};
@@ -1986,7 +1988,7 @@ void write_session_status(bool resources_retained=true,bool entries_restored=fal
     support_startup.call("path_choice_layout_observer_progress",[&]{path_choice_layout_observer::progress(output);});
     support_startup.call("path_choice_close_observer_progress",[&]{path_choice_close_observer::progress(output);});
     cover_body_live::progress(output);
-    {std::lock_guard<decltype(stereo_mutex)> lock(stereo_mutex);cover_camera_live::summary(output);cover_input_live::summary(output);cover_shared_input_live::summary(output);cover_geometry_observer_live::summary(output);cover_full_goal_live::summary(output);run_camera_live::summary(output);cover_pose_phase_live::summary(output);cover_control_observer_live::summary(output);rig_tracking_live::summary(output);continuous_hand_owner_live::summary(output);body_recoil_observer_live::summary(output);fresh_pose_producer_live::summary(output);full_body_c0_native_live::summary(output);body_c0_goal_policy_live::summary(output);native_atom_overwrite_live::summary(output);cover_native_rig_observer_live::summary(output);hand_goal_observer_live::summary(output);}
+    {std::lock_guard<decltype(stereo_mutex)> lock(stereo_mutex);cover_camera_live::summary(output);cover_input_live::summary(output);cover_shared_input_live::summary(output);cover_geometry_observer_live::summary(output);cover_full_goal_live::summary(output);run_camera_live::summary(output);cover_pose_phase_live::summary(output);cover_control_observer_live::summary(output);rig_tracking_live::summary(output);continuous_hand_owner_live::summary(output);body_recoil_observer_live::summary(output);fresh_pose_producer_live::summary(output);full_body_c0_native_live::summary(output);body_c0_goal_policy_live::summary(output);first_person_head_render_live::summary(output);native_atom_overwrite_live::summary(output);cover_native_rig_observer_live::summary(output);hand_goal_observer_live::summary(output);}
     weapon_hand_runtime::summary(output);
     // Diagnostic rates use this sample's QPC, not the owner's polling time.
     // Existing bound/top-level Present observations exclude DXGI_PRESENT_TEST
@@ -4141,7 +4143,7 @@ bool install(void* target,void* detour,void** original) {
           graphics_lock_observer_reserved_target(target)||
           native_atom_overwrite_live::reserved_target(target)||fresh_pose_producer_live::reserved_target(target)||
           cover_body_live::reserved_target(target)||
-          cover_pose_phase_live::reserved_target(target)||
+          cover_pose_phase_live::reserved_target(target)||first_person_head_render_live::reserved_target(target)||
           cover_control_observer_live::reserved_target(target)||
           (ui_reserved&&(std::find(ui_targets.begin(),ui_targets.end(),target)!=ui_targets.end()||target==ui_execute_target||target==ui_subtitle_target
 #if defined(GEARS_UI_SCENE_ROOT_OBSERVER) && GEARS_UI_SCENE_ROOT_OBSERVER
@@ -5146,6 +5148,8 @@ DWORD WINAPI worker(void*) {
     // the immutable startup INI/anchor settings are available on the worker.
     if(!cover_pose_phase_live::configure(ini,status)||!cover_pose_phase_live::reserve()){
         fprintf(status,"rejected: cover pose observer requires current full code certificates and reserved entries\n");fclose(status);return 2;}
+    if(!first_person_head_render_live::configure(status)){
+        fprintf(status,"rejected: first-person head palette requires matching render code and owned entries\n");fclose(status);return 2;}
     if(!cover_control_observer_live::configure(ini,status)||!cover_control_observer_live::reserve()){
         cover_control_observer_live::summary(status);fputc('\n',status);
         fprintf(status,"rejected: control observer requires passive pose support and matching current control code\n");fclose(status);return 2;}
@@ -5426,6 +5430,10 @@ DWORD WINAPI worker(void*) {
     if(ok && viewport_diagnostics)ok=install(geometry_target,reinterpret_cast<void*>(hook_geometry),reinterpret_cast<void**>(&original_geometry));
     if(ok && viewport_diagnostics)ok=install(quad_target,reinterpret_cast<void*>(hook_quad),reinterpret_cast<void**>(&original_quad));
     if(ok && first_view_mask_hook_enabled())ok=install(first_view_mask_target,reinterpret_cast<void*>(hook_first_view_mask),reinterpret_cast<void**>(&original_first_view_mask));
+    if(ok&&first_person_head_render_live::enabled){
+        const auto hooks=first_person_head_render_live::detours();
+        for(unsigned i=0;i<hooks.size()&&ok;++i)ok=install(first_person_head_render_live::targets[i],hooks[i],&first_person_head_render_live::originals[i]);
+    }
     if(ok&&ui_observer_enabled)for(unsigned i=0;i<4&&ok;++i)
         ok=install(ui_targets[i],reinterpret_cast<void*>(ui_detours[i]),reinterpret_cast<void**>(&ui_original[i]));
 #if defined(GEARS_UI_SCENE_ROOT_OBSERVER) && GEARS_UI_SCENE_ROOT_OBSERVER

@@ -698,7 +698,13 @@ def run_session(args,control=None,on_report=None,cancel_requested=None,before_na
                     right_stick_policy.tick()
                     state['right_stick_policy']=dict(right_stick_policy.report)
                     if not right_stick_policy.report['applied']:
-                        raise RuntimeError('Right-stick dead zone was not applied: '+repr(right_stick_policy.report['errors']))
+                        # Unsupported/menu input bindings are left untouched by
+                        # Policy.plan(). This optional preference must not stop
+                        # the already running stereo session; tick can apply it
+                        # after a supported gameplay input object becomes ready.
+                        state['right_stick_policy']['status']='deferred'
+                        print(json.dumps({'right_stick_deadzone_deferred':True,
+                            'errors':right_stick_policy.report['errors']}),flush=True)
                 while child.poll() is None:
                     if right_stick_policy:right_stick_policy.tick()
                     observe_first_stereo(native_started)

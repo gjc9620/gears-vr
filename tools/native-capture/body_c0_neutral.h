@@ -32,10 +32,16 @@ inline bool capture(b::Model const& model,b::Frame const& frame,a::marker::Marke
         b::ik::detail::validate(frame.local.data(),model.parents.data(),b::bones,work.component)!=b::ik::Status::okay)return false;
     for(auto const& atom:frame.local)if(atom.scale!=1)return false;
     std::copy(frame.local.begin(),frame.local.end(),work.pose.local);if(!b::d::rebuild(model,work))return false;
-    // Keep initial ground contacts, but never use a weapon animation's head,
-    // root or pelvis as the neutral camera/body basis. Ref115 is immutable.
+    // Freeze one coherent standing pose, including the actual ground contacts.
+    // A reference-pose head/pelvis combined with animated feet can ask for an
+    // unreachable spine before the player has moved at all. Only the heading
+    // below comes from Ref115; no later animation sample rebases these points.
     b::Pose contacts[2]{};
     for(unsigned i=0;i<2;++i)contacts[i]=b::d::pose(work.pose.world[b::legs[i][2]]);
+    const auto initial_pelvis=b::d::position(work.pose.world[b::pelvis]);
+    const auto initial_root=b::d::rotation(work.pose.world[b::root]);
+    a::marker::EyeHmdWorld initial_eye{};
+    if(a::marker::eye_from_head(marker,model,frame,{b::d::pose(work.pose.world[b::head])},initial_eye)!=a::marker::Status::okay)return false;
     std::copy(model.reference.begin(),model.reference.end(),work.pose.local);
     if(!b::d::rebuild(model,work))return false;
     a::marker::EyeHmdWorld eye{};
@@ -44,9 +50,9 @@ inline bool capture(b::Model const& model,b::Frame const& frame,a::marker::Marke
     const auto f=b::d::rotate(eye.pose.orientation,{1,0,0});const double n=std::hypot(f.x,f.y);
     if(!std::isfinite(n)||n<.5)return false;const b::Vec forward{f.x/n,f.y/n,0},right{-f.y/n,f.x/n,0};
     const auto inv=b::d::inverse(b::d::rotation(work.component));Stored next{};
-    next.eye=local_point(work.component,eye.pose.position);next.pelvis=local_point(work.component,b::d::position(work.pose.world[b::pelvis]));
+    next.eye=local_point(work.component,initial_eye.pose.position);next.pelvis=local_point(work.component,initial_pelvis);
     next.forward=b::d::rotate(inv,forward);next.right=b::d::rotate(inv,right);
-    next.root=b::d::product(inv,b::d::rotation(work.pose.world[b::root]));
+    next.root=b::d::product(inv,initial_root);
     for(unsigned i=0;i<2;++i){const auto& p=contacts[i];next.feet[i]={local_point(work.component,p.position),b::d::product(inv,p.orientation)};}
     a::Neutral check{};if(!move(next,frame.component_to_world,check))return false;output=next;return true;
 }

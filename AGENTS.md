@@ -1,5 +1,11 @@
 # Project reverse-engineering workflow
 
+## 6DoF latest owner override — this chat alone (2026-10-28)
+
+- The human owner now requires only the current coordinating chat to implement, build and run the project. The Body, Weapon and roadmap chats are archived; do not reopen or dispatch work to them, and do not spawn helpers without a new direct user request. Continue from preserved unified source, not a reimplementation.
+- Sole current checkout is C:/Users/11/.codex/worktrees/6dof-single/gearsVr, branch codex/6dof-single, recovered from archive snapshot 7e4dd3949d3a506bc830272dcac9b7d966388968 (parent69e2e73). Previous source branches and snapshots remain recovery records.
+- Continue M1 actual first-person XR output and fixed-space theater menu, then M2 free hands, then M3 shoulder/pocket switching. A short basic Playground selftest permits progression; user feel/comfort feedback remains separate. Keep the existing controlled background test and resource protections. Fixed manual entry remains J:/gearsVr/candidates/6dof-unified/GearsVR Launcher.exe.
+
 ## 6DoF owner override — Playground selftest progression and fixed theater menu (2026-10-28, latest)
 
 - Latest direct owner instruction in the coordinating chat: fix the persistent flat screen / missing menu, implement a large theater menu fixed in space rather than following the head, then follow first-person → free hands → shoulder/pocket switching. Body may use Playground for a short controlled basic selftest and continue to the next milestone when basically usable; waiting for owner feel/comfort feedback is no longer a prerequisite to coding the next milestone. Actual headset acceptance remains separate.
