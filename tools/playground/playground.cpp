@@ -1549,6 +1549,7 @@ extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundEnable(void*){
     if(!player_tick)return 2;
     playground::player_tick_index=get<Name>(player_tick+0x48).index;
     playground::player=playground::find_instance(L"WarLocalPlayer");
+    playground::stop_requested=false;playground::stop_acknowledged=false;
     playground::automatic=true;return 0;
 }
 #if defined(GEARS_PLAYGROUND_EQUIPMENT_OBSERVE)
@@ -2192,6 +2193,14 @@ extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundShutdown(void*){
        )
         return 20; // Game thread must restore first.
 #endif
+    // Package preparation belongs to the game thread. Request its cleanup before
+    // stopping callbacks; never invoke an engine cancellation on this worker.
+    if(playground::automatic){
+        playground::stop_requested=true;
+        const auto deadline=GetTickCount64()+2000;
+        while(!playground::stop_acknowledged.load()&&GetTickCount64()<deadline)Sleep(1);
+        if(!playground::stop_acknowledged.load())return 5;
+    }
     enabled.store(false,std::memory_order_release);
     if(auto r=pending.exchange(nullptr))InterlockedExchange(&r->state,-2);
     if(hook_created){

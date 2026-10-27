@@ -770,7 +770,7 @@ bool apply_impl(Entry const& e,body::Goal const& goal,gears_native_rig_tracking:
                 hand_result=hands::compose_eye(state.model,state.source,
                     body_tick_source_live::enabled?state.context.body_source.observed:state.context.body_input,
                     e.invocation,rig_tracking_live::object(state.context.asset),*render_base,*eye,
-                    rig_tracking_live::clock_ns(),simulator_operator,state.hand_work,state.output);
+                    rig_tracking_live::clock_ns(),simulator_operator,state.hand_work,state.output,state.right_mount);
             else if(body_tick_source_live::enabled)hand_result=hands::compose(state.model,state.source,state.context.body_source,rig_tracking_live::object(state.context.asset),
                 *render_base,rig_tracking_live::clock_ns(),simulator_operator,state.hand_work,state.output,state.right_mount);
             else if(body_tick_input_live::enabled)hand_result=hands::compose(state.model,state.source,state.context.body_input,rig_tracking_live::object(state.context.asset),

@@ -5,6 +5,15 @@ std::atomic<bool> automatic{};
 std::atomic<bool> test_enter_pending{};
 uptr viewport{},menu_button{},player{},arena_world{},arena_pc{},arena_pawn{},turret{};
 uptr scene_client{},menu_scene{};
+uptr range_vehicle{},vehicle_driver{};
+uptr vehicle_loader{};
+uptr previous_vehicle_pawn{};
+Name vehicle_level{};
+std::atomic<bool> stop_requested{},stop_acknowledged{};
+const char* vehicle_phase="idle";
+bool vehicle_loading{},vehicle_use_held{},vehicle_exit_held{},vehicle_shadow{};
+ULONGLONG vehicle_deadline{};
+unsigned vehicle_entries{},vehicle_exits{};
 unsigned player_tick_index{};
 bool requested{},ready{},menu_layout_valid{};unsigned failures{},pickup_respawns{},target_respawns{};
 ULONGLONG next_tick{},requested_at{};
@@ -156,8 +165,8 @@ void status(){
     unsigned live_guns=0,live_targets=0;
     if(ready){for(auto const& s:guns)if(!deleted(s.actor))++live_guns;for(auto const& s:targets)if(!deleted(s.actor)&&scalar<int>(s.actor,L"Health")>0)++live_targets;}
     auto file=_wfsopen(path,L"wb",_SH_DENYNO);if(!file)return;
-    fprintf(file,"{\"schema\":1,\"pid\":%lu,\"phase\":\"%ls\",\"ready\":%s,\"menu_button\":\"0x%llx\",\"menu_layout_valid\":%s,\"menu_bounds\":[%.3f,%.3f,%.3f,%.3f],\"world\":\"0x%llx\",\"pawn\":\"0x%llx\",\"pickups\":%u,\"targets\":%u,\"turret\":\"0x%llx\",\"failures\":%u,\"pickup_respawns\":%u,\"target_respawns\":%u}\n",
-        GetCurrentProcessId(),phase,ready?"true":"false",menu_button,menu_layout_valid?"true":"false",menu_bounds.left,menu_bounds.top,menu_bounds.right,menu_bounds.bottom,arena_world,arena_pawn,live_guns,live_targets,turret,failures,pickup_respawns,target_respawns);
+    fprintf(file,"{\"schema\":1,\"pid\":%lu,\"phase\":\"%ls\",\"ready\":%s,\"menu_button\":\"0x%llx\",\"menu_layout_valid\":%s,\"menu_bounds\":[%.3f,%.3f,%.3f,%.3f],\"world\":\"0x%llx\",\"pawn\":\"0x%llx\",\"pickups\":%u,\"targets\":%u,\"turret\":\"0x%llx\",\"failures\":%u,\"pickup_respawns\":%u,\"target_respawns\":%u,\"vehicle\":\"0x%llx\",\"vehicle_phase\":\"%s\",\"vehicle_entries\":%u,\"vehicle_exits\":%u}\n",
+        GetCurrentProcessId(),phase,ready?"true":"false",menu_button,menu_layout_valid?"true":"false",menu_bounds.left,menu_bounds.top,menu_bounds.right,menu_bounds.bottom,arena_world,arena_pawn,live_guns,live_targets,turret,failures,pickup_respawns,target_respawns,range_vehicle,vehicle_phase,vehicle_entries,vehicle_exits);
     fclose(file);
 }
 bool in_map(uptr object){
@@ -184,6 +193,7 @@ bool infinite(uptr weapon){
         put(weapon,L"SpareAmmoCount",int(maximum));
     return true;
 }
+#include "playground_vehicle.inl"
 bool create_gun(Slot& slot){
     if(!slot.cls)return false;
     auto weapon=spawn(slot.cls,slot.location);if(!weapon)return false;
@@ -223,11 +233,11 @@ bool initialize_arena(uptr pc,uptr pawn,uptr world){
     Vector start{};if(!floor_at(-3900,0,900,start))return false;start.z+=90;
     Args location(pawn,L"SetLocation");location.set(L"NewLocation",start);if(!location.run()||!location.output<unsigned>())return false;
     Args rotation(pc,L"SetRotation");rotation.set(L"NewRotation",Rotation{0,0,0});rotation.run();
-    ready=true;phase=L"ready";message(L"ready");status();return true;
+    ready=true;phase=L"ready";message(L"ready");begin_vehicle();status();return true;
 }
 void maintain(){
     arena_pawn=pointer(arena_pc,L"Pawn");
-    if(instance(arena_pawn,L"WarTurret"))arena_pawn=pointer(arena_pawn,L"Driver");
+    if(instance(arena_pawn,L"WarTurret")||vehicle_seat(arena_pawn))arena_pawn=pointer(arena_pawn,L"Driver");
     if(instance(arena_pawn,L"WarPawn")){
         auto inv=pointer(arena_pawn,L"InvManager");auto item=pointer(inv,L"InventoryChain");
         for(unsigned n=0;item&&n<32;++n){infinite(item);const auto next=pointer(item,L"Inventory");if(next==item)break;item=next;}
@@ -235,6 +245,7 @@ void maintain(){
     }
     // The map's mounted weapon has its own inventory outside the player's chain.
     infinite(pointer(turret,L"Weapon"));
+    advance_vehicle();
     const auto now=GetTickCount64();
     for(auto& s:guns){
         const bool missing=deleted(s.actor)||pointer(s.actor,L"Inventory")!=s.inventory||pointer(s.inventory,L"Instigator")!=0;
@@ -319,10 +330,15 @@ bool clicked(uptr object,uptr function,void* params){
     requested=true;requested_at=GetTickCount64();phase=L"travel_requested";next_tick=0;return true;
 }
 void tick(){
+    if(stop_requested.load()){
+        if(cancel_vehicle_load())stop_acknowledged=true;
+        return;
+    }
     if(test_enter_pending.exchange(false)){
         player=find_instance(L"WarLocalPlayer");requested_at=GetTickCount64();
         phase=L"travel_requested";requested=true;next_tick=0;
     }
+    vehicle_controls();
     const auto now=GetTickCount64();if(now<next_tick)return;next_tick=now+500;
     try{
         if(!viewport)viewport=find_instance(L"WarGameViewportClient");
@@ -332,7 +348,9 @@ void tick(){
         if(!registered(player)){phase=L"player_missing";status();return;}
         auto pc=pointer(player,L"Actor");
         if(instance(pc,L"WarPC_Menu")){
+            if(!cancel_vehicle_load())return;
             ready=false;arena_world=arena_pc=arena_pawn=turret=0;guns={};targets={};
+            reset_vehicle();
             if(!wcscmp(phase,L"travel_requested")){
                 Args travel(pc,L"ClientTravel");travel.text(L"URL",L"MP_WarMachine?Game=WarfareGame.WarGameSP").set(L"TravelType",static_cast<unsigned char>(0)).flag(L"bSeamless",false);
                 if(travel.run()){phase=L"loading";message(L"travel_dispatched");}
@@ -341,17 +359,18 @@ void tick(){
             status();return;
         }
         const auto world=pointer(pc,L"WorldInfo"),pawn=pointer(pc,L"Pawn");
-        const auto driver=instance(pawn,L"WarTurret")?pointer(pawn,L"Driver"):0;
+        const auto driver=(instance(pawn,L"WarTurret")||vehicle_seat(pawn))?pointer(pawn,L"Driver"):0;
         const bool ordinary=instance(pawn,L"WarPawn")&&pointer(pawn,L"Controller")==pc;
         const bool mounted=driver&&instance(driver,L"WarPawn")&&pointer(driver,L"DrivenVehicle")==pawn&&pointer(pawn,L"Controller")==pc;
         if(!instance(pc,L"WarPC")||!in_map(world)||(!ordinary&&!mounted)){
+            if(!cancel_vehicle_load())return;
             if(ready){ready=false;requested=false;phase=L"outside_playground";}
             else if(now-requested_at>120000){requested=false;phase=L"load_timeout";++failures;}
             status();return;
         }
         if(!ready){if(!initialize_arena(pc,pawn,world)){++failures;phase=L"setup_failed";requested=false;}}
-        else if(world!=arena_world){ready=false;requested=false;phase=L"outside_playground";}
+        else if(world!=arena_world){cancel_vehicle_load();ready=false;requested=false;phase=L"outside_playground";}
         if(ready)maintain();status();
-    }catch(...){++failures;requested=false;ready=false;phase=L"setup_exception";status();}
+    }catch(...){cancel_vehicle_load();++failures;requested=false;ready=false;phase=L"setup_exception";status();}
 }
 }

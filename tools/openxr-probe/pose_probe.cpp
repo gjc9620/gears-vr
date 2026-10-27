@@ -405,7 +405,6 @@ int main(int argc, char** argv) {
     unsigned stereo_producer_seconds=30;bool explicit_stereo_duration=false;
     double render_scale{};bool explicit_render_scale=false;
     bool simulator_operator=false,continuous_session=false,diagnostic_shutdown=false,diagnostic_outage=false,diagnostic_image_tickets=false,movie_display=false;
-    bool controller_input=false;
     DWORD continuous_owner_pid=0;std::uint64_t continuous_owner_creation=0;
     for(int i=3;i<argc;++i) {
         if(!strcmp(argv[i],"--render"))test_render=true;

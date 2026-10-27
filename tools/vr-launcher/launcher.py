@@ -668,6 +668,10 @@ def start(config,manifest,backend,index=INDEX,clock=time.monotonic,sleep=time.sl
             args.startup_selftest_proof=handshake['path'];args.startup_selftest_digest=handshake['digest'];args.startup_selftest_nonce=handshake['nonce']
         for key in SESSION_OPTIONS:setattr(args,key,manifest.get(key,False))
         args.sixdof_manual=manifest.get('sixdof_manual',False)
+        args.sixdof_unified=manifest.get('sixdof_unified',False)
+        if args.sixdof_unified:
+            args.unified_playground={key:manifest[key] for key in ('playground_build','playground_dll','playground_sha256')}
+            args.unified_fire_ready=manifest.get('unified_fire_ready',False)
         args.remeasure_armspan=bool(remeasure_armspan)
         args.launcher_language=config.get('launcher_language','en')
         hud_fov=hud_horizontal_fov(config,manifest)

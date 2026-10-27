@@ -1,7 +1,7 @@
 """Explicit owner-started first-person/free-hands profile. No test runner."""
 
 CAPTURE = ('first_person_preview=1\nfirst_person_initial_requested=1\n'
-           'first_person_body_basis=1\nfirst_person_near_clip_mm=120\n')
+           'first_person_body_basis=1\nfirst_person_near_clip_mm=120\nsixdof_unified=1\n')
 
 SECTIONS = '''
 [RigTracking]
@@ -23,7 +23,7 @@ enabled=1
 enabled=1
 hands=1
 arm_control_ownership=1
-held_main_mount=0
+held_main_mount=1
 diagnostic_first_failure=0
 diagnostic_held_main_mount=0
 diagnostic_ready_wrist=0
@@ -34,7 +34,7 @@ enabled=1
 [BodyTickInput]
 enabled=1
 [BodyMainMountSource]
-enabled=0
+enabled=1
 '''
 
 def validate(args):

@@ -155,7 +155,7 @@ inline Result compose_eye(body::Model const& model,body::Frame const& frame,
     gears_body_tick_input::Input const& input,std::uint64_t compose,
     hand::ObjectIdentity const& asset,gears_vr::StereoMatrix const& base,
     gears_vr::Pose const& desired_eye,std::int64_t now,bool allow_sim,
-    Workspace& work,body::Output& inout) noexcept {
+    Workspace& work,body::Output& inout,adapter::MountKind right_mount=adapter::MountKind::free_hand) noexcept {
     namespace free=gears_free_hand_eye_targets;
     if(gears_body_tick_input::classify(input,input.parent_scene,now,allow_sim)!=gears_body_tick_input::Verdict::okay)
         return detail::fail(Status::invalid_core);
@@ -170,7 +170,7 @@ inline Result compose_eye(body::Model const& model,body::Frame const& frame,
     work.eye_frame={key,desired_eye};work.tracking_frame={key,t,c};
     if(free::frame_status(work.eye_frame,work.tracking_frame,frame.units_per_metre)!=free::Status::okay)
         return detail::fail(Status::invalid_core);
-    return compose_common(model,frame,s,asset,base,now,allow_sim,work,inout,adapter::MountKind::free_hand,
+    return compose_common(model,frame,s,asset,base,now,allow_sim,work,inout,right_mount,
         [&](adapter::ModelBinding const& binding,unsigned side){
             auto const result=free::prepare_one(work.eye_frame,work.tracking_frame,side,
                 binding.authored_mount.calibration,frame.units_per_metre,work.eye_targets[side]);

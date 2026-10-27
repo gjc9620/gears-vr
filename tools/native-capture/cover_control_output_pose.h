@@ -5,8 +5,9 @@
 
 // Private caller-buffer math only. Matrix64 describes the float16 row shape,
 // not a native address, role, lifetime, ownership, or write permission. This
-// candidate accepts ONLY proper unit-scale rigid matrices; unknown LocalScale
-// is neither inferred nor preserved. No IO/engine/PG call or allocation.
+// Default requires proper unit-scale rigid matrices. Explicit Limb input
+// approximation does not prove or preserve native LocalScale.
+// No IO/engine/PG call or allocation.
 namespace gears_cover_control_output_pose {
 namespace ik=gears_cover_skeleton_ik;
 namespace arm=gears_hand_two_bone;
@@ -14,6 +15,7 @@ using Pose=gears_vr::Pose;
 using Vector=gears_vr::Vector;
 using Quaternion=gears_vr::Quaternion;
 struct Matrix64 {float values[16]{};};
+enum class OriginalMatrixPolicy { strict_unit, bounded_near_rigid };
 struct LimbInput {
     Matrix64 component[3]{},component_to_world{};
     Pose wrist_world{};
@@ -47,6 +49,24 @@ inline bool rigid(ik::Matrix const& matrix) noexcept {
     return std::abs(ik::detail::dot(ik::detail::row(matrix,0),ik::detail::row(matrix,1)))<=2e-5&&
         std::abs(ik::detail::dot(ik::detail::row(matrix,0),ik::detail::row(matrix,2)))<=2e-5&&
         std::abs(ik::detail::dot(ik::detail::row(matrix,1),ik::detail::row(matrix,2)))<=2e-5;
+}
+// Input-only engineering approximation, NOT a floating-point error theorem or
+// evidence of native LocalScale=1. The caller must establish scale semantics
+// before any live writer opts in. ||A*A^T-I||_F <= 1e-4 bounds each singular
+// value's deviation from one by at most ~5.001e-5. Tiny genuine scale/shear
+// inside this budget is indistinguishable from numerical drift in a matrix.
+// Do not use for CTW, model scale, output validation, or SingleBone tails.
+inline bool original_near_rigid(ik::Matrix const& matrix) noexcept {
+    if(!ik::detail::similarity(matrix))return false;
+    double squared_error=0;
+    for(unsigned i=0;i<3;++i)for(unsigned j=0;j<3;++j){
+        const double residual=ik::detail::dot(ik::detail::row(matrix,i),ik::detail::row(matrix,j))-(i==j?1.0:0.0);
+        squared_error+=residual*residual;
+    }
+    return squared_error<=1e-8;
+}
+inline bool original_matrix(ik::Matrix const& matrix,OriginalMatrixPolicy policy) noexcept {
+    return policy==OriginalMatrixPolicy::strict_unit?rigid(matrix):original_near_rigid(matrix);
 }
 inline bool single_rigid(ik::Matrix const& matrix) noexcept {
     // Actual SingleBone output can carry float accumulation in m[15]. Permit
@@ -100,7 +120,7 @@ inline Status solve(LimbInput const& input,Workspace& work,Matrix64* output) noe
        input.upper_length_scale<=0||input.lower_length_scale<=0)return Status::invalid_policy;
     if(!detail::transform(input.component_to_world,work))return Status::invalid_matrix;
     Quaternion target{};if(!ik::detail::finite_vector(input.wrist_world.position)||!detail::unit(input.wrist_world.orientation,target))return Status::invalid_target;
-    for(unsigned i=0;i<3;++i){work.component[i]=detail::unpack(input.component[i]);if(!detail::rigid(work.component[i]))return Status::invalid_matrix;
+    for(unsigned i=0;i<3;++i){work.component[i]=detail::unpack(input.component[i]);if(!detail::original_matrix(work.component[i],input.original_matrix_policy))return Status::invalid_matrix;
         work.world[i]=ik::detail::multiply(work.component[i],work.to_world);
         if(ik::world_pose(work.world[i],work.world_pose[i])!=ik::Status::okay)return Status::invalid_matrix;}
     work.input={work.world_pose[0],work.world_pose[1],work.world_pose[2],{input.wrist_world.position,target},input.authored,input.previous,

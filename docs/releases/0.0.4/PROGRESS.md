@@ -2164,3 +2164,14 @@ B编译状态：最终keyed源SHA93e2c62d5df8210eb1293d7e647fe54b23dbbdbf4ef4658
 2026-10-27 A/B代码整合后继（Body整合负责人回执，非本侧重跑）：A已在最新Junker/Support3 Native整合并compile/link exit0，B已采用本侧93e2c62d…784d1 free_hand_eye_targets、同次actual desired_eye／逐侧solved mask／固定骨长，compile/link exit0；本次仅源码和编译，没有测试运行。`analysis/free-hand-eye-targets-20261027/body-integration-receipt.json`把负责人回执与手动候选已交付／真机反馈分开；后两项仍未完成。
 
 按Body打包所需，Weapon只读查明物理XR冻结来源：BQ candidate-source完整591文件实hash均匹配producer manifest83abf4be…07539，normal4174d0e3…0c1ead与loader66946ea6…1932df实hash；RuntimeTracked物理producer与sim-source／1a059区分。最新focus1 source-provenance11b0a84e…2c9ae的588文件也全匹配，两源完整586文件父树byte相等、均来自menu-modal1 37f463；共同内容冲突仅CMakeLists.txt/pose_probe.cpp，BQ新增5个controller/actions/continuity文件，focus新增2个focus_diagnostics文件，合并union593。建议保留最新focus1为底，只拷精确BQ5文件并合并两处重叠，保留focus event/presence和源手Actions单次采样／whole-loop tracker／continuity→controller→eyes次序／原清理；仅宏ON不够，手动物理入口必须--controller-input及实际stereoPID，不携带simulator-operator/CY override。精确路径/flags/identity/建议封 `physical-xr-source-handoff.json` SHAba5f61f44e5b3501cafb9a808a4406246d81352c76b83d8843dbb1eb76b506a8并已交Body直接续作。未改Root／共享代码、未新建助手／构建／Game／XR或测试；明确旧build_normal.py/cpu_checks.py/focus build.py含历史测试执行，当前不得直接运行，Body只编译OpenXRPoseProbe目标后打包给用户。编译／源码归因不等于真实手或第一人称画面验收。
+
+
+## 2026-10-28：实际合并并接入固定统一手动入口
+
+用户经统筹明确恢复继续，撤销上次H1交付后的等待条件；仍完全停止自动Game/XR/Simulator/test/replay/selftest，只源码、编译、链接、打包，由用户真机。统一开发目录6dof-cover工作树，创建codex/6dof-unified，从37de6ef实际merge f397f9b，合并提交9a41f92，双亲历史保留。13冲突处理后原未提交AGENTS从限定stash原样恢复，两个未跟踪trial及J主目录未提交支持工作未碰。无新助手或管理会话，Root独占Git index/提交/构建。
+
+共享Native保留实际FP、同次eye、Ref115中立、固定长度／逐侧handoff，向同eye手部转换传入已确认held mount；配置held1+BodyMainMountSource1。现有肩／裤兜真实RGrip→装备Runtime→原库存和附着确认→typed持枪见证接入正常手动入口。缺臂展时复用原真实Tpose完成值的data-only Native查询，不捏造measurement，FP/自由手不等待新验收门。手动session在Native running后连接PG，正常停止先关闭fire/hand连接再原清理。
+
+首次统一Native/XR/PG均compile/link exit0，仅指定生产目标，未运行程序或测试。PG含最新Junker源码三方合并与原车辆清理；修复合并重复声明/target和既有Junker局部变量遮蔽引起的WX兼容问题，保留失败日志。固定包入口J:/gearsVr/candidates/6dof-unified/GearsVR Launcher.exe，版本6dof-unified-20261028-1；首包先交已接通FP/双手/取枪，unified_fire_ready=false，不启旧original_aim_only。Native458cdf…ba36b，XR6db1b9…3d727，PG4eea5d…84981。开火的实际muzzle/权威aim基准返回层由Weapon在统一目录限定文件继续实现，Root统一接入，不把它当首包交付前置，也不静默回退原版瞄准并报完成。
+
+详细状态见docs/6dof-unified-manual-20261028.md。源码已接通／编译／包交付／用户真机验收分列，原成熟度分数未凭编译增加，四步代码链继续推进；后续换弹、掩体和其他武器扩展仍待办。

@@ -5874,6 +5874,18 @@ extern "C" __declspec(dllexport) gears_weapon_hand::Reply __cdecl GearsVrRegiste
     gears_weapon_hand::Registration const* registration,gears_weapon_hand::RegistrationResult* result) noexcept {
     return weapon_hand_runtime::register_participant(registration,result);
 }
+// Data-only calibration query for the pinned, same-process equipment client.
+// The existing physical T-pose observer supplies the value; no guessed span,
+// pose refresh, engine call, skeletal write or registration permission here.
+extern "C" __declspec(dllexport) DWORD WINAPI GearsVrReadBodySlotCalibrationV1(void* output) noexcept {
+    if(!output||!active.load()||!controller_input_observer||simulator_operator)return ERROR_NOT_READY;
+    try{
+        gears_weapon::ArmspanCalibration value{};
+        {std::lock_guard<std::mutex> lock(controller_input_mailbox_mutex);value=controller_input_mailbox_calibration;}
+        if(!value.valid())return ERROR_NOT_READY;
+        return safe_copy(output,&value,sizeof(value))?ERROR_SUCCESS:ERROR_INVALID_PARAMETER;
+    }catch(...){return ERROR_INVALID_STATE;}
+}
 extern "C" __declspec(dllexport) gears_weapon_hand::Reply __cdecl GearsVrUnregisterWeaponHandParticipantV1(uint64_t cookie) noexcept {
     return weapon_hand_runtime::unregister(cookie);
 }

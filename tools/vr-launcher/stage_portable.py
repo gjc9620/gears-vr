@@ -84,6 +84,7 @@ def payload_paths(manifest):
     tests=() if manifest.get('sixdof_manual',False) else NATIVE_TESTS
     result += [(native / name).as_posix() for name in (dll, *tests)]
     if manifest.get('sixdof_manual',False):result.append('tools/native-capture/sixdof_manual_profile.py')
+    if manifest.get('sixdof_unified',False):result.append('tools/native-capture/sixdof_unified_runtime.py')
     result += [(xr / name).as_posix() for name in ('OpenXRPoseProbe.exe', 'openxr_loader.dll')]
     result += [f'{QUIET_BUILD}/{name}' for name in QUIET_HASHES]
     result += [AUDIO_HELPER, AUDIO_PROVENANCE]

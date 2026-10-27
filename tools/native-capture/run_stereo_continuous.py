@@ -268,9 +268,8 @@ def xr_command(args,csv_path,owner):
     command=[str(args.xr_build_dir.resolve()/'OpenXRPoseProbe.exe'),'0',str(csv_path),
             '--stereo-game-pid',str(args.pid),'--continuous-session',
             '--owner-pid',str(owner['pid']),'--owner-creation-time',str(owner['creation_time'])]
-    if getattr(args,'sixdof_manual',False):command.append('--controller-input')
+    if getattr(args,'sixdof_manual',False) or getattr(args,'controller_input_observer',False):command.append('--controller-input')
     if validate_render_scale(args) is not None:command+=['--render-scale',str(args.render_scale)]
-    if getattr(args,'controller_input_observer',False):command.append('--controller-input')
     if getattr(args,'startup_menu_window',0):
         command+=['--startup-menu-window',str(args.startup_menu_window),str(args.pid)]
     if getattr(args,'menu_recovery',False):
@@ -558,7 +557,7 @@ def run_session(args,control=None,on_report=None,cancel_requested=None,before_na
         ('render_scale','stereo_units_per_metre','camera_closer_metres','first_person_preview','right_stick_deadzone_percent',
          'hud_horizontal_fov_degrees','hud_element_scale','hud_center_scale')
         if isinstance(getattr(args,key,None),(bool,int,float))}
-    child=None;activation_attempted=False;menu_monitor=None;world_monitor=None;world_log=None;telemetry=None;path_center=None;right_stick_policy=None;support=None
+    child=None;activation_attempted=False;menu_monitor=None;world_monitor=None;world_log=None;telemetry=None;path_center=None;right_stick_policy=None;support=None;unified_session=None
     state['path_choice_center_enabled']=bool(getattr(args,'path_choice_center',False))
     native_status=args.build_dir.resolve()/'session-status.txt'
     floor=0
@@ -673,6 +672,10 @@ def run_session(args,control=None,on_report=None,cancel_requested=None,before_na
                 telemetry.sample(status,state['phase'])
                 print(json.dumps({'continuous_running':True,'session_report':str(state_path)}),flush=True)
                 observe_first_stereo(native_started)
+                if getattr(args,'sixdof_unified',False):
+                    from sixdof_unified_runtime import Session as UnifiedSession
+                    unified_session=UnifiedSession(args,state['game_identity'],lambda:checked_identity(control,state['game_identity']))
+                    state['unified_weapons']=dict(unified_session.poll());write_state(state_path,state)
                 if getattr(args,'menu_recovery',False):
                     from menu_display_monitor import MenuDisplayMonitor,BackgroundMenuDisplayMonitor
                     menu_monitor=BackgroundMenuDisplayMonitor(MenuDisplayMonitor(args.menu_state_file,state['game_identity'],state['owner_identity'],control.identity,
@@ -709,6 +712,11 @@ def run_session(args,control=None,on_report=None,cancel_requested=None,before_na
                             support.failure('native','native_stop',status.get('reason'))
                         break
                     checked_identity(control,state['game_identity'])
+                    if unified_session:
+                        previous=state.get('unified_weapons',{})
+                        current=dict(unified_session.poll())
+                        if current!=previous:
+                            state['unified_weapons']=current;write_state(state_path,state)
                     if menu_monitor:menu_monitor.poll()
                     if path_center:
                         try:
@@ -736,6 +744,9 @@ def run_session(args,control=None,on_report=None,cancel_requested=None,before_na
                 if support:support.failure('controller','session_exception',repr(error),phase=state.get('phase'))
                 state['error']=repr(error)
             finally:
+                if unified_session:
+                    try:state['unified_weapons_cleanup']=unified_session.close(args.cleanup_timeout)
+                    except Exception as error:state['unified_weapons_cleanup_error']=repr(error)
                 if preflight_log:
                     preflight_log.observe(rows,panel_ready,final=True,outcome='aborted')
                     state['xr_preflight_diagnostics']=preflight_log.last

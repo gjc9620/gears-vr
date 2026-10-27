@@ -1,5 +1,6 @@
 // Private original-button consumer on the normal authenticated Native path.
 // No bridge reread, pose write, aim override or damage write is installed.
+#include "weapon_unified_fire.h"
 namespace vrfire {
 namespace lr=gears_lancer_r2;
 namespace wh=gears_weapon_hand;
@@ -184,9 +185,11 @@ bool yield_for_native_equipment(wh::Frame const& frame) noexcept {
 DWORD enable(){
     if(weaponhand::current_gt(nullptr)||!enabled.load(std::memory_order_acquire)||!playground::automatic||
         mode.load(std::memory_order_acquire)!=off||!weaponcall::ready())return 1;
-    wchar_t behind[4]{},muted[4]{};
-    if(GetEnvironmentVariableW(L"GEARSVR_TEST_WINDOWS_BEHIND",behind,4)!=1||behind[0]!=L'1'||
-        GetEnvironmentVariableW(L"GEARSVR_TEST_MUTE_GAME",muted,4)!=1||muted[0]!=L'1')return 2;
+    if(!unified_weapon_fire::manual_profile()){
+        wchar_t behind[4]{},muted[4]{};
+        if(GetEnvironmentVariableW(L"GEARSVR_TEST_WINDOWS_BEHIND",behind,4)!=1||behind[0]!=L'1'||
+            GetEnvironmentVariableW(L"GEARSVR_TEST_MUTE_GAME",muted,4)!=1||muted[0]!=L'1')return 2;
+    }
     if(!button_name()||!input.reset_drained())return 3;
     logs=0;previous_status=previous_source=~0u;last_ammo=-1;next_ammo=0;ammo_reads=0;post_ammo_samples=2;ammo_resume_pending=false;
     mode.store(running,std::memory_order_release);playground::message(L"native_lancer_r2_enabled_original_aim_only");return 0;
