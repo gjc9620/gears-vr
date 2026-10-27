@@ -143,3 +143,14 @@ Root新纯文件reader在ignored `analysis/lancer-component-readback-20261026/de
 关键gate20为cookie尚为0、active row未形成时的一次diagnostic-only回执，最多1次，占原始容量且可在普通窗外。reader校验cookie／detail／prequery_cookie实际0、begin／end0及所有未访问runtime结果默认；source身份0／UNKNOWN按原样保存，既不套header身份，也不填cookie／时间送legacy验证。它始终不是authoritative normal row，不参与第一PG／source freshness／phase／permission结论。Marker、Basis、eye、body policy、cookie、parent、registration、cached current、revision／generation的可用字段按原短路边界严格校验；两生命周期值均实际已取时同时保留，包括revision0且generation也0。
 
 11项必要方法分批通过（10项0.007秒，新增Goal／capture与begin-only deadline1项0.002秒）；独立ctypes覆盖所有新POD offset，涵盖特殊／正常混合raw index、无arm特殊回执、真实arming、首false字段配对、原拒绝语义／旧v3兼容、容量损失及坏输入。初次10方法共16个断言失败，是复用旧no-input合成样本仍有equipment时间；新fixture改为真正未访问默认，parser拒绝规则未放宽，失败样本与计数保留。CLI mixed kind2／cookie0 special成功0，非法special／覆盖拒绝2，旧v3合成结果完全相同。未重跑旧suite或重解HO/K/HM/HN；RWENT004 reader3d9ce0cb保持，无Game／RE／Native-XR构建、age／PG-Muzzle扩查。HO90→90基线不能解释肩期另151次Goal拒绝，需实际同entry证据；此工具不作身体续更／玩法验收。
+
+
+## HP：首次prequery具体失败与有限覆盖（2026-10-27）
+
+Body唯一HP三门通过：shoulder4.3257423秒status0→42、ready0.8369653秒42→52、move1.0705665秒52→62；但original protocol_complete=false、body_continues_after_stop=false，不能整体通过。Stop4→5／quiescent／双控制器还原／bridge关闭、一次accepted finalizer／106恢复和退出通过；`cleanup_errors.bridge_error` 的No post-quiescent continuing free-hand commits／stable held counter超时保留，不用finalizer通过替代续更证明。
+
+本会话冻结1e0c7d30仅消费新BHELD004一次exit0。原件SHA256 `e625cebbba20a970fe793dbcf52d541594942354837b4a2e29385f5ef795b329`，Game33264／creation134375449427094269／Native3309563927982。parsed `hp-prequery-parsed-v4.json` SHA256 `84002ceba60dec3374d1bbaf102f3ee5d15bc7acbfb66bea9d76da38f92ccd8e`；只从已解析JSON整理的 `hp-prequery-review-v4.json` SHA256 `fbe2455744028b4e5b30f43fc6095f3478d82897919065b959b4e41db32d8dfb`，位于ignored `analysis/lancer-component-readback-20261026/`。128raw=127normal＋1非权威gate20，invalid均0，drop6／nested0／foreign0。kind2由首次实际prequery not_ready触发，arm330961712943100／deadline330968712943100，不能当PG-ready。
+
+首normal为raw1／Tick27266／Compose27267：gate12，实际cookie1／输入parent_cookie0，revision／generation未访问UNKNOWN，query0。它在shoulder marker之前583140700ns，不能解释整个肩期或旧HO。127normal中117份prequery0、7份未观察，另2份gate14／detail3（cached source_age_expired）：raw32／Tick30686／Compose30687在shoulder，raw117／Tick39781／Compose39782在move，均cookie／parent1且query0，原同条Goal reason18／apply照实保留，不借它解释别的Goal。独立Goal首拒绝raw98／Tick37748／Compose37749在ready：Goal14／adapter2 core，19项key比较全同，prequery六字段均UNKNOWN；不以相邻或别行gate14填补。
+
+以原entry_begin落在各原phase内分类，导出normal行83肩／16ready／15move，对应行的held marker43／8／8；共61个normal saved held marker不是status差分或整阶段commit总数。最后saved_end330968380970100早于原move_end298166800ns，加drop6和未知字段，完整覆盖未证；不将这些丢失行补到具体时间或失败原因。gate20 raw0虽带实际源身份，cookie0／begin-end未观察与非权威属性保持。新观察揭示本局具体首false，不证明HO根因已修复。未追加RWENT004权重／矩阵、PG-Muzzle／age、旧案或新Game；已交Body和统筹，原stable-follow／真机／默认接受仍pending。

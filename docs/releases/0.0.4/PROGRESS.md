@@ -1514,3 +1514,6 @@ HO后续Body既有记录明确：90attempt／90query前not_ready、query0，fall
 
 
 2026-10-27 完成查询前首false的BHELD004最小consumer（reader1e0c7d30…af0ef／回执27a2f8b4…58ea8／合同05070c33…95261）。H128／R648，正常行复用未改v1/v2/v3纯row helpers，v4独立真实arm规则；kind2不伪PG-ready，仍只约束begin≤deadline，end可越界。cookie0 gate20单独非权威diagnostic，保留source0／UNKNOWN、rawindex/slot，不补header身份／cookie／时间或送旧行验证。11必要方法分批通过（10/.007s＋1/.002s），首批旧合成equipment时间导致16断言失败的版本保留，修fixture不放宽reader；CLI特殊／混合窗／旧v3兼容与非法数据拒绝通过。原Goal/capture/guard字段和新prequery首false分开，不用HO90基线解释新增151Goal拒绝。权重reader3d9不改，旧实际案不重解，无Game／RE／构建或宽调查；已交Body／统筹，定位工具不涨功能百分比。
+
+
+2026-10-27 HP新BHELD004一次消费通过格式验证：Game33264／Native3309563927982，原件e625cebb…5b329／parsed84002ceb…ccd8e／reviewfbe24557…d8dfb。128raw=127normal+1gate20、drop6；kind2非PG-ready。首normal raw1 gate12 cookie1,parent0发生于肩marker前.5831407秒；117前置通过／7未观察／2context_prepare cached source_age3分属shoulder raw32及move raw117。独立ready Goal14 adapter2/core raw98的prequery UNKNOWN，不借别条填补。三个原门通过，但protocol/bodycontinue均false，post-quiescent free-hand续更超时原样保留，不能借106正常清理替代；新记录不证明HO修复。有限savedspan止于move末前.2981668秒，drop不补值。只消费新BHELD，不追加权重／矩阵／PG-Muzzle／age或旧案/新Game，不涨功能分。
