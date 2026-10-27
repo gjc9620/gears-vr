@@ -1502,3 +1502,6 @@ HM采样边界补充：Body核对returned_end早于THIS Kernel.finish，排除�
 
 
 2026-10-27 HN唯一新v3消费复现成功后Local35变化并缩小边界：原件8cda052c…3afb7／parsed b153ecc0…0f72b／review9b6d2501…1d407，Game59204／Native3232920772391。19=9成功（8保持1变）／2reject／6mount0／2seedcapture；17有效raw全raw→end Local三骨／Space35、52／CTW保持，2rawUNKNOWN不算稳定。成功seq13 Tick41283／Compose41284／epoch947 prepare0 commit1 finish4，planned→commit→pre保持，pre→raw仅35变1.14386646rad，raw／end同腕误差16.77294u／.571303rad。因此本局变化在finally/endcallbacks前已出现，排除其后callbacks／Kernel.finish解释，但不命名原指令或排除并发。准确key／4stage／flags／phase交Body，HN不代填HM。capture点1..17在ready、18/19在ready后move前；肩／移动不覆盖。原三门／恢复／106清理通过与稳定玩法／头显分开；无旧案重解、age／PG-Muzzle扩查或再开Game，不涨功能分。
+
+
+2026-10-27 完成RWENT004既有weight回调边界的file-only消费者（reader3d9ce0cb…fa8b4／回执e299b52b…562f4，合同31797a2e…4a89d）。原v3前缀保持，H128／R16416，新增bounded Diagnostic／WeightReturn+Stage／actual raw4 constants。严格count/drop／identity／signed字段／mask／partial，独立pre→weight→raw Local比较，无weight Space不编造world。按Body已有ASM supplement6c2e5ed6收窄候选条件：必须同entry/node/compute+weight ordinal的sample4/reason0、前后cached_flag读取0且其它角色／snapshot／alpha／实际常量全合格，才描述alpha>zero且>=full或fractional；零／无效／缺失保持UNKNOWN，条件不证明store／排并发／穷尽集合。最终12必要方法／0（0.039秒），CLI合成及旧v1-v3兼容通过，非法pair／覆盖拒绝；旧数学复用、K/HM/HN不重解或回填，原hash保持。已交Body／统筹，无新Game／RE／Native-XR构建或PG-Muzzle／age扩查，候选实跑另由唯一窗口安排，不涨功能进度。

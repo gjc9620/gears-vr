@@ -105,3 +105,18 @@ Body用准确aaccfc1c候选完成唯一HN原8命令／三个门／Stop与恢复�
 HN这份变化已在正常raw invoke返回后的采样中出现，因此本次后续finally／end callbacks及Kernel.finish不能解释它。当前只缩到consumer_pre→raw-return snapshot区间，不命名具体原指令或排除并发写者；HN不直接代填HM缺失的raw阶段。完整同entry／epoch／CTW／Space／flags已交Body继续核查准确写者，未重复Game或扩age／PG／Muzzle。
 
 seq13 capture_ns323303988349600在原ready323303351246300..323304254992600内。全部新capture点1..17在ready，18／19在ready后move前且19为nonready closing，肩／移动无本观测覆盖。unavailable332仍是启用期尝试统计。原动作与正常恢复通过不等于稳定跟随、GPU、头显或默认合流验收；本轮不再开Game，不增加功能百分比。
+
+
+## RWENT004 既有权重返回消费者（2026-10-27）
+
+统筹唯一后继为在已有weight回调边界继续缩小pre→raw变化区间。准确合同SHA256 `31797a2e5847c8090833ebe76c56b07db7c254a52856a8611c5259a44194a89d`；新格式Header128／Record16416／cap64，原2368前缀不变，append四个U64 count／drop、64×Diagnostic144和8×WeightBoundary600。Boundary包含原WeightReturn248、严格space=false Stage328及两个实际常量的mask／raw4。
+
+Root file-only reader为ignored同目录 `read_ready_wrist_v4.py` SHA256 `3d9ce0cb014a03f0b94daa7fbf6ef2fad9f704b3b8f053558322467554bfa8b4`；交付 `consumer-delivery-v4.json` SHA256 `e299b52b49b79f670df94ad41a84c992457f7d553e7bbe06f3bf210588e562f4`。合同、source header／policy／live／context／control、compiler布局和冻结parent均核hash。旧v1-v3 reader保持；原文件hash／version4与内存前缀投影分开，K／HM／HN原parsed哈希核验未改，没有重解旧案。
+
+Diagnostic保留原stage／reason／flags和signed QPC／scale counts，reason按原stage解释，不把非零泛化成age；read mask分别约束cached scale与数组计数。Weight保存实际原alpha与最终packet XMM0 low raw4、正常返回及原计算／权重valid flags；compute-match位不成立时shape／role保持缺失。完全匹配的compute ordinal／scope／node／thread／mesh和受支持end35角色、Identity、affected header／bones才支持候选描述；预先保存的身份不会变成新的写权限。
+
+每个合格weight snapshot独立比较pre→weight和weight→raw Local35／51／52，附epoch和CTW上下文；没有Space或世界目标姿态，不编造weight世界位置。实际常量只按成功read mask与zero-high32 raw4读取；失败snapshot／异常getter／partial／缺失均不填值。计数超64／8或非法pair拒绝，drop保留且不宣称first／complete coverage；零计数不证明没有自然回调。
+
+等号规则来自Body已有保存证据的补充 `RWENT004-comparison-supplement.json` SHA256 `6c2e5ed6c95955d9e231f39baa2ab0c459fd8af34318a802342af3fdfb029ec9`，所引ASM SHA256 `92ece07f4e233e452e2747ff8f8944d293d0422193ac5ad3ce08917ad3a6518e`仅核文件身份，不做新RE。有限数值alpha>actual zero才进入描述写回组，alpha>=actual full为full候选，zero<alpha<full为fractional；必须先有唯一同entry／node／scope／compute和weight ordinal的原Diagnostic.sample stage4／reason0／正常flags、前后flag_read bit2有效且两个cached_scale_word均0，才可排除所描述cached-scale旁支。还要求受支持角色／身份／strict snapshot、实际有限有序阈值和非零有限alpha。缺任何一项或观察到零alpha则candidate attribution UNKNOWN；即使条件满足也只是候选数值条件，不证明store执行、排除间接／并发写者或穷尽写者集合。
+
+最终12项新增必要方法全过（0.039秒）：独立ctypes每个新POD／offset、signed字段、identity／ownership、cap／drop、partial／exception、raw4 mask、零／非有限／缺失、缓存旁支必须有实际sample及等号边界、旧兼容和坏格式。最初10项与后续窄追加记录保留，最终仅新v4测试复核；未重跑旧数学suite。CLI新合成exit0、覆盖／常量非法对拒绝2，v1-v3合成输出完全相同。已交Body与统筹，未开Game、构建Native-XR或扩PG／Muzzle／age，准确新候选运行另循统一窗口；本工具不增加功能完成分。
