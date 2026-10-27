@@ -127,3 +127,6 @@ Diagnostic保留原stage／reason／flags和signed QPC／scale counts，reason�
 Body唯一HO在原shoulder-fixed-first32门失败：6.0073855秒内status0→0，未观察到合格held commit／coherent pose；门未放宽，ready／move未发送。正常finalizer一次accepted、恢复及清理通过，与目标动作未达分开。新原件仅Header128、count0／selected0／window_cookie0，SHA256 `7a30ff5d5808e54f34fc2ccc46e6c78171740e1ac48afb84d5abf0ba78d7b75c`；Game41768／Native3269225923034，RWENT004 H128／R16416，drop／nested／unmatched0。
 
 冻结v4 reader仅消费此新文件一次exit0，`ho-ready-wrist-parsed-v4.json` SHA256 `dffc595115fdffc491ab83a5cc6ac06ec40fcf2f9519c8f16c757afe003d7bc9`；空覆盖回执 `ho-ready-wrist-empty-review-v4.json` SHA256 `b3c1632ec215b146eb9a74a6710c5cb64895de10b41e61a50414740536c158a6`，ignored同目录。文件有效不等于场景成功：没有新record、alpha、weight或pre→weight→raw比较，不能验证候选条件、证明目标不再变化或替代HN。零计数不证明无自然回调，启用期nonmatching168／unavailable491不当ready丢失数。Body仅沿本局已存first-failure／held解释原门0；本会话不补旧值、不重解K/HM/HN、不改weight接口或开重复局／扩PG-Muzzle／age调查。
+
+
+HO前置边界补充（Body既有记录摘要SHA256 `20f57c83d9d26ece9ed60db0481996f316f8ec2c36363109dd113c1f1131e5f7`）：90次attempt均在query前的not_ready共享出口退出，query0；fallback hands status8（unreachable）。first-false未序列化，不能将共享出口归到某一具体谓词。没有held baseline，故body-continuation未证；原恢复／清理通过只指对应恢复清理项目，不能借106代替身体续更。旧空review／parsed保持，Root只接收窄补充，未泛审或新Game；weight reader3d9ce0cb冻结。

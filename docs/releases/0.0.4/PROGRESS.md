@@ -1508,3 +1508,6 @@ HM采样边界补充：Body核对returned_end早于THIS Kernel.finish，排除�
 
 
 2026-10-27 HO新v4为准确空覆盖：原shoulder门6.0073855秒status0→0／无coherent，ready／move未发送，未放宽门。原件7a30ff5d…7b75c仅Header128/count0/selected0；Game41768／Native3269225923034。冻结reader只解一次exit0，parsed dffc5951…d7bc9／empty review b3c1632e…158a6，旧HN等不替代不重解。新weight边界无目标覆盖，文件有效／正常恢复清理不算成功或修复证据；启用期491 unavailable非ready丢帧。Body沿本局旧first-failure／held记录解释门0，本侧不改weight接口、不再开局或扩PG-Muzzle／age，不涨功能分。
+
+
+HO后续Body既有记录明确：90attempt／90query前not_ready、query0，fallback hands unreachable8；first-false未保存，不归具体准入条件。该局没有held baseline，body-continuation未证，不能以106清理代替。Root保留原空解析／review和冻结v4 reader，仅接收此边界，不做泛审／再开局。
