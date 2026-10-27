@@ -1523,3 +1523,6 @@ HO后续Body既有记录明确：90attempt／90query前not_ready、query0，fall
 
 
 2026-10-27 接收Body HR受控neutral observed-rebind真实游戏结果（报告8c7b0d28…14f85／Root receipt037de4f3…14499）。准确Native851d50fc11cbfce3052fa66e0e2680a8404d429e5c540b4e7e037f2ca75c9da7原45通过；Source1右grip tracking flags15→0→15，observed1→2且硬refepoch2/flags1保持，rebind1。首次已保存接受rebind样本后hand/Goal+30；Stop4→5后free-hand+37、held71保持，三门/10命令/protocoltrue。106全恢复/XR0/原10/audio9/9/实例空另列。受控接续/Stop续更通过，不冒称原HP自然触发重建、所有硬key独立序列化或稳定跟枪/射击/头显/default验收。Root只核报告身份和字段，无wire解码/源码复审/Game/构建；下一联合候选复用该工件，PG/consumer冻结，百分比由统筹按证据更新。
+
+
+2026-10-27 针对HS新增pair门48次0接受（47跨组件发现body推进/1closing拒绝），完成单文件只读pair动态窗口候选4b473368…a8ca5／manifest e78e71f3…ab013。完整typed/身份/附件/Ref发现+预关闭在前，第二次未改原coherent probe取fresh body，短window内gun raw重复、AvatarCTW+未改115骨骼_close_pose闭合，完整static/selector/identity/ref/registry后关闭移到window外；动态值不再跨慢关闭pin，成功返回fresh保存cohort，失败原样fallback，明确window时点及sameC0/render未证。22 CPU方法分20/.159s+2/.014s通过，一次窄Sol审无P1/P2并补窗口后body推进fixture；原provider/字节/epoch/typed guards不放宽。只改Python模块和必要fixture，Native851d/PG/XR/held-RWENT消费者冻结，无Game/构建/collector或HS原件修改。已交Body下一唯一后继实跑，CPU结果不称运行修复或增加功能分。

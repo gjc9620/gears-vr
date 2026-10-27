@@ -183,32 +183,135 @@ class PairChecks(unittest.TestCase):
         self.assertEqual((p['engine_calls'],p['writes']),(0,0))
         self.assertEqual(f.pose_calls,2)
 
-    def test_pose_epoch_changes_between_callbacks(self):
+    def test_fresh_pose_can_advance_during_discovery(self):
         f = Fixture()
         f.pose_hook = lambda count: f.put(f.mesh['address']+0x338,struct.pack('<I',13)) if count==2 else None
-        self.rejected(f,'Body pose changed')
+        result = component.pair_probe(f, f.pose)
+        self.assertTrue(result['weapon_component_pair']['accepted'])
+        self.assertEqual(result['pose_epoch'],13)
+        self.assertEqual(result['weapon_component_pair']['pose_epoch'],13)
+        pair=result['weapon_component_pair']
+        self.assertLessEqual(pair['metadata_verified_ns'],pair['pair_window_begin_ns'])
+        self.assertLessEqual(pair['pair_window_begin_ns'],pair['pair_window_end_ns'])
+        self.assertLessEqual(pair['pair_window_end_ns'],pair['end_ns'])
+        self.assertFalse(pair['dynamic_pose_required_stable_through_metadata_close'])
+
+    def test_pose_epoch_changes_inside_dynamic_window(self):
+        f = Fixture()
+        def change(address,size):
+            if address==f.gun['address']+0xa0 and size==64:
+                f.put(f.mesh['address']+0x338,struct.pack('<I',13))
+        f.read_hook=change
+        self.rejected(f,'Pose changed at component close')
 
     def test_pose_bytes_change_without_epoch(self):
         for target in ('space','local','reference'):
             with self.subTest(target=target):
                 f = Fixture()
-                f.pose_hook = lambda count: f.put(getattr(f,target),b'\x01') if count==2 else None
-                self.rejected(f,'Body pose changed')
+                def change(address,size):
+                    if address==f.gun['address']+0xa0 and size==64:
+                        f.put(getattr(f,target),b'\x01')
+                f.read_hook=change
+                self.rejected(f,'metadata/registry changed' if target=='reference' else 'Pose changed at component close')
 
-    def test_component_change_after_second_pose(self):
+    def test_gun_motion_before_dynamic_capture_uses_current_matrix(self):
         f = Fixture()
         f.pose_hook = lambda count: f.put(f.gun['address']+0xa0+48,struct.pack('<f',99.)) if count==2 else None
-        self.rejected(f,'metadata/registry changed')
+        result=component.pair_probe(f,f.pose)['weapon_component_pair']
+        self.assertTrue(result['accepted'])
+        self.assertEqual(result['gun_matrix'][12],99.)
+
+    def test_gun_motion_between_dynamic_repeats_rejected(self):
+        f=Fixture();reads=0
+        def change(address,size):
+            nonlocal reads
+            if address==f.gun['address']+0xa0 and size==64:
+                reads+=1
+                if reads==2:f.put(address+48,struct.pack('<f',99.))
+        f.read_hook=change
+        self.rejected(f,'Gun matrix changed during dynamic pair window')
 
     def test_close_pose_catches_late_change(self):
         f = Fixture()
-        f.verify_hook = lambda count: f.put(f.space,b'\x01') if count==1 else None
+        reads=0
+        def change(address,size):
+            nonlocal reads
+            if address==f.gun['address']+0xa0 and size==64:
+                reads+=1
+                if reads==2:f.put(f.space,b'\x01')
+        f.read_hook=change
         self.rejected(f,'Pose changed at component close')
 
-    def test_final_close_catches_component_change(self):
+    def test_post_window_motion_preserves_the_recorded_past_cohort(self):
         f = Fixture()
         f.verify_hook = lambda count: f.put(f.gun['address']+0xa0+48,struct.pack('<f',99.)) if count==2 else None
-        self.rejected(f,'metadata/registry changed')
+        result=component.pair_probe(f,f.pose)['weapon_component_pair']
+        self.assertTrue(result['accepted'])
+        self.assertEqual(result['gun_matrix'][12],12.)
+        self.assertEqual(struct.unpack('<f',f.read(f.gun['address']+0xa0+48,4))[0],99.)
+        self.assertTrue(result['same_C0_not_proved'])
+
+    def test_post_window_body_motion_does_not_replace_the_saved_pair(self):
+        f=Fixture();expected=f.pose(f);f.pose_calls=0
+        def change(count):
+            if count!=2:return
+            f.put(f.mesh['address']+0x338,struct.pack('<I',13))
+            f.put(f.space,b'\x01');f.put(f.local,b'\x01')
+            f.put(f.mesh['address']+0xa0+48,struct.pack('<f',99.))
+        f.verify_hook=change
+        result=component.pair_probe(f,f.pose);pair=result['weapon_component_pair']
+        self.assertTrue(pair['accepted'])
+        for key in ('pose_epoch','space_sha256','local_sha256','ctw','bones'):
+            self.assertEqual(result[key],expected[key])
+        self.assertEqual(pair['pose_epoch'],12)
+        self.assertEqual(pair['avatar_matrix'],expected['ctw'])
+        self.assertEqual(struct.unpack('<I',f.read(f.mesh['address']+0x338,4))[0],13)
+
+    def test_avatar_matrix_motion_inside_dynamic_window_rejected(self):
+        f=Fixture()
+        def change(address,size):
+            if address==f.gun['address']+0xa0 and size==64:
+                f.put(f.mesh['address']+0xa0+48,struct.pack('<f',99.))
+        f.read_hook=change
+        self.rejected(f,'Avatar component matrix changed around pose read')
+
+    def test_static_metadata_still_closes_after_dynamic_window(self):
+        for target in ('attachment','typed_layout','component_extent'):
+            with self.subTest(target=target):
+                f=Fixture()
+                def change(count):
+                    if count!=2:return
+                    if target=='attachment':f.put(f.attachment_data+8,struct.pack('<II',51,0))
+                    elif target=='typed_layout':
+                        prop=f.props[(f.gun['cls'],'LocalToWorld')]
+                        f.put(prop['address']+0x70+0x24,struct.pack('<I',0xb0))
+                    else:f.put(f.gun['cls']+0x88,struct.pack('<I',4))
+                f.verify_hook=change
+                self.rejected(f,'metadata/registry changed')
+
+    def test_expensive_selector_and_query_closing_outside_dynamic_reads(self):
+        f=Fixture();events=[]
+        original_property=f.property
+        def prop(owner,name,inherited):
+            events.append(('property',owner,name))
+            return original_property(owner,name,inherited)
+        f.property=prop
+        def reads(address,size):
+            if address==f.gun['address']+0xa0 and size==64:events.append(('gun_dynamic',))
+        f.read_hook=reads
+        original_close=component._close_pose
+        def close(q,body):
+            events.append(('pose_close_begin',))
+            original_close(q,body)
+            events.append(('pose_close_end',))
+        f.verify_hook=lambda count:events.append(('verify',count))
+        with patch.object(component,'_close_pose',side_effect=close):
+            self.assertTrue(component.pair_probe(f,f.pose)['weapon_component_pair']['accepted'])
+        begin=next(i for i,e in enumerate(events) if e[0]=='gun_dynamic')
+        end=next(i for i,e in enumerate(events) if e[0]=='pose_close_end')
+        self.assertEqual([e for e in events[begin:end+1] if e[0] in ('property','verify')],[])
+        self.assertTrue(any(e[0]=='property' for e in events[:begin]))
+        self.assertTrue(any(e[0]=='property' for e in events[end+1:]))
 
     def test_selector_changes(self):
         f = Fixture()

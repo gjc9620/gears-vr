@@ -54,13 +54,17 @@ def _property(q, obj, name, kind=None, *, structure=False):
     return value
 
 
-def _value(q, obj, p):
+def _value_extent(q, obj, p):
     extent_address = obj['cls'] + 0x88
     extent_raw = q.read(extent_address, 4)
     extent = struct.unpack('<I', extent_raw)[0]
     if not extent or p['offset'] > extent or p['size'] > extent - p['offset']:
         raise RuntimeError('Component property exceeds actual class extent')
     _pin(q, extent_address, extent_raw)
+
+
+def _value(q, obj, p):
+    _value_extent(q, obj, p)
     raw = q.value(obj, p)
     _pin(q, obj['address'] + p['offset'], raw)
     return raw
@@ -76,7 +80,7 @@ def _pointer(q, obj, label, kinds=('ObjectProperty', 'ComponentProperty')):
     return q.obj(value)
 
 
-def _structure(q, obj, label, expected, size):
+def _structure_field(q, obj, label, expected, size):
     p = _property(q, obj, label, 'StructProperty')
     definition = q.obj(q.r.struct_type(p))
     definition_extent = q.read(definition['address'] + 0x88, 4)
@@ -87,6 +91,11 @@ def _structure(q, obj, label, expected, size):
     if struct.unpack('<Q', inner_raw)[0] != definition['address']:
         raise RuntimeError('Component struct selector changed')
     _pin(q, p['address'] + q.r.profile['struct_property_struct'], inner_raw)
+    return p
+
+
+def _structure(q, obj, label, expected, size):
+    p = _structure_field(q, obj, label, expected, size)
     return _value(q, obj, p)
 
 
@@ -102,13 +111,21 @@ def _boolean(q, obj, label):
     return bool(struct.unpack('<I', _value(q, obj, p))[0] & mask)
 
 
-def _matrix(q, obj):
-    value = list(struct.unpack('<16f', _structure(q, obj, 'LocalToWorld', 'Matrix', 64)))
+def _matrix_address(q, obj):
+    p = _structure_field(q, obj, 'LocalToWorld', 'Matrix', 64)
+    _value_extent(q, obj, p)
+    return obj['address'] + p['offset']
+
+
+def _matrix_bytes(q, address):
+    raw = q.read(address, 64)
+    value = list(struct.unpack('<16f', raw))
     inverse_affine(value)  # Reject malformed/degenerate transforms; not a pose grant.
-    return value
+    return raw
 
 
-def _snapshot(q, body):
+def _discover(q, body):
+    """Typed/static anchors span the later dynamic window; CTW values do not."""
     pawn, mesh = q.obj(body['pawn']['address']), q.obj(body['mesh']['address'])
     if pawn != body['pawn'] or mesh != body['mesh'] or _pointer(q, pawn, 'Mesh') != mesh:
         raise RuntimeError('Component observation body identity changed')
@@ -130,9 +147,9 @@ def _snapshot(q, body):
     rotation = list(struct.unpack('<3i', _structure(q, component, 'Rotation', 'Rotator', 12)))
     if not all(math.isfinite(x) for x in translation):
         raise RuntimeError('Nonfinite relative gun translation')
-    gun_matrix, avatar_matrix = _matrix(q, component), _matrix(q, mesh)
-    if avatar_matrix != body['ctw']:
-        raise RuntimeError('Avatar component matrix changed around pose read')
+    gun_address, avatar_address = _matrix_address(q, component), _matrix_address(q, mesh)
+    if avatar_address != mesh['address'] + 0xa0:
+        raise RuntimeError('Typed Avatar matrix differs from pose reader layout')
     # Compare the unique attachment's actual FName with Ref115 bone52 bytes.
     avatar_asset = _pointer(q, mesh, 'SkeletalMesh', ('ObjectProperty',))
     ref_header = q.read(avatar_asset['address'] + 0xa4, 16)
@@ -183,8 +200,8 @@ def _snapshot(q, body):
     location, angles, scale = members[:3], members[3:6], members[6:9]
     if not all(math.isfinite(x) for x in location + scale):
         raise RuntimeError('Nonfinite attachment transform')
-    return dict(weapon=weapon,component=component,asset=asset,gun_matrix=gun_matrix,
-                avatar_matrix=avatar_matrix,absolute_flags=absolute,relative_translation=translation,
+    return dict(weapon=weapon,component=component,asset=asset,
+                _matrix_addresses=(gun_address, avatar_address),absolute_flags=absolute,relative_translation=translation,
                 relative_rotation=rotation,attachment_bytes=entry.hex(),weapon_end_name_bytes=expected_bone.hex(),
                 attachment_location=list(location),attachment_rotation=list(angles),attachment_scale=list(scale))
 
@@ -219,29 +236,49 @@ def _close_pose(q, body):
 
 
 def pair_probe(observer, pose_probe, query_factory=None):
-    before = pose_probe(observer)  # Original coherent pose acceptance stays intact.
+    before = pose_probe(observer)  # Independently usable fallback, unchanged on rejection.
     start = time.perf_counter_ns()
     try:
         if query_factory is None:
             from world_state import Query
             query_factory = Query
         q = query_factory(observer)
-        component = _snapshot(q, before)
-        after = pose_probe(observer)
-        if not _same_pose(before, after):
-            raise RuntimeError('Body pose changed across component observation')
+        component = _discover(q, before)
+        gun_address, avatar_address = component.pop('_matrix_addresses')
         _close_selectors(q)
         q.finish()
+        metadata_verified_ns = time.perf_counter_ns()
+        # Original pose_probe and its complete coherent acceptance are unchanged.
+        # The discovery pose is not required to freeze during typed discovery.
+        window_begin_ns = time.perf_counter_ns()
+        after = pose_probe(observer)
+        if any(before[k] != after[k] for k in ('pawn', 'mesh', 'reference_sha256')):
+            raise RuntimeError('Body identity/reference changed after component discovery')
+        gun_raw = _matrix_bytes(q, gun_address)
+        avatar_raw = _matrix_bytes(q, avatar_address)
+        if list(struct.unpack('<16f', avatar_raw)) != after['ctw']:
+            raise RuntimeError('Avatar component matrix changed around pose read')
+        if _matrix_bytes(q, gun_address) != gun_raw:
+            raise RuntimeError('Gun matrix changed during dynamic pair window')
         _close_pose(q, after)
+        window_end_ns = time.perf_counter_ns()
+        # Only identities/selectors/static attachment/reference data close here.
+        # Dynamic CTW/Local/Space belong to the bounded window above, not to now.
         _close_selectors(q)
         q.finish()
         observer.verify()
+        gun_matrix = list(struct.unpack('<16f', gun_raw))
         component.update(accepted=True,begin_ns=start,end_ns=time.perf_counter_ns(),
-                         pose_epoch=after['pose_epoch'],weapon_end_world=before['bones']['weapon_end']['world_matrix'],
-                         gun_relative_to_weapon_end=mul(component['gun_matrix'],inverse_affine(before['bones']['weapon_end']['world_matrix'])),
+                         metadata_verified_ns=metadata_verified_ns,
+                         pair_window_begin_ns=window_begin_ns,pair_window_end_ns=window_end_ns,
+                         dynamic_pose_required_stable_through_metadata_close=False,
+                         pose_epoch=after['pose_epoch'],weapon_end_world=after['bones']['weapon_end']['world_matrix'],
+                         gun_matrix=gun_matrix,avatar_matrix=list(struct.unpack('<16f', avatar_raw)),
+                         gun_relative_to_weapon_end=mul(gun_matrix,inverse_affine(after['bones']['weapon_end']['world_matrix'])),
                          same_stable_read_cohort=True,same_C0_not_proved=True,final_render_phase_not_proved=True,
                          observation_only=True,engine_calls=0,writes=0)
-        before['weapon_component_pair'] = component
+        after['weapon_component_pair'] = component
+        return after
     except (RuntimeError,OSError,ValueError,KeyError,struct.error) as error:
         before['weapon_component_pair'] = dict(accepted=False,begin_ns=start,end_ns=time.perf_counter_ns(),
                                                error_type=type(error).__name__,error=str(error),

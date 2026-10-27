@@ -174,3 +174,16 @@ Body已完成单文件neutral observed-rebind候选的受控真实游戏验证�
 该场景通过实际Source1 API使右grip pose的tracking flags15→0→15（不是抓握按钮动作），观察到Native三个observed连续性字段1→2、hard reference epoch2／flags1保持、rebind1。以首份已经含rebind1的已保存样本为起点，后续hand／Goal applied各增加30；Stop4→5后hand／Goal各再增加37，held71保持，三个原门／10命令／协议true。不能将preloss到首次接受样本的+6全归恢复后，lost Native样本存在滞后，不把它虚作已记录observed2；其余hard-key约束由实际policy执行，但聚合样本没有独立序列化每个硬字段。
 
 这份受控case验证了接续后持续更新和Stop后的free-hand续更，实际106完整恢复／XR0／原10文件／audio9 of9还原／fresh实例空另列，不用清理替代行为。它不重建原HP自然publication失效的具体原因，不清已有poison，也不代表稳定武器跟随、射击、LGrip、GPU或物理头显接受；没有默认启动器／release集成。下一联合候选复用这一唯一准确Native工件，PG／consumer保持冻结，不重建未变Native或重复已审策略。
+
+
+## HS 后继：缩短组件配对动态窗口（2026-10-27）
+
+HS取枪／shoulder通过，ready的Native持枪计数41→89且原coherent body存在，但新增pair门48次均失败，平移／旋转未触达。原 `joint-observations-live.json` SHA256 `d282aa197f2c0020ecdbd0d890a85473eb8d74252741fe9025ea235392fb603c` 中47次为跨组件观察body推进，1次原world-state closing拒绝；Game63056／Native3374588039936。原模块SHA161a3e5a与武器分支parent逐字一致，HS原件保持。
+
+只改production `tools/game-playtest/weapon_component_observation.py` 及必要fixture，不改Native851d／PG／XR／BHELD／RWENT或增加collector。冻结候选 `analysis/component-pair-window-20261027/candidate/weapon_component_observation.py` SHA256 `4b4733681515e82f01ee69e5aa31386b2fec2c0eb2044b40f03261ae49ea8ca5`；manifest SHA256 `e78e71f33822b08e731ddcad9fb79d5afb2bec6e915ccfc7798434a615eab013`，fixture SHA256 `b4e916cca4a41356cc8e286bd5886b74a8a94f8e76e7854e723be28fb8f3242e`。
+
+新时间契约：第一次原probe结果只作discovery身份／Ref锚定和额外观察失败时的原样fallback；昂贵typed property／class extent／struct／附件／Ref115发现及selector＋Query.finish预校验完成后，才调用第二次未修改的原probe获得fresh完整coherent body。允许discovery期间epoch／姿态推进，成功必须返回这第二份body，不把seed骨骼拼回。动态窗口内只使用已认证typed CTW地址，两次gun raw64完全相同、Avatar CTW与fresh body一致，并执行未改 `_close_pose` 完整115 Space／Local hash、epoch、header、CTW闭合。typed CTW definition／selector／class extent仍前后校验，只将动态矩阵值移出慢static metadata pin集合。
+
+window_end后仍完整执行selector、全部metadata／identity／Ref／attachment／registry关闭和observer identity verify。动态body／gun不要求冻结到慢关闭结束；它们可以继续运动，输出保持已保存窗口值，不能再混入postclose新姿态。新增metadata_verified_ns／pair_window_begin_ns／pair_window_end_ns与原外层begin／end分开，接受不等于关闭时当前姿态。same_stable_read_cohort仅为重复读取一致，same_C0_not_proved／final_render_phase_not_proved保留，不能授写入／aim／最终render权限。原pose provider、_close_pose、typed pins/selectors和矩阵数学不弱化；原3秒／reads／bytes预算、registry严格相等、拒discovery hint保持。
+
+22个CPU方法分20项0.159秒和后补2项0.014秒通过；实际读取世界Query和fake owned memory验证typed／attachment／reference／identity／registry更改仍拒绝，窗口内body epoch或无epoch字节／AvatarCTW／gun raw变化仍拒绝，窗口外动态推进仅保存旧cohort。一次Sol medium窄只读delta审未见具体P1/P2，建议的postwindow body epoch／Space／Local／CTW同时推进fixture已补；没有复审旧Native策略或重跑其他suite。git diff --check通过。此为CPU候选，没有实际运行成功率或耗时改善证明；已交Body唯一运行后继核hash只换该模块，不重建未变工件或修改HS。
