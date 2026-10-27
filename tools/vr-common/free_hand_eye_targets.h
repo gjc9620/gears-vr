@@ -12,16 +12,51 @@ using gears_vr::Pose;
 using gears_vr::Quaternion;
 using gears_vr::Vector;
 
-enum class Status {okay,invalid_basis,invalid_frame,invalid_scale,invalid_mask};
+enum class Status {okay,invalid_key,key_mismatch,invalid_basis,invalid_frame,invalid_scale,invalid_mask,invalid_side};
 enum class HandStatus {not_requested,untracked,ready,invalid_pose,invalid_mount};
+// Caller copies this key from ONE admitted C0 invocation and its actual input.
+// Comparing it never authenticates a process, refreshes a frame or grants a
+// writer. No key is synthesized by the target converter.
+struct Key {
+    std::uint32_t game_pid{},game_thread{};
+    std::uint64_t game_start{},native_started_qpc{},world_generation{},mesh{},binding_generation{},tick{},compose{};
+    gears_vr::StereoSource source{gears_vr::StereoSource::RuntimeTracked};
+    std::uint64_t stereo_session{},stereo_sequence{},space_epoch{},reference_revision{};
+    std::uint64_t controller_sequence{},input_epoch{},profile_generation{};
+    std::int64_t predicted_time{};
+};
+struct EyeFrame {
+    Key key{};
+    Pose actual_eye_world{}; // SAME invocation's body Output.desired_eye.
+};
+struct TrackingFrame {
+    Key key{};
+    gears_vr::StereoSample stereo{};
+    gears_vr::ControllerInputFrame controllers{};
+};
 struct HandTarget {
     Pose grip_world{},wrist_world{};
 };
 struct Targets {
+    Key key{};
     std::uint32_t known_mask{};
     std::array<HandStatus,2> status{{HandStatus::not_requested,HandStatus::not_requested}};
     std::array<HandTarget,2> hands{};
 };
+struct Preparation {
+    Status frame{Status::invalid_key};
+    HandStatus hand{HandStatus::not_requested};
+    explicit operator bool() const noexcept {return frame==Status::okay&&hand==HandStatus::ready;}
+};
+
+inline bool same_key(Key const& a,Key const& b) noexcept {
+    return a.game_pid==b.game_pid&&a.game_thread==b.game_thread&&a.game_start==b.game_start&&
+        a.native_started_qpc==b.native_started_qpc&&a.world_generation==b.world_generation&&a.mesh==b.mesh&&
+        a.binding_generation==b.binding_generation&&a.tick==b.tick&&a.compose==b.compose&&a.source==b.source&&
+        a.stereo_session==b.stereo_session&&a.stereo_sequence==b.stereo_sequence&&a.space_epoch==b.space_epoch&&
+        a.reference_revision==b.reference_revision&&a.controller_sequence==b.controller_sequence&&
+        a.input_epoch==b.input_epoch&&a.profile_generation==b.profile_generation&&a.predicted_time==b.predicted_time;
+}
 
 namespace detail {
 inline bool unit(Quaternion q,Quaternion& out) noexcept {
@@ -31,6 +66,12 @@ inline Quaternion conjugate(Quaternion q) noexcept {return {-q.x,-q.y,-q.z,q.w};
 inline Vector subtract(Vector a,Vector b) noexcept {return {a.x-b.x,a.y-b.y,a.z-b.z};}
 inline bool units(double value) noexcept {
     return std::isfinite(value)&&value>=10&&value<=500;
+}
+inline bool key_shape(Key const& k) noexcept {
+    return k.game_pid&&k.game_thread&&k.game_start&&k.native_started_qpc&&k.world_generation&&k.mesh&&
+        k.binding_generation&&k.tick&&k.compose&&gears_vr::stereo_source_known(k.source)&&k.stereo_session&&
+        k.stereo_sequence&&k.space_epoch&&k.reference_revision&&k.controller_sequence&&k.input_epoch&&
+        k.profile_generation&&k.predicted_time>0;
 }
 }
 
@@ -78,31 +119,55 @@ inline HandStatus wrist_from_eye(Pose const& eye_world,Pose const& tracking_head
     output=candidate;return HandStatus::ready;
 }
 
+// Same-invocation association only, deliberately without a clock/age verdict.
+inline Status frame_status(EyeFrame const& eye,TrackingFrame const& tracking,double units_per_metre) noexcept {
+    if(!detail::key_shape(eye.key)||!detail::key_shape(tracking.key))return Status::invalid_key;
+    if(!same_key(eye.key,tracking.key))return Status::key_mismatch;
+    if(!detail::units(units_per_metre))return Status::invalid_scale;
+    Quaternion eye_q{},head_q{};
+    auto const& s=tracking.stereo;auto const& c=tracking.controllers;auto const& k=tracking.key;
+    if(!gears_vr::finite(eye.actual_eye_world.position)||!gears_vr::finite(s.head.position)||
+       !detail::unit(eye.actual_eye_world.orientation,eye_q)||!detail::unit(s.head.orientation,head_q))return Status::invalid_basis;
+    if(!gears_vr::controller_frame_shape_valid(c)||s.source!=k.source||s.session!=k.stereo_session||
+       s.sequence!=k.stereo_sequence||s.space_epoch!=k.space_epoch||s.predicted_time!=k.predicted_time||
+       c.source!=s.source||c.session!=s.session||c.sequence!=s.sequence||c.sequence!=k.controller_sequence||
+       c.space_epoch!=s.space_epoch||c.predicted_time!=s.predicted_time||
+       c.profile_generation!=k.profile_generation||c.input_epoch!=k.input_epoch)return Status::invalid_frame;
+    return Status::okay;
+}
+
+// Per-side adapter for compose_common's existing binding.authored_mount.
+// Output is unchanged on failure. A hand without a tracked full grip never
+// contributes a target; preparing that hand cannot mutate the other side.
+inline Preparation prepare_one(EyeFrame const& eye,TrackingFrame const& tracking,unsigned side,
+    gears_hand_wrist::Calibration const& mount,double units_per_metre,HandTarget& output) noexcept {
+    if(side>1)return {Status::invalid_side,HandStatus::not_requested};
+    const auto frame=frame_status(eye,tracking,units_per_metre);
+    if(frame!=Status::okay)return {frame,HandStatus::not_requested};
+    auto const& hand=tracking.controllers.hands[side];
+    if(!gears_vr::controller_pose_usable(hand.grip,hand.grip_flags,hand.grip_active))return {Status::okay,HandStatus::untracked};
+    return {Status::okay,wrist_from_eye(eye.actual_eye_world,tracking.stereo.head,hand.grip,mount,units_per_metre,output)};
+}
+
 // Whole-frame adapter. Caller supplies calibrated mounts from its existing
 // authenticated model bindings and an animation/interaction-owned free mask.
 // A non-requested or untracked hand remains UNKNOWN, never a retained target.
-// Matching here checks tuple/shape, not age, process identity or write rights.
+// Matching here checks key/tuple/shape, not age, process identity or write rights.
 // Caller retains the ORIGINAL admission instant; no receive time is refreshed.
-inline Status from_first_person_eye(Pose const& eye_world,gears_vr::StereoSample const& tracking,
-    gears_vr::ControllerInputFrame const& controllers,
+inline Status prepare_both(EyeFrame const& eye,TrackingFrame const& tracking,
     std::array<gears_hand_wrist::Calibration,2> const& mounts,
     double units_per_metre,std::uint32_t requested_mask,Targets& output) noexcept {
     if(requested_mask&~3u)return Status::invalid_mask;
-    if(!detail::units(units_per_metre))return Status::invalid_scale;
-    Quaternion eye_q{},head_q{};
-    if(!gears_vr::finite(eye_world.position)||!gears_vr::finite(tracking.head.position)||
-       !detail::unit(eye_world.orientation,eye_q)||!detail::unit(tracking.head.orientation,head_q))return Status::invalid_basis;
-    if(!gears_vr::controller_frame_shape_valid(controllers)||!tracking.session||!tracking.sequence||!tracking.space_epoch||
-       controllers.source!=tracking.source||controllers.session!=tracking.session||controllers.sequence!=tracking.sequence||
-       controllers.space_epoch!=tracking.space_epoch||controllers.predicted_time!=tracking.predicted_time)return Status::invalid_frame;
-    Targets candidate{};
+    const auto frame=frame_status(eye,tracking,units_per_metre);
+    if(frame!=Status::okay)return frame;
+    Targets candidate{};candidate.key=eye.key;
     for(unsigned side=0;side<2;++side){
         if(!(requested_mask&(1u<<side)))continue;
-        auto const& hand=controllers.hands[side];
+        auto const& hand=tracking.controllers.hands[side];
         if(!gears_vr::controller_pose_usable(hand.grip,hand.grip_flags,hand.grip_active)){
             candidate.status[side]=HandStatus::untracked;continue;
         }
-        candidate.status[side]=wrist_from_eye(eye_world,tracking.head,hand.grip,mounts[side],units_per_metre,candidate.hands[side]);
+        candidate.status[side]=wrist_from_eye(eye.actual_eye_world,tracking.stereo.head,hand.grip,mounts[side],units_per_metre,candidate.hands[side]);
         if(candidate.status[side]==HandStatus::ready)candidate.known_mask|=1u<<side;
     }
     output=candidate;return Status::okay;
