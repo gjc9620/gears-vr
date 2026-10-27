@@ -2175,3 +2175,12 @@ B编译状态：最终keyed源SHA93e2c62d5df8210eb1293d7e647fe54b23dbbdbf4ef4658
 首次统一Native/XR/PG均compile/link exit0，仅指定生产目标，未运行程序或测试。PG含最新Junker源码三方合并与原车辆清理；修复合并重复声明/target和既有Junker局部变量遮蔽引起的WX兼容问题，保留失败日志。固定包入口J:/gearsVr/candidates/6dof-unified/GearsVR Launcher.exe，版本6dof-unified-20261028-1；首包先交已接通FP/双手/取枪，unified_fire_ready=false，不启旧original_aim_only。Native458cdf…ba36b，XR6db1b9…3d727，PG4eea5d…84981。开火的实际muzzle/权威aim基准返回层由Weapon在统一目录限定文件继续实现，Root统一接入，不把它当首包交付前置，也不静默回退原版瞄准并报完成。
 
 详细状态见docs/6dof-unified-manual-20261028.md。源码已接通／编译／包交付／用户真机验收分列，原成熟度分数未凭编译增加，四步代码链继续推进；后续换弹、掩体和其他武器扩展仍待办。
+
+
+### 同日统一候选2：接完Lancer实际枪口开火代码
+
+没有停在首包等反馈。Weapon在统一目录限定三文件落实现有Lancer实际Muzzle getter采样／typed返回消费者，Root统一接入单一Native call subscriber begin/normal return/cleanup，保留128B Journal并为不确定返回写入增加sticky位，防止后续unwind清除事务债务。射线前后起点及基础方向来自同shot冻结的实际Muzzle，外层原误差与后续原碰撞/伤害流程保留；原original各一次。callback无Getter/Client Gate/rig读取/锁/参数消费，无第二骨骼或枪体writer。
+
+Root修正anonymous namespace include造成的ABI forward遮蔽与局部original名称遮蔽WX；最终normal PostTick还要求实际同源single/two射击快照（完整key、weapon/world/controller/pawn/mesh），避免左手unknown时允许press而返回层全部拒绝后悄然走原瞄准。此状态暂时拒绝开火，不假定左手丢失时已支持单手。预备源时效和原stamps保持，既有Scene/Native身份保护不放松。
+
+仅PG新目标compile/link exit0（含失败和修正记录），最终PG SHA80086cf51dd9b57f666ed108524f9a7069441e6e297c2f0dd6c6cca7df943f1c；Native458cdf…ba36b/XR6db1b9…3d727原产物复用。版本6dof-unified-20261028-2，unified_fire_ready=true。明确socket局部+X为待用户方向反馈的配置，HUD独立准星尚未接新射线，未声称画面/弹着/手感/停止或真机已通过。完整边界见docs/6dof-unified-muzzle-candidate-20261028.md。没有启动任何Game/XR/Simulator/test/selftest/replay/preflight。后续不扩散换弹、掩体、多武器；以用户真机反馈继续修正当前链。

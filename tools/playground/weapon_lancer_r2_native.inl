@@ -1,5 +1,6 @@
 // Private original-button consumer on the normal authenticated Native path.
-// No bridge reread, pose write, aim override or damage write is installed.
+// No bridge reread, pose or damage property writer. The explicit unified
+// profile requires the separate same-shot muzzle result consumer before enable.
 #include "weapon_unified_fire.h"
 namespace vrfire {
 namespace lr=gears_lancer_r2;
@@ -90,6 +91,7 @@ bool execute(gears_weapon::OriginalR2Action action,std::uint64_t controller,wh::
     if(action==gears_weapon::OriginalR2Action::press){
         if(!source||!game.main_hand_held||game.busy||game.animation||
             !nativeequipment::current(nullptr,*source))return false;
+        if(unified_weapon_fire::manual_profile()&&!unified_weapon_fire::ready_for(*source))return false;
         lancermain_asset::Evidence asset{};
         if(lancermain_asset::read(*source,asset)!=lancermain_asset::Status::ready||
             !nativeequipment::attached_frame(*source,asset.component.address)||
@@ -127,6 +129,15 @@ void tick(uptr pc) noexcept {
     bool current{};lr::Game game{};
     if(have_source)read_game(actors(frame),&frame,game,&current,&copied_game);
     if(!current&&input.has_actors()&&input.actors().controller.address==pc)read_game(input.actors(),nullptr,game);
+    if(unified_weapon_fire::manual_profile()){
+        const bool muzzle_ready=state==running&&current&&unified_weapon_fire::prepare_current(frame,copied_game);
+        if(!muzzle_ready){
+            unified_weapon_fire::clear_source();
+            // Retain the authenticated actor/R2 state for an owed release, but
+            // never keep an automatic burst down after losing its muzzle source.
+            game.main_hand_held=false;
+        }
+    }
     const auto now=weaponhand::clock_ns(nullptr);
     const auto previous_sync=input.last_sync_ns(),previous_observed=input.last_observed_ns();
     const auto result=input.advance(current?&frame:nullptr,current,game,now,
@@ -190,12 +201,16 @@ DWORD enable(){
         if(GetEnvironmentVariableW(L"GEARSVR_TEST_WINDOWS_BEHIND",behind,4)!=1||behind[0]!=L'1'||
             GetEnvironmentVariableW(L"GEARSVR_TEST_MUTE_GAME",muted,4)!=1||muted[0]!=L'1')return 2;
     }
+    if(unified_weapon_fire::manual_profile()&&!unified_weapon_fire::consumer_compiled())return 4;
     if(!button_name()||!input.reset_drained())return 3;
     logs=0;previous_status=previous_source=~0u;last_ammo=-1;next_ammo=0;ammo_reads=0;post_ammo_samples=2;ammo_resume_pending=false;
-    mode.store(running,std::memory_order_release);playground::message(L"native_lancer_r2_enabled_original_aim_only");return 0;
+    if(unified_weapon_fire::manual_profile()&&!unified_weapon_fire::set_running(true))return 4;
+    mode.store(running,std::memory_order_release);
+    playground::message(unified_weapon_fire::manual_profile()?L"native_lancer_r2_enabled_unified_muzzle":L"native_lancer_r2_enabled_original_aim_only");return 0;
 }
 DWORD disable(){
     if(weaponhand::current_gt(nullptr))return 1;
+    if(unified_weapon_fire::manual_profile())unified_weapon_fire::set_running(false);
     auto state=mode.load(std::memory_order_acquire);if(state==off)return 0;if(state==fault)return 4;
     if(state==running){mode.store(stopping,std::memory_order_release);state=stopping;}
     const auto end=GetTickCount64()+2000;

@@ -65,6 +65,9 @@ bool local_quiescent() noexcept;
 #error Fire-invocation scope requires the shared-hand client and existing CallFunction owner
 #endif
 #include "../vr-common/weapon_shot_scope.h"
+#if defined(GEARS_PLAYGROUND_UNIFIED_MUZZLE_FIRE)
+#include "../vr-common/weapon_support_grip.h"
+#endif
 #endif
 #if defined(GEARS_PLAYGROUND_WEAPON_HAND_PARTICIPANT_TRIAL)
 #if !defined(GEARS_PLAYGROUND_EQUIPMENT_OBSERVE)
@@ -1074,6 +1077,9 @@ namespace bodymountprovider {gears_weapon_hand::Reply attach(HMODULE) noexcept;}
 #if defined(GEARS_PLAYGROUND_WEAPON_SHOT_SCOPE_TRIAL)
 #include "weapon_shot_scope.inl"
 #endif
+#if defined(GEARS_PLAYGROUND_UNIFIED_MUZZLE_FIRE)
+#include "weapon_unified_fire.h"
+#endif
 #if defined(GEARS_PLAYGROUND_WEAPON_CALL_SUBSCRIBER_TRIAL)
 #include "weapon_call_subscriber.inl"
 #endif
@@ -1117,6 +1123,9 @@ void reset_after_drain() noexcept;
 #endif
 #endif
 #if defined(GEARS_PLAYGROUND_EXPERIMENTAL_VR_R2)
+#if defined(GEARS_PLAYGROUND_UNIFIED_MUZZLE_FIRE)
+#include "weapon_unified_fire.inl"
+#endif
 #include "vr_fire_adapter.inl"
 #endif
 #if defined(GEARS_PLAYGROUND_HAND_WEAPON_MESH_PHASE1_TRIAL)

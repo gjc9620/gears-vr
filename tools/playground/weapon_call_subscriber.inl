@@ -6,7 +6,12 @@ namespace handabi=gears_weapon_hand;
 std::atomic<std::uint64_t> attached_cookie{},attached_native{},transactions{};
 std::atomic<bool> faulted{};
 enum Flags:unsigned {created=1,leased=2,begin_done=4,ignored=8,raw_left=16,
-    writer_done=32,scope_left=64,closed=128};
+    writer_done=32,scope_left=64,closed=128,unified_uncertain=256};
+#if defined(GEARS_PLAYGROUND_UNIFIED_MUZZLE_FIRE)
+constexpr unsigned journal_valid_flags=511u;
+#else
+constexpr unsigned journal_valid_flags=255u;
+#endif
 struct Journal {
     callabi::Invocation call{};
     gears_weapon_shot::Token scope{};
@@ -65,6 +70,9 @@ void __cdecl begin(void* context,callabi::Invocation const* call,callabi::State*
     }
     // Do not gate this on armed(): soft loss must still mask unknown nesting.
     journal.scope=weaponshot::enter(call->self,call->caller_frame,call->callee);store(state,journal);
+#if defined(GEARS_PLAYGROUND_UNIFIED_MUZZLE_FIRE)
+    unified_weapon_fire::begin(*call,journal.scope);
+#endif
 #if defined(GEARS_PLAYGROUND_WEAPON_GRIP_DAMAGE_RESULT_PROBE)
     journal.raw=gripdamage::enter(call->self,call->caller_frame,call->result,call->callee);store(state,journal);
 #if defined(GEARS_PLAYGROUND_WEAPON_GRIP_DAMAGE_WRITE_TRIAL)
@@ -84,7 +92,7 @@ bool raw_closed(Journal const& journal) noexcept {
 #endif
 }
 bool cleanup(Journal& journal,callabi::State* state) noexcept {
-    bool clean=(journal.flags&begin_done)!=0;
+    bool clean=(journal.flags&begin_done)!=0&&!(journal.flags&unified_uncertain);
 #if defined(GEARS_PLAYGROUND_WEAPON_GRIP_DAMAGE_RESULT_PROBE)
     if(!(journal.flags&raw_left)){
         if(!raw_closed(journal))gripdamage::leave(journal.raw,false);
@@ -97,6 +105,11 @@ bool cleanup(Journal& journal,callabi::State* state) noexcept {
     if(!raw_closed(journal))clean=false;
 #endif
     if(!(journal.flags&scope_left)){
+#if defined(GEARS_PLAYGROUND_UNIFIED_MUZZLE_FIRE)
+        if(!unified_weapon_fire::cleanup(journal.call,journal.scope)){
+            journal.flags|=unified_uncertain;store(state,journal);clean=false;
+        }
+#endif
         weaponshot::leave(journal.scope);
         if(!weaponshot::stack.poisoned()&&(!journal.scope.entered||weaponshot::stack.depth()==journal.scope.previous_depth))
             journal.flags|=scope_left;
@@ -112,11 +125,16 @@ callabi::End finish(void* context,callabi::Invocation const* call,callabi::State
     if(!call||!state||context!=&weaponhand::client){poison();return callabi::End::unresolved;}
     auto journal=load(state);
     if(!callabi::invocation_valid(*call)||!callabi::same(journal.call,*call)||call->thread_id!=GetCurrentThreadId()||
-       !(journal.flags&created)||journal.reserved||(journal.flags&~255u)){poison();return callabi::End::unresolved;}
+       !(journal.flags&created)||journal.reserved||(journal.flags&~journal_valid_flags)){poison();return callabi::End::unresolved;}
     if(journal.flags&closed)return callabi::End::closed; // Retry never repeats a write or decrements a lease.
     bool clean{};
     __try{
         if(normal&&(journal.flags&begin_done)&&!(journal.flags&ignored)){
+#if defined(GEARS_PLAYGROUND_UNIFIED_MUZZLE_FIRE)
+            if(!unified_weapon_fire::normal_return(*call)){
+                journal.flags|=unified_uncertain;store(state,journal);poison();
+            }
+#endif
 #if defined(GEARS_PLAYGROUND_WEAPON_GRIP_DAMAGE_RESULT_PROBE)
             gripdamage::leave(journal.raw,true);
             if(raw_closed(journal))journal.flags|=raw_left;else poison();
