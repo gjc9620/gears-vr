@@ -1511,3 +1511,6 @@ HM采样边界补充：Body核对returned_end早于THIS Kernel.finish，排除�
 
 
 HO后续Body既有记录明确：90attempt／90query前not_ready、query0，fallback hands unreachable8；first-false未保存，不归具体准入条件。该局没有held baseline，body-continuation未证，不能以106清理代替。Root保留原空解析／review和冻结v4 reader，仅接收此边界，不做泛审／再开局。
+
+
+2026-10-27 完成查询前首false的BHELD004最小consumer（reader1e0c7d30…af0ef／回执27a2f8b4…58ea8／合同05070c33…95261）。H128／R648，正常行复用未改v1/v2/v3纯row helpers，v4独立真实arm规则；kind2不伪PG-ready，仍只约束begin≤deadline，end可越界。cookie0 gate20单独非权威diagnostic，保留source0／UNKNOWN、rawindex/slot，不补header身份／cookie／时间或送旧行验证。11必要方法分批通过（10/.007s＋1/.002s），首批旧合成equipment时间导致16断言失败的版本保留，修fixture不放宽reader；CLI特殊／混合窗／旧v3兼容与非法数据拒绝通过。原Goal/capture/guard字段和新prequery首false分开，不用HO90基线解释新增151Goal拒绝。权重reader3d9不改，旧实际案不重解，无Game／RE／构建或宽调查；已交Body／统筹，定位工具不涨功能百分比。

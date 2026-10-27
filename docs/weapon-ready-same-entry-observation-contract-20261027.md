@@ -130,3 +130,16 @@ Body唯一HO在原shoulder-fixed-first32门失败：6.0073855秒内status0→0�
 
 
 HO前置边界补充（Body既有记录摘要SHA256 `20f57c83d9d26ece9ed60db0481996f316f8ec2c36363109dd113c1f1131e5f7`）：90次attempt均在query前的not_ready共享出口退出，query0；fallback hands status8（unreachable）。first-false未序列化，不能将共享出口归到某一具体谓词。没有held baseline，故body-continuation未证；原恢复／清理通过只指对应恢复清理项目，不能借106代替身体续更。旧空review／parsed保持，Root只接收窄补充，未泛审或新Game；weight reader3d9ce0cb冻结。
+
+
+## BHELD004 查询前首false消费者（2026-10-27）
+
+统筹将下一单限定为恢复HO的query前路径，RWENT004权重接口不变。新BHELD004合同SHA256 `05070c3367fd5ad483f339a0e059e46aa3259561cc0b4e81a0b19e8eb2895261`，Header128／Record648／cap128，旧Header120和Record600字段offset保持。Header末尾arm_kind区分无普通窗0、原PG callback_ready触发1、首次实际prequery not_ready触发2；kind2只用原begin作为7秒窗参考，不是PG就绪或新branch时间。Record追加prequery gate／detail／实际cookie／parent cookie／revision／generation，保持原短路首false及未访问UNKNOWN。
+
+Root新纯文件reader在ignored `analysis/lancer-component-readback-20261026/decode_held_captures_v4.py`，SHA256 `1e0c7d3037378a29fbb8a052f80d72c2552646a8e82da01b96d0ae854ffaf0ef`；交付 `held-captures-v4-reader-delivery.json` SHA256 `27a2f8b47fb5bb6032adc5184d2668a1aaac1d3292d41bf913a98d7300e58ea8`。调用 `python decode_held_captures_v4.py INPUT --pid PID --native-started NATIVE --output NEW`，可带成对phase起止。原文件version／hash／raw count保留，normal row和特殊诊断分开计数并保存raw index映射。
+
+旧全文件decoder要求首行PG-ready，不适用于kind2；本实现不伪造PG query／cookie／时间或绕过全局检查。只在自有内存投影normal record前缀，复用未改v1.decode_record、v2.returns、v3.capture_result纯函数，v4明确执行自己的kind0／1／2 arming、7秒窗口、跨行身份／顺序和容量验证。原约束仅检查begin不晚于deadline，实际end允许越界。原Goal／capture／guard／admission结果及首拒绝保持，新prequery firstfalse单独报告，不重排原阶段；gate0只说明这些prequery检查通过，不证明query已发送。
+
+关键gate20为cookie尚为0、active row未形成时的一次diagnostic-only回执，最多1次，占原始容量且可在普通窗外。reader校验cookie／detail／prequery_cookie实际0、begin／end0及所有未访问runtime结果默认；source身份0／UNKNOWN按原样保存，既不套header身份，也不填cookie／时间送legacy验证。它始终不是authoritative normal row，不参与第一PG／source freshness／phase／permission结论。Marker、Basis、eye、body policy、cookie、parent、registration、cached current、revision／generation的可用字段按原短路边界严格校验；两生命周期值均实际已取时同时保留，包括revision0且generation也0。
+
+11项必要方法分批通过（10项0.007秒，新增Goal／capture与begin-only deadline1项0.002秒）；独立ctypes覆盖所有新POD offset，涵盖特殊／正常混合raw index、无arm特殊回执、真实arming、首false字段配对、原拒绝语义／旧v3兼容、容量损失及坏输入。初次10方法共16个断言失败，是复用旧no-input合成样本仍有equipment时间；新fixture改为真正未访问默认，parser拒绝规则未放宽，失败样本与计数保留。CLI mixed kind2／cookie0 special成功0，非法special／覆盖拒绝2，旧v3合成结果完全相同。未重跑旧suite或重解HO/K/HM/HN；RWENT004 reader3d9ce0cb保持，无Game／RE／Native-XR构建、age／PG-Muzzle扩查。HO90→90基线不能解释肩期另151次Goal拒绝，需实际同entry证据；此工具不作身体续更／玩法验收。
