@@ -1404,7 +1404,13 @@ void __fastcall event_hook(uptr object,uptr function,void* params){weaponentry::
 static DWORD reserve_playground_hook(){
     if(hook_created)return 0;
 #if defined(GEARS_PLAYGROUND_HAND_ANIMATION_CALL_PROBE)
+#if defined(GEARS_PLAYGROUND_UNIFIED_MANUAL_PROFILE) && GEARS_PLAYGROUND_UNIFIED_MANUAL_PROFILE && defined(GEARS_PLAYGROUND_WEAPON_CALL_SUBSCRIBER_TRIAL)
+    // The explicit owner-started profile shares the single Native call owner.
+    // Its ordinary reservation must not require autonomous-test window/audio
+    // settings. Identity, entry attestation and lifecycle checks below remain.
+#else
     if(!handanim::test_environment())return 34;
+#endif
 #endif
     base=reinterpret_cast<uptr>(GetModuleHandleW(nullptr));
     if(get<unsigned short>(base)!=0x5a4d)return 1;

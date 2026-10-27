@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "candidate_id": "6dof-unified-20261028-2",
+  "candidate_id": "6dof-unified-20261028-3",
   "source_branch": "codex/6dof-unified",
   "merge_commit": "9a41f92",
   "native": {
@@ -125,7 +125,7 @@
       "GEARS_PLAYGROUND_EXPERIMENTAL_VR_R2=ON",
       "GEARS_PLAYGROUND_NATIVE_LANCER_R2_TRIAL=ON",
       "GEARS_PLAYGROUND_EXPERIMENTAL_VR_L2=OFF",
-      "GEARS_PLAYGROUND_OUTPUT_NAME=GearsPlayground6DofUnified2",
+      "GEARS_PLAYGROUND_OUTPUT_NAME=GearsPlayground6DofUnified3",
       "GEARS_PLAYGROUND_UNIFIED_MUZZLE_FIRE=ON"
     ]
   },
@@ -134,5 +134,5 @@
   "manifest": "tools/vr-launcher/manifest-6dof-unified.json",
   "fixed_entry": "J:/gearsVr/candidates/6dof-unified/GearsVR Launcher.exe",
   "unified_fire_ready": true,
-  "source_parent": "8d3f625"
+  "source_parent": "e38a2b2"
 }

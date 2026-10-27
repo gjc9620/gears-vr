@@ -2184,3 +2184,12 @@ B编译状态：最终keyed源SHA93e2c62d5df8210eb1293d7e647fe54b23dbbdbf4ef4658
 Root修正anonymous namespace include造成的ABI forward遮蔽与局部original名称遮蔽WX；最终normal PostTick还要求实际同源single/two射击快照（完整key、weapon/world/controller/pawn/mesh），避免左手unknown时允许press而返回层全部拒绝后悄然走原瞄准。此状态暂时拒绝开火，不假定左手丢失时已支持单手。预备源时效和原stamps保持，既有Scene/Native身份保护不放松。
 
 仅PG新目标compile/link exit0（含失败和修正记录），最终PG SHA80086cf51dd9b57f666ed108524f9a7069441e6e297c2f0dd6c6cca7df943f1c；Native458cdf…ba36b/XR6db1b9…3d727原产物复用。版本6dof-unified-20261028-2，unified_fire_ready=true。明确socket局部+X为待用户方向反馈的配置，HUD独立准星尚未接新射线，未声称画面/弹着/手感/停止或真机已通过。完整边界见docs/6dof-unified-muzzle-candidate-20261028.md。没有启动任何Game/XR/Simulator/test/selftest/replay/preflight。后续不扩散换弹、掩体、多武器；以用户真机反馈继续修正当前链。
+
+
+### 2026-10-28：用户手动启动34的窄修复与候选3
+
+用户反馈进不去；两次实际reserve日志均在playground_reservation返回InitializationError34，Steam EXE验证通过，Native未激活/XR未启动。已先把整个旧候选、两次first-failure和用户config原始字节快照到忽略目录analysis/6dof-unified-startup34-20261028/。当前用户选择真实SteamLibrary副本，完整路径历史和hud_horizontal_fov_degrees=65须保留，不用模板覆盖。
+
+唯一生产源码差分playground.cpp：HAND_ANIMATION_CALL_PROBE下的test_environment门仅对明确UNIFIED_MANUAL_PROFILE=1且使用Native WEAPON_CALL_SUBSCRIBER的手动档不要求测试环境；旧实验门、EXE/进程/64字节入口/注册/生命周期等保护保留。顺查Reserve/Initialize/Enable/WeaponHandStart/VrFireEnable相邻手动链；R2已有手动档分支，其余未启用实验/诊断入口仍保留原门。没有向正常启动器注入静音或置后变量。
+
+仅编译受影响GearsPlayground目标，最终exit0；新PG 4f8a5dfaab0d191d45f2867fb084a6f414172933d43d1f1487844a14620b1036。Native458cdf…ba36b、XR6db1b9…3d727复用未改产物，未运行任何Game/XR/Simulator/test/selftest/replay/preflight。候选6dof-unified-20261028-3保留用户全部config与旧包/日志，固定入口继续6dof-unified。源码拒绝条件已修正，下一次真实启动及玩法仍待用户确认；既有HUD/左手unknown/socket轴限制不变。详见docs/6dof-unified-startup34-fix-20261028.md。
