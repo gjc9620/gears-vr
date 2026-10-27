@@ -15,6 +15,15 @@ std::atomic<uint64_t> neutral_rebind_attempts{},neutral_rebind_deferred{},neutra
 struct Call {Call(){++callbacks;}~Call(){--callbacks;}};
 struct Key {bind::Binding actor{};gears_anchor::Identity asset{};core::CoreSnapshot source{};
     pose::ArrayHeader reference{};std::array<b::rig::ReferenceRecord68,b::bones> ref{};double units{},model_scale{};};
+// The immutable body neutral belongs to the local avatar/mesh, not to its
+// currently equipped item. Weapon identity still remains mandatory in each
+// live C0 transaction, mount query and equipment action; this comparison only
+// permits reuse of unchanged body calibration across an ordinary gun switch.
+bool same_neutral_actor(bind::Binding const& x,bind::Binding const& y){return
+    x.context_valid&&y.context_valid&&x.weapon_known&&y.weapon_known&&
+    x.world_generation&&x.world_generation==y.world_generation&&
+    gears_anchor::equal_identity(x.controller,y.controller)&&gears_anchor::equal_identity(x.pawn,y.pawn)&&
+    gears_anchor::equal_identity(x.mesh,y.mesh)&&gears_anchor::equal_identity(x.world,y.world);}
 struct NeutralState {Key key{};neutral::Stored stored{};a::marker::Marker marker{};a::marker::Workspace work{};
     bool initialized{},poisoned{};} origin;
 enum class RejectReason : unsigned {wrong_thread=1,stopping,pending,uncaptured,wrong_entry,same_entry,
@@ -39,7 +48,7 @@ void note_held_reject(RejectReason reason,Entry const& e,bool source_available,u
     const bool key=captured&&origin.initialized;
     auto result=::gears_body_held_outcome::unknown;
     if(key){auto const& k=origin.key;auto const& s=n::state;result=0;
-            const bool bits[]={bind::same_key(k.actor,s.context.actor),bind::same(k.asset,s.context.asset),
+            const bool bits[]={same_neutral_actor(k.actor,s.context.actor),bind::same(k.asset,s.context.asset),
                 core::same(k.source.native,s.context.source.native),k.source.world_generation==s.context.source.world_generation,
                 k.source.stereo.source==s.context.source.stereo.source,k.source.stereo.session==s.context.source.stereo.session,
                 k.source.stereo.space_epoch==s.context.source.stereo.space_epoch,
@@ -75,7 +84,7 @@ void note_reject(RejectReason reason,Entry const& e,bool source_available=true,u
         row.origin_initialized=origin.initialized;row.origin_poisoned=origin.poisoned;
         row.current_source=reject_source(s.context.source);row.key_available=origin.initialized;
         if(row.key_available){auto const& k=origin.key;row.old_source=reject_source(k.source);
-            const bool bits[]={bind::same_key(k.actor,s.context.actor),bind::same(k.asset,s.context.asset),
+            const bool bits[]={same_neutral_actor(k.actor,s.context.actor),bind::same(k.asset,s.context.asset),
                 core::same(k.source.native,s.context.source.native),k.source.world_generation==s.context.source.world_generation,
                 k.source.stereo.source==s.context.source.stereo.source,k.source.stereo.session==s.context.source.stereo.session,
                 k.source.stereo.space_epoch==s.context.source.stereo.space_epoch,
@@ -148,20 +157,23 @@ bool same_observed_basis(core::CoreSnapshot const& old,core::CoreSnapshot const&
 bool same_source_basis(core::CoreSnapshot const& old,core::CoreSnapshot const& s){
     return same_hard_source_basis(old,s)&&same_observed_basis(old,s);
 }
-bool same_hard_key(Key const& key){auto const& s=n::state;return bind::same_key(key.actor,s.context.actor)&&bind::same(key.asset,s.context.asset)&&
-    same_hard_source_basis(key.source,s.context.source)&&pose::header_equal(key.reference,s.backend.metadata().reference)&&
+bool same_calibration_key(Key const& key){auto const& s=n::state;return same_neutral_actor(key.actor,s.context.actor)&&bind::same(key.asset,s.context.asset)&&
+    core::same(key.source.native,s.context.source.native)&&key.source.world_generation==s.context.source.world_generation&&
+    key.source.stereo.source==s.context.source.stereo.source&&pose::header_equal(key.reference,s.backend.metadata().reference)&&
     key.units==s.source.units_per_metre&&key.model_scale==s.source.model_scale&&
     !std::memcmp(key.ref.data(),s.source.reference.data(),sizeof key.ref);}
+bool same_hard_key(Key const& key){return same_calibration_key(key)&&same_hard_source_basis(key.source,n::state.context.source);}
 bool same_key(Key const& key){return same_hard_key(key)&&same_observed_basis(key.source,n::state.context.source);}
-// Observed counters also advance after a rejected publication. They are not
-// the independent hard reference epoch. Reuse only immutable mesh-local
-// calibration, never an old tracking sample or a newly animated Local pose.
+// A gun switch/recenter may replace the accepted tracking/reference cohort.
+// It does not replace this avatar's immutable mesh-local calibration. Rebind
+// only at idle to a newly authenticated complete current source, after the
+// normal adapter/receipt/final checks below; never retain/revive old tracking
+// or recapture the current gun animation as a new neutral pose.
 bool observed_rebind_candidate(Key const& key){
-    if(!same_hard_key(key))return false;
+    if(!same_calibration_key(key))return false;
     auto const& a=key.source.observed;auto const& b=n::state.context.source.observed;
     return a.stream&&a.reference&&a.head_tracking&&b.stream&&b.reference&&b.head_tracking&&
-        b.stream>=a.stream&&b.reference>=a.reference&&b.head_tracking>=a.head_tracking&&
-        (b.stream>a.stream||b.reference>a.reference||b.head_tracking>a.head_tracking);
+        (!same_hard_source_basis(key.source,n::state.context.source)||!same_observed_basis(key.source,n::state.context.source));
 }
 bool observed_rebind_idle(){auto const& s=n::state;return !pending.entry&&!open_ends.load()&&
     !s.prepared&&!s.notified&&!s.atom_installed&&!s.recovery.active&&
@@ -221,9 +233,8 @@ void pose_begin(Entry const& e) noexcept {Call call;if(e.kind==0)budget::recorde
                 ++neutral_rebind_deferred;note_reject(RejectReason::key_mismatch,e);++rejected;return;}
             invalidate();
             if(stopping.load()){note_reject(RejectReason::stopping,e);++rejected;return;}
-            origin.key.source.observed.stream=s.context.source.observed.stream;
-            origin.key.source.observed.reference=s.context.source.observed.reference;
-            origin.key.source.observed.head_tracking=s.context.source.observed.head_tracking;
+            origin.key.actor=s.context.actor;
+            origin.key.source=s.context.source;
             ++neutral_rebinds;
         }
         budget::recorder.mark(budget::Stage::goal_final_end);pending={};pending.entry=&e;pending.copy=e;pending.revision=revision.load();open_ends=1;
@@ -281,7 +292,7 @@ bool read_view(gears_anchor::Receipt const* scene,gears_vr::StereoResult const& 
            !gears_vr::stereo_tracking_valid(stereo.sample,simulator_operator)||!gears_vr::stereo_render_active(stereo.sample)||stereo.sample.focused!=1||
            !rig::source_fresh(stereo.sample.received_ns,now,a::maximum_age_ns))return deny(false);
         b::Matrix64 component{};a::Neutral moved{};gears_vr::CoverViewResult render{};
-        if(!bind::sample(scene,actor)||!bind::same_key(actor,copy.key.actor)||!standing(actor)||!current_geometry(copy,component)||
+        if(!bind::sample(scene,actor)||!same_neutral_actor(actor,copy.key.actor)||!standing(actor)||!current_geometry(copy,component)||
            !neutral::move(copy.stored,component,moved)||!gears_vr::prepare_cover_view(moved.eye_anchor,{},units,render)||
            !bind::current_actor(actor)||!rig::reference_snapshot(reference,ref_revision)||ref_revision!=s.native_reference_revision)return deny();
         std::lock_guard<std::mutex> lock(view_mutex);

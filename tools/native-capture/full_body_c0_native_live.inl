@@ -767,10 +767,13 @@ bool apply_impl(Entry const& e,body::Goal const& goal,gears_native_rig_tracking:
                 (source.flags&gears_rig_tracking::cover_key_known)||source.cover_type||source.cover_link.address||source.cover_slot!=-1)
                 hand_result.status=hands::Status::invalid_body;
             else if(eye&&first_person_live::body_basis&&body_tick_input_live::enabled)
-                hand_result=hands::compose_eye(state.model,state.source,
-                    body_tick_source_live::enabled?state.context.body_source.observed:state.context.body_input,
-                    e.invocation,rig_tracking_live::object(state.context.asset),*render_base,*eye,
-                    rig_tracking_live::clock_ns(),simulator_operator,state.hand_work,state.output,state.right_mount);
+                hand_result=body_tick_source_live::enabled?
+                    hands::compose_eye(state.model,state.source,state.context.body_source,
+                        e.invocation,rig_tracking_live::object(state.context.asset),*render_base,*eye,
+                        rig_tracking_live::clock_ns(),simulator_operator,state.hand_work,state.output,state.right_mount):
+                    hands::compose_eye(state.model,state.source,state.context.body_input,
+                        e.invocation,rig_tracking_live::object(state.context.asset),*render_base,*eye,
+                        rig_tracking_live::clock_ns(),simulator_operator,state.hand_work,state.output,state.right_mount);
             else if(body_tick_source_live::enabled)hand_result=hands::compose(state.model,state.source,state.context.body_source,rig_tracking_live::object(state.context.asset),
                 *render_base,rig_tracking_live::clock_ns(),simulator_operator,state.hand_work,state.output,state.right_mount);
             else if(body_tick_input_live::enabled)hand_result=hands::compose(state.model,state.source,state.context.body_input,rig_tracking_live::object(state.context.asset),

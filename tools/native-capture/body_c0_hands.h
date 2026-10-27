@@ -151,14 +151,13 @@ inline Result compose_common(body::Model const& model,body::Frame const& frame,c
 }
 // Current admitted tick plus the exact desired_eye that generated the body
 // head goal. No second legacy FP/reference offset or previous-frame target.
-inline Result compose_eye(body::Model const& model,body::Frame const& frame,
+namespace detail {
+inline Result compose_eye_current(body::Model const& model,body::Frame const& frame,
     gears_body_tick_input::Input const& input,std::uint64_t compose,
     hand::ObjectIdentity const& asset,gears_vr::StereoMatrix const& base,
     gears_vr::Pose const& desired_eye,std::int64_t now,bool allow_sim,
     Workspace& work,body::Output& inout,adapter::MountKind right_mount=adapter::MountKind::free_hand) noexcept {
     namespace free=gears_free_hand_eye_targets;
-    if(gears_body_tick_input::classify(input,input.parent_scene,now,allow_sim)!=gears_body_tick_input::Verdict::okay)
-        return detail::fail(Status::invalid_core);
     auto const& s=input.parent_scene;auto const& t=input.stereo;auto const& c=input.controllers;
     free::Key key{};key.game_pid=s.native.game_pid;key.game_thread=s.native.game_thread;
     key.game_start=s.native.game_start;key.native_started_qpc=s.native.native_started_qpc;
@@ -177,6 +176,29 @@ inline Result compose_eye(body::Model const& model,body::Frame const& frame,
             if(result){work.computed_wrist[side]=work.eye_targets[side].wrist_world;return adapter::Status::okay;}
             return result.hand==free::HandStatus::untracked?adapter::Status::hand_untracked:adapter::Status::numerical_failure;
         },true);
+}
+} // namespace detail
+inline Result compose_eye(body::Model const& model,body::Frame const& frame,
+    gears_body_tick_input::Input const& input,std::uint64_t compose,
+    hand::ObjectIdentity const& asset,gears_vr::StereoMatrix const& base,
+    gears_vr::Pose const& desired_eye,std::int64_t now,bool allow_sim,
+    Workspace& work,body::Output& inout,adapter::MountKind right_mount=adapter::MountKind::free_hand) noexcept {
+    if(gears_body_tick_input::classify(input,input.parent_scene,now,allow_sim)!=gears_body_tick_input::Verdict::okay)
+        return detail::fail(Status::invalid_core);
+    return detail::compose_eye_current(model,frame,input,compose,asset,base,desired_eye,now,allow_sim,work,inout,right_mount);
+}
+inline Result compose_eye(body::Model const& model,body::Frame const& frame,
+    gears_body_tick_source::Input const& input,std::uint64_t compose,
+    hand::ObjectIdentity const& asset,gears_vr::StereoMatrix const& base,
+    gears_vr::Pose const& desired_eye,std::int64_t now,bool allow_sim,
+    Workspace& work,body::Output& inout,adapter::MountKind right_mount=adapter::MountKind::free_hand) noexcept {
+    // Keep the distinct source contract. Its current tracking ticket remains
+    // bounded to40ms and its authenticated scene to50ms. Old Scene tracking
+    // is metadata here; erasing this type into legacy TickInput re-applied
+    // that consumer's extra stale-tracking checks to a different contract.
+    if(gears_body_tick_source::classify(input,input.observed.parent_scene,now,allow_sim)!=gears_body_tick_source::Verdict::okay)
+        return detail::fail(Status::invalid_core);
+    return detail::compose_eye_current(model,frame,input.observed,compose,asset,base,desired_eye,now,allow_sim,work,inout,right_mount);
 }
 inline Result compose(body::Model const& model,body::Frame const& frame,core::CoreSnapshot const& source,
     hand::ObjectIdentity const& asset,gears_vr::StereoMatrix const& base,std::int64_t now,bool allow_sim,

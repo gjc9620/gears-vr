@@ -45,6 +45,7 @@ class Backend final:public tx::Backend {
     struct Permit {tx::Block expected{},replacement{};std::uintptr_t address{};tx::Stage stage{};bool armed{};unsigned char reserved[3]{};} permit_{};
     // Large readback storage belongs to the backend, never to the game stack.
     body::Frame repeated_{};std::array<unsigned char,115> desired_repeat_{};
+    std::array<std::int16_t,115*2> unit_index_{};
     bool read_metadata(pose::Metadata& m) noexcept {
         auto reader=[](void* o,void const* p,std::size_t n){return read_memory(o,reinterpret_cast<std::uintptr_t>(p),n);};
         return pose::metadata(reader,request_,m);
@@ -136,13 +137,22 @@ public:
         // the same owner/header/metadata, but can never arm a memory-write permit.
         if(stage!=tx::Stage::scope_end){
             if(!read_memory(repeated_.local.data(),metadata_.local.data,sizeof repeated_.local))return tx::Verdict::fault;
+            // Index only the kernel's owned POD units, within this validation.
+            // Preserve every duplicate/shape/before/ours/local check while
+            // avoiding a complete unit scan for each of230 atom halves on
+            // every CAS. All live readbacks/context/freshness checks remain.
+            unit_index_.fill(-1);
+            for(unsigned i=0;i<v.count;++i){auto const& u=v.units[i];
+                if(u.bone>=115||u.half>1||(u.half&&u.bone))return tx::Verdict::denied;
+                auto& index=unit_index_[u.bone*2+u.half];
+                if(index>=0)return tx::Verdict::denied;
+                index=static_cast<std::int16_t>(i);
+            }
             for(unsigned bone=0;bone<115;++bone)for(unsigned half=0;half<2;++half){
                 auto const* expected=reinterpret_cast<unsigned char const*>(&source_.local[bone])+half*16;
-                bool owned=false,skip=false;
-                for(unsigned i=0;i<v.count;++i){auto const& u=v.units[i];
-                    if(u.bone>=115||u.half>1||(u.half&&u.bone))return tx::Verdict::denied;
-                    if(u.bone!=bone||u.half!=half)continue;
-                    if(owned)return tx::Verdict::denied;owned=true;
+                bool skip=false;
+                const auto index=unit_index_[bone*2+half];
+                if(index>=0){auto const& u=v.units[unsigned(index)];
                     const auto* planned=reinterpret_cast<unsigned char const*>(&v.plan.local[bone])+half*16;
                     if(std::memcmp(&u.before,expected,16)||std::memcmp(&u.ours,planned,16))return tx::Verdict::denied;
                     // Reverse recovery examines each owned value with CAS itself;

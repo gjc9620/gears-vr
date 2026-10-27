@@ -62,6 +62,40 @@ FIRST_PERSON_HEAD_RANGES = {
         (0x8bf246, 487, 'b4de6a4af4951fb85df14ac0bb21a577b8f4a9a274bcceb104cb64e8f2e9733d'),
     ),
 }
+# Complete known body/control entry chunks from the source-bound certificates.
+# These are fixed expectations, never inferred from the DLL's status/manifest.
+BODY_HOOK_RANGES = {
+    0x129cc0: (
+        (0x129cc0, 2132, 'd10570b6a96cc9d16c3938e2999be6288d7603127ac402eb908f6e57af0a2fa9'),
+        (0x8a9738, 1179, '4e81e649c3aa5c9fb28188adfc4d09b3837d46e73ac65cdd467b09b66617c70e'),
+    ),
+    0xf7940: (
+        (0xf7940, 2569, '418cdc8a350ce1a4b176126345e5c890aef09d4ed9b9599e7f1d7d5a3d6e91b0'),
+        (0x8a110e, 296, '28b53741cceb91938610e94a9397b544b243dd7688b2099efdd97485935a8902'),
+    ),
+    0x109970: ((0x109970, 5433, 'ba3725f89400b7cfa88231b8870721f8cf3b599c7717ee07ae6e124a8dc7eb67'),),
+    0x128920: (
+        (0x128920, 5018, '4b65c4f0bbd5f12af73bde81a459dc222efd1c554e52ff1754ea7b2ae04c82a1'),
+        (0x8a9500, 567, 'd4a5080e659dc461365cdc0320a04b0d765571e0b2d6095595a05c60e7e3088a'),
+    ),
+    0xf26d4: (
+        (0xf26d4, 1422, 'c8b9a07a24f586eab33c7983ca2f19a7f1a3a10e758a7ea0bf84c5bfaf686683'),
+        (0x8a018a, 911, 'f09cae23b775ebbf39371b65f0376e1a9ec677c95b571ff69ddacde94607e08e'),
+    ),
+    0xfa730: (
+        (0xfa730, 1403, 'ccd15f18ead14a5c4645d4fc8ff41f2a5da766be276ed3d4f59a30ac26a126cb'),
+        (0x8a18bc, 220, '938feaebec2a52aafc93607b187f25230eb17c4302cc2b34cd9ed36896c4497d'),
+    ),
+    0x1d2a04: (
+        (0x1d2a04, 2552, '6be9fd2fd75e3293d24d2614ce2f1891a772c83336a15ae02d553b6f3cf53b8b'),
+        (0x8c912c, 1418, 'bd3eef601899bfea97c429c6a82049bb2362c9ddceef2004539ed02caa525021'),
+    ),
+    0x1d396c: (
+        (0x1d396c, 1772, '034f506b7fceb901a5d525e3e580929a407937e6a7fe9d143cc1cd6bbbd39bff'),
+        (0x8c9822, 143, 'dee750b6cbd6d33290a0b7c53607eaddbdb7294ae6620a2faaddeea24f6cf73f'),
+    ),
+    0x515bb0: ((0x515bb0, 6, '53dbfaa28a9cdebe3943b279c5092f16fd2fceb294a0725518586517d867a360'),),
+}
 
 
 def check_runtime_ranges(read, base, target, ranges, source):
@@ -441,6 +475,10 @@ def main():
             if rva in FIRST_PERSON_HEAD_RANGES:
                 checks.extend(check_runtime_ranges(resolver.read, resolver.base, target,
                     FIRST_PERSON_HEAD_RANGES[rva], 'certified first-person head skin full chunks'))
+                continue
+            if rva in BODY_HOOK_RANGES:
+                checks.extend(check_runtime_ranges(resolver.read, resolver.base, target,
+                    BODY_HOOK_RANGES[rva], 'certified body/control full restored chunks'))
                 continue
             if rva in camera:
                 expected = camera[rva]
