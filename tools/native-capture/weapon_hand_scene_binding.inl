@@ -50,16 +50,43 @@ bool named(gears_anchor::Identity const& id,const wchar_t* name){return !id.numb
 bool identity(uintptr_t address,gears_anchor::Identity& out,bool instance=false,bool allow_long_prefix=false){
     gears_anchor::Registry objects{},names{},after_objects{},after_names{};
     if(!address||(address&7)||!read(objects,metadata.objects_header)||!read(names,metadata.names_header)||!cohort(objects,objects)||!cohort(names,names))return false;
-    auto capture=[&](gears_anchor::Identity& id){id.address=address;return field(id.index,address,metadata.object_internal_index)&&field(id.name_index,address,metadata.object_name)&&
-        field(id.number,address,metadata.object_name+4)&&field(id.cls,address,metadata.object_class)&&field(id.outer,address,metadata.object_outer);};
-    auto text=[&](uintptr_t entry,std::array<wchar_t,64>& name){name.fill(0);if(entry>UINTPTR_MAX-metadata.name_entry_text)return false;
+    // Same two observations and closing guards, with fewer read calls on the
+    // exact supported layout. No identity, name or permission is cached.
+    const bool object_block=metadata.object_internal_index==8&&metadata.object_outer==64&&
+        metadata.object_name==72&&metadata.object_class==80;
+    const bool name_block=sizeof(wchar_t)==2&&metadata.name_entry_index==0&&metadata.name_entry_text==20;
+    auto capture=[&](gears_anchor::Identity& id){id.address=address;
+        std::array<unsigned char,80> bytes{};
+        if(object_block&&range(address,88)&&read(bytes,address+8)){
+            std::memcpy(&id.index,bytes.data(),4);std::memcpy(&id.outer,bytes.data()+56,8);
+            std::memcpy(&id.name_index,bytes.data()+64,4);std::memcpy(&id.number,bytes.data()+68,4);
+            std::memcpy(&id.cls,bytes.data()+72,8);return true;
+        }
+        return field(id.index,address,metadata.object_internal_index)&&field(id.name_index,address,metadata.object_name)&&
+            field(id.number,address,metadata.object_name+4)&&field(id.cls,address,metadata.object_class)&&field(id.outer,address,metadata.object_outer);};
+    auto text=[&](uintptr_t entry,std::array<wchar_t,64>& name,unsigned expected_index){name.fill(0);if(entry>UINTPTR_MAX-metadata.name_entry_text)return false;
+        std::array<unsigned char,146> bytes{};
+        if(name_block&&read(bytes,entry)){
+            unsigned index{};std::memcpy(&index,bytes.data(),4);if(index!=expected_index)return false;
+            // Exactly the original first63 characters; the final zero is
+            // supplied by fill(). Unused bytes after a terminator are not
+            // identity data and do not introduce a new equality rule.
+            std::memcpy(name.data(),bytes.data()+20,126);
+            for(unsigned i=0;i<63;++i)if(!name[i]){
+                std::fill(name.begin()+i+1,name.end(),wchar_t(0));return i!=0;
+            }
+            return allow_long_prefix;
+        }
+        // A block can cross an unreadable page after a short valid name.
+        // Retry the original scalar observation, without accepting partial
+        // block data or omitting any original final identity/slot reread.
         for(unsigned i=0;i<63;++i){wchar_t c{};if(!field(c,entry+metadata.name_entry_text,i*2))return false;name[i]=c;if(!c)return i!=0;}return allow_long_prefix;};
     gears_anchor::Identity id{},again{};uintptr_t slot{},entry{},again_entry{};unsigned name_index{},again_name_index{};
     if(!capture(id)||!id.cls||id.index>=unsigned(objects.count)||id.name_index>=unsigned(names.count)||
        !read(slot,objects.data+uintptr_t(id.index)*8)||slot!=address||!read(entry,names.data+uintptr_t(id.name_index)*8)||
-       !field(name_index,entry,metadata.name_entry_index)||name_index!=id.name_index||!text(entry,id.name)||
+       !field(name_index,entry,metadata.name_entry_index)||name_index!=id.name_index||!text(entry,id.name,id.name_index)||
        (instance&&!wcsncmp(id.name.data(),L"Default__",9)))return false;
-    if(!capture(again)||!text(entry,again.name)||!same(id,again)||!read(slot,objects.data+uintptr_t(id.index)*8)||slot!=address||
+    if(!capture(again)||!text(entry,again.name,id.name_index)||!same(id,again)||!read(slot,objects.data+uintptr_t(id.index)*8)||slot!=address||
        !read(again_entry,names.data+uintptr_t(id.name_index)*8)||again_entry!=entry||!field(again_name_index,entry,metadata.name_entry_index)||again_name_index!=id.name_index||
        !read(after_objects,metadata.objects_header)||!read(after_names,metadata.names_header)||!cohort(objects,after_objects)||!cohort(names,after_names))return false;
     out=id;return true;

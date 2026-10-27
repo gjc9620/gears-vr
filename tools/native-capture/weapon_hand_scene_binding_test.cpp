@@ -20,11 +20,11 @@ std::atomic<uint64_t> committed_world_generation{1};std::atomic<unsigned> active
 std::atomic<bool> recording{true};bool continuous_session=true,anchor_observer_enabled=true;
 gears_anchor::Config anchor_config;
 struct Scope {bool world()const{return true;}};
-uintptr_t arena{},denied{};unsigned reads{},native_calls{};
+uintptr_t arena{},denied{};unsigned reads{},native_calls{};size_t denied_read_size{};
 void (*read_hook)(uintptr_t,size_t){};
 bool safe_copy(void* out,void const* from,size_t size){
  const auto address=reinterpret_cast<uintptr_t>(from);++reads;if(read_hook)read_hook(address,size);
- if(!address||address==denied||address<arena||size>1024*1024||address>arena+1024*1024-size)return false;
+ if(!address||address==denied||(denied_read_size&&size==denied_read_size)||address<arena||size>1024*1024||address>arena+1024*1024-size)return false;
  memcpy(out,from,size);return true;
 }
 long long now(){return static_cast<long long>(GetTickCount64());}
@@ -68,7 +68,7 @@ void refresh_scene(){
  scene.anchor.pawn=p.pawn.address;scene.anchor.pawn_identity=p.pawn;scene.anchor.controller=p.controller;scene.anchor.camera=p.camera;scene.anchor.level=p.level;
 }
 void setup(){
- read_hook=nullptr;denied=0;memset(reinterpret_cast<void*>(arena),0,1024*1024);auto& c=b::metadata;c={};c.objects_header=arena+0x100;c.names_header=arena+0x200;
+ read_hook=nullptr;denied=denied_read_size=0;memset(reinterpret_cast<void*>(arena),0,1024*1024);auto& c=b::metadata;c={};c.objects_header=arena+0x100;c.names_header=arena+0x200;
  c.object_internal_index=8;c.object_name=72;c.object_class=80;c.object_outer=64;c.field_super=96;c.name_entry_index=0;c.name_entry_text=20;c.identity_count=5;
  c.role_controller=0;c.role_local=1;c.role_camera=2;c.role_pawn=3;c.role_level=4;c.controller_pawn=c.pawn_controller=0x100;c.player_camera=c.pc_owner=0x108;c.player=0x110;c.camera_view_target=0x100;
  put(c.objects_header,gears_anchor::Registry{arena+0x1000,2001,2100});put(c.names_header,gears_anchor::Registry{arena+0x6000,2001,2100});
@@ -109,8 +109,8 @@ bool take(h::Binding& out,bool unchanged=true,gears_anchor::Receipt const* recei
  const bool result=h::sample(receipt,out);C(!memcmp(layout.data(),&b::layout,sizeof b::layout));C(native_calls==0);
  if(unchanged)C(!memcmp(saved_arena.data(),reinterpret_cast<void*>(arena),saved_arena.size()));return result;
 }
-uintptr_t trigger{},change_address{};unsigned hit{},nth{};uint64_t changed_value{};size_t changed_size{};bool throw_read{},change_generation{},change_scene{},change_thread{};
-void changing_read(uintptr_t address,size_t){if(address!=trigger||++hit!=nth)return;
+uintptr_t trigger{},change_address{};unsigned hit{},nth{};uint64_t changed_value{};size_t changed_size{},trigger_size{};bool throw_read{},change_generation{},change_scene{},change_thread{};
+void changing_read(uintptr_t address,size_t size){if(address!=trigger||(trigger_size&&size!=trigger_size)||++hit!=nth)return;
  if(throw_read)throw 9;
  if(change_generation)committed_world_generation=2;
  else if(change_scene)scene.invocation++;
@@ -118,7 +118,7 @@ void changing_read(uintptr_t address,size_t){if(address!=trigger||++hit!=nth)ret
  else memcpy(reinterpret_cast<void*>(change_address),&changed_value,changed_size);
 }
 void plan(uintptr_t watched,unsigned number,uintptr_t target,uint64_t value,size_t size){
- trigger=watched;nth=number;hit=0;change_address=target;changed_value=value;changed_size=size;throw_read=change_generation=change_scene=change_thread=false;read_hook=changing_read;
+ trigger=watched;trigger_size=0;nth=number;hit=0;change_address=target;changed_value=value;changed_size=size;throw_read=change_generation=change_scene=change_thread=false;read_hook=changing_read;
 }
 int main(){
  arena=reinterpret_cast<uintptr_t>(VirtualAlloc(nullptr,saved_arena.size(),MEM_COMMIT|MEM_RESERVE,PAGE_READWRITE));if(!arena)return 99;
@@ -159,6 +159,35 @@ int main(){
  for(unsigned which=0;which<3;++which){setup();if(which==2)C(take(out));plan(which==0?fixture_world_property+0x70:(which==1?instigator_property+0x70:fixture_pawn+0x1d0),1,0,0,0);throw_read=true;
   out.scene_invocation=999;C(!take(out)&&out.scene_invocation==999&&h::last_reason==h::Reason::exception);read_hook=nullptr;const bool unlocked=h::mutex.try_lock();C(unlocked);if(unlocked)h::mutex.unlock();fake_ms=1000;C(take(out));}
  setup();denied=fixture_weapon+0x218;C(!take(out));denied=0;fake_ms=1000;C(take(out));unsigned overflow{};C(!h::source_field(h::base_proof,overflow,UINTPTR_MAX-2,4));
+ // The layout-specific read batching must preserve both identity observations,
+ // the complete semantic name, and no-partial-output failure behavior.
+ setup();C(take(out));gears_anchor::Identity id{};auto begin_reads=reads;C(h::identity(fixture_weapon,id));
+ C(reads-begin_reads==14&&id.address==fixture_weapon&&!wcscmp(id.name.data(),L"CurrentWeapon"));
+ for(unsigned field=0;field<7;++field){setup();C(take(out));id={};id.address=999;
+  const auto names=get<gears_anchor::Registry>(h::metadata.names_header);
+  const auto entry=get<uintptr_t>(names.data+uintptr_t(get<unsigned>(fixture_weapon+72))*8);
+  if(field<5){const unsigned offsets[]={8,64,72,76,80};const auto offset=offsets[field];
+   const auto width=field==1||field==4?8u:4u;const auto value=width==8?get<uintptr_t>(fixture_weapon+offset):uint64_t(get<unsigned>(fixture_weapon+offset));
+   plan(fixture_weapon+8,2,fixture_weapon+offset,value+1,width);trigger_size=80;
+  }else{plan(entry,2,entry+(field==5?20:0),field==5?uint64_t(L'X'):uint64_t(get<unsigned>(entry)+1),field==5?2:4);trigger_size=146;}
+  C(!h::identity(fixture_weapon,id)&&id.address==999);C(hit==2);read_hook=nullptr;
+ }
+ // An oversized read may be unavailable even though all original scalar
+ // fields / the terminated short name are readable. Fall back, never use
+ // partial block bytes or silently discard a required scalar read.
+ for(size_t blocked:{size_t(80),size_t(146)}){setup();C(take(out));denied_read_size=blocked;id={};C(h::identity(fixture_weapon,id)&&id.address==fixture_weapon);denied_read_size=0;}
+ setup();C(take(out));id={};id.address=999;const auto name_table=get<gears_anchor::Registry>(h::metadata.names_header);
+ const auto name_entry=get<uintptr_t>(name_table.data+uintptr_t(get<unsigned>(fixture_weapon+72))*8);
+ std::array<wchar_t,64> expected_name{};wcscpy_s(expected_name.data(),expected_name.size(),L"CurrentWeapon");
+ // Real name entries have unrelated nonzero bytes after the first terminator.
+ // They must remain zero in the semantic Identity, and may change between
+ // observations without changing the object's actual name.
+ memset(reinterpret_cast<void*>(name_entry+20+28),0xa5,98);C(h::identity(fixture_weapon,id)&&id.name==expected_name);
+ plan(name_entry,2,name_entry+20+28,0x5a5au,2);trigger_size=146;
+ C(h::identity(fixture_weapon,id)&&id.name==expected_name&&hit==2);read_hook=nullptr;
+ std::array<wchar_t,64> long_name{};long_name.fill(L'Q');put(name_entry+20,long_name);id={};id.address=999;
+ C(!h::identity(fixture_weapon,id)&&id.address==999);C(h::identity(fixture_weapon,id,false,true)&&id.name[62]==L'Q'&&id.name[63]==0);
+ put(name_entry+20,wchar_t(0));id.address=999;C(!h::identity(fixture_weapon,id)&&id.address==999);
  C(VirtualFree(reinterpret_cast<void*>(arena),0,MEM_RELEASE)!=0);printf("weapon_hand_scene_binding: %u checks, %u failures\n",checks,failures);return failures?1:0;
 }
 #elif !GEARS_COVER_BODY_PROTOTYPE
