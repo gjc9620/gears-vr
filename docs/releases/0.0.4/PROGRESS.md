@@ -1490,3 +1490,6 @@ Native27从26c2的710文件最小派生718文件（5既有／8新增），82defi
 
 
 2026-10-27 按统筹安排完成RWENT002窄file-only适配，reader9923573d…dfa00／回执feddc65f…fb039，准确合同fca9c717…2fbfb。显式v2／R2040，仅尾2024 verdict与2032 causes；复用冻结v1前缀数学，原件身份与内存投影分别标记，v1结果及K原件保持不回填。UNKNOWN不推通过，只有verdict3＋mask1／2／3且prepare0／commit12合法；mask仅已计算事实，不推先后／branch clock／validate-exchange或深层原因。6项必要方法／0失败（0.007秒），CLI新合成与v1兼容通过、覆盖／半缺对拒绝；未重跑旧数学／旧案，无Game或Native／PG／XR构建。已交Body／统筹结束此离线交付，新候选验证安排另循唯一窗口，不增加功能进度。
+
+
+2026-10-27 武器会话完成HM新RWENT002一次消费（原件015902a9…f4b1b／输出237343af…49132／派生review a0dcdc54…96382），Game26228／Native3222855251894，23条=11成功／5guard拒绝／6mount0／1seed_model。5拒绝尾全verdict3／causes1，首seq6 tick36468／Compose36469 epoch958 unit6，实际记录BodySource source-age-only事实；其余18尾UNKNOWN，不推出先后或branch clock。11成功中10保持、seq13出现新差异：planned→commit→pre Local35／51／52逐bit相同，pre→end仅35变（1.21869rad），CTW与epoch965保持，world腕离target17.0568u／.569836rad；accurate key／stage／phase已交Body定位本次写者／rollback边界。K9成功保持与HM此条分别保存，不互相覆盖。ready capturepoints2..21共20，肩／移动不覆盖；HL预启动失败不算HM覆盖。原三门／恢复／一次106清理由Body通过，与稳定跟随接受分离；无重解K／PG／旧v3、新Game或构建，功能百分比不涨。

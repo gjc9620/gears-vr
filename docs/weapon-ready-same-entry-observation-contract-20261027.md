@@ -62,3 +62,16 @@ Body唯一K已正常完成原8动作、三个门、松手后的身体续更、�
 两尾字段全UNKNOWN仅表示本次特定return未观察，不能推出成功或hard guard；非未知仅接受verdict3与causes1／2／3且实际prepare0／commit12，半缺或非法对直接拒绝。事实mask1表示已取得的body source verdict为source-age-only，mask2表示已取得的equipment_fresh为false；只解释该entry在Context stagecommit首个既有BodyMainMountSource source-age返回。不能推出事实先后、失败branch时间、validate／exchange边界或更深metadata-age／raw-age子条件，不能与capture verdict或rollback后最终值混用。
 
 6项新增必要方法／0失败（0.007秒）：独立ctypes原前缀与尾布局、三个合法mask、UNKNOWN边界、非法／半缺对及实际prepare／commit矛盾、v1兼容和严格旧reader拒绝新格式、版本／长度／前缀验证。CLI新合成成功0，覆盖旧输出及半缺对拒绝2，v1合成结果与原结果完全一致。旧数学套件复用未重跑，无Game／Native／PG／XR构建或运行。已交Body和统筹准确哈希；新DLL必要检查与新验证安排由其负责，此增量交付不是新的实跑或根因结论。
+
+
+## HM：实际提交时效事实与成功路径差异（2026-10-27）
+
+Body唯一HM用准确9250候选完成三个原动作门、Stop与恢复、一次正常清理。HL的预启动失败保留但不算本次覆盖。本会话对HM原件仅用冻结v2 reader解析一次：原件SHA256 `015902a9217c2085837209d8d381695a630568794fe5c805886770df394f4b1b`，Game26228／creation134375362718608329／Native3222855251894，RWENT002 H128／R2040，共23条，drop／nested／unmatched均0。`hm-ready-wrist-parsed-v2.json` SHA256 `237343af2fe523b7a5fd332c4b904722306ff3d321f638198ed63b3348f49132`；仅从该已解析JSON整理的 `hm-ready-wrist-review-v2.json` SHA256 `a0dcdc545a27e4acc8f1911588ac7e64c8c2b446a373a4d2212986c25cd96382`，均在ignored同目录。
+
+23条=11个成功commit、5个guard_rejected、6个mount0无target、1个seed_model失败。5个拒绝seq6／8／12／16／23的尾字段实际均verdict3／causes1，首次为seq6／Tick36468／Compose36469／epoch958／unit6；其余unit10／1／3／13。它们记录stagecommit既有BodySource source-age-only事实，未观察mask2／3，不能据此推执行先后、失败branch时刻、validate／exchange或深层metadata／raw-age原因。其余18条尾字段UNKNOWN保持，不当passed／hard或借旧K填补。
+
+11成功中10份planned→commit→pre→end的Local35／51／52保持，另1份seq13出现新差异，不能把K的9份成功均保持概括到HM。准确seq13为entry14674320／thread66416／mesh5301728992／asset2236788800／Tick37217／Compose37218／cookie1；valid127，prepare0／commit1／unit0／finish4，original_called／returned均1且normal_scope_close。三个stage读状态均1、epoch均965，CTW都等同capture CTW；commit／pre没有Space，end有Space35／52，均已由冻结reader按原有效规则认证。planned→commit→pre三根Local逐bit相同；pre→end仅Local35改变，局部角度1.218694751弧度／平移2.76401e−5游戏单位，Local51／52逐bit保持。最终world腕偏离target17.056824296游戏单位／0.569835610弧度。相邻seq11→12→13的完整已记录mapping输入和target相同。
+
+seq13的capture_ns322296336150400处于原ready区间322295732164900..322296802091900，phase只是原capture点归属，不扩成整entry包含或失败钟。以上只定位“pre到end”的变化区间，不识别写者、动画子步或Kernel回滚边界；本条尾UNKNOWN也不能证明无其它拒绝。完整key、Local、Space、CTW、epoch与flag已交Native owner沿准确本次调用继续定位。
+
+本记录的ready capture点为seq2..21共20条，seq1在marker前、seq22／23在ready后move前，23是nonready closing；肩／移动没有此新观测capture点。unavailable302仍是整个启用期尝试计数。未重复K、BHELD003、PG／Muzzle解码或新Game／构建；Body原三门和恢复清理通过不能代替稳定跟随、GPU或真机验收。
