@@ -78,3 +78,6 @@ seq13的capture_ns322296336150400处于原ready区间322295732164900..3222968020
 
 
 HM边界补充（Body源码位置核对）：returned_end snapshot位于本次Kernel.finish之前，因此其后的finish／rollback不能解释已采到的Local35变化；原调用返回后到snapshot仍有finish_guarded／control_end／recoil_end／fresh_end／Goal读取。精确变化范围仍为consumer_pre→returned_end，不能只归到某个原函数内部写者。此前“尚未识别Kernel回滚边界”是定位范围未明确的旧措辞，以此补充为准。原parsed237343和review a0dcdc保留不改；Body负责封存准确源码audit，本会话不重复RE或新Game。
+
+
+Body已封存并接收hash核验的源码边界证据：HM `successful-path-source-boundary-audit.json` SHA256 `52c7d98fcdf64fcd9c7e35411d5d1f900b8ab41134dffd4bc09d93124906d668`；五个实际commit return与BHELD准确关联汇总 `actual-commit-source-return-summary.json` SHA256 `729741b4bca865e73e6b39147ccbc762b1bfa9e0fbada361f256b50436e52e41`。Root只接收引用，回执为ignored同目录 `hm-body-boundary-audit-received.json` SHA256 `6f83b3f6ab2c5573328fe5b317afe981ddd6bf9954abe2dae5a667141ff3aae1`；没有重复源码审计／解码／RE／Game。BHELD容量drop5与RWENT drop0属于不同collector，不互相覆盖。
