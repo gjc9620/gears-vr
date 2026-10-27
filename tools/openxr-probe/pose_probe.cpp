@@ -29,6 +29,7 @@
 #include "session_exit_state.h"
 #include "image_ticket_diagnostics.h"
 #include "startup_panel_policy.h"
+#include "menu_theater.h"
 #include "window_fallback_policy.h"
 #include "menu_display_reader.h"
 #include "xr_wait_diagnostics.h"
@@ -677,9 +678,10 @@ int main(int argc, char** argv) {
         MenuDisplayReader menu_display(menu_state_file,stereo_game_pid,menu_game_creation,continuous_owner_pid,continuous_owner_creation,movie_display);
         unsigned menu_quad_layers=0,menu_entries=0,menu_recoveries=0;
         unsigned main_menu_quad_layers=0,last_main_menu_entry=0,main_menu_snapshots=0;
-        unsigned pause_menu_projection_layers=0,last_pause_menu_entry=0;
-        unsigned death_menu_projection_layers=0,last_death_menu_entry=0;
+        unsigned pause_menu_quad_layers=0,last_pause_menu_entry=0;
+        unsigned death_menu_quad_layers=0,last_death_menu_entry=0;
         unsigned startup_quad_layers=0;
+        MenuTheater menu_theater;
         std::unique_ptr<GameGpuScreen,shutdown_diagnostics::DeleteMarker<GameGpuScreen>> gpu_screen{nullptr,{"gpu_screen_reset_enter","gpu_screen_reset_completed"}};
         if(gpu_pid)gpu_screen.reset(new GameGpuScreen(device.Get(),queue.Get(),gpu_pid,gpu_snapshot));
         std::unique_ptr<GameGpuScreen,shutdown_diagnostics::DeleteMarker<GameGpuScreen>> stereo_screen{nullptr,{"stereo_screen_reset_enter","stereo_screen_reset_completed"}};
@@ -896,7 +898,7 @@ int main(int argc, char** argv) {
                     else {outage_render_attempted=true;outage_copies_before=stereo_screen->copies;
                         if(startup_panel.show_menu_projection()){
                             const auto menu_boundary=startup_panel.minimum_sample_ns();
-                            stereo_menu_queued=stereo_screen->render_menu(projection,projection_views,stereo_session,result,menu_boundary,space_epoch.epoch(),space_epoch.last_change_time());
+                            stereo_menu_queued=stereo_screen->render_menu_quad(quad,stereo_session,result,menu_boundary,space_epoch.epoch(),space_epoch.last_change_time());
                             if(stereo_menu_queued){
                                 // A GPU copy can wait. Reject a changed/expired menu
                                 // lease and any new menu epoch before submission.
@@ -904,7 +906,7 @@ int main(int argc, char** argv) {
                                 const auto authorized=menu_display.poll(after_copy);
                                 observe_menu(authorized,after_copy);
                                 stereo_menu_queued=authorized==menu_mode&&startup_panel.show_menu_projection()&&startup_panel.minimum_sample_ns()==menu_boundary;
-                                if(stereo_menu_queued){end.layerCount=1;end.layers=layers;}
+                                if(stereo_menu_queued){end.layerCount=1;end.layers=game_layers;}
                                 else result=ProjectionStatus::menu_recovery_pending;
                             }
                         }else submitted=stereo_screen->render_projection(projection,projection_views,stereo_session,result,startup_panel.minimum_sample_ns(),space_epoch.epoch(),space_epoch.last_change_time());}
@@ -1080,6 +1082,11 @@ int main(int argc, char** argv) {
                 tracking_recovery_card_queued=world_handoff_panel_queued=startup_wait_card_queued=transition_panel_queued=startup_handoff_queued=startup_quad_queued=stereo_menu_queued=false;
                 armspan_card_queued=false;
             }}
+            if(end.layerCount==1&&end.layers==game_layers&&(startup_quad_queued||stereo_menu_queued)){
+                if(!menu_theater.place(quad,local,head,space_epoch.epoch(),menu_entries)){
+                    end.layerCount=0;startup_quad_queued=stereo_menu_queued=false;
+                }
+            }
             const auto ended=xr_wait_diagnostics::recorder.measure(xr_wait_diagnostics::Operation::end_frame,
                 [&]{return xrEndFrame(session,&end);},[]{return xr_wait_diagnostics::current_context;},
                 [](XrResult r){return r==XR_TIMEOUT_EXPIRED?xr_wait_diagnostics::Outcome::timeout:XR_FAILED(r)?xr_wait_diagnostics::Outcome::error:xr_wait_diagnostics::Outcome::success;});
@@ -1156,16 +1163,16 @@ int main(int argc, char** argv) {
                     gears_vr::monotonic_ns(),ended==XR_SUCCESS&&end.layerCount==1&&end.layers==layers?"true":"false");fflush(stdout);
             }
             transition_panel_active=transition_shown;
-            if(stereo_menu_queued&&ended==XR_SUCCESS&&end.layerCount==1&&end.layers==layers){
+            if(stereo_menu_queued&&ended==XR_SUCCESS&&end.layerCount==1&&end.layers==game_layers){
                 startup_panel.menu_rendered();
                 const bool death=menu_mode==gears_menu::Mode::death_menu;
-                ++(death?death_menu_projection_layers:pause_menu_projection_layers);
+                ++menu_quad_layers;++(death?death_menu_quad_layers:pause_menu_quad_layers);
                 auto& last_entry=death?last_death_menu_entry:last_pause_menu_entry;
                 if(last_entry!=menu_entries){
                     last_entry=menu_entries;const auto snapshot=stereo_screen->diagnostic_snapshot();
-                    printf("{\"%s_menu_first_frame\":true,\"epoch\":%u,\"end_frame_succeeded\":true,\"layer_type\":\"projection\",\"view_count\":%u,\"both_eyes_common_panel\":false,\"ticket\":%llu,\"sample_ns\":%lld,\"minimum_sample_ns\":%lld,\"eye_extent\":[%d,%d]}\n",
-                        death?"death":"pause",menu_entries,projection.viewCount,snapshot.ticket_id,snapshot.received_ns,startup_panel.minimum_sample_ns(),
-                        projection_views[0].subImage.imageRect.extent.width,projection_views[0].subImage.imageRect.extent.height);fflush(stdout);
+                    printf("{\"%s_menu_first_frame\":true,\"epoch\":%u,\"end_frame_succeeded\":true,\"layer_type\":\"quad\",\"space\":\"local\",\"both_eyes_common_panel\":true,\"ticket\":%llu,\"sample_ns\":%lld,\"minimum_sample_ns\":%lld,\"eye_extent\":[%d,%d]}\n",
+                        death?"death":"pause",menu_entries,snapshot.ticket_id,snapshot.received_ns,startup_panel.minimum_sample_ns(),
+                        quad.subImage.imageRect.extent.width,quad.subImage.imageRect.extent.height);fflush(stdout);
                 }
             }
             if(stereo_game_pid&&ended==XR_SUCCESS&&projection_frame_status==ProjectionStatus::submitted&&
@@ -1232,7 +1239,7 @@ int main(int argc, char** argv) {
                 // on its original projection-only contract.
                 const char* layer_kind=end.layerCount==0?"none":
                     end.layers==layers?(stereo_menu_queued?(menu_mode==gears_menu::Mode::death_menu?"death_menu_projection":"pause_menu_projection"):"projection"):
-                    end.layers==game_layers?(tracking_recovery_card_queued?"tracking_recovery_card":world_handoff_panel_queued?"world_handoff_card":startup_wait_card_queued?"startup_wait_card":transition_panel_queued?"transition_panel":
+                    end.layers==game_layers?(stereo_menu_queued?(menu_mode==gears_menu::Mode::death_menu?"death_menu_theater":"pause_menu_theater"):tracking_recovery_card_queued?"tracking_recovery_card":world_handoff_panel_queued?"world_handoff_card":startup_wait_card_queued?"startup_wait_card":transition_panel_queued?"transition_panel":
                         (startup_quad_queued?"startup_panel":"quad")):"other";
                 row.menu_mode=static_cast<unsigned>(menu_mode);row.session_state=static_cast<int>(state);
                 row.should_render=frame.shouldRender!=0;row.panel_requested=menu_panel_requested;
@@ -1344,8 +1351,8 @@ int main(int argc, char** argv) {
         if(startup_window)printf("{\"startup_menu_evidence\":true,\"startup_quad_layers\":%u,\"stereo_handoff\":%s,\"panel_counts_as_stereo\":false}\n",startup_quad_layers,stereo_image_shown?"true":"false");
         if(menu_state_file)printf("{\"menu_recovery_evidence\":true,\"entries\":%u,\"quad_layers\":%u,\"recoveries\":%u,\"panel_counts_as_stereo\":false}\n",menu_entries,menu_quad_layers,menu_recoveries);
         if(menu_state_file)printf("{\"main_menu_evidence\":true,\"quad_layers\":%u,\"source\":\"wgc_full_client\",\"panel_counts_as_stereo\":false}\n",main_menu_quad_layers);
-        if(menu_state_file)printf("{\"pause_menu_evidence\":true,\"projection_layers\":%u,\"view_count\":2,\"both_eyes_common_panel\":false}\n",pause_menu_projection_layers);
-        if(menu_state_file)printf("{\"death_menu_evidence\":true,\"projection_layers\":%u,\"view_count\":2,\"both_eyes_common_panel\":false}\n",death_menu_projection_layers);
+        if(menu_state_file)printf("{\"pause_menu_evidence\":true,\"quad_layers\":%u,\"space\":\"local\",\"both_eyes_common_panel\":true}\n",pause_menu_quad_layers);
+        if(menu_state_file)printf("{\"death_menu_evidence\":true,\"quad_layers\":%u,\"space\":\"local\",\"both_eyes_common_panel\":true}\n",death_menu_quad_layers);
         if(startup_window)printf("{\"startup_wait_card_evidence\":true,\"quad_layers\":%u,\"uploads\":%u,\"source\":\"session_owned_card\",\"panel_counts_as_stereo\":false}\n",
             startup_wait_card_layers,startup_wait_card?startup_wait_card->uploads:0);
         if(menu_state_file)printf("{\"transition_panel_evidence\":true,\"quad_layers\":%u,\"uploads\":%u,\"source\":\"session_owned_card\",\"panel_counts_as_stereo\":false}\n",transition_panel_layers,transition_card?transition_card->uploads:0);

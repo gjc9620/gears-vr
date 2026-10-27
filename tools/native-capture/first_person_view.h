@@ -66,7 +66,11 @@ inline bool near_clip(gears_vr::StereoMatrix& p,double units,double metres){
     const bool reverse=b>0;
     const double far_den=reverse?a:a-1.;
     double next_a{},next_b{};
-    if(std::abs(far_den)<1e-8){next_a=reverse?0.:1.;next_b=reverse?n:-n;}
+    // UE's ordinary infinite-far projection keeps a precision margin:
+    // A=1-epsilon, B=-near*A. Its depth=1 root is behind the eye, not
+    // a physical far plane. Keep A (and that margin) when moving near.
+    if(!reverse&&a>0&&a<1){next_a=a;next_b=-n*a;}
+    else if(std::abs(far_den)<1e-8){next_a=reverse?0.:1.;next_b=reverse?n:-n;}
     else{
         const double far_distance=-b/far_den;
         if(!std::isfinite(far_distance)||far_distance<=n)return false;
