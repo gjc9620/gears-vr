@@ -1602,3 +1602,8 @@ H1来源与验证：准确candidate6的body_head_authored_mount.h、full_body_c0
 新读器仅构建一次；新针对CPU32断言通过：与冻结原predicate返回一致、每一首拒条件、短路不展开、first/last/UNKNOWN、记录长度与原afterclock。初测试枚举名误写，修正为准确MetaOperatorSimulated后仅重编该测试，原失败log/build记录保留；没有重复旧23项、Game/XR/新助手/Native构建或共享源码变更。contract SHA bd0578eeb3afc6abcde7a76b51bf55aea173a0f222035c77362fcd0bc6ca0c4e，manifest SHA bdbe36ad1fe20c0d5b2f5f741bffc0f59d3f5c092e45c0ef3324838da197221b，已直接交Body唯一下一局，不等待重复确认。
 
 本轮吸收人类明确的第一人称6DoF验收顺序：同候选的实际XR双眼第一人称眼点／身体／腕目标，先保证静止自由手清楚可见，再做手动／头动。first_person_preview能力flag和旧局姿态不等于本局最终画面。Body唯一处理真实FP通路／view选择及Native，不叠两套偏移、不盲目前移；Weapon仅沿既定读器和Ref眼点消费者范围接入，不把完整W2枪体／射击／换弹增加为H1前置。当前没有新H1图像或动作通过，不增加玩法分。
+
+
+2026-10-27 H1 ad当前消费者实际结果封存：Body采用准确reader57f112及原flags/400ms/100ms，`runtime-review.json`已保存initial_input与fixed_input均matched=true/source1，同session361892787067500，序列5238→5264，两手grip_active1/flags15；各原stdout输入sampled-received为5,408,800ns和3,657,300ns。rgrip_coordinator准确reader路径/实hash已核，reader_failures0；Startevent返回0，实际4条为左右自然固定与随后左右恢复。整体complete=false，首失败已经前进到fixed-free-hands的手提交／owned body view／coherent pose合取超时。此成功样本不证明诊断代码修复ac，ac具体首拒仍未获真实timeout行；Start0／指令已发不等于手求解、提交或可见通过。只读窄receipt `analysis/stereo-reader-match-diagnostic-20261027/ad-consumer-result.json` SHA07b471bb1f5b8352e3a9a85dcf042c8cbb75caf630ccec8b0842727fb7027607，列来源hash、两段实际输入时间及证据边界。
+
+Body运行负责人进一步回执（本侧不重复审Native／FP／图像）：FP requested1/transition1/applied422，bodygoal applied617/view_used626，但hand attempts618/solved0/commits0且status8；实际XR projection双眼图仍有大块粉棕几何遮挡、手不清楚，H1不可用。唯一finalizer true、106/XR0，Stop4→5及两手恢复／bridgeclose由Body确认。武器侧冻结已可用57f112 reader与b505 eyehelper，不再追加读器／采样／构建／Game或W2，Body唯一定位status8及第一人称几何遮挡后按具体消费者缺口交接；当前不能补计第一人称／静止手／运动通过或玩法分。
