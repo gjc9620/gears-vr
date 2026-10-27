@@ -1520,3 +1520,6 @@ HO后续Body既有记录明确：90attempt／90query前not_ready、query0，fall
 
 
 2026-10-27 第37轮仅消费HP已有RWENT004权重原件a703a459…e402f一次（parsed401da0db…c2c23／reviewfa760a05…c5462），未新Game。9成功entry的18合格右腕weight前后Local均保持到raw/end，本份成功后变化未复现。实际原alpha/sample4=1，原applied事件与最终packet均0；sample4/reason0、前后缓存flag读取0、当前raw4阈值齐全仍不能给零alpha套full/fractional归因。其它final1/flags7缺匹配compute角色，不能填入成功证据。264alpha/64weight事件drop0，RWENT globaldrop0与BHELDdrop6分开；权重capture只ready限定片段，肩／移动不覆盖。按一个下一动作交Body继续已有HP Stop回执定位free-hand续更首阻碍，不新增采集器或原样重跑，不借HN/HM补值、不扩PG-Muzzle/age，无Native改动/构建；整局protocol/bodycontinuefalse与稳定跟随仍未验收，不涨功能分。
+
+
+2026-10-27 接收Body HR受控neutral observed-rebind真实游戏结果（报告8c7b0d28…14f85／Root receipt037de4f3…14499）。准确Native851d50fc11cbfce3052fa66e0e2680a8404d429e5c540b4e7e037f2ca75c9da7原45通过；Source1右grip tracking flags15→0→15，observed1→2且硬refepoch2/flags1保持，rebind1。首次已保存接受rebind样本后hand/Goal+30；Stop4→5后free-hand+37、held71保持，三门/10命令/protocoltrue。106全恢复/XR0/原10/audio9/9/实例空另列。受控接续/Stop续更通过，不冒称原HP自然触发重建、所有硬key独立序列化或稳定跟枪/射击/头显/default验收。Root只核报告身份和字段，无wire解码/源码复审/Game/构建；下一联合候选复用该工件，PG/consumer冻结，百分比由统筹按证据更新。

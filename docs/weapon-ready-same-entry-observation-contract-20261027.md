@@ -165,3 +165,12 @@ Body唯一HP三门通过：shoulder4.3257423秒status0→42、ready0.8369653秒4
 这18份均有准确同entry/node/scope/compute+weight ordinal的sample4/reason0，before/after read_mask127含flag2、cached_scale_word0／0；当前常量mask3，fullbits1065353048／zerobits925353388，未用历史常量。即使这些前提齐全，零alpha仍无full／fractional候选归因。另28个实际final1的weight flags7，缺matching compute身份／role，不能代替成功entry。总264个alpha事件／64个weight，36个flag1023最终0、28个flag7最终1，所有行事件drop0；RWENT全局drop0与BHELD原drop6分开。
 
 新capture点seq2..17在ready，seq1早于ready marker24.8424ms，seq18在ready后move前closing，肩／移动无此权重观测覆盖。条件不证明具体store执行、排除间接／并发写者或穷尽写者。只给Body一个下一可验证动作：继续其已安排的现有HP Stop回执分析，定位阻止free-hand续更的首条件；本份零alpha未复现结论固定，不原样重跑或新增collector。两个family的区分仍需真正同一成功且发生变化、最终非零的合格证据。无PG-Muzzle／age扩查或旧案重解，protocol／bodycontinue仍false，与三个门和正常finalizer分离。
+
+
+## HR 中立参考接续／Stop续更修复结果接收（2026-10-27）
+
+Body已完成单文件neutral observed-rebind候选的受控真实游戏验证，准确Native SHA256 `851d50fc11cbfce3052fa66e0e2680a8404d429e5c540b4e7e037f2ca75c9da7`、原45通过。运行报告为Body `analysis/body-held-outcome-runtime-20261027r/controller-loss-rebind-game-review.json` SHA256 `8c7b0d28e3db632e9527655048cd92f719996215c002c891b37e81a17b614f85`。Root仅核现有报告身份及字段、接收结果；ignored `analysis/lancer-ready-same-entry-20261027/hr-rebind-result-received.json` SHA256 `037de4f31aada2680cbe3e1c738bdff1169384afafa036600bbb5bd8bde14499`。没有新增wire解码、源码复审、Game或构建。
+
+该场景通过实际Source1 API使右grip pose的tracking flags15→0→15（不是抓握按钮动作），观察到Native三个observed连续性字段1→2、hard reference epoch2／flags1保持、rebind1。以首份已经含rebind1的已保存样本为起点，后续hand／Goal applied各增加30；Stop4→5后hand／Goal各再增加37，held71保持，三个原门／10命令／协议true。不能将preloss到首次接受样本的+6全归恢复后，lost Native样本存在滞后，不把它虚作已记录observed2；其余hard-key约束由实际policy执行，但聚合样本没有独立序列化每个硬字段。
+
+这份受控case验证了接续后持续更新和Stop后的free-hand续更，实际106完整恢复／XR0／原10文件／audio9 of9还原／fresh实例空另列，不用清理替代行为。它不重建原HP自然publication失效的具体原因，不清已有poison，也不代表稳定武器跟随、射击、LGrip、GPU或物理头显接受；没有默认启动器／release集成。下一联合候选复用这一唯一准确Native工件，PG／consumer保持冻结，不重建未变Native或重复已审策略。
