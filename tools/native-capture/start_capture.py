@@ -224,7 +224,8 @@ class _InitialPreparationCamera:
 
 def acquire_observer_preparation(pid,profile,camera,signatures,dll,*,anchor_observer=False,ui_observer=False,cinematic_camera=False,
                                  record_anchor_failure=True,preparation_deadline=None,check_live=None,entry_reader=None,
-                                 crosshair_assignment_observer=False,camera_discovery=None,anchor_sample_pose=True):
+                                 crosshair_assignment_observer=False,weapon_call_observer=False,
+                                 camera_discovery=None,anchor_sample_pose=True):
     """Read-only, pre-activation acquisition; never retries identity failures.
 
     A new Resolver.resolve() prepares fresh registries/caches and roles on every
@@ -241,6 +242,8 @@ def acquire_observer_preparation(pid,profile,camera,signatures,dll,*,anchor_obse
         raise ValueError('Static-only anchor assembly requires an attested anchor observer')
     if crosshair_assignment_observer and not (anchor_observer and ui_observer):
         raise ValueError('Crosshair assignment observer requires UI/anchor observers')
+    if weapon_call_observer and not crosshair_assignment_observer:
+        raise ValueError('Weapon call observer requires certified crosshair Tick roots')
     deadline=time.monotonic()+10 if preparation_deadline is None else preparation_deadline
     registry_retry=anchor_observer or ui_observer;attempts=3 if registry_retry else 1
     for attempt in range(attempts):
@@ -284,6 +287,7 @@ def acquire_observer_preparation(pid,profile,camera,signatures,dll,*,anchor_obse
                     elif crosshair_assignment_observer:
                         from crosshair_assignment_config import build_crosshair_assignment_config,crosshair_assignment_ini
                         assignment=build_crosshair_assignment_config(r,refreshed,include_tick_roots=True,include_writer_view=True,include_aim_state=True,
+                            **({'include_weapon_calls':True} if weapon_call_observer else {}),
                             **({'entry_reader':entry_reader} if entry_reader is not None else {}))
                         ui_section+=crosshair_assignment_ini(assignment)
                         ui_metadata['crosshair_assignment']=assignment
@@ -439,6 +443,9 @@ def main():
     parser.add_argument('--ui-hud-plane',action='store_true',help='Experimental HUD plane; requires UI observer, anchor observer and continuous session')
     parser.add_argument('--ui-reticle-late-sample',action='store_true',help=argparse.SUPPRESS)
     parser.add_argument('--crosshair-assignment-observer',action='store_true',help='Observe certified crosshair assignments; no reticle correction')
+    parser.add_argument('--controller-input-observer',action='store_true',help='Read-only matched controller input; requires stereo and certified PlayerTick observers')
+    parser.add_argument('--armspan-metres',type=float)
+    parser.add_argument('--hands-below-head-metres',type=float)
     parser.add_argument('--hud-horizontal-fov-degrees',type=float)
     parser.add_argument('--camera-closer-metres',type=float,default=0.)
     parser.add_argument('--first-person-preview',action='store_true')
@@ -449,6 +456,16 @@ def main():
     configure_anchor_options(args,parser)
     if args.ui_observer and not (args.anchor_observer and args.continuous_session):
         parser.error('UI observer requires continuous stereo with anchor observer')
+    if args.controller_input_observer and not (args.stereo_xr and args.continuous_session and
+            args.anchor_observer and args.ui_observer and args.crosshair_assignment_observer):
+        parser.error('Controller input observer requires continuous stereo and certified anchor/UI/crosshair observers')
+    if args.armspan_metres is not None or args.hands_below_head_metres is not None:
+        if not args.controller_input_observer or args.armspan_metres is None or args.hands_below_head_metres is None:
+            parser.error('Stored armspan calibration requires both values and controller input observer')
+        from weapon_calibration import validate
+        try:validate({'schema':1,'armspan_metres':args.armspan_metres,
+                      'hands_below_head_metres':args.hands_below_head_metres})
+        except ValueError as error:parser.error(str(error))
     args.gpu_diagnostics=args.gpu_diagnostics or args.viewport_diagnostics
     if args.continuous_session:
         if (args.continuous_owner_pid is None or not 0<args.continuous_owner_pid<=0xffffffff
@@ -574,7 +591,8 @@ def main():
             cinematic_camera=args.cinematic_camera,
             record_anchor_failure=not(args.continuous_session and args.anchor_observer),
             preparation_deadline=preparation_deadline,check_live=check_preparation,
-            **({'crosshair_assignment_observer':True} if args.crosshair_assignment_observer else {})))
+            **({'crosshair_assignment_observer':True} if args.crosshair_assignment_observer else {}),
+            **({'weapon_call_observer':True} if args.controller_input_observer else {})))
         check_preparation()
         preparation_timing('certificate_acquisition_including_retry',certificates_started)
         activation_started=time.perf_counter_ns()
@@ -588,6 +606,10 @@ def main():
         config+=f'anchor_observer={int(args.anchor_observer)}\n'
         config+=f'ui_observer={int(args.ui_observer)}\n'
         config+=f'crosshair_assignment_observer={int(args.crosshair_assignment_observer)}\n'
+        config+=f'controller_input_observer={int(args.controller_input_observer)}\n'
+        if args.armspan_metres is not None:
+            config+=f'weapon_armspan_metres={args.armspan_metres:.9g}\n'
+            config+=f'weapon_hands_below_head_metres={args.hands_below_head_metres:.9g}\n'
         config+=f'ui_hud_plane={int(getattr(args,"ui_hud_plane",False))}\n'
         config+=f'ui_reticle_late_sample={int(getattr(args,"ui_reticle_late_sample",False))}\n'
         config+=hud_size_ini(args)

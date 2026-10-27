@@ -100,7 +100,8 @@ def ui_bundle_ini(ui):
     return section
 
 
-def validate_sources(camera, anchor, ui, local, pid, digest, *, crosshair_assignment_observer=False):
+def validate_sources(camera, anchor, ui, local, pid, digest, *, crosshair_assignment_observer=False,
+                     weapon_call_observer=False):
     if uint(camera['pid'],'camera PID',32,True) != pid or camera['sha256'] != digest:
         raise ValueError('Camera build/PID mismatch')
     base = uint(camera['module_base'],'module base',positive=True)
@@ -128,6 +129,8 @@ def validate_sources(camera, anchor, ui, local, pid, digest, *, crosshair_assign
     if mounted and (uc['schema']!=2 or role(ac,'pawn')!=role(uc,'controlled')):raise ValueError('Mounted UI source mismatch')
     required_crosshair = ui.get('crosshair_assignment_observer_enabled',False)
     if type(required_crosshair) is not bool:raise ValueError('Invalid crosshair observer requirement')
+    if weapon_call_observer and not (crosshair_assignment_observer or required_crosshair):
+        raise ValueError('Weapon call observation requires crosshair certification')
     if (crosshair_assignment_observer or required_crosshair) and 'crosshair_assignment' not in ui and 'crosshair_assignment_suspended' not in ui:
         raise ValueError('Missing requested crosshair assignment certificate')
     if 'crosshair_assignment_suspended' in ui:
@@ -143,6 +146,8 @@ def validate_sources(camera, anchor, ui, local, pid, digest, *, crosshair_assign
             raise ValueError('Crosshair certificate build/PID/base mismatch')
         if len(cc['tick_roots']) != 2 or not cc.get('writer_view',{}).get('enabled'):
             raise ValueError('Crosshair world recovery requires tick roots and writer view')
+        if weapon_call_observer and len(cc.get('weapon_calls',())) != 6:
+            raise ValueError('Weapon call world recovery requires six live functions')
         def full_role(config, name):
             item = config['identities'][uint(config['roles'][name],'role '+name,32)]
             result = identity(item)
@@ -163,7 +168,7 @@ def validate_sources(camera, anchor, ui, local, pid, digest, *, crosshair_assign
 
 
 def build_candidate(pid,profile,previous_local_identity,expected_generation,owner_identity,dll,*,signatures,check_live=None,attestation=None,
-                    crosshair_assignment_observer=False,camera_discovery=None,sample_pose=True):
+                    crosshair_assignment_observer=False,weapon_call_observer=False,camera_discovery=None,sample_pose=True):
     if type(sample_pose)is not bool:raise ValueError('sample_pose must be boolean')
     if not sample_pose and attestation is None:
         raise ValueError('Static-only anchor assembly requires live entry attestation')
@@ -212,6 +217,7 @@ def build_candidate(pid,profile,previous_local_identity,expected_generation,owne
         record_anchor_failure=False,check_live=live,
         **({'camera_discovery':camera_discovery} if camera_discovery is not None else {}),
         **({'crosshair_assignment_observer':True} if crosshair_assignment_observer else {}),
+        **({'weapon_call_observer':True} if weapon_call_observer else {}),
         **({'anchor_sample_pose':False} if not sample_pose else {}),
         **({'entry_reader':attestation.read_entry} if attestation is not None else {}))
     live()
@@ -219,7 +225,8 @@ def build_candidate(pid,profile,previous_local_identity,expected_generation,owne
         # Preserve the request in the existing immutable metadata so subsequent
         # serialization cannot silently turn a required section into absence.
         ui = dict(ui,crosshair_assignment_observer_enabled=True)
-    base,_ = validate_sources(camera,anchor,ui,local,pid,digest,crosshair_assignment_observer=crosshair_assignment_observer)
+    base,_ = validate_sources(camera,anchor,ui,local,pid,digest,
+        crosshair_assignment_observer=crosshair_assignment_observer,weapon_call_observer=weapon_call_observer)
     if attestation is not None and attestation.module_base != base:
         raise ValueError('Attestation camera module mismatch')
     if str(Path(camera['executable']).resolve()).casefold() != game['image']:

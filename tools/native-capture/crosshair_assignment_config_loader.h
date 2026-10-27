@@ -6,11 +6,19 @@
 
 namespace gears_crosshair_assignment {
 struct TickRoot {unsigned owner{},function{};std::uintptr_t script{};unsigned size{};};
+struct WeaponCall {unsigned owner{},function{},result_property{},result_offset{};std::uintptr_t script{};unsigned size{};};
+struct WeaponFireTrace {
+    unsigned locals_size{},impact_list{};
+    std::array<unsigned,3> properties{},offsets{}; // StartTrace, EndTrace, PushedForwardStartTrace.
+};
 // Stable owned storage. Copy/move always rebind the internal pointer.
 struct OwnedConfig {
     gears_ui::Config identities{}; Config assignment{};
     bool mounted_suspended{};std::uintptr_t suspended_controller{},suspended_controlled{},suspended_driver{},suspended_camera{};
     unsigned pid{},tick_root_count{};std::array<TickRoot,2> tick_roots{};
+    unsigned weapon_call_count{},weapon_rotator_struct{};
+    std::array<unsigned,3> weapon_rotator_members{};std::array<WeaponCall,6> weapon_calls{};
+    WeaponFireTrace weapon_fire_trace{};
     OwnedConfig(){assignment.identities=&identities;}
     OwnedConfig(OwnedConfig const& x){*this=x;}
     OwnedConfig& operator=(OwnedConfig const& x){
@@ -18,6 +26,10 @@ struct OwnedConfig {
         suspended_driver=x.suspended_driver;suspended_camera=x.suspended_camera;
         identities=x.identities;assignment=x.assignment;pid=x.pid;
         tick_root_count=x.tick_root_count;tick_roots=x.tick_roots;
+        weapon_call_count=x.weapon_call_count;weapon_rotator_struct=x.weapon_rotator_struct;
+        weapon_rotator_members=x.weapon_rotator_members;
+        weapon_calls=x.weapon_calls;
+        weapon_fire_trace=x.weapon_fire_trace;
         assignment.identities=&identities;return *this;
     }
     OwnedConfig(OwnedConfig&& x) noexcept {*this=x;}
@@ -170,6 +182,75 @@ template<class Read> bool parse_config(Read read,unsigned expected_pid,std::uint
            !detail::named(c,root.function,L"PlayerTick",L"Function",addr(root.owner),true))return false;
         if(i==0?root.owner!=c.war_pc:!detail::named(c,root.owner,L"PlayerDriving",L"State",addr(c.war_pc),true))return false;
         if(i&&root.function==parsed.tick_roots[0].function)return false;
+    }
+    wchar_t call_count_text[64]{};
+    if(read(L"weapon_call_count",call_count_text,64)){
+        if(!load(L"weapon_call_count",parsed.weapon_call_count)||
+           (parsed.weapon_call_count!=0&&parsed.weapon_call_count!=parsed.weapon_calls.size())||
+           (parsed.weapon_call_count&&parsed.tick_root_count!=2))return false;
+    }
+    if(parsed.weapon_call_count&&(!load(L"weapon_rotator_struct",parsed.weapon_rotator_struct)||
+       parsed.weapon_rotator_struct>=ids.identity_count||
+       !detail::named(c,parsed.weapon_rotator_struct,L"Rotator",L"ScriptStruct")))return false;
+    if(parsed.weapon_call_count){
+        constexpr const wchar_t* members[]{L"Pitch",L"Yaw",L"Roll"};
+        for(unsigned i=0;i<3;++i){wchar_t key[40]{};
+            std::swprintf(key,40,L"weapon_rotator_member%u",i);
+            auto& member=parsed.weapon_rotator_members[i];
+            if(!load(key,member)||member>=ids.identity_count||
+               !detail::named(c,member,members[i],L"IntProperty",
+                              addr(parsed.weapon_rotator_struct),true))return false;
+        }
+    }
+    constexpr const wchar_t* owners[]{L"WarWeapon",L"Weapon",L"WarPawn",L"WarWeapon",L"Weapon",L"WarWeapon"};
+    constexpr const wchar_t* functions[]{L"InstantFire",L"InstantFire",L"GetAdjustedAimFor",L"GetAdjustedAim",L"CalcWeaponFire",L"ProcessInstantHit"};
+    for(unsigned i=0;i<parsed.weapon_call_count;++i){auto& call=parsed.weapon_calls[i];wchar_t k[64]{};
+        auto field=[&](const wchar_t* name,auto& value){std::swprintf(k,64,L"weapon_call%u_%ls",i,name);return load(k,value);};
+        if(!field(L"owner",call.owner)||!field(L"function",call.function)||
+           !field(L"script",call.script)||!field(L"size",call.size)||
+           call.owner>=ids.identity_count||call.function>=ids.identity_count||
+           !call.script||!call.size||call.size>131072||
+           call.script>(std::numeric_limits<std::uintptr_t>::max)()-call.size||
+           !detail::named(c,call.owner,owners[i],L"Class")||
+           !detail::named(c,call.function,functions[i],L"Function",addr(call.owner),true))return false;
+        if((i==0||i==3||i==5)?call.owner!=c.war_weapon:
+           i==2?call.owner!=c.war_pawn:
+           !gears_ui::derives(ids,addr(c.war_weapon),addr(call.owner)))return false;
+        auto const& owner=ids.identities[call.owner];auto package=gears_ui::known(ids,owner.outer);
+        auto package_class=package?gears_ui::known(ids,package->cls):nullptr;
+        if(!package||!package_class||std::wcscmp(package_class->name.data(),L"Package")||
+           std::wcscmp(package->name.data(),(i==1||i==4)?L"Engine":L"WarfareGame"))return false;
+        for(unsigned j=0;j<i;++j)if(call.function==parsed.weapon_calls[j].function)return false;
+        if(i==2||i==3){
+            if(!field(L"result_property",call.result_property)||
+               !field(L"result_offset",call.result_offset)||
+               call.result_property>=ids.identity_count||
+               call.result_offset!=(i==2?0x14u:0x0cu)||
+               !detail::named(c,call.result_property,L"ReturnValue",L"StructProperty",
+                              addr(call.function),true))return false;
+        }
+    }
+    if(parsed.weapon_call_count){
+        if(!load(L"weapon_fire_locals_size",parsed.weapon_fire_trace.locals_size)||
+           parsed.weapon_fire_trace.locals_size<52||
+           parsed.weapon_fire_trace.locals_size>65536)return false;
+        constexpr const wchar_t* names[]{L"StartTrace",L"EndTrace",L"PushedForwardStartTrace"};
+        constexpr const wchar_t* keys[]{L"weapon_fire_start",L"weapon_fire_end",L"weapon_fire_pushed"};
+        const auto owner=addr(parsed.weapon_calls[1].function);
+        for(unsigned i=0;i<3;++i){wchar_t key[64]{};
+            auto& property=parsed.weapon_fire_trace.properties[i];
+            auto& offset=parsed.weapon_fire_trace.offsets[i];
+            std::swprintf(key,64,L"%ls_property",keys[i]);
+            if(!load(key,property)||property>=ids.identity_count||
+               !detail::named(c,property,names[i],L"StructProperty",owner,true))return false;
+            std::swprintf(key,64,L"%ls_offset",keys[i]);
+            if(!load(key,offset)||offset!=12*i||
+               offset+12>parsed.weapon_fire_trace.locals_size)return false;
+        }
+        if(!load(L"weapon_fire_impact_list",parsed.weapon_fire_trace.impact_list)||
+           parsed.weapon_fire_trace.impact_list>=ids.identity_count||
+           !detail::named(c,parsed.weapon_fire_trace.impact_list,L"ImpactList",
+                          L"ArrayProperty",owner,true))return false;
     }
 #undef CH_W
 #undef CH_W_

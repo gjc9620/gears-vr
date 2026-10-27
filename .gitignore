@@ -7,6 +7,12 @@
 !/GearsVR DLSS Test.cmd
 !/docs/
 !/tools/
+!/assets/
+/assets/*
+!/assets/weapon-6dof/
+/assets/weapon-6dof/*
+!/assets/weapon-6dof/README.md
+!/assets/weapon-6dof/gnasher-round.glb
 
 # Third-party packages and local builds under our tools directory.
 /tools/package-inspector/python-libs/

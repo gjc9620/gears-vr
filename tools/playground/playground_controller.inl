@@ -20,8 +20,28 @@ const wchar_t* weapon_names[]={L"Weap_AssaultRifle",L"Weap_LocustAssaultRifle",L
 struct Slot {uptr actor{},inventory{},cls{};Vector location{};ULONGLONG after{};};
 std::array<Slot,11> guns{};std::array<Slot,6> targets{};
 
-bool named(uptr object,const wchar_t* value){wchar_t text[128]{};return name(object,text,128)&&!_wcsicmp(text,value);}
+#if defined(GEARS_PLAYGROUND_HAND_WEAPON_MESH_PHASE1_TRIAL)
+bool named(uptr object,const wchar_t* value,std::size_t limit){
+    wchar_t text[128]{};return value&&limit&&limit<=128&&name(object,text,limit)&&!_wcsicmp(text,value);
+}
+#endif
+bool named(uptr object,const wchar_t* value){
+#if defined(GEARS_PLAYGROUND_HAND_WEAPON_MESH_PHASE1_TRIAL)
+    if(component_names::enabled){
+        if(!object)return false;
+        return named(object,value,component_names::query_limit(value));
+    }
+#endif
+wchar_t text[128]{};return name(object,text,128)&&!_wcsicmp(text,value);}
 bool derives(uptr cls,const wchar_t* value){
+#if defined(GEARS_PLAYGROUND_HAND_WEAPON_MESH_PHASE1_TRIAL)
+    if(component_names::enabled){
+        if(!cls)return false;
+        const auto limit=component_names::query_limit(value);
+        for(unsigned n=0;cls&&n<40;++n,cls=get<uptr>(cls+0x60))if(named(cls,value,limit))return true;
+        return false;
+    }
+#endif
     for(unsigned n=0;cls&&n<40;++n,cls=get<uptr>(cls+0x60))if(named(cls,value))return true;
     return false;
 }
@@ -41,6 +61,18 @@ uptr find_instance(const wchar_t* value){
     return 0;
 }
 uptr field(uptr cls,const wchar_t* value,const wchar_t* kind=nullptr){
+#if defined(GEARS_PLAYGROUND_HAND_WEAPON_MESH_PHASE1_TRIAL)
+    if(component_names::enabled){
+        if(!cls)return 0;
+        const auto value_limit=component_names::query_limit(value),kind_limit=kind?component_names::query_limit(kind):0;
+        for(unsigned depth=0;cls&&depth<40;++depth,cls=get<uptr>(cls+0x60)){
+            auto f=get<uptr>(cls+0x80);
+            for(unsigned n=0;f&&n<4096;++n,f=get<uptr>(f+0x68))
+                if(named(f,value,value_limit)&&(!kind||named(get<uptr>(f+0x50),kind,kind_limit)))return f;
+        }
+        return 0;
+    }
+#endif
     for(unsigned depth=0;cls&&depth<40;++depth,cls=get<uptr>(cls+0x60)){
         auto f=get<uptr>(cls+0x80);
         for(unsigned n=0;f&&n<4096;++n,f=get<uptr>(f+0x68))
@@ -48,6 +80,33 @@ uptr field(uptr cls,const wchar_t* value,const wchar_t* kind=nullptr){
     }
     return 0;
 }
+#if defined(GEARS_PLAYGROUND_HAND_TAIL_TRANSLATION_TRIAL)
+// Addresses only, local to one non-invoking observation. Match the original
+// untyped field's first name in derived-to-base order, even for a bad type.
+// Descriptor validation and a fresh final resolution remain the caller's job.
+template<std::size_t N>
+bool fields(uptr cls,const wchar_t* const (&labels)[N],std::array<uptr,N>& out){
+    out={};std::array<uptr,N> found{};std::size_t remaining=N,limit=1;
+    for(auto label:labels){
+        if(!label)return false;
+        limit=(std::max)(limit,component_names::query_limit(label));
+    }
+    if(!component_names::enabled)limit=128;
+    for(unsigned depth=0;cls&&depth<40;++depth,cls=get<uptr>(cls+0x60)){
+        auto f=get<uptr>(cls+0x80);
+        for(unsigned n=0;f&&n<4096;++n,f=get<uptr>(f+0x68)){
+            wchar_t text[128]{};
+            if(!name(f,text,limit))continue;
+            for(std::size_t i=0;i<N;++i){
+                if(found[i]||_wcsicmp(text,labels[i]))continue;
+                found[i]=f;--remaining;
+            }
+            if(!remaining){out=found;return true;}
+        }
+    }
+    return false;
+}
+#endif
 uptr property(uptr object,const wchar_t* value){return registered(object)?field(get<uptr>(object+0x50),value):0;}
 uptr pointer(uptr object,const wchar_t* value){const auto p=property(object,value);return p?get<uptr>(object+get<unsigned>(p+0x94)):0;}
 template<class T>T scalar(uptr object,const wchar_t* value){const auto p=property(object,value);return p?get<T>(object+get<unsigned>(p+0x94)):T{};}

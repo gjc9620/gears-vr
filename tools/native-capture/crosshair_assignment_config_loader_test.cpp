@@ -24,6 +24,7 @@ int main(int argc,char** argv){
     }
     OwnedConfig good;assert(parse_config(Reader{valid},123,0x140000000,good));
     assert(good.assignment.identities==&good.identities&&good.tick_root_count==2);
+    assert(good.weapon_call_count==0||good.weapon_call_count==6);
     OwnedConfig copied=good;assert(copied.assignment.identities==&copied.identities);
     OwnedConfig moved=std::move(copied);assert(moved.assignment.identities==&moved.identities);
     OwnedConfig assigned;assigned=std::move(moved);assert(assigned.assignment.identities==&assigned.identities);
@@ -34,8 +35,10 @@ int main(int argc,char** argv){
         assert(!accepted);
         assert(out.pid==777&&out.assignment.script==good.assignment.script&&out.assignment.identities==&out.identities);
     };
-    // Optional view_enabled may be omitted by old certificates.
-    for(auto const& entry:valid){if(entry.first==L"view_enabled")continue;
+    // These gates may be omitted by older certificates; an enabled gate makes
+    // all its corresponding fields mandatory.
+    for(auto const& entry:valid){if(entry.first==L"view_enabled"||entry.first==L"aim_enabled"||
+                                   entry.first==L"weapon_call_count")continue;
         if(entry.first.rfind(L"view_",0)==0&&!good.assignment.view.enabled)continue;
         auto bad=valid;bad.erase(entry.first);reject(bad);}
     {auto legacy=valid;legacy.erase(L"view_enabled");OwnedConfig out;
@@ -84,6 +87,19 @@ int main(int argc,char** argv){
         auto bad=valid;bad[key]=L"999";reject(bad);
     }
     {auto bad=valid;bad[L"root1_size"]=L"0";reject(bad);}
+    if(good.weapon_call_count==6){
+        auto bad=valid;bad[L"weapon_call_count"]=L"5";reject(bad);
+        bad=valid;bad[L"weapon_call1_function"]=bad[L"weapon_call0_function"];reject(bad);
+        bad=valid;bad[L"weapon_call2_owner"]=bad[L"weapon_call0_owner"];reject(bad);
+        bad=valid;bad[L"weapon_call4_size"]=L"0";reject(bad);
+        bad=valid;bad[L"weapon_call2_result_property"]=bad[L"weapon_call2_function"];reject(bad);
+        bad=valid;bad[L"weapon_call3_result_offset"]=L"20";reject(bad);
+        bad=valid;bad[L"weapon_rotator_struct"]=bad[L"vector_struct"];reject(bad);
+        bad=valid;bad[L"weapon_rotator_member1"]=bad[L"weapon_rotator_member0"];reject(bad);
+        bad=valid;bad[L"weapon_fire_pushed_offset"]=L"12";reject(bad);
+        bad=valid;bad[L"weapon_fire_impact_list"]=bad[L"vector_struct"];reject(bad);
+        bad=valid;bad[L"weapon_fire_locals_size"]=L"24";reject(bad);
+    }
     {auto bad=valid;bad[L"pawn"]=bad[L"controller"];reject(bad);}
     {auto bad=valid;bad[L"id1_address"]=bad[L"id0_address"];reject(bad);}
     {auto bad=valid;bad[L"id1_index"]=bad[L"id0_index"];reject(bad);}
@@ -93,6 +109,9 @@ int main(int argc,char** argv){
     {auto no_roots=valid;no_roots[L"tick_root_count"]=L"0";
         for(unsigned i=0;i<2;++i)for(auto suffix:{L"owner",L"function",L"script",L"size"})
             no_roots.erase(L"root"+std::to_wstring(i)+L"_"+suffix);
+        no_roots[L"weapon_call_count"]=L"0";
+        for(unsigned i=0;i<6;++i)for(auto suffix:{L"owner",L"function",L"script",L"size"})
+            no_roots.erase(L"weapon_call"+std::to_wstring(i)+L"_"+suffix);
         OwnedConfig out;assert(parse_config(Reader{no_roots},123,0x140000000,out)&&out.tick_root_count==0);}
     {OwnedConfig out;assert(!parse_config(Reader{valid},124,0x140000000,out));
         assert(!parse_config(Reader{valid},123,0x140001000,out));}

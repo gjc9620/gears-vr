@@ -888,6 +888,17 @@ class ContinuousTests(unittest.TestCase):
                      mock.patch.object(start_capture.subprocess,'run') as spawn,contextlib.redirect_stderr(io.StringIO()):
                     with self.assertRaises(SystemExit) as error:start_capture.main()
                     self.assertEqual(error.exception.code,2);spawn.assert_not_called()
+            controller=['--continuous-session',*owner_flags,'--anchor-observer','--ui-observer',
+                        '--crosshair-assignment-observer','--controller-input-observer']
+            for values in ([],['--armspan-metres','1.7','--hands-below-head-metres','-.15']):
+                with mock.patch.object(start_capture.sys,'argv',base+controller+values):
+                    with self.assertRaisesRegex(RuntimeError,'Build capture DLL'):start_capture.main()
+            for values in (['--armspan-metres','1.7'],
+                           ['--armspan-metres','1.7','--hands-below-head-metres','nan'],
+                           ['--armspan-metres','.3','--hands-below-head-metres','-.15']):
+                with mock.patch.object(start_capture.sys,'argv',base+controller+values),contextlib.redirect_stderr(io.StringIO()):
+                    with self.assertRaises(SystemExit) as error:start_capture.main()
+                    self.assertEqual(error.exception.code,2)
 
     def test_recenter_only_signals_an_identical_running_owner_game_xr(self):
         with tempfile.TemporaryDirectory() as folder:

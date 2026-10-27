@@ -50,6 +50,8 @@ class GraphicsPolicyTests(unittest.TestCase):
         import winreg
         for value, kind, expected, calls in ((1234, winreg.REG_DWORD, '76561197960266962', 0),
                                              (0, winreg.REG_DWORD, '76561197960266963', 1),
+                                             ('0', winreg.REG_SZ, None, 0),
+                                             (False, winreg.REG_DWORD, None, 0),
                                              (0, winreg.REG_SZ, None, 0)):
             with mock.patch.object(winreg, 'OpenKey'), \
                     mock.patch.object(winreg, 'QueryValueEx', return_value=(value, kind)), \

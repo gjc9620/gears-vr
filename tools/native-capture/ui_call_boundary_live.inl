@@ -42,6 +42,7 @@ struct HookState {
     HookSlot<Scope> scope;
     HookSlot<cover_call_live::CallScope> cover;
     HookSlot<ui_logical_group_live::ChildScope> logical;
+    HookSlot<weapon_call_live::CallScope> weapon;
     HookSlot<gears_ui_call_boundary::Nest> nest;
     Row row;Row* saved_row;bool row_installed;
 };
@@ -53,7 +54,7 @@ void destroy_hook_state(HookState& state){
     // Exact reverse of construction/publication. In particular, nested calls
     // restore the parent's row before its Nest and logical child are exposed.
     if(state.row_installed){current_row=state.saved_row;state.row_installed=false;}
-    destroy_slot(state.nest);destroy_slot(state.logical);destroy_slot(state.cover);destroy_slot(state.scope);
+    destroy_slot(state.nest);destroy_slot(state.weapon);destroy_slot(state.logical);destroy_slot(state.cover);destroy_slot(state.scope);
 }
 uintptr_t invoke_original(HookState& state,void* self,void* caller_frame,void* result,void* callee){
     // One trampoline call site for every branch. Its opaque RAX bits and the
@@ -70,7 +71,9 @@ uintptr_t hook_body(HookState& state,void* self,void* caller_frame,void* result,
     if(!ui_observer_enabled)return native();
     state.logical.object=::new(static_cast<void*>(state.logical.storage)) ui_logical_group_live::ChildScope(self,caller_frame,callee,
         ui_logical_group_live::boundary_candidate()&&ui_invocation.frozen&&ui_invocation_current());
-    auto invoke=[&]{return state.logical.object->invoke(native);};
+    state.weapon.object=::new(static_cast<void*>(state.weapon.storage)) weapon_call_live::CallScope(self,caller_frame,result,callee);
+    auto invoke=[&]{const uintptr_t value=state.logical.object->invoke(native);
+        state.weapon.object->returned(value);return value;};
     ++calls;state.nest.object=::new(static_cast<void*>(state.nest.storage)) gears_ui_call_boundary::Nest(nesting);
     auto& nest=*state.nest.object;
     // Pointer-only frozen candidate lookup precedes expensive parent validation.

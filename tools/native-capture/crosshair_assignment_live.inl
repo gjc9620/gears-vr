@@ -43,6 +43,115 @@ bool root_binding(gears_crosshair_assignment::OwnedConfig const& config,unsigned
         safe_copy(&entry,reinterpret_cast<void*>(function+0x114),8)&&entry==base+0x1d6ca0;
 }
 bool root_binding(unsigned index){return root_binding(current(),index);}
+bool weapon_call_binding(gears_crosshair_assignment::OwnedConfig const& checked,unsigned index){
+    if(index>=checked.weapon_call_count||index>=checked.weapon_calls.size())return false;
+    auto const& call=checked.weapon_calls[index];auto const& ids=checked.identities;
+    if(call.owner>=ids.identity_count||call.function>=ids.identity_count)return false;
+    gears_ui::Reader<decltype(&safe_copy)> read{safe_copy};
+    gears_ui::Registry objects{},names{},script{};uintptr_t entry{};
+    auto const& owner=ids.identities[call.owner];auto const& function=ids.identities[call.function];
+    if(!(gears_ui::registry(read,ids.objects_header,objects)&&gears_ui::registry(read,ids.names_header,names)&&
+        gears_ui::fresh_identity(ids,read,objects,names,owner)&&
+        gears_ui::fresh_identity(ids,read,objects,names,function)&&
+        function.outer==owner.address&&
+        read.field(script,function.address,0x8c)&&script.data==call.script&&
+        script.count==int(call.size)&&script.count>0&&script.count<=script.capacity&&script.capacity<=131072&&
+        read.field(entry,function.address,0x114)&&entry==base+0x1d6ca0))return false;
+    if(index==1){
+        auto const& trace=checked.weapon_fire_trace;
+        if(trace.locals_size<52||trace.locals_size>65536||call.size<0xba||
+           checked.assignment.vector_struct>=ids.identity_count||
+           checked.weapon_calls[4].function>=ids.identity_count||
+           trace.impact_list>=ids.identity_count)return false;
+        unsigned current_locals_size{};
+        if(!read.field(current_locals_size,function.address,0x88)||
+           current_locals_size!=trace.locals_size)return false;
+        auto const& vector=ids.identities[checked.assignment.vector_struct];
+        auto const& calc=ids.identities[checked.weapon_calls[4].function];
+        if(std::wcscmp(vector.name.data(),L"Vector")||
+           std::wcscmp(calc.name.data(),L"CalcWeaponFire")||calc.number||
+           !gears_ui::fresh_identity(ids,read,objects,names,vector)||
+           !gears_ui::fresh_identity(ids,read,objects,names,calc))return false;
+        constexpr const wchar_t* local_names[]{L"StartTrace",L"EndTrace",L"PushedForwardStartTrace"};
+        std::array<std::uintptr_t,3> properties{};
+        for(unsigned i=0;i<3;++i){
+            const auto property_index=trace.properties[i];
+            if(property_index>=ids.identity_count||trace.offsets[i]!=12*i||
+               trace.offsets[i]+12>trace.locals_size)return false;
+            auto const& local=ids.identities[property_index];
+            auto const* kind=gears_ui::known(ids,local.cls);
+            unsigned offset{},dimension{},size{};std::uint64_t flags{};uintptr_t structure{};
+            if(!kind||std::wcscmp(kind->name.data(),L"StructProperty")||
+               std::wcscmp(local.name.data(),local_names[i])||local.number||
+               local.outer!=function.address||
+               !gears_ui::fresh_identity(ids,read,objects,names,local)||
+               !read.field(offset,local.address,0x94)||offset!=trace.offsets[i]||
+               !read.field(dimension,local.address,0x70)||dimension!=1||
+               !read.field(size,local.address,0x74)||size!=12||
+               !read.field(flags,local.address,0x78)||flags!=0||
+               !read.field(structure,local.address,checked.assignment.property_structure)||
+               structure!=vector.address)return false;
+            properties[i]=local.address;
+        }
+        auto const& impact=ids.identities[trace.impact_list];
+        auto const* impact_kind=gears_ui::known(ids,impact.cls);
+        unsigned impact_offset{},impact_dim{},impact_size{};std::uint64_t impact_flags{};
+        if(!impact_kind||std::wcscmp(impact_kind->name.data(),L"ArrayProperty")||
+           std::wcscmp(impact.name.data(),L"ImpactList")||impact.number||
+           impact.outer!=function.address||
+           !gears_ui::fresh_identity(ids,read,objects,names,impact)||
+           !read.field(impact_offset,impact.address,0x94)||impact_offset!=36||
+           !read.field(impact_dim,impact.address,0x70)||impact_dim!=1||
+           !read.field(impact_size,impact.address,0x74)||impact_size!=16||
+           !read.field(impact_flags,impact.address,0x78)||impact_flags!=0x400000)return false;
+        std::array<unsigned char,37> expected{},actual{};
+        expected[0]=0x1b;std::memcpy(expected.data()+1,&calc.name_index,4);
+        std::memcpy(expected.data()+5,&calc.number,4);
+        expected[9]=expected[18]=expected[27]=0;
+        std::memcpy(expected.data()+10,&properties[2],8);
+        std::memcpy(expected.data()+19,&properties[1],8);
+        std::memcpy(expected.data()+28,&impact.address,8);
+        expected[36]=0x16;
+        if(!safe_copy(actual.data(),reinterpret_cast<void const*>(call.script+0x95),actual.size())||
+           actual!=expected)return false;
+    }
+    if(index!=2&&index!=3)return true;
+    if(call.result_property>=ids.identity_count||checked.weapon_rotator_struct>=ids.identity_count||
+       call.result_offset!=(index==2?0x14u:0x0cu))return false;
+    auto const& property=ids.identities[call.result_property];
+    auto const& rotator=ids.identities[checked.weapon_rotator_struct];
+    auto const* kind=gears_ui::known(ids,property.cls);
+    auto const* struct_kind=gears_ui::known(ids,rotator.cls);
+    unsigned offset{},dimension{},size{};std::uint64_t flags{};uintptr_t structure{};
+    if(!(kind&&struct_kind&&!std::wcscmp(kind->name.data(),L"StructProperty")&&
+        !std::wcscmp(struct_kind->name.data(),L"ScriptStruct")&&
+        !std::wcscmp(property.name.data(),L"ReturnValue")&&!property.number&&
+        property.outer==function.address&&!std::wcscmp(rotator.name.data(),L"Rotator")&&
+        !rotator.number&&gears_ui::fresh_identity(ids,read,objects,names,property)&&
+        gears_ui::fresh_identity(ids,read,objects,names,rotator)&&
+        read.field(offset,property.address,0x94)&&offset==call.result_offset&&
+        read.field(dimension,property.address,0x70)&&dimension==1&&
+        read.field(size,property.address,0x74)&&size==12&&
+        read.field(flags,property.address,0x78)&&flags==0x580&&
+        read.field(structure,property.address,checked.assignment.property_structure)&&
+        structure==rotator.address))return false;
+    constexpr const wchar_t* member_names[]{L"Pitch",L"Yaw",L"Roll"};
+    for(unsigned i=0;i<3;++i){
+        const auto member_index=checked.weapon_rotator_members[i];
+        if(member_index>=ids.identity_count)return false;
+        auto const& member=ids.identities[member_index];
+        auto const* member_kind=gears_ui::known(ids,member.cls);
+        unsigned member_offset{},member_dim{},member_size{};
+        if(!member_kind||std::wcscmp(member_kind->name.data(),L"IntProperty")||
+           std::wcscmp(member.name.data(),member_names[i])||member.number||
+           member.outer!=rotator.address||
+           !gears_ui::fresh_identity(ids,read,objects,names,member)||
+           !read.field(member_offset,member.address,0x94)||member_offset!=4*i||
+           !read.field(member_dim,member.address,0x70)||member_dim!=1||
+           !read.field(member_size,member.address,0x74)||member_size!=4)return false;
+    }
+    return true;
+}
 bool recovery_fresh(gears_crosshair_assignment::OwnedConfig const&,gears_anchor::Config const&,gears_ui::Config const&,gears_anchor::GuardDiagnostic* diagnostic=nullptr);
 bool load(const wchar_t* ini,FILE* status=nullptr){
     auto reject=[&](const char* stage,const char* reason="none"){
@@ -54,6 +163,7 @@ bool load(const wchar_t* ini,FILE* status=nullptr){
     if(candidate.mounted_suspended){if(!recovery_fresh(candidate,anchor_config,ui_config))return reject("mounted_recovery");
         config=candidate;config_generation=committed_world_generation.load();return reserve()||reject("reserve");}
     if(candidate.tick_root_count!=2)return reject("tick_root_count");
+    if(controller_input_observer&&candidate.weapon_call_count!=6)return reject("weapon_call_count");
     if(candidate.identities.identities[candidate.assignment.controller].address!=expected_pc)return reject("controller");
     gears_crosshair_assignment::ValidationFailure failure{};
     gears_crosshair_assignment::OwnedConfig admitted;
@@ -80,6 +190,8 @@ bool load(const wchar_t* ini,FILE* status=nullptr){
     // path must not acquire a dependency on an unused global opcode handler.
     if(!root_binding(0))return reject("root0");
     if(!root_binding(1))return reject("root1");
+    if(controller_input_observer)for(unsigned i=0;i<config.weapon_call_count;++i)
+        if(!weapon_call_binding(config,i))return reject("weapon_call_binding");
     return reserve()||reject("reserve");
 }
 void append(unsigned kind,gears_crosshair_tick::Sealed const& value,long long scene){
@@ -116,6 +228,10 @@ bool recovery_fresh(gears_crosshair_assignment::OwnedConfig const& candidate,gea
     if(!camera||!same_object(*camera,anchor.identities[anchor.role_camera])||
        !root_binding(candidate,0)||!root_binding(candidate,1)||
        !gears_crosshair_assignment::validate_bindings(c,safe_copy,false))return false;
+    if(controller_input_observer){
+        if(candidate.weapon_call_count!=6)return false;
+        for(unsigned i=0;i<candidate.weapon_call_count;++i)if(!weapon_call_binding(candidate,i))return false;
+    }
     std::array<unsigned char,32> original_entry{};
     if(!read_attested_hook_entry(original_entry.data(),reinterpret_cast<void*>(base+0x1d7ad0),original_entry.size())||
        original_entry!=gears_crosshair_assignment::execlet_entry)return false;

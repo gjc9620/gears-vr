@@ -15,6 +15,16 @@
 #include "MinHook.h"
 #include "../vr-common/pose_bridge.h"
 #include "../vr-common/stereo_bridge.h"
+#include "../vr-common/controller_input_bridge.h"
+#include "../vr-common/body_slots.h"
+#include "../vr-common/weapon_input_router.h"
+#include "../vr-common/weapon_pose_solver.h"
+#include "../vr-common/equipment_intent_bridge.h"
+#include "../vr-common/controller_recenter_request.h"
+#if defined(GEARS_HAND_CONTINUITY_CANDIDATE) && GEARS_HAND_CONTINUITY_CANDIDATE
+#include "../vr-common/controller_continuity_bridge.h"
+#include "../vr-common/hand_world_continuity_bridge.h"
+#endif
 #include "../vr-common/gpu_share.h"
 #if defined(GEARS_DESKTOP_MIRROR) && GEARS_DESKTOP_MIRROR
 #include "../vr-common/gpu_mirror.h"
@@ -92,6 +102,8 @@ gears_support::Recorder support_diagnostics;
 #include "body_mount_commit.h"
 #include "body_tick_tracking_probe.h"
 #pragma pop_macro("small")
+#include "hand_personal_reference.h"
+#include "hand_personal_calibration_live.inl"
 #include "weapon_hand_broker.h"
 #include "cover_surface_getters.h"
 #include "../vr-common/weapon_hand_owner_adapter.h"
@@ -120,6 +132,9 @@ gears_support::Recorder support_diagnostics;
 #include "crosshair_tick_evidence.h"
 #include "crosshair_finite_query.h"
 #include "crosshair_weapon_binding.h"
+#if defined(GEARS_FREE_HAND_POSE_OBSERVER) && GEARS_FREE_HAND_POSE_OBSERVER
+#include "hand_pose_publication.h"
+#endif
 #endif
 #include "ui_canvas_batch.h"
 #include "ui_canvas_text_batch.h"
@@ -173,6 +188,7 @@ bool renderer_pair_enabled{};
 bool submit_pair_enabled{};
 bool projection_control{};
 bool stereo_xr{};
+bool controller_input_observer{};
 bool simulator_operator{};
 bool frame_link_diagnostics{};
 bool stereo_gpu_publish{};
@@ -333,8 +349,34 @@ double stereo_units_per_metre=100;
 double camera_closer_metres{};
 std::atomic<unsigned long long> camera_closer_applied{},camera_closer_inactive{},camera_closer_rejected{};
 gears_vr::StereoBridge stereo_bridge;
+gears_vr::ControllerInputBridge controller_input_bridge;
+gears_weapon::ArmspanCalibrator controller_armspan_observer;
+gears_weapon::ArmspanCalibration controller_armspan_saved{};
 gears_vr::StereoGate stereo_gate;
+#if defined(GEARS_HAND_CONTINUITY_CANDIDATE) && GEARS_HAND_CONTINUITY_CANDIDATE
+gears_hand_continuity::InputBridge hand_continuity_input;
+gears_hand_continuity::WorldBridge hand_continuity_world;
+std::uint64_t hand_continuity_matched{},hand_continuity_missing{},hand_continuity_published{},hand_continuity_rejected{};
+#endif
 gears_native_context::StereoMutex stereo_mutex;
+uint64_t controller_input_matched{},controller_input_missing{},controller_input_tracked_left{},controller_input_tracked_right{};
+uint64_t controller_input_first_sequence{},controller_input_last_sequence{},controller_input_profile_generation{};
+std::mutex controller_input_mailbox_mutex;
+gears_vr::ControllerInputFrame controller_input_mailbox{};
+gears_vr::StereoSample controller_input_mailbox_stereo{};
+gears_weapon::ArmspanCalibration controller_input_mailbox_calibration{};
+gears_vr::Pose controller_input_mailbox_body{};
+uint64_t controller_input_mailbox_world{};
+std::atomic<uint64_t> controller_input_tick_accepted{},controller_input_tick_baseline{},
+    controller_input_tick_stale{},controller_input_tick_replayed{},controller_input_tick_world_rejected{};
+std::mutex controller_input_tick_mutex;
+uint64_t controller_input_tick_session{},controller_input_tick_epoch{},controller_input_tick_profile{},
+    controller_input_tick_input_epoch{},controller_input_tick_sequence{};
+gears_weapon::WeaponInputRouter controller_input_intent_router;
+gears_weapon::EquipmentIntentBridge controller_equipment_intent_bridge;
+std::atomic<uint64_t> controller_equipment_intent_published{},controller_equipment_intent_rejected{};
+std::atomic<uint64_t> controller_hand_pose_published{},controller_hand_pose_rejected{};
+std::array<std::atomic<uint64_t>,16> controller_input_intents{};
 std::atomic<bool> outage_diagnostics{false};
 gears_outage::ActivitySnapshot outage_built;
 gears_outage::Window outage_window;
@@ -430,6 +472,7 @@ gears_vr::StereoSample stereo_first_sample{},stereo_last_sample{};
 gears_vr::Pose stereo_reference{};
 HANDLE stereo_recenter_event{};
 bool stereo_recenter_key_down{};
+gears_weapon::ControllerRecenterRequest controller_recenter_request;
 std::atomic<unsigned long long> stereo_recenter_requests{},stereo_heading_deferred{},stereo_reference_generation{};
 struct StereoReferenceEvent {
     std::uint64_t generation{},ticket{},session{},sequence{};
@@ -1237,6 +1280,7 @@ bool create_stereo_recenter_event() {
 void close_stereo_recenter_event() {
     // A failed hook installation may still have a callback in flight. Retain
     // the handle until process exit in that failure case, never race a wait.
+    controller_recenter_request.reset();
     if(stereo_recenter_event&&!active.load()){CloseHandle(stereo_recenter_event);stereo_recenter_event=nullptr;first_person_live::close();}
 }
 void poll_stereo_recenter() {
@@ -1260,6 +1304,34 @@ void print_stereo(FILE* file) {
     if(!stereo_xr)return;
     std::lock_guard<decltype(stereo_mutex)> lock(stereo_mutex);
     first_person_live::print(file);
+    if(controller_input_observer)fprintf(file,
+        "controller_input_observer enabled=1 matched=%llu missing=%llu tracked_left=%llu tracked_right=%llu first_sequence=%llu last_sequence=%llu profile_generation=%llu tick_accepted=%llu tick_baseline=%llu tick_stale=%llu tick_replayed=%llu tick_world_rejected=%llu game_input_injected=0\n",
+        controller_input_matched,controller_input_missing,controller_input_tracked_left,
+        controller_input_tracked_right,controller_input_first_sequence,
+        controller_input_last_sequence,controller_input_profile_generation,
+        controller_input_tick_accepted.load(),controller_input_tick_baseline.load(),
+        controller_input_tick_stale.load(),controller_input_tick_replayed.load(),
+        controller_input_tick_world_rejected.load());
+    if(controller_input_observer){
+        const auto measured=controller_armspan_observer.result();
+        fprintf(file,"controller_armspan_observer measured=%u progress=%.6g armspan_metres=%.6g hands_below_head_metres=%.6g saved=0\n",
+            measured?1u:0u,controller_armspan_observer.progress(),
+            measured?measured->armspan_metres:0.,measured?measured->hands_below_head_metres:0.);
+        fprintf(file,"controller_armspan_loaded valid=%u\n",controller_armspan_saved.valid()?1u:0u);
+        fprintf(file,"controller_intent_observer shoulder_ammo=%llu weapon_2=%llu weapon_1=%llu pistol=%llu grenade=%llu recenter=%llu reload=%llu aim_down=%llu fire_down=%llu game_actions_called=0 body_origin=diagnostic_head_translation\n",
+            controller_input_intents[static_cast<unsigned>(gears_weapon::WeaponIntent::grab_ammo)].load(),
+            controller_input_intents[static_cast<unsigned>(gears_weapon::WeaponIntent::weapon_2)].load(),
+            controller_input_intents[static_cast<unsigned>(gears_weapon::WeaponIntent::weapon_1)].load(),
+            controller_input_intents[static_cast<unsigned>(gears_weapon::WeaponIntent::pistol)].load(),
+            controller_input_intents[static_cast<unsigned>(gears_weapon::WeaponIntent::grenade)].load(),
+            controller_input_intents[static_cast<unsigned>(gears_weapon::WeaponIntent::recenter)].load(),
+            controller_input_intents[static_cast<unsigned>(gears_weapon::WeaponIntent::reload)].load(),
+            controller_input_intents[static_cast<unsigned>(gears_weapon::WeaponIntent::aim_down)].load(),
+            controller_input_intents[static_cast<unsigned>(gears_weapon::WeaponIntent::fire_down)].load());
+        fprintf(file,"controller_equipment_intent_bridge published=%llu rejected=%llu hand_pose_published=%llu hand_pose_rejected=%llu original_switch_called=0\n",
+            controller_equipment_intent_published.load(),controller_equipment_intent_rejected.load(),
+            controller_hand_pose_published.load(),controller_hand_pose_rejected.load());
+    }
     run_camera_live::print(file);
     cover_camera_live::print(file);
     cover_input_live::print(file);
@@ -3223,14 +3295,65 @@ bool try_submit_pair(void* destination,void* family,void* canvas,void* transform
 #if defined(GEARS_RUNTIME_RENDER_SIZE) && GEARS_RUNTIME_RENDER_SIZE
         if(!gears_native_render_size::matches_session(sample.session)){++stereo_rejections[8];return false;}
 #endif
-        auto result=stereo_gate.update(sample,gears_vr::monotonic_ns(),simulator_operator);
-        const auto rig_reference=stereo_gate.continuity();
+        const auto sample_time=gears_vr::monotonic_ns();
+        auto result=stereo_gate.update(sample,sample_time,simulator_operator);
         if(result.heading_deferred)++stereo_heading_deferred;
         if(!result){++stereo_rejections[static_cast<unsigned>(result.status)];
             if(weapon_hand_runtime::enabled)cover_shared_input_live::invalidate(gears_weapon_hand::InvalidateReason::input_lost);
             if(continuous_session&&(result.status==gears_vr::StereoStatus::session_changed||result.status==gears_vr::StereoStatus::invalid)){
                 request_session_stop(SessionStop::proof_failure);service_session_stop_native();}
             return false;}
+        // The game tick has already authenticated the L3 edge. Apply it only
+        // after this exact stereo sample has passed the gate; a rejected frame
+        // must not carry a pending recenter into a later world or session.
+        if(controller_input_observer&&gears_weapon::apply_controller_recenter(
+            controller_recenter_request,frame.world_generation,committed_world_generation.load(),
+            sample,sample_time,simulator_operator,stereo_gate,result))++stereo_recenter_requests;
+        // Both data paths retain the final reference of this same ticket,
+        // including an authenticated L3 recenter applied above.
+        const auto rig_reference=stereo_gate.continuity();
+#if defined(GEARS_HAND_CONTINUITY_CANDIDATE) && GEARS_HAND_CONTINUITY_CANDIDATE
+        // Freeze under the gate's original mutex, after the same-ticket L3
+        // request. This is the reference used below, not a diagnostic mirror.
+        const auto hand_reference_continuity=rig_reference;
+#endif
+        gears_vr::ControllerInputFrame matched_hands{};
+        bool have_matched_hands=false;
+        if(controller_input_observer){
+            gears_vr::ControllerInputFrame hands{};
+            if(controller_input_bridge.read_matching(sample,gears_vr::monotonic_ns(),hands,simulator_operator)){
+                matched_hands=hands;have_matched_hands=true;
+                if(!simulator_operator&&!controller_armspan_saved.valid())
+                    controller_armspan_observer.observe(hands,sample,gears_vr::monotonic_ns());
+                if(!controller_input_matched)controller_input_first_sequence=hands.sequence;
+                ++controller_input_matched;controller_input_last_sequence=hands.sequence;
+                controller_input_profile_generation=hands.profile_generation;
+                if(gears_vr::controller_pose_usable(hands.hands[0].grip,hands.hands[0].grip_flags,hands.hands[0].grip_active))
+                    ++controller_input_tracked_left;
+                if(gears_vr::controller_pose_usable(hands.hands[1].grip,hands.hands[1].grip_flags,hands.hands[1].grip_active))
+                    ++controller_input_tracked_right;
+                {std::lock_guard<std::mutex> mailbox(controller_input_mailbox_mutex);
+                    controller_input_mailbox=hands;
+                    controller_input_mailbox_stereo=sample;
+                    if(const auto measured=controller_armspan_observer.result())
+                        controller_input_mailbox_calibration=*measured;
+                    controller_input_mailbox_body={sample.head.position,result.reference.orientation};
+                    controller_input_mailbox_world=committed_world_generation.load();}
+            }else {++controller_input_missing;
+                if(!controller_armspan_observer.result())controller_armspan_observer.reset();}
+        }
+#if defined(GEARS_HAND_CONTINUITY_CANDIDATE) && GEARS_HAND_CONTINUITY_CANDIDATE
+        gears_hand_continuity::TrackedInput continuous_hands{};
+        gears_hand_continuity::Publisher hand_publisher{};
+        std::uint64_t original_publisher_pid{},original_publisher_start{};
+        const bool have_continuous_hands=have_matched_hands&&
+            hand_continuity_input.read_matching(sample,gears_vr::monotonic_ns(),
+                continuous_hands,hand_publisher,simulator_operator)&&
+            gears_hand_continuity::same_input(continuous_hands.input,matched_hands)&&
+            controller_input_bridge.publisher_identity(original_publisher_pid,original_publisher_start)&&
+            original_publisher_pid==hand_publisher.pid&&original_publisher_start==hand_publisher.start;
+        if(have_continuous_hands)++hand_continuity_matched;else ++hand_continuity_missing;
+#endif
         gears_vr::StereoMatrix view{},projection{};memcpy(view.data(),original_source.bytes.data()+0x70,64);
         memcpy(projection.data(),original_source.bytes.data()+0xb0,64);
         // The original camera defines Canvas screen placement. Retain its
@@ -3272,6 +3395,98 @@ bool try_submit_pair(void* destination,void* family,void* canvas,void* transform
             ++stereo_rejections[9];
             if(origin_trial_enabled){request_session_stop(SessionStop::proof_failure);service_session_stop_native();}
             return false;}
+#if defined(GEARS_CROSSHAIR_ASSIGNMENT_OBSERVER) && GEARS_CROSSHAIR_ASSIGNMENT_OBSERVER
+        const bool hand_pose_context=
+#if defined(GEARS_FREE_HAND_POSE_OBSERVER) && GEARS_FREE_HAND_POSE_OBSERVER
+            anchor_observer_enabled&&anchor&&!anchor_config.mounted_enabled&&!anchor->anchor.unpossessed;
+#else
+            first_person_live::ordinary(anchor);
+#endif
+        if(controller_input_observer&&have_matched_hands&&hand_pose_context&&
+           crosshair_live::enabled){
+            auto const& owned=crosshair_live::current();auto const& c=owned.assignment;
+            std::uintptr_t weapon{};
+#if !defined(GEARS_FREE_HAND_POSE_OBSERVER) || !GEARS_FREE_HAND_POSE_OBSERVER
+            std::uintptr_t instigator{};
+#endif
+            const auto pawn=anchor->anchor.pawn,pc=anchor->anchor.controller;
+            const bool hand_pose_binding=
+#if defined(GEARS_FREE_HAND_POSE_OBSERVER) && GEARS_FREE_HAND_POSE_OBSERVER
+                gears_hand_pose::current_weapon(c,anchor->anchor,frame.world_generation,
+                    committed_world_generation.load(),safe_copy,weapon)&&
+                frame.world_generation==committed_world_generation.load();
+#else
+                c.pawn<owned.identities.identity_count&&c.controller<owned.identities.identity_count&&
+               c.weapon<owned.identities.identity_count&&c.pawn_weapon.offset<=0xfff8&&
+               c.weapon_instigator.offset<=0xfff8&&
+               owned.identities.identities[c.pawn].address==pawn&&
+               owned.identities.identities[c.controller].address==pc&&
+               safe_copy(&weapon,reinterpret_cast<void*>(pawn+c.pawn_weapon.offset),sizeof(weapon))&&
+               weapon==owned.identities.identities[c.weapon].address&&
+               safe_copy(&instigator,reinterpret_cast<void*>(weapon+c.weapon_instigator.offset),sizeof(instigator))&&
+               instigator==pawn;
+#endif
+            if(hand_pose_binding){
+                gears_weapon::HandWorldFrame pose{};
+                pose.session=sample.session;pose.sequence=sample.sequence;
+                pose.space_epoch=sample.space_epoch;pose.input_epoch=matched_hands.input_epoch;
+                pose.world_generation=frame.world_generation;
+                pose.controller=pc;pose.pawn=pawn;pose.weapon=weapon;
+                pose.units_per_metre=stereo_units_per_metre;
+                for(unsigned hand=0;hand<2;++hand){
+                    const auto& h=matched_hands.hands[hand];
+                    if(!gears_vr::controller_pose_usable(h.grip,h.grip_flags,h.grip_active))continue;
+                    gears_vr::Viewpoint world_pose{};
+                    if(!gears_weapon::xr_pose_in_game_world(h.grip,result.reference,view,
+                            stereo_units_per_metre,world_pose))continue;
+                    (hand?pose.right:pose.left)=world_pose;pose.valid_mask|=std::uint8_t(1u<<hand);
+                    // Edge counters reset at focus/profile/space boundaries. A held
+                    // grip on the first frame after a boundary is only a baseline.
+                    if(h.squeeze_active&&h.pressed[gears_vr::control_squeeze]>
+                            h.released[gears_vr::control_squeeze])
+                        pose.grip_down_mask|=std::uint8_t(1u<<hand);
+                }
+#if defined(GEARS_FREE_HAND_POSE_OBSERVER) && GEARS_FREE_HAND_POSE_OBSERVER
+                { // A zero mask is a fresh tracking-loss receipt, never a hand target.
+#else
+                if(pose.valid_mask){
+#endif
+                    if(
+#if defined(GEARS_FREE_HAND_POSE_OBSERVER) && GEARS_FREE_HAND_POSE_OBSERVER
+                       // The extra identity reads must not retimestamp an expired XR ticket.
+                       frame.world_generation==committed_world_generation.load()&&
+                       gears_vr::controller_frame_matches(matched_hands,sample,gears_vr::monotonic_ns(),simulator_operator)&&
+#endif
+                       controller_equipment_intent_bridge.publish_pose(pose))++controller_hand_pose_published;
+                    else ++controller_hand_pose_rejected;
+#if defined(GEARS_HAND_CONTINUITY_CANDIDATE) && GEARS_HAND_CONTINUITY_CANDIDATE
+                    gears_hand_continuity::WorldFrame certified{};
+                    certified.pose=pose;
+                    auto& certificate=certified.certificate;
+                    certificate.native_started_qpc=hand_continuity_world.native_started_qpc();
+                    certificate.xr_publisher_pid=hand_publisher.pid;
+                    certificate.xr_publisher_start=hand_publisher.start;
+                    certificate.stream_epoch=continuous_hands.stream_epoch;
+                    certificate.reference_epoch=hand_reference_continuity.epoch;
+                    certificate.reference_generation=result.reference_generation;
+                    for(unsigned hand=0;hand<2;++hand)
+                        certificate.tracking_epoch[hand]=continuous_hands.tracking_epoch[hand];
+                    certificate.profile_generation=matched_hands.profile_generation;
+                    certificate.stereo_received_ns=sample.received_ns;
+                    certificate.input_received_ns=matched_hands.received_ns;
+                    certificate.source=static_cast<std::uint32_t>(sample.source);
+                    const auto certificate_time=gears_vr::monotonic_ns();
+                    if(have_continuous_hands&&hand_reference_continuity.stable&&
+                       !hand_reference_continuity.pending&&!hand_reference_continuity.exhausted&&
+                       frame.world_generation==committed_world_generation.load()&&
+                       gears_vr::controller_frame_matches(matched_hands,sample,certificate_time,simulator_operator)&&
+                       hand_continuity_world.publish(certified))++hand_continuity_published;
+                    else ++hand_continuity_rejected;
+#endif
+                }
+            }else ++controller_hand_pose_rejected;
+        }
+#endif
         cover_pose_phase_live::scene(anchor,result);
         if(rig_tracking_live::enabled&&first_person_live::ordinary(anchor)){
             const auto current_reference=stereo_gate.continuity();
@@ -4894,6 +5109,22 @@ DWORD WINAPI worker(void*) {
     view_union_mask_fix=GetPrivateProfileIntW(L"Capture",L"view_union_mask_fix",0,ini)==1;
     projection_control=GetPrivateProfileIntW(L"Capture",L"projection_control",0,ini)==1;
     stereo_xr=GetPrivateProfileIntW(L"Capture",L"stereo_xr",0,ini)==1;
+    controller_input_observer=GetPrivateProfileIntW(L"Capture",L"controller_input_observer",0,ini)==1;
+    if(controller_input_observer&&!stereo_xr){fprintf(status,"rejected: controller input observer requires stereo XR\n");fclose(status);return 3;}
+#if !defined(GEARS_CROSSHAIR_ASSIGNMENT_OBSERVER) || !GEARS_CROSSHAIR_ASSIGNMENT_OBSERVER
+    if(controller_input_observer){fprintf(status,"rejected: controller input observer requires certified tick build\n");fclose(status);return 3;}
+#endif
+    // Preconfigure only reads the requested flag. It neither authenticates an
+    // owner nor enables a hook, and lets a shared hand consumer load its saved
+    // calibration independently of the legacy controller observer.
+    if(!continuous_hand_owner_live::preconfigure(ini)){
+        fprintf(status,"rejected: continuous hand owner configuration is invalid\n");fclose(status);return 2;}
+    if(!hand_personal_calibration_live::configure(ini,stereo_xr,
+        controller_input_observer||continuous_hand_owner_live::requested,status)){
+        fclose(status);return 3;}
+    {auto const& saved=hand_personal_calibration_live::saved;
+        controller_armspan_saved={saved.version,saved.armspan_metres,saved.hands_below_head_metres};
+        controller_input_mailbox_calibration=controller_armspan_saved;}
     simulator_operator=GetPrivateProfileIntW(L"Capture",L"simulator_operator",0,ini)==1;
     frame_link_diagnostics=GetPrivateProfileIntW(L"Capture",L"frame_link_diagnostics",0,ini)==1;
     stereo_gpu_publish=GetPrivateProfileIntW(L"Capture",L"stereo_gpu_publish",0,ini)==1;
@@ -4913,7 +5144,7 @@ DWORD WINAPI worker(void*) {
         fprintf(status,"rejected: run camera stabilizer requires compiled Scene support and continuous stereo anchors\n");fclose(status);return 2;}
     // Reservations do not enable a hook. At this point MH is initialized and
     // the immutable startup INI/anchor settings are available on the worker.
-    if(!continuous_hand_owner_live::preconfigure(ini)||!cover_pose_phase_live::configure(ini,status)||!cover_pose_phase_live::reserve()){
+    if(!cover_pose_phase_live::configure(ini,status)||!cover_pose_phase_live::reserve()){
         fprintf(status,"rejected: cover pose observer requires current full code certificates and reserved entries\n");fclose(status);return 2;}
     if(!cover_control_observer_live::configure(ini,status)||!cover_control_observer_live::reserve()){
         cover_control_observer_live::summary(status);fputc('\n',status);
@@ -5044,6 +5275,18 @@ DWORD WINAPI worker(void*) {
         live_gate.arm(true);
     }
     if(stereo_xr && !stereo_bridge.open(GetCurrentProcessId(),false)){fprintf(status,"rejected: stereo XR producer unavailable\n");fclose(status);return 3;}
+    if(controller_input_observer&&!controller_input_bridge.open(GetCurrentProcessId(),false)){
+        fprintf(status,"rejected: controller input producer unavailable\n");fclose(status);return 3;
+    }
+    if(controller_input_observer&&!controller_equipment_intent_bridge.open(true)){
+        fprintf(status,"rejected: equipment intent bridge unavailable\n");fclose(status);return 3;
+    }
+#if defined(GEARS_HAND_CONTINUITY_CANDIDATE) && GEARS_HAND_CONTINUITY_CANDIDATE
+    if(!continuous_session||!controller_input_observer||!stereo_xr||
+       !hand_continuity_input.open(GetCurrentProcessId(),false)){
+        fprintf(status,"rejected: private hand continuity requires continuous XR input companion\n");fclose(status);return 3;
+    }
+#endif
     uintptr_t linked{};
     if(!expected_local || !expected_pc || !safe_copy(&linked,reinterpret_cast<void*>(expected_local+0x68),8) || linked!=expected_pc) {
         fprintf(status,"rejected: local player/controller link mismatch\n");fclose(status);return 3;
@@ -5309,6 +5552,11 @@ DWORD WINAPI worker(void*) {
         support_startup.record("first_status","enter");
         write_session_status();
         support_startup.record("first_status","exit",session_status_available);
+#if defined(GEARS_HAND_CONTINUITY_CANDIDATE) && GEARS_HAND_CONTINUITY_CANDIDATE
+        {std::lock_guard<decltype(stereo_mutex)> lock(stereo_mutex);
+            if(!hand_continuity_world.open(true,static_cast<std::uint64_t>(session_started_qpc)))
+                request_session_stop(SessionStop::proof_failure);}
+#endif
         WorldRebindPrepareRequest world_rebind_request;
         if(!session_status_available||!stop_event)request_session_stop(SessionStop::proof_failure);
         support_startup.call("publish_activation_ready",[&]{publish_session_activation_ready(session_status_available&&stop_event);});
@@ -5582,6 +5830,14 @@ DWORD WINAPI worker(void*) {
         shadow_state_enabled,state_attempted.load(),state_created.load(),state_release_returned.load(),state_done,state_original_preserved.load(),
         state_done?state_delete_flags:0,state_done?state_delete_thread:0,
         static_cast<unsigned long long>(state_done?state_delete_caller:0),static_cast<unsigned long long>(state_temporary.load()));
+#if defined(GEARS_HAND_CONTINUITY_CANDIDATE) && GEARS_HAND_CONTINUITY_CANDIDATE
+    fprintf(status,"hand_continuity matched=%llu missing=%llu published=%llu rejected=%llu\n",
+        static_cast<unsigned long long>(hand_continuity_matched),static_cast<unsigned long long>(hand_continuity_missing),
+        static_cast<unsigned long long>(hand_continuity_published),static_cast<unsigned long long>(hand_continuity_rejected));
+    hand_continuity_world.close();hand_continuity_input.close();
+#endif
+    controller_equipment_intent_bridge.close();
+    controller_input_bridge.close();
     cover_shared_input_live::close();cover_input_live::close();stereo_bridge.close();
     diagnostic_status=nullptr;fclose(file);fclose(status);
     // Terminal publication promises the complete, formerly exclusive report is readable.

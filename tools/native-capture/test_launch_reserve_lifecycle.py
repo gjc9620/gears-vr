@@ -37,7 +37,7 @@ class ReserveLifecycleTests(unittest.TestCase):
         identity=dict(pid=55,creation_time=456,image=str(exe))
         pe=SimpleNamespace(close=mock.Mock(),DIRECTORY_ENTRY_EXPORT=SimpleNamespace(symbols=[
             SimpleNamespace(name=b'GearsCaptureReserve',forwarder=None,address=123)]))
-        def hidden(*args,**kwargs):ticks[0]=30;return SimpleNamespace(returncode=0)
+        def hidden(*args,**kwargs):ticks[0]=30;return SimpleNamespace(returncode=0,stdout='',stderr='')
         def validate(*args):
             if ticks[0]==30:ticks[0]=51
             return exe
@@ -45,6 +45,7 @@ class ReserveLifecycleTests(unittest.TestCase):
             stack.enter_context(mock.patch.object(sys,'argv',['launch_reserve']))
             stack.enter_context(mock.patch.object(launch_reserve,'validate_game',side_effect=validate))
             stack.enter_context(mock.patch.object(launch_reserve,'run_hidden',side_effect=hidden))
+            stack.enter_context(mock.patch.object(launch_reserve.instance_policy,'running_game_pids',return_value=[]))
             stack.enter_context(mock.patch.object(launch_reserve.pefile,'PE',return_value=pe))
             stack.enter_context(mock.patch.object(launch_reserve.time,'monotonic',side_effect=lambda:ticks[0]))
             guard=mock.Mock()
@@ -155,13 +156,14 @@ class ReserveLifecycleTests(unittest.TestCase):
                        injection_attempted=False,prime_attempted=False)
             def hidden(command,**kwargs):
                 if '-LaunchReceipt' in command:receipt.write_text(json.dumps(value))
-                return SimpleNamespace(returncode=0,stdout='55' if 'Select-Object -ExpandProperty Id' in command[-1] else '')
+                return SimpleNamespace(returncode=0,stdout='55' if 'Select-Object -ExpandProperty Id' in command[-1] else '',stderr='')
             pe=SimpleNamespace(close=mock.Mock(),DIRECTORY_ENTRY_EXPORT=SimpleNamespace(symbols=[
                 SimpleNamespace(name=b'GearsCaptureReserve',forwarder=None,address=123)]))
             with contextlib.ExitStack() as stack:
                 stack.enter_context(mock.patch.object(sys,'argv',['launch_reserve','--launch-receipt',str(receipt)]))
                 stack.enter_context(mock.patch.object(launch_reserve,'validate_game',return_value=exe))
                 stack.enter_context(mock.patch.object(launch_reserve,'run_hidden',side_effect=hidden))
+                stack.enter_context(mock.patch.object(launch_reserve.instance_policy,'running_game_pids',return_value=[]))
                 stack.enter_context(mock.patch.object(launch_reserve.pefile,'PE',return_value=pe))
                 stack.enter_context(mock.patch.object(launch_reserve.time,'monotonic',side_effect=[0,0,1,26,26]))
                 stack.enter_context(mock.patch.object(launch_reserve.time,'sleep'))

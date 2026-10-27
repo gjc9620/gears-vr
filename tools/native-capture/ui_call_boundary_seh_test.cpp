@@ -1,8 +1,15 @@
-// Execute the production outer hook under /EHsc. Synthetic observers model
-// admission/TLS and assert destruction order; no game, Native DLL or hooks.
+// Derived mechanically from Cover's actual UI SEH fixture. This compiles the
+// candidate production hook, wrapper, and byte-identical Weapon observer.
+// UI geometry and crosshair certificate providers are explicit synthetic host
+// seams; actual frame/ancestry helpers and observer guards execute unchanged.
+// Runtime transport here is a scope seam; separate actual Broker/runtime tests
+// cover real scope/debt semantics. No game, native module or hook installation.
 #define WIN32_LEAN_AND_MEAN
 #define NOMINMAX
 #define GEARS_UI_CALL_BOUNDARY_OBSERVER 1
+#ifndef GEARS_CROSSHAIR_ASSIGNMENT_OBSERVER
+#define GEARS_CROSSHAIR_ASSIGNMENT_OBSERVER 1
+#endif
 #include <Windows.h>
 #include <array>
 #include <atomic>
@@ -31,6 +38,10 @@ long long now(){return ++ticks;}
 unsigned active{},admissions{},scope_created{},scope_destroyed{},cover_created{},cover_destroyed{},
     cover_returned{},logical_created{},logical_destroyed{},logical_returned{},native_depth{},original_calls{};
 unsigned constructor_fault{};
+bool observer_fire_active();bool observer_aim_active();
+bool transport_admitted=true,transport_stopped=false,expect_observer=false;
+bool controller_input_observer=true;
+std::atomic<uint64_t> committed_world_generation{1};
 std::array<int,128> destruction{};unsigned destruction_count{};
 void destroyed(int kind){CHECK(destruction_count<destruction.size());destruction[destruction_count++]=kind;}
 
@@ -91,7 +102,7 @@ struct ChildScope {
     ui_call_boundary::Row* saved_row=ui_call_boundary::current_row;
     gears_ui_call_boundary::Child const* saved_child=ui_call_boundary::nesting.current;
     unsigned saved_depth=ui_call_boundary::nesting.depth;
-    bool selected{};
+    bool selected{};bool saved_weapon_fire=observer_fire_active(),saved_weapon_aim=observer_aim_active();
     ChildScope(void*,void*,void*,bool candidate):selected(candidate){
         if(constructor_fault==3)RaiseException(game_exception,0,0,nullptr);
         ++logical_created;if(selected)current_child=this;
@@ -100,6 +111,7 @@ struct ChildScope {
         const auto value=original();if(selected)++logical_returned;return value;
     }
     ~ChildScope(){
+        CHECK(observer_fire_active()==saved_weapon_fire&&observer_aim_active()==saved_weapon_aim);
         CHECK(ui_call_boundary::current_row==saved_row);
         CHECK(ui_call_boundary::nesting.current==saved_child&&ui_call_boundary::nesting.depth==saved_depth);
         if(selected){CHECK(current_child==this);current_child=previous;}
@@ -127,23 +139,83 @@ struct ActionScope {bool active;bool revoke_owner_cache;};
 }
 namespace weapon_hand_runtime {
 thread_local gears_weapon_hand::CallScope* current_call{};
-unsigned begun{},finished{},returned_calls{},unwound_calls{},pending{};
-bool begin_action(uintptr_t,uintptr_t,uintptr_t,uintptr_t,gears_weapon_hand::ActionScope& scope) noexcept {scope.active=true;return true;}
-void finish_action(gears_weapon_hand::ActionScope& scope,bool,uint64_t) noexcept {scope.active=false;}
+unsigned begun{},finished{},returned_calls{},unwound_calls{},pending{},action_begun{},action_finished{},action_pending{};
+bool begin_action(uintptr_t,uintptr_t,uintptr_t,uintptr_t,gears_weapon_hand::ActionScope& scope) noexcept {
+    if(!transport_admitted||transport_stopped)return false;
+    scope.active=true;++action_begun;++action_pending;return true;
+}
+void finish_action(gears_weapon_hand::ActionScope& scope,bool,uint64_t) noexcept {
+    if(!scope.active)return;
+    CHECK(action_pending&&pending<action_pending);scope.active=false;--action_pending;++action_finished;
+}
 bool begin_call(uintptr_t self,uintptr_t caller,uintptr_t result,uintptr_t callee,gears_weapon_hand::CallScope& scope,gears_weapon_hand::ActionScope const* =nullptr) noexcept {
-    CHECK(!scope.active);scope={current_call,{self,caller,result,callee},++begun,true};
+    CHECK(!scope.active);if(!transport_admitted||transport_stopped)return false;
+    scope={current_call,{self,caller,result,callee},++begun,true};
     current_call=&scope;++pending;return true;
 }
 void finish_call(gears_weapon_hand::CallScope& scope,bool returned,uint64_t rax) noexcept {
-    CHECK(scope.active&&current_call==&scope&&pending);
+    if(!scope.active)return;CHECK(current_call==&scope&&pending);
     if(returned){CHECK(rax==sentinel);++returned_calls;}else ++unwound_calls;
     scope.active=false;current_call=scope.previous;--pending;++finished;
 }
 }
 #include "weapon_call_live.inl"
+
+// The original fixture already models UI identities. These additional inputs
+// provide the crosshair certificate/outer-Tick side of the same owned buffer.
+// They do not replace the production observer or frame ancestry functions.
+namespace gears_crosshair_assignment {
+struct Assignment {unsigned controller=1,pawn=2,weapon=3;};
+template<class Read> bool validate_bindings(Assignment const&,Read,bool){return metadata_current;}
+}
+namespace crosshair_live {
+struct Identity {uintptr_t address{};};
+struct Identities {unsigned identity_count=10;std::array<Identity,10> identities{};};
+struct Call {unsigned function{};uintptr_t script{};unsigned size{};};
+struct FireTrace {unsigned locals_size=64;std::array<unsigned,3> offsets{0,12,24};};
+struct Config {
+    bool mounted_suspended{};unsigned weapon_call_count=6;Identities identities{};
+    gears_crosshair_assignment::Assignment assignment{};
+    std::array<Call,2> tick_roots{};std::array<Call,6> weapon_calls{};FireTrace weapon_fire_trace{};
+} config;
+struct State {uint64_t token=1;uintptr_t frame{};} state;
+std::atomic<uint64_t> config_generation{1};
+Config const& current(){return config;}
+bool root_binding(unsigned){return metadata_current;}
+bool weapon_call_binding(Config const&,unsigned){return metadata_current;}
+struct TickScope {bool entered=true;uint64_t token=1,world=1;uintptr_t previous_frame{};};
+void reset_fixture(){
+    config={};config.identities.identities[0].address=0x5000;
+    config.identities.identities[1].address=0x1000;
+    config.identities.identities[2].address=0x1100;
+    config.identities.identities[3].address=0x1000;
+    config.tick_roots[0]={0,0x8000,0x200};
+    for(unsigned i=0;i<6;++i){
+        config.identities.identities[4+i].address=0x3000+i*16;
+        config.weapon_calls[i]={4+i,0x8000+i*0x100,0x200};
+    }
+    state={1,reinterpret_cast<uintptr_t>(frames[0].data())};
+}
+}
+#include "weapon_call_observer_live.inl"
+bool observer_fire_active(){
+#if GEARS_CROSSHAIR_ASSIGNMENT_OBSERVER
+    return weapon_call_live::context.fire_active;
+#else
+    return false;
+#endif
+}
+bool observer_aim_active(){
+#if GEARS_CROSSHAIR_ASSIGNMENT_OBSERVER
+    return weapon_call_live::context.aim_active;
+#else
+    return false;
+#endif
+}
+
 #include "ui_call_boundary_live.inl"
 
-enum class Mode {normal,seh,nested,nested_caught_seh,nested_unhandled_seh};
+enum class Mode {normal,seh,nested,nested_caught_seh,nested_unhandled_seh,stop_original};
 Mode mode{};
 struct Arguments {void* self;void* caller;void* result;void* callee;};
 std::array<Arguments,2> arguments{};
@@ -161,10 +233,16 @@ uintptr_t __fastcall original_call(void* self,void* caller,void* result,void* ca
     CHECK(native_depth<arguments.size());auto const& expected=arguments[native_depth];
     CHECK(self==expected.self&&caller==expected.caller&&result==expected.result&&callee==expected.callee);
     ++original_calls;++native_depth;
-    CHECK(weapon_hand_runtime::pending==native_depth&&weapon_hand_runtime::current_call);
-    auto const& call=*weapon_hand_runtime::current_call;
-    CHECK(call.args[0]==reinterpret_cast<uintptr_t>(self)&&call.args[1]==reinterpret_cast<uintptr_t>(caller)&&
-        call.args[2]==reinterpret_cast<uintptr_t>(result)&&call.args[3]==reinterpret_cast<uintptr_t>(callee));
+    CHECK(weapon_hand_runtime::pending==(transport_admitted?native_depth:0));
+    if(transport_admitted){
+        CHECK(weapon_hand_runtime::current_call);
+        auto const& call=*weapon_hand_runtime::current_call;
+        CHECK(call.args[0]==reinterpret_cast<uintptr_t>(self)&&call.args[1]==reinterpret_cast<uintptr_t>(caller)&&
+            call.args[2]==reinterpret_cast<uintptr_t>(result)&&call.args[3]==reinterpret_cast<uintptr_t>(callee));
+    }else CHECK(!weapon_hand_runtime::current_call&&!weapon_hand_runtime::action_pending);
+#if GEARS_CROSSHAIR_ASSIGNMENT_OBSERVER
+    if(expect_observer)CHECK(weapon_call_live::context.active);
+#endif
     CHECK(active==native_depth&&scope_tls!=nullptr);
     CHECK(admissions==(world_allowed?native_depth:0));
     CHECK(bool(cover_call_live::current)==expect_cover);
@@ -180,6 +258,7 @@ uintptr_t __fastcall original_call(void* self,void* caller,void* result,void* ca
     auto const* saved_child=ui_call_boundary::nesting.current;
     const unsigned saved_depth=ui_call_boundary::nesting.depth;
     __try {
+        if(mode==Mode::stop_original)transport_stopped=true;
         if(mode==Mode::seh||(native_depth==2&&(mode==Mode::nested_caught_seh||mode==Mode::nested_unhandled_seh)))
             RaiseException(game_exception,0,0,nullptr);
         if(native_depth==1&&(mode==Mode::nested||mode==Mode::nested_caught_seh||mode==Mode::nested_unhandled_seh)){
@@ -198,6 +277,9 @@ void reset(){
     CHECK(!weapon_hand_runtime::pending&&!weapon_hand_runtime::current_call);
     weapon_hand_runtime::begun=weapon_hand_runtime::finished=weapon_hand_runtime::returned_calls=weapon_hand_runtime::unwound_calls=0;
     recording=true;ui_observer_enabled=world_allowed=metadata_current=invocation_current=true;
+    transport_admitted=true;transport_stopped=false;expect_observer=false;
+    weapon_hand_runtime::action_begun=weapon_hand_runtime::action_finished=weapon_hand_runtime::action_pending=0;
+    weapon_call_live::reset_tls();
     expect_selected=expect_cover=expect_logical=true;constructor_fault=0;observed_exception=0;mode=Mode::normal;
     scope_created=scope_destroyed=cover_created=cover_destroyed=cover_returned=0;
     logical_created=logical_destroyed=logical_returned=original_calls=destruction_count=0;
@@ -209,8 +291,11 @@ void reset(){
     config.scopes[0]={1,0,1,0x8000,32};ui_invocation={{1,0},77,&config};
     for(unsigned i=0;i<frames.size();++i){frames[i]={};const uintptr_t node=0x5000,object=0x1000,code=0x8000;
         std::memcpy(frames[i].data()+0x18,&node,8);std::memcpy(frames[i].data()+0x20,&object,8);std::memcpy(frames[i].data()+0x28,&code,8);
-        arguments[i]={reinterpret_cast<void*>(0x1000ull+i*8),frames[i].data(),reinterpret_cast<void*>(0x2000ull+i*8),reinterpret_cast<void*>(0x3000)};
+        arguments[i]={reinterpret_cast<void*>(0x1000ull),frames[i].data(),reinterpret_cast<void*>(0x2000ull+i*8),reinterpret_cast<void*>(0x3000)};
     }
+    const auto parent=reinterpret_cast<uintptr_t>(frames[0].data());
+    std::memcpy(frames[1].data()+0x38,&parent,8);
+    crosshair_live::reset_fixture();
     ui_call_boundary::original=original_call;
 }
 void drained(unsigned scopes,unsigned covers,unsigned logicals){
@@ -220,12 +305,21 @@ void drained(unsigned scopes,unsigned covers,unsigned logicals){
     CHECK(cover_created==covers&&cover_destroyed==covers);
     CHECK(logical_created==logicals&&logical_destroyed==logicals);
     CHECK(!weapon_hand_runtime::pending&&!weapon_hand_runtime::current_call);
-    CHECK(weapon_hand_runtime::begun==original_calls&&weapon_hand_runtime::finished==original_calls);
-    CHECK(weapon_hand_runtime::returned_calls+weapon_hand_runtime::unwound_calls==original_calls);
+    const unsigned notices=transport_admitted?original_calls:0;
+    CHECK(weapon_hand_runtime::begun==notices&&weapon_hand_runtime::finished==notices);
+    CHECK(weapon_hand_runtime::returned_calls+weapon_hand_runtime::unwound_calls==notices);
+    CHECK(!weapon_hand_runtime::action_pending&&weapon_hand_runtime::action_begun==notices&&weapon_hand_runtime::action_finished==notices);
+    CHECK(!observer_fire_active()&&!observer_aim_active());
 }
 void run(bool fault,unsigned scopes=1,unsigned covers=1,unsigned logicals=1){
-    uintptr_t value{};CHECK(call_caught(arguments[0],value)==fault);
-    if(fault)CHECK(observed_exception==game_exception);else CHECK(value==sentinel);
+    uintptr_t value{};
+    {
+        crosshair_live::TickScope source_tick;
+        weapon_call_live::TickScope actual_tick(source_tick);
+        CHECK(call_caught(arguments[0],value)==fault);
+        if(fault)CHECK(observed_exception==game_exception);else CHECK(value==sentinel);
+        CHECK(!observer_fire_active()&&!observer_aim_active());
+    }
     drained(scopes,covers,logicals);
 }
 int main(){
@@ -264,6 +358,33 @@ int main(){
     }
     reset();constructor_fault=2;run(true,1,0,0);CHECK(!original_calls);
     reset();constructor_fault=3;run(true,1,1,0);CHECK(!original_calls);
-    std::printf("UiCallBoundarySehTest passed: %u checks; production outer hook, /EHsc, opaque RAX, SEH, nesting and prefix cleanup\n",checks);
+    reset();mode=Mode::stop_original;run(false);CHECK(transport_stopped&&original_calls==1);
+    reset();transport_admitted=false;expect_observer=true;
+#if GEARS_CROSSHAIR_ASSIGNMENT_OBSERVER
+    const auto before_noauth=weapon_call_live::accepted[0].load();
+#endif
+    run(false);CHECK(original_calls==1&&!weapon_hand_runtime::begun&&!weapon_hand_runtime::action_begun);
+#if GEARS_CROSSHAIR_ASSIGNMENT_OBSERVER
+    CHECK(weapon_call_live::accepted[0].load()==before_noauth+1); // RO accepted, transport still denied.
+#endif
+    // Exercise actual fire/aim ownership, including destructor cleanup when the
+    // original raises SEH. This catches incorrect reverse slot destruction.
+    for(unsigned fault=0;fault<2;++fault){
+        reset();expect_selected=false;arguments[0].callee=reinterpret_cast<void*>(0x3010);
+        const uintptr_t fire_node=0x3010,fire_pc=0x8101;
+        std::memcpy(frames[1].data()+0x18,&fire_node,8);std::memcpy(frames[1].data()+0x28,&fire_pc,8);
+        arguments[1].callee=reinterpret_cast<void*>(0x3030);
+        mode=fault?Mode::nested_unhandled_seh:Mode::nested;
+#if GEARS_CROSSHAIR_ASSIGNMENT_OBSERVER
+        const auto fire_before=weapon_call_live::accepted[1].load(),aim_before=weapon_call_live::accepted[3].load();
+#endif
+        run(fault!=0,2,2,2);CHECK(original_calls==2);
+#if GEARS_CROSSHAIR_ASSIGNMENT_OBSERVER
+        CHECK(weapon_call_live::accepted[1].load()==fire_before+1);
+        CHECK(weapon_call_live::accepted[3].load()==aim_before+1);
+#endif
+    }
+    std::printf("UiCallMergeTest feature=%u passed: %u checks; actual hook/wrapper/observer; explicit metadata and transport host seams\n",
+        unsigned(GEARS_CROSSHAIR_ASSIGNMENT_OBSERVER),checks);
     return 0;
 }

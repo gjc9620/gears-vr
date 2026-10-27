@@ -39,22 +39,32 @@ class PawnPreparationTests(unittest.TestCase):
             self.assertFalse(start.camera_preparation_transient(error))
 
     def test_null_classification_rechecks_source_field_and_offset(self):
-        for mutation in ('controller','field','offset'):
-            with self.subTest(mutation=mutation):
-                r=Fixture();original=r.u64;r.put(r.pc+0x224,bytes(8));changed=False
-                field=r.props[r.classes['PlayerController'],'Pawn']['address']
-                def read(address):
-                    nonlocal changed
-                    value=original(address)
-                    if address==r.pc+0x224 and not changed:
-                        changed=True
-                        if mutation=='offset':r.put(field+148,struct.pack('<I',0x228))
-                        else:r.put((r.pc if mutation=='controller' else field)+76,struct.pack('<I',1))
-                    return value
-                r.u64=read
-                with self.assertRaises(ui.UIConfigRejected) as rejected:
-                    ui.build_ui_observer_config(r,r.camera)
-                self.assertFalse(start.camera_preparation_transient(rejected.exception))
+        for reuse in (False,True):
+            for coalesce in (False,True):
+                options=dict(reuse_assembly_identities=reuse,coalesce_reads=coalesce)
+                with self.subTest(mutation='valid_null',**options):
+                    r=Fixture();r.put(r.pc+0x224,bytes(8))
+                    with self.assertRaises(ui.UIControlledPawnUnavailable) as unavailable:
+                        ui.build_ui_observer_config(r,r.camera,**options)
+                    self.assertIs(type(unavailable.exception),ui.UIControlledPawnUnavailable)
+                    self.assertTrue(start.camera_preparation_transient(unavailable.exception))
+                for mutation in ('controller','field','offset'):
+                    with self.subTest(mutation=mutation,**options):
+                        r=Fixture();original=r.u64;r.put(r.pc+0x224,bytes(8));changed=False
+                        field=r.props[r.classes['PlayerController'],'Pawn']['address']
+                        def read(address):
+                            nonlocal changed
+                            value=original(address)
+                            if address==r.pc+0x224 and not changed:
+                                changed=True
+                                if mutation=='offset':r.put(field+148,struct.pack('<I',0x228))
+                                else:r.put((r.pc if mutation=='controller' else field)+76,struct.pack('<I',1))
+                            return value
+                        r.u64=read
+                        with self.assertRaises(ui.UIConfigRejected) as rejected:
+                            ui.build_ui_observer_config(r,r.camera,**options)
+                        self.assertIs(type(rejected.exception),ui.UIConfigRejected)
+                        self.assertFalse(start.camera_preparation_transient(rejected.exception))
 
     def test_death_after_anchor_waits_for_checkpoint_or_shared_deadline_cancel(self):
         for outcome in ('checkpoint','deadline','cancel','code'):

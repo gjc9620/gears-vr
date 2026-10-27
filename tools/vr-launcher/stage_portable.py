@@ -13,14 +13,14 @@ import sys
 ROOT = Path(__file__).resolve().parents[2]
 RELEASE_VERSIONS = ('0.0.1', '0.0.2', '0.0.3')
 PROJECT_MODULES = {
-    'vr-launcher': 'launcher menu_navigation stage_portable portable_preflight diagnostics_bundle startup_diagnostics game_audio_guard playground_loader',
+    'vr-launcher': 'launcher menu_navigation stage_portable portable_preflight diagnostics_bundle startup_diagnostics game_audio_guard playground_loader armspan_startup armspan_calibration armspan_wire armspan_ui',
     'playground': 'runtime',
     'debug-launch': 'game_install background_launch quiet_launch configure_startup graphics_policy steam_account tiny_output_recovery instance_policy',
     'game-io': 'background_input game_io menu_state menu_control movie_state scene_owner_snapshot',
     'package-inspector': 'runtime_probe resolve_camera inspect_ui_state sample_player_anchor',
     'native-capture': ('anchor_config cinematic_anchor mounted_context mounted_read_pass crosshair_assignment_config hook_entry_attestation native_class_discovery camera_closer_options right_stick_policy '
         'launch_reserve menu_display_monitor prime_owner run_stereo_continuous run_stereo_probe startup_selftests '
-        'session_telemetry support_diagnostics thread_wait_diagnostics xr_preflight_diagnostics start_capture ui_observer_config verify_stopped world_rebind world_rebind_monitor world_rebind_runtime '
+        'session_telemetry support_diagnostics thread_wait_diagnostics xr_preflight_diagnostics start_capture weapon_calibration ui_observer_config verify_stopped world_rebind world_rebind_monitor world_rebind_runtime '
         'path_choice_center_monitor path_choice_layout path_choice_trial_config '
         'path_choice_position_monitor path_choice_position_collect path_choice_position_config path_choice_group_fit '
         'path_choice_close_config path_choice_owned_sidecar'),

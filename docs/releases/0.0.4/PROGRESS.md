@@ -1,18 +1,1045 @@
-# GearsVR 0.0.4 开发记录
+# GearsVR 0.0.4 开发进度
 
-## 2026-10-24 — 明确真实站蹲／物理探身与抓边并存
+本文件保留武器与掩体两个分支的开发历史，便于共用 Native 手部实现合流。各条记录仍以其原始验证范围为准；私有候选、只读采样或离线检查不代表完整功能、默认构建更新或头显验收。
+
+## 2026-10-27 — ready同entry目标／提交／原返回观察合同对齐，尚无新候选运行
+
+统筹将下一唯一交付限定为稳定跟随：Body独占准确HJ Native中的最小被动ready观察，武器会话只交字段／坐标合同与最小消费。双方已确认默认OFF Source1 fixture，full inverse(head)*grip的ready识别仅为诊断（1mm／1e-3rad），原writer／source资格不变。明确ready启动后有限64条不轮转，捕获失败与未知资格也保留entry／UNKNOWN，直到声明的非ready／身份变化／容量停止；未知不能当非ready漏掉，旧first32不改，不再赌异步近邻epoch。
+
+最小骨35／51／52复用旧hand9槽5／6／7：本entry compose成功的world wrist目标、实际Kernel结果及planned／consumer-pre Local、原called＋returned后的Local／Space35／52＋CTW，normal scope_close独立；未计算／未到达／未认证组有valid位，不用旧workspace或默认0冒充。consumer_pre准确位于before_original，不是原调用返回；capture成功但prepare失败路径可由Body单独认证后做被动读，不能绕原保护借旧model。枪体／Muzzle同步字段本轮UNKNOWN，不额外读资产或用旧PG几何填同entry。所有数学按原UE行向量world=Space*CTW、game原单位，raw XR米空间单列；不以相同raw右手替代整个head／left／view／basis来源相同。
+
+Root逻辑合同`analysis/lancer-ready-same-entry-20261027/consumer-contract-v1.json` SHA `b860b295ee1a35e86d89adf931260074c533a8281bf77d5b3c34e4366eaa8e32`及`docs/weapon-ready-same-entry-observation-contract-20261027.md`已交Body／统筹，不预先猜binary offsets。Body已确认开始实现并将交冻结布局／有效性／Host证据，Root随后最小file-only消费；当前只有合同／文档，无新Native／PG／collector／writer／Game、编译或测试，不扩大枪械／射击许可或默认整合。
+
+## 2026-10-27 — HJ三phase与恢复通过，8个phase内Muzzle配对；同raw腕／枪姿态仍变化
+
+Body后续仅对现存hand／BMS首32做有限join（`pg-first32-finite-join.json` SHA `22a3548822811b9cc2d53797a666da46f484a92460ae28d9e9608fde6ece138f`），9个PG实际mesh＋epoch／end精确对应均0。prefix1272..1337中没有1280／1290实际记录，邻近epoch不替代；ready／move超出prefix，PG读区间也未被已存query区间包含。因此现有资料不能定位差异到Native target／consumer／end；Root未重解或重算矩阵，新接收`hj-finite-join-received.json`保留原件hash与界限。相位角度归属按原Root逐项数值明确为ready最大32.54642°、move8→9约23.60479°，旧PG JSON不改。下一最小需求是覆盖这些实际差异点的有限精确观察，交统筹／唯一共享Native owner安排，当前无新Game／编译／测试／候选或writer。
+
+Body唯一HJ组合710756／reader01d8／PG5fdc已完成并释放：Game60808／Native3165621632666。原review complete=true、8动作三phase通过（status0→41／4.485336s、ready41→50／1.075517s、move50→59／0.8634748s），Stop后bodycontinue／bothrestore／bridgeclose均true，原finalizer一次106／full／Native-entry-PG／XR0／十文件／音频与fresh空通过，32handtrace有效。Root核交接摘要SHA `693a9be13ee40b06112d8aee93d29290ada21cde8c6bc944fcd1b0c4f18613a6`并复用协议结果，不重复Body v3／Native解码。reader_failures=[]只表本局没有记录66失败stderr，不把旧66判修复或给组合被动诊断宣称单一因果。
+
+Root独占40791B原PG日志（SHA `89e837fbf5c5ddc90d9845c81f52365c97f5d1c96937e7ca08bd5d61b15bac3f`）：9／9组件＋Avatar＋Muzzle配对有效，其中2held／3ready／3move完整落在原phase，1行prephase。初始实际间隔536.1317／538.1829ms，后继仍50ms配置；actual Ref9 bone0／socket相对几何全相同。binary32数学重放最大误差1.78e-15，gun相对Avatar bone52固定关系残差0.0002301，Avatar CTW逐字不变。私有`analysis/lancer-component-readback-20261026/hj-saved-muzzle-review.json` SHA `5bd618475033a183b453f854f781c5916431b5eb2bd4e4e668665e99f91882ba`保存完整raw／source scope／实际phase窗口与矩阵。
+
+原协议通过仍不能判稳定跟手：ready同raw右手的样本4／5／6（Avatar epoch1359／1360／1362）腕／枪／枪口一起变化，4与6近而5偏离，最大Muzzle位移39.54088u；move的7／8近而9再切，8→9枪旋转差23.60479°；32.54642°属于ready阶段。每条内部前后读取稳定，当前不支持枪组件单独脱骨，但顺序观察不是同C0或最终GPU，且raw右手相同不替代全head／left／view来源证明。已给Body exact epochs，要求只利用已有source-target／consumer／end能覆盖的点做有限对应，超prefix明确缺证，不开新局／扩矩阵／新writer或归因原动画。R2关闭，getter／权威bore／散布／回缩／前推／实际命中／物理头显未验，默认不替换；功能计分仍由统筹依固定节点核定，不能按9个sample推整项完成。
+
+## 2026-10-27 — BHELD003最小消费扩展交齐，等待唯一HJ联合实跑
+
+按统筹明确分工，Root新增ignored `analysis/lancer-component-readback-20261026/decode_held_captures_v3.py`，SHA `54ef375080ece0cae984a72fdb16710b60241488d558fb0e304bab135c679a90`。只沿未改v2／v1做内存共同字段投影，显式BHELD003／version3／Header120／Record600，capture reason392／Context400，旧guards／admission移至408；原文件／时标／身份／late-arm／coverage保持，不保存冒充原件的投影文件。合同683f5b95／header256cf9b2／Backend48e173b8均按准确hash校验，旧v2 reader与全部旧交付source不变并严格拒新magic，新v3拒旧v2，不覆盖旧证据。
+
+UNKNOWN是本entry未观测，不转零成功；0仅证明capture返回true。原因1..24保留首个实际原操作数，后继未执行不当通过；只有11／24可携Context，其他非UNKNOWN组合及未知枚举拒绝，11／24缺verdict仍missing不verified。四个helper标签只代表边界，不猜内部条件；新首拒只细化已记录的Native backend_capture，不编造分支时间或抢先替换原guard／Kernel结果。capture拒绝与held commit并存判矛盾无效，首个无input与统计只用trusted记录。late arm／容量／导出跨度不能扩为完整phase、总提交数、consumer／GPU／aim通过。
+
+8个v3专用合成方法0.031s通过；追加上述矛盾边界后只复验相关1方法0.006s通过。未重跑v1／v2套件或实际128条，未启动Game／重建Native／XR；复用Body原journal36／Backend245布局证据。交付`held-capture-v3-reader-delivery.json` SHA `a8f64c5854fa63e273b5beae86ebac2b40f797e5aa177c7029483e8644186bc9`与`HELD-CAPTURE-V3-READER.md`，2520B四记录例明确SYNTHETIC非实机。已交Body／统筹复用CLI／hash，Body独占下一实际v3解码／Native分析，Root只消费实际PG Muzzle与Stereo-open stderr，不双路重复。
+
+组合候选保持准确Native710756／reader01d8／PG5fdc，b768不选。Body已报告新DLL原startup22／preflight23实际45／0及HJ38／12／4案例预检完成；这些是新候选的检查，未冒充父通过。Root没有新Game、玩法加分、默认替换或另开接收平台；核交付后由Body按既有授权唯一HJ原动作／原统计／恢复门运行。
+
+## 2026-10-27 — 私有reader的Stereo-open准确子阶段诊断完成，未启动联合游戏
+
+按统筹独立分工，Root从实际0c707 reader冻结9源／原flags派生候选，仅私有`stereo_bridge.h`／`reader.cpp`改变；共享Native／XR／headers不动，原7源／测试及旧exe逐hash保持。原OpenMutex→OpenFileMapping（即使前者失败仍执行后者）、MapView、0等待、原复制／释放／QPF／packet短路次序保留，WAIT_ABANDONED仍释放拒绝，正常复制后ReleaseMutex失败也不新增拒绝条件。仅在原初读期间记录实际调用即时失败Win32、已有wait返回和已复制packet首拒；无额外open／sample／read／QPC／retry／权限。旧stderr行及stdout／exit66／400ms匹配和age尾部不变，只追加一行`reader_stereo_open_v1`。未执行／未复制和成功调用的旧LastError不能当有效失败，后续普通read不覆盖open记录。
+
+完整严格reader编译、19个baseline／candidate API替身场景、原／新各3个只针对本Python PID的CLI64／64／66小检查通过；实际缺自有Stereo对象时错误2即时记录、stdout为空。无Game／XR、bridge producer、目标RAM或旧右手命令重放；不重跑未改controller整套。一轮窄Astra只读两文件审阅无P1／P2。实际`/sourceDependencies`包含所选7个私有headers，原9源前后hash保持。
+
+选定exe ignored `analysis/stereo-reader-open-diagnostic-20261027/validation-1793056273353595900/reader.exe` SHA `01d8b9db36bfa57b580dc98d47e0969eec1b31be32d44e8b03759fcfc11ffc83`；`candidate-manifest.json` SHA `0dac77b18fde597cadac1660f246be2757c89093683e61b1ab30a0e2951c649b`、`result.json` SHA `b66b388aa1e9234e957d2d733d3de405af30d10c01ad6d6f242bb3f8769ea0fb`、差分SHA `098147ac281eac3b975355d7d0b010c0955b2964eb1ad644c45445def069e846`已交统筹和Body复用。说明为`docs/weapon-reader-stereo-open-diagnostic-20261027.md`。这是诊断交付，不能认定HI根因／fresh gap或玩法完成；新Native BHELD003／capture首拒候选由Body独占，现v2 reader继续严格拒新magic，待统筹安排最小适配后与5fdc cadence按原门一次串行组合，无默认替换／加分。
+
+## 2026-10-27 — HI取得两组真实Muzzle几何，均早于held阶段；后继采样间隔候选只准备
+
+Body后续窄分析已封存`analysis/body-held-outcome-runtime-20261027i/held-restore-saved-summary.json` SHA `c34acbb80d7ecf21ff8b532a7752f858b7be0a45ba57e201574c1b6100c218c6`（Body文档a250e7d）。Root仅核交付hash并引用，不重解持枪／restore：journal因late arm仅有1条recorded commit，不能当全phase总数；首已记录阻断backend_capture的内部首拒子条件未存。右恢复66已确认stereo.open，但缺内部子原因／调用clock，不能证明同案fresh gap。采样b4c1b0a／5fdc2f候选继续只暂存，待共享定位后串行组合；中间b768不选、不立即开局，原所有失败与Muzzle证据保持。
+
+Body唯一HI／PG207实跑Game29688／Native3144730156562已结束，Root只消费49675B／SHA `7fb11641f10e35cad2653b27a952851ff0d9726fff6fbf79eedd78facf909770`原PG小日志。3行全部socket before／after completed20／pass2／Reason0，2行完整component＋Avatar＋Muzzle配对接受，另1行被原game_or_generation拒绝而未发布derived world。实际唯一socket与当前Ref9的bone0匹配、相对位置 `(72.6682053,-0.00669687986,11.25)`／rotation0；9位打印恢复原binary32后独立矩阵重放与两个原derived世界位置double误差0。这证明精确Core.Object schema在这些当前点已有效，不反推HH唯一早退。Root回执`hi-saved-muzzle-review.json` SHA `c468aa12d1d77cb2b15f2ff42857401d22894fd9aef3ef7255247152cd5dc327`保留全部raw／时标／名字与身份scope／原件hash。
+
+两有效区间结束在原held phase前261.8747／86.4689ms，固定raw输入下Muzzle位置相差0.53072u；没有phase内或ready／move观察，不能提升稳定可见跟随／同C0／原getter／bore／权威射击或GPU证明。原40／6秒＋pose门失败，status0→1只是观测；Stop后body继续，但右控制器恢复未验证、both=false，首32验收header_valid=false／trace仅1。106／full／音频9／9和fresh空的accepted只属cleanup。Body交接指出恢复66为reader_open/stereo发生在Source1／age匹配循环前，不能因文案含fresh而断言过期；共享协议／restore分析由Body独占，Root不重解held或另读reader。
+
+Root仅在MUZZLE ON路径调整最初3个sample的原间隔50→500ms，后继attempt4..24仍50ms；3／pose、24／identity、8identity上限及所有source／metadata／权限／原动作／门保持。它只把初始有限观察分散，不是phase触发器，仍须实时时标关联。完整PG编译得到 `5fdc2f59037db4fc06055d5ca9344c79eb89873403f9c9b706a734d090b223cd`，相对207仅一个probe文件，原flags／16导出／OFF父源保持，原Pose12／Socket42因源／相关定义不变复用不重跑。回执`analysis/lancer-muzzle-observation-20261027/attempt-1793055422892249000/receipt.json` SHA `a4b53aa3b7337f65dac50382a7960190c039ec46eb13fdbd961895357b946213`，审计SHA `6f3d2e1e15941d64d93faa5f8d975adb684c0293a7d6b9ab591b441126927ac3`；中间b768全阶段500ms候选未选／未实跑。新候选只准备，等待共享门定位和协调后的串行组合，不立即另开Game，不加玩法分或替换默认。
+
+## 2026-10-27 — HH无有效Muzzle数据；修正已证实的Core.Object字段owner并加入实际早退记录
+
+计数口径更正：Body随后独占核同局v2，合法111条／drop0，phase内实际有42个held commit markers（counter2..43）；26条带pose的joint／status观测最高35，因此不能将35说成Native只提交35，也不能仅以42条marker把原双计数>=40联合门改判通过。Root复用Body交接结论，不重解该111条；held阶段无Goal10／11与postStop后独立reason10的定位仍由Body处理，不扩为Muzzle旁支调查。Body随后已封存`analysis/body-held-outcome-runtime-20261027h/two-blockers-saved-summary.json` SHA `585b1703ca6a21b520b3202c844a633dc97733872409422213c7b7d59a96e3e8`；Root仅核这份交付hash并复用标量，不重复统计。第40个distinct in-phase held marker正常end在marker后5.7116094s，live producer/status的freshness仍缺证，原联合门保持失败；postStop独立reason10在phase末后142.1621ms，只三项observed epoch1→2不等，16实际空间／身份项一致，其后2.406s attempts／reject各+87而plans／body提交不动。这些保存证据不把两项阻断判为同一根因，也不归因Muzzle。原HH小日志／阴性回执与全部历史pins不改。
+
+Body唯一HH局Game50892／Native3134767077917已结束：启动门／Grip／episodes1通过，但原shoulder-fixed40／6秒联合门status观测0→35、6.0179205s，后续ready／move未到，Stop quiescent成立而body续更超时。原finalizer一次accepted只证明106／full／Native-entry-PG／XR0／十文件／audio9／9及fresh空恢复；不把cleanup当动作通过。Root复用Body `runtime-handoff-summary.json` SHA `b64799c8db911de7d9728aa256f26e3e516801578c25aa4eb1a23d7c57568058`，只消费其21648B／SHA `64a1dc290faf28c7a4e917f82e3267d0f0caeb54fef3becf965e8f886f3bcf28`PG日志：肩部3／3component与Avatar配对接受，Muzzle前后／pair均0，无derived_world；所有socket0／count0等是未录默认值。两行早于phase179.369／70.1742ms，第三行只始于phase后0.2454ms，不补整段。私有`hh-muzzle-negative-saved.json` SHA `df7d7cacc300a7871781330796e62bbb92c8a1d3a1efeab8ccec56a176381636`保留原件和边界。
+
+单个既有助手与Root从保存metadata确认新增reader的具体源码错误：`Vector/Rotator`属于`Core.Object`而非直接`Core`。旧31例的合成正例也错误构造直接Core，不能证明真实owner兼容。修正只接受准确ScriptStruct→真实Core.Class Object→根Core链，extent12和原所有身份／字段／动态值门保留，假owner和旧直接Core新增拒绝。历史`live.json` SHA `65bcb1c55b619cf5f8014a411b8269a4d5d1e5c96c929b67a9ee59307ae57e66`与Core `objects.tsv` SHA `636376e841f7c82b639e1480885edc650554a4df0d995f99d3faef2c9efb139a`为依据，不是当前Game getter／调用证书。HH未记实际失败step，故不将此缺陷认定为HH唯一首拒或原联合门／Stop失败原因。
+
+同时只给现有返回加入step／pass／actual metadata Reason，无额外诊断Game读取／clock／guard；未进入Reader时Reason未知，实际none=0，失败Socket仍不发布。新PG `207cb5373f5ac675a24efb64a6f08237f17c72b2662fb6d046b80b0855f8f231`相对80b826只变4个观察文件；完整严格PG构建、受影响Socket42例通过，原位姿数学／测试源逐hash相同并复用旧12例。16导出／原flags保持；OFF probe精确父源。回执`analysis/lancer-muzzle-observation-20261027/attempt-1793054247587862700/receipt.json` SHA `be549385365f5f786b94f7fb11832ff1b9d5025aa7e5fb7a7851ebfa6ee4f012`、工件审计SHA `90be72f306dbe4c7715960d9aeeb5a8f78917c6b489ed9827e5152412d481d17`。这是有具体变化的候选，尚无实跑／Muzzle或玩法完成，不重建Native／XR、不重解held／旧suite、不放宽门或替换默认。
+
+## 2026-10-27 — 实际Muzzle观察PG已交Body复用HG动作，CPU通过但尚无实跑结果
+
+Root／单个既有助手分别实现9骨纯数组位置观察与实际typed Socket读取，集成为`83140a9`。默认OFF的Muzzle probe依赖既有bounded component probe，只读当前MuzzleSocketName／Sockets唯一对象／BoneName／RelativeLocation／Rotation及枪9骨Ref／Local／Space／epoch前后；原Frame、身份、时效、附件、原component／Avatar配对和采样上限均保留。`muzzle_pair_accepted`与旧观察分别记录，getter等价／权威bore／sameC0／最终renderer均未证明，没有新骨骼writer、引擎getter或mount_known／R2放行。非Actor对象只认证当前注册身份，不认证未知pending-kill flags。
+
+直接以HG failclosed PG dfd995的实际source2及17 vendor源为父，只变2既有／加5源，811份source闭包不变；原FLAGS保持、DEFINES仅加Muzzle观察。严格完整PG构建、12个枪骨／位置与31个typed Socket owned案例通过，16导出保持。PG SHA `80b826235774f6b9126db0017fdc24f1867cc2127e99b68bb6ddfb436a3db150`；ignored `analysis/lancer-muzzle-observation-20261027/attempt-1793053485363798500/receipt.json` SHA `63bde1d5b8f4de45c1dcd344af6461977b65a5102dfcda6e23a5d7464c662809`。只读工件审计`artifact-audit.json` SHA `bbf633081f3076c9aad9c7c7deb0e30dffeba1e62de04001ce9f8391a14d2eb3`证明OFF去块后probe与逆除新增CMake文本精确等于父源。首次漏独列vendor的configure失败和后一次vendor路径键规范化拒绝保留；均未到编译／Game，只修driver后才取得上述成功产物。
+
+Root已将Body后台09e0554最小3文件修正cherry-pick为`f567793`，不回旧build4／不改历史HF／HG pins。候选已交Body唯一runtime owner：后继只换PG，复用HG准确Native22268／XR1a059／quiet19b355／EarlyLaunch c12172及原8动作、40-6s／Stop／106／音频存档保护，0.4置后静音，R2继续OFF；Body确认正在准备。Root不另开Game、重复旧suite／held解码或重建Native／XR。当前只到构建与新CPU检查，实际枪口位置／持续可见跟随／原权威射击和默认整合均待证，⑤按统筹40%保持。
+
+## 2026-10-27 — HG原持枪与交还协议通过；复用9组腕／枪配对，实际枪口仍缺证
+
+Body交HG已封存实跑：Game64176／Native3118170081683，Native `22268f8a…313b6`／PG failclosed `dfd995e4…904669`／XR `1a059d2d…a2b4e9`／quiet `19b355db…15ef3`。同局原8动作、首40／6秒门0→46（约5.232秒）、两后继阶段+8／+10、Stop后hands89→124且held68不变、正常106／full及音频9／9恢复均通过；复用Body `runtime-review.json` SHA `2d73d4b0b67fd80546d319492e1d000d99238154ea022f7ad128ac0b3612e89d`、`runtime-final.json` SHA `c574abf9c20a6bb87fc818091f80a55130825aabea7327f7a59564bb2d445431`及保存摘要，不重解其128条v2／丢3或追未阻断协议的局部拒绝。R2关闭，实际可见跟随／权威瞄准／默认整合仍未证明，⑤保持统筹40%。后继新case须重基09e0554的build5后台策略与准确19b355／c12172选择，旧HF／HG pins不改。
+
+Root在HG现成32715B PG日志取得9／9稳定before-after腕骨／枪体配对（4.9722–5.6081ms），gun相对bone52的固定-90°矩阵最大元素残差0.00024615；同raw输入时腕35／骨52／枪一起变化，最大相邻枪位移32.43099u／旋转32.77917°，角色CTW一致。只证明这些顺序观察点的附件关系，不能把非原子summary计数当精确writer时点或升为GPU稳定。新私有回执`analysis/lancer-component-readback-20261026/hg-saved-component-review.json` SHA `bbe78ada3f355fad5990b13b0aad000ab949a1aa59dd612c2fad9c246a38d01b`及入口保留所有raw、scope、原时标与EQ／ES旧证据hash。
+
+Body复用既有hand-v3／BMS，确认仅PG epoch1295／1297分别能匹配Native seq1／2同mesh，consumer／end通过且PG发生其后；ready／move六个epoch均超出前32末1363，没有exact post-consumer join。Root未重复解码该前缀。单个既有助手只读现有aim／socket资料：历史MuzzleSocketName与静态9骨已知，当前Muzzle的实际Socket／BoneName／相对几何仍缺，不能用旧Magazine探针或+Y静态轴代替。下一交付在既有有界PG只读路径闭合当前枪口数据，必要共享Native改动交Body，继续保留mount_known=false及原CallFunction逐发消费者边界；本轮无新Game／编译／旧suite／Native修改或进度加分。
+
+## 2026-10-27 — BHELD002早退解码交付；保留旧520合同，尚无新局修复结论
+
+Body冻结仅追加实际Native／Goal返回观察的journal合同，header SHA `0abf184b0d3f2ab13ad9e36a45e0ee1132962447fd84f35c0bf5b131bc60d881`，BHELD002／version2，Header120／Record584，容量128／7秒不改。Root新增ignored `analysis/lancer-component-readback-20261026/decode_held_returns_v2.py`，SHA `3724aeb179f5a4e93a7b101f30d6d37b52cca9af0863a12b1af0d6ace9ad2401`；旧v1 reader及其交付全部source hash保持。共同字段通过去除新增8个U64的临时内存投影复用旧reader，原时标／身份逐字保留，未生成冒充原件的投影文件；两版相互拒绝不匹配的magic／version／layout，输出独占创建不覆盖旧证据。
+
+raw captured／key flags不直接授本entry身份：actual Goal reason1..6及19(exception)的derived source／key均保持未记录，只有7..18已通过原wrong_entry／same_entry检查，且key再需rawsource1／rawkey1／initialized1及合法已记录19位。reason7本身未通过current_prepare，不能当freshness成功；adapter只在actual reason14解释，reason10等rawadapter0保留但显示未记录。NativeBegin0才是实际captured结果，UNKNOWN不当成功；Goal缺reason也不当成功。无新分支clock，at_ns仍null，后继apply／exception不替换已有guard／Kernel首拒。新增first_no_input_after_held_commit精确关联首个成功held后无input entry的index／tick／Compose与边界，仍不证明phase完整或复现旧HE历史帧。
+
+复用Body Host29／0的584／120布局证据，Root不重建Native／PG／XR或重跑v1。v2定向10个合成方法一次通过（0.026s），覆盖上述reason5／6假有效flags、reason10默认adapter0、版本交叉拒绝、截断／身份／未知枚举、零mask与独占CLI等；2456B四记录样例明确标SYNTHETIC，非实际HF。说明`HELD-RETURN-V2-READER.md`和交付`held-return-v2-reader-delivery.json` SHA `08028f735f8734f24182f208cd851cc73b9d53927a4ae24687c41e03f952bee1`已交Body与统筹复用。Root没有新游戏／助手／玩法通过或默认替换，整体36%保持；后续只读Body唯一新候选正常drain的真实同局导出，不提前称修复。
+
+## 2026-10-27 — he首份非空journal解码：取枪一次，阶段首个已记录拒绝在Kernel commit；原门与Stop续更失败
+
+Body补充既有budget／Goal保存分析，Root仅核该同局摘要与三个共享回执hash并关联精确IDs，不重解raw／重审来源。Body `analysis/body-held-outcome-runtime-20261027e/goal-budget-saved-summary.json` SHA `985c5d9ac40791d8cf65b9286da9618c5175ffd789e6c0cef1638f9f1dd46b7e`记录实际budget9条query／no_query0，phase中只有exact query8／9。首query8的既有prepare_end／commit_end返回边界给出原Scene age48.9722／50.5291ms；这些不是首个Kernel失败谓词时刻或其Context verdict，仍不唯一归因age。全局first-failure tick29620／Compose29621发生phase前1172.3921ms，不匹配query8／9，不能填补当前Kernel拒绝。
+
+后继Stop首拒reason10、keybits0x7e3ff，只有observed stream/reference/head从1→3不等，其余16项（含实际XR space、Native reference与参考记录）一致；实际时点在phase末后146.0534ms，只证明后继阻断，不能倒推首个无input entry index2／tick33464／Compose33465为何早退。Body准备在同一有界journal追加实际Goal返回原因及已计算keybits，不加guard／clock／engine读取；Root要求冻结新header hash／version／Record／Header及layout回执后再增量适配，UNKNOWN／valid位必须区分未到达与默认0，旧520 decoder和原件不覆盖。Body隔离PG1336并以真实guard CPU三路验证的dfd995e4…904669仅为CPU artifact；Root不重复测试、不宣称实跑修复。接收记录ignored `he-existing-budget-received.json`保留范围和摘要hash，无新Game／构建／来源门变更或进度加分。
+
+Body唯一he局正常drain后交首份非空`body-held-outcomes.bin`，Game68132／Native3072491780786，PG `1336a597f7c7d47115e364e8c688fdba2c40ac3b9746ca13e902b3286c63990d`。Root直接复用已交decoder，以同局PID／Native及phase `[307257894873500,307263918239700]`调用，56800字节＝Header120＋109×Record520，errors0／invalid0，dropped／nested／foreign均0。未启动Game／测试／编译／IDA或全量重审。记录从phase起点晚37.116ms开始，虽然总span约6.094s并延伸至阶段末后107.7466ms，仍不完整覆盖请求phase；不能从容量或span提升为6秒验收。
+
+本局确实记录一次Grip held(slot3,event1,press1,frame307,source2684)，原阶段Native mount只+1／40，整轮不通过。指定阶段完整落入窗口的106条中，第一条tick33250／Compose33251／query8：两个SourceGate均okay、三次实际Tick admission均okay／passed、选择held_lancer、Kernel prepare=prepared(0)，commit=guard_rejected(12)。下一条tick33357／Compose33358／query9记录commit=committed(1)、held_counter1／trace_sequence1。其余104条本阶段entry未记录input/query/guard/admission/Kernel结果（UNKNOWN），不能把默认值当通过，也不能仅凭未到达字段选定Goal早退原因；全journal此类107条。已记录首拒不是phase开始缺失37ms内所有可能失败的首个原因。
+
+首条原Scene age在final admission为48.8083ms，entry end为50.8076ms；此时新controller age约12.3798ms、capture约9.1784ms。entry end还包含原Compose等后继工作，不是Kernel失败时刻；格式没有该时刻的Context首错／verdict和Kernel操作时标，不能仅凭末age越50ms认定唯一age根因。将精确tick／Compose／query交Body，若已有budget／first-failure可精确同局关联则复用，不能外推前缀或另开实验。
+
+Stop后free-hand续更也超时，`body_continues_after_stop`没有赋真、bridge_error保留；原finalizer一次106／full／Native-entry-PG／XR0／十文件／audio9/9与fresh空接受仅cleanup。另Body／统筹指出实验PG1336的bulk失败转scalar fallback有PAGE_GUARD自动清除差分，Body独占真实CPU对照与失败即拒修正；该候选不具默认整合资格，也不将此差分冒充he根因。event行追加的previous_bound等扩展字段在Input尾部Evidence聚合重赋中变为默认0，不能当真实prior unbound／counter0；gap／baseline原已验证扩展字段不受该event重赋影响。此限制随本局事件证据保留，不为它另行重编。
+
+Root产物ignored `analysis/lancer-component-readback-20261026/he-held-journal-decoded.json`及`he-phase-first-outcome-saved.json`，后者保留原件hash／两个实际Kernel结果／phase边界／缺证与安全限制，生成入口`analyze_he_phase_first_outcome.py`。一次取枪不等于稳定跟手、40-6s／Stop／射击或GPU验收，无默认替换、修复结论或玩法进度加分。
+
+## 2026-10-27 — hd早采样候选实际生效但未修复；按下前gap后首次press被baseline吸收
+
+Body在其私有`analysis/body-held-outcome-runtime-20261027d`只运行一次不同候选：PG `013c39f377b1fff7dec2897778004f6839c8b98ee995d19990a2028d444adc43`将已有early输入资格从held扩大到普通unheld，仍在真实当前clock执行原100ms，保守event.created、后续inventory／current／身份／attachment／250ms、baseline／pending／future保持，局部event早退丢弃、不重播。复用Body一次Astra增量审查及原CPU Input72case／778、Runtime84case／901验证，Root不重复。Native／XR未重编，不改40-6s或按住时长。
+
+Game44240／Native3056117722988的窗口通过，但无装备结果／episodes0／未进held40-6s，journal120字节。仅关联两个目标帧：frame342／source3173在实际press3178之前，rawpress0／lastpress0已出现previous_sync_stale，next_after_inventory0；旧sync age102.8921ms、current25.1187ms、相邻sync差77.7734ms、Frame now→Input23.8938ms、consumer前后观察差66.9259ms。该gap观察还早于press命令写入7.5696ms；随后frame343／source3178第一条press1／lastpress3178成为baseline，previous_bound0、evidence_valid1、event0。故本候选早路径确实运行但未修复，此局为“先无按下gap，再新press遇到baseline”，不能回填成hc“按下所在帧被拒”的同一具体事件。只排除本Tick**后继**inventory是该early拒绝的唯一耗时；不定位前置工作、上一Tick、copy/current/binding或CPU／GPU成本。
+
+Body原finalizer一次106／full／Native、entry、PG／XR0／十文件／audio9/9／fresh空恢复通过，仅cleanup。实际代码范围在清理后独立澄清并保留旧manifest／hd pins／原回执：相对hc当前仅`weapon_equipment_runtime.h`一个生产文件和`weapon_equipment_input_test.cpp`测试变化；历史“两个生产诊断字段文件”是更早diagnostic差分，不是当前early delta。澄清文件`analysis/equipment-input-early-admission-candidate1/source-manifest-scope-clarification.json` SHA `33c270d805a67a9e307b7a1669f07942936a6150ff10328e89283d99ffd7164d`；Root核该hash、原manifest和hd pins hash，不重建或重审全部source。
+
+Root有界接收记录ignored `analysis/lancer-component-readback-20261026/hd-early-input-failure-received-20261027.json`。未将失败候选默认整合或增加玩法进度；原hc机制证据、hb缺证和旧ES均保留。Body后继只核共享binding读取成本候选与当前acquisition/current实际路径关系，Root不重复该调查、不新增泛日志、助手、编译或Game。
+
+## 2026-10-27 — hc补齐同帧raw counter，具体RGrip边沿在时效拒绝／baseline吸收的链路闭合
+
+Body私有`analysis/body-held-outcome-runtime-20261027c`已单次原动作运行并清理，原100ms／40-6s与脉冲时长不变。Root仅关联保存的两个目标帧（gap／同帧outcome／后继baseline三行），不新开Game／测试／编译或重审整套源码。Game64604／Native3046028507935，诊断PG `3eb4932cdc17e43a1889b51778d63a6033f58f5b976443466e7aa0ef2b8927ac`；复用Body私有PG仅加诊断字段／校验的证据，不把它视作输入修复。
+
+frame278／source3553的rawpress1、release0、lastpress3550，存储的previous_bound1／source3547／press0／release0／lastpress0，实际reason previous_sync_stale且`next_after_inventory=1`；同帧outcome `input_evidence_valid=1`／sequence3553、baseline_waiting／event0，排除了旧evidence或把Outcome默认press0误当raw0。frame279／source3558实际baseline evidence_valid1／rawpress1／lastpress3550、previous_bound0／event0、`next_after_inventory=0`。本局slot3-press回执也为pressed1／lastpress3550，source/session/space/profile/input与gap行一致，3550位于3547与3553之间。因而特定边沿已进入consumer，在intent前的旧sync门被拒，重置后被baseline吸收；不是设备未发布按下，也不是intent生成后的装备动作门拒绝。这是hc本局闭合，不倒填hb缺失的raw字段。
+
+hc旧sync age111.4226ms、current47.4542ms、相邻sync差63.9684ms，触发的是原100ms old-sync门；Frame now至input observation39.557ms，`next_after_inventory=1`只证明采样在inventory之后，不把整段时间宣称为inventory／CPU／GPU函数耗时。仍未equipment held／未进入原40-6s；Root没有改门、替换clock或重播press。Body原finalizer一次106／full／Native、entry、PG／XR0／十文件／audio9/9及fresh空恢复通过，Root复用其恢复回执；整轮无装备结果超时仍保留。
+
+有界关联回执ignored `analysis/lancer-component-readback-20261026/hc-input-edge-closed-20261027.json`含目标行、同局身份／command关联及原件SHA。已交Body／统筹；Body按人类授权使用一位Astra作最小安全修复或唯一必要时标的窄问，Root不重复开助手或重跑。实际延迟归因与安全修复尚待结论，无默认合流或玩法进度加分。
+
+## 2026-10-27 — hb第一轮RGrip首断点：输入旧sync门拒绝后重建baseline，尚未生成装备intent
+
+完成统筹追加的窄任务，仅用hb命令／输入／装备回执及实际PG7e927e17…61aa冻结源码；核实际私有PG bytes与build receipt的Input／Runtime／backend／router四源码hash。Game73444／Native3029853403801，Body producer-timeline原件SHA `eaca4af6e22410167b9565b11a1f5ea7ef95473943a225e23bd3d2c3bffdef8c`复用，不重复XR来源／窗口调查。position／press／release的source/session/space/profile/input不变，producer pressed0→1→1、released0→0→1、lastpress2969；按下已在producer观察到。
+
+只查看已知press附近267–278帧装备标签（上限48KiB），实际frame273／source2972进入`Input::next`的`previous_sync_stale`分支：实际观察302993948340200、previous sync302993840423700、current sync302993895962000；旧sync age107.9165ms触发原100ms门，当前sync age52.3782ms、相邻sync差55.5383ms，不能宣称XR sync间隔大于100ms。同期Outcome为baseline_waiting／source_gap／event0，frame274为baseline／event0。冻结Input:154在new_press／router／event生成前return，reject重置router／bound／cursorMAX；Runtime:324随后input_boundary。故已证首断点是消费者已进入、在intent生成前被时间门拒绝并重建baseline，不是消费者未运行或生成intent后被装备动作门拒绝。inventory_stage=ok只证明metadata步骤，不替代后续tap／switch。
+
+当帧原始press_counter／last_press_sequence虽已复制到Evidence但未打印，前一基线counter／source sequence和后一基线consumed counter也缺；Outcome.press=0不是raw counter。因此机制与该按下被baseline吸收相容，尚未把特定边沿逐字段闭合。frame.now→input observed41.5446ms也只是一对原时标差，不是某函数／CPU／GPU已定位耗时；early-held／late-unheld next路径未逐帧记录。禁止用新2975替换保存2972或改写时钟让旧门通过。最小缺证点已交Body关联现有生产／消费边界，只需既有有界log保留owned counter／sequence、baseline消费值和采样路径；本任务没有实现该改动、重放输入或放宽门。
+
+机器回执ignored `analysis/lancer-component-readback-20261026/hb-input-first-break-saved.json`，解释与源行号在`HB-INPUT-FIRST-BREAK.md`，生成入口`analyze_hb_input_first_break.py`。没有Game／测试／编译／IDA／助手或共享Native、武器源码更改；交接停在这个首断点。原hb装备结果超时／episodes0、真实journal仅空头、原ES及持枪40／6门问题仍开放；没有修复或玩法进度加分。
+
+## 2026-10-27 — 独立交付held journal离线decoder；hb真实空头正确判无持枪条目
+
+按统筹分工，Root仅在ignored `analysis/lancer-component-readback-20261026/`完成`decode_held_outcomes.py`／合成fixture／最小检查和交付说明。先查Body held候选／runtime／相关saved-analysis，只有生产原始导出和Host布局证据，无BHELD001 decoder；旧reader.exe为controller bridge格式，未混用。读取合同精确pin `held_outcome_journal.h` SHA `a18b7a947b876260adbf3f6b61de6bb5f5bf7b4c0847014479c9bbefb2bd5be1`，复用Body原Host20／0的Record520／Header120，不重建Native／XR／PG。
+
+入口保留全部raw来源／capture／新Tick时标、两个before／after SourceGate与Context、三次实际admission及第四预留槽、mount、Kernel prepare／commit code和held／trace sequence；默认零／UNKNOWN／未到达／实际失败分开。首拒仅按冻结阶段的实际已记录结果归类，不把commit_end调用边界、旧Scene年龄或未知时间变成通过／唯一根因。PID／Native身份、尺寸／截断／尾部、枚举／时钟／slot丢失与容量overflow明确输出；依据实际span和可选原阶段范围标窗口不完整，128容量／7秒armed不证明6秒覆盖，`gameplay_acceptance`与完整phase证明始终不置真。6项合成定向检查通过，新增首拒摘要后相关2项复验通过，未扩矩阵／加助手／启动游戏或改武器、Native源码。
+
+合成1680字节样例明确标SYNTHETIC，输出source_after拒绝、Kernel prepare拒绝、held commit记录三类且窗口不完整。Body hb正常drain后提供的真实`body-held-outcomes.bin`为120字节，SHA `b57c6bbf0543b8702f58b789d3f08214e2d9da74d17866400a5756a49e990561`，以同case PID73444／Native3029853403801实际调用CLI，正确输出0条、errors=[]、`empty_or_not_armed_no_runtime_outcome`，未把解码exit0当动作通过。当前仍无实际held阶段日志条目。
+
+准确命令、输入合同与结果例在analysis的`HELD-JOURNAL-READER.md`；parser SHA `e86ee2cc0a9eccf53787433b79f4db039cfc86c04ec92fadaac16011557a4084`；交付回执`held-journal-reader-delivery.json` SHA `9fdc8dab6183ea819ce8015fd6e426df9261610a7a0c4045d91cab4e7fdfef8b`封存源码／synthetic与真实空文件结果／Host和enum来源hash。交Body后，下一检查点为以后合法原动作且正常drain的actual-held journal，不为reader重开一局。hb更早未取得equipment held结果、未进入原40／6秒门的首阻碍，依统筹新分工转由武器侧只读保存输入／装备回执及冻结consumer定位；不重复Body启动调查或生产侧时序采样，不改共享Native／放宽门／新增游戏、编译或助手。
+
+## 2026-10-27 — Body held-journal A启动窗口拒绝；无持枪日志运行证据
+
+Body在其私有`analysis/body-held-outcome-runtime-20261027a`单次0.4后台尝试，未到ready、Native未激活、XR未起、控制命令0，真实held日志采样／Stop／Goal epoch均未验证。保存WindowDetails为可见HWND处于iconic=true、rect约(-16000,-16000)、client0×0，原30秒／可见且client至少640×360门拒绝；此结果不证明Native／XR／新journal导致最小化。没有绕开原门、抢焦点、移动／恢复／调整窗口或重放原样持枪局。
+
+原finalizer只执行一次，`accepted=false`及`KeyError('session_report')`原样保留；Body另立startup-cleanup-audit，而非改成运行会话通过。该审计记录prime取消／入口恢复、PG reservation-only shutdown0／entry恢复、十文件／设置存档不变、准确owner/Game及审计时fresh Game/XR空；本局音频实际2／2恢复、pending0（以本局审计为准）。`startup_cleanup_observed=true`不等于active Native／XR exit0或正常运行验收。Root仅核该审计四输入hash及音频原件hash，复用Body结论，没有启动Game／测试／编译／IDA或修改武器／共享Native。
+
+审计SHA256 `8537d0f31c6cda317af6aa98c8bdd725413932775eef8dbd90d327112b762509`，Root接收记录ignored `analysis/lancer-component-readback-20261026/held-journal-startup-a-received-20261027.json`。原ES及B失败、Goal／来源缺证均保持开放；新journal仍仅离线候选，无默认合流、修复或进度加分。Body后继只离线比较quiet_startup窗口序列与成功B，FPS仍由人类暂停，Root不恢复它或另开GPU局。
+
+## 2026-10-27 — Body Goal epoch B触发并记录瞬态uncaptured；持枪原门超时，旧ES持续停滞未复现
+
+Body随后对同局保存片段作逐entry分析，Root仅核四原件hash并复用，未重跑／重解raw。26／26姿态样本读取成功、0 pose错误；`coherent=null`是原`mount>=40`谓词未满足后未选样，不能解释为姿态缺失或全数读取失败。10条v3 partial held trace按Body实际reader，9个planned atoms均与consumer／end相同、三个返回状态均1；仍未满32，不提升成完整验收。前32 budget只有25条落入该阶段，覆盖phase+0.0558至+2.0687秒，不能解释6秒后段。14条code3／branch7为回调后`body_mount_current` false，后续postquery admission age拒绝，未到hands；11条ready中1条final age拒绝、10条到commit调用结束边界，仅3条有精确tick／compose关联成功held trace；另7条没有逐entry Kernel结果／实际mount选择，不能用累计commit-code倒推。14条原Scene末age50.2164–51.665ms，但其bool资格包含多条件且没首错，新Tick raw年龄不在旧预算里，因此不能唯一归因于age或宣称新来源修复失败。
+
+Body保存分析为其worktree `analysis/body-goal-epoch-runtime-20261027b/held-phase-saved-analysis.json`，SHA256 `1a04aac6549a5f8baeb3ebd6d5df31b9fcfb9f1c124686bfd511161a6582ae43`；Root接收记录ignored `goal-epoch-b-held-analysis-received-20261027.json`。下一步由Body只准备actual held阶段被动有界首错／admission／mount／Kernel结果journal，按tick／Compose／query连接，并保留原时间和结果，不追加guard评估、renew／重采样、GT I/O或放宽任何门；正常drain后导出。此处仅诊断准备方向，没有新局或代码合并／玩法验收结论。
+
+Body私有`analysis/body-goal-epoch-runtime-20261027b`已单次0.4后台运行，原武器源码／父ES均未改。Root仅接收summary及ready／review／final保存回执，核session、输入hash和失败阶段字段，没有运行Game／测试／编译／IDA或合并Native。Game62936／Native2930735530854，诊断Native `40d2063db8fb32b7180f4c99740eae15a15fc9c5bd258a084a2735d52ee741e3`，PG仍`7e927e17…61aa`，pins `5baed00ba3acebdd342c5a4cefe01edc6857ada4da47ed4f1222bb77ab36d9bd`。阶段前后诊断absent epoch0，Stop后epoch1，实际触发已观察到；first reason4按Body冻结定义为uncaptured，记录没有可用source／key（相关字段0），不将这些0当有效来源或key相等证据。
+
+本轮整轮不通过：`shoulder-fixed-first32`原40提交／6秒期限门超时，失败阶段累计held MainMount0→10、context rejects3→48、post-admission rejects3→49、source age rejects38→153、Native commits180→190；coherent=null。它们是同局失败区间的聚合计数，没有per-query／C0配对，不能由此认定独立来源修复失败或选定根因，亦不能降低原门或用后续恢复覆盖持枪失败。
+
+Stop本次直接返回[5]并quiescent，随后Native commits206→235、hands27→56、Goal plans291→320，held MainMount10不变，Goal rejects128→129；observed stream/reference/head保持1。首拒后能继续+29，故本轮只是瞬态uncaptured和续更通过，没有复现旧ES代数2后的持续规划前拒绝，也没有解释或修复该旧失败。finalizer一次cleanup接受，原106／full chunks／Native、entry、PG／XR0／十文件／audio／准确PID恢复通过。Body已交窗FPS，无武器侧代码合并、默认集成或进度加分。接收回执ignored `analysis/lancer-component-readback-20261026/goal-epoch-b-received-20261027.json`，Body summary原SHA `0efe28b424e5368ba5efd506c97cc6fde9765851c36a226ce933ff98b4affe6b`；保留早先所有通过与失败记录。
+
+## 2026-10-26 — Body诊断派生局续更通过，原ES失败未复现；首拒诊断覆盖未证
+
+Body在其worktree从ES私有派生`analysis/body-goal-first-reject-runtime-20261026a`，使用其只读Goal first-reject候选Native `efdf83825f28a7a23b8a30d01338aa55aa9cbafefb7d17986bf492cc46f47462`，原动作与Stop恢复门运行一次。Root仅读其ready／runtime-review／runtime-final三保存回执及精确PID／Native，未重复其构建／测试或启动Game。Game59052／Native2854251650177，Stop4→5、quiescent、coordinator complete/errors0，基线后Native commits302→332、hands75→105、Goal plans349→379，held MainMount56不变、Goal rejected86不变；observed stream/reference/head均保持1。原106／full chunks／Native、entry、PG、XR0／十文件／audio／准确PID恢复通过。
+
+诊断`body_goal_first_state`前后均0，且本轮Stop后没有新的Goal拒绝，不能据此证实首拒触发已正确覆盖。Body提出“cookie1→0与absent_quiescent隔帧使同帧epoch触发漏记”的源码推测，尚待其定向验证，Root不把它作为已证原因。此局是一次续更通过与原ES失败未复现，不是修复证明：ES在observed代数2后的Goal规划前持续拒绝仍开着，不能用新局覆盖它，也不跨进程硬配累计值。Root接收回执ignored `analysis/lancer-component-readback-20261026/goal-first1-received.json`记录三原件hash与范围；Body已交窗口给FPS，Root无Game／测试／编译／IDA或共享Native更改，没有默认合流或进度加分。
+
+## 2026-10-26 — 仅复用 ER／ES 保存记录，Stop 续更差异缩到 Goal 规划前条件
+
+按统筹19点有界交付，仅比较实际ER PID23040／Native2694171951921与ES PID31188／Native2701965669072，各自独立时间线和增量，不按行号／累计计数跨局硬配。两局Stop均4→5且quiescent基线cookie0／revision4／callbacks、transactions、pin0／admission与fault0。差异为ES此时内部observed stream/reference/head/hand代数由先前1变为2，ER实际续更通过窗口仍1；Native reference epoch2／flags1／failed0相同。ES后12条观察中ticks／Native captures／Goal attempts均+78、Goal rejects+78，但plans／MainMount查询／hands attempts与commits全0；ER通过窗口上述规划／查询／hands提交均+34，held提交0。`body_goal_view_held` ES+78是旧缓存视图使用计数，不能误称握枪。
+
+冻结Native47源码`body_c0_goal_policy_live`的same_source_basis将observed stream／reference／head纳入中性基准key，初始化后key变化的pose_begin分支会poison并在规划前拒绝；运行计数与此路径相容，但没有保存实际origin key／poisoned／拒绝分支，尚不能定因或排除其他规划前条件。ES最早在quiescent后完整基线观察到代数2；前后live状态读取只是可能滞后的摘要，不是精确连续性事件时标。ER更晚的正常退出摘要也升为2、ES最终升3，不能把final摘要当Stop基线。
+
+按实际头和session核对，ER／ES BMS都只是1–32前缀，最后记录分别早于quiescent基线4625.04／4519.46ms；single first-failure分别早8145.20／7867.91ms，均不覆盖Stop。只解既有头和leading时标，不重算来源／矩阵、不外推first32。差异表及缺证见`docs/weapon-stop-freehand-er-es-20261026.md`，机器回执ignored `analysis/lancer-component-readback-20261026/stop-er-es-saved-review.json`。交Body最小下一动作是在既有pose_begin首个Stop后拒绝处记录具体谓词及old/current key与session/tick/Compose，不增加Hook／writer或放宽资格。本次没有Game／XR／测试／编译／IDA或共享Native更改；ES整轮仍失败，原finalizer成功仅恢复通过，进度分不变。
+
+## 2026-10-26 — ES取得9条骨骼／枪稳定配对；整组腕骨姿态分叉与放手续传仍失败
+
+Body后继仅复用保存原件完成时标对照：PG rows4／5／6（epoch1644／1645／1647）被同局joint obs26→27／26→27／27→28括住，保存状态的MainMount commits均45→45；rows7／8／9（epoch1662／1664／1666）被obs30→31／31→32／31→32括住，均54→54；hands attempts／commits及Native commits也各自不变。v3／BMS前32条末epoch1612、perf_ns270208184290100，早于这些点1754.78–2932.96ms，不能配成当前epoch的C0。Root仅核对Body回执的PID／Native和三份输入hash，复用其结论，没有重复矩阵／journal推导。回执为Body worktree `analysis/cover-implementation-20261024/es-native47-pose-timing-review.json`，SHA256 `3054388dfe3ed3099f9e0627db1f3e2b0dd80b0ffca52538cc337728c63af81a`。这些是非原子、约0.2秒且可能滞后的状态摘要括号，只能说所保存计数未变，不能证明每个PG采样点绝无新的实际GT提交，更不能定位原动画／其他writer／GPU阶段。该限制与Body原回执一致；没有新实验、源码修复或进度加分。
+
+Body CT10正常退出后明确交窗，Root仅运行已封存ES一次：Game31188／Native2701965669072，原shoulder门45次、ready9次、移转9次held提交。实际PG原组件9／9及新增pose pair9／9接受，前后epoch／全115 Space、Local、Ref／角色CTW相同、变化位图0，区间5.0517–5.7871ms，中位5.2277ms；不是ER外部两次顺序读的35.4808ms方法。每条实际角色asset／Ref52名及原source／hold／input关联一致。
+
+保存矩阵按row-vector重算`gun_world * inverse(bone52_world)`，9条均同固定旋转矩阵`[0,-1,0; 1,0,0; 0,0,1]`与近零位移，最大元素差0.000029427游戏单位（旋转元素误差亦远小于该量）。ready同raw的样本4／5／6，腕35的z为1.54785／-12.62361／1.54778，bone52与枪z同步1.54783／-12.39745／1.54775；small-move同raw样本7／8／9也见整组高低姿态切换。角色CTW九条一致。这里直接支持“这些观察点枪没有单独偏离骨骼，而是腕35／骨51／52整组姿态变化”，不能由此定位动画／writer／attachment更新阶段的最终原因，更不能推出全程或GPU效果。原EQ分叉仍是待修问题，只是定位范围缩小。
+
+本轮动作**不通过**：host83942 exit0、coordinator15041 exit1，report complete=false、errors=[]，首个失败单独保留为`No post-quiescent continuing free-hand commits / stable held counter`超时。HandStop[4,5]与quiescent通过后，baseline held68／hands70／handsAttempts474／NativeCommits464；后12条原pose观察这四个计数不增长，continuous_hand_ticks仍552→630。不能把tick继续等同自由双手继续，也不能被空errors列表或finalizer accepted掩盖该失败。Root将具体采样epoch／时间／矩阵和此计数交Body唯一writer所有者，对照保存的Native／BMS数据，不新增writer或放宽成功门。
+
+原finalizer正常执行一次exit0；Native／entry／XR0／PG0／原106及完整块／十文件／audio／准确PID恢复全部通过，final accepted的scope仍仅host／cleanup。fresh CIM空，窗口已交回Body；没有重跑。Root独立保存数据复核`analysis/lancer-component-readback-20261026/es-saved-pose-review.json`，保留所有ER失败与原EQ记录。没有新Native构建、默认合流、稳定跟手／枪口射击／GPU／头显接受或进度加分。
+
+## 2026-10-26 — ER原动作与恢复通过，外部配对39次全部拒绝
+
+后继最小源码：在既有默认OFF的PG组件probe内加入Ref115／Space／Local／epoch／CTW两个有界快照，typed读实际角色SkeletalMesh资产并前后复核descriptor／identity／全局表，无引擎调用或新增Hook。两个快照包围枪组件重复读取，记录bone35／51／52前后世界矩阵、epoch、实际角色资产及Ref52的FName、变化位图；附加pair失败仍分别保留原组件读取结果，不把组件accepted偷换成pair accepted。采样24／8／三次／50ms预算、原Game／Frame时间资格及typed provider不变。此处仍是同PlayerTick的顺序只读cohort，非同C0／GPU或挂枪／射线许可。
+
+新核心18个owned案例、实际typed适配器5个owned案例通过，覆盖稳定读取与world乘法、不可读、资产／master／数组bounds与地址溢出／NaN、结束epoch／header／asset／CTW变化、两次snapshot的bone35/52／Local／Ref／epoch／CTW变化，以及descriptor偏移／类型／读中selector变化。实际PG完整TU同原flags严格`/Zs /W4 /WX`通过；适配器fixture最初使用错误成员名的编译失败保留后修正，未运行该失败二进制。旧预算、Matrix、Body等检查直接复用，未重测。准确回执在ignored `pose-owned-1793010260063126400`（核心18通过／adapter初次编译失败）、`pose-adapter-owned-1793010288688309800`（5通过）及`pose-pg-syntax-1793010340722190600`。尚未构建新的PG DLL、运行新case或判断分叉原因。
+
+后继源码`3c8b0e0`已单次完整PG编译／链接为`7e927e1748e1d3549fa13df83eaffa72013a14f658b9e93f9d13e3d3c08b61aa`，787源及vendor稳定，实际生产defines／FLAGS与PG38d完全相同，16导出名称保持，Native／共享合同／provider／XR无源码差异或重编。build `analysis/lancer-component-readback-20261026/pose-pg-build/attempt-1793010396695942700`。ES封存于`analysis/equipment-native-rgrip-runtime-20261026es`，pins `b6fdd6714e88ae480d1b187e2a008fbb91f0eb3c680bf48a3e7f822c5f8f76f6`，coordinator `818345328debc87889cf8d8c7f39ca09b54abeaa3ee153e3dce602ba6280c55b`。外部body_observation恢复为EQ原字节，不调用ER wrapper；其余原host／gate／轨迹／finalizer仅namespace／PG摘要替换，Body后继共享query差异仍通过私有pin原EQ旧字节隔离。全部私有AST／实际原pose入口import／原件保存／hash审计通过，最小证明`es-pose-sealed.json`，原two-session／finalizer一次及保护说明在ES `POSE-PAIR-README.md`。此处只完成封存，等待独占窗口运行；不宣称分叉原因、稳定跟手或头显接受。
+
+Body CT8完整收尾并明确交窗后，Root仅执行已封存ER一次：host12792／coordinator39259均exit0，原finalizer一次exit0。Game23040／Native2694171951921，shoulder／ready／small-move实际45／8／8次held提交、原8命令complete且errors为空，39条原coherent姿态继续保留。9条原PG组件观察各自接受；外部新增pair却0／39接受：38次两次原骨骼观察比较发生变化，1次Query结束metadata／registry检查变化。pair开始到拒绝耗时28.7729–55.0061ms，中位35.4808ms；拒绝记录没有保留after字段，因此无法从现存数据定位哪项变化，更不能直接解释成原动画覆盖、attachment延迟或GPU闪烁。这次没有得到稳定配对，而非枪体稳定通过。保持现有拒绝条件，不重跑同一输入、不删失败。
+
+HandStop[4,5]、quiescent／自由双手继续、控制器恢复／bridgeclose、Native／entry／原106及完整块、XR0／PG0／十文件／audio／准确PID恢复通过，final accepted的scope仅host／正常清理；host瞬时no_remaining_games=false保留。fresh CIM无Game／XR／执行worker，窗口已交Body。保存复核`analysis/lancer-component-readback-20261026/er-saved-pair-review.json`。下一最小候选只将骨骼与枪组件读取收进现有PG组件只读采样点，先做有界owned检查；不新增Hook、不改Native或身体writer、不扩展其他枪，不把同PlayerTick误称同C0或最终GPU阶段。稳定跟手、枪口／射击与头显接受继续待验。
+
+## 2026-10-26 — EQ原动作已完成，固定输入下组件姿态分叉；配对观察离线通过
+
+更新：Body明确交出空窗口后，Root仅执行一次已冻结EQ及原finalizer；Game20012／Native2635598176705，原shoulder40／6秒门通过，三个阶段实际新增43／9／10次coherent held提交，8命令完成、errors为空。9条组件记录各自重复读取通过，ready→small-move的一组相邻样本旋转约9.99998°；但small-move输入与epochs完全相同的后两条样本，组件位置差14.93523游戏单位、角度差24.06287°。最后样本在该阶段结束前640.34ms，不能归因于Stop清理。Avatar矩阵9条相同；只能确认组件响应，尚未证明稳定跟手或分叉原因。旧异步骨骼样本距这些行24–105ms，不能硬配成同次姿态。每条组件采样约4.96–5.23ms，包含普通tick的33–37ms跨度不能全归于probe。保存证据与Root只读复核位于ignored `analysis/lancer-component-readback-20261026/eq-saved-component-review.json`。
+
+正常HandStop5、quiescent后自由双手继续、控制器恢复／bridgeclose、Native与entry恢复、原106／完整保护块、XR0／PG0、十文件／audio和精确PID收尾通过；host瞬时`no_remaining_games=false`原值保留，不覆盖最终清理结果。运行窗口已交回Body，当前FPS随后使用窗口，Root不抢占。
+
+针对分叉，源码`59e2cca`新增`tools/game-playtest/weapon_component_observation.py`，在原`probe(observer)`外包`wrap_probe`：原骨骼读回→typed枪／角色组件／唯一weapon_end attachment→第二次原骨骼读回→实际Query身份／属性选择／字段与注册表末读→骨骼epoch／Space／Local／CTW末读→再末读Query。附加记录失败仍返回第一次原姿态结果；第一次原姿态本身失败仍原样抛出。不会放宽原40／6秒成功条件，不写游戏、不调用engine getter、不改Native／PG／XR。有限顺序重复读取明确不是同C0原子快照，也不证明最终GPU阶段、枪口或射击。
+
+实际生产pair reader＋现有`world_state.Query`在owned内存fixture上16项定向测试通过，含稳定相对矩阵、epoch／Space／Local／reference变化、组件迟变、两次末读、属性选择／身份／注册表变化、错误／重复attachment、不可读、附加与原姿态失败区别、discovery hints拒绝和仿射逆矩阵。fixture姿态callback是seam，未冒称又验证一次原live骨骼算法。回执`analysis/lancer-component-readback-20261026/pair-observer-offline-receipt.json`，SHA256 `5e8a5899ca52390ef64c9c7ee0363e3ee70f0215c5b6846bb881ce2c0672018a`。
+
+ER已接入口并封存：`analysis/equipment-native-rgrip-runtime-20261026er`，pins `4618c3bd9ac62e0ad4d32f50cb7fe24b55aaf5465eee817a2ceb99465e5a4f3b`，原coordinator摘要仍`0cb264965702af66b83796c29297c2fd7bbfad1d51c6c73ec225827287f83b08`。原`body_observation.py`字节完整保留为前缀，仅末尾追加alias／wrapper；实际私有import确认`probe.__wrapped__`就是原函数。helper／world_state各自复制并pin，全部私有Python AST、原host／轨迹／gate／finalizer除namespace外相同、原件不变通过。首次clone因Body共享cover_surface_query后继改动被guard拒绝，未启动游戏；ER保留该拒绝，将hash完全等于原EQ的旧文件复制为私有同名依赖，按现有import优先级使用且准确pin，不回写Body、不接纳无关后继差异。完整最小证明在ignored `er-pair-sealed.json`及ER `PAIR-README.md`。未重建未变Native／PG／XR，也未重新运行旧检查；等待现有独占窗口交接，只跑原动作。稳定跟手、sameC0／画面／枪口／射击及头显接受均待验。
+
+以下保留EQ封存时的历史交付说明；“待运行／Root不launch”描述的是该时刻，已被上方实际运行记录更新。
+
+源码`28babdd`经单次PG-only完整编译／链接，得DLL `38d897b4ff4f355b958874235327a1851a9acb5fc9c7bfa05be91774d3a68912`，783源及vendor不变；实际生产defines相对EP仅加`GEARS_PLAYGROUND_LANCER_COMPONENT_PROBE=1`，原flags及16个PG导出名称保持。新flag OFF后原tick／playground文本还原，Native／共享合同／typed provider未改，旧检查不重测。精确build在ignored `analysis/lancer-component-readback-20261026/pg-build/attempt-1792999696227354400/`。
+
+从EP派生EQ，最终pins `2e8591fa29b289d62d572cdcdf7c5a3c4957b61e18dff0e00bc98951947986ac`，coordinator `0cb264965702af66b83796c29297c2fd7bbfad1d51c6c73ec225827287f83b08`。Native47／BQ／CY、INI及原8动作／40held-6秒／106／R2 OFF／0.4后台保护不变，全部private Python只必要namespace和PG／coordinator摘要替换，原EP输入／成功结果／BMS-v3-alpha原件保留。Body独立reader的实际Record8616与准确exe摘要记入选择元数据，不修改动作或finalizer。
+
+EQ已交Body独立审diff后独占执行，Root不launch，交付时无instances／ready，交付后冻结。组件采样将按shoulder／ready／small-move实际marker与时间分析；每条只代表parent V1元数据观察，显式不证明同C0、GPU、枪口或射击许可。COMPONENT-README与component-selection-preflight在ignored case给出完整原两session／normal finalize及保护证明。源码／链接／本地检查不是实际组件跟随通过，等待唯一原动作读回。
+
+## 2026-10-26 — EP原持枪门与移转通过，接续原枪组件只读验证
+
+Body以Native47／PG5a34完成EP原动作并正常退出：原40／6秒门、right-ready8次、小移＋10°10次提交均有coherent post-FK。Root只读复核三raw头及32条sequence／tick／Compose／thread关联，独立重算v3腕FK位置／Local，最大重算位置误差0.000255116游戏单位；四角色实际Applied各32、640event0drop。Body严格新BMS reader的完整source／ready回声关联与新目标派生按其证据复用，不冒充Root重新推导全部来源；32条也不扩充为全程62条姿态。HandStop5／quiescent／自由双手继续／bridgeclose与正常106等通过，cleanup-only不替代玩法。PG保留first32前缀6 unheld／15 ready／11 inactive，与BMS成功提交集合不同，均保留。现存证据只读复核，未重跑Game。
+
+Root下一单项交付为原Lancer组件位置／方向读回：新增默认OFF的有界normal PlayerTick probe，保存原copy_frame真实Game输出、直接反射读枪／角色Matrix并前后重复、双typed资产／唯一attachment／末Game／hold／domain／Frame资格检查，不调用原bone/socket getter、不写枪／相机／射线、不以新metadata witness授权普通GT动作。运动触发采样给后继ready／移转保留预算；47预算断言、实际Matrix reader8 owned案例与完整PG TU严格语法通过，旧Body／Client检查复用。具体边界在`docs/weapon-lancer-component-readback-20261026.md`，源码候选尚不代表GPU画面跟随／真实枪口／瞄准射击／Cover／头显通过。
+
+## 2026-10-26 — Native47／PG typed联合候选EP封存并交Body，尚未运行
+
+Body交付Native47 `78705ddd823a79a88aed943d559decb3bc873ce32eaf6d05ae9bba7c3d731348`后，Root仅对已封存`f611000`源码做一次PG feature DLL完整编译／链接，得`5a34a2808a1fb066091841f2d08b474650fda142cda55fb3cdb61870e4f3be0b`。778源与vendor保持，实际Ninja生产defines相对f85只增BodyMainMount新flag、原flags不变，无test-stats宏；既有Host结果直接复用，没有重建Native／XR或为报告重测。唯一构建及receipt在ignored `analysis/body-mount-pg-candidate-20261026/pg-build/attempt-1792994530678841000/`。
+
+从EO派生EP，最终pins `fc3c560f3d6cebe6305347154fc1cd8d70fe2a09ffb52f6cbb024d8b26e08885`，coordinator `91bd06a0ad0a6cb3ef8780c02e7e1963ff23b479854cb2ab4f41e07df47664c9`。Native receipt `cae944a5…60ed`、manifest `6ed5c005…bf75`、source47-before-build3 `b14c684b…a4af`及source2全部787源hash复核，14改5增；Native44导出只比46多独立Attach，原defines只加新source开关，PG16导出名称保持。BQ／CY保持，不采用Native generic manifest内旧XR／PG选择。INI仅新增`BodyMainMountSource=1`，保留BodyTickInput1／旧probe0，启动guard确认新节及实际enabled状态；动作coordinator只PG摘要替换，原轨迹／8命令／40held-6秒／106／0.4后台保护不变。
+
+新typed原件为BMSCOM01／Header64／Record8616，`body-mount-source-commits.bin`，禁止套旧Tick reader；v3／alpha与cleanup-only finalizer不变。封存时Body独立reader尚pending，随后交付reader `d3a21d45…0aaa`及actual schema头`2eb74168…901c`，Root只验hash并在area补`bms-reader-supplement.json`，不重封或修改EP；Body自行读取，不把shape／source join或postcommit年龄当精确CAS／真实GT／Kernel证明。
+
+EP已交Body独立审动作diff后独占运行，交付时无instances／ready，Root未启动Game／XR，EO输入／结果／三raw完整保留。完整命令在EP的NATIVE47-README，实际源码与联合构建交付在area的delivery-source／joint-build-delivery和EP native47-selection-preflight。联合源码／链接通过仍非持续玩法或头显通过，整体36%／W2 40%不变，无默认集成或发布。
+
+## 2026-10-26 — PG typed Tick／C0装备观察源码与有界Host通过，待Source47联合构建
+
+Body共享头按SHA `6ad0a08fb3633bb0cc3d39841634a69c2a65771ed29886e7c32ceeb9c03b4b3d`逐字接入，Root新增独立identity-only Game／asset／attachment入口、Client单Gate／epoch同步metadata操作和typed sender／provider，新flag默认OFF且依赖原provider。原V1 Client／Frame fresh方法与读取函数体不改；新旧provider共享entered／callbacks／parent pin／drain。两Game包住双asset与唯一attachment，再验holdGeneration／held_binding／domain／epoch；真实begin计metadata50，新raw／capture40与原Scene50各自验证。Native reference_revision仅非0偶数shape／echo，与原StereoGate reference_generation明确不同；pub／ticket／action为Native认证关联，PG不伪称独立观测，不造Frame／world pose／grant。
+
+严格定向结果：sender272 checks、实际Client新操作80 checks、actual typed Game／asset24 checks、actual attachment9 cases（owned解析seams）、actual provider+equipment编排271 checks（owned metadata／Client seams）及原Client15+30+17+8 cases通过。实际PG完整TU同f85 flags加新flag通过`/Zs /W4 /WX`，没有生成obj／DLL。一次Astra PG增量风险审查无具体P1/P2；Native实际source认证仍是独立前提。差分证明原V1在去掉纯新增／flag围栏后逐字还原，typed reader除入口签名外逻辑与原版逐字一致，f85／EO保持冻结。见`docs/weapon-body-main-mount-implementation-20261026.md`与ignored `analysis/body-mount-pg-candidate-20261026/`。
+
+此轮未构建PG／Native DLL、建case或Game／XR。等待Body冻结Source47／新export后再一次联合构建与原40／6秒动作；源码／Host与语法接受不能抬升持续玩法成熟度，整体36%／W2 40%不变。AGENTS外部修改保留不入本提交。
+
+## 2026-10-26 — 整理typed Tick／C0查询的独立装备观察边界，等待共享头
+
+按Body／Astra收窄方向，仅整理Client／PG只读方案：在同parent callback、actualGT、Client epoch／Gate内提取exact committed key／五对象作历史关联；新raw40负责右Grip资格，PG以当次Game／heldGeneration／双typed asset／attachment／全部末读形成query-bound metadata witness。旧V1 tracking确实参与frame_active／右Grip／world_grip资格，不能删sync检查或伪造Frame；原copy_frame_on_gt／source_game_on_gt／PG V1和f85／EO不动。方案额外明确Hand committed本身无publication／binding_generation，不能假称从Client读出；domain_ready只有ready／depth围栏，没有可导出的actionGeneration，须等Body明确共享action语义。
+
+最小本地操作建议单Gate内执行固定metadata reader，禁止递归调用旧Client source方法；两次fresh Game包围双asset／实际attachment，保留各reader内部末读及最后epoch／holdGeneration／domain／time检查，返回真实观察范围而非Frame／world pose／grant。具体提案见`docs/weapon-tick-mount-equipment-witness-plan-20261026.md`。本轮仅源码依赖分析／文档，无生产改动、构建、case或Game；等待Body唯一共享typed头及hash后才实施PG路径，不抬成熟度。
+
+## 2026-10-26 — EO实际查询耗时缩短，持续门仍失败，转查生产消费时序
+
+Body独占完成EO及原finalize一次并交回空窗口。其报告Game1500／Native2480512716131，19 held全部完整pose通过、四角色实际应用各19、380event0drop；原firstheld40／6秒仍失败，未移手，HandStop5／quiescent／freehand继续／输入恢复／bridgeclose与正常106／Native／entry／XR0／PG0／十文件／audio10／准确PID恢复通过，host瞬时false保留。Root本次仅核对保存的PG／预算时标与清理字段，不重算19条姿态，不扩大对身体侧结果的独立验证声称。
+
+Root按query及全部来源身份关联EN／EO原件。PG握枪样本EN26／EO27条的callback中位6.5356→3.7464ms，实际样本缩短2.7892ms；EO进入PG时原sync年龄中位反而44.87425→47.0972ms。两边各16条最终response12均在response入口已超50，EO范围50.3525–53.4922ms。EO Native前缀含query0，只关联PG1–31；失败的15条关联样本在compose进入原sync已45.6674–48.0854ms，compose→query中位0.983ms。不能错按行关联PG32，不能用独立运行计数或算法次数宣称配对因果／全场景保证，也不能用前缀解释全65 stale_broker。详细范围见`docs/weapon-en-eo-query-timing-20261026.md`及ignored `analysis/weapon-parser-candidate-20261026/en-eo-saved-query-comparison.json`。
+
+冻结候选与EO，不追加同类解析微优化、新case或Game；身体侧继续回查生产消费时序，保留40／50与原门。原19条姿态通过不代表持续握枪／移手／射击通过，整体36%与W2 40%保持，无默认集成或头显接受。
+
+## 2026-10-26 — PG单次查询解析优化完成源码与定向验证，待原动作验证实际收益
+
+按统筹确认的唯一候选范围，Root在PG provider取得独占entered后安装本次查询的解析工作区，finally恢复原TLS并清空工作区。FName只记本次查询内的长度界限；命中时仍重新读取slot、index、全部字符和终止NUL，同长文字变化仍由原快照见证捕获，长度或可读性变化拒绝。三个原field扫描器将重复地址查重改为精确地址哈希集合，原前缀数组／4096上限／首个同名字段及类型／所有读取与末读保持，嵌套扫描或容量不足回退原线性查重。保留两次fresh Game观察、两种typed资产、独立最终观察、原身份／资格／时间戳／40与50ms及默认非trial路径；未改Native、wire或R2运行开关。
+
+新PG完整TU严格构建通过，SHA256 `f85a00dda92f09c0c7548151b676c7cb37dc5ec0879472201855ad0248615650`；实际callback／attach定向933个断言与实际三个scanner／fresh_name定向8330个断言均通过，覆盖重入、工作线程TLS、SEH恢复、查询清空、碰撞、循环与4096边界、文字／指针变化和读取失败。8330是断言数，不能写作8330个场景。独立Astra增量审查无P1/P2发现，审查本身未执行测试。沿用PG0ec1相同编译flags和vendor，763份源与构建receipt一致，生产侧无test-stats宏；准确增量为六份已有构建／源码／测试文件和两份新头文件／测试，证明及唯一build位于ignored `analysis/weapon-parser-candidate-20261026/`。
+
+算法示例的8,390,656次线性比较降为6,153次哈希探测、LivePawn字符读取9次降为1次只说明减少操作，不能换算真实游戏节省毫秒。原EN回复需省0.9208–6.1447ms且后续仍需Native消费，是否足够须由Body独占同原动作验证；保留原firstheld40／6秒与106完整恢复，收益不足则回查生产消费时序，不连续堆微候选。尚无本轮Game／XR／GPU／头显验收，成熟度不增加。原EN held日志标签另有补充：前缀10次PG ready对应6条held记录，其中5条pose通过、query30失败；原回执保持，日志成员关系不能叫姿态成功。
+
+源码提交`73076dd`后，从原EN派生唯一EO并交Body独占运行。最终pins `365adfc4d3fa5df273c5c986e5b1cb6c2a6a00fb1bed3a422cd535342985341e`，coordinator `27bed41e965077d0c0cd3821df7845b1953baee3390583c7888e5d8349138d2a`；Native46／BQ／CY和所有动作／门槛／后台保护保留，manifest只改PG摘要，私有Python只必要namespace／PG摘要／coordinator校验摘要替换，16个PG导出名称保持。PG PE及当前选择元数据已更新，所有pins与原EN保护通过；封存时无instances、无Root Game／XR。完整原两session与一次normal finalize命令在ignored EO的`PG-PARSER-README.md`，交付后不再改case。此为可运行候选交接，尚非实际收益或持续玩法通过。
+
+## 2026-10-26 — EN保住27／28条完整姿态，继续收口PG原来源50ms成本
+
+Body独占完成EN及原finalize一次并交还空窗口。实际Game20148／Native2447539276000，新typed／v3／alpha分别SHA a987aa5a…858f、da05cc27…0004、5e1e7150…c1af；28条中27条consumer/end、Local、FK及四角色actualApplied通过，552个事件无drop。Root直接核对三原件、逐条sequence／tick／Compose／thread／PG query，独立重算原矩阵腕位置误差一致。异常准确为sequence5／query30，四角色no-token，不能忽略或说成最后序号；q30本身PG ready，不能混作PG source_mismatch。原fixedheld40／6秒门仍失败（ready43／held28），未到后续移手、射击或头显接受。本轮HandStop5／quiescent、cookie0后freehand继续、controller恢复、bridgeclose及106／Native／entry／XR0／PG0／十文件／audio10正常恢复通过，host瞬时false保留，EM旧freehand失败不覆盖。
+
+PG实际只保留first32／总111次，truncated1；与Native原预算query1–32的Scene／publication／cookie／原sync逐条关联一致。该前缀6 unheld、10 held-ready、16 held在完整retained／Game／资产／bind通过后由sender::response最终context返回12；16条response入口原sync已50.9203–56.1443ms。其PG耗时6.3998–7.3612ms，仅使回复≤50就需省0.9208–6.1447ms（中3.2709），尚需后续Native逐写复核。全程broker source_after63不能由此32条全部分类，末failure110与last_query111/raw0也不强配；budget commit_end不是成功或精确CAS时刻。
+
+按Body要求，本轮止于已有日志／源码分析，未改PG／Native、派生、构建或重跑。Root给出下一最小可改边界为claimed单次PG callback内纯解析工作区：长度界限辅助fresh全名读取、精确地址集合加速field cycle查重，保留原全部fresh Game／typed资产／独立末读／身份／generation／50ms与默认其他路径；先前copy比例不充作零售墙时收益，现无收益承诺。具体范围、缺口与禁止续时／放宽门槛在`docs/weapon-en-pg-budget-review-20261026.md`，独立回执为ignored `analysis/lancer-native46-review-20261026/`。仍须另保留seq5 token异常，下一原动作必须有真实增量，不能重复同46碰运气。
+
+## 2026-10-26 — EN封存Native46同次已提交消费认证候选
+
+Body冻结Native46最终build-cover-body46sim2后，Root仅从EM派生EN，准确选DLL `65f55c25b111bea5c7e818dfb3bdaf0acd8a7bb2ef243abdd1440450c67a951b`、manifest `d523040f…cea80`、receipt `4b1fa4b9…bb6e0`与最终source46-before-build2 `459c7671…94709`。该候选改变同次已提交消费认证并将hard故障独立；写入40／Scene资格50／原alpha1-Scale0和PG／wire不变，已有alpha侧录保留。Body实际完整TU／43exports／22startup／23preflight、32红例／真实owner-Rig-Kernel与ActualContext/Kernel wrapper定向结果及Astra关闭记录按其receipt来源复用，Root未重建、扩矩阵或Game。
+
+最终EN pins `0866765458013f065b78db11602ed2518d6dabafe603a1ab16345a11f2976fa6`，coordinator仍`1b4f9f2a…7da95`。PG0ec1／BQ／CY、控制器原8轨迹、firstheld40／6秒及106完整保护保持；INI逐字等EM，所有私有Python仅case/instance替换，证明在ignored case的native46-selection-preflight.json。原EM输入／结果及alpha／typed／v3三原件保持。已向Body交精确原两retained session及一次normal finalize命令并冻结EN，交付时无instances／ready，Root不自行Game/XR。尚无该轮行为接受；仍以实际Local/FK／持续held／移转／交还验收，不把新消费候选、原grant或返回时标当作最终姿态证明。
+
+## 2026-10-26 — EM诊断取得右臂prior-compute拒绝链，保留返回时标解释边界
+
+Body独占完成EM及一次normal finalize，完整106／Native／entry／XR0／PG0／原十文件／音频／exact PID正常恢复并fresh CIM空；本轮HandStop4→5／quiescent、双controller恢复与bridgeclose通过，但cookie0后freehand继续超时，独立保留，不用正常清理或EL成功覆盖。first-held门仍失败，未进入后移转；Native45只是被动诊断，未当修复或跟随接受。
+
+ARMALP01原件SHA256 `dc9f4e15411f070b51c83ac6180598f44a421b584dbeda39a0bffcc2acff3e62`，实际Game53920／Native incarnation2410681145942；24条held记录、330个事件，dropped0。Root直接按144B结构核对全部raw字段与修正后的em-alpha2，并逐条绑定typed4424／v32120的sequence／tick／Compose／thread，一致。RH limb／single各24次tokenRejected1，均对应compute_failure6（identity）／weight_failure12（prior_compute），尚未进入sample／owner；LH limb16与single5次真实sample okay、alpha1、Scale0、readmask127，继而owner通过并记录actualApplied。
+
+统筹指出的覆盖解释已由Body修正reader标签：Compute与owner中的零填不当作最终packet观察；原em-alpha1保留，Native和游戏未重跑。Root只使用em-alpha2的修正语义，并独立用v3真实QPC频率及typed原sync复算96次Compute RETURN源龄；RH失败为50.0018–50.9297ms。按failure分组，code1的21条返回观察为47.8729–50.0303ms，code6的75条为49.9995–50.9297ms，有边界重叠；这不是精确早先拒绝时点，也不将qpc排序为阶段耗时。
+
+源码链显示continuous_hand_owner control_begin／plan仍依赖旧same_source50，拒绝可令scope sticky，使CCTRL.current依赖的hand.control_current失效；已提交body在owns内部另用retained consumer_current。此静态链与运行拒绝相符，但具体因果及原检查不松的retained消费接口仍待Body的Astra设计／actual Host复现，当前没有据返回时标单独认定修复点或接受新行为。Root不派生新case、不改PG／Native、不Game；独立raw/年龄/完整清理结果在ignored `analysis/lancer-native45-alpha-20261026/` 的em-alpha-root及em-closure-and-return-ages，EM原件和host瞬时false均保持。
+
+## 2026-10-26 — EM冻结Native45同held alpha诊断，原消费行为不变
+
+Body交付唯一被动alpha诊断后，Root从EL派生EM，准确选择Native45 `7d0d2d542d2c661a04f4b352a5c9ad791a3db049ea95b9c6b27273c3f9813be2`、receipt `36e9be28…8ed91`与冻结source45 `c7fc7c4c…a7baa`。PG0ec1／BQ XR1a05／CY378及BodyTickInput1全部保留；所有私有Python只必要namespace替换，native_sections与EL逐字相同，43个导出名称相同。原8命令、firstheld40／6秒、alpha1／Scale／40／50／PG／wire／实际XMM编辑、0.4后台与106完整恢复保护不变。Body原完整TU、startup／preflight及定向owner／CCTRL结果按receipt复用，Root只做选择／封印，不重建或加矩阵。
+
+最终EM pins `05f347344c5b7f6f903364602556515dd94f759b3a6562dc4b4059a3bd89d1bc`、coordinator仍`1b4f9f2a…7da95`；namespace与INI证明在ignored case的native45-selection-preflight.json，原EL输入／结果及typed／v3原件保持。NATIVE45-README给原两retained session和一次normal finalizer完整命令，Root已交Body独占窗口并冻结EM，交付时未启动Game/XR、无instances／ready。
+
+新sidecar为native/body-arm-alpha.bin，ARMALP01／Header64／Record9256（40＋64×144）／first32成功held，每条64 events，最大296256B；Header末u32是event_capacity64。它按hand_record sequence／tick／Compose／thread关联原typed4424与v32120，不使用旧first128容量冒充held。Body／Hand／CCTRL stopped且全drained后CREATE_NEW导出，sample Reject／owner deny／最终applied分别记录，qpc多为原return观察，不能排序或当阶段耗时。Body严格reader已就绪，Root finalizer仍保留原范围。尚无EM实跑结果，诊断选择不是修复或持续跟随接受。
+
+## 2026-10-26 — EL取得29次held提交，原控制消费后覆盖仍阻断持续跟随
+
+Body独占完成EL及一次正常finalize后释放窗口并确认fresh CIM空。新typed输入361次取得均有效并正常Tick end；主握ready49，实际held commit29，原first-held40／6秒门仍失败，未到后续降枪／移转，未降低门槛或重跑碰运气。实际Game51152／Native incarnation2350130212567，新日志128360B（Header64＋29×4424），原v3为61552B（Header72＋29×2120）。Body严格reader验证输入／PG／Native join及重算数学目标：29条腕目标误差全0，head goal约8e-6u，但只有1条完整pose_pass，不能说持枪跟随通过。
+
+Root独立核对两份原binary的header、29条sequence／tick／Compose及PG response／parent query／原Scene key，另直接由v3 SpaceBases×CTW重算两腕位置误差，与Body reader一致。更具体的阶段证据是29／29进入原consumer时九骨均逐字等planned（mask511），消费结束后仅1条仍全相等；alpha grant mask的0／1／3／7／15分别为4／7／10／7／1条，与after_local保留mask448／451／455／479／511逐条对应。29条中head／腿51／52／55保留，alpha四角色分别对应8/10、11、32/34、35的保留；这是本轮精确相关，不替代具体拒绝分支或修复证据。右腕后FK位置误差中位31.8073u，左腕中位0.0001067u但部分明显偏离，旋转也须按reader完整检查，不能只取接近的位置样本。
+
+Body后续仅扩读现有POD的el-pose2进一步明确这些是owner grant，发生在CCTRL最终后置检查和XMM／packet改写之前，不能等同实际applied。Root将29条新增mask／count／original bits与原v3逐条核对一致，pose_pass仍1；回执为el-owner-grant-recheck.json。下一最小诊断为同32条held关联的alpha sidecar，区分既有单次sample Reject、Native deny stage与最终packet应用，不复用旧first128容量，不放宽alpha1／Scale／40／50；该sidecar尚未有实跑证据。
+
+原记录的29次normal_consumer_end均通过，本轮HandStop4→5／quiescent、两controller恢复、bridgeclose及cookie0后freehand继续实际通过；EK／EI的超时原件保持。完整106／Native／entry／XR0／PG0／原十文件／音频／exact PID正常清理通过，host瞬时false仍保留。committed_ns为postcommit观察，原sync在该观察时刻超过50ms不单独证明任何一次CAS超龄；Root没有将该时刻冒作最后检查时间。独立结果在ignored `analysis/lancer-native44-consumption-20261026/` 的el-consumption-root与el-alpha-role-correlation，源场景未修改、未重跑或重建。Body下一步只定位原control alpha交接拒绝，PG／40／50／原行为门保持。
+
+## 2026-10-26 — EL绑定Native44显式typed消费者，原行为门保持
+
+Body交付真正typed消费者Native44后，Root从EK派生EL，选择实际build-cover-body44sim2的DLL `1dafeb65f369e01b38b3b961f25bad5f3dfa27ff2930cd9fd9550b91f100e180`、最终source44-before-build2来源`3df45c10…92140`；PG0ec1／BQ XR1a05／CY simulator378不变。INI只移除BodyTickTrackingProbe、增加BodyTickInput enabled1；不是只读探针，明确新Tick／当前C0基准最终每写40ms、原Scene资格50ms，原Core／PG／wire语义保留，不宣称旧Scene40门通过。Body原完整TU／43exports／22startup／23preflight及其定向typed／真实C0Host验证按对应receipt复用，Root未重编或另跑Game／旧矩阵。
+
+最终EL pins `0a2e635328e5408853d56121f087835c3587fc532da9ff1374131f034c6fcb8f`，coordinator仍`1b4f9f2a…7da95`；namespace证明在ignored case的native44-selection-preflight.json。host／coordinator／runtime_support／finalizer／106验证器／dispatcher仅case/instance替换，profile去掉各自唯一新section后逐字一致；first-held门、原8命令、R2 OFF、所有身份／输入／存档／音频／后台／退出保护保持。EK原输入、结果及SHA69266c…d1b9的探针原件未变。两次派生recipe在创建case前分别因多余转义断言、旧manifest文件名拒绝，失败版本保留；最终另修继承的diagnostic-only描述并重新封印，未改变可执行host。
+
+EL原启动三命令及当前选择已交Body主会独占运行，Root冻结case、不并发；交付时没有instances／ready，尚无实跑接受。新的成功关联原件为native/body-tick-commits.bin，BTICMT01／Header64／sizeof新POD／前32条，须由Body严格reader与原body-hands-commits.bin v3按sequence／tick／Compose逐条关联；包含独立Input、当前base／CTW、avatarAsset、原PGResponse与parent receipt。committed_ns仅postcommit观察，不是CAS精确时刻。Root finalizer仍只验证原v3及正常清理，新的日志不代替持续held／小移转／交还或实体头显接受。
+
+## 2026-10-26 — EK实际证明真实Tick新输入可取得，旧held／交还行为仍未通过
+
+Body独占完成EK及一次正常finalize，释放窗口并确认fresh CIM无Game/XR。BTIPRB01原件122176B、Header64／Record3816／32条，SHA256 `69266cbe43418984477a5ab3208e474ce295234cbca664f58e8738d336a2d1b9`，实际Game55712／Native incarnation2333248191503；Body严格reader关联通过。32／32 valid、newer及可选真实C0 basis存在，raw sequence比原Scene前进2–4；新hands.sync源龄0.2243–10.8548ms（中位7.36925），原sync29.3217–47.2362ms（中位41.1907），采集0.0251–0.0558ms。basis观察在采集结束后0.891–11.3381ms，原时标未更新。首32可能在held之前，仅证明本轮同真实Tick的新成组来源及当前基准可取得，不推为持枪轨迹／目标计算或稳定性能结论。
+
+Root直接核对原binary完整header与32条tick／thread／cookie／起止时标／failure／valid／newer／basis prefix，逐条与Body严格reader一致，另独立重算其聚合指标及准确session；不冒称重做全部字段语义解析。回执为ignored `analysis/weapon-parser-budget-20261026/ek-source-availability-root.json`，旧消费者stable状态另解为`analysis/lancer-main-mount-ec-rejection-20261026ef/ek-native43-diagnostics.json`。
+
+原消费者未切换，first-held门仍失败：ready16、stale／fault／context拒绝0、held commits0、post40拒绝17，降枪和小移转未触达。HandStop4→5／quiescent、两手恢复、bridge close正常，但停止后自由双手继续更新检查超时，不能称交还行为通过；正常106／Native／entry／XR0／PG0／原十文件／音频／exact PID全部恢复通过，host瞬时no_remaining_games=false保持原值。EK现场与PG0ec1冻结；Body继续实现真实新typed输入和同C0关联，不改旧Core／PG wire，后续候选再沿原门验证持续held、移动与交还。
+
+## 2026-10-26 — EK选择Native43只读Tick探针，原消费者／动作／清理保持
+
+Body交付Native43真实outer-Tick只读探针后，Root从原EJ精确派生私有EK，仅替换Native build／DLL／hash／provenance及PE元数据，向原native_sections追加`[BodyTickTrackingProbe] enabled=1`。新Native SHA256 `1517cfb04235655c03e4345df9afc13fc903d4185286aace15d549d2c02dc426`，PG仍a54d592／0ec1、BQ XR1a05、CY simulator378。43个导出名称、构建receipt／冻结source43来源已核对；Body原完整构建／22startup／23preflight按明确来源复用，Root未重编、未运行旧矩阵或Game。
+
+EK pins为`b6f1820a87eaa660c2813ddda7404d4af13a24f3d04c373ff0a297286469f104`，coordinator仍`1b4f9f2ab451d8a37232033ac00f3fc32e5a71c16da630a610c53abf5997da95`。host／coordinator／runtime_support／finalizer／106完整验证器／dispatcher逐字保留，仅必要case/instance namespace不同；profile去掉新探针section后与EJ一致。原first-held门、最多8命令、R2 OFF、40/50、0.4／behind／observe-only／mute-restore／physical-background-OFF／原十文件保护均保持，EJ原输入、结果及预算原件未变。离线封印及完整启动命令在ignored `analysis/equipment-native-rgrip-runtime-20261026ek/` 的native43-selection-preflight与NATIVE43-README。
+
+Body确认fresh CIM无Game/XR后已接管唯一EK运行窗口，Root冻结case、不并发启动；本条尚无该轮实跑结果。正常drain后探针原件为实例native/body-tick-probe.bin，BTIPRB01／Header64／Record3816／最多32条122176B，ABI及严格reader由Body实际构建验证。前32个真实Tick可能在持枪前，只可用于判断真实新整包／原时标／来源与可选C0基准是否可取得，不当作同次held、消费者切换、持续跟手或头显接受；Root finalizer保持原清理范围，不新增探针成功门。来源只读证据通过后才接新typed消费与原持枪小移转／交还验证。
+
+## 2026-10-26 — EJ排除Native计算热点，先核实源龄预算再选择改动
+
+EJ由身体会话以冻结Native42／PG0ec1／BQ／CY及原动作独占执行，Native ready17、held commits0，首门仍未通过。此次HandStop后的自由双手继续更新与106完整正常恢复通过；EI同项超时仍保留，不能用EJ覆盖旧失败或据单轮证明稳定性。预算二进制11880B、24个query及1个无query源龄拒绝记录，SHA256 `a5656dacaf91b57a8d1615b8a4c818d0d01825d464ed9f3485bc8e92ceb092b7`，实际PID45644／Native incarnation2288270726650。Body严格解码与Root独立原字节／身份／阶段比对一致。
+
+17个ready样本的Compose入口→query为0.9256–1.1539ms，query为6.3464–6.8692ms；sync在Compose入口已老36.5061–39.1390ms。身体侧源码与原时标说明Scene中发布的同一快照经缓存被后续真实Mesh Tick消费，publication→Compose为28.2771–30.1130ms；读取不会更新来源时标。该区间尚未细分为CPU／GPU或精确游戏帧，不能称Native模型计算30ms或靠缓存模型修复。
+
+Root从同一binary逐条复算原40ms预算：query入口剩余-0.0922–2.4939ms，中位0.6156ms，2条已超限；再扣实际query结束→first40检查的0.1007–0.1962ms后，3条即使query耗时为0也无余量。其余14条要求query墙时减少64.0%–97.4%，各自所需倍率中位9.21；17条允许query耗时的中位0.5119ms，且未包含后续hands／final40或安全余量。此为保存样本的反事实预算上界，不是性能预测、FPS或最终提交证明。原始stage／identity与解码报告逐项相同，计算及独立回执在ignored `analysis/weapon-parser-budget-20261026/`。
+
+PG源码存在同次名称逐字重复读取及字段链线性查重，但解析优化尚无覆盖上述预算的实测证据。新增独立owned-memory计数夹具，除copy入口计数两处外与原fixture逆向逐字一致，使用未改的实际observe：普通例11025次copy／515次fresh_name／27个entry，加64个同名ignored前缀为15761／643／28；两次观察均接受。假设完美的同query长度界限命中且仍fresh读取全部字符和NUL，最多省总copy调用33.01%／40.82%，字符字节不减；未实现此优化，也未测visited-set或零售墙时，不能将调用比例变成实际耗时比例或宣称达到所需倍率。证据为ignored `analysis/weapon-parser-cost-20261026/result.json`，SHA256 `19739a31b6bd495a6cef9d1a67db0978592a0b8057df3d14d93081d46aef8f94`。
+
+先保留PG0ec1，不叠加小候选实跑。已将预算与计数交Body及统筹，用于选择保留原40／50ms、完整可变值与身份重读、独立末次Game观察的最小合法方向。消费者源码另确认parent已提交Hand Frame、retained Rig与BodyContext必须属于同一真实Scene／publication／generation／reference和原始输入，不能只替换一侧controller或把C0当Scene。真正新来源须有独立来源证明，不能延后发布旧值、重标时或在当前C0偷换cohort。Root未改Native／PG生产源码、默认启动器或启动新Game；完整武器功能和实体头显验收仍未完成。
+
+已有Astra／High仅审新来源的消费者协议决策，未重审旧矩阵、开IDA或改代码：现V1不能把Tick冒充Scene，但main-mount回复仅含固定grip-to-wrist校准／身份／revision，因此可考虑显式区分“同步query-correlated的原Scene校准来源”和“独立Tick姿态来源”。PG V1布局与reader可保持，前者继续原50ms完整资格检查，后者须由Native新契约独立证明真实整包tracking、base／reference及原sync／receive时标，并在最终使用复核40ms。此方案尚未实施，不能称旧Scene的40ms检查已通过。
+
+新组合契约必须在同一实际C0连接相同parent／lifecycle、当前world／controller／pawn／mesh／weapon／component／asset、hold/model generation、geometry／scale／units／basis和reference continuity，分别保留两份来源身份；不重写旧response key／binding generation，不跨query缓存ready，不二次解码Grip、取得Scene support lease、授权fire或增加writer，失效路径需明确。整体Hand／Rig迁为Tick语义的影响更大，必须显式协商新协议；若Body能将真正一致的Scene生产／消费提前，则可保留现协议。此窄决策已交共享Native唯一负责人及统筹，Root保持PG冻结，等待具体来源／join实现后接收验证。
+
+## 2026-10-26 — EI的27次持枪query全部有效，剩余阻碍转实际C0预算阶段
+
+EI以a54d592／PG0ec1、原Native41／BQ／CY及同动作实际运行。正常退出后的PG记录29／29无截断，query1–2为真实unheld；query3–29全部context／retained／response ready、source bind／资产检查通过并正常publish。当前样本的27个持枪回调为6.2567–6.8577ms，最终sync源龄43.9903–46.9392ms；Native稳定ready27、stale／fault／context拒绝0，commits仍0、post-admission拒绝27。该组是实际查询样本，不是匹配FPS基准或无限期稳定性结论，也不将独立累计计数伪装成逐query的后续提交trace。
+
+取Lancer、Source1和同次metadata／身份校验继续有效；held40首门仍未通过，降枪／移转未触达，不能宣称枪体跟随完成。HandStop4→5／quiescent、两手恢复、bridge close及106完整恢复／Native-entry／XR0／PG0／原十文件／音频／ownedPID正常清理通过。原EI输入和所有结果保留。
+
+后续逐项核对纠正本节原先的freehand通过表述：实际runtime-review的bridge_error为post-quiescent继续提交超时，body_continues_after_stop并非true，body_hands最终0；该行为检查未过，cleanup-only accepted不能代替它。after_quiescent_baseline为attempts159／solved0／commits0／status8=158／cookie0，没有成功的after_hand_stop_native快照。主门失败后右手仍在肩部，未到right-ready，因此该停止姿态的freehand可达性也未独立证明；当前不把此超时归因于PG parent未交还或特定solver缺陷。EJ保持原输入如实复测，结果另验。
+
+阶段／原时标／exact parent关联及稳定计数已保存ignored analysis/lancer-main-mount-ec-rejection-20261026ef/ei-query-ready.json与ei-native41-diagnostics.json。此后冻结PG0ec1，不继续猜测或叠加PG改动；身体会话将定位compose／capture／model／Goal／gate／query／post／hands／CAS实际时间，再决定Native的具体修正。Root不改Native、不并发Game、不更改40／50ms或源标记，完整武器功能及头显验收仍待后续实现。
+
+## 2026-10-26 — EH取得首次有效主握回复，继续收口附着检查中的重复Game观察
+
+EH实际取Lancer仍成功，held首门未过且commits0；首次Native ready1。PG正常drain后16／16未截断记录明确：q1–3真实unheld；q4–11及13–16初始context ready、retained complete且bind／资产均ready，最终response返回source_mismatch；q12成功publish并被Native接受。held查询约11.2–11.9ms，开始sync年龄约38–40ms，q16末sync50.905ms；Native stale12全部source_after，post-admission14，projection／pre-source／C0-current0。一次ready不算身体提交；与EG的稀疏max差异不当作匹配性能基准。106及原全部正常清理通过，EH原现场／日志保留。
+
+进一步源码核对发现attached_frame内部前后current各再执行一次完整Game观察，因而上轮retained仍有四次观察。仅retained路径改用元数据core：将旧attachment读取主体原样提取read_attached_frame，old attached_frame保留weapon非空→current→core→current短路顺序，R2／其他调用及preview不变。retained通过prepare_observed的编译期分支使用core，仍由同次copy-frame真实Game与末尾独立source_game／完整same_game包围，并在core前后增加廉价GT／domain／armed／注册／frame_active栅栏。资产两读、typed schema、唯一right-bone／可见性、array／entry／Mesh selector复核、generation、eligibility及final bind均保留，无跨帧缓存／新权限／时标续写。
+
+实际adapter318项通过，含retained-core／preview-wrapper路由、core内Game／generation变化及softinvalidate；完整严格PG构建通过，761源／vendor稳定。源文本证明metadata主体除签名和两次current外逐字保留，wrapper顺序固定；该证明不是二进制或实跑等价。Astra只复核此新增提取／retained分支，无具体finding，旧537 provider和其余矩阵复用。PG `0ec1cf1e…c88415`，attempt1792966517339153800；Native41／XR／sim继续冻结。身体端Astra预算审阅提示PG-only未必足够，若下一轮仍commits0再用原C0阶段时间定位实际成本，不根据publication间隔臆造Native热点或放宽40／50ms。
+
+## 2026-10-26 — EG定位post-source过期，PG复用同次真实观察并保留阶段记录
+
+EG由身体端唯一实跑并正常清理，取Lancer成功、held首门仍失败。稳定Native41显示stale6全部broker source_after；projection／source_before／C0-current拒绝均0，post-admission拒绝另有9次。最后source failure_query10、mask1541，六源龄为46.0638／51.8660／52.1526／52.9531／52.9305／52.9508ms。末值raw callback12=source_mismatch，但last_query被后续unavailable归零，二者不视为同query关联。原50ms来源限制和40ms admission不变，106完整恢复及其余退出保护通过。稳定数据解码保存在ignored analysis/lancer-main-mount-ec-rejection-20261026ef/eg-native41-diagnostics.json。
+
+PG源码进一步确认wire source_mismatch只直接来自sender::context或最终sender::response；retained bind失败会翻译为inactive，而非12。新增first32 claimed callback的有界POD阶段／实际返回／原时标记录，包含query／parent cookie／Native incarnation／lifecycle，区分context、retained细分阶段和response。GT不做日志IO、分配或额外游戏调用，原entered／finally／callback计数不变；仅原PGShutdown完成parent quiescent、停准入及PG drain后输出，Initialize在同样已停条件下重置。无新增Native导出／V1布局／源发布或写入权限。
+
+只在retained链减少一次重复初读：原Client.copy_frame_on_gt丢弃同次真实Game，prepare随后又source_game_on_gt；现改用原双输出overload并同步传入私有prepare_observed。preview保留原初读，helper入口仍检查GT／domain／armed／同cookie注册存活；末尾独立source_game和完整same_game、两次typed资产读取、附着、hold generation、最终eligibility及retained bind全部保留。没有跨帧缓存、假Frame或续写时间；公共Client／wire／source／candidate／rig binding头的原摘要未变。原b58524c四文件中仅实际adapter inl因这次具体实跑问题作上述窄修改。
+
+Sol／Medium新增直接包含实际adapter的owned-seam检查；前两次严格构建的测试夹具类型／命名错误已修正并原样留档，没有放宽生产检查。最终完整PG严格构建通过，761份源码／vendor闭包稳定；实际provider537项、实际adapter284项通过。Astra／High仅审本次增量，无P1／P2，发现正常publish失败被误记成未正常返回的P3，已让其经过共同诊断epilogue，并用owned VirtualProtect失败路径回归关闭。新PG `bed19e2b…2b2a9c`，构建attempt1792965623362730100；Native41／XR／sim不重建、旧PG矩阵复用。减少观察和离线通过不是已测性能改善或实际held验收，下一轮仍比较同一动作。
+
+## 2026-10-26 — EG保留原动作，仅绑定Native41被动阶段诊断
+
+EC失败后按身体会话交接，先从冻结EC派生ignored analysis/equipment-native-rgrip-runtime-20261026eg，并用实际runtime-slot执行门禁止未完成选择时启动；准确Native41交付后再解除该私有staging状态。最终Native `2d8de020…2a69`，PG仍 `a4657e0d…44472`、BQ XR仍 `1a059d2d…2b4e9`、CY仍 `378e785f…14894`。没有全抄native-only manifest中的旧XR：只替换Native字段／provenance及实际Native PE元数据，43导出同集合。原coordinator `ce4e0091…f4773`、host、PG、106验证器和全部动作／时效／背景保护同字节复用，不重跑旧PG矩阵。
+
+现有host动态收集body_main_mount_*，无需改代码即可保存新增26字段：projection／broker／C0拒绝、post-admission拒绝、query branch、callback raw status、来源失败mask与六种原时标源龄。统计末值不视为逐query一致trace，不把不同query的raw status和last failure强行关联。另备独立有界只读解码器，校验保存的session-status与精确Game／Native incarnation；旧Native40无字段时明确available=false，不伪造零。
+
+最终EG pins `f19afb69…e1bd6`，选择回执及NATIVE41-README已交身体会话；身体端确认依赖及新鲜CIM后接管唯一实际运行。Root没有并发Game/XR、没有修改EC原失败输入／结果或PG／Native源码。此条是被动诊断选择交付，不是拒绝原因或修复验收；等待该轮稳定实跑字段决定具体代码修正。
+
+## 2026-10-26 — EC实际取Lancer成功，主握首门拒绝，106正常恢复通过
+
+身体会话独占执行EC revision2后已正常释放窗口。实际右肩pulse3、生产held回执及独立Live.held附着认证通过；38／38一致postFK骨骼采样可读。shoulder-fixed-first32首门超时，Native mount ready0／commits0／stale14／last_query15／max15.2285ms，无fault或context_rejected；v3 held记录0。未到降枪／小移转，不能宣称持枪跟随完成。
+
+HandStop4→5、cookie0后自由双手继续、原两手恢复、bridge close及normal stop通过。身体端一次finalize的accepted=true仅为cleanup：独立106完整范围恢复、Native／entry、XR0／PG0、原十文件、音频、ownedPID及fresh CIM通过；宿主瞬时no_remaining_games=false原值保留，不覆盖成true。Root没有并发Game或改动本次EC／Native／PG。
+
+Root按交接只读保存PG证据和真实生产路径：普通tick preview的held行已认证Lancer资产及右手附着，body_unavailable来自其故意提供空BodyBinding；该行不是Native supplemental callback，不能据此定位失败。实际provider的context→retained(copy／bind／完整资产检查／final bind)→response阶段没有持久日志，scratch清理后无法用这次PG文件区分具体拒绝。Native stale是汇总分类，15.2ms也不是完整C0耗时。证据／输入摘要保存于ignored analysis/lancer-main-mount-ec-rejection-20261026ef/evidence.json；身体会话查Native首拒分支，Root暂不重跑旧矩阵、不放宽鲜度或预算，等具体条件后再修。
+
+## 2026-10-26 — Lancer主握联合用例EC离线交付，运行窗口归身体会话
+
+按身体会话及统筹要求，从已通过EB复用私有宿主、实际RGrip边沿／装备回执、独立Source1读取器及保留pending导出的API，只准备ignored `analysis/equipment-native-rgrip-runtime-20261026ec/` 联调胶水。Native40 `f146c542…de8ce`、PG3715853 `a4657e0d…44472`、BQ XR `1a059d2d…2b4e9`、CY simulator `378e785f…14894` 均绑定准确成品；采用身体端已修正XR选择的联合manifest629c92。没有修改或重建身体／渲染／XR／模拟器／PG源码，没有由Root启动Game或XR。
+
+Body19实际INI配置保留FP、C0 hands、arm-control ownership、CCTRL／phase、Fresh／Atom／Goal，并启用held_main_mount及selected-only诊断。动作限定为左手可达基线、右肩pulse3取Lancer和独立Live.held认证；肩部固定输入必须再取得至少40个新Native held-selector joint commits及一致腕部采样，才降枪并小移2cm／转10度（明确转换为弧度）。总输入上限八条包含最后双手原状态恢复。HandStop后另取quiescent基线，要求自由双手继续提交、not-ready fallback增长且held commits不再增长；未知pending输入／导出不覆盖或重放。R2保持OFF，无额外枪械RPC。原45秒协调窗口、300秒宿主、.4／behind／observe-only／测试静音恢复／physical-background OFF／十文件保护不变。
+
+恢复核对发现EB验证器已有Control8／Fresh3分支，只是Native29未启用；因此保留其无条件固定Pose8 union，仅从实际Body19增加Atom7完整范围分支，避免直接覆盖丢失旧保护。独立验证器SHA `6c88c33c…a2a2`，finalizer进一步要求固定26范围的source／target-RVA／完整长度／固定摘要全部匹配、总106及原Native／entry／XR0／PG0／音频／十文件／PID清理条件。Body19旧provenance摘要与当前源不符的事实保留；采用实际源摘要，不据旧清单宣称覆盖。正常停止后有界保存v3 first32原始二进制并检查header72／record2120／Game PID／Native incarnation；腕部／枪体数值比较仍由身体会话执行。
+
+离线host-preflight通过33份编译、12个私有namespace入口、4项原API检查；完整范围验证实际函数54项完整读取／截断／尾损检查通过；实际phase的Native-only／Pose-only／错误marker负例、固定范围覆盖负例、双手旋转恢复等11项及原watch finally6项通过。有界Sol／Medium仅审这次Python胶水，无其他具体finding。最终pins `2bd3cef6…9ad4`、coordinator `9e7e8937…74aa`，准确路径、运行步骤和边界见EC/JOINT-README.md，已交身体会话唯一运行。此处不新增联合游戏、可见枪体跟随、权威射线、散布／后坐力或头显验收，不据胶水交付增加成熟度。
+
+交付后离线复核修正一个具体误拒风险：原左右控制器z=-.4可能不可达，先恢复再检查自由双手提交会将正常交还判失败。EC revision2仅调整停止顺序：在当前可达姿态HandStop，等待真实cookie0状态后取计数基线，验证自由双手继续提交和held计数不增，再用原预留两条命令恢复手柄并close／normal stop。实际finally AST的正常路径、诊断读取失败仍Stop／restore／close、未知导出不重放／不close三例通过。最终pins更新为 `71c4fdf0…0233b`、coordinator `ce4e0091…f4773`，先前seal／源／结果原样留存；总输入／安全门／Native均不变，修正前后均未启动EC游戏。
+
+同时更新历史瞄准链文档，区分EB真实R2闭环与尚缺的逐发数值链：主握Response只是腕部标定，不能直接补齐完整枪口Pose、逐发Grip或射击写入权限。后续从现有CallFunction所有者关联实际Lancer原调用的基础瞄准／误差后方向与起点／终点／碰撞，不额外调用随机瞄准函数。
+
+## 2026-10-26 — 主握附加query的PG入口／映射／父注册接线完成，待Native联调
+
+身体会话已正式冻结weapon_main_mount_provider.h SHA `3f20163b…2f2cc`，Root按同字节复制；实际x64布局RigFrame1824、Body112、Request1968（body偏1856）、Response504、Registration48。附加注册复用同一Hand parent cookie／Native incarnation／context和已pin模块，只有新的Native attach导出，不增加PG导出或独立detach。Body独自负责Native broker、C0消费和写入，V1及原51／52增量不改。首轮R2 mode OFF。四份b58524c主握发送源保持原hash。
+
+新增默认OFF的GEARS_PLAYGROUND_NATIVE_MAIN_MOUNT_PROVIDER_TRIAL，要求既有Native装备／主握准备。HandStart在创建parent前验证新Native导出属于该已持有模块；parent和既有CF attach成功后才做child attach，精确校验回执cookie／incarnation并在返回前再次确认registration_alive。限定协议测试发现中途失联窗口后已补该末尾检查；任何partial attach错误都走原begin_disconnect，保留父注册等正常Stop，而非提前卸载。
+
+PG回调所有入口计入原callbacks，使用SEH __finally关闭计数、清空持久工作区和释放原子重入标志。新增Wire Request／Response／Candidate／Diagnostic均在独占持久工作区；只允许一个已认领调用使用，重入返回非法status交Native fault路径，不清掉外层数据。legacy parser只有原flag存在时才临时禁用并在finally恢复，不编入第二writer。回调不做Engine调用、日志、Native重入、等待或GT LifecycleScope。既有有界Rig／Hand／metadata局部快照按双方确认继续保留，不扩改Reader或冻结四源。
+
+纯mapper把Native已认证的保留Scene／body数据映射现有BodyContext，调用真实prepare_retained，再逐字段返回实际Candidate。独立检查query id／hand lifecycle／parent／Scene／完整对象／hold generation／geometry／scale／units／basis／revision与固定Lancer calibration。进入与返回都用原始Rig／stereo／controller sync时戳检查50ms，不靠重新读取或helper时间刷新来源；失败外部Response为空且仅保留size/version，ready只返回标定数据，不返回writer lease、wrist世界目标、aim或support权限。Native仍须按它的parent revision／operation／revocation及40/50ms窗口做返回端复核。
+
+299项纯字段映射／时效与owned fixture检查、289项实际provider.inl回调／attach协议检查通过，后者覆盖wrong context／GT／disabled／domain、soft/hard revoke、真实重入、SEH finally恢复和父回执错误，不冒充真实asset read或Native admission。原装备受影响检查及完整PG严格编译通过，760份源码／vendor稳定，PG `a4657e0d…44472`。第一次完整PG因parser命名空间仅在旧flag中存在而失败，已按原ifdef修正并保留失败源／回执；协议fixture单独打开parser stub分支，不启用实际旧writer。关闭新provider guard后，两处接入文件与0b0aaf6旧路径文本机械完全一致，非二进制等价或Game声明。
+
+Astra／High仅审阅本次新callback／映射／父注册危险边界，无具体P1/P2；依赖已确认的Native锁外调用／module pin／统一inflight/drain合同，未重审旧R2或把CPU测试视为C0验收。Native／XR未由Root重建，实际query调用、枪体／手腕跟随、联调清理和头显仍待。源码及验证在Root分支，ignored回执为analysis/lancer-native-r2-20261026dw/pg-build/attempt-1792960173173668200/与provider-off-equivalence.json。无默认替换、发布或额外身体writer。
+
+## 2026-10-26 — EB通过严格停止交还，Lancer扳机短闭环收口并交接主握query
+
+EB使用a09767e／PG `a3087ecb…24707`及收紧后的协调器，实际首次R2按下、原版key down、主动松开key up、356→347和两个新347／up通过；第二owned press后仍owned1，随后明确在mode2／source9执行status4、game_r2=1→owned0，没有running source-loss提前替代。runtime-review.complete／behavior_complete和独立r2-behavior-audit均true，errors为空，无pending export。本短动作内装备input_gap和R2来源拒绝日志均0；这不是全程或物理头显稳定性证明，仍原版瞄准，未测逐发数／命中／枪管射线／伤害。
+
+EB记录了copy与后续读取分段：示例两份后段有效输入的input_elapsed分别6.5542／6.5237ms，含copy；不能用game_elapsed约3ms直接对比旧版约6ms来宣称一半总耗时。额外的第二press action仍17.889ms，后续优化不得把它忽略。当前只确认这次原版输入闭环及严格停止语义通过，不作FPS收益结论。
+
+EB控制器恢复、HandStop／quiescent／bridge close、88项独立恢复、Native／entry、XR0／PG0、原十文件、音频10/10、准确自有PID和fresh CIM无Game／XR全部通过，已交还运行窗口。证据为ignored analysis/equipment-native-rgrip-runtime-20261026eb/runtime-review.json、runtime-final.json、r2-behavior-audit.json；pins `bf6d0583…9db46`，原DW／DY失败、EA假绿判读及DX既有通过均保留，没有重跑旧成功用例。
+
+当前下一主交付转为实际Lancer主握。身体会话已给出B18连续双腕和B19限定ownership fallthrough／reacquire通过范围，正在实现同parent cookie／ModulePin／统一inflight／drain的可选附加query注册；正式合同确认后Root仅接PG端，Body唯一负责Native消费／写入。主握发送端四源仍b58524c未改，未导出prepare_retained不能直接调用；query首轮R2 mode OFF，失败退stock mount，V1 Frame和51／52原增量保持。最新Client双输出仅PG C++访问器，不改变query lease／bridge admission，旧单输出行为经回归保持。无默认替换／新发布／头显验收。
+
+## 2026-10-26 — 独立判读纠正EA假绿，Client同次返回真实Frame／Game
+
+EA实际首次按下／主动松开及356→347通过，第二press也得到owned；但frame350在running mode1／source_status4先交还，后面的stopping mode2只有accepted、game_r2=0。协调器原complete／behavior_complete虽为true，未证明“停止时交还仍自有的射击输入”，不能作为完整目标通过。原始review／final不改，新增独立r2-behavior-audit.json：以实际日志的第二owned press为界，要求后续mode2／source9／status4／game_r2=1→owned0，且中间没有running hand-back。直接复用DW／DX／DY／EA四局原件哈希，独立目标判定依次false／true／false／false；DX真实停止交还保留，不重跑。四局清理均通过。
+
+EA的入口去重复观察后仍有装备前序sync年龄111ms和R2前序100.3851ms，后一项触发正确安全释放。不能把game_elapsed的局部下降推为整体性能或稳定性修复。EA正常88项独立恢复、Native／entry、XR0／PG0、原十文件、音频10/10、准确PID及fresh CIM无Game／XR后交还窗口；故障和语义缺口均保留。
+
+下一窄增量为PG C++ HandClient.copy_frame_on_gt双输出重载，返回同一成功调用的局部current Game，而非committed_game缓存。旧单输出入口委托同一实现；两个输出先清空，所有原GT／gate／key／epoch／publication／前后freshness／same_game检查均保持，全部成功后才一起输出。没有类字段、Registration／Frame、Native ABI或writer改变。R2 tick立即同栈使用这份Frame＋Game，期间只有controller admission／clock等无引擎步骤；使用点检查armed以拒worker soft invalidation，registration_alive不能替代。typed R2两次读取／对象结构复核和最终独立observe／same_game仍在；source已确认后的元数据失败保持unknown分类，不转loss-fallback重试。最终观察成功后再检查armed。execute／ammo／安全release均不接这份seed，继续原独立元数据路径。
+
+复用原Client fixture覆盖双输出的全部Frame-copy失效／过期／重入／disconnect竞争，两输出失败清空、成功一次observe、旧单输出一次observe，以及copy后soft invalidation仍保registration但armed=false。15既有＋30 Frame-copy＋17 source-current＋8 Game-output案例通过，原84 cases／900项Runtime、69 cases／733项Input及420项R2检查、完整PG严格编译通过；755源码／vendor稳定。PG `a3087ecb…24707`，Client头SHA `d41e2e98…db996`。新增copy_elapsed_ns／input_elapsed_ns用于明确包含copy的计时范围，不能只比较被缩小的game_elapsed。设计问题仅由已有Astra限定回答，没有额外全量审计或新测试体系。
+
+EB沿用原host／Native29／XR／sim／reader和原动作，协调器已收紧上述owned stopping语义；实际函数用DX正例、EA反例及去掉停止行的DX反例通过，全部清理和来源门不变。候选pins `bf6d0583…9db46`，实跑待窗口。身体端B18连续双腕与B19限定交还／重新跟踪已给出通过范围，双方开始独立主握query交接：Root发送端仍b58524c原四文件未改，Native端由身体会话唯一负责；已给精确路径／哈希及DX比较PG，强调现有prepare_retained未导出、同cookie admission／inflight／drain尚需正式合同，module pin不构成PG调用准入。无默认替换／发布／头显验收。
+
+## 2026-10-26 — DY否定单纯消费顺序交换，撤回该候选并消除重复鲜Game观察
+
+下节记录的调度尝试已实跑DY，行为失败，不作为完成的修复保留。首次R2 press成功后，下一Frame的前序sync年龄达到109.3368ms；保护正确执行原版release，物理模拟扳机仍down时正确不重放。仅356→355，主动松开步骤等不到对应owned release，第二press及持按停止未触达。装备gap减少不能补偿R2失效，整轮complete=false保留。DY的disable0、无pending、控制器恢复、HandStop／quiescent、88项独立恢复、Native／entry、XR0／PG0、原十文件、音频10/10及准确PID／fresh CIM正常；正常清理后释放窗口。证据为ignored analysis/equipment-native-rgrip-runtime-20261026dy/。
+
+已按实际DY构建manifest的逐文件hash保存六份候选源到analysis/lancer-native-r2-20261026dw/rejected-dy-source/，然后把Runtime／PG调度／backend／相关测试全部恢复e70174f。保留DX通过的原始先R2顺序；不把Astra静态无finding或CPU回归通过当作运行顺序验收。
+
+下一窄增量仅在weapon_lancer_r2_native.inl：原tick的current调用Client.source_current_on_gt，而它已调用完整fresh observe，随后read_game又观察before／after，扔掉第一份有效Game。改用同一Client.source_game_on_gt的真实输出作为before，保留原精确key／epoch／注册存活／前后源龄校验，typed R2两次读取、全对象／结构复核、最终独立observe和same_game比较仍在。source_current输出只在原来源证明确认后置true；后续typed元数据失败保持原unknown分类，不转成source-loss释放重试。null-source的独立安全交还路径不变，不缓存跨帧Game、不刷新Frame时间、不改100ms。另保留ammo_queried的有界同值诊断日志。
+
+首版严格PG及原受影响快速检查通过，755份源码／vendor稳定，PG `2739de07…be6ff`；Runtime／Input已恢复原用例，420项R2检查仍过。但Astra窄审查发现P2：若对所有read_game(source)都新增Frame freshness，tick见证后元数据耗时可使源过期，随后owned release会因这项新增条件被拒。DZ已准备但从未执行，保留原pins与二进制并标记DO-NOT-EXECUTE。
+
+修正为只有tick传source_current输出指针时才请求并复用真实来源见证；execute／ammo／装备交接所有旧调用均不传该指针，保持原XR-independent fresh observe路径，即使release收到先前的Frame也不新增source限制。Astra仅复核该分支与调用点，明确关闭P2，无新具体问题。最终完整PG及原受影响检查通过，PG `6aedb359…c8f83`。EA从已通过DX复用原host／协调器／全部动作和安全门，仅换精确PG；原Native29／XR／sim／reader均未变。当前仍待实跑，不将预期减少一次观察当作已测性能改善。共用身体／主握接口继续冻结，无默认替换或发布。
+
+## 2026-10-26 — Lancer原版R2短闭环通过，定位并调整抓握／射击消费顺序
+
+DX沿用DW的实际host／Native29sim／XR／simulator／reader，只选择PG `cb187cdf…6e18e`及诊断后新鲜UP观察门。实际首次扣下／独立原版key down／松开key up通过，原版总弹药356→348，两个新post-release读数均348／up；随后第二次DOWN得到owned press，保持物理模拟trigger down时Disable0，独立原版PC key已up。runtime-review.complete和behavior_complete均true，errors为空、无pending export。仍沿用原版瞄准，耗弹8不是逐发或命中数；主握／枪管权威射线／伤害／头显未验。
+
+DX控制器恢复、HandStop／quiescent／bridge close、88项独立恢复、Native／entry、XR0／PG0、原十文件、音频10/10及准确PID／新鲜CIM无Game／XR均通过，窗口已交还身体会话。证据为ignored analysis/equipment-native-rgrip-runtime-20261026dx/runtime-review.json与runtime-final.json，pins `291cda1b…79b5`。DW原失败及独立scope说明保留。新增R2代码与诊断阶段已提交e70174f，保持默认关闭。
+
+DX仍有两次装备previous_sync_stale。精确配对相同Frame／当前sync／前序sync后，R2消费时前序年龄91.3954／98.9844ms均合格，到后续装备输入消费已100.7385／106.8725ms，晚了9.3431／7.8881ms。记录到的R2游戏读取8.3–13.4ms、两次press约16.1／17.2ms、已记录的弹药查询约11ms；这些是稀疏状态变化样本，不是完整帧分析，第二次同值ammo查询在该版未输出耗时。不能把所有间隔或DW失败归结为ammo查询。配对与证据哈希保存于DX/timing-review.json。
+
+据此新增仅PG-local的同步调度点：稳定held的RGrip仍在Runtime内先采样，再调用R2消费者，随后复核原始Frame current并执行原库存／身份／附着／动作年龄检查。三参数Runtime::tick走原空消费者，不增加额外current；四参数只借用同栈时机，不授引擎／writer权限或保留Frame。装备在派发前早退时，event_hook必须补调R2一次，确保真正源丢失仍能交还owned press；已派发后任何早退均不重复。原切枪前yield保持。另补ammo_queried的有界日志，避免同值第二样本漏记耗时。
+
+新增真实Input＋Runtime顺序回归：相同90ms前序样本，旧顺序先做20ms其他工作会拒绝；先采样再同步工作可正常切换，但工作61ms使原Frame过期仍必须拒绝且不跨帧重放。覆盖consumer后current失效、suspend、重入、baseline顺序与派发前早退。原受影响测试与420项R2测试、完整PG严格编译通过，72 cases／764项Input检查，755份源码与vendor闭包稳定。Astra／High仅审阅该五文件调度增量，无具体P1／P2；未重审旧控制器或重跑Game。最终PG `f8ca11ee…e86a6`。DY原host／动作及所有安全门不变，已准备等待身体B18运行窗口；此处还不能声称调整后的实际连续输入稳定性通过。
+
+## 2026-10-26 — Lancer接入Native帧的原版R2，首次扣弹与松开通过
+
+新增默认关闭的PG私有Native Lancer R2消费者，直接使用当前注册的真实Hand Frame；旧Hammerburst bridge保留。仅支持已认证、实际右手附着且已握持的Lancer，经原版typed ButtonPress／ButtonRelease(Name R2)输入，不改枪口、瞄准、伤害、Native ABI或骨骼。切枪前必须交还自有按下；跟踪失效后不重放旧边沿。完整五对象身份不符或原版释放失败时保留未交还状态，不重置掩盖。私有控制沿用旧R2三个导出，生命周期与现有PG callback drain结合。
+
+有界Sol／Medium实现纯策略测试，Astra／High仅审查危险的输入所有权及退出增量。审查发现其他PlayerController和不适合处理输入的嵌套Tick原会被误记成源丢失，已改为在消费前跳过，并覆盖原owner仍能释放、真实新owner不能接管旧债。两个早期编译的纯测试失败来自fixture未递增release计数，原件保留；只修fixture，没有放宽生产输入结构。最终DW构建PG `6d8fea67…ea809`、真实wrapper与原ledger的380 checks及原受影响装备检查通过，755份源码和vendor闭包稳定，Native／XR未重建。
+
+DW购买版实际右肩Grip取出Lancer，首次R2按下／松开和独立原版bHoldingButton_R2读回通过；GetTotalAmmoInGun从356到347，松开后两份新样本均347且key up。耗弹9不是逐发计数，也未测命中或伤害。第二次DOWN落在输入重建基线时，未得到owned press；整轮complete=false保持，持按停止未触达。原回执scope沿用DU的认证／Snub文字且shots=0不是实测计数，已另写绑定原review／final哈希的behavior-scope-addendum.json，保留原件，不为文案重跑。首次耗弹仅证明原版瞄准下输入链路，不是枪管权威射线或6DoF握枪验收。
+
+DW的R2 disable0且无pending export、控制器恢复、HandStop／quiescent、Native／entry／88项独立恢复、XR0／PG0、原十文件和音频10/10通过，准确自有PID与新鲜CIM无Game／XR，窗口交还身体会话。ignored证据为analysis/equipment-native-rgrip-runtime-20261026dw/。runtime-final.accepted指恢复闭包通过，不能覆盖runtime-review.complete=false。
+
+针对第二次DOWN，先加真实wrapper回放：previous-sync gap后即使当前帧新鲜也必须丢弃旧DOWN，直至真实UP后新按下，source0／1均覆盖。再补有界source状态变化日志和game／action／ammo各阶段实际耗时；弹药查询后报告真正推进的新鲜UP，供测试协调器等待后发送第二DOWN，不改100ms限制、账本或引擎权限。420 checks与完整PG编译通过，PG `cb187cdf…6e18e`，源码闭包稳定。DX仅派生协调器的查询后观察门与修正scope，复用原host／Native／XR／sim／reader；原全预检和已审cleanup门复用，变化的真实lambda与cleanup门离线检查通过。DX实跑和耗时原因定位仍待运行窗口；当前不把查询耗时假设当根因。身体端唯一writer及主握发送端b58524c保持冻结，无默认替换／发布／tag。
+
+## 2026-10-26 — Lancer主握发送端绑定同一Scene，补齐身体来源适配
+
+继续Lancer实际主握接线。先核对B14实际Native37sim的冻结源，而非通用tools目录：Scene中的WeaponHand prepare／commit尝试先于Rig发布；稍后的C0保留那份Scene来源，body::plan之后才做hands::compose／Kernel.prepare。因此后继同步查询可使用那份Scene已成功commit的Root Frame，但Rig有效本身不能证明武器commit成功。C0／Kernel调用编号和publication_sequence不能代替hand.FrameKey.frame。五份实际冻结源、source37-before-build清单与37sim DLL哈希已独立核对，静态来源回执为ignored analysis/lancer-main-source-20261026dv/source-order-review.json；不将通用源码里未发现live Kernel的早期检查扩张到实际37，也不声明38时序已验。
+
+修正Root的weapon_rig_binding：原来匹配Native身份、全对象、原Stereo／GVC和reference，但漏了显式hand.key.frame==rig.scene_invocation。新增scene_mismatch拒绝，保留原状态枚举序号。旧DP真实ready记录两编号本来一致；新增回归特意保持所有输入样本／时间不变、只改Scene，确认仍拒绝，publication序号则可独立推进。测试fixture也修正为同一个Scene，而不让原错误的独立常量继续掩盖漏检。
+
+新增PG-local BodyContext／bind，要求Native键、publication／Scene／world／binding／reference五来源代数、完整Mesh、Rig单位、实际几何／scale、basis2／revision2均匹配，再从真实已commit Hand Frame复制BodyBinding.key；不构造C0 Frame、不写任何pose或授权。Native仍负责真实C0几何认证与使用前后有效性检查，known布尔值不是认证证明。prepare_retained入口先冻结调用者自有Rig／BodyContext，调用原Client.copy_frame_on_gt取得已提交帧，再绑定、执行原完整held／asset／attachment准备、最后复核来源时效。所有拒绝清空候选，不保留跨帧结果。
+
+该入口仍是PG本地函数，没有导出或新登记，不改变Native／Hand V1。当前调用要求已有PG callback lifetime lease；后继Native调用必须由身体唯一负责人纳入既有broker的准入、同cookie在途计数和退出／quiescent流程，不能仅靠模块pin调用。实际消费位置应在同C0 body plan之后、右手目标组成之前；51／52原动画增量继续由唯一writer保留，不能额外给标定加90°。本轮未修改身体会话源码或安装另一个writer。
+
+严格完整PG编译以及受影响的453项Rig绑定／328项Body来源绑定检查通过，752份源与vendor闭包稳定；后者使用合成数据，覆盖各来源／几何／基准拒绝、清空旧输出，以及绑定后进入现有Lancer候选策略，不等于实际Native几何或回调生命周期验收。一次有界Sol/Medium复核Root新增适配入口，无具体finding。PG c89070b7…174dd，回执为ignored analysis/lancer-main-source-20261026dv/pg-build/attempt-1792950587535241200/receipt.json。未重建Native／XR，旧非相关检查复用。
+
+DV购买版普通场景复用DP原host／Native29sim／XR，实际右肩Grip→Lancer held后取得4个不同publication的ready记录（原协调器门为4；DP上一局观察到5并不等于门槛为5）。四条均frame==scene，完整绑定仍由实际函数核验；源龄50.4155–66.1822ms、发布龄35.3064–50.6330ms，units100。complete／behavior_complete true、无错误，仅证明强化后的持枪准备姿态读取通过，不是37的C0写入测试。额外主握预览认证Lancer一次12.6ms，但body_binding／candidate始终0，prepare_retained尚未被Native调用。证据为ignored analysis/equipment-native-rgrip-runtime-20261026dv/runtime-review.json，pins470bcef8…72ba4。
+
+DV控制器恢复、HandStop／quiescent、88项独立恢复、Native／entry／XR exit0／PG shutdown0、原十文件保持、音频10/10与准确自有PID退出通过，随后新鲜CIM无Game／XR，窗口已交还身体会话。当前下一可玩检查点仍为唯一C0执行点上的Lancer跟手／瞄准／射击；Native查询准入和实际腕部覆盖修复仍待双方接通，不把本地适配／准备数据当作真实手腕或枪体运动。无新发布／tag或默认替换。
+
+## 2026-10-26 — 定位持枪后输入消费过晚，提前同tick读取Grip
+
+在995fd2f之后继续追踪DQ／DR的第二次Grip失败。旧记录只有sync／received，没有实际Input::next消费时刻，无法区分两处source_gap。新增纯诊断Gap细分、observed_ns与previous_observed_ns，在真实next拒绝位置最多记录16条，同时保留原始Frame.now、sync、received和sequence；没有替换时间公式或扩大100ms阈值。严格PG编译和原Runtime／实际Input→Runtime定向回归通过，复用原Native29sim／XR／host执行DS同两个动作。
+
+DS实际取得两条previous_sync_stale：当前样本源龄44.4435／45.8568ms，而前同步点到消费时刻为122.224／101.3919ms；消费相对该Frame.now延迟37.5691／43.2679ms。两条并非当前样本源龄超过100ms，也不是源次序倒退。DS第二次切枪仍失败，complete=false；这次取证把具体拒绝分支和实际消费时刻补齐，不把调查进展写成玩法完成。原日志与机械运算在ignored analysis/equipment-native-rgrip-runtime-20261026ds/runtime-input-gap-review.json。正常88项恢复、Native／entry／XR0／PG0、原十文件、音频12/12和随后新鲜CIM无Game／XR通过，运行窗口已正常释放。
+
+源级核对确认：baseline在库存前读取输入，已持枪路径却先做库存、身份、附件和多次完整observe，再读取同一Frame输入。修正只在稳定held且没有pending／future时，沿baseline附近的现有边界读取一次，并立即重核current；结果只存于本tick栈上。原位置使用同一结果和原cursor，不二次读取或重放。后续库存、持枪身份、附件、当前Frame源龄、event tuple／age和动作前检查全部保留；任何提前返回都丢弃局部事件，原pending／future路径顺序不变。不会用旧结果授权下一帧。
+
+新回归使用真实Input→Runtime→模型，模拟40ms当前源龄、50ms同步推进和28ms后续库存／附件耗时：旧Runtime在同一新增时序断言实际失败，新版通过；库存失败、附件失败和源过期都不切枪，恢复后无重放，新按压才执行。严格PG编译、原Runtime与69例733项输入检查通过；一次Sol/Medium仅复核该顺序差异，无具体finding。新PG为2eb6b5fc…a0bfa，750份源／vendor闭包稳定，未重建Native／XR或修改默认启动器。回执为ignored analysis/equipment-input-early-20261026dt/pg-build/attempt-1792949065954512600/receipt.json；旧Runtime的预期失败保存在同区old-runtime-check-1792949119833556300/receipt.json。
+
+DT真实同两动作运行中，没有记录到source_gap或baseline重建，Lancer认证1条／11.9059ms；第二次按压仍未切枪，complete=false保留。进一步核对发现私有脚本从DQ继承了错误裤兜坐标：vertical=-.72／depth=0，不是原DG已通过的-.55／.02。真实按压位置约比中心低17cm，距离约17.1cm，超过生产半径16cm。将DT记录的实际head／last-press grip送进实际编译的body_slot函数，在受控中立reference下返回none；原DG位置返回pistol。回执为ignored analysis/equipment-input-early-20261026dt/slot-check-1792949450884873600/receipt.json。这是独立测试输入错误，不能把先前所有失败都归因于消费延迟，不能扩大生产槽位来适配错误坐标。
+
+DT正常88项恢复、Native／entry／XR0／PG0、原十文件、音频12/12及随后新鲜CIM为空通过。DU仅恢复私有脚本的DG裤兜坐标，PG／Native／XR／两动作目标和所有时效守卫不变；预检首次因私有coordinator在artifacts／extraArtifacts中的两份旧hash未同步而拒绝，未启动游戏，保留失败后只更新这两个精确派生工件条目，完整预检通过。历史DQ／DR／DS／DT和各自封存输入不改写。
+
+DU随后真实完成两个检查点，complete／behavior_complete均true、两段episode、errors为空：frame470右肩slot3取得Lancer held及实际资产／唯一右手附件认证，耗时14.0466ms；frame505左裤兜slot0实际切到Snub且held，hold generation从1变2，资产准备返回unsupported_asset／unsupported_weapon（status3），未延续Lancer认证。所有记录candidate／body_binding仍0。输入顺序修正没有被用来放宽保护：本局仍记录3次previous_sync_stale，源龄分别29.3905／46.5215／24.7161ms，前同步点累计107.1264／113.1679／113.5128ms；恢复基线后完成了目标。不能将本局通过扩张成所有卡顿情况下输入均稳定，也不能单凭前后对照声称消费延迟是DQ／DR全部失败的唯一原因。
+
+DU正常停止完成控制器恢复、HandStop4→5／quiescent、88项独立恢复、Native／entry／XR exit0／PG shutdown0、原十文件保持、音频12/12和准确自有PID退出，随后新鲜CIM无Game／XR，窗口已交还。行为、拒绝实值和清理分别在ignored analysis/equipment-native-rgrip-runtime-20261026du/runtime-review.json、runtime-input-gap-review.json、runtime-final.json；pins为3eeb3b10…e5779。下一检查点回到共用C0上的Lancer实际主握／瞄准／射击；当前只完成输入消费修正与切枪后的资产认证失效验证，实际腕部、权威弹道及头显验收仍未完成，无新发布／tag／默认构建替换。
+
+## 2026-10-26 — Lancer实际资产与主握候选认证，诊断预览减负
+
+本轮保持单一目标：在正常GT装备消费者内，按当前真实持枪状态认证Lancer资产，为共用身体执行点准备固定Grip→Wrist标定。新增默认关闭的NativeEquipmentMainMountTrial，不新增Native登记／导出／共享ABI或骨骼／组件writer。现有source_current_on_gt提取为可返回当前GripGameState的source_game_on_gt，保留原GT、登记、精确FrameKey、身份、源龄与调用末尾检查；失败清空输出，不发布新Frame或产生写入权限。
+
+实际资产读取要求当前Weap_AssaultRifle、Instigator／Pawn链接、类型正确且可见的枪Mesh与COGAssaultRifle SkeletalMesh；重复核对属性选择、对象身份和链接后才返回。沿既有唯一b_MF_Weapon_R_End附件验证，附加预期枪Mesh一致性；准备函数在前后重新读取当前游戏状态、hold generation、资产和登记／时间。候选还必须收到身体唯一负责人认证的同帧几何、modelScale／units和marcus115-ref-eyes-face-forward-y-authored-v2基准，才能输出固定右腕Calibration。无身体绑定时输出为空，不假定默认Marcus／比例，不设置WeaponMount.valid，不改变51／52子链或后坐力。身体基准的面向修正不等于骨骼局部轴改变，不能再给固定腕标定叠加90°。
+
+DQ购买版普通场景实际完成右肩RGrip→Lancer held，取得6条真实资产与右手附件认证；准备耗时12.9455–14.9817ms。由于预览故意未提供身体绑定，6条均为body_unavailable／candidate=0。随后左裤兜RGrip→Snub未完成，complete=false与source_gap／baseline重建原记录保留。原输入最大间隔为100ms，既检查连续sync间隔，也检查当前时间距上次sync；不能只凭相邻sync约55–66ms排除拒绝。每帧重复深读确实增加负担，但尚未证明它是本次切枪失败的唯一原因。证据为ignored analysis/equipment-native-rgrip-runtime-20261026dq/runtime-review.json。
+
+DQ正常停止、控制器恢复、HandStop4→5／quiescent、88项独立恢复（含八完整Pose chunks）、Native／entry／XR exit0／PG shutdown0、原十文件保持及音频12/12恢复通过，随后新鲜CIM无Game／XR。原host退出瞬间的no_remaining_games=false保留，不改写历史。清理accepted=true仅限正常退出与恢复，不代表两个目标动作通过。
+
+减负改动只限制诊断tick：按登记／世界／五对象身份／持枪代数／动画与切换状态变化重置有限预算，间隔至少100ms、最多8次，取得认证或确定拒绝后停止。预算不保存或复用任何认证结果、几何、Calibration或pose；实际prepare每次仍执行完整新鲜校验。受影响严格PG编译、资产读取42例、候选118项、真实Client当前状态回归及既有相关Runtime／Hand／Shot／CF／protocol检查通过。最早候选测试因合成fixture漏填眼部单位四元数失败，已只修fixture并保留原失败；没有降低生产检查。最新私有PG为574160cc…bf0cc，750份编译源及vendor闭包稳定，Native／XR未重建。回执为ignored analysis/lancer-main-mount-20261026dq/pg-build/attempt-1792947521251763900/receipt.json。
+
+DR已按统筹建议完成同两个动作的对照，保持原输入时效、八命令上限和正常恢复。持有Lancer取得1条实际认证，单次15.0932ms，之后该持枪状态不再重复深读；candidate／body_binding均0。第二次切Snub仍在source_gap／baseline重建中超时，complete=false，没有取得实际Snub拒绝样本，因此旧Lancer认证不延续到手枪这一目标尚未通过。此对照不支持将原连续诊断负担当作唯一原因，也不证明它没有影响。证据为ignored analysis/equipment-native-rgrip-runtime-20261026dr/runtime-review.json，pins为7c207b3d…7461a。
+
+DR正常finalizer accepted=true，88项独立恢复、Native／entry／XR exit0／PG shutdown0、原十文件、音频12/12和准确自有PID退出通过，随后新鲜CIM无Game／XR，运行窗口已交还身体会话。下一步离线核对实际输入消费顺序与两个source_gap时间边界，必要时只补有限实值日志，不继续重复同一动作累计、不放宽100ms。共享身体／腕部执行仍由身体会话负责；其B14证据已把六根手臂骨的变化缩小到原Compose调用内部，尚未修复实际腕部偏差，因此本轮不能算自由双手、枪体跟手、射击或真机交付。完整需求和默认启动器不变，未发布／打tag。
+
+## 2026-10-25 — 普通装备消费者读通共用Rig，Lancer固定主握映射就绪
+
+本轮继续Lancer握持接线，没有扩展其他武器或新增writer。新增默认关闭的NativeEquipmentRigReader，将现有hand_rig_client从旧独立IK测试profile解耦，沿同一个已保留Native登记读取GearsVrReadRigTrackingFrameV1；旧两参数读取保留原编译期来源，新消费者显式使用认证Frame的来源。五处attach／seal／quiescent／detach生命周期条件复用原Admission与Native pin，停止／重连围栏保持。数据不跨帧缓存，不产生scope、武器／手部所有权或写入权限；新的开关没有启用旧骨骼／组件writer，V1布局和导出数量未改变。
+
+新绑定器同时要求Native手部Frame与Rig有效、原100ms内、同PID／GT／birth／Native started／cookie、world generation、五个完整对象身份、参考代数与姿态、原Stereo和完整GVC逐字段一致，并保留producer continuity要求。右Grip必需；对出现的左右Grip按实际final pre-HMD base／reference／units重算核验，不能把render-camera forward或HMD方向代作武器方向。读取前后仍核当前GT与原实际对象链接，记录时间再核绑定。世界Grip是准备后的跟踪坐标，不是实际已写手腕或枪矩阵。
+
+DP购买版普通场景在实际右肩Grip→held后取得5个不同publication的ready记录，原输入源龄43.4153–60.3024ms、发布龄35.9553–49.3073ms，units=100；协调器complete／behavior_complete均true、无错误，仅表示本轮“持枪时读取匹配准备姿态”目标通过。使用PG `b000d7ca…64a3c`、原Native29sim／XR／reader，仅私有RigTracking enabled=1数据发布，Body／IK／component writers仍全0。Root当前与Native29冻结RigFrame／HandV1头哈希一致。本轮不是Native35双手写入、持续枪体跟手、权威射击或头显验收，实际记录在ignored `analysis/equipment-native-rgrip-runtime-20261025dp/runtime-review.json`。
+
+已新增designer-authored `marcus115-lancer-held-grip-v1`／revision1固定映射，复用既有Marcus115几何签名、实际modelScale／units和同一掌心marker；held右腕改为UE F/R/U对齐，并相应换算Grip→Wrist位移，避免只转手腕而令掌心接触点移动。已查看既有LOD0侧面图，模型枪管沿mesh +Y、up +Z；原挂接约-90°gun-in-wrist方向关系仅用于数学核验，传给后继唯一writer的是Calibration，不是gun目标／额外组件旋转。该profile不证明物理校准、当前武器资产认证、枪口／权威弹道或support mount，不能仅凭它设置WeaponMount.valid。Native执行仍保留51／52原动画增量和子链。
+
+严格完整PG编译及受影响检查通过；新Rig绑定429项和固定Lancer映射752项仅为合成CPU数据检查。实际hand_rig_client源码另以Windows线程／事件测试旧wrapper、显式来源拒绝、重入、读取期间seal／拒绝detach、登记变化清空输出和drain后detach，19项通过；provider为合成，不能称为真实Native pin并发试验。一次有界源级复核未发现新生命周期缺口。构建回执为ignored `analysis/lancer-rig-consumer-20261025do/pg-build/attempt-1792941739671401900/receipt.json`，Windows测试为同目录`reader-check-1792941532680971100/receipt.json`；两个私有harness缺include／include顺序的首次编译失败也保留。
+
+DP控制器恢复、HandStop4→5／quiescent、88独立恢复（含八完整Pose chunks）、Native／entry／XR exit0／PG shutdown0、音频10恢复与原十文件保持通过，随后新鲜CIM无Game／XR，窗口已交还。0.4／幕后／observe-only／静音策略和默认启动器保持。本轮未发布／打tag。
+
+双方已对齐后继最小内容：main_hand_held、当前weapon身份、按资产固定Grip→Wrist Calibration、provider revision，沿现有登记／Frame关联，在同一C0 body plan后、Kernel.prepare前由身体唯一负责人消费；V1只读不动。共享小幅版本合同待身体会话freehands可用后落实，Root负责实际资产认证和发送适配。身体B10已正常清理，但其双腕baseline不可达、无hand commit，不算双手交付。Root下一可玩检查点仍是同一双手候选上的Lancer实际持枪／瞄准／射击；预计有效工作时间和累计窗口等待未知，完整最终范围保留。
+
+## 2026-10-25 — Lancer取得合格同帧骨／枪读数，确认末端与枪体方向存在偏移
+
+继续同一个Lancer交付。骨名查找现按认证GT帧分步准备，每步最多512项、扫描循环3ms预算；原身份／源时效检查在循环前后独立执行，整个准备步骤实测约5–6ms，不声称总用时被硬限制为3ms。只保留名字索引，不缓存姿态／Frame；名字表变化、源过龄与缓存名字内容变化会阻止旧进度用于调用。新增冷表60000项、耗时身份检查、过龄、表替换、非零NUL后填充及未终止字符串的直接回归。曾把身份检查计入扫描预算导致DK游标0，又曾误要求读取缓冲末格0而漏掉有效短名字导致DL超时；两处均修正，失败及源／编译回执保留。
+
+DM在第27573项集齐三名，原MatchRefBone35、GetBoneMatrix35、MatchRefBone51已实际成功；接着读取51矩阵前身份／时效守卫拒绝，记录时源龄约101.14ms。六次原getter加完整前后核验不能稳定放在同一100ms认证帧内，因此改为每帧一个骨与同帧Gun的独立比较，轮转52／35／51，不把不同帧骨矩阵拼成同一帧骨链，不取消任何守卫或延长源龄。
+
+DN候选PG `75730158…3fe82`在真实肩部Grip→held后得到4组合格读数：52两组、35与51各一组，独立分析原源龄92.18–99.49ms，矩阵有限／非退化且无反射，Absolute三项全0。两组End52与Gun世界原点完全相同，但End52_in_Gun方向均为约+90°yaw；Hand_R35_in_Gun原点约(-2.3226,0,0)，方向也约+90°yaw。该结果证明当前原版挂接含固定方向偏移，不能由组件相对Translation／Rotation为零推导世界矩阵相等，也不能将wrist矩阵直接用作gun矩阵。原始矩阵仅存ignored `analysis/equipment-native-rgrip-runtime-20261025dn/attachment-analysis.json`，没有将游戏派生矩阵加入公开源或包。
+
+DN第5组被聚合changed_before_record拒绝，记录时源龄约101.5975ms；旧日志没有细分首先失败的是哪个最终稳定性守卫，不能据此认定组件真实跳变。协调器complete=false、未达到各骨8组配额的结果保留，四组合格证据不等于整轮通过，更不等于控制器驱动枪体、射击／双眼／实体头显验收。之后源码仅细分最终拒绝原因，并在实际记录时间再验证Frame有效性；最后诊断PG `961f7cf2…68001`的严格完整编译和受影响检查通过，构建回执为ignored `analysis/lancer-native-attachment-20261025dh/pg-build/attempt-1792939680249726900/receipt.json`，此版本未启动Game／XR，须与DN实际游戏版本区分。当前不为了静止样本配额继续开局，下一次动态测试随共用双手候选进行。
+
+DK／DL／DM／DN均完成控制器原状态恢复、HandStop4→5／quiescent和正常退出；各自88独立恢复含八完整Pose chunks、Native／entry／XR exit0／PG shutdown0、原十文件与音频10项恢复通过，各轮随后新鲜CIM均无Game／XR，窗口已交还身体会话。四轮都复用Native29sim、XR和reader；0.4／幕后／observe-only／静音与存档保护保持，默认启动器未变。
+
+已把实际方向偏移及下一契约缺口交给身体会话：保留35→51→52自然子链及51／52原动画增量，由唯一共用writer执行；Root负责Lancer握持映射与发送端。现有WeaponHandParticipant仅含左手候选，尚不能传main_hand_held／武器专属右腕mount，不能假装已有可消费接口。当前下一可玩检查点为共用双手＋Lancer持枪瞄准／权威射击，等待身体会话最小双手及消费接点；预计有效工作时间与累计运行窗口等待时间均未知。完整最终需求保留。
+
+## 2026-10-25 — Lancer右手挂接只读采样，首失败保留
+
+本轮唯一目标是取得同一普通游戏GT帧中的Hand_R35、Weapon_R51、Weapon_R_End52与实际枪组件矩阵，核验原挂接链，供共用双手后续消费；没有新增骨骼／组件writer。私有AttachmentObserver默认关闭，沿现有NativeEquipment消费者执行，逐次核对Frame时效、实际对象身份、唯一挂接、反射参数契约和采样前后组件稳定性。只将既有只读MeshPoseProbe移出旧arena开关以便复用，未启用旧组件写入。当前PG候选a38b51e7…c43e对应ignored `analysis/lancer-native-attachment-20261025dh/pg-build/attempt-1792936667671300600/receipt.json`；完整PG翻译单元及受影响快速检查通过，Native29sim、XR和reader均复用原产物。
+
+DI先在真实Lancer读到AbsoluteTranslation／Rotation／Scale均0、组件相对位置／旋转为0，但预期GetBoneName并未反射暴露，因此未取得骨矩阵。随后改用项目已有的MatchRefBone（现有辅助函数名为bone_index，实际调用不是GetBoneIndex），保留完整类型及身份检查。DJ右肩Grip仍成功进入实际held，首个骨名冷查找尚未完成即触发原100ms源时效限制：记录observed_ns减sync_ns约101.7704ms，reason=bone_names_missing_or_source_expired。该结果只确定查找步骤被时效拒绝，不能断言三骨名不存在；没有合格矩阵，也没有动态跟随验收。DI、DJ的complete=false均保留，没有用正常清理accepted替代玩法成功。
+
+DJ控制器状态恢复、HandStop4→5／quiescent、bridge关闭、88项独立恢复（含八完整Pose chunks）、Native／entry／XR exit0／PG shutdown0、音频10项恢复及原十文件保持均通过；新鲜CIM无Game／XR。证据位于ignored `analysis/equipment-native-rgrip-runtime-20261025dj/runtime-review.json`、`runtime-final.json`和`attachment-analysis.json`。0.4、后台不激活／不调窗、静音测试策略保持，候选未替换默认启动器。
+
+已通过成果仍为6063d99的认证Native帧Grip消费者及03b510c记录的Lancer→Snub→同一Lancer往返。当前武器侧唯一技术阻碍为取得时效合格的三骨／枪组件关系；下一步将骨名准备移出整次冷扫描，再用当前认证帧核验，不延长源龄、不缓存骨矩阵。整体下一可玩检查点仍是共用双手持续更新后完成Lancer持枪与权威射击，身体会话尚未交付双手writer，预计有效工作时间未知。DJ核对清理后已释放运行窗口给身体会话B9；等待期间仅处理这一交付相关离线工作，累计等待时长尚未统计。
+
+## 2026-10-25 — 真实Grip完成手枪与Lancer库存往返
+
+DG沿同一个PG `41ef279a…879ee`、Native29sim、Source1 XR与DC reader，仅将目标改为当前场景的手枪槽0和右肩步枪槽3。右手到左裤兜的press1经正常生产消费者请求原版切换，实际当前武器由Weap_AssaultRifle变为Weap_COGPistol；右肩press2随后切回原来的同一个Weap_AssaultRifle实例。两次均经历switch_requested／pending到held，独立读取的PC／Pawn／Weapon／两个Mesh身份、当前武器链接、唯一b_MF_Weapon_R_End挂接及HiddenGame=false一致；Grip松开为0后仍完成持枪。协调器complete／behavior_complete均true、两条episode、无错误，未进入arena或通过模型提交导出来替代原版库存动作。
+
+这证明当前零售场景的“真实模拟器Grip→正确库存切换→实际挂接与软件握持”往返已经打通。它仍使用原版切枪过渡，尚不证明枪体持续6DoF、原切枪动画移除、自由双手、射击／后坐力／伤害、双眼图像或实体控制器验收；DF的不可用槽结果及其脚本假设失败仍保留。完整最终需求不缩减，下一步消费共用双手执行基础并完成Lancer握持和权威射击。
+
+自有控制器原状态已恢复，HandStop5／quiescent及bridge关闭通过；正常finalizer的88项独立恢复含八完整Pose chunks全部匹配，Native／entry／XR exit0／PG shutdown0／音频10恢复及原十文件hash保持，准确自有PID与随后新鲜CIM均为空。完整行为与清理证据分别保存在ignored `analysis/equipment-native-rgrip-runtime-20261025dg/runtime-review.json`和`runtime-final.json`。窗口已交还共用身体会话，当前候选没有替换默认启动器。
+
+## 2026-10-25 — 普通游戏取得认证手柄帧与库存，修正取枪消费者的旧通道依赖
+
+本轮唯一玩法目标是Grip导致正确库存切换并实际持枪。DD已在购买版普通场景取得真实Source1 GVC3／Stereo匹配，初始样本原源龄约1.47ms；HandStart及唯一Native CF登记成功，正常PostPlayerTick消费者取得当前Frame并完成实际库存读取。但输入始终baseline_waiting，三秒后停止，未发肩部Grip。首个确定失败为消费者依赖了另一个历史Root分支的EquipmentIntentBridge v6，而实际冻结Native29sim源码根本没有该producer／头；不是实际手柄样本无效，也不是已发生的库存切换失败。
+
+DC私有只读读取器已完成真正独立target／publisher／reader三进程回归，保留公共same-process guard、原六头、匹配循环和最终双源100ms检查；它在DD实际会话中已成功，后续复用。DD的原失败保留，正常停止取得HandStop5／quiescent、控制器恢复及bridge关闭；独立88项含八完整Pose chunks、Native／entry／XR exit0、PG shutdown0、音频10项及原十文件hash、准确PID退出通过，随后新鲜CIM无Game／XR。该清理accepted不代表取枪成功。
+
+生产修正改为在已有普通GT路径直接消费同一认证Native Frame，只路由右Grip四槽；使用当前head位置与稳定reference朝向、记录的last-press pose及明确校准，不创建新Native producer／hook／骨骼或相机writer。连续原始sync与序列夹住最新按压，created_ms从较早原sync保守折算，原始时间继续保留；失效或长间隔重建基线而不重放旧按压，空中按压不妨碍下一次肩部按压。Native注册前从已认证并pin住的模块旁capture.ini读取两项实际校准，缺失或非法即拒绝，不猜臂展；重连前检查PG callbacks已退，避免旧GT仍借用配置时worker重写。Sol复核关闭该生命周期缺口。
+
+实际新输入→Runtime→模型定向检查、原Runtime回归与Windows模块路径／UTF16配置检查通过。完整PG TU及相关hand／shot／CF／protocol检查随后通过，737份编译输入保持原hash；候选`GearsPlaygroundNativeEquipment.dll`为`41ef279a3c8b7d83a8a214879082bea0d11d3a4dccf26a286152b0556ad879ee`，13导出、Gate／Entry仍OFF。构建回执在ignored `analysis/equipment-native-rgrip-20261025cw/pg-build/attempt-1792931495360835400/receipt.json`。DF复用DD host／原Native29sim／XR／DC reader，仅换PG与独立场次，近期顺序同步到武器规格，完整最终需求保留。
+
+DF首次真正触达目标Grip：右肩press1经生产输入进入slot3 held，独立读回同一个实际Weap_AssaultRifle、当前Pawn／PC／两个Mesh、唯一b_MF_Weapon_R_End挂接及HiddenGame=false均通过。该枪原本已是当前武器，证明同槽建立握持，尚不能声称换另一把枪。第二次左肩press2被正确识别为slot2，生产返回empty_slot并沿原反馈路径完成；它表示该槽没有可用物品，现有记录尚未区分无对象与不可选的空弹武器。脚本原假定该槽会held而超时，原complete=false保留。不得为通过脚本而生成物品或跳过可用性检查。HandStop5／quiescent、控制器恢复、bridge关闭、88独立恢复及原十文件／音频通过，fresh CIM无Game／XR。下一DG沿用同一个PG／Native／XR／reader，改测左裤兜手枪0与右肩步枪3，核对实际不同武器切换；尚未替换默认启动器，也不代表枪体6DoF或头显通过。
+
+## 2026-10-25 — 正常游戏与XR启动通过，RGrip派发前的依赖路径修正
+
+DA实际使用购买版、Source1模拟输入、0.4缩放、置后窗口、tiny只观察及自有游戏静音，保持原启动窗口门，成功进入连续Native／XR并发布ready。Quiet六次真实只读查询均完成原线程退休、有效读取及关闭，无待处理调用；这补足此前受控OS seam测试的实际查询证据。单局启动通过不能说明cx原窗口失败的根因已修复，也不代表身体或武器交互通过。
+
+RGrip协调器随后在构造Bridge之前因子进程缺少已有pefile库的搜索路径而退出，未调用HandStart，也未发送Grip。原会话正常停止：Native cleanup、入口恢复、XR exit0、PG shutdown0／入口恢复、音频10项恢复和原配置／存档10份hash保持均通过；独立读取80项全匹配，原host结束瞬间的进程仍在退出记录保留，后续新鲜CIM确认准确自有PID及Game／XR为空。继承的finalizer还要求八段完整Pose代码证据，但本局Pose模块关闭时旧targets未包含它们，故`runtime-final.json`的accepted=false及空pose_checks保持；不能将80项结果写成完整八段验收或99项。
+
+新DB仅在私有host接入J盘现有pefile／ordlookup五文件，导入前核对hash、导入后核对精确module origin，不安装依赖；实际独立导入已通过且未构造Bridge。只读停止验证器在原stopped／进程／manifest守卫之后，将既有三个固定Pose入口加入原targets，沿用原八段完整范围及预期hash；没有启用Pose、改变允许的hook清单或降低finalizer条件。Sol有限只读审查未发现必须修复项，30份Python、12个fresh namespace、6个CLI help及3个retained CPU场景预检通过。DB pins为`c9fc59bf24877106c31174209471a5c4bd1baf16f3e37f23b850eeeab914708d`；当前候选仍独立于默认启动器。
+
+DB随后实际完成第二次Native／XR启动和Bridge attachment，但初始只读reader返回66，export_history／commands／episodes均为空，未HandStart／Grip。Root与Sol由实际冻结源码确认：66对应bridge open失败，而ControllerInputBridge消费者明确要求目标PID等于本进程；独立reader传入GamePID违反该调用合同，即使Stereo打开也会被拒。这是Root测试reader的确定接线错误，尚未执行时效或Source1匹配，不能归因于实际追踪生产失败。后续修正限制在私有跨进程只读observer，不改生产bridge进程guard。DB正常finalizer accepted=true严格限host／清理范围：88项独立读取全匹配，包含八段完整Pose chunks；Native／entry、XR exit0、PG shutdown0、音频10项恢复、原十文件hash及准确自有PID退出通过，随后新鲜CIM确认Game／XR为空。原DB行为结果complete=false与错误保留，完整功能进度仍不计取枪成功。
+
+## 2026-10-25 — 启动诊断阶段判断修正，保留两次未执行交互的实跑
+
+cx的prime原始记录进一步确认：同一真实交换链HWND在ResizeBuffers前被观察为iconic、client0×0，而desc／buffer仍1280×720；早先通过的掩体tree1父局也有该中间状态，因此不能把它直接定为cx失败原因。后续cz保持原可见／640×360／30秒门，仅加OwnPID窗口元数据和已有Quiet诊断导出的有限查询。查询模块使用原retained adapter，限定固定Quiet DLL／两个只读导出，原线程返回后才读回并释放自有输出；每次派发前重核原module path／base／SHA／executable image，未知不重发。九个受控OS seam场景覆盖有效非空记录、超时、exact exit、readback／decode／写入／回调保存失败；Astra关闭其1P1／1P2。它们不构成实际Quiet／窗口验收。
+
+cz实际启动时，新增诊断guard错误地要求birth receipt的injection_attempted一直为false，正常false→true推进被当成异常，watch在约两个窗口样本后提前取消。连续Native／XR、Quiet RPC、Grip及participant均未启动，不能用这局解释原启动窗口问题。已修的driver terminal／join记录路径确实执行并保存原失败。host结束瞬间game仍在正常退出，原no_remaining_games=false保留；Root另行新鲜CIM确认Game／XR／原owner已退出，并核prime取消／入口恢复、PG预留shutdown0／PE恢复、音频1项恢复、原配置存档10份hash一致、tiny monitor与watch已join。独立pre-session清理回执位于忽略的`analysis/equipment-native-rgrip-runtime-20261025cz/startup-closeout.json`，SHA256 `9ce4e6304a963e09122a0c8c8f995ed7f1d92c9b376da764ee61d535aaca4a08`；不覆写原host的瞬时false。
+
+新DA保留cx／cz和全部冻结输入，仅删除只读诊断对该可变阶段位的要求；kind、完整进程身份、精确image、当前PID／birth核对与后续incarnation检查保持，原启动Prompt点击仍仅限pre-injection。直接提取实际guard AST验证同身份false／true及三类坏身份共5例；Sol独立窄审无新遗漏。另将Root额外19工件纳入实际verify_pins强制校验，避免只验证40个host文件。全套新namespace预检通过30份Python、12个fresh child、6个help、实际CLI／INI及3个既有retained用例，未启动Game／XR。首次派生后的AST验证器误选外层if而停止，实际源已派生；保留失败并由独立验证器只重验同一字节，没有重拷贝或启动。DA pins为`cf91c76871aceeff0b269edaaccfbc1f59553b0a49223c04c2945f63f0fcb46a`；本条落盘时等待掩体Native30实跑正常收尾后协调下一窗口。
+
+## 2026-10-25 — RGrip实测在启动窗口门前停止，尚未执行交互
+
+为验证正常输入消费者，冻结独立cx host、实际13导出PG／42导出Native29sim、原Source1 XR及私有cy模拟器。cy只补既有文件命令的可选有限数值grip；完整DLL、588项实际parser／赋值检查和68项既有behind策略检查通过。Root逐项核25份cy源、365份实际compiler includes及每个delta的内存逆向恢复，原9abbeae4模拟器不变；另确认PG／29sim实际六份wire头仅CRLF表示差异，只读GVC3／Stereo helper使用六份真实headers编译，保留原publisher与source时间检查。host的27份Python、12个私有namespace、3个actual retained-adapter用例及实际CLI／INI／导出预检通过。Astra关闭协调器1P1／2P2后才执行，不把预检称为游戏动作成功。
+
+本机原默认游戏工作副本已不存在，选择与掩体近期实验相同、哈希仍为bdc6705d…8fa4的现存购买版Steam EXE；配置与存档使用新的私有实例。与掩体协调并确认Game／XR空闲后，执行cx一次后台启动：0.4、静音、置后、tiny-output只读、物理手柄后台输入关闭。原启动门在30秒内未找到可见且客户区至少640×360的游戏窗口。末次只读诊断有两个该PID的HWND：一个visible但client为0×0，一个hidden且未读取rect；尚无class／title，不能由此判定原因。
+
+实际Native只完成启动预留／prime，连续session尚未激活，XR未启动，PG仍为reservation-only；host与等待协调器均已terminal，未生成ready、未StartParticipant、未发送Grip或切枪。0.4每眼1440×1280仍只是启动计划，不是本次GPU尺寸证据。本次不能计入取枪、自由双手、游戏立体或头显验收，也不能归因于尚未运行的新装备路径或cy Grip代码。
+
+Root独立核定本次pre-session收尾：prime cancelled且entry_restore_verified、watchdog无pending；PG reservation shutdown0／PE restored；音频10项恢复无pending，原配置／存档10份hash一致，tiny monitor已join，新鲜CIM确认Game／XR及原owner均不存在。此范围的cleanup_verified为true，保留startup_passed=false／RGrip_accepted=false；未套用要求完整Native／XR会话的99项验收。所有失败及原冻结文件留在忽略的`analysis/equipment-native-rgrip-runtime-20261025cx/`，专门收尾为`startup-closeout.json`。下一步只读定位原启动窗口未就绪的原因，并补齐host在driver先结束时遗漏的watch终态记录；不放宽窗口门、不前置激活或调整用户窗口。
+
+## 2026-10-25 — 正常游戏RGrip库存消费者完成实现与离线验证
+
+新增默认关闭的`GEARS_PLAYGROUND_NATIVE_EQUIPMENT_TRIAL`，在原PlayerTick返回后处理Native既有GVE6身体槽位事件；不依赖测试场、旧switch/intent导出或预先提交的拿枪模型。每次以当前Native注册、进程出生、world generation、完整World／PC／Pawn／Mesh身份和原始XR输入时间绑定，成功建立cursor基线后才处理新抓握。重复press不重复切换或提示，最多保留一条原样future事件；同actor已发出的原版切枪在输入暂失时只继续观察，不取消、回滚或重发。
+
+不同槽位只调用一次原版`SetWeaponFromSlot`，其返回仅表示开始等待；五秒内还需观察目标完整身份、实际当前Weapon、原切换动画结束和真实挂接，才提交held。当前槽位也必须确认唯一可见Weapon.Mesh挂在当前Pawn.Mesh的`b_MF_Weapon_R_End`；HiddenGame通过严格typed Reader读取，读失败不能当作可见。请求槽位无枪／无可用弹药时沿用原empty cue。新增`copy_frame_on_gt`读取既有严格publication，以及仅复核原source的`source_current_on_gt`，后者不授予动作许可、不更新committed_game、不刷新追踪时间；它允许软件拿枪状态在本次提交后与旧publication暂时不同。私有held binding补Native incarnation／cookie／world generation，防止旧注册继续满足握枪判定；公开wire和client数据布局不改。
+
+库存原调用仍只发生在正常PG边界。新domain门在任何frame／inventory工作前排除CF／NoAuth栈和ActionGate递归；CMake拒绝与controlled IK或旧库存writer混用，并要求NativeEquipment+ActionGate配套实际Entry路由。初始化重置仅在client off且callbacks为零时执行，关闭重置在Native quiescence、停用PE hook和PG callbacks排空之后。纯诊断计数在排空后输出，区分无Frame、非本PC、域拒绝及inventory查询阶段，未新增引擎写入或后台轮询器。
+
+实际Runtime编排的严格MSVC测试为84 cases／685 checks；真实client读帧／source复核共60组通过。冻结734份项目源的完整PG候选及四个相关既有host、四种实际CallSubscriber协议模式通过，包含递归域拒绝断言。六组真实CMake组合检查与Gate+Entry完整PG构建通过；Sol只读复核关闭此前HiddenGame P1和两个配置／递归P2。最终补诊断后的完整构建及相关测试仍通过，候选`GearsPlaygroundNativeEquipment.dll` SHA256 `2617d3226b616dd392545dafcd28d11c75d4a22e9e78d6ca4cf633e228ed81a8`。证据位于忽略的`analysis/equipment-native-rgrip-20261025cw/`；此前缺snapshot include、命名／WX编译失败，以及protocol harness漏argv的失败均保留，未覆盖成通过。
+
+本记录只证明实现、离线编译与协议／逻辑检查。真实XR Grip到实际库存／挂接的实验正在另行准备，尚未执行；当前保留原版切换动画，stow明确返回unsupported并保留原握持，尚未达到用户要求的无切换动画取／收枪。持续自由双手、身体对齐、动画交还、全武器换弹／射击／伤害及头显体验仍未完成，完整目标继续active，默认冻结Native／XR和启动器均未替换。
+
+## 2026-10-25 — 校准卡实际模拟器合成、状态变化与正常退出
+
+与掩体Native28测试协调独立窗口后，使用未改字节的c84a0e7d候选和固定9abbeae4置后模拟器运行约98.5秒。此局只有自有Python显示fixture与XR41548，没有Game／Native／PG，不调用个人测量或保存。0.4参数产生每眼1440×1280的计划，日志明确这不是游戏GPU分配证据；实际唯一UI swapchain为768×256。全部8818帧有模拟器追踪，日志game_input_injected=false；CSV source0仅是常规XR来源编码，运行时明确simulation_not_physical_tracking=true，不能当物理测量。
+
+真实compositor截取英文等待、中文50%、绿色保存及停止显示心跳后回等待四种状态，MCP诊断log PID与实际child41548一致，FOCUSED、无errors／warnings。成功提交8817层UI，只有4次GPU上传；saved序号356取得对应exact成功xrEndFrame ack，游戏立体提交／scene copies均为0。正常stop_event后同句柄wait到exit0，无force；实际terminal EXITING路径未调用endSession，既有session_exit政策仍确认objects_destroyed／shutdown_completed。UI／session／instance按正常顺序清理，前后台焦点句柄前后相同，新鲜CIM确认Game／XR均为空后释放窗口；不把前后焦点快照当作全程Z-order观测。
+
+截图中卡片偏扁已按固定runtime源码和本次CSV FOV解释：quad-only D3D12按1920×348预览客户区创建画布，Fill不保持内容比例，每眼viewport960×348；tangent投影预测3:1卡片变为约8.7975:1，再按截图缩小到约202×23像素，与实图吻合。保留产品1.4×0.4667m尺寸，不反向补偿模拟器预览，也未修改模拟器设置／源码。该结论限定本次超宽Fill预览，物理头显比例与可读性仍待验收。
+
+实际日志、四份原样JPEG、显示harness、比例审查及收尾回执位于忽略的`analysis/armspan-hmd-ui-20261025cv/`，总审计`closeout-v1.json` SHA256 `8c47f79c8e6dc1e727ef333fbf1ab3aefa28dc20dd0f5f6d1ff4b281523283bb`。本组证明真实模拟器显示及生命周期，未证明完整首测流程、玩家臂展、游戏内双手／动画交还或全武器玩法。
+
+## 2026-10-25 — 武器分支接收完整C0身体内核
+
+在头显校准UI独立提交f5e2884后，接收掩体c1ed4bf的完整纯数组body planner／测试及16行CMake注册。唯一冲突为历史进度记录，保留双方内容并明确Native26c／27原实跑属于掩体工作树；未复制其capture.cpp或其他未提交Native接线。原头／脚目标、Root／脊柱／腿与输出新肩位的接口保持，不把尚未接入的身体输出称为实际跟手。当前范围仍为Marcus115、scale1、固定脚和yaw±60度；HMD眼位到头骨目标转换、走路换脚、完整掩体角度与实际writer均未完成。
+
+Root核对四份fixture、原始采样二进制／解析回执／本人先前骨名join的来源哈希，冻结本分支659份Native／common源码，使用当前实际共享headers与严格W4／WX配置编译FullBodyC0PlannerTest。确认CTest精确注册1项、实际执行9456 checks／0fail并生成20份115×32B候选；独立FK检查最大头／脚／段长残差分别为0.000254662／0.000570187／0.000314261原始单位，9456主要是逐骨检查，不是玩法场景数。最初harness把Windows反斜线路径与CTest JSON正斜线argv作字符串比较而停止，保留原回执；按实际路径归一核验后只运行已成功编译的同一exe，没有重编以覆盖失败。
+
+接收证据为忽略的`analysis/body-c0-receiver-20261025cu/`，最终`validation-1792916254856275600/receipt.json` SHA256 `82c09368bbd6c17eecf82b2d7ce32eb15280959ac634b8491471d5afcdff8bfa`。本次未启动Game／XR／IDA、重建Native DLL或启用骨写入；完整武器功能、身体校准与动画交还继续开发，默认冻结构建不变。
+
+## 2026-10-25 — 首次臂展校准接入头显双语说明与进度
+
+校准候选在Native激活前的独立XR子会话中显示双臂展开示意、两个Grip保持2秒的说明、长按进度及绿色保存结果，并沿用启动器中英文设置。CPU卡片采用内存GDI而非屏幕采集，中文缺字有明确英文回退；正常启动菜单／返回游戏／追踪丢失三种原静态卡仍走原颜色与一次上传路径。动态卡只在内容改变时上传，严格等待XR取得图像及GPU完成；非exact成功、会话失效或GPU超时不冒险释放／销毁不确定资源。补充正Acquire SESSION_LOSS_PENDING的持有状态处理，原冻结二进制不改。
+
+新增112B显示协议，以本次game／owner／publisher身份、随机token和单调序号绑定，只读消费者使用750毫秒UI期限；显示心跳不能推进测量或刷新追踪。长按未完成且实际采样停顿超过100毫秒时清空窗口。原子保存先于绿色卡片，只有对应卡片实际提交给成功xrEndFrame后才确认反馈，再保留至少0.6秒；失败保留已存记录并阻止本次Native激活。读者关闭、XR独立正常退出后才释放显示mapping／mutex。UI模式不创建WGC／Native画面接收器，独立计数，不冒充立体游戏证据。
+
+冻结250份XR／common源码，完整OpenXRPoseProbe候选编译通过；新增3项CTest全部通过，含221项实际IPC／进程寿命检查、246项像素检查及25组939项真实WARP上传读回／协议故障检查，另有6项原卡片／菜单／会话检查和2项probe自检。真实Python→独立C++读者的112B往返保持原packet字节，退出后命名对象消失；15组无效CLI在创建XR实例前拒绝并清理自有stop event。14份英中文无损预览已生成，Root目视核对英文说明、中文说明／99%／保存状态。启动器在Python3.14.4与便携运行时同版本的3.12.14各自整套284项无skip通过；首次测试因未接现有pefile依赖路径出现2项import错误的回执及SDK相对路径预检失败均保留，未放宽生产逻辑或安装依赖。
+
+证据统一位于忽略的`analysis/armspan-hmd-ui-20261025ct/`；XR完整构建为`xr-build/attempt-1792915291110463800/`，只读审计与像素／Python UI／跨进程回执独立保存。本组没有启动Game／XR session、替换默认Native／XR或发布版本；实际HMD显示、完整校准体验、自由双手写入及动画交还仍未验收。下一步接收掩体共用C0身体内核，保持完整武器需求与优先级。
+
+## 2026-10-25 — 保存臂展接到共用计划，修复重复帧测量重置
+
+原C++ArmspanCalibrator把同sequence重复观察与倒序一起清空并重开计数；游戏帧率高于输入采样率时可能测不完。独立提交cb32e45改为：同key且实际测量字段完全相同的重复样本不推进样本数／时间、不清窗口；倒序或同seq内容改变则清空并返回，失效与T-pose检查仍先执行。字段逐项比，无padding memcmp或整Frame栈副本。严格CL新增1616项及原断言通过；同新测试对冻结旧头在重复进度处失败的反例保留，Python11项亦通过。此修复属于武器分支原有legacy测量路径，掩体无需引入其body-slot模块。
+
+新增共用个人校准数据／参考尺寸／配置模块，把原schema1的两字段从单次启动读取接到连续只读owner。加载不再要求legacy controller observer必须开启，已请求的共用手部模块也能消费；requested预读取仍不启用Hook或授予owner。启动器已有校准文件不改格式，Native不保存文件，legacy/mailbox仅复制该次启动snapshot。真实Windows临时INI的75项检查通过，覆盖空值、部分字段、坏数值、consumer/stereo条件、截断、失败不变及自有文件删除；首次测试错误断言INI flush返回值的失败原件保留，生产reader未因此改动。
+
+从同源已核对canonical115参考父链求8/32肩根间距及两条8→10→11、32→34→35段长，仅乘一次model_scale／units。v1估计s=(保存span−参考肩宽−双mount偏移模之和)／四段原长和，保存四段绝对米长；mount偏移最大向外共线延伸是可能估短的authoring假设，不恢复真实grip朝向、肩宽或人体比例。纯模块175项、带真实RO3参考189项通过，与既有Native pure-buffer FK的最大尺寸差2.5176e−8m。未知模型、坏几何、单位、非有限值、溢出及别名不改输出，不夹比例或修改完整腕定位。
+
+连续owner跨Tick按记录、模型／units／scale、mount／估计版本及实际session／asset／mesh／world generation绑定缓存；每次把保存的绝对段长除以本次原始component→world段长，再传既有接口。目标腕距不进入派生或cache key，有记录时拒绝adaptive；没有记录仍保留原只读诊断默认1。当前实际owner仍只接纳model_scale=1、Marcus115；既有unit CTW和strict／near-rigid输入策略未放宽。CHOWNER1 Header／TickRecord／Plan／Failure定义不变，新诊断仅报告估计、四段目标长度与绑定／应用计数；仍不写Native输出数组或手骨。
+
+完整Native CR1已实际编译链接，DLL64929eeb…974ce，201项已注册相关CTest通过。继承25的cache漏了RO3 matrices/reference，首次未注册owner专门模式；Root在独立CS host build补齐三份fixture并强制核对测试名，再执行额外46项：全部19个连续owner模式、真实参考测试及新增可注册HandGoal用例均通过，未重编或覆盖已成功的Native DLL。新五模式覆盖多目标／原始段长变化下四段长度固定、缓存复用与变化重绑、默认值及错误保持。只新增测试证明实际uniform CTW1.1／1.2按既有strict早拒，没有把Root最初混淆similarity与control::rigid的静态判断误记为生产修复。
+
+证据在忽略的 `analysis/hand-personal-calibration-20261025cq/`、`hand-personal-native-build-20261025cr/` 与 `hand-personal-owner-host-20261025cs/`。主构建／CTest回执40c89597…9cc43，额外46项回执bc8b1045…3c8f0fb；独立接线窄审c558866c…144eba7未发现P1/P2。Root本轮没有启动Game／XR或替换默认二进制，Source1／host值不冒充玩家物理测量；首次HMD校准界面、实际跟手／身体对齐、骨写入、动画交还与头显验收继续推进，完整目标仍active。
+
+## 2026-10-25 — 共用固定个人段长接口与最新组合完整构建
+
+以独立三文件提交35a4497向共用LimbInput／LimbData增加upper_length_scale与lower_length_scale，默认均1，adapter每次显式传入已有LengthPolicy；control检查finite／positive，无效或数值溢出不改输出。preserve保持本次原始输入段长乘以固定比例，adaptive仍可按原规则伸长／重分配；调用者必须绑定正确模型与保存的校准，并使用原始基线，不能把改过的结果继续当作原长。未从腕距、眼骨或IPD推比例，未改头手／世界单位，也未加入live LocalScale写入。
+
+独立严格CL检查为Adapter9组820项及Control24 cases／417项通过，包含非均匀1.25／0.9、三个目标距离下固定1.5、复用工作区恢复默认、非法值／溢出不改输出及旧回归。Core／grip／个人比例仍明确为synthetic，矩阵使用原RO3样本。Astra限定审未发现P1／P2，报告395a5829…3f65。private LimbInput／LimbData及嵌入Workspace的C++布局确实变大，须同步重编消费者；公开Frame／ReadRequest／Core头未改，不能将私有C++布局称为ABI不变。
+
+随后在武器实际工作树上冻结完整组合：掩体fa283ca（f5矩阵策略、连续只读owner、post-weight只读观察）加武器输入／唯一wrapper及新段长接口。完整capture.cpp TU编译、链接通过，私有Native为ec9b5b75…ee628e；727份C/C++／ASM／CMake输入与当前源码相同，原42导出一致。198项相关CTest通过；继承的25 cache未提供caller fixture，另构建实际ContinuousHandOwnerTest并使用原pin样本／argv执行14个模式，全部通过，已成功Native DLL字节未变。没有把这14次直接执行改称CTest，也没有重新执行已通过组来覆盖缺少fixture的注册范围。
+
+完整组合审计为忽略的 `analysis/hand-shared-native-build-20261025cp/closeout-v1.json`，60dbe936…b1d8d；主构建／CTest回执10aedf9a…24699，14模式回执7d8d3f7a…e9471e。独立接口交付 `analysis/hand-fixed-length-calibration-20261025co/handoff-v1.json` 为925ef815…57ea8，已交掩体会话按单一版本接收。Root没有启动Game／XR或替换默认二进制；旧24b／25冻结源与旧2bc实跑结果保留。玩家首次臂展采集到此接口的连接、身体／眼位对齐、真实连续手骨跟随、动画交还与头显验收仍未完成，完整武器目标继续active。
+
+## 2026-10-25 — 接收连续只读手部 owner 与 null 身份复核修复
+
+在f5基础合流cf0383d之后接收掩体独立提交ac03bd4，11份原生源和两份文档同时保留，未使用其两个未跟踪旧C3文件。此路径不依赖Pose事件，在真实outer Tick锁存一次Core并让四个原生手控节点复用；cap-OFF路径保留实际no-op语义。它仍是只读计划，不发布正式手骨姿态，也不提供writer或physics fence许可。
+
+Root独立核对13份固定交付文件及11份源的真实commit表示，按Native24b实际ABI重新解析原始132944B sidecar，与原报告完全相同：411 Tick、411次getter、394次完整四计划，reject计数45不是失败Tick数；末32条环形记录全部complete／failure0，QPC起止有效。Root接收回执 `analysis/hand-continuous-receiver-20261025cn/attempt-1792905481414545600/receipt.json` 为2db36ef7…1dc04。owner原96项恢复／XR0／audio10／原十文件通过；Root本轮未启动新Game／XR，仍区分接收核验与亲自执行生命周期。
+
+该实跑明确启用了adaptive数学诊断，部署24b保留旧2bc输入算法；当前合流源使用f5显式矩阵策略，二者未混记成同一已测DLL。未验收正常臂长、身体／眼位对齐、独立手部运动、实际骨写入或头显。新组合将以独立完整TU构建继续核对。
+
+另用独立最小提交ab2ec38修复双方旧Python共有的null Controller.Pawn末次身份检查：绕过本次assembly hint缓存，真正fresh_read controller／field。合法typed-null仍按原政策允许启动重试；reuse/coalesce四组合下controller／field／offset变更均硬拒绝。31项限定测试及前述929项完整Native Python通过；只改该一行生产逻辑和两份回归，不改start_capture分类、renderer、Scale或手骨权限。相应证据在cm/sol及cm最终Python回执，供掩体和最新默认源独立接收。
+
+## 2026-10-25 — 共用手部基础实际合流与完整 Native 编译
+
+在独立 `codex/weapon-6dof` 整合掩体稳定提交f5da0d1，保留双方历史与功能，未切换或写入掩体／J工作树。10处冲突分别合并：Native Runtime／Core／HandGoal与武器controller mailbox／intent／equipment共存；CallFunction仍只有唯一wrapper／original，武器原只读观察体迁至独立include；停止、owned和exports均保留。L3同票据回中后的最终reference才进入Core快照，避免带旧reference epoch发布。构建／staging清单及两套Python测试同时保留。
+
+已冻结实际合流源并编译、链接完整capture.cpp TU，私有DLL为6cdd51c2…211153；核对实际568项compiler dependencies，当前718项C/C++／ASM／CMake输入与冻结源一致，原Cover导出全部保留，共42项。185项相关CTest通过，覆盖手部／Rig、消息连续性、UI调用、SEH及停止等实际host路径；18种消息及嵌套类型的197字段布局逐项一致，Core仍1832B，公开Rig仍1824B／Read40B。内部StereoGate仅增加两个observer指针；这不是公开wire ABI。
+
+Python Native组929项（12项按既有条件跳过）、启动器264项、XR6项最终均无失败；该完整工作区检查包含下一条独立提交的null guard修复。旧测试startup返回值补齐真实stdout／stderr形状，并mock原本遗漏的进程枚举，避免测试查询用户实际游戏。首次CTest清单缺少尚未构建exe的command、Python式正则不受CTest支持、缺NumPy环境、过宽audit拦截只读CIM及旧mock失败全部保留；未重编已成功的Native DLL来覆盖这些后续harness失败。
+
+交付审计为忽略的 `analysis/hand-shared-native-merge-20261025cm/build-closeout-v1.json`，542b627e…89341；185项CTest回执99788075…9c4f，最终Native Python回执a86e29fc…b4b94c，Astra／Sol落源与布局记录同目录保留。本组确认实际共享源码可一起构建及host合同，未启动Game／XR、替换J默认二进制或发布版本；未验收手骨写入、实际动画交还、0.7伤害整链或头显。下一份连续只读owner接线按掩体独立提交继续接收。
+
+## 2026-10-25 — 第一人称实际目标、身体基准与显式矩阵策略
+
+继续按用户要求先完成双方共用的自由双手。Root对同一 Native23b模拟器DLL和同一XR、固定头／手原始Pose的两局购买版数据独立重放：普通视角实际policy为0，第一人称局为1；两局分属不同进程／时刻，不把它们冒充同一骨姿态。第一人称的Core.world_head到C1 head55由约1.744m缩至0.269m，但实际左腕目标距肩61.900原始单位，仍大于约46.995的原版臂长，preserve求解拒绝且输出未改。右臂原矩阵先被严格规则拒绝；其有限位置计算的目标距离85.687单位只作诊断，未记为合法输入或成功求解。
+
+对全部115骨参考签名、原始CCTRL与C1重新核对，Limb肩原点经component-to-world变换与对应C1肩点一致；未发现一侧误用局部／世界空间。第一人称实际两眼骨间距约5.35427单位，eye midpoint与head55相差约9.845单位，当前world_head到眼骨中点仍有约18.152单位偏差。肩线相对实际base right约转过−42.866°，不能假设相机横轴就是身体肩轴。以上米制数值仅沿用原u100；骨pivot不是脸部表面、玩家身高或标定依据，未根据模型比例改头手／IPD单位。
+
+离线重放工具与证据在忽略的 `analysis/hand-native-core-input-20261025cj/`。FP2原样重放回执b60a09e7…fa63e，相同DLL双局比较及身体尺寸见 `dimensions-v1/`；最终眼骨交付eb042cef…a4a56。原始Core、控制矩阵、参考骨与前后hash保留，缺失阶段继续缺失。仅把所有腕目标平移到head55的反事实试算也明确分开：左侧几何可达、右侧仍不可达，没有应用到游戏或当作定位修复。
+
+接收掩体稳定提交f5da0d1的共用 `OriginalMatrixPolicy`：默认仍strict_unit；显式bounded_near_rigid仅允许原Limb输入3×3的有限正行列式、严格仿射和限定Gram误差，component-to-world、输出及Single专用规则不放宽。该工程容差也会接纳足够小的真实缩放／剪切，不能宣称只处理浮点舍入或已证明独立LocalScale语义；没有开启实际writer或默认opt-in。
+
+Root以精确17份源接收编译，适配器8组626项通过，回执d3038c09…bef3de。随后把未改的真实FP2控制器腕目标分别交给两种策略：左侧unreachable→unreachable，右侧invalid_matrix→unreachable；四次失败均保持输出原字节，无adaptive调用。回执为 `analysis/hand-matrix-policy-adapter-20261025cl/actual-fp2-1792903324632193800/receipt.json`，25527283…b834df。此结果将原矩阵接纳与身体／臂展问题分开，不能算自由手、连续骨写入、动画交还或头显验收。
+
+## 武器 6DoF 分支记录
+
+本文件记录 `codex/weapon-6dof` 的后续工作。已发布的 0.0.3、既有分支历史和冻结产物继续保留；早期武器记录见 [0.0.3 进度](../0.0.3/PROGRESS.md)。完整需求见 [武器 6DoF 交互设计](../../weapon-6dof-interaction-design-20261022.md)。这里的私有候选和自动测试不代表新版本发布或头显验收。
+
+### 2026-10-24 — 唯一开火调用入口的真实联调准备
+
+武器候选保持 `c41a65c` 的 PG subscriber（6157a180…5c69），与掩体会话交付的 Native9sim（e8109e81…5727）及 XR5sim（6e0f44c7…4839）进行一次私有互通验证。Native 独占 CallFunction，PG 只管理 ProcessEvent；保持正常 UI，不再使用关闭 UI 后并列安装第二个 CallFunction hook 的路径。原 hand v1 和补充调用 ABI 字节保持不变。此组合只用于模拟器联调，不覆盖最新默认启动器；今后正式集成须以用户指定的 support3 Native／menu-modal1 XR 冻结基线为起点，保留左眼独立历史、菜单修复和诊断功能。
+
+私有测试使用购买版、独立配置与存档，每边渲染比例 0.4，静音、窗口置后、tiny-output 只读，保持物理手柄后台输入关闭。一次真实原版 R2 开火前，由游戏线程对当前 Lancer 的实际槽位提交一次模型拿枪，再连接真实 Native hand／call 注册；不设置 single fixture、不直接调用伤害 getter，也不把模型提交当成身体 RGrip 或双手抓握。测试须分别证明 PG exact-cookie 排空、PG 的 PE 恢复且 Native 调用入口保持、Native 正常停止后的两个原始入口恢复、XR 退出、原音频与原配置／存档恢复。
+
+离线预检查已通过并固定实际工具来源。历史 AP 的 Cover 工具路径只作参考，实际运行使用武器工作树的 1221 项工具源码；派生平台固定 Source1、原始 flags、真实 XR runtime 名称／版本／模块路径和 8720 监听进程身份，未放宽正常头显路径。新增的 passive SupportJournal 单独固定来源，未改已冻结平台源。第一次预检查因历史 Cover 诊断 helper 已变化而拒绝，第二次发现缺失的 passive helper；原失败均保留。
+
+输入脚本采用私有 SafeBridge：提交前持有 request 与实际 Submit thread，原绝对期限覆盖反射、提交和完成等待。Submit 仍在执行时即使 GT 已写完成也不回收；仅已知拒绝码 1／2 可按未受理处理，未知线程退出保留不确定状态。超时只观察同一请求，不重发开火；补发释放以实际 dispatch 记录为准。静音由 root 的唯一 Guard 管理，启动器复用精确身份的 ready 凭据，避免两个 Guard 相互记录已静音状态。晚到的 owned game 和清理本身抛错均继续进入确切游戏／音频收尾。
+
+9 项人工输入边界检查和 45 项 schema2 日志规则检查通过；Astra 对原先四项收尾问题及最后两处修正完成限定源码复核。人工检查不等于跨 DLL、实际伤害、GPU 或头显结果。准备回执为 002d5573…ba556，私有 bridge 检查 4898bbae…ae66；证据位于忽略的 `analysis/weapon-call-runtime-1024bi*` 目录。本条落盘时尚未创建 BI 游戏实例或启动游戏／XR，实际结果须另行记录。
+
+真实副握 mount、全武器装填与黄色引导、自由手动画交还、投射物／延迟伤害、枪口弹道与准星、瞄准镜、体感电锯和投掷、默认合流及整局／Quest 验收仍未完成。完整武器 6DoF 目标继续进行。
+
+### 2026-10-24 — BI-r3 真实共存启动与清理，测试场顺序修正
+
+首次 BI 在创建游戏前因多传 `remeasure_armspan` 配置字段被拒绝；新的 BI-r2 在同阶段因隔离 Python 未显式提供既有 pefile 库路径被拒绝。两个已终止 worker、无 birth 的原始失败、各自一次性 marker 和私有配置保留，没有覆盖或因观测超时重启同一测试。BI-r3 去掉无关字段并仅向私有 wrapper／后代补充既有库路径，未安装依赖、改正常启动器或重建 Native／PG／XR。冷子进程导入检查通过后才启动。
+
+BI-r3 在购买版实际完成正常 UI、Source1 启动及 9025 次立体 projection 提交。实际 XR 名称、版本 281474976710683、runtime／operator 模块绝对路径及 IPv4／IPv6 的 8720 监听 PID 均与确切 owned XR 对上。请求比例为每边 0.4；启动游戏图像资源实测 1536×864。提交计数与尺寸不是画质、可见手部、瞄准对齐或头显验收。
+
+功能试验未通过：测试脚本先自动进入战役，再调用 `PlaygroundTestEnter`，状态在 100 秒观察期内保持 `travel_requested`。源码明确仅在 `WarPC_Menu` 分支发送 ClientTravel；该顺序无法进入测试地图。没有执行 hand／call 注册、观察器或 R2，Native 的 register／attach／admitted 计数均为零，因此没有真实握持或 0.7 倍伤害结果，也没有将其解释成 Native 卡死或已定位的渲染缺陷。
+
+PG Shutdown0，PG 停止后 PE 原64字节恢复；Native 正常停止后独立读取 CF 原32字节及 PE 原64字节均匹配。Native cleanup／entry restoration 为真，XR exit0，hand callback／transaction／aux scope／sticky debt／pin／cookie／retained 均0。确切 owned game、launcher、XR、root 与音频 helper 已退出，9个音频会话恢复、pending0，原10份配置／存档 hash 不变。失败发生在 Native wrapper 基线采集前，不能用“与缺失基线比较为false”推断 wrapper 被改变，也未声称已证明该中间阶段。实际收据 d990fdc3…cf0d，31文件封存与限定汇总 e96184a4…91c9 位于忽略的 `analysis/weapon-call-runtime-1024bi-closeout/`；平台生命周期通过与功能失败分别记录。
+
+BI-r4 仅修私有脚本顺序：不自动进入战役；启动器已启用 PG、仍在 Native 激活前等待 level 时，从主菜单提交一次 TestEnter。随后仍须真实 player／camera 就绪才允许 Native 激活，实际 hand 注册／R2／排空流程保持。Native／PG／XR 产物及 SafeBridge 字节不变，新一次性准备 d84494e2…da7e 已通过。测试窗口已明确归还掩体，等待其完成当前 AQ 后再协调一局，不并发启动；本条不预先声明 BI-r4 运行通过。
+
+### 2026-10-24 — BI-r5 真实共享握持到 Lancer 返回值的有限验证
+
+BI-r4 实际从主菜单进入测试地图，11个拾取物／6个目标就绪，原版 Lancer 的 GiveTo／装备／左手 IK 查询完成。随后启动器可选 right-stick dead-zone 策略在该现场 binding 上以 `Not a right-stick look-axis command` 拒绝并正常停机；无 hand 注册／开火，清理和原10份文件校验通过。具体 binding 字符串未独立采集，不能仅据此认定由测试场改写或归因给当前正常默认版本。BI-r5 只在私有 manifest／config 中不请求这项无关的可选修改，策略 guard 和普通启动器不变。
+
+BI-r5 保持原 Native9sim、PG subscriber 与 XR5sim 产物，实际完成同槽位模型拿枪 status5、Native hand register accepted1／call attach accepted1，PG Start0 并获得 active／armed 状态258。随后只调用一次原版 R2 press 和匹配 release，总时长0.3048秒，原持键 Bool 依次为 true／false；没有直接调用 damage getter 或设置握持 fixture。真实 Native owner 的登记 cookie／incarnation 与四条 `native_shared_owner / fire_invocation / fixture_ignored=1` packet 一致，各自保留 owner frame、input sequence 和 world generation。
+
+四条合格 getter 返回均完成一次 compare-exchange 和读回：三条12→8.399999618530273（`41400000→41066666`），一条20→14（`41a00000→41600000`）。后面三条复用同一 Result 地址，但对应独立 getter／row／scope-call，重新取得原版值20、12、12，没有按旧写入值反复乘0.7。实际 schema2 raw／context／writer 审计通过，Astra 有界复核 c2970a86…2a07 未发现推翻此限定结论的矛盾。
+
+停止时 exact HandStop 首次返回 quiescent5，client off0，PG Shutdown0，PE 原64字节恢复且 Native CF detour 与基线相同；Native 停止后 CF 原32／PE 原64再次独立匹配。Native 已入场的37392个 begin／finish相等，最终 callback／transaction／aux scope／sticky debt／pin／cookie／retained 均0。Native cleanup／entry restoration 为真，XR exit0，确切 owned game／launcher／XR／root／音频 helper 已退出。实际 viewport1536×864符合每边0.4，物理后台输入为 original，无测试窗口遮挡；9个音频会话恢复、pending0，原10份配置／存档 hash 不变。测试窗口已明确归还掩体。
+
+本次21项限定交叉检查通过，33文件封存及汇总4c9a3edd…c23b位于忽略的 `analysis/weapon-call-runtime-1024bi-r5-closeout/`。原 r5 的 `passed=false` 保留，汇总单独记录“共享 owner 到同调用存储已验证”，不改成完整功能验收。`shot_entry_runtime_verified=0`、审计器 `runtime_binary_provenance_verified=false` 及所有早期失败保持；4个 getter 不构成独立证实的4发，也没有测量最终敌人 HP／TakeDamage、投射物或延迟伤害。
+
+拿枪来自真实游戏线程的模型提交，仍不是身体 RGrip；mount／副握几何尚未认证，不能外推 Two、手模型运动、动画交还、全武器或 Quest。该 writer 仍为 Lancer／私有 arena／显式 opt-in／64行的受控版本，未安装到默认启动器。下一步继续接投射物与多目标／延迟结算，并完成真实副握 mount、自由手动画交还及全武器交互；完整武器 6DoF 目标继续进行。
+
+### 2026-10-24 — 手部组件局部字段读取合并
+
+在默认关闭的 TAIL 候选中，同一次 mesh 读取的五个字段改为一次批量定位，读取后再核对 mesh class 和首个匹配的五个字段地址。每个值仍经过原类型、维度、大小、范围、单 bit mask 和 Vector／Rotator 布局检查；字段地址不跨本次非 VM 读取保存。前后身份检查、slot VM 次数、每个 setter 的最后准入、100 ms 原始源龄、0.1 原始单位／0.1° 精度要求及 rollback 路径保持。此项减少重复查找，尚无实际耗时收益或 AX 超限已解决的结论。
+
+新增实际 helper 的 CPU seam 检查56项通过，既有字段检查207项及连续组件 lease 检查1326项通过；完整 TAIL PG 以 MSVC `/W4 /WX /EHsc` 编译成功，私有 DLL 为 a799ecbf…2591。TAIL 关闭时实际 phase1 文件的预处理结果与本次基线相同（仅规范换行和空行；不是完整 TU／ABI 证明），记录 b3f10658…db2f。Astra 有界复核没有发现需修复的保证丢失；CPU fixture 的 resolver／typed reader／schema 使用桩，真实元数据行为的保持来自源码对照，不能据检查数量推断运行验证。
+
+证据位于忽略的 `analysis/hand-component-read-20261024bj/`、`analysis/hand-component-read-build-20261024bj/` 和 `analysis/hand-component-live-build-20261024bj/`。本阶段未运行游戏／XR、未改 Native／XR／默认启动器；掩体会话继续独占已经协调的实际测试窗口。后续自动测试继续使用每边0.4、静音、窗口置后和 tiny-output 只读的独立实例。拾取／近战的同步动画交还仍待独立 ActionGate 补充通道实现，现有 hand V1／call V1 保持不变。
+
+### 2026-10-24 — 共享握持 observe 的 pawn 字段局部合并
+
+单次 observe 中的 pawn 六字段改为同批解析：Controller／Mesh／Weapon／bDeleteMe／bSwitchingWeapons／bNoWeaponFiring。每次取值前核对对象、class、owner structure 和完整 Property，消费 binding 前重新匹配首个同名字段，再执行原有全部末次身份、结构、属性、链接、Bool 和 table 复读。保留派生层首个错误类型拒绝、Core 包、精确 ComponentProperty、维度／宽度、owner 与 pawn 双重 extent、链循环和容量限制；没有跨 prepare／commit／shot／其他 observe 缓存，没有更改注册、拿枪模型、100 ms 或写入授权。
+
+包含实际 helper、原 selector 和生产 metadata Reader 的人工内存检查36类通过，原 hand client 检查21类通过，证据 d37650e6…71df 位于忽略的 `analysis/weapon-hands-transport-20261024bj/cpu-attempt2/`。root 使用冻结 BI subscriber 的13项开启选项编译完整当前 PG，私有 DLL 为7e237915…4395；实际 subscriber／client／shot／writer 的6个离线集成场景通过，包括 nested fire、复用 Result 和原 SEH 传播。它们使用人工内存及本地 Native Host 模型，不是新的跨 DLL／游戏运行结果；旧 BI-r5 工件和实际证据保持原样，也没有预先认定耗时收益。
+
+完整构建位于忽略的 `analysis/weapon-hand-pawn-live-build-20261024bk/`。本次未运行游戏／XR、未安装默认产物。独立 ActionGate 的 draft wire／PG POD 语义已与 Native owner 对齐审查；未知 Scene／stereo 上下文的 NoAuth 通知需要独立无引擎撤销路径，不能复用有隐藏引擎调用的旧 before_action。独立 PE／bridge 前置许可和即时 cache 撤销仍待 Native provider 对齐；在覆盖和验证完成前，subscriber 与持续 STREAM／STOW 的组合继续禁止。
+
+### 2026-10-24 — 动作交还传输与无引擎撤权路径
+
+新增独立 `weapon_action_gate.h`（e8908d94…d361）及默认关闭的 PG Gate subscriber，保留原 hand V1／call V1 字节。Gate 在同一 hand／call 登记之后接入，使用相同 cookie／Native incarnation／context；128B journal 与 PG 本地事务覆盖 begin、原调用空档和 end，停止也须等待它们闭合。原 CallFunction hook／original／左手 owner 仍归 Native，PG 没有新增第二入口或仲裁器。目前 Gate 仅接原只读动画观察，尚未接引擎恢复，也没有实际 Native provider／跨 DLL 结果。
+
+独立 `inspect／revoke_no_engine` 为不能调用引擎的入口提供撤权：GT 检查先于非原子状态读取，按 hands／stow 分别处理相关动作、恢复回声、dirty 和 pending；撤销旧 Plan／binding／readiness，保留未决 journal，禁止通过旧 before_action 间接调用 GetStateName／finish／yield。stow 回声不能掩盖 hands 的义务，真实 PE／CallFunction 不消费 component 的 owned bridge self-token。旧非 phase1 hand Backend 缺少在途纯写入 fence；related 仍只有 bool，pending 自然状态豁免仍需引擎查询。这些限制继续保留。
+
+Gate 的14个离线场景通过，覆盖嵌套、原调用空档停止、错误身份／LIFO、正常容量耗尽、C++／SEH 故障、observer 无异常拒绝，以及清理计数不足后重试不得扣减其他新租约。源码复核发现并修正了 observer 的 void 返回无法证明 token 关闭、全局容量溢出误判、失败释放未记录 attempted 的问题；原动画观察仅新增本次 ledger 关闭的 bool 回执，旧 post／完成计数行为保留。Astra 对最终 subscriber 没有剩余 must-fix。
+
+纯撤权 helper 的五配置人工 host 检查共56类通过；root 完整 TAIL PG 及其17类检查通过，仅将一个与 PG 全局变量冲突的形参改名。Gate 开／关的完整 PG 均以 `/W4 /WX /EHsc` 编译通过，关闭时既有 subscriber 的6个离线集成场景通过；完整 STREAM／STOW 与 subscriber 组合仍被实际 CMake 配置拒绝。保留首轮夹具骨矩阵错误、runner 负退出码识别问题和严格编译的变量遮蔽失败，不用后续通过覆盖它们。
+
+限定汇总1c0b0dfc…c418及14场景记录d2bdea3e…0072e在忽略的 `analysis/weapon-action-gate-20261024bl/`；三个完整构建分别为 `analysis/weapon-action-gate-build-20261024bl/`、`analysis/weapon-action-gate-off-build-20261024bl/` 与 `analysis/weapon-action-handoff-full-build-20261024bl/`。最终 Gate 私有 DLL 为5e8b49cb…1a48。它们证明离线传输／撤权构件，不证明原动画接管或恢复、实际双手运动、Two、投射物伤害或头显验收。本阶段未运行游戏／XR、未改冻结 Native／XR 或默认启动器。
+
+Native owner 正在补显式 Scene／stereo-lock 跟踪和无需加锁的撤销 generation，并审独立 PE／owned-bridge 前置 boundary scope；GT 或普通 Scope.depth 不能代替该许可。持续 STREAM／STOW 的兼容开关继续关闭，直到前置恢复、同帧 cache 撤销与实际拾取／近战／收枪交还齐备。完整武器 6DoF 目标继续进行，后续实际测试仍使用购买版的独立0.4比例、静音、置后实例。
+
+### 2026-10-25 — 原恢复函数的结果回执与前置边界本地排空
+
+hands 原 before_action 实现移到独立文件，并增加 checked 回执；旧 void 入口保持。回执在旧 Action 析构及其可能的 finish／drain 结束后判定，记录实际 restore／yield 返回值，不能因字段恰好干净而把失败判为成功。机械逆变换确认原动作过滤、引擎调用及其顺序未改，母文件除原位 include 外相同。实际生产函数被直接包含的两配置 CPU 检查共62类／60次 checked 与 void 轨迹状态比较通过，覆盖晚期析构新出现 dirty／fault／cleanup_failed／relinquished。
+
+stow 同样保留旧 void 入口，新增 checked 与 pending 完成回执；取消分支仍仅调用一次原 yield_hands，Stop 不充当成功代理。已 Stop 但本次确实交还成功可以 clean；未关闭 pending、无效 slot、restore false 或残留 dirty／fault／visibility 不会假 clean。原 Hammerburst 自然 firing 状态边界保持独立 pending_state_exempt，不能折叠为“已取消 pending”。37类／74次原版、checked、void wrapper 的 host 轨迹与末态比较通过，机械替回后完整原文件相同。
+
+复制 Native owner 的前置 boundary 草案6dac28b3…6709到公共源码，保持它是未冻结、未启用的草案，hand／call／Gate V1 不变。默认关闭的 boundary client 只接导出预检查、同登记绑定及本地生命周期。单原子的 closing-bit＋count 在 worker 停止时先封门；即使 Native Open 没授 scope，已进入的 PG 调用也阻止 HandClient 清空 GT 状态和 FreeLibrary(Native)。Entry 地址／代际防复制及重连混用，清理 attempted 防重复扣减。8类本地 admission 检查和实际 PG stop 路径的 healthy／faulted 两种 fixture 通过：count0不抹掉 sticky fault；内部 GT 拒绝不会封门。原公开停止入口本已拒绝 GT，此处属于内部 helper 硬化。
+
+完整 checked-hands TAIL PG 和 boundary-lifetime PG 均以 `/W4 /WX /EHsc` 编译通过，分别为f7d42842…2aa与68cb312a…af43。后者尚无实际 PE／bridge Open／Close 调用或恢复阶段；生命周期 fixture 使用本地 API 回执与持有的系统模块引用，不是 Native provider 验证。Astra 对目前 admission／client／stop 的限定源码复核没有剩余 must-fix。
+
+证据位于忽略的 `analysis/weapon-action-restore-20261024bm/`、`analysis/weapon-hands-transport-20261024bj/stow-checked/` 和两个 `analysis/*-build-20261025bm/` 目录；限定汇总为 `result-r2.json`（442a77a7…a163）。原汇总仅将包含草案的 header pin 字典误命名为 frozen_headers，保留原件并用新汇总明确更正，没有新增冻结基线。恢复阶段仍须保持 rollback：不能提前用 NoAuth relinquish，也不能预增 stow epoch。还需显式 finish、不可被后续 finalize 清除的阶段故障门槛，以及 Open 前地址稳定的 State512 pool；不确定 Open／Close 必须保留原槽位。上述接线、Native provider、真实动画交还和双手运动仍待完成，持续 STREAM／STOW 组合继续禁止。本轮未启动游戏／XR，未改默认 Native／XR／启动器。
+
+### 2026-10-25 — 固定边界存储、单次恢复阶段与导出传输
+
+新增地址稳定的128槽 State512 pool。每槽保留本次 Request、Open 输出、冻结 Receipt 和独立 Close 输入，票据绑定自身地址及不回绕代际；不确定 Open／Close 隔离原槽，不重置、不复用。正常 NoScope 只接受约定的五种返回，并核对零 State、无 active／engine 标志和无 scope。Native 后来撤销的全局 generation 不会替换本次 Open 的冻结回执。公共 boundary ABI 继续使用 owner 固定的6dac28b3…6709，既有 hand／call／Gate V1 字节不变；这没有建立新默认冻结基线。
+
+恢复协调器记录本次单次消耗，显式执行 hands → finish → stow → finish。具体 adapter 调用已有 checked helper，保留精确 pending_state_exempt；先撤销前向计划，但不提前 relinquish rollback，也不预增 stow epoch。原 Action 析构在外层 hold 下不触发恢复。阶段内部的 C++／SEH 故障只归还公开词法守卫，不清掉私有 busy／restoring／dirty，并留下独立的永久故障门槛。后续写入、reset、正常 finalize 和 client 停止都不能用表面 clean 覆盖它。嵌套 poison 后，两个显式 finish 在调用旧 helper 前再次检查健康状态。
+
+新增导出 transport：取得本地 Admission 后才能读取 API／cookie／context；先 Revoke，再按需 Open。无论是否获得 Native scope，本地 Entry 都跨越原版调用间隙，直到终结通知／Close 完成。未知导出历史、异常、回执损坏和失败 Close 先隔离／quarantine，再释放本地 Entry；正常重复 finish 不重试导出或重复扣减。未返回至完成位的 Revoke／Open 不能被 caller 的完整 Finish 假报 clean。该 transport 尚未挂入实际 PE／owned-bridge 入口，尚未证明同一 active cell 与唯一实际 stage 的入口绑定。
+
+CPU 检查分开记录：pool22类；协调器12类；具体 adapter21个独立进程、37个外层场景；最终 transport38个进程场景，另跑实际 PG client 生命周期3种与 pool，可复算汇总共42个作业。最后补充了旧 NoScope entry 仍在原版间隙、新 entry 已复用同槽的场景：旧 finish／重复 finish 不触碰新代际，worker 停止也不能提前释放模块。adapter 的旧 helper／grant／client 是明确的 host seam；transport 的 Native API／原版 body／成功 Finish 是 host seam。实际 client stop 路径执行过，但 Native provider、真实动画、引擎控制器和 GPU／头显均不在这些 CPU 结论内。
+
+完整 TAIL adapter PG 与独立 boundary PG 均以 `/W4 /WX /EHsc` 编译通过，分别为697bf4cf…19bf和18150ff8…79ca。Astra 对 coordinator／具体 adapter／故障门槛和最终 transport 的限定源码复核无剩余 must-fix；其后的测试源码只增加上述 NoScope 复用案例，生产代码未变。旧 review、历史 CPU 尝试与首两次 C4459 构建失败日志保留。最终 transport作业回执为ebbf61dd…2905，具体 adapter 的 CMake 回执为a5828698…c574；证据位于忽略的 `analysis/weapon-boundary-transport-20261025bn/`、`analysis/weapon-restore-stage-20261025bn/` 及对应构建目录。
+
+本轮仍未启动游戏／XR，未改 Native／XR／默认启动器或启用 STREAM／STOW＋subscriber 组合。下一步是实际入口的递归 NoAuth 分流、初始 owned self token 的独立消费、POD finally 覆盖原版间隙，以及 Native provider 联调；真实自由双手与拾取／近战／收枪的动画交还继续待验。后续实际测试继续每边0.4、静音、窗口置后、tiny-output只读并禁用实体手柄后台输入；保持最新 support3 Native／menu-modal1 XR 与其他会话修复。
+
+### 2026-10-25 — 实际动作入口接线、递归撤权与异常闭合
+
+新增默认关闭的 ENTRY 试验选项，把 PE 和 owned invoke 接到实际 invocation-local controller；continuous forward 的源码入口也接到同一路由，最终 authorize_once 与 setter 仍紧邻。相关 PE 在旧 scope 构造前完成许可判定及一次恢复，随后裸转发原版；递归 PE 包括无关 Tick 直接走原版，不重复进入旧 pre／post／队列工作。真实 CF 的 whole-gap 拒绝标记复用已有 Gate linked depth，相关 CF 仅撤权、不新开恢复 scope。NoAuth 不调用旧 Action／hold／观察器析构来暗中恢复。
+
+owned 初始组件 token 在任何 Revoke 前单次消费；收枪新增绑定 exact Request 地址、object、function 的初始 token，在最终 Args::run 前才武装。消费只豁免对应 participant，不豁免另一侧。mutating／releasing 保留为观察信息，不能单独抹掉动作义务。backend 的 Request／Receipt 副本必须与 active pool cell 一致，begin 还核对真实 active_stage 地址；换一个 Journal 无法复用父 stage。
+
+全部相关 PE／bridge／CF 在 Native Revoke 前先以 context_lost 撤销本地 HandClient publication；Native generation 与 PG published 两条撤权分别闭合。已消费 token 之后才采样 lexical Snapshot。准备阶段的自有 C++／SEH 屏障不包住原版，准备失败仍转发真实 PE；原版异常类型、code 和 opaque 参数继续传播。private cleanup、已捕获 TLS 恢复、transport retirement 与 callback 释放分开闭合；cleanup 自身故障保留固定 State、隔离通道并精确退还本地 lease，不覆盖原异常，不补造正常 post。
+
+本次 ENTRY 运行配置仍明确排除 STREAM／STOW。旧 normal_tick／PostTick 的引擎恢复没有获得整段 Tick 的新许可，ExternalBoundary 仍只授权本次 pre-action 恢复；不能把 Native cached authorized 状态当安全执行点。该禁止组合的 CMake 负例按预期拒绝。连续双手真实写入、实际恢复 helper 与新 Native provider 联调尚未通过，因此候选未集成默认启动器。
+
+完整 ENTRY PG 以 `/W4 /WX /EHsc` 编译通过，SHA 为b74c8fed…8462。实际 controller／无 participant backend／真实 client、subscribers、transport 的39个 host 场景通过；包含 cleanup SEH、原版异常、CF整段递归、不同实际 Journal 及被改过的 backend 副本。另有28个 stage／active-cell 绑定场景。local client prepare／commit 真正发布后，clean NoScope／CFrelated 在 Native Revoke 调用前已撤 publication；旧 snapshot 尚未超过100ms也被拒绝。旧 helper、Native API、original／legacy 和游戏对象分类仍分别是明确的 host seam，不能据此认定真实动画交还。
+
+初始收枪 token 使用实际源码1018字节精确片段，五配置的61个独立进程通过；foreign-thread 的 PAGE_NOACCESS Request 在解引用前拒绝。实际纯 handoff 的同时 dirty／pending／fault 状态保持，engine_reads／engine_writes／logs 均0。旧 handoff 测试同步修正宽泛回声豁免期望，原五配置56类通过。最终 CMake 复算117个作业通过，包含入口39、绑定28、完整纯交接16、core12、adapter21和旧完整handoff一个作业；adapter与handoff各自的外层case计数单独保留，不相加充当游戏覆盖。Astra对最终生产源码限定复核无剩余 must-fix；之后仅增加了测试目标／精确片段生成及选项说明。
+
+证据位于忽略的 `analysis/weapon-entry-routes-20261025bo/`、`analysis/weapon-entry-binding-20261025bo/`、`analysis/weapon-entry-initial-handoff-20261025bo/`。回归编译误复用了BN私有构建目录，该目录中的未发布PG DLL现在对应BO源码，历史BN哈希不能再按该路径当前文件复核；原manifest与8c1e9bc源码保留，本轮另行封存BO产物和此差异。冻结support3 Native／menu-modal1 XR已分别复核为4752801a…ae14／37f46312…a4d，未改动。未启动游戏／XR／RE；后续与Native16模拟器候选配对须继续独立0.4、静音、置后和observe-only，完整武器目标继续进行。
+
+### 2026-10-25 — 按用户要求优先完成双方共用的自由双手
+
+用户明确要求先实现双手自由移动，掩体会话也需要同一输入。执行优先级据此调整：先打通同一Scene的左右手追踪、完整世界变换、回中／转向及epoch，再用实际双手骨骼位移证明独立跟手和动画后重新接管；武器与掩体共用该结果。b16cfbe入口候选保留，新的writerless boundary互通探针后置；完整12武器、换弹、瞄准镜、电锯、投掷、UI等目标没有缩减。
+
+源审确认旧GHW1世界转换与Cover点映射在相同基准下相容；正确基准是双眼实际采用的最终pre-HMD base_view，不能一概换成原source_view。Cover当前Scene已冻结一次matched controllers并选出最终view，但没有旧GHW1发布段。双方协调由Native唯一owner发布同票RigTracking数据，明确原始输入／reference／source times、world/context identities、最终基准、units与失效纪元；数据不能充当骨架setter许可，不改旧hand V1，不另读一次“更新”的输入或重盖时间戳。
+
+AX的0 movementcommands已定位为试验顺序问题：runner先等枪体joint receipt，初次等待失败，未到第一条手部命令。现有clean waiting的hand_only路径允许先验证左右手各4cm纯平移及回位，之后再验动画重入；实际手骨世界矩阵、另一只手不串动和原有0.1单位／0.1度、100ms限制继续保留。RuntimeTracked0与MetaOperatorSimulated1必须按实际来源分别核对，模拟器身份不等于certificate source1。Support3标准冻结本身没有GHW1 producer，后续需要最小、可核对的共源发布候选，不能直接复用AX旧renderer或其scale1配置。当前仍在离线准备，运行窗口已留给Cover完成AR14；所有实际试验继续0.4、静音、置后和observe-only。
+
+### 2026-10-25 — 独立手部运动候选，先于枪体接管发送手部命令
+
+新增默认关闭的 `GEARS_PLAYGROUND_HAND_INDEPENDENT_MOTION_TRIAL`。该私有配置保留原 TAIL、certified、persistent hand-only 依赖、304字节 Start、原15秒期限和逐次 Plan／对象／时效／journal 检查，固定不进入枪体 acquire／update。normal_tick 先执行原手部恢复并退出 Operation，再要求 clean waiting 或带成功 drain 证明的 clean suspended；不恢复枪体区间，也不清除 closed、drain 或故障记录。普通配置继续原路径。编译时来源只能明确选择 RuntimeTracked0／MetaOperatorSimulated1，请求还需与相同的单字符来源环境值对应；不借可选 R2 模拟器开关决定手部来源。
+
+Astra 对三文件限定源码复核无剩余 must-fix。新的 `analysis/hand-independent-motion-20261025bp/root-builds/attempt1/` 独立目录完成 source0、source1 和 feature-off TAIL 三种完整 PG 的 `/W4 /WX /EHsc` 构建，分别为83e90e24…82b1、ee61f1d0…c807、58371cf5…b854；没有复用或重建此前封存候选目录。这只是编译结果，未运行游戏／XR，尚无四条实际移动命令或动画恢复的运行收据。
+
+新增 `test_hand_independent_motion_profile.py`，机械抽取实际 normal_tick、hand-only readiness、模式选择与 component dispatch guard；三种严格 CL 配置、15个独立进程通过。两个来源下均验证 clean suspended 连续两次手 journal acquire／restore，component resume／apply／acquire／update 均0，原 closed／成功 drain 记录保持；dirty／failed-drain／revoked 拒绝且保留原记录。实际 Policy 的100ms边界、任一原始来源超时1ns、MS期限及错source拒绝保持。完整结果为 `lifecycle-cpu-attempt5/result.json`，此前宿主构建和 fixture 构造失败分别保留；引擎 restore／finish／end 是明确 host stub，纯 primary journal 不证明 tail writer、实际手骨或游戏动画。
+
+与 Cover 协调的共享 `rig_tracking_math.h` 已按 d52efa9d…7502 原字节采用，使用最终 pre-HMD base_view；完整姿态输出是 UE world forward/right/up，不能重复做 XR 轴转换。Native 的新只读 Rig 帧仍在准备，原始追踪数据本身不能冒充旧 GHW1 certificate；现有 XR companion 仅提供实际 stream／tracking 纪元，旧 reference_epoch 则来自 Native StereoGate 的独立连续性计数。后续须以匹配当前冻结渲染来源的真实 producer 候选接入，缺失信息保持不可用。本条未改变默认 Native／XR／启动器，也不代表自由双手完成。
+
+### 2026-10-25 — 共用 Rig 读取、最新 XR 同源输入与独立试验收尾
+
+独立手部核心已提交为 `eda686d`。按 Native owner 交付的58cbb26f…76b0原字节采用 `rig_tracking_frame.h`：真实 producer stream／逐手 tracking 与实际 NativeReference 分开，Frame1824、ReadRequest40。Root 在自己的依赖下严格编译并核对全部给定 offset／align8；新只读 `rig_tracking_reader.h` 的18个 fake-provider 检查通过，验证 exact NativeKey／source／Scene 下界、读后时钟、原始双来源时效以及缺 producer 拒绝。此 helper 只复制数据，尚未接真实 Native 调用，不授予骨架写入许可。typed RigPolicy／完整 receipt 的前向再授权接线仍在进行，不从 raw Rig 拼造旧 GHW1 certificate，也不增加新的 GHW1 publisher。
+
+XR 改动从准确 menu-modal1 源另建私有副本：provenance为c089c4d8…390e，586个原文件和两份封存 JSON 构建后均保持原 hash。normal 候选只增加7个文件／13个 hunk 的 GVC3＋GHC1 发布接线；同一原始 actions sample 及时间先进入实际 SourceTracker／两桥，再尝试发布 eyes。未发布、失追、失焦均保留真实源历史，不二次采样，不增加 producer reference。原颜色、菜单修复与原 WAIT ON／SIXDOF OFF／HDR OFF／编译 flags 保留。四个原菜单 CPU 和三个严格桥／实际 loop 抽取 CPU 通过。normal XR为4174d0e3…1ead，manifest为056682a7…6b4，位于忽略的 `analysis/hand-xr-continuity-20261025bq/`；额外完整 `/WX` 试验的四处原 SDK C4459 失败另行保留，正式候选按母体原 flags 构建。它尚未运行，Source1sim 是独立后续候选，不能重标这份 normal。
+
+新的 `hand_independent_motion_run.py` 默认 UNBOUND，在项目 helper／prepare 前拒绝。四条手部命令先于任何枪体 joint 等待；即时 typed control／tail 字节、后续 Tick 的实际 pre_restore 手骨、restore 回执分别核对，缺同 lease 的 post-restore 世界手骨仍 pending。复核发现的晚到 reservation child 和 raw Start 在途参数释放问题已修：先收拢严格身份的原 worker／birth，再清理 owned game；实际 retained adapter 分别保留 request、Submit／export 原线程和 GT 结果，未知时不重派发、不 free、不卸载 Native，直到原线程或确切进程实例退出。修后限定源码复核无剩余 must-fix；34个 runner 离线场景和22个 fake Win32／thread adapter 场景通过，分别保留在 `runner-final-attempt5/` 与 `bridge-cpu-attempt2/`，不是实际进程／DLL／游戏收尾证明。
+
+本节没有启动游戏／XR／SDK session，未改冻结默认、原已发布包或其他会话 checkout。Native18b／新XR配对、真实左右手4厘米运动、完整旋转与大伸手、动画交还及头显验收仍待完成；后续自动测试继续每边0.4、静音、置后、tiny-output只读和关闭物理手柄后台输入。
+
+### 2026-10-25 — typed Rig 手部接线完成编译，执行阶段仍待合流
+
+新增独立 `RigPolicy/RigPlan`，完整1824字节 Native Frame进入 Plan；Scene publication 与 raw XR sequence 独立检查，首帧 baseline、新 Scene 同 raw 不重复写入、逐手 loss、实际 NativeReference 与完整身份／source／cookie／epoch／base 约束保持。两份原始 source 时间按100ms严格授权，局部 receipt 的 MS 时间仅作诊断，不伪称 Native uptime。新策略1261项检查／18组场景、旧 stream25组／certified12组回归通过，旧 policy 源未修改。
+
+PG 私有 Rig 分支已从真实 Native getter 读取，完整 typed Plan贯穿 tail backend，写前及 written 后均重新取得 live Rig，并在该读取返回后重读本地 action／对象／输入代际。恢复不依赖 fresh Rig。原配置8组／16份选中代码 token 等价检查通过，实际 helper全文及授权路径提取146项检查／15组 host场景通过。新增数据 getter 的 closing-bit/count 生命周期与24字节 owned Connect capsule分别复核；它们保留真实模块与登记，Connect不加载 Native，不改变原 Start304。
+
+稳定源码的 `full-pg-attempt2/result.json` 中 source0／source1／Rig-off TAIL 三个完整 `/W4 /WX /EHsc` 构建通过且 source pins 全程不变。attempt1 三个编译也 exit0，但代理在构建窗口补了 GT 和读后 action 复核，因此一致性检查按原样保留 `passed=false`，不将其当封存候选。Native18b采用 owner 的不可覆盖 `native-body18b-ready-semantic-final1.json`，943fea2b…c304；首次 adb69…旧元数据 pin 拒绝及原件保留，两个 DLL未变。新XR Source1sim为1a059d2d…b4e9、manifest c189bcca…efa80；实际 operator模式、0.4与三个后台环境门槛明确，normal与menu-modal1母体保持原 hash。Root本轮没有启动游戏／XR。
+
+**这些 PG 目前仍只是编译与限定 CPU 候选，不能按 Native18b 互通 READY 使用。** 继续源码核对发现原 handanim CF hook 承担同步 hands/stow 交还，不能只迁移其观察或假置 reserved。Native18b是唯一 CF owner；现 CallV1禁止该同步恢复，CMake的 subscriber＋stream/stow 以及 ENTRY＋normal Tick禁配继续保留。现 Native ActionGate已有受限恢复权限，PG还需接真实 Gate-bound恢复stage；正常 Tick写入也需要 Native实际安全阶段，RigRead和原PE返回均不授这项许可。双方正比较实际阶段接线与 Native最终骨架执行路径，既不安装第二CF hook，也不把四条idle命令当完整交还证明。审查回执为 `pg-call-owner-coexistence-review.json`（ed078cdf…1b17）。完整自由双手、与掩体的真实运行和动画交还仍未完成。
+
+独立脚本随后完成实际 RigV1 recipe：固定真实 MSVC layout／header，完整1824字节 sidecar 与 pose、Native/game/XR、五对象及原始双 source 时间交叉核对；四条4厘米命令、原残差和后续 pre_restore 骨骼检查保留。Connect从同一确切游戏 handle 枚举已加载 Native，按精确路径发送一次 owned24请求，使用原 startup期限；Hand15秒仍从HandStart前开始。新脚本737fbe7c…39a5与旧 retained adapter源码经限定复核无 must-fix，85个离线场景通过，证据位于 `runner-rigv1-attempt7/`。三项 `sole_native_cf_owner/cf_handoff_ready/normal_frame_stage_ready` 默认false，真实 pinned source manifest也须逐项证明；当前编译候选不满足，仍在任何artifact／SDK导入前拒绝运行。该 preflight声明不是运行时 Grant，尚无实际4厘米移动或最终世界手骨恢复证明。
+
+### 2026-10-25 — 自由双手优先，共用 Native 骨架执行方向
+
+依用户最新要求，自由双手先于依赖它的武器与掩体交互。双方选择 Native 的 C1 最终骨架工作区，由唯一 owner 按身体、手臂与武器顺序计算和发布。只迁移旧 PG 观察入口无法解决同步动画交还，因此不再为它新增 normal Tick 前向授权；现有 subscriber＋stream/stow、ENTRY＋normal Tick 禁配继续保留。C1 工作区的实际发布与消费、下游物理／附件关系和动画恢复仍在由 Native owner 核对，尚未宣布可运行的最终骨架 writer。
+
+新增共用 `hand_two_bone_pose.h` 与实际 header 测试，分别固定为015d06ac…922f与2aabe8d4…4d67。输入是同一坐标空间的肩、肘、腕原姿态及完整腕目标，不包含骨号、引擎调用或写入许可。保留长度模式对不可达目标明确失败；自适应模式调整两段长度并精确保持腕目标，原 packed Atom scale 由 Native adapter 保留。完整腕旋转保留 roll；上臂／前臂按原始骨轴施加摆动旋转，不假定模型骨轴。关节极限、碰撞和奇异姿态的唯一解不在这份纯数学能力内。
+
+严格 `/std:c++17 /W4 /WX /EHsc /UNDEBUG /MT /O2` 编译与16组 CPU 场景通过，涵盖内外可达边界、伸长／折叠、镜像、128次刚体变换的三类场景、极端单位量级、完整腕 roll、4厘米平移及回位、失败输出不变。最终回执为忽略的 `analysis/hand-two-bone-20261025bs/attempt2/result.json`，较早尝试原样保留。这是数学验证；实际角色手骨、武器附件、最终骨架发布与 GPU／头显验收均未完成。当前不改默认 Native／XR 或普通启动器。
+
+### 2026-10-25 — Native Gate 绑定的单次恢复实验
+
+新增默认关闭的 `GEARS_PLAYGROUND_WEAPON_GATE_RESTORE_TRIAL`。实际 Native Gate.begin journal 链接后、observer 与原版调用之前，adapter 核对完整 Invocation、Native State 地址、GT、cookie／Native 实例、当前 Entry、backend 与 stage 地址；在第一个 helper 前持久记录一次性 claim。重复、拷贝、嵌套、原版间隙或返回后的尝试不能重放恢复。沿用现有 hands → finish → stow → finish／verdict／POD cleanup，撤销前向计划但保留私有 rollback；不生成 external Open 回执，不授 normal Tick／前向写入权限。State128、hand／call／Gate V1 和原版调用位置保持。
+
+38个独立 host 进程场景、1225项检查通过，旧14场景回归及两份旧文件各三种 OFF 预处理输出去空白一致。完整 GateON／GateOFF PG 均以 `/W4 /WX /EHsc` 构建通过，DLL分别为1f981675…37ec与98733010…7c66，八份 source pins 和实际 DLL hash 在 Root 复核时均匹配。限定独立源码复核未发现新增 P0／P1。证据位于忽略的 `analysis/weapon-gate-restore-20261025bs/`，失败尝试与日志保留。
+
+这些 full DLL 仍未包含 STREAM／STOW，配置禁配保持；实际 helper、Native 锁／阶段及 provider 在 CPU 场景中是 host seam。此项仍是恢复实验代码，不是自由双手、真实动画交还或运行 READY。未启动这两个 DLL 的游戏测试，也未改默认候选。
+
+同轮首次私有只读骨名采样 `hand-reference-names-20261025bt` 在任何 game birth／Native session 前被 launcher 的 playground artifact 路径检查拒绝，未发送 Pose event。原10文件 hash 相同，事后 Game／XR／launcher worker／8720 均不存在；缺少 session 的 finalizer 如实保留 accepted=false，不能当 Native／entry／audio 清理通过。原因是派生 manifest 将要求相对路径的 playground_build 改成绝对路径，新的私有 bu case 将恢复正确精确 origin，额外离线核对实际 loader 与 launcher，保留 bt 全部失败原件。
+
+### 2026-10-25 — 同局骨名与真实父链采样通过
+
+bu 修正 PG 精确 origin 后仍在 game birth 前拒绝：私有 PowerShell 直接启动共享 `graphics_policy.py`，Python 的脚本目录优先级使它导入了旧 instance policy。失败的 bu 与 bt 均完整保留。新的 bv 用固定12个 target 的私有入口先载入严格私有 context，再保留实际脚本路径、参数、退出和清理行为；共享规则未改。全局配置修改、物理后台输入和 instance prepare 的入口仅允许离线 probe，实际路线不可执行。12个 fresh-child namespace probe、25个 Python 编译、实际 PG／driver 配置和 PowerShell 检查通过，限定独立复核未发现 P0／P1。
+
+随后 bv 在购买版与 Source1 模拟器中完成一次实际只读采样。前后115个 FName 的 index／number／名称、完整 opaque RefSkeleton 原始字节及同一 game／owner／XR／Native session／mesh／asset 身份一致；本次唯一 PoseEpisode 的 C0／C1／Plate0／Plate1／L1 均与之匹配，父链只取该局实际 C1 parser 输出。已能确认当前模型左右真实手臂的直接父链，未将 IK helper 当作真实手骨，也不将本局骨号推广到其他模型。Native 二进制594792字节，SHA b5098d75…9e57；join为00511f9a…245e，final为fe2b7dad…3d91。完整原始数据仅保留在忽略的 `analysis/hand-reference-names-20261025bv/`。
+
+该局 `runtime-final.json` accepted=true：Native 正常停止、入口及88项独立核对、8份完整 pose chunks 还原通过；XR exit0；原10文件 hash 相同；匹配的音频10次尝试均恢复、pending0；PG shutdown0／entry restored／stopped；tiny monitor joined；确切 owned PIDs为空。host较早记录的 `no_remaining_games=false` 原样保留，后续独立 finalizer 与全局 Game／XR／8720 查询均已为空，没有回写旧瞬时结果。
+
+测试保持每边0.4、静音、窗口置后、tiny-output只读和物理后台手柄输入关闭。Body／Rig／hand writer 与 engine restore 全部关闭；本次是骨名、父链和生命周期证据，没有控制器运动命令，也没有新增骨架／游戏字段 writer。已向掩体 Native owner 交付，继续用于共用 kernel 与真实 Atom／父链适配；自由双手运动、动画交还、最终发布／物理／附件与头显验收仍未完成。
+
+### 2026-10-25 — 本局真实手臂链的纯缓冲区求解验证
+
+将上述 bv 的同局 C1 原始 Atom、父链、component 和已认证骨名作为输入，只复制唯一 shared kernel 与 Native owner 的纯缓冲区 adapter，未改双方生产源码。当前 session 的 requested configuration、实际 Native command／config／status共同确认100 units／metre。左右各自4厘米平移／回位、90度腕轴旋转及多轴完整旋转共8个正向场景，以及两侧 preserve 不可达拒绝通过；实际 header 以 `/std:c++17 /W4 /WX /EHsc /UNDEBUG /MT /O2` 编译运行均 exit0，12份原输入、源与 header 副本前后相同。
+
+float Atom 打包后经实际 FK，目标腕位置最大误差3.289601e-5原生单位，旋转最大1.707830e-6弧度；每步保留115个 scale 字节、112个非链 Atom 及另一手 world 字节，19个相关后代的纯 FK 重组通过。输入、源码、依赖、结果和首轮记录保留于忽略的 `analysis/hand-arm-actual-20261025bw/`；最终 `result-attempt2.json` 为61f067c1…8659，已交 Native owner。
+
+这些目标是 Native wrist pose，未把 Rig world_grip 旋转直接充作腕骨；grip→wrist 校准仍须真实接入。八个4厘米目标均未触发长度调整，因此没有新增大伸手模型验收。回位只表示腕目标位置／旋转回位，量化后链上的三个 Atom 不保证原字节；这不能清除运行时 rollback 债务或替代保存原始 preimage。本节没有启动 Game／XR／SDK，也不证明真实骨架写入、模型变形、最终渲染／物理／附件或头显效果。下一步由 Native owner 的默认关闭、有限次数 C1 overlay 验证实际写入与恢复，仍保持唯一执行端和18b／默认冻结版不变。
+
+### 2026-10-25 — 原版合成变化回归与控制器到腕骨变换
+
+核对 Native owner 的未接 live 草案时，发现其 C1／排债 L1 要求完整 C0 Local 与 C1 Local 相同。重新按 bv 的实际 parser 范围和 hash 比较，原版恰会修改左右两条真实臂链的六个 Atom，包括 quaternion 和少量 translation。原 host 的 compose 只更新 Space，没有覆盖这个实际性质。Root 对稳定私有 c2ecc4c3…259e 源快照补了合法原版 Local 变化回归：严格 CL 编译0，功能期望 applied，实际返回 context、writer_calls0，测试 exit9／functional_expectation_met=false 如实保留，未启动实机写入。证据为忽略的 `analysis/hand-c1-overlay-review-20261025bx/`。
+
+Astra 的限定审查另指出 C0 部分归还后的 consumer 安全、失败后的 phase 可恢复性、Space journal 提前退休，以及 desired 数组／实际控制存储的别名保护问题。审计 ebc88d1f…71b7 与真实六骨变化、失败回归已交 Native owner；其正在分离 C0 输入、原版 C1 preimage、overlay after 和归还来源，并补对应 fixture。此处是对指定未冻结草案的发现，不是新 Native 候选的通过回执。Scope flags、C1／L1 样本和 host seam 均不授实际写入权限，仍待真实入口、恢复及 consumer 分支接线；18b、默认 Native／XR 和普通启动器不变。
+
+并行新增 `hand_wrist_calibration.h` 及实际 header 测试，固定为d73d075c…d224与bcefadc2…dabe。`Calibration` 默认 unknown，保存米制 grip-local 偏移与完整相对 quaternion。`from_caller_aligned_world_pair` 只在调用者已另证对齐的前提下计算相对变换，`native_wrist_target` 由同 UE 世界 grip、单位倍率和已知 offset 产生完整腕目标；平移只换算一次，完整 roll 保留，失败不修改输出。known仅表示数学校准存在，不证明物理对齐、身份／时效或 Native 权限；旧临时 binding、solver、Rig、PG、Native 与 CMake 未改。
+
+严格 `/std:c++17 /W4 /WX /EHsc /UNDEBUG /MT /O2` 编译和10组 CPU 检查通过，涵盖单位、90度及多轴旋转、完整 roll、回中／原位输出、世界刚体变换协变、左右独立 offset、合法 q 归一化、未知／非法／溢出输出不变。实际编译依赖、五份源及快照前后 hash 相同；最终回执位于忽略的 `analysis/hand-wrist-calibration-20261025by/attempt1/result.json`，c078001a…9810。实际标定流程、持久化和 live 连续跟手仍未实现。本节未启动任何 Game／XR／SDK／IDA，也未改其他会话源码。
+
+### 2026-10-25 — 原生控制输出路线与独立追踪数据核心
+
+Native owner 的 C3 私有修订已移除 C0／C1 相等假设，并改进部分失败、blocked 阶段及已知别名处理。Root固定六份源码，重新从本局 bv 提取完整 C0／C1／L1 原始 Snapshot，用原 C3 header／test 严格编译运行，8455项／43场景通过，16份源码／输入前后相同。证据位于忽略的 `analysis/hand-c1-overlay-review-20261025bz/bv-paired-attempt1/`，result为6a98b4f3…12ee7。实际执行的 IO／GT／Request／proofs仍是 host seam，paired overlay只验证默认左链。Astra继续指出 Local 任意分量变化即整字段退债，以及 Space 仅凭 different-after 判完整原生生产的未闭 P1，审计775c53f4…8d8c保留。C3不接 live，不因这份 CPU 回执变成写入 READY。
+
+后续主路线改为复用原生手臂控制的临时输出，由原 Compose 负责正式骨架和后续传播。Native owner 的新 RO4 前置独立窗口取得12个控制节点，实际手链为活动的 Limb／SingleBone 与强度0的尾节点；旧 PG 四通道恰选尾节点，不能复用其强启用结果作为新路线证明。Root已读原始前后／final：前置 accepted=true，后置因观察期间值改变拒绝，整轮 accepted=false、cleanup verified=true，未拼成原子 Pose 或提升执行权限。原生节点实现、目标空间、完整旋转、最大伸手限制与临时输出传播由唯一 Native RE owner 继续核对；Root未运行新游戏或使用 IDA。
+
+并行源码检查确认当前 Rig producer 在发布前后已依赖真实 hand 注册，不是只在 public read 上检查 cookie。现有同次 Scene 的 TrackingBundle／tracking_for、最终 pre-HMD base 与原始来源／reference 时间可以复用，但尚无供内部节点使用的独立完整快照入口。Root据此新增 `native_rig_tracking_frame.h`／实际测试，NativeSessionKey为24字节、无 cookie，CoreSnapshot为独立1832字节／align8；source_ticket与native_reference_revision仅作内部形状检查，current核对由 Native 外层实施。原 V1 Frame1824／ReadRequest40及全部成员布局保持，公共验证仍要求非零真实注册。
+
+公共 `rig_tracking_frame.h` 只抽取同一份 payload validator及按成员原字节拷贝 helper；Core与public共用原数据策略。`project_for_authenticated_registration` 仅在调用者已另证真实 broker／receipt 后按同 Native session 投影，再跑原 public validator；不造 cookie／producer／时间／sequence，不授调用权限。默认50毫秒和100毫秒上限、head-only及无 companion 的原数据语义保留；手部 consumer仍需实际 producer、各手mask、当前 ticket／reference／stop和安全阶段。
+
+最终两个生产 header 固定为d6b295eb…c2b2（Core）、af103284…d684（public）；测试83f2f7d8…b8cf。严格 CL actual headers／冻结旧 V1检查通过：Core8组204581项，含58484份 Frame及328份 Request行为差分、48220份合法变异的完整 V1输出字节比较；原 RigPolicy1261项／18场景回归通过。布局、原声明／request_valid原文、payload抽取、17份源码／依赖及11份只读输入均核对，attempt1原件保留；最终回执为忽略的 `analysis/hand-native-rig-core-20261025cb/attempt2/result.json`，f45580fd…fa35。Astra限定复核无 P0／P1，37a8296e…ebac。
+
+本轮没有实现 Native store／Scene builder／getter／latch，也未修改其他会话 live／capture／shared源码、运行 Native DLL 或启动 Game／XR／SDK。数据模块已交 Native owner 接线，仍需真实原生临时输出、控制器持续跟手、动画交还、全部角色／装备状态与头显验证；默认冻结 renderer／启动器和18b保持不变。
+
+### 2026-10-25 — 原生分支接收数据核心，准备控制输出解析
+
+Native owner 已按最终三文件 hash 接收 Core。首次接收检查因其本地 `stereo_frame.h` 与原 CPU 依赖不同而正确拒绝，失败保留；后续明确重新用实际本地 headers 与冻结旧 V1 编译，而非复用 Root CPU 结论，8组204581项检查通过，实际依赖与三份源码前后相同。Root已读取 `native-rig-core-receiver2/actual-local-result.json`，passed=true，回执a490c99d…e488e；这只证明另一组实际依赖下的数据层接收，Native发布／缓存／getter／latch仍未接入。
+
+下一观测候选由 Native owner 以冻结18b的最小增量准备，默认关闭，记录原生控制返回的临时矩阵、权重及相关状态；不在该轮混入 Core live 迁移或姿态 writer。Root初读了 register-only thunk／protected bridge，观测后仍调用原方法并在 finally 记录和清理；候选尚未冻结，因此不以本次初读作为最终ABI／运行通过结论。Root本轮没有启动游戏、XR或IDA，也未修改其他会话源码。
+
+Root另交付了离线解析所需的MSVC布局字段清单，位于忽略的 `analysis/hand-native-control-output-20261025cc/plan-draft1/required-layout.json`，89e46f0c…1939c。它明确为DRAFT_NOT_FROZEN：所有size／align／offset仍为null，尚未实现decoder或接受实际binary。清单覆盖Header／Row／NodeState／Method及Pose依赖类型、数组stride／count、基础类型与bool表示、Failure枚举，并要求确认episode／ordinal／linked-row关系、矩阵空间及参数来源。最终解析必须绑定冻结源码、实际MSVC布局和同session CPOSE数据，保留异常／失败／缺失／嵌套／并发／非有限值；端点相同不证明读者排他、未来权重、最终渲染或物理结果。
+
+### 2026-10-25 — 原生控制输出实际布局与精确阶段关联
+
+用户再次确认先完成武器与掩体共用的自由双手，双方继续使用 Native 唯一身体／手部执行端。Native owner 已冻结控制观测 v1b：生产 inl 为a3276d4f…7725c，四源交付9f0dde8a…00d26。Root在自己的忽略目录独立编译布局 helper，直接 include 对方冻结的真实 test／inl，由实际生产类型导出，未重新手写结构或运行 test main／observer。`/std:c++17 /W4 /WX /O2 /MT /EHsc /UNDEBUG` build／run均0；实际编译依赖、四源及其他依赖前后相同。
+
+实际 Header72／Row1944，九类全部成员的size／align／offset、数组data offset／stride／首末、基础类型与bool／float表示、Failure十五值及rows128均已导出。布局为忽略的 `analysis/hand-native-control-output-20261025cc/layout-v1b/attempt-1792887601705353300/layout.json`，2d0b064d…9529。CCTRL001是默认关闭的只读记录；本次ABI检查没有证明任何实际sidecar、节点姿态写入或跟手结果。
+
+新增离线CPOSE精确关联器，要求同session、完整owner、thread、1-based episode、outer tick和Compose invocation相等。Astra首审指出缺少控制QPC区间矛盾检查，以及L1／physics pair调用错配；旧源码与报告5bc212a3…ab3c完整保留。修订后要求正整数QPC（排除bool）满足C0≤before≤after≤C1；主／late物理各自配对并核对原caller、kind／phase、invocation及physics_matrix；L1核对原outer tick。缺端或矛盾保持具体原因，不借用其他阶段的数据。Weight只有原parser已精确关联且时间位于对应区间时才列为可观察记录，仍不解释未知应用权重。
+
+严格关联与反例42场景通过，六份源码／输入前后稳定；回执为同目录 `join-v1b/attempt-1792888199784113300/receipt.json`，e56f5fd6…2e3d。Astra仅复核两项原P1与新增weight过滤，均已关闭／未发现新P0或P1，报告d263715d…aa03。此处输入是此前真实bv CPOSE加明确标记的synthetic控制行，没有冒充新CCTRL实采；矩阵相等始终只是数值观察，reader fence、最终渲染／物理、writer权限和游戏验收均为false。Root本轮没有启动Game／XR／IDA；连续跟手、动画交还及Native内部追踪发布接线仍未完成。
+
+同目录纯Python CCTRL001 decoder最终固定为4698aa2f…ff03，绑定实际布局的原始文件与canonical内容hash，即使传入已准备的可变Layout也重新核对。11组CPU／33份保留synthetic二进制及CLI成功／拒绝检查通过；原生failure=okay与额外比较过滤分别记录，完整坏行、float原位bits／非有限分类、参数差异及显式compute→weight关联均保留。最终CPU回执 `parser-v1b/cpu-attempt3/result.json` 为c444c953…c75e，交付回执3c1e1cb0…c09c；首次仅因两个fixture留存文件重名而拒绝的失败原件仍保留。
+
+Root对最终decoder做三项端到端集成：旧bv真实CPOSE数据与明确synthetic控制bytes匹配时，一组compute／weight及完整矩阵逐bits对照通过；不同scene与非有限输出均保留且拒绝比较。七份源码／输入前后稳定，回执 `join-v1b/integration-1792888738648462900/receipt.json` 为f7ee80c9…df39；旧decoder的同类回执另留存。本轮实际Native19测试由Native owner执行，但其在启用前报告控制代码匹配检查拒绝，未派发capture event，也未产生新CCTRL／CPOSE；该失败不能用本节CPU结果代替，正在定位具体guard。离线工具已交Native owner继续使用，尚无新实采或自由双手运行通过结论。
+
+### 2026-10-25 — 内部追踪发布、读取与单 Tick 快照候选
+
+Native owner授权Root并行完成实际Core发布／读取候选。Root先以其当前真实生产依赖严格编译旧RigTrackingLiveTest，16个mode全部通过，35份依赖固定为原件和隔离候选，回执6055b424…e066。后续修改只在忽略的 `analysis/hand-native-rig-live-20261025cd/`，未改双方现有live源文件或启动Game／XR／IDA。
+
+候选使用独立CoreSnapshot保存原Shared唯一TrackingBundle、最终pre-HMD base、实际Scene／源时间／连续性和ticket／reference revision，不再要求外部注册cookie。内部getter按调用方另行认证的body owner／原Scene与当前Native session、停止／故障、world generation、ticket、reference、缓存修订及原始源龄核对。内部缓存修订只用于失效，不冒充XR epoch或输入时间。公开V1仍通过真实已发布Broker注册鉴权，并调用已审共用投影，Frame1824／ReadRequest40与原导出不变。
+
+新增非copy的TickLatch，在真实outer meshTick入口一次取得快照，四个控制节点使用同一对象／key／原Scene数据。每次使用仍重核时效与当前性；重复begin、错误key及失效后不能换入新帧。错误end只使帧失效并保留active key，必须由原真实outerTick结束关闭；正确end不能作为同Tick重新取样开关。实际Scope独占、异常finally、当前owner认证、全局头引用及四节点调用尚须Native owner接入，不能把helper当作执行或写入许可。
+
+Astra首审保留三组P1：最终mutex后的停止／引用／源龄收尾、注册变化或reserved cookie被误作已发布，以及错误end解除sticky。修订在锁内重新取时钟并重核原源龄与全门，公开读在最后检查后再核真实注册；Broker新增只读SC state／cookie／revision稳定predicate，既不使用hand authorization，也不改变phase-invalid数据语义。最终inl为aa401a2b…7e0b，Broker为fbca2c51…db18。新26个mode／669 checks通过，36份实际依赖前后稳定，回执68765c37…f8e9；最终旧16个mode回归亦通过，bd2fcbd8…b16c。第一轮新测试的ticket分派错误仅修测试，失败完整保留。
+
+Root另用host自身guard page精确暂停真实Broker的result copy：cookie已reserved但尚未published时公开读拒绝，内部Core保持原字节；继续真实短拷贝SEH使注册失败，随后worker collect通过。32项检查、严格编译／运行均0，回执ce2e0b7f…addb。pin hook只在私有fixture，不在生产实现；Actor／Scene／PG／模块pin和Runtime端点仍为host seam。实际Runtime源码另固定为5d9255f6…9481作外层初始化／Call／停止合同，不替代真实生命周期测试。
+
+37份最终源码由Astra复核，三组P1在声明范围内关闭，未发现新P0／P1，报告212cce14…0dfb。冻结交付 `delivery-v2.json` 为4e51c153…e42，已发Native owner；包含两份实际生产文件改动、共用Core头依赖、四份fixture改／新增及未接调用点。默认renderer／启动器和此前19／20／21冻结原件保持，实际持续跟手、动画交还、最终姿态写入与头显验收仍未完成。
+
+### 2026-10-25 — 原生控制实际样本与独立阶段复核
+
+Native20的分段日志将此前拒绝定位到weight getter的MinHook create status8；未派event、没有新姿态样本。Native21以冻结20最小派生，构建时仅对已认证exact6字节getter生成兼容trampoline，vendor原件保留。购买版RO3随后取得1次event、CCTRL8rows／15624字节和CPOSE1episode／594792字节。Root已实读final：accepted=true、errors空、Native／entry清理及96项独立核验通过，原8份pose完整chunks和新增control范围匹配；它是普通CT0／CA0状态只读采样，不是掩体／连续跟手或头显验收。
+
+Root固定两份原始bin、最终decoder、原CPOSE parser／layout、关联器及final八个输入，另在忽略的 `analysis/hand-native-control-actual-20261025ce/` 以真实CLI独立解析。8行全部可比较，4组weight关联及4个compute的精确CPOSE关联通过，原件前后hash相同；回执29e11064…3495。两条本局链为8／10／11与32／34／35，父关系分别6／8／10与30／32／34；未用其他session的GNames补骨名。Limb各前两个矩阵与C1逐bits相同，末端矩阵有约1.30e-4／2.37e-4原生分量差；其后的两Single矩阵各与C1逐bits相同。四次实际alpha返回均1，+AC原字段值均1，但不因此证明未来v248返回或写入阶段条件。
+
+四对Compute／Weight的真实entry RSP相同，前者输出header参数位于+0x80，weight的原R9实际位于+0x70，不能把它当pose输出。现有schema没有采weight返回后的pose／scale header；零数组不是空header证明，v240的RET imm0也不是数值0。后续必须关联前一Compute的真实header并在目标阶段重新读取／核对；本轮没有新增writer、reader fence、最终physics或自由手运动通过结论。
+
+Root另重hash20／21／21sim全部源树682／684／684项、八份ready artifact，并验证normal三文件差分、CMake逆向逐字恢复、capture及vendor原字节、原76加observer共77项definitions，以及sim唯一原命名hunk。审计80936d51…c4b7；实采CCTRL为597b2d01…f5b7，CPOSE为103e331a…dfc0。旧21-ready元数据仍含logging_delta_only=true，Root已向owner指出其实际为getter兼容修复／测试增量，需另行澄清，未改旧冻结选择，也未以此字段替代源码或运行证据。
+
+### 2026-10-25 — 共用默认手部定位与真实控制矩阵适配
+
+继续优先完成武器和掩体共用的自由双手。Native owner已按实际本地依赖接收前述Core发布／读取候选，原16、新26和真实Broker注册窗口共43个独立host运行通过；接收回执保留在其 `native-rig-live-receiver1/`。真实入口与只读Core观测由该会话继续接线，Root本轮不启动Game／XR／IDA，不修改对方live文件或争用运行窗口。
+
+Root在忽略的 `analysis/hand-authored-mount-20261025cf/` 制作 `marcus115-openxr-grip-authored-v1`。本地静态导出的全部115根参考骨，其原始四元数／平移／父链与RO3的五个有效阶段逐字节一致；canonical几何签名为3b3c978c…5193，不包含GNames编号或地址。这证明指定骨架几何对应，不证明零售整资源字节相等，缺失的Pmain阶段也没有算入。左右手默认握持轴和掌心位置明确标记designer_authored，完整旋转、米制偏移及模型倍率只换算一次；未知模板拒绝，不从任意动画姿态自动标定。实际手掌法线、贴合与其他模型仍待目视／头显核对。
+
+新增私有 `hand_core_target_adapter.h`，由同一锁存Core、当前模型／左右手绑定和已知默认定位一次产生完整腕目标，Limb与Single复用。保留原始Core完整字节和时间，检查原Scene／controller源龄、手部mask及显式producer连续性策略，不重新读取桥接数据。调用者仍需核对真实当前Tick／owner／asset／停止与执行许可；Target只是普通数据，准备时刻的校验不等于当前写入授权。长度模式继续由调用者明确选择，复用原共用求解器；失败不改变输出。
+
+实际RO3 Single的m15分别为0.9999998807907104和1.0000001192092896，旧精确等于1的校验会错误拒绝。Root仅在私有Single旋转替换路径允许有限的abs(m15−1)≤2×float epsilon：验证副本将该项设为1后沿用原rigid规则，输出不归一化，七个非3×3字段逐bits保留。Limb和component-to-world保持原严格规则，投影、scale、shear、reflection、NaN／Inf及超界尾值仍拒绝。原头和修复前397项收据／失败原件均保留，未覆盖Native21／22冻结源。
+
+严格CL构建下，默认定位699项通过；适配器7组603项通过，包含原始Single row2／6直接成功、实际Limb输入、边界及输出不变反例。最大位置残差3.60395e−6原始单位、旋转basis元素差4.75608e−8，仅为本次CPU数学误差。Core／grip／typed asset身份仍为明确host输入，不冒充游戏实采追踪。最终适配器回执542c9ba8…b622，Root独立核对16份源码／冻结副本和7份输入，审计1a0dd7c2…4b86；默认定位回执fc85d84d…0f7。Astra对三个生产头和限定测试复核无P1／P2，报告883f4738…a1dd5。17份源与4份fixture的整体交付 `delivery-v1.json` 为5622ab3c…f902，已发Native owner接入。
+
+本组是交给Native唯一执行端的离线候选，没有安装到默认启动器。持续独立跟手、完整roll、远伸手、追踪丢失、回中／转向、进出掩体和原版动画接管后恢复仍需实际运行，之后再接身体取枪取弹、单双手握枪和各武器装填。完整12武器目标及已有support3／menu-modal1默认保持，所有后续自动测试继续每边0.4、静音、置后和tiny-output只读。
+
+### 2026-10-25 — 首次游戏内共用Core通路与独立原始字节复核
+
+Native owner的22私有候选完成 `cover-host-1025core1` 单event只读取数：真实outerTick27090／Compose27091中的四个控制计算共用一次latch，无外部注册cookie。原 `runtime-final.json` accepted=true／errors空，Native和entry恢复、96项独立核验、XR exit0、音频10项恢复及原10文件保持；Root已实读该final，而非由进程消失推断清理。此局仍为模拟来源，原生身体／手部writer和姿态写入关闭。
+
+Root在忽略的 `analysis/hand-native-core-actual-20261025cg/` 固定三份实际bin及五份最终报告，用22冻结源的12份真实依赖重新严格CL导出Header112／Record1920／Core1832及所需offset。布局构建／运行0，依赖前后相同，回执193a0c8a…b34d。随后独立读取7792字节Core原件：四份完整snapshot逐bytes相同，Native／Scene／outerTick／Compose／ordinal／node／endbone／原时序精确关联到CCTRL原始row hash和字段；另对冻结输入重跑保留的owner纯checker，结果与其parse逐字段相同。Root未重写该checker算法，也未重测游戏生命周期。
+
+实际Core文件为24ab74c4…662c，Root核验回执47e1fc85…b4a4；原始输入前后不变。四份实际publication262／sourceTicket263／referenceRevision6／原published_ns一致，但world_pose_mask=1、flags=0，只有头部世界姿态，不能将其计为双手追踪或运动成功。下一步由唯一Native执行端接入前述已冻结手部适配器，再用实际matched左右手grip与完整姿态验证持续跟手；原动画、权限、输出寿命、最终physics和头显验收边界保持。Root本轮未启动Game／XR／IDA，未修改Native22冻结源或默认启动器。
+
+### 2026-10-25 — 当前骨架对应与独立XR手柄发布准备
+
+Root继续核对core1实际CPOSE：五个有效阶段中全部115骨q/T／parent均与默认定位模板canonical 3b3c978c…5193逐bytes相同；没有把缺失的Pmain0／1补成有效，也未使用跨session的GNames。当前C1参考骨副本及核验保存在 `analysis/hand-native-core-actual-20261025cg/`，`current-model-binding-v1.json` 为d5e58475…04d4。此项支持当前样本的模板选择，未来live asset身份、模型倍率和当前执行许可仍由Native caller核对。
+
+core1的私有host明确配置no_xr_controller_producer，实际XR命令factory未传`--controller-input`，因此上一轮没有手部世界姿态；这是该只读测试的设置，不是已经定位到的追踪故障。既有BQ sim XR 1a059d2d…b4e9包含该CLI与Source1连续性发布，Native Shared tracking读取也不依赖旧Native controller_input_observer开关。Root在 `analysis/hand-xr-controller-producer-20261025ch/` 准备仅给XR factory追加该token的私有差分，原Native factory逐字节不变；只执行实际factory的AST dry-run，使用伪PID，确认全部原参数保留并仍为0.4。回执e34523bc…0e62已发Native owner。
+
+该副本只是下一派生profile的差分载体，保留父profile路径，不能直接当新runtime-ready运行；由Native owner并入下一私有runner后按原流程冻结。没有修改core1原件、重建XR或启动Game／XR／IDA，也未增加Native observer／writer参数。实际sim controller active／flags15、与同Stereo精确匹配、手骨移动和动画恢复仍须实采；后台置后、物理后台输入关闭、静音及observe-only要求保持。
+
+### 2026-10-25 — 游戏内真实双手Core接收与身体原点问题
+
+Native owner已将共用Core基础、event观察及默认手部定位分别提交为d051cfe／822d525／f80433b；其实际本地依赖下默认定位699、适配器603及原数学417项均通过，接收回执29e19472…1c05b。Root已核三生产头实际hash，没有把它们安装到普通启动器。其后Native23完整接线编译遇到Windows RPC的small宏命中共用solver局部名，owner仅在capture全局adapter include处push／undef／pop该宏，保留共用数学hash和失败原件，修正候选为23b。
+
+Core2使用原Native22sim／原BQ XR和原静止模拟器，唯一输入变化是给XR命令追加controller-input。购买版实采四份完整Core逐bytes相同，实际左右grip flags15／active1，world mask7／flags3，来源MetaOperatorSimulated1；Native session和XR session分别保留，没有混同。Root子任务在 `analysis/hand-native-core-input-20261025cj/core2-v1/` 从实际Native22类型严格CL导出controller等offset，核四条Compute和C0／C1的完整cohort、原始range hash与QPC bracket。Pmain0／1缺失保持，原owner纯checker明确按同算法重跑，不冒称新的独立payload实现。
+
+原Core为34ad0b06…6cf6，四snapshot共同hash14f856a0…e44b；最终核验57bd5c01…d40e2，整体交付37dc1fbe…d6cb。Root另重hash全部32项输入／源，31d73013…fe61。原publication／Scene／stereo／controller时间未刷新，最后Compute的源龄均小于15毫秒；这仅是本次样本时效，不是性能或连续运动结论。owner原final的Native／entry96、XR0、音频10与原10文件清理通过，Root本轮没有启动Game／XR／SDK／IDA。
+
+实际空间核验揭示首个需修复的问题：u100／模型倍率1时，两段臂长左46.99497022、右46.99497366原始单位；真实grip加已知authored mount后的肩到腕目标距离分别144.45525572／126.48935208。实际共用control::solve两侧preserve均返回unreachable且输出不变，没有用adaptive或动画配对校准掩盖距离。当前115骨canonical仍与3b3c978c…5193对应。实测回执 `reach-v1/attempt-1792899149053572100/receipt.json` 为9de6f1fa…8f2f。
+
+进一步从实际Core和C0／C1定位：world_head、base camera和source camera位置相同；相对C1头骨55的距离为1.742732米，按实际base forward／right／up投影为−1.678775／+0.460439／+0.082604米；与肩中点距离1.716038米，C0结论相近。头骨语义来自已完整几何对应的静态模板，不读跨session GNames。最终space回执6bffb941…034f3、space-handoff d388325d…c406a；原7db版本数值相同，另留存起始self-pin改进。此项证实当前样本原点明显偏离身体，尚未证明具体修复方式。
+
+双方据此保留Native23只读adaptive规划的限定用途，先测真实FP状态下的头／肩差及preserve可达性，再进入持续手骨输出。旧first_person_view预览使用anchor.location加eye_height，再沿forward加0.35米／向上加0.10米；实际Rig取view_owned而非开关bool，不能仅凭打开FP推断已对齐，也不能在未配对测量时断言这些常数错误。固定模拟器姿态、原始校准与源时间保持，避免改握持偏置凑通过。完整自由双手及武器目标继续进行。
+
+### 2026-10-25 — 独立手腕roll测试输入候选
+
+当前冻结模拟器的controller命令只有yaw／pitch。Root为后续完整旋转验证另复制其24份源，仅修改runtime.cpp／mcp_integration.h，新增可选roll弧度／单手内部字段。默认roll0走原两角路径保持pose浮点位，省略roll保留已有值，显式0复原；其他字段继续父协议默认。原head-relative语义、源类型／epochs、tracking、后台输入、渲染与export均保留；父runtime／当前测试和默认选择不变。
+
+实际parser及机械抽取的原／新pose和赋值块以W4／WX／UTF8编译，83项检查通过，4915b8d1…a452。头部globals是明示host输入，未创建SDK会话。完整DLL沿用原Ninja／Release／MSVC14.51.36231与原flags，构建及父5项CTest通过，95ea815f…6c97；两条编译和链接命令仅规范化source路径后逐字符相同，审计e7c24bda…f653，原export ordinal／name一致。早期GBK／Windows near宏的测试fixture失败及一次命令过滤失败均保留，生产差分未因此扩大。
+
+Astra在静态pose范围窄审无P1／P2，08af6cab…23e2。冻结交付 `analysis/hand-simulator-roll-20261025ci/delivery-v1.json` 为9ca672c5…4a43，DLL为50d61004…a803，已发Native owner按后续私有profile采用。隔离roll必须每次带完整固定posXYZ／yaw／pitch／按钮状态，并固定头pose；只发hand和roll会触发父字段缺省重置。角速度仍是父yaw／pitch近似且z=0，不能用于动态roll速度、投掷或physics验收。尚无该新runtime的实时roll、手骨写入或头显结果。
+
+
+## 共用 Native 与掩体分支记录
+
+### 2026-10-24 — 明确真实站蹲／物理探身与抓边并存
 
 按用户纠正，改写[交互规格](../../6dof-cover-interaction-design-20261024.md)第4节：真实站起、蹲下、弯腰和左右物理探身均直接影响视点及掩体暴露，无需LGrip；左手抓边提供额外虚拟位移，可以单独或叠加使用。仅对“位置完全不变的纯旋转”禁止额外程序化探身，不能丢弃自然转头／抬头／侧倾伴随的真实位移。虚拟中立眼点不能将最终视点锁在顶沿以下，松手保持也不能锁住真实头部运动。
 
 同步操作表、实现P4、AGENTS与早期文档的解释，新增C19–C21，当前为21项掩体验收及4项跑动稳定验收，共25项。此轮为需求修正，未修改运行时代码或默认构建。
 
-## 2026-10-24 — 追加跑步／冲刺镜头稳定要求
+### 2026-10-24 — 追加跑步／冲刺镜头稳定要求
 
 用户反馈当前跑步镜头晃动过大，要求跑步时镜头不要晃动。已在 `6dof-cover` 的[交互规格](../../6dof-cover-interaction-design-20261024.md)第4.1节加入必做相机修复，覆盖普通跑动、冲刺、游戏允许的沿掩体跑动及起停／进出掩体过渡。去掉游戏额外跑动颠簸、摆动与角度晃动，保留真实头显运动、正常位移、地形／姿态变化、主动转向和武器行为。
 
 源码复核确认现有第一人称预览仍采用原视图forward与Pawn／EyeHeight输入，不能因已经去掉部分位置动画和滚转就认定跑步稳定完成；本轮未认证运行时根因。规格新增独立实现项及R01–R04四项验收，连同原C01–C18共22项。已同步分支AGENTS要求；此轮仅补充规格，没有修改运行时代码或默认构建。
 
-## 2026-10-24 — 独立 6DoF 掩体分支与交互规格
+### 2026-10-24 — 独立 6DoF 掩体分支与交互规格
 
 按用户要求建立独立托管 worktree `C:\Users\11\.codex\worktrees\6dof-cover\gearsVr`，分支精确命名为 `6dof-cover`。从 `codex/0.0.4` 的 `9ffa710` 出发，在该分支提交根目录尚未提交的29项相关0.0.4源码、诊断和记录，形成基线 `85fc2b3`；根目录分支、源码和用户配置未改变。与本功能无关的未跟踪内容未纳入基线。
 
@@ -26,7 +1053,7 @@
 
 本轮完成规格与实现准备，未改掩体运行行为、未重编默认DLL／XR、未启动游戏或新增IDA导出。下一步是只读认证原版掩体状态、合法边缘、输入分派和相机来源，再进入纯逻辑与游戏接线；自动化、真实游戏和实体头显验收均按新功能单独记录。
 
-## 2026-10-24 — 运行时支持观测集成默认入口
+### 2026-10-24 — 运行时支持观测集成默认入口
 
 按用户要求补齐五类运行证据：XR运行时实际提供的系统名称、vendor ID、追踪支持和尺寸上限；游戏交换链所用队列设备与XR实际设备的适配器信息／LUID对应关系；游戏与XR进程实际加载的图形模块文件版本，以及已安装／运行中VR组件版本；匿名交换链编号下创建、绑定接受、resize边界／返回值、Present进展和原有捕获／owned管线计数；以及首次故障及时落盘与运行中native状态保存。头显连接方式、厂商不提供的型号／版本保持不可用，不用注册清单或已安装显卡列表代替实际运行证据。
 
@@ -42,7 +1069,7 @@
 
 最终复核另修正长会话保留：原生256项事件缓冲使用循环索引，flush后持续接收后续事件，超出预算保留最近事件并显式累计丢弃数，首次失败另存不受影响；轮转重新记录已有适配器。启动器日志轮转时重放有界设备／软件上下文，保留最初观察时间，避免多次轮转后仅剩后半程计数。三次轮转上下文保持、缓冲超限后后续stop保留、首次故障不变及已满启动时间线仍能导出首次失败均有回归验证；最终native／XR采用新空build-c目录，重新核验依赖前缀及493／532项依赖后构建。
 
-## 2026-10-24 — 一次导出保留故障定位所需的现有证据
+### 2026-10-24 — 一次导出保留故障定位所需的现有证据
 
 Chtiblue的已收两份0.0.3支持包分别保留native激活失败与启动后零双目产出的摘要，但旧导出器没有带上同次native-start、native-status、session-status及完整停止原因；增加XR CSV字段还会导致旧白名单丢弃整份CSV。这是证据导出缺口，尚未证明该玩家故障的具体根因，不能从摘要推断SteamVR崩溃、相机距离或某个API layer为根因。
 
@@ -58,7 +1085,7 @@ Chtiblue的已收两份0.0.3支持包分别保留native激活失败与启动后�
 
 完整度复核：当前已补齐“采集到但没导出”的重要缺口，仍不足以认证“一次反馈必能确定底层根因”。后续诊断构建应优先补足实际XR系统／头显信息、游戏与XR各自选择的GPU适配器及匹配关系、故障时实际加载的图形模块／层、swapchain创建／选择／resize／Present与捕获拒绝的关联进展，以及首次故障先于清理错误的持久记录。注册清单不能替代实际加载证据，已安装GPU清单不能替代实际设备选择，正常会话导出成功也不能替代对激活失败／零发布／运行时退出等故障包的逐项验收。本次未把这些待补项写成已实现，也未因此更换冻结XR／native默认构建。
 
-## 2026-10-23 — 从0.0.3创建闪烁修复分支
+### 2026-10-23 — 从0.0.3创建闪烁修复分支
 
 按用户要求丢弃0.0.2分支临时未提交的启动账号识别修改和本地配置改动，回到 `codex/0.0.3`，从 `9ffa710` 创建 `codex/0.0.4`。恢复此前保留的0.0.3调查记录和用户配置；原stash仍保留，未删除其他来源文件或忽略的调查证据。根目录GUI恢复0.0.3已发布文件 `45cf2da2…7fb6` 并通过隐藏自检；默认native `7571fee6…bab9`、XR `58ef6c39…539a` 仍为0.0.3基线。尚未创建0.0.4发布或标签。
 
@@ -68,7 +1095,7 @@ Chtiblue的已收两份0.0.3支持包分别保留native激活失败与启动后�
 
 私有回执和图像继续保存在忽略目录 `analysis/flicker-simulator-20261023/`；分支／GUI切换回执为 `branch-004-baseline.json`。
 
-## 2026-10-23 — 左眼历史状态隔离已接入默认构建
+### 2026-10-23 — 左眼历史状态隔离已接入默认构建
 
 已在同一购买版游戏、每眼3600×3200、原色彩策略、动态模糊开启的静止场景中复现用户截图的左眼强烈径向拖影。普通游戏帧与VR帧穿插时，旧版VR左眼复用原玩家的历史状态，右眼为独立状态。现将VR左眼也交给原生工厂创建的独立持久状态，保留原玩家状态供普通渲染；不通过关闭动态模糊或更换颜色规避问题。修复限定正常连续VR会话，保留诊断控制模式原行为。
 
@@ -90,7 +1117,7 @@ Chtiblue的已收两份0.0.3支持包分别保留native激活失败与启动后�
 
 冻结回执为忽略目录 `analysis/runtime/left-history1-frozen.json`，配对图像和完整会话证据在 `analysis/flicker-simulator-20261023/`。原生／模拟器像素与生命周期回归通过；**物理头显、完整战役及FPS效果未验收**。未创建0.0.4发布包／标签，已发布历史包保持。
 
-## 2026-10-24 — 6DoF 掩体分支开始实现
+### 2026-10-24 — 6DoF 掩体分支开始实现
 
 工作限定独立 `6dof-cover` 分支／worktree。需求以 `docs/6dof-cover-interaction-design-20261024.md` 为准：真实站起、蹲下和左右探身直接生效；左手 LGrip 拉拽提供额外连续偏移，松手保持，再抓反向缩回。保留原生进入、吸附、沿边移动与退出，替换 LT／RT 自动探头。用户已授权自主后台测试及多个 agent；测试保持显式 behind-window 构建、静音、tiny-output 只观察、真实控制器后台输入关闭，所有运行均使用隔离配置／存档。
 
@@ -104,7 +1131,7 @@ Chtiblue的已收两份0.0.3支持包分别保留native激活失败与启动后�
 
 尚待连接并验证：有效掩体中的姿态结果→setter 同调用回执、合法边缘与连续身体／碰撞、面朝掩体与遮蔽眼点、实际武器／左手消费者、疾跑及过渡、头显验收。`CoverMovementPct` 的现有脚本用法是速度归一化，不能凭名字当探身权重；单人原生掩体／盲射免伤分支也必须纳入身体暴露验证。默认 support1 native／XR、独立左眼历史与原色彩策略保持；未发布新的版本或标签。私有证据位于本 worktree 忽略目录 `analysis/cover-implementation-20261024/`。
 
-## 2026-10-24 — 正版矮掩体端点与相机会话恢复
+### 2026-10-24 — 正版矮掩体端点与相机会话恢复
 
 在隔离副本加载已有医院测试进度，四份来源存档逐项核对 SHA256，并只映射到实例内已有的 profile 文件。该进度保留 assisted／既有 health assistance 标记，不构成无辅助战役验证；正常存档与设置没有替换。医院最近的可上探矮掩体实际进入成功，`CoverType=2`、slot 0、原生 stationary 标记成立；原版瞄准产生 `CoverAction=7 / CoverDirection=3`，释放后恢复 0。后退沿原逻辑清除 cover、退出吸附；输入驱动在特殊状态转换时中止继续施加移动。测试用户原 10 份文件的哈希仍保持。
 
@@ -118,7 +1145,7 @@ Chtiblue的已收两份0.0.3支持包分别保留native激活失败与启动后�
 
 身体实现继续沿原生 cover 混合姿态与必要的局部骨链修正推进，保持逻辑 Pawn／cover anchor 稳定。没有采用每 tick 把整个 Pawn 根位置来回移动的方案。只读 native 查询的两个 getter 及其非连续冷分支、实现函数已在私有 IDA 导出，并在当前正版进程逐块验证完全一致；证书保存在 ignored analysis，不把源码散列或相同 RVA 当作当前字节证明。连续身体权重、骨姿态发布、真实射击命中消费者与掩体／盲射免伤两个分支仍待联接和验证。
 
-## 2026-10-24 — 掩体姿态实际变化与骨骼查询接通
+### 2026-10-24 — 掩体姿态实际变化与骨骼查询接通
 
 上一轮 T 测试于本地 05:13 结束，随后没有自动接续施工；用户询问停滞和进度后，已如实报告，并恢复实现。T 的完整日志现已解码：64 个完整调用组、0 拒绝，其中两组实际记录 updater 的 caller-local 从 CT2/CA0/CD0 变为 CT2/CA7/CD3，以及反向恢复；后续两个 setter 均在同一 caller/locals 保留新值。其余62组只证明稳定调用连续，未将两个独立窗口的数值差异误记为同次调用变化。会话停止、native 清理、80项入口还原和 XR 退出通过，原10份配置／存档再次哈希匹配。
 
@@ -130,7 +1157,7 @@ V 隔离正版会话已取得普通姿态、矮掩体收拢、原版上探和缩
 
 用户追加要求后台游戏测试采用 `render_scale=0.4`。新 V 会话已从启动配置使用0.4，每眼1440×1280、接收源2880×1280（推荐3600×3200的该次模拟器尺寸），继续仅一份测试游戏、置后、静音、只观察输出，不改正常游戏画质或用户窗口。完整私有回执位于 ignored `analysis/cover-implementation-20261024/`。新原型尚未并入正常启动器，武器 worktree 未修改。
 
-## 2026-10-24 — 连续上探身体原型完成接线，等待实际姿态检查
+### 2026-10-24 — 连续上探身体原型完成接线，等待实际姿态检查
 
 新增默认关闭的 `GEARS_COVER_BODY_PROTOTYPE`，已接入现有 native 提前 reservation、统一 install、入口认证与停止流程；运行时还需测试子进程显式环境变量，普通启动不生成原型 INI。两个透明入口在 CoverBlend tick 前恢复上轮自有 Weight，随后在原生父 Tick 完成权重计算、首个非空 child 传播前，写入 neutral/top 的 `1-u/u`。原生传播与动画求值继续执行，没有修改 Pawn 根位置、DesiredWeights、TotalWeight、CA/CD 或动作过渡位。当前仅支持实际受控角色的稳定 CT2 矮掩体、SpecialMove0 与正的 incoming weight，不代表左右探身已接通。
 
@@ -140,7 +1167,7 @@ V 隔离正版会话已取得普通姿态、矮掩体收拢、原版上探和缩
 
 实际候选从已验证的 observe4 冻结源叠加上述最小增量，保留原构建开关、独立左眼历史和原色彩。body2 DLL 为 `build-cover-body2/GearsCaptureCoverBody2.dll`，SHA256 `6ae83dad2d22cc91d3d302e79a5752aa7e41dd7f12ff4b1bc83fd4db0c0779b0`，依赖及完整构建回执保留在 ignored analysis。第一轮 W 在游戏启动前因少一份 preflight helper 被拒绝，未注入；补齐后检测到另一会话的游戏／XR 测试，后续 X 在实例建立前拒绝，未叠开第二份游戏。当前等待独占实际测试窗口，没有把编译／合成检查写成身体姿态或头显通过。
 
-## 2026-10-24 — 连续上探七档实际身体校准与独立清理
+### 2026-10-24 — 连续上探七档实际身体校准与独立清理
 
 body3 修正普通 NPC 的 CoverBlend entry 提前恢复玩家 Weight 的时序问题：正常 entry 只恢复当前节点，只有 Reset、超时和停止才在已绑定游戏线程撤回全部自有字段；撤回未完成时不消费下一档输入。非目标 child 在进入 Scope／mutex 前拒绝。独立 journal 检查为 99 项通过。候选仍从 observe4 的实际冻结源叠加最小增量，body3 DLL SHA256 为 `ea3dcade1e68fb8cedba3fd298a6ba551d818dff2122d8226fa4e578ae7be8e9`；本分支没有把该实验写入正常默认启动器。
 
@@ -162,7 +1189,7 @@ ab 隔离正版会话使用 render scale 0.4、后台置后、静音、tiny-outp
 
 完整证据保留在 ignored `analysis/cover-implementation-20261024/body3-ab-calibration-review.json` 及 `analysis/runtime/continuous-stereo-53688-20261024-150032-c1505489.restored.json`。测试存档保留原 assisted／health-assistance 标记，本轮不构成无辅助战役、射击、疾跑或实体头显验收。用户明确授权各会话直接协调测试；当前按菜单→武器→掩体排队，完整清理后移交窗口，自动测试都使用私有 0.4 配置。最终集成需基于届时最新默认 support2／菜单修复，保留其他会话已完成的内容。
 
-## 2026-10-24 — 连续 pose 与原生动作判断分离
+### 2026-10-24 — 连续 pose 与原生动作判断分离
 
 body4 改为固定两个寄存器参数 ABI 的 call／post 包装：每轮首 child 前安装连续 Weight，最后非空 child 的原传播返回后恢复本轮 native Weight；原 CoverBlend post 返回后再安装连续 Weight，供 pose evaluation 使用。TotalWeight 仍只由原生传播计算，未增加 CA/CD、过渡标记或 Pawn 根写入。新增跨原函数的 Scope／wrapper／事务责任、嵌套 frame、异常 finally 和条件恢复；临时 native 阶段不等于清理完成。自有 helper 的普通 C++ 故障在 RAII 解锁后停止新修改，原函数异常继续穿透；未知内部 SEH 不作可恢复承诺。Scope 构造失败也会归还自身 active 增量。
 
@@ -172,7 +1199,7 @@ ae 正版实际日志已记录 u=.5：native post 的 child0／4 Weight 为 1／
 
 ac 有界疾跑夹具通过原版 CanDoSpecialMove(4,false)、held getter 和唯一 TryToRoadieRun(false)，条件 End 分支在同 Pawn SM4 时执行，结束恢复 SM0。完整元数据检查耗尽采样窗口，没有形成 during-SM4 相机多时间戳；3.578 秒实际租借超过原1秒／后3秒目标，均明确记录未达标，不以缺失样本的零速度当作稳定结果。相机字段2写入／2恢复、held／latch、timer、native／独立入口／XR／原10文件和进程清理均通过。疾跑相机稳定验收仍待补齐。
 
-## 2026-10-24 — 半探新开火通过，接入私有中立眼点预览
+### 2026-10-24 — 半探新开火通过，接入私有中立眼点预览
 
 ag 同一隔离正版实例完成 body4 主验证。固定 .5 权重下，只执行一次新的 LT＋Shoot 输入动作，原武器 AmmoUsedCount 4→8；射击时 CA／LastCA=7／7、Weight=.5／.5，起始的原生过渡随后完成，射击样本 `0x540 & 0x20=false`。双层释放已确认，没有第二次发射动作。此结果证明发射响应，不代表命中精度、枪口遮挡或伤害校准。
 
@@ -184,7 +1211,7 @@ ag 同一隔离正版实例完成 body4 主验证。固定 .5 权重下，只执
 
 只读 CoverLink geometry sampler 已实际取得 Link／Pawn typed变换、slot flags／offset及 live Stand130／Mid70、StandingLean[0,78,69]／CrouchLean[0,70,19]，未将这些本场景值硬编码为所有掩体。Python世界组合仍标记 candidate，未等同碰撞表面。左右分支与伤害保护继续独立验证；没有以本段结果宣称 LGrip、左右／上抓边或受击已完整接通。
 
-## 2026-10-24 — 流送关卡校验修复与低眼点实际验证
+### 2026-10-24 — 流送关卡校验修复与低眼点实际验证
 
 ah 的 body5 相机未应用：provider停在 current_link，applied=0。当前只读几何成功通过 Link／Pawn／PC 的 WorldInfo 相同检查，但 Link.outer 与 Pawn.outer 不同；原 provider 错把同一世界的流送关卡掩体拒绝。修复分别认证三个角色的 WorldInfo 属性类型、owner／extent、继承路径与引用类，在相同游戏世界内允许不同 Level.outer。没有仅删除身份验证。neutral 320 项与 camera 1257 项通过，body ON／OFF 编译通过。body5b 从冻结 source5 只替换 neutral 一个文件，其他源码、renderer flags、body4事务、CMake不变；DLL SHA256 为 `e4893743f7563fd1cb934c104506ef4bba4e74c26f08192e1bc77caaf74b5400`，完整 DLL＋9 helper检查通过。
 
@@ -194,7 +1221,7 @@ ai 在0.4后台正版实例中，原生 getter实际校准Head55，固定绑定�
 
 ah和ai均正常Reset／Stop，native及独立83项入口检查、Playground、XR exit0、音频9／9恢复、原10配置／存档哈希、自有进程退出全部通过。证据保留在ignored的`body5-ah-sameworld-evidence1.json`、`body5b-ai-runtime-review1.json`及两轮final报告；默认support2／menu-modal1未替换。
 
-## 2026-10-24 — 连续实时目标与几何准备
+### 2026-10-24 — 连续实时目标与几何准备
 
 新增独立side profile，仅在当前原生镜像下将child5作为单侧连续端点，尚未写镜像或混合二维姿态。live target入口按当前GT、完整Pawn／Mesh／World身份、world generation、严格递增frame／QPC和100ms时限接收任意u。每轮冻结自己的u与endpoint，新的输入仅供下一轮使用；传播、native-post、pose-rearm及停止恢复沿用既有事务。重复frame不刷新时限，未知身份继续保留恢复责任。中立判断使用实际u，不能因小幅探身落入诊断bucket0就当作中立。1717项事务／live检查、24项关闭构建检查和64组环境组合通过；此时尚未完成新的实时输入游戏验证。
 
@@ -202,7 +1229,7 @@ ah和ai均正常Reset／Stop，native及独立83项入口检查、Playground、X
 
 Native只读geometry模块认证当前Link／Pawn变换、live高度、slot结构212字节与选定Bool的D0 mask，655项启用和2项关闭检查通过；所有组合位置／顶沿均标记candidate，未建立原生getter或碰撞证明。动画诊断补充选定child的bMirrorSkeleton反射offset、原始word、D0mask与解析值，不写字段；新增镜像类型／范围／竞争检查与既有动画、几何共27项Python测试通过。接下来在同一隔离实例验证真实模拟头显驱动，并只读捕获两个原生slot getter与Actor.Trace的当前证书，继续闭合合法抓边。
 
-## 2026-10-24 — 连续物理上探实测与统一左手接线
+### 2026-10-24 — 连续物理上探实测与统一左手接线
 
 AN在正版隔离实例完成9段模拟HMD运动，render scale=0.4，窗口置后、静音、tiny-output只观察。每段都将Native选择的精确sequence与全量XR CSV关联，全部保留source1；不属于真实头显验收。同位置yaw15°／pitch10°的physical up与top weight均为0；上移0.15／0.30／0.55米得到u=0.214188／0.428376／0.811942。后两段Head相对中立Z增加33.289／59.440，Pelvis增加20.093／37.839；归零后child0/4恢复1/0，四个骨查询阶段PawnRoot逐值不变。骨查询非原子限制保留。左右各0.20米仅证明不误触发top，尚未证明侧探身体。
 
@@ -214,7 +1241,7 @@ PG忙碌或提交失败时，当前新Scene可以重新认证上一次已提交�
 
 LGrip runtime获取仍关闭，候选slot几何不能授予抓握。两侧镜像、完整上／侧组合、Mesh朝墙、碰撞／受击／枪口一致性、跑动SM4实测和最新默认集成仍待完成。固定child0/4/5只有三角形姿态域，不能把归一化三权重称为完整二维跟随。默认support2／menu-modal1及其他工作树未替换，无新release/tag。
 
-## 2026-10-24 — 原版左右姿态、原生掩体坐标与LGrip输入实测
+### 2026-10-24 — 原版左右姿态、原生掩体坐标与LGrip输入实测
 
 AO使用隔离正版、0.4 scale及原有后台保护，关闭body／camera／input三个原型，取得完整七阶段原版数据：CA依次为0、3、0、4、0、7、0；左侧CD1、右侧CD2，始终同一Link／slot0／CT2。三条原生LT租约全部确认释放，五条平移租约都确认归零及writer关闭，没有Shoot。四个已知骨骼各阶段查询通过，PawnRoot逐值不变；这些getter仍非同一原子姿态快照。原版左右child5 Weight均为1，top为child4=1；child0／4／5边的bMirrorSkeleton全部false，Pawn.bWantsToBeMirrored则左true、右false。Mirror_Master与TransitionBlend祖先尚缺typed权重／镜像值，不能据child5边值就认定原版左右的翻转位置，更不能把child5=0当作全局镜像切换不会改变中立姿态的证明。
 
@@ -230,7 +1257,7 @@ Native9随后完成fresh冻结构建。normal DLL SHA256为`50601ea6bf86ffcd6b05
 
 Native9sim仅改变既有一个sim连续模式guard，其余633文件／CMake／flags逐字相同，整体反向恢复normal；DLL SHA256为`e8109e819c63e105637178fc9e33213ed0d81be46ac38efd0b7f78702f8c5727`，23项helper重跑通过，CPU94因源码逐字相同明确复用。证据保留于ignored `native-body9-build-result.json`、`native-body9sim-build-result.json`及两份source provenance。候选已交武器会话配合其冻结c41a65c subscriber，继承旧PG pin仅为reference，实际测试必须换成该subscriber的真实hash；当前仍未完成真实跨DLL注册／开火／清理验收，没有替换默认组件。
 
-## 2026-10-24 — 上层镜像定位及原生几何接入
+### 2026-10-24 — 上层镜像定位及原生几何接入
 
 AP关闭三个原型，在0.4后台正版实例完成七阶段原版对照。Master#2 child0的镜像位依次为false、true、true、false、false、false、false，对应CA0、3、0、4、0、7、0；左探收回后仍保留上层镜像。Transition#7两条边始终为false／Weight1和true／Weight0。四骨前后14个祖先区间accepted，身份、布局、mask和采样值保持；独立读区间仍不等于同一pose epoch。清理80/80、XR0、音频9/9、原十文件及全部自有进程退出通过，证据为ignored `native-pose-ap-summary1.json`与`cover-host-1024ap-camera-final1.json`。
 
@@ -242,7 +1269,7 @@ Native11在frozen10上接入原生几何读路径。当前Link／Pawn／World／
 
 最新默认已前移至support3 Native `4752801a…ae14`与menu-modal1 XR `37f46312…a4d`。本分支候选保留原冻结渲染来源，后续正式集成需叠加最新support3被动诊断及菜单修复，不能拿旧候选覆盖默认。LGrip合法表面／碰撞、独立上下左右组合身体求解、Mesh朝墙、受击／枪口一致性与疾跑实际A/B验收仍为未完成范围。
 
-## 2026-10-24 — 冻结完整三维目标与实际几何读回
+### 2026-10-24 — 冻结完整三维目标与实际几何读回
 
 新增 `CoverBodyTarget`，将同一已提交虚拟偏移、原始 HMD 平移、视点基准和完整 World／Pawn／Mesh／Link／slot／Scene／XR epoch 绑定冻结为一个求解输入。左右、上下和前后独立保留，支持真实站起、下蹲和身体侧探；没有三角形归一化或高度饱和，固定位置的旋转不产生平移目标。源追踪和目标各自超过100ms即失效。当前模块只存储目标眼点，头骨到眼点校准、骨骼求解、同epoch发布和碰撞均明确未通过，未添加骨骼写入。
 
@@ -252,7 +1279,7 @@ AR-A／A2的Native11sim实际正版会话均在稳定CT2／CA0／slot0下取得1
 
 AQ疾跑夹具在进入SM4前的PE身份预热拒绝，未执行Try／End或持有跑动输入，没有during-SM4样本。完整清理独立80项、XR0、音频9/9、原十文件和自有进程退出通过。为定位实际差异，`cover_bone_query._module`仅增加失败字段、section差异及头部hash诊断，原拒绝谓词保持；相关64项Python检查通过。疾跑相机稳定仍未验收，不能将无样本写成零晃动。
 
-## 2026-10-24 — 显式Scene与stereo锁上下文
+### 2026-10-24 — 显式Scene与stereo锁上下文
 
 Native13新增内部context ledger及真实`StereoMutex`归属记录，所有11处stereo lock／try-lock使用同一类型；保留原底层互斥行为。完整Scene入口以POD helper及finally包住原有body，原六个参数、返回值和异常继续转发。嵌套、复制／错误地址／错误ledger、溢出和非LIFO结束不能被误记为上下文清空；未知状态保留poison。它目前只提供上下文记录，不授予引擎调用或字段写权；普通callback、ActionGate及前置PE／bridge许可还未连接，不能据此称完整动画交接通过。
 
@@ -260,7 +1287,7 @@ Native13新增内部context ledger及真实`StereoMutex`归属记录，所有11�
 
 AR-A3继续在任何正权重前被脚本拒绝：它读取了清理时才复制到runtime报告旁的status文件。原生运行时实际写入各隔离实例`native/session-status.txt`，AR4已改为认证instance_root、native_command build-dir、game／owner incarnation及started_qpc后读取该LIVE路径。A3清理独立83项、Native／入口、XR0、音频12/12、原十文件与自有进程退出均通过。AR-A4／A5则在continuous激活前被原有startup窗口门槛拒绝，没有probe或Advance，不记为身体失败或连续83项通过；窗口诊断为一个visible但client0×0的候选及一个hidden候选，tiny-output曾观察1280×720，但不能将它等同实时帧。未切前台、调整窗口或放宽门槛。A4完整prime／entry、reservation13/13、PG、tiny、音频12/12、原十文件与当前准确进程清理已核；A5保留独立后续审查。
 
-## 2026-10-25 — 完整Support3基线合并与测试阻断定位
+### 2026-10-25 — 完整Support3基线合并与测试阻断定位
 
 按实际源清单复核后，明确本分支冻结渲染源的共同母体为Support1（584文件）；source13仍缺Support2的完整启动timeline，不能只叠加Support3最近三个文件。真实Support1→Support3恰7文件。以source13为ours做三方合并，root审核三处capture冲突，保留cover／hand retained、完整stereo summary scope及hand初始化／失败顺序，再加入原Support3 trace。source14为645文件，恰7文件增量，其余source13内容逐字保持；旧默认及9–13候选保持。
 
@@ -270,7 +1297,7 @@ A5独立启动清理已补齐。A6的有界只读窗口采样实际记录主窗�
 
 A8通过中立基线、零档请求、typed child0／5 Weight及cache观测，首次骨骼查询在分配／提交前因PE校验拒绝。新诊断指出同一正版EXE的index12 `.themida` 节raw_size=0，PointerToRawData磁盘11354624、运行时0，其余节字段相同。离线以原1536字节头仅改此字段并叠加已复核Resource目录布局，重建hash与A8实际live header hash完全一致。兼容只接受该正版SHA256、精确index／整条节记录和0目标值；其他头字节、节布局、Import、全部函数代码及每次查询的完整原始live header closing复读保持。兼容记录不识别改写者，不修改游戏文件／内存，也不认证映射节的运行时内容。新增6组含多字段变异、未知hash、closing变化和代码变化拒绝检查，相关Python70项通过；新兼容的当前游戏读回仍待执行。依据为[Microsoft PE字段说明](https://learn.microsoft.com/en-us/windows/win32/debug/pe-format)，私有证据在`bone-empty-raw-pointer-layout-ar8.json`。正权重侧探A/B、实际抓边、完整三维身体求解、碰撞／受击／枪口一致性、原LT/RT自动探头移除和疾跑稳定验收继续实现，未计为完成。
 
-## 2026-10-25 — 掩体与武器动作边界的兼容接线
+### 2026-10-25 — 掩体与武器动作边界的兼容接线
 
 新增 Native ActionGate 与外部动作边界 provider，仍复用唯一 CallFunction owner、既有 hand pin 和同一个左手仲裁器。CallFunction 顺序为 Gate begin、V1 begin、原函数、V1 end、Gate end；所有已接纳责任跨越完整原函数并在 POD finally 收尾。恢复引擎调用只允许认证 GT 上、本次入口的显式许可；Scene、stereo、普通回调、嵌套及未知上下文拒绝许可。外部 State 只保存描述符，TLS／责任节点留在 Native 固定池；停止、异常、不确定状态与未完成责任保留模块，worker 不提前卸载。`WeaponActionGate.engine_restore` 默认关闭，没有启用 STREAM／STOW。
 
@@ -286,7 +1313,7 @@ Native16 normal已完成完整冻结与编译：DLL SHA256 `07837b14539ee81c42eb
 
 AQ4独立证书修补后，正版游戏完成一次Try及0.703秒held租约、恢复held后conditional End回SM0，取得107个accepted SM4样本和47个不同相机时间戳；相交完整CSV中61帧为固定source1模拟HMD。所有新增证书保持32,768上限及完整归属／closing，fast sampler字节保持；97项CPU通过。两个相机字段保持候选值并恢复2/2；游戏清理独立80项、Native／入口、XR0、音频10/10、原十文件及准确进程退出通过。实际Pawn根位移269.063单位、Z范围-41.350至1.699，不能将地形位移算晃动；相机相对Pawn的三个局部坐标范围约25.058／0.306／62.071单位，旋转相对PC范围17／0／0 RU。尚未有FP开启、无步态残差、最终眼矩阵或A/B证明，不能宣称稳定已修复。证据在ignored `sm4-aq4-summary1.json` 与本局 `sprint-1.json`。
 
-## 2026-10-25 — 跑步稳定视角候选与共用追踪坐标
+### 2026-10-25 — 跑步稳定视角候选与共用追踪坐标
 
 Native17只在actual frozen16上叠加7文件（654文件）：独立跑步kernel/live及组合测试，加Capture/CMake/first_person glue。SM0校准必须为CT0、未蹲伏／无蹲伏请求、无掩体／镜像过渡；SM4以当前Pawn根位置和已校准眼高构造基础视角，方向来自PC yaw/pitch，HMD仍只在既有下游组合一次。持续新鲜同context的跑动不设任意10秒切回，支持正负90度pitch；失去有效Scene／身份／epoch／时效时本次可选覆盖不可用，不停止stereo。配置默认关闭，仅在第一人称实际preview生效且非原生狙击scope时覆盖，普通Scene在FP关闭时只读预热。Root另以ordinary规则排除cinematic／mounted／unpossessed。该候选尚未解决第三人称跑动，也未完成实际FP开关／SM4衔接及最终眼验收。
 
@@ -312,7 +1339,7 @@ Native18b normal完整组合已通过：实际frozen17的654文件加21文件最
 
 配套XR source1sim已交回，基于最新menu-modal1同源normal制作，仅私有sim选项及9个限定hunk；原菜单、颜色、CSV尾部与normal输入采样loop保持。EXE SHA256 `1a059d2d3b6aed6b4f8911ee1790f5051a1908b0d91515f3451655e535a2b4e9`，manifest `c189bcca43d4a41420359fc36acb39100a00cbe0cb3e0174f091948539befa80`。Root独立核验7个EXE／loader／源与CPU回执／外部runtime及operator文件，均匹配；证据为ignored `pose-phase-ro1/xr-receiver-preflight1.json`。实际runtime身份、完整模块路径及本次XR进程的fresh8720监听仍须在拥有的会话启动后核对，文件校验不替代实际运行验收。只读Pose单次采集夹具准备中，此处尚未启动新Game/XR。
 
-## 2026-10-25 — 实际姿态阶段、骨名与原生数据适配
+### 2026-10-25 — 实际姿态阶段、骨名与原生数据适配
 
 Pose RO1首次实跑在Native worker启动前因私有child的`prime_owner`导入路径错误退出，未发送事件；原失败／incomplete、XR exit1及finalizer正常停止timeout均保留。独立事后核对无准确自有Game/XR进程、音频10/10已恢复、PG／early prime恢复通过，host原十文件比较保持；没有补造完整Native独立清理通过。RO2只修三个具体child导入路径并验证真实CLI闭包，保持所有Native/XR／动作／权限和原只读协议。
 
@@ -423,6 +1450,10 @@ Native25在实际24b上只改CCTRL／CMake并加4个文件，706文件整树逆p
 `post-weight-scale-ro2`实际session1650050334510／PID54836／Compose44873取得四组`CPSCL001`，24984B，SHA256 `f7cf3b3ee85517bd90a2e286883d81af30d0dd340fd008437a29189d79f61260`。Root使用25实际ABI和独立parser再次解析，4/4只读观察qualified，骨序分别8→10→11、11、32→34→35、35；前后read_mask均127，cached flag为实际DWORD0，scale header的data／count／capacity全0，真实alpha bits均3f800000，完整返回packet保持，Compose正常关闭且无nested／concurrent。嵌入8个Compute／weight Row与原CCTRL逐字关联，唯一变化为实际close更新offset1938的compose_returned 0→1，其余包括padding逐字相同，不做伪零归一化。完整96项恢复、XR0、音频10、原十文件与准确PID退出通过，窗口释放。
 
 独立parser SHA256 `f789d7d76e2eeea06ac7eafb998172a957f7c5a43f820f78487e40df1df0d8f8`，13项格式／cohort／claims／截断／未读值等正负检查通过；Root实际结果为ignored `post-weight-scale-ro2/runtime-scale-parse1.json`。它只排除本轮四组v240额外缩放，未来v248/g、其他状态、正常reach、骨骼writer／物理传播未获证明。Scale25专属2旧／4新文件已最小接入tracked，CMake保留当前其他内容、逆patch精确，当前headers的ON九场景／ABI和两个OFF helper严格CL通过，回执为`post-weight-scale-tracked-integration1/cpu-1792905767363545400/receipt.json`；当前combined完整DLL编译仍与已运行冻结25分开记录。
+
+### 2026-10-25 — 掩体分支补充记录，随C0内核接收
+
+以下Native26c／27实跑和原始证据属于掩体分支，接收其历史记录不代表武器分支已构建或运行这些Native候选；证据目录位于掩体独立工作树。
 
 独立接收武器会话的null-link身份复读修复`ab2ec3818b7e1ec0d7e3094a9e1bcfe13e88b8a2`，本分支为`fe4f90e`：只将UI组装期间判定可重试null前的controller／field身份检查恢复到真正fresh_read，避免assembly hint cache掩盖变化，既有typed-null／启动分类保持。Root本地两个修改测试模块实际7项通过；初次错误目录的0项不计，收尾误期待对方31项而失败的元数据断言保留，随后仅依据原exit0／7项日志与源码hash澄清，未重跑或冒称31项。实际范围和来源见ignored `analysis/ui-null-fresh-receiver1/receiver-final1.json`；未改根默认清单或扩展为新启动兼容性测试。
 
@@ -988,3 +2019,148 @@ B：武器提供纯变换 helper `93e2c62d…84d1`，由 Root 接入同次 `prep
 交付目录 `J:/gearsVr/candidates/6dof-manual-20261027-1`，正常 GUI，默认 0.4、相机拉近 0、第一人称勾选；已配置购买版路径。Native `322d8733291660a26445d8646d18a39d1aa32dc4f499d8d66f8b624fdd3f209b`，XR `9356fff38724d42141723285cf3c90445163aedfe2a6c51fd058b504ad3666cf`。显式 `sixdof_manual=true`，不含自动自测 EXE 和模拟器；原身份、新鲜度、启动、恢复和停止保护保留。说明见 `docs/6dof-manual-candidate-20261027.md`，包内 README／CANDIDATE／candidate-state／inventory 分列实现、编译、打包和待真机状态。
 
 当前状态：**代码实现／编译／打包已完成；实际启动、清晰双眼、持续双手、停止及真机验收未确认。等待用户反馈，暂停后续功能，不继续自动测试。** 回退使用正常停止并退出游戏后，再打开 J 主目录的原正常启动器。
+
+
+2026-10-27 武器会话完成RWENT001纯文件最小消费者交付。准确source3合同27493ce7…3520，reader821d0167…8ddea，回执26a8c3aa…92940，私有件在ignored `analysis/lancer-ready-same-entry-20261027/`。独立ctypes逐字段对compiler ABI，12项必要检查／0失败（0.020秒），CLI成功及覆盖／截断拒绝通过。valid组和read-status分别约束可信字段，失败记录保留；比较Local35／51／52四个相邻阶段以及returned_end的Space×CTW世界手腕误差，raw米与target游戏单位分开，不套未认证阈值或自动归因。跨entry必须有完整映射观测和相同cohort，rawRight单独固定不充当目标固定证明；原ns和QPC频率边界保持，gun／Muzzle缺证不补。Body准确67b513候选与K预检已由其交付，消费者已通知Body可开原独占一局。未动／构建Native、PG、XR，未重跑旧套件或旧案例；K实跑结果待收，不计跟手功能完成度。详见 `docs/weapon-ready-same-entry-observation-contract-20261027.md`。
+
+
+2026-10-27 武器会话完成唯一K新RWENT原件的一次实际解析：Game74284／Native3200498446623，18条=9提交成功／3guard拒绝／3mount0／3seed_model捕获失败。9成功样本planned→commit→pre→end的Local35／51／52逐bit一致；3拒绝seq7／13／15(code12/unit17／3／9)在pre仍逐bit等于before，end腕离target约15.77..16.18u；known-ready的11份有效target均相同，完整相邻mapping相同仍发生成功／拒绝分流。优先交Body定位capture／mount／commit准入，不能归因为成功写后动画覆盖。解析原件SHAb3563225…ab28b、输出f0c0d74b…4723b、派生review fc7cf1c5…9e7a5，均见ignored `analysis/lancer-ready-same-entry-20261027/`及同次观测文档。原ready phase仅15capturepoint／7成功；新观测不覆盖肩／移动，启用期unavailable293不当ready丢失。Body原动作／恢复／106清理通过，不增加功能完成百分比；未重复v3／PG解码或新Game／Native构建。
+
+
+2026-10-27 按统筹安排完成RWENT002窄file-only适配，reader9923573d…dfa00／回执feddc65f…fb039，准确合同fca9c717…2fbfb。显式v2／R2040，仅尾2024 verdict与2032 causes；复用冻结v1前缀数学，原件身份与内存投影分别标记，v1结果及K原件保持不回填。UNKNOWN不推通过，只有verdict3＋mask1／2／3且prepare0／commit12合法；mask仅已计算事实，不推先后／branch clock／validate-exchange或深层原因。6项必要方法／0失败（0.007秒），CLI新合成与v1兼容通过、覆盖／半缺对拒绝；未重跑旧数学／旧案，无Game或Native／PG／XR构建。已交Body／统筹结束此离线交付，新候选验证安排另循唯一窗口，不增加功能进度。
+
+
+2026-10-27 武器会话完成HM新RWENT002一次消费（原件015902a9…f4b1b／输出237343af…49132／派生review a0dcdc54…96382），Game26228／Native3222855251894，23条=11成功／5guard拒绝／6mount0／1seed_model。5拒绝尾全verdict3／causes1，首seq6 tick36468／Compose36469 epoch958 unit6，实际记录BodySource source-age-only事实；其余18尾UNKNOWN，不推出先后或branch clock。11成功中10保持、seq13出现新差异：planned→commit→pre Local35／51／52逐bit相同，pre→end仅35变（1.21869rad），CTW与epoch965保持，world腕离target17.0568u／.569836rad；accurate key／stage／phase已交Body定位本次写者／rollback边界。K9成功保持与HM此条分别保存，不互相覆盖。ready capturepoints2..21共20，肩／移动不覆盖；HL预启动失败不算HM覆盖。原三门／恢复／一次106清理由Body通过，与稳定跟随接受分离；无重解K／PG／旧v3、新Game或构建，功能百分比不涨。
+
+
+HM采样边界补充：Body核对returned_end早于THIS Kernel.finish，排除其后的finish／rollback解释该已采Local35变化；原调用返回至snapshot尚有wrapper收尾及Goal读取，暂不能归单一原函数内写者。仍只定位pre→returned_end区间，原parsed／review不改，不新增Game／RE。
+
+
+2026-10-27 完成RWENT003原函数刚返回边界的窄file-only消费者：reader235875fc…42122／回执6fabad75…d558e／合同671b56da…c3c42。H128／R2368，原2040前缀及Stage布局不改，只加raw_return328；分别比较pre→raw和raw→end，记录epoch／CTW资格及world误差，不推具体写者／写入瞬间。7项必要方法／0（0.008秒），CLI新合成与旧v1／v2兼容通过，覆盖／截断拒绝；旧数学套件复用、旧K／HM不重解或回填，原reader／parsed hash保持。已交Body／统筹，未开Game或Native-XR构建，准确新候选验证由统一窗口安排；定位准备不增加功能百分比。
+
+
+2026-10-27 HN唯一新v3消费复现成功后Local35变化并缩小边界：原件8cda052c…3afb7／parsed b153ecc0…0f72b／review9b6d2501…1d407，Game59204／Native3232920772391。19=9成功（8保持1变）／2reject／6mount0／2seedcapture；17有效raw全raw→end Local三骨／Space35、52／CTW保持，2rawUNKNOWN不算稳定。成功seq13 Tick41283／Compose41284／epoch947 prepare0 commit1 finish4，planned→commit→pre保持，pre→raw仅35变1.14386646rad，raw／end同腕误差16.77294u／.571303rad。因此本局变化在finally/endcallbacks前已出现，排除其后callbacks／Kernel.finish解释，但不命名原指令或排除并发。准确key／4stage／flags／phase交Body，HN不代填HM。capture点1..17在ready、18/19在ready后move前；肩／移动不覆盖。原三门／恢复／106清理通过与稳定玩法／头显分开；无旧案重解、age／PG-Muzzle扩查或再开Game，不涨功能分。
+
+
+2026-10-27 完成RWENT004既有weight回调边界的file-only消费者（reader3d9ce0cb…fa8b4／回执e299b52b…562f4，合同31797a2e…4a89d）。原v3前缀保持，H128／R16416，新增bounded Diagnostic／WeightReturn+Stage／actual raw4 constants。严格count/drop／identity／signed字段／mask／partial，独立pre→weight→raw Local比较，无weight Space不编造world。按Body已有ASM supplement6c2e5ed6收窄候选条件：必须同entry/node/compute+weight ordinal的sample4/reason0、前后cached_flag读取0且其它角色／snapshot／alpha／实际常量全合格，才描述alpha>zero且>=full或fractional；零／无效／缺失保持UNKNOWN，条件不证明store／排并发／穷尽集合。最终12必要方法／0（0.039秒），CLI合成及旧v1-v3兼容通过，非法pair／覆盖拒绝；旧数学复用、K/HM/HN不重解或回填，原hash保持。已交Body／统筹，无新Game／RE／Native-XR构建或PG-Muzzle／age扩查，候选实跑另由唯一窗口安排，不涨功能进度。
+
+
+2026-10-27 HO新v4为准确空覆盖：原shoulder门6.0073855秒status0→0／无coherent，ready／move未发送，未放宽门。原件7a30ff5d…7b75c仅Header128/count0/selected0；Game41768／Native3269225923034。冻结reader只解一次exit0，parsed dffc5951…d7bc9／empty review b3c1632e…158a6，旧HN等不替代不重解。新weight边界无目标覆盖，文件有效／正常恢复清理不算成功或修复证据；启用期491 unavailable非ready丢帧。Body沿本局旧first-failure／held记录解释门0，本侧不改weight接口、不再开局或扩PG-Muzzle／age，不涨功能分。
+
+
+HO后续Body既有记录明确：90attempt／90query前not_ready、query0，fallback hands unreachable8；first-false未保存，不归具体准入条件。该局没有held baseline，body-continuation未证，不能以106清理代替。Root保留原空解析／review和冻结v4 reader，仅接收此边界，不做泛审／再开局。
+
+
+2026-10-27 完成查询前首false的BHELD004最小consumer（reader1e0c7d30…af0ef／回执27a2f8b4…58ea8／合同05070c33…95261）。H128／R648，正常行复用未改v1/v2/v3纯row helpers，v4独立真实arm规则；kind2不伪PG-ready，仍只约束begin≤deadline，end可越界。cookie0 gate20单独非权威diagnostic，保留source0／UNKNOWN、rawindex/slot，不补header身份／cookie／时间或送旧行验证。11必要方法分批通过（10/.007s＋1/.002s），首批旧合成equipment时间导致16断言失败的版本保留，修fixture不放宽reader；CLI特殊／混合窗／旧v3兼容与非法数据拒绝通过。原Goal/capture/guard字段和新prequery首false分开，不用HO90基线解释新增151Goal拒绝。权重reader3d9不改，旧实际案不重解，无Game／RE／构建或宽调查；已交Body／统筹，定位工具不涨功能百分比。
+
+
+2026-10-27 HP新BHELD004一次消费通过格式验证：Game33264／Native3309563927982，原件e625cebb…5b329／parsed84002ceb…ccd8e／reviewfbe24557…d8dfb。128raw=127normal+1gate20、drop6；kind2非PG-ready。首normal raw1 gate12 cookie1,parent0发生于肩marker前.5831407秒；117前置通过／7未观察／2context_prepare cached source_age3分属shoulder raw32及move raw117。独立ready Goal14 adapter2/core raw98的prequery UNKNOWN，不借别条填补。三个原门通过，但protocol/bodycontinue均false，post-quiescent free-hand续更超时原样保留，不能借106正常清理替代；新记录不证明HO修复。有限savedspan止于move末前.2981668秒，drop不补值。只消费新BHELD，不追加权重／矩阵／PG-Muzzle／age或旧案/新Game，不涨功能分。
+
+
+2026-10-27 第37轮仅消费HP已有RWENT004权重原件a703a459…e402f一次（parsed401da0db…c2c23／reviewfa760a05…c5462），未新Game。9成功entry的18合格右腕weight前后Local均保持到raw/end，本份成功后变化未复现。实际原alpha/sample4=1，原applied事件与最终packet均0；sample4/reason0、前后缓存flag读取0、当前raw4阈值齐全仍不能给零alpha套full/fractional归因。其它final1/flags7缺匹配compute角色，不能填入成功证据。264alpha/64weight事件drop0，RWENT globaldrop0与BHELDdrop6分开；权重capture只ready限定片段，肩／移动不覆盖。按一个下一动作交Body继续已有HP Stop回执定位free-hand续更首阻碍，不新增采集器或原样重跑，不借HN/HM补值、不扩PG-Muzzle/age，无Native改动/构建；整局protocol/bodycontinuefalse与稳定跟随仍未验收，不涨功能分。
+
+
+2026-10-27 接收Body HR受控neutral observed-rebind真实游戏结果（报告8c7b0d28…14f85／Root receipt037de4f3…14499）。准确Native851d50fc11cbfce3052fa66e0e2680a8404d429e5c540b4e7e037f2ca75c9da7原45通过；Source1右grip tracking flags15→0→15，observed1→2且硬refepoch2/flags1保持，rebind1。首次已保存接受rebind样本后hand/Goal+30；Stop4→5后free-hand+37、held71保持，三门/10命令/protocoltrue。106全恢复/XR0/原10/audio9/9/实例空另列。受控接续/Stop续更通过，不冒称原HP自然触发重建、所有硬key独立序列化或稳定跟枪/射击/头显/default验收。Root只核报告身份和字段，无wire解码/源码复审/Game/构建；下一联合候选复用该工件，PG/consumer冻结，百分比由统筹按证据更新。
+
+
+2026-10-27 针对HS新增pair门48次0接受（47跨组件发现body推进/1closing拒绝），完成单文件只读pair动态窗口候选4b473368…a8ca5／manifest e78e71f3…ab013。完整typed/身份/附件/Ref发现+预关闭在前，第二次未改原coherent probe取fresh body，短window内gun raw重复、AvatarCTW+未改115骨骼_close_pose闭合，完整static/selector/identity/ref/registry后关闭移到window外；动态值不再跨慢关闭pin，成功返回fresh保存cohort，失败原样fallback，明确window时点及sameC0/render未证。22 CPU方法分20/.159s+2/.014s通过，一次窄Sol审无P1/P2并补窗口后body推进fixture；原provider/字节/epoch/typed guards不放宽。只改Python模块和必要fixture，Native851d/PG/XR/held-RWENT消费者冻结，无Game/构建/collector或HS原件修改。已交Body下一唯一后继实跑，CPU结果不称运行修复或增加功能分。
+
+
+2026-10-27 HT完成Lancer全动作／Stop续更／106正常恢复，武器侧仅消费本局已存3JSON。Game23504／Native3385921311899，分析dcbd1f5e…3a83c。新pair4b473实际取得48/62有效配对，动态窗中位6.54125ms（外层87.7139ms）；按完全包含phase计shoulder12/ready3/translation6/+10 3/−10 3/return5，未混门完成时4。48份附件/weapon/component/asset/relative参数与AvatarCTW保持，但同marker读回仍跳：obs4→5右腕31.461657u/34.28°；首直接gun/bone52关系大偏差obs14 epoch1336 gap31.002087u/34.402633°，另obs21 epoch1378 gap16.645682u/33.995248°。不筛样本，ready/+10/return两组姿态交替，6cm尚无干净响应证据，−10三份单独稳定不扩全程；左输入未改、无support grip，不强求跟右平移。已交Body两个精确epoch作既存证据关联，缺链保持未知，不命名写者/渲染原因。截图五freshness门超时、仅最后retained BMP待单独像素检查；typed配对非sameC0/非firing/非GPU/头显接受。无新wire/旧案解码、源审、collector、构建或Game，稳定跟随仍未通过，百分比由统筹按证据处理。
+
+
+2026-10-27 HT两个异常点现存RWENT004一次消费完成（原件4fe331a8…1b5ab／parsed f6fb4b18…a781d／focus review77aadd63…b9f1a）。obs14 epoch1336不覆盖，保持UNKNOWN。obs21 epoch1378 exact同mesh保存seq16/T41489/C41490，valid127 commit1，pre/commit窗前、4weight/raw/end读取位于pair窗口内，epoch/CTW一致；planned→commit→pre→右腕weight→raw→end Local35/51/52逐bit保持，raw/end world35/52与外部body世界矩阵精确同。4实际alpha最终0，原sample/cache0/实际常量齐也不作两个store归因。这条排除已观察selected Local在这些边界被改回的说法，外部gunCTW关系差异未解释；wire无gun更新时点及全Ref/Local/Space SHA，不作完整hash或sameC0/render/写者结论。64saved/65selected/drop1保持，无其它wire/PG-Muzzle/age/源码/建/Game或collector。已交Body/统筹，稳定跟随未通过。
+
+2026-10-27 按Body请求完成现有父骨骼→挂载枪组件刷新入口的窄查询，没有找到已经验证、可在当前owned GT调用且顺序明确的现成路径。主知识库保存的 `Engine.SkeletalMeshComponent.ForceSkelUpdate()` 只是native声明（文件hash eb1f25cd…bc3fd8）；历史字符串RVA不是函数地址，当前typed调用、child刷新语义及相对C0顺序均未知。AttachComponent参数导出不完整；现有装备挂载读回仅作metadata，旧phase1 setters是另一受lease约束的变更路径，不能借其权限刷新。receipt保存在ignored `analysis/lancer-continuous-follow-20261027/existing-attachment-refresh-entry-review.json`，已交Body唯一实施后继Native定位，没有新增PG写者、Game、构建或IDA。
+
+同日应Body新合同 e48f61d2…7168e，实现独立RWENT005 file-only消费者 `analysis/lancer-ready-same-entry-20261027/read_ready_wrist_v5.py`，SHA256 `443dbad4e21c83ecf30c909ef8599f391cd3794ea552aadf947b70734b599e0b`。Header128／Record17800，16416字节v4前缀不变，compose_gun304及outer1080追加；独立核对实际编译字段和新ObjectIdentity布局、OuterStatus域、exact外层Tick/thread/mesh及调用返回、latest-compose布尔、父→枪→父关闭原字节一致和QPC顺序。Compose父/枪仅顺序观测，无父关闭括读；外层父epoch保留实际后继值，绝不要求等于gun自身epoch。身份/附件/world generation一致后才作跨边界比较，缺失或last_compose不匹配保持UNKNOWN，无邻行补齐、写者/最终render/射击/头显证明。
+
+v5必要离线检查14项/.031秒通过，四个旧版本dispatch逐一等于冻结reader；完整合成CLI单行exit0。原Host样本58376d82…77387只独立解新tail核epoch42/顺序/括读，完整入口因其不完整旧前缀明确拒绝missing entry identity，未改原样本。独立v4合成前缀+ctypes v5 tail测试完整入口，全部标为合成非Game。首轮11/12过、Host零四元数触发旧数学校验的错误另存；新OuterStatus只认证读取，现保留原POD并单列数学不可用，旧v1–v4不改。tests SHA101dc25f…40ab4／receipt3e8b2d0e…ff8ed8；准确候选及CLI已交Body。Body持有HU固定ready真实运行窗口，Weapon不另开Game，不消费旧HT/HN/HP/HR，等待HU新原件一次消费；Native c875、真实结果、稳定跟随和默认集成尚未由本消费者验证，不增加功能分。
+
+2026-10-27 HU已正常清理释放窗口，但原肩位40提交/6秒门只到35，ready未触达，protocol=false。Body窄review及其三份输入hash已核对；RWENT005 count/selected0、仅Header128的结论按report记录，不打开/解空wire，不用13份肩位gun配对或旧case代替ready/外层更新证据。Stop4→5、body续更、双控制器/bridge恢复与唯一finalizer accepted另列，不能替代动作门；23次context rejection不单独解释为age。武器接收记录 `analysis/lancer-ready-same-entry-20261027/hu-not-reached-received.json`，读取器443d保持冻结。Body发现outer_end访问GT专属ticket前缺owner_thread快速门，正在唯一实施该明确修正与必要检查；c875不视为完成修复，不扩大武器功能分或重复读器测试。
+
+2026-10-27 Body候选3仅在outer_end访问GT专属ticket前增加owner-thread立即返回，新Native fbaf4662…16306、原45及实际回调26项通过。独立producer-provenance72577880…fc275／源manifest436324d6…9248f及DLL/header/live/两份验证结果实hash均核对，武器receipt eb83d6d5…3efd6；e48f原合同/c875/旧工件不回写，443d读取器复用且不重复14项。随后HV过原shoulder/ready门并正常Stop/一次finalizer/106/XR0/原10/audio恢复，Body释放窗口；这些是正常协议结果，仍非跟随/射击验收。
+
+HV唯一新v5原件49a9ffdf…6661b／1050328B，Game17532/creation134375598747616710、Native3458878466732，冻结443d/e48f+producer72577880一次解析得到 `hv-ready-wrist-parsed-v5.json` SHA415ceb72…83a90。59saved=59selected/drop0/nested0/unmatched0；正式 `hv-outer-boundary-qualified-review-v5.json` SHA630bc6d1…7e53b按角色/valid/finish/commit分层：25 held_lancer1/valid127/finish4/commit1/normal_scope=true全部有准确outer Tick/thread/mesh、called/returned1，无eligible漏outer。其compose_gun全unprepared11，outer全layout4/step1，outer.body/gun/body_close均UNKNOWN；首seq3 T38489/C38490/endepoch995，末seq55。其余7 held但commit12/valid63、15 free_hand/valid35、11角色未知/valid33、1角色未知/valid35均按设计不eligible，不混全局48 raw/end作同角色比较。
+
+HV没有可接受的outer父/枪括读，所以父后续变化、枪后续变化、外层是否收敛全部UNKNOWN；全部last_compose原0在prepare_layout失败后尚未赋值，不能报成观察到mismatch。首/后续unprepared不借下一行或旧HT填补，反复step1不等于完整typed发现反复执行；当前记录未给具体失败field/子条件，不猜锁/属性/age原因。中间未分层d6dd草稿保留但非正式交付；正式630b已交Body/统筹，下一唯一边界是现prepare_layout step1具体失败点。没有新增consumer、Native/PG写入、Game/构建、旧案解码或矩阵重算；实际枪体跟随、视觉、射击、头显和默认集成仍未验收，不增加功能分。
+
+2026-10-27 Body candidate4仅细分既有layout_step具名字段，Native0c92eba9…c2f09／源manifest1400bf0e…f75b1，40实际回调Host及原45检查通过；producer附页de46a6ba…17220的DLL/源header/live/manifest/两份验证实hash已核对，武器receipt001aec09…3f4b3。e48f原合同/header/ABI/OuterStatus与443d读器保持，不重复14项或重解旧case。HW新实际场景通过原shoulder/ready/Stop/正常唯一finalizer/106/XR0/原10/audio恢复；窗口由Body占用并正常释放。
+
+HW原wire36266437…7c534／1014728B只解析一次，Game37048/creation134375612668877206、Native3472837061334；parsed `hw-ready-wrist-parsed-v5.json` SHA8bb370d7…706fa，handoff17a3173e…890a7，正式 `hw-typed-boundary-qualified-review-v5.json` SHA129919de…3a5e7。57saved/selected、drop/nested/unmatched0；20 held_lancer1/valid127/finish4/commit1/normal_scope=true全部有准确outer/正常called-returned，无eligible漏outer。20条全停在新具名step105=Weapon.Mesh typed property，compose_gun全11 unprepared，outer父/枪/close全UNKNOWN；首seq1 T37421/C37422/thread51016/mesh3486117312/endepoch1342，末seq54。其余37按free_hand/valid35 16、held/valid63/finish4/commit12 4、held/valid63但finish及commit未知1（seq22）、角色未知/valid33 15和valid35 1分别保留，不混入20条有效角色范围。
+
+本次将第一阶段拒绝收敛到具体Weapon.Mesh属性验证；其内部究竟kind/声明类型/extent/identity/current哪项未满足仍UNKNOWN，不据此放宽保护，也不将20次同终端step当20次完整typed遍历。前序101身份/102Pawn.Mesh/103Pawn.Weapon/104Instigator按原短路路径先于105；后继条件尚未证明。last_compose原0仍是失败后未执行默认。因全拒绝，不做矩阵解释、不借邻行或旧HT补值；没有新消费者/测试、PG/Native写入或Game/构建由Weapon执行。正式结果已交Body唯一定位该属性内部条件及统筹，枪体外层是否收敛、持续跟随/视觉/射击/头显/默认集成仍未验收，不增加功能分。
+
+2026-10-27 对照装备已有源码：其Weapon.Mesh读取后认证实际对象为SkeletalMeshComponent；Python组件配对也校验实际实例派生关系，而Native观察器额外要求属性+d0声明Class名完全等于预期。保存KB仅有ComponentProperty Engine.Weapon.Mesh库存项，不提供实际声明目标身份，未据此猜本局原因或放宽验证。Body candidate5保留原共享helper，以机械等价私有诊断副本仅标记已执行的引用读/identity/Class/name失败，Native f135c3a2…35164c、producer59204251…d6b9bc、manifest51152b11…308fc4；40 Host/原45及acc6等价记录的来源实hash已核对，武器receipt ec3c4ff6…0d946。首namespace编译失败由Body保留，准确后继build2用于HX；旧合同/header/ABI/443d读取器不变，无重复14项。
+
+HX真实场景通过原两门/protocol/Stop/唯一finalizer/106/Native-entry-PG/XR0/原10/audio恢复，窗口正常释放。仅消费新wire347e1088…8d5d3／1085928B一次：Game17708/creation134375630804911331、Native3491002809899；parsed `hx-ready-wrist-parsed-v5.json` SHAaac88a59…020eb，handoff3efcc196…f115e，正式 `hx-declared-type-qualified-review-v5.json` SHA4f1e0678…40c38。61saved=selected、drop/nested/unmatched0；28 held/valid127/commit1/finish4/normalclose均有准确outer及正常call-return，无eligible漏outer。全28记录实际step10570：原严格引用pointer读、目标identity和Class-kind已通过，在原name比较处拒绝，已捕获声明目标名为MeshComponent，观察器期待SkeletalMeshComponent。首seq3 T36036/C36037/thread61124/mesh3482881520/endepoch918；其余20freehand/valid35、1held/valid63/finish4/commit12、1held/valid63但finish/commit未知（seq18）、11角色未知/valid33独立保留，无资格行不混入28。
+
+HX确定的是观察器声明类型预期不匹配，不能当作玩家跟枪缺陷根因或已修复。声明名与实际枪组件实例是不同对象，拒绝样本未序列化实际gun类/完整声明package/raw Class identity；不借KB/旧局补证。28条compose_gun仍unprepared11，outer父/枪/close全UNKNOWN，last_compose原0未执行，无矩阵计算、旁行填充或刷新顺序结论。已交Body唯一修正声明预期并保留实际实例认证、typed/extent/link/current保护，再取有效外层样本；Weapon不改consumer/PG/Native、不建/Game/解旧案或PG/Muzzle/age。枪体外层收敛、稳定跟随/视觉/射击/头显/默认集成仍未验收，不增加功能分。
+
+2026-10-27 Body candidate6据HX实际声明修正观察器的Weapon.Mesh预期为MeshComponent，并以原derives/same_path额外认证、闭合实际SkeletalMeshComponent完整继承路径及准确声明Class；Native55ac90d3…0a1d9／producer41f9366c…121d1a／manifest0c3258cb…709f4。41Host/原45及引用HX正式证据实hash核对，武器receipt f4b67b04…f9028；e48f布局合同与443d读取器不变，不重测未变组件。HY由Body记录为未触达ready：保存的首条Native提交>=40身体采样begin6.269289秒已晚于门end6.027458秒，不能推CPU/GPU根因；未解Header-only。后继HZ私有host将额外gun pair从shoulder延后到ready，原完整身体probe/coordinator/40提交6秒/coherent/Stop106条件保持，Native/XR/PG/CY/pair不重建；Body保留唯一运行权。
+
+HZ随后在ready之前由owned launcher terminal incomplete终止。Weapon只读追到具体XR预检，来源已封 `analysis/lancer-ready-same-entry-20261027/hz-startup-preflight-review.json` SHA4bee5997…2cc51：launcher/session/stdout/stderr/CSV/first-failure/当前controller源码/host result八份实hash。Game48108/creation134375656487625405、XR51108；原预检要求>=30完整CSV、末20行source1/state5/render1/head及view flags含15，并要求stdout startup_menu_first_frame/end_frame_succeeded/非stereo面板标记。本局只保存2条完整CSV，虽均满足逐行条件，但没有合格启动面板marker，只有generic wait card；不能用wait card替代。native_started及native_activated均false，故没有ready/outer证据；这定位的是观测到的启动边界，不排除所有passive reservation hook影响，也不将2条保存行当实际总帧/FPS或特定API阻塞证明。
+
+HZ正常XR停止等待35秒超时后执行terminate_owned_child，XR exit1，不能写成正常XR0或106玩法清理通过。prime入口恢复、PG reservation-only shutdown0/entry restored及audio guard restored字段单列；完整收尾由Body继续核对。stderr另有SSL timeout，但没有其与XR停进展的因果证据，不命名网络/GPU根因。此回合未改launcher/Native/PG/fixture、未开Game/读进程内存/解任何wire；精确只读review已交Body和统筹，下一步由Body唯一跟进XR启动/面板进展，保持原预检及后台置后约束。武器侧继续冻结443d，等待真实有效父/枪新记录，不增加功能分或声明玩法修复。
+
+2026-10-27 D0当前动作：HAA唯一新私有重试由Body确认再次在相同XR启动预检拒绝，停止原样开Game；标准finalizer accepted=false／XR35秒强制结束exit1与已恢复prime/PG/audio/原10分列。按Body明确新分工，Weapon只在ignored `analysis/xr-startup-boundary-20261027/` 完成准确frozen XR的最小被动诊断源及CPU构建，Body独占所有XR/Game运行和shared Native。原1a059完整591文件/flags核对后私有复制，第一候选b493保留；没有从当前杂合源码构建或替换默认。
+
+D0首失败与分离：原1a059 CLI明确禁止无Game的Operator或显式scale组合，因此没有伪造Game PID绕admission；先交准确normal parent4174的6秒无Game命令，私有CY/LOCALAPPDATA/NO_ACTIVATE/BEHIND/OBSERVE_ONLY与原物理后台输入门保持。未传render/scale，指应用没有图像swapchain，仍会初始化D3D12 device和runtime/preview资源。Body实际执行该parent后30.109秒外部deadline未退、exit1 forced、CSV0字节，不能称普通帧进展、与HZ同根因或排除所有graphics。准确源码证明无render仍走Poll／Wait／Begin／LocateViews／LocateSpace／End；据此新诊断必须覆盖共享路径及原xrPollEvent循环，而非仅WGC分支。
+
+D0交接产物：最终normal诊断 `normal-build1/Release/OpenXRPoseProbe.exe` SHA1b02d7052c1c184fa440e9c85767ae1b6b64164a69c25a15c8a6b90f45634714，准确4174父源码与原normal flags；sim诊断 `sim-build2/Release/OpenXRPoseProbe.exe` SHA188670a75f11f197a0d540504ed25231395ce20b4599f609102f77770f95945e，准确1a059父源码与原sim flags。两相邻loader均66946；各591父文件完整核对、各592候选文件，只改相同两原文件／新增一header，18处机械替换逆向精确恢复各自父版，实际vcxproj仅路径归一后flags完全相等。manifest238aa858…5fa27／contract60181ab4…fa0fa，已交Body/统筹，旧父版及b493均保留。23实际CPU核心检查复用，header仅增poll enum/name可逆回原已测core；新增poll原while赋值/短路/调用次数/正负enum真返回检查及两完整构建通过，Weapon没有执行XR/Game或新助手。
+
+D0诊断合同：复用既有stderr，45秒／最多65536条，所有选定非嵌套调用记录ticket/frame/真实TID/QPC/frequency/真实返回；首8仅标签，后续仍记录。xrPollEvent／Wait／Begin／LocateViews／LocateSpace、Source1采样发布段、启动及fallback GameScreen.render、End均在覆盖内；内部WGC acquire/update子调用及未选API仍UNKNOWN。原子pending只供已有WGC回调辅助，超过1秒／间隔1秒／最多3次，不以其保证导出；没有新线程/collector/IPC/文件通道、pose或source clock刷新、API重放、等待／返回／admission／颜色／清理改动。enter_intent含日志IO间隙，缺return不能单独证明API已进入或卡在其中；coverage_exhausted明确后续UNKNOWN，若终末transition是returned仍保存真实结果。新增日志可能改变时序，不用于FPS结论或冒称修复。
+
+D0下一动作：Body可用已交 `run_standalone_normal_diagnostic.py --execute`（command69c21ec7…a6e9／runner83e125f8…d5fa8，新私有目录、原6秒workload、独立30秒外部守护）独占执行新normal诊断并按owned PID/start＋真实TID补已有bounded WCT，不改内部等待。D0收尾后遵循v2当前顺序，Weapon作为H1消费者只核B1.01/B1.09/B1.10/B2.01/B3.02共同基准与自由双手、最终可见缺口；完整W2枪体跟随／权威射击不再是H1额外前置。W1/W2/W3和逐枪原需求保留，B3.10臂展配置仍归Weapon既有非共享范围但不立即并开；本D0交付不增加玩法完成分。
+
+2026-10-27 D0实测后继：Body已唯一运行normal诊断1b02，子进程26436／实际主TID21832，6秒请求在外部30.032秒限时后强制结束exit1、normal_exit=false，无Game。Weapon只按新任务审这一份已存trace，八份来源实SHA封 `analysis/xr-startup-boundary-20261027/normal-setup-trace-review.json` SHAb0c5c0e0…dd83a。只见初始化边界ticket0/frame0/phase0/result_known0，它不是pending API；既有xr_create_instance_enter之后有层协商／初始化／扩展查询／app信息消息，没有completed或Poll/Wait/Begin/Locate/End边界。stdout0字节；按result.argv实际路径当前CSV存在0字节，不推文件创建／完成时标。阶段停留在合同明确的setup缺口，不能把缺completed单独当API内部阻塞或WGC/Wait/GPU/网络根因，更不能假定与旧失败同一原因。
+
+D0首失败与下一动作：本次没有在原GetSystem支持日志前取得live PID/start birth回执，Body没有猜身份，WCT实际0次。Body仅在自己的运行harness补Popen后真实GetProcessTimes birth回执，再沿现有setup真实TID进行<=3次有界纯CPU/WCT，保留不暂停／不读内存或栈／不变权限／child1.5秒等原约束。Weapon未写runner身份增强、未重建／重测23项、未扩大SDK或其它case分析，候选／contract／runner均保持；正式新trace review已交Body/统筹。没有新H1/身体/双手/枪体动作验收，不增加玩法分，仍按已定共同基准与自由手顺序等新候选。
+
+
+2026-10-27 D0 EndFrame源码窄审收尾：按Body给定本轮边界，normal1b02的pose_probe.cpp与已封manifest实hash一致；无render／无Game argv下，聚合初始化的layerCount=0/layers=null是源码推断，不是穿过API层后的参数捕获。当前CY runtime.cpp 7200-7518中，无projection仍调用preview准备、D3D12槽开始／关闭／同步／消费及status等尾部，因此不能据无layer排除graphics，也不能从App enter_intent断言进入了哪层或runtime内部。未扩大到SDK、插件反编译、旧案或新构建。
+
+只读核对Body已经完成的三局并封正式receipt `analysis/xr-startup-boundary-20261027/endframe-source-and-isolation-review.json` SHA be66c9a950f9112743e5b968471b552fc4aa2fb1d8c385596485267d7eedb68b：normal-owned-identity／58284与child-only OBS-off／14128均有前两次EndFrame成功返回，第三次ticket22无闭合，分别30.156／30.203秒外部结束exit1；child-only OFXRBridge-off／9228使用同1b02、原6秒workload及30秒守护，11.438秒正常exit0，CSV533且533次EndFrame真实success，request-exit、space/session/instance销毁及cleanup/main-return标记完整。OBS disable key未与OFXR disable key同时设置；各局独立LOCALAPPDATA路径差异保留。结果支持沿该child-only条件继续Game启动验证，不定位插件内部原因、不称普遍修复。Weapon没有运行Game/XR、查询进程、读内存、改global/default/renderer、重建或新助手；审阅已交Body直接续作，不等重复确认。Body唯一执行后继Game/Source1启动及正常清理，随后回H1固定可见头身与自由双手；完整W2跟枪不额外挡H1。此无Game诊断不增加玩法分，Game／双眼画面／H1动作及头显验收仍待证。
+
+
+2026-10-27 D0后继交接：Body报告 `analysis/body-startup-bridge-isolation-20261027ab/` 使用同child-only Bridge disable、原XR1a059／Native55ac，进入ready并执行45秒纯被动测试后，唯一finalizer accepted=true，Native/entry恢复、106、8pose、XR0、原10、audio/PG恢复及ownedPIDs空。此处为Body运行负责人回执，Weapon未重复审整局或重跑；本局无HandStart和动作，不能据此认定H1／双手／W2完成。Body已转H1固定可见头手，武器D0窄审收尾，后续消费同一候选的共同基准、可见自由手及一次交还证据。
+
+
+2026-10-27 H1独立消费者交付（Body明确派单）：在ignored `analysis/h1-authored-eye-consumer-20261027/` 实现单文件纯Python `authored_eye_consumer.py` SHA b50516f805c45dedd5b16a29552fe1374586442b7b37e2bf4a62c6681ad5beea，接口 `authored_eye_from_reference(reference_bytes, head_world_row16)`。消费原coherent probe已经读到的115*68 Ref及实际Space55*CTW行矩阵，按准确Native qxyzw@12／translation@28／parent@56，原raw-q矩阵FK、头旋转逆变换与实际world头旋转计算authored eye midpoint；输出world眼点、head_to_eye_local、raw refhash/canonical及limits，替代观察器写死的EYE_LOCAL，不新增Game读取／IO／writer／相机位移／IPD推断。完整canonical签名锁Marcus115，严格count／parent／finite／q norm1e-3／proper similarity及原unit component容差2e-5；不授予当前live owner／namedRef／freshness许可。
+
+H1来源与验证：准确candidate6的body_head_authored_mount.h、full_body_c0_planner.h、cover_skeleton_ik.h及hand_authored_mount_profile.h均实hash入handoff；保存Ref fef334cf…5ce与原namedRef join00511f9a…245e的115行完整raw／parent全等已核，头55／眼57,60由原实名证据认证而非序号猜测。只执行3项针对纯CPU检查，实际exit0、0.010秒：旧真实Ref与独立normalized quaternion FK oracle、输入不变与重复确定性；90／180度世界旋转和平移的解析预期；坏count/parent/非finite/q归一/未知geometry及错误世界矩阵拒绝。旧Ref重算局部偏移[4.862866949520468,-8.560140831466375,-0.00011918239688627906]，不是新live采样结论。正式 `handoff.json` SHA1b2c711071e7be8250a007f8a2de5caa8dca6da04c17eace6ed28893e42827e1，含单文件接口/来源/限制，已交Body可直接导入原probe，用world眼点替换常量并保留本局refhash。未改Root/共享Native、未建／开Game/XR或新增助手；真实H1静点／双眼／运动／头显仍由Body当前候选验证，不将CPU通过补作玩法分。
+
+
+2026-10-27 H1 ac实测消费与纠正：准确b505眼点helper已接入Body `body-h1-fixed-runtime-20261027ac/body_observation.py`，接入预检实hash一致；实际 `joint-observations-live.json` 的17个coherent body行全部含真实reference计算结果，raw Ref均fef334cf…ed5ce、canonical均3b3c978c…5193，没有probe_error。此前将coordinator commands0／HandStart未触达误说成eyehelper未执行，现已按独立body观察纠正。17行只证明纯消费者实际执行，不证明第一人称画面、可见手、手部动作或对齐。Body封ac首读失败review f63eb7aa…ed5b0，Game52500/XR74652，首initial sample使用准确01d8 reader返回2、stdout matched:false、stderr空；commands/episodes0，无HandStart／图片。Body的106/XR0正常清理与无Start仍执行旧finally续更而超时分开，不能把后者写成Stop后回归。
+
+按Body明确新任务，仅审准确01d8冻结源及ac既存记录，封 `analysis/stereo-reader-match-diagnostic-20261027/ac-source-rejection-review.json` SHA e8aa3ecb987585c399c0cfcd1d40fd68323e087bfbb5d64d1d47e76f17a522a7。exit2只来自原400ms循环结束：两bridge open成功，否则66；退出处未命中身份/存活65，但不能据此证明每次read/match成功。原循环短路且不记录拒绝，ControllerInputObserver的reason也没有导出；CSV291行只是另一路保存的视图数据，不能对应本reader某次GVC3 tuple/100ms年龄或publisher条件。现存证据无法唯一指出拒绝条件，不猜GPU／插件／freshness根因。
+
+已获准的最小后继独立读器交付：`analysis/stereo-reader-match-diagnostic-20261027/build1/reader.exe` SHA57f112c9ad4cb52b1f69657688ca251cd190028c5afcb6b3016b1af279f8dc2f，准确01d8父版／原编译flags。只改private reader.cpp和ControllerInputObserver，新增diagheader，另7父文件byte不变；机械逆向精确恢复两原文件，实际compiler private includes均来自该副本。原400ms／Sleep5／100ms、调用及guard短路顺序、clock次数、stdout与退出码保持。每次原condition只执行一次，保存首次和最终拒绝stage、现成input reason及原match谓词实际首拒、原before/after与已读stereo／cached selected tuple；未执行字段有known位，内部stereo.read／frame_shape仍不具备的细项明确UNKNOWN。仅return2之前一次stderr `reader_match_timeout_v1`，有界1800B适配原coordinator stderr[-2000]，不加新读／retry／match／clock刷新，诊断存储仍可能扰动时序，不作为FPS／修复证据。
+
+新读器仅构建一次；新针对CPU32断言通过：与冻结原predicate返回一致、每一首拒条件、短路不展开、first/last/UNKNOWN、记录长度与原afterclock。初测试枚举名误写，修正为准确MetaOperatorSimulated后仅重编该测试，原失败log/build记录保留；没有重复旧23项、Game/XR/新助手/Native构建或共享源码变更。contract SHA bd0578eeb3afc6abcde7a76b51bf55aea173a0f222035c77362fcd0bc6ca0c4e，manifest SHA bdbe36ad1fe20c0d5b2f5f741bffc0f59d3f5c092e45c0ef3324838da197221b，已直接交Body唯一下一局，不等待重复确认。
+
+本轮吸收人类明确的第一人称6DoF验收顺序：同候选的实际XR双眼第一人称眼点／身体／腕目标，先保证静止自由手清楚可见，再做手动／头动。first_person_preview能力flag和旧局姿态不等于本局最终画面。Body唯一处理真实FP通路／view选择及Native，不叠两套偏移、不盲目前移；Weapon仅沿既定读器和Ref眼点消费者范围接入，不把完整W2枪体／射击／换弹增加为H1前置。当前没有新H1图像或动作通过，不增加玩法分。
+
+
+2026-10-27 H1 ad当前消费者实际结果封存：Body采用准确reader57f112及原flags/400ms/100ms，`runtime-review.json`已保存initial_input与fixed_input均matched=true/source1，同session361892787067500，序列5238→5264，两手grip_active1/flags15；各原stdout输入sampled-received为5,408,800ns和3,657,300ns。rgrip_coordinator准确reader路径/实hash已核，reader_failures0；Startevent返回0，实际4条为左右自然固定与随后左右恢复。整体complete=false，首失败已经前进到fixed-free-hands的手提交／owned body view／coherent pose合取超时。此成功样本不证明诊断代码修复ac，ac具体首拒仍未获真实timeout行；Start0／指令已发不等于手求解、提交或可见通过。只读窄receipt `analysis/stereo-reader-match-diagnostic-20261027/ad-consumer-result.json` SHA07b471bb1f5b8352e3a9a85dcf042c8cbb75caf630ccec8b0842727fb7027607，列来源hash、两段实际输入时间及证据边界。
+
+Body运行负责人进一步回执（本侧不重复审Native／FP／图像）：FP requested1/transition1/applied422，bodygoal applied617/view_used626，但hand attempts618/solved0/commits0且status8；实际XR projection双眼图仍有大块粉棕几何遮挡、手不清楚，H1不可用。唯一finalizer true、106/XR0，Stop4→5及两手恢复／bridgeclose由Body确认。武器侧冻结已可用57f112 reader与b505 eyehelper，不再追加读器／采样／构建／Game或W2，Body唯一定位status8及第一人称几何遮挡后按具体消费者缺口交接；当前不能补计第一人称／静止手／运动通过或玩法分。
+
+
+2026-10-27 H1新明确数学消费者项（Body派单，非重复Native审阅）：仅用ad已存fixed-free-hands的41个coherent rows、fixed_input和准确55ac source/profile，计算臂长、肩线和眼/身体关系，封小JSON `analysis/h1-arm-geometry-20261027/geometry-summary.json` SHA390491cac1d12440d5ec9632f87e51cb076ee87382c459596bea7bf5f9b46c4d（3829B）；完整sources/hash与首末/范围在 `geometry-receipt.json` SHAaea09c8bf4eb054f7a59a95e65106129bf68415f95310e461147bdc64ac3ed76。41行与host-result/joint-live逐项相等，raw Ref fef334cf…ed5ce锁定，准确9份source均对candidate6 manifest实hash。两臂上臂约24.63014UU、前臂22.36483UU，总约46.99498UU；肩线相对authored-eye右轴偏38.87–44.69°，明显不对称扭身。已记录的是同一cohort几何，而非某次failed compose前的精确肩/目标快照。
+
+条件性可达性：明确假设“实际HMD世界姿态==本cohort authoredEye marker、手适配器同基准/同fixed_input、requested100UU/m==latchedunits”，原free-hand mount和输入不变时，左目标距肩34.43–35.80UU，右54.36–55.67UU，右超原最大臂长7.36–8.67UU；同输入放在静态Ref模板下左右42.432/42.436UU，均小于46.995UU。这支持检查原扭身/肩基准、不是伸臂或减目标；它不是Native实际失败距离，也不是reference_neutral重放。实际render_base不能由CTW替代，尚缺失败invocation的base/source.reference/units/当次controller和pre-hand shoulder/computed_wrist/side。世界与marker局部距离双算共82组差<1e-7，无新测试框架／Game／XR／构建／Native改。
+
+准确源进一步收窄：当前compose三条实际prepare_hand路径仅返回验证错误/invalid_target/okay，不会返回adapter::unreachable，故本55ac路径Status8具体可达来源为body_c0_hands.h:111的two::solve；侧以及outside/inside仍未序列化未知，不能据上述条件性右臂数据断言实际失败侧。原Posture::reference_neutral只在1/3/4/5/6/30/54替换静态Ref q，直接针对骨盆/脊柱/锁骨/颈基准，保留animated translation、长度、scale、foot/headgoal和handmount；部分已存骨矩阵不足以精确重放完整分支，不能保证actual reach/base/遮挡修复。小JSON与该边界已交Body直接续作，Body唯一改Native并处理FP遮挡；统筹已获知这是Body新派的独立数学项，W2/B3.10顺序不变。未取得新H1画面或手提交通过，不增加玩法分。
+
+
+2026-10-27 人类新流程立即覆盖旧6DoF自动测试授权：按统筹与Body转达及AGENTS最新owner override，停止新增Game/XR/Simulator、测试用例、回放和自测；已有仅正常收尾，源码／编译／链接／打包可继续。此刻Weapon无自有运行，first-rejection消费者只保留未编译consumer.h，不再扩展或作交付门。交付顺序为A实际第一人称与统一眼/身基准、遮挡保手→B双手完整位置旋转→同候选编译打包→用户真机反馈后再后续；原全武器需求保留。
+
+B独立代码实装：新增 `tools/vr-common/free_hand_eye_targets.h`，与Body约定直接消费同一次C0 a::Output.desired_eye（UE world Pose/full quat）及同一body_tick_source::Input.observed.stereo.head/controllers（原XR tracking Pose）。EyeFrame/TrackingFrame均携实际game pid/start/NativeStarted/worldGen/mesh/bindingGen/GT/Tick/Compose与stereo session/seq/space/refRevision、controller seq/inputEpoch/profile及predicted_time Key，按字段比同key并核原tuple，不查clock／IPC／Game或合成新票据。prepare_one对接每侧现有binding.authored_mount.calibration，prepare_both给独立known_mask/每侧原因；单侧无追踪不生成旧目标或污染另一侧。原始HMD逆变换控制器完整pose→原XR到UE约定一次→actual eye world一次→原静态grip-to-wrist mount一次，保留完整roll/旋转；不再加source.reference／HMD位移／legacy FP offset、不拟合动画腕、不解IK或伸骨、不抢动画交还／唯一writer。Root继续唯一A/共享Native/相机/骨骼整合。
+
+B编译状态：最终keyed源SHA93e2c62d5df8210eb1293d7e647fe54b23dbbdbf4ef465843e20477cc00784d1；同MSVC14.51、C++17/EHsc/O2/W4/WX/MT，仅/TP /c实际编译obj成功exit0，没有创建／运行测试或回放exe，没有Game/XR/助手。原未带key版本编译保留在analysis/free-hand-eye-targets-20261027，最终编译在compile-keyed/，接口/源码/编译receipt与明确pending状态在keyed-integration-handoff.json。代码已实现/obj已编译与Body已整合/Native最终链接/同候选已交用户/真机反馈分别记录；后四项仍待完成，不能把编译当玩法验收，不加功能分。
+
+
+2026-10-27 A/B代码整合后继（Body整合负责人回执，非本侧重跑）：A已在最新Junker/Support3 Native整合并compile/link exit0，B已采用本侧93e2c62d…784d1 free_hand_eye_targets、同次actual desired_eye／逐侧solved mask／固定骨长，compile/link exit0；本次仅源码和编译，没有测试运行。`analysis/free-hand-eye-targets-20261027/body-integration-receipt.json`把负责人回执与手动候选已交付／真机反馈分开；后两项仍未完成。
+
+按Body打包所需，Weapon只读查明物理XR冻结来源：BQ candidate-source完整591文件实hash均匹配producer manifest83abf4be…07539，normal4174d0e3…0c1ead与loader66946ea6…1932df实hash；RuntimeTracked物理producer与sim-source／1a059区分。最新focus1 source-provenance11b0a84e…2c9ae的588文件也全匹配，两源完整586文件父树byte相等、均来自menu-modal1 37f463；共同内容冲突仅CMakeLists.txt/pose_probe.cpp，BQ新增5个controller/actions/continuity文件，focus新增2个focus_diagnostics文件，合并union593。建议保留最新focus1为底，只拷精确BQ5文件并合并两处重叠，保留focus event/presence和源手Actions单次采样／whole-loop tracker／continuity→controller→eyes次序／原清理；仅宏ON不够，手动物理入口必须--controller-input及实际stereoPID，不携带simulator-operator/CY override。精确路径/flags/identity/建议封 `physical-xr-source-handoff.json` SHAba5f61f44e5b3501cafb9a808a4406246d81352c76b83d8843dbb1eb76b506a8并已交Body直接续作。未改Root／共享代码、未新建助手／构建／Game／XR或测试；明确旧build_normal.py/cpu_checks.py/focus build.py含历史测试执行，当前不得直接运行，Body只编译OpenXRPoseProbe目标后打包给用户。编译／源码归因不等于真实手或第一人称画面验收。

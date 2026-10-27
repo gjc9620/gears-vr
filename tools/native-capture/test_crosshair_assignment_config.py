@@ -15,7 +15,7 @@ class Fixture(UIBase):
     def __init__(self):
         super().__init__()
         self.profile['struct_property_struct'] = 0xd0
-        for kind in ('StructProperty', 'ScriptStruct', 'State'):
+        for kind in ('StructProperty', 'ScriptStruct', 'State', 'ArrayProperty'):
             self.cls(kind, self.classes['Object'])
         self.weapon = self.obj('Rifle', self.classes['Weap_AssaultRifle'])
         self.prop('Pawn', 'Weapon', 'ObjectProperty', 0x440)
@@ -29,6 +29,9 @@ class Fixture(UIBase):
         self.impact = self.field(self.writer, 'Impact', 0x40, 84, self.impact_struct)
         self.ww = self.field(self.writer, 'WW', 0x10, 8, self.classes['WarWeapon'], 'ObjectProperty')
         self.rotator = self.obj('Rotator', self.classes['ScriptStruct'])
+        self.rotator_members=[]
+        for name,offset in (('Pitch',0),('Yaw',4),('Roll',8)):
+            self.rotator_members.append(self.field(self.rotator,name,offset,4,0,'IntProperty'))
         self.view = {}
         for name, offset, structure in (('CamLoc',0xa0,self.vector),('CamRot',0xb0,self.rotator),
                                         ('StartTrace',0xc0,self.vector),('TraceDir',0xd0,self.vector)):
@@ -51,6 +54,45 @@ class Fixture(UIBase):
             self.put(fn+0x114, struct.pack('<Q', self.base+0x1d6ca0))
             self.put(fn+0x8c, struct.pack('<Qii', 0xc00000+n*0x100, 3, 3))
             self.put(0xc00000+n*0x100, b'\x04\x0b\x53')
+        self.finish_registry()
+
+    def add_weapon_call_functions(self):
+        self.cls('Package', self.classes['Object'])
+        packages={name:self.obj(name,self.classes['Package']) for name in ('Engine','WarfareGame')}
+        self.cls('Weapon',self.classes['Actor'])
+        self.put(self.classes['WarWeapon']+96,struct.pack('<Q',self.classes['Weapon']))
+        for owner,package in (('Weapon','Engine'),('WarWeapon','WarfareGame'),('WarPawn','WarfareGame')):
+            self.put(self.classes[owner]+64,struct.pack('<Q',packages[package]))
+        functions=(('WarWeapon','InstantFire'),('Weapon','InstantFire'),
+                   ('WarPawn','GetAdjustedAimFor'),('WarWeapon','GetAdjustedAim'),
+                   ('Weapon','CalcWeaponFire'),('WarWeapon','ProcessInstantHit'))
+        self.weapon_results={}
+        self.weapon_functions={}
+        for i,(owner,name) in enumerate(functions):
+            fn=self.function(owner,name,0x1d6ca0)
+            self.weapon_functions[i]=fn
+            script=0xd00000+i*0x100
+            script_size=0xc0 if i==1 else 4
+            self.put(fn+0x8c,struct.pack('<Qii',script,script_size,script_size))
+            self.put(script,bytes(script_size) if i==1 else b'\x04\x0b\x53\x00')
+            if i in (2,3):
+                result=self.field(fn,'ReturnValue',0x14 if i==2 else 0x0c,
+                                  12,self.rotator)
+                self.put(result+0x78,struct.pack('<Q',0x580))
+                self.weapon_results[i]=result
+        fire=self.weapon_functions[1]
+        self.put(fire+0x88,struct.pack('<I',160))
+        start=self.field(fire,'StartTrace',0,12,self.vector)
+        end=self.field(fire,'EndTrace',12,12,self.vector)
+        pushed=self.field(fire,'PushedForwardStartTrace',24,12,self.vector)
+        impact=self.field(fire,'ImpactList',36,16,0,'ArrayProperty')
+        self.put(impact+0x78,struct.pack('<Q',0x400000))
+        self.weapon_fire_fields=(start,end,pushed,impact)
+        callsite=(b'\x1b'+struct.pack('<II',self.names['CalcWeaponFire'],0)+
+                  b'\x00'+struct.pack('<Q',pushed)+
+                  b'\x00'+struct.pack('<Q',end)+
+                  b'\x00'+struct.pack('<Q',impact)+b'\x16')
+        self.put(0xd00000+0x100+0x95,callsite)
         self.finish_registry()
 
     def field(self, owner, name, offset, size, target, kind='StructProperty'):
@@ -437,6 +479,53 @@ class CertificateTests(unittest.TestCase):
         self.assertEqual(s.getint('pawn_weapon_property'),c['fields']['pawn_weapon']['property'])
         self.assertEqual(s.getint('property_structure'),0xd0)
         self.assertEqual(s.getint('script_size'),c['script_size'])
+
+    def test_optional_weapon_call_certificate_is_exact_and_read_only(self):
+        r=Fixture();r.add_weapon_call_functions()
+        c=build_crosshair_assignment_config(r,r.camera,include_tick_roots=True,include_weapon_calls=True)
+        self.assertEqual(len(c['weapon_calls']),6)
+        self.assertLessEqual(len(c['identities']),96)
+        self.assertTrue(all(not call['runtime_coverage_proven'] for call in c['weapon_calls']))
+        import configparser
+        ini=configparser.ConfigParser();ini.read_string(crosshair_assignment_ini(c))
+        self.assertEqual(ini['CrosshairAssignment'].getint('weapon_call_count'),6)
+        self.assertEqual(ini['CrosshairAssignment'].getint('weapon_call4_function'),
+                         c['weapon_calls'][4]['function'])
+        self.assertEqual(ini['CrosshairAssignment'].getint('weapon_call2_result_property'),
+                         c['weapon_calls'][2]['result']['property'])
+        for mutate in (lambda x:x['weapon_calls'].pop(),
+                       lambda x:x['weapon_calls'][1].update(owner=x['weapon_calls'][0]['owner']),
+                       lambda x:x['weapon_calls'][2].update(receiver='weapon'),
+                       lambda x:x['weapon_calls'][5]['script'].update(size=0),
+                       lambda x:x['weapon_calls'][2]['result'].update(flags=0),
+                       lambda x:x['weapon_calls'][3]['result'].update(offset=0x14),
+                       lambda x:x['weapon_rotator_members'].__setitem__(1,x['roles']['vector_struct']),
+                       lambda x:x['weapon_fire_trace']['fields']['pushed'].update(offset=12),
+                       lambda x:x['weapon_fire_trace'].update(impact_list=x['roles']['vector_struct'])):
+            bad=copy.deepcopy(c);mutate(bad)
+            with self.assertRaises(CrosshairConfigRejected):validate_crosshair_assignment_config(bad)
+        with self.assertRaises(CrosshairConfigRejected):
+            build_crosshair_assignment_config(r,r.camera,include_weapon_calls=True)
+        for index,field,value in ((2,0x78,0),(3,0x74,16),(2,0xd0,r.vector)):
+            damaged=Fixture();damaged.add_weapon_call_functions()
+            damaged.put(damaged.weapon_results[index]+field,
+                        struct.pack('<Q' if field!=0x74 else '<I',value))
+            with self.assertRaises(CrosshairConfigRejected):
+                build_crosshair_assignment_config(damaged,damaged.camera,
+                    include_tick_roots=True,include_weapon_calls=True)
+        damaged=Fixture();damaged.add_weapon_call_functions()
+        damaged.put(damaged.rotator_members[1]+0x94,struct.pack('<I',8))
+        with self.assertRaises(CrosshairConfigRejected):
+            build_crosshair_assignment_config(damaged,damaged.camera,
+                include_tick_roots=True,include_weapon_calls=True)
+        for change in (
+                lambda f:f.put(0xd00100+0x9e,b'\x01'),
+                lambda f:f.put(f.weapon_fire_fields[2]+0x74,struct.pack('<I',16)),
+                lambda f:f.put(f.weapon_functions[1]+0x88,struct.pack('<I',24))):
+            damaged=Fixture();damaged.add_weapon_call_functions();change(damaged)
+            with self.assertRaises(CrosshairConfigRejected):
+                build_crosshair_assignment_config(damaged,damaged.camera,
+                    include_tick_roots=True,include_weapon_calls=True)
 
     def test_identity_type_pointer_script_and_native_fail_closed(self):
         mutations = {

@@ -78,6 +78,10 @@ struct LimbData {
     std::array<std::uint32_t,3> affected{};
     control::Matrix64 component[3]{},component_to_world{};
     arm::Pole authored{},previous{}; // Caller-supplied world points, unchanged.
+    control::OriginalMatrixPolicy original_matrix_policy{control::OriginalMatrixPolicy::strict_unit};
+    // Fixed caller-supplied personal calibration, independent of current reach.
+    // The live owner must bind a saved calibration to the current body model.
+    double upper_length_scale{1},lower_length_scale{1};
 };
 struct SingleData {
     hand::ObjectIdentity asset{};
@@ -226,6 +230,11 @@ inline Status solve_limb(Target const& target,LimbData const& data,arm::LengthMo
     for(unsigned i=0;i<3;++i)work.limb.component[i]=data.component[i];
     work.limb.component_to_world=data.component_to_world;work.limb.wrist_world=target.wrist_world;
     work.limb.mode=mode;work.limb.authored=data.authored;work.limb.previous=data.previous;
+    // Every call chooses its own input policy; reusable scratch must never
+    // carry a prior caller's opt-in into a default-strict request.
+    work.limb.original_matrix_policy=data.original_matrix_policy;
+    work.limb.upper_length_scale=data.upper_length_scale;
+    work.limb.lower_length_scale=data.lower_length_scale;
     return detail::convert(control::solve(work.limb,work.control_work,output));
 }
 inline Status replace_wrist_rotation(Target const& target,SingleData const& data,Workspace& work,control::Matrix64* output) noexcept {

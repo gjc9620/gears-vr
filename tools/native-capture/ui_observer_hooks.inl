@@ -6,6 +6,7 @@ gears_ui_layout::Parameters ui_hud_layout_parameters{};
 struct UiLayoutCounts {std::atomic<uint64_t> considered{},planned{},fallback{},applied{};} ui_layout_counts;
 gears_ui::Config ui_config;
 #include "crosshair_assignment_live.inl"
+#include "weapon_call_observer_live.inl"
 #include "ui_runtime_binding.h"
 #include "ui_canvas_tile_batch.h"
 std::mutex ui_binding_mutex;
@@ -128,6 +129,7 @@ bool retire_ui_world(gears_owned_ui_world::Guards const* owned_guards=nullptr,
 // Only on the owning thread's next outer Scope, after old readers drained.
 void reset_ui_world_tls(){
     ui_call_boundary::reset_tls();
+    weapon_call_live::reset_tls();
     ui_logical_group_live::reset_tls();
     ui_scene_root_live::reset_tls();
     ui_invocation={};ui_payload_context=nullptr;ui_index_context=nullptr;ui_execute_entry_return=0;
@@ -196,6 +198,68 @@ void observe_ui_canvas(unsigned draw,void* canvas,void* frame,gears_ui::ScopeCon
 void __fastcall hook_ui_vm(void* self,void* frame,void* result){
     Scope active_scope;if(!active_scope.world()){ui_original[0](self,frame,result);return;}
     crosshair_live::TickScope crosshair_tick(self,frame);
+    weapon_call_live::TickScope weapon_tick(crosshair_tick);
+#if defined(GEARS_CROSSHAIR_ASSIGNMENT_OBSERVER) && GEARS_CROSSHAIR_ASSIGNMENT_OBSERVER
+    if(controller_input_observer&&crosshair_tick.entered){
+        gears_vr::ControllerInputFrame hands{};gears_vr::StereoSample stereo{};
+        gears_weapon::ArmspanCalibration calibration{};gears_vr::Pose body{};uint64_t snapshot_world{};
+        {std::lock_guard<std::mutex> mailbox(controller_input_mailbox_mutex);
+            hands=controller_input_mailbox;stereo=controller_input_mailbox_stereo;
+            calibration=controller_input_mailbox_calibration;body=controller_input_mailbox_body;
+            snapshot_world=controller_input_mailbox_world;}
+        const auto time=gears_vr::monotonic_ns();
+        std::lock_guard<std::mutex> tick_guard(controller_input_tick_mutex);
+        if(snapshot_world!=committed_world_generation.load()){
+            controller_input_tick_session=0;controller_input_intent_router.reset();
+            ++controller_input_tick_world_rejected;
+        }else if(!hands.focused||!hands.received_ns||time<hands.received_ns||time-hands.received_ns>100000000){
+            controller_input_tick_session=0;controller_input_intent_router.reset();
+            ++controller_input_tick_stale;
+        }
+        else if(hands.session!=controller_input_tick_session||hands.space_epoch!=controller_input_tick_epoch||
+                hands.profile_generation!=controller_input_tick_profile||
+                hands.input_epoch!=controller_input_tick_input_epoch){
+            controller_input_tick_session=hands.session;controller_input_tick_epoch=hands.space_epoch;
+            controller_input_tick_profile=hands.profile_generation;
+            controller_input_tick_input_epoch=hands.input_epoch;
+            controller_input_tick_sequence=hands.sequence;
+            controller_input_intent_router.advance(hands,stereo,calibration,body,time,simulator_operator);
+            ++controller_input_tick_baseline;
+        }else if(hands.sequence<=controller_input_tick_sequence)++controller_input_tick_replayed;
+        else {
+            controller_input_tick_sequence=hands.sequence;++controller_input_tick_accepted;
+            const auto routed=controller_input_intent_router.advance(hands,stereo,calibration,body,time,simulator_operator);
+            if(routed.status==gears_weapon::RouterStatus::accepted)
+                for(unsigned i=0;i<routed.count;++i){
+                    const auto intent=routed.intents[i];
+                    ++controller_input_intents[static_cast<unsigned>(intent)];
+                    if(intent==gears_weapon::WeaponIntent::recenter)
+                        controller_recenter_request.submit(snapshot_world,hands.session,hands.space_epoch);
+                    const auto slot=gears_weapon::original_inventory_slot(
+                        gears_weapon::equipment_body_slot(intent));
+                    if(slot||intent==gears_weapon::WeaponIntent::grab_ammo||
+                       intent==gears_weapon::WeaponIntent::reload){
+                        auto const& binding=crosshair_live::state.binding;
+                        gears_weapon::EquipmentIntentEvent event{};
+                        event.input_session=hands.session;event.input_sequence=hands.sequence;
+                        event.space_epoch=hands.space_epoch;event.input_epoch=hands.input_epoch;
+                        event.world_generation=snapshot_world;
+                        event.controller=binding.controller;event.pawn=binding.pawn;
+                        event.weapon=binding.weapon;
+                        event.kind=slot?gears_weapon::EquipmentIntentKind::slot:
+                            intent==gears_weapon::WeaponIntent::reload?
+                                gears_weapon::EquipmentIntentKind::reload:
+                                gears_weapon::EquipmentIntentKind::grab_ammo;
+                        event.inventory_slot=slot?*slot:4;
+                        if(binding.world==snapshot_world&&
+                           controller_equipment_intent_bridge.publish(event))
+                            ++controller_equipment_intent_published;
+                        else ++controller_equipment_intent_rejected;
+                    }
+                }
+        }
+    }
+#endif
     if(ui_observer_enabled&&recording.load()){
         ++ui_vm_calls;uintptr_t node{};
         if(frame&&safe_copy(&node,static_cast<unsigned char*>(frame)+0x18,sizeof(node))){
@@ -475,6 +539,7 @@ void print_ui_observer(FILE* status,bool disabled){
         ui_observer_enabled?1:0,disabled&&!active.load()?1:0,ui_hud_plane_enabled?1:0,ui_vm_calls.load(),qpc_frequency);
     if(!ui_observer_enabled||!disabled||active.load())return;
     ui_call_boundary::print(status);
+    weapon_call_live::print(status);
     ui_scene_root_live::print(status);
     ui_logical_group_live::print(status);
 #if defined(GEARS_UI_CALL_BOUNDARY_OBSERVER) && GEARS_UI_CALL_BOUNDARY_OBSERVER

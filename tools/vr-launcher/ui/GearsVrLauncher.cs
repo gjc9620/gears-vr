@@ -5,12 +5,13 @@ using System.Drawing;
 using System.IO;
 using System.Globalization;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using System.Web.Script.Serialization;
 using System.Windows.Forms;
 
 namespace GearsVrUi {
-    enum TextKey { StartupError, RepositoryMissing, HudCapabilityInvalid, HudNumberInvalid, HudRangeInvalid, Unknown, PythonMissing, WindowTitle, Intro, GamePath, Browse, SystemRuntime, Simulator, RuntimeFile, HudSize, HudHint, StartVr, StopVr, Recenter, Status, OpenLogs, Ready, StopHint, ConfigReadError, GameFilter, RecenterNotReady, RecenterRequested, RecenterFailed, GameMissing, ManifestMissing, RuntimeMissing, ManifestChanged, Starting, StartupFailed, StartupFailedPrefix, Cancelling, Cancelled, Stopping, StopFailed, WaitingForStop, RunningCommand, CancelBeforeLaunch, CurrentPhase, SessionEnded, SessionExit, ExitCode, CommandFailed, ConfirmStop, CameraDistance, CameraHint, CameraInvalid, ExportLogs, ExportingLogs, LogsExported, ExportLogsFailed, ExportFilter, ExportInvalidResult, ExportWarnings, RenderScale, RenderHint, RenderPreview, RenderInvalid, RenderIntro, StereoFpsUnavailable, StereoFpsPrefix, XrRatePrefix, FirstPerson, FirstPersonHint, RightStickDeadzone, RightStickHint, GameplayInvalid }
+    enum TextKey { StartupError, RepositoryMissing, HudCapabilityInvalid, HudNumberInvalid, HudRangeInvalid, Unknown, PythonMissing, WindowTitle, Intro, GamePath, Browse, SystemRuntime, Simulator, RuntimeFile, HudSize, HudHint, StartVr, StopVr, Recenter, Status, OpenLogs, Ready, StopHint, ConfigReadError, GameFilter, RecenterNotReady, RecenterRequested, RecenterFailed, GameMissing, ManifestMissing, RuntimeMissing, ManifestChanged, Starting, StartupFailed, StartupFailedPrefix, Cancelling, Cancelled, Stopping, StopFailed, WaitingForStop, RunningCommand, CancelBeforeLaunch, CurrentPhase, SessionEnded, SessionExit, ExitCode, CommandFailed, ConfirmStop, CameraDistance, CameraHint, CameraInvalid, ExportLogs, ExportingLogs, LogsExported, ExportLogsFailed, ExportFilter, ExportInvalidResult, ExportWarnings, RenderScale, RenderHint, RenderPreview, RenderInvalid, RenderIntro, StereoFpsUnavailable, StereoFpsPrefix, XrRatePrefix, FirstPerson, FirstPersonHint, RightStickDeadzone, RightStickHint, GameplayInvalid, Armspan, ArmspanMeasure, ArmspanRequired, ArmspanSaved, ArmspanWaiting, ArmspanHolding, ArmspanComplete }
     static class Language {
         internal static volatile bool English = true;
         internal static readonly string[] Chinese = new string[] {
@@ -85,6 +86,13 @@ namespace GearsVrUi {
             "右摇杆死区",
             "%（0–50）；默认 2%，下次启动生效",
             "第一人称与摇杆死区配置无效。",
+            "臂展校准",
+            "测量／重测：长按 LGrip＋RGrip 2 秒",
+            "首次必测；完成并保存后才进入游戏",
+            "已有有效记录；勾选可重新测量",
+            "请张开双臂，长按 LGrip＋RGrip",
+            "保持双手稳定：",
+            "臂展已保存；下次自动复用",
         };
         internal static readonly string[] Translations = new string[] {
             "Gears VR startup failed",
@@ -158,6 +166,13 @@ namespace GearsVrUi {
             "Right stick dead zone",
             "% (0-50); default 2%, applies next launch",
             "First-person or right-stick settings are invalid.",
+            "Arm span",
+            "Measure/re-measure: hold LGrip + RGrip for 2 seconds",
+            "First use: measure and save before entering the game",
+            "Valid measurement saved; check to measure again",
+            "Arms out; hold LGrip + RGrip",
+            "Hold both hands steady: ",
+            "Arm span saved; reused next time",
         };
         internal static string T(TextKey key) { return English ? Translations[(int)key] : Chinese[(int)key]; }
         internal static string TranslateVisible(string text, bool english) {
@@ -240,13 +255,17 @@ namespace GearsVrUi {
             return String.IsNullOrWhiteSpace(value) ? Path.Combine(root, "tools", "vr-launcher", "manifest.json") :
                 Path.GetFullPath(Path.IsPathRooted(value) ? value : Path.Combine(root, value));
         }
-        internal static string Arguments(string root, string command, string runtime, string configOverride = null) {
+        internal static string Arguments(string root, string command, string runtime, string configOverride = null, bool remeasureArmspan = false) {
             string result = Quote(Path.Combine(root, "tools", "vr-launcher", "launcher.py")) + " " + command;
             if (command == "start" || command == "render-size") {
                 if (command == "start") result += " --foreground";
                 result += " --manifest " + Quote(ManifestPath(root));
                 if (!String.IsNullOrEmpty(runtime)) result += " --runtime " + Quote(runtime);
                 if (!String.IsNullOrEmpty(configOverride)) result += " --config " + Quote(configOverride);
+            }
+            if (remeasureArmspan) {
+                if (command != "start") throw new ArgumentException("Armspan measurement requires start", "command");
+                result += " --remeasure-armspan";
             }
             return result;
         }
@@ -343,6 +362,64 @@ namespace GearsVrUi {
             if (!manifest.TryGetValue("hud_size_control", out value)) return false;
             if (!(value is bool)) throw new InvalidDataException(Language.T(TextKey.HudCapabilityInvalid));
             return (bool)value;
+        }
+        internal static bool SupportsArmspan(Dictionary<string, object> manifest) {
+            object controller, startup;
+            bool hasController = manifest.TryGetValue("controller_input_observer", out controller);
+            bool hasStartup = manifest.TryGetValue("armspan_startup_calibration", out startup);
+            if ((hasController && !(controller is bool)) || (hasStartup && !(startup is bool)))
+                throw new InvalidDataException("Armspan capabilities must be boolean");
+            return hasController && hasStartup && (bool)controller && (bool)startup;
+        }
+        internal static bool ValidArmspanCalibration(string path) {
+            try {
+                // This small numeric record needs duplicate-key rejection and
+                // strict UTF-8. JavaScriptSerializer silently keeps duplicates.
+                string text = new UTF8Encoding(false, true).GetString(File.ReadAllBytes(path));
+                if (text.Length != 0 && text[0] == '\uFEFF') return false; // Frozen Native reader accepts UTF-8 without BOM.
+                var start = Regex.Match(text, @"\A[ \t\r\n]*\{");
+                if (!start.Success) return false;
+                int offset = start.Length;
+                var record = new Dictionary<string, double>();
+                var property = new Regex("\\G[ \\t\\r\\n]*\"(?<key>(?:[^\"\\\\\\x00-\\x1F]|\\\\(?:[\"\\\\/bfnrt]|u[0-9a-fA-F]{4}))*)\"[ \\t\\r\\n]*:[ \\t\\r\\n]*(?<number>-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?(?:[eE][+-]?[0-9]+)?)[ \\t\\r\\n]*(?<end>[,}])");
+                for (;;) {
+                    var match = property.Match(text, offset);
+                    if (!match.Success) return false;
+                    offset = match.Index + match.Length;
+                    string key = new JavaScriptSerializer().Deserialize<string>("\"" + match.Groups["key"].Value + "\"");
+                    if (record.ContainsKey(key) || (key != "schema" && key != "armspan_metres" && key != "hands_below_head_metres")) return false;
+                    string number = match.Groups["number"].Value;
+                    double value;
+                    if (!Double.TryParse(number, NumberStyles.Float, CultureInfo.InvariantCulture, out value) ||
+                        Double.IsNaN(value) || Double.IsInfinity(value) || (key == "schema" && number != "1")) return false;
+                    record.Add(key, value);
+                    if (match.Groups["end"].Value == "}") break;
+                    if (record.Count >= 3) return false;
+                }
+                return record.Count == 3 && Regex.IsMatch(text.Substring(offset), @"\A[ \t\r\n]*\z") &&
+                    record["armspan_metres"] >= .9 && record["armspan_metres"] <= 2.4 &&
+                    record["hands_below_head_metres"] >= -.35 && record["hands_below_head_metres"] <= .1;
+            } catch { return false; }
+        }
+        internal static bool HasArmspanCalibration() {
+            return ValidArmspanCalibration(Path.Combine(Environment.GetFolderPath(
+                Environment.SpecialFolder.LocalApplicationData), "GearsVR", "weapon-calibration.json"));
+        }
+        internal static string ArmspanProgressText(string line) {
+            var value = new JavaScriptSerializer().DeserializeObject(line) as Dictionary<string, object>;
+            object nested;
+            if (value == null || !value.TryGetValue("armspan_calibration", out nested)) return null;
+            var row = nested as Dictionary<string, object>; object phase, progress;
+            if (row == null || !row.TryGetValue("phase", out phase) || !(phase is string) ||
+                !row.TryGetValue("progress", out progress) || !(progress is int || progress is double || progress is decimal))
+                throw new InvalidDataException("Invalid armspan progress");
+            double p = Convert.ToDouble(progress);
+            if (Double.IsNaN(p) || Double.IsInfinity(p) || p < 0 || p > 1) throw new InvalidDataException("Invalid armspan progress");
+            if ((string)phase == "holding") return Language.T(TextKey.ArmspanHolding) + Math.Round(p * 100).ToString("0") + "%";
+            if ((string)phase == "saved" || (string)phase == "reused") return Language.T(TextKey.ArmspanComplete);
+            if ((string)phase == "waiting") return Language.T(TextKey.ArmspanWaiting);
+            if ((string)phase == "cancelled") return Language.T(TextKey.Cancelled);
+            throw new InvalidDataException("Invalid armspan phase");
         }
         internal static decimal HudSize(Dictionary<string, object> config) {
             object value;
@@ -520,6 +597,10 @@ namespace GearsVrUi {
             if (!DefaultRuntime(root, 0).EndsWith("virtualdesktop-openxr.json") || DefaultRuntime(root, 1) != "" || !DefaultRuntime(root, 2).EndsWith("openxr_simulator.json")) return 20;
             string args = Arguments(root, "start", "C:\\runtime with spaces\\openxr.json");
             if (!args.Contains("--foreground") || !args.Contains("--manifest") || !args.Contains("--runtime") || args.Contains("auto-continue")) return 2;
+            if (!Arguments(root, "start", null, remeasureArmspan: true).Contains("--remeasure-armspan") ||
+                Arguments(root, "start", null).Contains("--remeasure-armspan")) return 64;
+            try { Arguments(root, "status", null, remeasureArmspan: true); return 65; }
+            catch (ArgumentException) { }
             string simulatorConfig=Arguments(root,"render-size",@"C:\runtime\openxr.json",@"C:\preview config\simulator.json");
             if(!simulatorConfig.Contains("--config \"C:\\preview config\\simulator.json\"") ||
                 Arguments(root,"stop",null,@"C:\preview config\simulator.json").Contains("--config"))return 64;
@@ -601,6 +682,37 @@ namespace GearsVrUi {
             if (!Language.English || !IsEnglish(new Dictionary<string, object>())) return 31;
             string temp = Path.GetTempFileName();
             try {
+                if (SupportsArmspan(new Dictionary<string, object>()) ||
+                    SupportsArmspan(new Dictionary<string, object>{{"controller_input_observer", true}}) ||
+                    !SupportsArmspan(new Dictionary<string, object>{{"controller_input_observer", true},{"armspan_startup_calibration", true}})) return 66;
+                try { SupportsArmspan(new Dictionary<string, object>{{"controller_input_observer", "true"}}); return 67; }
+                catch (InvalidDataException) { }
+                File.WriteAllText(temp, "{\"schema\":1,\"armspan_metres\":1.72,\"hands_below_head_metres\":-0.14}");
+                if (!ValidArmspanCalibration(temp)) return 68;
+                foreach (string whitespace in new string[]{" ", "\t", "\r", "\n", " \t\r\n "}) {
+                    File.WriteAllText(temp, "{\"schema\":1" + whitespace + ",\"armspan_metres\":1.72" + whitespace +
+                        ",\"hands_below_head_metres\":-0.14" + whitespace + "}");
+                    if (!ValidArmspanCalibration(temp)) return 77;
+                }
+                File.WriteAllText(temp, "{\"schema\":1,\"armspan_metres\":0.3,\"hands_below_head_metres\":-0.14}");
+                if (ValidArmspanCalibration(temp)) return 69;
+                foreach (string invalid in new string[]{
+                    "{\"schema\":1,\"schema\":1,\"armspan_metres\":1.72,\"hands_below_head_metres\":-0.14}",
+                    "{\"schema\":1.0,\"armspan_metres\":1.72,\"hands_below_head_metres\":-0.14}",
+                    "{\"schema\":true,\"armspan_metres\":1.72,\"hands_below_head_metres\":-0.14}",
+                    "{\"schema\":1,\"armspan_metres\":NaN,\"hands_below_head_metres\":-0.14}",
+                    "{\"schema\":1,\"armspan_metres\":1.72,\"hands_below_head_metres\":-0.14,}",
+                    "{\"schema\":1,\"armspan_metres\":1.72,\"hands_below_head_metres\":-0.14}x"}) {
+                    File.WriteAllText(temp, invalid); if (ValidArmspanCalibration(temp)) return 72;
+                }
+                File.WriteAllBytes(temp, new byte[]{0xff}); if (ValidArmspanCalibration(temp)) return 73;
+                File.WriteAllText(temp, "{\"schema\":1,\"armspan_metres\":1.72,\"hands_below_head_metres\":-0.14}", new UTF8Encoding(true));
+                if (ValidArmspanCalibration(temp)) return 76;
+                if (ArmspanProgressText("{\"armspan_calibration\":{\"phase\":\"holding\",\"progress\":0.5}}") != Language.T(TextKey.ArmspanHolding) + "50%" ||
+                    ArmspanProgressText("{\"armspan_calibration\":{\"phase\":\"saved\",\"progress\":1}}") != Language.T(TextKey.ArmspanComplete) ||
+                    ArmspanProgressText("{\"other\":true}") != null) return 74;
+                try { ArmspanProgressText("{\"armspan_calibration\":{\"phase\":\"holding\",\"progress\":true}}"); return 75; }
+                catch (InvalidDataException) { }
                 File.WriteAllText(temp, "{\"game_path\":\"old\",\"stereo_units_per_metre\":100,\"extra\":{\"keep\":true}}");
                 SaveGame(temp, "C:\\game path\\game.exe"); var config = ReadConfig(temp);
                 if (!config.ContainsKey("extra") || Convert.ToInt32(config["stereo_units_per_metre"]) != 100 ||
@@ -709,8 +821,27 @@ namespace GearsVrUi {
                 Environment.SetEnvironmentVariable("GEARSVR_PYTHON", python.File);
                 if (!String.Equals(Python.Find(root).File, python.File, StringComparison.OrdinalIgnoreCase)) return 20;
             } finally { Environment.SetEnvironmentVariable("GEARSVR_PYTHON", previousPython); }
+            string layoutManifest = Path.GetTempFileName();
+            string previousManifest = Environment.GetEnvironmentVariable("GEARSVR_MANIFEST");
+            try {
+                var candidate = ReadConfig(ManifestPath(root));
+                candidate["controller_input_observer"] = true;
+                candidate["armspan_startup_calibration"] = true;
+                File.WriteAllText(layoutManifest, new JavaScriptSerializer().Serialize(candidate));
+                Environment.SetEnvironmentVariable("GEARSVR_MANIFEST", layoutManifest);
+                using (var form = new Launcher(root)) {
+                    form.CreateControl(); form.PerformLayout();
+                    var controls = form.Controls.Find("armspanMeasurement", true);
+                    if (controls.Length != 1 || !(controls[0] is CheckBox)) return 70;
+                    var measure = (CheckBox)controls[0];
+                    if (!HasArmspanCalibration() && (!measure.Checked || measure.Enabled)) return 71;
+                }
+            } finally {
+                Environment.SetEnvironmentVariable("GEARSVR_MANIFEST", previousManifest);
+                File.Delete(layoutManifest);
+            }
             File.WriteAllText(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "self-test.txt"),
-                "PASS: repository, embedded artwork/icon sizes, game path discovery/EXE-directory/Mod subdirectory/bounded search/saved preference/relocation/unrelated working directory, editable game path history/persistence/recency/deduplication/limit/config preservation, quoting, start/stop/export arguments, export receipt validation, phase parsing, config preservation, HUD capability/range/save/readback/legacy behavior, first-person and right-stick defaults/range/save/readback/preservation, bilingual catalog/language persistence, owner identity handshake, live FPS display source, Python probe\r\nPython: " + python.File);
+                "PASS: repository, embedded artwork/icon sizes, game path discovery/EXE-directory/Mod subdirectory/bounded search/saved preference/relocation/unrelated working directory, editable game path history/persistence/recency/deduplication/limit/config preservation, quoting, start/stop/export arguments, export receipt validation, phase parsing, config preservation, HUD capability/range/save/readback/legacy behavior, first-person and right-stick defaults/range/save/readback/preservation, armspan controls, bilingual catalog/language persistence, owner identity handshake, live FPS display source, Python probe\r\nPython: " + python.File);
             return 0;
         }
     }
@@ -764,15 +895,16 @@ namespace GearsVrUi {
             AutoCompleteMode = AutoCompleteMode.SuggestAppend, AutoCompleteSource = AutoCompleteSource.ListItems };
         ComboBox runtimeMode = new ComboBox(), languageMode = new ComboBox();
         Button start = new Button(), stop = new Button(), recenter = new Button(), status = new Button(), browseGame = new Button(), browseRuntime = new Button(), exportLogs = new Button();
-        Label state = new Label(), renderInfo = new Label(), fpsInfo = new Label();
+        Label state = new Label(), renderInfo = new Label(), fpsInfo = new Label(), armspanInfo = new Label();
         readonly Timer fpsTimer = new Timer { Interval = 1000 };
         Button renderPreview = new Button();
         NumericUpDown renderScale = new NumericUpDown { Minimum = .25m, Maximum = 2, Value = 1m, DecimalPlaces = 2, Increment = .05m, Width = 75 };
         NumericUpDown hudSize = new NumericUpDown { Minimum = 45, Maximum = 100, Value = 65, DecimalPlaces = 2, Increment = 1, Width = 85 };
         NumericUpDown cameraCloser = new NumericUpDown { Minimum = 0, Maximum = .5m, Value = 0, DecimalPlaces = 2, Increment = .05m, Width = 85 };
         CheckBox firstPerson = new CheckBox { AutoSize = true };
+        CheckBox remeasureArmspan = new CheckBox { Name = "armspanMeasurement", AutoSize = true };
         NumericUpDown rightStickDeadzone = new NumericUpDown { Minimum = 0, Maximum = 50, Value = 2, DecimalPlaces = 1, Increment = 1, Width = 75 };
-        bool hudSupported, cameraSupported, renderSupported, firstPersonSupported, deadzoneSupported;
+        bool hudSupported, cameraSupported, renderSupported, firstPersonSupported, deadzoneSupported, armspanSupported, armspanRequired;
         Process owner;
         int ownerPid; long ownerCreation;
         volatile bool stopRequested;
@@ -791,13 +923,16 @@ namespace GearsVrUi {
             var gameplayManifest=Program.ReadConfig(Program.ManifestPath(root));
             firstPersonSupported=Program.SupportsGameplay(gameplayManifest,"first_person_preview");
             deadzoneSupported=Program.SupportsGameplay(gameplayManifest,"right_stick_deadzone_control");
+            armspanSupported=Program.SupportsArmspan(gameplayManifest);
+            armspanRequired=armspanSupported&&!Program.HasArmspanCalibration();
+            remeasureArmspan.Checked=armspanRequired;
             var gameplayConfig=Program.ReadConfig(config);
             firstPerson.Checked=Program.FirstPersonEnabled(gameplayConfig);
             rightStickDeadzone.Value=Program.RightStickDeadzone(gameplayConfig);
             Text = Language.T(TextKey.WindowTitle); ClientSize = new Size(960, 690); MinimumSize = new Size(940, 600);
             Icon = LauncherBrand.LoadIcon(SystemInformation.IconSize);
             Font = new Font("Microsoft YaHei UI", 9F); StartPosition = FormStartPosition.CenterScreen;
-            var layout = new TableLayoutPanel { Dock = DockStyle.Fill, Padding = new Padding(14), ColumnCount = 3, RowCount = 14 };
+            var layout = new TableLayoutPanel { Dock = DockStyle.Fill, Padding = new Padding(14), ColumnCount = 3, RowCount = 15 };
             layout.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 110)); layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100)); layout.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 110));
             layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 62));
             for (int i = 1; i < 4; i++) layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 38));
@@ -806,6 +941,7 @@ namespace GearsVrUi {
             layout.RowStyles.Add(new RowStyle(SizeType.Absolute, renderSupported ? 66 : 0));
             layout.RowStyles.Add(new RowStyle(SizeType.Absolute, firstPersonSupported ? 38 : 0));
             layout.RowStyles.Add(new RowStyle(SizeType.Absolute, deadzoneSupported ? 38 : 0));
+            layout.RowStyles.Add(new RowStyle(SizeType.Absolute, armspanSupported ? 44 : 0));
             for (int i = 7; i < 9; i++) layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 38));
             layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 28));
             layout.RowStyles.Add(new RowStyle(SizeType.Percent, 100)); layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 40));
@@ -858,22 +994,32 @@ namespace GearsVrUi {
                 stickControls.Controls.Add(new Label { Text=Language.T(TextKey.RightStickHint), AutoSize=true, Padding=new Padding(0,5,0,0) });
                 layout.Controls.Add(stickControls,1,8);layout.SetColumnSpan(stickControls,2);
             }
+            if(armspanSupported) {
+                layout.Controls.Add(new Label { Text=Language.T(TextKey.Armspan), AutoSize=true },0,9);
+                var calibrationControls=new FlowLayoutPanel { Dock=DockStyle.Fill, WrapContents=false };
+                remeasureArmspan.Text=Language.T(TextKey.ArmspanMeasure);
+                calibrationControls.Controls.Add(remeasureArmspan);
+                armspanInfo.Text=Language.T(armspanRequired?TextKey.ArmspanRequired:TextKey.ArmspanSaved);
+                armspanInfo.AutoSize=true;armspanInfo.Padding=new Padding(4,5,0,0);
+                calibrationControls.Controls.Add(armspanInfo);
+                layout.Controls.Add(calibrationControls,1,9);layout.SetColumnSpan(calibrationControls,2);
+            }
             var buttons = new FlowLayoutPanel { Dock = DockStyle.Fill };
             start.Text = Language.T(TextKey.StartVr); stop.Text = Language.T(TextKey.StopVr); recenter.Text = Language.T(TextKey.Recenter); status.Text = Language.T(TextKey.Status);
             var logs = new Button { Text = Language.T(TextKey.OpenLogs), AutoSize = true };
             exportLogs.Text = Language.T(TextKey.ExportLogs);
             foreach (var button in new[] { start, stop, recenter, status, logs, exportLogs }) { button.AutoSize = true; buttons.Controls.Add(button); }
-            layout.Controls.Add(buttons, 0, 9); layout.SetColumnSpan(buttons, 3);
-            state.Text = Language.T(TextKey.Ready); state.Dock = DockStyle.Fill; layout.Controls.Add(state, 0, 10); layout.SetColumnSpan(state, 3);
+            layout.Controls.Add(buttons, 0, 10); layout.SetColumnSpan(buttons, 3);
+            state.Text = Language.T(TextKey.Ready); state.Dock = DockStyle.Fill; layout.Controls.Add(state, 0, 11); layout.SetColumnSpan(state, 3);
             fpsInfo.Text = Language.T(TextKey.StereoFpsUnavailable); fpsInfo.Dock = DockStyle.Fill;
             fpsInfo.AccessibleName = Language.T(TextKey.StereoFpsPrefix).Trim();
-            layout.Controls.Add(fpsInfo, 0, 11); layout.SetColumnSpan(fpsInfo, 3);
+            layout.Controls.Add(fpsInfo, 0, 12); layout.SetColumnSpan(fpsInfo, 3);
             output.Multiline = true; output.ReadOnly = true; output.ScrollBars = ScrollBars.Both; output.WordWrap = false; output.Dock = DockStyle.Fill;
-            layout.Controls.Add(output, 0, 12); layout.SetColumnSpan(output, 3);
+            layout.Controls.Add(output, 0, 13); layout.SetColumnSpan(output, 3);
             var footer = new Label { Text = Language.T(TextKey.StopHint), Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleLeft };
-            layout.Controls.Add(footer, 0, 13); layout.SetColumnSpan(footer, 2);
+            layout.Controls.Add(footer, 0, 14); layout.SetColumnSpan(footer, 2);
             layout.Controls.Add(new CornerMark { Size = new Size(32, 32), Anchor = AnchorStyles.Right | AnchorStyles.Bottom,
-                Margin = Padding.Empty }, 2, 13);
+                Margin = Padding.Empty }, 2, 14);
             Controls.Add(layout);
             try { var saved = Program.ReadConfig(config); game.Text = Convert.ToString(saved["game_path"]); if (hudSupported) hudSize.Value = Program.HudSize(saved); if (cameraSupported) cameraCloser.Value = Program.CameraCloser(saved); if(renderSupported){renderScale.Value=Program.RenderScale(saved);headsetRenderScale=renderScale.Value;} } catch (Exception e) { Log(Language.T(TextKey.ConfigReadError) + e.Message); }
             game.Text = Program.InitialGamePath(root, game.Text);
@@ -967,8 +1113,18 @@ namespace GearsVrUi {
             recenter.Enabled = owner != null && !stopping && !recentering && !stopRequested;
             game.Enabled = browseGame.Enabled = runtimeMode.Enabled = !busy;
             hudSize.Enabled = cameraCloser.Enabled = renderScale.Enabled = renderPreview.Enabled = firstPerson.Enabled = rightStickDeadzone.Enabled = !busy;
+            remeasureArmspan.Enabled = armspanSupported && !busy && !armspanRequired;
             runtime.Enabled = browseRuntime.Enabled = !busy && runtimeMode.SelectedIndex != 1;
             exportLogs.Enabled = !exportBusy;
+        }
+        void RefreshArmspan() {
+            if (!armspanSupported) return;
+            bool required = !Program.HasArmspanCalibration();
+            if (required) remeasureArmspan.Checked = true;
+            else if (armspanRequired) remeasureArmspan.Checked = false;
+            armspanRequired = required;
+            armspanInfo.Text = Language.T(required ? TextKey.ArmspanRequired : TextKey.ArmspanSaved);
+            UpdateButtons();
         }
         async Task ExportLogs() {
             if (exportBusy) return;
@@ -1034,6 +1190,7 @@ namespace GearsVrUi {
             if (starting || owner != null) return;
             renderInfo.Text="";
             try {
+                RefreshArmspan();
                 string path = game.Text.Trim(); string resolved = Path.IsPathRooted(path) ? path : Path.Combine(root, path);
                 if (!File.Exists(resolved)) throw new IOException(Language.T(TextKey.GameMissing));
                 string manifest = Program.ManifestPath(root);
@@ -1041,14 +1198,17 @@ namespace GearsVrUi {
                 string selectedRuntime = runtimeMode.SelectedIndex != 1 ? runtime.Text.Trim() : null;
                 if (selectedRuntime != null && !Path.IsPathRooted(selectedRuntime)) selectedRuntime = Path.GetFullPath(Path.Combine(root, selectedRuntime));
                 if (selectedRuntime != null && !File.Exists(selectedRuntime)) throw new IOException(Language.T(TextKey.RuntimeMissing));
-                bool currentHudSupport = Program.SupportsHudSize(Program.ReadConfig(manifest));
-                if (currentHudSupport != hudSupported || Program.SupportsCameraDistance(Program.ReadConfig(manifest)) != cameraSupported || Program.SupportsRenderSize(Program.ReadConfig(manifest)) != renderSupported) throw new IOException(Language.T(TextKey.ManifestChanged));
+                var currentManifest = Program.ReadConfig(manifest);
+                bool currentHudSupport = Program.SupportsHudSize(currentManifest);
+                if (currentHudSupport != hudSupported || Program.SupportsCameraDistance(currentManifest) != cameraSupported ||
+                    Program.SupportsRenderSize(currentManifest) != renderSupported ||
+                    Program.SupportsArmspan(currentManifest) != armspanSupported) throw new IOException(Language.T(TextKey.ManifestChanged));
                 RememberSelectedGame();
                 Program.SaveOptions(config, path, hudSupported, hudSize.Value, cameraSupported, cameraCloser.Value);
                 if(renderSupported&&runtimeMode.SelectedIndex!=2)Program.SaveRenderScale(config,renderScale.Value);
                 Program.SaveGameplay(config,firstPersonSupported,firstPerson.Checked,deadzoneSupported,rightStickDeadzone.Value);
                 stopRequested = false; starting = true; UpdateButtons(); state.Text = Language.T(TextKey.Starting);
-                int result = await Command("start", selectedRuntime);
+                int result = await Command("start", selectedRuntime, armspanSupported && remeasureArmspan.Checked);
                 if (result < 0) state.Text = Language.T(TextKey.StartupFailed);
             } catch (Exception e) { Log(e.Message); state.Text = Language.T(TextKey.StartupFailedPrefix) + e.Message; }
             finally { starting = false; UpdateButtons(); if (closingAfterOwner && owner == null) { closingAfterOwner = false; Close(); } }
@@ -1075,7 +1235,7 @@ namespace GearsVrUi {
             try { return Program.OwnIndexReady(File.ReadAllText(Path.Combine(root, "analysis", "runtime", "vr-launcher-session.json")), ownerPid, ownerCreation); }
             catch { return false; }
         }
-        async Task<int> Command(string command, string selectedRuntime) {
+        async Task<int> Command(string command, string selectedRuntime, bool remeasure = false) {
             string configOverride=null;
             try {
                 if(renderSupported&&runtimeMode.SelectedIndex==2&&(command=="start"||command=="render-size"))
@@ -1083,7 +1243,7 @@ namespace GearsVrUi {
                 int code = await Task.Run(delegate {
                     if (python == null) python = Python.Find(root);
                     using (var process = new Process()) {
-                        process.StartInfo = new ProcessStartInfo(python.File, python.Prefix + Program.Arguments(root, command, selectedRuntime, configOverride)) {
+                        process.StartInfo = new ProcessStartInfo(python.File, python.Prefix + Program.Arguments(root, command, selectedRuntime, configOverride, remeasure)) {
                             WorkingDirectory = root, UseShellExecute = false, CreateNoWindow = true,
                             WindowStyle = ProcessWindowStyle.Hidden, RedirectStandardOutput = true, RedirectStandardError = true,
                             StandardOutputEncoding = Encoding.UTF8, StandardErrorEncoding = Encoding.UTF8 };
@@ -1094,6 +1254,7 @@ namespace GearsVrUi {
                         var stdout = new StringBuilder();
                         process.OutputDataReceived += delegate(object sender, DataReceivedEventArgs e) { if (e.Data != null) { if (command == "status") stdout.AppendLine(e.Data);
                             if(renderSupported&&(command=="start"||command=="render-size")){try{string dimensions=Program.RenderSizeText(e.Data);if(dimensions!=null)Ui(delegate{renderInfo.Text=dimensions;});}catch{}}
+                            if(armspanSupported&&command=="start"){try{string progress=Program.ArmspanProgressText(e.Data);if(progress!=null)Ui(delegate{armspanInfo.Text=progress;});}catch{}}
                             Log(e.Data); } };
                         process.ErrorDataReceived += delegate(object sender, DataReceivedEventArgs e) { if (e.Data != null) Log(e.Data); };
                         Log(Language.T(TextKey.RunningCommand) + command);
@@ -1108,7 +1269,7 @@ namespace GearsVrUi {
                         if (command == "status" && exit == 0) {
                             try { string phase = Program.Phase(stdout.ToString()); Ui(delegate { state.Text = Language.T(TextKey.CurrentPhase) + phase; }); } catch { }
                         }
-                        if (command == "start") Ui(delegate { owner = null; state.Text = exit == 0 ? Language.T(TextKey.SessionEnded) : Language.T(TextKey.SessionExit) + exit + (Language.English ? ")" : "）"); UpdateButtons(); });
+                        if (command == "start") Ui(delegate { owner = null; state.Text = exit == 0 ? Language.T(TextKey.SessionEnded) : Language.T(TextKey.SessionExit) + exit + (Language.English ? ")" : "）"); RefreshArmspan(); UpdateButtons(); });
                         Log(command + Language.T(TextKey.ExitCode) + exit); return exit;
                     }
                 });
