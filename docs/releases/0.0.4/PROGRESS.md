@@ -1505,3 +1505,6 @@ HM采样边界补充：Body核对returned_end早于THIS Kernel.finish，排除�
 
 
 2026-10-27 完成RWENT004既有weight回调边界的file-only消费者（reader3d9ce0cb…fa8b4／回执e299b52b…562f4，合同31797a2e…4a89d）。原v3前缀保持，H128／R16416，新增bounded Diagnostic／WeightReturn+Stage／actual raw4 constants。严格count/drop／identity／signed字段／mask／partial，独立pre→weight→raw Local比较，无weight Space不编造world。按Body已有ASM supplement6c2e5ed6收窄候选条件：必须同entry/node/compute+weight ordinal的sample4/reason0、前后cached_flag读取0且其它角色／snapshot／alpha／实际常量全合格，才描述alpha>zero且>=full或fractional；零／无效／缺失保持UNKNOWN，条件不证明store／排并发／穷尽集合。最终12必要方法／0（0.039秒），CLI合成及旧v1-v3兼容通过，非法pair／覆盖拒绝；旧数学复用、K/HM/HN不重解或回填，原hash保持。已交Body／统筹，无新Game／RE／Native-XR构建或PG-Muzzle／age扩查，候选实跑另由唯一窗口安排，不涨功能进度。
+
+
+2026-10-27 HO新v4为准确空覆盖：原shoulder门6.0073855秒status0→0／无coherent，ready／move未发送，未放宽门。原件7a30ff5d…7b75c仅Header128/count0/selected0；Game41768／Native3269225923034。冻结reader只解一次exit0，parsed dffc5951…d7bc9／empty review b3c1632e…158a6，旧HN等不替代不重解。新weight边界无目标覆盖，文件有效／正常恢复清理不算成功或修复证据；启用期491 unavailable非ready丢帧。Body沿本局旧first-failure／held记录解释门0，本侧不改weight接口、不再开局或扩PG-Muzzle／age，不涨功能分。

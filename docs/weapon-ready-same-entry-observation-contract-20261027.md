@@ -120,3 +120,10 @@ Diagnostic保留原stage／reason／flags和signed QPC／scale counts，reason�
 等号规则来自Body已有保存证据的补充 `RWENT004-comparison-supplement.json` SHA256 `6c2e5ed6c95955d9e231f39baa2ab0c459fd8af34318a802342af3fdfb029ec9`，所引ASM SHA256 `92ece07f4e233e452e2747ff8f8944d293d0422193ac5ad3ce08917ad3a6518e`仅核文件身份，不做新RE。有限数值alpha>actual zero才进入描述写回组，alpha>=actual full为full候选，zero<alpha<full为fractional；必须先有唯一同entry／node／scope／compute和weight ordinal的原Diagnostic.sample stage4／reason0／正常flags、前后flag_read bit2有效且两个cached_scale_word均0，才可排除所描述cached-scale旁支。还要求受支持角色／身份／strict snapshot、实际有限有序阈值和非零有限alpha。缺任何一项或观察到零alpha则candidate attribution UNKNOWN；即使条件满足也只是候选数值条件，不证明store执行、排除间接／并发写者或穷尽写者集合。
 
 最终12项新增必要方法全过（0.039秒）：独立ctypes每个新POD／offset、signed字段、identity／ownership、cap／drop、partial／exception、raw4 mask、零／非有限／缺失、缓存旁支必须有实际sample及等号边界、旧兼容和坏格式。最初10项与后续窄追加记录保留，最终仅新v4测试复核；未重跑旧数学suite。CLI新合成exit0、覆盖／常量非法对拒绝2，v1-v3合成输出完全相同。已交Body与统筹，未开Game、构建Native-XR或扩PG／Muzzle／age，准确新候选运行另循统一窗口；本工具不增加功能完成分。
+
+
+## HO：原肩部门失败，v4空覆盖（2026-10-27）
+
+Body唯一HO在原shoulder-fixed-first32门失败：6.0073855秒内status0→0，未观察到合格held commit／coherent pose；门未放宽，ready／move未发送。正常finalizer一次accepted、恢复及清理通过，与目标动作未达分开。新原件仅Header128、count0／selected0／window_cookie0，SHA256 `7a30ff5d5808e54f34fc2ccc46e6c78171740e1ac48afb84d5abf0ba78d7b75c`；Game41768／Native3269225923034，RWENT004 H128／R16416，drop／nested／unmatched0。
+
+冻结v4 reader仅消费此新文件一次exit0，`ho-ready-wrist-parsed-v4.json` SHA256 `dffc595115fdffc491ab83a5cc6ac06ec40fcf2f9519c8f16c757afe003d7bc9`；空覆盖回执 `ho-ready-wrist-empty-review-v4.json` SHA256 `b3c1632ec215b146eb9a74a6710c5cb64895de10b41e61a50414740536c158a6`，ignored同目录。文件有效不等于场景成功：没有新record、alpha、weight或pre→weight→raw比较，不能验证候选条件、证明目标不再变化或替代HN。零计数不证明无自然回调，启用期nonmatching168／unavailable491不当ready丢失数。Body仅沿本局已存first-failure／held解释原门0；本会话不补旧值、不重解K/HM/HN、不改weight接口或开重复局／扩PG-Muzzle／age调查。
