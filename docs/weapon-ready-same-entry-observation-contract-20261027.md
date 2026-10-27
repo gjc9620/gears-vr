@@ -92,3 +92,16 @@ Root新reader为ignored同目录 `read_ready_wrist_v3.py` SHA256 `235875fca7e1d4
 新增阶段独立status和Space规则：UNKNOWN不采样，failed partial不可信；已观察要求最终original_called／returned1。只在对应两端有效时比较pre→raw、raw→returned_end的Local35／51／52，附各自pose_epoch和component是否一致；并计算target→raw的world腕误差、raw→end的world35／52数值差。缺证独立null，不代用邻entry或从一个有效区间推另一区间。world仍Space×CTW、原游戏单位。快照描述读取区间，不能确定具体native指令、writer、写入瞬间或排除并发写者。
 
 7项必要增量方法全部通过（0.008秒），独立ctypes对新Record和Stage布局、分段变化、UNKNOWN／失败partial、未正常返回／身份矛盾、epoch／CTW上下文、旧格式兼容及坏格式；原数学套件未重跑。CLI新合成exit0，覆盖旧输出／截断拒绝2，v1／v2合成结果完全一致。已交Body和统筹，无Game／RE／PG-Muzzle分析或Native-XR构建；新候选实际验证仍待统一安排。
+
+
+## HN：成功后变化缩到pre→raw-return（2026-10-27）
+
+Body用准确aaccfc1c候选完成唯一HN原8命令／三个门／Stop与恢复／一次正常106清理。本会话仅一次消费新v3原件SHA256 `8cda052cad78930cf0f3d49132e91c1f60a43a1bc6ed982929fd31e09a33afb7`，Game59204／creation134375372787792949／Native3232920772391，19条、drop／nested／unmatched0。ignored同目录 `hn-ready-wrist-parsed-v3.json` SHA256 `b153ecc0f96b586bdc49dbaecb0ec8c7318726be54b6c318e5e5fb82e360f72b`；从已解析JSON整理的 `hn-ready-wrist-review-v3.json` SHA256 `9b6d2501a04c9b8d869ab59d55eddf6f08a6c90e2d5d85fd32adce19b7a1d407`。旧K／HM不重解、不回填。
+
+19条分为9成功（8保持、1变化）、2guard拒绝、6mount0、2seed_model捕获失败。17份raw_return status1中，raw→end的Local35／51／52、Space35／52和CTW全部保持；其余2份raw UNKNOWN，不算稳定样本。成功变化seq13准确为entry14674320／thread29720／mesh5309084336／asset2236788800／Tick41283／Compose41284／cookie1，valid127，prepare0／commit1／unit0／finish4，original_called／returned1且normal_scope_close。commit／pre／raw／end四个stage均status1、pose_epoch947且CTW等同capture；Space有效分别0／0／1／1。
+
+该条planned→commit→pre Local35／51／52逐bit保持；pre→raw仅Local35变化，局部角1.1438664598弧度／位移1.99133e−5游戏单位，51／52不变；raw→end全保持，raw及end腕到target误差完全相同，为16.7729413984游戏单位／0.5713026451弧度。pre读取QPC3233039952248..3233039952667、raw3233039987514..3233039987930、end3233039989378..3233039989787。读取时段不当精确写入时刻。
+
+HN这份变化已在正常raw invoke返回后的采样中出现，因此本次后续finally／end callbacks及Kernel.finish不能解释它。当前只缩到consumer_pre→raw-return snapshot区间，不命名具体原指令或排除并发写者；HN不直接代填HM缺失的raw阶段。完整同entry／epoch／CTW／Space／flags已交Body继续核查准确写者，未重复Game或扩age／PG／Muzzle。
+
+seq13 capture_ns323303988349600在原ready323303351246300..323304254992600内。全部新capture点1..17在ready，18／19在ready后move前且19为nonready closing，肩／移动无本观测覆盖。unavailable332仍是启用期尝试统计。原动作与正常恢复通过不等于稳定跟随、GPU、头显或默认合流验收；本轮不再开Game，不增加功能百分比。

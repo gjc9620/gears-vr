@@ -1499,3 +1499,6 @@ HM采样边界补充：Body核对returned_end早于THIS Kernel.finish，排除�
 
 
 2026-10-27 完成RWENT003原函数刚返回边界的窄file-only消费者：reader235875fc…42122／回执6fabad75…d558e／合同671b56da…c3c42。H128／R2368，原2040前缀及Stage布局不改，只加raw_return328；分别比较pre→raw和raw→end，记录epoch／CTW资格及world误差，不推具体写者／写入瞬间。7项必要方法／0（0.008秒），CLI新合成与旧v1／v2兼容通过，覆盖／截断拒绝；旧数学套件复用、旧K／HM不重解或回填，原reader／parsed hash保持。已交Body／统筹，未开Game或Native-XR构建，准确新候选验证由统一窗口安排；定位准备不增加功能百分比。
+
+
+2026-10-27 HN唯一新v3消费复现成功后Local35变化并缩小边界：原件8cda052c…3afb7／parsed b153ecc0…0f72b／review9b6d2501…1d407，Game59204／Native3232920772391。19=9成功（8保持1变）／2reject／6mount0／2seedcapture；17有效raw全raw→end Local三骨／Space35、52／CTW保持，2rawUNKNOWN不算稳定。成功seq13 Tick41283／Compose41284／epoch947 prepare0 commit1 finish4，planned→commit→pre保持，pre→raw仅35变1.14386646rad，raw／end同腕误差16.77294u／.571303rad。因此本局变化在finally/endcallbacks前已出现，排除其后callbacks／Kernel.finish解释，但不命名原指令或排除并发。准确key／4stage／flags／phase交Body，HN不代填HM。capture点1..17在ready、18/19在ready后move前；肩／移动不覆盖。原三门／恢复／106清理通过与稳定玩法／头显分开；无旧案重解、age／PG-Muzzle扩查或再开Game，不涨功能分。
