@@ -75,3 +75,6 @@ Body唯一HM用准确9250候选完成三个原动作门、Stop与恢复、一次
 seq13的capture_ns322296336150400处于原ready区间322295732164900..322296802091900，phase只是原capture点归属，不扩成整entry包含或失败钟。以上只定位“pre到end”的变化区间，不识别写者、动画子步或Kernel回滚边界；本条尾UNKNOWN也不能证明无其它拒绝。完整key、Local、Space、CTW、epoch与flag已交Native owner沿准确本次调用继续定位。
 
 本记录的ready capture点为seq2..21共20条，seq1在marker前、seq22／23在ready后move前，23是nonready closing；肩／移动没有此新观测capture点。unavailable302仍是整个启用期尝试计数。未重复K、BHELD003、PG／Muzzle解码或新Game／构建；Body原三门和恢复清理通过不能代替稳定跟随、GPU或真机验收。
+
+
+HM边界补充（Body源码位置核对）：returned_end snapshot位于本次Kernel.finish之前，因此其后的finish／rollback不能解释已采到的Local35变化；原调用返回后到snapshot仍有finish_guarded／control_end／recoil_end／fresh_end／Goal读取。精确变化范围仍为consumer_pre→returned_end，不能只归到某个原函数内部写者。此前“尚未识别Kernel回滚边界”是定位范围未明确的旧措辞，以此补充为准。原parsed237343和review a0dcdc保留不改；Body负责封存准确源码audit，本会话不重复RE或新Game。
