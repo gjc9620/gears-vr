@@ -1586,3 +1586,8 @@ D0首失败与下一动作：本次没有在原GetSystem支持日志前取得liv
 
 
 2026-10-27 D0后继交接：Body报告 `analysis/body-startup-bridge-isolation-20261027ab/` 使用同child-only Bridge disable、原XR1a059／Native55ac，进入ready并执行45秒纯被动测试后，唯一finalizer accepted=true，Native/entry恢复、106、8pose、XR0、原10、audio/PG恢复及ownedPIDs空。此处为Body运行负责人回执，Weapon未重复审整局或重跑；本局无HandStart和动作，不能据此认定H1／双手／W2完成。Body已转H1固定可见头手，武器D0窄审收尾，后续消费同一候选的共同基准、可见自由手及一次交还证据。
+
+
+2026-10-27 H1独立消费者交付（Body明确派单）：在ignored `analysis/h1-authored-eye-consumer-20261027/` 实现单文件纯Python `authored_eye_consumer.py` SHA b50516f805c45dedd5b16a29552fe1374586442b7b37e2bf4a62c6681ad5beea，接口 `authored_eye_from_reference(reference_bytes, head_world_row16)`。消费原coherent probe已经读到的115*68 Ref及实际Space55*CTW行矩阵，按准确Native qxyzw@12／translation@28／parent@56，原raw-q矩阵FK、头旋转逆变换与实际world头旋转计算authored eye midpoint；输出world眼点、head_to_eye_local、raw refhash/canonical及limits，替代观察器写死的EYE_LOCAL，不新增Game读取／IO／writer／相机位移／IPD推断。完整canonical签名锁Marcus115，严格count／parent／finite／q norm1e-3／proper similarity及原unit component容差2e-5；不授予当前live owner／namedRef／freshness许可。
+
+H1来源与验证：准确candidate6的body_head_authored_mount.h、full_body_c0_planner.h、cover_skeleton_ik.h及hand_authored_mount_profile.h均实hash入handoff；保存Ref fef334cf…5ce与原namedRef join00511f9a…245e的115行完整raw／parent全等已核，头55／眼57,60由原实名证据认证而非序号猜测。只执行3项针对纯CPU检查，实际exit0、0.010秒：旧真实Ref与独立normalized quaternion FK oracle、输入不变与重复确定性；90／180度世界旋转和平移的解析预期；坏count/parent/非finite/q归一/未知geometry及错误世界矩阵拒绝。旧Ref重算局部偏移[4.862866949520468,-8.560140831466375,-0.00011918239688627906]，不是新live采样结论。正式 `handoff.json` SHA1b2c711071e7be8250a007f8a2de5caa8dca6da04c17eace6ed28893e42827e1，含单文件接口/来源/限制，已交Body可直接导入原probe，用world眼点替换常量并保留本局refhash。未改Root/共享Native、未建／开Game/XR或新增助手；真实H1静点／双眼／运动／头显仍由Body当前候选验证，不将CPU通过补作玩法分。
