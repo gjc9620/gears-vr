@@ -406,6 +406,7 @@ hands::adapter::MountKind select_body_mount(gears_native_rig_tracking::CoreSnaps
     // operation using a forged fresh Frame.
     gears_rig_tracking::detail::copy_payload(source,s.original_scene);s.original_scene.native.registration_cookie=cookie;
     s.scene_ticket=source.source_ticket;s.scene_cache_revision=state.context.body_source.scene_cache_revision;
+    s.metadata_begin_ns=state.context.body_source.metadata_begin_ns;s.metadata_end_ns=state.context.body_source.metadata_end_ns;
     auto& t=s.tracking;t.tick=i.tick;t.thread=i.thread;t.parent_cookie=i.parent_cookie;t.begin_ns=i.begin_ns;t.end_ns=i.end_ns;
     std::memcpy(&t.stereo,&i.stereo,sizeof t.stereo);std::memcpy(&t.controllers,&i.controllers,sizeof t.controllers);
     std::memcpy(&t.continuity,&i.continuity,sizeof t.continuity);t.native_reference=i.native_reference;
@@ -631,26 +632,35 @@ bool digest(void const* p,size_t n,body::rig::Signature& result){
     if(ok)ok=BCryptCreateHash(a,&h,nullptr,0,nullptr,0,0)>=0;if(ok)ok=BCryptHashData(h,reinterpret_cast<PUCHAR>(const_cast<void*>(p)),ULONG(n),0)>=0;
     if(ok)ok=BCryptFinishHash(h,result.data(),ULONG(result.size()),0)>=0;if(h)BCryptDestroyHash(h);if(a)BCryptCloseAlgorithmProvider(a,0);return ok;
 }
-bool same_source_basis(gears_native_rig_tracking::CoreSnapshot const& a,gears_native_rig_tracking::CoreSnapshot const& b){
+bool same_recovery_session(gears_native_rig_tracking::CoreSnapshot const& a,gears_native_rig_tracking::CoreSnapshot const& b){
     namespace core=gears_native_rig_tracking;
     return core::same(a.native,b.native)&&a.world_generation==b.world_generation&&a.stereo.source==b.stereo.source&&
-        a.stereo.session==b.stereo.session&&a.stereo.space_epoch==b.stereo.space_epoch&&a.reference_generation==b.reference_generation&&
-        a.native_reference_revision==b.native_reference_revision&&a.native_reference.epoch==b.native_reference.epoch&&
-        a.native_reference.flags==b.native_reference.flags&&a.observed.stream==b.observed.stream&&a.observed.reference==b.observed.reference&&
-        a.observed.head_tracking==b.observed.head_tracking&&gears_vr::stereo_same_pose(a.reference,b.reference)&&a.units_per_metre==b.units_per_metre;
+        a.units_per_metre==b.units_per_metre;
+}
+bool same_recovery_avatar(binding::Binding const& a,binding::Binding const& b){
+    return a.context_valid&&b.context_valid&&a.weapon_known&&b.weapon_known&&
+        a.world_generation==b.world_generation&&a.special_move==b.special_move&&
+        binding::same(a.controller,b.controller)&&binding::same(a.pawn,b.pawn)&&
+        binding::same(a.mesh,b.mesh)&&binding::same(a.world,b.world);
 }
 enum class RecoveryResult {okay,defer,hard};
 RecoveryResult recovery_current(){auto const& old=state.recovery;auto const& m=state.backend.metadata();
     if(!(old.active&&state.kernel.settled_source_age()&&!state.prepared&&!state.atom_installed&&!stopping.load()&&
         state.stamp.frame>old.stamp.frame&&state.stamp.producer>old.stamp.producer&&state.stamp.scope!=old.stamp.scope&&
-        tx::same(state.stamp.binding,old.stamp.binding)&&binding::same_key(old.actor,state.context.actor)&&binding::same(old.asset,state.context.asset)&&
-        same_source_basis(old.source,state.context.source)&&old.units==state.source.units_per_metre&&old.model_scale==state.source.model_scale&&
+        tx::same(state.stamp.binding,old.stamp.binding)&&same_recovery_avatar(old.actor,state.context.actor)&&binding::same(old.asset,state.context.asset)&&
+        same_recovery_session(old.source,state.context.source)&&old.units==state.source.units_per_metre&&old.model_scale==state.source.model_scale&&
         old.desired.count==state.desired.count&&old.desired.indices==state.desired.indices&&
         !std::memcmp(old.reference.data(),state.source.reference.data(),sizeof old.reference)&&
         old.metadata.asset==m.asset&&old.metadata.master==m.master&&old.metadata.physics_asset==m.physics_asset&&old.metadata.physics_instance==m.physics_instance&&
         gears_cover_pose_phase::header_equal(old.metadata.reference,m.reference)&&gears_cover_pose_phase::header_equal(old.metadata.local,m.local)&&
         gears_cover_pose_phase::header_equal(old.metadata.desired,m.desired)&&gears_cover_pose_phase::header_equal(old.metadata.space,m.space)&&
         native_atom_overwrite_live::ready_for_commit()))return RecoveryResult::hard;
+    // The old operation is fully rolled back and normally closed with no
+    // fields/lease/protocol debt. Its gun or input cohort need not survive a
+    // normal equipment change/recenter. This is a NEW independently captured
+    // operation on the same authenticated avatar/storage, not a renewal of
+    // the old source or permission. Its complete current source, actor,
+    // reference, registration and time limits still decide every new write.
     if(!state.context.current(tx::Stage::prepare)){
         // Classify HERE, immediately after this exact failed guard. A new
         // capture can itself reach its deadline; that grants no write and

@@ -16,8 +16,8 @@ struct Record {
     gears_weapon_hand::ObjectIdentity avatar_asset{};
 };
 struct Header {
-    char magic[8]{'B','M','S','C','O','M','0','1'};
-    std::uint32_t version{1},header_bytes{sizeof(Header)},record_bytes{sizeof(Record)},count{},capacity{32},reserved{};
+    char magic[8]{'B','M','S','C','O','M','0','2'};
+    std::uint32_t version{2},header_bytes{sizeof(Header)},record_bytes{sizeof(Record)},count{},capacity{32},reserved{};
     std::uint64_t pid{},native_started{},read_only{1},writer{};
 };
 static_assert(sizeof(Header)==64&&std::is_standard_layout_v<Record>&&std::is_trivially_copyable_v<Record>);

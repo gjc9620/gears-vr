@@ -22,6 +22,7 @@ std::uint64_t receipt_attempts{};bool diagnostics_written{};
 void reset_diagnostics_after_drain() noexcept {
     if(!mainmountprovider::diagnostics_drained())return;
     active_receipt={};receipts={};receipt_count=0;receipt_attempts=0;diagnostics_written=false;
+    bodymountequipment::asset_results={};
 }
 void write_diagnostics_after_drain() noexcept {
     if(!mainmountprovider::diagnostics_drained()||!log_file||diagnostics_written)return;
@@ -31,6 +32,10 @@ void write_diagnostics_after_drain() noexcept {
             r.query,r.cookie,r.scene,r.publication,r.tick,r.compose,r.begin,r.finish,r.sync,r.equipment_begin,r.equipment_end,r.stage,r.status,r.returned);
     }
     fwprintf(log_file,L"native_body_mount_query_summary attempts=%llu retained=%u truncated=%u\n",receipt_attempts,receipt_count,unsigned(receipt_attempts>receipts.size()));
+    fwprintf(log_file,L"native_body_mount_asset_summary");
+    for(unsigned i=0;i<bodymountequipment::asset_results.size();++i)
+        fwprintf(log_file,L" status_%u=%llu",i,bodymountequipment::asset_results[i]);
+    fwprintf(log_file,L"\n");
     fflush(log_file);
 }
 bool publish(wire::Response* out,wire::Response const& value) noexcept {

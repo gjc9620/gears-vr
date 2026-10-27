@@ -11,14 +11,15 @@ std::atomic<std::uint64_t> attempts{},acquisitions{},unavailable{},age_rejected{
 bool same_reference(api::NativeReference const&a,api::NativeReference const&b)noexcept {
     return a.epoch==b.epoch&&a.flags==b.flags&&!a.reserved&&!b.reserved;
 }
-void begin(std::uint64_t tick,std::uint64_t thread,gears_native_rig_tracking::CoreSnapshot const& original,std::uint64_t revision)noexcept {
+void begin(std::uint64_t tick,std::uint64_t thread,gears_native_rig_tracking::CoreSnapshot const& original,std::uint64_t revision,std::int64_t metadata_begin)noexcept {
     if(!enabled||!tick||!revision||GetCurrentThreadId()!=thread||original.native.game_thread!=thread||
        weapon_hand_scene_binding::game_thread.load()!=thread)return;
     owner_thread.store(thread,std::memory_order_release);
     if(attempted_tick==tick&&attempted_native==original.native.native_started_qpc)return;
     attempted_tick=tick;attempted_native=original.native.native_started_qpc;
     active=true;acquired=write_valid=hard_failed=age_burned=false;++attempts;
-    working={};working.scene_cache_revision=revision;auto& v=working.observed;
+    working={};working.scene_cache_revision=revision;
+    working.metadata_begin_ns=metadata_begin;working.metadata_end_ns=rig::clock_ns();auto& v=working.observed;
     std::memcpy(&v.parent_scene,&original,sizeof original);v.tick=tick;v.thread=thread;
     auto* broker=weapon_hand_runtime::current();v.parent_cookie=broker?broker->cookie():0;v.begin_ns=rig::clock_ns();
     try{
@@ -64,11 +65,15 @@ input::Verdict observe(source::Input const& saved,gears_native_rig_tracking::Cor
         if(!broker||!broker->registration_current(saved.observed.parent_cookie,original.native.native_started_qpc))return input::Verdict::hard;}
     api::NativeReference reference{};std::uint64_t revision{};
     if(!rig::reference_snapshot(reference,revision)||revision!=saved.observed.reference_revision||!same_reference(reference,saved.observed.native_reference))return input::Verdict::hard;
-    rig::TickFailure why{};const bool metadata=rig::metadata_copy_current(original,saved.scene_cache_revision,&why);
-    if(!metadata&&why!=rig::TickFailure::source_age_only)return input::Verdict::hard;
+    // Every dependency/cache/reference/ticket is still checked. Only the old
+    // render Scene's elapsed age is distinct from the actual current-Tick
+    // metadata receipt. The live C0 context also rereads actor + model before
+    // every write; an old receipt is bounded from its first read, never end.
+    rig::TickFailure why{};const bool legacy=rig::current_copy(original,saved.scene_cache_revision,50000000,&why);
+    if(!legacy&&why!=rig::TickFailure::source_age_only)return input::Verdict::hard;
     const auto verdict=source::classify(saved,original,rig::clock_ns(),simulator_operator);
     if(verdict==input::Verdict::hard)return verdict;
-    return !metadata||verdict==input::Verdict::source_age_only?input::Verdict::source_age_only:input::Verdict::okay;
+    return verdict;
 }
 input::Verdict current(source::Input const& saved,gears_native_rig_tracking::CoreSnapshot const& original,
     std::uint64_t tick,std::uint64_t thread,std::int64_t capture_begin)noexcept {
@@ -110,7 +115,7 @@ bool parent_current(Parent const& p)noexcept {
 bool configure(wchar_t const* ini,FILE* f,bool consumer){const auto request=GetPrivateProfileIntW(L"BodyMainMountSource",L"enabled",0,ini);
     if(request!=0&&request!=1)return false;enabled=request==1;
     if(enabled&&(!consumer||!body_tick_input_live::enabled||!rig::enabled||!weapon_hand_runtime::enabled||body_tick_tracking_probe_live::enabled))return false;
-    if(f)fprintf(f,"body_mount_source_compiled=1 body_mount_source_enabled=%u distinct_tracking40_scene50_equipment50=1 legacy_V1_unchanged=1\n",unsigned(enabled));return true;
+    if(f)fprintf(f,"body_mount_source_compiled=1 body_mount_source_enabled=%u distinct_tracking40_metadata50_equipment50=1 body_source_abi=2 legacy_V1_unchanged=1\n",unsigned(enabled));return true;
 }
 void summary(FILE* f)noexcept {if(f)fprintf(f,"body_mount_source_enabled=%u body_mount_source_attempts=%llu body_mount_source_acquired=%llu body_mount_source_unavailable=%llu body_mount_source_age_rejected=%llu body_mount_source_hard_rejected=%llu body_mount_source_ends=%llu ",unsigned(enabled),attempts.load(),acquisitions.load(),unavailable.load(),age_rejected.load(),hard_rejected.load(),ends.load());}
 }

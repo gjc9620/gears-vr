@@ -12,7 +12,7 @@ namespace gears_body_main_mount_provider {
 namespace mount=gears_weapon_main_mount_provider;
 namespace hand=gears_weapon_hand;
 namespace rig=gears_rig_tracking;
-inline constexpr std::uint32_t version=1;
+inline constexpr std::uint32_t version=2;
 inline constexpr std::uint64_t tracking_age_ns=40000000;
 inline constexpr std::uint64_t scene_age_ns=50000000;
 inline constexpr std::uint64_t equipment_age_ns=50000000;
@@ -40,10 +40,12 @@ struct Basis {
 struct Source {
     // Historical association is byte-for-byte the genuine original Scene.
     // Its original tracking may be stale for V1, which must still reject it.
-    // This contract separately bounds original Scene observation/publication,
-    // fresh tracking/capture, and fresh equipment evidence at 50/40/50 ms.
+    // V2 separately bounds actual GT metadata, tracking/capture and equipment
+    // at 50/40/50 ms. Original Scene must be fresh at metadata BEGIN, remains
+    // unchanged, and must still match the live Native cache/reference/ticket.
     rig::Frame original_scene{};
     std::uint64_t scene_ticket{},scene_cache_revision{};
+    std::int64_t metadata_begin_ns{},metadata_end_ns{};
     Tracking tracking{};
     Basis basis{};
 };
@@ -66,11 +68,13 @@ struct SourceKey {
     std::uint64_t tick{},thread{},compose{},sequence{},session{},space_epoch{},source{};
     std::uint64_t reference_revision{},publisher_pid{},publisher_start{};
     std::int64_t begin_ns{},end_ns{},stereo_received_ns{},controllers_received_ns{},sync_ns{},capture_begin_ns{};
+    std::int64_t metadata_begin_ns{},metadata_end_ns{};
 };
 inline SourceKey source_key(Source const& s) noexcept {
     SourceKey k{};auto const& t=s.tracking;
     k.scene_publication=s.original_scene.publication_sequence;k.scene_binding=s.original_scene.binding_generation;
     k.scene_ticket=s.scene_ticket;k.scene_cache_revision=s.scene_cache_revision;
+    k.metadata_begin_ns=s.metadata_begin_ns;k.metadata_end_ns=s.metadata_end_ns;
     k.tick=t.tick;k.thread=t.thread;k.compose=s.basis.compose;k.sequence=t.stereo.sequence;
     k.session=t.stereo.session;k.space_epoch=t.stereo.space_epoch;k.source=std::uint64_t(t.stereo.source);
     k.reference_revision=t.reference_revision;k.publisher_pid=t.publisher_pid;k.publisher_start=t.publisher_start;
@@ -81,6 +85,7 @@ inline SourceKey source_key(Source const& s) noexcept {
 inline bool same(SourceKey const& a,SourceKey const& b) noexcept {
     return a.scene_publication==b.scene_publication&&a.scene_binding==b.scene_binding&&
         a.scene_ticket==b.scene_ticket&&a.scene_cache_revision==b.scene_cache_revision&&
+        a.metadata_begin_ns==b.metadata_begin_ns&&a.metadata_end_ns==b.metadata_end_ns&&
         a.tick==b.tick&&a.thread==b.thread&&a.compose==b.compose&&a.sequence==b.sequence&&
         a.session==b.session&&a.space_epoch==b.space_epoch&&a.source==b.source&&
         a.reference_revision==b.reference_revision&&a.publisher_pid==b.publisher_pid&&a.publisher_start==b.publisher_start&&
@@ -125,7 +130,7 @@ inline bool same(Registration const& a,Registration const& b) noexcept {
         a.context==b.context&&a.prepare==b.prepare;
 }
 using Attach=hand::Reply(GEARS_BODY_MAIN_MOUNT_CALL*)(Registration const*,hand::RegistrationResult*) noexcept;
-inline constexpr char attach_export[]="GearsVrAttachBodyMainMountProviderV1";
+inline constexpr char attach_export[]="GearsVrAttachBodyMainMountProviderV2";
 #undef GEARS_BODY_MAIN_MOUNT_CALL
 
 // Same active Hand parent context, cookie, pinned image, callback counts,
@@ -139,8 +144,8 @@ inline constexpr char attach_export[]="GearsVrAttachBodyMainMountProviderV1";
 // Non-ready response has no payload beyond the default size/version headers.
 // Malformed reply/request mutation/reentry/fault uses the existing parent fault
 // path. A newer packet may never replace this source during the same C0.
-static_assert(sizeof(void*)==8&&sizeof(Tracking)==1792&&sizeof(Basis)==256&&sizeof(Source)==3888);
-static_assert(sizeof(Request)==3944&&sizeof(SourceKey)==160&&sizeof(Response)==712&&sizeof(Registration)==48);
+static_assert(sizeof(void*)==8&&sizeof(Tracking)==1792&&sizeof(Basis)==256&&sizeof(Source)==3904);
+static_assert(sizeof(Request)==3960&&sizeof(SourceKey)==176&&sizeof(Response)==728&&sizeof(Registration)==48);
 static_assert(alignof(Tracking)==8&&alignof(Basis)==8&&alignof(Source)==8&&alignof(Request)==8&&alignof(Response)==8);
 static_assert(offsetof(Registration,hand_cookie)==16&&offsetof(Registration,context)==32&&offsetof(Registration,prepare)==40);
 static_assert(offsetof(Request,query_id)==8&&offsetof(Request,source)==56);

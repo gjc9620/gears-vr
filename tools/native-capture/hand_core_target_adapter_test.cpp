@@ -340,7 +340,39 @@ void wrapper_rejection_cases(){
     target.wrist_world.orientation={0,0,0,0};C(a::replace_wrist_rotation(target,single,work,output)==a::Status::invalid_target);C(unchanged(output,before));
 }
 } // namespace
+void current_metadata_cases(){
+    namespace src=gears_body_tick_source;namespace tick=gears_body_tick_input;
+    ++groups;auto original=host_core();original.scene_qpc=now-60000000;original.published_ns=now-55000000;
+    for(unsigned side=0;side<2;++side){original.stereo.eyes[side].pose={{side?.032:-.032,0,0},{0,0,0,1}};
+        original.stereo.eyes[side].fov={-.7,.7,.7,-.7};}
+    original.stereo.received_ns=now-70000000;original.controllers.received_ns=now-71000000;original.controllers.sync_ns=now-72000000;
+    src::Input input{};input.scene_cache_revision=2;input.metadata_begin_ns=now-10000000;input.metadata_end_ns=now-8000000;
+    auto& t=input.observed;t.parent_scene=original;t.tick=1;t.thread=original.native.game_thread;
+    t.begin_ns=now-7000000;t.end_ns=now-3000000;t.stereo=original.stereo;t.stereo.sequence+=5;t.stereo.received_ns=now-4000000;
+    t.controllers=original.controllers;t.controllers.sequence=t.stereo.sequence;t.controllers.received_ns=now-5000000;t.controllers.sync_ns=now-6000000;
+    t.continuity.input=t.controllers;t.continuity.stream_epoch=original.producer.stream;
+    t.continuity.tracking_epoch[0]=original.producer.tracking[0];t.continuity.tracking_epoch[1]=original.producer.tracking[1];
+    t.native_reference=original.native_reference;t.reference_revision=original.native_reference_revision;
+    t.publisher_pid=original.controller_publisher_pid;t.publisher_start=original.controller_publisher_start;
+    const auto before=saved(original);
+    C(src::classify(input,original,now,false)==src::Verdict::okay);
+    C(tick::classify(t,original,now,false)==tick::Verdict::source_age_only);
+    C(unchanged(original,before));
+    for(unsigned field=0;field<5;++field){auto bad=input;
+        switch(field){case 0:bad.metadata_begin_ns=0;break;case 1:bad.metadata_end_ns=bad.metadata_begin_ns-1;break;
+        case 2:bad.metadata_end_ns=t.begin_ns+1;break;case 3:bad.metadata_begin_ns=bad.metadata_end_ns=now+1;break;
+        case 4:++bad.observed.publisher_start;break;}
+        C(src::classify(bad,original,now,false)==src::Verdict::hard);}
+    {auto old=input;++old.metadata_begin_ns;C(src::classify(old,original,now,false)==src::Verdict::source_age_only);}
+    for(auto elapsed:{33000000LL,33000001LL})
+        C((src::classify(input,original,now+elapsed,false)==src::Verdict::okay)==(elapsed==33000000));
+    {auto old=input;old.observed.begin_ns=now-40000001;old.metadata_end_ns=old.observed.begin_ns;old.metadata_begin_ns=old.metadata_end_ns;
+        C(src::classify(old,original,now,false)==src::Verdict::source_age_only);}
+}
 int main(int argc,char** argv){
+    current_metadata_cases();
+    if(argc==2&&!std::strcmp(argv[1],"--current-metadata")){
+        std::printf("current GT metadata: %u checks, %u failures; owned source data only\n",checks,failures);return failures?1:0;}
     if(argc!=2||!read_ro3(argv[1])){std::fprintf(stderr,"Expected pinned RO3 matrix fixture HCTRO3V1\n");return 2;}
     prepare_cases();held_mount_cases();age_tracking_cases();binding_cases();units_source_cases();limb_single_cases();single_tail_cases();wrapper_rejection_cases();
     std::printf("hand_core_target_adapter: %u groups, %u checks, %u failures; max_position=%.17g max_basis_rotation=%.17g; HOST Core/binding + observed RO3 matrices, CPU math only\n",

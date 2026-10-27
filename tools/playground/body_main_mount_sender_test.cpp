@@ -17,6 +17,7 @@ struct BodyFixture {
         o.qpc_frequency=1000000000;o.scene_qpc=fixture_now-20000000;o.published_ns=fixture_now-10000000;
         o.stereo.received_ns=fixture_now-70000000;o.controllers.received_ns=fixture_now-71000000;o.controllers.sync_ns=fixture_now-72000000;
         s.scene_ticket=41;s.scene_cache_revision=51;auto& t=s.tracking;
+        s.metadata_begin_ns=fixture_now-9000000;s.metadata_end_ns=fixture_now-8000000;
         t.tick=61;t.thread=o.native.game_thread;t.parent_cookie=o.native.registration_cookie;
         t.begin_ns=fixture_now-7000000;t.end_ns=fixture_now-3000000;t.stereo=o.stereo;t.stereo.sequence+=5;
         t.stereo.received_ns=fixture_now-4000000;t.controllers=o.controllers;t.controllers.sequence=t.stereo.sequence;
@@ -61,11 +62,27 @@ int main(){
     }
     for(std::int64_t age:{40000000LL,40000001LL}){BodyFixture f;auto& t=f.request.source.tracking;
         t.begin_ns=t.end_ns=t.stereo.received_ns=t.controllers.received_ns=t.controllers.sync_ns=fixture_now-age;
+        auto& s=f.request.source;s.metadata_begin_ns=t.begin_ns-1000000;s.metadata_end_ns=t.begin_ns;
+        s.original_scene.scene_qpc=s.metadata_begin_ns-2000000;s.original_scene.published_ns=s.metadata_begin_ns-1000000;
         t.continuity.input=t.controllers;f.request.source.basis.capture_begin_ns=t.end_ns;
         bodywire::Response out{};CHECK((f.respond(out)==bodywire::Status::ready)==(age==40000000));if(age>40000000)CHECK(empty(out));}
     for(std::int64_t age:{50000000LL,50000001LL}){BodyFixture f;auto& o=f.request.source.original_scene;
-        o.scene_qpc=fixture_now-age;o.published_ns=std::uint64_t(fixture_now-age);bodywire::Response out{};
+        o.scene_qpc=f.request.source.metadata_begin_ns-age;o.published_ns=std::uint64_t(o.scene_qpc);bodywire::Response out{};
         CHECK((f.respond(out)==bodywire::Status::ready)==(age==50000000));if(age>50000000)CHECK(empty(out));}
+    {BodyFixture f;auto& s=f.request.source;s.original_scene.scene_qpc=fixture_now-55000000;
+        s.original_scene.published_ns=fixture_now-54000000;bodywire::Response out{};
+        CHECK(f.respond(out)==bodywire::Status::ready); // actual GT metadata is 9 ms old, Scene was 46 ms at its BEGIN.
+        CHECK(out.source.metadata_begin_ns==s.metadata_begin_ns&&out.source.metadata_end_ns==s.metadata_end_ns);
+        CHECK(out.abi_version==2);auto legacy=f.request;legacy.abi_version=1;wh::EquipmentIdentity identity{};
+        CHECK(sender::context(legacy,f.parent,fixture_now,identity)==bodywire::Status::source_mismatch);}
+    for(std::int64_t age:{50000000LL,50000001LL}){BodyFixture f;auto& s=f.request.source;
+        s.metadata_begin_ns=fixture_now-age;s.metadata_end_ns=s.metadata_begin_ns;
+        s.original_scene.scene_qpc=s.metadata_begin_ns-1000000;s.original_scene.published_ns=s.metadata_begin_ns;
+        bodywire::Response out{};CHECK((f.respond(out)==bodywire::Status::ready)==(age==50000000));if(age>50000000)CHECK(empty(out));}
+    for(unsigned field=0;field<5;++field)reject([field](auto& f){auto& s=f.request.source;
+        switch(field){case 0:s.metadata_begin_ns=0;break;case 1:s.metadata_end_ns=s.metadata_begin_ns-1;break;
+        case 2:s.metadata_end_ns=s.tracking.begin_ns+1;break;case 3:s.metadata_begin_ns=s.metadata_end_ns=fixture_now+1;break;
+        case 4:s.original_scene.published_ns=std::uint64_t(s.metadata_begin_ns+1);break;}});
     for(std::int64_t age:{50000000LL,50000001LL}){BodyFixture f;f.observation.begin_ns=fixture_now-age;bodywire::Response out{};
         CHECK((f.respond(out)==bodywire::Status::ready)==(age==50000000));if(age>50000000)CHECK(empty(out));}
     for(unsigned field=0;field<7;++field)reject([field](auto& f){auto& s=f.request.source;

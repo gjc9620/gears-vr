@@ -4,6 +4,13 @@ namespace bodymountequipment {
 namespace sender=gears_body_main_mount_sender;
 namespace wire=gears_body_main_mount_provider;
 namespace hand=gears_weapon_hand;
+// Small GT-only observations, reported through the existing drained summary.
+// No pointers, source renewal or permission are retained.
+std::array<std::uint64_t,9> asset_results{};
+lancermain_asset::Status observed_asset(hand::EquipmentIdentity const& identity,lancermain_asset::Evidence& out) noexcept {
+    const auto status=lancermain_asset::read_equipment(identity,out);
+    const auto index=unsigned(status);if(index<asset_results.size())++asset_results[index];return status;
+}
 bool held_current(hand::EquipmentIdentity const& identity,std::uint64_t generation) noexcept {
     const auto& h=weaponhand::held_binding;
     return generation&&vrequip::model.hold_generation()==generation&&h.known&&h.generation==generation&&
@@ -34,11 +41,11 @@ struct Reader {
         status=wire::Status::inactive;
         lancermain_asset::Evidence first{},last{};
         if(!current())return false;
-        if(lancermain_asset::read_equipment(identity,first)!=lancermain_asset::Status::ready){status=wire::Status::unsupported_asset;return false;}
+        if(observed_asset(identity,first)!=lancermain_asset::Status::ready){status=wire::Status::unsupported_asset;return false;}
         if(!current())return false;
         if(!nativeequipment::read_attached_equipment(identity,first.component.address)){status=wire::Status::not_attached;return false;}
         if(!current())return false;
-        if(lancermain_asset::read_equipment(identity,last)!=lancermain_asset::Status::ready||
+        if(observed_asset(identity,last)!=lancermain_asset::Status::ready||
            !hand::same(first.component,last.component)||!hand::same(first.asset,last.asset)){
             status=wire::Status::unsupported_asset;return false;
         }

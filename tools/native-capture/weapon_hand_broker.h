@@ -464,10 +464,13 @@ class Broker {
         // Historical old packets are compared exactly, never declared fresh.
         // The private Native validator separately authenticates the full
         // original metadata source plus the genuine new raw/capture source.
-        return frame_shape_valid(f)&&now>=f.now_ns&&std::uint64_t(now-f.now_ns)<=body_mount::scene_age_ns&&
+        return frame_shape_valid(f)&&s.metadata_begin_ns>0&&s.metadata_end_ns>=s.metadata_begin_ns&&
+            s.metadata_end_ns<=s.tracking.begin_ns&&now>=s.metadata_end_ns&&
+            std::uint64_t(now-s.metadata_begin_ns)<=body_mount::scene_age_ns&&
+            s.metadata_begin_ns>=f.now_ns&&std::uint64_t(s.metadata_begin_ns-f.now_ns)<=body_mount::scene_age_ns&&
             r.size==sizeof r&&r.abi_version==rig::version&&r.status==rig::Status::ready&&
-            r.published_ns&&r.published_ns<=std::uint64_t(now)&&std::uint64_t(now)-r.published_ns<=body_mount::scene_age_ns&&
-            counter_fresh(r.scene_qpc,r.qpc_frequency,now)&&s.scene_ticket&&s.scene_cache_revision&&
+            r.published_ns&&r.published_ns<=std::uint64_t(s.metadata_begin_ns)&&std::uint64_t(s.metadata_begin_ns)-r.published_ns<=body_mount::scene_age_ns&&
+            counter_fresh(r.scene_qpc,r.qpc_frequency,s.metadata_begin_ns)&&s.scene_ticket&&s.scene_cache_revision&&
             s.tracking.parent_cookie==cookie_.load()&&s.tracking.thread==game_thread_&&s.basis.compose&&
             r.native.game_pid==f.key.game_pid&&r.native.game_thread==f.key.thread_id&&r.native.game_start==f.key.game_start&&
             r.native.native_started_qpc==f.key.native_started_qpc&&r.native.registration_cookie==f.key.registration_cookie&&

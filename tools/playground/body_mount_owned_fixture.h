@@ -18,6 +18,7 @@ struct BodyFixture {
         o.qpc_frequency=1000000000;o.scene_qpc=fixture_now-20000000;o.published_ns=fixture_now-10000000;
         o.stereo.received_ns=fixture_now-70000000;o.controllers.received_ns=fixture_now-71000000;o.controllers.sync_ns=fixture_now-72000000;
         s.scene_ticket=41;s.scene_cache_revision=51;auto& t=s.tracking;
+        s.metadata_begin_ns=fixture_now-9000000;s.metadata_end_ns=fixture_now-8000000;
         t.tick=61;t.thread=o.native.game_thread;t.parent_cookie=o.native.registration_cookie;
         t.begin_ns=fixture_now-7000000;t.end_ns=fixture_now-3000000;t.stereo=o.stereo;t.stereo.sequence+=5;
         t.stereo.received_ns=fixture_now-4000000;t.controllers=o.controllers;t.controllers.sequence=t.stereo.sequence;

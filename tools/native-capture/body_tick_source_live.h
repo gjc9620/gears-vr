@@ -13,7 +13,7 @@ struct Parent {
 #if defined(GEARS_BODY_MAIN_MOUNT_SOURCE) && GEARS_BODY_MAIN_MOUNT_SOURCE
 extern bool enabled;
 bool configure(wchar_t const*,FILE*,bool);
-void begin(std::uint64_t,std::uint64_t,gears_native_rig_tracking::CoreSnapshot const&,std::uint64_t)noexcept;
+void begin(std::uint64_t,std::uint64_t,gears_native_rig_tracking::CoreSnapshot const&,std::uint64_t,std::int64_t)noexcept;
 void end(std::uint64_t)noexcept;
 bool copy(std::uint64_t,std::uint64_t,gears_native_rig_tracking::CoreSnapshot const&,source::Input&)noexcept;
 gears_body_tick_input::Verdict current(source::Input const&,gears_native_rig_tracking::CoreSnapshot const&,std::uint64_t,std::uint64_t,std::int64_t)noexcept;
@@ -24,7 +24,7 @@ void summary(FILE*)noexcept;
 #else
 inline constexpr bool enabled=false;
 inline bool configure(wchar_t const* ini,FILE*,bool){return GetPrivateProfileIntW(L"BodyMainMountSource",L"enabled",0,ini)==0;}
-inline void begin(std::uint64_t,std::uint64_t,gears_native_rig_tracking::CoreSnapshot const&,std::uint64_t)noexcept{}
+inline void begin(std::uint64_t,std::uint64_t,gears_native_rig_tracking::CoreSnapshot const&,std::uint64_t,std::int64_t)noexcept{}
 inline void end(std::uint64_t)noexcept{}
 inline bool copy(std::uint64_t,std::uint64_t,gears_native_rig_tracking::CoreSnapshot const&,source::Input&)noexcept{return false;}
 inline gears_body_tick_input::Verdict current(source::Input const&,gears_native_rig_tracking::CoreSnapshot const&,std::uint64_t,std::uint64_t,std::int64_t)noexcept{return gears_body_tick_input::Verdict::hard;}

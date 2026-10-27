@@ -37,11 +37,13 @@ inline wire::Status context(wire::Request const& r,Parent const& parent,std::int
        !hand::identity_valid(o.mesh)||!hand::identity_valid(o.weapon,true)||
        !vr::stereo_pose_valid(o.reference)||!o.native_reference.epoch||o.native_reference.reserved||
        o.native_reference.flags!=rig::reference_stable||!o.published_ns||o.published_ns>std::uint64_t(INT64_MAX)||
-       !age(static_cast<std::int64_t>(o.published_ns),now,wire::scene_age_ns)||o.scene_qpc<=0||o.qpc_frequency<=0)
+       s.metadata_begin_ns<=0||s.metadata_end_ns<s.metadata_begin_ns||s.metadata_end_ns>t.begin_ns||
+       !age(s.metadata_begin_ns,now,wire::scene_age_ns)||
+       !age(static_cast<std::int64_t>(o.published_ns),s.metadata_begin_ns,wire::scene_age_ns)||o.scene_qpc<=0||o.qpc_frequency<=0)
         return wire::Status::source_mismatch;
     const auto scene_observed_ns=static_cast<long double>(o.scene_qpc)*1000000000.L/o.qpc_frequency;
     if(scene_observed_ns<=0||scene_observed_ns>INT64_MAX||scene_observed_ns>o.published_ns||
-       !age(static_cast<std::int64_t>(scene_observed_ns),now,wire::scene_age_ns))return wire::Status::source_mismatch;
+       !age(static_cast<std::int64_t>(scene_observed_ns),s.metadata_begin_ns,wire::scene_age_ns))return wire::Status::source_mismatch;
     // New tracking is a distinct real sample. Never validate/renew original
     // Rig/Hand tracking as if it supplied this query's current right Grip.
     const auto selected=std::uint64_t(t.stereo.source);

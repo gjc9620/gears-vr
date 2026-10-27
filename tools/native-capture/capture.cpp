@@ -5909,7 +5909,7 @@ extern "C" __declspec(dllexport) gears_weapon_hand::Reply __cdecl GearsVrAttachW
     gears_weapon_action::Registration const* registration,gears_weapon_hand::RegistrationResult* result) noexcept {
     return weapon_hand_runtime::attach_action_gate(registration,result,weapon_call_live::owned.load(std::memory_order_acquire));
 }
-extern "C" __declspec(dllexport) gears_weapon_hand::Reply __cdecl GearsVrAttachBodyMainMountProviderV1(
+extern "C" __declspec(dllexport) gears_weapon_hand::Reply __cdecl GearsVrAttachBodyMainMountProviderV2(
     gears_body_main_mount_provider::Registration const* registration,gears_weapon_hand::RegistrationResult* result) noexcept {
     return weapon_hand_runtime::attach_body_mount_provider(registration,result,full_body_c0_native_live::body_mount_policy_enabled());
 }

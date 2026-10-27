@@ -159,6 +159,11 @@ bool same_source(rig::TickFailure* failure=nullptr){
     if(failure)*failure=why;
     return fresh;
 }
+bool current_body_source(){
+    gears_body_tick_source::Input current{};
+    return body_tick_source_live::copy(slot.tick,slot.data.owner.thread,slot.data.record.source,current)&&
+        body_tick_source_live::current(current,slot.data.record.source,slot.tick,slot.data.owner.thread,0)==gears_body_tick_input::Verdict::okay;
+}
 // The read-only planner retains OLD tracking eligibility. Metadata mode never
 // creates or revives a legacy TickLatch; current_copy classifies the unchanged
 // original Core against its own original clocks and complete hard guards.
@@ -222,12 +227,13 @@ void tick_begin(Entry& e){e.tick_depth=true;e.depth=++slot.tick_depth;
     if(matching_ticks.fetch_add(1)){++conflicts;reject(Failure::concurrent);return;}
     slot.lease=::new(static_cast<void*>(slot.lease_storage)) ::Scope;
     if(!slot.lease->world()){reject(Failure::lease);return;}
+    const auto metadata_begin_ns=rig::clock_ns();
     if(!owner_current()){reject(Failure::owner);return;}
     slot.attempted=true;
     if(body_tick_source_live::enabled){
         if(!rig::begin_scene_metadata_tick(slot.key,slot.metadata_latch)||
            !rig::read_scene_metadata_tick(slot.key,slot.metadata_latch,slot.data.record.source,slot.metadata_revision)||!owner_current())reject(Failure::latch);
-        else body_tick_source_live::begin(e.invocation,e.thread,slot.data.record.source,slot.metadata_revision);
+        else body_tick_source_live::begin(e.invocation,e.thread,slot.data.record.source,slot.metadata_revision,metadata_begin_ns);
     }else{
         if(!rig::begin_tick(slot.key,slot.latch)||!rig::read_tick(slot.key,slot.latch,slot.data.record.source)||!owner_current())reject(Failure::latch);
         else {body_tick_tracking_probe_live::sample(e.invocation,e.thread,slot.data.record.source);
@@ -246,7 +252,7 @@ void compose_begin(Entry& e){if(!slot.active)return;
     // CCTRL continuous validation consumes this exact canonical Scope address.
     slot.compose.address=&slot.compose.scope;
     slot.compose.continuous=true;slot.compose.admitted=true;slot.compose.outer_tick=slot.tick;slot.data.record.compose=e.invocation;
-    if(!control_current(slot.compose.scope)||!same_source()||!metadata(true)||!geometry())reject(Failure::metadata);
+    if(!control_current(slot.compose.scope)||!(body_tick_source_live::enabled?current_body_source():same_source())||!metadata(true)||!geometry())reject(Failure::metadata);
     else{slot.data.record.asset=rig::object(slot.data.asset);slot.data.record.geometry_signature=slot.data.signature;slot.data.record.reference=slot.data.metadata.reference;budget::recorder.admitted();if(!bind_personal())reject(Failure::model);}
 }
 void pose_begin(Entry& e) noexcept {Call call;try{if(!enabled||!next(e))return;if(e.kind==2)tick_begin(e);else if(e.kind==0)compose_begin(e);}catch(...){failed=true;reject(Failure::exception);}}
@@ -267,7 +273,10 @@ void pose_end(Entry const& e,bool returned) noexcept {Call call;
            slot.compose_depth||slot.control_depth||slot.compose_address||slot.control_address){failed=true;reject(Failure::end);return;}
         if(!returned)reject(Failure::exception);if(stopping.load())reject(Failure::stopped);
         if(body_tick_source_live::enabled){
-            if(slot.attempted&&!slot.hard_control_fault&&!same_source())reject(Failure::latch);
+            rig::TickFailure why{};
+            // End only closes the already consumed typed scope. Preserve all
+            // immutable/owner checks without demanding renewed old Scene age.
+            if(slot.attempted&&!slot.hard_control_fault&&!same_source(&why)&&why!=rig::TickFailure::source_age_only)reject(Failure::latch);
             const bool ended=!slot.attempted||rig::end_scene_metadata_tick(slot.key,slot.metadata_latch);
             body_tick_source_live::end(e.invocation);slot.metadata_revision=0;
             if(!ended){failed=true;reject(Failure::end);return;}
