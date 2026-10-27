@@ -1487,3 +1487,6 @@ Native27从26c2的710文件最小派生718文件（5既有／8新增），82defi
 
 
 2026-10-27 武器会话完成唯一K新RWENT原件的一次实际解析：Game74284／Native3200498446623，18条=9提交成功／3guard拒绝／3mount0／3seed_model捕获失败。9成功样本planned→commit→pre→end的Local35／51／52逐bit一致；3拒绝seq7／13／15(code12/unit17／3／9)在pre仍逐bit等于before，end腕离target约15.77..16.18u；known-ready的11份有效target均相同，完整相邻mapping相同仍发生成功／拒绝分流。优先交Body定位capture／mount／commit准入，不能归因为成功写后动画覆盖。解析原件SHAb3563225…ab28b、输出f0c0d74b…4723b、派生review fc7cf1c5…9e7a5，均见ignored `analysis/lancer-ready-same-entry-20261027/`及同次观测文档。原ready phase仅15capturepoint／7成功；新观测不覆盖肩／移动，启用期unavailable293不当ready丢失。Body原动作／恢复／106清理通过，不增加功能完成百分比；未重复v3／PG解码或新Game／Native构建。
+
+
+2026-10-27 按统筹安排完成RWENT002窄file-only适配，reader9923573d…dfa00／回执feddc65f…fb039，准确合同fca9c717…2fbfb。显式v2／R2040，仅尾2024 verdict与2032 causes；复用冻结v1前缀数学，原件身份与内存投影分别标记，v1结果及K原件保持不回填。UNKNOWN不推通过，只有verdict3＋mask1／2／3且prepare0／commit12合法；mask仅已计算事实，不推先后／branch clock／validate-exchange或深层原因。6项必要方法／0失败（0.007秒），CLI新合成与v1兼容通过、覆盖／半缺对拒绝；未重跑旧数学／旧案，无Game或Native／PG／XR构建。已交Body／统筹结束此离线交付，新候选验证安排另循唯一窗口，不增加功能进度。

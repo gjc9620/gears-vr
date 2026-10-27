@@ -51,3 +51,14 @@ Body唯一K已正常完成原8动作、三个门、松手后的身体续更、�
 因此当前优先定位提交前的capture／mount／commit准入分叉。成功路径未观察到原流程将已提交的这三根Local改回；拒绝路径的后续变化不能作为成功写后动画覆盖的证据。准确seed_model子条件、guard unit对应的失败判定及mount0原因由Native owner继续定位，不为增加通过率放宽保护。尚不能宣称完整故障根因或跟手修复。
 
 覆盖按原capture_ns与原phase ns比较，不从QPC猜branch时钟：原ready区间320060142564400..320060994053000内只有seq2..16的15个capture点，其中7成功；seq1的capture点约早于ready marker13.549微秒，该点不等于整次entry区间；seq17／18在ready结束与move开始之间，18为nonready closing。肩和移动phase没有此新观测的capture点，不声称其阶段覆盖。Header unavailable_input293是整个启用期的尝试统计，不能当293条ready遗漏或失败。106清理、XR0和原文件／音频恢复沿Body原handoff证据，不能替代玩法或真机验收。
+
+
+## RWENT002 增量消费者（2026-10-27）
+
+按统筹明确窄交付，新建 `analysis/lancer-ready-same-entry-20261027/read_ready_wrist_v2.py`，SHA256 `9923573d99c72408c56b8f59570ec7dd599b6f429c60dd80d8a12fae157dfa00`；交付 `consumer-delivery-v2.json` SHA256 `feddc65f9e445172a75af3936996183791f182aed45a9c85eae447d2f76fb039`。准确delta合同SHA256 `fca9c717500f2abe2b7bbb5da41fe4c2c46cd178182f1cbafcf24a8a0562fbfb`。新文件显式RWENT002／version2／Header128／Record2040，原2024前缀和Key／Stage offsets全部保持，尾2024／2032为commit_context_verdict／causes。旧reader821d016和旧合同／K parsed／review均保留且核hash未变；未重解K或补值。
+
+适配器先核冻结v1 reader、合同、source header与compiler-layout哈希，在自有内存中投影原前缀并复用原数学／有效位逻辑；输出原文件SHA、version2／R2040及明确的内存投影标识，不把投影当新原件。v1严格分派仍返回原结果，不增加拒绝字段，原v1 reader继续拒绝v2。调用 `python read_ready_wrist_v2.py INPUT NEW_OUTPUT`，同目录保留原v1 reader，输出不覆盖。
+
+两尾字段全UNKNOWN仅表示本次特定return未观察，不能推出成功或hard guard；非未知仅接受verdict3与causes1／2／3且实际prepare0／commit12，半缺或非法对直接拒绝。事实mask1表示已取得的body source verdict为source-age-only，mask2表示已取得的equipment_fresh为false；只解释该entry在Context stagecommit首个既有BodyMainMountSource source-age返回。不能推出事实先后、失败branch时间、validate／exchange边界或更深metadata-age／raw-age子条件，不能与capture verdict或rollback后最终值混用。
+
+6项新增必要方法／0失败（0.007秒）：独立ctypes原前缀与尾布局、三个合法mask、UNKNOWN边界、非法／半缺对及实际prepare／commit矛盾、v1兼容和严格旧reader拒绝新格式、版本／长度／前缀验证。CLI新合成成功0，覆盖旧输出及半缺对拒绝2，v1合成结果与原结果完全一致。旧数学套件复用未重跑，无Game／Native／PG／XR构建或运行。已交Body和统筹准确哈希；新DLL必要检查与新验证安排由其负责，此增量交付不是新的实跑或根因结论。
