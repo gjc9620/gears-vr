@@ -154,3 +154,14 @@ Body唯一HP三门通过：shoulder4.3257423秒status0→42、ready0.8369653秒4
 首normal为raw1／Tick27266／Compose27267：gate12，实际cookie1／输入parent_cookie0，revision／generation未访问UNKNOWN，query0。它在shoulder marker之前583140700ns，不能解释整个肩期或旧HO。127normal中117份prequery0、7份未观察，另2份gate14／detail3（cached source_age_expired）：raw32／Tick30686／Compose30687在shoulder，raw117／Tick39781／Compose39782在move，均cookie／parent1且query0，原同条Goal reason18／apply照实保留，不借它解释别的Goal。独立Goal首拒绝raw98／Tick37748／Compose37749在ready：Goal14／adapter2 core，19项key比较全同，prequery六字段均UNKNOWN；不以相邻或别行gate14填补。
 
 以原entry_begin落在各原phase内分类，导出normal行83肩／16ready／15move，对应行的held marker43／8／8；共61个normal saved held marker不是status差分或整阶段commit总数。最后saved_end330968380970100早于原move_end298166800ns，加drop6和未知字段，完整覆盖未证；不将这些丢失行补到具体时间或失败原因。gate20 raw0虽带实际源身份，cookie0／begin-end未观察与非权威属性保持。新观察揭示本局具体首false，不证明HO根因已修复。未追加RWENT004权重／矩阵、PG-Muzzle／age、旧案或新Game；已交Body和统筹，原stable-follow／真机／默认接受仍pending。
+
+
+## HP既存权重记录的一次消费（2026-10-27，第37轮窄后继）
+
+按统筹安排复用HP已存原件，不开新局／构建：RWENT004原件295616B，SHA256 `a703a45902ee62bfa97cdc99d1f22919784b1129fdb9c19222007a727bfe402f`，身份Game33264／Native3309563927982。冻结reader3d9ce0cb和合同31797／supplement6c2e仅解析一次，ignored同目录 `hp-ready-wrist-parsed-v4.json` SHA256 `401da0db3dde210dbaf9dca3f0e73c95e7aa8a0ec31d8a9f8fb93871ce2c2c23`；从该JSON整理 `hp-ready-wrist-weight-review-v4.json` SHA256 `fa760a0529f74f5dc5cfc113a12bab3e0b9eb919e40bc6017c64a1d783cc5462`。
+
+直接结果：18个entry中9成功（seq1／3／5／7／9／11／13／15／17），各有两个角色／身份有效的end35 weight boundary，共18份；planned→commit→pre保持，pre→each weight→raw→end的Local35／51／52全部逐bit相同。本份未重现同一成功entry的变化，因此first-change区间未定位，不能把HN／HM异常借到这里。18份原alpha raw4=1、原sample4当时也1，但同pair原owner grant和applied0事件均实际存在，最终packet raw4都是+0；sample4的1和最终实际0处于不同边界，不能混作非零权重。
+
+这18份均有准确同entry/node/scope/compute+weight ordinal的sample4/reason0，before/after read_mask127含flag2、cached_scale_word0／0；当前常量mask3，fullbits1065353048／zerobits925353388，未用历史常量。即使这些前提齐全，零alpha仍无full／fractional候选归因。另28个实际final1的weight flags7，缺matching compute身份／role，不能代替成功entry。总264个alpha事件／64个weight，36个flag1023最终0、28个flag7最终1，所有行事件drop0；RWENT全局drop0与BHELD原drop6分开。
+
+新capture点seq2..17在ready，seq1早于ready marker24.8424ms，seq18在ready后move前closing，肩／移动无此权重观测覆盖。条件不证明具体store执行、排除间接／并发写者或穷尽写者。只给Body一个下一可验证动作：继续其已安排的现有HP Stop回执分析，定位阻止free-hand续更的首条件；本份零alpha未复现结论固定，不原样重跑或新增collector。两个family的区分仍需真正同一成功且发生变化、最终非零的合格证据。无PG-Muzzle／age扩查或旧案重解，protocol／bodycontinue仍false，与三个门和正常finalizer分离。

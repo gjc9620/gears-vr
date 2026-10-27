@@ -1517,3 +1517,6 @@ HO后续Body既有记录明确：90attempt／90query前not_ready、query0，fall
 
 
 2026-10-27 HP新BHELD004一次消费通过格式验证：Game33264／Native3309563927982，原件e625cebb…5b329／parsed84002ceb…ccd8e／reviewfbe24557…d8dfb。128raw=127normal+1gate20、drop6；kind2非PG-ready。首normal raw1 gate12 cookie1,parent0发生于肩marker前.5831407秒；117前置通过／7未观察／2context_prepare cached source_age3分属shoulder raw32及move raw117。独立ready Goal14 adapter2/core raw98的prequery UNKNOWN，不借别条填补。三个原门通过，但protocol/bodycontinue均false，post-quiescent free-hand续更超时原样保留，不能借106正常清理替代；新记录不证明HO修复。有限savedspan止于move末前.2981668秒，drop不补值。只消费新BHELD，不追加权重／矩阵／PG-Muzzle／age或旧案/新Game，不涨功能分。
+
+
+2026-10-27 第37轮仅消费HP已有RWENT004权重原件a703a459…e402f一次（parsed401da0db…c2c23／reviewfa760a05…c5462），未新Game。9成功entry的18合格右腕weight前后Local均保持到raw/end，本份成功后变化未复现。实际原alpha/sample4=1，原applied事件与最终packet均0；sample4/reason0、前后缓存flag读取0、当前raw4阈值齐全仍不能给零alpha套full/fractional归因。其它final1/flags7缺匹配compute角色，不能填入成功证据。264alpha/64weight事件drop0，RWENT globaldrop0与BHELDdrop6分开；权重capture只ready限定片段，肩／移动不覆盖。按一个下一动作交Body继续已有HP Stop回执定位free-hand续更首阻碍，不新增采集器或原样重跑，不借HN/HM补值、不扩PG-Muzzle/age，无Native改动/构建；整局protocol/bodycontinuefalse与稳定跟随仍未验收，不涨功能分。
