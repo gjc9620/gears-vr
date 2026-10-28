@@ -1,5 +1,12 @@
 # Project reverse-engineering workflow
 
+## Latest direct owner extension — one Lancer firing node (2026-10-28)
+
+- Owner explicitly has no time for current headset check and authorizes continuing ONE next node for joint acceptance. Continue M4 basic Lancer pickup/aim/trigger firing, using existing modules and the same unified candidate entry; M1/M2/M3 physical feedback no longer blocks this node.
+- Weapon muzzle/held-controller direction determines authoritative fire; head motion changes view only. Reuse existing firing code, close actual integration gaps, compile/package, and at most one short controlled Playground basic check plus a targeted repair/recheck for concrete failure. Preserve all runtime/resource protections.
+- Do not expand reload, cover or other weapons. Current chat remains sole implementation/build/runtime owner; no helpers or archived-chat dispatch. Physical acceptance of all four nodes remains pending and separate.
+
+
 ## 6DoF latest owner override — this chat alone (2026-10-28)
 
 - The human owner now requires only the current coordinating chat to implement, build and run the project. The Body, Weapon and roadmap chats are archived; do not reopen or dispatch work to them, and do not spawn helpers without a new direct user request. Continue from preserved unified source, not a reimplementation.

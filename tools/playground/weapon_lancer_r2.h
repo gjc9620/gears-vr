@@ -92,7 +92,10 @@ public:
             return reject(SourceStatus::cohort_changed);
         if(bound_&&(now<observed_||f.controllers.sequence<sequence_||f.controllers.sync_ns<sync_||
            (f.controllers.sequence==sequence_&&f.controllers.sync_ns!=sync_)))return reject(SourceStatus::regressed);
-        if(bound_&&f.controllers.sequence>sequence_&&(f.controllers.sync_ns<=sync_||now-sync_>age))
+        // Current sample age is checked above. Continuity measures producer
+        // sync-to-sync spacing, not previous-sync-to-consumer time: otherwise
+        // a fresh 70ms interval plus 40ms read latency is falsely sealed.
+        if(bound_&&f.controllers.sequence>sequence_&&(f.controllers.sync_ns<=sync_||f.controllers.sync_ns-sync_>age))
             return reject(SourceStatus::sync_invalid);
         if(!actors_known_||!same(actors_,actual)){
             // No owned press can pass the safe guard with a changed actor.

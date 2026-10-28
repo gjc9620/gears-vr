@@ -13,7 +13,27 @@ Name r2{};
 unsigned logs{};int last_ammo{-1};unsigned previous_status{~0u},previous_source{~0u};
 ULONGLONG next_ammo{};unsigned ammo_reads{},post_ammo_samples{2};
 bool ammo_resume_pending{};
+unsigned muzzle_logs{};std::uint64_t last_muzzle_writes{};
 lr::Actors actors(wh::Frame const& f) noexcept {return {f.world,f.controller,f.pawn,f.mesh,f.weapon};}
+// A negative scheduling hint only. Actual fire still authenticates the live
+// actor, Lancer class, held mount, source and result schemas on its normal path.
+// Holding a pistol must not pay Lancer metadata cost every PlayerTick.
+weaponhand::HoldBinding candidate_hold{};
+bool candidate_class_known{},candidate_is_lancer{};
+bool held_lancer_candidate() noexcept {
+    auto const& h=weaponhand::held_binding;
+    if(!h.known)return false;
+    const bool same=candidate_class_known&&candidate_hold.generation==h.generation&&
+        candidate_hold.native_cookie==h.native_cookie&&candidate_hold.native_started==h.native_started&&
+        candidate_hold.world_generation==h.world_generation&&wh::same(candidate_hold.world,h.world)&&
+        wh::same(candidate_hold.controller,h.controller)&&wh::same(candidate_hold.pawn,h.pawn)&&wh::same(candidate_hold.weapon,h.weapon);
+    if(same)return candidate_is_lancer;
+    meta::Snapshot schema{};schema.module_base=base;meta::Reader r{schema,meta::Stage::final_check};bool known{};
+    if(!meta::tables(base,schema.objects,schema.names)||!weaponhand::object(r,h.weapon))return false;
+    const bool lancer=weaponhand::derives(r,h.weapon.address,L"Weap_AssaultRifle",L"WarfareGame",&known);
+    if(!known)return false;
+    candidate_hold=h;candidate_is_lancer=lancer;candidate_class_known=true;return lancer;
+}
 bool button_name() noexcept {
     Array names{},again{};if(!copy(&names,base+0x1c34800,sizeof names)||!names.data||
         names.count<1000||names.count>names.capacity||names.capacity>4000000)return false;
@@ -116,6 +136,14 @@ void tick(uptr pc) noexcept {
     const auto state=mode.load(std::memory_order_acquire);if(state!=running&&state!=stopping)return;
     const bool quiet=weaponhand::current_gt(nullptr)&&nativeequipment::domain_ready();
     if(!lr::tick_admitted(quiet,pc,0,0))return;
+    // Equipment must first commit a real held binding. Repeated fire metadata
+    // reads while unheld starve its input baseline on the same GT. No source
+    // or R2 state is fabricated here; an owed release and stopping still take
+    // the complete existing path, even after equipment clears the binding.
+    if(state==running&&unified_weapon_fire::manual_profile()&&
+       !input.owns_press()&&!held_lancer_candidate()){
+        unified_weapon_fire::clear_source();return;
+    }
     const auto source_started=weaponhand::clock_ns(nullptr);
     wh::Frame frame{};wh::GripGameState copied_game{};
     const bool have_source=state==running&&weaponhand::client.copy_frame_on_gt(frame,copied_game);
@@ -143,6 +171,17 @@ void tick(uptr pc) noexcept {
     const auto result=input.advance(current?&frame:nullptr,current,game,now,
         [&](gears_weapon::OriginalR2Action a,std::uint64_t c){return execute(a,c,current?&frame:nullptr);},state==stopping);
     const auto action_finished=weaponhand::clock_ns(nullptr);
+    unified_weapon_fire::AppliedEvidence applied{};
+    if(log_file&&muzzle_logs<8&&unified_weapon_fire::applied_evidence(applied)){
+        const auto total=applied.writes[0]+applied.writes[1]+applied.writes[2]+applied.writes[3];
+        if(total!=last_muzzle_writes){
+            fwprintf(log_file,L"native_lancer_muzzle_applied shot=%llu aim_writes=%llu trace_writes=%llu pushed_writes=%llu physical_writes=%llu aim=%d,%d,%d original_aim=%d,%d,%d origin=%.9g,%.9g,%.9g\n",
+                applied.shot,applied.writes[0],applied.writes[1],applied.writes[2],applied.writes[3],
+                applied.aim[0],applied.aim[1],applied.aim[2],applied.original_aim[0],applied.original_aim[1],applied.original_aim[2],
+                double(applied.origin[0]),double(applied.origin[1]),double(applied.origin[2]));
+            fflush(log_file);last_muzzle_writes=total;++muzzle_logs;
+        }
+    }
     last_status.store(unsigned(result),std::memory_order_release);
     if(result==lr::Status::released||result==lr::Status::recovered||result==lr::Status::tapped){
         next_ammo=GetTickCount64()+500;post_ammo_samples=0;}
@@ -203,6 +242,7 @@ DWORD enable(){
     }
     if(unified_weapon_fire::manual_profile()&&!unified_weapon_fire::consumer_compiled())return 4;
     if(!button_name()||!input.reset_drained())return 3;
+    candidate_hold={};candidate_class_known=candidate_is_lancer=false;muzzle_logs=0;last_muzzle_writes=0;
     logs=0;previous_status=previous_source=~0u;last_ammo=-1;next_ammo=0;ammo_reads=0;post_ammo_samples=2;ammo_resume_pending=false;
     if(unified_weapon_fire::manual_profile()&&!unified_weapon_fire::set_running(true))return 4;
     mode.store(running,std::memory_order_release);

@@ -19,7 +19,14 @@ inline constexpr bool consumer_compiled() noexcept {
     return false;
 #endif
 }
+// Diagnostic copy only, consumed on normal GT tick, never an action ticket.
+struct AppliedEvidence {
+    std::uint64_t writes[4]{},shot{},epoch{};
+    std::int32_t aim[3]{},original_aim[3]{};
+    float origin[3]{};
+};
 #if defined(GEARS_PLAYGROUND_UNIFIED_MUZZLE_FIRE) && GEARS_PLAYGROUND_UNIFIED_MUZZLE_FIRE
+bool applied_evidence(AppliedEvidence&) noexcept;
 bool set_running(bool value) noexcept;
 bool prepare_current(gears_weapon_hand::Frame const&,gears_weapon_hand::GripGameState const&) noexcept;
 bool ready_for(gears_weapon_hand::Frame const&) noexcept;
@@ -28,6 +35,7 @@ void begin(gears_weapon_call::Invocation const&,gears_weapon_shot::Token const&)
 bool normal_return(gears_weapon_call::Invocation const&) noexcept;
 bool cleanup(gears_weapon_call::Invocation const&,gears_weapon_shot::Token const&) noexcept;
 #else
+inline bool applied_evidence(AppliedEvidence&) noexcept {return false;}
 inline bool set_running(bool value) noexcept {return !value;}
 inline bool prepare_current(gears_weapon_hand::Frame const&,gears_weapon_hand::GripGameState const&) noexcept {return false;}
 inline bool ready_for(gears_weapon_hand::Frame const&) noexcept {return false;}

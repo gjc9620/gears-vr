@@ -83,8 +83,16 @@ int main(){
         CHECK(t.advance()==Result::baseline);t.next();CHECK(t.advance()==Result::accepted&&t.calls.empty());}
     {Trial t;t.baseline();t.press();t.game.busy=true;t.next();
         CHECK(t.advance()==Result::released&&!t.input.owns_press()&&t.calls.size()==2);}
-    for(std::int64_t elapsed:{96000000LL,96000001LL}){Trial t;t.baseline();t.next(elapsed);t.advance();
-        CHECK(t.input.source_status()==(elapsed==96000000?lr::SourceStatus::ready:lr::SourceStatus::sync_invalid)&&t.calls.empty());}
+    for(std::int64_t elapsed:{99000000LL,99000001LL}){Trial t;t.baseline();t.next(elapsed);t.advance();
+        CHECK(t.input.source_status()==(elapsed==99000000?lr::SourceStatus::ready:lr::SourceStatus::sync_invalid)&&t.calls.empty());}
+    // A real new edge with bounded producer spacing remains valid even when
+    // consumer work makes the previous sample older than100ms. No replay:
+    // the current sample itself is43ms old, then its explicit release is owed.
+    for(unsigned source=0;source<2;++source){Trial t(source);t.baseline();t.next(70000000);
+        auto& h=t.f.hand.controllers.hands[1];++h.pressed[gears_vr::control_trigger];h.trigger=1;
+        t.stamp+=40000000;
+        CHECK(t.advance()==Result::pressed&&t.input.owns_press()&&t.calls.size()==1);
+        CHECK(t.input.source_status()==lr::SourceStatus::ready);t.release();CHECK(t.calls.size()==2);}
     {Trial t;t.baseline();t.press();const auto owner=t.game.actors.controller.address;
         const auto source=t.input.source_status();
         CHECK(!lr::tick_admitted(false,owner,owner,owner));

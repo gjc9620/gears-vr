@@ -443,6 +443,24 @@ bool compare_word(uptr address,U32 expected,U32 desired,bool& exchanged) noexcep
 }
 // All three words are invocation-local Result bytes, not UObject properties.
 // A failed partial update restores only words still equal to our own values.
+thread_local AppliedEvidence applied_returns;
+bool applied_evidence(AppliedEvidence& out) noexcept {
+    if(!weaponhand::current_gt(nullptr)||applied_returns.epoch!=control_epoch.load(std::memory_order_acquire))return false;
+    out=applied_returns;return true;
+}
+void note_applied(Pending const& entry,std::array<U32,3> const& prior_words) noexcept {
+    const auto epoch=control_epoch.load(std::memory_order_acquire);
+    if(applied_returns.epoch!=epoch){applied_returns={};applied_returns.epoch=epoch;}
+    const auto kind=unsigned(entry.signature.kind);
+    if(kind<1||kind>4)return;
+    auto& count=applied_returns.writes[kind-1];
+    if(count!=(std::numeric_limits<std::uint64_t>::max)())++count;
+    applied_returns.shot=entry.packet.shot;
+    if(entry.signature.kind==ResultKind::base_aim){
+        std::memcpy(applied_returns.aim,entry.desired.data(),12);
+        std::memcpy(applied_returns.original_aim,prior_words.data(),12);
+    }else std::memcpy(applied_returns.origin,entry.desired.data(),12);
+}
 bool store_result(Pending& entry,SourceScope const& source) noexcept {
     std::array<U32,3> original_words{};
     if(!copy(original_words.data(),entry.call.result,12)||!write_context(entry,source))return true;
@@ -450,7 +468,7 @@ bool store_result(Pending& entry,SourceScope const& source) noexcept {
     for(;changed<3;++changed){bool exchanged{};
         if(!write_context(entry,source)||!compare_word(entry.call.result+changed*4,original_words[changed],entry.desired[changed],exchanged)||!exchanged)break;
     }
-    if(changed==3&&write_context(entry,source))return true;
+    if(changed==3&&write_context(entry,source)){note_applied(entry,original_words);return true;}
     bool restored=true;
     while(changed){--changed;bool exchanged{};
         if(!compare_word(entry.call.result+changed*4,entry.desired[changed],original_words[changed],exchanged)||!exchanged)restored=false;

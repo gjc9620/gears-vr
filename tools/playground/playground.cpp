@@ -1332,10 +1332,14 @@ void __fastcall event_hook(uptr object,uptr function,void* params){
 #if defined(GEARS_PLAYGROUND_NATIVE_EQUIPMENT_TRIAL)
     if(post_native_equipment_tick&&enabled.load(std::memory_order_acquire)&&game_thread.load()==GetCurrentThreadId()){
         inside=true;
+        // Admit equipment input before muzzle/schema work consumes this tick's
+        // budget. Equipment's switch adapter explicitly yields any owned R2
+        // press before changing weapons; firing then sees the committed hold.
+        nativeequipment::tick(object);
 #if defined(GEARS_PLAYGROUND_NATIVE_LANCER_R2_TRIAL)
         vrfire::tick(object);
 #endif
-        nativeequipment::tick(object);inside=false;
+        inside=false;
     }
 #endif
 #if defined(GEARS_PLAYGROUND_HAND_ANIMATION_PROBE)
