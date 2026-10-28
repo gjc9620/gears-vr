@@ -2222,3 +2222,14 @@ Candidate `6dof-unified-20261028-9` updates the existing manual launcher. Native
 固定入口仍为第九包，本轮没有发布新候选，也不增加玩法成熟度分。新增现有状态摘要的首个拒绝计数；Native Release 编译通过。实际过渡中捕获通过，主要被旧 C0 事务待回执挡住；这是首个门禁，尚非画面根因证明。
 
 限定实跑读到 AnimTree → Synch → UpperBodyIKHack → Mirror_Master → WarAnim_BlendPerBone（FACB0）。两种 F7940/base-blend 回执实验均零触发，未作为修复接入；实验源码仅在忽略目录留存。全部已完成实验正常清理并恢复入口，未改用户配置／候选。下一步只核对 FACB0 的实际写入覆盖，不放宽既有回执／时效／CAS／回退条件，不继续重复错误入口。证据：`analysis/solo-m1-20261028/v10-investigation-evidence.json`。实体翻腕／自然触达／稳定性与用户反馈仍待确认。
+
+
+## 2026-10-28 — 单会话完整预览纠正；v9保持交付
+
+私有模拟器预览反复重启后保存的client高度被下一次当outer高度，最近图像只剩1920×56。下方手部被裁切，不能以不可见推断最终更新链失效。仅恢复空闲私有实例的初始1920×900，不移动用户窗口、不改0.4或physical边界；私有runner在无其他游戏/XR和端口占用检查后备份并初始化自身预览尺寸。runtime并不读取zoom_mode，不宣称fit设置生效。
+
+已安装v9（功能源码9e0ad18、Native041df839…0718）完整双眼图确认：左手单独移动／右手保持，右手单独移动／左手保持，右yaw/pitch可见朝向改变；实际手枪→Lancer VR握持后枪体随右手侧移。非原子骨架读数仅作图像旁证：左动右腕约0.00008世界单位、右动左腕约0.00013；不换算米，不等同物理追踪。Lancer mount44→92与前／侧图配对。证据analysis/solo-m1-20261028/full-preview-{left-only,right-only,right-rotation,Lancer-front,Lancer-side}.bmp、full-preview-motion-comparison.json；规范事件J:/gearsVr/analysis/6dof-progress/solo-full-preview-correction-20261028.json。
+
+撤回“裁切图无手即更新失败”和仅凭pending计数认定画面根因的判断。Root／UpperIK／per-bone／memcpy／subset实验均未取得有效新回执，已从功能源码撤回并在ignored analysis归档，未覆盖v9；4f40816仅状态计数也未晋升。没有第十包。Native正常清理、入口恢复、装备排空、XR0、launcher0、无遗留自有游戏均已核对。没有重复已通过动作，没有为此新开助手。
+
+第一人称／固定菜单、独立双手和身体三槽切换保持累计基本证据，完整roll／自然握持／真实范围／舒适度与连续性等待用户实体头显；不扩展新射击／换弹／掩体。历史成熟度31.02%，本事件0.00，代码／构建／可见动作／实体头显分列。已同步规范current和总看板并备份上一状态。
