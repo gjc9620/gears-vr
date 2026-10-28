@@ -2242,3 +2242,5 @@ Candidate `6dof-unified-20261028-9` updates the existing manual launcher. Native
 私有自测起初fire关闭，正式v9清单本已开启；已纠正该配置差异，不能称之为正式入口缺失。后续真实失败逐步收窄修正。最终购买版Source1／PID40804已实际取到Lancer，弹药420→419→405；正常同shot结果提交记录base aim20、trace origin30、pushed20、physical20，原基础方向0,0,0被实际Muzzle方向替换。记录只在成功写回后更新GT诊断计数，并在普通tick最多输出8行；回调内不记录日志、不调用引擎，无新动作权限。
 
 证据analysis/solo-m1-20261028/m4-basic-result.json及m4-shot-direction-*完整双眼图。Native清理／入口恢复／XR0／装备排空／launcher0／无遗留自有游戏正常。实际转头后再次射击触达，但后坐力与原动画会改变可见枪姿，未证明连续跟手、无中断长按或准确命中；HUD准星未重投影。物理翻腕、取枪范围与当前开火一起待用户确认。保留v9 Native／物理XR和已有修复，不扩展换弹、掩体或其他枪；私有模拟输入与合成尺寸不打包。
+
+交付：6dof-unified-20261028-10已更新J:/gearsVr/candidates/6dof-unified/GearsVR Launcher.exe，PG49e1ce0／SHA b5410418021bdb311ff6ac4d070fd3fa7a8e9bff8b12682269e471386ef9b4f9；Native与物理XR复用v9，配置字节保持e0bf312f…8efbd，旧包与10-rollback保留。726文件清单/实际三个模块/hash/ZIP已核对；ZIP SHA44372cd32eb624d886241ab5cce3486c2f2fb355a470e8e084e335f90c403adc。W2从40升限定实际动作60，11父项与64子项分母不变，总成熟度31.015873→32.834055（显示32.83%，+1.82pp）。代码/编译/限定实跑/交付/物理验收分别记录，未将精准命中、连续稳定或头显当作已通过。只完成用户授权的一个后继节点，不继续扩展。

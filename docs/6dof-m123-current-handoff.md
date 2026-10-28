@@ -1,4 +1,6 @@
-# 当前三项的统一体验与待确认边界
+# 当前四项的统一体验与待确认边界
+
+> 最新覆盖：用户授权继续一个M4开火节点，现第十包已交付。Lancer实际扣弹420→419→405、同shot枪口起点／方向写回与正常收尾已触达；长按、连续跟手、准确命中和头显仍待联合反馈。PG49e1ce0，Native／物理XR复用v9。以下v9记录保留为历史，原三项仍未物理确认。
 
 当前入口：[GearsVR Launcher.exe](</J:/gearsVr/candidates/6dof-unified/GearsVR Launcher.exe>)。功能候选6dof-unified-20261028-9，源码9e0ad18；后续文档提交不代表另一个功能包。原设置、物理XR及回退保持。
 
@@ -18,6 +20,6 @@
 2. 暂停后转头，菜单应留在空间中；选择继续后应恢复游戏。
 3. 有真实臂展记录后，右Grip在两侧肩后／裤兜取实际库存武器，再移回身前。缺测量则沿已有流程：双手平举、同时握持2秒后松开；自由手与第一人称不要求这次测量。库存需有相应武器，Lancer可按游戏正常方式拾取。
 
-直接反馈哪一步、哪只手、实际看到什么即可；无需调试测试脚本。普通日志使用启动器Export logs，运行记录在J:/gearsVr/candidates/6dof-unified/analysis/runtime。新射击／换弹／掩体／逐枪扩展继续暂缓，先按这三项具体反馈修正。
+直接反馈哪一步、哪只手、实际看到什么即可；无需调试测试脚本。普通日志使用启动器Export logs，运行记录在J:/gearsVr/candidates/6dof-unified/analysis/runtime。M4基础开火已获授权并交付；在第三个动作取出Lancer后可加右扳机短按／松开观察开火与扣弹。换弹／掩体／其他枪继续暂缓，按当前四项具体反馈修正。
 
 [总看板](</J:/gearsVr/docs/6dof-progress-dashboard.md>) · [完整画面证据与纠正](</J:/gearsVr/analysis/6dof-progress/solo-full-preview-correction-20261028.json>)
