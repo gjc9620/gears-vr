@@ -10,6 +10,13 @@ enum : unsigned {off=0,running=1,stopping=2,stopped=3,fault=4};
 std::atomic<unsigned> mode{off},last_status{};
 lr::Input input;
 Name r2{};
+#if defined(GEARS_PLAYGROUND_NATIVE_LANCER_L2_TRIAL)
+gears_weapon::OriginalL2Aim aim;
+Name l2{};
+bool aim_owns() noexcept {return aim.owns_press();}
+#else
+bool aim_owns() noexcept {return false;}
+#endif
 unsigned logs{};int last_ammo{-1};unsigned previous_status{~0u},previous_source{~0u};
 ULONGLONG next_ammo{};unsigned ammo_reads{},post_ammo_samples{2};
 bool ammo_resume_pending{};
@@ -36,7 +43,7 @@ bool held_lancer_candidate() noexcept {
     if(!known)return false;
     candidate_hold=h;candidate_is_lancer=lancer;candidate_class_known=true;return lancer;
 }
-bool button_name() noexcept {
+bool button_name(wchar_t first,Name& out) noexcept {
     Array names{},again{};if(!copy(&names,base+0x1c34800,sizeof names)||!names.data||
         names.count<1000||names.count>names.capacity||names.capacity>4000000)return false;
     const auto end=GetTickCount64()+2000;
@@ -45,19 +52,19 @@ bool button_name() noexcept {
         uptr entry{};unsigned index{};wchar_t text[3]{};
         if(!copy(&entry,names.data+size_t(i)*8,8)||!entry||!copy(&index,entry,4)||index!=unsigned(i)||
             !copy(text,entry+20,sizeof text))continue;
-        if(text[0]==L'R'&&text[1]==L'2'&&!text[2]){
+        if(text[0]==first&&text[1]==L'2'&&!text[2]){
             if(!copy(&again,base+0x1c34800,sizeof again)||memcmp(&names,&again,sizeof names))return false;
-            r2={unsigned(i),0};return true;
+            out={unsigned(i),0};return true;
         }
     }
     return false;
 }
-bool name_current() noexcept {
+bool name_current(Name const& name,wchar_t first) noexcept {
     Array names{};uptr entry{};unsigned index{};wchar_t text[3]{};
-    return !r2.number&&copy(&names,base+0x1c34800,sizeof names)&&names.data&&names.count>1000&&
-        names.count<=names.capacity&&names.capacity<=4000000&&r2.index<unsigned(names.count)&&
-        copy(&entry,names.data+size_t(r2.index)*8,8)&&entry&&copy(&index,entry,4)&&index==r2.index&&
-        copy(text,entry+20,sizeof text)&&text[0]==L'R'&&text[1]==L'2'&&!text[2];
+    return !name.number&&copy(&names,base+0x1c34800,sizeof names)&&names.data&&names.count>1000&&
+        names.count<=names.capacity&&names.capacity<=4000000&&name.index<unsigned(names.count)&&
+        copy(&entry,names.data+size_t(name.index)*8,8)&&entry&&copy(&index,entry,4)&&index==name.index&&
+        copy(text,entry+20,sizeof text)&&text[0]==first&&text[1]==L'2'&&!text[2];
 }
 bool read_game(lr::Actors const& expected,wh::Frame const* source,lr::Game& out,bool* source_current=nullptr,
     wh::GripGameState const* copied_game=nullptr) noexcept {
@@ -86,10 +93,17 @@ bool read_game(lr::Actors const& expected,wh::Frame const* source,lr::Game& out,
     if(!before.known)return false;
     meta::Snapshot schema{};schema.module_base=base;meta::Reader r{schema,meta::Stage::final_check};
     weaponhand::BoolField held{},again{};bool known{};
+#if defined(GEARS_PLAYGROUND_NATIVE_LANCER_L2_TRIAL)
+    weaponhand::BoolField target_key{},target_key_again{},toggle{},toggle_again{};
+#endif
     if(!meta::tables(base,schema.objects,schema.names)||!weaponhand::object(r,expected.controller)||
         !weaponhand::object(r,expected.weapon))return false;
     const bool lancer=weaponhand::derives(r,expected.weapon.address,L"Weap_AssaultRifle",L"WarfareGame",&known);
     if(!known||!weaponhand::boolean(r,expected.controller.address,L"bHoldingButton_R2",held))return false;
+#if defined(GEARS_PLAYGROUND_NATIVE_LANCER_L2_TRIAL)
+    if(!weaponhand::boolean(r,expected.controller.address,L"bPressingTargetingKey",target_key)||
+       !weaponhand::boolean(r,expected.controller.address,L"bToggleTargeting",toggle))return false;
+#endif
     const auto identities=schema.identity_count,structures=schema.structure_count;
     for(unsigned i=0;i<identities;++i){unsigned slot{};if(!r.identity(schema.identities[i].address,slot)||slot!=i)return false;}
     for(unsigned i=0;i<structures;++i){meta::Structure fresh{};
@@ -98,11 +112,25 @@ bool read_game(lr::Actors const& expected,wh::Frame const* source,lr::Game& out,
     meta::Table objects{},names{};
     if(!weaponhand::boolean(r,expected.controller.address,L"bHoldingButton_R2",again)||
         !meta::same_property(held.property,again.property)||held.mask!=again.mask||
-        (held.bits&held.mask)!=(again.bits&again.mask)||!meta::tables(base,objects,names)||
+        (held.bits&held.mask)!=(again.bits&again.mask)||
+#if defined(GEARS_PLAYGROUND_NATIVE_LANCER_L2_TRIAL)
+        !weaponhand::boolean(r,expected.controller.address,L"bPressingTargetingKey",target_key_again)||
+        !weaponhand::boolean(r,expected.controller.address,L"bToggleTargeting",toggle_again)||
+        !meta::same_property(target_key.property,target_key_again.property)||target_key.mask!=target_key_again.mask||
+        (target_key.bits&target_key.mask)!=(target_key_again.bits&target_key_again.mask)||
+        !meta::same_property(toggle.property,toggle_again.property)||toggle.mask!=toggle_again.mask||
+        (toggle.bits&toggle.mask)!=(toggle_again.bits&toggle_again.mask)||
+#endif
+        !meta::tables(base,objects,names)||
         !meta::same_table(objects,schema.objects)||!meta::same_table(names,schema.names)||
         !weaponhand::observe(nullptr,identity,weaponhand::clock_ns(nullptr),after)||!wh::same_game(before,after))return false;
     if(source_current&&!weaponhand::client.armed()){*source_current=false;return false;}
     out={expected,true,lancer,after.main_hand_held,after.animation_owns_hands,after.busy,true,bool(held.bits&held.mask)};
+#if defined(GEARS_PLAYGROUND_NATIVE_LANCER_L2_TRIAL)
+    out.l2_known=out.toggle_known=true;
+    out.l2_held=bool(target_key.bits&target_key.mask);
+    out.toggle_targeting=bool(toggle.bits&toggle.mask);
+#endif
     return true;
 }
 bool execute(gears_weapon::OriginalR2Action action,std::uint64_t controller,wh::Frame const* source,
@@ -118,7 +146,7 @@ bool execute(gears_weapon::OriginalR2Action action,std::uint64_t controller,wh::
         return false;
     };
     if(!enabled.load(std::memory_order_acquire)||!weaponhand::current_gt(nullptr)||!nativeequipment::domain_ready()||
-        !input.has_actors()||controller!=input.actors().controller.address||!name_current())return reject(L"entry");
+        !input.has_actors()||controller!=input.actors().controller.address||!name_current(r2,L'R'))return reject(L"entry");
     lr::Game game{};
     // advance invokes its press callback synchronously on this GT, directly
     // after tick's authenticated read_game. Reuse exactly that observation for
@@ -147,6 +175,35 @@ bool execute(gears_weapon::OriginalR2Action action,std::uint64_t controller,wh::
     if(!call.run())return reject(L"button_call");
     return true;
 }
+#if defined(GEARS_PLAYGROUND_NATIVE_LANCER_L2_TRIAL)
+gears_weapon::OriginalL2Context aim_context(lr::Game const& game,bool allow) noexcept {
+    const bool ordinary=game.known&&game.lancer&&game.l2_known&&game.toggle_known&&lr::valid(game.actors);
+    return {game.actors.world.address,game.actors.controller.address,game.actors.weapon.address,
+        ordinary,game.l2_held,game.toggle_targeting,ordinary&&allow};
+}
+bool execute_aim(gears_weapon::OriginalL2Action action,std::uint64_t controller,
+    wh::Frame const* source=nullptr,lr::Game const* tick_game=nullptr) noexcept {
+    if(!enabled.load(std::memory_order_acquire)||!weaponhand::current_gt(nullptr)||!nativeequipment::domain_ready()||
+       !input.has_actors()||controller!=input.actors().controller.address||!name_current(l2,L'L'))return false;
+    lr::Game game{};
+    if(action==gears_weapon::OriginalL2Action::press&&source&&tick_game&&tick_game->known&&
+       lr::same(tick_game->actors,actors(*source))&&lr::same(tick_game->actors,input.actors()))
+        game=*tick_game;
+    else if(!read_game(input.actors(),source,game))return false;
+    if(!game.lancer||!game.l2_known||!game.toggle_known||game.toggle_targeting)return false;
+    if(action==gears_weapon::OriginalL2Action::press){
+        if(!source||!game.main_hand_held||game.busy||game.animation||game.l2_held||
+           !nativeequipment::current(nullptr,*source))return false;
+    }else if(!game.l2_held)return true;
+    playground::Args call(controller,action==gears_weapon::OriginalL2Action::press?
+        L"ButtonPress":L"ButtonRelease");
+    const auto parameter=call.prop(L"ButtonName");
+    if(!call.valid||call.r.size!=sizeof(Name)||!parameter||get<unsigned>(parameter+0x70)!=1||
+       get<unsigned>(parameter+0x74)!=sizeof(Name)||!playground::named(get<uptr>(parameter+0x50),L"NameProperty")||
+       (get<unsigned long long>(parameter+0x78)&0x580)!=0x80||!call.set(L"ButtonName",l2).valid)return false;
+    return call.run();
+}
+#endif
 bool ammo(lr::Actors const& owner,int& count,bool& key_down) noexcept {
     lr::Game game{};if(!read_game(owner,nullptr,game)||!game.lancer)return false;
     playground::Args query(owner.weapon.address,L"GetTotalAmmoInGun");
@@ -164,7 +221,7 @@ void tick(uptr pc) noexcept {
     // or R2 state is fabricated here; an owed release and stopping still take
     // the complete existing path, even after equipment clears the binding.
     if(state==running&&unified_weapon_fire::manual_profile()&&
-       !input.owns_press()&&!input.has_actors()&&!held_lancer_candidate()){
+       !input.owns_press()&&!aim_owns()&&!input.has_actors()&&!held_lancer_candidate()){
         unified_weapon_fire::clear_source();return;
     }
     const auto source_started=weaponhand::clock_ns(nullptr);
@@ -204,6 +261,9 @@ void tick(uptr pc) noexcept {
     bool current{};lr::Game game{};
     if(have_source)read_game(actors(frame),&frame,game,&current,&copied_game);
     if(!current&&input.has_actors()&&input.actors().controller.address==pc)read_game(input.actors(),nullptr,game);
+#if defined(GEARS_PLAYGROUND_NATIVE_LANCER_L2_TRIAL)
+    const auto aim_game=game;
+#endif
     if(unified_weapon_fire::manual_profile()){
         if(!muzzle_ready){
             unified_weapon_fire::clear_source();
@@ -213,8 +273,19 @@ void tick(uptr pc) noexcept {
         }
     }
     const auto now=weaponhand::clock_ns(nullptr);
+#if defined(GEARS_PLAYGROUND_NATIVE_LANCER_L2_TRIAL)
+    const bool aim_allowed=state==running&&current&&aim_game.main_hand_held&&
+        !aim_game.animation&&!aim_game.busy&&frame.controllers.hands[0].trigger_active==1&&
+        nativeequipment::current(nullptr,frame);
+    const auto aim_result=aim.advance(current?frame.controllers:gears_vr::ControllerInputFrame{},
+        current?frame.stereo:gears_vr::StereoSample{},aim_context(aim_game,aim_allowed),now,
+        [&](gears_weapon::OriginalL2Action a,std::uint64_t c){
+            return execute_aim(a,c,current?&frame:nullptr,current?&aim_game:nullptr);
+        },current&&frame.stereo.source==gears_vr::StereoSource::MetaOperatorSimulated);
+    if(aim_result==gears_weapon::OriginalL2Status::abort_required){mode.store(fault,std::memory_order_release);return;}
+#endif
     const auto previous_sync=input.last_sync_ns(),previous_observed=input.last_observed_ns();
-    const auto result=input.advance(current?&frame:nullptr,current,game,now,
+    const auto result=input.advance(current?&frame:nullptr,current,game,weaponhand::clock_ns(nullptr),
         [&](gears_weapon::OriginalR2Action a,std::uint64_t c){return execute(a,c,current?&frame:nullptr,current?&game:nullptr);},state==stopping);
     const auto action_finished=weaponhand::clock_ns(nullptr);
     unified_weapon_fire::AppliedEvidence applied{};
@@ -268,9 +339,20 @@ void tick(uptr pc) noexcept {
         fflush(log_file);++logs;
     }
     previous_status=unsigned(result);previous_source=unsigned(input.source_status());if(ammo_known)last_ammo=count;
+#if defined(GEARS_PLAYGROUND_NATIVE_LANCER_L2_TRIAL)
+    static unsigned previous_aim{~0u},aim_logs{};
+    if(log_file&&aim_logs<24&&previous_aim!=unsigned(aim_result)){
+        fwprintf(log_file,L"native_lancer_l2 status=%u mode=%u owned=%u game_known=%u game_l2=%u toggle=%u allow=%u frame=%llu sequence=%llu left_trigger=%.3f\n",
+            unsigned(aim_result),state,unsigned(aim_owns()),unsigned(aim_game.known),unsigned(aim_game.l2_held),
+            unsigned(aim_game.toggle_targeting),unsigned(aim_allowed),current?frame.key.frame:0,
+            current?frame.controllers.sequence:0,current?double(frame.controllers.hands[0].trigger):0.);
+        fflush(log_file);++aim_logs;
+    }
+    previous_aim=unsigned(aim_result);
+#endif
     if(result==lr::Status::abort_required){mode.store(fault,std::memory_order_release);return;}
     if(state==stopping){
-        if(input.owns_press())mode.store(fault,std::memory_order_release);
+        if(input.owns_press()||aim_owns())mode.store(fault,std::memory_order_release);
         else mode.store(stopped,std::memory_order_release);
     }
 }
@@ -280,7 +362,18 @@ bool yield_for_native_equipment(wh::Frame const& frame) noexcept {
     lr::Game game{};if(!read_game(actors(frame),&frame,game))return false;
     const auto result=input.yield(game,[&](gears_weapon::OriginalR2Action a,std::uint64_t c){return execute(a,c,nullptr);});
     if(result==lr::Status::abort_required){mode.store(fault,std::memory_order_release);return false;}
-    lr::Game after{};return !input.owns_press()&&read_game(actors(frame),&frame,after)&&!after.r2_held;
+#if defined(GEARS_PLAYGROUND_NATIVE_LANCER_L2_TRIAL)
+    const auto aim_result=aim.yield(aim_context(game,false),
+        [&](gears_weapon::OriginalL2Action a,std::uint64_t c){return execute_aim(a,c);});
+    if(aim_result==gears_weapon::OriginalL2Status::abort_required){mode.store(fault,std::memory_order_release);return false;}
+#endif
+    lr::Game after{};
+    if(input.owns_press()||aim_owns()||!read_game(actors(frame),&frame,after)||after.r2_held)return false;
+#if defined(GEARS_PLAYGROUND_NATIVE_LANCER_L2_TRIAL)
+    return after.l2_known&&!after.l2_held;
+#else
+    return true;
+#endif
 }
 DWORD enable(){
     if(weaponhand::current_gt(nullptr)||!enabled.load(std::memory_order_acquire)||!playground::automatic||
@@ -291,7 +384,11 @@ DWORD enable(){
             GetEnvironmentVariableW(L"GEARSVR_TEST_MUTE_GAME",muted,4)!=1||muted[0]!=L'1')return 2;
     }
     if(unified_weapon_fire::manual_profile()&&!unified_weapon_fire::consumer_compiled())return 4;
-    if(!button_name()||!input.reset_drained())return 3;
+    if(!button_name(L'R',r2)||!input.reset_drained())return 3;
+#if defined(GEARS_PLAYGROUND_NATIVE_LANCER_L2_TRIAL)
+    if(aim_owns()||!button_name(L'L',l2))return 3;
+    aim.reset();
+#endif
     candidate_hold={};candidate_class_known=candidate_is_lancer=false;
     muzzle_logs=0;last_muzzle_writes=0;muzzle_prepare_failure_logs=0;execute_failure_logs=0;
     logs=0;previous_status=previous_source=~0u;last_ammo=-1;next_ammo=0;ammo_reads=0;post_ammo_samples=2;ammo_resume_pending=false;

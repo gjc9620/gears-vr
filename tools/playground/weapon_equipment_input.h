@@ -39,7 +39,7 @@ struct Evidence {
     // input timestamp. Keep the original ns/sequence evidence beside it.
     std::int64_t previous_sync_ns{},sync_ns{},received_ns{};
     std::int64_t observed_ns{},previous_observed_ns{};
-    enum class Gap : std::uint8_t {none,current_sync_future,current_sync_stale,sync_not_advancing,previous_sync_stale} gap{};
+    enum class Gap : std::uint8_t {none,current_sync_future,current_sync_stale,sync_not_advancing,producer_sync_gap} gap{};
 };
 inline char const* gap_name(Evidence::Gap gap) noexcept {
     switch(gap){
@@ -47,7 +47,7 @@ inline char const* gap_name(Evidence::Gap gap) noexcept {
     case Evidence::Gap::current_sync_future:return "current_sync_future";
     case Evidence::Gap::current_sync_stale:return "current_sync_stale";
     case Evidence::Gap::sync_not_advancing:return "sync_not_advancing";
-    case Evidence::Gap::previous_sync_stale:return "previous_sync_stale";
+    case Evidence::Gap::producer_sync_gap:return "producer_sync_gap";
     }
     return "invalid_gap";
 }
@@ -151,7 +151,11 @@ public:
             last_ns_=now_ns;last_ms_=now_ms;return false;
         }
         if(c.sync_ns<=sync_ns_)return reject_gap(Evidence::Gap::sync_not_advancing,cursor);
-        if(now_ns-sync_ns_>maximum_gap_ns)return reject_gap(Evidence::Gap::previous_sync_stale,cursor);
+        // Freshness of this frame was checked against now above. Continuity is
+        // the interval between the two original producer sync stamps, not the
+        // previous stamp plus this consumer's processing latency. Preserve the
+        // earlier stamp below as the conservative event creation bound.
+        if(c.sync_ns-sync_ns_>maximum_gap_ns)return reject_gap(Evidence::Gap::producer_sync_gap,cursor);
         const auto previous_sync=sync_ns_;
         const bool new_press=press>pressed_;
         if(new_press&&(!r.last_squeeze_press_sequence||r.last_squeeze_press_sequence<=sequence_||

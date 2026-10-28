@@ -206,7 +206,7 @@ gears_rig_tracking::ReadResult read(gears_rig_tracking::Frame&,std::uint64_t) no
 #if defined(GEARS_PLAYGROUND_NATIVE_LANCER_R2_TRIAL)
 #include "weapon_lancer_r2.h"
 #endif
-#if defined(GEARS_PLAYGROUND_EXPERIMENTAL_VR_L2)
+#if defined(GEARS_PLAYGROUND_EXPERIMENTAL_VR_L2) || defined(GEARS_PLAYGROUND_NATIVE_LANCER_L2_TRIAL)
 #include "../vr-common/original_l2_aim.h"
 #endif
 #include "../vr-common/pose_bridge.h"

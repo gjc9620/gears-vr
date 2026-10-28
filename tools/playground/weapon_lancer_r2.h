@@ -10,7 +10,8 @@ namespace gears_lancer_r2 {
 namespace hand=gears_weapon_hand;
 using Status=gears_weapon::OriginalR2Status;
 struct Actors {hand::ObjectIdentity world{},controller{},pawn{},mesh{},weapon{};};
-struct Game {Actors actors{};bool known{},lancer{},main_hand_held{},animation{},busy{},r2_known{},r2_held{};};
+struct Game {Actors actors{};bool known{},lancer{},main_hand_held{},animation{},busy{},r2_known{},r2_held{};
+    bool l2_known{},l2_held{},toggle_known{},toggle_targeting{};};
 enum class SourceStatus {unavailable,ready,inactive,stale,sync_invalid,regressed,cohort_changed,actors_mismatch,yielded,stopping};
 inline bool same(Actors const& a,Actors const& b) noexcept {
     return hand::same(a.world,b.world)&&hand::same(a.controller,b.controller)&&hand::same(a.pawn,b.pawn)&&
