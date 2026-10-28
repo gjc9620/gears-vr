@@ -51,6 +51,7 @@ class OriginalR2Fire {
 public:
     void reset() noexcept {*this=OriginalR2Fire{};}
     bool owns_press() const noexcept {return owned_;}
+    bool awaiting_release() const noexcept {return await_release_;}
     std::uint64_t owned_controller() const noexcept {return owned_?controller_:0;}
 
     // Synchronous hand-back, independent of XR freshness. The adapter never

@@ -42,6 +42,7 @@ struct MuzzleSample {
 bool preflight_returns(MuzzleSample const& sample) noexcept;
 thread_local MuzzleSample muzzle_sample;
 thread_local bool sampling{};
+thread_local unsigned prepare_stage{};
 
 bool retained_metadata(metadata::Reader& r) noexcept {
     auto& schema=r.result;
@@ -151,29 +152,35 @@ bool aim_from_socket(playground::Rotation const& rotation,playground::Rotation& 
 }
 void clear_source() noexcept {muzzle_sample={};}
 bool prepare_current(hand::Frame const& frame,hand::GripGameState const& game) noexcept {
-    clear_source();
+    clear_source();prepare_stage=0;
     const auto now=weaponhand::clock_ns(nullptr);
     if(!manual_profile()||!control_running.load(std::memory_order_acquire)||write_faulted.load(std::memory_order_acquire)||
        sampling||!enabled.load(std::memory_order_acquire)||!weaponhand::current_gt(nullptr)||
        !weaponhand::client.armed()||!weaponhand::client.source_current_on_gt(frame.key)||!hand::frame_active(frame,now)||
        !game.known||!game.main_hand_held||game.animation_owns_hands||game.busy)return false;
+    prepare_stage=1;
     MuzzleSample candidate{};candidate.source=frame;candidate.hold_generation=weaponhand::held_binding.generation;
     candidate.epoch=control_epoch.load(std::memory_order_acquire);
     if(!candidate.hold_generation||lancermain_asset::read(frame,candidate.asset)!=lancermain_asset::Status::ready)return false;
+    prepare_stage=2;
     Name muzzle{};if(!configured_muzzle(frame,muzzle))return false;
+    prepare_stage=3;
     playground::Args call(candidate.asset.component.address,L"GetSocketWorldLocationAndRotation");
     metadata::Snapshot schema{};schema.module_base=base;metadata::Reader r{schema,metadata::Stage::final_check};U32 mask{};
     if(!metadata::tables(base,schema.objects,schema.names)||!socket_getter_schema(call,r,mask))return false;
+    prepare_stage=4;
     if(!call.set(L"InSocketName",muzzle).valid)return false;
     const auto identities_before=schema.identity_count;
     sampling=true;const bool ran=call.run();sampling=false;
     U32 after_mask{};
     if(!ran||!socket_getter_schema(call,r,after_mask)||schema.identity_count!=identities_before||
        mask!=after_mask||(call.output<U32>()&mask)==0)return false;
+    prepare_stage=5;
     candidate.origin=call.output<playground::Vector>(L"OutLocation");
     candidate.socket_rotation=call.output<playground::Rotation>(L"OutRotation");
     if(!std::isfinite(candidate.origin.x)||!std::isfinite(candidate.origin.y)||!std::isfinite(candidate.origin.z)||
        !aim_from_socket(candidate.socket_rotation,candidate.aim))return false;
+    prepare_stage=6;
     lancermain_asset::Evidence after_asset{};hand::GripGameState after{};
     candidate.sampled_ns=weaponhand::clock_ns(nullptr);
     if(!control_running.load(std::memory_order_acquire)||candidate.epoch!=control_epoch.load(std::memory_order_acquire)||
@@ -183,6 +190,7 @@ bool prepare_current(hand::Frame const& frame,hand::GripGameState const& game) n
        lancermain_asset::read(frame,after_asset)!=lancermain_asset::Status::ready||
        !hand::same(candidate.asset.component,after_asset.component)||!hand::same(candidate.asset.asset,after_asset.asset)||
        !preflight_returns(candidate))return false;
+    prepare_stage=7;
     // Preserve original input/stereo receive stamps. The getter does not renew
     // tracking lifetime; the shot consumer must still match this source cohort.
     // The actual-shot consumer needs the existing admitted grip snapshot too.
@@ -195,6 +203,7 @@ bool prepare_current(hand::Frame const& frame,hand::GripGameState const& game) n
        !admitted.current(frame.key,frame.weapon,weaponhand::clock_ns(nullptr))||
        !hand::same(admitted.world,frame.world)||!hand::same(admitted.controller,frame.controller)||
        !hand::same(admitted.pawn,frame.pawn)||!hand::same(admitted.mesh,frame.mesh))return false;
+    prepare_stage=8;
     candidate.valid=true;muzzle_sample=candidate;return true;
 }
 bool held_current(MuzzleSample const& sample) noexcept {
@@ -448,7 +457,8 @@ bool applied_evidence(AppliedEvidence& out) noexcept {
     if(!weaponhand::current_gt(nullptr)||applied_returns.epoch!=control_epoch.load(std::memory_order_acquire))return false;
     out=applied_returns;return true;
 }
-void note_applied(Pending const& entry,std::array<U32,3> const& prior_words) noexcept {
+void note_applied(Pending const& entry,SourceScope const& source,
+                  std::array<U32,3> const& prior_words) noexcept {
     const auto epoch=control_epoch.load(std::memory_order_acquire);
     if(applied_returns.epoch!=epoch){applied_returns={};applied_returns.epoch=epoch;}
     const auto kind=unsigned(entry.signature.kind);
@@ -456,6 +466,14 @@ void note_applied(Pending const& entry,std::array<U32,3> const& prior_words) noe
     auto& count=applied_returns.writes[kind-1];
     if(count!=(std::numeric_limits<std::uint64_t>::max)())++count;
     applied_returns.shot=entry.packet.shot;
+    auto const& sampled=source.sample;
+    auto const& grip=sampled.source.controllers.hands[1].grip.position;
+    applied_returns.input_sequence=sampled.source.controllers.sequence;
+    applied_returns.input_sync_ns=sampled.source.controllers.sync_ns;
+    applied_returns.sampled_ns=sampled.sampled_ns;
+    applied_returns.right_grip[0]=grip.x;
+    applied_returns.right_grip[1]=grip.y;
+    applied_returns.right_grip[2]=grip.z;
     if(entry.signature.kind==ResultKind::base_aim){
         std::memcpy(applied_returns.aim,entry.desired.data(),12);
         std::memcpy(applied_returns.original_aim,prior_words.data(),12);
@@ -468,7 +486,7 @@ bool store_result(Pending& entry,SourceScope const& source) noexcept {
     for(;changed<3;++changed){bool exchanged{};
         if(!write_context(entry,source)||!compare_word(entry.call.result+changed*4,original_words[changed],entry.desired[changed],exchanged)||!exchanged)break;
     }
-    if(changed==3&&write_context(entry,source)){note_applied(entry,original_words);return true;}
+    if(changed==3&&write_context(entry,source)){note_applied(entry,source,original_words);return true;}
     bool restored=true;
     while(changed){--changed;bool exchanged{};
         if(!compare_word(entry.call.result+changed*4,entry.desired[changed],original_words[changed],exchanged)||!exchanged)restored=false;

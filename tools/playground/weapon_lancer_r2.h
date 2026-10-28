@@ -54,6 +54,7 @@ class Input {
     }
 public:
     bool owns_press() const noexcept {return ledger_.owns_press();}
+    bool awaiting_release() const noexcept {return ledger_.awaiting_release();}
     bool has_actors() const noexcept {return actors_known_;}
     Actors const& actors() const noexcept {return actors_;}
     SourceStatus source_status() const noexcept {return status_;}

@@ -14,6 +14,8 @@ unsigned logs{};int last_ammo{-1};unsigned previous_status{~0u},previous_source{
 ULONGLONG next_ammo{};unsigned ammo_reads{},post_ammo_samples{2};
 bool ammo_resume_pending{};
 unsigned muzzle_logs{};std::uint64_t last_muzzle_writes{};
+unsigned muzzle_prepare_failure_logs{};
+unsigned execute_failure_logs{};
 lr::Actors actors(wh::Frame const& f) noexcept {return {f.world,f.controller,f.pawn,f.mesh,f.weapon};}
 // A negative scheduling hint only. Actual fire still authenticates the live
 // actor, Lancer class, held mount, source and result schemas on its normal path.
@@ -103,26 +105,47 @@ bool read_game(lr::Actors const& expected,wh::Frame const* source,lr::Game& out,
     out={expected,true,lancer,after.main_hand_held,after.animation_owns_hands,after.busy,true,bool(held.bits&held.mask)};
     return true;
 }
-bool execute(gears_weapon::OriginalR2Action action,std::uint64_t controller,wh::Frame const* source) noexcept {
+bool execute(gears_weapon::OriginalR2Action action,std::uint64_t controller,wh::Frame const* source,
+    lr::Game const* tick_game=nullptr) noexcept {
+    auto reject=[&](wchar_t const* stage) noexcept {
+        if(log_file&&execute_failure_logs<8){
+            fwprintf(log_file,L"native_lancer_execute_rejected stage=%ls press=%u frame=%llu age_ns=%lld held=%u animation=%u busy=%u\n",
+                stage,unsigned(action==gears_weapon::OriginalR2Action::press),source?source->key.frame:0,
+                source?weaponhand::clock_ns(nullptr)-source->controllers.sync_ns:0,
+                unsigned(tick_game&&tick_game->main_hand_held),unsigned(tick_game&&tick_game->animation),unsigned(tick_game&&tick_game->busy));
+            fflush(log_file);++execute_failure_logs;
+        }
+        return false;
+    };
     if(!enabled.load(std::memory_order_acquire)||!weaponhand::current_gt(nullptr)||!nativeequipment::domain_ready()||
-        !input.has_actors()||controller!=input.actors().controller.address||!name_current())return false;
+        !input.has_actors()||controller!=input.actors().controller.address||!name_current())return reject(L"entry");
     lr::Game game{};
-    if(!read_game(input.actors(),source,game)||!game.lancer)return false;
+    // advance invokes its press callback synchronously on this GT, directly
+    // after tick's authenticated read_game. Reuse exactly that observation for
+    // a press; a second full metadata pass consumes the source's remaining
+    // 100 ms before the original ButtonPress. Other call paths and releases
+    // retain their independent fresh read.
+    if(action==gears_weapon::OriginalR2Action::press&&source&&tick_game&&tick_game->known&&
+       lr::same(tick_game->actors,actors(*source))&&lr::same(tick_game->actors,input.actors()))
+        game=*tick_game;
+    else if(!read_game(input.actors(),source,game))return reject(L"read_game");
+    if(!game.lancer)return reject(L"class");
     if(action==gears_weapon::OriginalR2Action::press){
         if(!source||!game.main_hand_held||game.busy||game.animation||
-            !nativeequipment::current(nullptr,*source))return false;
-        if(unified_weapon_fire::manual_profile()&&!unified_weapon_fire::ready_for(*source))return false;
+            !nativeequipment::current(nullptr,*source))return reject(L"press_state");
+        if(unified_weapon_fire::manual_profile()&&!unified_weapon_fire::ready_for(*source))return reject(L"muzzle_source");
         lancermain_asset::Evidence asset{};
         if(lancermain_asset::read(*source,asset)!=lancermain_asset::Status::ready||
             !nativeequipment::attached_frame(*source,asset.component.address)||
-            !nativeequipment::current(nullptr,*source))return false;
+            !nativeequipment::current(nullptr,*source))return reject(L"attachment");
     }else if(!game.r2_held)return true; // Already up, freshly certified; no redundant release.
     playground::Args call(controller,action==gears_weapon::OriginalR2Action::press?L"ButtonPress":L"ButtonRelease");
     const auto parameter=call.prop(L"ButtonName");
     if(!call.valid||call.r.size!=sizeof(Name)||!parameter||get<unsigned>(parameter+0x70)!=1||
         get<unsigned>(parameter+0x74)!=sizeof(Name)||!playground::named(get<uptr>(parameter+0x50),L"NameProperty")||
-        (get<unsigned long long>(parameter+0x78)&0x580)!=0x80||!call.set(L"ButtonName",r2).valid)return false;
-    return call.run();
+       (get<unsigned long long>(parameter+0x78)&0x580)!=0x80||!call.set(L"ButtonName",r2).valid)return reject(L"button_schema");
+    if(!call.run())return reject(L"button_call");
+    return true;
 }
 bool ammo(lr::Actors const& owner,int& count,bool& key_down) noexcept {
     lr::Game game{};if(!read_game(owner,nullptr,game)||!game.lancer)return false;
@@ -141,7 +164,7 @@ void tick(uptr pc) noexcept {
     // or R2 state is fabricated here; an owed release and stopping still take
     // the complete existing path, even after equipment clears the binding.
     if(state==running&&unified_weapon_fire::manual_profile()&&
-       !input.owns_press()&&!held_lancer_candidate()){
+       !input.owns_press()&&!input.has_actors()&&!held_lancer_candidate()){
         unified_weapon_fire::clear_source();return;
     }
     const auto source_started=weaponhand::clock_ns(nullptr);
@@ -154,11 +177,34 @@ void tick(uptr pc) noexcept {
     if(!lr::tick_admitted(quiet,pc,have_source?frame.controller.address:0,
         input.has_actors()?input.actors().controller.address:0))return;
     const auto observation_started=weaponhand::clock_ns(nullptr);
+    // Sample the expensive socket before the second complete game/schema read.
+    // That read can consume the remaining freshness window of an otherwise
+    // current XR frame. prepare_current independently rechecks the frozen
+    // source, held binding, live asset and game state on this same GT.
+    bool muzzle_ready{};
+    if(unified_weapon_fire::manual_profile()){
+        // trigger_active denotes a valid analog channel, not a pressed
+        // trigger. Keep the input ledger advancing while the trigger is up,
+        // but avoid the full socket/schema read on every idle PlayerTick.
+        // The publisher's hysteresis keeps a held trigger down above .35.
+        const bool trigger_in_use=have_source&&
+            ((frame.controllers.hands[1].trigger_active==1&&
+              (frame.controllers.hands[1].trigger>.35f||input.awaiting_release()))||
+              input.owns_press());
+        muzzle_ready=state==running&&trigger_in_use&&
+            unified_weapon_fire::prepare_current(frame,copied_game);
+        if(trigger_in_use&&!muzzle_ready&&log_file&&muzzle_prepare_failure_logs<8){
+            fwprintf(log_file,L"native_lancer_muzzle_prepare_rejected stage=%u frame=%llu sync_age_ns=%lld elapsed_ns=%lld\n",
+                unified_weapon_fire::prepare_stage,frame.key.frame,
+                weaponhand::clock_ns(nullptr)-frame.controllers.sync_ns,
+                weaponhand::clock_ns(nullptr)-observation_started);
+            fflush(log_file);++muzzle_prepare_failure_logs;
+        }
+    }
     bool current{};lr::Game game{};
     if(have_source)read_game(actors(frame),&frame,game,&current,&copied_game);
     if(!current&&input.has_actors()&&input.actors().controller.address==pc)read_game(input.actors(),nullptr,game);
     if(unified_weapon_fire::manual_profile()){
-        const bool muzzle_ready=state==running&&current&&unified_weapon_fire::prepare_current(frame,copied_game);
         if(!muzzle_ready){
             unified_weapon_fire::clear_source();
             // Retain the authenticated actor/R2 state for an owed release, but
@@ -169,14 +215,16 @@ void tick(uptr pc) noexcept {
     const auto now=weaponhand::clock_ns(nullptr);
     const auto previous_sync=input.last_sync_ns(),previous_observed=input.last_observed_ns();
     const auto result=input.advance(current?&frame:nullptr,current,game,now,
-        [&](gears_weapon::OriginalR2Action a,std::uint64_t c){return execute(a,c,current?&frame:nullptr);},state==stopping);
+        [&](gears_weapon::OriginalR2Action a,std::uint64_t c){return execute(a,c,current?&frame:nullptr,current?&game:nullptr);},state==stopping);
     const auto action_finished=weaponhand::clock_ns(nullptr);
     unified_weapon_fire::AppliedEvidence applied{};
     if(log_file&&muzzle_logs<8&&unified_weapon_fire::applied_evidence(applied)){
         const auto total=applied.writes[0]+applied.writes[1]+applied.writes[2]+applied.writes[3];
         if(total!=last_muzzle_writes){
-            fwprintf(log_file,L"native_lancer_muzzle_applied shot=%llu aim_writes=%llu trace_writes=%llu pushed_writes=%llu physical_writes=%llu aim=%d,%d,%d original_aim=%d,%d,%d origin=%.9g,%.9g,%.9g\n",
+            fwprintf(log_file,L"native_lancer_muzzle_applied shot=%llu aim_writes=%llu trace_writes=%llu pushed_writes=%llu physical_writes=%llu input_sequence=%llu input_sync_ns=%lld sampled_ns=%lld right_grip_m=%.9g,%.9g,%.9g aim=%d,%d,%d original_aim=%d,%d,%d origin=%.9g,%.9g,%.9g\n",
                 applied.shot,applied.writes[0],applied.writes[1],applied.writes[2],applied.writes[3],
+                applied.input_sequence,applied.input_sync_ns,applied.sampled_ns,
+                double(applied.right_grip[0]),double(applied.right_grip[1]),double(applied.right_grip[2]),
                 applied.aim[0],applied.aim[1],applied.aim[2],applied.original_aim[0],applied.original_aim[1],applied.original_aim[2],
                 double(applied.origin[0]),double(applied.origin[1]),double(applied.origin[2]));
             fflush(log_file);last_muzzle_writes=total;++muzzle_logs;
@@ -207,11 +255,13 @@ void tick(uptr pc) noexcept {
     const auto diagnostic_finished=weaponhand::clock_ns(nullptr);
     if(log_file&&logs<64&&(previous_status!=unsigned(result)||previous_source!=unsigned(input.source_status())||
         ready_after_ammo||ammo_queried||(ammo_known&&count!=last_ammo))){
-        fwprintf(log_file,L"native_lancer_r2 status=%u source_status=%u mode=%u owned=%u game_known=%u game_r2=%u before_action=1 frame=%llu sequence=%llu trigger_pressed=%u trigger_released=%u input_sync_ns=%lld observed_ns=%lld ammo_known=%u ammo=%d previous_sync_ns=%lld previous_observed_ns=%lld game_elapsed_ns=%lld action_elapsed_ns=%lld ammo_queried=%u diagnostic_elapsed_ns=%lld ready_after_ammo_read=%u copy_elapsed_ns=%lld input_elapsed_ns=%lld\n",
+        fwprintf(log_file,L"native_lancer_r2 status=%u source_status=%u mode=%u owned=%u game_known=%u game_r2=%u before_action=1 frame=%llu sequence=%llu trigger_pressed=%u trigger_released=%u trigger_active=%u trigger_value=%.3f muzzle_ready=%u input_sync_ns=%lld observed_ns=%lld ammo_known=%u ammo=%d previous_sync_ns=%lld previous_observed_ns=%lld game_elapsed_ns=%lld action_elapsed_ns=%lld ammo_queried=%u diagnostic_elapsed_ns=%lld ready_after_ammo_read=%u copy_elapsed_ns=%lld input_elapsed_ns=%lld\n",
             unsigned(result),unsigned(input.source_status()),state,unsigned(input.owns_press()),unsigned(game.known),unsigned(game.r2_held),
             current?frame.key.frame:0,current?frame.controllers.sequence:0,
             current?frame.controllers.hands[1].pressed[gears_vr::control_trigger]:0,
             current?frame.controllers.hands[1].released[gears_vr::control_trigger]:0,
+            current?frame.controllers.hands[1].trigger_active:0,
+            current?double(frame.controllers.hands[1].trigger):0.,unsigned(muzzle_ready),
             current?frame.controllers.sync_ns:0,now,unsigned(ammo_known),count,previous_sync,previous_observed,
             now-observation_started,action_finished-now,unsigned(ammo_queried),diagnostic_finished-action_finished,ready_after_ammo,
             copy_finished-source_started,now-source_started);
@@ -242,7 +292,8 @@ DWORD enable(){
     }
     if(unified_weapon_fire::manual_profile()&&!unified_weapon_fire::consumer_compiled())return 4;
     if(!button_name()||!input.reset_drained())return 3;
-    candidate_hold={};candidate_class_known=candidate_is_lancer=false;muzzle_logs=0;last_muzzle_writes=0;
+    candidate_hold={};candidate_class_known=candidate_is_lancer=false;
+    muzzle_logs=0;last_muzzle_writes=0;muzzle_prepare_failure_logs=0;execute_failure_logs=0;
     logs=0;previous_status=previous_source=~0u;last_ammo=-1;next_ammo=0;ammo_reads=0;post_ammo_samples=2;ammo_resume_pending=false;
     if(unified_weapon_fire::manual_profile()&&!unified_weapon_fire::set_running(true))return 4;
     mode.store(running,std::memory_order_release);

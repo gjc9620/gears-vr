@@ -22,8 +22,11 @@ inline constexpr bool consumer_compiled() noexcept {
 // Diagnostic copy only, consumed on normal GT tick, never an action ticket.
 struct AppliedEvidence {
     std::uint64_t writes[4]{},shot{},epoch{};
+    std::uint64_t input_sequence{};
+    std::int64_t input_sync_ns{},sampled_ns{};
     std::int32_t aim[3]{},original_aim[3]{};
     float origin[3]{};
+    double right_grip[3]{};
 };
 #if defined(GEARS_PLAYGROUND_UNIFIED_MUZZLE_FIRE) && GEARS_PLAYGROUND_UNIFIED_MUZZLE_FIRE
 bool applied_evidence(AppliedEvidence&) noexcept;
