@@ -36,6 +36,8 @@ std::atomic<uint64_t> hands_attempts{},hands_solved{},hands_commits{};
 std::array<std::atomic<uint64_t>,unsigned(hands::Status::residual)+1> hands_statuses{};
 std::atomic<bool> stopping{};std::atomic<unsigned> callbacks{},obligations{};
 std::atomic<uint64_t> captures{},commits{},rejected{};std::atomic<DWORD> owner_thread{};
+std::array<std::atomic<uint64_t>,32> begin_reasons{};
+std::array<std::atomic<uint64_t>,unsigned(native::CaptureReject::final_current)+1> capture_reasons{};
 struct ActualContext final:native::Context {
     Entry const* entry{};Entry copy{};gears_cover_pose_phase::OwnerKey owner{};
     gears_native_rig_tracking::CoreSnapshot source{};uint64_t tick{};bool expired{true};
@@ -687,7 +689,8 @@ bool admission_budget(){
 }
 void pose_begin(Entry const& e) noexcept {Call call;if(e.kind==0)budget::recorder.mark_entry(budget::Stage::native_entry,reinterpret_cast<uintptr_t>(&e),e.invocation);
     using Begin=held_outcome::NativeBegin;
-    const auto note=[&](Begin result){held_outcome::recorder.native_result(reinterpret_cast<uintptr_t>(&e),e.invocation,result);ready_wrist::native_result(e,result);};
+    const auto note=[&](Begin result){const auto index=unsigned(result);if(index<begin_reasons.size())++begin_reasons[index];
+        held_outcome::recorder.native_result(reinterpret_cast<uintptr_t>(&e),e.invocation,result);ready_wrist::native_result(e,result);};
     if(!enabled||stopping.load()||e.kind!=0||!e.selected){note(Begin::policy);return;}
     DWORD expected{};owner_thread.compare_exchange_strong(expected,GetCurrentThreadId());if(owner_thread.load()!=GetCurrentThreadId()){note(Begin::thread);++rejected;return;}
     ready_wrist::begin_unknown(e);
@@ -725,7 +728,8 @@ void pose_begin(Entry const& e) noexcept {Call call;if(e.kind==0)budget::recorde
         if(body_tick_input_live::enabled)state.context.basis_ns=rig_tracking_live::clock_ns();
         native::CaptureObservation capture_observation;
         const bool capture_ok=budget::bracket(budget::Stage::capture_begin,budget::Stage::capture_end,[&]{return state.backend.capture(state.context,state.context.owner,seed,state.source,state.desired,
-            (held_outcome::recorder.exact(reinterpret_cast<uintptr_t>(&e),e.invocation)||ready_wrist::current(e))?&capture_observation:nullptr);});
+            &capture_observation);});
+        if(capture_observation.reason<capture_reasons.size())++capture_reasons[unsigned(capture_observation.reason)];
         held_outcome::recorder.capture_result(reinterpret_cast<uintptr_t>(&e),e.invocation,capture_observation.reason,capture_observation.context_verdict);
         ready_wrist::captured(e,capture_observation,capture_ok);
         if(!capture_ok){note(Begin::backend_capture);state.context.expired=true;state.backend.invalidate();++rejected;return;}
@@ -935,6 +939,8 @@ void export_held_outcome()noexcept {
     if(!CloseHandle(file)){held_outcome_error=GetLastError();ok=false;}held_outcome_written=ok;
 }
 void summary(FILE* f){ready_wrist::export_records();export_held_outcome();export_failure(first_failure,L"body-c0-first-failure.bin",failure_file_attempted,failure_file_written,failure_file_error);
+    if(f){for(unsigned i=0;i<begin_reasons.size();++i)fprintf(f,"body_native_begin_reason_%u=%llu ",i,begin_reasons[i].load());
+        for(unsigned i=0;i<capture_reasons.size();++i)fprintf(f,"body_native_capture_reason_%u=%llu ",i,capture_reasons[i].load());}
     export_failure(first_commit_failure,L"body-c0-first-commit-failure.bin",commit_failure_file_attempted,commit_failure_file_written,commit_failure_file_error);
     export_hand_trace();export_budget();export_tick_commits();export_alpha_records();body_tick_input_live::summary(f);body_tick_source_live::summary(f);
     if(f)fprintf(f,"body_ready_wrist_enabled=%u body_ready_wrist_records=%u body_ready_wrist_active=%u body_ready_wrist_written=%u body_ready_wrist_error=%u ",

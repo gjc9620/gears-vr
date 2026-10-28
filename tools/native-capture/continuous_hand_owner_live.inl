@@ -50,6 +50,10 @@ inline thread_local Slot slot{};
 std::atomic<bool> stopping{},failed{},caller_certified{},file_attempted{},file_written{};
 std::atomic<unsigned> callbacks{},live_frames{},matching_ticks{};std::atomic<DWORD> file_error{};
 std::atomic<uint64_t> serial{1},conflicts{},ticks{},completed{},rejected{},preparations[2]{};
+// Existing status summary only. Observe the first rejected guard without
+// retrying it, changing its order, or granting a pose from diagnostic state.
+std::array<std::atomic<uint64_t>,4> compose_rejections{};
+std::array<std::atomic<uint64_t>,8> metadata_rejections{};
 std::mutex records_mutex;std::array<TickRecord,capacity> records{};uint64_t record_sequence{};unsigned record_count{};
 using LengthMode=gears_hand_two_bone::LengthMode;LengthMode length_mode=LengthMode::preserve;
 struct PersonalDiagnostic {bool bound{};personal::Status status{personal::Status::okay};double scale{1};std::array<double,2> upper{},lower{};};
@@ -181,24 +185,25 @@ bool observer_same_source(rig::TickFailure* failure=nullptr){
     if(failure)*failure=why;return fresh;
 }
 bool metadata(bool initial,controls::Row const* row=nullptr){budget::Span measured(initial?budget::Op::metadata_initial:budget::Op::metadata_repeat);auto& d=slot.data;
+    const auto fail=[](unsigned index){++metadata_rejections[index];return false;};
     auto reader=[](void* out,void const* in,size_t n){return safe_copy(out,in,n);};
-    std::unique_lock<std::mutex> lock(binding::mutex,std::try_to_lock);if(!lock.owns_lock()||!binding::metadata_current())return false;
+    std::unique_lock<std::mutex> lock(binding::mutex,std::try_to_lock);if(!lock.owns_lock()||!binding::metadata_current())return fail(0);
     gears_cover_pose_phase::Request request{};request.owner=d.owner.key;
     gears_cover_pose_phase::Metadata first{},last{};gears_anchor::Identity a{},b{};math::Matrix64 component{};
     if(!gears_cover_pose_phase::metadata(reader,request,first)||first.master||first.reference.count!=115||
        !gears_cover_pose_phase::header_valid(first.reference,68)||!gears_cover_pose_phase::header_valid(first.local,32)||
        !gears_cover_pose_phase::header_valid(first.space,64)||!gears_cover_pose_phase::header_valid(first.desired,1,true)||
        first.local.count!=115||first.space.count!=115||first.desired.count>115||
-       !binding::identity(first.asset,a,true))return false;
-    memcpy(&component,&first.component,64);if(!math::detail::rigid(math::detail::unpack(component)))return false;
+       !binding::identity(first.asset,a,true))return fail(1);
+    memcpy(&component,&first.component,64);if(!math::detail::rigid(math::detail::unpack(component)))return fail(2);
     const auto owned=reinterpret_cast<uintptr_t>(&slot);
-    if(first.reference.data<=owned+sizeof(slot)-1&&owned<=first.reference.data+sizeof(d.reference)-1)return false;
-    if(initial){if(!safe_copy(d.reference.data(),reinterpret_cast<void const*>(first.reference.data),sizeof(d.reference)))return false;}
-    else if(!binding::same(a,d.asset)||!controls::same_metadata(first,d.metadata))return false;
+    if(first.reference.data<=owned+sizeof(slot)-1&&owned<=first.reference.data+sizeof(d.reference)-1)return fail(3);
+    if(initial){if(!safe_copy(d.reference.data(),reinterpret_cast<void const*>(first.reference.data),sizeof(d.reference)))return fail(4);}
+    else if(!binding::same(a,d.asset)||!controls::same_metadata(first,d.metadata))return fail(5);
     if(gears_cover_pose_phase::repeat(reader,d.reference.data(),first.reference.data,sizeof(d.reference))!=gears_cover_pose_phase::Reject::none||
        !gears_cover_pose_phase::metadata(reader,request,last)||!controls::same_metadata(first,last)||
-       !binding::identity(first.asset,b,true)||!binding::same(a,b)||!binding::metadata_current())return false;
-    if(row&&(!controls::same_metadata(first,row->before.metadata)||!controls::same_metadata(first,row->after.metadata)))return false;
+       !binding::identity(first.asset,b,true)||!binding::same(a,b)||!binding::metadata_current())return fail(6);
+    if(row&&(!controls::same_metadata(first,row->before.metadata)||!controls::same_metadata(first,row->after.metadata)))return fail(7);
     if(initial){d.asset=a;d.metadata=first;}return true;
 }
 bool geometry(){budget::Span measured(budget::Op::geometry);auto& d=slot.data;if(!mount::canonical_geometry(d.reference.data(),d.reference.size(),d.canonical))return false;
@@ -252,8 +257,11 @@ void compose_begin(Entry& e){if(!slot.active)return;
     // CCTRL continuous validation consumes this exact canonical Scope address.
     slot.compose.address=&slot.compose.scope;
     slot.compose.continuous=true;slot.compose.admitted=true;slot.compose.outer_tick=slot.tick;slot.data.record.compose=e.invocation;
-    if(!control_current(slot.compose.scope)||!(body_tick_source_live::enabled?current_body_source():same_source())||!metadata(true)||!geometry())reject(Failure::metadata);
-    else{slot.data.record.asset=rig::object(slot.data.asset);slot.data.record.geometry_signature=slot.data.signature;slot.data.record.reference=slot.data.metadata.reference;budget::recorder.admitted();if(!bind_personal())reject(Failure::model);}
+    if(!control_current(slot.compose.scope)){++compose_rejections[0];reject(Failure::metadata);return;}
+    if(!(body_tick_source_live::enabled?current_body_source():same_source())){++compose_rejections[1];reject(Failure::metadata);return;}
+    if(!metadata(true)){++compose_rejections[2];reject(Failure::metadata);return;}
+    if(!geometry()){++compose_rejections[3];reject(Failure::metadata);return;}
+    slot.data.record.asset=rig::object(slot.data.asset);slot.data.record.geometry_signature=slot.data.signature;slot.data.record.reference=slot.data.metadata.reference;budget::recorder.admitted();if(!bind_personal())reject(Failure::model);
 }
 void pose_begin(Entry& e) noexcept {Call call;try{if(!enabled||!next(e))return;if(e.kind==2)tick_begin(e);else if(e.kind==0)compose_begin(e);}catch(...){failed=true;reject(Failure::exception);}}
 void save_record(){std::lock_guard<std::mutex> lock(records_mutex);records[record_sequence%capacity]=slot.data.record;
@@ -396,6 +404,8 @@ bool configure(wchar_t const* ini,FILE* file){wchar_t mode[16]{};GetPrivateProfi
     if(file)fprintf(file,"continuous_hand_enabled=%u caller_certified=%u continuous_hand_length_mode=%u read_only=1 writer=0 event_required=0 c0_snapshot_required=0\n",unsigned(enabled),unsigned(caller_certified.load()),unsigned(length_mode));return true;}
 void request_drain(){stopping=true;}unsigned pending_count(){return callbacks.load()+live_frames.load();}
 void summary(FILE* file){if(file){fprintf(file,"continuous_hand_enabled=%u continuous_hand_ticks=%llu continuous_hand_completed=%llu continuous_hand_rejected=%llu continuous_hand_prepare_left=%llu continuous_hand_prepare_right=%llu continuous_hand_pending=%u continuous_hand_failed=%u continuous_hand_file_written=%u continuous_hand_file_error=%lu ",unsigned(enabled),ticks.load(),completed.load(),rejected.load(),preparations[0].load(),preparations[1].load(),pending_count(),unsigned(failed.load()),unsigned(file_written.load()),file_error.load());
+    for(unsigned i=0;i<compose_rejections.size();++i)fprintf(file,"continuous_hand_compose_rejected_%u=%llu ",i,compose_rejections[i].load());
+    for(unsigned i=0;i<metadata_rejections.size();++i)fprintf(file,"continuous_hand_metadata_rejected_%u=%llu ",i,metadata_rejections[i].load());
     PersonalDiagnostic diagnostic{};{std::lock_guard<std::mutex> lock(personal_mutex);diagnostic=personal_diagnostic;}
     if(!saved_personal::loaded)diagnostic={};fprintf(file,"continuous_hand_personal_loaded=%u continuous_hand_personal_estimate=%u continuous_hand_personal_status=%u continuous_hand_personal_scale=%.17g continuous_hand_personal_upper_left_metres=%.17g continuous_hand_personal_lower_left_metres=%.17g continuous_hand_personal_upper_right_metres=%.17g continuous_hand_personal_lower_right_metres=%.17g continuous_hand_personal_binding_attempts=%llu continuous_hand_personal_bindings=%llu continuous_hand_personal_binding_failures=%llu continuous_hand_personal_apply_failures=%llu continuous_hand_personal_applied=%llu ",
         unsigned(saved_personal::loaded),unsigned(diagnostic.bound),unsigned(diagnostic.status),diagnostic.scale,diagnostic.upper[0],diagnostic.lower[0],diagnostic.upper[1],diagnostic.lower[1],

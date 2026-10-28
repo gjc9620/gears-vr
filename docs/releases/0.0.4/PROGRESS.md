@@ -2215,3 +2215,10 @@ Source `9e0ad18be239f350bcf0a32827d5608f88223341` on `codex/6dof-single` continu
 Production Native and Playground compiled with the preserved 90/17 build definitions. The focused current-metadata classifier (12), sender (337), and provider (271) host checks pass; these are not gameplay or headset acceptance. Bounded purchased-game Source1 observations show actual three-slot inventory changes and visible hand/attached-gun movement. A separate pistol-to-Lancer action confirms actual VR hold, 48 mounted commits and visible Lancer side movement. Some equipment/transition images still show the original animation; continuous stability, full roll, natural reach, physical calibration/feel and complete headset acceptance remain pending. No new shooting/reload/cover scope was advanced.
 
 Candidate `6dof-unified-20261028-9` updates the existing manual launcher. Native SHA256 `041df8394774bf39726d29374a213e9f6ab39c86d8166e3c9d0e9207552a0718`; Playground `4d163c7c7e4ab0c20d8e70a3e7f8ae5e24766ae1686f1f6c8c8a22031c3654ad`; physical XR `cb74d05c3dce128672f86cbeae1108518ecbc3740e5cc8667a3d920c96254237` is preserved. No private Source1 XR/trigger bridge or synthetic physical calibration is packaged. Exact user config bytes, old ZIPs and per-update rollback are preserved. Native normal cleanup, full entry restoration, equipment drain and XR exit0 were verified in the bounded action sessions. No public release/tag was created. Current delivery and scope are in `docs/6dof-progress-dashboard.md`; the 11/64 maturity score remains31.02 because no new fixed tier was crossed.
+
+
+### 单会话继续：装备过渡首个门禁与真实动画路径（2026-10-28T09:02:29+08:00）
+
+固定入口仍为第九包，本轮没有发布新候选，也不增加玩法成熟度分。新增现有状态摘要的首个拒绝计数；Native Release 编译通过。实际过渡中捕获通过，主要被旧 C0 事务待回执挡住；这是首个门禁，尚非画面根因证明。
+
+限定实跑读到 AnimTree → Synch → UpperBodyIKHack → Mirror_Master → WarAnim_BlendPerBone（FACB0）。两种 F7940/base-blend 回执实验均零触发，未作为修复接入；实验源码仅在忽略目录留存。全部已完成实验正常清理并恢复入口，未改用户配置／候选。下一步只核对 FACB0 的实际写入覆盖，不放宽既有回执／时效／CAS／回退条件，不继续重复错误入口。证据：`analysis/solo-m1-20261028/v10-investigation-evidence.json`。实体翻腕／自然触达／稳定性与用户反馈仍待确认。
