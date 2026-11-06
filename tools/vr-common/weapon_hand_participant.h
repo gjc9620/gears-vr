@@ -1,5 +1,6 @@
 #pragma once
 #include "controller_input_frame.h"
+#include "left_interaction_control.h"
 #include <array>
 #include <cstddef>
 #include <cstdint>
@@ -8,7 +9,7 @@
 // Synchronous Native-GT / weapon participant contract. This header creates no
 // arbiter, mapping, hook or writer. Native owns the one left-hand arbiter.
 namespace gears_weapon_hand {
-constexpr std::uint32_t version=1;
+constexpr std::uint32_t version=4; // Explicit unavailable part observation; physical GVC4 stays unchanged.
 enum class LeaseKind:std::uint32_t {none,support,ammo,magazine,cover,other};
 enum class DecisionStatus:std::uint32_t {released,retained,granted,needs_release,no_candidate,
     incumbent_conflict,candidate_conflict,inactive,lifecycle_changed,invalid,replayed,ambiguous,lease_lost};
@@ -49,8 +50,18 @@ struct Frame {
     // Decoded ONCE by Native's shared logical input adapter before prepare.
     // Token belongs to this owner lifecycle, not an epoch-reset XR counter.
     std::uint64_t press_token{};
-    std::uint32_t left_grip_down{},left_grip_known{},left_tracked{},reserved3{};
+    std::uint32_t left_grip_down{},left_grip_known{},left_tracked{},interaction_control{};
 };
+inline bool index_pinch(Frame const& f) noexcept {
+    return f.interaction_control==unsigned(gears_vr::LeftInteractionControl::pinch);
+}
+inline unsigned left_control(Frame const& f) noexcept {
+    return index_pinch(f)?gears_vr::control_trigger:gears_vr::control_squeeze;
+}
+inline bool control_held(gears_vr::ControllerHand const& h,unsigned control) noexcept {
+    return control==gears_vr::control_trigger?(h.trigger_active&&h.trigger>.35f):
+        control==gears_vr::control_squeeze&&(h.squeeze_active&&h.squeeze>.35f);
+}
 struct Lease {
     LeaseKind kind{};std::uint32_t reserved{};
     std::uint64_t lifecycle{},id{};
@@ -68,7 +79,10 @@ struct Proposal {
     std::array<Lease,2> incumbents{};
     // Only currently certified weapon candidates. Cover requests come from
     // Native's own surface/reach participant, never from these callbacks.
-    std::uint32_t support{},ammo{},magazine{},reserved{};
+    // An unavailable part observation is NOT a certified miss or a candidate.
+    // Native may preserve only this press in its existing bounded intention
+    // wait. A later fresh proposal still has to certify actual contact.
+    std::uint32_t support{},ammo{},magazine{},magazine_observation_pending{};
 };
 struct Decision {
     std::uint32_t size{sizeof(Decision)},abi_version{version};
@@ -78,13 +92,27 @@ struct Decision {
     DecisionStatus status{DecisionStatus::invalid};
     std::uint32_t new_grant{},release_required{1},reserved{};
 };
+// A same-frame part grant already owns its input, before a gameplay consumer
+// has opened the reload transaction. Do not also send that press to stock L2.
+// This reserves input only: it creates no candidate, lease or action authority.
+// A fore-end pinch owns its initiating trigger too. Grip-initiated support
+// keeps that distinct secondary trigger available to its original aim owner.
+inline bool part_reserves_secondary_trigger(Frame const& f,Decision const& d) noexcept {
+    return f.left_grip_known&&f.left_grip_down&&same(f.key,d.key)&&
+        d.press_token==f.press_token&&d.lease.id==f.press_token&&
+        lease_valid(d.lease,f.key.lifecycle)&&!d.release_required&&
+        (d.status==DecisionStatus::granted||d.status==DecisionStatus::retained)&&
+        (d.lease.kind==LeaseKind::magazine||d.lease.kind==LeaseKind::ammo||
+         d.lease.kind==LeaseKind::cover||d.lease.kind==LeaseKind::other||
+         (d.lease.kind==LeaseKind::support&&index_pinch(f)));
+}
 struct Invalidation {
     std::uint32_t size{sizeof(Invalidation)},abi_version{version};
     std::uint64_t registration_cookie{},native_started_qpc{};
     InvalidateReason reason{};std::uint32_t reserved{};
 };
 inline bool frame_shape_valid(Frame const& f) noexcept {
-    return f.size==sizeof(Frame)&&f.abi_version==version&&!(f.flags&~15u)&&!f.reserved&&!f.reserved2&&!f.reserved3&&
+    return f.size==sizeof(Frame)&&f.abi_version==version&&!(f.flags&~15u)&&!f.reserved&&!f.reserved2&&f.interaction_control<=1&&
         f.key.game_start&&f.key.native_started_qpc&&f.key.registration_cookie&&f.key.lifecycle&&f.key.frame&&
         f.key.world_generation&&f.key.game_pid&&f.key.thread_id&&f.now_ns>0&&
         identity_valid(f.world)&&identity_valid(f.controller)&&identity_valid(f.pawn)&&identity_valid(f.mesh)&&
@@ -147,11 +175,11 @@ inline constexpr char unregister_export[]="GearsVrUnregisterWeaponHandParticipan
 // PG keeps context/storage alive until quiescent; Native stop follows the same
 // drain protocol. A timeout is still draining, not permission to free memory.
 static_assert(sizeof(ObjectIdentity)==40&&sizeof(FrameKey)==56&&sizeof(Lease)==24);
-static_assert(sizeof(void*)==8&&sizeof(gears_vr::ControllerHand)==304&&sizeof(gears_vr::ControllerInputFrame)==688);
-static_assert(sizeof(gears_vr::StereoSample)==312&&sizeof(Frame)==1384&&alignof(Frame)==8);
+static_assert(sizeof(void*)==8&&sizeof(gears_vr::ControllerHand)==312&&sizeof(gears_vr::ControllerInputFrame)==720);
+static_assert(sizeof(gears_vr::StereoSample)==312&&sizeof(Frame)==1416&&alignof(Frame)==8);
 static_assert(offsetof(Frame,key)==16&&offsetof(Frame,now_ns)==72&&offsetof(Frame,world)==80);
-static_assert(offsetof(Frame,controllers)==280&&offsetof(Frame,stereo)==968&&offsetof(Frame,reference)==1280);
-static_assert(offsetof(Frame,press_token)==1360&&offsetof(Frame,left_grip_down)==1368);
+static_assert(offsetof(Frame,controllers)==280&&offsetof(Frame,stereo)==1000&&offsetof(Frame,reference)==1312);
+static_assert(offsetof(Frame,press_token)==1392&&offsetof(Frame,left_grip_down)==1400);
 static_assert(sizeof(Proposal)==136&&sizeof(Decision)==128&&sizeof(Invalidation)==32);
 static_assert(sizeof(Registration)==56&&sizeof(RegistrationResult)==24&&offsetof(Registration,prepare)==32);
 static_assert(std::is_standard_layout_v<Frame>&&std::is_trivially_copyable_v<Frame>);

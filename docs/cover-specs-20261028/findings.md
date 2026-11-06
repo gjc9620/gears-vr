@@ -1,0 +1,31 @@
+# 问题、证据与修复决定
+
+本表是静态审查，不把关闭的试验代码称为正在发生的玩家故障。P0 表示启用相应能力前必须解决；P1 表示交付完整功能前必须完成。阶段编号见 [实施交接](implementation-handoff.md)，A 编号见 [验收](acceptance.md)。精确行号和源码哈希见 [位置索引](code-locations.md)。
+
+| 编号／级别 | 确认事实与可能后果 | 已确定的修复 | 阶段／验证 |
+| --- | --- | --- | --- |
+| F01 P0 · S 缺少接线 | `cover_shared_input_live::prepare` 给 `frame.cover.range` 全零且 `edge={}`；日志明确 `grip_geometry_ready=0`。现有内核不等于可用抓边。 | 接入 typed CoverContext、真实边缘和运动证据后才产生抓取请求；不靠改一组范围常数开启。 | I1/I2/I3 · A01/A02 |
+| F02 P0 · S 所有权冲突 | `continuous_hand_owner_live::passive()` 要求旧 cover body/input 都关闭；`owner_current()` 依赖它。旧 preview 又依赖旧 body；`body_c0_goal_policy_live::no_cover` 明确拒绝 cover。 | 新 CoverPolicy 使用现有唯一 Tick／C0 执行器，拆开旧模块开关和新策略资格；原旧 writer 冲突检查保留。不能简单删除 `passive` 条件或打开两个 writer。 | I1/I4 · A03 |
+| F03 P0 · S/H/U 查询调用时相 | Actor.Trace 包装器不是已证明无回调的纯函数。历史审计记有间接调用和临时全局写入；Scene／骨架／binding 锁中调用有重入和死锁风险。 | 只在真实外层 GT Tick 的有效租约内、持锁段之外查询；同步重入检测、不可递归发起查询，调用后重验 owner。禁止伪造 Scene receipt。 | I2 · A04 |
+| F04 P0 · S/H 几何不足 | 槽位允许探出不能证明真实墙沿；CT17 是同一墙面的高度区间，世界射线不覆盖手部可达、侧沿或体积。 | 候选搜索与授权分开；增加 Actor/Component/表面身份、权限、边缘连续性、接近方向、到达路径和体积扫掠。 | I2 · A02/A05 |
+| F05 P0 · S/D 矩形合同错误风险 | `CoverRange` 要求整个矩形合法，内核会 clamp；只证明横／纵单轴或四个角不能证明对角及中间。 | 拆分操作边界与碰撞证据，用实际段＋完整姿态体积扫掠；原 offset、候选和裁剪终点全部由同一证据绑定。 | I2/I3 · A06 |
+| F06 P0 · S/U 异步旧结果 | Scene 输入与下一 Tick 查询不是同一事务。freshness、Actor 未换、甚至原命中 Component 未动都不能证明附近新障碍未进入。 | QueryReceipt 不携带可续用的输入 ticket；下一次消费重新核对请求、控制对象、几何世界版本／占用快照。无法证明时只输出等待／不可用。 | I2/I3 · A07 |
+| F07 P0 · S 待处理 API 缺失 | `CoverInputOwner` 候选偏移私有，`complete(bool)` 只有整单提交／abort；abort 会 suspend 和 invalidate 租约。将查询延迟当 false 会反复掉抓。 | 新增不可变候选视图和 accept/clip/wait/reject 结果；同一回合先解读 release，再处理查询；wait 保持租约但不提交新移动。 | I3 · A08 |
+| F08 P0 · S 旧偏移无占用证明 | `abort_current(...,true)` 会用当前 range 重新生成旧 offset 的 view；range 缩小还可改变 offset。此路径没有新占用证明。 | 去掉隐式“回退即认证”；保持、裁剪、恢复都索取当前占用证据。故障、等待和正常 release 分开，不让 fallback 绕过碰撞。 | I3/I4 · A09 |
+| F09 P0 · S 视角强制对齐风险 | 原 `WarPC.CoverAcquired` 可调 `BeginTurn`；旧 `initial_facing` 取 PawnYaw+π，`prepare_cover_view` 用它构造相机方向。旧日志亦未认证身体朝墙。 | 分离 CoverBasis 与 ViewBasis；只对本地 VR 实例抑制 cover 自动转镜头，身体朝向通过统一 C0 规划，观察方向保持连续。 | I4/I5 · A10 |
+| F10 P0 · S 双重／未生效姿态风险 | `cover_full_goal_live` 只生成目标，明确 `pose_applied=0/collision_verified=0`；主线 view 还有 C0 覆盖优先级。提前写 cover camera 可能被后续改写。 | 把已提交 cover offset 作为 C0 单一输入；身体、手、左右眼只消费一次同一 publication，不再串行叠加多个独立相机 owner。 | I4 · A03/A11 |
+| F11 P1 · S/D 生命周期不连续 | 内核在 world/pawn/cover 失效时清偏移，slot/reference 变化打断抓取；仅清零不足以保证进入／换槽／退出画面连续。 | 增加有明确前后基准的交接，保留世界合法路径；新基准、新手起点；不跨世界延用数据，不自动重抓。 | I4 · A12 |
+| F12 P0 · S 两种自动探身分支 | 普通 `DetermineLeanDirection` 处理 targeting 和 blind fire；Stationary 的 `UpdatePlayerPosture` 还会再次写 `CA=8/CD=3`。只改普通函数或吞 LT 不完整。 | 原流程执行一次，保留姿态／退出／slot 更新；在每个 state 的 PlayerMove 动作提交前适配 CA/CD，禁止扳机生成身体偏移；沿墙 `CurrentSlotDirection` 不混作探身量。 | I5 · A13 |
+| F13 P0 · S 单人免伤不匹配 | `IsProtectedByCover` 依赖 CoverAction 和 Pawn 朝向；`AdjustPawnDamage` 在保护成立时清零，随后还有人类盲射清零分支。VR 转身体或伸头可与这些状态不一致。 | 做实例化 exposure／damage adapter；只有真实受到遮蔽的命中可走掩体保护。暴露命中绕过相应 cover-only 免伤，继续原伤害链；不可全局关掩体保护。 | I5/I6 · A14 |
+| F14 P0 · S/U 命中身体未证明 | 现有骨骼输出、动画权重、视点目标不足以证明枪弹命中使用了同一姿态；MP 路径还用 Cylinder 与方向／左右 trace。 | 给 pose、physics/hit consumer 和 damage context 加同版本回执，验证真实命中区域；在本地权威范围实现，联机单列，不宣称同步完成。 | I4/I6 · A14/A15 |
+| F15 P0 · S/D 枪口与视点分歧 | 既有 aim-lock 诊断表明 HUD 命中与 Controller targeting 是两回事；眼睛出墙不表示枪口出墙。 | 消费武器主线的权威枪口和原射击实例，做枪体／枪口路径遮挡及射线起点检查；视线只投影 HUD。墙后盲射依原规则，不能把出生点移过墙。 | I6 · A16 |
+| F16 P1 · S 资源与左右手竞争 | 现有共享 owner 能保留 incumbent，但 cover 若凭粗糙边缘请求可抢空闲手；固定接触手还可能超出骨长，抓取后取匣也需真实 release。 | 准确接近检查和一次仲裁；抓取手只做可达 IK，保持固定骨长，释放时过渡回追踪；复用武器接触标记，不做第二套手所有权。 | I3/I4/I6 · A17 |
+| F17 P1 · S/H 跑动稳定不完整 | `run_camera_stabilizer` 仅对已校准 SM4 应用，SM0 不覆盖；进入校准需站姿、非 cover。旧路径显式加前移0.35 m／上移0.10 m，不能直接当新 C0 眼点。 | 在统一基准层去除人工跑动相机增量，保留真实运动和主动瞄准／后坐力；普通跑、起停、冲刺→cover 用同一交接器。 | I4 · A18 |
+| F18 P0 · H/U 历史 backend 未完成 | candidate2 曾有注册表增长再回滚漏判及512容量对933字段问题；candidate4最新记录为两个 shadow warning 导致 W4/WX 编译失败，未跑。完整查询历史约15,323次读取也不适合每帧重扫。 | 重新落实有限缓存的反射链证书和单链扫描，检测 allocation/capacity/selected slot/增长回滚；容量显式、超限拒绝；主线程预算可观测，不复用未经确认的候选 DLL。 | I1/I2 · A04/A19 |
+| F19 P0 · S 原版延迟开火链 | `ShouldDelayFiring` 在cover/CA0等条件下直接等待；`DoingAnimationTransition` 又检查CA与LastCoverActionAnim及过渡位。`ShouldRefire` 和弓的 `CanReleaseFire` 消费这个结果。稳定半探可能被当作永久过渡。 | 稳定连续姿态与原动作完成状态一致；只适配被认证的本实例cover-only过渡，保留镜像、换枪、真正动画和武器特殊限制。不全局设置bNoAnimDelayFiring或强制所有等待false。 | I5/I6 · A20 |
+
+## 已确认可以保留的部分
+
+`CoverInteraction` 使用抓取起点的绝对手位差，不是逐帧累加；正确实现不随转头改变轴、不靠重新抓取累加漂移。现有 epoch、单调样本、释放重新武装和 incumbent 租约保护继续使用。`cover_physical_displacement` 根据位置差而非头旋转计算位移，`cover_tracking_point` 不应再额外加第二次 HMD 位移。`cover_up_weight` 仅用于动画，`CoverMovementPct` 是沿墙移动相关量，不能当作上探／侧探权重。
+
+不把这些已有逻辑重新实现一遍；新增碰撞和提交能力时扩展现有结构并保持这些不变量。

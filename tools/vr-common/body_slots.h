@@ -32,6 +32,11 @@ struct ArmspanCalibration {
     }
 };
 
+// Authored interaction layout, NOT a measured human armspan. Used only for
+// slot hit regions until an optional real calibration replaces it. Never
+// persist this as calibration or use it to scale the avatar's bones.
+inline ArmspanCalibration default_body_slot_layout() noexcept {return {1,1.7,-.15};}
+
 // A two-second, uninterrupted, tracked T-pose grip hold. After completion the
 // caller atomically saves the completed value.
 class ArmspanCalibrator {
@@ -130,6 +135,12 @@ public:
 
 // body is a stable torso frame in XR LOCAL coordinates supplied by the game
 // rig. It must not be overwritten each frame with the latest head yaw.
+inline bool shoulder_ammo_center(ArmspanCalibration const& calibration,Pose const& body,Vector& out) noexcept {
+    if(!calibration.valid()||!gears_vr::stereo_pose_valid(body))return false;
+    const Vector local{-calibration.armspan_metres*.135,calibration.hands_below_head_metres+.035,.05};
+    const auto offset=gears_vr::transform(gears_vr::rotation_matrix(body.orientation),local);
+    out={body.position.x+offset.x,body.position.y+offset.y,body.position.z+offset.z};return gears_vr::finite(out);
+}
 inline BodySlot body_slot(ArmspanCalibration const& calibration,Pose const& body,
                           Vector grip,unsigned hand) noexcept {
     if(!calibration.valid()||!gears_vr::stereo_pose_valid(body)||!gears_vr::finite(grip)||hand>1)
@@ -137,21 +148,30 @@ inline BodySlot body_slot(ArmspanCalibration const& calibration,Pose const& body
     const double lateral=calibration.armspan_metres*.135;
     const double shoulder_y=calibration.hands_below_head_metres+.035;
     const double hip_y=shoulder_y-.55;
+    // Owner-requested forgiving reach. Broaden height/front-back most, with
+    // a narrower side radius and a small centre seam between left/right.
+    // Shoulder/pocket vertical centres remain55cm apart: even these wider
+    // regions have a gap, rather than silently selecting a neighbouring gun.
+    constexpr double shoulder_reach=.24,pocket_reach=.22,centre_seam=.02;
+    const double side_reach=(std::min)(.22,(std::max)(.16,lateral-.025));
     struct Candidate {BodySlot slot;Vector local;double radius;};
-    const Candidate left[]={{BodySlot::shoulder_ammo,{-lateral,shoulder_y,.05},.16}};
-    const Candidate right[]={{BodySlot::weapon_2,{-lateral,shoulder_y,.05},.16},
-                             {BodySlot::weapon_1,{lateral,shoulder_y,.05},.16},
-                             {BodySlot::pistol,{-lateral,hip_y,.02},.16},
-                             {BodySlot::grenade,{lateral,hip_y,.02},.16}};
+    const Candidate left[]={{BodySlot::shoulder_ammo,{-lateral,shoulder_y,.05},shoulder_reach}};
+    const Candidate right[]={{BodySlot::weapon_2,{-lateral,shoulder_y,.05},shoulder_reach},
+                             {BodySlot::weapon_1,{lateral,shoulder_y,.05},shoulder_reach},
+                             {BodySlot::pistol,{-lateral,hip_y,.02},pocket_reach},
+                             {BodySlot::grenade,{lateral,hip_y,.02},pocket_reach}};
     const Candidate* choices=hand?right:left;
     const unsigned count=hand?4:1;
     BodySlot best=BodySlot::none;double best_distance=1e9;
-    const auto rotation=gears_vr::rotation_matrix(body.orientation);
+    const auto inverse=gears_vr::transpose(gears_vr::rotation_matrix(body.orientation));
+    const auto local=gears_vr::transform(inverse,{grip.x-body.position.x,grip.y-body.position.y,grip.z-body.position.z});
+    if(std::abs(local.x)<centre_seam)return BodySlot::none;
     for(unsigned i=0;i<count;++i){
-        const auto offset=gears_vr::transform(rotation,choices[i].local);
-        const Vector point{body.position.x+offset.x,body.position.y+offset.y,body.position.z+offset.z};
-        const double distance=gears_vr::stereo_distance(point,grip);
-        if(distance<=choices[i].radius&&distance<best_distance){best=choices[i].slot;best_distance=distance;}
+        const auto& c=choices[i];if((local.x<0)!=(c.local.x<0))continue;
+        const double x=(local.x-c.local.x)/(std::min)(side_reach,c.radius);
+        const double y=(local.y-c.local.y)/c.radius,z=(local.z-c.local.z)/c.radius;
+        const double distance=x*x+y*y+z*z;
+        if(distance<=1&&distance<best_distance){best=c.slot;best_distance=distance;}
     }
     return best;
 }

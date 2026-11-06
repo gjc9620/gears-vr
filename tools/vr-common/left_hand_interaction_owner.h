@@ -14,6 +14,8 @@ struct LeftHandInteractionRequests {
     // Nonzero only for a current, uniquely eligible CoverInteraction request.
     std::uint64_t cover_request_id=0;
     bool support=false,ammo=false,magazine=false;
+    // Authenticated unavailable part observation; this supplies no candidate/lease.
+    bool magazine_observation_pending=false;
 };
 struct LeftHandInteractionFrame {
     // One authenticated game-thread owner's generations, NOT XR time or raw
@@ -31,6 +33,7 @@ struct LeftHandInteractionFrame {
     // cover's held BODY OFFSET and a reload TIMER are not left-hand leases.
     std::array<LeftHandInteractionLease,2> incumbents{};
     LeftHandInteractionRequests requests;
+    std::int64_t now_ns=0; // Actual owner clock, used only by the bounded wait.
 };
 enum class LeftHandInteractionStatus {
     released,retained,granted,needs_release,no_candidate,incumbent_conflict,
@@ -63,6 +66,10 @@ struct LeftHandInteractionDecision {
 // incumbent or changing requests under the same frame is a rejected mutation.
 class LeftHandInteractionOwner {
 public:
+    // Observation only for the existing bounded owner receipt. Preserve the
+    // first withdrawal cause while subsequent held frames say needs_release;
+    // it cannot arm input, create a candidate or change an arbitration result.
+    LeftHandInteractionStatus blocking_status() const noexcept {return blocking_status_;}
     // A failed external commit is a terminal interruption, not a second
     // arbitration of the same frame. Keep frame/token history and poison the
     // cached grant so retries cannot resurrect it. No incumbent is freed by
@@ -96,7 +103,9 @@ public:
         }
         if(input.press_token<last_press_)return reject(LeftHandInteractionStatus::replayed,false);
         if(!input.grip_down){
+            pending_since_=pending_last_=0;
             last_press_=input.press_token;selected_={};previous_down_=false;armed_=true;blocked_=false;
+            blocking_status_=LeftHandInteractionStatus::released;
             return save(LeftHandInteractionStatus::released,false);
         }
         const bool rising=!previous_down_;
@@ -109,9 +118,14 @@ public:
             return reject(LeftHandInteractionStatus::ambiguous,false);
         }
         previous_down_=true;
+        const bool deferred=pending_since_>0;
+        if(deferred&&(input.now_ns<=pending_last_||input.now_ns<pending_since_||
+           input.now_ns-pending_since_>100000000))return reject(LeftHandInteractionStatus::needs_release,false);
+        if(deferred)pending_last_=input.now_ns;
         unsigned count=0;LeftHandInteractionLease incumbent{};
         for(auto const& lease:input.incumbents)if(lease.kind!=LeftHandInteraction::none){++count;incumbent=lease;}
         if(count>1)return reject(LeftHandInteractionStatus::incumbent_conflict,false);
+        if(deferred&&count)return reject(LeftHandInteractionStatus::incumbent_conflict,false);
         if(blocked_)return save(LeftHandInteractionStatus::needs_release,false);
         if(selected_.kind!=LeftHandInteraction::none){
             if(count==1&&same(incumbent,selected_))return save(LeftHandInteractionStatus::retained,false);
@@ -121,7 +135,7 @@ public:
             selected_=incumbent;
             return save(LeftHandInteractionStatus::retained,false);
         }
-        if(!armed_||!rising)return reject(LeftHandInteractionStatus::needs_release,false);
+        if(!armed_||(!rising&&!deferred))return reject(LeftHandInteractionStatus::needs_release,false);
         LeftHandInteraction chosen=LeftHandInteraction::none;
         auto const& request=input.requests;
         if(request.cover_request_id)chosen=LeftHandInteraction::cover;
@@ -132,7 +146,25 @@ public:
             if(request.ammo)chosen=LeftHandInteraction::ammo;
             if(request.magazine)chosen=LeftHandInteraction::magazine;
         }
-        if(chosen==LeftHandInteraction::none)return reject(LeftHandInteractionStatus::no_candidate,false);
+        //46860: the unresolved magazine pair initially hid an otherwise
+        // valid fore-end proposal. Once that observation resolves, allow the
+        // SAME undispatched press to acquire its uniquely certified support
+        // contact within the ORIGINAL100ms window. Unknown/ambiguous contact,
+        // another owner, ammo/cover, timeout or any real interruption still
+        // cannot redirect the press. No incumbent has existed on this path.
+        const bool resolved_support=chosen==LeftHandInteraction::support&&!request.magazine_observation_pending;
+        if(deferred&&chosen!=LeftHandInteraction::none&&chosen!=LeftHandInteraction::magazine&&!resolved_support)
+            return reject(LeftHandInteractionStatus::needs_release,false);
+        if(chosen==LeftHandInteraction::none){
+            if(input.requests.magazine_observation_pending&&input.now_ns>0){
+                if(!deferred)pending_since_=pending_last_=input.now_ns;
+                // Preserve only this press. A later frozen frame must supply
+                // current actual contact; known no-contact consumes the press.
+                return save(LeftHandInteractionStatus::no_candidate,false);
+            }
+            return reject(LeftHandInteractionStatus::no_candidate,false);
+        }
+        pending_since_=pending_last_=0;
         selected_={chosen,input.lifecycle,chosen==LeftHandInteraction::cover?request.cover_request_id:input.press_token};
         armed_=false;
         return save(LeftHandInteractionStatus::granted,true);
@@ -147,7 +179,8 @@ private:
             a.context_valid==b.context_valid&&a.tracked==b.tracked&&a.grip_down==b.grip_down&&
             same(a.incumbents[0],b.incumbents[0])&&same(a.incumbents[1],b.incumbents[1])&&
             a.requests.cover_request_id==b.requests.cover_request_id&&a.requests.support==b.requests.support&&
-            a.requests.ammo==b.requests.ammo&&a.requests.magazine==b.requests.magazine;
+            a.requests.ammo==b.requests.ammo&&a.requests.magazine==b.requests.magazine&&
+            a.requests.magazine_observation_pending==b.requests.magazine_observation_pending&&a.now_ns==b.now_ns;
     }
     static bool valid(LeftHandInteractionFrame const& input){
         if(input.grip_down&&!input.press_token)return false;
@@ -163,7 +196,9 @@ private:
         return cached_;
     }
     LeftHandInteractionDecision reject(LeftHandInteractionStatus status,bool poison){
+        if(!blocked_)blocking_status_=status;
         selected_={};armed_=false;blocked_=true;previous_down_=true;
+        pending_since_=pending_last_=0;
         poisoned_=poison;
         return save(status,false);
     }
@@ -171,6 +206,8 @@ private:
     LeftHandInteractionDecision cached_;
     LeftHandInteractionLease selected_;
     std::uint64_t last_press_=0;
+    std::int64_t pending_since_=0,pending_last_=0;
     bool previous_down_=true,armed_=false,blocked_=false,poisoned_=false;
+    LeftHandInteractionStatus blocking_status_=LeftHandInteractionStatus::released;
 };
 } // namespace gears_vr

@@ -1,5 +1,6 @@
 // Include after Native backend and its real receipt implementation. The pure
 // body_c0_neutral.h is included globally before capture's anonymous namespace.
+#include "first_person_body_visibility.h"
 namespace body_c0_goal_policy_live {
 namespace budget=::gears_body_c0_budget;
 namespace n=full_body_c0_native_live;namespace b=gears_full_body_c0;namespace a=gears_body_goal_view;
@@ -10,7 +11,8 @@ bool enabled{};
 #if defined(GEARS_BODY_C0_GOAL_POLICY) && GEARS_BODY_C0_GOAL_POLICY
 std::atomic<bool> stopping{},view_valid{};std::atomic<unsigned> callbacks{},open_ends{};
 std::atomic<uint64_t> attempts{},plans{},applied{},published{},rejected{},view_rejected{},view_used{},revision{1};
-std::atomic<uint64_t> view_held{};
+std::atomic<uint64_t> view_held{},pickup_view_used{},lancer_animation_view_used{};
+std::atomic<uint64_t> lancer_execution_eye_used{};
 std::atomic<uint64_t> neutral_rebind_attempts{},neutral_rebind_deferred{},neutral_rebinds{};
 struct Call {Call(){++callbacks;}~Call(){--callbacks;}};
 struct Key {bind::Binding actor{};gears_anchor::Identity asset{};core::CoreSnapshot source{};
@@ -123,8 +125,9 @@ bool receipt_ready() noexcept {
     return false; // No receipt implementation means no real write permission.
 #endif
 }
-bool standing(bind::Binding const& actor){budget::Span measured(budget::Op::standing);
-    if(actor.special_move||!bind::current_actor(actor))return false;
+// Typed posture observation shared by the ordinary standing writer and the
+// camera-only pickup reader. This alone never grants an actor/action lease.
+bool upright_posture(bind::Binding const& actor){
     {std::unique_lock<std::mutex> lock(bind::mutex,std::try_to_lock);if(!lock.owns_lock()||!bind::metadata_current())return false;
         if(metadata_generation!=bind::metadata_generation||metadata_bytes!=bind::metadata_bytes){standing_proof={};crouch_masks={};metadata_generation=bind::metadata_generation;metadata_bytes=bind::metadata_bytes;}
         gears_anchor::Identity cls{};if(!bind::identity(actor.pawn.cls,cls))return false;bind::keys(standing_proof,cls);
@@ -140,7 +143,22 @@ bool standing(bind::Binding const& actor){budget::Span measured(budget::Op::stan
         if(ct[0]||ct[1]||std::memcmp(words[0],words[1],sizeof words[0])||
            (words[0][0]&crouch_masks[0])||(words[0][1]&crouch_masks[1])||!bind::current(standing_proof)||!bind::metadata_current())return false;
     }
-    return !actor.special_move&&bind::current_actor(actor);
+    return true;
+}
+bool standing(bind::Binding const& actor){budget::Span measured(budget::Op::standing);
+    const auto scope=[&](){return !actor.special_move||
+        (actor.special_move==33&&n::hands_enabled&&n::main_mount_policy_enabled()&&bind::current_lancer_animation(actor));};
+    // SM33 may reach CPU preparation only. apply_impl additionally requires
+    // this frame's authenticated held-Lancer mount before any bone commit.
+    return scope()&&bind::current_actor(actor)&&upright_posture(actor)&&scope()&&bind::current_actor(actor);
+}
+bool same_pickup_avatar(bind::Binding const& visual,bind::Binding const& calibrated){
+    return visual.context_valid&&!visual.weapon_known&&!visual.weapon.address&&visual.special_move==53&&
+        calibrated.context_valid&&calibrated.weapon_known&&visual.world_generation&&
+        visual.world_generation==calibrated.world_generation&&
+        gears_anchor::equal_identity(visual.controller,calibrated.controller)&&
+        gears_anchor::equal_identity(visual.pawn,calibrated.pawn)&&
+        gears_anchor::equal_identity(visual.mesh,calibrated.mesh)&&gears_anchor::equal_identity(visual.world,calibrated.world);
 }
 bool no_cover(core::CoreSnapshot const& s){return !(s.flags&core::rig::cover_key_known)&&!s.cover_type&&!s.cover_link.address&&s.cover_slot==-1;}
 bool same_hard_source_basis(core::CoreSnapshot const& old,core::CoreSnapshot const& s){
@@ -181,7 +199,8 @@ bool observed_rebind_idle(){auto const& s=n::state;return !pending.entry&&!open_
     !s.kernel.failed()&&!s.kernel.stopping()&&!s.kernel.original_exception();}
 bool initialize(){auto& s=n::state;
     if(origin.initialized)return same_key(origin.key);if(origin.poisoned)return false;
-    if(n::commits.load()||s.kernel.pending()||s.prepared||s.notified||!s.captured||s.source.units_per_metre!=s.context.source.units_per_metre)return false;
+    if(n::commits.load()||s.kernel.pending()||s.prepared||s.notified||!s.captured||s.context.actor.special_move||
+       s.source.units_per_metre!=s.context.source.units_per_metre)return false;
     a::marker::Marker marker{};neutral::Stored stored{};
     if(a::marker::prepare(s.model,s.source,a::marker::Basis::marcus_mesh_face_forward_y,origin.work,marker)!=a::marker::Status::okay||
        !neutral::capture(s.model,s.source,marker,s.workspace,stored)||!s.context.current(n::tx::Stage::prepare)||!standing(s.context.actor))return false;
@@ -291,25 +310,77 @@ bool read_view(gears_anchor::Receipt const* scene,gears_vr::StereoResult const& 
         if(
            !gears_vr::stereo_tracking_valid(stereo.sample,simulator_operator)||!gears_vr::stereo_render_active(stereo.sample)||stereo.sample.focused!=1||
            !rig::source_fresh(stereo.sample.received_ns,now,a::maximum_age_ns))return deny(false);
+        // SM53 owns the original pickup animation and may temporarily have no
+        // weapon. Keep the SAME established neutral eye, transformed by the
+        // current mesh, rather than following that animation's moving head.
+        // The visual binding has no weapon authority and is never published
+        // as a C0/hand/action receipt. All ordinary writer guards stay SM0.
+        bool pickup=false,lancer_animation=false;
+        const bool sampled=bind::sample(scene,actor);
+        if(sampled&&(actor.special_move==33||actor.special_move==34)){
+            if(!gears_first_person_visibility::original_lancer_animation(actor.special_move,
+               bind::current_lancer_animation(actor)))return deny(false);
+            // SM33 retains the established neutral eye and independently
+            // qualified held hands. SM34 keeps original arms and selects the
+            // current original-head eye position below. Fresh Stereo supplies
+            // independent HMD motion in both states.
+            // This read never republishes any old hand result or action.
+            if(!same_neutral_actor(actor,copy.key.actor)||!upright_posture(actor))return deny(false);
+            lancer_animation=true;
+        }else if(!sampled||actor.special_move){
+            if(!bind::sample_visual(scene,actor))return deny();
+            // During a weapon attachment transition the ordinary binding may
+            // be temporarily unavailable. A visual-only SM33/34 association
+            // cannot prove a current Lancer and must produce no view here;
+            // retain the immutable eye calibration for a fully proven retry.
+            if((actor.special_move==33||actor.special_move==34)&&
+               same_neutral_actor(actor,copy.key.actor)&&upright_posture(actor))return deny(false);
+            if(!same_pickup_avatar(actor,copy.key.actor)||
+               !bind::current_local_visual_model(actor)||!upright_posture(actor))return deny();
+            pickup=true;
+        }else if(!same_neutral_actor(actor,copy.key.actor)||!standing(actor))return deny();
+        auto actor_current=[&](){
+            if(lancer_animation)return same_neutral_actor(actor,copy.key.actor)&&
+                upright_posture(actor)&&bind::current_lancer_animation(actor);
+            if(!pickup)return bind::current_actor(actor);
+            bind::Binding closing{};
+            return bind::sample_visual(scene,closing)&&bind::same_visual_key(actor,closing)&&
+                same_pickup_avatar(closing,copy.key.actor)&&upright_posture(closing)&&bind::current_local_visual_model(closing);
+        };
         b::Matrix64 component{};a::Neutral moved{};gears_vr::CoverViewResult render{};
-        if(!bind::sample(scene,actor)||!same_neutral_actor(actor,copy.key.actor)||!standing(actor)||!current_geometry(copy,component)||
-           !neutral::move(copy.stored,component,moved)||!gears_vr::prepare_cover_view(moved.eye_anchor,{},units,render)||
-           !bind::current_actor(actor)||!rig::reference_snapshot(reference,ref_revision)||ref_revision!=s.native_reference_revision)return deny();
+        if(!current_geometry(copy,component)||!neutral::move(copy.stored,component,moved))return deny(!lancer_animation);
+        if(lancer_animation&&actor.special_move==34){
+            //46356: the original execution moves the visible head about27cm
+            // ahead of the held neutral pose. CTW-only following leaves the
+            // eye behind that body and exposes the collar/chest interior.
+            // SM34 owns the ORIGINAL skeleton (C0 body/hands are excluded),
+            // so use its freshly bracketed authored eye POSITION. Keep this
+            // same level basis and independent HMD view; never copy animated
+            // head angles, add an offset, or create a second camera writer.
+            gears_vr::Vector eye{};
+            if(!first_person_live::authored_eye(scene,eye))return deny(false);
+            moved.eye_anchor.neutral_eye_world=eye;
+        }
+        if(!gears_vr::prepare_cover_view(moved.eye_anchor,{},units,render)||
+           !actor_current()||!rig::reference_snapshot(reference,ref_revision)||ref_revision!=s.native_reference_revision)return deny(!lancer_animation);
         std::lock_guard<std::mutex> lock(view_mutex);
         if(stopping.load()||!view_valid.load()||copy.version!=view.version||copy.revision!=revision.load())return deny();
         // Only the immutable neutral basis is held. Current Scene/geometry and
         // current Stereo were revalidated above; no old tracking time or body
-        // commit is refreshed. This standing policy has zero virtual offset.
-        output=render;++view_used;if(!rig::source_fresh(copy.ended_ns,now,a::maximum_age_ns))++view_held;return true;
+        // commit is refreshed. This display policy has zero virtual offset.
+        output=render;++view_used;if(pickup)++pickup_view_used;
+        if(lancer_animation)++lancer_animation_view_used;
+        if(lancer_animation&&actor.special_move==34)++lancer_execution_eye_used;
+        if(!rig::source_fresh(copy.ended_ns,now,a::maximum_age_ns))++view_held;return true;
     }catch(...){return deny();}
 }
 bool configure(wchar_t const* ini,FILE* file){wchar_t value[8]{};GetPrivateProfileStringW(L"BodyC0GoalPolicy",L"enabled",L"0",value,8,ini);
     if(wcscmp(value,L"0")&&wcscmp(value,L"1"))return false;enabled=!wcscmp(value,L"1");if(enabled&&!n::enabled)return false;
-    if(file)fprintf(file,"body_goal_policy_compiled=1 body_goal_policy_enabled=%u body_goal_scope=standing_SM0_CT0_not_crouched body_goal_scene_view_wired=1 body_goal_virtual_offset=0\n",unsigned(enabled));return true;}
+    if(file)fprintf(file,"body_goal_policy_compiled=1 body_goal_policy_enabled=%u body_goal_scope=standing_SM0_or_current_held_Lancer_SM33_CT0_not_crouched body_goal_scene_view_wired=1 body_goal_virtual_offset=0\n",unsigned(enabled));return true;}
 void request_drain(){stopping=true;invalidate();}unsigned pending_count(){return callbacks.load()+open_ends.load();}
 void summary(FILE* f){if(!f)return;
     fprintf(f,"body_goal_enabled=%u body_goal_attempts=%llu body_goal_plans=%llu body_goal_applied=%llu body_goal_published=%llu body_goal_rejected=%llu body_goal_view_rejected=%llu body_goal_view_used=%llu body_goal_pending=%u body_goal_view_available=%u body_goal_view_held=%llu ",unsigned(enabled),attempts.load(),plans.load(),applied.load(),published.load(),rejected.load(),view_rejected.load(),view_used.load(),pending_count(),unsigned(view_valid.load()),view_held.load());
-    fprintf(f,"body_goal_neutral_rebind_attempts=%llu body_goal_neutral_rebind_deferred=%llu body_goal_neutral_rebinds=%llu ",neutral_rebind_attempts.load(),neutral_rebind_deferred.load(),neutral_rebinds.load());
+    fprintf(f,"body_goal_neutral_rebind_attempts=%llu body_goal_neutral_rebind_deferred=%llu body_goal_neutral_rebinds=%llu body_goal_pickup_view_used=%llu body_goal_lancer_animation_view_used=%llu body_goal_lancer_execution_eye_used=%llu ",neutral_rebind_attempts.load(),neutral_rebind_deferred.load(),neutral_rebinds.load(),pickup_view_used.load(),lancer_animation_view_used.load(),lancer_execution_eye_used.load());
     fprintf(f,"body_goal_absent_epoch=%llu ",static_cast<unsigned long long>(cover_shared_input_live::goal_absent_epoch.load(std::memory_order_acquire)));
     const auto state=first_reject_state.load(std::memory_order_acquire);
     if(state==2){auto const& r=first_reject;

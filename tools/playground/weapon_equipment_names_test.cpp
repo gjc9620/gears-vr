@@ -7,6 +7,17 @@ using namespace gears_equipment_names;
 unsigned checks{};
 void need(bool value){++checks;if(!value){std::fprintf(stderr,"failed check %u\n",checks);std::exit(1);}}
 int main(){
+    { Lookup hb({L"b_HB_Root",L"b_HB_MagLatch",L"b_HB_Mag"});
+      Table names{1,1000,1024};std::array<unsigned,3> found{};
+      const wchar_t* labels[]={L"b_HB_Root",L"b_HB_MagLatch",L"b_HB_Mag"};
+      auto table_read=[&](Table& out){out=names;return true;};
+      auto name_read=[&](Table,unsigned index,std::array<wchar_t,32>& text){
+          text.fill(0);if(index>=10&&index<=12)std::copy_n(labels[index-10],std::wcslen(labels[index-10])+1,text.begin());return true;};
+      need(hb.step(table_read,name_read,[](){return true;},[](){return true;},found)==State::ready);
+      need(found==std::array<unsigned,3>{10,11,12});
+      hb.reset();++names.data;
+      need(hb.step(table_read,name_read,[](){return true;},[](){return true;},found)==State::ready);
+      need(found==std::array<unsigned,3>{10,11,12}); }
     Lookup lookup;Table table{1,60000,65536};std::array<unsigned,3> output{};
     std::array<unsigned,3> actual{34001,47002,55003};unsigned reads{},calls{};
     bool fresh=true,mutate=false;unsigned expire_at=~0u;

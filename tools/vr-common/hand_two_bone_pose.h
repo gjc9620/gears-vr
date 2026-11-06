@@ -20,9 +20,20 @@ struct Input {
     Pose shoulder{},elbow{},wrist{},target{};
     Pole authored{},previous{};
     LengthPolicy lengths{};
+    bool share_forearm_twist{}; // Rotate the forearm about its own measured axis.
+    // Optional authored hand axis (in wrist-local space). Use the elbow circle
+    // to reduce excessive wrist bend while retaining the tracked wrist pose.
+    // Zero disables this preference. This is not a joint-angle clamp: some
+    // fixed-length targets have no feasible elbow with the preferred bend.
+    Vector wrist_forward_local{1,0,0};
+    double preferred_wrist_bend{}; // Radians, [0, pi].
+    // Bound the wrist preference's departure from the selected body pole.
+    // A straighter wrist must not turn a downward elbow into an inward/upward
+    // elbow. Default pi retains the unconstrained geometry helper behavior.
+    double max_wrist_pole_turn{3.14159265358979323846};
 };
 enum class Status {solved,invalid_input,invalid_quaternion,invalid_policy,degenerate_bone,unreachable,numerical_failure};
-enum class PoleSource {authored,previous,original_elbow,shoulder_frame};
+enum class PoleSource {authored,previous,original_elbow,shoulder_frame,wrist_direction};
 enum class LengthResolution {preserved,calibrated,extended,rebalanced};
 struct Solution {
     Pose shoulder{},elbow{},wrist{};
@@ -120,11 +131,17 @@ inline Status solve(Input const& input,Solution& output) noexcept {
     Quaternion shoulder{},elbow{},wrist{},target{};
     if(!quaternion(input.shoulder.orientation,shoulder)||!quaternion(input.elbow.orientation,elbow)||
        !quaternion(input.wrist.orientation,wrist)||!quaternion(input.target.orientation,target))return Status::invalid_quaternion;
-    (void)wrist;
     auto const& policy=input.lengths;
     if((policy.mode!=LengthMode::preserve&&policy.mode!=LengthMode::adaptive)||
        !std::isfinite(policy.upper_scale)||!std::isfinite(policy.lower_scale)||
        policy.upper_scale<=0||policy.lower_scale<=0)return Status::invalid_policy;
+    if(!std::isfinite(input.preferred_wrist_bend)||input.preferred_wrist_bend<0||
+       input.preferred_wrist_bend>3.14159265358979323846||
+       !std::isfinite(input.max_wrist_pole_turn)||input.max_wrist_pole_turn<0||
+       input.max_wrist_pole_turn>3.14159265358979323846)return Status::invalid_policy;
+    Vector hand_forward{};
+    if(input.preferred_wrist_bend>0&&
+       !unit(rotated(target,input.wrist_forward_local),hand_forward))return Status::invalid_input;
     const auto old_upper=sub(input.elbow.position,input.shoulder.position);
     const auto old_lower=sub(input.wrist.position,input.elbow.position);
     const auto displacement=sub(input.target.position,input.shoulder.position);
@@ -193,6 +210,32 @@ inline Status solve(Input const& input,Solution& output) noexcept {
     if(!std::isfinite(ratio)||std::abs(ratio)>1+epsilon*8)return Status::numerical_failure;
     ratio=(std::clamp)(ratio,-1.,1.);
     const double height=straight?0:a*std::sqrt((std::max)(0.,(1-ratio)*(1+ratio)));
+    if(input.preferred_wrist_bend>0&&height>epsilon){
+        // The elbow can move on a circle without changing either bone length,
+        // the shoulder, or the tracked wrist. Keep the authored pole if it is
+        // already comfortable; otherwise rotate it only as far as necessary
+        // toward the hand-facing solution. Axial wrist roll is still handled
+        // by forearm twist below. Near straight arms keep their authored pole.
+        const auto projected=sub(hand_forward,scaled(axis,dot(hand_forward,axis)));
+        const double projection=length(projected);
+        if(projection>epsilon){
+            const auto best=scaled(projected,-1/projection);
+            const double base=(d-x)/b*dot(axis,hand_forward);
+            const double amplitude=height/b*projection;
+            const double requested=std::cos(input.preferred_wrist_bend);
+            const double current=base+amplitude*dot(radial,best);
+            if(amplitude>epsilon&&current<requested-epsilon){
+                const double permitted=std::acos((std::clamp)((requested-base)/amplitude,-1.,1.));
+                const double turn=std::atan2(dot(axis,cross(radial,best)),dot(radial,best));
+                const double amount=std::copysign((std::min)(input.max_wrist_pole_turn,
+                    (std::max)(0.,std::abs(turn)-permitted)),turn);
+                Vector adjusted{};
+                if(!unit(add(scaled(radial,std::cos(amount)),scaled(cross(axis,radial),std::sin(amount))),adjusted))
+                    return Status::numerical_failure;
+                radial=adjusted;candidate.pole=PoleSource::wrist_direction;
+            }
+        }
+    }
     const auto offset=add(scaled(axis,x*scale),scaled(radial,height*scale));
     candidate.shoulder.position=input.shoulder.position;
     candidate.elbow.position=add(input.shoulder.position,offset);
@@ -206,6 +249,24 @@ inline Status solve(Input const& input,Solution& output) noexcept {
     if(!swing(old_upper,new_upper,normal,shoulder,upper_delta)||!swing(old_lower,new_lower,normal,elbow,lower_delta)||
        !quaternion(gears_vr::multiply(upper_delta,shoulder),candidate.shoulder.orientation)||
        !quaternion(gears_vr::multiply(lower_delta,elbow),candidate.elbow.orientation))return Status::numerical_failure;
+    if(input.share_forearm_twist){
+        // A wrist's axial rotation belongs to forearm pronation/supination,
+        // not a corkscrew at the wrist. Retain the original wrist/forearm rest
+        // relation and transfer only twist about the NEW forearm direction.
+        // This leaves all joint positions, bone lengths and the tracked wrist
+        // orientation unchanged. A pure 180-degree swing has no unique twist.
+        Vector forearm_axis{};Quaternion neutral{},delta{};
+        if(!unit(new_lower,forearm_axis)||
+           !quaternion(gears_vr::multiply(candidate.elbow.orientation,
+               gears_vr::multiply(gears_vr::inverse(elbow),wrist)),neutral)||
+           !quaternion(gears_vr::multiply(target,gears_vr::inverse(neutral)),delta))return Status::numerical_failure;
+        const double along=dot({delta.x,delta.y,delta.z},forearm_axis);
+        if(std::hypot(along,delta.w)>epsilon){
+            Quaternion twist{};
+            if(!quaternion({forearm_axis.x*along,forearm_axis.y*along,forearm_axis.z*along,delta.w},twist)||
+               !quaternion(gears_vr::multiply(twist,candidate.elbow.orientation),candidate.elbow.orientation))return Status::numerical_failure;
+        }
+    }
     output=candidate;return Status::solved;
 }
 } // namespace gears_hand_two_bone

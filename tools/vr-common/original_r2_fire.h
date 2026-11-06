@@ -4,9 +4,19 @@
 
 namespace gears_weapon {
 enum class OriginalR2Action : std::uint8_t { press,release };
+// not_ready proves the original action was NOT called. An actual invocation
+// failure remains failed, with the existing owed-release/fault semantics.
+enum class OriginalR2Execution : std::uint8_t {failed,executed,not_ready};
+inline OriginalR2Execution r2_execution(bool value) noexcept {
+    return value?OriginalR2Execution::executed:OriginalR2Execution::failed;
+}
+inline OriginalR2Execution r2_execution(OriginalR2Execution value) noexcept {return value;}
+template<class Execute>bool r2_executed(Execute&& execute,OriginalR2Action action,std::uint64_t controller){
+    return r2_execution(execute(action,controller))==OriginalR2Execution::executed;
+}
 enum class OriginalR2Status : std::uint8_t {
     rejected,baseline,accepted,pressed,released,tapped,suppressed,
-    recovered,blocked,abort_required
+    recovered,blocked,abort_required,deferred
 };
 struct OriginalR2Context {
     std::uint64_t world{},controller{},weapon{};
@@ -75,7 +85,7 @@ public:
         const bool owned=owned_;
         if(owned_){
             if(!release_safe_||!context.release_on_loss_safe||
-               (context.game_r2_held&&!execute(OriginalR2Action::release,controller_))){
+               (context.game_r2_held&&!r2_executed(execute,OriginalR2Action::release,controller_))){
                 faulted_=true;return OriginalR2Status::abort_required;
             }
             owned_=false;
@@ -91,7 +101,7 @@ public:
                              gears_vr::StereoSample const& stereo,
                              OriginalR2Context const& context,
                              std::int64_t now_ns,Execute&& execute,
-                             bool allow_sim=false) {
+                             bool allow_sim=false,bool allow_press_deferral=false) {
         if(faulted_)return OriginalR2Status::abort_required;
         if(owned_&&!context.allow_press)return yield(context,execute);
         const bool valid=gears_vr::controller_frame_matches(frame,stereo,now_ns,allow_sim)&&
@@ -103,7 +113,7 @@ public:
                profile_!=frame.profile_generation||input_epoch_!=frame.input_epoch))){
             if(owned_){
                 if(!same(context)||!release_safe_||!context.release_on_loss_safe||
-                   !execute(OriginalR2Action::release,controller_)){
+                   !r2_executed(execute,OriginalR2Action::release,controller_)){
                     faulted_=true;
                     return OriginalR2Status::abort_required;
                 }
@@ -127,7 +137,7 @@ public:
         if(p<presses_||r<releases_||p-presses_>1||r-releases_>1){
             if(owned_){
                 if(!release_safe_||!context.release_on_loss_safe||
-                   !execute(OriginalR2Action::release,controller_)){
+                   !r2_executed(execute,OriginalR2Action::release,controller_)){
                     faulted_=true;
                     return OriginalR2Status::abort_required;
                 }
@@ -152,7 +162,13 @@ public:
             if(suppressed_)return OriginalR2Status::suppressed;
             if(!context.allow_press)return OriginalR2Status::blocked;
             if(game_held){suppressed_=true;return OriginalR2Status::suppressed;}
-            if(!execute(OriginalR2Action::press,controller_)){
+            const auto execution=r2_execution(execute(OriginalR2Action::press,controller_));
+            if(execution==OriginalR2Execution::not_ready){
+                // Only a distinct DOWN may be retried by the bounded Native
+                // adapter. A missed combined tap never gains a later press.
+                return allow_press_deferral&&down&&!up?OriginalR2Status::deferred:OriginalR2Status::blocked;
+            }
+            if(execution!=OriginalR2Execution::executed){
                 faulted_=true;return OriginalR2Status::abort_required;
             }
             owned_=true;game_held=true;release_safe_=context.release_on_loss_safe;
@@ -161,7 +177,7 @@ public:
         auto release=[&]()->OriginalR2Status {
             if(suppressed_){suppressed_=false;return OriginalR2Status::suppressed;}
             if(!owned_)return OriginalR2Status::accepted;
-            if(!execute(OriginalR2Action::release,controller_)){
+            if(!r2_executed(execute,OriginalR2Action::release,controller_)){
                 faulted_=true;return OriginalR2Status::abort_required;
             }
             owned_=false;game_held=false;return OriginalR2Status::released;
@@ -183,7 +199,7 @@ public:
                 }
             }
         }else result=down?press():release();
-        if(!faulted_)baseline(frame,context);
+        if(!faulted_&&result!=OriginalR2Status::deferred)baseline(frame,context);
         return result;
     }
 };

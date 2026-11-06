@@ -25,7 +25,9 @@ struct FrameTicket {bool enabled{};std::uint64_t id{};gears_vr::StereoSample sam
     bool aiming{};
     // Immutable completed Create parameters for reduced constructor inputs.
     // CPU identity only: owns no feature, resource, GPU work or producer proof.
-    gears_ngx_create::NativeCreateSource ngx_constructor_source{};};
+    gears_ngx_create::NativeCreateSource ngx_constructor_source{};
+    bool flat_menu{}; // Frozen display policy only; never a bridge/action ABI.
+};
 class Lifetime {
     std::mutex mutex;
     std::array<uintptr_t,64> roots{};

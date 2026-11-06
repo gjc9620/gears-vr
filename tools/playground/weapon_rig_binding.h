@@ -62,4 +62,18 @@ inline Status match(gears_weapon_hand::Frame const& hand,gears_rig_tracking::Fra
     }
     return Status::matched;
 }
+// Copy the actual companion already selected by Native for THIS Scene.
+// PG's later GT consumer can still be within100ms after the small transport
+// ring overwrites that row. The authenticated prepared snapshot retains the
+// original bytes/timestamps/producer, not a renewed source or a new input edge.
+inline bool continuity(gears_weapon_hand::Frame const& hand,gears_rig_tracking::Frame const& rig,
+    std::int64_t now,std::uint32_t source,gears_hand_continuity::TrackedInput& out,
+    gears_hand_continuity::Publisher& publisher) noexcept {
+    out={};publisher={};
+    if(match(hand,rig,now,source)!=Status::matched)return false;
+    gears_hand_continuity::TrackedInput selected{rig.controllers,rig.producer.stream,
+        {rig.producer.tracking[0],rig.producer.tracking[1]}};
+    if(!gears_hand_continuity::tracked_input_shape_valid(selected))return false;
+    out=selected;publisher={rig.controller_publisher_pid,rig.controller_publisher_start};return true;
+}
 } // namespace gears_equipment_rig

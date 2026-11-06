@@ -1,5 +1,6 @@
 #pragma once
 #include "pose_math.h"
+#include "weapon_lancer_contact_dimensions.h"
 #include <algorithm>
 #include <array>
 #include <cmath>
@@ -56,4 +57,28 @@ inline bool lancer_feed_world(std::array<float,16> const& mesh,
     out={point,axis};return true;
 }
 
+// Removal starts by pinching the visible installed body, not by satisfying
+// the insertion orientation. This capsule is contact only, never a stroke.
+inline bool lancer_magazine_grab(std::array<float,16> const& mesh,gears_vr::Vector palm,double units,
+    double* distance_metres=nullptr) noexcept {
+    LancerFeedWorld feed{};
+    if(!std::isfinite(units)||units<10||units>500||!gears_vr::finite(palm)||!lancer_feed_world(mesh,feed))return false;
+    const gears_vr::Vector d{palm.x-feed.point_raw.x,palm.y-feed.point_raw.y,palm.z-feed.point_raw.z};
+    const double depth=d.x*feed.outward_axis.x+d.y*feed.outward_axis.y+d.z*feed.outward_axis.z;
+    const double along=std::clamp(depth,0.,lancer_contact::magazine_axis_length*units);
+    const gears_vr::Vector e{d.x-along*feed.outward_axis.x,d.y-along*feed.outward_axis.y,d.z-along*feed.outward_axis.z};
+    const double distance=std::hypot(std::hypot(e.x,e.y),e.z)/units;
+    if(distance_metres)*distance_metres=distance;
+    return distance<=lancer_contact::magazine_radius;
+}
+inline bool lancer_seated_magazine(std::array<float,16> const& mesh,gears_vr::Viewpoint& out) noexcept {
+    LancerFeedWorld feed{};if(!lancer_feed_world(mesh,feed))return false;
+    gears_vr::Matrix axes{};
+    for(unsigned i=0;i<3;++i){
+        const unsigned source=i==0?1:i==1?0:2;
+        const double scale=std::hypot(std::hypot(double(mesh[source*4]),double(mesh[source*4+1])),double(mesh[source*4+2]));
+        for(unsigned j=0;j<3;++j)axes[j][i]=(i==2?-1.:1.)*mesh[source*4+j]/scale;
+    }
+    out={feed.point_raw,gears_vr::ue_angles(axes)};return true;
+}
 } // namespace gears_weapon

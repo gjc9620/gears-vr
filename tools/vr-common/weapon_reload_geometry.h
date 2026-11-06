@@ -5,7 +5,7 @@
 #include <cmath>
 
 namespace gears_weapon {
-enum class GuidePart : std::uint8_t { none,feed_port,bolt,lever_handle,left_shoulder };
+enum class GuidePart : std::uint8_t { none,feed_port,bolt,lever_handle,left_shoulder,magazine_closure };
 
 inline GuidePart reload_guide(ReloadModel const& reload) noexcept {
     switch(reload.stage()){
@@ -17,6 +17,7 @@ inline GuidePart reload_guide(ReloadModel const& reload) noexcept {
             switch(reload.pending_action()){
                 case MechanismAction::bolt:return GuidePart::bolt;
                 case MechanismAction::lever_down_return:return GuidePart::lever_handle;
+                case MechanismAction::magazine_close:return GuidePart::magazine_closure;
                 default:return GuidePart::none;
             }
     }

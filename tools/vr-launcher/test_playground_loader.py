@@ -11,6 +11,35 @@ import stage_portable
 import portable_preflight
 
 
+class GamepadGateRestoreTests(unittest.TestCase):
+    identity=dict(pid=17,creation_time=29,image='owned-game')
+    def race(self):
+        error=OSError('Thread exited');error.winerror=87;return error
+    @patch.object(p.time,'sleep')
+    def test_transient_thread_exit_retries_full_certified_transaction(self,sleep):
+        change=Mock(side_effect=[self.race(),dict(identity=self.identity,state='enabled'),dict(state='original')])
+        result,attempts=p._restore_gamepad_gate(self.identity,change,lambda pid:self.identity)
+        self.assertEqual((result['state'],attempts),('original',2))
+        self.assertEqual([x.args[1] for x in change.call_args_list],['disable','status','disable'])
+    @patch.object(p.time,'sleep')
+    def test_unknown_code_and_reused_process_never_retry_mutation(self,sleep):
+        change=Mock(side_effect=[self.race(),dict(identity=self.identity,state='pending')])
+        with self.assertRaises(RuntimeError):p._restore_gamepad_gate(self.identity,change,lambda pid:self.identity)
+        self.assertEqual(change.call_count,2)
+        change=Mock(side_effect=[self.race(),dict(identity=self.identity,state='enabled')])
+        identities=Mock(side_effect=[self.identity,dict(self.identity,creation_time=30)])
+        with self.assertRaises(RuntimeError):p._restore_gamepad_gate(self.identity,change,identities)
+        self.assertEqual(change.call_count,2)
+    @patch.object(p.time,'sleep')
+    def test_other_errors_fail_closed_and_thread_churn_is_bounded(self,sleep):
+        change=Mock(side_effect=OSError('Access denied'))
+        with self.assertRaises(OSError):p._restore_gamepad_gate(self.identity,change,lambda pid:self.identity)
+        self.assertEqual(change.call_count,1)
+        change=Mock(side_effect=[self.race(),dict(identity=self.identity,state='enabled'),self.race(),dict(identity=self.identity,state='enabled'),self.race()])
+        with self.assertRaises(OSError):p._restore_gamepad_gate(self.identity,change,lambda pid:self.identity)
+        self.assertEqual(change.call_count,5)
+
+
 class PlaygroundArtifactTests(unittest.TestCase):
     def setUp(self):
         self.temp=tempfile.TemporaryDirectory();self.addCleanup(self.temp.cleanup)

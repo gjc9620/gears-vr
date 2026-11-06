@@ -29,7 +29,19 @@ bool reference_matches(gears_vr::ReferenceContinuity const& frozen,uint64_t revi
     return frozen.epoch&&frozen.stable&&!frozen.pending&&!frozen.exhausted&&reference_snapshot(current,stamp)&&stamp==revision&&current.epoch==frozen.epoch;}
 unsigned long long attempts{},published{},rejected{},duplicates{},reads{},read_rejected{};
 unsigned long long core_reads{},core_read_rejected{};
+std::atomic<uint64_t> metadata_owner_attempts{},metadata_owner_age_rejected{},metadata_owner_hard_rejected{};
 int64_t (*clock_ns)()=gears_vr::monotonic_ns;
+// Bounded passive receipts for failed owner admission, including frames that
+// never reach the successful-pose recorder. Export only after the owner drains.
+struct MetadataReject {int64_t at_ns{},scene_qpc{},frequency{};uint64_t published_ns{},publication{},revision{};unsigned stage{},reason{};};
+std::array<MetadataReject,128> metadata_rejects{};
+std::atomic<unsigned> metadata_reject_count{};bool metadata_reject_trace{};
+void note_metadata_reject(core::CoreSnapshot const& copy,uint64_t revision,unsigned stage,unsigned reason) noexcept {
+    if(!metadata_reject_trace||GetCurrentThreadId()!=copy.native.game_thread)return;
+    const auto i=metadata_reject_count.load(std::memory_order_relaxed);if(i>=metadata_rejects.size())return;
+    metadata_rejects[i]={clock_ns(),copy.scene_qpc,copy.qpc_frequency,copy.published_ns,copy.publication_sequence,revision,stage,reason};
+    metadata_reject_count.store(i+1,std::memory_order_release);
+}
 bool changed(){if(value_version==UINT64_MAX){stopped=true;value={};scene_owner_binding={};return false;}++value_version;return true;}
 bool increment(uint64_t& v){if(v==UINT64_MAX){stopped=true;value={};scene_owner_binding={};changed();return false;}++v;return true;}
 bool bump(api::ObservedContinuity& e){return increment(e.stream)&&increment(e.reference)&&increment(e.head_tracking)&&increment(e.hand_tracking[0])&&increment(e.hand_tracking[1]);}
@@ -192,21 +204,22 @@ bool current_copy(core::CoreSnapshot const& copy,uint64_t revision,uint64_t age,
 }
 // Distinct Scene-observation policy, not a successful V1 tracking read.
 // The original current_copy still returns false for expired old tracking. Its
-// classified result supplies the complete hard/cache/reference checks; this
-// new contract separately bounds ONLY the original Scene/publication data.
+// classified result supplies the hard cache/reference checks.
+// V3 uses the Scene as an immutable association, not this Tick's metadata
+// observation. Actual actor/model reads are independently bracketed by the
+// live Tick/C0 owner and bounded to 50 ms; tracking stays bounded to 40 ms.
+// Checking the old render timestamp here drops valid hands on slow frames.
+// This function grants no writer and never makes legacy Core tracking fresh.
 bool metadata_copy_current(core::CoreSnapshot const& copy,uint64_t revision,TickFailure* failure=nullptr){
     if(failure)*failure=TickFailure::hard;
     TickFailure first{};const bool old_first=current_copy(copy,revision,50000000,&first);
     if(!old_first&&first!=TickFailure::source_age_only)return false;
-    const auto at=clock_ns();
-    const bool fresh=copy.published_ns<=uint64_t(INT64_MAX)&&source_fresh(int64_t(copy.published_ns),at,50000000)&&
-        scene_fresh(copy.scene_qpc,copy.qpc_frequency,at,50000000);
+    {std::lock_guard<std::mutex> lock(mutex);
+        if(revision!=value_version||std::memcmp(&copy,&value,sizeof copy))return false;}
     TickFailure last{};const bool old_last=current_copy(copy,revision,50000000,&last);
     if(!old_last&&last!=TickFailure::source_age_only)return false;
-    const auto final=clock_ns();
-    const bool result=fresh&&source_fresh(int64_t(copy.published_ns),final,50000000)&&scene_fresh(copy.scene_qpc,copy.qpc_frequency,final,50000000);
-    if(failure)*failure=result?TickFailure::none:TickFailure::source_age_only;
-    return result;
+    if(failure)*failure=TickFailure::none;
+    return true;
 }
 bool read_metadata_core_revision(CoreReadRequest const& request,core::CoreSnapshot& output,uint64_t& revision) noexcept {
     rt::detail::Call call;output={};revision=0;
@@ -220,18 +233,24 @@ bool read_metadata_core_revision(CoreReadRequest const& request,core::CoreSnapsh
         revision=captured;return true;
     }catch(...){output={};revision=0;return false;}
 }
-bool copy_scene_metadata_owner(binding::Binding& actor,CoreReadRequest& request) noexcept {
+bool copy_scene_metadata_owner(binding::Binding& actor,CoreReadRequest& request,uintptr_t expected_mesh=0) noexcept {
     actor={};request={};try {
         core::CoreSnapshot copy{};binding::Binding owner{};uint64_t revision{};
         {std::lock_guard<std::mutex> lock(mutex);copy=value;owner=scene_owner_binding;revision=value_version;}
+        if(expected_mesh&&owner.mesh.address!=expected_mesh)return false;
+        ++metadata_owner_attempts;
+        TickFailure reason{};
         if(copy.status!=api::Status::ready||!owner.context_valid||owner.scene_invocation!=copy.scene_invocation||
            owner.world_generation!=copy.world_generation||!hand::same(object(owner.world),copy.world)||
-           !hand::same(object(owner.pawn),copy.pawn)||!hand::same(object(owner.mesh),copy.mesh)||
-           !metadata_copy_current(copy,revision))return false;
+           !hand::same(object(owner.pawn),copy.pawn)||!hand::same(object(owner.mesh),copy.mesh)){
+            ++metadata_owner_hard_rejected;note_metadata_reject(copy,revision,1,unsigned(TickFailure::hard));return false;}
+        if(!metadata_copy_current(copy,revision,&reason)){
+            if(reason==TickFailure::source_age_only)++metadata_owner_age_rejected;else ++metadata_owner_hard_rejected;
+            note_metadata_reject(copy,revision,2,unsigned(reason));return false;}
         CoreReadRequest next{};next.native=copy.native;next.world=copy.world;next.pawn=copy.pawn;next.mesh=copy.mesh;
         next.world_generation=copy.world_generation;next.scene_invocation=copy.scene_invocation;next.scene_qpc=copy.scene_qpc;
         next.minimum_publication_sequence=copy.publication_sequence;
-        if(!request_shape(next)||!metadata_copy_current(copy,revision))return false;
+        if(!request_shape(next)||!metadata_copy_current(copy,revision,&reason)){note_metadata_reject(copy,revision,3,unsigned(reason));return false;}
         actor=owner;request=next;return true;
     }catch(...){return false;}
 }
@@ -382,10 +401,17 @@ void stop() noexcept {stopped.store(true);try{std::lock_guard<std::mutex> lock(m
 bool configure(const wchar_t* ini,FILE* file){const auto request=GetPrivateProfileIntW(L"RigTracking",L"enabled",0,ini);if(!request)return !enabled;
 #if defined(GEARS_COVER_BODY_PROTOTYPE) && GEARS_COVER_BODY_PROTOTYPE
     if(request!=1||enabled||stopped.load()||!rt::enabled||!continuous_session||!stereo_xr||!anchor_observer_enabled)return false;
+    // Continuous render/source observations are independent of the old
+    // first32 shoulder-window selector. Keep its legacy opt-in as fallback,
+    // but allow a private combined run to retain current evidence without
+    // requiring that an obsolete shoulder waypoint happens to be visited.
+    const auto shoulder_trace=GetPrivateProfileIntW(L"FullBodyC0Native",L"diagnostic_hand_trace_right_shoulder",0,ini);
+    const auto trace=GetPrivateProfileIntW(L"FullBodyC0Native",L"diagnostic_render_pose_trace",shoulder_trace,ini);
+    if(shoulder_trace>1||trace>1||(trace&&!simulator_operator))return false;metadata_reject_trace=trace==1;
     enabled=true;shared::continuity_enabled=true;if(file)fprintf(file,"rig_tracking_config enabled=1 data_only=1 native_core_without_registration=1 producer_companion_optional=1 native_reference_mirror=1 setters_granted=0 ghw1_certificate=0\n");return true;
 #else
     (void)file;return false;
 #endif
 }
-void summary(FILE* file){std::lock_guard<std::mutex> lock(mutex);fprintf(file,"rig_tracking_enabled=%u rig_tracking_stopped=%u rig_tracking_attempts=%llu rig_tracking_published=%llu rig_tracking_rejected=%llu rig_tracking_duplicates=%llu rig_tracking_reads=%llu rig_tracking_read_rejected=%llu rig_tracking_sequence=%llu rig_tracking_binding_generation=%llu rig_tracking_observed_stream=%llu rig_tracking_observed_reference=%llu rig_tracking_observed_head=%llu rig_tracking_observed_left=%llu rig_tracking_observed_right=%llu rig_tracking_producer_continuity=%u rig_tracking_native_reference_epoch=%llu rig_tracking_native_reference_flags=%u rig_tracking_reference_failed=%u rig_tracking_setters_granted=0 ",unsigned(enabled),unsigned(stopped.load()),attempts,published,rejected,duplicates,reads,read_rejected,static_cast<unsigned long long>(sequence),static_cast<unsigned long long>(binding_generation),static_cast<unsigned long long>(observed.stream),static_cast<unsigned long long>(observed.reference),static_cast<unsigned long long>(observed.head_tracking),static_cast<unsigned long long>(observed.hand_tracking[0]),static_cast<unsigned long long>(observed.hand_tracking[1]),unsigned((value.flags&api::producer_continuity_available)!=0),static_cast<unsigned long long>(reference_epoch.load()),reference_flags.load(),unsigned(reference_failed.load()));fprintf(file,"rig_tracking_core_reads=%llu rig_tracking_core_read_rejected=%llu rig_tracking_cache_revision=%llu ",core_reads,core_read_rejected,static_cast<unsigned long long>(value_version));}
+void summary(FILE* file){fprintf(file,"rig_metadata_owner_attempts=%llu rig_metadata_owner_age_rejected=%llu rig_metadata_owner_hard_rejected=%llu ",metadata_owner_attempts.load(),metadata_owner_age_rejected.load(),metadata_owner_hard_rejected.load());std::lock_guard<std::mutex> lock(mutex);fprintf(file,"rig_tracking_enabled=%u rig_tracking_stopped=%u rig_tracking_attempts=%llu rig_tracking_published=%llu rig_tracking_rejected=%llu rig_tracking_duplicates=%llu rig_tracking_reads=%llu rig_tracking_read_rejected=%llu rig_tracking_sequence=%llu rig_tracking_binding_generation=%llu rig_tracking_observed_stream=%llu rig_tracking_observed_reference=%llu rig_tracking_observed_head=%llu rig_tracking_observed_left=%llu rig_tracking_observed_right=%llu rig_tracking_producer_continuity=%u rig_tracking_native_reference_epoch=%llu rig_tracking_native_reference_flags=%u rig_tracking_reference_failed=%u rig_tracking_setters_granted=0 ",unsigned(enabled),unsigned(stopped.load()),attempts,published,rejected,duplicates,reads,read_rejected,static_cast<unsigned long long>(sequence),static_cast<unsigned long long>(binding_generation),static_cast<unsigned long long>(observed.stream),static_cast<unsigned long long>(observed.reference),static_cast<unsigned long long>(observed.head_tracking),static_cast<unsigned long long>(observed.hand_tracking[0]),static_cast<unsigned long long>(observed.hand_tracking[1]),unsigned((value.flags&api::producer_continuity_available)!=0),static_cast<unsigned long long>(reference_epoch.load()),reference_flags.load(),unsigned(reference_failed.load()));fprintf(file,"rig_tracking_core_reads=%llu rig_tracking_core_read_rejected=%llu rig_tracking_cache_revision=%llu ",core_reads,core_read_rejected,static_cast<unsigned long long>(value_version));}
 } // namespace rig_tracking_live

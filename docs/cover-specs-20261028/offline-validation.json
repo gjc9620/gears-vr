@@ -1,0 +1,25 @@
+{
+  "schema": 1,
+  "validation_type": "offline document consistency, source identity and link checks only",
+  "passed": true,
+  "findings": 19,
+  "implementation_phases": 7,
+  "acceptance_scenarios": 20,
+  "source_files": 23,
+  "source_locations": 63,
+  "additional_source_files": 10,
+  "additional_source_locations": 19,
+  "active_mainline_files_changed_since_v2_snapshot": [
+    "tools/playground/weapon_unified_fire.inl",
+    "tools/playground/weapon_unified_fire.h",
+    "tools/playground/weapon_lancer_r2_native.inl",
+    "tools/playground/weapon_native_lancer_follow.inl"
+  ],
+  "specification_model_cases": 28,
+  "specification_model_assertions": 78,
+  "composition_examples": 3,
+  "local_links_checked": 59,
+  "game_tests_executed": 0,
+  "production_source_tests_executed": 0,
+  "failures": []
+}

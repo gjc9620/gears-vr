@@ -30,6 +30,11 @@ struct Host {
     std::vector<wh::ObjectIdentity> objects;
     bool current_ok{true},inventory_ok{true},attached_ok{true},identify_ok{true},switch_ok{true},sound_ok{true},hold_ok{true};
     bool baseline_blocked{},published_hold{},hold_saw_model{},reenter{},suspend_in_forward{};
+    bool integrated_stow{},stow_ok{true},unholster_ok{true},unholster_changed{};
+    bool prepare_stow_changed{},prepare_stow_ok{true},invalidate_on_prepare{};
+    bool index_enabled{},index_allowed{true};unsigned index_begins{};
+    unsigned prepare_stow_calls{};
+    unsigned stow_calls{},unholster_calls{},idle_unheld_calls{};
     unsigned next_calls{},inventory_calls{},identify_calls{},attached_calls{},switch_calls{},sound_calls{},hold_calls{},clear_calls{},reset_calls{};
     unsigned last_slot{4};er::Status reentrant_status{er::Status::idle};
     Callback invalidate_at{Callback::none},age_at{Callback::none};std::uint64_t delay_ms{};
@@ -99,7 +104,10 @@ struct Host {
     static bool inventory(void* p,wh::Frame const&,gw::EquipmentSnapshot& out) noexcept {
         auto& h=host(p);++h.inventory_calls;h.fault(Callback::inventory);if(!h.inventory_ok)return false;out=h.game;return true;
     }
-    static bool attached(void* p,wh::Frame const&,gw::EquipmentSnapshot const&) noexcept {
+    unsigned held_inventory_calls{};
+    static bool held_inventory(void* p,wh::Frame const& f,gw::EquipmentSnapshot& out) noexcept {
+        ++host(p).held_inventory_calls;return inventory(p,f,out);
+    }    static bool attached(void* p,wh::Frame const&,gw::EquipmentSnapshot const&) noexcept {
         auto& h=host(p);++h.attached_calls;h.fault(Callback::attached);return h.attached_ok;
     }
     static bool identify(void* p,std::uint64_t address,wh::ObjectIdentity& out) noexcept {
@@ -121,7 +129,26 @@ struct Host {
     }
     static void clear_hold(void* p) noexcept {auto& h=host(p);++h.clear_calls;h.published_hold=false;}
     static void reset_input(void* p) noexcept {++host(p).reset_calls;}
-    er::Backend backend(){return {this,clock_ms,clock_ns,current,next,inventory,attached,identify,forward,empty_sound,hold,clear_hold,reset_input};}
+    static bool stow(void* p,wh::Frame const&,gw::EquipmentSnapshot const&) noexcept {
+        auto& h=host(p);++h.stow_calls;if(h.stow_ok)h.attached_ok=false;return h.stow_ok;
+    }
+    static bool unholster(void* p,wh::Frame const&,gw::EquipmentSnapshot const&,bool& changed) noexcept {
+        auto& h=host(p);++h.unholster_calls;changed=h.unholster_changed;
+        if(h.unholster_ok&&changed)h.attached_ok=true;
+        return h.unholster_ok;
+    }
+    static void idle_unheld(void* p,wh::Frame const&,gw::EquipmentSnapshot const&) noexcept {++host(p).idle_unheld_calls;}
+    static bool prepare_stow(void* p,wh::Frame const&,bool& changed) noexcept {
+        auto& h=host(p);++h.prepare_stow_calls;changed=h.prepare_stow_changed;
+        if(h.invalidate_on_prepare)h.current_ok=false;
+        return h.prepare_stow_ok;
+    }
+    static bool begin_index(void* p,wh::Frame const&,gw::EquipmentSnapshot const&,unsigned) noexcept {
+        auto& h=host(p);++h.index_begins;return h.index_allowed;
+    }
+    er::Backend backend(){return {this,clock_ms,clock_ns,current,next,inventory,attached,identify,forward,empty_sound,hold,clear_hold,reset_input,held_inventory,
+        integrated_stow?stow:nullptr,integrated_stow?unholster:nullptr,integrated_stow?idle_unheld:nullptr,
+        integrated_stow?prepare_stow:nullptr,index_enabled?begin_index:nullptr};}
     er::Outcome tick(){return runtime.tick(frame,backend(),model);}
     void baseline(){
         const auto switches=switch_calls,sounds=sound_calls,holds=hold_calls;
@@ -130,6 +157,33 @@ struct Host {
     }
     void start(unsigned slot=2){baseline();press();event(slot);C(tick().status==er::Status::switch_requested);C(switch_calls==1&&model.switch_pending()&&!model.held()&&!published_hold);}
 };
+void index_acquisition_cases(){
+    const auto press=[](Host& h,unsigned slot=2){h.advance();auto& r=h.frame.controllers.hands[1];
+        r.trigger_active=1;r.trigger=1;++r.pressed[vr::control_trigger];h.publish();
+        h.event(slot);h.events.back().kind=gw::EquipmentIntentKind::index_acquire_slot;};
+    for(unsigned slot=2;slot<4;++slot){
+        ++cases;Host h;h.index_enabled=true;h.baseline();press(h,slot);const auto before=h.frame;
+        const auto result=h.tick();C(result.status==er::Status::switch_requested&&result.press_counter==1);
+        C(h.switch_calls==1&&h.index_begins==1&&h.runtime.state().consumed_press==0&&h.runtime.state().consumed_index_press==1);
+        C(!std::memcmp(&before,&h.frame,sizeof(before)));h.selected(slot);C(h.tick().status==er::Status::held);
+        h.advance();++h.frame.controllers.hands[1].released[vr::control_trigger];
+        h.frame.controllers.hands[1].trigger=0;h.publish();h.tick();
+        press(h,slot);C(h.tick().status==er::Status::invalid_event&&h.model.held()&&h.stow_calls==0&&h.switch_calls==1);
+    }
+    for(unsigned bad=0;bad<7;++bad){
+        ++cases;Host h;h.index_enabled=bad!=0;h.index_allowed=bad!=1;h.baseline();press(h,bad==2?0:2);
+        auto& r=h.frame.controllers.hands[1];
+        if(bad==3){r.trigger=0;++r.released[vr::control_trigger];}
+        if(bad==4)--h.events.back().input_sequence;
+        if(bad==5)++h.events.back().input_sequence;
+        if(bad==6)r.grip_flags=3;
+        h.publish();h.tick();C(!h.model.held()&&h.switch_calls==0&&h.hold_calls==0&&!h.runtime.state().future_known);
+    }
+    ++cases;Host empty;empty.index_enabled=true;empty.game.weapon_in_slot[2]=0;empty.baseline();press(empty);
+    C(empty.tick().status==er::Status::empty_slot&&empty.sound_calls==1&&empty.switch_calls==0&&!empty.model.held());
+    empty.event();empty.events.back().kind=gw::EquipmentIntentKind::index_acquire_slot;
+    C(empty.tick().status==er::Status::duplicate_press&&empty.sound_calls==1);
+}
 
 void baseline_cases(){
     ++cases;Host h;h.press();h.event();h.baseline_blocked=true;
@@ -361,13 +415,189 @@ void final_checks(){
     held.advance();C(held.tick().status==er::Status::baseline);C(held.model.held()&&held.published_hold&&held.hold_calls==2);
     ++held.objects[0].registry_index;held.advance();C(held.tick().status==er::Status::identity_mismatch);C(!held.model.held()&&!held.published_hold);
 
+    ++cases;Host animation;animation.baseline();animation.press();animation.event(0);
+    C(animation.tick().status==er::Status::held&&animation.published_hold);
+    // The independent original-animation owner has validated its current hold.
+    // Suspending only inventory input must drop a queued shoulder edge without
+    // clearing/reissuing that existing hold or admitting any action itself.
+    animation.press();animation.event(2);
+    const auto animation_holds=animation.hold_calls,animation_switches=animation.switch_calls,
+        animation_resets=animation.reset_calls,animation_clears=animation.clear_calls;
+    animation.runtime.suspend_input(animation.backend());
+    C(animation.published_hold&&animation.runtime.state().hold_published&&animation.model.held());
+    C(!animation.runtime.state().input_bound&&!animation.runtime.state().baseline_ready&&
+        !animation.runtime.state().future_known&&animation.runtime.state().cursor==UINT64_MAX);
+    C(animation.reset_calls==animation_resets+1&&animation.clear_calls==animation_clears);
+    animation.advance();C(animation.tick().status==er::Status::baseline);
+    animation.advance();C(animation.tick().status==er::Status::idle);
+    C(animation.hold_calls==animation_holds&&animation.switch_calls==animation_switches&&animation.published_hold);
+    // This narrow API cannot make a stale/unowned Frame actionable. Ordinary
+    // currentness failure still revokes the publication through suspend().
+    animation.current_ok=false;animation.advance();C(animation.tick().status==er::Status::unavailable);
+    C(!animation.published_hold&&!animation.runtime.state().hold_published);
+
+    ++cases;Host idle;idle.baseline();idle.press();idle.event(0);C(idle.tick().status==er::Status::held);
+    C(idle.held_inventory_calls==0);idle.advance();C(idle.tick().status==er::Status::idle);
+    C(idle.held_inventory_calls==1&&idle.model.held());
+    idle.advance();idle.press();idle.event(0);(void)idle.tick();C(idle.held_inventory_calls==1);
+
     ++cases;Host reset;reset.start();reset.runtime.reset_after_drain(reset.backend(),reset.model);
     C(!reset.runtime.state().actor_bound&&!reset.runtime.state().pending&&!reset.model.switch_pending());
     C(reset.runtime.state().cursor==UINT64_MAX&&reset.switch_calls==1);reset.advance();reset.baseline();
 }
 }
+void integrated_stow_cases(){
+    const auto held=[](Host& h){h.integrated_stow=true;h.baseline();h.press();h.event(0);C(h.tick().status==er::Status::held);};
+    ++cases;Host parked;held(parked);parked.prepare_stow_changed=true;parked.invalidate_on_prepare=true;
+    parked.press();const auto request=parked.event(0);
+    C(parked.tick().status==er::Status::stow_pending);
+    C(parked.stow_calls==0&&parked.runtime.state().pending_stow&&parked.model.held());
+    C(parked.runtime.state().deadline_ms==request.created_ms+250);
+    parked.current_ok=true;parked.advance();
+    C(parked.tick().status==er::Status::stowed);
+    C(parked.stow_calls==1&&parked.prepare_stow_calls==1&&!parked.model.held());
+    C(!parked.runtime.state().pending);
+    ++cases;Host stale;held(stale);stale.prepare_stow_changed=true;stale.press();stale.event(0);
+    C(stale.tick().status==er::Status::stow_pending);stale.advance(250);
+    C(stale.tick().status==er::Status::switch_timed_out&&stale.stow_calls==0);
+    ++cases;Host foreign;held(foreign);foreign.prepare_stow_changed=true;foreign.press();foreign.event(0);
+    C(foreign.tick().status==er::Status::stow_pending);foreign.advance();foreign.game.weapon_in_slot[0]=0x7770;
+    C(foreign.tick().status==er::Status::switch_interrupted&&foreign.stow_calls==0);
+    ++cases;Host refused;held(refused);refused.prepare_stow_ok=false;refused.press();refused.event(0);
+    C(refused.tick().status==er::Status::stow_failed&&refused.stow_calls==0&&refused.model.held());
+    ++cases;Host h;h.integrated_stow=true;h.baseline();C(h.idle_unheld_calls==1);
+    h.press();h.event(0);C(h.tick().status==er::Status::held);
+    C(h.model.held()&&h.published_hold&&h.unholster_calls==1);
+    h.press();h.event(0);C(h.tick().status==er::Status::stowed);
+    C(h.stow_calls==1&&!h.model.held()&&!h.published_hold&&!h.runtime.state().pending);
+    h.advance();C(h.tick().status==er::Status::idle);C(h.idle_unheld_calls==2);
+    h.unholster_changed=true;h.press();h.event(0);const auto holds=h.hold_calls;
+    C(h.tick().status==er::Status::unholster_pending);
+    C(h.runtime.state().pending_unholster&&!h.model.held()&&!h.published_hold&&h.hold_calls==holds);
+    C(h.tick().status==er::Status::unholster_pending);C(h.hold_calls==holds);
+    h.advance();C(h.tick().status==er::Status::held);
+    C(h.model.held()&&h.published_hold&&!h.runtime.state().pending&&h.hold_calls==holds+1);
+    C(h.stow_calls==1&&h.unholster_calls==2&&h.switch_calls==0);
+
+    ++cases;Host failed;failed.integrated_stow=true;failed.baseline();failed.press();failed.event(0);
+    C(failed.tick().status==er::Status::held);failed.stow_ok=false;failed.press();failed.event(0);
+    C(failed.tick().status==er::Status::stow_failed);C(failed.model.held()&&failed.published_hold);
+
+    ++cases;Host unholster;unholster.integrated_stow=true;unholster.unholster_ok=false;
+    unholster.baseline();unholster.press();unholster.event(0);
+    C(unholster.tick().status==er::Status::unholster_failed);
+    C(!unholster.model.held()&&!unholster.published_hold&&!unholster.runtime.state().pending&&unholster.hold_calls==0);
+
+    ++cases;Host timeout;timeout.integrated_stow=true;timeout.unholster_changed=true;
+    timeout.baseline();timeout.press();timeout.event(0);C(timeout.tick().status==er::Status::unholster_pending);
+    timeout.advance(5000);C(timeout.tick().status==er::Status::switch_timed_out);
+    C(!timeout.model.held()&&!timeout.runtime.state().pending&&timeout.hold_calls==0&&timeout.unholster_calls==1);
+
+    ++cases;Host replaced;replaced.integrated_stow=true;replaced.unholster_changed=true;
+    replaced.baseline();replaced.press();replaced.event(0);C(replaced.tick().status==er::Status::unholster_pending);
+    replaced.advance();replaced.game.weapon_in_slot[0]=0x7770;
+    C(replaced.tick().status==er::Status::switch_interrupted);
+    C(!replaced.model.held()&&!replaced.runtime.state().pending&&replaced.hold_calls==0);
+
+    ++cases;Host boundary;boundary.integrated_stow=true;boundary.unholster_changed=true;
+    boundary.baseline();boundary.press();boundary.event(0);C(boundary.tick().status==er::Status::unholster_pending);
+    const auto deadline=boundary.runtime.state().deadline_ms;boundary.runtime.suspend(boundary.backend());
+    C(boundary.runtime.state().pending_unholster&&boundary.runtime.state().deadline_ms==deadline);
+    boundary.advance();C(boundary.tick().status==er::Status::held);C(boundary.hold_calls==1&&boundary.unholster_calls==1);
+
+    ++cases;Host switched;switched.integrated_stow=true;switched.unholster_changed=true;
+    switched.baseline();switched.press();switched.event(2);
+    C(switched.tick().status==er::Status::switch_pending);
+    C(switched.runtime.state().pending_dispatch&&!switched.model.switch_pending()&&switched.switch_calls==0);
+    C(switched.tick().status==er::Status::switch_pending);C(switched.switch_calls==0);
+    switched.advance();C(switched.tick().status==er::Status::switch_requested);
+    C(!switched.runtime.state().pending_dispatch&&switched.model.switch_pending()&&switched.switch_calls==1);
+    switched.selected();C(switched.tick().status==er::Status::held);
+    C(switched.switch_calls==1&&switched.unholster_calls==1&&switched.hold_calls==1);
+
+    ++cases;Host expired;expired.integrated_stow=true;expired.unholster_changed=true;
+    expired.baseline();expired.press();const auto old=expired.event(2);
+    C(expired.tick().status==er::Status::switch_pending);
+    C(expired.runtime.state().deadline_ms==old.created_ms+250);
+    expired.advance(250);C(expired.tick().status==er::Status::switch_timed_out);
+    C(!expired.runtime.state().pending&&expired.switch_calls==0&&expired.hold_calls==0);
+}
+void blocked_input_cases(){
+    const auto held=[](Host& h){h.start();h.selected();C(h.tick().status==er::Status::held);C(h.model.held());};
+    ++cases;Host unbound;C(!unbound.runtime.observe_input_while_blocked(unbound.frame,unbound.backend()));
+    C(unbound.next_calls==0&&unbound.switch_calls==0);
+    ++cases;Host h;held(h);h.game.can_switch=false;
+    const auto switches=h.switch_calls,holds=h.hold_calls,sounds=h.sound_calls;
+    // A long original motor hold does not pause the sole input observer or
+    // permit any equipment action. Fresh source frames retain original ages.
+    for(unsigned n=0;n<120;++n){h.advance(90);C(h.runtime.observe_input_while_blocked(h.frame,h.backend()));}
+    C(h.switch_calls==switches&&h.hold_calls==holds&&h.sound_calls==sounds&&h.model.held());
+    h.press();const auto original=h.event(3);
+    C(h.runtime.observe_input_while_blocked(h.frame,h.backend()));
+    C(h.runtime.state().future_known&&h.runtime.state().future.created_ms==original.created_ms&&h.switch_calls==switches);
+    const auto reads=h.next_calls;
+    h.advance(100);C(h.runtime.observe_input_while_blocked(h.frame,h.backend()));
+    C(h.next_calls==reads&&h.runtime.state().future.created_ms==original.created_ms);
+    h.game.can_switch=true;C(h.tick().status==er::Status::switch_requested&&h.switch_calls==switches+1&&h.last_slot==3);
+    C(!h.runtime.state().future_known);
+
+    ++cases;Host expired;held(expired);expired.press();expired.event(3);
+    C(expired.runtime.observe_input_while_blocked(expired.frame,expired.backend()));
+    expired.advance(251);C(expired.runtime.observe_input_while_blocked(expired.frame,expired.backend()));
+    C(!expired.runtime.state().future_known);(void)expired.tick();C(expired.switch_calls==1);
+    ++cases;Host boundary;held(boundary);boundary.press();boundary.event(3);
+    C(boundary.runtime.observe_input_while_blocked(boundary.frame,boundary.backend()));
+    ++boundary.frame.controllers.input_epoch;boundary.publish();
+    C(!boundary.runtime.observe_input_while_blocked(boundary.frame,boundary.backend()));
+    C(!boundary.runtime.state().future_known&&!boundary.runtime.state().baseline_ready&&boundary.switch_calls==1);
+    ++cases;Host weapon;held(weapon);weapon.press();weapon.event(3);
+    C(weapon.runtime.observe_input_while_blocked(weapon.frame,weapon.backend()));
+    weapon.frame.weapon.registry_index++;weapon.publish();
+    C(!weapon.runtime.observe_input_while_blocked(weapon.frame,weapon.backend()));
+    C(!weapon.runtime.state().future_known&&weapon.switch_calls==1);
+    ++cases;Host stale;held(stale);stale.ns+=100000001;
+    C(!stale.runtime.observe_input_while_blocked(stale.frame,stale.backend()));
+    C(!stale.runtime.state().baseline_ready&&stale.switch_calls==1);
+    ++cases;Host lost;held(lost);lost.press();lost.event(3);lost.invalidate_at=Callback::next;
+    C(!lost.runtime.observe_input_while_blocked(lost.frame,lost.backend()));
+    C(!lost.runtime.state().future_known&&lost.switch_calls==1);
+    ++cases;Host bad;held(bad);bad.press();bad.event(3);bad.events.back().pawn+=8;
+    C(!bad.runtime.observe_input_while_blocked(bad.frame,bad.backend()));
+    C(!bad.runtime.state().future_known&&bad.switch_calls==1);
+
+    // 6864: the blocked input observer expired and erased the existing hold
+    // before the backward-OFF transition returned to ordinary equipment.
+    // A separate live owner can retain only that hold, never the stale Frame
+    // or deferred input. Its check runs AFTER the failing backend operation.
+    ++cases;Host pinned;held(pinned);pinned.press();pinned.event(3);
+    pinned.age_at=Callback::next;pinned.delay_ms=101;
+    unsigned pin_checks{};const auto clears=pinned.clear_calls,old_switches=pinned.switch_calls;
+    C(!pinned.runtime.observe_input_while_blocked(pinned.frame,pinned.backend(),[&]() noexcept {
+        ++pin_checks;C(pinned.age_at==Callback::none);return true;
+    }));
+    C(pin_checks==1&&pinned.published_hold&&pinned.clear_calls==clears&&pinned.model.held());
+    C(!pinned.runtime.state().future_known&&!pinned.runtime.state().baseline_ready&&pinned.switch_calls==old_switches);
+    pinned.advance();C(pinned.tick().status==er::Status::baseline);
+    C(pinned.published_hold&&pinned.switch_calls==old_switches);
+
+    ++cases;Host released;held(released);released.ns+=100000001;
+    const auto released_clears=released.clear_calls;
+    C(!released.runtime.observe_input_while_blocked(released.frame,released.backend(),[]() noexcept {return false;}));
+    C(!released.published_hold&&released.clear_calls==released_clears+1);
+
+    ++cases;Host changed;held(changed);++changed.frame.controllers.input_epoch;changed.publish();
+    unsigned changed_checks{};
+    C(!changed.runtime.observe_input_while_blocked(changed.frame,changed.backend(),[&]() noexcept {++changed_checks;return true;}));
+    C(changed_checks==0&&!changed.published_hold);
+
+    ++cases;Host malformed;held(malformed);malformed.press();malformed.event(3);malformed.events.back().pawn+=8;
+    unsigned malformed_checks{};
+    C(!malformed.runtime.observe_input_while_blocked(malformed.frame,malformed.backend(),[&]() noexcept {++malformed_checks;return true;}));
+    C(malformed_checks==0&&!malformed.published_hold&&!malformed.runtime.state().future_known);
+}
 int main(){
     baseline_cases();press_cases();future_cases();event_rejections();source_cases();boundary_cases();
-    decision_cases();observe_cases();final_checks();
+    decision_cases();observe_cases();final_checks();integrated_stow_cases();
+    blocked_input_cases();index_acquisition_cases();
     std::printf("WeaponEquipmentRuntimeTest: %u cases / %u checks passed; actual Runtime + model, controlled synchronous PG backend seam; no Game/XR/Native callback or engine acceptance\n",cases,checks);
 }

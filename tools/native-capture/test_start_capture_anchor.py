@@ -631,4 +631,35 @@ class AnchorRegistryRetryTests(unittest.TestCase):
                 for r in fixture.resolvers:r.p.close.assert_called_once()
                 self.assertEqual(start.camera_preparation_transient(error),scenario not in ('identity','message_only'))
 
+class StartupPresentationRetireTests(unittest.TestCase):
+    def exercise(self,result=0,*,legacy=False,remote_error=None):
+        export=types.SimpleNamespace(name=b'GearsCaptureRetireStartupPresentationOwned',address=0x123,forwarder=None)
+        pe=mock.Mock();pe.DIRECTORY_ENTRY_EXPORT.symbols=[] if legacy else [export];pe.OPTIONAL_HEADER.SizeOfImage=0x1000
+        check=mock.Mock();writes=[]
+        def write(handle,address,buffer,size,copied):
+            writes.append(start.c.string_at(buffer,size));copied._obj.value=size;return True
+        with mock.patch.object(start.pefile,'PE',return_value=pe),\
+             mock.patch.object(start.k,'VirtualAllocEx',return_value=0x456) as alloc,\
+             mock.patch.object(start.k,'WriteProcessMemory',side_effect=write),\
+             mock.patch.object(start.k,'VirtualFreeEx',return_value=True) as free,\
+             mock.patch.object(start,'remote_call',return_value=result,side_effect=remote_error) as remote:
+            error=None;returned=None
+            try:returned=start.retire_startup_presentation(9,(0x10000,pathlib.Path('native.dll')),pathlib.Path('native.dll'),12,34,check)
+            except RuntimeError as value:error=value
+            return returned,error,alloc.call_count,free.call_count,remote.call_args,writes,check.call_count
+    def test_owned_retire_finishes_then_frees_argument(self):
+        returned,error,alloc,free,call,writes,checks=self.exercise()
+        self.assertTrue(returned);self.assertIsNone(error);self.assertEqual((alloc,free,checks),(1,1,3))
+        self.assertEqual(call.args,(9,0x10123,0x456));self.assertEqual(call.kwargs,{'timeout_ms':5000})
+        self.assertEqual(writes,[start.owner_argument(12,34)])
+    def test_legacy_native_keeps_original_path(self):
+        returned,error,alloc,free,call,writes,checks=self.exercise(legacy=True)
+        self.assertFalse(returned);self.assertIsNone(error);self.assertEqual((alloc,free,checks),(0,0,0));self.assertIsNone(call);self.assertFalse(writes)
+    def test_known_native_rejection_frees_argument_and_does_not_repeat(self):
+        returned,error,alloc,free,call,writes,checks=self.exercise(result=5023)
+        self.assertIsNone(returned);self.assertIn('no activation',str(error));self.assertEqual((alloc,free,checks),(1,1,2));self.assertEqual(len(writes),1)
+    def test_unknown_remote_completion_retains_argument(self):
+        returned,error,alloc,free,call,writes,checks=self.exercise(remote_error=RuntimeError('Remote call did not finish'))
+        self.assertIsNone(returned);self.assertIn('did not finish',str(error));self.assertEqual((alloc,free,checks),(1,0,2));self.assertEqual(len(writes),1)
+
 if __name__=='__main__':unittest.main()

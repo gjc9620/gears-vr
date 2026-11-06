@@ -33,8 +33,10 @@ struct CoverControllerResult {
 // applied here. Compose physical HMD motion once in the later camera path.
 class CoverControllerAdapter {
 public:
+    explicit CoverControllerAdapter(unsigned control=control_squeeze):control_(control){}
     CoverControllerResult update(ControllerInputFrame const* input,StereoSample const& stereo,
                                 CoverControllerReference reference,std::int64_t now_ns,bool allow_sim=false){
+        if(control_!=control_squeeze&&control_!=control_trigger)return fail(CoverControllerStatus::invalid,stereo,reference);
         if(now_ns<=0||now_ns<last_now_ns_)return fail(CoverControllerStatus::stale,stereo,reference);
         last_now_ns_=now_ns;
         if(!reference.session_epoch||!reference.space_epoch)return fail(CoverControllerStatus::invalid,stereo,reference);
@@ -73,41 +75,45 @@ public:
                 }
             }
         }
-        const auto old_pressed=last_?last_->hands[0].pressed[control_squeeze]:0;
-        const auto old_released=last_?last_->hands[0].released[control_squeeze]:0;
+        const auto old_pressed=last_?last_->hands[0].pressed[control_]:0;
+        const auto old_released=last_?last_->hands[0].released[control_]:0;
         const auto old_sequence=last_?last_->sequence:0;
         const bool was_outage=outage_;
         last_=frame;last_stereo_=stereo;last_reference_=reference;
         auto const& hand=frame.hands[0];
-        if(!controller_pose_usable(hand.grip,hand.grip_flags,hand.grip_active)||hand.squeeze_active!=1)
+        const auto value=control_==control_trigger?hand.trigger:hand.squeeze;
+        const auto active=control_==control_trigger?hand.trigger_active:hand.squeeze_active;
+        if(!controller_pose_usable(hand.grip,hand.grip_flags,hand.grip_active)||active!=1)
             return fail(CoverControllerStatus::untracked,stereo,reference);
 
         if(boundary||needs_baseline_){
             if(!generation_||(!needs_baseline_&&!initial))advance_generation();
             known_=false;down_=true;release_required_=true;needs_baseline_=false;outage_=false;
-            zero_neutral_allowed_=hand.squeeze==0.f;
+            zero_neutral_allowed_=value==0.f;
             // Pinned producer: active value exactly zero is released in BOTH
             // hysteresis branches. This is an exact neutral witness, not a
             // second analog threshold. Held/band baselines remain unarmed.
-            if(initial&&!was_outage&&hand.squeeze==0.f){
+            if(initial&&!was_outage&&value==0.f){
                 known_=true;down_=false;release_required_=false;
                 return save(frame,reference,CoverControllerStatus::baseline,true);
             }
             return save(frame,reference,CoverControllerStatus::baseline,false);
         }
-        const auto pressed=hand.pressed[control_squeeze],released=hand.released[control_squeeze];
+        const auto pressed=hand.pressed[control_],released=hand.released[control_];
         if(pressed<old_pressed||released<old_released||pressed-old_pressed>1||released-old_released>1||
            (pressed!=old_pressed&&released!=old_released))return ambiguous(frame,reference);
         const bool press=pressed!=old_pressed,release=released!=old_released;
         if((press&&known_&&down_)||(release&&known_&&!down_))return ambiguous(frame,reference);
         if(press){
-            if(hand.last_squeeze_press_sequence<=old_sequence||
-               !controller_pose_usable(hand.last_squeeze_press_grip,hand.last_squeeze_press_flags,1))
+            if(control_==control_squeeze&&(hand.last_squeeze_press_sequence<=old_sequence||
+               !controller_pose_usable(hand.last_squeeze_press_grip,hand.last_squeeze_press_flags,1)))
                 return ambiguous(frame,reference);
+            // Pinch is its fresh trigger edge plus this exact tracked frame.
+            // The part consumer must still certify current physical contact.
             known_=true;down_=true;
         }else if(release){
             known_=true;down_=false;release_required_=false;
-        }else if(!known_&&zero_neutral_allowed_&&hand.squeeze==0.f){
+        }else if(!known_&&zero_neutral_allowed_&&value==0.f){
             known_=true;down_=false;release_required_=false;
         }
         if(!known_||release_required_)return save(frame,reference,CoverControllerStatus::needs_release,false);
@@ -169,9 +175,10 @@ private:
     }
     CoverControllerResult ambiguous(ControllerInputFrame const& frame,CoverControllerReference reference){
         advance_generation();known_=false;down_=true;release_required_=true;
-        zero_neutral_allowed_=frame.hands[0].squeeze==0.f;
+        zero_neutral_allowed_=(control_==control_trigger?frame.hands[0].trigger:frame.hands[0].squeeze)==0.f;
         return save(frame,reference,CoverControllerStatus::ambiguous,false);
     }
+    unsigned control_{control_squeeze};
     std::int64_t last_now_ns_=0;
     std::uint64_t generation_=0;
     bool outage_=false,needs_baseline_=false,known_=false,down_=true,release_required_=true;

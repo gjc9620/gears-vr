@@ -1,5 +1,6 @@
 #include "weapon_support_grip.h"
 #include "weapon_hand_owner_adapter.h"
+#include "weapon_lancer_contact_route.h"
 #include <cassert>
 #include <cstdio>
 #include <cstdlib>
@@ -41,11 +42,14 @@ struct Host {
     }
     Proposal prepare(bool down){
         auto& hand=frame.controllers.hands[0];
-        if(down&&!previous_down){++press;++hand.pressed[gears_vr::control_squeeze];
-            hand.last_squeeze_press_grip=hand.grip;hand.last_squeeze_press_flags=hand.grip_flags;
-            hand.last_squeeze_press_sequence=frame.controllers.sequence;}
-        if(!down&&previous_down)++hand.released[gears_vr::control_squeeze];
-        hand.squeeze=down?1.f:0.f;previous_down=down;
+        const auto control=left_control(frame);
+        if(down&&!previous_down){++press;++hand.pressed[control];
+            if(control==gears_vr::control_squeeze){hand.last_squeeze_press_grip=hand.grip;
+                hand.last_squeeze_press_flags=hand.grip_flags;hand.last_squeeze_press_sequence=frame.controllers.sequence;}}
+        if(!down&&previous_down)++hand.released[control];
+        if(control==gears_vr::control_trigger){hand.trigger_active=1;hand.trigger=down?1.f:0.f;}
+        else hand.squeeze=down?1.f:0.f;
+        previous_down=down;
         frame.left_tracked=gears_vr::controller_pose_usable(hand.grip,hand.grip_flags,hand.grip_active)?1u:0u;
         frame.left_grip_down=down&&frame.left_tracked?1u:0u;frame.press_token=press;
         Proposal p{};assert(participant.prepare(frame,game,p)==Reply::accepted);assert(proposal_valid(p,frame));return p;
@@ -53,6 +57,7 @@ struct Host {
     Decision arbitrate(Proposal const& p,bool down,std::uint64_t cover=0){
         gears_vr::LeftHandInteractionFrame request{};request.lifecycle=frame.key.lifecycle;
         request.frame=frame.key.frame;request.press_token=press;request.context_valid=true;
+        request.now_ns=frame.now_ns;
         auto const& hand=frame.controllers.hands[0];
         request.tracked=gears_vr::controller_pose_usable(hand.grip,hand.grip_flags,hand.grip_active);
         request.grip_down=down&&request.tracked;append_weapon_proposal(p,request);
@@ -70,6 +75,83 @@ int main(){
     _set_error_mode(_OUT_TO_STDERR);_set_abort_behavior(0,_WRITE_ABORT_MSG|_CALL_REPORTFAULT);
 #endif
     unsigned cases{};
+    for(unsigned control=0;control<2;++control){
+        ++cases;Host h;h.frame.interaction_control=control;assert(h.step(false)==Grip::single);
+        h.game.magazine_observation_pending=true;
+        auto p=h.prepare(true);auto d=h.arbitrate(p,true);
+        assert(d.status==DecisionStatus::no_candidate&&!d.release_required);
+        assert(h.participant.commit(h.frame,p,d)==Reply::accepted);h.next();
+        //46860 token2: a current KNOWN fore-end contact after the pending
+        // installed-mag observation must not consume the held input as a miss.
+        h.game.magazine_observation_pending=false;p=h.prepare(true);d=h.arbitrate(p,true);
+        assert(p.support&&!p.magazine&&!p.ammo&&!p.magazine_observation_pending);
+        assert(d.new_grant&&d.lease.kind==LeaseKind::support&&d.press_token==1);
+        assert(h.participant.commit(h.frame,p,d)==Reply::accepted);
+        assert(h.participant.snapshot().grip==Grip::two);h.next();
+        assert(h.step(true)==Grip::two);assert(h.step(false)==Grip::single);
+    }
+    for(unsigned control=0;control<2;++control){
+        ++cases;Host h;h.frame.interaction_control=control;
+        assert(h.step(false)==Grip::single);h.game.request_magazine=true;
+        auto p=h.prepare(true);auto d=h.arbitrate(p,true);
+        assert(d.new_grant&&d.lease.kind==LeaseKind::magazine);
+        assert(h.participant.commit(h.frame,p,d)==Reply::accepted);
+        const auto held=d.lease;const auto granted=h.frame.key.frame;h.next();
+        h.game.request_magazine=false;h.game.magazine_observation_pending=true;
+        //68424: installed-mag geometry is unknown but the existing C grasp
+        // must survive, without proposing any new contact or borrowing a pose.
+        for(unsigned i=0;i<60;++i){
+            h.game.object_incumbents={};
+            assert(gears_weapon::retain_lancer_part_incumbent(h.frame,held,granted,true,h.game.object_incumbents));
+            p=h.prepare(true);d=h.arbitrate(p,true);
+            assert(d.status==DecisionStatus::retained&&same(d.lease,held)&&!d.new_grant);
+            assert(!p.magazine_observation_pending&&!p.magazine&&!p.ammo);
+            assert(h.participant.commit(h.frame,p,d)==Reply::accepted);h.next();
+        }
+        for(unsigned invalid=0;invalid<7;++invalid){
+            auto f=h.frame;auto lease=held;std::array<Lease,2> owners{};
+            bool identity=true;std::uint64_t grant_frame=granted;
+            switch(invalid){
+            case 0:f.left_grip_down=0;break;
+            case 1:f.left_grip_known=0;break;
+            case 2:f.left_tracked=0;break;
+            case 3:identity=false;break;
+            case 4:++f.key.lifecycle;break;
+            case 5:++f.press_token;break;
+            case 6:grant_frame=f.key.frame;break;
+            }
+            assert(!gears_weapon::retain_lancer_part_incumbent(f,lease,grant_frame,identity,owners));
+            assert(owners[0].kind==LeaseKind::none&&owners[1].kind==LeaseKind::none);
+        }
+        h.game.object_incumbents={};assert(h.step(false)==Grip::single);
+        h.frame.left_grip_down=1; // Exercise a genuine occupied-owner conflict.
+        auto owners=std::array<Lease,2>{Lease{LeaseKind::ammo,0,h.frame.key.lifecycle,71},
+            Lease{LeaseKind::support,0,h.frame.key.lifecycle,72}};
+        const auto before=owners;
+        assert(!gears_weapon::retain_lancer_part_incumbent(h.frame,held,granted,true,owners));
+        assert(same(owners[0],before[0])&&same(owners[1],before[1]));
+    }
+    for(unsigned control=0;control<2;++control){
+        ++cases;Host h;h.frame.interaction_control=control;
+        h.game.magazine_observation_pending=true; // Unknown pose while released cannot reserve a press.
+        assert(h.step(false)==Grip::single);
+        h.game.magazine_observation_pending=true;
+        auto p=h.prepare(true);assert(p.magazine_observation_pending&&!p.support&&!p.magazine&&!p.ammo);
+        auto d=h.arbitrate(p,true);assert(d.status==DecisionStatus::no_candidate&&!d.release_required);
+        assert(h.participant.commit(h.frame,p,d)==Reply::accepted);h.next();
+        h.game.magazine_observation_pending=false;h.game.request_magazine=true;
+        p=h.prepare(true);d=h.arbitrate(p,true);
+        assert(d.status==DecisionStatus::granted&&d.lease.kind==LeaseKind::magazine&&d.press_token==1);
+        assert(h.participant.commit(h.frame,p,d)==Reply::accepted);
+    }
+    {++cases;Host h;assert(h.step(false)==Grip::single);
+        h.game.magazine_observation_pending=true;auto p=h.prepare(true);auto d=h.arbitrate(p,true);
+        assert(h.participant.commit(h.frame,p,d)==Reply::accepted);h.next();
+        h.frame.now_ns+=150000000;h.frame.stereo.received_ns+=150000000;h.next();
+        h.game.magazine_observation_pending=false;h.game.request_magazine=true;
+        p=h.prepare(true);d=h.arbitrate(p,true);assert(d.status==DecisionStatus::needs_release&&d.release_required);
+        assert(h.participant.commit(h.frame,p,d)==Reply::accepted);
+    }
     {++cases;Host h;assert(h.step(false)==Grip::single);assert(h.step(true)==Grip::two);
         auto s=h.participant.snapshot();assert(s.left_hand.kind==LeaseKind::support&&s.press_token==1);
         // Main hand is a toggled equipment hold: no right squeeze is required.
@@ -83,8 +165,8 @@ int main(){
         assert(h.step(true)==Grip::single);assert(h.step(false)==Grip::single&&h.step(true)==Grip::two);}
     {++cases;Host h;assert(h.step(false)==Grip::single&&h.step(true)==Grip::two);
         h.frame.controllers.hands[0].grip.position.x=.17;assert(h.step(true)==Grip::two);
-        h.frame.controllers.hands[0].grip.position.x=.26;assert(h.step(true)==Grip::single);
-        h.frame.controllers.hands[0].grip.position.x=0;assert(h.step(true)==Grip::single);
+        h.frame.controllers.hands[0].grip.position.x=.26;assert(h.step(true)==Grip::two);
+        h.frame.controllers.hands[0].grip.position.x=0;assert(h.step(true)==Grip::two);
         assert(h.step(false)==Grip::single&&h.step(true)==Grip::two);}
     {++cases;Host h;assert(h.step(false)==Grip::single);assert(h.step(true,99)==Grip::single);
         assert(h.participant.snapshot().left_hand.kind==LeaseKind::cover);
@@ -154,5 +236,16 @@ int main(){
             native.incumbents[1].kind==gears_vr::LeftHandInteraction::ammo);
         const auto d=h.owner.update(native);assert(d.status==gears_vr::LeftHandInteractionStatus::incumbent_conflict&&
             d.lease.kind==gears_vr::LeftHandInteraction::none);}
+    {++cases;Host h;h.frame.interaction_control=unsigned(gears_vr::LeftInteractionControl::pinch);
+        assert(h.step(false)==Grip::single&&h.step(true)==Grip::two);
+        const auto lease=h.participant.snapshot().left_hand;
+        h.frame.controllers.hands[0].grip.position.x=.35;
+        assert(h.step(true)==Grip::two&&same(h.participant.snapshot().left_hand,lease));
+        assert(h.step(false)==Grip::single);
+        assert(h.step(true)==Grip::single); // fresh far-away press cannot acquire
+        h.frame.controllers.hands[0].grip.position.x=0;
+        assert(h.step(true)==Grip::single); // hovering while held supplies no new edge
+        assert(h.step(false)==Grip::single&&h.step(true)==Grip::two);
+    }
     std::printf("WeaponSupportGripTest passed cases=%u; local host/shared owner, no runtime transport or mount acceptance\n",cases);
 }

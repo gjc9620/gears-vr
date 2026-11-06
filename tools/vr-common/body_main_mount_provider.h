@@ -12,7 +12,9 @@ namespace gears_body_main_mount_provider {
 namespace mount=gears_weapon_main_mount_provider;
 namespace hand=gears_weapon_hand;
 namespace rig=gears_rig_tracking;
-inline constexpr std::uint32_t version=2;
+inline constexpr std::uint32_t version=5; // Explicit visual hold kind; old Rig/Hand/main-mount V1 stays unchanged.
+enum class HoldKind:std::uint32_t {unknown,firearm,frag};
+inline bool hold_kind_valid(HoldKind k) noexcept {return k==HoldKind::firearm||k==HoldKind::frag;}
 inline constexpr std::uint64_t tracking_age_ns=40000000;
 inline constexpr std::uint64_t scene_age_ns=50000000;
 inline constexpr std::uint64_t equipment_age_ns=50000000;
@@ -40,9 +42,11 @@ struct Basis {
 struct Source {
     // Historical association is byte-for-byte the genuine original Scene.
     // Its original tracking may be stale for V1, which must still reject it.
-    // V2 separately bounds actual GT metadata, tracking/capture and equipment
-    // at 50/40/50 ms. Original Scene must be fresh at metadata BEGIN, remains
-    // unchanged, and must still match the live Native cache/reference/ticket.
+    // V3 bounds actual GT metadata, tracking/capture and equipment at 50/40/50
+    // ms. Original Scene is an association, not a current pose or metadata
+    // sample: its bytes/clocks stay unchanged and must match Native's live
+    // cache/reference/ticket. Current actor/model reads authenticate the Tick.
+    // This deliberately uses a new export/ABI; V2 required a fresh old Scene.
     rig::Frame original_scene{};
     std::uint64_t scene_ticket{},scene_cache_revision{};
     std::int64_t metadata_begin_ns{},metadata_end_ns{};
@@ -94,6 +98,9 @@ inline bool same(SourceKey const& a,SourceKey const& b) noexcept {
 }
 struct Response {
     std::uint32_t size{sizeof(Response)},abi_version{version};
+    // Read-only visual context, not firearm eligibility or throw permission.
+    // PG must admit Frag's exact class/mesh/package before selecting frag.
+    HoldKind hold_kind{};std::uint32_t reserved{};
     std::uint64_t query_id{},hand_lifecycle{},action_generation{};
     SourceKey source{};
     // Actual query-local PG observation times, not timestamps copied from the
@@ -130,7 +137,7 @@ inline bool same(Registration const& a,Registration const& b) noexcept {
         a.context==b.context&&a.prepare==b.prepare;
 }
 using Attach=hand::Reply(GEARS_BODY_MAIN_MOUNT_CALL*)(Registration const*,hand::RegistrationResult*) noexcept;
-inline constexpr char attach_export[]="GearsVrAttachBodyMainMountProviderV2";
+inline constexpr char attach_export[]="GearsVrAttachBodyMainMountProviderV3";
 #undef GEARS_BODY_MAIN_MOUNT_CALL
 
 // Same active Hand parent context, cookie, pinned image, callback counts,
@@ -144,12 +151,12 @@ inline constexpr char attach_export[]="GearsVrAttachBodyMainMountProviderV2";
 // Non-ready response has no payload beyond the default size/version headers.
 // Malformed reply/request mutation/reentry/fault uses the existing parent fault
 // path. A newer packet may never replace this source during the same C0.
-static_assert(sizeof(void*)==8&&sizeof(Tracking)==1792&&sizeof(Basis)==256&&sizeof(Source)==3904);
-static_assert(sizeof(Request)==3960&&sizeof(SourceKey)==176&&sizeof(Response)==728&&sizeof(Registration)==48);
+static_assert(sizeof(void*)==8&&sizeof(Tracking)==1856&&sizeof(Basis)==256&&sizeof(Source)==4000);
+static_assert(sizeof(Request)==4056&&sizeof(SourceKey)==176&&sizeof(Response)==736&&sizeof(Registration)==48);
 static_assert(alignof(Tracking)==8&&alignof(Basis)==8&&alignof(Source)==8&&alignof(Request)==8&&alignof(Response)==8);
 static_assert(offsetof(Registration,hand_cookie)==16&&offsetof(Registration,context)==32&&offsetof(Registration,prepare)==40);
 static_assert(offsetof(Request,query_id)==8&&offsetof(Request,source)==56);
-static_assert(offsetof(Response,query_id)==8&&offsetof(Response,source)==32);
+static_assert(offsetof(Response,query_id)==16&&offsetof(Response,source)==40);
 static_assert(std::is_standard_layout_v<Tracking>&&std::is_trivially_copyable_v<Tracking>);
 static_assert(std::is_standard_layout_v<Basis>&&std::is_trivially_copyable_v<Basis>);
 static_assert(std::is_standard_layout_v<Source>&&std::is_trivially_copyable_v<Source>);

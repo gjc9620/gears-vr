@@ -6,6 +6,7 @@ struct AuxFake {
     unsigned pins{},unpins{},pres{},returns{},unwinds{},invalidations{},violations{},originals{};
     std::uint64_t rax{};c::Invocation observed_pre{},observed_end{};c::UnwindReason reason{};
     HANDLE entered{},resume{};unsigned block{};w::Reply reentered{};
+    bool submit_hud{},hud_accepted{};gears_weapon_hud_receipt::Receipt hud{};
     static bool pin(void* p,w::Registration const&,w::ModulePin& out) noexcept {auto& f=*static_cast<AuxFake*>(p);++f.pins;out={0x8800,0x8800};return true;}
     static bool unpin(void* p,w::ModulePin) noexcept {auto& f=*static_cast<AuxFake*>(p);++f.unpins;
         if(test_thread!=worker||f.broker->pending_callbacks()||f.broker->pending_transactions()||f.broker->pending_aux_scopes()||f.broker->aux_debt())++f.violations;return f.unpin_ok;}
@@ -24,6 +25,7 @@ struct AuxFake {
         if(!f.broker->pending_aux_scopes()||!f.broker->pending_callbacks()||reinterpret_cast<std::uintptr_t>(state)%8)++f.violations;
         const c::State empty{};if(std::memcmp(&empty,state,sizeof(empty)))++f.violations;
         std::memcpy(state->storage.data(),&invocation->call_id,sizeof(invocation->call_id));
+        if(f.submit_hud){f.hud.call=*invocation;f.hud.root_frame=invocation->caller_frame;f.hud_accepted=f.broker->submit_hud_query(f.hud);}
         if(f.fault==AuxFault::pre_input)++const_cast<c::Invocation*>(invocation)->callee;
         if(f.fault==AuxFault::reenter){w::CallScope nested{};if(f.broker->begin_call(1,2,3,4,nested))++f.violations;f.reentered=f.broker->unregister(invocation->hand_cookie);}
         f.barrier(1);if(f.fault==AuxFault::pre||f.fault==AuxFault::pre_unwind)RaiseException(0xe042c040,0,0,nullptr);
@@ -167,4 +169,23 @@ void auxiliary_stop_race_tests(){
     C(f.broker.pending_aux_scopes()==1&&!f.broker.pending_callbacks()&&!f.broker.pending_transactions()&&f.fake.unpins==0);
     f.broker.finish_call(scope,true,0);f.finish();
 }
-void auxiliary_tests(){auxiliary_registration_tests();auxiliary_normal_nested_tests();auxiliary_drain_retired_tests();auxiliary_fault_tests();auxiliary_scope_validation_tests();auxiliary_stop_race_tests();}
+void hud_single_hand_test(){
+    AuxFixture f;f.attach();Fixture shape;shape.result.cookie=f.result.cookie;
+    auto frame=shape.frame();frame.weapon={0x5000,0x1000,0x9000,5,6,0,1};frame.left_grip_down=0;
+    w::Proposal proposal{};C(f.broker.prepare(frame,proposal)==w::Reply::accepted);
+    auto decision=shape.decision(frame,proposal,false);
+    C(f.broker.commit(frame,proposal,decision)==w::Reply::accepted&&!f.broker.authorized());
+    f.fake.submit_hud=true;f.fake.hud.source=frame;f.fake.hud.hold_generation=1;
+    f.fake.hud.applied_ns=frame.now_ns;f.fake.hud.end={100,0,0};f.fake.hud.direction={1,0,0};
+    w::CallScope call{};C(f.broker.begin_call(frame.weapon.address,0x8000,0,0x9000,call));
+    C(f.fake.hud_accepted);
+    gears_weapon_hud_receipt::Receipt output{};
+    C(!f.broker.take_hud_query(0x8000,frame.controller.address,frame.pawn.address,output));
+    f.broker.finish_call(call,true,0);
+    C(f.broker.take_hud_query(0x8000,frame.controller.address,frame.pawn.address,output));
+    C(!f.broker.take_hud_query(0x8000,frame.controller.address,frame.pawn.address,output));
+    C(f.broker.invalidate(w::InvalidateReason::input_lost)==w::Reply::accepted);
+    w::CallScope invalid{};C(f.broker.begin_call(frame.weapon.address,0x8000,0,0x9000,invalid));
+    C(!f.fake.hud_accepted);f.broker.finish_call(invalid,true,0);f.finish();
+}
+void auxiliary_tests(){hud_single_hand_test();auxiliary_registration_tests();auxiliary_normal_nested_tests();auxiliary_drain_retired_tests();auxiliary_fault_tests();auxiliary_scope_validation_tests();auxiliary_stop_race_tests();}

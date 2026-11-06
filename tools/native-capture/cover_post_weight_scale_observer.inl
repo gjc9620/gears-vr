@@ -142,7 +142,10 @@ Reject sample(Compose const& frame,Call const& call,Record& r,bool realtime=fals
         memcmp(r.before.matrices.data(),r.compute.matrices.data(),r.matrix_count*64))return Reject::changed;
     if(r.before.scale.count)return Reject::scale_nonempty;
     if(r.before.has_scale_word)return Reject::scale_flag;
-    if(r.weight.weight_bits!=0x3f800000u)return Reject::alpha;
+    // Historical read-only captures remain restricted to the exact full-weight
+    // branch. Live ownership must also handle the normal fractional transition.
+    if(realtime?!gears_body_c0_arm_alpha::normal_blend_weight(r.weight.weight_bits):
+        r.weight.weight_bits!=0x3f800000u)return Reject::alpha;
     return Reject::okay;
 }
 void observe(Call const& call,pose::CallPacket const& packet,bool returned) noexcept {

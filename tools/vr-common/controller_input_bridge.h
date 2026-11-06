@@ -12,8 +12,8 @@ inline std::uint64_t controller_process_start(HANDLE process) noexcept {
     return (std::uint64_t(created.dwHighDateTime)<<32)|created.dwLowDateTime;
 }
 struct ControllerInputPacket {
-    static constexpr std::uint32_t magic_value=0x47564333; // GVC3
-    static constexpr std::uint32_t version_value=3;
+    static constexpr std::uint32_t magic_value=0x47564334; // GVC4: menu and display routing hint
+    static constexpr std::uint32_t version_value=4;
     static constexpr unsigned capacity=8;
     std::uint32_t magic{magic_value},version{version_value},size{sizeof(ControllerInputPacket)},game_pid{};
     std::uint64_t game_start{},publisher_pid{},publisher_start{};
@@ -24,6 +24,16 @@ struct ControllerInputPacket {
 static_assert(std::is_standard_layout_v<ControllerInputPacket> &&
               std::is_trivially_copyable_v<ControllerInputPacket>);
 static_assert(offsetof(ControllerInputPacket,frames)%alignof(ControllerInputFrame)==0);
+
+// Receiver-local explanation only. Never serialized into GVC4 or used to
+// admit a frame that read_matching otherwise rejects.
+struct ControllerMatchingRead {
+    enum class Code : unsigned {accepted,not_open,publisher_exited,mutex_unavailable,
+        header_invalid,publisher_changed,not_published_yet,evicted,frame_mismatch};
+    Code code{Code::not_open};
+    std::uint64_t latest_sequence{},selected_sequence{};
+    std::int64_t selected_sync_ns{};
+};
 
 // Independent from StereoBridge v4. A receiver asks for the exact frame key
 // frozen by its stereo consumer; a newer hand sample can never be substituted.
@@ -44,12 +54,16 @@ class ControllerInputBridge {
             packet.qpc_frequency==frequency.QuadPart;
     }
     static void name(wchar_t (&out)[128],DWORD pid,std::uint64_t created,bool lock) noexcept {
-        swprintf_s(out,lock?L"Local\\GearsVR.ControllerInputLock.v3.%lu.%llu":
-                           L"Local\\GearsVR.ControllerInput.v3.%lu.%llu",
+        swprintf_s(out,lock?L"Local\\GearsVR.ControllerInputLock.v4.%lu.%llu":
+                           L"Local\\GearsVR.ControllerInput.v4.%lu.%llu",
                    pid,static_cast<unsigned long long>(created));
     }
-    static bool lock_now(HANDLE mutex) noexcept {
-        return mutex&&WaitForSingleObject(mutex,0)==WAIT_OBJECT_0;
+    static bool lock_now(HANDLE mutex,bool* contended=nullptr) noexcept {
+        if(contended)*contended=false;if(!mutex)return false;
+        const auto result=WaitForSingleObject(mutex,0);
+        if(result==WAIT_ABANDONED){ReleaseMutex(mutex);return false;}
+        if(contended)*contended=result==WAIT_TIMEOUT;
+        return result==WAIT_OBJECT_0;
     }
 public:
     ControllerInputBridge()=default;
@@ -111,17 +125,26 @@ public:
         ReleaseMutex(mutex_);return result;
     }
     bool read_matching(StereoSample const& stereo,std::int64_t now_ns,
-                       ControllerInputFrame& out,bool allow_sim=false) noexcept {
-        if(producer_||!data_||!publisher_process_||
-           WaitForSingleObject(publisher_process_,0)!=WAIT_TIMEOUT||!lock_now(mutex_))return false;
+                       ControllerInputFrame& out,bool allow_sim=false,bool* contended=nullptr,
+                       ControllerMatchingRead* diagnostic=nullptr) noexcept {
+        ControllerMatchingRead local{};
+        auto finish=[&](ControllerMatchingRead::Code code){local.code=code;if(diagnostic)*diagnostic=local;return code==ControllerMatchingRead::Code::accepted;};
+        if(contended)*contended=false;
+        using Code=ControllerMatchingRead::Code;
+        if(producer_||!data_||!publisher_process_)return finish(Code::not_open);
+        if(WaitForSingleObject(publisher_process_,0)!=WAIT_TIMEOUT)return finish(Code::publisher_exited);
+        if(!lock_now(mutex_,contended))return finish(Code::mutex_unavailable);
         ControllerInputPacket packet{};
         std::memcpy(&packet,data_,sizeof(packet));ReleaseMutex(mutex_);
-        if(!header_valid(packet)||controller_process_start(publisher_process_)!=packet.publisher_start||
-           stereo.sequence>packet.latest_sequence||
-           packet.latest_sequence-stereo.sequence>=ControllerInputPacket::capacity)return false;
+        if(!header_valid(packet))return finish(Code::header_invalid);
+        if(controller_process_start(publisher_process_)!=packet.publisher_start)return finish(Code::publisher_changed);
+        local.latest_sequence=packet.latest_sequence;
+        if(stereo.sequence>packet.latest_sequence)return finish(Code::not_published_yet);
+        if(packet.latest_sequence-stereo.sequence>=ControllerInputPacket::capacity)return finish(Code::evicted);
         auto const& selected=packet.frames[stereo.sequence%ControllerInputPacket::capacity];
-        if(!controller_frame_matches(selected,stereo,now_ns,allow_sim))return false;
-        out=selected;return true;
+        local.selected_sequence=selected.sequence;local.selected_sync_ns=selected.sync_ns;
+        if(!controller_frame_matches(selected,stereo,now_ns,allow_sim))return finish(Code::frame_mismatch);
+        out=selected;return finish(Code::accepted);
     }
     // Read-only identity of the same retained process handle authenticated by
     // read_matching. No packet layout, mapping or publication behavior changes.

@@ -13,8 +13,13 @@
 #include <share.h>
 #include <cmath>
 #include "MinHook.h"
+#include <Xinput.h>
+#include <intrin.h>
+#include "../vr-common/vr_gamepad_input.h"
+#include "../vr-common/current_tracking_reader.h"
 #include "../vr-common/pose_bridge.h"
 #include "../vr-common/stereo_bridge.h"
+#include "../vr-common/current_tracking_reader.h"
 #include "../vr-common/controller_input_bridge.h"
 #include "../vr-common/body_slots.h"
 #include "../vr-common/weapon_input_router.h"
@@ -30,6 +35,7 @@
 #include "../vr-common/gpu_mirror.h"
 #endif
 #include "../vr-common/stereo_ticket_store.h"
+#include "../vr-common/menu_display_state.h"
 #include "render_cost.h"
 #include "atomic_status_file.h"
 #include "../vr-common/support_startup_trace.h"
@@ -42,6 +48,7 @@ gears_support::Recorder support_diagnostics;
 #include "resource_resize_probe.h"
 #include "swapchain_resize_mode.h"
 #include "swapchain_startup_trace.h"
+#include "gpu_readback.h"
 #include "source_view_shadow.h"
 #include "native_source_view_args.h"
 #include "source_eye_args.h"
@@ -105,6 +112,8 @@ gears_support::Recorder support_diagnostics;
 #include "hand_personal_reference.h"
 #include "hand_personal_calibration_live.inl"
 #include "weapon_hand_broker.h"
+#include "../vr-common/weapon_lancer_original_handle.h"
+#include "../vr-common/weapon_lancer_handle_morph.h"
 #include "cover_surface_getters.h"
 #include "../vr-common/weapon_hand_owner_adapter.h"
 #include <new>
@@ -154,6 +163,7 @@ gears_support::Recorder support_diagnostics;
 #include "swapchain_binding_observer.h"
 
 namespace {
+namespace vr_gamepad_live {void request_stop() noexcept;unsigned pending_count() noexcept;void close() noexcept;bool owns_axes() noexcept;void print(FILE*) noexcept;}
 struct Vec {float x,y,z;};
 struct Rot {int pitch,yaw,roll;};
 using SceneFn=void*(__fastcall*)(void*,void*,Vec*,Rot*,void*,void*);
@@ -196,6 +206,10 @@ gears_vr::GpuPublisher stereo_publisher;
 #if defined(GEARS_DESKTOP_MIRROR) && GEARS_DESKTOP_MIRROR
 gears_vr::DesktopMirror desktop_mirror;
 std::atomic<unsigned long long> mirror_inventory_rejected{},mirror_present1_full{};
+std::atomic<bool> mirror_had_output{};
+struct MirrorIntegrationMiss {std::atomic<int64_t> at_ns{};std::atomic<unsigned> stage{},flags{},reason{};};
+std::array<MirrorIntegrationMiss,32> mirror_integration_misses{};
+std::atomic<unsigned> mirror_integration_miss_count{};
 #endif
 #if defined(GEARS_NATIVE_OWNED_XR_PROBE) && GEARS_NATIVE_OWNED_XR_PROBE
 constexpr bool owned_xr_probe=true;
@@ -668,7 +682,7 @@ constexpr unsigned cover_future_g_hooks=1;
 constexpr unsigned cover_future_g_hooks=0;
 #endif
 #if defined(GEARS_FRESH_POSE_PRODUCER_OBSERVER) && GEARS_FRESH_POSE_PRODUCER_OBSERVER
-constexpr unsigned fresh_pose_hooks=2;
+constexpr unsigned fresh_pose_hooks=3;
 #else
 constexpr unsigned fresh_pose_hooks=0;
 #endif
@@ -788,13 +802,21 @@ using BarrierFn=void(STDMETHODCALLTYPE*)(ID3D12GraphicsCommandList*,UINT,const D
 BarrierFn original_resource_barrier{};
 #endif
 #if defined(GEARS_SWAPCHAIN_STARTUP_TRACE) && GEARS_SWAPCHAIN_STARTUP_TRACE
-constexpr unsigned prime_hook_base_count=8;
+constexpr unsigned prime_hook_base_count=10;
 #else
 constexpr unsigned prime_hook_base_count=6;
 #endif
 constexpr unsigned prime_hook_count=prime_hook_base_count+ngx_mv_descriptor_hooks;
 std::array<void*,prime_hook_count> prime_targets{};
 std::atomic<bool> prime_recording{},prime_ready{},prime_handoff{},prime_done{};
+namespace startup_menu_geometry_live {void print(FILE*);}
+// Read-only startup observations over the same Present entrypoints later
+// owned by the full session. No flag/result changes, GPU copies or world permit.
+struct PrimePresentObservation {
+    std::atomic<unsigned long long> calls{},tests{},occluded{},failed{};
+    std::atomic<unsigned> interval{},flags{},swap_flags{};
+    std::atomic<long> result{};
+} prime_present_observation;
 std::atomic<unsigned> prime_started{};
 std::mutex prime_mutex;
 HANDLE prime_event{};
@@ -917,6 +939,7 @@ struct NativeOwnedShutdownRhiScope {
     ~NativeOwnedShutdownRhiScope(){native_owned_scene_shutdown_rhi();}
 };
 #include "desktop_mirror_readback.inl"
+#include "native_menu_display.inl"
 #include "ngx_root_signature_capture.inl"
 void trace_rectangle(unsigned index,uintptr_t view) {
     if(!submit_pair_enabled || !view)return;
@@ -1027,6 +1050,7 @@ void request_session_stop_at(SessionStop reason,const char* source_file,unsigned
     native_atom_overwrite_live::request_drain();body_c0_goal_policy_live::request_drain();full_body_c0_native_live::request_drain();fresh_pose_producer_live::request_drain();body_recoil_observer_live::request_drain();continuous_hand_owner_live::request_drain();
     cover_native_rig_observer_live::request_drain();
     rig_tracking_live::stop();
+    vr_gamepad_live::request_stop();
     weapon_hand_runtime::request_stop();
     cover_control_observer_live::request_drain();
     cover_pose_phase_live::request_drain();
@@ -1135,6 +1159,7 @@ struct SessionBuildScope {
     ~SessionBuildScope(){if(enabled){--session_build_depth;service_session_stop_native();}}
 };
 bool session_native_cleanup_ready() {
+    if(vr_gamepad_live::pending_count())return false;
     return weapon_hand_runtime::cleanup_ready()&&!cover_body_live::pending_count()&&!cover_pose_phase_live::pending_count()&&!cover_control_observer_live::pending_count()&&!native_atom_overwrite_live::pending_count()&&!body_c0_goal_policy_live::pending_count()&&!full_body_c0_native_live::pending_count()&&!fresh_pose_producer_live::pending_count()&&!body_recoil_observer_live::pending_count()&&!continuous_hand_owner_live::pending_count()&&!cover_native_rig_observer_live::pending_count()&&!hand_goal_observer_live::pending_count()&&submitted_lifetime.is_closed()&&!submitted_lifetime.pending()&&!submit_retained.load()&&left_view_history.retired()&&
         (!state_created.load()||(state_release_returned.load()==1&&state_destroyed.load()==1&&(state_delete_flags&1)));
 }
@@ -1278,6 +1303,7 @@ bool create_stereo_recenter_event() {
     stereo_recenter_event=event;return true;
 }
 void close_stereo_recenter_event() {
+    if(!active.load())vr_gamepad_live::close();
     // A failed hook installation may still have a callback in flight. Retain
     // the handle until process exit in that failure case, never race a wait.
     controller_recenter_request.reset();
@@ -1304,6 +1330,7 @@ void print_stereo(FILE* file) {
     if(!stereo_xr)return;
     std::lock_guard<decltype(stereo_mutex)> lock(stereo_mutex);
     first_person_live::print(file);
+    vr_gamepad_live::print(file);
     if(controller_input_observer)fprintf(file,
         "controller_input_observer enabled=1 matched=%llu missing=%llu tracked_left=%llu tracked_right=%llu first_sequence=%llu last_sequence=%llu profile_generation=%llu tick_accepted=%llu tick_baseline=%llu tick_stale=%llu tick_replayed=%llu tick_world_rejected=%llu game_input_injected=0\n",
         controller_input_matched,controller_input_missing,controller_input_tracked_left,
@@ -1394,6 +1421,7 @@ bool read_attested_hook_entry(void* output,void const* source,size_t size);
 #include "weapon_call_live.inl"
 #include "ui_observer_hooks.inl"
 #include "first_person_live.inl"
+#include "vr_gamepad_live.inl"
 #include "path_choice_close_observer.inl"
 #include "cover_body_live.inl"
 #include "weapon_hand_scene_binding.inl"
@@ -1407,6 +1435,9 @@ bool read_attested_hook_entry(void* output,void const* source,size_t size);
 #include "cover_geometry_observer_live.inl"
 #include "cover_input_live.inl"
 #include "weapon_hand_runtime.inl"
+#include "weapon_part_visibility_live.inl"
+#include "lancer_original_handle_live.inl"
+#include "lancer_grasp_live.inl"
 #include "cover_shared_input_live.inl"
 #include "rig_tracking_live.inl"
 #include "body_tick_tracking_probe_live.inl"
@@ -1420,6 +1451,7 @@ bool read_attested_hook_entry(void* output,void const* source,size_t size);
 #include "native_atom_overwrite_live.inl"
 #include "full_body_c0_native_live.inl"
 #include "body_c0_goal_policy_live.inl"
+#include "lancer_handle_morph_live.inl"
 #include "first_person_head_render_live.inl"
 #include "cover_full_goal_live.inl"
 uintptr_t canonical_identity(IUnknown* object) {
@@ -1483,6 +1515,7 @@ void release_bindings() {
     std::lock_guard<std::mutex> lock(binding_owner_mutex);
     for(auto& owner:binding_owners){if(owner.chain)owner.chain->Release();if(owner.queue)owner.queue->Release();owner={};}
 }
+#include "startup_menu_readback.inl"
 void write_swapchain_output_status(bool sample,const char* phase) {
     // Diagnostic only: query retained chain identities, never retain backbuffers
     // or invoke window operations. One writer spans prime -> native handoff.
@@ -1527,10 +1560,13 @@ void write_swapchain_output_status(bool sample,const char* phase) {
     support_startup.record("swapchain_file_open","enter");
     FILE* output=_wfsopen(temporary,L"w",_SH_DENYWR);
     support_startup.record("swapchain_file_open","exit",output!=nullptr,output?0:errno);if(!output)return;
-    fprintf(output,"schema=1 pid=%lu creation_time=%llu phase=%s valid=%u candidates=%u hwnd=%llu chain=%llu width=%u height=%u windowed=%u qpc=%lld qpc_frequency=%lld complete=1\n",
+    fprintf(output,"schema=1 pid=%lu creation_time=%llu phase=%s valid=%u candidates=%u hwnd=%llu chain=%llu width=%u height=%u windowed=%u qpc=%lld qpc_frequency=%lld prime_present_calls=%llu prime_present_tests=%llu prime_present_occluded=%llu prime_present_failed=%llu prime_present_result=%ld prime_present_interval=%u prime_present_flags=%u prime_present_swap_flags=%u complete=1\n",
         GetCurrentProcessId(),creation_time,phase,valid?1u:0u,candidates,
         static_cast<unsigned long long>(valid?window:0),static_cast<unsigned long long>(valid?identity:0),
-        valid?width:0,valid?height:0,valid&&windowed?1u:0u,qpc.QuadPart,frequency.QuadPart);
+        valid?width:0,valid?height:0,valid&&windowed?1u:0u,qpc.QuadPart,frequency.QuadPart,
+        prime_present_observation.calls.load(),prime_present_observation.tests.load(),prime_present_observation.occluded.load(),
+        prime_present_observation.failed.load(),prime_present_observation.result.load(),prime_present_observation.interval.load(),
+        prime_present_observation.flags.load(),prime_present_observation.swap_flags.load());
     support_startup.record("swapchain_file_flush","enter");const bool written=fflush(output)==0;
     support_startup.record("swapchain_file_flush","exit",written,written?0:errno);
     support_startup.record("swapchain_file_close","enter");const bool closed=fclose(output)==0;
@@ -2005,6 +2041,7 @@ void write_session_status(bool resources_retained=true,bool entries_restored=fal
     fprintf(output,"mirror_state=%u mirror_captures=%llu mirror_presents=%llu mirror_stale=%llu mirror_busy=%llu mirror_inventory_rejected=%llu mirror_timeouts=%llu mirror_reason=%u mirror_held=%u mirror_format=%u mirror_async=%u mirror_pending_draws=%u mirror_wait_ns=%llu mirror_max_wait_ns=%llu ",
         mirror.state,mirror.captures,mirror.presents,mirror.stale,mirror.busy,mirror_inventory_rejected.load(),mirror.timeouts,static_cast<unsigned>(mirror.reason),mirror.destination_held?1:0,mirror.destination_format,
         gears_vr::DesktopMirror::asynchronous?1:0,mirror.pending_draws,mirror.wait_ns,mirror.max_wait_ns);
+    fprintf(output,"mirror_menu_presents=%llu ",mirror.menu_presents);
 #endif
     fprintf(output,"stop_recorded=%u stop_qpc=%lld stop_qpc_frequency=%lld stop_thread=%lu stop_source_file=%s stop_source_line=%u ",
         stop_recorded?1:0,stop_recorded?session_stop_qpc.load():0,qpc_frequency,
@@ -2244,6 +2281,7 @@ void print_frame_link(FILE* status) {
     death_pso_cache::print(status);
     print_backbuffer_copies(status);
     final_transfer_live::print(status);
+    startup_menu_geometry_live::print(status);
     fprintf(status,"final_eye_failure_inventory rows=%u limit=%u per_epoch_limit=%u missing_ticket_per_epoch_limit=1 missing_ticket_global_limit=16 dropped=%llu resource_desc_source=tracked_rtv present_source=existing_inventory stage_bits=quad:1,draw:2 reason_bits=eye_invalid:1,ticket_missing:2,targets_not_one:4,mip:8,width:16,height:32,descriptor_capacity:64,no_targets:128,no_resource:256,not_known_buffer:512,verified_rect:1024\n",
         final_eye_failures.size,gears_final_eye_diagnostics::Recorder::capacity,gears_final_eye_diagnostics::Recorder::per_epoch,final_eye_failures.dropped);
     for(unsigned i=0;i<final_eye_failures.size;++i){const auto& r=final_eye_failures.rows[i];const auto& g=r.geometry;
@@ -2269,9 +2307,18 @@ void print_frame_link(FILE* status) {
     auto bindings=swapchain_bindings.snapshot();
 #if defined(GEARS_DESKTOP_MIRROR) && GEARS_DESKTOP_MIRROR
     const auto mirror=desktop_mirror.status();
+    fprintf(status,"mirror_present_lock_waits=%llu cpu_serialization_only=1 freshness_rechecked_after_wait=1\n",mirror.present_lock_waits);
+    fprintf(status,"mirror_menu_presents=%llu mirror_last_flat_menu=%u mirror_waiting_presents=%llu mirror_waiting_reason=%u waiting_counts_as_eye_image=0\n",
+        mirror.menu_presents,unsigned(mirror.flat_menu),mirror.waiting_presents,unsigned(mirror.waiting_reason));
+    native_menu_display::summary(status);
     fprintf(status,"desktop_mirror enabled=1 state=%u captures=%llu presents=%llu busy=%llu stale=%llu rejected=%llu inventory_rejected=%llu present1_full=%llu ticket=%llu received_ns=%lld wait_ns=%llu max_wait_ns=%llu timeouts=%llu error=%lx unsafe=%u synchronous_present=%u pending_draws=%u destination_format=%u\n",
         mirror.state,mirror.captures,mirror.presents,mirror.busy,mirror.stale,mirror.rejected,mirror_inventory_rejected.load(),mirror_present1_full.load(),
         mirror.ticket,mirror.received_ns,mirror.wait_ns,mirror.max_wait_ns,mirror.timeouts,static_cast<unsigned long>(mirror.error),mirror.unsafe?1:0,gears_vr::DesktopMirror::asynchronous?0:1,mirror.pending_draws,mirror.destination_format);
+    for(unsigned i=0;i<mirror.present_refusal_count;++i){auto const& m=mirror.present_refusals[i];
+        fprintf(status,"mirror_present_refusal_%u=%lld,%u,%llu,%lld,%lld\n",i,m.at_ns,unsigned(m.reason),m.ticket,m.received_ns,m.captured_ns);}
+    for(unsigned i=0;i<mirror_integration_misses.size();++i){auto const& m=mirror_integration_misses[i];
+        const auto at=m.at_ns.load(std::memory_order_acquire);if(at>0)
+            fprintf(status,"mirror_integration_miss_%u=%lld,%u,%u,%u\n",i,at,m.stage.load(std::memory_order_relaxed),m.flags.load(std::memory_order_relaxed),m.reason.load(std::memory_order_relaxed));}
     desktop_mirror_readback::print(status);
 #endif
     auto overlay_stats=frame_link.snapshot();
@@ -2976,6 +3023,18 @@ void print(FILE*){}
 }
 
 #include "resource_identity_observer.h"
+void ui_scene_root_live::startup_draw::bound_inputs(TraceRow& row){
+    uintptr_t tls{};unsigned char count{};
+    if(!safe_copy(&tls,reinterpret_cast<void*>(__readgsqword(0x58)),8)||!tls||
+       !safe_copy(&row.context,reinterpret_cast<void*>(tls+0x20),8)||!row.context)return;
+    row.read_mask|=1;
+    if(!safe_copy(&count,reinterpret_cast<void*>(row.context+0x65d),1))return;
+    row.read_mask|=2;row.slot_count=count;const auto n=(std::min)(unsigned(count),4u);
+    if(n&&!safe_copy(row.objects.data(),reinterpret_cast<void*>(row.context+0x768),n*8))return;
+    row.read_mask|=4;
+    for(unsigned i=0;i<n;++i){ResourceIdentity identity{};query_bound_resource(row.objects[i],identity);
+        if(SUCCEEDED(identity.result)){row.inputs[i]=identity.canonical;row.input_width[i]=unsigned(identity.desc.Width);row.input_height[i]=identity.desc.Height;row.input_format[i]=unsigned(identity.desc.Format);}}
+}
 #include "late_quad_observer.inl"
 
 namespace owned_ticket_size_trace {
@@ -3059,6 +3118,7 @@ void print_quad_draws(FILE*){}
 #include "unpossessed_quad_observer.inl"
 #include "death_hdr_timeline.inl"
 #include "final_transfer_live.inl"
+#include "startup_menu_geometry_live.inl"
 #include "backbuffer_copy_observer.inl"
 #include "final_input_observer.h"
 #include "quad_source_control.h"
@@ -3227,7 +3287,9 @@ void* __fastcall hook_destroy_renderer(void* renderer){
 bool try_submit_pair(void* destination,void* family,void* canvas,void* transform,Record& record,void*& returned,
     gears_anchor::Receipt const* anchor=nullptr) {
     native_owned_scene_pace(); // No session/frame locks or pair snapshot held here.
-    // A rejected Scene cannot leave an older prepared tracking frame readable.
+    // A rejected source cannot leave an older tracking frame readable. The
+    // later visual-quality gate may skip output AFTER authenticating/publishing
+    // this real Scene, so the next C0 can recover without a render/source cycle.
     // The data reader never enters this path or acquires session/stereo locks.
     struct RigAttempt {bool kept{};~RigAttempt(){if(!kept&&rig_tracking_live::enabled)rig_tracking_live::fail();}} rig_attempt;
     note_world_progress(WorldProgress::try_pair);
@@ -3377,6 +3439,16 @@ bool try_submit_pair(void* destination,void* family,void* canvas,void* transform
         gears_vr::CoverViewResult body_view{};
         const bool body_view_owned=body_c0_goal_policy_live::read_view(anchor,result,stereo_units_per_metre,body_view);
         if(body_view_owned)view=body_view.base_view;
+        // A transient authored-eye/weapon metadata failure must not publish
+        // the original third-person camera while body first-person is requested.
+        // No old eye or tracking sample is renewed: this candidate is skipped
+        // and the existing XR outage/recovery path retains its own limits.
+        if(first_person_live::body_view_required&&!first_person_view_owned&&!body_view_owned&&!cover_view_owned){
+            ++first_person_live::missing_basis_rejected;return false;}
+        // This is the final selected first-person basis, even when the earlier
+        // authored-eye fallback could not be prepared. Local head suppression
+        // must follow that actual selection, not the preliminary fallback.
+        if(first_person_live::body_basis&&body_view_owned)first_person_live::preview_current=true;
         bool closer_view_owned=false;
         if(camera_closer_metres>0&&!first_person_view_owned&&!run_view_owned&&!cover_view_owned&&!body_view_owned){
             const bool gameplay=anchor&&!anchor->anchor.unpossessed&&anchor_config.cinematic_enabled&&!anchor_config.mounted_enabled&&
@@ -3500,7 +3572,15 @@ bool try_submit_pair(void* destination,void* family,void* canvas,void* transform
                 rig_attempt.kept=rig_tracking_live::publish(anchor,frame.source_view,view,result,policy,rig_reference);
             }
         }
+        // Require a fresh, actual head mask for this local actor. Hand
+        // composition is checked and reported separately: refusing a hand
+        // result must not switch the camera or freeze headset output.
+        if(first_person_live::body_view_required&&anchor&&
+           !first_person_head_render_live::visual_current(anchor->anchor.pawn)){
+            ++first_person_live::uncomposed_view_rejected;return false;
+        }
         frame.enabled=true;frame.sample=result.sample;frame_reference=result.reference;
+        frame.flat_menu=native_menu_display::flat();
         frame.reference_generation=result.reference_generation;frame.reference=result.reference;
     }
     submit_original_state=original_state;
@@ -3901,6 +3981,11 @@ void STDMETHODCALLTYPE hook_execute(ID3D12CommandQueue* queue,UINT count,ID3D12C
     NativeOwnedShutdownRhiScope owned_shutdown_scope;
     final_transfer_live::normalizer::boundary();
     if(stereo_publish_bypass){owned_source_pixels::execute_passthrough(queue,count,lists,death_hdr_pixels::execute_passthrough);return;}
+    if(ui_scene_root_live::startup_draw::observing()){
+        Scope scope;const auto submission=ui_scene_root_live::startup_draw::submission_begin(queue,count,lists);
+        owned_source_pixels::execute_passthrough(queue,count,lists,death_hdr_pixels::execute_passthrough);
+        ui_scene_root_live::startup_draw::submitted(submission);return;
+    }
     Scope scope;if(!scope.world()){auto unknown=frame_lock();frame_link.invalidate();owned_ticket_size_trace::clear_attachments();owned_source_pixels::execute_passthrough(queue,count,lists,death_hdr_pixels::execute_passthrough);return;}auto frame_guard=frame_lock();auto record=start_record(5,queue,_ReturnAddress());
     gears_frame_link::ExecutionToken owned_token{};
     gears_frame_link::ExecutionToken* owned=nullptr;
@@ -3938,30 +4023,41 @@ void STDMETHODCALLTYPE hook_execute(ID3D12CommandQueue* queue,UINT count,ID3D12C
     else if(count)owned_ticket_size_trace::clear_attachments(); // Membership unreadable/unbounded: retain no stale OM state.
     record.duration=now()-record.time;enqueue(record);
 }
+void mirror_note_miss(unsigned stage,UINT flags,unsigned reason=0){
+#if defined(GEARS_DESKTOP_MIRROR) && GEARS_DESKTOP_MIRROR
+    if(!recording.load()||stereo_publish_counts.stopped.load()||!mirror_had_output.load()||(flags&DXGI_PRESENT_TEST))return;
+    const auto i=mirror_integration_miss_count.fetch_add(1,std::memory_order_relaxed);if(i>=mirror_integration_misses.size())return;
+    auto& m=mirror_integration_misses[i];m.stage.store(stage,std::memory_order_relaxed);m.flags.store(flags,std::memory_order_relaxed);
+    m.reason.store(reason,std::memory_order_relaxed);
+    m.at_ns.store(gears_vr::monotonic_ns(),std::memory_order_release);
+#else
+    (void)stage;(void)flags;(void)reason;
+#endif
+}
 bool desktop_mirror_present(IDXGISwapChain* chain,UINT flags){
 #if defined(GEARS_DESKTOP_MIRROR) && GEARS_DESKTOP_MIRROR
     if(!recording.load()||!stereo_gpu_publish||stereo_publish_counts.stopped.load()||
-       (flags&(DXGI_PRESENT_TEST|DXGI_PRESENT_DO_NOT_WAIT)))return false;
+       (flags&(DXGI_PRESENT_TEST|DXGI_PRESENT_DO_NOT_WAIT))){mirror_note_miss(3,flags);return false;}
     const auto identity=canonical_identity(chain);const auto binding=swapchain_bindings.lookup(identity);
     if(!binding.chain||!owned_scene_gpu::queue||binding.queue!=canonical_identity(owned_scene_gpu::queue)){
-        ++mirror_inventory_rejected;return false;
+        ++mirror_inventory_rejected;mirror_note_miss(4,flags);return false;
     }
     DXGI_SWAP_CHAIN_DESC desc{};std::array<uintptr_t,16> resources{};
     if(FAILED(chain->GetDesc(&desc))||!desc.BufferCount||desc.BufferCount>resources.size()){
-        ++mirror_inventory_rejected;return false;
+        ++mirror_inventory_rejected;mirror_note_miss(5,flags);return false;
     }
     for(unsigned i=0;i<desc.BufferCount;++i){gears_vr::ComPtr<ID3D12Resource> buffer;
-        if(FAILED(chain->GetBuffer(i,IID_PPV_ARGS(&buffer)))){++mirror_inventory_rejected;return false;}
+        if(FAILED(chain->GetBuffer(i,IID_PPV_ARGS(&buffer)))){++mirror_inventory_rejected;mirror_note_miss(6,flags);return false;}
         resources[i]=canonical_identity(buffer.Get());
     }
     if(!swapchain_bindings.unchanged(identity,desc.BufferDesc.Width,desc.BufferDesc.Height,resources.data(),desc.BufferCount)){
-        ++mirror_inventory_rejected;return false;
+        ++mirror_inventory_rejected;mirror_note_miss(7,flags);return false;
     }
     gears_vr::ComPtr<IDXGISwapChain3> current;gears_vr::ComPtr<ID3D12Resource> buffer;
-    if(FAILED(chain->QueryInterface(IID_PPV_ARGS(&current)))){++mirror_inventory_rejected;return false;}
+    if(FAILED(chain->QueryInterface(IID_PPV_ARGS(&current)))){++mirror_inventory_rejected;mirror_note_miss(8,flags);return false;}
     const auto index=current->GetCurrentBackBufferIndex();
     if(index>=desc.BufferCount||FAILED(chain->GetBuffer(index,IID_PPV_ARGS(&buffer)))||canonical_identity(buffer.Get())!=resources[index]){
-        ++mirror_inventory_rejected;return false;
+        ++mirror_inventory_rejected;mirror_note_miss(9,flags);return false;
     }
     // The game is about to call Present on this queue. D3D12's documented
     // Present contract requires this backbuffer in PRESENT/COMMON here.
@@ -3969,15 +4065,41 @@ bool desktop_mirror_present(IDXGISwapChain* chain,UINT flags){
     // Async slots retain their backbuffers until fence completion; the resize
     // wrapper drains those slots before forwarding ResizeBuffers.
     StereoPublishBypass bypass;
-    return desktop_mirror.present(buffer.Get(),owned_scene_gpu::queue,gears_vr::monotonic_ns());
+    gears_vr::DesktopMirror::Reason reason{};
+    // A continuous first-person display must not expose the game's original
+    // third-person buffer merely because its certified eye image is not ready.
+    // The fallback draws only a labelled waiting card on this same admitted
+    // queue/destination. It never renews a stale image or grants action input.
+    const bool wait_display=continuous_session&&first_person_live::enabled&&first_person_live::body_basis&&
+        native_menu_display::current_mode()==gears_menu::Mode::gameplay;
+    const bool mirrored=desktop_mirror.present(buffer.Get(),owned_scene_gpu::queue,gears_vr::monotonic_ns(),&reason,wait_display);
+    if(mirrored)mirror_had_output=true;
+    // A waiting card is presentation, never proof of a fresh eye image.
+    if(!mirrored||reason!=gears_vr::DesktopMirror::Reason::none)mirror_note_miss(10,flags,unsigned(reason));return mirrored;
 #else
     (void)chain;(void)flags;return false;
 #endif
 }
+void observe_prime_present(IDXGISwapChain* chain,UINT interval,UINT flags,HRESULT result) noexcept {
+    if(!prime_recording.load(std::memory_order_acquire)||recording.load(std::memory_order_acquire)||!chain)return;
+    DXGI_SWAP_CHAIN_DESC desc{};DWORD pid{};
+    if(FAILED(chain->GetDesc(&desc))||!desc.OutputWindow||desc.BufferDesc.Width<640||desc.BufferDesc.Height<360||
+       !GetWindowThreadProcessId(desc.OutputWindow,&pid)||pid!=GetCurrentProcessId())return;
+    auto& o=prime_present_observation;++o.calls;
+    if(flags&DXGI_PRESENT_TEST)++o.tests;
+    if(result==DXGI_STATUS_OCCLUDED)++o.occluded;
+    if(FAILED(result))++o.failed;
+    o.interval=interval;o.flags=flags;o.result=result;o.swap_flags=desc.Flags;
+}
 HRESULT STDMETHODCALLTYPE hook_present(IDXGISwapChain* chain,UINT interval,UINT flags) {
     support_diagnostics.entry(false);
     final_transfer_live::normalizer::boundary();
-    Scope scope;if(!scope.world()){auto unknown=frame_lock();frame_link.invalidate();return original_present(chain,interval,flags);}auto frame_guard=frame_lock();
+    Scope scope;ui_scene_root_live::startup_draw::present(chain,flags);
+    if(!scope.world()){auto unknown=frame_lock();frame_link.invalidate();
+        mirror_note_miss(1,flags);
+        startup_menu_readback::present(chain,flags);
+        const auto result=original_present(chain,interval,flags);observe_prime_present(chain,interval,flags,result);return result;}auto frame_guard=frame_lock();
+    startup_menu_readback::present(chain,flags);
     FramePresentScope frame_present;
     auto record=start_record(3,chain,_ReturnAddress());
     inspect_swapchain(record,chain);
@@ -3989,9 +4111,10 @@ HRESULT STDMETHODCALLTYPE hook_present(IDXGISwapChain* chain,UINT interval,UINT 
     if(frame_interval&&recording.load()&&!(flags&DXGI_PRESENT_TEST))native_owned_scene_copy();
 #endif
     auto saved_inside_present=frame_inside_original_present;frame_inside_original_present=true;
-    if(frame_interval)desktop_mirror_present(chain,flags);
+    if(frame_interval)desktop_mirror_present(chain,flags);else mirror_note_miss(2,flags);
     if(diagnostic)diagnostic->original_begin_qpc=now();
     HRESULT result=original_present(chain,interval,flags);
+    observe_prime_present(chain,interval,flags,result);
     if(FAILED(result)){const auto id=canonical_identity(chain);support_diagnostics.failure(id,result);ID3D12Device* observed{};
         if(SUCCEEDED(chain->GetDevice(IID_PPV_ARGS(&observed)))){support_diagnostics.event(9,id,0,0,0,0,observed->GetDeviceRemovedReason());observed->Release();}}
     if(diagnostic)outage_finish(*diagnostic,now(),result);
@@ -4005,7 +4128,12 @@ HRESULT STDMETHODCALLTYPE hook_present(IDXGISwapChain* chain,UINT interval,UINT 
 HRESULT STDMETHODCALLTYPE hook_present1(IDXGISwapChain1* chain,UINT interval,UINT flags,const DXGI_PRESENT_PARAMETERS* params) {
     support_diagnostics.entry(true);
     final_transfer_live::normalizer::boundary();
-    Scope scope;if(!scope.world()){auto unknown=frame_lock();frame_link.invalidate();return original_present1(chain,interval,flags,params);}auto frame_guard=frame_lock();
+    Scope scope;ui_scene_root_live::startup_draw::present(chain,flags);
+    if(!scope.world()){auto unknown=frame_lock();frame_link.invalidate();
+        mirror_note_miss(1,flags);
+        startup_menu_readback::present(chain,flags);
+        const auto result=original_present1(chain,interval,flags,params);observe_prime_present(chain,interval,flags,result);return result;}auto frame_guard=frame_lock();
+    startup_menu_readback::present(chain,flags);
     FramePresentScope frame_present;
     auto record=start_record(4,chain,_ReturnAddress());
     inspect_swapchain(record,chain);
@@ -4019,11 +4147,13 @@ HRESULT STDMETHODCALLTYPE hook_present1(IDXGISwapChain1* chain,UINT interval,UIN
     auto saved_inside_present=frame_inside_original_present;frame_inside_original_present=true;
     DXGI_PRESENT_PARAMETERS full_update{};
     const bool mirrored=frame_interval&&desktop_mirror_present(chain,flags);
+    if(!frame_interval)mirror_note_miss(2,flags);
 #if defined(GEARS_DESKTOP_MIRROR) && GEARS_DESKTOP_MIRROR
     if(mirrored)++mirror_present1_full;
 #endif
     if(diagnostic)diagnostic->original_begin_qpc=now();
     HRESULT result=original_present1(chain,interval,flags,mirrored?&full_update:params);
+    observe_prime_present(chain,interval,flags,result);
     if(FAILED(result)){const auto id=canonical_identity(chain);support_diagnostics.failure(id,result);ID3D12Device* observed{};
         if(SUCCEEDED(chain->GetDevice(IID_PPV_ARGS(&observed)))){support_diagnostics.event(9,id,0,0,0,0,observed->GetDeviceRemovedReason());observed->Release();}}
     if(diagnostic)outage_finish(*diagnostic,now(),result);
@@ -4132,6 +4262,7 @@ bool install(void* target,void* detour,void** original) {
         auto& entry=session_hook_entries[session_hook_entry_count];entry.target=target;entry.detour=detour;
         auto primed=std::find(prime_targets.begin(),prime_targets.end(),target);
         if(prime_ready.load()&&primed!=prime_targets.end())entry.bytes=prime_original_bytes[static_cast<size_t>(primed-prime_targets.begin())];
+        else if(ui_scene_root_live::startup_draw::primed_bytes(target,entry.bytes)){}
         else if(graphics_lock_primed_bytes(target,entry.bytes)){}
         else if(!safe_copy(entry.bytes.data(),target,entry.bytes.size()))return false;
         ++session_hook_entry_count;
@@ -4140,7 +4271,7 @@ bool install(void* target,void* detour,void** original) {
     if(created==MH_ERROR_ALREADY_CREATED && *original &&
          ((reservation_ready && (target==scene_target || target==event_target || target==family_target || target==clone_target || target==renderer_target || target==consume_target || target==destroy_renderer_target || target==prepare_target || target==state_delete_target || target==quad_target || target==geometry_target || (first_view_mask_reserved && target==first_view_mask_target))) ||
           (prime_ready.load() && std::find(prime_targets.begin(),prime_targets.end(),target)!=prime_targets.end())||
-          graphics_lock_observer_reserved_target(target)||
+          graphics_lock_observer_reserved_target(target)||ui_scene_root_live::startup_draw::reserved_target(target)||
           native_atom_overwrite_live::reserved_target(target)||fresh_pose_producer_live::reserved_target(target)||
           cover_body_live::reserved_target(target)||
           cover_pose_phase_live::reserved_target(target)||first_person_head_render_live::reserved_target(target)||
@@ -4215,7 +4346,7 @@ bool native_atom_overwrite_live::own_entry(){
 #if defined(GEARS_FRESH_POSE_PRODUCER_OBSERVER) && GEARS_FRESH_POSE_PRODUCER_OBSERVER
 bool fresh_pose_producer_live::own_entries(){
     if(!enabled||!reserved||!certified||!hook_entry_manifest_ready.load())return false;
-    for(unsigned i=0;i<2;++i){std::array<unsigned char,32> b{};
+    for(unsigned i=0;i<hook_count();++i){std::array<unsigned char,32> b{};
         if(!read_attested_hook_entry(b.data(),targets[i],b.size())||b!=gears_fresh_pose_certificate::prefixes[i])return false;}
     return true;
 }
@@ -4248,6 +4379,10 @@ uintptr_t barrier_identity(IUnknown* object) {
 }
 void STDMETHODCALLTYPE hook_resource_barrier(ID3D12GraphicsCommandList* list,UINT count,const D3D12_RESOURCE_BARRIER* barriers) {
     if(stereo_publish_bypass){original_resource_barrier(list,count,barriers);return;}
+    if(ui_scene_root_live::startup_draw::observing()){
+        Scope scope;ui_scene_root_live::startup_draw::barriers(list,reinterpret_cast<uintptr_t>(_ReturnAddress()),count,barriers);
+        original_resource_barrier(list,count,barriers);return;
+    }
     Scope scope;if(!scope.world()){auto unknown=frame_lock();frame_link.invalidate();return original_resource_barrier(list,count,barriers);}auto frame_guard=frame_lock();const auto owned=frame_link.owned_status();
 #if defined(GEARS_NGX_EPOCH_PAIR_OBSERVER) && GEARS_NGX_EPOCH_PAIR_OBSERVER
     ngx_epoch_pair::BarrierScope epoch_barriers(list,count,barriers,reinterpret_cast<uintptr_t>(_ReturnAddress()));
@@ -4301,6 +4436,13 @@ HRESULT STDMETHODCALLTYPE hook_reset_list(ID3D12GraphicsCommandList* list,ID3D12
     NativeOwnedShutdownRhiScope::Activity compute_reset_activity;
     ngx_mv_compute_capture::ResetScope compute_reset(list);
     if(stereo_publish_bypass){const auto hr=owned_source_pixels::reset_passthrough(list,allocator,state,death_pso_cache::reset_passthrough);compute_reset.finish(hr);return hr;}
+    if(ui_scene_root_live::startup_draw::observing()){
+        Scope scope;const auto hr=owned_source_pixels::reset_passthrough(list,allocator,state,death_pso_cache::reset_passthrough);
+        const auto raw=reinterpret_cast<uintptr_t>(list);
+        ui_scene_root_live::startup_draw::list_generation(raw,true,SUCCEEDED(hr));
+        if(SUCCEEDED(hr)){viewport_stats.reset(raw);frame_target_stats.reset(raw);}
+        compute_reset.finish(hr);return hr;
+    }
     Scope scope;if(!scope.world()){auto unknown=frame_lock();frame_link.invalidate();owned_ticket_size_trace::retire_attachments(reinterpret_cast<uintptr_t>(list));
         const auto hr=owned_source_pixels::reset_passthrough(list,allocator,state,death_pso_cache::reset_passthrough);compute_reset.finish(hr);return hr;}auto frame_guard=frame_lock();
 #if defined(GEARS_NGX_EPOCH_PAIR_OBSERVER) && GEARS_NGX_EPOCH_PAIR_OBSERVER
@@ -4341,6 +4483,12 @@ void STDMETHODCALLTYPE hook_viewports(ID3D12GraphicsCommandList* list,UINT count
     final_transfer_live::normalizer::bind(1,reinterpret_cast<uintptr_t>(list),count,values,stereo_publish_bypass!=0);
     final_transfer_live::bracket::consumed_viewport(reinterpret_cast<uintptr_t>(list),count,values,stereo_publish_bypass!=0);
     if(stereo_publish_bypass){original_viewports(list,count,values);return;}
+    if(ui_scene_root_live::startup_draw::observing()){
+        Scope scope;D3D12_VIEWPORT value{};const bool known=count==1&&safe_copy(&value,values,sizeof(value));
+        viewport_stats.set(reinterpret_cast<uintptr_t>(list),known?gears_viewport::classify(value.TopLeftX,value.TopLeftY,value.Width,value.Height):gears_viewport::unknown,
+            false,{value.TopLeftX,value.TopLeftY,value.Width,value.Height},count,known,value.MinDepth,value.MaxDepth);
+        original_viewports(list,count,values);return;
+    }
     Scope scope;if(!scope.world()){auto unknown=frame_lock();frame_link.invalidate();return original_viewports(list,count,values);}auto frame_guard=frame_lock();
     if(recording.load()||(owned_bindings_enabled&&prime_recording.load())) {
         D3D12_VIEWPORT value{};unsigned category=gears_viewport::unknown;
@@ -4360,6 +4508,12 @@ void STDMETHODCALLTYPE hook_scissors(ID3D12GraphicsCommandList* list,UINT count,
     final_transfer_live::normalizer::bind(2,reinterpret_cast<uintptr_t>(list),count,values,stereo_publish_bypass!=0);
     final_transfer_live::bracket::consumed_scissor(reinterpret_cast<uintptr_t>(list),count,values,stereo_publish_bypass!=0);
     if(stereo_publish_bypass){original_scissors(list,count,values);return;}
+    if(ui_scene_root_live::startup_draw::observing()){
+        Scope scope;D3D12_RECT value{};const bool known=count==1&&safe_copy(&value,values,sizeof(value));
+        const gears_viewport::Rect rectangle{float(value.left),float(value.top),float(int64_t(value.right)-value.left),float(int64_t(value.bottom)-value.top)};
+        viewport_stats.set(reinterpret_cast<uintptr_t>(list),known?gears_viewport::classify(rectangle.x,rectangle.y,rectangle.width,rectangle.height):gears_viewport::unknown,true,rectangle,count);
+        original_scissors(list,count,values);return;
+    }
     Scope scope;if(!scope.world()){auto unknown=frame_lock();frame_link.invalidate();return original_scissors(list,count,values);}auto frame_guard=frame_lock();
     if(recording.load()||(owned_bindings_enabled&&prime_recording.load())) {
         D3D12_RECT value{};unsigned category=gears_viewport::unknown;
@@ -4406,7 +4560,20 @@ void observe_output_post(unsigned attempt){
 }
 void __fastcall hook_quad(float x,float y,float width,float height,float u,float v,float uw,float vh,
     unsigned target_width,unsigned target_height,unsigned texture_width,unsigned texture_height){
-    Scope scope;uintptr_t caller=reinterpret_cast<uintptr_t>(_ReturnAddress())-base;vr_dof_compat::quad(caller,scope.world());
+    Scope scope;startup_menu_geometry_live::Activity geometry_activity;
+    startup_menu_geometry_live::Quad forwarded{reinterpret_cast<uintptr_t>(_ReturnAddress()),{x,y,width,height,u,v,uw,vh},{target_width,target_height,texture_width,texture_height}};
+    if(geometry_activity.entered&&startup_menu_geometry_live::repair(forwarded)){
+        x=forwarded.args[0];y=forwarded.args[1];width=forwarded.args[2];height=forwarded.args[3];
+        u=forwarded.args[4];v=forwarded.args[5];uw=forwarded.args[6];vh=forwarded.args[7];
+        target_width=forwarded.dimensions[0];target_height=forwarded.dimensions[1];
+        texture_width=forwarded.dimensions[2];texture_height=forwarded.dimensions[3];
+    }
+    if(ui_scene_root_live::startup_draw::observing()){
+        ui_scene_root_live::startup_draw::QuadScope quad;
+        ui_scene_root_live::startup_draw::current_quad={reinterpret_cast<uintptr_t>(_ReturnAddress()),{x,y,width,height,u,v,uw,vh},{target_width,target_height,texture_width,texture_height}};
+        original_quad(x,y,width,height,u,v,uw,vh,target_width,target_height,texture_width,texture_height);return;
+    }
+    uintptr_t caller=reinterpret_cast<uintptr_t>(_ReturnAddress())-base;vr_dof_compat::quad(caller,scope.world());
     dlss_route_observer::quad(caller,{x,y,width,height,u,v,uw,vh},{target_width,target_height,texture_width,texture_height});
     dlss_output_control::QuadScope dlss_quad(scope.world(),caller,{x,y,width,height,u,v,uw,vh},{target_width,target_height,texture_width,texture_height});
     dlss_quad.forward(x,y,width,height,u,v,uw,vh);
@@ -4494,6 +4661,10 @@ void STDMETHODCALLTYPE hook_draw(ID3D12GraphicsCommandList* list,UINT vertices,U
     final_transfer_live::normalizer::draw_call(reinterpret_cast<uintptr_t>(list),reinterpret_cast<uintptr_t>(_ReturnAddress())-base,0,vertices,instances,stereo_publish_bypass!=0);
     final_transfer_live::bracket::draw_call(reinterpret_cast<uintptr_t>(list),reinterpret_cast<uintptr_t>(_ReturnAddress())-base,0,vertices,instances,stereo_publish_bypass!=0);
     if(stereo_publish_bypass){original_draw(list,vertices,instances,start,first_instance);return;}
+    if(ui_scene_root_live::startup_draw::observing()){
+        Scope scope;ui_scene_root_live::startup_draw::gpu_draw(list,reinterpret_cast<uintptr_t>(_ReturnAddress()),false,vertices,instances);
+        original_draw(list,vertices,instances,start,first_instance);return;
+    }
     Scope scope;if(!scope.world()){auto unknown=frame_lock();frame_link.invalidate();return original_draw(list,vertices,instances,start,first_instance);}auto frame_guard=frame_lock();const auto caller=reinterpret_cast<uintptr_t>(_ReturnAddress());
     if(outage_diagnostics.load())outage_source_overlay={};
     observe_late_draw(list,caller,0,vertices,instances);
@@ -4535,6 +4706,10 @@ void STDMETHODCALLTYPE hook_draw_indexed(ID3D12GraphicsCommandList* list,UINT in
     final_transfer_live::normalizer::draw_call(reinterpret_cast<uintptr_t>(list),reinterpret_cast<uintptr_t>(_ReturnAddress())-base,1,indices,instances,stereo_publish_bypass!=0);
     final_transfer_live::bracket::draw_call(reinterpret_cast<uintptr_t>(list),reinterpret_cast<uintptr_t>(_ReturnAddress())-base,1,indices,instances,stereo_publish_bypass!=0);
     if(stereo_publish_bypass){original_draw_indexed(list,indices,instances,start,vertex,first_instance);return;}
+    if(ui_scene_root_live::startup_draw::observing()){
+        Scope scope;ui_scene_root_live::startup_draw::gpu_draw(list,reinterpret_cast<uintptr_t>(_ReturnAddress()),true,indices,instances);
+        original_draw_indexed(list,indices,instances,start,vertex,first_instance);return;
+    }
     Scope scope;if(!scope.world()){auto unknown=frame_lock();frame_link.invalidate();return original_draw_indexed(list,indices,instances,start,vertex,first_instance);}auto frame_guard=frame_lock();const auto caller=reinterpret_cast<uintptr_t>(_ReturnAddress());
     if(outage_diagnostics.load())outage_source_overlay={};
     observe_late_draw(list,caller,1,indices,instances);
@@ -4573,23 +4748,26 @@ void STDMETHODCALLTYPE hook_draw_indexed(ID3D12GraphicsCommandList* list,UINT in
             binding.targets==1&&!binding.target.mip&&binding.target.resource==route.resource&&
             binding.target.width==target.width&&binding.target.height==target.height&&
             pair.linked&&pair.ticket==route.ticket&&chain;
-        bool reticle=false,plane=false,sample_found=false;
+        bool reticle=false,plane=false,sample_found=false,flat_menu=false;
         gears_vr::StereoSample hud_sample{};
         auto hud_parameters=ui_hud_parameters;
         gears_ui_hud::Diagnostic hud_diagnostic{};
         if(admitted){
-            reticle=prepare_ui_reticle_overlay(route.ticket,saved,target.width,target.height,plan);
-            if(!reticle){
+            gears_vr::StereoTicketGeometry geometry{};
+            flat_menu=ui_ticket_geometry(route.ticket,geometry)&&geometry.flat_menu;
+            if(flat_menu){plan=gears_viewport::overlay_plan(saved,target.width,target.height);plane=plan.valid;}
+            else reticle=prepare_ui_reticle_overlay(route.ticket,saved,target.width,target.height,plan);
+            if(!flat_menu&&!reticle){
                 hud_parameters=gears_ui_hud::for_source(ui_hud_parameters,ui_source_aspect());
-                // Menu glyphs lack semantic sidecar labels but are still exact
-                // Canvas members. Use the same ticket's head-locked panel.
+                // Gameplay UI retains the same ticket's HUD panel. A frozen
+                // flat menu uses its full 2D canvas and the XR fixed theater.
                 sample_found=ui_ticket_sample(route.ticket,hud_sample);
                 plane=sample_found&&
                     prepare_ui_panel(route.ticket,saved,target.width,target.height,hud_sample,plan,hud_parameters,&hud_diagnostic);
             }
         }
         if(admitted&&(reticle||plane)){
-            const auto* layout=plane?prepare_ui_hud_layout(saved,target.width,target.height,plan):nullptr;
+            const auto* layout=plane&&!flat_menu?prepare_ui_hud_layout(saved,target.width,target.height,plan):nullptr;
             auto viewport=[&](gears_viewport::Rect r,float a,float b){D3D12_VIEWPORT v{r.x,r.y,r.width,r.height,a,b};original_viewports(list,1,&v);};
             auto scissor=[&](gears_viewport::Rect r){D3D12_RECT s{LONG(r.x),LONG(r.y),LONG(r.x+r.width),LONG(r.y+r.height)};original_scissors(list,1,&s);};
             unsigned mask{};
@@ -4601,8 +4779,9 @@ void STDMETHODCALLTYPE hook_draw_indexed(ID3D12GraphicsCommandList* list,UINT in
             }
             ++owned_ui_live::route_draws;
             if(layout&&mask==3)++ui_layout_counts.applied;
-            if(reticle)++owned_ui_live::route_reticle_draws;else ++owned_ui_live::route_plane_draws;
-            observe_ui_gpu_payload(pair.ticket,ref,target,indices,instances,start,vertex,plane,&plan,reticle,&plan,layout&&mask==3);
+            if(flat_menu)++owned_ui_live::route_menu_draws;
+            else if(reticle)++owned_ui_live::route_reticle_draws;else ++owned_ui_live::route_plane_draws;
+            observe_ui_gpu_payload(pair.ticket,ref,target,indices,instances,start,vertex,plane&&!flat_menu,&plan,reticle,&plan,layout&&mask==3);
             return; // Overlay work is not an extra world-geometry draw.
         }
         owned_ui_live::reject_draw({route.ticket,pair.ticket,caller-base,binding.target.resource,route.resource,
@@ -4661,6 +4840,11 @@ void STDMETHODCALLTYPE hook_targets(ID3D12GraphicsCommandList* list,UINT count,c
     final_transfer_live::normalizer::bind(0,reinterpret_cast<uintptr_t>(list),count,handles,stereo_publish_bypass!=0);
     final_transfer_live::bracket::consumed_target(reinterpret_cast<uintptr_t>(list),count,handles,stereo_publish_bypass!=0);
     if(stereo_publish_bypass){original_targets(list,count,handles,single,depth);return;}
+    if(ui_scene_root_live::startup_draw::observing()){
+        Scope scope;D3D12_CPU_DESCRIPTOR_HANDLE first{};if(count)safe_copy(&first,handles,sizeof(first));
+        viewport_stats.bind(reinterpret_cast<uintptr_t>(list),count,first.ptr);frame_target_stats.bind(reinterpret_cast<uintptr_t>(list),count,first.ptr);
+        original_targets(list,count,handles,single,depth);return;
+    }
     Scope scope;if(!scope.world()){auto unknown=frame_lock();frame_link.invalidate();owned_ticket_size_trace::retire_attachments(reinterpret_cast<uintptr_t>(list));return original_targets(list,count,handles,single,depth);}auto frame_guard=frame_lock();
     if(recording.load()){D3D12_CPU_DESCRIPTOR_HANDLE first{};
         if(count)safe_copy(&first,handles,sizeof(first));
@@ -4803,6 +4987,32 @@ void STDMETHODCALLTYPE hook_copy_simple(ID3D12Device* device,UINT count,D3D12_CP
                 if(owned_bindings_enabled)owned_target_stats.copy(destinations.data(),sources.data(),dc,descriptor_epoch);}
         else {viewport_stats.reject_copy();frame_target_stats.reject_copy();if(owned_bindings_enabled)owned_target_stats.reject_copy();if(frame_link_diagnostics)frame_link.invalidate();}}
 }
+bool reserve_startup_ui_gpu(ID3D12Device* device,bool owned) {
+#if defined(GEARS_UI_SCENE_ROOT_OBSERVER) && GEARS_UI_SCENE_ROOT_OBSERVER && defined(GEARS_NATIVE_OWNED_PIXELS) && GEARS_NATIVE_OWNED_PIXELS && defined(GEARS_OWNED_OUTPUT_TRACKING) && GEARS_OWNED_OUTPUT_TRACKING
+    wchar_t option[4]{};
+    if(!owned||!reservation_ready||GetEnvironmentVariableW(L"GEARSVR_TEST_STARTUP_UI_DRAW",option,4)!=1||option[0]!=L'1')return true;
+    gears_vr::ComPtr<ID3D12CommandAllocator> allocator;gears_vr::ComPtr<ID3D12GraphicsCommandList> list;
+    gears_vr::ComPtr<ID3D12CommandQueue> queue;D3D12_COMMAND_QUEUE_DESC desc{};
+    if(FAILED(device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT,IID_PPV_ARGS(&allocator)))||
+       FAILED(device->CreateCommandList(0,D3D12_COMMAND_LIST_TYPE_DIRECT,allocator.Get(),nullptr,IID_PPV_ARGS(&list)))||
+       FAILED(device->CreateCommandQueue(&desc,IID_PPV_ARGS(&queue))))return false;
+    auto table=*reinterpret_cast<void***>(list.Get());auto qt=*reinterpret_cast<void***>(queue.Get());
+    const void* targets[]={table[10],table[21],table[22],table[12],table[13],table[46],qt[10],table[16],table[17],table[19],table[26],table[48]};
+    void* detours[]={reinterpret_cast<void*>(hook_reset_list),reinterpret_cast<void*>(hook_viewports),reinterpret_cast<void*>(hook_scissors),
+        reinterpret_cast<void*>(hook_draw),reinterpret_cast<void*>(hook_draw_indexed),reinterpret_cast<void*>(hook_targets),reinterpret_cast<void*>(hook_execute),
+        reinterpret_cast<void*>(hook_color_copy),reinterpret_cast<void*>(owned_hook_copy),reinterpret_cast<void*>(owned_hook_resolve),
+        reinterpret_cast<void*>(hook_resource_barrier),reinterpret_cast<void*>(owned_hook_clear)};
+    void** originals[]={reinterpret_cast<void**>(&original_reset_list),reinterpret_cast<void**>(&original_viewports),reinterpret_cast<void**>(&original_scissors),
+        reinterpret_cast<void**>(&original_draw),reinterpret_cast<void**>(&original_draw_indexed),reinterpret_cast<void**>(&original_targets),reinterpret_cast<void**>(&original_execute),
+        reinterpret_cast<void**>(&original_color_copy),reinterpret_cast<void**>(&owned_original_copy),reinterpret_cast<void**>(&owned_original_resolve),
+        reinterpret_cast<void**>(&original_resource_barrier),reinterpret_cast<void**>(&owned_original_clear)};
+    for(unsigned i=0;i<std::size(targets);++i){auto at=const_cast<void*>(targets[i]);
+        if(!ui_scene_root_live::startup_draw::remember(at)||MH_CreateHook(at,detours[i],originals[i])!=MH_OK)return false;}
+    return SUCCEEDED(list->Close());
+#else
+    (void)device;(void)owned;return true;
+#endif
+}
 bool viewport_hooks(ID3D12Device* device) {
     ngx_mv_descriptor_capture::arm();
     ID3D12CommandAllocator* allocator{};ID3D12GraphicsCommandList* list{};bool success=false;
@@ -4908,21 +5118,27 @@ DWORD WINAPI target_prime_watchdog(void* argument) {
         if(waited!=WAIT_TIMEOUT)break;
         if(!prime_owner.handle&&GetTickCount64()>=deadline)break;
         write_swapchain_output_status(prime_recording.load(),"prime");
+        ui_scene_root_live::startup_draw::print(status);
+        startup_menu_readback::poll(status);
         if(gears_swapchain_startup::print(status,&startup_export))fflush(status);
         ngx_root_signature_capture::poll(); // Watchdog owns no frame/observer lock here.
     }
+    const bool menu_readback_clean=startup_menu_readback::finish(status);
     {std::lock_guard<std::mutex> lock(prime_mutex);
     if(prime_handoff.load()){
         auto stats=viewport_stats.snapshot();
         fprintf(status,"handed_off creates=%llu copies=%llu evictions=%llu\n",stats.descriptor_creates,stats.descriptor_copies,stats.descriptor_evictions);
     }else{
+        vr_gamepad_live::request_stop();vr_gamepad_live::close();
         ngx_mv_target_capture::close();ngx_mv_descriptor_capture::close();
         prime_recording=false;bool disabled=disable_graphics_lock_prime();
+        disabled=startup_menu_geometry_live::disable()&&disabled;
+        disabled=ui_scene_root_live::startup_draw::disable()&&disabled;
         for(auto target:prime_targets){auto result=MH_DisableHook(target);disabled=disabled&&(result==MH_OK||result==MH_ERROR_DISABLED);}
         // Apply can still be inside a native collector/commit when cancellation
         // arrives. Leave time for it to return within the launcher's 15s cleanup.
         ULONGLONG deadline=GetTickCount64()+10000;while(active.load()&&GetTickCount64()<deadline)Sleep(1);
-        bool restored=graphics_lock_prime_restored();std::array<unsigned char,32> bytes{};
+        bool restored=graphics_lock_prime_restored()&&startup_menu_geometry_live::restored()&&ui_scene_root_live::startup_draw::restored();std::array<unsigned char,32> bytes{};
         for(unsigned i=0;i<prime_targets.size();++i)
             restored=restored&&safe_copy(bytes.data(),prime_targets[i],bytes.size())&&!memcmp(bytes.data(),prime_original_bytes[i].data(),bytes.size());
         const char* reason=waited==WAIT_TIMEOUT?"timeout":waited==WAIT_OBJECT_0?"cancel":
@@ -4932,10 +5148,12 @@ DWORD WINAPI target_prime_watchdog(void* argument) {
     }
     if(!prime_handoff.load()){
         write_swapchain_output_status(false,"stopped");
-        if(!active.load())release_bindings();
+        if(!active.load()&&menu_readback_clean)release_bindings();
     }
     }
     ngx_root_signature_capture::poll(); // Closed/drained owner cleanup left no callback lock.
+    ui_scene_root_live::startup_draw::print(status,true);
+    startup_menu_geometry_live::print(status);
     gears_swapchain_startup::print(status,&startup_export);
     ngx_mv_descriptor_capture::print(status);
     fclose(status);prime_done=true;return 0;
@@ -4978,11 +5196,16 @@ DWORD begin_target_prime(const gears_prime::OwnerArgument* owner_argument=nullpt
            SUCCEEDED(factory->CreateSwapChainForComposition(queue.Get(),&desc,nullptr,&chain))&&
            SUCCEEDED(chain->QueryInterface(IID_PPV_ARGS(&extended)))){
             prime_targets[6]=(*reinterpret_cast<void***>(chain.Get()))[13];
-            prime_targets[7]=(*reinterpret_cast<void***>(extended.Get()))[39];resize_targets_ready=true;
+            prime_targets[7]=(*reinterpret_cast<void***>(extended.Get()))[39];
+            prime_targets[8]=(*reinterpret_cast<void***>(chain.Get()))[8];
+            prime_targets[9]=(*reinterpret_cast<void***>(chain.Get()))[22];
+            resize_targets_ready=prime_targets[8]&&prime_targets[9]&&prime_targets[8]!=prime_targets[9];
         }
     }
     if(!resize_targets_ready){device->Release();factory->Release();fclose(status);return ERROR_NOT_SUPPORTED;}
 #endif
+    if(!reserve_startup_ui_gpu(device,prime_owner.handle!=nullptr)){device->Release();factory->Release();fclose(status);return ERROR_INVALID_STATE;}
+    if(!startup_menu_geometry_live::arm(status)){device->Release();factory->Release();fclose(status);return ERROR_REVISION_MISMATCH;}
     device->Release();factory->Release();
     std::array<void*,prime_hook_count> detours{reinterpret_cast<void*>(hook_create_rtv),reinterpret_cast<void*>(hook_copy_descriptors),reinterpret_cast<void*>(hook_copy_simple),
         reinterpret_cast<void*>(hook_create_swapchain),reinterpret_cast<void*>(hook_create_hwnd),reinterpret_cast<void*>(hook_create_composition)};
@@ -5003,6 +5226,8 @@ DWORD begin_target_prime(const gears_prime::OwnerArgument* owner_argument=nullpt
 #if defined(GEARS_SWAPCHAIN_STARTUP_TRACE) && GEARS_SWAPCHAIN_STARTUP_TRACE
     detours[6]=reinterpret_cast<void*>(game_resize::hook);detours[7]=reinterpret_cast<void*>(game_resize::hook1);
     originals[6]=reinterpret_cast<void**>(&game_resize::original);originals[7]=reinterpret_cast<void**>(&game_resize::original1);
+    detours[8]=reinterpret_cast<void*>(hook_present);detours[9]=reinterpret_cast<void*>(hook_present1);
+    originals[8]=reinterpret_cast<void**>(&original_present);originals[9]=reinterpret_cast<void**>(&original_present1);
 #endif
     bool ok=true;
     for(unsigned i=0;i<prime_targets.size();++i){
@@ -5019,11 +5244,14 @@ DWORD begin_target_prime(const gears_prime::OwnerArgument* owner_argument=nullpt
     ok=ok&&prime_event;
     if(ok&&prime_owner.handle)ok=prime_owner.state()==gears_session::OwnerState::alive;
     if(ok)ok=begin_graphics_lock_prime(status,prime_owner.handle!=nullptr);
-    if(ok){ngx_mv_descriptor_capture::arm();prime_recording=true;ok=MH_ApplyQueued()==MH_OK;}
+    if(ok)ok=ui_scene_root_live::startup_draw::queue(prime_owner.handle!=nullptr);
+    if(ok)ok=startup_menu_geometry_live::queue();
+    if(ok){startup_menu_readback::arm();ngx_mv_descriptor_capture::arm();prime_recording=true;ok=MH_ApplyQueued()==MH_OK;}
     HANDLE thread{};
     if(ok){thread=CreateThread(nullptr,0,target_prime_watchdog,status,0,nullptr);ok=thread!=nullptr;}
-    if(!ok){ngx_mv_target_capture::close();ngx_mv_descriptor_capture::close();prime_recording=false;disable_graphics_lock_prime();for(auto target:prime_targets){MH_QueueDisableHook(target);MH_DisableHook(target);}ngx_mv_descriptor_capture::release_drained();ngx_mv_descriptor_capture::print(status);fprintf(status,"prime_setup_failed\n");fclose(status);return ERROR_INVALID_STATE;}
-    if(prime_owner.handle)fprintf(status,"capturing pid=%lu lifetime=owner owner_pid=%lu owner_creation_time=%llu native_hooks_enabled=%u graphics_hooks_enabled=%u scene_hooks_enabled=0 descriptor_hooks_enabled=%u factory_hooks_enabled=3\n",GetCurrentProcessId(),prime_owner_pid,static_cast<unsigned long long>(prime_owner_creation_time),graphics_lock_prime_count(),graphics_lock_prime_count(),3+ngx_mv_descriptor_hooks);
+    if(!ok){ngx_mv_target_capture::close();ngx_mv_descriptor_capture::close();prime_recording=false;disable_graphics_lock_prime();startup_menu_geometry_live::disable();ui_scene_root_live::startup_draw::disable();for(auto target:prime_targets){MH_QueueDisableHook(target);MH_DisableHook(target);}ngx_mv_descriptor_capture::release_drained();ngx_mv_descriptor_capture::print(status);fprintf(status,"prime_setup_failed\n");fclose(status);return ERROR_INVALID_STATE;}
+    const unsigned presentation_hooks=startup_menu_geometry_live::enabled.load()?1u:0u;
+    if(prime_owner.handle)fprintf(status,"capturing pid=%lu lifetime=owner owner_pid=%lu owner_creation_time=%llu native_hooks_enabled=%u graphics_hooks_enabled=%u scene_hooks_enabled=0 startup_presentation_hooks_enabled=%u startup_presentation_code_attested=%u descriptor_hooks_enabled=%u factory_hooks_enabled=3\n",GetCurrentProcessId(),prime_owner_pid,static_cast<unsigned long long>(prime_owner_creation_time),graphics_lock_prime_count()+presentation_hooks,graphics_lock_prime_count(),presentation_hooks,presentation_hooks,3+ngx_mv_descriptor_hooks);
     else fprintf(status,"capturing pid=%lu seconds=180 native_hooks_enabled=0 descriptor_hooks_enabled=%u factory_hooks_enabled=3\n",GetCurrentProcessId(),3+ngx_mv_descriptor_hooks);fflush(status);
     prime_ready=true;CloseHandle(thread);return 0;
 }
@@ -5102,6 +5330,7 @@ DWORD WINAPI worker(void*) {
         fprintf(status,"continuous_owner_verified=1 owner_pid=%lu owner_creation_time=%llu\n",session_owner_pid,
             static_cast<unsigned long long>(session_owner_creation_time));
     }
+    if(!native_menu_display::configure(ini,status)){fprintf(status,"rejected: menu display configuration invalid\n");fclose(status);return 3;}
     trial_seconds=GetPrivateProfileIntW(L"Capture",L"trial_seconds",30,ini);
     submit_background=GetPrivateProfileIntW(L"Capture",L"submit_background",0,ini)!=0;
     quad_left_source_control=GetPrivateProfileIntW(L"Capture",L"quad_left_source_control",0,ini)==1;
@@ -5460,7 +5689,7 @@ DWORD WINAPI worker(void*) {
 #if defined(GEARS_NATIVE_ATOM_OVERWRITE_RECEIPT) && GEARS_NATIVE_ATOM_OVERWRITE_RECEIPT
     if(ok&&native_atom_overwrite_live::enabled)ok=install(native_atom_overwrite_live::target,reinterpret_cast<void*>(native_atom_overwrite_live::GearsAtomOverwriteHook),&native_atom_overwrite_live::GearsAtomOriginalTarget);
 #endif
-    if(ok&&fresh_pose_producer_live::enabled)for(unsigned i=0;i<2&&ok;++i)
+    if(ok&&fresh_pose_producer_live::enabled)for(unsigned i=0;i<fresh_pose_producer_live::hook_count()&&ok;++i)
         ok=install(fresh_pose_producer_live::targets[i],fresh_pose_producer_live::detours[i],&fresh_pose_producer_live::originals[i]);
 #endif
     if(ok&&(cover_pose_phase_live::enabled||continuous_hand_owner_live::requested)){
@@ -5515,6 +5744,7 @@ DWORD WINAPI worker(void*) {
     if(ok)ok=create_first_view_mask_events();
     if(ok)ok=create_stereo_recenter_event();
     if(ok)ok=first_person_live::initialize();
+    if(ok)ok=vr_gamepad_live::initialize(first_person_live::body_basis&&controller_input_observer,simulator_operator,status);
     fprintf(status,"present_hooks_created=%d\n",graphics);
     if(ok) {
         std::lock_guard<std::mutex> lock(prime_mutex);
@@ -5572,6 +5802,7 @@ DWORD WINAPI worker(void*) {
         ULONGLONG next_status=0;
         gears_world::StatusCadence world_status;
         for(;;){
+            native_menu_display::worker_tick();
             weapon_hand_runtime::worker_tick();
 #if defined(GEARS_COVER_BODY_PROTOTYPE) && GEARS_COVER_BODY_PROTOTYPE
             if(cover_body_stop_record.load(std::memory_order_acquire)==2)
@@ -5656,6 +5887,7 @@ DWORD WINAPI worker(void*) {
     // Disable entry patches; leave the DLL and trampolines resident so delayed
     // in-flight execution can never jump into freed code.
     session_activation_gate.close();
+    native_menu_display::stop();
     ngx_mv_target_capture::close();ngx_mv_descriptor_capture::close();
     death_hdr_pixels::stop();
     ngx_output_pixels::stop();
@@ -5846,6 +6078,7 @@ DWORD WINAPI worker(void*) {
 #endif
     controller_equipment_intent_bridge.close();
     controller_input_bridge.close();
+    if(disabled==MH_OK&&!active.load()&&!continuous_hand_owner_live::pending_count())body_tick_input_live::close_after_drain();
     cover_shared_input_live::close();cover_input_live::close();stereo_bridge.close();
     diagnostic_status=nullptr;fclose(file);fclose(status);
     // Terminal publication promises the complete, formerly exclusive report is readable.
@@ -5897,9 +6130,97 @@ extern "C" __declspec(dllexport) DWORD WINAPI GearsVrReadBodySlotCalibrationV1(v
 extern "C" __declspec(dllexport) gears_weapon_hand::Reply __cdecl GearsVrUnregisterWeaponHandParticipantV1(uint64_t cookie) noexcept {
     return weapon_hand_runtime::unregister(cookie);
 }
+extern "C" __declspec(dllexport) gears_weapon_part_visibility::Result __cdecl GearsVrHideSnubMagazineV1(
+    gears_weapon_part_visibility::Request const* request,gears_weapon_part_visibility::Receipt* receipt) noexcept {
+    return weapon_part_visibility_live::begin(request,receipt);
+}
+extern "C" __declspec(dllexport) bool __cdecl GearsVrPublishLancerGraspV1(
+    gears_hand_object_grasp::Request const* request) noexcept {return lancer_grasp_live::publish(request);}
+extern "C" __declspec(dllexport) gears_lancer_original_handle::Result __cdecl GearsVrBindOriginalLancerStarterV2(
+    gears_lancer_original_handle::Request const* request,gears_lancer_original_handle::Receipt* receipt) noexcept {
+    return lancer_original_handle_live::begin(request,receipt);
+}
+extern "C" __declspec(dllexport) gears_lancer_original_handle::Result __cdecl GearsVrPoseOriginalLancerStarterV2(
+    gears_lancer_original_handle::Control const* request,gears_lancer_original_handle::Receipt* receipt) noexcept {
+    return lancer_original_handle_live::update(request,receipt,false);
+}
+extern "C" __declspec(dllexport) gears_lancer_original_handle::Result __cdecl GearsVrRestoreOriginalLancerStarterV2(
+    gears_lancer_original_handle::Control const* request,gears_lancer_original_handle::Receipt* receipt) noexcept {
+    return lancer_original_handle_live::update(request,receipt,true);
+}
+extern "C" __declspec(dllexport) gears_lancer_handle_morph::Result __cdecl GearsVrBindLancerFrontHandleMorphV2(
+    gears_lancer_handle_morph::Request const* request,gears_lancer_handle_morph::Receipt* receipt) noexcept {
+    return lancer_handle_morph_live::begin(request,receipt);
+}
+extern "C" __declspec(dllexport) gears_lancer_handle_morph::Result __cdecl GearsVrUpdateLancerFrontHandleMorphV2(
+    gears_lancer_handle_morph::Control const* control,gears_lancer_handle_morph::Receipt* receipt) noexcept {
+    return lancer_handle_morph_live::update(control,receipt);
+}
+extern "C" __declspec(dllexport) gears_lancer_handle_morph::Result __cdecl GearsVrRevokeLancerFrontHandleMorphV2(
+    gears_lancer_handle_morph::Control const* control,gears_lancer_handle_morph::Receipt* receipt) noexcept {
+    return lancer_handle_morph_live::revoke(control,receipt);
+}
+extern "C" __declspec(dllexport) gears_lancer_handle_morph::Result __cdecl GearsVrPollLancerFrontHandleMorphV2(
+    gears_lancer_handle_morph::Control const* control,gears_lancer_handle_morph::Receipt* receipt) noexcept {
+    return lancer_handle_morph_live::revoke(control,receipt,false);
+}
+extern "C" __declspec(dllexport) gears_weapon_part_visibility::Result __cdecl GearsVrRestoreSnubMagazineV1(
+    gears_weapon_part_visibility::Control const* control,gears_weapon_part_visibility::Receipt* receipt) noexcept {
+    return weapon_part_visibility_live::update(control,receipt,true);
+}
+extern "C" __declspec(dllexport) gears_weapon_part_visibility::Result __cdecl GearsVrPollSnubMagazineV1(
+    gears_weapon_part_visibility::Control const* control,gears_weapon_part_visibility::Receipt* receipt) noexcept {
+    return weapon_part_visibility_live::update(control,receipt,false);
+}
 extern "C" __declspec(dllexport) gears_rig_tracking::Reply __cdecl GearsVrReadRigTrackingFrameV1(
     gears_rig_tracking::ReadRequest const* request,gears_rig_tracking::Frame* frame) noexcept {
     return rig_tracking_live::read(request,frame);
+}
+extern "C" __declspec(dllexport) DWORD WINAPI GearsCaptureVrGamepadOriginalActionPending(void*) noexcept {
+    return vr_gamepad_live::original_action_pending();
+}
+extern "C" __declspec(dllexport) DWORD WINAPI GearsCaptureVrGamepadStowFence(void* argument) noexcept {
+    return vr_gamepad_live::set_stow_fence(argument);
+}
+extern "C" __declspec(dllexport) DWORD WINAPI GearsCaptureVrGamepadAxesOwned(void*) noexcept {
+    return vr_gamepad_live::owns_axes()?1:0;
+}
+extern "C" __declspec(dllexport) DWORD WINAPI GearsCaptureVrGamepadStatus(void*) noexcept {
+    return (vr_gamepad_live::enabled.load()?1u:0u)|(vr_gamepad_live::reads.load()?2u:0u)|
+        (vr_gamepad_live::game_polls.load()?4u:0u)|(vr_gamepad_live::other_polls.load()?8u:0u)|
+        (vr_gamepad_live::caps_polls.load()?16u:0u);
+}
+extern "C" __declspec(dllexport) DWORD WINAPI GearsCaptureVrGamepadGateLease(void* argument) noexcept {
+    const auto token=reinterpret_cast<std::uintptr_t>(argument);
+    if(token>1)return ERROR_INVALID_PARAMETER;
+    return vr_gamepad_live::gate_lease(token==1)?ERROR_SUCCESS:ERROR_INVALID_STATE;
+}
+extern "C" __declspec(dllexport) DWORD WINAPI GearsCaptureStartVrGamepad(void* argument) noexcept {
+    gears_prime::OwnerArgument request{};
+    if(!argument||!safe_copy(&request,argument,sizeof(request))||request.reserved>1)return ERROR_INVALID_PARAMETER;
+    const bool simulated=request.reserved==1;request.reserved=0;
+    if(!gears_prime::valid(request))return ERROR_INVALID_PARAMETER;
+    std::lock_guard<std::mutex> lock(prime_mutex);
+    if(!prime_ready.load()||!prime_owner_allows_handoff(true,request.pid,request.creation_time))return ERROR_ACCESS_DENIED;
+    // The owned prime already attested this process/module. Buttons are needed
+    // before player discovery, and this same owner is retained into gameplay.
+    return vr_gamepad_live::initialize(true,simulated,nullptr)?ERROR_SUCCESS:ERROR_INVALID_STATE;
+}
+extern "C" __declspec(dllexport) gears_rig_tracking::Reply __cdecl GearsVrReadCommittedHandEndpointV3(
+    gears_committed_hand::Request const* request,gears_committed_hand::Frame* frame) noexcept {
+    return full_body_c0_native_live::read_endpoint(request,frame);
+}
+extern "C" __declspec(dllexport) gears_weapon_hand::Reply __cdecl GearsVrAttachCommittedHandConsumerV3(
+    gears_committed_hand_consumer::Registration const* registration,gears_weapon_hand::RegistrationResult* result) noexcept {
+    return weapon_hand_runtime::attach_hand_visual(registration,result,full_body_c0_native_live::enabled);
+}
+extern "C" __declspec(dllexport) gears_rig_tracking::Reply __cdecl GearsVrReadCommittedHandInteractionV4(
+    gears_committed_interaction::Request const* request,gears_committed_interaction::Frame* frame) noexcept {
+    return full_body_c0_native_live::read_interaction(request,frame);
+}
+extern "C" __declspec(dllexport) bool __cdecl GearsVrSubmitWeaponHudQueryV1(
+    gears_weapon_hud_receipt::Receipt const* receipt) noexcept {
+    return weapon_hand_runtime::submit_hud_query(receipt);
 }
 extern "C" __declspec(dllexport) gears_weapon_hand::Reply __cdecl GearsVrAttachWeaponCallBoundaryV1(
     gears_weapon_call::Registration const* registration,gears_weapon_hand::RegistrationResult* result) noexcept {
@@ -5909,7 +6230,7 @@ extern "C" __declspec(dllexport) gears_weapon_hand::Reply __cdecl GearsVrAttachW
     gears_weapon_action::Registration const* registration,gears_weapon_hand::RegistrationResult* result) noexcept {
     return weapon_hand_runtime::attach_action_gate(registration,result,weapon_call_live::owned.load(std::memory_order_acquire));
 }
-extern "C" __declspec(dllexport) gears_weapon_hand::Reply __cdecl GearsVrAttachBodyMainMountProviderV2(
+extern "C" __declspec(dllexport) gears_weapon_hand::Reply __cdecl GearsVrAttachBodyMainMountProviderV3(
     gears_body_main_mount_provider::Registration const* registration,gears_weapon_hand::RegistrationResult* result) noexcept {
     return weapon_hand_runtime::attach_body_mount_provider(registration,result,full_body_c0_native_live::body_mount_policy_enabled());
 }
@@ -6224,6 +6545,15 @@ extern "C" __declspec(dllexport) DWORD WINAPI GearsCaptureTargetPrimeOwned(void*
     gears_prime::OwnerArgument copied{};
     if(!argument||!safe_copy(&copied,argument,sizeof(copied)))return ERROR_INVALID_PARAMETER;
     return begin_target_prime(&copied);
+}
+extern "C" __declspec(dllexport) DWORD WINAPI GearsCaptureRetireStartupPresentationOwned(void* argument) {
+    gears_prime::OwnerArgument copied{};
+    if(!argument||!safe_copy(&copied,argument,sizeof(copied))||!gears_prime::valid(copied))return ERROR_INVALID_PARAMETER;
+    std::lock_guard<std::mutex> lock(prime_mutex);
+    if(!prime_ready.load()||prime_done.load()||started.load()||recording.load()||
+       !gears_prime::same_owner(prime_owner_pid,prime_owner_creation_time,copied.pid,copied.creation_time)||
+       prime_owner.state()!=gears_session::OwnerState::alive)return ERROR_INVALID_STATE;
+    return startup_menu_geometry_live::retire();
 }
 namespace {
 QuadTrace fake_quad_last{};unsigned fake_quad_calls{};

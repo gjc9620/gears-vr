@@ -7,6 +7,7 @@
 namespace {
 namespace sender=gears_body_main_mount_sender;
 namespace bodywire=gears_body_main_mount_provider;
+static_assert(bodywire::version==5,"This fixture checks the explicit visual hold context ABI");
 namespace oldwire=gears_weapon_main_mount_provider;
 struct BodyFixture {
     Fixture owned;bodywire::Request request{};sender::Parent parent{};
@@ -39,6 +40,7 @@ struct BodyFixture {
     bodywire::Status respond(bodywire::Response& out){return sender::response(request,parent,identity,observation,fixture_now,out);}
 };
 bool empty(bodywire::Response const& out){return out.size==sizeof(out)&&out.abi_version==bodywire::version&&
+    out.hold_kind==bodywire::HoldKind::unknown&&!out.reserved&&
     !out.query_id&&!out.hand_lifecycle&&!out.action_generation&&!out.equipment_begin_ns&&!out.equipment_end_ns&&
     bodywire::same(out.source,bodywire::SourceKey{})&&out.mount.size==sizeof(out.mount)&&
     out.mount.abi_version==oldwire::version&&!out.mount.query_id&&!out.mount.key.frame&&!out.mount.calibration_known&&
@@ -48,6 +50,12 @@ template<class Change>void reject(Change change){BodyFixture f;bodywire::Respons
     CHECK(f.respond(out)!=bodywire::Status::ready&&empty(out));}
 }
 int main(){
+    {BodyFixture f;bodywire::Response out{};CHECK(f.respond(out)==bodywire::Status::ready);
+        CHECK(out.hold_kind==bodywire::HoldKind::firearm&&!out.reserved);
+        f.observation.game.kind=wh::WeaponKind::hand_thrown;
+        CHECK(f.respond(out)==bodywire::Status::ready&&out.hold_kind==bodywire::HoldKind::frag);
+        f.observation.game.kind=wh::WeaponKind::unknown;
+        CHECK(f.respond(out)==bodywire::Status::not_firearm&&empty(out));}
     for(unsigned selected=0;selected<2;++selected){BodyFixture f(selected);bodywire::Response out{};CHECK(f.respond(out)==bodywire::Status::ready);
         CHECK(out.query_id==901&&out.mount.query_id==901&&out.hand_lifecycle==f.request.hand_lifecycle&&out.action_generation==7);
         CHECK(bodywire::same(out.source,bodywire::source_key(f.request.source))&&wh::same(out.mount.key,f.identity.key));
@@ -66,15 +74,15 @@ int main(){
         s.original_scene.scene_qpc=s.metadata_begin_ns-2000000;s.original_scene.published_ns=s.metadata_begin_ns-1000000;
         t.continuity.input=t.controllers;f.request.source.basis.capture_begin_ns=t.end_ns;
         bodywire::Response out{};CHECK((f.respond(out)==bodywire::Status::ready)==(age==40000000));if(age>40000000)CHECK(empty(out));}
-    for(std::int64_t age:{50000000LL,50000001LL}){BodyFixture f;auto& o=f.request.source.original_scene;
+    for(std::int64_t age:{50000000LL,50000001LL,250000000LL}){BodyFixture f;auto& o=f.request.source.original_scene;
         o.scene_qpc=f.request.source.metadata_begin_ns-age;o.published_ns=std::uint64_t(o.scene_qpc);bodywire::Response out{};
-        CHECK((f.respond(out)==bodywire::Status::ready)==(age==50000000));if(age>50000000)CHECK(empty(out));}
+        CHECK(f.respond(out)==bodywire::Status::ready);CHECK(out.abi_version==5);}
     {BodyFixture f;auto& s=f.request.source;s.original_scene.scene_qpc=fixture_now-55000000;
         s.original_scene.published_ns=fixture_now-54000000;bodywire::Response out{};
         CHECK(f.respond(out)==bodywire::Status::ready); // actual GT metadata is 9 ms old, Scene was 46 ms at its BEGIN.
         CHECK(out.source.metadata_begin_ns==s.metadata_begin_ns&&out.source.metadata_end_ns==s.metadata_end_ns);
-        CHECK(out.abi_version==2);auto legacy=f.request;legacy.abi_version=1;wh::EquipmentIdentity identity{};
-        CHECK(sender::context(legacy,f.parent,fixture_now,identity)==bodywire::Status::source_mismatch);}
+        CHECK(out.abi_version==5);for(unsigned version:{1u,2u,3u,4u}){auto legacy=f.request;legacy.abi_version=version;wh::EquipmentIdentity identity{};
+            CHECK(sender::context(legacy,f.parent,fixture_now,identity)==bodywire::Status::source_mismatch);}}
     for(std::int64_t age:{50000000LL,50000001LL}){BodyFixture f;auto& s=f.request.source;
         s.metadata_begin_ns=fixture_now-age;s.metadata_end_ns=s.metadata_begin_ns;
         s.original_scene.scene_qpc=s.metadata_begin_ns-1000000;s.original_scene.published_ns=s.metadata_begin_ns;
@@ -94,9 +102,43 @@ int main(){
         switch(field){case 0:t.stereo.focused=0;break;case 1:t.controllers.hands[1].grip_active=0;break;
         case 2:++t.stereo.space_epoch;break;case 3:++t.stereo.session;break;case 4:++t.controllers.input_epoch;break;
         case 5:++t.controllers.profile_generation;break;case 6:++t.continuity.stream_epoch;break;
-        case 7:++t.continuity.tracking_epoch[1];break;case 8:++t.publisher_start;break;case 9:++t.native_reference.epoch;break;
+        case 7:--t.continuity.tracking_epoch[1];break;case 8:++t.publisher_start;break;case 9:++t.native_reference.epoch;break;
         case 10:t.reference_revision=0;break;case 11:t.reference_revision=303;break;
         case 12:t.stereo.source=t.controllers.source=gears_vr::StereoSource::MetaOperatorSimulated;break;}});
+    for(unsigned side=0;side<2;++side){BodyFixture f;auto& t=f.request.source.tracking;
+        ++t.continuity.tracking_epoch[side];bodywire::Response out{};
+        CHECK(f.respond(out)==bodywire::Status::ready);
+        // Right-hand equipment does not require a currently tracked left hand.
+        t.controllers.hands[0].grip_active=0;t.controllers.hands[0].grip_flags=0;t.continuity.input=t.controllers;
+        CHECK(f.respond(out)==bodywire::Status::ready);
+        t.stereo.sequence=t.controllers.sequence=f.request.source.original_scene.controllers.sequence;
+        t.continuity.input=t.controllers;CHECK(f.respond(out)==bodywire::Status::source_mismatch&&empty(out));}
+    {BodyFixture f;auto& o=f.request.source.original_scene;
+        o.flags&=~gears_rig_tracking::producer_continuity_available;o.producer={};
+        bodywire::Response out{};CHECK(f.respond(out)==bodywire::Status::ready);
+        for(unsigned field=0;field<8;++field){BodyFixture bad;auto& s=bad.request.source;
+            s.original_scene.flags&=~gears_rig_tracking::producer_continuity_available;s.original_scene.producer={};
+            switch(field){case 0:s.tracking.continuity.stream_epoch=0;break;case 1:s.tracking.continuity.tracking_epoch[1]=0;break;
+            case 2:++s.tracking.publisher_start;break;case 3:++s.tracking.continuity.input.sequence;break;
+            case 4:++s.tracking.controllers.input_epoch;s.tracking.continuity.input=s.tracking.controllers;break;
+            case 5:++s.tracking.native_reference.epoch;break;case 6:s.original_scene.producer.stream=1;break;
+            case 7:s.original_scene.flags&=~gears_rig_tracking::controllers_matched;break;}
+            CHECK(bad.respond(out)==bodywire::Status::source_mismatch&&empty(out));
+        }
+    }
+    {BodyFixture f;auto clear=[](auto& o){o.flags&=~(gears_rig_tracking::controllers_matched|gears_rig_tracking::producer_continuity_available);
+            o.controllers={};o.producer={};o.controller_publisher_pid=0;o.controller_publisher_start=0;
+            o.world_pose_mask=gears_rig_tracking::head_pose;o.world_grip[0]={};o.world_grip[1]={};};
+        clear(f.request.source.original_scene);bodywire::Response out{};
+        CHECK(f.respond(out)==bodywire::Status::ready);
+        for(unsigned field=0;field<8;++field){BodyFixture bad;auto& s=bad.request.source;clear(s.original_scene);
+            switch(field){case 0:s.original_scene.controllers.sequence=1;break;case 1:s.original_scene.controller_publisher_pid=1;break;
+            case 2:s.original_scene.producer.stream=1;break;case 3:s.original_scene.world_pose_mask|=gears_rig_tracking::right_grip_pose;break;
+            case 4:s.tracking.publisher_pid=0;break;case 5:s.tracking.continuity.stream_epoch=0;break;
+            case 6:s.tracking.controllers.sync_ns=fixture_now-40000001;s.tracking.continuity.input=s.tracking.controllers;break;
+            case 7:++s.tracking.native_reference.epoch;break;}
+            CHECK(bad.respond(out)==bodywire::Status::source_mismatch&&empty(out));}
+    }
     reject([](auto& f){++f.identity.key.lifecycle;});reject([](auto& f){++f.identity.mesh.name_number;});
     reject([](auto& f){f.observation.game.main_hand_held=false;});reject([](auto& f){f.observation.component={};});
     {BodyFixture f;f.request.query_id=902;bodywire::Response out{};CHECK(f.respond(out)==bodywire::Status::ready&&out.query_id==902&&out.mount.query_id==902);}

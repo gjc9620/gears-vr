@@ -1,6 +1,7 @@
 #pragma once
 #include "../vr-common/native_rig_tracking_frame.h"
 #include "../vr-common/controller_continuity_frame.h"
+#include "../vr-common/current_continuity_for_metadata.h"
 #include <cstring>
 #include <limits>
 namespace gears_body_tick_input {
@@ -28,13 +29,31 @@ inline bool scene_time(std::int64_t ticks,std::int64_t frequency,std::int64_t& o
     if(!n||n>lim)return false;
     out=std::int64_t(n);return true;
 }
-inline bool hard_shape(Input const& input,core::CoreSnapshot const& original,std::int64_t now,bool allow_sim,std::int64_t& scene_ns) noexcept {
+inline bool tracking_epochs_match(Input const& input,core::CoreSnapshot const& parent,bool current_hand_epochs) noexcept {
+    for(unsigned side=0;side<2;++side){
+        const auto current=input.continuity.tracking_epoch[side],previous=parent.producer.tracking[side];
+        if(current==previous)continue;
+        // The current source is separately acquired from the same authenticated
+        // stream. A hand loss may advance its epoch after the older Scene was
+        // observed; that must not discard the other current hand/head solve.
+        // Never mutate the parent or carry its pose/action across the boundary.
+        // The target uses current tracking; endpoints publish current epochs.
+        // Legacy consumers still require exact parent epochs. A changed epoch
+        // on the SAME cohort or a regression is invalid for every consumer.
+        if(!current_hand_epochs||current<previous||input.controllers.sequence<=parent.controllers.sequence)return false;
+    }
+    return true;
+}
+inline bool hard_shape(Input const& input,core::CoreSnapshot const& original,std::int64_t now,bool allow_sim,std::int64_t& scene_ns,
+    bool require_both_hands=true,bool current_hand_epochs=false) noexcept {
     const auto& s=input.stereo;const auto& c=input.controllers;const auto& p=original;
+    const bool parent_controllers=(p.flags&rig::controllers_matched)!=0;
     if(std::memcmp(&input.parent_scene,&original,sizeof original)||
        !core::core_snapshot_non_age_valid(p,now,parent_age_ns,allow_sim)||
        !scene_time(p.scene_qpc,p.qpc_frequency,scene_ns)||scene_ns>now||
        !vr::stereo_geometry_valid(p.stereo)||!vr::stereo_render_active(p.stereo)||p.stereo.focused!=1||
-       !(p.flags&rig::controllers_matched)||!(p.flags&rig::producer_continuity_available)||
+       (!parent_controllers&&(!current_hand_epochs||!gears_current_continuity::absent_controllers(p)))||
+       (!(p.flags&rig::producer_continuity_available)&&!current_hand_epochs)||
        p.controllers.sync_ns>now||!input.tick||input.thread!=p.native.game_thread||
        input.begin_ns<=0||input.end_ns<input.begin_ns||input.end_ns>now||
        !vr::stereo_tracking_valid(s,allow_sim)||!vr::stereo_geometry_valid(s)||
@@ -44,17 +63,20 @@ inline bool hard_shape(Input const& input,core::CoreSnapshot const& original,std
        !gears_hand_continuity::tracked_input_shape_valid(input.continuity)||
        !gears_hand_continuity::same_input(input.continuity.input,c)||
        s.source!=p.stereo.source||s.session!=p.stereo.session||s.space_epoch!=p.stereo.space_epoch||
-       c.profile_generation!=p.controllers.profile_generation||c.input_epoch!=p.controllers.input_epoch||
-       input.continuity.stream_epoch!=p.producer.stream||
-       input.continuity.tracking_epoch[0]!=p.producer.tracking[0]||input.continuity.tracking_epoch[1]!=p.producer.tracking[1]||
-       input.publisher_pid!=p.controller_publisher_pid||input.publisher_start!=p.controller_publisher_start||
+       (parent_controllers&&(c.profile_generation!=p.controllers.profile_generation||c.input_epoch!=p.controllers.input_epoch))||
+       !gears_current_continuity::metadata_scene(input.continuity,p.producer,p.controllers.sequence,
+           (p.flags&rig::producer_continuity_available)!=0,current_hand_epochs,current_hand_epochs)||
+       !input.publisher_pid||!input.publisher_start||
+       (parent_controllers&&(input.publisher_pid!=p.controller_publisher_pid||input.publisher_start!=p.controller_publisher_start))||
        input.reference_revision!=p.native_reference_revision||
        input.native_reference.epoch!=p.native_reference.epoch||input.native_reference.flags!=p.native_reference.flags||
        input.native_reference.reserved!=p.native_reference.reserved||
        s.sequence<p.stereo.sequence||s.received_ns<p.stereo.received_ns||s.predicted_time<p.stereo.predicted_time||
        c.received_ns<p.controllers.received_ns||c.sync_ns<p.controllers.sync_ns)return false;
-    if(s.sequence==p.stereo.sequence&&(!vr::stereo_same(s,p.stereo)||!gears_hand_continuity::same_input(c,p.controllers)))return false;
-    for(unsigned i=0;i<2;++i)if(!vr::controller_pose_usable(c.hands[i].grip,c.hands[i].grip_flags,c.hands[i].grip_active))return false;
+    if(s.sequence==p.stereo.sequence&&(!vr::stereo_same(s,p.stereo)||
+        (parent_controllers&&!gears_hand_continuity::same_input(c,p.controllers))))return false;
+    if(require_both_hands)for(unsigned i=0;i<2;++i)
+        if(!vr::controller_pose_usable(c.hands[i].grip,c.hands[i].grip_flags,c.hands[i].grip_active))return false;
     return true;
 }
 inline Verdict classify(Input const& input,core::CoreSnapshot const& original,std::int64_t now,bool allow_sim) noexcept {

@@ -1,13 +1,15 @@
 // Identity-only metadata carrier; original V1 logic and entry remain unchanged.
 namespace lancermain_asset {
-Status read_equipment(gears_weapon_hand::EquipmentIdentity const& f,Evidence& out) noexcept {
+Status read_equipment(gears_weapon_hand::EquipmentIdentity const& f,Evidence& out,
+    AssetScope scope=AssetScope::lancer_only) noexcept {
     const auto gt=weaponhand::current_gt(nullptr);
     if(!gt||(f.key.thread_id&&gt!=f.key.thread_id))return Status::wrong_thread;
     meta::Snapshot schema{};schema.module_base=base;meta::Reader r{schema,meta::Stage::final_check};
     if(!gears_weapon_hand::identity_valid(f.weapon)||!gears_weapon_hand::identity_valid(f.mesh)||
        !meta::tables(schema.module_base,schema.objects,schema.names)||!weaponhand::object(r,f.weapon)||
        !weaponhand::object(r,f.mesh))return Status::invalid_identity;
-    if(!weaponhand::derives(r,f.weapon.address,L"Weap_AssaultRifle",L"WarfareGame"))return Status::unsupported_weapon;
+    const auto expected_asset=held_asset_name(r,f.weapon.address,scope);
+    if(expected_asset==HeldAsset::unknown)return Status::unsupported_weapon;
     std::array<meta::PointerField,3> links{};weaponhand::BoolField hidden{};Evidence candidate{};
     if(!f.pawn.address||!weaponhand::pointer(r,f.weapon.address,L"Instigator",f.pawn.address,links[0])||
        !mesh_pointer(r,f.weapon.address,links[1])||!links[1].value)return Status::invalid_link;
@@ -19,7 +21,7 @@ Status read_equipment(gears_weapon_hand::EquipmentIdentity const& f,Evidence& ou
        !identify(r,links[2].value,candidate.asset)||
        !weaponhand::derives(r,links[2].value,L"SkeletalMesh",L"Engine"))return Status::unsupported_asset;
     U32 asset_slot{};
-    if(!r.path(candidate.asset.address,asset_slot)||!r.named(asset_slot,L"COGAssaultRifle"))return Status::unsupported_asset;
+    if(!r.path(candidate.asset.address,asset_slot)||!held_asset_matches(r,asset_slot,expected_asset))return Status::unsupported_asset;
     // Repeat actual selectors too: a newly inserted earlier same-name field
     // must not leave the old selected descriptor looking valid in isolation.
     std::array<meta::PointerField,3> fresh_links{};weaponhand::BoolField fresh_hidden{};

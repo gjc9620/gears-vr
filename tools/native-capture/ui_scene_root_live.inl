@@ -15,6 +15,7 @@ namespace ui_scene_root_live {
 #if defined(GEARS_UI_SCENE_ROOT_OBSERVER) && GEARS_UI_SCENE_ROOT_OBSERVER
 using Exec=uintptr_t(__fastcall*)(void*,void*,void*);
 Exec original{};void* target{};bool reserved{};
+#include "startup_ui_draw_observer.inl"
 inline constexpr unsigned row_limit=8;
 struct Row {
     uintptr_t client{},fcanvas{},scene{},caller{};uint64_t invocation{};
@@ -24,6 +25,31 @@ struct Row {
 };
 std::array<Row,row_limit> rows{};std::atomic<unsigned> slots{};
 std::atomic<uint64_t> calls{},candidates{},rejected{},dropped{};
+// One small read-only layout record per distinct root/matrix. The original
+// first-eight batch inventories are usually consumed by HUD scenes before a
+// pause menu opens; do not repeat those expensive inventories per frame.
+struct LayoutRow {
+    uintptr_t client{},canvas{},scene{};uint64_t world{},invocation{};long long at{};
+    unsigned depth{};std::array<unsigned char,64> client_matrix{},canvas_matrix{};
+};
+SRWLOCK layout_lock=SRWLOCK_INIT;
+std::array<LayoutRow,24> layout_rows{};unsigned layout_count{};
+void observe_layout(gears_ui_scene_root::Candidate const& c,uint64_t invocation){
+    gears_ui_scene_root::MatrixSnapshot canvas{};
+    LayoutRow r{};r.client=c.client;r.canvas=c.fcanvas;r.scene=c.scene;
+    r.world=committed_world_generation.load();r.invocation=invocation;r.at=gears_vr::monotonic_ns();
+    std::array<unsigned char,64> again{};
+    if(!gears_ui_scene_root::matrix_stack(safe_copy,c.fcanvas,canvas)||
+       !safe_copy(r.client_matrix.data(),reinterpret_cast<void const*>(c.client+0xb0),r.client_matrix.size())||
+       !safe_copy(again.data(),reinterpret_cast<void const*>(c.client+0xb0),again.size())||again!=r.client_matrix)return;
+    r.depth=unsigned(canvas.stack.count);std::copy_n(canvas.top.begin(),64,r.canvas_matrix.begin());
+    if(!TryAcquireSRWLockExclusive(&layout_lock))return;
+    struct Unlock {~Unlock(){ReleaseSRWLockExclusive(&layout_lock);}} unlock;
+    for(unsigned i=0;i<layout_count;++i){auto const& old=layout_rows[i];
+        if(old.client==r.client&&old.scene==r.scene&&old.world==r.world&&old.depth==r.depth&&
+           old.client_matrix==r.client_matrix&&old.canvas_matrix==r.canvas_matrix)return;}
+    if(layout_count<layout_rows.size())layout_rows[layout_count++]=r;
+}
 thread_local Row* current{};
 void executing(unsigned kind){ui_logical_group_live::executing(kind);
     if(current){if(kind==1)++current->simple_executes;else if(kind==2)++current->material_executes;}}
@@ -35,12 +61,15 @@ uintptr_t __fastcall hook(void* client,void* fcanvas,void* scene){
     const auto caller=reinterpret_cast<uintptr_t>(_ReturnAddress());
     struct Restore {Row* previous=current;~Restore(){current=previous;}} restore;
     current=nullptr;Scope scope;
+    if(startup_draw::armed.load(std::memory_order_acquire)&&prime_recording.load()&&!recording.load())
+        return startup_draw::invoke(client,fcanvas,scene,caller);
     if(!scope.world()||!ui_observer_enabled||!recording.load())return original(client,fcanvas,scene);
     ++calls;gears_ui_scene_root::Candidate selected{};
     if(!gears_ui_scene_root::candidate({base},safe_copy,reinterpret_cast<uintptr_t>(client),
         reinterpret_cast<uintptr_t>(fcanvas),reinterpret_cast<uintptr_t>(scene),caller,selected)){
         ++rejected;return original(client,fcanvas,scene);}
     const auto invocation=++candidates;
+    observe_layout(selected,invocation);
     ui_logical_group_live::Observe group(2,invocation,reinterpret_cast<uintptr_t>(scene),
         base+gears_ui_scene_root::scene_render_rva,0,reinterpret_cast<uintptr_t>(fcanvas),0);
     auto render=[&]{return path_choice_position_live::invoke(selected,[&]{
@@ -78,6 +107,7 @@ uintptr_t __fastcall hook(void* client,void* fcanvas,void* scene){
 bool reserve(){
     if(reserved||!gears_ui_scene_root::validate_adapter({base},safe_copy))return false;
     target=reinterpret_cast<void*>(base+gears_ui_scene_root::adapter_rva);
+    if(!safe_copy(startup_draw::original_bytes.data(),target,startup_draw::original_bytes.size()))return false;
     if(MH_CreateHook(target,reinterpret_cast<void*>(hook),reinterpret_cast<void**>(&original))!=MH_OK||
        !gears_ui_scene_root::validate_adapter({base},safe_copy))return false;
     reserved=true;return true;
@@ -91,8 +121,35 @@ void print(FILE* status){
             i,r.invocation,reinterpret_cast<void*>(r.client),reinterpret_cast<void*>(r.fcanvas),reinterpret_cast<void*>(r.scene),
             reinterpret_cast<void*>(r.caller),r.thread,r.enter,r.exit,r.before_valid,r.after_candidate,r.delta_valid,r.before_keys,r.before_items,
             r.before_vertices,r.simple_ranges,r.added_vertices,r.materials,r.simple_executes,r.material_executes,r.before_matrix,r.after_matrix,r.matrix_restored);}
+    std::array<LayoutRow,24> layouts{};unsigned count{};
+    if(TryAcquireSRWLockExclusive(&layout_lock)){count=layout_count;layouts=layout_rows;ReleaseSRWLockExclusive(&layout_lock);}
+    for(unsigned i=0;i<count;++i){auto const& r=layouts[i];
+        fprintf(status,"ui_scene_root_layout row=%u at_ns=%lld client=%p canvas=%p scene=%p world=%llu invocation=%llu depth=%u client_matrix=",
+            i,r.at,reinterpret_cast<void*>(r.client),reinterpret_cast<void*>(r.canvas),reinterpret_cast<void*>(r.scene),r.world,r.invocation,r.depth);
+        for(auto b:r.client_matrix)fprintf(status,"%02x",unsigned(b));fprintf(status," canvas_matrix=");
+        for(auto b:r.canvas_matrix)fprintf(status,"%02x",unsigned(b));fprintf(status," semantic_identity_proven=0 source_modified=0\n");}
 }
 #else
+namespace startup_draw {
+bool remember(void*){return true;}
+bool observing(){return false;}
+bool reserved_target(void*){return false;}
+struct ExecuteScope {};
+uint64_t list_generation(uintptr_t,bool=false,bool=true){return 0;}
+void gpu_draw(ID3D12GraphicsCommandList*,uintptr_t,bool,unsigned,unsigned){}
+struct Submission {};
+Submission submission_begin(ID3D12CommandQueue*,unsigned,ID3D12CommandList* const*){return {};}
+void submitted(Submission const&){}
+unsigned execute_begin(void*,uintptr_t){return 0;}
+void execute_end(unsigned,uint32_t){}
+unsigned flush_begin(void*,uintptr_t){return 0;}
+void flush_end(unsigned,uintptr_t){}
+bool queue(bool){return true;}
+bool primed_bytes(void*,std::array<unsigned char,32>&){return false;}
+bool disable(){return true;}
+bool restored(){return true;}
+void print(FILE*,bool=false){}
+}
 bool reserve(){return true;}
 void executing(unsigned kind){ui_logical_group_live::executing(kind);}
 void reset_tls(){}

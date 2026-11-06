@@ -53,6 +53,15 @@ PATH_CLOSE_SHA256 = 'b8c82a830ef05c50a88489351c469e591b65a154310a2fefec91e57f66f
 PATH_CLOSE_EXEC_CHUNKS = ((0x34698c, 128), (0x90dbe6, 32))
 PATH_CLOSE_EXEC_SHA256 = '1f03d742fcd859a664004bb62ff35c327d80b1364b235701e64184eee53e55c1'
 FIRST_PERSON_HEAD_RANGES = {
+    # Independent fixed expectations from the same verified retail text.
+    # Include the complete out-of-line branch of the original factory lookup.
+    0x35b9a0: (
+        (0x35b9a0,54,'ce664d87173e85d14f002f56689354b3a3e5558feed3382d081d194de5dc1930'),
+        (0x910a96,9,'a20033339ab7bcd3d8d0e3614dd6a97f3432ee8c4ee78984ec79c0ea8e3d361e'),
+    ),
+    0xcfa300: (
+        (0xcfa300,91,'673199bacd19db9b8ea7f77cd8054a070706c3e996cef504adc31d7946df3202'),
+    ),
     0xdfb50: (
         (0xdfb50, 1485, '77aa1db06718230a1f0bc4492392753f48434e670f630da77a2062c472712ad3'),
         (0x89cb4e, 725, '388d5977468b288faf972ce6ee739cec0503038e64990be169e874b41624d2a2'),
@@ -65,6 +74,10 @@ FIRST_PERSON_HEAD_RANGES = {
 # Complete known body/control entry chunks from the source-bound certificates.
 # These are fixed expectations, never inferred from the DLL's status/manifest.
 BODY_HOOK_RANGES = {
+    0xfacb0: (
+        (0xfacb0, 4055, '660fe88e7f2237e6aec7f288e2c34ffb69212cf863ce89ce783551ce4e27f7a0'),
+        (0x8a1998, 982, 'b67b229ac5bd3ca5ff0a1b4c6c1e3a3a11f1ead720a0830a3ae37f1d0e5785ee'),
+    ),
     0x129cc0: (
         (0x129cc0, 2132, 'd10570b6a96cc9d16c3938e2999be6288d7603127ac402eb908f6e57af0a2fa9'),
         (0x8a9738, 1179, '4e81e649c3aa5c9fb28188adfc4d09b3837d46e73ac65cdd467b09b66617c70e'),

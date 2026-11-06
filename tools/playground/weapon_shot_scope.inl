@@ -5,6 +5,9 @@ namespace shot=gears_weapon_shot;
 namespace meta=gripdamage_metadata;
 namespace abi=gears_weapon_hand;
 thread_local shot::Stack stack;
+// GT-only counters: distinguish a missing fire entry from rejected metadata.
+// Exported by the ordinary tick, never formatted inside CallFunction.
+thread_local std::array<std::uint64_t,6> admission_counts{};
 bool read(void* out,void const* address,std::size_t bytes) noexcept {
     return copy(out,reinterpret_cast<uptr>(address),bytes);
 }
@@ -102,7 +105,12 @@ shot::Token enter(uptr self,uptr caller,uptr callee) noexcept {
     const auto candidate=probe(callee);
     if(candidate==Probe::helper)return {};
     shot::Binding binding{};abi::ObjectIdentity weapon{};
-    if(candidate==Probe::unknown||!bind(callee,binding)||!receiver(self,weapon)||!caller_known(caller))return stack.mask();
+    if(candidate==Probe::unknown){++admission_counts[0];return stack.mask();}
+    ++admission_counts[1];
+    if(!bind(callee,binding)){++admission_counts[2];return stack.mask();}
+    if(!receiver(self,weapon)){++admission_counts[3];return stack.mask();}
+    if(!caller_known(caller)){++admission_counts[4];return stack.mask();}
+    ++admission_counts[5];
     shot::Binding parent{};abi::ObjectIdentity parent_weapon{};
     if(stack.binding(parent,parent_weapon)){
         if(!active_binding_current())return stack.mask();

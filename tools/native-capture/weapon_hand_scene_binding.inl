@@ -24,6 +24,12 @@ bool same_key(Binding const& a,Binding const& b){return a.context_valid&&b.conte
     a.world_generation&&a.world_generation==b.world_generation&&gears_anchor::equal_identity(a.controller,b.controller)&&
     gears_anchor::equal_identity(a.pawn,b.pawn)&&gears_anchor::equal_identity(a.mesh,b.mesh)&&
     gears_anchor::equal_identity(a.world,b.world)&&gears_anchor::equal_identity(a.weapon,b.weapon);}
+// Camera-only binding cannot authorize weapon/pose operations: those require
+// weapon_known, which deliberately stays false in this observation.
+bool same_visual_key(Binding const& a,Binding const& b){return a.context_valid&&b.context_valid&&!a.weapon_known&&!b.weapon_known&&
+    !a.weapon.address&&!b.weapon.address&&a.world_generation&&a.world_generation==b.world_generation&&
+    gears_anchor::equal_identity(a.controller,b.controller)&&gears_anchor::equal_identity(a.pawn,b.pawn)&&
+    gears_anchor::equal_identity(a.mesh,b.mesh)&&gears_anchor::equal_identity(a.world,b.world);}
 enum class Reason:unsigned {ready,body_unavailable,no_scene,wrong_thread,context_guard,context_invalid,
     layout_wait,layout_rejected,layout_changed,world,mesh,weapon,instigator,changed,exception};
 const char* reason_name(Reason r){static constexpr const char* names[]={"ready","body_unavailable","no_scene","wrong_thread",
@@ -223,7 +229,7 @@ bool root(gears_anchor::Receipt const& scene,Context& c){
        !same(c.binding.pawn,c.possession.pawn)||!derives(c.binding.pawn.cls,L"WarPawn",0,c.paths[0]))return reject(Reason::context_invalid);
     return true;
 }
-bool values(Context& c){
+bool values(Context& c,bool visual_only=false){
     auto& result=c.binding;auto const& p=base_proof;uintptr_t pawn_world{},pc_world{},mesh{},weapon{};
     stage="current_world";
     if(!field(pawn_world,result.pawn.address,p.fields[0].offset)||!field(pc_world,result.controller.address,p.fields[1].offset)||
@@ -232,6 +238,12 @@ bool values(Context& c){
     stage="current_mesh";
     if(!field(mesh,result.pawn.address,p.fields[3].offset)||!identity(mesh,result.mesh,true)||
        !derives(result.mesh.cls,L"SkeletalMeshComponent",p.fields[3].reference.address,c.paths[2]))return reject(Reason::mesh);
+    if(visual_only){
+        if(!field(result.special_move,result.pawn.address,p.fields[4].offset))return reject(Reason::context_invalid);
+        result.context_valid=true; // No weapon identity or action permission.
+        result.shared_actor_world=same(p.fields[0].id,p.fields[1].id)&&same(p.fields[0].owner,p.fields[1].owner)&&named(p.fields[0].owner,L"Actor");
+        return true;
+    }
     stage="current_weapon";
     if(!field(weapon,result.pawn.address,p.fields[2].offset)||!field(result.special_move,result.pawn.address,p.fields[4].offset))return reject(Reason::weapon);
     if(weapon){
@@ -281,9 +293,59 @@ bool current_actor_checked(Binding const& expected,bool retained,bool storage_on
     }catch(...){return false;}
 }
 bool current_actor(Binding const& expected){return current_actor_checked(expected,false);}
+std::atomic<uint64_t> tick_lancer_state_refreshes{};
+bool current_tick_actor(Binding const& scene,Binding& out) noexcept {
+    // Scene is an immutable identity association. SpecialMove is per-Tick
+    // policy, explicitly not part of same_key(). A legitimate Lancer ready
+    // transition after that Scene must be observed anew, not accepted as the
+    // old state or rejected until the next render Scene (one stock pose).
+    // Caller already owns the current outer MeshTick/world lease. No cached
+    // Scene/Core/tracking timestamp, actor identity or writer is replaced.
+    try {
+        if(GetCurrentThreadId()!=game_thread.load()||!scene.context_valid||!scene.weapon_known)return false;
+        Binding observed=scene;
+        {
+            std::unique_lock<std::mutex> lock(mutex,std::try_to_lock);
+            if(!lock.owns_lock()||!context_ready()||!proofs_current(scene.weapon.address!=0)||
+               !field(observed.special_move,scene.pawn.address,base_proof.fields[4].offset))return false;
+            if(observed.special_move!=scene.special_move){
+                const auto supported=[](unsigned x){return x==0||x==33||x==34;};
+                gears_anchor::Identity actual{};ClassPath path{};
+                if(!supported(scene.special_move)||!supported(observed.special_move)||!scene.weapon.address||
+                   !identity(scene.weapon.address,actual,true)||!same(actual,scene.weapon)||
+                   !derives(actual.cls,L"Weap_AssaultRifle",0,path)||!proofs_current(true))return false;
+            }
+        }
+        // Two complete actual possession/world/mesh/weapon/Instigator and
+        // SpecialMove reads. A change during this observation still rejects;
+        // every later C0 check uses this exact newly observed policy state.
+        if(!current_actor(observed))return false;
+        if(observed.special_move!=scene.special_move)++tick_lancer_state_refreshes;
+        out=observed;return true;
+    }catch(...){return false;}
+}
+// Read-only display exception for original Lancer animation. Complete current
+// possession/weapon/Instigator checks remain mandatory; a cached Scene, class
+// name or special-move number alone cannot establish this observation.
+bool current_lancer_animation(Binding const& expected){
+    if(!expected.context_valid||!expected.weapon_known||!expected.weapon.address||
+       (expected.special_move!=33&&expected.special_move!=34)||!current_actor(expected))return false;
+    {
+        std::unique_lock<std::mutex> lock(mutex,std::try_to_lock);
+        if(!lock.owns_lock()||!metadata_current())return false;
+        gears_anchor::Identity actual{};ClassPath path{};
+        if(!identity(expected.weapon.address,actual,true)||!same(actual,expected.weapon)||
+           !derives(actual.cls,L"Weap_AssaultRifle",0,path)||!metadata_current())return false;
+    }
+    return current_actor(expected);
+}
+// Current local possession/world/mesh identity, independent of a weapon swap.
+// A visual consumer must separately bound this actual observation and its
+// queued payload. This does not authorize bone, weapon or tracking writes.
+bool current_local_visual_model(Binding const& expected){return current_actor_checked(expected,false,true);}
 bool current_actor_retained(Binding const& expected){return current_actor_checked(expected,true);}
 bool current_actor_storage(Binding const& expected){return current_actor_checked(expected,true,true);}
-bool sample(gears_anchor::Receipt const* scene,Binding& out){
+bool sample_impl(gears_anchor::Receipt const* scene,Binding& out,bool visual_only){
     try{
         std::lock_guard<std::mutex> lock(mutex);stage="scene_admission";
         if(!scene||!scene->invocation||scene->scene_qpc<=0||scene->family_qpc<scene->scene_qpc||scene->renderer_qpc<scene->family_qpc)return reject(Reason::no_scene);
@@ -293,11 +355,11 @@ bool sample(gears_anchor::Receipt const* scene,Binding& out){
         Context first{},second{},last{};if(!root(*scene,first))return false;
         gears_anchor::Identity pawn_class{},controller_class{};
         if(!identity(first.binding.pawn.cls,pawn_class)||!identity(first.binding.controller.cls,controller_class))return reject(Reason::context_invalid);
-        keys(base_proof,pawn_class,controller_class);stage="base_metadata";if(!prepare_base()||!values(first))return false;
+        keys(base_proof,pawn_class,controller_class);stage="base_metadata";if(!prepare_base()||!values(first,visual_only))return false;
         const auto nonempty=first.binding.weapon.address!=0;
         stage="closing_context";
-        if(!context_ready()||!proofs_current(nonempty)||!root(*scene,second)||!values(second)||!same_context(first,second))return reject(Reason::changed);
-        if(!context_ready()||!proofs_current(nonempty)||!root(*scene,last)||!values(last)||!same_context(first,last)||
+        if(!context_ready()||!proofs_current(nonempty)||!root(*scene,second)||!values(second,visual_only)||!same_context(first,second))return reject(Reason::changed);
+        if(!context_ready()||!proofs_current(nonempty)||!root(*scene,last)||!values(last,visual_only)||!same_context(first,last)||
            !proofs_current(nonempty)||!context_ready()||first.binding.world_generation!=committed_world_generation.load()||
            scene->invocation!=first.binding.scene_invocation||scene->thread!=GetCurrentThreadId()||
            scene->scene_qpc!=scene_time||scene->family_qpc!=family_time||scene->renderer_qpc!=renderer_time)return reject(Reason::changed);
@@ -305,7 +367,10 @@ bool sample(gears_anchor::Receipt const* scene,Binding& out){
         out=first.binding;stage="ready";last_reason=Reason::ready;return true;
     }catch(...){return reject(Reason::exception);}
 }
+bool sample(gears_anchor::Receipt const* scene,Binding& out){return sample_impl(scene,out,false);}
+bool sample_visual(gears_anchor::Receipt const* scene,Binding& out){return sample_impl(scene,out,true);}
 #else
 bool sample(gears_anchor::Receipt const*,Binding&){return reject(Reason::body_unavailable);}
+bool sample_visual(gears_anchor::Receipt const*,Binding&){return reject(Reason::body_unavailable);}
 #endif
 } // namespace weapon_hand_scene_binding

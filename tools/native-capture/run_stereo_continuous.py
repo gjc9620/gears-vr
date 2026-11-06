@@ -239,6 +239,7 @@ def native_command(args,owner):
     if getattr(args,'cinematic_camera',False):command.append('--cinematic-camera')
     if getattr(args,'origin_trial',False):command.append('--origin-trial')
     if getattr(args,'ui_observer',False):command.append('--ui-observer')
+    if getattr(args,'menu_state_file',None):command+=['--menu-display-file',str(args.menu_state_file)]
     if getattr(args,'ui_hud_plane',False):command.append('--ui-hud-plane')
     if getattr(args,'ui_reticle_late_sample',False):command.append('--ui-reticle-late-sample')
     if getattr(args,'crosshair_assignment_observer',False):command.append('--crosshair-assignment-observer')
@@ -598,6 +599,10 @@ def run_session(args,control=None,on_report=None,cancel_requested=None,before_na
             preflight_log=None
             try:
                 if cancel_requested and cancel_requested():raise StartupCancelled()
+                if getattr(args,'menu_recovery',False):
+                    from menu_display_monitor import MenuDisplayMonitor,BackgroundMenuDisplayMonitor
+                    menu_monitor=BackgroundMenuDisplayMonitor(MenuDisplayMonitor(args.menu_state_file,state['game_identity'],state['owner_identity'],control.identity,
+                        movie_display=getattr(args,'movie_display',False)))
                 # No Operator layer or pose calls are added to this strict mode.
                 xr_started=time.perf_counter_ns()
                 child=subprocess.Popen(state['xr_command'],stdout=out,stderr=err,
@@ -612,6 +617,7 @@ def run_session(args,control=None,on_report=None,cancel_requested=None,before_na
                 rows=[];panel_ready=not state['startup_menu_enabled']
                 while time.monotonic()<deadline and child.poll() is None:
                     if cancel_requested and cancel_requested():raise StartupCancelled()
+                    if menu_monitor:menu_monitor.poll()
                     path=prefix.with_suffix('.csv')
                     rows=complete_csv_rows(path) if path.exists() else []
                     panel_ready=not state['startup_menu_enabled'] or startup_panel_submitted(out_path)
@@ -639,6 +645,7 @@ def run_session(args,control=None,on_report=None,cancel_requested=None,before_na
                         if cancel_requested and cancel_requested():raise StartupCancelled()
                         checked_identity(control,state['game_identity'])
                         if child.poll() is not None:raise RuntimeError('XR exited while waiting for the level')
+                        if menu_monitor:menu_monitor.poll()
                     ensure_startup_live()
                     before_native_activation(ensure_startup_live)
                     ensure_startup_live()
@@ -676,10 +683,6 @@ def run_session(args,control=None,on_report=None,cancel_requested=None,before_na
                     from sixdof_unified_runtime import Session as UnifiedSession
                     unified_session=UnifiedSession(args,state['game_identity'],lambda:checked_identity(control,state['game_identity']))
                     state['unified_weapons']=dict(unified_session.poll());write_state(state_path,state)
-                if getattr(args,'menu_recovery',False):
-                    from menu_display_monitor import MenuDisplayMonitor,BackgroundMenuDisplayMonitor
-                    menu_monitor=BackgroundMenuDisplayMonitor(MenuDisplayMonitor(args.menu_state_file,state['game_identity'],state['owner_identity'],control.identity,
-                        movie_display=getattr(args,'movie_display',False)))
                 if getattr(args,'world_recovery',False):
                     from world_rebind_runtime import RuntimePreparation
                     from world_rebind_monitor import WorldRebindMonitor
@@ -749,7 +752,17 @@ def run_session(args,control=None,on_report=None,cancel_requested=None,before_na
             except Exception as error:
                 if support:support.failure('controller','session_exception',repr(error),phase=state.get('phase'))
                 state['error']=repr(error)
+                # Preserve where startup/handoff failed, not just MemoryError()
+                # or an export code. Existing session report only; bounded
+                # exception stack, no new polling/collector/game-thread work.
+                import traceback
+                state['exception_traceback']=traceback.format_exc(limit=16)[-8192:]
             finally:
+                if getattr(args,'vr_gamepad_gate',None):
+                    try:
+                        from playground_loader import finish_gamepad
+                        state['vr_gamepad_cleanup']=finish_gamepad(*args.vr_gamepad_gate)
+                    except Exception as error:state['vr_gamepad_cleanup_error']=repr(error)
                 if unified_session:
                     try:state['unified_weapons_cleanup']=unified_session.close(args.cleanup_timeout)
                     except Exception as error:state['unified_weapons_cleanup_error']=repr(error)

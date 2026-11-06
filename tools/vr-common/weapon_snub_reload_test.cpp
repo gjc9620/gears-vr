@@ -1,292 +1,217 @@
 #include "weapon_snub_reload.h"
 #include <cassert>
 #include <cstdio>
-#include <limits>
 using namespace gears_weapon;
-using E=SnubReloadEvent;
-using S=SnubReloadStage;
-
+using E=SnubReloadEvent;using S=SnubReloadStage;
 namespace {
-// ALL plans, counts, ticks, geometry IDs and motion receipts in these tests are
-// synthetic. In particular, slide-after-insertion and the alternative wing
-// order below are NOT claims about the original Snub animation or mechanics.
+// Synthetic receipts only: no travel, count or timing is runtime evidence.
 constexpr SnubReloadIdentity id{11,12,13,14};
-SnubReloadStamp stamp(std::uint64_t seq,std::int64_t tick=1000,std::uint64_t epoch=1) {
+SnubReloadStamp stamp(std::uint64_t seq,std::int64_t tick=1000,std::uint64_t epoch=1){
     return {id,seq,epoch,tick};
 }
-SnubReloadStart start(std::uint32_t loaded=2,std::uint32_t reserve=9,bool known=true) {
-    SnubReloadStart s{};
-    s.stamp=stamp(1);s.r3_press_edge=1;s.original_reload_serial=21;
-    s.capacity=6;s.loaded=loaded;s.reserve=reserve;
-    s.plan.identity=id;s.plan.id=31;s.plan.feed_mount_id=41;s.plan.count=3;
+SnubReloadStart start(unsigned loaded=4,unsigned reserve=2,bool perfect=true){
+    SnubReloadStart s{};s.stamp=stamp(1);s.intent_id=1;s.inventory_revision=1;
+    s.old_magazine_item=70;s.capacity=6;s.loaded=loaded;s.reserve=reserve;
+    const auto q=(std::min)(6u-loaded,reserve);
+    s.original_reload_serial=q?21:0;s.original_reload_accepted=q!=0;
+    s.original_class_verified=s.right_hand_equipped=true;s.original_inventory_slot=0;
+    s.plan.identity=id;s.plan.id=31;s.plan.feed_mount_id=41;
     s.plan.condition=loaded?SnubReloadCondition::partial:SnubReloadCondition::empty;
-    s.plan.original_order_verified=s.plan.current_instance_verified=true;
+    s.plan.count=loaded?2:3;s.plan.original_order_verified=s.plan.current_instance_verified=true;
     s.plan.steps[0]={SnubStepKind::eject_magazine,snub_part(SnubPart::magazine),51,0};
     s.plan.steps[1]={SnubStepKind::insert_magazine,snub_part(SnubPart::feed_port),52,0};
-    s.plan.steps[2]={SnubStepKind::move_original_parts,snub_part(SnubPart::slide),53,61};
-    s.perfect={id,21,known?100:0,known};
-    s.original_inventory_slot=0;
-    s.original_class_verified=s.right_hand_equipped=s.original_reload_accepted=true;
-    return s;
+    s.plan.steps[2]={SnubStepKind::move_original_parts,static_cast<SnubPartMask>(
+        snub_part(SnubPart::slide)|snub_part(SnubPart::left_wing)|snub_part(SnubPart::right_wing)),53,61};
+    s.perfect={id,s.original_reload_serial,perfect&&q?100:0,perfect&&q!=0};return s;
 }
-SnubEjectionReceipt eject() {return {21,31,51,true,true};}
-SnubMagazineReceipt magazine(std::uint64_t item=71) {
-    return {item,snub_ammo_slot,true,true,true,true};
+SnubEjectionReceipt eject(std::uint64_t serial=21){return {serial,31,51,true,true};}
+SnubMagazineReceipt mag(std::uint64_t item=71){return {item,snub_ammo_slot,true,true,true,true};}
+SnubInsertionReceipt insert(std::uint64_t item=71,std::uint64_t began=4){
+    return {item,41,began,true,true,true,true,true,true};
 }
-SnubInsertionReceipt insertion(std::uint64_t item=71,std::uint64_t since=3) {
-    return {item,41,since,true,true,true,true,true,true};
+SnubPartMotionReceipt motion(std::uint64_t began=6){
+    return {21,31,53,61,began,static_cast<SnubPartMask>(
+        snub_part(SnubPart::slide)|snub_part(SnubPart::left_wing)|snub_part(SnubPart::right_wing)),
+        true,true,true,true,true,true};
 }
-SnubPartMotionReceipt movement(std::uint64_t since=4,std::uint64_t phase=53,
-                               SnubPartMask parts=snub_part(SnubPart::slide),
-                               std::uint64_t travel=61) {
-    return {21,31,phase,travel,since,parts,true,true,true,true,true,true};
+SnubInventoryReceipt accepted(SnubInventoryRequest const& q,std::uint64_t revision){
+    auto out=q.expected;out.revision=revision;
+    return {q.token,true,out,q.result==ReloadTxnResult::inspection?ReloadTxnResult::none:q.result};
 }
-void ejected(SnubReload& m,SnubReloadStart const& s=start()) {
-    assert(m.begin_r3(s)==E::started);
-    assert(m.confirm_ejection(stamp(2),eject())==E::ejected);
+void opened(SnubReload& m,SnubReloadStart const& s=start()){
+    assert(m.begin(s)==E::started&&!m.can_fire());
+    assert(m.confirm_ejection(stamp(2),eject(s.original_reload_serial))==E::ejected);
+    assert(m.stage()==S::old_magazine&&m.loaded()==s.loaded&&m.reserve()==s.reserve);
 }
-void seated(SnubReload& m,SnubReloadStart const& s=start()) {
-    ejected(m,s);
-    assert(m.grab_left_shoulder(stamp(3),magazine())==E::grabbed);
-    assert(m.insert_magazine(stamp(4),insertion())==E::inserted);
+SnubInventoryRequest pending_insert(SnubReload& m,SnubReloadStart const& s=start(),std::int64_t insert_tick=1000){
+    opened(m,s);assert(m.grab_left_shoulder(stamp(3),mag())==E::rejected);
+    assert(m.release_original(stamp(3),70)==E::released);
+    assert(m.grab_left_shoulder(stamp(4),mag())==E::grabbed);
+    const auto target=(std::min)(s.capacity-s.loaded,s.reserve);
+    assert(m.loaded()==s.loaded&&m.reserve()==s.reserve&&m.held()==target);
+    assert(m.available_reserve()==s.reserve-target&&m.total()==s.loaded+s.reserve);
+    assert(m.insert_magazine(stamp(5,insert_tick),insert())==E::insertion_requested);
+    assert(m.stage()==S::inventory_pending&&m.loaded()==s.loaded&&!m.can_fire());
+    SnubInventoryRequest q{};assert(m.take_inventory_request(q));
+    assert(q.call==ReloadTxnCall::insert&&q.before.loaded==s.loaded&&q.before.reserve==s.reserve);
+    assert(!m.take_inventory_request(q)&&!m.reset());return q;
 }
-void complete_and_commit() {
-    assert(snub_body_slot==BodySlot::pistol&&original_inventory_slot(snub_body_slot)==0);
-    SnubReload m;assert(!m.can_fire()&&!m.guide().parts);
-    assert(m.begin_r3(start())==E::started);
-    auto guide=m.guide();
-    assert(guide.parts==snub_part(SnubPart::magazine)&&guide.red==1&&guide.green==1&&
-           guide.blue==0&&guide.alpha==1);
-    assert(m.loaded()==2&&m.reserve()==9&&m.total()==11);
-    assert(m.confirm_ejection(stamp(2),eject())==E::ejected);
-    assert(m.loaded()==0&&m.reserve()==11&&!m.feed_present()&&m.total()==11);
-    assert(m.guide().parts==snub_part(SnubPart::left_shoulder));
-    assert(m.grab_left_shoulder(stamp(3),magazine())==E::grabbed);
-    assert(m.held()==6&&m.reserve()==5&&m.loaded()==0&&!m.can_fire());
-    assert(m.guide().parts==snub_part(SnubPart::feed_port));
-    assert(m.insert_magazine(stamp(4),insertion())==E::inserted);
-    assert(m.loaded()==6&&m.held()==0&&m.feed_present()&&!m.can_fire());
-    assert(m.guide().parts==snub_part(SnubPart::slide));
-    assert(m.move_original_parts(stamp(5,1040),movement())==E::perfect);
-    assert(m.stage()==S::pending_completion&&!m.guide().parts&&!m.can_fire());
-    assert(m.acknowledge_completion(stamp(6,1041),21,6,5,true,true)==E::rejected);
-    SnubReloadCompletion out{};
-    assert(m.take_completion(out)&&out.identity==id&&out.original_reload_serial==21&&
-           out.loaded==6&&out.reserve==5&&out.started_tick==1000&&
-           out.finished_tick==1040&&out.result==E::perfect);
-    assert(!m.take_completion(out));
-    assert(m.acknowledge_completion(stamp(6,1041),22,6,5,true,true)==E::rejected);
-    assert(m.acknowledge_completion(stamp(6,1041),21,5,5,true,true)==E::rejected);
-    assert(m.acknowledge_completion(stamp(6,1041),21,6,5,false,true)==E::rejected);
-    assert(m.acknowledge_completion(stamp(6,1041),21,6,5,true,false)==E::rejected);
-    assert(m.acknowledge_completion(stamp(6,1041),21,6,5,true,true)==E::committed);
-    assert(m.can_fire()&&m.stage()==S::complete);
-    assert(m.move_original_parts(stamp(7,1042),movement())==E::rejected);
-    assert(m.acknowledge_completion(stamp(7,1042),21,6,5,true,true)==E::rejected);
-    assert(!m.take_completion(out));
+void finish(SnubReload& m,std::uint64_t seq,std::int64_t tick,E result){
+    SnubReloadCompletion out{};assert(m.take_completion(out));
+    assert(out.result==result&&out.native_request.call==ReloadTxnCall::finish);
+    assert(!m.take_completion(out)&&!m.can_fire()&&!m.reset());
+    auto receipt=accepted(out.native_request,m.inventory().revision);
+    auto wrong=receipt;++wrong.token;
+    assert(m.acknowledge_completion(stamp(seq,tick),wrong,true)==E::rejected);
+    assert(m.acknowledge_completion(stamp(seq,tick),receipt,false)==E::rejected);
+    assert(m.acknowledge_completion(stamp(seq,tick),receipt,true)==E::committed);
+    assert(m.can_fire()&&!m.take_completion(out));
+    assert(m.acknowledge_completion(stamp(seq+1,tick),receipt,true)==E::rejected);
 }
-void deadlines_and_pause() {
-    for(auto end:{1000LL,1099LL,1100LL,1101LL,5000LL}){
-        SnubReload m;seated(m);
-        assert(m.move_original_parts(stamp(5,end),movement())==(end<=1100?E::perfect:E::ordinary));
+void partial_and_empty(){
+    SnubReload p;const auto q=pending_insert(p);
+    assert(q.expected.loaded==6&&q.expected.reserve==0);
+    assert(p.acknowledge_inventory(stamp(6,1040),accepted(q,2))==E::perfect);
+    assert(p.condition()==SnubReloadCondition::partial&&p.current_step()==2);
+    assert(p.move_original_parts(stamp(7,1041),motion())==E::rejected);
+    assert(p.acknowledge_inventory(stamp(7,1041),accepted(q,2))==E::rejected);
+    finish(p,7,1041,E::perfect);
+    SnubReload empty;const auto eq=pending_insert(empty,start(0,4));
+    assert(eq.expected.loaded==4&&eq.expected.reserve==0);
+    assert(empty.acknowledge_inventory(stamp(6,1040),accepted(eq,2))==E::inserted);
+    assert(empty.loaded()==4&&empty.condition()==SnubReloadCondition::empty&&!empty.can_fire());
+    SnubReloadCompletion out{};assert(!empty.take_completion(out));
+    auto wrong=motion();wrong.endpoints_verified=false;
+    assert(empty.move_original_parts(stamp(7,1045),wrong)==E::rejected);
+    wrong=motion();wrong.parts=snub_part(SnubPart::slide);
+    assert(empty.move_original_parts(stamp(7,1045),wrong)==E::rejected);
+    assert(empty.move_original_parts(stamp(7,1045),motion())==E::perfect);
+    finish(empty,8,1046,E::perfect);
+}
+void old_mag_and_inspection(){
+    for(auto s:{start(4,2),start(6,5),start(3,0),start(0,0)}){
+        SnubReload m;opened(m,s);
+        assert(m.restore_original(stamp(3),insert(70,2))==E::cancelled);
+        assert(m.loaded()==s.loaded&&m.reserve()==s.reserve&&m.held()==0);
+        SnubReloadCompletion out{};
+        if(s.original_reload_serial){
+            assert(m.take_completion(out)&&out.native_request.call==ReloadTxnCall::exit_without_fill);
+            assert(out.native_request.result==ReloadTxnResult::inspection);
+            auto bad=accepted(out.native_request,1);bad.result_applied=ReloadTxnResult::perfect;
+            auto ambiguous=m; // An inconsistent native result requires reconciliation.
+            assert(ambiguous.acknowledge_completion(stamp(4),bad,true)==E::rejected);
+            assert(!ambiguous.can_fire()&&!ambiguous.reset());
+            assert(m.acknowledge_completion(stamp(4),accepted(out.native_request,1),true)==E::committed);
+        }else assert(m.stage()==S::complete&&!m.take_completion(out));
+        assert(m.total()==s.loaded+s.reserve&&m.can_fire()==(s.loaded!=0));
     }
-    SnubReload unknown;seated(unknown,start(2,9,false));
-    assert(unknown.move_original_parts(stamp(5),movement())==E::ordinary);
-    SnubReload not_verified;auto s=start(2,9,false);s.perfect.end_ticks=100;
-    seated(not_verified,s);
-    assert(not_verified.move_original_parts(stamp(5),movement())==E::ordinary);
-    SnubReload long_wait;ejected(long_wait);
-    assert(long_wait.grab_left_shoulder(stamp(3,50000),magazine())==E::grabbed);
-    assert(long_wait.stage()==S::holding_magazine&&!long_wait.can_fire());
-    assert(long_wait.insert_magazine(stamp(4,50000),insertion())==E::inserted);
-    assert(long_wait.move_original_parts(stamp(5,50000),movement())==E::ordinary);
-    SnubReload huge;seated(huge);
-    assert(huge.move_original_parts(stamp(5,(std::numeric_limits<std::int64_t>::max)()),movement())==E::ordinary);
 }
-void invalid_start_and_plan() {
-    for(unsigned bad=0;bad!=25;++bad){
-        SnubReload m;auto s=start();
-        switch(bad){
-            case 0:s.stamp.identity.weapon=0;break;
-            case 1:s.r3_press_edge=0;break;
-            case 2:s.original_reload_serial=0;break;
-            case 3:s.original_class_verified=false;break;
-            case 4:s.right_hand_equipped=false;break;
-            case 5:s.original_reload_accepted=false;break;
-            case 6:s.original_inventory_slot=2;break;
-            case 7:s.capacity=0;break;
-            case 8:s.loaded=7;break;
-            case 9:s.reserve=1000001;break;
-            case 10:s.plan.current_instance_verified=false;break;
-            case 11:s.plan.original_order_verified=false;break;
-            case 12:s.plan.identity.weapon++;break;
-            case 13:s.plan.condition=SnubReloadCondition::empty;break;
-            case 14:s.plan.count=11;break;
-            case 15:s.plan.steps[1].phase_id=51;break;
-            case 16:s.plan.steps[2].measured_travel_id=0;break;
-            case 17:s.plan.steps[2].parts=128;break;
-            case 18:s.plan.steps[1]=s.plan.steps[2];break;
-            case 19:s.perfect.end_ticks=-1;break;
-            case 20:s.perfect.identity.weapon++;break;
-            case 21:s.perfect.original_reload_serial++;break;
-            case 22:s.perfect.end_ticks=0;break;
-            case 23:s.stamp.game_tick=-1;break;
-            case 24:s.stamp.motion_epoch=0;break;
-        }
-        assert(m.begin_r3(s)==E::invalid&&m.stage()==S::idle&&m.total()==0);
-    }
-    SnubReload full,dry;
-    assert(full.begin_r3(start(6,9))==E::full);
-    assert(dry.begin_r3(start(2,0))==E::no_ammo);
-    SnubReload active;ejected(active);auto total=active.total();
-    assert(active.begin_r3(start())==E::rejected&&active.total()==total);
+void release_retry_and_recovery(){
+    SnubReload m;opened(m);
+    assert(m.release_original(stamp(3),71)==E::rejected);
+    assert(m.release_original(stamp(3),70)==E::released);
+    assert(m.grab_left_shoulder(stamp(4),mag())==E::grabbed);
+    assert(m.release_magazine(stamp(5),72)==E::rejected);
+    assert(m.release_magazine(stamp(5),71)==E::released&&m.reserve()==2&&m.held()==0);
+    assert(m.grab_left_shoulder(stamp(6),mag())==E::rejected);
+    assert(m.grab_left_shoulder(stamp(6),mag(72))==E::grabbed);
+    assert(m.interrupt()==E::interrupted&&m.reserve()==2&&m.held()==0&&!m.reset());
+    auto observed=m.inventory();auto wrong=observed;++wrong.loaded;
+    assert(m.resume(stamp(7,1001,2),2,21,wrong,true)==E::rejected);
+    assert(m.resume(stamp(7,1001,2),1,21,observed,true)==E::rejected);
+    assert(m.resume(stamp(7,1001,2),2,21,observed,true)==E::resumed);
+    assert(m.grab_left_shoulder(stamp(8,1002,2),mag(73))==E::grabbed);
+    assert(m.insert_magazine(stamp(9,1003,2),insert(73,8))==E::insertion_requested);
+    SnubInventoryRequest q{};assert(m.take_inventory_request(q));
+    assert(m.acknowledge_inventory(stamp(10,1004,2),accepted(q,2))==E::ordinary);
+    SnubReloadCompletion out{};assert(m.take_completion(out));
+    assert(out.native_request.result==ReloadTxnResult::ordinary&&out.started_tick==1000);
 }
-void required_order_and_receipts() {
-    SnubReload m;assert(m.begin_r3(start())==E::started);
-    assert(m.grab_left_shoulder(stamp(2),magazine())==E::rejected);
-    assert(m.move_original_parts(stamp(2),movement(1))==E::rejected);
-    for(unsigned bad=0;bad!=5;++bad){
-        auto r=eject();
-        switch(bad){case 0:r.original_reload_serial++;break;case 1:r.plan_id++;break;
-            case 2:r.phase_id++;break;case 3:r.original_magazine_detached=false;break;
-            case 4:r.snub_magazine_binding_verified=false;break;}
-        assert(m.confirm_ejection(stamp(2),r)==E::rejected&&m.loaded()==2);
-    }
-    assert(m.confirm_ejection(stamp(2),eject())==E::ejected);
-    for(unsigned bad=0;bad!=6;++bad){
-        auto r=magazine();
-        switch(bad){case 0:r.source=BodySlot::pistol;break;case 1:r.item_serial=0;break;
-            case 2:r.snub_magazine_verified=false;break;case 3:r.left_hand_tracked=false;break;
-            case 4:r.left_grip_held=false;break;case 5:r.right_hand_tracked=false;break;}
-        assert(m.grab_left_shoulder(stamp(3),r)==E::rejected&&m.held()==0);
-    }
-    assert(m.grab_left_shoulder(stamp(3),magazine())==E::grabbed);
-    for(unsigned bad=0;bad!=9;++bad){
-        auto r=insertion();
-        switch(bad){case 0:r.item_serial++;break;case 1:r.feed_mount_id++;break;
-            case 2:r.aligned=false;break;case 3:r.continuous=false;break;
-            case 4:r.seated=false;break;case 5:r.left_hand_tracked=false;break;
-            case 6:r.left_grip_held=false;break;case 7:r.right_hand_tracked=false;break;
-            case 8:r.motion_begin_sequence=2;break;}
-        assert(m.insert_magazine(stamp(4),r)==E::rejected&&m.loaded()==0&&m.total()==11);
-    }
-    assert(m.insert_magazine(stamp(4),insertion())==E::inserted);
-    for(unsigned bad=0;bad!=13;++bad){
-        auto r=movement();
-        switch(bad){case 0:r.original_reload_serial++;break;case 1:r.plan_id++;break;
-            case 2:r.phase_id++;break;case 3:r.measured_travel_id++;break;
-            case 4:r.parts=snub_part(SnubPart::left_wing);break;
-            case 5:r.endpoints_verified=false;break;case 6:r.continuous=false;break;
-            case 7:r.player_driven=false;break;case 8:r.left_hand_tracked=false;break;
-            case 9:r.left_grip_held=false;break;case 10:r.right_hand_tracked=false;break;
-            case 11:r.motion_begin_sequence=3;break;case 12:r.motion_begin_sequence=5;break;}
-        assert(m.move_original_parts(stamp(5),r)==E::rejected&&m.stage()==S::mechanism&&!m.can_fire());
-    }
-    for(unsigned bad=0;bad!=4;++bad){
-        auto t=stamp(5);
-        switch(bad){case 0:t.sequence=4;break;case 1:t.identity.world_generation++;break;
-            case 2:t.game_tick=999;break;case 3:t.motion_epoch=2;break;}
-        assert(m.move_original_parts(t,movement())==E::rejected);
-    }
-    assert(m.move_original_parts(stamp(5),movement())==E::perfect);
+void late_call_and_reconciliation(){
+    SnubReload m;const auto q=pending_insert(m,start(0,4));
+    assert(m.interrupt()==E::interrupted&&m.held()==4&&!m.reset());
+    assert(m.resume(stamp(6,1001,2),2,21,m.inventory(),true)==E::rejected);
+    assert(m.acknowledge_inventory(stamp(6,1001,2),accepted(q,2))==E::interrupted);
+    assert(m.loaded()==4&&m.held()==0&&!m.can_fire());
+    assert(m.resume(stamp(7,1002,2),2,21,m.inventory(),true)==E::resumed);
+    assert(m.move_original_parts(stamp(8,1003,2),motion(6))==E::rejected);
+    assert(m.move_original_parts(stamp(8,1003,2),motion(7))==E::ordinary);
+    SnubReloadCompletion out{};assert(m.take_completion(out));
+    assert(m.interrupt()==E::interrupted&&!m.reset());
+    assert(m.acknowledge_completion(stamp(9,1004,2),accepted(out.native_request,2),true)==E::interrupted);
+    assert(!m.can_fire()&&m.resume(stamp(10,1005,3),3,21,m.inventory(),true)==E::committed);
+    assert(m.can_fire()&&!m.take_completion(out));
+    SnubReload bad;const auto bq=pending_insert(bad);
+    auto receipt=accepted(bq,2);++receipt.observed.loaded;
+    assert(bad.acknowledge_inventory(stamp(6),receipt)==E::rejected&&!bad.can_fire());
+    assert(!bad.take_inventory_request(out.native_request)&&!bad.reset());
+    assert(bad.interrupt()==E::interrupted);
+    assert(bad.acknowledge_inventory(stamp(6),accepted(bq,2))==E::interrupted);
+    assert(bad.loaded()==6&&bad.reserve()==0);
 }
-void distinct_verified_plans() {
-    // Neither a universal final slide action nor independently operated wings
-    // are assumed. Each accepted phase highlights exactly its configured parts.
-    auto s=start(0,4);s.plan.count=4;
-    auto coupled=static_cast<SnubPartMask>(snub_part(SnubPart::left_wing)|snub_part(SnubPart::right_wing));
-    s.plan.steps[1]={SnubStepKind::move_original_parts,coupled,54,62};
-    s.plan.steps[2]={SnubStepKind::insert_magazine,snub_part(SnubPart::feed_port),52,0};
-    s.plan.steps[3]={SnubStepKind::move_original_parts,snub_part(SnubPart::slide),53,61};
-    SnubReload m;ejected(m,s);
-    assert(m.guide().parts==coupled);
-    assert(m.grab_left_shoulder(stamp(3),magazine())==E::rejected);
-    assert(m.move_original_parts(stamp(3),movement(2,54,coupled,62))==E::mechanism_completed);
-    assert(m.grab_left_shoulder(stamp(4),magazine())==E::grabbed);
-    assert(m.insert_magazine(stamp(5),insertion(71,4))==E::inserted);
-    assert(m.move_original_parts(stamp(6),movement(5))==E::perfect&&m.loaded()==4);
-    auto only_magazine=start();only_magazine.plan.count=2;
-    SnubReload no_final;ejected(no_final,only_magazine);
-    assert(no_final.grab_left_shoulder(stamp(3),magazine())==E::grabbed);
-    assert(no_final.insert_magazine(stamp(4),insertion())==E::perfect);
+void windows_plans_and_replay(){
+    for(auto end:{1040LL,1100LL,1101LL,50000LL}){
+        SnubReload m;const auto q=pending_insert(m,start(),end);
+        assert(m.acknowledge_inventory(stamp(6,end+20),accepted(q,2))==(end<=1100?E::perfect:E::ordinary));
+    }
+    SnubReload delayed;const auto delayed_q=pending_insert(delayed,start(),1040);
+    assert(delayed.acknowledge_inventory(stamp(6,50000),accepted(delayed_q,2))==E::perfect);
+    SnubReloadCompletion delayed_out{};assert(delayed.take_completion(delayed_out));
+    assert(delayed_out.finished_tick==1040);
+    SnubReload unknown;const auto q=pending_insert(unknown,start(4,2,false));
+    assert(unknown.acknowledge_inventory(stamp(6,1001),accepted(q,2))==E::ordinary);
+    auto s=start();s.plan.count=3;SnubReload invalid;assert(invalid.begin(s)==E::invalid);
+    s=start(0,4);s.plan.count=2;assert(invalid.begin(s)==E::invalid);
+    s=start();s.r3_press_edge=5;s.intent_id=0;assert(invalid.begin(s)==E::invalid);
+    s=start();s.r3_press_edge=5;assert(invalid.begin(s)==E::invalid);
+    s=start();s.intent_source=ReloadIntentSource::take_ammunition;assert(invalid.begin(s)==E::invalid);
+    s=start(6,0);s.original_reload_serial=9;assert(invalid.begin(s)==E::invalid);
+    SnubReload m;const auto iq=pending_insert(m);
+    assert(m.acknowledge_inventory(stamp(6,1001),accepted(iq,2))==E::perfect);
+    finish(m,7,1002,E::perfect);assert(m.reset());
+    s=start(1,5);s.stamp=stamp(8,2000);s.intent_id=2;s.old_magazine_item=72;
+    s.inventory_revision=3;s.original_reload_serial=22;s.perfect.original_reload_serial=22;
+    auto replay=s;replay.intent_id=1;assert(m.begin(replay)==E::rejected);
+    replay=s;replay.old_magazine_item=71;assert(m.begin(replay)==E::rejected);
+    assert(m.begin(s)==E::started);
 }
-void discontinuities_and_interruptions() {
-    SnubReload m;ejected(m);
-    assert(m.grab_left_shoulder(stamp(3),magazine())==E::grabbed);
-    assert(m.motion_discontinuity(stamp(4,1050,2))==E::motion_reset);
-    assert(m.insert_magazine(stamp(5,1051),insertion())==E::rejected);
-    assert(m.insert_magazine(stamp(5,1051,2),insertion())==E::rejected);
-    assert(m.insert_magazine(stamp(5,1051,2),insertion(71,4))==E::inserted);
-    assert(m.motion_discontinuity(stamp(6,1100,1))==E::rejected);
-    assert(m.motion_discontinuity(stamp(6,1100,3))==E::motion_reset);
-    assert(m.move_original_parts(stamp(7,1101,3),movement(5))==E::rejected);
-    assert(m.move_original_parts(stamp(7,1101,3),movement(6))==E::ordinary);
-    SnubReload held;ejected(held);
-    assert(held.grab_left_shoulder(stamp(3),magazine())==E::grabbed);
-    assert(held.interrupt()==E::interrupted&&held.held()==0&&held.reserve()==11&&held.total()==11);
-    assert(!held.guide().parts&&!held.can_fire()&&held.interrupt()==E::rejected);
-    assert(held.resume(stamp(4,1001,2),21,0,10,true)==E::rejected);
-    assert(held.resume(stamp(4,1001,2),22,0,11,true)==E::rejected);
-    assert(held.resume(stamp(4,1001,2),21,0,11,false)==E::rejected);
-    auto wrong_world=stamp(4,1001,2);wrong_world.identity.world++;
-    assert(held.resume(wrong_world,21,0,11,true)==E::rejected);
-    assert(held.resume(stamp(4,1001,2),21,0,11,true)==E::resumed);
-    assert(held.grab_left_shoulder(stamp(5,1001,2),magazine())==E::rejected);
-    assert(held.grab_left_shoulder(stamp(5,1001,2),magazine(72))==E::grabbed);
-    assert(held.insert_magazine(stamp(6,1001,2),insertion(72,5))==E::inserted);
-    assert(held.move_original_parts(stamp(7,1001,2),movement(6))==E::ordinary);
-    SnubReload seated_gun;seated(seated_gun);
-    assert(seated_gun.interrupt()==E::interrupted&&seated_gun.loaded()==6&&seated_gun.reserve()==5);
-    assert(seated_gun.resume(stamp(5,1001,2),21,6,5,true)==E::resumed);
-    assert(seated_gun.move_original_parts(stamp(6,1001,2),movement(5))==E::ordinary);
-    assert(seated_gun.interrupt()==E::interrupted);
-    SnubReloadCompletion out{};
-    assert(!seated_gun.take_completion(out));
-    assert(seated_gun.resume(stamp(7,1002,3),21,6,5,true)==E::rejected);
+void cancelled_drop_and_infinite(){
+    for(auto s:{start(3,0),start(4,2)}){
+        SnubReload m;opened(m,s);assert(m.release_original(stamp(3),70)==E::released);
+        assert(m.interrupt()==E::interrupted);
+        SnubOriginalReturnReceipt r{70,true,true,true};auto bad=r;bad.mechanism_closed=false;
+        assert(m.cancel_to_original(stamp(4,1001,2),2,m.inventory(),bad)==E::rejected);
+        assert(m.cancel_to_original(stamp(4,1001,2),2,m.inventory(),r)==E::cancelled);
+        assert(m.loaded()==s.loaded&&m.reserve()==s.reserve&&m.outcome()==E::cancelled);
+        SnubReloadCompletion out{};
+        if(s.original_reload_serial){
+            assert(m.take_completion(out)&&out.native_request.call==ReloadTxnCall::exit_without_fill);
+            assert(m.acknowledge_completion(stamp(5,1002,2),accepted(out.native_request,1),true)==E::committed);
+        }else assert(m.stage()==S::complete);
+    }
+    auto s=start(4,0,false);s.infinite_reserve=true;s.original_reload_serial=21;
+    s.original_reload_accepted=true;SnubReload m;opened(m,s);
+    assert(m.release_original(stamp(3),70)==E::released);
+    assert(m.grab_left_shoulder(stamp(4),mag())==E::grabbed&&m.held()==2&&m.reserve()==0);
+    assert(m.insert_magazine(stamp(5),insert())==E::insertion_requested);
+    SnubInventoryRequest q{};assert(m.take_inventory_request(q));
+    assert(q.expected.loaded==6&&q.expected.reserve==0&&q.expected.infinite_reserve);
+    assert(m.acknowledge_inventory(stamp(6),accepted(q,2))==E::ordinary);
 }
-void conservation_and_drop_retry() {
+void conservation(){
     unsigned cases=0;
-    for(std::uint32_t loaded=0;loaded<6;++loaded)for(std::uint32_t reserve=1;reserve<20;++reserve){
-        SnubReload m;ejected(m,start(loaded,reserve,false));
-        assert(m.total()==loaded+reserve);
-        assert(m.grab_left_shoulder(stamp(3),magazine())==E::grabbed);
-        assert(m.release_magazine(stamp(4),72)==E::rejected);
-        assert(m.release_magazine(stamp(4),71)==E::released&&m.total()==loaded+reserve);
-        assert(m.grab_left_shoulder(stamp(5),magazine())==E::rejected);
-        assert(m.grab_left_shoulder(stamp(5),magazine(72))==E::grabbed);
-        assert(m.insert_magazine(stamp(6),insertion(72,5))==E::inserted);
-        assert(m.loaded()==(std::min)(6U,loaded+reserve)&&m.total()==loaded+reserve);
-        assert(m.insert_magazine(stamp(7),insertion(72,5))==E::rejected);
-        assert(m.move_original_parts(stamp(7),movement(6))==E::ordinary);
-        ++cases;
+    for(unsigned l=0;l<6;++l)for(unsigned r=1;r<20;++r){
+        auto s=start(l,r,false);SnubReload m;const auto q=pending_insert(m,s);
+        assert(m.acknowledge_inventory(stamp(6),accepted(q,2))==(l?E::ordinary:E::inserted));
+        if(!l)assert(m.move_original_parts(stamp(7),motion())==E::ordinary);
+        assert(m.loaded()==(std::min)(6u,l+r)&&m.reserve()==r-(m.loaded()-l));
+        assert(m.total()==l+r);++cases;
     }
     assert(cases==114);
 }
-void new_attempt_identity_and_edge() {
-    SnubReload m;seated(m);
-    assert(m.move_original_parts(stamp(5),movement())==E::perfect);
-    SnubReloadCompletion out{};assert(m.take_completion(out));
-    auto next=start(1,8);next.stamp=stamp(7,2000);next.r3_press_edge=2;
-    next.original_reload_serial=22;next.perfect.original_reload_serial=22;
-    assert(m.begin_r3(next)==E::rejected); // Pending original result cannot be replaced.
-    assert(m.acknowledge_completion(stamp(6),21,6,5,true,true)==E::committed);
-    auto old=next;old.r3_press_edge=1;assert(m.begin_r3(old)==E::rejected);
-    old=next;old.original_reload_serial=21;old.perfect.original_reload_serial=21;
-    assert(m.begin_r3(old)==E::rejected);
-    old=next;old.stamp.identity.weapon++;old.plan.identity=old.stamp.identity;
-    old.perfect.identity=old.stamp.identity;assert(m.begin_r3(old)==E::rejected);
-    assert(m.begin_r3(next)==E::started);
-    m.reset();
-    assert(m.stage()==S::idle&&m.begin_r3(next)==E::rejected);
-    next.stamp=stamp(8,3000);next.r3_press_edge=3;
-    next.original_reload_serial=23;next.perfect.original_reload_serial=23;
-    assert(m.begin_r3(next)==E::started);
 }
-}
-int main() {
-    complete_and_commit();deadlines_and_pause();invalid_start_and_plan();
-    required_order_and_receipts();distinct_verified_plans();
-    discontinuities_and_interruptions();conservation_and_drop_retry();
-    new_attempt_identity_and_edge();
-    std::puts("Snub reload: 8 groups and 114 conservation/retry cases passed (synthetic receipts only).");
+int main(){
+    partial_and_empty();old_mag_and_inspection();release_retry_and_recovery();
+    late_call_and_reconciliation();windows_plans_and_replay();cancelled_drop_and_infinite();conservation();
+    std::puts("Snub shared ledger: branches/inspection/recovery/late-call/replay +114 conservation cases passed (synthetic only).");
 }

@@ -23,6 +23,9 @@ class OneShotReadback {
     UINT64 bytes{};
     bool submitted{};
 public:
+    // Borrowed only while the caller owns this readback's lifetime/locks.
+    ID3D12Resource* captured_source() const noexcept {return source;}
+    IDXGISwapChain3* bound_chain() const noexcept {return chain;}
     std::atomic<unsigned> state{0}; // 0 absent, 1 bound, 2 ready, 3 recording, 4 mapped, 5 failed, 6 submitted
     unsigned width{},height{},format{},index{};
     HRESULT failure=S_OK;

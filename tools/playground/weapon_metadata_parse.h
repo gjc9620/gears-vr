@@ -28,6 +28,22 @@ inline Workspace* activate(Workspace& workspace) noexcept {
     std::memset(&workspace,0,sizeof(workspace));active=&workspace;return previous;
 }
 inline void restore(Workspace* previous) noexcept {active=previous;}
+// Ordinary PlayerTick also performs the same bounded reflection walks as the
+// mount provider. Reuse its parsing acceleration without retaining field,
+// object or input values between ticks. Nested scopes borrow the outer scratch.
+class TickScope {
+    Workspace* previous_{};bool installed_{};
+public:
+    TickScope() noexcept {
+        if(!active){
+            static thread_local Workspace scratch;
+            previous_=activate(scratch);installed_=true;
+        }
+    }
+    ~TickScope(){if(installed_)restore(previous_);}
+    TickScope(TickScope const&)=delete;
+    TickScope& operator=(TickScope const&)=delete;
+};
 inline std::size_t bucket(Address value,U32 mask) noexcept {
     auto x=std::uint64_t(value)>>3;
     x^=x>>30;x*=0xbf58476d1ce4e5b9ull;x^=x>>27;x*=0x94d049bb133111ebull;x^=x>>31;

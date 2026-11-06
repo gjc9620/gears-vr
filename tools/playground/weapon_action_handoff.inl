@@ -4,6 +4,7 @@
 namespace weaponaction_handoff {
 struct Seen {
     uptr object{},function{};std::uint32_t thread{};
+    wchar_t function_name[96]{}; // Same existing metadata read, observation only.
     bool gt{},name_known{},recognized{},unknown_name{};
     bool hands{},stow{},hands_required{},stow_required{},required{};
     bool hands_restore_echo{},stow_restore_echo{},owned_restore_echo{};
@@ -58,6 +59,7 @@ inline Seen inspect(uptr object,uptr function) {
     if(!gt||seen.thread!=gt)return seen;
     seen.gt=true;
     wchar_t label[96]{};seen.name_known=registered(function)&&name(function,label,96);
+    if(seen.name_known)for(unsigned i=0;i<96;++i)seen.function_name[i]=label[i];
 #if defined(GEARS_PLAYGROUND_HAND_IK_STREAM_TRIAL)
     seen.hands_dirty=handstream::trial.lease.dirty();
 #if defined(GEARS_PLAYGROUND_HAND_WEAPON_MESH_PHASE1_TRIAL)

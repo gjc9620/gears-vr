@@ -33,14 +33,20 @@ using uptr=std::uintptr_t;
 uptr base{},fail_read{},mutate_read{};HMODULE module{};
 std::atomic<DWORD> game_thread{};std::atomic<bool> enabled{true};
 std::function<void()> mutation;
+#if defined(GEARS_WEAPON_METADATA_PARSE_TEST_STATS)
+std::function<void(uptr,std::size_t)> read_observer;
+#endif
 bool safe_copy(void* out,uptr from,std::size_t bytes) noexcept {
-    if(!from||from==fail_read)return false;
+    if(!from||!bytes||(fail_read>=from&&fail_read-from<bytes))return false;
     __try{std::memcpy(out,reinterpret_cast<void const*>(from),bytes);return true;}
     __except(EXCEPTION_EXECUTE_HANDLER){return false;}
 }
 bool copy(void* out,uptr from,std::size_t bytes){
+#if defined(GEARS_WEAPON_METADATA_PARSE_TEST_STATS)
+    if(read_observer)read_observer(from,bytes);
+#endif
     const auto result=safe_copy(out,from,bytes);
-    if(result&&mutate_read==from){mutate_read=0;auto callback=std::move(mutation);callback();}
+    if(result&&mutate_read>=from&&mutate_read-from<bytes){mutate_read=0;auto callback=std::move(mutation);callback();}
     return result;
 }
 namespace playground {uptr arena_pawn{};}
@@ -157,6 +163,8 @@ struct Memory {
         assert(weaponhand::held_binding.known);
     }
     ~Memory(){mutation={};mutate_read=fail_read=0;weaponhand::held_binding={};vrequip::model.reset();base=0;VirtualFree(reservation,0,MEM_RELEASE);}
-    bool read(abi::GripGameState& out){return weaponhand::observe(nullptr,frame,weaponhand::clock_ns(nullptr),out);}
+    bool read(abi::GripGameState& out,bool source_only=false){
+        return (source_only?weaponhand::observe_source:weaponhand::observe)(nullptr,frame,weaponhand::clock_ns(nullptr),out);
+    }
 };
 }

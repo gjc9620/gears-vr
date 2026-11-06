@@ -4,19 +4,20 @@
 
 namespace gears_weapon {
 
-// Saved evidence: analysis/hammerburst-animation-tracks.json (WarfareGame.u
+// Recovered evidence: analysis/solo-m1-20261028/hb-original-latch-track.json (WarfareGame.u
 // SHA256 91c0f56e9302db2b3991fc3d8646abc1eaff2b33b8b021ce8df436d8cd681d13)
 // and the Hammerburst magazine part manifest. HB_Reload
 // has 75 rotation keys on b_HB_MagLatch; b_HB_Mag is constant relative to its
-// latch parent. This does not establish a manual bolt, insertion axis, latch
-// angle, hand contact or usable phase timestamps. No Lancer mounts are used.
+// latch parent. Float96NoW decoding finds ~48deg maximum stored local rotation
+// about local Y, returning closed. This is not a controller-angle threshold,
+// insertion axis, contact calibration or runtime key-time proof. No Lancer mounts.
 inline constexpr char hammerburst_original_class[]="Weap_LocustAssaultRifle";
 inline constexpr char hammerburst_original_magazine[]=
     "Locust_Hammerburst.Hammerburst_Magazine";
 inline constexpr char hammerburst_original_latch_bone[]="b_HB_MagLatch";
 
 enum class HammerburstReloadStage : std::uint8_t {
-    idle,opening_latch,take_magazine,holding_magazine,closing_latch,complete,interrupted
+    idle,opening_latch,take_magazine,holding_magazine,closing_latch,complete,interrupted,paused
 };
 enum class HammerburstReloadEvent : std::uint8_t {
     rejected,invalid,full,no_ammo,started,opened,grabbed,released,inserted,
@@ -101,10 +102,11 @@ struct HammerburstReloadCompletion {
 // original perfect reward/sound and physical yellow rendering remain outside.
 class HammerburstReload {
     HammerburstReloadStage stage_{HammerburstReloadStage::idle};
+    HammerburstReloadStage paused_stage_{HammerburstReloadStage::idle};
     HammerburstReloadIdentity identity_{};
     HammerburstPerfectWindow perfect_{};
     std::uint64_t r3_edge_{},reload_serial_{},start_sequence_{},last_sequence_{},
-                  grab_sequence_{},insert_sequence_{},held_item_{},last_item_{};
+                  grab_sequence_{},insert_sequence_{},held_item_{},last_item_{},motion_floor_{};
     std::int64_t start_tick_{},last_tick_{},finish_tick_{};
     std::uint32_t capacity_{},loaded_{},reserve_{},held_{},target_{};
     bool latch_closed_{true},feed_present_{true},completion_taken_{};
@@ -123,10 +125,32 @@ class HammerburstReload {
                        std::uint64_t after_sequence) const noexcept {
         return accepts(stamp)&&receipt.original_reload_serial==reload_serial_&&
             receipt.measured_hammerburst_travel&&receipt.from==from&&receipt.to==to&&
-            receipt.motion_begin_sequence>=after_sequence&&
+            receipt.motion_begin_sequence>=after_sequence&&receipt.motion_begin_sequence>=motion_floor_&&
             receipt.motion_begin_sequence<stamp.sequence;
     }
 public:
+    // Physical latch intent uses the existing monotonic intent slot. It is
+    // not an R3 prerequisite; native acceptance and measured travel remain
+    // separately required by the adapter receipts.
+    HammerburstReloadEvent begin_latch(HammerburstReloadStart start,std::uint64_t grip_edge) noexcept {
+        start.r3_press_edge=grip_edge;return begin_r3(start);
+    }
+    HammerburstReloadEvent suspend() noexcept {
+        if(stage_!=HammerburstReloadStage::opening_latch&&stage_!=HammerburstReloadStage::take_magazine&&
+           stage_!=HammerburstReloadStage::holding_magazine&&stage_!=HammerburstReloadStage::closing_latch)
+            return HammerburstReloadEvent::rejected;
+        if(stage_==HammerburstReloadStage::holding_magazine){
+            reserve_+=held_;held_=0;held_item_=0;stage_=HammerburstReloadStage::take_magazine;
+        }
+        paused_stage_=stage_;stage_=HammerburstReloadStage::paused;
+        return HammerburstReloadEvent::interrupted;
+    }
+    bool resume(HammerburstReloadStamp const& stamp,std::uint64_t serial,std::uint64_t fresh_grip_edge) noexcept {
+        if(stage_!=HammerburstReloadStage::paused||!accepts(stamp)||serial!=reload_serial_||
+           !fresh_grip_edge||fresh_grip_edge<=r3_edge_)return false;
+        consume(stamp);motion_floor_=stamp.sequence;r3_edge_=fresh_grip_edge;stage_=paused_stage_;
+        paused_stage_=HammerburstReloadStage::idle;return true;
+    }
     // Reset only when the live adapter has reconciled authoritative inventory;
     // resetting is not an inventory rollback and must not replay a reward.
     void reset() noexcept {
@@ -201,7 +225,8 @@ public:
         if(stage_!=HammerburstReloadStage::holding_magazine||!accepts(stamp)||
            !receipt.item||receipt.item!=held_item_||!receipt.hammerburst_mount_verified||
            !receipt.aligned||!receipt.continuous||!receipt.seated||!receipt.tracked_left_hand||
-           receipt.stroke_begin_sequence<grab_sequence_||receipt.stroke_begin_sequence>=stamp.sequence)
+           receipt.stroke_begin_sequence<grab_sequence_||receipt.stroke_begin_sequence<motion_floor_||
+           receipt.stroke_begin_sequence>=stamp.sequence)
             return HammerburstReloadEvent::rejected;
         consume(stamp);loaded_+=held_;held_=0;held_item_=0;feed_present_=true;
         insert_sequence_=stamp.sequence;stage_=HammerburstReloadStage::closing_latch;

@@ -101,8 +101,40 @@ std::vector<unsigned> changed(body::Frame const& f,body::Output const& p){std::v
     for(unsigned bit=0;bit<230;++bit)if(std::memcmp(reinterpret_cast<unsigned char const*>(f.local.data())+bit*16,reinterpret_cast<unsigned char const*>(p.local.data())+bit*16,16))result.push_back(bit);return result;}
 void reverse_is(std::vector<unsigned> const& actual,std::vector<unsigned> const& bits,unsigned count){C(actual.size()==count);for(unsigned i=0;i<count&&i<actual.size();++i)C(actual[i]==bits[count-i-1]);}
 int main(int argc,char** argv){
-    if(argc!=2)return 2;const std::string folder=argv[1];auto f=std::make_unique<body::Frame>();auto workspace=std::make_unique<body::Workspace>();body::Model model{};body::Output plan{};
+    if(argc!=2&&argc!=3)return 2;const std::string folder=argv[1];auto f=std::make_unique<body::Frame>();auto workspace=std::make_unique<body::Workspace>();body::Model model{};body::Output plan{};
     C(read(folder+"/reference.bin",f->reference.data(),sizeof f->reference));C(read(folder+"/C0-local.bin",f->local.data(),sizeof f->local));C(read(folder+"/C0-component.bin",&f->component_to_world,sizeof f->component_to_world));C(body::prepare_model(f->reference,hash,model));
+    if(argc==3&&std::string(argv[2])=="--animation-scale"){
+        const auto original=*f;
+        for(float scale:{1.f-0x1p-23f,std::nextafter(1.f,0.f),1.f,std::nextafter(1.f,2.f)}){
+            *f=original;f->local[3].scale=scale;
+            C(body::retain_native_body(model,*f,*workspace,plan).status==body::Status::solved);
+            body::Goal g{};g.head_world=plan.head_world;
+            g.head_world.orientation=gears_vr::multiply({0,std::sin(.1),0,std::cos(.1)},g.head_world.orientation);
+            for(unsigned s=0;s<2;++s)g.feet_world[s]=plan.feet_world[s];
+            C(body::plan(model,*f,g,*workspace,plan).status==body::Status::solved);
+            Host h(*f,plan);tx::Kernel k;tx::Lease l;
+            C(k.prepare(h,h.current,*f,plan,h.desired,l).code==tx::Code::prepared);
+            C(k.commit(h,l,h.current).code==tx::Code::committed);
+            for(unsigned i=0;i<body::bones;++i)C(!std::memcmp(&h.memory[i].scale,&f->local[i].scale,4));
+            C(k.rollback(h,l,h.current).code==tx::Code::rolled_back);C(h.original());
+            C(k.finish(h,l,h.current,tx::End::before_consumer).pending==0);
+            // Even in the tolerated band, a consumer may not normalize or
+            // modify any source scale. Reject it before the first store.
+            auto altered=plan;altered.local[3].scale=std::nextafter(scale,2.f);
+            Host bad(*f,altered);tx::Kernel bk;tx::Lease bl;
+            C(bk.prepare(bad,bad.current,*f,altered,bad.desired,bl).code!=tx::Code::prepared);
+            C(bad.cas_calls==0&&bad.original()&&!bk.pending());
+        }
+        for(float scale:{std::nextafter(1.f-0x1p-23f,0.f),std::nextafter(1.f+0x1p-23f,2.f),1.01f,0.f,-1.f,INFINITY,NAN}){
+            *f=original;C(body::retain_native_body(model,*f,*workspace,plan).status==body::Status::solved);
+            f->local[3].scale=plan.local[3].scale=scale;
+            Host h(*f,plan);tx::Kernel k;tx::Lease l;
+            C(k.prepare(h,h.current,*f,plan,h.desired,l).code!=tx::Code::prepared);
+            C(h.cas_calls==0&&h.original()&&!k.pending());
+        }
+        std::printf("animation-scale transaction: %u checks %u failures; exact scale preserved, Game=0\n",checks,failures);
+        return failures?1:0;
+    }
     for(unsigned i=0;i<16;++i)workspace->component.m[i]=f->component_to_world.values[i];std::copy(f->local.begin(),f->local.end(),workspace->pose.local);C(body::d::rebuild(model,*workspace));
     body::Goal goal{};goal.scope=body::Scope::fixed_cover;goal.body_yaw_delta=-.1;goal.physical_world={1,2,-3};goal.committed_grip_world={2,1,-2};
     goal.head_world=body::d::pose(workspace->pose.world[55]);goal.head_world.position=body::d::add(goal.head_world.position,{3,3,-5});for(unsigned i=0;i<2;++i)goal.feet_world[i]=body::d::pose(workspace->pose.world[body::legs[i][2]]);

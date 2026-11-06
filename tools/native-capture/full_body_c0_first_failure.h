@@ -5,7 +5,7 @@
 // Private immutable first-failure input, not a public wire or authorization.
 namespace gears_full_body_c0_first_failure {
 namespace body=gears_full_body_c0;namespace tx=gears_full_body_c0_transaction;
-enum class Stage:std::uint32_t {gate,plan,prepare,commit,exception};
+enum class Stage:std::uint32_t {gate,plan,prepare,commit,exception,hands};
 enum class Gate:std::uint32_t {okay,disabled,stopping,thread,capture,prepared,notified,entry,source,context,receipt,count};
 constexpr unsigned statuses=unsigned(body::Status::pelvis_iterations)+1,codes=unsigned(tx::Code::bad_receipt)+1;
 struct Timing {std::uint64_t begin{},gate{},plan{},prepare{},commit{},end{},frequency{};};

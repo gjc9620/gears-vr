@@ -95,13 +95,15 @@ def camera_closer(config,manifest):
 
 def gameplay_controls(config,manifest):
     result={}
-    for capability in ('first_person_preview','right_stick_deadzone_control'):
+    for capability in ('first_person_preview','right_stick_deadzone_control','run_camera_stabilization','lancer_interaction_ranges'):
         if type(manifest.get(capability,False)) is not bool:raise ValueError('Gameplay capability must be boolean: '+capability)
     requested=config.get('first_person_preview',manifest.get('first_person_preview',False))
     if type(requested) is not bool:raise ValueError('First person preview must be boolean')
     # Shared saved preferences must also work with the older, separately
     # frozen DLSS entry and a rollback manifest. Only advertise actual support.
-    preview=requested and manifest.get('first_person_preview',False)
+    # Unified 6DoF requires the coherent first-person body/hand basis even if
+    # an old saved render-only preview preference was disabled.
+    preview=(requested or manifest.get('sixdof_manual',False)) and manifest.get('first_person_preview',False)
     if preview and not all(manifest.get(k,False) for k in
             ('anchor_observer','cinematic_camera','crosshair_assignment_observer')):
         raise ValueError('First person preview requires a supported build and gameplay/weapon observers')
@@ -111,6 +113,10 @@ def gameplay_controls(config,manifest):
         if isinstance(value,bool) or not isinstance(value,(int,float)) or not math.isfinite(value) or not 0<=value<=50:
             raise ValueError('Right stick dead zone must be between 0 and 50 percent')
         if manifest.get('right_stick_deadzone_control',False):result['right_stick_deadzone_percent']=float(value)
+    if manifest.get('run_camera_stabilization',False):result['run_camera_stabilization']=True
+    ranges=config.get('lancer_interaction_ranges',False)
+    if type(ranges) is not bool:raise ValueError('Lancer interaction ranges must be boolean')
+    if manifest.get('lancer_interaction_ranges',False):result['lancer_interaction_ranges']=ranges
     return result
 
 
@@ -126,12 +132,12 @@ def render_scale(config,manifest):
     return float(value)
 
 
-def render_size_info(manifest,scale,root=ROOT):
+def render_size_info(manifest,scale,root=ROOT,environment=None):
     probe=rooted(manifest['xr_build'],root)/'OpenXRPoseProbe.exe'
     if hashlib.sha256(probe.read_bytes()).hexdigest().lower()!=manifest['xr_sha256'].lower():
         raise RuntimeError('XR render size probe SHA256 mismatch')
     result=subprocess.run([str(probe),'--render-size-info','--render-scale',str(scale)],
-        capture_output=True,text=True,encoding='utf-8',errors='replace',timeout=30,
+        capture_output=True,text=True,encoding='utf-8',errors='replace',timeout=30,env=environment,
         creationflags=getattr(subprocess,'CREATE_NO_WINDOW',0))
     if result.returncode:raise RuntimeError('VR render size rejected before game launch: '+(result.stderr.strip() or result.stdout.strip()))
     plans=[]
@@ -154,7 +160,7 @@ def render_size_info(manifest,scale,root=ROOT):
 def settings(config,manifest,root=ROOT):
     # History is GUI metadata, not another source for the selected executable.
     # Per-install settings bindings are validated by graphics_policy.locate().
-    unknown=set(config)-{'game_path','game_path_history','game_settings_paths','stereo_units_per_metre','hud_horizontal_fov_degrees','launcher_language','hud_element_scale','hud_center_scale','camera_closer_metres','render_scale','first_person_preview','right_stick_deadzone_percent'}
+    unknown=set(config)-{'game_path','game_path_history','game_settings_paths','stereo_units_per_metre','hud_horizontal_fov_degrees','launcher_language','hud_element_scale','hud_center_scale','camera_closer_metres','render_scale','first_person_preview','right_stick_deadzone_percent','lancer_interaction_ranges'}
     if unknown:raise ValueError('Unknown configuration field: '+', '.join(sorted(unknown)))
     controls=gameplay_controls(config,manifest)
     if manifest.get('sixdof_manual',False) and (not controls.get('first_person_preview') or
@@ -483,6 +489,9 @@ class Backend:
         from playground_loader import start
         return start(manifest,identity,check_live=check_live,
                      attach=lambda bridge:setattr(self,'playground_bridge',bridge))
+    def start_vr_gamepad(self,manifest,identity,owner,check_live):
+        from playground_loader import start_gamepad
+        return start_gamepad(manifest,identity,owner,check_live=check_live)
     def finish_playground(self):
         from playground_loader import finish,finish_reservation
         bridge=getattr(self,'playground_bridge',None)
@@ -583,9 +592,14 @@ def start(config,manifest,backend,index=INDEX,clock=time.monotonic,sleep=time.sl
     if size_plan:state['render_size_plan']=size_plan
     audio_state_key='test_audio_guard'
     cancel=None;identity=None;tiny_output_monitor=None;test_audio_guard=None;owned_prime=manifest.get('startup_menu',False)
+    prepared_original_parts=None
     try:
         cancel=backend.open_cancel(owner['pid'])
         if backend.game_pids():raise RuntimeError('An existing game process must exit normally before fresh startup')
+        if manifest.get('sixdof_manual',False) and type(manifest.get('weapon_part_assets')) is int and manifest['weapon_part_assets']==1:
+            from manual_part_preparation import prepare_inputs
+            prepared_original_parts=prepare_inputs(game,ROOT/'analysis/weapon-part-cache')
+            state['original_part_preparation']=prepared_original_parts
         atomic_json(index,state)
         started=clock();state['phase']='reserving';atomic_json(index,state)
         reserved=(backend.reserve(manifest,index.with_suffix('.reserve.log'),owner=owner,game_path=game,foreground=foreground) if owned_prime else
@@ -669,6 +683,8 @@ def start(config,manifest,backend,index=INDEX,clock=time.monotonic,sleep=time.sl
         for key in SESSION_OPTIONS:setattr(args,key,manifest.get(key,False))
         args.sixdof_manual=manifest.get('sixdof_manual',False)
         args.sixdof_unified=manifest.get('sixdof_unified',False)
+        args.weapon_part_assets=manifest.get('weapon_part_assets',None)
+        args.prepared_original_part_inputs=prepared_original_parts
         if args.sixdof_unified:
             args.unified_playground={key:manifest[key] for key in ('playground_build','playground_dll','playground_sha256')}
             args.unified_fire_ready=manifest.get('unified_fire_ready',False)
@@ -693,6 +709,11 @@ def start(config,manifest,backend,index=INDEX,clock=time.monotonic,sleep=time.sl
                 sleep(.1)
             else:
                 state['startup_window_last_diagnostic']=last_window_diagnostic
+                details=getattr(backend,'startup_window_details',None)
+                if details:
+                    try:state['startup_window_details']=details(pid,last_window_diagnostic)
+                    except Exception as error:state['startup_window_details_error']=repr(error)
+                state['no_automatic_retry']=True
                 raise TimeoutError('Game window unavailable for startup VR panel')
         expected_armspan=None
         if manifest.get('armspan_startup_calibration',False):
@@ -723,6 +744,10 @@ def start(config,manifest,backend,index=INDEX,clock=time.monotonic,sleep=time.sl
         extra={}
         if owned_prime:
             def before_activation(check_live):
+                if args.sixdof_manual and manifest.get('controller_input_observer',False):
+                    state['vr_gamepad']=backend.start_vr_gamepad(manifest,identity,owner,check_live)
+                    args.vr_gamepad_gate=(manifest,identity,state['vr_gamepad'])
+                    atomic_json(index,state)
                 if prepare_level(check_live) is None:raise backend.runner.StartupCancelled()
                 if expected_armspan is not None:
                     from armspan_calibration import validate as validate_armspan

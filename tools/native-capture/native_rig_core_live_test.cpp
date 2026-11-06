@@ -209,8 +209,18 @@ void race_registration_readers(){
     done=true;native_reader.join();public_reader.join();C(!faults.load()&&core_ok.load()>0&&public_attempts.load()>0);
     C(same_bytes(get(r),first)&&pg.prepares==0&&pg.commits==0);std::printf("race_registration core=%u public=%u\n",core_ok.load(),public_attempts.load());cleanup();
 }
+void metadata_association_case(){
+    start_case();const auto r=request();const auto first=get(r);const auto revision=rig::value_version;
+    controlled_clock=int64_t(first.published_ns)+250000000;rig::TickFailure why{};
+    C(!rig::current_copy(first,revision,50000000,&why)&&why==rig::TickFailure::source_age_only);
+    C(rig::metadata_copy_current(first,revision,&why)&&why==rig::TickFailure::none);
+    C(!rig::metadata_copy_current(first,revision+1,&why)&&why==rig::TickFailure::hard);
+    auto edited=first;++edited.mesh.name_number;C(!rig::metadata_copy_current(edited,revision,&why)&&why==rig::TickFailure::hard);
+    rig::stop();C(!rig::metadata_copy_current(first,revision,&why)&&why==rig::TickFailure::hard);cleanup();
+}
 int native_case(char const* mode){
-    if(!strcmp(mode,"unregistered-runtime"))unregistered_case(false,true);
+    if(!strcmp(mode,"metadata-association"))metadata_association_case();
+    else if(!strcmp(mode,"unregistered-runtime"))unregistered_case(false,true);
     else if(!strcmp(mode,"unregistered-sim"))unregistered_case(true,true);
     else if(!strcmp(mode,"head-only"))unregistered_case(true,false);
     else if(!strcmp(mode,"registration"))registration_case();

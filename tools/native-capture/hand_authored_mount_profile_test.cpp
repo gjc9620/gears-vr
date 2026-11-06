@@ -43,9 +43,10 @@ int wmain(int argc,wchar_t** argv){
             C(profile.hand_bone==(index?35u:11u));
             const auto rotation=vr::rotation_matrix(profile.calibration.grip_to_wrist_rotation);
             C(near(determinant(rotation),1));
-            C(near(vr::transform(rotation,{1,0,0}),{0,0,1}));
-            C(near(vr::transform(rotation,{0,1,0}),{0,index?-1.:1.,0}));
-            C(near(vr::transform(rotation,{0,0,1}),{index?1.:-1.,0,0}));
+            constexpr double c=.93969262078590838405,s=.34202014332566873304;
+            C(near(vr::transform(rotation,{1,0,0}),{c,0,-s}));
+            C(near(vr::transform(rotation,{0,1,0}),{0,index?1.:-1.,0}));
+            C(near(vr::transform(rotation,{0,0,1}),{index?s:-s,0,index?c:-c}));
             const auto centre=vr::transform(rotation,marker);const auto& p=profile.calibration.grip_to_wrist_metres;
             C(near(vr::Vector{p.x*units,p.y*units,p.z*units},{-centre.x*scale,-centre.y*scale,-centre.z*scale}));
             for(unsigned trial=0;trial<9;++trial){

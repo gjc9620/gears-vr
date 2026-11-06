@@ -1,0 +1,1018 @@
+{
+  "schema": 1,
+  "units": "metres; hand is projected onto one locked cover axis",
+  "evidence": "synthetic specification vectors, not captured game behavior",
+  "cases": [
+    {
+      "id": "V01",
+      "title": "松手保持已经提交的位移",
+      "acceptance": [
+        "A09"
+      ],
+      "events": [
+        {
+          "op": "grab"
+        },
+        {
+          "op": "move",
+          "hand": -0.2
+        },
+        {
+          "op": "query"
+        },
+        {
+          "op": "commit"
+        },
+        {
+          "op": "release"
+        }
+      ],
+      "expect": {
+        "offset": [
+          0.2,
+          0
+        ],
+        "kernel_offset": [
+          0.2,
+          0
+        ],
+        "held": false,
+        "pose": 1
+      }
+    },
+    {
+      "id": "V02",
+      "title": "松手早于提交，旧请求不能晚到移动",
+      "acceptance": [
+        "A08"
+      ],
+      "events": [
+        {
+          "op": "grab"
+        },
+        {
+          "op": "move",
+          "hand": -0.2
+        },
+        {
+          "op": "query"
+        },
+        {
+          "op": "release"
+        },
+        {
+          "op": "commit"
+        }
+      ],
+      "expect": {
+        "offset": [
+          0,
+          0
+        ],
+        "pose": 0,
+        "status": "commit_rejected"
+      }
+    },
+    {
+      "id": "V03",
+      "title": "提交先于输入确认，松手必须先读取账本",
+      "acceptance": [
+        "A08",
+        "A09"
+      ],
+      "events": [
+        {
+          "op": "grab"
+        },
+        {
+          "op": "move",
+          "hand": -0.2
+        },
+        {
+          "op": "query"
+        },
+        {
+          "op": "commit",
+          "expect": {
+            "kernel_pose": 0,
+            "pose": 1
+          }
+        },
+        {
+          "op": "release"
+        }
+      ],
+      "expect": {
+        "kernel_pose": 1,
+        "kernel_offset": [
+          0.2,
+          0
+        ],
+        "status": "released"
+      }
+    },
+    {
+      "id": "V04",
+      "title": "等待保留租约且不产生移动",
+      "acceptance": [
+        "A08"
+      ],
+      "events": [
+        {
+          "op": "grab"
+        },
+        {
+          "op": "move",
+          "hand": -0.2
+        },
+        {
+          "op": "query",
+          "verdict": "wait"
+        }
+      ],
+      "expect": {
+        "held": true,
+        "pending": true,
+        "offset": [
+          0,
+          0
+        ],
+        "status": "waiting"
+      }
+    },
+    {
+      "id": "V05",
+      "title": "等待中释放立即取消意图",
+      "acceptance": [
+        "A08"
+      ],
+      "events": [
+        {
+          "op": "grab"
+        },
+        {
+          "op": "move",
+          "hand": -0.2
+        },
+        {
+          "op": "query",
+          "verdict": "wait"
+        },
+        {
+          "op": "release"
+        },
+        {
+          "op": "commit"
+        }
+      ],
+      "expect": {
+        "held": false,
+        "pending": false,
+        "offset": [
+          0,
+          0
+        ],
+        "status": "commit_rejected"
+      }
+    },
+    {
+      "id": "V06",
+      "title": "新手样本使旧查询意图失效",
+      "acceptance": [
+        "A07"
+      ],
+      "events": [
+        {
+          "op": "grab"
+        },
+        {
+          "op": "move",
+          "hand": -0.2
+        },
+        {
+          "op": "move",
+          "hand": -0.3
+        },
+        {
+          "op": "query",
+          "intent": 1
+        },
+        {
+          "op": "commit"
+        }
+      ],
+      "expect": {
+        "pose": 0,
+        "status": "commit_rejected"
+      }
+    },
+    {
+      "id": "V07",
+      "title": "查询后几何改变，已返回证书失效",
+      "acceptance": [
+        "A07"
+      ],
+      "events": [
+        {
+          "op": "grab"
+        },
+        {
+          "op": "move",
+          "hand": -0.2
+        },
+        {
+          "op": "query"
+        },
+        {
+          "op": "geometry_change"
+        },
+        {
+          "op": "commit"
+        }
+      ],
+      "expect": {
+        "pose": 0,
+        "occupied": false,
+        "status": "commit_rejected"
+      }
+    },
+    {
+      "id": "V08",
+      "title": "Actor未换但几何版本改变仍拒绝",
+      "acceptance": [
+        "A07"
+      ],
+      "events": [
+        {
+          "op": "grab"
+        },
+        {
+          "op": "move",
+          "hand": -0.2
+        },
+        {
+          "op": "geometry_change"
+        },
+        {
+          "op": "query",
+          "geometry": 1
+        },
+        {
+          "op": "commit"
+        }
+      ],
+      "expect": {
+        "pose": 0,
+        "status": "commit_rejected"
+      }
+    },
+    {
+      "id": "V09",
+      "title": "无同一物理快照保证不能提交",
+      "acceptance": [
+        "A04",
+        "A07"
+      ],
+      "events": [
+        {
+          "op": "grab"
+        },
+        {
+          "op": "move",
+          "hand": -0.2
+        },
+        {
+          "op": "query",
+          "same_physics_snapshot": false
+        },
+        {
+          "op": "commit"
+        }
+      ],
+      "expect": {
+        "pose": 0,
+        "status": "commit_rejected"
+      }
+    },
+    {
+      "id": "V10",
+      "title": "路径终点被占用不能提交",
+      "acceptance": [
+        "A05"
+      ],
+      "events": [
+        {
+          "op": "grab"
+        },
+        {
+          "op": "move",
+          "hand": -0.2
+        },
+        {
+          "op": "query",
+          "endpoint_free": false
+        },
+        {
+          "op": "commit"
+        }
+      ],
+      "expect": {
+        "pose": 0,
+        "status": "commit_rejected"
+      }
+    },
+    {
+      "id": "V11",
+      "title": "裁剪后重新建立手位起点，反拉立即回退",
+      "acceptance": [
+        "A06"
+      ],
+      "events": [
+        {
+          "op": "grab"
+        },
+        {
+          "op": "move",
+          "hand": -1
+        },
+        {
+          "op": "query",
+          "accepted": [
+            0.3,
+            0
+          ]
+        },
+        {
+          "op": "commit"
+        },
+        {
+          "op": "move",
+          "hand": -0.9
+        },
+        {
+          "op": "query"
+        },
+        {
+          "op": "commit"
+        },
+        {
+          "op": "release"
+        }
+      ],
+      "expect": {
+        "offset": [
+          0.2,
+          0
+        ],
+        "pose": 2
+      }
+    },
+    {
+      "id": "V12",
+      "title": "单轴裁剪不能修改另一轴",
+      "acceptance": [
+        "A06"
+      ],
+      "events": [
+        {
+          "op": "grab"
+        },
+        {
+          "op": "move",
+          "hand": -0.2
+        },
+        {
+          "op": "query",
+          "accepted": [
+            0.1,
+            0.1
+          ]
+        },
+        {
+          "op": "commit"
+        }
+      ],
+      "expect": {
+        "pose": 0,
+        "status": "commit_rejected"
+      }
+    },
+    {
+      "id": "V13",
+      "title": "裁剪不能超过候选终点",
+      "acceptance": [
+        "A06"
+      ],
+      "events": [
+        {
+          "op": "grab"
+        },
+        {
+          "op": "move",
+          "hand": -0.2
+        },
+        {
+          "op": "query",
+          "accepted": [
+            0.3,
+            0
+          ]
+        },
+        {
+          "op": "commit"
+        }
+      ],
+      "expect": {
+        "pose": 0,
+        "status": "commit_rejected"
+      }
+    },
+    {
+      "id": "V14",
+      "title": "再抓不沿用第一次手位起点",
+      "acceptance": [
+        "A09"
+      ],
+      "events": [
+        {
+          "op": "grab"
+        },
+        {
+          "op": "move",
+          "hand": -0.2
+        },
+        {
+          "op": "query"
+        },
+        {
+          "op": "commit"
+        },
+        {
+          "op": "release"
+        },
+        {
+          "op": "grab",
+          "hand": 4
+        },
+        {
+          "op": "move",
+          "hand": 4
+        },
+        {
+          "op": "query"
+        },
+        {
+          "op": "commit"
+        },
+        {
+          "op": "release"
+        }
+      ],
+      "expect": {
+        "offset": [
+          0.2,
+          0
+        ],
+        "pose": 2
+      }
+    },
+    {
+      "id": "V15",
+      "title": "先侧拉再上拉保留另一轴",
+      "acceptance": [
+        "A06"
+      ],
+      "events": [
+        {
+          "op": "grab"
+        },
+        {
+          "op": "move",
+          "hand": -0.2
+        },
+        {
+          "op": "query"
+        },
+        {
+          "op": "commit"
+        },
+        {
+          "op": "release"
+        },
+        {
+          "op": "grab",
+          "axis": 1
+        },
+        {
+          "op": "move",
+          "hand": -0.15
+        },
+        {
+          "op": "query"
+        },
+        {
+          "op": "commit"
+        },
+        {
+          "op": "release"
+        }
+      ],
+      "expect": {
+        "offset": [
+          0.2,
+          0.15
+        ],
+        "pose": 2
+      }
+    },
+    {
+      "id": "V16",
+      "title": "重置上下文后旧结果不能复活",
+      "acceptance": [
+        "A12"
+      ],
+      "events": [
+        {
+          "op": "grab"
+        },
+        {
+          "op": "move",
+          "hand": -0.2
+        },
+        {
+          "op": "query"
+        },
+        {
+          "op": "invalidate"
+        },
+        {
+          "op": "commit"
+        }
+      ],
+      "expect": {
+        "pose": 0,
+        "held": false,
+        "occupied": false,
+        "status": "commit_rejected"
+      }
+    },
+    {
+      "id": "V17",
+      "title": "已有武器租约不能被新抓边抢走",
+      "acceptance": [
+        "A17"
+      ],
+      "events": [
+        {
+          "op": "grab",
+          "incumbent": true
+        },
+        {
+          "op": "move",
+          "hand": -0.2
+        }
+      ],
+      "expect": {
+        "held": false,
+        "pose": 0,
+        "status": "move_denied"
+      }
+    },
+    {
+      "id": "V18",
+      "title": "没有合法边缘不能抓取",
+      "acceptance": [
+        "A01",
+        "A02"
+      ],
+      "events": [
+        {
+          "op": "grab",
+          "edge_legal": false
+        },
+        {
+          "op": "move",
+          "hand": -0.2
+        }
+      ],
+      "expect": {
+        "held": false,
+        "pose": 0,
+        "status": "move_denied"
+      }
+    },
+    {
+      "id": "V19",
+      "title": "原身体消费异常不能发布新位置且不能假定已回滚",
+      "acceptance": [
+        "A03"
+      ],
+      "events": [
+        {
+          "op": "grab"
+        },
+        {
+          "op": "move",
+          "hand": -0.2
+        },
+        {
+          "op": "query"
+        },
+        {
+          "op": "commit",
+          "consumer_returned": false
+        }
+      ],
+      "expect": {
+        "pose": 0,
+        "status": "consumer_failed",
+        "consumer_uncertain": true,
+        "occupied": false
+      }
+    },
+    {
+      "id": "V20",
+      "title": "保持位置占用丢失，不自动回到零点",
+      "acceptance": [
+        "A09"
+      ],
+      "events": [
+        {
+          "op": "grab"
+        },
+        {
+          "op": "move",
+          "hand": -0.2
+        },
+        {
+          "op": "query"
+        },
+        {
+          "op": "commit"
+        },
+        {
+          "op": "release"
+        },
+        {
+          "op": "geometry_change"
+        },
+        {
+          "op": "occupancy",
+          "free": false
+        },
+        {
+          "op": "consume"
+        }
+      ],
+      "expect": {
+        "offset": [
+          0.2,
+          0
+        ],
+        "occupied": false,
+        "status": "consumer_rejected"
+      }
+    },
+    {
+      "id": "V21",
+      "title": "旧pose不能用于新枪口或命中消费",
+      "acceptance": [
+        "A15",
+        "A16"
+      ],
+      "events": [
+        {
+          "op": "grab"
+        },
+        {
+          "op": "move",
+          "hand": -0.2
+        },
+        {
+          "op": "query"
+        },
+        {
+          "op": "commit"
+        },
+        {
+          "op": "consume",
+          "pose": 0
+        }
+      ],
+      "expect": {
+        "pose": 1,
+        "status": "consumer_rejected"
+      }
+    },
+    {
+      "id": "V22",
+      "title": "同pose当前占用证据允许消费",
+      "acceptance": [
+        "A15"
+      ],
+      "events": [
+        {
+          "op": "grab"
+        },
+        {
+          "op": "move",
+          "hand": -0.2
+        },
+        {
+          "op": "query"
+        },
+        {
+          "op": "commit"
+        },
+        {
+          "op": "consume"
+        }
+      ],
+      "expect": {
+        "pose": 1,
+        "status": "consumer_ok"
+      }
+    },
+    {
+      "id": "V23",
+      "title": "重复确认不重复移动",
+      "acceptance": [
+        "A08"
+      ],
+      "events": [
+        {
+          "op": "grab"
+        },
+        {
+          "op": "move",
+          "hand": -0.2
+        },
+        {
+          "op": "query"
+        },
+        {
+          "op": "commit"
+        },
+        {
+          "op": "ack"
+        },
+        {
+          "op": "ack"
+        }
+      ],
+      "expect": {
+        "offset": [
+          0.2,
+          0
+        ],
+        "pose": 1,
+        "kernel_pose": 1
+      }
+    },
+    {
+      "id": "V24",
+      "title": "旧确认不能覆盖更新的提交",
+      "acceptance": [
+        "A07"
+      ],
+      "events": [
+        {
+          "op": "grab"
+        },
+        {
+          "op": "move",
+          "hand": -0.2
+        },
+        {
+          "op": "query"
+        },
+        {
+          "op": "commit"
+        },
+        {
+          "op": "move",
+          "hand": -0.3
+        },
+        {
+          "op": "query"
+        },
+        {
+          "op": "commit"
+        },
+        {
+          "op": "ack",
+          "pose": 1
+        }
+      ],
+      "expect": {
+        "offset": [
+          0.3,
+          0
+        ],
+        "pose": 2,
+        "status": "ack_rejected"
+      }
+    },
+    {
+      "id": "V25",
+      "title": "非法from-version不能给新移动授权",
+      "acceptance": [
+        "A07"
+      ],
+      "events": [
+        {
+          "op": "grab"
+        },
+        {
+          "op": "move",
+          "hand": -0.2
+        },
+        {
+          "op": "query",
+          "from_pose": 99
+        },
+        {
+          "op": "commit"
+        }
+      ],
+      "expect": {
+        "pose": 0,
+        "status": "commit_rejected"
+      }
+    },
+    {
+      "id": "V26",
+      "title": "新抓取前先吸收上一轮已提交结果",
+      "acceptance": [
+        "A09"
+      ],
+      "events": [
+        {
+          "op": "grab"
+        },
+        {
+          "op": "move",
+          "hand": -0.2
+        },
+        {
+          "op": "query"
+        },
+        {
+          "op": "commit"
+        },
+        {
+          "op": "release"
+        },
+        {
+          "op": "grab",
+          "hand": 5
+        },
+        {
+          "op": "move",
+          "hand": 5.1
+        },
+        {
+          "op": "query"
+        },
+        {
+          "op": "commit"
+        },
+        {
+          "op": "release"
+        }
+      ],
+      "expect": {
+        "offset": [
+          0.1,
+          0
+        ],
+        "kernel_pose": 2
+      }
+    },
+    {
+      "id": "V27",
+      "title": "原消费异常后的新移动等待恢复",
+      "acceptance": [
+        "A03"
+      ],
+      "events": [
+        {
+          "op": "grab"
+        },
+        {
+          "op": "move",
+          "hand": -0.2
+        },
+        {
+          "op": "query"
+        },
+        {
+          "op": "commit",
+          "consumer_returned": false
+        },
+        {
+          "op": "move",
+          "hand": -0.3
+        }
+      ],
+      "expect": {
+        "pose": 0,
+        "status": "recovery_needed",
+        "consumer_uncertain": true
+      }
+    },
+    {
+      "id": "V28",
+      "title": "仅重新证明空间空闲不能清除身体消费异常",
+      "acceptance": [
+        "A03",
+        "A15"
+      ],
+      "events": [
+        {
+          "op": "grab"
+        },
+        {
+          "op": "move",
+          "hand": -0.2
+        },
+        {
+          "op": "query"
+        },
+        {
+          "op": "commit",
+          "consumer_returned": false
+        },
+        {
+          "op": "occupancy",
+          "free": true
+        },
+        {
+          "op": "consume"
+        }
+      ],
+      "expect": {
+        "pose": 0,
+        "status": "consumer_rejected",
+        "consumer_uncertain": true
+      }
+    }
+  ],
+  "composition_examples": [
+    {
+      "id": "M01",
+      "virtual": [
+        0.2,
+        0.1,
+        0
+      ],
+      "physical": [
+        0.05,
+        -0.04,
+        0.03
+      ],
+      "expected": [
+        0.25,
+        0.06,
+        0.03
+      ]
+    },
+    {
+      "id": "M02",
+      "virtual": [
+        0.2,
+        0.1,
+        0
+      ],
+      "physical": [
+        0,
+        0,
+        0
+      ],
+      "head_rotation_degrees": 90,
+      "expected": [
+        0.2,
+        0.1,
+        0
+      ]
+    },
+    {
+      "id": "M03",
+      "virtual": [
+        0.2,
+        0.1,
+        0
+      ],
+      "physical": [
+        -0.2,
+        -0.1,
+        0
+      ],
+      "expected": [
+        0,
+        0,
+        0
+      ]
+    }
+  ]
+}

@@ -6,6 +6,8 @@ namespace {
 unsigned checks{},failures{};
 #define C(x) do{++checks;if(!(x)){++failures;std::printf("FAIL %u: %s\n",__LINE__,#x);}}while(0)
 void configure_main_test_backend(w::BrokerBackend&) noexcept;
+void configure_visual_test_backend(w::BrokerBackend&) noexcept;
+void configure_body_mount_test_backend(w::BrokerBackend&) noexcept;
 thread_local std::uint32_t test_thread=1;
 constexpr std::uint32_t worker=1,gt=2;
 enum class Mutate {none,frame,proposal,decision,key,nonce,candidate,cover,duplicate,reserved,size,version,reenter,fault};
@@ -18,6 +20,7 @@ struct Fake {
     w::Reply prepare_reply=w::Reply::accepted,commit_reply=w::Reply::accepted;
     Mutate prepare_mutation{},commit_mutation{},invalidate_mutation{};
     w::Lease incumbent{};
+    bool magazine_candidate{},magazine_pending{};
     w::Reply reentered=w::Reply::invalid;
     w::Frame observed_frame{};w::Proposal observed_proposal{};w::Decision observed_decision{};
     w::Invalidation observed_invalidation{};
@@ -42,6 +45,8 @@ struct Fake {
         auto& f=*static_cast<Fake*>(context);++f.prepares;f.observed_frame=*frame;
         if(!f.broker->pending_callbacks()||!f.broker->pending_transactions())++f.violations;
         *proposal={};proposal->key=frame->key;proposal->nonce=frame->key.frame*17+1;proposal->support=1;proposal->incumbents[0]=f.incumbent;
+        proposal->magazine=f.magazine_candidate?1u:0u;
+        if(f.magazine_pending){proposal->support=0;proposal->magazine_observation_pending=1;}
         switch(f.prepare_mutation){
         case Mutate::frame:const_cast<w::Frame*>(frame)->pawn.address+=8;break;
         case Mutate::key:++proposal->key.frame;break;
@@ -49,7 +54,7 @@ struct Fake {
         case Mutate::candidate:proposal->support=2;break;
         case Mutate::cover:proposal->incumbents[0]={w::LeaseKind::cover,0,frame->key.lifecycle,9};break;
         case Mutate::duplicate:proposal->incumbents[0]=proposal->incumbents[1]={w::LeaseKind::support,0,frame->key.lifecycle,9};break;
-        case Mutate::reserved:proposal->reserved=1;break;
+        case Mutate::reserved:proposal->magazine_observation_pending=2;break;
         case Mutate::size:--proposal->size;break;
         case Mutate::version:++proposal->abi_version;break;
         case Mutate::reenter:f.reentered=f.broker->unregister(frame->key.registration_cookie);break;
@@ -80,7 +85,7 @@ struct Fake {
     }
     w::BrokerBackend backend() noexcept {
         w::BrokerBackend b{this,pin,unpin,clock,thread,w::weapon_broker_win32::prepare,w::weapon_broker_win32::commit,w::weapon_broker_win32::invalidate};
-        configure_main_test_backend(b);return b;
+        configure_main_test_backend(b);configure_visual_test_backend(b);configure_body_mount_test_backend(b);return b;
     }
     void start_barrier(unsigned phase){entered=CreateEventW(nullptr,TRUE,FALSE,nullptr);resume=CreateEventW(nullptr,TRUE,FALSE,nullptr);block=phase;C(entered&&resume);}
     void end_barrier(){CloseHandle(entered);CloseHandle(resume);entered=resume=nullptr;block=0;}
@@ -121,6 +126,7 @@ void registration_tests(){
     Fixture f;C(f.broker.availability()==w::Availability::absent_quiescent&&!f.broker.pending());
     C(f.broker.register_participant(nullptr,&f.result)==w::Reply::invalid);
     auto bad=f.registration;bad.frame_bytes=1;C(f.broker.register_participant(&bad,&f.result)==w::Reply::invalid&&f.fake.pins==0);
+    bad=f.registration;bad.abi_version=3;C(f.broker.register_participant(&bad,&f.result)==w::Reply::invalid&&f.fake.pins==0);
     bad=f.registration;bad.commit=nullptr;C(f.broker.register_participant(&bad,&f.result)==w::Reply::invalid);
     auto result=f.result;--result.size;C(f.broker.register_participant(&f.registration,&result)==w::Reply::invalid);
     f.fake.pin_ok=false;C(f.broker.register_participant(&f.registration,&f.result)==w::Reply::invalid);
@@ -135,6 +141,24 @@ void registration_tests(){
     f.registration.prepare=nullptr; // The registered private copy is immutable.
     auto frame=f.frame();w::Proposal p{};C(f.broker.prepare(frame,p)==w::Reply::accepted&&f.fake.prepares==1);
     C(f.broker.abort_frame(frame.key,p.nonce)==w::Reply::accepted);f.finish();
+}
+
+void pending_magazine_tests(){
+    for(unsigned defect=0;defect<7;++defect){
+        Fixture f;f.attach();f.fake.magazine_pending=true;auto frame=f.frame();
+        if(defect==1)f.fake.magazine_candidate=true;
+        if(defect==2)f.fake.incumbent={w::LeaseKind::magazine,0,frame.key.lifecycle,frame.press_token};
+        if(defect==3)frame.left_grip_down=0;
+        if(defect==4)frame.left_grip_known=0;
+        if(defect==5)frame.left_tracked=0;
+        if(defect==6)f.fake.prepare_mutation=Mutate::version;
+        w::Proposal p{};const auto reply=f.broker.prepare(frame,p);
+        if(!defect){
+            C(reply==w::Reply::accepted&&p.magazine_observation_pending&&!p.support&&!p.magazine&&!p.ammo);
+            C(f.broker.abort_frame(frame.key,p.nonce)==w::Reply::accepted);
+        }else C(reply==w::Reply::invalid&&!f.broker.authorized()&&!f.broker.pending_transactions());
+        f.finish();
+    }
 }
 
 void normal_and_retry_tests(){
@@ -421,10 +445,48 @@ void retired_cookie_tests(){
 }
 #include "weapon_hand_call_broker_test.inl"
 #include "main_mount_broker_test.inl"
+#include "body_main_mount_broker_test.inl"
+#include "committed_hand_consumer_test.inl"
+void part_visibility_admission_tests(){
+    Fixture f;f.attach();f.fake.magazine_candidate=true;
+    auto frame=f.frame();w::Proposal proposal{};
+    C(!f.broker.admit_part_visibility(frame));
+    C(f.broker.prepare(frame,proposal)==w::Reply::accepted);
+    auto decision=f.decision(frame,proposal);decision.lease.kind=w::LeaseKind::magazine;
+    C(f.broker.commit(frame,proposal,decision)==w::Reply::accepted);
+    C(f.broker.admit_part_visibility(frame));
+    auto changed=frame;changed.press_token++;
+    C(!f.broker.admit_part_visibility(changed));
+    changed=frame;changed.key.registration_cookie++;
+    C(!f.broker.admit_part_visibility(changed));
+    changed=frame;changed.left_grip_down=0;C(!f.broker.admit_part_visibility(changed));
+    test_thread=worker;C(!f.broker.admit_part_visibility(frame));test_thread=gt;
+    f.fake.stamp+=100000001;C(!f.broker.admit_part_visibility(frame));
+    auto next=f.frame(2);C(f.broker.prepare(next,proposal)==w::Reply::accepted);
+    decision=f.decision(next,proposal,false);C(f.broker.commit(next,proposal,decision)==w::Reply::accepted);
+    C(!f.broker.admit_part_visibility(next));f.finish();
+    Fixture support;support.attach();frame=support.frame();C(support.broker.prepare(frame,proposal)==w::Reply::accepted);
+    decision=support.decision(frame,proposal);C(support.broker.commit(frame,proposal,decision)==w::Reply::accepted);
+    C(!support.broker.admit_part_visibility(frame));C(support.broker.admit_support_visibility(frame));
+    auto pinch=frame;pinch.interaction_control=1;C(!support.broker.admit_support_visibility(pinch));
+    support.fake.stamp+=100000001;C(!support.broker.admit_support_visibility(frame));support.finish();
+}
+void weapon_render_admission_tests(){
+    Fixture f;f.attach();auto frame=f.frame();w::Proposal proposal{};
+    C(!f.broker.admit_weapon_render(frame));C(f.broker.prepare(frame,proposal)==w::Reply::accepted);
+    auto decision=f.decision(frame,proposal);C(f.broker.commit(frame,proposal,decision)==w::Reply::accepted);
+    C(f.broker.admit_weapon_render(frame));C(!f.broker.admit_part_visibility(frame));
+    auto changed=frame;changed.key.registration_cookie++;C(!f.broker.admit_weapon_render(changed));
+    changed=frame;changed.controllers.sequence++;C(!f.broker.admit_weapon_render(changed));
+    test_thread=worker;C(!f.broker.admit_weapon_render(frame));test_thread=gt;
+    f.fake.stamp+=100000001;C(!f.broker.admit_weapon_render(frame));f.finish();
+}
 } // namespace
 int main(){
-    registration_tests();normal_and_retry_tests();temporary_loss_tests();bad_callback_tests();
+    registration_tests();pending_magazine_tests();normal_and_retry_tests();temporary_loss_tests();bad_callback_tests();
     bad_frame_and_decision_tests();transaction_drain_tests();concurrent_tests();clock_thread_and_pin_tests();retired_cookie_tests();
-    auxiliary_tests();main_mount_tests();
+    auxiliary_tests();main_mount_tests();body_mount_tests();hand_visual_tests();
+    part_visibility_admission_tests();
+    weapon_render_admission_tests();
     std::printf("weapon_hand_broker: %u checks, %u failures\n",checks,failures);return failures?1:0;
 }

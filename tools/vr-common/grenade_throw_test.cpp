@@ -2,6 +2,7 @@
 #include <cassert>
 #include <cmath>
 #include <cstdio>
+#include <cstring>
 
 using namespace gears_vr;
 using namespace gears_weapon;
@@ -47,15 +48,31 @@ int main(){
             assert(near(game.velocity.x,150)&&near(game.velocity.y,380)&&
                    near(game.velocity.z,200));
             assert(near(game.impulse.y,1140)&&near(game.gravity.z,-981));
+            const double direction_length=std::sqrt(21.);
+            assert(near(game.direction.x,1/direction_length)&&near(game.direction.y,4/direction_length)&&
+                   near(game.direction.z,2/direction_length)); // Pawn base velocity is added only to velocity.
             assert(!tracker.armed());
         }
     }
     assert(tracker.begin(77,99,1,4));
     for(unsigned i=13;i<=21;++i){
         const auto now=frame(i,{0,1.5,0});
-        assert(!tracker.advance(hands,stereo,77,99,4,now,i==21));
+        const auto result=tracker.advance(hands,stereo,77,99,4,now,i==21);
+        if(i==21)assert(result&&near(length(result->velocity_mps),0));
+        else assert(!result);
     }
-    assert(!tracker.armed()); // A stationary hand does not throw.
+    assert(!tracker.armed()); // A deliberate stationary release is a drop.
+    {
+        GrenadeThrowSolution drop{};drop.weapon=77;drop.world=99;drop.session=8;drop.space_epoch=2;
+        drop.reference_generation=4;drop.predicted_time=10000000000ll;drop.gravity_mps2=9.81;
+        const double h=std::sqrt(.5);drop.release_orientation={0,h,0,h};
+        GameGrenadeLaunch launch{};
+        assert(grenade_world_launch(drop,{{},{0,0,0,1}},{{},{0,0,0}},100,launch,{50,0,0}));
+        assert(near(launch.direction.x,0)&&near(launch.direction.y,-1)&&near(launch.direction.z,0));
+        assert(near(launch.velocity.x,50)&&near(launch.velocity.y,0));
+        drop.release_orientation={0,0,0,0};
+        assert(!grenade_world_launch(drop,{{},{0,0,0,1}},{{},{0,0,0}},100,launch));
+    }
     assert(tracker.begin(77,99,1,5));
     auto now=frame(22,{0,1.5,0});
     assert(!tracker.advance(hands,stereo,77,99,5,now,false));
@@ -94,5 +111,38 @@ int main(){
         }else assert(!result);
     }
     assert(!tracker.armed()); // Wrist motion moves the grenade even with a fixed grip origin.
-    std::puts("grenade hand-history velocity, 3 kg impulse, arc and discontinuity checks passed");
+    {
+        // One slow GT poll gets genuine90/100Hz samples, not eight invented
+        // Stereo Frames. Release is sample8; sample9 is already moving away.
+        gears_hand_continuity::MotionHistory history{};history.count=8;
+        for(unsigned i=0;i<8;++i){const auto sequence=i+2;now=frame(sequence,{.02*double(sequence-1),1.5,0});
+            hands.hands[1].grip.orientation={0,0,0,1};
+            auto& sample=history.frames[i];sample.input=hands;sample.stream_epoch=11;
+            sample.tracking_epoch[0]=21;sample.tracking_epoch[1]=22;
+        }
+        history.frames[7].input.hands[1].grip.position.x=.30;hands=history.frames[7].input;
+        const auto original=history;
+        assert(tracker.begin(77,99,1,11));
+        const auto release=tracker.advance_history(history,hands,stereo,77,99,11,now,1,8);
+        assert(release&&near(release->velocity_mps.x,2)&&near(release->release_position.x,.14));
+        assert(release->predicted_time==history.frames[6].input.predicted_time&&!tracker.armed());
+        assert(!std::memcmp(&original,&history,sizeof history));
+        for(unsigned bad=0;bad<10;++bad){auto invalid=history;
+            switch(bad){case 0:invalid.reserved=1;break;case 1:invalid.count=9;break;
+            case 2:++invalid.frames[3].stream_epoch;break;case 3:++invalid.frames[3].tracking_epoch[1];break;
+            case 4:++invalid.frames[3].input.input_epoch;break;case 5:invalid.frames[3].input.focused=0;break;
+            case 6:invalid.frames[3].input.hands[1].grip_active=0;break;case 7:++invalid.frames[3].input.sequence;break;
+            case 8:invalid.frames[7].input.sync_ns++;break;case 9:invalid.frames[3].input.predicted_time=invalid.frames[2].input.predicted_time;break;}
+            assert(tracker.begin(77,99,1,11));
+            assert(!tracker.advance_history(invalid,hands,stereo,77,99,11,now,1,8)&&!tracker.armed());
+        }
+        assert(tracker.begin(77,99,1,11));
+        assert(!tracker.advance_history(history,hands,stereo,77,99,11,now,1,1)&&!tracker.armed());
+        assert(tracker.begin(77,99,1,11));
+        assert(!tracker.advance_history(history,hands,stereo,77,99,11,now,1,7)&&!tracker.armed()); // <55ms, not enough motion data.
+        assert(tracker.begin(77,99,1,11));
+        assert(!tracker.advance_history(history,hands,stereo,77,99,11,now,1));
+        assert(!tracker.advance_history(history,hands,stereo,77,99,11,now,1,8)&&!tracker.armed()); // Replay cannot throw.
+    }
+    std::puts("grenade hand-history velocity, original-ring release position, impulse, arc and discontinuity checks passed");
 }

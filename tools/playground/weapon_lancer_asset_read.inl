@@ -7,6 +7,35 @@ using U32=std::uint32_t;
 enum class Status:U32 {ready,wrong_thread,invalid_identity,unsupported_weapon,invalid_link,
     invalid_component,hidden_component,unsupported_asset,changed};
 struct Evidence {gears_weapon_hand::ObjectIdentity component{},asset{};};
+enum class AssetScope { lancer_only,basic_hold,supported_instant_fire,frag_hold };
+// Basic visual holding is separate from Lancer muzzle/reload eligibility.
+// Never accept an arbitrary firearm/mesh pair under the broader scope.
+enum class HeldAsset {unknown,lancer,pistol,hammerburst,frag};
+HeldAsset held_asset_name(meta::Reader& r,uptr weapon,AssetScope scope) noexcept {
+    // Frag is deliberately outside firearm/muzzle eligibility. This explicit
+    // scope is for its separate original-projectile adapter only.
+    if(scope==AssetScope::frag_hold)return weaponhand::derives(r,weapon,L"Weap_FragGrenade",L"WarfareGame")?
+        HeldAsset::frag:HeldAsset::unknown;
+    if(weaponhand::derives(r,weapon,L"Weap_AssaultRifle",L"WarfareGame"))return HeldAsset::lancer;
+    if(scope==AssetScope::lancer_only)return HeldAsset::unknown;
+    if(weaponhand::derives(r,weapon,L"Weap_COGPistol",L"WarfareGame"))return HeldAsset::pistol;
+    if(weaponhand::derives(r,weapon,L"Weap_LocustAssaultRifle",L"WarfareGame"))return HeldAsset::hammerburst;
+    return HeldAsset::unknown;
+}
+bool held_asset_matches(meta::Reader& r,U32 slot,HeldAsset kind) noexcept {
+    switch(kind){
+    case HeldAsset::lancer:return r.named(slot,L"COGAssaultRifle");
+    case HeldAsset::pistol:return r.named(slot,L"COG_Pistol");
+    case HeldAsset::hammerburst:return r.named(slot,L"Locust_Hammerburst");
+    case HeldAsset::frag:{
+        if(!r.named(slot,L"Frag_Grenade"))return false;
+        const auto outer=r.result.identities[slot].outer;U32 package{};
+        return outer&&r.path(outer,package)&&r.named(package,L"COG_Bolo_Grenade")&&
+            weaponhand::derives(r,outer,L"Package",L"Core");
+    }
+    default:return false;
+    }
+}
 bool identify(meta::Reader& r,uptr address,gears_weapon_hand::ObjectIdentity& out) noexcept {
     U32 slot{};if(!address||!r.path(address,slot))return false;
     const auto& id=r.result.identities[slot];
@@ -20,14 +49,15 @@ bool mesh_pointer(meta::Reader& r,uptr weapon,meta::PointerField& out) noexcept 
         (r.result.failure.reason==meta::Reason::none&&weaponhand::read_pointer(r,weapon,L"Mesh",out));
     return found&&r.result.failure.reason==meta::Reason::none;
 }
-Status read(gears_weapon_hand::Frame const& f,Evidence& out) noexcept {
+Status read(gears_weapon_hand::Frame const& f,Evidence& out,AssetScope scope=AssetScope::lancer_only) noexcept {
     const auto gt=weaponhand::current_gt(nullptr);
     if(!gt||(f.key.thread_id&&gt!=f.key.thread_id))return Status::wrong_thread;
     meta::Snapshot schema{};schema.module_base=base;meta::Reader r{schema,meta::Stage::final_check};
     if(!gears_weapon_hand::identity_valid(f.weapon)||!gears_weapon_hand::identity_valid(f.mesh)||
        !meta::tables(schema.module_base,schema.objects,schema.names)||!weaponhand::object(r,f.weapon)||
        !weaponhand::object(r,f.mesh))return Status::invalid_identity;
-    if(!weaponhand::derives(r,f.weapon.address,L"Weap_AssaultRifle",L"WarfareGame"))return Status::unsupported_weapon;
+    const auto expected_asset=held_asset_name(r,f.weapon.address,scope);
+    if(expected_asset==HeldAsset::unknown)return Status::unsupported_weapon;
     std::array<meta::PointerField,3> links{};weaponhand::BoolField hidden{};Evidence candidate{};
     if(!f.pawn.address||!weaponhand::pointer(r,f.weapon.address,L"Instigator",f.pawn.address,links[0])||
        !mesh_pointer(r,f.weapon.address,links[1])||!links[1].value)return Status::invalid_link;
@@ -39,7 +69,7 @@ Status read(gears_weapon_hand::Frame const& f,Evidence& out) noexcept {
        !identify(r,links[2].value,candidate.asset)||
        !weaponhand::derives(r,links[2].value,L"SkeletalMesh",L"Engine"))return Status::unsupported_asset;
     U32 asset_slot{};
-    if(!r.path(candidate.asset.address,asset_slot)||!r.named(asset_slot,L"COGAssaultRifle"))return Status::unsupported_asset;
+    if(!r.path(candidate.asset.address,asset_slot)||!held_asset_matches(r,asset_slot,expected_asset))return Status::unsupported_asset;
     // Repeat actual selectors too: a newly inserted earlier same-name field
     // must not leave the old selected descriptor looking valid in isolation.
     std::array<meta::PointerField,3> fresh_links{};weaponhand::BoolField fresh_hidden{};

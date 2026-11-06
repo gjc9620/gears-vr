@@ -25,6 +25,7 @@ static_assert(offsetof(CallPacket,flags)==0x38 && offsetof(CallPacket,xmm)==0x40
 extern "C" {
 void GearsFreshRootHook();
 void GearsFreshOptionalHook();
+void GearsFreshPerBoneHook();
 void GearsCoverControlSingleHook();
 void GearsCoverControlWeightHook();
 void GearsCoverBlendBefore(std::uintptr_t,float,float);
@@ -81,7 +82,8 @@ void check_live_unwind(){
 }
 std::uint32_t bits(const unsigned char* p){std::uint32_t v{};std::memcpy(&v,p,4);return v;}
 void seed(unsigned kind,std::uint64_t flags){
-    expected_kind=kind;gCoverTestHook=kind?reinterpret_cast<void*>(&GearsFreshOptionalHook):reinterpret_cast<void*>(&GearsFreshRootHook);
+    expected_kind=kind;gCoverTestHook=kind==1?reinterpret_cast<void*>(&GearsFreshOptionalHook):
+        kind==2?reinterpret_cast<void*>(&GearsFreshPerBoneHook):reinterpret_cast<void*>(&GearsFreshRootHook);
     gCoverTestBefore={};gCoverTestTarget={};gCoverTestReturned={};post_packet={};
     before_calls=post_calls=finally_calls=protected_live=gCoverTestOriginalCalls=0;gCoverTestOriginalKind=99;caught_code=0;throw_stage=0;
     gCoverTestInput.rax=0x0123456789abcdef;gCoverTestInput.rcx=0x1020304050607080;
@@ -107,7 +109,7 @@ void normal_case(unsigned kind,std::uint64_t flags){
     expect(!std::memcmp(&gCoverTestTarget,&gCoverTestInput,7*sizeof(std::uint64_t)),"original sees all seven input volatile GPRs");
     expect(!std::memcmp(gCoverTestTarget.xmm,gCoverTestInput.xmm,sizeof gCoverTestInput.xmm),"original sees full input XMM0..5");
     expect((gCoverTestTarget.flags&arithmetic_flags)==flags,"original sees incoming arithmetic RFLAGS");
-    if(!kind)expect(gCoverTestTarget.opaque5==0x0123456789abcdef,"Root original receives exact fifth argument");
+    if(kind!=1)expect(gCoverTestTarget.opaque5==0x0123456789abcdef,"Root/per-bone original receives exact fifth argument");
     expect((gCoverTestTarget.rsp&15)==8,"original entry has ABI stack alignment");
     expect(gCoverTestTarget.return_address!=reinterpret_cast<std::uintptr_t>(&GearsCoverTestAfterCall),"original has wrapper return address: fixed ABI, no tailcall guarantee");
     const std::uint64_t shadow[]{0xa0a0a0a0a0a0a0a0,0xb1b1b1b1b1b1b1b1,0xc2c2c2c2c2c2c2c2,0xd3d3d3d3d3d3d3d3};
@@ -139,12 +141,12 @@ extern "C" void GearsCoverTestAfter(unsigned kind){
 extern "C" __declspec(noinline) void GearsFreshInvokeProtected(CallPacket* packet,unsigned kind,std::uintptr_t caller,std::uintptr_t entry_rsp,std::uintptr_t fifth) noexcept(false){
     expect(caller==reinterpret_cast<std::uintptr_t>(&GearsCoverTestAfterCall),"exact original caller RA forwarded");
     expect(entry_rsp==gCoverTestDriverRsp-8,"true original entry RSP forwarded as fourth argument");
-    expect(fifth==(kind?0ull:0x0123456789abcdefull),"Root fifth is forwarded; Optional fifth is unread/zero");
+    expect(fifth==(kind==1?0ull:0x0123456789abcdefull),"Root/per-bone fifth is forwarded; Optional fifth is unread/zero");
     expect((entry_rsp&15)==8,"original entry RSP alignment");
     bool returned{};float f1{},f2{};std::memcpy(&f1,packet->xmm[1],4);std::memcpy(&f2,packet->xmm[2],4);++protected_live;
     __try{
         if(kind!=1)GearsCoverBlendBefore(packet->gpr[1],f1,f2);else GearsCoverChildBefore(packet->gpr[1],static_cast<std::int32_t>(packet->gpr[2]),f2);
-        if(kind)GearsFreshRawInvoke4(packet,reinterpret_cast<void*>(&GearsCoverTestChildTarget));
+        if(kind==1)GearsFreshRawInvoke4(packet,reinterpret_cast<void*>(&GearsCoverTestChildTarget));
         else GearsFreshRawInvoke5(packet,reinterpret_cast<void*>(&GearsCoverTestBlendTarget),fifth);returned=true;
     }__finally{
         __try{if(returned&&!AbnormalTermination()){post_packet=*packet;GearsCoverTestAfterCallback(kind);}}
@@ -184,14 +186,16 @@ void read_window(void* target,bool root_hook,bool raw){
 int main(){
     read_window(reinterpret_cast<void*>(&GearsFreshRootHook),true,false);
     read_window(reinterpret_cast<void*>(&GearsFreshOptionalHook),false,false);
+    read_window(reinterpret_cast<void*>(&GearsFreshPerBoneHook),true,false);
     read_window(reinterpret_cast<void*>(&GearsFreshRawInvoke4),false,true);
     check_unwind_metadata(reinterpret_cast<void*>(&GearsFreshRootHook),13,false);
+    check_unwind_metadata(reinterpret_cast<void*>(&GearsFreshPerBoneHook),13,false);
 
     check_unwind_metadata(reinterpret_cast<void*>(&GearsFreshRawInvoke5),3,false);
     check_unwind_metadata(reinterpret_cast<void*>(&GearsFreshRawInvoke4),3,false);
     check_unwind_metadata(reinterpret_cast<void*>(&GearsFreshInvokeProtected),0,true);
 
-    for(unsigned kind=0;kind!=2;++kind){
+    for(unsigned kind=0;kind!=3;++kind){
         normal_case(kind,arithmetic_flags);normal_case(kind,0);
         for(unsigned stage=1;stage!=4;++stage){seed(kind,arithmetic_flags);throw_stage=stage;expect(invoke_catching()&&caught_code==test_exception,"same SEH propagates through protected thunk");
             expect(finally_calls==1&&!protected_live,"SEH releases exactly once");expect(gCoverTestOriginalCalls==(stage==1?0u:1u),"SEH never duplicates original");expect(post_calls==(stage==3?1u:0u),"exception does not run a normal post");}

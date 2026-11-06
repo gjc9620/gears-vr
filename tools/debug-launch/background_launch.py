@@ -80,7 +80,9 @@ def process_creation_time(process):
 
 
 def launch(game_path, game_args=(), *, foreground=False, disable_background_input=True,
-           game_io=GAME_IO, runtime=RUNTIME, popen=subprocess.Popen, quiet_build=None, launch_receipt=None):
+           game_io=GAME_IO, runtime=RUNTIME, popen=subprocess.Popen, quiet_build=None, launch_receipt=None,
+           steam_client_launch=False):
+    if steam_client_launch and not foreground:raise ValueError('Steam client launch requires explicit manual foreground policy')
     quiet_build = quiet_build_for_start(foreground, quiet_build)
     game_path = pathlib.Path(game_path).resolve()
     if not game_path.is_file():
@@ -90,7 +92,7 @@ def launch(game_path, game_args=(), *, foreground=False, disable_background_inpu
     if launch_receipt is not None and pathlib.Path(launch_receipt).exists():
         raise RuntimeError('Launch receipt must be fresh')
 
-    quiet_report = None
+    quiet_report = None;steam_report=None
     child_environment = None
     if quiet_build is not None:
         verify_default_quiet_build(quiet_build)
@@ -98,6 +100,10 @@ def launch(game_path, game_args=(), *, foreground=False, disable_background_inpu
         from quiet_launch import launch_quiet
         quiet_report = launch_quiet(game_path, game_args, quiet_build, popen=popen, main_noactivate=True)
         game_pid, creation_time = quiet_report['pid'], quiet_report['creation_time']
+    elif steam_client_launch:
+        from steam_game_start import launch as steam_start
+        steam_report=steam_start(game_path,game_args,popen=popen)
+        game_pid,creation_time=steam_report['pid'],steam_report['creation_time']
     else:
         creationflags = 0 if foreground else subprocess.CREATE_NO_WINDOW
         startupinfo = None if foreground else nonactivating_startupinfo()
@@ -122,17 +128,19 @@ def launch(game_path, game_args=(), *, foreground=False, disable_background_inpu
         'creation_time': creation_time,
         'game_path': str(game_path),
         'game_args': list(map(str, game_args)),
-        'window_startup_policy': 'quiet_startup' if quiet_report else 'foreground' if foreground else 'shown_no_activate',
+        'window_startup_policy': 'steam_client_foreground' if steam_report else 'quiet_startup' if quiet_report else 'foreground' if foreground else 'shown_no_activate',
         'background_input_requested': not disable_background_input,
         'test_windows_behind_requested': test_windows_behind_requested(foreground),
-        'steam_app_id': quiet_report.get('steam_app_id') if quiet_report else child_environment.get('SteamAppId'),
-        'steam_game_id': quiet_report.get('steam_game_id') if quiet_report else child_environment.get('SteamGameId'),
-        'steam_environment_scope': 'child_process',
+        'steam_app_id': steam_report['steam_app_id'] if steam_report else quiet_report.get('steam_app_id') if quiet_report else child_environment.get('SteamAppId'),
+        'steam_game_id': steam_report['steam_app_id'] if steam_report else quiet_report.get('steam_game_id') if quiet_report else child_environment.get('SteamGameId'),
+        'steam_environment_scope': 'steam_client' if steam_report else 'child_process',
     }
     runtime = pathlib.Path(runtime)
     runtime.mkdir(parents=True, exist_ok=True)
     if quiet_report is not None:
         record['quiet_startup'] = quiet_report
+    if steam_report is not None:
+        record['steam_client_launch'] = steam_report
     record_path = runtime / ('background-launch-%s.json' % game_pid)
     record['record_path'] = str(record_path)
     record_path.write_text(json.dumps(record, indent=2) + '\n', encoding='utf-8')
@@ -164,6 +172,7 @@ def main(argv=None):
     parser.add_argument('--game-path', type=pathlib.Path, required=True)
     parser.add_argument('--game-arg', action='append', default=[])
     parser.add_argument('--foreground', action='store_true', help='Use the ordinary foreground startup policy')
+    parser.add_argument('--steam-client-launch',action='store_true',help='Manual6DoF: start via the same live Steam client')
     inputs = parser.add_mutually_exclusive_group()
     inputs.add_argument('--enable-background-input', dest='disable_background_input', action='store_false',
                         help='Explicitly enable physical controller input while the game is unfocused')
@@ -176,7 +185,7 @@ def main(argv=None):
     try:
         record = launch(args.game_path, args.game_arg, foreground=args.foreground,
                         disable_background_input=args.disable_background_input,
-                        launch_receipt=args.launch_receipt,
+                        launch_receipt=args.launch_receipt,steam_client_launch=args.steam_client_launch,
                         quiet_build=quiet_build_for_start(args.foreground,args.quiet_build))
         print(json.dumps(record))
         return 0

@@ -60,6 +60,8 @@ def allowed_paths(root):
         raise ValueError('Unexpected staged native DLL')
     result = set(staging.payload_paths(manifest)) | set(staging.LICENSES.values()) | {
         'tools/vr-launcher/manifest.json', 'tools/vr-launcher/config.json', 'README.txt', 'portable-candidate.json'}
+    if manifest.get('sixdof_unified',False):
+        result.add('6dof-reload.ini')
     metadata = json.loads(read_bounded(staging.contained(root, 'portable-candidate.json'), 1024 * 1024),
                           object_pairs_hook=unique_object)
     if not isinstance(metadata, dict): raise ValueError('Invalid portable candidate metadata')

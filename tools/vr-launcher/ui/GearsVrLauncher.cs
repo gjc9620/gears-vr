@@ -457,6 +457,11 @@ namespace GearsVrUi {
             if (!(value is bool)) throw new InvalidDataException(Language.T(TextKey.GameplayInvalid));
             return (bool)value;
         }
+        internal static bool LancerRangesEnabled(Dictionary<string, object> config) {
+            object value; if (!config.TryGetValue("lancer_interaction_ranges", out value)) return false;
+            if (!(value is bool)) throw new InvalidDataException(Language.T(TextKey.GameplayInvalid));
+            return (bool)value;
+        }
         internal static decimal RightStickDeadzone(Dictionary<string, object> config) {
             object value; if (!config.TryGetValue("right_stick_deadzone_percent", out value)) return 2m;
             if (!(value is int || value is long || value is decimal || value is double || value is float))
@@ -466,11 +471,12 @@ namespace GearsVrUi {
                 throw new InvalidDataException(Language.T(TextKey.GameplayInvalid));
             return Convert.ToDecimal(value);
         }
-        internal static void SaveGameplay(string path, bool previewSupported, bool preview, bool deadzoneSupported, decimal deadzone) {
+        internal static void SaveGameplay(string path, bool previewSupported, bool preview, bool deadzoneSupported, decimal deadzone, bool rangesSupported=false, bool ranges=false) {
             if (deadzoneSupported&&(deadzone<0||deadzone>50)) throw new ArgumentOutOfRangeException("deadzone");
             var config=ReadConfig(path);
             if (previewSupported) config["first_person_preview"]=preview;
             if (deadzoneSupported) config["right_stick_deadzone_percent"]=deadzone;
+            if (rangesSupported) config["lancer_interaction_ranges"]=ranges;
             WriteConfig(path,config);
         }
         internal static bool SupportsRenderSize(Dictionary<string, object> manifest) {
@@ -770,6 +776,12 @@ namespace GearsVrUi {
                 if(RightStickDeadzone(new Dictionary<string,object>())!=2m||!FirstPersonEnabled(new Dictionary<string,object>()))return 61;
                 SaveGameplay(temp,true,false,true,2m);
                 if(FirstPersonEnabled(ReadConfig(temp))||RightStickDeadzone(ReadConfig(temp))!=2m||CameraCloser(ReadConfig(temp))!=.5m)return 62;
+                if(LancerRangesEnabled(new Dictionary<string,object>()))return 64;
+                SaveGameplay(temp,true,false,true,2m,true,true);
+                if(!LancerRangesEnabled(ReadConfig(temp))||RightStickDeadzone(ReadConfig(temp))!=2m||CameraCloser(ReadConfig(temp))!=.5m)return 65;
+                foreach(object invalid in new object[]{1,"true",null}) {
+                    try{LancerRangesEnabled(new Dictionary<string,object>{{"lancer_interaction_ranges",invalid}});return 66;}catch(InvalidDataException){}
+                }
                 foreach(object invalid in new object[]{true,"2",null,Double.NaN,Double.PositiveInfinity,-.01,50.01}) {
                     try{RightStickDeadzone(new Dictionary<string,object>{{"right_stick_deadzone_percent",invalid}});return 63;}catch(InvalidDataException){}
                 }
@@ -902,9 +914,11 @@ namespace GearsVrUi {
         NumericUpDown hudSize = new NumericUpDown { Minimum = 45, Maximum = 100, Value = 65, DecimalPlaces = 2, Increment = 1, Width = 85 };
         NumericUpDown cameraCloser = new NumericUpDown { Minimum = 0, Maximum = .5m, Value = 0, DecimalPlaces = 2, Increment = .05m, Width = 85 };
         CheckBox firstPerson = new CheckBox { AutoSize = true };
+        CheckBox lancerRanges = new CheckBox { AutoSize = true };
+        ToolTip lancerRangeTip = new ToolTip { AutoPopDelay=30000, InitialDelay=300, ReshowDelay=100 };
         CheckBox remeasureArmspan = new CheckBox { Name = "armspanMeasurement", AutoSize = true };
         NumericUpDown rightStickDeadzone = new NumericUpDown { Minimum = 0, Maximum = 50, Value = 2, DecimalPlaces = 1, Increment = 1, Width = 75 };
-        bool hudSupported, cameraSupported, renderSupported, firstPersonSupported, deadzoneSupported, armspanSupported, armspanRequired;
+        bool hudSupported, cameraSupported, renderSupported, firstPersonSupported, firstPersonRequired, deadzoneSupported, armspanSupported, armspanRequired, lancerRangesSupported;
         Process owner;
         int ownerPid; long ownerCreation;
         volatile bool stopRequested;
@@ -922,12 +936,15 @@ namespace GearsVrUi {
             renderSupported = Program.SupportsRenderSize(Program.ReadConfig(Program.ManifestPath(root)));
             var gameplayManifest=Program.ReadConfig(Program.ManifestPath(root));
             firstPersonSupported=Program.SupportsGameplay(gameplayManifest,"first_person_preview");
+            firstPersonRequired=Program.SupportsGameplay(gameplayManifest,"sixdof_manual");
             deadzoneSupported=Program.SupportsGameplay(gameplayManifest,"right_stick_deadzone_control");
+            lancerRangesSupported=Program.SupportsGameplay(gameplayManifest,"lancer_interaction_ranges");
             armspanSupported=Program.SupportsArmspan(gameplayManifest);
             armspanRequired=armspanSupported&&!Program.HasArmspanCalibration();
             remeasureArmspan.Checked=armspanRequired;
             var gameplayConfig=Program.ReadConfig(config);
-            firstPerson.Checked=Program.FirstPersonEnabled(gameplayConfig);
+            firstPerson.Checked=Program.FirstPersonEnabled(gameplayConfig)||firstPersonRequired;
+            lancerRanges.Checked=Program.LancerRangesEnabled(gameplayConfig);
             rightStickDeadzone.Value=Program.RightStickDeadzone(gameplayConfig);
             Text = Language.T(TextKey.WindowTitle); ClientSize = new Size(960, 690); MinimumSize = new Size(940, 600);
             Icon = LauncherBrand.LoadIcon(SystemInformation.IconSize);
@@ -985,7 +1002,17 @@ namespace GearsVrUi {
             }
             if(firstPersonSupported) {
                 layout.Controls.Add(new Label { Text=Language.T(TextKey.FirstPerson), AutoSize=true },0,7);
-                firstPerson.Text=Language.T(TextKey.FirstPersonHint);layout.Controls.Add(firstPerson,1,7);layout.SetColumnSpan(firstPerson,2);
+                firstPerson.Text=firstPersonRequired?(Language.English?"Automatically enabled in gameplay":"进入游戏后自动启用"):Language.T(TextKey.FirstPersonHint);
+                var viewControls=new FlowLayoutPanel { Dock=DockStyle.Fill, WrapContents=false };
+                viewControls.Controls.Add(firstPerson);
+                if(lancerRangesSupported) {
+                    lancerRanges.Text=Language.English?"Debug: Lancer grab volumes (red)":"调试：Lancer 抓取范围（红色）";
+                    lancerRangeTip.SetToolTip(lancerRanges,Language.English?
+                        "Next launch. Red numbered outlines show actual acquisition regions, not grasp-retention limits. Cyan crosses are pose anchors; cyan/purple cylinders are Magwell snap regions.\n1 Main grip axes (no volume)\n2 Fore-end: sphere14cm\n3 Installed magazine: capsule12cm radius,16cm centre line (24x24x40cm total)\n4 Retained original magazine: sphere12cm\n5 Held magazine grip axes (no volume)\n6 Charging E: sphere18cm x gun mesh scale\n7 Chainsaw C: sphere14cm\n8 Magwell entry: radius14cm, axial -4..20cm\n9 Magwell retention: radius18cm, axial -4..25cm":
+                        "下次启动生效。红色编号轮廓为实际开始抓取的范围，不是抓住后的脱离边界。青色十字为纯姿态锚点；青色/紫色圆柱为弹井吸附区域。\n1 主握把：姿态轴，无碰撞体\n2 前护木：球形，半径14厘米\n3 已装弹匣：胶囊，半径12厘米，中心线16厘米，整体24×24×40厘米\n4 保留原弹匣：球形，半径12厘米\n5 手中弹匣：姿态轴，无碰撞体\n6 拉栓 E：球形，半径18厘米 × 枪网格缩放\n7 电锯 C：球形，半径14厘米\n8 弹井吸附进入：径向14厘米，轴向-4至20厘米\n9 弹井吸附保持：径向18厘米，轴向-4至25厘米");
+                    viewControls.Controls.Add(lancerRanges);
+                }
+                layout.Controls.Add(viewControls,1,7);layout.SetColumnSpan(viewControls,2);
             }
             if(deadzoneSupported) {
                 layout.Controls.Add(new Label { Text=Language.T(TextKey.RightStickDeadzone), AutoSize=true },0,8);
@@ -1113,6 +1140,8 @@ namespace GearsVrUi {
             recenter.Enabled = owner != null && !stopping && !recentering && !stopRequested;
             game.Enabled = browseGame.Enabled = runtimeMode.Enabled = !busy;
             hudSize.Enabled = cameraCloser.Enabled = renderScale.Enabled = renderPreview.Enabled = firstPerson.Enabled = rightStickDeadzone.Enabled = !busy;
+            firstPerson.Enabled=!busy&&!firstPersonRequired;
+            lancerRanges.Enabled=!busy&&lancerRangesSupported;
             remeasureArmspan.Enabled = armspanSupported && !busy && !armspanRequired;
             runtime.Enabled = browseRuntime.Enabled = !busy && runtimeMode.SelectedIndex != 1;
             exportLogs.Enabled = !exportBusy;
@@ -1202,11 +1231,12 @@ namespace GearsVrUi {
                 bool currentHudSupport = Program.SupportsHudSize(currentManifest);
                 if (currentHudSupport != hudSupported || Program.SupportsCameraDistance(currentManifest) != cameraSupported ||
                     Program.SupportsRenderSize(currentManifest) != renderSupported ||
-                    Program.SupportsArmspan(currentManifest) != armspanSupported) throw new IOException(Language.T(TextKey.ManifestChanged));
+                    Program.SupportsArmspan(currentManifest) != armspanSupported ||
+                    Program.SupportsGameplay(currentManifest,"lancer_interaction_ranges") != lancerRangesSupported) throw new IOException(Language.T(TextKey.ManifestChanged));
                 RememberSelectedGame();
                 Program.SaveOptions(config, path, hudSupported, hudSize.Value, cameraSupported, cameraCloser.Value);
                 if(renderSupported&&runtimeMode.SelectedIndex!=2)Program.SaveRenderScale(config,renderScale.Value);
-                Program.SaveGameplay(config,firstPersonSupported,firstPerson.Checked,deadzoneSupported,rightStickDeadzone.Value);
+                Program.SaveGameplay(config,firstPersonSupported,firstPerson.Checked,deadzoneSupported,rightStickDeadzone.Value,lancerRangesSupported,lancerRanges.Checked);
                 stopRequested = false; starting = true; UpdateButtons(); state.Text = Language.T(TextKey.Starting);
                 int result = await Command("start", selectedRuntime, armspanSupported && remeasureArmspan.Checked);
                 if (result < 0) state.Text = Language.T(TextKey.StartupFailed);

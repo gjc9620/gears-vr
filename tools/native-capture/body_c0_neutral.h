@@ -32,13 +32,13 @@ inline bool capture(b::Model const& model,b::Frame const& frame,a::marker::Marke
         b::ik::detail::validate(frame.local.data(),model.parents.data(),b::bones,work.component)!=b::ik::Status::okay)return false;
     for(auto const& atom:frame.local)if(atom.scale!=1)return false;
     std::copy(frame.local.begin(),frame.local.end(),work.pose.local);if(!b::d::rebuild(model,work))return false;
-    // Freeze one coherent standing pose, including the actual ground contacts.
-    // A reference-pose head/pelvis combined with animated feet can ask for an
-    // unreachable spine before the player has moved at all. Only the heading
-    // below comes from Ref115; no later animation sample rebases these points.
+    // Freeze the actual standing eye and ground contacts. The torso below is
+    // reference-neutral, so freezing the old aiming pelvis as well would force
+    // a compressed, sideways spine to reach the old animated eye. Place that
+    // neutral torso under the SAME eye once; legs solve to the SAME contacts.
+    // No later animation/tracking sample rebases any of these points.
     b::Pose contacts[2]{};
     for(unsigned i=0;i<2;++i)contacts[i]=b::d::pose(work.pose.world[b::legs[i][2]]);
-    const auto initial_pelvis=b::d::position(work.pose.world[b::pelvis]);
     const auto initial_root=b::d::rotation(work.pose.world[b::root]);
     a::marker::EyeHmdWorld initial_eye{};
     if(a::marker::eye_from_head(marker,model,frame,{b::d::pose(work.pose.world[b::head])},initial_eye)!=a::marker::Status::okay)return false;
@@ -49,8 +49,19 @@ inline bool capture(b::Model const& model,b::Frame const& frame,a::marker::Marke
     // The standing view uses reference yaw, never animated weapon-stance yaw.
     const auto f=b::d::rotate(eye.pose.orientation,{1,0,0});const double n=std::hypot(f.x,f.y);
     if(!std::isfinite(n)||n<.5)return false;const b::Vec forward{f.x/n,f.y/n,0},right{-f.y/n,f.x/n,0};
+    a::marker::HeadBoneWorld neutral_head{};
+    const a::marker::EyeHmdWorld fixed_eye{{initial_eye.pose.position,b::d::yaw(std::atan2(forward.y,forward.x))}};
+    if(a::marker::head_from_eye(marker,model,frame,fixed_eye,neutral_head)!=a::marker::Status::okay)return false;
+    // Use exactly the live planner's neutral rotations and actual translations,
+    // lengths, scale and root orientation, rather than a different Ref body.
+    std::copy(frame.local.begin(),frame.local.end(),work.pose.local);
+    for(unsigned i:b::neutral_rotation_bones)std::memcpy(work.pose.local[i].q,model.reference[i].q,16);
+    if(!b::d::rebuild(model,work))return false;
+    const auto neutral_pelvis=b::d::add(b::d::position(work.pose.world[b::pelvis]),
+        b::d::sub(neutral_head.pose.position,b::d::position(work.pose.world[b::head])));
+    if(!b::d::finite_vector(neutral_pelvis))return false;
     const auto inv=b::d::inverse(b::d::rotation(work.component));Stored next{};
-    next.eye=local_point(work.component,initial_eye.pose.position);next.pelvis=local_point(work.component,initial_pelvis);
+    next.eye=local_point(work.component,initial_eye.pose.position);next.pelvis=local_point(work.component,neutral_pelvis);
     next.forward=b::d::rotate(inv,forward);next.right=b::d::rotate(inv,right);
     next.root=b::d::product(inv,initial_root);
     for(unsigned i=0;i<2;++i){const auto& p=contacts[i];next.feet[i]={local_point(work.component,p.position),b::d::product(inv,p.orientation)};}

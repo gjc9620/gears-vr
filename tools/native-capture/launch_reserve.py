@@ -24,6 +24,7 @@ from run_stereo_continuous import WindowsControl
 sys.path.insert(0,str(ROOT/'tools/vr-launcher'))
 from startup_diagnostics import StartupTrace
 k.SetEvent.argtypes=[w.HANDLE];k.SetEvent.restype=w.BOOL
+k.GetExitCodeProcess.argtypes=[w.HANDLE,c.POINTER(w.DWORD)];k.GetExitCodeProcess.restype=w.BOOL
 
 
 def mark_launch_stage(path,identity,stage):
@@ -356,12 +357,32 @@ def reserve(args,owned,trace,command_started):
                     if not k.WriteProcessMemory(handle,prime_memory,argument_buffer,len(argument),c.byref(written)) or written.value!=len(argument):
                         raise c.WinError(c.get_last_error())
                 prime_attempted=True
-                code=remote_call(handle,resident[0]+prime_rva,prime_memory)
+                # GPU target preparation includes device/factory creation.
+                # Wait on this one owned call; never retry its dispatch when
+                # the ordinary loader's 15-second observation window expires.
+                code=remote_call(handle,resident[0]+prime_rva,prime_memory,timeout_ms=45000)
                 prime_finished=True
+                trace.end(remote_thread_exit_code=code)
+                if code==0 and args.sixdof_manual:
+                    # Enumerate the VR pad before initial device discovery,
+                    # not after the user has already entered a level.
+                    pad_export=next(x for x in pe.DIRECTORY_ENTRY_EXPORT.symbols if x.name==b'GearsCaptureStartVrGamepad')
+                    trace.begin('manual_vr_gamepad')
+                    prime_finished=False
+                    code=remote_call(handle,resident[0]+pad_export.address,prime_memory)
+                    prime_finished=True
+                    trace.end(remote_thread_exit_code=code)
             finally:
                 if prime_memory and prime_finished:k.VirtualFreeEx(handle,prime_memory,0,0x8000)
-            trace.end(remote_thread_exit_code=code)
-            if code:raise RuntimeError(f'Target priming failed ({code}); do not activate')
+            if code:
+                # A dying game's remote threads inherit its exit status. Do
+                # not label the original Steam/startup exit as a proven VR
+                # prime failure. This observes this SAME owned handle only.
+                k.WaitForSingleObject(handle,250)
+                exited=w.DWORD()
+                if k.GetExitCodeProcess(handle,c.byref(exited)) and exited.value!=259:
+                    raise RuntimeError(f'Game exited before VR startup completed (game exit {exited.value}); check the original Steam/startup error; no retry')
+                raise RuntimeError(f'Target priming or manual VR gamepad setup failed ({code}); do not activate')
             trace.begin('prime_readiness')
             prime_event=k.OpenEventW(0x100000,False,f'Local\\GearsVR.Capture.TargetPrime.{pid}')
             if not prime_event:raise RuntimeError('Target priming readiness absent')

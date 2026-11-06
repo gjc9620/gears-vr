@@ -1,4 +1,6 @@
 #include "weapon_hammerburst_reload.h"
+#include "weapon_hammerburst_latch.h"
+#include "weapon_hammerburst_latch_curve.h"
 #include <cassert>
 #include <cstdio>
 #include <limits>
@@ -262,9 +264,89 @@ void start_replay_and_commit() {
     assert(model.begin_r3(next)==E::started);
 }
 }
+void physical_start_pause_and_resume() {
+    HammerburstReload m;auto b=start();b.r3_press_edge=0;
+    assert(m.begin_latch(b,1)==E::started);
+    assert(m.confirm_latch_open(stamp(2,1010),opening())==E::opened);
+    assert(m.grab_left_shoulder(stamp(3,1020),magazine())==E::grabbed);
+    assert(m.suspend()==E::interrupted&&m.stage()==S::paused&&m.held()==0&&m.total()==23);
+    assert(!m.resume(stamp(4,1200),2,2)&&!m.resume(stamp(4,1200),1,1));
+    assert(m.resume(stamp(4,1200),1,2));
+    assert(m.grab_left_shoulder(stamp(5,1210),magazine())==E::rejected);
+    assert(m.grab_left_shoulder(stamp(5,1210),magazine(52))==E::grabbed);
+    assert(m.insert_magazine(stamp(6,1220),insertion(52,5))==E::inserted);
+    assert(m.suspend()==E::interrupted&&m.resume(stamp(7,1230),1,3));
+    assert(m.confirm_latch_closed(stamp(8,1240),closing(6))==E::rejected);
+    assert(m.confirm_latch_closed(stamp(8,1240),closing(7))==E::ordinary);
+    assert(m.loaded()==10&&m.reserve()==13&&m.total()==23);
+}
+void continuous_hinge_motion() {
+    HammerburstLatchGeometry g{{0,0,0},{0,1,0},{.05,0,0},.8,.02,.02,.02,true};
+    HammerburstLatchStroke stroke;
+    auto sample=[](double angle,std::uint64_t seq,std::uint64_t ms){
+        return HammerburstLatchSample{{.05*std::cos(angle),0,-.05*std::sin(angle)},seq,ms,1,true,true};
+    };
+    assert(stroke.begin(g,sample(0,1,1000),0));
+    for(unsigned i=1;i<=4;++i){
+        const auto result=stroke.observe(sample(.2*i,i+1,1000+50*i));
+        assert(result==(i==4?HammerburstLatchMotion::open:HammerburstLatchMotion::moving));
+    }
+    for(unsigned i=1;i<=4;++i){
+        const auto result=stroke.observe(sample(.8-.2*i,i+5,1200+50*i));
+        assert(result==(i==4?HammerburstLatchMotion::closed:HammerburstLatchMotion::moving));
+    }
+    assert(stroke.observe(sample(.2,10,1600))==HammerburstLatchMotion::rejected&&!stroke.active());
+    assert(stroke.begin(g,sample(.4,11,1700),.4));
+    auto loss=sample(.5,12,1750);loss.tracked=false;
+    assert(stroke.observe(loss)==HammerburstLatchMotion::rejected);
+    assert(stroke.begin(g,sample(.4,13,1800),.4));
+    auto other=sample(.5,14,1850);other.grip_token=2;
+    assert(stroke.observe(other)==HammerburstLatchMotion::rejected);
+    auto centre=sample(0,15,1900);centre.hand={0,0,0};
+    assert(!stroke.begin(g,centre,0));
+    auto unverified=g;unverified.current_instance_verified=false;
+    assert(!stroke.begin(unverified,sample(0,16,2000),0));
+    g.axis={0,0,1};
+    assert(stroke.begin(g,{{.05,0,0},17,2100,3,true,true},0));
+    assert(stroke.observe({{.05*std::cos(.4),.05*std::sin(.4),0},18,2150,3,true,true})==HammerburstLatchMotion::moving);
+    assert(std::abs(stroke.angle()-.4)<1e-8);
+}
 int main() {
+    { HammerburstLatchCurve curve;double keys[]={0,0,.4,.8,.8,.4,0};float time=-1;
+      assert(!curve.bind(keys,7,.7,false)&&!curve.time_for_angle(.4,time));
+      assert(curve.bind(keys,7,.7,true)&&curve.time_for_angle(.4,time)&&std::abs(time-.2f)<1e-6);
+      assert(curve.time_for_angle(.6,time)&&std::abs(time-.25f)<1e-6);
+      assert(curve.time_for_angle(.8,time)&&std::abs(time-.3f)<1e-6);
+      assert(curve.time_for_angle(.8,time,HammerburstLatchCurve::Sampling::endpoint_intervals)&&std::abs(time-.35f)<1e-6);
+      double sampled{};
+      assert(curve.angle_at_time(.3,sampled,HammerburstLatchCurve::Sampling::endpoint_intervals)&&std::abs(sampled-(.4+.4*4./7))<1e-6);
+      assert(!curve.time_for_angle(.9,time));
+      double reversed[]={0,.4,.2,.8,.8,.4,0};assert(!curve.bind(reversed,7,.7,true));
+      keys[2]=std::numeric_limits<double>::quiet_NaN();assert(!curve.bind(keys,7,.7,true)); }
     completion_and_guide();deadlines();entry_validation();latch_order_and_receipts();
     pickup_and_insertion();identity_clock_and_release();conservation_and_interruptions();
-    start_replay_and_commit();
+    start_replay_and_commit();physical_start_pause_and_resume();continuous_hinge_motion();
+    { // Forgiving acquisition/retention and real endpoint motion, not a
+      // stationary pinch or a cosmetic snap. Other consumers keep defaults.
+      HammerburstLatchGeometry g{{0,0,0},{0,1,0},{.07,0,0},.8,.12,.10,.10,true};
+      g.endpoint_tolerance=.14;g.overtravel=.45;g.minimum_endpoint_motion=.06;
+      HammerburstLatchStroke s;
+      const auto point=[](double a,unsigned seq,unsigned ms,double radius=.07,double axial=0.){
+          return HammerburstLatchSample{{radius*std::cos(a),axial,-radius*std::sin(a)},seq,ms,99,true,true};};
+      assert(s.begin(g,point(0,1,1000,.10,.04),0));
+      assert(s.observe(point(0,2,1050,.10,.04))==HammerburstLatchMotion::moving);
+      assert(s.observe(point(.3,3,1100,.12,.06))==HammerburstLatchMotion::moving);
+      assert(s.observe(point(.69,4,1150,.12,.06))==HammerburstLatchMotion::open&&s.angle()==.8);
+      assert(s.observe(point(1.05,5,1200,.12,.06))==HammerburstLatchMotion::open&&s.angle()==.8);
+      assert(s.observe(point(.60,6,1250,.12,.06))==HammerburstLatchMotion::moving);
+      assert(std::abs(s.angle()-.60)<1e-8); // Overtravel was retained, not lost at the stop.
+      auto stale=point(.5,7,1400,.12,.06);
+      assert(s.observe(stale)==HammerburstLatchMotion::rejected);
+      assert(s.begin(g,point(.8,8,1500),.8));
+      assert(s.observe(point(.4,9,1550))==HammerburstLatchMotion::moving);
+      assert(s.observe(point(.1,10,1600))==HammerburstLatchMotion::closed&&s.angle()==0);
+      auto unheld=point(.0,11,1650);unheld.gripped=false;
+      assert(s.observe(unheld)==HammerburstLatchMotion::rejected);
+    }
     std::puts("Hammerburst latch/magazine reload, timing, conservation and interruption tests passed");
 }

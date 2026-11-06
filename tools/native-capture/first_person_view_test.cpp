@@ -24,6 +24,12 @@ int main(){
     assert(camera_mode(toggle.requested(),true,true,true,true)==CameraMode::native_scope);
     assert(camera_mode(toggle.requested(),true,true,true,false)==CameraMode::preview&&toggle.requested());
     assert(camera_mode(toggle.requested(),true,false,true,false)==CameraMode::unchanged&&toggle.requested());
+    // Unified first person survives the unknown inventory state in a pickup
+    // handoff. Unknown metadata cannot activate a native sniper zoom camera.
+    assert(camera_mode(true,true,false,false,false,true)==CameraMode::preview);
+    assert(camera_mode(true,true,false,true,true,true)==CameraMode::preview);
+    assert(camera_mode(true,true,true,true,true,true)==CameraMode::native_scope);
+    assert(camera_mode(true,false,false,false,false,true)==CameraMode::unchanged);
     assert(camera_mode(toggle.requested(),false,true,true,false)==CameraMode::unchanged&&toggle.requested());
     assert(toggle.update(true,false,true,900,true)&&!toggle.requested());
     assert(camera_mode(toggle.requested(),true,true,true,false)==CameraMode::unchanged);

@@ -26,7 +26,8 @@ struct String {const wchar_t* data;int count,capacity;};
 const wchar_t* weapon_names[]={L"Weap_AssaultRifle",L"Weap_LocustAssaultRifle",L"Weap_Shotgun",
     L"Weap_SniperRifle",L"Weap_COGPistol",L"Weap_LocustPistol",L"Weap_Boomer",L"Weap_Bow",
     L"WEAP_HammerOfDawn",L"Weap_FragGrenade",L"Weap_SmokeGrenade"};
-struct Slot {uptr actor{},inventory{},cls{};Vector location{};ULONGLONG after{};};
+struct RangeIdentity {uptr address{},klass{},world{},outer{};unsigned index{};Name name{};};
+struct Slot {uptr actor{},inventory{},cls{};Vector location{};ULONGLONG after{};bool melee{};RangeIdentity controller{},identity{};};
 std::array<Slot,11> guns{};std::array<Slot,6> targets{};
 
 #if defined(GEARS_PLAYGROUND_HAND_WEAPON_MESH_PHASE1_TRIAL)
@@ -185,6 +186,14 @@ bool floor_at(float x,float y,float start_z,Vector& position){
 }
 bool infinite(uptr weapon){
     if(!instance(weapon,L"WarWeapon")||deleted(weapon))return false;
+    // Private reload verification must exercise the production finite-ammo
+    // path without the range's periodic refill masking its accounting.
+    const auto range_test_flag=[](const wchar_t* key){wchar_t value[4]{};
+        return GetEnvironmentVariableW(key,value,4)==1&&value[0]==L'1';};
+    if(range_test_flag(L"GEARSVR_TEST_FINITE_RANGE_AMMO")&&
+       range_test_flag(L"GEARSVR_TEST_WINDOWS_BEHIND")&&range_test_flag(L"GEARSVR_TEST_MUTE_GAME")&&
+       range_test_flag(L"GEARSVR_TEST_TINY_OUTPUT_OBSERVE_ONLY"))
+        return boolean(weapon,L"bInfiniteSpareAmmo",false);
     // Set only owned range objects; normal magazine consumption/reload survives.
     if(!boolean(weapon,L"bInfiniteSpareAmmo",true))return false;
     const auto spare=scalar<int>(weapon,L"SpareAmmoCount");
@@ -205,13 +214,83 @@ bool create_gun(Slot& slot){
     if(!bound||!set_mesh.run()){Args cleanup(pickup,L"Destroy");cleanup.run();Args cleanup_weapon(weapon,L"Destroy");cleanup_weapon.run();return false;}
     slot.actor=pickup;slot.inventory=weapon;slot.after=0;return true;
 }
+bool current_range_object(RangeIdentity const& id){
+    if(!id.address||!registered(id.address)||get<unsigned>(id.address+8)!=id.index||
+       get<uptr>(id.address+0x50)!=id.klass||get<uptr>(id.address+0x40)!=id.outer||
+       pointer(id.address,L"WorldInfo")!=id.world)return false;
+    const auto n=get<Name>(id.address+0x48);
+    return n.index==id.name.index&&n.number==id.name.number;
+}
+bool current_range_controller(RangeIdentity const& id){
+    return current_range_object(id)&&instance(id.address,L"WarAI_Drone");
+}
+void retire_target(Slot& slot){
+    const auto actor=slot.actor;const auto controller=slot.controller;
+    const bool actor_owned=current_range_object(slot.identity);
+    if(actor_owned&&!deleted(actor)){Args destroy(actor,L"Destroy");destroy.run();}
+    // Only this range-created, identity-pinned controller may be retired.
+    // Never destroy a controller that has since possessed somebody else.
+    if(current_range_controller(controller)&&!deleted(controller.address)){
+        const auto pawn=pointer(controller.address,L"Pawn");
+        if(!pawn||(actor_owned&&pawn==actor)){Args destroy(controller.address,L"Destroy");destroy.run();}
+    }
+    slot.actor=0;slot.controller={};slot.identity={};
+}
+bool prepare_melee_target(Slot& slot,uptr actor){
+    // The retail special-melee validator requires a real controller. Keep
+    // that gameplay rule, rather than accepting the unpossessed shooting
+    // dummies as fake victims. Spawn and possess through the original Pawn.
+    Args possess(actor,L"SpawnDefaultController");
+    if(!possess.run()){message(L"melee_target_spawn_controller_failed");return false;}
+    const auto controller=pointer(actor,L"Controller");
+    if(!current_range_object(slot.identity)||!instance(controller,L"WarAI_Drone")||pointer(controller,L"Pawn")!=actor||
+       pointer(controller,L"WorldInfo")!=arena_world){message(L"melee_target_controller_links_failed");return false;}
+    slot.controller={controller,get<uptr>(controller+0x50),arena_world,get<uptr>(controller+0x40),get<unsigned>(controller+8),get<Name>(controller+0x48)};
+    // Match the original OnAIToggleCombat disabled policy on this owned
+    // practice AI. DebugState alone was insufficient:41864 left its start
+    // and fired at the player. Do not stop Tick/animation or modify team,
+    // health, collision, original melee validators or victim PushState.
+    if(!boolean(controller,L"bAllowCombatTransitions",false)){
+        message(L"melee_target_combat_disable_failed");return false;}
+    // Select the original DebugState and suspend only automatic perception
+    // timers on this owned practice AI. Stationary behavior is checked in the
+    // actual range; Tick/animation and the original victim PushState stay on.
+    for(const auto label:{L"FillEnemyList",L"UpdateAllEnemyInfo",L"HandleInfoRequests"}){
+        const auto function=field(slot.controller.klass,label,L"Function");
+        if(!function){message(L"melee_target_perception_timer_schema_failed");return false;}
+        const auto timer=get<Name>(function+0x48);
+        Args clear(controller,L"ClearTimer");
+        if(!current_range_controller(slot.controller)||!clear.set(L"inTimerFunc",timer).run()){
+            message(L"melee_target_clear_perception_timer_failed");return false;}
+    }
+    const auto state=field(slot.controller.klass,L"DebugState",L"State");
+    if(!state){message(L"melee_target_debug_state_missing");return false;}
+    const auto state_name=get<Name>(state+0x48);
+    Args stop(controller,L"StopFiring"),clear_move(controller,L"ClearMovementInfo"),
+        idle(controller,L"GotoState"),state_query(controller,L"GetStateName");
+    if(!stop.run()||!clear_move.run()||!idle.set(L"NewState",state_name).run()||!state_query.run()){
+        message(L"melee_target_debug_state_call_failed");return false;}
+    const auto actual=state_query.output<Name>();
+    if(actual.index!=state_name.index||actual.number!=state_name.number||
+       !current_range_controller(slot.controller)||pointer(actor,L"Controller")!=controller||
+       pointer(controller,L"Pawn")!=actor){message(L"melee_target_debug_state_or_links_not_current");return false;}
+    const auto position=scalar<Vector>(actor,L"Location");
+    if(log_file){fwprintf(log_file,L"playground melee_target_ready pawn=%llx controller=%llx state=DebugState original_controller=1 combat_transitions=0 x=%.3f y=%.3f z=%.3f\n",
+        actor,controller,position.x,position.y,position.z);fflush(log_file);}
+    return true;
+}
 bool create_target(Slot& slot){
     const auto actor=spawn(slot.cls,slot.location,Rotation{0,32768,0});
     if(!actor)return false;
     // A dynamic Pawn is deliberately left without an AI controller: a stationary,
     // damageable enemy target. It is placed on a world trace before spawning.
     if(pointer(actor,L"Controller")){Args cleanup(actor,L"Destroy");cleanup.run();return false;}
-    boolean(actor,L"bDontPossess",true);slot.actor=actor;slot.after=0;return true;
+    boolean(actor,L"bDontPossess",true);slot.actor=actor;slot.after=0;
+    slot.identity={actor,get<uptr>(actor+0x50),arena_world,get<uptr>(actor+0x40),get<unsigned>(actor+8),get<Name>(actor+0x48)};
+    if(slot.melee&&!prepare_melee_target(slot,actor)){
+        message(L"melee_target_controller_setup_failed");retire_target(slot);return false;
+    }
+    return true;
 }
 bool initialize_arena(uptr pc,uptr pawn,uptr world){
     arena_pc=pc;arena_pawn=pawn;arena_world=world;
@@ -222,12 +301,24 @@ bool initialize_arena(uptr pc,uptr pawn,uptr world){
     if(!turret){message(L"existing_troika_missing");return false;}
     // The raised platform behind the existing Troika is the equipment area.
     for(unsigned i=0;i<guns.size();++i){auto& s=guns[i];s={};s.cls=find_class(weapon_names[i]);
-        const float x=-4100.f+float(i%2)*180.f,y=-550.f+float(i/2)*210.f;
+        // Keep grenade pickups on the walkable inner platform. The old
+        // positive-y rack rows put them behind the equipment sandbags;
+        // approach stopped at y159.64 and original X selected a nearer Bow.
+        // They remain real original pickups with original ammo/interaction.
+        const bool grenade=i>=9;
+        const float x=grenade?-3770.f:-4100.f+float(i%2)*180.f;
+        const float y=grenade?(-140.f-float(i-9)*220.f):-550.f+float(i/2)*210.f;
         if(!s.cls||!floor_at(x,y,900,s.location)){message(weapon_names[i]);message(L"weapon_class_or_floor_missing");return false;}
         s.location.z+=45;if(!create_gun(s)){message(weapon_names[i]);message(L"pickup_creation_failed");return false;}}
     const auto target_class=find_class(L"Pawn_GeistLocust");
     for(unsigned i=0;i<targets.size();++i){auto& s=targets[i];s={};s.cls=target_class;
-        const float x=-2850.f+float(i/2)*450.f,y=(i%2)?350.f:-350.f;
+        // Keep the practice opponent on the player's raised starting area.
+        // The old -900 side lies beyond the equipment sandbags;41864's
+        // straight walking route was blocked there. Other five are unchanged.
+#if defined(GEARS_PLAYGROUND_NATIVE_LANCER_FOLLOW)
+        s.melee=i==0;
+#endif
+        const float x=s.melee?-3650.f:-2850.f+float(i/2)*450.f,y=s.melee?0.f:((i%2)?350.f:-350.f);
         if(!s.cls||!floor_at(x,y,900,s.location)){message(L"target_floor_missing");return false;}
         s.location.z+=90;if(!create_target(s)){message(L"target_creation_failed");return false;}}
     Vector start{};if(!floor_at(-3900,0,900,start))return false;start.z+=90;
@@ -255,9 +346,16 @@ void maintain(){
                 if(create_gun(s))++pickup_respawns;else{++failures;s.after=now+5000;}}
         }
     }
-    for(auto& s:targets)if(deleted(s.actor)||scalar<int>(s.actor,L"Health")<=0){
+    for(auto& s:targets)if(!current_range_object(s.identity)||deleted(s.actor)||scalar<int>(s.actor,L"Health")<=0){
+        // A chainsaw victim can be dead while its original paired animation
+        // still owns both actors. Respawning at the old fixed3s deadline
+        // would destroy that victim under the attacker's animation.
+        if(s.melee&&current_range_object(s.identity)&&!deleted(s.actor)&&
+           (scalar<unsigned char>(s.actor,L"SpecialMove")==35||
+            (scalar<unsigned char>(arena_pawn,L"SpecialMove")==34&&
+             pointer(pointer(arena_pawn,L"Weapon"),L"SpecialMeleeAttackVictim")==s.actor))){s.after=0;continue;}
         if(!s.after)s.after=now+3000;
-        if(now>=s.after){if(!deleted(s.actor)){Args d(s.actor,L"Destroy");d.run();}
+        if(now>=s.after){retire_target(s);
             if(create_target(s))++target_respawns;else{++failures;s.after=now+5000;}}
     }
 }

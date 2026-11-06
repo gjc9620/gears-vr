@@ -28,6 +28,16 @@ static void reject(Fixture const& fixture,Reason reason){
 }
 int main(){
     Fixture base;gears_vr::StereoFiniteAim out{};
+    {auto weapon=base;weapon.data.writer_view.weapon_query_call=7;
+     weapon.data.writer_view.weapon_query_deadline_qpc=160;
+     weapon.authority.scene_stamp=weapon.data.stamp=bits(1.08f);
+     assert(weapon.run(out)==Reason::accepted);
+     auto legacy=weapon;legacy.data.writer_view.weapon_query_call=0;reject(legacy,Reason::age);
+     auto stale=weapon;stale.now=151;reject(stale,Reason::age);
+     auto expired=weapon;expired.data.writer_view.weapon_query_deadline_qpc=149;reject(expired,Reason::age);
+     auto missing=weapon;missing.data.writer_view.weapon_query_deadline_qpc=0;reject(missing,Reason::age);
+     auto backwards=weapon;backwards.data.writer_view.assignment_stamp=bits(2.f);reject(backwards,Reason::clock);
+    }
     auto ads=base;ads.data.writer_view.aiming_known=ads.data.writer_view.aiming=true;
     bool aiming=false;
     assert(authorize(ads.data,ads.authority,ads.view,ads.now,ads.frequency,out,&aiming)==Reason::accepted&&aiming);

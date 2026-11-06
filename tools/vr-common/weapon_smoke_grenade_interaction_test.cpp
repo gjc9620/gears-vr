@@ -390,11 +390,12 @@ void bad_motion_never_throws(){
         CHECK(f.update(f.frame(),f.input(SmokeInputKind::right_trigger_release)).event==E::rejected);
         CHECK(!f.model.take_request()&&f.model.inventory().count==3);
     }
-    for(unsigned mode=0;mode<4;++mode){
+    // Shared tracker permits deliberate stationary release.
+    for(unsigned mode:{0u,2u,3u}){
         Fixture f;f.grab();f.prepare();
         const unsigned count=mode==0?2u:8u;
         for(unsigned i=0;i<count;++i){
-            auto point=Vector{mode==1?0:.04*double(i),1.5,0};
+            auto point=Vector{.04*double(i),1.5,0};
             if(mode==2&&i==count-1)point.x=4; // Tracking teleport on release.
             auto frame=f.frame(point,mode==3&&i==count-1?70000000:10000000);
             const auto result=f.update(frame,i==count-1?f.input(SmokeInputKind::right_trigger_release):SmokeInput{});

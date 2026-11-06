@@ -62,7 +62,7 @@ void verify(Input const& in,Solution const& out){
         assert(close(rotate(delta,unit(old[i])),unit(next[i]),5e-11));
         // The direction change's axis is perpendicular to the old bone: the
         // kernel adds swing, never a new twist around an assumed local X axis.
-        assert(std::abs(dot({delta.x,delta.y,delta.z},unit(old[i])))<5e-11);
+        if(i==0||!in.share_forearm_twist)assert(std::abs(dot({delta.x,delta.y,delta.z},unit(old[i])))<5e-11);
     }
 }
 Solution solved(Input const& in){Solution out{};assert(solve(in,out)==Status::solved);verify(in,out);return out;}
@@ -73,7 +73,7 @@ void failure(Input const& in,Status expected){
     std::array<unsigned char,sizeof(Solution)> before{};std::memcpy(before.data(),&out,sizeof(out));
     assert(solve(in,out)==expected);assert(std::memcmp(before.data(),&out,sizeof(out))==0);
 }
-template<class Test>void run(const char* name,Test test){test();++groups;std::printf("PASS %s\n",name);}
+template<class Test>void run(const char* name,Test test){std::printf("RUN %s\n",name);std::fflush(stdout);test();++groups;std::printf("PASS %s\n",name);}
 Input transformed(Input in,Quaternion rotation,Vector translation){
     for(auto* pose:{&in.shoulder,&in.elbow,&in.wrist,&in.target}){
         pose->position=add(rotate(rotation,pose->position),translation);
@@ -157,6 +157,60 @@ int main(){
         in.target.position={-1.8,1e-11,0};in.authored={true,{0,1,0}};solved(in);
     });
     run("straight-arm-full-extension",[]{auto in=straight();in.target.position=in.wrist.position;const auto out=solved(in);assert(close(out.elbow.position,in.elbow.position));});
+    run("wrist-roll-is-shared-by-forearm-without-moving-the-hand",[]{
+        for(double roll:{-.5*pi,-.25*pi,0.,.25*pi,.5*pi}){
+            auto in=straight();in.target.position=in.wrist.position;in.target.orientation=axis({1,0,0},roll);
+            in.share_forearm_twist=true;auto out=solved(in);
+            assert(equivalent(out.elbow.orientation,in.target.orientation));
+            assert(close(out.elbow.position,in.elbow.position));
+            // Covariance uses an interior target: a rigid transform can round
+            // the exact fully extended boundary one ULP outside fixed reach.
+            auto interior=in;interior.target.position={1.8,.1,0};
+            covariance(interior,axis({1,2,3},.6),{3,5,7});
+        }
+    });
+    run("forearm-twist-preserves-swing-and-original-wrist-offset",[]{
+        auto in=straight();in.target.position=in.wrist.position;in.wrist.orientation=axis({0,1,0},.15);
+        in.target.orientation=gears_vr::multiply(axis({1,0,0},.7),in.wrist.orientation);in.share_forearm_twist=true;
+        const auto out=solved(in);assert(equivalent(out.elbow.orientation,axis({1,0,0},.7)));
+        in.wrist.orientation={};in.target.orientation=axis({0,1,0},pi);
+        assert(equivalent(solved(in).elbow.orientation,Quaternion{}));
+    });
+    run("wrist-direction-uses-feasible-elbow-circle",[]{
+        auto in=straight();in.target.position={1.2,0,0};in.authored={true,{0,1,0}};
+        in.target.orientation=axis({0,0,1},pi/2);in.share_forearm_twist=true;
+        const auto original=solved(in);
+        const auto bend=[&](Solution const& s){return std::acos((std::clamp)(
+            dot(unit(sub(s.wrist.position,s.elbow.position)),rotate(s.wrist.orientation,{1,0,0})),-1.,1.));};
+        assert(bend(original)>pi/2);
+        in.preferred_wrist_bend=pi/3;const auto adjusted=solved(in);
+        assert(adjusted.pole==PoleSource::wrist_direction&&std::abs(bend(adjusted)-pi/3)<1e-10);
+        assert(close(adjusted.wrist.position,original.wrist.position)&&equivalent(adjusted.wrist.orientation,original.wrist.orientation));
+        assert(std::abs(adjusted.upper_length-original.upper_length)<1e-12&&std::abs(adjusted.lower_length-original.lower_length)<1e-12);
+        covariance(in,axis({1,2,3},.8),{8,2,-7});
+        // An already good pole remains unchanged; a straight arm does not
+        // invent reach, alter tracking, or claim the preference was attained.
+        in.authored.point={0,-1,0};const auto comfortable=solved(in);in.preferred_wrist_bend=0;
+        assert(close(comfortable.elbow.position,solved(in).elbow.position));
+        in.preferred_wrist_bend=pi/3;in.target.position={2,0,0};
+        assert(std::abs(bend(solved(in))-pi/2)<1e-10);
+        in.target.position={1.2,0,0};in.target.orientation={};solved(in);
+        in.preferred_wrist_bend=std::numeric_limits<double>::quiet_NaN();failure(in,Status::invalid_policy);
+        in.preferred_wrist_bend=pi/3;in.wrist_forward_local={};failure(in,Status::invalid_input);
+    });
+    run("wrist-preference-cannot-flip-the-body-elbow-pole",[]{
+        auto in=straight();in.target.position={1.2,0,0};in.authored={true,{0,0,-1}};
+        in.target.orientation=axis({0,1,0},pi/2);in.preferred_wrist_bend=pi/6;
+        const auto unrestricted=solved(in);assert(unrestricted.elbow.position.z>0);
+        in.max_wrist_pole_turn=pi/3;const auto limited=solved(in);
+        assert(limited.elbow.position.z<0);
+        const auto radial=unit(sub(limited.elbow.position,{.6,0,0}));
+        assert(std::abs(std::acos((std::clamp)(-radial.z,-1.,1.))-pi/3)<1e-10);
+        covariance(in,axis({1,2,3},.8),{8,2,-7});
+        in.max_wrist_pole_turn=0;assert(solved(in).elbow.position.z<-.7);
+        in.max_wrist_pole_turn=-.1;failure(in,Status::invalid_policy);
+        in.max_wrist_pole_turn=std::numeric_limits<double>::quiet_NaN();failure(in,Status::invalid_policy);
+    });
     run("left-right-mirror-with-mirrored-authored-pole",[]{
         auto left=bent(),right=left;
         const auto mirror=[](Vector v){return Vector{v.x,-v.y,v.z};};

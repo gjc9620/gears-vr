@@ -145,6 +145,11 @@ uint32_t __fastcall hook_ui_execute(void* command){
     if(stereo_publish_bypass)return ui_original_execute(command);
     ui_scene_root_live::executing(1);
     const auto caller=reinterpret_cast<uintptr_t>(_ReturnAddress());
+    if(ui_scene_root_live::startup_draw::observing()){
+        Scope active_scope;ui_scene_root_live::startup_draw::ExecuteScope context;
+        const auto slot=ui_scene_root_live::startup_draw::execute_begin(command,caller);
+        const auto result=ui_original_execute(command);ui_scene_root_live::startup_draw::execute_end(slot,result);return result;
+    }
     Scope active_scope;if(!active_scope.world())return ui_original_execute(command);
     UiPayloadRestore restore;ui_payload_context=nullptr;ui_index_context=nullptr;ui_execute_entry_return=0;
     const auto owned_receipt=owned_ui_live::execute_begin(command);
@@ -386,6 +391,7 @@ bool reserve_ui_execute(){
     if(!safe_copy(before.data(),ui_execute_target,before.size())||before!=ui_execute_bytes||
        !safe_copy(&entry,reinterpret_cast<void*>(base+0x13394f0+8),8)||entry!=base+0x19e64c||
        !gears_ui_batch::validate_binding({base},safe_copy)||
+       !ui_scene_root_live::startup_draw::remember(ui_execute_target)||
        MH_CreateHook(ui_execute_target,reinterpret_cast<void*>(hook_ui_execute),reinterpret_cast<void**>(&ui_original_execute))!=MH_OK||
        !safe_copy(after.data(),ui_execute_target,after.size())||after!=before)return false;
     return true;
@@ -513,7 +519,7 @@ void print_ui_payload_observer(FILE* status){
                     k,i,r.execute_sequence,r.ticket,r.segment_ordinal,s.minimum,s.maximum,s.index_count,s.known[0],s.known[1],s.known[2],s.unknown,
                     s.kind_mask,s.entry_mask,r.command_completed?1:0,r.geometry_matched?1:0);
             }
-            if(r.geometry_matched&&i<3){
+            if(r.geometry_matched&&(i<3||r.reticle_direction_applied)){
                 const gears_vr::StereoMatrix* matrices[]{&r.geometry.source_view,&r.geometry.source_projection,
                     &r.geometry.eyes.view[0],&r.geometry.eyes.projection[0],&r.geometry.eyes.view[1],&r.geometry.eyes.projection[1]};
                 for(unsigned m=0;m<6;++m){
@@ -529,6 +535,12 @@ void print_ui_payload_observer(FILE* status){
                 }
             }
             if(r.reticle_direction_applied){
+                // Existing bounded draw rows already retain this exact ticket's
+                // target. Export it beside the actual eye plan so offline review
+                // never substitutes a later HUD cache or a different ticket.
+                const auto& aim=r.geometry.finite_aim;
+                fprintf(status,"ui_reticle_target_row kind_mask=%u row=%u ticket=%llu finite_available=%u world=%llu tick=%llu point=%.9g,%.9g,%.9g\n",
+                    k,i,r.ticket,aim.valid?1u:0u,aim.world,aim.tick,aim.point[0],aim.point[1],aim.point[2]);
 #if defined(GEARS_UI_CALL_BOUNDARY_OBSERVER) && GEARS_UI_CALL_BOUNDARY_OBSERVER
                 auto const& extent=r.reticle_extent;
                 fprintf(status,"ui_reticle_source_extent_row kind_mask=%u row=%u ticket=%llu ordinal=%u valid=%u root=%llu bounds=%.9g,%.9g,%.9g,%.9g\n",

@@ -1,4 +1,5 @@
 #include "original_l2_aim.h"
+#include "weapon_hand_participant.h"
 #include <cassert>
 #include <cstdio>
 #include <vector>
@@ -35,6 +36,34 @@ struct Trial {
         assert(advance()==OriginalL2Status::pressed&&aim.owns_press());context.game_target_key=true;
     }
 };
+void part_grant_reserves_first_press_before_reload_becomes_busy(){
+    namespace h=gears_weapon_hand;
+    for(auto kind:{h::LeaseKind::magazine,h::LeaseKind::ammo,h::LeaseKind::cover,h::LeaseKind::other,h::LeaseKind::support}){
+        Trial t;h::Frame f{};f.key.lifecycle=9;f.key.frame=10;
+        if(kind==h::LeaseKind::support)f.interaction_control=unsigned(LeftInteractionControl::pinch);
+        f.press_token=4;f.left_grip_known=f.left_grip_down=1;
+        h::Decision d{};d.key=f.key;d.press_token=4;d.lease={kind,0,9,4};
+        d.status=h::DecisionStatus::granted;d.release_required=0;
+        assert(h::part_reserves_secondary_trigger(f,d));
+        t.next();++t.frame.hands[0].pressed[control_trigger];
+        t.context.allow_press=!h::part_reserves_secondary_trigger(f,d);
+        assert(t.advance()==OriginalL2Status::blocked&&t.calls.empty()&&!t.aim.owns_press());
+        d.status=h::DecisionStatus::retained;++f.key.frame;d.key=f.key;
+        assert(h::part_reserves_secondary_trigger(f,d));
+        t.next();assert(t.advance()==OriginalL2Status::accepted&&t.calls.empty());
+        // Losing the part does not replay the consumed trigger edge as aim.
+        f.left_grip_down=0;t.context.allow_press=!h::part_reserves_secondary_trigger(f,d);
+        t.next();assert(t.advance()==OriginalL2Status::accepted&&t.calls.empty());
+        t.next();++t.frame.hands[0].released[control_trigger];assert(t.advance()==OriginalL2Status::accepted);
+        t.press();assert(t.calls.size()==1);
+        f.left_grip_down=1;++d.key.frame;assert(!h::part_reserves_secondary_trigger(f,d));
+        d.key=f.key;d.lease.kind=h::LeaseKind::support;
+        f.interaction_control=unsigned(LeftInteractionControl::grip);
+        assert(!h::part_reserves_secondary_trigger(f,d));
+        f.interaction_control=unsigned(LeftInteractionControl::pinch);
+        assert(h::part_reserves_secondary_trigger(f,d));
+    }
+}
 void cold_yield_still_requires_baseline_release_and_press(){
     Trial t(false);
     assert(t.yield()==OriginalL2Status::accepted&&t.calls.empty()&&!t.aim.owns_press());
@@ -225,6 +254,7 @@ int main(){
     context.game_target_key=true;context.weapon=99;
     assert(advance()==OriginalL2Status::abort_required&&aim.owns_press());
     assert(advance()==OriginalL2Status::abort_required);
+    part_grant_reserves_first_press_before_reload_becomes_busy();
     cold_yield_still_requires_baseline_release_and_press();
     baseline_release_proof_requires_active_low_trigger_and_game_key_up();
     synchronous_yield_seals_held_and_missed_edges();allow_press_false_releases_without_a_new_frame();

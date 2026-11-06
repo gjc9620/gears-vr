@@ -111,6 +111,14 @@ void observe_color_copy(ID3D12GraphicsCommandList* list,const D3D12_TEXTURE_COPY
 void STDMETHODCALLTYPE hook_color_copy(ID3D12GraphicsCommandList* list,const D3D12_TEXTURE_COPY_LOCATION* destination,UINT x,UINT y,UINT z,
     const D3D12_TEXTURE_COPY_LOCATION* source,const D3D12_BOX* box){
     if(stereo_publish_bypass){original_color_copy(list,destination,x,y,z,source,box);return;}
+    if(ui_scene_root_live::startup_draw::observing()){
+        Scope scope;D3D12_TEXTURE_COPY_LOCATION src{},dst{};
+        if(safe_copy(&src,source,sizeof(src))&&safe_copy(&dst,destination,sizeof(dst)))
+            ui_scene_root_live::startup_draw::transfer(list,reinterpret_cast<uintptr_t>(_ReturnAddress()),2,dst.pResource,src.pResource,
+                dst.Type==D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX?dst.SubresourceIndex:UINT_MAX,
+                src.Type==D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX?src.SubresourceIndex:UINT_MAX,x,y);
+        original_color_copy(list,destination,x,y,z,source,box);return;
+    }
     Scope scope;if(!scope.world()){auto unknown=frame_lock();frame_link.invalidate();return original_color_copy(list,destination,x,y,z,source,box);}
 #if defined(GEARS_NATIVE_OWNED_PIXELS) && GEARS_NATIVE_OWNED_PIXELS
     std::lock_guard<FrameHookMutex> frame_guard(frame_hook_mutex);

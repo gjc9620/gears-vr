@@ -1,0 +1,263 @@
+{
+  "schema": 2,
+  "revision": "v2",
+  "date": "2026-10-28",
+  "scope": "offline cover implementation handoff",
+  "checkout": "C:/Users/11/.codex/worktrees/6dof-single/gearsVr",
+  "branch": "codex/6dof-single",
+  "source_head": "e62e2cee7eb74cafd17407544707893d4f7ada20",
+  "runtime_source_modified": false,
+  "runtime_enabled": false,
+  "built": false,
+  "game_run": false,
+  "simulator_run": false,
+  "headset_accepted": false,
+  "shared_mainline_modified_by_this_work": false,
+  "interaction_design_frozen": true,
+  "implementation_complete": false,
+  "evidence_levels": [
+    "S",
+    "H",
+    "D",
+    "U"
+  ],
+  "open_runtime_certifications": [
+    "U1",
+    "U2",
+    "U3",
+    "U4"
+  ],
+  "findings": [
+    {
+      "id": "F01",
+      "implementation": [
+        "I1",
+        "I2",
+        "I3"
+      ],
+      "acceptance": [
+        "A01",
+        "A02"
+      ],
+      "status": "located_and_assigned_not_fixed"
+    },
+    {
+      "id": "F02",
+      "implementation": [
+        "I1",
+        "I4"
+      ],
+      "acceptance": [
+        "A03"
+      ],
+      "status": "located_and_assigned_not_fixed"
+    },
+    {
+      "id": "F03",
+      "implementation": [
+        "I2"
+      ],
+      "acceptance": [
+        "A04"
+      ],
+      "status": "located_and_assigned_not_fixed"
+    },
+    {
+      "id": "F04",
+      "implementation": [
+        "I2"
+      ],
+      "acceptance": [
+        "A02",
+        "A05"
+      ],
+      "status": "located_and_assigned_not_fixed"
+    },
+    {
+      "id": "F05",
+      "implementation": [
+        "I2",
+        "I3"
+      ],
+      "acceptance": [
+        "A06"
+      ],
+      "status": "located_and_assigned_not_fixed"
+    },
+    {
+      "id": "F06",
+      "implementation": [
+        "I2",
+        "I3"
+      ],
+      "acceptance": [
+        "A07"
+      ],
+      "status": "located_and_assigned_not_fixed"
+    },
+    {
+      "id": "F07",
+      "implementation": [
+        "I3"
+      ],
+      "acceptance": [
+        "A08"
+      ],
+      "status": "located_and_assigned_not_fixed"
+    },
+    {
+      "id": "F08",
+      "implementation": [
+        "I3",
+        "I4"
+      ],
+      "acceptance": [
+        "A09"
+      ],
+      "status": "located_and_assigned_not_fixed"
+    },
+    {
+      "id": "F09",
+      "implementation": [
+        "I4",
+        "I5"
+      ],
+      "acceptance": [
+        "A10"
+      ],
+      "status": "located_and_assigned_not_fixed"
+    },
+    {
+      "id": "F10",
+      "implementation": [
+        "I4"
+      ],
+      "acceptance": [
+        "A03",
+        "A11"
+      ],
+      "status": "located_and_assigned_not_fixed"
+    },
+    {
+      "id": "F11",
+      "implementation": [
+        "I4"
+      ],
+      "acceptance": [
+        "A12"
+      ],
+      "status": "located_and_assigned_not_fixed"
+    },
+    {
+      "id": "F12",
+      "implementation": [
+        "I5"
+      ],
+      "acceptance": [
+        "A13"
+      ],
+      "status": "located_and_assigned_not_fixed"
+    },
+    {
+      "id": "F13",
+      "implementation": [
+        "I5",
+        "I6"
+      ],
+      "acceptance": [
+        "A14"
+      ],
+      "status": "located_and_assigned_not_fixed"
+    },
+    {
+      "id": "F14",
+      "implementation": [
+        "I4",
+        "I6"
+      ],
+      "acceptance": [
+        "A14",
+        "A15"
+      ],
+      "status": "located_and_assigned_not_fixed"
+    },
+    {
+      "id": "F15",
+      "implementation": [
+        "I6"
+      ],
+      "acceptance": [
+        "A16"
+      ],
+      "status": "located_and_assigned_not_fixed"
+    },
+    {
+      "id": "F16",
+      "implementation": [
+        "I3",
+        "I4",
+        "I6"
+      ],
+      "acceptance": [
+        "A17"
+      ],
+      "status": "located_and_assigned_not_fixed"
+    },
+    {
+      "id": "F17",
+      "implementation": [
+        "I4"
+      ],
+      "acceptance": [
+        "A18"
+      ],
+      "status": "located_and_assigned_not_fixed"
+    },
+    {
+      "id": "F18",
+      "implementation": [
+        "I1",
+        "I2"
+      ],
+      "acceptance": [
+        "A04",
+        "A19"
+      ],
+      "status": "located_and_assigned_not_fixed"
+    },
+    {
+      "id": "F19",
+      "implementation": [
+        "I5",
+        "I6"
+      ],
+      "acceptance": [
+        "A20"
+      ],
+      "status": "located_and_assigned_not_fixed"
+    }
+  ],
+  "planned_new_files": [
+    "tools/vr-common/cover_motion.h",
+    "tools/native-capture/cover_context_live.inl",
+    "tools/native-capture/cover_collision_live.inl",
+    "tools/native-capture/cover_gameplay_live.inl"
+  ],
+  "documentation": [
+    "README.md",
+    "interaction-contract.md",
+    "findings.md",
+    "original-entry-map.md",
+    "implementation-handoff.md",
+    "acceptance.md",
+    "code-locations.md",
+    "code-locations.json",
+    "manifest.json",
+    "offline-validation.json",
+    "research-followup-v2.md",
+    "revision2-code-locations.json",
+    "contract-vectors.json",
+    "offline-contract-checker.py",
+    "contract-check-results.json"
+  ]
+}

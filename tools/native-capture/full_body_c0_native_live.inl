@@ -6,6 +6,7 @@
 #include "full_body_c0_first_failure.h"
 #include "body_c0_arm_alpha_policy.h"
 #include "body_head_authored_mount.h"
+#include "lancer_saw_pose_policy.h"
 #include "../vr-common/weapon_main_mount_provider.h"
 namespace rig_tracking_live {bool retained_core_identity(gears_native_rig_tracking::CoreSnapshot const&)noexcept;}
 namespace cover_control_observer_live {bool retained_boundary_current()noexcept;}
@@ -26,13 +27,22 @@ void alpha_event(gears_body_c0_arm_alpha::Diagnostic const&) noexcept;}
 bool hands_enabled{};
 bool arm_alpha_enabled{};
 bool held_main_mount{},diagnostic_held_main_mount{};
+ComposeObservation last_compose_observation{};
 std::atomic<uint64_t> main_mount_attempts{},main_mount_ready{},main_mount_not_ready{},main_mount_context_rejected{},main_mount_stale{},main_mount_fault{},main_mount_commits{},main_mount_last_query{},main_mount_max_ns{};
 std::array<std::atomic<uint64_t>,unsigned(gears_weapon_hand::MainMountQueryResult::Branch::count)> main_mount_branches{};
 std::atomic<uint64_t> main_mount_stale_projection{},main_mount_stale_broker{},main_mount_stale_c0{},main_mount_post_admission_rejected{},main_mount_source_failure_query{};
 std::atomic<unsigned> main_mount_last_callback_status{UINT32_MAX},main_mount_last_source_failure_mask{},main_mount_c0_rejection{};
 std::array<std::atomic<int64_t>,6> main_mount_last_failure_ages{};
 std::atomic<uint64_t> arm_alpha_owner_calls{},arm_alpha_owner_granted{},arm_alpha_owner_rejected{},arm_alpha_threshold_rejected{};
+std::array<std::atomic<uint64_t>,16> arm_retained_first_rejects{};
+std::atomic<unsigned> body_plan_scale_bone{},body_plan_scale_bits{};
+std::atomic<double> body_plan_head_residual{},body_plan_length_residual{};
+std::atomic<double> body_plan_foot_residual[2]{},body_plan_angle_residual[3]{};
 std::atomic<uint64_t> hands_attempts{},hands_solved{},hands_commits{};
+std::array<std::atomic<uint64_t>,5> contextual_grasp_commits{};
+std::atomic<uint64_t> hands_native_body_fallback{};
+std::atomic<uint64_t> hands_spine_projected{};
+std::atomic<double> hands_spine_projection_last{},hands_spine_projection_max{};
 std::array<std::atomic<uint64_t>,unsigned(hands::Status::residual)+1> hands_statuses{};
 std::atomic<bool> stopping{};std::atomic<unsigned> callbacks{},obligations{};
 std::atomic<uint64_t> captures{},commits{},rejected{};std::atomic<DWORD> owner_thread{};
@@ -46,7 +56,9 @@ struct ActualContext final:native::Context {
     gears_body_tick_input::Input body_input{};int64_t basis_ns{};body_tick_input_live::Parent mount_parent{};
     gears_body_tick_source::Input body_source{};body_tick_source_live::Parent source_parent{},queried_parent{};
     tx::Verdict rejection_{tx::Verdict::denied};
+    unsigned rejection_detail_{};
     tx::Verdict rejection() const noexcept override{return rejection_;}
+    unsigned rejection_detail() const noexcept override{return rejection_detail_;}
     bool retained_current() {auto const& f=hand::slot;auto const& o=f.data.owner;
         return f.active&&o.valid&&f.tick_depth==1&&f.tick_address==tick_entry&&tick_entry&&
             !std::memcmp(tick_entry,&tick_copy,sizeof tick_copy)&&f.lease==world_lease&&world_lease&&world_lease->world()&&
@@ -59,7 +71,7 @@ struct ActualContext final:native::Context {
             binding::same(asset,f.data.asset)&&binding::current_actor_retained(actor)&&hand::tick_target(owner.mesh.address);
     }
     bool current(tx::Stage stage) noexcept override {budget::Span measured(budget::Op::context);try{
-        rejection_=tx::Verdict::denied;
+        rejection_=tx::Verdict::denied;rejection_detail_=1;
         // Consumption notification and finally authenticate the retained old
         // scope. Neither can grant a new write, or require an already-burned
         // source latch to become fresh again.
@@ -74,17 +86,21 @@ struct ActualContext final:native::Context {
            std::memcmp(entry,&copy,sizeof copy)||!hand::metadata(false)||hand::slot.data.signature!=body::rig::marcus115_signature||
            !fresh_pose_producer_live::certified||!fresh_pose_producer_live::own_entries()||!fresh_pose_producer_live::caller_current(0)||
            !fresh_pose_producer_live::caller_current(1))return false;
+        rejection_detail_=2;
         if(!(copy.kind==0&&copy.selected&&copy.compose_depth&&copy.depth==1&&
             copy.ra==base+gears_cover_pose_phase::compose_caller&&copy.rcx==owner.mesh.address&&copy.rdx==copy.rcx+0x27c&&copy.r8==copy.rcx+0x28c))return false;
         if(!retained){
             // Explicit two-source contract. Authenticate every immutable body
             // dependency before classifying elapsed time; hard still dominates.
             if(body_tick_source_live::enabled){
+                rejection_detail_=3;
                 const auto verdict=body_tick_source_live::current(body_source,source,tick,copy.thread,basis_ns);
                 if(verdict==gears_body_tick_input::Verdict::hard)return false;
+                rejection_detail_=4;
                 if(queried_parent.cookie&&!body_tick_source_live::parent_idle_current(queried_parent))return false;
                 bool equipment_fresh=true;
                 if(source_parent.query){
+                    rejection_detail_=5;
                     if(!body_tick_source_live::parent_idle_current(source_parent))return false;
                     const auto now=rig_tracking_live::clock_ns();
                     if(source_parent.equipment_begin_ns<=0||source_parent.equipment_end_ns<source_parent.equipment_begin_ns||
@@ -92,10 +108,10 @@ struct ActualContext final:native::Context {
                     equipment_fresh=uint64_t(now-source_parent.equipment_begin_ns)<=body_mount::equipment_age_ns;
                     if(!body_tick_source_live::parent_idle_current(source_parent))return false;
                 }
-                if(!equipment_fresh||verdict!=gears_body_tick_input::Verdict::okay){rejection_=tx::Verdict::source_age_expired;
+                if(!equipment_fresh||verdict!=gears_body_tick_input::Verdict::okay){rejection_detail_=6;rejection_=tx::Verdict::source_age_expired;
                     ready_wrist::source_rejected(entry,stage,rejection_,unsigned(verdict==gears_body_tick_input::Verdict::source_age_only)|unsigned(!equipment_fresh)*2);
                     return false;}
-                return true;
+                rejection_detail_=0;return true;
             }
             const auto body_verdict=body_tick_input_live::enabled?
                 body_tick_input_live::current(body_input,source,tick,copy.thread,basis_ns):gears_body_tick_input::Verdict::okay;
@@ -129,6 +145,75 @@ struct State {
 };
 // One registered GT owner, persistent storage so unknown end never destroys debt.
 State state{};
+bool diagnostic_first_failure{};
+struct PendingObservation {
+    std::uint64_t tick{},compose{},mesh{};unsigned pending{},fields{},protocol{},failure{};
+    bool consumed{},storage_current{},metadata_current{},journal_known{};
+    gears_cover_pose_phase::Metadata installed{},current{};
+    gears_cover_pose_phase::ArrayHeader local{},desired{};
+    tx::Mask required{};gears_atom_overwrite::Diagnostic journal{};
+    unsigned exchange_kind{},exchange_stage{},exchange_verdict{},exchange_detail{};uint64_t exchange_address{};
+};
+PendingObservation first_pending{};bool first_pending_known{};std::atomic<bool> pending_file_attempted{};
+struct PendingFrame { int64_t at_ns{}; PendingObservation observed{};
+    uint64_t qpc{};unsigned branch_count{};
+    std::array<fresh_pose_producer_live::PendingBranch,16> branches{};
+};
+std::array<PendingFrame,32> pending_frames{};unsigned pending_frame_count{};
+void note_pending() noexcept {
+    if(!diagnostic_first_failure||GetCurrentThreadId()!=owner_thread.load()||
+       (first_pending_known&&first_pending.failure==unsigned(tx::Failure::hard)))return;
+    auto& p=first_pending;p.tick=state.context.tick;p.compose=state.context.copy.invocation;p.mesh=state.stamp.binding.owner;
+    p.pending=state.kernel.pending();p.fields=state.kernel.outstanding_fields();p.protocol=state.kernel.protocol_debt();
+    p.failure=unsigned(state.kernel.failure());p.consumed=state.kernel.consumed();p.required=state.kernel.outstanding_mask();
+    const auto exchange=state.backend.exchange_failure();p.exchange_kind=exchange.kind;p.exchange_stage=exchange.stage;
+    p.exchange_verdict=exchange.verdict;p.exchange_detail=exchange.detail;p.exchange_address=exchange.address;
+    p.installed=state.backend.metadata();p.metadata_current=state.backend.retirement_metadata(p.current);
+    p.storage_current=binding::current_actor_storage(state.context.actor);
+    safe_copy(&p.local,reinterpret_cast<void const*>(p.mesh+0x27c),sizeof p.local);
+    safe_copy(&p.desired,reinterpret_cast<void const*>(p.mesh+0x28c),sizeof p.desired);
+    if(auto* source=native_atom_overwrite_live::receipts())p.journal_known=source->diagnostic(p.journal);
+    // Preserve the actual skipped-frame obligation before a later source-age
+    // rejection replaces first_pending. Existing opt-in diagnostics only;
+    // stopped/drained export below, no game-thread file IO or new permission.
+    if(rig_tracking_live::metadata_reject_trace&&p.fields&&pending_frame_count<pending_frames.size()){
+        auto& row=pending_frames[pending_frame_count++];row.at_ns=rig_tracking_live::clock_ns();row.observed=p;
+        row.qpc=uint64_t(phase::qpc());
+        row.branch_count=fresh_pose_producer_live::pending_branches(p.mesh,row.branches);
+    }
+    first_pending_known=true; // Observation only: no permit, retirement or state reset.
+}
+void export_pending() noexcept {
+    if(!diagnostic_first_failure||!first_pending_known||!stopping.load()||callbacks.load()||obligations.load()||
+       GetCurrentThreadId()==owner_thread.load()||pending_file_attempted.exchange(true))return;
+    wchar_t path[MAX_PATH]{};if(!directory[0]||swprintf_s(path,L"%s\\body-c0-pending-%llu.json",directory,uint64_t(session_started_qpc))<=0)return;
+    FILE* out{};if(_wfopen_s(&out,path,L"wb")||!out)return;
+    auto const& p=first_pending;auto const& j=p.journal;
+    fprintf(out,"{\"tick\":%llu,\"compose\":%llu,\"mesh\":%llu,\"pending\":%u,\"fields\":%u,\"protocol\":%u,\"failure\":%u,\"consumed\":%u,\"storage_current\":%u,\"metadata_current\":%u,\"installed_local\":%llu,\"current_local\":%llu,\"raw_local\":%llu,\"raw_count\":%d,\"raw_desired_count\":%d,\"installed_epoch\":%u,\"current_epoch\":%u,\"journal_known\":%u,\"journal_epoch\":%u,\"coverage_epoch\":%u,\"journal_event\":%llu,\"journal_bound\":%u,\"required\":[%llu,%llu,%llu,%llu],\"covered\":[%llu,%llu,%llu,%llu],",
+        p.tick,p.compose,p.mesh,p.pending,p.fields,p.protocol,p.failure,unsigned(p.consumed),unsigned(p.storage_current),unsigned(p.metadata_current),
+        uint64_t(p.installed.local.data),uint64_t(p.current.local.data),uint64_t(p.local.data),p.local.count,p.desired.count,
+        p.installed.pose_epoch,p.current.pose_epoch,unsigned(p.journal_known),j.installed_epoch,j.coverage_epoch,j.event,unsigned(j.bound),
+        p.required.words[0],p.required.words[1],p.required.words[2],p.required.words[3],j.covered.words[0],j.covered.words[1],j.covered.words[2],j.covered.words[3]);
+    // Same diagnostic object; no v1 binary layout changes.
+    fprintf(out,"\"exchange_kind\":%u,\"exchange_stage\":%u,\"exchange_verdict\":%u,\"exchange_detail\":%u,\"exchange_address\":%llu,\"pending_frames\":[",
+        p.exchange_kind,p.exchange_stage,p.exchange_verdict,p.exchange_detail,p.exchange_address);
+    for(unsigned i=0;i<pending_frame_count;++i){const auto& row=pending_frames[i];const auto& q=row.observed;const auto& journal=q.journal;
+        fprintf(out,"%s{\"at_ns\":%lld,\"tick\":%llu,\"compose\":%llu,\"fields\":%u,\"protocol\":%u,\"failure\":%u,\"consumed\":%u,\"storage_current\":%u,\"metadata_current\":%u,\"installed_epoch\":%u,\"current_epoch\":%u,\"coverage_epoch\":%u,\"journal_event\":%llu,\"bound\":%u,\"required\":[%llu,%llu,%llu,%llu],\"covered\":[%llu,%llu,%llu,%llu]",
+            i?",":"",row.at_ns,q.tick,q.compose,q.fields,q.protocol,q.failure,unsigned(q.consumed),unsigned(q.storage_current),unsigned(q.metadata_current),q.installed.pose_epoch,q.current.pose_epoch,journal.coverage_epoch,journal.event,unsigned(journal.bound),
+            q.required.words[0],q.required.words[1],q.required.words[2],q.required.words[3],journal.covered.words[0],journal.covered.words[1],journal.covered.words[2],journal.covered.words[3]);
+        fprintf(out,",\"qpc\":%llu,\"original_branches\":[",row.qpc);
+        for(unsigned b=0;b<row.branch_count;++b){const auto& v=row.branches[b];
+            fprintf(out,"%s{\"qpc\":%llu,\"tick\":%llu,\"root\":%llu,\"mesh\":%llu,\"method\":%llu,\"caller\":%llu,\"canonical\":%u,\"depth\":%u,\"root_epoch\":%u,\"mesh_epoch\":%u,\"children\":%d,\"cache_data\":%llu,\"cache_count\":%d,\"cache_capacity\":%d,\"local_data\":%llu,\"local_count\":%d,\"local_capacity\":%d,\"child\":[",
+                b?",":"",v.qpc,v.tick,v.root,v.mesh,v.method,v.caller,v.canonical,v.depth,v.root_epoch,v.mesh_epoch,v.child_count,v.cache_data,v.cache_count,v.cache_capacity,v.local_data,v.local_count,v.local_capacity);
+            for(unsigned c=0;c<4;++c)fprintf(out,"%s{\"node\":%llu,\"method\":%llu,\"weight\":%u,\"epoch\":%u,\"cache_count\":%d}",
+                c?",":"",v.child_nodes[c],v.child_methods[c],v.weights[c],v.child_epochs[c],v.child_cache_counts[c]);
+            fprintf(out,"],\"kind\":%u,\"mode\":%u,\"descriptors\":%d,\"layer_count\":%d,\"sequence_count\":%d,\"sequence_selected\":%d,\"sequence_blended\":%u,\"sequence_weights\":[%u,%u,%u,%u]}",
+                v.kind,v.mode,v.descriptors,v.layer_count,v.sequence_count,v.sequence_selected,v.sequence_blended,
+                v.sequence_weights[0],v.sequence_weights[1],v.sequence_weights[2],v.sequence_weights[3]);
+        }fputs("]}",out);
+    }
+    fputs("]}\n",out);fclose(out);
+}
 // This private callback is installed by Native, never supplied by PG. The
 // broker invokes it outside its mutex with its own callback reservation live.
 // source_parent remains empty until the returned query is accepted, avoiding
@@ -165,11 +250,13 @@ bool body_mount_source_current(body_mount::Source const& input) noexcept {
     }catch(...){return fail(Gate::exception);}}
 
 namespace failure=gears_full_body_c0_first_failure;
-bool diagnostic_first_failure{};
 // Bounded observation only. The GT writes owned POD after a real joint commit;
 // the collector exports once, after drain and all body obligations are zero.
 // No target record is a source/permission or a producer-retirement receipt.
 constexpr unsigned hand_trace_capacity=32;
+// Passive, simulator-only selection of the existing bounded receipts. Keep
+// startup commits from exhausting them before the observed switch defect.
+bool hand_trace_right_shoulder{},hand_trace_head_pitch{},hand_trace_window{};
 constexpr unsigned hand_trace_bones[9]={8,10,11,32,34,35,51,52,55};
 struct HandTraceRecord {uint64_t sequence{},tick{},compose{},qpc{},publication{},source_ns{},mesh{};
     uint32_t pose_epoch{},normal_return{};body::Pose wrist[2]{};
@@ -220,9 +307,29 @@ unsigned observe_hand_trace(HandTraceRecord& row,bool after) noexcept {
     return 1;
 }
 void trace_hands_commit() noexcept {
-    // First32 successful joint commits only; no allocation, rotation or GT I/O.
+    // First32 successful joint commits in the selected window; no allocation,
+    // rotation or GT I/O. Selection cannot grant source/write authority.
     state.hand_record=0;if(!diagnostic_first_failure||hand_trace_sequence>=hand_trace_capacity||
         (diagnostic_held_main_mount&&state.right_mount!=hands::adapter::MountKind::held_lancer))return;
+    if(hand_trace_right_shoulder&&!hand_trace_window){
+        if(!body_tick_source_live::enabled)return;
+        auto const& input=state.context.body_source.observed;auto const& right=input.controllers.hands[1];
+        const auto relative=gears_vr::transform(gears_vr::rotation_matrix(gears_vr::inverse(input.stereo.head.orientation)),
+            {right.grip.position.x-input.stereo.head.position.x,right.grip.position.y-input.stereo.head.position.y,
+             right.grip.position.z-input.stereo.head.position.z});
+        if(input.stereo.source!=gears_vr::StereoSource::MetaOperatorSimulated||right.squeeze<.5||
+           std::hypot(relative.x-.23,relative.y+.115,relative.z-.05)>.025)return;
+        hand_trace_window=true;
+    }
+    if(hand_trace_head_pitch&&!hand_trace_window){
+        if(!body_tick_source_live::enabled)return;
+        auto const& input=state.context.body_source.observed;
+        // Select the existing bounded observation window only. No pose,
+        // source timestamp, admission result or write permission is changed.
+        const auto forward=gears_vr::transform(gears_vr::rotation_matrix(input.stereo.head.orientation),{0,0,-1});
+        if(input.stereo.source!=gears_vr::StereoSource::MetaOperatorSimulated||std::abs(forward.y)<.03)return;
+        hand_trace_window=true;
+    }
     const auto seq=++hand_trace_sequence;auto& row=hand_trace[(seq-1)%hand_trace_capacity];row={};
     row.sequence=seq;row.tick=state.context.tick;row.compose=state.context.copy.invocation;row.qpc=uint64_t(phase::qpc());
     row.publication=state.context.source.publication_sequence;row.source_ns=uint64_t(state.context.source.stereo.received_ns);
@@ -285,6 +392,30 @@ void export_tick_commits()noexcept {
 void export_hand_trace() noexcept {
     if(!hands_enabled||!diagnostic_first_failure||!stopping.load()||callbacks.load()||obligations.load()||
        GetCurrentThreadId()==owner_thread.load()||hand_trace_attempted.exchange(true))return;
+    if(rig_tracking_live::metadata_reject_trace){
+#if defined(GEARS_BODY_MAIN_MOUNT_SOURCE) && GEARS_BODY_MAIN_MOUNT_SOURCE
+        wchar_t source_path[MAX_PATH]{};
+        if(directory[0]&&swprintf_s(source_path,L"%s\\body-source-rejections.csv",directory)>0){
+            FILE* source_file{};
+            if(!_wfopen_s(&source_file,source_path,L"wb")&&source_file){
+                fputs("at_ns,capture_begin,metadata_begin,tracking_begin,tracking_end,stereo_received,controller_received,sync,tick,stage,reason,verdict\n",source_file);
+                for(unsigned i=0;i<body_tick_source_live::rejected_source_count;++i){auto const& r=body_tick_source_live::rejected_sources[i];
+                    fprintf(source_file,"%lld,%lld,%lld,%lld,%lld,%lld,%lld,%lld,%llu,%u,%u,%u\n",r.at_ns,r.capture_begin,r.metadata_begin,r.tracking_begin,r.tracking_end,r.stereo_received,r.controller_received,r.sync,r.tick,r.stage,r.reason,r.verdict);}
+                fclose(source_file);
+            }
+        }
+#endif
+        wchar_t rejects_path[MAX_PATH]{};
+        if(directory[0]&&swprintf_s(rejects_path,L"%s\\body-metadata-rejects.bin",directory)>0){
+            HANDLE rejects=CreateFileW(rejects_path,GENERIC_WRITE,0,nullptr,CREATE_NEW,FILE_ATTRIBUTE_NORMAL,nullptr);
+            if(rejects!=INVALID_HANDLE_VALUE){
+                const auto count=rig_tracking_live::metadata_reject_count.load(std::memory_order_acquire);
+                DWORD written{};if(count<=rig_tracking_live::metadata_rejects.size())
+                    WriteFile(rejects,rig_tracking_live::metadata_rejects.data(),DWORD(count*sizeof(rig_tracking_live::MetadataReject)),&written,nullptr);
+                CloseHandle(rejects);
+            }
+        }
+    }
     wchar_t path[MAX_PATH]{};if(!directory[0]||swprintf_s(path,L"%s\\body-hands-commits.bin",directory)<=0){hand_trace_error=ERROR_INVALID_NAME;return;}
     LARGE_INTEGER frequency{};if(!QueryPerformanceFrequency(&frequency)||frequency.QuadPart<=0){hand_trace_error=ERROR_INVALID_DATA;return;}
     HandTraceHeader header{};header.last=hand_trace_sequence;header.count=unsigned((std::min)(uint64_t(hand_trace_capacity),header.last));
@@ -363,6 +494,320 @@ void arm_alpha_diagnostic(gears_body_c0_arm_alpha::Diagnostic const& event) noex
 }
 void sync() noexcept {obligations=state.kernel.pending();}
 bool same_entry(Entry const& e) noexcept {return state.context.entry==&e&&!std::memcmp(&e,&state.context.copy,sizeof e);}
+namespace endpoint=gears_committed_hand;
+endpoint::Frame endpoint_value{};bool endpoint_valid{},endpoint_observable{},endpoint_refreshing{};uint64_t endpoint_serial{};
+int64_t endpoint_commit_ns{};
+std::atomic<uint64_t> endpoint_published{},endpoint_reads{},endpoint_accepted{};
+std::atomic<uint64_t> endpoint_observed_visual{};
+std::atomic<uint64_t> endpoint_late_visual{};
+struct EndpointGeometry {
+    gears_cover_pose_phase::ArrayHeader space{};
+    std::array<float,16> component{},wrist{};
+};
+EndpointGeometry endpoint_geometry{};
+gears_committed_interaction::Frame interaction_value{};
+std::array<float,16> interaction_left_wrist{};
+bool interaction_valid{};
+std::array<std::atomic<uint64_t>,7> interaction_publish{};
+std::array<std::atomic<uint64_t>,6> interaction_read{};
+std::array<std::atomic<uint64_t>,7> endpoint_unavailable{};
+bool read_endpoint_geometry(uintptr_t,EndpointGeometry&) noexcept;
+bool left_geometry(std::array<float,16>& out) noexcept {
+    EndpointGeometry before{},after{};std::array<float,16> a{},b{};
+    if(!read_endpoint_geometry(endpoint_value.mesh.address,before))return false;
+    if(!native::read_memory(a.data(),before.space.data+11*64,64)||
+       !native::read_memory(b.data(),before.space.data+11*64,64)||a!=b||
+       !read_endpoint_geometry(endpoint_value.mesh.address,after)||
+       !gears_cover_pose_phase::header_equal(before.space,after.space)||before.component!=after.component||
+       before.wrist!=after.wrist||before.component!=endpoint_geometry.component||
+       !gears_cover_pose_phase::header_equal(before.space,endpoint_geometry.space))return false;
+    for(float v:a)if(!std::isfinite(v))return false;
+    out=a;return true;
+}
+std::atomic<uint64_t> endpoint_geometry_rejected{},endpoint_geometry_revoked{};
+std::atomic<uint64_t> endpoint_notice_attempts{},endpoint_notices{};
+// Bounded passive evidence for the recorded held-gun pose flash. These are
+// the actual matrices from the existing failed proof, never pose inputs,
+// tracking permits or a reason to keep an old endpoint. Each slot is written
+// once on the owning GT and published only when complete; summary readers
+// cannot race a partially written or reused POD record.
+struct EndpointProofObservation {
+    int64_t at_ns{};
+    uint64_t serial{},tick{},compose{},input{},mesh{};
+    unsigned stage{},geometry_known{}; // 1: publication, 2: later exact read.
+    gears_vr::Pose wanted{};
+    EndpointGeometry actual{},selected{};
+};
+constexpr unsigned endpoint_proof_capacity=16;
+std::array<EndpointProofObservation,endpoint_proof_capacity> endpoint_proof_observations{};
+std::array<std::atomic<bool>,endpoint_proof_capacity> endpoint_proof_ready{};
+std::atomic<unsigned> endpoint_proof_seen{};
+void observe_endpoint_proof_failure(unsigned stage,endpoint::Frame const& f,
+    bool known,EndpointGeometry const& actual,EndpointGeometry const& selected) noexcept {
+    if(!rig_tracking_live::metadata_reject_trace||f.purpose!=endpoint::Purpose::held_lancer||
+       GetCurrentThreadId()!=owner_thread.load())return;
+    const auto index=endpoint_proof_seen.fetch_add(1,std::memory_order_relaxed);
+    if(index>=endpoint_proof_capacity)return;
+    auto& row=endpoint_proof_observations[index];
+    row.at_ns=rig_tracking_live::clock_ns();row.serial=f.serial;row.tick=f.tick;row.compose=f.compose;
+    row.input=f.controllers.sequence;row.mesh=f.mesh.address;row.stage=stage;row.geometry_known=unsigned(known);
+    row.wanted=f.right_grip;row.actual=actual;row.selected=selected;
+    endpoint_proof_ready[index].store(true,std::memory_order_release);
+}
+bool notify_endpoint(gears_committed_hand_consumer::Kind kind) noexcept {
+    if(!endpoint_value.parent.registration_cookie)return false;
+    auto* broker=weapon_hand_runtime::current();if(!broker)return false;
+    gears_committed_hand_consumer::Notice notice{};notice.kind=kind;notice.frame=endpoint_value;
+    bool applied=false;++endpoint_notice_attempts;if(broker->notify_hand_visual(notice,&applied))++endpoint_notices;
+    return applied;
+}
+bool read_endpoint_geometry(uintptr_t mesh,EndpointGeometry& out) noexcept {
+    namespace p=gears_cover_pose_phase;
+    EndpointGeometry a{},b{};
+    if(!native::read_memory(&a.space,mesh+0x26c,sizeof a.space)||a.space.count!=115||
+       !p::header_valid(a.space,64)||!native::read_memory(a.component.data(),mesh+0xa0,64)||
+       !native::read_memory(a.wrist.data(),a.space.data+35*64,64)||
+       !native::read_memory(&b.space,mesh+0x26c,sizeof b.space)||!p::header_equal(a.space,b.space)||
+       !native::read_memory(b.component.data(),mesh+0xa0,64)||a.component!=b.component||
+       !native::read_memory(b.wrist.data(),b.space.data+35*64,64)||a.wrist!=b.wrist)return false;
+    for(float x:a.component)if(!std::isfinite(x))return false;
+    for(float x:a.wrist)if(!std::isfinite(x))return false;
+    out=a;return true;
+}
+bool endpoint_geometry_matches(endpoint::Frame const& frame,EndpointGeometry const& g) noexcept {
+    gears_vr::Vector marker{};if(!gears_weapon_lancer_contact::palm_marker_in_wrist(marker))return false;
+    const auto point=[](std::array<float,16> const& m,gears_vr::Vector p) noexcept {
+        return gears_vr::Vector{m[12]+m[0]*p.x+m[4]*p.y+m[8]*p.z,
+            m[13]+m[1]*p.x+m[5]*p.y+m[9]*p.z,m[14]+m[2]*p.x+m[6]*p.y+m[10]*p.z};
+    };
+    const auto palm=point(g.component,point(g.wrist,marker));
+    const auto wanted=frame.right_grip.position;
+    if(!gears_vr::finite(palm)||std::hypot(std::hypot(palm.x-wanted.x,palm.y-wanted.y),palm.z-wanted.z)>.02)return false;
+    const auto expected=gears_vr::rotation_matrix(frame.right_grip.orientation);
+    for(unsigned axis=0;axis<3;++axis){
+        double v[3]{};
+        for(unsigned world=0;world<3;++world)for(unsigned k=0;k<3;++k)
+            v[world]+=double(g.component[k*4+world])*g.wrist[axis*4+k];
+        const auto length=std::hypot(std::hypot(v[0],v[1]),v[2]);
+        if(!std::isfinite(length)||length<.1||length>10)return false;
+        double dot{};for(unsigned world=0;world<3;++world)dot+=v[world]*expected[world][axis]/length;
+        if(dot<.9999)return false;
+    }
+    return true;
+}
+bool observed_palm(EndpointGeometry const& geometry,gears_vr::Pose& out) noexcept {
+    gears_vr::Vector marker{};if(!gears_weapon_lancer_contact::palm_marker_in_wrist(marker))return false;
+    body::ik::Matrix component{},wrist{};
+    for(unsigned i=0;i<16;++i){component.m[i]=geometry.component[i];wrist.m[i]=geometry.wrist[i];}
+    const auto world=body::ik::detail::multiply(wrist,component);
+    gears_vr::Pose observed{};
+    if(body::ik::world_pose(world,observed)!=body::ik::Status::okay)return false;
+    const auto offset=gears_vr::transform(gears_vr::rotation_matrix(observed.orientation),marker);
+    observed.position={observed.position.x+offset.x,observed.position.y+offset.y,observed.position.z+offset.z};
+    out=observed;return true;
+}
+// Only the actual local-avatar GPU Update calls this, before taking its model
+// metadata lock. Original animation may update SpaceBases after Compose. An
+// exact-read failure must revoke action geometry, but must not leave the gun at
+// the earlier wrist while the next skin palette displays the current wrist.
+// The old visual component lease is restored before observing/consuming the
+// new geometry. No new Compose, input, interaction pair or clock is invented.
+bool refresh_render_observation(uintptr_t mesh,unsigned* diagnostic=nullptr) noexcept {
+    if(diagnostic)*diagnostic=0;
+    const auto fail=[&](unsigned reason) noexcept {if(diagnostic)*diagnostic=reason;return false;};
+    if(endpoint_refreshing)return fail(9);
+    if(!endpoint_observable)return fail(10);
+    if(state.captured)return fail(11);
+    if(stopping.load()||!enabled)return fail(12);
+    if(GetCurrentThreadId()!=owner_thread.load())return fail(13);
+    if(mesh!=endpoint_value.mesh.address||endpoint_serial==UINT64_MAX)return fail(14);
+    const auto prior=endpoint_value;
+    if(prior.purpose!=endpoint::Purpose::held_lancer&&prior.purpose!=endpoint::Purpose::observed_held_visual)return false;
+    auto* broker=weapon_hand_runtime::current();gears_rig_tracking::NativeReference ref{};uint64_t revision{};
+    if(!broker||broker->draining()||!broker->registration_current(prior.parent.registration_cookie,prior.parent.native_started_qpc)||
+       !rig_tracking_live::reference_snapshot(ref,revision)||ref.epoch!=prior.native_reference.epoch)return fail(3);
+    EndpointGeometry before{};if(!read_endpoint_geometry(mesh,before))return fail(4);
+    if(endpoint_valid&&gears_cover_pose_phase::header_equal(before.space,endpoint_geometry.space)&&
+       before.component==endpoint_geometry.component&&before.wrist==endpoint_geometry.wrist){if(diagnostic)*diagnostic=1;return true;}
+    if(!endpoint::fresh(prior,rig_tracking_live::clock_ns(),simulator_operator))return fail(2);
+    endpoint_refreshing=true;
+    struct Finish {~Finish(){endpoint_refreshing=false;}} finish;
+    endpoint_valid=false;interaction_valid=false;
+    notify_endpoint(gears_committed_hand_consumer::Kind::revoke);
+    EndpointGeometry actual{};
+    if(!endpoint_observable||stopping.load()||!read_endpoint_geometry(mesh,actual)||
+       !gears_cover_pose_phase::header_equal(before.space,actual.space)||
+       before.component!=actual.component||before.wrist!=actual.wrist)return fail(5);
+    gears_vr::Pose palm{};endpoint::Frame next{};
+    if(!observed_palm(actual,palm)||!endpoint::observe_visual(prior,palm,endpoint_serial+1,
+       rig_tracking_live::clock_ns(),simulator_operator,next)||!endpoint_geometry_matches(next,actual))return fail(6);
+    if(!broker->registration_current(prior.parent.registration_cookie,prior.parent.native_started_qpc)||broker->draining()||
+       !rig_tracking_live::reference_snapshot(ref,revision)||ref.epoch!=prior.native_reference.epoch)return fail(7);
+    endpoint_serial=next.serial;endpoint_geometry=actual;endpoint_value=next;endpoint_valid=true;
+    ++endpoint_published;++endpoint_late_visual;
+    notify_endpoint(gears_committed_hand_consumer::Kind::committed);
+    if(diagnostic)*diagnostic=8;
+    return true;
+}
+void publish_endpoint() noexcept {
+    endpoint_valid=false;endpoint_observable=false;interaction_valid=false;
+    if(diagnostic_first_failure){
+        last_compose_observation.endpoint_publish_stage=1;
+        last_compose_observation.endpoint_publish_flags=unsigned(body_tick_source_live::enabled)|
+            (unsigned(state.joint_committed)<<1)|(unsigned(state.consumer_verified)<<2)|
+            (unsigned(bool(state.hand_work.solved_mask&2))<<3)|(unsigned(endpoint_serial!=UINT64_MAX)<<4);
+    }
+    if(!body_tick_source_live::enabled||!state.joint_committed||!state.consumer_verified||
+       !(state.hand_work.solved_mask&2)||
+       endpoint_serial==UINT64_MAX)return;
+    if(diagnostic_first_failure)last_compose_observation.endpoint_publish_stage=2;
+    auto const& input=state.context.body_source.observed;
+    auto const& mount=state.body_mount_response.mount;
+    const bool frag=state.right_mount==hands::adapter::MountKind::held_frag;
+    const bool held=state.right_mount==hands::adapter::MountKind::held_lancer||frag;
+    if(!held&&state.right_mount!=hands::adapter::MountKind::free_hand)return;
+    endpoint::Frame f{};
+    // Frag uses this existing VISUAL-only endpoint. It cannot pass the held
+    // Lancer action matcher or publish the Lancer left-part interaction frame.
+    if(frag)f.purpose=endpoint::Purpose::observed_held_visual;
+    if(held){
+        f.parent=mount.key;f.world=mount.world;f.controller=mount.controller;
+        f.pawn=mount.pawn;f.mesh=mount.mesh;f.weapon=mount.weapon;f.hold_generation=mount.hold_generation;
+    }else{
+        // Actual solved free-hand geometry is useful to a departing weapon's
+        // visual writer, but is NEVER a held/action endpoint. No lifecycle or
+        // hold generation is invented for an unheld equipment response.
+        auto const& s=state.context.source;auto const& p=state.context.queried_parent;
+        if(!p.cookie||p.cookie!=input.parent_cookie||!body_tick_source_live::parent_idle_current(p))return;
+        f.purpose=endpoint::Purpose::free_hand_visual;
+        f.parent={s.native.game_start,s.native.native_started_qpc,p.cookie,0,s.scene_invocation,
+            s.world_generation,s.native.game_pid,s.native.game_thread};
+        f.world=s.world;f.controller=s.controller;f.pawn=s.pawn;f.mesh=s.mesh;f.weapon=s.weapon;
+    }
+    f.serial=++endpoint_serial;f.tick=state.context.tick;f.compose=state.context.copy.invocation;
+    f.binding_generation=state.context.source.binding_generation;
+    f.reference_generation=state.context.source.reference_generation;f.native_reference=input.native_reference;
+    f.producer={input.continuity.stream_epoch,{input.continuity.tracking_epoch[0],input.continuity.tracking_epoch[1]}};
+    f.acquisition_begin_ns=input.begin_ns;f.acquisition_end_ns=input.end_ns;
+    f.committed_ns=endpoint_commit_ns;f.returned_ns=rig_tracking_live::clock_ns();
+    f.stereo=input.stereo;f.controllers=input.controllers;f.geometry=state.model.signature;
+    f.units_per_metre=state.source.units_per_metre;
+    const auto& wrist=state.hand_work.solutions[1].wrist;
+    gears_vr::Vector marker{};if(!gears_weapon_lancer_contact::palm_marker_in_wrist(marker))return;
+    const auto delta=gears_vr::transform(gears_vr::rotation_matrix(wrist.orientation),marker);
+    f.right_grip={{wrist.position.x+delta.x,wrist.position.y+delta.y,wrist.position.z+delta.z},wrist.orientation};
+    if(!endpoint::fresh(f,f.returned_ns,simulator_operator))return;
+    // Action geometry still requires the original exact planned-palm proof.
+    // Rendering follows the actual fresh post-Compose palm even when original
+    // animation has moved it (e.g. firing recoil). That explicit visual-only
+    // purpose cannot authorize shooting, equipment or reload transitions.
+    if(diagnostic_first_failure)last_compose_observation.endpoint_publish_stage=3;
+    EndpointGeometry geometry{};
+    const bool geometry_known=read_endpoint_geometry(f.mesh.address,geometry);
+    if(!geometry_known||!endpoint_geometry_matches(f,geometry)){
+        observe_endpoint_proof_failure(1,f,geometry_known,geometry,{});
+        ++endpoint_geometry_rejected;
+        if(diagnostic_first_failure)last_compose_observation.endpoint_publish_stage=4;
+        if(!held||!geometry_known)return;
+        gears_vr::Pose observed{};
+        if(!observed_palm(geometry,observed))return;
+        f.purpose=endpoint::Purpose::observed_held_visual;f.right_grip=observed;
+        // All original times/identities remain intact; validate the extracted
+        // rigid palm against the SAME double-read matrices, without a new
+        // tracking sample or a widened target/action tolerance.
+        if(diagnostic_first_failure)last_compose_observation.endpoint_publish_stage=5;
+        if(!endpoint::fresh(f,rig_tracking_live::clock_ns(),simulator_operator)||
+           !endpoint_geometry_matches(f,geometry))return;
+        ++endpoint_observed_visual;
+    }
+    endpoint_geometry=geometry;
+    endpoint_value=f;endpoint_valid=true;endpoint_observable=true;++endpoint_published;
+    if(diagnostic_first_failure)last_compose_observation.endpoint_publish_stage=6;
+    if(f.purpose==endpoint::Purpose::observed_held_visual)return;
+    if(held&&(state.hand_work.solved_mask&1)){
+        const auto& left=state.hand_work.solutions[0].wrist;
+        std::array<float,16> actual{};
+        if(!left_geometry(actual)){++interaction_publish[1];return;}
+        const auto& c=endpoint_geometry.component;
+        const gears_vr::Vector p{c[12]+c[0]*actual[12]+c[4]*actual[13]+c[8]*actual[14],
+            c[13]+c[1]*actual[12]+c[5]*actual[13]+c[9]*actual[14],
+            c[14]+c[2]*actual[12]+c[6]*actual[13]+c[10]*actual[14]};
+        if(std::hypot(std::hypot(p.x-left.position.x,p.y-left.position.y),p.z-left.position.z)>.02){++interaction_publish[2];return;}
+        const auto expected=gears_vr::rotation_matrix(left.orientation);
+        for(unsigned axis=0;axis<3;++axis){double v[3]{};
+            for(unsigned world=0;world<3;++world)for(unsigned k=0;k<3;++k)v[world]+=double(c[k*4+world])*actual[axis*4+k];
+            const auto n=std::hypot(std::hypot(v[0],v[1]),v[2]);if(!std::isfinite(n)||n<.1||n>10){++interaction_publish[3];return;}
+            double dot{};for(unsigned world=0;world<3;++world)dot+=v[world]*expected[world][axis]/n;
+            if(dot<.9999){++interaction_publish[4];return;}
+        }
+        const auto& calibration=state.hand_work.bindings[0].authored_mount.calibration;
+        const auto q=gears_vr::multiply(left.orientation,gears_vr::inverse(calibration.grip_to_wrist_rotation));
+        const auto d=gears_vr::transform(gears_vr::rotation_matrix(q),calibration.grip_to_wrist_metres);
+        gears_committed_interaction::Frame both{};both.right=f;both.reference=state.context.source.reference;
+        both.left_wrist=left;both.model_scale=state.source.model_scale;
+        both.left_grip={{left.position.x-d.x*f.units_per_metre,left.position.y-d.y*f.units_per_metre,
+            left.position.z-d.z*f.units_per_metre},q};
+        both.physical_left_grip=both.left_grip;
+        if(state.hand_work.left_visual_applied){
+            const auto& physical=state.hand_work.physical_wrist[0];
+            const auto orientation=gears_vr::multiply(physical.orientation,gears_vr::inverse(calibration.grip_to_wrist_rotation));
+            const auto offset=gears_vr::transform(gears_vr::rotation_matrix(orientation),calibration.grip_to_wrist_metres);
+            both.physical_left_grip={{physical.position.x-offset.x*f.units_per_metre,
+                physical.position.y-offset.y*f.units_per_metre,physical.position.z-offset.z*f.units_per_metre},orientation};
+        }
+        if(!gears_vr::stereo_pose_valid(both.left_grip)||!gears_vr::stereo_pose_valid(both.physical_left_grip)){++interaction_publish[5];return;}
+        interaction_value=both;interaction_left_wrist=actual;interaction_valid=true;++interaction_publish[0];
+    }else ++interaction_publish[6];
+}
+gears_rig_tracking::Reply read_endpoint(endpoint::Request const* request,endpoint::Frame* out) noexcept {
+    using Reply=gears_rig_tracking::Reply;Call call;++endpoint_reads;
+    // Validate both POD sizes BEFORE touching the caller's response buffer.
+    // A stale development DLL must never receive a differently sized write.
+    unsigned header[2]{};endpoint::Request q{};
+    if(!request||!safe_copy(header,request,sizeof header)||header[0]!=sizeof q||header[1]!=endpoint::version||
+       !safe_copy(&q,request,sizeof q)||!endpoint::request_valid(q))return Reply::invalid;
+    endpoint::Frame empty{};if(!out||!safe_copy(out,&empty,sizeof empty))return Reply::invalid;
+    if(stopping.load()||!enabled)return Reply::stopping;
+    if(GetCurrentThreadId()!=owner_thread.load()){++endpoint_unavailable[0];return Reply::unavailable;}
+    if(state.captured){++endpoint_unavailable[1];return Reply::unavailable;}
+    if(!endpoint_valid){++endpoint_unavailable[2];return Reply::unavailable;}
+    auto* broker=weapon_hand_runtime::current();
+    if(!broker||!broker->registration_current(q.cookie,q.native_started)||broker->draining()||
+       endpoint_value.parent.registration_cookie!=q.cookie||endpoint_value.parent.native_started_qpc!=q.native_started)return Reply::wrong_cookie;
+    const auto now=rig_tracking_live::clock_ns();gears_rig_tracking::NativeReference ref{};uint64_t revision{};
+    if(!rig_tracking_live::reference_snapshot(ref,revision)){++endpoint_unavailable[3];return Reply::unavailable;}
+    if(ref.epoch!=endpoint_value.native_reference.epoch){++endpoint_unavailable[4];return Reply::unavailable;}
+    if(!endpoint::current_result(endpoint_value,now,simulator_operator)){++endpoint_unavailable[5];return Reply::unavailable;}
+    EndpointGeometry geometry{};
+    const bool geometry_known=read_endpoint_geometry(endpoint_value.mesh.address,geometry);
+    if(!geometry_known||
+       !gears_cover_pose_phase::header_equal(geometry.space,endpoint_geometry.space)||
+       geometry.component!=endpoint_geometry.component||geometry.wrist!=endpoint_geometry.wrist){
+        observe_endpoint_proof_failure(2,endpoint_value,geometry_known,geometry,endpoint_geometry);
+        endpoint_valid=false;++endpoint_geometry_revoked;++endpoint_unavailable[6];return Reply::unavailable;}
+    if(!safe_copy(out,&endpoint_value,sizeof endpoint_value))return Reply::invalid;
+    ++endpoint_accepted;return Reply::accepted;
+}
+gears_rig_tracking::Reply read_interaction(gears_committed_interaction::Request const* request,
+    gears_committed_interaction::Frame* out) noexcept {
+    using Reply=gears_rig_tracking::Reply;Call call;
+    gears_committed_interaction::Request q{};unsigned header[2]{};
+    if(!request||!safe_copy(header,request,sizeof header)||header[0]!=sizeof q||header[1]!=gears_committed_interaction::version||
+       !safe_copy(&q,request,sizeof q)||!gears_committed_interaction::shape(q))return Reply::invalid;
+    gears_committed_interaction::Frame empty{};if(!out||!safe_copy(out,&empty,sizeof empty))return Reply::invalid;
+    // Reuse the original endpoint's registration, actual geometry and original
+    // acquisition deadline checks. No timestamp is renewed by this second read.
+    endpoint::Request parent{};parent.cookie=q.cookie;parent.native_started=q.native_started;
+    endpoint::Frame right{};const auto reply=read_endpoint(&parent,&right);
+    if(reply!=Reply::accepted){++interaction_read[1];return reply;}
+    std::array<float,16> actual{};
+    if(!interaction_valid){++interaction_read[2];return Reply::unavailable;}
+    if(interaction_value.right.serial!=right.serial){++interaction_read[3];return Reply::unavailable;}
+    if(!left_geometry(actual)){++interaction_read[4];return Reply::unavailable;}
+    if(actual!=interaction_left_wrist){++interaction_read[5];return Reply::unavailable;}
+    ++interaction_read[0];
+    return safe_copy(out,&interaction_value,sizeof interaction_value)?Reply::accepted:Reply::invalid;
+}
 #include "ready_wrist_entry_live.inl"
 void arm_weight_return(gears_body_c0_arm_alpha::WeightReturn const& input) noexcept {
     if(!ready_wrist::recorder.enabled||GetCurrentThreadId()!=owner_thread.load()||!state.context.entry)return;
@@ -379,6 +824,8 @@ bool main_mount_policy_enabled() noexcept {
 void note_mount_prequery(held_outcome::PreQueryGate gate,held_outcome::U detail=held_outcome::unknown,
     held_outcome::U cookie=held_outcome::unknown,held_outcome::U parent_cookie=held_outcome::unknown,
     held_outcome::U revision=held_outcome::unknown,held_outcome::U generation=held_outcome::unknown) noexcept {
+    if(last_compose_observation.compose==state.context.copy.invocation)
+        last_compose_observation.mount_prequery=unsigned(gate);
     auto* e=state.context.entry;if(e)held_outcome::recorder.prequery_result(reinterpret_cast<uintptr_t>(e),e->invocation,
         held_outcome::U(gate),detail,cookie,parent_cookie,revision,generation);
 }
@@ -421,6 +868,9 @@ hands::adapter::MountKind select_body_mount(gears_native_rig_tracking::CoreSnaps
     const auto begin=rig_tracking_live::clock_ns();budget::recorder.mark(budget::Stage::query_begin);
     gears_weapon_hand::MainMountQueryResult result{};
     {QueryScope scope;result=weapon_hand_runtime::query_body_mount(s,state.body_mount_response);}
+    if(last_compose_observation.compose==state.context.copy.invocation){auto& o=last_compose_observation;
+        o.mount_query=result.query_id;o.mount_query_code=unsigned(result.code);
+        o.mount_query_branch=unsigned(result.branch);o.mount_callback_status=result.callback_status;}
     held_outcome::recorder.query_end(result.query_id,unsigned(result.code),unsigned(result.branch),result.callback_status,
         state.body_mount_response.equipment_begin_ns,state.body_mount_response.equipment_end_ns);
     // Persist the actual pre-query parent even for a non-ready answer. A
@@ -435,11 +885,13 @@ hands::adapter::MountKind select_body_mount(gears_native_rig_tracking::CoreSnaps
     if(result.callback_status!=UINT32_MAX)main_mount_last_callback_status=result.callback_status;
     if(result.code!=Code::ready){if(result.code==Code::context_rejected)++main_mount_context_rejected;
         else if(result.code==Code::stale){++main_mount_stale;++main_mount_stale_broker;}
-        else if(result.code==Code::fault)++main_mount_fault;else ++main_mount_not_ready;return Kind::free_hand;}
+        else if(result.code==Code::fault)++main_mount_fault;else ++main_mount_not_ready;
+        if(last_compose_observation.compose==state.context.copy.invocation)last_compose_observation.mount_admission=1;
+        return Kind::free_hand;}
     auto const& r=state.body_mount_response;auto const& m=r.mount;
     parent.query=result.query_id;parent.equipment_begin_ns=r.equipment_begin_ns;parent.equipment_end_ns=r.equipment_end_ns;
     gears_weapon_lancer_wrist_mount::Profile profile{};
-    if(r.size!=sizeof r||r.abi_version!=body_mount::version||r.query_id!=result.query_id||m.size!=sizeof m||m.abi_version!=main_mount::version||
+    if(r.size!=sizeof r||r.abi_version!=body_mount::version||!body_mount::hold_kind_valid(r.hold_kind)||r.reserved||r.query_id!=result.query_id||m.size!=sizeof m||m.abi_version!=main_mount::version||
        m.query_id!=r.query_id||!r.hand_lifecycle||r.hand_lifecycle!=m.key.lifecycle||r.action_generation!=parent.generation||
        !body_mount::same(r.source,body_mount::source_key(s))||
        m.key.registration_cookie!=cookie||m.key.frame!=source.scene_invocation||m.key.game_pid!=source.native.game_pid||m.key.thread_id!=source.native.game_thread||
@@ -450,14 +902,21 @@ hands::adapter::MountKind select_body_mount(gears_native_rig_tracking::CoreSnaps
        m.provider_revision!=main_mount::provider_revision||m.body_revision!=source.binding_generation||m.basis_revision!=main_mount::supported_basis_revision||
        m.basis!=main_mount::Basis::marcus_mesh_face_forward_y||m.reserved||m.geometry!=state.model.signature||m.model_scale!=state.source.model_scale||m.units_per_metre!=source.units_per_metre||
        m.calibration_known!=1||m.calibration_reserved||!gears_weapon_lancer_wrist_mount::marcus115(m.geometry,m.model_scale,m.units_per_metre,profile)){
-        ++main_mount_not_ready;return Kind::free_hand;}
+        ++main_mount_not_ready;
+        if(last_compose_observation.compose==state.context.copy.invocation)last_compose_observation.mount_admission=2;
+        return Kind::free_hand;}
     auto const& c=profile.mount.calibration;
     if(m.grip_to_wrist_metres.x!=c.grip_to_wrist_metres.x||m.grip_to_wrist_metres.y!=c.grip_to_wrist_metres.y||m.grip_to_wrist_metres.z!=c.grip_to_wrist_metres.z||
        m.grip_to_wrist_rotation.x!=c.grip_to_wrist_rotation.x||m.grip_to_wrist_rotation.y!=c.grip_to_wrist_rotation.y||m.grip_to_wrist_rotation.z!=c.grip_to_wrist_rotation.z||m.grip_to_wrist_rotation.w!=c.grip_to_wrist_rotation.w||
-       !body_tick_source_live::parent_current(parent)){++main_mount_not_ready;return Kind::free_hand;}
+       !body_tick_source_live::parent_current(parent)){++main_mount_not_ready;
+        if(last_compose_observation.compose==state.context.copy.invocation)last_compose_observation.mount_admission=3;
+        return Kind::free_hand;}
     state.context.source_parent=parent;state.mount_response=m;
-    if(!state.context.current(tx::Stage::prepare)){++main_mount_stale;++main_mount_stale_c0;main_mount_c0_rejection=unsigned(state.context.rejection());return Kind::free_hand;}
-    ++main_mount_ready;return Kind::held_lancer;
+    if(!state.context.current(tx::Stage::prepare)){++main_mount_stale;++main_mount_stale_c0;main_mount_c0_rejection=unsigned(state.context.rejection());
+        if(last_compose_observation.compose==state.context.copy.invocation)last_compose_observation.mount_admission=4;
+        return Kind::free_hand;}
+    if(last_compose_observation.compose==state.context.copy.invocation)last_compose_observation.mount_admission=0;
+    ++main_mount_ready;return r.hold_kind==body_mount::HoldKind::frag?Kind::held_frag:Kind::held_lancer;
 #else
     (void)source;return hands::adapter::MountKind::free_hand;
 #endif
@@ -543,33 +1002,42 @@ gears_body_c0_arm_alpha::RetainedControl retained_control_current(phase::Scope c
 #if defined(GEARS_BODY_TICK_INPUT) && GEARS_BODY_TICK_INPUT
     if(!body_tick_input_live::enabled)return Result::not_applicable;
     Call call;auto& f=hand::slot;
-    auto deny=[&]()noexcept {if(GetCurrentThreadId()==owner_thread.load()&&f.active)f.hard_control_fault=true;return Result::denied;};
+    auto deny=[&](unsigned reason)noexcept {if(GetCurrentThreadId()==owner_thread.load()&&f.active){
+        if(!f.hard_control_fault&&reason<arm_retained_first_rejects.size()){
+            ++arm_retained_first_rejects[reason];
+            if(diagnostic_first_failure&&last_compose_observation.compose==state.context.copy.invocation)
+                last_compose_observation.retained_failure=reason;
+        }
+        f.hard_control_fault=true;}return Result::denied;};
     try{
         if(GetCurrentThreadId()!=owner_thread.load()||!arm_control_policy_enabled()||stopping.load()||!recording.load()||
            !hand::enabled||hand::stopping.load()||hand::failed.load()||!hand::passive()||f.hard_control_fault||
            !cover_control_observer_live::retained_boundary_current()||
-           !f.active||f.tick_depth!=1||f.compose_depth!=1||f.control_depth>1||!tick||f.tick!=tick||
+           !f.active||f.tick_depth!=1||f.compose_depth!=1||f.control_depth>1||!tick||f.tick!=tick)return deny(1);
+        if(
            &scope!=&f.compose.scope||scope.invocation!=state.context.copy.invocation||!scope.arguments||scope.kind||
-           scope.owner.thread!=GetCurrentThreadId()||!phase::same(scope.owner.key,state.context.owner)||
+           scope.owner.thread!=GetCurrentThreadId()||!phase::same(scope.owner.key,state.context.owner))return deny(2);
+        if(
            !state.captured||!state.prepared||!state.notified||!state.joint_committed||!state.consumer_verified||state.context.expired||
-           !state.kernel.retained_consumer(state.backend,state.lease,state.stamp)||
-           state.model.signature!=body::rig::marcus115_signature)return deny();
+           !state.kernel.retained_consumer(state.backend,state.lease,state.stamp))return deny(3);
+        if(state.model.signature!=body::rig::marcus115_signature)return deny(4);
         // No fresh source or re-notification is obtained here. The exact live
         // consumed lease authenticates use of the already-written Local pose.
         // Hard data/continuity checks still run independently after the old
         // observation latch has burned; elapsed age cannot grant new writes.
         if(body_tick_source_live::enabled){
-            if(!state.context.current(tx::Stage::consumer_entry)||!rig_tracking_live::retained_core_identity(state.context.source)||
-               !body_tick_source_live::retained_current(state.context.body_source,state.context.source,tick,state.context.copy.thread)||
-               (state.context.queried_parent.cookie&&!body_tick_source_live::parent_idle_current(state.context.queried_parent))||
-               (state.context.source_parent.query&&!body_tick_source_live::parent_idle_current(state.context.source_parent)))return deny();
+            if(!state.context.current(tx::Stage::consumer_entry))return deny(5);
+            if(!rig_tracking_live::retained_core_identity(state.context.source))return deny(6);
+            if(!body_tick_source_live::retained_current(state.context.body_source,state.context.source,tick,state.context.copy.thread))return deny(7);
+            if(state.context.queried_parent.cookie&&!body_tick_source_live::parent_idle_current(state.context.queried_parent))return deny(8);
+            if(state.context.source_parent.query&&!body_tick_source_live::parent_idle_current(state.context.source_parent))return deny(9);
             return Result::verified;
         }
         if(!state.context.current(tx::Stage::consumer_entry)||!rig_tracking_live::retained_core_identity(state.context.source)||
            body_tick_input_live::current(state.context.body_input,state.context.source,tick,state.context.copy.thread,state.context.basis_ns)==gears_body_tick_input::Verdict::hard||
-           (state.context.mount_parent.query&&!body_tick_input_live::parent_current(state.context.mount_parent)))return deny();
+           (state.context.mount_parent.query&&!body_tick_input_live::parent_current(state.context.mount_parent)))return deny(10);
         return Result::verified;
-    }catch(...){return deny();}
+    }catch(...){return deny(11);}
 #else
     (void)scope;(void)tick;return Result::not_applicable;
 #endif
@@ -603,7 +1071,7 @@ bool owns_arm_control(gears_body_c0_arm_alpha::Proof const& p) noexcept {
            p.scope_address!=reinterpret_cast<uintptr_t>(&f.compose.scope)||
            !phase::same(p.owner,state.context.owner)||p.side>=2||p.kind>=2||!p.token||p.token==UINT64_MAX||
            !(state.hand_work.solved_mask&(1u<<p.side))||
-           p.compute_ordinal!=p.token||p.weight_ordinal!=p.token+1||p.original_alpha_bits!=0x3f800000u||
+           p.compute_ordinal!=p.token||p.weight_ordinal!=p.token+1||!gears_body_c0_arm_alpha::normal_blend_weight(p.original_alpha_bits)||
            p.cached_scale_flag||p.scale.count||!p.node_argument||p.node.address!=p.node_argument||
            !p.root.address||p.node.outer!=p.root.address)return deny(2);
         const unsigned count=p.kind?1u:3u;const unsigned chain[2][3]={{8,10,11},{32,34,35}};
@@ -687,15 +1155,33 @@ bool admission_budget(){
         rig_tracking_live::source_fresh(source.stereo.received_ns,now,budget)&&
         (!(source.flags&gears_rig_tracking::controllers_matched)||rig_tracking_live::source_fresh(source.controllers.received_ns,now,budget));
 }
+bool observe_last_compose(uintptr_t mesh,ComposeObservation& out) noexcept {
+    if(!diagnostic_first_failure||GetCurrentThreadId()!=owner_thread.load()||
+       !mesh||last_compose_observation.mesh!=mesh)return false;
+    out=last_compose_observation;return true;
+}
 void pose_begin(Entry const& e) noexcept {Call call;if(e.kind==0)budget::recorder.mark_entry(budget::Stage::native_entry,reinterpret_cast<uintptr_t>(&e),e.invocation);
     using Begin=held_outcome::NativeBegin;
+    if(diagnostic_first_failure&&e.kind==0&&GetCurrentThreadId()==owner_thread.load()&&
+       e.rcx&&(e.rcx==hand::slot.data.owner.key.mesh.address||e.rcx==endpoint_value.mesh.address)){
+        last_compose_observation={};auto& o=last_compose_observation;
+        o.begin_ns=rig_tracking_live::clock_ns();o.mesh=e.rcx;o.tick=hand::slot.tick;
+        o.compose=e.invocation;o.selected=unsigned(e.selected);
+        o.caller=e.ra;o.source_slot_active=unsigned(hand::slot.active);
+    }
     const auto note=[&](Begin result){const auto index=unsigned(result);if(index<begin_reasons.size())++begin_reasons[index];
+        if(last_compose_observation.compose==e.invocation)last_compose_observation.begin_result=index;
         held_outcome::recorder.native_result(reinterpret_cast<uintptr_t>(&e),e.invocation,result);ready_wrist::native_result(e,result);};
+    // Even a passthrough/unselected Compose can replace the previous result.
+    // Invalidate before the selection gate, without granting it a new write.
+    if(e.kind==0&&owner_thread.load()==GetCurrentThreadId()&&e.rcx==endpoint_value.mesh.address){
+        endpoint_valid=false;endpoint_observable=false;notify_endpoint(gears_committed_hand_consumer::Kind::revoke);}
     if(!enabled||stopping.load()||e.kind!=0||!e.selected){note(Begin::policy);return;}
     DWORD expected{};owner_thread.compare_exchange_strong(expected,GetCurrentThreadId());if(owner_thread.load()!=GetCurrentThreadId()){note(Begin::thread);++rejected;return;}
+    if(e.rcx==endpoint_value.mesh.address)endpoint_valid=false;endpoint_commit_ns=0;
     ready_wrist::begin_unknown(e);
     if(state.captured){note(Begin::already_captured);++rejected;return;}
-    if(state.kernel.pending()){note(Begin::kernel_pending);++rejected;return;}
+    if(state.kernel.pending()){note_pending();note(Begin::kernel_pending);++rejected;return;}
     try{
         if(state.kernel.settled_source_age()&&!state.recovery.active){auto& old=state.recovery;
             old.actor=state.context.actor;old.asset=state.context.asset;old.source=state.context.source;old.metadata=state.backend.metadata();
@@ -759,25 +1245,83 @@ bool apply_impl(Entry const& e,body::Goal const& goal,gears_native_rig_tracking:
     else if(!native_atom_overwrite_live::ready_for_commit())gate=failure::Gate::receipt;
     else if(body_tick_input_live::enabled&&(!render_base||!marker))gate=failure::Gate::context;
     budget::recorder.mark(budget::Stage::apply_gate_end);if(diagnostic_first_failure)timing.gate=uint64_t(phase::qpc());
+    if(last_compose_observation.compose==e.invocation)last_compose_observation.apply_gate=unsigned(gate);
     ++failure_counts.gates[unsigned(gate)];if(gate!=failure::Gate::okay){remember_failure(e,goal,failure::Stage::gate,unsigned(gate),timing);return false;}
     try{
         if(body_tick_source_live::enabled)held_outcome::recorder.input(state.context.body_source,state.context.basis_ns);
         state.body_render_base=render_base?*render_base:gears_vr::StereoMatrix{};
         if(!admission_budget()){budget::recorder.age_rejected();++admission_skipped;++rejected;return false;}
-        const auto report=body::plan(state.model,state.source,goal,state.workspace,state.output);budget::recorder.mark(budget::Stage::body_plan_end);if(diagnostic_first_failure)timing.plan=uint64_t(phase::qpc());++failure_counts.plans[unsigned(report.status)];
+        const auto special_move=state.context.actor.special_move;
+        const bool current_lancer_ready=special_move==33&&binding::current_lancer_animation(state.context.actor);
+        const bool free_hand_scope=gears_lancer_saw_pose::prepare_hands(special_move,current_lancer_ready,hands_enabled);
+        const bool independent_standing=hands_enabled&&eye&&render_base&&goal.scope==body::Scope::stationary&&
+            free_hand_scope&&!(source.flags&gears_rig_tracking::cover_key_known)&&
+            !source.cover_type&&!source.cover_link.address&&source.cover_slot==-1;
+        double head_projection{};
+        auto report=independent_standing?
+            body::plan_with_spine_reach(state.model,state.source,goal,state.workspace,state.output,head_projection):
+            body::plan(state.model,state.source,goal,state.workspace,state.output);
+        if(report.status==body::Status::solved&&head_projection>0){++hands_spine_projected;
+            hands_spine_projection_last=head_projection;hands_spine_projection_max=(std::max)(hands_spine_projection_max.load(),head_projection);}
+        budget::recorder.mark(budget::Stage::body_plan_end);if(diagnostic_first_failure)timing.plan=uint64_t(phase::qpc());++failure_counts.plans[unsigned(report.status)];
+        if(report.status==body::Status::model_scale&&report.failed_bone<body::bones){
+            uint32_t bits{};std::memcpy(&bits,&state.source.local[report.failed_bone].scale,4);
+            body_plan_scale_bone=report.failed_bone;body_plan_scale_bits=bits;}
+        if(report.status==body::Status::residual){body_plan_head_residual=report.head_error;body_plan_length_residual=report.max_length_error;
+            for(unsigned s=0;s<2;++s){body_plan_foot_residual[s]=report.foot_error[s];body_plan_angle_residual[s]=report.foot_angle_error[s];}
+            body_plan_angle_residual[2]=report.head_angle_error;}
         ready_wrist::body_plan(e,unsigned(report.status));
+        if(hands_enabled&&eye&&render_base&&goal.scope==body::Scope::stationary&&
+           free_hand_scope&&!(source.flags&gears_rig_tracking::cover_key_known)&&
+           !source.cover_type&&!source.cover_link.address&&source.cover_slot==-1&&
+           (report.status==body::Status::spine_unreachable||report.status==body::Status::spine_iterations)){
+            report=body::retain_native_body(state.model,state.source,state.workspace,state.output);
+            if(report.status==body::Status::solved)++hands_native_body_fallback;
+        }
         if(report.status!=body::Status::solved){remember_failure(e,goal,failure::Stage::plan,unsigned(report.status),timing,&report);++rejected;return false;}
         state.right_mount=select_main_mount(source,marker);held_outcome::recorder.selected_mount(unsigned(state.right_mount));
+        if(last_compose_observation.compose==e.invocation)last_compose_observation.mount_kind=unsigned(state.right_mount);
         ready_wrist::mount(e,unsigned(state.right_mount));
+        // Ready-hold33 never falls back to free/unheld hands. Its SAME current
+        // held-Lancer mount must be accepted by the existing sole broker;
+        // missing/busy/stale/released ownership leaves the original pose alone.
+        if(special_move==33&&!gears_lancer_saw_pose::commit_hands(special_move,current_lancer_ready,hands_enabled,
+           state.right_mount==hands::adapter::MountKind::held_lancer)){
+            if(last_compose_observation.compose==e.invocation)last_compose_observation.hand_status=unsigned(hands::Status::invalid_body);
+            // Reuse the existing bounded first-failure record. A100ms palette
+            // sample can miss the single rejected Compose entirely. Stage
+            // hands/detail invalid_body records the exact owned failure;
+            // unit bits: ready0, mount1..4, prequery5..9, query10..13,
+            // admission14..16, callback17..24 (all-ones means unobserved).
+            auto const& observed=last_compose_observation;
+            const unsigned witness=unsigned(current_lancer_ready)|((unsigned(state.right_mount)&15u)<<1)|
+                ((observed.mount_prequery&31u)<<5)|((observed.mount_query_code&15u)<<10)|
+                ((observed.mount_admission&7u)<<14)|((observed.mount_callback_status&255u)<<17);
+            remember_failure(e,goal,failure::Stage::hands,unsigned(hands::Status::invalid_body),timing,&report,&state.output,witness);
+            ++hands_statuses[unsigned(hands::Status::invalid_body)];++rejected;return false;}
         if(main_mount_policy_enabled()&&!admission_budget()){budget::recorder.mark(budget::Stage::post40_end);budget::recorder.age_rejected();++main_mount_post_admission_rejected;++admission_skipped;++rejected;return false;}
         budget::recorder.mark(budget::Stage::post40_end);
         bool hand_plan{};
         if(hands_enabled){++hands_attempts;hands::Result hand_result{};
-            // The current standing policy is the only hands consumer. A body
+            state.hand_work.left_visual={};
+            if(state.right_mount==hands::adapter::MountKind::held_lancer&&eye&&body_tick_input_live::enabled){
+                auto const& current_input=body_tick_source_live::enabled?
+                    state.context.body_source.observed:state.context.body_input;
+                lancer_grasp_live::target(source,current_input.controllers,state.hand_work.left_visual);
+            }
+            // Cosmetic finger rotations must not add a bone outside this
+            // actual LOD's already captured DesiredBones. Kernel ownership
+            // and its independent complete changed-mask check stay unchanged.
+            state.hand_work.finger_available={};
+            for(unsigned i=0;i<state.desired.count&&i<body::bones;++i){const unsigned b=state.desired.indices[i];
+                if(b<body::bones)state.hand_work.finger_available[b/64]|=std::uint64_t(1)<<(b%64);}
+            // Ordinary standing and certified held-Lancer ready33 are the only
+            // hand consumers. Original paired execution34 always keeps its
+            // animation. A body
             // pose can bootstrap the first camera basis, but cannot relabel a
             // previous FP basis or write a reconstructed Core/hand timestamp.
             if(!render_base)hand_result.status=hands::Status::basis;
-            else if(goal.scope!=body::Scope::stationary||state.context.actor.special_move||
+            else if(goal.scope!=body::Scope::stationary||!free_hand_scope||
                 (source.flags&gears_rig_tracking::cover_key_known)||source.cover_type||source.cover_link.address||source.cover_slot!=-1)
                 hand_result.status=hands::Status::invalid_body;
             else if(eye&&first_person_live::body_basis&&body_tick_input_live::enabled)
@@ -795,6 +1339,7 @@ bool apply_impl(Entry const& e,body::Goal const& goal,gears_native_rig_tracking:
             else hand_result=hands::compose(state.model,state.source,source,rig_tracking_live::object(state.context.asset),
                 *render_base,rig_tracking_live::clock_ns(),simulator_operator,state.hand_work,state.output,state.right_mount);
             ready_wrist::target(e,hand_result,render_base);
+            if(last_compose_observation.compose==e.invocation)last_compose_observation.hand_status=unsigned(hand_result.status);
             ++hands_statuses[unsigned(hand_result.status)];hand_plan=hand_result.status==hands::Status::okay&&state.hand_work.solved_mask!=0;
             if(hand_plan)++hands_solved;
             else if(hand_result.status!=hands::Status::basis&&hand_result.status!=hands::Status::hand_untracked&&
@@ -805,10 +1350,15 @@ bool apply_impl(Entry const& e,body::Goal const& goal,gears_native_rig_tracking:
         held_outcome::recorder.prepared(unsigned(result.code));++failure_counts.prepares[unsigned(result.code)];
         ready_wrist::prepared(e,result);
         if(result.code!=tx::Code::prepared){remember_failure(e,goal,failure::Stage::prepare,unsigned(result.code),timing,&report,&state.output,result.unit);++rejected;return false;}state.prepared=true;
-        result=state.kernel.commit(state.backend,state.lease,state.stamp);budget::recorder.mark(budget::Stage::commit_end);if(diagnostic_first_failure)timing.commit=uint64_t(phase::qpc());sync();install_atom_receipt();
+        result=state.kernel.commit(state.backend,state.lease,state.stamp);if(state.kernel.failed())note_pending();budget::recorder.mark(budget::Stage::commit_end);if(diagnostic_first_failure)timing.commit=uint64_t(phase::qpc());sync();install_atom_receipt();
         held_outcome::recorder.committed(unsigned(result.code));++failure_counts.commits[unsigned(result.code)];
         ready_wrist::committed(e,result);
-        if(result.code==tx::Code::committed){++commits;if(hand_plan){state.joint_committed=true;++hands_commits;
+        if(last_compose_observation.compose==e.invocation){auto& o=last_compose_observation;
+            o.commit_result=unsigned(result.code);o.solved_mask=state.hand_work.solved_mask;
+            if(o.solved_mask&2){o.right_target=state.hand_work.computed_wrist[1].position;
+                o.right_solved_target=state.hand_work.inputs[1].target.position;}}
+        if(result.code==tx::Code::committed){endpoint_commit_ns=rig_tracking_live::clock_ns();++commits;if(hand_plan){state.joint_committed=true;++hands_commits;
+            if(state.hand_work.left_visual_applied){const unsigned kind=unsigned(state.hand_work.left_blend.kind);if(kind<contextual_grasp_commits.size())++contextual_grasp_commits[kind];}
             if(state.right_mount==hands::adapter::MountKind::held_lancer)++main_mount_commits;trace_hands_commit();
             if(state.right_mount==hands::adapter::MountKind::held_lancer)held_outcome::recorder.held(main_mount_commits.load(),state.hand_record);}return true;}
         remember_failure(e,goal,failure::Stage::commit,unsigned(result.code),timing,&report,&state.output,result.unit);++rejected;return false;
@@ -830,6 +1380,8 @@ void before_original(Entry const& e) noexcept {Call call;
     install_atom_receipt();
     auto key=state.stamp;if(!same_entry(e))key.scope=0;
     state.notified=true;const auto result=state.kernel.notify_consumer_entry(state.backend,state.lease,key);sync();
+    if(diagnostic_first_failure&&last_compose_observation.compose==e.invocation)
+        last_compose_observation.consumer_result=unsigned(result.code);
     state.consumer_verified=result.code==tx::Code::consumer_marked;
     if(state.hand_record){auto& row=hand_trace[(state.hand_record-1)%hand_trace_capacity];if(row.sequence==state.hand_record){
         row.consumer_qpc=uint64_t(phase::qpc());row.consumer_verified=result.code==tx::Code::consumer_marked;
@@ -840,9 +1392,16 @@ void after_original(Entry const& e) noexcept {
     if(!ready_wrist::recorder.enabled||e.kind!=0||GetCurrentThreadId()!=owner_thread.load()||!state.captured)return;
     ready_wrist::raw_return(e);
 }
+#include "lancer_component_transform_finish.inl"
 void pose_end(Entry const& e,bool returned,bool original_called) noexcept {Call call;
+    if(diagnostic_first_failure&&e.kind==0&&GetCurrentThreadId()==owner_thread.load()&&
+       last_compose_observation.compose==e.invocation){auto& o=last_compose_observation;
+        o.end_ns=rig_tracking_live::clock_ns();o.returned=unsigned(returned);o.original_called=unsigned(original_called);}
     // Passive diagnostic only; no old C0 Context is made current at Tick end.
-    if(e.kind==2)ready_wrist::outer_end(e,returned,original_called);
+    if(e.kind==2){
+        lancer_transform_finish::finish(e,returned,original_called);
+        ready_wrist::outer_end(e,returned,original_called);
+    }
     ready_wrist::Finish ready_finish{e,returned,original_called};
     if(GetCurrentThreadId()!=owner_thread.load()||e.kind!=0||!state.captured)return;
     ready_wrist::returned_end(e,returned,original_called);
@@ -850,7 +1409,13 @@ void pose_end(Entry const& e,bool returned,bool original_called) noexcept {Call 
         if(state.hand_record&&same_entry(e)&&returned&&original_called){auto& row=hand_trace[(state.hand_record-1)%hand_trace_capacity];
             if(row.sequence==state.hand_record){row.end_begin_qpc=uint64_t(phase::qpc());row.end_status=observe_hand_trace(row,true);row.end_end_qpc=uint64_t(phase::qpc());}}
         const auto result=state.kernel.finish(state.backend,state.lease,key,original_called?(returned?tx::End::original_returned:tx::End::original_threw):tx::End::before_consumer);sync();
+        if(diagnostic_first_failure&&last_compose_observation.compose==e.invocation){
+            last_compose_observation.finish_result=unsigned(result.code);
+            last_compose_observation.finish_failure=unsigned(state.kernel.failure());
+        }
         ready_wrist::closed(e,result);
+        if(result.code==tx::Code::scope_closed&&returned&&original_called&&same_entry(e)&&
+           !state.kernel.failed()&&!state.kernel.protocol_debt()&&!state.kernel.original_exception())publish_endpoint();
         if(state.hand_record&&result.code==tx::Code::scope_closed&&returned&&original_called&&!state.kernel.failed()&&
            !state.kernel.protocol_debt()&&!state.kernel.original_exception()){
             auto& row=hand_trace[(state.hand_record-1)%hand_trace_capacity];if(row.sequence==state.hand_record){row.normal_return=1;
@@ -859,6 +1424,15 @@ void pose_end(Entry const& e,bool returned,bool original_called) noexcept {Call 
                 std::copy(state.alpha_grant_original.begin(),state.alpha_grant_original.end(),row.alpha_grant_original);}}}
     state.context.expired=true;state.backend.invalidate();state.captured=false;state.prepared=false;
     state.joint_committed=false;state.consumer_verified=false;
+    // The exact Compose has returned and the skeletal transaction is closed.
+    // The same PG weapon writer can now follow THIS result, before the outer
+    // mesh update consumes attachment transforms. Never notify while captured.
+    if(endpoint_valid&&returned&&original_called&&endpoint_value.compose==e.invocation&&
+       notify_endpoint(gears_committed_hand_consumer::Kind::committed))
+    {
+        lancer_transform_finish::queue();
+        lancer_transform_finish::finish(e,returned,original_called);
+    }
     // Kernel/Lease/Backend storage remains alive while pending; never restore at
     // tick-end, stop, teardown or value equality. Fresh is explicitly unavailable.
 }
@@ -874,6 +1448,12 @@ bool configure(wchar_t const* ini,FILE* f){wchar_t value[8]{};GetPrivateProfileS
        GetPrivateProfileIntW(L"CoverFutureGObserver",L"enabled",0,ini)!=0))return false;
     wchar_t diagnostic[8]{};GetPrivateProfileStringW(L"FullBodyC0Native",L"diagnostic_first_failure",L"0",diagnostic,8,ini);
     if(wcscmp(diagnostic,L"0")&&wcscmp(diagnostic,L"1"))return false;diagnostic_first_failure=!wcscmp(diagnostic,L"1");
+    const auto shoulder_trace=GetPrivateProfileIntW(L"FullBodyC0Native",L"diagnostic_hand_trace_right_shoulder",0,ini);
+    if(shoulder_trace>1)return false;hand_trace_right_shoulder=shoulder_trace==1;
+    if(hand_trace_right_shoulder&&(!simulator_operator||!diagnostic_first_failure||!hands_enabled))return false;
+    const auto head_trace=GetPrivateProfileIntW(L"FullBodyC0Native",L"diagnostic_hand_trace_head_pitch",0,ini);
+    if(head_trace>1)return false;hand_trace_head_pitch=head_trace==1;
+    if(hand_trace_head_pitch&&(!simulator_operator||!diagnostic_first_failure||!hands_enabled||hand_trace_right_shoulder))return false;
     wchar_t mount_value[8]{};GetPrivateProfileStringW(L"FullBodyC0Native",L"held_main_mount",L"0",mount_value,8,ini);
     if(wcscmp(mount_value,L"0")&&wcscmp(mount_value,L"1"))return false;held_main_mount=!wcscmp(mount_value,L"1");
     if(held_main_mount&&!main_mount_policy_enabled())return false;
@@ -887,6 +1467,13 @@ bool configure(wchar_t const* ini,FILE* f){wchar_t value[8]{};GetPrivateProfileS
     if(wcscmp(ready_value,L"0")&&wcscmp(ready_value,L"1"))return false;
     ready_wrist::recorder.enabled=!wcscmp(ready_value,L"1");
     if(ready_wrist::recorder.enabled&&(!simulator_operator||!hands_enabled||!diagnostic_held_main_mount||!body_tick_source_live::enabled))return false;
+    wchar_t reentry_value[8]{};GetPrivateProfileStringW(L"FullBodyC0Native",L"diagnostic_ready_wrist_saw_reentry",L"0",reentry_value,8,ini);
+    if(wcscmp(reentry_value,L"0")&&wcscmp(reentry_value,L"1"))return false;
+    ready_wrist::recorder.saw_reentry=!wcscmp(reentry_value,L"1");
+    if(ready_wrist::recorder.saw_reentry&&!ready_wrist::recorder.enabled)return false;
+    const auto saw_target=GetPrivateProfileIntW(L"FullBodyC0Native",L"diagnostic_ready_wrist_saw_entry",2,ini);
+    if((saw_target!=1&&saw_target!=2)||(!ready_wrist::recorder.saw_reentry&&saw_target!=2))return false;
+    ready_wrist::recorder.saw_target=saw_target;
     held_outcome::recorder.prequery_enabled=ready_wrist::recorder.enabled;
     budget::recorder.clock=[]()noexcept{return rig_tracking_live::clock_ns();};
     budget::recorder.thread=[]()noexcept{return uint64_t(GetCurrentThreadId());};
@@ -938,13 +1525,45 @@ void export_held_outcome()noexcept {
     bool ok=write(&h,sizeof h);if(ok&&h.count)ok=write(r.rows.data(),DWORD(h.count*sizeof(held_outcome::Record)));
     if(!CloseHandle(file)){held_outcome_error=GetLastError();ok=false;}held_outcome_written=ok;
 }
-void summary(FILE* f){ready_wrist::export_records();export_held_outcome();export_failure(first_failure,L"body-c0-first-failure.bin",failure_file_attempted,failure_file_written,failure_file_error);
+void summary(FILE* f){export_pending();ready_wrist::export_records();export_held_outcome();export_failure(first_failure,L"body-c0-first-failure.bin",failure_file_attempted,failure_file_written,failure_file_error);
+    if(f)fprintf(f,"body_tick_lancer_state_refreshed=%llu ",binding::tick_lancer_state_refreshes.load());
+    if(f){fprintf(f,"body_gun_transform_attempts=%llu body_gun_transform_completed=%llu body_gun_transform_rejected=%llu ",
+        lancer_transform_finish::attempts.load(),lancer_transform_finish::completed.load(),lancer_transform_finish::rejected.load());
+        fprintf(f,"body_gun_transform_already_current=%llu body_gun_transform_source_reject_tick=%llu body_gun_transform_source_reject_serial=%llu body_gun_transform_source_reject_age_ns=%llu ",
+            lancer_transform_finish::already_current.load(),lancer_transform_finish::source_reject_tick.load(),
+            lancer_transform_finish::source_reject_serial.load(),lancer_transform_finish::source_reject_age_ns.load());
+        for(unsigned i=0;i<lancer_transform_finish::rejection_stage.size();++i)fprintf(f,"body_gun_transform_reject_%u=%llu ",i,lancer_transform_finish::rejection_stage[i].load());}
+    if(f)fprintf(f,"body_endpoint_published=%llu body_endpoint_reads=%llu body_endpoint_accepted=%llu body_endpoint_geometry_rejected=%llu body_endpoint_geometry_revoked=%llu ",endpoint_published.load(),endpoint_reads.load(),endpoint_accepted.load(),endpoint_geometry_rejected.load(),endpoint_geometry_revoked.load());
+    if(f)fprintf(f,"body_endpoint_observed_visual=%llu body_endpoint_late_visual=%llu ",endpoint_observed_visual.load(),endpoint_late_visual.load());
+    if(f){for(unsigned i=0;i<contextual_grasp_commits.size();++i)fprintf(f,"body_context_grasp_commit_%u=%llu ",i,contextual_grasp_commits[i].load());
+        for(unsigned i=0;i<interaction_publish.size();++i)fprintf(f,"body_interaction_publish_%u=%llu ",i,interaction_publish[i].load());
+        for(unsigned i=0;i<interaction_read.size();++i)fprintf(f,"body_interaction_read_%u=%llu ",i,interaction_read[i].load());
+        for(unsigned i=0;i<endpoint_unavailable.size();++i)fprintf(f,"body_endpoint_unavailable_%u=%llu ",i,endpoint_unavailable[i].load());}
+    if(f)fprintf(f,"body_endpoint_notice_attempts=%llu body_endpoint_notices=%llu ",endpoint_notice_attempts.load(),endpoint_notices.load());
+    if(f){
+        fprintf(f,"body_endpoint_proof_seen=%u ",endpoint_proof_seen.load());
+        for(unsigned i=0;i<endpoint_proof_capacity;++i)if(endpoint_proof_ready[i].load(std::memory_order_acquire)){
+            auto const& row=endpoint_proof_observations[i];
+            fprintf(f,"body_endpoint_proof_%u=%lld,%llu,%llu,%llu,%llu,%llx,%u,%u ",i,
+                row.at_ns,row.serial,row.tick,row.compose,row.input,row.mesh,row.stage,row.geometry_known);
+            fprintf(f,"body_endpoint_proof_%u_wanted=%.12g,%.12g,%.12g,%.12g,%.12g,%.12g,%.12g ",i,
+                row.wanted.position.x,row.wanted.position.y,row.wanted.position.z,
+                row.wanted.orientation.x,row.wanted.orientation.y,row.wanted.orientation.z,row.wanted.orientation.w);
+            for(unsigned kind=0;kind<4;++kind){
+                auto const& m=kind==0?row.actual.component:kind==1?row.actual.wrist:kind==2?row.selected.component:row.selected.wrist;
+                fprintf(f,"body_endpoint_proof_%u_matrix_%u=",i,kind);
+                for(unsigned n=0;n<16;++n)fprintf(f,n?",%.9g":"%.9g",double(m[n]));
+                fputc(' ',f);
+            }
+        }
+    }
     if(f){for(unsigned i=0;i<begin_reasons.size();++i)fprintf(f,"body_native_begin_reason_%u=%llu ",i,begin_reasons[i].load());
         for(unsigned i=0;i<capture_reasons.size();++i)fprintf(f,"body_native_capture_reason_%u=%llu ",i,capture_reasons[i].load());}
     export_failure(first_commit_failure,L"body-c0-first-commit-failure.bin",commit_failure_file_attempted,commit_failure_file_written,commit_failure_file_error);
     export_hand_trace();export_budget();export_tick_commits();export_alpha_records();body_tick_input_live::summary(f);body_tick_source_live::summary(f);
     if(f)fprintf(f,"body_ready_wrist_enabled=%u body_ready_wrist_records=%u body_ready_wrist_active=%u body_ready_wrist_written=%u body_ready_wrist_error=%u ",
         unsigned(ready_wrist::recorder.enabled),ready_wrist::recorder.saved.load(),unsigned(ready_wrist::recorder.active.load()),unsigned(ready_wrist::written.load()),ready_wrist::error.load());
+    if(f)fprintf(f,"body_ready_wrist_saw_reentry=%u body_ready_wrist_saw_entries=%u ",unsigned(ready_wrist::recorder.saw_reentry),ready_wrist::recorder.saw_entries);
     if(f)fprintf(f,"body_alpha_trace_records=%llu body_alpha_trace_written=%u body_alpha_trace_error=%u ",hand_trace_sequence,unsigned(alpha_written.load()),alpha_error.load());
     if(f)fprintf(f,"body_tick_commits_records=%llu body_tick_commits_written=%u body_tick_commits_error=%u ",hand_trace_sequence,unsigned(tick_commits_written.load()),tick_commits_error.load());
     body_tick_tracking_probe_live::summary(f,stopping.load()&&!callbacks.load()&&!obligations.load()&&hand::stopping.load()&&!hand::callbacks.load()&&!hand::live_frames.load()&&GetCurrentThreadId()!=owner_thread.load());
@@ -952,8 +1571,12 @@ void summary(FILE* f){ready_wrist::export_records();export_held_outcome();export
         unsigned(budget::recorder.enabled),budget::recorder.saved.load(),unsigned(budget::recorder.no_query_saved.load()),unsigned(budget::recorder.active.load()),unsigned(budget_written.load()),budget_error.load());}
     if(f)fprintf(f,"body_mount_prequery_enabled=%u body_mount_prequery_arm=%llu ",unsigned(held_outcome::recorder.prequery_enabled),held_outcome::recorder.arm_kind.load());
     if(f){fprintf(f,"body_native_enabled=%u body_native_captures=%llu body_native_commits=%llu body_native_rejected=%llu body_native_pending=%u body_native_fresh_retirement=atom_receipt body_native_admission_skipped=%llu body_native_age_recovered=%llu body_native_recovery_rejected=%llu body_native_recovery_deferred=%llu ",unsigned(enabled),captures.load(),commits.load(),rejected.load(),pending_count(),admission_skipped.load(),age_recovered.load(),recovery_rejected.load(),recovery_deferred.load());
-    fprintf(f,"body_hands_enabled=%u body_hands_attempts=%llu body_hands_solved=%llu body_hands_commits=%llu ",unsigned(hands_enabled),hands_attempts.load(),hands_solved.load(),hands_commits.load());
+    fprintf(f,"body_hands_enabled=%u body_hands_attempts=%llu body_hands_solved=%llu body_hands_commits=%llu body_hands_native_body_fallback=%llu ",unsigned(hands_enabled),hands_attempts.load(),hands_solved.load(),hands_commits.load(),hands_native_body_fallback.load());
+    fprintf(f,"body_hands_spine_projected=%llu body_hands_spine_projection_last=%.9g body_hands_spine_projection_max=%.9g ",hands_spine_projected.load(),hands_spine_projection_last.load(),hands_spine_projection_max.load());
     fprintf(f,"body_arm_alpha_enabled=%u body_arm_alpha_owner_calls=%llu body_arm_alpha_owner_granted=%llu body_arm_alpha_owner_rejected=%llu body_arm_alpha_threshold_rejected=%llu ",unsigned(arm_alpha_enabled),arm_alpha_owner_calls.load(),arm_alpha_owner_granted.load(),arm_alpha_owner_rejected.load(),arm_alpha_threshold_rejected.load());
+    for(unsigned i=0;i<arm_retained_first_rejects.size();++i)if(auto n=arm_retained_first_rejects[i].load())fprintf(f,"body_arm_retained_first_reject_%u=%llu ",i,n);
+    fprintf(f,"body_plan_scale_bone=%u body_plan_scale_bits=%08x body_plan_head_residual=%.9g body_plan_length_residual=%.9g ",body_plan_scale_bone.load(),body_plan_scale_bits.load(),body_plan_head_residual.load(),body_plan_length_residual.load());
+    fprintf(f,"body_plan_foot_left_residual=%.9g body_plan_foot_right_residual=%.9g body_plan_foot_left_angle=%.9g body_plan_foot_right_angle=%.9g body_plan_head_angle=%.9g ",body_plan_foot_residual[0].load(),body_plan_foot_residual[1].load(),body_plan_angle_residual[0].load(),body_plan_angle_residual[1].load(),body_plan_angle_residual[2].load());
     fprintf(f,"body_hands_trace_attempted=%u body_hands_trace_written=%u body_hands_trace_error=%u ",unsigned(hand_trace_attempted.load()),unsigned(hand_trace_written.load()),hand_trace_error.load());
     fprintf(f,"body_main_mount_enabled=%u body_main_mount_attempts=%llu body_main_mount_ready=%llu body_main_mount_not_ready=%llu body_main_mount_context_rejected=%llu body_main_mount_stale=%llu body_main_mount_fault=%llu body_main_mount_commits=%llu body_main_mount_last_query=%llu body_main_mount_max_ns=%llu body_main_mount_trace_selected_only=%u ",
         unsigned(main_mount_policy_enabled()),main_mount_attempts.load(),main_mount_ready.load(),main_mount_not_ready.load(),main_mount_context_rejected.load(),main_mount_stale.load(),main_mount_fault.load(),main_mount_commits.load(),main_mount_last_query.load(),main_mount_max_ns.load(),unsigned(diagnostic_held_main_mount));
@@ -973,6 +1596,9 @@ void atom_overwrite_completed(uint64_t event)noexcept {
     if(result.code==tx::Code::fresh_retired){native_atom_overwrite_live::retired(version,event);state.atom_installed=false;}
 }
 #else
+bool refresh_render_observation(uintptr_t,unsigned* diagnostic=nullptr) noexcept{if(diagnostic)*diagnostic=0;return false;}
+bool observe_last_compose(uintptr_t,ComposeObservation&) noexcept{return false;}
+gears_rig_tracking::Reply read_endpoint(gears_committed_hand::Request const*,gears_committed_hand::Frame*) noexcept{return gears_rig_tracking::Reply::unavailable;}
 bool configure(wchar_t const* ini,FILE*){return GetPrivateProfileIntW(L"FullBodyC0Native",L"enabled",0,ini)==0&&GetPrivateProfileIntW(L"FullBodyC0Native",L"hands",0,ini)==0&&GetPrivateProfileIntW(L"FullBodyC0Native",L"arm_control_ownership",0,ini)==0&&GetPrivateProfileIntW(L"FullBodyC0Native",L"held_main_mount",0,ini)==0&&GetPrivateProfileIntW(L"FullBodyC0Native",L"diagnostic_held_main_mount",0,ini)==0;}
 bool main_mount_policy_enabled() noexcept{return false;}
 bool body_mount_policy_enabled() noexcept{return false;}

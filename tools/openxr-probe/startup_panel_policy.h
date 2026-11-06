@@ -27,11 +27,12 @@ public:
         return false;
     }
     bool show_panel() const {return enabled_&&!cancelled_&&mode_!=gears_menu::Mode::loading_display&&
-        (mode_==gears_menu::Mode::main_menu||(!handed_off_&&!resume_required_));}
-    // In-game menus use native stereo projection but retain the menu epoch. It
-    // cannot retire the fresh-image boundary required when gameplay resumes.
-    bool show_menu_projection()const{return enabled_&&!cancelled_&&
-        (mode_==gears_menu::Mode::pause_menu||mode_==gears_menu::Mode::death_menu);}
+        (mode_==gears_menu::Mode::main_menu||mode_==gears_menu::Mode::pause_menu||
+         mode_==gears_menu::Mode::death_menu||(!handed_off_&&!resume_required_));}
+    // All menus use the same fresh whole-window theater capture. A paused
+    // native stereo scene may stop producing HUD pixels; it is not the menu
+    // image source. Gameplay still needs a NEW ticket after the menu epoch.
+    bool show_menu_projection()const{return false;}
     // Producer readiness alone must never retire the initial fallback capture.
     bool suspend_window_capture()const{return handed_off_&&!show_panel();}
     void menu_rendered(){
@@ -40,9 +41,9 @@ public:
     }
     bool show_transition_panel()const{return enabled_&&reversible_&&!cancelled_&&resume_required_&&
         (mode_==gears_menu::Mode::movie_display||(menu_presented_&&(mode_==gears_menu::Mode::gameplay||mode_==gears_menu::Mode::loading_display||
-            mode_==gears_menu::Mode::acquisition_wait||mode_==gears_menu::Mode::main_menu)));}
+            mode_==gears_menu::Mode::acquisition_wait||mode_==gears_menu::Mode::main_menu||mode_==gears_menu::Mode::unknown)));}
     bool transition_menu_requested_wait()const{return show_transition_panel()&&
-        (mode_==gears_menu::Mode::main_menu||mode_==gears_menu::Mode::acquisition_wait);}
+        (mode_==gears_menu::Mode::main_menu||mode_==gears_menu::Mode::acquisition_wait||mode_==gears_menu::Mode::unknown);}
     bool transition_authorized(gears_menu::Mode fresh)const{return fresh==mode_&&show_transition_panel();}
     // A generic session-owned card can fill an empty startup frame. It grants
     // no authority to show a game image, and a real projection retires it forever.

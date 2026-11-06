@@ -55,10 +55,25 @@ struct Fixture {
     }
     er::Status status(std::int64_t stamp=now) const {return er::match(hand,rig,stamp,source);}
 };
-template<class Change>void rejected(Change change,er::Status expected){Fixture f;change(f);CHECK(f.status()==expected);}
+template<class Change>void rejected(Change change,er::Status expected){Fixture f;change(f);CHECK(f.status()==expected);
+    gears_hand_continuity::TrackedInput input{};input.input.sequence=99;
+    gears_hand_continuity::Publisher publisher{99,99};
+    CHECK(!er::continuity(f.hand,f.rig,now,f.source,input,publisher));
+    CHECK(!input.input.sequence&&!publisher.pid&&!publisher.start);}
 static_assert(noexcept(er::match(wh::Frame{},rt::Frame{},now,0)));
 }
 int main(){
+    for(unsigned source=0;source<2;++source){Fixture f(source);
+        gears_hand_continuity::TrackedInput input{};gears_hand_continuity::Publisher publisher{};
+        // The selected row is94ms old: a90Hz eight-row transport ring may
+        // have overwritten it, while Native's SAME Scene remains valid.
+        CHECK(er::continuity(f.hand,f.rig,now+90000000,source,input,publisher));
+        CHECK(gears_hand_continuity::same_input(input.input,f.hand.controllers));
+        CHECK(input.input.sync_ns==now-4000000&&input.stream_epoch==f.rig.producer.stream);
+        CHECK(publisher.pid==f.rig.controller_publisher_pid&&publisher.start==f.rig.controller_publisher_start);
+        CHECK(!er::continuity(f.hand,f.rig,now+100000001,source,input,publisher));
+        CHECK(!input.input.sequence&&!publisher.pid&&!publisher.start);
+    }
     for(unsigned source=0;source<2;++source){Fixture f(source);CHECK(f.status()==er::Status::matched);
         CHECK(er::match(f.hand,f.rig,now,1-source)==er::Status::source_mismatch);
         CHECK(er::match(f.hand,f.rig,now,2)==er::Status::invalid_source);

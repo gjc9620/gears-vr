@@ -70,7 +70,7 @@ namespace fresh_pose_producer_live {bool own_entries(){return !bad_entry;}}
 namespace f=fresh_pose_producer_live;using Entry=gears_continuous_hand_entry::Entry;
 extern std::array<unsigned char,32> motion;
 struct CppException{int marker;};constexpr DWORD code=0xe042c022;
-extern "C" void GearsFreshRootHook(){}extern "C" void GearsFreshOptionalHook(){}
+extern "C" void GearsFreshRootHook(){}extern "C" void GearsFreshOptionalHook(){}extern "C" void GearsFreshPerBoneHook(){}
 void original(p::CallPacket* packet,uintptr_t fifth) {
     ++original_calls;fifth_seen=fifth;
     if(original_action==1)RaiseException(code,0,0,nullptr);

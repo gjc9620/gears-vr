@@ -41,6 +41,22 @@ int main(){
         case 4:game_thread.store(0);break;}
         TYPED_CHECK(la::read_equipment(i,a)!=la::Status::ready);
     }
+    // Grouping metadata searches must retain the independently closing live
+    // relationships/delete flags and first same-name field's type checks.
+    for(unsigned changed=0;changed<6;++changed){
+        auto m=std::make_unique<AssetMemory>();auto i=identity(*m);abi::GripGameState game{};
+        if(changed<3){
+            const uptr field=changed==0?m->pc+0x110:changed==1?m->pc+0x100:m->weapon+0x110;
+            mutate_read=field;mutation=[field]{Memory::put(field,0,uptr(0));};
+        }else if(changed==3)Memory::put(m->pc,0x108,4u);
+        else if(changed==4)Memory::put(m->weapon,0x108,4u);
+        else {
+            const auto cls=m->cls(L"WrongFirstPawnController",m->warfare,m->pc_class);
+            m->property(cls,L"Pawn",m->bool_type,0x190,8);
+            Memory::put(m->pc,0x50,cls);m->tables();i.controller=m->identity(m->pc);
+        }
+        TYPED_CHECK(!weaponhand::observe_equipment(i,game)&&!game.known);
+    }
     {auto m=std::make_unique<AssetMemory>();auto i=identity(*m);abi::GripGameState a{},b{};
         TYPED_CHECK(weaponhand::observe_equipment(i,a));Memory::put(m->pawn,0x128,1u);
         TYPED_CHECK(weaponhand::observe_equipment(i,b)&&!abi::same_game(a,b));}

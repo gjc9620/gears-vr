@@ -39,7 +39,9 @@ void begin(Entry const& e,bool copied) noexcept {
     const bool fixture=copied&&input.parent_cookie==key.cookie&&key.cookie&&
         input.stereo.source==gears_vr::StereoSource::MetaOperatorSimulated&&input.controllers.source==input.stereo.source&&
         input.stereo.head_flags==15&&input.stereo.view_flags==15&&h.grip_active==1&&h.grip_flags==15;
-    if(recorder.begin(key,input.stereo.head,h.grip,h.squeeze,h.trigger,fixture,true)){
+    const bool reentry=recorder.saw_reentry&&fixture&&recorder.select_saw_reentry(key,c.actor.weapon.address,c.actor.special_move,
+        c.actor.special_move==33&&binding::current_lancer_animation(c.actor));
+    if(recorder.begin(key,input.stereo.head,h.grip,h.squeeze,h.trigger,fixture,true,reentry)){
         auto& row=*recorder.current;if(!row.key.begin_qpc)row.key.begin_qpc=uint64_t(phase::qpc());
         if(row.valid&wire::Valid::source){row.xr_reference=input.parent_scene.reference;
             row.native_reference_epoch=input.native_reference.epoch;row.native_reference_flags=input.native_reference.flags;}}

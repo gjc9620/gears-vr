@@ -1,7 +1,8 @@
 // Included after crosshair_live and before stereo pair construction. All state
 // is owned by stereo_mutex; the requested mode persists across world recovery.
 namespace first_person_live {
-bool enabled{},preview_current{},initial_requested{},body_basis{};gears_first_person::Toggle toggle;
+bool enabled{},preview_current{},initial_requested{},body_basis{},body_view_required{};gears_first_person::Toggle toggle;
+unsigned long long missing_basis_rejected{},uncomposed_view_rejected{};
 double near_clip_metres{};
 HANDLE event{};HMODULE xinput_module{};
 struct Pad {unsigned packet{};unsigned short buttons{};unsigned char lt{},rt{};short lx{},ly{},rx{},ry{};};
@@ -14,7 +15,8 @@ gears_first_person::ZoomHint zoom_hint{};
 void close(){if(event){CloseHandle(event);event=nullptr;}}
 bool initialize(){
     if(!enabled)return true;
-    toggle.initialize(initial_requested);
+    // The coherent 6DoF body/hand basis always starts in first person.
+    toggle.initialize(body_basis||initial_requested);
     wchar_t name[128]{};swprintf_s(name,L"Local\\GearsVR.FirstPersonToggle.%lu",GetCurrentProcessId());
     event=CreateEventW(nullptr,FALSE,FALSE,name);
     if(!event||GetLastError()==ERROR_ALREADY_EXISTS){close();return false;}
@@ -39,19 +41,24 @@ bool weapon_state(gears_anchor::Receipt const* anchor,gears_first_person::Weapon
 #endif
 }
 bool prepare(gears_anchor::Receipt const* anchor,gears_vr::StereoMatrix& view){
-    preview_current=false;
+    preview_current=false;body_view_required=false;
     if(!enabled)return false;
     const bool context=ordinary(anchor);
-    const bool focused=foreground();
-    const bool e=focused&&(GetAsyncKeyState('E')&0x8000),r=focused&&(GetAsyncKeyState('R')&0x8000);
-    bool pad_chord=false,pad_neutral=true;
-    if(focused&&get_pad)for(DWORD i=0;i<4;++i){Pad pad{};if(get_pad(i,&pad)==ERROR_SUCCESS){
-        pad_chord=pad_chord||((pad.buttons&0xc0)==0xc0);pad_neutral=pad_neutral&&!(pad.buttons&0xc0);}}
     const bool external=event&&WaitForSingleObject(event,0)==WAIT_OBJECT_0;
-    if(toggle.update(context&&(focused||external),(e&&r)||pad_chord,!e&&!r&&pad_neutral,GetTickCount64(),external))++transitions;
+    // Legacy keyboard/event toggles must not disable the unified body basis.
+    // Render-only preview entries retain their optional view switching.
+    if(!body_basis){
+        const bool focused=foreground();
+        const bool e=focused&&(GetAsyncKeyState('E')&0x8000),r=focused&&(GetAsyncKeyState('R')&0x8000);
+        bool pad_chord=false,pad_neutral=true;
+        if(focused&&get_pad)for(DWORD i=0;i<4;++i){Pad pad{};if(get_pad(i,&pad)==ERROR_SUCCESS){
+            pad_chord=pad_chord||((pad.buttons&0xc0)==0xc0);pad_neutral=pad_neutral&&!(pad.buttons&0xc0);}}
+        if(toggle.update(context&&(focused||external),(e&&r)||pad_chord,!e&&!r&&pad_neutral,GetTickCount64(),external))++transitions;
+    }
     if(!toggle.requested()||!context){++excluded;return false;}
+    body_view_required=body_basis;
     gears_first_person::WeaponState weapon{};const bool known=weapon_state(anchor,weapon);
-    const auto mode=gears_first_person::camera_mode(toggle.requested(),context,known,weapon.sniper,weapon.zoomed);
+    const auto mode=gears_first_person::camera_mode(toggle.requested(),context,known,weapon.sniper,weapon.zoomed,body_basis);
     if(mode==gears_first_person::CameraMode::unchanged){++excluded;return false;}
     if(mode==gears_first_person::CameraMode::native_scope){
         // Keep the original zoom camera byte-for-byte and prevent camera-closer
@@ -66,6 +73,6 @@ bool prepare(gears_anchor::Receipt const* anchor,gears_vr::StereoMatrix& view){
         ++rejected;return false;}
     view=result.view;preview_current=true;++applied;if(weapon.sniper)++sniper_applied;return true;
 }
-void print(FILE* file){fprintf(file,"first_person_preview enabled=%u requested=%u transitions=%llu applied=%llu excluded=%llu rejected=%llu weapon_unknown=%llu sniper_applied=%llu sniper_scoped=%llu body_basis=%u authored_eye_applied=%llu authored_eye_rejected=%llu authored_eye_x=%.6f authored_eye_y=%.6f authored_eye_z=%.6f anchor_forward_metres=%.2f anchor_up_metres=%.2f pitch_height_coupling=0 weapon_animation_modified=0\n",
+void print(FILE* file){fprintf(file,"first_person_missing_basis_rejected=%llu first_person_uncomposed_view_rejected=%llu\n",missing_basis_rejected,uncomposed_view_rejected);fprintf(file,"first_person_preview enabled=%u requested=%u transitions=%llu applied=%llu excluded=%llu rejected=%llu weapon_unknown=%llu sniper_applied=%llu sniper_scoped=%llu body_basis=%u authored_eye_applied=%llu authored_eye_rejected=%llu authored_eye_x=%.6f authored_eye_y=%.6f authored_eye_z=%.6f anchor_forward_metres=%.2f anchor_up_metres=%.2f pitch_height_coupling=0 weapon_animation_modified=0\n",
     unsigned(enabled),unsigned(toggle.requested()),transitions,applied,excluded,rejected,weapon_unknown,sniper_applied,sniper_scoped,unsigned(body_basis),authored_eye_applied,authored_eye_rejected,authored_eye_last[0],authored_eye_last[1],authored_eye_last[2],body_basis?0.:.35,body_basis?0.:.10);}
 }

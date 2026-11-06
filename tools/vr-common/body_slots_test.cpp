@@ -190,6 +190,24 @@ int main(){
     assert(body_slot(measured,body,{-1.7*.135,1.65-.15+.035-.55,.02},1)==BodySlot::pistol);
     assert(body_slot(measured,body,{1.7*.135,1.65-.15+.035-.55,.02},1)==BodySlot::grenade);
     assert(body_slot(measured,body,{3,3,3},1)==BodySlot::none);
+    // These offsets were outside the old16cm spheres. Both sides and both
+    // pockets must be forgiving, without joining across the torso or height.
+    const auto verify_reach=[&](Pose const& torso){
+        const auto transform=[&](Vector local){const auto v=gears_vr::transform(gears_vr::rotation_matrix(torso.orientation),local);
+            return Vector{torso.position.x+v.x,torso.position.y+v.y,torso.position.z+v.z};};
+        const double x=measured.armspan_metres*.135,y=measured.hands_below_head_metres+.035;
+        check(body_slot(measured,torso,transform({-x,y,.05+.23}),1)==BodySlot::weapon_2);
+        check(body_slot(measured,torso,transform({x,y+.23,.05}),1)==BodySlot::weapon_1);
+        check(body_slot(measured,torso,transform({-x,y-.55,.02-.21}),1)==BodySlot::pistol);
+        check(body_slot(measured,torso,transform({x,y-.55+.21,.02}),1)==BodySlot::grenade);
+        check(body_slot(measured,torso,transform({-x,y,.05+.23}),0)==BodySlot::shoulder_ammo);
+        check(body_slot(measured,torso,transform({0,y,.05}),1)==BodySlot::none);
+        check(body_slot(measured,torso,transform({0,y-.55,.02}),1)==BodySlot::none);
+        check(body_slot(measured,torso,transform({x,y-.275,.035}),1)==BodySlot::none);
+        check(body_slot(measured,torso,transform({x,y,.05+.26}),1)==BodySlot::none);
+        check(body_slot(measured,torso,transform({x,y-.55,.02+.24}),1)==BodySlot::none);
+    };
+    verify_reach(body);verify_reach({{3,2,-4},{0,std::sin(.7),0,std::cos(.7)}});
     calibrator.reset();
     for(int i=0;i<100;++i){
         const auto ns=4000000000LL+i*10000000LL;

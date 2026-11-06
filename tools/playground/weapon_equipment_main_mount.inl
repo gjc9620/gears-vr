@@ -26,7 +26,7 @@ policy::Status prepare_observed(hand::Frame const& frame,policy::BodyBinding con
     const auto allowed=policy::eligibility(frame,game,generation,nativeequipment::clock_ns(nullptr));
     if(allowed!=policy::Status::ready)return allowed;
     lancermain_asset::Evidence evidence{};diagnostic.asset_attempted=true;
-    diagnostic.asset_status=lancermain_asset::read(frame,evidence);
+    diagnostic.asset_status=lancermain_asset::read(frame,evidence,lancermain_asset::AssetScope::basic_hold);
     if(diagnostic.asset_status!=lancermain_asset::Status::ready)return policy::Status::unsupported_asset;
     if constexpr(enclosed_attachment){
         // The actual copy-frame observation above and independent final
@@ -45,7 +45,7 @@ policy::Status prepare_observed(hand::Frame const& frame,policy::BodyBinding con
     if(!weaponhand::client.source_game_on_gt(frame.key,after)||!hand::same_game(game,after)||
        vrequip::model.hold_generation()!=generation)return policy::Status::inactive;
     lancermain_asset::Evidence final_asset{};
-    if(lancermain_asset::read(frame,final_asset)!=lancermain_asset::Status::ready||
+    if(lancermain_asset::read(frame,final_asset,lancermain_asset::AssetScope::basic_hold)!=lancermain_asset::Status::ready||
        !hand::same(evidence.component,final_asset.component)||!hand::same(evidence.asset,final_asset.asset))
         return policy::Status::unsupported_asset;
     if(!weaponhand::client.armed()||!weaponhand::client.registration_alive(frame.key.registration_cookie,frame.key.native_started_qpc)||

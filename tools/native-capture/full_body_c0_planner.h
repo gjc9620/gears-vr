@@ -19,6 +19,7 @@ constexpr unsigned root=0,pelvis=1,head=55;
 constexpr std::array<unsigned,5> spine{{3,4,5,54,55}};
 constexpr unsigned legs[2][3]={{91,92,93},{95,96,97}};
 constexpr unsigned shoulders[2]={8,32};
+constexpr std::array<unsigned,9> neutral_rotation_bones{{1,3,4,5,6,7,30,31,54}};
 struct Matrix64 {float values[16]{};};
 struct Model {
     rig::Signature signature{};rig::CanonicalGeometry canonical{};
@@ -75,6 +76,14 @@ static_assert(sizeof(Atom)==32&&sizeof(Matrix64)==64);
 static_assert(std::is_trivially_copyable<Frame>::value&&std::is_trivially_copyable<Workspace>::value);
 namespace d {
 using namespace ik::detail;
+// Retail animation blending has produced 0x3f7ffffe (1 - FLT_EPSILON).
+// Use one symmetric float epsilon around unity: two representable steps below
+// 1 and one above. Preserve the exact source bytes; this is not model scaling,
+// bone stretching, or permission to relax the final geometric residuals.
+inline bool unit_animation_scale(float scale) noexcept {
+    constexpr float epsilon=0x1p-23f;
+    return scale>=1.f-epsilon&&scale<=1.f+epsilon;
+}
 inline Vec add(Vec a,Vec b) noexcept {return {a.x+b.x,a.y+b.y,a.z+b.z};}
 inline Quat inverse(Quat q) noexcept {return {-q.x,-q.y,-q.z,q.w};}
 inline Vec rotate(Quat q,Vec v) noexcept {return two::detail::rotated(q,v);}
@@ -159,7 +168,7 @@ inline Report plan(Model const& model,Frame const& frame,Goal const& goal,Worksp
     if(!similarity(work.component)||std::abs(length(row(work.component,0))-1)>2e-5)return fail(Status::component);
     const auto checked=validate(frame.local.data(),model.parents.data(),bones,work.component);
     if(checked!=ik::Status::okay)return fail(Status::atom);
-    for(unsigned i=0;i<bones;++i)if(frame.local[i].scale!=1)return fail(Status::model_scale,i);
+    for(unsigned i=0;i<bones;++i)if(!unit_animation_scale(frame.local[i].scale))return fail(Status::model_scale,i);
     std::memcpy(work.pose.local,frame.local.data(),sizeof(frame.local));if(!rebuild(model,work))return fail(Status::numerical);
     std::copy_n(work.pose.world,bones,work.original_world.data());
     const Vec base_pelvis=position(work.pose.world[pelvis]);Quat heading=yaw(goal.body_yaw_delta);
@@ -172,7 +181,10 @@ inline Report plan(Model const& model,Frame const& frame,Goal const& goal,Worksp
     if(goal.posture==Posture::reference_neutral){
         // Static Ref rotations only. No replacement of animated translation,
         // segment length, scale, foot anchor, head goal or hand mount.
-        for(unsigned i:{1u,3u,4u,5u,6u,30u,54u})std::memcpy(work.pose.local[i].q,model.reference[i].q,16);
+        // The two shoulder-deformation branches7/31 are siblings of the arm
+        // roots, not part of the arm IK chain. Leaving their aiming-animation
+        // rotations behind keeps deforming collar skin in a neutral VR body.
+        for(unsigned i:neutral_rotation_bones)std::memcpy(work.pose.local[i].q,model.reference[i].q,16);
         if(!rebuild(model,work))return fail(Status::numerical);
     }
     const Vec desired_pelvis=add(absolute?goal.absolute.neutral_pelvis_world:base_pelvis,add(goal.physical_world,goal.committed_grip_world));
@@ -204,25 +216,61 @@ inline Report plan(Model const& model,Frame const& frame,Goal const& goal,Worksp
     for(unsigned side=0;side<2;++side){
         const auto hip=legs[side][0],knee=legs[side][1],foot=legs[side][2];
         if(same_position(position(work.pose.world[foot]),goal.feet_world[side].position)&&same_rotation(rotation(work.pose.world[foot]),goal.feet_world[side].orientation))continue;
+        // Blended float quaternions can be near-unit rather than exact-unit.
+        // Encoding solved rotations changes that roundoff. Refine from the
+        // encoded FK, keeping the original foot goal, translations and scales;
+        // never increase the final fixed-length/foot-error acceptance limits.
+        for(unsigned refinement=0;refinement<3;++refinement){
         work.leg_input={};work.leg_input.shoulder=pose(work.pose.world[hip]);work.leg_input.elbow=pose(work.pose.world[knee]);work.leg_input.wrist=pose(work.pose.world[foot]);work.leg_input.target=goal.feet_world[side];
         work.leg_input.authored={true,add(point,rotate(heading,sub(position(work.original_world[knee]),base_pelvis)))};
         const auto status=two::solve(work.leg_input,work.leg_solution);
         if(status!=two::Status::solved)return fail(status==two::Status::unreachable?Status::leg_unreachable:Status::numerical,hip,length(sub(goal.feet_world[side].position,work.leg_input.shoulder.position)),radii[side]);
         const Pose solved[]={work.leg_solution.shoulder,work.leg_solution.elbow,work.leg_solution.wrist};
         for(unsigned j=0;j<3;++j)if(!world_rotation(model,work,legs[side][j],solved[j].orientation))return fail(Status::numerical,legs[side][j]);
+        if(length(sub(position(work.pose.world[foot]),goal.feet_world[side].position))<=.0005&&
+           angle(rotation(work.pose.world[foot]),goal.feet_world[side].orientation)<=1e-5)break;
+        }
     }
     for(unsigned i=0;i<5;++i)work.chain[i]=position(work.pose.world[spine[i]]);
     double total{},longest{};
     for(unsigned i=0;i<4;++i){const double n=length(sub(work.chain[i+1],work.chain[i]));if(n<1e-6)return fail(Status::atom,spine[i+1]);work.lengths[i]=n;total+=n;longest=(std::max)(longest,n);}
     const Vec anchor=work.chain[0];const double reach=length(sub(goal.head_world.position,anchor));
+    const Vec spine_pole=sub(work.chain[2],anchor);
     if(reach>total+1e-7||reach<(std::max)(0.,2*longest-total)-1e-7)return fail(Status::spine_unreachable,head,reach,total);
     if(!same_position(work.chain[4],goal.head_world.position,1e-6)){
-        for(unsigned iteration=0;iteration<256;++iteration){
+        // At maximum reach the only solution is a straight chain. FABRIK
+        // approaches that limit asymptotically and can exhaust its iteration
+        // budget even though this exact fixed-length solution is available.
+        if(reach>=total-1e-7){
+            const auto direction=mul(sub(goal.head_world.position,anchor),1./reach);
+            for(unsigned i=0;i<4;++i)work.chain[i+1]=add(work.chain[i],mul(direction,work.lengths[i]));
+        }else for(unsigned iteration=0;iteration<256;++iteration){
             work.chain[4]=goal.head_world.position;
             for(int i=3;i>=0;--i){Vec u{};if(!two::detail::unit(sub(work.chain[unsigned(i)],work.chain[unsigned(i)+1]),u))return fail(Status::numerical,spine[unsigned(i)]);work.chain[unsigned(i)]=add(work.chain[unsigned(i)+1],mul(u,work.lengths[unsigned(i)]));}
             work.chain[0]=anchor;
             for(unsigned i=0;i<4;++i){Vec u{};if(!two::detail::unit(sub(work.chain[i+1],work.chain[i]),u))return fail(Status::numerical,spine[i]);work.chain[i+1]=add(work.chain[i],mul(u,work.lengths[i]));}
             report.spine_iterations=iteration+1;if(length(sub(work.chain[4],goal.head_world.position))<1e-5)break;
+        }
+        if(length(sub(work.chain[4],goal.head_world.position))>.001&&reach>total*.995){
+            // Near full extension FABRIK converges asymptotically even for a
+            // reachable head. Falling back to the animated native torso then
+            // makes the head/shoulders jump while the wrists remain tracked.
+            // Solve a bounded analytic two-link chain instead, splitting each
+            // virtual link into its two ORIGINAL fixed-length spine segments.
+            // The bend plane comes from this invocation's neutral spine (or
+            // its authored frame at exact collinearity), never a prior pose.
+            const double upper=work.lengths[0]+work.lengths[1],lower=work.lengths[2]+work.lengths[3];
+            Vec axis{},radial{};
+            if(reach>std::abs(upper-lower)&&two::detail::unit(sub(goal.head_world.position,anchor),axis)&&
+               (two::detail::perpendicular(spine_pole,axis,radial)||
+                two::detail::frame_perpendicular(rotation(work.pose.world[spine[0]]),axis,radial))){
+                const double cosine=(std::clamp)((reach*reach+upper*upper-lower*lower)/(2*reach*upper),-1.,1.);
+                const Vec elbow=add(anchor,add(mul(axis,upper*cosine),mul(radial,upper*std::sqrt((std::max)(0.,1-cosine*cosine)))));
+                work.chain[1]=add(anchor,mul(sub(elbow,anchor),work.lengths[0]/upper));
+                work.chain[2]=elbow;
+                work.chain[3]=add(elbow,mul(sub(goal.head_world.position,elbow),work.lengths[2]/lower));
+                work.chain[4]=goal.head_world.position;
+            }
         }
         if(length(sub(work.chain[4],goal.head_world.position))>.001){auto failure=fail(Status::spine_iterations,head,length(sub(work.chain[4],goal.head_world.position)),total);failure.spine_iterations=report.spine_iterations;return failure;}
         for(unsigned i=0;i<4;++i){const auto b=spine[i],next=spine[i+1];Quat swing{};
@@ -241,5 +289,42 @@ inline Report plan(Model const& model,Frame const& frame,Goal const& goal,Worksp
     work.candidate.root_world=pose(work.pose.world[root]);work.candidate.pelvis_world=pose(work.pose.world[pelvis]);work.candidate.head_world=pose(work.pose.world[head]);
     for(unsigned side=0;side<2;++side){work.candidate.feet_world[side]=pose(work.pose.world[legs[side][2]]);work.candidate.shoulders_world[side]=pose(work.pose.world[shoulders[side]]);}
     work.candidate.report=report;output=work.candidate;return report;
+}
+// Standing first-person fallback for an HMD goal beyond fixed spine reach.
+// Solve the SAME neutral body/feet/root toward the nearest reachable head
+// position, keeping the requested head orientation. Never reintroduce the
+// animated weapon stance, stretch bones, or change the actual XR eye target.
+// The caller must report projection separately from exact HMD/body success.
+inline Report plan_with_spine_reach(Model const& model,Frame const& frame,Goal const& goal,
+    Workspace& work,Output& output,double& head_projection) noexcept {
+    head_projection=0;
+    const auto original=plan(model,frame,goal,work,output);
+    if(original.status!=Status::spine_unreachable||goal.scope!=Scope::stationary||
+       goal.posture!=Posture::reference_neutral||goal.target_mode!=BodyTargetMode::world_absolute||
+       original.requested_distance<=original.available_reach||original.available_reach<=0)return original;
+    // These chain values are produced by the just-completed, validated plan,
+    // never retained from a prior invocation or inferred from camera motion.
+    auto reachable=goal;const auto anchor=work.chain[0];
+    reachable.head_world.position=d::add(anchor,d::mul(d::sub(goal.head_world.position,anchor),
+        original.available_reach/original.requested_distance));
+    const auto result=plan(model,frame,reachable,work,output);
+    if(result.status==Status::solved)head_projection=d::length(d::sub(reachable.head_world.position,goal.head_world.position));
+    return result;
+}
+// Retain this invocation's original body when its spine cannot reach the HMD.
+// Hands still use the actual eye/controller basis. This is a separately solved
+// native-body goal, never a claim that the original HMD/body goal succeeded.
+inline Report retain_native_body(Model const& model,Frame const& frame,Workspace& work,Output& output) noexcept {
+    using namespace d;
+    const Range ranges[]={range(&model,sizeof model),range(&frame,sizeof frame),range(&work,sizeof work),range(&output,sizeof output)};
+    if(!disjoint(ranges,4))return fail(Status::alias);
+    if(frame.count!=bones)return fail(Status::count);
+    for(unsigned i=0;i<16;++i)work.component.m[i]=frame.component_to_world.values[i];
+    if(validate(frame.local.data(),model.parents.data(),bones,work.component)!=ik::Status::okay)return fail(Status::atom);
+    std::copy(frame.local.begin(),frame.local.end(),work.pose.local);
+    if(!rebuild(model,work))return fail(Status::numerical);
+    Goal native{};native.head_world=pose(work.pose.world[head]);
+    for(unsigned side=0;side<2;++side)native.feet_world[side]=pose(work.pose.world[legs[side][2]]);
+    return plan(model,frame,native,work,output);
 }
 } // namespace gears_full_body_c0

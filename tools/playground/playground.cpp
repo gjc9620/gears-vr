@@ -1,5 +1,18 @@
 // In-process UE3 playground bridge. Engine calls run on the observed game thread.
 #include <windows.h>
+#include <bcrypt.h>
+#include "../vr-common/weapon_part_geometry.h"
+#include "../vr-common/weapon_part_native_contract.h"
+#include "../vr-common/weapon_part_input_catalog.h"
+#include "../vr-common/weapon_snub_part_input.h"
+#include "../vr-common/weapon_snub_magazine_mount.h"
+#include "../vr-common/weapon_part_visibility.h"
+#include "../vr-common/weapon_hammerburst_latch_curve.h"
+#include "../vr-common/weapon_hammerburst_latch.h"
+#include "../vr-common/weapon_reload_geometry.h"
+#include "../vr-common/weapon_lancer_interaction_guide.h"
+#include "../vr-common/weapon_bolo_grenade_interaction.h"
+#include "weapon_equipment_names.h"
 #include <cstdint>
 #include <cstdio>
 #include <cstring>
@@ -67,6 +80,22 @@ bool local_quiescent() noexcept;
 #include "../vr-common/weapon_shot_scope.h"
 #if defined(GEARS_PLAYGROUND_UNIFIED_MUZZLE_FIRE)
 #include "../vr-common/weapon_support_grip.h"
+#include "../vr-common/weapon_reload_transaction.h"
+#include "../vr-common/weapon_lancer_magazine_pose.h"
+#include "../vr-common/weapon_lancer_insertion.h"
+#include "../vr-common/weapon_lancer_insertion_assist.h"
+#include "../vr-common/weapon_lancer_reload_policy.h"
+#include "../vr-common/weapon_lancer_charging.h"
+#include "../vr-common/weapon_lancer_front_handle.h"
+#include "../vr-common/weapon_lancer_handle_morph.h"
+#include "../vr-common/weapon_lancer_contact_route.h"
+#include "../vr-common/weapon_lancer_starter_mount.h"
+#include "../vr-common/weapon_lancer_chainsaw.h"
+#include "../vr-common/hand_object_grasp.h"
+#include "../vr-common/weapon_lancer_saw_input.h"
+#include "../vr-common/weapon_snub_slide.h"
+#include "../vr-common/weapon_snub_slide_curve.h"
+#include "../vr-common/weapon_lancer_motion_samples.h"
 #endif
 #endif
 #if defined(GEARS_PLAYGROUND_WEAPON_HAND_PARTICIPANT_TRIAL)
@@ -84,14 +113,20 @@ bool local_quiescent() noexcept;
 #error Native equipment requires the current hand registration and sole Native call owner
 #endif
 #include "weapon_equipment_runtime.h"
+#include "../vr-common/weapon_stow_lease.h"
 #include "weapon_equipment_native_config.h"
 #include "weapon_equipment_input.h"
+#include "controller_locomotion_input.h"
 #if defined(GEARS_PLAYGROUND_NATIVE_EQUIPMENT_MAIN_MOUNT_TRIAL)
 #include "weapon_main_mount_source.h"
 #endif
 #endif
 #if defined(GEARS_PLAYGROUND_HAND_RIG_TRACKING_TRIAL) || defined(GEARS_PLAYGROUND_NATIVE_EQUIPMENT_RIG_READER)
 #include "../vr-common/rig_tracking_reader.h"
+#include "../vr-common/committed_hand_endpoint.h"
+#include "../vr-common/committed_hand_interaction.h"
+#include "../vr-common/weapon_retained_item_motion.h"
+#include "../vr-common/committed_hand_consumer.h"
 #include "../vr-common/weapon_boundary_admission.h"
 #if defined(GEARS_PLAYGROUND_NATIVE_EQUIPMENT_RIG_READER)
 #include "weapon_rig_binding.h"
@@ -202,6 +237,7 @@ gears_rig_tracking::ReadResult read(gears_rig_tracking::Frame&,std::uint64_t) no
 #endif
 #if defined(GEARS_PLAYGROUND_EXPERIMENTAL_VR_R2)
 #include "../vr-common/controller_input_bridge.h"
+#include "../vr-common/current_tracking_reader.h"
 #include "../vr-common/original_r2_fire.h"
 #if defined(GEARS_PLAYGROUND_NATIVE_LANCER_R2_TRIAL)
 #include "weapon_lancer_r2.h"
@@ -239,6 +275,12 @@ gears_rig_tracking::ReadResult read(gears_rig_tracking::Frame&,std::uint64_t) no
 #include "../vr-common/weapon_lancer_starter_mount.h"
 #endif
 #endif
+#endif
+#if defined(GEARS_PLAYGROUND_NATIVE_LANCER_FOLLOW)
+#include "../vr-common/weapon_mesh_follow.h"
+#include "../vr-common/weapon_lancer_held_contact.h"
+#include "../vr-common/weapon_mesh_component_lease.h"
+#include "../vr-common/weapon_component_rotation.h"
 #endif
 extern "C" DWORD GearsPlaygroundAllocationAttempts(void);
 extern "C" DWORD GearsPlaygroundAllocationError(void);
@@ -552,6 +594,9 @@ enum class EquipmentYield:unsigned {failed,settling,ready};
 EquipmentYield yield_for_equipment(uptr,uptr);
 }
 #endif
+#if defined(GEARS_PLAYGROUND_NATIVE_EQUIPMENT_TRIAL)
+namespace nativeequipment::stow_native {void before_action(uptr,uptr) noexcept;void pre_original_tick(uptr) noexcept;}
+#endif
 #if defined(GEARS_PLAYGROUND_HAND_EQUIPMENT_COMBINED_TRIAL)
 namespace handstream {bool yield_for_equipment(const wchar_t*);bool equipment_ready();}
 namespace vrequip {unsigned hand_equipment_phase(uptr,uptr,uptr);}
@@ -624,6 +669,11 @@ bool invoke(Request* r){
 #endif
 #if defined(GEARS_PLAYGROUND_EQUIPMENT_STOW_TEST)
     if(r)vrequip::stow::before_action(r->object,r->function);
+#endif
+#if defined(GEARS_PLAYGROUND_NATIVE_EQUIPMENT_TRIAL)
+    // Owned reflected requests call the original dispatch directly. Close a
+    // stow journal BEFORE that boundary too, not only in the PE detour.
+    if(r)nativeequipment::stow_native::before_action(r->object,r->function);
 #endif
 #if defined(GEARS_PLAYGROUND_HAND_ANIMATION_PROBE)
     const auto observation=handanim::bridge_before(r);
@@ -982,6 +1032,9 @@ bool invoke_component_forward(Request* request,ComponentForwardGate& gate){
 #if defined(GEARS_PLAYGROUND_EQUIPMENT_STOW_TEST)
     if(request)vrequip::stow::before_action(request->object,request->function);
 #endif
+#if defined(GEARS_PLAYGROUND_NATIVE_EQUIPMENT_TRIAL)
+    if(request)nativeequipment::stow_native::before_action(request->object,request->function);
+#endif
 #if defined(GEARS_PLAYGROUND_HAND_ANIMATION_PROBE)
     const auto observation=handanim::bridge_before(request);
 #endif
@@ -1056,7 +1109,26 @@ namespace weaponhand {void equipment_hold_committed(uptr,gears_weapon::Equipment
 #endif
 #if defined(GEARS_PLAYGROUND_WEAPON_HAND_PARTICIPANT_TRIAL)
 #if defined(GEARS_PLAYGROUND_NATIVE_EQUIPMENT_TRIAL)
-namespace nativeequipment {bool configure_native(HMODULE) noexcept;}
+namespace nativeequipment {
+// Only equipment consumers borrow this configuration. Unrelated ProcessEvent
+// callbacks must not prevent a worker from establishing the hand connection.
+inline SRWLOCK configuration_lock=SRWLOCK_INIT;
+struct ConfigurationRead {
+    bool held{TryAcquireSRWLockShared(&configuration_lock)!=FALSE};
+    ~ConfigurationRead(){if(held)ReleaseSRWLockShared(&configuration_lock);}
+    ConfigurationRead()=default;
+    ConfigurationRead(ConfigurationRead const&)=delete;
+    ConfigurationRead& operator=(ConfigurationRead const&)=delete;
+};
+struct ConfigurationWrite {
+    bool held{TryAcquireSRWLockExclusive(&configuration_lock)!=FALSE};
+    ~ConfigurationWrite(){if(held)ReleaseSRWLockExclusive(&configuration_lock);}
+    ConfigurationWrite()=default;
+    ConfigurationWrite(ConfigurationWrite const&)=delete;
+    ConfigurationWrite& operator=(ConfigurationWrite const&)=delete;
+};
+bool configure_native(HMODULE) noexcept;
+}
 #endif
 #if defined(GEARS_PLAYGROUND_NATIVE_MAIN_MOUNT_PROVIDER_TRIAL)
 #include "weapon_main_mount_sender.h"
@@ -1065,6 +1137,83 @@ namespace mainmountprovider {gears_weapon_hand::Reply attach(HMODULE) noexcept;}
 #if defined(GEARS_PLAYGROUND_BODY_MAIN_MOUNT_PROVIDER_TRIAL)
 #include "body_main_mount_sender.h"
 namespace bodymountprovider {gears_weapon_hand::Reply attach(HMODULE) noexcept;}
+#endif
+#if defined(GEARS_PLAYGROUND_NATIVE_LANCER_FOLLOW)
+namespace handrender {gears_weapon_hand::Reply attach(HMODULE) noexcept;}
+namespace lancerreload_contact {
+void propose(gears_weapon_hand::Frame const&,gears_weapon_hand::GripGameState&) noexcept;
+void committed(gears_weapon_hand::Frame const&,gears_weapon_hand::Decision const&) noexcept;
+}
+namespace lancerhandle_visual {
+bool ready_for(gears_weapon_hand::Frame const&) noexcept;
+bool set_distance(gears_weapon_hand::Frame const&,double,gears_lancer_handle_morph::Receipt&) noexcept;
+bool restore() noexcept;
+}
+namespace lancersaw_starter {
+bool retain_incumbent(gears_weapon_hand::Frame const&,gears_weapon_hand::GripGameState&) noexcept;
+bool retain_grasp_during_pose_gap(uptr) noexcept;
+bool propose(gears_weapon_hand::Frame const&,gears_weapon_hand::GripGameState&,double*) noexcept;
+void committed(gears_weapon_hand::Frame const&,gears_weapon_hand::Decision const&) noexcept;
+bool blocks_fire(gears_weapon_hand::ObjectIdentity const&) noexcept;
+void tick(gears_weapon_hand::Frame const&,gears_weapon_hand::Decision const&) noexcept;
+void reset_after_drain() noexcept;
+}
+namespace lancersaw_original {
+extern std::atomic<bool> stop_requested,outstanding;
+bool retain_hold_during_pose_gap(uptr) noexcept;
+bool active() noexcept;
+bool blocks_fire(gears_weapon_hand::ObjectIdentity const&) noexcept;
+void prepare(gears_weapon_hand::Frame const&) noexcept;
+bool prepared() noexcept;
+bool begin(gears_weapon_hand::Frame const&) noexcept;
+void service(uptr) noexcept;
+void after_original_tick(uptr) noexcept;
+bool pre_equipment(gears_weapon_hand::Frame const&) noexcept;
+bool ready_motion_allowed(gears_weapon_hand::Frame const&) noexcept;
+void observe_call_no_engine(uptr,uptr,void const*) noexcept;
+void reset_after_drain() noexcept;
+}
+namespace lancersaw_contact {void tick(gears_weapon_hand::Frame const&) noexcept;}
+namespace hammerburst_runtime {
+bool matrix(std::array<float,16> const&,gears_vr::Pose&,double&) noexcept;
+void propose(gears_weapon_hand::Frame const&,gears_weapon_hand::GripGameState&) noexcept;
+bool tick(uptr) noexcept;
+bool blocks_fire(gears_weapon_hand::ObjectIdentity const&) noexcept;
+void switch_dispatched(gears_weapon_hand::Frame const&) noexcept;
+}
+namespace snub_runtime {
+void committed(gears_weapon_hand::Frame const&,gears_weapon_hand::Decision const&) noexcept;
+bool tick(uptr) noexcept;
+bool manual_enabled() noexcept;
+void propose(gears_weapon_hand::Frame const&,gears_weapon_hand::GripGameState&) noexcept;
+bool blocks_fire(gears_weapon_hand::ObjectIdentity const&) noexcept;
+void switch_dispatched(gears_weapon_hand::Frame const&) noexcept;
+}
+namespace weapon_part_assets {
+void on_frame(gears_weapon_hand::Frame const&) noexcept;
+void on_frame_unavailable() noexcept;
+}
+namespace lancerreload_ui {
+bool prepare(gears_weapon_hand::Frame const&) noexcept;
+void begin(gears_weapon_call::Invocation const&) noexcept;
+bool returned(gears_weapon_call::Invocation const&) noexcept;
+void cleanup(gears_weapon_call::Invocation const&) noexcept;
+}
+namespace lancerreload_reward {
+bool returned(gears_weapon_call::Invocation const&) noexcept;
+}
+namespace lancerhud_layout {bool begin(gears_weapon_call::Invocation const&) noexcept;bool cleanup(gears_weapon_call::Invocation const&) noexcept;}
+namespace fraglaunch {
+void begin(gears_weapon_call::Invocation const&) noexcept;
+bool returned(gears_weapon_call::Invocation const&) noexcept;
+bool cleanup(gears_weapon_call::Invocation const&) noexcept;
+}
+#endif
+#if defined(GEARS_PLAYGROUND_NATIVE_LANCER_FOLLOW)
+namespace nativelancerfollow {
+bool support_geometry(gears_weapon_hand::Frame const&,gears_vr::Pose&) noexcept;
+bool fill_support_mount(gears_weapon_hand::Frame const&,gears_weapon_hand::GripGameState&) noexcept;
+}
 #endif
 #include "weapon_hand_client.inl"
 #if defined(GEARS_PLAYGROUND_NATIVE_EQUIPMENT_MAIN_MOUNT_TRIAL)
@@ -1081,11 +1230,24 @@ namespace bodymountprovider {gears_weapon_hand::Reply attach(HMODULE) noexcept;}
 #include "weapon_unified_fire.h"
 #endif
 #if defined(GEARS_PLAYGROUND_WEAPON_CALL_SUBSCRIBER_TRIAL)
+#if defined(GEARS_PLAYGROUND_NATIVE_LANCER_FOLLOW)
+namespace lancerreload_manual {
+void begin(gears_weapon_call::Invocation const&) noexcept;
+bool returned(gears_weapon_call::Invocation const&) noexcept;
+void cleanup(gears_weapon_call::Invocation const&) noexcept;
+}
+#endif
+#if defined(GEARS_PLAYGROUND_NATIVE_EQUIPMENT_TRIAL)
+namespace nativeequipment::stow_native {void observe_call_no_engine(uptr,uptr,uptr) noexcept;}
+#endif
 #include "weapon_call_subscriber.inl"
 #endif
 #if defined(GEARS_PLAYGROUND_NATIVE_EQUIPMENT_TRIAL)
 #if defined(GEARS_PLAYGROUND_NATIVE_LANCER_R2_TRIAL)
-namespace vrfire {bool yield_for_native_equipment(gears_weapon_hand::Frame const&) noexcept;}
+namespace vrfire {
+bool yield_for_native_equipment(gears_weapon_hand::Frame const&) noexcept;
+void tick(uptr) noexcept;
+}
 #endif
 #if defined(GEARS_PLAYGROUND_NATIVE_EQUIPMENT_MAIN_MOUNT_TRIAL)
 namespace nativeequipment_main_mount {
@@ -1097,6 +1259,18 @@ void reset_after_drain() noexcept;
 namespace nativeequipment_rig {
 void tick(gears_weapon_hand::Frame const&) noexcept;
 void reset_after_drain() noexcept;
+}
+#endif
+#if defined(GEARS_PLAYGROUND_NATIVE_LANCER_FOLLOW)
+namespace nativelancerfollow {
+enum class Phase {prepare_only,post_original};
+void pre_original_tick(wchar_t const* observation_phase=L"pre_player_tick") noexcept;
+void tick(gears_weapon_hand::Frame const&,Phase phase=Phase::post_original) noexcept;
+void apply() noexcept;
+bool adjust_muzzle(gears_weapon_hand::Frame const&,lancermain_asset::Evidence const&,
+    playground::Vector&,playground::Rotation&) noexcept;
+bool sample_target(gears_weapon_hand::Frame const&,gears_vr::Vector&,gears_vr::Vector&) noexcept;
+bool active() noexcept;
 }
 #endif
 #if defined(GEARS_PLAYGROUND_NATIVE_EQUIPMENT_ATTACHMENT_OBSERVER)
@@ -1111,12 +1285,128 @@ void tick(gears_weapon_hand::Frame const&,gears_weapon_hand::GripGameState const
 void reset_after_drain() noexcept;
 }
 #endif
+#if defined(GEARS_PLAYGROUND_NATIVE_LANCER_FOLLOW)
+namespace lancerreload_manual {
+void prepare(gears_weapon_hand::Frame const&) noexcept;
+void prepare_starter(gears_weapon_hand::Frame const&) noexcept;
+bool requires_permission(gears_weapon_hand::Frame const&) noexcept;
+bool enter(gears_weapon_hand::Frame const&) noexcept;void leave() noexcept;
+}
+namespace lancerreload_runtime {
+void tick(uptr) noexcept; bool pre_tick(uptr) noexcept; bool needs_priority() noexcept;
+bool retain_charging_during_pose_gap(uptr) noexcept;
+bool retain_magazine_during_pose_gap(uptr) noexcept;
+bool stow_ready(gears_weapon_hand::Frame const&) noexcept;
+bool prepare_stow(gears_weapon_hand::Frame const&,bool&) noexcept;
+bool prepare_render_result(gears_committed_hand::Frame const&,gears_weapon_hand::Frame&) noexcept;
+bool on_render_result(gears_committed_hand::Frame const&,gears_weapon_hand::Frame const&) noexcept;
+void switch_dispatched(gears_weapon_hand::Frame const&) noexcept;
+}
+namespace lancersaw_visual {
+struct PhaseCost {
+    std::int64_t prepare_ns{},gun_ns{},stage_ns{},flush_ns{},ack_ns{},asset_source_ns{};
+    std::uint64_t asset_source_calls{};
+};
+extern PhaseCost last_cost;
+void tick(gears_weapon_hand::Frame const&,double pull_raw=0,bool deploy=false) noexcept;
+}
+namespace lancer_grasp {void tick(gears_weapon_hand::Frame const&,gears_weapon_hand::Decision const&) noexcept;}
+namespace fragruntime {
+#if defined(GEARS_PLAYGROUND_EXPERIMENTAL_VR_R2) && defined(GEARS_PLAYGROUND_UNIFIED_MUZZLE_FIRE)
+void tick(gears_weapon_hand::Frame const&,gears_weapon_hand::GripGameState const&) noexcept;
+void unavailable(uptr) noexcept;void reset_after_drain() noexcept;
+bool retain_return_during_pose_gap(uptr) noexcept;
+bool retain_preparation_during_pose_gap(uptr) noexcept;
+bool pre_equipment(gears_weapon_hand::Frame const&,gears_weapon_hand::GripGameState const&) noexcept;
+#else
+inline void tick(gears_weapon_hand::Frame const&,gears_weapon_hand::GripGameState const&) noexcept{}
+inline void unavailable(uptr) noexcept{}
+inline void reset_after_drain() noexcept{}
+inline bool retain_return_during_pose_gap(uptr) noexcept{return false;}
+inline bool retain_preparation_during_pose_gap(uptr) noexcept{return false;}
+inline bool pre_equipment(gears_weapon_hand::Frame const&,gears_weapon_hand::GripGameState const&) noexcept{return false;}
+#endif
+}
+namespace fragpreparation {
+#if defined(GEARS_PLAYGROUND_EXPERIMENTAL_VR_R2) && defined(GEARS_PLAYGROUND_UNIFIED_MUZZLE_FIRE)
+extern std::atomic<bool> outstanding,stop_requested;
+bool stop() noexcept;void service() noexcept;void reset_after_drain() noexcept;
+#else
+inline std::atomic<bool> outstanding{},stop_requested{};
+inline bool stop() noexcept{return true;}
+inline void service() noexcept{}
+inline void reset_after_drain() noexcept{stop_requested.store(false);}
+#endif
+}
+namespace fraglaunch {
+#if defined(GEARS_PLAYGROUND_EXPERIMENTAL_VR_R2) && defined(GEARS_PLAYGROUND_UNIFIED_MUZZLE_FIRE)
+extern std::atomic<bool> outstanding;
+void service() noexcept;void reset_after_drain() noexcept;
+#else
+inline std::atomic<bool> outstanding{};
+inline void service() noexcept{}
+inline void reset_after_drain() noexcept{}
+#endif
+}
+#endif
+// Last existing action-boundary observation, printed only with an already
+// bounded support-withdrawal receipt on ordinary GT. No reader, engine call,
+// permission or log I/O is introduced at the NoAuth boundary itself.
+namespace weaponaction_diagnostic {
+struct Observation {uptr object{},function{};wchar_t name[96]{};std::int64_t ns{};
+    unsigned source{},hands{},stow{},hands_dirty{},component_dirty{},stow_dirty{},pending{};};
+thread_local Observation last;
+void observe(uptr object,uptr function,wchar_t const* label,unsigned source,
+    bool hands,bool stow,bool dirty,bool component,bool stow_dirty,bool pending_item) noexcept {
+    last={};last.object=object;last.function=function;last.ns=weaponhand::clock_ns(nullptr);
+    for(unsigned i=0;i<96;++i)last.name[i]=label[i];last.source=source;
+    last.hands=hands;last.stow=stow;last.hands_dirty=dirty;last.component_dirty=component;
+    last.stow_dirty=stow_dirty;last.pending=pending_item;
+}
+void report(FILE* file) noexcept {
+    if(file&&last.function)fwprintf(file,L"native_equipment_withdrawal_action object=%llx function=%llx name=%ls source=%u hands=%u stow=%u hands_dirty=%u component_dirty=%u stow_dirty=%u pending=%u age_ns=%lld\n",
+        last.object,last.function,last.name,last.source,last.hands,last.stow,last.hands_dirty,
+        last.component_dirty,last.stow_dirty,last.pending,weaponhand::clock_ns(nullptr)-last.ns);
+}
+}
 #include "weapon_equipment_backend.inl"
+#include "controller_locomotion.inl"
 #if defined(GEARS_PLAYGROUND_NATIVE_EQUIPMENT_MAIN_MOUNT_TRIAL)
 #include "weapon_equipment_main_mount.inl"
 #endif
 #if defined(GEARS_PLAYGROUND_NATIVE_EQUIPMENT_RIG_READER)
 #include "weapon_equipment_rig.inl"
+#endif
+#if defined(GEARS_PLAYGROUND_NATIVE_LANCER_FOLLOW)
+#include "weapon_native_lancer_follow.inl"
+#include "committed_hand_consumer.inl"
+#include "weapon_lancer_reload_inventory.inl"
+namespace lancerreload_reward {
+bool invoke(lancerreload_inventory::Identity const&,bool,playground::Args&,bool&,bool&) noexcept;
+}
+#include "weapon_lancer_reload_state.inl"
+#include "weapon_lancer_reload_ui.inl"
+namespace lancersaw_original {bool starter_continuation(gears_weapon_call::Invocation const&) noexcept;}
+#include "weapon_lancer_manual_reload.inl"
+#include "weapon_reload_reward_scope.inl"
+namespace unified_weapon_fire {bool retained_metadata(gripdamage_metadata::Reader&) noexcept;}
+#include "weapon_hammerburst_animation.inl"
+#include "weapon_snub_animation.inl"
+#include "weapon_lancer_magazine_visual.inl"
+#include "weapon_lancer_charging.inl"
+#include "weapon_lancer_reload_contact.inl"
+#include "weapon_lancer_reload_runtime.inl"
+#include "weapon_part_assets.inl"
+#include "../vr-common/weapon_lancer_handle_morph.h"
+#include "weapon_part_inputs.inl"
+#include "weapon_lancer_handle_visual.inl"
+#include "weapon_lancer_saw_original.inl"
+#include "../vr-common/weapon_lancer_original_handle.h"
+#include "weapon_lancer_original_starter.inl"
+#include "weapon_lancer_starter_contact.inl"
+#include "weapon_lancer_grasp.inl"
+#include "weapon_lancer_saw_contact.inl"
+#include "weapon_snub_part_visibility.inl"
 #endif
 #if defined(GEARS_PLAYGROUND_NATIVE_EQUIPMENT_ATTACHMENT_OBSERVER)
 #include "weapon_equipment_attachment_observer.inl"
@@ -1125,8 +1415,30 @@ void reset_after_drain() noexcept;
 #if defined(GEARS_PLAYGROUND_EXPERIMENTAL_VR_R2)
 #if defined(GEARS_PLAYGROUND_UNIFIED_MUZZLE_FIRE)
 #include "weapon_unified_fire.inl"
+#if defined(GEARS_PLAYGROUND_NATIVE_LANCER_FOLLOW)
+#include "weapon_frag_original.inl"
+#endif
+#if defined(GEARS_PLAYGROUND_NATIVE_LANCER_FOLLOW)
+#include "weapon_hammerburst_runtime.inl"
+#include "weapon_snub_visual.inl"
+#include "weapon_snub_visual_clip.inl"
+#include "weapon_snub_charging.inl"
+#include "weapon_snub_runtime.inl"
+#include "weapon_hammerburst_guide.inl"
+#include "weapon_lancer_interaction_guide.inl"
+#include "weapon_lancer_interaction_ranges.inl"
+#include "weapon_lancer_hud_layout.inl"
+#endif
 #endif
 #include "vr_fire_adapter.inl"
+#if defined(GEARS_PLAYGROUND_UNIFIED_MUZZLE_FIRE) && defined(GEARS_PLAYGROUND_NATIVE_LANCER_FOLLOW)
+#include "weapon_frag_preparation.inl"
+#include "weapon_frag_launch.inl"
+#include "weapon_frag_runtime.inl"
+#endif
+#if defined(GEARS_PLAYGROUND_NATIVE_LANCER_R2_TRIAL) && defined(GEARS_PLAYGROUND_NATIVE_LANCER_FOLLOW) && defined(GEARS_PLAYGROUND_UNIFIED_MUZZLE_FIRE)
+#include "weapon_lancer_refire_native.inl"
+#endif
 #endif
 #if defined(GEARS_PLAYGROUND_HAND_WEAPON_MESH_PHASE1_TRIAL)
 namespace handstream {
@@ -1199,7 +1511,20 @@ void __fastcall event_hook(uptr object,uptr function,void* params){
 #if defined(GEARS_PLAYGROUND_HAND_IK_CONTROLLED_TRIAL)
     handikcontrolled::TickScope controlled_ik_tick_observation(object,function);
 #endif
+#if defined(GEARS_PLAYGROUND_NATIVE_LANCER_FOLLOW)
+    lancersaw_original::observe_call_no_engine(object,function,params);
+    if(enabled.load(std::memory_order_acquire))lancerreload_runtime::observe_magazine_notify(object,function);
+#endif
+#if defined(GEARS_PLAYGROUND_NATIVE_EQUIPMENT_TRIAL)
+    nativeequipment::stow_native::before_action(object,function);
+#endif
+#if defined(GEARS_PLAYGROUND_NATIVE_LANCER_R2_TRIAL) && defined(GEARS_PLAYGROUND_NATIVE_LANCER_FOLLOW) && defined(GEARS_PLAYGROUND_UNIFIED_MUZZLE_FIRE)
+    if(lancerrefire::capture_initial(object,function,params))return;
+#endif
     if(inside||!enabled.load(std::memory_order_acquire)){original_dispatch(object,function,params);return;}
+#if defined(GEARS_PLAYGROUND_NATIVE_LANCER_R2_TRIAL) && defined(GEARS_PLAYGROUND_NATIVE_LANCER_FOLLOW) && defined(GEARS_PLAYGROUND_UNIFIED_MUZZLE_FIRE)
+    if(lancerrefire::defer(object,function))return;
+#endif
 #if defined(GEARS_PLAYGROUND_NATIVE_EQUIPMENT_TRIAL)
     // Normal gameplay cannot depend on the private arena's cached PlayerTick
     // name/index. This is dispatch selection only; the post-Tick adapter still
@@ -1214,6 +1539,12 @@ void __fastcall event_hook(uptr object,uptr function,void* params){
         get<Name>(function+0x48).index!=playground::player_tick_index){
         original_dispatch(object,function,params);return;
     }
+    // This is past the recursion/irrelevant-event bypass. Keep parsing scratch
+    // through original dispatch and the post-tick equipment/fire consumers;
+    // all metadata and source authorization are still read afresh.
+#if defined(GEARS_PLAYGROUND_NATIVE_MAIN_MOUNT_PROVIDER_TRIAL)
+    weapon_metadata_parse::TickScope tick_parsing;
+#endif
     inside=true;
     if(!playground::automatic)record(object,function);
     if(playground::clicked(object,function,params)){inside=false;return;}
@@ -1223,6 +1554,10 @@ void __fastcall event_hook(uptr object,uptr function,void* params){
     wchar_t f[128]{};name(function,f,128);
 #else
     bool post_native_equipment_tick=false;
+    bool pre_reload_ticked=false;
+    // Observe this existing owning PlayerTick only. These timestamps never
+    // select input, authorize an action or change the original dispatch.
+    std::int64_t native_tick_work_begin{},native_tick_original_begin{},native_tick_original_end{};
 #endif
 #if defined(GEARS_PLAYGROUND_WEAPON_MESH_FOLLOW_TEST)
     bool post_weapon_tick=false;
@@ -1251,6 +1586,29 @@ void __fastcall event_hook(uptr object,uptr function,void* params){
         DWORD zero=0;game_thread.compare_exchange_strong(zero,GetCurrentThreadId());
         if(game_thread.load()==GetCurrentThreadId()){
 #if defined(GEARS_PLAYGROUND_NATIVE_EQUIPMENT_TRIAL)
+            if(playground::automatic&&native_player_tick)native_tick_work_begin=weaponhand::clock_ns(nullptr);
+#endif
+#if defined(GEARS_PLAYGROUND_NATIVE_LANCER_FOLLOW)
+            if(playground::automatic&&native_player_tick){
+                // Consume an actual bilateral C0 result before original
+                // component setters / PlayerTick revoke that publication.
+                // The active reload only writes its separately owned magazine;
+                // the sole gun writer still restores before original PlayerTick.
+                {
+                    nativeequipment::ConfigurationRead configuration;
+                    if(configuration.held){
+                        lancersaw_original::service(object);
+                        pre_reload_ticked=lancerreload_runtime::pre_tick(object);
+                    }
+                }
+                nativelancerfollow::pre_original_tick();
+#if defined(GEARS_PLAYGROUND_NATIVE_LANCER_R2_TRIAL)
+                vrfire::pre_original_held_shot(object);
+#endif
+            }
+#endif
+#if defined(GEARS_PLAYGROUND_NATIVE_EQUIPMENT_TRIAL)
+            if(playground::automatic&&native_player_tick)nativeequipment::stow_native::pre_original_tick(object);
             post_native_equipment_tick=native_player_tick;
 #endif
 #if defined(GEARS_PLAYGROUND_HAND_IK_STREAM_TRIAL)
@@ -1313,6 +1671,9 @@ void __fastcall event_hook(uptr object,uptr function,void* params){
         }
     }
     inside=false;
+#if defined(GEARS_PLAYGROUND_NATIVE_EQUIPMENT_TRIAL)
+    if(post_native_equipment_tick)native_tick_original_begin=weaponhand::clock_ns(nullptr);
+#endif
 #if defined(GEARS_PLAYGROUND_HAND_EQUIPMENT_COMBINED_TRIAL)
 #if defined(GEARS_PLAYGROUND_WEAPON_COMPONENT_HOLD_TRIAL)
     if(post_stream_hand_ik_tick){handstream::component_hold::ObserverScope hold_observer;
@@ -1327,19 +1688,70 @@ void __fastcall event_hook(uptr object,uptr function,void* params){
         handstream::component_hold::after_original(component_hold_token,true);}
 #endif
 #else
+#if defined(GEARS_PLAYGROUND_NATIVE_EQUIPMENT_TRIAL)
+    if(post_native_equipment_tick&&!controller_locomotion::entered&&game_thread.load()==GetCurrentThreadId())
+        controller_locomotion::dispatch(object,function,params,original_dispatch);
+    else
+#endif
     original_dispatch(object,function,params);
 #endif
 #if defined(GEARS_PLAYGROUND_NATIVE_EQUIPMENT_TRIAL)
+    if(post_native_equipment_tick)native_tick_original_end=weaponhand::clock_ns(nullptr);
     if(post_native_equipment_tick&&enabled.load(std::memory_order_acquire)&&game_thread.load()==GetCurrentThreadId()){
+        nativeequipment::ConfigurationRead configuration;
+        if(configuration.held){
         inside=true;
+#if defined(GEARS_PLAYGROUND_NATIVE_LANCER_FOLLOW)
+        // Confirm the original ready transition and suppress its target timer
+        // immediately after PlayerTick, even while hand publication changes.
+        lancersaw_original::after_original_tick(object);
+        fragpreparation::service();
+        fraglaunch::service();
+#endif
+#if defined(GEARS_PLAYGROUND_NATIVE_LANCER_R2_TRIAL) && defined(GEARS_PLAYGROUND_NATIVE_LANCER_FOLLOW) && defined(GEARS_PLAYGROUND_UNIFIED_MUZZLE_FIRE)
+        lancerrefire::service(object);
+#endif
         // Admit equipment input before muzzle/schema work consumes this tick's
         // budget. Equipment's switch adapter explicitly yields any owned R2
         // press before changing weapons; firing then sees the committed hold.
-        nativeequipment::tick(object);
+        const auto equipment_work_begin=weaponhand::clock_ns(nullptr);
+        bool reload_ticked_early=false;
+        [[maybe_unused]] const bool fire_ticked_early=nativeequipment::tick(object,reload_ticked_early,pre_reload_ticked);
+        const auto equipment_tick_end=weaponhand::clock_ns(nullptr);
 #if defined(GEARS_PLAYGROUND_NATIVE_LANCER_R2_TRIAL)
-        vrfire::tick(object);
+        if(!fire_ticked_early)vrfire::tick(object);
 #endif
+#if defined(GEARS_PLAYGROUND_NATIVE_LANCER_FOLLOW)
+        nativelancerfollow::apply();
+        if(!reload_ticked_early)lancerreload_runtime::tick(object);
+        hammerburst_guide::tick(object);
+        lancer_interaction_guide::tick(object);
+        lancer_interaction_ranges::tick(object);
+#if defined(GEARS_PLAYGROUND_UNIFIED_MUZZLE_FIRE)
+        lancerhud_layout::tick(object);
+#endif
+        lancerhandle_visual::tick(object);
+        if(lancersaw_visual::stop_requested.load()||lancersaw_visual::revoking)lancersaw_visual::restore();
+        weapon_part_assets::drain();
+        snub_part_visibility::drain_on_gt();
+#endif
+        static unsigned equipment_work_logs{},equipment_work_observed{};
+        if(log_file&&equipment_work_logs<16&&vrequip::model.hold_generation()){
+            const auto ordinal=equipment_work_observed++;
+            // Keep the original bounded receipt, with four early rows and
+            // later samples. Initial setup alone did not describe the slow
+            // settled frames. No per-call tracing or additional collector.
+            if(ordinal<4||ordinal%128==0){
+                const auto end=weaponhand::clock_ns(nullptr);
+                fwprintf(log_file,L"native_equipment_post_tick_cost elapsed_ns=%lld observed=%u pre_original_ns=%lld original_player_tick_ns=%lld after_original_service_ns=%lld equipment_tick_ns=%lld follow_reload_ns=%lld total_ns=%lld\n",
+                    end-equipment_work_begin,ordinal,native_tick_original_begin-native_tick_work_begin,
+                    native_tick_original_end-native_tick_original_begin,equipment_work_begin-native_tick_original_end,
+                    equipment_tick_end-equipment_work_begin,end-equipment_tick_end,end-native_tick_work_begin);
+                fflush(log_file);++equipment_work_logs;
+            }
+        }
         inside=false;
+        }
     }
 #endif
 #if defined(GEARS_PLAYGROUND_HAND_ANIMATION_PROBE)
@@ -2064,8 +2476,90 @@ extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundVrAimStatus(void*){
 #if defined(GEARS_PLAYGROUND_WEAPON_HAND_PARTICIPANT_TRIAL)
 extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundWeaponHandStart(void* native_module){
     if(weaponhand::current_gt(nullptr))return unsigned(gears_weapon_hand::Reply::reentrant);
-    LifecycleScope lifecycle;return unsigned(weaponhand::start(static_cast<HMODULE>(native_module)));
+    LifecycleScope lifecycle;
+#if defined(GEARS_PLAYGROUND_NATIVE_EQUIPMENT_TRIAL)
+    if(nativeequipment::stow_native::outstanding.load())return unsigned(gears_weapon_hand::Reply::draining);
+    nativeequipment::stow_native::reset_after_drain();
+#endif
+#if defined(GEARS_PLAYGROUND_NATIVE_LANCER_FOLLOW)
+    if(fragpreparation::outstanding.load(std::memory_order_acquire)||fraglaunch::outstanding.load(std::memory_order_acquire)||lancersaw_original::outstanding.load(std::memory_order_acquire)||lancerreload_runtime::outstanding.load(std::memory_order_acquire))return unsigned(gears_weapon_hand::Reply::draining);
+    if(weapon_part_assets::outstanding.load(std::memory_order_acquire)||snub_part_visibility::outstanding()||lancerhandle_visual::live()||lancersaw_visual::live())return unsigned(gears_weapon_hand::Reply::draining);
+    lancersaw_original::reset_after_drain();
+    fragpreparation::reset_after_drain();
+    fraglaunch::reset_after_drain();
+    fragruntime::reset_after_drain();
+    lancerreload_runtime::stop_requested.store(false,std::memory_order_release);
+    weapon_part_assets::stop_requested.store(false,std::memory_order_release);
+    snub_part_visibility::reset_after_drain();
+    lancerhandle_visual::reset_after_drain();
+    lancersaw_visual::reset_after_drain();
+    weapon_part_inputs::original_source_enabled.store(false,std::memory_order_release);
+#endif
+    return unsigned(weaponhand::start(static_cast<HMODULE>(native_module)));
 }
+#if defined(GEARS_PLAYGROUND_NATIVE_EQUIPMENT_TRIAL)
+extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundControllerTurnDeadzone(void* argument){
+    LifecycleScope lifecycle;
+    const auto value=reinterpret_cast<uptr>(argument);
+    if(value>5000||!enabled.load(std::memory_order_acquire)||!playground::automatic||
+       weaponhand::client.phase()!=gears_weapon_hand::ClientPhase::active)return 1;
+    controller_locomotion::turn_deadzone_basis_points.store(unsigned(value),std::memory_order_release);
+    return 0;
+}
+#if defined(GEARS_PLAYGROUND_NATIVE_LANCER_FOLLOW)
+extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundLancerReloadPolicy(void* argument){
+    LifecycleScope lifecycle;
+    gears_weapon::LancerReloadPolicy value{};
+    if(!gears_weapon::LancerReloadPolicy::unpack(reinterpret_cast<uptr>(argument),value)||
+       !enabled.load(std::memory_order_acquire)||!playground::automatic||
+       weaponhand::client.phase()!=gears_weapon_hand::ClientPhase::active)return 1;
+    lancerreload_runtime::configured_policy.store(value.packed(),std::memory_order_release);
+    return 0;
+}
+extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundLancerInteractionRanges(void* argument){
+    LifecycleScope lifecycle;
+    const auto value=reinterpret_cast<uptr>(argument);
+    if(value>1||!enabled.load(std::memory_order_acquire)||!playground::automatic||
+       weaponhand::client.phase()!=gears_weapon_hand::ClientPhase::active)return 1;
+    lancer_interaction_ranges::enabled.store(value!=0,std::memory_order_release);
+    return 0;
+}
+extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundWeaponReloadPolicy(void* argument){
+    LifecycleScope lifecycle;
+    const auto packed=std::uint64_t(reinterpret_cast<uptr>(argument));
+    const auto kind=packed>>40;
+    gears_weapon::LancerReloadPolicy value{};
+    if((kind!=1&&kind!=2)||!gears_weapon::LancerReloadPolicy::unpack(packed&((1ull<<40)-1),value)||
+       !enabled.load(std::memory_order_acquire)||!playground::automatic||
+       weaponhand::client.phase()!=gears_weapon_hand::ClientPhase::active)return 1;
+    (kind==1?snub_runtime::configured_policy:hammerburst_runtime::configured_policy).store(value.packed(),std::memory_order_release);
+    return 0;
+}
+extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundOriginalPartInputsEnable(void* argument){
+    LifecycleScope lifecycle;
+    const auto value=reinterpret_cast<uptr>(argument);
+    if(value>1||!enabled.load(std::memory_order_acquire)||!playground::automatic)return 1;
+    const bool wanted=value!=0;
+    if(wanted!=weapon_part_inputs::original_source_enabled.load(std::memory_order_acquire)&&
+       (lancersaw_original::outstanding.load(std::memory_order_acquire)||weapon_part_assets::outstanding.load(std::memory_order_acquire)||snub_part_visibility::outstanding()||lancerhandle_visual::live()||lancersaw_visual::live()))return 4;
+    weapon_part_inputs::original_source_enabled.store(wanted,std::memory_order_release);
+    return 0;
+}
+#endif
+extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundEquipmentCalibrationRefresh(void*){
+    using Reply=gears_weapon_hand::Reply;
+    if(weaponhand::current_gt(nullptr))return unsigned(Reply::reentrant);
+    LifecycleScope lifecycle;
+    if(!weaponhand::native_module||weaponhand::client.phase()!=gears_weapon_hand::ClientPhase::active)
+        return unsigned(Reply::unavailable);
+    nativeequipment::ConfigurationWrite configuration;
+    if(!configuration.held)return unsigned(Reply::busy);
+    if(nativeequipment::calibration_measured&&nativeequipment::calibration.valid())return unsigned(Reply::accepted);
+    if(nativeequipment::configure_native(weaponhand::native_module))return unsigned(Reply::accepted);
+    // This export's 6 means usable authored slot layout, NOT real calibration.
+    return unified_weapon_fire::manual_profile()?6u:unsigned(Reply::unavailable);
+}
+#endif
 #if defined(GEARS_PLAYGROUND_HAND_RIG_TRACKING_TRIAL)
 extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundHandRigConnect(void* argument){
     using Reply=gears_weapon_hand::Reply;
@@ -2085,7 +2579,29 @@ extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundHandRigConnect(void* arg
 #endif
 extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundWeaponHandStop(void*){
     if(weaponhand::current_gt(nullptr))return unsigned(gears_weapon_hand::Reply::reentrant);
-    LifecycleScope lifecycle;return unsigned(weaponhand::stop());
+    LifecycleScope lifecycle;
+#if defined(GEARS_PLAYGROUND_NATIVE_EQUIPMENT_TRIAL)
+#if defined(GEARS_PLAYGROUND_NATIVE_LANCER_FOLLOW)
+    fragpreparation::stop_requested.store(true,std::memory_order_release);
+#endif
+    nativeequipment::stow_native::stop_requested.store(true,std::memory_order_release);
+    const auto stow_until=GetTickCount64()+2000;
+    while((nativeequipment::stow_native::outstanding.load()||callbacks.load())&&GetTickCount64()<stow_until)Sleep(1);
+    if(nativeequipment::stow_native::outstanding.load()||callbacks.load())return unsigned(gears_weapon_hand::Reply::draining);
+#endif
+#if defined(GEARS_PLAYGROUND_NATIVE_LANCER_FOLLOW)
+    lancerreload_runtime::stop_requested.store(true,std::memory_order_release);
+    lancersaw_original::stop_requested.store(true,std::memory_order_release);
+    fragpreparation::stop_requested.store(true,std::memory_order_release);
+    weapon_part_assets::stop_requested.store(true,std::memory_order_release);
+    snub_part_visibility::request_stop();
+    lancerhandle_visual::request_stop();
+    lancersaw_visual::request_stop();
+    const auto until=GetTickCount64()+2000;
+    while((fragpreparation::outstanding.load(std::memory_order_acquire)||fraglaunch::outstanding.load(std::memory_order_acquire)||lancersaw_original::outstanding.load(std::memory_order_acquire)||lancerreload_runtime::outstanding.load(std::memory_order_acquire)||weapon_part_assets::outstanding.load(std::memory_order_acquire)||snub_part_visibility::outstanding()||lancerhandle_visual::live()||lancersaw_visual::live()||callbacks.load(std::memory_order_acquire))&&GetTickCount64()<until)Sleep(1);
+    if(fragpreparation::outstanding.load(std::memory_order_acquire)||fraglaunch::outstanding.load(std::memory_order_acquire)||lancersaw_original::outstanding.load(std::memory_order_acquire)||lancerreload_runtime::outstanding.load(std::memory_order_acquire)||weapon_part_assets::outstanding.load(std::memory_order_acquire)||snub_part_visibility::outstanding()||lancerhandle_visual::live()||lancersaw_visual::live()||callbacks.load(std::memory_order_acquire))return unsigned(gears_weapon_hand::Reply::draining);
+#endif
+    return unsigned(weaponhand::stop());
 }
 extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundWeaponHandStatus(void*){
     return unsigned(weaponhand::client.phase())|(weaponhand::client.armed()?0x100u:0u);
@@ -2128,6 +2644,30 @@ extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundShutdown(void*){
 #endif
     LifecycleScope lifecycle;
 #if defined(GEARS_PLAYGROUND_WEAPON_HAND_PARTICIPANT_TRIAL)
+#if defined(GEARS_PLAYGROUND_NATIVE_EQUIPMENT_TRIAL)
+    // Close the original holster handoff on GT while the Native client is
+    // still attached; an unresolved journal may never disappear on unload.
+#if defined(GEARS_PLAYGROUND_NATIVE_LANCER_FOLLOW)
+    fragpreparation::stop_requested.store(true,std::memory_order_release);
+#endif
+    nativeequipment::stow_native::stop_requested.store(true,std::memory_order_release);
+    const auto stow_until=GetTickCount64()+2000;
+    while((nativeequipment::stow_native::outstanding.load()||callbacks.load())&&GetTickCount64()<stow_until)Sleep(1);
+    if(nativeequipment::stow_native::outstanding.load()||callbacks.load())return 54;
+#endif
+#if defined(GEARS_PLAYGROUND_NATIVE_LANCER_FOLLOW)
+    // Restore owned magazine/reload state on GT before withdrawing its client.
+    lancerreload_runtime::stop_requested.store(true,std::memory_order_release);
+    lancersaw_original::stop_requested.store(true,std::memory_order_release);
+    fragpreparation::stop_requested.store(true,std::memory_order_release);
+    weapon_part_assets::stop_requested.store(true,std::memory_order_release);
+    snub_part_visibility::request_stop();
+    lancerhandle_visual::request_stop();
+    lancersaw_visual::request_stop();
+    const auto reload_until=GetTickCount64()+2000;
+    while((fragpreparation::outstanding.load(std::memory_order_acquire)||fraglaunch::outstanding.load(std::memory_order_acquire)||lancersaw_original::outstanding.load(std::memory_order_acquire)||lancerreload_runtime::outstanding.load(std::memory_order_acquire)||weapon_part_assets::outstanding.load(std::memory_order_acquire)||snub_part_visibility::outstanding()||lancerhandle_visual::live()||lancersaw_visual::live()||callbacks.load(std::memory_order_acquire))&&GetTickCount64()<reload_until)Sleep(1);
+    if(fragpreparation::outstanding.load(std::memory_order_acquire)||fraglaunch::outstanding.load(std::memory_order_acquire)||lancersaw_original::outstanding.load(std::memory_order_acquire)||lancerreload_runtime::outstanding.load(std::memory_order_acquire)||weapon_part_assets::outstanding.load(std::memory_order_acquire)||snub_part_visibility::outstanding()||lancerhandle_visual::live()||lancersaw_visual::live()||callbacks.load(std::memory_order_acquire))return 54;
+#endif
     if(weaponhand::stop()!=gears_weapon_hand::Reply::quiescent)return 53;
     // client remains static/alive through the existing hook-disable and PG
     // callbacks drain below. Native quiescence alone never permits PG unload.
@@ -2190,6 +2730,13 @@ extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundShutdown(void*){
 #endif
 #if defined(GEARS_PLAYGROUND_EXPERIMENTAL_VR_R2)
     if(const auto stopped=vrfire::disable())return 10+stopped;
+#endif
+#if defined(GEARS_PLAYGROUND_NATIVE_LANCER_FOLLOW)
+    {
+        const auto deadline=GetTickCount64()+2000;
+        while(nativelancerfollow::active()&&GetTickCount64()<deadline)Sleep(1);
+        if(nativelancerfollow::active())return 21;
+    }
 #endif
 #if defined(GEARS_PLAYGROUND_WEAPON_MESH_FOLLOW_TEST)
     vrequip::support_probe_requested.store(false,std::memory_order_release);
@@ -2309,6 +2856,9 @@ extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundShutdown(void*){
     if(hook_created){
 #if defined(GEARS_PLAYGROUND_HAND_ANIMATION_CALL_PROBE) && !defined(GEARS_PLAYGROUND_WEAPON_CALL_SUBSCRIBER_TRIAL)
         if(!handanimcall::remove())return 33;
+#endif
+#if defined(GEARS_PLAYGROUND_NATIVE_LANCER_FOLLOW) && defined(GEARS_PLAYGROUND_UNIFIED_MUZZLE_FIRE)
+        if(!lancerhud_layout::stopped())return 33;
 #endif
         if(MH_RemoveHook(reinterpret_cast<void*>(base+0x1d8dd8))!=MH_OK)return 3;
         if(MH_Uninitialize()!=MH_OK)return 4;

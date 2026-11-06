@@ -31,8 +31,11 @@ def locate(game_path=None):
     folder = (instance_policy.local_appdata() / 'Coalition/WarGame/Config').resolve()
     # An explicit per-install binding supports installations using a different
     # local profile. A game-path change cannot silently reuse another binding.
-    if game_path is not None and not instance_policy.context():
-        config_path = ROOT / 'tools/vr-launcher/config.json'
+    if game_path is not None:
+        selected_instance=instance_policy.context()
+        # An isolated launcher may bind its OWN copied settings explicitly.
+        # Never borrow the shared launcher's binding or change Steam metadata.
+        config_path = (selected_instance / 'config.json') if selected_instance else ROOT / 'tools/vr-launcher/config.json'
         config = json.loads(config_path.read_text(encoding='utf-8')) if config_path.exists() else {}
         bindings = config.get('game_settings_paths', {})
         if (not isinstance(bindings, dict) or any(

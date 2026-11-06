@@ -36,6 +36,13 @@ void write_diagnostics_after_drain() noexcept {
     for(unsigned i=0;i<bodymountequipment::asset_results.size();++i)
         fwprintf(log_file,L" status_%u=%llu",i,bodymountequipment::asset_results[i]);
     fwprintf(log_file,L"\n");
+#if defined(GEARS_PLAYGROUND_NATIVE_LANCER_L2_TRIAL)
+    const auto& d=bodymountequipment::unheld_witness;
+    fwprintf(log_file,L"native_body_mount_unheld queries=%llu generation=%llu model_held=%llu binding_known=%llu binding_generation=%llu binding_world=%llu binding_controller=%llu binding_pawn=%llu binding_weapon=%llu binding_native=%llu first_scene=%llu first_weapon=%llx first_binding_weapon=%llx\n",
+        d.queries,d.generation,d.model_held,d.binding_known,d.binding_generation,d.binding_world,
+        d.binding_controller,d.binding_pawn,d.binding_weapon,d.binding_native,
+        d.first_after_generation_scene,d.first_after_generation_weapon,d.first_after_generation_binding_weapon);
+#endif
     fflush(log_file);
 }
 bool publish(wire::Response* out,wire::Response const& value) noexcept {
@@ -43,10 +50,10 @@ bool publish(wire::Response* out,wire::Response const& value) noexcept {
     __except(GetExceptionCode()==0xe06d7363ul||GetExceptionCode()==EXCEPTION_STACK_OVERFLOW?
         EXCEPTION_CONTINUE_SEARCH:EXCEPTION_EXECUTE_HANDLER){return false;}
 }
-bool running(sender::Parent const& parent) noexcept {
+bool running(sender::Parent const& parent,std::uint64_t generation) noexcept {
     return enabled.load(std::memory_order_acquire)&&weaponhand::current_gt(nullptr)==parent.game_thread&&
         nativeequipment::domain_ready()&&weaponhand::client.registration_alive(parent.cookie,parent.native_started_qpc)&&
-        weaponhand::client.armed();
+        generation&&weaponhand::client.metadata_generation_on_gt()==generation;
 }
 std::uint32_t prepare_data(wire::Request const* request) noexcept {
     active_receipt.stage=1;std::uint32_t header[2]{};
@@ -59,19 +66,20 @@ std::uint32_t prepare_data(wire::Request const* request) noexcept {
     active_receipt.tick=r.source.tracking.tick;active_receipt.compose=r.source.basis.compose;active_receipt.sync=r.source.tracking.controllers.sync_ns;
     const sender::Parent parent{weaponhand::client.cookie(),weaponhand::client.native_started_qpc(),
         GetCurrentProcessId(),weaponhand::current_gt(nullptr)};
-    if(!running(parent))return unsigned(wire::Status::inactive);
+    const auto generation=weaponhand::client.metadata_generation_on_gt();
+    if(!running(parent,generation))return unsigned(wire::Status::inactive);
     active_receipt.stage=2;
     auto status=sender::context(r,parent,weaponhand::clock_ns(nullptr),scratch.identity);
     if(status!=wire::Status::ready)return unsigned(status);
     active_receipt.stage=3;
-    status=bodymountequipment::observe(r,parent,scratch.identity,scratch.observation);
+    status=bodymountequipment::observe(r,parent,generation,scratch.identity,scratch.observation);
     active_receipt.equipment_begin=scratch.observation.begin_ns;active_receipt.equipment_end=scratch.observation.end_ns;
     if(status!=wire::Status::ready)return unsigned(status);
-    if(!running(parent)||!bodymountequipment::held_current(scratch.identity,scratch.observation.hold_generation))
+    if(!running(parent,generation)||!bodymountequipment::held_current(scratch.identity,scratch.observation.hold_generation))
         return unsigned(wire::Status::inactive);
     active_receipt.stage=4;
     status=sender::response(r,parent,scratch.identity,scratch.observation,weaponhand::clock_ns(nullptr),scratch.response);
-    if(!running(parent)||!bodymountequipment::held_current(scratch.identity,scratch.observation.hold_generation)){
+    if(!running(parent,generation)||!bodymountequipment::held_current(scratch.identity,scratch.observation.hold_generation)){
         scratch.response=empty_response;return unsigned(wire::Status::inactive);
     }
     return unsigned(status);

@@ -219,7 +219,7 @@ bool next(Entry& e){e.thread=GetCurrentThreadId();e.invocation=serial.fetch_add(
 void tick_begin(Entry& e){e.tick_depth=true;e.depth=++slot.tick_depth;
     if(slot.active){reject(Failure::nested);return;}if(e.depth!=1||stopping.load())return;
     binding::Binding actor{};rig::CoreReadRequest request{};
-    if(!(body_tick_source_live::enabled?rig::copy_scene_metadata_owner(actor,request):rig::copy_scene_owner(actor,request))||e.rcx!=actor.mesh.address||e.thread!=request.native.game_thread)return;
+    if(!(body_tick_source_live::enabled?rig::copy_scene_metadata_owner(actor,request,e.rcx):rig::copy_scene_owner(actor,request))||e.rcx!=actor.mesh.address||e.thread!=request.native.game_thread)return;
     // Only cached owner + code here. Actor/vtable reads require the lease below.
     if(e.ra!=base+0x12e537||!caller_certified.load()||!phase::own_entries()||!controls::own_entries()){++rejected;return;}
     slot.active=true;e.selected=true;slot.tick_address=&e;slot.tick=e.invocation;++live_frames;++ticks;
@@ -233,6 +233,11 @@ void tick_begin(Entry& e){e.tick_depth=true;e.depth=++slot.tick_depth;
     slot.lease=::new(static_cast<void*>(slot.lease_storage)) ::Scope;
     if(!slot.lease->world()){reject(Failure::lease);return;}
     const auto metadata_begin_ns=rig::clock_ns();
+    if(body_tick_source_live::enabled){
+        binding::Binding current_actor{};
+        if(!binding::current_tick_actor(owner.binding,current_actor)){reject(Failure::owner);return;}
+        owner.binding=current_actor;
+    }
     if(!owner_current()){reject(Failure::owner);return;}
     slot.attempted=true;
     if(body_tick_source_live::enabled){
@@ -258,6 +263,7 @@ void compose_begin(Entry& e){if(!slot.active)return;
     slot.compose.address=&slot.compose.scope;
     slot.compose.continuous=true;slot.compose.admitted=true;slot.compose.outer_tick=slot.tick;slot.data.record.compose=e.invocation;
     if(!control_current(slot.compose.scope)){++compose_rejections[0];reject(Failure::metadata);return;}
+    if(body_tick_source_live::enabled)body_tick_source_live::acquire_for_compose(slot.tick,e.thread);
     if(!(body_tick_source_live::enabled?current_body_source():same_source())){++compose_rejections[1];reject(Failure::metadata);return;}
     if(!metadata(true)){++compose_rejections[2];reject(Failure::metadata);return;}
     if(!geometry()){++compose_rejections[3];reject(Failure::metadata);return;}

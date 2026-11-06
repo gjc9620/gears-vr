@@ -27,6 +27,21 @@ void rejects(AssetMemory& m){
 template<class Change>void rejection(Change change){auto m=std::make_unique<AssetMemory>();change(*m);rejects(*m);}
 }
 int main(){
+    // Actual Frag uses its own class/asset package and never gains the
+    // existing firearm, muzzle, or Lancer mechanical eligibility.
+    {AssetMemory m;const auto frag=m.cls(L"Weap_FragGrenade",m.warfare,m.weapon_class);
+        const auto package=m.node(L"COG_Bolo_Grenade",m.package_type);
+        Memory::put(m.weapon,0x50,frag);Memory::put(m.asset,0x48,m.text(L"Frag_Grenade"));
+        Memory::put(m.asset,0x40,package);m.frame.weapon=m.identity(m.weapon);m.tables();
+        la::Evidence out{};assert(la::read(m.frame,out,la::AssetScope::frag_hold)==la::Status::ready);
+        assert(gears_weapon_hand::same(out.asset,m.identity(m.asset)));
+        assert(la::read(m.frame,out,la::AssetScope::basic_hold)==la::Status::unsupported_weapon);
+        assert(la::read(m.frame,out,la::AssetScope::supported_instant_fire)==la::Status::unsupported_weapon);
+        Memory::put(package,0x48,m.text(L"OtherGrenadePackage"));m.tables();
+        assert(la::read(m.frame,out,la::AssetScope::frag_hold)==la::Status::unsupported_asset);++cases;
+    }
+    {AssetMemory m;la::Evidence out{};
+        assert(la::read(m.frame,out,la::AssetScope::frag_hold)==la::Status::unsupported_weapon);++cases;}
     for(bool object_mesh:{false,true}){auto m=std::make_unique<AssetMemory>(object_mesh);la::Evidence out{};
         assert(m->read_asset(out)==la::Status::ready&&abi::same(out.component,m->identity(m->component))&&
             abi::same(out.asset,m->identity(m->asset)));++cases;}

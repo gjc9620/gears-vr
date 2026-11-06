@@ -18,6 +18,7 @@ struct GripGameState {
     double acquire_metres{.10},release_metres{.18};
     std::array<Lease,2> object_incumbents{}; // Actual ammo/magazine/other objects.
     bool request_ammo{},request_magazine{}; // Independently certified candidates.
+    bool magazine_observation_pending{}; // Unknown current part geometry, never contact.
 };
 struct GripSnapshot {
     Grip grip{};FrameKey key{};
@@ -52,7 +53,7 @@ inline bool same_frame(Frame const& a,Frame const& b) noexcept {
         a.reference_generation==b.reference_generation&&a.stereo_status==b.stereo_status&&
         a.recentered==b.recentered&&a.heading_deferred==b.heading_deferred&&a.reserved2==b.reserved2&&
         a.press_token==b.press_token&&a.left_grip_down==b.left_grip_down&&a.left_grip_known==b.left_grip_known&&
-        a.left_tracked==b.left_tracked&&a.reserved3==b.reserved3&&
+        a.left_tracked==b.left_tracked&&a.interaction_control==b.interaction_control&&
         gears_vr::stereo_same_pose(a.reference,b.reference)&&gears_vr::stereo_same(a.stereo,b.stereo)&&
         x.source==y.source&&x.session==y.session&&x.sequence==y.sequence&&x.space_epoch==y.space_epoch&&
         x.profile_generation==y.profile_generation&&x.input_epoch==y.input_epoch&&x.predicted_time==y.predicted_time&&
@@ -62,9 +63,10 @@ inline bool same_frame(Frame const& a,Frame const& b) noexcept {
 inline bool same_proposal(Proposal const& a,Proposal const& b) noexcept {
     return a.size==b.size&&a.abi_version==b.abi_version&&same(a.key,b.key)&&a.nonce==b.nonce&&
         same(a.incumbents[0],b.incumbents[0])&&same(a.incumbents[1],b.incumbents[1])&&
-        a.support==b.support&&a.ammo==b.ammo&&a.magazine==b.magazine&&a.reserved==b.reserved;
+        a.support==b.support&&a.ammo==b.ammo&&a.magazine==b.magazine&&
+        a.magazine_observation_pending==b.magazine_observation_pending;
 }
-inline bool support_contact(Frame const& f,GripGameState const& game,bool retain) noexcept {
+inline bool support_contact(Frame const& f,GripGameState const& game,bool retain,double* measured_distance=nullptr) noexcept {
     if(!game.mount_known||!identity_valid(game.mount_asset)||!game.mount_revision||!game.mount.valid()||
        !std::isfinite(game.acquire_metres)||!std::isfinite(game.release_metres)||game.acquire_metres<=0||
        game.acquire_metres>.15||game.release_metres<game.acquire_metres||game.release_metres>.25)return false;
@@ -78,6 +80,7 @@ inline bool support_contact(Frame const& f,GripGameState const& game,bool retain
     auto const actual=gears_weapon::difference(left.grip.position,right.grip.position);
     const auto e=gears_weapon::length(expected),a=gears_weapon::length(actual);
     const auto distance=gears_weapon::length(gears_weapon::difference(expected,actual));
+    if(measured_distance&&std::isfinite(distance))*measured_distance=distance;
     return std::isfinite(a)&&a>.10&&std::isfinite(distance)&&distance<=(retain?game.release_metres:game.acquire_metres)&&
         std::abs(a-e)<=game.mount.support_length_tolerance_metres&&
         gears_weapon::dot(expected,actual)/(e*a)>=std::cos(game.mount.maximum_support_correction_radians);
@@ -134,14 +137,23 @@ public:
         }
         const bool main=main_valid(f,game,f.now_ns);
         const bool logical=f.left_grip_known&&f.left_tracked&&f.left_grip_down;
-        const bool retain=main&&logical&&support_.kind==LeaseKind::support&&support_contact(f,game,true);
+        // Contact is an acquisition gate. A retained, current support grasp
+        // ends on its initiating control/identity/tracking lifetime, not just
+        // because the player moves the still-grasping hand away from hover.
+        const bool retain=main&&logical&&support_.kind==LeaseKind::support&&
+            support_.id==f.press_token&&lease_valid(support_,f.key.lifecycle);
         if(retain&&count<proposal_.incumbents.size())proposal_.incumbents[count++]=support_;
         else if(!retain)support_={};
         // If all three exist, two are enough to expose an incumbent conflict;
         // never omit the real object holders in order to claim a free hand.
         if(main&&logical&&game.kind==WeaponKind::firearm){
-            proposal_.support=support_contact(f,game,retain)?1u:0u;
+            const bool pending=game.magazine_observation_pending&&f.left_grip_down&&f.left_grip_known&&f.left_tracked&&!count&&!retain&&
+                !game.request_magazine&&!game.request_ammo;
+            // A not-yet-observed part must not turn the same press into a
+            // support grasp before its current fitted pair becomes available.
+            proposal_.support=(retain||(!pending&&!game.request_magazine&&!game.request_ammo&&support_contact(f,game,false)))?1u:0u;
             proposal_.ammo=game.request_ammo?1u:0u;proposal_.magazine=game.request_magazine?1u:0u;
+            proposal_.magazine_observation_pending=pending?1u:0u;
         }
         mount_asset_=game.mount_asset;mount_revision_=game.mount_revision;
         pending_=true;out=proposal_;return Reply::accepted;
@@ -160,8 +172,11 @@ public:
         const bool incumbent=same(p.incumbents[0],d.lease)||same(p.incumbents[1],d.lease);
         if(owns)for(auto const& lease:p.incumbents)if(lease.kind!=LeaseKind::none&&
            (d.lease.kind==LeaseKind::cover||!same(lease,d.lease))){clear();return Reply::invalid;}
+        const bool retained_support=d.status==DecisionStatus::retained&&incumbent&&
+            same(support_,d.lease)&&d.lease.id==f.press_token;
         if(d.lease.kind==LeaseKind::support&&(!main_valid(f,game_,d.now_ns)||!p.support||
-           !support_contact(f,game_,incumbent)||(d.status==DecisionStatus::retained&&!incumbent)||
+           (!retained_support&&!support_contact(f,game_,false))||
+           (d.status==DecisionStatus::retained&&!retained_support)||
            (d.status==DecisionStatus::granted&&(incumbent||d.lease.id!=d.press_token||
              p.incumbents[0].kind!=LeaseKind::none||p.incumbents[1].kind!=LeaseKind::none||p.ammo||p.magazine)))){
             clear();return Reply::invalid;

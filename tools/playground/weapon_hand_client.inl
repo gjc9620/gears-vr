@@ -107,9 +107,11 @@ template<std::size_t N>bool pointer(meta::Reader& r,uptr address,wchar_t const (
     return read_pointer(r,address,label,out,component)&&out.value==expected;
 }
 #include "weapon_hand_pawn_read.inl"
+#include "weapon_hand_binding_read.inl"
+#include "weapon_hand_aim_read.inl"
 // Fresh reflection is intentionally bounded and read-only. It does not use
 // get<T>'s unreadable-as-zero fallback, nor vrequip::snapshot's engine queries.
-bool observe(void*,abi::Frame const& f,std::int64_t,abi::GripGameState& out) noexcept {
+bool observe_game(abi::Frame const& f,abi::GripGameState& out,bool candidates) noexcept {
 #if defined(GEARS_PLAYGROUND_RESTORE_STAGE_CORE)
     if(!weaponrestore::healthy())return false;
 #endif
@@ -123,28 +125,57 @@ bool observe(void*,abi::Frame const& f,std::int64_t,abi::GripGameState& out) noe
     if(vrequip::lancer_magazine_active_visible.load(std::memory_order_acquire))return false;
 #endif
     meta::Snapshot schema{};schema.module_base=base;meta::Reader r{schema,meta::Stage::final_check};
+    // No engine calls or writes occur during this local metadata discovery.
+    // Reuse the first identity/name already recorded in THIS Snapshot, then
+    // validate every one freshly below before exposing any result/proposal.
+    r.reuse_initial_identities=true;
     if(!meta::tables(base,schema.objects,schema.names)||!object(r,f.world)||!object(r,f.controller)||
        !object(r,f.pawn)||!object(r,f.mesh)||!object(r,f.weapon)||
        !derives(r,f.controller.address,L"WarPC",L"WarfareGame")||
        !derives(r,f.pawn.address,L"WarPawn",L"WarfareGame")||
        !derives(r,f.world.address,L"WorldInfo",L"Engine")||
        !derives(r,f.mesh.address,L"SkeletalMeshComponent",L"Engine"))return false;
-    std::array<meta::PointerField,6> links{};PawnObserveFields pawn_fields;
-    if(!pointer(r,f.controller.address,L"Pawn",f.pawn.address,links[0])||
-       !pointer(r,f.controller.address,L"WorldInfo",f.world.address,links[1])||
+    std::array<meta::PointerField,6> links{};PawnObserveFields pawn_fields;ControllerObserveFields controller_fields;WeaponObserveFields weapon_fields;
+    if(!controller_fields.begin(r,f.controller.address)||
+       !controller_fields.pointer(r,ControllerObserveFields::pawn_link,f.pawn.address,links[0])||
+       !controller_fields.pointer(r,ControllerObserveFields::world_link,f.world.address,links[1])||
        !pawn_fields.begin(r,f.pawn.address)||
        !pawn_fields.pointer(r,PawnObserveFields::controller_link,f.controller.address,links[2])||
        !pawn_fields.pointer(r,PawnObserveFields::mesh_link,f.mesh.address,links[3])||
        !pawn_fields.pointer(r,PawnObserveFields::weapon_link,f.weapon.address,links[4]))return false;
     if(f.weapon.address&&(!derives(r,f.weapon.address,L"WarWeapon",L"WarfareGame")||
-       !pointer(r,f.weapon.address,L"Instigator",f.pawn.address,links[5])))return false;
+       !weapon_fields.begin(r,f.weapon.address)||
+       !weapon_fields.pointer(r,WeaponObserveFields::instigator_link,f.pawn.address,links[5])))return false;
     std::array<BoolField,6> flags{};
     const std::array<uptr,4> actors{f.world.address,f.controller.address,f.pawn.address,f.weapon.address};
     for(std::size_t i=0;i<actors.size();++i)if(actors[i]&&
-       (!(i==2?pawn_fields.boolean(r,PawnObserveFields::deleted_flag,flags[i]):boolean(r,actors[i],L"bDeleteMe",flags[i]))||
+       (!(i==2?pawn_fields.boolean(r,PawnObserveFields::deleted_flag,flags[i]):i==1?controller_fields.boolean(r,ControllerObserveFields::deleted_flag,flags[i]):i==3?weapon_fields.boolean(r,WeaponObserveFields::deleted_flag,flags[i]):boolean(r,actors[i],L"bDeleteMe",flags[i]))||
         (flags[i].bits&flags[i].mask)))return false;
     if(!pawn_fields.boolean(r,PawnObserveFields::switching_flag,flags[4])||
        !pawn_fields.boolean(r,PawnObserveFields::no_firing_flag,flags[5]))return false;
+
+#if defined(GEARS_PLAYGROUND_NATIVE_EQUIPMENT_TRIAL)
+    // This optional runtime comparison belongs to the Native-equipment host,
+    // which owns log_file. Standalone metadata readers have no runtime logger.
+    static const bool compare_bindings=[](){wchar_t flag[4]{},mute[4]{},behind[4]{};return
+        GetEnvironmentVariableW(L"GEARSVR_TEST_POSE_BATCH_COMPARE",flag,4)==1&&flag[0]==L'1'&&
+        GetEnvironmentVariableW(L"GEARSVR_TEST_MUTE_GAME",mute,4)==1&&mute[0]==L'1'&&
+        GetEnvironmentVariableW(L"GEARSVR_TEST_WINDOWS_BEHIND",behind,4)==1&&behind[0]==L'1';}();
+    static unsigned binding_comparisons{};
+    if(compare_bindings&&binding_comparisons<12){std::array<meta::PointerField,3> old{};BoolField pc_deleted{},weapon_deleted{};
+        bool equal=pointer(r,f.controller.address,L"Pawn",f.pawn.address,old[0])&&
+            pointer(r,f.controller.address,L"WorldInfo",f.world.address,old[1])&&boolean(r,f.controller.address,L"bDeleteMe",pc_deleted)&&
+            meta::same_property(old[0].property,links[0].property)&&old[0].value==links[0].value&&
+            meta::same_property(old[1].property,links[1].property)&&old[1].value==links[1].value&&
+            meta::same_property(pc_deleted.property,flags[1].property)&&pc_deleted.mask==flags[1].mask&&pc_deleted.bits==flags[1].bits;
+        if(equal&&f.weapon.address)equal=pointer(r,f.weapon.address,L"Instigator",f.pawn.address,old[2])&&
+            boolean(r,f.weapon.address,L"bDeleteMe",weapon_deleted)&&meta::same_property(old[2].property,links[5].property)&&
+            old[2].value==links[5].value&&meta::same_property(weapon_deleted.property,flags[3].property)&&
+            weapon_deleted.mask==flags[3].mask&&weapon_deleted.bits==flags[3].bits;
+        if(log_file){fwprintf(log_file,L"binding_field_batch_compare sample=%u equal=%u weapon=%u\n",binding_comparisons,unsigned(equal),unsigned(f.weapon.address!=0));fflush(log_file);}
+        ++binding_comparisons;if(!equal)return false;
+    }
+#endif
     abi::GripGameState game{};game.known=true;
     game.main_hand_held=f.weapon.address&&vrequip::model.held_for(f.world.address,f.pawn.address,f.weapon.address)&&
         held_binding.known&&held_binding.generation&&held_binding.generation==vrequip::model.hold_generation()&&
@@ -165,6 +196,7 @@ bool observe(void*,abi::Frame const& f,std::int64_t,abi::GripGameState& out) noe
     // candidate is invented from temporary mesh-follow calibration.
     game.mount_known=false;
     // Close the local search binding before all original final rereads.
+    r.reuse_initial_identities=false;
     if(!pawn_fields.finish(r))return false;
     const auto identities=schema.identity_count,structures=schema.structure_count;
     for(U32 i=0;i<identities;++i){U32 slot{};if(!r.identity(schema.identities[i].address,slot)||slot!=i)return false;}
@@ -188,7 +220,27 @@ bool observe(void*,abi::Frame const& f,std::int64_t,abi::GripGameState& out) noe
     }
     meta::Table objects{},names{};
     if(!meta::tables(base,objects,names)||!meta::same_table(objects,schema.objects)||!meta::same_table(names,schema.names))return false;
+#if defined(GEARS_PLAYGROUND_NATIVE_LANCER_FOLLOW)
+    if(game.main_hand_held&&!game.busy&&!game.animation_owns_hands&&game.kind==abi::WeaponKind::firearm)
+        nativelancerfollow::fill_support_mount(f,game);
+    if(candidates){
+        lancerreload_contact::propose(f,game);
+        hammerburst_runtime::propose(f,game);
+        snub_runtime::propose(f,game);
+    }
+#else
+    (void)candidates;
+#endif
     out=game;return true;
+}
+bool observe(void*,abi::Frame const& f,std::int64_t,abi::GripGameState& out) noexcept {
+    return observe_game(f,out,true);
+}
+bool observe_source(void*,abi::Frame const& f,std::int64_t,abi::GripGameState& out) noexcept {
+    // Only source_current_on_gt uses this. Keep every fresh reflection,
+    // identity, ownership/flag and final reread above. Repeated display checks
+    // must not reenter Native contact observation or calculate new proposals.
+    return observe_game(f,out,false);
 }
 // Only actual successful unholster/equip commits may call this. It never
 // adopts an existing raw-address latch just because a Native frame arrived.
@@ -212,7 +264,15 @@ void equipment_hold_committed(uptr pc,gears_weapon::EquipmentSnapshot const& gam
        !vrequip::model.held_for(game.world,game.pawn,game.current_weapon)||vrequip::model.hold_generation()!=generation)return;
     held_binding={frame.world,frame.controller,frame.pawn,frame.weapon,generation,true};
 }
-abi::HandClient client({nullptr,observe,current_gt,clock_ns});
+void committed(void*,abi::Frame const& frame,abi::Decision const& decision) noexcept {
+#if defined(GEARS_PLAYGROUND_NATIVE_LANCER_FOLLOW)
+    lancerreload_contact::committed(frame,decision);
+    snub_runtime::committed(frame,decision);
+#else
+    (void)frame;(void)decision;
+#endif
+}
+abi::HandClient client({nullptr,observe,current_gt,clock_ns,committed,observe_source});
 HMODULE native_module{};abi::Unregister host_unregister{};bool native_quiescent{};
 bool call_register(abi::Register fn,abi::Registration const* registration,abi::RegistrationResult* result,abi::Reply& reply) noexcept {
     __try{reply=fn(registration,result);return true;}
@@ -237,9 +297,10 @@ abi::Reply start(HMODULE requested) noexcept {
     if(!enabled.load(std::memory_order_acquire)||!requested||requested==module)return abi::Reply::unavailable;
     if(client.phase()!=abi::ClientPhase::off||native_module)return abi::Reply::busy;
 #if defined(GEARS_PLAYGROUND_NATIVE_EQUIPMENT_TRIAL)
-    // An earlier normal PG tick can outlive Native unregister. Its borrowed
-    // calibration must retire before a reconnect replaces that configuration.
-    if(callbacks.load(std::memory_order_acquire))return abi::Reply::busy;
+    // An earlier equipment tick can outlive Native unregister. Fence its
+    // actual configuration borrow, not every unrelated engine dispatch.
+    nativeequipment::ConfigurationWrite configuration;
+    if(!configuration.held)return abi::Reply::busy;
 #endif
     HMODULE held{};
     if(!GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS,reinterpret_cast<LPCWSTR>(requested),&held))return abi::Reply::unavailable;
@@ -268,7 +329,10 @@ abi::Reply start(HMODULE requested) noexcept {
         if(!executable(GetProcAddress(held,export_name),held)){FreeLibrary(held);return abi::Reply::unavailable;}
 #endif
 #if defined(GEARS_PLAYGROUND_NATIVE_EQUIPMENT_TRIAL)
-    if(!nativeequipment::configure_native(held)){FreeLibrary(held);return abi::Reply::unavailable;}
+    // Body-slot calibration gates slot gestures, not registration or free
+    // hands. The manual worker refreshes the real measurement after connect.
+    // An invalid calibration still fails closed in EquipmentInput::next.
+    nativeequipment::configure_native(held);
 #endif
     FILETIME created{},exited{},kernel{},user{};
     if(!GetProcessTimes(GetCurrentProcess(),&created,&exited,&kernel,&user)){FreeLibrary(held);return abi::Reply::unavailable;}
@@ -302,6 +366,9 @@ abi::Reply start(HMODULE requested) noexcept {
 #endif
 #if defined(GEARS_PLAYGROUND_BODY_MAIN_MOUNT_PROVIDER_TRIAL)
         if(attached==abi::Reply::accepted)attached=bodymountprovider::attach(held);
+#endif
+#if defined(GEARS_PLAYGROUND_NATIVE_LANCER_FOLLOW)
+        if(attached==abi::Reply::accepted)attached=handrender::attach(held);
 #endif
         if(attached!=abi::Reply::accepted)client.begin_disconnect();
         return attached;

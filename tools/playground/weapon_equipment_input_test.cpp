@@ -56,11 +56,54 @@ struct Sample {
 };
 struct Direct {
     Sample sample;ei::Input input;std::uint64_t cursor{UINT64_MAX};ei::Event out{};
-    bool next(){return input.next(sample.f,sample.calibration,sample.ns,sample.ms,cursor,out);}
+    bool index_enabled{};
+    bool next(){return input.next(sample.f,sample.calibration,sample.ns,sample.ms,cursor,out,nullptr,index_enabled);}
     void baseline(){C(!next());C(cursor!=UINT64_MAX&&input.evidence().status==ei::Status::baseline);}
     void unchanged_failure(ei::Status status){const auto before=out;C(!next());C(cursor==UINT64_MAX);
         C(input.evidence().status==status);C(!std::memcmp(&before,&out,sizeof(out)));}
 };
+void index_acquisition(){
+    const auto arm=[](Direct& h){h.index_enabled=true;h.sample.f.controllers.hands[1].trigger_active=1;h.baseline();};
+    const auto press=[](Direct& h,unsigned slot){h.sample.advance();auto& r=h.sample.f.controllers.hands[1];
+        ++r.pressed[vr::control_trigger];r.trigger=1;r.grip.position=h.sample.point(slot);};
+    const auto release=[](Direct& h){h.sample.advance();auto& r=h.sample.f.controllers.hands[1];
+        ++r.released[vr::control_trigger];r.trigger=0;C(!h.next());};
+    for(unsigned sim=0;sim<2;++sim)for(unsigned slot=0;slot<4;++slot){
+        ++cases;Direct h;if(sim)h.sample.simulated();arm(h);press(h,slot);const auto original=h.sample.f;
+        C(h.next()==(slot>=2));C(!std::memcmp(&original,&h.sample.f,sizeof(original)));
+        if(slot<2)continue;
+        C(h.out.kind==gw::EquipmentIntentKind::index_acquire_slot&&h.out.inventory_slot==slot);
+        C(h.out.input_sequence==h.sample.f.controllers.sequence&&h.out.created_ms==998);
+        C(h.input.evidence().control==vr::control_trigger&&h.input.evidence().press_counter==1);
+        C(h.sample.f.controllers.hands[1].pressed[vr::control_squeeze]==0);
+        h.sample.advance();h.sample.f.controllers.hands[1].grip.position={3,3,3};C(!h.next());
+        release(h);press(h,slot);C(h.next()&&h.out.serial==2);
+    }
+    ++cases;Direct held;held.index_enabled=true;held.sample.f.controllers.hands[1].trigger_active=1;
+    held.sample.f.controllers.hands[1].pressed[vr::control_trigger]=1;held.sample.f.controllers.hands[1].trigger=1;
+    held.baseline();held.sample.advance();held.sample.f.controllers.hands[1].grip.position=held.sample.point(3);C(!held.next());
+    release(held);press(held,3);C(held.next());
+    ++cases;Direct enable;enable.sample.f.controllers.hands[1].trigger_active=1;
+    enable.sample.f.controllers.hands[1].pressed[vr::control_trigger]=8;enable.sample.f.controllers.hands[1].released[vr::control_trigger]=7;
+    enable.sample.f.controllers.hands[1].trigger=1;enable.baseline();enable.index_enabled=true;
+    enable.sample.advance();C(!enable.next());release(enable);press(enable,2);C(enable.next());
+    ++cases;Direct both;arm(both);press(both,3);auto& b=both.sample.f.controllers.hands[1];
+    ++b.pressed[vr::control_squeeze];b.squeeze=1;b.last_squeeze_press_grip=b.grip;
+    b.last_squeeze_press_sequence=both.sample.f.controllers.sequence;b.last_squeeze_press_flags=15;
+    C(both.next()&&both.out.kind==gw::EquipmentIntentKind::slot&&both.out.inventory_slot==3);C(!both.next());
+    for(unsigned bad=0;bad<5;++bad){
+        ++cases;Direct h;arm(h);press(h,3);auto& r=h.sample.f.controllers.hands[1];
+        if(bad==0){++r.released[vr::control_trigger];r.trigger=0;}
+        if(bad==1)++r.pressed[vr::control_trigger];
+        if(bad==2)r.grip_flags=3;
+        if(bad==3){h.sample.advance(101);r.trigger=1;}
+        if(bad==4){--h.sample.f.controllers.sequence;--h.sample.f.stereo.sequence;}
+        C(!h.next()&&h.cursor==UINT64_MAX);
+    }
+    ++cases;Direct regression;arm(regression);regression.sample.advance();C(!regression.next());
+    ++regression.sample.f.controllers.hands[1].pressed[vr::control_trigger];
+    regression.sample.f.controllers.hands[1].trigger=1;regression.unchanged_failure(ei::Status::source_regressed);
+}
 void routes(){
     for(unsigned simulated=0;simulated<2;++simulated)for(unsigned slot=0;slot<4;++slot){
         ++cases;Direct h;if(simulated)h.sample.simulated();
@@ -153,15 +196,16 @@ void invalids(){
 }
 void times(){
     ++cases;Direct gap;gap.baseline();gap.sample.advance(101);gap.sample.press();gap.unchanged_failure(ei::Status::source_gap);
-    C(gap.input.evidence().gap==ei::Evidence::Gap::previous_sync_stale);
+    C(gap.input.evidence().gap==ei::Evidence::Gap::producer_sync_gap);
     C(gap.input.evidence().observed_ns==gap.sample.ns&&gap.input.evidence().previous_observed_ns==1000000000);
     gap.baseline();C(!gap.next());gap.sample.press(3);C(gap.next());C(gap.input.evidence().press_counter==2);
     C(gap.input.evidence().gap==ei::Evidence::Gap::none);
     ++cases;Direct edge;edge.baseline();edge.sample.advance(88);edge.sample.press();C(edge.next());
     C(edge.sample.ns-edge.input.evidence().previous_sync_ns==100000000&&edge.out.created_ms==998);
     ++cases;Direct past;past.baseline();past.sample.advance(88);past.sample.press();++past.sample.ns;
-    past.unchanged_failure(ei::Status::source_gap);
-    C(past.input.evidence().gap==ei::Evidence::Gap::previous_sync_stale);
+    C(past.next()); // Consumer latency does not lengthen the producer sync interval.
+    C(past.input.evidence().gap==ei::Evidence::Gap::none);
+    C(past.out.created_ms<=std::uint64_t(past.input.evidence().previous_sync_ns/1000000));
     ++cases;Direct stale;stale.baseline();const auto sync=stale.sample.f.controllers.sync_ns;
     stale.sample.advance(101);stale.sample.f.controllers.sync_ns=sync;stale.unchanged_failure(ei::Status::source_gap);
     C(stale.input.evidence().gap==ei::Evidence::Gap::current_sync_stale);
@@ -174,9 +218,9 @@ void times(){
     ++cases;Direct accumulated;accumulated.sample.f.controllers.sync_ns=accumulated.sample.ns-60000000;
     accumulated.baseline();const auto previous=accumulated.sample.f.controllers.sync_ns;
     accumulated.sample.advance(50);accumulated.sample.f.controllers.sync_ns=accumulated.sample.ns-60000000;
-    accumulated.unchanged_failure(ei::Status::source_gap);
+    C(!accumulated.next());C(accumulated.cursor!=UINT64_MAX);
     const auto& evidence=accumulated.input.evidence();
-    C(evidence.gap==ei::Evidence::Gap::previous_sync_stale);
+    C(evidence.gap==ei::Evidence::Gap::none);
     C(evidence.observed_ns-evidence.sync_ns==60000000&&evidence.sync_ns-previous==50000000);
     C(evidence.observed_ns-evidence.previous_sync_ns==110000000);
     C(evidence.previous_observed_ns==1000000000);
@@ -187,6 +231,120 @@ void times(){
     ++cases;Direct counter;counter.sample.press();counter.baseline();counter.sample.advance();
     counter.sample.f.controllers.hands[1].pressed[vr::control_squeeze]=0;
     counter.unchanged_failure(ei::Status::counter_regressed);
+}
+void continuous_source_jitter(){
+    auto proof=[](Sample const& s){ei::Continuity c{};c.publisher={71,81};
+        c.tracking.input=s.f.controllers;c.tracking.stream_epoch=3;
+        c.tracking.tracking_epoch[0]=4;c.tracking.tracking_epoch[1]=5;return c;};
+    // Reproduce the measured missed press: observed polls82ms apart, consumed
+    // syncs100.011ms apart, current packet26ms old. Intermediate XR samples are
+    // authenticated by the unchanged V2 publisher stream, not fabricated here.
+    for(unsigned variation=0;variation<13;++variation){
+        ++cases;Direct h;h.sample.f.controllers.sync_ns=h.sample.ns-44338700;
+        h.sample.f.controllers.received_ns=h.sample.f.stereo.received_ns=h.sample.f.controllers.sync_ns+200;
+        auto previous=proof(h.sample);
+        C(!h.input.next(h.sample.f,h.sample.calibration,h.sample.ns,h.sample.ms,h.cursor,h.out,variation==1?nullptr:&previous));
+        C(h.input.evidence().status==ei::Status::baseline);
+        const auto earlier=h.sample.f.controllers.sync_ns;
+        h.sample.press();h.sample.advance(72);h.sample.ns+=25800;h.sample.f.now_ns=h.sample.ns;
+        h.sample.f.controllers.hands[1].last_squeeze_press_sequence=h.sample.f.controllers.sequence;
+        h.sample.f.controllers.sync_ns=earlier+100011000;
+        h.sample.f.controllers.received_ns=h.sample.f.stereo.received_ns=h.sample.f.controllers.sync_ns+1000;
+        C(h.sample.ns-h.sample.f.controllers.sync_ns==26353500);
+        auto current=proof(h.sample);auto expected=ei::Status::source_gap;
+        switch(variation){
+            case 3:++current.publisher.pid;expected=ei::Status::cohort_changed;break;
+            case 4:++current.publisher.start;expected=ei::Status::cohort_changed;break;
+            case 5:++current.tracking.stream_epoch;expected=ei::Status::cohort_changed;break;
+            case 6:++current.tracking.tracking_epoch[1];expected=ei::Status::cohort_changed;break;
+            case 7:++current.tracking.tracking_epoch[0];break; // Left loss cannot discard the right source.
+            case 8:current.tracking.input.hands[1].grip.position.x+=.01;expected=ei::Status::invalid_frame;break;
+            case 9:h.sample.ns+=20000000;h.sample.ms+=20;h.sample.f.now_ns=h.sample.ns;break;
+            case 10:h.sample.f.controllers.sync_ns=h.sample.ns-100000001;current=proof(h.sample);break;
+            case 12:h.sample.f.controllers.hands[1].last_squeeze_press_sequence=100;
+                current=proof(h.sample);expected=ei::Status::invalid_press;break;
+            default:break;
+        }
+        const auto before=h.out;
+        const bool result=h.input.next(h.sample.f,h.sample.calibration,h.sample.ns,h.sample.ms,h.cursor,h.out,variation==2?nullptr:&current);
+        if(variation==0||variation==7||variation==11){
+            C(result);C(h.out.serial==1&&h.out.inventory_slot==2);
+            C(h.input.evidence().continuous_source_gap&&h.input.evidence().gap==ei::Evidence::Gap::none);
+            C(h.out.created_ms<=std::uint64_t(earlier/1000000)); // Original conservative bound, no renewed edge time.
+            C(!h.input.next(h.sample.f,h.sample.calibration,h.sample.ns,h.sample.ms,h.cursor,h.out,&current));
+            C(h.out.serial==1); // Frozen repeat never emits/replays the press.
+        }else{
+            C(!result&&h.cursor==UINT64_MAX&&h.input.evidence().status==expected);
+            C(!std::memcmp(&h.out,&before,sizeof before));
+        }
+    }
+}
+
+void recorded_press_after_slow_poll(){
+    for(unsigned simulated=0;simulated<2;++simulated)for(unsigned variation=0;variation<18;++variation){
+        ++cases;Direct h;if(simulated)h.sample.simulated();
+        const auto make=[&](){ei::Continuity c{};c.publisher={71,81};c.tracking.input=h.sample.f.controllers;
+            c.tracking.stream_epoch=3;c.tracking.tracking_epoch[0]=4;c.tracking.tracking_epoch[1]=5;return c;};
+        auto baseline=make();C(!h.input.next(h.sample.f,h.sample.calibration,h.sample.ns,h.sample.ms,h.cursor,h.out,&baseline));
+        const auto previous=h.sample.f.controllers.sync_ns;
+        h.sample.advance(200);h.sample.f.controllers.sequence+=20;h.sample.f.stereo.sequence=h.sample.f.controllers.sequence;
+        h.sample.press(0);auto& latest=h.sample.f.controllers.hands[1];
+        latest.last_squeeze_press_sequence=h.sample.f.controllers.sequence-1;
+        auto current=make();auto& press=current.right_press;press=current.tracking;
+        --press.input.sequence;press.input.sync_ns-=20000000;press.input.received_ns-=20000000;
+        press.input.hands[1].released[vr::control_squeeze]=0;press.input.hands[1].squeeze=1;
+        switch(variation){
+        case 1:latest.released[vr::control_squeeze]=0;latest.squeeze=1;current.tracking.input=h.sample.f.controllers;break;
+        case 2:press.input.sync_ns=h.sample.ns-100000001;break;
+        case 3:press.input.sync_ns=h.sample.ns+1;break;
+        case 4:press.input.sequence=latest.last_squeeze_press_sequence=100;
+            press.input.hands[1].last_squeeze_press_sequence=100;current.tracking.input=h.sample.f.controllers;break;
+        case 5:press={};break;
+        case 6:++current.tracking.stream_epoch;break;
+        case 7:++press.stream_epoch;break;
+        case 8:++press.tracking_epoch[1];break;
+        case 9:++press.tracking_epoch[0];break; // Left tracking does not forge right tracking.
+        case 10:++press.input.input_epoch;break;
+        case 11:press.input.hands[1].grip.position.x+=.1;break;
+        case 12:++press.input.hands[1].pressed[vr::control_squeeze];
+            ++press.input.hands[1].released[vr::control_squeeze];break;
+        case 13:press.input.hands[1].squeeze=0;break;
+        case 14:latest.last_squeeze_press_grip.position.x+=.1;current.tracking.input=h.sample.f.controllers;break;
+        case 15:press.input.hands[1].released[vr::control_squeeze]=1;break;
+        case 16:press.input.sequence=h.sample.f.controllers.sequence+1;break;
+        case 17:press.input.sync_ns=h.sample.ns-100000000;break;
+        }
+        const bool expected=variation==0||variation==1||variation==9||variation==17;
+        const auto before=h.out;
+        const bool result=h.input.next(h.sample.f,h.sample.calibration,h.sample.ns,h.sample.ms,h.cursor,h.out,&current);
+        C(result==expected);
+        if(expected){
+            C(h.out.serial==1&&h.out.inventory_slot==0&&h.out.input_sequence==press.input.sequence);
+            C(h.input.evidence().continuous_source_gap&&h.input.evidence().previous_sync_ns==previous);
+            C(h.input.evidence().recorded_press_sync_ns==press.input.sync_ns);
+            C(h.out.created_ms==h.sample.ms-std::uint64_t((h.sample.ns-press.input.sync_ns+999999)/1000000));
+            C(h.out.created_ms<h.sample.ms);
+            C(!h.input.next(h.sample.f,h.sample.calibration,h.sample.ns,h.sample.ms,h.cursor,h.out,&current));
+            C(h.out.serial==1); // Reading the same ring proof cannot replay a press.
+        }else{
+            C(h.cursor==UINT64_MAX);C(!std::memcmp(&h.out,&before,sizeof before));
+        }
+    }
+}
+
+void quiet_slow_poll_baseline(){
+    ++cases;Direct h;
+    const auto proof=[&](){ei::Continuity c{};c.publisher={71,81};c.tracking.input=h.sample.f.controllers;
+        c.tracking.stream_epoch=3;c.tracking.tracking_epoch[0]=4;c.tracking.tracking_epoch[1]=5;return c;};
+    auto c=proof();C(!h.input.next(h.sample.f,h.sample.calibration,h.sample.ns,h.sample.ms,h.cursor,h.out,&c));
+    h.sample.advance(200);h.sample.f.controllers.sequence+=20;h.sample.f.stereo.sequence=h.sample.f.controllers.sequence;c=proof();
+    const auto old=h.out;
+    C(!h.input.next(h.sample.f,h.sample.calibration,h.sample.ns,h.sample.ms,h.cursor,h.out,&c));
+    C(h.cursor==0&&h.input.evidence().status==ei::Status::quiet&&h.input.evidence().continuous_source_gap);
+    C(!std::memcmp(&h.out,&old,sizeof old)); // Quiet rebase cannot emit/replay anything.
+    h.sample.press(1);c=proof();
+    C(h.input.next(h.sample.f,h.sample.calibration,h.sample.ns,h.sample.ms,h.cursor,h.out,&c));
+    C(h.out.serial==1&&h.out.inventory_slot==1); // A following fresh press is not swallowed as baseline.
 }
 
 // Actual Input -> actual Runtime -> actual model. Only game/attachment/current
@@ -220,6 +378,31 @@ struct Integrated {
     er::Outcome tick(){return runtime.tick(sample.f,backend(),model);}
     void baseline(){C(tick().status==er::Status::baseline);C(runtime.state().baseline_ready&&runtime.state().cursor==0);}
 };
+void pose_gap_observation(){
+    // Actual Input + Runtime: a missing render publication cannot swallow a
+    // new physical edge, replay an old one or authorize a changed cohort.
+    for(unsigned mode=0;mode<6;++mode){
+        ++cases;Integrated h;h.sample.simulated();h.baseline();
+        const auto resets=h.resets;
+        if(mode==5)h.runtime.suspend(h.backend());
+        else C(h.runtime.suspend_pose_gap(h.backend()));
+        C(h.switches==0&&h.holds==0&&h.sounds==0);
+        h.sample.advance(mode==2?150:30);
+        if(mode!=0)h.sample.press(2);
+        if(mode==3){h.sample.f.pawn.address+=8;h.game.pawn=h.sample.f.pawn.address;}
+        if(mode==4)++h.sample.f.controllers.input_epoch;
+        const auto result=h.tick();
+        if(mode==1){
+            C(result.status==er::Status::switch_requested&&h.switches==1);
+            C(h.resets==resets);
+            C(h.tick().status==er::Status::switch_pending&&h.switches==1);
+        }else{
+            C(h.switches==0&&h.holds==0&&h.sounds==0);
+            if(mode==0)C(result.status==er::Status::idle);
+            h.sample.advance();h.tick();C(h.switches==0&&h.holds==0);
+        }
+    }
+}
 void integration(){
     ++cases;Integrated h;h.sample.simulated();h.baseline();
     h.sample.press(4);C(h.tick().status==er::Status::idle);C(h.runtime.state().consumed_press==0);
@@ -285,6 +468,6 @@ void held_timing(){
     }
 }
 }
-int main(){routes();boundaries();invalids();times();integration();held_timing();
+int main(){index_acquisition();routes();boundaries();invalids();times();continuous_source_jitter();recorded_press_after_slow_poll();quiet_slow_poll_baseline();pose_gap_observation();integration();held_timing();
     std::printf("NativeEquipmentInputTest: %u cases / %u checks passed; actual Native Frame input/router + Runtime/model, controlled backend seam; no Game/XR/mapping/engine acceptance\n",cases,checks);
 }

@@ -57,9 +57,12 @@ int main() {
     CHECK(publisher.open(pid,true));CHECK(!duplicate.open(pid,true));
     CHECK(reader.open(pid,false));CHECK(publisher.publish(frame));
     ControllerInputFrame copy{};
-    CHECK(reader.read_matching(stereo,1000000200,copy));
+    ControllerMatchingRead diagnostic{};
+    CHECK(reader.read_matching(stereo,1000000200,copy,false,nullptr,&diagnostic));
+    CHECK(diagnostic.code==ControllerMatchingRead::Code::accepted&&diagnostic.latest_sequence==1&&diagnostic.selected_sequence==1);
     CHECK(copy.sequence==1&&copy.hands[0].buttons==controller_x&&copy.hands[1].trigger==.9f);
-    CHECK(!reader.read_matching(stereo,1100000101,copy)); // older than 100 ms
+    CHECK(!reader.read_matching(stereo,1100000101,copy,false,nullptr,&diagnostic)); // older than 100 ms
+    CHECK(diagnostic.code==ControllerMatchingRead::Code::frame_mismatch);
     auto wrong=stereo;wrong.space_epoch=3;CHECK(!reader.read_matching(wrong,1000000200,copy));
     wrong=stereo;wrong.predicted_time=1021;CHECK(!reader.read_matching(wrong,1000000200,copy));
     wrong=stereo;wrong.source=StereoSource::MetaOperatorSimulated;
@@ -80,7 +83,10 @@ int main() {
         CHECK(publisher.publish(frame));
         CHECK(reader.read_matching(stereo,frame.received_ns+100,copy));
     }
-    wrong=stereo;wrong.sequence=1;CHECK(!reader.read_matching(wrong,frame.received_ns+100,copy));
+    wrong=stereo;wrong.sequence=1;CHECK(!reader.read_matching(wrong,frame.received_ns+100,copy,false,nullptr,&diagnostic));
+    CHECK(diagnostic.code==ControllerMatchingRead::Code::evicted&&diagnostic.latest_sequence==10);
+    wrong=stereo;wrong.sequence=12;CHECK(!reader.read_matching(wrong,frame.received_ns+100,copy,false,nullptr,&diagnostic));
+    CHECK(diagnostic.code==ControllerMatchingRead::Code::not_published_yet);
     auto unfocused=frame;unfocused.sequence=11;unfocused.focused=0;
     CHECK(publisher.publish(unfocused));
     wrong=stereo;wrong.sequence=11;CHECK(!reader.read_matching(wrong,frame.received_ns+100,copy));

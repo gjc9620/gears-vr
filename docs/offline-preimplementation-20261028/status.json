@@ -1,0 +1,2721 @@
+{
+  "schema": "gearsvr.offline-preimplementation.v1",
+  "objective": "提前调研技术方案、排障、代码定位、技术方案落实，让后面的进度更顺利",
+  "goal_complete": false,
+  "last_goal_turn": "progress: reusable parameter snapshot core factored with old reward API preserved; exact grenade Notify parameter contract implemented, normal/seven invalid compiler cases pass plus existing reward collector/native reader compile. Actual grenade Native callbacks still pending.",
+  "production_applied": false,
+  "game_xr_simulator_runs": 0,
+  "test_executable_runs": 0,
+  "workstreams": [
+    {
+      "id": "P1",
+      "name": "共用换弹事务",
+      "status": "partial",
+      "evidence": "ReloadModel, Hammerburst and Snub candidates use common transaction; Snub 18 new compiler-evaluated cases; current mainline magazine_close/magazine_closure names retained with historical aliases; five new old-magazine/closure scenarios and focused current-baseline six-file patch verified privately; Gnasher start/accounting adapter now carries original serial/tick and reserves first physical round atomically; seven compiler-evaluated scenarios passed; mechanical caller not yet migrated; Gnasher mechanical candidate migrated to common ledger, duplicate writable counts removed, animation/completion receipts separated; eight accounting compiler scenarios and current-dependency source compilation passed; later Boltok/Longshot/Boomshot/Torque Bow private common accounting and compile checks are recorded in per-weapon reports; current Longshot/Boomshot/Bow package hashes reverified",
+      "remaining": "actual Native consumers, partial mutation reconciliation and integration of overlapping common-header changes; see per-weapon reports for private candidate proof and remaining boundaries"
+    },
+    {
+      "id": "P2",
+      "name": "逐枪逻辑差额",
+      "status": "partial",
+      "evidence": "Torque Bow normal cancel 7 cases; Gnasher partial-close candidate and updated test source (not executed); Boltok 13 compiler-evaluated scenarios including explicit partial close and six chambers; Lancer/Hammerburst physical intent, retained old magazine and explicit receipts implemented in private candidates; Snub physical magazine start, old-mag inspection and frozen empty/partial slide branch implemented; Gnasher start/accounting adapter now carries original serial/tick and reserves first physical round atomically; seven compiler-evaluated scenarios passed; mechanical caller not yet migrated; Gnasher mechanical candidate migrated to common ledger, duplicate writable counts removed, animation/completion receipts separated; eight accounting compiler scenarios and current-dependency source compilation passed; later Longshot/Boomshot/Bow/HOD/Troika offline packages verified independently; no Native/runtime acceptance implied",
+      "remaining": "all12 native call/receipt authentication and calibration; cumulative integration not performed; handoff packages are separate baselines"
+    },
+    {
+      "id": "P3",
+      "name": "手雷计算与坐标消费",
+      "status": "partial",
+      "evidence": "stationary/slow fit plus Frag/Smoke shared mapping: basis generations, committed-origin progression, explicit original base velocity, single addition, Init direction receipt; 12 new compile-time cases",
+      "remaining": "actual native throw adapter and certified body/base-motion source wiring; full tracker/runtime/headset acceptance remains separate"
+    },
+    {
+      "id": "P4",
+      "name": "掩体请求提交逻辑",
+      "status": "partial",
+      "evidence": "V5 ledger plus V6 existing CoverInputOwner deferred arbitration, immediate release cancellation, late-fact synchronization, explicit completion and separate current-proof view publication; common test consumers migrated; 47 compiler-evaluated cover/policy scenarios",
+      "remaining": "native Authority and cover_input_live/cover_shared_input_live caller migration; current collision scope, C0 and real hit/damage/muzzle consumer certificates; slot/exit/recenter paths; Native composition tests and full input execution not performed"
+    },
+    {
+      "id": "P5",
+      "name": "模型加载离线部分",
+      "status": "partial",
+      "evidence": "weapon_asset_input.h validates v2 vertex/index byte lengths, native 2*N count bound, contiguous sections, exact min/max referenced vertex, material range and disabled collision; eight compiler-evaluated checks; binary32 decoder, all vertex float fields, quantized orthonormal tangent basis, unused UV/color constraints and source-space AABB/radius-squared candidate; all 29616 real vertex records validated by candidate C++ at compile time in bounded chunks; all real index/section payloads passed C++ validation; numeric rigid/reflection mapping with positive uniform scale, direction/position separation and native float-range rejection implemented; complete numeric emission function authored and compiled with atomic output replacement and collapsed-triangle rejection; SHA256 text parsing and existing Windows CNG route adapted for immutable input buffers, compiled only; owned Windows file snapshot with basename policy, bounded exact-size reads, metadata recheck and same-buffer digest verification authored and compiled; JSON lexical reader and full real-manifest lexical compiler check passed; schema parsing not yet implemented; bounded JSON tree parser rejects structural errors and decoded duplicate keys; full 1166-node real manifest and 11 asset counts verified by compiler evaluation; v2 geometry manifest extraction passed all 11 real records and 20 schema cases; output owns filenames/digests/counts/sections and preserves previous output on failure; Windows catalog/payload loader integration authored and compiled; combined payload validator passed seven compiler-evaluated cases; exact verified buffers retained with manifest digest and record identity; loaded-payload-to-emitter candidate compiled with explicit target space, retained source record/calibration, pre/post owner revalidation and same-map authored marker conversion; outward binary32 centre/extents/radius encoding from actual emitted vertices added and connected to preparation; seven compile-time edge cases passed",
+      "remaining": "real calibration owner/evidence adapter and measured placement; full loader/emitter/hash/file API execution; native ABI/bounds/material/resource consumption and bounded Snub research"
+    },
+    {
+      "id": "P6",
+      "name": "标定与排障工具",
+      "status": "partial",
+      "evidence": "calibration plan nulls preserved; candidate checks six content digests, logical model identity, explicit measured transforms/units/axes and evidence metadata; mandatory external owner binding and evidence checks; nine compiler-evaluated assertions using synthetic inputs; authored asset-to-mesh placement now mandatory; ordered mapping composition and final unit/axis consistency checks passed ten compiler-evaluated scenarios; immutable prepared artifact and original-marker conversion connected to same selected map; full template instantiation compiled; side-effect-free failure/recovery classifier covers 88 enum values and nested stages, 11 compile-time checks; explicit unknown/inconsistent state handling and no automatic retries",
+      "remaining": "real owner binding and evidence adapter, calibration input parsing and diagnostic display consumer; measure placements; investigate any nonuniform original scales; per-weapon handoff evidence"
+    }
+  ],
+  "next_checkpoint": "Implement Native metadata Reader specialization for recovered Notify signature using current existing object reader and authenticated parameter-class/flags/header callbacks; validate entry snapshot and actual callback frame before using occurrence identity.",
+  "latest_longshot_package": {
+    "path": "analysis/offline-preimplementation-20261028/gearsvr-offline-longshot-v2.zip",
+    "sha256": "510dc349e20d40db4b5b5e48545bb304789f866dae59d35fa2e43fd764cb4d18",
+    "patch_sha256": "cedb4b3cb013dce9612f27741f0fa2ac180d541bc268db29a88f79bb144701d9",
+    "files_changed": 6,
+    "archive_entries": 20,
+    "private_apply_verified": true,
+    "production_applied": false,
+    "runtime_executed": false
+  },
+  "not_claimed": [
+    "native ABI certified",
+    "production C++ changed",
+    "gameplay accepted",
+    "headset comfort accepted",
+    "all preparation implementation complete"
+  ],
+  "latest_patch": "analysis/offline-preimplementation-20261028/patches/offline-preimplementation-v6.patch",
+  "latest_checks": {
+    "constexpr_scenarios": 150,
+    "compatibility_translation_units": 11,
+    "gnasher_geometry_flow_executed": false,
+    "full_ledger_per_weapon_integration": false,
+    "grenade_full_tracker_flow_executed": false,
+    "cover_full_input_flow_executed": false,
+    "cover_native_authority_implemented": false,
+    "cover_native_composition_compiled": false
+  },
+  "latest_model_patch": "analysis/offline-preimplementation-20261028/patches/offline-model-preparation-v7.patch",
+  "latest_model_package": {
+    "path": "analysis/offline-preimplementation-20261028/gearsvr-offline-model-preparation-v7.zip",
+    "sha256": "2e5dad2f01ed880748c04bd1011f1c55f667d8da9912baf2503d27e31e9f3be0",
+    "files": 88,
+    "new_headers": 16,
+    "compile_only_sources": 33,
+    "cumulative_v6_replacement": false,
+    "production_applied": false
+  },
+  "current_mainline_drift": [
+    {
+      "path": "tools/vr-common/weapon_reload_geometry.h",
+      "frozen_sha256": "16a9cd9b9623bc14b6458204f7acefb31f7e186a55b6c9a18e380ea5218122c3",
+      "current_sha256": "621819507a45243fa8bee265f74ecf55708dd265e49336239b939fd12a3507da",
+      "candidate_sha256": "72871255966a69f679f4e5dc8c1cad0c7cb9c715a43fd2700733d35c1d6f7ccb"
+    },
+    {
+      "path": "tools/vr-common/weapon_reload_model.h",
+      "frozen_sha256": "ee41add094f5d1080fa3734cface2280cfee9fc97305133fdb70eba401a11b40",
+      "current_sha256": "3643cc16365bf86d604d253c1c4081fb5820486501fb7c76ea6729e408131638",
+      "candidate_sha256": "652b760bc2fc1866c96ce18b60416f171c150b43f44d62749a75a1fa73b65deb"
+    },
+    {
+      "path": "tools/vr-common/weapon_reload_model_test.cpp",
+      "frozen_sha256": "5f42ca50971fa57453595f5a041e3e82ebfc3f0d2182973f81aa141589ec5e1a",
+      "current_sha256": "67f4660620a06036a1251f19c22761d91852ef61db36f7a38c3e528b34f899df",
+      "candidate_sha256": "a57a730a5aae033dad876da0b1842a5abaebab43dd0fa9e334d9ed0b69e95a6b"
+    }
+  ],
+  "old_cumulative_patch_current_applicability": "V6 cumulative patch still not certified for direct current application; six-file reload reconciliation separately verified against recorded current hashes, other candidate files retain their original baselines",
+  "model_checks_v7": {
+    "asset_indices_compile": 8,
+    "asset_vertices_compile": 8,
+    "asset_real_samples_compile": 11,
+    "real_vertex_sample_count": 22,
+    "test_executable_runs": 0,
+    "full_real_vertex_records": 29616,
+    "full_real_payloads": 11,
+    "asset_transform_compile": 8,
+    "full_real_index_payloads": 11,
+    "asset_emit_helper_cases": 5,
+    "full_emitter_executed": false,
+    "asset_digest_compile": 1,
+    "windows_digest_adapter_executed": false,
+    "asset_filename_compile": 10,
+    "windows_snapshot_adapter_executed": false,
+    "asset_json_lexer_compile": 14,
+    "full_manifest_lexical_scan": true,
+    "full_manifest_schema_validated_by_cpp": false,
+    "asset_json_document_compile": 18,
+    "full_manifest_structure_scan": true,
+    "asset_manifest_cases": 20,
+    "manifest_geometry_records": 11,
+    "geometry_manifest_contract_validated_by_cpp": true,
+    "asset_payload_compile": 7,
+    "windows_loader_executed": false,
+    "asset_calibration_compile": 9,
+    "actual_calibration_measurements": false,
+    "asset_mapping_compile": 13,
+    "prepared_emission_executed": false,
+    "asset_bounds_compile": 7,
+    "native_bounds_consumed": false
+  },
+  "reload_current_reconciliation": {
+    "patch": "analysis/offline-preimplementation-20261028/patches/reload-current-reconciliation.patch",
+    "sha256": "aa62671938fb04b04c3b9a9717eb33052e2466b61b8bc036177ddcb5fa5e4ad7",
+    "files": 6,
+    "current_baseline_private_apply": "passed",
+    "production_applied": false,
+    "new_scenarios": 5,
+    "existing_scenarios_rechecked": 15,
+    "runtime_adapter_ready": false
+  },
+  "latest_model_recovery_addon": {
+    "patch": "analysis/offline-preimplementation-20261028/patches/model-recovery-v7-addon.patch",
+    "sha256": "5292c3a56e7c17d620474a966a8876c98906e3092749c832dce6dd6b40f9d6e6",
+    "requires_model_v7": true,
+    "production_applied": false
+  },
+  "gnasher_accounting_checks": {
+    "compiler_scenarios": 8,
+    "mechanical_class_migrated": true,
+    "current_dependency_compile_passed": true,
+    "native_adapter_migrated": false,
+    "full_mechanical_flow_executed": false,
+    "executable_run": false
+  },
+  "latest_gnasher_patch": {
+    "path": "analysis/offline-preimplementation-20261028/patches/gnasher-common-ledger-candidate.patch",
+    "sha256": "9662dca6f8675bc341a8663cacb16c9eb122dc7d7e4dec641c021419ab80f5ff",
+    "files": 5,
+    "production_applied": false
+  },
+  "boltok_accounting_checks": {
+    "compiler_scenarios": 9,
+    "existing_boltok_compile_passed": true,
+    "mechanical_class_migrated": true,
+    "native_adapter_migrated": false,
+    "executable_run": false,
+    "report": "analysis/offline-preimplementation-20261028/reports/boltok-ledger-migration.json",
+    "mechanical_constexpr_scenarios": 17,
+    "current_dependency_compile_passed": true,
+    "legacy_test_replacement_complete": true
+  },
+  "latest_boltok_patch": {
+    "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\offline-preimplementation-20261028\\patches\\boltok-common-ledger-with-tests.patch",
+    "sha256": "60589a07b2f3fb1f6f431ae9021c207a7a5f72425c46022de7f763c1a0dd358c",
+    "files": 5,
+    "production_applied": false,
+    "includes_staged_test_replacement": true
+  },
+  "boltok_legacy_guard_checks": {
+    "groups": 15,
+    "invalid_input_variants": 107,
+    "compile_passed": true,
+    "executable_run": false,
+    "coverage_complete": false,
+    "report": "analysis/offline-preimplementation-20261028/reports/boltok-legacy-guard-coverage.json",
+    "conservation_initial_combinations": 28,
+    "staged_replacement_compiled": true,
+    "production_test_replaced": false
+  },
+  "latest_composed_reload_patch": {
+    "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\offline-preimplementation-20261028\\patches\\reload-composed-infinite-policy.patch",
+    "sha256": "7235d06af5833b0f070b863bb53c1ba129530da57c8c3a98e8a7d10d9562b45a",
+    "files": 14,
+    "compile_translation_units": 12,
+    "production_applied": false,
+    "preserves_current_infinite_reserve": true,
+    "preserves_dispatched_request_observation": true,
+    "weapon_specific_infinite_reserve_propagated": true
+  },
+  "older_reload_patches_integration_warning": "Do not directly apply earlier generic/Gnasher/Boltok patches: their shared transaction header would remove current mainline infinite reserve and dispatched request observation. Use composed candidate after remaining adapter work.",
+  "infinite_policy_candidate": {
+    "new_constexpr_scenarios": 3,
+    "gnasher_full_mechanical_runtime": false,
+    "native_acquisition_verified": false,
+    "report": "analysis/offline-preimplementation-20261028/reports/reload-composed-infinite-policy.json"
+  },
+  "native_reload_seam_audit": {
+    "report": "analysis/offline-preimplementation-20261028/reports/native-reload-seam-audit.json",
+    "source_entry_points": 11,
+    "runtime_verified": false
+  },
+  "saved_weapon_reload_audit": {
+    "report": "analysis/offline-preimplementation-20261028/reports/saved-weapon-reload-evidence-audit.json",
+    "exports_read": 8,
+    "reward_applicability_order_unresolved": true,
+    "runtime_verified": false
+  },
+  "reward_predicate_audit": {
+    "report": "analysis/offline-preimplementation-20261028/reports/reload-reward-predicate-resolved.json",
+    "predicate_resolved": true,
+    "native_fix_implemented": false,
+    "runtime_verified": false
+  },
+  "reward_repair_recipe": {
+    "report": "analysis/offline-preimplementation-20261028/reports/reload-reward-repair-recipe.json",
+    "stages": 9,
+    "production_implemented": false,
+    "runtime_verified": false
+  },
+  "reward_math_candidate": {
+    "report": "analysis/offline-preimplementation-20261028/reports/reward-call-contract-and-math.json",
+    "constexpr_assertions": 12,
+    "production_applied": false,
+    "runtime_verified": false
+  },
+  "reward_journal_candidate": {
+    "report": "analysis/offline-preimplementation-20261028/reports/reward-journal-candidate.json",
+    "constexpr_scenarios": 4,
+    "native_consumer_connected": false
+  },
+  "reward_signature_candidate": {
+    "report": "analysis/offline-preimplementation-20261028/reports/reward-signature-candidate.json",
+    "compiled": true,
+    "actual_reflection_verified": false
+  },
+  "reward_reflection_reuse": {
+    "report": "analysis/offline-preimplementation-20261028/reports/reward-reflection-reuse-map.json",
+    "source_locations": 6,
+    "reader_implemented": false
+  },
+  "reward_snapshot_core": {
+    "report": "analysis/offline-preimplementation-20261028/reports/reward-snapshot-core.json",
+    "compiled": true,
+    "native_specialization_implemented": false
+  },
+  "reward_native_reader": {
+    "report": "analysis/offline-preimplementation-20261028/reports/reward-native-reader-candidate.json",
+    "body_implemented": true,
+    "current_metadata_compile_passed": true,
+    "owner_admission_implemented": false,
+    "runtime_verified": false
+  },
+  "reward_owner_path": {
+    "report": "analysis/offline-preimplementation-20261028/reports/reward-owner-path-admission.json",
+    "compiled": true,
+    "static_cdo_and_target_class_verified": false
+  },
+  "reward_preparation_package": {
+    "archive": "analysis\\offline-preimplementation-20261028\\gearsvr-offline-reward-preparation-v1.zip",
+    "sha256": "000eb57eb628258b45850c2bc67a40a8b2acb976aaaf4b7321f97dff22fc9411",
+    "entries": 30,
+    "archive_byte_verification": true,
+    "standalone_build": false,
+    "production_ready": false,
+    "runtime_verified": false,
+    "remaining": [
+      "ObjectProperty target-class layout",
+      "UFunction flags layout",
+      "actual SoundGroup class default-object binding"
+    ]
+  },
+  "boomshot_physical_start": {
+    "scope": "private Boomshot W07 physical start",
+    "compile_passed": true,
+    "compiler_report": "reports/boomshot_start_compile.json",
+    "assertion_groups": 4,
+    "invalid_start_variants": 10,
+    "header_sha256": "1b3ae8b480a27c9d0833c987373fdba0fd0ee19fa16e72162f6badca3996bbe0",
+    "check_sha256": "aa5eba8f844c4fc85981610a5d49aa97daa4aee2c6a70443fa0e5ffca7bbf53a",
+    "production_header_sha256": "80d69c59b7ff743a8441be6e5f73f545da9ac5480fc858f7f711b5ab983a7eeb",
+    "production_applied": false,
+    "runtime_executed": false,
+    "contract": [
+      "mechanism_open and auxiliary_button use one owner intent sequence",
+      "physical start requires tracked continuous frame and accepted original reload",
+      "start leaves opening stroke incomplete at index zero",
+      "legacy R3 delegates to the same entry"
+    ],
+    "remaining": [
+      "common transaction accounting migration",
+      "retain dispatched receipts across interruption",
+      "infinite reserve policy",
+      "legacy fixtures migration",
+      "native contact authentication and timer/Notify ownership"
+    ]
+  },
+  "boomshot_accounting_candidate": {
+    "scope": "Boomshot private common-accounting adapter",
+    "compile_passed": true,
+    "compiler_report": "reports/boomshot_accounting_compile.json",
+    "assertion_groups": 6,
+    "invalid_carrier_variants": 9,
+    "hashes": {
+      "staging/tools/vr-common/weapon_boomshot_reload_accounting.h": "5e0794505017e3f0b413ae6d87dccafecd2019110a067bd327bcfcab3089a521",
+      "staging/tools/vr-common/weapon_boomshot_interaction.h": "b005f9e6fc5076a876b6435407df0a86e7543472e638c89a1adb3215e50e0ed3",
+      "staging/tools/vr-common/weapon_reload_transaction.h": "7d646b9e0c966e85679553323bc1b8602f259893fe8eeddd19fb17fb3246213e",
+      "checks/boomshot_accounting_compile.cpp": "888bd58268b970bbf1b7e25367452b0039004aaea02518e34d138b09332369ba"
+    },
+    "production_applied": false,
+    "runtime_executed": false,
+    "mechanical_caller_migrated": false,
+    "covered": [
+      "late insertion after interruption with no redispatch",
+      "zero finite reserve under infinite policy",
+      "wrong policy receipt retains request for reconciliation",
+      "rejected insertion requires fresh carrier",
+      "late completion requires explicit same reload resume",
+      "carrier binding, serial, plan, phase, type, source, units and grip validation"
+    ],
+    "remaining": [
+      "replace mechanical inventory/request members with accounting owner",
+      "preserve tracking and original fire receipt semantics in migration",
+      "migrate legacy fixtures and full mechanical flows",
+      "authenticate native motion and original receipts"
+    ]
+  },
+  "boomshot_mechanical_migration": {
+    "scope": "Boomshot mechanical caller migration",
+    "compile_passed": true,
+    "compiler_report": "reports/boomshot_mechanics_compile.json",
+    "mechanical_assertion_groups": 8,
+    "hashes": {
+      "staging/tools/vr-common/weapon_boomshot_interaction.h": "d802e6aab2070d7b6483c221f15e55c1e6f68364d802a07fc66986641438e352",
+      "staging/tools/vr-common/weapon_boomshot_types.h": "f20ae97f55e0a88b1a295bcb68ce3fa656e56f1650da0dde2d3a7db66b1aff7a",
+      "staging/tools/vr-common/weapon_boomshot_mechanics.h": "52817a4d9709232b00ecfc0a3657f9fed51608c0373cfda6e29228ae0b71c9c0",
+      "staging/tools/vr-common/weapon_boomshot_reload_accounting.h": "86db281645c15a9994e3c59f24839e0f0f7530a243145e78218d198194547155",
+      "checks/boomshot_mechanics_compile.cpp": "0718226e6e6328bb088ff2c66c876bb1bcfcd75b57d383ccb18eca86630e937a"
+    },
+    "production_header_unchanged": true,
+    "production_applied": false,
+    "runtime_executed": false,
+    "mechanical_caller_migrated": true,
+    "inventory_and_reload_requests_owned_by_common_ledger": true,
+    "interface_changes": [
+      "explicit take_reload_request and read-only dispatched_reload_request replace copied inventory/completion request getters",
+      "completion receipt requires result_applied and original_ready",
+      "resume requires same original reload, fresh intent and certified mechanical state",
+      "reset rejects active/interrupted operations and retains ledger counters"
+    ],
+    "covered": [
+      "finite/infinite full open-insert-close",
+      "late insertion requires same reload resume",
+      "late completion cannot bypass resume",
+      "rejected completion retry preserves original physical closing time",
+      "original fire handoff after reload with no manual post-shot cycle",
+      "rejected insertion requires fresh carrier",
+      "three unverified completion facts retain dispatched request"
+    ],
+    "remaining": [
+      "migrate legacy tests to fixed W07 and new dispatch/receipt interface",
+      "closed instance rebind and reload-after-shot lifecycle checks",
+      "interrupted fire handoff reconciliation still separate from reload recovery",
+      "Native inventory/reward/Notify ownership and motion certification",
+      "candidate packaging against latest baseline"
+    ]
+  },
+  "boomshot_lifecycle_candidate": {
+    "compile_passed": true,
+    "compiler_report": "reports/boomshot_lifecycle_compile.json",
+    "assertion_groups": 6,
+    "production_applied": false,
+    "runtime_executed": false,
+    "hashes": {
+      "staging/tools/vr-common/weapon_boomshot_mechanics.h": "7bdc0e65316afeca19d1a7a458497f3e7ecd90d4eb5cd3b33323bcfcd4210261",
+      "checks/boomshot_lifecycle_compile.cpp": "8f0704c0fc66e6123f8ef50bf9a9200f177542b24c8f8bceb7f8e99247beb8d1",
+      "checks/boomshot_mechanics_compile.cpp": "3ff6cc2174c21eeb3c403ffac69bd30c38857f97639c3d9a4095aa2f669554b5"
+    },
+    "fixed": "dispatched original shot receipt was rejected after mechanical interruption",
+    "interface_changes": [
+      "take_fire_request is the only dispatch operation; fire_request is read-only",
+      "resume_ready explicitly restores idle/fire interruption after confirmed original readiness and closure",
+      "undispatched shot is cancelled on interruption; dispatched shot retained until receipt reconciled"
+    ],
+    "covered": [
+      "late accepted shot",
+      "late rejected shot",
+      "undispatched cancellation and receipt rejection",
+      "wrong projectile count retains shot until corrected authenticated receipt",
+      "reload starts after original shot",
+      "closed new instance retains request/item histories"
+    ],
+    "remaining": [
+      "legacy fixture migration",
+      "complete repeated reload-fire-reload sequence",
+      "latest baseline package construction",
+      "Native adapter dispatch and original receipt authentication"
+    ]
+  },
+  "boomshot_repeat_and_legacy_guards": {
+    "compile_passed": true,
+    "compiler_report": "reports/boomshot_legacy_guards_compile.json",
+    "repeat_flow": "complete reload-fire-reload, old serial rejected, fresh carrier, independent second perfect window",
+    "legacy_guard_groups": 8,
+    "guard_variants": 44,
+    "production_applied": false,
+    "runtime_executed": false,
+    "production_legacy_test_sha256": "4e97fb6266d5ba4e61f41b3ff29a123bf417c760e74837bb7161bb3b4e16dfa4",
+    "ported": [
+      "17 mechanical proof failures",
+      "4 insertion geometry failures",
+      "5 inventory result failures retaining pending request",
+      "5 original fire result failures retaining pending request",
+      "6 tracking discontinuities",
+      "mandatory closing return proof",
+      "5 timing cases including paused game tick and unknown reward window",
+      "original animation handoff and restoration"
+    ],
+    "replaced_obsolete_expectations": [
+      "capacity seven and two rounds per carrier -> W07 capacity one and one verified carrier",
+      "insert-only/mixed quantity/manual after-shot plans -> reject invalid W07 plans",
+      "reset discards pending request -> reset denied until resolved",
+      "late dispatched receipt rejected -> settle and explicitly resume",
+      "rejected insertion keeps old carrier -> release and require fresh carrier"
+    ],
+    "remaining": [
+      "finish entry/config legacy guard migration and guidance/conservation assertions",
+      "produce self-contained staged replacement test with coverage map",
+      "current baseline package verification"
+    ],
+    "files": {
+      "checks\\boomshot_repeat_compile.cpp": "4be8e5de296411cddbe83094f4a9150b71554291239b323e9f00cfd3e5b992f3",
+      "checks\\boomshot_legacy_guards_compile.cpp": "a9c8f95aae912aa93f3e6acf88e17a6ea435cbfb163112aea9c67a751a556071",
+      "staging\\tools\\vr-common\\weapon_boomshot_mechanics.h": "68ee3ad9c42be202a4caeb1846d1c8b7dd342d16383a090f9469904dfb41d105"
+    }
+  },
+  "boomshot_standalone_test": {
+    "source_checks": [
+      "boomshot_legacy_entry_compile.cpp",
+      "boomshot_legacy_guards_compile.cpp",
+      "boomshot_repeat_compile.cpp",
+      "boomshot_lifecycle_compile.cpp",
+      "boomshot_mechanics_compile.cpp",
+      "boomshot_accounting_compile.cpp",
+      "boomshot_start_compile.cpp",
+      "boomshot_plan_compile.cpp"
+    ],
+    "source_hashes": {
+      "boomshot_legacy_entry_compile.cpp": "5edd0b3b06fc19042e5f21a137e82e2cb64adccfc6d16d55049c54c8679beca3",
+      "boomshot_legacy_guards_compile.cpp": "a9c8f95aae912aa93f3e6acf88e17a6ea435cbfb163112aea9c67a751a556071",
+      "boomshot_repeat_compile.cpp": "4be8e5de296411cddbe83094f4a9150b71554291239b323e9f00cfd3e5b992f3",
+      "boomshot_lifecycle_compile.cpp": "8f0704c0fc66e6123f8ef50bf9a9200f177542b24c8f8bceb7f8e99247beb8d1",
+      "boomshot_mechanics_compile.cpp": "3ff6cc2174c21eeb3c403ffac69bd30c38857f97639c3d9a4095aa2f669554b5",
+      "boomshot_accounting_compile.cpp": "888bd58268b970bbf1b7e25367452b0039004aaea02518e34d138b09332369ba",
+      "boomshot_start_compile.cpp": "aa5eba8f844c4fc85981610a5d49aa97daa4aee2c6a70443fa0e5ffca7bbf53a",
+      "boomshot_plan_compile.cpp": "267019c489f7c3344abcf4097875aacf662fe97d080747d2dad24bfb5b620a7c"
+    },
+    "candidate_sha256": "39bbab17e5510c996853e9da07873682116e29508dadfdfcc6a3ede67eb72476",
+    "assertion_sites": 42,
+    "private_cpp_includes_remaining": false,
+    "compiled": true,
+    "runtime_executed": false,
+    "compiler_report": "reports/boomshot_standalone_compile.json",
+    "legacy_coverage_map": {
+      "certification_and_entry": "legacy_entry_matrix (17 config,18 start), legacy_full_dry, physical start guards",
+      "ordered_guidance_and_conservation": "legacy_guidance_conservation; W07 single carrier",
+      "timing_and_independent_plans": "legacy_timing_edges; invalid generic plans rejected by boom_plan_rejects/config_rejects",
+      "mechanical_and_ammo_proofs": "legacy_motion_guards, legacy_insert_guards, legacy_closing_proof, boom_bad_carriers",
+      "tracking_clock_and_animation": "legacy_tracking_guards, legacy_animation_handoff, boom_tracking_recovery",
+      "inventory_receipts_and_rebinding": "legacy_inventory_guards, mechanical late/rejection/recovery, closed_rebind_preserves_tokens",
+      "original_fire_and_cycles": "legacy_fire_guards, lifecycle shot dispatch/recovery, repeat_reload_fire_reload; manual post-shot cycle rejected"
+    },
+    "coverage_note": "Behavioral replacement with mapped groups; not a claim every old assertion is copied verbatim. Obsolete synthetic behavior is explicitly rejected."
+  },
+  "latest_boomshot_package": {
+    "archive": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\offline-preimplementation-20261028\\gearsvr-offline-boomshot-v1.zip",
+    "archive_sha256": "8ae12dac21031d977f476dd2f158c0952ce8db6a22b1ecccc8fea3aad469ef8b",
+    "patch_sha256": "65450010f471b519e42a5b3763297abecbdacb325419a53d92ae38be990ef106",
+    "archive_entries": 14,
+    "private_apply": "passed",
+    "production_applied": false,
+    "executable_run": false
+  },
+  "bow_physical_reload_candidate": {
+    "scope": "Torque Bow W08 physical reload start and plan",
+    "compile_passed": true,
+    "compiler_report": "reports/bow_physical_reload_compile.json",
+    "new_assertion_groups": 3,
+    "invalid_variants": 11,
+    "existing_cancel_checks_included": true,
+    "production_applied": false,
+    "runtime_executed": false,
+    "hashes": {
+      "staging/tools/vr-common/weapon_torque_bow_interaction.h": "16f632de07c01893f16a5d2be59efba48f679274f2d08ca0944104502cbabf19",
+      "checks/bow_physical_reload_compile.cpp": "8f8192a894ceb5a98a8ac7d1c1a606cc18b924b46ce621d51d8a9a446fa757d8",
+      "checks/bow_cancel_compile.cpp": "1f3875ec8b8ca03150a079700f6c4118db12f0a47aa5229441c1c59b4cb331d1"
+    },
+    "findings": [
+      "old config allowed capacity up to 10000 and extra manual mechanism steps",
+      "old reload start required R3 before shoulder pickup"
+    ],
+    "changes": [
+      "capacity fixed to one",
+      "verified reload plan has exactly one insert_arrow component",
+      "begin_from_left_shoulder validates pickup before atomic reload start and reservation",
+      "R3 compatibility and cancel share owner intent stream"
+    ],
+    "remaining": [
+      "common ledger/infinite reserve integration",
+      "reload interruption/resume and dispatched receipt lifecycle audit",
+      "legacy three-step test migration",
+      "Native abort state transition and reload Notify/reward adapters"
+    ]
+  },
+  "bow_infinite_policy_candidate": {
+    "compile_passed": true,
+    "compiler_report": "reports/bow_infinite_reload_compile.json",
+    "new_assertion_groups": 4,
+    "production_applied": false,
+    "runtime_executed": false,
+    "common_ledger_migrated": false,
+    "covered": [
+      "zero-count infinite reserve completes reload without decrement",
+      "wrong policy receipt retains pending request and does not mutate inventory",
+      "release and retake under infinite policy",
+      "finite zero reserve remains dry"
+    ],
+    "hashes": {
+      "staging/tools/vr-common/weapon_torque_bow_interaction.h": "357911a46cdde7dfe7ecd5f9f474ddfd3874de2058c5669340314d72186caa1a",
+      "checks/bow_infinite_reload_compile.cpp": "e8ba558463c0376cd3944439adc8f9442a1dd2f47ee54c164063e3ebf9343199"
+    },
+    "remaining": [
+      "common ledger migration",
+      "explicit reload recovery after interruption and rejection",
+      "legacy test migration",
+      "Native reload/abort consumers"
+    ]
+  },
+  "bow_reload_exit_recovery": {
+    "compile_passed": true,
+    "compiler_report": "reports/bow_reload_recovery_compile.json",
+    "new_assertion_groups": 3,
+    "invalid_recovery_variants": 8,
+    "production_applied": false,
+    "runtime_executed": false,
+    "common_ledger_migrated": false,
+    "semantics": "Explicit recovery only after original reload exited and fill suppression released; abandon old reload, settle pending receipt first, new reload needs new serial. Does not replace planned same-reload common-ledger resume.",
+    "covered": [
+      "late accepted completion retains interrupted state until owner confirms exit",
+      "late rejected completion can recover and begin with fresh serial",
+      "pending dispatch prevents recovery",
+      "eight invalid recovery conditions fail without consuming recovery input"
+    ],
+    "hashes": {
+      "staging/tools/vr-common/weapon_torque_bow_interaction.h": "b2e90affd23cc876f9b03663998507a8814e7dc99ccd25ac9c4162c9dba68367",
+      "checks/bow_reload_recovery_compile.cpp": "db466be1b4b21071a56929eb88fcd09d963872ad04500edfd5d3f91d4fb685dd"
+    },
+    "remaining": [
+      "common accounting and same-reload resume",
+      "legacy reload fixture migration",
+      "Native state/exit/automatic-fill authentication",
+      "physical calibration and game validation"
+    ]
+  },
+  "bow_common_accounting_candidate": {
+    "compile_passed": true,
+    "compiler_report": "reports/bow_accounting_compile.json",
+    "assertion_groups": 3,
+    "mechanical_caller_migrated": false,
+    "production_applied": false,
+    "runtime_executed": false,
+    "covered": [
+      "finite and infinite late insertion after interruption",
+      "same identity and original reload serial resume",
+      "physical seating tick preserved for completion",
+      "late completion requires explicit resume",
+      "wrong policy retains dispatched request"
+    ],
+    "hashes": {
+      "staging/tools/vr-common/weapon_torque_bow_reload_accounting.h": "0856598573144693fe6c12849e19792bbae7c367d69dac12df7ca116a185ea03",
+      "checks/bow_accounting_compile.cpp": "e1c32609a7d019b2b6cf28ba701dfbc1ec68b07fe175eeca6678f2791e59f9b0"
+    },
+    "remaining": [
+      "reject seating tick earlier than reload start before queueing",
+      "release/retake and rejected insertion recovery",
+      "replace mechanical inventory/request owner",
+      "native split insertion/completion consumers and lifecycle receipts",
+      "legacy fixtures and package"
+    ]
+  },
+  "bow_accounting_retry": {
+    "compile_passed": true,
+    "compiler_report": "reports/bow_accounting_retry_compile.json",
+    "assertion_groups": 4,
+    "production_applied": false,
+    "runtime_executed": false,
+    "mechanical_caller_migrated": false,
+    "covered": [
+      "release and fresh arrow retake",
+      "earlier-than-reload seating tick rejected before queue",
+      "rejected insertion retry in same reload",
+      "rejected insertion after interruption explicitly resumes same serial",
+      "undispatched insertion cancellation and new arrow after resume",
+      "retry keeps original timing and becomes ordinary outside window"
+    ],
+    "hashes": {
+      "staging/tools/vr-common/weapon_torque_bow_reload_accounting.h": "03f08933f87116c9e596a17e601f053602ff5f8de093bda29b1b615ae5f93c4d",
+      "checks/bow_accounting_retry_compile.cpp": "e843ba951c605bd6567f95b1d66015eebd762c7fd336a8ba7893b61380e03378"
+    },
+    "remaining": [
+      "mechanical inventory/request owner migration",
+      "original split insertion/completion adapter",
+      "legacy fixtures and full repeated flows",
+      "Native charge abort and exit authentication"
+    ]
+  },
+  "bow_idle_accounting_and_types": {
+    "compile_passed": true,
+    "compiler_report": "reports/bow_idle_accounting_compile.json",
+    "new_assertion_groups": 2,
+    "production_applied": false,
+    "runtime_executed": false,
+    "mechanical_inventory_migrated": false,
+    "covered": [
+      "idle original shot inventory sync then first-arrow reload",
+      "identity/revision/policy guards",
+      "active reload rejects idle synchronization",
+      "pending dispatch cannot be erased by binding or sync"
+    ],
+    "hashes": {
+      "staging/tools/vr-common/weapon_torque_bow_interaction.h": "c5a275df3fa8da70fad6c5683c84649dd5a9fe4e0e5312e1c3638d7c0449b7f5",
+      "staging/tools/vr-common/weapon_torque_bow_types.h": "2109fca7a61c14554f02fd3fe0a47798e3f101259d157ed024064fe04fd2eb79",
+      "staging/tools/vr-common/weapon_torque_bow_mechanics.h": "6469a90cd340fa4d2ed31d832d942374a20132dac21409871000376b25b3c31d",
+      "staging/tools/vr-common/weapon_torque_bow_reload_accounting.h": "df7499041f9bcc7fa19a256d2a7089440d019e3717bdc40a771564d6cec0f058",
+      "checks/bow_idle_accounting_compile.cpp": "cfe70f6c611b16171323774c43a0fcf672608ad46ca608f831830cf78043b271"
+    },
+    "remaining": [
+      "replace mechanical inventory member with accounting inventory",
+      "separate native insertion/completion requests",
+      "connect release/retry/resume and exited reload paths",
+      "migrate legacy tests and full charge/reload repeat flows"
+    ]
+  },
+  "bow_mechanical_inventory_owner": {
+    "compile_passed": true,
+    "compiler_report": "reports/bow_inventory_owner_compile.json",
+    "new_assertion_groups": 2,
+    "mechanical_inventory_migrated": true,
+    "mechanical_reload_requests_migrated": false,
+    "production_applied": false,
+    "runtime_executed": false,
+    "covered": [
+      "mechanical reload completion then original charge and projectile inventory receipt",
+      "finite and infinite reserve policy preserved",
+      "existing cancel/recovery/accounting checks included"
+    ],
+    "hashes": {
+      "staging/tools/vr-common/weapon_torque_bow_mechanics.h": "451fa51377f14578b77580bc83913c90901e2ffccbce636366a68abfb7368f37",
+      "checks/bow_inventory_owner_compile.cpp": "3180115e53ac261e79c4044fb7b82e683908aedb68d0fd7b6b6826d6a4a82e61"
+    },
+    "remaining": [
+      "replace old combined reload action request with common insertion/completion dispatch",
+      "connect actual mechanical reserve/release/resume to common ledger",
+      "preserve charge/cancel ownership while separating request kinds",
+      "full lifecycle and legacy test migration"
+    ]
+  },
+  "bow_split_mechanical_migration": {
+    "compile_passed": true,
+    "compiler_report": "reports/bow_split_mechanics_compile.json",
+    "assertion_groups": 2,
+    "mechanical_reserve_insert_finish_connected": true,
+    "production_applied": false,
+    "runtime_executed": false,
+    "covered": [
+      "first pickup reserves through ledger",
+      "seat queues insert only",
+      "accepted insertion queues separate finish using physical seat time",
+      "late insertion keeps interrupted and resumes same reload",
+      "original charge cancel checks remain passing"
+    ],
+    "remaining": [
+      "migrate obsolete combined-request fixtures",
+      "completion rejection and late completion mechanical flows",
+      "explicit exited-reload recovery must reconcile active ledger before idle sync",
+      "remove unreachable old combined reload receipt branches",
+      "full charge-after-new-reload and infinite repeated flows",
+      "Native insertion/finish consumers"
+    ],
+    "hashes": {
+      "staging/tools/vr-common/weapon_torque_bow_mechanics.h": "7c63ea260a60dfe4ed337a354f8d120bef48365df703951e6822bce67f978530",
+      "staging/tools/vr-common/weapon_torque_bow_reload_accounting.h": "f1f0b78e528ec2fd3038b16635969c58b9e39d72fa540be52c76800bcc5c3bf2",
+      "checks/bow_split_mechanics_compile.cpp": "82b120b84f8ec20c6bcb2347640517c9bdcea533edd3ae2f0f41c5b1cef2b5c0"
+    }
+  },
+  "bow_completion_recovery_migration": {
+    "compile_passed": true,
+    "compiler_report": "reports/bow_completion_recovery_compile.json",
+    "new_assertion_groups": 3,
+    "production_applied": false,
+    "runtime_executed": false,
+    "covered": [
+      "late finish requires ready-certified explicit resume",
+      "rejected finish retries with original perfect timing after long wait",
+      "undispatched insertion cancelled and physical unseated recovery permits new arrow"
+    ],
+    "fixed": "mechanical seated step remained set after undispatched ledger insertion was cancelled",
+    "obsolete_combined_ack_branches_removed": true,
+    "remaining": [
+      "original exited-reload ledger reconciliation",
+      "migrate obsolete combined request fixtures",
+      "infinite/repeated reload-charge-fire checks and packaging",
+      "Native consumers"
+    ],
+    "hashes": {
+      "staging/tools/vr-common/weapon_torque_bow_mechanics.h": "b591113ea67e53f75bbb82933bf1ecbf645d67d11333f459948a741465546e75",
+      "checks/bow_completion_recovery_compile.cpp": "52364c1855917a41c032aa296528c5c44cc7cb6ecf33448a6796458c9c8f7fda"
+    }
+  },
+  "bow_settled_exit": {
+    "compile_passed": true,
+    "compiler_reports": [
+      "reports/bow_settled_exit_compile.json",
+      "reports/current_suspended_reload_compile.json"
+    ],
+    "new_assertion_groups": 2,
+    "production_applied": false,
+    "runtime_executed": false,
+    "shared_change": "add settle_exited for owner-certified original exit, only interrupted with matching inventory/serial, fresh intent, no pending/reserved/original-held item; preserve histories/result",
+    "covered": [
+      "unfilled interrupted reload exits without debit and new serial can begin",
+      "old serial cannot restart",
+      "pending completed reload cannot exit until receipt settled",
+      "late finished reward remains settled with no new request"
+    ],
+    "remaining": [
+      "infinite/repeated charge-fire flows on split path",
+      "legacy combined fixtures migration",
+      "shared change review and current-baseline package",
+      "Native owner must authenticate original exit and final feed/closure state"
+    ],
+    "hashes": {
+      "staging/tools/vr-common/weapon_reload_transaction.h": "9471b22b248f7d559878d8cd9c828ff4541d71371ce1629c779444316683f1f7",
+      "staging/tools/vr-common/weapon_torque_bow_reload_accounting.h": "117892c78fc20b18fcc4660c84c79334338d31c816e006de5fa38d28b13087e1",
+      "staging/tools/vr-common/weapon_torque_bow_mechanics.h": "991a9ef0e7ae807dd1016d07c504394fb7e6ec8c1421ceff138c015c5ee845ce",
+      "checks/bow_settled_exit_compile.cpp": "7108e94d9eeb8731cf1960dc741a4c0a11613c5e36b796e4f2032d8be6e97631"
+    }
+  },
+  "bow_split_repeat_and_tracking": {
+    "compile_passed": true,
+    "compiler_report": "reports/bow_split_repeat_compile.json",
+    "new_assertion_groups": 3,
+    "production_applied": false,
+    "runtime_executed": false,
+    "covered": [
+      "two finite reload-charge-original-shot rounds conserve reserve 3 to 1",
+      "two infinite rounds preserve zero count and policy",
+      "fresh arrows/reload serials/increasing request tokens",
+      "unknown second window does not inherit first perfect outcome",
+      "tracking loss releases unseated reservation; retake works",
+      "pending query includes queued and dispatched ledger requests"
+    ],
+    "fixed": [
+      "tracking_lost cleared visual arrow without releasing common reservation",
+      "has_pending_request ignored common reload channel"
+    ],
+    "remaining": [
+      "legacy combined fixture migration and self-contained replacement",
+      "review shared exit contract and native receipt requirements",
+      "current baseline package"
+    ],
+    "hashes": {
+      "staging/tools/vr-common/weapon_torque_bow_mechanics.h": "69585d96e507ccc7b33c2cc451b02383b3040db36e04953da8787e166cbab473",
+      "staging/tools/vr-common/weapon_torque_bow_reload_accounting.h": "732837876cbc66e9622ae4595f390016b7a11d83b9e6d75b73f18e9231968771",
+      "checks/bow_split_repeat_compile.cpp": "93c9c118453deca1af376d3cd6bfbd07bd3210b2c89d399958e3601cb0a27c7e"
+    }
+  },
+  "bow_legacy_charge_migration": {
+    "compile_passed": true,
+    "compiler_report": "reports/bow_legacy_charge_compile.json",
+    "legacy_groups_ported": 5,
+    "assert_call_sites": 87,
+    "production_applied": false,
+    "runtime_executed": false,
+    "source_sha256": "081ee3af577c677669cd9096b630c32dcf5a423567efec1673920b748e3a3614",
+    "candidate_sha256": "fdf333fb6881628bd232ac945d3a0d996d6ab0af055959b5c81ffa48208c40e2",
+    "groups": [
+      "charge",
+      "original_charge_release_and_actual_projectile",
+      "loss_never_generates_end_fire",
+      "quick_tap_and_expiry",
+      "sequence_clock_and_dispatch_gates",
+      "contradictory_receipts_and_identity_change_fail_closed"
+    ],
+    "migration": [
+      "capacity one and W08 single insertion config",
+      "constexpr fixtures with failing assertions preventing constant evaluation",
+      "removed unused old open/seat/reload helper methods"
+    ],
+    "remaining": [
+      "four legacy config/reload groups need W08 split interface migration",
+      "bad_reload tail from contradictory group deferred to reload receipt guards",
+      "coverage-mapped independent full test and package"
+    ]
+  },
+  "bow_legacy_reload_migration": {
+    "compile_passed": true,
+    "compiler_report": "reports/bow_legacy_reload_compile.json",
+    "assertion_groups": 5,
+    "production_applied": false,
+    "runtime_executed": false,
+    "candidate_sha256": "5154af80612c8072a773fc699056b22a358b8e64458ec0c6b798872939e8c26b",
+    "covered": [
+      "nine invalid configs and uncertified abort/reload entry",
+      "W08 guide colors/component and finite conservation on release/retake",
+      "old motion cannot seat replacement arrow",
+      "five original-clock reward boundaries including paused tick and unknown window",
+      "five wrong reload receipts retain dispatch and do not mutate inventory",
+      "ten seating proof guards"
+    ],
+    "legacy_mapping": {
+      "certified_configuration_only": "bow_legacy_config_matrix; W08 rejects manual mechanism order",
+      "guides_conservation_and_once_only_commit": "bow_legacy_guide_and_conservation plus split/repeated once-only flows",
+      "perfect_deadline_and_unknown_window": "bow_legacy_time_edges",
+      "reload_gates_and_tracking_fences": "bow_legacy_reload_motion_guards, wrong receipt identity, prior tracking release/recovery checks",
+      "contradictory_receipts bad_reload tail": "bow_legacy_wrong_reload_receipts"
+    },
+    "remaining": [
+      "coverage-mapped self-contained full test assembly",
+      "review native split call contract and shared settle_exited delta",
+      "current baseline private patch apply/compile/package"
+    ]
+  },
+  "latest_torque_bow_package": {
+    "archive": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\offline-preimplementation-20261028\\gearsvr-offline-torque-bow-v1.zip",
+    "archive_sha256": "0532a73cad2162a5f35eab7096df009eac834a2471b61f6686ecb57e8025dd21",
+    "patch_sha256": "f0442ebdf900ed52afdbbc3b12e209c8ce3c4372824e70eba32dc174fa2eb5a9",
+    "archive_entries": 14,
+    "private_apply": "passed",
+    "production_applied": false,
+    "executable_run": false
+  },
+  "hod_resource_contract": {
+    "compile_passed": true,
+    "compiler_report": "reports/hod_resource_contract_compile.json",
+    "assertion_groups": 3,
+    "production_applied": false,
+    "runtime_executed": false,
+    "finding": "generic original_managed resource pool and synthetic 777-unit fixtures contradict W09 no-consumable design",
+    "changes": [
+      "reject consumable resource config",
+      "all bound resource counts must be zero including unknown policy",
+      "receipt cannot authorize resource quantity change"
+    ],
+    "remaining": [
+      "migrate legacy synthetic resource fixtures",
+      "review aim/fire ownership and stop chain versus W09",
+      "actual target query and EndFire native adapter certification"
+    ],
+    "hashes": {
+      "staging/tools/vr-common/weapon_hammer_of_dawn_interaction.h": "ccd0ed120363c1ac9792eff406e4016f39bb535d420fc9153848701db9251210",
+      "checks/hod_resource_contract_compile.cpp": "06d6c987710bbcefb8f0b2d443b9ed71c2435c4494ea185081df39531be0051d"
+    }
+  },
+  "hod_right_hand_admission": {
+    "compile_passed": true,
+    "compiler_report": "reports/hod_right_hand_compile.json",
+    "new_assertion_groups": 2,
+    "production_applied": false,
+    "runtime_executed": false,
+    "finding": "VR hand authority restoration incorrectly required left tracking even for right-hand weapon fire",
+    "changes": [
+      "valid right weapon pose restores VR hands; optional left aim retains separate gate",
+      "pure decision methods compiler evaluable",
+      "finite/unit ray validation expressed as bounded comparisons for compile evaluation"
+    ],
+    "covered": [
+      "right tracked/left untracked legal target can request fire",
+      "invalid target cannot request fire"
+    ],
+    "remaining": [
+      "actual stop/invalid target callbacks",
+      "legacy zero-resource test migration",
+      "ray validity edge cases after constexpr conversion",
+      "Native owner and target query authentication"
+    ],
+    "hashes": {
+      "staging/tools/vr-common/weapon_hammer_of_dawn_interaction.h": "0b82cbb4977dfb29866425d1080d63c2905cdfe26fc179eb5ee6af95d54d6197",
+      "checks/hod_right_hand_compile.cpp": "08a251a22f6f3e4722f4774acd3da8a9f0ae008be8521ce5dd7ccdcabb8671fa"
+    }
+  },
+  "hod_stop_ownership": {
+    "compile_passed": true,
+    "compiler_report": "reports/hod_stop_compile.json",
+    "assertion_groups": 4,
+    "production_applied": false,
+    "runtime_executed": false,
+    "finding": "accepted release cleared owned fire before verifying original beam phase stopped",
+    "changes": [
+      "retain ownership and request cancel if release returns fire-down or designating/warming/illuminating"
+    ],
+    "covered": [
+      "normal release to cooldown",
+      "accepted release but active beam continues -> retain and cancel",
+      "target invalidation -> one cancel -> confirmed cooldown releases ownership",
+      "right tracking loss -> same cancel receipt lifecycle"
+    ],
+    "remaining": [
+      "Native EndFire and cancel callback binding",
+      "pending start/update race and rejected stop receipts",
+      "legacy zero-resource fixture migration",
+      "ray validity edge cases"
+    ],
+    "hashes": {
+      "staging/tools/vr-common/weapon_hammer_of_dawn_interaction.h": "30413354f66ee5eaad2314d986ca4f1065fac85915fbbaef0fbc03a45630cfd6",
+      "checks/hod_stop_compile.cpp": "60d82f250e8a2e5dd89873532c1de01a512be158dd2de3b12d21b40b5db93357"
+    }
+  },
+  "hod_request_races_and_ray": {
+    "compile_passed": true,
+    "compiler_report": "reports/hod_races_compile.json",
+    "assertion_groups": 4,
+    "production_applied": false,
+    "runtime_executed": false,
+    "covered": [
+      "dispatched begin reconciled before tracking cancel",
+      "release deferred until dispatched designation receipt",
+      "rejected cancel retains ownership and retries with fresh token",
+      "six ray finite/unit/overflow boundaries"
+    ],
+    "change": "reject non-finite or impossible direction components before squared-length multiplication",
+    "remaining": [
+      "legacy zero-resource fixture migration",
+      "Native EndFire/invalid target mapping and actual ownership checks",
+      "independent test and current baseline package"
+    ],
+    "hashes": {
+      "staging/tools/vr-common/weapon_hammer_of_dawn_interaction.h": "523ac30578b5606d0502cb4dc08bc3aa540529a893640f1b66efa18b2cc39969",
+      "checks/hod_races_compile.cpp": "80082aac0cf8cb29ce61f28b378ae8f8de7ce08d4fff4ce08bf36cfb834c0294"
+    }
+  },
+  "hod_legacy_migration": {
+    "compile_passed": true,
+    "compiler_report": "reports/hod_legacy_compile.json",
+    "legacy_groups": 8,
+    "check_call_sites": 156,
+    "source_sha256": "12a8fee9bb7e63614e9f430b1606b1bb007e89f620a049a6291c40ec69da6159",
+    "candidate_sha256": "e449f38713c323a5d7bdf36f32645033e4a4f47083522807121fc1cf5778b47e",
+    "production_applied": false,
+    "runtime_executed": false,
+    "changes": [
+      "resource fixture original_managed/777 replaced with W09 no_consumable/zero",
+      "real effects preserve zero quantity; certified nonzero quantity rejected",
+      "snapshot mutation uses explicit nonzero instead of zero unsigned decrement",
+      "animation restoration with right-only tracking uses new accepted behavior",
+      "all eight old groups compiler-evaluated, no executable test main"
+    ],
+    "first_failure": "animation legacy check expected left tracking before restoring; updated to established W09 right-hand independent contract",
+    "remaining": [
+      "independent combined test assembly",
+      "Native target/stop entry binding contract and evidence boundary",
+      "current baseline private apply/package"
+    ]
+  },
+  "latest_hod_package": {
+    "archive": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\offline-preimplementation-20261028\\gearsvr-offline-hod-v1.zip",
+    "archive_sha256": "14d75ef16735938939738cfd79ddca58a1ba1bcfe6eb2a635ba1302c9bdeb363",
+    "patch_sha256": "deee3f177962419fc4c07ad6b61f62d7814e5051c4f479b921207ceb3fff8f80",
+    "archive_entries": 9,
+    "private_apply": "passed",
+    "production_applied": false,
+    "executable_run": false
+  },
+  "troika_no_manual_reload": {
+    "compile_passed": true,
+    "compiler_report": "reports/troika_reload_contract_compile.json",
+    "assertion_groups": 2,
+    "invalid_manual_variants": 6,
+    "production_applied": false,
+    "runtime_executed": false,
+    "finding": "generic manual service plan allowed suspending original automatic Reloading completion, conflicting with W10",
+    "changes": [
+      "config rejects manual mechanical plan and latent step fields",
+      "begin_mechanical returns unsupported for valid current identity, rejects invalid stamp"
+    ],
+    "coverage_limit": "plan contract only, not mounted flow or original automatic reload proof",
+    "remaining": [
+      "two-grip stop and remount ownership audit",
+      "automatic Reloading Loader-specific timing and particles Native binding",
+      "legacy manual-mechanics fixture migration",
+      "resource/heat semantics must be original-certified, not assumed"
+    ],
+    "hashes": {
+      "staging/tools/vr-common/weapon_troika_interaction.h": "fb56f83061ea17b313a44ed7a688b926382d098992c1063d0d55b9995d486a30",
+      "checks/troika_reload_contract_compile.cpp": "7e85f6ad313b9740ef60ff508d6cea7eece60c29c710cc7f1dd07705e6deca14"
+    }
+  },
+  "troika_transition_ownership": {
+    "compile_passed": true,
+    "compiler_report": "reports/troika_transition_contract_compile.json",
+    "assertion_groups": 2,
+    "invalid_transition_variants": 7,
+    "production_applied": false,
+    "runtime_executed": false,
+    "source_audit": [
+      "drive_allowed requires both_handles and current pawn mounted authority",
+      "fire_allowed depends on drive_allowed",
+      "reconcile prioritizes owned-fire stop before unmount",
+      "animation_finished previously checked target phase only, not final driver ownership"
+    ],
+    "fix": "authenticated transition now requires mounted+driver or detached+no driver, no input fire and no animation ownership",
+    "coverage_limit": "pure predicate compiled and used by actual animation receipt; full mount/grip flow not executed or compiler evaluated",
+    "remaining": [
+      "full geometry/state compiler checks or migrated source checks",
+      "legacy unmount fixtures must report driver released",
+      "actual Claim/Unclaim/DriverLeave ABI and body/view restore",
+      "resource/heat/automatic Reloading evidence boundary"
+    ],
+    "hashes": {
+      "header": "71562fbb14a3650a5d49efb091b5c694815733f7bb9355a6e4105e49562f856d",
+      "check": "31d84797f10790b2e5cc67ce7246fbe18b7f9b3328160e7190f3db35972b00ba"
+    }
+  },
+  "troika_legacy_source_migration": {
+    "compile_passed": true,
+    "compiler_report": "reports/troika_legacy_source_compile.json",
+    "validation_scope": "syntax/type compilation only; runtime CHECK bodies not executed or compiler-evaluated",
+    "production_applied": false,
+    "runtime_executed": false,
+    "migration": [
+      "replace manual service group with original automatic servicing observation",
+      "delete unused manual service/motion fixture helpers",
+      "existing animation helper already sets driver false for detached"
+    ],
+    "new_source_scenarios": [
+      "servicing blocks aim/fire",
+      "manual action unsupported",
+      "only certified original resource event can refill",
+      "new trigger action required after reload"
+    ],
+    "entry_audit": [
+      "TroikaInteraction references in Native/XR/Playground search only yielded CMake test target, no actual consumer found in searched directories",
+      "candidate receives yaw/pitch from external TroikaPose and validates limits, not a hand-to-pivot solver"
+    ],
+    "remaining": [
+      "implement calibrated hand/pivot-to-angle adapter",
+      "Native turret claim/drive/stop/unclaim and free-hand/view restoration",
+      "full flow execution or compile evaluation requires math handling; do not claim source compile as pass",
+      "original automatic Reloading Loader/particle bindings"
+    ],
+    "hashes": {
+      "source_test": "5d490b83295aacd8411fb1b5d01b43f788c2e5b754ed43249ef7144e8a55d5bb",
+      "candidate_test": "4c0f16ef20f94db622b051123659e1d85bfa0e0cbf29676cd73206ad010e8dfe"
+    }
+  },
+  "troika_grip_solver_candidate": {
+    "compile_passed": true,
+    "compiler_report": "reports/troika_grip_solver_compile.json",
+    "assertion_groups": 4,
+    "invalid_variants": 7,
+    "production_applied": false,
+    "runtime_executed": false,
+    "algorithm": "81 bounded yaw/pitch coarse samples followed by 20 local refinements; certify each hand residual before output",
+    "coordinate_contract": "metres, both hands and calibrated handle offsets in same fixed pivot basis; yaw +Z then pitch +Y; Native must prove original axes/sign/order mapping",
+    "covered": [
+      "neutral pose",
+      "off-grid yaw 0.37 pitch -0.21",
+      "upper original travel limits",
+      "seven missing tracking/grip/binding/basis/geometry/fit conditions reject without changing output"
+    ],
+    "limitations": [
+      "synthetic points generated with same rotation model; not independent engine geometry proof",
+      "coarse plus local refinement is bounded fitting, not proof of global solution/uniqueness",
+      "actual pivot/basis/handle calibration and Native consumer not implemented",
+      "frame freshness/identity original ownership remain TroikaInteraction adapter responsibilities"
+    ],
+    "hashes": {
+      "staging/tools/vr-common/weapon_troika_grip_solver.h": "ebd7ac4e028e65735891fc2a1316b594b54f2f6300d995c5773f98e000eada38",
+      "checks/troika_grip_solver_compile.cpp": "997d530b59ab0e1609cfd337869722f362ab74b394f8d677189edbb31b2e4212"
+    }
+  },
+  "troika_solver_bridge": {
+    "compile_passed": true,
+    "compiler_report": "reports/troika_solver_bridge_compile.json",
+    "assertion_groups": 3,
+    "production_applied": false,
+    "runtime_executed": false,
+    "covered": [
+      "independent explicit 90deg yaw and 30deg pitch points",
+      "rotated/translated fixed basis inverse-transform",
+      "mapping mismatch preserves old output"
+    ],
+    "contract": [
+      "derive canonical points from same TroikaPose hands, do not accept separate stale solver points",
+      "binding/pose mapping/calibration/limits/handle offsets agree",
+      "only yaw/pitch updated on success; no muzzle or native certificates fabricated"
+    ],
+    "remaining": [
+      "Native calibration of axes/order/sign and actual fixed base",
+      "Native consumer invokes bridge before observe/aim",
+      "expanded failure matrix and full flow migration",
+      "candidate package"
+    ],
+    "hashes": {
+      "staging/tools/vr-common/weapon_troika_solver_bridge.h": "cc15406398da281a06e967294e19fbeab7250e7fd8472f2e4246aa0e635950bf",
+      "checks/troika_solver_bridge_compile.cpp": "7a1cac7f580cfeb787e6192dcc61a8283d184f3f989a2b5a3e845e2157be54bb"
+    }
+  },
+  "troika_hand_drive_consumer": {
+    "compile_passed": true,
+    "compiler_reports": [
+      "reports/troika_solver_bridge_compile.json",
+      "reports/troika_legacy_source_compile.json"
+    ],
+    "new_constexpr_group": 1,
+    "failure_variants": 12,
+    "production_applied": false,
+    "runtime_executed": false,
+    "consumer_implemented": "observe_troika_hand_drive routes mounted normal drive through solver then model.observe; bad geometry calls recoverable suspend_hand_drive; native animations/service bypass solver and remain governed by original state",
+    "covered": [
+      "binding/calibration/frame/time/grip/tracking/constraint/pivot/rotation/limit/handle/fit failure preserves old angles",
+      "previous independent known angles still pass"
+    ],
+    "coverage_limit": "consumer and old full flow source compile only; no claim mounted runtime/constexpr complete stop flow",
+    "remaining": [
+      "full consumer-route lifecycle proof with representative geometry",
+      "Native fixed basis and original axis calibration",
+      "original claim/stop/unclaim call ABI and view restore",
+      "package current baseline"
+    ],
+    "hashes": {
+      "staging/tools/vr-common/weapon_troika_interaction.h": "954ee93f3825e471b65ecb04f2c0d079c484b73dc2621be0c971eeb33892e658",
+      "staging/tools/vr-common/weapon_troika_solver_bridge.h": "5bfa383d9802b6e4903cf0563064c5da6bafa12c28529e1f5e70671f2b4e6dd3",
+      "checks/troika_solver_bridge_compile.cpp": "50875edb58881a57b4649c61af8745b9a22ea3aacf4ec330b76deb160148a745"
+    }
+  },
+  "troika_full_compiler_flows": {
+    "compile_passed": true,
+    "compiler_reports": [
+      "reports/troika_legacy_constexpr_compile.json",
+      "reports/troika_solver_bridge_compile.json",
+      "reports/troika_consumer_flow_compile.json"
+    ],
+    "legacy_groups_evaluated": 7,
+    "actual_consumer_groups": 1,
+    "production_applied": false,
+    "runtime_executed": false,
+    "changes": [
+      "pure Troika geometry/state methods constexpr",
+      "finite/unit guards before quaternion/ray norms",
+      "bounded cosine evaluation reused from private solver for grip angle threshold",
+      "legacy sqrt(0.5) fixture uses explicit constant"
+    ],
+    "covered": [
+      "all seven migrated source groups compiler evaluated",
+      "actual observe_troika_hand_drive normal sample then acquired fire -> left grip release -> stop dispatch -> ack -> aim rejected"
+    ],
+    "first_compile_repairs": [
+      "test sqrt was not constexpr; explicit sqrt-half fixture",
+      "test abs was not constexpr; use bounded pure helper"
+    ],
+    "remaining": [
+      "numerical tolerance review for cosine replacement",
+      "independent Native axes/basis calibration and original engine calls",
+      "current baseline package with dependencies"
+    ],
+    "hashes": {
+      "staging/tools/vr-common/weapon_troika_interaction.h": "63c32ad1c2071a5636b94632ad9a0fa9bf2aae44278c9de0b0265382a8e26d3d",
+      "staging/tools/vr-common/weapon_troika_solver_bridge.h": "ea57de938293dc94baccf483d9180cd9988b7a84d2725ca0ef5e45329e314ff6",
+      "checks/troika_legacy_constexpr_compile.cpp": "b55ca947b57d2123ca94d78591093fff2fe27e6abab9f65132246249750144a0",
+      "checks/troika_consumer_flow_compile.cpp": "fa9697d6f752298ae6360668d7ceaf88488ed9fd9d8c14ded30268eb069c2f62"
+    }
+  },
+  "latest_troika_package": {
+    "archive": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\offline-preimplementation-20261028\\gearsvr-offline-troika-v1.zip",
+    "archive_sha256": "b042692db7f6d44f4ecfd3abe9e1faf9e694c1bc4ce4e995f57ceb0e33b0ca5e",
+    "patch_sha256": "ea4c8f1ded30cc0ffb06f7dff203de8b09a8fec7a3d86d7a5ef1a2045f9a608a",
+    "archive_entries": 11,
+    "private_apply": "passed",
+    "production_applied": false,
+    "executable_run": false
+  },
+  "full_scope_coverage_audit": "analysis/offline-preimplementation-20261028/reports/full-scope-coverage-audit.json",
+  "grenade_native_launch_scope": {
+    "compile_passed": true,
+    "compiler_report": "reports/grenade_native_scope_compile.json",
+    "assertion_groups": 4,
+    "production_applied": false,
+    "runtime_executed": false,
+    "native_hooks_implemented": false,
+    "covered": [
+      "exact key/thread/invocation read and admission",
+      "one spawn permission per gate",
+      "Init direction only to observed projectile",
+      "scope close removes overrides",
+      "partial ammo/notification/no-return outcomes retain projectile as unknown",
+      "null spawn and wrong projectile class handled separately"
+    ],
+    "boundary": [
+      "one noncopyable gate per already-dispatched request, owner must retain tombstone; recreating object is not duplicate protection",
+      "owner_validated requires existing executable_at identity/clock/body mapping proof; bool is not evidence",
+      "original notify outside scope needs separate ownership/suppression mapping",
+      "Frag/Smoke request bridge and actual Native observation hooks still absent"
+    ],
+    "hashes": {
+      "staging/tools/vr-common/grenade_native_launch_scope.h": "9c48618a6cc6478f6756de60432022e8c9720593e52eb3f64730e8d98a89ea68",
+      "checks/grenade_native_scope_compile.cpp": "cc913adbe445cd9461fe983c62775f46aa6a7677cd2920995df392225c97fc81"
+    }
+  },
+  "grenade_notify_ownership": {
+    "compile_passed": true,
+    "compiler_report": "reports/grenade_notify_owner_compile.json",
+    "assertion_groups": 3,
+    "production_applied": false,
+    "runtime_executed": false,
+    "native_hooks_implemented": false,
+    "covered": [
+      "same original preparation claimed once across adapter token changes",
+      "suppress owned AnimNotifyThrow only",
+      "forward original spawn-completion notification",
+      "Frag/Smoke and weapon/world lifecycle mismatches unowned",
+      "capacity full preserves tombstones; only verified destroyed-world retirement frees them"
+    ],
+    "limits": [
+      "bounded table capacity is a pending lifecycle design constraint, not unlimited throw readiness",
+      "requires authentic original preparation serial on notify; do not invent it from animation name/frame",
+      "unclaimed notifications remain original; caller must claim before dispatch",
+      "Native entry routing and request bridge still pending"
+    ],
+    "hashes": {
+      "staging/tools/vr-common/grenade_throw_notify_owner.h": "d07aa3fb1f321661d3e7b044d4c46e9eef9761fd99829808cc6b54c5e6ce6d51",
+      "checks/grenade_notify_owner_compile.cpp": "095bc7efbe0beea086991993ec24152cc854fa40d22c761122c26b3020dd3159"
+    }
+  },
+  "grenade_native_request_bridge": {
+    "compile_passed": true,
+    "compiler_report": "reports/grenade_request_bridge_compile.json",
+    "assertion_groups": 3,
+    "invalid_variants": 7,
+    "production_applied": false,
+    "runtime_executed": false,
+    "actual_native_hook": false,
+    "covered": [
+      "Frag request launch data copied once without remapping/base velocity addition",
+      "Smoke ammo/emitter class match before claim",
+      "expired/input epoch/basis/cover/preparation/debit mismatch rejected atomically",
+      "call key preserves controller/XR/space/input/profile identity"
+    ],
+    "boundary": [
+      "tests use synthetic populated request objects, not actual interaction dispatch yet",
+      "owner must prove dispatched request, original classes/entry and launch/body mapping; flags alone are not proof",
+      "notify retirement capacity remains unresolved",
+      "Native callback and original receipt plumbing still absent"
+    ],
+    "hashes": {
+      "staging/tools/vr-common/grenade_native_request_bridge.h": "4df369391b6e1f4ecd633638d05e2db62c2040369be30d889ed938bd5e76afb0",
+      "staging/tools/vr-common/grenade_native_launch_scope.h": "ffb2f5bc982e942ab65ca910088e778b9d2add6a342c7226273d3e29e3b835c2",
+      "checks/grenade_request_bridge_compile.cpp": "bdda96465cf8b6f8e681f511454017e1e6ed83e6d8be730f55c7326eb0493c50"
+    }
+  },
+  "grenade_dispatch_consumer_source": {
+    "compile_passed": true,
+    "compiler_reports": [
+      "reports/grenade_frag_dispatch_source_compile.json",
+      "reports/grenade_smoke_dispatch_source_compile.json"
+    ],
+    "validation_scope": "source/type compile only, trajectory fixture bodies not executed or constant-evaluated",
+    "production_applied": false,
+    "runtime_executed": false,
+    "consumers": "actual Bolo/Smoke interaction fixture throw_ready -> take_request -> matching native bridge -> single admission -> Init identity -> observed finish -> original receipt iff complete",
+    "source_scenarios": [
+      "successful launch settles original class/count once",
+      "spawned but debit unconfirmed remains unknown; no fake ack or redispatch",
+      "owned late animation notification suppression retained"
+    ],
+    "remaining": [
+      "authenticate original preparation/AnimNotify association; current serial is adapter certificate not proven engine field",
+      "real Native callbacks and partial-outcome reconciliation",
+      "notification tombstone retirement capacity",
+      "compile-evaluate or runtime-validate full tracker fixture later within authorized scope"
+    ],
+    "hashes": {
+      "checks/grenade_frag_dispatch_source_compile.cpp": "a7d954b7e3f635957c6fd0083df58fd92d186ae9672a400823876dd9f1e69f78",
+      "checks/grenade_smoke_dispatch_source_compile.cpp": "94c74b6c28693580019fcc00fed12603c524fb7376edc0d5d52c9bb378b9bdc4"
+    }
+  },
+  "grenade_notify_source_evidence": {
+    "evidence": [
+      {
+        "file": "J:\\gearsVr\\analysis\\re-kb\\scripts\\WarfareGame\\Function_WarfareGame.Weap_Grenade.AnimNotifyThrow_.uc",
+        "sha256": "b5f3c436ab64926115605bd89b0fabd5da3333e967e4492a6ce7df0a490e478e",
+        "has_unresolved_markers": true
+      },
+      {
+        "file": "J:\\gearsVr\\analysis\\re-kb\\scripts\\WarfareGame\\Function_WarfareGame.Weap_FragGrenade.AnimNotifyThrow_.uc",
+        "sha256": "2f3389d3f55318aaebbfb909be5382da7b061c554b9e8902a7c3dd3cac36683c",
+        "has_unresolved_markers": true
+      },
+      {
+        "file": "J:\\gearsVr\\analysis\\re-kb\\scripts\\WarfareGame\\Function_WarfareGame.Weap_Grenade.ThrowGrenade_.uc",
+        "sha256": "e61a3d4dec412762ae5141a057dfbf2e7ab92e54062958d3d84381af2f41b6da",
+        "has_unresolved_markers": true
+      },
+      {
+        "file": "J:\\gearsVr\\analysis\\re-kb\\scripts\\WarfareGame\\Function_WarfareGame.Weap_Grenade.GrenadeThrownNotification_.uc",
+        "sha256": "ba57a5579ddea0c9e863b5f647dbdec37f41e2669200617d3e0d823d35b1a2c1",
+        "has_unresolved_markers": true
+      },
+      {
+        "file": "J:\\gearsVr\\analysis\\re-kb\\scripts\\WarfareGame\\Function_WarfareGame.Weap_Grenade.ThrowingGrenade.BeginState_.uc",
+        "sha256": "0302f8985f91f1aff8616c4c9731e2b0178bbfff62c67ee07c5733e5494b906a",
+        "has_unresolved_markers": true
+      },
+      {
+        "file": "J:\\gearsVr\\analysis\\re-kb\\scripts\\WarfareGame\\Function_WarfareGame.Weap_Grenade.ThrowingGrenade.EndState_.uc",
+        "sha256": "c3063674912e673d87bed7af80b3907df3142e37f9fd581686d9352e33304c34",
+        "has_unresolved_markers": true
+      }
+    ],
+    "kb_artifact": 2,
+    "kb_notify_hashes_verified": true,
+    "findings": [
+      "saved AnimNotifyThrow declaration has no explicit preparation serial parameter; local NadeProj is not serial",
+      "base notify plays sound, calls ThrowGrenade, then completion even for null projectile",
+      "Frag override calls super then pawn sound 43; bypassing override loses side effects",
+      "completion detaches weapon, vibration, sound and possible projectile animation",
+      "ThrowingGrenade state start/end declarations do not establish drained notify queues or reusable fence"
+    ],
+    "implementation_change": [
+      "launch bridge now requires authenticated dynamic AnimNotifyThrow envelope, nested ThrowGrenade only gets overrides",
+      "null spawn no debit with one original completion notification classified failed; zero notifications remains unknown"
+    ],
+    "compile_reports": [
+      "reports/grenade_request_bridge_compile.json",
+      "reports/grenade_frag_dispatch_source_compile.json",
+      "reports/grenade_smoke_dispatch_source_compile.json"
+    ],
+    "native_implemented": false,
+    "runtime_verified": false,
+    "remaining": [
+      "original notify association requires actual animation/node/state occurrence provenance; no invented engine serial",
+      "state EndState is not proof all old notifications drained",
+      "capacity-safe retirement remains open",
+      "exact native/script ABI and entry binding still unverified"
+    ]
+  },
+  "grenade_notify_dispatch_origin": {
+    "evidence": [
+      {
+        "file": "J:\\gearsVr\\analysis\\re-kb\\scripts\\WarfareGame\\Function_WarfareGame.WarAnimNotify_ThrowGrenade.Notify_.uc",
+        "sha256": "3ee46fde5d9a0a26ec7455287da5650b6c77e82638f439aa7c447a49dc0b629c"
+      },
+      {
+        "file": "J:\\gearsVr\\analysis\\re-kb\\scripts\\WarfareGame\\Function_WarfareGame.Weap_Grenade.GrenadeThrownTimer_.uc",
+        "sha256": "2fa2e116e5f4c622b8614dc344fc76e28a75d5e9b163bc576a9a37ea9781b03e"
+      },
+      {
+        "file": "J:\\gearsVr\\analysis\\re-kb\\scripts\\WarfareGame\\Function_WarfareGame.Weap_Grenade.StartGrenadeThrow_.uc",
+        "sha256": "e70379eef15eea8770d7cdd1baba39d2f67488214f14163523ea45de2d518577"
+      },
+      {
+        "file": "J:\\gearsVr\\analysis\\re-kb\\scripts\\Engine\\Function_Engine.AnimNotify_Scripted.Notify_.uc",
+        "sha256": "b6fdc474a1fade314b0db903f18eca105ce9976c1f1a973e1919cfb1546ec380"
+      },
+      {
+        "file": "J:\\gearsVr\\analysis\\re-kb\\classes-v2\\Engine\\Class_Engine.AnimNotify_Script_.uc",
+        "sha256": "f4d5014bad5a0688b5249de26df4cd443e9dd692938a8f34ca229dcb4aa4f2cd"
+      }
+    ],
+    "kb_notify_hash_verified": true,
+    "findings": [
+      "WarAnimNotify_ThrowGrenade.Notify routes Pawn(Owner).Weapon -> Weap_Grenade",
+      "checks !IsTimerActive GrenadeThrownTimer, then calls AnimNotifyThrow and sets 0.5 timer",
+      "GrenadeThrownTimer body empty in saved script; debounce, not drain proof",
+      "object inventory records Notify.Owner index13365 and Notify.AnimSeqInstigator index13364, which malformed declaration omitted",
+      "AnimNotify_Script.NotifyName is static event name, not play occurrence identity"
+    ],
+    "inference": [
+      "cross-switch delayed notify may target current pawn weapon, so current weapon and fabricated preparation alone cannot identify source",
+      "preserve original timer wrapper semantics or authenticated equivalent; invoking inner weapon notify alone omits original debounce",
+      "AnimSeqInstigator is a promising source object lead but property presence does not prove parameter flags/type/offset or playback generation"
+    ],
+    "unresolved": [
+      "recover property flags/signatures for Owner/AnimSeqInstigator",
+      "native Notify dispatch caller and playback occurrence identity",
+      "safe fence excludes pending callbacks before retirement"
+    ],
+    "native_runtime_verified": false
+  },
+  "grenade_notify_parameters_resolved": {
+    "evidence_report": "analysis\\offline-preimplementation-20261028\\reports\\grenade-notify-property-reader.json",
+    "source_sha256": "91c0f56e9302db2b3991fc3d8646abc1eaff2b33b8b021ce8df436d8cd681d13",
+    "reader_dll_sha256": "863b92a0ab707bbf64363a8e29bf1d586702e7983ad3ba9d96c735e3ecd23c46",
+    "recovered_parameters": [
+      {
+        "object_index": 13365,
+        "name": "Owner",
+        "type": "Actor",
+        "flags": "0x80 Parm"
+      },
+      {
+        "object_index": 13364,
+        "name": "AnimSeqInstigator",
+        "type": "AnimNodeSequence",
+        "flags": "0x80 Parm"
+      }
+    ],
+    "locals": [
+      "Pawn P",
+      "Weap_Grenade Grenade"
+    ],
+    "method": "existing UELib loaded hash-verified offline package read-only; deserialize five selected objects",
+    "limitations": [
+      "all cooked ElementSize values zero; not runtime parameter layout proof",
+      "does not establish byte offsets, reflection ParmSize or live object identity",
+      "AnimNodeSequence object can be reused; still no playback-generation/drain proof"
+    ],
+    "next_action": "trace original native notify dispatch and node playback lifecycle using exact Owner/AnimNodeSequence parameters; require binding to authentic occurrence before notify tombstone reclamation",
+    "game_or_test_execution": false
+  },
+  "grenade_node_lifecycle_evidence": {
+    "metadata_report": "reports/grenade-node-metadata.json",
+    "source_sha256": "95b0c8da438a5acaf1ebfcdd0d94ac4d42c06422e717ce1ffe3f095e8ce90510",
+    "confirmed_fields": [
+      "AnimSeq: const transient AnimSequence",
+      "PreviousTime: const transient float",
+      "CurrentTime: const float",
+      "bIsIssuingNotifies: bool",
+      "bNoNotifies: editable bool",
+      "bLooping: editable bool",
+      "bPlaying: editable bool"
+    ],
+    "confirmed_native_entries": [
+      "SetAnim: Native/Public",
+      "PlayAnim: Native/Public/HasOptionalParms",
+      "StopAnim: Native/Public",
+      "SetPosition: Native/Public"
+    ],
+    "not_confirmed": [
+      "no observed playback generation field in inspected listed declarations",
+      "bIsIssuingNotifies false at one instant does not prove callbacks cannot be queued",
+      "bNoNotifies would affect other notify effects and is not authorized as blanket suppression",
+      "native function addresses and exact IssueNotifies call/queue model not resolved"
+    ],
+    "native_registration_lead": {
+      "literal": "intUAnimNodeSequenceexecPlayAnim",
+      "historical_address": "0x141726210",
+      "source_sha256": "c5deb08128dea890e2606b7bb6bf30eb3e1045c19b3f477e0bebf6c7fd15231c",
+      "kb_refs_found": false,
+      "boundary": "historical UTF16 literal only, not callable code address"
+    },
+    "next_direction": "target original native registration and callback dispatch using focused static analysis; do not infer occurrence from time/flags or clear tombstones on StopAnim alone",
+    "runtime_verified": false
+  },
+  "grenade_native_registration_probe": {
+    "private_identity": {
+      "source": "J:\\gearsVr\\analysis\\re-kb\\full-native\\snapshot.i64",
+      "source_sha256": "324248ac7cd0388a05907c29436fccf804eb82e5cb8433190806342c1cfcbb26",
+      "private": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\offline-preimplementation-20261028\\ida-grenade-notify-20261029\\snapshot.i64",
+      "private_sha256": "324248ac7cd0388a05907c29436fccf804eb82e5cb8433190806342c1cfcbb26",
+      "saved": false
+    },
+    "source_database_unchanged": true,
+    "mcp_open": "failed: missing ida_nexus, worker exited1",
+    "mcp_instances_after": 0,
+    "offline_cli_probe": {
+      "existing_executable": "J:/ida94sp1_0915/idat.exe",
+      "environment": "IDA_NEXUS_IDALIB_ONLY=1 process-local only",
+      "exit_code": 1,
+      "output_file": "analysis\\offline-preimplementation-20261028\\ida-grenade-notify-20261029\\xref_probe.json",
+      "output_written": true,
+      "success_claim": false
+    },
+    "probe_evidence": {
+      "target": "0x141726210",
+      "xrefs": [],
+      "segments": [
+        {
+          "start": "0x140001000",
+          "end": "0x14131a94f"
+        }
+      ]
+    },
+    "finding": "private DB contains code segment only ending0x14131a94f, registration string0x141726210 is outside mapped database segments; empty xrefs are not evidence no native registration exists",
+    "next_action": "map hash-verified historical data section into a fresh private copy and reconstruct targeted original registration references with IDAPython; retain failed attempt and avoid installing/upgrading plugins",
+    "game_or_test_execution": false
+  },
+  "grenade_registration_mapped_probe": {
+    "source_database_unchanged": true,
+    "source_sha256": "324248ac7cd0388a05907c29436fccf804eb82e5cb8433190806342c1cfcbb26",
+    "private_probe": "ida-grenade-registration-data-v1/probe.py",
+    "result": "ida-grenade-registration-data-v1/registration.json",
+    "cli_exit": 0,
+    "mapping_verified": [
+      "code SHA911ab9bcb24cc078420400369a78ffd3f747d915e42c4935a5c82c2dcecc6ae6 equals IDA bytes",
+      "data SHAc5deb08128dea890e2606b7bb6bf30eb3e1045c19b3f477e0bebf6c7fd15231c equals mapped bytes"
+    ],
+    "results": {
+      "authority": "hash-verified historical snapshot, private IDA mapping",
+      "target": "0x141726210",
+      "direct_rip_lea": [],
+      "absolute_data_pointers": []
+    },
+    "failed_attempts_preserved": [
+      "ida-grenade-notify-20261029/cli-probe.log: wrong ida_idaapi.qexit; MCP also independently failed missing ida_nexus",
+      "ida-grenade-registration-data-v1/failure-first.txt: put_bytes returns no boolean; replaced with byte/hash verification"
+    ],
+    "scope_limit": "direct RIP-relative LEA to exact full-name address and absolute pointer in this data section only; not all native lookup/relative refs",
+    "next_direction": "short PlayAnim name and AnimNodeSequence native registration/indirect lookup tables; stop treating exact registration string as direct function lead",
+    "game_or_test_execution": false,
+    "database_saved": false
+  },
+  "grenade_native_lookup_route_audit": {
+    "short_probe_exit": 0,
+    "short_probe": {
+      "targets": {
+        "0x1415ca818": "UAnimNodeSequence"
+      },
+      "references": [],
+      "pointers": []
+    },
+    "retail_export_probe": {
+      "source": "J:\\SteamLibrary\\steamapps\\common\\Gears of War Reloaded\\Binaries_x64\\GOWDE-Steam.exe",
+      "sha256": "bdc6705d18ddb335b767df0b38e256ba5da0f49449c8970b302118bb7a4a8fa4",
+      "image_base": "0x140000000",
+      "export_count": 31,
+      "matches": [],
+      "runtime_verified": false
+    },
+    "native_tokens": [
+      {
+        "index": 6478,
+        "path": "Function'Engine.AnimNodeSequence.SetAnim'",
+        "native_token": 0,
+        "flags": "0x400:Native;0x20000:Public;",
+        "error": ""
+      },
+      {
+        "index": 6482,
+        "path": "Function'Engine.AnimNodeSequence.PlayAnim'",
+        "native_token": 0,
+        "flags": "0x400:Native;0x20000:Public;0x4000:HasOptionalParms;",
+        "error": ""
+      },
+      {
+        "index": 6483,
+        "path": "Function'Engine.AnimNodeSequence.StopAnim'",
+        "native_token": 0,
+        "flags": "0x400:Native;0x20000:Public;",
+        "error": ""
+      },
+      {
+        "index": 6486,
+        "path": "Function'Engine.AnimNodeSequence.SetPosition'",
+        "native_token": 0,
+        "flags": "0x400:Native;0x20000:Public;",
+        "error": ""
+      }
+    ],
+    "conclusions": [
+      "no direct short-name LEA/pointer in inspected historical section paths; only standalone UAnimNodeSequence literal",
+      "retail EXE hash matches supported disk baseline, 31 exports contain no target animation symbol",
+      "all four package declarations NativeToken0, so do not map to GNatives[0] or invent static token",
+      "requires actual UFunction native bind/lookup registration path; neither cooked object index nor string RVA is code address"
+    ],
+    "coverage_limits": [
+      "search covers named patterns and recorded data only, not every indirect representation",
+      "no exact native function RVA established",
+      "no playback occurrence or notify-drain proof"
+    ],
+    "game_or_test_execution": false,
+    "next_direction": "inspect existing native function resolver/binding source and cached native bind/find entry evidence; stop short-name/export/token guessing"
+  },
+  "grenade_existing_function_entry_route": {
+    "evidence": [
+      {
+        "file": "tools/package-inspector/analyze_native_camera.py",
+        "sha256": "455987f2b2a41233b02e63dbbd5f3d20a0300d9d2b5b1332a415f4c714b194c8",
+        "lines": [
+          64
+        ]
+      },
+      {
+        "file": "tools/native-capture/cover_call_config.py",
+        "sha256": "ce965d4fda97f9e487f05a133907747574b23b3b5784af5c0a2d095855eeeca0",
+        "lines": [
+          258
+        ]
+      },
+      {
+        "file": "tools/native-capture/cover_call_wire.h",
+        "sha256": "db465e50c71e37beca60e81b9465c76b488821ffe2dba7640c5a58449d45832d",
+        "lines": [
+          77
+        ]
+      },
+      {
+        "file": "tools/native-capture/crosshair_assignment_live.inl",
+        "sha256": "ab4b491574b48e0e2e8eed714d396ca6fba83048652bef01b8d19ca67a744da7",
+        "lines": [
+          50
+        ]
+      },
+      {
+        "file": "tools/native-capture/native_metadata_contract.h",
+        "sha256": "be474aa43f3db80387d812d3cb2a4efbe8ecac84476dbf16dff8d1818433ecb1",
+        "lines": [
+          34
+        ]
+      }
+    ],
+    "finding": "existing true-UFunction object resolvers read entry+0x114; native camera verifies executable code, script cover expects base+0x1d6ca0 plus script/local metadata",
+    "scope": "source reuse evidence, no live grenade metadata read or ABI/entry certification",
+    "wrong_lead_excluded": "resolve_runtime_function.py resolves exception ranges, not UFunction binding",
+    "specialization": [
+      "reuse existing full object/class/name/version identity gates",
+      "resolve exact AnimNodeSequence native mutation fields and stable executable entry snapshots",
+      "resolve WarAnimNotify_ThrowGrenade.Notify, authenticate Actor Owner and AnimNodeSequence AnimSeqInstigator parameters and script entry",
+      "read/revalidate full runtime parameter layout, not zero cooked ElementSize",
+      "tie original lifecycle callbacks to playback occurrence; no sample-time generation",
+      "refuse changing/foreign/stale entry or unresolved notification fence"
+    ],
+    "game_or_test_execution": false
+  },
+  "grenade_notify_snapshot_candidate": {
+    "compile_passed": true,
+    "compiler_reports": [
+      "reports/grenade_notify_snapshot_compile.json",
+      "reports/reload_reward_snapshot_compile.json",
+      "reports/reward_native_reader_compile.json"
+    ],
+    "new_assertion_groups": 2,
+    "invalid_variants": 7,
+    "production_applied": false,
+    "runtime_executed": false,
+    "changes": [
+      "existing reward collector factored to capture_parameter_snapshot with validator; old API preserved",
+      "grenade notify contract exact owner/function and Actor Owner / AnimNodeSequence AnimSeqInstigator identities",
+      "Parm flags, object width8, scalar dimension, names, nonoverlap, bounded extent, cycle and stable reread checks"
+    ],
+    "boundary": [
+      "reuses existing Reader protocol but actual grenade Native header/field callbacks not implemented",
+      "test offsets0/8 and size16 are synthetic, not inferred live ABI",
+      "declaring owner/class identities need authenticated current metadata, not cooked export indices",
+      "reward archive predates generic collector refactor and must be reconciled before integration"
+    ],
+    "hashes": {
+      "staging/tools/vr-common/weapon_reload_reward_snapshot.h": "25f724f6be5bea22f58e6479fbbf50b141621de84d3d272f5bc2725da8db42b1",
+      "staging/tools/vr-common/grenade_notify_parameter_snapshot.h": "5bc9d74f985862087e41c92fe7ce2e4fcd7fc5eb9ec3a7abaccf58f4c3385320",
+      "checks/grenade_notify_snapshot_compile.cpp": "7b560ab03186acc9ab50a96d9c8f277445eac702cf18a1e41c8f194d57472819"
+    }
+  },
+  "grenade_notify_reader_frame_candidate": {
+    "date": "2026-10-29",
+    "compile_exit_codes": {
+      "grenade_notify_call_frame_compile": 0,
+      "grenade_notify_native_reader_compile": 0,
+      "grenade_notify_snapshot_compile": 0,
+      "reward_native_reader_compile": 0,
+      "reload_reward_signature_compile": 0
+    },
+    "production_applied": false,
+    "runtime_executed": false,
+    "implemented": [
+      "Notify exact function/owner/package and receiver inheritance using existing metadata Reader",
+      "shared Reader captures runtime metadata fields; callback admission remains mandatory",
+      "original callback parameter receipt contract; two pointer and object identity reads; final metadata revalidation; atomic argument output",
+      "one valid and eight invalid frame cases evaluated by static_assert"
+    ],
+    "unresolved": [
+      "actual Native Authorize callback: original thread/invocation/lease/receiver/function/entry ownership",
+      "ObjectTarget callback and evidenced runtime PropertyClass location",
+      "actual original callback parameter-block receipt; no guessed FFrame ABI",
+      "animation playback occurrence provenance and queue drain/ownership capacity",
+      "no game integration or runtime/headset validation"
+    ],
+    "hashes": {
+      "staging/tools/playground/grenade_notify_parameters.inl": "26ba27da06bf5f77e0fb9e0913d9beea9485b227fad2dd001c206dd4efdda04b",
+      "staging/tools/playground/weapon_reload_reward_parameters.inl": "08cbb8e0fdbc31195a7e7a9a54906b27b6b57ae1ef11f4b13f2c08b67b72f265",
+      "staging/tools/vr-common/weapon_reload_reward_signature.h": "c4eb30850c525b5192efa79dd6bf59c08bb3ba7a588d1fbf7032d7c54278a586",
+      "staging/tools/vr-common/grenade_notify_call_frame.h": "14026741efa5c8682e9ceb539e3fc54a696d6fd0394c803f8419d18c1e7d658c",
+      "checks/grenade_notify_call_frame_compile.cpp": "a14eaa317a0a66ccc1392150773ed583471a34c3a488199fc207662de2f1f673",
+      "checks/grenade_notify_native_reader_compile.cpp": "4799ba376f13d07cc5260bf6405c11d08050558ad4367c1a065f32c11394e868"
+    }
+  },
+  "grenade_notify_native_frame_reader": {
+    "date": "2026-10-29",
+    "previous_turn_classification": "progress",
+    "implemented": [
+      "FrameReader range-bounded original parameter pointer copy using existing meta::read_at",
+      "actual registered object/name identity and bounded superclass walk for parameter instance validation",
+      "exact receipt/header/binding comparison and mandatory original owner admission before and after each read",
+      "existing reward metadata API preserved"
+    ],
+    "compile_exit_codes": {
+      "grenade_notify_native_reader_compile": 0,
+      "grenade_notify_call_frame_compile": 0,
+      "reward_native_reader_compile": 0
+    },
+    "negative_evidence": {
+      "kb_search": "PropertyClass --limit 6: no results",
+      "source_search": "PropertyClass/property_class in existing RE KB and tools/package-inspector/native-capture/playground: no supported target-class offset reader; anchor_observer matches are property UObject class, not ObjectProperty target class"
+    },
+    "remaining": [
+      "supported ObjectProperty target-class offset/accessor evidence",
+      "real original callback receipt and entry/thread/invocation/lifetime owner certificate",
+      "animation occurrence provenance and safe late-notify retention retirement"
+    ],
+    "production_applied": false,
+    "runtime_executed": false,
+    "hashes": {
+      "staging/tools/playground/grenade_notify_parameters.inl": "8f7df364f4aaff6e170f101b0e077c6ba955d47e881ccdf6eccd1a81ce01d287",
+      "staging/tools/playground/weapon_reload_reward_parameters.inl": "a0002bfc657ea3e162c62a77746257d3555e0b26c2b72bd9154e73a456e75820",
+      "checks/grenade_notify_native_reader_compile.cpp": "de13b00ea22ccb62869674eedcecc4f9764948736917dc4c78a6b24b885e4c48"
+    }
+  },
+  "object_property_route_assessment": {
+    "date": "2026-10-29",
+    "previous_turn_classification": "progress",
+    "source": "historical PID16812 six-section manifest; section hashes reverified",
+    "references": [
+      {
+        "literal": "UTF16 ObjectProperty",
+        "instruction": "0x14035605e",
+        "function": "0x140355f0c",
+        "observed": "LEA literal followed by edx=5, sub_140355E8C and sub_140355DE0; adjacent literals use IDs4,6,7",
+        "interpretation": "consistent with predefined name registration; no target-class field access proved"
+      },
+      {
+        "literal": "ASCII ObjectProperty",
+        "instruction": "0x140ca31b4",
+        "function": "0x140ca2598",
+        "observed": "preceding property offset+0x94 then virtual+0x290; literal converted and compared, conditional virtual+0x378",
+        "interpretation": "property-value and format/type dispatch route; no ObjectProperty target-class offset proved; virtual slots must not be guessed as class getters"
+      }
+    ],
+    "ida": {
+      "first_attempt": "relative paths failed library initialization, exit1",
+      "repair": "absolute database/script/log paths; same installed IDA, no setup change",
+      "final_exit_code": 0,
+      "private_database_only": true,
+      "code_blob_sha256_verified": true
+    },
+    "unresolved": "ObjectProperty target-class runtime layout/accessor remains unproved",
+    "next_evidence_route": "bounded inspect property-type implementation/vtable with independently authenticated class identity, rather than treating string registration as a field getter",
+    "game_runtime_executed": false,
+    "production_applied": false,
+    "evidence_sha256": {
+      "object-property-literal-route.json": "c2ccaeb13203b04815038bc51df929479283572e37517f4969553d78a00ce062",
+      "object-property-reference-disassembly.json": "27a442d47906bef4109c2cad0a6915a379a27af020e1f1d4d2d3a913daf17f9c"
+    }
+  },
+  "object_property_name_route_closeout": {
+    "date": "2026-10-29",
+    "cached_helpers": [
+      {
+        "va": "0x140355e8c",
+        "path": "J:\\gearsVr\\analysis\\re-kb\\full-native\\pseudocode\\140355e8c.c",
+        "sha256": "a1eb5d99e80413e63483e42de3e42be33f15f8caf885426c790a9b425c896c89"
+      },
+      {
+        "va": "0x140355de0",
+        "path": "J:\\gearsVr\\analysis\\re-kb\\full-native\\pseudocode\\140355de0.c",
+        "sha256": "2e2b3e55c45d00f28f8ecac77cf245141e653c6fd282c85c7b80d0c403d67138"
+      }
+    ],
+    "observation": "first helper builds text entry; second inserts entry into table indexed by entry index, supporting name-registration interpretation",
+    "caution": "cached pseudocode ABI variables and raw-loader absolute addresses are unreliable; use previous actual instruction export and authenticated module-base readers, not pseudocode MEMORY literals",
+    "rtti_exact_forms": "no hits across five hash-verified saved nonexecutable sections; not evidence that RTTI/functionality is absent",
+    "target_class_offset_resolved": false
+  },
+  "candidate_composition_audit": {
+    "archives": 8,
+    "files": 100,
+    "cross_archive_conflicts": 3,
+    "review_files": 12,
+    "report": "reports/candidate-composition-audit.json",
+    "diff_report": "reports/candidate-composition-differences.json",
+    "applied": false,
+    "completed_semantic_merge": false
+  },
+  "unified_offline_source_snapshot_v1": {
+    "archive": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\offline-preimplementation-20261028\\gearsvr-offline-unified-source-v1.zip",
+    "sha256": "64ff59e77924cc3d19a620e7426e4d9fcd2f254e176f5ddcebbeeac16df25571",
+    "source_file_count": 183,
+    "isolated_header_compile_exit_code": 0,
+    "archive_contents_verified": true,
+    "production_applied": false,
+    "runtime_executed": false,
+    "semantic_merge_complete": false,
+    "current_staging_checks": {
+      "all_weapon_shared_headers_compile": 0,
+      "reload_model_compile": 0,
+      "weapon_infinite_reserve_compile": 0,
+      "gnasher_accounting_compile": 0,
+      "longshot_legacy_compile": 0,
+      "bow_standalone_compile": 0,
+      "boomshot_standalone_compile": 0
+    },
+    "reviewed_shared_differences": [
+      "mechanism magazine_close name retained with linked_closure alias",
+      "infinite reserve participates in inventory identity/count reconciliation and does not fabricate finite reserve",
+      "original exit settlement retained in current transaction; absent in old Longshot archive"
+    ],
+    "remaining": "12 semantic difference files require final change-by-change review; isolated header compile proves declarations only; Native and runtime work remain"
+  },
+  "boltok_gnasher_composition_review": {
+    "date": "2026-10-29",
+    "previous_turn_classification": "progress",
+    "reviewed": [
+      {
+        "file": "tools/vr-common/weapon_boltok_reload.h",
+        "sha256": "84ee3aaed0bb3e840acd08ff5639fd8145527e5c2c350126f241efe5e1d05c73",
+        "matches_frozen_snapshot_v1": true,
+        "decision": "retain current staged implementation; do not restore v6 archive copy"
+      },
+      {
+        "file": "tools/vr-common/weapon_gnasher_mechanics.h",
+        "sha256": "a1b8847d9cf285c53d5470fbae472a7846a4b8ce0a2614547cb11603ec324cc8",
+        "matches_frozen_snapshot_v1": true,
+        "decision": "retain current staged implementation; do not restore v6 archive copy"
+      },
+      {
+        "file": "tools/vr-common/weapon_gnasher_mechanics_test.cpp",
+        "sha256": "822685782ad51abba7b14544cb2bc09a65c044e802b1dab271b74b0d842bec91",
+        "matches_frozen_snapshot_v1": true,
+        "decision": "retain current staged implementation; do not restore v6 archive copy"
+      }
+    ],
+    "compile_exit_codes": {
+      "boltok_compile": 0,
+      "boltok_accounting_compile": 0,
+      "boltok_legacy_guards_compile": 0,
+      "compat_weapon_gnasher_mechanics_test": 0,
+      "gnasher_accounting_compile": 0
+    },
+    "boltok_findings": [
+      "identity/inventory extracted into shared weapon-specific types; common accounting owns counts and visual six-chamber mask",
+      "infinite reserve preserves finite observed counter and policy identity",
+      "rejected insertion releases reservation and requires fresh grab; no phantom chamber occupation",
+      "late dispatched receipts reconcile common request; original effect/result and ammo class must match",
+      "bind retains intent/item histories; native receiver lifecycle still externally certified"
+    ],
+    "gnasher_findings": [
+      "common ledger replaces duplicate counts, held quantities and target/result timing",
+      "physical first-round start must carry accepted original serial and exact inventory; auxiliary start carries no held round",
+      "accepted cycle animation is distinct from original reload completion/reward; both are required to become fire-ready",
+      "zero-fill cancellation still requires physical closure and original no-refill exit receipt",
+      "reset cannot erase active reload or pending effect; rejected insertion requires fresh grab",
+      "same-original recovery requires fresh intent and matching original serial"
+    ],
+    "test_limits": [
+      "Gnasher complete mechanical fixture was syntax checked only, not executed",
+      "constexpr accounting assertions evaluate pure synthetic contracts, not authentic Native or game behavior",
+      "no new production integration or gameplay validation"
+    ],
+    "remaining": [
+      "actual original call/admission/receipt owners",
+      "Gnasher/Boltok authentic geometry and original mechanism provenance",
+      "cross-weapon dropped ownership after original exits mid-reload must be certified; do not fabricate exit from an input gap",
+      "remaining changed-file semantic review, including TorqueBow and reward integration"
+    ],
+    "production_applied": false,
+    "runtime_executed": false
+  },
+  "candidate_composition_review_v1": {
+    "date": "2026-10-29",
+    "scope": "selection review for 12 files flagged by eight-archive composition audit; not full Native/semantic integration acceptance",
+    "reviewed_files": [
+      {
+        "file": "tools/playground/weapon_reload_reward_parameters.inl",
+        "sha256": "a0002bfc657ea3e162c62a77746257d3555e0b26c2b72bd9154e73a456e75820",
+        "matches_unified_snapshot_v1": true,
+        "selection": "retain staged version in private snapshot",
+        "reason": "retain exact Notify path and shared identity/instance reads; original reward paths preserved, mandatory Authorize/ObjectTarget not bypassed"
+      },
+      {
+        "file": "tools/vr-common/weapon_boltok_reload.h",
+        "sha256": "84ee3aaed0bb3e840acd08ff5639fd8145527e5c2c350126f241efe5e1d05c73",
+        "matches_unified_snapshot_v1": true,
+        "selection": "retain staged version in private snapshot",
+        "reason": "retain common accounting, six-hole presentation, infinite policy and separate actual call receipts; prior three-file review"
+      },
+      {
+        "file": "tools/vr-common/weapon_gnasher_mechanics.h",
+        "sha256": "a1b8847d9cf285c53d5470fbae472a7846a4b8ce0a2614547cb11603ec324cc8",
+        "matches_unified_snapshot_v1": true,
+        "selection": "retain staged version in private snapshot",
+        "reason": "retain original accepted start and separate animation/reward completion with common ledger; prior three-file review"
+      },
+      {
+        "file": "tools/vr-common/weapon_gnasher_mechanics_test.cpp",
+        "sha256": "822685782ad51abba7b14544cb2bc09a65c044e802b1dab271b74b0d842bec91",
+        "matches_unified_snapshot_v1": true,
+        "selection": "retain staged version in private snapshot",
+        "reason": "retain migrated start fixture and separate completion test; source-only mechanical test, not executed"
+      },
+      {
+        "file": "tools/vr-common/weapon_reload_geometry.h",
+        "sha256": "732607851bfe30682faf76f7b7b107e7317a00f4d9b7655e52fd3448a242929b",
+        "matches_unified_snapshot_v1": true,
+        "selection": "retain staged version in private snapshot",
+        "reason": "retain magazine_close naming and linked_closure alias; constexpr guide"
+      },
+      {
+        "file": "tools/vr-common/weapon_reload_model.h",
+        "sha256": "6289280087d5d28bfae6ec612ebb217c77b37cc95647cfda106568b6b6bb3a44",
+        "matches_unified_snapshot_v1": true,
+        "selection": "retain staged version in private snapshot",
+        "reason": "retain magazine_close alias and infinite policy consistency through start/shot/inventory observations"
+      },
+      {
+        "file": "tools/vr-common/weapon_reload_model_test.cpp",
+        "sha256": "e960a0776b358612d36c03d1c7d97d9d80739d0adafce5c9a5134272d3c38c8a",
+        "matches_unified_snapshot_v1": true,
+        "selection": "retain staged version in private snapshot",
+        "reason": "retain magazine_close test call sites; shared legacy model compile confirmed"
+      },
+      {
+        "file": "tools/vr-common/weapon_reload_reward_signature.h",
+        "sha256": "c4eb30850c525b5192efa79dd6bf59c08bb3ba7a588d1fbf7032d7c54278a586",
+        "matches_unified_snapshot_v1": true,
+        "selection": "retain staged version in private snapshot",
+        "reason": "retain grenade_notify enum as a distinct reader selector; reward_signature_valid default rejects it"
+      },
+      {
+        "file": "tools/vr-common/weapon_reload_reward_snapshot.h",
+        "sha256": "25f724f6be5bea22f58e6479fbbf50b141621de84d3d272f5bc2725da8db42b1",
+        "matches_unified_snapshot_v1": true,
+        "selection": "retain staged version in private snapshot",
+        "reason": "retain generic bounded double capture with injected signature validator; original reward API wrapper preserved"
+      },
+      {
+        "file": "tools/vr-common/weapon_reload_transaction.h",
+        "sha256": "9471b22b248f7d559878d8cd9c828ff4541d71371ce1629c779444316683f1f7",
+        "matches_unified_snapshot_v1": true,
+        "selection": "retain staged version in private snapshot",
+        "reason": "retain infinite policy, closed/suspended rebinding, dispatched receipt recovery and owner-certified original exit settlement"
+      },
+      {
+        "file": "tools/vr-common/weapon_torque_bow_interaction.h",
+        "sha256": "c5a275df3fa8da70fad6c5683c84649dd5a9fe4e0e5312e1c3638d7c0449b7f5",
+        "matches_unified_snapshot_v1": true,
+        "selection": "retain staged version in private snapshot",
+        "reason": "retain compatibility include to split mechanics/types/accounting; source moved, not deleted; one-arrow seat/lock and original charge behavior retained"
+      },
+      {
+        "file": "tools/vr-common/weapon_torque_bow_interaction_test.cpp",
+        "sha256": "eeba7896889548d931f8350f951ac73b0e3df00b9afb48815aeea2daf8698c42",
+        "matches_unified_snapshot_v1": true,
+        "selection": "retain staged version in private snapshot",
+        "reason": "retain constexpr cancellation, actual projectile race, split inventory/completion, repeated finite/infinite reload and settled-exit checks"
+      }
+    ],
+    "reviewed_count": 12,
+    "flagged_count": 12,
+    "this_turn_compile_exit_codes": {
+      "bow_cancel_compile": 0,
+      "bow_settled_exit_compile": 0,
+      "bow_split_repeat_compile": 0,
+      "bow_standalone_compile": 0,
+      "reload_reward_signature_compile": 0,
+      "reload_reward_snapshot_compile": 0,
+      "reward_native_reader_compile": 0,
+      "grenade_notify_native_reader_compile": 0
+    },
+    "prior_reports": [
+      "unified-source-v1.json",
+      "boltok-gnasher-composition-review.json"
+    ],
+    "snapshot_sha256": "64ff59e77924cc3d19a620e7426e4d9fcd2f254e176f5ddcebbeeac16df25571",
+    "snapshot_rebuild_needed": false,
+    "source_changed_this_turn": false,
+    "selection_review_complete": true,
+    "native_integration_complete": false,
+    "remaining": [
+      "TorqueBow non-firing abort entry is unproved; production charge admission remains disabled",
+      "Native original ownership, target-class accessor, callback-frame/entry certification and animation occurrence provenance",
+      "actual per-weapon calibrated geometry, model runtime ABI/lifetimes and cover physics/query consumers",
+      "future production baseline changes require rebase/review; snapshot is not an apply-ready monolithic patch"
+    ],
+    "production_applied": false,
+    "runtime_executed": false
+  },
+  "cover_trace_bit1_decoded": {
+    "date": "2026-10-29",
+    "authority": "actual IDA disassembly of both hash-verified historical Actor.Trace chunks; not current runtime proof",
+    "chunks": [
+      {
+        "start": "0x1400cdacc",
+        "end": "0x1400ce21d",
+        "sha256": "44b9510b16dd79df98cd823a89f854b200cf6bad49f6b7c3cd8721c26cff1b22"
+      },
+      {
+        "start": "0x14089b1be",
+        "end": "0x14089b278",
+        "sha256": "3d526e6b29f039bbbca1e7df396ec87919bbd4334d499b32cd10a3fe973455f2"
+      }
+    ],
+    "corrected_address_route": "cached JUMPOUT 0x2800CEF34 is not a literal runtime VA; real bit1 sequence is 0x1400cdf27..0x1400cdf31. First adjacent-function disassembly is preserved but rejected for Trace semantics",
+    "observed": [
+      {
+        "at": "0x1400cdf29",
+        "operation": "BTS ecx,17; TEST r8b,1; CMOVZ ecx,edx",
+        "conclusion": "input extra bit0 conditionally adds internal query bit17 (0x20000)"
+      },
+      {
+        "at": "0x1400cdefc..0x1400cdf08",
+        "operation": "extra bit3 selects actor-branch base0x20df versus0x20bf"
+      },
+      {
+        "at": "0x1400ce077",
+        "operation": "alternate initial branch base0x2086"
+      },
+      {
+        "at": "0x1400cdf83",
+        "operation": "copy final EBX mask into outgoing argument stack slot"
+      },
+      {
+        "at": "0x1400cdf8f",
+        "operation": "direct call sub_1400CF8F8"
+      }
+    ],
+    "downstream_saved_evidence": [
+      {
+        "va": "0x1400cf8f8",
+        "pseudocode_sha256": "f8542b4737e929a36e2c57f88fa25cb4536ccb0aa4fc1629ca6a4da3428aa200",
+        "observation": "cached pseudocode routes to0xcfa40 with OR0x400; must confirm real argument forwarding before using as native contract"
+      },
+      {
+        "va": "0x1400cfa40",
+        "pseudocode_sha256": "aa2331d25e6c0f876436f7272ca26af3c40dccc2203a91fad48064a1863fad36",
+        "observation": "cached pseudocode has remaining tail/JUMPOUT and does not resolve bit17 concrete geometry consumer"
+      }
+    ],
+    "candidate": "staging/tools/vr-common/cover_trace_flag_translation.h",
+    "compiler_report": "reports/cover_trace_flag_translation_compile.json",
+    "static_assertions": 11,
+    "unresolved": [
+      "bit17 semantics in concrete component/shape filtering",
+      "body pose update visibility to this query",
+      "actual incoming damage pose/version association"
+    ],
+    "supersedes": "cover-bullet-query-chain.json only for the wrapper bit1 decode gap; downstream geometry remains unresolved",
+    "snapshot_v1_contains_new_candidate": false,
+    "production_applied": false,
+    "game_runtime_executed": false
+  },
+  "cover_query_mask_forwarding": {
+    "date": "2026-10-29",
+    "previous_turn_classification": "progress",
+    "authority": "private IDA actual instructions; each exported chunk bytes equals hash-verified historical code blob",
+    "functions": [
+      {
+        "requested": "0x1400cf8f8",
+        "ida_function": "0x1400cf8f8",
+        "chunks": [
+          {
+            "start": "0x1400cf8f8",
+            "end": "0x1400cfa40",
+            "sha256": "4190a413bace4a59e31431dbf2884463c32fd444279cc3e10f5e2eae27ae6236"
+          },
+          {
+            "start": "0x14089b2ae",
+            "end": "0x14089b2d0",
+            "sha256": "cb5150c9433a49cdb4563710fe4dabb9f890931ba9fff3e18de627189297a610"
+          }
+        ]
+      },
+      {
+        "requested": "0x1400cfa40",
+        "ida_function": "0x1400cfa40",
+        "chunks": [
+          {
+            "start": "0x1400cfa40",
+            "end": "0x1400cfd58",
+            "sha256": "ee6605bf0e866521310294ebac7999fffcedd5192b24587b6d4d25dc95554a22"
+          }
+        ]
+      },
+      {
+        "requested": "0x1400cfd58",
+        "ida_function": "0x1400cfd58",
+        "chunks": [
+          {
+            "start": "0x1400cfd58",
+            "end": "0x1400cfea9",
+            "sha256": "b1466e9577b878a43a57c8fa90634ae5f61239879e485471224a92d99347007d"
+          }
+        ]
+      },
+      {
+        "requested": "0x1400cfdb3",
+        "ida_function": "0x1400cfd58",
+        "chunks": [
+          {
+            "start": "0x1400cfd58",
+            "end": "0x1400cfea9",
+            "sha256": "b1466e9577b878a43a57c8fa90634ae5f61239879e485471224a92d99347007d"
+          }
+        ]
+      }
+    ],
+    "instruction_chain": [
+      {
+        "at": "0x1400cf91f",
+        "operation": "loads incoming mask into EBX"
+      },
+      {
+        "at": "0x1400cf952",
+        "operation": "BTS EBX,10 adds0x400 without dropping0x20000"
+      },
+      {
+        "at": "0x1400cf96e / 0x1400cf977",
+        "operation": "stores mask in outgoing stack argument and calls0xcfa40"
+      },
+      {
+        "at": "0x1400cfa9c",
+        "operation": "loads mask into R14D"
+      },
+      {
+        "at": "0x1400cfd33..0x1400cfd55",
+        "operation": "tests mask&0x209b; loads receiver from [RDI+0x178], checks nonnull, loads vtable; no bit17-specific filter established here"
+      },
+      {
+        "at": "0x1400cfd58",
+        "operation": "continues directly from0xcfd55 across an IDA function boundary, shared registers/frame; no CALL at boundary"
+      },
+      {
+        "at": "0x1400cfd6d / 0x1400cfd77",
+        "operation": "stores full R14D as outgoing mask; invokes receiver vtable slot+0x20"
+      }
+    ],
+    "proven": [
+      "wrapper bit17 survives helper bit10 addition and is forwarded to concrete unresolved virtual receiver",
+      "cached sub0xcfd58 pseudocode is a split-region view, not proof of an independently callable ABI"
+    ],
+    "not_proven": [
+      "semantic class or ownership of receiver at+0x178",
+      "concrete vtable+0x20 target and shape selection rules",
+      "query-visible pose synchronization after body updates",
+      "all-query/all-weapon coverage"
+    ],
+    "next_bounded_question": "identify construction/assignment provenance of the receiver at outer+0x178, then authenticate vtable+0x20 code target; do not label it PhysX or CollisionHash from numeric offsets",
+    "candidate": "staging/tools/vr-common/cover_trace_flag_translation.h",
+    "static_assertions": 14,
+    "compile_exit_code": 0,
+    "production_applied": false,
+    "runtime_executed": false,
+    "evidence_sha256": "b8c61dcec5706c3259b754510058d1fb98fe867bba087bf6fe859688c9be4043",
+    "snapshot_v1_includes_candidate": false
+  },
+  "cover_query_receiver_resolved": {
+    "date": "2026-10-29",
+    "previous_turn_classification": "progress",
+    "authority": "hash-verified historical code and data, actual IDA disassembly; current runtime instance and ABI not certified",
+    "creation_chain": [
+      {
+        "at": "0x1401f117d",
+        "operation": "loads parent object from actual RIP-relative global0x141c20890, same global decoded from Trace0xcdf60"
+      },
+      {
+        "at": "0x1401f1198..0x1401f11b8",
+        "operation": "allocates0x120 bytes; nonnull calls constructor0x1401f14a0; stores returned object at parent+0x178"
+      },
+      {
+        "at": "0x1401f14ad..0x1401f14b4",
+        "operation": "LEA raw RIP target0x14133d140 then writes vtable at object+0"
+      },
+      {
+        "vtable_slot": "0x14133d160",
+        "operation": "slot+0x20 holds0x1400cfef0 in hash-verified data section"
+      }
+    ],
+    "concrete_target": {
+      "va": "0x1400cfef0",
+      "rva": "0xcfef0",
+      "cached_pseudocode_sha256": "8104103ddb340f481fd30d47f9b6c6cf5180dcfb0ce3c8d99357f179bfa9a433",
+      "cached_lead": "stateful query preparation and recursion candidate0x1400e6a10; bit17/component consumption still unproved"
+    },
+    "global_and_vtable": {
+      "vtable": "0x14133d140",
+      "constructor_global": "0x141c20890",
+      "matches_trace_global": true,
+      "entries": [
+        {
+          "slot": "0x0",
+          "target": "0x1401efa20"
+        },
+        {
+          "slot": "0x8",
+          "target": "0x1403fb4e4"
+        },
+        {
+          "slot": "0x10",
+          "target": "0x140136918"
+        },
+        {
+          "slot": "0x18",
+          "target": "0x1400caec0"
+        },
+        {
+          "slot": "0x20",
+          "target": "0x1400cfef0"
+        },
+        {
+          "slot": "0x28",
+          "target": "0x14018e6c0"
+        },
+        {
+          "slot": "0x30",
+          "target": "0x1403b9b78"
+        },
+        {
+          "slot": "0x38",
+          "target": "0x1400cc018"
+        }
+      ],
+      "source_sha256": "c5deb08128dea890e2606b7bb6bf30eb3e1045c19b3f477e0bebf6c7fd15231c"
+    },
+    "construction_chunks": [
+      {
+        "va": "0x1401f1150",
+        "chunks": [
+          {
+            "start": "0x1401f1150",
+            "end": "0x1401f1440",
+            "sha256": "b4365836af82f5fbf4c0e7e22389b93a81ed876e57487bfd666aad6e8ff3bd67"
+          },
+          {
+            "start": "0x1408cf3c6",
+            "end": "0x1408cf594",
+            "sha256": "f6f6bfeecb1edb71724cc8d100c5ddb69daf1d753602e97f941ec8952dff3258"
+          }
+        ]
+      },
+      {
+        "va": "0x1401f14a0",
+        "chunks": [
+          {
+            "start": "0x1401f14a0",
+            "end": "0x1401f1512",
+            "sha256": "21eb67ea9240f85c1cd3fc950157d2ce354d408f7550813859fe5feb4f75cd5f"
+          }
+        ]
+      }
+    ],
+    "rejected_shortcuts": [
+      "74 raw writes to+0x178 include unrelated objects and zero initializers; not all are query receiver writes",
+      "raw-loader displayed data names differ from actual RIP-resolved addresses; never copy display text as pointer",
+      "constructor family from this path does not prove current instance vtable; replacement/world lifecycle must be checked before any future hook",
+      "stateful query method must not be replayed as a passive probe"
+    ],
+    "recovery": {
+      "old_private_database": "initialization error4 reported empty database; preserved, no process remained",
+      "fresh_private_copy": "ida-cover-query-construction-v2/snapshot.i64",
+      "original_copy_sha256": "324248ac7cd0388a05907c29436fccf804eb82e5cb8433190806342c1cfcbb26",
+      "fresh_copy_hash_verified_before_open": true,
+      "successful_ida_exit_code": 0
+    },
+    "next_bounded_question": "verify actual0xcfef0 argument mask forwarding into0xe6a10 and concrete component test, then correlate to body update paths",
+    "production_applied": false,
+    "game_runtime_executed": false
+  },
+  "cover_query_component_route": {
+    "date": "2026-10-29",
+    "previous_turn_classification": "progress",
+    "authority": "actual instructions in hash-verified historical query target and recursive traversal; virtual receiver semantic names remain provisional",
+    "chunks": [
+      {
+        "va": "0x1400cfef0",
+        "chunks": [
+          {
+            "start": "0x1400cfef0",
+            "end": "0x1400d0586",
+            "sha256": "d066c0679f667c6ae7d7ca009282c551faacd7e6f5a85e988e7246eb6cf4b0e8"
+          },
+          {
+            "start": "0x14089b2d0",
+            "end": "0x14089b331",
+            "sha256": "d4e36fc72b8a25f883a5fd3f724f7c8581254c351c43dc070776b4eedc74ef51"
+          }
+        ]
+      },
+      {
+        "va": "0x1400e6a10",
+        "chunks": [
+          {
+            "start": "0x1400e6a10",
+            "end": "0x1400e7029",
+            "sha256": "0aeba221d458e793cc6ab6f53a9379612b0141de91cf19fca528cb7d651e32c3"
+          }
+        ]
+      }
+    ],
+    "mask_flow": [
+      {
+        "at": "0x1400cff07 / 0x1400cffa3",
+        "operation": "incoming mask loads into EDI and stores query context+0x3c"
+      },
+      {
+        "at": "0x1400d03b9",
+        "operation": "calls recursive traversal0x1400e6a10 with same query context"
+      },
+      {
+        "at": "0x1400e6b43..0x1400e6b84",
+        "operation": "loads candidate from node list, deduplicates via+0xf4, gets associated object at candidate+0x78, starts bounds-like vector loads at+0x108"
+      },
+      {
+        "at": "0x1400e6c90..0x1400e6ca5",
+        "operation": "associated receiver vtable+0x330 called with R9D=context+0x3c; zero result skips candidate"
+      },
+      {
+        "at": "0x1400e6cab..0x1400e6d46",
+        "operation": "candidate receiver vtable+0x2e8 loaded to R10; context+0x3c copied to stack argument; indirect callR10 at0xe6d46"
+      },
+      {
+        "at": "0x1400e6d49 / 0x1400e6fcb",
+        "operation": "zero return takes alternate hit-record route, not a generic bool success assumption"
+      }
+    ],
+    "integration_implications": [
+      "query admission observes per-candidate association and vector bounds before narrow test; bone/rigid-body completion alone cannot establish candidate visibility",
+      "runtime receipt must associate query context/version, candidate object and linked object identities, resolved virtual targets, actual invoked branch and returned hit result",
+      "stateful query mutates deduplication/context state; do not replay as passive validation",
+      "do not infer hit success from a nonzero return; actual path here branches on zero"
+    ],
+    "not_proven": [
+      "formal engine field names for candidate bounds/index and linked object",
+      "concrete linked-object+0x330 and component+0x2e8 virtual implementations for player mesh/capsule",
+      "which narrow test interprets0x20000 and whether it consumes skeletal geometry, physics shape or another proxy",
+      "bounds and query index refresh semantics/timing after cover pose commit"
+    ],
+    "next_bounded_question": "resolve concrete player candidate receiver vtables or their constructor lineage for+0x2e8; separately locate bounds/index refresh, preserve original query state",
+    "source_changed": false,
+    "production_applied": false,
+    "runtime_executed": false,
+    "evidence_sha256": "07d7a1af48f2e2fa433468693184a99cbc8656eae02f463f1a04a12f746a3246"
+  },
+  "cover_skeletal_hit_route_resolved": {
+    "date": "2026-10-29",
+    "authority": "hash-verified historical code/data; raw RIP addresses and actual instructions, no current player instance proof",
+    "type_name": {
+      "factory": "0x1404fd1e8",
+      "name_lea": "0x1404fd25a",
+      "actual_name_address": "0x1415bf86a",
+      "utf16_name": "SkeletalMeshComponent",
+      "constructor_callback": "0x1403d9d90",
+      "callback_call": "0x1403d9d99 ->0x1403d9da4"
+    },
+    "class_slots": {
+      "type_name": "SkeletalMeshComponent",
+      "factory": "0x1404fd1e8",
+      "thunk": "0x1403d9d90",
+      "constructor": "0x1403d9da4",
+      "vtable": "0x14137ac50",
+      "vtable_lea": {
+        "ea": "0x1403d9daf",
+        "bytes": "4c8d059a0efa00",
+        "text": "lea     r8, cs:1379C50h"
+      },
+      "slots": {
+        "0x2e8": "0x140339294"
+      },
+      "scope": "base class constructor historical family; current player component subclass/instance requires separate identity authentication"
+    },
+    "actual_bit17_branch": {
+      "mask_load": "0x140339307 R12D from incoming mask argument",
+      "test": "0x140339332 BT R12D,17; carry branch at0x140339337",
+      "branch_target": "0x1403393b1",
+      "condition": "compares linked data field+0x130 to zero; positive goes0x14090bdf6, nonpositive rejoins0x140339339",
+      "other_route": "0x140339339 gets RSI+0x248 and, if available,0x140339359 calls0x140131e80",
+      "limits": "field names and geometric meanings not certified; do not call routes per-polygon/PhysX/bone merely from offsets"
+    },
+    "proven": [
+      "registered factory name, constructor thunk, instance constructor vtable and base-class+0x2e8 target linked by actual code/data",
+      "query bit17 is explicitly tested within the identified skeletal component base-class implementation",
+      "geometry route is conditional on bit17 plus other flags/data, so diagnostic extra8 is not equivalent"
+    ],
+    "not_proven": [
+      "current player mesh uses this unoverridden slot or same object/layout",
+      "exact branch geometry and required refresh/FK/physics ordering",
+      "broadphase bounds/index consumed committed cover pose"
+    ],
+    "next_bounded_question": "decode0x14090bdf6 route and identify transforms/shape data consumed, then map to existing body/physics update stages",
+    "evidence": [
+      {
+        "file": "cover-skeletal-class-reference-disassembly.json",
+        "sha256": "25231cf28590493d20666a5b0647912aa07ad85c24700015c876986ca6084518"
+      },
+      {
+        "file": "cover-skeletal-factory-construction.json",
+        "sha256": "0d7c9185edfcc6f8de11a4fab9817e23a7e050253f2a8b8318a00219ca326a02"
+      },
+      {
+        "file": "cover-skeletal-instance-constructor.json",
+        "sha256": "65c6352b5d46870b6699912d10de6c0a9812c6df6ac7de5b04c2c29f57cb4886"
+      },
+      {
+        "file": "cover-skeletal-hit-check-chunks.json",
+        "sha256": "46e7292ac7690962ab57a26b0010ed3a6c0411da75867f3b60deebbdc2946d8a"
+      }
+    ],
+    "hit_function_chunks": [
+      {
+        "start": "0x140339294",
+        "end": "0x1403394ba",
+        "sha256": "6a89e07513b70c4bfd773ee6deb928b67c64d63df9619db8d7106e57479f43fa"
+      },
+      {
+        "start": "0x14090bdd2",
+        "end": "0x14090bf7c",
+        "sha256": "60974a58ff5d323d6fcfe117e1fe23726314f43ae168eda0b5df01379de7b8d6"
+      },
+      {
+        "start": "0x14090c29a",
+        "end": "0x14090c371",
+        "sha256": "0b39a00c2185c979f4fb3a8feb94d6301ff267320e73662d4a0e425f48fffb0a"
+      }
+    ],
+    "production_applied": false,
+    "runtime_executed": false
+  },
+  "cover_hit_bone_transform_reuse": {
+    "date": "2026-10-29",
+    "previous_turn_classification": "progress",
+    "authority": "actual hash-verified historical cold-region instructions and existing Native getter code contract; no current runtime evidence",
+    "branch_data": [
+      {
+        "at": "0x14090be00..0x14090be42",
+        "operation": "reads linked asset at mesh+0x218, checks count+0x140, reads name entry from asset+0x128"
+      },
+      {
+        "at": "0x14090be4d",
+        "operation": "calls0xf9d80 name-to-index lookup and rejects -1"
+      },
+      {
+        "at": "0x14090be76..0x14090be88",
+        "operation": "RCX=mesh RSI, RDX=aligned output, R8D=index; calls bone matrix getter0x1d40b8"
+      },
+      {
+        "at": "0x14090be8f..0x14090beb9",
+        "operation": "copies returned matrix then calls transform helper0x137a60"
+      },
+      {
+        "at": "0x14090bf86..0x14090bff2",
+        "operation": "uses asset+0x138 with per-entry offset and calls geometry helpers0xdec0e8/0xded060 or0xdebe0c/0xdec81c; their exact geometric semantics remain unproved"
+      }
+    ],
+    "existing_reuse": {
+      "file": "tools/native-capture/cover_bone_getters.h",
+      "sha256": "b4a54fc8834f563dae3b4291936696792d0cb6af0131e4a3c6ec4fd3304f4996",
+      "entry": "0x1d40b8",
+      "two_code_chunks_match_existing_contract": true,
+      "existing_guards": [
+        "game thread/current mesh/world ownership required",
+        "bounds/index verified; MasterPose remap rejected for current publisher",
+        "valid finite matrix and table header/current code rechecks",
+        "cannot substitute identity fallback for a real bone"
+      ]
+    },
+    "package_support": {
+      "known_declarations": [
+        "Engine.SkeletalMesh.PerPolyCollisionBones",
+        "Engine.SkeletalMesh.PerPolyBoneKDOPs"
+      ],
+      "scope": "names support a per-bone geometry hypothesis only; exact runtime array offsets were not inferred from cooked property indices"
+    },
+    "conclusion": "at least one skeletal hit route obtains current bone world transforms from the same getter already certified by source; cannot require rigid-body synchronization as a sufficient or universal explanation for all hit geometry",
+    "remaining": [
+      "confirm this route and asset set for actual player mesh/subclass",
+      "decode geometry helper semantics and data ownership",
+      "prove committed pose reaches SpaceBases/world transform and broadphase bounds/index before query",
+      "retain separate simple/physics routes and MasterPose handling; one getter match is not full hit_geometry receipt"
+    ],
+    "production_applied": false,
+    "runtime_executed": false,
+    "evidence_sha256": "748b0914bd02f72d132e7fc96c5cb815ff9d43cd19af206bd21990c60d6a87a9"
+  },
+  "cover_hit_code_preparation": {
+    "date": "2026-10-29",
+    "previous_turn_classification": "progress",
+    "manifest": "reports/cover-hit-query-code-spans.json",
+    "verifier": "verify_cover_hit_code_spans.py",
+    "header": "staging/tools/vr-common/cover_hit_query_code_spans.h",
+    "verified_spans": 14,
+    "verified_bytes": 7828,
+    "compile_exit_code": 0,
+    "coverage": "known query helper, component traversal, skeletal test main/cold blocks and shared bone getter/name lookup; sorted distinct nonoverlapping chunks",
+    "cached_geometry_lead": "0xdb120 appears to test zero extent; cold branch chooses0xdec0e8/0xded060 versus0xdebe0c/0xdec81c; exact helper instruction semantics still require export",
+    "failed_attempt": {
+      "tool": "existing private IDA v2",
+      "result": "initialization error4, no helper export produced",
+      "handling": "preserve old copy/log; no retry or source rebuild this turn; continue offline existing evidence verification"
+    },
+    "limits": [
+      "not a complete transitive native call closure",
+      "future byte matching alone does not authorize game calls or establish ABI",
+      "actual instance vtable/world/thread/pose/shape and index/bounds ownership still mandatory",
+      "code spans exclude unresolved deeper geometry helper implementation",
+      "snapshotv1 does not contain newly added span header"
+    ],
+    "production_applied": false,
+    "runtime_executed": false
+  },
+  "cover_skeletal_geometry_helper_route": {
+    "date": "2026-10-29",
+    "previous_turn_classification": "progress",
+    "authority": "actual exported instructions, all helper chunks checked against historical blob",
+    "helpers": [
+      {
+        "va": "0x1400db120",
+        "chunks": [
+          {
+            "start": "0x1400db120",
+            "end": "0x1400db141",
+            "sha256": "b2c6ae180317fd2535c8f32cfb51ce2f9abacdf9798bf4e78078024e42c24259"
+          }
+        ]
+      },
+      {
+        "va": "0x140dec0e8",
+        "chunks": [
+          {
+            "start": "0x140dec0e8",
+            "end": "0x140dec151",
+            "sha256": "ade78206ba0260377b3f87d7498500b68280a61355d2837e4b41e359868db2e0"
+          }
+        ]
+      },
+      {
+        "va": "0x140ded060",
+        "chunks": [
+          {
+            "start": "0x140ded060",
+            "end": "0x140ded0c3",
+            "sha256": "e1c7cff0c411678781a99dac0112977c46ae5862cd5b06b133bfe418f7ca9ce9"
+          }
+        ]
+      },
+      {
+        "va": "0x140debe0c",
+        "chunks": [
+          {
+            "start": "0x140debe0c",
+            "end": "0x140dec0e6",
+            "sha256": "9a92159882f29a7d0bd1064e9f5a2463a83c28e2b06a191703e416c95635c96f"
+          }
+        ]
+      },
+      {
+        "va": "0x140dec81c",
+        "chunks": [
+          {
+            "start": "0x140dec81c",
+            "end": "0x140dec8eb",
+            "sha256": "6b7103ec364d3949c9bc01ab19e56260be70b14171cf70c48ed85e7f9683a1ab"
+          }
+        ]
+      }
+    ],
+    "observed": [
+      {
+        "va": "0x1400db120",
+        "operation": "VUCOMISS against zero for components0/4/8; returns1 if all equality branches taken. For finite inputs this distinguishes zero extent; it does not establish finite-input validation"
+      },
+      {
+        "va": "0x140dec0e8",
+        "operation": "loads per-query entry index, computes80-byte stride, reads asset array pointer+0x138, stores entry pointers and invokes0x34dbc0 for query preparation"
+      },
+      {
+        "va": "0x140debe0c",
+        "operation": "calls common preparation0xdec0e8 then additional helper0xe83f0; extra extent-related preparation visible"
+      },
+      {
+        "va": "0x140ded060",
+        "operation": "precheck0xad8464, then recursive/detail candidate0xdecae8"
+      },
+      {
+        "va": "0x140dec81c",
+        "operation": "adjusts vector ranges, precheck0xad8464, then different recursive/detail candidate0xdec154"
+      }
+    ],
+    "conclusions": [
+      "previous line/volume split lead now has actual helper instructions; retain separate query semantics",
+      "asset-backed per-entry geometry uses80-byte layout; shape type remains unproved",
+      "finite input checks must remain in caller, not inferred from zero-vector helper",
+      "existing code identity manifest expanded to19 verified spans/9002 bytes, without native call implementation"
+    ],
+    "next_bounded_question": "resolve0xdecae8 versus0xdec154 detailed geometry access and asset record layout; no guessed collision algorithm substitution",
+    "private_copy": "ida-cover-geometry-v3/snapshot.i64 from hash-verified original; original untouched",
+    "successful_ida_exit_code": 0,
+    "code_manifest": "reports/cover-hit-query-code-spans-v2.json",
+    "compile_exit_code": 0,
+    "production_applied": false,
+    "runtime_executed": false,
+    "complete": false
+  },
+  "cover_skeletal_indexed_geometry_route": {
+    "date": "2026-10-29",
+    "previous_turn_classification": "progress",
+    "authority": "actual instruction export checked chunk-for-chunk against historical blob; package declarations are corroborating names only",
+    "functions": [
+      {
+        "va": "0x140decae8",
+        "chunks": [
+          {
+            "start": "0x140decae8",
+            "end": "0x140ded05f",
+            "sha256": "dd0c2a2ba3cbacb863d4aff76ea75f83ce979dff0146a801b4d7caa85583362e"
+          }
+        ]
+      },
+      {
+        "va": "0x140dec154",
+        "chunks": [
+          {
+            "start": "0x140dec154",
+            "end": "0x140dec819",
+            "sha256": "2aac08c84331352a9d6ff1a35a42bb081bb71b096bf960f88d99294967ce0f65"
+          }
+        ]
+      },
+      {
+        "va": "0x140deba24",
+        "chunks": [
+          {
+            "start": "0x140deba24",
+            "end": "0x140debe0c",
+            "sha256": "a33caaef654b04dd18053979227b1d579afbc98c36c7894f27dbcbe050d78f3f"
+          }
+        ]
+      },
+      {
+        "va": "0x140ad8464",
+        "chunks": [
+          {
+            "start": "0x140ad8464",
+            "end": "0x140ad862b",
+            "sha256": "49d8c69af36dacfcfd06290887d65e44a274ccded55de5d31a0c23f4f7cfb670"
+          }
+        ]
+      }
+    ],
+    "leaf_record": {
+      "stride": 8,
+      "index_offsets": [
+        0,
+        2,
+        4
+      ],
+      "index_width": 2,
+      "extra_value_offset": 6,
+      "extra_value_width": 2,
+      "vertex_stride": 12,
+      "vertex_source": "asset+0x138 per-bone80-byte entry, vertex base at entry+0x40",
+      "extra_value_semantics": "unresolved; do not label material/bone/section"
+    },
+    "actual_sites": [
+      {
+        "at": "0x140decfd9..0x140decfec",
+        "operation": "recursive line-path leaf iterates8-byte records, reads extra16bit value+6 and calls0xdeba24"
+      },
+      {
+        "at": "0x140deba70..0x140debaa4",
+        "operation": "computes80-byte asset entry; reads vertex pointer entry+0x40; loads three16bit indices and forms12-byte point addresses"
+      },
+      {
+        "at": "0x140dec699..0x140dec72a",
+        "operation": "volume-path leaf reads same3indices+extra, forms point addresses, passes3points into0x1b697c"
+      },
+      {
+        "at": "0x140dec731..0x140dec74b",
+        "operation": "accepted detail result compared with existing hit fraction before replacement"
+      }
+    ],
+    "geometry_inference": "three indexed3-float points and native vector tests are consistent with triangle-backed collision geometry; do not infer full visual-mesh skinning or the full tree format",
+    "implementation_implications": [
+      "retain original asset geometry/index data; cover pose should not rewrite shared asset vertices or indices",
+      "authenticated route needs current bone-to-world transform plus candidate/bounds/index visibility; rigid-body update alone neither proves nor universally defines this branch",
+      "volume and line query have distinct detail implementations, so line-only diagnostic cannot certify swept-volume movement",
+      "pose/version receipts must preserve actual asset/entry/index identity and query/hit sequence; auxiliary16bit field meaning remains unresolved"
+    ],
+    "unresolved": [
+      "current player asset supports this branch and inherited slot",
+      "tree and detail algorithms beyond inspected entries,0x1b697c transitive code identity",
+      "exact finite/index bounds and asset/lifecycle owner for future adapter",
+      "bounds/index refresh path and same-version pose synchronization",
+      "simple/physics alternatives and incoming damage binding"
+    ],
+    "next_bounded_question": "locate original component bounds/index refresh and selected asset flags, using this concrete geometry route rather than adding a replacement collider",
+    "ida_exit_code": 0,
+    "production_applied": false,
+    "runtime_executed": false,
+    "evidence_sha256": "8358bc7763b70b0428c2c1bf4c814db2874a2bf2844db2d480356554f95370f6"
+  }
+}

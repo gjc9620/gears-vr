@@ -30,7 +30,11 @@ def graphics_prime_count(status, required=False, menu_lock=False):
     if len(captures)!=1:raise RuntimeError('Expected one target-prime capture record')
     fields=dict(token.split('=',1) for token in captures[0].split()[1:] if '=' in token)
     expected='4' if menu_lock else '3' if required else '0'
-    if (fields.get('native_hooks_enabled')!=expected or
+    presentation=fields.get('startup_presentation_hooks_enabled','0')
+    if presentation not in ('0','1'):raise RuntimeError('Unknown startup presentation hook inventory')
+    if presentation=='1' and (fields.get('lifetime')!='owner' or fields.get('startup_presentation_code_attested')!='1'):
+        raise RuntimeError('Startup presentation hook requires an owned certified lease')
+    if (fields.get('native_hooks_enabled')!=str(int(expected)+int(presentation)) or
             fields.get('graphics_hooks_enabled','0')!=expected or fields.get('scene_hooks_enabled','0')!='0'):
         raise RuntimeError('Target-prime graphics policy differs from requested manifest')
     if required and fields.get('lifetime')!='owner':raise RuntimeError('Startup graphics lock requires owned lifetime')

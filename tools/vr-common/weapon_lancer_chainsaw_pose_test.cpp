@@ -9,14 +9,79 @@ int main(){
     std::array<float,16> gun{1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1};
     LancerStarterWorld mount{};
     assert(lancer_starter_world(gun,mount));
-    assert(mount.anchor_raw.x==6&&mount.anchor_raw.y==26&&
+    assert(mount.socket_raw.x==6&&mount.anchor_raw.x==10.5&&mount.anchor_raw.y==26&&
            mount.anchor_raw.z==10.65&&mount.pull_axis.x==1);
     gun={0,1,0,0, -1,0,0,0, 0,0,1,0, 0,0,0,1};
     assert(lancer_starter_world(gun,mount));
-    assert(mount.anchor_raw.x==-26&&mount.anchor_raw.y==6&&
+    assert(mount.anchor_raw.x==-26&&mount.anchor_raw.y==10.5&&
            mount.pull_axis.x==0&&mount.pull_axis.y==1);
     gun[1]=-1;
     assert(!lancer_starter_world(gun,mount)); // reflected gun frame
+    {
+        std::array<float,16> actual{1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1};
+        gears_vr::Viewpoint pose{};const gears_vr::Vector scale{1,1,1};
+        auto axes=gears_vr::ue_matrix({});
+        assert(lancer_starter_matches_draw(actual,pose,scale,&axes));
+        auto bad=axes;bad[0][0]=-1;actual[0]=-1;
+        assert(!lancer_starter_matches_draw(actual,pose,scale,&bad)); // matching reflection is still invalid
+        actual[0]=1.02f;bad=axes;bad[0][0]=1.02;
+        assert(!lancer_starter_matches_draw(actual,pose,scale,&bad)); // scale cannot hide in axes
+        actual[0]=1;bad=axes;bad[0][1]=.2;actual[4]=.2f;
+        assert(!lancer_starter_matches_draw(actual,pose,scale,&bad)); // nor shear
+        actual[4]=0;bad=axes;bad[0][0]=NAN;
+        assert(!lancer_starter_matches_draw(actual,pose,scale,&bad));
+        actual[12]=1;assert(!lancer_starter_matches_draw(actual,pose,scale,&axes)); // old position still rejected
+        actual[12]=0;actual[0]=-1;actual[5]=-1;
+        assert(!lancer_starter_matches_draw(actual,pose,scale,&axes)); // valid180-degree wrong direction rejected
+    }
+    for(double scale:{.5,1.,2.})for(double units:{80.,100.,150.})for(double pull:{0.,.01,.18,.3}){
+        const std::array<float,16> posed{0,float(scale),0,0, float(-scale),0,0,0,
+            0,0,float(scale),0, 123,456,789,1};
+        LancerStarterParts parts{};assert(lancer_starter_parts(posed,pull,units,parts));
+        const auto point=[](std::array<float,16> const& matrix,double x){return gears_vr::Vector{
+            matrix[12]+x*matrix[0],matrix[13]+x*matrix[1],matrix[14]+x*matrix[2]};};
+        const auto fixed=point(parts.cord,lancer_starter_cord_start_raw);
+        const auto socket=point(parts.socket,lancer_starter_cord_start_raw);
+        const auto moving=point(parts.cord,lancer_starter_cord_end_raw);
+        const auto grip=point(parts.grip,lancer_starter_cord_end_raw);
+        const auto contact=point(parts.grip,lancer_starter_grip_raw);
+        const auto close_enough=[](gears_vr::Vector a,gears_vr::Vector b){
+            return std::hypot(std::hypot(a.x-b.x,a.y-b.y),a.z-b.z)<.0002;};
+        assert(close_enough(fixed,socket)&&close_enough(moving,grip)&&close_enough(contact,parts.grasp_raw));
+        assert(std::abs(contact.y-(456+10.5*scale+pull*units))<.0002);
+        for(auto const* draw:{&parts.socket,&parts.grip,&parts.cord}){
+            gears_vr::Viewpoint pose{};gears_vr::Vector sizes{};
+            assert(lancer_starter_draw_pose(*draw,pose,sizes));
+            assert(lancer_starter_matches_draw(*draw,pose,sizes));
+            auto stale=*draw;stale[12]+=1;assert(!lancer_starter_matches_draw(stale,pose,sizes));
+            auto reversed=*draw;reversed[0]=-reversed[0];reversed[1]=-reversed[1];reversed[2]=-reversed[2];
+            assert(!lancer_starter_matches_draw(reversed,pose,sizes));
+            const auto basis=gears_vr::ue_matrix(pose.rotation);
+            const double scales[]={sizes.x,sizes.y,sizes.z};
+            for(unsigned i=0;i<3;++i)for(unsigned j=0;j<3;++j)
+                assert(std::abs(basis[j][i]*scales[i]-(*draw)[i*4+j])<1e-4);
+        }
+    }
+    {
+        const auto basis=gears_vr::ue_matrix({.4,-.7,.3});
+        std::array<float,16> turned{};turned[15]=1;
+        for(unsigned i=0;i<3;++i)for(unsigned j=0;j<3;++j)turned[i*4+j]=float(basis[j][i]);
+        LancerStarterParts parts{};assert(lancer_starter_parts(turned,.18,100,parts));
+        for(auto const* draw:{&parts.socket,&parts.grip,&parts.cord}){
+            gears_vr::Viewpoint pose{};gears_vr::Vector scale{};assert(lancer_starter_draw_pose(*draw,pose,scale));
+            assert(lancer_starter_matches_draw(*draw,pose,scale));
+        }
+    }
+    {
+        LancerStarterParts untouched{};untouched.socket[12]=321;
+        auto before=untouched;
+        assert(!lancer_starter_parts(gun,.18,100,untouched)); // reflected
+        gun={1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1};
+        for(double bad:{-.001,.301,double(NAN),double(INFINITY)})
+            assert(!lancer_starter_parts(gun,bad,100,untouched));
+        assert(!lancer_starter_parts(gun,.18,0,untouched));
+        assert(untouched.socket==before.socket&&untouched.grip==before.grip&&untouched.cord==before.cord);
+    }
     HandWorldFrame frame{};
     frame.created_ms=1000;frame.session=1;frame.sequence=1;
     frame.space_epoch=2;frame.input_epoch=3;frame.world_generation=4;

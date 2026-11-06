@@ -203,12 +203,90 @@ static void cover_two_stage_with_weapon_competition(){
     }
 }
 
+static void bounded_magazine_observation_handoff(){
+    const auto begin=[](LeftHandInteractionOwner& owner){
+        auto f=neutral();f.now_ns=1000000000;owner.update(f);press(f);f.now_ns+=1000000;
+        f.requests.magazine_observation_pending=true;
+        const auto waiting=owner.update(f);
+        CHECK(empty(waiting)&&!waiting.release_required&&waiting.status==LeftHandInteractionStatus::no_candidate);
+        CHECK(same(waiting,owner.update(f)));return f;
+    };
+    {
+        LeftHandInteractionOwner owner;auto f=begin(owner);
+        next(f);f.now_ns+=50000000;f.requests.magazine_observation_pending=false;f.requests.magazine=true;
+        const auto acquired=owner.update(f);CHECK(acquired.new_grant&&acquired.lease.kind==LeftHandInteraction::magazine);
+        CHECK(same(acquired,owner.update(f)));
+        next(f);++f.now_ns;f.incumbents[0]=acquired.lease;
+        CHECK(owner.update(f).status==LeftHandInteractionStatus::retained);
+        release(f);++f.now_ns;CHECK(!owner.update(f).release_required);
+    }
+    for(unsigned mode=0;mode<11;++mode){
+        LeftHandInteractionOwner owner;auto f=begin(owner);next(f);
+        f.now_ns+=50000000;f.requests.magazine_observation_pending=false;f.requests.magazine=true;
+        if(mode==0)f.now_ns+=50000001;
+        if(mode==1)f.now_ns-=50000000;
+        if(mode==2)f.now_ns-=50000001;
+        if(mode==3)f.tracked=false;
+        if(mode==4)f.context_valid=false;
+        if(mode==5)++f.lifecycle;
+        if(mode==6)++f.press_token;
+        if(mode==7){f.requests.magazine=false;f.requests.ammo=true;}
+        if(mode==8){f.requests.magazine=false;f.requests.support=true;f.requests.magazine_observation_pending=true;}
+        if(mode==9){f.requests.magazine=false;f.requests.cover_request_id=42;}
+        if(mode==10)f.incumbents[0]={LeftHandInteraction::ammo,f.lifecycle,88};
+        const auto denied=owner.update(f);CHECK(empty(denied)&&denied.release_required);
+        f.tracked=f.context_valid=true;f.requests={};f.requests.magazine=true;f.incumbents={};next(f);++f.now_ns;
+        CHECK(empty(owner.update(f)));
+    }
+    {
+        LeftHandInteractionOwner owner;auto f=begin(owner);next(f);f.now_ns+=50000000;
+        f.requests.magazine_observation_pending=false;f.requests.support=true;
+        const auto granted=owner.update(f);CHECK(granted.new_grant&&!granted.release_required&&
+            granted.lease.kind==LeftHandInteraction::support&&granted.press_token==f.press_token);
+        f.incumbents[0]=granted.lease;f.requests={};next(f);++f.now_ns;
+        CHECK(owner.update(f).status==LeftHandInteractionStatus::retained);
+    }
+    {
+        LeftHandInteractionOwner owner;auto f=begin(owner);next(f);f.now_ns+=30000000;
+        CHECK(!owner.update(f).release_required);
+        next(f);f.now_ns+=70000000;f.requests.magazine_observation_pending=false;f.requests.magazine=true;
+        CHECK(owner.update(f).new_grant);
+    }
+    {
+        LeftHandInteractionOwner owner;auto f=begin(owner);next(f);++f.now_ns;
+        f.requests.magazine_observation_pending=false;CHECK(owner.update(f).release_required);
+        next(f);++f.now_ns;f.requests.magazine=true;CHECK(empty(owner.update(f)));
+    }
+    {
+        LeftHandInteractionOwner owner;auto f=begin(owner);auto mutated=f;mutated.requests.magazine_observation_pending=false;
+        CHECK(owner.update(mutated).status==LeftHandInteractionStatus::replayed);
+        next(f);++f.now_ns;f.requests.magazine=true;CHECK(empty(owner.update(f)));
+    }
+    {
+        LeftHandInteractionOwner owner;auto f=begin(owner);release(f);++f.now_ns;
+        CHECK(!owner.update(f).release_required);
+        press(f);++f.now_ns;f.requests.magazine_observation_pending=false;f.requests.magazine=true;
+        CHECK(owner.update(f).new_grant);
+    }
+}
+
 int main(){
     try{
+        // A rejected held press keeps the original cause for observation;
+        // reading it must not rearm or change the required physical release.
+        {LeftHandInteractionOwner owner;auto f=neutral();owner.update(f);
+            press(f);CHECK(owner.update(f).status==LeftHandInteractionStatus::no_candidate);
+            CHECK(owner.blocking_status()==LeftHandInteractionStatus::no_candidate);
+            next(f);f.requests.magazine=true;
+            CHECK(owner.update(f).status==LeftHandInteractionStatus::needs_release);
+            CHECK(owner.blocking_status()==LeftHandInteractionStatus::no_candidate);
+            release(f);CHECK(owner.update(f).status==LeftHandInteractionStatus::released);
+            CHECK(owner.blocking_status()==LeftHandInteractionStatus::released);
+            press(f);CHECK(owner.update(f).new_grant);}
         single_press_cover_priority_and_idempotence();existing_leases_win_and_conflicts_never_guess();
         weapon_candidates_and_consumed_empty_press();interruptions_replay_and_lifecycle();
-        cover_two_stage_with_weapon_competition();
+        cover_two_stage_with_weapon_competition();bounded_magazine_observation_handoff();
     }catch(int){return 1;}
-    std::printf("Shared left-hand owner CPU PASS: 5 groups, %u checks; cover priority, support/ammo/magazine incumbents, single press grants, repeat/mutation/regression, lifecycle/tracking rearm and cover-kernel two-stage integration.\n",checks);
+    std::printf("Shared left-hand owner CPU PASS: 6 groups, %u checks; priority, incumbents, single press, frozen frames, bounded magazine observation, lifecycle/tracking rearm and cover integration.\n",checks);
     return 0;
 }

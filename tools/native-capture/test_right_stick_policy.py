@@ -1,8 +1,17 @@
 import math
 import unittest
-from right_stick_policy import Policy,percent,zero_axis_deadzone
+from right_stick_policy import Policy,percent,zero_axis_deadzone,legacy_look_edit
 
 class PolicyTests(unittest.TestCase):
+    def test_retail_action_alias_precedes_legacy_axis(self):
+        bindings=[('XboxTypeS_RightX','Game_LookX'),('XboxTypeS_RightY','Game_LookY'),
+                  ('XboxTypeS_RightX','Axis aTurn Speed=1.0 DeadZone=0.2'),
+                  ('XboxTypeS_RightY','Axis aLookup Speed=1.0 DeadZone=0.3')]
+        edits=[(name,legacy_look_edit(name,text)) for name,text in bindings]
+        self.assertEqual([name for name,edit in edits if edit is not None],['XboxTypeS_RightX','XboxTypeS_RightY'])
+        self.assertTrue(all('DeadZone=0' in edit for name,edit in edits if edit is not None))
+        with self.assertRaises(ValueError):legacy_look_edit('XboxTypeS_RightX','Game_LookY')
+        with self.assertRaises(ValueError):legacy_look_edit('XboxTypeS_RightX','Game_Reload')
     def test_only_look_commands_and_preserve_allocation(self):
         for original in ['Axis aTurn Speed=1.0 DeadZone=0.2','Axis aLookup Speed=0.8 DeadZone=0.200',
                          'Axis aTurn DeadZone=.25 Invert=1','Axis aLookup Speed=1']:

@@ -1,6 +1,10 @@
 // Included after Scope. Diagnostic ownership stays with the existing VM owner.
+namespace weapon_hand_runtime {
+bool take_hud_query(std::uintptr_t,std::uintptr_t,std::uintptr_t,gears_weapon_hud_receipt::Receipt&) noexcept;
+}
 namespace crosshair_live {
 bool enabled{};
+std::atomic<uint64_t> held_weapon_queries{};
 #if defined(GEARS_CROSSHAIR_ASSIGNMENT_OBSERVER) && GEARS_CROSSHAIR_ASSIGNMENT_OBSERVER
 using ExecLet=std::uintptr_t(__fastcall*)(void*,void*,void*);
 ExecLet original{};void* target{};bool reserved{};
@@ -23,6 +27,9 @@ struct Row {unsigned kind{},thread{};uint64_t world{},tick{};long long begin{},a
 std::array<Row,32> rows{};
 std::atomic<uint64_t> anchor_associated{},anchor_association_rejected{},ticket_registered{},association_row_count{};
 std::array<std::atomic<uint64_t>,6> finite_reasons{};
+std::array<std::atomic<uint64_t>,6> aimed_finite_reasons{};
+struct AimedAge {long long begin{},assignment{},finish{},scene{},checked{},deadline{};float assigned_stamp{},scene_stamp{};bool weapon{};};
+std::array<AimedAge,16> aimed_ages{};std::atomic<unsigned> aimed_age_count{};
 std::atomic<uint64_t> finite_registered{};
 std::atomic<uint64_t> aim_observed{},aim_raised{},aim_without_query{},aim_rejected{};
 struct DiagnosticPose {gears_vr::StereoMatrix view{},projection{};uint64_t ticket{},world{},tick{};unsigned thread{};};
@@ -320,6 +327,25 @@ std::uintptr_t __fastcall hook(void* self,void* frame,void* result){
                 receipt.view.camera_binding_valid=true;receipt.view.camera=anchor.camera;
                 receipt.view.local=anchor_config.identities[anchor_config.role_local].address;
                 receipt.view.level=anchor.level;receipt.view.assignment_stamp=stamp;}}
+        gears_weapon_hud_receipt::Receipt weapon_query{};
+        if(receipt.view.valid&&receipt.view.camera_binding_valid&&
+           weapon_hand_runtime::take_hud_query(reinterpret_cast<uintptr_t>(frame),receipt.controller,receipt.pawn,weapon_query)&&
+           weapon_query.source.weapon.address==receipt.weapon&&
+           receipt.view.start==weapon_query.start&&receipt.view.direction==weapon_query.direction){
+            const auto clock_qpc=now();
+            const auto clock_ns=gears_weapon_hand::weapon_broker_win32::clock_ns(nullptr);
+            const auto oldest=(std::min)({weapon_query.source.now_ns,weapon_query.source.controllers.sync_ns,
+                weapon_query.source.controllers.received_ns,weapon_query.source.stereo.received_ns});
+            if(oldest>0&&clock_ns>=oldest&&clock_ns-oldest<100000000&&qpc_frequency>0){
+                const auto remaining=100000000-(clock_ns-oldest);
+                const auto delta=static_cast<long long>(double(remaining)*double(qpc_frequency)/1e9);
+                if(delta>0&&clock_qpc>0&&clock_qpc<LLONG_MAX-delta){
+                    receipt.view.weapon_query_call=weapon_query.call.call_id;
+                    receipt.view.weapon_query_deadline_qpc=clock_qpc+delta;
+                    ++held_weapon_queries;
+                }
+            }
+        }
         ++completed;state.assignment=now();state.point=receipt.point;state.evidence.assignment(state.token,receipt,state.assignment);
     }else {++completion_rejected;state.evidence.invalidate();}
     cost(now()-after);return value;
@@ -380,7 +406,19 @@ void freeze(gears_submitted::FrameTicket& frame,gears_anchor::Receipt const* anc
     const auto reason=gears_crosshair_assignment::validate_bindings(config.assignment,safe_copy,false)?
         gears_crosshair_finite_query::authorize(*frame.crosshair,authority,frame.source_view,now(),qpc_frequency,frame.finite_aim):
         gears_crosshair_finite_query::Reason::binding;
-    ++finite_reasons[static_cast<unsigned>(reason)];cost(now()-started);
+    if(frame.aiming&&reason==gears_crosshair_finite_query::Reason::age){
+        const auto index=aimed_age_count.fetch_add(1);
+        if(index<aimed_ages.size()){
+            const auto& d=*frame.crosshair;auto& r=aimed_ages[index];
+            r={d.begin_qpc,d.assignment_qpc,d.finish_qpc,d.scene_qpc,now(),d.writer_view.weapon_query_deadline_qpc};
+            r.weapon=d.writer_view.weapon_query_call;
+            std::memcpy(&r.assigned_stamp,&d.writer_view.assignment_stamp,sizeof(float));
+            std::memcpy(&r.scene_stamp,&authority.scene_stamp,sizeof(float));
+        }
+    }
+    ++finite_reasons[static_cast<unsigned>(reason)];
+    if(frame.aiming)++aimed_finite_reasons[static_cast<unsigned>(reason)];
+    cost(now()-started);
 #else
     (void)frame;(void)anchor;
 #endif
@@ -401,7 +439,7 @@ void print(FILE* out){
     fprintf(out,"crosshair_assignment_observer enabled=%u compiled=1 roots=%llu root_rejected=%llu lets_in_tick=%llu candidates=%llu snapshot_rejected=%llu completed=%llu completion_rejected=%llu sealed=%llu scene_calls=%llu scene_consumed=%llu overhead_qpc=%llu maximum_overhead_qpc=%llu qpc_frequency=%lld rows=%llu camera_equivalence_proven=0 ticket_association_proven=0 observer_query_coordinates_modified=0\n",
         enabled?1:0,roots.load(),root_rejected.load(),lets.load(),candidates.load(),snapshot_rejected.load(),completed.load(),completion_rejected.load(),
         sealed.load(),scene_calls.load(),consumed.load(),overhead_qpc.load(),maximum_overhead_qpc.load(),qpc_frequency,(std::min)(row_count.load(),uint64_t(rows.size())));
-    fprintf(out,"crosshair_assignment_mounted_suspended=%u human_weapon_aim_used=0\n",config.mounted_suspended?1u:0u);
+    fprintf(out,"crosshair_assignment_mounted_suspended=%u held_weapon_query_assignments=%llu headset_aim_verified=0\n",config.mounted_suspended?1u:0u,held_weapon_queries.load());
     fprintf(out,"crosshair_assignment_scene_binding_rejected=%llu\n",scene_binding_rejected.load());
     fprintf(out,"crosshair_scene_aim observed=%llu raised=%llu raised_without_query=%llu rejected=%llu independent_of_hud_query=1 source=current_scene_controller\n",
         aim_observed.load(),aim_raised.load(),aim_without_query.load(),aim_rejected.load());
@@ -410,8 +448,14 @@ void print(FILE* out){
     fprintf(out,"crosshair_world_certificate generation=%llu commits=%llu\n",config_generation.load(),world_certificates.load());
     fprintf(out,"crosshair_finite_hud_query eligible=%llu binding_rejected=%llu clock_rejected=%llu age_rejected=%llu geometry_rejected=%llu registered=%llu camera_rejected=%llu source_camera_freshness_guard=1 max_assignment_and_tick_age_ms=50 camera_equivalence_proven=0 current_camera_aim_proven=0 bullet_impact_proven=0\n",
         finite_reasons[0].load(),finite_reasons[1].load(),finite_reasons[2].load(),finite_reasons[3].load(),finite_reasons[4].load(),finite_registered.load(),finite_reasons[5].load());
+    fprintf(out,"crosshair_aimed_finite_query accepted=%llu binding=%llu clock=%llu age=%llu geometry=%llu camera=%llu\n",
+        aimed_finite_reasons[0].load(),aimed_finite_reasons[1].load(),aimed_finite_reasons[2].load(),
+        aimed_finite_reasons[3].load(),aimed_finite_reasons[4].load(),aimed_finite_reasons[5].load());
     if(active.load())return;
-    fprintf(out,"crosshair_assignment_association anchors=%llu anchor_rejected=%llu tickets_registered=%llu rows=%llu camera_equivalence_proven=0 finite_aim_certified=0\n",
+    for(unsigned i=0;i<(std::min)(aimed_age_count.load(),unsigned(aimed_ages.size()));++i){const auto& r=aimed_ages[i];
+        fprintf(out,"crosshair_aimed_age index=%u begin=%lld assignment=%lld finish=%lld scene=%lld checked=%lld deadline=%lld assigned_stamp=%.9g scene_stamp=%.9g weapon=%u frequency=%lld\n",
+            i,r.begin,r.assignment,r.finish,r.scene,r.checked,r.deadline,r.assigned_stamp,r.scene_stamp,unsigned(r.weapon),qpc_frequency);
+    }    fprintf(out,"crosshair_assignment_association anchors=%llu anchor_rejected=%llu tickets_registered=%llu rows=%llu camera_equivalence_proven=0 finite_aim_certified=0\n",
         anchor_associated.load(),anchor_association_rejected.load(),ticket_registered.load(),
         (std::min)(association_row_count.load(),uint64_t(association_rows.size())));
     for(unsigned i=0;i<(std::min)(association_row_count.load(),uint64_t(association_rows.size()));++i){auto const& r=association_rows[i].data;

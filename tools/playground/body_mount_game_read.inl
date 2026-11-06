@@ -20,19 +20,29 @@ bool observe_equipment(abi::EquipmentIdentity const& f,abi::GripGameState& out) 
        !derives(r,f.pawn.address,L"WarPawn",L"WarfareGame")||
        !derives(r,f.world.address,L"WorldInfo",L"Engine")||
        !derives(r,f.mesh.address,L"SkeletalMeshComponent",L"Engine"))return false;
+    // Same query-local grouped field walks as the action-Frame reader. This
+    // metadata-only callback can run repeatedly during one body composition;
+    // do not separately rescan the controller/weapon hierarchy for each link
+    // and delete flag. Every value and the original closing rereads below
+    // remain current; no identity, pose, permission or field is cached.
     std::array<meta::PointerField,6> links{};PawnObserveFields pawn_fields;
-    if(!pointer(r,f.controller.address,L"Pawn",f.pawn.address,links[0])||
-       !pointer(r,f.controller.address,L"WorldInfo",f.world.address,links[1])||
+    ControllerObserveFields controller_fields;WeaponObserveFields weapon_fields;
+    if(!controller_fields.begin(r,f.controller.address)||
+       !controller_fields.pointer(r,ControllerObserveFields::pawn_link,f.pawn.address,links[0])||
+       !controller_fields.pointer(r,ControllerObserveFields::world_link,f.world.address,links[1])||
        !pawn_fields.begin(r,f.pawn.address)||
        !pawn_fields.pointer(r,PawnObserveFields::controller_link,f.controller.address,links[2])||
        !pawn_fields.pointer(r,PawnObserveFields::mesh_link,f.mesh.address,links[3])||
        !pawn_fields.pointer(r,PawnObserveFields::weapon_link,f.weapon.address,links[4]))return false;
     if(f.weapon.address&&(!derives(r,f.weapon.address,L"WarWeapon",L"WarfareGame")||
-       !pointer(r,f.weapon.address,L"Instigator",f.pawn.address,links[5])))return false;
+       !weapon_fields.begin(r,f.weapon.address)||
+       !weapon_fields.pointer(r,WeaponObserveFields::instigator_link,f.pawn.address,links[5])))return false;
     std::array<BoolField,6> flags{};
     const std::array<uptr,4> actors{f.world.address,f.controller.address,f.pawn.address,f.weapon.address};
     for(std::size_t i=0;i<actors.size();++i)if(actors[i]&&
-       (!(i==2?pawn_fields.boolean(r,PawnObserveFields::deleted_flag,flags[i]):boolean(r,actors[i],L"bDeleteMe",flags[i]))||
+       (!(i==2?pawn_fields.boolean(r,PawnObserveFields::deleted_flag,flags[i]):
+          i==1?controller_fields.boolean(r,ControllerObserveFields::deleted_flag,flags[i]):
+          i==3?weapon_fields.boolean(r,WeaponObserveFields::deleted_flag,flags[i]):boolean(r,actors[i],L"bDeleteMe",flags[i]))||
         (flags[i].bits&flags[i].mask)))return false;
     if(!pawn_fields.boolean(r,PawnObserveFields::switching_flag,flags[4])||
        !pawn_fields.boolean(r,PawnObserveFields::no_firing_flag,flags[5]))return false;

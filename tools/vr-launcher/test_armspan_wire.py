@@ -16,7 +16,7 @@ NOW = 1_000_000_000
 def packets():
     view, hands = wire.StereoPacket(), wire.InputPacket()
     view.magic, view.version, view.size, view.pid, view.frequency = 0x47565331, 4, C.sizeof(view), 100, 10_000_000
-    hands.magic, hands.version, hands.size, hands.pid = 0x47564333, 3, C.sizeof(hands), 100
+    hands.magic, hands.version, hands.size, hands.pid = 0x47564334, 4, C.sizeof(hands), 100
     hands.game_start, hands.publisher_pid, hands.publisher_start, hands.frequency, hands.latest_sequence = 200, 300, 400, 10_000_000, 8
     sample = view.sample
     sample.session, sample.sequence, sample.space_epoch = 1, 8, 1
@@ -40,6 +40,30 @@ def decode(view, hands, now=NOW):
 
 
 class WireTests(unittest.TestCase):
+    def test_current_producer_mapping_and_mutex_version_are_paired(self):
+        reader = wire.Reader.__new__(wire.Reader)
+        reader.game, reader.publisher = GAME, PUBLISHER
+        reader.identity = lambda pid: GAME if pid == GAME['pid'] else PUBLISHER
+        reader.api = object();reader.stereo = reader.input = None
+        mapping = mock.Mock();mapping.read.return_value = None
+        with mock.patch.object(wire, 'Mapping', return_value=mapping) as create:
+            self.assertIsNone(reader.read())
+        self.assertEqual(create.call_args_list[1].args[1:3],
+                         ('Local\\GearsVR.ControllerInput.v4.100.200',
+                          'Local\\GearsVR.ControllerInputLock.v4.100.200'))
+
+    def test_menu_button_and_routing_metadata_match_current_cpp_contract(self):
+        view, packet = packets();frame = packet.frames[view.sample.sequence % 8]
+        frame.hands[0].buttons_active |= 32
+        frame.hands[0].buttons |= 32
+        frame.display_mode, frame.display_observed_ns = 3, NOW
+        self.assertIsNotNone(decode(view, packet))
+        frame.hands[1].pressed[7] = 1
+        with self.assertRaises(wire.Unavailable):decode(view, packet)
+        frame.hands[1].pressed[7] = 0
+        frame.display_observed_ns = NOW + 1
+        with self.assertRaises(wire.Unavailable):decode(view, packet)
+
     def test_reader_attempts_both_mapping_closes_even_when_one_fails(self):
         reader = wire.Reader.__new__(wire.Reader)
         first = mock.Mock()
@@ -55,11 +79,11 @@ class WireTests(unittest.TestCase):
     def test_x64_layout_and_matching_physical_ticket(self):
         self.assertEqual([C.sizeof(t) for t in (wire.Vector, wire.Quaternion, wire.Pose,
                          wire.Stereo, wire.StereoPacket, wire.Hand, wire.Input, wire.InputPacket)],
-                         [24, 32, 56, 312, 336, 304, 688, 5560])
+                         [24, 32, 56, 312, 336, 312, 720, 5816])
         self.assertEqual([wire.StereoPacket.sample.offset, wire.Stereo.head.offset, wire.Stereo.eyes.offset,
                           wire.Stereo.space_epoch.offset, wire.Hand.pressed.offset,
                           wire.Hand.last_squeeze_press_grip.offset, wire.Input.hands.offset, wire.InputPacket.frames.offset],
-                         [24, 64, 120, 296, 172, 232, 80, 56])
+                         [24, 64, 120, 296, 172, 240, 80, 56])
         value = decode(*packets())
         self.assertEqual((value.sequence, value.space_epoch, value.squeeze), (8, 1, (1., 1.)))
         self.assertAlmostEqual(value.left[0], -.85)

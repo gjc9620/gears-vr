@@ -358,16 +358,150 @@ void current_metadata_cases(){
     C(src::classify(input,original,now,false)==src::Verdict::okay);
     C(tick::classify(t,original,now,false)==tick::Verdict::source_age_only);
     C(unchanged(original,before));
+    // Recorded failure: the historical Scene matched controllers but missed
+    // its optional continuity read; current independently authenticated input
+    // was fresh and complete. This metadata contract uses that current input
+    // without modifying or admitting the old parent through legacy tracking.
+    {auto parent=original;parent.flags&=~r::producer_continuity_available;parent.producer={};
+        auto current=input;current.observed.parent_scene=parent;const auto parent_before=saved(parent);
+        C(src::classify(current,parent,now,false)==src::Verdict::okay);
+        C(tick::classify(current.observed,parent,now,false)==tick::Verdict::hard);
+        a::SourceTarget target{};auto right=binding(parent,a::Side::right);
+        C(a::prepare_hand(current,right,a::Side::right,parent.base_view,now,false,target)==a::Status::okay);
+        C(unchanged(parent,parent_before));
+        for(unsigned field=0;field<9;++field){auto bad=current;auto bad_parent=parent;
+            switch(field){
+            case 0:bad.observed.continuity.stream_epoch=0;break;
+            case 1:bad.observed.continuity.tracking_epoch[1]=0;break;
+            case 2:++bad.observed.publisher_start;break;
+            case 3:++bad.observed.continuity.input.sequence;break;
+            case 4:++bad.observed.controllers.input_epoch;bad.observed.continuity.input=bad.observed.controllers;break;
+            case 5:++bad.observed.native_reference.epoch;break;
+            case 6:bad.observed.controllers.sync_ns=now-40000001;bad.observed.continuity.input=bad.observed.controllers;break;
+            case 7:bad_parent.producer.stream=1;break;
+            case 8:bad_parent.flags&=~r::controllers_matched;break;
+            }
+            bad.observed.parent_scene=bad_parent;
+            C(src::classify(bad,bad_parent,now,false)!=src::Verdict::okay);
+        }
+        auto previous=current.observed.continuity;auto next=previous;++next.input.sequence;
+        C(gears_current_continuity::not_regressed(next,previous));
+        for(unsigned field=0;field<4;++field){auto bad=next;
+            switch(field){case 0:--bad.stream_epoch;break;case 1:--bad.tracking_epoch[0];break;
+            case 2:--bad.tracking_epoch[1];break;case 3:bad.input.sequence=previous.input.sequence-1;break;}
+            C(!gears_current_continuity::not_regressed(bad,previous));}
+        auto same=previous;++same.stream_epoch;C(!gears_current_continuity::not_regressed(same,previous));
+        auto new_input=next;++new_input.input.input_epoch;new_input.input.sequence=1;
+        C(gears_current_continuity::not_regressed(new_input,previous));
+        --new_input.stream_epoch;C(!gears_current_continuity::not_regressed(new_input,previous));
+    }
+    // Render metadata may legitimately be head-only. The current-source POD
+    // can still describe complete tracking, but the live latch additionally
+    // requires the previous successful independent input domain.
+    {auto parent=original;parent.flags&=~(r::controllers_matched|r::producer_continuity_available);
+        parent.controllers={};parent.producer={};parent.controller_publisher_pid=0;parent.controller_publisher_start=0;
+        parent.world_pose_mask=r::head_pose;parent.world_grip[0]={};parent.world_grip[1]={};
+        auto current=input;current.observed.parent_scene=parent;const auto parent_before=saved(parent);
+        C(src::classify(current,parent,now,false)==src::Verdict::okay);
+        C(tick::classify(current.observed,parent,now,false)==tick::Verdict::hard);
+        C(src::independent_domain_matches(current,input));
+        C(!src::independent_domain_matches(current,src::Input{}));
+        C(unchanged(parent,parent_before));
+        a::SourceTarget target{};auto right=binding(parent,a::Side::right);
+        C(a::prepare_hand(current,right,a::Side::right,parent.base_view,now,false,target)==a::Status::okay);
+        for(unsigned field=0;field<19;++field){auto changed=current;auto& v=changed.observed;auto& p=v.parent_scene;
+            switch(field){case 0:++p.native.native_started_qpc;break;case 1:++p.native.game_start;break;
+            case 2:++p.world_generation;break;case 3:++p.pawn.name_number;break;case 4:++p.mesh.name_number;break;
+            case 5:++p.controller.name_number;break;case 6:++p.reference_generation;break;case 7:++v.reference_revision;break;
+            case 8:++v.native_reference.epoch;break;case 9:++v.publisher_pid;break;case 10:++v.publisher_start;break;
+            case 11:++v.controllers.input_epoch;break;case 12:++v.controllers.profile_generation;break;
+            case 13:++v.continuity.stream_epoch;break;case 14:--v.continuity.tracking_epoch[1];break;
+            case 15:++v.stereo.session;break;case 16:++v.stereo.space_epoch;break;case 17:++v.parent_cookie;break;
+            case 18:++p.binding_generation;break;}
+            C(!src::independent_domain_matches(changed,input));}
+        for(unsigned field=0;field<8;++field){auto bad=current;auto& v=bad.observed;auto& p=v.parent_scene;
+            switch(field){case 0:p.controllers.sequence=1;break;case 1:p.controller_publisher_pid=1;break;
+            case 2:p.producer.stream=1;break;case 3:p.world_pose_mask|=r::right_grip_pose;break;
+            case 4:v.publisher_pid=0;break;case 5:v.continuity.stream_epoch=0;break;
+            case 6:v.controllers.sync_ns=now-40000001;v.continuity.input=v.controllers;break;
+            case 7:v.stereo.received_ns=now-40000001;break;}
+            C(src::classify(bad,p,now,false)!=src::Verdict::okay);}
+    }
+    // A tracked right hand remains usable when only the left disappears.
+    // No old left target or malformed/future/stale frame becomes admissible.
+    for(unsigned missing=0;missing<2;++missing){auto partial=input;
+        auto& observed=partial.observed;
+        observed.controllers.hands[missing].grip_active=0;
+        observed.controllers.hands[missing].grip_flags=0;
+        observed.continuity.input=observed.controllers;
+        C(src::classify(partial,original,now,false)==src::Verdict::okay);
+        C(tick::classify(observed,original,now,false)==tick::Verdict::hard);
+        const auto lost=static_cast<a::Side>(missing),tracked=static_cast<a::Side>(1-missing);
+        auto lost_binding=binding(original,lost),tracked_binding=binding(original,tracked);
+        a::SourceTarget target{};const auto target_before=saved(target);
+        C(a::prepare_hand(partial,lost_binding,lost,original.base_view,now,false,target)==a::Status::hand_untracked);
+        C(unchanged(target,target_before));
+        C(a::prepare_hand(partial,tracked_binding,tracked,original.base_view,now,false,target)==a::Status::okay);
+        C(src::classify(partial,original,now+33000001,false)==src::Verdict::source_age_only);
+        auto malformed=partial;malformed.observed.controllers.hands[1-missing].grip.orientation={0,0,0,0};
+        malformed.observed.continuity.input=malformed.observed.controllers;
+        C(src::classify(malformed,original,now,false)==src::Verdict::hard);
+        auto changed=partial;++changed.observed.continuity.tracking_epoch[missing];
+        C(src::classify(changed,original,now,false)==src::Verdict::okay);
+        C(tick::classify(changed.observed,original,now,false)==tick::Verdict::hard);
+        C(a::prepare_hand(changed,tracked_binding,tracked,original.base_view,now,false,target)==a::Status::okay);
+        const auto current_target=saved(target);
+        C(a::prepare_hand(changed,lost_binding,lost,original.base_view,now,false,target)==a::Status::hand_untracked);
+        C(unchanged(target,current_target));
+        // Recovery has a fresh current grip/epoch, never the parent hand pose.
+        auto recovered=changed;recovered.observed.controllers=input.observed.controllers;
+        recovered.observed.continuity.input=recovered.observed.controllers;
+        C(src::classify(recovered,original,now,false)==src::Verdict::okay);
+        C(a::prepare_hand(recovered,lost_binding,lost,original.base_view,now,false,target)==a::Status::okay);
+        C(target.input.observed.continuity.tracking_epoch[missing]==changed.observed.continuity.tracking_epoch[missing]);
+        C(unchanged(original,before));
+        auto regressed=changed;regressed.observed.continuity.tracking_epoch[missing]=original.producer.tracking[missing]-1;
+        C(src::classify(regressed,original,now,false)==src::Verdict::hard);
+        auto other_stream=changed;++other_stream.observed.continuity.stream_epoch;
+        C(src::classify(other_stream,original,now,false)==src::Verdict::hard);
+        // Even with a fresh metadata association, the same cohort cannot
+        // claim a changed tracking epoch. Keep all parent bytes immutable.
+        auto same_cohort=changed;
+        auto& same=same_cohort.observed;
+        same.stereo=original.stereo;same.controllers=original.controllers;
+        same.continuity.input=same.controllers;
+        C(src::classify(same_cohort,original,now,false)==src::Verdict::hard);
+        C(src::classify(changed,original,now+33000001,false)==src::Verdict::source_age_only);
+    }
     for(unsigned field=0;field<5;++field){auto bad=input;
         switch(field){case 0:bad.metadata_begin_ns=0;break;case 1:bad.metadata_end_ns=bad.metadata_begin_ns-1;break;
         case 2:bad.metadata_end_ns=t.begin_ns+1;break;case 3:bad.metadata_begin_ns=bad.metadata_end_ns=now+1;break;
         case 4:++bad.observed.publisher_start;break;}
         C(src::classify(bad,original,now,false)==src::Verdict::hard);}
-    {auto old=input;++old.metadata_begin_ns;C(src::classify(old,original,now,false)==src::Verdict::source_age_only);}
+    {auto later=input;++later.metadata_begin_ns;C(src::classify(later,original,now,false)==src::Verdict::okay);}
+    // A delayed render does not age a newly observed Tick. Never rewrite the
+    // old Scene to achieve this, and still reject it on the legacy path.
+    {auto delayed=original;delayed.scene_qpc-=200000000;delayed.published_ns-=200000000;
+        delayed.stereo.received_ns-=200000000;delayed.controllers.received_ns-=200000000;delayed.controllers.sync_ns-=200000000;
+        auto current=input;current.observed.parent_scene=delayed;const auto bytes=saved(delayed);
+        C(src::classify(current,delayed,now,false)==src::Verdict::okay);
+        C(tick::classify(current.observed,delayed,now,false)==tick::Verdict::source_age_only);C(unchanged(delayed,bytes));}
+    for(auto metadata_age:{50000000LL,50000001LL}){auto old=input;old.metadata_begin_ns=now-metadata_age;
+        C((src::classify(old,original,now,false)==src::Verdict::okay)==(metadata_age==50000000));}
     for(auto elapsed:{33000000LL,33000001LL})
         C((src::classify(input,original,now+elapsed,false)==src::Verdict::okay)==(elapsed==33000000));
     {auto old=input;old.observed.begin_ns=now-40000001;old.metadata_end_ns=old.observed.begin_ns;old.metadata_begin_ns=old.metadata_end_ns;
         C(src::classify(old,original,now,false)==src::Verdict::source_age_only);}
+    // Compose may acquire later than outer Tick, but neither the metadata
+    // observation nor the XR publication receives a fresh timestamp for free.
+    {auto late=input;late.metadata_begin_ns=now-49000000;late.metadata_end_ns=now-48000000;
+        late.observed.begin_ns=now-2000000;late.observed.end_ns=now-1000000;
+        C(src::classify(late,original,now,false)==src::Verdict::okay);
+        C(src::classify(late,original,now+1000001,false)==src::Verdict::source_age_only);
+        for(auto raw_age:{40000000LL,40000001LL}){auto raw_old=late;
+            raw_old.observed.stereo.received_ns=now-raw_age;
+            C((src::classify(raw_old,original,now,false)==src::Verdict::okay)==(raw_age==40000000));}
+        C(unchanged(original,before));}
 }
 int main(int argc,char** argv){
     current_metadata_cases();

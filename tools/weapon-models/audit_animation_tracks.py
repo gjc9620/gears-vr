@@ -62,8 +62,30 @@ def decode_interval_fixed32_no_w(stream, offset, count):
     return samples
 
 
+def decode_float96_no_w(stream, offset, count):
+    """UEViewer pinned UnMeshTypes.h FQuatFloat96NoW: three floats, W>=0.
+
+    Same reference revision as the interval decoder above. Stored animation
+    coordinates only; no model/world convention or key timing is inferred.
+    """
+    if count < 1 or offset < 0 or offset + 12 * count > len(stream):
+        raise ValueError('Float96 quaternion track exceeds compressed stream')
+    samples = []
+    for index in range(count):
+        xyz = struct.unpack_from('<3f', stream, offset + index * 12)
+        squared = sum(value * value for value in xyz)
+        if not all(math.isfinite(value) for value in xyz) or squared > 1.0001:
+            raise ValueError('Invalid Float96 quaternion')
+        w = math.sqrt(max(0.0, 1.0 - squared))
+        sample = {'key_index': index, 'quaternion_xyzw': [*xyz, w]}
+        if abs(xyz[1]) < 1e-4 and abs(xyz[2]) < 1e-4:
+            sample['signed_local_x_degrees'] = math.degrees(2.0 * math.atan2(xyz[0], w))
+        samples.append(sample)
+    return samples
+
+
 def audit(package, inventory_path, names_path, prefix, animset_path=None,
-          sample_sequence=None, sample_bone=None):
+          sample_sequence=None, sample_bone=None, legacy_rotation_ranges=False):
     if (sample_sequence is None) != (sample_bone is None):
         raise ValueError('Sampling requires both a sequence and a bone')
     if sample_bone is not None and animset_path is None:
@@ -158,15 +180,39 @@ def audit(package, inventory_path, names_path, prefix, animset_path=None,
                 matching = [track for track in tracks if track['bone_name'] == sample_bone]
                 if len(matching) != 1:
                     raise ValueError('Expected exactly one matching bone in ' + row['Path'])
-                if rotation_compression != 'ACF_IntervalFixed32NoW':
+                decoders = {'ACF_IntervalFixed32NoW': decode_interval_fixed32_no_w,
+                            'ACF_Float96NoW': decode_float96_no_w}
+                if rotation_compression not in decoders:
                     raise ValueError('Unsupported sampled rotation compression: ' + row['Path'])
                 track = matching[0]
+                sample_offset = track['rotation_offset']
+                range_header = None
+                if legacy_rotation_ranges:
+                    if rotation_compression != 'ACF_Float96NoW' or track['rotation_keys'] < 2:
+                        raise ValueError('Legacy Float96 ranges require a multi-key Float96 track')
+                    boundaries = [value for other in tracks for value in
+                                  (other['translation_offset'], other['rotation_offset'])
+                                  if value > sample_offset]
+                    boundary = min(boundaries, default=stream_size)
+                    if sample_offset + 24 + 12 * track['rotation_keys'] != boundary:
+                        raise ValueError('Legacy range header/keys do not exactly fill track span')
+                    range_header = struct.unpack_from('<6f', tail[4:], sample_offset)
+                    if not all(math.isfinite(x) for x in range_header) or any(x < 0 for x in range_header[3:]):
+                        raise ValueError('Invalid legacy rotation ranges')
+                    sample_offset += 24
+                samples = decoders[rotation_compression](tail[4:], sample_offset, track['rotation_keys'])
+                if range_header is not None:
+                    for sample in samples:
+                        for value, low, span in zip(sample['quaternion_xyzw'][:3],range_header[:3],range_header[3:]):
+                            if value < low-1e-5 or value > low+span+1e-5:
+                                raise ValueError('Quaternion lies outside legacy track ranges')
                 sampled_rotation = {
                     'bone_name': sample_bone,
                     'coordinate_convention': 'stored animation-local quaternion; mesh/world conversion unverified',
                     'timing': 'not decoded; game-runtime key times unverified',
-                    'samples': decode_interval_fixed32_no_w(
-                        tail[4:], track['rotation_offset'], track['rotation_keys']),
+                    'legacy_range_header': range_header,
+                    'rotation_data_offset': sample_offset,
+                    'samples': samples,
                 }
             result['sequences'].append({
                 'path': row['Path'], 'export_sha256': actual,
@@ -195,11 +241,13 @@ def main():
     parser.add_argument('--animset-path', help='Exact owning AnimSet object path')
     parser.add_argument('--sample-sequence', help='One sequence name for bounded rotation-key decoding')
     parser.add_argument('--sample-bone', help='One bone name from --animset-path')
+    parser.add_argument('--legacy-rotation-ranges', action='store_true',
+                        help='Explicit old-style Float96 range header; exact span and bounds required')
     parser.add_argument('--output', required=True, type=Path)
     args = parser.parse_args()
     result = audit(args.package, args.inventory, args.names,
                    args.object_prefix, args.animset_path,
-                   args.sample_sequence, args.sample_bone)
+                   args.sample_sequence, args.sample_bone, args.legacy_rotation_ranges)
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(result, indent=2), encoding='utf8')
     for sequence in result['sequences']:

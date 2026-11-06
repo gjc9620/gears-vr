@@ -61,6 +61,9 @@ struct BoloFuse {
 };
 struct BoloInstanceConfig {
     BoloIdentity identity{};
+    // One frozen provenance profile. A private simulator binding never
+    // accepts physical packets, and production never silently accepts sim.
+    gears_vr::StereoSource input_source{gears_vr::StereoSource::RuntimeTracked};
     std::uint64_t config_serial{},original_projectile_type{},grip_geometry_serial{},
                   release_rule_serial{},fuse_rule_serial{},prepare_entry{},launch_entry{},safety_entry{},
                   original_no_ammo_cue{},audio_rule_serial{};
@@ -75,7 +78,7 @@ struct BoloInstanceConfig {
          original_initial_pose_velocity_override_verified{},original_effects_preserved_verified{},
          non_throwing_safety_entry_verified{},original_gravity_and_units_verified{},original_no_ammo_cue_verified{};
     bool valid() const noexcept {
-        return identity.valid()&&config_serial&&original_projectile_type&&grip_geometry_serial&&
+        return identity.valid()&&gears_vr::stereo_source_known(input_source)&&config_serial&&original_projectile_type&&grip_geometry_serial&&
             release_rule_serial&&fuse_rule_serial&&prepare_entry&&launch_entry&&safety_entry&&
             original_no_ammo_cue&&audio_rule_serial&&
             release_input==BoloReleaseInput::right_trigger_release_after_press&&
@@ -103,8 +106,15 @@ struct BoloFrame {
     BoloInventory inventory{};
     gears_vr::ControllerInputFrame hands{};
     gears_vr::StereoSample stereo{};
+    // Optional exact raw-producer ring, copied with the current publisher
+    // bundle. These historical poses are never rebuilt as current Frames.
+    gears_hand_continuity::MotionHistory motion_history{};
     BoloWorldMapping mapping{};
     std::uint64_t right_pocket_weapon{};
+    // Current receipt of the existing equipment owner, not a new Grip edge.
+    // The live adapter must authenticate the actual held binding/weapon and
+    // its generation against this same fresh frame before supplying it.
+    std::uint64_t equipment_hold_generation{};
     // EquipmentModel must have confirmed the original equip before taking a
     // local visual reservation. This module never clones an inventory actor.
     bool original_equipped{},original_interaction_allowed{},original_owns_hands{};
@@ -118,6 +128,58 @@ struct BoloInput {
     unsigned hand{1};
     BodySlot slot{BodySlot::none};
     bool continuous_input{}; // Recovery/baseline edges are never actions.
+};
+enum class BoloTriggerObservation : std::uint8_t {baseline,duplicate,quiet,edge,invalid,ambiguous,exhausted};
+// One normal-GT input observer, separate from the equipment Grip owner. The
+// exact authenticated ring supplies the original trigger-edge pose/time.
+// This classifier neither constructs a Frame nor prepares/spawns anything.
+class BoloTriggerObserver {
+    BoloIdentity identity_{};std::uint64_t binding_{},hold_{},serial_{};
+    gears_hand_continuity::TrackedInput previous_{};bool known_{};
+public:
+    void clear() noexcept {identity_={};binding_=hold_=0;previous_={};known_=false;}
+    BoloTriggerObservation observe(BoloFrame const& f,BoloInput& out) noexcept {
+        out={};
+        if(!f.stamp.identity.valid()||!f.stamp.binding||!f.equipment_hold_generation||
+           !f.motion_history.count||f.motion_history.count>gears_hand_continuity::motion_history_capacity){clear();return BoloTriggerObservation::invalid;}
+        const auto& current=f.motion_history.frames[f.motion_history.count-1];
+        if(!gears_hand_continuity::same_input(current.input,f.hands)||
+           !gears_hand_continuity::motion_history_valid(f.motion_history,current,1)||
+           f.stamp.monotonic_ns<current.input.sync_ns){clear();return BoloTriggerObservation::invalid;}
+        const bool cohort=known_&&identity_==f.stamp.identity&&binding_==f.stamp.binding&&hold_==f.equipment_hold_generation&&
+            previous_.stream_epoch==current.stream_epoch&&previous_.tracking_epoch[1]==current.tracking_epoch[1]&&
+            gears_hand_continuity::detail::same_key(previous_.input,current.input);
+        if(cohort&&gears_hand_continuity::same_tracking(previous_,current))return BoloTriggerObservation::duplicate;
+        const auto prior=previous_;identity_=f.stamp.identity;binding_=f.stamp.binding;hold_=f.equipment_hold_generation;
+        previous_=current;known_=true;
+        if(!cohort)return BoloTriggerObservation::baseline;
+        if(current.input.sequence<=prior.input.sequence||current.input.sync_ns<=prior.input.sync_ns){clear();return BoloTriggerObservation::invalid;}
+        constexpr auto control=gears_vr::control_trigger;
+        const auto& old=prior.input.hands[1];const auto& tip=current.input.hands[1];
+        if(tip.trigger_active!=1||old.trigger_active!=1){clear();return BoloTriggerObservation::invalid;}
+        if(tip.pressed[control]<old.pressed[control]||tip.released[control]<old.released[control]){clear();return BoloTriggerObservation::invalid;}
+        if(tip.pressed[control]==old.pressed[control]&&tip.released[control]==old.released[control])return BoloTriggerObservation::quiet;
+        const bool press=old.pressed[control]!=UINT32_MAX&&tip.pressed[control]==old.pressed[control]+1&&tip.released[control]==old.released[control];
+        const bool release=old.released[control]!=UINT32_MAX&&tip.released[control]==old.released[control]+1&&tip.pressed[control]==old.pressed[control];
+        if(press==release)return BoloTriggerObservation::ambiguous;
+        for(unsigned i=0;i<f.motion_history.count;++i){const auto& row=f.motion_history.frames[i];const auto& h=row.input.hands[1];
+            if(row.input.sequence<=prior.input.sequence)continue;
+            const auto* before=i?&f.motion_history.frames[i-1]:&prior;
+            if(!gears_hand_continuity::motion_pair(*before,row,1,100000000)||h.trigger_active!=1||
+               before->input.hands[1].pressed[control]!=old.pressed[control]||
+               before->input.hands[1].released[control]!=old.released[control]||
+               h.pressed[control]!=tip.pressed[control]||h.released[control]!=tip.released[control]||
+               (press?h.trigger<.65f:h.trigger>.35f))continue;
+            if(serial_==UINT64_MAX)return BoloTriggerObservation::exhausted;
+            out.kind=press?BoloInputKind::right_trigger_press:BoloInputKind::right_trigger_release;
+            out.edge_serial=++serial_;out.hand_sequence=row.input.sequence;out.input_epoch=row.input.input_epoch;
+            out.sync_ns=row.input.sync_ns;out.continuous_input=true;
+            return BoloTriggerObservation::edge;
+        }
+        // Ring overwritten, skipped edge, multiple cycles or boundary: never
+        // invent the missing edge at the current hand position/poll clock.
+        return BoloTriggerObservation::ambiguous;
+    }
 };
 enum class BoloAction : std::uint8_t { none,prepare_original,launch_original,preserve_original_on_interrupt };
 enum class BoloStage : std::uint8_t { unbound,idle,held,prepare_pending,prepared,launch_pending,safety_pending,interrupted };
@@ -144,6 +206,7 @@ struct BoloRequest {
     std::uint32_t expected_count{};
     BoloFuse fuse{};
     std::int64_t authored_ns{},valid_until_ns{},authored_game_tick{};
+    std::int64_t original_input_sync_ns{};
     GrenadeThrowSolution tracked{};
     GameGrenadeLaunch launch{};
     bool executable_at(std::int64_t now,BoloIdentity const& current,std::uint64_t current_binding,
@@ -187,10 +250,12 @@ class BoloGrenadeInteraction {
     std::uint64_t next_token_{1},binding_{},sequence_{},last_edge_{},last_native_event_{},
                   held_serial_{},preparation_serial_{},last_preparation_serial_{},
                   motion_epoch_{},reference_generation_{},last_hand_sequence_{},
-                  trigger_press_sequence_{},trigger_press_hold_{};
+                  trigger_press_sequence_{},trigger_press_hold_{},equipment_hold_generation_{};
+    std::uint64_t motion_stream_{},motion_tracking_{};
+    std::uint32_t trigger_pressed_counter_{},trigger_released_counter_{};
     std::int64_t ns_{},game_tick_{},last_hand_predicted_time_{},last_hand_sync_ns_{},trigger_press_sync_ns_{};
     double history_units_per_metre_{};
-    bool dispatched_{},interrupt_after_receipt_{};
+    bool dispatched_{},interrupt_after_receipt_{},history_mode_{};
 
     std::uint64_t token() noexcept {
         if(next_token_==(std::numeric_limits<std::uint64_t>::max)())return 0;
@@ -213,7 +278,7 @@ class BoloGrenadeInteraction {
     }
     void clear_local_hold() noexcept {
         tracker_.reset();held_serial_=preparation_serial_=trigger_press_sequence_=trigger_press_hold_=0;
-        trigger_press_sync_ns_=0;fuse_={};
+        trigger_press_sync_ns_=0;trigger_pressed_counter_=trigger_released_counter_=0;equipment_hold_generation_=0;fuse_={};
     }
     bool issue(BoloAction action) noexcept {
         const auto id=token();
@@ -258,7 +323,9 @@ class BoloGrenadeInteraction {
             h.input_epoch==config_.identity.input_epoch&&h.profile_generation==config_.identity.profile_generation&&
             h.sync_ns<=f.stamp.monotonic_ns&&
             f.stamp.monotonic_ns-h.sync_ns<=config_.motion.maximum_sample_gap_ns&&
-            gears_vr::controller_frame_matches(h,f.stereo,f.stamp.monotonic_ns)&&
+            h.source==config_.input_source&&f.stereo.source==config_.input_source&&
+            gears_vr::controller_frame_matches(h,f.stereo,f.stamp.monotonic_ns,
+                config_.input_source==gears_vr::StereoSource::MetaOperatorSimulated)&&
             gears_vr::controller_pose_usable(h.hands[1].grip,h.hands[1].grip_flags,h.hands[1].grip_active);
     }
     bool mapping_valid(BoloFrame const& f) const noexcept {
@@ -280,6 +347,8 @@ public:
         sequence_=last_edge_=last_native_event_=last_preparation_serial_=motion_epoch_=
             reference_generation_=last_hand_sequence_=trigger_press_sequence_=trigger_press_hold_=0;
         ns_=game_tick_=last_hand_predicted_time_=last_hand_sync_ns_=trigger_press_sync_ns_=0;
+        equipment_hold_generation_=0;
+        motion_stream_=motion_tracking_=0;history_mode_=false;
         fuse_={};tracker_.reset();request_={};
         dispatched_=interrupt_after_receipt_=false;return true;
     }
@@ -290,6 +359,20 @@ public:
     unsigned reserved_count() const noexcept {return held_serial_?1u:0u;}
     bool suppress_original_trajectory() const noexcept {return held_serial_!=0;}
     BoloRequest const& pending_request() const noexcept {return request_;}
+    // Equip animation can finish after the physical pocket Grip has already
+    // been consumed by EquipmentModel. Adopt its current confirmed hold; do
+    // not require/replay that old press or create a second equipment arbiter.
+    // This grants neither preparation nor launch: both still require their
+    // own real fresh trigger edges and original-operation receipts.
+    BoloDecision adopt_equipment_hold(BoloFrame const& f) noexcept {
+        if(stage_!=BoloStage::idle||!f.equipment_hold_generation||!inventory_.count||
+           request_.token||held_serial_||!stamp_valid(f.stamp))return {};
+        (void)update(f);
+        if(stage_!=BoloStage::idle||sequence_!=f.stamp.sequence||ns_!=f.stamp.monotonic_ns)return {};
+        held_serial_=token();if(!held_serial_)return {BoloEvent::safety_violation};
+        equipment_hold_generation_=f.equipment_hold_generation;
+        stage_=BoloStage::held;return {BoloEvent::grabbed};
+    }
     std::optional<BoloRequest> take_request() noexcept {
         if(!request_.token||dispatched_)return std::nullopt;
         dispatched_=true;return request_;
@@ -312,24 +395,46 @@ public:
         consume(f.stamp);
         if(!count_matches(f.inventory,inventory_.count,inventory_.revision)||
            f.right_pocket_weapon!=config_.identity.weapon||!f.original_equipped||
+           (equipment_hold_generation_&&f.equipment_hold_generation!=equipment_hold_generation_)||
            !f.original_interaction_allowed||f.original_owns_hands||!tracked(f)||!mapping_valid(f)||
            f.hands.sequence<=last_hand_sequence_||f.hands.predicted_time<=last_hand_predicted_time_||
            f.hands.sync_ns<=last_hand_sync_ns_){return {interrupt()};}
         inventory_=f.inventory;last_hand_sequence_=f.hands.sequence;
         last_hand_predicted_time_=f.hands.predicted_time;last_hand_sync_ns_=f.hands.sync_ns;
+        const bool history_supplied=f.motion_history.count||f.motion_history.reserved;
+        const gears_hand_continuity::TrackedInput* motion_current=nullptr;
+        if(history_supplied){
+            if(!f.motion_history.count||f.motion_history.count>gears_hand_continuity::motion_history_capacity)return {interrupt()};
+            motion_current=&f.motion_history.frames[f.motion_history.count-1];
+            if(!gears_hand_continuity::same_input(motion_current->input,f.hands)||
+               !gears_hand_continuity::motion_history_valid(f.motion_history,*motion_current,1,config_.motion.maximum_sample_gap_ns))return {interrupt()};
+        }else if(history_mode_)return {interrupt()};
         bool edge=false;
         if(input.kind!=BoloInputKind::none){
             const bool newer=input.edge_serial>last_edge_;
             if(input.hand==1&&newer)last_edge_=input.edge_serial;
-            const bool fresh=input.hand==1&&input.edge_serial&&newer&&input.continuous_input&&
-                input.hand_sequence==f.hands.sequence&&input.input_epoch==f.hands.input_epoch&&
-                input.sync_ns==f.hands.sync_ns;
-            auto const& right=f.hands.hands[1];
+            const gears_vr::ControllerInputFrame* edge_frame=&f.hands;
+            if(history_supplied){edge_frame=nullptr;
+                for(unsigned i=0;i<f.motion_history.count;++i){const auto& h=f.motion_history.frames[i].input;
+                    if(h.sequence==input.hand_sequence&&h.sync_ns==input.sync_ns){edge_frame=&h;break;}}
+            }
+            const bool fresh=input.hand==1&&input.edge_serial&&newer&&input.continuous_input&&edge_frame&&
+                input.hand_sequence==edge_frame->sequence&&input.input_epoch==f.hands.input_epoch&&
+                input.sync_ns==edge_frame->sync_ns&&input.sync_ns<=ns_&&
+                ns_-input.sync_ns<=config_.request_lease_ns;
+            auto const& right=edge_frame?edge_frame->hands[1]:f.hands.hands[1];
+            const auto control=input.kind==BoloInputKind::right_grip_press?gears_vr::control_squeeze:gears_vr::control_trigger;
+            // A later release/repress in the same ring cannot borrow an old
+            // edge's pose. Exact producer counters remain the current ones.
+            const bool same_edge_cycle=!history_supplied||
+                (right.pressed[control]==f.hands.hands[1].pressed[control]&&
+                 right.released[control]==f.hands.hands[1].released[control]&&
+                 (input.kind==BoloInputKind::right_trigger_release?right.released[control]:right.pressed[control])!=0);
             const bool trigger_valid=(input.kind!=BoloInputKind::right_trigger_press&&
                 input.kind!=BoloInputKind::right_trigger_release)||
                 (right.trigger_active==1&&
                  (input.kind==BoloInputKind::right_trigger_press?right.trigger>=.65f:right.trigger<=.35f));
-            if(!fresh||!trigger_valid){
+            if(!fresh||!same_edge_cycle||!trigger_valid){
                 // A release from a stale frame, recovery baseline or inactive
                 // action cannot use this hold's accumulated velocity history.
                 if(input.hand==1&&input.kind==BoloInputKind::right_trigger_release&&held_serial_)
@@ -338,13 +443,28 @@ public:
             }
             edge=true;
         }
+        // Right Grip belongs to the equipment owner after an external hold
+        // was adopted. Its later confirmed generation/identity change above
+        // cancels us; a duplicate raw Grip must not toggle our local state.
+        if(equipment_hold_generation_&&input.kind==BoloInputKind::right_grip_press)edge=false;
         const bool boundary=motion_epoch_&&(f.stamp.motion_epoch!=motion_epoch_||
             f.mapping.reference_generation!=reference_generation_||
             !same_pose(f.mapping.frozen_reference,history_reference_)||
-            f.mapping.units_per_metre!=history_units_per_metre_||gap>config_.motion.maximum_sample_gap_ns);
+            f.mapping.units_per_metre!=history_units_per_metre_||
+            (gap>config_.motion.maximum_sample_gap_ns&&!history_supplied)||
+            (motion_current&&motion_stream_&&(motion_current->stream_epoch!=motion_stream_||motion_current->tracking_epoch[1]!=motion_tracking_)));
         motion_epoch_=f.stamp.motion_epoch;reference_generation_=f.mapping.reference_generation;
         history_reference_=f.mapping.frozen_reference;history_units_per_metre_=f.mapping.units_per_metre;
+        if(motion_current){history_mode_=true;motion_stream_=motion_current->stream_epoch;motion_tracking_=motion_current->tracking_epoch[1];}
         if(trigger_press_sequence_&&f.hands.hands[1].trigger_active!=1)return {interrupt()};
+        if(history_mode_&&trigger_press_sequence_){
+            const auto& right=f.hands.hands[1];
+            const bool same_cycle=right.pressed[gears_vr::control_trigger]==trigger_pressed_counter_;
+            const bool same_release=right.released[gears_vr::control_trigger]==trigger_released_counter_;
+            const bool deliberate_release=edge&&input.kind==BoloInputKind::right_trigger_release&&
+                trigger_released_counter_!=UINT32_MAX&&right.released[gears_vr::control_trigger]==trigger_released_counter_+1;
+            if(!same_cycle||(!same_release&&!deliberate_release))return {interrupt()};
+        }
         if(trigger_press_sequence_&&(stage_==BoloStage::prepared||stage_==BoloStage::prepare_pending)&&
            f.hands.hands[1].trigger<=.35f&&
            !(edge&&input.kind==BoloInputKind::right_trigger_release))return {interrupt()};
@@ -379,9 +499,14 @@ public:
         }
         if(stage_==BoloStage::held){
             if(edge&&input.kind==BoloInputKind::right_trigger_press){
-                trigger_press_sequence_=f.hands.sequence;trigger_press_hold_=held_serial_;
-                trigger_press_sync_ns_=f.hands.sync_ns;
-                if(issue(BoloAction::prepare_original))return {BoloEvent::request_ready};
+                trigger_press_sequence_=input.hand_sequence;trigger_press_hold_=held_serial_;
+                trigger_press_sync_ns_=input.sync_ns;
+                trigger_pressed_counter_=f.hands.hands[1].pressed[gears_vr::control_trigger];
+                trigger_released_counter_=f.hands.hands[1].released[gears_vr::control_trigger];
+                if(issue(BoloAction::prepare_original)){
+                    request_.original_input_sync_ns=input.sync_ns;
+                    request_.valid_until_ns=(std::min)(request_.valid_until_ns,input.sync_ns+config_.request_lease_ns);
+                    return {BoloEvent::request_ready};}
                 return {interrupt()};
             }
             return {BoloEvent::observed};
@@ -389,10 +514,15 @@ public:
         if(stage_!=BoloStage::prepared)return {};
         const bool release=edge&&input.kind==BoloInputKind::right_trigger_release;
         if(release&&(!trigger_press_sequence_||trigger_press_hold_!=held_serial_||
-           f.hands.sequence<=trigger_press_sequence_||f.hands.sync_ns<=trigger_press_sync_ns_))
+           input.hand_sequence<=trigger_press_sequence_||input.sync_ns<=trigger_press_sync_ns_))
             return {interrupt()};
-        const auto solution=tracker_.advance(f.hands,f.stereo,config_.identity.weapon,config_.identity.world,
-            reference_generation_,ns_,release,config_.motion);
+        const auto solution=history_supplied?
+            tracker_.advance_history(f.motion_history,f.hands,f.stereo,config_.identity.weapon,config_.identity.world,
+                reference_generation_,ns_,trigger_press_sequence_,release?input.hand_sequence:0,config_.motion,
+                config_.input_source==gears_vr::StereoSource::MetaOperatorSimulated):
+            tracker_.advance(f.hands,f.stereo,config_.identity.weapon,config_.identity.world,
+                reference_generation_,ns_,release,config_.motion,
+                config_.input_source==gears_vr::StereoSource::MetaOperatorSimulated);
         if(!release){
             if(!tracker_.armed())return {interrupt()};
             return {BoloEvent::observed};
@@ -401,6 +531,8 @@ public:
         if(!solution||!grenade_world_launch(*solution,f.mapping.frozen_reference,f.mapping.game_base,
             f.mapping.units_per_metre,launch,f.mapping.pawn_velocity_world_units_per_second))return {interrupt()};
         if(!issue(BoloAction::launch_original))return {interrupt()};
+        request_.original_input_sync_ns=input.sync_ns;
+        request_.valid_until_ns=(std::min)(request_.valid_until_ns,input.sync_ns+config_.request_lease_ns);
         request_.tracked=*solution;request_.launch=launch;return {BoloEvent::request_ready};
     }
     BoloEvent acknowledge(BoloOriginalReceipt const& r) noexcept {
@@ -423,8 +555,16 @@ public:
             request_={};
             return interrupt();
         }
-        if(!request_.executable_at(r.executed_ns,r.stamp.identity,r.stamp.binding,
-                                  request_.motion_epoch,request_.reference_generation)||
+        // A non-throwing release of an already-owned, unlit preparation may
+        // finish after a pause/source outage. It grants no new input, motion,
+        // item or projectile. Positive prepare/launch and a live-fuse safety
+        // operation retain their original request deadline unchanged.
+        const bool release_only=action==BoloAction::preserve_original_on_interrupt&&
+            !fuse_.active&&!r.fuse.active&&!r.original_projectiles_spawned&&!r.original_projectile&&r.native_safety_complete;
+        const bool execution_time=r.executed_ns>=request_.authored_ns&&r.executed_ns<=r.stamp.monotonic_ns&&
+            (release_only||request_.executable_at(r.executed_ns,r.stamp.identity,r.stamp.binding,
+                                  request_.motion_epoch,request_.reference_generation));
+        if(!execution_time||
            !r.original_effect_applied_once||!r.original_fuse_preserved||!r.original_effects_preserved||
            r.fuse.started_game_tick>r.stamp.game_tick)return BoloEvent::safety_violation;
         bool ammo_spent=false;

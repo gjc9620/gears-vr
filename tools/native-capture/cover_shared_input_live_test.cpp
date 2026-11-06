@@ -89,7 +89,7 @@ bool sample(gears_anchor::Receipt const* scene,Binding& out){++sample_calls;if(s
 constexpr unsigned worker_thread=0xfffffff0u;thread_local bool as_worker=false;
 struct PG {
     unsigned pins{},unpins{},prepares{},commits{},invalidations{},violations{},grants{};
-    bool unpin_ok=true,candidates=true,revoke_prepare=false,revoke_commit=false;
+    bool unpin_ok=true,candidates=true,revoke_prepare=false,revoke_commit=false,magazine_pending=false,magazine_candidate=false;
     w::Reply prepare_reply=w::Reply::accepted,commit_reply=w::Reply::accepted;
     w::Frame last_frame{};w::Proposal last_proposal{};w::Decision last_decision{};w::Lease incumbent{};
     static bool pin(void*,w::Registration const&,w::ModulePin& value) noexcept;
@@ -134,6 +134,8 @@ void revoke(w::Frame const& frame){
 std::uint32_t PG::prepare(void*,w::Frame const* frame,w::Proposal* proposal) noexcept {
     ++pg.prepares;pg.last_frame=*frame;*proposal={};proposal->key=frame->key;proposal->nonce=frame->key.frame*17+1;
     proposal->support=pg.candidates?1u:0u;if(pg.incumbent.lifecycle==frame->key.lifecycle)proposal->incumbents[0]=pg.incumbent;
+    if(pg.magazine_candidate){proposal->support=0;proposal->magazine=1;}
+    if(pg.magazine_pending){proposal->support=0;proposal->magazine_observation_pending=1;}
     pg.last_proposal=*proposal;if(pg.revoke_prepare)revoke(*frame);return unsigned(pg.prepare_reply);
 }
 std::uint32_t PG::commit(void*,w::Frame const* frame,w::Proposal const* proposal,w::Decision const* decision) noexcept {
@@ -166,7 +168,7 @@ void setup(bool cover,bool simulated=false){
     auto& sample=stereo.sample;sample.session=41;sample.space_epoch=1;sample.source=simulated?gears_vr::StereoSource::MetaOperatorSimulated:gears_vr::StereoSource::RuntimeTracked;
     sample.head_flags=simulated?3:15;sample.view_flags=15;sample.focused=sample.visible=sample.should_render=1;sample.head.orientation={0,0,0,1};
     for(auto& eye:sample.eyes){eye.fov={-.7,.7,.7,-.7};eye.pose.orientation={0,0,0,1};}
-    hands.focused=1;for(auto& hand:hands.hands){hand.grip_active=hand.squeeze_active=1;hand.grip_flags=15;hand.grip={{-.2,1.3,-.4},{0,0,0,1}};}
+    hands.focused=1;for(auto& hand:hands.hands){hand.grip_active=hand.squeeze_active=hand.trigger_active=1;hand.grip_flags=15;hand.grip={{-.2,1.3,-.4},{0,0,0,1}};}
     C(producer.open(GetCurrentProcessId(),true));
 }
 void attach(){w::Registration r{};r.context=&pg;r.prepare=PG::prepare;r.commit=PG::commit;r.invalidate=PG::invalidate;w::RegistrationResult result{};
@@ -195,6 +197,15 @@ void outside(bool simulated=false){
     step();C(pg.last_decision.status==w::DecisionStatus::released);step(0,.8f);
     C(pg.last_decision.new_grant==1&&pg.last_decision.press_token==token+1&&pg.grants==2&&body::published==0);
     C((pg.last_frame.flags&w::allow_sim)==(simulated?w::allow_sim:0u));finish();
+}
+void pending_magazine(){
+    setup(false);attach();release();pg.magazine_pending=true;step(0,.8f);
+    const auto token=pg.last_frame.press_token;
+    C(token&&pg.last_proposal.magazine_observation_pending);
+    C(pg.last_decision.status==w::DecisionStatus::no_candidate&&!pg.last_decision.release_required&&pg.grants==0);
+    pg.magazine_pending=false;pg.magazine_candidate=true;step(0,.8f);
+    C(pg.last_decision.status==w::DecisionStatus::granted&&pg.last_decision.new_grant&&pg.grants==1);
+    C(pg.last_decision.press_token==token);finish();
 }
 void cover(bool simulated=false){
     setup(true,simulated);attach();release();C(step(.3));C(body::published>0&&close_enough(body::latest.u,.5));
@@ -378,6 +389,7 @@ void tracking_bundle(){
 int main(int argc,char** argv){
     const char* mode=argc>1?argv[1]:"outside";
     if(!std::strcmp(mode,"tracking"))tracking_bundle();else if(!std::strcmp(mode,"outside"))outside();else if(!std::strcmp(mode,"cover"))cover();
+    else if(!std::strcmp(mode,"pending-magazine"))pending_magazine();
     else if(!std::strcmp(mode,"prepare-rejected"))rejection(true);else if(!std::strcmp(mode,"commit-rejected"))rejection(false);
     else if(!std::strcmp(mode,"barrier"))barrier(argc>2?argv[2]:"weapon");
     else if(!std::strcmp(mode,"retry"))retry(argc>2?argv[2]:"exact");

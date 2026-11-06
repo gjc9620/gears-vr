@@ -5,7 +5,10 @@
 namespace gears_weapon_hand {
 inline bool proposal_valid(Proposal const& p,Frame const& f) noexcept {
     if(p.size!=sizeof(Proposal)||p.abi_version!=version||!same(p.key,f.key)||!p.nonce||
-       p.support>1||p.ammo>1||p.magazine>1||p.reserved)return false;
+       p.support>1||p.ammo>1||p.magazine>1||p.magazine_observation_pending>1)return false;
+    if(p.magazine_observation_pending&&(p.support||p.ammo||p.magazine||
+       p.incumbents[0].kind!=LeaseKind::none||p.incumbents[1].kind!=LeaseKind::none||
+       !f.left_grip_down||!f.left_grip_known||!f.left_tracked))return false;
     for(auto const& lease:p.incumbents)
         if(!lease_valid(lease,f.key.lifecycle)||lease.kind==LeaseKind::cover)return false;
     return p.incumbents[0].kind==LeaseKind::none||p.incumbents[1].kind==LeaseKind::none||
@@ -26,6 +29,7 @@ inline void append_weapon_proposal(Proposal const& p,gears_vr::LeftHandInteracti
     }
     frame.requests.support=frame.requests.support||p.support!=0;
     frame.requests.ammo=frame.requests.ammo||p.ammo!=0;frame.requests.magazine=frame.requests.magazine||p.magazine!=0;
+    frame.requests.magazine_observation_pending=frame.requests.magazine_observation_pending||p.magazine_observation_pending!=0;
 }
 inline Decision owner_decision(Frame const& f,Proposal const& p,
         gears_vr::LeftHandInteractionDecision const& d,std::int64_t now_ns) noexcept {

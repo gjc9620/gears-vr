@@ -16,6 +16,19 @@ struct EquipmentObservation {
     std::uint64_t hold_generation{};
     ObjectIdentity component{},asset{};
 };
+// Read-only association for recording completed motion. This is deliberately
+// not an actionable Frame or a fresh game-state observation. Its original
+// clocks/counters must be compared with independently current Native geometry;
+// only the normal action consumer may dispatch or change inventory.
+struct RetainedItemInput {
+    EquipmentIdentity parent{};
+    Lease lease{};
+    std::uint64_t press_token{},controller_sequence{};
+    gears_vr::StereoSource source{};
+    std::uint64_t session{},space{},input{},profile{};
+    std::int64_t original_input_ns{},decision_ns{};
+    std::uint32_t pressed{},released{},interaction_control{};
+};
 inline bool equipment_identity_valid(EquipmentIdentity const& i) noexcept {
     const auto& k=i.key;
     return k.game_start&&k.native_started_qpc&&k.registration_cookie&&k.lifecycle&&k.frame&&

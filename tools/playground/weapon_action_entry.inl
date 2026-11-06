@@ -134,6 +134,10 @@ inline void prepare(Entry& entry,Source source,uptr object,uptr function,void* p
     entry.bare=entry.related||entry.recursive||inside||weaponrestore::active()||!weaponrestore::healthy()||!enabled.load(std::memory_order_acquire);
     if(!entry.related){entry.handback=true;entry.stage_closed=true;entry.prepared=true;return;}
     cancel_post(entry);
+#if defined(GEARS_PLAYGROUND_NATIVE_LANCER_FOLLOW)
+    weaponaction_diagnostic::observe(object,function,entry.seen.function_name,unsigned(source),entry.seen.hands,
+        entry.seen.stow,entry.seen.hands_dirty,entry.seen.component_dirty,entry.seen.stow_dirty,entry.seen.pending);
+#endif
     weaponrestore::revoke_publication_no_engine();
     const bool request_open=!entry.recursive&&!weaponrestore::active()&&weaponrestore::healthy()&&entry.seen.gt&&!entry.seen.unknown_name;
     auto disarmed=request_open?weaponrestore::prepare_forward_no_engine(entry.seen,false):weaponrestore::ForwardDisarm{};
@@ -256,6 +260,10 @@ inline bool revoke_call_body(Entry& notice,uptr object,uptr function,bool& relat
     const auto seen=weaponaction_handoff::inspect(object,function);
     related=seen.hands||seen.stow;if(!related)return true;
     notice.lexical.inside=inside;cancel_post(notice);
+#if defined(GEARS_PLAYGROUND_NATIVE_LANCER_FOLLOW)
+    weaponaction_diagnostic::observe(object,function,seen.function_name,unsigned(Source::owned_bridge),seen.hands,
+        seen.stow,seen.hands_dirty,seen.component_dirty,seen.stow_dirty,seen.pending);
+#endif
     weaponrestore::revoke_publication_no_engine();
     const bool clean=no_engine_handback(seen);weaponaction_handoff::revoke_no_engine(seen);
     const auto flags=gears_weapon_boundary::related|(clean?0u:gears_weapon_boundary::unresolved);

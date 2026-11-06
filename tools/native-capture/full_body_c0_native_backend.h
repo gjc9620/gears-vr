@@ -16,6 +16,7 @@ public:
     virtual bool current(tx::Stage) noexcept=0;
     // Only the exact last failed current() may classify a pure source deadline.
     virtual tx::Verdict rejection() const noexcept{return tx::Verdict::denied;}
+    virtual unsigned rejection_detail() const noexcept{return 0;}
 };
 inline bool read_memory(void* out,std::uintptr_t address,std::size_t size) noexcept {
     if(!pose::span(address,size)||!out)return false;
@@ -46,6 +47,7 @@ class Backend final:public tx::Backend {
     // Large readback storage belongs to the backend, never to the game stack.
     body::Frame repeated_{};std::array<unsigned char,115> desired_repeat_{};
     std::array<std::int16_t,115*2> unit_index_{};
+    struct ExchangeFailure {unsigned kind{},stage{},verdict{},detail{};std::uintptr_t address{};} first_exchange_failure_{};
     bool read_metadata(pose::Metadata& m) noexcept {
         auto reader=[](void* o,void const* p,std::size_t n){return read_memory(o,reinterpret_cast<std::uintptr_t>(p),n);};
         return pose::metadata(reader,request_,m);
@@ -75,6 +77,7 @@ public:
     std::uint64_t thread_token() const noexcept override{return GetCurrentThreadId();}
     tx::Stamp const& stamp() const noexcept{return stamp_;}
     pose::Metadata const& metadata() const noexcept{return metadata_;}
+    auto exchange_failure()const noexcept{return first_exchange_failure_;}
     void request_stop() noexcept {stopped_=true;}
     void invalidate() noexcept {permit_.armed=false;context_=nullptr;}
     // Seed IDs are registrations supplied only by the actual C0 adapter; Local
@@ -179,11 +182,17 @@ public:
     }
     tx::Cas exchange(std::uintptr_t address,tx::Block const& expected,tx::Block const& replacement) noexcept override {
         const auto ticket=permit_;permit_.armed=false;
+        const auto failed=[&](unsigned kind,tx::Cas result){
+            if(!first_exchange_failure_.kind)first_exchange_failure_={kind,unsigned(ticket.stage),
+                context_?unsigned(context_->rejection()):UINT_MAX,context_?context_->rejection_detail():UINT_MAX,address};
+            return result;
+        };
         if(!ticket.armed||address!=ticket.address||std::memcmp(&expected,&ticket.expected,16)||std::memcmp(&replacement,&ticket.replacement,16)||
-           !context_||GetCurrentThreadId()!=thread_||(ticket.stage==tx::Stage::commit&&stopped_))return tx::Cas::fault_unknown;
-        if(!context_->current(ticket.stage))return ticket.stage==tx::Stage::commit&&context_->rejection()==tx::Verdict::source_age_expired?
-            tx::Cas::source_age_no_write:tx::Cas::fault_unknown;
-        return atomic_exchange(address,expected,replacement);
+           !context_||GetCurrentThreadId()!=thread_||(ticket.stage==tx::Stage::commit&&stopped_))return failed(1,tx::Cas::fault_unknown);
+        if(!context_->current(ticket.stage))return failed(2,ticket.stage==tx::Stage::commit&&context_->rejection()==tx::Verdict::source_age_expired?
+            tx::Cas::source_age_no_write:tx::Cas::fault_unknown);
+        const auto result=atomic_exchange(address,expected,replacement);
+        return result==tx::Cas::exchanged?result:failed(result==tx::Cas::mismatch?4:3,result);
     }
     void receipt_source(gears_atom_overwrite::ReceiptSource* p)noexcept{receipts_=p;}
     std::uint32_t installation_epoch()const noexcept{return metadata_.pose_epoch;}

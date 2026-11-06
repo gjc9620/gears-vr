@@ -18,6 +18,13 @@ enum class Reason:U32 {
 };
 struct Failure {Stage stage;Reason reason;uptr address;U32 ordinal;};
 struct RawName {U32 index,number;};
+// These fields are contiguous in the certified retail object/property
+// layouts. Read exactly their existing bytes together, with no retained
+// values, skipped field, wider range or change to the closing rereads.
+struct IdentityHeader {uptr outer;RawName name;uptr klass;};
+struct PropertyPrefix {uptr next;U32 dimension,element_bytes;U64 flags;};
+static_assert(sizeof(IdentityHeader)==24&&offsetof(IdentityHeader,name)==8&&offsetof(IdentityHeader,klass)==16);
+static_assert(sizeof(PropertyPrefix)==24&&offsetof(PropertyPrefix,dimension)==8&&offsetof(PropertyPrefix,element_bytes)==12&&offsetof(PropertyPrefix,flags)==16);
 struct Table {uptr data;std::int32_t count,capacity;};
 struct NameText {uptr entry;U32 index,length;std::array<wchar_t,max_name_units> units;};
 struct Identity {uptr address,outer,klass;U32 index;RawName name;U32 name_slot;};
@@ -126,10 +133,10 @@ template<std::size_t N>bool exact_text(NameText const& text,wchar_t const (&lite
 }
 bool raw_identity(Table const& objects,Table const& names,uptr object,Identity& identity,NameText& text) noexcept {
     identity={};identity.address=object;identity.name_slot=invalid_slot;
-    U32 class_index{},outer_index{},last_index{};
-    return registered_known(objects,object,identity.index)&&read_at(object,0x40,identity.outer)&&
-        read_at(object,0x48,identity.name)&&read_at(object,0x50,identity.klass)&&
-        registered_known(objects,identity.klass,class_index)&&
+    U32 class_index{},outer_index{},last_index{};IdentityHeader header{};
+    if(!registered_known(objects,object,identity.index)||!read_at(object,0x40,header))return false;
+    identity.outer=header.outer;identity.name=header.name;identity.klass=header.klass;
+    return registered_known(objects,identity.klass,class_index)&&
         (!identity.outer||registered_known(objects,identity.outer,outer_index))&&
         fresh_name(names,identity.name.index,text)&&registered_known(objects,object,last_index)&&last_index==identity.index;
 }
@@ -147,6 +154,11 @@ bool candidate(uptr callee,bool& known) noexcept {
 
 struct Reader {
     Snapshot& result;Stage phase;
+    // Opt-in only for a read-only query's initial discovery. The Snapshot is
+    // local to that query; callers MUST disable this before their existing
+    // fresh closing rereads, and before any dispatch or result publication.
+    // Other readers retain their original fresh-on-every-access behaviour.
+    bool reuse_initial_identities{};
     bool fail(Reason reason,uptr address=0,U32 ordinal=0) noexcept {
         if(result.failure.reason==Reason::none)result.failure={phase,reason,address,ordinal};
         return false;
@@ -155,6 +167,9 @@ struct Reader {
         return read_at(object,offset,value)||fail(Reason::unreadable,object,static_cast<U32>(offset));
     }
     bool identity(uptr object,U32& slot) noexcept {
+        if(reuse_initial_identities){
+            for(U32 i=0;i<result.identity_count;++i)if(result.identities[i].address==object){slot=i;return true;}
+        }
         Identity fresh{};NameText text{};
         if(!raw_identity(result.objects,result.names,object,fresh,text))return fail(Reason::identity_unknown,object);
         U32 name_slot=invalid_slot;
@@ -204,8 +219,10 @@ struct Reader {
     }
     bool property(uptr object,Property& value) noexcept {
         value={};if(!path(object,value.identity)||!path(result.identities[value.identity].klass,value.type))return false;
-        return at(object,0x68,value.next)&&at(object,0x70,value.dimension)&&at(object,0x74,value.element_bytes)&&
-            at(object,0x78,value.flags)&&at(object,0x94,value.offset);
+        PropertyPrefix prefix{};
+        if(!at(object,0x68,prefix)||!at(object,0x94,value.offset))return false;
+        value.next=prefix.next;value.dimension=prefix.dimension;value.element_bytes=prefix.element_bytes;value.flags=prefix.flags;
+        return true;
     }
     bool receiver_classes() noexcept {
         auto current=result.identities[result.receiver_identity].klass;bool war_weapon=false,owner=false;

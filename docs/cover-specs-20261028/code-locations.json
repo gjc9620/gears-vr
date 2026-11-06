@@ -1,0 +1,505 @@
+{
+  "schema": 1,
+  "date": "2026-10-28",
+  "checkout": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr",
+  "head": "e62e2cee7eb74cafd17407544707893d4f7ada20",
+  "evidence": "offline source inspection; line numbers are advisory; resolve symbols and compare hashes before editing",
+  "files": [
+    {
+      "path": "tools/vr-common/cover_interaction.h",
+      "sha256": "01f2d1e4cd8b7e4329c6a2b946f9fc76a849af2b72bb712040d8728bc3b3cc42",
+      "bytes": 15458,
+      "symbols": [
+        {
+          "symbol": "struct CoverRange",
+          "line": 15,
+          "additional_matches": []
+        },
+        {
+          "symbol": "struct CoverEpochs",
+          "line": 23,
+          "additional_matches": []
+        },
+        {
+          "symbol": "struct CoverEdgeObservation",
+          "line": 26,
+          "additional_matches": []
+        },
+        {
+          "symbol": "class CoverInteraction",
+          "line": 85,
+          "additional_matches": []
+        },
+        {
+          "symbol": "CoverResult suspend",
+          "line": 96,
+          "additional_matches": []
+        },
+        {
+          "symbol": "CoverResult update",
+          "line": 112,
+          "additional_matches": []
+        }
+      ]
+    },
+    {
+      "path": "tools/vr-common/cover_input_owner.h",
+      "sha256": "91be03b22c8c8350c28d83134180f2d0afc98bbfbf65ab8b5f08c7375ade31bd",
+      "bytes": 23573,
+      "symbols": [
+        {
+          "symbol": "class CoverInputOwner",
+          "line": 36,
+          "additional_matches": [
+            37,
+            45,
+            81
+          ]
+        },
+        {
+          "symbol": "CoverInputOwnerDecoded begin",
+          "line": 88,
+          "additional_matches": []
+        },
+        {
+          "symbol": "CoverInputOwnerCandidate update_with_decoded",
+          "line": 132,
+          "additional_matches": []
+        },
+        {
+          "symbol": "CoverInputOwnerResult complete",
+          "line": 178,
+          "additional_matches": []
+        },
+        {
+          "symbol": "void abort_current",
+          "line": 226,
+          "additional_matches": []
+        },
+        {
+          "symbol": "void build_view",
+          "line": 267,
+          "additional_matches": []
+        }
+      ]
+    },
+    {
+      "path": "tools/vr-common/cover_controller_adapter.h",
+      "sha256": "9df9dd38a8569cf033e7ccc8a42a5bf4590ae3c5285ff98a108e8fbc9e83e31c",
+      "bytes": 11687,
+      "symbols": [
+        {
+          "symbol": "class CoverControllerAdapter",
+          "line": 34,
+          "additional_matches": []
+        }
+      ]
+    },
+    {
+      "path": "tools/vr-common/cover_view.h",
+      "sha256": "dfdbd0c845140b99bbae747ec663390671d95febd86768f7bc270aa261718f3e",
+      "bytes": 6657,
+      "symbols": [
+        {
+          "symbol": "struct CoverViewAnchor",
+          "line": 11,
+          "additional_matches": []
+        },
+        {
+          "symbol": "prepare_cover_view(",
+          "line": 36,
+          "additional_matches": []
+        },
+        {
+          "symbol": "cover_physical_displacement(",
+          "line": 57,
+          "additional_matches": []
+        },
+        {
+          "symbol": "cover_tracking_basis(",
+          "line": 69,
+          "additional_matches": []
+        },
+        {
+          "symbol": "cover_tracking_point(",
+          "line": 79,
+          "additional_matches": []
+        }
+      ]
+    },
+    {
+      "path": "tools/vr-common/cover_body_target.h",
+      "sha256": "1669aa21042444cdb81b6feed0d3b49d5d6c12bbe0969c5c124496f6fd45fab7",
+      "bytes": 5111,
+      "symbols": [
+        {
+          "symbol": "struct CoverBodyTarget",
+          "line": 8,
+          "additional_matches": [
+            27
+          ]
+        },
+        {
+          "symbol": "prepare_cover_body_target(",
+          "line": 46,
+          "additional_matches": []
+        }
+      ]
+    },
+    {
+      "path": "tools/vr-common/left_hand_interaction_owner.h",
+      "sha256": "dcab11858739dfe3526f2869697f27f71eaa5c0427b8d1dc46e2495c04640c5c",
+      "bytes": 9669,
+      "symbols": [
+        {
+          "symbol": "class LeftHandInteractionOwner",
+          "line": 64,
+          "additional_matches": []
+        },
+        {
+          "symbol": "LeftHandInteractionDecision update",
+          "line": 74,
+          "additional_matches": []
+        }
+      ]
+    },
+    {
+      "path": "tools/native-capture/cover_shared_input_live.inl",
+      "sha256": "89e632c239481968eb4ed8fc03016882570580f64590434304dbf68a75bf2fe3",
+      "bytes": 24021,
+      "symbols": [
+        {
+          "symbol": "bool prepare(",
+          "line": 120,
+          "additional_matches": []
+        },
+        {
+          "symbol": "frame.cover.range=",
+          "line": 222,
+          "additional_matches": []
+        },
+        {
+          "symbol": "participant.update_with_decoded",
+          "line": 260,
+          "additional_matches": []
+        },
+        {
+          "symbol": "broker->commit",
+          "line": 265,
+          "additional_matches": []
+        },
+        {
+          "symbol": "participant.complete",
+          "line": 271,
+          "additional_matches": []
+        }
+      ]
+    },
+    {
+      "path": "tools/native-capture/cover_camera_live.inl",
+      "sha256": "abe0201bcd763c9c17c30630ffc1c2b274bee5b7b0c53c1e1fc0b5fbf35d2542",
+      "bytes": 13635,
+      "symbols": [
+        {
+          "symbol": "Reason initial_facing(",
+          "line": 55,
+          "additional_matches": [
+            80
+          ]
+        },
+        {
+          "symbol": "bool prepare_with(",
+          "line": 82,
+          "additional_matches": []
+        },
+        {
+          "symbol": "bool configure(",
+          "line": 115,
+          "additional_matches": []
+        }
+      ]
+    },
+    {
+      "path": "tools/native-capture/cover_full_goal_live.inl",
+      "sha256": "8fc103cd62d34534234bc1d86e25c52954bd58119fc29b990c7dbd3bd9d0d0e7",
+      "bytes": 3417,
+      "symbols": [
+        {
+          "symbol": "void prepare(",
+          "line": 9,
+          "additional_matches": []
+        }
+      ]
+    },
+    {
+      "path": "tools/native-capture/cover_geometry_live.inl",
+      "sha256": "7f57bd264a6bfdaf9655fd9fd7c31abcff6442cb4ba4150c87558cd5d203e4e0",
+      "bytes": 26511,
+      "symbols": [
+        {
+          "symbol": "struct Geometry",
+          "line": 41,
+          "additional_matches": []
+        }
+      ]
+    },
+    {
+      "path": "tools/native-capture/cover_neutral_eye_live.inl",
+      "sha256": "a3924371797e770d6da60fbb3da0b4bc6be546ce9b01a6ea1607eb974514dbee",
+      "bytes": 25906,
+      "symbols": [
+        {
+          "symbol": "bool sample(",
+          "line": 286,
+          "additional_matches": [
+            288
+          ]
+        }
+      ]
+    },
+    {
+      "path": "tools/native-capture/continuous_hand_owner_live.inl",
+      "sha256": "4ef8bd987ee601263c64b4f1c20b864a5bb10d092827b4eea6b1cd6818463c52",
+      "bytes": 40339,
+      "symbols": [
+        {
+          "symbol": "bool passive()",
+          "line": 63,
+          "additional_matches": []
+        },
+        {
+          "symbol": "bool owner_current()",
+          "line": 142,
+          "additional_matches": []
+        },
+        {
+          "symbol": "void tick_begin(",
+          "line": 219,
+          "additional_matches": []
+        },
+        {
+          "symbol": "void compose_begin(",
+          "line": 248,
+          "additional_matches": []
+        }
+      ]
+    },
+    {
+      "path": "tools/native-capture/body_c0_goal_policy_live.inl",
+      "sha256": "2941ef777ef28a207a13db8f982ee7c6286d64a1606911aa61f84bfd151f1f69",
+      "bytes": 32059,
+      "symbols": [
+        {
+          "symbol": "bool no_cover(",
+          "line": 145,
+          "additional_matches": []
+        },
+        {
+          "symbol": "void pose_begin(",
+          "line": 192,
+          "additional_matches": [
+            338
+          ]
+        },
+        {
+          "symbol": "void pose_end(",
+          "line": 249,
+          "additional_matches": [
+            338
+          ]
+        },
+        {
+          "symbol": "bool read_view(",
+          "line": 278,
+          "additional_matches": [
+            339
+          ]
+        }
+      ]
+    },
+    {
+      "path": "tools/native-capture/full_body_c0_transaction.h",
+      "sha256": "795d8c20c808f54f4de0aedd37588deb1818e80b8d1c49f686ee904b876878ef",
+      "bytes": 20734,
+      "symbols": [
+        {
+          "symbol": "Result prepare(",
+          "line": 181,
+          "additional_matches": []
+        },
+        {
+          "symbol": "Result commit(",
+          "line": 200,
+          "additional_matches": []
+        },
+        {
+          "symbol": "Result rollback(",
+          "line": 219,
+          "additional_matches": []
+        }
+      ]
+    },
+    {
+      "path": "tools/native-capture/capture.cpp",
+      "sha256": "041da2f1c8b88c824b83cd9ad272463b4d36a26c134301b9a404fb919442f565",
+      "bytes": 554686,
+      "symbols": [
+        {
+          "symbol": "first_person_live::prepare(anchor,view)",
+          "line": 3370,
+          "additional_matches": []
+        },
+        {
+          "symbol": "cover_shared_input_live::prepare(anchor,view,result)",
+          "line": 3374,
+          "additional_matches": []
+        },
+        {
+          "symbol": "body_c0_goal_policy_live::read_view",
+          "line": 3378,
+          "additional_matches": []
+        },
+        {
+          "symbol": "gears_vr::stereo_matrices(view,projection,result.reference",
+          "line": 3396,
+          "additional_matches": []
+        }
+      ]
+    },
+    {
+      "path": "tools/native-capture/run_camera_live.inl",
+      "sha256": "3cba13a54568809fe4a5aa9222b7902900421940c7149e454970f3ed12681f0d",
+      "bytes": 14090,
+      "symbols": [
+        {
+          "symbol": "bool prepare(",
+          "line": 93,
+          "additional_matches": [
+            137
+          ]
+        },
+        {
+          "symbol": "input.standing_sm0_verified=",
+          "line": 119,
+          "additional_matches": []
+        }
+      ]
+    },
+    {
+      "path": "tools/native-capture/run_camera_stabilizer.h",
+      "sha256": "de068e14fbc7c29b63c8586ed8ab4217106be5a804fdd8432d6a12239c11a8e2",
+      "bytes": 6775,
+      "symbols": [
+        {
+          "symbol": "class Kernel",
+          "line": 37,
+          "additional_matches": []
+        },
+        {
+          "symbol": "Status update(",
+          "line": 62,
+          "additional_matches": []
+        }
+      ]
+    },
+    {
+      "path": "tools/native-capture/cover_call_config.py",
+      "sha256": "ce965d4fda97f9e487f05a133907747574b23b3b5784af5c0a2d095855eeeca0",
+      "bytes": 23167,
+      "symbols": [
+        {
+          "symbol": "def prepare(",
+          "line": 298,
+          "additional_matches": []
+        }
+      ]
+    },
+    {
+      "path": "tools/native-capture/cover_call_trace.h",
+      "sha256": "054c16c88d65b6595a4b6a2618e2bc918071d8da86f5afefd34036da3938a348",
+      "bytes": 8819,
+      "symbols": [
+        {
+          "symbol": "struct Function",
+          "line": 31,
+          "additional_matches": []
+        },
+        {
+          "symbol": "Result capture(",
+          "line": 84,
+          "additional_matches": []
+        }
+      ]
+    },
+    {
+      "path": "tools/native-capture/cover_call_live.inl",
+      "sha256": "fbd020ba8bf45a7f206ae902214908ffb6a5d0ca496d33af81a8bdb615a2b5c0",
+      "bytes": 12672,
+      "symbols": [
+        {
+          "symbol": "bool configure(",
+          "line": 74,
+          "additional_matches": [
+            207
+          ]
+        }
+      ]
+    },
+    {
+      "path": "tools/game-playtest/cover_trace_query.py",
+      "sha256": "f56e5e1103c10bbe932ab4ff2ee7fda38d42236aa3773879be45fc7ea263c68b",
+      "bytes": 19195,
+      "symbols": [
+        {
+          "symbol": "def _parameters(",
+          "line": 140,
+          "additional_matches": []
+        },
+        {
+          "symbol": "def _certificate(",
+          "line": 171,
+          "additional_matches": []
+        },
+        {
+          "symbol": "def capture(",
+          "line": 198,
+          "additional_matches": []
+        }
+      ]
+    },
+    {
+      "path": "tools/game-playtest/cover_surface_query.py",
+      "sha256": "9414f550286ed26402119c6eb5c8b89d4c8e4cd7c898fa3effd0edfc03e7c97a",
+      "bytes": 18994,
+      "symbols": [
+        {
+          "symbol": "TRACE_RVA, TRACE_INDEX, GNATIVES_RVA",
+          "line": 23,
+          "additional_matches": []
+        },
+        {
+          "symbol": "def _function(",
+          "line": 200,
+          "additional_matches": []
+        }
+      ]
+    },
+    {
+      "path": "tools/game-playtest/cover_state.py",
+      "sha256": "f563d72d2a9a50b4399cce8d52b6ab8b449b561c1efff80afc45b972033f40e3",
+      "bytes": 9908,
+      "symbols": [
+        {
+          "symbol": "def slot_snapshot(",
+          "line": 65,
+          "additional_matches": []
+        },
+        {
+          "symbol": "def capture(",
+          "line": 120,
+          "additional_matches": []
+        }
+      ]
+    }
+  ]
+}

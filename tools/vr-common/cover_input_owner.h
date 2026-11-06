@@ -2,6 +2,7 @@
 #include "cover_controller_adapter.h"
 #include "cover_view.h"
 #include "left_hand_interaction_owner.h"
+#include "left_interaction_control.h"
 
 namespace gears_vr {
 struct CoverInputOwnerFrame {
@@ -18,7 +19,7 @@ struct CoverInputOwnerFrame {
     unsigned height_key_count=0;
     double units_per_metre=100;
     std::int64_t now_ns=0;
-    bool allow_sim=false,owner_context_valid=false;
+    bool allow_sim=false,owner_context_valid=false,allow_index_pinch=false;
 };
 struct CoverInputOwnerResult {
     CoverResult interaction;
@@ -49,6 +50,7 @@ private:
 struct CoverInputOwnerDecoded {
     CoverInputOwnerTicket ticket;
     std::uint64_t press_token=0,continuity_generation=0;
+    LeftInteractionControl interaction_control{LeftInteractionControl::grip};
     CoverControllerStatus controller_status=CoverControllerStatus::unavailable;
     // These are conservative logical-input certifications, not raw tracking
     // diagnostics. Unknown/needs-release/barrier samples expose all three false.
@@ -110,6 +112,15 @@ public:
         decoded_.ticket.origin_=this;decoded_.ticket.serial_=++serial_;phase_=Phase::decoded;
         hand_=adapter_.update(has_controllers_?&controllers_:nullptr,frame.stereo.sample,
             {frame.cover.epochs.session,frame.cover.epochs.space},frame.now_ns,frame.allow_sim);
+        const auto pinch=pinch_adapter_.update(has_controllers_?&controllers_:nullptr,frame.stereo.sample,
+            {frame.cover.epochs.session,frame.cover.epochs.space},frame.now_ns,frame.allow_sim);
+        const auto selection=control_selector_.update(
+            {hand_.hand.input_active,hand_.hand.lgrip_down},{pinch.hand.input_active,pinch.hand.lgrip_down},
+            frame.allow_index_pinch&&!frame.cover.cover_valid);
+        if(selection.control==LeftInteractionControl::pinch)hand_=pinch;
+        hand_.hand.input_active=hand_.hand.input_active&&selection.known;
+        hand_.hand.lgrip_down=selection.down;
+        decoded_.interaction_control=selection.control;
         const bool tracked=hand_.hand.input_active&&hand_.hand.position_valid&&hand_.hand.position_tracked;
         const bool down=tracked&&hand_.hand.lgrip_down;
         if(!tracked)previous_down_=true; // An interruption cannot manufacture a new press.
@@ -221,6 +232,7 @@ private:
         frame.lifecycle=lifecycle_;frame.frame=frame_;frame.press_token=press_token_;
         frame.context_valid=frozen_.owner_context_valid&&!barrier_;
         frame.tracked=decoded_.left_tracked;frame.grip_down=decoded_.left_grip_down;
+        frame.now_ns=frozen_.now_ns;
         return frame;
     }
     void abort_current(LeftHandInteractionOwner& owner,bool recertify_current_scene=false){
@@ -262,7 +274,7 @@ private:
             else if(lease.lifecycle!=lifecycle_||!lease.id||weapon.state==CoverWeaponState::absent_quiescent)return false;
         }
         return weapon.state!=CoverWeaponState::absent_quiescent||
-            (!weapon.requests.support&&!weapon.requests.ammo&&!weapon.requests.magazine);
+            (!weapon.requests.support&&!weapon.requests.ammo&&!weapon.requests.magazine&&!weapon.requests.magazine_observation_pending);
     }
     void build_view(CoverInputOwnerResult& result) const {
         auto const& frame=frozen_;auto const& proposal=result.interaction;
@@ -332,7 +344,8 @@ private:
         return a.kind==b.kind&&a.lifecycle==b.lifecycle&&a.id==b.id;
     }
     static bool same(LeftHandInteractionRequests const& a,LeftHandInteractionRequests const& b){
-        return a.cover_request_id==b.cover_request_id&&a.support==b.support&&a.ammo==b.ammo&&a.magazine==b.magazine;
+        return a.cover_request_id==b.cover_request_id&&a.support==b.support&&a.ammo==b.ammo&&a.magazine==b.magazine&&
+            a.magazine_observation_pending==b.magazine_observation_pending;
     }
     static bool same(CoverWeaponContribution const& a,CoverWeaponContribution const& b){
         return a.state==b.state&&same(a.incumbents[0],b.incumbents[0])&&same(a.incumbents[1],b.incumbents[1])&&same(a.requests,b.requests);
@@ -346,13 +359,16 @@ private:
            !same(frame.weapon_incumbents[0],f.weapon_incumbents[0])||!same(frame.weapon_incumbents[1],f.weapon_incumbents[1])||
            !same(frame.weapon_requests,f.weapon_requests)||(frame.height_curve!=nullptr)!=has_curve_||
            frame.height_key_count!=f.height_key_count||!number_same(frame.units_per_metre,f.units_per_metre)||
-           frame.now_ns!=f.now_ns||frame.allow_sim!=f.allow_sim||frame.owner_context_valid!=f.owner_context_valid)return false;
+           frame.now_ns!=f.now_ns||frame.allow_sim!=f.allow_sim||frame.owner_context_valid!=f.owner_context_valid||
+           frame.allow_index_pinch!=f.allow_index_pinch)return false;
         for(unsigned i=0;i<f.height_key_count;++i)
             if(!number_same(frame.height_curve[i].u,height_curve_[i].u)||
                !number_same(frame.height_curve[i].height_metres,height_curve_[i].height_metres))return false;
         return true;
     }
     CoverControllerAdapter adapter_;
+    CoverControllerAdapter pinch_adapter_{control_trigger};
+    LeftControlSelector control_selector_;
     CoverInteraction interaction_,pending_interaction_;
     LeftHandInteractionLease cover_lease_,pending_lease_;
     LeftHandInteractionOwner* owner_=nullptr;

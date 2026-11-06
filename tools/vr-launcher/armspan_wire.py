@@ -1,4 +1,4 @@
-"""Read-only x64 GVC3/Stereo-v4 adapter for candidate startup calibration.
+"""Read-only x64 GVC4/Stereo-v4 adapter for candidate startup calibration.
 
 Both mappings are copied under their existing mutex. Exact ticket, process
 creation, publisher identity, QPC frequency, version, bounds and freshness are
@@ -32,12 +32,13 @@ class Hand(C.Structure):
                 ('grip_active', U32), ('aim_active', U32), ('buttons', U32), ('buttons_active', U32),
                 ('trigger', C.c_float), ('squeeze', C.c_float), ('stick_x', C.c_float), ('stick_y', C.c_float),
                 ('trigger_active', U32), ('squeeze_active', U32), ('stick_active', U32),
-                ('pressed', U32 * 7), ('released', U32 * 7), ('last_squeeze_press_grip', Pose),
+                ('pressed', U32 * 8), ('released', U32 * 8), ('last_squeeze_press_grip', Pose),
                 ('last_squeeze_press_flags', U64), ('last_squeeze_press_sequence', U64)]
 class Input(C.Structure):
     _fields_ = [('source', U32), ('session', U64), ('sequence', U64), ('space_epoch', U64),
                 ('profile', U64), ('input_epoch', U64), ('predicted_time', I64), ('received_ns', I64),
-                ('sync_ns', I64), ('focused', U32), ('hands', Hand * 2)]
+                ('sync_ns', I64), ('focused', U32), ('hands', Hand * 2),
+                ('display_mode', U32), ('display_observed_ns', I64)]
 class InputPacket(C.Structure):
     _fields_ = [('magic', U32), ('version', U32), ('size', U32), ('pid', U32), ('game_start', U64),
                 ('publisher_pid', U64), ('publisher_start', U64), ('frequency', I64),
@@ -68,7 +69,7 @@ def decode(stereo_bytes, input_bytes, game, publisher, frequency, now_ns):
             (0x47565331, 4, C.sizeof(StereoPacket), game['pid'], frequency) or
             (packet.magic, packet.version, packet.size, packet.pid, packet.game_start,
              packet.publisher_pid, packet.publisher_start, packet.frequency) !=
-            (0x47564333, 3, C.sizeof(InputPacket), game['pid'], game['creation_time'],
+            (0x47564334, 4, C.sizeof(InputPacket), game['pid'], game['creation_time'],
              publisher['pid'], publisher['creation_time'], frequency)):
         raise ContractError('Bridge version/process/publisher/QPC identity mismatch')
     view = stereo.sample
@@ -82,6 +83,8 @@ def decode(stereo_bytes, input_bytes, game, publisher, frequency, now_ns):
             frame.focused != 1 or view.focused != 1 or view.should_render != 1 or
             view.head_flags & 15 != 15 or view.view_flags & 15 != 15 or
             view.visible > 1 or not pose_valid(view.head) or frame.predicted_time <= 0 or
+            frame.display_mode > 7 or frame.display_observed_ns < 0 or frame.display_observed_ns > frame.received_ns or
+            ((frame.display_mode == 0) != (frame.display_observed_ns == 0)) or
             not 0 < frame.sync_ns <= frame.received_ns <= now_ns or
             not 0 < view.received_ns <= now_ns or
             now_ns - frame.received_ns > 100_000_000 or now_ns - view.received_ns > 100_000_000):
@@ -95,7 +98,7 @@ def decode(stereo_bytes, input_bytes, game, publisher, frequency, now_ns):
     if not .04 <= math.dist(xyz(view.eyes[0].pose.position), xyz(view.eyes[1].pose.position)) <= .085:
         raise Unavailable('Invalid stereo eye separation')
     for index, hand in enumerate(frame.hands):
-        allowed = 28 if index == 0 else 19
+        allowed = 60 if index == 0 else 19
         if (any(v > 1 for v in (hand.grip_active, hand.aim_active, hand.trigger_active, hand.squeeze_active, hand.stick_active)) or
                 (hand.buttons | hand.buttons_active) & ~allowed or hand.buttons & ~hand.buttons_active or
                 not all(math.isfinite(v) for v in (hand.trigger, hand.squeeze, hand.stick_x, hand.stick_y)) or
@@ -113,7 +116,7 @@ def decode(stereo_bytes, input_bytes, game, publisher, frequency, now_ns):
         for control, (pressed, released) in enumerate(zip(hand.pressed, hand.released)):
             if (pressed > frame.sequence or released > frame.sequence or abs(pressed - released) > 1 or
                     (index == 0 and control in (0, 1) and (pressed or released)) or
-                    (index == 1 and control in (2, 3) and (pressed or released))):
+                    (index == 1 and control in (2, 3, 7) and (pressed or released))):
                 raise Unavailable('Invalid controller edge history')
     q = view.head.orientation
     forward_x, forward_z = -2*(q.x*q.z + q.y*q.w), -(1-2*(q.x*q.x + q.y*q.y))
@@ -211,8 +214,8 @@ class Reader:
         if self.stereo is None:
             self.stereo = Mapping(self.api, f'Local\\GearsVR.Stereo.{pid}', f'Local\\GearsVR.StereoLock.{pid}', C.sizeof(StereoPacket))
         if self.input is None:
-            self.input = Mapping(self.api, f'Local\\GearsVR.ControllerInput.v3.{pid}.{start}',
-                                 f'Local\\GearsVR.ControllerInputLock.v3.{pid}.{start}', C.sizeof(InputPacket))
+            self.input = Mapping(self.api, f'Local\\GearsVR.ControllerInput.v4.{pid}.{start}',
+                                 f'Local\\GearsVR.ControllerInputLock.v4.{pid}.{start}', C.sizeof(InputPacket))
         view, hands = self.stereo.read(), self.input.read()
         if view is None or hands is None:
             return None

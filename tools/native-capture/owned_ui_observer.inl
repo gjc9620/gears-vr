@@ -16,7 +16,7 @@ constexpr bool material_routing=true;
 #else
 constexpr bool material_routing=false;
 #endif
-std::atomic<uint64_t> route_commands{},route_draws{},route_faults{},route_plane_draws{},route_reticle_draws{},semantic_incomplete{};
+std::atomic<uint64_t> route_commands{},route_draws{},route_faults{},route_plane_draws{},route_reticle_draws{},route_menu_draws{},semantic_incomplete{};
 std::atomic<unsigned> first_route_fault{};
 struct FirstFault {uint64_t ticket{};long long qpc{};unsigned thread{},reason{};};
 FirstFault first_fault{};
@@ -147,6 +147,10 @@ void sample_flush(FlushContext const& context,uintptr_t caller){
  }
 }
 uintptr_t __fastcall hook_flush(void* canvas){
+ if(ui_scene_root_live::startup_draw::observing()){
+  Scope active_scope;const auto slot=ui_scene_root_live::startup_draw::flush_begin(canvas,reinterpret_cast<uintptr_t>(_ReturnAddress()));
+  const auto result=original_flush(canvas);ui_scene_root_live::startup_draw::flush_end(slot,result);return result;
+ }
  Scope active_scope;if(!active_scope.world())return original_flush(canvas);
  const auto caller=reinterpret_cast<uintptr_t>(_ReturnAddress())-base;
  const auto saved=flushing;flushing={};uintptr_t target{},secondary{};
@@ -270,7 +274,8 @@ bool reserve(){
     !safe_copy(bytes.data(),produce_target,16)||memcmp(bytes.data(),produce_bytes,16)||
     !safe_copy(bytes.data(),reinterpret_cast<void*>(base+0x2a6b9a),5)||memcmp(bytes.data(),destructor_call,5)||
     !safe_copy(&entry,reinterpret_cast<void*>(base+0x133cc98),8)||entry!=base+0x117430)return false;
- if(MH_CreateHook(flush_target,reinterpret_cast<void*>(hook_flush),reinterpret_cast<void**>(&original_flush))!=MH_OK||
+ if(!ui_scene_root_live::startup_draw::remember(flush_target)||
+    MH_CreateHook(flush_target,reinterpret_cast<void*>(hook_flush),reinterpret_cast<void**>(&original_flush))!=MH_OK||
     MH_CreateHook(produce_target,reinterpret_cast<void*>(hook_produce),reinterpret_cast<void**>(&original_produce))!=MH_OK)return false;
  return safe_copy(bytes.data(),flush_target,16)&&!memcmp(bytes.data(),flush_bytes,16)&&
   safe_copy(checked.data(),produce_target,16)&&!memcmp(checked.data(),produce_bytes,16);
@@ -283,6 +288,7 @@ void print(FILE* file){
    s.viewport.x,s.viewport.y,s.viewport.width,s.viewport.height,s.scissor.x,s.scissor.y,s.scissor.width,s.scissor.height);}}
  fprintf(file,"owned_ui_batch enabled=%u commands=%llu draws=%llu plane=%llu reticle=%llu faults=%llu first_fault=%u\n",
   routing,route_commands.load(),route_draws.load(),route_plane_draws.load(),route_reticle_draws.load(),route_faults.load(),first_route_fault.load());
+ fprintf(file,"owned_ui_flat_menu_draws=%llu\n",route_menu_draws.load());
  const auto s=ledger.snapshot();const auto& c=s.counts;
  fprintf(file,"owned_ui_route observed_only=%u bound=%llu flushes=%llu produced=%llu transferred=%llu executed=%llu completed=%llu failed=%llu closed=%llu consumed=%llu retired=%llu active=%u retained=%u rejected=%llu binding_rejected=%llu payload_rejected=%llu capacity_rejected=%llu stale_rejected=%llu target_rejected=%llu transfer_rejected=%llu read_rejected=%llu producer_unassociated=%llu execute_unassociated=%llu all_flushes=%llu all_producers=%llu\n",
   routing?0:1,c.bound,c.flushes,c.produced,c.transferred,c.executed,c.completed,c.failed,c.closed,c.published,c.retired,s.active_count,s.retained_count,

@@ -25,7 +25,7 @@ static StereoTicketGeometry geometry_fixture() {
     return g;
 }
 static bool same_geometry(StereoTicketGeometry const& a,StereoTicketGeometry const& b) {
-    if(a.source_view!=b.source_view||a.source_projection!=b.source_projection||a.aiming!=b.aiming)return false;
+    if(a.source_view!=b.source_view||a.source_projection!=b.source_projection||a.aiming!=b.aiming||a.flat_menu!=b.flat_menu)return false;
     if(a.finite_aim.valid!=b.finite_aim.valid||a.finite_aim.point!=b.finite_aim.point||
        a.finite_aim.world!=b.finite_aim.world||a.finite_aim.tick!=b.finite_aim.tick)return false;
     for(unsigned eye=0;eye<2;++eye)
@@ -37,15 +37,16 @@ static int finite_geometry_tests() {
     // Preserve the previous three-argument aggregate initialization contract.
     StereoTicketGeometry geometry{original.source_view,original.source_projection,original.eyes};
     CHECK(!geometry.finite_aim.valid);
-    geometry.finite_aim={true,{1,2,3},4,5};const auto frozen=geometry;
+    geometry.finite_aim={true,{1,2,3},4,5};geometry.flat_menu=true;const auto frozen=geometry;
     StereoTicketStore store;
     CHECK(store.retain(1,sample,false,&geometry)==TicketRetainResult::retained);
     CHECK(store.retain(1,sample,false,&geometry)==TicketRetainResult::duplicate);
-    for(unsigned field=0;field<7;++field){auto changed=frozen;
+    for(unsigned field=0;field<8;++field){auto changed=frozen;
         if(field==0)changed.finite_aim.valid=false;
         if(field>=1&&field<=3)changed.finite_aim.point[field-1]+=1;
         if(field==4)++changed.finite_aim.world;if(field==5)++changed.finite_aim.tick;
         if(field==6)changed.aiming=!changed.aiming;
+        if(field==7)changed.flat_menu=!changed.flat_menu;
         CHECK(store.retain(1,sample,false,&changed)==TicketRetainResult::conflict);
     }
     for(unsigned fault=0;fault<8;++fault){auto bad=frozen;

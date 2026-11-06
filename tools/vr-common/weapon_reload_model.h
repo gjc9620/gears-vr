@@ -8,7 +8,7 @@ enum class LoadUnit : std::uint8_t { magazine, round };
 // The hand adapter must prove the named geometry and complete travel before
 // reporting an action. Gnasher cycles by lowering and returning the right-hand
 // grip while the left hand holds the front, not by pumping the front hand.
-enum class MechanismAction : std::uint8_t { none, bolt, lever_down_return };
+enum class MechanismAction : std::uint8_t { none, bolt, lever_down_return, magazine_close };
 enum class ReloadStage : std::uint8_t { idle, feed_port, holding_ammo, mechanism, complete };
 enum class ReloadEvent : std::uint8_t {
     rejected, invalid, full, no_ammo, started, grabbed, released, inserted,
@@ -38,6 +38,9 @@ class ReloadModel {
     std::int64_t start_tick_{};
     bool reward_issued_{},pending_mechanism_{},feed_present_{true};
     MechanismAction pending_action_{MechanismAction::none};
+    std::uint32_t ejected_loaded_{};
+    bool ejected_available_{},ejected_pending_{};
+    MechanismAction ejected_action_{MechanismAction::none};
     ReloadEvent finish(std::int64_t tick) noexcept {
         if(stage_!=ReloadStage::mechanism || tick<start_tick_ || reward_issued_)return ReloadEvent::rejected;
         stage_=ReloadStage::complete;reward_issued_=true;pending_mechanism_=false;
@@ -77,6 +80,9 @@ public:
            (policy.unit!=LoadUnit::round&&policy.unit!=LoadUnit::magazine))return ReloadEvent::invalid;
         if(loaded==policy.capacity)return ReloadEvent::full;
         if(!reserve)return ReloadEvent::no_ammo;
+        ejected_available_=policy.unit==LoadUnit::magazine&&feed_present_;
+        ejected_loaded_=ejected_available_?loaded:0;
+        ejected_pending_=pending_mechanism_;ejected_action_=pending_action_;
         policy_=policy;stage_=ReloadStage::feed_port;weapon_=weapon;
         loaded_=loaded;reserve_=reserve;held_=inserted_=0;
         if(!pending_mechanism_)pending_action_=MechanismAction::none;
@@ -113,7 +119,7 @@ public:
     ReloadEvent insert(std::uint64_t weapon,std::int64_t game_tick) noexcept {
         if(stage_!=ReloadStage::holding_ammo||weapon!=weapon_||!held_||
            game_tick<start_tick_||loaded_>policy_.capacity-held_)return ReloadEvent::rejected;
-        loaded_+=held_;inserted_+=held_;held_=0;
+        loaded_+=held_;inserted_+=held_;held_=0;ejected_available_=false;
         if(policy_.unit==LoadUnit::magazine)feed_present_=true;
         if(policy_.final_mechanism){pending_mechanism_=true;pending_action_=policy_.reload_action;}
         if(inserted_<target_){stage_=ReloadStage::feed_port;return ReloadEvent::inserted;}
@@ -137,11 +143,25 @@ public:
         loaded_=loaded_after_shot;pending_mechanism_=true;
         pending_action_=policy_.shot_action;return true;
     }
+    // Reinsert the SAME authenticated old magazine, before any replacement
+    // has been committed. The adapter proves item identity and insertion
+    // geometry; this restores its original rounds, never a full magazine.
+    ReloadEvent restore_ejected_magazine(std::uint64_t weapon) noexcept {
+        if(weapon!=weapon_||!ejected_available_||policy_.unit!=LoadUnit::magazine||
+           inserted_||feed_present_||
+           (stage_!=ReloadStage::feed_port&&stage_!=ReloadStage::holding_ammo)||
+           reserve_+held_<ejected_loaded_)return ReloadEvent::rejected;
+        reserve_=reserve_+held_-ejected_loaded_;held_=0;loaded_=ejected_loaded_;
+        feed_present_=true;stage_=ReloadStage::idle;target_=0;
+        pending_mechanism_=ejected_pending_;pending_action_=ejected_action_;
+        ejected_available_=false;
+        return ReloadEvent::cancelled;
+    }
     ReloadEvent cancel(std::uint64_t weapon) noexcept {
         if(weapon!=weapon_||stage_==ReloadStage::idle||stage_==ReloadStage::complete)
             return ReloadEvent::rejected;
         if(held_>std::numeric_limits<std::uint32_t>::max()-reserve_)return ReloadEvent::rejected;
-        reserve_+=held_;held_=0;stage_=ReloadStage::idle;
+        reserve_+=held_;held_=0;stage_=ReloadStage::idle;ejected_available_=false;
         return ReloadEvent::cancelled;
     }
     ReloadStage stage() const noexcept {return stage_;}

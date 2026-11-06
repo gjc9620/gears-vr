@@ -6,7 +6,17 @@
 #include <cstdio>
 #include <vector>
 #include <stdexcept>
+#include <thread>
 using namespace gears_vr;
+#if defined(GEARS_DESKTOP_MIRROR_TEST) && GEARS_DESKTOP_MIRROR_TEST
+namespace gears_vr {
+struct DesktopMirrorTestAccess {
+    static void lock(DesktopMirror& mirror){AcquireSRWLockExclusive(&mirror.lock_);}
+    static void unlock(DesktopMirror& mirror){ReleaseSRWLockExclusive(&mirror.lock_);}
+    static uint64_t waits(DesktopMirror& mirror){return mirror.present_lock_waits_.load();}
+};
+}
+#endif
 static unsigned checks{};
 static void require(bool ok,const char* message){++checks;if(!ok)throw std::runtime_error(message);}
 #if GEARS_DESKTOP_MIRROR_READBACK
@@ -167,6 +177,110 @@ static void async_checks(GPU& gpu){
     }
 }
 #endif
+#if defined(GEARS_DESKTOP_MIRROR_TEST) && GEARS_DESKTOP_MIRROR_TEST
+static void contended_display_checks(GPU& gpu){
+    // Deterministic CPU-lock contention, with real WARP destination pixels.
+    // No visible window, game, controller or production-only hook is involved.
+    auto source=gpu.texture(18,7,DXGI_FORMAT_R8G8B8A8_UNORM,D3D12_RESOURCE_STATE_RENDER_TARGET);gpu.colors(source.Get(),true);
+    auto dest=gpu.texture(240,100,DXGI_FORMAT_R8G8B8A8_UNORM,D3D12_RESOURCE_STATE_PRESENT);
+    DesktopMirror mirror;require(mirror.bind(gpu.queue.Get(),source.Get(),1)&&mirror.prepare(),"contention display prepare");
+    for(bool age_while_waiting:{false,true}){
+        const auto stamp=monotonic_ns();
+        require(mirror.capture(source.Get(),1,age_while_waiting?2:1,stamp,D3D12_RESOURCE_STATE_RENDER_TARGET)&&mirror.drain(),"contention source capture");
+        const auto before=mirror.status();DesktopMirror::Reason reason{};bool presented{};
+        DesktopMirrorTestAccess::lock(mirror);
+        DesktopMirror::Reason ordinary{};
+        const bool unowned=mirror.present(dest.Get(),gpu.queue.Get(),stamp,&ordinary);
+        std::thread thread([&]{presented=mirror.present(dest.Get(),gpu.queue.Get(),stamp,&reason,true);});
+        const auto deadline=GetTickCount64()+2000;
+        while(DesktopMirrorTestAccess::waits(mirror)==before.present_lock_waits&&GetTickCount64()<deadline)Sleep(0);
+        const bool entered=DesktopMirrorTestAccess::waits(mirror)==before.present_lock_waits+1;
+        if(age_while_waiting){
+            // The timestamp passed by the integration predates contention.
+            // A source that expires meanwhile must become a labelled wait.
+            while(monotonic_ns()-stamp<=110000000)Sleep(1);
+        }
+        DesktopMirrorTestAccess::unlock(mirror);thread.join();
+        require(!unowned&&ordinary==DesktopMirror::Reason::lock_busy,"noncontinuous caller still skips CPU contention");
+        require(entered&&presented,"ready continuous display survives observed CPU-lock contention");
+        const auto after=mirror.status();
+        require(after.wait_ns==before.wait_ns,"CPU admission introduces no GPU fence wait");
+        require(after.ticket==before.ticket&&after.received_ns==before.received_ns&&after.captured_ns==before.captured_ns&&after.captures==before.captures,"contention cannot renew source evidence");
+        require(reason==(age_while_waiting?DesktopMirror::Reason::stale:DesktopMirror::Reason::none),"freshness is evaluated after CPU lock admission");
+        require(mirror.drain(),"contention draw completion");
+        const auto pixels=gpu.read(dest.Get(),D3D12_RESOURCE_STATE_PRESENT);
+        const auto* pixel=&pixels[(size_t(50)*240+120)*4];
+        require(age_while_waiting?(pixels[0]<15&&pixels[1]<20&&pixels[2]<25):(abs(int(pixel[0])-128)<=2&&abs(int(pixel[1])-32)<=2&&abs(int(pixel[2])-16)<=2),"contention yields actual eye pixels or labelled waiting pixels");
+        require(age_while_waiting?after.waiting_presents==before.waiting_presents+1:after.presents==before.presents+1,"waiting remains distinct from game-image presentation");
+    }
+    require(mirror.close(),"contended display closes normally");
+}
+#endif
+static void waiting_display_checks(GPU& gpu){
+    auto source=gpu.texture(18,7,DXGI_FORMAT_R8G8B8A8_UNORM,D3D12_RESOURCE_STATE_RENDER_TARGET);gpu.colors(source.Get(),true);
+    auto dest=gpu.texture(240,100,DXGI_FORMAT_R8G8B8A8_UNORM,D3D12_RESOURCE_STATE_PRESENT);
+    DesktopMirror mirror;DesktopMirror::Reason reason{};
+    require(mirror.bind(gpu.queue.Get(),source.Get(),1)&&mirror.prepare(),"waiting display prepare");
+#if GEARS_DESKTOP_MIRROR_READBACK
+    require(mirror.arm_readback(),"waiting readback armed for a real game image");
+#endif
+    auto stamp=monotonic_ns();
+    require(!mirror.present(dest.Get(),gpu.queue.Get(),stamp,&reason)&&reason==DesktopMirror::Reason::not_ready,
+        "default display still refuses missing source");
+    require(mirror.present(dest.Get(),gpu.queue.Get(),stamp,&reason,true)&&reason==DesktopMirror::Reason::not_ready&&mirror.drain(),
+        "opted-in waiting card overwrites original destination without a source image");
+    auto pixels=gpu.read(dest.Get(),D3D12_RESOURCE_STATE_PRESENT);
+    unsigned ink{};
+    for(unsigned i=0;i<240*100;++i){const auto* p=&pixels[i*4];require(p[0]<40||p[0]>150,"waiting card contains only background/text, never original red image");ink+=p[0]>150;}
+    require(ink>40&&mirror.status().captures==0&&mirror.status().presents==0&&mirror.status().waiting_presents==1,
+        "label is visible and does not count as a game image");
+#if GEARS_DESKTOP_MIRROR_READBACK
+    require(mirror.readback_status().state==DesktopMirror::ReadbackState::armed,"waiting cannot consume a game acceptance readback");
+#endif
+    stamp=monotonic_ns();require(mirror.capture(source.Get(),1,1,stamp,D3D12_RESOURCE_STATE_RENDER_TARGET)&&mirror.drain(),"waiting recovery fresh capture");
+    require(mirror.present(dest.Get(),gpu.queue.Get(),stamp+1,&reason,true)&&reason==DesktopMirror::Reason::none&&mirror.drain(),"fresh eye replaces waiting card");
+    const auto before=mirror.status();
+    require(mirror.present(dest.Get(),gpu.queue.Get(),stamp+100000001,&reason,true)&&reason==DesktopMirror::Reason::stale&&mirror.drain(),
+        "expired image becomes labelled wait without increasing100ms age limit");
+    const auto after=mirror.status();
+    require(after.ticket==before.ticket&&after.received_ns==before.received_ns&&after.captured_ns==before.captured_ns&&
+        after.captures==before.captures&&after.presents==before.presents&&after.waiting_presents==before.waiting_presents+1&&after.waiting_reason==DesktopMirror::Reason::stale,
+        "waiting never renews tracking/image evidence");
+    pixels=gpu.read(dest.Get(),D3D12_RESOURCE_STATE_PRESENT);require(pixels[0]<15&&pixels[1]<20&&pixels[2]<25,"waiting clears original game pixels");
+    require(!mirror.present(dest.Get(),nullptr,stamp+100000002,&reason,true)&&reason==DesktopMirror::Reason::queue,"waiting cannot bypass certified queue");
+    require(!mirror.capture(source.Get(),1,2,monotonic_ns()-100000001,D3D12_RESOURCE_STATE_RENDER_TARGET),"waiting does not admit expired new captures");
+    require(mirror.close()&&!mirror.present(dest.Get(),gpu.queue.Get(),stamp+100000003,&reason,true),"waiting cannot reopen terminal display");
+}
+static void flat_menu_checks(GPU& gpu){
+    auto source=gpu.texture(18,7,DXGI_FORMAT_R8G8B8A8_UNORM,D3D12_RESOURCE_STATE_RENDER_TARGET);gpu.colors(source.Get(),true);
+    auto dest=gpu.texture(32,16,DXGI_FORMAT_R8G8B8A8_UNORM,D3D12_RESOURCE_STATE_PRESENT);
+    DesktopMirror mirror;require(mirror.bind(gpu.queue.Get(),source.Get(),1)&&mirror.prepare(),"menu bind");
+    auto stamp=monotonic_ns();
+    require(mirror.capture(source.Get(),1,1,stamp,D3D12_RESOURCE_STATE_RENDER_TARGET,true)&&mirror.drain(),"menu snapshot freezes display mode");
+    require(mirror.present(dest.Get(),gpu.queue.Get(),stamp+1)&&mirror.drain(),"menu fills destination");
+    auto pixels=gpu.read(dest.Get(),D3D12_RESOURCE_STATE_PRESENT);
+    for(unsigned i=0;i<32*16;++i)require(abs(int(pixels[i*4])-128)<=2&&abs(int(pixels[i*4+1])-32)<=2&&abs(int(pixels[i*4+2])-16)<=2,
+        "menu covers corners with left-eye pixels, without letterbox or right-eye bleed");
+    require(mirror.status().menu_presents==1,"menu presentation counted separately");
+    stamp=monotonic_ns();
+    require(mirror.capture(source.Get(),1,2,stamp,D3D12_RESOURCE_STATE_RENDER_TARGET,false)&&mirror.drain(),"gameplay snapshot resets mode");
+    require(mirror.present(dest.Get(),gpu.queue.Get(),stamp+1)&&mirror.drain(),"gameplay mirror restored");
+    pixels=gpu.read(dest.Get(),D3D12_RESOURCE_STATE_PRESENT);
+    require(pixels[0]==0&&pixels[1]==0&&pixels[2]==0&&mirror.status().menu_presents==1,"gameplay restores aspect bars");
+    const auto before_refusals=mirror.status().present_refusal_count;DesktopMirror::Reason reason{};
+    for(unsigned i=0;i<20;++i)
+        require(!mirror.present(dest.Get(),gpu.queue.Get(),stamp+100000001,&reason)&&reason==DesktopMirror::Reason::stale,
+            "each expired presentation returns its own reason without widening source age");
+    require(mirror.status().present_refusal_count==before_refusals+1,"one stale startup ticket cannot exhaust later interruption observations");
+    stamp=monotonic_ns();require(mirror.capture(source.Get(),1,3,stamp,D3D12_RESOURCE_STATE_RENDER_TARGET)&&mirror.drain(),"new actual source after refusal");
+    require(!mirror.present(dest.Get(),nullptr,stamp+1,&reason)&&reason==DesktopMirror::Reason::queue,
+        "exact failure reason follows this call, not a prior stale observation");
+    require(mirror.status().present_refusal_count==before_refusals+2,"different reason/source preserves a distinct bounded observation");
+    require(mirror.present(dest.Get(),gpu.queue.Get(),stamp+2,&reason)&&reason==DesktopMirror::Reason::none&&mirror.drain(),"successful presentation clears its returned refusal");
+    require(!mirror.capture(source.Get(),1,4,monotonic_ns()-100000001,D3D12_RESOURCE_STATE_RENDER_TARGET,true)&&!mirror.status().flat_menu,
+        "expired source cannot activate menu mode");
+    require(mirror.close(),"menu mirror closes normally");
+}
 int main(){try{
     GPU gpu;const DXGI_FORMAT formats[]={DXGI_FORMAT_R8G8B8A8_UNORM,DXGI_FORMAT_B8G8R8A8_UNORM,DXGI_FORMAT_R8G8B8A8_UNORM_SRGB,DXGI_FORMAT_B8G8R8A8_UNORM_SRGB};
     const DXGI_FORMAT destinations[]={DXGI_FORMAT_R8G8B8A8_UNORM,DXGI_FORMAT_B8G8R8A8_UNORM,DXGI_FORMAT_R8G8B8A8_UNORM_SRGB,DXGI_FORMAT_B8G8R8A8_UNORM_SRGB,DXGI_FORMAT_R10G10B10A2_UNORM};
@@ -318,5 +432,10 @@ int main(){try{
 #if GEARS_DESKTOP_MIRROR_ASYNC
     async_checks(gpu);
 #endif
-    gpu.verify();std::printf("desktop mirror WARP: %u checks passed (async=%u, formats, snapshot, states, bars, close, timeout recovery, source handoff)\n",checks,DesktopMirror::asynchronous?1u:0u);return 0;
+    flat_menu_checks(gpu);
+    waiting_display_checks(gpu);
+#if defined(GEARS_DESKTOP_MIRROR_TEST) && GEARS_DESKTOP_MIRROR_TEST
+    contended_display_checks(gpu);
+#endif
+    gpu.verify();std::printf("desktop mirror WARP: %u checks passed (async=%u, formats, snapshot, states, bars, flat menu, close, timeout recovery, source handoff)\n",checks,DesktopMirror::asynchronous?1u:0u);return 0;
 }catch(std::exception const& error){std::fprintf(stderr,"mirror test: %s\n",error.what());return 1;}}

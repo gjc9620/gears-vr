@@ -75,6 +75,12 @@ public:
     bool held() const noexcept {return phase_==Phase::held;}
     bool animation_owns_hands() const noexcept {return phase_==Phase::pickup;}
     bool switch_pending() const noexcept {return phase_==Phase::switching;}
+    // Visual handoff only. This does not expose a hold generation or authorize
+    // fire/inventory. The consumer must also observe the old weapon still
+    // current, visible and attached to this player's actual right-hand bone.
+    bool departing_for(std::uint64_t world,std::uint64_t pawn,std::uint64_t weapon) const noexcept {
+        return phase_==Phase::switching&&previous_weapon_&&world_==world&&pawn_==pawn&&previous_weapon_==weapon;
+    }
     std::uint64_t held_weapon() const noexcept {return held()?weapon_:0;}
     std::uint64_t hold_generation() const noexcept {return held()?hold_generation_:0;}
     bool held_for(std::uint64_t world,std::uint64_t pawn,std::uint64_t weapon) const noexcept {

@@ -147,6 +147,15 @@ void source_rejections_break_continuity() {
     CHECK(source.update(input,out));CHECK(out.stream_epoch==2);
     input.source=gears_vr::StereoSource::MetaOperatorSimulated;CHECK(source.update(input,out));CHECK(out.stream_epoch==3);
 }
+void producer_sync_boundaries() {
+    for(auto gap:{99999999LL,100000000LL,100000001LL,-1LL}){
+        SourceTracker source;TrackedInput out{};auto input=frame();CHECK(source.update(input,out));
+        ++input.sequence;input.sync_ns+=gap;input.received_ns+=gap;
+        CHECK(source.update(input,out));CHECK(out.stream_epoch==((gap>100000000||gap<0)?2u:1u));
+        CHECK(out.tracking_epoch[0]==1&&out.tracking_epoch[1]==1);
+        const auto repeated=out;CHECK(source.update(input,out));CHECK(same_tracked(repeated,out));
+    }
+}
 
 void source_overflow_is_permanent() {
     for(unsigned overflowing=0;overflowing<3;++overflowing){
@@ -167,8 +176,8 @@ struct OwnedMapping {
     OwnedMapping() {
         const auto pid=GetCurrentProcessId();const auto start=gears_vr::controller_process_start(GetCurrentProcess());
         wchar_t map_name[128]{},lock_name[128]{};
-        swprintf_s(map_name,L"Local\\GearsVR.ControllerContinuity.v1.%lu.%llu",pid,static_cast<unsigned long long>(start));
-        swprintf_s(lock_name,L"Local\\GearsVR.ControllerContinuityLock.v1.%lu.%llu",pid,static_cast<unsigned long long>(start));
+        swprintf_s(map_name,L"Local\\GearsVR.ControllerContinuity.v3.%lu.%llu",pid,static_cast<unsigned long long>(start));
+        swprintf_s(lock_name,L"Local\\GearsVR.ControllerContinuityLock.v3.%lu.%llu",pid,static_cast<unsigned long long>(start));
         mutex=OpenMutexW(SYNCHRONIZE|MUTEX_MODIFY_STATE,FALSE,lock_name);
         mapping=OpenFileMappingW(FILE_MAP_READ|FILE_MAP_WRITE,FALSE,map_name);
         CHECK(mutex&&mapping);packet=static_cast<ContinuityPacket*>(MapViewOfFile(mapping,FILE_MAP_WRITE,0,0,sizeof(ContinuityPacket)));
@@ -338,9 +347,40 @@ void publisher_process_lifetime() {
 }
 }
 
+void original_motion_ring_copy(){
+    InputBridge producer,reader;const auto pid=GetCurrentProcessId();
+    CHECK(producer.open(pid,true)&&reader.open(pid,false));
+    auto input=frame();
+    const auto publish=[&](unsigned sequence,unsigned left=1,unsigned right=1){
+        input=frame(sequence);input.predicted_time=10000000000ll+sequence*10000000ll;
+        input.sync_ns=1000000000ll+sequence*10000000ll;input.received_ns=input.sync_ns+100;
+        CHECK(producer.publish(tracked(input,1,left,right)));
+    };
+    for(unsigned sequence=1;sequence<=10;++sequence)publish(sequence);
+    MotionHistory history{};TrackedInput selected{};Publisher publisher{};
+    CHECK(reader.read_matching(stereo_for(input),input.received_ns+1000,selected,publisher,false,nullptr,nullptr,&history));
+    CHECK(history.count==8&&history.frames[0].input.sequence==3&&history.frames[7].input.sequence==10);
+    CHECK(motion_history_valid(history,selected,1)&&same_input(history.frames[7].input,input));
+    for(unsigned i=0;i<8;++i){const auto sequence=i+3;
+        CHECK(history.frames[i].input.sync_ns==1000000000ll+sequence*10000000ll);
+        CHECK(history.frames[i].input.received_ns==history.frames[i].input.sync_ns+100);}
+    auto previous=input;previous.sequence=9;previous.predicted_time-=10000000;previous.sync_ns-=10000000;previous.received_ns-=10000000;
+    CHECK(reader.read_matching(stereo_for(previous),input.received_ns+1000,selected,publisher,false,nullptr,nullptr,&history));
+    CHECK(history.count==7&&history.frames[0].input.sequence==3&&history.frames[6].input.sequence==9);
+    publish(11,1,2);
+    CHECK(reader.read_matching(stereo_for(input),input.received_ns+1000,selected,publisher,false,nullptr,nullptr,&history));
+    CHECK(history.count==1&&history.frames[0].input.sequence==11); // Right-hand recovery never borrows old motion.
+    publish(12,2,2);
+    CHECK(reader.read_matching(stereo_for(input),input.received_ns+1000,selected,publisher,false,nullptr,nullptr,&history));
+    CHECK(history.count==2&&history.frames[0].input.sequence==11); // Independent left tracking does not cancel right motion.
+    auto mismatch=stereo_for(input);++mismatch.session;
+    CHECK(!reader.read_matching(mismatch,input.received_ns+1000,selected,publisher,false,nullptr,nullptr,&history));
+    CHECK(!history.count&&!selected.input.sequence&&!publisher.pid);
+}
+
 int main(int argc,char** argv) {
     if(argc>1&&std::strcmp(argv[1],"--publisher-child")==0)return publisher_child(argc,argv);
-    exact_value_comparison();source_loss_and_boundaries();source_rejections_break_continuity();source_overflow_is_permanent();
+    original_motion_ring_copy();exact_value_comparison();source_loss_and_boundaries();source_rejections_break_continuity();producer_sync_boundaries();source_overflow_is_permanent();
     coexistence_and_skipped_loss();matching_age_and_ring();publication_rejection_does_not_consume();
     fixed_header_and_nonblocking_mutex();maximum_counters_do_not_wrap();publisher_process_lifetime();
     std::puts("controller continuity source history, exact matching, GVC3 coexistence, ring, identity and lifetime checks passed");

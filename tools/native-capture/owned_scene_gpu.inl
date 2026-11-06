@@ -14,6 +14,7 @@ unsigned creation_count{},error{},prebirth_faults{},barriers{},unsupported{},bir
 std::array<uint64_t,8> api_calls{},api_scoped{};unsigned device_dispatch_available{},device_dispatch_match{};
 enum class Unknown : unsigned { unspecified,descriptor,clear,indirect,bundle,enhanced,render_pass,alias,uav,unreadable,copy,mrt };
 std::array<uint64_t,12> unknown_reasons{};
+unsigned first_readback_error{};HRESULT first_readback_hr{S_OK};
 thread_local unsigned creating{};
 bool enabled{},finished{},sealed{},birth_ok{};
 uintptr_t resource{};uint64_t generation{};
@@ -294,7 +295,7 @@ void retain_image(){
  if(!owned_xr_probe||!stereo_gpu_publish||!watching())return;
  auto const& frame=consuming_frozen_frame;
  if(!birth_ok||!frame.enabled||!frame.id||frame.id!=consuming_frame_ticket){fault(17);return;}
- gears_vr::StereoTicketGeometry geometry{frame.source_view,frame.source_projection,frame.expected,frame.finite_aim,frame.aiming};
+ gears_vr::StereoTicketGeometry geometry{frame.source_view,frame.source_projection,frame.expected,frame.finite_aim,frame.aiming,frame.flat_menu};
  auto result=image_tickets.retain(frame.id,frame.sample,simulator_operator,&geometry);
  if(!gears_vr::StereoTicketStore::accepted(result)){fault(17);return;}
  if(result==gears_vr::TicketRetainResult::retained)++retained_images;else ++duplicate_images;
@@ -316,9 +317,15 @@ bool publish_image(){
 #endif
  gears_vr::GpuCaptureTrace trace{};bool published=false;
 #if defined(GEARS_DESKTOP_MIRROR) && GEARS_DESKTOP_MIRROR
- // This proof includes all required UI and its actual queue submission. Take
- // an independent snapshot before allowing the next owned target writer.
- {StereoPublishBypass bypass;desktop_mirror.capture(texture,generation,image.id,image.sample.received_ns,D3D12_RESOURCE_STATES(proof.final_state));}
+ gears_vr::StereoTicketGeometry mirror_geometry{};
+ if(!image_tickets.lookup_geometry(image.id,mirror_geometry,simulator_operator)){fault(18);return false;}
+ // The fixed-space menu consumes WGC rather than this gameplay GPU lease.
+ // XR deliberately stops acquiring gameplay slots while that menu is active;
+ // retain its independent, authenticated display route even when both slots
+ // are busy. Mode comes from this frozen ticket, never a new action grant.
+ if(mirror_geometry.flat_menu){StereoPublishBypass bypass;
+  desktop_mirror.capture(texture,generation,image.id,image.sample.received_ns,
+      D3D12_RESOURCE_STATES(proof.final_state),true);}
 #endif
  auto stamp=timing(image.id);if(stamp){stamp->received=image.sample.received_ns;stamp->publish_begin=gears_vr::monotonic_ns();}
  const auto deadline=stereo_publish_deadline.load();
@@ -333,7 +340,18 @@ bool publish_image(){
   trace.slot_serial_before,trace.slot_serial_after,trace.ready_completed,trace.done_completed};
  ++publication_attempts;
  if(publication_count<publications.size())publications[publication_count++]=latest_publication;
- if(published){++published_count;stereo_publish_counts.last_ticket=image.id;}
+ if(published){
+  ++published_count;stereo_publish_counts.last_ticket=image.id;
+#if defined(GEARS_DESKTOP_MIRROR) && GEARS_DESKTOP_MIRROR
+  // A recoverable XR publication skip must not advance the desktop to a
+  // ticket that XR could never acquire. Both copies run on the same certified
+  // queue before the next owned target writer. This is publication agreement,
+  // not proof that the asynchronous XR consumer has displayed this ticket.
+  if(!mirror_geometry.flat_menu){StereoPublishBypass bypass;
+   desktop_mirror.capture(texture,generation,image.id,image.sample.received_ns,
+       D3D12_RESOURCE_STATES(proof.final_state),false);}
+#endif
+ }
  else {
   ++stereo_publish_counts.capture_skipped;
   const bool skip=gears_vr::gpu_capture_recoverable(trace,stereo_publish_counts.stopped.load());
@@ -452,7 +470,10 @@ void copy(bool ready,uint64_t ticket){
   else if(last)swprintf_s(path,L"%s\\owned-scene-%lu-last.ppm",directory,GetCurrentProcessId());
   else swprintf_s(path,L"%s\\owned-scene-%lu.ppm",directory,GetCurrentProcessId());
   StereoPublishBypass bypass;
-  if(!(late?late_readback:last?last_readback:readback).queue(texture,queue,D3D12_RESOURCE_STATES(proof.final_state),true,path)){fault(10);return;}
+  auto& selected=late?late_readback:last?last_readback:readback;
+  if(!selected.queue(texture,queue,D3D12_RESOURCE_STATES(proof.final_state),true,path)){
+   if(!first_readback_error){first_readback_error=unsigned(selected.result().error);first_readback_hr=selected.result().hr;}
+   fault(10);return;}
   if(late)late_sample_ticket=ticket;
  }
  if(!publish_image())return;
@@ -622,6 +643,12 @@ void print_progress(FILE* file){
 #endif
  fprintf(file,"owned_sustained=%u owned_consumed=%llu owned_last_ticket=%llu owned_published=%llu owned_error=%u owned_stored_frames=%u ",
   sustained,consumed_count,last_consumed_ticket,published_count,error,stored_frames);
+ unsigned unknown_mask{};for(unsigned i=0;i<unknown_reasons.size();++i)if(unknown_reasons[i])unknown_mask|=1u<<i;
+ // Also available on the ordinary running/failure summary. Previously the
+ // specific operation/HRESULT was printed only after successful cleanup,
+ // concealing a renderer stop behind the later hand-registration rejection.
+ fprintf(file,"owned_unknown_reason_mask=%u owned_first_readback_error=%u owned_first_readback_hr=%08lx ",
+  unknown_mask,first_readback_error,first_readback_hr);
  const bool execute_ready=execute_failure_ready.load(std::memory_order_acquire);
  fprintf(file,"owned_execute_failure_qpc=%lld owned_execute_failure_count=%u owned_execute_failure_caller=%llx owned_execute_failure_missing=%llx owned_execute_failure_certified=%u ",
   execute_ready?execute_failure.qpc:0,execute_ready?execute_failure.count:0,execute_ready?execute_failure.caller:0,

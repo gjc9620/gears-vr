@@ -40,12 +40,13 @@ struct Fixture {
     BoloGrenadeInteraction model{};
     BoloInstanceConfig certificate{};
     std::uint64_t sequence{},hand_sequence{},edge{},native_event{},preparation{100};
-    std::uint64_t epoch{1},reference{1};
+    std::uint64_t epoch{1},reference{1},equipment_generation{};
     std::int64_t ns{2000000000},game_tick{100};
     bool trigger_down{};
     explicit Fixture(std::uint32_t count=3,BoloFuseOwner fuse=BoloFuseOwner::original_projectile,
-                     Vector offset={}){
+                     Vector offset={},gears_vr::StereoSource source=gears_vr::StereoSource::RuntimeTracked){
         certificate=config(fuse);certificate.centre_in_right_grip_metres=offset;
+        certificate.input_source=source;
         CHECK(model.bind(certificate,{1,count,true}));
     }
     BoloStamp stamp(std::int64_t delta=1000000){
@@ -53,6 +54,7 @@ struct Fixture {
     }
     BoloFrame frame(Vector position={0,1.5,0},std::int64_t delta=10000000){
         BoloFrame f{};f.stamp=stamp(delta);f.inventory=model.inventory();
+        f.hands.source=f.stereo.source=certificate.input_source;
         f.hands.session=f.stereo.session=certificate.identity.xr_session;
         f.hands.space_epoch=f.stereo.space_epoch=certificate.identity.space_epoch;
         f.hands.input_epoch=certificate.identity.input_epoch;
@@ -70,6 +72,7 @@ struct Fixture {
         f.mapping.game_base={{100,20,30},{0,0,0}};f.mapping.units_per_metre=100;
         f.mapping.pawn_velocity_world_units_per_second={50,-20,0};f.mapping.current_instance_verified=true;
         f.right_pocket_weapon=certificate.identity.weapon;
+        f.equipment_hold_generation=equipment_generation;
         f.original_equipped=f.original_interaction_allowed=true;return f;
     }
     BoloInput input(BoloFrame& frame,BoloInputKind kind,BodySlot slot=BodySlot::none){
@@ -272,6 +275,29 @@ void interruption_and_native_fuse(){
     CHECK(!failure.model.bind(failure.certificate,{1,3,true}));
     CHECK(failure.model.cancel()==E::interrupted&&!failure.model.take_request());
 }
+void late_release_only_cleanup(){
+    Fixture f;f.grab();f.prepare();CHECK(f.model.cancel()==E::safety_required);
+    const auto stop=f.take(A::preserve_original_on_interrupt);
+    f.ns+=500000000;
+    auto receipt=f.receipt(stop);receipt.executed_ns=f.ns-1;
+    CHECK(receipt.executed_ns>stop.valid_until_ns);
+    auto broken=receipt;broken.native_safety_complete=false;
+    CHECK(f.model.acknowledge(broken)==E::safety_violation);
+    broken=receipt;broken.executed_ns=receipt.stamp.monotonic_ns+1;
+    CHECK(f.model.acknowledge(broken)==E::safety_violation);
+    CHECK(f.model.acknowledge(receipt)==E::safety_completed);
+    CHECK(f.model.inventory().count==3&&f.model.reserved_count()==0&&f.model.stage()==S::interrupted);
+    // An expired actual throw cannot borrow the release-only exception.
+    Fixture launch;const auto q=launch.throw_ready();launch.ns+=500000000;
+    auto late=launch.receipt(q);late.executed_ns=launch.ns-1;
+    CHECK(launch.model.acknowledge(late)==E::safety_violation);
+    CHECK(launch.model.inventory().count==3);
+    // Nor can a live original fuse be made to disappear after expiry.
+    Fixture lit(3,BoloFuseOwner::original_preparation);lit.grab();lit.prepare();
+    CHECK(lit.model.cancel()==E::safety_required);const auto s=lit.take(A::preserve_original_on_interrupt);
+    lit.ns+=500000000;auto live=lit.receipt(s,true,true);live.executed_ns=lit.ns-1;
+    CHECK(lit.model.acknowledge(live)==E::safety_violation&&lit.model.inventory().count==3);
+}
 void ambiguous_and_undispatched_operations(){
     Fixture undelivered;
     undelivered.grab();
@@ -368,11 +394,12 @@ void bad_motion_never_throws(){
         CHECK(f.step(BoloInputKind::right_trigger_release).event==E::rejected);
         CHECK(!f.model.take_request()&&f.model.inventory().count==3);
     }
-    for(unsigned mode=0;mode<4;++mode){
+    // Deliberate stationary release is valid and covered separately below.
+    for(unsigned mode:{0u,2u,3u}){
         Fixture f;f.grab();f.prepare();
         const unsigned count=mode==0?2u:8u;
         for(unsigned i=0;i<count;++i){
-            auto point=Vector{mode==1?0:.04*double(i),1.5,0};
+            auto point=Vector{.04*double(i),1.5,0};
             if(mode==2&&i==count-1)point.x=4; // Tracking teleport on release.
             auto frame=f.frame(point,mode==3&&i==count-1?70000000:10000000);
             const auto result=f.model.update(frame,i==count-1?f.input(frame,BoloInputKind::right_trigger_release):BoloInput{});
@@ -452,11 +479,139 @@ void input_provenance_and_verified_press(){
     CHECK(new_hold.model.update(new_hold.frame(),old_press).event==E::rejected);
     CHECK(new_hold.step(BoloInputKind::right_trigger_release).event==E::observed&&!new_hold.model.take_request());
 }
+void existing_equipment_hold(){
+    Fixture f;f.equipment_generation=500;
+    auto first=f.frame();CHECK(f.model.adopt_equipment_hold(first).event==E::grabbed);
+    CHECK(f.edge==0&&f.model.stage()==S::held&&f.model.reserved_count()==1);
+    CHECK(f.model.inventory().count==3&&!f.model.take_request());
+    CHECK(f.model.adopt_equipment_hold(first).event==E::rejected); // No replay/reacquisition.
+    CHECK(f.step(BoloInputKind::right_grip_press,BodySlot::grenade).event==E::observed);
+    CHECK(f.model.stage()==S::held&&f.model.inventory().count==3); // Sole equipment arbiter.
+    f.prepare();
+    for(unsigned i=0;i<12;++i){
+        auto frame=f.frame({.04*double(i),1.5,.01*double(i)});
+        const auto input=i==11?f.input(frame,BoloInputKind::right_trigger_release):BoloInput{};
+        CHECK(f.model.update(frame,input).event==(i==11?E::request_ready:E::observed));
+    }
+    const auto request=f.take(A::launch_original);const auto receipt=f.receipt(request);
+    CHECK(f.model.acknowledge(receipt)==E::thrown&&f.model.inventory().count==2);
+    CHECK(f.model.acknowledge(receipt)==E::rejected&&f.model.inventory().count==2);
+    // No new pocket Grip is required for the original newly re-equipped one.
+    CHECK(f.model.adopt_equipment_hold(f.frame()).event==E::grabbed);
+    CHECK(f.model.inventory().count==2&&!f.model.take_request());
+    for(unsigned bad=0;bad<7;++bad){
+        Fixture q;auto frame=q.frame();frame.equipment_hold_generation=500;
+        switch(bad){case 0:frame.equipment_hold_generation=0;break;
+        case 1:frame.original_equipped=false;break;case 2:frame.original_interaction_allowed=false;break;
+        case 3:frame.original_owns_hands=true;break;case 4:++frame.right_pocket_weapon;break;
+        case 5:++frame.hands.input_epoch;break;case 6:frame.hands.hands[1].grip_active=0;break;}
+        CHECK(q.model.adopt_equipment_hold(frame).event!=E::grabbed);
+        CHECK(q.model.reserved_count()==0&&!q.model.take_request()&&q.model.inventory().count==3);
+    }
+    {Fixture q(0);q.equipment_generation=500;
+        CHECK(q.model.adopt_equipment_hold(q.frame()).event==E::rejected);
+        CHECK(q.model.reserved_count()==0&&!q.model.take_request());}
+    {Fixture q;q.equipment_generation=500;CHECK(q.model.adopt_equipment_hold(q.frame()).event==E::grabbed);
+        ++q.equipment_generation;CHECK(q.model.update(q.frame()).event==E::interrupted);
+        CHECK(!q.model.take_request()&&q.model.inventory().count==3);}
+    {Fixture q;q.equipment_generation=500;CHECK(q.model.adopt_equipment_hold(q.frame()).event==E::grabbed);q.prepare();
+        ++q.equipment_generation;CHECK(q.model.update(q.frame()).event==E::safety_required);
+        const auto safety=q.take(A::preserve_original_on_interrupt);
+        CHECK(q.model.acknowledge(q.receipt(safety))==E::safety_completed&&q.model.inventory().count==3);}
+}
+void gentle_and_stationary_release(){
+    for(const auto velocity:{Vector{0,0,0},Vector{.1,0,0}}){
+        Fixture f;const auto request=f.throw_ready(velocity);
+        CHECK(near(request.tracked.velocity_mps.x,velocity.x));
+        CHECK(near(request.tracked.velocity_mps.y,0)&&near(request.tracked.velocity_mps.z,0));
+        CHECK(f.model.acknowledge(f.receipt(request))==E::thrown);
+        CHECK(f.model.inventory().count==2&&!f.model.take_request());
+    }
+}
+void explicit_provenance_profile(){
+    using Source=gears_vr::StereoSource;
+    Fixture simulator(3,BoloFuseOwner::original_projectile,{},Source::MetaOperatorSimulated);
+    const auto request=simulator.throw_ready();
+    CHECK(simulator.model.acknowledge(simulator.receipt(request))==E::thrown);
+    for(const auto configured:{Source::RuntimeTracked,Source::MetaOperatorSimulated}){
+        Fixture q(3,BoloFuseOwner::original_projectile,{},configured);q.grab();q.prepare();
+        auto frame=q.frame();frame.hands.source=frame.stereo.source=configured==Source::RuntimeTracked?
+            Source::MetaOperatorSimulated:Source::RuntimeTracked;
+        CHECK(q.model.update(frame).event==E::safety_required);
+        CHECK(q.model.inventory().count==3&&q.model.pending_request().action==A::preserve_original_on_interrupt);
+    }
+    BoloGrenadeInteraction q;auto c=config();c.input_source=static_cast<Source>(2);
+    CHECK(!q.bind(c,{1,3,true}));
+}
+void original_ring_and_trigger_release(){
+    using Observe=BoloTriggerObservation;
+    for(unsigned scenario=0;scenario<9;++scenario){
+        Fixture q;q.equipment_generation=42;BoloTriggerObserver observer;
+        gears_hand_continuity::MotionHistory history{};
+        const auto raw=[&](double x,bool down,std::uint32_t pressed,std::uint32_t released){
+            auto f=q.frame({x,1.5,0});auto& right=f.hands.hands[1];right.trigger=down?1.f:0.f;
+            right.pressed[gears_vr::control_trigger]=pressed;right.released[gears_vr::control_trigger]=released;
+            if(history.count==gears_hand_continuity::motion_history_capacity){
+                for(unsigned i=1;i<history.count;++i)history.frames[i-1]=history.frames[i];--history.count;}
+            auto& sample=history.frames[history.count++];sample.input=f.hands;
+            sample.stream_epoch=11;sample.tracking_epoch[0]=21;sample.tracking_epoch[1]=22;
+            f.motion_history=history;return f;
+        };
+        auto baseline=raw(0,false,0,0);BoloInput input{};
+        CHECK(observer.observe(baseline,input)==Observe::baseline&&input.kind==BoloInputKind::none);
+        CHECK(q.model.adopt_equipment_hold(baseline).event==E::grabbed);
+        auto press=raw(0,true,1,0);
+        CHECK(observer.observe(press,input)==Observe::edge&&input.kind==BoloInputKind::right_trigger_press);
+        CHECK(q.model.update(press,input).event==E::request_ready);
+        const auto prepared=q.take(A::prepare_original);
+        CHECK(prepared.original_input_sync_ns==press.hands.sync_ns);
+        CHECK(q.model.acknowledge(q.receipt(prepared))==E::prepared);
+        BoloFrame latest{},released{};
+        for(unsigned i=0;i<8;++i){latest=raw(.02*double(i),i<6,1,i<6?0:1);if(i==6)released=latest;}
+        CHECK(latest.stamp.monotonic_ns-press.stamp.monotonic_ns>60000000);
+        if(scenario==1)++latest.motion_history.frames[7].input.sync_ns;
+        if(scenario==2)latest.motion_history={};
+        if(scenario==3)++latest.motion_history.frames[3].tracking_epoch[1];
+        if(scenario==4){latest.hands.hands[1].pressed[gears_vr::control_trigger]=2;
+            latest.hands.hands[1].trigger=1;latest.motion_history.frames[7].input=latest.hands;}
+        if(scenario==5){++latest.hands.input_epoch;latest.motion_history.frames[7].input=latest.hands;}
+        if(scenario==6){++latest.mapping.reference_generation;}
+        if(scenario==7){latest.hands.hands[1].pressed[gears_vr::control_trigger]=0;
+            latest.hands.hands[1].released[gears_vr::control_trigger]=0;latest.motion_history.frames[7].input=latest.hands;}
+        if(scenario==8){for(unsigned i=0;i<latest.motion_history.count;++i){
+            ++latest.motion_history.frames[i].stream_epoch;latest.motion_history.frames[i].tracking_epoch[1]++;}}
+        const auto observed=observer.observe(latest,input);
+        if(scenario){
+            // No malformed/missing ring, new trigger cycle or reference may
+            // turn a poll into a release. The model must require safety.
+            CHECK(q.model.update(latest,input).event==E::safety_required);
+            CHECK(q.model.inventory().count==3&&q.model.pending_request().action==A::preserve_original_on_interrupt);
+            continue;
+        }
+        CHECK(observed==Observe::edge&&input.kind==BoloInputKind::right_trigger_release);
+        CHECK(input.hand_sequence==released.hands.sequence&&input.hand_sequence<latest.hands.sequence);
+        CHECK(input.sync_ns==released.hands.sync_ns);
+        CHECK(q.model.update(latest,input).event==E::request_ready);
+        const auto request=q.take(A::launch_original);
+        CHECK(near(request.tracked.velocity_mps.x,2)&&near(request.tracked.release_position.x,.12));
+        CHECK(request.tracked.predicted_time==released.hands.predicted_time);
+        CHECK(request.original_input_sync_ns==released.hands.sync_ns&&
+            request.valid_until_ns==released.hands.sync_ns+q.certificate.request_lease_ns);
+        CHECK(q.model.inventory().count==3&&q.model.acknowledge(q.receipt(request))==E::thrown);
+        CHECK(q.model.inventory().count==2);
+        CHECK(observer.observe(latest,input)==Observe::duplicate&&input.kind==BoloInputKind::none);
+    }
+}
 }
 int main(){
     certificate_gates();grab_and_empty();real_motion_and_one_original_commit();
     receipt_validation_and_old_callbacks();interruption_and_native_fuse();
     ambiguous_and_undispatched_operations();bad_motion_never_throws();
     input_provenance_and_verified_press();
+    existing_equipment_hold();
+    gentle_and_stationary_release();
+    explicit_provenance_profile();
+    original_ring_and_trigger_release();
+    late_release_only_cleanup();
     std::printf("Bolo grab/fuse/original-once hand-trajectory checks passed (%u checks)\n",checks);
 }

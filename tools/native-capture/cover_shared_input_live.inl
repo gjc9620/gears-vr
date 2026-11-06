@@ -21,6 +21,16 @@ struct Diagnostics {
     uint64_t lifecycle{1},frame{},cookie{},revision{};unsigned last_prepare{},last_commit{};
     binding::Reason binding_reason=binding::Reason::body_unavailable;
 } diagnostics;
+struct GripHandoffObservation {
+    uint64_t frame{},token{};unsigned status{},kind{},incumbent0{},incumbent1{},committed{},ammo{},magazine{};
+    bool magazine_pending{};
+    uint64_t lifecycle{};unsigned down{},known{},tracked{},control{},withdrawal{};
+    unsigned read_status{},controller_status{};
+    uint64_t requested_sequence{},latest_sequence{},selected_sequence{};
+    std::int64_t source_age_ns{},selected_age_ns{};
+};
+std::array<GripHandoffObservation,24> grip_handoffs{};
+unsigned grip_handoff_count{};
 // Diagnostic only: the GT records a real registered-cookie -> quiescent
 // transition, never a cookie-zero observation by itself. The first Goal
 // rejection may occur in a later Scene.
@@ -199,7 +209,8 @@ bool prepare(gears_anchor::Receipt const* scene,gears_vr::StereoMatrix& view,gea
         diagnostics.cookie=next.cookie;diagnostics.revision=next.revision;
         if(!epochs(next)){++diagnostics.rejected;invalidate(wire::InvalidateReason::context_lost);return owned;}
         const auto stamp=gears_vr::monotonic_ns();gears_vr::ControllerInputFrame hands{};
-        const bool matched=input::matching_input(stereo,stamp,hands);
+        gears_vr::ControllerMatchingRead matching{};
+        const bool matched=input::matching_input(stereo,stamp,hands,&matching);
         TrackingBundle selection{};selection.actor=actor;selection.eye=eye;memcpy(&selection.stereo,&stereo,sizeof stereo);
         selection.hands=matched?hands:gears_vr::ControllerInputFrame{};selection.matched=matched;
         selection.available=!matched||input::controllers.publisher_identity(selection.publisher_pid,selection.publisher_start);
@@ -224,6 +235,7 @@ bool prepare(gears_anchor::Receipt const* scene,gears_vr::StereoMatrix& view,gea
             frame.height_curve=input::height_curve.data();frame.height_key_count=unsigned(input::height_curve.size());}
         frame.stereo=stereo;frame.controllers=matched?&hands:nullptr;frame.now_ns=stamp;
         frame.units_per_metre=stereo_units_per_metre;frame.allow_sim=simulator_operator;frame.owner_context_valid=actor.context_valid;
+        frame.allow_index_pinch=!cover;
         const auto decoded=input::participant.begin(frame,input::left_hand_owner);
         if(!decoded.accepted){++diagnostics.rejected;invalidate(wire::InvalidateReason::input_lost);return owned;}
         wire::Frame callback{};wire::Proposal proposal{};Pending pending{};
@@ -248,12 +260,17 @@ bool prepare(gears_anchor::Receipt const* scene,gears_vr::StereoMatrix& view,gea
             callback.recentered=stereo.recentered?1u:0u;callback.heading_deferred=stereo.heading_deferred?1u:0u;
             callback.press_token=decoded.press_token;callback.left_grip_down=decoded.left_grip_down?1u:0u;
             callback.left_grip_known=decoded.left_grip_known?1u:0u;callback.left_tracked=decoded.left_tracked?1u:0u;
+            callback.interaction_control=unsigned(decoded.interaction_control);
             const auto reply=broker->prepare(callback,proposal);diagnostics.last_prepare=unsigned(reply);
             if(reply==wire::Reply::accepted){
                 pending.broker=broker;pending.key=callback.key;pending.nonce=proposal.nonce;pending.armed=true;
                 ++diagnostics.prepared;weapon.state=gears_vr::CoverWeaponState::ready;
                 for(unsigned i=0;i<weapon.incumbents.size();++i)weapon.incumbents[i]=wire::owner_lease(proposal.incumbents[i]);
                 weapon.requests.support=proposal.support!=0;weapon.requests.ammo=proposal.ammo!=0;weapon.requests.magazine=proposal.magazine!=0;
+                // PG knows whether its actual part observation was unavailable.
+                // Do not infer a certified miss from Native's last endpoint:
+                // that endpoint can itself be awaiting this press's pose.
+                weapon.requests.magazine_observation_pending=proposal.magazine_observation_pending!=0;
             }else ++diagnostics.blocked;
         }else {++diagnostics.blocked;if(!action_allowed)++diagnostics.action_blocked;}
         if(!action_current())weapon={};
@@ -269,6 +286,21 @@ bool prepare(gears_anchor::Receipt const* scene,gears_vr::StereoMatrix& view,gea
         }
         if(committed&&!action_current()){committed=false;++diagnostics.action_raced;}
         const auto result=input::participant.complete(decoded.ticket,committed,input::left_hand_owner);
+        if(decoded.press_token){
+            GripHandoffObservation row{frame.frame,decoded.press_token,unsigned(candidate.left_hand.status),
+                unsigned(candidate.left_hand.lease.kind),unsigned(weapon.incumbents[0].kind),unsigned(weapon.incumbents[1].kind),
+                unsigned(committed),unsigned(weapon.requests.ammo),unsigned(weapon.requests.magazine),weapon.requests.magazine_observation_pending,
+                frame.lifecycle,unsigned(decoded.left_grip_down),unsigned(decoded.left_grip_known),unsigned(decoded.left_tracked),
+                unsigned(decoded.interaction_control),unsigned(input::left_hand_owner.blocking_status()),
+                unsigned(matching.code),unsigned(decoded.controller_status),stereo.sample.sequence,matching.latest_sequence,
+                matching.selected_sequence,stamp-stereo.sample.received_ns,matching.selected_sync_ns?stamp-matching.selected_sync_ns:0};
+            const auto& old=grip_handoffs[grip_handoff_count?grip_handoff_count-1:0];
+            if(grip_handoff_count<grip_handoffs.size()&&(!grip_handoff_count||row.token!=old.token||row.status!=old.status||
+               row.kind!=old.kind||row.incumbent0!=old.incumbent0||row.incumbent1!=old.incumbent1||row.committed!=old.committed||
+               row.magazine_pending!=old.magazine_pending||row.lifecycle!=old.lifecycle||row.down!=old.down||
+               row.known!=old.known||row.tracked!=old.tracked||row.control!=old.control||row.withdrawal!=old.withdrawal))
+                grip_handoffs[grip_handoff_count++]=row;
+        }
         // A failed weapon callback aborts this transaction and requires a real
         // release. It must not create a fresh global barrier on EVERY retry:
         // that would keep logical input unknown and prevent recovery forever.
@@ -296,6 +328,17 @@ bool prepare(gears_anchor::Receipt const* scene,gears_vr::StereoMatrix& view,gea
     }catch(...){++diagnostics.rejected;invalidate(wire::InvalidateReason::context_lost);return owned;}
 }
 void summary(FILE* file){
+    for(unsigned i=0;i<grip_handoff_count;++i){const auto& r=grip_handoffs[i];
+        fprintf(file,"shared_grip_handoff_%u=%llu,%llu,%u,%u,%u,%u,%u,%u,%u ",i,
+            static_cast<unsigned long long>(r.frame),static_cast<unsigned long long>(r.token),r.status,r.kind,
+            r.incumbent0,r.incumbent1,r.committed,r.ammo,r.magazine);
+        fprintf(file,"shared_grip_handoff_pending_%u=%u ",i,unsigned(r.magazine_pending));
+        fprintf(file,"shared_grip_handoff_state_%u=%llu,%u,%u,%u,%u,%u ",i,
+            static_cast<unsigned long long>(r.lifecycle),r.down,r.known,r.tracked,r.control,r.withdrawal);
+        fprintf(file,"shared_grip_handoff_source_%u=%u,%u,%llu,%llu,%llu,%lld,%lld ",i,
+            r.read_status,r.controller_status,static_cast<unsigned long long>(r.requested_sequence),
+            static_cast<unsigned long long>(r.latest_sequence),static_cast<unsigned long long>(r.selected_sequence),
+            static_cast<long long>(r.source_age_ns),static_cast<long long>(r.selected_age_ns));}
     fprintf(file,"shared_hand_attempts=%llu shared_hand_bindings=%llu shared_hand_outside_cover=%llu shared_hand_rejected=%llu shared_hand_prepared=%llu shared_hand_committed=%llu shared_hand_aborted=%llu shared_hand_absent=%llu shared_hand_blocked=%llu shared_hand_retries=%llu shared_hand_lifecycle=%llu shared_hand_frame=%llu shared_hand_cookie=%llu shared_hand_revision=%llu shared_hand_prepare_reply=%u shared_hand_commit_reply=%u shared_hand_binding_reason=%s shared_hand_grip_geometry_ready=0 ",
         diagnostics.attempts,diagnostics.bindings,diagnostics.outside_cover,diagnostics.rejected,diagnostics.prepared,diagnostics.committed,diagnostics.aborted,diagnostics.absent,diagnostics.blocked,diagnostics.retries,
         static_cast<unsigned long long>(diagnostics.lifecycle),static_cast<unsigned long long>(diagnostics.frame),static_cast<unsigned long long>(diagnostics.cookie),static_cast<unsigned long long>(diagnostics.revision),

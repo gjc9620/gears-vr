@@ -105,6 +105,39 @@ int main(){
     assert(cancelled.cycle(30,1103,MechanismAction::lever_down_return)==ReloadEvent::ordinary);
     assert(cancelled.total()==7);
 
+    // Lancer's closure is a distinct physical action, not a generic bolt.
+    ReloadModel lancer;
+    ReloadPolicy closure{LoadUnit::magazine,60,60,true,false,100,
+        MechanismAction::magazine_close,MechanismAction::none};
+    assert(lancer.begin(60,closure,10,80,1000)==ReloadEvent::started);
+    assert(lancer.grab(60)==ReloadEvent::grabbed);
+    assert(lancer.insert(60,1050)==ReloadEvent::mechanism_needed);
+    assert(lancer.cycle(60,1060,MechanismAction::bolt)==ReloadEvent::rejected);
+    assert(lancer.cycle(60,1060,MechanismAction::lever_down_return)==ReloadEvent::rejected);
+    assert(lancer.cycle(60,1101,MechanismAction::magazine_close)==ReloadEvent::ordinary);
+    assert(lancer.total()==90);
+    assert(lancer.cycle(60,1102,MechanismAction::magazine_close)==ReloadEvent::rejected);
+    // Reinserting the original partial magazine cancels without free ammo or
+    // a reload reward, including when replacement rounds were reserved.
+    ReloadModel reinsert;
+    assert(reinsert.begin(61,closure,10,80,1000)==ReloadEvent::started);
+    assert(reinsert.grab(61)==ReloadEvent::grabbed);
+    assert(reinsert.restore_ejected_magazine(62)==ReloadEvent::rejected);
+    assert(reinsert.restore_ejected_magazine(61)==ReloadEvent::cancelled);
+    assert(reinsert.loaded()==10&&reinsert.reserve()==80&&reinsert.held()==0);
+    assert(reinsert.total()==90&&reinsert.can_fire());
+    assert(reinsert.restore_ejected_magazine(61)==ReloadEvent::rejected);
+    assert(reinsert.cycle(61,1050,MechanismAction::magazine_close)==ReloadEvent::rejected);
+    assert(reinsert.begin(61,closure,10,80,1100)==ReloadEvent::started);
+    assert(reinsert.grab(61)==ReloadEvent::grabbed);
+    assert(reinsert.insert(61,1150)==ReloadEvent::mechanism_needed);
+    assert(reinsert.restore_ejected_magazine(61)==ReloadEvent::rejected);
+    assert(reinsert.loaded()==60&&reinsert.reserve()==30&&reinsert.total()==90);
+    ReloadModel interrupted_empty_port;
+    assert(interrupted_empty_port.begin(62,closure,10,80,1000)==ReloadEvent::started);
+    assert(interrupted_empty_port.cancel(62)==ReloadEvent::cancelled);
+    assert(interrupted_empty_port.begin(62,closure,0,90,1100)==ReloadEvent::started);
+    assert(interrupted_empty_port.restore_ejected_magazine(62)==ReloadEvent::rejected);
     ReloadModel empty,full;
     assert(empty.begin(40,shotgun,3,0,0)==ReloadEvent::no_ammo);
     assert(full.begin(41,shotgun,8,2,0)==ReloadEvent::full);

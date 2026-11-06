@@ -6,21 +6,45 @@ bool enabled{};input::Input latch{},working{},last{};bool have_last{},valid{},ac
 std::uint64_t attempted_tick{},attempted_native{};
 std::atomic<std::uint64_t> attempts{},acquired{},unavailable{},age_rejected{},hard_rejected{},ends{};
 bool reference_equal(api::NativeReference const&a,api::NativeReference const&b)noexcept{return a.epoch==b.epoch&&a.flags==b.flags&&!a.reserved&&!b.reserved;}
-bool acquire(input::Input& out) {
+gears_current_tracking::Reader current_reader;
+std::atomic<std::uint64_t> independent_reads{};std::atomic<bool> reader_closed{true};
+void close_after_drain()noexcept {current_reader.close_after_drain();reader_closed=true;}
+enum class AcquireFailure : unsigned { none, engine_context, stereo_lock, reference_before,
+    stereo_read, stereo_geometry, stereo_active, stereo_focus, stereo_tracking,
+    controller_bridge, controller_read, controller_publisher, continuity_bridge,
+    continuity_read, continuity_publisher, reference_after, reader_open, reader_wrong_owner, reader_cohort, reader_clock,
+    stereo_busy,controller_busy,continuity_busy };
+bool acquire(input::Input& out,AcquireFailure* failure=nullptr,bool independent_reader=false) {
+    if(failure)*failure=AcquireFailure::none;
+    const auto fail=[&](AcquireFailure reason){if(failure)*failure=reason;return false;};
     auto const& old=out.parent_scene;const auto now=rig::clock_ns();
-    if(!gears_native_context::engine_context_clear(gears_native_context::thread_ledger,true))return false;
-    std::unique_lock<decltype(stereo_mutex)> lock(stereo_mutex,std::try_to_lock);if(!lock.owns_lock())return false;
+    if(!gears_native_context::engine_context_clear(gears_native_context::thread_ledger,true))return fail(AcquireFailure::engine_context);
+    std::unique_lock<decltype(stereo_mutex)> lock(stereo_mutex,std::defer_lock);
+    if(!independent_reader&&!lock.try_lock())return fail(AcquireFailure::stereo_lock);
     if(!rig::reference_snapshot(out.native_reference,out.reference_revision)||out.reference_revision!=old.native_reference_revision||
-       !reference_equal(out.native_reference,old.native_reference))return false;
-    if(!stereo_bridge.read(out.stereo)||!gears_vr::stereo_geometry_valid(out.stereo)||!gears_vr::stereo_render_active(out.stereo)||
-       out.stereo.focused!=1||!gears_vr::stereo_tracking_valid(out.stereo,simulator_operator))return false;
-    if(!cover_input_live::bridge_open||!cover_input_live::controllers.read_matching(out.stereo,now,out.controllers,simulator_operator)||
-       !cover_input_live::controllers.publisher_identity(out.publisher_pid,out.publisher_start))return false;
+       !reference_equal(out.native_reference,old.native_reference))return fail(AcquireFailure::reference_before);
+    if(independent_reader){
+        ++independent_reads;reader_closed=false;
+        gears_hand_continuity::Publisher publisher{};
+        const auto result=current_reader.read(GetCurrentProcessId(),[](){return rig::clock_ns();},simulator_operator,out.stereo,out.controllers,out.continuity,publisher);
+        if(result!=gears_current_tracking::Failure::none){if(failure)*failure=static_cast<AcquireFailure>(result);return false;}
+        out.publisher_pid=publisher.pid;out.publisher_start=publisher.start;
+    }else{
+    if(!stereo_bridge.read(out.stereo))return fail(AcquireFailure::stereo_read);
+    if(!gears_vr::stereo_geometry_valid(out.stereo))return fail(AcquireFailure::stereo_geometry);
+    if(!gears_vr::stereo_render_active(out.stereo))return fail(AcquireFailure::stereo_active);
+    if(out.stereo.focused!=1)return fail(AcquireFailure::stereo_focus);
+    if(!gears_vr::stereo_tracking_valid(out.stereo,simulator_operator))return fail(AcquireFailure::stereo_tracking);
+    if(!cover_input_live::bridge_open)return fail(AcquireFailure::controller_bridge);
+    if(!cover_input_live::controllers.read_matching(out.stereo,now,out.controllers,simulator_operator))return fail(AcquireFailure::controller_read);
+    if(!cover_input_live::controllers.publisher_identity(out.publisher_pid,out.publisher_start))return fail(AcquireFailure::controller_publisher);
     gears_hand_continuity::Publisher publisher{};
-    if(!cover_shared_input_live::continuity_open||!cover_shared_input_live::continuity_bridge.read_matching(out.stereo,now,out.continuity,publisher,simulator_operator)||
-       publisher.pid!=out.publisher_pid||publisher.start!=out.publisher_start)return false;
+    if(!cover_shared_input_live::continuity_open)return fail(AcquireFailure::continuity_bridge);
+    if(!cover_shared_input_live::continuity_bridge.read_matching(out.stereo,now,out.continuity,publisher,simulator_operator))return fail(AcquireFailure::continuity_read);
+    if(publisher.pid!=out.publisher_pid||publisher.start!=out.publisher_start)return fail(AcquireFailure::continuity_publisher);
+    }
     api::NativeReference again{};std::uint64_t revision{};
-    if(!rig::reference_snapshot(again,revision)||revision!=out.reference_revision||!reference_equal(again,out.native_reference))return false;
+    if(!rig::reference_snapshot(again,revision)||revision!=out.reference_revision||!reference_equal(again,out.native_reference))return fail(AcquireFailure::reference_after);
     return true;
 }
 void begin(std::uint64_t tick,std::uint64_t thread,gears_native_rig_tracking::CoreSnapshot const& source)noexcept {
@@ -79,6 +103,6 @@ bool configure(wchar_t const* ini,FILE* f,bool consumer){const auto request=GetP
        GetPrivateProfileIntW(L"BodyC0GoalPolicy",L"enabled",0,ini)!=1))return false;
     if(f)fprintf(f,"body_tick_input_compiled=1 body_tick_input_enabled=%u legacy_Scene_unchanged=1 body40_scene50=1\n",unsigned(enabled));return true;
 }
-void summary(FILE* f)noexcept{if(f)fprintf(f,"body_tick_input_enabled=%u body_tick_input_attempts=%llu body_tick_input_acquired=%llu body_tick_input_unavailable=%llu body_tick_input_age_rejected=%llu body_tick_input_hard_rejected=%llu body_tick_input_ends=%llu ",unsigned(enabled),attempts.load(),acquired.load(),unavailable.load(),age_rejected.load(),hard_rejected.load(),ends.load());}
+void summary(FILE* f)noexcept{if(f)fprintf(f,"body_tick_input_enabled=%u body_tick_input_attempts=%llu body_tick_input_acquired=%llu body_tick_input_unavailable=%llu body_tick_input_age_rejected=%llu body_tick_input_hard_rejected=%llu body_tick_input_ends=%llu body_tick_independent_reads=%llu body_tick_reader_closed=%u ",unsigned(enabled),attempts.load(),acquired.load(),unavailable.load(),age_rejected.load(),hard_rejected.load(),ends.load(),independent_reads.load(),unsigned(reader_closed.load()));}
 }
 #endif

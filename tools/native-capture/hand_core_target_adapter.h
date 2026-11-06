@@ -20,7 +20,7 @@ using Side=mount::Side;
 using Pose=gears_vr::Pose;
 // Internal, explicitly selected authored data. Selecting this is not a held
 // equipment proof; the live C0 caller independently admits the current query.
-enum class MountKind:std::uint32_t {free_hand,held_lancer};
+enum class MountKind:std::uint32_t {free_hand,held_lancer,held_frag};
 
 struct ModelBinding {
     core::NativeSessionKey native{};
@@ -124,7 +124,7 @@ inline Status binding_valid(core::CoreSnapshot const& source,ModelBinding const&
        source.binding_generation!=binding.binding_generation)return Status::binding_mismatch;
     mount::Mount expected{};
     bool supported{};
-    if(binding.mount_kind==MountKind::free_hand)
+    if(binding.mount_kind==MountKind::free_hand||(binding.mount_kind==MountKind::held_frag&&side==Side::right))
         supported=mount::marcus115(binding.geometry_signature,side,binding.model_to_world_scale,source.units_per_metre,expected);
     else if(binding.mount_kind==MountKind::held_lancer&&side==Side::right){
         gears_weapon_lancer_wrist_mount::Profile held{};
@@ -187,6 +187,9 @@ inline Status prepare_tracking_math(Input const& input,gears_body_tick_input::In
     std::int64_t now,bool allow_sim,Target& output) noexcept {
     const auto& source=tracking.parent_scene;
     const auto bound=detail::binding_valid(source,binding,side);if(bound!=Status::okay)return bound;
+    const auto& current_hand=tracking.controllers.hands[static_cast<unsigned>(side)];
+    if(!gears_vr::controller_pose_usable(current_hand.grip,current_hand.grip_flags,current_hand.grip_active))
+        return Status::hand_untracked;
     Pose grip{},wrist{};
     if(!gears_vr::rig_tracking::pose(render_base,source.reference,tracking.controllers.hands[static_cast<unsigned>(side)].grip,
         source.units_per_metre,grip)||gears_hand_wrist::native_wrist_target(grip,binding.authored_mount.calibration,

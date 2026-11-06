@@ -1,9 +1,31 @@
 #pragma once
+#include <climits>
 #include "continuous_hand_owner_entry.h"
 #include "full_body_c0_planner.h"
 #include "body_head_authored_mount.h"
 #include "../vr-common/body_main_mount_provider.h"
+#include "../vr-common/committed_hand_endpoint.h"
+#include "../vr-common/committed_hand_interaction.h"
+#include "../vr-common/weapon_lancer_held_contact.h"
 namespace full_body_c0_native_live {
+// Passive correlation for the existing opt-in GPU palette journal. No source,
+// pose, lease or writer permission can be obtained from this observation.
+struct ComposeObservation {
+    int64_t begin_ns{},end_ns{};uintptr_t mesh{};
+    uint64_t tick{},compose{};unsigned selected{},begin_result{UINT_MAX},apply_gate{UINT_MAX},
+        commit_result{UINT_MAX},solved_mask{},returned{},original_called{};
+    unsigned mount_kind{UINT_MAX},mount_prequery{UINT_MAX},mount_query_code{UINT_MAX},
+        mount_query_branch{UINT_MAX},mount_callback_status{UINT_MAX},mount_admission{UINT_MAX},hand_status{UINT_MAX};
+    uint64_t mount_query{},caller{};
+    unsigned source_slot_active{};
+    unsigned consumer_result{UINT_MAX},finish_result{UINT_MAX},finish_failure{UINT_MAX},
+        endpoint_publish_stage{UINT_MAX},endpoint_publish_flags{},retained_failure{UINT_MAX};
+    gears_vr::Vector right_target{}; // Original physical tracking target.
+    gears_vr::Vector right_solved_target{}; // Final fixed-length/cosmetic solve target.
+};
+bool observe_last_compose(uintptr_t,ComposeObservation&) noexcept;
+gears_rig_tracking::Reply read_endpoint(gears_committed_hand::Request const*,gears_committed_hand::Frame*) noexcept;
+gears_rig_tracking::Reply read_interaction(gears_committed_interaction::Request const*,gears_committed_interaction::Frame*) noexcept;
 bool main_mount_policy_enabled() noexcept;
 bool body_mount_policy_enabled() noexcept;
 bool body_mount_source_current(gears_body_main_mount_provider::Source const&) noexcept;

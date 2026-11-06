@@ -19,11 +19,17 @@ public:
     static constexpr bool asynchronous=GEARS_DESKTOP_MIRROR_ASYNC!=0;
     static constexpr unsigned draw_slot_count=asynchronous?3:1;
     enum class Reason : unsigned { none,not_ready,lock_busy,copy_busy,source,generation,ticket,stale,queue,device,destination,api,timeout,closed,draw_busy };
+    struct PresentRefusal {int64_t at_ns{},received_ns{};uint64_t ticket{};Reason reason{Reason::none};int64_t captured_ns{};};
     struct Status {
         unsigned state{},destination_format{}; // 0 empty, 1 bound, 2 ready, 3 failed, 4 closed, 5 retiring.
         uint64_t captures{},presents{},busy{},stale{},rejected{},wait_ns{},max_wait_ns{},timeouts{},ticket{};
-        int64_t received_ns{};HRESULT error{S_OK};Reason reason{Reason::none};bool unsafe{},destination_held{};
+        int64_t received_ns{},captured_ns{};HRESULT error{S_OK};Reason reason{Reason::none};bool unsafe{},destination_held{};
         unsigned pending_draws{};
+        uint64_t present_lock_waits{};
+        bool flat_menu{};uint64_t menu_presents{},waiting_presents{};
+        Reason waiting_reason{Reason::none};
+        unsigned present_refusal_count{};
+        std::array<PresentRefusal,16> present_refusals{};
     };
 #if defined(GEARS_DESKTOP_MIRROR_READBACK) && GEARS_DESKTOP_MIRROR_READBACK
     // Private acceptance evidence. The completed buffer is independent of the
@@ -40,8 +46,16 @@ public:
     struct ReadbackStatus {ReadbackState state{};HRESULT error{S_OK};bool held{},signaled{};uint64_t draw_serial{};};
 #endif
 private:
+#if defined(GEARS_DESKTOP_MIRROR_TEST) && GEARS_DESKTOP_MIRROR_TEST
+    friend struct DesktopMirrorTestAccess;
+#endif
     SRWLOCK lock_=SRWLOCK_INIT;
     std::atomic<uint64_t> lock_busy_{};
+    std::atomic<uint64_t> present_lock_waits_{};
+    // Publication of completed CPU preparation only, not image freshness or
+    // presentation authority. Initial shader/resource preparation must never
+    // make a live Present wait while holding the capture integration lock.
+    std::atomic<bool> presentation_ready_{};
     Status stats_{};
     ComPtr<ID3D12CommandQueue> queue_;
     ComPtr<IUnknown> queue_identity_,source_identity_,device_identity_;
@@ -103,7 +117,7 @@ private:
     static bool same_object(IUnknown* object,IUnknown* identity){ComPtr<IUnknown> actual;
         return object&&SUCCEEDED(object->QueryInterface(IID_PPV_ARGS(&actual)))&&actual.Get()==identity;}
     bool reject(Reason r){++stats_.rejected;stats_.reason=r;return false;}
-    bool failed(HRESULT error){stats_.state=3;stats_.error=error;stats_.reason=Reason::api;return false;}
+    bool failed(HRESULT error){presentation_ready_.store(false,std::memory_order_release);stats_.state=3;stats_.error=error;stats_.reason=Reason::api;return false;}
     bool fresh(int64_t received,int64_t now){
         if(received<=0||now<received||now-received>100000000){++stats_.stale;return reject(Reason::stale);}return true;
     }
@@ -163,12 +177,39 @@ private:
     void create_pipeline(){
         const char* shader=R"(
 Texture2D<float4> image:register(t0);SamplerState linearClamp:register(s0);
-cbuffer Size:register(b0){uint2 sourceSize;};
+cbuffer Size:register(b0){uint2 sourceSize;uint displayWaiting;};
 struct V {float4 position:SV_Position;float2 uv:TEXCOORD0;};
 V vs(uint id:SV_VertexID){V v;float2 p=float2((id<<1)&2,id&2);v.position=float4(p.x*2-1,1-p.y*2,0,1);v.uv=p;return v;}
+// A source-independent display card. It deliberately contains no game image,
+// and never changes the ticket or its original tracking timestamp.
+uint glyph(uint c,uint row){
+ if(c==87){const uint r[5]={17,17,21,21,10};return r[row];}
+ if(c==65){const uint r[5]={14,17,31,17,17};return r[row];}
+ if(c==73){const uint r[5]={31,4,4,4,31};return r[row];}
+ if(c==84){const uint r[5]={31,4,4,4,4};return r[row];}
+ if(c==78){const uint r[5]={17,25,21,19,17};return r[row];}
+ if(c==71){const uint r[5]={14,16,23,17,14};return r[row];}
+ if(c==70){const uint r[5]={31,16,30,16,16};return r[row];}
+ if(c==79){const uint r[5]={14,17,17,17,14};return r[row];}
+ if(c==82){const uint r[5]={30,17,30,20,18};return r[row];}
+ if(c==86){const uint r[5]={17,17,17,10,4};return r[row];}
+ if(c==77){const uint r[5]={17,27,21,17,17};return r[row];}
+ if(c==69){const uint r[5]={31,16,30,16,31};return r[row];}
+ return 0;
+}
+float3 waiting(float2 uv){
+ const uint text[20]={87,65,73,84,73,78,71,32,70,79,82,32,86,82,32,70,82,65,77,69};
+ float2 p=(uv-float2(.1,.46))/float2(.8,.08)*float2(120,5);
+ bool ink=false;
+ if(p.x>=0&&p.x<120&&p.y>=0&&p.y<5){uint x=(uint)p.x,y=(uint)p.y;
+  uint column=x%6;ink=(column<5)&&((glyph(text[x/6],y)>>(4-min(column,4u)))&1)!=0;}
+ return ink?float3(.72,.84,.94):float3(.025,.04,.06);
+}
 float4 ps(V v):SV_Target {
- float2 uv=float2(clamp(v.uv.x*.5,.5/sourceSize.x,.5-.5/sourceSize.x),clamp(v.uv.y,.5/sourceSize.y,1-.5/sourceSize.y));
- float3 c=image.Sample(linearClamp,uv).rgb;
+ float3 c;
+ [branch] if(displayWaiting)c=waiting(v.uv);
+ else {float2 uv=float2(clamp(v.uv.x*.5,.5/sourceSize.x,.5-.5/sourceSize.x),clamp(v.uv.y,.5/sourceSize.y,1-.5/sourceSize.y));
+  c=image.Sample(linearClamp,uv).rgb;}
 #ifdef SRGB_TARGET
  c=float3(c.r<=.04045?c.r/12.92:pow((c.r+.055)/1.055,2.4),c.g<=.04045?c.g/12.92:pow((c.g+.055)/1.055,2.4),c.b<=.04045?c.b/12.92:pow((c.b+.055)/1.055,2.4));
 #endif
@@ -181,7 +222,7 @@ float4 ps(V v):SV_Target {
         D3D12_DESCRIPTOR_RANGE range{};range.RangeType=D3D12_DESCRIPTOR_RANGE_TYPE_SRV;range.NumDescriptors=1;
         D3D12_ROOT_PARAMETER parameters[2]{};parameters[0].ParameterType=D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
         parameters[0].DescriptorTable.NumDescriptorRanges=1;parameters[0].DescriptorTable.pDescriptorRanges=&range;parameters[0].ShaderVisibility=D3D12_SHADER_VISIBILITY_PIXEL;
-        parameters[1].ParameterType=D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS;parameters[1].Constants.Num32BitValues=2;parameters[1].ShaderVisibility=D3D12_SHADER_VISIBILITY_PIXEL;
+        parameters[1].ParameterType=D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS;parameters[1].Constants.Num32BitValues=3;parameters[1].ShaderVisibility=D3D12_SHADER_VISIBILITY_PIXEL;
         D3D12_STATIC_SAMPLER_DESC sampler{};sampler.Filter=D3D12_FILTER_MIN_MAG_MIP_LINEAR;
         sampler.AddressU=sampler.AddressV=sampler.AddressW=D3D12_TEXTURE_ADDRESS_MODE_CLAMP;sampler.MaxAnisotropy=1;sampler.ComparisonFunc=D3D12_COMPARISON_FUNC_ALWAYS;sampler.MaxLOD=D3D12_FLOAT32_MAX;sampler.ShaderVisibility=D3D12_SHADER_VISIBILITY_PIXEL;
         D3D12_ROOT_SIGNATURE_DESC signature{};signature.NumParameters=2;signature.pParameters=parameters;signature.NumStaticSamplers=1;signature.pStaticSamplers=&sampler;
@@ -198,7 +239,7 @@ float4 ps(V v):SV_Target {
 public:
     DesktopMirror()=default;DesktopMirror(DesktopMirror const&)=delete;
     ~DesktopMirror(){close(0);}
-    Status status(){AcquireSRWLockExclusive(&lock_);Unlock unlock{&lock_};auto result=stats_;result.busy+=lock_busy_.load();
+    Status status(){AcquireSRWLockExclusive(&lock_);Unlock unlock{&lock_};auto result=stats_;result.busy+=lock_busy_.load();result.present_lock_waits=present_lock_waits_.load();
         for(auto const& draw:draws_){result.destination_held|=draw.destination!=nullptr;result.pending_draws+=draw.inflight?1u:0u;}return result;}
 #if defined(GEARS_DESKTOP_MIRROR_READBACK) && GEARS_DESKTOP_MIRROR_READBACK
     bool arm_readback(){
@@ -246,10 +287,11 @@ public:
             create_pipeline();D3D12_DESCRIPTOR_HEAP_DESC hd{};hd.Type=D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;hd.NumDescriptors=1;hd.Flags=D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
             gpu_check(device_->CreateDescriptorHeap(&hd,IID_PPV_ARGS(&srv_)),"mirror SRV");D3D12_SHADER_RESOURCE_VIEW_DESC view{};
             view.Format=(format_index(desc.Format)%2)?DXGI_FORMAT_B8G8R8A8_UNORM:DXGI_FORMAT_R8G8B8A8_UNORM;view.ViewDimension=D3D12_SRV_DIMENSION_TEXTURE2D;view.Shader4ComponentMapping=D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;view.Texture2D.MipLevels=1;
-            device_->CreateShaderResourceView(snapshot_.Get(),&view,srv_->GetCPUDescriptorHandleForHeapStart());stats_.state=2;stats_.reason=Reason::none;return true;
+            device_->CreateShaderResourceView(snapshot_.Get(),&view,srv_->GetCPUDescriptorHandleForHeapStart());stats_.state=2;stats_.reason=Reason::none;
+            presentation_ready_.store(true,std::memory_order_release);return true;
         }catch(...){return failed(E_FAIL);}
     }
-    bool capture(ID3D12Resource* source,uint64_t generation,uint64_t ticket,int64_t received_ns,D3D12_RESOURCE_STATES idle){
+    bool capture(ID3D12Resource* source,uint64_t generation,uint64_t ticket,int64_t received_ns,D3D12_RESOURCE_STATES idle,bool flat_menu=false){
         if(!TryAcquireSRWLockExclusive(&lock_)){++lock_busy_;return false;}Unlock unlock{&lock_};
         if(stats_.state!=2)return reject(Reason::not_ready);if(generation!=generation_)return reject(Reason::generation);
         if(!same_object(source,source_identity_.Get())||(idle!=D3D12_RESOURCE_STATE_COMMON&&idle!=D3D12_RESOURCE_STATE_RENDER_TARGET&&idle!=D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE))return reject(Reason::source);
@@ -262,14 +304,50 @@ public:
             copy_list_->CopyResource(snapshot_.Get(),source);transition(copy_list_.Get(),snapshot_.Get(),D3D12_RESOURCE_STATE_COPY_DEST,D3D12_RESOURCE_STATE_COMMON);transition(copy_list_.Get(),source,D3D12_RESOURCE_STATE_COPY_SOURCE,idle);
             gpu_check(copy_list_->Close(),"mirror copy close");ID3D12CommandList* lists[]={copy_list_.Get()};copy_inflight_=true;copy_signaled_=false;queue_->ExecuteCommandLists(1,lists);
             gpu_check(queue_->Signal(copy_fence_.Get(),++copy_serial_),"mirror copy signal");copy_signaled_=true;snapshot_valid_=true;
-            stats_.ticket=ticket;stats_.received_ns=received_ns;++stats_.captures;stats_.reason=Reason::none;return true;
+            stats_.ticket=ticket;stats_.received_ns=received_ns;stats_.captured_ns=monotonic_ns();stats_.flat_menu=flat_menu;++stats_.captures;stats_.reason=Reason::none;return true;
         }catch(...){return failed(E_FAIL);}
     }
-    bool present(ID3D12Resource* destination,ID3D12CommandQueue* queue,int64_t now_ns){
-        if(!TryAcquireSRWLockExclusive(&lock_)){++lock_busy_;return false;}Unlock unlock{&lock_};
-        if(stats_.state!=2||!snapshot_valid_)return reject(Reason::not_ready);
+    bool present(ID3D12Resource* destination,ID3D12CommandQueue* queue,int64_t now_ns,Reason* failure=nullptr,bool waiting_fallback=false){
+        if(failure)*failure=Reason::lock_busy;
+        if(!TryAcquireSRWLockExclusive(&lock_)){
+            ++lock_busy_;
+            // A ready asynchronous continuous mirror must not expose the
+            // original third-person backbuffer just because status/poll is
+            // briefly inspecting its CPU state (recorded50684). Serialize
+            // that short section; do not wait on a GPU fence or initial
+            // preparation. Source/queue/target/lifetime checks below remain.
+            if(!asynchronous||!waiting_fallback||!presentation_ready_.load(std::memory_order_acquire))return false;
+            ++present_lock_waits_;AcquireSRWLockExclusive(&lock_);
+            // Lock contention can age an image. Measure the actual time
+            // after admission; never let a pre-wait timestamp renew it.
+            now_ns=(std::max)(now_ns,monotonic_ns());
+        }Unlock unlock{&lock_};
+        // Bounded observations only, copied with the existing status. The
+        // destructor runs before Unlock, and never waits, submits work or I/O.
+        struct Observe {
+            Status& status;int64_t now;Reason* failure;bool success{};Reason image_refusal{Reason::none};
+            ~Observe(){
+                const auto reason=success?image_refusal:status.reason;
+                if(failure)*failure=reason;
+                if((success&&reason==Reason::none)||!status.presents)return;
+                // Repeated startup refusals of one ticket must not consume
+                // every slot before the first gameplay interruption occurs.
+                if(status.present_refusal_count){auto const& previous=status.present_refusals[status.present_refusal_count-1];
+                    if(previous.ticket==status.ticket&&previous.reason==reason)return;}
+                if(status.present_refusal_count<status.present_refusals.size())
+                    status.present_refusals[status.present_refusal_count++]={now,status.received_ns,status.ticket,reason,status.captured_ns};
+            }
+        } observation{stats_,now_ns,failure};
+        if(stats_.state!=2)return reject(Reason::not_ready);
         if(!same_object(queue,queue_identity_.Get())||queue->GetDesc().Type!=D3D12_COMMAND_LIST_TYPE_DIRECT)return reject(Reason::queue);
-        if(!fresh(stats_.received_ns,now_ns))return false;
+        bool display_wait=false;
+        if(!snapshot_valid_){
+            if(!waiting_fallback)return reject(Reason::not_ready);
+            observation.image_refusal=Reason::not_ready;display_wait=true;
+        }else if(!fresh(stats_.received_ns,now_ns)){
+            if(!waiting_fallback)return false;
+            observation.image_refusal=stats_.reason;display_wait=true;
+        }
         if(!destination)return reject(Reason::destination);const auto d=destination->GetDesc();stats_.destination_format=unsigned(d.Format);const int index=destination_index(d.Format);
         if(index<0||d.Dimension!=D3D12_RESOURCE_DIMENSION_TEXTURE2D||!d.Width||!d.Height||d.Width>16384||d.Height>16384||d.DepthOrArraySize!=1||d.MipLevels!=1||d.SampleDesc.Count!=1||d.SampleDesc.Quality||!(d.Flags&D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET)||same_object(destination,source_identity_.Get()))return reject(Reason::destination);
         ComPtr<ID3D12Device> device;ComPtr<IUnknown> identity;
@@ -284,20 +362,26 @@ public:
         try{
             if(draw_serial_==UINT64_MAX)return failed(E_UNEXPECTED);
 #if defined(GEARS_DESKTOP_MIRROR_READBACK) && GEARS_DESKTOP_MIRROR_READBACK
-            const bool read_pixels=prepare_readback(d);
+            // The acceptance readback remains armed until a real eye image;
+            // a source-independent wait card is not game/stereo evidence.
+            const bool read_pixels=!display_wait&&prepare_readback(d);
 #endif
             gpu_check(draw.allocator->Reset(),"mirror draw reset");gpu_check(draw.list->Reset(draw.allocator.Get(),pipelines_[index].Get()),"mirror draw list reset");
             D3D12_RENDER_TARGET_VIEW_DESC view{};view.Format=d.Format;view.ViewDimension=D3D12_RTV_DIMENSION_TEXTURE2D;
             const auto handle=draw.rtv->GetCPUDescriptorHandleForHeapStart();device_->CreateRenderTargetView(destination,&view,handle);
             transition(draw.list.Get(),destination,D3D12_RESOURCE_STATE_PRESENT,D3D12_RESOURCE_STATE_RENDER_TARGET);transition(draw.list.Get(),snapshot_.Get(),D3D12_RESOURCE_STATE_COMMON,D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
             const float black[]={0,0,0,1};draw.list->ClearRenderTargetView(handle,black,0,nullptr);draw.list->OMSetRenderTargets(1,&handle,FALSE,nullptr);
-            const auto rectangle=mirror_rectangle(unsigned(d.Width),d.Height,unsigned(source_desc_.Width/2),source_desc_.Height);
+            // A menu was rendered as the original full 2D canvas in each eye.
+            // Restore its original destination aspect before the fixed theater
+            // consumes WGC. Gameplay keeps its aspect-correct eye mirror.
+            const auto rectangle=(display_wait||stats_.flat_menu)?MirrorRectangle{0,0,unsigned(d.Width),d.Height}:
+                mirror_rectangle(unsigned(d.Width),d.Height,unsigned(source_desc_.Width/2),source_desc_.Height);
             if(!rectangle.width||!rectangle.height)return reject(Reason::destination);
             D3D12_VIEWPORT viewport{float(rectangle.x),float(rectangle.y),float(rectangle.width),float(rectangle.height),0,1};
             D3D12_RECT scissor{LONG(rectangle.x),LONG(rectangle.y),LONG(rectangle.x+rectangle.width),LONG(rectangle.y+rectangle.height)};
             draw.list->RSSetViewports(1,&viewport);draw.list->RSSetScissorRects(1,&scissor);draw.list->SetGraphicsRootSignature(root_.Get());
             ID3D12DescriptorHeap* heaps[]={srv_.Get()};draw.list->SetDescriptorHeaps(1,heaps);draw.list->SetGraphicsRootDescriptorTable(0,srv_->GetGPUDescriptorHandleForHeapStart());
-            const unsigned extent[]={static_cast<unsigned>(source_desc_.Width),source_desc_.Height};draw.list->SetGraphicsRoot32BitConstants(1,2,extent,0);
+            const unsigned extent[]={static_cast<unsigned>(source_desc_.Width),source_desc_.Height,display_wait?1u:0u};draw.list->SetGraphicsRoot32BitConstants(1,3,extent,0);
             draw.list->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);draw.list->DrawInstanced(3,1,0,0);
             transition(draw.list.Get(),snapshot_.Get(),D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE,D3D12_RESOURCE_STATE_COMMON);
 #if defined(GEARS_DESKTOP_MIRROR_READBACK) && GEARS_DESKTOP_MIRROR_READBACK
@@ -327,7 +411,9 @@ public:
 #if defined(GEARS_DESKTOP_MIRROR_READBACK) && GEARS_DESKTOP_MIRROR_READBACK
             refresh_readback();
 #endif
-            ++stats_.presents;stats_.reason=Reason::none;return true;
+            if(display_wait){++stats_.waiting_presents;stats_.waiting_reason=observation.image_refusal;}
+            else {++stats_.presents;if(stats_.flat_menu)++stats_.menu_presents;stats_.waiting_reason=Reason::none;}
+            stats_.reason=Reason::none;observation.success=true;return true;
         }catch(...){
 #if defined(GEARS_DESKTOP_MIRROR_READBACK) && GEARS_DESKTOP_MIRROR_READBACK
             if(readback_state_==ReadbackState::recorded||
@@ -356,16 +442,17 @@ public:
         if(!expected_generation||expected_generation!=generation_)return reject(Reason::generation);
         if(stats_.state==0)return true;
         if(stats_.state!=1&&stats_.state!=2&&stats_.state!=5)return false;
-        stats_.state=5;snapshot_valid_=false;
+        presentation_ready_.store(false,std::memory_order_release);stats_.state=5;snapshot_valid_=false;
         const bool copied=complete(copy_fence_,copy_serial_,copy_signaled_,copy_inflight_);
         const bool drawn=poll_draws();
         if(!copied||!drawn||stats_.state==3)return false;
         release(false);source_desc_={};copy_serial_=draw_serial_=0;
         copy_signaled_=false;for(auto& draw:draws_)draw={};
-        stats_.received_ns=0;stats_.state=0;stats_.reason=Reason::none;return true;
+        stats_.received_ns=stats_.captured_ns=0;stats_.state=0;stats_.reason=Reason::none;return true;
     }
     bool drain(unsigned timeout_ms=1000){AcquireSRWLockExclusive(&lock_);Unlock unlock{&lock_};if(stats_.state==4)return !stats_.unsafe;return drain_locked(timeout_ms);}
     bool close(unsigned timeout_ms=1000){
+        presentation_ready_.store(false,std::memory_order_release);
         AcquireSRWLockExclusive(&lock_);Unlock unlock{&lock_};if(stats_.state==4)return !stats_.unsafe;
         const bool safe=drain_locked(timeout_ms);stats_.unsafe=!safe;release(!safe);stats_.state=4;stats_.reason=Reason::closed;return safe;
     }

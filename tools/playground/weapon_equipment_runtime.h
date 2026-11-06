@@ -30,6 +30,21 @@ struct Backend {
     bool (*hold)(void*,Frame const&,EquipmentSnapshot const&) noexcept{};
     void (*clear_hold)(void*) noexcept{};
     void (*reset_input)(void*) noexcept{};
+    bool (*held_inventory)(void*,Frame const&,EquipmentSnapshot&) noexcept{};
+    // Optional integrated handoff. These callbacks authenticate the original
+    // current request and verify their actual engine result, never a trial
+    // arena actor. A changed attachment needs a NEW publication before hold.
+    bool (*stow)(void*,Frame const&,EquipmentSnapshot const&) noexcept{};
+    bool (*unholster)(void*,Frame const&,EquipmentSnapshot const&,bool& changed) noexcept{};
+    void (*idle_unheld)(void*,Frame const&,EquipmentSnapshot const&) noexcept{};
+    // An accepted stow may first need to park a committed manual reload.
+    // changed consumes that publication; dispatch requires a later current
+    // one within the ORIGINAL intent deadline, exactly like switch handoff.
+    bool (*prepare_stow)(void*,Frame const&,bool& changed) noexcept{};
+    // Optional PG-local index acquisition, never accepted from the legacy
+    // Native bridge. Authenticate the supported target (or empty slot) and
+    // seal the existing firing ledger before changing any attachment.
+    bool (*begin_index_acquire)(void*,Frame const&,EquipmentSnapshot const&,unsigned) noexcept{};
 };
 static_assert(std::is_standard_layout_v<Backend>&&std::is_trivially_copyable_v<Backend>);
 
@@ -38,7 +53,8 @@ enum class Status : std::uint8_t {
     event_ignored,invalid_event,expired_event,future_event,duplicate_press,
     busy,empty_slot,empty_sound_failed,unsupported_stow,attachment_unavailable,
     identity_mismatch,inventory_unavailable,switch_requested,switch_failed,
-    switch_pending,switch_timed_out,switch_interrupted,held,hold_failed,clock_invalid
+    switch_pending,switch_timed_out,switch_interrupted,held,hold_failed,
+    stowed,stow_failed,unholster_pending,unholster_failed,clock_invalid,stow_pending
 };
 inline char const* status_name(Status s) noexcept {
     switch(s){
@@ -56,6 +72,9 @@ inline char const* status_name(Status s) noexcept {
         GEARS_EQUIPMENT_STATUS(switch_pending);GEARS_EQUIPMENT_STATUS(switch_timed_out);
         GEARS_EQUIPMENT_STATUS(switch_interrupted);GEARS_EQUIPMENT_STATUS(held);
         GEARS_EQUIPMENT_STATUS(hold_failed);GEARS_EQUIPMENT_STATUS(clock_invalid);
+        GEARS_EQUIPMENT_STATUS(stowed);GEARS_EQUIPMENT_STATUS(stow_failed);
+        GEARS_EQUIPMENT_STATUS(stow_pending);
+        GEARS_EQUIPMENT_STATUS(unholster_pending);GEARS_EQUIPMENT_STATUS(unholster_failed);
 #undef GEARS_EQUIPMENT_STATUS
     }
     return "invalid_status";
@@ -63,6 +82,7 @@ inline char const* status_name(Status s) noexcept {
 struct Outcome {
     Status status{Status::idle};unsigned slot{4};
     std::uint64_t target{},event_serial{},press_counter{};
+    unsigned input_control{gears_vr::control_squeeze};
 };
 struct ActorKey {
     std::uint64_t game_start{},native_started_qpc{},registration_cookie{},world_generation{};
@@ -75,16 +95,20 @@ struct InputKey {
 };
 struct State {
     ActorKey actor{};InputKey input{};
-    bool actor_bound{},input_bound{},baseline_ready{},future_known{},pending{},held_known{},hold_published{},clock_known{};
+    bool actor_bound{},input_bound{},baseline_ready{},future_known{},pending{},pending_unholster{},pending_dispatch{},pending_stow{},held_known{},hold_published{},clock_known{};
     std::uint64_t cursor{UINT64_MAX},last_input_sequence{},consumed_press{},last_seen_press{},last_ms{};
+    std::uint64_t consumed_index_press{},last_seen_index_press{};
     EquipmentIntentEvent future{}; // At most one original event, never retimestamped.
+    EquipmentIntentEvent pending_intent{}; // Undispatched helper handoff; original250ms deadline.
     ObjectIdentity target{},held_identity{};
     unsigned pending_slot{4};
-    std::uint64_t deadline_ms{},pending_event_serial{},pending_press{};
+    unsigned pending_control{gears_vr::control_squeeze};
+    std::uint64_t deadline_ms{},pending_event_serial{},pending_press{},pending_frame{};
 };
 
 class Runtime {
     State state_{};
+    WeaponEquipmentModel handoff_proposed_{}; // Software intent, never an action/pose permit.
     bool ticking_{},suspended_in_tick_{};
     static bool complete(Backend const& b) noexcept {
         return b.clock_ms&&b.clock_ns&&b.current&&b.next&&b.inventory&&b.attached&&b.identify&&
@@ -127,17 +151,20 @@ class Runtime {
     void input_boundary(Backend const& b) noexcept {
         state_.input={};state_.input_bound=state_.baseline_ready=state_.future_known=false;
         state_.cursor=UINT64_MAX;state_.last_input_sequence=state_.consumed_press=state_.last_seen_press=0;
+        state_.consumed_index_press=state_.last_seen_index_press=0;
         state_.future={};if(b.reset_input)b.reset_input(b.context);
     }
     void clear_pending() noexcept {
-        state_.pending=false;state_.target={};state_.pending_slot=4;
-        state_.deadline_ms=state_.pending_event_serial=state_.pending_press=0;
+        state_.pending=state_.pending_unholster=state_.pending_dispatch=state_.pending_stow=false;state_.target={};state_.pending_slot=4;
+        handoff_proposed_={};state_.pending_intent={};
+        state_.deadline_ms=state_.pending_event_serial=state_.pending_press=state_.pending_frame=0;
+        state_.pending_control=gears_vr::control_squeeze;
     }
     void clear_model(Backend const& b,WeaponEquipmentModel& model) noexcept {
         clear_binding(b);model.reset();clear_pending();state_.held_known=false;state_.held_identity={};
     }
     Outcome pending_out(Status status) const noexcept {
-        return {status,state_.pending_slot,state_.target.address,state_.pending_event_serial,state_.pending_press};
+        return {status,state_.pending_slot,state_.target.address,state_.pending_event_serial,state_.pending_press,state_.pending_control};
     }
     Outcome lost(Backend const& b) noexcept {
         const auto out=pending_out(Status::unavailable);suspend(b);return out;
@@ -184,17 +211,87 @@ class Runtime {
 public:
     Runtime()=default;Runtime(Runtime const&)=delete;Runtime& operator=(Runtime const&)=delete;
     State const& state() const noexcept {return state_;}
+    // A known original action may temporarily block inventory actions without
+    // stopping observation of the sole input stream. Preserve at most one
+    // exact fresh event in the EXISTING deferred-event slot; neither its
+    // creation stamp nor the250ms action deadline is renewed. Normal tick
+    // must still revalidate the tuple, age, inventory and original switch gate.
+    // This method never selects/stows/holds an item or calls an engine action.
+    template<class RetainExistingHold>
+    bool observe_input_while_blocked(Frame const& f,Backend const& b,RetainExistingHold const& retain) noexcept {
+        if(ticking_||!complete(b)||state_.pending||!state_.baseline_ready||!state_.actor_bound||
+           !state_.input_bound||!state_.held_known)return false;
+        ticking_=true;suspended_in_tick_=false;
+        struct Exit {bool& flag;~Exit(){flag=false;}} exit{ticking_};
+        std::uint64_t now{};
+        if(!clock(b,now)||!same(state_.actor,actor(f))||!same(state_.input,input(f))||
+           !gears_weapon_hand::same(state_.held_identity,f.weapon)||
+           f.controllers.sequence<state_.last_input_sequence||
+           std::uint64_t(f.controllers.hands[1].pressed[gears_vr::control_squeeze])<state_.last_seen_press||
+           std::uint64_t(f.controllers.hands[1].pressed[gears_vr::control_trigger])<state_.last_seen_index_press){
+            suspend(b);return false;
+        }
+        // A read-only inventory observation can outlive its pose Frame while
+        // an independent original-action owner still authenticates the SAME
+        // physical hold. Drop input/events, but do not erase that hold merely
+        // for this soft failure. Actor/input/counter changes above never use
+        // the exception. The caller must recheck its live pin here, not pass
+        // a boolean captured before next()/other backend work.
+        const auto unavailable=[&]() noexcept {
+            if(retain())suspend_input(b);else suspend(b);
+            return false;
+        };
+        if(!current(f,b))return unavailable();
+        state_.last_input_sequence=f.controllers.sequence;
+        state_.last_seen_press=f.controllers.hands[1].pressed[gears_vr::control_squeeze];
+        state_.last_seen_index_press=f.controllers.hands[1].pressed[gears_vr::control_trigger];
+        if(state_.future_known){
+            if(!fresh(state_.future,now)){state_.future={};state_.future_known=false;}
+            return true;
+        }
+        EquipmentIntentEvent event{};const auto before=state_.cursor;
+        const bool available=b.next(b.context,f,state_.cursor,event);
+        if(!current(f,b))return unavailable();
+        if(state_.cursor==UINT64_MAX){suspend(b);return false;}
+        if(!available)return true;
+        if(state_.cursor<=before||event.serial!=state_.cursor||!event_tuple(event,f)||
+           !clock(b,now)||!fresh(event,now)){
+            suspend(b);return false;
+        }
+        state_.future=event;state_.future_known=true;return true;
+    }
+    bool observe_input_while_blocked(Frame const& f,Backend const& b) noexcept {
+        return observe_input_while_blocked(f,b,[]() noexcept {return false;});
+    }
     // GT-only: close the input bridge/drop undispatched events. A switch already
     // sent to the game remains observable; this does NOT cancel/roll it back.
-    void suspend(Backend const& b) noexcept {
+    // The original animation owner may independently authenticate a current
+    // held weapon and fresh input while no C0 pose Frame is available. Drop
+    // inventory input/events only; this does not publish or renew any hold.
+    // Generic source loss still uses suspend() and revokes the publication.
+    void suspend_input(Backend const& b) noexcept {
         if(ticking_)suspended_in_tick_=true;
-        input_boundary(b);clear_binding(b);
+        input_boundary(b);
+    }
+    void suspend(Backend const& b) noexcept {
+        suspend_input(b);clear_binding(b);
+    }
+    // Missing/stale render publication disarms actions and revokes the hold,
+    // but need not erase an already observed input baseline. No Frame, event,
+    // pose or clock is retained/renewed here. On the next REAL fresh Frame,
+    // actor/input cohorts, the Input publisher/tracking continuity, original
+    // press time and every normal inventory/action guard still run. Hard
+    // identity/observation failures must continue to use suspend().
+    bool suspend_pose_gap(Backend const& b) noexcept {
+        if(ticking_||!state_.actor_bound||!state_.input_bound||!state_.baseline_ready){suspend(b);return false;}
+        state_.future_known=false;state_.future={};
+        clear_binding(b);return true;
     }
     // Caller must have drained PG callbacks. Never reset while an original
     // call is on the stack; a reentrant request only disarms this tick.
     void reset_after_drain(Backend const& b,WeaponEquipmentModel& model) noexcept {
         if(ticking_){suspend(b);return;}
-        suspend(b);model.reset();state_={};suspended_in_tick_=false;
+        suspend(b);model.reset();state_={};handoff_proposed_={};suspended_in_tick_=false;
     }
     Outcome tick(Frame const& f,Backend const& b,WeaponEquipmentModel& model) noexcept {
         if(ticking_)return {Status::reentrant};
@@ -213,12 +310,14 @@ public:
         }
         auto const& right=f.controllers.hands[1];
         const auto press=std::uint64_t(right.pressed[gears_vr::control_squeeze]);
+        const auto index_press=std::uint64_t(right.pressed[gears_vr::control_trigger]);
         const auto input_key=input(f);
         if(!state_.input_bound||!same(state_.input,input_key)||
-           f.controllers.sequence<state_.last_input_sequence||press<state_.last_seen_press){
+           f.controllers.sequence<state_.last_input_sequence||press<state_.last_seen_press||index_press<state_.last_seen_index_press){
             input_boundary(b);state_.input=input_key;state_.input_bound=true;
         }
         state_.last_input_sequence=f.controllers.sequence;state_.last_seen_press=press;
+        state_.last_seen_index_press=index_press;
         if(!gears_vr::controller_pose_usable(right.grip,right.grip_flags,right.grip_active))return lost(b);
 
         Status input_status=Status::idle;
@@ -229,7 +328,7 @@ public:
             // next intentionally returns false after a successful baseline.
             // Missing/invalid input leaves MAX intact and MUST NOT arm input.
             state_.baseline_ready=state_.cursor!=UINT64_MAX;
-            if(state_.baseline_ready)state_.consumed_press=press;
+            if(state_.baseline_ready){state_.consumed_press=press;state_.consumed_index_press=index_press;}
             input_status=state_.baseline_ready?Status::baseline:Status::baseline_waiting;
         }
 
@@ -248,7 +347,12 @@ public:
         }
 
         EquipmentSnapshot game{};
-        if(!b.inventory(b.context,f,game)){
+        // Observation-only idle hold: no selection, sound, switch or new hold
+        // can consume this reduced snapshot. Keep live slots/identity/attachment.
+        const bool observe_only=sampled_held&&!have_held_input&&state_.hold_published&&
+            state_.cursor!=UINT64_MAX&&state_.cursor==held_cursor;
+        const auto read_inventory=observe_only&&b.held_inventory?b.held_inventory:b.inventory;
+        if(!read_inventory(b.context,f,game)){
             clear_binding(b);return {Status::inventory_unavailable};
         }
         if(!current(f,b))return lost(b);
@@ -260,13 +364,56 @@ public:
             const auto out=pending_out(Status::switch_timed_out);clear_model(b,model);return out;
         }
         if(state_.pending){
-            auto out=pending_out(Status::switch_pending);
+            auto out=pending_out(state_.pending_stow?Status::stow_pending:state_.pending_unholster?Status::unholster_pending:Status::switch_pending);
             ObjectIdentity target{};
-            if(!model.switch_pending()||game.weapon_in_slot[state_.pending_slot]!=state_.target.address||
+            const bool expected_model=state_.pending_stow?model.held_for(game.world,game.pawn,state_.target.address):state_.pending_unholster?
+                handoff_proposed_.held_for(game.world,game.pawn,state_.target.address):
+                state_.pending_dispatch?handoff_proposed_.switch_pending():model.switch_pending();
+            if(!expected_model||game.weapon_in_slot[state_.pending_slot]!=state_.target.address||
                !identify(b,state_.target.address,target)||!gears_weapon_hand::same(target,state_.target)){
                 clear_model(b,model);out.status=Status::switch_interrupted;return out;
             }
             if(!current(f,b))return lost(b);
+            if(state_.pending_stow){
+                if(!event_tuple(state_.pending_intent,f)||!fresh(state_.pending_intent,now)){
+                    clear_model(b,model);out.status=Status::expired_event;return out;
+                }
+                if(f.key.frame<=state_.pending_frame||!game.can_switch||game.animation_busy)return out;
+                if(!gears_weapon_hand::same(f.weapon,target)||!b.stow||!b.stow(b.context,f,game)){
+                    clear_pending();out.status=Status::stow_failed;return out;
+                }
+                model=handoff_proposed_;clear_binding(b);clear_pending();state_.held_known=false;state_.held_identity={};
+                out.status=Status::stowed;return out;
+            }
+            if(state_.pending_dispatch){
+                if(!event_tuple(state_.pending_intent,f)||!fresh(state_.pending_intent,now)){
+                    clear_model(b,model);out.status=Status::expired_event;return out;
+                }
+                if(f.key.frame<=state_.pending_frame||!game.can_switch||game.animation_busy)return out;
+                if(now>(std::numeric_limits<std::uint64_t>::max)()-5000){clear_model(b,model);out.status=Status::clock_invalid;return out;}
+                clear_binding(b);
+                if(!b.switch_slot(b.context,f,game,out.slot)){clear_model(b,model);out.status=Status::switch_failed;return out;}
+                model=handoff_proposed_;handoff_proposed_={};state_.pending_dispatch=false;state_.pending_intent={};
+                state_.deadline_ms=now+5000;state_.pending_frame=0;
+                out.status=Status::switch_requested;
+                if(!current(f,b)){suspend(b);out.status=Status::unavailable;}
+                return out;
+            }
+            if(state_.pending_unholster){
+                if(game.current_weapon!=target.address||!gears_weapon_hand::same(f.weapon,target)){
+                    clear_model(b,model);out.status=Status::switch_interrupted;return out;
+                }
+                // The helper changed the attachment, so the original event's
+                // source cannot certify this hold. Observe the real result on
+                // this new, independently authenticated publication instead.
+                if(f.key.frame<=state_.pending_frame||!game.can_switch||game.animation_busy)return out;
+                const bool attached=b.attached(b.context,f,game);
+                if(!current(f,b))return lost(b);
+                if(!clock(b,now))return bad_clock(b,model);
+                if(now>=state_.deadline_ms){clear_model(b,model);out.status=Status::switch_timed_out;return out;}
+                if(!attached){out.status=Status::attachment_unavailable;return out;}
+                return commit_hold(f,b,game,model,handoff_proposed_,target,out);
+            }
             auto proposed=model;const auto observation=proposed.observe(game);
             if(observation.event==gears_weapon::EquipmentEvent::interrupted){
                 clear_model(b,model);out.status=Status::switch_interrupted;return out;
@@ -305,7 +452,13 @@ public:
                 }
             }
         }
-        if(input_status!=Status::idle)return {input_status};
+        if(input_status!=Status::idle){
+            if(input_status==Status::baseline&&!model.held()&&!state_.pending&&b.idle_unheld){
+                b.idle_unheld(b.context,f,game);
+                if(!current(f,b))return lost(b);
+            }
+            return {input_status};
+        }
 
         EquipmentIntentEvent event{};
         if(state_.future_known){event=state_.future;state_.future_known=false;state_.future={};}
@@ -322,16 +475,37 @@ public:
                 // boundary independently of Runtime's cohort. Drop old presses
                 // and require a successful fresh baseline; retain game pending.
                 if(state_.cursor==UINT64_MAX){input_boundary(b);return {Status::baseline_waiting};}
+                if(!state_.pending&&!model.held()&&b.idle_unheld){
+                    b.idle_unheld(b.context,f,game);
+                    if(!current(f,b))return lost(b);
+                }
                 return state_.pending?pending_out(Status::switch_pending):Outcome{};
             }
             if(state_.cursor==UINT64_MAX||state_.cursor<=cursor||event.serial!=state_.cursor)return {Status::invalid_event};
         }
-        Outcome out{Status::invalid_event,event.inventory_slot,0,event.serial,press};
+        const bool index_acquire=event.kind==gears_weapon::EquipmentIntentKind::index_acquire_slot;
+        const auto action_press=index_acquire?index_press:press;
+        const auto action_control=index_acquire?gears_vr::control_trigger:gears_vr::control_squeeze;
+        Outcome out{Status::invalid_event,event.inventory_slot,0,event.serial,action_press,action_control};
         if(!current(f,b))return lost(b);
-        if(event.kind!=gears_weapon::EquipmentIntentKind::slot){out.status=Status::event_ignored;return out;}
+        if(event.kind!=gears_weapon::EquipmentIntentKind::slot&&!index_acquire){out.status=Status::event_ignored;return out;}
         if(event.inventory_slot>=4||!event_tuple(event,f))return out;
         if(!clock(b,now))return bad_clock(b,model);
         if(!fresh(event,now)){out.status=Status::expired_event;return out;}
+        if(index_acquire){
+            // Index has no producer-cached edge pose: only the exact current
+            // held edge from Input may acquire. Never defer future/stale index
+            // poses, repurpose held firing, or let index stow/switch a hold.
+            if(event.input_sequence!=f.controllers.sequence||event.inventory_slot<2||
+               model.held()||state_.pending||!b.begin_index_acquire||
+               right.trigger_active!=1||!gears_weapon_hand::control_held(right,gears_vr::control_trigger))return out;
+            if(index_press<=state_.consumed_index_press){out.status=Status::duplicate_press;return out;}
+            state_.consumed_index_press=index_press;
+            if(!b.begin_index_acquire(b.context,f,game,event.inventory_slot)){out.status=Status::event_ignored;return out;}
+            if(!current(f,b))return lost(b);
+            if(!clock(b,now))return bad_clock(b,model);
+            if(!fresh(event,now)){out.status=Status::expired_event;return out;}
+        }else{
         if(event.input_sequence>f.controllers.sequence){
             state_.future=event;state_.future_known=true;out.status=Status::future_event;return out;
         }
@@ -341,10 +515,39 @@ public:
         // Latest press may skip several presses that missed all body slots.
         // Consume before any callback, including busy/empty/unsupported/failure.
         state_.consumed_press=press;
+        }
         auto proposed=model;const auto decision=proposed.tap(body(event.inventory_slot),game);
         out.slot=decision.inventory_slot<4?decision.inventory_slot:event.inventory_slot;out.target=decision.weapon;
         if(decision.event==gears_weapon::EquipmentEvent::busy){out.status=Status::busy;return out;}
-        if(decision.event==gears_weapon::EquipmentEvent::request_stow){out.status=Status::unsupported_stow;return out;}
+        if(decision.event==gears_weapon::EquipmentEvent::request_stow){
+            if(!b.stow){out.status=Status::unsupported_stow;return out;}
+            if(!current(f,b))return lost(b);
+            if(!clock(b,now))return bad_clock(b,model);
+            if(!fresh(event,now)){out.status=Status::expired_event;return out;}
+            bool prepared{};
+            if(b.prepare_stow&&!b.prepare_stow(b.context,f,prepared)){out.status=Status::stow_failed;return out;}
+            if(prepared){
+                if(!clock(b,now))return bad_clock(b,model);
+                if(!fresh(event,now)){out.status=Status::expired_event;return out;}
+                ObjectIdentity target{};
+                if(!identify(b,decision.weapon,target)||!gears_weapon_hand::same(target,f.weapon)){
+                    out.status=Status::identity_mismatch;return out;
+                }
+                if(event.created_ms>(std::numeric_limits<std::uint64_t>::max)()-250){out.status=Status::clock_invalid;return out;}
+                handoff_proposed_=proposed;state_.pending=state_.pending_stow=true;
+                state_.target=target;state_.pending_slot=out.slot;state_.deadline_ms=event.created_ms+250;
+                state_.pending_event_serial=event.serial;state_.pending_press=action_press;
+                state_.pending_control=action_control;
+                state_.pending_frame=f.key.frame;state_.pending_intent=event;
+                out.status=Status::stow_pending;return out;
+            }
+            if(!current(f,b))return lost(b);
+            if(!b.stow(b.context,f,game)){out.status=Status::stow_failed;return out;}
+            // The adapter verified its real, restorable attachment handoff.
+            // No new hold/action can consume the now changed publication.
+            model=proposed;clear_binding(b);clear_pending();state_.held_known=false;state_.held_identity={};
+            out.status=Status::stowed;return out;
+        }
         if(decision.event==gears_weapon::EquipmentEvent::empty_slot){
             if(!current(f,b))return lost(b);
             if(!clock(b,now))return bad_clock(b,model);
@@ -356,14 +559,44 @@ public:
         ObjectIdentity target{};
         if(!identify(b,decision.weapon,target)){out.status=Status::identity_mismatch;return out;}
         if(!current(f,b))return lost(b);
+        if(decision.event==gears_weapon::EquipmentEvent::request_unholster&&!gears_weapon_hand::same(target,f.weapon)){
+            out.status=Status::identity_mismatch;return out;
+        }
+        if(!clock(b,now))return bad_clock(b,model);
+        if(!fresh(event,now)){out.status=Status::expired_event;return out;}
+        bool changed{};
+        if(b.unholster&&!b.unholster(b.context,f,game,changed)){
+            out.status=decision.event==gears_weapon::EquipmentEvent::request_unholster?Status::unholster_failed:Status::switch_failed;
+            return out;
+        }
         if(decision.event==gears_weapon::EquipmentEvent::request_unholster){
-            if(!gears_weapon_hand::same(target,f.weapon)){out.status=Status::identity_mismatch;return out;}
+            if(changed){
+                if(!clock(b,now))return bad_clock(b,model);
+                if(now>(std::numeric_limits<std::uint64_t>::max)()-5000){out.status=Status::clock_invalid;return out;}
+                clear_binding(b);handoff_proposed_=proposed;
+                state_.pending=state_.pending_unholster=true;state_.target=target;state_.pending_slot=out.slot;
+                state_.deadline_ms=now+5000;state_.pending_event_serial=event.serial;state_.pending_press=action_press;
+                state_.pending_control=action_control;
+                state_.pending_frame=f.key.frame;
+                out.status=Status::unholster_pending;return out;
+            }
             const bool attached=b.attached(b.context,f,game);
             if(!current(f,b))return lost(b);
             if(!clock(b,now))return bad_clock(b,model);
             if(!fresh(event,now)){out.status=Status::expired_event;return out;}
             if(!attached){out.status=Status::attachment_unavailable;return out;}
             return commit_hold(f,b,game,model,proposed,target,out);
+        }
+        if(changed){
+            if(!clock(b,now))return bad_clock(b,model);
+            if(!fresh(event,now)){out.status=Status::expired_event;return out;}
+            if(event.created_ms>(std::numeric_limits<std::uint64_t>::max)()-250){out.status=Status::clock_invalid;return out;}
+            clear_binding(b);handoff_proposed_=proposed;
+            state_.pending=state_.pending_dispatch=true;state_.target=target;state_.pending_slot=out.slot;
+            state_.deadline_ms=event.created_ms+250;state_.pending_event_serial=event.serial;state_.pending_press=action_press;
+            state_.pending_control=action_control;
+            state_.pending_frame=f.key.frame;state_.pending_intent=event;
+            out.status=Status::switch_pending;return out;
         }
         if(!clock(b,now))return bad_clock(b,model);
         if(!fresh(event,now)){out.status=Status::expired_event;return out;}
@@ -373,7 +606,8 @@ public:
         if(!b.switch_slot(b.context,f,game,out.slot)){out.status=Status::switch_failed;return out;}
         model=proposed;state_.held_known=false;state_.held_identity={};state_.pending=true;
         state_.target=target;state_.pending_slot=out.slot;state_.deadline_ms=now+5000;
-        state_.pending_event_serial=event.serial;state_.pending_press=press;
+        state_.pending_event_serial=event.serial;state_.pending_press=action_press;
+        state_.pending_control=action_control;
         out.status=Status::switch_requested;
         if(!current(f,b)){suspend(b);out.status=Status::unavailable;}
         return out;

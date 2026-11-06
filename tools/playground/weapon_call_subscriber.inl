@@ -69,9 +69,26 @@ void __cdecl begin(void* context,callabi::Invocation const* call,callabi::State*
         journal.flags|=ignored|begin_done;store(state,journal);return;
     }
     // Do not gate this on armed(): soft loss must still mask unknown nesting.
+#if defined(GEARS_PLAYGROUND_NATIVE_LANCER_FOLLOW)
+    lancerreload_ui::begin(*call);
+    lancerreload_manual::begin(*call);
+#if defined(GEARS_PLAYGROUND_UNIFIED_MUZZLE_FIRE)
+    fraglaunch::begin(*call);
+    if(!lancerhud_layout::begin(*call)){journal.flags|=unified_uncertain;store(state,journal);poison();}
+#endif
+    // CallFunction's caller FFrame is not a callee parameter buffer. The
+    // normal-GT owner must confirm an expected ready transition afterwards.
+    lancersaw_original::observe_call_no_engine(call->self,call->callee,nullptr);
+#endif
+#if defined(GEARS_PLAYGROUND_NATIVE_EQUIPMENT_TRIAL)
+    nativeequipment::stow_native::observe_call_no_engine(call->self,call->callee,call->caller_frame);
+#endif
     journal.scope=weaponshot::enter(call->self,call->caller_frame,call->callee);store(state,journal);
 #if defined(GEARS_PLAYGROUND_UNIFIED_MUZZLE_FIRE)
     unified_weapon_fire::begin(*call,journal.scope);
+    if(!unified_weapon_fire::hud_begin(*call)){
+        journal.flags|=unified_uncertain;store(state,journal);
+    }
 #endif
 #if defined(GEARS_PLAYGROUND_WEAPON_GRIP_DAMAGE_RESULT_PROBE)
     journal.raw=gripdamage::enter(call->self,call->caller_frame,call->result,call->callee);store(state,journal);
@@ -92,6 +109,14 @@ bool raw_closed(Journal const& journal) noexcept {
 #endif
 }
 bool cleanup(Journal& journal,callabi::State* state) noexcept {
+#if defined(GEARS_PLAYGROUND_NATIVE_LANCER_FOLLOW)
+#if defined(GEARS_PLAYGROUND_UNIFIED_MUZZLE_FIRE)
+    if(!fraglaunch::cleanup(journal.call)){journal.flags|=unified_uncertain;store(state,journal);}
+    if(!lancerhud_layout::cleanup(journal.call)){journal.flags|=unified_uncertain;store(state,journal);}
+#endif
+    lancerreload_ui::cleanup(journal.call);
+    lancerreload_manual::cleanup(journal.call);
+#endif
     bool clean=(journal.flags&begin_done)!=0&&!(journal.flags&unified_uncertain);
 #if defined(GEARS_PLAYGROUND_WEAPON_GRIP_DAMAGE_RESULT_PROBE)
     if(!(journal.flags&raw_left)){
@@ -130,7 +155,23 @@ callabi::End finish(void* context,callabi::Invocation const* call,callabi::State
     bool clean{};
     __try{
         if(normal&&(journal.flags&begin_done)&&!(journal.flags&ignored)){
+#if defined(GEARS_PLAYGROUND_NATIVE_LANCER_FOLLOW)
+            if(!lancerreload_ui::returned(*call)){
+                journal.flags|=unified_uncertain;store(state,journal);poison();
+            }
+            if(!lancerreload_manual::returned(*call)){
+                journal.flags|=unified_uncertain;store(state,journal);poison();
+            }
+            if(!lancerreload_reward::returned(*call)){
+                journal.flags|=unified_uncertain;store(state,journal);poison();
+            }
+#endif
 #if defined(GEARS_PLAYGROUND_UNIFIED_MUZZLE_FIRE)
+#if defined(GEARS_PLAYGROUND_NATIVE_LANCER_FOLLOW)
+            if(!fraglaunch::returned(*call)){
+                journal.flags|=unified_uncertain;store(state,journal);poison();
+            }
+#endif
             if(!unified_weapon_fire::normal_return(*call)){
                 journal.flags|=unified_uncertain;store(state,journal);poison();
             }
@@ -171,6 +212,9 @@ handabi::Reply attach(void* image) noexcept {
        transactions.load(std::memory_order_acquire)||attached_cookie.load(std::memory_order_acquire))return handabi::Reply::busy;
     const auto address=GetProcAddress(native,callabi::attach_export);
     if(!weaponhand::executable(address,native))return handabi::Reply::unavailable;
+#if defined(GEARS_PLAYGROUND_UNIFIED_MUZZLE_FIRE)
+    unified_weapon_fire::configure_hud_receiver(native);
+#endif
     auto candidate=registration();handabi::RegistrationResult receipt{};auto reply=handabi::Reply::invalid;
     const auto completed=call_attach(reinterpret_cast<callabi::Attach>(address),&candidate,&receipt,reply);
     if(!completed||(reply==handabi::Reply::accepted&&(receipt.size!=sizeof(receipt)||receipt.abi_version!=handabi::version||

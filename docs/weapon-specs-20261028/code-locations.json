@@ -1,0 +1,588 @@
+{
+  "schema": "gearsvr.offline-code-locations.v1",
+  "date": "2026-10-28",
+  "head_when_indexed": "69a8799e8c7d9f96023593e42782483ce118a908",
+  "not_atomic_checkout_snapshot": true,
+  "line_numbers_are_navigation_only": true,
+  "policy": "On implementation use symbol and compare file hash; preserve concurrent mainline edits. No redesign required for shifted line numbers.",
+  "files": [
+    {
+      "path": "tools/vr-common/weapon_reload_model.h",
+      "sha256": "ee41add094f5d1080fa3734cface2280cfee9fc97305133fdb70eba401a11b40",
+      "symbols": [
+        {
+          "name": "begin",
+          "line": 66,
+          "signature": "ReloadEvent begin(std::uint64_t weapon,ReloadPolicy policy,std::uint32_t loaded,"
+        },
+        {
+          "name": "insert",
+          "line": 113,
+          "signature": "ReloadEvent insert(std::uint64_t weapon,std::int64_t game_tick) noexcept {"
+        },
+        {
+          "name": "finish",
+          "line": 41,
+          "signature": "ReloadEvent finish(std::int64_t tick) noexcept {"
+        },
+        {
+          "name": "cycle",
+          "line": 124,
+          "signature": "ReloadEvent cycle(std::uint64_t weapon,std::int64_t game_tick,MechanismAction action) noexcept {"
+        },
+        {
+          "name": "cancel",
+          "line": 140,
+          "signature": "ReloadEvent cancel(std::uint64_t weapon) noexcept {"
+        }
+      ]
+    },
+    {
+      "path": "tools/vr-common/weapon_hammerburst_reload.h",
+      "sha256": "3890f5088eb8c31ab9bb733cbafc148d1ef213d4bdc2508239d71c773cf24c3c",
+      "symbols": [
+        {
+          "name": "begin_r3",
+          "line": 141,
+          "signature": "HammerburstReloadEvent begin_r3(HammerburstReloadStart const& start) noexcept {"
+        },
+        {
+          "name": "confirm_latch_open",
+          "line": 168,
+          "signature": "HammerburstReloadEvent confirm_latch_open(HammerburstReloadStamp const& stamp,"
+        },
+        {
+          "name": "insert_magazine",
+          "line": 199,
+          "signature": "HammerburstReloadEvent insert_magazine(HammerburstReloadStamp const& stamp,"
+        },
+        {
+          "name": "confirm_latch_closed",
+          "line": 210,
+          "signature": "HammerburstReloadEvent confirm_latch_closed(HammerburstReloadStamp const& stamp,"
+        }
+      ]
+    },
+    {
+      "path": "tools/vr-common/weapon_gnasher_mechanics.h",
+      "sha256": "612a70554edd308d205f521a180240651ab532413965a648f4db4593bc29cb14",
+      "symbols": [
+        {
+          "name": "begin_reload",
+          "line": 292,
+          "signature": "GnasherMechanicalDecision begin_reload(GnasherIdentity const& identity,"
+        },
+        {
+          "name": "acknowledge_inventory",
+          "line": 330,
+          "signature": "GnasherMechanicalDecision acknowledge_inventory(GnasherInventoryReceipt const& receipt) noexcept {"
+        },
+        {
+          "name": "observe",
+          "line": 382,
+          "signature": "GnasherMechanicalDecision observe(GnasherMechanicalSample const& sample) noexcept {"
+        },
+        {
+          "name": "acknowledge_cycle",
+          "line": 367,
+          "signature": "GnasherMechanicalDecision acknowledge_cycle(GnasherCycleReceipt const& receipt,"
+        }
+      ]
+    },
+    {
+      "path": "tools/vr-common/weapon_longshot_reload.h",
+      "sha256": "5e6163ef0dec632cc4479813f2a53fe84826e0142515f7d2c96ecf27596622a1",
+      "symbols": [
+        {
+          "name": "begin_r3",
+          "line": 204,
+          "signature": "LongshotReloadEvent begin_r3(LongshotReloadStart const& start,std::int64_t now_ns) noexcept {"
+        },
+        {
+          "name": "complete_step",
+          "line": 263,
+          "signature": "LongshotReloadEvent complete_step(LongshotReloadStamp const& s,LongshotStepReceipt const& r,"
+        },
+        {
+          "name": "acknowledge_inventory",
+          "line": 284,
+          "signature": "LongshotReloadEvent acknowledge_inventory(LongshotReloadStamp const& s,"
+        },
+        {
+          "name": "acknowledge_completion",
+          "line": 307,
+          "signature": "LongshotReloadEvent acknowledge_completion(LongshotReloadStamp const& s,"
+        }
+      ]
+    },
+    {
+      "path": "tools/vr-common/weapon_snub_reload.h",
+      "sha256": "03e8200b5d1e6e0bc7be3bd7a07a0dfab49cbf4eb25bf1153aa0d268ec84cacd",
+      "symbols": [
+        {
+          "name": "begin_r3",
+          "line": 195,
+          "signature": "SnubReloadEvent begin_r3(SnubReloadStart const& s) noexcept {"
+        },
+        {
+          "name": "confirm_ejection",
+          "line": 221,
+          "signature": "SnubReloadEvent confirm_ejection(SnubReloadStamp const& s,"
+        },
+        {
+          "name": "insert_magazine",
+          "line": 248,
+          "signature": "SnubReloadEvent insert_magazine(SnubReloadStamp const& s,"
+        },
+        {
+          "name": "move_original_parts",
+          "line": 257,
+          "signature": "SnubReloadEvent move_original_parts(SnubReloadStamp const& s,"
+        }
+      ]
+    },
+    {
+      "path": "tools/vr-common/weapon_boltok_reload.h",
+      "sha256": "7ad57e50051e99331941a485f0ee809c152374baa50d070fbe75fcecc8080cd9",
+      "symbols": [
+        {
+          "name": "begin_r3",
+          "line": 318,
+          "signature": "BoltokReloadEvent begin_r3(BoltokReloadStart const& s,std::int64_t now) noexcept {"
+        },
+        {
+          "name": "advance",
+          "line": 263,
+          "signature": "BoltokReloadEvent advance() noexcept {"
+        },
+        {
+          "name": "insert_ammunition",
+          "line": 370,
+          "signature": "BoltokReloadEvent insert_ammunition(BoltokReloadStamp const& s,BoltokInsertionReceipt const& r,"
+        },
+        {
+          "name": "acknowledge_inventory",
+          "line": 383,
+          "signature": "BoltokReloadEvent acknowledge_inventory(BoltokReloadStamp const& s,BoltokOriginalReceipt const& r,"
+        }
+      ]
+    },
+    {
+      "path": "tools/vr-common/weapon_boomshot_interaction.h",
+      "sha256": "80d69c59b7ff743a8441be6e5f73f545da9ac5480fc858f7f711b5ab983a7eeb",
+      "symbols": [
+        {
+          "name": "begin_r3",
+          "line": 336,
+          "signature": "BoomshotEvent begin_r3(BoomshotFrame const& f,BoomshotReloadStart const& start) noexcept {"
+        },
+        {
+          "name": "insert_ammunition",
+          "line": 386,
+          "signature": "BoomshotEvent insert_ammunition(BoomshotFrame const& f,BoomshotInsertionReceipt const& r) noexcept {"
+        },
+        {
+          "name": "acknowledge_inventory",
+          "line": 398,
+          "signature": "BoomshotEvent acknowledge_inventory(BoomshotOriginalReceipt const& r) noexcept {"
+        },
+        {
+          "name": "acknowledge_completion",
+          "line": 415,
+          "signature": "BoomshotEvent acknowledge_completion(BoomshotOriginalReceipt const& r) noexcept {"
+        }
+      ]
+    },
+    {
+      "path": "tools/vr-common/weapon_torque_bow_interaction.h",
+      "sha256": "8fda03a5fe25209ad18b1070b91e94dffe1a646657275405c8a85e0f3e285340",
+      "symbols": [
+        {
+          "name": "begin_r3",
+          "line": 333,
+          "signature": "TorqueBowEvent begin_r3(TorqueBowReloadStart const& s) noexcept {"
+        },
+        {
+          "name": "trigger",
+          "line": 377,
+          "signature": "TorqueBowEvent trigger(TorqueBowStamp const& s,TorqueBowTriggerEdge const& e) noexcept {"
+        },
+        {
+          "name": "request_abort",
+          "line": 216,
+          "signature": "TorqueBowEvent request_abort() noexcept {"
+        },
+        {
+          "name": "take_request",
+          "line": 279,
+          "signature": "bool take_request(TorqueBowRequest& out,std::int64_t now_ns) noexcept {"
+        },
+        {
+          "name": "acknowledge",
+          "line": 413,
+          "signature": "TorqueBowEvent acknowledge(TorqueBowActionReceipt const& r) noexcept {"
+        }
+      ]
+    },
+    {
+      "path": "tools/vr-common/weapon_hammer_of_dawn_interaction.h",
+      "sha256": "9dab089d831b5f580adfdb6916b62648064b5c8455d2f60d72410a54321c5e11",
+      "symbols": [
+        {
+          "name": "observe",
+          "line": 288,
+          "signature": "HammerOfDawnEvent observe(HammerOfDawnSample const& s) noexcept {"
+        },
+        {
+          "name": "begin_r3",
+          "line": 379,
+          "signature": "HammerOfDawnEvent begin_r3(HammerOfDawnStamp const& s,std::uint64_t edge_serial) noexcept {"
+        },
+        {
+          "name": "take_request",
+          "line": 385,
+          "signature": "bool take_request(HammerOfDawnRequest& out,std::int64_t ns) noexcept {"
+        },
+        {
+          "name": "acknowledge",
+          "line": 397,
+          "signature": "HammerOfDawnEvent acknowledge(HammerOfDawnReceipt const& r) noexcept {"
+        }
+      ]
+    },
+    {
+      "path": "tools/vr-common/weapon_troika_interaction.h",
+      "sha256": "062a8ca8e941e98046bc6b89568d1de86d2f26540d32afa5635a2e3715f91786",
+      "symbols": [
+        {
+          "name": "edge",
+          "line": 392,
+          "signature": "TroikaEvent edge(TroikaStamp const& s,TroikaEdge const& e) noexcept {"
+        },
+        {
+          "name": "update_aim",
+          "line": 420,
+          "signature": "TroikaEvent update_aim(TroikaStamp const& s) noexcept {"
+        },
+        {
+          "name": "take_request",
+          "line": 424,
+          "signature": "bool take_request(TroikaRequest& out,std::int64_t ns) noexcept {"
+        },
+        {
+          "name": "acknowledge",
+          "line": 445,
+          "signature": "TroikaEvent acknowledge(TroikaReceipt const& r) noexcept {"
+        }
+      ]
+    },
+    {
+      "path": "tools/vr-common/weapon_bolo_grenade_interaction.h",
+      "sha256": "572c82e3c0c7e8fb16749ec0b31d1b132b9b2609f9a623723beb01f045320a16",
+      "symbols": [
+        {
+          "name": "bind",
+          "line": 276,
+          "signature": "bool bind(BoloInstanceConfig const& config,BoloInventory const& inventory) noexcept {"
+        },
+        {
+          "name": "take_request",
+          "line": 293,
+          "signature": "std::optional<BoloRequest> take_request() noexcept {"
+        },
+        {
+          "name": "cancel",
+          "line": 300,
+          "signature": "BoloEvent cancel() noexcept {"
+        },
+        {
+          "name": "acknowledge",
+          "line": 406,
+          "signature": "BoloEvent acknowledge(BoloOriginalReceipt const& r) noexcept {"
+        }
+      ]
+    },
+    {
+      "path": "tools/vr-common/weapon_smoke_grenade_interaction.h",
+      "sha256": "424b8c5c0d4739ca3f556cfd6247f127674bcfbbb9a24ee4780347388bbaf6be",
+      "symbols": [
+        {
+          "name": "bind",
+          "line": 302,
+          "signature": "bool bind(SmokeInstanceConfig const& config,SmokeInventory const& inventory) noexcept {"
+        },
+        {
+          "name": "take_request",
+          "line": 320,
+          "signature": "std::optional<SmokeRequest> take_request() noexcept {"
+        },
+        {
+          "name": "cancel",
+          "line": 327,
+          "signature": "SmokeEvent cancel() noexcept {"
+        },
+        {
+          "name": "acknowledge",
+          "line": 431,
+          "signature": "SmokeEvent acknowledge(SmokeOriginalReceipt const& r) noexcept {"
+        }
+      ]
+    },
+    {
+      "path": "tools/vr-common/grenade_throw.h",
+      "sha256": "8a52680f72d2eed8c10ba1599dfcd5c5abbc98d7dada4b65cf46016104688e47",
+      "symbols": [
+        {
+          "name": "grenade_world_launch",
+          "line": 48,
+          "signature": "inline bool grenade_world_launch(GrenadeThrowSolution const& tracked,"
+        },
+        {
+          "name": "solve",
+          "line": 115,
+          "signature": "std::optional<GrenadeThrowSolution> solve(GrenadeThrowConfig const& config) const noexcept {"
+        },
+        {
+          "name": "begin",
+          "line": 147,
+          "signature": "bool begin(std::uint64_t weapon,std::uint64_t world,unsigned hand,"
+        }
+      ]
+    },
+    {
+      "path": "tools/playground/weapon_equipment_backend.inl",
+      "sha256": "cda743055113d3e9aa561f552bd5f8fa68bf53233e67766e58f928173bdfd8c2",
+      "symbols": [
+        {
+          "name": "current",
+          "line": 30,
+          "signature": "bool current(void*,abi::Frame const& frame) noexcept {"
+        },
+        {
+          "name": "tick",
+          "line": 182,
+          "signature": "void tick(uptr pc) noexcept {"
+        },
+        {
+          "name": "reset_after_drain",
+          "line": 222,
+          "signature": "void reset_after_drain() noexcept {"
+        }
+      ]
+    },
+    {
+      "path": "tools/playground/weapon_equipment_rig.inl",
+      "sha256": "934d0a6d3df903cbed4fefbeb4c4e5957f763c176f0f86dcacca9b35bdfcf118",
+      "symbols": [
+        {
+          "name": "acquire",
+          "line": 16,
+          "signature": "Result acquire(hand::Frame const& source,rig::Frame& out) noexcept {"
+        },
+        {
+          "name": "tick",
+          "line": 46,
+          "signature": "void tick(hand::Frame const& source) noexcept {"
+        }
+      ]
+    },
+    {
+      "path": "tools/playground/weapon_hand_client.inl",
+      "sha256": "f442d7d8c62a5642ca4c2163e2f9726d2025ff3d9c0652af986d07ec57c53518",
+      "symbols": [
+        {
+          "name": "observe",
+          "line": 112,
+          "signature": "bool observe(void*,abi::Frame const& f,std::int64_t,abi::GripGameState& out) noexcept {"
+        },
+        {
+          "name": "equipment_hold_committed",
+          "line": 195,
+          "signature": "void equipment_hold_committed(uptr pc,gears_weapon::EquipmentSnapshot const& game) noexcept {"
+        }
+      ]
+    },
+    {
+      "path": "tools/playground/weapon_action_entry.inl",
+      "sha256": "4325d363c0f8571d5c03450cf37d57c82757115298e0ce86dc1db04af8433b0e",
+      "symbols": [
+        {
+          "name": "prepare",
+          "line": 118,
+          "signature": "inline void prepare(Entry& entry,Source source,uptr object,uptr function,void* params,bool hand_self=false,bool stow_self=false){"
+        },
+        {
+          "name": "invoke_owned",
+          "line": 299,
+          "signature": "inline bool invoke_owned(Request* request){"
+        },
+        {
+          "name": "process_event",
+          "line": 334,
+          "signature": "inline void process_event(uptr object,uptr function,void* params){"
+        }
+      ]
+    },
+    {
+      "path": "tools/playground/weapon_call_subscriber.inl",
+      "sha256": "6fb4f83bb4e6e4da994a818394b747b6cf7663cc197e013824e1506b9b87ef51",
+      "symbols": [
+        {
+          "name": "begin",
+          "line": 56,
+          "signature": "void __cdecl begin(void* context,callabi::Invocation const* call,callabi::State* state) noexcept {"
+        },
+        {
+          "name": "cleanup",
+          "line": 94,
+          "signature": "bool cleanup(Journal& journal,callabi::State* state) noexcept {"
+        }
+      ]
+    },
+    {
+      "path": "tools/playground/weapon_unified_fire.inl",
+      "sha256": "c99afa7554339f55b518a1af5223be2c9aba57809c0d201845b52f87f787899e",
+      "symbols": [
+        {
+          "name": "prepare_current",
+          "line": 154,
+          "signature": "bool prepare_current(hand::Frame const& frame,hand::GripGameState const& game) noexcept {"
+        },
+        {
+          "name": "typed_result",
+          "line": 317,
+          "signature": "bool typed_result(callabi::Invocation const& call,MuzzleSample const& sample,ReturnSignature& out) noexcept {"
+        },
+        {
+          "name": "begin",
+          "line": 410,
+          "signature": "void begin(callabi::Invocation const& call,shot::Token const& scope) noexcept {"
+        },
+        {
+          "name": "normal_return",
+          "line": 497,
+          "signature": "bool normal_return(callabi::Invocation const& call) noexcept {"
+        },
+        {
+          "name": "cleanup",
+          "line": 510,
+          "signature": "bool cleanup(callabi::Invocation const& call,shot::Token const& scope) noexcept {"
+        }
+      ]
+    },
+    {
+      "path": "tools/playground/vr_lancer_reload_hold.inl",
+      "sha256": "b9c9e211fe312af40715fc252b07c1024c3b962805a7e2ccae49195e84f2b9ee",
+      "symbols": [
+        {
+          "name": "lancer_clear_timer",
+          "line": 68,
+          "signature": "bool lancer_clear_timer(uptr weapon,Name timer){"
+        },
+        {
+          "name": "lancer_set_fallback",
+          "line": 74,
+          "signature": "bool lancer_set_fallback(uptr weapon,Name timer){"
+        },
+        {
+          "name": "lancer_finish_now",
+          "line": 81,
+          "signature": "bool lancer_finish_now(uptr weapon,uptr function){"
+        },
+        {
+          "name": "lancer_refresh",
+          "line": 138,
+          "signature": "void lancer_refresh(uptr pc,gears_weapon::EquipmentSnapshot const& game){"
+        }
+      ]
+    },
+    {
+      "path": "tools/playground/weapon_lancer_r2_native.inl",
+      "sha256": "e1e5e09da2c744b00fe2295f552549aee9f14c904dada1f705aca0b2baf118f9",
+      "symbols": [
+        {
+          "name": "tick",
+          "line": 215,
+          "signature": "void tick(uptr pc) noexcept {"
+        },
+        {
+          "name": "yield_for_native_equipment",
+          "line": 359,
+          "signature": "bool yield_for_native_equipment(wh::Frame const& frame) noexcept {"
+        }
+      ]
+    },
+    {
+      "path": "tools/playground/weapon_equipment_domain.inl",
+      "sha256": "bda593739036e1d2462c4650b439b52cf8dc59e2fcf61ee7c9b23d3358842d44",
+      "symbols": [
+        {
+          "name": "domain_ready",
+          "line": 4,
+          "signature": "inline bool domain_ready() noexcept {"
+        }
+      ]
+    },
+    {
+      "path": "tools/playground/weapon_lancer_component_probe.inl",
+      "sha256": "2360295e41622a7ab77d4684f78a33e72a80c9f3fa10639331e7fcf0be2f058f",
+      "symbols": [
+        {
+          "name": "tick",
+          "line": 15,
+          "signature": "void tick(hand::Frame const& f,hand::GripGameState const& copied_game,std::int64_t copy_begin_ns) noexcept {"
+        }
+      ]
+    },
+    {
+      "path": "tools/vr-common/weapon_lancer_feed_anchor.h",
+      "sha256": "d09f7aa4056269132b22b935a78850e221d5f5e4745539887d157a20bc111428",
+      "symbols": []
+    },
+    {
+      "path": "tools/vr-common/weapon_lancer_insertion.h",
+      "sha256": "7ea92078c6739ebebc8468ce8a27c69324477b9b0e9a8cbf111dc6c4dcd266f7",
+      "symbols": []
+    },
+    {
+      "path": "tools/vr-common/weapon_lancer_magazine_pose.h",
+      "sha256": "a1bdb7e9705586c1c1724fad1978ab3c4d223b02d45270599797ca3aa0bbc978",
+      "symbols": []
+    },
+    {
+      "path": "tools/vr-common/weapon_action_boundary.h",
+      "sha256": "794635fa91f8104d90dd8c6776d40570229131f455bd196d5a1ee8891e653cfa",
+      "symbols": []
+    },
+    {
+      "path": "tools/vr-common/weapon_call_boundary.h",
+      "sha256": "d3ca6b107c1a68e66bd0c957e88000d1eed09aea94dc459b527b4b8c2dddb464",
+      "symbols": []
+    },
+    {
+      "path": "tools/vr-common/left_hand_interaction_owner.h",
+      "sha256": "dcab11858739dfe3526f2869697f27f71eaa5c0427b8d1dc46e2495c04640c5c",
+      "symbols": []
+    },
+    {
+      "path": "tools/playground/weapon_grip_damage_metadata.inl",
+      "sha256": "5ac9a29a1ebc8c3461bda86c65e4f714fad6cfe6081dcd4d186856156e2feecd",
+      "symbols": []
+    },
+    {
+      "path": "tools/playground/weapon_metadata_parse.h",
+      "sha256": "bf2bbfc2b9d6c86d169265a280f250a2981b26d03482dd3fc4a11f0ae02df7eb",
+      "symbols": []
+    },
+    {
+      "path": "tools/playground/playground.cpp",
+      "sha256": "09b82d8be83484bb65e8c35b31450b40176ddcc84fec863482ea6d7b892ec035",
+      "symbols": []
+    },
+    {
+      "path": "tools/playground/CMakeLists.txt",
+      "sha256": "f77ad2a1906766b8b830fc3961d1f1df7b9a74fbcb8f8a074ba43df4c7304c38",
+      "symbols": []
+    }
+  ]
+}

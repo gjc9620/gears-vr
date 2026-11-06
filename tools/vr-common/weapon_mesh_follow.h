@@ -42,6 +42,17 @@ public:
     void reset() noexcept {bound_=left_was_down_=support_latched_=false;mesh_scale_=1;}
     bool bound() const noexcept {return bound_;}
     bool support_latched() const noexcept {return support_latched_;}
+    // Same model transform used by the visual follower, including the bound
+    // uniform asset scale. Contact/insertion must not use an old animated pose.
+    bool model_matrix(gears_vr::Viewpoint const& right,std::array<float,16>& out) const noexcept {
+        out={};gears_vr::Viewpoint solved{};
+        if(!solve(right,solved))return false;
+        const auto basis=gears_vr::ue_matrix(solved.rotation);
+        for(int axis=0;axis<3;++axis)for(int world=0;world<3;++world)
+            out[axis*4+world]=float(basis[world][axis]*mesh_scale_);
+        out[12]=float(solved.position.x);out[13]=float(solved.position.y);out[14]=float(solved.position.z);out[15]=1;
+        return true;
+    }
     bool bind(gears_vr::Viewpoint const& right_hand,
               std::array<float,16> const& mesh_local_to_world,
               bool left_down_at_bind=false) noexcept {
@@ -84,6 +95,19 @@ public:
         mesh_scale_=(scale[0]+scale[1]+scale[2])/3;
         left_was_down_=left_down_at_bind;
         bound_=true;return true;
+    }
+    // Keep the observed mesh-local contact at the controller, but replace
+    // pickup-animation orientation with the asset's authored held relation.
+    // This is contact preservation, not physical grip calibration.
+    bool bind_oriented(gears_vr::Viewpoint const& right_hand,
+                       std::array<float,16> const& mesh_local_to_world,
+                       gears_vr::Matrix const& mesh_in_hand) noexcept {
+        if(!rigid_basis(mesh_in_hand)||!bind(right_hand,mesh_local_to_world))return false;
+        const auto mesh_local_offset=gears_vr::transform(
+            gears_vr::transpose(hand_to_mesh_rotation_),hand_to_mesh_);
+        hand_to_mesh_=gears_vr::transform(mesh_in_hand,mesh_local_offset);
+        hand_to_mesh_rotation_=mesh_in_hand;
+        return true;
     }
     // A measured weapon grip replaces the first-frame trial offset. The
     // original hand basis is measured in the gun mesh; the controller-to-palm

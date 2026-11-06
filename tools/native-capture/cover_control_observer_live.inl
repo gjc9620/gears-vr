@@ -46,6 +46,14 @@ bool arm_policy_enabled() noexcept {
 #endif
 }
 std::atomic<uint64_t> arm_alpha_applied{},arm_alpha_rejected{};
+// Existing summary diagnostics only: distinguish rejected transition weights
+// from identity/scope failures without any new engine read or permission.
+std::array<std::array<std::atomic<uint64_t>,32>,8> arm_alpha_reasons{};
+std::array<std::atomic<uint64_t>,4> arm_alpha_weight_classes{};
+std::atomic<uint32_t> arm_alpha_last_rejected_weight{};
+std::array<std::atomic<uint64_t>,16> arm_alpha_token_compute_failures{},arm_alpha_token_weight_failures{};
+std::array<std::atomic<uint64_t>,4> arm_alpha_token_roles{};
+std::array<std::atomic<uint64_t>,8> arm_node_state_failures{};
 struct Compose {
     phase::Scope const* address{};phase::Scope const* end_address{};uint64_t end_invocation{};phase::Scope scope{};uint64_t outer_tick{},ordinal{},last_ordinal{};uintptr_t last_node{};
     pose::Identity last_identity{};unsigned last_row{};bool admitted{},nested{},last_valid{},continuous{};
@@ -94,21 +102,23 @@ bool current(Compose const& frame){return frame.admitted&&phase::thread.ticks==1
 #endif
     own_entries()&&episode_current(frame)&&phase::current(frame.scope.owner);}
 bool node_state(Compose const& frame,uintptr_t address,NodeState& state){
-    if(!current(frame))return false;std::unique_lock<std::mutex> lock(binding::mutex,std::try_to_lock);if(!lock.owns_lock()||!binding::metadata_current())return false;
+    const auto deny=[](unsigned reason){++arm_node_state_failures[reason];return false;};
+    if(!current(frame))return deny(1);std::unique_lock<std::mutex> lock(binding::mutex,std::try_to_lock);
+    if(!lock.owns_lock())return deny(2);if(!binding::metadata_current())return deny(3);
     gears_anchor::Identity node_id{},root_id{},again_id{};uintptr_t tree_again{},tree_field{},parameters{};
     if(!pose::add(frame.scope.owner.key.mesh.address,0x230,tree_field)||!pose::add(address,0x70,parameters)||
         !read(state.tree,tree_field)||!state.tree||!binding::identity(state.tree,root_id,true,true)||
         !binding::identity(address,node_id,true,true)||node_id.outer!=state.tree||!read(state.vtable,address)||!state.vtable||
-        !safe_copy(state.parameters.data(),reinterpret_cast<void const*>(parameters),state.parameters.size()))return false;
+        !safe_copy(state.parameters.data(),reinterpret_cast<void const*>(parameters),state.parameters.size()))return deny(4);
     pose::Request request{};request.owner=frame.scope.owner.key;auto reader=[](void* out,void const* in,size_t n){return safe_copy(out,in,n);};
     if(!pose::metadata(reader,request,state.metadata)||!pose::header_valid(state.metadata.reference,68)||!pose::header_valid(state.metadata.local,32)||
         !pose::header_valid(state.metadata.space,64)||!pose::header_valid(state.metadata.desired,1,true)||
-        state.metadata.reference.count!=state.metadata.local.count||state.metadata.reference.count!=state.metadata.space.count||!pose::finite(state.metadata.component))return false;
+        state.metadata.reference.count!=state.metadata.local.count||state.metadata.reference.count!=state.metadata.space.count||!pose::finite(state.metadata.component))return deny(5);
     constexpr unsigned slots[]={0x230,0x238,0x240,0x248,0x278};
     for(unsigned i=0;i<5;++i){uintptr_t slot{};if(!pose::add(state.vtable,slots[i],slot)||!read(state.methods[i].target,slot)||!pose::span(state.methods[i].target,32)||
-        !safe_copy(state.methods[i].current_prefix.data(),reinterpret_cast<void const*>(state.methods[i].target),32))return false;}
+        !safe_copy(state.methods[i].current_prefix.data(),reinterpret_cast<void const*>(state.methods[i].target),32))return deny(6);}
     if(!binding::identity(address,again_id,true,true)||!binding::same(node_id,again_id)||!read(tree_again,tree_field)||tree_again!=state.tree||
-        !binding::identity(state.tree,again_id,true,true)||!binding::same(root_id,again_id)||!binding::metadata_current())return false;
+        !binding::identity(state.tree,again_id,true,true)||!binding::same(root_id,again_id)||!binding::metadata_current())return deny(7);
     state.node=phase::compact(node_id);state.root=phase::compact(root_id);return true;
 }
 bool ranges(Row const& row,pose::ArrayHeader const& output){
@@ -271,6 +281,13 @@ void arbitrate_arm_alpha(Call const& call,pose::CallPacket& packet,bool returned
     diagnostic.flags=(adjacent?1u:0u)|(token?2u:0u)|4u|(returned?8u:0u);
     auto event=[&](gears_body_c0_arm_alpha::Stage stage,unsigned reason=0u)noexcept{
         diagnostic.stage=unsigned(stage);diagnostic.reason=reason;
+        if(reason&&unsigned(stage)<arm_alpha_reasons.size()&&reason<32){
+            ++arm_alpha_reasons[unsigned(stage)][reason];
+            float original{};std::memcpy(&original,&diagnostic.original_alpha_bits,4);
+            ++arm_alpha_weight_classes[original==1.f?0u:original==0.f?1u:
+                std::isfinite(original)&&original>0.f&&original<1.f?2u:3u];
+            arm_alpha_last_rejected_weight=diagnostic.original_alpha_bits;
+        }
 #if defined(GEARS_FULL_BODY_C0_NATIVE_BACKEND) && GEARS_FULL_BODY_C0_NATIVE_BACKEND
         full_body_c0_native_live::arm_alpha_diagnostic(diagnostic);
 #endif
@@ -282,7 +299,13 @@ void arbitrate_arm_alpha(Call const& call,pose::CallPacket& packet,bool returned
     unsigned denied{};
     if(!token)denied=1;else if(!arm_policy_enabled())denied=2;else if(stopping.load())denied=3;
     else if(failed.load())denied=4;else if(in_flight.load()!=1)denied=5;else if(!returned)denied=6;
-    if(denied){event(gears_body_c0_arm_alpha::Stage::token,denied);++arm_alpha_rejected;return;}
+    if(denied){
+        if(denied==1){
+            if(last.failure<arm_alpha_token_compute_failures.size())++arm_alpha_token_compute_failures[last.failure];
+            if(unsigned(call.row.failure)<arm_alpha_token_weight_failures.size())++arm_alpha_token_weight_failures[unsigned(call.row.failure)];
+            if(adjacent&&last.kind<2&&(last.raw_rdx==11||last.raw_rdx==35))++arm_alpha_token_roles[(last.raw_rdx==35?2:0)+last.kind];
+        }
+        event(gears_body_c0_arm_alpha::Stage::token,denied);++arm_alpha_rejected;return;}
     auto& r=arm_alpha_workspace.record;r={};r.weight=call.row;r.compute=frame.live_compute;
     r.linked_source=true;r.original_returned=returned;r.original_return_packet=packet;
     const auto sampled=post_weight_scale::sample(frame,call,r,true);
@@ -419,7 +442,16 @@ bool configure(wchar_t const* ini,FILE* file){wchar_t value[16]{};GetPrivateProf
 }
 void request_drain(){stopping=true;clear_arms();future_g::request_drain();}
 unsigned pending_count(){const uint64_t sum=uint64_t(in_flight.load())+compose_in_flight.load()+future_g::pending_count();return sum>UINT_MAX?UINT_MAX:unsigned(sum);}
-void summary(FILE* file){std::lock_guard<std::mutex> lock(mutex);if(file)fprintf(file,"cover_control_reserve_stage=%s cover_control_reserve_rva=0x%llx cover_control_reserve_mh_status=%d cover_control_enabled=%u cover_control_certified=%u cover_control_reserved_mask=%u cover_control_calls=%llu cover_control_inflight=%u cover_control_compose_inflight=%u cover_control_rows=%u cover_control_episode=%u cover_control_dropped=%llu cover_control_rejected=%llu cover_control_nested=%llu cover_control_protocol=%llu cover_control_failed=%u cover_control_file_written=%u cover_control_file_error=%lu ",reserve_stage,static_cast<unsigned long long>(reserve_rva),reserve_mh_status,unsigned(enabled),unsigned(certified),reserved_mask,calls.load(),in_flight.load(),compose_in_flight.load(),row_count,selected_episode,dropped.load(),rejected.load(),nested_calls.load(),protocol_errors.load(),unsigned(failed.load()),unsigned(file_written.load()),file_error.load());if(file)fprintf(file,"arm_alpha_policy_requested=%u arm_alpha_behavior_changes=%llu arm_alpha_rejected=%llu ",unsigned(arm_policy_enabled()),arm_alpha_applied.load(),arm_alpha_rejected.load());future_g::summary(file);}
+void summary(FILE* file){std::lock_guard<std::mutex> lock(mutex);if(file)fprintf(file,"cover_control_reserve_stage=%s cover_control_reserve_rva=0x%llx cover_control_reserve_mh_status=%d cover_control_enabled=%u cover_control_certified=%u cover_control_reserved_mask=%u cover_control_calls=%llu cover_control_inflight=%u cover_control_compose_inflight=%u cover_control_rows=%u cover_control_episode=%u cover_control_dropped=%llu cover_control_rejected=%llu cover_control_nested=%llu cover_control_protocol=%llu cover_control_failed=%u cover_control_file_written=%u cover_control_file_error=%lu ",reserve_stage,static_cast<unsigned long long>(reserve_rva),reserve_mh_status,unsigned(enabled),unsigned(certified),reserved_mask,calls.load(),in_flight.load(),compose_in_flight.load(),row_count,selected_episode,dropped.load(),rejected.load(),nested_calls.load(),protocol_errors.load(),unsigned(failed.load()),unsigned(file_written.load()),file_error.load());if(file)fprintf(file,"arm_alpha_policy_requested=%u arm_alpha_behavior_changes=%llu arm_alpha_rejected=%llu ",unsigned(arm_policy_enabled()),arm_alpha_applied.load(),arm_alpha_rejected.load());
+    if(file){for(unsigned s=0;s<arm_alpha_reasons.size();++s)for(unsigned r=1;r<32;++r)
+        if(auto n=arm_alpha_reasons[s][r].load())fprintf(file,"arm_alpha_reject_stage_%u_reason_%u=%llu ",s,r,n);
+        for(unsigned i=0;i<arm_alpha_weight_classes.size();++i)fprintf(file,"arm_alpha_reject_weight_class_%u=%llu ",i,arm_alpha_weight_classes[i].load());
+        fprintf(file,"arm_alpha_last_rejected_weight=%08x ",arm_alpha_last_rejected_weight.load());
+        for(unsigned i=0;i<16;++i){if(auto n=arm_alpha_token_compute_failures[i].load())fprintf(file,"arm_alpha_token_compute_failure_%u=%llu ",i,n);
+            if(auto n=arm_alpha_token_weight_failures[i].load())fprintf(file,"arm_alpha_token_weight_failure_%u=%llu ",i,n);}
+        for(unsigned i=0;i<4;++i)fprintf(file,"arm_alpha_token_role_%u=%llu ",i,arm_alpha_token_roles[i].load());
+        for(unsigned i=0;i<8;++i)if(auto n=arm_node_state_failures[i].load())fprintf(file,"arm_node_state_failure_%u=%llu ",i,n);}
+    future_g::summary(file);}
 void print(FILE* file,bool disabled){
     future_g::print(file,disabled);post_weight_scale::print(file,disabled);
     if(enabled&&disabled&&stopping.load()&&!pending_count()&&!file_attempted.exchange(true)){wchar_t path[MAX_PATH]{};Header header{};memcpy(header.magic,"CCTRL001",8);

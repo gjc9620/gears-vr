@@ -1,4 +1,6 @@
 #include "weapon_mesh_follow.h"
+#include "weapon_lancer_held_contact.h"
+#include "weapon_frag_grasp.h"
 #include <cassert>
 #include <cmath>
 #include <cstdio>
@@ -114,5 +116,76 @@ int main(){
     assert(!invalid_mount.bind_mount(grip,mesh_matrix(gun_angle,gun_origin),
         lancer_palm,original_hand,reflected));
     assert(!invalid_mount.bound());
-    std::puts("weapon mesh follow calibration and invalid geometry gates passed");
+    // Different pickup animation rotations must not determine held aim.
+    const auto authored=ue_matrix({0,-quarter_turn,0});
+    for(auto animation : {Rotator{0,0,0},Rotator{.9,.4,-.7}}){
+        WeaponMeshFollow oriented;
+        const auto pickup_basis=ue_matrix(animation);
+        const Vector mount_contact{2,3,-4};
+        const auto contact_world=transform(pickup_basis,mount_contact);
+        const Vector origin{first.position.x-contact_world.x,
+            first.position.y-contact_world.y,first.position.z-contact_world.z};
+        assert(oriented.bind_oriented(first,mesh_matrix(animation,origin),authored));
+        assert(oriented.solve(moved,actual));
+        const auto actual_basis=ue_matrix(actual.rotation);
+        const auto expected_basis=multiply(ue_matrix(moved.rotation),authored);
+        for(int i=0;i<3;++i)for(int j=0;j<3;++j)
+            assert(near(actual_basis[i][j],expected_basis[i][j]));
+        const auto offset=transform(actual_basis,mount_contact);
+        assert(near(actual.position.x+offset.x,moved.position.x));
+        assert(near(actual.position.y+offset.y,moved.position.y));
+        assert(near(actual.position.z+offset.z,moved.position.z));
+        std::array<float,16> contact_matrix{};
+        assert(oriented.model_matrix(moved,contact_matrix));
+        for(int axis=0;axis<3;++axis)for(int world=0;world<3;++world)
+            assert(std::abs(contact_matrix[axis*4+world]-actual_basis[world][axis])<1e-5);
+        assert(std::abs(contact_matrix[12]-actual.position.x)<1e-4);
+        assert(std::abs(contact_matrix[13]-actual.position.y)<1e-4);
+        assert(std::abs(contact_matrix[14]-actual.position.z)<1e-4);
+        assert(contact_matrix[3]==0&&contact_matrix[7]==0&&contact_matrix[11]==0&&contact_matrix[15]==1);
+        oriented.reset();
+        assert(!oriented.model_matrix(moved,contact_matrix));
+    }
+    // Regression: pickup animation position/orientation must not become a
+    // permanent Lancer hand offset. The authored palm, not the wrist origin,
+    // must coincide with the controller after any accepted pickup pose.
+    Vector authored_contact{};Matrix authored_wrist{};
+    assert(gears_weapon_lancer_contact::authored(authored_contact,authored_wrist));
+    for(auto pickup : {Rotator{0,0,0},Rotator{.9,.4,-.7}})
+    for(auto pickup_position : {Vector{110,220,330},Vector{70,180,295}}){
+        WeaponMeshFollow fixed;
+        assert(fixed.bind_mount(first,mesh_matrix(pickup,pickup_position),
+            authored_contact,authored_wrist,ue_matrix({0,0,0})));
+        for(auto target : {first,moved}){
+            Viewpoint solved{};assert(fixed.solve(target,solved));
+            const auto shift=transform(ue_matrix(solved.rotation),authored_contact);
+            assert(near(solved.position.x+shift.x,target.position.x));
+            assert(near(solved.position.y+shift.y,target.position.y));
+            assert(near(solved.position.z+shift.z,target.position.z));
+        }
+    }
+    // Frag mounts on the original handle instead of inheriting an equip
+    // animation offset. The two object scales preserve the same palm offset;
+    // no held shot/muzzle calibration is created by this visual data.
+    for(double scale:{.75,1.,1.25}){
+        gears_weapon_frag_grasp::Profile profile{};
+        assert(gears_weapon_frag_grasp::marcus115(gears_hand_authored_mount::marcus115_signature,1,100,profile,scale));
+        WeaponMeshFollow frag;const auto before=mesh_matrix({.3,.7,-.2},{80,170,260},scale);
+        assert(frag.bind_mount(first,before,profile.palm_in_mesh,profile.wrist_in_mesh,
+            rotation_matrix(profile.hand.calibration.grip_to_wrist_rotation)));
+        for(auto hand:{first,moved}){std::array<float,16> frag_matrix{};assert(frag.model_matrix(hand,frag_matrix));
+            const auto p=profile.palm_in_mesh;
+            assert(near(frag_matrix[12]+frag_matrix[0]*p.x+frag_matrix[4]*p.y+frag_matrix[8]*p.z,hand.position.x));
+            assert(near(frag_matrix[13]+frag_matrix[1]*p.x+frag_matrix[5]*p.y+frag_matrix[9]*p.z,hand.position.y));
+            assert(near(frag_matrix[14]+frag_matrix[2]*p.x+frag_matrix[6]*p.y+frag_matrix[10]*p.z,hand.position.z));
+            const auto r=hand.rotation;
+            const auto hand_q=multiply(multiply(Quaternion{0,0,std::sin(r.yaw/2),std::cos(r.yaw/2)},
+                Quaternion{0,-std::sin(r.pitch/2),0,std::cos(r.pitch/2)}),Quaternion{-std::sin(r.roll/2),0,0,std::cos(r.roll/2)});
+            Pose endpoint{hand.position,multiply(hand_q,profile.hand.calibration.grip_to_wrist_rotation)};
+            Pose recovered{};assert(gears_weapon_frag_grasp::grip_from_palm_endpoint(endpoint,recovered));
+            const auto q=rotation_matrix(recovered.orientation),frag_expected=ue_matrix(hand.rotation);
+            for(unsigned row=0;row<3;++row)for(unsigned col=0;col<3;++col)assert(near(q[row][col],frag_expected[row][col]));
+        }
+    }
+    std::puts("weapon mesh follow calibration and invalid geometry gates passed; Frag authored handle mount CPU-only");
 }

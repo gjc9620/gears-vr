@@ -8,7 +8,7 @@
 namespace gears_native_context {
 // Internal Native bookkeeping only. This ledger grants no engine operation or
 // game-field rights. Permission also needs the broker's current authenticated GT.
-enum class Kind:unsigned {scene,stereo,action,restore,callback,count};
+enum class Kind:unsigned {scene,stereo,action,restore,callback,hand_visual,count};
 struct Ticket;
 struct Ledger {
     std::array<unsigned,static_cast<unsigned>(Kind::count)> depth{};

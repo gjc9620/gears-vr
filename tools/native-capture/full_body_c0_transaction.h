@@ -119,7 +119,7 @@ class Kernel {
         for(double x:angles)if(!std::isfinite(x)||x<0||x>1e-4)return false;
         if(!std::isfinite(p.report.pelvis_projection)||p.report.pelvis_projection<0)return false;
         for(unsigned i=0;i<body::bones;++i){const auto& a=f.local[i];const auto& n=p.local[i];body::Quat q{};
-            if(!body::d::normalized({a.q[0],a.q[1],a.q[2],a.q[3]},q)||!body::d::normalized({n.q[0],n.q[1],n.q[2],n.q[3]},q)||a.scale!=1||std::memcmp(&a.scale,&n.scale,4))return false;
+            if(!body::d::normalized({a.q[0],a.q[1],a.q[2],a.q[3]},q)||!body::d::normalized({n.q[0],n.q[1],n.q[2],n.q[3]},q)||!body::d::unit_animation_scale(a.scale)||std::memcmp(&a.scale,&n.scale,4))return false;
             for(unsigned j=0;j<3;++j)if(!std::isfinite(a.translation[j])||!std::isfinite(n.translation[j]))return false;
             if(i&&std::memcmp(a.translation,n.translation,12))return false;
             if(std::memcmp(&a,&n,32))changed[i/64]|=std::uint64_t(1)<<(i%64);
@@ -158,6 +158,10 @@ public:
     explicit Kernel(std::uint64_t serial=0) noexcept:serial_(serial){};Kernel(Kernel const&)=delete;Kernel& operator=(Kernel const&)=delete;
     Kernel(Kernel&&)=delete;Kernel& operator=(Kernel&&)=delete;
     unsigned pending() const noexcept {const auto n=std::uint64_t(outstanding_.load())+active_.load()+protocol_.load();return n>UINT_MAX?UINT_MAX:unsigned(n);}
+    Mask outstanding_mask() const noexcept {
+        Mask mask{};for(unsigned i=0;i<count_;++i)if(owes(units_[i].state))include(mask,units_[i].bone*2+units_[i].half);
+        return mask; // Owned diagnostic data, never a retirement receipt.
+    }
     unsigned outstanding_fields() const noexcept{return outstanding_.load();}
     unsigned protocol_debt() const noexcept{return protocol_.load();}
     bool failed() const noexcept{return failed_.load();}

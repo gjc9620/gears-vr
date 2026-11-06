@@ -1,9 +1,11 @@
 #pragma once
 #include "../vr-common/weapon_hand_participant.h"
 #include "../vr-common/weapon_call_boundary.h"
+#include "../vr-common/weapon_hud_query_receipt.h"
 #include "../vr-common/weapon_action_gate.h"
 #include "../vr-common/weapon_main_mount_provider.h"
 #include "../vr-common/body_main_mount_provider.h"
+#include "../vr-common/committed_hand_consumer.h"
 #include "../vr-common/weapon_lancer_wrist_mount.h"
 #include "weapon_action_boundary_state.h"
 #include <atomic>
@@ -22,6 +24,7 @@
 // engine call or game-memory access. The Native Scene caller owns eligibility.
 namespace gears_weapon_hand {
 namespace call=::gears_weapon_call;
+namespace hand_visual=::gears_committed_hand_consumer;
 namespace action=::gears_weapon_action;
 namespace boundary=::gears_weapon_boundary;
 namespace boundary_state=::gears_weapon_boundary_state;
@@ -60,6 +63,7 @@ struct CallScope {
     call::Registration registration{};
     call::Invocation invocation{},notice{};
     call::State state{};
+    unsigned notice_kind{3};
 };
 static_assert(std::is_standard_layout_v<CallScope>&&std::is_trivially_copyable_v<CallScope>&&std::is_trivially_destructible_v<CallScope>);
 // Ready still requires a valid per-frame prepare. Unavailable (including an
@@ -98,6 +102,8 @@ struct BrokerBackend {
     // Fixed Native-private validator, never a callback supplied by PG or by
     // Request. Called outside mutex with exact query lifetime reserved.
     bool (*body_mount_current)(void*,body_mount::Source const&) noexcept{};
+    bool (*hand_visual_module)(void*,hand_visual::Registration const&,ModulePin) noexcept{};
+    bool (*hand_visual_notify)(void*,hand_visual::Registration const&,hand_visual::Notice const*,std::uint32_t&) noexcept{};
 };
 
 namespace weapon_broker_win32 {
@@ -288,6 +294,21 @@ inline bool body_mount_prepare(void*,body_mount::Registration const& r,body_moun
     reply=r.prepare(r.context,input,output);return true;
 #endif
 }
+inline bool hand_visual_module(void*,hand_visual::Registration const& r,ModulePin p) noexcept {
+#if defined(_WIN32)
+    std::uintptr_t image{};return p.handle&&p.module&&executable_image(reinterpret_cast<std::uintptr_t>(r.notify),image)&&image==p.module;
+#else
+    (void)r;(void)p;return false;
+#endif
+}
+inline bool hand_visual_notify(void*,hand_visual::Registration const& r,hand_visual::Notice const* n,std::uint32_t& reply) noexcept {
+#if defined(_WIN32) && defined(_MSC_VER)
+    __try {reply=unsigned(r.notify(r.context,n));return true;}
+    __except(filter(GetExceptionCode())){return false;}
+#else
+    reply=unsigned(r.notify(r.context,n));return true;
+#endif
+}
 } // namespace weapon_broker_win32
 inline BrokerBackend weapon_hand_win32_backend() noexcept {
     return {nullptr,weapon_broker_win32::pin,weapon_broker_win32::unpin,weapon_broker_win32::clock_ns,
@@ -295,15 +316,16 @@ inline BrokerBackend weapon_hand_win32_backend() noexcept {
         weapon_broker_win32::call_module,weapon_broker_win32::call_begin,weapon_broker_win32::call_returned,weapon_broker_win32::call_unwind,
         weapon_broker_win32::action_module,weapon_broker_win32::action_begin,weapon_broker_win32::action_returned,weapon_broker_win32::action_unwind,
         weapon_broker_win32::main_mount_module,weapon_broker_win32::main_mount_prepare,
-        weapon_broker_win32::body_mount_module,weapon_broker_win32::body_mount_prepare,nullptr};
+        weapon_broker_win32::body_mount_module,weapon_broker_win32::body_mount_prepare,nullptr,
+        weapon_broker_win32::hand_visual_module,weapon_broker_win32::hand_visual_notify};
 }
 
 class Broker {
     enum class State {empty,registering,active,draining,quiescent,collecting};
     struct CallbackMark {
         Broker* broker{};bool violated{},action_phase{};CallbackMark* previous{};context::Ticket ticket{};
-        explicit CallbackMark(Broker* b,bool restore=false) noexcept:broker(b),action_phase(restore),previous(current_){
-            current_=this;if(!context::enter(context::thread_ledger,ticket,restore?context::Kind::restore:context::Kind::callback))violated=true;
+        explicit CallbackMark(Broker* b,bool restore=false,bool visual=false) noexcept:broker(b),action_phase(restore||visual),previous(current_){
+            current_=this;if(!context::enter(context::thread_ledger,ticket,visual?context::Kind::hand_visual:restore?context::Kind::restore:context::Kind::callback))violated=true;
         }
         ~CallbackMark(){if(ticket.active)(void)context::leave(context::thread_ledger,ticket);current_=previous;}
     };
@@ -335,6 +357,8 @@ class Broker {
     std::atomic<bool> authorization_{},pin_retained_{};
     Registration registration_{};ModulePin pin_{};
     call::Registration call_registration_{};std::uint64_t next_call_id_{1};
+    gears_weapon_hud_receipt::Receipt hud_query_{};
+    bool hud_query_present_{},hud_query_completed_{};
     std::uint64_t next_cookie_{1},transaction_revision_{},operation_epoch_{1};
     std::uint32_t game_thread_{};unsigned normal_calls_{};
     bool published_{},cancel_registration_{},stopping_{},phase_invalid_{},invalidate_running_{},invalidate_done_{true},invalidate_failed_{};
@@ -347,6 +371,7 @@ class Broker {
     struct MainMountWork {mount::Request request{},shadow{};mount::Response response{};Frame committed{};};
     MainMountWork main_mount_work_{};
     body_mount::Registration body_mount_registration_{};bool body_mount_attached_{};std::uint64_t next_body_mount_query_{1};
+    hand_visual::Registration hand_visual_registration_{};bool hand_visual_attached_{};
     struct BodyMountWork {body_mount::Request request{},shadow{};body_mount::Response response{};Frame committed{};};
     BodyMountWork body_mount_work_{};
     inline static const body_mount::Response empty_body_mount_response_{};
@@ -461,16 +486,19 @@ class Broker {
     }
     bool body_mount_parent(body_mount::Source const& s,Frame const& f,std::int64_t now) const noexcept {
         auto const& r=s.original_scene;
+        const auto scene_ns=weapon_broker_win32::counter_ns(r.scene_qpc,r.qpc_frequency);
         // Historical old packets are compared exactly, never declared fresh.
         // The private Native validator separately authenticates the full
         // original metadata source plus the genuine new raw/capture source.
+        // V3 ages the actual GT metadata receipt, not its unchanged Scene
+        // association. V1's independent fresh-Scene checks stay unchanged.
         return frame_shape_valid(f)&&s.metadata_begin_ns>0&&s.metadata_end_ns>=s.metadata_begin_ns&&
             s.metadata_end_ns<=s.tracking.begin_ns&&now>=s.metadata_end_ns&&
             std::uint64_t(now-s.metadata_begin_ns)<=body_mount::scene_age_ns&&
-            s.metadata_begin_ns>=f.now_ns&&std::uint64_t(s.metadata_begin_ns-f.now_ns)<=body_mount::scene_age_ns&&
+            s.metadata_begin_ns>=f.now_ns&&
             r.size==sizeof r&&r.abi_version==rig::version&&r.status==rig::Status::ready&&
-            r.published_ns&&r.published_ns<=std::uint64_t(s.metadata_begin_ns)&&std::uint64_t(s.metadata_begin_ns)-r.published_ns<=body_mount::scene_age_ns&&
-            counter_fresh(r.scene_qpc,r.qpc_frequency,s.metadata_begin_ns)&&s.scene_ticket&&s.scene_cache_revision&&
+            scene_ns>0&&std::uint64_t(scene_ns)<=r.published_ns&&r.published_ns<=std::uint64_t(s.metadata_begin_ns)&&
+            s.scene_ticket&&s.scene_cache_revision&&
             s.tracking.parent_cookie==cookie_.load()&&s.tracking.thread==game_thread_&&s.basis.compose&&
             r.native.game_pid==f.key.game_pid&&r.native.game_thread==f.key.thread_id&&r.native.game_start==f.key.game_start&&
             r.native.native_started_qpc==f.key.native_started_qpc&&r.native.registration_cookie==f.key.registration_cookie&&
@@ -485,6 +513,7 @@ class Broker {
         if(raw!=unsigned(mount::Status::ready))return equal_bytes(outer,empty_body_mount_response_);
         auto const& r=outer.mount;auto const& b=q.source.basis.geometry;
         if(outer.query_id!=q.query_id||outer.hand_lifecycle!=q.hand_lifecycle||outer.action_generation!=q.action_generation||
+           !body_mount::hold_kind_valid(outer.hold_kind)||outer.reserved||
            !body_mount::same(outer.source,body_mount::source_key(q.source))||
            outer.equipment_begin_ns<=0||outer.equipment_end_ns<outer.equipment_begin_ns||now<outer.equipment_end_ns||
            r.size!=sizeof r||r.abi_version!=mount::version)return false;
@@ -578,7 +607,10 @@ class Broker {
         return stamp>0&&stamp>=f.now_ns&&stamp-f.now_ns<=100000000&&frame_active(f,stamp);
     }
     static bool proposal_valid_here(Proposal const& p,Frame const& f) noexcept {
-        if(p.size!=sizeof(Proposal)||p.abi_version!=version||!same(p.key,f.key)||!p.nonce||p.support>1||p.ammo>1||p.magazine>1||p.reserved)return false;
+        if(p.size!=sizeof(Proposal)||p.abi_version!=version||!same(p.key,f.key)||!p.nonce||p.support>1||p.ammo>1||p.magazine>1||p.magazine_observation_pending>1)return false;
+        if(p.magazine_observation_pending&&(p.support||p.ammo||p.magazine||
+           p.incumbents[0].kind!=LeaseKind::none||p.incumbents[1].kind!=LeaseKind::none||
+           !f.left_grip_down||!f.left_grip_known||!f.left_tracked))return false;
         for(auto const& lease:p.incumbents)if(!lease_valid(lease,f.key.lifecycle)||lease.kind==LeaseKind::cover)return false;
         return p.incumbents[0].kind==LeaseKind::none||p.incumbents[1].kind==LeaseKind::none||!same(p.incumbents[0],p.incumbents[1]);
     }
@@ -617,12 +649,14 @@ class Broker {
             {std::lock_guard<std::mutex> lock(mutex_);++callbacks_;++normal_calls_;counted=true;
                 if(phase_invalid_){final_invalidate_=true;invalidate_done_=false;}}
             snapshot(scope.notice,scope.invocation);bool ok{},violated{};
+            scope.notice_kind=kind;
             {CallbackMark mark(this);
                 if(kind==0)ok=backend_.call_begin(backend_.context,scope.registration,&scope.notice,&scope.state);
                 else if(kind==1)ok=backend_.call_returned(backend_.context,scope.registration,&scope.notice,&scope.state,rax,end);
                 else ok=backend_.call_unwind(backend_.context,scope.registration,&scope.notice,&scope.state,reason,end);
                 violated=mark.violated;
             }
+            scope.notice_kind=3;
             const bool valid=ok&&!violated&&call::same(scope.notice,scope.invocation)&&(kind==0||end<=unsigned(call::End::unresolved));
             InvalidateCall invalidation{};
             {std::lock_guard<std::mutex> lock(mutex_);--callbacks_;--normal_calls_;counted=false;
@@ -692,6 +726,51 @@ public:
             revision_.load(std::memory_order_seq_cst)==revision;
     }
     Availability availability() const noexcept {return availability_.load(std::memory_order_acquire);}
+    // One new visibility-only transaction, outside callbacks/engine calls.
+    // Its semantic hide may persist; this admission does not lend tracking
+    // freshness or a hand/action permit to any later decoder callback.
+    // Read-only render preparation. It never admits an interaction, supplies a
+    // pose or changes the existing magazine/grip visibility gate below.
+    bool admit_weapon_render(Frame const& source) noexcept {
+        try {
+            if(reentrant()||action_barrier()||!current_thread(source))return false;
+            std::lock_guard<std::mutex> lock(mutex_);
+            return published_&&!stopping_&&state_.load()==State::active&&!aux_debt_.load()&&
+                have_commit_&&!phase_invalid_&&!action_invalidation_pending_&&!action_debt_.load()&&
+                revocation_.frame_current(frame_stamp_)&&active_now(source,backend_.clock_ns(backend_.context))&&
+                same_frame(source,frozen_)&&equal_bytes(source,frozen_)&&same(committed_.key,source.key);
+        }catch(...){return false;}
+    }
+    bool admit_part_visibility(Frame const& source) noexcept {
+        try {
+            if(reentrant()||action_barrier()||!current_thread(source))return false;
+            std::lock_guard<std::mutex> lock(mutex_);
+            return published_&&!stopping_&&state_.load()==State::active&&!aux_debt_.load()&&
+                have_commit_&&!phase_invalid_&&!action_invalidation_pending_&&!action_debt_.load()&&
+                revocation_.frame_current(frame_stamp_)&&active_now(source,backend_.clock_ns(backend_.context))&&
+                same_frame(source,frozen_)&&equal_bytes(source,frozen_)&&
+                same(committed_.key,source.key)&&!committed_.release_required&&
+                (committed_.status==DecisionStatus::granted||committed_.status==DecisionStatus::retained)&&
+                (committed_.lease.kind==LeaseKind::magazine||committed_.lease.kind==LeaseKind::ammo)&&
+                lease_valid(committed_.lease,source.key.lifecycle)&&committed_.lease.id==source.press_token&&
+                source.left_tracked&&source.left_grip_known&&source.left_grip_down;
+        }catch(...){return false;}
+    }
+    bool admit_support_visibility(Frame const& source) noexcept {
+        try {
+            if(reentrant()||action_barrier()||!current_thread(source))return false;
+            std::lock_guard<std::mutex> lock(mutex_);
+            return published_&&!stopping_&&state_.load()==State::active&&!aux_debt_.load()&&
+                have_commit_&&!phase_invalid_&&!action_invalidation_pending_&&!action_debt_.load()&&
+                revocation_.frame_current(frame_stamp_)&&active_now(source,backend_.clock_ns(backend_.context))&&
+                same_frame(source,frozen_)&&equal_bytes(source,frozen_)&&
+                same(committed_.key,source.key)&&!committed_.release_required&&
+                (committed_.status==DecisionStatus::granted||committed_.status==DecisionStatus::retained)&&
+                committed_.lease.kind==LeaseKind::support&&lease_valid(committed_.lease,source.key.lifecycle)&&
+                committed_.lease.id==source.press_token&&
+                source.left_tracked&&source.left_grip_known&&source.left_grip_down;
+        }catch(...){return false;}
+    }
     bool authorized() const noexcept {return authorization_.load(std::memory_order_acquire)&&!action_barrier()&&
         revocation_.frame_current({action_auth(),authorized_frame_.load(),authorized_generation_.load()});}
     bool action_barrier() const noexcept {return action_barriers_.load(std::memory_order_acquire)||external_scopes_.load(std::memory_order_acquire)||action_debt_.load()||revocation_.debt();}
@@ -777,6 +856,54 @@ public:
         }
     }
 
+    Reply attach_hand_visual(hand_visual::Registration const* input,RegistrationResult* output,bool consumer_owned) {
+        if(reentrant())return Reply::reentrant;
+        hand_visual::Registration r{};RegistrationResult receipt{};
+        if(!consumer_owned||!weapon_broker_win32::copy(&r,input,sizeof r)||!hand_visual::shape(r)||
+           !weapon_broker_win32::copy(&receipt,output,sizeof receipt)||receipt.size!=sizeof receipt||receipt.abi_version!=version||
+           !backend_.hand_visual_module||!backend_.hand_visual_notify)return Reply::invalid;
+        std::lock_guard<std::mutex> lock(mutex_);
+        if(!published_||r.hand_cookie!=cookie_.load()||r.native_started_qpc!=session_.native_started_qpc)return Reply::wrong_cookie;
+        if(stopping_||state_.load()!=State::active||aux_debt_.load()||action_debt())return Reply::draining;
+        if(r.context!=registration_.context||!backend_.hand_visual_module(backend_.context,r,pin_))return Reply::invalid;
+        if(hand_visual_attached_&&!hand_visual::same(r,hand_visual_registration_))return Reply::busy;
+        receipt.cookie=cookie_.load();receipt.native_started_qpc=session_.native_started_qpc;
+        if(!weapon_broker_win32::copy(output,&receipt,sizeof receipt))return Reply::invalid;
+        hand_visual_registration_=r;hand_visual_attached_=true;return Reply::accepted;
+    }
+    // Native-owned C0 begin/end only. The parent pin/count protects this
+    // synchronous call; no mutex spans the existing component setters. The
+    // visual context allows those original engine calls but blocks new action
+    // authorization. Neither the Notice nor this callback authorizes firing.
+    bool notify_hand_visual(hand_visual::Notice const& notice,bool* applied_result=nullptr) noexcept {
+        if(applied_result)*applied_result=false;
+        if(current_)return false;
+        hand_visual::Registration r{};InvalidateCall invalidation{};bool counted{};
+        try {
+            {std::lock_guard<std::mutex> lock(mutex_);
+                if(!hand_visual_attached_||!published_||state_.load()!=State::active||stopping_||
+                   notice.size!=sizeof notice||notice.abi_version!=hand_visual::version||notice.reserved||
+                   unsigned(notice.kind)>unsigned(hand_visual::Kind::committed)||
+                   notice.frame.parent.registration_cookie!=cookie_.load()||notice.frame.parent.native_started_qpc!=session_.native_started_qpc||
+                   !game_thread_||backend_.thread(backend_.context)!=game_thread_||
+                   !context::engine_context_clear(context::thread_ledger,true)||normal_calls_||callbacks_.load()||
+                   transactions_.load()||aux_scopes_.load()||action_scopes_.load()||aux_debt_.load()||action_debt())return false;
+                r=hand_visual_registration_;++callbacks_;++normal_calls_;counted=true;
+            }
+            hand_visual::Notice shadow=notice;unsigned reply=unsigned(hand_visual::Result::fault);bool okay{},violated{};
+            {CallbackMark mark(this,false,true);
+                okay=!mark.violated&&backend_.hand_visual_notify(backend_.context,r,&shadow,reply);violated=mark.violated;}
+            const bool valid=okay&&!violated&&reply<=unsigned(hand_visual::Result::applied)&&!std::memcmp(&shadow,&notice,sizeof notice);
+            {std::lock_guard<std::mutex> lock(mutex_);--callbacks_;--normal_calls_;counted=false;
+                if(!valid)invalidate_locked(InvalidateReason::callback_fault,true,invalidation);
+                if(phase_invalid_&&final_invalidate_&&!invalidate_running_&&!invalidate_failed_)
+                    invalidate_locked(phase_reason_,state_.load()==State::draining,invalidation);
+                refresh_locked();}
+            run_invalidate(invalidation);
+            if(applied_result)*applied_result=valid&&reply==unsigned(hand_visual::Result::applied);
+            return valid;
+        }catch(...){(void)counted;auxiliary_unknown();return false;}
+    }
     Reply attach_body_mount_provider(body_mount::Registration const* input,RegistrationResult* output,bool consumer_owned) {
         if(reentrant())return Reply::reentrant;
         body_mount::Registration r{};RegistrationResult result{};
@@ -857,6 +984,45 @@ public:
         call_registration_=r;call_attached_.store(true,std::memory_order_release);return Reply::accepted;
     }
 
+    // The one synchronous pre notification may provide typed HUD evidence.
+    // Unlike normal participant reentry, this copies POD only, invokes no
+    // callback/engine work and takes no lease beyond the existing call scope.
+    bool submit_hud_query(gears_weapon_hud_receipt::Receipt const& value) noexcept {
+        try {
+            auto* scope=call_top_;
+            if(!scope||scope->owner!=this||!scope->active||scope->notice_kind!=0||
+               !current_||current_->broker!=this||current_->violated||
+               scope->thread!=backend_.thread(backend_.context))return false;
+            std::lock_guard<std::mutex> lock(mutex_);
+              // authorization_ describes an arbiter hand lease. Single-hand
+              // aiming needs no support-hand lease; authenticate the committed
+              // publication and its revocation generation instead.
+            if(!published_||stopping_||state_.load()!=State::active||aux_debt_.load()||
+                 !have_commit_||phase_invalid_||action_invalidation_pending_||
+                 action_debt_.load()||!revocation_.frame_current(frame_stamp_)||
+               (hud_query_present_&&!hud_query_completed_)||
+               gears_weapon_hud_receipt::validate(value,scope->invocation,frozen_,
+                   backend_.clock_ns(backend_.context))!=gears_weapon_hud_receipt::Reason::accepted)return false;
+            hud_query_=value;hud_query_present_=true;hud_query_completed_=false;return true;
+        }catch(...){return false;}
+    }
+    bool take_hud_query(std::uintptr_t root,std::uintptr_t controller,std::uintptr_t pawn,
+                        gears_weapon_hud_receipt::Receipt& output) noexcept {
+        output={};
+        try {
+            if(current_||backend_.thread(backend_.context)!=game_thread_)return false;
+            std::lock_guard<std::mutex> lock(mutex_);
+            if(!hud_query_present_||!hud_query_completed_)return false;
+            hud_query_present_=hud_query_completed_=false;
+            if(!published_||stopping_||state_.load()!=State::active||aux_debt_.load()||
+                 !have_commit_||phase_invalid_||action_invalidation_pending_||
+                 action_debt_.load()||!revocation_.frame_current(frame_stamp_)||hud_query_.root_frame!=root||
+               hud_query_.source.controller.address!=controller||hud_query_.source.pawn.address!=pawn||
+               gears_weapon_hud_receipt::validate(hud_query_,hud_query_.call,frozen_,
+                   backend_.clock_ns(backend_.context))!=gears_weapon_hud_receipt::Reason::accepted)return false;
+            output=hud_query_;return true;
+        }catch(...){return false;}
+    }
     bool begin_call(std::uintptr_t self,std::uintptr_t caller_frame,std::uintptr_t result,std::uintptr_t callee,CallScope& scope,ActionScope const* gate=nullptr) noexcept {
         if(call_reentrant()){auxiliary_unknown();return false;}
         try {
@@ -897,7 +1063,12 @@ public:
                 if(!valid){std::uint32_t ignored=unsigned(call::End::unresolved);(void)call_notice(scope,2,0,call::UnwindReason::notification_fault,ignored);}
             }else valid=call_notice(scope,2,0,call::UnwindReason::original_exception,end);
             if(!valid||scope.notification_fault||end!=unsigned(call::End::closed))auxiliary_terminal();
-            {std::lock_guard<std::mutex> lock(mutex_);call_top_=scope.previous;scope.active=false;--aux_scopes_;refresh_locked();}
+            {std::lock_guard<std::mutex> lock(mutex_);
+                if(hud_query_present_&&call::same(hud_query_.call,scope.invocation)){
+                    hud_query_completed_=original_returned&&valid&&!scope.notification_fault&&end==unsigned(call::End::closed);
+                    if(!hud_query_completed_)hud_query_present_=false;
+                }
+                call_top_=scope.previous;scope.active=false;--aux_scopes_;refresh_locked();}
             // Keep owner/token as a consumed receipt: accidental reuse is not a
             // second pre or a second end. A new wrapper invocation uses fresh {}.
         }catch(...){auxiliary_unknown();}
@@ -1211,6 +1382,7 @@ public:
         if(!released){state_.store(State::quiescent);refresh_locked();return Reply::unavailable;}
         remember_retired_locked();
         pin_={};registration_={};main_mount_registration_={};main_mount_attached_=false;body_mount_registration_={};body_mount_attached_=false;call_registration_={};call_attached_.store(false);action_registration_={};action_attached_.store(false);
+        hand_visual_registration_={};hand_visual_attached_=false;
         (void)revocation_.publish({});action_context_.store(0);published_=false;cookie_.store(0);pin_retained_.store(false);authorization_.store(false);
         phase_invalid_=invalidate_running_=invalidate_failed_=final_invalidate_=false;invalidate_done_=true;have_attempt_=have_commit_=false;
         state_.store(State::empty);refresh_locked();return Reply::quiescent;

@@ -5,6 +5,13 @@
 // Native owner independently authenticates its current joint/consumer scope.
 namespace gears_body_c0_arm_alpha {
 namespace pose=gears_cover_pose_phase;
+// The already-owned wrist must also suppress a native control fading in/out.
+// This describes a scalar only; all owner, pair, layout and empty-scale proofs
+// remain required at the caller. Unknown/nonfinite/extrapolating weights fail.
+inline bool normal_blend_weight(std::uint32_t bits) noexcept {
+    float weight{};std::memcpy(&weight,&bits,sizeof weight);
+    return std::isfinite(weight)&&weight>=0.f&&weight<=1.f;
+}
 enum class Stage:std::uint32_t {compute=1,entry=2,token=3,sample=4,owner=5,post_owner=6,applied=7};
 enum class RetainedControl:std::uint32_t {not_applicable,denied,verified};
 // Diagnostic only. Flags: 1 adjacent same-node last compute, 2 valid live

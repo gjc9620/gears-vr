@@ -13,9 +13,32 @@ struct ClientAdapter {
     bool (*observe)(void*,Frame const&,std::int64_t,GripGameState&) noexcept{};
     std::uint32_t (*game_thread)(void*) noexcept{};
     std::int64_t (*clock_ns)(void*) noexcept{};
+    // Optional synchronous receipt of an accepted decision. This runs under
+    // the client gate: no reentry, engine calls, pose or inventory writes.
+    // Any staged incumbent must apply only to a LATER owner frame, preserving
+    // the exact prepared/committed observation of this frame.
+    void (*committed)(void*,Frame const&,Decision const&) noexcept{};
+    // Optional source-liveness observation with the SAME fresh actor/link/
+    // lifecycle checks as observe, but without calculating new contact
+    // candidates. Display revalidation consumes no proposal or hand grant.
+    // Omitted adapters retain the original full-observation behavior.
+    bool (*observe_source)(void*,Frame const&,std::int64_t,GripGameState&) noexcept{};
 };
 enum class ClientPhase:std::uint32_t {off,connecting,active,draining,quarantined};
 struct ClientSession {std::uint64_t game_start{};std::uint32_t game_pid{};};
+// Optional caller-owned failure observation. Never a Frame, source, holder or
+// permission. It classifies the SAME existing checks without another read.
+enum class FrameReadFailure:std::uint32_t {none,thread_or_unarmed,gate,publication,key,
+    stale_before,observe,game_changed,stale_or_changed_after,support_prepare,implicit_clear};
+struct FrameReadObservation {
+    FrameReadFailure failure{};std::uint32_t game_difference{};
+    std::uint64_t frame{},sequence{},press_token{};
+    std::int64_t input_age_ns{-1};std::uint32_t left_grip_down{};
+    std::uint32_t frame_difference{},game_flags{};
+};
+// Lifetime of an already journalled ORIGINAL action through a normal pose/
+// animation handoff. This is neither a pose/input Frame nor an action grant.
+struct ExistingActionLifetime {EquipmentIdentity parent{};std::uint64_t epoch{};};
 inline bool same_game(GripGameState const& a,GripGameState const& b) noexcept {
     auto const& x=a.mount;auto const& y=b.mount;
     const auto vector=[](gears_vr::Vector p,gears_vr::Vector q){return p.x==q.x&&p.y==q.y&&p.z==q.z;};
@@ -28,7 +51,65 @@ inline bool same_game(GripGameState const& a,GripGameState const& b) noexcept {
         x.maximum_support_correction_radians==y.maximum_support_correction_radians&&
         a.acquire_metres==b.acquire_metres&&a.release_metres==b.release_metres&&
         same(a.object_incumbents[0],b.object_incumbents[0])&&same(a.object_incumbents[1],b.object_incumbents[1])&&
-        a.request_ammo==b.request_ammo&&a.request_magazine==b.request_magazine;
+        a.request_ammo==b.request_ammo&&a.request_magazine==b.request_magazine&&
+        a.magazine_observation_pending==b.magazine_observation_pending;
+}
+inline bool same_support_observation(Frame const& f,Decision const& d,
+    GripGameState const& current,GripGameState const& committed) noexcept {
+    if(same_game(current,committed))return true;
+    // Hover proposals belong to acquisition. A freshly revalidated, already
+    // exclusive support grasp must not disappear because another part enters
+    // a generous hover volume during an original shot. Do not reuse this for
+    // prepare/commit, part grants, conflicting incumbents or changed game,
+    // mount, animation, identity, input or tracking state.
+    if(d.lease.kind!=LeaseKind::support||d.release_required||
+       (d.status!=DecisionStatus::granted&&d.status!=DecisionStatus::retained)||
+       !same(f.key,d.key)||!f.press_token||d.lease.id!=f.press_token||d.press_token!=f.press_token||
+       !lease_valid(d.lease,f.key.lifecycle)||!f.left_grip_known||!f.left_tracked||!f.left_grip_down||
+       !current.known||!current.main_hand_held||current.animation_owns_hands||current.busy||
+       current.kind!=WeaponKind::firearm||!current.mount_known)return false;
+    auto compared=current;
+    compared.request_ammo=committed.request_ammo;compared.request_magazine=committed.request_magazine;
+    compared.magazine_observation_pending=committed.magazine_observation_pending;
+    return same_game(compared,committed);
+}
+inline bool same_pose_consumer_observation(Frame const& f,Decision const& d,
+    GripGameState const& current,GripGameState const& committed) noexcept {
+    if(same_support_observation(f,d,current,committed))return true;
+    //67624/3088: an installed-mag pending marker changed after a no-lease
+    // publication or while the same C part was ALREADY held. It is not the
+    // main hand's or that incumbent's liveness. Keep the actual observation
+    // and frozen decision; this cannot grant a part or renew a press.
+    // Prepare/commit remains strict. A part must have the exact SAME sole
+    // certified incumbent, not a first grant or an omitted/conflicting lease.
+    if(!same(f.key,d.key)||!d.proposal_nonce||!f.press_token||d.press_token!=f.press_token||
+       d.new_grant||!f.left_grip_known||!f.left_tracked||!f.left_grip_down||
+       !current.known||!current.main_hand_held||current.animation_owns_hands||current.busy||
+       current.kind!=WeaponKind::firearm||!current.mount_known)return false;
+    unsigned holders{};
+    for(unsigned i=0;i<2;++i)if(!same(current.object_incumbents[i],Lease{})){
+        if(!same(current.object_incumbents[i],d.lease)||++holders>1)return false;
+    }
+    if(same(d.lease,Lease{})){
+        if(holders)return false;
+    }else if(d.lease.kind!=LeaseKind::magazine||d.status!=DecisionStatus::retained||
+             d.release_required||!lease_valid(d.lease,f.key.lifecycle)||d.lease.id!=f.press_token||holders!=1)return false;
+    auto compared=current;
+    compared.magazine_observation_pending=committed.magazine_observation_pending;
+    return same_game(compared,committed);
+}
+inline unsigned game_difference(GripGameState const& current,GripGameState const& expected) noexcept {
+    auto compared=current;
+    unsigned difference=unsigned(current.request_ammo!=expected.request_ammo)|
+        (unsigned(current.request_magazine!=expected.request_magazine)<<1)|
+        (unsigned(current.magazine_observation_pending!=expected.magazine_observation_pending)<<4)|
+        (unsigned(!same(current.object_incumbents[0],expected.object_incumbents[0])||
+            !same(current.object_incumbents[1],expected.object_incumbents[1]))<<2);
+    compared.request_ammo=expected.request_ammo;compared.request_magazine=expected.request_magazine;
+    compared.magazine_observation_pending=expected.magazine_observation_pending;
+    compared.object_incumbents=expected.object_incumbents;
+    if(!same_game(compared,expected))difference|=8;
+    return difference;
 }
 
 // Weapon-side callback storage, not a host/arbiter or a loader. Control calls
@@ -47,9 +128,17 @@ class HandClient {
     std::atomic_flag gate_=ATOMIC_FLAG_INIT;
     SupportGripParticipant participant_;
     Frame committed_{};GripGameState prepared_game_{},committed_game_{};
+    Decision committed_decision_{};
+    FrameReadObservation last_withdrawal_{};
+    std::atomic<std::uint32_t> last_disarm_reason_{};
     std::uint64_t seen_epoch_{},prepared_epoch_{};bool pending_{};
     bool adapter_valid() const noexcept {return adapter_.observe&&adapter_.game_thread&&adapter_.clock_ns;}
-    void disarm() noexcept {
+    void disarm(std::uint32_t reason=1) noexcept {
+        // Read-only failure classification. No validity is extended and no
+        // caller may use this diagnostic to recover a retired publication.
+        // Native notices use0x100+reason; local disarms use0x200+the frozen
+        // source line, distinguishing gate reentry from drain/quarantine.
+        last_disarm_reason_.store(reason,std::memory_order_release);
         published_.store(0,std::memory_order_release);
         auto value=epoch_.load(std::memory_order_acquire);
         for(;;){
@@ -59,8 +148,32 @@ class HandClient {
             if(epoch_.compare_exchange_weak(value,value+1,std::memory_order_acq_rel))return;
         }
     }
-    void clear_gt() noexcept {
-        participant_.invalidate_on_gt();committed_={};prepared_game_={};committed_game_={};
+    void clear_gt(FrameReadFailure reason=FrameReadFailure::none,unsigned difference=0) noexcept {
+        if(reason==FrameReadFailure::none&&committed_decision_.lease.kind==LeaseKind::support)
+            reason=FrameReadFailure::implicit_clear;
+        if(reason!=FrameReadFailure::none&&committed_.key.frame){
+            const auto now=adapter_.clock_ns(adapter_.context);
+            last_withdrawal_={reason,difference,committed_.key.frame,committed_.controllers.sequence,
+                committed_.press_token,committed_.controllers.sync_ns>0&&now>=committed_.controllers.sync_ns?
+                    now-committed_.controllers.sync_ns:-1,committed_.left_grip_down};
+        }
+        participant_.invalidate_on_gt();committed_={};prepared_game_={};committed_game_={};committed_decision_={};
+        pending_=false;prepared_epoch_=0;published_.store(0,std::memory_order_release);
+    }
+    void withdraw_expired_pose_gt() noexcept {
+        if(participant_.snapshot().grip!=Grip::two||committed_decision_.lease.kind!=LeaseKind::support){
+            clear_gt(FrameReadFailure::stale_before);return;
+        }
+        const auto now=adapter_.clock_ns(adapter_.context);
+        last_withdrawal_={FrameReadFailure::stale_before,0,committed_.key.frame,committed_.controllers.sequence,
+            committed_.press_token,now>=committed_.controllers.sync_ns?now-committed_.controllers.sync_ns:-1,
+            committed_.left_grip_down};
+        // Expired render data grants NO Frame, snapshot, pose or action. Keep
+        // only the participant's logical support incumbent for the NEXT
+        // independently fresh prepare/commit. It must revalidate all object,
+        // mount, reference, input/tracking epochs, held token and game guards;
+        // a genuine release or invalidation still clears it normally.
+        committed_={};prepared_game_={};committed_game_={};committed_decision_={};
         pending_=false;prepared_epoch_=0;published_.store(0,std::memory_order_release);
     }
     Reply fail_gt(Reply reason) noexcept {clear_gt();return reason;}
@@ -101,7 +214,7 @@ class HandClient {
         if(!frame||!out)return Reply::invalid;
         *out={};
         if(phase_.load(std::memory_order_acquire)!=ClientPhase::active||!on_gt())return Reply::unavailable;
-        Gate gate(gate_);if(!gate.held){disarm();return Reply::busy;}
+        Gate gate(gate_);if(!gate.held){disarm(0x200u+__LINE__);return Reply::busy;}
         const auto epoch=epoch_.load(std::memory_order_acquire);
         if(seen_epoch_!=epoch){clear_gt();seen_epoch_=epoch;}
         if(!active(epoch)||!key_valid(*frame))return fail_gt(Reply::unavailable);
@@ -110,7 +223,29 @@ class HandClient {
             return fail_gt(Reply::unavailable);
         now=adapter_.clock_ns(adapter_.context);
         if(!active(epoch)||!fresh(*frame,now))return fail_gt(Reply::unavailable);
+        const bool support_was_held=participant_.snapshot().grip==Grip::two;
         const auto reply=participant_.prepare(*frame,game,*out);
+        if(support_was_held&&reply==Reply::accepted&&
+           out->incumbents[0].kind!=LeaseKind::support&&out->incumbents[1].kind!=LeaseKind::support){
+            // Data from this exact existing prepare only. A withdrawal cannot
+            // be explained by a later single-hand snapshot; retain which
+            // lifetime/game fields actually differed before the old grant
+            // disappeared. This grants no source, input or held authority.
+            auto const& old=committed_;auto const& f=*frame;
+            const unsigned changed=unsigned(!gears_vr::stereo_same_pose(old.reference,f.reference))|
+                (unsigned(old.reference_generation!=f.reference_generation)<<1)|
+                (unsigned(old.controllers.session!=f.controllers.session||old.controllers.space_epoch!=f.controllers.space_epoch||
+                    old.controllers.profile_generation!=f.controllers.profile_generation||old.controllers.input_epoch!=f.controllers.input_epoch)<<2)|
+                (unsigned(old.key.lifecycle!=f.key.lifecycle||old.key.world_generation!=f.key.world_generation||
+                    old.key.registration_cookie!=f.key.registration_cookie||old.key.native_started_qpc!=f.key.native_started_qpc)<<3)|
+                (unsigned(!same(old.world,f.world)||!same(old.controller,f.controller)||!same(old.pawn,f.pawn)||
+                    !same(old.mesh,f.mesh)||!same(old.weapon,f.weapon))<<4)|
+                (unsigned(!same(committed_game_.mount_asset,game.mount_asset)||committed_game_.mount_revision!=game.mount_revision)<<5);
+            last_withdrawal_={FrameReadFailure::support_prepare,game_difference(game,committed_game_),f.key.frame,
+                f.controllers.sequence,f.press_token,now>=f.controllers.sync_ns?now-f.controllers.sync_ns:-1,
+                f.left_grip_down,changed,unsigned(game.known)|(unsigned(game.main_hand_held)<<1)|
+                    (unsigned(game.animation_owns_hands)<<2)|(unsigned(game.busy)<<3)|(unsigned(game.mount_known)<<4)};
+        }
         if(reply!=Reply::accepted)return fail_gt(reply);
         if(!active(epoch)){*out={};return fail_gt(Reply::unavailable);}
         prepared_game_=game;prepared_epoch_=epoch;pending_=true;
@@ -120,7 +255,7 @@ class HandClient {
     Reply commit(Frame const* frame,Proposal const* proposal,Decision const* decision) noexcept {
         if(!frame||!proposal||!decision)return Reply::invalid;
         if(phase_.load(std::memory_order_acquire)!=ClientPhase::active||!on_gt())return Reply::unavailable;
-        Gate gate(gate_);if(!gate.held){disarm();return Reply::busy;}
+        Gate gate(gate_);if(!gate.held){disarm(0x200u+__LINE__);return Reply::busy;}
         const auto epoch=epoch_.load(std::memory_order_acquire);
         if(!pending_||prepared_epoch_!=epoch||!active(epoch)||!key_valid(*frame))return fail_gt(Reply::unavailable);
         pending_=false;auto now=adapter_.clock_ns(adapter_.context);GripGameState game{};
@@ -131,7 +266,9 @@ class HandClient {
         if(!active(epoch)||!fresh(*frame,now))return fail_gt(Reply::unavailable);
         const auto reply=participant_.commit(*frame,*proposal,*decision);
         if(reply!=Reply::accepted)return fail_gt(reply);
-        committed_=*frame;committed_game_=game;published_.store(epoch,std::memory_order_release);
+        committed_=*frame;committed_game_=game;committed_decision_=*decision;published_.store(epoch,std::memory_order_release);
+        if(!active(epoch))return fail_gt(Reply::unavailable);
+        if(adapter_.committed)adapter_.committed(adapter_.context,*frame,*decision);
         if(!active(epoch))return fail_gt(Reply::unavailable);
         return Reply::accepted;
     }
@@ -145,7 +282,7 @@ class HandClient {
             message->native_started_qpc!=native_.load(std::memory_order_acquire)))return;
         if(message->reason==InvalidateReason::native_stopping||message->reason==InvalidateReason::unregistering||
            message->reason==InvalidateReason::callback_fault)terminal_.store(true,std::memory_order_release);
-        disarm();
+        disarm(0x100u+unsigned(message->reason));
     }
     static std::uint32_t prepare_callback(void* p,Frame const* f,Proposal* out) noexcept {
         return p?unsigned(static_cast<HandClient*>(p)->prepare(f,out)):unsigned(Reply::invalid);
@@ -172,8 +309,48 @@ public:
     bool armed() const noexcept {
         const auto p=published_.load(std::memory_order_acquire);return p&&active(p);
     }
+    // Query-local metadata lifetime, independent of the legacy published Hand
+    // Frame. This number is not a pose/input/action permit. Explicit revoke,
+    // reentry, drain or reconnect still invalidates a read in progress.
+    std::uint64_t metadata_generation_on_gt() const noexcept {
+        const auto epoch=epoch_.load(std::memory_order_acquire);
+        return on_gt()&&active(epoch)&&cookie_.load(std::memory_order_acquire)&&
+            native_.load(std::memory_order_acquire)?epoch:0;
+    }
+    std::uint32_t last_disarm_reason() const noexcept {return last_disarm_reason_.load(std::memory_order_acquire);}
     Registration registration() noexcept {
         Registration r{};r.context=this;r.prepare=prepare_callback;r.commit=commit_callback;r.invalidate=invalidate_callback;return r;
+    }
+    bool capture_existing_action_lifetime_on_gt(FrameKey const& expected,ExistingActionLifetime& out) noexcept {
+        out={};if(!on_gt()||!armed())return false;
+        Gate gate(gate_);if(!gate.held){disarm(0x200u+__LINE__);return false;}
+        const auto epoch=epoch_.load(std::memory_order_acquire);const auto& f=committed_;
+        if(!active(epoch)||published_.load(std::memory_order_acquire)!=epoch||!same(f.key,expected)||
+           !key_valid(f)||!fresh(f,adapter_.clock_ns(adapter_.context)))return false;
+        out={{f.key,f.world,f.controller,f.pawn,f.mesh,f.weapon,f.reference,f.reference_generation},epoch};return true;
+    }
+    bool existing_action_lifetime_on_gt(ExistingActionLifetime const& action,std::uint32_t* failure=nullptr) noexcept {
+        if(failure)*failure=0;
+        const auto reject=[&](std::uint32_t why) noexcept {if(failure)*failure=why;return false;};
+        if(!on_gt()||!action.epoch||!equipment_identity_valid(action.parent))return reject(1);
+        Gate gate(gate_);if(!gate.held){disarm(0x200u+__LINE__);return reject(2);}
+        Frame association{};association.key=action.parent.key;
+        if(!active(action.epoch))return reject(3);
+        if(!key_valid(association))return reject(4);
+        // clear_gt can retire a grip publication when the ORIGINAL action
+        // changes busy/animation state. Explicit Native invalidation advances
+        // epoch and always revokes this witness. A published new ancestry may
+        // advance its frame, but cannot change the frozen owner/reference.
+        if(committed_.key.frame){auto expected=action.parent;expected.key.frame=committed_.key.frame;
+            if(committed_.key.frame<action.parent.key.frame)return reject(5);
+            if(!equipment_matches(committed_,expected)){
+                // Classify existing POD only; no renewed lease or game read.
+                if(!same(committed_.key,expected.key))return reject(6);
+                if(committed_.reference_generation!=expected.reference_generation)return reject(8);
+                if(!gears_vr::stereo_same_pose(committed_.reference,expected.reference))return reject(9);
+                return reject(7);
+            }}
+        return active(action.epoch)?true:reject(3);
     }
     // Existing parent callback lifetime is required, including early returns.
     // A fixed PG metadata continuation executes synchronously under one Gate;
@@ -183,7 +360,7 @@ public:
     bool observe_equipment_on_gt(EquipmentIdentity const& expected,Reader& reader,EquipmentObservation& out) noexcept {
         out={};
         if(!on_gt()||!armed())return false;
-        if(gate_.test_and_set(std::memory_order_acquire)){disarm();return false;}
+        if(gate_.test_and_set(std::memory_order_acquire)){disarm(0x200u+__LINE__);return false;}
         bool okay{};
 #if defined(_MSC_VER)
         __try{okay=equipment_locked(expected,reader,out);}
@@ -192,6 +369,68 @@ public:
         okay=equipment_locked(expected,reader,out);gate_.clear(std::memory_order_release);
 #endif
         if(!okay)out={};return okay;
+    }
+    // The typed current-body source caller authenticates its own immutable
+    // Scene association, fresh tracking/eye basis and before/after actor.
+    // Qualify ONLY metadata against this registration generation. Do not
+    // consume, republish or rearm a missing/expired legacy Hand Frame.
+    template<class Reader>
+    bool observe_registered_equipment_on_gt(EquipmentIdentity const& expected,std::uint64_t generation,
+        Reader& reader,EquipmentObservation& out) noexcept {
+        out={};
+        if(!generation||!equipment_identity_valid(expected)||metadata_generation_on_gt()!=generation)return false;
+        if(gate_.test_and_set(std::memory_order_acquire)){disarm(0x200u+__LINE__);return false;}
+        bool okay{};
+        EquipmentIdentity frozen_identity{};std::memcpy(&frozen_identity,&expected,sizeof frozen_identity);
+        const auto current=[&]() noexcept {
+            auto const& k=expected.key;
+            return metadata_generation_on_gt()==generation&&!std::memcmp(&expected,&frozen_identity,sizeof expected)&&
+                k.game_pid==session_.game_pid&&k.game_start==session_.game_start&&
+                k.thread_id==adapter_.game_thread(adapter_.context)&&
+                registration_alive(k.registration_cookie,k.native_started_qpc);
+        };
+        const auto read=[&]() noexcept {
+            if(!current())return false;
+            const auto begin=adapter_.clock_ns(adapter_.context);
+            if(begin<=0||!reader(expected,current,out)||!current())return false;
+            const auto end=adapter_.clock_ns(adapter_.context);
+            if(end<begin||std::uint64_t(end-begin)>50000000||!current())return false;
+            out.begin_ns=begin;out.end_ns=end;return true;
+        };
+#if defined(_MSC_VER)
+        __try{okay=read();}
+        __finally{if(!okay)out={};gate_.clear(std::memory_order_release);}
+#else
+        okay=read();if(!okay)out={};gate_.clear(std::memory_order_release);
+#endif
+        return okay;
+    }
+    // Motion observation only, for the exact still-published parent of a
+    // completed Native pose. Do not re-query pose-derived candidates here:
+    // that may revoke a publication while merely recording its actual motion.
+    // This neither renews the old input/decision nor certifies current game
+    // state, and must never replace copy_frame_on_gt in an action/writer.
+    bool copy_retained_item_input_on_gt(EquipmentIdentity const& expected,RetainedItemInput& out) noexcept {
+        out={};if(!on_gt()||!armed()||!equipment_identity_valid(expected))return false;
+        Gate gate(gate_);if(!gate.held){disarm(0x200u+__LINE__);return false;}
+        const auto epoch=epoch_.load(std::memory_order_acquire);
+        constexpr auto required=scene_owned|input_matched|gameplay_interactable;
+        const auto& f=committed_;const auto& d=committed_decision_;
+        if(!active(epoch)||published_.load(std::memory_order_acquire)!=epoch||pending_||
+           !key_valid(f)||!frame_shape_valid(f)||(f.flags&required)!=required||f.recentered||f.heading_deferred||
+           !equipment_matches(f,expected)||!same(d.key,f.key)||d.status!=DecisionStatus::retained||
+           d.release_required||!lease_valid(d.lease,f.key.lifecycle)||
+           (d.lease.kind!=LeaseKind::magazine&&d.lease.kind!=LeaseKind::ammo)||
+           !f.left_tracked||!f.left_grip_known||!f.left_grip_down||
+           !f.press_token||d.press_token!=f.press_token||d.lease.id!=f.press_token)return false;
+        const auto now=adapter_.clock_ns(adapter_.context);
+        if(now<f.now_ns||d.now_ns<f.now_ns||d.now_ns>now||f.controllers.sync_ns<=0||f.controllers.sync_ns>now)return false;
+        const auto& left=f.controllers.hands[0];
+        RetainedItemInput candidate{expected,d.lease,f.press_token,f.controllers.sequence,f.controllers.source,
+            f.controllers.session,f.controllers.space_epoch,f.controllers.input_epoch,f.controllers.profile_generation,
+            f.controllers.sync_ns,d.now_ns,left.pressed[left_control(f)],left.released[left_control(f)],f.interaction_control};
+        if(!active(epoch)||published_.load(std::memory_order_acquire)!=epoch)return false;
+        out=candidate;return true;
     }
     // Call before invoking Native register; callbacks can arrive before that
     // export returns, but cannot publish until its receipt has been validated.
@@ -215,7 +454,7 @@ public:
         }
         if(!call_completed||reply!=Reply::accepted||receipt.size!=sizeof(receipt)||receipt.abi_version!=version||
            !receipt.cookie||!receipt.native_started_qpc){
-            phase_.store(ClientPhase::quarantined,std::memory_order_release);disarm();return Reply::invalid;
+            phase_.store(ClientPhase::quarantined,std::memory_order_release);disarm(0x200u+__LINE__);return Reply::invalid;
         }
         cookie_.store(receipt.cookie,std::memory_order_release);native_.store(receipt.native_started_qpc,std::memory_order_release);
         phase_.store(terminal_.load(std::memory_order_acquire)?ClientPhase::draining:ClientPhase::active,std::memory_order_release);
@@ -225,7 +464,7 @@ public:
         if(on_gt())return Reply::reentrant;
         if(phase()==ClientPhase::off)return Reply::quiescent;
         if(phase()==ClientPhase::connecting||phase()==ClientPhase::quarantined)return Reply::unavailable;
-        phase_.store(ClientPhase::draining,std::memory_order_release);disarm();return Reply::draining;
+        phase_.store(ClientPhase::draining,std::memory_order_release);disarm(0x200u+__LINE__);return Reply::draining;
     }
     // Native's exact-cookie quiescent receipt is a PRECONDITION. This resets
     // private state; it is NOT permission to destroy storage or unload code.
@@ -250,18 +489,41 @@ public:
     // Return this call's actual fresh observation together with its Frame.
     // Both are caller-owned, synchronous data, not a reusable source permit.
     bool copy_frame_on_gt(Frame& out,GripGameState& observed) noexcept {
-        out={};observed={};if(!on_gt()||!armed())return false;
-        Gate gate(gate_);if(!gate.held){disarm();return false;}
+        Decision ignored{};return copy_frame_on_gt(out,observed,ignored);
+    }
+    // The actual sole-Native-owner decision from this same committed frame.
+    // Consumers cannot infer ammo/magazine ownership from Grip::single: it
+    // also represents no candidate and released ownership. No new arbiter.
+    bool copy_frame_on_gt(Frame& out,GripGameState& observed,Decision& decision,
+        FrameReadObservation* observation=nullptr) noexcept {
+        if(observation)*observation={};
+        const auto fail=[&](FrameReadFailure reason,std::uint32_t difference=0)noexcept {
+            if(observation){observation->failure=reason;observation->game_difference=difference;}return false;
+        };
+        out={};observed={};decision={};if(!on_gt()||!armed())return fail(FrameReadFailure::thread_or_unarmed);
+        Gate gate(gate_);if(!gate.held){disarm(0x200u+__LINE__);return fail(FrameReadFailure::gate);}
         const auto epoch=epoch_.load(std::memory_order_acquire);
-        if(!active(epoch)||published_.load(std::memory_order_acquire)!=epoch)return false;
+        if(!active(epoch)||published_.load(std::memory_order_acquire)!=epoch)return fail(FrameReadFailure::publication);
         auto now=adapter_.clock_ns(adapter_.context);GripGameState current{};
-        if(!key_valid(committed_)||!fresh(committed_,now)||
-           !adapter_.observe(adapter_.context,committed_,now,current)||!same_game(current,committed_game_)){
-            clear_gt();return false;
+        if(observation){
+            observation->frame=committed_.key.frame;observation->sequence=committed_.controllers.sequence;
+            observation->press_token=committed_.press_token;observation->left_grip_down=committed_.left_grip_down;
+            observation->input_age_ns=committed_.controllers.sync_ns>0&&now>=committed_.controllers.sync_ns?
+                now-committed_.controllers.sync_ns:-1;
+        }
+        if(!key_valid(committed_)){clear_gt(FrameReadFailure::key);return fail(FrameReadFailure::key);}
+        if(!fresh(committed_,now)){withdraw_expired_pose_gt();return fail(FrameReadFailure::stale_before);}
+        if(!adapter_.observe(adapter_.context,committed_,now,current)){clear_gt(FrameReadFailure::observe);return fail(FrameReadFailure::observe);}
+        if(!same_pose_consumer_observation(committed_,committed_decision_,current,committed_game_)){
+            // Classify candidates, actual item incumbents, and remaining
+            // live-game/mount fields separately. Returned game data remains
+            // the actual observation, including acquisition hover changes.
+            const unsigned difference=game_difference(current,committed_game_);
+            clear_gt(FrameReadFailure::game_changed,difference);return fail(FrameReadFailure::game_changed,difference);
         }
         now=adapter_.clock_ns(adapter_.context);
-        if(!active(epoch)||published_.load(std::memory_order_acquire)!=epoch||!fresh(committed_,now))return false;
-        std::memcpy(&out,&committed_,sizeof(out));observed=current;return true;
+        if(!active(epoch)||published_.load(std::memory_order_acquire)!=epoch||!fresh(committed_,now))return fail(FrameReadFailure::stale_or_changed_after);
+        std::memcpy(&out,&committed_,sizeof(out));observed=current;decision=committed_decision_;return true;
     }
     // Same callback lifetime lease requirement. Revalidate the exact existing
     // publication after a caller changes its software equipment model. Fresh
@@ -269,37 +531,46 @@ public:
     // differ. Do not change committed_game_, refresh a grip or return a Frame.
     // A stale caller key cannot revoke a different healthy current publication.
     // This source-current witness is not equipment or pose-write permission.
-    bool source_game_on_gt(FrameKey const& expected,GripGameState& out) noexcept {
+private:
+    bool source_observation_on_gt(FrameKey const& expected,GripGameState& out,bool source_only) noexcept {
         out={};
         if(!on_gt()||!armed())return false;
-        Gate gate(gate_);if(!gate.held){disarm();return false;}
+        Gate gate(gate_);if(!gate.held){disarm(0x200u+__LINE__);return false;}
         const auto epoch=epoch_.load(std::memory_order_acquire);
         if(!active(epoch)||published_.load(std::memory_order_acquire)!=epoch||!same(committed_.key,expected))return false;
         auto now=adapter_.clock_ns(adapter_.context);GripGameState current{};
-        if(!key_valid(committed_)||!fresh(committed_,now)||
-           !adapter_.observe(adapter_.context,committed_,now,current)||!current.known){clear_gt();return false;}
+        const auto observe=source_only&&adapter_.observe_source?adapter_.observe_source:adapter_.observe;
+        if(!key_valid(committed_)){clear_gt(FrameReadFailure::key);return false;}
+        if(!fresh(committed_,now)){withdraw_expired_pose_gt();return false;}
+        if(!observe(adapter_.context,committed_,now,current)||!current.known){clear_gt(FrameReadFailure::observe);return false;}
         now=adapter_.clock_ns(adapter_.context);
         if(!active(epoch)||published_.load(std::memory_order_acquire)!=epoch||!fresh(committed_,now))return false;
         out=current;return true;
     }
+public:
+    FrameReadObservation withdrawal_on_gt() const noexcept {return on_gt()?last_withdrawal_:FrameReadObservation{};}
+    bool source_game_on_gt(FrameKey const& expected,GripGameState& out) noexcept {
+        return source_observation_on_gt(expected,out,false);
+    }
     // Reuse the same witness when only liveness is requested. The optional
     // current game data above is not a new publication or a held/support grant.
     bool source_current_on_gt(FrameKey const& expected) noexcept {
-        GripGameState ignored{};return source_game_on_gt(expected,ignored);
+        GripGameState ignored{};return source_observation_on_gt(expected,ignored,true);
     }
     // Requires the enclosing PG hook callback lifetime lease even on an early
     // return. Freeze this at the outer actual fire invocation. Do not reread it
     // independently for each pellet/target, and never use it as a throw scale.
     bool snapshot_on_gt(GripSnapshot& out) noexcept {
         out={};if(!on_gt()||!armed())return false;
-        Gate gate(gate_);if(!gate.held){disarm();return false;}
+        Gate gate(gate_);if(!gate.held){disarm(0x200u+__LINE__);return false;}
         const auto epoch=epoch_.load(std::memory_order_acquire);
         if(!active(epoch)||published_.load(std::memory_order_acquire)!=epoch)return false;
         auto now=adapter_.clock_ns(adapter_.context);GripGameState current{};
-        if(!key_valid(committed_)||!fresh(committed_,now)||
-           !adapter_.observe(adapter_.context,committed_,now,current)||!same_game(current,committed_game_)){
-            clear_gt();return false;
-        }
+        if(!key_valid(committed_)){clear_gt(FrameReadFailure::key);return false;}
+        if(!fresh(committed_,now)){withdraw_expired_pose_gt();return false;}
+        if(!adapter_.observe(adapter_.context,committed_,now,current)){clear_gt(FrameReadFailure::observe);return false;}
+        if(!same_pose_consumer_observation(committed_,committed_decision_,current,committed_game_)){
+            clear_gt(FrameReadFailure::game_changed,game_difference(current,committed_game_));return false;}
         now=adapter_.clock_ns(adapter_.context);auto snapshot=participant_.snapshot();
         if(!active(epoch)||published_.load(std::memory_order_acquire)!=epoch||!fresh(committed_,now)||
            !snapshot.current(committed_.key,committed_.weapon,now))return false;

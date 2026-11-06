@@ -30,6 +30,10 @@ class RenderSizeTests(unittest.TestCase):
             with mock.patch.object(launcher.subprocess,'run',return_value=SimpleNamespace(returncode=0,stdout=json.dumps(plan),stderr='')) as run:
                 self.assertEqual(launcher.render_size_info(manifest,.7,root),plan)
                 self.assertEqual(run.call_args.args[0][-2:],['--render-scale','0.7'])
+                self.assertIsNone(run.call_args.kwargs['env'])
+                private={'LOCALAPPDATA':str(root/'private-xr'),'XR_SIMULATOR_NO_ACTIVATE':'1'}
+                self.assertEqual(launcher.render_size_info(manifest,.7,root,environment=private),plan)
+                self.assertEqual(run.call_args.kwargs['env'],private)
             for wrong in (dict(plan,source=[3840,2160]),dict(plan,eye=[1920,2160]),dict(plan,render_scale=1)):
                 with mock.patch.object(launcher.subprocess,'run',return_value=SimpleNamespace(returncode=0,stdout=json.dumps(wrong),stderr='')):
                     with self.assertRaises(RuntimeError):launcher.render_size_info(manifest,.7,root)

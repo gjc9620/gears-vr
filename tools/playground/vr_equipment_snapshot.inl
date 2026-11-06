@@ -17,7 +17,7 @@ struct MeshPoseProbe {
     float local_to_world[16]{};
     bool transform_known{},absolute_translation{},absolute_rotation{},absolute_scale{},hidden{};
 };
-bool mesh_pose_probe(uptr weapon,MeshPoseProbe& out){
+bool mesh_pose_probe_legacy(uptr weapon,MeshPoseProbe& out){
     out={};
     if(!playground::instance(weapon,L"WarWeapon")||playground::deleted(weapon))return false;
     out.mesh=playground::pointer(weapon,L"Mesh");
@@ -42,6 +42,63 @@ bool mesh_pose_probe(uptr weapon,MeshPoseProbe& out){
         read_bool(out.mesh,L"AbsoluteRotation",out.absolute_rotation)&&read_bool(out.mesh,L"AbsoluteScale",out.absolute_scale)&&
         read_bool(out.mesh,L"HiddenGame",out.hidden);
 }
+
+// Resolve the same live descriptors together in one hierarchy walk. No
+// descriptor, object, pose or authorization is retained between invocations.
+template<std::size_t N>bool pose_fields(uptr object,wchar_t const* const (&labels)[N],std::array<uptr,N>& result){
+    result={};if(!registered(object))return false;std::size_t remaining=N;
+    for(auto cls=get<uptr>(object+0x50),depth=uptr{};cls&&depth<40;cls=get<uptr>(cls+0x60),++depth){
+        auto field=get<uptr>(cls+0x80);
+        for(unsigned count=0;field&&count<4096;field=get<uptr>(field+0x68),++count){
+            wchar_t text[128]{};if(!name(field,text,128))continue;
+            for(std::size_t i=0;i<N;++i)if(!result[i]&&!_wcsicmp(text,labels[i])){result[i]=field;--remaining;}
+            if(!remaining)return true;
+        }
+    }
+    return false;
+}
+bool mesh_pose_probe(uptr weapon,MeshPoseProbe& out){
+#if defined(GEARS_PLAYGROUND_NATIVE_LANCER_FOLLOW)
+    out={};if(!playground::instance(weapon,L"WarWeapon")||playground::deleted(weapon))return false;
+    out.mesh=playground::pointer(weapon,L"Mesh");out.weapon_mesh=playground::pointer(weapon,L"WeaponMesh");
+    if(!playground::instance(out.mesh,L"SkeletalMeshComponent")||playground::deleted(out.mesh))return false;
+    constexpr wchar_t const* labels[]={L"SkeletalMesh",L"Translation",L"Rotation",L"LocalToWorld",L"AbsoluteTranslation",L"AbsoluteRotation",L"AbsoluteScale",L"HiddenGame"};
+    std::array<uptr,8> fields{};if(!pose_fields(out.mesh,labels,fields))return false;
+    const auto extent=get<unsigned>(get<uptr>(out.mesh+0x50)+0x88);
+    const auto fits=[&](uptr p,unsigned bytes){const auto offset=get<unsigned>(p+0x94);return offset<=extent&&bytes<=extent-offset;};
+    if(!fits(fields[0],8))return false;out.asset=get<uptr>(out.mesh+get<unsigned>(fields[0]+0x94));
+    name(out.mesh,out.component_name,96);if(out.asset)name(out.asset,out.asset_name,96);
+    const auto structure=[&](unsigned index,void* data,unsigned bytes){auto p=fields[index];
+        return get<unsigned>(p+0x74)==bytes&&playground::named(get<uptr>(p+0x50),L"StructProperty")&&
+            fits(p,bytes)&&copy(data,out.mesh+get<unsigned>(p+0x94),bytes);};
+    out.transform_known=structure(1,&out.translation,sizeof out.translation)&&structure(2,&out.rotation,sizeof out.rotation)&&
+        structure(3,out.local_to_world,sizeof out.local_to_world);
+    if(!out.transform_known)return false;
+    bool* values[]={&out.absolute_translation,&out.absolute_rotation,&out.absolute_scale,&out.hidden};
+    for(unsigned i=0;i<4;++i){auto p=fields[i+4];if(get<unsigned>(p+0x74)!=4||!fits(p,4)||
+        !playground::named(get<uptr>(p+0x50),L"BoolProperty"))return false;
+        *values[i]=(get<unsigned>(out.mesh+get<unsigned>(p+0x94))&get<unsigned>(p+0xd0))!=0;}
+    // One bounded, read-only comparison in an explicitly owned test. Never a
+    // normal-mode duplicate read, cache, relaxed setter check or fallback.
+    static const bool compare=[](){wchar_t flag[4]{},mute[4]{},behind[4]{};return
+        GetEnvironmentVariableW(L"GEARSVR_TEST_POSE_BATCH_COMPARE",flag,4)==1&&flag[0]==L'1'&&
+        GetEnvironmentVariableW(L"GEARSVR_TEST_MUTE_GAME",mute,4)==1&&mute[0]==L'1'&&
+        GetEnvironmentVariableW(L"GEARSVR_TEST_WINDOWS_BEHIND",behind,4)==1&&behind[0]==L'1';}();
+    static unsigned comparisons{};
+    if(compare&&comparisons<12){MeshPoseProbe legacy{};const bool equal=mesh_pose_probe_legacy(weapon,legacy)&&
+        out.mesh==legacy.mesh&&out.weapon_mesh==legacy.weapon_mesh&&out.asset==legacy.asset&&
+        !std::memcmp(&out.translation,&legacy.translation,sizeof out.translation)&&!std::memcmp(&out.rotation,&legacy.rotation,sizeof out.rotation)&&
+        !std::memcmp(out.local_to_world,legacy.local_to_world,sizeof out.local_to_world)&&out.absolute_translation==legacy.absolute_translation&&
+        out.absolute_rotation==legacy.absolute_rotation&&out.absolute_scale==legacy.absolute_scale&&out.hidden==legacy.hidden;
+        if(log_file){fwprintf(log_file,L"mesh_pose_batch_compare sample=%u equal=%u\n",comparisons,unsigned(equal));fflush(log_file);}++comparisons;
+        if(!equal)return false;
+    }
+    return true;
+#else
+    return mesh_pose_probe_legacy(weapon,out);
+#endif
+}
+#include "weapon_magazine_visual_read.inl"
 #if defined(GEARS_PLAYGROUND_EQUIPMENT_SWITCH_TEST)
 gears_weapon::EquipmentSwitchMailbox switch_requests;
 ULONGLONG switch_deadline{};
@@ -62,116 +119,6 @@ bool test_environment(){
     wchar_t behind[4]{},muted[4]{};
     return GetEnvironmentVariableW(L"GEARSVR_TEST_WINDOWS_BEHIND",behind,4)==1&&behind[0]==L'1'&&
         GetEnvironmentVariableW(L"GEARSVR_TEST_MUTE_GAME",muted,4)==1&&muted[0]==L'1';
-}
-// The shipped weapon can own both a skinned magazine on its gun mesh and a
-// separate StaticMeshComponent for the left hand. Observe the latter before
-// deciding whether a VR reload needs any derived mesh at all. This does not
-// attach, hide, duplicate, or otherwise change either original component.
-struct MagazineVisualProbe {
-    uptr component{},asset{};
-    wchar_t component_name[96]{},asset_name[96]{};
-    bool present{},attached_to_pawn{},hidden{};
-};
-bool magazine_visual_probe(uptr weapon,uptr pawn,MagazineVisualProbe& out){
-    out={};
-    if(!playground::instance(weapon,L"WarWeapon")||playground::deleted(weapon)||
-       !playground::instance(pawn,L"WarPawn")||playground::deleted(pawn)||
-       playground::pointer(weapon,L"Instigator")!=pawn)return false;
-    const auto field=playground::property(weapon,L"MagazineMesh");
-    if(!field||get<unsigned>(field+0x74)!=sizeof(uptr)||
-       !playground::named(get<uptr>(field+0x50),L"ComponentProperty"))return false;
-    out.component=playground::pointer(weapon,L"MagazineMesh");
-    if(!out.component)return true;
-    if(!playground::instance(out.component,L"StaticMeshComponent")||
-       playground::deleted(out.component))return false;
-    out.present=true;
-    name(out.component,out.component_name,96);
-    out.asset=playground::pointer(out.component,L"StaticMesh");
-    if(out.asset){
-        if(!playground::instance(out.asset,L"StaticMesh")||
-           playground::deleted(out.asset))return false;
-        name(out.asset,out.asset_name,96);
-    }
-    if(!read_bool(out.component,L"HiddenGame",out.hidden))return false;
-    const auto pawn_mesh=playground::pointer(pawn,L"Mesh");
-    if(!playground::instance(pawn_mesh,L"SkeletalMeshComponent")||
-       playground::deleted(pawn_mesh))return false;
-    playground::Args attached(pawn_mesh,L"IsComponentAttached");
-    const auto input=attached.prop(L"Component"),result=attached.prop(L"ReturnValue");
-    if(!attached.valid||!input||!result||
-       get<unsigned>(input+0x74)!=sizeof(uptr)||
-       !playground::named(get<uptr>(input+0x50),L"ComponentProperty")||
-       get<unsigned>(result+0x74)!=4||
-       !playground::named(get<uptr>(result+0x50),L"BoolProperty")||
-       !attached.set(L"Component",out.component).run())return false;
-    const auto mask=get<unsigned>(result+0xd0);
-    if(!mask)return false;
-    out.attached_to_pawn=(attached.output<unsigned>()&mask)!=0;
-    return true;
-}
-// The original SetWeaponAmmoBoneDisplay resolves AmmoControl on the weapon's
-// current skinned mesh, then changes its active strength. Mirror only the
-// lookup and read the current/target strengths; never call the setter here.
-struct AmmoBoneVisualProbe {
-    uptr mesh{},control{};
-    wchar_t control_name[96]{};
-    bool present{};
-    float strength{},target{},bone_scale{};
-};
-bool ammo_control_name(Name& out){
-    static Name cached{};
-    static bool found{};
-    if(found){out=cached;return true;}
-    const auto names=get<Array>(base+0x1c34800);
-    if(!names.data||names.count<1000||names.count>names.capacity||names.capacity>4000000)
-        return false;
-    constexpr wchar_t wanted[]=L"AmmoControl";
-    for(int index=0;index<names.count;++index){
-        const auto entry=get<uptr>(names.data+size_t(index)*8);
-        if(!entry||get<unsigned>(entry)!=unsigned(index))continue;
-        wchar_t value[sizeof(wanted)/sizeof(wchar_t)]{};
-        if(!copy(value,entry+20,sizeof(value))||
-           std::memcmp(value,wanted,sizeof(value)))continue;
-        cached={unsigned(index),0};found=true;out=cached;return true;
-    }
-    return false;
-}
-bool read_control_float(uptr control,const wchar_t* field,float& out){
-    const auto property=playground::property(control,field);
-    const auto cls=get<uptr>(control+0x50);
-    if(!property||!cls||get<unsigned>(property+0x74)!=sizeof(float)||
-       !playground::named(get<uptr>(property+0x50),L"FloatProperty"))return false;
-    const auto offset=get<unsigned>(property+0x94),size=get<unsigned>(cls+0x88);
-    return offset<=size&&sizeof(float)<=size-offset&&
-        copy(&out,control+offset,sizeof(out))&&std::isfinite(out);
-}
-bool ammo_bone_visual_probe(uptr weapon,AmmoBoneVisualProbe& out){
-    out={};
-    if(!playground::instance(weapon,L"WarWeapon")||playground::deleted(weapon))return false;
-    out.mesh=playground::pointer(weapon,L"Mesh");
-    if(!playground::instance(out.mesh,L"SkeletalMeshComponent")||
-       playground::deleted(out.mesh))return false;
-    Name control_name{};
-    if(!ammo_control_name(control_name))return false;
-    playground::Args find(out.mesh,L"FindSkelControl");
-    const auto input=find.prop(L"InControlName"),result=find.prop(L"ReturnValue");
-    if(!find.valid||!input||!result||
-       get<unsigned>(input+0x74)!=sizeof(Name)||
-       !playground::named(get<uptr>(input+0x50),L"NameProperty")||
-       get<unsigned>(result+0x74)!=sizeof(uptr)||
-       !playground::named(get<uptr>(result+0x50),L"ObjectProperty")||
-       get<unsigned>(result+0x94)>find.r.size||
-       sizeof(uptr)>find.r.size-get<unsigned>(result+0x94)||
-       !find.set(L"InControlName",control_name).run())return false;
-    out.control=find.output<uptr>();
-    if(!out.control)return true;
-    if(!playground::instance(out.control,L"SkelControlBase")||
-       playground::deleted(out.control))return false;
-    out.present=true;
-    name(out.control,out.control_name,96);
-    return read_control_float(out.control,L"ControlStrength",out.strength)&&
-        read_control_float(out.control,L"StrengthTarget",out.target)&&
-        read_control_float(out.control,L"BoneScale",out.bone_scale);
 }
 // Locate the original UFunction wrappers without calling either function.
 // The historical disk EXE is protected, so a live, validated module-relative
@@ -403,7 +350,7 @@ bool read_ammo_supply(uptr weapon,bool& available){
     return true;
 }
 #endif
-bool snapshot(uptr pc,gears_weapon::EquipmentSnapshot& game,const wchar_t*& error){
+bool snapshot(uptr pc,gears_weapon::EquipmentSnapshot& game,const wchar_t*& error,bool selection=true){
     game={};error=L"identity";
     if(!playground::instance(pc,L"WarPC")||playground::deleted(pc))return false;
     const auto pawn=playground::pointer(pc,L"Pawn");
@@ -425,7 +372,7 @@ bool snapshot(uptr pc,gears_weapon::EquipmentSnapshot& game,const wchar_t*& erro
         for(std::uint8_t earlier=0;earlier<slot;++earlier)
             if(item&&game.weapon_in_slot[earlier]==item)return false;
         game.weapon_in_slot[slot]=item;
-        if(item){
+        if(item&&selection){
             error=L"slot_ammo_query";
             if(!read_has_any_ammo(item,game.ammo_available[slot]))return false;
             game.ammo_known[slot]=true;
@@ -435,6 +382,7 @@ bool snapshot(uptr pc,gears_weapon::EquipmentSnapshot& game,const wchar_t*& erro
             error=L"inventory_slot_query";
         }
     }
+    if(!selection){error=L"ok_observation";return true;}
     error=L"switch_query";
     if(!read_can_switch(pc,game.can_switch))return false;
     error=L"animation_state";

@@ -1,6 +1,6 @@
 param([switch]$DirectLevel, [switch]$PauseOnUnfocus, [switch]$Foreground,
       [switch]$DisableBackgroundInput = $true, [string]$GamePath, [switch]$PythonCheckOnly, [string]$LaunchReceipt,
-      [switch]$ExperimentalPreserveUpscaler)
+      [switch]$ExperimentalPreserveUpscaler, [switch]$SteamClientLaunch)
 $ErrorActionPreference = 'Stop'
 [Console]::OutputEncoding = New-Object System.Text.UTF8Encoding($false)
 $OutputEncoding = [Console]::OutputEncoding
@@ -92,6 +92,7 @@ if ($DirectLevel) {
 $launchCommand = @((Join-Path $PSScriptRoot 'background_launch.py'), '--game-path', $exe)
 foreach ($argument in $launchArguments) { $launchCommand += "--game-arg=$argument" }
 if ($Foreground) { $launchCommand += '--foreground' }
+if ($SteamClientLaunch) { $launchCommand += '--steam-client-launch' }
 if ($DisableBackgroundInput) { $launchCommand += '--disable-background-input' }
 if ($LaunchReceipt) { $launchCommand += @('--launch-receipt', $LaunchReceipt) }
 & $python @launchCommand

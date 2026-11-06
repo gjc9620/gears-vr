@@ -35,7 +35,10 @@ bool authored_eye(gears_anchor::Receipt const* anchor,gears_vr::Vector& output){
     namespace binding=weapon_hand_scene_binding;
     if(!anchor)return false;
     binding::Binding owner{},closing{};
-    if(!binding::sample(anchor,owner))return false;
+    // Inventory/Instigator can be in a legitimate handoff during original
+    // pickup animation. The eye observes the current local avatar, and grants
+    // no weapon action, so it must not depend on that changing weapon binding.
+    if(!binding::sample_visual(anchor,owner))return false;
     gears_vr::Vector eye{};
     {
         std::unique_lock<std::mutex> lock(binding::mutex,std::try_to_lock);
@@ -89,7 +92,7 @@ bool authored_eye(gears_anchor::Receipt const* anchor,gears_vr::Vector& output){
            !eye_phase::field(read,again_head,space.data,eye_marker::head_bone*sizeof head)||std::memcmp(&head,&again_head,sizeof head)||
            !binding::identity(asset,again_id)||!binding::same(asset_id,again_id)||!binding::metadata_current())return false;
     }
-    if(!binding::sample(anchor,closing)||!binding::same_key(owner,closing))return false;
+    if(!binding::sample_visual(anchor,closing)||!binding::same_visual_key(owner,closing))return false;
     output=eye;authored_eye_last={eye.x,eye.y,eye.z};++authored_eye_applied;return true;
 }
 }

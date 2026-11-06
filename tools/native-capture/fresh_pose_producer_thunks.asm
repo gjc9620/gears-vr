@@ -50,8 +50,8 @@ Name PROC FRAME
     .setframe rbp, 0d0h
     .endprolog
     CONTROL_SAVE rsp, 030h
-    IF Kind EQ 0
-        mov rax, [rbp+030h] ; ROOT ONLY: original fifth at RSP0+28h
+    IF Kind NE 1
+        mov rax, [rbp+030h] ; Root/per-bone original fifth at RSP0+28h
         mov [rsp+020h], rax
     ELSE
         mov QWORD PTR [rsp+020h], 0 ; Optional does not read caller fifth
@@ -69,6 +69,7 @@ Name ENDP
 ENDM
 CONTROL_THUNK GearsFreshRootHook, 0
 CONTROL_THUNK GearsFreshOptionalHook, 1
+CONTROL_THUNK GearsFreshPerBoneHook, 2
 PUBLIC GearsFreshRawInvoke5
 GearsFreshRawInvoke5 PROC FRAME
     push rbp

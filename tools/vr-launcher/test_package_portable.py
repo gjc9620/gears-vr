@@ -70,6 +70,23 @@ class PackageTests(unittest.TestCase):
             self.build()
         self.assert_clean()
 
+    def test_unified_reload_configuration_is_required_at_portable_root(self):
+        manifest=json.loads((self.stage/'tools/vr-launcher/manifest.json').read_text())
+        manifest['sixdof_unified']=True
+        self.rows=[r for r in self.rows if r['path']!='tools/vr-launcher/manifest.json']
+        self.add('tools/vr-launcher/manifest.json',json.dumps(manifest).encode())
+        present={r['path'] for r in self.rows}
+        required=packaging.allowed_paths(self.stage)
+        for name in sorted(required-present-{'6dof-reload.ini'}):self.add(name,b'unified-fixture')
+        self.save()
+        with self.assertRaisesRegex(ValueError,'Missing required inventory members: 6dof-reload.ini'):
+            self.build()
+        self.assert_clean()
+        self.add('6dof-reload.ini',b'[Lancer]\ntactical_seconds=4\nempty_seconds=6\n');self.save()
+        self.build()
+        with zipfile.ZipFile(self.output) as archive:
+            self.assertEqual(archive.read('6dof-reload.ini'),(self.stage/'6dof-reload.ini').read_bytes())
+
     def test_release_notes_required_only_for_versioned_public_release(self):
         self.rows = [row for row in self.rows if row['path'] != 'portable-candidate.json']
         self.add('portable-candidate.json', json.dumps({'kind': 'public-test-release', 'version': '0.0.1'}).encode())

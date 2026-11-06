@@ -103,10 +103,10 @@ void setup(){
  b::enabled=false;b::layout_ready=false;b::game_thread=0;b::initial_world=0;committed_world_generation=1;b::failed=true;b::external_change=true;b::stopping=true;entries_valid=false;recording=true;
  h::base_proof={};h::instigator_proof={};h::metadata={};h::metadata_bytes={};h::metadata_ready=false;h::metadata_generation=0;h::game_thread=0;h::clock_ms=test_ms;fake_ms=reads=native_calls=0;anchor_config=c;refresh_scene();
 }
-bool take(h::Binding& out,bool unchanged=true,gears_anchor::Receipt const* receipt=&scene){
+bool take(h::Binding& out,bool unchanged=true,gears_anchor::Receipt const* receipt=&scene,bool visual=false){
  std::array<unsigned char,sizeof(b::Layout)> layout{};memcpy(layout.data(),&b::layout,sizeof b::layout);
  if(unchanged)memcpy(saved_arena.data(),reinterpret_cast<void*>(arena),saved_arena.size());
- const bool result=h::sample(receipt,out);C(!memcmp(layout.data(),&b::layout,sizeof b::layout));C(native_calls==0);
+ const bool result=visual?h::sample_visual(receipt,out):h::sample(receipt,out);C(!memcmp(layout.data(),&b::layout,sizeof b::layout));C(native_calls==0);
  if(unchanged)C(!memcmp(saved_arena.data(),reinterpret_cast<void*>(arena),saved_arena.size()));return result;
 }
 uintptr_t trigger{},change_address{};unsigned hit{},nth{};uint64_t changed_value{};size_t changed_size{},trigger_size{};bool throw_read{},change_generation{},change_scene{},change_thread{};
@@ -122,11 +122,45 @@ void plan(uintptr_t watched,unsigned number,uintptr_t target,uint64_t value,size
 }
 int main(){
  arena=reinterpret_cast<uintptr_t>(VirtualAlloc(nullptr,saved_arena.size(),MEM_COMMIT|MEM_RESERVE,PAGE_READWRITE));if(!arena)return 99;
+ // A transient weapon handoff must not freeze a read-only eye observation,
+ // and that observation must never acquire equipment or pose permission.
+ setup();h::Binding visual{};put(fixture_weapon+0x218,fixture_pc);
+ C(!take(visual));C(take(visual,true,&scene,true));
+ C(visual.context_valid&&!visual.weapon_known&&!visual.weapon.address);
+ C(h::same_visual_key(visual,visual)&&!h::same_key(visual,visual)&&!h::current_actor(visual));
+ {auto foreign=visual;foreign.mesh=visual.pawn;C(!h::same_visual_key(visual,foreign));}
+ setup();put(fixture_pawn+0x100,fixture_weapon);C(!take(visual,true,&scene,true));
  setup();h::Binding out{};denied=fixture_pawn+0x200;const auto start=reads;C(take(out));const auto cold_reads=reads-start;
  C(out.context_valid&&out.weapon_known&&out.weapon.address==fixture_weapon&&out.controller.address==fixture_pc&&out.pawn.address==fixture_pawn&&out.mesh.address==fixture_mesh&&out.world.address==fixture_world);
  C(out.world.outer!=scene.anchor.level&&out.weapon.outer!=out.pawn.outer&&out.shared_actor_world&&out.special_move==0&&out.scene_invocation==17&&out.world_generation==1);
  C(!out.actor_or_mesh_fields_written&&!out.atomic_snapshot_verified);const auto warmed=reads;C(take(out));printf("binding synthetic reads cold=%u warm=%u; base sources=%u/ids=%u instigator sources=%u/ids=%u\n",cold_reads,reads-warmed,h::base_proof.source_count,h::base_proof.identity_count,h::instigator_proof.source_count,h::instigator_proof.identity_count);
+ // Head visibility uses a fresh real local-model read, without requiring the
+ // old gun to remain selected. It never accepts another owner or mesh.
+ C(h::current_local_visual_model(out));
+ put(fixture_pawn+0x1d0,fixture_weapon2);C(h::current_local_visual_model(out));C(!h::current_actor(out));
+ put(fixture_pawn+0x1d0,fixture_weapon);
+ {auto bad=out;bad.mesh=out.weapon;C(!h::current_local_visual_model(bad));bad=out;bad.controller=out.pawn;C(!h::current_local_visual_model(bad));}
+ recording=false;C(!h::current_local_visual_model(out));recording=true;
+ committed_world_generation=2;C(!h::current_local_visual_model(out));committed_world_generation=1;
+ h::game_thread=GetCurrentThreadId()+1;C(!h::current_local_visual_model(out));h::game_thread=GetCurrentThreadId();
+ put(fixture_pc+0x188,uintptr_t(0));C(!h::current_local_visual_model(out));put(fixture_pc+0x188,fixture_pawn);
  C(!b::enabled&&!b::layout_ready&&b::game_thread==0&&b::initial_world==0&&h::game_thread==GetCurrentThreadId());
+ // Cached render Scene identity remains immutable while an actual Lancer
+ // ready/execution policy change is freshly observed under the next Tick.
+ setup();klass(fixture_gun_a,22,L"Weap_AssaultRifle",fixture_warweapon);C(take(out));
+ {const auto original=out;h::Binding tick{};
+  for(unsigned move:{33u,34u,0u}){const auto previous=out.special_move;put(fixture_pawn+0x191,static_cast<unsigned char>(move));
+   C(h::current_tick_actor(out,tick)&&tick.special_move==move&&h::same_key(out,tick)&&h::current_actor(tick));
+   C(out.special_move==previous&&out.scene_invocation==original.scene_invocation);out=tick;}
+  const auto expect=out;tick.special_move=255;
+  put(fixture_pawn+0x191,static_cast<unsigned char>(12));C(!h::current_tick_actor(expect,tick)&&tick.special_move==255);
+  put(fixture_pawn+0x191,static_cast<unsigned char>(33));put(fixture_pawn+0x1d0,fixture_weapon2);
+  C(!h::current_tick_actor(expect,tick)&&tick.special_move==255);put(fixture_pawn+0x1d0,fixture_weapon);
+  committed_world_generation=2;C(!h::current_tick_actor(expect,tick)&&tick.special_move==255);committed_world_generation=1;
+  plan(fixture_pawn+0x191,2,fixture_pawn+0x191,0,1);C(!h::current_tick_actor(expect,tick)&&tick.special_move==255);read_hook=nullptr;}
+ setup();C(take(out));{h::Binding tick{};C(h::current_tick_actor(out,tick));
+  put(fixture_pawn+0x191,static_cast<unsigned char>(33));tick.special_move=255;
+  C(!h::current_tick_actor(out,tick)&&tick.special_move==255);} // GunA is not Lancer.
  setup();b::metadata={};b::layout={};denied=arena+0x900;C(take(out)); // No body metadata/entry/source dependency.
  setup();scene.thread++;C(!take(out)&&h::game_thread==0);refresh_scene();C(take(out)&&h::game_thread==GetCurrentThreadId());
  {auto key=out;C(h::same_key(out,key));++key.scene_invocation;++key.special_move;C(h::same_key(out,key));++key.weapon.number;C(!h::same_key(out,key));key=out;++key.controller.number;C(!h::same_key(out,key));key=out;++key.world_generation;C(!h::same_key(out,key));key=out;key.weapon_known=false;C(!h::same_key(out,key));key=out;key.context_valid=false;C(!h::same_key(out,key));}

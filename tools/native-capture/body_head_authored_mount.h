@@ -88,6 +88,12 @@ inline Status prepare(body::Model const& model,body::Frame const& frame,Basis ba
     // This static asset basis is not a player IPD or animated calibration.
     candidate.reference_eye_.orientation=basis==Basis::marcus_mesh_face_forward_y?
         yaw(1.57079632679489661923):body::Quat{0,0,0,1};
+    // One coherent authored eye/body mount, requested after the physical
+    // check. Both the fallback eye and inverse head solver use this SAME3cm
+    // forward placement; no extra camera offset or second writer is added.
+    if(basis==Basis::marcus_mesh_face_forward_y)
+        candidate.reference_eye_.position=add(candidate.reference_eye_.position,
+            rotate(candidate.reference_eye_.orientation,{.03*frame.units_per_metre,0,0}));
     const auto inverse_head=body::d::inverse(candidate.reference_head_.orientation);
     candidate.head_to_eye_.position=rotate(inverse_head,sub(candidate.reference_eye_.position,candidate.reference_head_.position));
     candidate.head_to_eye_.orientation=basis==Basis::designer_authored_ue_actor_axes?inverse_head:

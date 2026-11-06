@@ -47,14 +47,30 @@ template<class Read>bool cohort(Read&& read,Arguments const&a,Cohort& c) {
 struct Observation {pose::Metadata metadata{};std::uint64_t journal_version{},qpc{};};
 class Context {public:virtual ~Context()=default;virtual std::uint64_t thread_token()const noexcept=0;
     virtual bool current(tx::Stamp const&,Observation&) noexcept=0;};
-class ReceiptSource {public:virtual ~ReceiptSource()=default;virtual tx::Verdict verify(tx::View const&,tx::ReceiptRef,tx::FreshEvidence&)noexcept=0;};
+struct Diagnostic {tx::Mask covered{};std::uint64_t version{},event{},return_qpc{};std::uint32_t installed_epoch{},coverage_epoch{};bool bound{},active{};};
+class ReceiptSource {public:virtual ~ReceiptSource()=default;virtual tx::Verdict verify(tx::View const&,tx::ReceiptRef,tx::FreshEvidence&)noexcept=0;
+    virtual bool diagnostic(Diagnostic&)const noexcept{return false;}};
 struct Ticket {Ticket const*self{};std::uint64_t version{},serial{},thread{};unsigned bone{};Observation before{};Cohort source{};bool admitted{};};
+// Observation of the certified root blend's actual full-array stores. This is
+// not a lease and does not hold the per-bone decoder's nested callback slot.
+struct BlendTicket {BlendTicket const*self{};std::uint64_t version{},thread{};Observation before{};bool admitted{};};
 class Registry final:public ReceiptSource {
+    std::array<std::atomic<std::uint64_t>,9> blend_results_{};
+    std::atomic<unsigned> blend_exact_failure_{};
     Context* context_{};tx::Stamp installed_{};std::uint32_t installed_epoch_{},coverage_epoch_{};
     std::uint64_t version_{},serial_{},event_{},return_qpc_{};std::uintptr_t caller_{};tx::Mask covered_{};Observation last_{};Ticket*active_{};
     std::atomic<std::uint64_t> thread_{};std::atomic<unsigned> protocol_{},in_call_{};bool bound_{};
     void debt()noexcept{auto x=protocol_.load();while(x!=UINT_MAX&&!protocol_.compare_exchange_weak(x,x+1)){};}
 public:
+    std::uint64_t blend_result(unsigned i)const noexcept{return i<blend_results_.size()?blend_results_[i].load():0;}
+    unsigned blend_exact_failure()const noexcept{return blend_exact_failure_.load();}
+    std::uintptr_t candidate_mesh(std::uint64_t thread)const noexcept {
+        return thread&&thread_.load()==thread&&bound_&&!protocol_.load()?installed_.binding.owner:0;
+    } // Selection only; begin/finish still authenticate storage + actual world scope.
+    bool diagnostic(Diagnostic& out)const noexcept override {
+        if(!context_||!thread_.load()||context_->thread_token()!=thread_.load())return false;
+        out={covered_,version_,event_,return_qpc_,installed_epoch_,coverage_epoch_,bound_,active_!=nullptr};return true;
+    }
     std::uint64_t version()const noexcept{return version_;}
     std::uint64_t event()const noexcept{return event_;}
     // Cheap same-GT selection only; this grants neither coverage nor write permission.
@@ -91,6 +107,28 @@ public:
         Observation now{};if(!context_->current(installed_,now)||now.journal_version!=version_||now.metadata.pose_epoch!=coverage_epoch_||
            now.metadata.pose_epoch<=installed_epoch_||!pose::metadata_equal(now.metadata,t.before.metadata)||now.qpc<=t.before.qpc||now.qpc<=installed_.producer)return false;
         tx::include(covered_,t.bone*2);tx::include(covered_,t.bone*2+1);last_=now;return_qpc_=now.qpc;event_=t.serial;return true;
+    }
+    bool begin_blend(BlendTicket& t,std::uint32_t epoch)noexcept {
+        t={};const auto thread=context_?context_->thread_token():0;
+        if(!bound_||!thread||thread_.load()!=thread||active_||protocol_.load()||serial_==UINT64_MAX)return false;
+        Observation now{};if(!context_->current(installed_,now)||now.journal_version!=version_||
+            now.metadata.pose_epoch!=epoch||epoch<=installed_epoch_||now.qpc<=installed_.producer)return false;
+        t.self=&t;t.version=version_;t.thread=thread;t.before=now;t.admitted=true;return true;
+    }
+    bool finish_blend(BlendTicket& t,bool certified_stores)noexcept {
+        const auto fail=[&](unsigned reason){++blend_results_[reason];return false;};
+        const bool exact=t.self==&t&&t.admitted&&bound_&&!active_&&!protocol_.load()&&context_&&
+            t.thread==thread_.load()&&context_->thread_token()==t.thread&&t.version==version_&&serial_!=UINT64_MAX;
+        if(!exact)blend_exact_failure_=unsigned(t.self!=&t)|unsigned(!t.admitted)*2|unsigned(!bound_)*4|
+            unsigned(active_!=nullptr)*8|unsigned(protocol_.load()!=0)*16|unsigned(t.version!=version_)*32;
+        t.admitted=false;if(!exact)return fail(1);if(!certified_stores)return fail(2);
+        Observation now{};if(!context_->current(installed_,now))return fail(3);
+        if(now.journal_version!=version_)return fail(4);
+        if(now.metadata.pose_epoch!=t.before.metadata.pose_epoch||now.metadata.pose_epoch<=installed_epoch_)return fail(5);
+        if(!pose::metadata_equal(now.metadata,t.before.metadata))return fail(6);
+        if(now.qpc<=t.before.qpc||now.qpc<=installed_.producer)return fail(7);
+        covered_={};for(unsigned bone=0;bone<115;++bone){tx::include(covered_,bone*2);tx::include(covered_,bone*2+1);}
+        coverage_epoch_=now.metadata.pose_epoch;last_=now;return_qpc_=now.qpc;event_=++serial_;++blend_results_[0];return true;
     }
     void abandon(Ticket&t)noexcept {if(t.admitted){if(t.self==&t&&active_==&t){active_=nullptr;in_call_=0;t.admitted=false;}debt();}}
     tx::Verdict verify(tx::View const&v,tx::ReceiptRef r,tx::FreshEvidence&out)noexcept override {

@@ -15,6 +15,21 @@ import portable_preflight as preflight
 
 
 class StageTests(unittest.TestCase):
+    def test_explicit_authored_parts_capability_requires_only_frozen_public_inputs(self):
+        original=set(stage.payload_paths(self.manifest))
+        enabled=dict(self.manifest,weapon_part_assets=1)
+        self.assertEqual(set(stage.payload_paths(enabled))-original,
+                         set(stage.AUTHORED_PART_INPUTS)|{
+                             'tools/vr-launcher/weapon_part_cache.py',
+                             'tools/vr-launcher/manual_part_preparation.py',
+                             'tools/vr-launcher/lancer_handle_cache.py'})
+        self.assertEqual(len(stage.AUTHORED_PART_INPUTS),22)
+        self.assertTrue(all(name.startswith('assets/weapon-6dof/offline-v2/engine-input/')
+                            and name.endswith(('.vtx60','.idx16')) for name in stage.AUTHORED_PART_INPUTS))
+        for invalid in (True,False,0,2,'1'):
+            with self.assertRaisesRegex(ValueError,'asset schema'):
+                stage.payload_paths(dict(self.manifest,weapon_part_assets=invalid))
+
     def test_packaging_contains_every_generated_continuous_selftest_executable(self):
         sys.path.insert(0,str(Path(__file__).resolve().parents[1]/'native-capture'))
         from startup_selftests import continuous_suite,capture_suite

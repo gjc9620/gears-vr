@@ -12,7 +12,7 @@ import pathlib
 import subprocess
 import sys
 import time
-from prime_owner import pending_prime
+from prime_owner import pending_prime,owner_argument
 ROOT=pathlib.Path(__file__).resolve().parents[2]
 sys.path.insert(0,str(ROOT/'tools/package-inspector'))
 sys.path.insert(0,str(ROOT/'tools/package-inspector/python-libs'))
@@ -60,16 +60,50 @@ def modules(handle,*,bases=None):
     return result
 
 
-def remote_call(handle,address,parameter):
+def remote_call(handle,address,parameter,*,timeout_ms=15000):
+    if not isinstance(timeout_ms,int) or isinstance(timeout_ms,bool) or not 1<=timeout_ms<=60000:
+        raise ValueError('Remote call wait must be bounded to 1..60000 ms')
     thread=k.CreateRemoteThread(handle,None,0,address,parameter,0,None)
     if not thread:raise c.WinError(c.get_last_error())
     try:
-        status=k.WaitForSingleObject(thread,15000)
+        status=k.WaitForSingleObject(thread,timeout_ms)
         if status!=0:raise RuntimeError('Remote loader call did not finish; do not repeat injection blindly')
         code=w.DWORD()
         if not k.GetExitCodeThread(thread,c.byref(code)):raise c.WinError(c.get_last_error())
         return code.value
     finally:k.CloseHandle(thread)
+
+
+def retire_startup_presentation(handle,resident,dll,owner_pid,owner_creation_time,check_live):
+    """Restore the resident Native's owned startup quad before raw entry checks.
+
+    Older frozen Native has no lease/export and keeps the unchanged path. A
+    newer Native verifies the same owner and drains its single early callback.
+    Unknown remote completion retains its argument allocation, as with loading.
+    """
+    if owner_pid is None or owner_creation_time is None:return False
+    pe=pefile.PE(str(dll))
+    try:
+        export=next((e for e in pe.DIRECTORY_ENTRY_EXPORT.symbols if e.name==b'GearsCaptureRetireStartupPresentationOwned'),None)
+        if export is None:return False
+        if export.forwarder or not 0<export.address<pe.OPTIONAL_HEADER.SizeOfImage:
+            raise RuntimeError('Invalid startup presentation retirement export')
+        address=resident[0]+export.address
+    finally:pe.close()
+    check_live();argument=owner_argument(owner_pid,owner_creation_time)
+    memory=k.VirtualAllocEx(handle,None,len(argument),0x3000,0x04)
+    if not memory:raise c.WinError(c.get_last_error())
+    finished=False;invoked=False
+    try:
+        copied=c.c_size_t();buffer=c.create_string_buffer(argument)
+        if not k.WriteProcessMemory(handle,memory,buffer,len(argument),c.byref(copied)) or copied.value!=len(argument):
+            raise c.WinError(c.get_last_error())
+        check_live();invoked=True
+        code=remote_call(handle,address,memory,timeout_ms=5000);finished=True
+        if code:raise RuntimeError(f'Owned startup presentation retirement failed ({code}); no activation')
+        check_live();return True
+    finally:
+        if finished or not invoked:k.VirtualFreeEx(handle,memory,0,0x8000)
 
 
 def observer_preparation_churn(error):
@@ -441,6 +475,7 @@ def main():
     parser.add_argument('--origin-trial',action='store_true',help='Explicit experimental origin A/B/A; requires anchor observer, continuous session and stereo GPU publication')
     parser.add_argument('--cinematic-camera',action='store_true',help='Accept certified cinematic CameraActor targets sharing the controlled WorldInfo while preserving Pawn possession')
     parser.add_argument('--ui-observer',action='store_true',help='Observe registered reticle/HUD Canvas calls without changing coordinates')
+    parser.add_argument('--menu-display-file',type=pathlib.Path,help=argparse.SUPPRESS)
     parser.add_argument('--ui-hud-plane',action='store_true',help='Experimental HUD plane; requires UI observer, anchor observer and continuous session')
     parser.add_argument('--ui-reticle-late-sample',action='store_true',help=argparse.SUPPRESS)
     parser.add_argument('--crosshair-assignment-observer',action='store_true',help='Observe certified crosshair assignments; no reticle correction')
@@ -454,6 +489,11 @@ def main():
     parser.add_argument('--hud-center-scale',type=float,help='Experimental HUD group center displacement, 0..1; identity default')
     parser.add_argument('--outage-diagnostics',action='store_true',help='Record a bounded missing-image window in the existing stereo publication path; disabled by default')
     args=parser.parse_args()
+    if args.menu_display_file is not None:
+        if not args.continuous_session:parser.error('Menu display requires a continuous session owner')
+        args.menu_display_file=args.menu_display_file.resolve()
+        if any(c in str(args.menu_display_file) for c in '\r\n') or len(str(args.menu_display_file))>=259:
+            parser.error('Menu display path is not a bounded native INI value')
     configure_anchor_options(args,parser)
     if args.ui_observer and not (args.anchor_observer and args.continuous_session):
         parser.error('UI observer requires continuous stereo with anchor observer')
@@ -581,11 +621,14 @@ def main():
                 try:
                     if k.WaitForSingleObject(prime_event,0)!=0x102:raise RuntimeError('Target priming already signaled')
                 finally:k.CloseHandle(prime_event)
+                if retire_startup_presentation(handle,resident,dll,args.continuous_owner_pid,args.continuous_owner_creation_time,check_preparation):
+                    print(json.dumps({'startup_presentation_retired':True,'pid':args.pid,'original_entry_check_preserved':True}),flush=True)
         elif dll.name.lower() in loaded:raise RuntimeError('Capture DLL already loaded; restart game before a new capture build/run')
         active_event=k.OpenEventW(0x100000,False,f'Local\\GearsVR.Capture.Stop.{args.pid}')
         if active_event:
             k.CloseHandle(active_event);raise RuntimeError('Another capture is active; overlapping instrumentation rejected')
-        # Verify exact target prologues before any remote allocation or load.
+        # After retiring an already-resident startup lease, verify exact raw
+        # prologues before new capture loading/activation. No patched-entry bypass.
         signatures=observer_signatures(args)
         camera,anchor_metadata,anchor_section,ui_metadata,ui_section=prepare(lambda:acquire_observer_preparation(
             args.pid,profile,camera,signatures,dll,anchor_observer=args.anchor_observer,ui_observer=args.ui_observer,
@@ -618,6 +661,7 @@ def main():
         config+=f'stereo_gpu_publish={int(args.stereo_gpu_publish)}\n'
         config+=f'simulator_operator={int(args.simulator_operator)}\n'
         config+=f'continuous_session={int(args.continuous_session)}\n'
+        if args.menu_display_file is not None:config+=f'menu_display_file={args.menu_display_file}\n'
         if args.continuous_session:
             config+=f'continuous_owner_pid={args.continuous_owner_pid}\ncontinuous_owner_creation_time={args.continuous_owner_creation_time}\n'
         config+=f'color_copy_diagnostics={int(args.color_copy_diagnostics)}\n'

@@ -16,13 +16,14 @@ struct MirrorResizeBoundary {
     std::unique_lock<FrameHookMutex> lock{frame_hook_mutex,std::defer_lock};
     bool ready{true};
     explicit MirrorResizeBoundary(IDXGISwapChain* chain){
+        if(depth==1)ready=startup_menu_readback::before_resize(chain);
 #if defined(GEARS_DESKTOP_MIRROR) && GEARS_DESKTOP_MIRROR
         if constexpr(gears_vr::DesktopMirror::asynchronous){
             if(depth!=1)return;
             lock.lock();
             if(!swapchain_bindings.registered(canonical_identity(chain)).chain){lock.unlock();return;}
             StereoPublishBypass bypass;
-            ready=desktop_mirror.drain(1000);
+            ready=desktop_mirror.drain(1000)&&ready;
         }
 #else
         (void)chain;

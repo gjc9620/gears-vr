@@ -17,6 +17,7 @@
 #include "outage_diagnostics.h"
 #include "transition_card_layout.h"
 #include "menu_pixels.h"
+#include "physical_window_pixels.h"
 
 inline std::int64_t menu_capture_qpc_ticks(){
     LARGE_INTEGER counter{},frequency{};
@@ -44,6 +45,7 @@ class GameWindowFrames {
     unsigned pool_width{},pool_height{};
     winrt::event_token token{},closed_token{};
     HWND hwnd{};DWORD pid{};unsigned source_width{},source_height{};
+    LONG last_crop_left{},last_crop_top{},last_content_width{},last_content_height{};
     struct ProcessHandle {HANDLE value{};~ProcessHandle(){if(value)CloseHandle(value);}};
     bool startup=false;ProcessHandle target_process;uint64_t target_creation{};
     bool recover_window=false;
@@ -73,7 +75,7 @@ class GameWindowFrames {
     bool usable(HWND window)const{
         RECT client{};
         return matches(window)&&IsWindowVisible(window)&&!IsIconic(window)&&
-            GetClientRect(window,&client)&&client.right>=640&&client.bottom>=360;
+            physical_window_pixels::client(window,client)&&client.right>=640&&client.bottom>=360;
     }
     void request_borderless_access(){
         using namespace winrt::Windows::Graphics::Capture;
@@ -131,7 +133,7 @@ class GameWindowFrames {
         using namespace winrt::Windows::Graphics::DirectX;
         require_process();
         RECT client{};
-        if(!matches(window)||!GetClientRect(window,&client)||client.right<=0||client.bottom<=0)return false;
+        if(!matches(window)||!physical_window_pixels::client(window,client)||client.right<=0||client.bottom<=0)return false;
         if(recover_window&&!usable(window))return false;
         source_width=client.right;source_height=client.bottom;
         width=std::min(startup?1920u:960u,source_width);height=std::max(1u,unsigned(uint64_t(source_height)*width/source_width));
@@ -177,7 +179,7 @@ class GameWindowFrames {
         const auto visit=[](HWND window,LPARAM param)->BOOL{
             auto& found=*reinterpret_cast<Candidates*>(param);DWORD actual{};RECT client{};
             GetWindowThreadProcessId(window,&actual);
-            if(actual==found.pid&&IsWindowVisible(window)&&!IsIconic(window)&&GetClientRect(window,&client)&&
+            if(actual==found.pid&&IsWindowVisible(window)&&!IsIconic(window)&&physical_window_pixels::client(window,client)&&
                 client.right>=640&&client.bottom>=360){found.window=window;++found.count;}
             return TRUE;
         };
@@ -260,6 +262,11 @@ public:
     std::int64_t menu_started()const{return menu_epoch.started();}
     std::int64_t menu_captured()const{return menu_epoch.captured();}
     std::uintptr_t window_identity()const{return reinterpret_cast<std::uintptr_t>(hwnd);}
+    void print_pixel_geometry()const {
+        printf("{\"menu_source_pixel_geometry\":true,\"client\":[%u,%u],\"crop_origin\":[%ld,%ld],\"content\":[%ld,%ld],\"physical_measurement\":true,\"thread_dpi_awareness_after_restore\":%d}\n",
+            source_width,source_height,last_crop_left,last_crop_top,last_content_width,last_content_height,
+            int(GetAwarenessFromDpiAwarenessContext(GetThreadDpiAwarenessContext())));fflush(stdout);
+    }
     bool menu_fresh(std::int64_t* observed_now=nullptr,std::int64_t max_age=MenuCaptureEpoch::maximum_age)const{
         if(!startup)return true;
         const auto now=menu_capture_qpc_ticks();if(observed_now)*observed_now=now;
@@ -312,7 +319,8 @@ public:
             pool_width=content.Width;pool_height=content.Height;return reject_capture(R::resize);
         }
         RECT client{},bounds{};POINT origin{};
-        GetClientRect(hwnd,&client);ClientToScreen(hwnd,&origin);
+        if(!physical_window_pixels::client(hwnd,client,&origin)){
+            frame.Close();return reject_capture(R::invalid_crop);}
         auto bounds_result=DwmGetWindowAttribute(hwnd,DWMWA_EXTENDED_FRAME_BOUNDS,&bounds,sizeof(bounds));
         if(startup&&FAILED(bounds_result)){frame.Close();return reject_capture(R::invalid_crop);}check_hresult(bounds_result);
         LONG left=std::max(0L,origin.x-bounds.left),top=std::max(0L,origin.y-bounds.top);
@@ -336,6 +344,7 @@ public:
             check_hresult(device->CreateTexture2D(&desc,nullptr,staging.put()));
         }
         D3D11_BOX box{UINT(left),UINT(top),0,UINT(left+client.right),UINT(top+client.bottom),1};
+        last_crop_left=left;last_crop_top=top;last_content_width=content.Width;last_content_height=content.Height;
         context->CopySubresourceRegion(staging.get(),0,0,0,0,texture.get(),0,&box);
         D3D11_MAPPED_SUBRESOURCE mapped{};check_hresult(context->Map(staging.get(),0,D3D11_MAP_READ,0,&mapped));
         pixel_sampler.copy(pixels.data(),width,height,static_cast<const unsigned char*>(mapped.pData),
@@ -471,6 +480,7 @@ public:
             const unsigned char rgb[]={pixel[2],pixel[1],pixel[0]};fwrite(rgb,1,3,output);
         }
         fclose(output);
+        source.print_pixel_geometry();
     }
     // Same XR render thread as render(); leaves GPU objects/fence ownership intact.
     void begin_menu_epoch(){

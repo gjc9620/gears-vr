@@ -2,6 +2,9 @@
 // Native worker configures/initializes before Scene admission or exports can
 // register. This module creates one stable Broker, never an input/hand owner.
 namespace full_body_c0_native_live {bool body_mount_source_current(gears_body_main_mount_provider::Source const&) noexcept;}
+namespace weapon_part_visibility_live {bool pending() noexcept;void request_drain() noexcept;}
+namespace lancer_handle_morph_live {bool pending() noexcept;void request_drain() noexcept;}
+namespace lancer_original_handle_live {bool pending() noexcept;void request_drain() noexcept;}
 namespace weapon_hand_runtime {
 namespace api=::gears_weapon_hand;
 namespace call_api=::gears_weapon_call;
@@ -206,6 +209,26 @@ api::Reply attach_call_participant(call_api::Registration const* input,api::Regi
     }catch(...){detail::fault();return api::Reply::invalid;}
 }
 
+bool submit_hud_query(gears_weapon_hud_receipt::Receipt const* input) noexcept {
+    detail::Call call;
+    if(detail::admission_closed.load()||detail::stop_requested.load())return false;
+    auto* b=current();if(!b)return false;
+    gears_weapon_hud_receipt::Receipt value{};
+    if(!api::weapon_broker_win32::copy(&value,input,sizeof(value)))return false;
+    return b->submit_hud_query(value);
+}
+api::Reply attach_hand_visual(gears_committed_hand_consumer::Registration const* input,api::RegistrationResult* output,bool owned) noexcept {
+    detail::Call call;
+    if(detail::admission_closed.load()||detail::stop_requested.load())return api::Reply::draining;
+    auto* b=current();if(!b)return api::Reply::unavailable;
+    try{return b->attach_hand_visual(input,output,owned);}catch(...){detail::fault();return api::Reply::invalid;}
+}
+bool take_hud_query(std::uintptr_t root,std::uintptr_t controller,std::uintptr_t pawn,
+                    gears_weapon_hud_receipt::Receipt& output) noexcept {
+    detail::Call call;output={};
+    if(detail::admission_closed.load()||detail::stop_requested.load())return false;
+    auto* b=current();return b&&b->take_hud_query(root,controller,pawn,output);
+}
 bool begin_call(std::uintptr_t self,std::uintptr_t caller_frame,std::uintptr_t result,std::uintptr_t callee,api::CallScope& scope,api::ActionScope const* gate=nullptr) noexcept {
     detail::Call call;++detail::call_begin_attempts;
     if((detail::admission_closed.load()||detail::stop_requested.load())&&(!gate||!gate->active))return false;
@@ -290,6 +313,9 @@ boundary_api::End close_boundary(boundary_api::State* state,boundary_api::Receip
 void request_stop() noexcept {
     detail::Call call;++detail::stop_requests;
     detail::stop_requested.store(true);detail::admission_closed.store(true);
+    weapon_part_visibility_live::request_drain();
+    lancer_original_handle_live::request_drain();
+    lancer_handle_morph_live::request_drain();
     if(auto* b=current())try {b->invalidate(api::InvalidateReason::native_stopping);}catch(...){detail::fault();}
 }
 
@@ -311,10 +337,12 @@ void worker_tick() noexcept {
 }
 
 bool retained() noexcept {
+    if(weapon_part_visibility_live::pending()||lancer_handle_morph_live::pending()||lancer_original_handle_live::pending())return true;
     if(detail::unknown_fault.load()||detail::calls.load())return true;
     auto* b=current();return b&&(b->cookie()||b->pin_retained()||b->pending_callbacks()||b->pending_transactions()||b->pending_aux_scopes()||b->aux_debt()||b->pending());
 }
 bool cleanup_ready() noexcept {
+    if(weapon_part_visibility_live::pending()||lancer_handle_morph_live::pending()||lancer_original_handle_live::pending())return false;
     if(!detail::admission_closed.load()||detail::unknown_fault.load()||detail::calls.load())return false;
     auto* b=current();return !b||(!b->cookie()&&!b->pin_retained()&&!b->pending_callbacks()&&!b->pending_transactions()&&!b->pending_aux_scopes()&&!b->aux_debt()&&!b->pending()&&
         b->availability()==api::Availability::absent_quiescent);

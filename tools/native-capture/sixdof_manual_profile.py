@@ -21,6 +21,8 @@ enabled=1
 length_mode=preserve
 [FreshPoseProducerObserver]
 enabled=1
+experimental_sequence_overwrite=1
+experimental_per_bone_overwrite=1
 [FullBodyC0Native]
 enabled=1
 hands=1

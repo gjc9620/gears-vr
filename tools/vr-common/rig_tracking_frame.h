@@ -7,7 +7,7 @@
 // are unchanged. Reading this value grants no engine call, setter, bone lease,
 // restore stage or ownership of a pose workspace. It is not a GHW1 certificate.
 namespace gears_rig_tracking {
-constexpr std::uint32_t version=1;
+constexpr std::uint32_t version=2; // Exact GVC4 controller payload.
 constexpr std::uint64_t maximum_age_ns=100000000;
 enum class Status:std::uint32_t {unavailable,ready,stopped};
 enum class Reply:std::uint32_t {accepted,unavailable,invalid,wrong_cookie,stopping};

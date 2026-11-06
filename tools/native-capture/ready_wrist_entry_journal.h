@@ -102,7 +102,21 @@ inline bool ready_pose(gears_vr::Pose const& head,gears_vr::Pose const& right,
     } catch(...) {return false;}
 }
 struct Recorder {
-    bool enabled{};std::atomic<bool> active{};std::atomic<unsigned> saved{};
+    bool enabled{},saw_reentry{};std::atomic<bool> active{};std::atomic<unsigned> saved{};
+    // Opt-in private observation window: one selected actual ready33 entry
+    // (second by default; first may be selected in the private simulator).
+    // The ordinary fixed-pose selector is unchanged. No writer consumes this
+    // state; keep the existing64-row bound and every original source clock.
+    Key saw_key{};U saw_weapon{};unsigned saw_entries{},saw_target{2};bool saw_ready{};
+    bool select_saw_reentry(Key const& key,U weapon,unsigned move,bool current_lancer) noexcept {
+        if(!key.pid||!key.game_start||!key.native_started||!key.mesh||!key.cookie||!weapon)return false;
+        if(key.pid!=saw_key.pid||key.game_start!=saw_key.game_start||key.native_started!=saw_key.native_started||
+           key.mesh!=saw_key.mesh||key.cookie!=saw_key.cookie||weapon!=saw_weapon){saw_key=key;saw_weapon=weapon;saw_entries=0;saw_ready=false;}
+        if(move!=33){saw_ready=false;return false;}
+        if(!current_lancer)return false; // Unknown binding is not another start edge.
+        if(!saw_ready&&saw_entries<3)++saw_entries;saw_ready=true;
+        return saw_entries==saw_target;
+    }
     U selected{},dropped_capacity{},nested{},unmatched_end{},nonmatching_input{},unavailable_input{};
     bool window{},exhausted{};Key window_key{};U window_cookie{};
     Record* current{};std::array<Record,capacity> rows{};
@@ -111,7 +125,8 @@ struct Recorder {
             current->key.compose==compose&&current->key.thread==thread;
     }
     bool begin(Key const& key,gears_vr::Pose const& head,gears_vr::Pose const& right,
-               double squeeze,double trigger,bool copied_fixture_input_valid,bool update_existing=false) noexcept {
+               double squeeze,double trigger,bool copied_fixture_input_valid,bool update_existing=false,
+               bool context_selected=false) noexcept {
         if(!enabled||exhausted)return false;
         const bool updating=active.load(std::memory_order_acquire);
         if(updating&&(!update_existing||!exact(key.entry,key.compose,key.thread))){++nested;return false;}
@@ -121,12 +136,13 @@ struct Recorder {
            (key.input_source!=unknown&&key.input_source!=window_key.input_source));
         if(changed)window=false;
         gears_vr::Pose relative{};double position{},angle{};bool known=false;
-        const bool match=copied_fixture_input_valid&&key.cookie&&ready_pose(head,right,relative,position,angle,&known);
+        const bool pose_match=copied_fixture_input_valid&&key.cookie&&ready_pose(head,right,relative,position,angle,&known);
+        const bool match=copied_fixture_input_valid&&key.cookie&&known&&(saw_reentry?context_selected:pose_match);
         if(updating){
             if(changed){current->selection=4;return true;}
             if(!known)return true;
             if(current->selection==2&&unavailable_input)--unavailable_input;
-            current->selection=match?1u:3u;
+            current->selection=match?(saw_reentry?5u:1u):3u;
             if(!match){++nonmatching_input;window=false;}
             const auto began=current->key.begin_qpc;current->key=key;current->key.begin_qpc=began;
             current->valid|=Valid::source;current->raw_head=head;current->raw_right=right;current->head_relative_right=relative;
@@ -134,7 +150,7 @@ struct Recorder {
             return true;
         }
         U selection=unknown;
-        if(match){selection=1;if(!window){window=true;window_key=key;window_cookie=key.cookie;}}
+        if(match){selection=saw_reentry?5u:1u;if(!window){window=true;window_key=key;window_cookie=key.cookie;}}
         else if(known){++nonmatching_input;if(!window)return false;selection=3;window=false;}
         else{++unavailable_input;if(!window)return false;selection=2;}
         const auto seq=++selected;const auto index=saved.load(std::memory_order_relaxed);

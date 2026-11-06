@@ -37,6 +37,28 @@ struct Fixture {
     }
 };
 int main(){
+    {
+        LeftControlSelector select;
+        C(!select.update({true,false},{true,true},true).known); // Held attachment is not a new pinch.
+        C(select.update({true,false},{true,false},true).known);
+        auto p=select.update({true,false},{true,true},true);
+        C(p.known&&p.down&&p.control==LeftInteractionControl::pinch);
+        p=select.update({true,true},{true,true},true);
+        C(p.known&&p.down&&p.control==LeftInteractionControl::pinch);
+        p=select.update({true,true},{true,false},true);
+        C(p.known&&!p.down&&p.control==LeftInteractionControl::pinch); // Never redirects held Grip.
+        C(!select.update({false,false},{true,true},true).known);
+        C(!select.update({true,true},{true,true},true).known);
+        select.update({true,false},{true,false},true);
+        p=select.update({true,true},{true,false},true);C(p.known&&p.down&&p.control==LeftInteractionControl::grip);
+    }
+    {
+        Fixture pinch;pinch.frame.cover.cover_valid=false;pinch.frame.allow_index_pinch=true;
+        pinch.frame.weapon_requests.magazine=true;pinch.hands.hands[0].trigger_active=1;pinch.publish();pinch.run();
+        pinch.hands.hands[0].trigger=.8f;auto p=pinch.next(0);
+        C(p.accepted&&p.left_hand.new_grant&&p.left_hand.lease.kind==LeftHandInteraction::magazine);
+        C(!p.interaction.owns_left_hand); // Trigger never becomes a cover Grip.
+    }
     Fixture f;auto r=f.run();C(r.accepted&&r.view_valid&&r.body_weight_valid&&r.requested_up_weight==0);
     C(r.left_hand.status==LeftHandInteractionStatus::released);
     r=f.next(.8f);C(r.interaction.owns_left_hand&&r.left_hand.new_grant&&r.left_hand.lease.kind==LeftHandInteraction::cover);
@@ -74,6 +96,19 @@ int main(){
     // Outside cover, the same global owner still grants ordinary weapon input.
     Fixture outside;outside.frame.cover.cover_valid=false;outside.frame.weapon_requests.ammo=true;
     outside.run();r=outside.next(.8f);C(r.accepted&&!r.view_valid&&r.left_hand.lease.kind==LeftHandInteraction::ammo);
+    // Exercise the actual cover/weapon bridge, not only the pure hand arbiter.
+    Fixture deferred;deferred.frame.cover.cover_valid=false;deferred.run();
+    deferred.frame.weapon_requests.magazine_observation_pending=true;r=deferred.next(.8f);
+    C(r.accepted&&r.left_hand.lease.kind==LeftHandInteraction::none&&!r.left_hand.release_required);
+    deferred.frame.weapon_requests.magazine_observation_pending=false;
+    deferred.frame.weapon_requests.magazine=true;r=deferred.next(.8f);
+    C(r.accepted&&r.left_hand.new_grant&&r.left_hand.lease.kind==LeftHandInteraction::magazine);
+    const auto deferred_lease=r.left_hand.lease;deferred.frame.weapon_incumbents[0]=deferred_lease;
+    r=deferred.next(.8f);C(r.accepted&&!r.left_hand.new_grant&&r.left_hand.status==LeftHandInteractionStatus::retained);
+    Fixture known_absent;known_absent.frame.cover.cover_valid=false;known_absent.run();r=known_absent.next(.8f);
+    C(r.accepted&&r.left_hand.release_required);
+    known_absent.frame.weapon_requests.magazine=true;r=known_absent.next(.8f);
+    C(r.accepted&&!r.left_hand.new_grant&&r.left_hand.lease.kind==LeftHandInteraction::none);
     // Both lateral directions use the fixed tracking right axis.
     for(auto edge:{CoverEdgeKind::left,CoverEdgeKind::right}){
         Fixture lateral(edge);lateral.run();lateral.next(.8f);

@@ -186,6 +186,11 @@ class ContinuousTests(unittest.TestCase):
         cmd=runner.xr_command(args,pathlib.Path('capture.csv'),identity(100))
         self.assertEqual(cmd[cmd.index('--menu-game-creation')+1],'789')
         self.assertEqual(cmd[cmd.index('--menu-state-file')+1],'state.menu.bin')
+        args.build_dir=pathlib.Path('native');args.dll_name='Continuous.dll';args.stereo_units_per_metre=100
+        native=runner.native_command(args,identity(100))
+        self.assertEqual(native.count('--menu-display-file'),1)
+        self.assertEqual(native[native.index('--menu-display-file')+1],'state.menu.bin')
+        self.assertNotIn('--menu-display-file',cmd)
         self.assertNotIn('--movie-display',cmd)
         args.movie_display=True
         self.assertIn('--movie-display',runner.xr_command(args,pathlib.Path('capture.csv'),identity(100)))

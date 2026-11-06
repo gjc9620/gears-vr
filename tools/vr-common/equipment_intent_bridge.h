@@ -7,7 +7,10 @@
 #include <type_traits>
 
 namespace gears_weapon {
-enum class EquipmentIntentKind : std::uint8_t { slot,grab_ammo,reload };
+// index_acquire_slot is a PG-local intent derived from its authenticated
+// current Native Frame. The legacy Native bridge deliberately does NOT accept
+// or publish it; this adds no wire fields or permission to reinterpret Grip.
+enum class EquipmentIntentKind : std::uint8_t { slot,grab_ammo,reload,index_acquire_slot };
 struct EquipmentIntentEvent {
     std::uint64_t serial{},created_ms{},input_session{},input_sequence{},space_epoch{},input_epoch{},world_generation{};
     std::uintptr_t controller{},pawn{},weapon{};

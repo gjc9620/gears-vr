@@ -40,7 +40,13 @@ bool draw(ID3D12GraphicsCommandList* list,uintptr_t caller,gears_ui_material::Dr
  plan_stage=1;
  if(!owned_scene_gpu::image_tickets.lookup(c.owned_ticket,sample,simulator_operator))return reject_draw(28);
  bool reticle_suppressed=false;
- if(c.consumer.receipt.kind==1){
+ gears_vr::StereoTicketGeometry display{};
+ if(!owned_scene_gpu::image_tickets.lookup_geometry(c.owned_ticket,display,simulator_operator))return reject_draw(28);
+ if(display.flat_menu){
+  overlay.kind=gears_game_material::Plan::ordinary;
+  overlay.plan=gears_viewport::overlay_plan(saved,target.width,target.height);
+  if(!overlay.plan.valid)return reject_draw(28);
+ }else if(c.consumer.receipt.kind==1){
   gears_vr::StereoTicketGeometry geometry{};gears_material_reticle::Result reticle{};
   const bool directional=ui_reticle_direction_enabled&&ui_hud_plane_enabled;
   plan_stage=2;

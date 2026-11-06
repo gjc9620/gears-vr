@@ -71,8 +71,11 @@ inline Reason authorize(gears_crosshair_scene::Metadata const& data,Authority co
     std::memcpy(&scene_stamp,&expected.scene_stamp,sizeof(scene_stamp));
     if(!std::isfinite(assignment_stamp)||!std::isfinite(scene_stamp)||assignment_stamp<0||scene_stamp<0||
        scene_stamp<assignment_stamp)return Reason::clock;
-    // Engine stamps are an independent continuity bracket, not a query time.
-    if(double(scene_stamp)-double(assignment_stamp)>.05)return Reason::age;
+    // This stamp is CameraCache time, not the authenticated weapon query time.
+    // Camera-ray queries require its age bracket; weapon queries instead carry
+    // their original tracking deadline below. Keep monotonic camera continuity
+    // above and the same 50ms host query bracket for both paths.
+    if(!view.weapon_query_call&&double(scene_stamp)-double(assignment_stamp)>.05)return Reason::age;
     // Targeting state has independent identity/time authority even when the
     // point later fails camera agreement or lies behind the current source.
     if(aiming)*aiming=view.aiming_known&&view.aiming;
@@ -84,7 +87,9 @@ inline Reason authorize(gears_crosshair_scene::Metadata const& data,Authority co
     const double w=double(data.point[0])*source_view[3]+double(data.point[1])*source_view[7]+
         double(data.point[2])*source_view[11]+source_view[15];
     if(!std::isfinite(depth)||depth<=0||!std::isfinite(w)||w!=1)return Reason::geometry;
-    if(!camera_matches(view,source_view))return Reason::camera;
+    if(view.weapon_query_call){
+        if(view.weapon_query_deadline_qpc<=0||now_qpc>view.weapon_query_deadline_qpc)return Reason::age;
+    }else if(!camera_matches(view,source_view))return Reason::camera;
     out={true,data.point,data.world,data.tick};return Reason::accepted;
 }
 }

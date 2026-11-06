@@ -1,9 +1,27 @@
 #include "final_transfer_normalize.h"
+#include "startup_menu_geometry.h"
+#include <limits>
 #include <cassert>
 #include <iostream>
 using namespace gears_final_transfer_normalize;
 using namespace gears_final_transfer_bracket;
 int main(){
+    {
+        using MenuInput=gears_startup_menu_geometry::Input;
+        const float nan=std::numeric_limits<float>::quiet_NaN();
+        MenuInput broken{0x9a7377,{0,0,0,0,nan,nan,nan,nan},{0,0,3840,2160},3840,2160,true,true,true,true,true};
+        auto repaired=gears_startup_menu_geometry::plan(broken);
+        assert((repaired.valid&&repaired.args==std::array<float,8>{0,0,3840,2160,0,0,3840,2160}));
+        assert((repaired.dimensions==std::array<unsigned,4>{3840,2160,3840,2160}));
+        auto ready=broken;ready.args=repaired.args;ready.dimensions=repaired.dimensions;
+        assert(!gears_startup_menu_geometry::plan(ready).valid);
+        for(unsigned i=0;i<11;++i){auto bad=broken;
+            switch(i){case 0:bad.code=false;break;case 1:bad.pending=false;break;case 2:bad.source=false;break;
+                case 3:bad.current_buffer=false;break;case 4:bad.rectangles=false;break;case 5:++bad.caller;break;
+                case 6:bad.args[4]=std::numeric_limits<float>::infinity();break;case 7:bad.args[4]=0;break;
+                case 8:bad.args[0]=1;break;case 9:bad.dimensions[2]=2560;break;case 10:bad.width=0;break;}
+            assert(!gears_startup_menu_geometry::plan(bad).valid);}
+    }
     assert(allowed_mode(true,true,true,true,false,false,false));
     for(unsigned fault=0;fault<7;++fault){bool mode[]{true,true,true,true,false,false,false};mode[fault]=!mode[fault];
         assert(!allowed_mode(mode[0],mode[1],mode[2],mode[3],mode[4],mode[5],mode[6]));}

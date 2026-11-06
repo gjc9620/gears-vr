@@ -7,8 +7,8 @@
 namespace gears_hand_continuity {
 struct ContinuityPacket {
     static constexpr std::uint32_t magic_value=0x47484331; // GHC1
-    static constexpr std::uint32_t version_value=1;
-    static constexpr unsigned capacity=8;
+    static constexpr std::uint32_t version_value=3; // GVC4 menu/hint layout; producer sync-gap boundaries retained.
+    static constexpr unsigned capacity=motion_history_capacity;
     std::uint32_t magic{magic_value},version{version_value},size{sizeof(ContinuityPacket)},game_pid{};
     std::uint64_t game_start{},publisher_pid{},publisher_start{};
     std::int64_t qpc_frequency{};
@@ -53,14 +53,15 @@ class InputBridge {
                  tracked_input_shape_valid(packet.frames[packet.latest_sequence%ContinuityPacket::capacity])));
     }
     static void name(wchar_t (&out)[128],DWORD pid,std::uint64_t created,bool lock) noexcept {
-        swprintf_s(out,lock?L"Local\\GearsVR.ControllerContinuityLock.v1.%lu.%llu":
-                           L"Local\\GearsVR.ControllerContinuity.v1.%lu.%llu",
+        swprintf_s(out,lock?L"Local\\GearsVR.ControllerContinuityLock.v3.%lu.%llu":
+                           L"Local\\GearsVR.ControllerContinuity.v3.%lu.%llu",
                    pid,static_cast<unsigned long long>(created));
     }
-    static bool lock_now(HANDLE mutex) noexcept {
-        if(!mutex)return false;
+    static bool lock_now(HANDLE mutex,bool* contended=nullptr) noexcept {
+        if(contended)*contended=false;if(!mutex)return false;
         const auto result=WaitForSingleObject(mutex,0);
         if(result==WAIT_ABANDONED)ReleaseMutex(mutex);
+        if(contended)*contended=result==WAIT_TIMEOUT;
         return result==WAIT_OBJECT_0;
     }
     bool open_publisher() noexcept {
@@ -142,10 +143,13 @@ public:
         ReleaseMutex(mutex_);return result;
     }
     bool read_matching(gears_vr::StereoSample const& stereo,std::int64_t now_ns,
-                       TrackedInput& out,Publisher& publisher,bool allow_sim=false) noexcept {
-        out={};publisher={};
+                       TrackedInput& out,Publisher& publisher,bool allow_sim=false,
+                       TrackedInput* right_press=nullptr,bool* contended=nullptr,
+                       MotionHistory* right_motion=nullptr) noexcept {
+        if(contended)*contended=false;
+        out={};publisher={};if(right_press)*right_press={};if(right_motion)*right_motion={};
         if(producer_||!data_||!process_alive(game_process_,game_pid_,game_start_)||
-           !process_alive(publisher_process_,publisher_.pid,publisher_.start)||!lock_now(mutex_))return false;
+           !process_alive(publisher_process_,publisher_.pid,publisher_.start)||!lock_now(mutex_,contended))return false;
         ContinuityPacket packet{};
         std::memcpy(&packet,data_,sizeof(packet));ReleaseMutex(mutex_);
         if(!header_valid(packet)||!process_alive(game_process_,game_pid_,game_start_)||
@@ -155,6 +159,29 @@ public:
         auto const& selected=packet.frames[stereo.sequence%ContinuityPacket::capacity];
         if(selected.stream_epoch!=packet.latest_stream_epoch||!tracked_input_shape_valid(selected)||
            !gears_vr::controller_frame_matches(selected.input,stereo,now_ns,allow_sim))return false;
+        if(right_motion){
+            auto& history=*right_motion;
+            history.frames[0]=selected;history.count=1;
+            // Stop at a real tracking/stream boundary, missing row or bad
+            // timestamp. Never fill gaps, extend the ring or renew old data.
+            for(unsigned age=1;age<ContinuityPacket::capacity&&age<stereo.sequence;++age){
+                const auto sequence=stereo.sequence-age;
+                if(packet.latest_sequence-sequence>=ContinuityPacket::capacity)break;
+                const auto& prior=packet.frames[sequence%ContinuityPacket::capacity];
+                if(prior.input.sequence!=sequence||!motion_pair(prior,history.frames[0],1,100000000))break;
+                for(unsigned i=history.count;i>0;--i)history.frames[i]=history.frames[i-1];
+                history.frames[0]=prior;++history.count;
+            }
+            if(!motion_history_valid(history,selected,1)){*right_motion={};return false;}
+        }
+        if(right_press){
+            const auto sequence=selected.input.hands[1].last_squeeze_press_sequence;
+            if(sequence&&sequence<=packet.latest_sequence&&
+               packet.latest_sequence-sequence<ContinuityPacket::capacity){
+                const auto& edge=packet.frames[sequence%ContinuityPacket::capacity];
+                if(recorded_right_squeeze_press(selected,edge))*right_press=edge;
+            }
+        }
         out=selected;publisher={packet.publisher_pid,packet.publisher_start};return true;
     }
     void close() noexcept {

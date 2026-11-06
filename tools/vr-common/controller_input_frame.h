@@ -7,10 +7,11 @@ namespace gears_vr {
 enum ControllerButton : std::uint32_t {
     controller_a=1u<<0, controller_b=1u<<1,
     controller_x=1u<<2, controller_y=1u<<3,
-    controller_stick_click=1u<<4
+    controller_stick_click=1u<<4,controller_menu=1u<<5
 };
-constexpr std::uint32_t controller_known_buttons=controller_a|controller_b|controller_x|controller_y|controller_stick_click;
-enum ControllerControl : unsigned { control_a,control_b,control_x,control_y,control_stick,control_trigger,control_squeeze,control_count };
+constexpr std::uint32_t controller_known_buttons=controller_a|controller_b|controller_x|controller_y|controller_stick_click|controller_menu;
+enum ControllerControl : unsigned { control_a,control_b,control_x,control_y,control_stick,control_trigger,control_squeeze,control_menu,control_count };
+constexpr float controller_analog_press_threshold=.65f,controller_analog_release_threshold=.35f;
 constexpr std::uint64_t controller_pose_required_flags=15; // valid position/orientation and tracked position/orientation
 
 // Wire data contains no OpenXR handles, pointers, bools or runtime-owned memory.
@@ -35,6 +36,9 @@ struct ControllerInputFrame {
     std::int64_t predicted_time{},received_ns{},sync_ns{};
     std::uint32_t focused{};
     ControllerHand hands[2]{}; // 0 left, 1 right
+    // Display-owner routing hint only. Never pose, scene or action authority.
+    std::uint32_t display_mode{};
+    std::int64_t display_observed_ns{};
 };
 inline bool controller_pose_usable(Pose const& pose,std::uint64_t flags,std::uint32_t active) {
     return active==1&&(flags&controller_pose_required_flags)==controller_pose_required_flags&&stereo_pose_valid(pose);
@@ -42,7 +46,7 @@ inline bool controller_pose_usable(Pose const& pose,std::uint64_t flags,std::uin
 inline bool controller_hand_shape_valid(ControllerHand const& hand,unsigned index) {
     if(index>1||hand.grip_active>1||hand.aim_active>1||hand.trigger_active>1||
        hand.squeeze_active>1||hand.stick_active>1)return false;
-    constexpr std::uint32_t left=controller_x|controller_y|controller_stick_click;
+    constexpr std::uint32_t left=controller_x|controller_y|controller_stick_click|controller_menu;
     constexpr std::uint32_t right=controller_a|controller_b|controller_stick_click;
     const auto allowed=index==0?left:right;
     if((hand.buttons|hand.buttons_active)&~allowed)return false;
@@ -57,7 +61,8 @@ inline bool controller_hand_shape_valid(ControllerHand const& hand,unsigned inde
     if(index==0&&(hand.pressed[control_a]||hand.released[control_a]||
                   hand.pressed[control_b]||hand.released[control_b]))return false;
     if(index==1&&(hand.pressed[control_x]||hand.released[control_x]||
-                  hand.pressed[control_y]||hand.released[control_y]))return false;
+                  hand.pressed[control_y]||hand.released[control_y]||
+                  hand.pressed[control_menu]||hand.released[control_menu]))return false;
     if(hand.grip_active&&(hand.grip_flags&3)==3&&!stereo_pose_valid(hand.grip))return false;
     if(hand.aim_active&&(hand.aim_flags&3)==3&&!stereo_pose_valid(hand.aim))return false;
     if(hand.last_squeeze_press_sequence&&(hand.last_squeeze_press_flags&3)==3&&
@@ -67,7 +72,9 @@ inline bool controller_hand_shape_valid(ControllerHand const& hand,unsigned inde
 inline bool controller_frame_shape_valid(ControllerInputFrame const& frame) {
     if(!stereo_source_known(frame.source)||!frame.session||!frame.sequence||!frame.space_epoch||
        !frame.profile_generation||!frame.input_epoch||frame.predicted_time<=0||frame.received_ns<=0||frame.sync_ns<=0||
-       frame.sync_ns>frame.received_ns||frame.focused>1)return false;
+       frame.sync_ns>frame.received_ns||frame.focused>1||frame.display_mode>7||
+       frame.display_observed_ns<0||frame.display_observed_ns>frame.received_ns||
+       ((frame.display_mode==0)!=(frame.display_observed_ns==0)))return false;
     for(unsigned i=0;i<2;++i){
         if(!controller_hand_shape_valid(frame.hands[i],i))return false;
         if(frame.hands[i].last_squeeze_press_sequence>frame.sequence)return false;
@@ -100,10 +107,11 @@ class ControllerEdgeCounter {
     static bool down(ControllerHand const& hand,unsigned control,bool previous) noexcept {
         constexpr std::uint32_t bits[]={controller_a,controller_b,controller_x,controller_y,controller_stick_click};
         if(control<5)return (hand.buttons_active&bits[control])&&(hand.buttons&bits[control]);
+        if(control==control_menu)return (hand.buttons_active&controller_menu)&&(hand.buttons&controller_menu);
         const bool trigger=control==control_trigger;
         const float value=trigger?hand.trigger:hand.squeeze;
         const bool active=trigger?hand.trigger_active!=0:hand.squeeze_active!=0;
-        return active&&(previous?value>.35f:value>=.65f);
+        return active&&(previous?value>controller_analog_release_threshold:value>=controller_analog_press_threshold);
     }
     void boundary() noexcept {
         ++epoch_;if(!epoch_)epoch_=1;

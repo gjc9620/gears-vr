@@ -83,6 +83,82 @@ def start(manifest,identity,*,check_live=lambda:None,attach=lambda bridge:None,c
                 menu_label='happyotaku playground')
 
 
+def start_gamepad(manifest,identity,owner,*,check_live=lambda:None,simulator_operator=False):
+    """Attach to the already attested owned Native prime; never inject again."""
+    import struct
+    sys.path.insert(0,str(ROOT/'tools/playground'))
+    from runtime import Bridge
+    path=(ROOT/manifest['native_build']/manifest['native_dll']).resolve()
+    if not path.is_relative_to(ROOT.resolve()):raise ValueError('Native gamepad path escaped workspace')
+    check_live()
+    bridge=Bridge(identity,path,expected_sha256=manifest['native_sha256'],attach_only=True)
+    address=None;returned=False;leased=False;gate=None
+    try:
+        check_live()
+        address=bridge.allocate(struct.pack('<IIIIQ',24,1,owner['pid'],int(simulator_operator),owner['creation_time']))
+        code=bridge.export('GearsCaptureStartVrGamepad',address);returned=True
+        if code:raise RuntimeError('Owned pre-menu VR gamepad rejected: '+str(code))
+        check_live()
+        sys.path.insert(0,str(ROOT/'tools/game-io'))
+        import background_input
+        if background_input.change(identity['pid'],'status',identity['creation_time'])['state']!='original':
+            raise RuntimeError('Controller focus gate already has another owner')
+        if bridge.export('GearsCaptureVrGamepadGateLease',1):raise RuntimeError('Virtual-only pad gate lease rejected')
+        leased=True
+        gate=background_input.change(identity['pid'],'enable',identity['creation_time'])
+        check_live()
+        return dict(enabled=True,before_level_discovery=True,keyboard_required=False,source=1 if simulator_operator else 0,
+                    virtual_pad_only=True,focus_gate=gate,gate_lease_owned=True)
+    except BaseException:
+        if leased:
+            # Keep the Native neutral-pad retention guard if restoration fails.
+            try:
+                background_input.change(identity['pid'],'disable',identity['creation_time'])
+                if bridge.export('GearsCaptureVrGamepadGateLease',0):raise RuntimeError('Pad gate release rejected')
+            except Exception:pass
+        raise
+    finally:
+        if returned and address:bridge.free(address)
+        bridge.close()
+
+
+def _restore_gamepad_gate(identity,change,check_identity):
+    # Toolhelp can enumerate a short-lived retail worker immediately before it
+    # exits; OpenThread then reports ERROR_INVALID_PARAMETER. Restart the WHOLE
+    # certified transaction, never skip a thread or relax its freeze checks.
+    for attempt in range(3):
+        actual=check_identity(identity['pid'])
+        if actual is None:return dict(game_exited=True),attempt+1
+        if actual!=identity:raise RuntimeError('Gamepad cleanup process identity changed')
+        try:return change(identity['pid'],'disable',identity['creation_time']),attempt+1
+        except OSError as error:
+            if getattr(error,'winerror',None)!=87 or attempt==2:raise
+            # No retry may adopt unknown/mixed bytes. Status revalidates the
+            # complete certified function; disable also checks the owner ledger.
+            status=change(identity['pid'],'status',identity['creation_time'])
+            if status.get('identity')!=identity or status.get('state') not in ('enabled','original'):
+                raise RuntimeError('Gamepad cleanup retry has no certified code state') from error
+            time.sleep(.05)
+    raise RuntimeError('Gamepad gate restoration did not finish')
+
+
+def finish_gamepad(manifest,identity,proof):
+    if not proof or not proof.get('gate_lease_owned'):return dict(owned=False)
+    sys.path.insert(0,str(ROOT/'tools/game-io'))
+    sys.path.insert(0,str(ROOT/'tools/playground'))
+    import background_input
+    from runtime import Bridge
+    from run_stereo_continuous import WindowsControl
+    restored,attempts=_restore_gamepad_gate(identity,background_input.change,WindowsControl().identity)
+    if restored.get('game_exited'):return restored
+    path=(ROOT/manifest['native_build']/manifest['native_dll']).resolve()
+    bridge=Bridge(identity,path,expected_sha256=manifest['native_sha256'],attach_only=True)
+    try:
+        if bridge.export('GearsCaptureVrGamepadGateLease',0):raise RuntimeError('Restored controller gate lease release rejected')
+    finally:bridge.close()
+    return dict(restored=restored['state']=='original',virtual_only_until_restored=True,restore_attempts=attempts)
+
+
 def finish(bridge):
     if bridge is None:return dict(loaded=False)
     try:

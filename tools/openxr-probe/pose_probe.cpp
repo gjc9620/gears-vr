@@ -19,6 +19,7 @@
 #include "reference_space_epoch.h"
 #include "../vr-common/stereo_bridge.h"
 #include "../vr-common/controller_input_bridge.h"
+#include "../vr-common/controller_cohort_publication.h"
 #if defined(GEARS_HAND_CONTINUITY_CANDIDATE) && GEARS_HAND_CONTINUITY_CANDIDATE
 #include "../vr-common/controller_continuity_bridge.h"
 #endif
@@ -60,7 +61,7 @@ struct HandContinuityCandidate {
     std::uint64_t sampled{},published{},skipped{},rejected{},stream_epoch{},tracking_epoch[2]{},last_sequence{};
     bool requested{},opened{};
     bool open(DWORD pid) {requested=true;opened=bridge.open(pid,true);return opened;}
-    void observe_and_publish(gears_vr::ControllerInputFrame const& input) {
+    bool observe_and_publish(gears_vr::ControllerInputFrame const& input) {
         controller_count(sampled);
         gears_hand_continuity::TrackedInput tracked{};
         if(!tracker.update(input,tracked)){
@@ -70,7 +71,9 @@ struct HandContinuityCandidate {
         stream_epoch=tracked.stream_epoch;
         for(unsigned hand=0;hand<2;++hand)tracking_epoch[hand]=tracked.tracking_epoch[hand];
         last_sequence=tracked.input.sequence;
-        if(bridge.publish(tracked))controller_count(published);else controller_count(skipped);
+        const bool sent=bridge.publish(tracked);
+        if(sent)controller_count(published);else controller_count(skipped);
+        return sent;
     }
     ~HandContinuityCandidate() {
         bridge.close();
@@ -231,7 +234,7 @@ int projection_receiver_self_test(){
                       gears_menu::Mode::main_menu,gears_menu::Mode::acquisition_wait}){
             StartupPanelPolicy witnessed(true,true);witnessed.projection_rendered(true);
             witnessed.observe(gears_menu::Mode::pause_menu,100);witnessed.menu_rendered();witnessed.observe(mode,200);
-            const bool narrow=mode==gears_menu::Mode::main_menu||mode==gears_menu::Mode::acquisition_wait;
+            const bool narrow=mode==gears_menu::Mode::main_menu||mode==gears_menu::Mode::acquisition_wait||mode==gears_menu::Mode::unknown;
             if(recovery_panel_wait(s,witnessed)!=(expected||(s==ProjectionStatus::menu_requested&&narrow)))return 45;
             StartupPanelPolicy unwitnessed(true,true);unwitnessed.observe(mode,200);
             if(recovery_panel_wait(s,unwitnessed)!=expected)return 46;
@@ -519,6 +522,7 @@ int main(int argc, char** argv) {
 #endif
     const uint64_t stereo_session=static_cast<uint64_t>(gears_vr::monotonic_ns());
     uint64_t stereo_published=0,stereo_publish_skipped=0;
+    std::uint64_t stereo_dependency_skipped{};
     std::uint64_t controller_published{},controller_publish_skipped{};
     bool stereo_space_changed=false;
     gears_xr::ReferenceSpaceEpoch space_epoch;
@@ -793,25 +797,45 @@ int main(int argc, char** argv) {
                 stereo_sample.head=pose(head.pose);
                 for(unsigned i=0;i<2;++i){const auto& f=views[i].fov;
                     stereo_sample.eyes[i]={pose(views[i].pose),{f.angleLeft,f.angleRight,f.angleUp,f.angleDown}};}
+                gears_vr::ControllerInputFrame hands{};
                 if(controller_input){
-                    gears_vr::ControllerInputFrame hands{};
+                    const auto routing_mode=menu_display.poll(gears_vr::monotonic_ns());
+                    if(routing_mode!=gears_menu::Mode::unknown){
+                        hands.display_mode=static_cast<std::uint32_t>(routing_mode);
+                        hands.display_observed_ns=static_cast<std::int64_t>(menu_display.observed_ns());
+                    }
                     hands.source=stereo_sample.source;hands.session=stereo_sample.session;
                     hands.sequence=stereo_sample.sequence;hands.space_epoch=stereo_sample.space_epoch;
                     hands.profile_generation=controller_actions.profile_generation();hands.predicted_time=stereo_sample.predicted_time;
                     if(!controller_actions.sample(local,frame.predictedDisplayTime,state==XR_SESSION_STATE_FOCUSED,hands))
                         throw std::runtime_error("Controller input sampling rejected");
+                }
 #if defined(GEARS_HAND_CONTINUITY_CANDIDATE) && GEARS_HAND_CONTINUITY_CANDIDATE
-                    hand_continuity.observe_and_publish(hands);
+                constexpr bool continuity_required=true;
+#else
+                constexpr bool continuity_required=false;
 #endif
-                    if(controller_bridge.publish(hands))controller_count(controller_published);
+                const bool eyes_allowed=!stereo_space_changed||continuous_session;
+                const auto publication=gears_controller_cohort::publish(eyes_allowed,controller_input,continuity_required,
+                    [&](){return controller_bridge.publish(hands);},
+                    [&](){
+#if defined(GEARS_HAND_CONTINUITY_CANDIDATE) && GEARS_HAND_CONTINUITY_CANDIDATE
+                        return hand_continuity.observe_and_publish(hands);
+#else
+                        return true;
+#endif
+                    },
+                    [&](){return stereo_bridge.publish(stereo_sample);});
+                if(controller_input){
+                    if(publication.controllers)controller_count(controller_published);
                     else controller_count(controller_publish_skipped);
                 }
-                // Attempt both hand publications before the eyes. A nonblocking
-                // skip remains a skip; no second action read or receipt is made.
-                if(!stereo_space_changed||continuous_session){
-                    stereo_sent=stereo_bridge.publish(stereo_sample);
-                    if(stereo_sent)++stereo_published;else ++stereo_publish_skipped;
-                }
+                // Eyes commit only a complete exact hand cohort. A nonblocking
+                // dependency skip remains a skip; no resampling or retry. The
+                // previous complete packet retains its ORIGINAL age checks.
+                stereo_sent=publication.eyes;
+                if(eyes_allowed&&!publication.eyes_attempted)controller_count(stereo_dependency_skipped);
+                if(eyes_allowed){if(stereo_sent)++stereo_published;else ++stereo_publish_skipped;}
             }
             XrFrameEndInfo end{XR_TYPE_FRAME_END_INFO};end.displayTime=frame.predictedDisplayTime;end.environmentBlendMode=XR_ENVIRONMENT_BLEND_MODE_OPAQUE;
             XrCompositionLayerProjectionView projection_views[2];
@@ -827,7 +851,7 @@ int main(int argc, char** argv) {
             const auto menu_mode=menu_display.poll(menu_now);
             const auto observe_menu=[&](gears_menu::Mode mode,std::int64_t observed){
                 if(!startup_panel.observe(mode,observed))return;
-                if(mode==gears_menu::Mode::main_menu&&startup_screen)
+                if((mode==gears_menu::Mode::main_menu||mode==gears_menu::Mode::pause_menu||mode==gears_menu::Mode::death_menu)&&startup_screen)
                     startup_screen->begin_menu_epoch();
                 ++menu_entries;
                 printf("{\"menu_display_enter\":true,\"epoch\":%u,\"mode\":\"%s\",\"observed_ns\":%lld}\n",
@@ -1083,7 +1107,7 @@ int main(int argc, char** argv) {
                 armspan_card_queued=false;
             }}
             if(end.layerCount==1&&end.layers==game_layers&&(startup_quad_queued||stereo_menu_queued)){
-                if(!menu_theater.place(quad,local,head,space_epoch.epoch(),menu_entries)){
+                if(!menu_theater.place(quad,local,head,space_epoch.epoch(),menu_entries,views,view_count)){
                     end.layerCount=0;startup_quad_queued=stereo_menu_queued=false;
                 }
             }
@@ -1198,20 +1222,29 @@ int main(int argc, char** argv) {
             if(startup_quad_queued&&ended==XR_SUCCESS&&end.layerCount==1&&end.layers==game_layers){
                 startup_panel.menu_rendered();
                 ++startup_quad_layers;
-                if(menu_mode==gears_menu::Mode::main_menu){
-                    ++main_menu_quad_layers;
-                    if(last_main_menu_entry!=menu_entries){
-                        last_main_menu_entry=menu_entries;const auto image=startup_screen->window_snapshot();
-                        printf("{\"main_menu_first_frame\":true,\"epoch\":%u,\"source\":\"wgc_full_client\",\"owner_sequence\":%llu,\"capture_epoch_100ns\":%lld,\"captured_100ns\":%lld,\"source_generation\":%llu,\"hwnd\":%llu,\"extent\":[%u,%u],\"source_hash_algorithm\":\"pixel_fnv4\",\"source_hash\":%llu,\"end_frame_succeeded\":true,\"both_eyes_common_panel\":true,\"panel_counts_as_stereo\":false}\n",
-                            menu_entries,menu_display.sequence(),image.epoch_100ns,image.captured_100ns,
+                if(menu_mode==gears_menu::Mode::main_menu||menu_mode==gears_menu::Mode::pause_menu||menu_mode==gears_menu::Mode::death_menu){
+                    const bool main=menu_mode==gears_menu::Mode::main_menu,death=menu_mode==gears_menu::Mode::death_menu;
+                    if(main)++main_menu_quad_layers;else{++menu_quad_layers;++(death?death_menu_quad_layers:pause_menu_quad_layers);}
+                    auto& last_entry=main?last_main_menu_entry:death?last_death_menu_entry:last_pause_menu_entry;
+                    if(last_entry!=menu_entries){
+                        last_entry=menu_entries;const auto image=startup_screen->window_snapshot();
+                        printf("{\"%s_menu_first_frame\":true,\"epoch\":%u,\"source\":\"wgc_full_client\",\"owner_sequence\":%llu,\"capture_epoch_100ns\":%lld,\"captured_100ns\":%lld,\"source_generation\":%llu,\"hwnd\":%llu,\"extent\":[%u,%u],\"source_hash_algorithm\":\"pixel_fnv4\",\"source_hash\":%llu,\"end_frame_succeeded\":true,\"both_eyes_common_panel\":true,\"panel_counts_as_stereo\":false}\n",
+                            main?"main":death?"death":"pause",menu_entries,menu_display.sequence(),image.epoch_100ns,image.captured_100ns,
                             image.generation,image.hwnd,image.width,image.height,image.hash);fflush(stdout);
-                        if(gpu_snapshot&&main_menu_snapshots<2){
+                        if(gpu_snapshot&&main_menu_snapshots<4){
                             ++main_menu_snapshots;
-                            startup_screen->save_source_preview(std::string(argv[2])+"-main-menu-"+std::to_string(menu_entries)+".ppm");
+                            startup_screen->save_source_preview(std::string(argv[2])+"-"+(main?"main":death?"death":"pause")+"-menu-"+std::to_string(menu_entries)+".ppm");
                         }
                     }
                 }
-                if(startup_quad_layers==1){printf("{\"startup_menu_first_frame\":true,\"end_frame_succeeded\":true,\"panel_counts_as_stereo\":false}\n");fflush(stdout);}
+                if(startup_quad_layers==1){
+                    printf("{\"startup_menu_first_frame\":true,\"end_frame_succeeded\":true,\"panel_counts_as_stereo\":false}\n");fflush(stdout);
+                }
+                // Before level discovery there is no menu-state lease yet.
+                // Keep a few bounded source images in the existing optional
+                // diagnostic, including the title screen after initial loading.
+                if(gpu_snapshot&&(startup_quad_layers==1||startup_quad_layers==900||startup_quad_layers==2700))
+                    startup_screen->save_source_preview(std::string(argv[2])+"-startup-menu-source-"+std::to_string(startup_quad_layers)+".ppm");
             }
             if(startup_handoff_queued){
                 printf("{\"startup_menu_handoff\":true,\"startup_quad_layers\":%u,\"ticketed_projection_rendered\":true,\"end_frame_succeeded\":true,\"one_way\":%s}\n",startup_quad_layers,menu_state_file?"false":"true");fflush(stdout);
@@ -1329,6 +1362,7 @@ int main(int argc, char** argv) {
             stereo_session,stereo_published,stereo_publish_skipped,stereo_space_changed?"true":"false",stereo_screen&&stereo_screen->projection_rendered?"true":"false");
         if(controller_input)printf("{\"controller_input_bridge\":true,\"published\":%llu,\"publish_skipped\":%llu,\"profile_generation\":%llu,\"game_input_injected\":false}\n",
             controller_published,controller_publish_skipped,controller_actions.profile_generation());
+        if(controller_input)printf("{\"controller_cohort_publication\":true,\"dependent_eyes_skipped\":%llu,\"no_retry\":true,\"original_sample_times\":true}\n",stereo_dependency_skipped);
         if(stereo_game_pid)printf("{\"stereo_game_projection_layers\":%u,\"stereo_game_copies\":%u,\"matching_render_ticket_required\":true}\n",
             retired_stereo_projections+(stereo_screen?stereo_screen->projection_rendered:0),retired_stereo_copies+(stereo_screen?stereo_screen->copies:0));
         if(stereo_game_pid)printf("{\"image_continuity_evidence\":true,\"continuous_mode\":%s,\"retained_over_100ms\":%u,\"late_images_rejected\":%u,\"new_image_max_age_ns\":%lld,\"retained_max_age_ns\":%lld,\"original_render_pose_preserved\":true}\n",

@@ -112,6 +112,22 @@ class GraphicsPolicyTests(unittest.TestCase):
                 mock.patch.object(policy.instance_policy, 'context', return_value=self.root):
             self.assertEqual(policy.locate(self.root / 'game.exe'), settings.resolve())
 
+    def test_isolated_instance_uses_only_its_own_explicit_profile_binding(self):
+        folder=self.root/'Coalition/WarGame/Config';folder.mkdir(parents=True)
+        selected=folder/'76561198020107697EngineUserSettings.ini';other=folder/'76561197960271872EngineUserSettings.ini'
+        selected.write_bytes(b'DLSS=False\n');other.write_bytes(b'DLSS=True\n')
+        exe=self.root/'retail/GOWDE-Steam.exe'
+        config=self.root/'config.json';config.write_text(json.dumps({'game_settings_paths':{str(exe):str(selected)}}))
+        before={p.name:p.read_bytes() for p in folder.iterdir()}
+        with mock.patch.object(policy.instance_policy,'local_appdata',return_value=self.root), \
+             mock.patch.object(policy.instance_policy,'context',return_value=self.root), \
+             mock.patch.object(policy,'active_steam_id',return_value=None):
+            self.assertEqual(policy.locate(exe),selected.resolve())
+            with self.assertRaisesRegex(RuntimeError,'Multiple user-settings'):policy.locate(self.root/'different.exe')
+            config.write_text(json.dumps({'game_settings_paths':{str(exe):str(self.root/'outside.ini')}}))
+            with self.assertRaisesRegex(RuntimeError,'Settings binding'):policy.locate(exe)
+        self.assertEqual({p.name:p.read_bytes() for p in folder.iterdir()},before)
+
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)

@@ -18,6 +18,7 @@ class Actions {
     XrAction grip_{XR_NULL_HANDLE},aim_{XR_NULL_HANDLE},trigger_{XR_NULL_HANDLE},squeeze_{XR_NULL_HANDLE};
     XrAction stick_x_{XR_NULL_HANDLE},stick_y_{XR_NULL_HANDLE},stick_click_{XR_NULL_HANDLE};
     std::array<XrAction,4> face_{}; // A B X Y
+    XrAction menu_{XR_NULL_HANDLE};
     std::array<XrSpace,2> grip_spaces_{},aim_spaces_{};
     std::uint64_t profile_generation_{1};
     gears_vr::ControllerEdgeCounter edges_;
@@ -57,24 +58,35 @@ class Actions {
         }
         add(face_[0],1,"/input/a/click");add(face_[1],1,"/input/b/click");
         add(face_[2],0,"/input/x/click");add(face_[3],0,"/input/y/click");
+        add(menu_,0,"/input/menu/click");
         XrInteractionProfileSuggestedBinding suggestion{XR_TYPE_INTERACTION_PROFILE_SUGGESTED_BINDING};
         suggestion.interactionProfile=path("/interaction_profiles/oculus/touch_controller");
         suggestion.countSuggestedBindings=static_cast<std::uint32_t>(bindings.size());
         suggestion.suggestedBindings=bindings.data();
-        const auto result=xrSuggestInteractionProfileBindings(instance_,&suggestion);
+        auto result=xrSuggestInteractionProfileBindings(instance_,&suggestion);
+        if(result==XR_ERROR_PATH_UNSUPPORTED){
+            // A runtime may reserve its menu button. Preserve the existing
+            // face/pose bindings; the gamepad adapter offers the thumb chord.
+            bindings.pop_back();suggestion.countSuggestedBindings=static_cast<std::uint32_t>(bindings.size());
+            suggestion.suggestedBindings=bindings.data();result=xrSuggestInteractionProfileBindings(instance_,&suggestion);
+        }
         if(result==XR_ERROR_PATH_UNSUPPORTED)return false;
         check(result,"xrSuggestInteractionProfileBindings(touch)");return true;
     }
     bool suggest_simple() const {
-        std::array<XrActionSuggestedBinding,4> bindings{{
+        std::array<XrActionSuggestedBinding,5> bindings{{
             {grip_,component(0,"/input/grip/pose")},{aim_,component(0,"/input/aim/pose")},
-            {grip_,component(1,"/input/grip/pose")},{aim_,component(1,"/input/aim/pose")}
+            {grip_,component(1,"/input/grip/pose")},{aim_,component(1,"/input/aim/pose")},
+            {menu_,component(0,"/input/menu/click")}
         }};
         XrInteractionProfileSuggestedBinding suggestion{XR_TYPE_INTERACTION_PROFILE_SUGGESTED_BINDING};
         suggestion.interactionProfile=path("/interaction_profiles/khr/simple_controller");
         suggestion.countSuggestedBindings=static_cast<std::uint32_t>(bindings.size());
         suggestion.suggestedBindings=bindings.data();
-        const auto result=xrSuggestInteractionProfileBindings(instance_,&suggestion);
+        auto result=xrSuggestInteractionProfileBindings(instance_,&suggestion);
+        if(result==XR_ERROR_PATH_UNSUPPORTED){
+            suggestion.countSuggestedBindings=4;result=xrSuggestInteractionProfileBindings(instance_,&suggestion);
+        }
         if(result==XR_ERROR_PATH_UNSUPPORTED)return false;
         check(result,"xrSuggestInteractionProfileBindings(simple)");return true;
     }
@@ -127,6 +139,7 @@ public:
             face_[1]=action("weapon_b","Weapon B",XR_ACTION_TYPE_BOOLEAN_INPUT,&hands_[1],1);
             face_[2]=action("weapon_x","Weapon X",XR_ACTION_TYPE_BOOLEAN_INPUT,&hands_[0],1);
             face_[3]=action("weapon_y","Weapon Y",XR_ACTION_TYPE_BOOLEAN_INPUT,&hands_[0],1);
+            menu_=action("game_pause_menu","Pause Menu",XR_ACTION_TYPE_BOOLEAN_INPUT,&hands_[0],1);
             const bool touch=suggest_touch(),simple=suggest_simple();
             if(!touch&&!simple)throw std::runtime_error("No supported controller interaction profile");
             XrSessionActionSetsAttachInfo attach{XR_TYPE_SESSION_ACTION_SETS_ATTACH_INFO};
@@ -169,7 +182,7 @@ public:
                 if(state.isActive){hand.buttons_active|=bit;if(state.currentState)hand.buttons|=bit;}
             };
             button(stick_click_,gears_vr::controller_stick_click);
-            if(i==0){button(face_[2],gears_vr::controller_x);button(face_[3],gears_vr::controller_y);}
+            if(i==0){button(face_[2],gears_vr::controller_x);button(face_[3],gears_vr::controller_y);button(menu_,gears_vr::controller_menu);}
             else{button(face_[0],gears_vr::controller_a);button(face_[1],gears_vr::controller_b);}
         }
         edges_.update(frame);frame.received_ns=gears_vr::monotonic_ns();return true;

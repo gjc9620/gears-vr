@@ -120,6 +120,11 @@ def preflight(root=ROOT):
     for name, expected in QUIET_HASHES.items():
         if digest(contained(root, f'{QUIET_BUILD}/{name}')) != expected: raise ValueError('Quiet11 hash mismatch')
     imported = import_project_modules(root)
+    if manifest.get('weapon_part_assets')==1:
+        parts=importlib.import_module('weapon_part_cache')
+        if Path(parts.__file__).resolve()!=contained(root,'tools/vr-launcher/weapon_part_cache.py'):
+            raise ValueError('Original-part cache module escapes stage')
+        imported.append('weapon_part_cache')
     audio = importlib.import_module('game_audio_guard')
     if audio.MANUAL_HELPER.resolve() != contained(root, AUDIO_HELPER):
         raise ValueError('Manual audio helper escapes stage')

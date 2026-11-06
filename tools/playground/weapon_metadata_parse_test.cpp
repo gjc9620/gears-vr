@@ -1,6 +1,7 @@
 #define GEARS_PLAYGROUND_NATIVE_MAIN_MOUNT_PROVIDER_TRIAL 1
 #define GEARS_WEAPON_METADATA_PARSE_TEST_STATS 1
 #include "weapon_metadata_parse.h"
+#include "../native-capture/weapon_hud_query_input.h"
 #include "../vr-common/weapon_main_mount_provider.h"
 #include "weapon_hand_offline_fixture.h"
 #include <algorithm>
@@ -83,17 +84,16 @@ void scanners(){
 }
 meta::Table name_table(Memory& m){return {reinterpret_cast<uptr>(m.names.data()),int(1000+m.name_count),int(m.names.size())};}
 unsigned character_calls(Memory& m,unsigned index,meta::NameText& text){
-    const auto entry=m.names[index];const unsigned units=unsigned(m.labels[index-1000].size()+1);unsigned calls{};
-    std::function<void()> step;step=[&]{++calls;if(calls<units){mutate_read=entry+20+2*calls;mutation=step;}};
-    mutate_read=entry+20;mutation=step;CHECK(meta::fresh_name(name_table(m),index,text));
-    mutation={};mutate_read=0;return calls;
+    const auto entry=m.names[index];unsigned calls{};
+    read_observer=[&](uptr from,std::size_t){if(from>=entry+20&&from<entry+20+2*meta::max_name_units)++calls;};
+    CHECK(meta::fresh_name(name_table(m),index,text));read_observer={};return calls;
 }
 void names(){
     {auto m=std::make_unique<Memory>();const auto index=Memory::get<meta::RawName>(m->pawn,0x48).index;
         meta::NameText a{},b{};Query q;const auto miss=character_calls(*m,index,a),hit=character_calls(*m,index,b);
         CHECK(miss==a.length+1&&hit==1&&meta::same_name_text(a,b));
         std::printf("Actual fresh_name character calls: miss=%u hit=%u; all characters still fresh, no timing claim\n",miss,hit);
-        {Query scalar(false);CHECK(character_calls(*m,index,b)==miss&&meta::same_name_text(a,b));}
+        {Query scalar(false);CHECK(character_calls(*m,index,b)==a.length+1&&meta::same_name_text(a,b));}
         CHECK(character_calls(*m,index,b)==1);}
     for(unsigned change=0;change<7;++change){auto m=std::make_unique<Memory>();Query q;
         const auto index=Memory::get<meta::RawName>(m->pawn,0x48).index;const auto entry=m->names[index];meta::NameText a{},b{};
@@ -133,6 +133,172 @@ void names(){
         {Query q;meta::NameText text{};CHECK(meta::fresh_name(name_table(*m),index,text));CHECK(parse::length_bound(entry,index)>0);}
         Query next;CHECK(parse::length_bound(entry,index)==0);}
 }
+void cold_name_boundaries(){
+    SYSTEM_INFO info{};GetSystemInfo(&info);const auto page=std::size_t(info.dwPageSize);
+    auto memory=static_cast<unsigned char*>(VirtualAlloc(nullptr,page*2,MEM_RESERVE|MEM_COMMIT,PAGE_READWRITE));
+    CHECK(memory&&page>=4096);DWORD old{};CHECK(VirtualProtect(memory+page,page,PAGE_NOACCESS,&old));
+    for(unsigned length:{0u,1u,15u,16u,17u,31u,32u,95u}){
+        auto m=std::make_unique<Memory>();const auto name=m->text(std::wstring(length,L'Q'));m->tables();
+        // Last NUL is the final readable wchar. Both the scalar cold scan and
+        // retained length-bound read must accept it; removing it must reject.
+        const auto bytes=20+(length+1)*sizeof(wchar_t);
+        const auto entry=reinterpret_cast<uptr>(memory+page-bytes);
+        Memory::put(entry,0,name.index);
+        std::memcpy(reinterpret_cast<void*>(entry+20),m->labels[name.index-1000].c_str(),(length+1)*sizeof(wchar_t));
+        m->names[name.index]=entry;
+        meta::NameText scalar{},batch{};
+        {Query q(false);CHECK(meta::fresh_name(name_table(*m),name.index,scalar)==(length!=0));}
+        {Query q;CHECK(meta::fresh_name(name_table(*m),name.index,batch)==(length!=0));
+            CHECK(meta::same_name_text(scalar,batch));
+            if(length)CHECK(meta::fresh_name(name_table(*m),name.index,batch));}
+        Memory::put(entry,20+2*length,wchar_t(L'Q'));
+        {Query q(false);CHECK(!meta::fresh_name(name_table(*m),name.index,scalar));}
+        {Query q;CHECK(!meta::fresh_name(name_table(*m),name.index,batch));}
+    }
+    CHECK(VirtualFree(memory,0,MEM_RELEASE));
+    auto m=std::make_unique<Memory>();const auto name=m->text(std::wstring(95,L'Q'));m->tables();
+    meta::NameText scalar{},batch{};unsigned scalar_calls{},cold_calls{},bound_calls{};
+    {Query q(false);scalar_calls=character_calls(*m,name.index,scalar);}
+    {Query q;cold_calls=character_calls(*m,name.index,batch);bound_calls=character_calls(*m,name.index,batch);}
+    CHECK(meta::same_name_text(scalar,batch)&&scalar_calls==96&&cold_calls==96&&bound_calls==1);
+    std::printf("95-character name: scalar=%u cold=%u current length-bound=%u reads; no live FPS claim\n",scalar_calls,cold_calls,bound_calls);
 }
-int main(){walks();scanners();names();CHECK(parse::active==nullptr);
+
+}
+void tick_scope_lifetime(){
+    CHECK(parse::active==nullptr);
+    {
+        parse::TickScope tick;auto* owner=parse::active;CHECK(owner);
+        parse::remember_length(0x1000,7,4);
+        {parse::TickScope nested;CHECK(parse::active==owner&&parse::length_bound(0x1000,7)==4);}
+        CHECK(parse::active==owner);
+        {Query provider;CHECK(parse::active!=owner);parse::TickScope borrowed;CHECK(parse::active!=owner);}
+        CHECK(parse::active==owner&&parse::length_bound(0x1000,7)==4);
+    }
+    CHECK(parse::active==nullptr);
+    try{parse::TickScope next;CHECK(parse::length_bound(0x1000,7)==0);throw 1;}catch(int){}
+    CHECK(parse::active==nullptr);
+}
+void hud_direct_arguments(){
+    namespace hud=gears_weapon_hud_query;
+    std::array<unsigned char,29> bytes{};
+    const std::uint32_t name=12027;const std::uintptr_t start=0x1230,end=0x4560;
+    bytes[0]=0x1b;std::memcpy(bytes.data()+1,&name,4);
+    std::memcpy(bytes.data()+10,&start,8);std::memcpy(bytes.data()+19,&end,8);
+    bytes[27]=0x50;bytes[28]=0x16;
+    const auto script=reinterpret_cast<std::uintptr_t>(bytes.data());
+    hud::Layout layout{};layout.code=script+9;
+    auto read=[&](void* out,void const* address,std::size_t size){
+        const auto p=reinterpret_cast<std::uintptr_t>(address);
+        if(p<script||p-script>bytes.size()||size>bytes.size()-(p-script))return false;
+        std::memcpy(out,address,size);return true;
+    };
+    auto accepted=[&](unsigned size=29){return hud::direct_arguments(read,layout,script,size,name,start,end);};
+    CHECK(accepted());CHECK(!accepted(28));
+    bytes[27]=0x4a;CHECK(!accepted());bytes[27]=0x50;
+    bytes[28]=0x15;CHECK(!accepted());bytes[28]=0x16;
+    bytes[10]^=1;CHECK(!accepted());bytes[10]^=1;
+    bytes[1]^=1;CHECK(!accepted());bytes[1]^=1;
+    bytes[27]=0x16;CHECK(accepted(28));
+}
+void query_local_identities(){
+    {
+        auto m=std::make_unique<Memory>();meta::Snapshot schema{};
+        meta::Reader r{schema,meta::Stage::final_check};
+        CHECK(!r.reuse_initial_identities&&meta::tables(base,schema.objects,schema.names));
+        unsigned reads{};
+        read_observer=[&](uptr address,std::size_t bytes){if(address==m->weapon+0x40&&bytes==24)++reads;};
+        r.reuse_initial_identities=true;meta::U32 first{};CHECK(r.identity(m->weapon,first));
+        for(unsigned i=0;i<32;++i){meta::U32 slot{};CHECK(r.identity(m->weapon,slot)&&slot==first);}
+        CHECK(reads==1);
+        auto name=Memory::get<meta::RawName>(m->weapon,0x48);++name.number;Memory::put(m->weapon,0x48,name);
+        meta::U32 slot{};CHECK(r.identity(m->weapon,slot)); // Still discovery, no result authority.
+        r.reuse_initial_identities=false;CHECK(!r.identity(m->weapon,slot)&&reads==2);
+        read_observer={};
+    }
+    // Mutate only when the world is freshly read a SECOND time, at the
+    // closing pass. A different object's old discovery identity must never
+    // satisfy publication after that mutation, in either observer route.
+    for(bool source_only:{false,true})for(unsigned field=0;field<4;++field){
+        auto m=std::make_unique<Memory>();unsigned world_reads{};bool changed{};
+        read_observer=[&](uptr address,std::size_t bytes){
+            if(address!=m->world+0x40||bytes!=24||++world_reads!=2)return;
+            changed=true;
+            if(field==0)Memory::put(m->weapon,0x50,m->pawn_class);
+            if(field==1)Memory::put(m->weapon,0x40,m->core);
+            if(field==2){auto name=Memory::get<meta::RawName>(m->weapon,0x48);++name.number;Memory::put(m->weapon,0x48,name);}
+            if(field==3)m->objects[Memory::get<unsigned>(m->weapon,8)]=m->pawn;
+        };
+        abi::GripGameState out{};CHECK(!m->read(out,source_only)&&!out.known&&changed&&world_reads>=2);
+        read_observer={};
+    }
+    // An ordinary Reader has no discovery reuse enabled, including on its
+    // second access. Do not alter other metadata consumers' contracts.
+    auto m=std::make_unique<Memory>();meta::Snapshot schema{};meta::Reader r{schema,meta::Stage::final_check};
+    CHECK(meta::tables(base,schema.objects,schema.names));meta::U32 slot{};CHECK(r.identity(m->weapon,slot));
+    Memory::put(m->weapon,0x50,m->pawn_class);CHECK(!r.identity(m->weapon,slot));
+}
+void contiguous_metadata_fields(){
+    // Faults at ANY byte of the existing contiguous fields must reject both
+    // complete and source-only observations, not just the first byte of a copy.
+    for(bool source_only:{false,true})for(unsigned region=0;region<2;++region)
+    for(unsigned byte=0;byte<24;++byte){
+        auto m=std::make_unique<Memory>();
+        fail_read=(region?m->switch_property+0x68:m->weapon+0x40)+byte;
+        abi::GripGameState out{};CHECK(!m->read(out,source_only)&&!out.known);
+    }
+    // A coherent prefix read does not license retaining it through the query:
+    // the ORIGINAL closing identity/property rereads must find these changes.
+    for(bool source_only:{false,true})for(unsigned field=0;field<7;++field){
+        auto m=std::make_unique<Memory>();
+        const unsigned offsets[]={0x40,0x48,0x50,0x68,0x70,0x74,0x78};
+        const auto object=field<3?m->weapon:m->switch_property;
+        mutate_read=object+offsets[field]+1;
+        mutation=[&]{
+            if(field==0)Memory::put(m->weapon,0x40,m->core);
+            if(field==1){auto name=Memory::get<meta::RawName>(m->weapon,0x48);++name.number;Memory::put(m->weapon,0x48,name);}
+            if(field==2)Memory::put(m->weapon,0x50,m->pawn_class);
+            if(field==3)Memory::put(m->switch_property,0x68,uptr(0));
+            if(field==4)Memory::put(m->switch_property,0x70,2u);
+            if(field==5)Memory::put(m->switch_property,0x74,8u);
+            if(field==6)Memory::put(m->switch_property,0x78,std::uint64_t(0x80));
+        };
+        abi::GripGameState out{};CHECK(!m->read(out,source_only)&&!out.known);
+    }
+    fail_read=mutate_read=0;mutation={};
+    auto allocation=static_cast<unsigned char*>(VirtualAlloc(nullptr,8192,MEM_COMMIT|MEM_RESERVE,PAGE_READWRITE));
+    CHECK(allocation);DWORD prior{};CHECK(VirtualProtect(allocation+4096,4096,PAGE_NOACCESS,&prior));
+    const meta::PropertyPrefix source{0x12345678,1,4,0x1122334455667788};
+    auto address=reinterpret_cast<uptr>(allocation+4096-sizeof(source));
+    std::memcpy(reinterpret_cast<void*>(address),&source,sizeof(source));
+    meta::PropertyPrefix actual{};CHECK(meta::read_at(address-0x68,0x68,actual));
+    CHECK(actual.next==source.next&&actual.dimension==source.dimension&&actual.element_bytes==source.element_bytes&&actual.flags==source.flags);
+    CHECK(!meta::read_at(address+1-0x68,0x68,actual)); // No overread may cross the inaccessible page.
+    meta::IdentityHeader header{};CHECK(meta::read_at(address-0x40,0x40,header));
+    CHECK(std::memcmp(&header,&source,24)==0);CHECK(!meta::read_at(address+1-0x40,0x40,header));
+    CHECK(VirtualFree(allocation,0,MEM_RELEASE));
+}
+void aimed_fields(){
+    using F=weaponhand::AimObserveFields;
+    for(unsigned scenario=0;scenario<6;++scenario){
+        auto m=std::make_unique<Memory>();
+        const auto held=m->property(m->pc_class,L"bHoldingButton_R2",m->bool_type,0x180,4,1);
+        m->property(m->pc_class,L"bPressingTargetingKey",m->bool_type,0x184,4,2);
+        m->property(m->pc_class,L"bToggleTargeting",m->bool_type,0x188,4,4);m->tables();
+        if(scenario==1)Memory::put(held,0x50,m->object_type);
+        if(scenario==2)Memory::put(held,0x74,8u);
+        if(scenario==3)Memory::put(held,0x40,m->pawn_class);
+        meta::Snapshot schema{};meta::Reader r{schema,meta::Stage::final_check};
+        CHECK(meta::tables(base,schema.objects,schema.names));F fields;
+        if(scenario>=1&&scenario<=3){CHECK(!fields.begin(r,m->pc));continue;}
+        CHECK(fields.begin(r,m->pc));weaponhand::BoolField value{};
+        CHECK(fields.boolean(r,F::held_flag,value)&&value.mask==1);
+        if(scenario==4){Memory::put(held,0xd0,3u);CHECK(!fields.boolean(r,F::held_flag,value));continue;}
+        if(scenario==5){Memory::put(held,0x94,0x190u);CHECK(!fields.boolean(r,F::held_flag,value));continue;}
+        Memory::put(m->pc,0x180,1u);CHECK(fields.boolean(r,F::held_flag,value)&&(value.bits&value.mask));
+        CHECK(fields.boolean(r,F::target_flag,value)&&value.mask==2);
+        CHECK(fields.boolean(r,F::toggle_flag,value)&&value.mask==4);
+        CHECK(fields.finish(r));CHECK(!fields.boolean(r,F::held_flag,value));
+    }
+}int main(){query_local_identities();contiguous_metadata_fields();aimed_fields();hud_direct_arguments();tick_scope_lifetime();walks();scanners();names();cold_name_boundaries();CHECK(parse::active==nullptr);
     std::printf("WeaponMetadataParseTest: %u checks passed; actual scanners/name reader, owned memory only\n",checks);return 0;}

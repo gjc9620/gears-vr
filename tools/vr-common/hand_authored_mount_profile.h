@@ -14,7 +14,7 @@ enum class Side:std::uint32_t {left=0,right=1,unknown=0xffffffffu};
 enum class Model:std::uint32_t {unknown,marcus115};
 enum class Provenance:std::uint32_t {unknown,designer_authored};
 enum class Space:std::uint32_t {unknown,ue_grip_forward_right_up};
-inline constexpr char profile_id[]="marcus115-openxr-grip-authored-v1";
+inline constexpr char profile_id[]="marcus115-openxr-grip-authored-v3-wrist-down20";
 inline constexpr Signature marcus115_signature{{
     0x3b,0x3c,0x97,0x8c,0xb7,0xb6,0xdf,0x3f,0x3b,0xe4,0x8f,0x60,0xac,0x33,0xda,0xaf,
     0x45,0xdd,0x8f,0x30,0x81,0x6a,0x18,0xa3,0x92,0xfc,0x90,0x6b,0xdb,0xc7,0x51,0x93}};
@@ -28,25 +28,33 @@ struct Mount {
 inline bool valid_side(Side side) noexcept {return side==Side::left||side==Side::right;}
 
 // Marker origin is halfway between wrist and the mean of the four direct
-// non-thumb finger roots. Hand +Y is the designer-chosen outward palm normal.
-// UE F/R/U axes in Hand space: left [-Z,+Y,+X], right [+Z,-Y,+X]. Both det +1.
-// These choices are fixed authoring data; never rederive them from animation.
+// non-thumb finger roots. The wrist's longitudinal +X continues forward from
+// the forearm at neutral grip; it must not point upward by default. Mirror the
+// left hand about that longitudinal axis, retaining the asset-local marker.
+// Use the same right-wrist basis before and after taking a weapon. These are
+// fixed authoring data, never a calibration fitted to a live animation pose.
 inline bool marcus115(Signature const& actual_geometry,Side side,double model_scale,
     double units_per_metre,Mount& out) noexcept {
     if(actual_geometry!=marcus115_signature||!valid_side(side)||!std::isfinite(model_scale)||model_scale<=0||
        !std::isfinite(units_per_metre)||units_per_metre<10||units_per_metre>500)return false;
-    const bool left=side==Side::left;const double h=std::sqrt(.5);
-    const gears_vr::Vector raw=left?gears_vr::Vector{.20201516151428223,-.45673370361328125,-5.4255638122558594}:
-        gears_vr::Vector{.20201301574707031,.45673370361328125,-5.4255599975585938};
+    const bool left=side==Side::left;
+    const gears_vr::Vector raw=left?gears_vr::Vector{-5.4255638122558594,.45673370361328125,.20201516151428223}:
+        gears_vr::Vector{-5.4255599975585938,-.45673370361328125,.20201301574707031};
+    // Owner's physical check: depress both wrists20degrees in GRIP-local
+    // forward/right/up space. Rotate the marker offset with the same mount so
+    // the authored palm stays on the real controller; never alter XR input.
+    const gears_vr::Quaternion down{0,.17364817766693034885,0,.98480775301220805937};
+    const auto pitched=gears_vr::transform(gears_vr::rotation_matrix(down),raw);
     const double scale=model_scale/units_per_metre;
-    const gears_vr::Vector metres{raw.x*scale,raw.y*scale,raw.z*scale};
+    const gears_vr::Vector metres{pitched.x*scale,pitched.y*scale,pitched.z*scale};
     if(!gears_vr::finite(metres))return false;
     Mount candidate{};candidate.model=Model::marcus115;candidate.side=side;candidate.provenance=Provenance::designer_authored;
     candidate.input_space=Space::ue_grip_forward_right_up;candidate.geometry_signature=actual_geometry;
     candidate.bone_count=115;candidate.hand_bone=left?11u:35u;
     candidate.chain=left?std::array<std::uint32_t,3>{{8,10,11}}:std::array<std::uint32_t,3>{{32,34,35}};
     candidate.model_to_world_scale=model_scale;candidate.units_per_metre=units_per_metre;
-    candidate.calibration={true,metres,left?gears_vr::Quaternion{0,-h,0,h}:gears_vr::Quaternion{h,0,h,0}};
+    const auto mirrored=left?gears_vr::Quaternion{1,0,0,0}:gears_vr::Quaternion{0,0,0,1};
+    candidate.calibration={true,metres,gears_vr::multiply(down,mirrored)};
     out=candidate;return true;
 }
 

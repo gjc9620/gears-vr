@@ -30,6 +30,14 @@ def zero_axis_deadzone(command):
     return re.sub(r'(\bDeadZone\s*=\s*)([+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?)',zero,command,flags=re.I)
 
 
+def legacy_look_edit(name,command):
+    # Retail keeps Game_Look AND a legacy Axis binding for each right axis.
+    # Preserve the original action; edit only the redundant Axis dead zone.
+    if name in ('XboxTypeS_RightX','Gamepad_RightX') and command.strip()=='Game_LookX':return None
+    if name in ('XboxTypeS_RightY','Gamepad_RightY') and command.strip()=='Game_LookY':return None
+    return zero_axis_deadzone(command)
+
+
 class Writer:
     def __init__(self,pid,identity,check_identity):
         self.identity,self.check_identity=identity,check_identity
@@ -125,7 +133,9 @@ class Policy:
             if not pointer or not 1<length<=allocated<=2048:raise RuntimeError('Right-stick command allocation differs')
             raw=r.read(pointer,length*2)
             if not raw.endswith(b'\0\0'):raise RuntimeError('Right-stick command is not terminated UTF16')
-            text=raw[:-2].decode('utf-16-le');updated=zero_axis_deadzone(text).encode('utf-16-le')+b'\0\0'
+            text=raw[:-2].decode('utf-16-le');edit=legacy_look_edit(name,text)
+            if edit is None:continue
+            updated=edit.encode('utf-16-le')+b'\0\0'
             if len(updated)!=len(raw):raise RuntimeError('Right-stick command resize refused')
             guards[base+n['offset']]=name_raw;guards[base+cmd['offset']]=sh
             if updated!=raw:changes.append((pointer,raw,updated))

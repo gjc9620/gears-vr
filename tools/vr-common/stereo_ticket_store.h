@@ -19,6 +19,7 @@ struct StereoTicketGeometry {
     StereoMatrices eyes{};
     StereoFiniteAim finite_aim{};
     bool aiming{}; // Frozen certified game targeting state; not an XR input.
+    bool flat_menu{}; // Frozen display-only menu composition, no action authority.
 };
 
 // Single-swapchain bounded CPU provenance store. Contains values, not renderer
@@ -55,7 +56,7 @@ class StereoTicketStore {
         return true;
     }
     static bool same(StereoTicketGeometry const& a,StereoTicketGeometry const& b) {
-        if(a.source_view!=b.source_view||a.source_projection!=b.source_projection||a.aiming!=b.aiming)return false;
+        if(a.source_view!=b.source_view||a.source_projection!=b.source_projection||a.aiming!=b.aiming||a.flat_menu!=b.flat_menu)return false;
         if(a.finite_aim.valid!=b.finite_aim.valid||a.finite_aim.point!=b.finite_aim.point||
            a.finite_aim.world!=b.finite_aim.world||a.finite_aim.tick!=b.finite_aim.tick)return false;
         for(unsigned eye=0;eye<2;++eye)

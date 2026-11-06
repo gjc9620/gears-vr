@@ -17,12 +17,15 @@ class Lookup {
     Table table_{};
     unsigned cursor_{},found_{};
     std::array<unsigned,3> indices_{};
+    std::array<const wchar_t*,3> labels_{L"b_MF_Hand_R",L"b_MF_Weapon_R",L"b_MF_Weapon_R_End"};
     bool known_{};
 public:
     static constexpr const wchar_t* wanted[]={L"b_MF_Hand_R",L"b_MF_Weapon_R",L"b_MF_Weapon_R_End"};
+    Lookup()=default;
+    explicit Lookup(std::array<const wchar_t*,3> labels):labels_(labels){}
     unsigned cursor() const noexcept {return cursor_;}
     unsigned found() const noexcept {return found_;}
-    void reset() noexcept {*this=Lookup{};}
+    void reset() noexcept {const auto labels=labels_;*this=Lookup(labels);}
     // Reads are bounded by both item count and the caller's time budget. A
     // changed table or expired source cannot commit partial lookup progress.
     template<class ReadTable,class ReadName,class Current,class Budget>
@@ -39,14 +42,14 @@ public:
             bool valid=true;
             for(unsigned i=0;i<3;++i){std::array<wchar_t,32> text{};
                 valid=read_name(name_table,indices[i],text)&&std::wmemchr(text.data(),0,text.size())&&
-                    !std::wcscmp(text.data(),wanted[i])&&valid;}
+                    !std::wcscmp(text.data(),labels_[i])&&valid;}
             if(!valid){reset();known_=true;table_=name_table;cursor=0;found=0;indices={};}
         }
         for(unsigned scanned=0;found!=7&&cursor<name_table.count&&scanned<maximum;++scanned){
             if((scanned&15u)==0&&!budget())break;
             std::array<wchar_t,32> text{};
             if(read_name(name_table,cursor,text)&&std::wmemchr(text.data(),0,text.size()))
-                for(unsigned i=0;i<3;++i)if(!std::wcscmp(text.data(),wanted[i])){indices[i]=cursor;found|=1u<<i;}
+                for(unsigned i=0;i<3;++i)if(!std::wcscmp(text.data(),labels_[i])){indices[i]=cursor;found|=1u<<i;}
             ++cursor;
         }
         Table after{};

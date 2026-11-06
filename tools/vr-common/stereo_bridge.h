@@ -52,11 +52,12 @@ public:
         if(ok){value.frequency=frequency.QuadPart;value.sample=sample;std::memcpy(data_,&value,sizeof(value));}
         ReleaseMutex(mutex_);return ok;
     }
-    bool read(StereoSample& sample) {
+    bool read(StereoSample& sample,bool* contended=nullptr) {
+        if(contended)*contended=false;
         if(!data_)return false;
         DWORD wait=WaitForSingleObject(mutex_,0);
         if(wait==WAIT_ABANDONED){ReleaseMutex(mutex_);return false;}
-        if(wait!=WAIT_OBJECT_0)return false;
+        if(wait!=WAIT_OBJECT_0){if(contended)*contended=wait==WAIT_TIMEOUT;return false;}
         StereoBridgePacket value;std::memcpy(&value,data_,sizeof(value));ReleaseMutex(mutex_);
         if(!packet_valid(value))return false;
         sample=value.sample;return true;

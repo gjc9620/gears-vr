@@ -1,0 +1,153 @@
+{
+  "schema": 1,
+  "date": "2026-10-28",
+  "purpose": "point-in-time inspection of active mainline; never restore these snapshots over current source",
+  "files": [
+    {
+      "path": "tools/native-capture/cover_call_live.inl",
+      "sha256": "fbd020ba8bf45a7f206ae902214908ffb6a5d0ca496d33af81a8bdb615a2b5c0",
+      "bytes": 12672,
+      "symbols": [
+        {
+          "symbol": "void returned(",
+          "line": 155
+        }
+      ]
+    },
+    {
+      "path": "tools/native-capture/cover_call_decode.py",
+      "sha256": "e1f82acdfd85a3f07e01e82126af57c10d20d384cbb3e74d146a227ce3fdfaaa",
+      "bytes": 17358,
+      "symbols": [
+        {
+          "symbol": "def _row(",
+          "line": 160
+        },
+        {
+          "symbol": "def analyze(",
+          "line": 205
+        }
+      ]
+    },
+    {
+      "path": "tools/native-capture/full_body_c0_native_backend.h",
+      "sha256": "ccdc8834bbe9c40e06e29fffa149eaf9ba853f5d2ea05089f57ac24d592d51ed",
+      "bytes": 15261,
+      "symbols": [
+        {
+          "symbol": "class Context",
+          "line": 13
+        },
+        {
+          "symbol": "class Backend",
+          "line": 41
+        }
+      ]
+    },
+    {
+      "path": "tools/native-capture/full_body_c0_native_live.inl",
+      "sha256": "9a4e1341c8302b7e9e9015778b3e9a21d41c2c73618e33522bd62bd973c6cfe9",
+      "bytes": 94012,
+      "symbols": [
+        {
+          "symbol": "void trace_hands_commit(",
+          "line": 222
+        },
+        {
+          "symbol": "unsigned observe_hand_trace(",
+          "line": 202
+        }
+      ]
+    },
+    {
+      "path": "tools/native-capture/weapon_call_live.inl",
+      "sha256": "26fc03a5aa62a403fed1d2938767b273263369692782eee7097fd337bd637d05",
+      "bytes": 1804,
+      "symbols": [
+        {
+          "symbol": "uintptr_t invoke(",
+          "line": 7
+        }
+      ]
+    },
+    {
+      "path": "tools/playground/weapon_unified_fire.inl",
+      "sha256": "0274778e1e44510c7ff2b6d6aaf3ef7daf85e99ac3204b979e64a62a7ee11dba",
+      "bytes": 36506,
+      "symbols": [
+        {
+          "symbol": "struct MuzzleSample",
+          "line": 33
+        },
+        {
+          "symbol": "bool prepare_current(",
+          "line": 154
+        },
+        {
+          "symbol": "bool typed_result(",
+          "line": 322
+        },
+        {
+          "symbol": "bool normal_return(",
+          "line": 502
+        },
+        {
+          "symbol": "bool source_matches_shot(",
+          "line": 262
+        }
+      ]
+    },
+    {
+      "path": "tools/playground/weapon_unified_fire.h",
+      "sha256": "148cd9e5111f87c94158ff70e53efa2d889ace5727e7ec7dd4b56b4d1704e6ab",
+      "bytes": 2110,
+      "symbols": [
+        {
+          "symbol": "struct AppliedEvidence",
+          "line": 23
+        }
+      ]
+    },
+    {
+      "path": "tools/playground/weapon_hand_client.inl",
+      "sha256": "f442d7d8c62a5642ca4c2163e2f9726d2025ff3d9c0652af986d07ec57c53518",
+      "bytes": 23771,
+      "symbols": [
+        {
+          "symbol": "game.animation_owns_hands=",
+          "line": 157
+        },
+        {
+          "symbol": "game.busy=",
+          "line": 158
+        }
+      ]
+    },
+    {
+      "path": "tools/playground/weapon_lancer_r2_native.inl",
+      "sha256": "e1e5e09da2c744b00fe2295f552549aee9f14c904dada1f705aca0b2baf118f9",
+      "bytes": 28367,
+      "symbols": [
+        {
+          "symbol": "unified_weapon_fire::prepare_current",
+          "line": 252
+        }
+      ]
+    },
+    {
+      "path": "tools/playground/weapon_native_lancer_follow.inl",
+      "sha256": "b51edee456a5f70995badaed706bb8ea0e45b22138a44e97533863d30a238b32",
+      "bytes": 13371,
+      "symbols": [
+        {
+          "symbol": "namespace nativelancerfollow",
+          "line": 5
+        },
+        {
+          "symbol": "adjust_muzzle(",
+          "line": 153
+        }
+      ]
+    }
+  ]
+}

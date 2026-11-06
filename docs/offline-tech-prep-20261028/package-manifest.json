@@ -1,0 +1,655 @@
+{
+  "schema": "gearsvr.offline-tech-package.v1",
+  "kind": "offline implementation preparation, not game package",
+  "goal_complete": true,
+  "open_preparation_gap": null,
+  "N01": "static resource creation, ownership and release route researched; implementation and runtime acceptance pending",
+  "files": [
+    {
+      "path": "assets/weapon-6dof/lancer-starter.glb",
+      "bytes": 59076,
+      "sha256": "23616c7e880813c4877bf9fb677b824c3e63af518632902d31f3eeb93d06598f"
+    },
+    {
+      "path": "assets/weapon-6dof/offline-v2/boltok-assembly.json",
+      "bytes": 1743,
+      "sha256": "df6eb9cd337dac4ede85255b501ab70dbe3af42cabee81cea67b1b68c2a7f042"
+    },
+    {
+      "path": "assets/weapon-6dof/offline-v2/boltok-cylinder.glb",
+      "bytes": 540144,
+      "sha256": "dc569f01858d2791249f07cd7a49d7b61cc4b9f638367bad480880c05da5291a"
+    },
+    {
+      "path": "assets/weapon-6dof/offline-v2/boltok-round.glb",
+      "bytes": 144724,
+      "sha256": "81279d6788a22bc8ca00e29f90c2570a0e7e1793b70e65afa702fe1de09dd824"
+    },
+    {
+      "path": "assets/weapon-6dof/offline-v2/engine-input/boltok-cylinder-lod0.idx16",
+      "bytes": 21888,
+      "sha256": "f2ffcef4341212d94c681c02f2666b6f0be7b2da02c7548985a30900690ebce2"
+    },
+    {
+      "path": "assets/weapon-6dof/offline-v2/engine-input/boltok-cylinder-lod0.vtx60",
+      "bytes": 656640,
+      "sha256": "e37eaab4ff158933b50b2f45c443f2abc71d6288d0c19259c63383e6346f9ff6"
+    },
+    {
+      "path": "assets/weapon-6dof/offline-v2/engine-input/boltok-cylinder-lod1.idx16",
+      "bytes": 7776,
+      "sha256": "2fb27a49d5da6f3835493688eeb7ea6cc836d03892a384c82594f2817036e07a"
+    },
+    {
+      "path": "assets/weapon-6dof/offline-v2/engine-input/boltok-cylinder-lod1.vtx60",
+      "bytes": 233280,
+      "sha256": "571196d808f1a998883cc63b7ccb31a3d6b15df2496142173afa65fb79418886"
+    },
+    {
+      "path": "assets/weapon-6dof/offline-v2/engine-input/boltok-round-lod0.idx16",
+      "bytes": 5760,
+      "sha256": "e245c956c3190f2fbbffc2a276eb04203efc7e3a136ea925d32d1154e619b81f"
+    },
+    {
+      "path": "assets/weapon-6dof/offline-v2/engine-input/boltok-round-lod0.vtx60",
+      "bytes": 172800,
+      "sha256": "e4e62799a15575979c391caaa71a4a3dafe756356677649137ba6ecf3b62ebaf"
+    },
+    {
+      "path": "assets/weapon-6dof/offline-v2/engine-input/boltok-round-lod1.idx16",
+      "bytes": 1920,
+      "sha256": "fbd35b6be309743dbb6f11ae15e0c2b6cdedbb5711c9c0f799321ae8000c6818"
+    },
+    {
+      "path": "assets/weapon-6dof/offline-v2/engine-input/boltok-round-lod1.vtx60",
+      "bytes": 57600,
+      "sha256": "15f0693e08a5cf21b3a95fa8cd56b0c840a3ca874572fd0526a74272be2adaa0"
+    },
+    {
+      "path": "assets/weapon-6dof/offline-v2/engine-input/gnasher-round-lod0.idx16",
+      "bytes": 5760,
+      "sha256": "e245c956c3190f2fbbffc2a276eb04203efc7e3a136ea925d32d1154e619b81f"
+    },
+    {
+      "path": "assets/weapon-6dof/offline-v2/engine-input/gnasher-round-lod0.vtx60",
+      "bytes": 172800,
+      "sha256": "2fe0d0fe6ffcca2fe349de6f4f7ef5dc7d6c78857d0517fe05c07bb545b80979"
+    },
+    {
+      "path": "assets/weapon-6dof/offline-v2/engine-input/gnasher-round-lod1.idx16",
+      "bytes": 1920,
+      "sha256": "fbd35b6be309743dbb6f11ae15e0c2b6cdedbb5711c9c0f799321ae8000c6818"
+    },
+    {
+      "path": "assets/weapon-6dof/offline-v2/engine-input/gnasher-round-lod1.vtx60",
+      "bytes": 57600,
+      "sha256": "30f0de87d76a27f26fa7d881cb327ef8b9e819c44d83a613043a4522b9d7c5d5"
+    },
+    {
+      "path": "assets/weapon-6dof/offline-v2/engine-input/lancer-starter-StarterCord.idx16",
+      "bytes": 288,
+      "sha256": "8daaa4c6b16f6bd020f9520536487dcb46bc254d02c98e45d21356fb8f73cf3e"
+    },
+    {
+      "path": "assets/weapon-6dof/offline-v2/engine-input/lancer-starter-StarterCord.vtx60",
+      "bytes": 8640,
+      "sha256": "7b55604dd449ae50e6d813f50e61eb302d0fb1db27c8ce0d6dbdd3acf46882b2"
+    },
+    {
+      "path": "assets/weapon-6dof/offline-v2/engine-input/lancer-starter-StarterPullGrip.idx16",
+      "bytes": 1920,
+      "sha256": "fbd35b6be309743dbb6f11ae15e0c2b6cdedbb5711c9c0f799321ae8000c6818"
+    },
+    {
+      "path": "assets/weapon-6dof/offline-v2/engine-input/lancer-starter-StarterPullGrip.vtx60",
+      "bytes": 57600,
+      "sha256": "85eaff9435206b9cf8df123b1ed2c8589f88f4a295cf06f9d868543d7f08b902"
+    },
+    {
+      "path": "assets/weapon-6dof/offline-v2/engine-input/lancer-starter-StarterSocket.idx16",
+      "bytes": 2016,
+      "sha256": "a69fd311c38e9191a272e425fb559e5322af9820c1f1d4b3d2c0f5dd4d744d1d"
+    },
+    {
+      "path": "assets/weapon-6dof/offline-v2/engine-input/lancer-starter-StarterSocket.vtx60",
+      "bytes": 60480,
+      "sha256": "ef4eae89c62abd8beaef784d37be23030d0e9c020b347e72e0574644720edcdf"
+    },
+    {
+      "path": "assets/weapon-6dof/offline-v2/engine-input/longshot-round-lod0.idx16",
+      "bytes": 7488,
+      "sha256": "796dc46ccc2980a2fb010c4add50af71bcecfd123a2248fd7b94092d726d94fd"
+    },
+    {
+      "path": "assets/weapon-6dof/offline-v2/engine-input/longshot-round-lod0.vtx60",
+      "bytes": 224640,
+      "sha256": "c6f62f095ca1c693463b7393ff19f722af4e7763254a27019f63e205e38e84ae"
+    },
+    {
+      "path": "assets/weapon-6dof/offline-v2/engine-input/longshot-round-lod1.idx16",
+      "bytes": 2496,
+      "sha256": "dad22f0c97a8d8c0fc988d30ff7505f4d9698aaa4c8a34ddf892361009131ff8"
+    },
+    {
+      "path": "assets/weapon-6dof/offline-v2/engine-input/longshot-round-lod1.vtx60",
+      "bytes": 74880,
+      "sha256": "b874e58252c5b64dfda99d81ca5defa53455ba8a4b89d07d543cc9d428e45bf1"
+    },
+    {
+      "path": "assets/weapon-6dof/offline-v2/engine-input/manifest.json",
+      "bytes": 39304,
+      "sha256": "7e3ecf9629c101c6f5cea68d51fae7604138e117a2fda15f03e76dd7a1d9923b"
+    },
+    {
+      "path": "assets/weapon-6dof/offline-v2/gnasher-round.glb",
+      "bytes": 146236,
+      "sha256": "fbc590043d675ab179135aa4a6d39689fcdd9b8ad6762dfb329e53a7bfec6e2c"
+    },
+    {
+      "path": "assets/weapon-6dof/offline-v2/lancer-starter.glb",
+      "bytes": 59076,
+      "sha256": "23616c7e880813c4877bf9fb677b824c3e63af518632902d31f3eeb93d06598f"
+    },
+    {
+      "path": "assets/weapon-6dof/offline-v2/longshot-round.glb",
+      "bytes": 186248,
+      "sha256": "298fec9444c5bd577ba24b7328953b8ddbbc54d7e88c0c2f4f0122b2d091e380"
+    },
+    {
+      "path": "assets/weapon-6dof/offline-v2/manifest.json",
+      "bytes": 6840,
+      "sha256": "a9bd0307e5bc41fa599508add2e2ec6372eeb4f256418480b8db1c4199d8d12a"
+    },
+    {
+      "path": "assets/weapon-6dof/offline-v2/preview.html",
+      "bytes": 814486,
+      "sha256": "74f245bf3931182a291e6e1e0cf527c95fc22e67e9c9960501117a7eab37984e"
+    },
+    {
+      "path": "assets/weapon-6dof/offline-v2/preview.png",
+      "bytes": 80652,
+      "sha256": "885aa94ab9f3bc32fd54135e30432cdeb150ab674f394272a1b8b19441523379"
+    },
+    {
+      "path": "assets/weapon-6dof/offline-v2/README.md",
+      "bytes": 4317,
+      "sha256": "c84f6bf0099ef5c3aa925e7a05f48478da0535fec1beed3dba3a549bf34e612f"
+    },
+    {
+      "path": "docs/all-weapons-interaction-plan-20261028.md",
+      "bytes": 29659,
+      "sha256": "fd7409cb5773be3cc55a711bb90f6ce3f553276cdd48b280cd68887949efacd4"
+    },
+    {
+      "path": "docs/cover-specs-20261028/acceptance.md",
+      "bytes": 7549,
+      "sha256": "b5585ba3ae5236aff46dcc7e701a941bab9dab381312be931caf0039a918aab6"
+    },
+    {
+      "path": "docs/cover-specs-20261028/code-locations.json",
+      "bytes": 13557,
+      "sha256": "4368de4f1a2e97c62f25f3a58937d9e76ec912902aa9af25344169006a76c6de"
+    },
+    {
+      "path": "docs/cover-specs-20261028/code-locations.md",
+      "bytes": 4544,
+      "sha256": "4690253769c51589c0f48b25b4748efc325d7813eb7512933ff057f7a2c792fa"
+    },
+    {
+      "path": "docs/cover-specs-20261028/contract-check-results.json",
+      "bytes": 2849,
+      "sha256": "7a0def59e05c41ff389fb42479e027a8bca9cde9d4f7806f682698f3a8f112ad"
+    },
+    {
+      "path": "docs/cover-specs-20261028/contract-vectors.json",
+      "bytes": 18285,
+      "sha256": "b7099a2a4b288d3943cd026208797eb9d3a2594527d59766c7435f939283b728"
+    },
+    {
+      "path": "docs/cover-specs-20261028/findings.md",
+      "bytes": 8712,
+      "sha256": "74c72af1a3196b3f92ea10d13d8d67cc009563d2e2338b298dc0bdeedf5d7c84"
+    },
+    {
+      "path": "docs/cover-specs-20261028/implementation-handoff.md",
+      "bytes": 16440,
+      "sha256": "e1f0cc599fe704e5029d5c5b72d0ed071775f373291f8e08eb3de06e1d9ba230"
+    },
+    {
+      "path": "docs/cover-specs-20261028/interaction-contract.md",
+      "bytes": 7323,
+      "sha256": "6caff390ab4cc8b1029144563aa8ab7a721ecfd04a813fc1e2aa0895a346c3c5"
+    },
+    {
+      "path": "docs/cover-specs-20261028/manifest.json",
+      "bytes": 5211,
+      "sha256": "044949eddbf8a7d4270c2be49dc67d2b229d42a8b569a8cd39832a340e4ca2f9"
+    },
+    {
+      "path": "docs/cover-specs-20261028/offline-contract-checker.py",
+      "bytes": 9119,
+      "sha256": "52f77e2aae0330caca9c1ca48896167f9a36dcaa52cd473dda7f96d72287ec9c"
+    },
+    {
+      "path": "docs/cover-specs-20261028/offline-validation.json",
+      "bytes": 829,
+      "sha256": "2a7e957beca5d0507e329f274e750ad72b87d78b2df36e1ce6d22555e38c4da6"
+    },
+    {
+      "path": "docs/cover-specs-20261028/original-entry-map.md",
+      "bytes": 9092,
+      "sha256": "177284e2ec831bc80f43238b1624d8300b9582d305ae9ed7f7d37f86683ad13a"
+    },
+    {
+      "path": "docs/cover-specs-20261028/README.md",
+      "bytes": 4264,
+      "sha256": "ad437e7643172371b34857d050d183b64134950450ebd864575155e1c3e59720"
+    },
+    {
+      "path": "docs/cover-specs-20261028/research-followup-v2.md",
+      "bytes": 8945,
+      "sha256": "45a33e863329f93b582fed89f534dba2efd7d408540caea95c403a205f1d38fb"
+    },
+    {
+      "path": "docs/cover-specs-20261028/revision2-code-locations.json",
+      "bytes": 4014,
+      "sha256": "10ad71d902f575ac12794923dcd5d41d491558e12f0fb264ee0bfae29b760623"
+    },
+    {
+      "path": "docs/offline-tech-prep-20261028/asset-backend.md",
+      "bytes": 8927,
+      "sha256": "d048966aee2f3290c374f46598315279f5ffb77bbfa6fc89c4ea9d11308b4ae7"
+    },
+    {
+      "path": "docs/offline-tech-prep-20261028/calibration-plan.json",
+      "bytes": 17645,
+      "sha256": "93444f11bc2c05feebc2b5b2653de3feb3f675a2ec16b39d2eb1b0ca5413bdf9"
+    },
+    {
+      "path": "docs/offline-tech-prep-20261028/README.md",
+      "bytes": 3943,
+      "sha256": "92d323e3df0870fad80534b8e23c7c5429ef15f3ee44ff26ded5631058fed3d2"
+    },
+    {
+      "path": "docs/offline-tech-prep-20261028/requirements-audit.md",
+      "bytes": 6460,
+      "sha256": "36cc817573064fbced3f8d6853b82b5b8bdf0150c91ea86d551884493008cddb"
+    },
+    {
+      "path": "docs/offline-tech-prep-20261028/shared-contracts.md",
+      "bytes": 6711,
+      "sha256": "516dc69d6b3d3756101c8ba9bdeec4093486c0766ec091d12caffdd8b3b3d8c8"
+    },
+    {
+      "path": "docs/weapon-specs-20261028/authoring-manifest.json",
+      "bytes": 32512,
+      "sha256": "be77b71f9dba81134906b899bcdad32456ecf66eafda49f9ed5520c13f43d31f"
+    },
+    {
+      "path": "docs/weapon-specs-20261028/code-locations.json",
+      "bytes": 20489,
+      "sha256": "4cef82b51b73977a37701dae50c63a7e7d9d1f66311ba25a5a8239b24b7e0556"
+    },
+    {
+      "path": "docs/weapon-specs-20261028/code-locations.md",
+      "bytes": 5585,
+      "sha256": "a27e919979b4de6a1519b7890ab13610e3593a5821e9149e8f1a4f7776f1b6fb"
+    },
+    {
+      "path": "docs/weapon-specs-20261028/implementation-handoff.md",
+      "bytes": 19688,
+      "sha256": "bab3a98a3586dbe5b3b3881379af57cf3807d8eb6d508d5ddb3fc6700edbfadc"
+    },
+    {
+      "path": "docs/weapon-specs-20261028/interaction-review-v2.md",
+      "bytes": 11496,
+      "sha256": "0f4b2f331903079694d8fc54bf8b8b76f643d28f4b762ecbc36202c547dc9028"
+    },
+    {
+      "path": "docs/weapon-specs-20261028/model-work-orders.md",
+      "bytes": 11811,
+      "sha256": "51ab190ed1a33c95d0e0e7519add95827eb8d2775e31f26bc5afd58acba2f2f0"
+    },
+    {
+      "path": "docs/weapon-specs-20261028/original-entry-map.md",
+      "bytes": 20581,
+      "sha256": "db001c482302da04eeb51a12856098f7aa00ce1ed28f577d0708af9de45da13a"
+    },
+    {
+      "path": "docs/weapon-specs-20261028/README.md",
+      "bytes": 8487,
+      "sha256": "f1a1dcee59dcb8475e31cf73cd1a5698bab25dab380eff97897c0582a778cec5"
+    },
+    {
+      "path": "docs/weapon-specs-20261028/weapon-cards.md",
+      "bytes": 26535,
+      "sha256": "cc7a4a1a48ce0d9bd6e2273607ce319f3cb69631fb017c1dcfd05a35a17ae566"
+    },
+    {
+      "path": "tools/weapon-models/offline-v2/build_engine_inputs.py",
+      "bytes": 6957,
+      "sha256": "f3561da15e9e9ef0aa30dbc26ca0384f9b0f9003227dc7fc6bef442ca9d5ead0"
+    },
+    {
+      "path": "tools/weapon-models/offline-v2/build_offline_assets.py",
+      "bytes": 23261,
+      "sha256": "5aa937b055b43e1c6c2f38668eaa8aaf6efa6dbc67e3692abac760726fddb174"
+    },
+    {
+      "path": "tools/weapon-models/offline-v2/validate_engine_inputs.py",
+      "bytes": 2804,
+      "sha256": "245d7915a7adab4e0570c051687b7672ddc00d2b438b23a52b1d42c1402f2069"
+    },
+    {
+      "path": "tools/weapon-models/offline-v2/validate_offline_assets.py",
+      "bytes": 7517,
+      "sha256": "b812868412f1e14cffd7d90d20477d045fdb2778fdaf79c447c8f201c0e59a42"
+    }
+  ],
+  "local_links_checked": 183,
+  "workspace_evidence_links_not_bundled": [
+    {
+      "file": "docs\\all-weapons-interaction-plan-20261028.md",
+      "target": "weapon-6dof-interaction-design-20261022.md"
+    },
+    {
+      "file": "docs\\all-weapons-interaction-plan-20261028.md",
+      "target": "../tools/playground/vr_lancer_reload_hold.inl"
+    },
+    {
+      "file": "docs\\all-weapons-interaction-plan-20261028.md",
+      "target": "../tools/vr-common/grenade_throw.h"
+    },
+    {
+      "file": "docs\\all-weapons-interaction-plan-20261028.md",
+      "target": "weapon-6dof-interaction-design-20261022.md"
+    },
+    {
+      "file": "docs\\all-weapons-interaction-plan-20261028.md",
+      "target": "ammo-and-physical-reload-20261021.md"
+    },
+    {
+      "file": "docs\\all-weapons-interaction-plan-20261028.md",
+      "target": "58-reverse-engineering-knowledge-base.md"
+    },
+    {
+      "file": "docs\\all-weapons-interaction-plan-20261028.md",
+      "target": "../assets/weapon-6dof/README.md"
+    },
+    {
+      "file": "docs\\all-weapons-interaction-plan-20261028.md",
+      "target": "../assets/weapon-6dof/gnasher-round.glb"
+    },
+    {
+      "file": "docs\\cover-specs-20261028\\code-locations.md",
+      "target": "../../tools/vr-common/cover_interaction.h"
+    },
+    {
+      "file": "docs\\cover-specs-20261028\\code-locations.md",
+      "target": "../../tools/vr-common/cover_input_owner.h"
+    },
+    {
+      "file": "docs\\cover-specs-20261028\\code-locations.md",
+      "target": "../../tools/vr-common/cover_controller_adapter.h"
+    },
+    {
+      "file": "docs\\cover-specs-20261028\\code-locations.md",
+      "target": "../../tools/vr-common/cover_view.h"
+    },
+    {
+      "file": "docs\\cover-specs-20261028\\code-locations.md",
+      "target": "../../tools/vr-common/cover_body_target.h"
+    },
+    {
+      "file": "docs\\cover-specs-20261028\\code-locations.md",
+      "target": "../../tools/vr-common/left_hand_interaction_owner.h"
+    },
+    {
+      "file": "docs\\cover-specs-20261028\\code-locations.md",
+      "target": "../../tools/native-capture/cover_shared_input_live.inl"
+    },
+    {
+      "file": "docs\\cover-specs-20261028\\code-locations.md",
+      "target": "../../tools/native-capture/cover_camera_live.inl"
+    },
+    {
+      "file": "docs\\cover-specs-20261028\\code-locations.md",
+      "target": "../../tools/native-capture/cover_full_goal_live.inl"
+    },
+    {
+      "file": "docs\\cover-specs-20261028\\code-locations.md",
+      "target": "../../tools/native-capture/cover_geometry_live.inl"
+    },
+    {
+      "file": "docs\\cover-specs-20261028\\code-locations.md",
+      "target": "../../tools/native-capture/cover_neutral_eye_live.inl"
+    },
+    {
+      "file": "docs\\cover-specs-20261028\\code-locations.md",
+      "target": "../../tools/native-capture/continuous_hand_owner_live.inl"
+    },
+    {
+      "file": "docs\\cover-specs-20261028\\code-locations.md",
+      "target": "../../tools/native-capture/body_c0_goal_policy_live.inl"
+    },
+    {
+      "file": "docs\\cover-specs-20261028\\code-locations.md",
+      "target": "../../tools/native-capture/full_body_c0_transaction.h"
+    },
+    {
+      "file": "docs\\cover-specs-20261028\\code-locations.md",
+      "target": "../../tools/native-capture/capture.cpp"
+    },
+    {
+      "file": "docs\\cover-specs-20261028\\code-locations.md",
+      "target": "../../tools/native-capture/run_camera_live.inl"
+    },
+    {
+      "file": "docs\\cover-specs-20261028\\code-locations.md",
+      "target": "../../tools/native-capture/run_camera_stabilizer.h"
+    },
+    {
+      "file": "docs\\cover-specs-20261028\\code-locations.md",
+      "target": "../../tools/native-capture/cover_call_config.py"
+    },
+    {
+      "file": "docs\\cover-specs-20261028\\code-locations.md",
+      "target": "../../tools/native-capture/cover_call_trace.h"
+    },
+    {
+      "file": "docs\\cover-specs-20261028\\code-locations.md",
+      "target": "../../tools/native-capture/cover_call_live.inl"
+    },
+    {
+      "file": "docs\\cover-specs-20261028\\code-locations.md",
+      "target": "../../tools/game-playtest/cover_trace_query.py"
+    },
+    {
+      "file": "docs\\cover-specs-20261028\\code-locations.md",
+      "target": "../../tools/game-playtest/cover_surface_query.py"
+    },
+    {
+      "file": "docs\\cover-specs-20261028\\code-locations.md",
+      "target": "../../tools/game-playtest/cover_state.py"
+    },
+    {
+      "file": "docs\\cover-specs-20261028\\interaction-contract.md",
+      "target": "../6dof-cover-interaction-design-20261024.md"
+    },
+    {
+      "file": "docs\\cover-specs-20261028\\original-entry-map.md",
+      "target": "../releases/0.0.4/PROGRESS.md"
+    },
+    {
+      "file": "docs\\cover-specs-20261028\\research-followup-v2.md",
+      "target": "../releases/0.0.4/PROGRESS.md"
+    },
+    {
+      "file": "docs\\offline-tech-prep-20261028\\asset-backend.md",
+      "target": "../../analysis/technical-prep-20261028/native-resource-entry-map.json"
+    },
+    {
+      "file": "docs\\offline-tech-prep-20261028\\asset-backend.md",
+      "target": "../../analysis/technical-prep-20261028/native-resource-audit.json"
+    },
+    {
+      "file": "docs\\weapon-specs-20261028\\code-locations.md",
+      "target": "../../tools/vr-common/weapon_reload_model.h"
+    },
+    {
+      "file": "docs\\weapon-specs-20261028\\code-locations.md",
+      "target": "../../tools/vr-common/weapon_hammerburst_reload.h"
+    },
+    {
+      "file": "docs\\weapon-specs-20261028\\code-locations.md",
+      "target": "../../tools/vr-common/weapon_gnasher_mechanics.h"
+    },
+    {
+      "file": "docs\\weapon-specs-20261028\\code-locations.md",
+      "target": "../../tools/vr-common/weapon_longshot_reload.h"
+    },
+    {
+      "file": "docs\\weapon-specs-20261028\\code-locations.md",
+      "target": "../../tools/vr-common/weapon_snub_reload.h"
+    },
+    {
+      "file": "docs\\weapon-specs-20261028\\code-locations.md",
+      "target": "../../tools/vr-common/weapon_boltok_reload.h"
+    },
+    {
+      "file": "docs\\weapon-specs-20261028\\code-locations.md",
+      "target": "../../tools/vr-common/weapon_boomshot_interaction.h"
+    },
+    {
+      "file": "docs\\weapon-specs-20261028\\code-locations.md",
+      "target": "../../tools/vr-common/weapon_torque_bow_interaction.h"
+    },
+    {
+      "file": "docs\\weapon-specs-20261028\\code-locations.md",
+      "target": "../../tools/vr-common/weapon_hammer_of_dawn_interaction.h"
+    },
+    {
+      "file": "docs\\weapon-specs-20261028\\code-locations.md",
+      "target": "../../tools/vr-common/weapon_troika_interaction.h"
+    },
+    {
+      "file": "docs\\weapon-specs-20261028\\code-locations.md",
+      "target": "../../tools/vr-common/weapon_bolo_grenade_interaction.h"
+    },
+    {
+      "file": "docs\\weapon-specs-20261028\\code-locations.md",
+      "target": "../../tools/vr-common/weapon_smoke_grenade_interaction.h"
+    },
+    {
+      "file": "docs\\weapon-specs-20261028\\code-locations.md",
+      "target": "../../tools/vr-common/grenade_throw.h"
+    },
+    {
+      "file": "docs\\weapon-specs-20261028\\code-locations.md",
+      "target": "../../tools/playground/weapon_equipment_backend.inl"
+    },
+    {
+      "file": "docs\\weapon-specs-20261028\\code-locations.md",
+      "target": "../../tools/playground/weapon_equipment_rig.inl"
+    },
+    {
+      "file": "docs\\weapon-specs-20261028\\code-locations.md",
+      "target": "../../tools/playground/weapon_hand_client.inl"
+    },
+    {
+      "file": "docs\\weapon-specs-20261028\\code-locations.md",
+      "target": "../../tools/playground/weapon_action_entry.inl"
+    },
+    {
+      "file": "docs\\weapon-specs-20261028\\code-locations.md",
+      "target": "../../tools/playground/weapon_call_subscriber.inl"
+    },
+    {
+      "file": "docs\\weapon-specs-20261028\\code-locations.md",
+      "target": "../../tools/playground/weapon_unified_fire.inl"
+    },
+    {
+      "file": "docs\\weapon-specs-20261028\\code-locations.md",
+      "target": "../../tools/playground/vr_lancer_reload_hold.inl"
+    },
+    {
+      "file": "docs\\weapon-specs-20261028\\code-locations.md",
+      "target": "../../tools/playground/weapon_lancer_r2_native.inl"
+    },
+    {
+      "file": "docs\\weapon-specs-20261028\\code-locations.md",
+      "target": "../../tools/playground/weapon_equipment_domain.inl"
+    },
+    {
+      "file": "docs\\weapon-specs-20261028\\code-locations.md",
+      "target": "../../tools/playground/weapon_lancer_component_probe.inl"
+    },
+    {
+      "file": "docs\\weapon-specs-20261028\\code-locations.md",
+      "target": "../../tools/vr-common/weapon_lancer_feed_anchor.h"
+    },
+    {
+      "file": "docs\\weapon-specs-20261028\\code-locations.md",
+      "target": "../../tools/vr-common/weapon_lancer_insertion.h"
+    },
+    {
+      "file": "docs\\weapon-specs-20261028\\code-locations.md",
+      "target": "../../tools/vr-common/weapon_lancer_magazine_pose.h"
+    },
+    {
+      "file": "docs\\weapon-specs-20261028\\code-locations.md",
+      "target": "../../tools/vr-common/weapon_action_boundary.h"
+    },
+    {
+      "file": "docs\\weapon-specs-20261028\\code-locations.md",
+      "target": "../../tools/vr-common/weapon_call_boundary.h"
+    },
+    {
+      "file": "docs\\weapon-specs-20261028\\code-locations.md",
+      "target": "../../tools/vr-common/left_hand_interaction_owner.h"
+    },
+    {
+      "file": "docs\\weapon-specs-20261028\\code-locations.md",
+      "target": "../../tools/playground/weapon_grip_damage_metadata.inl"
+    },
+    {
+      "file": "docs\\weapon-specs-20261028\\code-locations.md",
+      "target": "../../tools/playground/weapon_metadata_parse.h"
+    },
+    {
+      "file": "docs\\weapon-specs-20261028\\code-locations.md",
+      "target": "../../tools/playground/playground.cpp"
+    },
+    {
+      "file": "docs\\weapon-specs-20261028\\code-locations.md",
+      "target": "../../tools/playground/CMakeLists.txt"
+    },
+    {
+      "file": "docs\\weapon-specs-20261028\\interaction-review-v2.md",
+      "target": "../../analysis/weapon-specs-20261028/review-v2/boltok-assembly-private.png"
+    },
+    {
+      "file": "docs\\weapon-specs-20261028\\interaction-review-v2.md",
+      "target": "../../analysis/weapon-specs-20261028/review-v2/boltok-rig-authoring.json"
+    },
+    {
+      "file": "docs\\weapon-specs-20261028\\model-work-orders.md",
+      "target": "../../analysis/weapon-specs-20261028/boltok-parts-private.png"
+    },
+    {
+      "file": "docs\\weapon-specs-20261028\\model-work-orders.md",
+      "target": "../../analysis/weapon-specs-20261028/review-v2/boltok-assembly-private.png"
+    },
+    {
+      "file": "docs\\weapon-specs-20261028\\model-work-orders.md",
+      "target": "../../analysis/weapon-specs-20261028/review-v2/boltok-rig-authoring.json"
+    },
+    {
+      "file": "docs\\weapon-specs-20261028\\README.md",
+      "target": "../../analysis/weapon-specs-20261028/"
+    }
+  ],
+  "private_source_evidence_included": false,
+  "production_runtime_code_included": false,
+  "code_reference_policy": "Compare current mainline by symbol before implementation; source itself is not bundled."
+}

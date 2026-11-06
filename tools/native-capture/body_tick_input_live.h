@@ -15,6 +15,7 @@ input::Verdict current(input::Input const&,gears_native_rig_tracking::CoreSnapsh
 bool parent_snapshot(input::Input const&,std::uint64_t,Parent&)noexcept;
 bool parent_current(Parent const&)noexcept;
 void summary(FILE*)noexcept;
+void close_after_drain()noexcept;
 #else
 inline constexpr bool enabled=false;
 inline bool configure(wchar_t const* ini,FILE*,bool){return GetPrivateProfileIntW(L"BodyTickInput",L"enabled",0,ini)==0;}
@@ -25,5 +26,6 @@ inline input::Verdict current(input::Input const&,gears_native_rig_tracking::Cor
 inline bool parent_snapshot(input::Input const&,std::uint64_t,Parent&)noexcept{return false;}
 inline bool parent_current(Parent const&)noexcept{return false;}
 inline void summary(FILE*)noexcept{}
+inline void close_after_drain()noexcept{}
 #endif
 }

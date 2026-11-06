@@ -11,6 +11,11 @@ import subprocess
 import sys
 
 ROOT = Path(__file__).resolve().parents[2]
+AUTHORED_PART_INPUTS = tuple('assets/weapon-6dof/offline-v2/engine-input/' + name + suffix
+    for name in ('gnasher-round-lod0','gnasher-round-lod1','longshot-round-lod0','longshot-round-lod1',
+                 'boltok-round-lod0','boltok-round-lod1','boltok-cylinder-lod0','boltok-cylinder-lod1',
+                 'lancer-starter-StarterSocket','lancer-starter-StarterPullGrip','lancer-starter-StarterCord')
+    for suffix in ('.vtx60','.idx16'))
 RELEASE_VERSIONS = ('0.0.1', '0.0.2', '0.0.3')
 PROJECT_MODULES = {
     'vr-launcher': 'launcher menu_navigation stage_portable portable_preflight diagnostics_bundle startup_diagnostics game_audio_guard playground_loader armspan_startup armspan_calibration armspan_wire armspan_ui',
@@ -84,7 +89,15 @@ def payload_paths(manifest):
     tests=() if manifest.get('sixdof_manual',False) else NATIVE_TESTS
     result += [(native / name).as_posix() for name in (dll, *tests)]
     if manifest.get('sixdof_manual',False):result.append('tools/native-capture/sixdof_manual_profile.py')
-    if manifest.get('sixdof_unified',False):result.append('tools/native-capture/sixdof_unified_runtime.py')
+    if manifest.get('sixdof_unified',False):
+        result += ['tools/native-capture/sixdof_unified_runtime.py','tools/vr-launcher/reload_policy.py']
+    if 'weapon_part_assets' in manifest:
+        if type(manifest['weapon_part_assets']) is not int or manifest['weapon_part_assets']!=1:
+            raise ValueError('Unsupported authored weapon-part asset schema')
+        result += AUTHORED_PART_INPUTS
+        result.append('tools/vr-launcher/weapon_part_cache.py')
+        result.append('tools/vr-launcher/lancer_handle_cache.py')
+        result.append('tools/vr-launcher/manual_part_preparation.py')
     result += [(xr / name).as_posix() for name in ('OpenXRPoseProbe.exe', 'openxr_loader.dll')]
     result += [f'{QUIET_BUILD}/{name}' for name in QUIET_HASHES]
     result += [AUDIO_HELPER, AUDIO_PROVENANCE]
@@ -133,6 +146,9 @@ def stage(root, python_root, destination, *, manifest_path=None, launcher_path=N
     copies = [(candidate_launcher if path == 'GearsVR Launcher.exe' and candidate_launcher is not None else contained(root, path),
                path, 'candidate-gui:' + candidate_launcher.name if path == 'GearsVR Launcher.exe' and candidate_launcher is not None else 'repository:' + path,
                'project-code-or-built-artifact') for path in payload_paths(manifest)]
+    if manifest.get('sixdof_unified',False):
+        copies.append((contained(root,'tools/vr-launcher/6dof-reload.ini'),'6dof-reload.ini',
+            'repository:tools/vr-launcher/6dof-reload.ini','editable-user-settings'))
     copies += [(contained(root, source), target, 'repository:' + source, 'third-party-license')
                for source, target in LICENSES.items()]
     copies += [(contained(python_root, path), 'runtime/python/' + path, 'python-root:' + path,

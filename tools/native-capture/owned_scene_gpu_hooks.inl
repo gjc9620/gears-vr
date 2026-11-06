@@ -113,17 +113,26 @@ HRESULT STDMETHODCALLTYPE owned_hook_placed2(ID3D12Device10* d,ID3D12Heap* h,UIN
 }
 void STDMETHODCALLTYPE owned_hook_clear(ID3D12GraphicsCommandList* list,D3D12_CPU_DESCRIPTOR_HANDLE handle,const FLOAT* rgba,UINT count,const D3D12_RECT* rect){
  if(stereo_publish_bypass){owned_original_clear(list,handle,rgba,count,rect);return;}
+ if(ui_scene_root_live::startup_draw::observing()){
+  Scope scope;ui_scene_root_live::startup_draw::clear(list,reinterpret_cast<uintptr_t>(_ReturnAddress()),handle,rgba,count);
+  owned_original_clear(list,handle,rgba,count,rect);return;}
  Scope scope;auto lock=frame_lock();auto target=owned_target_stats.lookup(handle.ptr);
  if(!target.resource||owned_target_stats.descriptor_capacity_lost())owned_scene_gpu::uncertain(owned_scene_gpu::Unknown::clear);else owned_scene_gpu::use(list,target.resource,false);
  owned_original_clear(list,handle,rgba,count,rect);
 }
 void STDMETHODCALLTYPE owned_hook_copy(ID3D12GraphicsCommandList* list,ID3D12Resource* dst,ID3D12Resource* src){
  if(stereo_publish_bypass){owned_original_copy(list,dst,src);return;}
+ if(ui_scene_root_live::startup_draw::observing()){
+  Scope scope;ui_scene_root_live::startup_draw::transfer(list,reinterpret_cast<uintptr_t>(_ReturnAddress()),3,dst,src);
+  owned_original_copy(list,dst,src);return;}
  Scope scope;auto lock=frame_lock();if(owned_scene_gpu::watching()){owned_scene_gpu::use(list,canonical_identity(dst),true);owned_scene_gpu::use(list,canonical_identity(src),true);}
  owned_original_copy(list,dst,src);
 }
 void STDMETHODCALLTYPE owned_hook_resolve(ID3D12GraphicsCommandList* list,ID3D12Resource* dst,UINT di,ID3D12Resource* src,UINT si,DXGI_FORMAT fmt){
  if(stereo_publish_bypass){owned_original_resolve(list,dst,di,src,si,fmt);return;}
+ if(ui_scene_root_live::startup_draw::observing()){
+  Scope scope;ui_scene_root_live::startup_draw::transfer(list,reinterpret_cast<uintptr_t>(_ReturnAddress()),7,dst,src,di,si,unsigned(fmt));
+  owned_original_resolve(list,dst,di,src,si,fmt);return;}
  Scope scope;auto lock=frame_lock();if(owned_scene_gpu::watching()){owned_scene_gpu::use(list,canonical_identity(dst),true);owned_scene_gpu::use(list,canonical_identity(src),true);}
  owned_original_resolve(list,dst,di,src,si,fmt);
 }

@@ -1,0 +1,883 @@
+{
+  "schema": "gearsvr.offline-weapon-specs.v2",
+  "date": "2026-10-28",
+  "purpose": "Authoring and evidence index only; no production loader or enabling behavior",
+  "scope_count": 12,
+  "design_baseline_commit": "10510241b620b2960d79b9d1abc517e42c9c59b9",
+  "runtime_enabled": false,
+  "sources": [
+    {
+      "kind": "decompressed_asset_package",
+      "sha256": "91c0f56e9302db2b3991fc3d8646abc1eaff2b33b8b021ce8df436d8cd681d13",
+      "name": "WarfareGame.u"
+    },
+    {
+      "kind": "decompressed_asset_package",
+      "sha256": "55f40ca44051413fe6db19816f97b09849c5e104319d93e9d5d159cbe6fb2840",
+      "name": "MP_WarMachine.war"
+    }
+  ],
+  "common_semantic_entries": [
+    "WarfareGame.WarWeapon.GetMagazineSize",
+    "WarfareGame.WarWeapon.GetMaxSpareAmmoSize",
+    "WarfareGame.WarWeapon.ForceReload",
+    "WarfareGame.WarWeapon.Reloading.BeginState",
+    "WarfareGame.WarWeapon.PlayWeaponReloading",
+    "WarfareGame.WarWeapon.Reloading.EndOfReloadTimer",
+    "WarfareGame.WarWeapon.PerformReload",
+    "WarfareGame.WarWeapon.SetAmmoUsedCount",
+    "WarfareGame.WarWeapon.SetSpareAmmoCount",
+    "WarfareGame.WarWeapon.SetWeaponAmmoBoneDisplay",
+    "WarfareGame.WarWeapon.SetPawnAmmoAttachment",
+    "WarfareGame.WarWeapon.AbortWeaponReload",
+    "WarfareGame.WarWeapon.Reloading.EndState",
+    "WarfareGame.WarWeapon.LocalActiveReloadSuccess",
+    "WarfareGame.WarWeapon.ActiveReloadSuccess",
+    "WarfareGame.WarWeapon.PlayActiveReloadSuperSuccess"
+  ],
+  "grenade_base_static_reference": {
+    "MagSize": 1,
+    "MaxSpareAmmo": 3,
+    "not_hud_total": true
+  },
+  "weapons": [
+    {
+      "id": "W01",
+      "name": "Lancer",
+      "card": "weapon-cards.md#w01",
+      "original_class": "WarfareGame.Weap_AssaultRifle",
+      "static_reference": {
+        "capacity": 60,
+        "max_spare": 600,
+        "not_runtime_override": true
+      },
+      "design_policy": "grip_extract_magazine_implicit_release_insert_single_linked_close",
+      "reload_applicable": true,
+      "source_mesh": {
+        "path": "SkeletalMesh'COG_AssaultRifle.Mesh.COGAssaultRifle'",
+        "sha256": "df356ff3dda45e060f87b5ed94c806d96bbfe36b74b21a0f1d2032596f9dcf4d",
+        "source": "core",
+        "bones": [
+          "b_AR_Root",
+          "b_AR_Chainsaw",
+          "b_AR_ChainsawEnd",
+          "b_AR_Chain",
+          "b_AR_Chainsaw_Handle",
+          "b_AR_Receiver",
+          "b_AR_Receiver_Spin",
+          "b_AR_Latch",
+          "b_AR_Magazine"
+        ]
+      },
+      "model_tasks": [
+        "M01",
+        "M15",
+        "M17"
+      ],
+      "existing_modules": [
+        "tools/vr-common/weapon_reload_model.h",
+        "tools/vr-common/weapon_lancer_feed_anchor.h",
+        "tools/vr-common/weapon_lancer_insertion.h",
+        "tools/vr-common/weapon_lancer_magazine_pose.h"
+      ],
+      "original_semantic_entries": [
+        "WarfareGame.Weap_AssaultRifle.Reloading.BeginState",
+        "WarfareGame.Weap_AssaultRifle.Notify_AmmoGrab",
+        "WarfareGame.Weap_AssaultRifle.Notify_AmmoRelease",
+        "WarfareGame.Weap_AssaultRifle.Notify_AmmoReload"
+      ],
+      "common_entry_group": "C1_C2",
+      "binding": {
+        "current_instance_verified": false,
+        "grip_transform": null,
+        "insertion_transform": null,
+        "mechanism_endpoints": null,
+        "native_abi_verified_this_turn": false,
+        "runtime_integration_performed_this_turn": false
+      },
+      "reload_start": "fresh grip and continuous magazine extraction with implicit latch release",
+      "r3_required": false,
+      "new_assets": [
+        "../../assets/weapon-6dof/offline-v2/lancer-starter.glb"
+      ]
+    },
+    {
+      "id": "W02",
+      "name": "Hammerburst",
+      "card": "weapon-cards.md#w02",
+      "original_class": "WarfareGame.Weap_LocustAssaultRifle",
+      "static_reference": {
+        "capacity": 78,
+        "max_spare": 702,
+        "not_runtime_override": true
+      },
+      "design_policy": "open_latch_magazine_close_latch",
+      "reload_applicable": true,
+      "source_mesh": {
+        "path": "SkeletalMesh'Locust_Hammerburst.Locust_Hammerburst'",
+        "sha256": "4b6bd78407481887e6efcd80532fd64b7108dce2ee6c05d259e19e8b44c0152b",
+        "source": "core",
+        "bones": [
+          "b_HB_Root",
+          "b_HB_MagLatch",
+          "b_HB_Mag"
+        ]
+      },
+      "model_tasks": [
+        "M02",
+        "M17"
+      ],
+      "existing_modules": [
+        "tools/vr-common/weapon_hammerburst_reload.h"
+      ],
+      "original_semantic_entries": [
+        "WarfareGame.Weap_LocustAssaultRifle.FireAmmunition",
+        "WarfareGame.Weap_LocustAssaultRifle.Notify_AmmoGrab",
+        "WarfareGame.Weap_LocustAssaultRifle.Notify_AmmoRelease",
+        "WarfareGame.Weap_LocustAssaultRifle.Notify_AmmoReload",
+        "WarfareGame.Weap_LocustAssaultRifle.Notify_AmmoThrow"
+      ],
+      "common_entry_group": "C1_C2",
+      "binding": {
+        "current_instance_verified": false,
+        "grip_transform": null,
+        "insertion_transform": null,
+        "mechanism_endpoints": null,
+        "native_abi_verified_this_turn": false,
+        "runtime_integration_performed_this_turn": false
+      },
+      "reload_start": "fresh grip and opening of real magazine latch",
+      "r3_required": false,
+      "new_assets": []
+    },
+    {
+      "id": "W03",
+      "name": "Gnasher",
+      "card": "weapon-cards.md#w03",
+      "original_class": "WarfareGame.Weap_Shotgun",
+      "static_reference": {
+        "capacity": 8,
+        "max_spare": 31,
+        "not_runtime_override": true
+      },
+      "design_policy": "individual_rounds_max_three_then_lever",
+      "reload_applicable": true,
+      "source_mesh": {
+        "path": "SkeletalMesh'COG_Gnasher.Mesh.COG_Gnasher_Skel'",
+        "sha256": "0439fa167754bf5201135ad6a52eb96701c5722542f4bd093d108b6049aa023f",
+        "source": "core",
+        "bones": [
+          "b_Shotgun_Root",
+          "b_Shotgun_Main",
+          "b_Shotgun_Lever"
+        ]
+      },
+      "model_tasks": [
+        "M03",
+        "M13",
+        "M17"
+      ],
+      "existing_modules": [
+        "tools/vr-common/weapon_gnasher_mechanics.h"
+      ],
+      "original_semantic_entries": [
+        "WarfareGame.Weap_Shotgun.CustomFire",
+        "WarfareGame.Weap_Shotgun.FireAllPellets",
+        "WarfareGame.Weap_Shotgun.ShotgunCocking.BeginState",
+        "WarfareGame.Weap_Shotgun.ShotgunCocking.FinishedCockingShotgun",
+        "WarfareGame.Weap_Shotgun.PlayShotgunCocking"
+      ],
+      "common_entry_group": "C1_C2",
+      "binding": {
+        "current_instance_verified": false,
+        "grip_transform": null,
+        "insertion_transform": null,
+        "mechanism_endpoints": null,
+        "native_abi_verified_this_turn": false,
+        "runtime_integration_performed_this_turn": false
+      },
+      "reload_start": "first deliberate shoulder round grab while ammo missing",
+      "r3_required": false,
+      "new_assets": [
+        "../../assets/weapon-6dof/offline-v2/gnasher-round.glb"
+      ],
+      "partial_close": {
+        "allowed": true,
+        "retains_committed_rounds": true,
+        "below_target_reward": "none",
+        "state_machine_change_deferred": true
+      }
+    },
+    {
+      "id": "W04",
+      "name": "Longshot",
+      "card": "weapon-cards.md#w04",
+      "original_class": "WarfareGame.Weap_SniperRifle",
+      "static_reference": {
+        "capacity": 1,
+        "max_spare": 23,
+        "not_runtime_override": true
+      },
+      "design_policy": "open_eject_one_round_close",
+      "reload_applicable": true,
+      "source_mesh": {
+        "path": "SkeletalMesh'COG_SniperRifle.LongShot'",
+        "sha256": "741d96530f076bf7d3a98d31c9813e2e65f566eda193eaa5f5ea6710c5421e9f",
+        "source": "core",
+        "bones": [
+          "b_LS_Root",
+          "b_LS_LensCap",
+          "b_LS_Scope",
+          "b_LS_Bolt"
+        ]
+      },
+      "model_tasks": [
+        "M04",
+        "M14-L",
+        "M17"
+      ],
+      "existing_modules": [
+        "tools/vr-common/weapon_longshot_reload.h"
+      ],
+      "original_semantic_entries": [
+        "WarfareGame.Weap_SniperRifle.PlayWeaponReloading",
+        "WarfareGame.Weap_SniperRifle.Reloading.EndState",
+        "WarfareGame.Weap_SniperRifle.Reloading.ForceReload",
+        "WarfareGame.Weap_SniperRifle.Reloading.TargetingModeChanged",
+        "WarfareGame.Weap_SniperRifle.ShouldAutoReload"
+      ],
+      "common_entry_group": "C1_C2",
+      "binding": {
+        "current_instance_verified": false,
+        "grip_transform": null,
+        "insertion_transform": null,
+        "mechanism_endpoints": null,
+        "native_abi_verified_this_turn": false,
+        "runtime_integration_performed_this_turn": false
+      },
+      "reload_start": "open bolt while unloaded",
+      "r3_required": false,
+      "new_assets": [
+        "../../assets/weapon-6dof/offline-v2/longshot-round.glb"
+      ]
+    },
+    {
+      "id": "W05",
+      "name": "Snub",
+      "card": "weapon-cards.md#w05",
+      "original_class": "WarfareGame.Weap_COGPistol",
+      "static_reference": {
+        "capacity": 12,
+        "max_spare": 60,
+        "not_runtime_override": true
+      },
+      "design_policy": "magazine_empty_requires_slide_cycle",
+      "reload_applicable": true,
+      "source_mesh": {
+        "path": "SkeletalMesh'COG_Pistol.COG_Pistol'",
+        "sha256": "1f1c5a1405d354f89d352c26547a22a1c4cd791ba769755b6e9317e93ceaecb2",
+        "source": "core",
+        "bones": [
+          "b_HG_Root",
+          "b_HG_Slide",
+          "b_HG_Wing_L",
+          "b_HG_Wing_R",
+          "b_HG_Magazine"
+        ]
+      },
+      "model_tasks": [
+        "M05",
+        "M17"
+      ],
+      "existing_modules": [
+        "tools/vr-common/weapon_snub_reload.h"
+      ],
+      "original_semantic_entries": [
+        "WarfareGame.Weap_COGPistol.PlayWeaponReloading",
+        "WarfareGame.Weap_COGPistol.StartFire",
+        "WarfareGame.Weap_COGPistol.EjectClip",
+        "WarfareGame.Weap_COGPistol.InsertClip",
+        "WarfareGame.Weap_COGPistol.CockOpen",
+        "WarfareGame.Weap_COGPistol.CockClose",
+        "WarfareGame.Weap_COGPistol.CockCloseFinish"
+      ],
+      "common_entry_group": "C1_C2",
+      "binding": {
+        "current_instance_verified": false,
+        "grip_transform": null,
+        "insertion_transform": null,
+        "mechanism_endpoints": null,
+        "native_abi_verified_this_turn": false,
+        "runtime_integration_performed_this_turn": false
+      },
+      "reload_start": "fresh grip and magazine extraction with implicit release",
+      "r3_required": false,
+      "new_assets": [],
+      "private_split": "../../analysis/weapon-specs-20261028/review-v2/snub-magazine/part.json"
+    },
+    {
+      "id": "W06",
+      "name": "Boltok",
+      "card": "weapon-cards.md#w06",
+      "original_class": "WarfareGame.Weap_LocustPistol",
+      "static_reference": {
+        "capacity": 6,
+        "max_spare": 24,
+        "not_runtime_override": true
+      },
+      "design_policy": "open_yoke_linked_eject_fill_unique_chambers_optional_partial_close",
+      "reload_applicable": true,
+      "source_mesh": {
+        "path": "SkeletalMesh'Geist_Pistol.Boltock_Pistol'",
+        "sha256": "a1f04758c0f6c5c817701ed9f063f43221dadba2e734f6a2a683cd918ecd7087",
+        "source": "core",
+        "bones": [
+          "alow_poly",
+          "Object03",
+          "Object08",
+          "Object02",
+          "Object07",
+          "Object09",
+          "Object10",
+          "Object11",
+          "Object04",
+          "Object05",
+          "Object06",
+          "Object01"
+        ]
+      },
+      "model_tasks": [
+        "M06",
+        "M14-B",
+        "M16",
+        "M17"
+      ],
+      "existing_modules": [
+        "tools/vr-common/weapon_boltok_reload.h"
+      ],
+      "original_semantic_entries": [
+        "WarfareGame.Weap_LocustPistol.CockOpen",
+        "WarfareGame.Weap_LocustPistol.CockClose",
+        "WarfareGame.Weap_LocustPistol.CockCloseFinish",
+        "WarfareGame.Weap_LocustPistol.EjectClip",
+        "WarfareGame.Weap_LocustPistol.InsertClip"
+      ],
+      "common_entry_group": "C1_C2",
+      "binding": {
+        "current_instance_verified": false,
+        "grip_transform": null,
+        "insertion_transform": null,
+        "mechanism_endpoints": null,
+        "native_abi_verified_this_turn": false,
+        "runtime_integration_performed_this_turn": false
+      },
+      "reload_start": "open Object03 yoke and child cylinder group",
+      "r3_required": false,
+      "new_assets": [
+        "../../assets/weapon-6dof/offline-v2/boltok-round.glb",
+        "../../assets/weapon-6dof/offline-v2/boltok-cylinder.glb"
+      ],
+      "partial_close": {
+        "allowed": true,
+        "retains_committed_rounds": true,
+        "below_target_reward": "none",
+        "state_machine_change_deferred": true
+      },
+      "mechanism": {
+        "yoke": "Object03",
+        "children": [
+          "Object02",
+          "Object08"
+        ],
+        "fixed_rear_plate": "Object01",
+        "Object09": "underbarrel part, not verified ejector",
+        "source_cylinder_closed_end_faces": true,
+        "replacement_required": true,
+        "original_animation_verified": false,
+        "authored_preview_open_degrees": 80,
+        "preview_angle_is_design": true,
+        "assembly": "../../assets/weapon-6dof/offline-v2/boltok-assembly.json"
+      }
+    },
+    {
+      "id": "W07",
+      "name": "Boomshot",
+      "card": "weapon-cards.md#w07",
+      "original_class": "warfaregamecontentweapons.Weap_Boomer",
+      "static_reference": {
+        "capacity": 1,
+        "max_spare": 11,
+        "not_runtime_override": true
+      },
+      "design_policy": "open_barrel_one_original_carrier_close",
+      "reload_applicable": true,
+      "source_mesh": {
+        "path": "SkeletalMesh'Locust_Boomshot.Mesh.Locust_Boomshot'",
+        "sha256": "a3b7067818b6c4b2670fa36211ca29694706d606b033eb91688c382acd280710",
+        "source": "map",
+        "bones": [
+          "Boomshot_Root",
+          "Boomshot_Magazine",
+          "Boomshot_Barrel"
+        ]
+      },
+      "model_tasks": [
+        "M07",
+        "M17"
+      ],
+      "existing_modules": [
+        "tools/vr-common/weapon_boomshot_interaction.h"
+      ],
+      "original_semantic_entries": [
+        "WarfareGame.Weap_Boomer_base.Notify_AmmoGrab",
+        "WarfareGame.Weap_Boomer_base.Notify_AmmoRelease",
+        "WarfareGame.Weap_Boomer_base.Notify_AmmoReload",
+        "WarfareGame.Weap_Boomer_base.GetProjectileClass",
+        "WarfareGame.Weap_Boomer_base.GetProjectileFirePosition",
+        "WarfareGame.Weap_Boomer_base.ProjectileFire"
+      ],
+      "common_entry_group": "C1_C2",
+      "binding": {
+        "current_instance_verified": false,
+        "grip_transform": null,
+        "insertion_transform": null,
+        "mechanism_endpoints": null,
+        "native_abi_verified_this_turn": false,
+        "runtime_integration_performed_this_turn": false
+      },
+      "reload_start": "open barrel loading mechanism while unloaded",
+      "r3_required": false,
+      "new_assets": []
+    },
+    {
+      "id": "W08",
+      "name": "Torque Bow",
+      "card": "weapon-cards.md#w08",
+      "original_class": "warfaregamecontentweapons.Weap_Bow",
+      "static_reference": {
+        "capacity": 1,
+        "max_spare": 11,
+        "not_runtime_override": true
+      },
+      "design_policy": "one_original_arrow_trigger_charge",
+      "reload_applicable": true,
+      "source_mesh": {
+        "path": "SkeletalMesh'Locust_Torquebow.TorqueBow'",
+        "sha256": "4769f3da359b895b8ea5d47947958da707bbfeef1801ed93ccd9da2d0de702db",
+        "source": "map",
+        "bones": [
+          "b_TB_Root",
+          "b_TB_Bow_01",
+          "b_TB_Bow_03",
+          "b_TB_Bow_05",
+          "b_TB_Bow_02",
+          "b_TB_Bow_04",
+          "b_TB_Bow_06",
+          "b_TB_Bow_07",
+          "b_TB_Bow_08"
+        ]
+      },
+      "model_tasks": [
+        "M08",
+        "M17"
+      ],
+      "existing_modules": [
+        "tools/vr-common/weapon_torque_bow_interaction.h"
+      ],
+      "original_semantic_entries": [
+        "WarfareGame.Weap_Bow_base.Notify_AmmoGrab",
+        "WarfareGame.Weap_Bow_base.Notify_AmmoReload",
+        "WarfareGame.Weap_Bow_base.PlayWeaponReloading",
+        "WarfareGame.Weap_Bow_base.Charge.BeginState",
+        "WarfareGame.Weap_Bow_base.Charge.EndFire",
+        "WarfareGame.Weap_Bow_base.Charge.Tick",
+        "WarfareGame.Weap_Bow_base.Charge.EndState",
+        "WarfareGame.Weap_Bow_base.CheckFireShot",
+        "WarfareGame.Weap_Bow_base.ChargeEnded",
+        "WarfareGame.Weap_Bow_base.Fire.BeginState",
+        "WarfareGame.Weap_Bow_base.Fire.EndState",
+        "Engine.Weapon.ClearPendingFire",
+        "Engine.Weapon.PutDownWeapon",
+        "Engine.Weapon.WeaponPuttingDown.BeginState",
+        "WarfareGame.WarWeapon.Active.BeginState",
+        "WarfareGame.Weap_Bow_base.CanReleaseFire"
+      ],
+      "common_entry_group": "C1_C2",
+      "binding": {
+        "current_instance_verified": false,
+        "grip_transform": null,
+        "insertion_transform": null,
+        "mechanism_endpoints": null,
+        "native_abi_verified_this_turn": false,
+        "runtime_integration_performed_this_turn": false
+      },
+      "reload_start": "first deliberate shoulder arrow grab while unloaded",
+      "r3_required": false,
+      "new_assets": [],
+      "cancel_plan": {
+        "eligible_state": "Charge",
+        "sequence": [
+          "stop local fire injection",
+          "ClearPendingFire owned modes",
+          "clear owned bPendingEndFire",
+          "ChargeEnded",
+          "normal state change to Active or PutDownWeapon",
+          "automatic Charge.EndState cleanup",
+          "read back no pending/fire/ammo consumption",
+          "require physical trigger release"
+        ],
+        "forbidden_cancel_calls": [
+          "Charge.EndFire",
+          "StopFire",
+          "manual EndState followed by normal state transition"
+        ],
+        "already_fired": "cannot undo or refund",
+        "native_abi_verified": false
+      },
+      "charge_reference": {
+        "can_release_fire": "Pawn delay/animation gate, not minimum charge",
+        "counter_initial": "MinChargeTime",
+        "fatigue_counter_threshold_default": 6.5,
+        "active_reload_bonus_counter_rate": 2,
+        "not_fixed_wall_clock_seconds": true
+      },
+      "manual_cancel": {
+        "input": "fresh R3 short press during owned Charge",
+        "planned_public_entry": "cancel_charge(stamp, edge)",
+        "reuse_private_entry": "request_abort",
+        "interrupt_is_fault_not_normal_cancel": true,
+        "rearm": "actual trigger release then fresh press",
+        "runtime_implemented": false
+      }
+    },
+    {
+      "id": "W09",
+      "name": "Hammer of Dawn",
+      "card": "weapon-cards.md#w09",
+      "original_class": "warfaregamecontentweapons.WEAP_HammerOfDawn",
+      "static_reference": {
+        "capacity": null,
+        "max_spare": null,
+        "not_runtime_override": true
+      },
+      "design_policy": "original_target_paint_and_stop_no_reload",
+      "reload_applicable": false,
+      "source_mesh": {
+        "path": "SkeletalMesh'COG_HOD.COG_HammerofDawn'",
+        "sha256": "e8d29e9e13040bd422a58d446656be47b32e695541d653d00b65e245219eed54",
+        "source": "map",
+        "bones": [
+          "cog_hod_mesh",
+          "Trigger"
+        ]
+      },
+      "model_tasks": [
+        "M09",
+        "M17"
+      ],
+      "existing_modules": [
+        "tools/vr-common/weapon_hammer_of_dawn_interaction.h"
+      ],
+      "original_semantic_entries": [
+        "warfaregamecontentweapons.WEAP_HammerOfDawn.BeginFire",
+        "warfaregamecontentweapons.WEAP_HammerOfDawn.EndFire",
+        "warfaregamecontentweapons.WEAP_HammerOfDawn.GetTraceImpact",
+        "warfaregamecontentweapons.WEAP_HammerOfDawn.Tick",
+        "warfaregamecontentweapons.WEAP_HammerOfDawn.TurnOnTargetingLaser",
+        "warfaregamecontentweapons.WEAP_HammerOfDawn.TurnOffTargetingLaser",
+        "warfaregamecontentweapons.WEAP_HammerOfDawn.UpdateFX",
+        "warfaregamecontentweapons.WEAP_HammerOfDawn.HasAmmo",
+        "warfaregamecontentweapons.WEAP_HammerOfDawn.HasInfiniteSpareAmmo",
+        "warfaregamecontentweapons.HammerOfDawnBeamManager.NotifyValidTarget",
+        "warfaregamecontentweapons.HammerOfDawnBeamManager.NotifyInvalidTarget",
+        "warfaregamecontentweapons.HammerOfDawnBeamManager.NotifyStopFire",
+        "warfaregamecontentweapons.HammerOfDawnBeamManager.BeginBeamWarmup"
+      ],
+      "common_entry_group": null,
+      "binding": {
+        "current_instance_verified": false,
+        "grip_transform": null,
+        "insertion_transform": null,
+        "mechanism_endpoints": null,
+        "native_abi_verified_this_turn": false,
+        "runtime_integration_performed_this_turn": false
+      },
+      "reload_start": "not applicable",
+      "r3_required": false,
+      "new_assets": []
+    },
+    {
+      "id": "W10",
+      "name": "Troika",
+      "card": "weapon-cards.md#w10",
+      "original_class": "WarfareGameContent.Weap_Troika",
+      "static_reference": {
+        "capacity": null,
+        "max_spare": null,
+        "not_runtime_override": true
+      },
+      "design_policy": "mounted_two_grips_original_automatic_recovery",
+      "reload_applicable": false,
+      "source_mesh": {
+        "path": "SkeletalMesh'Geist_TroikaCabal.TroikaTurret'",
+        "sha256": "7baac05a7bb59b5a60e5f1b409deb2bed223e17c953ad3c3d400619e59adc037",
+        "source": "map",
+        "bones": [
+          "b_troika_root",
+          "b_troika_gun_latitude",
+          "b_troika_gun_longitude",
+          "b_troika_spinner_L",
+          "b_troika_spinner_R",
+          "b_troika_port_R",
+          "b_troika_port_L",
+          "b_troika_muzzle_R",
+          "b_troika_muzzle_L",
+          "b_troika_handleroot",
+          "b_troika_handle_L",
+          "b_troika_handle_R",
+          "b_troika_playerref"
+        ]
+      },
+      "model_tasks": [
+        "M10",
+        "M17"
+      ],
+      "existing_modules": [
+        "tools/vr-common/weapon_troika_interaction.h"
+      ],
+      "original_semantic_entries": [
+        "WarfareGame.Turret_TroikaCabal_base.ClaimTurret",
+        "WarfareGame.Turret_TroikaCabal_base.UnclaimTurret",
+        "WarfareGame.Turret_TroikaCabal_base.DriverEnter",
+        "WarfareGame.Turret_TroikaCabal_base.DriverLeave",
+        "WarfareGame.Turret_TroikaCabal_base.UpdateTurret",
+        "WarfareGame.Turret_TroikaCabal_base.GetPhysicalFireStartLoc",
+        "WarfareGame.Weap_Troika_base.Active.BeginFire",
+        "WarfareGame.Weap_Troika_base.WarmingUp.EndFire",
+        "WarfareGame.Weap_Troika_base.InstantFire",
+        "WarfareGame.Weap_Troika_base.WeaponFired",
+        "WarfareGame.Weap_Troika_base.CanReload",
+        "WarfareGame.Weap_Troika_base.GetReloadDuration",
+        "WarfareGame.Weap_Troika_base.Reloading.BeginState",
+        "WarfareGame.Weap_Troika_base.Reloading.EndState"
+      ],
+      "common_entry_group": null,
+      "binding": {
+        "current_instance_verified": false,
+        "grip_transform": null,
+        "insertion_transform": null,
+        "mechanism_endpoints": null,
+        "native_abi_verified_this_turn": false,
+        "runtime_integration_performed_this_turn": false
+      },
+      "reload_start": "not applicable",
+      "r3_required": false,
+      "new_assets": []
+    },
+    {
+      "id": "W11",
+      "name": "Frag Grenade",
+      "card": "weapon-cards.md#w11",
+      "original_class": "WarfareGame.Weap_FragGrenade",
+      "static_reference": {
+        "capacity": null,
+        "max_spare": null,
+        "not_runtime_override": true
+      },
+      "design_policy": "hand_release_original_frag_projectile",
+      "reload_applicable": false,
+      "source_mesh": {
+        "path": "SkeletalMesh'COG_Bolo_Grenade.Frag_Grenade'",
+        "sha256": "f015fe8af442469bd23f7b24c9cfc58b11b99085abeedc349236b8cbd4f2a7ac",
+        "source": "core",
+        "bones": [
+          "b_bolo_root",
+          "b_Bolo_Counter",
+          "b_Bolo_Chain_01",
+          "b_Bolo_Chain_02",
+          "b_Bolo_Chain_03",
+          "b_Bolo_Chain_04",
+          "b_Bolo_Chain_05",
+          "b_Bolo_Chain_06",
+          "b_Bolo_Chain_07",
+          "b_bolo_chain_08",
+          "b_Bolo_Chain_09",
+          "b_bolo_end"
+        ]
+      },
+      "model_tasks": [
+        "M11",
+        "M17"
+      ],
+      "existing_modules": [
+        "tools/vr-common/weapon_bolo_grenade_interaction.h",
+        "tools/vr-common/grenade_throw.h"
+      ],
+      "original_semantic_entries": [
+        "WarfareGame.Weap_Grenade.StartGrenadeSpin",
+        "WarfareGame.Weap_Grenade.StopGrenadeSpin",
+        "WarfareGame.Weap_Grenade.StartGrenadeThrow",
+        "WarfareGame.Weap_Grenade.AnimNotifyThrow",
+        "WarfareGame.Weap_Grenade.ThrowGrenade",
+        "WarfareGame.Weap_Grenade.GrenadeThrownNotification",
+        "WarfareGame.Weap_Grenade.GetPhysicalFireStartLoc",
+        "WarfareGame.Weap_Grenade.GetGrenadeTossVelocity",
+        "WarfareGame.Weap_Grenade.PlayWeaponReloading",
+        "WarfareGame.Proj_Grenade.BeginExplosionSequence",
+        "WarfareGame.Proj_Grenade.HitWall",
+        "WarfareGame.Proj_Grenade.Bounce",
+        "WarfareGame.Proj_Grenade.DoExplosion",
+        "WarfareGame.Proj_Grenade.Init",
+        "WarfareGame.Proj_Grenade.PostBeginPlay",
+        "WarfareGame.Proj_FragGrenade.EnableGrenadePhysics",
+        "WarfareGame.Proj_Grenade.StopBounce",
+        "WarfareGame.Proj_Grenade.AttachInit"
+      ],
+      "common_entry_group": "T1",
+      "binding": {
+        "current_instance_verified": false,
+        "grip_transform": null,
+        "insertion_transform": null,
+        "mechanism_endpoints": null,
+        "native_abi_verified_this_turn": false,
+        "runtime_integration_performed_this_turn": false
+      },
+      "reload_start": "not applicable",
+      "r3_required": false,
+      "new_assets": [],
+      "fuse_static_paths": {
+        "held_prepare": "no DoExplosion timer in inspected prepare functions; do not add cooking",
+        "ordinary_stop": {
+          "callback": "Proj_Grenade.StopBounce",
+          "default_delays_seconds": [
+            0.1,
+            1
+          ],
+          "pawn_base_delays_seconds": [
+            1.5,
+            1
+          ]
+        },
+        "attachment": {
+          "callback": "Proj_Grenade.AttachInit",
+          "delay_seconds": 2.5
+        },
+        "exceptional_hitwall": "retain inherited BeginExplosionSequence(0, TimeAfterBeep) conditions",
+        "lifespan_is_not_fuse": true,
+        "runtime_verified": false
+      }
+    },
+    {
+      "id": "W12",
+      "name": "Smoke Grenade",
+      "card": "weapon-cards.md#w12",
+      "original_class": "WarfareGame.Weap_SmokeGrenade",
+      "static_reference": {
+        "capacity": null,
+        "max_spare": null,
+        "not_runtime_override": true
+      },
+      "design_policy": "hand_release_original_smoke_projectile",
+      "reload_applicable": false,
+      "source_mesh": {
+        "path": "SkeletalMesh'COG_Bolo_Grenade.Smoke_Grenade'",
+        "sha256": "bd94a1935a1d722db9f1e50c88efc4eaecad21410149a31da067cc9ae2fbfa6c",
+        "source": "core",
+        "bones": [
+          "b_bolo_root",
+          "b_Bolo_Counter",
+          "b_Bolo_Chain_01",
+          "b_Bolo_Chain_02",
+          "b_Bolo_Chain_03",
+          "b_Bolo_Chain_04",
+          "b_Bolo_Chain_05",
+          "b_Bolo_Chain_06",
+          "b_Bolo_Chain_07",
+          "b_bolo_chain_08",
+          "b_Bolo_Chain_09",
+          "b_bolo_end"
+        ]
+      },
+      "model_tasks": [
+        "M12",
+        "M17"
+      ],
+      "existing_modules": [
+        "tools/vr-common/weapon_smoke_grenade_interaction.h",
+        "tools/vr-common/grenade_throw.h"
+      ],
+      "original_semantic_entries": [
+        "WarfareGame.Weap_Grenade.StartGrenadeSpin",
+        "WarfareGame.Weap_Grenade.StopGrenadeSpin",
+        "WarfareGame.Weap_Grenade.StartGrenadeThrow",
+        "WarfareGame.Weap_Grenade.AnimNotifyThrow",
+        "WarfareGame.Weap_Grenade.ThrowGrenade",
+        "WarfareGame.Weap_Grenade.GrenadeThrownNotification",
+        "WarfareGame.Weap_Grenade.GetPhysicalFireStartLoc",
+        "WarfareGame.Weap_Grenade.GetGrenadeTossVelocity",
+        "WarfareGame.Weap_Grenade.PlayWeaponReloading",
+        "WarfareGame.Proj_Grenade.BeginExplosionSequence",
+        "WarfareGame.Proj_Grenade.HitWall",
+        "WarfareGame.Proj_Grenade.Bounce",
+        "WarfareGame.Proj_Grenade.DoExplosion",
+        "WarfareGame.Proj_Grenade.Init",
+        "WarfareGame.Proj_Grenade.PostBeginPlay",
+        "WarfareGame.Proj_SmokeGrenade.GrenadeExplosion",
+        "WarfareGame.Proj_SmokeGrenade.StopBounce",
+        "WarfareGame.Proj_SmokeGrenade.AttachInit"
+      ],
+      "common_entry_group": "T1",
+      "binding": {
+        "current_instance_verified": false,
+        "grip_transform": null,
+        "insertion_transform": null,
+        "mechanism_endpoints": null,
+        "native_abi_verified_this_turn": false,
+        "runtime_integration_performed_this_turn": false
+      },
+      "reload_start": "not applicable",
+      "r3_required": false,
+      "new_assets": [],
+      "fuse_static_paths": {
+        "held_prepare": "no DoExplosion timer in inspected prepare functions; do not add cooking",
+        "ordinary_stop": {
+          "callback": "Proj_SmokeGrenade.StopBounce",
+          "action": "immediate DoExplosion"
+        },
+        "attachment": {
+          "callback": "Proj_SmokeGrenade.AttachInit",
+          "action": "spawn attached Emit_SmokeGrenade directly"
+        },
+        "exceptional_hitwall": "retain inherited BeginExplosionSequence(0, TimeAfterBeep) conditions",
+        "lifespan_is_not_fuse": true,
+        "runtime_verified": false
+      }
+    }
+  ],
+  "review": "interaction-review-v2.md",
+  "offline_assets": "../../assets/weapon-6dof/offline-v2/manifest.json",
+  "input_policy": {
+    "reload_default": "first deliberate physical action specific to the weapon",
+    "r3": "optional release/accessibility mapping to same transaction; never mandatory",
+    "start_clock": "original game accepts physical reload request",
+    "grip_intent": "release support grip and make a fresh grip on mechanism; continuous motion required",
+    "inspection_when_full_or_no_reserve": "allowed without forced ammo transaction or reward",
+    "old_magazine_reinsert": "cancel and restore original quantity; no refill or reward",
+    "magazine_absent_blocks_fire_even_with_original_round_count": true,
+    "perfect_window": "original end deadline retained; target shortfall means ordinary completion",
+    "runtime_input_changed": false,
+    "r3_charge_context": "Torque Bow Charge: fresh R3 exclusively invokes nonfaulting cancel_charge; no reload intent on same edge",
+    "grenade_velocity": "raw XR grip-plus-reference-offset samples; one frozen basis conversion; certified base velocity once; cover drag velocity excluded"
+  },
+  "static_review": {
+    "bolt_mechanism": "Object03 yoke parents Object02 cylinder and Object08; Object01 is fixed to root",
+    "original_boltok_animation_verified": false,
+    "bolt_80_degrees": "offline design visualization only",
+    "bow_cancel": "proposed state composition from saved script, no native ABI or runtime claim",
+    "grenade_fuses": "separate StopBounce, AttachInit and exceptional HitWall paths identified",
+    "evidence_directory": "../../analysis/weapon-specs-20261028/review-v2/"
+  },
+  "implementation_handoff": "implementation-handoff.md",
+  "source_edit_index": "code-locations.json",
+  "shared_contracts": "../offline-tech-prep-20261028/shared-contracts.md"
+}

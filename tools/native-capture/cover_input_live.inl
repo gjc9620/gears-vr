@@ -44,12 +44,14 @@ bool update_epochs(neutral::EyeSample const& eye,gears_vr::StereoResult const& s
     if(!first&&next.cover!=epochs.cover)++diagnostics.bindings;
     epochs=next;last_eye=eye;last_session=stereo.sample.session;last_space=stereo.sample.space_epoch;last_reference=stereo.reference_generation;return true;
 }
-bool matching_input(gears_vr::StereoResult const& stereo,std::int64_t stamp,gears_vr::ControllerInputFrame& out){
+bool matching_input(gears_vr::StereoResult const& stereo,std::int64_t stamp,gears_vr::ControllerInputFrame& out,
+    gears_vr::ControllerMatchingRead* diagnostic=nullptr){
+    if(diagnostic)*diagnostic={};
     const auto clock=GetTickCount64();
     if(!bridge_open&&(!attempted_open||clock-last_open>=1000)){
         attempted_open=true;last_open=clock;bridge_open=controllers.open(GetCurrentProcessId(),false);
     }
-    if(bridge_open&&controllers.read_matching(stereo.sample,stamp,out,simulator_operator))return true;
+    if(bridge_open&&controllers.read_matching(stereo.sample,stamp,out,simulator_operator,nullptr,diagnostic))return true;
     if(bridge_open){std::uint64_t pid{},start{};if(!controllers.publisher_identity(pid,start)){
         controllers.close();bridge_open=false;
     }}

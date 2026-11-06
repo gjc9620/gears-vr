@@ -50,7 +50,7 @@ bool seal_session_hook_manifest(FILE* status){
     }
 #endif
 #if defined(GEARS_FRESH_POSE_PRODUCER_OBSERVER) && GEARS_FRESH_POSE_PRODUCER_OBSERVER
-    if(fresh_pose_producer_live::enabled)for(unsigned n=0;n<2;++n){bool found=false;
+    if(fresh_pose_producer_live::enabled)for(unsigned n=0;n<fresh_pose_producer_live::hook_count();++n){bool found=false;
         for(unsigned i=0;i<hook_entry_proof_count;++i){auto const& p=hook_entry_proofs[i];
             if(p.target==reinterpret_cast<uintptr_t>(fresh_pose_producer_live::targets[n])&&
                 p.detour==reinterpret_cast<uintptr_t>(fresh_pose_producer_live::detours[n])&&p.original32==gears_fresh_pose_certificate::prefixes[n])found=true;}

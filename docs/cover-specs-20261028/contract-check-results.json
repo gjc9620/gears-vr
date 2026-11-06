@@ -1,0 +1,168 @@
+{
+  "schema": 1,
+  "kind": "specification reference model, not production tests",
+  "passed": true,
+  "cases": 28,
+  "assertions": 78,
+  "composition_examples": 3,
+  "rows": [
+    {
+      "id": "V01",
+      "passed": true,
+      "assertions": 4
+    },
+    {
+      "id": "V02",
+      "passed": true,
+      "assertions": 3
+    },
+    {
+      "id": "V03",
+      "passed": true,
+      "assertions": 5
+    },
+    {
+      "id": "V04",
+      "passed": true,
+      "assertions": 4
+    },
+    {
+      "id": "V05",
+      "passed": true,
+      "assertions": 4
+    },
+    {
+      "id": "V06",
+      "passed": true,
+      "assertions": 2
+    },
+    {
+      "id": "V07",
+      "passed": true,
+      "assertions": 3
+    },
+    {
+      "id": "V08",
+      "passed": true,
+      "assertions": 2
+    },
+    {
+      "id": "V09",
+      "passed": true,
+      "assertions": 2
+    },
+    {
+      "id": "V10",
+      "passed": true,
+      "assertions": 2
+    },
+    {
+      "id": "V11",
+      "passed": true,
+      "assertions": 2
+    },
+    {
+      "id": "V12",
+      "passed": true,
+      "assertions": 2
+    },
+    {
+      "id": "V13",
+      "passed": true,
+      "assertions": 2
+    },
+    {
+      "id": "V14",
+      "passed": true,
+      "assertions": 2
+    },
+    {
+      "id": "V15",
+      "passed": true,
+      "assertions": 2
+    },
+    {
+      "id": "V16",
+      "passed": true,
+      "assertions": 4
+    },
+    {
+      "id": "V17",
+      "passed": true,
+      "assertions": 3
+    },
+    {
+      "id": "V18",
+      "passed": true,
+      "assertions": 3
+    },
+    {
+      "id": "V19",
+      "passed": true,
+      "assertions": 4
+    },
+    {
+      "id": "V20",
+      "passed": true,
+      "assertions": 3
+    },
+    {
+      "id": "V21",
+      "passed": true,
+      "assertions": 2
+    },
+    {
+      "id": "V22",
+      "passed": true,
+      "assertions": 2
+    },
+    {
+      "id": "V23",
+      "passed": true,
+      "assertions": 3
+    },
+    {
+      "id": "V24",
+      "passed": true,
+      "assertions": 3
+    },
+    {
+      "id": "V25",
+      "passed": true,
+      "assertions": 2
+    },
+    {
+      "id": "V26",
+      "passed": true,
+      "assertions": 2
+    },
+    {
+      "id": "V27",
+      "passed": true,
+      "assertions": 3
+    },
+    {
+      "id": "V28",
+      "passed": true,
+      "assertions": 3
+    }
+  ],
+  "composition": [
+    {
+      "id": "M01",
+      "passed": true
+    },
+    {
+      "id": "M02",
+      "passed": true
+    },
+    {
+      "id": "M03",
+      "passed": true
+    }
+  ],
+  "native_calls": 0,
+  "production_cpp_executed": false,
+  "game_run": false,
+  "note": "Synthetic proof labels explore contract ordering; no real collision, damage or headset validation."
+}
