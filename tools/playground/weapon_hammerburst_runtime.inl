@@ -38,6 +38,7 @@ std::uint64_t feed_item{},feed_sequence{};
 std::int64_t feed_ns{};
 unsigned feed_logs{};V last_feed_position{};bool last_feed_position_known{};
 unsigned latch_rejection_logs{};
+std::int64_t last_latch_seek_elapsed_ns{};
 double angle{};
 bool released{},switch_requested{},native_exited{};
 unsigned open_pose_reads{},open_stable_reads{},feed_failure{};
@@ -213,6 +214,7 @@ void reset(bool preserve_geometry=false) noexcept {
     feed_item=feed_sequence=0;feed_ns=0;
     open_pose_reads=open_stable_reads=feed_failure=0;last_open_observed=0;
     stroke.reset();insertion.reset();extraction.reset();feed={};if(!preserve_geometry)geometry.known=false;
+    last_latch_seek_elapsed_ns=0;
     lancerreload_runtime::outstanding.store(false,std::memory_order_release);
 }
 bool cleanup(unsigned line=0) noexcept {
@@ -410,9 +412,9 @@ void step(hand::Frame const& f,hand::Decision const& decision) noexcept {
         const auto moved=stroke.observe(sample);
         if(moved==gears_weapon::HammerburstLatchMotion::rejected){
             if(log_file&&latch_rejection_logs++<8){
-                fwprintf(log_file,L"hammerburst_latch_rejected reason=%u stage=%u serial=%llu angle=%.9g sequence=%llu previous_ms=%llu sample_ms=%llu interval_limit_ms=%llu\n",
+                fwprintf(log_file,L"hammerburst_latch_rejected reason=%u stage=%u serial=%llu angle=%.9g sequence=%llu previous_ms=%llu sample_ms=%llu interval_limit_ms=%llu previous_seek_ns=%lld\n",
                     unsigned(stroke.last_rejection()),unsigned(stage),serial,angle,sample.sequence,
-                    previous_ms,sample.milliseconds,geometry.latch.observation_interval_ms);fflush(log_file);
+                    previous_ms,sample.milliseconds,geometry.latch.observation_interval_ms,last_latch_seek_elapsed_ns);fflush(log_file);
             }
             held={};released=false;return;
         }
@@ -420,8 +422,12 @@ void step(hand::Frame const& f,hand::Decision const& decision) noexcept {
         // but must not reparse the whole animation and redispatch the same
         // native setter. Those redundant calls can stall the next sample.
         // Changed angles retain the full original ownership/content checks.
-        if(std::abs(stroke.angle()-angle)>1e-7&&
-           !anim::seek_latch_angle(f,animation_serial(),stroke.angle())){cleanup(__LINE__);return;}
+        if(std::abs(stroke.angle()-angle)>1e-7){
+            const auto began=weaponhand::clock_ns(nullptr);
+            const bool sought=anim::seek_latch_angle(f,animation_serial(),stroke.angle());
+            last_latch_seek_elapsed_ns=weaponhand::clock_ns(nullptr)-began;
+            if(!sought){cleanup(__LINE__);return;}
+        }
         angle=stroke.angle();
         if(stage==Stage::opening&&moved==gears_weapon::HammerburstLatchMotion::open){stage=Stage::opened;stroke.reset();}
         else if(stage==Stage::closing&&moved==gears_weapon::HammerburstLatchMotion::closed){

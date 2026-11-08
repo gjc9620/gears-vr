@@ -26,6 +26,8 @@ enum class Stage {opening,closing,opened,old_magazine,new_magazine,waiting_ammo,
 Stage stage=Stage::opening;
 hand::Lease held{};bool released{};double angle{};unsigned seeks{},latch_rejection_logs{};
 std::uint64_t serial{1},old_item{1},new_item{};FILE* log_file{};
+std::int64_t last_latch_seek_elapsed_ns{};
+namespace weaponhand {std::int64_t clock_ns(void*){return 0;}}
 gears_weapon::HammerburstLatchStroke stroke;
 struct Geometry {gears_weapon::HammerburstLatchGeometry latch;}geometry;
 gears_weapon::HammerburstLatchSample input{};
