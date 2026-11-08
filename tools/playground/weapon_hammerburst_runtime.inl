@@ -38,6 +38,7 @@ std::uint64_t feed_item{},feed_sequence{};
 std::int64_t feed_ns{};
 unsigned feed_logs{};V last_feed_position{};bool last_feed_position_known{};
 unsigned latch_rejection_logs{};
+unsigned latch_stationary_holds{};
 std::int64_t last_latch_seek_elapsed_ns{};
 double angle{};
 bool released{},switch_requested{},native_exited{};
@@ -215,12 +216,13 @@ void reset(bool preserve_geometry=false) noexcept {
     open_pose_reads=open_stable_reads=feed_failure=0;last_open_observed=0;
     stroke.reset();insertion.reset();extraction.reset();feed={};if(!preserve_geometry)geometry.known=false;
     last_latch_seek_elapsed_ns=0;
+    latch_stationary_holds=0;
     lancerreload_runtime::outstanding.store(false,std::memory_order_release);
 }
 bool cleanup(unsigned line=0) noexcept {
     if(stage!=Stage::recovering&&log_file){
-        fwprintf(log_file,L"hammerburst_reload_cleanup line=%u stage=%u serial=%llu angle=%.9g animation=%u stopped=%u pending=%u\n",
-            line,unsigned(stage),serial,angle,unsigned(anim::ownership.active),unsigned(anim::ownership.stopped),unsigned(transaction.pending()));fflush(log_file);
+        fwprintf(log_file,L"hammerburst_reload_cleanup line=%u stage=%u serial=%llu angle=%.9g animation=%u stopped=%u pending=%u stationary_holds=%u\n",
+            line,unsigned(stage),serial,angle,unsigned(anim::ownership.active),unsigned(anim::ownership.stopped),unsigned(transaction.pending()),latch_stationary_holds);fflush(log_file);
     }
     stage=Stage::recovering;held={};stroke.reset();insertion.reset();
     // Never write into a recycled weapon. Only positive registry retirement
@@ -409,12 +411,18 @@ void step(hand::Frame const& f,hand::Decision const& decision) noexcept {
             return;
         }
         const auto previous_ms=stroke.last_observation_ms();
-        const auto moved=stroke.observe(sample);
+        const bool retained_contact=f.left_tracked&&decision.status==hand::DecisionStatus::retained&&
+            !decision.new_grant&&hand::same(held,decision.lease);
+        const auto moved=stroke.observe(sample,retained_contact);
+        if(moved==gears_weapon::HammerburstLatchMotion::held_stationary){
+            if(latch_stationary_holds!=~0u)++latch_stationary_holds;
+            return; // No seek, mechanical progress, completion or new grab.
+        }
         if(moved==gears_weapon::HammerburstLatchMotion::rejected){
             if(log_file&&latch_rejection_logs++<8){
-                fwprintf(log_file,L"hammerburst_latch_rejected reason=%u stage=%u serial=%llu angle=%.9g sequence=%llu previous_ms=%llu sample_ms=%llu interval_limit_ms=%llu previous_seek_ns=%lld\n",
+                fwprintf(log_file,L"hammerburst_latch_rejected reason=%u stage=%u serial=%llu angle=%.9g sequence=%llu previous_ms=%llu sample_ms=%llu interval_limit_ms=%llu previous_seek_ns=%lld stationary_holds=%u\n",
                     unsigned(stroke.last_rejection()),unsigned(stage),serial,angle,sample.sequence,
-                    previous_ms,sample.milliseconds,geometry.latch.observation_interval_ms,last_latch_seek_elapsed_ns);fflush(log_file);
+                    previous_ms,sample.milliseconds,geometry.latch.observation_interval_ms,last_latch_seek_elapsed_ns,latch_stationary_holds);fflush(log_file);
             }
             held={};released=false;return;
         }
@@ -595,8 +603,8 @@ bool tick(uptr pc) noexcept {
     const auto before=stage;step(f,decision);
     if(before!=stage&&log_file){
         const auto counts=transaction.inventory();
-        fwprintf(log_file,L"hammerburst_reload_transition from=%u to=%u serial=%llu angle=%.9g loaded=%u reserve=%u pending=%u\n",
-            unsigned(before),unsigned(stage),serial,angle,counts.loaded,counts.reserve,unsigned(transaction.pending()));fflush(log_file);
+        fwprintf(log_file,L"hammerburst_reload_transition from=%u to=%u serial=%llu angle=%.9g loaded=%u reserve=%u pending=%u stationary_holds=%u\n",
+            unsigned(before),unsigned(stage),serial,angle,counts.loaded,counts.reserve,unsigned(transaction.pending()),latch_stationary_holds);fflush(log_file);
     }
     return true;
 }

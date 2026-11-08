@@ -21,7 +21,7 @@ struct HammerburstLatchSample {
     std::uint64_t sequence{},milliseconds{},grip_token{};
     bool tracked{},gripped{};
 };
-enum class HammerburstLatchMotion {rejected,moving,closed,open};
+enum class HammerburstLatchMotion {rejected,moving,closed,open,held_stationary};
 enum class HammerburstLatchRejection {none,inactive,sample,token,order,gap,radius,axis,speed,range};
 class HammerburstLatchStroke {
     using V=gears_vr::Vector;
@@ -39,6 +39,7 @@ class HammerburstLatchStroke {
         return s.tracked&&s.gripped&&s.sequence&&s.milliseconds&&s.grip_token&&gears_vr::finite(s.hand);
     }
 public:
+    static constexpr double stationary_position_epsilon_metres=1e-5;
     void reset() noexcept {active_=false;}
     bool active() const noexcept {return active_;}
     double angle() const noexcept {return angle_;}
@@ -65,14 +66,23 @@ public:
         if(radius_<.01)return false;
         geometry_=g;last_=s;angle_=actual_angle;active_=true;return true;
     }
-    HammerburstLatchMotion observe(HammerburstLatchSample const& s) noexcept {
+    HammerburstLatchMotion observe(HammerburstLatchSample const& s,bool retain_stationary=false) noexcept {
         const auto reject=[&](HammerburstLatchRejection why){rejection_=why;reset();return HammerburstLatchMotion::rejected;};
         rejection_=HammerburstLatchRejection::none;
         if(!active_)return reject(HammerburstLatchRejection::inactive);
         if(!valid(s))return reject(HammerburstLatchRejection::sample);
         if(s.grip_token!=last_.grip_token)return reject(HammerburstLatchRejection::token);
         if(s.sequence<=last_.sequence||s.milliseconds<=last_.milliseconds)return reject(HammerburstLatchRejection::order);
-        if(s.milliseconds-last_.milliseconds>geometry_.observation_interval_ms)return reject(HammerburstLatchRejection::gap);
+        if(s.milliseconds-last_.milliseconds>geometry_.observation_interval_ms){
+            // Opt-in callers must still own the SAME current live grab.
+            // Numerical contact noise may renew a stationary baseline, but
+            // no movement, angle or endpoint is accepted across the gap.
+            if(retain_stationary&&length(sub(s.hand,last_.hand))<=stationary_position_epsilon_metres){
+                const auto geometry=geometry_;const auto retained_angle=angle_;
+                if(begin(geometry,s,retained_angle))return HammerburstLatchMotion::held_stationary;
+            }
+            return reject(HammerburstLatchRejection::gap);
+        }
         const auto hand=sub(s.hand,geometry_.pivot);const double height=dot(hand,geometry_.axis);
         const auto radial=sub(hand,scale(geometry_.axis,height));const double radius=length(radial);
         if(radius<.01||std::abs(radius-radius_)>geometry_.radial_tolerance)return reject(HammerburstLatchRejection::radius);

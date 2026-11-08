@@ -6,6 +6,8 @@ from pathlib import Path
 import subprocess, json, hashlib, sys
 R=Path(__file__).resolve().parents[2]; O=R/'analysis/hammerburst-20261108'; O.mkdir(parents=True,exist_ok=True)
 source=(Path(sys.argv[1]) if len(sys.argv)>1 else Path(__file__).with_name('weapon_hammerburst_runtime.inl')).resolve(); text=source.read_text(encoding='utf-8')
+tag=sys.argv[2] if len(sys.argv)>2 else 'latch-handoff'
+assert tag.isascii() and all(c.isalnum() or c in '-_' for c in tag)
 def block(start):
     begin=text.index(start); opening=text.index('{',begin); depth=0
     for i in range(opening,len(text)):
@@ -24,7 +26,7 @@ host=r'''
 namespace hand=gears_weapon_hand;
 enum class Stage {opening,closing,opened,old_magazine,new_magazine,waiting_ammo,completing,recovering};
 Stage stage=Stage::opening;
-hand::Lease held{};bool released{};double angle{};unsigned seeks{},latch_rejection_logs{};
+hand::Lease held{};bool released{};double angle{};unsigned seeks{},latch_rejection_logs{},latch_stationary_holds{};
 std::uint64_t serial{1},old_item{1},new_item{};FILE* log_file{};
 std::int64_t last_latch_seek_elapsed_ns{};
 namespace weaponhand {std::int64_t clock_ns(void*){return 0;}}
@@ -81,14 +83,44 @@ int main(){
  if(!check(stroke.active()&&std::abs(angle-.6)<1e-9&&seeks==1,"later continuous retained motion resumes"))return 1;
  sample(.84,1380,2);step(f,d);
  if(!check(stage==Stage::opened&&!stroke.active()&&seeks==2,"actual resumed endpoint reaches opened"))return 1;
+ const auto stationary=[&](){
+  stage=Stage::opening;angle=.5;released=false;seeks=0;latch_stationary_holds=0;
+  f.left_tracked=f.left_grip_known=f.left_grip_down=1;f.press_token=2;
+  d.key=f.key;d.release_required=0;d.status=hand::DecisionStatus::retained;d.new_grant=0;
+  d.lease={hand::LeaseKind::magazine,0,f.key.lifecycle,2};held=d.lease;
+  sample(.5,1500,2);if(!stroke.begin(geometry.latch,input,angle))return false;
+  sample(.5,1617,2);return true;
+ };
+ if(!stationary())return 2;step(f,d);
+ if(!check(stroke.active()&&held.id==2&&!released&&angle==.5&&!seeks&&stage==Stage::opening&&latch_stationary_holds==1,"same current retained lease renews stationary baseline without motion"))return 1;
+ sample(.6,1697,2);step(f,d);
+ if(!check(std::abs(angle-.6)<1e-9&&seeks==1,"only later timely motion can advance"))return 1;
+ if(!stationary())return 2;d.status=hand::DecisionStatus::granted;d.new_grant=1;step(f,d);
+ if(!check(!stroke.active()&&!held.id&&!seeks,"fresh grant cannot borrow retained stationary exception"))return 1;
+ if(!stationary())return 2;held.id=1;step(f,d);
+ if(!check(!stroke.active()&&!held.id&&!seeks,"different held lease cannot renew baseline"))return 1;
+ if(!stationary())return 2;input.hand.x=.0001;step(f,d);
+ if(!check(!stroke.active()&&!held.id&&!seeks,"even0.1mm movement cannot cross the100ms gap"))return 1;
+ if(!stationary())return 2;input.hand.x=.000001;step(f,d);
+ if(!check(stroke.active()&&angle==.5&&!seeks,"rounding-level position noise never advances motion"))return 1;
+ if(!stationary())return 2;stroke.reset();held={};step(f,d);
+ if(!check(!stroke.active()&&!held.id&&!seeks,"explicit withdrawal cannot revive from an old retained press"))return 1;
+ if(!stationary())return 2;f.left_tracked=0;step(f,d);
+ if(!check(!stroke.active()&&!held.id&&!seeks,"untracked frame cannot retain stationary baseline"))return 1;
+ if(!stationary())return 2;--held.lifecycle;step(f,d);
+ if(!check(!stroke.active()&&!held.id&&!seeks,"foreign lifecycle cannot retain stationary baseline"))return 1;
+ if(!stationary())return 2;d.release_required=1;step(f,d);
+ if(!check(stroke.last_observation_ms()==1500&&!seeks&&!latch_stationary_holds,"release-required decision cannot renew observation"))return 1;
+ if(!stationary())return 2;++d.key.lifecycle;step(f,d);
+ if(!check(stroke.last_observation_ms()==1500&&!seeks&&!latch_stationary_holds,"foreign frame cannot renew observation"))return 1;
  std::printf("HB exact opening/release blocks: %u recovery and anti-replay checks passed; engine calls faked\n",cases);
 }
 '''
-cpp=O/'latch-handoff.cpp';exe=O/'latch-handoff.exe';cmd=O/'latch-handoff.cmd'
+cpp=O/(tag+'.cpp');exe=O/(tag+'.exe');cmd=O/(tag+'.cmd')
 cpp.write_text(host+grant+'\n'+step+tests,encoding='utf-8')
-cmd.write_text('@echo off\ncall E:\\vs\\VC\\Auxiliary\\Build\\vcvars64.bat >nul\ncl /nologo /std:c++17 /EHsc /W4 /WX /I"'+str(R/'tools/vr-common')+'" /Fe:"'+str(exe)+'" /Fo:"'+str(O/'latch-handoff.obj')+'" "'+str(cpp)+'"\nif errorlevel 1 exit /b %errorlevel%\n"'+str(exe)+'"\n',encoding='ascii')
+cmd.write_text('@echo off\ncall E:\\vs\\VC\\Auxiliary\\Build\\vcvars64.bat >nul\ncl /nologo /std:c++17 /EHsc /W4 /WX /I"'+str(R/'tools/vr-common')+'" /Fe:"'+str(exe)+'" /Fo:"'+str(O/(tag+'.obj'))+'" "'+str(cpp)+'"\nif errorlevel 1 exit /b %errorlevel%\n"'+str(exe)+'"\n',encoding='ascii')
 r=subprocess.run(['cmd','/c',str(cmd)],capture_output=True,encoding='utf-8',errors='replace')
 receipt=dict(source=str(source),source_sha256=hashlib.sha256(source.read_bytes()).hexdigest(),branch_sha256=hashlib.sha256((grant+step).encode()).hexdigest(),exit_code=r.returncode,output=r.stdout+r.stderr,scope=__doc__)
-(O/'latch-handoff.log').write_text(r.stdout+r.stderr,encoding='utf-8')
-(O/'latch-handoff.json').write_text(json.dumps(receipt,indent=2),encoding='utf-8');print(json.dumps(receipt,indent=2));sys.exit(r.returncode)
+(O/(tag+'.log')).write_text(r.stdout+r.stderr,encoding='utf-8')
+(O/(tag+'.json')).write_text(json.dumps(receipt,indent=2),encoding='utf-8');print(json.dumps(receipt,indent=2));sys.exit(r.returncode)
 
