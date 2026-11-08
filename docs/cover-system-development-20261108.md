@@ -165,3 +165,11 @@ r7 使用修正后的源快照重新完成隔离 Native 编译、链接和原 10
 wrapper／launcher 均 exit 0，Native cleanup／entry restore TRUE、XR exit 0、owned game 为空；config、settings 精确恢复，原缺失 head 文件仍缺失，结束时 20 个运行依赖未漂移。既有 retention 22786 实际 terminal0，删除 2148 文件／366588094 字节、errors0，保留 [46808,9684,5008]，文字／源码保留。核实 Game／XR／录制／编码均空后，已明确唯一交窗 HB 原匣004159／PG28f0184d，之后按其既有队列继续；本会话不重启或占用该窗口。
 
 完整证据在 `analysis/cover-system-20261108/cover-46808-review.json`、`cover-boundary-chain-46808.py`、对应 session、`menu-firstperson-46808-010410` 和 `menu-firstperson-46808-startup-20261109-010318/dual-output`。这是新的实际首故障与启动／清理证据，完整掩体开发目标继续进行。
+
+### 首故障后的专用只读适配
+
+新增 `tools/game-playtest/cover_playground_observation.py`。仅在已拥有的正常运行 session、原连接已就绪、明确认证 top=null／active_scenes=[]／无 input block 的 Playground 中，复用现有 `LiveRegistryAnchorSampler`／`acquire_anchor_sample` 和原类型化人物字段读取。校验当前 controller／pawn、非剧情、存活，以及前后 UI、对象和 session；失败关闭自己的 reader，不返回部分人物状态。公共 `Observer`／`gameplay` 未改，也不授予输入、查询、掩体或身体写入权限。
+
+实际离线 `unittest` 三个方法通过，包含一个明确空 UI 正例、五种缺字段和五种活动／不可信 UI 反例。初稿将缺失 top 与明确 null 混同，该负例先失败，增加必须存在 top 键后通过。此检查只验证 UI 准入，实际锚点读取与游戏内掩体动作仍未验证。
+
+入口同时补齐失败前保留观察行和明确缺失人物状态错误，执行过的旧动作源码按原 SHA256 保留；旧运行计划另存 `cover-boundary-runtime-plan-executed-46808.json`。新计划只替换诊断动作哈希并加入专用适配，21 依赖 `--prepare-only` 通过，r7 Native／PG／XR 未改，无新 stage／run。已向 HB 登记在既有 Snub／Boltok／Longshot 之后的尾位复查，等待明确唯一交接；当前窗口仍不属于掩体。
