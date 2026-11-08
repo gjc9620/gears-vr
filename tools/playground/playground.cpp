@@ -12,6 +12,7 @@
 #include "../vr-common/weapon_hammerburst_latch_curve.h"
 #include "../vr-common/weapon_hammerburst_latch.h"
 #include "../vr-common/weapon_reload_geometry.h"
+#include "../vr-common/weapon_hammerburst_magazine.h"
 #include "../vr-common/weapon_lancer_interaction_guide.h"
 #include "../vr-common/weapon_bolo_grenade_interaction.h"
 #include "weapon_equipment_names.h"

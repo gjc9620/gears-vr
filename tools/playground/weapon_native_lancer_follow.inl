@@ -5,6 +5,7 @@
 #include "../vr-common/hand_contact_equivalence.h"
 #include "../vr-common/weapon_two_hand_hold.h"
 #include "../vr-common/weapon_lancer_foregrip.h"
+#include "../vr-common/weapon_hammerburst_foregrip.h"
 #include "../vr-common/weapon_lancer_wrist_mount.h"
 #include "../vr-common/weapon_lancer_sight_zero.h"
 #include "../vr-common/weapon_frag_grasp.h"
@@ -30,7 +31,7 @@ using State=gears_weapon::WeaponMeshComponentState<Key>;
 gears_weapon::WeaponMeshComponentLease<Key> lease;
 std::atomic<bool> visible{};
 bool faulted{};
-Key bound_key{};bool bound_key_known{},bound_is_lancer{},bound_is_frag{};
+Key bound_key{};bool bound_key_known{},bound_is_lancer{},bound_is_frag{},bound_is_hammerburst{};
 std::uint64_t bound_session{},bound_space{},bound_input{},bound_reference{},bound_world{};
 double bound_units{};
 gears_weapon::WeaponMeshFollow mount;
@@ -44,7 +45,7 @@ bool endpoint_matrix(gears_vr::Pose const& palm,std::array<float,16>& out) noexc
     return mount.model_matrix({grip.position,gears_vr::ue_angles(gears_vr::rotation_matrix(grip.orientation))},out);
 }
 bool support_geometry(hand::Frame const& f,gears_vr::Pose& out) noexcept try {
-    if(!bound_key_known||!bound_is_lancer||!mount.bound()||!hand::same(bound_key.weapon,f.weapon)||
+    if(!bound_key_known||(!bound_is_lancer&&!bound_is_hammerburst)||!mount.bound()||!hand::same(bound_key.weapon,f.weapon)||
        bound_key.hold_generation!=vrequip::model.hold_generation()||!std::isfinite(bound_units)||bound_units<10||bound_units>500||
        bound_session!=f.stereo.session||bound_space!=f.stereo.space_epoch||bound_input!=f.controllers.input_epoch||
        bound_reference!=f.reference_generation||bound_world!=f.key.world_generation)return false;
@@ -62,9 +63,9 @@ bool support_geometry(hand::Frame const& f,gears_vr::Pose& out) noexcept try {
     gears_hand_authored_mount::Mount left{};
     if(!gears_hand_authored_mount::marcus115(gears_hand_authored_mount::marcus115_signature,
         gears_hand_authored_mount::Side::left,1,100,left))return false;
-    const auto wrist_in_gun=gears_weapon_lancer_foregrip::wrist_in_mesh();
+    const auto wrist_in_gun=bound_is_hammerburst?gears_weapon_hammerburst_foregrip::wrist_in_mesh():gears_weapon_lancer_foregrip::wrist_in_mesh();
     gears_vr::Vector p{};
-    if(!gears_weapon_lancer_foregrip::grip_in_mesh(p))return false;
+    if(!(bound_is_hammerburst?gears_weapon_hammerburst_foregrip::grip_in_mesh(p):gears_weapon_lancer_foregrip::grip_in_mesh(p)))return false;
     gears_vr::Pose pose{};
     pose.position={(gun[12]+p.x*gun[0]+p.y*gun[4]+p.z*gun[8])/bound_units,
         (gun[13]+p.x*gun[1]+p.y*gun[5]+p.z*gun[9])/bound_units,
@@ -382,6 +383,8 @@ void tick(hand::Frame const& source,Phase phase) noexcept {
         lancermain_asset::Evidence lancer{};
         const bool is_lancer=lancermain_asset::read(source,lancer)==lancermain_asset::Status::ready;
         bound_is_lancer=is_lancer;bound_is_frag=is_frag;
+        bound_is_hammerburst=basic==lancermain_asset::Status::ready&&
+            playground::instance(source.weapon.address,L"Weap_LocustAssaultRifle");
         bool restored_geometry=false;
         for(const auto& saved:saved_mounts){
             if(saved.known&&hand::same(saved.key.weapon,key.weapon)&&
@@ -464,7 +467,7 @@ void tick(hand::Frame const& source,Phase phase) noexcept {
             right={grip.position,gears_vr::ue_angles(gears_vr::rotation_matrix(grip.orientation))};
         }else endpoint={};
     }
-    if(!endpoint.serial&&bound_is_lancer&&(prepared.world_pose_mask&rig::left_grip_pose)){
+    if(!endpoint.serial&&(bound_is_lancer||bound_is_hammerburst)&&(prepared.world_pose_mask&rig::left_grip_pose)){
         hand::GripSnapshot snapshot{};gears_vr::Pose geometry{};gears_weapon_two_hand::Solution supported{};
         const bool snapshot_known=weaponhand::client.snapshot_on_gt(snapshot);
         if(!snapshot_known&&source.left_grip_down&&log_file&&support_withdrawal_rows<8){

@@ -27,6 +27,7 @@ inv::Request completion;
 lancerreload_state::RewardReceipt reward;
 gears_weapon::HammerburstLatchStroke stroke;
 gears_weapon::FeedInsertionStroke insertion;
+gears_weapon::HammerburstMagazineExtraction extraction;
 gears_weapon::FeedPortMount feed;
 hand::Lease held{};
 std::uint64_t serial{},old_item{},new_item{};
@@ -201,7 +202,7 @@ void reset(bool preserve_geometry=false) noexcept {
     held={};serial=old_item=new_item=0;angle=0;released=switch_requested=native_exited=ui_pending=false;
     feed_item=feed_sequence=0;feed_ns=0;
     open_pose_reads=open_stable_reads=feed_failure=0;last_open_observed=0;
-    stroke.reset();insertion.reset();feed={};if(!preserve_geometry)geometry.known=false;
+    stroke.reset();insertion.reset();extraction.reset();feed={};if(!preserve_geometry)geometry.known=false;
     lancerreload_runtime::outstanding.store(false,std::memory_order_release);
 }
 bool cleanup(unsigned line=0) noexcept {
@@ -323,6 +324,7 @@ gears_weapon::FeedResult insertion_step(hand::Frame const& f,std::uint64_t item)
     }
     gears_weapon::FeedSample sample{f.weapon.address,item,f.world.address,f.stereo.space_epoch,f.controllers.sequence,
         f.controllers.sync_ns,{{0,0,0},{0,0,0,1}},left,f.left_tracked!=0,true};
+    if(stage==Stage::old_magazine&&!extraction.complete())extraction.observe(sample,feed);
     return insertion.observe(sample,feed);
 }
 void step(hand::Frame const& f,hand::Decision const& decision) noexcept {
@@ -364,12 +366,15 @@ void step(hand::Frame const& f,hand::Decision const& decision) noexcept {
         }
         if(!visual::begin(f,visual::Profile::hammerburst)){cleanup(__LINE__);return;}
         if(!insertion.arm(f.weapon.address,old_item,f.world.address,f.stereo.space_epoch)){cleanup(__LINE__);return;}
-        stage=Stage::old_magazine;return;
+        extraction.reset();stage=Stage::old_magazine;insertion_step(f,old_item);return;
     }
     if(!f.left_grip_known)return;
     if(!f.left_grip_down){
         released=true;held={};stroke.reset();
         if(stage==Stage::old_magazine){
+            // A premature release cancels and restores the owned component;
+            // it cannot expose shoulder supply without actual extraction.
+            if(!extraction.complete()){cleanup(__LINE__);return;}
             if(!transaction.stow_original(old_item)||!visual::stow()){cleanup(__LINE__);return;}
             stage=Stage::waiting_ammo;
         }else if(stage==Stage::new_magazine){

@@ -2,6 +2,7 @@
 // socket. Proximity fits skin only and never supplies that lease. Destination:
 // existing Native C0 skin solver, never a controller/input transform.
 #include "../vr-common/weapon_lancer_grasp_pose.h"
+#include "../vr-common/weapon_hammerburst_support.h"
 namespace lancer_grasp {
 namespace api=gears_hand_object_grasp;namespace hand=gears_weapon_hand;
 using P=gears_vr::Pose;using Q=gears_vr::Quaternion;using V=gears_vr::Vector;
@@ -119,6 +120,27 @@ void report_grasp_attempt(hand::Frame const& f,api::Kind kind,bool published,uns
         weaponhand::clock_ns(nullptr)-f.controllers.sync_ns);fflush(log_file);++rows;}previous=state;
 }
 bool proximity_tick(hand::Frame const& f,hand::GripGameState const& game,hand::Decision const& decision) noexcept {
+    if(nativelancerfollow::bound_is_hammerburst){
+        nearby_kind={};
+        using Mode=gears_weapon_hammerburst_support::Mode;
+        if(gears_weapon_hammerburst_support::mode(f,game,decision,weaponhand::clock_ns(nullptr))!=Mode::snap)return false;
+        const auto& plan=nativelancerfollow::plan;
+        P geometry{};
+        if(!plan.valid||!hand::same_frame(plan.source,f)||
+           !nativelancerfollow::support_geometry(f,geometry)||!nativeequipment::current(nullptr,f))return false;
+        const auto& right=plan.right_grip;
+        const auto offset=gears_vr::transform(gears_vr::rotation_matrix(right.orientation),geometry.position);
+        const double units=plan.prepared.units_per_metre;
+        if(!std::isfinite(units)||units<10||units>500)return false;
+        api::Request q{};q.source=f;q.kind=api::Kind::support;q.proximity=1;
+        q.grip={{right.position.x+offset.x*units,right.position.y+offset.y*units,right.position.z+offset.z*units},
+            gears_vr::normalized(gears_vr::multiply(right.orientation,geometry.orientation))};
+        const auto call=lancersaw_visual::function<api::Publish>(api::publish_export);
+        if(!call||!nativeequipment::current(nullptr,f))return false;
+        const bool published=call(&q);
+        if(published){nearby_kind=api::Kind::support;nearby_source=f;}
+        return published;
+    }
     lancersaw_starter::cosmetic_nearby=false;
     const bool neutral=f.controllers.hands[0].squeeze_active==1&&
         !hand::control_held(f.controllers.hands[0],gears_vr::control_squeeze);
