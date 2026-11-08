@@ -6,13 +6,14 @@ namespace context=cover_context_live;
 #if GEARS_COVER_BODY_PROTOTYPE
 uintptr_t link_class{},link_instance{},slot_type{},inner{},array_kind{};
 std::array<uintptr_t,7> cover_properties{};
-void cover_setup(){
+void cover_setup(bool wrong_last_action_name=false){
     live_setup();context::pawn_proof={};context::link_proof={};context::metadata_generation=0;
     link_class=arena+0x72000;link_instance=arena+0x48000;slot_type=arena+0x72400;
     array_kind=arena+0x72800;klass(link_class,80,L"CoverLink",fixture_actor);klass(array_kind,81,L"ArrayProperty",0);
     object(slot_type,82,script_struct,0,L"CoverSlot");put(slot_type+0x88,212u);
     object(link_instance,83,link_class,arena+0x49000,L"SyntheticCover");
-    const wchar_t* names[]={L"CurrentLink",L"CurrentSlotIdx",L"CoverAction",L"LastCoverAction",L"Slots"};
+    const wchar_t* names[]={L"CurrentLink",L"CurrentSlotIdx",L"CoverAction",
+        wrong_last_action_name?L"LastCoverAction":L"LastCoverActionAnim",L"Slots"};
     const unsigned offsets[]={0x300,0x308,0x30c,0x30d,0x340};
     const uintptr_t kinds[]={fixture_object_property,int_class,fixture_byte_property,fixture_byte_property,array_kind};
     const unsigned widths[]={8,4,1,1,16};
@@ -41,7 +42,11 @@ int main(){
         C(out.cover_type==type&&out.link.address==link_instance&&out.slot==0&&out.scene==scene.invocation);
         auto again=out;C(observe(again)&&context::same(out,again));
         put(fixture_pawn+0x30c,static_cast<unsigned char>(7));put(fixture_pawn+0x294,0x84u);C(observe(again));
-        C(again.cover_action==7&&again.transitioning&&!context::same(out,again));}
+        C(again.cover_action==7&&again.transitioning&&!context::same(out,again));
+        put(fixture_pawn+0x30d,static_cast<unsigned char>(3));C(observe(again)&&again.last_action==3);}
+    // The shipped animation state is LastCoverActionAnim. A similarly named
+    // synthetic property must not make the fixture validate the wrong reader.
+    cover_setup(true);out={};out.scene=999;C(!observe(out)&&out.scene==999);
     for(unsigned bad=0;bad<12;++bad){cover_setup();put(fixture_pawn+0x298,static_cast<unsigned char>(2));out={};out.scene=999;
         if(bad==0)put(fixture_pawn+0x308,-1);
         if(bad==1)put(fixture_pawn+0x308,2);
@@ -58,12 +63,13 @@ int main(){
         C(!observe(out)&&out.scene==999);}
     // Mutations after initial values, including an otherwise identical slot,
     // cannot escape the closing bracket or modify caller output on failure.
-    for(unsigned bad=0;bad<5;++bad){cover_setup();put(fixture_pawn+0x298,static_cast<unsigned char>(2));C(observe(out));
+    for(unsigned bad=0;bad<6;++bad){cover_setup();put(fixture_pawn+0x298,static_cast<unsigned char>(2));C(observe(out));
         if(bad==0)plan(fixture_pawn+0x308,2,fixture_pawn+0x308,1,4);
         if(bad==1)plan(fixture_pawn+0x308,2,arena+0x80000,0,4);
         if(bad==2)plan(fixture_pawn+0x308,2,inner+0x94,4,4);
         if(bad==3){plan(fixture_pawn+0x308,2,0,0,0);change_scene=true;}
         if(bad==4){plan(fixture_pawn+0x308,2,0,0,0);change_generation=true;}
+        if(bad==5)plan(fixture_pawn+0x308,2,fixture_pawn+0x30d,1,1);
         const auto before=out;C(!context::sample(&scene,out)&&!memcmp(&before,&out,sizeof out));read_hook=nullptr;
         C(h::mutex.try_lock());h::mutex.unlock();}
     C(VirtualFree(reinterpret_cast<void*>(arena),0,MEM_RELEASE)!=0);

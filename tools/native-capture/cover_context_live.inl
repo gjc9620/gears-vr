@@ -46,7 +46,7 @@ bool pawn_layout(binding::Binding const& actor){
     binding::keys(pawn_proof,cls);if(!binding::begin_prepare(pawn_proof))return false;
     if(pawn_proof.ready)return true;
     const wchar_t* names[]={L"CoverType",L"CurrentLink",L"CurrentSlotIdx",L"CoverAction",
-                            L"LastCoverAction",L"bDoingCoverActionAnimTransition"};
+                            L"LastCoverActionAnim",L"bDoingCoverActionAnimTransition"};
     const wchar_t* kinds[]={L"ByteProperty",L"ObjectProperty",L"IntProperty",L"ByteProperty",L"ByteProperty",L"BoolProperty"};
     const unsigned widths[]={1,8,4,1,1,4};
     for(unsigned i=0;i<fields.size();++i)

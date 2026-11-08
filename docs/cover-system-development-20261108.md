@@ -125,3 +125,11 @@ MSVC 原始结果保存在 `analysis/cover-system-20261108/focused-cover-results
 最终 r6 隔离 Native 编译、链接通过，SHA256 `63fe604d1db8f242cf02437e78af2214eb163ab9d18fa582ed0f4d2995768567`。依赖记录为 661 项，构建回执中的 10 次实际执行均 exit 0。源快照、叠加文件哈希、构建与检查在 `analysis/cover-system-20261108/context-native-r6-source.json`、`context-native-r6-source`、`build-context-native-r6` 和 `context-native-r6-build-result.json`。私有构建包含本批原始姿态测量接线，未安装、未交付为可玩候选，未运行游戏／XR／模拟器。
 
 同时保留 r5 的独立失败：旧 `BodyC0GoalPolicyLiveTest` 宿主前缀尚未跟进现有 weapon/compose 接口，编译报告超过百项缺失类型／成员。本批新增的 mode16 只读生命周期断言已写入源码，因这一宿主编译失败尚未执行。r6 未请求该过时宿主目标，不把 Native 产品编译成功或纯转换检查当作该宿主检查通过；旧失败日志仍位于 `build-context-native-r5`。后续仍须验证实际 C0 回调生命周期，并取得合法中立眼点、当前实体表面、可达和连续身体碰撞输入后，才能选择 `prepare_cover` 进入写入事务。
+
+## 2026年11月8日 动画状态字段修正
+
+接续核对原版动作链发现本会话独立读取器使用了错误字段名 `LastCoverAction`。原有 `cover_neutral_eye_live` 和保留原脚本 `analysis/cover-prep-20261028/revision2/scripts/Function_WarfareGame.WarPawn.DoingAnimationTransition_.uc` 均使用 `LastCoverActionAnim`。先前合成反射夹具复制了同一错误，因此 r4／r6 的离线通过不足以证明该字段与原版兼容；它们没有游戏内通过证据，不应安装。
+
+先改夹具为原字段名并增加错误字段拒绝，实际重现 124 检查中 20 处失败；原 RED 结果保存在 `context-name-before-fix.json` 与 `context-name-before-fix.log`。随后只修正生产读取字段名，124 检查全部通过。额外覆盖 LastCoverActionAnim 数值变化及关闭边界变化拒绝，旧身体仍关闭，夹具无写入。
+
+r7 使用修正后的源快照重新完成隔离 Native 编译、链接和原 10 次离线检查，均 exit 0；DLL SHA256 `10eed9dff50097b86f795e6fcc97ac0b447d4baef5507cee70df69d0a579ec74`，依赖 661 项。证据在 `context-native-r7-source.json`、`context-native-r7-build-result.json` 与相邻源码／构建目录。此处更新当前可用于后续私有验证的构建身份；仍未安装、未运行游戏／XR／模拟器，原 r5 宿主检查缺口仍保留。
