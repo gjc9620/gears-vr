@@ -50,9 +50,11 @@ inline bool rotation(unsigned side,unsigned finger_joint,double amount,
     // beyond the barrel and against the palm. Ease MCP flexion slightly;
     // preserve the authored thumb, every bone translation and all other parts.
     constexpr double starter[4][3]={{82,100,65},{85,105,65},{85,105,65},{85,100,60}};
-    // Broad fore-end wrap: preserve space for the original receiver rather
-    // than closing the fingers/thumb into the small C-handle cylinder.
-    constexpr double support[4][3]={{25,55,25},{30,60,25},{35,65,25},{40,65,25}};
+    // Original LOD0 skin against the fixed underside palm contact: the former
+    // MCP curl buried the distal pads in the receiver. Extend the knuckles,
+    // then wrap the longer fingers around the far surface. The index follows
+    // the shallower front contour; bone lengths and the wrist stay unchanged.
+    constexpr double support[4][3]={{15,10,15},{5,70,25},{0,90,25},{5,90,25}};
     // The actual held-rifle context owns the wrap even after the acquisition
     // Grip is released. Only its index follows the real firing trigger. Do
     // not inherit a reload/saw animation's open or twisted stock fingers.
@@ -71,11 +73,13 @@ inline bool rotation(unsigned side,unsigned finger_joint,double amount,
         // E's thumb pad must oppose the index at the small tab. The former
         // extended base left the thumb beside the index and the old palm
         // contact put the tab behind both pads. This is skin authoring only.
-        const double flexion=shape==Shape::support?5:(shape==Shape::grenade?4:(shape==Shape::weapon?5:(shape==Shape::magazine?10:(shape==Shape::loading?6:(shape==Shape::starter?-5:20)))));
-        const double opposition=shape==Shape::support?25:(shape==Shape::grenade?30:(shape==Shape::weapon?28:(shape==Shape::magazine?38:(shape==Shape::loading?26:(shape==Shape::starter?30:35)))));
+        const double flexion=shape==Shape::support?15:(shape==Shape::grenade?4:(shape==Shape::weapon?5:(shape==Shape::magazine?10:(shape==Shape::loading?6:(shape==Shape::starter?-5:20)))));
+        // Support thumb lies forward along the near side. Opposition35 drove
+        // its original skin through the gun despite a correct palm-up wrist.
+        const double opposition=shape==Shape::support?0:(shape==Shape::grenade?30:(shape==Shape::weapon?28:(shape==Shape::magazine?38:(shape==Shape::loading?26:(shape==Shape::starter?30:35)))));
         closed=product(turn(2,-flexion*radians),product(turn(1,(side?opposition:-opposition)*radians),reference));
     }else{
-        const double flexion=shape==Shape::support?15:(shape==Shape::magazine?(finger_joint==13?35:20):
+        const double flexion=shape==Shape::support?(finger_joint==13?15:10):(shape==Shape::magazine?(finger_joint==13?35:20):
             (shape==Shape::loading?(finger_joint==13?45:30):(shape==Shape::starter?(finger_joint==13?45:30):(finger_joint==13?25:20))));
         closed=product(reference,turn(2,-flexion*radians));
     }

@@ -4,6 +4,7 @@
 #define NOMINMAX
 #include <windows.h>
 #include <d3d11.h>
+#include <dwmapi.h>
 #include <windows.graphics.capture.interop.h>
 #include <windows.graphics.directx.direct3d11.interop.h>
 #include <winrt/Windows.Foundation.h>
@@ -33,7 +34,7 @@ struct Lane {
  com_ptr<ID3D11Device> device;com_ptr<ID3D11DeviceContext> context;com_ptr<ID3D11Texture2D> staging;
  com_ptr<IWICImagingFactory> wic;IDirect3DDevice capture_device{nullptr};GraphicsCaptureItem item{nullptr};
  Direct3D11CaptureFramePool pool{nullptr};GraphicsCaptureSession capture{nullptr};D3D11_TEXTURE2D_DESC staged{};
- std::ofstream log;long long last_frame{};fs::path output;
+ std::ofstream log;long long last_frame{};fs::path output;bool stale_window_recorded{};
  winrt::Windows::Graphics::SizeInt32 pool_size{};unsigned pool_generation{};
  Lane(const char* label,DWORD id,unsigned long long stamp,HWND window,fs::path directory,unsigned limit):name(label),pid(id),creation(stamp),hwnd(window),max_width(limit),output(directory){
   process=OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION|SYNCHRONIZE,FALSE,pid);if(!process||born(process)!=creation)throw std::runtime_error("Capture process identity");
@@ -52,8 +53,26 @@ struct Lane {
   require();capture.StartCapture();
  }
  void require(){DWORD actual{};GetWindowThreadProcessId(hwnd,&actual);if(!IsWindow(hwnd)||actual!=pid||WaitForSingleObject(process,0)!=WAIT_TIMEOUT||born(process)!=creation)throw std::runtime_error("Owned capture target exited or changed");}
+ void observe_first_stale_window(){
+  const auto now=qpc_ns();
+  if(stale_window_recorded||!frames||now-last_frame<=1000000000LL)return;
+  require();DWORD cloaked{};const HRESULT cloak_result=DwmGetWindowAttribute(hwnd,DWMWA_CLOAKED,&cloaked,sizeof(cloaked));
+  RECT rect{};const bool have_rect=GetWindowRect(hwnd,&rect)!=FALSE;
+  WINDOWPLACEMENT placement{};placement.length=sizeof(placement);const bool have_placement=GetWindowPlacement(hwnd,&placement)!=FALSE;
+  require();stale_window_recorded=true;
+  // One bounded read-only window snapshot in the existing receipt, not a new
+  // capture lane, a recovery/restart or authority to move/show the window.
+  log<<"{\"kind\":\"first_stale_window\",\"observed_qpc_ns\":"<<now<<",\"last_capture_qpc_ns\":"<<last_frame
+     <<",\"pid\":"<<pid<<",\"creation_time\":"<<creation<<",\"hwnd\":"<<(uintptr_t)hwnd
+     <<",\"visible\":"<<(IsWindowVisible(hwnd)?"true":"false")<<",\"iconic\":"<<(IsIconic(hwnd)?"true":"false")
+     <<",\"hung\":"<<(IsHungAppWindow(hwnd)?"true":"false")<<",\"window_thread_id\":"<<GetWindowThreadProcessId(hwnd,nullptr)
+     <<",\"cloaked_query_succeeded\":"<<(SUCCEEDED(cloak_result)?"true":"false")<<",\"cloaked\":"<<cloaked
+     <<",\"placement_query_succeeded\":"<<(have_placement?"true":"false")<<",\"show_command\":"<<placement.showCmd
+     <<",\"rect_query_succeeded\":"<<(have_rect?"true":"false")<<",\"rect\":["<<rect.left<<","<<rect.top<<","<<rect.right<<","<<rect.bottom
+     <<"],\"window_mutation\":false,\"stale_is_not_render_failure_proof\":true}\n";log.flush();
+ }
  void take(){
-  require();auto frame=pool.TryGetNextFrame();if(!frame)return;
+  require();auto frame=pool.TryGetNextFrame();if(!frame){observe_first_stale_window();return;}
   // WGC queues old frames until they are consumed. Drain bounded pending
   // frames before sampling, so recorder backlog is not mistaken for XR lag.
   for(unsigned n=0;n<4;++n){auto newer=pool.TryGetNextFrame();if(!newer)break;frame.Close();frame=std::move(newer);}

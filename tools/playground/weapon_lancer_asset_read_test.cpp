@@ -1,3 +1,6 @@
+#define GEARS_WEAPON_METADATA_PARSE_TEST_STATS 1
+#define GEARS_PLAYGROUND_NATIVE_MAIN_MOUNT_PROVIDER_TRIAL 1
+#include "../vr-common/weapon_main_mount_provider.h"
 #include "weapon_hand_offline_fixture.h"
 namespace {
 #include "weapon_lancer_asset_read.inl"
@@ -13,7 +16,10 @@ struct AssetMemory:Memory {
         component=node(L"LiveLancerMesh",mesh_class,weapon);asset=node(L"COGAssaultRifle",asset_class,engine);
         put(weapon,0x118,component);put(component,0x120,asset);tables();frame.key.thread_id=GetCurrentThreadId();
     }
-    la::Status read_asset(la::Evidence& out){return la::read(frame,out);}
+    la::Status read_asset(la::Evidence& out){
+        weapon_metadata_parse::TickScope production_parsing;
+        return la::read(frame,out);
+    }
     void final_mutation(std::function<void()> action){
         const auto trigger=component+0x120;mutate_read=trigger;
         mutation=[trigger,action]{mutate_read=trigger;mutation=action;};
@@ -27,6 +33,27 @@ void rejects(AssetMemory& m){
 template<class Change>void rejection(Change change){auto m=std::make_unique<AssetMemory>();change(*m);rejects(*m);}
 }
 int main(){
+    for(bool object_mesh:{false,true}){
+        auto m=std::make_unique<AssetMemory>(object_mesh);uptr weapon_head{},component_head{};
+        const auto prepend=[&](uptr owner,const wchar_t* label){
+            const auto old=Memory::get<uptr>(owner,0x80),p=m->node(label,m->object_type,owner);
+            Memory::put(p,0x70,1u);Memory::put(p,0x74,8u);Memory::put(p,0x94,0x180u);
+            Memory::put(p,0x68,old);Memory::put(owner,0x80,p);return p;
+        };
+        for(unsigned i=0;i<64;++i){
+            weapon_head=prepend(m->weapon_class,L"UnrelatedWeaponField");
+            component_head=prepend(m->mesh_class,L"UnrelatedComponentField");
+        }
+        m->tables();unsigned walks{};std::uint64_t reads{};
+        read_observer=[&](uptr address,std::size_t bytes){
+            ++reads;
+            if(bytes==8&&(address==weapon_head+0x68||address==component_head+0x68))++walks;
+        };
+        la::Evidence out{};assert(m->read_asset(out)==la::Status::ready);read_observer={};
+        assert(walks==4); // Initial and closing discovery of BOTH objects.
+        std::printf("Actual asset selectors: Mesh type=%s, unrelated-prefix traversals=%u, fresh reads=%llu; no live timing claim\n",
+            object_mesh?"ObjectProperty":"ComponentProperty",walks,static_cast<unsigned long long>(reads));++cases;
+    }
     // Actual Frag uses its own class/asset package and never gains the
     // existing firearm, muzzle, or Lancer mechanical eligibility.
     {AssetMemory m;const auto frag=m.cls(L"Weap_FragGrenade",m.warfare,m.weapon_class);
@@ -95,5 +122,22 @@ int main(){
         const auto replacement=m.node(L"Mesh",m.component_type,m.weapon_class);
         Memory::put(replacement,0x70,1u);Memory::put(replacement,0x74,8u);Memory::put(replacement,0x94,0x118u);
         Memory::put(replacement,0x68,previous);Memory::put(m.weapon_class,0x80,replacement);m.tables();});});
+    // Pre-register an unused replacement. Change only an interior prefix
+    // link at closing time: tables, class children, old descriptor and values
+    // remain unchanged. Fresh selector discovery must still reject it.
+    for(unsigned field=0;field<4;++field){
+        auto m=std::make_unique<AssetMemory>();
+        const auto owner=field<2?m->weapon_class:m->mesh_class;
+        const wchar_t* labels[]={L"Instigator",L"Mesh",L"SkeletalMesh",L"HiddenGame"};
+        const unsigned offsets[]={0x110,0x118,0x120,0x110};
+        const auto old=Memory::get<uptr>(owner,0x80);
+        const auto prefix=m->node(L"UnusedStablePrefix",m->object_type,owner);
+        const auto replacement=m->node(labels[field],field==3?m->bool_type:field==1?m->component_type:m->object_type,owner);
+        Memory::put(prefix,0x68,old);Memory::put(owner,0x80,prefix);
+        Memory::put(replacement,0x70,1u);Memory::put(replacement,0x74,field==3?4u:8u);
+        Memory::put(replacement,0x94,offsets[field]);if(field==3)Memory::put(replacement,0xd0,2u);
+        Memory::put(replacement,0x68,old);m->tables();
+        m->final_mutation([=]{Memory::put(prefix,0x68,replacement);});rejects(*m);
+    }
     std::printf("WeaponLancerAssetReadTest: %u cases passed (owned memory only)\n",cases);return 0;
 }

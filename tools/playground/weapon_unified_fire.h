@@ -33,6 +33,10 @@ struct AppliedEvidence {
     double world_grip[3]{},target_mesh[3]{};
     bool follow_target_known{};
 };
+struct ReadinessEvidence {
+    bool valid{},same_frame{},frame_current{},reserved_frame_current{},held{},registration{},live{},reserved_live{},epoch{};
+    std::int64_t sync_age{-1},stereo_age{-1},frame_age{-1},sample_age{-1},render_age{-1};
+};
 // Read-only values copied at the actual CalcWeaponFire callsite. End is the
 // requested ray endpoint, not a collision result or a rendered reticle hit.
 struct FireTraceEvidence {
@@ -71,6 +75,7 @@ std::uint64_t shot_trajectory_dropped_updates() noexcept;
 bool set_running(bool value) noexcept;
 bool prepare_current(gears_weapon_hand::Frame const&,gears_weapon_hand::GripGameState const&) noexcept;
 bool ready_for(gears_weapon_hand::Frame const&,std::int64_t dispatch_reserve_ns=0) noexcept;
+bool readiness_evidence(gears_weapon_hand::Frame const&,std::int64_t,ReadinessEvidence&) noexcept;
 void clear_source() noexcept;
 void begin(gears_weapon_call::Invocation const&,gears_weapon_shot::Token const&) noexcept;
 bool hud_begin(gears_weapon_call::Invocation const&) noexcept;
@@ -88,6 +93,7 @@ inline std::uint64_t shot_trajectory_dropped_updates() noexcept {return 0;}
 inline bool set_running(bool value) noexcept {return !value;}
 inline bool prepare_current(gears_weapon_hand::Frame const&,gears_weapon_hand::GripGameState const&) noexcept {return false;}
 inline bool ready_for(gears_weapon_hand::Frame const&,std::int64_t=0) noexcept {return false;}
+inline bool readiness_evidence(gears_weapon_hand::Frame const&,std::int64_t,ReadinessEvidence&) noexcept {return false;}
 inline void clear_source() noexcept {}
 #endif
 }

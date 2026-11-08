@@ -159,7 +159,7 @@ class LancerChainsawInteraction {
     Vector start_left_{},start_anchor_{},start_relative_{},start_axis_{},
            last_left_{},last_anchor_{};
     bool previous_left_grip_{},owns_original_melee_{},release_requested_{};
-    double pull_metres_{},handle_angle_{},initial_handle_angle_{};
+    double pull_metres_{},handle_angle_{},initial_handle_angle_{},initial_slide_{},lowest_slide_{};
     bool original_handle_{},original_slide_{},local_rail_{};
     Vector start_rail_{};
     Vector initial_radial_{};
@@ -190,6 +190,7 @@ class LancerChainsawInteraction {
             difference(difference(s.left_palm_m,s.starter_anchor_m),start_relative_);
         travel=local_rail_?relative.y:dot(relative,start_axis_);
         lateral=local_rail_?std::hypot(relative.x,relative.z):length(difference(relative,scaled(start_axis_,travel)));
+        travel+=initial_slide_;
         // Sliding socket: project the current real hand onto its acquired
         // rail, rather than measuring a sphere from the old grab origin.
         // Axial overtravel never releases this held part. The real mechanism
@@ -358,7 +359,9 @@ public:
                 original_slide_=s.original_slide;
                 local_rail_=s.local_rail;start_rail_=s.rail_hand_m;
                 if(original_slide_){
-                    if(s.starter_actual_pull_m>.003)return interrupted();
+                    // Grip release now locks the actual slider. A new grasp
+                    // starts at THAT position, never teleports it to rest.
+                    initial_slide_=lowest_slide_=pull_metres_=s.starter_actual_pull_m;
                     if(s.starter_actual_angle<1.56)phase_=LancerSawPhase::deploying;
                 }else if(original_handle_){
                     initial_radial_=difference(s.left_palm_m,s.starter_pivot_m);
@@ -374,7 +377,7 @@ public:
         }
         if(phase_==LancerSawPhase::deploying){
             if(!s.original_slide||!s.left_tracked||!s.left_grip_down||!s.game_can_melee||
-               s.starter_actual_pull_m>.003)return interrupted();
+               std::abs(s.starter_actual_pull_m-initial_slide_)>.003)return interrupted();
             // The REAL new Grip acquired the folded bar. Its unfolding is
             // cosmetic setup on an ALREADY authenticated grasp. Do not demand
             // that the player chase its animated end with a second2.5cm grab.
@@ -400,15 +403,20 @@ public:
             last_left_=s.left_palm_m;last_anchor_=s.starter_anchor_m;
             if(original_slide_){
                 double travel{},lateral{};if(!rail_position(s,travel,lateral))return interrupted();
-                const double hand_travel=local_rail_?travel:dot(difference(s.left_palm_m,start_left_),start_axis_);
                 const double required=s.starter_travel_m*(s.require_full_slide?.98:.625);
                 // A quicker push waits for actual mechanical travel and
                 // dwell; it must not discard a legitimate retained grasp.
                 if(lateral>.18)return interrupted();
                 pull_metres_=std::clamp(travel,0.,s.starter_travel_m);
+                lowest_slide_=(std::min)(lowest_slide_,(std::min)(pull_metres_,s.starter_actual_pull_m));
+                const double required_new=(std::min)(required*.7,(std::max)(.01,required-initial_slide_));
+                const double physical_forward=local_rail_?travel-lowest_slide_:
+                    dot(difference(s.left_palm_m,start_left_),start_axis_);
                 // Physical forward travel AND the independently evaluated
                 // C-bone must reach the on gate. Unfolding cannot supply it.
-                if(travel>=required&&hand_travel>=required*.7&&
+                if(travel>=required&&travel-lowest_slide_>=required_new&&
+                   physical_forward>=required_new&&
+                   s.starter_actual_pull_m-lowest_slide_>=required_new&&
                    s.starter_actual_pull_m>=required&&s.created_ms-phase_start_ms_>=160){
                     phase_=LancerSawPhase::waiting_for_hold;phase_start_ms_=s.created_ms;owns_original_melee_=true;
                     return {LancerSawEvent::request_original_hold,phase_,0,true};

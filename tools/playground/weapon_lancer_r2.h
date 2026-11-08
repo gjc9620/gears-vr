@@ -1,6 +1,6 @@
 #pragma once
 #include "../vr-common/original_r2_fire.h"
-#include "../vr-common/weapon_hand_participant.h"
+#include "../vr-common/weapon_hand_client.h"
 #include "../vr-common/controller_continuity_frame.h"
 
 // PG-local input/ownership policy only. Caller authenticates each Frame and
@@ -9,6 +9,16 @@
 // Native permission, retained Frame, pose or tracking sample lives here.
 namespace gears_lancer_r2 {
 namespace hand=gears_weapon_hand;
+// Original R2 state consumes the held/busy/animation/type/mount observation,
+// not left-hand hover candidates/incumbents. Its separate current Frame,
+// typed button fields, reload veto, admitted muzzle and shot guards remain.
+// Comparing this projection must never be used for prepare/commit/part grants.
+inline bool same_fire_observation(hand::GripGameState a,hand::GripGameState b) noexcept {
+    a.object_incumbents={};b.object_incumbents={};
+    a.request_ammo=a.request_magazine=a.magazine_observation_pending=false;
+    b.request_ammo=b.request_magazine=b.magazine_observation_pending=false;
+    return hand::same_game(a,b);
+}
 using Status=gears_weapon::OriginalR2Status;
 struct Actors {hand::ObjectIdentity world{},controller{},pawn{},mesh{},weapon{};};
 struct Game {Actors actors{};bool known{},lancer{},main_hand_held{},animation{},busy{},r2_known{},r2_held{};

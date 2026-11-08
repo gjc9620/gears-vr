@@ -125,6 +125,10 @@ def preflight(root=ROOT):
         if Path(parts.__file__).resolve()!=contained(root,'tools/vr-launcher/weapon_part_cache.py'):
             raise ValueError('Original-part cache module escapes stage')
         imported.append('weapon_part_cache')
+        lancer_magazine=importlib.import_module('lancer_magazine_cache')
+        if Path(lancer_magazine.__file__).resolve()!=contained(root,'tools/vr-launcher/lancer_magazine_cache.py'):
+            raise ValueError('Wrong Lancer magazine preparation module')
+        imported.append('lancer_magazine_cache')
     audio = importlib.import_module('game_audio_guard')
     if audio.MANUAL_HELPER.resolve() != contained(root, AUDIO_HELPER):
         raise ValueError('Manual audio helper escapes stage')

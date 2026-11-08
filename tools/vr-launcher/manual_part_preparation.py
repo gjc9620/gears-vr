@@ -7,6 +7,7 @@ from pathlib import Path
 import hashlib,os,stat
 import weapon_part_cache as magazine
 import lancer_handle_cache as handle
+import lancer_magazine_cache as lancer_magazine
 
 def _source(game_exe):
     game=Path(game_exe).resolve()
@@ -28,7 +29,7 @@ def _digest(path,size,digest):
 def prepare_inputs(game_exe,cache_root):
     game,package=_source(game_exe);cache=Path(cache_root).absolute()
     result=dict(schema=1,game_path=str(game),cache_root=str(cache),stage='before_game_reservation',parts={})
-    for name,prepare in (('magazine',magazine.prepare),('lancer_handle',handle.prepare)):
+    for name,prepare in (('magazine',magazine.prepare),('lancer_handle',handle.prepare),('lancer_magazine',lancer_magazine.prepare)):
         try:
             value=prepare(game,cache)
             result['parts'][name]=dict(prepared=True,source_sha256=value['source_sha256'])
@@ -51,7 +52,10 @@ def verified_inputs(game_exe,cache_root,receipt):
              ('snub-magazine.idx16',942*2,magazine.INDEX_SHA256))),
         'lancer_handle':(handle.CACHE_VERSION,handle.EXPORT_SHA256,
             (('pullA.delta20',handle.COUNT*20,handle.DELTA_SHA256),
-             ('pullB.delta20',handle.COUNT*20,handle.DELTA_SHA256)))}
+             ('pullB.delta20',handle.COUNT*20,handle.DELTA_SHA256))),
+        'lancer_magazine':(lancer_magazine.CACHE_VERSION,lancer_magazine.EXPORT_SHA256,
+            (('lancer-magazine.vtx60',120*60,lancer_magazine.VERTEX_SHA256),
+             ('lancer-magazine.idx16',468*2,lancer_magazine.INDEX_SHA256)))}
     for name,(version,source,files) in checks.items():
         item=receipt.get('parts',{}).get(name,{})
         if not isinstance(item,dict):raise ValueError('Malformed prepared part')

@@ -4,6 +4,19 @@
 #include <limits>
 
 namespace gears_weapon {
+// Feedback de-duplication only. The caller must already authenticate the real
+// current hand/source and empty inventory; this supplies no action authority.
+class ReloadSupplyRejection {
+    std::uint64_t lifecycle_{},press_{};
+public:
+    constexpr bool rejected(std::uint64_t lifecycle,std::uint64_t press) const noexcept {
+        return lifecycle&&press&&lifecycle==lifecycle_&&press==press_;
+    }
+    constexpr bool reject(std::uint64_t lifecycle,std::uint64_t press) noexcept {
+        if(!lifecycle||!press||rejected(lifecycle,press))return false;
+        lifecycle_=lifecycle;press_=press;return true;
+    }
+};
 // Identity is the existing weapon-specific identity, not a second XR protocol.
 // This pure ledger accepts only receipts authenticated by the game-thread owner.
 // A populated value does not itself certify a native call or physical gesture.
@@ -164,6 +177,29 @@ public:
         const auto quantity=mode_==ReloadTxnMode::magazine ? target_-inserted_ : 1u;
         if(!inventory_.infinite_reserve&&quantity>inventory_.reserve)return false;
         held_=quantity;item_=last_item_=item;stage_=ReloadTxnStage::holding;return true;
+    }
+    // Lancer's disappearing old magazine returns its unspent rounds to the
+    // same logical inventory. They already remain in native L, so a new
+    // physical magazine may contain L even when spare R is zero. This is
+    // explicit opt-in; other weapons retain reserve_item's original policy.
+    constexpr bool reserve_magazine_reusing_loaded(std::uint64_t item) noexcept {
+        if(mode_!=ReloadTxnMode::magazine)return false;
+        if(target_>inserted_)return reserve_item(item);
+        if(stage_!=ReloadTxnStage::open||old_held_||held_||pending_.token||
+           target_||inserted_||!inventory_.loaded||!item||item<=last_item_)return false;
+        item_=last_item_=item;stage_=ReloadTxnStage::holding;return true;
+    }
+    constexpr std::uint32_t held_magazine_rounds() const noexcept {
+        return mode_==ReloadTxnMode::magazine&&item_&&stage_==ReloadTxnStage::holding?
+            inventory_.loaded+held_:0;
+    }
+    // Seat a replacement made entirely from the already-accounted L rounds.
+    // No inventory request, setter, revision, reload clock or reward is made.
+    constexpr bool seat_reused_rounds(std::uint64_t item) noexcept {
+        if(stage_!=ReloadTxnStage::holding||mode_!=ReloadTxnMode::magazine||
+           !item||item!=item_||held_||target_||inserted_||pending_.token||
+           !inventory_.loaded||reload_serial_)return false;
+        release_reservation();feed_present_=true;stage_=ReloadTxnStage::closing;return true;
     }
     constexpr bool release_item(std::uint64_t item) noexcept {
         if(stage_!=ReloadTxnStage::holding || !item || item!=item_)return false;

@@ -90,81 +90,7 @@ bool submit_hud_receipt(gears_weapon_hud_receipt::Submit fn,
         EXCEPTION_CONTINUE_SEARCH:EXCEPTION_EXECUTE_HANDLER){return false;}
 }
 
-bool retained_metadata(metadata::Reader& r) noexcept {
-    auto& schema=r.result;
-    const auto identities=schema.identity_count,structures=schema.structure_count,fields=schema.field_count;
-    for(U32 i=0;i<identities;++i){U32 slot{};
-        if(!r.identity(schema.identities[i].address,slot)||slot!=i)return false;}
-    for(U32 i=0;i<structures;++i){metadata::Structure current{};
-        if(!r.structure(schema.identities[schema.structures[i].identity].address,current)||
-           !metadata::same_structure(current,schema.structures[i]))return false;}
-    for(U32 i=0;i<fields;++i){metadata::Property current{};
-        if(!r.property(schema.identities[schema.fields[i].identity].address,current)||
-           !metadata::same_property(current,schema.fields[i]))return false;}
-    for(U32 i=0;i<schema.name_count;++i){metadata::NameText current{};
-        if(!metadata::fresh_name(schema.names,schema.name_text[i].index,current)||
-           !metadata::same_name_text(current,schema.name_text[i]))return false;}
-    metadata::Table objects{},names{};
-    return base==schema.module_base&&metadata::tables(base,objects,names)&&
-        metadata::same_table(objects,schema.objects)&&metadata::same_table(names,schema.names)&&
-        schema.failure.reason==metadata::Reason::none;
-}
-template<std::size_t N>bool core_struct(metadata::Reader& r,metadata::Property const& property,
-    wchar_t const(&label)[N]) noexcept {
-    uptr structure{};U32 slot{},kind{},owner{},owner_kind{},package{},extent{};
-    return weaponhand::core_type(r,property.type,L"StructProperty")&&property.element_bytes==12&&
-        r.at(r.result.identities[property.identity].address,0xd0,structure)&&r.path(structure,slot)&&r.named(slot,label)&&
-        r.path(r.result.identities[slot].klass,kind)&&weaponhand::core_type(r,kind,L"ScriptStruct")&&
-        r.path(r.result.identities[slot].outer,owner)&&r.named(owner,L"Object")&&
-        r.path(r.result.identities[owner].klass,owner_kind)&&weaponhand::core_type(r,owner_kind,L"Class")&&
-        r.path(r.result.identities[owner].outer,package)&&r.named(package,L"Core")&&
-        !r.result.identities[package].outer&&r.at(structure,0x88,extent)&&extent==12;
-}
-bool socket_getter_schema(playground::Args const& call,metadata::Reader& r,U32& return_mask) noexcept {
-    if(!call.valid||!call.r.function||call.r.size>4096)return false;
-    U32 fn{},kind{},owner{},package{};metadata::Structure structure{};
-    if(!r.path(call.r.function,fn)||!r.named(fn,L"GetSocketWorldLocationAndRotation")||
-       !r.path(r.result.identities[fn].klass,kind)||!weaponhand::core_type(r,kind,L"Function")||
-       !r.path(r.result.identities[fn].outer,owner)||!r.named(owner,L"SkeletalMeshComponent")||
-       !r.path(r.result.identities[owner].outer,package)||!r.named(package,L"Engine")||
-       r.result.identities[package].outer||!r.structure(call.r.function,structure))return false;
-    std::uint16_t parameter_bytes{},return_offset{};
-    if(!r.at(call.r.function,0x106,parameter_bytes)||parameter_bytes!=call.r.size||
-       !r.at(call.r.function,0x108,return_offset))return false;
-    unsigned found{};std::array<uptr,16> visited{};unsigned count{};
-    for(auto child=structure.children;child;){
-        if(count==visited.size())return false;
-        for(unsigned i=0;i<count;++i)if(visited[i]==child)return false;
-        visited[count++]=child;metadata::Property property{};
-        if(!r.property(child,property)||r.result.identities[property.identity].outer!=call.r.function||
-           property.dimension!=1||!metadata::property_fits(property,structure.extent)||
-           ((property.flags&0x80)&&!metadata::property_fits(property,parameter_bytes)))return false;
-        if(r.result.field_count==r.result.fields.size())return false;
-        r.result.fields[r.result.field_count++]=property;
-        if(property.flags&0x80){
-            unsigned bit{};
-            if(r.named(property.identity,L"InSocketName")&&weaponhand::core_type(r,property.type,L"NameProperty")&&
-               property.element_bytes==8&&(property.flags&0x580)==0x80)bit=1;
-            else if(r.named(property.identity,L"OutLocation")&&core_struct(r,property,L"Vector")&&
-               (property.flags&0x580)==0x180)bit=2;
-            else if(r.named(property.identity,L"OutRotation")&&core_struct(r,property,L"Rotator")&&
-               (property.flags&0x580)==0x180)bit=4;
-            else if(r.named(property.identity,L"ReturnValue")&&weaponhand::core_type(r,property.type,L"BoolProperty")&&
-               property.element_bytes==4&&(property.flags&0x480)==0x480&&property.offset==return_offset){
-                if(!r.at(child,0xd0,return_mask)||!return_mask||(return_mask&(return_mask-1)))return false;
-                bit=8;
-            }else if(r.named(property.identity,L"Space")&&weaponhand::core_type(r,property.type,L"IntProperty")&&
-               property.element_bytes==4&&(property.flags&0x590)==0x90){
-                // Optional coordinate-space argument stays at its ordinary
-                // zero/world default in Args' zero-initialized parameter block.
-                bit=16;
-            }else return false;
-            if(found&bit)return false;found|=bit;
-        }
-        child=property.next;
-    }
-    return (found&15)==15&&retained_metadata(r);
-}
+#include "weapon_muzzle_getter_call.inl"
 bool configured_muzzle(hand::Frame const& frame,Name& name) noexcept {
     metadata::Snapshot schema{};schema.module_base=base;metadata::Reader r{schema,metadata::Stage::final_check};
     weaponhand::BoolField field{};metadata::RawName value{},again{};metadata::NameText text{};
@@ -243,18 +169,21 @@ bool prepare_current(hand::Frame const& frame,hand::GripGameState const& game) n
     prepare_stage=3;
     playground::Args call(candidate.asset.component.address,L"GetSocketWorldLocationAndRotation");
     metadata::Snapshot schema{};schema.module_base=base;metadata::Reader r{schema,metadata::Stage::final_check};U32 mask{};
-    if(!metadata::tables(base,schema.objects,schema.names)||!socket_getter_schema(call,r,mask))return false;
+    SocketGetterLayout arguments{},returned{};
+    if(!metadata::tables(base,schema.objects,schema.names)||!socket_getter_schema(call,r,mask,&arguments))return false;
     prepare_stage=4;
-    if(!call.set(L"InSocketName",muzzle).valid)return false;
+    if(!arguments.write(call,SocketGetterLayout::input_name,muzzle))return false;
     const auto identities_before=schema.identity_count;
     sampling=true;const bool ran=call.run();sampling=false;
     U32 after_mask{};
-    if(!ran||!socket_getter_schema(call,r,after_mask)||schema.identity_count!=identities_before||
-       mask!=after_mask||(call.output<U32>()&mask)==0)return false;
+    U32 result{};
+    if(!ran||!socket_getter_schema(call,r,after_mask,&returned)||schema.identity_count!=identities_before||
+       arguments.function!=returned.function||arguments.bytes!=returned.bytes||arguments.offsets!=returned.offsets||
+       mask!=after_mask||!returned.read(call,SocketGetterLayout::result,result)||(result&mask)==0)return false;
     prepare_stage=5;
-    candidate.origin=call.output<playground::Vector>(L"OutLocation");
+    if(!returned.read(call,SocketGetterLayout::output_location,candidate.origin)||
+       !returned.read(call,SocketGetterLayout::output_rotation,candidate.socket_rotation))return false;
     candidate.original_socket_origin=candidate.origin;
-    candidate.socket_rotation=call.output<playground::Rotation>(L"OutRotation");
     if(!std::isfinite(candidate.origin.x)||!std::isfinite(candidate.origin.y)||!std::isfinite(candidate.origin.z)||
        !aim_from_socket(candidate.socket_rotation,candidate.aim))return false;
 #if defined(GEARS_PLAYGROUND_NATIVE_LANCER_FOLLOW)
@@ -318,6 +247,19 @@ bool ready_for(hand::Frame const& frame,std::int64_t dispatch_reserve_ns) noexce
     // and the real return consumers. This never renews a producer timestamp.
     return dispatch_reserve_ns>=0&&dispatch_reserve_ns<=100000000&&now<=INT64_MAX-dispatch_reserve_ns&&
         live_sample(muzzle_sample,now+dispatch_reserve_ns)&&hand::same_frame(frame,muzzle_sample.source);
+}
+bool readiness_evidence(hand::Frame const& frame,std::int64_t reserve,ReadinessEvidence& out) noexcept {
+    out={};if(!weaponhand::current_gt(nullptr)||reserve<0||reserve>100000000)return false;
+    const auto now=weaponhand::clock_ns(nullptr);if(now>INT64_MAX-reserve)return false;
+    const auto sample=muzzle_sample;
+    const auto age=[&](std::int64_t stamp)noexcept{return stamp>0&&now>=stamp?now-stamp:-1;};
+    out.valid=sample.valid;out.same_frame=hand::same_frame(frame,sample.source);
+    out.frame_current=hand::frame_active(frame,now);out.reserved_frame_current=hand::frame_active(frame,now+reserve);
+    out.held=held_current(sample);out.registration=weaponhand::client.registration_alive(frame.key.registration_cookie,frame.key.native_started_qpc);
+    out.live=live_sample(sample,now);out.reserved_live=live_sample(sample,now+reserve);
+    out.epoch=sample.epoch==control_epoch.load(std::memory_order_acquire);
+    out.sync_age=age(frame.controllers.sync_ns);out.stereo_age=age(frame.stereo.received_ns);out.frame_age=age(frame.now_ns);
+    out.sample_age=age(sample.sampled_ns);out.render_age=age(sample.render_acquisition_ns);return true;
 }
 
 namespace callabi=gears_weapon_call;
@@ -450,6 +392,10 @@ void schema_fingerprint(metadata::Snapshot const& schema,Fingerprint& hash) noex
         hash.word(field.dimension);hash.word(field.element_bytes);hash.word(field.offset);}
 }
 bool typed_result(callabi::Invocation const& call,MuzzleSample const& sample,ReturnSignature& out) noexcept {
+    // This function only reads metadata. Exact visited-address membership is
+    // query-local; it ends before any engine call and never retains selectors,
+    // names, values, input or a previous result across queries/callbacks.
+    weapon_metadata_parse::TraversalQuery traversal;
     out={};metadata::Snapshot schema{};schema.module_base=base;metadata::Reader r{schema,metadata::Stage::function_path};
     U32 fn{},kind{},owner{},owner_kind{},package{};
     if(!call.result||(call.result&3)||call.result>UINTPTR_MAX-12||!metadata::tables(base,schema.objects,schema.names)||

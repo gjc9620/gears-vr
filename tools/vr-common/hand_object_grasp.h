@@ -7,11 +7,63 @@
 namespace gears_hand_object_grasp {
 namespace vr=gears_vr;namespace hand=gears_weapon_hand;
 enum class Kind:unsigned {none,magazine,loading,starter,support};
-struct Target {Kind kind{};vr::Pose grip{};double weight{};};
+// Only an acquisition preference at a REAL released part. No lease, pose,
+// travel or action survives here. Reflected busy flags and neutral fitting
+// publication can disappear independently of the user's stationary hand.
+struct ReleasedSocket {
+    hand::Frame source{};vr::Vector anchor{};std::uint64_t hold{};bool known{};
+    void clear() noexcept {known=false;hold=0;}
+    bool bind(hand::Frame const& f,std::uint64_t owner_hold) noexcept {
+        clear();const auto& input=f.controllers.hands[0];
+        if(!owner_hold||!f.left_tracked||!f.left_grip_known||input.squeeze_active!=1||
+           hand::control_held(input,vr::control_squeeze)||
+           !vr::controller_pose_usable(input.grip,input.grip_flags,input.grip_active))return false;
+        source=f;anchor=input.grip.position;hold=owner_hold;known=true;return true;
+    }
+    bool retained(hand::Frame const& f,std::uint64_t owner_hold) noexcept {
+        const auto& a=source;const auto& input=f.controllers.hands[0];
+        const auto p=input.grip.position;
+        const bool same=known&&hold==owner_hold&&f.left_tracked&&f.left_grip_known&&input.squeeze_active==1&&
+            vr::controller_pose_usable(input.grip,input.grip_flags,input.grip_active)&&
+            a.key.game_pid==f.key.game_pid&&a.key.game_start==f.key.game_start&&
+            a.key.native_started_qpc==f.key.native_started_qpc&&a.key.registration_cookie==f.key.registration_cookie&&
+            a.key.lifecycle==f.key.lifecycle&&a.key.world_generation==f.key.world_generation&&
+            hand::same(a.world,f.world)&&hand::same(a.pawn,f.pawn)&&hand::same(a.weapon,f.weapon)&&
+            a.stereo.session==f.stereo.session&&a.stereo.space_epoch==f.stereo.space_epoch&&
+            a.controllers.input_epoch==f.controllers.input_epoch&&a.controllers.profile_generation==f.controllers.profile_generation&&
+            std::hypot(std::hypot(p.x-anchor.x,p.y-anchor.y),p.z-anchor.z)<=.03;
+        if(!same)clear();return same;
+    }
+};
+// Neutral proximity has no action owner. Retain its cosmetic socket across
+// small boundary jitter, but allow a deliberate approach to the other nearby
+// part. An unconditional22cm incumbent kept handguard fitting when reaching C.
+inline Kind proximity_socket(Kind incumbent,double support,double starter,
+    double support_radius,double starter_radius,bool stationary_starter=false) noexcept {
+    for(double v:{support,starter,support_radius,starter_radius})if(!std::isfinite(v)||v<0)return Kind::none;
+    const auto nearest=support<=support_radius&&support<=starter?Kind::support:
+        starter<=starter_radius?Kind::starter:Kind::none;
+    const double old=incumbent==Kind::support?support:starter;
+    if((incumbent==Kind::support||incumbent==Kind::starter)&&old<=.22){
+        //70956: unfolding/ready animation changes the rendered distances even
+        //when the physical hand has not moved. Preserve that C hover only;
+        //the caller still validates current geometry, identity and actual
+        //physical displacement. No action/grasp or wider contact is supplied.
+        if(incumbent==Kind::starter&&stationary_starter)return incumbent;
+        const double next=nearest==Kind::support?support:starter;
+        if(nearest!=Kind::none&&nearest!=incumbent&&next+.03<old)return nearest;
+        return incumbent;
+    }
+    return nearest;
+}
+struct Target {Kind kind{};vr::Pose grip{};double weight{};bool passive_socket{};};
 // support carries a fixed foregrip-in-right-grip pose in metres; Native
 // evaluates it from BOTH current physical hands in the one C0 solve.
-struct Request {unsigned size{sizeof(Request)},version{1};hand::Frame source{};Kind kind{};vr::Pose grip{};};
-inline constexpr char publish_export[]="GearsVrPublishLancerGraspV1";
+// A proximity request contains a WORLD socket and grants skin fitting only.
+// Ordinary support still contains its relative two-hand geometry and requires
+// an actual support lease. Both binaries must agree on this V2 layout.
+struct Request {unsigned size{sizeof(Request)},version{2};hand::Frame source{};Kind kind{};vr::Pose grip{};unsigned proximity{};};
+inline constexpr char publish_export[]="GearsVrPublishLancerGraspV2";
 #if defined(_WIN32)
 using Publish=bool(__cdecl*)(Request const*) noexcept;
 #endif

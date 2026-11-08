@@ -28,7 +28,7 @@ public:
     }
     bool show_panel() const {return enabled_&&!cancelled_&&mode_!=gears_menu::Mode::loading_display&&
         (mode_==gears_menu::Mode::main_menu||mode_==gears_menu::Mode::pause_menu||
-         mode_==gears_menu::Mode::death_menu||(!handed_off_&&!resume_required_));}
+         mode_==gears_menu::Mode::death_menu||(!reversible_&&!handed_off_&&!resume_required_));}
     // All menus use the same fresh whole-window theater capture. A paused
     // native stereo scene may stop producing HUD pixels; it is not the menu
     // image source. Gameplay still needs a NEW ticket after the menu epoch.
@@ -48,8 +48,12 @@ public:
     // A generic session-owned card can fill an empty startup frame. It grants
     // no authority to show a game image, and a real projection retires it forever.
     bool show_startup_wait(StartupWaitContext const& c)const{
-        return enabled_&&!cancelled_&&!handed_off_&&(show_panel()||mode_==gears_menu::Mode::loading_display||
-            (mode_==gears_menu::Mode::gameplay&&resume_required_))&&
+        // A session-owned startup card needs no game-image authority. In the
+        // reversible product path UNKNOWN/GAMEPLAY must never inherit the
+        // startup whole-window capture: it may already contain third person.
+        // A real menu capture wins via layer_count; a real projection retires
+        // this card permanently, including after later acquisition failures.
+        return enabled_&&!cancelled_&&!handed_off_&&mode_!=gears_menu::Mode::movie_display&&
             c.layer_count==0&&c.should_render&&
             c.session_visible&&c.running&&!c.stop_requested&&!c.producer_stopped&&!c.loss&&
             !c.structural_error&&c.ordinary_wait;

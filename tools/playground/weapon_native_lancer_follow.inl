@@ -74,6 +74,9 @@ bool support_geometry(hand::Frame const& f,gears_vr::Pose& out) noexcept try {
     if(!gears_weapon_two_hand::geometry(pose))return false;out=pose;return true;
 }catch(...){return false;}
 bool fill_support_mount(hand::Frame const& f,hand::GripGameState& game) noexcept {
+    // Owner contract: neutral proximity fits the hand; only large-object
+    // Grip, not an index-trigger pinch, may steer this secondary handguard.
+    if(hand::index_pinch(f))return false;
     gears_vr::Pose g{};if(!support_geometry(f,g))return false;
     game.mount={};game.mount.support_grip_in_weapon={g.position.y,g.position.z,-g.position.x};
     game.mount.support_length_tolerance_metres=.22;game.mount.maximum_support_correction_radians=.8;
@@ -224,9 +227,23 @@ bool bool_arg(playground::Args& call,const wchar_t* field,bool value) noexcept {
     bits=value?bits|mask:bits&~mask;
     std::memcpy(call.r.params+offset,&bits,4);return true;
 }
+// Existing readback observes the first actual restore read, not an extra
+// complete component/metadata pass before it. This stack-local output is
+// never an input to the lease, its comparisons or any writer/permission.
+struct RestoreReadback {
+    vrequip::MeshPoseProbe pose{};
+    std::int64_t read_ns{};
+    bool known{};
+};
 struct Backend {
     Key key{};
-    bool read(State& out) noexcept {return value_of(key,out);}
+    RestoreReadback* first_read{};
+    bool read(State& out) noexcept {
+        const bool capture=first_read&&!first_read->known;
+        const bool known=value_of(key,out,capture?&first_read->pose:nullptr);
+        if(known&&capture){first_read->read_ns=nativeequipment::clock_ns(nullptr);first_read->known=true;}
+        return known;
+    }
     bool set_absolute(Key const& wanted_key,Value const& expected,Absolute const& wanted) noexcept {
         State before{};if(!(wanted_key==key)||!read(before)||!gears_weapon::mesh_component_exact(before.value,expected))return false;
         playground::Args call(key.component.address,L"SetAbsolute");
@@ -259,30 +276,37 @@ void pre_original_tick(wchar_t const* observation_phase) noexcept {
         if(lease.has_snapshot())lease.reset();
         visible.store(false,std::memory_order_release);return;
     }
-    Backend backend{lease.key()};
     // SetTranslation updates component fields immediately, but UE3 may not
     // refresh LocalToWorld until a later scene update. Read the selected
     // previous pose before restoring the lease, then compare it by its own
     // frame/sequence rather than treating the immediate matrix as final.
-    vrequip::MeshPoseProbe delayed{};
-    State delayed_state{};
     const auto prior=deferred_readback;
     deferred_readback={};
-    const bool delayed_known=prior.valid&&prior.key==lease.key()&&
-        value_of(prior.key,delayed_state,&delayed);
+    RestoreReadback restore_readback{};
+    Backend backend{lease.key(),prior.valid&&prior.key==lease.key()?&restore_readback:nullptr};
     gears_committed_hand::Frame latest{};gears_vr::Vector palm{},contact{};
-    const bool endpoint_known=prior.valid&&handrig::read_endpoint(latest)&&
+    // These two extra observations feed ONLY the diagnostic contact row.
+    // Keep the actual restore/read/compare/identity transaction on EVERY tick;
+    // do not spend every new input Frame on unrelated mesh/bone cross-checks.
+    // Four early samples and one per128 valid readbacks retain bounded review.
+    static std::uint64_t contact_observations{};
+    const bool observe_contact=prior.valid&&log_file&&
+        (contact_observations++<4||contact_observations%128==0);
+    const bool endpoint_known=observe_contact&&handrig::read_endpoint(latest)&&
         hand::same(latest.weapon,prior.key.weapon)&&hand::same(latest.mesh,prior.hand_mesh)&&
         latest.hold_generation==prior.key.hold_generation;
-    const bool palm_known=delayed_known&&prior.endpoint_serial&&observed_palm(prior.hand_mesh,palm);
+    const bool palm_observed=observe_contact&&prior.endpoint_serial&&observed_palm(prior.hand_mesh,palm);
+    const bool clean=lease.restore(backend);
+    const bool delayed_known=restore_readback.known;
+    const auto& delayed=restore_readback.pose;
+    const bool palm_known=delayed_known&&palm_observed;
     gears_vr::Vector local_contact{};gears_vr::Matrix contact_basis{};
-    const bool contact_known=delayed_known&&prior.endpoint_serial&&gears_weapon_lancer_contact::authored(local_contact,contact_basis);
+    const bool contact_known=observe_contact&&delayed_known&&prior.endpoint_serial&&gears_weapon_lancer_contact::authored(local_contact,contact_basis);
     if(contact_known){const auto& m=delayed.local_to_world;
         contact={m[12]+m[0]*local_contact.x+m[4]*local_contact.y+m[8]*local_contact.z,
             m[13]+m[1]*local_contact.x+m[5]*local_contact.y+m[9]*local_contact.z,
             m[14]+m[2]*local_contact.x+m[6]*local_contact.y+m[10]*local_contact.z};}
-    const auto readback_ns=nativeequipment::clock_ns(nullptr);
-    const bool clean=lease.restore(backend);
+    const auto readback_ns=restore_readback.known?restore_readback.read_ns:nativeequipment::clock_ns(nullptr);
     if(prior.valid&&log_file){
         fwprintf(log_file,L"native_lancer_follow_readback frame=%llu source_sequence=%llu age_ns=%lld known=%u target_world=%.9g,%.9g,%.9g component_translation=%.9g,%.9g,%.9g gun_world=%.9g,%.9g,%.9g gun_basis=%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g restored=%u\n",
             prior.frame,prior.input_sequence,readback_ns-prior.applied_ns,unsigned(delayed_known),
@@ -294,10 +318,10 @@ void pre_original_tick(wchar_t const* observation_phase) noexcept {
             double(delayed.local_to_world[8]),double(delayed.local_to_world[9]),double(delayed.local_to_world[10]),
             unsigned(clean));
         fflush(log_file);
-        fwprintf(log_file,L"native_lancer_contact_readback phase=%ls frame=%llu source_sequence=%llu selected_serial=%llu latest_serial=%llu latest_known=%u palm_known=%u contact_known=%u selected_grip=%.9g,%.9g,%.9g latest_grip=%.9g,%.9g,%.9g observed_palm=%.9g,%.9g,%.9g observed_contact=%.9g,%.9g,%.9g\n",
+        if(observe_contact){fwprintf(log_file,L"native_lancer_contact_readback phase=%ls frame=%llu source_sequence=%llu selected_serial=%llu latest_serial=%llu latest_known=%u palm_known=%u contact_known=%u selected_grip=%.9g,%.9g,%.9g latest_grip=%.9g,%.9g,%.9g observed_palm=%.9g,%.9g,%.9g observed_contact=%.9g,%.9g,%.9g\n",
             observation_phase,prior.frame,prior.input_sequence,prior.endpoint_serial,latest.serial,unsigned(endpoint_known),unsigned(palm_known),unsigned(contact_known),
             prior.selected_grip.x,prior.selected_grip.y,prior.selected_grip.z,latest.right_grip.position.x,latest.right_grip.position.y,latest.right_grip.position.z,
-            palm.x,palm.y,palm.z,contact.x,contact.y,contact.z);fflush(log_file);
+            palm.x,palm.y,palm.z,contact.x,contact.y,contact.z);fflush(log_file);}
     }
     if(clean){++restores;visible.store(false,std::memory_order_release);
         if(lease.faulted())faulted=true;

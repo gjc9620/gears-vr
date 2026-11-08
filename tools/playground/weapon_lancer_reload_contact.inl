@@ -5,6 +5,9 @@ namespace hand=gears_weapon_hand;
 gears_weapon::LancerContactRoute mechanism_route;
 bool dispatch_enabled{true}; // Same production consumer; package promotion follows runtime evidence.
 bool waiting_ammo{};
+// A known empty shoulder attempt retires only that real press. It must not
+// keep publishing an object candidate/Grab Pose for a nonexistent magazine.
+gears_weapon::ReloadSupplyRejection empty_supply;
 bool resume_original{};
 unsigned sample_failure{},match_status{};
 std::int64_t last_geometry_ns{};
@@ -60,6 +63,7 @@ void committed(hand::Frame const& source,hand::Decision const& decision) noexcep
        source.controllers.sync_ns>0&&source.controllers.sync_ns<=INT64_MAX-250000000){
         held=decision.lease;held_identity=lancerreload_inventory::identity(source);held_after_frame=source.key.frame;
         preparing=true;preparation_until=source.controllers.sync_ns+250000000;
+        mechanism_route.remember_grant(source,decision,gears_weapon::LancerContact::magazine);
     }
     // A grant can precede PlayerTick by an entire owner frame. Record its
     // existing lease now, without acquiring a component or consuming ammo.
@@ -73,7 +77,8 @@ void committed(hand::Frame const& source,hand::Decision const& decision) noexcep
     // arbitrated grant; regrasp_original still authenticates the actual item,
     // fresh physical pair and insertion observer before any mechanical work.
     if(resume_original&&decision.status==hand::DecisionStatus::granted&&decision.new_grant&&
-       decision.lease.kind==hand::LeaseKind::magazine)retain(source,decision);
+       decision.lease.kind==hand::LeaseKind::magazine&&retain(source,decision))
+        mechanism_route.remember_grant(source,decision,gears_weapon::LancerContact::magazine);
 }
 bool completed_sample(gears_committed_interaction::Frame const& actual,bool grip_down,
     gears_weapon::LancerInsertionSample& out) noexcept {
@@ -124,15 +129,51 @@ bool retained_observation(gears_committed_interaction::Frame const& actual,hand:
             weaponhand::clock_ns(nullptr),actual.right.stereo.source==gears_vr::StereoSource::MetaOperatorSimulated);
 }
 void propose(hand::Frame const& f,hand::GripGameState& game) noexcept {
+    // First-frame handoff: the real grant already passed prepare/commit.
+    // Keep its original proposal while our own display reparent/move occurs;
+    // never promote an incumbent until a later owner frame. Actual current
+    // identity/game/input/freshness checks still run in the caller, and this
+    // exact-source receipt cannot acquire a different object or another press.
+    if(dispatch_enabled&&game.known&&game.main_hand_held&&!game.busy&&!game.animation_owns_hands&&
+       game.kind==hand::WeaponKind::firearm&&held_after_frame==f.key.frame&&
+       held_identity==lancerreload_inventory::identity(f)&&
+       (preparing||lancerreload_visual::active)&&
+       mechanism_route.preserves_granted_proposal(f,held,gears_weapon::LancerContact::magazine)){
+        game.request_magazine=true;game.magazine_observation_pending=false;return;
+    }
     struct Tag {
         hand::Frame const& frame;hand::GripGameState& game;
         gears_weapon::LancerContact purpose{gears_weapon::LancerContact::magazine};
         double magazine_distance{1e9};
         ~Tag(){
+            // Owner auto-socket contract: a neutral hand already selected a
+            // known support socket. On the real Grip edge, its CURRENT contact
+            // may drive that socket even if the unrelated magazine pair has
+            // not completed. No known magazine/ammo request, existing C socket, incumbent,
+            // changed hold/basis, stale input or cold held press is bypassed.
+            // Affinity returns no pose or lease; Native still arbitrates and
+            // revalidates the exact current support proposal at commit.
+            const bool support_selected=lancer_grasp::support_socket_preferred(frame,game);
+            if(game.magazine_observation_pending&&support_selected){
+                game.magazine_observation_pending=false;
+                mechanism_route.propose(frame,0);return;
+            }
+            lancersaw_starter::observe_route(frame,game.magazine_observation_pending,lancer_grasp::selected_starter(frame));
             if(seated_hold)return; // No new mechanism proposals on this consumed press.
             if(game.magazine_observation_pending){
+                // A selected C socket has its OWN current geometry/contact
+                //proposal. An unavailable unrelated magazine pair cannot
+                //consume that real Grip before this known part is considered.
+                //Selection alone never grants anything: the unchanged C
+                //proposal and Native commit still prove the actual contact.
+                if(lancer_grasp::selected_starter(frame)&&lancersaw_starter::propose(frame,game,nullptr)){
+                    const auto part=mechanism_route.propose(frame,unsigned(gears_weapon::LancerContact::starter));
+                    game.request_magazine=part==gears_weapon::LancerContact::starter;
+                    if(game.request_magazine)game.magazine_observation_pending=false;
+                    return;
+                }
                 // Preserve only this press's bounded intent. Do not turn an
-                // unknown magazine pair into a different starter acquisition.
+                // unknown magazine pair/unknown C contact into a new action.
                 // An already owned C grasp is independent of that magazine
                 // observation. Omission here would manufacture a lease loss
                 // while the authenticated initiating control remains held.
@@ -146,7 +187,12 @@ void propose(hand::Frame const& f,hand::GripGameState& game) noexcept {
                 // volumes choose the actually nearer part, not an ambiguous
                 // multi-purpose grant or a hidden priority for C.
                 if(contacts==unsigned(gears_weapon::LancerContact::magazine))
-                    contacts=magazine_distance<=starter_distance?contacts:unsigned(gears_weapon::LancerContact::starter);
+                    // A hand already auto-fitted to C should grasp C on the
+                    // real Grip edge. Cosmetic unfolding changes the visible
+                    // point's distance; it must not turn that input into a
+                    // magazine grab. C's actual contact above is still needed.
+                    contacts=!lancer_grasp::selected_starter(frame)&&magazine_distance<=starter_distance?
+                        contacts:unsigned(gears_weapon::LancerContact::starter);
                 else contacts|=unsigned(gears_weapon::LancerContact::starter);
             }
             const auto selected=mechanism_route.propose(frame,contacts);
@@ -188,6 +234,7 @@ void propose(hand::Frame const& f,hand::GripGameState& game) noexcept {
         return; // Preserve existing conflict, never overwrite another holder.
     }
     if(waiting_ammo){
+        if(empty_supply.rejected(f.key.lifecycle,f.press_token))return;
         if(!lancerreload_visual::active||!hand::same(f.weapon,lancerreload_visual::saved.weapon)||
            !hand::same(f.pawn,lancerreload_visual::saved.pawn))return;
         const gears_vr::Pose body{f.stereo.head.position,f.reference.orientation};

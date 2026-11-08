@@ -59,6 +59,7 @@ class Session:
                     getattr(args,'prepared_original_part_inputs',None))
                 self.state['weapon_part_inputs']=prepared['magazine']
                 self.state['lancer_handle_inputs']=prepared['lancer_handle']
+                self.state['lancer_magazine_inputs']=prepared['lancer_magazine']
                 self.original_parts_ready=prepared['magazine']['prepared']
             except (OSError,ValueError,MemoryError) as error:
                 # Preserve first-person and existing equipment. A failed

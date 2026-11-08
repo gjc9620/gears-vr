@@ -30,6 +30,7 @@ int main(){
     using Wait=StartupPanelPolicy::StartupWaitContext;
     const Wait ready{0,true,true,true,false,false,false,false,true};
     StartupPanelPolicy waiting(true,true);
+    assert(!waiting.show_panel()); // Unknown pixels may already be gameplay.
     assert(waiting.show_startup_wait(ready)); // UNKNOWN permits only this generic card.
     for(unsigned fault=0;fault<9;++fault){auto bad=ready;
         switch(fault){case 0:bad.layer_count=1;break;case 1:bad.should_render=false;break;
@@ -51,9 +52,19 @@ int main(){
     before_menu.observe(gears_menu::Mode::main_menu,100);
     assert(before_menu.show_startup_wait(ready)&&before_menu.minimum_sample_ns()==100);
     before_menu.observe(gears_menu::Mode::unknown,101);
-    assert(!before_menu.show_startup_wait(ready)); // Still obeys show_panel().
+    assert(before_menu.show_startup_wait(ready)&&!before_menu.show_panel()); // Generic card, never stale menu/game pixels.
     before_menu.observe(gears_menu::Mode::pause_menu,102);
     assert(before_menu.show_startup_wait(ready)); // Fresh WGC pause panel may still be acquiring.
+    StartupPanelPolicy first_gameplay(true,true);
+    first_gameplay.observe(gears_menu::Mode::gameplay,103);
+    assert(!first_gameplay.show_panel()&&first_gameplay.show_startup_wait(ready));
+    assert(!first_gameplay.projection_rendered(false));
+    first_gameplay.observe(gears_menu::Mode::unknown,104);
+    assert(!first_gameplay.show_panel()&&first_gameplay.show_startup_wait(ready));
+    first_gameplay.observe(gears_menu::Mode::acquisition_wait,105);
+    assert(!first_gameplay.show_panel()&&first_gameplay.show_startup_wait(ready));
+    first_gameplay.observe(gears_menu::Mode::gameplay,106);
+    assert(first_gameplay.projection_rendered(true)&&!first_gameplay.show_startup_wait(ready));
     StartupPanelPolicy disabled_wait(false,true),cancelled_wait(true,true);
     cancelled_wait.cancel();
     assert(!disabled_wait.show_startup_wait(ready)&&!cancelled_wait.show_startup_wait(ready));
@@ -183,7 +194,7 @@ int main(){
     assert(loading_startup.show_startup_wait(ready)&&loading_startup.minimum_sample_ns()==4200);
     loading_startup.menu_rendered();assert(!loading_startup.show_transition_panel()); // No fabricated menu witness.
     loading_startup.observe(Mode::unknown,4300);
-    assert(!loading_startup.show_startup_wait(ready)&&!loading_startup.show_transition_panel());
+    assert(loading_startup.show_startup_wait(ready)&&!loading_startup.show_transition_panel());
     loading_startup.observe(Mode::gameplay,4400);
     assert(loading_startup.allow_projection()&&loading_startup.minimum_sample_ns()==4400);
     assert(!loading_startup.show_transition_panel()&&loading_startup.show_startup_wait(ready));

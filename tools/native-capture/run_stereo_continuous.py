@@ -295,8 +295,12 @@ def startup_panel_submitted(path):
     for line in path.read_text(encoding='utf-8',errors='replace').splitlines():
         try:value=json.loads(line)
         except ValueError:continue
-        if (isinstance(value,dict) and value.get('startup_menu_first_frame') is True
-                and value.get('end_frame_succeeded') is True and value.get('panel_counts_as_stereo') is False):return True
+        if not isinstance(value,dict):continue
+        menu=value.get('startup_menu_first_frame') is True
+        card=(value.get('startup_wait_card_first_frame') is True and value.get('source')=='session_owned_card'
+              and type(value.get('observed_ns')) is int and value['observed_ns']>0)
+        if ((menu or card) and value.get('end_frame_succeeded') is True
+                and value.get('panel_counts_as_stereo') is False):return True
     return False
 
 
@@ -405,7 +409,8 @@ def continuous_passed(state):
     startup_ok=(not state.get('startup_menu_enabled') and recovery is False) or (
         state.get('startup_menu_enabled') is True
         and state.get('startup_panel_submitted') is True and menu.get('stereo_handoff') is True
-        and menu.get('startup_quad_layers',0)>0 and handoff.get('end_frame_succeeded') is True
+        and (menu.get('startup_quad_layers',0)>0 or menu.get('startup_wait_card_layers',0)>0)
+        and handoff.get('end_frame_succeeded') is True
         and handoff.get('ticketed_projection_rendered') is True and handoff_mode_ok)
     return bool(state.get('native_cleanup_verified') and state.get('entry_restore_verified')
                 and startup_ok

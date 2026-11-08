@@ -756,6 +756,22 @@ public:
                 source.left_tracked&&source.left_grip_known&&source.left_grip_down;
         }catch(...){return false;}
     }
+    // Neutral proximity fitting has no left action lease. It may not borrow
+    // part/support admission or fabricate a press. The caller publishes only
+    // a cosmetic socket to the existing C0 solver, never to the action owner.
+    bool admit_socket_visibility(Frame const& source) noexcept {
+        try {
+            if(reentrant()||action_barrier()||!current_thread(source))return false;
+            std::lock_guard<std::mutex> lock(mutex_);
+            return published_&&!stopping_&&state_.load()==State::active&&!aux_debt_.load()&&
+                have_commit_&&!phase_invalid_&&!action_invalidation_pending_&&!action_debt_.load()&&
+                revocation_.frame_current(frame_stamp_)&&active_now(source,backend_.clock_ns(backend_.context))&&
+                same_frame(source,frozen_)&&equal_bytes(source,frozen_)&&same(committed_.key,source.key)&&
+                committed_.lease.kind==LeaseKind::none&&source.left_tracked&&
+                source.controllers.hands[0].squeeze_active==1&&
+                !control_held(source.controllers.hands[0],gears_vr::control_squeeze);
+        }catch(...){return false;}
+    }
     bool admit_support_visibility(Frame const& source) noexcept {
         try {
             if(reentrant()||action_barrier()||!current_thread(source))return false;

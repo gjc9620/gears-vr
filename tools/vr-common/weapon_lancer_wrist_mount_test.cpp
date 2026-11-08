@@ -49,20 +49,33 @@ int main(){
         authored::Mount left{};CHECK(authored::marcus115(authored::marcus115_signature,authored::Side::left,1,100,left));
         const auto orientation=gears_vr::multiply(fore::wrist_in_mesh(),gears_vr::inverse(left.calibration.grip_to_wrist_rotation));
         const auto hand=target({grip,orientation},left.calibration,100);
-        // Reconstruct the actual curled-palm surface after calibration. It
-        // must lie ON the original ribbed fore-end, rather than verifying
-        // only that the wrist agrees with an old animation wrist target.
+        // Reconstruct the authored palm marker after calibration. This
+        // checks the contact transform only; actual45596's whole palm still
+        // crosses the gun despite marker coincidence. Full original skin
+        // fitting is a separate requirement, not proved by this CPU check.
         CHECK(close(add(hand.position,rotated(hand.orientation,fore::palm_surface_raw)),fore::surface_raw));
-        // The forearm/wrist long axis must point along the barrel, not up.
-        // Palm faces inward/upward at the lower side; fixed marker reaches
+        // The wrist approaches diagonally forward in the horizontal plane,
+        // not vertically/upward or backwards into the forearm.
+        // Palm faces upward from underneath; fixed marker reaches
         // the actual original fore-end surface after calibration.
-        CHECK(close(rotated(hand.orientation,{1,0,0}),{0,1,0}));
-        // Independently check a mostly inward palm with a modest upward
-        // cant, rather than accepting a vertical/upward wrist merely because
-        // the palm marker happens to meet the contact position.
+        const auto longitudinal=rotated(hand.orientation,{1,0,0});
+        CHECK(std::abs(longitudinal.z)<1e-8&&longitudinal.y>.3&&longitudinal.x<-.3);
+        // Original index-to-little knuckle row is wrist-local Z. It must
+        // extend along the handguard, not span its narrow cross-section.
+        const auto finger_row=rotated(hand.orientation,{0,0,1});
+        CHECK(std::abs(finger_row.z)<1e-8&&finger_row.y<-.7&&finger_row.x<0);
+        // Marcus LEFT thumb lies on wrist-local -Z. The owner5112dfd7
+        // reference requires that side toward the muzzle, with the other
+        // fingers wrapping the far side. An upward palm alone accepts the
+        // reversed hand; the old signed row check even demanded that error.
+        const auto thumb_side=rotated(hand.orientation,{0,0,-1});
+        CHECK(thumb_side.y>.7);
+        // Owner's underhand reference: upward palm, forward forearm,
+        // wrist below the contact. A side-facing fist is not acceptable even
+        // when the palm marker happens to meet the contact position.
         const auto normal=rotated(hand.orientation,{0,-1,0});
-        CHECK(normal.x<-.90&&std::abs(normal.y)<1e-8&&normal.z>.25&&normal.z<.45);
-        CHECK(hand.position.x>fore::surface_raw.x&&hand.position.z<fore::surface_raw.z);
+        CHECK(std::abs(normal.x)<1e-8&&std::abs(normal.y)<1e-8&&normal.z>.99);
+        CHECK(hand.position.z<fore::surface_raw.z-1.&&hand.position.z>fore::surface_raw.z-2.);
     }
     {
         const Pose tracking{{-4096,512,600},{0,0,0,1}};

@@ -19,6 +19,41 @@ h::Decision grant(h::Frame const& f){
     d.lease={h::LeaseKind::magazine,0,f.key.lifecycle,f.press_token};return d;
 }
 int main(){
+    unsigned handoff_cases{};
+    for(auto purpose:{P::magazine,P::charging,P::starter}){
+        Route route;auto f=frame();auto d=grant(f);
+        assert(!route.preserves_granted_proposal(f,d.lease,purpose));
+        assert(!route.remember_grant(f,d,purpose));
+        assert(route.propose(f,unsigned(purpose))==purpose);
+        assert(!route.preserves_granted_proposal(f,d.lease,purpose));
+        auto rejected=d;rejected.release_required=1;
+        assert(!route.remember_grant(f,rejected,purpose));
+        assert(route.remember_grant(f,d,purpose));
+        assert(route.preserves_granted_proposal(f,d.lease,purpose));++handoff_cases;
+        for(unsigned change=0;change<12;++change){
+            auto changed=f;auto held=d.lease;
+            switch(change){
+            case 0:++changed.key.frame;break;
+            case 1:++changed.key.lifecycle;break;
+            case 2:++changed.weapon.registry_index;break;
+            case 3:++changed.controllers.sequence;break;
+            case 4:++changed.controllers.sync_ns;break;
+            case 5:++changed.controllers.input_epoch;break;
+            case 6:++changed.stereo.space_epoch;break;
+            case 7:++changed.reference_generation;break;
+            case 8:++changed.press_token;break;
+            case 9:changed.left_grip_down=0;break;
+            case 10:changed.left_tracked=0;break;
+            case 11:++held.id;break;
+            }
+            assert(!route.preserves_granted_proposal(changed,held,purpose));++handoff_cases;
+        }
+        // A later real observation is still a later observation, not a replay.
+        auto newer=f;++newer.key.frame;
+        assert(route.propose(newer,0)==P::none);
+        assert(!route.preserves_granted_proposal(f,d.lease,purpose));
+        route.reset();assert(!route.preserves_granted_proposal(f,d.lease,purpose));
+    }
     for(auto purpose:{P::magazine,P::charging,P::starter}){
         Route route;auto f=frame();auto d=grant(f);
         assert(!route.grants(f,d,purpose));
@@ -68,4 +103,5 @@ int main(){
         assert(!route.grants(f,grant(f),P::magazine));
     }
     std::puts("Lancer contact purpose routing: exclusive grant, replay, overlap and identity checks passed");
+    std::printf("Committed-proposal observation handoff: %u cases; exact consumed source only, no new grant\n",handoff_cases);
 }

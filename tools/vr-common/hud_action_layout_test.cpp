@@ -42,5 +42,23 @@ int main(){
     // A changed owner/property must decline before invoking this raw restore.
     // The scalar journal itself never overwrites the unexpected value.
     assert(!s.restore(read,write)&&m.values[0]==731);
+    // One HUD float borrowed by an owned original reload-bar invocation.
+    // Partial/false stores, an inner inherited scale and foreign writes retain
+    // the same fail-closed journal semantics as the two-float action layout.
+    using Single=gears_hud_action_layout::FloatScope<1>;
+    auto single=[](){return Single{{{0x100}},{{960}},{{1920}},0};};
+    for(bool after:{false,true}){
+        Memory one{};one.fail_at=1;one.fail_after_store=after;auto q=single();
+        const auto rd=[&](auto at,float& v){return one.read(at,v);};const auto wr=[&](auto at,float v){return one.write(at,v);};
+        assert(!q.apply(rd,wr)&&!q.owned&&one.values[0]==960);
+    }
+    Memory one{};auto q=single();
+    const auto rd=[&](auto at,float& v){return one.read(at,v);};const auto wr=[&](auto at,float v){return one.write(at,v);};
+    assert(q.apply(rd,wr)&&q.owned==1&&one.values[0]==1920);
+    auto nested=single();nested.before={{1920}};assert(nested.apply(rd,wr)&&nested.restore(rd,wr)&&one.values[0]==1920);
+    assert(q.restore(rd,wr)&&!q.owned&&one.values[0]==960);
+    assert(q.apply(rd,wr));one.values[0]=777;const auto writes=one.writes;
+    assert(!q.restore(rd,wr)&&q.owned==1&&one.values[0]==777&&one.writes==writes);
+    auto invalid=single();invalid.addresses[0]=0;assert(!invalid.apply(rd,wr)&&!invalid.owned);
     std::puts("HUD action layout: original-call nesting, partial/false stores, unwind restoration and foreign-writer preservation; CPU only");
 }

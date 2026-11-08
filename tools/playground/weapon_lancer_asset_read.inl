@@ -43,40 +43,139 @@ bool identify(meta::Reader& r,uptr address,gears_weapon_hand::ObjectIdentity& ou
     if(!weaponhand::object(r,value))return false;out=value;return true;
 }
 bool mesh_pointer(meta::Reader& r,uptr weapon,meta::PointerField& out) noexcept {
-    // The first exact Mesh descriptor must be one of these two Core types.
-    // An unreadable/mutating ComponentProperty attempt cannot become fallback.
+    // Preserve the single-field API for independent existing consumers.
     const bool found=weaponhand::read_pointer(r,weapon,L"Mesh",out,true)||
         (r.result.failure.reason==meta::Reason::none&&weaponhand::read_pointer(r,weapon,L"Mesh",out));
     return found&&r.result.failure.reason==meta::Reason::none;
 }
+// Like AimObserveFields, this owns only one synchronous read query. Resolve
+// the two fields of each object together; resolve them AGAIN at finish so an
+// inserted earlier same-name descriptor cannot hide behind a cached address.
+class AssetObserveFields {
+    using Field=weaponhand::BoolField;
+    bool component_{},ready_{};uptr object_{},class_{};
+    std::array<Field,2> fields_{};
+    U32 label(meta::NameText const& text) const noexcept {
+        if(component_){
+            if(meta::exact_text(text,L"SkeletalMesh"))return 0;
+            if(meta::exact_text(text,L"HiddenGame"))return 1;
+        }else{
+            if(meta::exact_text(text,L"Instigator"))return 0;
+            if(meta::exact_text(text,L"Mesh"))return 1;
+        }
+        return 2;
+    }
+    bool type(meta::Reader& r,U32 slot,U32 index) const noexcept {
+        if(component_&&index==1)return weaponhand::core_type(r,slot,L"BoolProperty");
+        if(!component_&&index==1){
+            // The first Mesh descriptor may have either original Core type;
+            // an unreadable/mutating first attempt is never a fallback.
+            if(weaponhand::core_type(r,slot,L"ComponentProperty"))return true;
+            if(r.result.failure.reason!=meta::Reason::none)return false;
+        }
+        return weaponhand::core_type(r,slot,L"ObjectProperty");
+    }
+    bool resolve(meta::Reader& r,uptr object,std::array<Field,2>& out,uptr& object_class) const noexcept {
+        U32 slot{};if(!r.path(object,slot))return false;
+        const auto first_class=r.result.identities[slot].klass;
+        auto cls=first_class;U32 depth{},extent{},remaining=2;
+        std::array<Field,2> found{};std::array<uptr,meta::max_parents> parents{};
+        while(cls){
+            if(depth==parents.size())return false;
+            for(U32 i=0;i<depth;++i)if(parents[i]==cls)return false;
+            parents[depth++]=cls;meta::Structure s{};if(!r.structure(cls,s))return false;
+            if(depth==1)extent=s.extent;
+            auto address=s.children;std::array<uptr,meta::max_search> seen{};U32 searched{};
+            weapon_metadata_parse::Walk traversal;
+            while(address){
+                if(searched==seen.size()||traversal.seen(address,seen.data(),searched))return false;
+                seen[searched++]=address;meta::Identity id{};meta::NameText text{};
+                if(!meta::raw_identity(r.result.objects,r.result.names,address,id,text))return false;
+                const auto index=label(text);
+                if(index<2&&!found[index].property.element_bytes){
+                    Field value{};value.object=object;value.owner=s.identity;
+                    const U32 bytes=component_&&index==1?4u:8u;
+                    if(id.name.number||!r.property(address,value.property)||
+                       r.result.identities[value.property.identity].outer!=cls||!type(r,value.property.type,index)||
+                       value.property.dimension!=1||value.property.element_bytes!=bytes||
+                       !meta::property_fits(value.property,s.extent)||!meta::property_fits(value.property,extent))return false;
+                    found[index]=value;if(!--remaining){out=found;object_class=first_class;return true;}
+                }
+                if(!r.at(address,0x68,address))return false;
+            }
+            cls=s.super;
+        }
+        return false;
+    }
+    bool current(meta::Reader& r,U32 index) const noexcept {
+        if(!ready_||index>=2)return false;
+        U32 slot{};meta::Structure owner{};meta::Property fresh{};auto const& field=fields_[index];
+        return r.path(object_,slot)&&r.result.identities[slot].klass==class_&&
+            r.structure(r.result.identities[field.owner].address,owner)&&owner.identity==field.owner&&
+            r.property(r.result.identities[field.property.identity].address,fresh)&&meta::same_property(fresh,field.property);
+    }
+public:
+    explicit AssetObserveFields(bool component) noexcept:component_(component){}
+    bool begin(meta::Reader& r,uptr object) noexcept {
+        ready_=false;std::array<Field,2> fields{};uptr cls{};
+        if(!resolve(r,object,fields,cls))return false;
+        object_=object;class_=cls;fields_=fields;ready_=true;return true;
+    }
+    bool pointer(meta::Reader& r,U32 index,meta::PointerField& out) const noexcept {
+        if((component_&&index==1)||!current(r,index))return false;
+        auto const& field=fields_[index];meta::PointerField value{};
+        if(!r.at(object_,field.property.offset,value.value))return false;
+        value.property=field.property;value.owner=field.owner;out=value;return true;
+    }
+    bool hidden(meta::Reader& r,Field& out) const noexcept {
+        if(!component_||!current(r,1))return false;
+        auto value=fields_[1];
+        if(!r.at(r.result.identities[value.property.identity].address,0xd0,value.mask)||!value.mask||(value.mask&(value.mask-1))||
+           !r.at(object_,value.property.offset,value.bits))return false;
+        out=value;return true;
+    }
+    bool finish(meta::Reader& r) noexcept {
+        if(!ready_)return false;ready_=false;std::array<Field,2> fresh{};uptr cls{};
+        if(!resolve(r,object_,fresh,cls)||cls!=class_)return false;
+        for(U32 i=0;i<2;++i)if(fresh[i].object!=fields_[i].object||fresh[i].owner!=fields_[i].owner||
+            !meta::same_property(fresh[i].property,fields_[i].property))return false;
+        return true;
+    }
+};
 Status read(gears_weapon_hand::Frame const& f,Evidence& out,AssetScope scope=AssetScope::lancer_only) noexcept {
     const auto gt=weaponhand::current_gt(nullptr);
     if(!gt||(f.key.thread_id&&gt!=f.key.thread_id))return Status::wrong_thread;
     meta::Snapshot schema{};schema.module_base=base;meta::Reader r{schema,meta::Stage::final_check};
+    // One read-only discovery, as in the binding observer. Reuse only the
+    // identities already read into THIS local Snapshot while walking its
+    // types/fields; retain no metadata or eligibility across queries. Disable
+    // before the original fresh selector, identity, layout and value closure.
+    r.reuse_initial_identities=true;
     if(!gears_weapon_hand::identity_valid(f.weapon)||!gears_weapon_hand::identity_valid(f.mesh)||
        !meta::tables(schema.module_base,schema.objects,schema.names)||!weaponhand::object(r,f.weapon)||
        !weaponhand::object(r,f.mesh))return Status::invalid_identity;
     const auto expected_asset=held_asset_name(r,f.weapon.address,scope);
     if(expected_asset==HeldAsset::unknown)return Status::unsupported_weapon;
+    AssetObserveFields weapon_fields(false),component_fields(true);
     std::array<meta::PointerField,3> links{};weaponhand::BoolField hidden{};Evidence candidate{};
-    if(!f.pawn.address||!weaponhand::pointer(r,f.weapon.address,L"Instigator",f.pawn.address,links[0])||
-       !mesh_pointer(r,f.weapon.address,links[1])||!links[1].value)return Status::invalid_link;
+    if(!f.pawn.address||!weapon_fields.begin(r,f.weapon.address)||!weapon_fields.pointer(r,0,links[0])||links[0].value!=f.pawn.address||
+       !weapon_fields.pointer(r,1,links[1])||!links[1].value)return Status::invalid_link;
     if(!identify(r,links[1].value,candidate.component)||
        !weaponhand::derives(r,links[1].value,L"SkeletalMeshComponent",L"Engine")||
-       !weaponhand::boolean(r,links[1].value,L"HiddenGame",hidden))return Status::invalid_component;
+       !component_fields.begin(r,links[1].value)||!component_fields.hidden(r,hidden))return Status::invalid_component;
     if(hidden.bits&hidden.mask)return Status::hidden_component;
-    if(!weaponhand::read_pointer(r,links[1].value,L"SkeletalMesh",links[2])||
+    if(!component_fields.pointer(r,0,links[2])||
        !identify(r,links[2].value,candidate.asset)||
        !weaponhand::derives(r,links[2].value,L"SkeletalMesh",L"Engine"))return Status::unsupported_asset;
     U32 asset_slot{};
     if(!r.path(candidate.asset.address,asset_slot)||!held_asset_matches(r,asset_slot,expected_asset))return Status::unsupported_asset;
+    r.reuse_initial_identities=false;
     // Repeat actual selectors too: a newly inserted earlier same-name field
     // must not leave the old selected descriptor looking valid in isolation.
     std::array<meta::PointerField,3> fresh_links{};weaponhand::BoolField fresh_hidden{};
-    if(!weaponhand::read_pointer(r,f.weapon.address,L"Instigator",fresh_links[0])||
-       !mesh_pointer(r,f.weapon.address,fresh_links[1])||
-       !weaponhand::read_pointer(r,candidate.component.address,L"SkeletalMesh",fresh_links[2])||
-       !weaponhand::boolean(r,candidate.component.address,L"HiddenGame",fresh_hidden))return Status::changed;
+    if(!weapon_fields.pointer(r,0,fresh_links[0])||!weapon_fields.pointer(r,1,fresh_links[1])||
+       !component_fields.pointer(r,0,fresh_links[2])||!component_fields.hidden(r,fresh_hidden)||
+       !weapon_fields.finish(r)||!component_fields.finish(r))return Status::changed;
     for(U32 i=0;i<links.size();++i)if(!meta::same_pointer(links[i],fresh_links[i]))return Status::changed;
     if(hidden.object!=fresh_hidden.object||hidden.owner!=fresh_hidden.owner||hidden.mask!=fresh_hidden.mask||
        hidden.bits!=fresh_hidden.bits||!meta::same_property(hidden.property,fresh_hidden.property))return Status::changed;

@@ -209,4 +209,53 @@ constexpr bool zero_target_original_inspection_rebind_has_no_reload_reward() {
     return true;
 }
 static_assert(zero_target_original_inspection_rebind_has_no_reload_reward());
+constexpr bool discarded_magazine_rounds_can_return_without_spare_or_setters() {
+    for(unsigned remaining=1;remaining<=60;++remaining){
+        Tx t;Inv i{id,1,60,remaining,0};Req q;
+        if(!t.bind(i)||!t.begin(i,1,ReloadIntentSource::magazine_pull,0,
+            ReloadTxnMode::magazine,60,10,11)||t.reserve_magazine_reusing_loaded(12)||
+            !t.stow_original(11)||t.reserve_item(12)||
+            !t.reserve_magazine_reusing_loaded(12)||t.reserved()||t.available_reserve()||
+            t.held_magazine_rounds()!=remaining||t.reserve_magazine_reusing_loaded(13)||
+            t.request_insertion(12)||t.seat_reused_rounds(13)||!t.release_item(12)||
+            t.reserve_magazine_reusing_loaded(12)||!t.reserve_magazine_reusing_loaded(13)||
+            !t.seat_reused_rounds(13)||t.take_request(q)||t.pending()||
+            !t.confirm_closed(20,4000)||t.result()!=ReloadTxnResult::inspection||
+            !t.mechanical_ready()||t.take_request(q)||t.inventory().loaded!=remaining||
+            t.inventory().reserve||t.inventory().revision!=i.revision)return false;
+    }
+    return true;
+}
+static_assert(discarded_magazine_rounds_can_return_without_spare_or_setters());
+constexpr bool total_zero_cannot_create_a_replacement_magazine() {
+    Tx t;Inv i{id,1,60,0,0};Req q;
+    return t.bind(i)&&t.begin(i,1,ReloadIntentSource::magazine_pull,0,
+        ReloadTxnMode::magazine,60,10,11)&&t.stow_original(11)&&
+        !t.reserve_magazine_reusing_loaded(12)&&!t.reserve_item(12)&&
+        !t.held_magazine_rounds()&&!t.seat_reused_rounds(12)&&!t.pending()&&
+        !t.take_request(q)&&t.inventory().loaded==0&&t.inventory().reserve==0;
+}
+static_assert(total_zero_cannot_create_a_replacement_magazine());
+constexpr bool partially_filled_replacements_never_create_extra_rounds() {
+    for(unsigned loaded=0;loaded<60;++loaded)for(unsigned reserve=1;reserve<=3;++reserve){
+        Tx t;Inv i{id,1,60,loaded,reserve};Req q;
+        const auto used=std::min(60-loaded,reserve);
+        if(!t.bind(i)||!t.begin(i,1,ReloadIntentSource::magazine_pull,7,
+            ReloadTxnMode::magazine,60,10,11)||!t.stow_original(11)||
+            !t.reserve_magazine_reusing_loaded(12)||t.reserved()!=used||
+            t.held_magazine_rounds()!=loaded+used||!t.request_insertion(12)||
+            !t.take_request(q)||q.expected.loaded!=loaded+used||
+            q.expected.reserve!=reserve-used||q.expected.loaded+q.expected.reserve!=loaded+reserve||
+            !t.acknowledge({q.token,true,{id,2,60,loaded+used,reserve-used}}))return false;
+    }
+    return true;
+}
+static_assert(partially_filled_replacements_never_create_extra_rounds());
+constexpr bool empty_supply_feedback_once_per_real_press_lifetime() {
+    ReloadSupplyRejection f;
+    return !f.reject(0,1)&&!f.reject(1,0)&&!f.rejected(1,1)&&f.reject(1,1)&&
+        f.rejected(1,1)&&!f.reject(1,1)&&f.reject(1,2)&&!f.reject(1,2)&&
+        !f.rejected(2,2)&&f.reject(2,2)&&!f.reject(2,2);
+}
+static_assert(empty_supply_feedback_once_per_real_press_lifetime());
 // Compile-time contract checks; this translation unit has no main or runtime.

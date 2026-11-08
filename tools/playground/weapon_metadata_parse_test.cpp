@@ -17,18 +17,42 @@ struct Query {
     ~Query(){parse::restore(previous);}
 };
 void walks(){
-    std::vector<uptr> previous(4096);std::uint64_t scalar_comparisons{};
+    std::vector<uptr> previous(4096);std::uint64_t scalar_comparisons{},uncached_comparisons{};
+    const auto original_seen=[&](uptr address,uptr const* prefix,unsigned count){
+        for(unsigned i=0;i<count;++i){++scalar_comparisons;if(prefix[i]==address)return true;}
+        return false;
+    };
+    for(unsigned i=0;i<4096;++i){const uptr p=8ull*(i+1);
+        CHECK(!original_seen(p,previous.data(),i));previous[i]=p;}
+    CHECK(original_seen(previous[4095],previous.data(),4096));
+    CHECK(scalar_comparisons==std::uint64_t(4096)*4095/2+4096);
     {Query q(false);parse::Walk walk;for(unsigned i=0;i<4096;++i){const uptr p=8ull*(i+1);
         CHECK(!walk.seen(p,previous.data(),i));previous[i]=p;}
-        CHECK(walk.seen(previous[4095],previous.data(),4096));scalar_comparisons=walk.comparisons();
-        CHECK(scalar_comparisons==std::uint64_t(4096)*4095/2+4096&&walk.probes()==0);}
+        CHECK(walk.seen(previous[4095],previous.data(),4096));uncached_comparisons=walk.comparisons();
+        CHECK(uncached_comparisons<scalar_comparisons&&walk.probes()==0);
+        for(unsigned i=0;i<4096;++i)CHECK(walk.seen(previous[i],previous.data(),4096));
+        // A Bloom collision must fall back to exact equality, not reject a
+        // previously unseen field as a cycle. Exercise an actual collision.
+        bool collision{};
+        for(uptr p=0x1000000;p<0x1001000;p+=8){const auto before=walk.comparisons();
+            CHECK(!walk.seen(p,previous.data(),4096));
+            if(walk.comparisons()>before){collision=true;break;}}
+        CHECK(collision);
+        // A different/restarted caller prefix cannot inherit absence bits.
+        uptr other[]={0x2000000,0x2000010};CHECK(walk.seen(other[1],other,2));
+        CHECK(!walk.seen(previous[0],other,2));
+        other[0]=0x3000000;CHECK(walk.seen(other[0],other,1));}
+    {Query q(false);parse::Walk walk;uptr prefix[]={0x40,0x41};
+        CHECK(!walk.seen(0x42,prefix,2)); // Same hash input after >>3, unequal address.
+        CHECK(walk.seen(0x41,prefix,2));}
+    static_assert(sizeof(parse::Walk)<=1200,"No large callback-local workspace");
     {Query q;parse::Walk walk;for(unsigned i=0;i<4096;++i){const uptr p=8ull*(i+1);
         CHECK(!walk.seen(p,previous.data(),i));previous[i]=p;}
         CHECK(walk.seen(previous[4095],previous.data(),4096));CHECK(walk.comparisons()==0&&walk.probes()<scalar_comparisons);
         const auto epoch=q.workspace->epoch;{parse::Walk inner;CHECK(inner.seen(previous[2],previous.data(),4096));
             CHECK(inner.probes()==0&&inner.comparisons()==3&&q.workspace->epoch==epoch);}
         CHECK(q.workspace->walk_owned&&walk.seen(previous[0],previous.data(),4096));
-        std::printf("Walk membership only: linear comparisons=%llu hashed probes=%llu, no timing claim\n",scalar_comparisons,walk.probes());}
+        std::printf("Walk membership only: original linear comparisons=%llu uncached filtered comparisons=%llu scoped hashed probes=%llu, no timing claim\n",scalar_comparisons,uncached_comparisons,walk.probes());}
     {Query q;uptr seen[3]{};std::vector<uptr> collision;
         const auto bucket=parse::bucket(8,parse::visit_buckets-1);
         for(uptr p=8;collision.size()<3;p+=8)if(parse::bucket(p,parse::visit_buckets-1)==bucket)collision.push_back(p);
@@ -36,6 +60,36 @@ void walks(){
             CHECK(walk.seen(collision[1],seen,3)&&walk.probes()>=8);}
         CHECK(!q.workspace->walk_owned);{parse::Walk next;CHECK(!next.seen(collision[0],seen,0));}
         q.workspace->epoch=~parse::U32(0);{parse::Walk wrapped;CHECK(!wrapped.seen(collision[0],seen,0)&&q.workspace->epoch==1);}}
+}
+void traversal_queries(){
+    CHECK(parse::active==nullptr&&parse::traversal_only==nullptr);
+    std::vector<uptr> previous(4096);
+    for(unsigned turn=0;turn<2;++turn){
+        Query q(false);parse::TraversalQuery query;
+        auto* scratch=parse::traversal_only;CHECK(scratch&&parse::active==nullptr);
+        CHECK(scratch->epoch==0&&!scratch->walk_owned);
+        parse::remember_length(0x123400,7,45);CHECK(parse::length_bound(0x123400,7)==0);
+        {parse::Walk walk;for(unsigned i=0;i<4096;++i){const uptr p=8ull*(i+1);
+                CHECK(!walk.seen(p,previous.data(),i));previous[i]=p;}
+            for(unsigned i=0;i<4096;++i)CHECK(walk.seen(previous[i],previous.data(),4096));
+            CHECK(walk.comparisons()==0&&walk.probes()>0);
+            const auto epoch=scratch->epoch;
+            {parse::TraversalQuery nested;CHECK(parse::traversal_only==scratch&&scratch->epoch==epoch);
+                parse::Walk inner;CHECK(inner.seen(previous[2],previous.data(),4096));
+                CHECK(inner.probes()==0&&inner.comparisons()==3);}
+            CHECK(parse::traversal_only==scratch&&scratch->walk_owned&&scratch->epoch==epoch);
+            std::printf("Query-local exact walk: turn=%u probes=%llu linear comparisons=%llu; no game-time claim\n",
+                turn,walk.probes(),walk.comparisons());}
+        CHECK(!scratch->walk_owned&&parse::active==nullptr);
+        {parse::Walk next;CHECK(!next.seen(previous[0],previous.data(),0));}
+    }
+    CHECK(parse::traversal_only==nullptr&&parse::active==nullptr);
+    {Query q;const auto epoch=q.workspace->epoch;parse::TraversalQuery query;
+        CHECK(parse::active==q.workspace.get()&&parse::traversal_only==nullptr&&q.workspace->epoch==epoch);}
+    {parse::TraversalQuery disabled(false);CHECK(parse::traversal_only==nullptr);}
+    {parse::Walk outside;CHECK(outside.seen(previous[2],previous.data(),4096));
+        CHECK(outside.probes()==0&&outside.comparisons()==3);}
+    static_assert(sizeof(parse::TraversalQuery)<=16,"Query scope is not a callback-local workspace");
 }
 struct Prefix {
     std::vector<Block> nodes;std::vector<uptr> registry;
@@ -52,8 +106,9 @@ struct Prefix {
     }
 };
 struct Selection {bool accepted{};uptr property{};unsigned offset{};uptr value{};};
-Selection select(Memory& m,unsigned scanner,bool fast){
-    Query q(fast);meta::Snapshot schema{};meta::Reader reader{schema,meta::Stage::final_check};
+Selection select(Memory& m,unsigned scanner,bool fast,bool traversal=false){
+    Query q(fast);parse::TraversalQuery query(traversal);
+    meta::Snapshot schema{};meta::Reader reader{schema,meta::Stage::final_check};
     CHECK(meta::tables(base,schema.objects,schema.names));Selection result{};
     if(scanner==0){weaponhand::BoolField field{};result.accepted=weaponhand::field(reader,m.pawn,L"Controller",L"ObjectProperty",8,field);
         if(result.accepted){result.property=schema.identities[field.property.identity].address;result.offset=field.property.offset;}}
@@ -65,9 +120,10 @@ Selection select(Memory& m,unsigned scanner,bool fast){
     return result;
 }
 void differential(Memory& m,unsigned scanner,bool accepted){
-    const auto slow=select(m,scanner,false),fast=select(m,scanner,true);
-    CHECK(slow.accepted==accepted&&fast.accepted==accepted);
+    const auto slow=select(m,scanner,false),fast=select(m,scanner,true),query=select(m,scanner,false,true);
+    CHECK(slow.accepted==accepted&&fast.accepted==accepted&&query.accepted==accepted);
     CHECK(slow.property==fast.property&&slow.offset==fast.offset&&slow.value==fast.value);
+    CHECK(slow.property==query.property&&slow.offset==query.offset&&slow.value==query.value);
 }
 void scanners(){
     for(unsigned scanner=0;scanner<3;++scanner){
@@ -83,17 +139,34 @@ void scanners(){
     }
 }
 meta::Table name_table(Memory& m){return {reinterpret_cast<uptr>(m.names.data()),int(1000+m.name_count),int(m.names.size())};}
-unsigned character_calls(Memory& m,unsigned index,meta::NameText& text){
+// Retained unoptimized oracle belongs to the test, not a live mode selected
+// by the presence/absence of a parsing cache. Production is tested both ways.
+bool scalar_name_reference(meta::Table const& names,unsigned index,meta::NameText& text){
+    text={};text.index=index;unsigned entry_index{};
+    if(index>=unsigned(names.count)||!meta::read_at(names.data,uptr(index)*8,text.entry)||!text.entry||
+       !meta::read_at(text.entry,0,entry_index)||entry_index!=index)return false;
+    for(unsigned i=0;i<meta::max_name_units;++i){
+        if(!meta::read_at(text.entry,20+uptr(i)*sizeof(wchar_t),text.units[i]))return false;
+        if(!text.units[i]){text.length=i;return i!=0;}
+    }
+    return false;
+}
+unsigned character_calls(Memory& m,unsigned index,meta::NameText& text,bool scalar_reference=false){
     const auto entry=m.names[index];unsigned calls{};
     read_observer=[&](uptr from,std::size_t){if(from>=entry+20&&from<entry+20+2*meta::max_name_units)++calls;};
-    CHECK(meta::fresh_name(name_table(m),index,text));read_observer={};return calls;
+    CHECK(scalar_reference?scalar_name_reference(name_table(m),index,text):meta::fresh_name(name_table(m),index,text));read_observer={};return calls;
+}
+unsigned page_character_calls(uptr entry,unsigned length){
+    SYSTEM_INFO info{};GetSystemInfo(&info);const auto page=uptr(info.dwPageSize);
+    return unsigned((entry+20+2*length)/page-(entry+20)/page+1);
 }
 void names(){
     {auto m=std::make_unique<Memory>();const auto index=Memory::get<meta::RawName>(m->pawn,0x48).index;
         meta::NameText a{},b{};Query q;const auto miss=character_calls(*m,index,a),hit=character_calls(*m,index,b);
-        CHECK(miss==a.length+1&&hit==1&&meta::same_name_text(a,b));
+        CHECK(miss==page_character_calls(m->names[index],a.length)&&hit==1&&meta::same_name_text(a,b));
         std::printf("Actual fresh_name character calls: miss=%u hit=%u; all characters still fresh, no timing claim\n",miss,hit);
-        {Query scalar(false);CHECK(character_calls(*m,index,b)==a.length+1&&meta::same_name_text(a,b));}
+        {Query scalar(false);CHECK(character_calls(*m,index,b,true)==a.length+1&&meta::same_name_text(a,b));
+            CHECK(character_calls(*m,index,b)==page_character_calls(m->names[index],b.length)&&meta::same_name_text(a,b));CHECK(!parse::active);}
         CHECK(character_calls(*m,index,b)==1);}
     for(unsigned change=0;change<7;++change){auto m=std::make_unique<Memory>();Query q;
         const auto index=Memory::get<meta::RawName>(m->pawn,0x48).index;const auto entry=m->names[index];meta::NameText a{},b{};
@@ -127,8 +200,8 @@ void names(){
         for(uptr fake=8;inserted<parse::name_probes;fake+=8)if(fake!=entry&&parse::name_bucket(fake,index)==target){
             parse::remember_length(fake,index,3);CHECK(parse::length_bound(fake,index)==3);++inserted;}
         CHECK(parse::length_bound(entry,index)==0);meta::NameText text{};
-        CHECK(character_calls(*m,index,text)==text.length+1&&parse::length_bound(entry,index)==0);
-        CHECK(character_calls(*m,index,text)==text.length+1);}
+        CHECK(character_calls(*m,index,text)==page_character_calls(entry,text.length)&&parse::length_bound(entry,index)==0);
+        CHECK(character_calls(*m,index,text)==page_character_calls(entry,text.length));}
     {auto m=std::make_unique<Memory>();const auto index=Memory::get<meta::RawName>(m->pawn,0x48).index;const auto entry=m->names[index];
         {Query q;meta::NameText text{};CHECK(meta::fresh_name(name_table(*m),index,text));CHECK(parse::length_bound(entry,index)>0);}
         Query next;CHECK(parse::length_bound(entry,index)==0);}
@@ -147,21 +220,49 @@ void cold_name_boundaries(){
         std::memcpy(reinterpret_cast<void*>(entry+20),m->labels[name.index-1000].c_str(),(length+1)*sizeof(wchar_t));
         m->names[name.index]=entry;
         meta::NameText scalar{},batch{};
-        {Query q(false);CHECK(meta::fresh_name(name_table(*m),name.index,scalar)==(length!=0));}
+        {Query q(false);CHECK(scalar_name_reference(name_table(*m),name.index,scalar)==(length!=0));
+            meta::NameText uncached{};CHECK(meta::fresh_name(name_table(*m),name.index,uncached)==(length!=0));
+            CHECK(meta::same_name_text(scalar,uncached)&&!parse::active);}
         {Query q;CHECK(meta::fresh_name(name_table(*m),name.index,batch)==(length!=0));
             CHECK(meta::same_name_text(scalar,batch));
             if(length)CHECK(meta::fresh_name(name_table(*m),name.index,batch));}
         Memory::put(entry,20+2*length,wchar_t(L'Q'));
-        {Query q(false);CHECK(!meta::fresh_name(name_table(*m),name.index,scalar));}
+        {Query q(false);CHECK(!scalar_name_reference(name_table(*m),name.index,scalar));
+            CHECK(!meta::fresh_name(name_table(*m),name.index,scalar));}
         {Query q;CHECK(!meta::fresh_name(name_table(*m),name.index,batch));}
     }
     CHECK(VirtualFree(memory,0,MEM_RELEASE));
+    // Differential fault oracle: an unreadable byte before/in the NUL must
+    // never become a valid string. A transient failed chunk after the NUL may
+    // conservatively reject, never retry a consumed one-shot memory fault.
+    for(unsigned length:{1u,7u,8u,9u,15u,95u}){
+        auto fixture=std::make_unique<Memory>();const auto label=fixture->text(std::wstring(length,L'Q'));fixture->tables();
+        const auto entry=fixture->names[label.index];
+        for(unsigned byte=0;byte<2*(length+8);++byte){
+            fail_read=entry+20+byte;meta::NameText scalar_name{},block_name{};bool scalar_ok{},block_ok{};
+            {Query q(false);scalar_ok=scalar_name_reference(name_table(*fixture),label.index,scalar_name);
+                meta::NameText uncached{};const bool valid=meta::fresh_name(name_table(*fixture),label.index,uncached);
+                CHECK(scalar_ok||!valid);if(valid)CHECK(meta::same_name_text(scalar_name,uncached));}
+            {Query q;block_ok=meta::fresh_name(name_table(*fixture),label.index,block_name);}
+            CHECK(scalar_ok||!block_ok);if(block_ok)CHECK(meta::same_name_text(scalar_name,block_name));
+        }
+        fail_read=0;
+    }
+    {
+        auto fixture=std::make_unique<Memory>();const auto label=fixture->text(L"GuardedName");fixture->tables();
+        auto pages=static_cast<unsigned char*>(VirtualAlloc(nullptr,page*2,MEM_RESERVE|MEM_COMMIT,PAGE_READWRITE));CHECK(pages);
+        const auto entry=reinterpret_cast<uptr>(pages+page-20);Memory::put(entry,0,label.index);
+        std::memcpy(pages+page,L"GuardedName",sizeof(L"GuardedName"));fixture->names[label.index]=entry;
+        for(bool fast:{false,true}){CHECK(VirtualProtect(pages+page,page,PAGE_READWRITE|PAGE_GUARD,&old));
+            Query q(fast);meta::NameText value{};CHECK(!meta::fresh_name(name_table(*fixture),label.index,value));}
+        CHECK(VirtualFree(pages,0,MEM_RELEASE));
+    }
     auto m=std::make_unique<Memory>();const auto name=m->text(std::wstring(95,L'Q'));m->tables();
-    meta::NameText scalar{},batch{};unsigned scalar_calls{},cold_calls{},bound_calls{};
-    {Query q(false);scalar_calls=character_calls(*m,name.index,scalar);}
+    meta::NameText scalar{},batch{};unsigned scalar_calls{},uncached_calls{},cold_calls{},bound_calls{};
+    {Query q(false);scalar_calls=character_calls(*m,name.index,scalar,true);uncached_calls=character_calls(*m,name.index,batch);CHECK(!parse::active);}
     {Query q;cold_calls=character_calls(*m,name.index,batch);bound_calls=character_calls(*m,name.index,batch);}
-    CHECK(meta::same_name_text(scalar,batch)&&scalar_calls==96&&cold_calls==96&&bound_calls==1);
-    std::printf("95-character name: scalar=%u cold=%u current length-bound=%u reads; no live FPS claim\n",scalar_calls,cold_calls,bound_calls);
+    CHECK(meta::same_name_text(scalar,batch)&&scalar_calls==96&&uncached_calls==1&&cold_calls==1&&bound_calls==1);
+    std::printf("95-character name: scalar reference=%u uncached production=%u scoped cold=%u current length-bound=%u reads; no live FPS claim\n",scalar_calls,uncached_calls,cold_calls,bound_calls);
 }
 
 }
@@ -300,5 +401,5 @@ void aimed_fields(){
         CHECK(fields.boolean(r,F::toggle_flag,value)&&value.mask==4);
         CHECK(fields.finish(r));CHECK(!fields.boolean(r,F::held_flag,value));
     }
-}int main(){query_local_identities();contiguous_metadata_fields();aimed_fields();hud_direct_arguments();tick_scope_lifetime();walks();scanners();names();cold_name_boundaries();CHECK(parse::active==nullptr);
+}int main(){query_local_identities();contiguous_metadata_fields();aimed_fields();hud_direct_arguments();tick_scope_lifetime();walks();traversal_queries();scanners();names();cold_name_boundaries();CHECK(parse::active==nullptr&&parse::traversal_only==nullptr);
     std::printf("WeaponMetadataParseTest: %u checks passed; actual scanners/name reader, owned memory only\n",checks);return 0;}

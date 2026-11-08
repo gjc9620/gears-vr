@@ -86,6 +86,50 @@ inline bool support_contact(Frame const& f,GripGameState const& game,bool retain
         gears_weapon::dot(expected,actual)/(e*a)>=std::cos(game.mount.maximum_support_correction_radians);
 }
 
+// Neutral auto-socket selection, not a hand lease or a retained tracking pose.
+// A later Grip still needs CURRENT contact and the shared owner's real edge.
+// This affinity may choose a known support socket over an unavailable unrelated
+// part; it never chooses support on a cold held press or a known part request.
+class SupportSocketPreference {
+    FrameKey key_{};std::array<ObjectIdentity,6> objects_{};
+    gears_vr::Pose reference_{};gears_weapon::WeaponMount mount_{};
+    std::array<std::uint64_t,9> epochs_{};
+    double acquire_{},release_{};bool selected_{};
+    static bool same_mount(gears_weapon::WeaponMount const& a,gears_weapon::WeaponMount const& b) noexcept {
+        const auto vector=[](gears_vr::Vector p,gears_vr::Vector q){return p.x==q.x&&p.y==q.y&&p.z==q.z;};
+        return gears_vr::stereo_same_pose(a.right_grip_in_weapon,b.right_grip_in_weapon)&&
+            vector(a.support_grip_in_weapon,b.support_grip_in_weapon)&&vector(a.muzzle_in_weapon,b.muzzle_in_weapon)&&
+            vector(a.bore_forward_in_weapon,b.bore_forward_in_weapon)&&
+            a.support_length_tolerance_metres==b.support_length_tolerance_metres&&
+            a.maximum_support_correction_radians==b.maximum_support_correction_radians;
+    }
+public:
+    void reset() noexcept {selected_=false;}
+    bool observe(Frame const& f,GripGameState const& game,std::uint64_t hold,std::int64_t now,bool another_socket) noexcept {
+        bool occupied{};for(auto const& item:game.object_incumbents)occupied|=item.kind!=LeaseKind::none;
+        if(!hold||another_socket||occupied||!frame_active(f,now)||!game.known||!game.main_hand_held||game.busy||
+           game.animation_owns_hands||game.kind!=WeaponKind::firearm||!f.left_tracked||!f.left_grip_known||
+           index_pinch(f)||game.request_magazine||game.request_ammo||!support_contact(f,game,false)){
+            reset();return false;
+        }
+        const auto& left=f.controllers.hands[0];
+        const std::array<ObjectIdentity,6> objects{f.world,f.controller,f.pawn,f.mesh,f.weapon,game.mount_asset};
+        const std::array<std::uint64_t,9> epochs{f.reference_generation,f.stereo.session,f.stereo.space_epoch,
+            f.controllers.input_epoch,f.controllers.profile_generation,hold,game.mount_revision,
+            std::uint64_t(f.stereo.source),std::uint64_t(f.controllers.source)};
+        if(!f.left_grip_down&&left.squeeze_active==1&&!control_held(left,gears_vr::control_squeeze)){
+            key_=f.key;objects_=objects;epochs_=epochs;reference_=f.reference;mount_=game.mount;
+            acquire_=game.acquire_metres;release_=game.release_metres;selected_=true;return false;
+        }
+        auto expected=key_;expected.frame=f.key.frame;
+        if(!selected_||f.key.frame<key_.frame||!same(expected,f.key)||epochs_!=epochs||
+           !gears_vr::stereo_same_pose(reference_,f.reference)||!same_mount(mount_,game.mount)||
+           acquire_!=game.acquire_metres||release_!=game.release_metres){reset();return false;}
+        for(std::size_t i=0;i<objects.size();++i)if(!same(objects_[i],objects[i])){reset();return false;}
+        return f.left_grip_down&&control_held(left,gears_vr::control_squeeze);
+    }
+};
+
 // A participant only: it never instantiates or updates LeftHandInteractionOwner.
 // prepare is read-only with respect to the game; commit changes private grip
 // state only after the shared Native arbiter has decided this exact frame.

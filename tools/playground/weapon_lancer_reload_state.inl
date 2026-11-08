@@ -60,7 +60,7 @@ struct Lease {
     bool ui_owned{},ui_replaced{};
     unsigned attempt_offset{},attempt_mask{};bool attempts_owned{},attempt_before{};
     hand::ObjectIdentity ui_hud{},ui_controller{};
-    unsigned hud_tick_offset{},hud_result_offset{};
+    unsigned hud_tick_offset{},hud_result_offset{},hud_fade_offset{},hud_flash_offset{};
     float hud_tick_before{},hud_tick_wanted{};
     unsigned char hud_result_before{};bool hud_owned{};
     hand::ObjectIdentity ui_draw_function{},ui_getter_function{};
@@ -69,6 +69,31 @@ struct Lease {
     Array ui_draw_script{};unsigned ui_locals_extent{};std::uint64_t ui_draw_updates{};
     std::array<float,4> ui_draw_original{},ui_draw_current{};
     unsigned ui_draw_gate{},ui_reported_gate{};bool ui_draw_reported{};
+    std::array<hand::ObjectIdentity,2> ui_clock_properties{};
+    std::array<unsigned,2> ui_clock_offsets{};
+    std::uint64_t ui_display_scopes{},ui_display_late{},ui_display_restores{};
+    std::array<float,4> ui_display_last{}; // real start, drawing start, real elapsed, marker
+    std::array<float,2> ui_fade_durations{};
+    // DrawX/DrawY/Scale input-value parameters, Canvas/ClipX/ClipY,
+    // ResScaleSmall and the original AR background texture's UL/VL.
+    std::array<hand::ObjectIdentity,14> ui_layout_properties{};
+    std::array<unsigned,14> ui_layout_offsets{},ui_layout_raw_offsets{};
+    hand::ObjectIdentity ui_canvas_class{},ui_setpos_function{};
+    std::uint64_t ui_layout_updates{},ui_body_observations{},ui_shape_updates{};
+    std::uint64_t ui_marker_scopes{},ui_marker_restores{};
+    float ui_marker_resolution{};
+    float ui_shape_last{};
+    unsigned ui_body_gate{};
+    std::array<float,5> ui_layout_last{}; // x,y,scale,width,height
+    std::array<float,7> ui_body_last{}; // DrawX,DrawY,Scale,BarLength,fade,flash,Alpha
+    // Optional read-only receipt AFTER the original Canvas.SetPos returned.
+    // Missing observation metadata never blocks a reload or drawing adapter.
+    std::array<hand::ObjectIdentity,5> ui_canvas_properties{};
+    std::array<unsigned,5> ui_canvas_offsets{};
+    bool ui_canvas_known{},ui_final_reported{};
+    std::uint64_t ui_canvas_call{},ui_canvas_observations{};
+    std::array<float,7> ui_canvas_last{}; // CurX/Y,OrgX/Y,ClipX/Y,alpha
+    unsigned ui_canvas_color{};
 };
 Lease lease;
 std::uint64_t next_serial{1};
@@ -181,15 +206,15 @@ bool ui_float(uptr weapon,const wchar_t* name,float& out) noexcept {
     return offset<=extent&&sizeof(float)<=extent-offset&&weapon<=UINTPTR_MAX-offset-sizeof(float)&&
         copy(&out,weapon+offset,sizeof(out))&&std::isfinite(out);
 }
-bool ui_hud_current() noexcept {
-    if(!lease.hud_owned)return true;
+bool ui_hud_current(Lease const& l) noexcept {
     hand::ObjectIdentity actual{};
-    return nativeequipment::identify(nullptr,lease.ui_controller.address,actual)&&hand::same(actual,lease.ui_controller)&&
-        nativeequipment::identify(nullptr,lease.ui_hud.address,actual)&&hand::same(actual,lease.ui_hud)&&
-        playground::pointer(lease.identity.pawn.address,L"Controller")==lease.ui_controller.address&&
-        playground::pointer(lease.ui_controller.address,L"myHUD")==lease.ui_hud.address&&
-        playground::pointer(lease.ui_hud.address,L"WorldInfo")==lease.identity.world.address;
+    return nativeequipment::identify(nullptr,l.ui_controller.address,actual)&&hand::same(actual,l.ui_controller)&&
+        nativeequipment::identify(nullptr,l.ui_hud.address,actual)&&hand::same(actual,l.ui_hud)&&
+        playground::pointer(l.identity.pawn.address,L"Controller")==l.ui_controller.address&&
+        playground::pointer(l.ui_controller.address,L"myHUD")==l.ui_hud.address&&
+        playground::pointer(l.ui_hud.address,L"WorldInfo")==l.identity.world.address;
 }
+bool ui_hud_current() noexcept {return !lease.hud_owned||ui_hud_current(lease);}
 bool restore_ui_timing() noexcept {
     if(!lease.ui_owned&&!lease.attempts_owned&&!lease.hud_owned)return true;
     hand::ObjectIdentity actual{};
@@ -222,6 +247,16 @@ bool restore_ui_timing() noexcept {
         if(!ui_store(lease.ui_hud.address+lease.hud_tick_offset,&lease.hud_tick_before,4)||
            !ui_store(lease.ui_hud.address+lease.hud_result_offset,&lease.hud_result_before,1))return false;
         lease.hud_owned=false;
+    }
+    if(!lease.ui_final_reported&&log_file){
+        lease.ui_final_reported=true;
+        fwprintf(log_file,L"lancer_reload_ui_final serial=%llu updates=%llu display_scopes=%llu display_restores=%llu last_draw_elapsed=%.6g fade_duration=%.6g flash_duration=%.6g height_updates=%llu body_height=%.6g marker_scopes=%llu marker_restores=%llu marker_resolution=%.6g canvas_known=%u canvas_observations=%llu canvas=%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g canvas_color=%08x\n",
+            lease.serial,lease.ui_draw_updates,lease.ui_display_scopes,lease.ui_display_restores,lease.ui_display_last[2],
+            lease.ui_fade_durations[0],lease.ui_fade_durations[1],lease.ui_shape_updates,lease.ui_shape_last,
+            lease.ui_marker_scopes,lease.ui_marker_restores,lease.ui_marker_resolution,
+            unsigned(lease.ui_canvas_known),lease.ui_canvas_observations,lease.ui_canvas_last[0],lease.ui_canvas_last[1],
+            lease.ui_canvas_last[2],lease.ui_canvas_last[3],lease.ui_canvas_last[4],lease.ui_canvas_last[5],lease.ui_canvas_last[6],lease.ui_canvas_color);
+        fflush(log_file);
     }
     return true;
 }
@@ -289,7 +324,7 @@ bool set_ui_timing(hand::Frame const& source,std::uint64_t serial,
     ui_setup_gate=8;
     const auto hud_extent=get<unsigned>(get<uptr>(hud+0x50)+0x88);
     if(start>hud_extent||bytes>hud_extent-start||hud>UINTPTR_MAX-hud_extent)return false;
-    bool tick_found{},result_found{};unsigned fields_seen{};
+    bool tick_found{},result_found{},fade_found{},flash_found{};unsigned fields_seen{};
     ui_setup_gate=9;
     for(auto field=get<uptr>(structure+0x80);field;field=get<uptr>(field+0x68)){
         if(++fields_seen>64||!registered(field)||get<uptr>(field+0x40)!=structure)return false;
@@ -301,8 +336,14 @@ bool set_ui_timing(hand::Frame const& source,std::uint64_t serial,
         if(playground::named(field,L"ARResult")&&size==1&&playground::named(get<uptr>(field+0x50),L"ByteProperty")){
             lease.hud_result_offset=start+at;result_found=true;
         }
+        if(playground::named(field,L"FadeDuration")&&size==4&&playground::named(get<uptr>(field+0x50),L"FloatProperty")){
+            lease.hud_fade_offset=start+at;fade_found=true;
+        }
+        if(playground::named(field,L"FlashDuration")&&size==4&&playground::named(get<uptr>(field+0x50),L"FloatProperty")){
+            lease.hud_flash_offset=start+at;flash_found=true;
+        }
     }
-    if(!tick_found||!result_found||!copy(&lease.hud_tick_before,hud+lease.hud_tick_offset,4)||
+    if(!tick_found||!result_found||!fade_found||!flash_found||!copy(&lease.hud_tick_before,hud+lease.hud_tick_offset,4)||
        !copy(&lease.hud_result_before,hud+lease.hud_result_offset,1)||!std::isfinite(lease.hud_tick_before))return false;
     ui_setup_gate=10;
     lease.hud_tick_wanted=lease.hud_tick_before;lease.hud_owned=true;
@@ -321,7 +362,12 @@ bool tick_ui_timing() noexcept {
     // ordinary GT path, outside the original native invocation.
     if(log_file&&lease.ui_draw_gate&&lease.ui_reported_gate!=lease.ui_draw_gate){
         lease.ui_reported_gate=lease.ui_draw_gate;
-        fwprintf(log_file,L"lancer_reload_ui_draw_gate serial=%llu gate=%u updates=%llu\n",lease.serial,lease.ui_draw_gate,lease.ui_draw_updates);fflush(log_file);
+        fwprintf(log_file,L"lancer_reload_ui_draw_gate serial=%llu gate=%u updates=%llu display_scopes=%llu display_late=%llu display_restores=%llu real_start=%.6g draw_start=%.6g elapsed=%.6g marker=%.6g values=%.6g,%.6g,%.6g,%.6g layout_updates=%llu x=%.6g y=%.6g scale=%.6g width=%.6g height=%.6g body_observations=%llu body_x=%.6g body_y=%.6g body_scale=%.6g body_bar_length=%.6g body_fade=%.6g body_flash=%.6g body_alpha=%.6g\n",
+            lease.serial,lease.ui_draw_gate,lease.ui_draw_updates,lease.ui_display_scopes,lease.ui_display_late,lease.ui_display_restores,
+            lease.ui_display_last[0],lease.ui_display_last[1],lease.ui_display_last[2],lease.ui_display_last[3],
+            lease.ui_draw_current[0],lease.ui_draw_current[1],lease.ui_draw_current[2],lease.ui_draw_current[3],
+            lease.ui_layout_updates,lease.ui_layout_last[0],lease.ui_layout_last[1],lease.ui_layout_last[2],lease.ui_layout_last[3],lease.ui_layout_last[4],
+            lease.ui_body_observations,lease.ui_body_last[0],lease.ui_body_last[1],lease.ui_body_last[2],lease.ui_body_last[3],lease.ui_body_last[4],lease.ui_body_last[5],lease.ui_body_last[6]);fflush(log_file);
     }
     if(lease.ui_draw_updates&&!lease.ui_draw_reported&&log_file){
         lease.ui_draw_reported=true;const auto& a=lease.ui_draw_current;const auto& b=lease.ui_draw_original;

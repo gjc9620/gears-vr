@@ -7,6 +7,49 @@
 #include <cstring>
 int main(){
     namespace g=gears_hand_object_grasp;namespace v=gears_vr;
+    std::printf("released_socket_layout frame=%zu size=%zu anchor=%zu hold=%zu known=%zu key=%zu stereo=%zu controllers=%zu\n",
+        sizeof(gears_weapon_hand::Frame),sizeof(g::ReleasedSocket),offsetof(g::ReleasedSocket,anchor),
+        offsetof(g::ReleasedSocket,hold),offsetof(g::ReleasedSocket,known),
+        offsetof(gears_weapon_hand::Frame,key),offsetof(gears_weapon_hand::Frame,stereo),
+        offsetof(gears_weapon_hand::Frame,controllers));
+    // A neutral hand crosses the handguard's generous trigger en route to C.
+    // Retention must resist jitter, but cannot trap it in the wrong socket.
+    assert(g::proximity_socket(g::Kind::support,.18,.01,.14,.14)==g::Kind::starter);
+    assert(g::proximity_socket(g::Kind::starter,.01,.18,.14,.14)==g::Kind::support);
+    assert(g::proximity_socket(g::Kind::support,.12,.11,.14,.14)==g::Kind::support);
+    assert(g::proximity_socket(g::Kind::starter,.11,.12,.14,.14)==g::Kind::starter);
+    assert(g::proximity_socket(g::Kind::support,.20,.30,.14,.14)==g::Kind::support);
+    assert(g::proximity_socket(g::Kind::support,.23,.30,.14,.14)==g::Kind::none);
+    assert(g::proximity_socket(g::Kind::none,.18,.01,.14,.14)==g::Kind::starter);
+    assert(g::proximity_socket(g::Kind::none,.01,.18,.14,.14)==g::Kind::support);
+    assert(g::proximity_socket(g::Kind::none,-1,.01,.14,.14)==g::Kind::none);
+    assert(g::proximity_socket(g::Kind::starter,.01,.18,.14,.14,true)==g::Kind::starter);
+    assert(g::proximity_socket(g::Kind::starter,.01,.18,.14,.14,false)==g::Kind::support);
+    assert(g::proximity_socket(g::Kind::starter,.01,.23,.14,.14,true)==g::Kind::support);
+    assert(g::proximity_socket(g::Kind::support,.18,.01,.14,.14,true)==g::Kind::starter);
+    {
+        gears_weapon_hand::Frame f{};f.left_tracked=f.left_grip_known=1;
+        auto& input=f.controllers.hands[0];input.squeeze_active=input.grip_active=1;
+        input.grip_flags=15;input.grip={{0,1,0},{0,0,0,1}};
+        g::ReleasedSocket released;
+        assert(released.bind(f,17));
+        // A released part stays preferred when only the fitting/busy state
+        //changes, including the next actual squeeze. It is not an action.
+        f.reference_generation++;input.squeeze=1;f.left_grip_down=1;
+        assert(released.retained(f,17));
+        input.grip.position.x=.02;assert(released.retained(f,17));
+        input.grip.position.x=.031;assert(!released.retained(f,17));
+        input.grip.position.x=0;assert(!released.retained(f,17)); // No drifting reacquisition.
+        input.squeeze=0;f.left_grip_down=0;
+        assert(released.bind(f,17));assert(!released.retained(f,18));
+        assert(released.bind(f,17));f.stereo.space_epoch++;assert(!released.retained(f,17));
+        assert(released.bind(f,17));f.controllers.input_epoch++;assert(!released.retained(f,17));
+        assert(released.bind(f,17));f.weapon.address++;assert(!released.retained(f,17));
+        assert(released.bind(f,17));f.key.lifecycle++;assert(!released.retained(f,17));
+        assert(released.bind(f,17));f.controllers.profile_generation++;assert(!released.retained(f,17));
+        assert(released.bind(f,17));f.left_tracked=0;assert(!released.retained(f,17));
+        f.left_tracked=1;input.squeeze=1;assert(!released.bind(f,17));
+    }
     const gears_hand_wrist::Calibration c{true,{-.05,.004,.002},{1,0,0,0}};
     const v::Pose physical{{10,20,30},{0,0,0,1}};
     g::Target t{g::Kind::starter,{{15,20,30},{0,0,std::sqrt(.5),std::sqrt(.5)}},1};

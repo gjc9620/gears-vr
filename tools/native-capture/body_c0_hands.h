@@ -148,7 +148,7 @@ inline Result compose_common(body::Model const& model,body::Frame const& frame,c
         side_prepared[side]=true;
     }
     gears_hand_object_grasp::Target visual_goals[2]{work.left_visual,{}};
-    if(work.left_visual.kind==gears_hand_object_grasp::Kind::support){
+    if(work.left_visual.kind==gears_hand_object_grasp::Kind::support&&!work.left_visual.passive_socket){
         visual_goals[0]={};gears_weapon_two_hand::Solution support{};
         if(independent&&side_prepared[0]&&side_prepared[1]){
             visual_goals[0]={gears_hand_object_grasp::Kind::support,

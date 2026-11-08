@@ -34,6 +34,10 @@ class LancerContactRoute {
     unsigned candidates_{};
     LancerContact purpose_{};
     bool known_{};
+    Source granted_source_{};
+    gears_weapon_hand::Lease granted_lease_{};
+    LancerContact granted_purpose_{};
+    bool grant_known_{};
     static Source source(Frame const& f) noexcept {
         return {f.key,f.world,f.controller,f.pawn,f.mesh,f.weapon,f.press_token,
             f.controllers.sequence,f.controllers.input_epoch,f.stereo.session,
@@ -82,6 +86,26 @@ public:
             d.status==h::DecisionStatus::granted&&d.lease.kind==h::LeaseKind::magazine&&
             h::lease_valid(d.lease,f.key.lifecycle)&&d.lease.id==f.press_token&&
             d.press_token==f.press_token;
+    }
+    // Receipt of the exact Native grant, not another proposal or permission.
+    // Moving the newly leased display component may change the geometry of
+    // a later observer in THIS SAME frozen owner frame. Preserve that frame's
+    // already accepted proposal instead of resampling our own visual writes.
+    // A new owner frame must observe afresh; disagreement before commit still
+    // poisons the route exactly as before. No pose/clock/stroke is retained.
+    bool remember_grant(Frame const& f,Decision const& d,LancerContact purpose) noexcept {
+        if(!grants(f,d,purpose))return false;
+        granted_source_=source(f);granted_lease_=d.lease;
+        granted_purpose_=purpose;grant_known_=true;return true;
+    }
+    bool preserves_granted_proposal(Frame const& f,gears_weapon_hand::Lease const& held,
+        LancerContact purpose) const noexcept {
+        namespace h=gears_weapon_hand;
+        return known_&&grant_known_&&purpose_==purpose&&granted_purpose_==purpose&&
+            purpose!=LancerContact::none&&purpose!=LancerContact::conflict&&
+            same_source(source_,f)&&same_source(granted_source_,f)&&
+            h::same(held,granted_lease_)&&h::lease_valid(held,f.key.lifecycle)&&
+            held.id==f.press_token&&f.left_tracked==1&&f.left_grip_known==1&&f.left_grip_down==1;
     }
 };
 } // namespace gears_weapon

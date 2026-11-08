@@ -115,6 +115,29 @@ struct Host {
     bool current(FrameKey const& expected){GT gt;return client->source_current_on_gt(expected);}
     bool current_game(FrameKey const& expected,GripGameState& out){GT gt;return client->source_game_on_gt(expected,out);}
 };
+unsigned candidate_failure_observation_cases(){
+    unsigned cases{};
+    for(bool pending:{false,true}){
+        Host h;HandClient c(h.adapter());h.connect(c);h.step();h.next();h.step();
+        h.game.magazine_observation_pending=pending;
+        if(!pending)h.frame.controllers.hands[0].grip.position.x=2.;
+        h.next(true);h.step();
+        // Expiry STILL rejects and clears the actual publication. The same
+        // failing read now explains the committed empty proposal using POD;
+        // observing a known contact cannot refresh or grant the expired Frame.
+        h.now=(std::max)(h.frame.controllers.received_ns,h.frame.stereo.received_ns)+100000001;
+        Frame out{};GripGameState observed{};Decision decision{};FrameReadObservation failure{};
+        {GT gt;assert(!c.copy_frame_on_gt(out,observed,decision,&failure));
+            assert(failure.failure==FrameReadFailure::stale_before);
+            assert(c.withdrawal_on_gt().candidate.flags==failure.candidate.flags);}
+        assert(!c.armed()&&same_frame(out,Frame{})&&same_game(observed,GripGameState{}));
+        assert(failure.candidate.decision==unsigned(DecisionStatus::no_candidate)&&!failure.candidate.lease);
+        assert(failure.candidate.flags==(pending?31u:13u));
+        assert(pending?failure.candidate.support_distance_metres<1e-9:failure.candidate.support_distance_metres>1.);
+        ++cases;
+    }
+    assert(!candidate_observation(Frame{},GripGameState{},Decision{}).flags);return cases+1;
+}
 unsigned single_hand_pending_marker_cases(){
     //67624: no left lease existed when pending-mag observation changed.
     // That acquisition-only marker must not revoke the current main hand.
@@ -178,13 +201,40 @@ unsigned single_hand_pending_marker_cases(){
         assert(decision.status==DecisionStatus::retained&&!decision.new_grant&&
             same(decision.lease,h.game.object_incumbents[0])&&c.armed());++cases;
     }
+    // 69680 frame736: request_magazine AND pending changed (difference18).
+    // Reproduce the retained-part case, in both directions and through both
+    // consumers; this does not infer that original frame's decision status.
+    for(bool hover:{false,true})for(bool pending:{false,true})for(bool snapshot_first:{false,true}){
+        Host h;HandClient c(h.adapter());single(h,c,false);
+        h.next(false);h.step();h.game.request_magazine=true;h.next(true);h.step();
+        Frame out{};GripGameState game{};Decision decision{};
+        {GT gt;assert(c.copy_frame_on_gt(out,game,decision));}
+        h.game.object_incumbents[0]=decision.lease;h.game.request_magazine=hover;
+        h.game.magazine_observation_pending=pending;h.next(true);h.step();
+        h.game.request_magazine=!hover;h.game.magazine_observation_pending=!pending;
+        if(snapshot_first)assert(h.snapshot());
+        {GT gt;assert(c.copy_frame_on_gt(out,game,decision));}
+        assert(decision.status==DecisionStatus::retained&&!decision.new_grant&&
+            same_frame(out,h.frame)&&same_game(game,h.game)&&
+            same(decision.lease,h.game.object_incumbents[0])&&c.armed());++cases;
+    }
+    {
+        Host h;HandClient c(h.adapter());single(h,c,false);
+        h.next(false);h.step();h.game.request_magazine=true;h.next(true);h.step();
+        Frame out{};GripGameState game{};Decision decision{};
+        {GT gt;assert(c.copy_frame_on_gt(out,game,decision));}
+        assert(decision.new_grant);
+        auto committed=game;committed.object_incumbents[0]=decision.lease;
+        auto changed=committed;changed.request_magazine=false;changed.magazine_observation_pending=true;
+        assert(!same_pose_consumer_observation(out,decision,changed,committed));++cases;
+    }
     for(unsigned changed=0;changed<5;++changed){
         Host h;HandClient c(h.adapter());single(h,c,false);
         h.next(false);h.step();h.game.request_magazine=true;h.next(true);h.step();
         Frame out{};GripGameState game{};Decision decision{};
         {GT gt;assert(c.copy_frame_on_gt(out,game,decision));}
         h.game.request_magazine=false;h.game.object_incumbents[0]=decision.lease;h.next(true);h.step();
-        h.game.magazine_observation_pending=true;
+        h.game.magazine_observation_pending=true;h.game.request_magazine=true;
         if(changed==0)h.game.object_incumbents={};
         if(changed==1)++h.game.object_incumbents[0].id;
         if(changed==2)h.game.object_incumbents[1]=h.game.object_incumbents[0];
@@ -605,6 +655,7 @@ int main(){
         h.invalidate(InvalidateReason::native_stopping);assert(c.phase()==ClientPhase::active&&!c.registration_alive(33,22));
         assert(c.begin_disconnect()==Reply::draining&&!c.registration_alive(33,22));
         assert(c.finish_disconnect(33)==Reply::quiescent);++cases;}
+    const auto candidate_failure_cases=candidate_failure_observation_cases();
     const auto pending_marker_cases=single_hand_pending_marker_cases();
     const auto frame_cases=frame_copy_cases();
     const auto source_cases=source_current_cases();
@@ -620,4 +671,5 @@ int main(){
     std::printf("Source observer routing: %u case; full Frame/game reads retain candidate observation\n",routing_cases);
     std::printf("Source game-state output: %u cases; no publication or grant\n",game_cases);
     std::printf("Retained motion ancestry: %u cases; original clocks, no fresh Frame/game/write authority\n",motion_cases);
+    std::printf("Expired empty-proposal receipt: %u cases; known contact/pending versus known miss, no renewed permission\n",candidate_failure_cases);
 }

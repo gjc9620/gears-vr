@@ -44,6 +44,37 @@ gears_weapon::LancerSawInputContinuity witness(gears_weapon::LancerSawSample con
 }
 int main() {
     {
+        // Grip release locks a partial real slider. Regrasp starts there and
+        // continues the remaining physical/mechanical stroke, without reset.
+        using namespace gears_weapon;
+        LancerChainsawInteraction model;auto s=sample();
+        s.original_handle=s.original_slide=s.local_rail=s.require_full_slide=true;
+        s.starter_travel_m=.08;s.starter_actual_angle=1.5707963267948966;s.pull_axis_m={0,1,0};
+        s.starter_actual_pull_m=.04;model.observe(s);advance(s);s.left_grip_down=true;
+        assert(model.observe(s).event==LancerSawEvent::pull_began&&std::abs(model.pull_metres()-.04)<1e-9);
+        advance(s);assert(!model.observe(s).press_original_melee);
+        advance(s);s.rail_hand_m.y=s.left_palm_m.y=.04;
+        assert(!model.observe(s).press_original_melee); // still no independent mechanical progress
+        advance(s);s.starter_actual_pull_m=.08;
+        assert(model.observe(s).press_original_melee);
+    }
+    {
+        // Regrasp at the locked full-forward endpoint is NOT a new start.
+        // Neither waiting nor axial overtravel can manufacture part motion.
+        using namespace gears_weapon;
+        LancerChainsawInteraction model;auto s=sample();
+        s.original_handle=s.original_slide=s.local_rail=s.require_full_slide=true;
+        s.starter_travel_m=.08;s.starter_actual_angle=1.5707963267948966;s.pull_axis_m={0,1,0};
+        s.starter_actual_pull_m=.08;model.observe(s);advance(s);s.left_grip_down=true;
+        assert(model.observe(s).event==LancerSawEvent::pull_began);
+        for(unsigned i=0;i<4;++i){advance(s);s.rail_hand_m.y=s.left_palm_m.y=.02*i;
+            assert(!model.observe(s).press_original_melee);}
+        advance(s);s.rail_hand_m.y=s.left_palm_m.y=-.06;s.starter_actual_pull_m=.02;
+        assert(!model.observe(s).press_original_melee);
+        advance(s);s.rail_hand_m.y=s.left_palm_m.y=0;s.starter_actual_pull_m=.08;
+        assert(model.observe(s).press_original_melee);
+    }
+    {
         using namespace gears_weapon;
         LancerChainsawInteraction model;auto s=sample();
         s.original_handle=s.original_slide=s.local_rail=s.require_full_slide=true;

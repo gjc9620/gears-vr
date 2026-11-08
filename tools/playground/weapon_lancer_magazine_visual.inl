@@ -1,3 +1,9 @@
+namespace lancer_magazine_appearance {
+bool install(gears_weapon_hand::Frame const&,gears_weapon_hand::ObjectIdentity const&,
+    gears_weapon_hand::ObjectIdentity&) noexcept;
+bool uninstall(gears_weapon_hand::ObjectIdentity const&,gears_weapon_hand::ObjectIdentity&) noexcept;
+bool retired_weapon(gears_weapon_hand::ObjectIdentity const&,bool) noexcept;
+}
 namespace lancerreload_visual {
 namespace hand=gears_weapon_hand;
 struct Snapshot {
@@ -162,7 +168,8 @@ bool restore() noexcept {
        !flag(saved.weapon.address,L"SetWeaponAmmoBoneDisplay",L"bShow",true)||
        !flag(saved.component.address,L"SetHidden",L"NewHidden",saved.hidden)||
        !absolute(saved.absolute_translation,saved.absolute_rotation,saved.absolute_scale)||
-       !transform(saved.translation,saved.rotation))return false;
+       !transform(saved.translation,saved.rotation)||
+       !lancer_magazine_appearance::uninstall(saved.component,saved.asset))return false;
     vrequip::MagazineVisualProbe check{};
     uptr restored_shadow{},restored_environment{};
     if(!vrequip::magazine_visual_probe(saved.weapon.address,saved.pawn.address,check)||
@@ -368,7 +375,8 @@ bool begin(hand::Frame const& source,Profile profile=Profile::lancer,
     // shared material, body light environment or global rendering flag changes.
     s.dynamic_shadow_owned=!hb&&s.precomputed_shadows;
     saved=s;active=true;last_grab_known=false; // Own restoration even when a following call fails.
-    if(!precomputed_shadow_mode(false)||!flag(s.weapon.address,L"SetPawnAmmoAttachment",L"bAttach",true)||
+    if((!hb&&!lancer_magazine_appearance::install(source,s.component,saved.asset))||
+       !precomputed_shadow_mode(false)||!flag(s.weapon.address,L"SetPawnAmmoAttachment",L"bAttach",true)||
        !flag(s.weapon.address,L"SetWeaponAmmoBoneDisplay",L"bShow",false)||
        !absolute(true,true,s.absolute_scale)||!independent_shadow_parent()||
        (!hb&&!prime_lancer_pose(initial_target))){restore();return fail(4);}
@@ -459,6 +467,26 @@ bool stow() noexcept {
         flag(saved.weapon.address,L"SetWeaponAmmoBoneDisplay",L"bShow",false)&&
         absolute(saved.absolute_translation,saved.absolute_rotation,saved.absolute_scale)&&
         transform(saved.translation,saved.rotation);
+}
+bool hide_parked(bool& changed) noexcept {
+    changed=false;
+    // Retail reload exit / weapon reattachment can reveal the gun's seated
+    // magazine again. Preserve the already-owned, physically removed item;
+    // this is display recovery only, never an attachment or ammunition grant.
+    bool hidden{};vrequip::AmmoBoneVisualProbe control{};
+    if(GetCurrentThreadId()!=game_thread.load(std::memory_order_acquire)||!alive()||
+       !vrequip::read_bool(saved.component.address,L"HiddenGame",hidden)||
+       !vrequip::ammo_bone_visual_probe(saved.weapon.address,control)||!control.present||
+       control.bone_scale!=0.f||!std::isfinite(control.target)||control.target<0.f||control.target>1.f)return false;
+    if(!hidden){
+        if(!flag(saved.component.address,L"SetHidden",L"NewHidden",true))return false;
+        changed=true;
+    }
+    if(control.target!=1.f){
+        if(!flag(saved.weapon.address,L"SetWeaponAmmoBoneDisplay",L"bShow",false))return false;
+        changed=true;
+    }
+    return true;
 }
 unsigned replacement_failure{};
 bool take_replacement(hand::Frame const& source) noexcept {

@@ -22,7 +22,8 @@ class StageTests(unittest.TestCase):
                          set(stage.AUTHORED_PART_INPUTS)|{
                              'tools/vr-launcher/weapon_part_cache.py',
                              'tools/vr-launcher/manual_part_preparation.py',
-                             'tools/vr-launcher/lancer_handle_cache.py'})
+                             'tools/vr-launcher/lancer_handle_cache.py',
+                             'tools/vr-launcher/lancer_magazine_cache.py'})
         self.assertEqual(len(stage.AUTHORED_PART_INPUTS),22)
         self.assertTrue(all(name.startswith('assets/weapon-6dof/offline-v2/engine-input/')
                             and name.endswith(('.vtx60','.idx16')) for name in stage.AUTHORED_PART_INPUTS))

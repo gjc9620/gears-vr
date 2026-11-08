@@ -17,6 +17,32 @@ inline constexpr double maximum_angle=1.5707963267948966;
 // the replica reference nor these distances establish an
 // original-game character animation or a measured real mechanism.
 inline constexpr double maximum_pull_raw=8.;
+// Deployment is cosmetic; sliding is a physical interaction. A neutral
+// proximity socket can unfold the crossbar without borrowing a part lease,
+// but can never move the rail in EITHER direction. A released slider remains
+// locked; ordinary zero-stroke folding may still finish without a new grasp.
+inline bool update_admitted(double angle,double pull,double before_angle,double before_pull,
+    bool render,bool part,bool socket) noexcept {
+    for(const double v:{angle,before_angle})if(!std::isfinite(v)||v<0||v>maximum_angle)return false;
+    for(const double v:{pull,before_pull})if(!std::isfinite(v)||v<0||v>maximum_pull_raw)return false;
+    if(!render)return false;
+    if(pull!=before_pull)return part;
+    if(angle>before_angle)return part||socket;
+    if(angle<before_angle)return part||before_pull==0;
+    return true;
+}
+struct DisplayTarget {double angle{},pull{};};
+// Once Grip is released, lock the last acknowledged display request exactly.
+// Reconstructed float geometry is an observation, not a new rail command. A
+// tiny readback difference must not demand a part lease that just ended.
+inline bool display_target(bool locked,DisplayTarget requested,DisplayTarget accepted,
+    bool accepted_known,DisplayTarget& out) noexcept {
+    if(locked&&!accepted_known)return false;
+    const auto p=locked?accepted:requested;
+    if(!std::isfinite(p.angle)||p.angle<0||p.angle>maximum_angle||
+       !std::isfinite(p.pull)||p.pull<0||p.pull>maximum_pull_raw)return false;
+    out=p;return true;
+}
 inline constexpr std::array<double,3> closed_grasp{{4.9944004760,25.0155129328,10.1799370098}};
 inline bool finite(Atom const& a) noexcept {
     for(float v:a.rotation)if(!std::isfinite(v))return false;

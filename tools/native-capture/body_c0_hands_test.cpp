@@ -346,6 +346,25 @@ int main(int argc,char** argv){
             C(bytes(work->computed_wrist[side])==bytes(physical_targets[side]));
             C(distance(world[wrist].position,expected_wrist[side].position)<.002&&qerror(world[wrist].orientation,expected_wrist[side].orientation)<1e-5);}
         for(unsigned i=0;i<b::bones;++i)C(!std::memcmp(adjusted.local[i].translation,body_only.local[i].translation,12)&&adjusted.local[i].scale==body_only.local[i].scale);
+        // Proximity handguard attachment is a WORLD cosmetic socket. Unlike
+        // active support it must not rotate the right hand/gun before Grip.
+        {
+            auto socket=left;socket.position.x+=1;
+            work->left_visual={gears_hand_object_grasp::Kind::support,socket,1,true};
+            work->left_blend={};work->right_blend={};
+            work->left_blend.kind=gears_hand_object_grasp::Kind::support;
+            work->left_blend.weight=1;work->left_blend.last_ns=now-20000000;
+            adjusted=body_only;
+            C(a::compose_common(*model,*frame,actual,asset,base,now,sim,*work,adjusted,
+                a::adapter::MountKind::held_lancer,prepare,true).status==a::Status::okay);
+            const auto passive=fk(*model,*frame,adjusted);
+            C(work->left_visual_applied&&work->right_blend.weight==0);
+            C(distance(passive[35].position,physical_targets[1].position)<.002&&
+                qerror(passive[35].orientation,physical_targets[1].orientation)<1e-5);
+            C(bytes(actual)==input_before&&bytes(work->eye_targets[0].grip_world)==bytes(moved_left));
+            for(unsigned i=0;i<b::bones;++i)C(!std::memcmp(adjusted.local[i].translation,body_only.local[i].translation,12)&&
+                adjusted.local[i].scale==body_only.local[i].scale);
+        }
         // A release decays the skin-only fitting on fresh physical input, then
         // returns both hands to the independently tracked poses.
         work->left_visual={};

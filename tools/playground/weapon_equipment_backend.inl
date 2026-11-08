@@ -129,9 +129,11 @@ bool inventory(void*,abi::Frame const& frame,Snapshot& out) noexcept {
         inventory_stage=L"ok";return true;
     }catch(...){inventory_stage=L"cpp_exception";out={};return false;}
 }
+#include "weapon_equipment_idle_inventory.inl"
 bool held_inventory(void*,abi::Frame const& frame,Snapshot& out) noexcept {
     try {
-        if(!current(nullptr,frame)||!vrequip::snapshot(frame.controller.address,out,inventory_stage,false))return false;
+        inventory_stage=L"held_chain_observation";
+        if(!current(nullptr,frame)||!idle_inventory::read(frame,out))return false;
         return out.world==frame.world.address&&out.pawn==frame.pawn.address&&
             out.current_weapon==frame.weapon.address&&current(nullptr,frame);
     }catch(...){out={};return false;}
@@ -297,9 +299,10 @@ bool tick(uptr pc,bool& reload_ticked_early,bool reload_already_ticked) noexcept
         const auto failure=weaponhand::client.withdrawal_on_gt();
         if(log_file&&rows<8&&failure.frame&&failure.frame!=last_frame&&failure.left_grip_down){
             ++rows;last_frame=failure.frame;
-            fwprintf(log_file,L"native_equipment_support_withdrawal frame=%llu sequence=%llu token=%llu reason=%u game_difference=%u frame_difference=%u game_flags=%u age_ns=%lld\n",
+            fwprintf(log_file,L"native_equipment_support_withdrawal frame=%llu sequence=%llu token=%llu reason=%u game_difference=%u frame_difference=%u game_flags=%u age_ns=%lld candidate_flags=%u candidate_decision=%u candidate_lease=%u support_distance_m=%.9g\n",
                 failure.frame,failure.sequence,failure.press_token,unsigned(failure.failure),failure.game_difference,
-                failure.frame_difference,failure.game_flags,failure.input_age_ns);fflush(log_file);
+                failure.frame_difference,failure.game_flags,failure.input_age_ns,failure.candidate.flags,
+                failure.candidate.decision,failure.candidate.lease,failure.candidate.support_distance_metres);fflush(log_file);
             weaponaction_diagnostic::report(log_file);
         }
     };
@@ -336,9 +339,10 @@ bool tick(uptr pc,bool& reload_ticked_early,bool reload_already_ticked) noexcept
         static unsigned first_failures{},grip_failures{};
         if(frame_read.frame&&log_file&&((frame_read.left_grip_down&&grip_failures++<24)||
            (!frame_read.left_grip_down&&first_failures++<8))){
-            fwprintf(log_file,L"native_equipment_frame_read failure=%u game_difference=%u frame=%llu sequence=%llu press=%llu left_grip_down=%u input_age_ns=%lld\n",
+            fwprintf(log_file,L"native_equipment_frame_read failure=%u game_difference=%u frame=%llu sequence=%llu press=%llu left_grip_down=%u input_age_ns=%lld candidate_flags=%u candidate_decision=%u candidate_lease=%u support_distance_m=%.9g\n",
                 unsigned(frame_read.failure),frame_read.game_difference,frame_read.frame,frame_read.sequence,
-                frame_read.press_token,frame_read.left_grip_down,frame_read.input_age_ns);fflush(log_file);
+                frame_read.press_token,frame_read.left_grip_down,frame_read.input_age_ns,frame_read.candidate.flags,
+                frame_read.candidate.decision,frame_read.candidate.lease,frame_read.candidate.support_distance_metres);fflush(log_file);
         }
 #if defined(GEARS_PLAYGROUND_NATIVE_LANCER_FOLLOW)
         weapon_part_assets::on_frame_unavailable();
@@ -350,8 +354,13 @@ bool tick(uptr pc,bool& reload_ticked_early,bool reload_already_ticked) noexcept
     if(fragruntime::pre_equipment(frame,copied_game)){state.suspend_input(backend);return false;}
     fragruntime::tick(frame,copied_game);
     if(fragruntime::pre_equipment(frame,copied_game)){state.suspend_input(backend);return false;}
-    if(copied_decision.new_grant)lancer_grasp::tick(frame,copied_decision);
+    const bool support_grasp=copied_decision.lease.kind==abi::LeaseKind::support;
+    // Publish a retained support pose at the same early admission point as a
+    // new grant. Unrelated reload/starter work must not precede this request.
+    // tick retains every current source, exact lease and geometry check.
+    if(copied_decision.new_grant||support_grasp)lancer_grasp::tick(frame,copied_game,copied_decision);
     weapon_part_assets::on_frame(frame);
+    if(!copied_decision.new_grant)lancer_magazine_appearance::prepare(frame);
 #endif
     ++frames;
     // Original saw ownership blocks inventory mutation, not observation. A
@@ -378,7 +387,7 @@ bool tick(uptr pc,bool& reload_ticked_early,bool reload_already_ticked) noexcept
             // old early return freezes the lever at ON and never sees OFF.
             // Paired34 remains original-owned and cannot enter this branch.
             lancersaw_starter::tick(frame,copied_decision);
-            lancer_grasp::tick(frame,copied_decision);
+            if(!support_grasp)lancer_grasp::tick(frame,copied_game,copied_decision);
             if(lancersaw_original::ready_motion_allowed(frame))lancersaw_contact::tick(frame);
         }
         return false;
@@ -420,6 +429,8 @@ bool tick(uptr pc,bool& reload_ticked_early,bool reload_already_ticked) noexcept
     // Consume an already arbitrated magazine/receiver edge before idle
     // starter display work spends the actual hand pair's100ms lifetime.
     // tick still reauthenticates its own source, exact lease and geometry.
+    if(!reload_ticked_early&&support_grasp&&lancerreload_runtime::idle_support_only(frame,copied_game,copied_decision))
+        reload_ticked_early=true;
     if(!reload_ticked_early&&(frame.left_grip_down||lancerreload_runtime::needs_priority())){
         lancerreload_runtime::tick(pc);reload_ticked_early=true;
     }
@@ -427,7 +438,7 @@ bool tick(uptr pc,bool& reload_ticked_early,bool reload_already_ticked) noexcept
     lancersaw_contact::tick(frame);
     const auto timing_contact=clock_ns(nullptr);
     lancersaw_starter::tick(frame,copied_decision);
-    lancer_grasp::tick(frame,copied_decision);
+    if(!support_grasp)lancer_grasp::tick(frame,copied_game,copied_decision);
     const auto timing_starter=clock_ns(nullptr);
 #endif
 #if defined(GEARS_PLAYGROUND_NATIVE_EQUIPMENT_ATTACHMENT_OBSERVER)
@@ -466,6 +477,9 @@ bool tick(uptr pc,bool& reload_ticked_early,bool reload_already_ticked) noexcept
 void reset_after_drain() noexcept {
     stow_native::reset_after_drain();
     state.reset_after_drain(backend,vrequip::model);have_status=false;
+    if(log_file)fwprintf(log_file,L"native_equipment_idle_inventory_summary hits=%llu qualifications=%llu rejected=%llu action_permission=0\n",
+        idle_inventory::hits,idle_inventory::qualifications,idle_inventory::rejected);
+    idle_inventory::certificate={};idle_inventory::hits=idle_inventory::qualifications=idle_inventory::rejected=0;
 #if defined(GEARS_PLAYGROUND_NATIVE_LANCER_FOLLOW)
     lancersaw_starter::reset_after_drain();
     fragruntime::reset_after_drain();

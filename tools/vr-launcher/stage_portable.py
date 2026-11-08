@@ -97,6 +97,7 @@ def payload_paths(manifest):
         result += AUTHORED_PART_INPUTS
         result.append('tools/vr-launcher/weapon_part_cache.py')
         result.append('tools/vr-launcher/lancer_handle_cache.py')
+        result.append('tools/vr-launcher/lancer_magazine_cache.py')
         result.append('tools/vr-launcher/manual_part_preparation.py')
     result += [(xr / name).as_posix() for name in ('OpenXRPoseProbe.exe', 'openxr_loader.dll')]
     result += [f'{QUIET_BUILD}/{name}' for name in QUIET_HASHES]

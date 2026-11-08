@@ -9,6 +9,7 @@ std::atomic<unsigned> outstanding{};std::atomic<bool> stop_requested{};
 bool ready{},visible{},revoking{},unknown_adoption{};unsigned failure{};
 std::uint64_t generation{};PhaseCost last_cost{};
 std::int64_t last_pose_ns{};double deployment_angle{};
+api::DisplayTarget accepted_pose{};bool accepted_pose_known{};
 void report() noexcept {
     static unsigned previous{~0u},rows{};const unsigned state=failure*4+unsigned(ready)+2*unsigned(visible);
     if(log_file&&rows<32&&state!=previous){
@@ -39,7 +40,8 @@ bool restore() noexcept {
     if(r.size!=sizeof r||r.version!=2||r.handle!=control.handle||r.result!=code||
        (code!=api::Result::restored&&code!=api::Result::inactive_restored)||
        (!r.cpu_restored&&!r.original_destroyed))return false;
-    control={};owner={};node={};closed={};key={};generation=0;last_pose_ns=0;deployment_angle=0;revoking=false;failure=0;
+    control={};owner={};node={};closed={};key={};generation=0;last_pose_ns=0;deployment_angle=0;
+    accepted_pose={};accepted_pose_known=false;revoking=false;failure=0;
     outstanding.store(0,std::memory_order_release);return true;
 }
 bool reset_after_drain() noexcept {
@@ -101,7 +103,7 @@ bool observe(hand::Frame const& f,Observation& out,bool calibrate=false) noexcep
         // ordinary tick/setter separately authenticates its current source.
         same_binding(f)&&asset::object(owner.component)&&asset::object(owner.asset)&&asset::object(node);
 }
-void tick(hand::Frame const& f,double pull_raw,bool deploy) noexcept try {
+void tick(hand::Frame const& f,double pull_raw,bool deploy,bool lock) noexcept try {
     struct Review {~Review(){report();}} review;
     last_cost={};const auto begin=weaponhand::clock_ns(nullptr);ready=visible=false;
     if(stop_requested.load()||revoking||(live()&&!same_binding(f))){restore();return;}
@@ -123,20 +125,26 @@ void tick(hand::Frame const& f,double pull_raw,bool deploy) noexcept try {
         }
         owner=selected;node=selected_node;key=f.key;generation=r.handle;control={};
         control.handle=r.handle;control.cookie=f.key.registration_cookie;unknown_adoption=false;last_pose_ns=begin;deployment_angle=0;
+        accepted_pose={r.angle,r.pull_raw};accepted_pose_known=code==api::Result::pending||code==api::Result::ready;
         if(code==api::Result::restoring){revoking=true;restore();return;}
     }
-    // Idle stays folded. Only an acquired real grip unfolds it. After release
-    // the slider first springs home, then the bar folds; neither motion can
-    // establish physical travel or an action permit.
+    // Neutral auto-socket may deploy cosmetic geometry; only authenticated
+    // Grip motion changes the slider. Release locks its current pose instead
+    // of springing/folding it. Stow/owner loss still restores normally.
     const double dt=last_pose_ns>0&&begin>=last_pose_ns?std::clamp(double(begin-last_pose_ns)/1e9,0.,.1):0;
     last_pose_ns=begin;
-    deployment_angle=std::clamp(deployment_angle+((deploy||pull_raw>.001)?1.:-1.)*dt*api::maximum_angle/.2,0.,api::maximum_angle);
-    control.source=f;control.angle=closed.known?deployment_angle:0;
-    control.pull_raw=pull_raw;const auto pose=function<api::Update>(api::update_export);api::Receipt r{};
+    if(!lock)deployment_angle=std::clamp(deployment_angle+((deploy||pull_raw>.001)?1.:-1.)*dt*api::maximum_angle/.2,0.,api::maximum_angle);
+    api::DisplayTarget target{};
+    if(!api::display_target(lock,{closed.known?deployment_angle:0,pull_raw},accepted_pose,accepted_pose_known,target))return;
+    if(lock)deployment_angle=target.angle;
+    control.source=f;control.angle=target.angle;
+    control.pull_raw=target.pull;const auto pose=function<api::Update>(api::update_export);api::Receipt r{};
     failure=3;if(!pose)return;const auto code=pose(&control,&r);
     if(r.size!=sizeof r||r.version!=2||r.handle!=control.handle||r.result!=code)return;
     if(code==api::Result::restoring||code==api::Result::restored||code==api::Result::inactive_restored){revoking=true;restore();return;}
     if(code!=api::Result::pending&&code!=api::Result::ready)return;
+    if(r.angle!=control.angle||r.pull_raw!=control.pull_raw)return;
+    accepted_pose={r.angle,r.pull_raw};accepted_pose_known=true;
     Observation actual{};failure=4;
     // Calibrate only with Native's actual evaluated rest pose acknowledged.
     if(!closed.known&&(control.angle!=0||pull_raw!=0||code!=api::Result::ready))return;

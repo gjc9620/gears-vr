@@ -37,6 +37,38 @@ struct Fixture {
     void update_space(){const auto m=h::multiply(h::matrix(local[4],true),root);for(unsigned i=0;i<16;++i)space[4][i]=float(m[i]);}
 };
 int main(){
+    //62548: partial release readback2.00046 differs from the last accepted
+    //2.000674 request. Reissuing it needs a now-released part lease and leaves
+    //C unready, so a same-position regrasp wrongly acquires the magazine.
+    h::DisplayTarget locked{};
+    CHECK(!h::update_admitted(h::maximum_angle,2.00046,h::maximum_angle,2.000674,true,false,true));
+    CHECK(h::display_target(true,{h::maximum_angle,2.00046},{h::maximum_angle,2.000674},true,locked));
+    CHECK(locked.pull==2.000674&&locked.angle==h::maximum_angle);
+    CHECK(h::update_admitted(locked.angle,locked.pull,h::maximum_angle,2.000674,true,false,true));
+    CHECK(h::display_target(false,{h::maximum_angle,7.5},locked,true,locked));
+    CHECK(locked.pull==7.5);
+    CHECK(!h::update_admitted(locked.angle,locked.pull,h::maximum_angle,2.000674,true,false,true));
+    CHECK(h::update_admitted(locked.angle,locked.pull,h::maximum_angle,2.000674,true,true,false));
+    CHECK(!h::display_target(true,{0,0},{0,0},false,locked));
+    CHECK(!h::display_target(false,{0,9},{0,0},true,locked));
+    // Runtime12780: the old angle-increase predicate rejected neutral socket
+    // deployment because it had no part/action lease. Only the angle may move.
+    CHECK(!((.2<=0&&0<=0)||false)); // old admission, same observed inputs
+    CHECK(h::update_admitted(.2,0,0,0,true,false,true));
+    CHECK(h::update_admitted(h::maximum_angle,0,.2,0,true,false,true));
+    CHECK(!h::update_admitted(.3,0,.2,0,true,false,false));
+    CHECK(!h::update_admitted(.3,0,.2,0,false,true,true));
+    for(bool socket:{false,true}){
+        CHECK(!h::update_admitted(h::maximum_angle,1,h::maximum_angle,0,true,false,socket));
+        CHECK(!h::update_admitted(h::maximum_angle,0,h::maximum_angle,1,true,false,socket));
+        CHECK(!h::update_admitted(0,1,h::maximum_angle,1,true,false,socket));
+        CHECK(h::update_admitted(h::maximum_angle,1,h::maximum_angle,1,true,false,socket));
+    }
+    CHECK(h::update_admitted(0,0,h::maximum_angle,0,true,false,false));
+    CHECK(h::update_admitted(h::maximum_angle,7,h::maximum_angle,2,true,true,false));
+    CHECK(h::update_admitted(h::maximum_angle,0,h::maximum_angle,7,true,true,false));
+    CHECK(!h::update_admitted(h::maximum_angle,9,h::maximum_angle,2,true,true,true));
+    CHECK(!h::update_admitted(std::numeric_limits<double>::quiet_NaN(),0,0,0,true,true,true));
     Fixture f;h::Plan p{};CHECK(p.bind(f.closed,f.root,f.handle));CHECK(p.conjugated);
     // Independent original-surface trajectory: radius is preserved around
     // the actual handle pivot; no disconnected translating cord or cap.

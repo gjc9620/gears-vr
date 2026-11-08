@@ -146,7 +146,7 @@ bool upright_posture(bind::Binding const& actor){
     return true;
 }
 bool standing(bind::Binding const& actor){budget::Span measured(budget::Op::standing);
-    const auto scope=[&](){return !actor.special_move||
+    const auto scope=[&](){return gears_lancer_saw_pose::ordinary_hands_motion(actor.special_move)||
         (actor.special_move==33&&n::hands_enabled&&n::main_mount_policy_enabled()&&bind::current_lancer_animation(actor));};
     // SM33 may reach CPU preparation only. apply_impl additionally requires
     // this frame's authenticated held-Lancer mount before any bone commit.
@@ -314,7 +314,8 @@ bool read_view(gears_anchor::Receipt const* scene,gears_vr::StereoResult const& 
         // weapon. Keep the SAME established neutral eye, transformed by the
         // current mesh, rather than following that animation's moving head.
         // The visual binding has no weapon authority and is never published
-        // as a C0/hand/action receipt. All ordinary writer guards stay SM0.
+        // as a C0/hand/action receipt. Normal stopping keeps the same fresh
+        // ordinary writer checks; special-action exceptions stay separate.
         bool pickup=false,lancer_animation=false;
         const bool sampled=bind::sample(scene,actor);
         if(sampled&&(actor.special_move==33||actor.special_move==34)){
@@ -327,7 +328,7 @@ bool read_view(gears_anchor::Receipt const* scene,gears_vr::StereoResult const& 
             // This read never republishes any old hand result or action.
             if(!same_neutral_actor(actor,copy.key.actor)||!upright_posture(actor))return deny(false);
             lancer_animation=true;
-        }else if(!sampled||actor.special_move){
+        }else if(!sampled||!gears_lancer_saw_pose::ordinary_hands_motion(actor.special_move)){
             if(!bind::sample_visual(scene,actor))return deny();
             // During a weapon attachment transition the ordinary binding may
             // be temporarily unavailable. A visual-only SM33/34 association

@@ -635,7 +635,10 @@ class ContinuousTests(unittest.TestCase):
                  mock.patch.object(runner,'read_session_status',side_effect=stages),contextlib.redirect_stdout(io.StringIO()):
                 code=runner.run_session(args,control,on_report=report,cancel_requested=cancelled if cancel_at else None,
                                         before_native_activation=startup_callback)
-            state=json.loads(next((root/'analysis/runtime').glob('*.json')).read_text())
+            # Prelaunch now also writes proof JSONs. Inspect the exact session
+            # report delivered by on_report, not the first unrelated file.
+            self.assertEqual(len(reports),1)
+            state=json.loads(pathlib.Path(reports[0]).read_text())
             return code,state,popen.call_args,native_run,control,child
 
     def test_one_owner_orders_native_cleanup_before_xr_and_verifies_entries(self):
@@ -737,6 +740,19 @@ class ContinuousTests(unittest.TestCase):
             self.assertEqual(runner.first_stereo_submitted(path),good)
             with mock.patch.object(pathlib.Path,'read_text',side_effect=PermissionError('busy')):
                 self.assertFalse(runner.first_stereo_submitted(path))
+
+    def test_startup_card_requires_successful_end_and_never_counts_as_stereo(self):
+        with tempfile.TemporaryDirectory() as folder:
+            path=pathlib.Path(folder)/'stdout.txt'
+            good=dict(startup_wait_card_first_frame=True,observed_ns=123,source='session_owned_card',
+                      end_frame_succeeded=True,panel_counts_as_stereo=False)
+            for key,value in [('startup_wait_card_first_frame',False),('observed_ns',0),('observed_ns',True),
+                              ('source','game_window'),('end_frame_succeeded',False),('panel_counts_as_stereo',True)]:
+                path.write_text(json.dumps(dict(good,**{key:value}))+'\n')
+                self.assertFalse(runner.startup_panel_submitted(path),key)
+            path.write_text(json.dumps(good)+'\n')
+            self.assertTrue(runner.startup_panel_submitted(path))
+            self.assertFalse(runner.first_stereo_submitted(path))
 
     def test_diagnostics_enabled_report_and_commands(self):
         code,state,spawn,native,control,child=self.run_mock(diagnostics=True)
@@ -847,6 +863,10 @@ class ContinuousTests(unittest.TestCase):
             startup_menu_handoff=dict(end_frame_succeeded=True,ticketed_projection_rendered=True,one_way=False),
             menu_recovery_evidence=dict(menu_recovery_evidence=True,panel_counts_as_stereo=False))
         self.assertTrue(runner.continuous_passed(state))
+        card_only=dict(state,startup_menu_evidence=dict(stereo_handoff=True,startup_quad_layers=0,startup_wait_card_layers=12))
+        self.assertTrue(runner.continuous_passed(card_only))
+        self.assertFalse(runner.continuous_passed(dict(card_only,startup_menu_evidence=dict(stereo_handoff=True,startup_quad_layers=0,startup_wait_card_layers=0))))
+        self.assertFalse(runner.continuous_passed(dict(card_only,startup_menu_handoff=dict(end_frame_succeeded=False,ticketed_projection_rendered=True,one_way=False))))
         for field,value in [('menu_recovery_enabled',False),('menu_recovery_enabled',1),
                             ('startup_menu_enabled',False),('menu_recovery_evidence',{}),
                             ('xr_exit_code',1),('native_cleanup_verified',False)]:

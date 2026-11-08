@@ -199,8 +199,9 @@ api::Result update(api::Control const* input,api::Receipt* output,bool restore) 
     else {
         auto* b=weapon_hand_runtime::current();
         if(!b||!hand::same(q.source.weapon,bound.weapon)||!hand::same(q.source.world,bound.world)||
-           !hand::same(q.source.pawn,bound.pawn)||!b->admit_weapon_render(q.source)||
-           ((q.angle>bound.pose.wanted()||q.pull_raw>bound.pose.wanted_pull())&&!b->admit_part_visibility(q.source))||
+           !hand::same(q.source.pawn,bound.pawn)||
+           !api::update_admitted(q.angle,q.pull_raw,bound.pose.wanted(),bound.pose.wanted_pull(),
+               b->admit_weapon_render(q.source),b->admit_part_visibility(q.source),b->admit_socket_visibility(q.source))||
            !bound.pose.wanted(q.angle,q.pull_raw))return api::Result::rejected;
     }
     drain_on_gt();const auto r=receipt();return safe_copy(output,&r,sizeof r)?r.result:api::Result::rejected;

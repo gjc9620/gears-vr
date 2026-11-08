@@ -1535,6 +1535,7 @@ void summary(FILE* f){export_pending();ready_wrist::export_records();export_held
         for(unsigned i=0;i<lancer_transform_finish::rejection_stage.size();++i)fprintf(f,"body_gun_transform_reject_%u=%llu ",i,lancer_transform_finish::rejection_stage[i].load());}
     if(f)fprintf(f,"body_endpoint_published=%llu body_endpoint_reads=%llu body_endpoint_accepted=%llu body_endpoint_geometry_rejected=%llu body_endpoint_geometry_revoked=%llu ",endpoint_published.load(),endpoint_reads.load(),endpoint_accepted.load(),endpoint_geometry_rejected.load(),endpoint_geometry_revoked.load());
     if(f)fprintf(f,"body_endpoint_observed_visual=%llu body_endpoint_late_visual=%llu ",endpoint_observed_visual.load(),endpoint_late_visual.load());
+    lancer_grasp_live::summary(f);
     if(f){for(unsigned i=0;i<contextual_grasp_commits.size();++i)fprintf(f,"body_context_grasp_commit_%u=%llu ",i,contextual_grasp_commits[i].load());
         for(unsigned i=0;i<interaction_publish.size();++i)fprintf(f,"body_interaction_publish_%u=%llu ",i,interaction_publish[i].load());
         for(unsigned i=0;i<interaction_read.size();++i)fprintf(f,"body_interaction_read_%u=%llu ",i,interaction_read[i].load());

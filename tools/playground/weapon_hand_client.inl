@@ -111,7 +111,7 @@ template<std::size_t N>bool pointer(meta::Reader& r,uptr address,wchar_t const (
 #include "weapon_hand_aim_read.inl"
 // Fresh reflection is intentionally bounded and read-only. It does not use
 // get<T>'s unreadable-as-zero fallback, nor vrequip::snapshot's engine queries.
-bool observe_game(abi::Frame const& f,abi::GripGameState& out,bool candidates) noexcept {
+bool observe_game(abi::Frame const& f,abi::GripGameState& out,bool candidates,bool support_mount=true) noexcept {
 #if defined(GEARS_PLAYGROUND_RESTORE_STAGE_CORE)
     if(!weaponrestore::healthy())return false;
 #endif
@@ -221,7 +221,10 @@ bool observe_game(abi::Frame const& f,abi::GripGameState& out,bool candidates) n
     meta::Table objects{},names{};
     if(!meta::tables(base,objects,names)||!meta::same_table(objects,schema.objects)||!meta::same_table(names,schema.names))return false;
 #if defined(GEARS_PLAYGROUND_NATIVE_LANCER_FOLLOW)
-    if(game.main_hand_held&&!game.busy&&!game.animation_owns_hands&&game.kind==abi::WeaponKind::firearm)
+    // The adapter's boolean current() witness consumes actor/ownership/flag
+    // liveness, never a support mount or contact candidate. Full observations
+    // AND existing R2/source consumers retain their original live mount.
+    if(support_mount&&game.main_hand_held&&!game.busy&&!game.animation_owns_hands&&game.kind==abi::WeaponKind::firearm)
         nativelancerfollow::fill_support_mount(f,game);
     if(candidates){
         lancerreload_contact::propose(f,game);
@@ -229,7 +232,7 @@ bool observe_game(abi::Frame const& f,abi::GripGameState& out,bool candidates) n
         snub_runtime::propose(f,game);
     }
 #else
-    (void)candidates;
+    (void)candidates;(void)support_mount;
 #endif
     out=game;return true;
 }
@@ -237,10 +240,19 @@ bool observe(void*,abi::Frame const& f,std::int64_t,abi::GripGameState& out) noe
     return observe_game(f,out,true);
 }
 bool observe_source(void*,abi::Frame const& f,std::int64_t,abi::GripGameState& out) noexcept {
-    // Only source_current_on_gt uses this. Keep every fresh reflection,
+    // Source-current witnesses and R2's metadata prerequisites use this.
+    // Keep every fresh reflection,
     // identity, ownership/flag and final reread above. Repeated display checks
     // must not reenter Native contact observation or calculate new proposals.
+    // R2's before/after comparison still consumes the original support mount.
     return observe_game(f,out,false);
+}
+bool observe_liveness(void*,abi::Frame const& f,std::int64_t,abi::GripGameState& out) noexcept {
+    // HandClient discards this optional adapter's game payload; it is ONLY a
+    // source-current boolean witness. Keep all fresh metadata/actor/flag and
+    // closing rereads, without geometry or new contact proposals. Explicit
+    // observe_source and full Frame/game readers above are unchanged.
+    return observe_game(f,out,false,false);
 }
 // Only actual successful unholster/equip commits may call this. It never
 // adopts an existing raw-address latch just because a Native frame arrived.
@@ -272,7 +284,7 @@ void committed(void*,abi::Frame const& frame,abi::Decision const& decision) noex
     (void)frame;(void)decision;
 #endif
 }
-abi::HandClient client({nullptr,observe,current_gt,clock_ns,committed,observe_source});
+abi::HandClient client({nullptr,observe,current_gt,clock_ns,committed,observe_liveness});
 HMODULE native_module{};abi::Unregister host_unregister{};bool native_quiescent{};
 bool call_register(abi::Register fn,abi::Registration const* registration,abi::RegistrationResult* result,abi::Reply& reply) noexcept {
     __try{reply=fn(registration,result);return true;}

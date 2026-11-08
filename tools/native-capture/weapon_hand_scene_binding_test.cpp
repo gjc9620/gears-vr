@@ -149,7 +149,7 @@ int main(){
  // ready/execution policy change is freshly observed under the next Tick.
  setup();klass(fixture_gun_a,22,L"Weap_AssaultRifle",fixture_warweapon);C(take(out));
  {const auto original=out;h::Binding tick{};
-  for(unsigned move:{33u,34u,0u}){const auto previous=out.special_move;put(fixture_pawn+0x191,static_cast<unsigned char>(move));
+  for(unsigned move:{33u,34u,0u,14u,15u,0u}){const auto previous=out.special_move;put(fixture_pawn+0x191,static_cast<unsigned char>(move));
    C(h::current_tick_actor(out,tick)&&tick.special_move==move&&h::same_key(out,tick)&&h::current_actor(tick));
    C(out.special_move==previous&&out.scene_invocation==original.scene_invocation);out=tick;}
   const auto expect=out;tick.special_move=255;
@@ -159,6 +159,9 @@ int main(){
   committed_world_generation=2;C(!h::current_tick_actor(expect,tick)&&tick.special_move==255);committed_world_generation=1;
   plan(fixture_pawn+0x191,2,fixture_pawn+0x191,0,1);C(!h::current_tick_actor(expect,tick)&&tick.special_move==255);read_hook=nullptr;}
  setup();C(take(out));{h::Binding tick{};C(h::current_tick_actor(out,tick));
+  for(unsigned move:{15u,14u,0u}){const auto before=out;put(fixture_pawn+0x191,static_cast<unsigned char>(move));
+   C(h::current_tick_actor(out,tick)&&tick.special_move==move&&h::current_actor(tick));
+   C(out.special_move==before.special_move&&h::same_key(out,tick));out=tick;}
   put(fixture_pawn+0x191,static_cast<unsigned char>(33));tick.special_move=255;
   C(!h::current_tick_actor(out,tick)&&tick.special_move==255);} // GunA is not Lancer.
  setup();b::metadata={};b::layout={};denied=arena+0x900;C(take(out)); // No body metadata/entry/source dependency.

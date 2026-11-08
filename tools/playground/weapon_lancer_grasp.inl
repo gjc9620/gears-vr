@@ -1,4 +1,5 @@
-// Ordinary GT publication after a real part lease. The destination is the
+// Ordinary GT publication for an actual part lease or a neutral proximity
+// socket. Proximity fits skin only and never supplies that lease. Destination:
 // existing Native C0 skin solver, never a controller/input transform.
 #include "../vr-common/weapon_lancer_grasp_pose.h"
 namespace lancer_grasp {
@@ -11,6 +12,35 @@ bool magazine_known{};
 gears_weapon_lancer_grasp::PartFit part_fit;
 hand::Frame part_source{};api::Kind part_kind{};
 unsigned part_pose_gate{};
+api::Kind nearby_kind{};hand::Frame nearby_source{};
+V nearby_physical_anchor{};bool nearby_anchor_known{};
+hand::SupportSocketPreference support_socket;
+bool support_socket_preferred(hand::Frame const& f,hand::GripGameState const& game) noexcept {
+    if(!nativelancerfollow::bound_is_lancer||!hand::same(nativelancerfollow::bound_key.weapon,f.weapon)||
+       lancerreload_runtime::stage!=lancerreload_runtime::Stage::idle||lancerreload_runtime::pending_start.frame||
+       lancerreload_runtime::needs_priority()||lancerreload_visual::active||lancerreload_state::lease.acquired||
+       lancer_charging::required(f)){
+        support_socket.reset();return false;
+    }
+    return support_socket.observe(f,game,vrequip::model.hold_generation(),weaponhand::clock_ns(nullptr),selected_starter(f));
+}
+// Preference only; the contact proposal still proves current real C geometry
+// and Native alone grants the actual new Grip lease.
+bool selected_starter(hand::Frame const& f) noexcept {
+    return lancersaw_starter::released_socket_preferred(f)||(nearby_kind==api::Kind::starter&&
+        lancerreload_inventory::identity(nearby_source)==lancerreload_inventory::identity(f)&&
+        nearby_source.reference_generation==f.reference_generation&&nearby_source.stereo.session==f.stereo.session&&
+        nearby_source.stereo.space_epoch==f.stereo.space_epoch&&nearby_source.controllers.input_epoch==f.controllers.input_epoch&&
+        nearby_source.controllers.profile_generation==f.controllers.profile_generation);
+}
+bool stationary_starter(hand::Frame const& f) noexcept {
+    if(lancersaw_starter::released_socket_preferred(f))return true;
+    if(!selected_starter(f)||!nearby_anchor_known||!f.left_tracked||!f.left_grip_known)return false;
+    const auto& a=f.controllers.hands[0];
+    if(!gears_vr::controller_pose_usable(a.grip,a.grip_flags,a.grip_active))return false;
+    const auto p=a.grip.position,q=nearby_physical_anchor;
+    return std::hypot(std::hypot(p.x-q.x,p.y-q.y),p.z-q.z)<=.03;
+}
 hand::ObjectIdentity part_asset{},part_component{};
 std::array<std::uint64_t,4> part_epochs{};
 bool same_magazine_capture(hand::Frame const& f,gears_committed_interaction::Frame const& actual) noexcept {
@@ -88,11 +118,110 @@ void report_grasp_attempt(hand::Frame const& f,api::Kind kind,bool published,uns
         unsigned(kind),unsigned(published),f.key.frame,gate,part_gate,
         weaponhand::clock_ns(nullptr)-f.controllers.sync_ns);fflush(log_file);++rows;}previous=state;
 }
-void tick(hand::Frame const& f,hand::Decision const& decision) noexcept try {
+bool proximity_tick(hand::Frame const& f,hand::GripGameState const& game,hand::Decision const& decision) noexcept {
+    lancersaw_starter::cosmetic_nearby=false;
+    const bool neutral=f.controllers.hands[0].squeeze_active==1&&
+        !hand::control_held(f.controllers.hands[0],gears_vr::control_squeeze);
+    // Auto-fitting selected C before the real Grip edge. Preserve only that
+    // cosmetic selection/deployment during its handoff, using NEW actual
+    // geometry. Do not publish a passive pose or supply an action lease here.
+    if(!neutral&&selected_starter(f)&&f.left_tracked&&f.left_grip_known&&
+       hand::control_held(f.controllers.hands[0],gears_vr::control_squeeze)&&
+       (decision.lease.kind==hand::LeaseKind::none||lancersaw_starter::same_hold(f))&&
+       lancersaw_starter::idle_reload(f)&&nativeequipment::current(nullptr,f)){
+        gears_committed_interaction::Frame actual{};lancersaw_visual::Observation c{};
+        if(lancerreload_visual::interaction(f,actual)&&lancersaw_visual::observe(f,c)){
+            const auto p=actual.physical_left_grip.position;
+            const double distance=std::hypot(std::hypot(p.x-c.grasp.x,p.y-c.grasp.y),p.z-c.grasp.z)/actual.right.units_per_metre;
+            if(std::isfinite(distance)&&distance<=.22){
+                lancersaw_starter::cosmetic_nearby=true;lancersaw_starter::cosmetic_identity=lancerreload_inventory::identity(f);
+                nearby_source=f;nearby_physical_anchor=f.controllers.hands[0].grip.position;nearby_anchor_known=true;
+                return false;
+            }
+        }
+    }
+    // The released Frame can still carry the old part lease even after the
+    // game's busy bit clears. Keep the stationary cosmetic C selection through
+    // BOTH transitions; neither one supplies a new skin goal or action lease.
+    if(neutral&&stationary_starter(f)&&(game.busy||game.animation_owns_hands||
+       decision.lease.kind!=hand::LeaseKind::none)&&
+       (lancersaw_original::active()||lancersaw_starter::locked_rail)&&
+       lancersaw_starter::idle_reload(f)&&nativeequipment::current(nullptr,f)){
+        gears_committed_interaction::Frame actual{};lancersaw_visual::Observation c{};
+        if(lancerreload_visual::interaction(f,actual)&&lancersaw_visual::observe(f,c)){
+            const auto p=actual.physical_left_grip.position;
+            const double distance=std::hypot(std::hypot(p.x-c.grasp.x,p.y-c.grasp.y),p.z-c.grasp.z)/actual.right.units_per_metre;
+            if(std::isfinite(distance)&&distance<=.22){
+                lancersaw_starter::cosmetic_nearby=true;lancersaw_starter::cosmetic_identity=lancerreload_inventory::identity(f);
+                nearby_source=f;return false;
+            }
+        }
+    }
+    if(!f.left_tracked||!f.left_grip_known||
+       (nearby_kind==api::Kind::starter&&!selected_starter(f))){
+        nearby_kind={};return false;
+    }
+    // A spent immutable Frame withdraws publication, not this cosmetic
+    // acquisition preference. A later new Grip still needs fresh actual C
+    // contact and the unchanged Native arbiter; old geometry grants nothing.
+    if(!nativeequipment::current(nullptr,f))return false;
+    if(!neutral||decision.lease.kind!=hand::LeaseKind::none||!lancersaw_starter::idle_reload(f)){
+        nearby_kind={};return false;
+    }
+    // Reuse the game observation from this exact authenticated frame copy.
+    // Reopening the full observer here adds no new authority or geometry.
+    if(!game.known||!game.main_hand_held||game.kind!=hand::WeaponKind::firearm||game.busy||game.animation_owns_hands){
+        nearby_kind={};return false;
+    }
+    gears_committed_interaction::Frame actual{};P geometry{},right{};
+    if(!lancerreload_visual::interaction(f,actual)||!nativelancerfollow::support_geometry(f,geometry)||
+       !gears_weapon_lancer_wrist_mount::grip_from_palm_endpoint(actual.right.right_grip,right))return false;
+    const double units=actual.right.units_per_metre;
+    const auto offset=gears_vr::transform(gears_vr::rotation_matrix(right.orientation),geometry.position);
+    const P support{{right.position.x+offset.x*units,right.position.y+offset.y*units,right.position.z+offset.z*units},
+        gears_vr::normalized(gears_vr::multiply(right.orientation,geometry.orientation))};
+    const auto distance=[&](V p){const auto q=actual.physical_left_grip.position;
+        return std::hypot(std::hypot(p.x-q.x,p.y-q.y),p.z-q.z)/units;};
+    const bool same=nearby_kind!=api::Kind::none&&
+        lancerreload_inventory::identity(nearby_source)==lancerreload_inventory::identity(f)&&
+        nearby_source.reference_generation==f.reference_generation&&nearby_source.stereo.session==f.stereo.session&&
+        nearby_source.stereo.space_epoch==f.stereo.space_epoch&&nearby_source.controllers.input_epoch==f.controllers.input_epoch&&
+        nearby_source.controllers.profile_generation==f.controllers.profile_generation;
+    const double support_distance=distance(support.position);
+    lancersaw_visual::Observation c{};const bool c_known=lancersaw_visual::observe(f,c);
+    const double c_distance=c_known?distance(c.grasp):1e9;
+    const auto incumbent=lancersaw_starter::released_socket_preferred(f)?api::Kind::starter:
+        same?nearby_kind:api::Kind::none;
+    const auto selected=api::proximity_socket(incumbent,support_distance,c_distance,
+        gears_weapon::lancer_contact::support_radius,gears_weapon::lancer_contact::starter_radius,stationary_starter(f));
+    if(selected==api::Kind::none){nearby_kind={};part_fit.reset();return false;}
+    if(!same||selected!=nearby_kind)part_fit.reset();
+    P goal=support;
+    if(selected==api::Kind::starter&&!part_pose(f,selected,goal))return false;
+    const auto call=lancersaw_visual::function<api::Publish>(api::publish_export);
+    if(!call||!nativeequipment::current(nullptr,f))return false;
+    api::Request q{};q.source=f;q.kind=selected;q.grip=goal;q.proximity=1;
+    const bool published=call(&q);
+    if(published){
+        if(selected==api::Kind::starter&&(!same||nearby_kind!=api::Kind::starter||!nearby_anchor_known)){
+            nearby_physical_anchor=f.controllers.hands[0].grip.position;nearby_anchor_known=true;
+        }else if(selected!=api::Kind::starter)nearby_anchor_known=false;
+        nearby_kind=selected;nearby_source=f;
+        lancersaw_starter::cosmetic_nearby=selected==api::Kind::starter;
+        lancersaw_starter::cosmetic_identity=lancerreload_inventory::identity(f);}
+    report_grasp_attempt(f,selected,published,published?0u:34u,selected==api::Kind::starter?part_pose_gate:0);
+    return published;
+}
+void tick(hand::Frame const& f,hand::GripGameState const& game,hand::Decision const& decision) noexcept try {
     struct Attempt {
         hand::Frame const& frame;api::Kind kind{};bool published{};unsigned gate{1},part_gate{};
         ~Attempt(){report_grasp_attempt(frame,kind,published,gate,part_gate);}
     } attempt{f};
+    if(proximity_tick(f,game,decision)){
+        attempt.kind=nearby_kind;attempt.published=true;attempt.gate=0;
+        attempt.part_gate=nearby_kind==api::Kind::starter?part_pose_gate:0;
+        magazine_known=false;return;
+    }
     if(!f.left_tracked||!f.left_grip_known||!f.left_grip_down||decision.release_required||
        (decision.status!=hand::DecisionStatus::granted&&decision.status!=hand::DecisionStatus::retained)||
        !hand::lease_valid(decision.lease,f.key.lifecycle)||decision.lease.id!=f.press_token||

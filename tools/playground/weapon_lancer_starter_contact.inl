@@ -8,8 +8,20 @@ hand::Lease held{};inv::Identity identity{};
 std::uint64_t granted_frame{};std::int64_t last_tick_ns{},completed_ns{};
 gears_weapon::LancerChainsawInteraction interaction;
 bool pulling{},pull_complete{};double shown_pull{};
+bool locked_rail{},cosmetic_nearby{};inv::Identity cosmetic_identity{};
+inv::Identity rail_identity{};std::uint64_t rail_hold{};
+gears_hand_object_grasp::ReleasedSocket released_socket;
+bool released_socket_preferred(hand::Frame const& f) noexcept {
+    if(!locked_rail||!(rail_identity==inv::identity(f))) {released_socket.clear();return false;}
+    return released_socket.retained(f,vrequip::model.hold_generation());
+}
 unsigned events{},sample_rows{},observed_gate{},observed_matrix_gate{};std::uint64_t previous_sample_ms{};
 unsigned proposal_gate{},proposal_observed_gate{},proposal_matrix_gate{},ungranted_rows{};std::uint64_t proposal_frame{};
+unsigned proposal_conditions{};
+bool route_magazine_pending{},route_selected_socket{};std::uint64_t route_frame{};
+void observe_route(hand::Frame const& f,bool magazine_pending_value,bool socket_selected_value) noexcept {
+    route_frame=f.key.frame;route_magazine_pending=magazine_pending_value;route_selected_socket=socket_selected_value;
+}
 // Association/pin for an ALREADY acquired C grasp. A missing rendered Frame
 // is not a physical release. This never provides a pose, new action or edge.
 hand::Frame grasp_parent{};hand::ExistingActionLifetime grasp_lifetime{};
@@ -39,8 +51,10 @@ bool observed(hand::Frame const& f,gears_weapon::LancerSawSample& sample,bool cu
     const auto left=actual.physical_left_grip.position;
     // Acquisition uses the ACTUALLY visible crossbar. Motion then uses its
     // fixed socket/rest point, so moving the handle cannot reset pull travel.
+    const bool attached=(cosmetic_nearby&&cosmetic_identity==inv::identity(f))||released_socket_preferred(f);
+    const double acquire=attached?.22:gears_weapon::lancer_contact::starter_radius;
     observed_gate=7;if(!current_grip&&std::hypot(std::hypot(left.x-visible_grasp.x,left.y-visible_grasp.y),left.z-visible_grasp.z)>
-        gears_weapon::lancer_contact::starter_radius*units)return false;
+        acquire*units)return false;
     sample.world=f.world.address;sample.pawn=f.pawn.address;sample.weapon=f.weapon.address;
     sample.session=f.stereo.session;sample.space_epoch=f.stereo.space_epoch;sample.input_epoch=f.controllers.input_epoch;
     sample.world_generation=f.key.world_generation;sample.sequence=actual.right.controllers.sequence;
@@ -77,9 +91,14 @@ bool retain_incumbent(hand::Frame const& f,hand::GripGameState& game) noexcept {
 bool propose(hand::Frame const& f,hand::GripGameState& game,double* distance_metres) noexcept {
     if(distance_metres)*distance_metres=0;
     proposal_frame=f.key.frame;proposal_gate=1;proposal_observed_gate=proposal_matrix_gate=0;
-    proposal_gate=2; // Both logical grab controls may acquire this part.
+    proposal_conditions=unsigned(game.main_hand_held)|(unsigned(game.kind==hand::WeaponKind::firearm)<<1)|
+        (unsigned(idle_reload(f))<<2)|(unsigned(hand::index_pinch(f))<<3)|(unsigned(f.left_tracked!=0)<<4)|
+        (unsigned(f.left_grip_known!=0)<<5)|(unsigned(f.left_grip_down!=0)<<6)|
+        (unsigned(lancersaw_original::active())<<7)|(unsigned(lancersaw_original::prepared())<<8)|
+        (unsigned(game.busy)<<9)|(unsigned(game.animation_owns_hands)<<10);
+    proposal_gate=2; // Large C manipulation belongs to Grip only.
     if(!game.main_hand_held||game.kind!=hand::WeaponKind::firearm||
-       !idle_reload(f)||!f.left_tracked||!f.left_grip_known||!f.left_grip_down)return false;
+       !idle_reload(f)||hand::index_pinch(f)||!f.left_tracked||!f.left_grip_known||!f.left_grip_down)return false;
     if(same_hold(f)){
         if(f.key.frame==granted_frame)return true; // immutable original grant proposal
         retain_incumbent(f,game);
@@ -91,7 +110,7 @@ bool propose(hand::Frame const& f,hand::GripGameState& game,double* distance_met
     // current identity/lifecycle/tracked held grip above. Reject new grabs
     // while original animation or other busy work owns the weapon.
     if(lancersaw_original::active()||!lancersaw_original::prepared()||game.busy||game.animation_owns_hands)return false;
-    proposal_gate=3;if(shown_pull>.0001)return false;
+    proposal_gate=3; // A released slider can be regrasped at its locked position.
     gears_weapon::LancerSawSample sample{};const bool available=observed(f,sample,false);
     if(available){
         double support_distance{};
@@ -101,7 +120,8 @@ bool propose(hand::Frame const& f,hand::GripGameState& game,double* distance_met
         if(distance_metres)*distance_metres=starter_distance;
         // Overlapping generous volumes choose the nearest large part. An
         // existing support/C lease remains owned until its ordinary release.
-        if(hand::support_contact(f,game,false,&support_distance)&&support_distance<starter_distance)return false;
+        if(!lancer_grasp::selected_starter(f)&&
+           hand::support_contact(f,game,false,&support_distance)&&support_distance<starter_distance)return false;
     }
     proposal_observed_gate=observed_gate;proposal_matrix_gate=observed_matrix_gate;proposal_gate=available?0:4;return available;
 }
@@ -110,6 +130,8 @@ void committed(hand::Frame const& f,hand::Decision const& decision) noexcept {
     if(!idle_reload(f)||!lancerreload_contact::mechanism_route.grants(f,decision,gears_weapon::LancerContact::starter)||
        f.controllers.sync_ns<=0||f.controllers.sync_ns>INT64_MAX-250000000)return;
     held=decision.lease;identity=inv::identity(f);granted_frame=f.key.frame;
+    rail_identity=identity;rail_hold=vrequip::model.hold_generation();
+    locked_rail=false;released_socket.clear();
 }
 void clear_grab(unsigned reason=0,hand::Frame const* source=nullptr) noexcept {
     // Extend the existing bounded gesture receipt; do not sample another
@@ -208,10 +230,17 @@ void observe_pull_input(hand::Frame const& f) noexcept {
 }
 void reset_after_drain() noexcept {
     if(lancersaw_original::active())return;
-    clear_grab();shown_pull=0;last_tick_ns=0;events=sample_rows=0;previous_sample_ms=0;lancersaw_visual::restore();lancersaw_original::reset_after_drain();
+    clear_grab();shown_pull=0;locked_rail=cosmetic_nearby=false;released_socket.clear();cosmetic_identity=rail_identity={};rail_hold=0;last_tick_ns=0;events=sample_rows=0;previous_sample_ms=0;lancersaw_visual::restore();lancersaw_original::reset_after_drain();
 }
 void tick(hand::Frame const& f,hand::Decision const& decision) noexcept {
     const auto now=weaponhand::clock_ns(nullptr);
+    // A locked mechanical pose belongs only to this exact weapon hold. Do
+    // not carry it to another Lancer, a reused address or a later stow lease.
+    if(rail_hold&&(rail_hold!=vrequip::model.hold_generation()||!(rail_identity==inv::identity(f)))){
+        locked_rail=false;released_socket.clear();shown_pull=0;rail_identity={};rail_hold=0;clear_grab(8,&f);
+    }
+    const bool nearby=cosmetic_nearby&&cosmetic_identity==inv::identity(f)&&f.left_tracked&&
+        f.controllers.hands[0].squeeze_active==1;
     if(now<=0||!nativeequipment::current(nullptr,f)){
         // Original stop/reflection work can spend the immutable Frame's
         // remaining lifetime. Use the SAME existing input/lifecycle pin used
@@ -229,12 +258,13 @@ void tick(hand::Frame const& f,hand::Decision const& decision) noexcept {
         // the hand/handle now; the authenticated existing motor gets its one
         // three-second tail. Tracking/focus/weapon loss still stops at once.
         if(!f.left_tracked||!f.left_grip_known){
+            locked_rail=false;shown_pull=0;
             lancersaw_original::stop_pending=true;lancersaw_original::service(f.controller.address);clear_grab(4,&f);
         }else if(!f.left_grip_down||lancersaw_original::hold_input.release_tail_started()){
             lancersaw_original::service(f.controller.address);
+            if(granted_frame&&!f.left_grip_down){locked_rail=true;released_socket.bind(f,rail_hold);}
             if(granted_frame)clear_grab(4,&f);
-            if(last_tick_ns>0&&now>=last_tick_ns)shown_pull=(std::max)(0.,shown_pull-double(now-last_tick_ns)/1e9*40.);
-            last_tick_ns=now;lancersaw_visual::tick(f,shown_pull,false);return;
+            last_tick_ns=now;lancersaw_visual::tick(f,shown_pull,nearby,locked_rail);return;
         }else{
             observe_pull_input(f);
             gears_weapon::LancerSawSample sample{};gears_lancer_saw_input::Observation stock{};
@@ -252,17 +282,25 @@ void tick(hand::Frame const& f,hand::Decision const& decision) noexcept {
         last_tick_ns=now;lancersaw_visual::tick(f,shown_pull,f.left_tracked&&f.left_grip_known&&f.left_grip_down);return;
     }
     if(!idle_reload(f)){
-        clear_grab(2,&f);shown_pull=0;last_tick_ns=now;lancersaw_visual::tick(f,0);return;
+        clear_grab(2,&f);
+        // Only a mechanically acquired rail has a locked position. Reloading
+        // before the first C grasp must not permanently lock cosmetic deploy.
+        if(rail_hold)locked_rail=true;
+        last_tick_ns=now;lancersaw_visual::tick(f,shown_pull,false,locked_rail);return;
+    }
+    // Journal a REAL known Grip release before the arbiter's released lease
+    // clears the action. Keep the mechanical position, not an action permit.
+    if(granted_frame&&f.left_tracked&&f.left_grip_known&&!f.left_grip_down){
+        locked_rail=true;released_socket.bind(f,rail_hold);
     }
     if(granted_frame&&(!same_hold(f)||decision.release_required||!hand::same(held,decision.lease)||
        (decision.status!=hand::DecisionStatus::granted&&decision.status!=hand::DecisionStatus::retained))){clear_grab(3,&f);}
     if(!f.left_tracked||!f.left_grip_known||!f.left_grip_down){
+        if(!f.left_tracked||!f.left_grip_known){locked_rail=false;shown_pull=0;}
         clear_grab(4,&f);
     }
     if(!same_hold(f)){
-        // Spring return is display only. A new grasp is unavailable until it
-        // reaches rest; this never creates an input/reload/start action.
-        if(last_tick_ns>0&&now>=last_tick_ns)shown_pull=(std::max)(0.,shown_pull-double(now-last_tick_ns)/1e9*40.);
+        if(!locked_rail)shown_pull=0;
     }
     // A current input witness can retain the already-owned pull while an
     // actual render/part matrix is temporarily unavailable. It cannot move
@@ -280,7 +318,7 @@ void tick(hand::Frame const& f,hand::Decision const& decision) noexcept {
         }
         lancersaw_visual::tick(f,shown_pull,pulling||pull_complete||lancersaw_original::active());return;
     }
-    lancersaw_visual::tick(f,shown_pull,pulling||pull_complete);
+    lancersaw_visual::tick(f,shown_pull,pulling||pull_complete||nearby,locked_rail);
     if(!lancersaw_visual::ready){
         if(pulling&&sample_rows++<32&&log_file){fwprintf(log_file,
             L"lancer_starter_sample visual_ready=0 visual_gate=%u asset_gate=%u frame=%llu sync_ns=%lld previous_sample_ms=%llu\n",
@@ -303,8 +341,8 @@ void tick(hand::Frame const& f,hand::Decision const& decision) noexcept {
     if(!sample.left_grip_down){interaction.observe(sample);return;}
     if(!same_hold(f)||pull_complete){
         if(!same_hold(f)&&ungranted_rows++<12&&log_file){
-            fwprintf(log_file,L"lancer_starter_ungranted frame=%llu token=%llu proposal_frame=%llu proposal_gate=%u proposal_observed_gate=%u proposal_matrix_gate=%u decision=%u new_grant=%u lease_kind=%u left=%.6g,%.6g,%.6g anchor=%.6g,%.6g,%.6g\n",
-                f.key.frame,f.press_token,proposal_frame,proposal_gate,proposal_observed_gate,proposal_matrix_gate,unsigned(decision.status),decision.new_grant,unsigned(decision.lease.kind),
+            fwprintf(log_file,L"lancer_starter_ungranted frame=%llu token=%llu proposal_frame=%llu proposal_gate=%u proposal_observed_gate=%u proposal_matrix_gate=%u proposal_conditions=%u route_frame=%llu route_magazine_pending=%u route_selected_socket=%u decision=%u new_grant=%u lease_kind=%u left=%.6g,%.6g,%.6g anchor=%.6g,%.6g,%.6g\n",
+                f.key.frame,f.press_token,proposal_frame,proposal_gate,proposal_observed_gate,proposal_matrix_gate,proposal_conditions,route_frame,unsigned(route_magazine_pending),unsigned(route_selected_socket),unsigned(decision.status),decision.new_grant,unsigned(decision.lease.kind),
                 sample.left_palm_m.x,sample.left_palm_m.y,sample.left_palm_m.z,sample.starter_anchor_m.x,sample.starter_anchor_m.y,sample.starter_anchor_m.z);fflush(log_file);}
         return;
     }

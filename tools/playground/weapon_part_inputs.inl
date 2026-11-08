@@ -45,20 +45,21 @@ bool folder(std::wstring& out,const wchar_t* relative=L"/assets/weapon-6dof/offl
 Result load(const char* id,geometry::Conversion const& conversion,geometry::Prepared& out) noexcept {
     if(!id)return Result::unknown_asset;
     const catalog::Asset* selected=nullptr;
-    const bool private_input=!std::strcmp(id,"snub-magazine");
+    const bool lancer=!std::strcmp(id,"lancer-magazine");
+    const bool private_input=lancer||!std::strcmp(id,"snub-magazine");
     if(private_input){
         if(!original_source_enabled.load(std::memory_order_acquire))return Result::unknown_asset;
         // This cache already uses the original engine's mesh axes. Applying
         // the separate authored-GLB axis map would rotate/mirror it twice.
         for(unsigned i=0;i<3;++i)for(unsigned j=0;j<3;++j)
             if(std::abs(conversion.axes[i][j]-(i==j?1.:0.))>1e-9)return Result::invalid_geometry;
-        selected=&gears_weapon::original_part_input::snub;
+        selected=lancer?&gears_weapon::original_part_input::lancer_magazine:&gears_weapon::original_part_input::snub;
     }
     for(const auto& asset:catalog::assets)if(!std::strcmp(asset.id,id)){selected=&asset;break;}
     if(!selected)return Result::unknown_asset;
     try {
         std::wstring root;
-        if(!folder(root,private_input?gears_weapon::original_part_input::snub_cache:
+        if(!folder(root,private_input?(lancer?gears_weapon::original_part_input::lancer_magazine_cache:gears_weapon::original_part_input::snub_cache):
                    L"/assets/weapon-6dof/offline-v2/engine-input"))return Result::missing_root;
         std::vector<std::uint8_t> vertices,indices;
         if(!read(root+L"/"+selected->vertex_file,selected->vertices*60,vertices)||

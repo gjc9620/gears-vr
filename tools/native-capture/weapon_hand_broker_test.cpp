@@ -481,6 +481,28 @@ void weapon_render_admission_tests(){
     test_thread=worker;C(!f.broker.admit_weapon_render(frame));test_thread=gt;
     f.fake.stamp+=100000001;C(!f.broker.admit_weapon_render(frame));f.finish();
 }
+void proximity_socket_admission_tests(){
+    Fixture f;f.attach();auto frame=f.frame();w::Proposal proposal{};
+    frame.left_grip_down=0;frame.press_token=0;
+    frame.controllers.hands[0].squeeze_active=1;frame.controllers.hands[0].squeeze=0;
+    C(!f.broker.admit_socket_visibility(frame));
+    C(f.broker.prepare(frame,proposal)==w::Reply::accepted);
+    auto decision=f.decision(frame,proposal,false);
+    C(f.broker.commit(frame,proposal,decision)==w::Reply::accepted);
+    C(f.broker.admit_socket_visibility(frame));
+    C(!f.broker.admit_part_visibility(frame)&&!f.broker.admit_support_visibility(frame));
+    auto changed=frame;changed.controllers.hands[0].squeeze=.8f;
+    C(!f.broker.admit_socket_visibility(changed));
+    changed=frame;changed.controllers.hands[0].squeeze_active=0;C(!f.broker.admit_socket_visibility(changed));
+    changed=frame;changed.left_tracked=0;C(!f.broker.admit_socket_visibility(changed));
+    changed=frame;changed.reference_generation++;C(!f.broker.admit_socket_visibility(changed));
+    test_thread=worker;C(!f.broker.admit_socket_visibility(frame));test_thread=gt;
+    f.fake.stamp+=100000001;C(!f.broker.admit_socket_visibility(frame));f.finish();
+    Fixture held;held.attach();frame=held.frame();frame.controllers.hands[0].squeeze_active=1;
+    C(held.broker.prepare(frame,proposal)==w::Reply::accepted);decision=held.decision(frame,proposal);
+    C(held.broker.commit(frame,proposal,decision)==w::Reply::accepted);
+    C(!held.broker.admit_socket_visibility(frame));held.finish();
+}
 } // namespace
 int main(){
     registration_tests();pending_magazine_tests();normal_and_retry_tests();temporary_loss_tests();bad_callback_tests();
@@ -488,5 +510,6 @@ int main(){
     auxiliary_tests();main_mount_tests();body_mount_tests();hand_visual_tests();
     part_visibility_admission_tests();
     weapon_render_admission_tests();
+    proximity_socket_admission_tests();
     std::printf("weapon_hand_broker: %u checks, %u failures\n",checks,failures);return failures?1:0;
 }

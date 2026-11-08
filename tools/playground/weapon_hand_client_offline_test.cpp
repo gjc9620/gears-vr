@@ -1,11 +1,36 @@
 #include <cstdio>
-namespace {FILE* log_file{};}
+#include "../vr-common/weapon_hand_client.h"
+#define GEARS_PLAYGROUND_NATIVE_LANCER_FOLLOW 1
+namespace {
+FILE* log_file{};
+unsigned support_mount_reads{},part_proposals{};
+// Exercise the production observer's actual follow-enabled routing. Geometry
+// and arbitration are separate owners; these spies cannot grant a hand lease.
+namespace nativelancerfollow {
+bool fill_support_mount(gears_weapon_hand::Frame const&,gears_weapon_hand::GripGameState& game) noexcept {
+    ++support_mount_reads;game.mount_known=true;return true;
+}
+}
+namespace lancerreload_contact {
+void propose(gears_weapon_hand::Frame const&,gears_weapon_hand::GripGameState&) noexcept {++part_proposals;}
+void committed(gears_weapon_hand::Frame const&,gears_weapon_hand::Decision const&) noexcept {}
+}
+namespace hammerburst_runtime {
+void propose(gears_weapon_hand::Frame const&,gears_weapon_hand::GripGameState&) noexcept {++part_proposals;}
+}
+namespace snub_runtime {
+void propose(gears_weapon_hand::Frame const&,gears_weapon_hand::GripGameState&) noexcept {++part_proposals;}
+void committed(gears_weapon_hand::Frame const&,gears_weapon_hand::Decision const&) noexcept {}
+}
+}
 #include "weapon_hand_offline_fixture.h"
 int main(){
     unsigned cases{};
     for(bool source_only:{false,true}){
-    {auto m=std::make_unique<Memory>();abi::GripGameState out{};assert(m->read(out,source_only));
-        assert(out.known&&out.main_hand_held&&!out.busy&&!out.animation_owns_hands&&!out.mount_known&&out.kind==abi::WeaponKind::firearm);++cases;}
+    {auto m=std::make_unique<Memory>();abi::GripGameState out{};
+        support_mount_reads=part_proposals=0;assert(m->read(out,source_only));
+        assert(out.known&&out.main_hand_held&&!out.busy&&!out.animation_owns_hands&&out.kind==abi::WeaponKind::firearm);
+        assert(out.mount_known&&support_mount_reads==1u&&part_proposals==(source_only?0u:3u));++cases;}
     {auto m=std::make_unique<Memory>(true);abi::GripGameState out{};assert(m->read(out,source_only));assert(out.kind==abi::WeaponKind::hand_thrown);++cases;}
     {auto m=std::make_unique<Memory>();fail_read=m->pawn+0x128;abi::GripGameState out{};assert(!m->read(out,source_only)&&!out.known);++cases;}
     {auto m=std::make_unique<Memory>();fail_read=m->pc+0x110;abi::GripGameState out{};assert(!m->read(out,source_only)&&!out.known);++cases;}
@@ -56,5 +81,13 @@ int main(){
         assert(!weaponhand::native_module&&weaponhand::client.phase()==abi::ClientPhase::off);
         assert(weaponhand::stop()==abi::Reply::quiescent);++cases;}
     }
-    std::printf("WeaponHandClientOfflineTest passed: %u cases; full and source-only production metadata, owned artificial memory only\n",cases);
+    {auto m=std::make_unique<Memory>();abi::GripGameState out{};support_mount_reads=part_proposals=0;
+        assert(weaponhand::observe_liveness(nullptr,m->frame,weaponhand::clock_ns(nullptr),out));
+        assert(out.known&&out.main_hand_held&&!out.mount_known&&support_mount_reads==0&&part_proposals==0);++cases;}
+    {auto m=std::make_unique<Memory>();fail_read=m->pawn+0x128;abi::GripGameState out{};support_mount_reads=part_proposals=0;
+        assert(!weaponhand::observe_liveness(nullptr,m->frame,weaponhand::clock_ns(nullptr),out)&&!out.known);
+        assert(support_mount_reads==0&&part_proposals==0);++cases;}
+    {auto m=std::make_unique<Memory>();mutate_read=m->pawn+0x120;mutation=[&]{Memory::put(m->pawn,0x120,uptr(0));};
+        abi::GripGameState out{};assert(!weaponhand::observe_liveness(nullptr,m->frame,weaponhand::clock_ns(nullptr),out)&&!out.known);++cases;}
+    std::printf("WeaponHandClientOfflineTest passed: %u cases; full/source retain live mount, boolean liveness omits geometry; owned artificial memory only\n",cases);
 }

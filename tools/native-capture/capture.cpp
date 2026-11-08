@@ -6134,7 +6134,7 @@ extern "C" __declspec(dllexport) gears_weapon_part_visibility::Result __cdecl Ge
     gears_weapon_part_visibility::Request const* request,gears_weapon_part_visibility::Receipt* receipt) noexcept {
     return weapon_part_visibility_live::begin(request,receipt);
 }
-extern "C" __declspec(dllexport) bool __cdecl GearsVrPublishLancerGraspV1(
+extern "C" __declspec(dllexport) bool __cdecl GearsVrPublishLancerGraspV2(
     gears_hand_object_grasp::Request const* request) noexcept {return lancer_grasp_live::publish(request);}
 extern "C" __declspec(dllexport) gears_lancer_original_handle::Result __cdecl GearsVrBindOriginalLancerStarterV2(
     gears_lancer_original_handle::Request const* request,gears_lancer_original_handle::Receipt* receipt) noexcept {

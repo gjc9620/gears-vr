@@ -698,8 +698,20 @@ int main(int argc, char** argv) {
         auto deadline=std::chrono::steady_clock::now()+std::chrono::seconds(seconds);
         auto next_csv=std::chrono::steady_clock::now();
         bool exiting=false;
+        unsigned long long owned_thread_messages=0;bool owned_thread_quit=false;
         shutdown_diagnostics::marker("frame_loop");
         while(!exiting && (continuous_session||std::chrono::steady_clock::now()<deadline)) {
+            // Runtime/API-layer presentation may run on a compositor worker.
+            // Its PeekMessage cannot drain this application's owning UI thread
+            // (including the simulator's posted title/paint messages). Pump
+            // only our own thread, outside OpenXR/GPU callbacks, without any
+            // focus, window placement or synthetic desktop input operation.
+            MSG owned_message{};
+            for(unsigned i=0;i<64&&PeekMessageW(&owned_message,nullptr,0,0,PM_REMOVE);++i){
+                if(owned_message.message==WM_QUIT){owned_thread_quit=true;break;}
+                TranslateMessage(&owned_message);DispatchMessageW(&owned_message);++owned_thread_messages;
+            }
+            if(owned_thread_quit){startup_panel.cancel();stop_reason="window_quit";break;}
             if(continuous_session){if(const auto* reason=continuous_control.requested()){startup_panel.cancel();stop_reason=reason;break;}}
             XrEventDataBuffer event{XR_TYPE_EVENT_DATA_BUFFER};
             XrResult poll;
@@ -1162,7 +1174,7 @@ int main(int argc, char** argv) {
             const bool startup_wait_shown=startup_wait_card_queued&&ended==XR_SUCCESS&&end.layerCount==1&&end.layers==game_layers;
             if(startup_wait_shown){
                 if(++startup_wait_card_layers==1){
-                    printf("{\"startup_wait_card_first_frame\":true,\"observed_ns\":%lld,\"cause\":\"%s\",\"source\":\"session_owned_card\",\"panel_counts_as_stereo\":false}\n",
+                    printf("{\"startup_wait_card_first_frame\":true,\"observed_ns\":%lld,\"cause\":\"%s\",\"source\":\"session_owned_card\",\"end_frame_succeeded\":true,\"panel_counts_as_stereo\":false}\n",
                         gears_vr::monotonic_ns(),projection_status_name(projection_frame_status));fflush(stdout);
                 }
             }
@@ -1382,7 +1394,8 @@ int main(int argc, char** argv) {
         if(stereo_game_pid&&!continuous_session)projection_evidence.print();
         bool display_ok=!screen || (screen->rendered && screen->gpu_pixels_verified);
         if(movie_display)movie_fallback_diagnostics.report(gears_vr::monotonic_ns(),true);
-        if(startup_window)printf("{\"startup_menu_evidence\":true,\"startup_quad_layers\":%u,\"stereo_handoff\":%s,\"panel_counts_as_stereo\":false}\n",startup_quad_layers,stereo_image_shown?"true":"false");
+        printf("{\"owned_thread_window_messages\":%llu,\"thread_id\":%lu,\"quit_seen\":%s,\"desktop_input\":false}\n",owned_thread_messages,GetCurrentThreadId(),owned_thread_quit?"true":"false");
+        if(startup_window)printf("{\"startup_menu_evidence\":true,\"startup_quad_layers\":%u,\"startup_wait_card_layers\":%u,\"stereo_handoff\":%s,\"panel_counts_as_stereo\":false}\n",startup_quad_layers,startup_wait_card_layers,stereo_image_shown?"true":"false");
         if(menu_state_file)printf("{\"menu_recovery_evidence\":true,\"entries\":%u,\"quad_layers\":%u,\"recoveries\":%u,\"panel_counts_as_stereo\":false}\n",menu_entries,menu_quad_layers,menu_recoveries);
         if(menu_state_file)printf("{\"main_menu_evidence\":true,\"quad_layers\":%u,\"source\":\"wgc_full_client\",\"panel_counts_as_stereo\":false}\n",main_menu_quad_layers);
         if(menu_state_file)printf("{\"pause_menu_evidence\":true,\"quad_layers\":%u,\"space\":\"local\",\"both_eyes_common_panel\":true}\n",pause_menu_quad_layers);

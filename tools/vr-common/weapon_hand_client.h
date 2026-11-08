@@ -30,11 +30,26 @@ struct ClientSession {std::uint64_t game_start{};std::uint32_t game_pid{};};
 // permission. It classifies the SAME existing checks without another read.
 enum class FrameReadFailure:std::uint32_t {none,thread_or_unarmed,gate,publication,key,
     stale_before,observe,game_changed,stale_or_changed_after,support_prepare,implicit_clear};
+struct CandidateObservation {
+    // Diagnostic bits:1 association known,2 support contact,4 mount known,
+    //8 mount valid,16 magazine pending,32 magazine request,64 ammo request.
+    std::uint32_t flags{},decision{},lease{};
+    double support_distance_metres{-1};
+};
+inline CandidateObservation candidate_observation(Frame const& f,GripGameState const& game,Decision const& d) noexcept {
+    CandidateObservation result{};
+    if(!f.key.frame||!same(f.key,d.key))return result;
+    const bool contact=support_contact(f,game,false,&result.support_distance_metres);
+    result.flags=1u|(unsigned(contact)<<1)|(unsigned(game.mount_known)<<2)|(unsigned(game.mount.valid())<<3)|
+        (unsigned(game.magazine_observation_pending)<<4)|(unsigned(game.request_magazine)<<5)|(unsigned(game.request_ammo)<<6);
+    result.decision=unsigned(d.status);result.lease=unsigned(d.lease.kind);return result;
+}
 struct FrameReadObservation {
     FrameReadFailure failure{};std::uint32_t game_difference{};
     std::uint64_t frame{},sequence{},press_token{};
     std::int64_t input_age_ns{-1};std::uint32_t left_grip_down{};
     std::uint32_t frame_difference{},game_flags{};
+    CandidateObservation candidate{}; // Existing failure receipt only; never a permit.
 };
 // Lifetime of an already journalled ORIGINAL action through a normal pose/
 // animation handoff. This is neither a pose/input Frame nor an action grant.
@@ -95,6 +110,11 @@ inline bool same_pose_consumer_observation(Frame const& f,Decision const& d,
     }else if(d.lease.kind!=LeaseKind::magazine||d.status!=DecisionStatus::retained||
              d.release_required||!lease_valid(d.lease,f.key.lifecycle)||d.lease.id!=f.press_token||holders!=1)return false;
     auto compared=current;
+    // 69680 difference18: once the exact exclusive magazine-route part is
+    // ALREADY retained, entering/leaving its generous acquisition volume is
+    // not loss of that item's liveness. Keep this out of the no-lease branch
+    // and the first-grant/prepare/commit paths; returned data remains actual.
+    if(holders==1)compared.request_magazine=committed.request_magazine;
     compared.magazine_observation_pending=committed.magazine_observation_pending;
     return same_game(compared,committed);
 }
@@ -156,6 +176,7 @@ class HandClient {
             last_withdrawal_={reason,difference,committed_.key.frame,committed_.controllers.sequence,
                 committed_.press_token,committed_.controllers.sync_ns>0&&now>=committed_.controllers.sync_ns?
                     now-committed_.controllers.sync_ns:-1,committed_.left_grip_down};
+            last_withdrawal_.candidate=candidate_observation(committed_,committed_game_,committed_decision_);
         }
         participant_.invalidate_on_gt();committed_={};prepared_game_={};committed_game_={};committed_decision_={};
         pending_=false;prepared_epoch_=0;published_.store(0,std::memory_order_release);
@@ -168,6 +189,7 @@ class HandClient {
         last_withdrawal_={FrameReadFailure::stale_before,0,committed_.key.frame,committed_.controllers.sequence,
             committed_.press_token,now>=committed_.controllers.sync_ns?now-committed_.controllers.sync_ns:-1,
             committed_.left_grip_down};
+        last_withdrawal_.candidate=candidate_observation(committed_,committed_game_,committed_decision_);
         // Expired render data grants NO Frame, snapshot, pose or action. Keep
         // only the participant's logical support incumbent for the NEXT
         // independently fresh prepare/commit. It must revalidate all object,
@@ -510,6 +532,7 @@ public:
             observation->press_token=committed_.press_token;observation->left_grip_down=committed_.left_grip_down;
             observation->input_age_ns=committed_.controllers.sync_ns>0&&now>=committed_.controllers.sync_ns?
                 now-committed_.controllers.sync_ns:-1;
+            observation->candidate=candidate_observation(committed_,committed_game_,committed_decision_);
         }
         if(!key_valid(committed_)){clear_gt(FrameReadFailure::key);return fail(FrameReadFailure::key);}
         if(!fresh(committed_,now)){withdraw_expired_pose_gt();return fail(FrameReadFailure::stale_before);}

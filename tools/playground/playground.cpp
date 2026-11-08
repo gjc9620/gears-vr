@@ -1,10 +1,12 @@
 // In-process UE3 playground bridge. Engine calls run on the observed game thread.
 #include <windows.h>
+#include "fresh_wide_name.h"
 #include <bcrypt.h>
 #include "../vr-common/weapon_part_geometry.h"
 #include "../vr-common/weapon_part_native_contract.h"
 #include "../vr-common/weapon_part_input_catalog.h"
 #include "../vr-common/weapon_snub_part_input.h"
+#include "../vr-common/weapon_lancer_magazine_input.h"
 #include "../vr-common/weapon_snub_magazine_mount.h"
 #include "../vr-common/weapon_part_visibility.h"
 #include "../vr-common/weapon_hammerburst_latch_curve.h"
@@ -550,8 +552,12 @@ bool name(uptr object,wchar_t* out,size_t count){
 #if defined(GEARS_PLAYGROUND_HAND_WEAPON_MESH_PHASE1_TRIAL)
     if(component_names::enabled)return component_names::text(entry+20,out,count);
 #endif
-    for(size_t i=0;i<count;++i){if(!copy(&out[i],entry+20+i*2,2))return false;if(!out[i])return true;}
-    out[count-1]=0;return false;
+    // Ordinary reflection also uses fresh page-bounded chunks, independently
+    // of the optional component_names scope. No scalar retry or cached text.
+    static const std::size_t page=[](){SYSTEM_INFO info{};GetSystemInfo(&info);return std::size_t(info.dwPageSize);}();
+    if(entry>~uptr(0)-20)return false;
+    return fresh_wide_name::text(entry+20,out,count,page,
+        [](void* destination,uptr address,std::size_t bytes) noexcept {return copy(destination,address,bytes);});
 }
 void record(uptr object,uptr function){
     AcquireSRWLockExclusive(&log_lock);
@@ -1149,7 +1155,12 @@ bool ready_for(gears_weapon_hand::Frame const&) noexcept;
 bool set_distance(gears_weapon_hand::Frame const&,double,gears_lancer_handle_morph::Receipt&) noexcept;
 bool restore() noexcept;
 }
+namespace lancer_grasp {
+bool selected_starter(gears_weapon_hand::Frame const&) noexcept;
+bool support_socket_preferred(gears_weapon_hand::Frame const&,gears_weapon_hand::GripGameState const&) noexcept;
+}
 namespace lancersaw_starter {
+void observe_route(gears_weapon_hand::Frame const&,bool,bool) noexcept;
 bool retain_incumbent(gears_weapon_hand::Frame const&,gears_weapon_hand::GripGameState&) noexcept;
 bool retain_grasp_during_pose_gap(uptr) noexcept;
 bool propose(gears_weapon_hand::Frame const&,gears_weapon_hand::GripGameState&,double*) noexcept;
@@ -1197,7 +1208,7 @@ namespace lancerreload_ui {
 bool prepare(gears_weapon_hand::Frame const&) noexcept;
 void begin(gears_weapon_call::Invocation const&) noexcept;
 bool returned(gears_weapon_call::Invocation const&) noexcept;
-void cleanup(gears_weapon_call::Invocation const&) noexcept;
+bool cleanup(gears_weapon_call::Invocation const&) noexcept;
 }
 namespace lancerreload_reward {
 bool returned(gears_weapon_call::Invocation const&) noexcept;
@@ -1294,6 +1305,8 @@ bool enter(gears_weapon_hand::Frame const&) noexcept;void leave() noexcept;
 }
 namespace lancerreload_runtime {
 void tick(uptr) noexcept; bool pre_tick(uptr) noexcept; bool needs_priority() noexcept;
+bool idle_support_only(gears_weapon_hand::Frame const&,gears_weapon_hand::GripGameState const&,
+    gears_weapon_hand::Decision const&) noexcept;
 bool retain_charging_during_pose_gap(uptr) noexcept;
 bool retain_magazine_during_pose_gap(uptr) noexcept;
 bool stow_ready(gears_weapon_hand::Frame const&) noexcept;
@@ -1308,9 +1321,9 @@ struct PhaseCost {
     std::uint64_t asset_source_calls{};
 };
 extern PhaseCost last_cost;
-void tick(gears_weapon_hand::Frame const&,double pull_raw=0,bool deploy=false) noexcept;
+void tick(gears_weapon_hand::Frame const&,double pull_raw=0,bool deploy=false,bool lock=false) noexcept;
 }
-namespace lancer_grasp {void tick(gears_weapon_hand::Frame const&,gears_weapon_hand::Decision const&) noexcept;}
+namespace lancer_grasp {void tick(gears_weapon_hand::Frame const&,gears_weapon_hand::GripGameState const&,gears_weapon_hand::Decision const&) noexcept;}
 namespace fragruntime {
 #if defined(GEARS_PLAYGROUND_EXPERIMENTAL_VR_R2) && defined(GEARS_PLAYGROUND_UNIFIED_MUZZLE_FIRE)
 void tick(gears_weapon_hand::Frame const&,gears_weapon_hand::GripGameState const&) noexcept;
@@ -1369,6 +1382,7 @@ void report(FILE* file) noexcept {
         last.component_dirty,last.stow_dirty,last.pending,weaponhand::clock_ns(nullptr)-last.ns);
 }
 }
+namespace lancer_magazine_appearance {void prepare(gears_weapon_hand::Frame const&) noexcept;}
 #include "weapon_equipment_backend.inl"
 #include "controller_locomotion.inl"
 #if defined(GEARS_PLAYGROUND_NATIVE_EQUIPMENT_MAIN_MOUNT_TRIAL)
@@ -1399,6 +1413,7 @@ namespace unified_weapon_fire {bool retained_metadata(gripdamage_metadata::Reade
 #include "weapon_part_assets.inl"
 #include "../vr-common/weapon_lancer_handle_morph.h"
 #include "weapon_part_inputs.inl"
+#include "weapon_lancer_magazine_appearance.inl"
 #include "weapon_lancer_handle_visual.inl"
 #include "weapon_lancer_saw_original.inl"
 #include "../vr-common/weapon_lancer_original_handle.h"
@@ -2858,7 +2873,7 @@ extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundShutdown(void*){
         if(!handanimcall::remove())return 33;
 #endif
 #if defined(GEARS_PLAYGROUND_NATIVE_LANCER_FOLLOW) && defined(GEARS_PLAYGROUND_UNIFIED_MUZZLE_FIRE)
-        if(!lancerhud_layout::stopped())return 33;
+        if(!lancerhud_layout::stopped()||!lancerreload_ui::stopped())return 33;
 #endif
         if(MH_RemoveHook(reinterpret_cast<void*>(base+0x1d8dd8))!=MH_OK)return 3;
         if(MH_Uninitialize()!=MH_OK)return 4;

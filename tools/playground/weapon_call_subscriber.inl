@@ -114,7 +114,7 @@ bool cleanup(Journal& journal,callabi::State* state) noexcept {
     if(!fraglaunch::cleanup(journal.call)){journal.flags|=unified_uncertain;store(state,journal);}
     if(!lancerhud_layout::cleanup(journal.call)){journal.flags|=unified_uncertain;store(state,journal);}
 #endif
-    lancerreload_ui::cleanup(journal.call);
+    if(!lancerreload_ui::cleanup(journal.call)){journal.flags|=unified_uncertain;store(state,journal);}
     lancerreload_manual::cleanup(journal.call);
 #endif
     bool clean=(journal.flags&begin_done)!=0&&!(journal.flags&unified_uncertain);

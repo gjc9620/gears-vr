@@ -49,10 +49,10 @@ def settings_sample(name):
 
 
 def return_confirmation_sample():
-    root=dict(name='DeltaPause-Campaign-Host',cls='WarUIScene',input_mode=1,address='0x100')
-    prompt=dict(name='WarfareConfirmation',cls='UIScene_Confirmation',input_mode=1,address='0x200')
+    root=dict(name='DeltaPause-Campaign-Host',cls='WarUIScene',input_mode=1,address='0x100',number=1,outer='0x300')
+    prompt=dict(name='WarfareConfirmation',cls='UIScene_Confirmation',input_mode=1,address='0x200',number=1,outer='0x300')
     focus=dict(prompt,states=['UIState_Enabled'])
-    return dict(sample(),top=dict(prompt,tag='WarfareConfirmation'),active_scenes=[root,prompt],
+    return dict(sample(),top=dict(prompt,tag='WarfareConfirmation',tag_number=0),active_scenes=[root,prompt],
                 dialog_text={'Title':'<Strings:WarfareGame.Generic.ConfirmSurrender_Title>',
                              'MessageText':'<Strings:WarfareGame.Generic.ConfirmSurrender>'},
                 focus_chain=[focus],focused_leaf=focus)
@@ -67,6 +67,7 @@ def checkpoint_confirmation_sample():
 class Reader:
     closed=False
     def sample(self):return sample()
+    def sample_display(self):return self.sample()
     def close(self):self.closed=True
 
 
@@ -83,6 +84,35 @@ def loading_sample(blocked=2):
 
 
 class Tests(unittest.TestCase):
+    def test_title_attract_requires_complete_observed_scene_and_focus_chain(self):
+        outer='0x141ea180'
+        scenes=[dict(address='0x100',name='UIScene',number=1,cls='UIScene',outer=outer,input_mode=0),
+                dict(address='0x200',name='DeltaWarTitleScreen',number=1,cls='WarUIScene_TitleScreen',outer=outer,input_mode=4),
+                dict(address='0x300',name='AttractLauncher',number=1,cls='UIScene_AttractLauncher',outer=outer,input_mode=0)]
+        focus={k:scenes[-1][k] for k in ('address','name','number','cls','outer')}
+        focus['states']=['UIState_Enabled']
+        base=dict(sample(),top=dict(scenes[-1],tag='AttractLauncher',tag_number=0),active_scenes=scenes,
+                  focus_chain=[focus],focused_leaf=copy.deepcopy(focus))
+        self.assertEqual(classify(base),MAIN_MENU)
+        for key,value in [('read_only',False),('consistent_reread',False),('input_block_count',1),
+                          ('input_block_count',False),('player_index',-1),('active_scenes_truncated',True),
+                          ('focus_chain_truncated',True),('focus_chain',[]),('focused_leaf',None)]:
+            self.assertEqual(classify(dict(base,**{key:value})),UNKNOWN,(key,value))
+        for i in range(3):
+            bad=copy.deepcopy(base);bad['active_scenes'].pop(i)
+            self.assertEqual(classify(bad),UNKNOWN)
+            for key,value in [('name','OtherMenu'),('cls','WarUIScene'),('outer','0x999'),
+                              ('address','0x0'),('number',-1),('input_mode',True)]:
+                bad=copy.deepcopy(base);bad['active_scenes'][i][key]=value
+                self.assertEqual(classify(bad),UNKNOWN,(i,key))
+        for key,value in [('tag','Other'),('tag_number',True),('number',2),('input_mode',1)]:
+            bad=copy.deepcopy(base);bad['top'][key]=value
+            self.assertEqual(classify(bad),UNKNOWN,key)
+        bad=copy.deepcopy(base);bad['focus_chain'][0]['address']='0x999'
+        self.assertEqual(classify(bad),UNKNOWN)
+        bad=copy.deepcopy(base);bad['focused_leaf']['states']=['UIState_Disabled']
+        self.assertEqual(classify(bad),UNKNOWN)
+
     def test_loading_display_exact_observed_stack_is_never_gameplay_or_input(self):
         # XR15 actual line9: same exact stack at block2 -> block1 -> block0.
         for blocked in (1,2):
@@ -391,19 +421,19 @@ class Tests(unittest.TestCase):
                 self.assertEqual((packet[3],packet[-2],packet[-1]),(PAUSE_MENU,1,100))
             finally:m.close()
 
-    def test_return_prompt_rejects_other_dialogs_and_contexts(self):
+    def test_return_prompt_display_uses_typed_parent_not_dialog_text(self):
         base=return_confirmation_sample()
         for text in (None,{},dict(base['dialog_text'],Title='Exit Game?'),
                      dict(base['dialog_text'],MessageText='<Strings:WarfareGame.Generic.ConfirmCheckpoint>'),
                      dict(base['dialog_text'],extra='unreviewed')):
-            self.assertEqual(classify(dict(base,dialog_text=text)),UNKNOWN)
+            self.assertEqual(classify(dict(base,dialog_text=text)),PAUSE_MENU)
         for scenes in (None,[],base['active_scenes'][1:],list(reversed(base['active_scenes']))):
-            self.assertEqual(classify(dict(base,active_scenes=scenes)),UNKNOWN)
+            self.assertNotEqual(classify(dict(base,active_scenes=scenes)),PAUSE_MENU)
         for key,value in (('name','DeltaMainMenu'),('cls','OtherScene'),('input_mode',2),('input_mode',True)):
             state=copy.deepcopy(base);state['active_scenes'][0][key]=value
-            self.assertEqual(classify(state),UNKNOWN)
+            self.assertNotEqual(classify(state),PAUSE_MENU)
 
-    def test_exact_checkpoint_prompt_is_display_only_and_rejects_mixed_text_or_context(self):
+    def test_checkpoint_prompt_display_preserves_identity_guards_without_text_authority(self):
         base=checkpoint_confirmation_sample();surrender=return_confirmation_sample()
         for blocked in (0,1):self.assertEqual(classify(dict(base,input_block_count=blocked)),PAUSE_MENU)
         with patch.object(sys,'path',[str(pathlib.Path(__file__).resolve().parents[1]/'game-io'),*sys.path]):
@@ -414,12 +444,12 @@ class Tests(unittest.TestCase):
                      dict(base['dialog_text'],Title='Load checkpoint?'),
                      dict(base['dialog_text'],MessageText='Load current checkpoint'),
                      dict(base['dialog_text'],extra='unreviewed')):
-            self.assertEqual(classify(dict(base,dialog_text=text)),UNKNOWN)
+            self.assertEqual(classify(dict(base,dialog_text=text)),PAUSE_MENU)
         for scenes in (None,[],base['active_scenes'][1:],list(reversed(base['active_scenes']))):
-            self.assertEqual(classify(dict(base,active_scenes=scenes)),UNKNOWN)
+            self.assertNotEqual(classify(dict(base,active_scenes=scenes)),PAUSE_MENU)
         for key,value in (('name','DeltaMainMenu'),('cls','OtherScene'),('input_mode',2),('input_mode',True)):
             state=copy.deepcopy(base);state['active_scenes'][0][key]=value
-            self.assertEqual(classify(state),UNKNOWN)
+            self.assertNotEqual(classify(state),PAUSE_MENU)
         for key,value in (('tag','OtherConfirmation'),('name','OtherConfirmation'),('address','0x999'),
                           ('address',None),('cls','WarUIScene'),('input_mode',2),('input_mode',True)):
             state=copy.deepcopy(base);state['top'][key]=value

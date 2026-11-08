@@ -20,6 +20,29 @@ struct Workspace {
 };
 static_assert(sizeof(Address)==8&&std::is_trivially_copyable_v<Workspace>);
 inline thread_local Workspace* active{};
+// Cycle-membership scratch for ONE metadata query only. It is deliberately
+// separate from active: installing it must not enable name-length retention.
+inline thread_local Workspace* traversal_only{};
+
+class TraversalQuery {
+    bool installed_{};
+public:
+    explicit TraversalQuery(bool allow_query=true) noexcept {
+#if defined(GEARS_PLAYGROUND_NATIVE_MAIN_MOUNT_PROVIDER_TRIAL)
+        if(allow_query&&!active&&!traversal_only){
+            static thread_local Workspace scratch;
+            std::memset(scratch.epochs.data(),0,sizeof(scratch.epochs));
+            scratch.epoch=0;scratch.walk_owned=false;
+            traversal_only=&scratch;installed_=true;
+        }
+#else
+        (void)allow_query;
+#endif
+    }
+    ~TraversalQuery() noexcept {if(installed_)traversal_only=nullptr;}
+    TraversalQuery(TraversalQuery const&)=delete;
+    TraversalQuery& operator=(TraversalQuery const&)=delete;
+};
 
 // Precondition: the caller exclusively owns this inactive workspace (the
 // existing entered claim). No large temporary or game-hook stack allocation.
@@ -77,14 +100,41 @@ inline void remember_length(Address entry,U32 index,U32 length) noexcept {
 // exhausted hash table can use the exact original linear membership check.
 class Walk {
     Workspace* owner_{};U32 epoch_{};bool hashed_{};
+#if defined(GEARS_PLAYGROUND_NATIVE_MAIN_MOUNT_PROVIDER_TRIAL)
+    // The same caller-owned append-only visited prefix also exists when no
+    // workspace is installed (or a nested walk owns it). A tiny local Bloom
+    // filter can prove absence; a possible match STILL runs the original
+    // exact array comparison. No game object/value/selector is cached here.
+    static constexpr U32 filter_bits=8192;
+    std::array<std::uint64_t,filter_bits/64> filter_{};
+    Address const* filter_prefix_{};U32 filter_count_{};
+    void filter_add(Address address) noexcept {
+        const auto a=bucket(address,filter_bits-1);
+        const auto b=bucket(address^Address(0x9e3779b97f4a7c15ull),filter_bits-1);
+        filter_[a/64]|=std::uint64_t(1)<<(a%64);
+        filter_[b/64]|=std::uint64_t(1)<<(b%64);
+    }
+    bool filter_maybe(Address address,Address const* previous,U32 count) noexcept {
+        // Every production caller preserves its local prefix and appends
+        // each visited address. Also handle a prepopulated/new array or a
+        // restarted prefix; never infer its contents from the queried value.
+        if(filter_prefix_!=previous||count<filter_count_){filter_={};filter_prefix_=previous;filter_count_=0;}
+        for(;filter_count_<count;++filter_count_)filter_add(previous[filter_count_]);
+        const auto a=bucket(address,filter_bits-1);
+        const auto b=bucket(address^Address(0x9e3779b97f4a7c15ull),filter_bits-1);
+        return (filter_[a/64]&(std::uint64_t(1)<<(a%64)))&&
+            (filter_[b/64]&(std::uint64_t(1)<<(b%64)));
+    }
+#endif
 #if defined(GEARS_WEAPON_METADATA_PARSE_TEST_STATS)
     std::uint64_t probes_{},comparisons_{};
 #endif
 public:
     Walk() noexcept {
 #if defined(GEARS_PLAYGROUND_NATIVE_MAIN_MOUNT_PROVIDER_TRIAL)
-        if(active&&!active->walk_owned){
-            owner_=active;owner_->walk_owned=true;
+        auto* const workspace=active?active:traversal_only;
+        if(workspace&&!workspace->walk_owned){
+            owner_=workspace;owner_->walk_owned=true;
             if(!++owner_->epoch){std::memset(owner_->epochs.data(),0,sizeof(owner_->epochs));owner_->epoch=1;}
             epoch_=owner_->epoch;hashed_=true;
         }
@@ -104,6 +154,9 @@ public:
             }
             hashed_=false; // The original caller array includes every prefix.
         }
+#if defined(GEARS_PLAYGROUND_NATIVE_MAIN_MOUNT_PROVIDER_TRIAL)
+        if(!filter_maybe(address,previous,count))return false;
+#endif
         for(U32 i=0;i<count;++i){
 #if defined(GEARS_WEAPON_METADATA_PARSE_TEST_STATS)
             ++comparisons_;

@@ -6,6 +6,7 @@
 #include <atomic>
 #include <cstdint>
 #include <cstring>
+#include "lancer_saw_pose_policy.h"
 #include <cwchar>
 #include <mutex>
 #include <type_traits>
@@ -309,11 +310,13 @@ bool current_tick_actor(Binding const& scene,Binding& out) noexcept {
             if(!lock.owns_lock()||!context_ready()||!proofs_current(scene.weapon.address!=0)||
                !field(observed.special_move,scene.pawn.address,base_proof.fields[4].offset))return false;
             if(observed.special_move!=scene.special_move){
-                const auto supported=[](unsigned x){return x==0||x==33||x==34;};
+                const auto supported=[](unsigned x){return gears_lancer_saw_pose::ordinary_hands_motion(x)||x==33||x==34;};
+                const bool ordinary=gears_lancer_saw_pose::ordinary_hands_motion(scene.special_move)&&
+                    gears_lancer_saw_pose::ordinary_hands_motion(observed.special_move);
                 gears_anchor::Identity actual{};ClassPath path{};
                 if(!supported(scene.special_move)||!supported(observed.special_move)||!scene.weapon.address||
                    !identity(scene.weapon.address,actual,true)||!same(actual,scene.weapon)||
-                   !derives(actual.cls,L"Weap_AssaultRifle",0,path)||!proofs_current(true))return false;
+                   (!ordinary&&!derives(actual.cls,L"Weap_AssaultRifle",0,path))||!proofs_current(true))return false;
             }
         }
         // Two complete actual possession/world/mesh/weapon/Instigator and

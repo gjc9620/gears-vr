@@ -2,6 +2,7 @@
 // No bridge reread, pose or damage property writer. The explicit unified
 // profile requires the separate same-shot muzzle result consumer before enable.
 #include "weapon_unified_fire.h"
+#include "weapon_lancer_trajectory_log.h"
 #if defined(GEARS_PLAYGROUND_NATIVE_LANCER_FOLLOW) && defined(GEARS_PLAYGROUND_UNIFIED_MUZZLE_FIRE)
 namespace lancerrefire {
 bool certified_for(gears_weapon_hand::Frame const&) noexcept;
@@ -34,6 +35,19 @@ ULONGLONG next_ammo{};unsigned ammo_reads{},post_ammo_samples{2};
 bool ammo_resume_pending{};
 unsigned muzzle_logs{},trace_logs{};std::uint64_t last_muzzle_writes{},last_trace_count{};
 unsigned trajectory_logs{};std::uint64_t trajectory_omitted{},last_trajectory_drop{};
+std::uint64_t private_trajectory_total() noexcept {
+    static const auto total=[]()noexcept->std::uint64_t{
+        for(auto key:{L"GEARSVR_TEST_FINITE_RANGE_AMMO",L"GEARSVR_TEST_WINDOWS_BEHIND",
+            L"GEARSVR_TEST_MUTE_GAME",L"GEARSVR_TEST_TINY_OUTPUT_OBSERVE_ONLY"}){
+            wchar_t flag[4]{};if(GetEnvironmentVariableW(key,flag,4)!=1||flag[0]!=L'1')return 0;
+        }
+        wchar_t text[16]{};const auto n=GetEnvironmentVariableW(L"GEARSVR_TEST_TRAJECTORY_FINITE_TOTAL",text,16);
+        if(!n||n>=16)return 0;std::uint64_t value{};
+        for(DWORD i=0;i<n;++i){if(text[i]<L'0'||text[i]>L'9'||value>1000000)return 0;value=value*10+unsigned(text[i]-L'0');}
+        return gears_lancer_trajectory_log::valid_total(value)?value:0;
+    }();
+    return total;
+}
 unsigned muzzle_prepare_failure_logs{};
 unsigned execute_failure_logs{};
 lr::Actors actors(wh::Frame const& f) noexcept {return {f.world,f.controller,f.pawn,f.mesh,f.weapon};}
@@ -92,8 +106,10 @@ bool read_game(lr::Actors const& expected,wh::Frame const* source,lr::Game& out,
     wh::GripGameState before{},after{};
     if(source_current){
         // Only tick supplies the two outputs of its immediately preceding
-        // successful copy_frame_on_gt. No engine/wait/republication occurs
-        // between that copy and this use. armed() still catches worker-side
+        // successful copy_frame_on_gt. A socket getter may have run since
+        // that copy; this is a comparison snapshot, not renewed permission.
+        // The fresh AFTER observation below must match its fire projection.
+        // armed() still catches worker-side
         // soft invalidation; a live registration alone is insufficient.
         // This is never a seed for execute/ammo/owned-release reads.
         if(!source||!copied_game||!copied_game->known||!weaponhand::client.armed()||
@@ -103,7 +119,7 @@ bool read_game(lr::Actors const& expected,wh::Frame const* source,lr::Game& out,
         // Preserve source-vs-metadata failure classification: a later typed
         // R2/schema failure must not become a source-loss fallback/retry.
         if(source_current)*source_current=true;
-    }else if(!weaponhand::observe(nullptr,identity,weaponhand::clock_ns(nullptr),before))return false;
+    }else if(!weaponhand::observe_source(nullptr,identity,weaponhand::clock_ns(nullptr),before))return false;
     if(!before.known)return false;
     meta::Snapshot schema{};schema.module_base=base;meta::Reader r{schema,meta::Stage::final_check};
     weaponhand::BoolField held{},again{};
@@ -152,7 +168,8 @@ bool read_game(lr::Actors const& expected,wh::Frame const* source,lr::Game& out,
 #endif
         !meta::tables(base,objects,names)||
         !meta::same_table(objects,schema.objects)||!meta::same_table(names,schema.names)||
-        !weaponhand::observe(nullptr,identity,weaponhand::clock_ns(nullptr),after)||!wh::same_game(before,after))return false;
+        !weaponhand::observe_source(nullptr,identity,weaponhand::clock_ns(nullptr),after)||
+        !lr::same_fire_observation(before,after))return false;
     if(source_current&&!weaponhand::client.armed()){*source_current=false;return false;}
     out={expected,true,lancer,after.main_hand_held,after.animation_owns_hands,after.busy,true,bool(held.bits&held.mask)};
 #if defined(GEARS_PLAYGROUND_NATIVE_LANCER_L2_TRIAL)
@@ -210,7 +227,16 @@ gears_weapon::OriginalR2Execution execute(gears_weapon::OriginalR2Action action,
     // deferred by Input within the ORIGINAL press intent's fixed deadline.
     // Each attempt still needs its own <=100ms source and dispatch reserve.
     if(action==gears_weapon::OriginalR2Action::press&&unified_weapon_fire::manual_profile()&&
-       !unified_weapon_fire::ready_for(*source,20000000))return gears_weapon::OriginalR2Execution::not_ready;
+       !unified_weapon_fire::ready_for(*source,20000000)){
+        unified_weapon_fire::ReadinessEvidence evidence{};
+        if(log_file&&execute_failure_logs<8&&unified_weapon_fire::readiness_evidence(*source,20000000,evidence)){
+            fwprintf(log_file,L"native_lancer_execute_not_ready frame=%llu valid=%u same_frame=%u frame_current=%u reserved_frame_current=%u held=%u registration=%u live=%u reserved_live=%u epoch=%u sync_age_ns=%lld stereo_age_ns=%lld frame_age_ns=%lld sample_age_ns=%lld render_age_ns=%lld\n",
+                source->key.frame,unsigned(evidence.valid),unsigned(evidence.same_frame),unsigned(evidence.frame_current),unsigned(evidence.reserved_frame_current),
+                unsigned(evidence.held),unsigned(evidence.registration),unsigned(evidence.live),unsigned(evidence.reserved_live),unsigned(evidence.epoch),
+                evidence.sync_age,evidence.stereo_age,evidence.frame_age,evidence.sample_age,evidence.render_age);fflush(log_file);++execute_failure_logs;
+        }
+        return gears_weapon::OriginalR2Execution::not_ready;
+    }
 #if defined(GEARS_PLAYGROUND_NATIVE_LANCER_FOLLOW) && defined(GEARS_PLAYGROUND_UNIFIED_MUZZLE_FIRE)
     const bool owned_press=action==gears_weapon::OriginalR2Action::press;
     if(owned_press)lancerrefire::begin_owned_press(*source);
@@ -505,7 +531,12 @@ void tick(uptr pc) noexcept {
     unified_weapon_fire::ShotTrajectoryEvidence trajectory{};
     while(unified_weapon_fire::next_shot_trajectory(trajectory)){
         if(!log_file)continue;
-        if(trajectory_logs>=128){
+        // A private finite-ammo setup may consume hundreds of rounds. Spend
+        // the SAME bounded export budget on its beginning and final magazine,
+        // leaving target-action evidence available after preparation. No new
+        // sample/storage/game read and no change to the actual shot consumer.
+        if(!gears_lancer_trajectory_log::selected(trajectory.shot,private_trajectory_total()))continue;
+        if(trajectory_logs>=gears_lancer_trajectory_log::record_limit){
             ++trajectory_omitted;
             if(trajectory_omitted==1){
                 fwprintf(log_file,L"native_lancer_trajectory_truncated first_omitted_shot=%llu limit=128\n",trajectory.shot);

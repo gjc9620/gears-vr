@@ -89,16 +89,42 @@ bool fresh_name(Table const& names,U32 index,NameText& text) noexcept {
         if(text.units[bound])return false;
         text.length=bound;return true;
     }
-#endif
+    {
+        // Native participant callbacks can run without a parsing workspace.
+        // The same fresh page-bounded read is valid there too; no scope or
+        // length/text cache is created merely to enable this read algorithm.
+        // Cold names still require ALL real characters through the first NUL.
+        // Never cross a readable page merely to fill a chunk. A failed read
+        // rejects immediately: retrying could consume a one-shot guard-page
+        // exception and incorrectly turn that failure into an accepted name.
+        static const std::size_t page_bytes=[](){SYSTEM_INFO info{};GetSystemInfo(&info);
+            return std::size_t(info.dwPageSize);}();
+        if(!page_bytes)return false;
+        for(U32 at=0;at<max_name_units;){
+            const auto offset=20+uptr(at)*sizeof(wchar_t);
+            if(offset>~uptr(0)-text.entry)return false;
+            const auto room=(page_bytes-(text.entry+offset)%page_bytes)/sizeof(wchar_t);
+            const U32 count=room?U32((std::min)(std::size_t(max_name_units-at),room)):1;
+            if(!read_bytes(text.entry,offset,text.units.data()+at,std::size_t(count)*sizeof(wchar_t)))return false;
+            for(U32 n=0;n<count;++n){
+                const auto i=at+n;
+                if(!text.units[i]){
+                    text.length=i;if(i)weapon_metadata_parse::remember_length(text.entry,index,i);
+                    return i!=0;
+                }
+            }
+            at+=count;
+        }
+        return false;
+    }
+#else
     for(U32 i=0;i<max_name_units;++i){
         if(!read_at(text.entry,20+uptr(i)*sizeof(wchar_t),text.units[i]))return false;
         if(!text.units[i]){text.length=i;
-#if defined(GEARS_PLAYGROUND_NATIVE_MAIN_MOUNT_PROVIDER_TRIAL)
-            if(i)weapon_metadata_parse::remember_length(text.entry,index,i);
-#endif
             return i!=0;}
     }
     return false; // Never manufacture the terminating NUL.
+#endif
 }
 bool same_name_text(NameText const& first,NameText const& second) noexcept {
     if(first.entry!=second.entry||first.index!=second.index||first.length!=second.length||

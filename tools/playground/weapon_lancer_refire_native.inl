@@ -425,8 +425,24 @@ void service(uptr pc) noexcept {
 void deliver_ready(wh::Frame const& frame) noexcept {
     if(!pending_validated||pending_fire.event.empty()||delivering||
        vrfire::mode.load(std::memory_order_acquire)!=vrfire::running||!vrfire::input.owns_press()||
-       !weaponhand::current_gt(nullptr)||!matches(pending_fire.cohort,frame)||
-       !unified_weapon_fire::ready_for(frame,20000000))return;
+       !weaponhand::current_gt(nullptr)||!matches(pending_fire.cohort,frame))return;
+    if(!unified_weapon_fire::ready_for(frame,20000000)){
+        // Reuse the existing readiness witness at the ACTUAL deferred-event
+        // decision. The earlier ButtonPress witness cannot explain an event
+        // captured later by the original state machine. Observe only after
+        // rejection, never refresh a sample or turn observation into a permit.
+        static unsigned not_ready_logs{};
+        unified_weapon_fire::ReadinessEvidence evidence{};
+        if(log_file&&not_ready_logs<8&&unified_weapon_fire::readiness_evidence(frame,20000000,evidence)){
+            ++not_ready_logs;
+            fwprintf(log_file,L"native_lancer_original_fire_not_ready kind=%u frame=%llu valid=%u same_frame=%u frame_current=%u reserved_frame_current=%u held=%u registration=%u live=%u reserved_live=%u epoch=%u sync_age_ns=%lld stereo_age_ns=%lld frame_age_ns=%lld sample_age_ns=%lld render_age_ns=%lld\n",
+                unsigned(pending_fire.event.kind()),frame.key.frame,unsigned(evidence.valid),unsigned(evidence.same_frame),
+                unsigned(evidence.frame_current),unsigned(evidence.reserved_frame_current),unsigned(evidence.held),
+                unsigned(evidence.registration),unsigned(evidence.live),unsigned(evidence.reserved_live),unsigned(evidence.epoch),
+                evidence.sync_age,evidence.stereo_age,evidence.frame_age,evidence.sample_age,evidence.render_age);fflush(log_file);
+        }
+        return;
+    }
     const auto kind=pending_fire.event.kind();const auto function=pending_fire.function.address;
     const auto bytes=pending_fire.parameter_bytes;const auto parameters=pending_fire.parameters;
     if(!pending_fire.event.claim(weaponhand::clock_ns(nullptr)))return;

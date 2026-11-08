@@ -13,6 +13,7 @@ using namespace gears_weapon_hand;
 // transport. These tests cannot certify live mesh mounts or a callback lease.
 struct Host {
     Frame frame{};GripGameState game{};SupportGripParticipant participant;
+    SupportSocketPreference socket;bool auto_socket{},another_socket{};std::uint64_t hold{1};
     gears_vr::LeftHandInteractionOwner owner;
     std::uint64_t press{};bool previous_down{};
     ObjectIdentity object(std::uint64_t address){return {address,0x8000,0x9000,unsigned(address/8),7,0,1};}
@@ -52,6 +53,7 @@ struct Host {
         previous_down=down;
         frame.left_tracked=gears_vr::controller_pose_usable(hand.grip,hand.grip_flags,hand.grip_active)?1u:0u;
         frame.left_grip_down=down&&frame.left_tracked?1u:0u;frame.press_token=press;
+        if(auto_socket&&socket.observe(frame,game,hold,frame.now_ns,another_socket))game.magazine_observation_pending=false;
         Proposal p{};assert(participant.prepare(frame,game,p)==Reply::accepted);assert(proposal_valid(p,frame));return p;
     }
     Decision arbitrate(Proposal const& p,bool down,std::uint64_t cover=0){
@@ -75,6 +77,57 @@ int main(){
     _set_error_mode(_OUT_TO_STDERR);_set_abort_behavior(0,_WRITE_ABORT_MSG|_CALL_REPORTFAULT);
 #endif
     unsigned cases{};
+    {++cases;Host h;h.auto_socket=true;assert(h.step(false)==Grip::single);
+        h.game.magazine_observation_pending=true;
+        assert(h.step(true)==Grip::two); // Actual hovered support + real edge; unknown unrelated magazine.
+        assert(h.participant.snapshot().left_hand.kind==LeaseKind::support);
+    }
+    // A cold held press, stale input, changed identity/basis/mount/hold,
+    // tracking loss, known competing part and another selected socket NEVER
+    // obtain the affinity exception. Unknown contact remains pending.
+    for(unsigned changed=0;changed<21;++changed){
+        ++cases;Host h;h.auto_socket=true;assert(h.step(false)==Grip::single);
+        switch(changed){
+        case 0:h.socket.reset();break;
+        case 1:++h.hold;break;
+        case 2:++h.frame.key.lifecycle;break;
+        case 3:++h.frame.key.world_generation;break;
+        case 4:++h.frame.key.registration_cookie;break;
+        case 5:++h.frame.controllers.input_epoch;break;
+        case 6:++h.frame.controllers.profile_generation;break;
+        case 7:++h.frame.reference_generation;break;
+        case 8:h.frame.reference.position.x=.01;break;
+        case 9:h.game.mount_revision++;break;
+        case 10:h.game.mount_asset.name_number++;break;
+        case 11:h.frame.weapon.name_number++;break;
+        case 12:h.game.mount.support_grip_in_weapon.z=-.51;break;
+        case 13:h.game.acquire_metres=.11;break;
+        case 14:h.frame.controllers.hands[0].grip.position.x=.2;break;
+        case 15:h.another_socket=true;break;
+        case 16:h.frame.interaction_control=1;break;
+        case 17:h.game.busy=true;break;
+        case 18:h.frame.controllers.hands[0].grip_active=0;break;
+        case 19:h.frame.key.frame=0;break;
+        case 20:h.hold=0;break;
+        }
+        h.game.magazine_observation_pending=true;
+        h.frame.left_grip_down=1;h.frame.controllers.hands[0].squeeze=1;
+        assert(!h.socket.observe(h.frame,h.game,h.hold,h.frame.now_ns,h.another_socket));
+    }
+    for(unsigned part=0;part<2;++part){++cases;Host h;h.auto_socket=true;h.step(false);
+        h.game.magazine_observation_pending=true;
+        h.game.request_magazine=part==0;h.game.request_ammo=part==1;
+        const auto p=h.prepare(true);const auto d=h.arbitrate(p,true);
+        assert(!p.support&&d.lease.kind==(part?LeaseKind::ammo:LeaseKind::magazine));
+        assert(h.participant.commit(h.frame,p,d)==Reply::accepted);
+    }
+    {++cases;Host h;SupportSocketPreference preference;
+        assert(!preference.observe(h.frame,h.game,1,h.frame.now_ns,false));
+        h.frame.left_grip_down=1;h.frame.controllers.hands[0].squeeze=1;
+        const auto expired=h.frame.controllers.received_ns+100000001;
+        assert(!preference.observe(h.frame,h.game,1,expired,false));
+        assert(!preference.observe(h.frame,h.game,1,h.frame.now_ns,false)); // No stored permission after expiry.
+    }
     for(unsigned control=0;control<2;++control){
         ++cases;Host h;h.frame.interaction_control=control;assert(h.step(false)==Grip::single);
         h.game.magazine_observation_pending=true;

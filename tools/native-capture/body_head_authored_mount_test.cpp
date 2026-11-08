@@ -98,6 +98,17 @@ int main(int argc,char** argv){
         C(!saw_pose::commit_hands(35,true,true,true));
         C(!saw_pose::commit_hands(53,true,true,true));
         C(saw_pose::commit_hands(0,false,true,false));
+        // Ordinary stopping is visual continuity, not a held-item grant.
+        for(unsigned sm:{14u,15u}){
+            C(saw_pose::prepare_hands(sm,false,true));
+            C(saw_pose::commit_hands(sm,false,true,false));
+        }
+        // Hits, vaults, pickups and paired actions never enter this path.
+        for(unsigned sm=0;sm<256;++sm){
+            const bool ordinary=sm==0||sm==14||sm==15;
+            C(saw_pose::ordinary_hands_motion(sm)==ordinary);
+            C(saw_pose::prepare_hands(sm,false,true)==ordinary);
+        }
         C(visibility::original_pickup(53));
         C(visibility::original_lancer_animation(33,true));
         C(visibility::original_lancer_animation(34,true));

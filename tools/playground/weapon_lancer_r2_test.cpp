@@ -1,4 +1,5 @@
 #include "weapon_lancer_r2.h"
+#include "weapon_lancer_trajectory_log.h"
 #include <vector>
 #define main weapon_lancer_r2_owned_fixture_tests
 #include "weapon_rig_binding_test.cpp"
@@ -32,6 +33,41 @@ struct Trial {
 lr::Continuity witness(Trial const& t){return {{t.f.hand.controllers,1,{1,1}},{100,200}};}
 }
 int main(){
+    {
+        namespace log=gears_lancer_trajectory_log;
+        CHECK(log::record_limit==128&&log::valid_total(420)&&!log::valid_total(63)&&!log::valid_total(1000001));
+        for(std::uint64_t total:{64ull,80ull,128ull,420ull}){
+            unsigned selected{};
+            for(std::uint64_t shot=1;shot<=total;++shot){
+                const bool choose=log::selected(shot,total);
+                if(choose)++selected;
+                if(shot<=16||shot>total-64)CHECK(choose);
+                else CHECK(!choose);
+            }
+            CHECK(selected<=80&&selected<=log::record_limit);
+        }
+        CHECK(log::selected(1000000,1000000)&&!log::selected(999936,1000000)&&log::selected(999937,1000000));
+        for(std::uint64_t shot=1;shot<=512;++shot)CHECK(log::selected(shot,0));
+        CHECK(!log::selected(356,420)&&log::selected(357,420)&&log::selected(420,420));
+    }
+    // Primary firing observes the SAME live eligibility/mount, without
+    // recalculating unrelated left-hand candidate geometry. Part admission
+    // keeps its separate full comparison and is never granted by this helper.
+    {
+        wh::GripGameState a{};a.known=a.main_hand_held=true;a.kind=wh::WeaponKind::firearm;
+        auto b=a;CHECK(lr::same_fire_observation(a,b));
+        b.request_ammo=true;b.request_magazine=true;b.magazine_observation_pending=true;
+        b.object_incumbents[0].kind=wh::LeaseKind::magazine;
+        CHECK(lr::same_fire_observation(a,b)&&!wh::same_game(a,b));
+        for(unsigned field=0;field<9;++field){b=a;
+            if(field==0)b.known=false;if(field==1)b.main_hand_held=false;
+            if(field==2)b.animation_owns_hands=true;if(field==3)b.busy=true;
+            if(field==4)b.kind=wh::WeaponKind::hand_thrown;if(field==5)b.mount_known=true;
+            if(field==6)++b.mount_revision;if(field==7)b.mount.muzzle_in_weapon.x+=1;
+            if(field==8)b.release_metres+=.01;
+            CHECK(!lr::same_fire_observation(a,b));
+        }
+    }
     // The actual equipment adapter seals this ledger before index acquisition.
     // Attachment completion with that trigger still down never fires; an
     // authentic release/new press returns to ordinary held-trigger firing.

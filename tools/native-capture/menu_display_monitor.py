@@ -227,6 +227,33 @@ def loading_display(sample):
     return True
 
 
+def title_menu(sample, top):
+    """Observed title/attract topology; display only, never an input permit."""
+    if (sample.get('input_block_count')!=0 or type(sample.get('input_block_count')) is not int
+            or sample.get('active_scenes_truncated',False) is not False
+            or sample.get('focus_chain_truncated',False) is not False):return False
+    scenes=sample.get('active_scenes');focus=sample.get('focus_chain');leaf=sample.get('focused_leaf')
+    if not isinstance(scenes,list) or len(scenes)!=3 or not isinstance(focus,list) or len(focus)!=1:return False
+    def pointer(value):
+        return type(value) is str and re.fullmatch(r'0x[0-9a-fA-F]{1,16}',value) is not None and int(value,16)>0
+    core=('address','name','number','cls','outer')
+    expected=(('UIScene','UIScene',0),('DeltaWarTitleScreen','WarUIScene_TitleScreen',4),
+              ('AttractLauncher','UIScene_AttractLauncher',0))
+    for node,(name,cls,mode) in zip(scenes,expected):
+        if (not isinstance(node,dict) or node.get('name')!=name or node.get('cls')!=cls
+                or type(node.get('input_mode')) is not int or node['input_mode']!=mode
+                or type(node.get('number')) is not int or node['number']<0
+                or not pointer(node.get('address')) or not pointer(node.get('outer'))
+                or node['outer']!=top.get('outer')):return False
+    if len({node['address'] for node in scenes})!=3:return False
+    if (any(top.get(k)!=scenes[-1].get(k) for k in (*core,'input_mode'))
+            or top.get('tag')!='AttractLauncher' or type(top.get('tag_number')) is not int or top['tag_number']!=0):return False
+    for node in (focus[0],leaf):
+        if (not isinstance(node,dict) or any(node.get(k)!=top.get(k) for k in core)
+                or node.get('states')!=['UIState_Enabled']):return False
+    return True
+
+
 def classify(sample):
     if sample.get('consistent_reread') is not True or sample.get('read_only') is not True:
         return UNKNOWN
@@ -260,7 +287,7 @@ def classify(sample):
         return UNKNOWN
     top = sample.get('top') or {}
     if not isinstance(top, dict):return UNKNOWN
-    if player == 0 and main_menu(sample, top):
+    if player == 0 and (title_menu(sample,top) or main_menu(sample, top)):
         return MAIN_MENU
     if blocked == 0 and player == 0 and (top.get('tag'), top.get('cls'), top.get('input_mode')) == ('DeltaGameover', 'WarUIScene', 1):
         return DEATH_MENU
