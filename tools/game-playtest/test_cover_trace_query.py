@@ -4,8 +4,9 @@ import unittest
 from pathlib import Path
 from types import SimpleNamespace
 import sys
+from unittest.mock import patch
 
-from cover_trace_query import TraceQuery
+from cover_trace_query import TraceQuery, capture_edge_interval
 
 
 class Memory:
@@ -185,6 +186,163 @@ class TraceRegistryTests(unittest.TestCase):
         query = TraceQuery(Observer(resolver, identity))
         with self.assertRaisesRegex(RuntimeError, 'newly registered tail'):
             query.obj(identity['address'])
+
+
+class EdgeIntervalTests(unittest.TestCase):
+    def run_probe(self, *, delta=(0, 0, 64), direction=(1, 0, 0), mutate=None, **options):
+        calls = []
+
+        def trace(observer, path, digest, start, end, **kwargs):
+            calls.append((start, end, kwargs))
+            fraction = sum(start[i] * delta[i] for i in range(3)) / sum(x * x for x in delta)
+            blocked = fraction < .6
+            receipt = dict(accepted=True, trace_calls=1, pending_possible=False,
+                           allocation_retained=False, session_id='owned',
+                           game_identity=dict(pid=100, created=200), owner_identity=dict(pid=300),
+                           roles=dict(pawn=dict(address=1), controller=dict(address=2),
+                                      link=dict(address=3), world=dict(address=4), current_slot=0),
+                           pawn_position=(0, 0, 0), module=dict(base=10, sha256='module'),
+                           function=dict(address=20),
+                           inputs=dict(start=start, end=end, **kwargs),
+                           hit=dict(actor_address=9 if blocked else 0,
+                                    location=tuple((start[i] + end[i]) / 2 for i in range(3)) if blocked else (0, 0, 0),
+                                    normal=tuple(-x for x in direction) if blocked else (0, 0, 0)))
+            if blocked:
+                receipt['hit']['actor_identity'] = dict(address=9, name='ActualWall', index=12)
+            if mutate:
+                mutate(receipt, len(calls))
+            return receipt
+
+        result = capture_edge_interval(None, 'already-loaded.dll', 'digest', (0, 0, 0),
+                                       tuple(100 * x for x in direction), delta,
+                                       capture_ray=trace, **options)
+        return result, calls
+
+    def test_top_and_both_side_directions_use_bounded_current_rays(self):
+        for delta, direction in (((0, 0, 64), (1, 0, 0)),
+                                 ((0, -64, 0), (1, 0, 0)),
+                                 ((0, 64, 0), (1, 0, 0)),
+                                 ((-64, 0, 0), (0, 1, 0)),
+                                 ((0, 64, 0), (-1, 0, 0))):
+            with self.subTest(delta=delta, direction=direction):
+                result, calls = self.run_probe(delta=delta, direction=direction)
+                self.assertTrue(result['accepted'], result)
+                self.assertLessEqual(len(calls), 8)
+                self.assertLess(result['blocked_fraction'], .6)
+                self.assertGreaterEqual(result['clear_fraction'], .6)
+                self.assertLessEqual(result['interval_width'], 1)
+                self.assertFalse(result['grab_authorized'])
+                self.assertFalse(result['collision_verified'])
+                self.assertFalse(result['body_modified'])
+                for _, _, kwargs in calls:
+                    self.assertEqual(kwargs, dict(extent=(0, 0, 0), trace_actors=False, extra_flags=8))
+
+    def test_invalid_plan_is_rejected_before_any_call(self):
+        for options in (dict(tolerance=0), dict(tolerance=float('nan')), dict(tolerance=True),
+                        dict(tolerance=64), dict(maximum_calls=9), dict(maximum_calls=True),
+                        dict(maximum_calls=2), dict(maximum_seconds=31), dict(maximum_seconds=True),
+                        dict(delta=(64, 0, 0)), dict(delta=(0, 0, 201))):
+            with self.subTest(options=options):
+                result, calls = self.run_probe(**options)
+                self.assertFalse(result['accepted'])
+                self.assertEqual(calls, [])
+
+    def test_failed_or_pending_trace_never_becomes_empty_and_is_not_retried(self):
+        for change in (dict(accepted=False), dict(trace_calls=0), dict(pending_possible=True),
+                       dict(allocation_retained=True)):
+            with self.subTest(change=change):
+                result, calls = self.run_probe(mutate=lambda r, n: r.update(change) if n == 2 else None)
+                self.assertFalse(result['accepted'])
+                self.assertEqual(len(calls), 2)
+                self.assertEqual(len(result['rays']), 2)
+
+    def test_selected_binding_change_stops_search(self):
+        for field in ('session_id', 'game_identity', 'owner_identity', 'roles',
+                      'pawn_position', 'module', 'function'):
+            with self.subTest(field=field):
+                def mutate(receipt, n):
+                    if n == 2:
+                        receipt[field] = 'changed'
+                result, calls = self.run_probe(mutate=mutate)
+                self.assertFalse(result['accepted'])
+                self.assertIn('binding changed', result['rejection'])
+                self.assertEqual(len(calls), 2)
+
+    def test_input_changes_are_rejected(self):
+        for field, value in (('start', (1, 2, 3)), ('extent', (1, 0, 0)),
+                             ('trace_actors', True), ('extra_flags', 0)):
+            with self.subTest(field=field):
+                result, calls = self.run_probe(mutate=lambda r, n: r['inputs'].update({field: value}))
+                self.assertFalse(result['accepted'])
+                self.assertEqual(len(calls), 1)
+
+    def test_self_cover_marker_floor_and_bad_ray_hits_are_rejected(self):
+        for change in (dict(actor_address=1, actor_identity=dict(address=1)),
+                       dict(actor_address=2, actor_identity=dict(address=2)),
+                       dict(actor_address=3, actor_identity=dict(address=3)),
+                       dict(normal=(0, 0, 1)), dict(normal=(1, 0, 0)),
+                       dict(normal=(-2, 0, 0)), dict(location=(150, 0, 0)),
+                       dict(location=(50, 1, 0)), dict(location=(0, 0, 0)),
+                       dict(location=(float('nan'), 0, 0)),
+                       dict(actor_identity=dict(address=11))):
+            with self.subTest(change=change):
+                result, calls = self.run_probe(mutate=lambda r, n: r['hit'].update(change))
+                self.assertFalse(result['accepted'])
+                self.assertEqual(len(calls), 1)
+
+    def test_different_wall_during_bisection_stops(self):
+        def mutate(receipt, n):
+            if n == 3:
+                receipt['hit'].update(actor_address=10, actor_identity=dict(address=10))
+        result, calls = self.run_probe(mutate=mutate)
+        self.assertFalse(result['accepted'])
+        self.assertIn('different collision actor', result['rejection'])
+        self.assertEqual(len(calls), 3)
+
+    def test_unexplained_empty_hit_data_stops(self):
+        def mutate(receipt, n):
+            if n == 2:
+                receipt['hit']['normal'] = (-1, 0, 0)
+        result, calls = self.run_probe(mutate=mutate)
+        self.assertFalse(result['accepted'])
+        self.assertIn('unexplained hit data', result['rejection'])
+        self.assertEqual(len(calls), 2)
+
+    def test_empty_start_and_blocked_outside_do_not_infer_edge(self):
+        def empty(receipt, n):
+            receipt['hit'] = dict(actor_address=0, location=(0, 0, 0), normal=(0, 0, 0))
+        result, calls = self.run_probe(mutate=empty)
+        self.assertFalse(result['accepted'])
+        self.assertEqual(len(calls), 1)
+
+        def wall(receipt, n):
+            start, end = receipt['inputs']['start'], receipt['inputs']['end']
+            receipt['hit'] = dict(actor_address=9, actor_identity=dict(address=9, name='ActualWall', index=12),
+                                  location=tuple((a + b) / 2 for a, b in zip(start, end)), normal=(-1, 0, 0))
+        result, calls = self.run_probe(mutate=wall)
+        self.assertFalse(result['accepted'])
+        self.assertIn('still blocked', result['rejection'])
+        self.assertEqual(len(calls), 2)
+
+    def test_elapsed_budget_stops_after_current_call_without_retry(self):
+        with patch('cover_trace_query.time.monotonic', side_effect=(0, 0, 31)):
+            result, calls = self.run_probe()
+        self.assertFalse(result['accepted'])
+        self.assertEqual(len(calls), 1)
+        self.assertEqual(result['rejection_type'], 'TimeoutError')
+
+    def test_receipts_are_frozen_and_missing_evidence_is_rejected(self):
+        saved = []
+        def mutate(receipt, n):
+            if saved:
+                saved[0]['hit']['actor_address'] = 99
+            saved.append(receipt)
+        result, _ = self.run_probe(mutate=mutate)
+        self.assertTrue(result['accepted'], result)
+        self.assertEqual(result['rays'][0]['receipt']['hit']['actor_address'], 9)
+        result, calls = self.run_probe(mutate=lambda r, n: r.pop('roles'))
+        self.assertFalse(result['accepted'])
+        self.assertEqual(len(calls), 1)
 
 
 if __name__ == '__main__':

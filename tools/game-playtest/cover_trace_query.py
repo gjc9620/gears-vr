@@ -325,3 +325,130 @@ def capture(observer, dll_path, dll_sha256, start, end, *, extent=(0, 0, 0), tra
                 report.update(accepted=False, close_error=str(error), close_error_type=type(error).__name__)
         report['finished_perf_counter_ns'] = time.perf_counter_ns()
     return report
+
+
+def capture_edge_interval(observer, dll_path, dll_sha256, start, end, outside_delta, *,
+                          tolerance=1.0, maximum_calls=8, maximum_seconds=30.0,
+                          capture_ray=capture):
+    """Bracket one wall-to-clear transition with certified original GT rays.
+
+    start/end are a measured blocked ray; outside_delta translates BOTH ends
+    toward the chosen edge. No CoverSlot height is treated as collision data.
+    All calls use world-only blocking Trace, and must retain the same owned
+    session, Pawn, CoverLink, slot, Pawn position and hit actor. Failed or
+    uncertain calls terminate the search immediately, without any retry.
+
+    The output is a measured interval on ONE slice, not a certified grabbable
+    edge, reach, solid wall, body sweep, or permission to enlarge CoverRange.
+    Additional slices/reach/sweep evidence are still required by the live owner.
+    """
+    result = dict(schema=1, accepted=False, diagnostic_only=True, rays=[],
+                  collision_verified=False, grab_authorized=False,
+                  body_modified=False, physical_headset_acceptance=False)
+    deadline = None
+    try:
+        start = _point(start, 'Edge TraceStart')
+        end = _point(end, 'Edge TraceEnd')
+        delta = _point(outside_delta, 'Edge outside translation')
+        length = math.dist(start, end)
+        travel = math.sqrt(sum(x * x for x in delta))
+        if not .001 <= length <= 300 or not .001 <= travel <= 200:
+            raise ValueError('Edge slice ray/translation outside bounded range')
+        # Translations parallel to the ray do not search a wall boundary.
+        if abs(sum((end[i] - start[i]) * delta[i] for i in range(3))) > 1e-5 * length * travel:
+            raise ValueError('Edge translation must be perpendicular to the ray')
+        if (type(tolerance) not in (int, float) or not math.isfinite(tolerance) or
+                not 0 < tolerance < travel):
+            raise ValueError('Edge interval tolerance must be positive and smaller than travel')
+        if type(maximum_calls) is not int or not 2 <= maximum_calls <= 8:
+            raise ValueError('Edge search requires two to eight bounded calls')
+        if (type(maximum_seconds) not in (int, float) or not math.isfinite(maximum_seconds) or
+                not 0 < maximum_seconds <= 30):
+            raise ValueError('Edge search time budget must be positive and at most thirty seconds')
+        required = 2
+        width = travel
+        while width > tolerance:
+            width /= 2
+            required += 1
+        if required > maximum_calls:
+            raise ValueError('Edge precision cannot fit the selected call budget')
+        deadline = time.monotonic() + maximum_seconds
+        result.update(start=start, end=end, outside_delta=delta,
+                      tolerance=tolerance, maximum_calls=maximum_calls)
+        cohort = actor_identity = None
+        direction = tuple((end[i] - start[i]) / length for i in range(3))
+
+        def ray(fraction):
+            nonlocal cohort, actor_identity
+            if len(result['rays']) >= maximum_calls or time.monotonic() >= deadline:
+                raise TimeoutError('Edge search budget exhausted')
+            origin = tuple(start[i] + fraction * delta[i] for i in range(3))
+            target = tuple(end[i] + fraction * delta[i] for i in range(3))
+            receipt = capture_ray(observer, dll_path, dll_sha256, origin, target,
+                                  extent=(0, 0, 0), trace_actors=False, extra_flags=TRACE_FLAGS)
+            result['rays'].append(dict(fraction=fraction, receipt=copy.deepcopy(receipt)))
+            # A complete accepted Trace is the only usable observation. In
+            # particular an unaccepted raw hit or pending request is not empty.
+            if receipt.get('accepted') is not True or receipt.get('trace_calls') != 1:
+                raise RuntimeError('Edge ray not accepted; search stopped without retry')
+            if receipt.get('pending_possible') or receipt.get('allocation_retained'):
+                raise RuntimeError('Edge ray has unresolved request ownership')
+            if time.monotonic() >= deadline:
+                raise TimeoutError('Edge search time budget exhausted after completed ray')
+            identity = tuple(copy.deepcopy(receipt[key]) for key in
+                             ('session_id', 'game_identity', 'owner_identity', 'roles',
+                              'pawn_position', 'module', 'function'))
+            if cohort is None:
+                cohort = identity
+            elif identity != cohort:
+                raise RuntimeError('Edge search Pawn/Link/slot/session binding changed')
+            inputs = receipt['inputs']
+            if (tuple(inputs['start']) != origin or tuple(inputs['end']) != target or
+                    tuple(inputs['extent']) != (0, 0, 0) or inputs['trace_actors'] is not False or
+                    inputs['extra_flags'] != TRACE_FLAGS):
+                raise RuntimeError('Edge ray completed input differs')
+            hit = receipt['hit']
+            actor = hit['actor_address']
+            point = _point(hit['location'], 'Edge hit location')
+            normal = _point(hit['normal'], 'Edge hit normal')
+            if type(actor) is not int or actor < 0:
+                raise RuntimeError('Edge hit actor invalid')
+            if not actor:
+                if point != (0, 0, 0) or normal != (0, 0, 0):
+                    raise RuntimeError('Edge empty result has unexplained hit data')
+                return False
+            actor_id = hit['actor_identity']
+            excluded = {receipt['roles'][role]['address'] for role in ('pawn', 'controller', 'link')}
+            if actor in excluded or actor_id['address'] != actor:
+                raise RuntimeError('Edge hit belongs to controlled actor or cover marker')
+            normal_length = math.sqrt(sum(x * x for x in normal))
+            along = sum((point[i] - origin[i]) * direction[i] for i in range(3))
+            error = math.sqrt(sum((point[i] - origin[i] - along * direction[i]) ** 2 for i in range(3)))
+            # Explicit numerical observation tolerances, not game constants.
+            if (not .99 <= normal_length <= 1.01 or abs(normal[2]) > .1 or
+                    sum(normal[i] * direction[i] for i in range(3)) > -.9 or
+                    not .001 < along < length - .001 or error > .01):
+                raise RuntimeError('Edge hit is not an interior facing wall contact')
+            if actor_identity is None:
+                actor_identity = copy.deepcopy(actor_id)
+            elif actor_id != actor_identity:
+                raise RuntimeError('Edge search crossed a different collision actor')
+            return True
+
+        if not ray(0):
+            raise RuntimeError('Edge search needs a positive blocked starting ray')
+        if ray(1):
+            raise RuntimeError('Edge search outside endpoint is still blocked')
+        blocked, clear = 0.0, 1.0
+        while (clear - blocked) * travel > tolerance:
+            middle = (blocked + clear) / 2
+            if ray(middle):
+                blocked = middle
+            else:
+                clear = middle
+        result.update(accepted=True, actor_identity=actor_identity,
+                      blocked_fraction=blocked, clear_fraction=clear,
+                      interval_width=(clear - blocked) * travel)
+    except Exception as error:
+        result.update(accepted=False, rejection=str(error), rejection_type=type(error).__name__)
+    return result
