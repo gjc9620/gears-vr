@@ -317,3 +317,14 @@ Cover正常唯一交窗后stage010655/PG8e2a8c38，实际14312完成原HB肩取�
 第二gap sync975409239000000比第二次圆弧第一命令975409332132100早93.1321ms，支持检查真实重抓后的静止等待，但没有记录实际前后local hand位移，不能直接称完全静止。下一只考虑保留严格输入/真实Native同lease/不携带运动的条件，不能直接放宽100ms或将旧press重新授权。
 
 54秒双路2页overview+3张按QPC选取实际接触图亲看，选择时间差12.021/-18.318/-0.643ms；自然手型和全角度仍未接受。Native/entry TRUE、XR/launcher0、game退出，config/settings原字节和head原缺恢复；编码64883=0、retention31381=0删1340媒体/206534215bytes、核无残留后唯一交Lancer023554。之后Snub024436→Frag030808→此前已受理Boltok030739→Cover新只读→Longshot034956，已直接协调，无统筹抄送。详runtime-9540-review.json。
+
+
+## 同一当前Native抓握的静止基线，不带跨gap运动
+
+9540第二gap早于第二圆弧命令，但保存的XR CSV只有眼位，不含Grip；Native continuous-hand-plans32条环尾最早975415224430000，已晚于gap975409239000000，不能从它补造当时手位。保留实际位移未知。
+
+针对“同一真实Native lease一直retained、接触点数值不变却被消费采样间隔撤销”的条件，旧生产opening/release分支实际CPU红复现。dc59ee41只为HB显式opt-in：当前Frame tracked/known/down、granted严格通过、decision retained且非new_grant、held与当前lease完全相同时，纯stroke允许≤1e-5m数值接触噪声重建静止基线；不seek、不推进角度/端点/阶段、不更新原reload时钟或奖励。任何0.1mm移动跨100ms仍拒绝；实际tracking/frame撤销已清stroke/held，旧press不能复活。其他消费者默认参数false，原100ms观察/输入时限和所有身份/原函数/写入门不变。仅原transition/失败/cleanup行附stationary_holds聚合，不新增日志行/采集器。
+
+旧源17项夹具到静止条件实际exit1；新源21项执行0，新增同lease无动作/后续及时运动、new_grant/别的lease/lifecycle/untracked/release_required/foreign frame/真移动/显式撤销拒绝。另7项明确失追proof撤销回归已保存，55项seek纯reconcile不变。独立GearsPlayground完整编译链接0。旧整套legacy模型测试在其另外的forgiving-profile段因3个早已不存在的字段编译失败（default-latch-compat.json保留）；未为过测添加或放宽字段/接触范围。其原有continuous_hinge_motion函数原样单独提取、当前默认false路径编译执行0（default-latch-motion.json），不称整套通过。
+
+冻结hammerburst-prepared-20261109-043309，PG611a40908e79f66f720d09042c3f64289d890e7e0ffd28806e9bd6187004e3a5；全源/制品哈希核对，stationary-hold-build-check.json，未stage/game。包括已独立回归的两处extraction.reset，但静止实际是否满足10微米条件仍待原记录/游戏计数证明，不称9540根因已定。后续只申请既有队尾Longshot034956之后同一原匣点，不插队。
