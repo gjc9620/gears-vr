@@ -340,3 +340,12 @@ Lancer只读确认上述forgiving-profile不是其本轮改动，未补写共享
 
 
 最终同一静止点冻结hammerburst-prepared-20261109-044514，PGa03ec04513c879b105c35da6ae3cf8e6f2f1aca6fe37d11e94106d04fe69d264，替代未stage043309；21+7+55及严格旧纯模型测试的边界如上，完整PG0/全source与制品hash核对，stationary-metric-build-check.json。未stage/game，动作scope和排位不增加，真实位移/静止保持次数等待实际回执。
+
+
+## 7712：同一原匣取出装回及真实回射通过
+
+044514/PGa03ec045全归档源码/6制品及12项当前运行输入hash核对，唯一交窗后stage。实际7712/134386451280970537：肩取6发后72/78，原版begin serial1；卡扣1→2→3→4，真实取出原匣、同匣不释放装回4→7，关盖7→8，complete result1。原匣库存仍72/78、capacity78、bonus0；回射6条来源一致的有效原生轨迹、实际loaded72→66，reserve78不变。operator0，非仅wrapper通过。修正后的实际Grip基底在本次达到真正座入和完成，未靠库存setter。
+
+没有latch拒绝或重抓，stationary_holds始终0；新的静止保留分支没有live覆盖，不能据此宣称9540旧gap根因确定或静止修复已被游戏验证。失追proof撤销也未作为本段动作验证。
+
+56.3s双路全2页overview及simulator00690/00730/00844/00920原接触图亲看。可见弹匣提取/回座过程，但近脸构图、手/袖自然贴合与全角度仍未接受；初始第三人称/等待卡和HUD既有问题保留。game lane最大捕获gap1533.3488ms在启动段，不当游戏停顿/FPS根因。Native/entry/pad恢复TRUE，hand_stop5/drained，XR0、launcher0、game退出，config/settings原字节及head原缺恢复。编码64780=0，retention33602=0删1954媒体/332573205bytes，核idle后最终唯一交Snub042943→Frag045142→Cover r8。runtime-7712-review.json保存范围；全枪/实体头显不算完成，下一验证是实际新匣替换与库存守恒。
