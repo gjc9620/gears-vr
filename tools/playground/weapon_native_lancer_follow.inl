@@ -586,7 +586,7 @@ bool render_current(Plan const& p,unsigned* diagnostic=nullptr) noexcept {
           f.purpose==gears_committed_hand::Purpose::observed_held_visual)&&
          vrequip::model.held_for(f.world.address,f.pawn.address,f.weapon.address)&&
          vrequip::model.hold_generation()==f.hold_generation&&p.key.hold_generation==f.hold_generation);
-    if(!p.render_owned||(!bound_is_lancer&&!bound_is_frag)||!bound_key_known||!(p.key==bound_key)||
+    if(!p.render_owned||(!bound_is_lancer&&!bound_is_frag&&!bound_is_hammerburst)||!bound_key_known||!(p.key==bound_key)||
        !enabled.load(std::memory_order_acquire)||!weaponhand::current_gt(nullptr)||!nativeequipment::domain_ready()||
        !weaponhand::client.registration_alive(f.parent.registration_cookie,f.parent.native_started_qpc)||
        !eligible||
@@ -614,7 +614,7 @@ void apply() noexcept {
     if(!plan.valid||plan.applied)return;
     // Certified Lancer visual writes belong to the actual C0 result callback.
     // PostPlayerTick still prepares authoritative shots and binds geometry.
-    if((bound_is_lancer||bound_is_frag)&&!plan.render_owned)return;
+    if((bound_is_lancer||bound_is_frag||bound_is_hammerburst)&&!plan.render_owned)return;
     const Plan wanted_plan=plan;
     const auto& source=wanted_plan.source;
     const auto& key=wanted_plan.key;
@@ -734,7 +734,7 @@ bool render_rejected(gears_committed_hand::Frame const& f,unsigned stage,unsigne
     return false;
 }
 bool on_render_result(gears_committed_hand::Frame const& f) noexcept {
-    if(faulted||(!bound_is_lancer&&!bound_is_frag)||!bound_key_known||!mount.bound())return render_rejected(f,1);
+    if(faulted||(!bound_is_lancer&&!bound_is_frag&&!bound_is_hammerburst)||!bound_key_known||!mount.bound())return render_rejected(f,1);
     // Revoke/normal pre-PlayerTick must have settled the sole old lease.
     if(lease.dirty())return render_rejected(f,2);
     gears_vr::Pose endpoint_grip{};

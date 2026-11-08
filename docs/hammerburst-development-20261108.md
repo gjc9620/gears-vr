@@ -167,3 +167,11 @@ HB独立护木几何、Snap输出及当前真实support租约下的双手求解�
 223041/PGfe94c6实跑再次到达被动Snap/随枪/Grip转向，实际掌到护木22.397164原单位失败，后续release/fire/reload未执行。新增原回执已取得asset_origin=(0,-16384,0)，延迟组件旋转与写入值配对核对、absolute=(1,1,0)，具体统计component-model-56220.json。用现有旋转公式和写入值重建的模型误差很小，实际矩阵仍约35度，重点转到组件控制之后的模型变换，未确定具体引擎字段根因。正常运行器exec30932已exit0，当前双路review/编码exec60387运行，尚未审片/retention/交窗。
 
 启动前原始settings哈希一致，首次文本比较换行正规化误判已纠正；config按wrapper backup恢复后运行。Snub后续指出外层selected-copy另有原始备份，不能将wrapper临时config当外层原bytes，后续需按两层原记录恢复并保留54740原失败。pre-stage-after-54740.json保存本轮比较，不撤回Native cleanup未验证失败。
+
+## 56220收尾与C0视觉路径候选
+
+三页完整配对总览已亲看，左手仍悬在枪身上方；编码exec60387终止0、retention15512终止0、launcher0且remaininggame null，wrapper config/settings/head原字节/哈希核对通过。随后已按Snub selected-copy-1794148651847569800原hex恢复外层config，避免将wrapper临时selected配置当外层原bytes。详runtime-56220-review.json。核idle后唯一交更早申请的Longshot基础路线段，Longshot已明确接收，之后Lancer再Frag，不双交。
+
+源码发现HB普通PostTick视觉写入与已有Lancer/Frag渲染结果写入路径不同。候选只在render_current/apply/on_render_result三个门加入确切已绑定HB，让视觉写入使用同一C0结果回调和同一组件lease，普通Tick仍准备动作/几何但不写HB视觉。保留全部身份/时效/当前结果/原metadata及single-writer，不增Native写入或骨架写入器，不改Longshot分支。此为针对路径差异的修复候选，不宣称35度根因已证实。
+
+独立PG编译链接exit0，现有组件lease278 CPU检查与follow校准/无效几何检查实际执行通过；不是游戏/C0回调/贴合通过。冻结hammerburst-prepared-20261108-225749，PG8d0fc939f9954ab35612cc50bff5efb92e0cd70c73d23020c6ede2e3a36d1117，源与制品哈希全核对，c0-visual-route-build-check.json；未stage/运行。
