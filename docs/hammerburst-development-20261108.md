@@ -129,3 +129,7 @@ HB独立护木几何、Snap输出及当前真实support租约下的双手求解�
 既有弹药观察器仅接受Lancer，已建立HB精确类型专用入口，只替换类型条件/错误文本，原typed属性/身份/双读/closing检查保持。离线夹具验证HB进入typed读取、Lancer和OtherWeapon拒绝，4文件语法通过；不是实际库存读取或换弹通过。初版驱动不存在ammo键的问题在运行前改成capacity/used/reserve/infinite/bonus明确比较。
 
 最新冻结hammerburst-prepared-20261108-215626，2219项来源哈希全部核对，PG3e7ede1c不变，未stage/运行。精确记录original-return-driver-check.json。首次记录脚本在冻结完成后误把Path当字典导致文档追加失败，冻结/哈希已完成且未启动游戏，现修正文档记录。Snub尚未明确交窗，已请求核对唯一持有人，不抢共享instance；完整目标仍开放。
+
+## 下一运行预检与明确队列
+
+215626的7个HB专用驱动与6类继承构建制品已逐个重新核对哈希及语法，next-run-preflight.json记录一致；不代表新编译或游戏通过。Snub全部清理terminal后已明确交Longshot，Longshot确认将先运行其已冻结基础段，再正常退出/双路复查/清理terminal后唯一交HB。HB已确认该交接条件，未stage/start，也不把暂时无进程当作窗口归还。下一实际动作保持护木四态单点，原弹匣检查随后另段进行。
