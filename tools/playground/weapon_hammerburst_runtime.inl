@@ -508,7 +508,7 @@ bool tick(uptr pc) noexcept {
         if((starting==last_started_identity||inv::same_instance_across_hold(last_started_identity,starting))&&
            f.press_token<=last_started_grip)return true;
         inv::Inventory before{};
-        if(!observer.sample(f,before)||!transaction.bind(before)||
+        if(!observer.sample(f,before)||
            before.loaded==before.capacity||(!before.infinite_reserve&&!before.reserve))return true;
         if(!gears_weapon::LancerReloadPolicy::unpack(configured_policy.load(std::memory_order_acquire),opening_policy))return true;
         const auto result=lancerreload_state::begin(f,serial);
@@ -520,7 +520,7 @@ bool tick(uptr pc) noexcept {
             double(lancerreload_state::lease.reward_start));fflush(log_file);}
         lancerreload_runtime::outstanding.store(true,std::memory_order_release);stage=Stage::acquiring;
         if(result!=lancerreload_state::BeginResult::acquired||
-           !transaction.begin(before,old_item,gears_weapon::ReloadIntentSource::mechanism_open,serial,
+           !transaction.bind(before)||!transaction.begin(before,old_item,gears_weapon::ReloadIntentSource::mechanism_open,serial,
                gears_weapon::ReloadTxnMode::magazine,before.capacity,lancerreload_state::lease.accepted_begin_ms,old_item)){
             cleanup(__LINE__);return true;
         }

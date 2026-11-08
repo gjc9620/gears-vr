@@ -30,5 +30,17 @@ int main(){
     e.reset();assert(!e.observe(sample(.05),m));
     assert(e.observe(sample(0,2),m));assert(e.observe(sample(.02,3),m));
     assert(e.observe(sample(0,4),m));assert(!e.complete());
+    { // The witness follows the actual weapon basis, not world +Z.
+      FeedPortMount rotated=m;rotated.port_in_weapon.position={.1,.2,.3};
+      const double h=std::sqrt(.5);
+      const gears_vr::Pose gun{{2,3,4},{0,h,0,h}};
+      const auto point=[&](double depth,unsigned sequence){
+          auto s=sample(depth,sequence);s.weapon_pose=gun;
+          const auto local=sum(rotated.port_in_weapon.position,Vector{0,0,depth});
+          s.left_grip={sum(gun.position,rotate(gun.orientation,local)),gun.orientation};return s;
+      };
+      e.reset();assert(e.observe(point(0,1),rotated));
+      assert(e.observe(point(.025,2),rotated));assert(e.observe(point(.05,3),rotated));assert(e.complete());
+    }
     std::puts("HB magazine: continuous extraction and 10 invalidation cases passed");
 }
