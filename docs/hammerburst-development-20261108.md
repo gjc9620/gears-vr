@@ -145,3 +145,9 @@ HB独立护木几何、Snap输出及当前真实support租约下的双手求解�
 三页完整配对总览已亲自查看，实际左手悬在枪身上方，符合贴合失败；启动第三人称/等待卡仍在。编码terminal0，launcher0且remaining_owned_game null，既有媒体清理正在exec2262运行，尚未交窗。精确runtime-47576-review.json；下一步针对生产model target与实际枪体约35度/22.4cm变换差异定位，不能加大范围或换成目标矩阵假装实际通过。
 
 47576既有retention exec2262已实际terminal0，复查无game/XR/ffmpeg/review/HB/retention进程，已按双方先前明确确认唯一交Lancer212510，并同步Frag后续申请。HB不自行重查。继续离线核对model_to_component_rotation/RotOrigin、实际LocalToWorld及既有Native握持校准链；尚未确定35度偏差根因，未硬加补偿或新增写入器。
+
+## 47576残差轴定位与既有回执补列
+
+64组同frame/sequence延迟回读中58组角度34.9~35.1度，模型局部残差轴约(-1,0,0)，axis范围及每对矩阵保存在model-residual-47576.json。这缩小了局部固定旋转方向，但不能证明资产RotOrigin、组件被改写或引擎下游哪一处是根因。CPU矩阵不是每Draw证明。
+
+只在已有两条普通GT回执补列：已读取asset_origin，以及恢复前首个已读取MeshPoseProbe的component_rot/absolute。无新对象读取/日志行/collector/writer/输入入口，不改任何动作保护。独立source54029c2加此前HB overlay完整编译链接exit0，新PGfe94c6f9cfa9e762e28fabb7ee290c27abb591a3934ffd52d73fb1ce95865f27，冻结hammerburst-prepared-20261108-222846，全部源与制品哈希核对。component-readback-build-check.json记录，尚未stage/实跑，不叫修复。共享文件只提交此8行精确patch，其他会话分支保持；Lancer异常段已收尾并交Frag，HB离线准备后续申请。

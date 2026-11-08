@@ -309,7 +309,7 @@ void pre_original_tick(wchar_t const* observation_phase) noexcept {
             m[14]+m[2]*local_contact.x+m[6]*local_contact.y+m[10]*local_contact.z};}
     const auto readback_ns=restore_readback.known?restore_readback.read_ns:nativeequipment::clock_ns(nullptr);
     if(prior.valid&&log_file){
-        fwprintf(log_file,L"native_lancer_follow_readback frame=%llu source_sequence=%llu age_ns=%lld known=%u target_world=%.9g,%.9g,%.9g component_translation=%.9g,%.9g,%.9g gun_world=%.9g,%.9g,%.9g gun_basis=%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g restored=%u\n",
+        fwprintf(log_file,L"native_lancer_follow_readback frame=%llu source_sequence=%llu age_ns=%lld known=%u target_world=%.9g,%.9g,%.9g component_translation=%.9g,%.9g,%.9g gun_world=%.9g,%.9g,%.9g gun_basis=%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g restored=%u component_rot=%d,%d,%d absolute=%u,%u,%u\n",
             prior.frame,prior.input_sequence,readback_ns-prior.applied_ns,unsigned(delayed_known),
             prior.target.x,prior.target.y,prior.target.z,
             double(delayed.translation.x),double(delayed.translation.y),double(delayed.translation.z),
@@ -317,7 +317,8 @@ void pre_original_tick(wchar_t const* observation_phase) noexcept {
             double(delayed.local_to_world[0]),double(delayed.local_to_world[1]),double(delayed.local_to_world[2]),
             double(delayed.local_to_world[4]),double(delayed.local_to_world[5]),double(delayed.local_to_world[6]),
             double(delayed.local_to_world[8]),double(delayed.local_to_world[9]),double(delayed.local_to_world[10]),
-            unsigned(clean));
+            unsigned(clean),delayed.rotation.pitch,delayed.rotation.yaw,delayed.rotation.roll,
+            unsigned(delayed.absolute_translation),unsigned(delayed.absolute_rotation),unsigned(delayed.absolute_scale));
         fflush(log_file);
         if(observe_contact){fwprintf(log_file,L"native_lancer_contact_readback phase=%ls frame=%llu source_sequence=%llu selected_serial=%llu latest_serial=%llu latest_known=%u palm_known=%u contact_known=%u selected_grip=%.9g,%.9g,%.9g latest_grip=%.9g,%.9g,%.9g observed_palm=%.9g,%.9g,%.9g observed_contact=%.9g,%.9g,%.9g\n",
             observation_phase,prior.frame,prior.input_sequence,prior.endpoint_serial,latest.serial,unsigned(endpoint_known),unsigned(palm_known),unsigned(contact_known),
@@ -700,7 +701,7 @@ void apply() noexcept {
        (sample_logs<4||moved||rotated||interval)){
         State actual{};vrequip::MeshPoseProbe pose{};
         const bool sampled=value_of(key,actual,&pose);
-        fwprintf(log_file,L"native_lancer_follow frame=%llu publication=%llu source_sequence=%llu sync_ns=%lld observed_ns=%lld hold=%llu accepted=1 mesh_read=%u grip_world=%.9g,%.9g,%.9g grip_quat=%.9g,%.9g,%.9g,%.9g target_world=%.9g,%.9g,%.9g target_rot=%d,%d,%d component_translation=%.9g,%.9g,%.9g gun_world=%.9g,%.9g,%.9g gun_rot=%d,%d,%d dirty=%u\n",
+        fwprintf(log_file,L"native_lancer_follow frame=%llu publication=%llu source_sequence=%llu sync_ns=%lld observed_ns=%lld hold=%llu accepted=1 mesh_read=%u grip_world=%.9g,%.9g,%.9g grip_quat=%.9g,%.9g,%.9g,%.9g target_world=%.9g,%.9g,%.9g target_rot=%d,%d,%d asset_origin=%d,%d,%d component_translation=%.9g,%.9g,%.9g gun_world=%.9g,%.9g,%.9g gun_rot=%d,%d,%d dirty=%u\n",
             source.key.frame,wanted_plan.publication,source.controllers.sequence,source.controllers.sync_ns,
             observed_ns,key.hold_generation,unsigned(sampled),
             wanted_plan.right_grip.position.x,wanted_plan.right_grip.position.y,wanted_plan.right_grip.position.z,
@@ -708,6 +709,7 @@ void apply() noexcept {
             wanted_plan.right_grip.orientation.z,wanted_plan.right_grip.orientation.w,
             target.position.x,target.position.y,target.position.z,
             model_rotation.pitch,model_rotation.yaw,model_rotation.roll,
+            asset_origin[0],asset_origin[1],asset_origin[2],
             double(pose.translation.x),double(pose.translation.y),double(pose.translation.z),
             double(pose.local_to_world[12]),double(pose.local_to_world[13]),double(pose.local_to_world[14]),
             pose.rotation.pitch,pose.rotation.yaw,pose.rotation.roll,lease.dirty_mask());
