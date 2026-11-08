@@ -1435,6 +1435,7 @@ namespace unified_weapon_fire {bool retained_metadata(gripdamage_metadata::Reade
 #include "weapon_frag_original.inl"
 #endif
 #if defined(GEARS_PLAYGROUND_NATIVE_LANCER_FOLLOW)
+#include "weapon_hammerburst_visual_clip.inl"
 #include "weapon_hammerburst_runtime.inl"
 #include "weapon_snub_visual.inl"
 #include "weapon_snub_visual_clip.inl"

@@ -8,6 +8,7 @@ namespace visual=lancerreload_visual;
 std::atomic<std::uint64_t> configured_policy{gears_weapon::LancerReloadPolicy{}.packed()};
 gears_weapon::LancerReloadPolicy opening_policy;
 bool ui_pending{};
+gears_weapon::ReloadSupplyRejection empty_supply;
 using V=gears_vr::Vector;using Q=gears_vr::Quaternion;using M=gears_vr::Matrix;using P=gears_vr::Pose;
 enum class Stage {idle,acquiring,opening,opened,old_magazine,waiting_ammo,new_magazine,closing,completing,recovering};
 Stage stage{};
@@ -179,6 +180,7 @@ void propose(hand::Frame const& f,hand::GripGameState& game) noexcept {
         return;
     }
     if(stage==Stage::waiting_ammo){
+        if(empty_supply.rejected(f.key.lifecycle,f.press_token))return;
         const P body{f.stereo.head.position,f.reference.orientation};
         game.request_ammo=gears_weapon::body_slot(nativeequipment::calibration,body,f.controllers.hands[0].grip.position,0)==gears_weapon::BodySlot::shoulder_ammo;
     }else if(stage==Stage::old_magazine&&visual::active&&visual::last_grab_known){
@@ -191,6 +193,14 @@ void propose(hand::Frame const& f,hand::GripGameState& game) noexcept {
     }else if(stage==Stage::idle||stage==Stage::acquiring||stage==Stage::opening||stage==Stage::opened||stage==Stage::closing)
         game.request_magazine=at_latch(f);
 }
+bool animation_owned(hand::Frame const& f) noexcept {
+    return serial?lancerreload_state::owns(f,serial):
+        !lancerreload_state::lease.acquired&&nativeequipment::current(nullptr,f)&&
+        opening.identity==inv::identity(f)&&(!anim::ownership.active||
+        (anim::ownership.visual_only&&anim::ownership.inventory==opening.identity));
+}
+std::uint64_t animation_serial() noexcept {return serial?serial:old_item;}
+bool restore_animation() noexcept {return anim::ownership.visual_only?hammerburst_visual_clip::restore():anim::hand_back_after_native_exit();}
 bool blocks_fire(hand::ObjectIdentity const& weapon) noexcept {
     return stage!=Stage::idle&&hand::same(weapon,opening.identity.weapon);
 }
@@ -219,7 +229,7 @@ bool cleanup(unsigned line=0) noexcept {
     }
     inv::Request pending_request{};
     if(transaction.dispatched_request(pending_request)&&!lancerreload_state::restore_partial_insert(pending_request,observer))return false;
-    if(!lancerreload_state::recover_owned()||!anim::hand_back_after_native_exit()||!visual::restore())return false;
+    if(!lancerreload_state::recover_owned()||!restore_animation()||!visual::restore())return false;
     if(transaction.dispatched_request(pending_request)){
         inv::Inventory counts{};if(!observer.sample_owned(pending_request.identity,counts))return false;
         bool applied=false;
@@ -278,7 +288,7 @@ bool prepare_feed(hand::Frame const& f) noexcept {
         // Correct only the still-authenticated hand's requested endpoint. No
         // animation clock/elapsed reward window or native inventory is changed.
         if(latch.sampling==gears_weapon::HammerburstLatchCurve::Sampling::endpoint_intervals&&
-           !anim::seek_latch_angle(f,serial,angle)&&anim::ownership.seek_pending)feed_failure=3;
+           !anim::seek_latch_angle(f,animation_serial(),angle)&&anim::ownership.seek_pending)feed_failure=3;
         return false;
     }
     feed_failure=3;
@@ -329,19 +339,19 @@ gears_weapon::FeedResult insertion_step(hand::Frame const& f,std::uint64_t item)
 }
 void step(hand::Frame const& f,hand::Decision const& decision) noexcept {
     if(stage==Stage::acquiring){
-        if(!lancerreload_state::owns(f,serial)||!granted(f,decision,hand::LeaseKind::magazine))return;
+        if(!animation_owned(f)||!granted(f,decision,hand::LeaseKind::magazine))return;
         if(held.id!=f.press_token){
             if(!released||!granted(f,decision,hand::LeaseKind::magazine,true))return;
             held=decision.lease;released=false;
         }
         if(!anim::ownership.active){
-            const auto result=anim::acquire(f,serial);
+            const auto result=(serial?anim::acquire(f,serial):hammerburst_visual_clip::start(f,old_item));
             if(result==anim::Acquire::recovery_required)cleanup(__LINE__);
             return; // Stop and the first position change use distinct frames.
         }
         geometry.latch.open_angle=anim::ownership.latch.curve.open_angle();
         if(log_file){fwprintf(log_file,L"hammerburst_reload_latch open_angle=%.9g\n",geometry.latch.open_angle);fflush(log_file);}
-        if(!anim::seek_latch_angle(f,serial,0)){
+        if(!anim::seek_latch_angle(f,animation_serial(),0)){
             if(anim::ownership.seek_pending)cleanup(__LINE__);
             return; // A pre-dispatch expiry has no setter to replay.
         }
@@ -404,7 +414,7 @@ void step(hand::Frame const& f,hand::Decision const& decision) noexcept {
         // native setter. Those redundant calls can stall the next sample.
         // Changed angles retain the full original ownership/content checks.
         if(std::abs(stroke.angle()-angle)>1e-7&&
-           !anim::seek_latch_angle(f,serial,stroke.angle())){cleanup(__LINE__);return;}
+           !anim::seek_latch_angle(f,animation_serial(),stroke.angle())){cleanup(__LINE__);return;}
         angle=stroke.angle();
         if(stage==Stage::opening&&moved==gears_weapon::HammerburstLatchMotion::open){stage=Stage::opened;stroke.reset();}
         else if(stage==Stage::closing&&moved==gears_weapon::HammerburstLatchMotion::closed){
@@ -413,16 +423,32 @@ void step(hand::Frame const& f,hand::Decision const& decision) noexcept {
             if(log_file){fwprintf(log_file,L"hammerburst_reload_closure serial=%llu elapsed_game_ms=%lld perfect_end_ms=%lld inserted=%u target=%u\n",
                 serial,tick-lancerreload_state::lease.accepted_begin_ms,window,
                 transaction.inserted(),transaction.target());fflush(log_file);}
-            if(!transaction.confirm_closed(tick,window)||!transaction.take_request(completion)){cleanup(__LINE__);return;}
+            if(!transaction.confirm_closed(tick,window)||(serial&&!transaction.take_request(completion))){cleanup(__LINE__);return;}
             stage=Stage::completing;held={};
         }
         return;
     }
     if(stage==Stage::waiting_ammo){
         if(!released||!granted(f,decision,hand::LeaseKind::ammo,true))return;
+        inv::Inventory current{};
+        if(!observer.sample(f,current))return;
+        const auto expected=transaction.inventory();
+        if(!(current.identity==expected.identity)||current.loaded!=expected.loaded||current.reserve!=expected.reserve||
+           current.capacity!=expected.capacity||current.infinite_reserve!=expected.infinite_reserve){cleanup(__LINE__);return;}
+        if(!current.loaded&&!current.reserve&&!current.infinite_reserve){
+            if(!nativeequipment::current(nullptr,f))return;
+            if(empty_supply.reject(f.key.lifecycle,f.press_token)){
+                gears_weapon::EquipmentSnapshot cue{};cue.world=f.world.address;cue.pawn=f.pawn.address;cue.current_weapon=f.weapon.address;
+                bool played{};try{played=vrequip::play_empty_slot_sound(cue,4);}catch(...){}
+                if(log_file){fwprintf(log_file,L"hammerburst_empty_supply token=%llu sound=%u replacement_created=0\n",f.press_token,unsigned(played));fflush(log_file);}
+            }
+            return;
+        }
         new_item=decision.lease.id;
-        if(!transaction.reserve_item(new_item)||!visual::take_replacement(f)||
+        if(!transaction.reserve_magazine_reusing_loaded(new_item)||!visual::take_replacement(f)||
            !insertion.arm(f.weapon.address,new_item,f.world.address,f.stereo.space_epoch)){cleanup(__LINE__);return;}
+        if(log_file){fwprintf(log_file,L"hammerburst_supply token=%llu rounds=%u spare_reserved=%u loaded=%u reserve=%u\n",
+            new_item,transaction.held_magazine_rounds(),transaction.reserved(),current.loaded,current.reserve);fflush(log_file);}
         held=decision.lease;released=false;stage=Stage::new_magazine;insertion_step(f,new_item);return;
     }
     if(stage!=Stage::old_magazine&&stage!=Stage::new_magazine)return;
@@ -436,7 +462,9 @@ void step(hand::Frame const& f,hand::Decision const& decision) noexcept {
     const auto item=stage==Stage::old_magazine?old_item:new_item;
     if(insertion_step(f,item)!=gears_weapon::FeedResult::inserted)return;
     if(stage==Stage::old_magazine){if(!transaction.restore_original(old_item)){cleanup(__LINE__);return;}}
-    else{
+    else if(!transaction.target()){
+        if(!transaction.seat_reused_rounds(item)){cleanup(__LINE__);return;}
+    }else{
         inv::Request request{};inv::Receipt receipt{};
         if(!transaction.request_insertion(item)||!transaction.take_request(request)){cleanup(__LINE__);return;}
         const auto result=writer.commit(f,request,observer,lancerreload_state::owns,receipt);
@@ -450,8 +478,18 @@ bool tick(uptr pc) noexcept {
     if(stage==Stage::idle&&lancerreload_runtime::stage!=lancerreload_runtime::Stage::idle)return false;
     if(stage==Stage::recovering){cleanup(__LINE__);return true;}
     if(stage==Stage::completing){
+        if(!serial){
+            inv::Inventory counts{};
+            if(!observer.sample_owned(opening.identity,counts))return true;
+            const auto expected=transaction.inventory();
+            if(counts.loaded!=expected.loaded||counts.reserve!=expected.reserve||counts.capacity!=expected.capacity||
+               counts.infinite_reserve!=expected.infinite_reserve){cleanup(__LINE__);return true;}
+            if(!transaction.mechanical_ready()||!restore_animation()||!visual::restore()){cleanup(__LINE__);return true;}
+            if(log_file){fwprintf(log_file,L"hammerburst_inspection_complete loaded=%u reserve=%u inventory_changed=0\n",counts.loaded,counts.reserve);fflush(log_file);}
+            reset(true);return true;
+        }
         if(!native_exited){
-            if(!lancerreload_state::recover_owned()||!anim::hand_back_after_native_exit()){cleanup(__LINE__);return true;}
+            if(!lancerreload_state::recover_owned()||!restore_animation()){cleanup(__LINE__);return true;}
             native_exited=true;return true;
         }
         inv::Inventory counts{};
@@ -508,20 +546,21 @@ bool tick(uptr pc) noexcept {
         if((starting==last_started_identity||inv::same_instance_across_hold(last_started_identity,starting))&&
            f.press_token<=last_started_grip)return true;
         inv::Inventory before{};
-        if(!observer.sample(f,before)||
-           before.loaded==before.capacity||(!before.infinite_reserve&&!before.reserve))return true;
+        if(!observer.sample(f,before))return true;
+        const bool needs_reload=before.loaded<before.capacity&&(before.infinite_reserve||before.reserve);
         if(!gears_weapon::LancerReloadPolicy::unpack(configured_policy.load(std::memory_order_acquire),opening_policy))return true;
-        const auto result=lancerreload_state::begin(f,serial);
+        serial=0;
+        const auto result=needs_reload?lancerreload_state::begin(f,serial):lancerreload_state::BeginResult::acquired;
         if(result==lancerreload_state::BeginResult::rejected)return true;
         last_started_identity=starting;last_started_grip=f.press_token;
-        opening=before;old_item=f.press_token;held=decision.lease;ui_pending=true;
+        opening=before;old_item=f.press_token;held=decision.lease;ui_pending=needs_reload;
         if(log_file){fwprintf(log_file,L"hammerburst_reload_begin serial=%llu accepted_ms=%lld perfect_window_ms=%lld game_start=%.9g\n",
             serial,lancerreload_state::lease.accepted_begin_ms,lancerreload_state::lease.perfect_end_ms,
             double(lancerreload_state::lease.reward_start));fflush(log_file);}
         lancerreload_runtime::outstanding.store(true,std::memory_order_release);stage=Stage::acquiring;
         if(result!=lancerreload_state::BeginResult::acquired||
            !transaction.bind(before)||!transaction.begin(before,old_item,gears_weapon::ReloadIntentSource::mechanism_open,serial,
-               gears_weapon::ReloadTxnMode::magazine,before.capacity,lancerreload_state::lease.accepted_begin_ms,old_item)){
+               gears_weapon::ReloadTxnMode::magazine,before.capacity,serial?lancerreload_state::lease.accepted_begin_ms:f.controllers.sync_ns/1000000,old_item)){
             cleanup(__LINE__);return true;
         }
         // Original acceptance and ownership acquisition may share this fresh
@@ -529,7 +568,7 @@ bool tick(uptr pc) noexcept {
         // state, original functions and unchanged action grant; if not ready,
         // the normal acquiring stage observes again on a later frame. Keep
         // StopAnim and the first SetPosition on distinct frames as before.
-        if(anim::acquire(f,serial)==anim::Acquire::recovery_required)cleanup(__LINE__);
+        if((serial?anim::acquire(f,serial):hammerburst_visual_clip::start(f,old_item))==anim::Acquire::recovery_required)cleanup(__LINE__);
         return true;
     }
     if(!f.left_tracked){
