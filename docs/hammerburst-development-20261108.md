@@ -50,7 +50,7 @@
 | 完美/取消、换弹中断/收枪 | 有实现与部分纯测试 | 仍缺本枪实际动作证据 |
 | 完整自然手型、舒适度、实体头显 | 尚无接受 | 未通过 |
 
-下一不可变候选为hammerburst-prepared-20261109-055335-supply-bursts，PG仍a03ec04513c879b105c35da6ae3cf8e6f2f1aca6fe37d11e94106d04fe69d264，2229源/6制品核验，无产品改动。新增驱动仅用真实开火和一次必要真实换匣建立R0前提，检查有余弹肩取复用、再总零拒绝；九个实际drain-helper假引擎用例及四脚本语法通过，不冒充游戏。保留128条射线导出上限，最后必要耗弹段只按实际截断回执记录尾部缺证，不称全156射线已观察。候选未stage/run，须在当前队列尾获得唯一最终交接。实际原匣7712与新匣53224的源码、离线、游戏、影像、清理和交接证据见本文末尾；早期章节为保留的历史，不是当前待办重启理由。
+下一不可变候选为hammerburst-prepared-20261109-065400-refire-supply，PG63da3c546c54c485d52d88fef5463f6be975e13daed9ecc26c79722faa3023f3，2236源/6制品核验。先复核53624耗弹缺轨迹/来源陈旧的有因HB timer适配，再只在前提通过后继续已有零备弹/总零目标；不增Native/Hook/写者或射线预算。167原包matcher、52生产adapter假metadata、145既有事件/loop与9驱动边界检查通过，完整隔离PG0；没有live timer证明，未stage/run，按新队尾交接。失败前已读弹量/射线现在先写现有驱动JSON再断言，避免重现53624缺原始数值的问题，不补造旧数据。实际原匣7712、新匣53224与耗弹53624的范围/失败/影像/正常收尾见本文末尾；早期章节为历史记录。
 
 ## 第一批实现与离线构建
 
@@ -382,3 +382,12 @@ Lancer只读确认上述forgiving-profile不是其本轮改动，未补写共享
 现有准入计数最后candidates144/bound144/stale_sample6/source_ready138，最近rejected_source sync103.4301ms/stereo103.4345ms、sample59.2257ms、frame78.2286ms，held_current1/frame_active0。与3个缺失shot有关联方向，但仍须逐发/原函数契约核对，不能当完整因果已证或改变100ms。冻结源码中lancerrefire::defer与capture_initial显式lancer_only，HB另有自己的WeaponFiring.RefireCheckTimer/BeginState/ShouldRefire/FireAmmunition；不能直接放开类型复用Engine循环认证。
 
 32.78s双路2页全跨度overview+4张按相邻已记录shot的QPC选取实际原图亲看，simulator00547/00589/00658/00671，偏差20.9695/-5.7572/14.7535/2.5184ms。这是失败附近画面，不是缺失shot的像素/射线证明；完整自然拟合与头显仍未接受。Native/entry/pad恢复TRUE、hand_stop5/drained、XR/launcher0、game退出，config/settings原字节与head原缺恢复；编码15219=0、retention19806=0删2010媒体/368256485bytes，核idle后唯一交Frag既定053956位，后续Longshot060433→Cover r12。runtime-53624-review.json保存缺证与实际失败。
+
+
+## HB原突发射击timer独立契约适配（尚未游戏验证）
+
+按本地reverse-engineer-anything证据流程，只读取已验证原包及既有UELib分析工具：WarfareGame.u SHA91c0f56e9302db2b3991fc3d8646abc1eaff2b33b8b021ce8df436d8cd681d13，export37979的HB WeaponFiring.RefireCheckTimer原串71bytes/hashdd4d481e，runtime声明79bytes，差值为两个反射property操作数由32到64位的正常重定位。完整跳转0x19/0x32、bWeaponPutDown、PutDownWeapon、ShouldRefire、FireAmmunition、bWasTargeting和BurstDelaying分支匹配；UC含未解析native token，不仅凭反编译文字授权。hb-refire-static-contract.json保存偏移、包/导出/工具hash和局限。初次私有解析器缺已有Unsafe依赖，仅复制同一既有工具目录的精确DLL后成功，不安装/升级软件，不执行游戏脚本。
+
+与Lancer原writer边界确认后，提交47f69b96新增独立HB matcher和timer契约adapter。共享refire入口只增exact HB选支，复用不变的Engine TimeWeaponFiring循环timer证明及同一个DeferredEvent/normal PostTick；不新增事件owner、回调、writer或HB BeginState捕获。Lancer原Engine/capture_initial分支、实际R2 press/release/counter、身份/引用/hold/freshness、100ms输入和20ms调度余量、已有250ms事件原期限均保留，聚合/重发不续期。HB专用timer自身zero-param/void/VM/无locals、同包原class/state、typed原函数、Bool property/输出、完整bytecode和关闭读都严格核验；只对已拥有的实际R2定时器事件生效，不能宣称全部释放后burst尾段都已覆盖。
+
+167项独立原始71bytes重定位夹具/全字节变异/截断/错误identity matcher通过；实际生产adapter在有界metadata fakes下52项拒绝/闭合检查通过，Engine证明和生命周期在该夹具为stub；既有Lancer原事件/loop145项通过，隔离完整PG0。9项drain-helper假引擎检查增加断言失败前的实际before/after/已导出轨迹保存验证。只这些离线证据，不把它们当53624因果或游戏修复证明。冻结065400-refire-supply/PG63da3c54，2236源/6制品核对，未stage/run；请求在所有已受理尾项后复核一次真实耗弹前提，过后才续R0/总零。
