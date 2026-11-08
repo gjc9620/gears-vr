@@ -213,3 +213,9 @@ launcher0/native_cleanup_verified TRUE/entry_restore TRUE/XR0/remaininggame null
 原匣下一段驱动补入70816实际使用过的近身跨胸主手输入姿势(.16,-.18,+.06,yaw25度/pitch0.3)，在原首发准备前通过既有continuous reach移动；不拉长骨骼、不修改接触半径。支撑路径不变，换弹实际接触/翻盖/原匣/回射尚未覆盖，语法通过。下一冻结hammerburst-prepared-20261109-001658继承已实跑PG7bed6ef7、全哈希核对，reload-presentation-prepared.json，尚未stage/运行。
 
 70816既有retention27270已实际terminal0，正常恢复和无残留进程核对后按约唯一交Boltok首段，转达其后Frag真实伤害失败点、Lancer HUD/掩体已有申请。HB继续持会话等待、离线准备原匣，不自行启动第二段；后续请求在已登记队列后一次原匣检查。
+
+## 模块化：公共被动/主动握点判定
+
+按主人最新模块化要求，仅把原HB头内完全武器无关的free/snap/grab只读判定提取到weapon_support_socket_mode.h，命名gears_weapon_support_socket；HB原header保留Mode alias/薄转发。公共模块只依赖既有Frame/GripGameState/Decision和support_contact接口，不含HB类型/几何、游戏读写、Native/资源/UI或测试驱动。避免Longshot必须依赖HB命名模块；已通知其自行切换调用，不改其他枪分支，不扩展ABI/结构字段。
+
+原函数体与提取后逐字一致；已有HB真实owner/participant离线测试执行Snap/Grab/松手/退出和11类拒绝通过，独立PG完整编译链接0。冻结hammerburst-prepared-20261109-004003，PG9945b703ad8a8f206af8e629758da121d8534b36c8fd6a032c1a7096bc6cbe89，全部源与制品哈希核对，common-support-policy-build-check.json。新批未stage/实跑，不把提取算新功能或游戏通过；70816限定交互证据保留，下一仍仅原匣未过单点。
