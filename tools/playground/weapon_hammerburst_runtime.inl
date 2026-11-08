@@ -406,11 +406,13 @@ void step(hand::Frame const& f,hand::Decision const& decision) noexcept {
             if(stroke.begin(geometry.latch,sample,angle)){held=decision.lease;released=false;}
             return;
         }
+        const auto previous_ms=stroke.last_observation_ms();
         const auto moved=stroke.observe(sample);
         if(moved==gears_weapon::HammerburstLatchMotion::rejected){
             if(log_file&&latch_rejection_logs++<8){
-                fwprintf(log_file,L"hammerburst_latch_rejected reason=%u stage=%u serial=%llu angle=%.9g sequence=%llu\n",
-                    unsigned(stroke.last_rejection()),unsigned(stage),serial,angle,sample.sequence);fflush(log_file);
+                fwprintf(log_file,L"hammerburst_latch_rejected reason=%u stage=%u serial=%llu angle=%.9g sequence=%llu previous_ms=%llu sample_ms=%llu interval_limit_ms=%llu\n",
+                    unsigned(stroke.last_rejection()),unsigned(stage),serial,angle,sample.sequence,
+                    previous_ms,sample.milliseconds,geometry.latch.observation_interval_ms);fflush(log_file);
             }
             held={};released=false;return;
         }

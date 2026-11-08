@@ -43,6 +43,8 @@ public:
     bool active() const noexcept {return active_;}
     double angle() const noexcept {return angle_;}
     HammerburstLatchRejection last_rejection() const noexcept {return rejection_;}
+    // Diagnostic value only; it grants no continuity or permission.
+    std::uint64_t last_observation_ms() const noexcept {return last_.milliseconds;}
     bool begin(HammerburstLatchGeometry const& g,HammerburstLatchSample const& s,double actual_angle) noexcept {
         reset();
         if(!g.current_instance_verified||!valid(s)||!gears_vr::finite(g.pivot)||
