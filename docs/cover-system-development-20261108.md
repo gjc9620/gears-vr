@@ -173,3 +173,17 @@ wrapper／launcher 均 exit 0，Native cleanup／entry restore TRUE、XR exit 0�
 实际离线 `unittest` 三个方法通过，包含一个明确空 UI 正例、五种缺字段和五种活动／不可信 UI 反例。初稿将缺失 top 与明确 null 混同，该负例先失败，增加必须存在 top 键后通过。此检查只验证 UI 准入，实际锚点读取与游戏内掩体动作仍未验证。
 
 入口同时补齐失败前保留观察行和明确缺失人物状态错误，执行过的旧动作源码按原 SHA256 保留；旧运行计划另存 `cover-boundary-runtime-plan-executed-46808.json`。新计划只替换诊断动作哈希并加入专用适配，21 依赖 `--prepare-only` 通过，r7 Native／PG／XR 未改，无新 stage／run。已向 HB 登记在既有 Snub／Boltok／Longshot 之后的尾位复查，等待明确唯一交接；当前窗口仍不属于掩体。
+
+## 2026年11月9日 实际 55600 与定向复查 72608
+
+收到 Longshot 完整正常收尾后的唯一交接，精确 stage 原 r7，实际 55600／creation134386346981712265 的专用 Playground 适配取得当前认证人物状态（Health450）。新首故障在发现阶段：全图 257 个 CoverLink 在筛当前世界／附近范围之前就触发原 128 候选预算。尚未导航、A 进入或 Trace。15.80 秒双路全跨度 1 页及两路末端原图亲看，编码15948 exit0；wrapper48612 exit0、Native／entry TRUE、XR0／launcher0／game退出；config／settings／原缺失head精确恢复。retention47796 terminal0，删除1360文件／218221879字节、errors0，保留[55600,4632,2044]。
+
+只修发现顺序：先用当前 world 和900单位距离形成位置提示，再应用原128候选预算；后续真实反射 world／位置／槽位及 closing 检查仍逐项执行。500000 UObject／30秒、128候选／32槽等既有诊断预算、原版查询证书、输入与时间保护均未放宽，产品三二进制不变。执行过的21依赖全源码归档在 `analysis/cover-system-20261108/drivers-r1`，55600旧计划另存。修正后 `--prepare-only` 通过；依据具体失败允许定向修复／复查的现有授权，在同一独占窗口内仅作一次未达到动作的复查，并提前告知下一接收者HB；没有重复已通过玩法或未知请求。
+
+实际复查 72608／creation134386349955377432，从257个全图提示筛得17个同世界附近Link、62个启用低掩体槽候选，普通VR走动及一次右手原版A实际进入矮掩体：CT2／CA0／CD0、current/left/right slot0、pct0、stationaryTRUE／circularFALSE。同场景几何读取 accepted。随后原版GT Trace实际完成一次，queue_state2、pending_possibleFALSE、调用内存已释放，命中 `mp_warmachine_SMC` 挡面；返回位置约(-3898.058,-200.418,584)，法线约(-0.803208,0.595699,0.0000357)。后续 `_surface_state` 报 `Edge collision component ownership differs`，故区间搜索立即拒绝，没有第二条射线或重发。不可把调用成功、有命中或Actor名称当成组件关系／顶沿／连续碰撞认证；抓边与身体写入未开放。
+
+完整27.07秒双路1页及四张原图已亲看。末端游戏等待卡／模拟器黑帧保留；贴近CT2观察时刻的 `game-00430.jpg`（约+1.03ms）已是等待帧卡，`simulator-00533.jpg`（约-32.30ms）可见自身身体与装备近裁剪遮挡。数值原版进入与实际VR画面分开记：原版进入达到，完整掩体画面FAIL。不能据此直接命名C0或相机根因；须核对现有同次来源撤回与视图／身体消费记录。游戏最大捕获空档1950.022ms、模拟器一次pool resize drop均保留，不推断渲染FPS或游戏停顿。
+
+72608 wrapper35800／编码61815均 terminal0，Native cleanup／entry restore TRUE、XR0／launcher0／game退出；config／settings精确恢复、原缺head仍缺，21运行依赖结束时无漂移。retention18126 terminal0，删除2602文件／458183517字节、errors0，保留[72608,55600,4632]。核实Game／XR／录制／编码均空后，最终明确唯一交给HB012813／PGfe0bd568，之后按其已接受队列Lancer012317→Snub。本会话本窗口不再启动游戏。
+
+证据分别在 `analysis/cover-system-20261108/cover-55600-review.json`、`cover-72608-review.json`，对应不可变session与 `menu-firstperson-*/cover-boundary.json`／双路目录。先前46808媒体已按主人 newest3／48h 规则实际删除，文字、源码和亲看记录保留，不再提供不存在的图片链接。下一源码工作分为集合静态网格的当前Actor／Component归属关系，以及实际CT2时身体／视图来源衔接；不删保护、不把单条射线升级为完整安全范围。完整目标保持未完成。
