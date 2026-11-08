@@ -32,7 +32,10 @@ struct Owner {Observation last{};float wanted_time{};bool active{},stopped{},see
 tests=r'''
 int main(){
  Observation base{};base.weapon={0x1000,0x2000,0x3000,1,2,0,1};
- base.component=base.asset=base.node=base.sequence=base.weapon;
+ base.component={0x4000,0x1000,0x5000,3,4,0,1};
+ base.asset={0x6000,0x7000,0x8000,5,6,0,1};
+ base.node={0x9000,0x4000,0xa000,7,8,0,1};
+ base.sequence={0xb000,0x6000,0xc000,9,10,0,1};
  base.sequence_name={12,0};base.time=.25f;base.rate=1;base.length=2.5f;base.reload_start=12;
  unsigned cases{};
  const auto reset=[&](){ownership={base,.5f,true,true,false};};
@@ -55,6 +58,8 @@ int main(){
    case 9:c.time=std::numeric_limits<float>::infinity();break;case 10:c.time=-1;break;default:c.time=3;}
   if(!reject(c,"foreign clock/content/playback/time"))return 1;
  }
+ auto swapped=base;swapped.asset=base.node;if(!reject(swapped,"registered node cannot replace asset"))return 1;
+ swapped=base;swapped.node=base.asset;if(!reject(swapped,"registered asset cannot replace selected node"))return 1;
  reset();ownership.active=false;++cases;if(reconcile_hammerburst_observation(base))return 1;
  reset();ownership.stopped=false;++cases;if(reconcile_hammerburst_observation(base))return 1;
  reset();++cases;if(!reconcile_hammerburst_observation(base)||ownership.last.time!=.25f)return 1;
