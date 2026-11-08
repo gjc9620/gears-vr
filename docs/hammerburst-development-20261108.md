@@ -191,3 +191,9 @@ Longshot21724已明确全收尾后唯一交Lancer，接下来Frag效果、Snub�
 HB包装器复用现有已核活进程身份位置，在录像/动作启动前写出默认passed=false/native cleanup未验证的retention identity结果，flush/fsync。它只保留证据，不能授予动作或作为通过。正常结果另由原操作者写入，不覆盖已有记录；不改其他枪入口/共享runner/媒体保留策略。针对59800已出现的目标前异常退出丢媒体风险补齐。临时目录实际执行默认失败、同身份幂等、4类无效身份拒绝、禁止覆盖，以及2文件语法检查通过；未运行游戏。
 
 新冻结hammerburst-prepared-20261108-231852，继承PG7bed6ef7产品不变，所有源与制品哈希核对，capture-identity-check.json。仍需实际验证HB C0贴合/完整四态/持续连发与回射/弹匣，尚未stage或交付。
+
+## 窗口依赖阻塞检查点
+
+连续三轮复核仍无本枪运行窗口：37120游戏/编码处理已结束，未收到其完整审片/retention之后的明确唯一交接；当前无game/XR/ffmpeg/known review/retention进程。只读核对不能把idle当归还。已向Lancer核对并由Frag/Snub确认后续队列；顺序Lancer收尾→Frag效果→Snub原匣→HB。此处等待外部窗口状态改变，不伪造新构建或重复离线测试当进展。
+
+最新HB候选231852，PG7bed6ef7，继承Nativec985/XR1684；C0唯一视觉路径、原只读refire边界和提前失败身份已冻结，尚未stage/实跑。下一步在明确交窗并核idle/恢复后stage该候选，仅复查护木实际贴合/四态/持续Grip权威连发与release回射，再继续原匣/新匣/零供弹及中断恢复。完整目标未完成，所有旧实际失败保留，不把排队当验收。
