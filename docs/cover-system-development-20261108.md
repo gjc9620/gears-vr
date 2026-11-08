@@ -133,3 +133,13 @@ MSVC 原始结果保存在 `analysis/cover-system-20261108/focused-cover-results
 先改夹具为原字段名并增加错误字段拒绝，实际重现 124 检查中 20 处失败；原 RED 结果保存在 `context-name-before-fix.json` 与 `context-name-before-fix.log`。随后只修正生产读取字段名，124 检查全部通过。额外覆盖 LastCoverActionAnim 数值变化及关闭边界变化拒绝，旧身体仍关闭，夹具无写入。
 
 r7 使用修正后的源快照重新完成隔离 Native 编译、链接和原 10 次离线检查，均 exit 0；DLL SHA256 `10eed9dff50097b86f795e6fcc97ac0b447d4baef5507cee70df69d0a579ec74`，依赖 661 项。证据在 `context-native-r7-source.json`、`context-native-r7-build-result.json` 与相邻源码／构建目录。此处更新当前可用于后续私有验证的构建身份；仍未安装、未运行游戏／XR／模拟器，原 r5 宿主检查缺口仍保留。
+
+## 2026年11月8日 短段原版掩体与实体边界入口准备
+
+已准备 `equipment-controls-prepared-20261108-cover-r7`，使用上述 r7 Native、保留的 Playground `f8e6f3c2…4807` 与模拟器 XR `16840b27…a7fc`。只复制已冻结二进制并记录源码快照和哈希，未修改共享实例 manifest、默认候选或公开 v71，未启动运行。20 个运行依赖哈希、主人指定 EXE 和配置验证通过；`run_cover_check.py --prepare-only` 实际 exit 0，内存选择后的动作模块也已编译检查。
+
+入口复用现有受控 Source1、后台窗口、observe-only、静音、身份、双路录制和正常退出／配置恢复路径，私有渲染比例为 0.4。动作在同一实际世界中只读发现附近启用的矮掩体候选，通过普通走动、转向及一次原版右手 A 进入；不设置人物位置或 CoverAction，不拾取／开火／换弹。发现、步行、槽数和时间均有界，未成功进入或当前反射几何拒绝即保留失败并正常结束。
+
+只有进入同一实际低掩体并取得当前槽位几何后，才计划一组从低处挡面到上方空返回的截面，复用 `capture_edge_interval`，最多八条现有原版 GT Trace。槽位变换仅用于候选射线放置；挡面、空返回和法线均须由实际调用确认。单个截面成功仍不证明整边、手部可达、连续身体扫掠、中立眼点、受击或完整掩体玩法。任何未定提交不重发。
+
+脚本、准备和计划在 `analysis/cover-system-20261108/prepare-cover-runtime.py` 及 `analysis/solo-m1-20261028/{run_cover_check.py,run_cover_operator.py,cover_boundary_chain.py,cover-boundary-runtime-plan.json}`。提前持久化真实游戏身份的失败默认记录保留已有中断录像归属做法。已向现有统筹登记后续唯一窗口，继续等待明确交接，不因排队结束工作，也不抢占正在使用或已约定的窗口。
