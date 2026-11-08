@@ -227,3 +227,12 @@ launcher0/native_cleanup_verified TRUE/entry_restore TRUE/XR0/remaininggame null
 离线检查发现stage acquiring在granted=false时直接返回，未登记实际已知UP。失追清held/released后，UP仍不能rearm，后续新press会永久被released=false阻断，直到外部取消。用实际生产acquiring分支和原granted谓词原样提取执行的CPU夹具复现：旧分支exit1/FAIL release observed during acquisition。夹具首次新版本未显式取消Decision默认release_required=1，导致后续fresh-grant假失败；修正夹具后旧分支仍在同点失败，新分支9项通过，失败与修正日志均保留。
 
 修正只在acquiring且动画所有权仍有效时识别已知UP、清held并登记released；不获取动画、不seek。后续仍需当前帧实际fresh grant/相同身份/新press才能继续；未知输入、无UP旧按住、foreign frame、旧retained lease、release_required、失去动画所有权均拒绝。夹具游戏读写被替代，只证明这段规则，不证明失追实际恢复已过。产品独立完整编译链接0。冻结hammerburst-prepared-20261109-010655，PG8e2a8c3873962287ce21a6707e494ffde05a686b39841e0876c5ee17e91341b2，源与制品哈希核对，acquire-up-build-check.json；未stage/运行，不改变旧实际失败。共享HB尾部其他人的service包装未收入此独立编译/本提交。
+
+
+## 14312：原版reload取得，开盖连续见证间隔失败
+
+Cover正常唯一交窗后stage010655/PG8e2a8c38，实际14312完成原HB肩取与6发权威射线；真实Grip取得原版reload serial1、loaded72/reserve78，并进入1→2 opening。首失败是reload_chain.py第74行等待to4超时，而非第70行等待to2。早期仅看同prefix异常摘要错误判断为未进入opening、随后误怀疑读者，均已用完整调用栈/原始日志纠正：公共records已正确读取to2，没有公共读者缺陷证据。
+
+实际开盖angle0.526562711（约30.17度）/sequence2180出现hammerburst_latch_rejected reason5=gap，连续观测超过保持不变的100ms阈值；后续未达到opened/old_magazine4，未拔匣、未供弹、未提交库存。cleanup记录stage2/stopped1/pending0。本次不证明已修的acquiring失追UP恢复，也不计完整原匣换弹通过。下一定位既有动作/输入采样开销与真实松开后在当前机械位置重新抓取的恢复，不延长输入或连续见证阈值。
+
+全部52秒双路2页配对总览和3张实际接触原图亲看，当前图像中左手在枪侧，翻盖未完全打开；自然指型/全角度/遮挡仍未接受。Native cleanup/entry restore均true、XR0、launcher0、remaining game null；config/settings按010831备份逐字节一致，head恢复不存在。双路编码完成，retention72460 terminal0删除2591媒体/452782166bytes，源/文本/数值保留。核idle后已唯一交Snub010736，随后Boltok→Frag011230→Longshot005036→Cover reader。详runtime-14312-review.json。
