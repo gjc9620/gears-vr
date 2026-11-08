@@ -232,7 +232,7 @@ bool observe_game(abi::Frame const& f,abi::GripGameState& out,bool candidates,bo
         // Restrict this dispatch only after the exact held HB binding exists;
         // the HB producer below still proves its own current part geometry.
         const bool held_hammerburst=game.main_hand_held&&
-            playground::instance(f.weapon.address,L"Weap_LocustAssaultRifle");
+            derives(r,f.weapon.address,L"Weap_LocustAssaultRifle",L"WarfareGame");
         if(!held_hammerburst)lancerreload_contact::propose(f,game);
         hammerburst_runtime::propose(f,game);
         snub_runtime::propose(f,game);
