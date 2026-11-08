@@ -109,3 +109,11 @@ HB独立护木几何、Snap输出及当前真实support租约下的双手求解�
 只读复核既有WarfareGame.u分析副本中确切HB导出62424426/1238355字节，SHA4b6bd784匹配原记录。原有有界tag解析器从64读到185，4个标签没有RotOrigin；骨架前原生变换区24字节候选可解为Origin(0,0,0)、Rotator(0,-16384,0)。此处是保存布局推断，不是运行时反射值，不能证明运行时35度差异的根因，也没有据此硬加35度补偿。详细字节及界限见hb-origin-properties.json、hb-native-origin-candidate.json。
 
 下一候选hammerburst-prepared-20261108-214027已冻结2216项源码/驱动哈希，PG3e7ede1c，继承原已标识Native/XR/启动器；没有stage或启动。源与二进制来自独立source54029c2加已标识HB分派/回执改动，不混入共享worktree其他武器未提交变更。精确记录support-model-plan-prepared.json。已向Snub申请在其完成既有Frag→Snub队列并正常收尾后交回窗口；当前不占运行器。保持完整护木/换弹/交付目标开放。
+
+## 护木四态检查补强（214651冻结，未运行）
+
+独立驱动新增实际已求值左腕相对实际枪矩阵的比较，不能只凭“枪没有转”判Snap成功：无Grip物理左手移4.47cm时，腕部在枪局部坐标的位移须<1cm、转差<2度；松Grip后也要回到此前被动吸附姿态。数值独立于生产目标/输入规划，非原子CPU回读容差不代替最终像素/五指贴合验收。
+
+离线实际检查4项：9772旧记录被正确拒绝（相对腕位移4.472196原单位）；相同记录通过；枪和已求值骨架共同刚性变换后通过（误差4.64e-13）；仅腕朝向转21.199度正确拒绝。语法检查通过，详细snap-observation-check.json。没有启动新游戏或放宽产品半径/时效/租约。
+
+产品PG3e7ede1c不变，下一冻结更新为hammerburst-prepared-20261108-214651，2217项来源哈希全部核对，support-snap-plan-prepared.json。原214027保持历史原字节。当前Snub已在运行，Longshot先申请其后窗口，Lancer也有窄段申请；HB已同步尊重唯一交接队列，不stage/start争用共享instance。完整护木、换弹和交付目标继续开放。
