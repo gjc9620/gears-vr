@@ -280,6 +280,15 @@ def _surface_state(q, roles, actor, selected_component=None):
     return result
 
 
+class HitComponentObservationRejected(RuntimeError):
+    """Preserve already-read fields without implying a closing certificate."""
+    def __init__(self, observation, cause):
+        super().__init__(str(cause))
+        self.observation = copy.deepcopy(observation)
+        self.observation.update(closing_verified=False, read_completed=False,
+                                rejection=str(cause), rejection_type=type(cause).__name__)
+
+
 def _hit_component_observation(q, roles, actor, component):
     """Read the explicit hit's ownership without certifying a usable surface.
 
@@ -299,6 +308,14 @@ def _hit_component_observation(q, roles, actor, component):
                   collision_component=_reference(q, actor, 'CollisionComponent'),
                   containers={}, accepted=False, collision_verified=False,
                   grab_authorized=False, body_modified=False)
+    try:
+        _hit_component_containers(q, actor, component, result)
+    except (RuntimeError, OSError, ValueError, struct.error) as error:
+        raise HitComponentObservationRejected(result, error) from error
+    return result
+
+
+def _hit_component_containers(q, actor, component, result):
     for name in ('StaticMeshComponents', 'Components', 'AllComponents'):
         try:
             field = _field(q, actor, name, 'ArrayProperty')
@@ -324,7 +341,6 @@ def _hit_component_observation(q, roles, actor, component):
             header_bytes=q.value(actor, field).hex(), member_bytes=raw.hex(),
             explicit_component_occurrences=pointers.count(component['address']),
             explicit_component_derives_element=target in list(_chain(q, component['cls'])))
-    return result
 
 
 def capture(observer, dll_path, dll_sha256, start, end, *, extent=(0, 0, 0), trace_actors=True,

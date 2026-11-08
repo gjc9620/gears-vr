@@ -8,7 +8,8 @@ import copy
 from unittest.mock import patch
 
 from cover_trace_query import (TraceQuery, capture_edge_interval, _surface_state,
-                               _hit_component_observation, SurfaceOwnershipRejected)
+                               _hit_component_observation, SurfaceOwnershipRejected,
+                               HitComponentObservationRejected)
 
 
 class Memory:
@@ -557,6 +558,21 @@ class SurfaceSnapshotTests(unittest.TestCase):
         self.assertFalse(value['accepted'])
         with self.assertRaisesRegex(RuntimeError, 'Required bone property not found'):
             _surface_state(q, roles, actor, component)
+
+    def test_container_budget_failure_preserves_owner_as_unclosed_rejection(self):
+        m, q, roles, actor, component, inner, data = self.collection_fixture()
+        m.put(actor['address'] + 0x190, struct.pack('<Qii', data, 257, 257))
+        with self.assertRaises(HitComponentObservationRejected) as failed:
+            _hit_component_observation(q, roles, actor, component)
+        value = failed.exception.observation
+        self.assertEqual(value['component_owner'], actor)
+        self.assertEqual(value['component'], component)
+        self.assertIsNone(value['collision_component'])
+        self.assertFalse(value['closing_verified'])
+        self.assertFalse(value['read_completed'])
+        self.assertFalse(value['accepted'])
+        self.assertFalse(value['collision_verified'])
+        self.assertIn('array bounds rejected', value['rejection'])
 
     def test_inherited_world_hint_does_not_become_a_declared_collection_field(self):
         m, q, roles, actor, component = self.fixture()
