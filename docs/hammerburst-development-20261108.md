@@ -151,3 +151,9 @@ HB独立护木几何、Snap输出及当前真实support租约下的双手求解�
 64组同frame/sequence延迟回读中58组角度34.9~35.1度，模型局部残差轴约(-1,0,0)，axis范围及每对矩阵保存在model-residual-47576.json。这缩小了局部固定旋转方向，但不能证明资产RotOrigin、组件被改写或引擎下游哪一处是根因。CPU矩阵不是每Draw证明。
 
 只在已有两条普通GT回执补列：已读取asset_origin，以及恢复前首个已读取MeshPoseProbe的component_rot/absolute。无新对象读取/日志行/collector/writer/输入入口，不改任何动作保护。独立source54029c2加此前HB overlay完整编译链接exit0，新PGfe94c6f9cfa9e762e28fabb7ee290c27abb591a3934ffd52d73fb1ce95865f27，冻结hammerburst-prepared-20261108-222846，全部源与制品哈希核对。component-readback-build-check.json记录，尚未stage/实跑，不叫修复。共享文件只提交此8行精确patch，其他会话分支保持；Lancer异常段已收尾并交Frag，HB离线准备后续申请。
+
+## 换新匣检查模式准备
+
+离线新增显式replacement驱动分支：实际连续拔出原匣→真实松手→等待waiting_ammo→连续左肩路线及新Grip→等待new_magazine→持续持握入槽→闭合→有限库存按实际used/reserve核对填充量和守恒→权威回射。未调用游戏setter/ForceReload/GiveTo，不自动叠到护木或原匣返回检查。需要HB_RELOAD和HB_REPLACEMENT两个显式选择，默认仍原匣返回；护木与换弹互斥。两文件语法通过，但动作、路径、供弹与实际计数均尚未实跑。总0与L>0/R0仍需另行实际覆盖。
+
+最新冻结hammerburst-prepared-20261108-223041继承PGfe94c6，全部源与制品哈希核对，replacement-driver-prepared.json；尚未stage。222846原冻结保持原字节。手雷35856/游戏26496实际在运行，Snub确认其后原匣段正常收尾再唯一交HB，本轮没有抢窗或标完整目标完成。
