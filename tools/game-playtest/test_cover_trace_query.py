@@ -398,6 +398,27 @@ class SurfaceSnapshotTests(unittest.TestCase):
                 m.put(current + 0x68, struct.pack('<Q', nxt))
         return m, CoverQuery(m.observer), dict(world=m.fresh(m.WORLD)), m.fresh(wall), component
 
+    def test_inherited_world_hint_does_not_become_a_declared_collection_field(self):
+        m, q, roles, actor, component = self.fixture()
+        collection_class = 0x2a000
+        m.add_class(collection_class, 'StaticMeshCollectionActor', m.ACTOR)
+        m.put(collection_class + m.profile['struct_children'], bytes(8))
+        m.objects[actor['address']]['cls'] = collection_class
+        actor = m.fresh(actor['address'])
+
+        # Match the actual metadata-only path: an inherited WorldInfo hint is
+        # read before _surface_state authenticates its declaring Actor class.
+        self.assertEqual(q.pointer(actor, 'WorldInfo'), roles['world'])
+        result = _surface_state(q, roles, actor)
+        self.assertEqual(result['component']['address'], component)
+        self.assertEqual(result['actor'], actor)
+        with self.assertRaisesRegex(RuntimeError, '^Property WorldInfo not found$'):
+            q.prop(q.obj(collection_class), 'WorldInfo', structure=True)
+        q.finish()
+        m.put(collection_class + m.profile['field_super'], bytes(8))
+        with self.assertRaises(RuntimeError):
+            q.finish()
+
     def test_typed_collision_snapshot_and_closing_transform_change(self):
         m, q, roles, actor, component = self.fixture()
         result = _surface_state(q, roles, actor)

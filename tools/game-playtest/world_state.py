@@ -46,7 +46,10 @@ class Query:
 
     def prop(self, obj, name, kind=None, *, structure=False):
         owner = obj['address'] if structure else obj['cls']
-        key = owner, name
+        # A normal object lookup may find an inherited field. A subsequent
+        # declaring-structure lookup on that same class must still search only
+        # its own children, rather than inherit the earlier cached result.
+        key = owner, name, structure
         if key not in self.properties:
             self.properties[key] = self.r.property(owner, name, not structure)
         p = self.properties[key]

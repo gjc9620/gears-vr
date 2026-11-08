@@ -217,3 +217,17 @@ r8没有stage、没有游戏／XR运行，也没有开启掩体写入或解决72
 4种墙向与3种连续视向共12组，真实手沿新原始轴平移5cm映到世界后始终等于墙面右移5cm，上移3cm仍按世界重力，非法基准拒绝且不改输出。现有 `cover_view_test` 883检查及原 `cover_controller_adapter_test` 629检查通过，MSVC/W4/WX，回执在 `cover-independent-axes.json`。没有改输入仲裁、真实按下／释放、100ms等时限或任何身体写入。
 
 此重载在r8构建之后添加，只完成独立内核编译与检查，尚未选入live抓边消费者，也不属于r8二进制的新运行证据；旧两参数路径行为保持。后续真正使用时须与当前身份／reference、独立view heading、边缘／可达／碰撞及同一提交事务一起接通并构建验证。没有据此启动游戏或重建未使用该重载的Native。
+
+## 2026年11月9日 只读归属诊断49584／65700与字段缓存修正
+
+收到Frag69684完整收尾后的明确唯一交接，精确使用r7三制品与21个冻结驱动，运行只读符号Actor归属项。49584／creation134386384867694833的首故障是无关UObject发现提示的名称超出原有UTF16读取上限；尚未到目标Actor字段，没有A进入、Trace或身体写入。只将该发现循环接到普通掩体发现已使用的有界异常处理：注册表变化继续立即失败，无关不可读提示可跳过，所选Actor仍须原始身份、世界、字段与closing核验。执行过的原r3／修正r4源码与计划分别保存，未延长预算或改产品。
+
+49584的37.20秒完整双路共2页及目标观察附近game00515／sim00717原图亲看：启动第三人称／等待后实际第一人称自由手，未发生掩体动作。编码原句柄38965已缺失，不能补造原进程退出码；成品与最终日志已核对，ffprobe实际exit0、视频37.233333秒。Native cleanup／entry restore TRUE、XR0、launcher0、game退出，wrapper与config／settings／原缺head精确恢复，驱动结束哈希一致。retention85554实际terminal0，删除1830文件／334978883字节、errors0，保留[49584,69684,26152]。
+
+具体发现故障修正后在同一窗口只复查一次，实际65700／creation134386392141155216跳过2个无关提示，读到目标类名StaticMeshCollectionActor，随后在严格WorldInfo声明归属检查停止。没有完成组件／Owner观测和最终closing，不能以类名读到推断当前碰撞组件关系。没有A、Trace、抓边或身体写入，也没有将r8数学混入r7运行。
+
+65700的33.47秒完整双路2页及game00505／sim00651原图亲看，实际第一人称自由手可见；564游戏／736模拟器采样帧、双路末端覆盖合格。游戏最大采集间隔2599.9861ms和模拟器500.0106ms保留，不作为游戏停顿／渲染FPS证明。wrapper／编码均实际exit0，Native cleanup／entry TRUE、XR0／launcher0／game退出；config／settings／原缺head精确恢复，21驱动结束时一致。retention35013实际terminal0，删除1919文件／326355451字节、errors0，保留[65700,49584,69684]。重新核对Game／XR／录制／编码／retention均空后，已最终明确唯一交Longshot021930，后续HB023513→Lancer023554；本窗口不再stage／run。
+
+离线按65700真实调用顺序复现：先以可继承查询读取集合Actor的WorldInfo，再由_surface_state逐层认证实际声明类，旧Query.prop用(owner,name)缓存两种查询，错误复用父类字段并在子类声明检查抛出相同的Bone field identity/class/owner rejected: WorldInfo。新增回归先得到同错误RED，再仅把缓存键改为(owner,name,structure)。当前完整链可认证实际父类声明，子类自身查询仍明确not found；改变已认证的继承链仍使closing拒绝。没有取消归属检查、放宽时间或把未知值当有效结果。
+
+world／trace／bone／surface四个相关模块共98项实际离线检查通过，原失败日志保留在inherited-property-cache-red.log、inherited-property-cache-runtime-sequence-red.log，GREEN在inherited-property-cache-green.log。此为读取器修正，r7／r8制品未改，修正后尚未游戏复查。执行过的65700计划另存，下一入口的21依赖与源码在drivers-owner-only-r5，prepare-only实际exit0，未stage／run。后续仍需取得真实组件关系，才能继续实体边缘与完整身体碰撞证据；不能据此宣布掩体可玩、画面或实体头显通过。两局完整证据见cover-49584-review.json、cover-65700-review.json及对应不可变session／动作／双路目录。
