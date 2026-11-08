@@ -297,3 +297,12 @@ Cover正常唯一交窗后stage010655/PG8e2a8c38，实际14312完成原HB肩取�
 017ee559仅补强测试：weapon/component/asset/node/sequence使用互不相同的真实类型ObjectIdentity，另加有效node/asset身份互换两类拒绝，避免相同基准身份掩盖错位比较。对实际隔离生产helper原样提取执行55项通过，函数hash仍99dd1882d65575a52ea2a8b545d1b847c5927e5ecc61009547bcb27a35890319；产品和023513冻结未改，不重复编译游戏DLL，也不将新测试文件假称已收入旧冻结。
 
 主人最新经既有统筹转达：不主动向01a1bb5e-5946-7271-af0d-1068759697e0发送进度、候选、测试、队列、收尾，也不回信确认该通知。已经停止抄送；仅在本会话/本记录保存进展，直接相关会话必要的唯一窗口交接与依赖协调仍可进行。等待继续有界保持会话、不据idle抢窗、不用Computer Use。当前Frag69684已全收尾唯一交Cover owner-only-r2，后Longshot021930→HB023513→Lancer023554→Snub024436。
+
+
+## 提取证明在明确撤销路径的适配器回归（未入已排冻结）
+
+纯HammerburstMagazineExtraction已对无效sample清complete，但运行适配器在当前frame不可用及left_tracked=false两个撤销分支仅清held/stroke/insertion，未清extraction。真实生产撤销/松手分支原样提取+真实纯提取器CPU夹具：先连续0→6cm完成证明，走明确tracking撤销后complete仍true，旧源实际exit1/FAIL tracking loss clears completed extraction proof；未借假输入或默认成功。
+
+只在这两条既有撤销路径补extraction.reset，后续已知UP不能再凭撤销前的旧证明stow，按既有未完成提取取消；新源7项通过，涵盖两种撤销/之后UP、合法continuous提取后UP正常stow，以及replacement失追原预留释放行为不变。旧红/新绿记录分别tracking-witness-before/after，源字段/引擎stow与cleanup为fakes；只证明这些条件分支，不证明实际Native生命周期必到该路径或全部中断恢复已通过。
+
+这一安全源码与测试单独保存，尚未完整编译或收入023513/PG821的不可变冻结；当前队列原开盖候选、驱动与源归档均不改，不假称该补丁已在下一正常开盖段被游戏验证。主线仍等待Longshot最终交窗，之后唯一交Lancer023554。

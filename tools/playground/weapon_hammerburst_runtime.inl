@@ -524,7 +524,7 @@ bool tick(uptr pc) noexcept {
     hand::Frame f{};hand::GripGameState game{};hand::Decision decision{};
     if(!weaponhand::client.copy_frame_on_gt(f,game,decision)||f.controller.address!=pc||
        !game.known||!game.main_hand_held||game.busy||game.animation_owns_hands){
-        if(stage!=Stage::idle){held={};stroke.reset();insertion.reset();released=false;
+        if(stage!=Stage::idle){held={};stroke.reset();insertion.reset();extraction.reset();released=false;
             if(lancerreload_runtime::weapon_retired(opening.identity.weapon))cleanup(__LINE__);return true;}
         return false;
     }
@@ -585,7 +585,7 @@ bool tick(uptr pc) noexcept {
         return true;
     }
     if(!f.left_tracked){
-        held={};stroke.reset();insertion.reset();released=false;
+        held={};stroke.reset();insertion.reset();extraction.reset();released=false;
         if(stage==Stage::new_magazine){
             if(!transaction.release_item(new_item)||!visual::stow())cleanup(__LINE__);
             else{stage=Stage::waiting_ammo;new_item=0;}
