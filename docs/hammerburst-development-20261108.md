@@ -143,3 +143,5 @@ HB独立护木几何、Snap输出及当前真实support租约下的双手求解�
 明确交窗后stage220323/PG3e7，实际47576进入本枪护木。无Grip枪转差1.0245e-5度，物理左手移动时腕在枪内位移2.6368e-5原单位；右手移枪1.23225原单位/转2.29183度，腕相对枪位移8.6675e-5，两个被动保持判据通过。真实Grip后左手带枪转7.3046度，随后实际掌到实际护木距离22.39714原单位断言失败。不能把前三项数值通过当自然贴合或全四态通过；松Grip/回射/食指/换弹尚未执行。
 
 三页完整配对总览已亲自查看，实际左手悬在枪身上方，符合贴合失败；启动第三人称/等待卡仍在。编码terminal0，launcher0且remaining_owned_game null，既有媒体清理正在exec2262运行，尚未交窗。精确runtime-47576-review.json；下一步针对生产model target与实际枪体约35度/22.4cm变换差异定位，不能加大范围或换成目标矩阵假装实际通过。
+
+47576既有retention exec2262已实际terminal0，复查无game/XR/ffmpeg/review/HB/retention进程，已按双方先前明确确认唯一交Lancer212510，并同步Frag后续申请。HB不自行重查。继续离线核对model_to_component_rotation/RotOrigin、实际LocalToWorld及既有Native握持校准链；尚未确定35度偏差根因，未硬加补偿或新增写入器。
