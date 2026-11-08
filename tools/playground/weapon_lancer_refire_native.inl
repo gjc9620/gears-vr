@@ -2,6 +2,7 @@
 // until normal PostPlayerTick can prepare its current muzzle, before ammo.
 // No VM frame, timer, input edge or inventory value is rewritten here.
 #include "../vr-common/weapon_lancer_refire_loop.h"
+#include "../vr-common/weapon_hammerburst_refire.h"
 namespace lancerrefire {
 namespace meta=gripdamage_metadata;
 namespace wh=gears_weapon_hand;
@@ -97,7 +98,10 @@ template<std::size_t N>bool weapon_function(meta::Reader& r,uptr function,
         ((r.named(owner,L"Weapon")&&r.named(package,L"Engine"))||
          (allow_war&&r.named(owner,L"WarWeapon")&&r.named(package,L"WarfareGame")))&&r.structure(function,structure);
 }
+bool original_loop(meta::Reader& r,uptr weapon,uptr function,unsigned& reason) noexcept;
+#include "weapon_hammerburst_refire.inl"
 bool original_loop(meta::Reader& r,uptr weapon,uptr function,unsigned& reason) noexcept {
+    if(hammerburst_refire::candidate(r,weapon,function))return hammerburst_refire::original_loop(r,weapon,function,reason);
     reason=1;unsigned fn{},kind{},state{},state_kind{},owner{},owner_kind{},package{};
     meta::Structure refire{};std::uint16_t parameters{},result{},native{};unsigned flags{};uptr exec{};
     if(!r.path(function,fn)||!r.named(fn,L"RefireCheckTimer")||
@@ -255,7 +259,7 @@ bool defer(uptr object,uptr function) noexcept {
     meta::Snapshot schema{};schema.module_base=base;meta::Reader r{schema,meta::Stage::final_check};
     weaponhand::BoolField putting_down{},putting_down_after{};
     if(!meta::tables(base,schema.objects,schema.names)||!weaponhand::object(r,held.weapon)||
-       lancermain_asset::held_asset_name(r,object,lancermain_asset::AssetScope::lancer_only)!=lancermain_asset::HeldAsset::lancer||
+       !hammerburst_refire::supported_receiver(r,object)||
        !weaponhand::boolean(r,object,L"bWeaponPutDown",putting_down)||
        (putting_down.bits&putting_down.mask))return false;
     unsigned reason{};
