@@ -328,3 +328,12 @@ Cover正常唯一交窗后stage010655/PG8e2a8c38，实际14312完成原HB肩取�
 旧源17项夹具到静止条件实际exit1；新源21项执行0，新增同lease无动作/后续及时运动、new_grant/别的lease/lifecycle/untracked/release_required/foreign frame/真移动/显式撤销拒绝。另7项明确失追proof撤销回归已保存，55项seek纯reconcile不变。独立GearsPlayground完整编译链接0。旧整套legacy模型测试在其另外的forgiving-profile段因3个早已不存在的字段编译失败（default-latch-compat.json保留）；未为过测添加或放宽字段/接触范围。其原有continuous_hinge_motion函数原样单独提取、当前默认false路径编译执行0（default-latch-motion.json），不称整套通过。
 
 冻结hammerburst-prepared-20261109-043309，PG611a40908e79f66f720d09042c3f64289d890e7e0ffd28806e9bd6187004e3a5；全源/制品哈希核对，stationary-hold-build-check.json，未stage/game。包括已独立回归的两处extraction.reset，但静止实际是否满足10微米条件仍待原记录/游戏计数证明，不称9540根因已定。后续只申请既有队尾Longshot034956之后同一原匣点，不插队。
+
+
+## 遗留模型测试按当前严格契约修正
+
+Lancer只读确认上述forgiving-profile不是其本轮改动，未补写共享头。现仅修正HB测试夹具：保留历史原源码/编译失败，将不受支持的3字段/12cm宽松profile改为当前实际API的明确拒绝与精确端点检查。新断言包括12cm配置拒绝、离轴超抓取体拒绝、静止只报closed而不open、0.69不提前open、0.79真实到open、1.05超程拒绝、默认静止151ms仍gap、0.1不提前closed、0.01到closed，以及unheld/inactive即使显式opt也不可复活。没有改生产范围/过冲/端点阈值。
+
+更新后的完整既有纯model/curve/latch suite真实MSVC/W4/WX/UNDEBUG编译执行0，strict-legacy-model.json；不冒充旧forgiving能力已实现，不把其旧R3抽象模型视为当前Grip入口/实际库存或游戏证明。先前default-latch-compat编译失败和旧fixture都保留。
+
+同一静止候选原失败行补retained_same和真实前后手位移hand_delta_m，仅用stroke已保留样本，不读新对象/不增日志行；生产控制分支21项重跑0、隔离PG完整编译0，避免后续再只能猜手是否静止。Getter只读，行为与043309相同。

@@ -326,27 +326,35 @@ int main() {
     completion_and_guide();deadlines();entry_validation();latch_order_and_receipts();
     pickup_and_insertion();identity_clock_and_release();conservation_and_interruptions();
     start_replay_and_commit();physical_start_pause_and_resume();continuous_hinge_motion();
-    { // Forgiving acquisition/retention and real endpoint motion, not a
-      // stationary pinch or a cosmetic snap. Other consumers keep defaults.
-      HammerburstLatchGeometry g{{0,0,0},{0,1,0},{.07,0,0},.8,.12,.10,.10,true};
-      g.endpoint_tolerance=.14;g.overtravel=.45;g.minimum_endpoint_motion=.06;
+    { // Strict acquisition, measured endpoints and default gap handling.
+      HammerburstLatchGeometry g{{0,0,0},{0,1,0},{.07,0,0},.8,.035,.035,.03,true};
       HammerburstLatchStroke s;
       const auto point=[](double a,unsigned seq,unsigned ms,double radius=.07,double axial=0.){
           return HammerburstLatchSample{{radius*std::cos(a),axial,-radius*std::sin(a)},seq,ms,99,true,true};};
-      assert(s.begin(g,point(0,1,1000,.10,.04),0));
-      assert(s.observe(point(0,2,1050,.10,.04))==HammerburstLatchMotion::moving);
-      assert(s.observe(point(.3,3,1100,.12,.06))==HammerburstLatchMotion::moving);
-      assert(s.observe(point(.69,4,1150,.12,.06))==HammerburstLatchMotion::open&&s.angle()==.8);
-      assert(s.observe(point(1.05,5,1200,.12,.06))==HammerburstLatchMotion::open&&s.angle()==.8);
-      assert(s.observe(point(.60,6,1250,.12,.06))==HammerburstLatchMotion::moving);
-      assert(std::abs(s.angle()-.60)<1e-8); // Overtravel was retained, not lost at the stop.
-      auto stale=point(.5,7,1400,.12,.06);
-      assert(s.observe(stale)==HammerburstLatchMotion::rejected);
-      assert(s.begin(g,point(.8,8,1500),.8));
-      assert(s.observe(point(.4,9,1550))==HammerburstLatchMotion::moving);
-      assert(s.observe(point(.1,10,1600))==HammerburstLatchMotion::closed&&s.angle()==0);
-      auto unheld=point(.0,11,1650);unheld.gripped=false;
+      auto oversized=g;oversized.contact_radius=.12;
+      assert(!s.begin(oversized,point(0,1,1000),0));
+      assert(!s.begin(g,point(0,1,1000,.10,.04),0));
+      assert(s.begin(g,point(0,1,1000),0));
+      assert(s.observe(point(0,2,1050))==HammerburstLatchMotion::closed&&s.angle()==0);
+      assert(s.observe(point(.3,3,1100))==HammerburstLatchMotion::moving);
+      assert(s.observe(point(.69,4,1150))==HammerburstLatchMotion::moving);
+      assert(std::abs(s.angle()-.69)<1e-8);
+      assert(s.observe(point(.79,5,1200))==HammerburstLatchMotion::open);
+      assert(std::abs(s.angle()-.79)<1e-8);
+      assert(s.observe(point(1.05,6,1250))==HammerburstLatchMotion::rejected);
+      assert(s.last_rejection()==HammerburstLatchRejection::range);
+      assert(s.begin(g,point(.8,7,1300),.8));
+      assert(s.observe(point(.8,8,1451))==HammerburstLatchMotion::rejected);
+      assert(s.last_rejection()==HammerburstLatchRejection::gap);
+      assert(s.begin(g,point(.8,9,1500),.8));
+      assert(s.observe(point(.4,10,1550))==HammerburstLatchMotion::moving);
+      assert(s.observe(point(.1,11,1600))==HammerburstLatchMotion::moving);
+      assert(s.observe(point(.01,12,1650))==HammerburstLatchMotion::closed);
+      assert(std::abs(s.angle()-.01)<1e-8);
+      auto unheld=point(.0,13,1700);unheld.gripped=false;
       assert(s.observe(unheld)==HammerburstLatchMotion::rejected);
+      assert(s.observe(point(0,14,1750),true)==HammerburstLatchMotion::rejected);
+      assert(s.last_rejection()==HammerburstLatchRejection::inactive);
     }
     std::puts("Hammerburst latch/magazine reload, timing, conservation and interruption tests passed");
 }
