@@ -143,3 +143,13 @@ r7 使用修正后的源快照重新完成隔离 Native 编译、链接和原 10
 只有进入同一实际低掩体并取得当前槽位几何后，才计划一组从低处挡面到上方空返回的截面，复用 `capture_edge_interval`，最多八条现有原版 GT Trace。槽位变换仅用于候选射线放置；挡面、空返回和法线均须由实际调用确认。单个截面成功仍不证明整边、手部可达、连续身体扫掠、中立眼点、受击或完整掩体玩法。任何未定提交不重发。
 
 脚本、准备和计划在 `analysis/cover-system-20261108/prepare-cover-runtime.py` 及 `analysis/solo-m1-20261028/{run_cover_check.py,run_cover_operator.py,cover_boundary_chain.py,cover-boundary-runtime-plan.json}`。提前持久化真实游戏身份的失败默认记录保留已有中断录像归属做法。已向现有统筹登记后续唯一窗口，继续等待明确交接，不因排队结束工作，也不抢占正在使用或已约定的窗口。
+
+## 2026年11月9日 等待期间的需求与启动前补全
+
+统筹已明确接受掩体排在 HB → Boltok → Frag → Lancer235922 之后，Lancer 正常退出、双路复查、编码与 retention 全部结束后再向本会话唯一交接。确认在 `analysis/solo-m1-20261028/cover-boundary-window-queue.json`。本会话尚未获得窗口、未 stage、未启动；正常等待不记 blocked 或完成。
+
+需求文档补入 2026-10-28 交互合同／第二轮研究中的提交顺序、连续体积扫掠、当前占用、动画开火等待和原伤害分支约束，保留 CV-01–24，验收追加至 AC-22。主人随后补充“注意模块化，注意解耦”，据此增加模块职责、输入输出、依赖方向和禁止跨模块内部操作的要求；不将文档接口描述为已接通运行接口，也不发起全仓重构。项目目录副本与来源材料按哈希同步，需求编号及来源链接均已检查。
+
+启动前导入检查发现离线 MSVC 脚本所用 Python 3.14 没有 Pillow（原失败保留）；已核对受管解释器 `C:/Users/11/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/python.exe` 的 Pillow／NumPy 导入 exit 0，并用它执行 `run_cover_check.py --prepare-only` exit 0。运行入口与审片使用该解释器；原启动器子进程仍使用现有打包解释器。记录在 `runtime-interpreter-check.json`，不是游戏结果。
+
+针对 r5 宿主缺口，仅在 ignored `host-include-probe` 副本补入实际类型头做一次编译定位。缺失声明的一部分被解决，但旧诊断／runtime seams 与严格警告仍使编译失败，程序没有执行；原编译字节和失败记录保留。没有改生产源码、禁用严格警告或伪造宿主通过。此项不影响已经独立通过的 r7 Native 构建，也不关闭尚未完成的实际 C0 生命周期验证。
