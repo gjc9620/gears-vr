@@ -111,13 +111,21 @@ bool part_pose(hand::Frame const& f,api::Kind kind,P& grip) noexcept {
     part_asset=nativelancerfollow::bound_key.asset;part_component=nativelancerfollow::bound_key.component;
     return true;
 }
-void report_grasp_attempt(hand::Frame const& f,api::Kind kind,bool published,unsigned gate,unsigned part_gate) noexcept {
+void report_grasp_attempt(hand::Frame const& f,api::Kind kind,bool published,unsigned gate,unsigned part_gate,
+    hand::GripGameState const* game=nullptr,hand::Decision const* decision=nullptr) noexcept {
     static unsigned previous{~0u},rows{};
-    const unsigned state=unsigned(kind)*4096+gate*64+part_gate;
+    const unsigned hb_observation=game&&nativelancerfollow::bound_is_hammerburst?
+        1u+(unsigned(game->main_hand_held)<<1)+(unsigned(game->mount_known)<<2)+(unsigned(game->busy)<<3)+
+        (unsigned(game->animation_owns_hands)<<4)+(unsigned(f.left_grip_down)<<5):0u;
+    const unsigned state=unsigned(kind)*4096+gate*64+part_gate+(hb_observation<<16);
     if(log_file&&rows<16&&previous!=state){fwprintf(log_file,
-        L"lancer_context_grasp kind=%u published=%u frame=%llu visual_only=1 gate=%u part_gate=%u age_ns=%lld\n",
+        L"lancer_context_grasp kind=%u published=%u frame=%llu visual_only=1 gate=%u part_gate=%u age_ns=%lld hb_observed=%u known=%u main_held=%u mount=%u busy=%u animation=%u down=%u input_known=%u tracked=%u control=%u decision=%u lease=%u pending=%u\n",
         unsigned(kind),unsigned(published),f.key.frame,gate,part_gate,
-        weaponhand::clock_ns(nullptr)-f.controllers.sync_ns);fflush(log_file);++rows;}previous=state;
+        weaponhand::clock_ns(nullptr)-f.controllers.sync_ns,hb_observation,game?unsigned(game->known):0u,
+        game?unsigned(game->main_hand_held):0u,game?unsigned(game->mount_known):0u,game?unsigned(game->busy):0u,
+        game?unsigned(game->animation_owns_hands):0u,f.left_grip_down,f.left_grip_known,f.left_tracked,f.interaction_control,
+        decision?unsigned(decision->status):0u,decision?unsigned(decision->lease.kind):0u,
+        game?unsigned(game->magazine_observation_pending):0u);fflush(log_file);++rows;}previous=state;
 }
 bool proximity_tick(hand::Frame const& f,hand::GripGameState const& game,hand::Decision const& decision) noexcept {
     if(nativelancerfollow::bound_is_hammerburst){
@@ -231,14 +239,14 @@ bool proximity_tick(hand::Frame const& f,hand::GripGameState const& game,hand::D
         nearby_kind=selected;nearby_source=f;
         lancersaw_starter::cosmetic_nearby=selected==api::Kind::starter;
         lancersaw_starter::cosmetic_identity=lancerreload_inventory::identity(f);}
-    report_grasp_attempt(f,selected,published,published?0u:34u,selected==api::Kind::starter?part_pose_gate:0);
+    report_grasp_attempt(f,selected,published,published?0u:34u,selected==api::Kind::starter?part_pose_gate:0,&game,&decision);
     return published;
 }
 void tick(hand::Frame const& f,hand::GripGameState const& game,hand::Decision const& decision) noexcept try {
     struct Attempt {
-        hand::Frame const& frame;api::Kind kind{};bool published{};unsigned gate{1},part_gate{};
-        ~Attempt(){report_grasp_attempt(frame,kind,published,gate,part_gate);}
-    } attempt{f};
+        hand::Frame const& frame;hand::GripGameState const& game;hand::Decision const& decision;api::Kind kind{};bool published{};unsigned gate{1},part_gate{};
+        ~Attempt(){report_grasp_attempt(frame,kind,published,gate,part_gate,&game,&decision);}
+    } attempt{f,game,decision};
     if(proximity_tick(f,game,decision)){
         attempt.kind=nearby_kind;attempt.published=true;attempt.gate=0;
         attempt.part_gate=nearby_kind==api::Kind::starter?part_pose_gate:0;
