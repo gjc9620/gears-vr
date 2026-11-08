@@ -93,3 +93,13 @@ HB独立护木几何、Snap输出及当前真实support租约下的双手求解�
 原分派的playground::instance额外依赖使现有离线读取器夹具无法编译。改为同次Reader的精确derives查询（a2a1d6f），现有WeaponHandClientOfflineTest实际45项通过，保留原身份/类型/表及输入检查。已有report_grasp_attempt普通GT回执增加同帧main_held/mount/busy/animation/input/decision字段，上限仍16条，无额外对象读取、callback、collector或控制入口；用于区分后续当前绑定/握点/抓取失效。独立PG完整编译链接通过，SHA3e7ede1c，尚未实跑。准确源哈希见grasp-receipt-build-check.json；当前共享目录其他枪未提交改动没有混入该独立构建。
 
 57008编码/清理均已terminal0后，Longshot明确未就绪让窗，HB已将唯一运行窗口明确交给手雷会话，Snub排在其后；Lancer暂不立即运行。HB当前只离线工作，不stage或启动，后续需重新协调窗口。未标记完整目标完成。
+
+## 分派回归及9772输入规划基准差异
+
+现有production observer的人工内存测试新增3项：确切WarfareGame HB不调用无关Lancer producer、同名外包类型不误识别、source-only观察不生成候选。注入无关Lancer pending后，隔离源码恢复旧无条件分派实际断言失败(exit3221226505)，恢复修正后48项通过。证据dispatch-regression-check.json；这验证分派边界，不证明9772根因。曾尝试启用完整Native-equipment宏扩展夹具，但注册适配器依赖缺失而编译失败，该探索撤回，不能把当时旧exe输出当新检查通过；最终48项版本已重新编译/执行。
+
+更具体的9772记录分析：稳定右手位置对比差3.19e-7原单位，测试读取器m和生产follow target_model basis却差34.99935度，第二握点坐标差22.395cm。64组相同frame/sequence的恢复前delayed LocalToWorld回读与目标basis仍差34.99935~35.69885度，不只是未配对的外部截图；但这些CPU矩阵仍不是每Draw/GPU证明。现有support_contact对旧读取m规划的手柄位置与读取m得到true，对同一物理手与生产model-based mount得到false(distance0.223954m)，大于原14cm。输入按生产model target重新规划后，原函数得到true(distance1.2395e-8m)，没有放宽半径/时效/授权。
+
+因此9772的Grip无转向不能直接作纯产品授权链缺陷结论，也不能宣称Snap成立；还需核对目标模型与实际渲染差异。保留失败，增加可复现的weapon_hammerburst_contact_plan_test.cpp，MSVC C++17/W4/WX编译执行通过上述3个判定。具体数值/记录见model-vs-measured-9772.json、model-delayed-readback-9772.json、contact-plan-regression-check.json。
+
+独立护木驱动现只在输入规划使用同右握持对应的生产target_model，明确标记planning_is_not_outcome_evidence；独立观察的实际枪矩阵、骨架、真实射线及后续像素验收保持，不把目标矩阵换成实际结果。驱动语法与离线接触重放通过，尚未新实跑。原Snap/Grab实现、最终五指/枪体贴合和完整换弹仍未验收。
