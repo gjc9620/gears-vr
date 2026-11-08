@@ -192,4 +192,6 @@ wrapper／launcher 均 exit 0，Native cleanup／entry restore TRUE、XR exit 0�
 
 旧 `_surface_state` 把 CollisionComponent 为空及 Owner 与 Actor 不同合并为同一错误，72608 回执没有保留这两个已读值，因而不能从集合Actor名称猜定根因。新增 `SurfaceOwnershipRejected` 只把原本已经读取的 actor／component／owner 保存为明确 `accepted=false/collision_verified=false` 的拒绝观察；capture 继续返回失败，所有归属、世界、变换、关闭、预算与重试规则不变，没有新增引擎调用或周期采集。空组件与错误Owner两种反例均确认仍拒绝且能区分。实际 `test_cover_trace_query.py` 23项及原 `test_cover_surface_query.py` 13项通过；未做新游戏运行。
 
-另核对 r7 冻结 `capture.cpp` 的最终视图选择：已有 `body_view_required` 且 first_person／body／cover 三者均无基准时，明确累加 missing_basis_rejected 并拒绝本帧；共同C0策略本身仍排除cover写入。这是下一次衔接定位的源码依据，不是72608实际命中该分支的回执，也不能直接把等待卡归因为它。合法低位基准、脚位与碰撞仍须补证，不能删除该保护以获得一帧未认证视图。
+另核对 r7 冻结 `capture.cpp` 的最终视图选择：已有 `body_view_required` 且 first_person／body／cover 三者均无基准时，明确累加 missing_basis_rejected 并拒绝本帧；共同C0策略本身仍排除cover写入。随后互核保存的 Native 快照 owner8396／creation134386349882977996 与 capturing pid72608，均与本session吻合，读取到 `first_person_missing_basis_rejected=163`；未进入掩体的55600对照为0。这是同次实际拒绝计数，仍不是某个CT2／compose／图像的原子因果回执。合法低位基准、脚位与碰撞仍须补证，不能删除该保护以获得一帧未认证视图。
+
+下一只读入口已冻结：在普通Playground中仅按当前世界和符号 `mp_warmachine_SMC#3` 重认证该集合Actor，复用严格表面字段读取及closing，保存组件／Owner拒绝观察；不再A进入、不提交Trace、不改变身体或产品。发现仍有500000对象／30秒预算，21依赖及精确源码归档在 `analysis/cover-system-20261108/drivers-owner-only`，`--prepare-only`通过。HB已接受在其本段→Lancer012317→Snub013007→Boltok013903→Frag020326之后唯一交本只读项；以实际交接最新顺序为准。本会话未stage／run，目标继续未完成。
