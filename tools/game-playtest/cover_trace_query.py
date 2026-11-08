@@ -280,6 +280,53 @@ def _surface_state(q, roles, actor, selected_component=None):
     return result
 
 
+def _hit_component_observation(q, roles, actor, component):
+    """Read the explicit hit's ownership without certifying a usable surface.
+
+    A cooked collection can have an empty StaticMeshComponents declaration.
+    Observe the actual hit and the three named component containers instead
+    of selecting another component or relaxing the surface membership rule.
+    The caller must close this query before marking the observation complete.
+    """
+    if q.obj(actor['address']) != actor or q.obj(component['address']) != component:
+        raise RuntimeError('Hit component observation identity changed')
+    if _reference(q, actor, 'WorldInfo') != roles['world']:
+        raise RuntimeError('Hit component observation WorldInfo differs')
+    result = dict(actor=copy.deepcopy(actor), component=copy.deepcopy(component),
+                  actor_class=q.obj(actor['cls']), component_class=q.obj(component['cls']),
+                  component_outer=q.obj(component['outer']) if component['outer'] else None,
+                  component_owner=_reference(q, component, 'Owner'),
+                  collision_component=_reference(q, actor, 'CollisionComponent'),
+                  containers={}, accepted=False, collision_verified=False,
+                  grab_authorized=False, body_modified=False)
+    for name in ('StaticMeshComponents', 'Components', 'AllComponents'):
+        try:
+            field = _field(q, actor, name, 'ArrayProperty')
+        except RuntimeError as error:
+            if str(error) != 'Required bone property not found: ' + name:
+                raise
+            result['containers'][name] = dict(declared=False)
+            continue
+        inner, stride, raw, count = q.array(actor, name, 256)
+        inner_link = q.read(field['address'] + q.r.profile['struct_property_struct'], 8)
+        kind = q.obj(inner['cls'])['name']
+        if (struct.unpack('<Q', inner_link)[0] != inner['address'] or
+                stride != 8 or kind not in ('ObjectProperty', 'ComponentProperty') or
+                'Property' not in [value['name'] for value in _chain(q, inner['cls'])]):
+            raise RuntimeError('Hit component container type differs: ' + name)
+        target = q.obj(struct.unpack('<Q', q.read(
+            inner['address'] + q.r.profile['struct_property_struct'], 8))[0])
+        if q.obj(target['cls'])['name'] != 'Class':
+            raise RuntimeError('Hit component container element is not Class: ' + name)
+        pointers = struct.unpack('<' + 'Q' * count, raw)
+        result['containers'][name] = dict(declared=True, field=field,
+            element_property=inner, element_class=target, count=count, stride=stride,
+            header_bytes=q.value(actor, field).hex(), member_bytes=raw.hex(),
+            explicit_component_occurrences=pointers.count(component['address']),
+            explicit_component_derives_element=target in list(_chain(q, component['cls'])))
+    return result
+
+
 def capture(observer, dll_path, dll_sha256, start, end, *, extent=(0, 0, 0), trace_actors=True,
             extra_flags=TRACE_FLAGS,
             bridge_factory=_AttachedBridge, query_factory=TraceQuery,
@@ -378,6 +425,9 @@ def capture(observer, dll_path, dll_sha256, start, end, *, extent=(0, 0, 0), tra
                              hit_info_bytes=returned[64:104].hex())
         if actor:
             report['hit']['actor_identity'] = q.obj(actor)
+            hit_component = struct.unpack_from('<Q', returned, 96)[0]
+            if hit_component:
+                report['hit']['component_identity'] = q.obj(hit_component)
         if snapshot_surface:
             selected_actor = surface_actor or report['hit'].get('actor_identity')
             if not selected_actor:
@@ -387,8 +437,7 @@ def capture(observer, dll_path, dll_sha256, start, end, *, extent=(0, 0, 0), tra
                 hit_component = struct.unpack_from('<Q', returned, 96)[0]
                 if not hit_component:
                     raise RuntimeError('Edge Trace hit has no collision component')
-                hit_component_identity = q.obj(hit_component)
-                report['hit']['component_identity'] = hit_component_identity
+                hit_component_identity = report['hit']['component_identity']
                 if selected_component is not None and selected_component != hit_component_identity:
                     raise RuntimeError('Edge Trace hit a different Actor/component')
                 selected_component = hit_component_identity

@@ -285,3 +285,19 @@ r10没有stage或游戏／XR运行，仍未接通实际连续C0基准、合法�
 此结论只覆盖本次按归档身份选定的三份文件，不声称搜索了全部历史记录。原文件未改，完整关联、尺寸、时序、源码SHA和解码结果保存在retained-72608-pose-review.json、retained-72608-producer.json／controls.json及相邻C++／构建日志。记录同时去掉了先前按排队顺序推断32408武器归属的标签，仅保留实际进程身份，不将窗口顺序当所属会话证明。
 
 下一项具体缺失证据是新鲜原版CT2下的原始C0头／骨盆／脚位。已有r7 CoverPosePhaseObserver具备有界捕获，不需新Hook／writer：未来在本次组件只读完整收尾并取得另一明确窗口后，可在原版进入成功、当前owner／进程creation／Native session／事件名称均核实后只触发一次Local\\GearsVR.CoverPoseCapture.<PID>，由原观察器在下一匹配Tick最多记录一个episode。事件名称只有PID，不能凭名称证明会话；不能消费自动重置事件来探测状态，也不能把SetEvent成功当成C0快照已完成或未知超时后重发。当前21驱动及元数据only作用域未改、没有发事件，也未增加A／Trace／身体动作。实际采样计划仍须结合组件只读结果收窄。
+
+## 2026年11月9日 23420完成只读归属检查
+
+恢复工作时先复核实际进程，原运行handle18152已不存在，Game／XR／录制／编码均无活动进程；没有重启本次检查。原operator回执exit0，launcher exit0、game退出；最终wrapper回执为restored及21驱动一致。原wrapper的工具终态没有留存，因此只记其退出码未知，不由launcher正常退出推填wrapper0。
+
+23420／creation134386441643258345的实际读取越过65700的WorldInfo声明缓存失败。当前世界中唯一mp_warmachine_SMC#3的类仍为StaticMeshCollectionActor，根CollisionComponent为空，Owner随之为空；声明StaticMeshComponents的元素为ComponentProperty、stride8、目标类StaticMeshComponent，但当前数组count0。严格closing与第二次当前人物／UI观察均完成，ownership_read_completed为TRUE。结果只认证本次只读字段，不证明该Actor没有碰撞；实际TraceHitInfo中的组件尚未在本局读取，不能从空数组补造成员，也不能因此放宽Owner／membership检查。无A进入、Trace、抓边、身体写入或捕获事件。
+
+23.1001398秒完整双路总览1页及贴近第二次字段观察的game00265／sim00320原图已亲看：启动第三人称与等待卡后进入实际第一人称自由双手，暂停／B正常衔接；本次没有掩体动作。游戏采样最大缺口1866.6803ms、模拟器266.6672ms，双路末端覆盖通过，不把采样缺口或窗口标题当渲染FPS／实体头显证据。配对编码77923实际terminal0。
+
+Native cleanup／entry restore／pad恢复TRUE、hand_stop5／drained、XR0；原config字节、settings SHA及head原缺状态精确恢复，结束21驱动一致。既有retention21421实际terminal0，删除1761媒体／322581166字节、errors0，保留23420／37116／67780；原始数值、源码与文字保留。再次实际核idle后已最终明确唯一交窗Longshot034956，不在离线工作期间占窗。完整记录在analysis/cover-system-20261108/cover-23420-review.json。
+
+下一证据切片收窄为：在另一次明确交接窗口中，用原版进入取得新鲜CT2；复用已有有界C0观察器单次采样，并用一条原版Trace认证实际HitInfo组件，再只读核对它的类、Owner与当前组件容器。当前空root／空声明数组否定了从这些字段直接选组件的方向，尚不能判定运行时真正归属结构。后续诊断仍不签发collision_verified／grab_authorized／body写入许可，r9／r10尚未实跑、72608画面失败及完整目标保持未完成。
+
+为保留下一条真实命中的身份，原capture现在在有Actor及非空HitInfo组件时，即使未请求surface snapshot，也将该组件加入原严格身份／registry closing；没有更改调用ABI、Trace次数、pending／free条件或表面准入。新增内部只读观察按明确命中的Actor／Component读取Owner、Outer、根组件，以及StaticMeshComponents／Components／AllComponents三个具名反射容器。缺失字段明确记未声明；已声明容器须通过原类型、元素Class、8字节stride、256预算及完整closing，不扫描其他组件替代命中。容器成员出现次数和类型关系只作为观察，所有碰撞／抓取／身体权限始终FALSE，旧严格surface membership规则未变。
+
+实际45个针对unittest通过（Trace32、原surface13），新增案例包含空集合、不同Owner、其他具名容器、错误元素类型及identity、Owner／空header／元素链接在closing改变等。正向观察后仍断言旧surface拒绝，不能把可读字段升级为安全证明。日志在explicit-hit-observation-tests.log；此读取器变化尚未运行进游戏，Native／PG／XR无需据此重编。

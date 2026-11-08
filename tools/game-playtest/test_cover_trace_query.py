@@ -7,7 +7,8 @@ import sys
 import copy
 from unittest.mock import patch
 
-from cover_trace_query import TraceQuery, capture_edge_interval, _surface_state, SurfaceOwnershipRejected
+from cover_trace_query import (TraceQuery, capture_edge_interval, _surface_state,
+                               _hit_component_observation, SurfaceOwnershipRejected)
 
 
 class Memory:
@@ -485,6 +486,77 @@ class SurfaceSnapshotTests(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, 'differs from Actor collision component'):
             _surface_state(q, roles, actor, m.fresh(m.PAWN))
         q.finish()
+
+    def test_empty_collection_observes_explicit_hit_without_surface_permission(self):
+        m, q, roles, actor, component, inner, data = self.collection_fixture()
+        m.put(actor['address'] + 0x190, struct.pack('<Qii', 0, 0, 0))
+        value = _hit_component_observation(q, roles, actor, component)
+        q.finish()
+        self.assertEqual(value['component'], component)
+        self.assertEqual(value['component_owner'], actor)
+        self.assertIsNone(value['collision_component'])
+        self.assertEqual(value['containers']['StaticMeshComponents']['count'], 0)
+        self.assertEqual(value['containers']['AllComponents'], dict(declared=False))
+        for permission in ('accepted', 'collision_verified', 'grab_authorized', 'body_modified'):
+            self.assertFalse(value[permission])
+        with self.assertRaisesRegex(RuntimeError, 'absent or ambiguous'):
+            _surface_state(q, roles, actor, component)
+
+    def test_wrong_owner_can_be_observed_but_still_cannot_certify_surface(self):
+        m, q, roles, actor, component, inner, data = self.collection_fixture()
+        m.set_value(component['address'], 'Owner', m.PAWN, '<Q')
+        value = _hit_component_observation(q, roles, actor, component)
+        q.finish()
+        self.assertEqual(value['component_owner'], m.fresh(m.PAWN))
+        self.assertFalse(value['accepted'])
+        with self.assertRaises(SurfaceOwnershipRejected):
+            _surface_state(q, roles, actor, component)
+
+    def test_hit_observation_pins_owner_and_empty_container_through_closing(self):
+        for change in ('owner', 'header', 'element_link'):
+            with self.subTest(change=change):
+                m, q, roles, actor, component, inner, data = self.collection_fixture()
+                m.put(actor['address'] + 0x190, struct.pack('<Qii', 0, 0, 0))
+                _hit_component_observation(q, roles, actor, component)
+                if change == 'owner':
+                    m.set_value(component['address'], 'Owner', m.PAWN, '<Q')
+                elif change == 'header':
+                    m.put(actor['address'] + 0x190, struct.pack('<Qii', data, 2, 2))
+                else:
+                    m.put(inner + m.profile['struct_property_struct'], struct.pack('<Q', m.ACTOR))
+                with self.assertRaises(RuntimeError):
+                    q.finish()
+
+    def test_hit_observation_rejects_bad_container_and_changed_identity(self):
+        for bad in ('stride', 'inner_kind', 'element_class', 'world', 'component_identity'):
+            with self.subTest(bad=bad):
+                m, q, roles, actor, component, inner, data = self.collection_fixture()
+                if bad == 'stride':
+                    m.put(inner + 0x74, struct.pack('<I', 4))
+                elif bad == 'inner_kind':
+                    m.objects[inner]['cls'] = m.kind_classes['FloatProperty']
+                elif bad == 'element_class':
+                    m.put(inner + m.profile['struct_property_struct'], struct.pack('<Q', m.PAWN))
+                elif bad == 'world':
+                    m.set_value(actor['address'], 'WorldInfo', m.PAWN, '<Q')
+                else:
+                    component = dict(component, number=9)
+                with self.assertRaises(RuntimeError):
+                    _hit_component_observation(q, roles, actor, component)
+
+    def test_other_declared_container_is_reported_without_replacing_membership_rule(self):
+        m, q, roles, actor, component, inner, data = self.collection_fixture()
+        field = m.properties.pop((actor['cls'], 'StaticMeshComponents'))
+        m.properties[actor['cls'], 'AllComponents'] = field
+        m.objects[field['address']]['name'] = 'AllComponents'
+        value = _hit_component_observation(q, roles, actor, component)
+        q.finish()
+        self.assertEqual(value['containers']['StaticMeshComponents'], dict(declared=False))
+        self.assertEqual(value['containers']['AllComponents']['explicit_component_occurrences'], 1)
+        self.assertTrue(value['containers']['AllComponents']['explicit_component_derives_element'])
+        self.assertFalse(value['accepted'])
+        with self.assertRaisesRegex(RuntimeError, 'Required bone property not found'):
+            _surface_state(q, roles, actor, component)
 
     def test_inherited_world_hint_does_not_become_a_declared_collection_field(self):
         m, q, roles, actor, component = self.fixture()
