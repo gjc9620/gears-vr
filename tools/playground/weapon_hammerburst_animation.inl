@@ -423,14 +423,36 @@ bool reconcile_seek() noexcept {
     if(!ownership.seek_pending&&current.time!=ownership.last.time)return false;
     ownership.last=current;ownership.seek_pending=false;return true;
 }
+// HB's live selected-node observation already brackets the current mesh,
+// asset, sequence, clock and node values. Reconcile that SAME observation;
+// do not read the entire stopped node again before preparing its controls.
+// This never substitutes cached identity or content for fresh admission.
+bool reconcile_hammerburst_observation(Observation const& current) noexcept {
+    if(!ownership.active||!ownership.stopped)return false;
+    const auto& expected=ownership.last;
+    if(!hand::same(current.weapon,expected.weapon)||!hand::same(current.component,expected.component)||
+       !hand::same(current.asset,expected.asset)||!hand::same(current.node,expected.node)||
+       !hand::same(current.sequence,expected.sequence)||current.sequence_name.index!=expected.sequence_name.index||
+       current.sequence_name.number!=expected.sequence_name.number||current.length!=expected.length||
+       current.reload_start!=expected.reload_start||current.playing||current.rate!=expected.rate||
+       current.looping!=expected.looping||!std::isfinite(current.time)||current.time<0||current.time>current.length)return false;
+    if(ownership.seek_pending&&std::abs(current.time-ownership.wanted_time)>1e-4f)return false;
+    if(!ownership.seek_pending&&current.time!=expected.time)return false;
+    ownership.last=current;ownership.seek_pending=false;return true;
+}
 bool seek_impl(hand::Frame const& source,std::uint64_t serial,float time,bool settling) noexcept {
     if(!ownership.active||serial!=ownership.serial||!(lancerreload_inventory::identity(source)==ownership.inventory)||
        !(ownership.visual_only?nativeequipment::current(nullptr,source):lancerreload_state::owns(source,serial))||
        (settling?(!playground::instance(source.weapon.address,L"Weap_COGPistol")||
             !source.left_grip_known||source.left_grip_down||time<ownership.last.time):!lancerreload_state::item_owned(source))||
-       !std::isfinite(time)||time<0||time>ownership.last.length||!reconcile_seek())return false;
+       !std::isfinite(time)||time<0||time>ownership.last.length)return false;
     Controls controls{};
-    if(!prepare_controls(source,ownership.last,controls)||!hand::same(controls.seek,ownership.controls.seek))return false;
+    if(playground::instance(source.weapon.address,L"Weap_LocustAssaultRifle")){
+        Observation current{};
+        if(!observe_expected(source,current)||!reconcile_hammerburst_observation(current)||
+           !prepare_controls(source,current,controls,true))return false;
+    }else if(!reconcile_seek()||!prepare_controls(source,ownership.last,controls))return false;
+    if(!hand::same(controls.seek,ownership.controls.seek))return false;
     playground::Args call(ownership.last.node.address,L"SetPosition");hand::ObjectIdentity fn{};
     const auto time_field=call.prop(L"NewTime"),notify_field=call.prop(L"bFireNotifies");
     if(call.r.size!=8||!input_field(call,time_field,L"FloatProperty",4)||
