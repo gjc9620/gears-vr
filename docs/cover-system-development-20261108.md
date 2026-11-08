@@ -317,3 +317,5 @@ Native cleanup／entry restore／pad恢复TRUE、hand_stop5／drained、XR0；�
 旧df787ea1的r7动作计划在运行前明确撤回，保留原档；最终prepared为equipment-controls-prepared-20261109-cover-r11，PG仍f8e6f3c2、XR仍1684，21驱动与完整源码归档drivers-hit-pose-r11，plan SHA256为c6e3e0c67d49d61fce1745234699157a5642628343056e45eb044c62bde08579，prepare-only通过。已经向唯一前驱Frag更新身份，未stage／run；接受的交接为Snub042943→Frag050613→Cover本项→Longshot050328→HB050438，以实际最终交接为准，不因idle启动。
 
 离线解码器按r7真实Header／Row／Episode声明生成，static_assert尺寸56／84936／594736；复用冻结r10已有Marcus全身模型与头部marker计算原始世界姿态，不制造Core或中立校准。MSVC/W4/WX编译0；72608真实空文件读出count0，错误session／snapshot尺寸及尾随字节拒绝；原观察器Host生成的8episode文件可解码，并分别拒绝异常、并发、重复及错误参数的row。该Host为合成骨架，未被解释为Marcus几何。未来实际游戏文件仍需与该局数值归档SHA、原Native session、CT2观察、世界／人物／mesh及时间互核。原始头／骨盆／脚位仅是测量，不直接授予中立基准、扫掠、C0写入或命中／枪口权限。
+
+最终再显式pin事件复用的既有run_stereo_continuous.py及launcher.py，直接依赖由21增至23；没有再改代码、动作或制品。c6e3e0c6的direct21计划另存未运行档，最终plan SHA为4f17b9da85afd2dd540982d19401ecbabd9fff8e446ca8b050b5f4afc1203232，prepare-only0，已向Frag给出准确新身份。另将保留Marcus115骨骼载荷放入明确合成的Host owner／episode，离线解码的世界头／骨盆／双脚及作者眼点分支均成功，非有限值和单位四元数检查通过；此夹具不是游戏内掩体采样，neutral／atomic／body权限仍FALSE，记录在decoder-synthetic-owner-retained-marcus-review.json。
