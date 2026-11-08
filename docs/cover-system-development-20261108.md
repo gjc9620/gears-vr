@@ -412,3 +412,20 @@ body_c0_goal_policy_live::sample_current_cover_pose在原context prepare检查�
 r15 Native全编译链接0，661依赖，93开关逐项与r14／r13一致；DLL SHA256为b84973cd67859277cccc58443d8c0e6d1042c1c5beb063c4a9ede4e8f669b720。准确冻结源的On206、Off及CoverNeutralGoal167执行均0。最初构建误写不存在的CoverContextLiveTest目标，Ninja明确拒绝；失败目录原样保留，改用原有On／Off目标在全新build-context-native-r15-corrected构建，未绕过build_verified的空构建目录规则。首次手工读者编译缺MinHook include路径也保留，修正为原tools/third-party/minhook/include后通过。证据见context-native-r15-source.json、context-native-r15-build-result.json及相邻原日志。
 
 当前运行计划仍为6838d7b93804c01aac3e101d8d20be602bcead458714d02459067faae1b7e274／prepared cover-r13／Native5cf4adea／PGf8e6／XR1684；本轮没有改23运行驱动或已登记制品，没有将r14／r15混入该段或新增slot。Longshot窗口尚须其全部视觉／编码／retention及恢复终态后的明确交接。完整中立provider、合法脚位与体积碰撞、抓边提交、双眼／受击／枪口及实体头显仍未闭合，Publicv71和历史评分不变。
+
+
+## 2026年11月9日 61864实际r13：眼点拒绝清零，几何closing首败保留
+
+收到Longshot实际8092全部恢复、全跨度视觉／编码／retention终态后的唯一明确交窗，独立核实际idle及23驱动／制品SHA，再按6838d7b93804c01aac3e101d8d20be602bcead458714d02459067faae1b7e274计划stage r13。该段没有使用r14／r15，源码接线与实跑证据分别保留。stage归档prior-private-text-20261109-064948，执行计划原样保存为cover-boundary-runtime-plan-executed-61864.json。
+
+实际game61864／creation134386518083637581，owner51584／creation134386518002561062，Native session started_qpc9863948299927；Native5cf4adea／PGf8e6／XR1684。原版A一次到CT2／CA0，当前Pawn位置[-3931.990234,-162.364182,579]。随后独立geometry读取在约71.545ms的观察段末端报告“World-state metadata/registry changed at closing boundary”，operator实际exit1，整段passed=false。Trace尚未启动，实际调用0；因此r12新增当前Components／AllComponents成员认证分支仍未取得游戏执行证据，不能把此次A成功当作该读者通过。
+
+原world_state.Query.finish已经区分identity／metadata／registry并保存closing_rejection，但cover_geometry_state.capture只带出了统一异常字符串，实际是哪一字段／对象／header变化在61864回执中缺失。不能据统一报错推断对象表增长、缓存或游戏故障，也不能在进程退出后恢复未保存的读回。下一项应保留该既有结构化closing witness并做定向检查，继续保留严格closing，不能用允许变化或盲重试绕过本次首败。
+
+r13运行日志中authored_eye_applied352、authored_eye_rejected0、missing_basis_rejected0、uncomposed_view_rejected1；rig_tracking_published313、body_goal_attempts312／rejected83。相比旧61492的504次眼点拒绝，本段该拒绝未再出现；这是准确r13候选的限定运行结果，不证明旧504次全部同因、所有掩体或实体头显已修好。原Scene／C0链已有本段新的调用计数，不能将计数当作完整中立身体写入或当前脚位／碰撞通过。
+
+已亲自查看全21.0167866秒的paired-review-00.jpg及四张实际原图game00352／00363、simulator00426／00437；原图按A后实际观察QPC附近选取，各自时间在61864-selected-visual.json。两路当前掩体附近已显示实际游戏视野；右侧身体／装备仍大面积近裁剪遮挡，完整视觉仍FAIL，启动段仍见第三人称。WGC为369游戏／443模拟器采样，末端覆盖过，最大捕获间隔1.6500237／0.2666679秒，不将采样或窗口标题FPS当实际渲染率／原子C0-GPU配对。
+
+runner62662实际terminal0、launcher0，operator1真实失败保留；paired编码90737实际terminal0。Native cleanup／entry restore及pad恢复TRUE，hand_stop5／drained，Native pending0／resources_retained0／cleanup_timeout0，XR0、game退出。XR回执为实际terminal exiting／objects destroyed／shutdown completed，未把其end_session_succeeded=false写成已调用EndSession。原config字节、settings SHA及head原缺状态精确恢复，结束23驱动一致，closure-proof和wrapper回执均保存。
+
+既有retention55213实际terminal0，删除1207媒体／203868906字节，保留61864／8092／68512，最多3局／48小时，源／文字／数值未删。再次独立核idle后已最终唯一交窗Snub060545-input-loss；本窗没有追加case。完整记录analysis/cover-system-20261108/cover-61864-review.json，原session为analysis/runtime/continuous-stereo-61864-20261109-065042-562f7bb5.json。当前身体面墙、中立provider、合法脚位与连续体积碰撞、真实抓边提交、受击／枪口及实体头显仍未闭合，Publicv71和原历史评分不变。
