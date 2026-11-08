@@ -7,7 +7,7 @@ enum class Mode { free,snap,grab };
 // Read-only common view of the existing owner decision. No asset geometry,
 // game reads, input publication or lease grant. Snap never grants a lease.
 inline Mode mode(hand::Frame const& f,hand::GripGameState const& game,
-                 hand::Decision const& d,std::int64_t now) noexcept {
+                 hand::Decision const& d,std::int64_t now,bool retained_snap=false) noexcept {
     if(!hand::frame_active(f,now)||!game.known||!game.main_hand_held||game.busy||
        game.animation_owns_hands||game.kind!=hand::WeaponKind::firearm||
        !f.left_tracked||!f.left_grip_known||!hand::same(f.key,d.key)||d.release_required||
@@ -24,6 +24,8 @@ inline Mode mode(hand::Frame const& f,hand::GripGameState const& game,
     if(f.left_grip_down||d.lease.kind!=hand::LeaseKind::none||
        game.request_magazine||game.request_ammo)return Mode::free;
     for(auto const& lease:game.object_incumbents)if(lease.kind!=hand::LeaseKind::none)return Mode::free;
-    return hand::support_contact(f,game,false)?Mode::snap:Mode::free;
+    // The caller may retain an already authenticated passive selection.
+    // This affects neutral contact only; it never grants or retains Grab.
+    return hand::support_contact(f,game,retained_snap)?Mode::snap:Mode::free;
 }
 }

@@ -109,6 +109,17 @@ int main(){
     {Host x;auto p=x.prepare(false);auto d=x.arbitrate(p,false);
      x.frame.controllers.hands[0].squeeze=1;x.frame.left_grip_down=1;
      assert(mode(x.frame,x.game,d,x.frame.now_ns)==Mode::free);}
+    { // Passive keep range cannot create action authority.
+      Host x;x.frame.controllers.hands[0].grip.position.x=.18;
+      const auto p=x.prepare(false);auto d=x.arbitrate(p,false);
+      assert(gears_weapon_support_socket::mode(x.frame,x.game,d,x.frame.now_ns)==Mode::free);
+      assert(gears_weapon_support_socket::mode(x.frame,x.game,d,x.frame.now_ns,true)==Mode::snap);
+      ++d.key.lifecycle;
+      assert(gears_weapon_support_socket::mode(x.frame,x.game,d,x.frame.now_ns,true)==Mode::free);
+      Host y;y.frame.controllers.hands[0].grip.position.x=.18;
+      const auto pressed=y.prepare(true);const auto denied=y.arbitrate(pressed,true);
+      assert(gears_weapon_support_socket::mode(y.frame,y.game,denied,y.frame.now_ns,true)==Mode::free);
+    }
     gears_vr::Vector point{};
     assert(gears_weapon_hammerburst_foregrip::grip_in_mesh(point));
     assert(gears_vr::finite(point));
