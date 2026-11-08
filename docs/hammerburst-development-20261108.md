@@ -157,3 +157,7 @@ HB独立护木几何、Snap输出及当前真实support租约下的双手求解�
 离线新增显式replacement驱动分支：实际连续拔出原匣→真实松手→等待waiting_ammo→连续左肩路线及新Grip→等待new_magazine→持续持握入槽→闭合→有限库存按实际used/reserve核对填充量和守恒→权威回射。未调用游戏setter/ForceReload/GiveTo，不自动叠到护木或原匣返回检查。需要HB_RELOAD和HB_REPLACEMENT两个显式选择，默认仍原匣返回；护木与换弹互斥。两文件语法通过，但动作、路径、供弹与实际计数均尚未实跑。总0与L>0/R0仍需另行实际覆盖。
 
 最新冻结hammerburst-prepared-20261108-223041继承PGfe94c6，全部源与制品哈希核对，replacement-driver-prepared.json；尚未stage。222846原冻结保持原字节。手雷35856/游戏26496实际在运行，Snub确认其后原匣段正常收尾再唯一交HB，本轮没有抢窗或标完整目标完成。
+
+## 离线引擎分析可用性核查
+
+为解释局部X−35度尝试绑定既定游戏EXE做静态引擎分析：REA明确provider_unavailable/REA_IDA_MCP_CONFIG未配置，直接IDA list_databases为空；未取得反编译证据，未安装软件/更改工具注册/启动目标。保留engine-analysis-availability.json。该工具条件不阻断整个开发目标：下一实际证据仍由已冻结PGfe94c6现有GT回执补列获得。Frag本轮运行已结束正在收尾，Snub确认其后原匣段再交HB，尚未归还窗口；不把暂时无进程当交窗。
