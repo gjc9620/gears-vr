@@ -27,11 +27,12 @@ inline bool cover_body_target_key_valid(CoverBodyTargetKey const& k){
 struct CoverBodyTarget {
     CoverBodyTargetKey key{};
     CoverViewAnchor anchor{};
-    CoverViewResult committed_view{};
+    CoverViewAnchor view_anchor{};
+    CoverViewResult committed_view{}; // Pre-HMD base; virtual offset only.
     CoverOffset virtual_offset{};
     StereoResult tracking{};
     CoverPhysicalDisplacement physical{};
-    Vector desired_eye_world{};
+    Vector desired_eye_world{}; // Already contains current HMD translation once.
     double desired_right_metres{},desired_up_metres{},desired_forward_metres{},units_per_metre{};
     std::int64_t observed_ns{};
     // An eye goal is not a solved bone pose. The head-to-eye calibration,
@@ -44,7 +45,7 @@ static_assert(std::is_trivially_copyable_v<CoverBodyTarget>&&std::is_standard_la
 // No animation feedback, height saturation, triangle normalization or game
 // writes. expected must be the caller's current binding, not a cached old key.
 inline bool prepare_cover_body_target(CoverBodyTargetKey const& expected,CoverBodyTargetKey const& key,
-    CoverViewAnchor const& anchor,CoverViewResult const& committed,CoverOffset virtual_offset,
+    CoverViewAnchor const& anchor,CoverViewAnchor const& view_anchor,CoverViewResult const& committed,CoverOffset virtual_offset,
     StereoResult const& stereo,std::int64_t now_ns,double units_per_metre,CoverBodyTarget& out,bool allow_sim=false){
     if(!cover_body_target_key_valid(key)||!same(expected,key)||!stereo||stereo.heading_deferred||
        key.xr_session!=stereo.sample.session||key.xr_space!=stereo.sample.space_epoch||
@@ -52,17 +53,19 @@ inline bool prepare_cover_body_target(CoverBodyTargetKey const& expected,CoverBo
        !stereo_tracking_valid(stereo.sample,allow_sim)||!stereo_render_active(stereo.sample)||!stereo_geometry_valid(stereo.sample)||
        now_ns<=0||stereo.sample.received_ns<=0||now_ns<stereo.sample.received_ns||
        now_ns-stereo.sample.received_ns>100000000)return false;
-    CoverViewResult checked{};CoverBodyTarget candidate{};
-    if(!prepare_cover_view(anchor,virtual_offset,units_per_metre,checked)||
+    CoverViewResult checked{};CoverBodyTarget candidate{};CoverPhysicalDisplacement wall_physical{};
+    if(!prepare_cover_view(anchor,view_anchor,virtual_offset,units_per_metre,checked)||
        checked.base_eye_world.x!=committed.base_eye_world.x||checked.base_eye_world.y!=committed.base_eye_world.y||
        checked.base_eye_world.z!=committed.base_eye_world.z||checked.base_view!=committed.base_view||
        !cover_physical_displacement(stereo.reference,stereo.sample.head,candidate.physical)||
-       !cover_tracking_point(anchor,committed,stereo.reference,stereo.sample.head.position,units_per_metre,candidate.desired_eye_world))return false;
-    candidate.key=key;candidate.anchor=anchor;candidate.committed_view=committed;candidate.virtual_offset=virtual_offset;
+       !cover_physical_in_wall(anchor,view_anchor,candidate.physical,wall_physical)||
+       !cover_tracking_point(view_anchor,committed,stereo.reference,stereo.sample.head.position,units_per_metre,candidate.desired_eye_world))return false;
+    candidate.key=key;candidate.anchor=anchor;candidate.view_anchor=view_anchor;
+    candidate.committed_view=committed;candidate.virtual_offset=virtual_offset;
     candidate.tracking=stereo;candidate.observed_ns=now_ns;candidate.units_per_metre=units_per_metre;
-    candidate.desired_right_metres=virtual_offset.right+candidate.physical.right;
-    candidate.desired_up_metres=virtual_offset.up+candidate.physical.up;
-    candidate.desired_forward_metres=candidate.physical.forward;
+    candidate.desired_right_metres=virtual_offset.right+wall_physical.right;
+    candidate.desired_up_metres=virtual_offset.up+wall_physical.up;
+    candidate.desired_forward_metres=wall_physical.forward;
     if(!std::isfinite(candidate.desired_right_metres)||!std::isfinite(candidate.desired_up_metres)||
        !std::isfinite(candidate.desired_forward_metres))return false;
     out=candidate;return true;

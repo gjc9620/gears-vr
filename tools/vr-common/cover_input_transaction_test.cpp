@@ -82,14 +82,17 @@ static void exact_snapshot_and_opaque_ticket(){
     C(other_ticket!=d.ticket&&!f.kernel.complete(other_ticket,true,f.owner).accepted);
     candidate=f.kernel.update_with_decoded(d.ticket,absent(),f.owner);C(candidate.accepted&&candidate.left_hand.new_grant);
     C(f.kernel.complete(d.ticket,true,f.owner).interaction.owns_left_hand);
-    f.hands.hands[0].grip.position.y=.9;f.advance(.8f);d=f.begin();
+    f.hands.hands[0].grip.position.y=.9;f.advance(.8f);const auto selected_tracking=f.frame.stereo;d=f.begin();
     // No pointer survives begin: proposal/height/view use copied data even if
     // the caller's storage is overwritten before arbitration.
     f.hands.hands[0].grip.position.y=-9;f.curve[1].height_metres=.6;f.frame.anchor.neutral_eye_world.z=9000;
+    f.frame.stereo.sample.head.position.y+=7;
+    for(auto& eye:f.frame.stereo.sample.eyes)eye.pose.position.y+=7;
     f.frame.cover.edge.allowed=false;
     candidate=f.kernel.update_with_decoded(d.ticket,absent(),f.owner);C(candidate.accepted);
     auto r=f.kernel.complete(d.ticket,true,f.owner);
     C(close(r.interaction.offset.up,.3)&&close(r.requested_up_weight,.5)&&close(r.view.base_eye_world.z,-10));
+    C(stereo_same(r.tracking.sample,selected_tracking.sample)&&stereo_same_pose(r.tracking.reference,selected_tracking.reference));
 
     Fixture bounded;CoverHeightKey curve[33]{};bounded.frame.height_curve=curve;bounded.frame.height_key_count=33;
     C(!bounded.begin().accepted);bounded.advance(0);bounded.frame.height_key_count=32;

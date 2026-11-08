@@ -27,6 +27,8 @@ struct CoverInputOwnerResult {
     CoverControllerStatus controller_status=CoverControllerStatus::unavailable;
     LeftHandInteractionDecision left_hand;
     CoverViewResult view;
+    CoverViewAnchor wall_anchor{},view_anchor{}; // Frozen only with view_valid.
+    StereoResult tracking{}; // Exact selected sample/reference used for this view.
     CoverPhysicalDisplacement physical;
     double requested_right_metres=0,requested_up_metres=0,requested_up_weight=0;
     // A failed hand transaction may still re-certify a held-offset/physical-HMD
@@ -297,16 +299,14 @@ private:
            !stereo_render_active(frame.stereo.sample)||!stereo_tracking_valid(frame.stereo.sample,frame.allow_sim)||
            !stereo_geometry_valid(frame.stereo.sample)||frame.stereo.sample.received_ns<=0||
            frame.stereo.sample.received_ns>frame.now_ns||frame.now_ns-frame.stereo.sample.received_ns>100000000)return;
+        CoverPhysicalDisplacement wall_physical{};
         if(!prepare_cover_view(frame.anchor,frame.view_anchor,proposal.offset,frame.units_per_metre,result.view)||
-           !cover_physical_displacement(frame.stereo.reference,frame.stereo.sample.head,result.physical))return;
+           !cover_physical_displacement(frame.stereo.reference,frame.stereo.sample.head,result.physical)||
+           !cover_physical_in_wall(frame.anchor,frame.view_anchor,result.physical,wall_physical))return;
+        result.wall_anchor=frame.anchor;result.view_anchor=frame.view_anchor;
+        result.tracking=frame.stereo;
         result.view_valid=true;
-        const auto& wall=frame.anchor;const auto& view=frame.view_anchor;
-        const bool same_heading=wall.forward_world.x==view.forward_world.x&&wall.forward_world.y==view.forward_world.y&&
-            wall.right_world.x==view.right_world.x&&wall.right_world.y==view.right_world.y;
-        const auto physical_right=same_heading?result.physical.right:
-            (view.right_world.x*result.physical.right+view.forward_world.x*result.physical.forward)*wall.right_world.x+
-            (view.right_world.y*result.physical.right+view.forward_world.y*result.physical.forward)*wall.right_world.y;
-        result.requested_right_metres=proposal.offset.right+physical_right;
+        result.requested_right_metres=proposal.offset.right+wall_physical.right;
         result.requested_up_metres=proposal.offset.up+result.physical.up;
         result.body_weight_valid=cover_up_weight(has_curve_?height_curve_.data():nullptr,frame.height_key_count,
             result.requested_up_metres,result.requested_up_weight);

@@ -427,6 +427,10 @@ if(MSVC AND CMAKE_SIZEOF_VOID_P EQUAL 8)
     set_property(TARGET CoverSharedInputLiveTest PROPERTY CXX_STANDARD 17)
     target_compile_options(CoverSharedInputLiveTest PRIVATE /W4 /WX /EHsc /UNDEBUG)
     add_test(NAME CoverSharedInputLiveTest COMMAND CoverSharedInputLiveTest outside)
+    add_executable(CoverFullGoalLiveTest cover_full_goal_live_test.cpp)
+    set_property(TARGET CoverFullGoalLiveTest PROPERTY CXX_STANDARD 17)
+    target_compile_options(CoverFullGoalLiveTest PRIVATE /W4 /WX /EHsc /UNDEBUG)
+    add_test(NAME CoverFullGoalLiveTest COMMAND CoverFullGoalLiveTest)
     foreach(SHARED_MODE IN ITEMS cover prepare-rejected commit-rejected absent blocked gap-stop gap-unregister
             source1-outside source1-cover source1-disallowed held-fallback
             action-revoke action-external action-prepare-race action-commit-race action-revoke-revision tracking)

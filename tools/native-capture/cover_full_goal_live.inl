@@ -6,24 +6,37 @@ gears_vr::CoverBodyTarget latest{};bool available{};
 uint64_t attempts{},accepted{},rejected{};
 const char* reason="inactive";
 void clear(char const* why){std::lock_guard<std::mutex> lock(mutex);available=false;reason=why;}
-void prepare(gears_anchor::Receipt const* scene,gears_vr::StereoResult const& stereo){
+void prepare(gears_anchor::Receipt const* scene_receipt,gears_vr::StereoResult const& selected_stereo){
     if(!cover_input_live::enabled||!cover_camera_live::enabled)return;
     ++attempts;
     try{
         auto const& diagnostics=cover_input_live::diagnostics;auto const& result=diagnostics.latest;
-        if(!scene||scene->thread!=GetCurrentThreadId()||diagnostics.frame!=scene->invocation||
-           diagnostics.sequence!=stereo.sample.sequence||diagnostics.reference!=stereo.reference_generation||!result.view_valid){
+        if(!scene_receipt||scene_receipt->thread!=GetCurrentThreadId()||diagnostics.frame!=scene_receipt->invocation||
+           diagnostics.sequence!=selected_stereo.sample.sequence||diagnostics.reference!=selected_stereo.reference_generation||!result.view_valid){
             ++rejected;clear("input_or_scene");return;
         }
+        auto const& tracking=result.tracking;
+        if(tracking.status!=selected_stereo.status||tracking.reference_generation!=selected_stereo.reference_generation||
+           tracking.recentered!=selected_stereo.recentered||tracking.heading_deferred!=selected_stereo.heading_deferred||
+           !gears_vr::stereo_same_pose(tracking.reference,selected_stereo.reference)||
+           !gears_vr::stereo_same(tracking.sample,selected_stereo.sample)){
+            ++rejected;clear("input_tracking_binding");return;
+        }
         cover_neutral_eye_live::EyeSample eye{};
-        if(!cover_neutral_eye_live::sample(scene,eye)) {++rejected;clear("current_eye_binding");return;}
+        if(!cover_neutral_eye_live::sample(scene_receipt,eye)) {++rejected;clear("current_eye_binding");return;}
         gears_vr::CoverBodyTargetKey key{};key.epochs=cover_input_live::epochs;
         key.world=eye.current_world;key.world_generation=eye.world_generation;key.pawn=eye.pawn.address;
-        key.mesh=eye.mesh.address;key.link=eye.link.address;key.slot=eye.slot;key.thread=scene->thread;key.scene=scene->invocation;
-        key.xr_session=stereo.sample.session;key.xr_space=stereo.sample.space_epoch;key.reference=stereo.reference_generation;key.sequence=stereo.sample.sequence;
+        key.mesh=eye.mesh.address;key.link=eye.link.address;key.slot=eye.slot;key.thread=scene_receipt->thread;key.scene=scene_receipt->invocation;
+        key.xr_session=selected_stereo.sample.session;key.xr_space=selected_stereo.sample.space_epoch;key.reference=selected_stereo.reference_generation;key.sequence=selected_stereo.sample.sequence;
         gears_vr::CoverViewAnchor anchor{eye.neutral_eye_world,cover_camera_live::facing.forward,cover_camera_live::facing.right};
+        const auto& frozen=result.wall_anchor;
+        if(frozen.neutral_eye_world.x!=anchor.neutral_eye_world.x||frozen.neutral_eye_world.y!=anchor.neutral_eye_world.y||
+           frozen.neutral_eye_world.z!=anchor.neutral_eye_world.z||frozen.forward_world.x!=anchor.forward_world.x||
+           frozen.forward_world.y!=anchor.forward_world.y||frozen.forward_world.z!=anchor.forward_world.z||
+           frozen.right_world.x!=anchor.right_world.x||frozen.right_world.y!=anchor.right_world.y||
+           frozen.right_world.z!=anchor.right_world.z){++rejected;clear("input_wall_binding");return;}
         gears_vr::CoverBodyTarget goal{};
-        if(!gears_vr::prepare_cover_body_target(key,key,anchor,result.view,result.interaction.offset,stereo,
+        if(!gears_vr::prepare_cover_body_target(key,key,frozen,result.view_anchor,result.view,result.interaction.offset,tracking,
             gears_vr::monotonic_ns(),stereo_units_per_metre,goal,simulator_operator)){
             ++rejected;clear("goal_inputs");return;
         }

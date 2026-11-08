@@ -46,6 +46,14 @@ int main(){
         CHECK(prepare_cover_view(view,{.2,.1},100,legacy)&&same_view.base_view==legacy.base_view);
         auto wrong_eye=view;wrong_eye.neutral_eye_world.x+=1;const auto saved_dragged=dragged;
         CHECK(!prepare_cover_view(wall,wrong_eye,{},100,dragged)&&dragged.base_view==saved_dragged.base_view);
+        CoverPhysicalDisplacement physical{.15,.05,.1},wall_motion{};
+        CHECK(cover_physical_in_wall(wall,view,physical,wall_motion));
+        const auto dx=.15*view.right_world.x+.1*view.forward_world.x;
+        const auto dy=.15*view.right_world.y+.1*view.forward_world.y;
+        CHECK(near(wall_motion.right,dx*wall.right_world.x+dy*wall.right_world.y,1e-10));
+        CHECK(near(wall_motion.forward,dx*wall.forward_world.x+dy*wall.forward_world.y,1e-10)&&wall_motion.up==.05);
+        const auto saved_motion=wall_motion;
+        CHECK(!cover_physical_in_wall(wall,wrong_eye,physical,wall_motion)&&wall_motion.right==saved_motion.right);
         const Vector start{reference.position.x+.1,reference.position.y-.2,reference.position.z-.3};
         const Vector right{start.x+.05*axes.right.x,start.y+.05*axes.right.y,start.z+.05*axes.right.z};
         const Vector up{start.x+.03*axes.up.x,start.y+.03*axes.up.y,start.z+.03*axes.up.z};

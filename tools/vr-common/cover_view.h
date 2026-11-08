@@ -70,6 +70,23 @@ inline bool prepare_cover_view(CoverViewAnchor const& wall,CoverViewAnchor const
 }
 
 struct CoverPhysicalDisplacement {double right=0,up=0,forward=0;};
+// Re-express a displacement from the fixed tracking/view axes in wall axes.
+// It remains in metres and contains no virtual offset or current head angle.
+inline bool cover_physical_in_wall(CoverViewAnchor const& wall,CoverViewAnchor const& view,
+                                  CoverPhysicalDisplacement const& physical,CoverPhysicalDisplacement& out){
+    if(!cover_view_basis(wall)||!cover_view_basis(view)||
+       wall.neutral_eye_world.x!=view.neutral_eye_world.x||wall.neutral_eye_world.y!=view.neutral_eye_world.y||
+       wall.neutral_eye_world.z!=view.neutral_eye_world.z||!std::isfinite(physical.right)||
+       !std::isfinite(physical.up)||!std::isfinite(physical.forward))return false;
+    if(wall.forward_world.x==view.forward_world.x&&wall.forward_world.y==view.forward_world.y&&
+       wall.right_world.x==view.right_world.x&&wall.right_world.y==view.right_world.y){out=physical;return true;}
+    const auto x=view.right_world.x*physical.right+view.forward_world.x*physical.forward;
+    const auto y=view.right_world.y*physical.right+view.forward_world.y*physical.forward;
+    CoverPhysicalDisplacement candidate{x*wall.right_world.x+y*wall.right_world.y,physical.up,
+        x*wall.forward_world.x+y*wall.forward_world.y};
+    if(!std::isfinite(candidate.right)||!std::isfinite(candidate.forward))return false;
+    out=candidate;return true;
+}
 // Body/exposure follows the SAME head-position delta that stereo_matrices uses.
 // The result is in metres in the fixed reference camera's right/up/forward
 // basis. Rotation is deliberately absent from this calculation; natural head
