@@ -7,6 +7,9 @@
 bool stereo_xr=true;double stereo_units_per_metre=100;
 #include "run_camera_live.inl"
 namespace run=run_camera_live;
+#ifndef GEARS_RUN_CAMERA_TEST_MAIN
+#define GEARS_RUN_CAMERA_TEST_MAIN main
+#endif
 #if GEARS_COVER_BODY_PROTOTYPE
 uint64_t fake_ns=1000000000;
 uint64_t clock_ns(){return fake_ns;}
@@ -51,7 +54,7 @@ void live_setup(){
 gears_vr::StereoMatrix original(){return {1,0,0,0,0,1,0,0,0,0,1,0,-7,-8,-9,1};}
 bool prepare(gears_vr::StereoMatrix& view,bool fp=true){return run::prepare(&scene,stereo,view,fp);}
 void warm(gears_vr::StereoMatrix& view){for(unsigned i=0;i<3;++i){C(!prepare(view,false));fake_ns+=100000000;tick();}C(run::kernel.calibrated());}
-int main(){
+int GEARS_RUN_CAMERA_TEST_MAIN(){
  arena=reinterpret_cast<uintptr_t>(VirtualAlloc(nullptr,saved_arena.size(),MEM_COMMIT|MEM_RESERVE,PAGE_READWRITE));if(!arena)return 99;
  live_setup();auto view=original();auto before=view;run::enabled=false;C(!prepare(view)&&view==before&&!reads);run::enabled=true;
  memcpy(saved_arena.data(),reinterpret_cast<void const*>(arena),saved_arena.size());warm(view);C(view==before);tick(4);C(!prepare(view,false)&&view==before);C(prepare(view));
@@ -99,5 +102,5 @@ int main(){
  C(VirtualFree(reinterpret_cast<void*>(arena),0,MEM_RELEASE)!=0);printf("run_camera_live: %u checks, %u failures; CPU composition only\n",checks,failures);return failures?1:0;
 }
 #else
-int main(){auto view=gears_vr::StereoMatrix{};const auto before=view;C(!run::prepare(nullptr,{},view,true)&&view==before);C(!run::enabled);printf("run_camera_live OFF: %u checks, %u failures\n",checks,failures);return failures?1:0;}
+int GEARS_RUN_CAMERA_TEST_MAIN(){auto view=gears_vr::StereoMatrix{};const auto before=view;C(!run::prepare(nullptr,{},view,true)&&view==before);C(!run::enabled);printf("run_camera_live OFF: %u checks, %u failures\n",checks,failures);return failures?1:0;}
 #endif

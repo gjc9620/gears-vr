@@ -14,6 +14,28 @@ namespace weapon_hand_runtime::detail {
 std::atomic<bool> admission_closed{},stop_requested{},unknown_fault{};std::atomic<unsigned> calls{};
 struct Call {Call(){++calls;}~Call(){--calls;}};
 }
+#if defined(GEARS_COVER_CONTEXT_READER) && GEARS_COVER_CONTEXT_READER
+// Publisher integration only. The real reader's reflected identity, layout,
+// closing and no-legacy-hook behavior is covered by CoverContextLiveOnTest.
+#define GEARS_COVER_CONTEXT_LIVE_INCLUDED
+namespace cover_context_live {
+struct Observation {weapon_hand_scene_binding::Binding actor{};gears_anchor::Identity link{};
+    int slot{-1};unsigned char cover_type{};};
+unsigned calls{},fail_on{},change_on{};unsigned char type{};bool wrong_actor{};
+bool same(Observation const& a,Observation const& b){return
+    weapon_hand_scene_binding::same_key(a.actor,b.actor)&&gears_anchor::equal_identity(a.link,b.link)&&
+    a.slot==b.slot&&a.cover_type==b.cover_type;}
+bool sample(gears_anchor::Receipt const* receipt,Observation& out){
+    if(++calls==fail_on||!receipt)return false;
+    out.actor=weapon_hand_scene_binding::actor;out.actor.scene_invocation=receipt->invocation;
+    if(wrong_actor)out.actor.mesh.number++;
+    out.cover_type=type;out.slot=type?0:-1;
+    if(type)out.link=weapon_hand_scene_binding::actor.world; // Synthetic key only.
+    if(calls==change_on)++out.slot;
+    return true;
+}
+}
+#endif
 #include "rig_tracking_live.inl"
 namespace rig=rig_tracking_live;namespace api=gears_rig_tracking;
 int64_t fake_clock{};int64_t rig_clock(){return fake_clock;}
@@ -117,7 +139,25 @@ int main_test(const char* mode){
         C(shared::continuity_open&&shared::continuity_pid==GetCurrentProcessId()&&shared::continuity_start);
         shared::close();C(!shared::continuity_open&&!shared::continuity_pid&&!shared::continuity_start&&!shared::continuity_attempted&&!shared::continuity_last_open);
         C(read(request,out)==api::Reply::unavailable&&out.status==api::Status::unavailable);
-    }else C(false);
+    }
+#if defined(GEARS_COVER_CONTEXT_READER) && GEARS_COVER_CONTEXT_READER
+    else if(!strcmp(mode,"cover-context")){
+        namespace ctx=cover_context_live;
+        // No legacy camera-owned view or old cover input is needed to publish
+        // the independently certified cover key to the shared body source.
+        C(!shared::previous.cover);ctx::type=2;selected();C(publish());
+        C(read(request,out)==api::Reply::accepted&&(out.flags&api::cover_key_known)&&out.cover_type==2&&out.cover_slot==0);
+        C(gears_weapon_hand::same(out.cover_link,rig::object(native::actor.world))&&out.binding_generation>first.binding_generation);
+        const auto cover_generation=out.binding_generation;ctx::type=0;selected();C(publish());
+        C(read(request,out)==api::Reply::accepted&&!(out.flags&api::cover_key_known)&&!out.cover_link.address&&out.cover_slot==-1);
+        C(out.binding_generation>cover_generation);
+        for(unsigned bad=0;bad<4;++bad){selected();ctx::calls=0;ctx::fail_on=bad<2?bad+1:0;
+            ctx::change_on=bad==2?2:0;ctx::wrong_actor=bad==3;ctx::type=2;
+            C(!publish());C(read(request,out)==api::Reply::unavailable);
+            ctx::fail_on=ctx::change_on=0;ctx::wrong_actor=false;}
+    }
+#endif
+    else C(false);
     rig::stop();C(read(request,out)==api::Reply::stopping&&out.status==api::Status::unavailable);C(!publish());
     finish();printf("rig_tracking_live %s: %u checks, %u failures; no Game/XR\n",mode,checks,failures);return failures?1:0;
 }

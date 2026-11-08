@@ -75,3 +75,24 @@ MSVC 原始结果保存在 `analysis/cover-system-20261108/focused-cover-results
 ### 身体执行链接续点
 
 现有 `body_goal_view_adapter.h` 已支持 `Scope::fixed_cover`，可复用其同源头身手目标计算。实际 Native 策略仍以 `upright_posture` 和 `no_cover` 排除掩体；旧 `cover_camera_live`／`cover_neutral_eye_live` 又依赖旧 CoverBody 原型的布局与入口。后续须把只读掩体基准接到现有唯一 C0 写入端，不能为了取眼点而重新开放第二套身体写入器，也不能只删准入检查。实体几何、连续身体碰撞、暴露与受击等完整要求继续保留。
+
+## 2026年11月8日 独立掩体身份读取与统一追踪接线
+
+新增 `tools/native-capture/cover_context_live.inl`，复用已有 Scene 身份与反射读取器，读取当前 CoverType、CoverLink、CurrentSlotIdx、动作和过渡位。它核对当前人物与世界、Link 世界关系、CoverSlot 数组结构及选定元素，并在关闭时重新核对。读取失败保持调用方输出不变。
+
+读取器不使用旧 CoverBody 的启用状态、布局、线程、Hook 或身体写入能力，也不调用引擎、改变相机或取得抓边许可。`GEARS_COVER_BODY_PROTOTYPE` 编译开关仍用于获得仓库现有的 shared Scene binding 实现，不表示需要启用旧运行时写入器。
+
+通过新选项 `GEARS_COVER_CONTEXT_READER` 接入 `rig_tracking_live`：开启时从独立读取器发布掩体键，关闭时保留原路径。统一帧发布前再次核对掩体状态，拒绝前后不同的对象、槽位或动作。选项默认 OFF；本批隔离 Native 明确以 ON 编译，尚未安装或做游戏验证。实际中立眼点、面墙身体目标、碰撞与受击接线仍未完成。
+
+实际检查如下：
+
+- 真实反射内存夹具：108 项通过，旧身体写入与 Hook 始终关闭，并核对没有修改夹具内存。
+- 读取器 OFF 路径、原相机 On／Off 路径均通过；原相机 On 为 195 项，Off 为 2 项。
+- 原统一追踪 normal、epochs、binding-close、reference-inflight 四种情况通过。
+- 新发布接线夹具 74 项通过：覆盖原相机未取得掩体视点时的掩体键发布、退出清除、读取失败、关闭变化及人物错配拒绝。此夹具替换读取端；真实读取端由前述 108 项单独覆盖，不能将两者称为游戏内联合验证。
+
+完整隔离 Native 已编译、链接通过，SHA256 `94eaf122c3290244978e9e355bfcaad0fb65844c3acc674f16568e5ab30464b4`。Ninja 记录 661 个依赖，实际包含新读取器、统一追踪与原 Scene binding。最终源码、构建、9 次检查及回执分别在 `analysis/cover-system-20261108/context-native-r4-source`、`build-context-native-r4`、`context-native-r4-build-result.json`。构建基于保留的统一冻结源，只叠加本批文件及其缺失的构建辅助文件，没有编入其他会话正在编辑的 capture／武器分派。
+
+首轮独立测试因复用夹具 main 宏冲突和局部参数重名编译失败，修正后通过。前两次冻结包配置分别发现旧快照遗漏 `.cmake` 和 `.asm` 文件；保留原失败目录，补录同一仓库未修改的辅助文件及哈希后完成 r3 编译，追加发布接线检查后完成最终 r4。没有把配置失败改记为通过。
+
+主人经统筹补充当前游戏位置为 `J:/gearsVr/Gears.of.War.Reloaded.v1.0.1.3816947-P2P/Gears of War Reloaded/Binaries_x64`。本轮已用现有 `game_install.validate_game` 核对该路径 EXE 和 Coalesced 配置通过；此前只依据旧路径禁用记录作出的环境判断应按此最新信息更新。本轮未因此启动游戏或模拟器。后续验证遵从主人最新要求：使用现有游戏直控与模拟器脚本，不使用 Computer Use；需要时录制并实际检查游戏和模拟器画面，并保留共享运行窗口与清理保护。

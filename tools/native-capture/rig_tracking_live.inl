@@ -1,6 +1,9 @@
 // Global include native_rig_tracking_frame.h first; include after Runtime/Shared.
 // publish owns stereo_mutex/admitted ordinary Scene GT. read/stop never take
 // stereo_mutex, query modules, invoke PG or read controller/game memory.
+#if defined(GEARS_COVER_CONTEXT_READER) && GEARS_COVER_CONTEXT_READER
+#include "cover_context_live.inl"
+#endif
 namespace rig_tracking_live {
 namespace api=gears_rig_tracking;namespace rt=weapon_hand_runtime;namespace shared=cover_shared_input_live;
 namespace binding=weapon_hand_scene_binding;namespace hand=gears_weapon_hand;
@@ -97,8 +100,18 @@ bool publish(gears_anchor::Receipt const* scene_receipt,gears_vr::StereoMatrix c
         if(selected.matched){next.flags|=api::controllers_matched;next.controllers=selected.hands;
             next.controller_publisher_pid=uint32_t(selected.publisher_pid);next.controller_publisher_start=selected.publisher_start;}
         if(selected.continuity_known){next.flags|=api::producer_continuity_available;next.producer={selected.continuity.stream_epoch,{selected.continuity.tracking_epoch[0],selected.continuity.tracking_epoch[1]}};}
+#if defined(GEARS_COVER_CONTEXT_READER) && GEARS_COVER_CONTEXT_READER
+        cover_context_live::Observation cover_context{};
+        if(!cover_context_live::sample(scene_receipt,cover_context)||
+           !binding::same_key(first,cover_context.actor)||first.special_move!=cover_context.actor.special_move||
+           first.scene_invocation!=cover_context.actor.scene_invocation)return fail();
+        if(cover_context.cover_type){
+            next.flags|=api::cover_key_known;next.cover_link=object(cover_context.link);
+            next.cover_slot=cover_context.slot;next.cover_type=cover_context.cover_type;}
+#else
         if(selected.cover_known&&selected.eye.native_ct&&selected.eye.link.address&&selected.eye.slot>=0){
             next.flags|=api::cover_key_known;next.cover_link=object(selected.eye.link);next.cover_slot=selected.eye.slot;next.cover_type=selected.eye.native_ct;}
+#endif
         if(!gears_vr::rig_tracking::pose(base_view,stereo_result.reference,stereo_result.sample.head,stereo_units_per_metre,next.world_head))return fail();
         next.world_pose_mask=api::head_pose;
         for(unsigned i=0;i<2;++i)if(selected.matched&&gears_vr::controller_pose_usable(selected.hands.hands[i].grip,selected.hands.hands[i].grip_flags,selected.hands.hands[i].grip_active)){
@@ -107,6 +120,10 @@ bool publish(gears_anchor::Receipt const* scene_receipt,gears_vr::StereoMatrix c
         if(!binding::sample(scene_receipt,last)||!actor_same(first,last)||memcmp(receipt.data(),scene_receipt,receipt.size())||!recording.load()||
            committed_world_generation.load()!=first.world_generation||scene_receipt->thread!=GetCurrentThreadId()||
            !native_session_current(broker,session)||!reference_matches(frozen,reference_stamp)||!shared::tracking_ticket_current(selected.ticket))return fail();
+#if defined(GEARS_COVER_CONTEXT_READER) && GEARS_COVER_CONTEXT_READER
+        cover_context_live::Observation closing_cover{};
+        if(!cover_context_live::sample(scene_receipt,closing_cover)||!cover_context_live::same(cover_context,closing_cover))return fail();
+#endif
         std::lock_guard<std::mutex> lock(mutex);if(stopped.load()||!native_session_current(broker,session)||!reference_matches(frozen,reference_stamp))return false;
         if(have_previous&&next.scene_invocation==previous_payload.scene_invocation&&core::same(next.native,previous_payload.native)){
             if(value.status!=api::Status::ready||loss_seen||memcmp(&next,&previous_payload,sizeof next)||!shared::tracking_ticket_current(source_ticket)){
