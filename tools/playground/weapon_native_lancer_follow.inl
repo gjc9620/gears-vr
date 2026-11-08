@@ -338,7 +338,7 @@ void tick(hand::Frame const& source,Phase phase) noexcept {
     // ray is read-only and must not require first replacing that visible gun
     // with the stock attachment. Permit only the SAME bound Lancer/hold; the
     // complete current rig/basis check below still precedes its mount solve.
-    const bool read_owned_visual=phase==Phase::prepare_only&&bound_is_lancer&&bound_key_known&&
+    const bool read_owned_visual=phase==Phase::prepare_only&&(bound_is_lancer||bound_is_hammerburst)&&bound_key_known&&
         lease.dirty()&&lease.key()==bound_key&&hand::same(bound_key.weapon,source.weapon)&&
         bound_key.hold_generation==vrequip::model.hold_generation();
     if(faulted||(lease.dirty()&&!read_owned_visual)||!nativeequipment::current(nullptr,source)){

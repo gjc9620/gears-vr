@@ -179,3 +179,9 @@ HB独立护木几何、Snap输出及当前真实support租约下的双手求解�
 ## C0准入核查与拒绝回执
 
 源码只读确认body mount使用basic_hold资产观察、现有render_current核对当前held generation/身份/实际结果；HB加入回调候选没有改动作prepare或原过滤条件。为避免新路径被拒绝却只有空白日志，只将HB加入原render_rejected输出条件，原16条上限/字段/失败专用/私有模拟器限制保持，不增对象读取/collector/权限。完整独立编译链接exit0，冻结hammerburst-prepared-20261108-230036，PG2ac4b7d8d12c36cd4eb7e60ef9eca45e68df03932462e547911fb4a9b37ec2f8，源和制品哈希全核对，c0-rejection-receipt-build-check.json；未stage/实跑，不能证明C0实际准入或贴合修复。前一批lease278/follow测试针对未改组件逻辑，未为本行日志条件重复运行。
+
+## C0候选的连发只读准备边界
+
+源码核查发现既有RefireCheckTimer在视觉lease仍安装时，仅允许同一Lancer的prepare_only只读路径。HB转C0后也可能在PlayerTick之间连发，故仅将同一已绑定HB加入该只读选择；原lease.key、weapon identity、hold generation、nativeequipment::current、完整rig/basis及source检查不变。没有使用C0视觉时间延长输入/授权、没有新write权限。独立产品编译链接exit0，冻结hammerburst-prepared-20261108-230718，PG7bed6ef74017efb877ac9bdd5716f8600ddce52a743e0ffb356b1f259700c4fd，所有来源/制品哈希核对，c0-refire-prepare-build-check.json。尚未stage/游戏验证，后续必须实际验证持续Grip中的整段权威连发与release回射，不能只验首发。
+
+Longshot21724已明确全收尾后唯一交Lancer，接下来Frag效果、Snub原匣、HB候选，HB未占窗。
