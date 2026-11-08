@@ -10,7 +10,8 @@ struct CoverInputOwnerFrame {
     // consume its committed result instead of arbitrating the hand again.
     std::uint64_t lifecycle=0,frame=0;
     CoverObservation cover;
-    CoverViewAnchor anchor;
+    CoverViewAnchor anchor;      // Wall/body/virtual-drag basis.
+    CoverViewAnchor view_anchor; // Explicit continuous view; same neutral eye.
     StereoResult stereo;
     ControllerInputFrame const* controllers=nullptr; // exact stereo match only
     std::array<LeftHandInteractionLease,2> weapon_incumbents{};
@@ -156,6 +157,18 @@ public:
             phase_=Phase::decided;return candidate_;
         }
         auto const& frame=frozen_;auto hand=hand_.hand;
+        auto cover=frame.cover;
+        if(cover.cover_valid){
+            CoverViewResult base{};CoverTrackingBasis axes{};
+            if(prepare_cover_view(frame.anchor,frame.view_anchor,{},frame.units_per_metre,base)&&
+               cover_tracking_basis(frame.stereo.reference,frame.view_anchor,frame.anchor,axes)){
+                cover.right_axis_tracking=axes.right;cover.up_axis_tracking=axes.up;
+            }else{
+                // Missing cover/view geometry withdraws only Cover's proposal;
+                // the same decoded input can still serve a valid weapon request.
+                cover.interaction_enabled=false;
+            }
+        }
         if(barrier_)hand.input_active=hand.position_valid=hand.position_tracked=false;
         unsigned external_count{};
         for(auto const& lease:weapon.incumbents)if(lease.kind!=LeftHandInteraction::none)++external_count;
@@ -163,7 +176,7 @@ public:
         if(external_count)ownership.owner=CoverLeftHandOwner::other;
         else if(cover_lease_.kind==LeftHandInteraction::cover)
             ownership={CoverLeftHandOwner::cover,cover_lease_.id};
-        auto proposal=pending_interaction_.update(frame.cover,hand,ownership,frame.now_ns);
+        auto proposal=pending_interaction_.update(cover,hand,ownership,frame.now_ns);
         requests.incumbents=weapon.incumbents;requests.requests=weapon.requests;
         // The cover request is always derived here, never accepted from the
         // weapon side. A held body offset has no hand lease after release.
@@ -174,7 +187,7 @@ public:
         candidate_.left_hand=owner.update(requests);
         if(proposal.request_left_hand&&candidate_.left_hand.lease.kind==LeftHandInteraction::cover&&
            candidate_.left_hand.lease.id==proposal.request_id){
-            proposal=pending_interaction_.update(frame.cover,hand,
+            proposal=pending_interaction_.update(cover,hand,
                 {CoverLeftHandOwner::cover,proposal.request_id},frame.now_ns);
         }else if(proposal.owns_left_hand&&candidate_.left_hand.lease.kind!=LeftHandInteraction::cover){
             proposal=pending_interaction_.update(frame.cover,hand,{CoverLeftHandOwner::other,0},frame.now_ns);
@@ -284,10 +297,16 @@ private:
            !stereo_render_active(frame.stereo.sample)||!stereo_tracking_valid(frame.stereo.sample,frame.allow_sim)||
            !stereo_geometry_valid(frame.stereo.sample)||frame.stereo.sample.received_ns<=0||
            frame.stereo.sample.received_ns>frame.now_ns||frame.now_ns-frame.stereo.sample.received_ns>100000000)return;
-        if(!prepare_cover_view(frame.anchor,proposal.offset,frame.units_per_metre,result.view)||
+        if(!prepare_cover_view(frame.anchor,frame.view_anchor,proposal.offset,frame.units_per_metre,result.view)||
            !cover_physical_displacement(frame.stereo.reference,frame.stereo.sample.head,result.physical))return;
         result.view_valid=true;
-        result.requested_right_metres=proposal.offset.right+result.physical.right;
+        const auto& wall=frame.anchor;const auto& view=frame.view_anchor;
+        const bool same_heading=wall.forward_world.x==view.forward_world.x&&wall.forward_world.y==view.forward_world.y&&
+            wall.right_world.x==view.right_world.x&&wall.right_world.y==view.right_world.y;
+        const auto physical_right=same_heading?result.physical.right:
+            (view.right_world.x*result.physical.right+view.forward_world.x*result.physical.forward)*wall.right_world.x+
+            (view.right_world.y*result.physical.right+view.forward_world.y*result.physical.forward)*wall.right_world.y;
+        result.requested_right_metres=proposal.offset.right+physical_right;
         result.requested_up_metres=proposal.offset.up+result.physical.up;
         result.body_weight_valid=cover_up_weight(has_curve_?height_curve_.data():nullptr,frame.height_key_count,
             result.requested_up_metres,result.requested_up_weight);
@@ -355,6 +374,9 @@ private:
         if(frame.lifecycle!=f.lifecycle||frame.frame!=f.frame||!same(frame.cover,f.cover)||
            !same(frame.anchor.neutral_eye_world,f.anchor.neutral_eye_world)||!same(frame.anchor.forward_world,f.anchor.forward_world)||
            !same(frame.anchor.right_world,f.anchor.right_world)||!same(frame.stereo,f.stereo)||
+           !same(frame.view_anchor.neutral_eye_world,f.view_anchor.neutral_eye_world)||
+           !same(frame.view_anchor.forward_world,f.view_anchor.forward_world)||
+           !same(frame.view_anchor.right_world,f.view_anchor.right_world)||
            (frame.controllers!=nullptr)!=has_controllers_||(has_controllers_&&!same(*frame.controllers,controllers_))||
            !same(frame.weapon_incumbents[0],f.weapon_incumbents[0])||!same(frame.weapon_incumbents[1],f.weapon_incumbents[1])||
            !same(frame.weapon_requests,f.weapon_requests)||(frame.height_curve!=nullptr)!=has_curve_||

@@ -37,6 +37,15 @@ int main(){
         Pose reference{{.4,1.55,-.2},{0,std::sin(.37),0,std::cos(.37)}};
         CoverTrackingBasis axes{};CHECK(cover_tracking_basis(reference,view,wall,axes));
         CoverViewResult base{};CHECK(prepare_cover_view(view,{},100,base));
+        CoverViewResult dragged{},same_view{},legacy{};
+        CHECK(prepare_cover_view(wall,view,{.2,.1},100,dragged));
+        CHECK(near(dragged.base_eye_world,{wall.neutral_eye_world.x+20*wall.right_world.x,
+            wall.neutral_eye_world.y+20*wall.right_world.y,wall.neutral_eye_world.z+10}));
+        for(unsigned i=0;i<12;++i)CHECK(dragged.base_view[i]==base.base_view[i]);
+        CHECK(prepare_cover_view(view,view,{.2,.1},100,same_view));
+        CHECK(prepare_cover_view(view,{.2,.1},100,legacy)&&same_view.base_view==legacy.base_view);
+        auto wrong_eye=view;wrong_eye.neutral_eye_world.x+=1;const auto saved_dragged=dragged;
+        CHECK(!prepare_cover_view(wall,wrong_eye,{},100,dragged)&&dragged.base_view==saved_dragged.base_view);
         const Vector start{reference.position.x+.1,reference.position.y-.2,reference.position.z-.3};
         const Vector right{start.x+.05*axes.right.x,start.y+.05*axes.right.y,start.z+.05*axes.right.z};
         const Vector up{start.x+.03*axes.up.x,start.y+.03*axes.up.y,start.z+.03*axes.up.z};

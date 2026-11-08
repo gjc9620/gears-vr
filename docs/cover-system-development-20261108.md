@@ -245,3 +245,19 @@ capture从已认证TraceHitInfo布局读取实际命中组件，并在后续射�
 world／trace／bone／surface共101个离线测试方法实际exit0。新增覆盖明确组件的正例、普通根组件等价、11种错误身份／类型／成员／Owner反例，以及成员顺序、内层链接、声明类、Owner和变换变化后的closing拒绝；既有区间夹具确认第二条及以后继续绑定首次实际观察的组件。测试为合成反射内存和队列夹具，不是本次游戏调用／实际集合归属通过。初次26项、随后100项及最终101项日志均保留；最终为collection-surface-final.log。
 
 下一次已排队项仍仅按符号重认证当前Actor并读取元数据，无A、无Trace、无抓边／身体写入；诊断额外记录数组实际声明类和所抽样组件类，并将数组内层链接加入closing。21依赖冻结在drivers-owner-only-r7，prepare-only通过；没有stage／run，没有改r7／r8 Native或公开v71。HB已更正唯一前驱为Boltok030739，既有尾序为Snub024436→Frag030808→Boltok030739→Cover新只读；运行时以实际最终交接为准，不据idle占窗。C0旧宿主的当前依赖接线缺口仍在，未重编或伪报通过；身体／视图／碰撞完整闭环继续未完成。
+
+## 2026年11月9日 共同抓边层接入独立视图数学，r9隔离构建
+
+继续检查发现，尽管身体目标转换器已经分开墙面与连续视向，CoverInputOwner仍直接用墙面anchor构造view，并把追踪参考中的physical.right当墙面右探量。新增端到端回归：墙面转90度，视向保持，真实头部同时向原视向右移15cm、前移10cm；旧逻辑实际出现5处失败，包括视图旋转和期望墙面右探-10cm。RED在cover_input_owner-view-red.log，未据此启动另一局。
+
+cover_view增加显式wall／view两个anchor的prepare_cover_view重载，要求相同中立眼点：虚拟偏移沿墙面右轴与世界重力，视图旋转使用独立view，HMD不在此处应用。同轴路径保留原单次组合；身体Goal转换与共同抓边层复用这一个实现。CoverInputOwnerFrame新增必须显式提供的view_anchor，冻结／重试核对也包含其完整基准；各现有调用方已显式填写，不能因字段默认空而悄悄使用墙面视向。
+
+共同抓边层从固定追踪reference及同一对wall／view计算原始手部拉拽轴，不取实时头朝向，也不使用变换后的虚拟手反推身体。真实位移仍保留原追踪分量，requested_right另外投影到墙面右轴；上下仍按重力。缺失／非法掩体视图只撤回Cover提案与视图，不阻塞同次已认证输入中的合法武器请求。释放、保持、重抓、反拉、token及原100ms／身份保护未放宽。
+
+针对检查实际通过：CoverView1087项、CoverInputOwner120项、CoverInputTransaction766项；身体转换designer／Marcus各326项及各12组全身规划，普通转换159项。现有共享消费者宿主outside25、cover18、source1-cover18、held-fallback54、retry14项也通过，使用真实公共owner／仲裁／broker代码与明确合成Native端点，不是游戏或头显。覆盖分离视向后的抓取正反方向、松手保持、墙面投影、未知视图下武器请求，以及view基准在同一事务中被修改后的拒绝。
+
+第一次联查另有13个旧事务夹具失败：夹具搬了墙面中立眼点而未搬新增的独立视图眼点，因此新同点保护正确拒绝。已保留原失败JSON／日志，仅在该“新场景同时搬基准”的正例中显式移动两者；同帧单独修改view眼点／forward／right的3个负例继续拒绝，没有放宽同点或缓存规则。最终事务日志为cover_input_transaction-separate-view-final-test.log，其他结果在cover-owner-separate-view-checks.json与owner-view-final-consumer-checks.json。
+
+r9从完整保留r8源码树复制，冻结10项明确overlay；除本批9个实际修改文件外，包含先前已检查但r8构建后才加入的独立抓边轴／Marcus测试CLI。其余Native源码及所有GEARS开关沿用r8，不引入共享工作树的其他武器实验。Native实际编译链接exit0、661依赖，DLL SHA256为b20cd94d464d13ce9f65ddaf705825d9c5f2413e75b62a77c7892127402c4b94；快照overlay与当前源逐字节一致。记录见context-native-r9-source.json、context-native-r9-build-result.json及相邻隔离目录。
+
+r9未stage、未游戏／XR运行，下一组件只读项仍使用原r7。旧预览调用方目前显式传原先同轴基准，维持旧路径的已有证据；它们不是连续C0基准的新提供方。实际身体面墙、连续视图、合法眼点／脚位、连续体积碰撞及同版受击／枪口消费仍须在现有唯一写入端闭合，72608画面失败与旧C0Goal完整宿主缺口均未据本批关闭。HB后续确认本只读项全收尾后的唯一后继为Longshot034956，前驱Boltok030739保持；无并行runner或新Hook，公开v71不变。

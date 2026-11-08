@@ -14,6 +14,7 @@ struct Fixture {
         frame.cover.cover_valid=frame.cover.interaction_enabled=frame.owner_context_valid=true;
         frame.cover.range={-.6,.5,0,.7};frame.cover.edge={17,kind,true,true};
         frame.anchor={{1000,-2000,-40},{1,0,0},{0,1,0}};
+        frame.view_anchor=frame.anchor;
         frame.height_curve=curve;frame.height_key_count=3;
         frame.stereo.status=StereoStatus::accepted;frame.stereo.reference_generation=1;
         frame.stereo.reference={{0,1.6,0},{}};
@@ -37,6 +38,45 @@ struct Fixture {
     }
 };
 int main(){
+    {
+        Fixture separate(CoverEdgeKind::right);
+        const auto continuous=separate.frame.anchor;
+        separate.frame.anchor.forward_world={0,1,0};
+        separate.frame.anchor.right_world={-1,0,0};
+        CoverTrackingBasis axes{};
+        C(cover_tracking_basis(separate.frame.stereo.reference,continuous,separate.frame.anchor,axes));
+        separate.frame.cover.right_axis_tracking=axes.right;
+        separate.frame.cover.up_axis_tracking=axes.up;
+        auto& sample=separate.frame.stereo.sample;
+        sample.head.position.x+=.15;sample.head.position.z-=.1;
+        for(auto& eye:sample.eyes){eye.pose.position.x+=.15;eye.pose.position.z-=.1;}
+        separate.publish();
+        const auto result=separate.run();CoverViewResult expected{};
+        C(prepare_cover_view(continuous,{},100,expected));
+        C(result.accepted&&result.view_valid);
+        for(unsigned i=0;i<12;++i)C(result.view.base_view[i]==expected.base_view[i]);
+        C(close(result.physical.right,.15)&&close(result.physical.forward,.1));
+        C(close(result.requested_right_metres,-.1));
+        C(separate.next(.8f).interaction.owns_left_hand);
+        auto& hand=separate.hands.hands[0].grip.position;
+        hand.x-=.12*axes.right.x;hand.y-=.12*axes.right.y;hand.z-=.12*axes.right.z;
+        auto dragged=separate.next(.8f);
+        C(close(dragged.interaction.offset.right,.12)&&close(dragged.requested_right_metres,.02));
+        C(close(dragged.view.base_eye_world.x,988)&&close(dragged.view.base_eye_world.y,-2000));
+        for(unsigned i=0;i<12;++i)C(dragged.view.base_view[i]==expected.base_view[i]);
+        C(close(separate.next(0).interaction.offset.right,.12));
+        C(separate.next(.8f).interaction.owns_left_hand);
+        hand.x+=.06*axes.right.x;hand.y+=.06*axes.right.y;hand.z+=.06*axes.right.z;
+        dragged=separate.next(.8f);
+        C(close(dragged.interaction.offset.right,.06)&&close(dragged.requested_right_metres,-.04));
+    }
+    {
+        Fixture missing;missing.frame.view_anchor={};missing.frame.weapon_requests.support=true;
+        C(missing.run().accepted);
+        const auto result=missing.next(.8f);
+        C(result.accepted&&!result.view_valid&&!result.interaction.owns_left_hand);
+        C(result.left_hand.new_grant&&result.left_hand.lease.kind==LeftHandInteraction::support);
+    }
     {
         LeftControlSelector select;
         C(!select.update({true,false},{true,true},true).known); // Held attachment is not a new pinch.

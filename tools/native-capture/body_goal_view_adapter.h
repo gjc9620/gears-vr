@@ -124,18 +124,7 @@ inline Status prepare_axes_math(Neutral const& neutral,vr::CoverViewAnchor grip_
        !normalized(neutral.root_bone_world_q,root)||!goal_pose(neutral.feet_world[0])||!goal_pose(neutral.feet_world[1]))return Status::neutral;
     Output candidate{};
     const auto& basis=neutral.eye_anchor;
-    const bool same_heading=basis.forward_world.x==grip_basis.forward_world.x&&
-        basis.forward_world.y==grip_basis.forward_world.y&&basis.right_world.x==grip_basis.right_world.x&&
-        basis.right_world.y==grip_basis.right_world.y;
-    if(same_heading){ // Preserve the ordinary path's original one composition.
-        if(!vr::prepare_cover_view(basis,committed,source.units_per_metre,candidate.render))return Status::view;
-    }else{
-        vr::CoverViewResult dragged{};
-        if(!vr::prepare_cover_view(grip_basis,committed,source.units_per_metre,dragged)||
-           !vr::prepare_cover_view(basis,{},source.units_per_metre,candidate.render)||
-           !vr::view_with_origin(candidate.render.base_view,dragged.base_eye_world,candidate.render.base_view))return Status::view;
-        candidate.render.base_eye_world=dragged.base_eye_world;
-    }
+    if(!vr::prepare_cover_view(grip_basis,basis,committed,source.units_per_metre,candidate.render))return Status::view;
     // This helper ALREADY returns a proper UE pose. Do not remap its axes.
     if(!vr::rig_tracking::pose(candidate.render.base_view,source.reference,tracking.head,
                               source.units_per_metre,candidate.desired_eye))return Status::view;

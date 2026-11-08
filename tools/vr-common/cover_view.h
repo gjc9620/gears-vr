@@ -50,6 +50,25 @@ inline bool prepare_cover_view(CoverViewAnchor const& anchor,CoverOffset virtual
     out={view,eye};return true;
 }
 
+// Body/drag axes follow the wall; observation follows the independently
+// supplied continuous view heading. Both anchors describe the same neutral
+// eye. This builds only the pre-HMD base and never applies head motion.
+inline bool prepare_cover_view(CoverViewAnchor const& wall,CoverViewAnchor const& view_anchor,
+                               CoverOffset virtual_offset,double units_per_metre,CoverViewResult& out){
+    if(!cover_view_basis(wall)||!cover_view_basis(view_anchor)||
+       wall.neutral_eye_world.x!=view_anchor.neutral_eye_world.x||
+       wall.neutral_eye_world.y!=view_anchor.neutral_eye_world.y||
+       wall.neutral_eye_world.z!=view_anchor.neutral_eye_world.z)return false;
+    if(wall.forward_world.x==view_anchor.forward_world.x&&wall.forward_world.y==view_anchor.forward_world.y&&
+       wall.right_world.x==view_anchor.right_world.x&&wall.right_world.y==view_anchor.right_world.y)
+        return prepare_cover_view(view_anchor,virtual_offset,units_per_metre,out);
+    CoverViewResult dragged{},continuous{};
+    if(!prepare_cover_view(wall,virtual_offset,units_per_metre,dragged)||
+       !prepare_cover_view(view_anchor,{},units_per_metre,continuous)||
+       !view_with_origin(continuous.base_view,dragged.base_eye_world,continuous.base_view))return false;
+    continuous.base_eye_world=dragged.base_eye_world;out=continuous;return true;
+}
+
 struct CoverPhysicalDisplacement {double right=0,up=0,forward=0;};
 // Body/exposure follows the SAME head-position delta that stereo_matrices uses.
 // The result is in metres in the fixed reference camera's right/up/forward

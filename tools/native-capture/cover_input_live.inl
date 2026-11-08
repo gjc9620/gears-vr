@@ -106,6 +106,7 @@ bool prepare(gears_anchor::Receipt const* scene,gears_vr::StereoMatrix& view,gea
     // candidate CoverSlot plane MUST NOT silently acquire LGrip ownership.
     frame.cover.range={0,0,0,0};frame.cover.edge={};
     frame.anchor={eye.neutral_eye_world,camera::facing.forward,camera::facing.right};
+    frame.view_anchor=frame.anchor; // Legacy preview basis; not a certified continuous C0 view.
     frame.stereo=stereo;frame.controllers=matched&&!interrupted?&input:nullptr;
     frame.height_curve=height_curve.data();frame.height_key_count=unsigned(height_curve.size());
     frame.units_per_metre=stereo_units_per_metre;frame.now_ns=stamp;

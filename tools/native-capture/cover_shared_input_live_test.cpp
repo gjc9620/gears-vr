@@ -303,6 +303,7 @@ gears_vr::CoverInputOwnerResult common_step(double up,float squeeze,bool commit,
     f.cover.cover_valid=f.cover.interaction_enabled=true;f.cover.range={-.6,.5,0,.7};
     f.cover.edge={17,gears_vr::CoverEdgeKind::top,true,true};f.cover.right_axis_tracking=axes.right;f.cover.up_axis_tracking=axes.up;
     f.anchor={neutral::eye.neutral_eye_world,cover_camera_live::facing.forward,cover_camera_live::facing.right};
+    f.view_anchor=f.anchor;
     f.stereo=stereo;f.controllers=&selected;f.height_curve=input::height_curve.data();f.height_key_count=unsigned(input::height_curve.size());
     f.units_per_metre=100;f.now_ns=stamp;f.owner_context_valid=true;
     const auto decoded=input::participant.begin(f,input::left_hand_owner);C(decoded.accepted);

@@ -19,7 +19,8 @@ struct Fixture {
         frame.cover.sequence=1;frame.cover.observed_ns=frame.now_ns;frame.cover.epochs={1,1,1,1,1,1,1};
         frame.cover.cover_valid=frame.cover.interaction_enabled=frame.owner_context_valid=true;
         frame.cover.range={-.6,.5,0,.7};frame.cover.edge={17,CoverEdgeKind::top,true,true};
-        frame.anchor={{1000,-2000,-40},{1,0,0},{0,1,0}};frame.height_curve=curve;frame.height_key_count=3;
+        frame.anchor={{1000,-2000,-40},{1,0,0},{0,1,0}};frame.view_anchor=frame.anchor;
+        frame.height_curve=curve;frame.height_key_count=3;
         frame.stereo.status=StereoStatus::accepted;frame.stereo.reference_generation=1;
         frame.stereo.reference={{0,1.6,0},{}};
         auto& s=frame.stereo.sample;s.session=41;s.sequence=1;s.space_epoch=2;
@@ -97,7 +98,7 @@ static void exact_snapshot_and_opaque_ticket(){
 }
 
 static void snapshot_mutations_abort(){
-    for(unsigned mutation=0;mutation<18;++mutation){
+    for(unsigned mutation=0;mutation<21;++mutation){
         Fixture f;f.run();f.advance(.8f);auto d=f.begin();C(d.accepted&&d.press_token==1);
         switch(mutation){
         case 0:++f.frame.now_ns;break;
@@ -117,7 +118,10 @@ static void snapshot_mutations_abort(){
         case 14:f.frame.weapon_requests.ammo=true;break;
         case 15:f.frame.stereo.sample.eyes[1].fov.left=-.6;break;
         case 16:++f.frame.cover.epochs.session;break;
-        default:f.frame.allow_sim=true;break;
+        case 17:f.frame.allow_sim=true;break;
+        case 18:f.frame.view_anchor.neutral_eye_world.x+=.1;break;
+        case 19:f.frame.view_anchor.forward_world.x+=.1;break;
+        default:f.frame.view_anchor.right_world.y+=.1;break;
         }
         C(!f.begin().accepted);const auto rejected=f.kernel.complete(d.ticket,true,f.owner);
         C(!rejected.accepted&&!rejected.view_valid&&!rejected.body_weight_valid);
@@ -213,7 +217,9 @@ static void failed_transaction_recertifies_current_context_only(){
         if(change==2)++f.frame.cover.epochs.cover;
         if(change==3)f.frame.cover.range.max_up=.1;
         if(change==4)f.frame.cover.cover_valid=false;
-        f.frame.anchor.neutral_eye_world={200,300,400};auto r=f.next(0,CoverWeaponContribution{});
+        f.frame.anchor.neutral_eye_world={200,300,400};
+        f.frame.view_anchor.neutral_eye_world=f.frame.anchor.neutral_eye_world;
+        auto r=f.next(0,CoverWeaponContribution{});
         C(!r.accepted&&no_lease(r.left_hand)&&!r.interaction.owns_left_hand);
         C(close(r.interaction.offset.up,change==3?.1:0));
         if(change==4){
