@@ -301,3 +301,19 @@ Native cleanup／entry restore／pad恢复TRUE、hand_stop5／drained、XR0；�
 为保留下一条真实命中的身份，原capture现在在有Actor及非空HitInfo组件时，即使未请求surface snapshot，也将该组件加入原严格身份／registry closing；没有更改调用ABI、Trace次数、pending／free条件或表面准入。新增内部只读观察按明确命中的Actor／Component读取Owner、Outer、根组件，以及StaticMeshComponents／Components／AllComponents三个具名反射容器。缺失字段明确记未声明；已声明容器须通过原类型、元素Class、8字节stride、256预算及完整closing，不扫描其他组件替代命中。容器成员出现次数和类型关系只作为观察，所有碰撞／抓取／身体权限始终FALSE，旧严格surface membership规则未变。
 
 实际45个针对unittest通过（Trace32、原surface13），新增案例包含空集合、不同Owner、其他具名容器、错误元素类型及identity、Owner／空header／元素链接在closing改变等。正向观察后仍断言旧surface拒绝，不能把可读字段升级为安全证明。日志在explicit-hit-observation-tests.log；此读取器变化尚未运行进游戏，Native／PG／XR无需据此重编。
+
+## 2026年11月9日 r11将既有只读姿态观察移至视图拒绝之前
+
+准备单次C0请求时复核真实r7控制流：capture.cpp先进行view选择，在missing_basis处return，之后才执行cover_pose_phase_live::scene。因而该明确拒绝路径也会跳过只读Owner更新，不能指望仅发事件就得到新鲜掩体姿态。72608有missing_basis163是实际计数，但当时没有发捕获事件；本次源码发现不是“已证明所有零episode的运行根因”，也不是72608画面修复。
+
+仅将同一现有Scene调用前移至已认证StereoResult、同张票据的L3回中及最终reference确定之后、任何view选择之前。仍在原stereo_mutex与同一Scene／线程内，只调用一次；全部Owner、100ms、代码前缀／caller、正常返回和当前世界检查保持，missing_basis拒绝原文保留。没有增加观察器、Hook、骨骼／人物／相机写入端，也没有让缺基准帧获得投影许可。当前共享capture.cpp只施此小移动，其余武器dirty内容与共享Git index未纳入本次冻结。
+
+隔离r11直接复制准确r7冻结树，逐文件比较只有capture.cpp变化；93个GEARS开关沿用r7，没有混入r9／r10身体数学或其他新武器源。Native编译链接exit0、661依赖，SHA256为6a6a1f9a7e3a78f16076da933b43c27a979ed8cccd715b53968b26087617cc13。实际运行原PosePhaseLive149检查与RigTrackingCoverContext74检查均exit0；前者复用8段完整历史代码SHA认证的Host fixture，保留丢失stage、异常、身份变化、重复／并发、错误参数及8episode上限，不是游戏证据。source／build记录在context-native-r11-source.json、context-native-r11-build-result.json。
+
+为避免把同文件的其他dirty编辑一起提交，另以临时index从当前HEAD只加入这一次移动，保存来源检查点cdb7bac2bf6dba4e0615c3cf2c0a07ec57bcb805及refs/codex/checkpoints/cover-observer-before-view-20261109；共享分支HEAD、真实index及工作树其他内容未由该操作改变。此检查点不是发行标签或另一开发工作树；本轮读取器与23420证据已在正常分支提交e9ec4c54。
+
+下一动作仍只原版A一次进入、当前CT2下既有自动重置事件一次、一条原版Trace及明确命中组件只读，不执行区间二分或抓边。事件请求先核game creation／action_owner／Native SHA／started_qpc／原观察器认证、零episode、100ms观察，然后在SetEvent前持久化unknown；失败、未知或之后会话变化均不重发，不客户端Wait／Reset该事件。4个定向测试方法含15类准入拒绝与一次调用／缺失事件／未知异常，通过；SetEvent成功仍不算已保存C0。
+
+旧df787ea1的r7动作计划在运行前明确撤回，保留原档；最终prepared为equipment-controls-prepared-20261109-cover-r11，PG仍f8e6f3c2、XR仍1684，21驱动与完整源码归档drivers-hit-pose-r11，plan SHA256为c6e3e0c67d49d61fce1745234699157a5642628343056e45eb044c62bde08579，prepare-only通过。已经向唯一前驱Frag更新身份，未stage／run；接受的交接为Snub042943→Frag050613→Cover本项→Longshot050328→HB050438，以实际最终交接为准，不因idle启动。
+
+离线解码器按r7真实Header／Row／Episode声明生成，static_assert尺寸56／84936／594736；复用冻结r10已有Marcus全身模型与头部marker计算原始世界姿态，不制造Core或中立校准。MSVC/W4/WX编译0；72608真实空文件读出count0，错误session／snapshot尺寸及尾随字节拒绝；原观察器Host生成的8episode文件可解码，并分别拒绝异常、并发、重复及错误参数的row。该Host为合成骨架，未被解释为Marcus几何。未来实际游戏文件仍需与该局数值归档SHA、原Native session、CT2观察、世界／人物／mesh及时间互核。原始头／骨盆／脚位仅是测量，不直接授予中立基准、扫掠、C0写入或命中／枪口权限。
