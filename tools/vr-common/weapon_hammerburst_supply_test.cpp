@@ -40,5 +40,36 @@ int main(){
     ReloadSupplyRejection empty;
     assert(empty.reject(1,1));assert(!empty.reject(1,1));assert(empty.reject(1,2));
     assert(!empty.reject(1,2));assert(empty.reject(2,1));
+    // Actual14312 double-read snapshot: C78/L72/R78. Early original return
+    // must exit without fill or perfect reward even inside the timing window.
+    {
+        ReloadTransaction<Identity> tx;ReloadTxnInventory<Identity> before{{1},1,78,72,78};
+        ReloadTxnRequest<Identity> q{};
+        assert(tx.bind(before));assert(tx.begin(before,1,ReloadIntentSource::mechanism_open,1,
+            ReloadTxnMode::magazine,78,100,1));
+        assert(tx.restore_original(1));assert(tx.confirm_closed(200,799));assert(tx.take_request(q));
+        assert(q.call==ReloadTxnCall::exit_without_fill&&q.result==ReloadTxnResult::inspection);
+        assert(q.expected.loaded==72&&q.expected.reserve==78&&q.expected.capacity==78);
+        assert(tx.acknowledge({q.token,true,before,ReloadTxnResult::none}));assert(tx.mechanical_ready());
+    }
+    // Same capacity/loaded boundary with exhausted spare supply: only the
+    // already-accounted72 rounds may be carried, with no native reload token.
+    {
+        ReloadTransaction<Identity> tx;ReloadTxnInventory<Identity> before{{1},1,78,72,0};
+        ReloadTxnRequest<Identity> q{};
+        assert(tx.bind(before));assert(tx.begin(before,1,ReloadIntentSource::mechanism_open,0,
+            ReloadTxnMode::magazine,78,100,1));assert(tx.stow_original(1));
+        assert(tx.reserve_magazine_reusing_loaded(2));assert(tx.held_magazine_rounds()==72);
+        assert(!tx.reserved()&&tx.seat_reused_rounds(2));assert(tx.confirm_closed(200,799));
+        assert(!tx.take_request(q)&&tx.mechanical_ready());
+        assert(tx.inventory().loaded==72&&tx.inventory().reserve==0);
+    }
+    {
+        ReloadTransaction<Identity> tx;ReloadTxnInventory<Identity> before{{1},1,78,0,0};
+        assert(tx.bind(before));assert(tx.begin(before,1,ReloadIntentSource::mechanism_open,0,
+            ReloadTxnMode::magazine,78,100,1));assert(tx.stow_original(1));
+        assert(!tx.reserve_magazine_reusing_loaded(2));assert(!tx.held_magazine_rounds());
+    }
     std::printf("HB supply ledger: %u conservation/completion cases; zero supply and press deduplication passed\n",cases);
+    std::puts("HB observed capacity78: original return/no reward, zero-spare reuse and zero-total rejection passed; CPU only");
 }

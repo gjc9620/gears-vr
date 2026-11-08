@@ -252,3 +252,8 @@ Cover正常唯一交窗后stage010655/PG8e2a8c38，实际14312完成原HB肩取�
 14312旧回执只有reason5，无法区分准确的前后样本间隔。只在原最多8条失败输出补last_observation_ms、sample.milliseconds和geometry原阈值；pure stroke增加只读getter，不改变其reset/observe/begin/连续见证或授权，未增游戏字段读取/采集器/Hook。源码精准提交fd8033a4仅此两文件，其他caller的service/recover_serial修改未混入独立产品。生产分支回归已持久化为tools/playground/weapon_hammerburst_latch_handoff_test.py，真实MSVC W4/WX编译执行10条通过；独立PG完整编译链接0。
 
 冻结012813/PGfe0bd568e312df0ef519ce20fea887d6298fd8ba790a933ddc27253a66026751，替代未stage012255，动作仍连续圆弧/最多一次真实松开重抓原匣单点。全源/制品哈希核对，latch-interval-build-check.json；未stage/实跑，未声称间隔根因修复。现队列Snub→Boltok→Frag011230→Longshot005036→Cover reader→HB012813→Lancer012317，Cover已知最新候选。
+
+
+## 实际容量78库存边界离线回归
+
+14312类型化双读实际C78/L72/R78，而原7500合成矩阵上限C60。保留原矩阵并增加实测容量78专例：原匣返回即便闭合在perfect window内也只exit_without_fill/inspection、72/78不变且无奖励；备用0只搬已有72发、serial0且不发库存请求；总0拒绝替换匣。MSVC/W4/WX/UNDEBUG真实编译执行通过，日志supply-observed-capacity.log。首次cmd相对正斜杠路径未执行编译，修正绝对反斜杠调用后通过，原调用错误另存。该提交只有测试，不改012813二进制或未完成的游戏覆盖。
