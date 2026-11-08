@@ -337,3 +337,6 @@ Lancer只读确认上述forgiving-profile不是其本轮改动，未补写共享
 更新后的完整既有纯model/curve/latch suite真实MSVC/W4/WX/UNDEBUG编译执行0，strict-legacy-model.json；不冒充旧forgiving能力已实现，不把其旧R3抽象模型视为当前Grip入口/实际库存或游戏证明。先前default-latch-compat编译失败和旧fixture都保留。
 
 同一静止候选原失败行补retained_same和真实前后手位移hand_delta_m，仅用stroke已保留样本，不读新对象/不增日志行；生产控制分支21项重跑0、隔离PG完整编译0，避免后续再只能猜手是否静止。Getter只读，行为与043309相同。
+
+
+最终同一静止点冻结hammerburst-prepared-20261109-044514，PGa03ec04513c879b105c35da6ae3cf8e6f2f1aca6fe37d11e94106d04fe69d264，替代未stage043309；21+7+55及严格旧纯模型测试的边界如上，完整PG0/全source与制品hash核对，stationary-metric-build-check.json。未stage/game，动作scope和排位不增加，真实位移/静止保持次数等待实际回执。
