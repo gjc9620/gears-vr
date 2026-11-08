@@ -11,10 +11,10 @@ from pathlib import Path
 import struct
 import time
 
-from cover_state import CoverQuery
+from cover_state import CoverQuery, struct_type
 from world_state import registry_append_only
 from cover_geometry_state import _geometry
-from cover_bone_query import _AttachedBridge, _module, _ownership, SubmitFailure
+from cover_bone_query import _AttachedBridge, _module, _ownership, _reference, _field, SubmitFailure
 import cover_surface_query as surface
 
 
@@ -195,9 +195,47 @@ def _certificate(q, roles, module, expected_chunks):
     return row, dict(gnatives_slot_rva=hex(slot_rva), chunks=chunks, structures=structures)
 
 
+def _surface_state(q, roles, actor):
+    """Pin the actual collision component transform, not just its Actor name."""
+    if q.obj(actor['address']) != actor:
+        raise RuntimeError('Edge surface Actor identity changed')
+    if _reference(q, actor, 'WorldInfo') != roles['world']:
+        raise RuntimeError('Edge surface WorldInfo differs')
+    component = _reference(q, actor, 'CollisionComponent')
+    if not component or _reference(q, component, 'Owner') != actor:
+        raise RuntimeError('Edge collision component ownership differs')
+    matrix_field = _field(q, component, 'LocalToWorld', 'StructProperty')
+    matrix_type = q.obj(struct_type(q, matrix_field))
+    if (matrix_field['size'] != 64 or matrix_type['name'] != 'Matrix' or
+            q.obj(matrix_type['cls'])['name'] != 'ScriptStruct' or
+            struct.unpack('<I', q.read(matrix_type['address'] + 0x88, 4))[0] != 64):
+        raise RuntimeError('Edge collision LocalToWorld is not a typed Matrix')
+    for index, label in enumerate(('XPlane', 'YPlane', 'ZPlane', 'WPlane')):
+        plane_field = _field(q, matrix_type, label, 'StructProperty', structure=True)
+        plane_type = q.obj(struct_type(q, plane_field))
+        if (plane_field['size'] != 16 or plane_field['offset'] != index * 16 or
+                plane_type['name'] != 'Plane' or q.obj(plane_type['cls'])['name'] != 'ScriptStruct' or
+                struct.unpack('<I', q.read(plane_type['address'] + 0x88, 4))[0] != 16):
+            raise RuntimeError('Edge collision Matrix Plane layout differs')
+        for axis, name in enumerate(('X', 'Y', 'Z', 'W')):
+            # Plane may inherit X/Y/Z from Vector. Use the existing typed
+            # declaring-owner walk, which also pins each actual super link.
+            field = _field(q, plane_type, name, 'FloatProperty', structure=True)
+            if field['size'] != 4 or field['offset'] != axis * 4:
+                raise RuntimeError('Edge collision Plane scalar layout differs')
+    raw = q.value(component, matrix_field)
+    matrix = struct.unpack('<16f', raw)
+    if (not all(math.isfinite(x) and abs(x) <= 2 ** 24 for x in matrix) or
+            any(abs(matrix[i]) > 1e-5 for i in (3, 7, 11)) or abs(matrix[15] - 1) > 1e-5):
+        raise RuntimeError('Edge collision transform is not finite affine')
+    return dict(actor=copy.deepcopy(actor), component=component, world=roles['world'],
+                local_to_world_bytes=raw.hex())
+
+
 def capture(observer, dll_path, dll_sha256, start, end, *, extent=(0, 0, 0), trace_actors=True,
             extra_flags=TRACE_FLAGS,
-            bridge_factory=_AttachedBridge, query_factory=TraceQuery):
+            bridge_factory=_AttachedBridge, query_factory=TraceQuery,
+            snapshot_surface=False, surface_actor=None):
     """Run at most one existing GT queue item; unknown pending is never retried."""
     report = dict(schema=1, accepted=False, diagnostic_only=True, trace_calls=0,
                   collision_verified=False, grab_authorized=False, body_modified=False,
@@ -223,6 +261,10 @@ def capture(observer, dll_path, dll_sha256, start, end, *, extent=(0, 0, 0), tra
         report['playground_submit'] = copy.deepcopy(bridge.submit_source)
         q = query_factory(observer)
         roles = surface._roles(q)
+        if type(snapshot_surface) is not bool or (surface_actor is not None and not snapshot_surface):
+            raise ValueError('Surface snapshot requires explicit observation mode')
+        if surface_actor is not None:
+            report['surface_before'] = _surface_state(q, roles, surface_actor)
         module = _module(q, bridge, game)
         if module['sha256'] != surface.GAME_SHA256 or Path(module['path']).resolve() != Path(disk['path']).resolve():
             raise RuntimeError('Cover Trace disk/current module identity differs')
@@ -286,6 +328,17 @@ def capture(observer, dll_path, dll_sha256, start, end, *, extent=(0, 0, 0), tra
                              hit_info_bytes=returned[64:104].hex())
         if actor:
             report['hit']['actor_identity'] = q.obj(actor)
+        if snapshot_surface:
+            selected_actor = surface_actor or report['hit'].get('actor_identity')
+            if not selected_actor:
+                raise RuntimeError('Initial edge ray has no collision Actor to observe')
+            report['surface_after'] = _surface_state(q, roles, selected_actor)
+            if surface_actor is not None and report['surface_before'] != report['surface_after']:
+                raise RuntimeError('Edge surface transform changed across Trace')
+            if actor:
+                hit_component = struct.unpack_from('<Q', returned, 96)[0]
+                if actor != selected_actor['address'] or hit_component != report['surface_after']['component']['address']:
+                    raise RuntimeError('Edge Trace hit a different Actor/component')
         if surface._roles(q) != roles:
             raise RuntimeError('Cover Trace closing Pawn/Link/slot binding differs')
         closing, after = _certificate(q, roles, module, expected)
@@ -375,17 +428,18 @@ def capture_edge_interval(observer, dll_path, dll_sha256, start, end, outside_de
         deadline = time.monotonic() + maximum_seconds
         result.update(start=start, end=end, outside_delta=delta,
                       tolerance=tolerance, maximum_calls=maximum_calls)
-        cohort = actor_identity = None
+        cohort = actor_identity = observed_surface = None
         direction = tuple((end[i] - start[i]) / length for i in range(3))
 
         def ray(fraction):
-            nonlocal cohort, actor_identity
+            nonlocal cohort, actor_identity, observed_surface
             if len(result['rays']) >= maximum_calls or time.monotonic() >= deadline:
                 raise TimeoutError('Edge search budget exhausted')
             origin = tuple(start[i] + fraction * delta[i] for i in range(3))
             target = tuple(end[i] + fraction * delta[i] for i in range(3))
             receipt = capture_ray(observer, dll_path, dll_sha256, origin, target,
-                                  extent=(0, 0, 0), trace_actors=False, extra_flags=TRACE_FLAGS)
+                                  extent=(0, 0, 0), trace_actors=False, extra_flags=TRACE_FLAGS,
+                                  snapshot_surface=True, surface_actor=actor_identity)
             result['rays'].append(dict(fraction=fraction, receipt=copy.deepcopy(receipt)))
             # A complete accepted Trace is the only usable observation. In
             # particular an unaccepted raw hit or pending request is not empty.
@@ -402,6 +456,11 @@ def capture_edge_interval(observer, dll_path, dll_sha256, start, end, outside_de
                 cohort = identity
             elif identity != cohort:
                 raise RuntimeError('Edge search Pawn/Link/slot/session binding changed')
+            current_surface = receipt['surface_after']
+            if observed_surface is None:
+                observed_surface = copy.deepcopy(current_surface)
+            elif (receipt['surface_before'] != observed_surface or current_surface != observed_surface):
+                raise RuntimeError('Edge collision surface changed between rays')
             inputs = receipt['inputs']
             if (tuple(inputs['start']) != origin or tuple(inputs['end']) != target or
                     tuple(inputs['extent']) != (0, 0, 0) or inputs['trace_actors'] is not False or
@@ -418,6 +477,8 @@ def capture_edge_interval(observer, dll_path, dll_sha256, start, end, outside_de
                     raise RuntimeError('Edge empty result has unexplained hit data')
                 return False
             actor_id = hit['actor_identity']
+            if current_surface['actor'] != actor_id:
+                raise RuntimeError('Edge search crossed a different collision actor')
             excluded = {receipt['roles'][role]['address'] for role in ('pawn', 'controller', 'link')}
             if actor in excluded or actor_id['address'] != actor:
                 raise RuntimeError('Edge hit belongs to controlled actor or cover marker')
@@ -447,6 +508,7 @@ def capture_edge_interval(observer, dll_path, dll_sha256, start, end, outside_de
             else:
                 clear = middle
         result.update(accepted=True, actor_identity=actor_identity,
+                      surface_state=observed_surface,
                       blocked_fraction=blocked, clear_fraction=clear,
                       interval_width=(clear - blocked) * travel)
     except Exception as error:

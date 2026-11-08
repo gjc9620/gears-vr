@@ -4,9 +4,10 @@ import unittest
 from pathlib import Path
 from types import SimpleNamespace
 import sys
+import copy
 from unittest.mock import patch
 
-from cover_trace_query import TraceQuery, capture_edge_interval
+from cover_trace_query import TraceQuery, capture_edge_interval, _surface_state
 
 
 class Memory:
@@ -193,6 +194,9 @@ class EdgeIntervalTests(unittest.TestCase):
         calls = []
 
         def trace(observer, path, digest, start, end, **kwargs):
+            observed = kwargs.pop('snapshot_surface')
+            actor = kwargs.pop('surface_actor')
+            self.assertIs(observed, True)
             calls.append((start, end, kwargs))
             fraction = sum(start[i] * delta[i] for i in range(3)) / sum(x * x for x in delta)
             blocked = fraction < .6
@@ -209,6 +213,12 @@ class EdgeIntervalTests(unittest.TestCase):
                                     normal=tuple(-x for x in direction) if blocked else (0, 0, 0)))
             if blocked:
                 receipt['hit']['actor_identity'] = dict(address=9, name='ActualWall', index=12)
+            state = dict(actor=dict(address=9, name='ActualWall', index=12),
+                         component=dict(address=90), world=receipt['roles']['world'],
+                         local_to_world_bytes='same_measured_transform')
+            receipt['surface_after'] = copy.deepcopy(state)
+            if actor is not None:
+                receipt['surface_before'] = copy.deepcopy(state)
             if mutate:
                 mutate(receipt, len(calls))
             return receipt
@@ -343,6 +353,95 @@ class EdgeIntervalTests(unittest.TestCase):
         result, calls = self.run_probe(mutate=lambda r, n: r.pop('roles'))
         self.assertFalse(result['accepted'])
         self.assertEqual(len(calls), 1)
+
+    def test_surface_motion_or_component_replacement_stops_even_on_an_empty_ray(self):
+        for side in ('surface_before', 'surface_after'):
+            for field, value in (('component', dict(address=91)), ('local_to_world_bytes', 'moved')):
+                with self.subTest(side=side, field=field):
+                    def mutate(receipt, n):
+                        if n == 2:
+                            receipt[side][field] = value
+                    result, calls = self.run_probe(mutate=mutate)
+                    self.assertFalse(result['accepted'])
+                    self.assertIn('surface changed', result['rejection'])
+                    self.assertEqual(len(calls), 2)
+
+
+class SurfaceSnapshotTests(unittest.TestCase):
+    def fixture(self):
+        from test_cover_surface_query import SurfaceMemory
+        from cover_state import CoverQuery
+        m = SurfaceMemory()
+        wall, component = 0x18000, 0x19000
+        m.add_object(wall, 'MeasuredWall', m.ACTOR)
+        m.add_object(component, 'MeasuredCollision', m.MESH_CLASS)
+        m.add_property(m.ACTOR, 'WorldInfo', 'ObjectProperty', 0x180, 8)
+        m.add_property(m.ACTOR, 'CollisionComponent', 'ComponentProperty', 0x188, 8)
+        m.add_property(m.MESH_CLASS, 'Owner', 'ObjectProperty', 0x180, 8)
+        m.add_property(m.MESH_CLASS, 'LocalToWorld', 'StructProperty', 0x200, 64, target=m.MATRIX)
+        m.put(m.MATRIX + 0x88, struct.pack('<I', 64))
+        m.put(m.PLANE + 0x88, struct.pack('<I', 16))
+        m.set_value(wall, 'WorldInfo', m.WORLD, '<Q')
+        m.set_value(wall, 'CollisionComponent', component, '<Q')
+        m.set_value(component, 'Owner', wall, '<Q')
+        m.put(component + 0x200, struct.pack('<16f', 1, 0, 0, 0, 0, 1, 0, 0,
+                                            0, 0, 1, 0, 10, 20, 30, 1))
+        for (owner, _), p in m.properties.items():
+            kind = p['type']
+            address = next(a for a, obj in m.objects.items() if obj['name'] == kind and
+                           obj['cls'] == m.META_CLASS)
+            m.objects[p['address']]['cls'] = address
+        for owner in {owner for owner, _ in m.properties}:
+            addresses = [p['address'] for (declaring, _), p in m.properties.items() if declaring == owner]
+            m.put(owner + 0x80, struct.pack('<Q', addresses[0]))
+            for current, nxt in zip(addresses, addresses[1:] + [0]):
+                m.put(current + 0x68, struct.pack('<Q', nxt))
+        return m, CoverQuery(m.observer), dict(world=m.fresh(m.WORLD)), m.fresh(wall), component
+
+    def test_typed_collision_snapshot_and_closing_transform_change(self):
+        m, q, roles, actor, component = self.fixture()
+        result = _surface_state(q, roles, actor)
+        self.assertEqual(result['component']['address'], component)
+        self.assertEqual(result['actor'], actor)
+        q.finish()
+        raw = bytes.fromhex(result['local_to_world_bytes'])
+        m.put(component + 0x200, raw[:48] + struct.pack('<f', 11) + raw[52:])
+        with self.assertRaises(RuntimeError):
+            q.finish()
+
+    def test_bad_world_owner_matrix_and_plane_are_rejected(self):
+        for bad in ('world', 'owner', 'size', 'plane', 'scalar', 'nonfinite', 'perspective'):
+            with self.subTest(bad=bad):
+                m, q, roles, actor, component = self.fixture()
+                if bad == 'world':
+                    m.set_value(actor['address'], 'WorldInfo', m.PAWN, '<Q')
+                if bad == 'owner':
+                    m.set_value(component, 'Owner', m.PAWN, '<Q')
+                if bad == 'size':
+                    m.put(m.MATRIX + 0x88, struct.pack('<I', 80))
+                if bad == 'plane':
+                    p = m.properties[m.MATRIX, 'XPlane']
+                    m.put(p['address'] + 0x94, struct.pack('<I', 4))
+                if bad == 'scalar':
+                    p = m.properties[m.VECTOR, 'X']
+                    m.put(p['address'] + 0x94, struct.pack('<I', 4))
+                if bad == 'nonfinite':
+                    m.put(component + 0x200, struct.pack('<f', float('nan')))
+                if bad == 'perspective':
+                    m.put(component + 0x20c, struct.pack('<f', .5))
+                with self.assertRaises(RuntimeError):
+                    _surface_state(q, roles, actor)
+
+    def test_inherited_plane_and_structure_links_remain_closing_dependencies(self):
+        for address_kind in ('super', 'structure'):
+            with self.subTest(address_kind=address_kind):
+                m, q, roles, actor, _ = self.fixture()
+                _surface_state(q, roles, actor)
+                address = (m.PLANE + m.profile['field_super'] if address_kind == 'super' else
+                           m.properties[m.MATRIX, 'XPlane']['address'] + m.profile['struct_property_struct'])
+                m.put(address, bytes(8))
+                with self.assertRaises(RuntimeError):
+                    q.finish()
 
 
 if __name__ == '__main__':

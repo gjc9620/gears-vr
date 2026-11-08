@@ -46,3 +46,32 @@ MSVC 原始结果保存在 `analysis/cover-system-20261108/focused-cover-results
 | 全部状态中断与 AC-01–19 | 仍待当前玩法证据 | 在实际集成候选记录暂停、回中、丢追踪、死亡和重载，并复核双眼图像与头显结果 |
 
 下一切片是将本批边界查询用于现有受控游戏路径，取得当前同一槽位的实体边缘截面。接入抓取之前还须完成可达性和身体扫掠，不能将单截面二分成功改写成完整抓边许可。游戏窗口、冻结候选与启动清理继续遵循既有保护；不抢占其他人的游戏或构建过程，不启动助手。
+
+## 2026年11月8日 碰撞组件连续性与正版隔离实例
+
+本轮属于实质进展：新增碰撞表面连续性校验，并完成独立测试实例的准备。完整开发与验证目标仍在进行，不提升历史成熟度或改变公开 v71。
+
+### 碰撞组件与变换
+
+边界搜索最初只比较碰撞 Actor 身份。相同 Actor 的组件替换或变换变化也会使多条射线失去共同几何参照，因此现增加以下检查：
+
+- 通过现有反射读取器核对命中 Actor 的 WorldInfo、CollisionComponent 和组件 Owner。
+- 核对 LocalToWorld 的 Matrix、Plane 结构及实际声明字段，支持 Plane 从 Vector 继承 X、Y、Z；结构大小、偏移、类型和继承链接均参与关闭校验。
+- 后续每条查询在提交前和返回后核对同一表面。即使射线返回空，也必须观察先前选中的碰撞组件及其变换，不能把墙面移动或组件替换当作发现边缘。
+- 非空命中的原始 HitInfo.HitComponent 须与所观察的 CollisionComponent 一致。该偏移来自原有完整 TraceHitInfo 反射证书。
+
+普通单次 Trace 默认路径不启用新表面观察；边界搜索显式启用。边界结果继续只证明单个截面，仍不授予抓边或身体移动权限。
+
+实际离线结果：`test_cover_trace_query.py` 22 项通过；原 `test_cover_surface_query.py` 13 项通过。新增测试使用原有反射内存夹具核对完整 Matrix 和继承 Plane，并验证关闭时的变换、结构链接和继承链接变化拒绝。两次夹具构造失败分别为矩阵打包方式和遗漏结构大小字段，已修正；它们不作为产品运行失败或通过证据。最新日志为 `analysis/cover-system-20261108/surface-transform-tests.log`。
+
+### 当前游戏前置条件
+
+原 `solo-m1-1028d` 测试配置仍指向历史 P2P 路径；约定的 `J:/gearsVr/Gears of War Reloaded` 工作副本不存在。本轮未使用这些路径启动游戏。
+
+通过既有 `game_install.validate_game` 核对 Steam 库内正版 EXE 和 Coalesced 配置后，复用 `tools/multi-instance/start.py::prepare` 创建 `analysis/instances/cover-20261108a`。实例有独立设置、存档副本、日志、Native 目录及 0.4 渲染配置。准备脚本与记录在 `analysis/cover-system-20261108/prepare-instance.py`、`private-instance.json`，`game_started=false`。原武器实例、公开候选和 Steam 游戏文件没有被本轮改写。
+
+当前 Steam 进程和 ActiveUser 存在，但其他现有正版试验在 Steam 已登录后仍得到原版“需要执行 Steam 才能游玩”提示，并在 Native/XR 激活前退出。该结果不能归因为掩体。为避免重复相同前置失败，本轮没有启动游戏；已准备实例也不能写成运行通过。需要确认普通正版启动条件恢复后，再安排当前实体边缘查询。
+
+### 身体执行链接续点
+
+现有 `body_goal_view_adapter.h` 已支持 `Scope::fixed_cover`，可复用其同源头身手目标计算。实际 Native 策略仍以 `upright_posture` 和 `no_cover` 排除掩体；旧 `cover_camera_live`／`cover_neutral_eye_live` 又依赖旧 CoverBody 原型的布局与入口。后续须把只读掩体基准接到现有唯一 C0 写入端，不能为了取眼点而重新开放第二套身体写入器，也不能只删准入检查。实体几何、连续身体碰撞、暴露与受击等完整要求继续保留。
