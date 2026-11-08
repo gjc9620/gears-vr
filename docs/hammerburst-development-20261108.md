@@ -290,3 +290,10 @@ Cover正常唯一交窗后stage010655/PG8e2a8c38，实际14312完成原HB肩取�
 为后续若再超限时区分读/写准备耗时，仅在原最多8条拒绝行补previous_seek_ns：最后一次改变角度的seek_latch_angle调用总耗时，两次原GT clock读取，不增加游戏字段/采集器/Hook/输入或许可。该值不保证就是上一静止样本，不单凭它认定gap根因。实际opening/release分支更新后10项执行仍通过，独立PG完整编译0。
 
 新冻结hammerburst-prepared-20261109-023513，PG821966d17fe7c86997713f317e95182e85bfc6f9ece8000b79415e7598467ce2，替代未stage023148；53纯reconcile用例的生产helper不变，10控制分支重新编译执行通过。所有源/制品哈希核对，seek-cost-build-check.json；未stage/game，排位沿用原申请，不增加动作或时长。
+
+
+## 观察回归夹具补强及最新协作约定
+
+017ee559仅补强测试：weapon/component/asset/node/sequence使用互不相同的真实类型ObjectIdentity，另加有效node/asset身份互换两类拒绝，避免相同基准身份掩盖错位比较。对实际隔离生产helper原样提取执行55项通过，函数hash仍99dd1882d65575a52ea2a8b545d1b847c5927e5ecc61009547bcb27a35890319；产品和023513冻结未改，不重复编译游戏DLL，也不将新测试文件假称已收入旧冻结。
+
+主人最新经既有统筹转达：不主动向01a1bb5e-5946-7271-af0d-1068759697e0发送进度、候选、测试、队列、收尾，也不回信确认该通知。已经停止抄送；仅在本会话/本记录保存进展，直接相关会话必要的唯一窗口交接与依赖协调仍可进行。等待继续有界保持会话、不据idle抢窗、不用Computer Use。当前Frag69684已全收尾唯一交Cover owner-only-r2，后Longshot021930→HB023513→Lancer023554→Snub024436。
