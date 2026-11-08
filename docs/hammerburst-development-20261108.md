@@ -103,3 +103,9 @@ HB独立护木几何、Snap输出及当前真实support租约下的双手求解�
 因此9772的Grip无转向不能直接作纯产品授权链缺陷结论，也不能宣称Snap成立；还需核对目标模型与实际渲染差异。保留失败，增加可复现的weapon_hammerburst_contact_plan_test.cpp，MSVC C++17/W4/WX编译执行通过上述3个判定。具体数值/记录见model-vs-measured-9772.json、model-delayed-readback-9772.json、contact-plan-regression-check.json。
 
 独立护木驱动现只在输入规划使用同右握持对应的生产target_model，明确标记planning_is_not_outcome_evidence；独立观察的实际枪矩阵、骨架、真实射线及后续像素验收保持，不把目标矩阵换成实际结果。驱动语法与离线接触重放通过，尚未新实跑。原Snap/Grab实现、最终五指/枪体贴合和完整换弹仍未验收。
+
+## 原资产变换核对与下一冻结
+
+只读复核既有WarfareGame.u分析副本中确切HB导出62424426/1238355字节，SHA4b6bd784匹配原记录。原有有界tag解析器从64读到185，4个标签没有RotOrigin；骨架前原生变换区24字节候选可解为Origin(0,0,0)、Rotator(0,-16384,0)。此处是保存布局推断，不是运行时反射值，不能证明运行时35度差异的根因，也没有据此硬加35度补偿。详细字节及界限见hb-origin-properties.json、hb-native-origin-candidate.json。
+
+下一候选hammerburst-prepared-20261108-214027已冻结2216项源码/驱动哈希，PG3e7ede1c，继承原已标识Native/XR/启动器；没有stage或启动。源与二进制来自独立source54029c2加已标识HB分派/回执改动，不混入共享worktree其他武器未提交变更。精确记录support-model-plan-prepared.json。已向Snub申请在其完成既有Frag→Snub队列并正常收尾后交回窗口；当前不占运行器。保持完整护木/换弹/交付目标开放。
