@@ -121,3 +121,11 @@ HB独立护木几何、Snap输出及当前真实support租约下的双手求解�
 ## 弹匣拔出边界补证（离线）
 
 新增6类实际拒绝断言：错误朝向、同时间、倒退时间、NaN手位、无效轴、无效枪姿态；另增加枪同步平移/复合旋转且弹匣相对手有非零位置/旋转偏移的连续拔出，以及已完成拔出后换item身份必须撤销见证。MSVC C++17 /W4 /WX、保留assert，独立编译并执行exit0，精确source/exe/命令哈希见magazine-expanded-check.json。未修改产品抽取算法，未运行游戏；不把新测试替代原匣/新匣回座、动画恢复和实际手枪面贴合验收。
+
+## 原弹匣检查驱动准备（未实跑）
+
+新增独立hammerburst_reload_chain，复用受控启动/录像/退出，只用连续模拟手柄动作，检查翻盖开启、原弹匣实际拔出后不松手回座、闭合、原计数/奖励不变及权威回射。护木与本段由互斥环境选择，没有沿用旧HB脚本的GiveTo、直接输入文件或stage逻辑。
+
+既有弹药观察器仅接受Lancer，已建立HB精确类型专用入口，只替换类型条件/错误文本，原typed属性/身份/双读/closing检查保持。离线夹具验证HB进入typed读取、Lancer和OtherWeapon拒绝，4文件语法通过；不是实际库存读取或换弹通过。初版驱动不存在ammo键的问题在运行前改成capacity/used/reserve/infinite/bonus明确比较。
+
+最新冻结hammerburst-prepared-20261108-215626，2219项来源哈希全部核对，PG3e7ede1c不变，未stage/运行。精确记录original-return-driver-check.json。首次记录脚本在冻结完成后误把Path当字典导致文档追加失败，冻结/哈希已完成且未启动游戏，现修正文档记录。Snub尚未明确交窗，已请求核对唯一持有人，不抢共享instance；完整目标仍开放。
