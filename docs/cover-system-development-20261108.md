@@ -429,3 +429,12 @@ r13运行日志中authored_eye_applied352、authored_eye_rejected0、missing_bas
 runner62662实际terminal0、launcher0，operator1真实失败保留；paired编码90737实际terminal0。Native cleanup／entry restore及pad恢复TRUE，hand_stop5／drained，Native pending0／resources_retained0／cleanup_timeout0，XR0、game退出。XR回执为实际terminal exiting／objects destroyed／shutdown completed，未把其end_session_succeeded=false写成已调用EndSession。原config字节、settings SHA及head原缺状态精确恢复，结束23驱动一致，closure-proof和wrapper回执均保存。
 
 既有retention55213实际terminal0，删除1207媒体／203868906字节，保留61864／8092／68512，最多3局／48小时，源／文字／数值未删。再次独立核idle后已最终唯一交窗Snub060545-input-loss；本窗没有追加case。完整记录analysis/cover-system-20261108/cover-61864-review.json，原session为analysis/runtime/continuous-stereo-61864-20261109-065042-562f7bb5.json。当前身体面墙、中立provider、合法脚位与连续体积碰撞、真实抓边提交、受击／枪口及实体头显仍未闭合，Publicv71和原历史评分不变。
+
+
+## 2026年11月9日 reader-r16保留几何closing的原始拒绝证据
+
+上轮为progress：035f9d7f接好当前V3／C0掩体键，并将实际61864首败、眼点出图及全收尾保存为5b32174c。本轮依据该首败检查封装链：world_state.Query.finish原本已有identity／metadata／registry分类、地址及前后值／header，但cover_geometry_state.capture捕获异常时仅存字符串。新增代码只在已有真实closing_rejection时deepcopy到结果；query尚未建立或没有该证据时不制造witness。不增加进程读取、循环、retry、append-only容许或Native调用，所有权限仍FALSE，Query／CoverQuery.finish及原closing规则未改。
+
+test_cover_geometry_state新增两个测试方法，使用原实际Query的内存夹具分别触发身份、属性布局metadata及registry变化，核对精确before／after和header、复制后不再受原字典修改影响，并核对早期读者不可用时没有伪造witness。原代码实际RED缺closing_rejection；首轮metadata夹具误改值／struct指针而非Query.metadata所记录的0x70布局块，原失败日志保留。修正夹具目标后，全部13方法实际0，accepted／collision／activation等原断言继续保留。日志geometry-closing-witness-red.log及geometry-closing-witness-confirmed.log。此处修复了拒绝信息丢失，没有证明61864具体变化原因，更不能填补它没有记录的前后值。
+
+冻结下一有限检查plan859bb156623dc81f31762629473bddded77795c3e78c8b88f836ed1683e39b15，23驱动中仅cover_geometry_state.py变化，副本在drivers-closing-witness-r16；prepare-only0。继续准确equipment-controls-prepared-20261109-cover-r13／Native5cf4adea／PGf8e6／XR1684，不重编／混入r15。本段仍原版A一次、最多8ray／30秒单截面，首个严格失败即停，无新C0事件／抓边／身体或碰撞许可；旧61864执行计划保留为6838d7b9，不据新plan改写旧结果。未stage／game，须排当前已受理尾项之后并收到唯一最终交接才能运行。

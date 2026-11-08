@@ -47,6 +47,41 @@ class GeometryMemory(MemoryFixture):
 
 
 class GeometryTests(unittest.TestCase):
+    def test_exact_closing_witness_survives_capture_without_authorizing_geometry(self):
+        for defect in ('identity', 'metadata', 'registry'):
+            with self.subTest(defect=defect):
+                f, queries = GeometryMemory(), []
+                def factory(observer):
+                    q = CoverQuery(observer)
+                    queries.append(q)
+                    return q
+                def mutate(call):
+                    if call != 2:return
+                    if defect == 'identity':f.objects[f.LINK]['internal_index'] += 1
+                    elif defect == 'metadata':
+                        f.put(f.properties[f.LINK_CLASS, 'Location']['address'] + 0x70, struct.pack('<I', 2))
+                    else:f.put(f.names_header + 8, struct.pack('<i', 101))
+                f.at_verify = mutate
+                row = self.result(f, False, query_factory=factory)
+                self.assertEqual(row['rejection'], 'World-state metadata/registry changed at closing boundary')
+                self.assertEqual(row['closing_rejection']['kind'], defect)
+                self.assertEqual(row['closing_rejection'], queries[0].closing_rejection)
+                self.assertNotEqual(row['closing_rejection']['before'], row['closing_rejection']['after'])
+                if defect == 'registry':
+                    self.assertEqual(row['closing_rejection']['before_header']['count'], 100)
+                    self.assertEqual(row['closing_rejection']['after_header']['count'], 101)
+                witness = json.dumps(row['closing_rejection'], sort_keys=True)
+                queries[0].closing_rejection['before'] = 'mutated fixture after capture'
+                self.assertEqual(json.dumps(row['closing_rejection'], sort_keys=True), witness)
+
+    def test_pre_query_failure_has_no_invented_closing_witness(self):
+        f = GeometryMemory()
+        def fail_first(call):
+            if call == 1:raise OSError('fixture: reader unavailable before query')
+        f.at_verify = fail_first
+        row = self.result(f, False)
+        self.assertNotIn('closing_rejection', row)
+
     def result(self, fixture, accepted=True, **kwargs):
         row = fixture.capture(**kwargs)
         self.assertIs(row['accepted'], accepted, row.get('rejection'))

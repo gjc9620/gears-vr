@@ -135,6 +135,7 @@ def capture(observer, *, query_factory=CoverQuery):
                native_cover_state_certified=False, native_getter_verified=False,
                collision_verified=False, renderer_alignment_verified=False,
                started_perf_counter_ns=time.perf_counter_ns())
+    q = None
     try:
         observer.verify()
         if observer.resolver is None or observer.sampler is None:
@@ -181,5 +182,10 @@ def capture(observer, *, query_factory=CoverQuery):
                           'authenticate fixed facing, cover edges, top collision height, native getters or shooting.')
     except (RuntimeError, OSError, ValueError, TypeError, KeyError, struct.error) as error:
         out.update(rejection=str(error), rejection_type=type(error).__name__)
+        witness = getattr(q, 'closing_rejection', None)
+        if witness is not None:
+            # Preserve the exact failed readback already recorded by Query.
+            # No extra process reads, retry, or relaxation of its closing gate.
+            out['closing_rejection'] = copy.deepcopy(witness)
     out['finished_perf_counter_ns'] = time.perf_counter_ns()
     return out
