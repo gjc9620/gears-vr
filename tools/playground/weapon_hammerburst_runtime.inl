@@ -420,9 +420,11 @@ void step(hand::Frame const& f,hand::Decision const& decision) noexcept {
         }
         if(moved==gears_weapon::HammerburstLatchMotion::rejected){
             if(log_file&&latch_rejection_logs++<8){
-                fwprintf(log_file,L"hammerburst_latch_rejected reason=%u stage=%u serial=%llu angle=%.9g sequence=%llu previous_ms=%llu sample_ms=%llu interval_limit_ms=%llu previous_seek_ns=%lld stationary_holds=%u\n",
+                const auto previous_hand=stroke.last_hand_in_weapon();
+                const double hand_delta=std::hypot(std::hypot(sample.hand.x-previous_hand.x,sample.hand.y-previous_hand.y),sample.hand.z-previous_hand.z);
+                fwprintf(log_file,L"hammerburst_latch_rejected reason=%u stage=%u serial=%llu angle=%.9g sequence=%llu previous_ms=%llu sample_ms=%llu interval_limit_ms=%llu previous_seek_ns=%lld stationary_holds=%u retained_same=%u hand_delta_m=%.9g\n",
                     unsigned(stroke.last_rejection()),unsigned(stage),serial,angle,sample.sequence,
-                    previous_ms,sample.milliseconds,geometry.latch.observation_interval_ms,last_latch_seek_elapsed_ns,latch_stationary_holds);fflush(log_file);
+                    previous_ms,sample.milliseconds,geometry.latch.observation_interval_ms,last_latch_seek_elapsed_ns,latch_stationary_holds,unsigned(retained_contact),hand_delta);fflush(log_file);
             }
             held={};released=false;return;
         }
