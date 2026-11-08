@@ -89,6 +89,86 @@ int main(int argc,char** argv){
     const auto before=bytes(result);
     C(ng::prepare(result.neutral,placement,source,*model,*frame,marker,policy,{.25},*work,result)==ng::Status::alias);
     C(bytes(result)==before);
+    // Current V3 acquisition on an older immutable Scene association. These
+    // are CPU clocks/cohorts; the original retained source file stays CT0.
+    namespace src=gears_body_tick_source;
+    src::Input input{};input.scene_cache_revision=2;
+    const auto now=std::int64_t(source.published_ns)+1000000000;
+    input.metadata_begin_ns=now-10000000;input.metadata_end_ns=now-8000000;
+    auto& tick=input.observed;tick.parent_scene=source;tick.tick=1;tick.thread=source.native.game_thread;tick.parent_cookie=123;
+    tick.begin_ns=now-7000000;tick.end_ns=now-3000000;
+    tick.stereo=source.stereo;tick.stereo.sequence+=5;tick.stereo.received_ns=now-4000000;tick.stereo.predicted_time+=1000000000;
+    tick.controllers=source.controllers;tick.controllers.sequence=tick.stereo.sequence;
+    tick.controllers.predicted_time=tick.stereo.predicted_time;
+    tick.controllers.received_ns=now-5000000;tick.controllers.sync_ns=now-6000000;
+    tick.continuity.input=tick.controllers;tick.continuity.stream_epoch=source.producer.stream;
+    for(unsigned i=0;i<2;++i)tick.continuity.tracking_epoch[i]=source.producer.tracking[i];
+    tick.reference_revision=source.native_reference_revision;tick.native_reference=source.native_reference;
+    tick.publisher_pid=source.controller_publisher_pid;tick.publisher_start=source.controller_publisher_start;
+    auto current_policy=policy;current_policy.now_ns=now;
+    auto current_placement=placement;current_placement.observed_ns=input.metadata_end_ns;
+    if(src::classify(input,source,now,true)!=src::Verdict::okay)
+        printf("V3 fixture hard bits=%x flags=%x producer=%llu publisher=%u\n",src::rejection_detail(input,source,now,true),source.flags,source.producer.stream,source.controller_publisher_pid);
+    C(src::classify(input,source,now,true)==src::Verdict::okay);
+    C(!a::core::core_snapshot_valid(source,now,a::maximum_age_ns,true));
+    const auto input_before=bytes(input);
+    a::CoverPoseMeasurement current_measure{};
+    C(a::measure_cover_pose(input,*model,*frame,marker,current_policy,work->fitting.body_work,current_measure)==a::Status::okay);
+    C(current_measure.binding.observed_ns==input.metadata_end_ns);
+    C(current_measure.binding.publication==source.publication_sequence&&current_measure.binding.scene==source.scene_invocation);
+    C(distance(current_measure.pelvis.position,measured.pelvis.position)==0);
+    ng::Result current_neutral{};
+    C(ng::prepare(calibrated,current_placement,input,*model,*frame,marker,current_policy,{.25},*work,current_neutral)==ng::Status::okay);
+    C(bytes(current_neutral.neutral)==bytes(result.neutral));
+    C(ng::prepare(calibrated,current_placement,source,*model,*frame,marker,current_policy,{.25},*work,current_neutral)!=ng::Status::okay);
+    a::Output converted{};
+    C(a::prepare_cover(calibrated,current_placement,input,*model,*frame,marker,{},current_policy,converted)==a::Status::okay);
+    const auto converted_before=bytes(converted);
+    C(a::prepare_cover(calibrated,current_placement,source,*model,*frame,marker,{},current_policy,converted)!=a::Status::okay);
+    C(bytes(converted)==converted_before);
+    C(bytes(input)==input_before);
+    // The latest independent physical input is used; old world_head and the
+    // old Scene Stereo never supply a pose to this conversion.
+    const v::Vector current_physical{.025,.015,-.02};
+    tick.stereo.head.position=plus(source.reference.position,rotate(source.reference.orientation,current_physical));
+    tick.stereo.head.orientation=oracle_multiply(source.reference.orientation,axis(1,.15));
+    const auto tracked_input_before=bytes(input);
+    C(src::classify(input,source,now,true)==src::Verdict::okay);
+    C(a::prepare_cover(calibrated,current_placement,input,*model,*frame,marker,{},current_policy,converted)==a::Status::okay);
+    a::Neutral placed{};C(a::place_cover_head(calibrated,current_placement,input,*model,*frame,marker,current_policy,placed)==a::Status::okay);
+    C(distance(converted.goal.physical_world,map(placed,current_physical,source.units_per_metre))<1e-9);
+    ng::Result with_current_head{};
+    C(ng::prepare(calibrated,current_placement,input,*model,*frame,marker,current_policy,{.25},*work,with_current_head)==ng::Status::okay);
+    C(bytes(with_current_head.neutral)==bytes(result.neutral));
+    for(unsigned bad=0;bad<15;++bad){auto changed=input;auto p=current_placement;auto pol=current_policy;
+        if(bad==0)changed.scene_cache_revision=0;
+        if(bad==1)changed.metadata_begin_ns=now-50000001;
+        if(bad==2)changed.metadata_end_ns=changed.observed.begin_ns+1;
+        if(bad==3)changed.observed.begin_ns=now-40000001;
+        if(bad==4)changed.observed.stereo.received_ns=now-40000001;
+        if(bad==5)++changed.observed.reference_revision;
+        if(bad==6)++changed.observed.publisher_start;
+        if(bad==7)++changed.observed.controllers.sequence;
+        if(bad==8)++p.scene;if(bad==9)++p.publication;
+        if(bad==10)p.observed_ns=input.metadata_begin_ns-1;
+        if(bad==11)p.observed_ns=input.metadata_end_ns+1;
+        if(bad==12)pol.now_ns=now+50000001;
+        if(bad==13)changed.observed.parent_scene.flags&=~a::core::rig::cover_key_known;
+        if(bad==14)++changed.observed.parent_scene.cover_slot;
+        const auto saved_result=bytes(with_current_head);const auto saved_output=bytes(converted);
+        C(ng::prepare(calibrated,p,changed,*model,*frame,marker,pol,{.25},*work,with_current_head)!=ng::Status::okay);
+        C(bytes(with_current_head)==saved_result);
+        C(a::prepare_cover(calibrated,p,changed,*model,*frame,marker,{},pol,converted)!=a::Status::okay);
+        C(bytes(converted)==saved_output);
+    }
+    // Whole-input overlap must be rejected, including tracking outside the
+    // parent Core subobject. Only an alias check reads this output reference.
+    auto overlap=std::make_unique<src::Input>(input);const auto overlap_before=bytes(*overlap);
+    auto& aliased=*reinterpret_cast<a::Output*>(&overlap->observed.stereo);
+    C(a::prepare_cover(calibrated,current_placement,*overlap,*model,*frame,marker,{},current_policy,aliased)==a::Status::alias);
+    C(bytes(*overlap)==overlap_before);
+    C(bytes(input)==tracked_input_before);
+    C(bytes(source)==source_before&&bytes(*frame)==frame_before);
     C(bytes(*frame)==frame_before&&bytes(source)==source_before&&bytes(calibrated)==calibrated_before);
     printf("cover_neutral_goal: %u checks, %u failures; retained geometry, CPU cover binding; no runtime permission\n",checks,failures);
     return failures?1:0;

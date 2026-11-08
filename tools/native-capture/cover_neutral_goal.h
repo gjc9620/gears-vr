@@ -19,8 +19,11 @@ struct Result {
     fit::Result fitting{};
 };
 struct Workspace {fit::Workspace fitting{};};
-inline Status prepare(a::Neutral const& calibrated,a::CoverPlacement const& placement,
-    a::core::CoreSnapshot const& source,b::Model const& model,b::Frame const& frame,
+inline a::core::CoreSnapshot const& parent(a::core::CoreSnapshot const& source) noexcept {return source;}
+inline a::core::CoreSnapshot const& parent(gears_body_tick_source::Input const& source) noexcept {return source.observed.parent_scene;}
+// The selected overload performs its own unchanged Core or V3 admission.
+template<class Source> inline Status prepare(a::Neutral const& calibrated,a::CoverPlacement const& placement,
+    Source const& source,b::Model const& model,b::Frame const& frame,
     a::marker::Marker const& marker,a::Policy const& policy,fit::Limits limits,
     Workspace& work,Result& out) noexcept {
     using namespace b::d;
@@ -37,9 +40,10 @@ inline Status prepare(a::Neutral const& calibrated,a::CoverPlacement const& plac
     // Preserve the original Core, clocks and selected tracking untouched;
     // this local sample is solely a mathematical pre-HMD target, never a
     // submitted tracking sample or a current-source certificate.
-    auto neutral_tracking=source.stereo;neutral_tracking.head=source.reference;
+    auto const& original=parent(source);
+    auto neutral_tracking=original.stereo;neutral_tracking.head=original.reference;
     a::Output target{};
-    if(a::prepare_axes_math(next.neutral,placement.anchor,source,neutral_tracking,model,frame,
+    if(a::prepare_axes_math(next.neutral,placement.anchor,original,neutral_tracking,model,frame,
         marker,{},policy,target)!=a::Status::okay)return Status::goal;
     if(fit::fit(model,frame,target.goal,next.measured.pelvis.position,limits,work.fitting,next.fitting)!=fit::Status::okay)
         return Status::fit;

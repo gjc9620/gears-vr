@@ -215,10 +215,18 @@ void sample_current_cover_pose() noexcept {
     if(stopping.load()||!observed_rebind_idle())return;
     const auto expected_revision=revision.load();
     try{auto& s=n::state;a::marker::Marker marker{};a::CoverPoseMeasurement candidate{};a::Policy policy{};
+        cover_context_live::CurrentKey before{},after{};
         policy.now_ns=rig::clock_ns();policy.allow_sim=simulator_operator;
         if(!s.context.current(n::tx::Stage::prepare)||
-           a::marker::prepare(s.model,s.source,a::marker::Basis::marcus_mesh_face_forward_y,origin.work,marker)!=a::marker::Status::okay||
-           a::measure_cover_pose(s.context.source,s.model,s.source,marker,policy,s.workspace,candidate)!=a::Status::okay||
+           !cover_context_live::sample_current(s.context.actor,before)||
+           before.type!=s.context.source.cover_type||before.slot!=s.context.source.cover_slot||
+           !gears_weapon_hand::same(rig::object(before.link),s.context.source.cover_link)||
+           a::marker::prepare(s.model,s.source,a::marker::Basis::marcus_mesh_face_forward_y,origin.work,marker)!=a::marker::Status::okay)return;
+        const auto measured=body_tick_source_live::enabled?
+            a::measure_cover_pose(s.context.body_source,s.model,s.source,marker,policy,s.workspace,candidate):
+            a::measure_cover_pose(s.context.source,s.model,s.source,marker,policy,s.workspace,candidate);
+        if(measured!=a::Status::okay||
+           !cover_context_live::sample_current(s.context.actor,after)||!cover_context_live::same(before,after)||
            !s.context.current(n::tx::Stage::prepare)||stopping.load()||revision.load()!=expected_revision)return;
         current_cover_pose=candidate;current_cover_pose_valid=true;
         if(stopping.load()||revision.load()!=expected_revision)current_cover_pose_valid=false;

@@ -54,14 +54,17 @@ struct CoverPoseMeasurement {
     vr::Pose eye{};
     body::Pose root{},pelvis{},feet[2]{};
 };
-inline Status measure_cover_pose(core::CoreSnapshot const& source,body::Model const& model,
+// Math over an independently admitted source. observed_ns is the original
+// Scene publication for Core, or the actual V3 metadata observation end.
+inline Status measure_cover_pose_math(core::CoreSnapshot const& source,std::int64_t observed_ns,body::Model const& model,
     body::Frame const& frame,marker::Marker const& authored,Policy const& policy,
     body::Workspace& work,CoverPoseMeasurement& out) noexcept {
     using namespace body::d;
     const Range ranges[]={range(&source,sizeof source),range(&model,sizeof model),range(&frame,sizeof frame),
         range(&authored,sizeof authored),range(&policy,sizeof policy),range(&work,sizeof work),range(&out,sizeof out)};
     if(!disjoint(ranges,7))return Status::alias;
-    if(!core::core_snapshot_valid(source,policy.now_ns,maximum_age_ns,policy.allow_sim))return Status::core;
+    if(observed_ns<=0||observed_ns>policy.now_ns||
+       std::uint64_t(policy.now_ns-observed_ns)>maximum_age_ns)return Status::core;
     if(!(source.flags&core::rig::cover_key_known)||!source.cover_type||source.cover_slot<0)return Status::cover;
     if(frame.model_scale!=1||frame.units_per_metre!=source.units_per_metre)return Status::units;
     if(marker::detail::context(model,frame,model.canonical)!=marker::Status::okay)return Status::head_marker;
@@ -78,8 +81,24 @@ inline Status measure_cover_pose(core::CoreSnapshot const& source,body::Model co
     auto& key=next.binding;key.world=source.world;key.pawn=source.pawn;key.mesh=source.mesh;key.link=source.cover_link;
     key.world_generation=source.world_generation;key.scene=source.scene_invocation;key.publication=source.publication_sequence;
     key.reference=source.reference_generation;key.slot=source.cover_slot;key.type=source.cover_type;
-    key.observed_ns=std::int64_t(source.published_ns); // Never refresh the source clock.
+    key.observed_ns=observed_ns; // Original receipt; never refresh any source clock.
     out=next;return Status::okay;
+}
+inline Status measure_cover_pose(core::CoreSnapshot const& source,body::Model const& model,
+    body::Frame const& frame,marker::Marker const& authored,Policy const& policy,
+    body::Workspace& work,CoverPoseMeasurement& out) noexcept {
+    if(!core::core_snapshot_valid(source,policy.now_ns,maximum_age_ns,policy.allow_sim))return Status::core;
+    return measure_cover_pose_math(source,std::int64_t(source.published_ns),model,frame,authored,policy,work,out);
+}
+inline Status measure_cover_pose(gears_body_tick_source::Input const& input,body::Model const& model,
+    body::Frame const& frame,marker::Marker const& authored,Policy const& policy,
+    body::Workspace& work,CoverPoseMeasurement& out) noexcept {
+    using namespace body::d;
+    const Range ranges[]={range(&input,sizeof input),range(&model,sizeof model),range(&frame,sizeof frame),
+        range(&authored,sizeof authored),range(&policy,sizeof policy),range(&work,sizeof work),range(&out,sizeof out)};
+    if(!disjoint(ranges,7))return Status::alias;
+    if(gears_body_tick_source::classify(input,input.observed.parent_scene,policy.now_ns,policy.allow_sim)!=gears_body_tick_source::Verdict::okay)return Status::core;
+    return measure_cover_pose_math(input.observed.parent_scene,input.metadata_end_ns,model,frame,authored,policy,work,out);
 }
 inline Status place_cover(Neutral const& calibrated,vr::CoverViewAnchor const& anchor,
                          vr::CoverViewAnchor const& view_anchor,
@@ -182,7 +201,7 @@ inline Status prepare(Neutral const& neutral,gears_body_tick_source::Input const
     if(gears_body_tick_source::classify(input,input.observed.parent_scene,policy.now_ns,policy.allow_sim)!=gears_body_tick_source::Verdict::okay)return Status::core;
     return prepare_math(neutral,input.observed.parent_scene,input.observed.stereo,model,frame,authored,committed,policy,out);
 }
-inline Status place_cover_head(Neutral const& calibrated,CoverPlacement const& placement,
+inline Status place_cover_head_math(Neutral const& calibrated,CoverPlacement const& placement,
     core::CoreSnapshot const& source,body::Model const& model,body::Frame const& frame,
     marker::Marker const& authored,Policy const& policy,Neutral& out) noexcept {
     using namespace body::d;
@@ -190,7 +209,6 @@ inline Status place_cover_head(Neutral const& calibrated,CoverPlacement const& p
         range(&model,sizeof model),range(&frame,sizeof frame),range(&authored,sizeof authored),
         range(&policy,sizeof policy),range(&out,sizeof out)};
     if(!disjoint(ranges,8))return Status::alias;
-    if(!core::core_snapshot_valid(source,policy.now_ns,maximum_age_ns,policy.allow_sim))return Status::core;
     if(policy.scope!=body::Scope::fixed_cover)return Status::policy;
     if(!(source.flags&core::rig::cover_key_known)||!placement.type||placement.type!=source.cover_type||
        placement.slot<0||placement.slot!=source.cover_slot||
@@ -219,6 +237,23 @@ inline Status place_cover_head(Neutral const& calibrated,CoverPlacement const& p
     placed.pelvis_world=add(placed.pelvis_world,sub(tracking_head.pose.position,wall_head.pose.position));
     out=placed;return Status::okay;
 }
+inline Status place_cover_head(Neutral const& calibrated,CoverPlacement const& placement,
+    core::CoreSnapshot const& source,body::Model const& model,body::Frame const& frame,
+    marker::Marker const& authored,Policy const& policy,Neutral& out) noexcept {
+    if(!core::core_snapshot_valid(source,policy.now_ns,maximum_age_ns,policy.allow_sim))return Status::core;
+    return place_cover_head_math(calibrated,placement,source,model,frame,authored,policy,out);
+}
+inline Status place_cover_head(Neutral const& calibrated,CoverPlacement const& placement,
+    gears_body_tick_source::Input const& input,body::Model const& model,body::Frame const& frame,
+    marker::Marker const& authored,Policy const& policy,Neutral& out) noexcept {
+    using namespace body::d;
+    const Range ranges[]={range(&calibrated,sizeof calibrated),range(&placement,sizeof placement),range(&input,sizeof input),
+        range(&model,sizeof model),range(&frame,sizeof frame),range(&authored,sizeof authored),range(&policy,sizeof policy),range(&out,sizeof out)};
+    if(!disjoint(ranges,8))return Status::alias;
+    if(gears_body_tick_source::classify(input,input.observed.parent_scene,policy.now_ns,policy.allow_sim)!=gears_body_tick_source::Verdict::okay)return Status::core;
+    if(placement.observed_ns<input.metadata_begin_ns||placement.observed_ns>input.metadata_end_ns)return Status::cover;
+    return place_cover_head_math(calibrated,placement,input.observed.parent_scene,model,frame,authored,policy,out);
+}
 inline Status prepare_cover(Neutral const& calibrated,CoverPlacement const& placement,
     core::CoreSnapshot const& source,body::Model const& model,body::Frame const& frame,
     marker::Marker const& authored,vr::CoverOffset const& committed,Policy const& policy,Output& out) noexcept {
@@ -231,5 +266,19 @@ inline Status prepare_cover(Neutral const& calibrated,CoverPlacement const& plac
     const auto status=place_cover_head(calibrated,placement,source,model,frame,authored,policy,placed);
     if(status!=Status::okay)return status;
     return prepare_axes_math(placed,placement.anchor,source,source.stereo,model,frame,authored,committed,policy,out);
+}
+inline Status prepare_cover(Neutral const& calibrated,CoverPlacement const& placement,
+    gears_body_tick_source::Input const& input,body::Model const& model,body::Frame const& frame,
+    marker::Marker const& authored,vr::CoverOffset const& committed,Policy const& policy,Output& out) noexcept {
+    using namespace body::d;
+    const Range ranges[]={range(&calibrated,sizeof calibrated),range(&placement,sizeof placement),range(&input,sizeof input),
+        range(&model,sizeof model),range(&frame,sizeof frame),range(&authored,sizeof authored),range(&committed,sizeof committed),
+        range(&policy,sizeof policy),range(&out,sizeof out)};
+    if(!disjoint(ranges,9))return Status::alias;
+    Neutral placed{};
+    const auto status=place_cover_head(calibrated,placement,input,model,frame,authored,policy,placed);
+    if(status!=Status::okay)return status;
+    return prepare_axes_math(placed,placement.anchor,input.observed.parent_scene,input.observed.stereo,
+        model,frame,authored,committed,policy,out);
 }
 } // namespace gears_body_goal_view

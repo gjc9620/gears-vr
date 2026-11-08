@@ -37,9 +37,19 @@ bool observe(context::Observation& out){
 int main(){
     arena=reinterpret_cast<uintptr_t>(VirtualAlloc(nullptr,saved_arena.size(),MEM_COMMIT|MEM_RESERVE,PAGE_READWRITE));if(!arena)return 99;
     cover_setup();context::Observation out{};C(observe(out));C(!out.cover_type&&!out.link.address&&out.slot==-1);
+    context::CurrentKey current{};
+    const auto original_actor=out.actor;
+    memcpy(saved_arena.data(),reinterpret_cast<void*>(arena),saved_arena.size());
+    C(context::sample_current(out.actor,current));C(!current.type&&current.slot==-1&&!current.link.address);
+    C(!memcmp(saved_arena.data(),reinterpret_cast<void*>(arena),saved_arena.size()));
+    C(!memcmp(&original_actor,&out.actor,sizeof original_actor));
     // Independent of legacy CoverBody, even though its gates are deliberately bad.
     for(unsigned type:{1u,2u}){cover_setup();put(fixture_pawn+0x298,static_cast<unsigned char>(type));C(observe(out));
         C(out.cover_type==type&&out.link.address==link_instance&&out.slot==0&&out.scene==scene.invocation);
+        C(context::sample_current(out.actor,current));
+        C(current.type==type&&current.slot==out.slot&&gears_anchor::equal_identity(current.link,out.link));
+        const auto before=current;put(arena+0x80000,0x12345678u);
+        C(context::sample_current(out.actor,current)&&!context::same(before,current));
         auto again=out;C(observe(again)&&context::same(out,again));
         put(fixture_pawn+0x30c,static_cast<unsigned char>(7));put(fixture_pawn+0x294,0x84u);C(observe(again));
         C(again.cover_action==7&&again.transitioning&&!context::same(out,again));
@@ -72,6 +82,24 @@ int main(){
         if(bad==5)plan(fixture_pawn+0x308,2,fixture_pawn+0x30d,1,1);
         const auto before=out;C(!context::sample(&scene,out)&&!memcmp(&before,&out,sizeof out));read_hook=nullptr;
         C(h::mutex.try_lock());h::mutex.unlock();}
+    // The current C0 reader authenticates actual local possession and typed
+    // cover fields, without manufacturing a newer render Scene receipt.
+    for(unsigned bad=0;bad<12;++bad){cover_setup();put(fixture_pawn+0x298,static_cast<unsigned char>(2));C(observe(out));
+        auto actor=out.actor;current={};current.slot=999;
+        if(bad==0)++actor.world_generation;
+        if(bad==1)++actor.mesh.number;
+        if(bad==2)actor.weapon_known=false;
+        if(bad==3)put(fixture_pawn+0x308,2);
+        if(bad==4)put(link_instance+0x188,fixture_pawn);
+        if(bad==5)put(inner+0x74,48u);
+        if(bad==6)plan(fixture_pawn+0x308,2,arena+0x80000,0,4);
+        if(bad==7)plan(fixture_pawn+0x308,2,fixture_pawn+0x30c,7,1);
+        if(bad==8)plan(fixture_pawn+0x308,2,link_instance+0x340,arena+0x82000,8);
+        if(bad==9)denied=arena+0x80000;
+        if(bad==10)h::game_thread=GetCurrentThreadId()+1;
+        if(bad==11)recording=false;
+        const auto before=current;C(!context::sample_current(actor,current)&&!memcmp(&before,&current,sizeof current));
+        read_hook=nullptr;C(h::mutex.try_lock());h::mutex.unlock();}
     C(VirtualFree(reinterpret_cast<void*>(arena),0,MEM_RELEASE)!=0);
     printf("cover_context_live: %u checks, %u failures; legacy body disabled, no hooks/writes\n",checks,failures);return failures?1:0;
 }

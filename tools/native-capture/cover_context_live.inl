@@ -13,6 +13,19 @@ struct Observation {
     uint64_t scene{};unsigned thread{};
     int64_t scene_qpc{},family_qpc{},renderer_qpc{};
 };
+// A synchronous read inside an already admitted Tick/C0 owner. This is not
+// a Scene publication, tracking sample or reusable body-write certificate.
+struct CurrentKey {
+    gears_anchor::Identity link{};
+    uintptr_t slots_data{};int slots_count{},slots_capacity{},slot{-1};
+    unsigned char type{},action{},last_action{};bool transitioning{};
+    std::array<unsigned char,212> selected{};
+};
+bool same(CurrentKey const& a,CurrentKey const& b){return
+    gears_anchor::equal_identity(a.link,b.link)&&a.slots_data==b.slots_data&&
+    a.slots_count==b.slots_count&&a.slots_capacity==b.slots_capacity&&a.slot==b.slot&&
+    a.type==b.type&&a.action==b.action&&a.last_action==b.last_action&&
+    a.transitioning==b.transitioning&&a.selected==b.selected;}
 bool same(Observation const& a,Observation const& b){return
     binding::same_key(a.actor,b.actor)&&a.actor.special_move==b.actor.special_move&&
     gears_anchor::equal_identity(a.link,b.link)&&a.slot==b.slot&&a.cover_type==b.cover_type&&
@@ -95,6 +108,31 @@ bool values(binding::Binding const& actor,Values& out){
 bool current_layout(){return binding::context_ready()&&binding::metadata_current()&&
     metadata_generation==binding::metadata_generation&&metadata_bytes==binding::metadata_bytes&&
     binding::current(pawn_proof);}
+bool sample_current(binding::Binding const& tick_owner,CurrentKey& out){
+    try{
+        binding::Binding first_actor{},last_actor{};
+        if(!binding::current_tick_actor(tick_owner,first_actor)||
+           !binding::same_key(tick_owner,first_actor)||tick_owner.special_move!=first_actor.special_move)return false;
+        Values first{},last{};
+        {
+            std::lock_guard<std::mutex> lock(binding::mutex);
+            if(!binding::context_ready()||!pawn_layout(first_actor)||!values(first_actor,first)||!current_layout()||
+               (first.type&&!binding::current(link_proof))||!values(first_actor,last)||!equal(first,last))return false;
+        }
+        if(!binding::current_tick_actor(first_actor,last_actor)||!binding::same_key(first_actor,last_actor)||
+           first_actor.special_move!=last_actor.special_move)return false;
+        {
+            std::lock_guard<std::mutex> lock(binding::mutex);
+            if(!current_layout()||!values(last_actor,last)||!equal(first,last)||
+               (first.type&&!binding::current(link_proof))||!current_layout()||
+               last_actor.world_generation!=committed_world_generation.load())return false;
+        }
+        CurrentKey key{};key.link=first.link_identity;key.slot=first.slot;key.type=first.type;
+        key.action=first.action;key.last_action=first.last;key.transitioning=(first.transition&transition_mask)!=0;
+        key.slots_data=first.array.data;key.slots_count=first.array.count;key.slots_capacity=first.array.capacity;key.selected=first.selected;
+        out=key;return true;
+    }catch(...){return false;}
+}
 bool sample(gears_anchor::Receipt const* scene_receipt,Observation& out){
     try{
         if(!scene_receipt||!scene_receipt->invocation||scene_receipt->thread!=GetCurrentThreadId()||scene_receipt->scene_qpc<=0||
@@ -124,6 +162,7 @@ bool sample(gears_anchor::Receipt const* scene_receipt,Observation& out){
 }
 #else
 bool sample(gears_anchor::Receipt const*,Observation&){return false;}
+bool sample_current(binding::Binding const&,CurrentKey&){return false;}
 #endif
 } // namespace cover_context_live
 #endif
