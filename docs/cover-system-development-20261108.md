@@ -454,3 +454,5 @@ REA的IDA provider未配置，直接IDA connector因缺ida_nexus退出；没有�
 核对当前cover_trace_query：它消费完成的原Actor.Trace对象返回与原hit字段，既有边缘截面仍是Extent0射线，没有直接调用上述leaf，也明确不授予collision／grab／body许可。因此本轮没有凭历史leaf给生产查询加不适用的语义或放宽guard。这七例只认证该历史数学函数及本次参数解释，不能证明当前StaticMesh／世界形状分派、静止初始重叠的broadphase覆盖、动态碰撞、self排除、physics fence或同版hit／muzzle消费。
 
 完整数值、字节身份、失败与范围记录在analysis/cover-system-20261108/ida-volume-leaf-r16/findings.json及replay/replay-result.json；派生原代码片段保持ignored，不进入源码或发行包。r16运行plan及23驱动未改，未stage／启动游戏。当前明确队列保留Frag071258→Longshot070405→HB070119-refire-supply→Cover reader-r16→Snub071103-charging-observer；仍须前驱完整收尾后的唯一交接及独立idle。完整碰撞、抓边身体提交、双眼／受击／枪口和头显验收仍未闭合，Publicv71及历史评分不变。
+
+随后仅在新goal-host-r17输出目录对准确r15冻结源的BodyC0GoalPolicyLiveTest作/W4/WX编译复核，实际exit2。首批缺失是旧host_native_live_prefix未提供当前ComposeObservation、MainMountQueryResult、PendingBranch、safe_copy前置声明及metadata诊断等合同，后续出现连锁编译错误；没有进入执行。原log、命令及四个输入源SHA保存在goal-host-r17/compile-findings.json。此结果明确原Host集成覆盖仍缺，不能由reader／目标数学通过替代；没有删生产分支、加宽松stub或重编DLL。再次逐项核对23驱动与plan859bb156完全一致，实际游戏／XR／自有IDA均无遗留；不将当前idle视作已交接窗口。
