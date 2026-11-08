@@ -113,3 +113,15 @@ MSVC 原始结果保存在 `analysis/cover-system-20261108/focused-cover-results
 首次直接读取保留的 `captured-core.bin` 时，精确尺寸检查失败：旧文件为 1832 字节，当前结构为 1864 字节。旧文件未转换、覆盖、补字节或改记为当前样本；失败保存在 `body_goal_view_adapter-old-core-failure.log` 与 `cover-adapter-first-failure.json`。尝试复用旧 Core 单元测试生成器时，其旧 ABI static_assert 同样拒绝；没有修改这些原断言。后续使用独立、明确命名的当前合成夹具生成器，并先通过当前 `core_snapshot_valid`。合成数据不属于游戏或物理追踪证据。
 
 检查脚本和结果在 `analysis/cover-system-20261108/run-cover-adapter.py`、`make-synthetic-core.cpp`、`synthetic-core-current.bin`、`cover-adapter-results.json`。新检查已登记到 CMake，仍要求显式提供对应 Core 与骨骼夹具。没有据本轮生成新的安装候选或运行游戏；上批 r4 DLL 仅证明其冻结源码中的独立掩体读取接线，不代表本批转换已经进入实跑。
+
+## 2026年11月8日 当前 C0 掩体原始姿态读取
+
+在原唯一 C0 执行入口中补接只读测量：当前人物已进入掩体时，从本次已捕获的原始 Local 骨骼及组件变换重建眼点、根、骨盆与双脚。眼点继续使用 Marcus 原有作者标记；测量不叠加 HMD、不读取渲染结果，也不把动作中或过渡中的姿态自动命名为中立姿态。当前掩体姿态仍拒绝身体写入，不调用覆盖回执取得写入许可。
+
+测量复用本次已认证 C0 上下文，前后检查 current、空闲重绑定条件、停止状态与修订号。只在当前 owner 回调范围有效；新的回调、结束、失效或停止都会清除有效位。记录保留原 Core 的 publication、scene、reference 与 published_ns，不以读取时刻刷新旧样本。它尚无实际玩法消费者，不能单独开启抓边、移动眼点或认证脚位碰撞。
+
+本批 `BodyCoverGoalAdapterTest` 为 221 项通过，含原 12 组完整身体规划；新增检查确认原始骨骼未修改、原时间与身份键保留、HMD／world_head 改变不影响此原始测量，以及拒绝时输出保持。原转换器另在同一明确合成的当前 Core 上 159 项通过。骨骼夹具是真实保留记录，Core 和本批掩体状态是合成输入，仍是 CPU 证据。
+
+最终 r6 隔离 Native 编译、链接通过，SHA256 `63fe604d1db8f242cf02437e78af2214eb163ab9d18fa582ed0f4d2995768567`。依赖记录为 661 项，构建回执中的 10 次实际执行均 exit 0。源快照、叠加文件哈希、构建与检查在 `analysis/cover-system-20261108/context-native-r6-source.json`、`context-native-r6-source`、`build-context-native-r6` 和 `context-native-r6-build-result.json`。私有构建包含本批原始姿态测量接线，未安装、未交付为可玩候选，未运行游戏／XR／模拟器。
+
+同时保留 r5 的独立失败：旧 `BodyC0GoalPolicyLiveTest` 宿主前缀尚未跟进现有 weapon/compose 接口，编译报告超过百项缺失类型／成员。本批新增的 mode16 只读生命周期断言已写入源码，因这一宿主编译失败尚未执行。r6 未请求该过时宿主目标，不把 Native 产品编译成功或纯转换检查当作该宿主检查通过；旧失败日志仍位于 `build-context-native-r5`。后续仍须验证实际 C0 回调生命周期，并取得合法中立眼点、当前实体表面、可达和连续身体碰撞输入后，才能选择 `prepare_cover` 进入写入事务。

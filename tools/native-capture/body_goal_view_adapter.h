@@ -43,6 +43,41 @@ struct CoverPlacement {
     vr::CoverViewAnchor anchor{};
     body::Pose feet_world[2]{};
 };
+// Original C0 geometry, deliberately separate from a certified neutral/Goal.
+// An action/transition pose is not automatically a neutral calibration. The
+// live owner must still bind neutral action, surface, reach and collision.
+struct CoverPoseMeasurement {
+    CoverPlacement binding{};
+    vr::Pose eye{};
+    body::Pose root{},pelvis{},feet[2]{};
+};
+inline Status measure_cover_pose(core::CoreSnapshot const& source,body::Model const& model,
+    body::Frame const& frame,marker::Marker const& authored,Policy const& policy,
+    body::Workspace& work,CoverPoseMeasurement& out) noexcept {
+    using namespace body::d;
+    const Range ranges[]={range(&source,sizeof source),range(&model,sizeof model),range(&frame,sizeof frame),
+        range(&authored,sizeof authored),range(&policy,sizeof policy),range(&work,sizeof work),range(&out,sizeof out)};
+    if(!disjoint(ranges,7))return Status::alias;
+    if(!core::core_snapshot_valid(source,policy.now_ns,maximum_age_ns,policy.allow_sim))return Status::core;
+    if(!(source.flags&core::rig::cover_key_known)||!source.cover_type||source.cover_slot<0)return Status::cover;
+    if(frame.model_scale!=1||frame.units_per_metre!=source.units_per_metre)return Status::units;
+    if(marker::detail::context(model,frame,model.canonical)!=marker::Status::okay)return Status::head_marker;
+    for(unsigned i=0;i<16;++i)work.component.m[i]=frame.component_to_world.values[i];
+    if(!similarity(work.component)||std::abs(length(row(work.component,0))-1)>2e-5)return Status::neutral;
+    for(auto const& atom:frame.local)if(!unit_animation_scale(atom.scale))return Status::neutral;
+    if(body::ik::detail::validate(frame.local.data(),model.parents.data(),body::bones,work.component)!=body::ik::Status::okay)return Status::neutral;
+    std::copy(frame.local.begin(),frame.local.end(),work.pose.local);
+    if(!rebuild(model,work))return Status::numerical;
+    CoverPoseMeasurement next{};marker::EyeHmdWorld eye{};
+    if(marker::eye_from_head(authored,model,frame,{pose(work.pose.world[body::head])},eye)!=marker::Status::okay)return Status::head_marker;
+    next.eye=eye.pose;next.root=pose(work.pose.world[body::root]);next.pelvis=pose(work.pose.world[body::pelvis]);
+    for(unsigned i=0;i<2;++i)next.feet[i]=pose(work.pose.world[body::legs[i][2]]);
+    auto& key=next.binding;key.world=source.world;key.pawn=source.pawn;key.mesh=source.mesh;key.link=source.cover_link;
+    key.world_generation=source.world_generation;key.scene=source.scene_invocation;key.publication=source.publication_sequence;
+    key.reference=source.reference_generation;key.slot=source.cover_slot;key.type=source.cover_type;
+    key.observed_ns=std::int64_t(source.published_ns); // Never refresh the source clock.
+    out=next;return Status::okay;
+}
 inline Status place_cover(Neutral const& calibrated,vr::CoverViewAnchor const& anchor,
                          body::Pose const (&feet)[2],Neutral& out) noexcept {
     using namespace body::d;

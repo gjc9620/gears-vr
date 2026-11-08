@@ -62,6 +62,8 @@ int main(int argc,char**argv){if(argc!=4)return 2;unsigned mode=unsigned(std::st
     host_core.cover_type=0;host_core.cover_link={};host_core.cover_slot=-1;host_core.stereo.head=host_core.reference;
     host_core.stereo.head.position.y-=.03; // Real-shape Host HMD physical squat, no game crouch flag.
     C(gears_native_rig_tracking::core_snapshot_valid(host_core,host_now,50000000,true));
+    if(mode==16){host_core.flags|=gears_rig_tracking::cover_key_known;host_core.cover_type=2;
+        host_core.cover_link=host_core.world;host_core.cover_slot=0;host_cover=2;}
     Fixture fixture(*frame);Scope lease;Entry tick{},entry{};tick.thread=GetCurrentThreadId();tick.invocation=10;tick.kind=2;tick.depth=1;tick.tick_depth=tick.selected=true;
     entry.thread=tick.thread;entry.invocation=11;entry.kind=0;entry.depth=1;entry.compose_depth=entry.selected=true;
     entry.ra=base+p::compose_caller;entry.rcx=fixture.mesh.address();entry.rdx=entry.rcx+0x27c;entry.r8=entry.rcx+0x28c;
@@ -74,8 +76,12 @@ int main(int argc,char**argv){if(argc!=4)return 2;unsigned mode=unsigned(std::st
     live::enabled=goal::enabled=true;native_atom_overwrite_live::available=mode!=0&&mode!=10&&mode!=11;
     if(mode==5)host_cover=2;if(mode==6)host_crouched=1;if(mode==7)host_wants=1;if(mode==8)host_now+=50000001;
     const auto entry_before=entry;live::pose_begin(entry);C(live::state.captured);goal::pose_begin(entry);C(!std::memcmp(&entry,&entry_before,sizeof entry));
-    if(mode==0||mode>=5&&mode<=8||mode==10||mode==11){
+    if(mode==0||mode>=5&&mode<=8||mode==10||mode==11||mode==16){
         C(goal::applied==0&&!goal::view_valid&&!live::state.prepared);C(!std::memcmp(fixture.local.data,frame->local.data(),sizeof frame->local));
+        if(mode==16){C(goal::current_cover_pose_valid);
+            C(goal::current_cover_pose.binding.publication==host_core.publication_sequence&&
+              goal::current_cover_pose.binding.slot==host_core.cover_slot);
+            C(!goal::origin.initialized&&!native_atom_overwrite_live::ready_calls);}
         if(mode==0){adapter::Neutral moved{};adapter::Output prepared{};adapter::Policy policy{host_now,true,body::Scope::stationary};
             C(neutral::move(goal::origin.stored,live::state.source.component_to_world,moved));
             C(adapter::prepare(moved,host_core,live::state.model,live::state.source,goal::origin.marker,{},policy,prepared)==adapter::Status::okay);
@@ -84,6 +90,7 @@ int main(int argc,char**argv){if(argc!=4)return 2;unsigned mode=unsigned(std::st
             C(native_atom_overwrite_live::ready_calls>before&&!live::state.prepared&&!live::state.kernel.pending());
             C(!std::memcmp(fixture.local.data,frame->local.data(),sizeof frame->local));}
         finish_return(entry);C(!goal::pending_count()&&!live::pending_count()&&!goal::view_valid);
+        if(mode==16)C(!goal::current_cover_pose_valid);
         if(mode==0){C(goal::origin.initialized&&goal::plans==1);adapter::Neutral base_neutral{},rotated{};auto const& stored=goal::origin.stored;
             C(neutral::move(stored,frame->component_to_world,base_neutral));auto original_ctw=neutral::matrix(frame->component_to_world);
             for(double yaw:{-3.141592653589793,-1.5707963267948966,1.5707963267948966,3.141592653589793}){

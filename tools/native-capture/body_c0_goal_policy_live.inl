@@ -28,6 +28,8 @@ bool same_neutral_actor(bind::Binding const& x,bind::Binding const& y){return
     gears_anchor::equal_identity(x.mesh,y.mesh)&&gears_anchor::equal_identity(x.world,y.world);}
 struct NeutralState {Key key{};neutral::Stored stored{};a::marker::Marker marker{};a::marker::Workspace work{};
     bool initialized{},poisoned{};} origin;
+a::CoverPoseMeasurement current_cover_pose{};
+std::atomic<bool> current_cover_pose_valid{};
 enum class RejectReason : unsigned {wrong_thread=1,stopping,pending,uncaptured,wrong_entry,same_entry,
     current_prepare,standing,cover,key_mismatch,poisoned,initialize,neutral_move,adapter,
     receipt,current_final,standing_final,apply,exception};
@@ -116,7 +118,7 @@ struct Pending {Entry const* entry{};Entry copy{};Publication next{};uint64_t re
 bind::Proof standing_proof{};std::array<unsigned,2> crouch_masks{};
 std::array<unsigned char,sizeof(gears_anchor::Config)> metadata_bytes{};uint64_t metadata_generation{};
 
-void invalidate() noexcept {view_valid=false;auto old=revision.load();while(old!=UINT64_MAX&&!revision.compare_exchange_weak(old,old+1)){}
+void invalidate() noexcept {view_valid=false;current_cover_pose_valid=false;auto old=revision.load();while(old!=UINT64_MAX&&!revision.compare_exchange_weak(old,old+1)){}
     if(old==UINT64_MAX)stopping=true;}
 bool receipt_ready() noexcept {
 #if defined(GEARS_NATIVE_ATOM_OVERWRITE_RECEIPT) && GEARS_NATIVE_ATOM_OVERWRITE_RECEIPT
@@ -208,9 +210,24 @@ bool initialize(){auto& s=n::state;
     k.ref=s.source.reference;k.units=s.source.units_per_metre;k.model_scale=s.source.model_scale;
     origin.marker=marker;origin.stored=stored;origin.initialized=true;return true;
 }
+void sample_current_cover_pose() noexcept {
+    current_cover_pose_valid=false;
+    if(stopping.load()||!observed_rebind_idle())return;
+    const auto expected_revision=revision.load();
+    try{auto& s=n::state;a::marker::Marker marker{};a::CoverPoseMeasurement candidate{};a::Policy policy{};
+        policy.now_ns=rig::clock_ns();policy.allow_sim=simulator_operator;
+        if(!s.context.current(n::tx::Stage::prepare)||
+           a::marker::prepare(s.model,s.source,a::marker::Basis::marcus_mesh_face_forward_y,origin.work,marker)!=a::marker::Status::okay||
+           a::measure_cover_pose(s.context.source,s.model,s.source,marker,policy,s.workspace,candidate)!=a::Status::okay||
+           !s.context.current(n::tx::Stage::prepare)||stopping.load()||revision.load()!=expected_revision)return;
+        current_cover_pose=candidate;current_cover_pose_valid=true;
+        if(stopping.load()||revision.load()!=expected_revision)current_cover_pose_valid=false;
+    }catch(...){current_cover_pose_valid=false;}
+}
 void pose_begin(Entry const& e) noexcept {Call call;if(e.kind==0)budget::recorder.mark_entry(budget::Stage::goal_entry,reinterpret_cast<uintptr_t>(&e),e.invocation);if(!enabled||e.kind!=0||!e.selected)return;++attempts;
     if(first_person_live::body_basis&&!first_person_live::toggle.requested()){invalidate();return;}
     if(GetCurrentThreadId()!=n::owner_thread.load()){note_reject(RejectReason::wrong_thread,e,false);++rejected;return;}
+    current_cover_pose_valid=false;
     try{auto& s=n::state;
         if(stopping.load()){note_reject(RejectReason::stopping,e);++rejected;return;}
         if(pending.entry){note_reject(RejectReason::pending,e);++rejected;return;}
@@ -218,8 +235,11 @@ void pose_begin(Entry const& e) noexcept {Call call;if(e.kind==0)budget::recorde
         if(s.context.entry!=&e){note_reject(RejectReason::wrong_entry,e);++rejected;return;}
         if(!n::same_entry(e)){note_reject(RejectReason::same_entry,e);++rejected;return;}
         if(!s.context.current(n::tx::Stage::prepare)){note_reject(RejectReason::current_prepare,e);++rejected;return;}
+        if(!no_cover(s.context.source)){
+            sample_current_cover_pose();
+            note_reject(RejectReason::cover,e);++rejected;return;
+        }
         if(!standing(s.context.actor)){note_reject(RejectReason::standing,e);++rejected;return;}
-        if(!no_cover(s.context.source)){note_reject(RejectReason::cover,e);++rejected;return;}
         budget::recorder.mark(budget::Stage::goal_initial_end);bool rebind_observed=false;
         if(origin.initialized&&!same_key(origin.key)){
             if(origin.poisoned||!observed_rebind_candidate(origin.key)){
@@ -267,6 +287,7 @@ void pose_begin(Entry const& e) noexcept {Call call;if(e.kind==0)budget::recorde
 }
 void pose_end(Entry const& e,bool returned,bool original_called) noexcept {Call call;
     if(GetCurrentThreadId()!=n::owner_thread.load()){n::pose_end(e,returned,original_called);return;}
+    current_cover_pose_valid=false;
     bool exact{},publish{};try{exact=pending.entry==&e&&!std::memcmp(&pending.copy,&e,sizeof e);
         publish=exact&&pending.committed&&returned&&original_called&&enabled&&!stopping.load()&&pending.revision==revision.load()&&
             n::state.captured&&n::same_entry(e)&&n::state.notified&&n::state.kernel.consumed()&&!n::state.kernel.failed()&&

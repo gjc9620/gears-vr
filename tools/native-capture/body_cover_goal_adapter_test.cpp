@@ -24,6 +24,20 @@ int main(int argc,char** argv){
     policy.scope=b::Scope::fixed_cover;policy.posture=b::Posture::reference_neutral;
     source.flags|=a::core::rig::cover_key_known;source.cover_link=source.world;source.cover_type=2;source.cover_slot=0;
     source.stereo.head=source.reference;
+    a::CoverPoseMeasurement measured{};const auto frame_before=bytes(*frame);
+    C(a::measure_cover_pose(source,*model,*frame,marker,policy,*work,measured)==a::Status::okay);
+    C(bytes(*frame)==frame_before);
+    C(measured.binding.publication==source.publication_sequence&&measured.binding.scene==source.scene_invocation&&
+      measured.binding.observed_ns==int64_t(source.published_ns));
+    for(unsigned i=0;i<2;++i)C(distance(measured.feet[i].position,calibrated.feet_world[i].position)<1e-8);
+    auto head_changed=source;head_changed.stereo.head.position.x+=.1;head_changed.world_head.position.z+=100;
+    a::CoverPoseMeasurement same_pose{};
+    C(a::measure_cover_pose(head_changed,*model,*frame,marker,policy,*work,same_pose)==a::Status::okay);
+    C(bytes(measured)==bytes(same_pose)); // Raw C0 measurement must not reapply HMD/camera.
+    auto invalid_source=source;invalid_source.flags&=~a::core::rig::cover_key_known;
+    const auto measurement_before=bytes(measured);
+    C(a::measure_cover_pose(invalid_source,*model,*frame,marker,policy,*work,measured)!=a::Status::okay);
+    C(bytes(measured)==measurement_before);
     a::CoverPlacement placement{};placement.world=source.world;placement.pawn=source.pawn;placement.mesh=source.mesh;
     placement.link=source.cover_link;placement.world_generation=source.world_generation;placement.scene=source.scene_invocation;
     placement.publication=source.publication_sequence;placement.reference=source.reference_generation;
