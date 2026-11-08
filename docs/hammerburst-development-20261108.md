@@ -268,3 +268,18 @@ Cover正常唯一交窗后stage010655/PG8e2a8c38，实际14312完成原HB肩取�
 2页完整双路总览与4张真实接触原图亲看；自然手型、袖口遮挡和近脸构图仍未接受。Native/entry TRUE，XR/launcher0，game退出；config/settings逐字节恢复、head原缺失恢复。编码35734 terminal0、retention54890 terminal0实删2432媒体/417441210bytes，文本源码保留。详runtime-44560-review.json。
 
 冻结022007，产品仍PGfe0bd568，源/制品全哈希核对，driver语法及真实数据旧错误/新规划深度断言通过。Lancer明确未stage并接受按具体失败许可仅这一坐标驱动修正复查；本次全收尾后执行一次，若新失败保留后交Lancer、不连续追加。后续既有Lancer012317→Snub013007→Boltok013903→Frag020326→Cover新只读项→Longshot021930。
+
+
+## 50736：真实松开重抓恢复后再遇112ms，未座入
+
+022007/同PGfe0bd568实际50736/creation134386357043262872已肩取/6发；opening第一gap=111ms（970317728→970317839），机械角0.643563172；一次真实UP/new Grip在当前接触点恢复，机械角继续到0.786032468，第二gap=112ms（970320619→970320731）按驱动规则停止。未到4，正确座入规划尚未实际执行，不能称原匣完成或gap修复。原100ms规则保持。
+
+完整2页双路总览+3张原接触图亲看；Native/entry TRUE、XR/launcher0、game退出；config/settings逐字节恢复、head原缺恢复。编码89058 terminal0、retention62914 terminal0删612媒体/86251703bytes，核无残留后已最终唯一交Lancer012317，再既有尾部。交接消息首次creation数值录入错误，已立即据正式result更正；正式runtime-50736-review.json始终是真实134386357043262872。
+
+## HB seek新鲜观察复用候选
+
+原seek_impl先read_owned/reconcile，随后prepare_controls又observe_expected完整双选node/资产/字段；实际前置信息在后者已新鲜读取。仅exact HB改为先同一完整observe_expected，严格比较武器/组件/资产/node/sequence全部identity、动画名、长度、reload_start、playing/rate/looping、有限time与pending期望，再prepare_controls(...,true)复用该观察；SetPosition原函数/参数/当前输入与lease最终准入和post-seek read_owned不变。其他枪仍原reconcile_seek+prepare_controls路径。原observe_kind/observe_expected/read_owned/prepare_controls/read_latch_curve/reconcile_seek逐字核对未改，未跳过内容或selected-node读取，不缓存授权。与Snub明确非重叠，不收入其独立分支。
+
+生产reconcile函数原样提取、真实ObjectIdentity语义执行53项身份/回收对象/名字/内容/时钟/playing/pending/NaN等正反例通过；独立PG完整编译0，源码10f70100。此为源码候选，尚未证明111/112ms根因或消除gap。
+
+冻结hammerburst-prepared-20261109-023148，PG28710bea1b8ca5b2e8452ca3067df66b37352b1624f6bb68337364d11476527c，全部源与制品核对，seek-observation-build-check.json；未stage/game。后续只申请既有队尾一次原匣同点，不重跑其他套件。首次冻结脚本已完成复制/哈希/回执后，在追加文档时误复用变量触发TypeError，未写入文档；本次只据保存回执补文档，不重建或改写冻结。
