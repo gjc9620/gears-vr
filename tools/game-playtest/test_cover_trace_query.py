@@ -449,6 +449,99 @@ class SurfaceSnapshotTests(unittest.TestCase):
                 with self.assertRaises(RuntimeError):
                     q.finish()
 
+    def attached_collection_fixture(self):
+        m, q, roles, actor, component, inner, data = self.collection_fixture()
+        actor_component = 0x2d000
+        m.add_class(actor_component, 'ActorComponent', 0)
+        m.put(m.MESH_CLASS + m.profile['field_super'], struct.pack('<Q', actor_component))
+        m.objects[component['address']]['outer'] = actor['address']
+        m.put(actor['address'] + 0x190, bytes(16))
+        containers = {}
+        for n, name in enumerate(('Components', 'AllComponents')):
+            offset, prop_inner, members = 0x1a0 + n * 16, 0x2e000 + n * 0x100, 0x30000 + n * 0x1000
+            m.add_property(m.ACTOR, name, 'ArrayProperty', offset, 16)
+            field = m.properties[m.ACTOR, name]
+            m.objects[field['address']]['cls'] = m.kind_classes['ArrayProperty']
+            m.add_object(prop_inner, name, m.kind_classes['ComponentProperty'], outer=field['address'])
+            m.put(prop_inner + 0x70, struct.pack('<II', 1, 8))
+            m.put(prop_inner + m.profile['struct_property_struct'], struct.pack('<Q', actor_component))
+            m.put(field['address'] + m.profile['struct_property_struct'], struct.pack('<Q', prop_inner))
+            m.put(actor['address'] + offset, struct.pack('<Qii', members, 100, 100))
+            pointers = [0] * 100
+            pointers[37 + n] = component['address']
+            m.put(members, struct.pack('<100Q', *pointers))
+            containers[name] = dict(field=field, inner=prop_inner, data=members, pointers=pointers)
+        fields = [p['address'] for (owner, _), p in m.properties.items() if owner == m.ACTOR]
+        m.put(m.ACTOR + m.profile['struct_children'], struct.pack('<Q', fields[0]))
+        for current, nxt in zip(fields, fields[1:] + [0]):
+            m.put(current + m.profile['field_next'], struct.pack('<Q', nxt))
+        return m, q, roles, actor, m.fresh(component['address']), containers
+
+    def test_cooked_collection_with_empty_declaration_uses_both_typed_actor_containers(self):
+        m, q, roles, actor, component, containers = self.attached_collection_fixture()
+        with self.assertRaises(SurfaceOwnershipRejected):
+            _surface_state(q, roles, actor)
+        result = _surface_state(q, roles, actor, component)
+        self.assertEqual(result['component'], component)
+        self.assertEqual(set(result['collection_membership']['runtime_components']), {'Components', 'AllComponents'})
+        q.finish()
+
+    def test_cooked_collection_requires_unique_membership_and_original_identity_checks(self):
+        for bad in ('missing', 'duplicate', 'all_missing', 'all_duplicate', 'inner_kind',
+                    'stride', 'element_class', 'declaring_class', 'outer', 'owner', 'world', 'ancestry'):
+            with self.subTest(bad=bad):
+                m, q, roles, actor, component, containers = self.attached_collection_fixture()
+                selected = containers['AllComponents' if bad.startswith('all_') else 'Components']
+                if bad in ('missing', 'all_missing', 'duplicate', 'all_duplicate'):
+                    pointers = [0] * 100
+                    if 'duplicate' in bad:
+                        pointers[:2] = [component['address']] * 2
+                    m.put(selected['data'], struct.pack('<100Q', *pointers))
+                elif bad == 'inner_kind':
+                    m.objects[selected['inner']]['cls'] = m.kind_classes['ObjectProperty']
+                elif bad == 'stride':
+                    m.put(selected['inner'] + 0x74, struct.pack('<I', 4))
+                elif bad == 'element_class':
+                    m.put(selected['inner'] + m.profile['struct_property_struct'], struct.pack('<Q', m.MESH_CLASS))
+                elif bad == 'declaring_class':
+                    m.objects[m.ACTOR]['name'] = 'OtherActor'
+                elif bad == 'outer':
+                    m.objects[component['address']]['outer'] = m.WORLD
+                    component = m.fresh(component['address'])
+                elif bad == 'owner':
+                    m.set_value(component['address'], 'Owner', m.PAWN, '<Q')
+                elif bad == 'world':
+                    m.set_value(actor['address'], 'WorldInfo', m.PAWN, '<Q')
+                else:
+                    m.put(m.MESH_CLASS + m.profile['field_super'], bytes(8))
+                with self.assertRaises(RuntimeError):
+                    _surface_state(q, roles, actor, component)
+
+    def test_cooked_collection_closing_pins_both_containers_and_transform(self):
+        for changed in ('Components', 'AllComponents', 'header', 'inner_link', 'element_class', 'outer', 'owner', 'transform'):
+            with self.subTest(changed=changed):
+                m, q, roles, actor, component, containers = self.attached_collection_fixture()
+                _surface_state(q, roles, actor, component)
+                selected = containers.get(changed, containers['Components'])
+                if changed in ('Components', 'AllComponents'):
+                    pointers = selected['pointers'][:]
+                    pointers[37 + (changed == 'AllComponents')] = 0
+                    m.put(selected['data'], struct.pack('<100Q', *pointers))
+                elif changed == 'header':
+                    m.put(actor['address'] + selected['field']['offset'], bytes(16))
+                elif changed == 'inner_link':
+                    m.put(selected['field']['address'] + m.profile['struct_property_struct'], bytes(8))
+                elif changed == 'element_class':
+                    m.put(selected['inner'] + m.profile['struct_property_struct'], struct.pack('<Q', m.MESH_CLASS))
+                elif changed == 'outer':
+                    m.objects[component['address']]['outer'] = m.WORLD
+                elif changed == 'owner':
+                    m.set_value(component['address'], 'Owner', m.PAWN, '<Q')
+                else:
+                    m.put(component['address'] + 0x230, struct.pack('<f', 11))
+                with self.assertRaises(RuntimeError):
+                    q.finish()
+
     def test_collection_identity_membership_type_and_owner_fail_closed(self):
         for bad in ('actor_class', 'not_member', 'duplicate', 'inner_kind', 'inner_owner',
                     'stride', 'element_class', 'component_class', 'owner', 'selected_identity', 'world'):

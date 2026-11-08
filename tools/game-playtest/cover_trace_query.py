@@ -205,6 +205,36 @@ class SurfaceOwnershipRejected(RuntimeError):
                                 accepted=False, collision_verified=False)
 
 
+def _attached_collection_member(q, actor, component, name):
+    """Certify a named Actor container for this already explicit hit only."""
+    field = _field(q, actor, name, 'ArrayProperty')
+    field_identity = q.obj(field['address'])
+    declaring = q.obj(field_identity['outer'])
+    if (declaring['name'] != 'Actor' or declaring['number'] or
+            q.obj(declaring['cls'])['name'] != 'Class' or
+            declaring not in list(_chain(q, actor['cls']))):
+        raise RuntimeError('Edge collection attached container declaring class differs')
+    inner, stride, raw, count = q.array(actor, name, 256)
+    inner_address = struct.unpack('<Q', q.read(
+        field['address'] + q.r.profile['struct_property_struct'], 8))[0]
+    if (inner['outer'] != field['address'] or inner['number'] or stride != 8 or
+            inner_address != inner['address'] or q.obj(inner['cls'])['name'] != 'ComponentProperty' or
+            'Property' not in [owner['name'] for owner in _chain(q, inner['cls'])]):
+        raise RuntimeError('Edge collection attached component array type differs')
+    target = q.obj(struct.unpack('<Q', q.read(
+        inner['address'] + q.r.profile['struct_property_struct'], 8))[0])
+    if (target['name'] != 'ActorComponent' or target['number'] or
+            q.obj(target['cls'])['name'] != 'Class' or
+            target not in list(_chain(q, component['cls']))):
+        raise RuntimeError('Edge collection attached component class differs')
+    members = struct.unpack('<' + 'Q' * count, raw)
+    if members.count(component['address']) != 1:
+        raise RuntimeError('Edge collection selected component membership is absent or ambiguous')
+    return dict(array_field=field, declaring_class=declaring, element_property=inner,
+                element_class=target, array_header_bytes=q.value(actor, field).hex(),
+                member_bytes=raw.hex())
+
+
 def _collection_member(q, actor, component):
     """Authenticate one explicit TraceHitInfo component, never pick a member."""
     cls = q.obj(actor['cls'])
@@ -225,11 +255,25 @@ def _collection_member(q, actor, component):
             target not in list(_chain(q, component['cls']))):
         raise RuntimeError('Edge collection selected component class differs')
     members = struct.unpack('<' + 'Q' * count, raw)
-    if members.count(component['address']) != 1:
-        raise RuntimeError('Edge collection selected component membership is absent or ambiguous')
-    return dict(collection_class=cls, array_field=field, element_property=inner,
+    result = dict(collection_class=cls, array_field=field, element_property=inner,
                 element_class=target, array_header_bytes=q.value(actor, field).hex(),
                 member_bytes=raw.hex())
+    if members.count(component['address']) == 1:
+        return result
+    # Observed retail cooked collections have an empty declaration and own the
+    # actual hit in BOTH inherited Actor containers. Never fall back from an
+    # ambiguous/nonempty declaration or select a substitute member.
+    if count or component['outer'] != actor['address']:
+        raise RuntimeError('Edge collection selected component membership is absent or ambiguous')
+    result['runtime_components'] = {}
+    for name in ('Components', 'AllComponents'):
+        try:
+            result['runtime_components'][name] = _attached_collection_member(q, actor, component, name)
+        except RuntimeError as error:
+            if str(error) == 'Required bone property not found: ' + name:
+                raise RuntimeError('Edge collection selected component membership is absent or ambiguous') from error
+            raise
+    return result
 
 
 def _surface_state(q, roles, actor, selected_component=None):

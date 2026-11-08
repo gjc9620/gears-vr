@@ -335,3 +335,17 @@ CPOSE文件594792字节，SHA256为f62f9bbe66c4a4e1fc60e0de87b47397a3e9269c74bd5
 完整27.5334801秒双路1页和4张贴近原版进入／C0时刻的原图已亲看。game00340／00343是等待帧卡；sim00397／00401仍可见身体与装备近裁剪遮挡。完整掩体画面继续FAIL，不能把只读观察已恢复等同于视图已修复，双窗口样本也不是同一C0／GPU draw的原子对应。启动第三人称／等待、移动及HUD的旧缺口仍保留。双路末端覆盖通过，game最大捕获缺口1616.6839ms／sim316.6693ms，不解释为FPS或游戏停顿。
 
 本局runner69903／operator／launcher与配对编码27561均实际exit0；Native cleanup／entry restore／pad TRUE、hand_stop5／drained、XR0、Game退出。config原字节、settings原SHA及head原缺精确恢复，结束23依赖一致。既有retention57724实际exit0，删除2064媒体／344281505字节、errors0，保留61492／15368／36696；再次核实际idle后已最终明确唯一交Longshot050328，后继HB050438。本会话不追加本窗，转离线修当前容器认证与真实眼／骨盆／脚位提供方。全部结论在cover-61492-review.json；公开v71不变，完整掩体与实体头显仍未完成。
+
+## 2026年11月9日 当前集合容器认证与真实姿态目标准备
+
+上一目标轮为progress：61492实际字段／姿态证据、r11改动与正常收尾改变了下一步。当前分支仍codex/6dof-single，既有共享capture.cpp其他dirty内容不纳入本批。当前_collection_member已按61492的真实关系补充严格路径：只有原StaticMeshComponents声明数组为空且明确命中组件Outer为本Actor，才分别认证继承自Actor的Components及AllComponents。两者均须为ComponentProperty／ActorComponent、8字节stride、当前声明与元素Class及继承链有效，明确组件各唯一一次；原非空声明路径不变，歧义／非成员／错误Owner／World／变换继续拒绝。所有header、member bytes与类型链接仍加入原closing。没有由数组挑替代组件，不增加Trace、放宽16384／3秒读取预算或签发碰撞／抓边／身体许可。
+
+先用真实形状的空声明＋两个100元素容器回归复现旧拒绝（actual-containers-red.log）；修正后49个Trace／surface方法通过。新增12类准入反例及8类closing变化覆盖两个容器、元素类型、声明类、继承、Outer、Owner、World与矩阵。第一次联合检查的错误World反例使用了fixture中不存在的地址而抛KeyError，保留原日志；改为已存在的错误Pawn对象后原World拒绝通过，没有改变生产读取器的异常或准入规则。该新surface路径尚未在游戏运行；61492只验证了原Trace和独立字段观察。
+
+另按61492原done与numerical-receipts.json取回同局fresh-pose-producer.bin（SHA dc272fc7e3707ebd19df81e38605d4470863d0608d60540a4ec832bdd4ecadcc），与已存CPOSE互核session、PID／creation、World／Pawn／Mesh及完整115参考骨字节。FPOSE为旧CT0普通姿态，只作该人物站立校准来源，不重标成当前CT2或刷新Core时钟。离线probe复用真实生产planner、marker和adapter，没有新造当前Core。原C0几何目标原样规划成功；将站立中立整体降到实际掩体眼点时，solver虽成功，但实际骨盆Z约514.38，低于已测脚位约520.31／520.61。反之将骨盆硬固定在实际546.00并改为面墙／水平视向，preserve-C0与reference-neutral两种姿态分别超出脊柱可达范围，未删原spine_unreachable。仅保持骨盆高度、沿XY调整的有界候选可解，但候选尚无碰撞或姿态校准权限。
+
+新增纯目标准备cover_posture_fit.h，在实测骨盆高度不变的平面上求头部最大可达球、两个固定脚位腿长球及明确水平位移上限的交集；随后仍调用原完整planner验证。头／脚目标、骨长、原始Frame和原残差限值均不改变。输入仅允许fixed_cover、world_absolute、零physical／grip的中立目标，禁止把当前HMD位移送入校准；骨盆低于脚位、错误源、超预算、不可达或最终solver失败均保持输出原字节。该模块只返回数学候选，不调用引擎、写内存或授予碰撞许可。
+
+在61492真实骨骼及明确派生的中立Goal fixture上，preserve-C0／reference-neutral分别水平调整约11.69746／13.27997游戏单位，保持骨盆Z546.004803及双脚，原solver验证通过；3个刚性世界旋转／平移、零预算已可达原姿态、错误源／HMD与Grip非零／预算不足／别名／输出不变等共60检查通过。直接MSVC/W4/WX与隔离CMake新目标均编译及执行0，218依赖。新目标只在明确指定私有fixture时注册；未跑旧完整矩阵或游戏。隔离构建第一次字节比较发现旧冻结头文件LF与当前CRLF差异，原失败保留；所选8项真实依赖逐一记录SHA，旧body planner等文本除换行完全相同，未混入其他武器实验逻辑。见cover-posture-fit-cmake-result.json及posture-fit-source-dependencies.json。
+
+当前posture fit尚未接入Native C0消费者，也未重编／stage新的运行Native；本批不能关闭61492等待帧／穿插问题。后续先将当前姿态与中立目标绑定到同一真实owner／Tick和参考，再在已有唯一写入端接入，并补实际连续碰撞、双眼、受击及枪口证据。公开v71及完整功能验收状态不变。
