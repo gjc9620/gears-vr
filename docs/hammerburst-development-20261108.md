@@ -221,3 +221,9 @@ launcher0/native_cleanup_verified TRUE/entry_restore TRUE/XR0/remaininggame null
 原函数体与提取后逐字一致；已有HB真实owner/participant离线测试执行Snap/Grab/松手/退出和11类拒绝通过，独立PG完整编译链接0。冻结hammerburst-prepared-20261109-004003，PG9945b703ad8a8f206af8e629758da121d8534b36c8fd6a032c1a7096bc6cbe89，全部源与制品哈希核对，common-support-policy-build-check.json。新批未stage/实跑，不把提取算新功能或游戏通过；70816限定交互证据保留，下一仍仅原匣未过单点。
 
 公共接口按Longshot当前明确需求增加第5参数retained_snap=false，仅传给neutral最后support_contact，前方实际Grab/身份/松手/竞争物条件不变，HB薄层4参数保持默认false。新增4断言实际通过：18cm默认free、已选被动保持可snap、旧生命周期即使保持也拒绝、18cm新Grip即使保持也不能获Grab。原HB测试11类拒绝同跑通过，产品完整编译0，未更改wire布局或Native。冻结hammerburst-prepared-20261109-004159，PG28f0184d2a3fb3e5850c47c29e85f1ef74cbaf31c11154e51c7554cd0ca994ad，全哈希核对support-retained-policy-build-check.json；不把公共接口提取或纯计算检查当实际换弹通过。
+
+## acquiring真实松手恢复边界
+
+离线检查发现stage acquiring在granted=false时直接返回，未登记实际已知UP。失追清held/released后，UP仍不能rearm，后续新press会永久被released=false阻断，直到外部取消。用实际生产acquiring分支和原granted谓词原样提取执行的CPU夹具复现：旧分支exit1/FAIL release observed during acquisition。夹具首次新版本未显式取消Decision默认release_required=1，导致后续fresh-grant假失败；修正夹具后旧分支仍在同点失败，新分支9项通过，失败与修正日志均保留。
+
+修正只在acquiring且动画所有权仍有效时识别已知UP、清held并登记released；不获取动画、不seek。后续仍需当前帧实际fresh grant/相同身份/新press才能继续；未知输入、无UP旧按住、foreign frame、旧retained lease、release_required、失去动画所有权均拒绝。夹具游戏读写被替代，只证明这段规则，不证明失追实际恢复已过。产品独立完整编译链接0。冻结hammerburst-prepared-20261109-010655，PG8e2a8c3873962287ce21a6707e494ffde05a686b39841e0876c5ee17e91341b2，源与制品哈希核对，acquire-up-build-check.json；未stage/运行，不改变旧实际失败。共享HB尾部其他人的service包装未收入此独立编译/本提交。

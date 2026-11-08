@@ -339,7 +339,12 @@ gears_weapon::FeedResult insertion_step(hand::Frame const& f,std::uint64_t item)
 }
 void step(hand::Frame const& f,hand::Decision const& decision) noexcept {
     if(stage==Stage::acquiring){
-        if(!animation_owned(f)||!granted(f,decision,hand::LeaseKind::magazine))return;
+        if(!animation_owned(f)||!f.left_grip_known)return;
+        // Acquisition may span frames. A real known UP is still required
+        // after tracking/ownership loss before any fresh grant can regrab.
+        // It neither acquires the animation nor advances the latch.
+        if(!f.left_grip_down){released=true;held={};return;}
+        if(!granted(f,decision,hand::LeaseKind::magazine))return;
         if(held.id!=f.press_token){
             if(!released||!granted(f,decision,hand::LeaseKind::magazine,true))return;
             held=decision.lease;released=false;
