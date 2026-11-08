@@ -209,3 +209,11 @@ wrapper／launcher 均 exit 0，Native cleanup／entry restore TRUE、XR exit 0�
 隔离r8 Native编译、链接及10次既有针对检查均通过，SHA256 `7aaafc5819f04e81a5e741dbaf61407fbacb4699e49708a099ea3604aba14a3c`，依赖661项。产品头文件与冻结r8逐字节一致；构建后仅增加测试CLI的marker选择，再独立编译同一产品头完成Marcus检查，没有重建未变的Native。回执在 `context-native-r8-build-result.json`、`cover-adapter-results.json`、`cover-marcus-adapter.json/log`。旧宿主r5缺口仍未关闭。
 
 r8没有stage、没有游戏／XR运行，也没有开启掩体写入或解决72608画面失败。下一只读窗口继续使用明确冻结的r7产品；本批数学不会混入它。连续view heading的实际同源提供方、合法中立眼点／脚位／当前碰撞、抓边追踪轴与该独立视图的映射、C0事务及同版视图／受击／枪口消费仍待接通，不能把本批编译与CPU规划称为完整掩体通过。
+
+### 独立视图下的原始抓边轴
+
+再补 `cover_tracking_basis(reference, view, wall, out)` 纯计算重载，将墙面右轴先投到独立连续视图的右／前轴，再转入固定reference的原始OpenXR坐标。当前HMD／控制器旋转不是输入。旧两参数接口不变，同轴情况新旧结果一致；点到世界的映射继续调用既有 `cover_tracking_point`，但独立基准消费者必须显式传view anchor，不得误传wall anchor。
+
+4种墙向与3种连续视向共12组，真实手沿新原始轴平移5cm映到世界后始终等于墙面右移5cm，上移3cm仍按世界重力，非法基准拒绝且不改输出。现有 `cover_view_test` 883检查及原 `cover_controller_adapter_test` 629检查通过，MSVC/W4/WX，回执在 `cover-independent-axes.json`。没有改输入仲裁、真实按下／释放、100ms等时限或任何身体写入。
+
+此重载在r8构建之后添加，只完成独立内核编译与检查，尚未选入live抓边消费者，也不属于r8二进制的新运行证据；旧两参数路径行为保持。后续真正使用时须与当前身份／reference、独立view heading、边缘／可达／碰撞及同一提交事务一起接通并构建验证。没有据此启动游戏或重建未使用该重载的Native。

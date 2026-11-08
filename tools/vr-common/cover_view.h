@@ -4,8 +4,10 @@
 
 namespace gears_vr {
 
-// An authenticated, level cover basis. Forward points FROM the player INTO the
-// cover. The owner supplies a neutral eye calibrated without virtual dragging
+// An authenticated, level world basis. In its wall role, Forward points FROM
+// the player INTO cover. The independent tracking/view role preserves the
+// continuous observation heading; callers must supply that role explicitly.
+// The owner supplies a neutral eye calibrated without virtual dragging
 // or tracked-head displacement. A current animated head position is unsuitable:
 // it already includes the pose response which this camera is about to produce.
 struct CoverViewAnchor {
@@ -70,6 +72,22 @@ inline bool cover_tracking_basis(Pose const& reference,CoverTrackingBasis& out){
     if(!stereo_pose_valid(reference))return false;
     const auto rotation=rotation_matrix(reference.orientation);
     CoverTrackingBasis candidate{transform(rotation,{1,0,0}),transform(rotation,{0,1,0})};
+    if(!finite(candidate.right)||!finite(candidate.up))return false;
+    out=candidate;return true;
+}
+// With independent view/body headings, project the wall's right direction
+// into the CONTINUOUS view basis before converting it to raw tracking space.
+// The current HMD/controller rotation is deliberately not an input. These are
+// data axes only; no grasp, geometry or motion permission is produced.
+inline bool cover_tracking_basis(Pose const& reference,CoverViewAnchor const& view,
+                                 CoverViewAnchor const& wall,CoverTrackingBasis& out){
+    if(!stereo_pose_valid(reference)||!cover_view_basis(view)||!cover_view_basis(wall))return false;
+    const double right=cover_dot(wall.right_world,view.right_world);
+    const double forward=cover_dot(wall.right_world,view.forward_world);
+    const double n=std::hypot(right,forward);
+    if(!std::isfinite(n)||n<1e-5)return false;
+    const auto rotation=rotation_matrix(reference.orientation);
+    CoverTrackingBasis candidate{transform(rotation,{right/n,0,-forward/n}),transform(rotation,{0,1,0})};
     if(!finite(candidate.right)||!finite(candidate.up))return false;
     out=candidate;return true;
 }

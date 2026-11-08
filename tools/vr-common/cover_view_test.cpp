@@ -26,6 +26,30 @@ Vector midpoint(StereoMatrices const& views){
 }
 int main(){
     const StereoMatrix projection{1,0,0,0,0,1,0,0,0,0,0,1,0,0,10,0};
+    // A grip displacement along the wall remains along that SAME world axis
+    // even when the player entered with a different continuous view heading.
+    for(double wall_yaw:{0.,1.5707963267948966,3.1415926535897932,-1.5707963267948966})
+    for(double view_yaw:{0.,.41,-1.1}){
+        CoverViewAnchor wall{{1000,-2000,80},{std::cos(wall_yaw),std::sin(wall_yaw),0},
+            {-std::sin(wall_yaw),std::cos(wall_yaw),0}};
+        CoverViewAnchor view{wall.neutral_eye_world,{std::cos(view_yaw),std::sin(view_yaw),0},
+            {-std::sin(view_yaw),std::cos(view_yaw),0}};
+        Pose reference{{.4,1.55,-.2},{0,std::sin(.37),0,std::cos(.37)}};
+        CoverTrackingBasis axes{};CHECK(cover_tracking_basis(reference,view,wall,axes));
+        CoverViewResult base{};CHECK(prepare_cover_view(view,{},100,base));
+        const Vector start{reference.position.x+.1,reference.position.y-.2,reference.position.z-.3};
+        const Vector right{start.x+.05*axes.right.x,start.y+.05*axes.right.y,start.z+.05*axes.right.z};
+        const Vector up{start.x+.03*axes.up.x,start.y+.03*axes.up.y,start.z+.03*axes.up.z};
+        Vector a{},r{},u{};CHECK(cover_tracking_point(view,base,reference,start,100,a));
+        CHECK(cover_tracking_point(view,base,reference,right,100,r));
+        CHECK(cover_tracking_point(view,base,reference,up,100,u));
+        CHECK(near(Vector{r.x-a.x,r.y-a.y,r.z-a.z},Vector{5*wall.right_world.x,5*wall.right_world.y,0}));
+        CHECK(near(Vector{u.x-a.x,u.y-a.y,u.z-a.z},Vector{0,0,3}));
+        CoverTrackingBasis old{},same{};CHECK(cover_tracking_basis(reference,old));
+        CHECK(cover_tracking_basis(reference,view,view,same));CHECK(near(old.right,same.right,1e-9)&&near(old.up,same.up,1e-9));
+        auto bad=wall;bad.forward_world={};const auto before=axes;
+        CHECK(!cover_tracking_basis(reference,view,bad,axes)&&near(axes.right,before.right,1e-9)&&near(axes.up,before.up,1e-9));
+    }
     for(double yaw:{-3.,-1.5707963267948966,0.,1.5707963267948966,3.}){
         CoverViewAnchor a{{1000,-2000,-39.16},{std::cos(yaw),std::sin(yaw),0},{-std::sin(yaw),std::cos(yaw),0}};
         const Pose reference{{.4,1.55,-.2},{0,std::sin(.37),0,std::cos(.37)}};
