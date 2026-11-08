@@ -211,3 +211,5 @@ HB包装器复用现有已核活进程身份位置，在录像/动作启动前�
 launcher0/native_cleanup_verified TRUE/entry_restore TRUE/XR0/remaininggame null，config/settings/head按本次备份字节及settings哈希核对一致。编码exec61699已terminal0，既有媒体清理exec27270运行中，尚未交窗。提前interrupted身份已在实际录像前成功保存，仅身份默认失败，不抵消正式result。详runtime-70816-review.json与contacts-70816.json。下一项仍原弹匣拔出/持握返回/库存守恒/回射，另段排期，不重复本次已过护木。
 
 原匣下一段驱动补入70816实际使用过的近身跨胸主手输入姿势(.16,-.18,+.06,yaw25度/pitch0.3)，在原首发准备前通过既有continuous reach移动；不拉长骨骼、不修改接触半径。支撑路径不变，换弹实际接触/翻盖/原匣/回射尚未覆盖，语法通过。下一冻结hammerburst-prepared-20261109-001658继承已实跑PG7bed6ef7、全哈希核对，reload-presentation-prepared.json，尚未stage/运行。
+
+70816既有retention27270已实际terminal0，正常恢复和无残留进程核对后按约唯一交Boltok首段，转达其后Frag真实伤害失败点、Lancer HUD/掩体已有申请。HB继续持会话等待、离线准备原匣，不自行启动第二段；后续请求在已登记队列后一次原匣检查。
