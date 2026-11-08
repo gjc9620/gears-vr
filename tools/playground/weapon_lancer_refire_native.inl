@@ -259,7 +259,10 @@ bool defer(uptr object,uptr function) noexcept {
     meta::Snapshot schema{};schema.module_base=base;meta::Reader r{schema,meta::Stage::final_check};
     weaponhand::BoolField putting_down{},putting_down_after{};
     if(!meta::tables(base,schema.objects,schema.names)||!weaponhand::object(r,held.weapon)||
-       !hammerburst_refire::supported_receiver(r,object)||
+       // HB's finite burst can continue after real R2-up. Its timer contract
+       // alone is insufficient; keep that incomplete route withdrawn until
+       // original burst-completion ownership is implemented and verified.
+       lancermain_asset::held_asset_name(r,object,lancermain_asset::AssetScope::lancer_only)!=lancermain_asset::HeldAsset::lancer||
        !weaponhand::boolean(r,object,L"bWeaponPutDown",putting_down)||
        (putting_down.bits&putting_down.mask))return false;
     unsigned reason{};
