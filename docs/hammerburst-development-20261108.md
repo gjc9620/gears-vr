@@ -306,3 +306,14 @@ Cover正常唯一交窗后stage010655/PG8e2a8c38，实际14312完成原HB肩取�
 只在这两条既有撤销路径补extraction.reset，后续已知UP不能再凭撤销前的旧证明stow，按既有未完成提取取消；新源7项通过，涵盖两种撤销/之后UP、合法continuous提取后UP正常stow，以及replacement失追原预留释放行为不变。旧红/新绿记录分别tracking-witness-before/after，源字段/引擎stow与cleanup为fakes；只证明这些条件分支，不证明实际Native生命周期必到该路径或全部中断恢复已通过。
 
 这一安全源码与测试单独保存，尚未完整编译或收入023513/PG821的不可变冻结；当前队列原开盖候选、驱动与源归档均不改，不假称该补丁已在下一正常开盖段被游戏验证。主线仍等待Longshot最终交窗，之后唯一交Lancer023554。
+
+
+## 9540：新鲜观察复用仍超限，未证性能修复
+
+等候时仅给原回射补真实扣弹/射线计数只读断言，冻结034516/PG仍821966d1，全hash核对、无新增输入/动作。二十项HB关键脚本/依赖与冻结一致；本枪Resolver/wire reader路径不import game-playtest.world_state.Query，Cover五行cache键修复未混入本枪。root另存失追proof撤销补丁未入该冻结。
+
+实际9540/134386407745387891肩取/6发、原版begin serial1和opening2达到，随后两gap112/117ms，机械角均0.35093584；最后一次changed-angle seek耗时13.5967ms，该值不是上一静止样本耗时，不能当根因。一次真实UP/newGrip后再超限按规则停止，未到4/座入/关盖/回射；新的扣弹断言也未执行到。复用观察未解决gap，不能称性能修复。
+
+第二gap sync975409239000000比第二次圆弧第一命令975409332132100早93.1321ms，支持检查真实重抓后的静止等待，但没有记录实际前后local hand位移，不能直接称完全静止。下一只考虑保留严格输入/真实Native同lease/不携带运动的条件，不能直接放宽100ms或将旧press重新授权。
+
+54秒双路2页overview+3张按QPC选取实际接触图亲看，选择时间差12.021/-18.318/-0.643ms；自然手型和全角度仍未接受。Native/entry TRUE、XR/launcher0、game退出，config/settings原字节和head原缺恢复；编码64883=0、retention31381=0删1340媒体/206534215bytes、核无残留后唯一交Lancer023554。之后Snub024436→Frag030808→此前已受理Boltok030739→Cover新只读→Longshot034956，已直接协调，无统筹抄送。详runtime-9540-review.json。
