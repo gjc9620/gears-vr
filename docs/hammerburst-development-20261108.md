@@ -245,3 +245,10 @@ Cover正常唯一交窗后stage010655/PG8e2a8c38，实际14312完成原HB肩取�
 测试驱动把原19段各自停止/等待的开盖方式换成1.6秒最小jerk连续物理圆弧，46次held Grip输入，不改游戏/阈值/手臂/机制。加入各输入采样时间与角度、明确wait目标和末8条回执；若实际再出现一次gap，只允许一次真实release→回到当前机械接触点→新Grip→继续，另记latch_regrabs/normal_uninterrupted_pass=false，第二次拒绝终止，不无限重跑。实际驱动提取执行连续样本/端点/圆弧半径/按住/单次恢复顺序离线检查通过。
 
 冻结hammerburst-prepared-20261109-012255，PG仍8e2a8c38，产品/Native/XR不变，全源和制品哈希核对，continuous-latch-prepared.json。未stage/游戏验证，排在已接受Cover reader之后一次原匣失败点；当前Snub窗口，不从idle推断归还。
+
+
+## 原拒绝回执补准确间隔
+
+14312旧回执只有reason5，无法区分准确的前后样本间隔。只在原最多8条失败输出补last_observation_ms、sample.milliseconds和geometry原阈值；pure stroke增加只读getter，不改变其reset/observe/begin/连续见证或授权，未增游戏字段读取/采集器/Hook。源码精准提交fd8033a4仅此两文件，其他caller的service/recover_serial修改未混入独立产品。生产分支回归已持久化为tools/playground/weapon_hammerburst_latch_handoff_test.py，真实MSVC W4/WX编译执行10条通过；独立PG完整编译链接0。
+
+冻结012813/PGfe0bd568e312df0ef519ce20fea887d6298fd8ba790a933ddc27253a66026751，替代未stage012255，动作仍连续圆弧/最多一次真实松开重抓原匣单点。全源/制品哈希核对，latch-interval-build-check.json；未stage/实跑，未声称间隔根因修复。现队列Snub→Boltok→Frag011230→Longshot005036→Cover reader→HB012813→Lancer012317，Cover已知最新候选。
