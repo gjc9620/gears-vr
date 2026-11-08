@@ -44,7 +44,8 @@
 | 护木Snap→Grab→松Grip回Snap | 70816实际手腕/枪体矩阵与4组6发 | 四态功能通过；自然手指/全角度贴合未接受 |
 | 原匣提取、不释放装回、关卡扣 | 7712生产阶段1→2→3→4→7→8与complete result1 | 本次真实流程通过 |
 | 原匣库存与回射 | 7712保持72/78，真实6发后66/78 | 已模拟器实录，无补弹/奖励 |
-| 新匣、零备弹、总零 | 7500组纯账本等离线检查；新匣支路尚未实录 | 不继承原匣通过 |
+| 新匣替换与普通换弹 | 53224真实提取释放/肩取/装入关卡扣、72/78→78/72，回射6发→72/72 | 功能通过；开关各一次移动gap后真实重抓，不算无中断通过 |
+| 零备弹、总零 | 7500组纯账本等离线检查 | 仍缺本枪游戏动作证据 |
 | 静止基线与失追proof撤销 | 实际生产分支21+7项红/绿回归 | 7712静止计数0、未失追，不能称live覆盖 |
 | 完美/取消、换弹中断/收枪 | 有实现与部分纯测试 | 仍缺本枪实际动作证据 |
 | 完整自然手型、舒适度、实体头显 | 尚无接受 | 未通过 |
@@ -360,3 +361,12 @@ Lancer只读确认上述forgiving-profile不是其本轮改动，未补写共享
 没有latch拒绝或重抓，stationary_holds始终0；新的静止保留分支没有live覆盖，不能据此宣称9540旧gap根因确定或静止修复已被游戏验证。失追proof撤销也未作为本段动作验证。
 
 56.3s双路全2页overview及simulator00690/00730/00844/00920原接触图亲看。可见弹匣提取/回座过程，但近脸构图、手/袖自然贴合与全角度仍未接受；初始第三人称/等待卡和HUD既有问题保留。game lane最大捕获gap1533.3488ms在启动段，不当游戏停顿/FPS根因。Native/entry/pad恢复TRUE，hand_stop5/drained，XR0、launcher0、game退出，config/settings原字节及head原缺恢复。编码64780=0，retention33602=0删1954媒体/332573205bytes，核idle后最终唯一交Snub042943→Frag045142→Cover r8。runtime-7712-review.json保存范围；全枪/实体头显不算完成，下一验证是实际新匣替换与库存守恒。
+
+
+## 53224：真实新匣替换及守恒通过，移动gap保留
+
+050438-replacement沿同PGa03ec045/Nativec985/XR1684、原驱动未改，前驱Longshot71272完整收尾唯一交窗后重新核6制品/12关键运行输入并stage。实际53224/134386475569110764，原肩取6发后L72/R78；原版serial1，卡扣1→2→3→4；真实连续提取+UP使4→5，左肩真实新Grip token3得到78发新匣、仅预留备弹6；同握持续接近入槽6→7后实际L78/R72，关卡扣7→8、普通complete result2。回射6条有效且来源一致的原生trajectory，实扣L78→72/R72，总量与发射一致，bonus0。operator0。
+
+此次不是无中断卡扣通过：opening stage2 angle0.000645289526与closing stage7 angle0.813532753各gap112ms，actual retained_same均1，实际hand_delta分别0.000619197414m与0.00178300227m，last changed-angle seek17.2725/14.3677ms。二者都是移动而非≤10µm静止，strict100ms正确拒绝；各一次真实UP/newGrip后完成，保留两个实际失败及恢复，不把driver整体pass覆盖它们。stationary_holds0，新静止分支未live覆盖；不能把seek耗时单项当全部gap因果。
+
+76.95s双路3页全跨度overview及simulator00825/00950/01211/01343原图已亲看。可见旧匣释放、左肩取新匣和回座，但自然手指/袖口、近脸构图、完整多角度及头显仍未接受；game startup capture gap1850.0287ms不当游戏停顿/FPS证明。Native/entry/pad恢复TRUE、hand_stop5/drained、XR/launcher0、game退出、config/settings原字节和head原缺恢复；编码99894=0。媒体保留41102=0，删除2655媒体/464596636bytes；核idle后最终唯一交Snub051415→Boltok051519→Frag045142，runtime-53224-review.json保存实际终态。
