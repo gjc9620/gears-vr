@@ -96,3 +96,20 @@ MSVC 原始结果保存在 `analysis/cover-system-20261108/focused-cover-results
 首轮独立测试因复用夹具 main 宏冲突和局部参数重名编译失败，修正后通过。前两次冻结包配置分别发现旧快照遗漏 `.cmake` 和 `.asm` 文件；保留原失败目录，补录同一仓库未修改的辅助文件及哈希后完成 r3 编译，追加发布接线检查后完成最终 r4。没有把配置失败改记为通过。
 
 主人经统筹补充当前游戏位置为 `J:/gearsVr/Gears.of.War.Reloaded.v1.0.1.3816947-P2P/Gears of War Reloaded/Binaries_x64`。本轮已用现有 `game_install.validate_game` 核对该路径 EXE 和 Coalesced 配置通过；此前只依据旧路径禁用记录作出的环境判断应按此最新信息更新。本轮未因此启动游戏或模拟器。后续验证遵从主人最新要求：使用现有游戏直控与模拟器脚本，不使用 Computer Use；需要时录制并实际检查游戏和模拟器画面，并保留共享运行窗口与清理保护。
+
+## 2026年11月8日 掩体眼点与统一身体目标转换
+
+在既有 `body_goal_view_adapter.h` 增加 `place_cover` 和 `prepare_cover`，继续输出给原全身规划器使用的 Goal／Render 数据，不增加写入端。转换将独立指定的掩体中立眼点与朝向应用于已校准的眼点到骨盆关系；身体根朝向按墙面基准旋转，真实头部旋转不进入该身体转向计算。
+
+脚位必须由进入掩体的脚位处理方显式提供。转换器保留这些脚位，不随躯干朝墙自动旋转、移动旧脚锚点。输入 `CoverPlacement` 只是当前放置数据，不是碰撞证明、脚位可达许可或 Native 写入资格。其世界、人物、Mesh、CoverLink、槽位、场景、publication、reference 与时间必须匹配本次有效 Core；拒绝时调用方输出保持不变。
+
+真实 HMD 位移与已提交的虚拟抓边偏移仍由现有统一转换各应用一次。完整 C0 运行策略尚未选择该新入口，`no_cover` 等旧准入没有被直接删除；实际合法眼点、脚位及表面／身体碰撞输入仍待接入。
+
+本批 MSVC `/std:c++17 /O2 /W4 /WX /EHsc /UNDEBUG` 编译与执行结果：
+
+- `BodyCoverGoalAdapterTest` 212 项通过，使用保留的原版 115 骨记录和明确合成的当前 Core／掩体放置。四种墙面朝向与 0／15／30 厘米眼点降低组成 12 个完整身体规划，全部 solved；真实头部位移、抓边位移、脚位保留与过期／错场景输入拒绝检查通过。
+- 原 `BodyGoalViewAdapterTest` 在同一合成当前 Core 上 159 项通过。输出已改为报告实际输入结构尺寸，不再固定打印“actual Core1832”。
+
+首次直接读取保留的 `captured-core.bin` 时，精确尺寸检查失败：旧文件为 1832 字节，当前结构为 1864 字节。旧文件未转换、覆盖、补字节或改记为当前样本；失败保存在 `body_goal_view_adapter-old-core-failure.log` 与 `cover-adapter-first-failure.json`。尝试复用旧 Core 单元测试生成器时，其旧 ABI static_assert 同样拒绝；没有修改这些原断言。后续使用独立、明确命名的当前合成夹具生成器，并先通过当前 `core_snapshot_valid`。合成数据不属于游戏或物理追踪证据。
+
+检查脚本和结果在 `analysis/cover-system-20261108/run-cover-adapter.py`、`make-synthetic-core.cpp`、`synthetic-core-current.bin`、`cover-adapter-results.json`。新检查已登记到 CMake，仍要求显式提供对应 Core 与骨骼夹具。没有据本轮生成新的安装候选或运行游戏；上批 r4 DLL 仅证明其冻结源码中的独立掩体读取接线，不代表本批转换已经进入实跑。

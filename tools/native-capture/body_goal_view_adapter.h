@@ -30,8 +30,40 @@ struct Output {
     vr::CoverViewResult render{}; // Final pre-HMD base, committed virtual only.
     vr::Pose desired_eye{};      // UE world +X forward,+Y right,+Z up.
 };
-enum class Status {okay,alias,core,units,neutral,policy,view,physical,head_marker,numerical};
+enum class Status {okay,alias,core,units,neutral,policy,view,physical,head_marker,numerical,cover};
 inline constexpr std::uint64_t maximum_age_ns=50'000'000;
+// A current, independently supplied cover placement. This is data for the
+// existing planner, not collision/exposure certification or a Native write
+// permit. Feet must be explicitly supplied by the entry/foot-placement owner;
+// a wall-facing torso must not silently rotate or relocate old foot anchors.
+struct CoverPlacement {
+    gears_weapon_hand::ObjectIdentity world{},pawn{},mesh{},link{};
+    std::uint64_t world_generation{},scene{},publication{},reference{};
+    std::int64_t observed_ns{};std::int32_t slot{-1};std::uint32_t type{};
+    vr::CoverViewAnchor anchor{};
+    body::Pose feet_world[2]{};
+};
+inline Status place_cover(Neutral const& calibrated,vr::CoverViewAnchor const& anchor,
+                         body::Pose const (&feet)[2],Neutral& out) noexcept {
+    using namespace body::d;
+    const Range ranges[]={range(&calibrated,sizeof calibrated),range(&anchor,sizeof anchor),
+                          range(feet,sizeof feet),range(&out,sizeof out)};
+    if(!disjoint(ranges,4))return Status::alias;
+    body::Quat root{};
+    if(!vr::cover_view_basis(calibrated.eye_anchor)||!vr::cover_view_basis(anchor)||
+       !finite_vector(calibrated.pelvis_world)||!normalized(calibrated.root_bone_world_q,root)||
+       !goal_pose(feet[0])||!goal_pose(feet[1]))return Status::neutral;
+    const auto f=calibrated.eye_anchor.forward_world;
+    const auto target=anchor.forward_world;
+    const double angle=std::atan2(f.x*target.y-f.y*target.x,f.x*target.x+f.y*target.y);
+    const auto turn=yaw(angle);
+    Neutral next{};next.eye_anchor=anchor;
+    next.pelvis_world=add(anchor.neutral_eye_world,rotate(turn,sub(calibrated.pelvis_world,calibrated.eye_anchor.neutral_eye_world)));
+    next.root_bone_world_q=product(turn,root);
+    next.feet_world[0]=feet[0];next.feet_world[1]=feet[1];
+    if(!finite_vector(next.pelvis_world))return Status::numerical;
+    out=next;return Status::okay;
+}
 inline Status prepare_math(Neutral const& neutral,core::CoreSnapshot const& source,
     vr::StereoSample const& tracking,body::Model const& model,body::Frame const& frame,marker::Marker const& authored,
     vr::CoverOffset const& committed,Policy const& policy,Output& out) noexcept {
@@ -98,5 +130,28 @@ inline Status prepare(Neutral const& neutral,gears_body_tick_source::Input const
     if(!disjoint(ranges,8))return Status::alias;
     if(gears_body_tick_source::classify(input,input.observed.parent_scene,policy.now_ns,policy.allow_sim)!=gears_body_tick_source::Verdict::okay)return Status::core;
     return prepare_math(neutral,input.observed.parent_scene,input.observed.stereo,model,frame,authored,committed,policy,out);
+}
+inline Status prepare_cover(Neutral const& calibrated,CoverPlacement const& placement,
+    core::CoreSnapshot const& source,body::Model const& model,body::Frame const& frame,
+    marker::Marker const& authored,vr::CoverOffset const& committed,Policy const& policy,Output& out) noexcept {
+    using namespace body::d;
+    const Range ranges[]={range(&calibrated,sizeof calibrated),range(&placement,sizeof placement),range(&source,sizeof source),
+        range(&model,sizeof model),range(&frame,sizeof frame),range(&authored,sizeof authored),range(&committed,sizeof committed),
+        range(&policy,sizeof policy),range(&out,sizeof out)};
+    if(!disjoint(ranges,9))return Status::alias;
+    if(!core::core_snapshot_valid(source,policy.now_ns,maximum_age_ns,policy.allow_sim))return Status::core;
+    if(policy.scope!=body::Scope::fixed_cover)return Status::policy;
+    if(!(source.flags&core::rig::cover_key_known)||!placement.type||placement.type!=source.cover_type||
+       placement.slot<0||placement.slot!=source.cover_slot||
+       !gears_weapon_hand::same(placement.world,source.world)||!gears_weapon_hand::same(placement.pawn,source.pawn)||
+       !gears_weapon_hand::same(placement.mesh,source.mesh)||!gears_weapon_hand::same(placement.link,source.cover_link)||
+       placement.world_generation!=source.world_generation||placement.scene!=source.scene_invocation||
+       placement.publication!=source.publication_sequence||placement.reference!=source.reference_generation||
+       placement.observed_ns<=0||placement.observed_ns>policy.now_ns||
+       std::uint64_t(policy.now_ns-placement.observed_ns)>maximum_age_ns)return Status::cover;
+    Neutral placed{};
+    const auto status=place_cover(calibrated,placement.anchor,placement.feet_world,placed);
+    if(status!=Status::okay)return status;
+    return prepare_math(placed,source,source.stereo,model,frame,authored,committed,policy,out);
 }
 } // namespace gears_body_goal_view

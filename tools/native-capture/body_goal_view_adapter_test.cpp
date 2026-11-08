@@ -89,5 +89,5 @@ int main(int argc,char** argv){
     }
     auto alias=std::make_unique<a::core::CoreSnapshot>(source);const auto before=bytes(*alias);auto& bad_out=*reinterpret_cast<a::Output*>(alias.get());C(a::prepare(neutral,*alias,*model,*frame,marker,committed,policy,bad_out)==a::Status::alias);C(bytes(*alias)==before);
     C(bytes(actual)==actual_bytes&&bytes(*frame)==frame_bytes);
-    std::printf("BodyGoalViewAdapter: %u checks, %u failures; actual Core1832 + full115 Ref; maxEye=%g maxAxis=%g; no Native/physics permission\n",checks,failures,max_eye_error,max_axis_error);return failures?1:0;
+    std::printf("BodyGoalViewAdapter: %u checks, %u failures; input Core=%zu bytes + full115 Ref; maxEye=%g maxAxis=%g; no Native/physics permission\n",checks,failures,sizeof(actual),max_eye_error,max_axis_error);return failures?1:0;
 }
