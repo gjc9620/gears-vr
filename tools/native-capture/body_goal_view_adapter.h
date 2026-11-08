@@ -182,14 +182,14 @@ inline Status prepare(Neutral const& neutral,gears_body_tick_source::Input const
     if(gears_body_tick_source::classify(input,input.observed.parent_scene,policy.now_ns,policy.allow_sim)!=gears_body_tick_source::Verdict::okay)return Status::core;
     return prepare_math(neutral,input.observed.parent_scene,input.observed.stereo,model,frame,authored,committed,policy,out);
 }
-inline Status prepare_cover(Neutral const& calibrated,CoverPlacement const& placement,
+inline Status place_cover_head(Neutral const& calibrated,CoverPlacement const& placement,
     core::CoreSnapshot const& source,body::Model const& model,body::Frame const& frame,
-    marker::Marker const& authored,vr::CoverOffset const& committed,Policy const& policy,Output& out) noexcept {
+    marker::Marker const& authored,Policy const& policy,Neutral& out) noexcept {
     using namespace body::d;
     const Range ranges[]={range(&calibrated,sizeof calibrated),range(&placement,sizeof placement),range(&source,sizeof source),
-        range(&model,sizeof model),range(&frame,sizeof frame),range(&authored,sizeof authored),range(&committed,sizeof committed),
+        range(&model,sizeof model),range(&frame,sizeof frame),range(&authored,sizeof authored),
         range(&policy,sizeof policy),range(&out,sizeof out)};
-    if(!disjoint(ranges,9))return Status::alias;
+    if(!disjoint(ranges,8))return Status::alias;
     if(!core::core_snapshot_valid(source,policy.now_ns,maximum_age_ns,policy.allow_sim))return Status::core;
     if(policy.scope!=body::Scope::fixed_cover)return Status::policy;
     if(!(source.flags&core::rig::cover_key_known)||!placement.type||placement.type!=source.cover_type||
@@ -217,6 +217,19 @@ inline Status prepare_cover(Neutral const& calibrated,CoverPlacement const& plac
     if(marker::head_from_eye(authored,model,frame,{wall_eye},wall_head)!=marker::Status::okay||
        marker::head_from_eye(authored,model,frame,{tracking_eye},tracking_head)!=marker::Status::okay)return Status::head_marker;
     placed.pelvis_world=add(placed.pelvis_world,sub(tracking_head.pose.position,wall_head.pose.position));
+    out=placed;return Status::okay;
+}
+inline Status prepare_cover(Neutral const& calibrated,CoverPlacement const& placement,
+    core::CoreSnapshot const& source,body::Model const& model,body::Frame const& frame,
+    marker::Marker const& authored,vr::CoverOffset const& committed,Policy const& policy,Output& out) noexcept {
+    using namespace body::d;
+    const Range ranges[]={range(&calibrated,sizeof calibrated),range(&placement,sizeof placement),range(&source,sizeof source),
+        range(&model,sizeof model),range(&frame,sizeof frame),range(&authored,sizeof authored),range(&committed,sizeof committed),
+        range(&policy,sizeof policy),range(&out,sizeof out)};
+    if(!disjoint(ranges,9))return Status::alias;
+    Neutral placed{};
+    const auto status=place_cover_head(calibrated,placement,source,model,frame,authored,policy,placed);
+    if(status!=Status::okay)return status;
     return prepare_axes_math(placed,placement.anchor,source,source.stereo,model,frame,authored,committed,policy,out);
 }
 } // namespace gears_body_goal_view

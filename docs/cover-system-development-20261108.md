@@ -349,3 +349,24 @@ CPOSE文件594792字节，SHA256为f62f9bbe66c4a4e1fc60e0de87b47397a3e9269c74bd5
 在61492真实骨骼及明确派生的中立Goal fixture上，preserve-C0／reference-neutral分别水平调整约11.69746／13.27997游戏单位，保持骨盆Z546.004803及双脚，原solver验证通过；3个刚性世界旋转／平移、零预算已可达原姿态、错误源／HMD与Grip非零／预算不足／别名／输出不变等共60检查通过。直接MSVC/W4/WX与隔离CMake新目标均编译及执行0，218依赖。新目标只在明确指定私有fixture时注册；未跑旧完整矩阵或游戏。隔离构建第一次字节比较发现旧冻结头文件LF与当前CRLF差异，原失败保留；所选8项真实依赖逐一记录SHA，旧body planner等文本除换行完全相同，未混入其他武器实验逻辑。见cover-posture-fit-cmake-result.json及posture-fit-source-dependencies.json。
 
 当前posture fit尚未接入Native C0消费者，也未重编／stage新的运行Native；本批不能关闭61492等待帧／穿插问题。后续先将当前姿态与中立目标绑定到同一真实owner／Tick和参考，再在已有唯一写入端接入，并补实际连续碰撞、双眼、受击及枪口证据。公开v71及完整功能验收状态不变。
+
+
+## 2026年11月9日 实测髋高拟合接入中立目标转换
+
+上轮为 progress：实际组件容器认证与实测髋高拟合器已保存。随后完成需求文档核对，补齐24项功能与22项验收的对应、术语及合同内可调初值；本节继续实现，不改变需求完成标准。
+
+新增 cover_neutral_goal.h，复用既有 body_goal_view_adapter、measure_cover_pose 和 cover_posture_fit。原 prepare_cover 的身份／时效／墙面与独立视向头部pivot检查提取为 place_cover_head，原接口继续经同一检查后合成追踪。新中立准备先从当前原始C0测量髋高，以独立placement指定的眼点、身体朝向、连续视向和脚位生成纯数学pre-HMD目标，再用实测髋高及显式水平预算拟合；成功后返回固定Neutral供已有追踪转换使用。没有更改原Core、刷新时间或把拟合结果签成碰撞／写入许可。中立值须由实际owner在合格中立边界建立一次，并随当前掩体基准失效，不能逐帧用动画或上一输出重校准。
+
+同局61492原FPOSE仍是CT0，原字节和原时间未改。probe仅导出同局站立校准及当前C0骨架的owned-buffer结果；新测试明确在CPU内构造掩体键，不把该Core称为实际CT2来源。两种姿态策略以原壁面法向及进入前观察yaw=-4667分别给身体／视向；preserve_c0与reference_neutral的水平拟合分别10.1788092及11.7528148游戏单位，髋高均保持546.004803，原脚位和目标头位不变。它们还没有当前场景可通行证明。
+
+新增CoverNeutralGoalTest实际84检查、0失败：包含保留站立校准直接转换产生低于脚位的原情况；两种姿态下实测髋高／脚位／固定骨长求解；真实HMD位置及旋转不改变中立拟合；真实平移和已提交虚拟偏移在后续目标各加一次；17类身份、代次、时效、单位／骨架／零预算等负例，以及别名、失败输出和输入不变。原BodyCoverGoalAdapter的designer／Marcus各326检查、12个全身目标通过，原BodyGoalViewAdapter159检查通过。
+
+隔离源码由上一posture-fit-source复制，递归核对本次测试实际quoted include依赖，仅相应目标转换／新模块文本改变；CMake只增本次目标及可选fixture登记。MSVC /W4 /WX编译与4次执行均exit0，实际编译依赖240。原始结果为analysis/cover-system-20261108/neutral-goal-build-result.json，源码与依赖为neutral-goal-source／neutral-goal-source-dependencies.json；原始fixture及派生来源说明见neutral-goal-fixtures.json。没有编译新的运行DLL，也未stage／启动游戏。
+
+继续核对到源码上的启动依赖：capture.cpp中missing_basis返回仍早于rig_tracking_live::publish；copy_scene_metadata_owner消费的是同一成功Scene发布的Core和owner。continuous_hand_owner只有取得该owner才能开始Tick／C0，而body_c0_goal_policy_live须在已captured上下文中才能sample_current_cover_pose，随后仍明确拒绝cover。这说明r11前移只读调试观察不等于接通实际中立／身体来源；也不能据此删除视点或Core准入检查。下一项是沿现有owner与Scene元数据通道建立不依赖最终相机输出的当前C0接线，同时保留原始追踪来源与唯一身体writer。合法中立眼点、连续体积碰撞、实际双眼、受击及枪口闭环仍待证。
+
+### 当前已登记运行切片与后继
+
+reader-r12仍冻结plan b5e097b018a98bd1d576d088e60cb80a778ebd8a4a4853ca3035dc370c42373a，23依赖，prepared仍r11 Native6a6a1f9a／PGf8e6f3c2／XR16840b27。本切片仅原版A一次、最多8条原Trace／30秒的一个边缘cross-section，严格当前实际命中组件与Owner／Outer／容器／几何closing，不发C0事件、不抓边、不写身体；上述中立模块没有混入该Native。实际源与plan核对、stage和运行仍须在明确交窗后执行。
+
+Longshot060433已明确接受Cover r12为唯一后继，Cover确认身份与Scope不变；其前链Frag053206→HB055335→Frag053956保留。本段之后没有更早受理后继，已直接登记Snub060545-input-loss为唯一后继，对方确认。必须等待060433最终完整恢复、双路全跨度及原图审看、编码／retention终态的唯一交窗，并独立核实际进程；不据idle抢窗。以上是排队与源码进展，不是新游戏结果。Publicv71、历史计分及实体头显／完整掩体验收状态均不变。
