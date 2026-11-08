@@ -227,7 +227,13 @@ bool observe_game(abi::Frame const& f,abi::GripGameState& out,bool candidates,bo
     if(support_mount&&game.main_hand_held&&!game.busy&&!game.animation_owns_hands&&game.kind==abi::WeaponKind::firearm)
         nativelancerfollow::fill_support_mount(f,game);
     if(candidates){
-        lancerreload_contact::propose(f,game);
+        // HB has its own latch/magazine observer. A missing Lancer-only C0
+        // pair must not become an unrelated pending-magazine veto for HB.
+        // Restrict this dispatch only after the exact held HB binding exists;
+        // the HB producer below still proves its own current part geometry.
+        const bool held_hammerburst=nativelancerfollow::bound_key_known&&
+            nativelancerfollow::bound_is_hammerburst&&abi::same(f.weapon,nativelancerfollow::bound_key.weapon);
+        if(!held_hammerburst)lancerreload_contact::propose(f,game);
         hammerburst_runtime::propose(f,game);
         snub_runtime::propose(f,game);
     }
