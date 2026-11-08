@@ -4,6 +4,8 @@
 namespace {
 FILE* log_file{};
 unsigned support_mount_reads{},part_proposals{};
+unsigned lancer_proposals{},hammerburst_proposals{};
+bool simulate_lancer_pending{};
 // Exercise the production observer's actual follow-enabled routing. Geometry
 // and arbitration are separate owners; these spies cannot grant a hand lease.
 namespace nativelancerfollow {
@@ -12,11 +14,14 @@ bool fill_support_mount(gears_weapon_hand::Frame const&,gears_weapon_hand::GripG
 }
 }
 namespace lancerreload_contact {
-void propose(gears_weapon_hand::Frame const&,gears_weapon_hand::GripGameState&) noexcept {++part_proposals;}
+void propose(gears_weapon_hand::Frame const&,gears_weapon_hand::GripGameState& game) noexcept {
+    ++part_proposals;++lancer_proposals;
+    if(simulate_lancer_pending)game.magazine_observation_pending=true;
+}
 void committed(gears_weapon_hand::Frame const&,gears_weapon_hand::Decision const&) noexcept {}
 }
 namespace hammerburst_runtime {
-void propose(gears_weapon_hand::Frame const&,gears_weapon_hand::GripGameState&) noexcept {++part_proposals;}
+void propose(gears_weapon_hand::Frame const&,gears_weapon_hand::GripGameState&) noexcept {++part_proposals;++hammerburst_proposals;}
 }
 namespace snub_runtime {
 void propose(gears_weapon_hand::Frame const&,gears_weapon_hand::GripGameState&) noexcept {++part_proposals;}
@@ -26,6 +31,26 @@ void committed(gears_weapon_hand::Frame const&,gears_weapon_hand::Decision const
 #include "weapon_hand_offline_fixture.h"
 int main(){
     unsigned cases{};
+    {auto m=std::make_unique<Memory>();
+        Memory::put(m->concrete,0x48,m->text(L"Weap_LocustAssaultRifle"));m->tables();
+        abi::GripGameState out{};support_mount_reads=part_proposals=lancer_proposals=hammerburst_proposals=0;
+        simulate_lancer_pending=true;
+        assert(m->read(out)&&out.known&&out.main_hand_held&&out.mount_known);
+        assert(support_mount_reads==1&&part_proposals==2&&lancer_proposals==0&&hammerburst_proposals==1);
+        assert(!out.magazine_observation_pending);simulate_lancer_pending=false;++cases;
+    }
+    {auto m=std::make_unique<Memory>();
+        Memory::put(m->concrete,0x48,m->text(L"Weap_LocustAssaultRifle"));
+        const auto foreign=m->node(L"ForeignWeaponPackage",m->package_type);
+        Memory::put(m->concrete,0x40,foreign);m->tables();
+        abi::GripGameState out{};lancer_proposals=0;
+        assert(m->read(out)&&out.main_hand_held&&lancer_proposals==1);++cases;
+    }
+    {auto m=std::make_unique<Memory>();
+        Memory::put(m->concrete,0x48,m->text(L"Weap_LocustAssaultRifle"));m->tables();
+        abi::GripGameState out{};support_mount_reads=part_proposals=0;
+        assert(m->read(out,true)&&out.mount_known&&support_mount_reads==1&&part_proposals==0);++cases;
+    }
     for(bool source_only:{false,true}){
     {auto m=std::make_unique<Memory>();abi::GripGameState out{};
         support_mount_reads=part_proposals=0;assert(m->read(out,source_only));
