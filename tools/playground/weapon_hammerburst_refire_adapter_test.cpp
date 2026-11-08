@@ -13,7 +13,7 @@ using uptr=std::uint64_t;
 constexpr uptr base=0x140000000;
 namespace fixture {
 enum :unsigned {none,timer,state,owner,package,fn_type,state_type,class_type,bool_type,
-    engine_owner,engine_state,engine_timer,put,should,ammo,timing,down,target,returned,burst,count};
+    engine_owner,engine_state,engine_timer,put,should,ammo,timing,down,target,returned,burst,war_owner,count};
 struct Object {uptr address{},outer{},klass{};gears_hammerburst_refire::Name name{};std::wstring label;};
 struct Structure {uptr children{};unsigned extent{};};
 struct Property {unsigned identity{},type{};std::uint64_t flags{};unsigned dimension{1},element_bytes{4},offset{};};
@@ -37,10 +37,11 @@ void reset(){
         auto& o=model.identities[i];o.label=label;o.klass=address(klass);o.outer=address(outer);o.name={name,0};};
     set(fn_type,L"Function",0,0);set(state_type,L"State",0,0);set(class_type,L"Class",0,0);set(bool_type,L"BoolProperty",0,0);
     set(package,L"WarfareGame",0,0);set(owner,L"Weap_LocustAssaultRifle",class_type,package);
+    set(war_owner,L"WarWeapon",class_type,package);
     set(state,L"WeaponFiring",state_type,owner);set(timer,L"RefireCheckTimer",fn_type,state);
     set(engine_owner,L"Weapon",class_type,0);set(engine_state,L"WeaponFiring",state_type,engine_owner);
     set(engine_timer,L"RefireCheckTimer",fn_type,engine_state);
-    set(put,L"PutDownWeapon",fn_type,engine_owner,23997);set(should,L"ShouldRefire",fn_type,owner,27558);
+    set(put,L"PutDownWeapon",fn_type,war_owner,23997);set(should,L"ShouldRefire",fn_type,owner,27558);
     set(ammo,L"FireAmmunition",fn_type,owner,13002);set(timing,L"TimeWeaponFiring",fn_type,engine_owner);
     set(down,L"bWeaponPutDown",bool_type,engine_owner);set(target,L"bWasTargeting",bool_type,owner);
     set(returned,L"ReturnValue",bool_type,should);
@@ -108,9 +109,10 @@ namespace meta=gripdamage_metadata;
 struct Array {uptr data{};int count{},capacity{};};struct Script {Array array{};std::array<unsigned char,256> bytes{};};
 bool script(meta::Reader&,uptr fn,Script& out){if(!fixture::model.body||fn!=fixture::address(fixture::timer))return false;out.array.count=79;std::memcpy(out.bytes.data(),fixture::model.code.data(),79);return true;}
 bool unchanged(meta::Reader&,uptr,Script const&){return fixture::model.unchanged;}
-template<std::size_t N>bool weapon_function(meta::Reader& r,uptr fn,wchar_t const(&label)[N],unsigned& slot,meta::Structure& s,bool=false){
+template<std::size_t N>bool weapon_function(meta::Reader& r,uptr fn,wchar_t const(&label)[N],unsigned& slot,meta::Structure& s,bool allow_war=false){
     return r.path(fn,slot)&&r.named(slot,label)&&fixture::model.identities[slot].klass==fixture::address(fixture::fn_type)&&
-        fixture::model.identities[slot].outer==fixture::address(fixture::engine_owner)&&r.structure(fn,s);
+        (fixture::model.identities[slot].outer==fixture::address(fixture::engine_owner)||
+         (allow_war&&fixture::model.identities[slot].outer==fixture::address(fixture::war_owner)))&&r.structure(fn,s);
 }
 bool original_loop(meta::Reader&,uptr,uptr fn,unsigned& reason){++fixture::model.engine_calls;reason=0;return fn==fixture::address(fixture::engine_timer)&&fixture::model.engine_proof;}
 #include "weapon_hammerburst_refire.inl"
@@ -120,6 +122,7 @@ int main(){
     const auto run=[](){gripdamage_metadata::Reader r;unsigned reason{};
         return lancerrefire::hammerburst_refire::original_loop(r,0x9999,address(timer),reason);};
     reset();assert(run()&&model.engine_calls==1);++checks;
+    reset();model.identities[put].outer=address(engine_owner);assert(run());++checks;
     const auto reject=[&](std::function<void()> const& change){reset();change();assert(!run());++checks;};
     reject([]{model.receiver=false;});
     reject([]{model.identities[timer].label=L"OtherTimer";});
@@ -142,6 +145,7 @@ int main(){
     reject([]{model.properties[target].type=fn_type;});
     reject([]{model.args=false;});
     reject([]{model.identities[put].klass=address(state_type);});
+    reject([]{model.identities[put].outer=address(owner);});
     reject([]{model.identities[should].klass=address(state_type);});
     reject([]{model.identities[should].outer=address(engine_owner);});
     reject([]{model.identities[ammo].klass=address(state_type);});

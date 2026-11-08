@@ -45,7 +45,7 @@ bool original_loop(meta::Reader& r,uptr weapon,uptr function,unsigned& reason) n
     meta::Structure put_structure{},should_structure{},ammo_structure{},timing_structure{};
     reason=32;
     if(!put.valid||!should.valid||!ammo.valid||!timing.valid||
-       !weapon_function(r,put.r.function,L"PutDownWeapon",put_slot,put_structure)||
+       !weapon_function(r,put.r.function,L"PutDownWeapon",put_slot,put_structure,true)||
        !r.path(should.r.function,should_slot)||!r.named(should_slot,L"ShouldRefire")||
        !r.path(r.result.identities[should_slot].klass,should_type)||!weaponhand::core_type(r,should_type,L"Function")||
        !r.path(r.result.identities[should_slot].outer,should_owner)||should_owner!=owner||
