@@ -274,4 +274,14 @@ CoverInputOwnerResult在view_valid时一起保存冻结的wall_anchor、view_anc
 
 r10从完整r9冻结树复制，只overlay9项本批源码／测试及新增CMake目标，所有GEARS开关沿用r9。Native完整编译链接exit0，661依赖；DLL SHA256为4b1eb8a1eddfeb9bd85fe028f5cce4715dfd1ad138a69fa79f0cc8a2a54d7e9d。冻结源码上实际执行5个定向目标均exit0：CoverView1135、CoverBodyTarget428、CoverInputOwner120、CoverInputTransaction767、CoverFullGoalLive23。428项包含4种墙向×3种视向的目标、世界眼点与保留FALSE权限检查，以及错误基准／陈旧追踪／错误key等拒绝。原始与最终宿主日志、源码与构建见cover-target-view-checks.json、context-native-r10-source.json、context-native-r10-build-result.json及相邻目录。
 
-r10没有stage或游戏／XR运行，仍未接通实际连续C0基准、合法脚位及体积碰撞，不关闭72608画面失败或头显验收。当前下一只读仍为equipment-controls-prepared-20261108-cover-r7／drivers-owner-only-r7，21驱动核对一致，plan SHA256为8763956cdf027673d47a6e55ec01322b30fda9ae79c0aabbf8e401f19ffb35dc。已直接向唯一前驱Boltok030739提供精确制品／reader身份，待其正常恢复、全跨度视觉、编码和retention全部终态后最终交窗；本只读全收尾后唯一交Longshot034956。正常排队未记blocked，未抢当前Lancer48572／Snub32408的实际运行窗口，也未向通知／统筹聊天主动发送进度。
+r10没有stage或游戏／XR运行，仍未接通实际连续C0基准、合法脚位及体积碰撞，不关闭72608画面失败或头显验收。当前下一只读仍为equipment-controls-prepared-20261108-cover-r7／drivers-owner-only-r7，21驱动核对一致，plan SHA256为8763956cdf027673d47a6e55ec01322b30fda9ae79c0aabbf8e401f19ffb35dc。已直接向唯一前驱Boltok030739提供精确制品／reader身份，待其正常恢复、全跨度视觉、编码和retention全部终态后最终交窗；本只读全收尾后唯一交Longshot034956。正常排队未记blocked，未抢当时48572／32408的实际运行窗口，也未向通知／统筹聊天主动发送进度。
+
+### 72608保留姿态记录的定向核对
+
+为减少补数运行，先核对已归档的同局数值记录。prior-private-text-20261109-021447/done.json明确指向72608／creation134386349955377432的session；三份文件SHA均与当时numerical-receipts.json一致。用实际r7冻结声明生成独立C++解码器，/W4／WX编译、解码均exit0；二进制header／record尺寸、长度／数量、PID及native started_qpc9695846001518与原Native状态互核，未读取新游戏进程。
+
+结果不支持把保留数据当掩体内姿态：cover-pose-phases.bin只有56字节头、episode0，与同局cover_pose_episodes0／file_written1一致。fresh-pose-producer.bin有1个66432字节记录，5个stage均记录115 local且read_mask2047，但source为CT0／slot-1，原published_ns比首次认证CT2观察早15.7602183秒；fresh_certified仍0，不补成写入凭证。control-node-phases.bin有128个1944字节row，session均一致，记录的affected bone只有[8,10,11,32,34,35]，最后after_qpc按该局已保存的10MHz频率换算仍早于CT2约14.6569199秒。不能跨越实际进入／动画变化，把这些旧值当当前头、骨盆或脚位。
+
+此结论只覆盖本次按归档身份选定的三份文件，不声称搜索了全部历史记录。原文件未改，完整关联、尺寸、时序、源码SHA和解码结果保存在retained-72608-pose-review.json、retained-72608-producer.json／controls.json及相邻C++／构建日志。记录同时去掉了先前按排队顺序推断32408武器归属的标签，仅保留实际进程身份，不将窗口顺序当所属会话证明。
+
+下一项具体缺失证据是新鲜原版CT2下的原始C0头／骨盆／脚位。已有r7 CoverPosePhaseObserver具备有界捕获，不需新Hook／writer：未来在本次组件只读完整收尾并取得另一明确窗口后，可在原版进入成功、当前owner／进程creation／Native session／事件名称均核实后只触发一次Local\\GearsVR.CoverPoseCapture.<PID>，由原观察器在下一匹配Tick最多记录一个episode。事件名称只有PID，不能凭名称证明会话；不能消费自动重置事件来探测状态，也不能把SetEvent成功当成C0快照已完成或未知超时后重发。当前21驱动及元数据only作用域未改、没有发事件，也未增加A／Trace／身体动作。实际采样计划仍须结合组件只读结果收窄。
