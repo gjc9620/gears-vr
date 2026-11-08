@@ -257,3 +257,14 @@ Cover正常唯一交窗后stage010655/PG8e2a8c38，实际14312完成原HB肩取�
 ## 实际容量78库存边界离线回归
 
 14312类型化双读实际C78/L72/R78，而原7500合成矩阵上限C60。保留原矩阵并增加实测容量78专例：原匣返回即便闭合在perfect window内也只exit_without_fill/inspection、72/78不变且无奖励；备用0只搬已有72发、serial0且不发库存请求；总0拒绝替换匣。MSVC/W4/WX/UNDEBUG真实编译执行通过，日志supply-observed-capacity.log。首次cmd相对正斜杠路径未执行编译，修正绝对反斜杠调用后通过，原调用错误另存。该提交只有测试，不改012813二进制或未完成的游戏覆盖。
+
+
+## 44560：开盖/原匣提取达到，同匣座入驱动换轴错误
+
+精确012813/PGfe0bd568实际44560肩取/6发后获得serial1，连续圆弧无gap/无regrab达1→2→3→4，实际开盖角0.822600225；真实骨链初观测0.761657触发既有endpoint_intervals选择，随后0.822699045一致并建立feed。原匣实际外拔最大记录depth0.0926914653，随后同匣返回等待to7失败，关盖/回射未达到。不能扩成原匣完整通过。
+
+实际同一回执的hand_quat对照发现测试驱动左Grip basis换轴乘序错误（maxdiff1.49356）。旧算法在计划depth0时真实预测depth19.6805mm/lateral18.8273mm，超过原6mm座入深度，和当前实测相符。使用本次已认证world左Grip旋转、先断言raw orientation未改，再转换到production model，矩阵maxdiff3.46e-5；对同一真实itemoffset复算depth1.3465微米/lateral0.6425微米。只修输入规划，不改产品/容差/库存，不能把离线预测当实际座入通过。保留magazine-input-basis-44560.json。
+
+2页完整双路总览与4张真实接触原图亲看；自然手型、袖口遮挡和近脸构图仍未接受。Native/entry TRUE，XR/launcher0，game退出；config/settings逐字节恢复、head原缺失恢复。编码35734 terminal0、retention54890 terminal0实删2432媒体/417441210bytes，文本源码保留。详runtime-44560-review.json。
+
+冻结022007，产品仍PGfe0bd568，源/制品全哈希核对，driver语法及真实数据旧错误/新规划深度断言通过。Lancer明确未stage并接受按具体失败许可仅这一坐标驱动修正复查；本次全收尾后执行一次，若新失败保留后交Lancer、不连续追加。后续既有Lancer012317→Snub013007→Boltok013903→Frag020326→Cover新只读项→Longshot021930。
