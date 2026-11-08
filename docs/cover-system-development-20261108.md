@@ -319,3 +319,19 @@ Native cleanup／entry restore／pad恢复TRUE、hand_stop5／drained、XR0；�
 离线解码器按r7真实Header／Row／Episode声明生成，static_assert尺寸56／84936／594736；复用冻结r10已有Marcus全身模型与头部marker计算原始世界姿态，不制造Core或中立校准。MSVC/W4/WX编译0；72608真实空文件读出count0，错误session／snapshot尺寸及尾随字节拒绝；原观察器Host生成的8episode文件可解码，并分别拒绝异常、并发、重复及错误参数的row。该Host为合成骨架，未被解释为Marcus几何。未来实际游戏文件仍需与该局数值归档SHA、原Native session、CT2观察、世界／人物／mesh及时间互核。原始头／骨盆／脚位仅是测量，不直接授予中立基准、扫掠、C0写入或命中／枪口权限。
 
 最终再显式pin事件复用的既有run_stereo_continuous.py及launcher.py，直接依赖由21增至23；没有再改代码、动作或制品。c6e3e0c6的direct21计划另存未运行档，最终plan SHA为4f17b9da85afd2dd540982d19401ecbabd9fff8e446ca8b050b5f4afc1203232，prepare-only0，已向Frag给出准确新身份。另将保留Marcus115骨骼载荷放入明确合成的Host owner／episode，离线解码的世界头／骨盆／双脚及作者眼点分支均成功，非有限值和单位四元数检查通过；此夹具不是游戏内掩体采样，neutral／atomic／body权限仍FALSE，记录在decoder-synthetic-owner-retained-marcus-review.json。
+
+## 2026年11月9日 实际61492取得当前组件与掩体姿态
+
+接收Frag15368最终交接时保留其Native cleanup_timeout1／drain0／entries0／launcher1，不能改称正常退出；独立核实其Game／XR／录制／编码已不存在后才stage本r11。运行前补了一处拒绝回执：若具名容器越过256预算或类型非法，保留此前已读的明确组件及Owner，标明closing_verified／read_completed为FALSE，不丢失原始拒绝值。原限制与surface准入不变，46个Trace／surface方法通过，源码提交e4e2d09f。最终实际运行计划SHA为69b77bd1ef94fe8b3d94d16d99b28c57937e1de6e34ec30e3c230092dedc27f6／23依赖，准确源码另存drivers-hit-pose-r11-owner-rejection；此前4f17计划保留为未运行档。本局没有触发容器拒绝分支，不将它记作该分支的live覆盖。
+
+实际61492／creation134386467119153096、Native started_qpc9812988712167，仅普通移动及一次原版A进入CT2／CA0；既有姿态事件只SetEvent一次，原版Trace只提交一次。Trace accepted、queue state2、pending FALSE、请求内存释放；之后独立只读query对同一roles与明确HitInfo组件完成closing。实际组件为StaticMeshComponent#186308，Owner与Outer均等于当前mp_warmachine_SMC#3；根CollisionComponent仍为空。StaticMeshComponents为typed StaticMeshComponent数组、count0；Actor.Components和Actor.AllComponents均为typed ComponentProperty／ActorComponent数组，count各100，明确命中组件在两者中各出现一次。没有从数组另选组件、重复Trace或发出抓边请求。
+
+这次实际字段证据给出下一读取修正方向：旧_collection_member只支持StaticMeshComponents唯一成员，不能覆盖本次真实运行容器。后续按当前继承声明认证Components／AllComponents成员、Owner及Outer，并继续保留world／类型／身份／变换／closing检查；不能把数组存在或本局一次成员读回升级成整个人体扫掠／grabbable证书。当前严格surface路径未据本局自动放行。
+
+CPOSE文件594792字节，SHA256为f62f9bbe66c4a4e1fc60e0de87b47397a3e9269c74bd5f2da1a459554a36a018，header session与原Native完全一致，1episode closed，exception／concurrent／nested／duplicate均0。seen／accepted均0x73：C0、C1、late P0／P1与L1共5个row有效，主physics P0／P1未观察到，不补成7stage完整。5个row均为115 local／reference，按该局已保存的10MHz QPC换算落在请求前后实际CT2观察区间内；World／Pawn与Trace角色吻合。源文件原样保存在61492-numerical及其receipt.json，解码在cover-61492-pose-decoded.json，未拿旧CT0数据替代当前测量。
+
+现有Marcus marker实际解出C0作者眼点约(-3935.878,-138.288,574.440)，骨盆约(-3931.004,-187.414,546.005)，左右脚约(-3907.025,-166.583,520.609)及(-3962.637,-185.897,520.311)。5个有效stage的作者眼点相同；这不是原子消费、渲染／命中或合法中立校准。实际component-to-world三轴长度约1.000000044／1.000000044／1，当前数据不支持将它归因为非单位整体缩放。没有签发C0写入、碰撞、射击或抓边许可。
+
+完整27.5334801秒双路1页和4张贴近原版进入／C0时刻的原图已亲看。game00340／00343是等待帧卡；sim00397／00401仍可见身体与装备近裁剪遮挡。完整掩体画面继续FAIL，不能把只读观察已恢复等同于视图已修复，双窗口样本也不是同一C0／GPU draw的原子对应。启动第三人称／等待、移动及HUD的旧缺口仍保留。双路末端覆盖通过，game最大捕获缺口1616.6839ms／sim316.6693ms，不解释为FPS或游戏停顿。
+
+本局runner69903／operator／launcher与配对编码27561均实际exit0；Native cleanup／entry restore／pad TRUE、hand_stop5／drained、XR0、Game退出。config原字节、settings原SHA及head原缺精确恢复，结束23依赖一致。既有retention57724实际exit0，删除2064媒体／344281505字节、errors0，保留61492／15368／36696；再次核实际idle后已最终明确唯一交Longshot050328，后继HB050438。本会话不追加本窗，转离线修当前容器认证与真实眼／骨盆／脚位提供方。全部结论在cover-61492-review.json；公开v71不变，完整掩体与实体头显仍未完成。
