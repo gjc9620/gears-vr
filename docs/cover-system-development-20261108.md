@@ -438,3 +438,19 @@ runner62662实际terminal0、launcher0，operator1真实失败保留；paired编
 test_cover_geometry_state新增两个测试方法，使用原实际Query的内存夹具分别触发身份、属性布局metadata及registry变化，核对精确before／after和header、复制后不再受原字典修改影响，并核对早期读者不可用时没有伪造witness。原代码实际RED缺closing_rejection；首轮metadata夹具误改值／struct指针而非Query.metadata所记录的0x70布局块，原失败日志保留。修正夹具目标后，全部13方法实际0，accepted／collision／activation等原断言继续保留。日志geometry-closing-witness-red.log及geometry-closing-witness-confirmed.log。此处修复了拒绝信息丢失，没有证明61864具体变化原因，更不能填补它没有记录的前后值。
 
 冻结下一有限检查plan859bb156623dc81f31762629473bddded77795c3e78c8b88f836ed1683e39b15，23驱动中仅cover_geometry_state.py变化，副本在drivers-closing-witness-r16；prepare-only0。继续准确equipment-controls-prepared-20261109-cover-r13／Native5cf4adea／PGf8e6／XR1684，不重编／混入r15。本段仍原版A一次、最多8ray／30秒单截面，首个严格失败即停，无新C0事件／抓边／身体或碰撞许可；旧61864执行计划保留为6838d7b9，不据新plan改写旧结果。未stage／game，须排当前已受理尾项之后并收到唯一最终交接才能运行。
+
+## 2026年11月9日 原版三角形体积函数的初始重叠语义
+
+上一目标轮仅定位并核对已有需求稿，没有改变开发接线或下一动作，按开发目标记为no progress。本轮重新核实当前工作树、实际进程及既有导出，继续CV-16／17的碰撞认证；没有把文档齐全当作掩体完成。
+
+沿用reverse-engineer-anything流程，复用已保存的skeletal indexed geometry调用链，将问题限定到历史原代码0x1401b697c及其axis helper 0x1401b711c。原始code blob SHA911ab9bc、data blob SHAc5deb081与磁盘游戏EXE是不同证据。私有IDA库导出的主／冷块及helper分别2086／725字节，逐块匹配原code blob；56条相对控制流边全部落在这些原块内，13个直接调用均指向该helper，没有外部／间接调用。实际RIP常量按指令disp32解析后与独立data blob核对，未将IDA显示的cs标签误作真实地址。
+
+REA的IDA provider未配置，直接IDA connector因缺ida_nexus退出；没有安装／修改provider，改用现有官方IDA CLI与既有IDAPython导出方式，关闭自动分析并正常qexit。最初axis优先级检查因ctypes缺64位HANDLE声明而失败，原失败保留；修正声明后实际GetPriorityClass为16384。leaf原导出中的priority_below_normal字面值只是未核实请求，不能引用为已确认优先级。原库复制前后SHA仍698dc321，未修改原库；所有自有IDA进程已退出。
+
+新增ignored离线harness仅在自有进程保留三个精确64KB内存块，逐片校验SHA后先写入再设code为RX、data为只读，无RWX、不覆盖既有映射、不接触游戏。MSVC /W4 /WX编译通过；第一次编译缺MAXULONG宏的日志保留，改用标准numeric_limits后通过。实际回放进程72408确认BelowNormal，七个合成三角形／盒体样本全部符合预期，进程正常exit0并释放自有映射。
+
+原函数实测：静止初始重叠返回1、time0、零法线；静止相切同样返回1／time0；从z2扫到z-2、盒半高0.5时接触time0.375且法线+Z；从重叠向外移动仍time0，法线为运动反向而非穿透深度或已认证恢复方向。静止远离及横向分离返回0。已有更近time0.1时，原接触time0.375的候选返回0并保留原time／normal，所以该detail返回0不能被单独解释为全局空空间；time0或零法线也不能把已发生接触抹掉。
+
+核对当前cover_trace_query：它消费完成的原Actor.Trace对象返回与原hit字段，既有边缘截面仍是Extent0射线，没有直接调用上述leaf，也明确不授予collision／grab／body许可。因此本轮没有凭历史leaf给生产查询加不适用的语义或放宽guard。这七例只认证该历史数学函数及本次参数解释，不能证明当前StaticMesh／世界形状分派、静止初始重叠的broadphase覆盖、动态碰撞、self排除、physics fence或同版hit／muzzle消费。
+
+完整数值、字节身份、失败与范围记录在analysis/cover-system-20261108/ida-volume-leaf-r16/findings.json及replay/replay-result.json；派生原代码片段保持ignored，不进入源码或发行包。r16运行plan及23驱动未改，未stage／启动游戏。当前明确队列保留Frag071258→Longshot070405→HB070119-refire-supply→Cover reader-r16→Snub071103-charging-observer；仍须前驱完整收尾后的唯一交接及独立idle。完整碰撞、抓边身体提交、双眼／受击／枪口和头显验收仍未闭合，Publicv71及历史评分不变。
