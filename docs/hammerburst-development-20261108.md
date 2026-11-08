@@ -185,3 +185,9 @@ HB独立护木几何、Snap输出及当前真实support租约下的双手求解�
 源码核查发现既有RefireCheckTimer在视觉lease仍安装时，仅允许同一Lancer的prepare_only只读路径。HB转C0后也可能在PlayerTick之间连发，故仅将同一已绑定HB加入该只读选择；原lease.key、weapon identity、hold generation、nativeequipment::current、完整rig/basis及source检查不变。没有使用C0视觉时间延长输入/授权、没有新write权限。独立产品编译链接exit0，冻结hammerburst-prepared-20261108-230718，PG7bed6ef74017efb877ac9bdd5716f8600ddce52a743e0ffb356b1f259700c4fd，所有来源/制品哈希核对，c0-refire-prepare-build-check.json。尚未stage/游戏验证，后续必须实际验证持续Grip中的整段权威连发与release回射，不能只验首发。
 
 Longshot21724已明确全收尾后唯一交Lancer，接下来Frag效果、Snub原匣、HB候选，HB未占窗。
+
+## 提前保留真实失败身份
+
+HB包装器复用现有已核活进程身份位置，在录像/动作启动前写出默认passed=false/native cleanup未验证的retention identity结果，flush/fsync。它只保留证据，不能授予动作或作为通过。正常结果另由原操作者写入，不覆盖已有记录；不改其他枪入口/共享runner/媒体保留策略。针对59800已出现的目标前异常退出丢媒体风险补齐。临时目录实际执行默认失败、同身份幂等、4类无效身份拒绝、禁止覆盖，以及2文件语法检查通过；未运行游戏。
+
+新冻结hammerburst-prepared-20261108-231852，继承PG7bed6ef7产品不变，所有源与制品哈希核对，capture-identity-check.json。仍需实际验证HB C0贴合/完整四态/持续连发与回射/弹匣，尚未stage或交付。
