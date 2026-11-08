@@ -50,7 +50,7 @@
 | 完美/取消、换弹中断/收枪 | 有实现与部分纯测试 | 仍缺本枪实际动作证据 |
 | 完整自然手型、舒适度、实体头显 | 尚无接受 | 未通过 |
 
-下一不可变候选为hammerburst-prepared-20261109-065400-refire-supply，PG63da3c546c54c485d52d88fef5463f6be975e13daed9ecc26c79722faa3023f3，2236源/6制品核验。先复核53624耗弹缺轨迹/来源陈旧的有因HB timer适配，再只在前提通过后继续已有零备弹/总零目标；不增Native/Hook/写者或射线预算。167原包matcher、52生产adapter假metadata、145既有事件/loop与9驱动边界检查通过，完整隔离PG0；没有live timer证明，未stage/run，按新队尾交接。失败前已读弹量/射线现在先写现有驱动JSON再断言，避免重现53624缺原始数值的问题，不补造旧数据。实际原匣7712、新匣53224与耗弹53624的范围/失败/影像/正常收尾见本文末尾；早期章节为历史记录。
+下一不可变候选为hammerburst-prepared-20261109-070119-refire-supply，PG30239f21a306c31d5fd1d357556aa11c1f32201d2b57cbe824c28aa109f719ce，2236源/6制品核验。先复核53624耗弹缺轨迹/来源陈旧的有因HB timer适配，再只在前提通过后继续已有零备弹/总零目标；不增Native/Hook/写者或射线预算。167原包matcher、52生产adapter假metadata、145既有事件/loop与9驱动边界检查通过，完整隔离PG0；没有live timer证明，未stage/run，按新队尾交接。失败前已读弹量/射线现在先写现有驱动JSON再断言，避免重现53624缺原始数值的问题，不补造旧数据。实际原匣7712、新匣53224与耗弹53624的范围/失败/影像/正常收尾见本文末尾；早期章节为历史记录。
 
 ## 第一批实现与离线构建
 
@@ -391,3 +391,6 @@ Lancer只读确认上述forgiving-profile不是其本轮改动，未补写共享
 与Lancer原writer边界确认后，提交47f69b96新增独立HB matcher和timer契约adapter。共享refire入口只增exact HB选支，复用不变的Engine TimeWeaponFiring循环timer证明及同一个DeferredEvent/normal PostTick；不新增事件owner、回调、writer或HB BeginState捕获。Lancer原Engine/capture_initial分支、实际R2 press/release/counter、身份/引用/hold/freshness、100ms输入和20ms调度余量、已有250ms事件原期限均保留，聚合/重发不续期。HB专用timer自身zero-param/void/VM/无locals、同包原class/state、typed原函数、Bool property/输出、完整bytecode和关闭读都严格核验；只对已拥有的实际R2定时器事件生效，不能宣称全部释放后burst尾段都已覆盖。
 
 167项独立原始71bytes重定位夹具/全字节变异/截断/错误identity matcher通过；实际生产adapter在有界metadata fakes下52项拒绝/闭合检查通过，Engine证明和生命周期在该夹具为stub；既有Lancer原事件/loop145项通过，隔离完整PG0。9项drain-helper假引擎检查增加断言失败前的实际before/after/已导出轨迹保存验证。只这些离线证据，不把它们当53624因果或游戏修复证明。冻结065400-refire-supply/PG63da3c54，2236源/6制品核对，未stage/run；请求在所有已受理尾项后复核一次真实耗弹前提，过后才续R0/总零。
+
+
+静态继承链补核：PutDownWeapon由WarfareGame.WarWeapon export35863覆盖（UC SHA045eb54e），非仅Engine基类。旧47f69b96生产adapter在此原包归属的metadata夹具实际断言RED(-1073740791)，保留war-owner-before源与log；50a208b4仅给HB此调用启用既有严格Engine/WarWeapon函数白名单，默认War归属+Engine兼容及外来归属拒绝54项GREEN，已有145事件检查及完整PG0。没有为过测接受同名其他类。065400未stage/run，后续精确冻结hammerburst-prepared-20261109-070119-refire-supply、PG30239f21a306c31d5fd1d357556aa11c1f32201d2b57cbe824c28aa109f719ce，仍2236源/6制品，替换同一队尾位置。
