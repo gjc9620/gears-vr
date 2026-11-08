@@ -373,3 +373,12 @@ Lancer只读确认上述forgiving-profile不是其本轮改动，未补写共享
 
 
 供弹边界驱动在运行前改为已实录的真实R2按下/释放突发，每次只在读到实际弹量进展后才继续，首个不扣弹即停止；不假定一次长按能耗尽突发武器。增加多次真实边沿和无进展退出的假引擎测试，九项通过，check_supply_driver.py及精确hash随冻结保存。旧054953保留未stage/run，新冻结同一队尾位置，产品与目标不变。
+
+
+## 53624：耗弹前提射线缺证，零备弹目标未达到
+
+055335-supply-bursts全2229源/6制品及13当前关键输入核验后stage。实际53624/134386503726632506，肩取和首6发通过；必要耗弹达脚本库存empty/reserve保持断言，随后actual轨迹数断言失败，operator1。全局只75条有效来源一致trajectory，缺shot20/40/72；其中耗弹段69条而非72，无128截断或drop回执。未进入任何换匣/R0/总零支路。失败helper在return前未持久化before/after数值，明确缺少原始typed count快照，不按控制流补造观察数值；只记录先前库存断言已通过。下一驱动要把已读观察先保存再断言，不增游戏读取或放宽射线要求。
+
+现有准入计数最后candidates144/bound144/stale_sample6/source_ready138，最近rejected_source sync103.4301ms/stereo103.4345ms、sample59.2257ms、frame78.2286ms，held_current1/frame_active0。与3个缺失shot有关联方向，但仍须逐发/原函数契约核对，不能当完整因果已证或改变100ms。冻结源码中lancerrefire::defer与capture_initial显式lancer_only，HB另有自己的WeaponFiring.RefireCheckTimer/BeginState/ShouldRefire/FireAmmunition；不能直接放开类型复用Engine循环认证。
+
+32.78s双路2页全跨度overview+4张按相邻已记录shot的QPC选取实际原图亲看，simulator00547/00589/00658/00671，偏差20.9695/-5.7572/14.7535/2.5184ms。这是失败附近画面，不是缺失shot的像素/射线证明；完整自然拟合与头显仍未接受。Native/entry/pad恢复TRUE、hand_stop5/drained、XR/launcher0、game退出，config/settings原字节与head原缺恢复；编码15219=0、retention19806=0删2010媒体/368256485bytes，核idle后唯一交Frag既定053956位，后续Longshot060433→Cover r12。runtime-53624-review.json保存缺证与实际失败。
