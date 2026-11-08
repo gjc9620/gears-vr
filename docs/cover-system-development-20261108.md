@@ -195,3 +195,17 @@ wrapper／launcher 均 exit 0，Native cleanup／entry restore TRUE、XR exit 0�
 另核对 r7 冻结 `capture.cpp` 的最终视图选择：已有 `body_view_required` 且 first_person／body／cover 三者均无基准时，明确累加 missing_basis_rejected 并拒绝本帧；共同C0策略本身仍排除cover写入。随后互核保存的 Native 快照 owner8396／creation134386349882977996 与 capturing pid72608，均与本session吻合，读取到 `first_person_missing_basis_rejected=163`；未进入掩体的55600对照为0。这是同次实际拒绝计数，仍不是某个CT2／compose／图像的原子因果回执。合法低位基准、脚位与碰撞仍须补证，不能删除该保护以获得一帧未认证视图。
 
 下一只读入口已冻结：在普通Playground中仅按当前世界和符号 `mp_warmachine_SMC#3` 重认证该集合Actor，复用严格表面字段读取及closing，保存组件／Owner拒绝观察；不再A进入、不提交Trace、不改变身体或产品。发现仍有500000对象／30秒预算，21依赖及精确源码归档在 `analysis/cover-system-20261108/drivers-owner-only`，`--prepare-only`通过。HB已接受在其本段→Lancer012317→Snub013007→Boltok013903→Frag020326之后唯一交本只读项；以实际交接最新顺序为准。本会话未stage／run，目标继续未完成。
+
+## 2026年11月9日 身体面墙与连续视图基准分离
+
+离线按CV-02复核此前转换器，发现 `CoverPlacement.anchor` 同时控制身体根朝向、虚拟拉拽轴、真实位移映射和视图朝向，无法表达身体转向墙面而HMD观察方向连续。先增加“墙面转90／180／-90度，真实头位姿不变，观察方向应保持”的回归，实际245检查中9处失败，原12组整身求解仍通过；这说明原通过包含了错误的视图随墙转向假设。RED保留在 `cover-heading-before-fix.json/log`。
+
+新增必须显式提供的 `CoverPlacement.view_anchor`，其眼点须与墙面anchor相同，朝向独立。`place_cover` 形成身体根／骨盆／明确脚位的参考放置；`prepare_cover` 再用原作者眼点至头骨关系校正中立头骨支点，形成完整目标。墙面仅决定身体根朝向和虚拟拉拽轴；连续view anchor决定视图及真实头动的世界映射。HMD／virtual grip仍各应用一次，身体转向不修改HMD观察，真实转头不回写身体根或骨盆。普通 `prepare` 保留原同轴单次视图组合路径。
+
+分离后原脚位夹具的支点问题也实际暴露：它绕眼点旋转整个地面放置，头向保持后部分固定骨长目标不可达。保留中间失败 `cover-heading-pivot-foot-failure.json`，没有放宽求解器。夹具现在显式围绕中立头骨支点提供入掩体脚位，降低眼点不降低地面；转换器仍逐项保留输入脚位。另加旧眼点支点脚位反例，转换不擅自挪脚，原求解器继续返回spine_unreachable。实际脚位可达／扫掠及中立基准认证仍须由运行接线完成，合成脚位不授予任何许可。
+
+最终MSVC/W4/WX检查：designer与实际live使用的Marcus marker各326项、各12组完整身体规划通过；原普通转换159项通过。覆盖独立墙面朝向、原地真实转头、真实位移与虚拟位移分离、明确脚位保留、错误／缺失view anchor、错身份与旧时钟拒绝。Core与放置仍为明确合成输入，骨骼为保留115骨记录。Marcus选择参数为 `--marcus`，不再把designer marker的结果当实际live profile覆盖。
+
+隔离r8 Native编译、链接及10次既有针对检查均通过，SHA256 `7aaafc5819f04e81a5e741dbaf61407fbacb4699e49708a099ea3604aba14a3c`，依赖661项。产品头文件与冻结r8逐字节一致；构建后仅增加测试CLI的marker选择，再独立编译同一产品头完成Marcus检查，没有重建未变的Native。回执在 `context-native-r8-build-result.json`、`cover-adapter-results.json`、`cover-marcus-adapter.json/log`。旧宿主r5缺口仍未关闭。
+
+r8没有stage、没有游戏／XR运行，也没有开启掩体写入或解决72608画面失败。下一只读窗口继续使用明确冻结的r7产品；本批数学不会混入它。连续view heading的实际同源提供方、合法中立眼点／脚位／当前碰撞、抓边追踪轴与该独立视图的映射、C0事务及同版视图／受击／枪口消费仍待接通，不能把本批编译与CPU规划称为完整掩体通过。

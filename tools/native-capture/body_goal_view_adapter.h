@@ -41,6 +41,9 @@ struct CoverPlacement {
     std::uint64_t world_generation{},scene{},publication{},reference{};
     std::int64_t observed_ns{};std::int32_t slot{-1};std::uint32_t type{};
     vr::CoverViewAnchor anchor{};
+    // Continuous tracking/view heading, supplied independently of the wall.
+    // Its neutral eye equals anchor's; turning the body cannot turn the HMD.
+    vr::CoverViewAnchor view_anchor{};
     body::Pose feet_world[2]{};
 };
 // Original C0 geometry, deliberately separate from a certified neutral/Goal.
@@ -79,27 +82,31 @@ inline Status measure_cover_pose(core::CoreSnapshot const& source,body::Model co
     out=next;return Status::okay;
 }
 inline Status place_cover(Neutral const& calibrated,vr::CoverViewAnchor const& anchor,
+                         vr::CoverViewAnchor const& view_anchor,
                          body::Pose const (&feet)[2],Neutral& out) noexcept {
     using namespace body::d;
     const Range ranges[]={range(&calibrated,sizeof calibrated),range(&anchor,sizeof anchor),
-                          range(feet,sizeof feet),range(&out,sizeof out)};
-    if(!disjoint(ranges,4))return Status::alias;
+                          range(&view_anchor,sizeof view_anchor),range(feet,sizeof feet),range(&out,sizeof out)};
+    if(!disjoint(ranges,5))return Status::alias;
     body::Quat root{};
-    if(!vr::cover_view_basis(calibrated.eye_anchor)||!vr::cover_view_basis(anchor)||
+    if(!vr::cover_view_basis(calibrated.eye_anchor)||!vr::cover_view_basis(anchor)||!vr::cover_view_basis(view_anchor)||
+       anchor.neutral_eye_world.x!=view_anchor.neutral_eye_world.x||
+       anchor.neutral_eye_world.y!=view_anchor.neutral_eye_world.y||
+       anchor.neutral_eye_world.z!=view_anchor.neutral_eye_world.z||
        !finite_vector(calibrated.pelvis_world)||!normalized(calibrated.root_bone_world_q,root)||
        !goal_pose(feet[0])||!goal_pose(feet[1]))return Status::neutral;
     const auto f=calibrated.eye_anchor.forward_world;
     const auto target=anchor.forward_world;
     const double angle=std::atan2(f.x*target.y-f.y*target.x,f.x*target.x+f.y*target.y);
     const auto turn=yaw(angle);
-    Neutral next{};next.eye_anchor=anchor;
+    Neutral next{};next.eye_anchor=view_anchor;
     next.pelvis_world=add(anchor.neutral_eye_world,rotate(turn,sub(calibrated.pelvis_world,calibrated.eye_anchor.neutral_eye_world)));
     next.root_bone_world_q=product(turn,root);
     next.feet_world[0]=feet[0];next.feet_world[1]=feet[1];
     if(!finite_vector(next.pelvis_world))return Status::numerical;
     out=next;return Status::okay;
 }
-inline Status prepare_math(Neutral const& neutral,core::CoreSnapshot const& source,
+inline Status prepare_axes_math(Neutral const& neutral,vr::CoverViewAnchor grip_basis,core::CoreSnapshot const& source,
     vr::StereoSample const& tracking,body::Model const& model,body::Frame const& frame,marker::Marker const& authored,
     vr::CoverOffset const& committed,Policy const& policy,Output& out) noexcept {
     using namespace body::d;
@@ -110,10 +117,25 @@ inline Status prepare_math(Neutral const& neutral,core::CoreSnapshot const& sour
     if((policy.scope!=body::Scope::stationary&&policy.scope!=body::Scope::fixed_cover)||
        (policy.posture!=body::Posture::preserve_c0&&policy.posture!=body::Posture::reference_neutral))return Status::policy;
     body::Quat root{};
-    if(!vr::cover_view_basis(neutral.eye_anchor)||!finite_vector(neutral.pelvis_world)||
+    if(!vr::cover_view_basis(neutral.eye_anchor)||!vr::cover_view_basis(grip_basis)||
+       neutral.eye_anchor.neutral_eye_world.x!=grip_basis.neutral_eye_world.x||
+       neutral.eye_anchor.neutral_eye_world.y!=grip_basis.neutral_eye_world.y||
+       neutral.eye_anchor.neutral_eye_world.z!=grip_basis.neutral_eye_world.z||!finite_vector(neutral.pelvis_world)||
        !normalized(neutral.root_bone_world_q,root)||!goal_pose(neutral.feet_world[0])||!goal_pose(neutral.feet_world[1]))return Status::neutral;
     Output candidate{};
-    if(!vr::prepare_cover_view(neutral.eye_anchor,committed,source.units_per_metre,candidate.render))return Status::view;
+    const auto& basis=neutral.eye_anchor;
+    const bool same_heading=basis.forward_world.x==grip_basis.forward_world.x&&
+        basis.forward_world.y==grip_basis.forward_world.y&&basis.right_world.x==grip_basis.right_world.x&&
+        basis.right_world.y==grip_basis.right_world.y;
+    if(same_heading){ // Preserve the ordinary path's original one composition.
+        if(!vr::prepare_cover_view(basis,committed,source.units_per_metre,candidate.render))return Status::view;
+    }else{
+        vr::CoverViewResult dragged{};
+        if(!vr::prepare_cover_view(grip_basis,committed,source.units_per_metre,dragged)||
+           !vr::prepare_cover_view(basis,{},source.units_per_metre,candidate.render)||
+           !vr::view_with_origin(candidate.render.base_view,dragged.base_eye_world,candidate.render.base_view))return Status::view;
+        candidate.render.base_eye_world=dragged.base_eye_world;
+    }
     // This helper ALREADY returns a proper UE pose. Do not remap its axes.
     if(!vr::rig_tracking::pose(candidate.render.base_view,source.reference,tracking.head,
                               source.units_per_metre,candidate.desired_eye))return Status::view;
@@ -126,7 +148,7 @@ inline Status prepare_math(Neutral const& neutral,core::CoreSnapshot const& sour
     g.absolute.root_orientation.value=neutral.root_bone_world_q;
     g.physical_world={u*(a.right_world.x*physical.right+a.forward_world.x*physical.forward),
                       u*(a.right_world.y*physical.right+a.forward_world.y*physical.forward),u*physical.up};
-    g.committed_grip_world={u*a.right_world.x*committed.right,u*a.right_world.y*committed.right,u*committed.up};
+    g.committed_grip_world={u*grip_basis.right_world.x*committed.right,u*grip_basis.right_world.y*committed.right,u*committed.up};
     g.feet_world[0]=neutral.feet_world[0];g.feet_world[1]=neutral.feet_world[1];
     const marker::EyeHmdWorld eye{candidate.desired_eye};marker::HeadBoneWorld head{};
     if(marker::head_from_eye(authored,model,frame,eye,head)!=marker::Status::okay)return Status::head_marker;
@@ -135,6 +157,11 @@ inline Status prepare_math(Neutral const& neutral,core::CoreSnapshot const& sour
     // Float render-origin rounding is retained in desired_eye; never feed it
     // back as a physical displacement or rebase the fixed Neutral.
     out=candidate;return Status::okay;
+}
+inline Status prepare_math(Neutral const& neutral,core::CoreSnapshot const& source,
+    vr::StereoSample const& tracking,body::Model const& model,body::Frame const& frame,marker::Marker const& authored,
+    vr::CoverOffset const& committed,Policy const& policy,Output& out) noexcept {
+    return prepare_axes_math(neutral,neutral.eye_anchor,source,tracking,model,frame,authored,committed,policy,out);
 }
 inline Status prepare(Neutral const& neutral,core::CoreSnapshot const& source,
     body::Model const& model,body::Frame const& frame,marker::Marker const& authored,
@@ -185,8 +212,22 @@ inline Status prepare_cover(Neutral const& calibrated,CoverPlacement const& plac
        placement.observed_ns<=0||placement.observed_ns>policy.now_ns||
        std::uint64_t(policy.now_ns-placement.observed_ns)>maximum_age_ns)return Status::cover;
     Neutral placed{};
-    const auto status=place_cover(calibrated,placement.anchor,placement.feet_world,placed);
+    const auto status=place_cover(calibrated,placement.anchor,placement.view_anchor,placement.feet_world,placed);
     if(status!=Status::okay)return status;
-    return prepare_math(placed,source,source.stereo,model,frame,authored,committed,policy,out);
+    // The authored eye offset rotates with the head, not with the torso.
+    // Keep the reference spine under the same HEAD pivot when body heading
+    // and continuous view heading differ. This uses neither current HMD nor
+    // animated/previous output; no extra camera displacement is introduced.
+    vr::CoverViewResult wall_view{},tracking_view{};vr::Pose wall_eye{},tracking_eye{};
+    if(!vr::prepare_cover_view(placement.anchor,{},source.units_per_metre,wall_view)||
+       !vr::prepare_cover_view(placement.view_anchor,{},source.units_per_metre,tracking_view)||
+       !vr::rig_tracking::pose(wall_view.base_view,source.reference,source.reference,source.units_per_metre,wall_eye)||
+       !vr::rig_tracking::pose(tracking_view.base_view,source.reference,source.reference,source.units_per_metre,tracking_eye))return Status::view;
+    wall_eye.position={};tracking_eye.position={};
+    marker::HeadBoneWorld wall_head{},tracking_head{};
+    if(marker::head_from_eye(authored,model,frame,{wall_eye},wall_head)!=marker::Status::okay||
+       marker::head_from_eye(authored,model,frame,{tracking_eye},tracking_head)!=marker::Status::okay)return Status::head_marker;
+    placed.pelvis_world=add(placed.pelvis_world,sub(tracking_head.pose.position,wall_head.pose.position));
+    return prepare_axes_math(placed,placement.anchor,source,source.stereo,model,frame,authored,committed,policy,out);
 }
 } // namespace gears_body_goal_view
