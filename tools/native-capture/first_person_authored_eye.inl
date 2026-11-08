@@ -81,10 +81,14 @@ bool authored_eye(gears_anchor::Receipt const* anchor,gears_vr::Vector& output){
              p.x*m[1]+p.y*m[5]+p.z*m[9]+m[13],
              p.x*m[2]+p.y*m[6]+p.z*m[10]+m[14]};
         const auto& a=anchor->anchor;
+        // Pawn.Location is the capsule pivot, not the mesh's ground/root.
+        // A valid low-cover head can be BELOW that pivot. Check its lower
+        // extent in the same actual mesh space that supplied the head mount;
+        // retain the independent world/Pawn horizontal and upper bounds.
         if(!std::isfinite(eye.x)||!std::isfinite(eye.y)||!std::isfinite(eye.z)||
            std::abs(eye.x-a.location[0])>stereo_units_per_metre||
            std::abs(eye.y-a.location[1])>stereo_units_per_metre||
-           eye.z-a.location[2]<stereo_units_per_metre*.1||eye.z-a.location[2]>stereo_units_per_metre*1.5)return false;
+           p.z<stereo_units_per_metre*.1||eye.z-a.location[2]>stereo_units_per_metre*1.5)return false;
         if(!eye_phase::field(read,again_asset,mesh,0x218)||again_asset!=asset||
            !eye_phase::field(read,again_ref,asset,0xa4)||!eye_phase::header_equal(ref,again_ref)||
            !eye_phase::field(read,again_component,mesh,0xa0)||std::memcmp(&component,&again_component,sizeof component)||
