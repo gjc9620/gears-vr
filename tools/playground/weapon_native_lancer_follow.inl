@@ -725,7 +725,7 @@ bool render_rejected(gears_committed_hand::Frame const& f,unsigned stage,unsigne
     // Failure-only extension of the existing limited endpoint receipts. It
     // performs no new game reads and is private-simulator-only. Startup
     // successes cannot exhaust it before the observed C transition.
-    if(log_file&&render_rejection_rows<16&&bound_is_lancer&&bound_key_known&&
+    if(log_file&&render_rejection_rows<16&&(bound_is_lancer||bound_is_hammerburst)&&bound_key_known&&
        hand::same(bound_key.weapon,f.weapon)&&f.stereo.source==gears_vr::StereoSource::MetaOperatorSimulated){
         ++render_rejection_rows;const auto now=weaponhand::clock_ns(nullptr);
         fwprintf(log_file,L"native_lancer_render_rejected stage=%u detail=%u serial=%llu tick=%llu compose=%llu input=%llu sync_ns=%lld observed_ns=%lld age_ns=%lld purpose=%u dirty=%u faulted=%u bound_hold=%llu result_hold=%llu enabled=%u\n",

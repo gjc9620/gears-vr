@@ -175,3 +175,7 @@ HB独立护木几何、Snap输出及当前真实support租约下的双手求解�
 源码发现HB普通PostTick视觉写入与已有Lancer/Frag渲染结果写入路径不同。候选只在render_current/apply/on_render_result三个门加入确切已绑定HB，让视觉写入使用同一C0结果回调和同一组件lease，普通Tick仍准备动作/几何但不写HB视觉。保留全部身份/时效/当前结果/原metadata及single-writer，不增Native写入或骨架写入器，不改Longshot分支。此为针对路径差异的修复候选，不宣称35度根因已证实。
 
 独立PG编译链接exit0，现有组件lease278 CPU检查与follow校准/无效几何检查实际执行通过；不是游戏/C0回调/贴合通过。冻结hammerburst-prepared-20261108-225749，PG8d0fc939f9954ab35612cc50bff5efb92e0cd70c73d23020c6ede2e3a36d1117，源与制品哈希全核对，c0-visual-route-build-check.json；未stage/运行。
+
+## C0准入核查与拒绝回执
+
+源码只读确认body mount使用basic_hold资产观察、现有render_current核对当前held generation/身份/实际结果；HB加入回调候选没有改动作prepare或原过滤条件。为避免新路径被拒绝却只有空白日志，只将HB加入原render_rejected输出条件，原16条上限/字段/失败专用/私有模拟器限制保持，不增对象读取/collector/权限。完整独立编译链接exit0，冻结hammerburst-prepared-20261108-230036，PG2ac4b7d8d12c36cd4eb7e60ef9eca45e68df03932462e547911fb4a9b37ec2f8，源和制品哈希全核对，c0-rejection-receipt-build-check.json；未stage/实跑，不能证明C0实际准入或贴合修复。前一批lease278/follow测试针对未改组件逻辑，未为本行日志条件重复运行。
