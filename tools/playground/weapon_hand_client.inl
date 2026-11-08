@@ -231,8 +231,8 @@ bool observe_game(abi::Frame const& f,abi::GripGameState& out,bool candidates,bo
         // pair must not become an unrelated pending-magazine veto for HB.
         // Restrict this dispatch only after the exact held HB binding exists;
         // the HB producer below still proves its own current part geometry.
-        const bool held_hammerburst=nativelancerfollow::bound_key_known&&
-            nativelancerfollow::bound_is_hammerburst&&abi::same(f.weapon,nativelancerfollow::bound_key.weapon);
+        const bool held_hammerburst=game.main_hand_held&&
+            playground::instance(f.weapon.address,L"Weap_LocustAssaultRifle");
         if(!held_hammerburst)lancerreload_contact::propose(f,game);
         hammerburst_runtime::propose(f,game);
         snub_runtime::propose(f,game);
