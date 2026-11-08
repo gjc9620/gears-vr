@@ -456,3 +456,19 @@ REA的IDA provider未配置，直接IDA connector因缺ida_nexus退出；没有�
 完整数值、字节身份、失败与范围记录在analysis/cover-system-20261108/ida-volume-leaf-r16/findings.json及replay/replay-result.json；派生原代码片段保持ignored，不进入源码或发行包。r16运行plan及23驱动未改，未stage／启动游戏。当前明确队列保留Frag071258→Longshot070405→HB070119-refire-supply→Cover reader-r16→Snub071103-charging-observer；仍须前驱完整收尾后的唯一交接及独立idle。完整碰撞、抓边身体提交、双眼／受击／枪口和头显验收仍未闭合，Publicv71及历史评分不变。
 
 随后仅在新goal-host-r17输出目录对准确r15冻结源的BodyC0GoalPolicyLiveTest作/W4/WX编译复核，实际exit2。首批缺失是旧host_native_live_prefix未提供当前ComposeObservation、MainMountQueryResult、PendingBranch、safe_copy前置声明及metadata诊断等合同，后续出现连锁编译错误；没有进入执行。原log、命令及四个输入源SHA保存在goal-host-r17/compile-findings.json。此结果明确原Host集成覆盖仍缺，不能由reader／目标数学通过替代；没有删生产分支、加宽松stub或重编DLL。再次逐项核对23驱动与plan859bb156完全一致，实际游戏／XR／自有IDA均无遗留；不将当前idle视作已交接窗口。
+
+## 2026年11月9日 修复身体目标Host接线并验证掩体测量关闭路径
+
+上轮为progress：原版volume leaf的初始重叠回放完成，且准确复现旧Host编译缺口。本轮从r15冻结副本开始修复测试入口，再在当前工作树的正式生产include上完成编译与执行。只改测试前缀、两个测试入口、共用宿主夹具和CMake测试登记，没有改生产Goal／backend／Kernel／掩体reader、运行DLL或开关。
+
+host_native_live_prefix补用正式full_body_c0_native_live、broker、fresh producer、tracking probe及hand-part头，提供真实NativeKey及正确前置声明。原来的简化Property／Proof重复定义移除，使用正式reflection类型和helper；只对原已声明为Host边界的actor／property／metadata读取重命名隔离。两个入口共用新增host_native_goal_seams，Broker明确不可用，视觉样本和未建模数组／矩阵读返回拒绝。没有让测试stub签发覆盖或退休证明；原Registry、Backend、CAS128、Kernel、EpochGate与真实Goal函数继续执行。
+
+编译进入执行后，原synthetic-core-current夹具的published为1999000000ns而Scene只有12100ns，当前40ms准入正确拒绝。只在owned Host副本明确构造与夹具时钟一致的Scene QPC；原文件和生产时间检查不变。另一个原反例将Component矩阵的零值m00乘2而没有改变矩阵，改为将完整第一行乘2，实际形成非法非单位缩放。夹具加载失败现在立即退出，避免继续使用空输入。最初路径错误、字段名称／模板类型错误和各轮编译失败均保留，未将其改写成通过。
+
+BodyC0GoalPolicyLiveTest的0–23模式实际453检查通过：原普通身体提交、原函数异常、drain、错误结束入口、姿态／旧来源拒绝、中立随Component移动、held-view失效继续通过。新增16–23八个掩体模式调用真实sample_current_cover_pose，分别验证合格只读测量，以及closing selected bytes变化、读取拒绝、Link不匹配、slot不匹配、第二次读取停止、来源过期、第二次读取revision变化。拒绝时valid为false且旧测量存储不改，所有掩体模式均无body apply、receipt install或neutral初始化，结束后测量失效。
+
+因共用前缀也影响FullBodyC0FirstFailureLiveTest，同步移除其重复宿主定义并核对受影响入口。仅选择16–20五个首次失败记录场景实际152检查通过，覆盖gate／plan／prepare／commit失败及collector一次写出；没有运行其21–27恢复场景或全工程矩阵。两个最终入口以当前工作树实际include经MSVC /std:c++17 /O2 /W4 /WX /EHsc /UNDEBUG /MT编译链接0，合计29场景605检查、0失败。编译sourceDependencies各记录90项workspace依赖，其路径／SHA及命令、原输入、日志、产物和结果在analysis/cover-system-20261108/goal-host-r17/verification.json。
+
+这里的actor／property／当前对象准入仍是明确Host seam；CurrentKey类型及比较、Goal测量、数学和提交事务是生产代码。body_tick_source_live关闭，因此本轮没有执行V3掩体测量分支，也未授予／执行掩体身体写入。CMake仅将既有Goal登记范围0–14补全到0–23，不新增运行或验收门禁。本批修复的是CPU集成测试入口及受测关闭路径，不是游戏碰撞、同版hit／muzzle或头显通过。
+
+运行plan仍859bb156，23驱动逐项一致，Native仍已冻结r13；未stage、启动游戏／XR或抢窗口。后续继续当前世界形状／占用及V3中立provider接线，再由已有唯一写入端形成合法掩体提交；r16窄段仍等待前驱完整收尾后的唯一交接。完整CV-01–24／AC-01–22、Publicv71和历史评分的证据范围不变。
