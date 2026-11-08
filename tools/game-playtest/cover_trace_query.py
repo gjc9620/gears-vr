@@ -14,7 +14,7 @@ import time
 from cover_state import CoverQuery, struct_type
 from world_state import registry_append_only
 from cover_geometry_state import _geometry
-from cover_bone_query import _AttachedBridge, _module, _ownership, _reference, _field, SubmitFailure
+from cover_bone_query import _AttachedBridge, _module, _ownership, _reference, _field, _chain, SubmitFailure
 import cover_surface_query as surface
 
 
@@ -205,13 +205,47 @@ class SurfaceOwnershipRejected(RuntimeError):
                                 accepted=False, collision_verified=False)
 
 
-def _surface_state(q, roles, actor):
+def _collection_member(q, actor, component):
+    """Authenticate one explicit TraceHitInfo component, never pick a member."""
+    cls = q.obj(actor['cls'])
+    if (cls['name'] != 'StaticMeshCollectionActor' or cls['number'] or
+            q.obj(cls['cls'])['name'] != 'Class'):
+        raise RuntimeError('Edge selected component differs from Actor collision component')
+    field = _field(q, actor, 'StaticMeshComponents', 'ArrayProperty')
+    inner, stride, raw, count = q.array(actor, 'StaticMeshComponents', 256)
+    inner_address = struct.unpack('<Q', q.read(field['address'] + q.r.profile['struct_property_struct'], 8))[0]
+    if (inner['outer'] != field['address'] or inner['number'] or stride != 8 or
+            inner_address != inner['address'] or q.obj(inner['cls'])['name'] != 'ComponentProperty' or
+            'Property' not in [owner['name'] for owner in _chain(q, inner['cls'])]):
+        raise RuntimeError('Edge collection component array type differs')
+    target_address = struct.unpack('<Q', q.read(inner['address'] + q.r.profile['struct_property_struct'], 8))[0]
+    target = q.obj(target_address)
+    if (target['name'] != 'StaticMeshComponent' or target['number'] or
+            q.obj(target['cls'])['name'] != 'Class' or
+            target not in list(_chain(q, component['cls']))):
+        raise RuntimeError('Edge collection selected component class differs')
+    members = struct.unpack('<' + 'Q' * count, raw)
+    if members.count(component['address']) != 1:
+        raise RuntimeError('Edge collection selected component membership is absent or ambiguous')
+    return dict(collection_class=cls, array_field=field, element_property=inner,
+                element_class=target, array_header_bytes=q.value(actor, field).hex(),
+                member_bytes=raw.hex())
+
+
+def _surface_state(q, roles, actor, selected_component=None):
     """Pin the actual collision component transform, not just its Actor name."""
     if q.obj(actor['address']) != actor:
         raise RuntimeError('Edge surface Actor identity changed')
     if _reference(q, actor, 'WorldInfo') != roles['world']:
         raise RuntimeError('Edge surface WorldInfo differs')
     component = _reference(q, actor, 'CollisionComponent')
+    collection = None
+    if selected_component is not None:
+        if q.obj(selected_component['address']) != selected_component:
+            raise RuntimeError('Edge selected component identity changed')
+        if selected_component != component:
+            collection = _collection_member(q, actor, selected_component)
+        component = selected_component
     owner = _reference(q, component, 'Owner') if component else None
     if not component or owner != actor:
         raise SurfaceOwnershipRejected(actor, component, owner)
@@ -239,14 +273,17 @@ def _surface_state(q, roles, actor):
     if (not all(math.isfinite(x) and abs(x) <= 2 ** 24 for x in matrix) or
             any(abs(matrix[i]) > 1e-5 for i in (3, 7, 11)) or abs(matrix[15] - 1) > 1e-5):
         raise RuntimeError('Edge collision transform is not finite affine')
-    return dict(actor=copy.deepcopy(actor), component=component, world=roles['world'],
-                local_to_world_bytes=raw.hex())
+    result = dict(actor=copy.deepcopy(actor), component=component, world=roles['world'],
+                  local_to_world_bytes=raw.hex())
+    if collection is not None:
+        result['collection_membership'] = collection
+    return result
 
 
 def capture(observer, dll_path, dll_sha256, start, end, *, extent=(0, 0, 0), trace_actors=True,
             extra_flags=TRACE_FLAGS,
             bridge_factory=_AttachedBridge, query_factory=TraceQuery,
-            snapshot_surface=False, surface_actor=None):
+            snapshot_surface=False, surface_actor=None, surface_component=None):
     """Run at most one existing GT queue item; unknown pending is never retried."""
     report = dict(schema=1, accepted=False, diagnostic_only=True, trace_calls=0,
                   collision_verified=False, grab_authorized=False, body_modified=False,
@@ -274,8 +311,10 @@ def capture(observer, dll_path, dll_sha256, start, end, *, extent=(0, 0, 0), tra
         roles = surface._roles(q)
         if type(snapshot_surface) is not bool or (surface_actor is not None and not snapshot_surface):
             raise ValueError('Surface snapshot requires explicit observation mode')
+        if surface_component is not None and (not snapshot_surface or surface_actor is None):
+            raise ValueError('Selected surface component requires its already observed Actor')
         if surface_actor is not None:
-            report['surface_before'] = _surface_state(q, roles, surface_actor)
+            report['surface_before'] = _surface_state(q, roles, surface_actor, surface_component)
         module = _module(q, bridge, game)
         if module['sha256'] != surface.GAME_SHA256 or Path(module['path']).resolve() != Path(disk['path']).resolve():
             raise RuntimeError('Cover Trace disk/current module identity differs')
@@ -343,7 +382,17 @@ def capture(observer, dll_path, dll_sha256, start, end, *, extent=(0, 0, 0), tra
             selected_actor = surface_actor or report['hit'].get('actor_identity')
             if not selected_actor:
                 raise RuntimeError('Initial edge ray has no collision Actor to observe')
-            report['surface_after'] = _surface_state(q, roles, selected_actor)
+            selected_component = surface_component
+            if actor:
+                hit_component = struct.unpack_from('<Q', returned, 96)[0]
+                if not hit_component:
+                    raise RuntimeError('Edge Trace hit has no collision component')
+                hit_component_identity = q.obj(hit_component)
+                report['hit']['component_identity'] = hit_component_identity
+                if selected_component is not None and selected_component != hit_component_identity:
+                    raise RuntimeError('Edge Trace hit a different Actor/component')
+                selected_component = hit_component_identity
+            report['surface_after'] = _surface_state(q, roles, selected_actor, selected_component)
             if surface_actor is not None and report['surface_before'] != report['surface_after']:
                 raise RuntimeError('Edge surface transform changed across Trace')
             if actor:
@@ -452,7 +501,8 @@ def capture_edge_interval(observer, dll_path, dll_sha256, start, end, outside_de
             target = tuple(end[i] + fraction * delta[i] for i in range(3))
             receipt = capture_ray(observer, dll_path, dll_sha256, origin, target,
                                   extent=(0, 0, 0), trace_actors=False, extra_flags=TRACE_FLAGS,
-                                  snapshot_surface=True, surface_actor=actor_identity)
+                                  snapshot_surface=True, surface_actor=actor_identity,
+                                  surface_component=observed_surface['component'] if observed_surface is not None else None)
             result['rays'].append(dict(fraction=fraction, receipt=copy.deepcopy(receipt)))
             # A complete accepted Trace is the only usable observation. In
             # particular an unaccepted raw hit or pending request is not empty.

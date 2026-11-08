@@ -196,7 +196,9 @@ class EdgeIntervalTests(unittest.TestCase):
         def trace(observer, path, digest, start, end, **kwargs):
             observed = kwargs.pop('snapshot_surface')
             actor = kwargs.pop('surface_actor')
+            component = kwargs.pop('surface_component')
             self.assertIs(observed, True)
+            self.assertEqual(component, dict(address=90) if actor is not None else None)
             calls.append((start, end, kwargs))
             fraction = sum(start[i] * delta[i] for i in range(3)) / sum(x * x for x in delta)
             blocked = fraction < .6
@@ -397,6 +399,92 @@ class SurfaceSnapshotTests(unittest.TestCase):
             for current, nxt in zip(addresses, addresses[1:] + [0]):
                 m.put(current + 0x68, struct.pack('<Q', nxt))
         return m, CoverQuery(m.observer), dict(world=m.fresh(m.WORLD)), m.fresh(wall), component
+
+    def collection_fixture(self):
+        m, q, roles, actor, component = self.fixture()
+        cls, inner, data = 0x2a000, 0x2b000, 0x2c000
+        m.add_class(cls, 'StaticMeshCollectionActor', m.ACTOR)
+        m.objects[actor['address']]['cls'] = cls
+        m.objects[m.MESH_CLASS]['name'] = 'StaticMeshComponent'
+        m.add_property(cls, 'StaticMeshComponents', 'ArrayProperty', 0x190, 16)
+        field = m.properties[cls, 'StaticMeshComponents']
+        m.objects[field['address']]['cls'] = m.kind_classes['ArrayProperty']
+        m.put(cls + m.profile['struct_children'], struct.pack('<Q', field['address']))
+        m.put(field['address'] + m.profile['field_next'], bytes(8))
+        kind = next(a for a, obj in m.objects.items() if obj['name'] == 'ComponentProperty'
+                    and obj['cls'] == m.META_CLASS)
+        m.add_object(inner, 'StaticMeshComponents', kind, outer=field['address'])
+        m.put(inner + 0x70, struct.pack('<II', 1, 8))
+        m.put(inner + m.profile['struct_property_struct'], struct.pack('<Q', m.MESH_CLASS))
+        m.put(field['address'] + m.profile['struct_property_struct'], struct.pack('<Q', inner))
+        m.put(actor['address'] + 0x190, struct.pack('<Qii', data, 2, 2))
+        m.put(data, struct.pack('<QQ', component, 0))
+        m.set_value(actor['address'], 'CollisionComponent', 0, '<Q')
+        return m, q, roles, m.fresh(actor['address']), m.fresh(component), inner, data
+
+    def test_collection_requires_explicit_unique_typed_hit_component(self):
+        for changed in ('members', 'inner_link', 'element_class', 'owner', 'transform'):
+            with self.subTest(closing_change=changed):
+                m, q, roles, actor, component, inner, data = self.collection_fixture()
+                # A collection name or a null Actor root never selects a component.
+                with self.assertRaises(SurfaceOwnershipRejected):
+                    _surface_state(q, roles, actor)
+                result = _surface_state(q, roles, actor, component)
+                self.assertEqual(result['component'], component)
+                self.assertIn('collection_membership', result)
+                q.finish()
+                if changed == 'members':
+                    m.put(data, struct.pack('<QQ', 0, component['address']))
+                elif changed == 'inner_link':
+                    field = m.properties[actor['cls'], 'StaticMeshComponents']
+                    m.put(field['address'] + m.profile['struct_property_struct'], bytes(8))
+                elif changed == 'element_class':
+                    m.put(inner + m.profile['struct_property_struct'], struct.pack('<Q', m.ACTOR))
+                elif changed == 'owner':
+                    m.set_value(component['address'], 'Owner', m.PAWN, '<Q')
+                else:
+                    m.put(component['address'] + 0x230, struct.pack('<f', 11))
+                with self.assertRaises(RuntimeError):
+                    q.finish()
+
+    def test_collection_identity_membership_type_and_owner_fail_closed(self):
+        for bad in ('actor_class', 'not_member', 'duplicate', 'inner_kind', 'inner_owner',
+                    'stride', 'element_class', 'component_class', 'owner', 'selected_identity', 'world'):
+            with self.subTest(bad=bad):
+                m, q, roles, actor, component, inner, data = self.collection_fixture()
+                if bad == 'actor_class':
+                    m.objects[actor['cls']]['name'] = 'StaticMeshActor'
+                elif bad == 'not_member':
+                    m.put(data, bytes(16))
+                elif bad == 'duplicate':
+                    m.put(data, struct.pack('<QQ', component['address'], component['address']))
+                elif bad == 'inner_kind':
+                    m.objects[inner]['cls'] = m.kind_classes['ObjectProperty']
+                elif bad == 'inner_owner':
+                    m.objects[inner]['outer'] = actor['cls']
+                elif bad == 'stride':
+                    m.put(inner + 0x74, struct.pack('<I', 4))
+                elif bad == 'element_class':
+                    m.put(inner + m.profile['struct_property_struct'], struct.pack('<Q', m.ACTOR))
+                elif bad == 'component_class':
+                    m.objects[component['address']]['cls'] = m.ACTOR
+                    component = m.fresh(component['address'])
+                elif bad == 'owner':
+                    m.set_value(component['address'], 'Owner', m.PAWN, '<Q')
+                elif bad == 'selected_identity':
+                    component = dict(component, number=1)
+                elif bad == 'world':
+                    m.set_value(actor['address'], 'WorldInfo', m.PAWN, '<Q')
+                with self.assertRaises(RuntimeError):
+                    _surface_state(q, roles, actor, component)
+
+    def test_explicit_single_collision_component_keeps_original_snapshot(self):
+        m, q, roles, actor, component = self.fixture()
+        original = _surface_state(q, roles, actor)
+        self.assertEqual(_surface_state(q, roles, actor, m.fresh(component)), original)
+        with self.assertRaisesRegex(RuntimeError, 'differs from Actor collision component'):
+            _surface_state(q, roles, actor, m.fresh(m.PAWN))
+        q.finish()
 
     def test_inherited_world_hint_does_not_become_a_declared_collection_field(self):
         m, q, roles, actor, component = self.fixture()

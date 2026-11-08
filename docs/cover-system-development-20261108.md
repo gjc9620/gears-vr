@@ -231,3 +231,17 @@ r8没有stage、没有游戏／XR运行，也没有开启掩体写入或解决72
 离线按65700真实调用顺序复现：先以可继承查询读取集合Actor的WorldInfo，再由_surface_state逐层认证实际声明类，旧Query.prop用(owner,name)缓存两种查询，错误复用父类字段并在子类声明检查抛出相同的Bone field identity/class/owner rejected: WorldInfo。新增回归先得到同错误RED，再仅把缓存键改为(owner,name,structure)。当前完整链可认证实际父类声明，子类自身查询仍明确not found；改变已认证的继承链仍使closing拒绝。没有取消归属检查、放宽时间或把未知值当有效结果。
 
 world／trace／bone／surface四个相关模块共98项实际离线检查通过，原失败日志保留在inherited-property-cache-red.log、inherited-property-cache-runtime-sequence-red.log，GREEN在inherited-property-cache-green.log。此为读取器修正，r7／r8制品未改，修正后尚未游戏复查。执行过的65700计划另存，下一入口的21依赖与源码在drivers-owner-only-r5，prepare-only实际exit0，未stage／run。后续仍需取得真实组件关系，才能继续实体边缘与完整身体碰撞证据；不能据此宣布掩体可玩、画面或实体头显通过。两局完整证据见cover-49584-review.json、cover-65700-review.json及对应不可变session／动作／双路目录。
+
+## 2026年11月9日 集合命中组件的严格读取路径
+
+从主人指定游戏副本的Engine.u重新离线解压，55块长度检查通过；解压SHA256为95b0c8da…e90510，与保留的Engine.u逐字节身份相同。现有UELib解析器定向导出StaticMeshCollectionActor及其父类；对象表包含StaticMeshComponents的ArrayProperty／ComponentProperty，集合类继承StaticMeshActorBase，与普通StaticMeshActor的单组件默认配置不同。此处只是静态结构提示，不能据此断言65700的CollisionComponent为空、成员Owner为何值或实际命中哪一个组件。
+
+原始部分输出保留在collection-static与collection-parent-static：集合数组反编译为array<@NULL>；父类／默认对象有RenderOnlyDrawScale3D及Components解析错误，不能称完整反编译。REA的Windows PTY捕获明确不支持验证后代清理，本次未取得REA Evidence；按技能恢复路径改用已有只读包解析器，未安装或修改REA、未附加其他会话的游戏。来源身份、解析限制及原工具拒绝另存collection-surface-review.json和rea-process-provider-unavailable.json。
+
+补入_collection_member：只有调用方明确提供实际TraceHitInfo.HitComponent，且当前Actor为精确StaticMeshCollectionActor时，才可在原根CollisionComponent不同的情况下检查集合路径。须认证实际声明的ArrayProperty、ComponentProperty内层及其StaticMeshComponent声明类，命中组件须属于该类、在当前完整成员数组中恰好出现一次、Owner仍为同一Actor，之后仍核对原有类型化LocalToWorld。数组头、全部成员字节、内层链接、声明类链接、继承链、Owner与变换均进入原closing；不是从数组中挑一个组件冒充射线结果。
+
+capture从已认证TraceHitInfo布局读取实际命中组件，并在后续射线前后传递同一组件身份；空返回也须保持先前表面证据，换组件／换Actor或元数据变化立即停止。普通Actor仍须命中其原根CollisionComponent，无显式组件时也不因集合类名或成员列表放行。调用预算、单次提交、未知请求不重发、分配释放及原身份／生命周期保护未变。该路径仍只认证诊断射线的表面观察，不证明整条可抓边、手部可达或连续身体体积扫掠，collision_verified／grab_authorized／body_modified继续FALSE。
+
+world／trace／bone／surface共101个离线测试方法实际exit0。新增覆盖明确组件的正例、普通根组件等价、11种错误身份／类型／成员／Owner反例，以及成员顺序、内层链接、声明类、Owner和变换变化后的closing拒绝；既有区间夹具确认第二条及以后继续绑定首次实际观察的组件。测试为合成反射内存和队列夹具，不是本次游戏调用／实际集合归属通过。初次26项、随后100项及最终101项日志均保留；最终为collection-surface-final.log。
+
+下一次已排队项仍仅按符号重认证当前Actor并读取元数据，无A、无Trace、无抓边／身体写入；诊断额外记录数组实际声明类和所抽样组件类，并将数组内层链接加入closing。21依赖冻结在drivers-owner-only-r7，prepare-only通过；没有stage／run，没有改r7／r8 Native或公开v71。HB已更正唯一前驱为Boltok030739，既有尾序为Snub024436→Frag030808→Boltok030739→Cover新只读；运行时以实际最终交接为准，不据idle占窗。C0旧宿主的当前依赖接线缺口仍在，未重编或伪报通过；身体／视图／碰撞完整闭环继续未完成。
