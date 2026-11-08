@@ -236,3 +236,12 @@ Cover正常唯一交窗后stage010655/PG8e2a8c38，实际14312完成原HB肩取�
 实际开盖angle0.526562711（约30.17度）/sequence2180出现hammerburst_latch_rejected reason5=gap，连续观测超过保持不变的100ms阈值；后续未达到opened/old_magazine4，未拔匣、未供弹、未提交库存。cleanup记录stage2/stopped1/pending0。本次不证明已修的acquiring失追UP恢复，也不计完整原匣换弹通过。下一定位既有动作/输入采样开销与真实松开后在当前机械位置重新抓取的恢复，不延长输入或连续见证阈值。
 
 全部52秒双路2页配对总览和3张实际接触原图亲看，当前图像中左手在枪侧，翻盖未完全打开；自然指型/全角度/遮挡仍未接受。Native cleanup/entry restore均true、XR0、launcher0、remaining game null；config/settings按010831备份逐字节一致，head恢复不存在。双路编码完成，retention72460 terminal0删除2591媒体/452782166bytes，源/文本/数值保留。核idle后已唯一交Snub010736，随后Boltok→Frag011230→Longshot005036→Cover reader。详runtime-14312-review.json。
+
+
+## 开盖gap离线恢复与连续动作驱动
+
+实际生产release/opening两个完整分支和granted原谓词不改字提取，使用真实HammerburstLatchStroke，只有动画/库存/本机观察引擎调用由CPU夹具替代；10条实际通过，涵盖101ms撤销但机械角不变、继续旧按住不能重启、unknown UP不算release、真实UP只rearm、retained新token不冒充fresh grant、release_required拒绝、超实际接触半径拒绝、当前机械位置新抓不seek、后续连续运动/真实端点到opened。夹具首次用0.3rad当超接触范围，实际该半径对应约2.1cm仍在3.5cm允许范围，故正确被接收；将夹具改成真实超半径后通过，原夹具失败另存。此为规则回归，不证明14312gap的完整耗时根因或游戏恢复已通过。
+
+测试驱动把原19段各自停止/等待的开盖方式换成1.6秒最小jerk连续物理圆弧，46次held Grip输入，不改游戏/阈值/手臂/机制。加入各输入采样时间与角度、明确wait目标和末8条回执；若实际再出现一次gap，只允许一次真实release→回到当前机械接触点→新Grip→继续，另记latch_regrabs/normal_uninterrupted_pass=false，第二次拒绝终止，不无限重跑。实际驱动提取执行连续样本/端点/圆弧半径/按住/单次恢复顺序离线检查通过。
+
+冻结hammerburst-prepared-20261109-012255，PG仍8e2a8c38，产品/Native/XR不变，全源和制品哈希核对，continuous-latch-prepared.json。未stage/游戏验证，排在已接受Cover reader之后一次原匣失败点；当前Snub窗口，不从idle推断归还。
