@@ -283,3 +283,10 @@ Cover正常唯一交窗后stage010655/PG8e2a8c38，实际14312完成原HB肩取�
 生产reconcile函数原样提取、真实ObjectIdentity语义执行53项身份/回收对象/名字/内容/时钟/playing/pending/NaN等正反例通过；独立PG完整编译0，源码10f70100。此为源码候选，尚未证明111/112ms根因或消除gap。
 
 冻结hammerburst-prepared-20261109-023148，PG28710bea1b8ca5b2e8452ca3067df66b37352b1624f6bb68337364d11476527c，全部源与制品核对，seek-observation-build-check.json；未stage/game。后续只申请既有队尾一次原匣同点，不重跑其他套件。首次冻结脚本已完成复制/哈希/回执后，在追加文档时误复用变量触发TypeError，未写入文档；本次只据保存回执补文档，不重建或改写冻结。
+
+
+## 同一开盖候选的有界seek耗时
+
+为后续若再超限时区分读/写准备耗时，仅在原最多8条拒绝行补previous_seek_ns：最后一次改变角度的seek_latch_angle调用总耗时，两次原GT clock读取，不增加游戏字段/采集器/Hook/输入或许可。该值不保证就是上一静止样本，不单凭它认定gap根因。实际opening/release分支更新后10项执行仍通过，独立PG完整编译0。
+
+新冻结hammerburst-prepared-20261109-023513，PG821966d17fe7c86997713f317e95182e85bfc6f9ece8000b79415e7598467ce2，替代未stage023148；53纯reconcile用例的生产helper不变，10控制分支重新编译执行通过。所有源/制品哈希核对，seek-cost-build-check.json；未stage/game，排位沿用原申请，不增加动作或时长。
