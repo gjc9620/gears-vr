@@ -201,14 +201,10 @@ inline Status prepare(Neutral const& neutral,gears_body_tick_source::Input const
     if(gears_body_tick_source::classify(input,input.observed.parent_scene,policy.now_ns,policy.allow_sim)!=gears_body_tick_source::Verdict::okay)return Status::core;
     return prepare_math(neutral,input.observed.parent_scene,input.observed.stereo,model,frame,authored,committed,policy,out);
 }
-inline Status place_cover_head_math(Neutral const& calibrated,CoverPlacement const& placement,
-    core::CoreSnapshot const& source,body::Model const& model,body::Frame const& frame,
-    marker::Marker const& authored,Policy const& policy,Neutral& out) noexcept {
-    using namespace body::d;
-    const Range ranges[]={range(&calibrated,sizeof calibrated),range(&placement,sizeof placement),range(&source,sizeof source),
-        range(&model,sizeof model),range(&frame,sizeof frame),range(&authored,sizeof authored),
-        range(&policy,sizeof policy),range(&out,sizeof out)};
-    if(!disjoint(ranges,8))return Status::alias;
+// Shared admission for initial placement and later conversion of a frozen
+// fitted neutral. Checking this binding does not reapply placement rotations.
+inline Status cover_placement_binding(CoverPlacement const& placement,
+    core::CoreSnapshot const& source,Policy const& policy) noexcept {
     if(policy.scope!=body::Scope::fixed_cover)return Status::policy;
     if(!(source.flags&core::rig::cover_key_known)||!placement.type||placement.type!=source.cover_type||
        placement.slot<0||placement.slot!=source.cover_slot||
@@ -218,6 +214,29 @@ inline Status place_cover_head_math(Neutral const& calibrated,CoverPlacement con
        placement.publication!=source.publication_sequence||placement.reference!=source.reference_generation||
        placement.observed_ns<=0||placement.observed_ns>policy.now_ns||
        std::uint64_t(policy.now_ns-placement.observed_ns)>maximum_age_ns)return Status::cover;
+    return Status::okay;
+}
+inline Status cover_placement_current(CoverPlacement const& placement,
+    core::CoreSnapshot const& source,Policy const& policy) noexcept {
+    if(!core::core_snapshot_valid(source,policy.now_ns,maximum_age_ns,policy.allow_sim))return Status::core;
+    return cover_placement_binding(placement,source,policy);
+}
+inline Status cover_placement_current(CoverPlacement const& placement,
+    gears_body_tick_source::Input const& input,Policy const& policy) noexcept {
+    if(gears_body_tick_source::classify(input,input.observed.parent_scene,policy.now_ns,policy.allow_sim)!=gears_body_tick_source::Verdict::okay)return Status::core;
+    if(placement.observed_ns<input.metadata_begin_ns||placement.observed_ns>input.metadata_end_ns)return Status::cover;
+    return cover_placement_binding(placement,input.observed.parent_scene,policy);
+}
+inline Status place_cover_head_math(Neutral const& calibrated,CoverPlacement const& placement,
+    core::CoreSnapshot const& source,body::Model const& model,body::Frame const& frame,
+    marker::Marker const& authored,Policy const& policy,Neutral& out) noexcept {
+    using namespace body::d;
+    const Range ranges[]={range(&calibrated,sizeof calibrated),range(&placement,sizeof placement),range(&source,sizeof source),
+        range(&model,sizeof model),range(&frame,sizeof frame),range(&authored,sizeof authored),
+        range(&policy,sizeof policy),range(&out,sizeof out)};
+    if(!disjoint(ranges,8))return Status::alias;
+    const auto binding=cover_placement_binding(placement,source,policy);
+    if(binding!=Status::okay)return binding;
     Neutral placed{};
     const auto status=place_cover(calibrated,placement.anchor,placement.view_anchor,placement.feet_world,placed);
     if(status!=Status::okay)return status;

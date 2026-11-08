@@ -5,6 +5,19 @@
 #undef main
 #include "cover_neutral_goal.h"
 namespace ng=gears_cover_neutral_goal;
+// Successful Goal values contain four bytes of C++ padding before absolute.
+// Compare every named field, while rejection checks still require the actual
+// destination object's bytes to remain unchanged.
+bool same_converted(a::Output const& x,a::Output const& y){
+    auto const& p=x.goal;auto const& q=y.goal;
+    return p.scope==q.scope&&p.posture==q.posture&&p.body_yaw_delta==q.body_yaw_delta&&p.target_mode==q.target_mode&&
+        distance(p.physical_world,q.physical_world)==0&&distance(p.committed_grip_world,q.committed_grip_world)==0&&
+        ng::same(p.head_world,q.head_world)&&ng::same(p.feet_world[0],q.feet_world[0])&&ng::same(p.feet_world[1],q.feet_world[1])&&
+        ng::same(b::Pose{p.absolute.neutral_pelvis_world,p.absolute.root_orientation.value},
+                 b::Pose{q.absolute.neutral_pelvis_world,q.absolute.root_orientation.value})&&
+        x.render.base_view==y.render.base_view&&ng::same(x.render.base_eye_world,y.render.base_eye_world)&&
+        v::stereo_same_pose(x.desired_eye,y.desired_eye);
+}
 int main(int argc,char** argv){
     if(argc!=2)return 2;const std::string folder=argv[1];
     auto frame=std::make_unique<b::Frame>();auto model=std::make_unique<b::Model>();
@@ -70,6 +83,21 @@ int main(int argc,char** argv){
         C(distance(minus(moving.desired_eye.position,still.desired_eye.position),plus(physical_world,virtual_world))<.001);
         C(bytes(moving.goal.feet_world)==bytes(placement.feet_world));
         C(distance(moving.goal.absolute.neutral_pelvis_world,result.neutral.pelvis_world)==0);
+        // Initial placement is not a per-frame conversion of the fitted value:
+        // it would apply the independent wall/view pivot correction again.
+        a::Output replaced{},frozen_conversion{};
+        C(a::prepare_cover(result.neutral,placement,source,*model,*frame,marker,{},policy,replaced)==a::Status::okay);
+        C(distance(replaced.goal.absolute.neutral_pelvis_world,result.neutral.pelvis_world)>1e-3);
+        C(ng::convert(result,placement,tracked,*model,*frame,marker,grip,policy,frozen_conversion)==ng::Status::okay);
+        C(distance(frozen_conversion.goal.absolute.neutral_pelvis_world,result.neutral.pelvis_world)==0);
+        C(distance(frozen_conversion.goal.physical_world,moving.goal.physical_world)<1e-9);
+        C(distance(frozen_conversion.goal.committed_grip_world,moving.goal.committed_grip_world)<1e-9);
+        C(bytes(frozen_conversion.goal.feet_world)==bytes(placement.feet_world));
+        C(distance(frozen_conversion.desired_eye.position,moving.desired_eye.position)<1e-9);
+        const auto moving_plan=b::plan(*model,*frame,frozen_conversion.goal,work->fitting.body_work,work->fitting.planned);
+        if(moving_plan.status!=b::Status::solved)printf("frozen moving posture=%u status=%u bone=%u requested=%.9g available=%.9g head=%.9g\n",unsigned(posture),unsigned(moving_plan.status),moving_plan.failed_bone,moving_plan.requested_distance,moving_plan.available_reach,moving_plan.head_error);
+        C(moving_plan.status==b::Status::solved);
+        C(bytes(result)==bytes(saved));
         printf("neutral posture=%u shift=%.9g hip=%.9g; tracking+grip applied once\n",unsigned(posture),result.fitting.horizontal_units,result.neutral.pelvis_world.z);
     }
     for(unsigned bad=0;bad<17;++bad){
@@ -140,6 +168,64 @@ int main(int argc,char** argv){
     ng::Result with_current_head{};
     C(ng::prepare(calibrated,current_placement,input,*model,*frame,marker,current_policy,{.25},*work,with_current_head)==ng::Status::okay);
     C(bytes(with_current_head.neutral)==bytes(result.neutral));
+    a::Output current_frozen{},current_math{};const v::CoverOffset held{.02,.03};
+    const auto fitted_before=bytes(with_current_head);
+    C(ng::convert(with_current_head,current_placement,input,*model,*frame,marker,held,current_policy,current_frozen)==ng::Status::okay);
+    C(a::prepare_axes_math(with_current_head.neutral,current_placement.anchor,source,input.observed.stereo,
+        *model,*frame,marker,held,current_policy,current_math)==a::Status::okay);
+    C(same_converted(current_frozen,current_math));
+    C(distance(current_frozen.goal.absolute.neutral_pelvis_world,with_current_head.neutral.pelvis_world)==0);
+    C(bytes(with_current_head)==fitted_before&&bytes(input)==tracked_input_before);
+    const auto current_plan=b::plan(*model,*frame,current_frozen.goal,work->fitting.body_work,work->fitting.planned);
+    if(current_plan.status!=b::Status::solved)printf("frozen current status=%u bone=%u requested=%.9g available=%.9g head=%.9g\n",unsigned(current_plan.status),current_plan.failed_bone,current_plan.requested_distance,current_plan.available_reach,current_plan.head_error);
+    C(current_plan.status==b::Status::solved);
+    // A later Scene/publication is allowed only with its independently current
+    // placement. No old Scene, metadata or tracking clock is rewritten.
+    auto later=input;auto later_place=current_placement;
+    ++later.observed.parent_scene.publication_sequence;++later.observed.parent_scene.scene_invocation;
+    later_place.publication=later.observed.parent_scene.publication_sequence;
+    later_place.scene=later.observed.parent_scene.scene_invocation;
+    C(src::classify(later,later.observed.parent_scene,now,true)==src::Verdict::okay);
+    C(ng::convert(with_current_head,later_place,later,*model,*frame,marker,held,current_policy,current_frozen)==ng::Status::okay);
+    C(same_converted(current_frozen,current_math));
+    const auto later_before=bytes(current_frozen);
+    C(ng::convert(with_current_head,current_placement,later,*model,*frame,marker,held,current_policy,current_frozen)==ng::Status::placement);
+    C(bytes(current_frozen)==later_before);
+    C(ng::convert(with_current_head,current_placement,source,*model,*frame,marker,held,current_policy,current_frozen)==ng::Status::placement);
+    C(bytes(current_frozen)==later_before);
+    // Mutate every stable calibration domain independently, keeping the actual
+    // current acquisition valid so this tests the frozen-domain comparison.
+    for(unsigned bad=0;bad<38;++bad){auto changed=with_current_head;auto& key=changed.basis;
+        if(bad==0)++key.native.game_pid;if(bad==1)++key.controller.name_number;
+        if(bad==2)key.reference.position.x+=.001;if(bad==3)++key.native_reference.epoch;
+        if(bad==4)++key.native_reference.flags;if(bad==5)++key.native_revision;
+        if(bad==6)key.source=key.source==v::StereoSource::RuntimeTracked?v::StereoSource::MetaOperatorSimulated:v::StereoSource::RuntimeTracked;if(bad==7)++key.session;
+        if(bad==8)++key.space;if(bad==9)++key.observed_stream;
+        if(bad==10)++key.observed_reference;if(bad==11)++key.observed_head;
+        if(bad==12)++key.producer_stream;if(bad==13)++key.publisher_pid;
+        if(bad==14)++key.publisher_start;if(bad==15)key.geometry[0]^=1;
+        if(bad==16)key.units+=1;if(bad==17)key.model_scale+=.01;
+        if(bad==18)++changed.binding.world.name_number;if(bad==19)++changed.binding.pawn.name_number;
+        if(bad==20)++changed.binding.mesh.name_number;if(bad==21)++changed.binding.link.name_number;
+        if(bad==22)++changed.binding.world_generation;if(bad==23)++changed.binding.reference;
+        if(bad==24)++changed.binding.slot;if(bad==25)++changed.binding.type;
+        if(bad==26)changed.binding.anchor.neutral_eye_world.x+=.001;
+        if(bad==27)changed.binding.anchor.forward_world.x+=.001;
+        if(bad==28)changed.binding.view_anchor.right_world.x+=.001;
+        if(bad==29)changed.binding.feet_world[0].position.x+=.001;
+        if(bad==30)changed.binding.feet_world[1].orientation.x+=.001;
+        if(bad==31)changed.fitting.validation.status=b::Status::goal;
+        if(bad==32)changed.neutral.pelvis_world.x+=.001;
+        if(bad==33)changed.neutral.root_bone_world_q.x+=.001;
+        if(bad==34)changed.neutral.eye_anchor.forward_world.x+=.001;
+        if(bad==35)changed.neutral.feet_world[0].position.x+=.001;
+        if(bad==36)changed.fitting.goal.physical_world.x=.001;
+        if(bad==37)changed.fitting.goal.posture=changed.fitting.goal.posture==b::Posture::preserve_c0?
+            b::Posture::reference_neutral:b::Posture::preserve_c0;
+        const auto saved_output=bytes(current_frozen);const auto saved_fitted=bytes(changed);
+        C(ng::convert(changed,current_placement,input,*model,*frame,marker,held,current_policy,current_frozen)==ng::Status::basis);
+        C(bytes(current_frozen)==saved_output&&bytes(changed)==saved_fitted);
+    }
     for(unsigned bad=0;bad<15;++bad){auto changed=input;auto p=current_placement;auto pol=current_policy;
         if(bad==0)changed.scene_cache_revision=0;
         if(bad==1)changed.metadata_begin_ns=now-50000001;
@@ -160,6 +246,9 @@ int main(int argc,char** argv){
         C(bytes(with_current_head)==saved_result);
         C(a::prepare_cover(calibrated,p,changed,*model,*frame,marker,{},pol,converted)!=a::Status::okay);
         C(bytes(converted)==saved_output);
+        const auto saved_frozen_output=bytes(current_frozen);
+        C(ng::convert(with_current_head,p,changed,*model,*frame,marker,held,pol,current_frozen)!=ng::Status::okay);
+        C(bytes(current_frozen)==saved_frozen_output);
     }
     // Whole-input overlap must be rejected, including tracking outside the
     // parent Core subobject. Only an alias check reads this output reference.
@@ -167,6 +256,12 @@ int main(int argc,char** argv){
     auto& aliased=*reinterpret_cast<a::Output*>(&overlap->observed.stereo);
     C(a::prepare_cover(calibrated,current_placement,*overlap,*model,*frame,marker,{},current_policy,aliased)==a::Status::alias);
     C(bytes(*overlap)==overlap_before);
+    C(ng::convert(with_current_head,current_placement,*overlap,*model,*frame,marker,held,current_policy,aliased)==ng::Status::alias);
+    C(bytes(*overlap)==overlap_before);
+    auto frozen_overlap=with_current_head;const auto frozen_overlap_before=bytes(frozen_overlap);
+    auto& frozen_aliased=*reinterpret_cast<a::Output*>(&frozen_overlap);
+    C(ng::convert(frozen_overlap,current_placement,input,*model,*frame,marker,held,current_policy,frozen_aliased)==ng::Status::alias);
+    C(bytes(frozen_overlap)==frozen_overlap_before);
     C(bytes(input)==tracked_input_before);
     C(bytes(source)==source_before&&bytes(*frame)==frame_before);
     C(bytes(*frame)==frame_before&&bytes(source)==source_before&&bytes(calibrated)==calibrated_before);

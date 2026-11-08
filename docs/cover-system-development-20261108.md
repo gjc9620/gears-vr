@@ -472,3 +472,13 @@ BodyC0GoalPolicyLiveTest的0–23模式实际453检查通过：原普通身体�
 这里的actor／property／当前对象准入仍是明确Host seam；CurrentKey类型及比较、Goal测量、数学和提交事务是生产代码。body_tick_source_live关闭，因此本轮没有执行V3掩体测量分支，也未授予／执行掩体身体写入。CMake仅将既有Goal登记范围0–14补全到0–23，不新增运行或验收门禁。本批修复的是CPU集成测试入口及受测关闭路径，不是游戏碰撞、同版hit／muzzle或头显通过。
 
 运行plan仍859bb156，23驱动逐项一致，Native仍已冻结r13；未stage、启动游戏／XR或抢窗口。后续继续当前世界形状／占用及V3中立provider接线，再由已有唯一写入端形成合法掩体提交；r16窄段仍等待前驱完整收尾后的唯一交接。完整CV-01–24／AC-01–22、Publicv71和历史评分的证据范围不变。
+
+## 2026年11月9日 持续中立转换WIP及实际脊柱可达失败
+
+上轮为progress：d43e56c6修复真实Host接线。本轮在既有cover_neutral_goal中增加冻结拟合值的Core／V3持续convert入口，提取原placement身份／时段检查供其复用。当前来源、掩体／世界／人物／Link／slot、独立身体和观察轴、脚位、模型及输入参考域继续核对，Scene／publication可随当前合法来源推进，但旧binding不能冒充新回执。冻结Neutral不重新placement或拟合，真实HMD和已提交Grip各应用一次；该纯数学入口不读写游戏或签发碰撞／身体许可，尚未接入live provider。
+
+中立结果新增最小稳定Basis，保留原始Native／输入域、controller、reference、model／units，不缓存每帧时钟或序列；convert还核对拟合结果与Neutral自身一致。Core／V3目标转换、38类冻结域／结果变化、15类当前来源／时段反例及别名／失败输出检查均保留。早期编译的publisher PID窄化和auto推导错误已改正；一次跨成功调用的整Output字节比较失败明确定位于Goal的236–239填充字节，改为逐一比较全部命名字段，失败目的缓冲区仍按原字节保持检查。原日志未删。
+
+进一步把带小幅真实头动及Grip的目标送进原完整planner，真实发现三处spine_unreachable：preserve_c0／reference_neutral的requested分别48.0171826／48.0252175，而available约46.86003游戏单位。当前310检查仍有3个失败，原断言和result-moving-diagnose.log保留；不能把前一步295检查通过称作持续身体跟随通过。尚须在保持中立基准、真实头目标、固定骨长和脚位的前提下处理当前身体姿态可达性，并将最终身体路径纳入碰撞认证，不得用普通站立的head projection／native-body fallback冒充完整掩体跟随。
+
+本批以WIP源保存，未编译运行Native或交付。证据analysis/cover-system-20261108/neutral-convert-r18/。此时收到HB070119实际72536完整恢复、全跨度视觉、编码／retention终态及独立idle后的最终唯一交窗，后继Snub071103→Boltok072100→Frag074333→Longshot075334保留。先保存本源码与失败，再独立复核plan859bb156及23驱动、准确r13三制品，执行原先已登记r16窄段；本WIP及r14／15均不混入该运行包。
