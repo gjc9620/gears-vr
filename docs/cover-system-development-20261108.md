@@ -153,3 +153,15 @@ r7 使用修正后的源快照重新完成隔离 Native 编译、链接和原 10
 启动前导入检查发现离线 MSVC 脚本所用 Python 3.14 没有 Pillow（原失败保留）；已核对受管解释器 `C:/Users/11/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/python.exe` 的 Pillow／NumPy 导入 exit 0，并用它执行 `run_cover_check.py --prepare-only` exit 0。运行入口与审片使用该解释器；原启动器子进程仍使用现有打包解释器。记录在 `runtime-interpreter-check.json`，不是游戏结果。
 
 针对 r5 宿主缺口，仅在 ignored `host-include-probe` 副本补入实际类型头做一次编译定位。缺失声明的一部分被解决，但旧诊断／runtime seams 与严格警告仍使编译失败，程序没有执行；原编译字节和失败记录保留。没有改生产源码、禁用严格警告或伪造宿主通过。此项不影响已经独立通过的 r7 Native 构建，也不关闭尚未完成的实际 C0 生命周期验证。
+
+## 2026年11月9日 r7 首次实际运行 46808
+
+收到 Lancer 完整收尾后的明确唯一交接，重新核对冻结依赖后精确 stage r7，实际游戏 46808／creation134386310077392271，session `continuous-stereo-46808-20261109-010406-50eed86f`。使用主人指定副本、受管解释器、Source1、0.4、后台／observe-only／静音和原输入隔离保护；公开 v71 未改。
+
+首个失败发生在诊断入口，而非掩体动作：`Observer.sample()` 的旧 `gameplay(menu)` 只接受特定战役 popup，当前 Playground 的 top 为 null，故未填 `special_move_raw` 等人物字段；本入口随后触发 KeyError。没有导航、A 进入、抓边、Trace 或身体移动，因此不记掩体进入／碰撞失败或通过。保留原始失败与精确执行源码哈希，后续仅在 Playground 专用诊断适配层接现有认证锚点／人物读取，不改变公共战役菜单判定。另已补失败前保存完整观察行及明确缺失状态错误，尚未重跑。
+
+亲自检查 13.7000835 秒完整跨度的 1 页双路总览，以及末端 `game-00226.jpg`、`simulator-00286.jpg` 原图：标题、等待卡、初始第三人称及随后实际第一人称自由手可见，未发生掩体动作。227 游戏帧／287 模拟器帧，两路末端相差小于 500ms；游戏捕获最大间隔 1933.3566ms，保留该采集空档，不把它推断为游戏停顿或帧率证据。单段双路编码实际 exit 0，不代表头显或掩体完整验收。
+
+wrapper／launcher 均 exit 0，Native cleanup／entry restore TRUE、XR exit 0、owned game 为空；config、settings 精确恢复，原缺失 head 文件仍缺失，结束时 20 个运行依赖未漂移。既有 retention 22786 实际 terminal0，删除 2148 文件／366588094 字节、errors0，保留 [46808,9684,5008]，文字／源码保留。核实 Game／XR／录制／编码均空后，已明确唯一交窗 HB 原匣004159／PG28f0184d，之后按其既有队列继续；本会话不重启或占用该窗口。
+
+完整证据在 `analysis/cover-system-20261108/cover-46808-review.json`、`cover-boundary-chain-46808.py`、对应 session、`menu-firstperson-46808-010410` 和 `menu-firstperson-46808-startup-20261109-010318/dual-output`。这是新的实际首故障与启动／清理证据，完整掩体开发目标继续进行。
