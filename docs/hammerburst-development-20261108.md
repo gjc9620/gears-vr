@@ -161,3 +161,9 @@ HB独立护木几何、Snap输出及当前真实support租约下的双手求解�
 ## 离线引擎分析可用性核查
 
 为解释局部X−35度尝试绑定既定游戏EXE做静态引擎分析：REA明确provider_unavailable/REA_IDA_MCP_CONFIG未配置，直接IDA list_databases为空；未取得反编译证据，未安装软件/更改工具注册/启动目标。保留engine-analysis-availability.json。该工具条件不阻断整个开发目标：下一实际证据仍由已冻结PGfe94c6现有GT回执补列获得。Frag本轮运行已结束正在收尾，Snub确认其后原匣段再交HB，尚未归还窗口；不把暂时无进程当交窗。
+
+## 56220变换对照：组件保持，实际模型仍偏转
+
+223041/PGfe94c6实跑再次到达被动Snap/随枪/Grip转向，实际掌到护木22.397164原单位失败，后续release/fire/reload未执行。新增原回执已取得asset_origin=(0,-16384,0)，延迟组件旋转与写入值配对核对、absolute=(1,1,0)，具体统计component-model-56220.json。用现有旋转公式和写入值重建的模型误差很小，实际矩阵仍约35度，重点转到组件控制之后的模型变换，未确定具体引擎字段根因。正常运行器exec30932已exit0，当前双路review/编码exec60387运行，尚未审片/retention/交窗。
+
+启动前原始settings哈希一致，首次文本比较换行正规化误判已纠正；config按wrapper backup恢复后运行。Snub后续指出外层selected-copy另有原始备份，不能将wrapper临时config当外层原bytes，后续需按两层原记录恢复并保留54740原失败。pre-stage-after-54740.json保存本轮比较，不撤回Native cleanup未验证失败。
