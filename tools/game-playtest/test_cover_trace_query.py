@@ -7,7 +7,7 @@ import sys
 import copy
 from unittest.mock import patch
 
-from cover_trace_query import TraceQuery, capture_edge_interval, _surface_state
+from cover_trace_query import TraceQuery, capture_edge_interval, _surface_state, SurfaceOwnershipRejected
 
 
 class Memory:
@@ -442,6 +442,27 @@ class SurfaceSnapshotTests(unittest.TestCase):
                 m.put(address, bytes(8))
                 with self.assertRaises(RuntimeError):
                     q.finish()
+
+    def test_rejected_ownership_observation_distinguishes_null_and_wrong_owner(self):
+        for missing in (False, True):
+            with self.subTest(missing_component=missing):
+                m, q, roles, actor, component = self.fixture()
+                if missing:
+                    m.set_value(actor['address'], 'CollisionComponent', 0, '<Q')
+                else:
+                    m.set_value(component, 'Owner', m.PAWN, '<Q')
+                with self.assertRaises(SurfaceOwnershipRejected) as caught:
+                    _surface_state(q, roles, actor)
+                witness = caught.exception.observation
+                self.assertFalse(witness['accepted'])
+                self.assertFalse(witness['collision_verified'])
+                self.assertEqual(witness['actor'], actor)
+                if missing:
+                    self.assertIsNone(witness['collision_component'])
+                    self.assertIsNone(witness['component_owner'])
+                else:
+                    self.assertEqual(witness['collision_component']['address'], component)
+                    self.assertEqual(witness['component_owner']['address'], m.PAWN)
 
 
 if __name__ == '__main__':

@@ -195,6 +195,16 @@ def _certificate(q, roles, module, expected_chunks):
     return row, dict(gnatives_slot_rva=hex(slot_rva), chunks=chunks, structures=structures)
 
 
+class SurfaceOwnershipRejected(RuntimeError):
+    """Existing rejected reads only; never a usable surface certificate."""
+    def __init__(self, actor, component, owner):
+        super().__init__('Edge collision component ownership differs')
+        self.observation = dict(actor=copy.deepcopy(actor),
+                                collision_component=copy.deepcopy(component),
+                                component_owner=copy.deepcopy(owner),
+                                accepted=False, collision_verified=False)
+
+
 def _surface_state(q, roles, actor):
     """Pin the actual collision component transform, not just its Actor name."""
     if q.obj(actor['address']) != actor:
@@ -202,8 +212,9 @@ def _surface_state(q, roles, actor):
     if _reference(q, actor, 'WorldInfo') != roles['world']:
         raise RuntimeError('Edge surface WorldInfo differs')
     component = _reference(q, actor, 'CollisionComponent')
-    if not component or _reference(q, component, 'Owner') != actor:
-        raise RuntimeError('Edge collision component ownership differs')
+    owner = _reference(q, component, 'Owner') if component else None
+    if not component or owner != actor:
+        raise SurfaceOwnershipRejected(actor, component, owner)
     matrix_field = _field(q, component, 'LocalToWorld', 'StructProperty')
     matrix_type = q.obj(struct_type(q, matrix_field))
     if (matrix_field['size'] != 64 or matrix_type['name'] != 'Matrix' or
@@ -350,6 +361,8 @@ def capture(observer, dll_path, dll_sha256, start, end, *, extent=(0, 0, 0), tra
         report.update(accepted=True, proof_after=after)
     except BaseException as error:
         report.update(accepted=False, rejection=str(error), rejection_type=type(error).__name__)
+        if isinstance(error, SurfaceOwnershipRejected):
+            report['rejected_surface_observation'] = copy.deepcopy(error.observation)
         if isinstance(error, SubmitFailure):
             report['pending_possible'] = error.pending_possible
     finally:

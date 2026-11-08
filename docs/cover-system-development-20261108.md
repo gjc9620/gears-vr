@@ -187,3 +187,9 @@ wrapper／launcher 均 exit 0，Native cleanup／entry restore TRUE、XR exit 0�
 72608 wrapper35800／编码61815均 terminal0，Native cleanup／entry restore TRUE、XR0／launcher0／game退出；config／settings精确恢复、原缺head仍缺，21运行依赖结束时无漂移。retention18126 terminal0，删除2602文件／458183517字节、errors0，保留[72608,55600,4632]。核实Game／XR／录制／编码均空后，最终明确唯一交给HB012813／PGfe0bd568，之后按其已接受队列Lancer012317→Snub。本会话本窗口不再启动游戏。
 
 证据分别在 `analysis/cover-system-20261108/cover-55600-review.json`、`cover-72608-review.json`，对应不可变session与 `menu-firstperson-*/cover-boundary.json`／双路目录。先前46808媒体已按主人 newest3／48h 规则实际删除，文字、源码和亲看记录保留，不再提供不存在的图片链接。下一源码工作分为集合静态网格的当前Actor／Component归属关系，以及实际CT2时身体／视图来源衔接；不删保护、不把单条射线升级为完整安全范围。完整目标保持未完成。
+
+### 72608 拒绝后的离线定位
+
+旧 `_surface_state` 把 CollisionComponent 为空及 Owner 与 Actor 不同合并为同一错误，72608 回执没有保留这两个已读值，因而不能从集合Actor名称猜定根因。新增 `SurfaceOwnershipRejected` 只把原本已经读取的 actor／component／owner 保存为明确 `accepted=false/collision_verified=false` 的拒绝观察；capture 继续返回失败，所有归属、世界、变换、关闭、预算与重试规则不变，没有新增引擎调用或周期采集。空组件与错误Owner两种反例均确认仍拒绝且能区分。实际 `test_cover_trace_query.py` 23项及原 `test_cover_surface_query.py` 13项通过；未做新游戏运行。
+
+另核对 r7 冻结 `capture.cpp` 的最终视图选择：已有 `body_view_required` 且 first_person／body／cover 三者均无基准时，明确累加 missing_basis_rejected 并拒绝本帧；共同C0策略本身仍排除cover写入。这是下一次衔接定位的源码依据，不是72608实际命中该分支的回执，也不能直接把等待卡归因为它。合法低位基准、脚位与碰撞仍须补证，不能删除该保护以获得一帧未认证视图。
