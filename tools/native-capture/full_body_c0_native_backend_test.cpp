@@ -6,6 +6,7 @@
 #include <fstream>
 #include <memory>
 #include <string>
+#include <thread>
 namespace n=gears_full_body_c0_native;namespace tx=n::tx;namespace body=n::body;namespace p=n::pose;
 unsigned checks{},failures{};
 #define C(x) do{++checks;if(!(x)){++failures;std::printf("FAIL %d %s\n",__LINE__,#x);}}while(0)
@@ -20,11 +21,12 @@ struct Page {unsigned char* data;size_t size;
     template<class T>void put(size_t offset,T const& v){std::memcpy(data+offset,&v,sizeof v);}
 };
 struct HostContext final:n::Context {
-    bool allowed{true};unsigned calls{},commit_calls{};int expire_commit_call{-1};
+    bool allowed{true};unsigned calls{},commit_calls{};int expire_commit_call{-1},reject_call{-1},stop_call{-1};n::Backend* stop_backend{};
     tx::Verdict last{tx::Verdict::denied};
     bool current(tx::Stage stage)noexcept override{
         ++calls;last=tx::Verdict::denied;
-        if(!allowed)return false;
+        if(stop_backend&&int(calls)==stop_call)stop_backend->request_stop();
+        if(!allowed||int(calls)==reject_call)return false;
         if(stage==tx::Stage::commit&&int(++commit_calls)==expire_commit_call){last=tx::Verdict::source_age_expired;return false;}
         return true;
     }
@@ -45,6 +47,18 @@ struct Fixture {
     }
     bool capture(){return backend.capture(context,owner,seed,captured,desired_copy);}
     body::Atom* atoms(){return reinterpret_cast<body::Atom*>(local.data);}
+    // Explicit Host emulation of original Compose output. This is NOT an
+    // engine execution or a physics/renderer certificate.
+    void original_space(){
+        std::array<body::ik::Matrix,body::bones> matrices{};
+        for(unsigned i=0;i<body::bones;++i){
+            std::int32_t parent{};std::memcpy(&parent,captured.reference[i].bytes+56,4);
+            const auto m=body::d::atom_matrix(atoms()[i]);matrices[i]=i?body::d::multiply(m,matrices[unsigned(parent)]):m;
+            body::Matrix64 value{};for(unsigned j=0;j<16;++j)value.values[j]=float(matrices[i].m[j]);
+            space.put(i*64,value);
+        }
+    }
+
 };
 unsigned changed(body::Frame const& f,body::Output const& output){unsigned result{};for(unsigned i=0;i<230;++i)result+=unsigned(std::memcmp(reinterpret_cast<unsigned char const*>(f.local.data())+i*16,reinterpret_cast<unsigned char const*>(output.local.data())+i*16,16)!=0);return result;}
 int main(int argc,char**argv){if(argc!=2)return 2;std::string directory=argv[1];auto frame=std::make_unique<body::Frame>();auto workspace=std::make_unique<body::Workspace>();body::Model model{};body::Output output{};
@@ -126,5 +140,76 @@ int main(int argc,char**argv){if(argc!=2)return 2;std::string directory=argv[1];
         C(k.notify_consumer_entry(f.backend,l,key).code==tx::Code::consumer_marked);f.atoms()[114].translation[0]+=.25f; // legitimate simulated original consumer update
         C(k.finish(f.backend,l,key,tx::End::original_returned).code==tx::Code::scope_closed);C(k.outstanding_fields()==units);C(k.rollback(f.backend,l,key).code==tx::Code::wrong_lease);
         const auto before=k.pending();C(k.retire_fresh(f.backend,{123}).code==tx::Code::bad_receipt);std::memcpy(f.local.data,frame->local.data(),sizeof frame->local);C(k.retire_fresh(f.backend,{124}).code==tx::Code::bad_receipt);C(k.pending()==before);}
-    std::printf("NativeBackend: %u checks, %u failures; actual_read=1 actual_CAS128=1 actual_SEH=1 Host_context_only=1 fresh_denied=1\n",checks,failures);return failures?1:0;
+    // Actual Native reads + CAS/Kernel on owned pages; only original Compose
+    // output generation/current-owner admission are explicit Host seams.
+    for(unsigned mode=0;mode<24;++mode){
+        Fixture f(*frame);tx::Kernel k;tx::Lease l;C(f.capture());auto key=f.backend.stamp();
+        auto observed=std::make_unique<n::ConsumedPose>();observed->observed_qpc=123;
+        const auto before=*observed;
+        C(f.backend.read_consumed_pose(k,key,0,*observed)==n::ConsumedPoseCode::transaction);
+        C(!std::memcmp(observed.get(),&before,sizeof before));
+        C(k.prepare(f.backend,key,f.captured,output,f.desired_copy,l).code==tx::Code::prepared);
+        C(k.commit(f.backend,l,key).code==tx::Code::committed);const auto serial=k.serial();
+        C(f.backend.read_consumed_pose(k,key,serial,*observed)==n::ConsumedPoseCode::transaction);
+        if(mode==1)C(k.rollback(f.backend,l,key).code==tx::Code::rolled_back);
+        C(k.notify_consumer_entry(f.backend,l,key).code==tx::Code::consumer_marked);
+        if(mode==18){
+            // The original consumer may rotate a nonselected leaf. Retain that
+            // actual Local/SpaceBases instead of demanding all plan atoms.
+            auto& leaf=f.atoms()[114];body::Quat original{leaf.q[0],leaf.q[1],leaf.q[2],leaf.q[3]};
+            C(body::d::set_quat(leaf,body::d::product(original,body::d::yaw(.15))));
+        }
+        f.original_space();
+        C(k.finish(f.backend,l,key,tx::End::original_returned).code==tx::Code::scope_closed);
+        C(k.completed_consumer(f.backend,key,serial)==(mode!=1));
+        if(mode==2)++key.scope;
+        if(mode==3)f.mesh.put(0x26c,p::ArrayHeader{f.space.address(),114,115});
+        if(mode==4){const float value=NAN;f.space.put(body::head*64,value);}
+        if(mode==5){auto* m=reinterpret_cast<body::Matrix64*>(f.space.data);m[body::head].values[12]+=.1f;}
+        if(mode==6){auto* m=reinterpret_cast<body::Matrix64*>(f.space.data);m[114].values[12]+=.1f;}
+        if(mode==7)f.atoms()[114].translation[0]+=.1f;
+        if(mode==8){f.atoms()[114].translation[0]+=.1f;f.original_space();}
+        if(mode==9){f.atoms()[114].scale=2;f.original_space();}
+        if(mode==10)f.context.allowed=false;
+        DWORD protection{},ignored{};
+        if(mode==11)C(VirtualProtect(f.space.data,f.space.size,PAGE_NOACCESS,&protection)!=FALSE);
+        if(mode==21)C(VirtualProtect(f.local.data,f.local.size,PAGE_NOACCESS,&protection)!=FALSE);
+        if(mode==12){auto m=frame->component_to_world;m.values[12]+=1;f.mesh.put(0xa0,m);}
+        if(mode==13)f.reference.data[1]^=1;
+        if(mode==14)std::swap(f.desired.data[0],f.desired.data[1]);
+        if(mode==15)f.mesh.put(0x338,uint32_t(89));
+        if(mode==16)f.backend.invalidate();
+        if(mode==19){f.atoms()[0].translation[0]+=.1f;f.original_space();}
+        if(mode==20){auto& head=f.atoms()[body::head];body::Quat q{head.q[0],head.q[1],head.q[2],head.q[3]};
+            C(body::d::set_quat(head,body::d::product(q,body::d::yaw(.02))));f.original_space();}
+        if(mode==22)f.context.reject_call=int(f.context.calls+2); // final owner guard withdraws
+        if(mode==23){f.context.stop_backend=&f.backend;f.context.stop_call=int(f.context.calls+2);}
+
+        const auto pending=k.pending();
+        const auto result=f.backend.read_consumed_pose(k,key,mode==17?serial+1:serial,*observed);
+        if(mode==11)C(VirtualProtect(f.space.data,f.space.size,protection,&ignored)!=FALSE);
+        if(mode==21)C(VirtualProtect(f.local.data,f.local.size,protection,&ignored)!=FALSE);
+        const bool accepted=mode==0||mode==18;
+        if(accepted){
+            C(result==n::ConsumedPoseCode::verified);
+            C(observed->observed_qpc>0&&observed->consumed.serial==serial&&tx::same(observed->consumed.stamp,key));
+            C(observed->max_position_error<=.002&&observed->max_angle_error<=1e-4&&observed->max_length_error<=.002);
+            C(!std::memcmp(observed->local.data(),f.local.data,sizeof observed->local)&&
+              !std::memcmp(observed->space.data(),f.space.data,sizeof observed->space));
+        }else {C(result!=n::ConsumedPoseCode::verified);C(!std::memcmp(observed.get(),&before,sizeof before));}
+        C(k.pending()==pending); // Readback cannot retire or erase write debt.
+        if(mode==19||mode==20)C(result==n::ConsumedPoseCode::target);
+        if(mode==22)C(result==n::ConsumedPoseCode::context);
+        if(mode==23)C(result==n::ConsumedPoseCode::unavailable);
+        if(mode==0){
+            const auto completed=*observed;const auto calls=f.context.calls;
+            n::ConsumedPoseCode foreign_thread=n::ConsumedPoseCode::verified;
+            std::thread reader([&]{foreign_thread=f.backend.read_consumed_pose(k,key,serial,*observed);});reader.join();
+            C(foreign_thread==n::ConsumedPoseCode::unavailable&&f.context.calls==calls&&
+              !std::memcmp(observed.get(),&completed,sizeof completed));
+            f.backend.request_stop();C(f.backend.read_consumed_pose(k,key,serial,*observed)==n::ConsumedPoseCode::unavailable);
+            C(!std::memcmp(observed.get(),&completed,sizeof completed)&&k.pending()==pending);
+        }
+    }
+    std::printf("NativeBackend: %u checks, %u failures; actual_read=1 actual_CAS128=1 actual_SEH=1 Host_context_only=1 fresh_denied=1 consumed_pose_original_Compose=Host_math live_reader_wired=0\n",checks,failures);return failures?1:0;
 }

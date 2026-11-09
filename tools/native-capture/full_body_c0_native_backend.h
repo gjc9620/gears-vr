@@ -39,6 +39,19 @@ enum class CaptureReject:std::uint64_t {captured,stopped,already_captured,seed_o
 struct CaptureObservation {
     std::uint64_t reason{UINT64_MAX},context_verdict{UINT64_MAX};
 };
+// Stable repeated-read observation of actual Local/SpaceBases after normal
+// original consumption. It proves the selected body's rendered skeleton data,
+// not hardware upload, physics/hit use, occupancy or future-frame validity.
+enum class ConsumedPoseCode {verified,unavailable,alias,transaction,context,metadata,unreadable,changed,geometry,target};
+struct ConsumedPose {
+    tx::CompletedPose consumed{};pose::Metadata metadata{};
+    std::array<body::Atom,body::bones> local{};
+    std::array<body::Matrix64,body::bones> space{};
+    std::array<body::Pose,7> world{};
+    std::int64_t observed_qpc{};
+    double max_position_error{},max_angle_error{},max_length_error{};
+};
+static_assert(std::is_trivially_copyable<ConsumedPose>::value);
 class Backend final:public tx::Backend {
     gears_atom_overwrite::ReceiptSource* receipts_{};
     Context* context_{};pose::Request request_{};pose::Metadata metadata_{};tx::Stamp stamp_{};
@@ -47,6 +60,10 @@ class Backend final:public tx::Backend {
     // Large readback storage belongs to the backend, never to the game stack.
     body::Frame repeated_{};std::array<unsigned char,115> desired_repeat_{};
     std::array<std::int16_t,115*2> unit_index_{};
+    // Owned backend storage; neither the large candidate nor its repeat buffer
+    // is placed on a game callback stack.
+    ConsumedPose consumed_pose_{};
+    std::array<body::Matrix64,body::bones> consumed_space_repeat_{};
     struct ExchangeFailure {unsigned kind{},stage{},verdict{},detail{};std::uintptr_t address{};} first_exchange_failure_{};
     bool read_metadata(pose::Metadata& m) noexcept {
         auto reader=[](void* o,void const* p,std::size_t n){return read_memory(o,reinterpret_cast<std::uintptr_t>(p),n);};
@@ -193,6 +210,70 @@ public:
             tx::Cas::source_age_no_write:tx::Cas::fault_unknown);
         const auto result=atomic_exchange(address,expected,replacement);
         return result==tx::Cas::exchanged?result:failed(result==tx::Cas::mismatch?4:3,result);
+    }
+    ConsumedPoseCode read_consumed_pose(tx::Kernel const& kernel,tx::Stamp const& actual,
+                                       std::uint64_t serial,ConsumedPose& out) noexcept {
+        if(!captured_||!context_||stopped_||GetCurrentThreadId()!=thread_)return ConsumedPoseCode::unavailable;
+        const body::d::Range ranges[]={body::d::range(this,sizeof *this),body::d::range(&kernel,sizeof kernel),
+            body::d::range(&actual,sizeof actual),body::d::range(&out,sizeof out),
+            {request_.owner.mesh.address,0x354},{metadata_.asset,0xb4},
+            {metadata_.reference.data,sizeof source_.reference},{metadata_.local.data,sizeof source_.local},
+            {metadata_.desired.data,115},{metadata_.space.data,115*64}};
+        if(!body::d::disjoint(ranges,10))return ConsumedPoseCode::alias;
+        auto& next=consumed_pose_;std::memset(&next,0,sizeof next);
+        if(!kernel.completed_pose(*this,actual,serial,next.consumed)||!tx::same(actual,stamp_))return ConsumedPoseCode::transaction;
+        if(!context_->current(tx::Stage::scope_end))return ConsumedPoseCode::context;
+        pose::Metadata after{};
+        if(!read_metadata(next.metadata)||!pose::metadata_equal(next.metadata,metadata_)||!shape(next.metadata)||!immutable_readback())
+            return ConsumedPoseCode::metadata;
+        if(!read_memory(next.local.data(),metadata_.local.data,sizeof next.local)||
+           !read_memory(next.space.data(),metadata_.space.data,sizeof next.space)||
+           !read_memory(repeated_.local.data(),metadata_.local.data,sizeof repeated_.local)||
+           !read_memory(consumed_space_repeat_.data(),metadata_.space.data,sizeof consumed_space_repeat_))return ConsumedPoseCode::unreadable;
+        if(std::memcmp(next.local.data(),repeated_.local.data(),sizeof next.local)||std::memcmp(next.space.data(),consumed_space_repeat_.data(),sizeof next.space))
+            return ConsumedPoseCode::changed;
+        body::ik::Matrix component{};
+        for(unsigned j=0;j<16;++j)component.m[j]=next.metadata.component.values[j];
+        if(!body::d::similarity(component)||std::abs(body::d::length(body::d::row(component,0))-1)>2e-5)return ConsumedPoseCode::geometry;
+        for(unsigned i=0;i<body::bones;++i){
+            std::int32_t parent{};std::memcpy(&parent,source_.reference[i].bytes+56,4);
+            if((!i&&parent)||(i&&(parent<0||unsigned(parent)>=i)))return ConsumedPoseCode::geometry;
+            auto const& atom=next.local[i];body::Quat q{};
+            if(!body::d::normalized({atom.q[0],atom.q[1],atom.q[2],atom.q[3]},q)||!body::d::unit_animation_scale(atom.scale))return ConsumedPoseCode::geometry;
+            for(float x:atom.translation)if(!std::isfinite(x))return ConsumedPoseCode::geometry;
+            body::ik::Matrix space{},parent_space{};
+            for(unsigned j=0;j<16;++j){space.m[j]=next.space[i].values[j];parent_space.m[j]=i?next.space[unsigned(parent)].values[j]:component.m[j];}
+            if(!body::d::similarity(space)||std::abs(body::d::length(body::d::row(space,0))-1)>2e-5)return ConsumedPoseCode::geometry;
+            const auto expected=i?body::d::multiply(body::d::atom_matrix(atom),parent_space):body::d::atom_matrix(atom);
+            // Matrix translation uses the same0.002 world-unit residual as the
+            // planner/transaction. Basis entries retain a separate tight bound.
+            for(unsigned j=0;j<16;++j)if(std::abs(space.m[j]-expected.m[j])>((j>=12&&j<=14)?.002:2e-5))return ConsumedPoseCode::geometry;
+            if(i){
+                const auto measured=body::d::length(body::d::sub(body::d::position(space),body::d::position(parent_space)));
+                auto const& original=source_.local[i];
+                const auto length=body::d::length(body::Vec{original.translation[0],original.translation[1],original.translation[2]});
+                const auto error=std::abs(measured-length);next.max_length_error=(std::max)(next.max_length_error,error);
+                if(error>.002)return ConsumedPoseCode::geometry;
+            }
+        }
+        for(unsigned i=0;i<tx::completed_pose_bones.size();++i){
+            body::ik::Matrix local{};for(unsigned j=0;j<16;++j)local.m[j]=next.space[tx::completed_pose_bones[i]].values[j];
+            next.world[i]=body::d::pose(body::d::multiply(local,component));
+            const auto position=body::d::length(body::d::sub(next.world[i].position,next.consumed.world[i].position));
+            const auto angle=body::d::angle(next.world[i].orientation,next.consumed.world[i].orientation);
+            next.max_position_error=(std::max)(next.max_position_error,position);next.max_angle_error=(std::max)(next.max_angle_error,angle);
+            if(position>.002||angle>1e-4)return ConsumedPoseCode::target;
+        }
+        LARGE_INTEGER clock{};
+        if(!QueryPerformanceCounter(&clock)||clock.QuadPart<=0)return ConsumedPoseCode::unavailable;
+        next.observed_qpc=clock.QuadPart; // Actual observation time, not a refreshed source receipt.
+        if(!read_metadata(after)||!pose::metadata_equal(after,next.metadata)||!immutable_readback())return ConsumedPoseCode::metadata;
+        if(!context_->current(tx::Stage::scope_end))return ConsumedPoseCode::context;
+        if(!kernel.completed_consumer(*this,actual,serial))return ConsumedPoseCode::transaction;
+        // Retained scope validation intentionally remains usable for cleanup;
+        // it cannot override a stop requested while this read was in flight.
+        if(stopped_)return ConsumedPoseCode::unavailable;
+        out=next;return ConsumedPoseCode::verified;
     }
     void receipt_source(gears_atom_overwrite::ReceiptSource* p)noexcept{receipts_=p;}
     std::uint32_t installation_epoch()const noexcept{return metadata_.pose_epoch;}

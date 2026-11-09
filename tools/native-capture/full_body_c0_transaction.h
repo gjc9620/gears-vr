@@ -26,6 +26,12 @@ inline bool same(Binding const& a,Binding const& b) noexcept {
 }
 inline bool same(Stamp const& a,Stamp const& b) noexcept {return same(a.binding,b.binding)&&a.frame==b.frame&&a.producer==b.producer&&a.scope==b.scope;}
 struct Desired {unsigned count{};std::array<unsigned char,body::bones> indices{};};
+// Copied data from this kernel's immutable consumed plan, never a write or
+// collision lease. The Native reader obtains this directly from the Kernel.
+constexpr std::array<unsigned,7> completed_pose_bones{{body::root,body::pelvis,body::head,
+    body::legs[0][2],body::legs[1][2],body::shoulders[0],body::shoulders[1]}};
+struct CompletedPose {Stamp stamp{};std::uint64_t serial{};std::array<body::Pose,7> world{};};
+
 enum class UnitState:unsigned char {unwritten,applied,uncertain,conflict,restored,fresh_retired};
 struct Unit {std::uint16_t bone{};unsigned char half{};UnitState state{};unsigned char reserved[12]{};Block before{},ours{};};
 static_assert(sizeof(Unit)==48&&offsetof(Unit,before)==16&&offsetof(Unit,ours)==32);
@@ -194,6 +200,13 @@ public:
             same(actual,stamp_)&&!active_.load()&&!lease_&&ended_&&ending_==End::original_returned&&
             consumed_.load()&&consumer_verified_&&commit_finished_&&installed()&&!failed_.load()&&
             !stopping_.load()&&!original_exception_.load()&&!protocol_.load();
+    }
+    bool completed_pose(Backend& backend,Stamp const& actual,std::uint64_t serial,CompletedPose& out) const noexcept {
+        const body::d::Range ranges[]={body::d::range(this,sizeof *this),body::d::range(&actual,sizeof actual),body::d::range(&out,sizeof out)};
+        if(!body::d::disjoint(ranges,3)||!completed_consumer(backend,actual,serial))return false;
+        CompletedPose next{};next.stamp=stamp_;next.serial=serial_;
+        next.world={plan_.root_world,plan_.pelvis_world,plan_.head_world,plan_.feet_world[0],plan_.feet_world[1],
+            plan_.shoulders_world[0],plan_.shoulders_world[1]};out=next;return true;
     }
     bool settled_source_age() const noexcept {return failure_.load()==Failure::source_age_only&&failed_.load()&&stopping_.load()&&
         ended_&&ending_!=End::original_threw&&!original_exception_.load()&&!pending();}

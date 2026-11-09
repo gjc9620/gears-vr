@@ -2,6 +2,8 @@
 
 目标：完成掩体系统开发与验证。状态：进行中。
 
+最近结果（2026-11-09）：r24/game33420首次完成当前严格实体边缘截面的8次原Trace，宽度1.5625游戏单位；后续暂停B恢复失败、unified武器清理drained=false、双路右身体遮挡与启动捕获缺口均保留。r27已实现并离线检查Native真实Local／SpaceBases读回，尚未接入真实C0回调或掩体提交后端。当前不占运行窗，已最终唯一交Snub093107；完整CV-01–24／AC-01–22及实体头显仍未完成。具体边界见本文末两节。
+
 ## 2026年11月8日 首批接续
 
 使用统一工作树 `C:/Users/11/.codex/worktrees/6dof-single/gearsVr`，分支 `codex/6dof-single`。本批开始时 HEAD 为 `f30862b`。保留现有武器工作，不修改武器分派、共享骨骼写入端、默认候选或用户配置。
@@ -621,3 +623,30 @@ r24 plan83be29c7、reader369f1217、23驱动及准确cover-r13三制品保持不
 本轮同时核对需求汇总，补充简明行为总览；CV-01–24／AC-01–22和工程默认／实际验收的区分保留。实际Native motion Backend、最终身体几何／连续扫掠／占用与世界同步、basis合法交接及恢复、同版双眼／命中／枪口、近裁剪与实体头显继续未完成。完成边界修复是主线接线的必要准备，不将它表述为掩体全功能或实际物理验证通过。
 
 当前未拥有运行窗。r24 plan83be29c7、reader369f1217、23驱动及准确r13三制品均不变，未stage。本轮已按真实尾序接受Snub093107为Cover r24全部终态后的唯一后继，并直接确认Frag090321→Cover r24→Snub093107；Longshot094103的后续新申请由Snub继续核对真实尾。登记不等于交窗，仍须Frag最终唯一全终交接后独立核对再运行。公开v71、完整掩体FALSE、实体头显未验收及历史计分保持不变。
+
+
+## 2026年11月9日 r24实际边缘查询通过但暂停恢复与画面仍失败
+
+收到Frag090321/game58316的最终唯一全终交窗后，独立CIM确认game／XR／录制／ffmpeg／本窗脚本空闲；再次核对plan83be29c7、prepared f4bc243e、冻结source_snapshot的24项声明源、3保存制品、23实际driver及AST、所选EXE身份，随后stage准确r13并运行。Native5cf4adea／PGf8e6f3c2／XR1684没有混入r25／26／27源；公开v71未动。运行game33420，creation134386633626394071，owner25508，creation134386633552582872；session6f87d2d5017f4956b4c965cd72a3bc72。
+
+一次原版A取得CT2／CA0，原几何认证通过；8次零Extent原Trace全部strict accepted，分别明确queue2／call1、pending_possible=false和allocation_retained=false，没有重试。当前挡面为mp_warmachine_SMC#3／StaticMeshComponent#186308，边界位于100单位切片的17.1875–18.75之间，宽1.5625。每次读取最大12121次／368691字节，保留原16384次／2MiB／3秒总上限；实际r19的超字节失败未再出现，原失败证据继续保留。这只证明该截面边界，不证明整条可抓边、连续体积路径、终点占用、动态世界同步或任何抓取／身体写入许可。
+
+后续原菜单段先成功暂停，B恢复等待超时，操作器37252明确exit1；menu-firstperson结果保存RuntimeError('VR pause state did not become False')。不能把cover-boundary.json的passed=true或总session的passed=true推广为整段操作通过。Native关闭／drain／入口恢复通过，body／hand／atom pending均0；unified_weapons_cleanup实际fire_disable_code2／hand_stop_code4／drained=false，继续作为未成功的清理子项保留。XR exit0、terminal exiting／objects destroyed／shutdown complete，EndSession=false如实保留，不能写成EndSession成功。
+
+全部3张paired overview与6张原图亲自审看。62.267秒的game726帧、simulator795帧中，启动仍有普通第三人称暴露和等待卡；两路在约12.47–37.18秒有约24.7秒WGC捕获缺口，合成视频在此持有旧帧，不代表新渲染帧或已知游戏卡顿原因。实际8查询位于45.472–51.803秒，窗口内最大捕获间隔game116.6662ms／sim116.6666ms。43.084秒原图可见双手，49.084／51.5秒掩体原图均有严重右身体／肩部／装备遮挡；完整画面、手体贴合和头显均未接受。视频ffprobe为62.300秒／7813858字节；WGC和编码都不是render-FPS／硬件每Draw或命中证明。
+
+runner27002 terminal0／launcher0，encoder37789 terminal0，原操作器terminal1分别记录。唯一retention21342 terminal0／errors0，删除1506项生成媒体246627021字节，保留33420／58316／16872最新三局、48小时；源／文本／数值不删。config原字节、settings原SHA与head原不存在状态已独立复核恢复，结束23驱动哈希一致，最终CIM无自有运行／编码／录制残留。之后最终明确唯一交Snub093107，已不占窗。记录cover-33420-review.json、cover-33420-closure-proof.json、33420-paired-review-build.log和33420-retention-result.json。
+
+下一次实际查询应针对仍缺的非零体积／初始重叠与提交时相取得新证据，不重跑已通过的同一零Extent切片。暂停恢复失败、unified清理失败和实际近裁剪需分别定位，不能用边缘数值通过掩盖。当前完整需求与历史计分不变。
+
+## 2026年11月9日 r27消费后真实骨架读回后端
+
+在现有生产Kernel增加completed_pose只读拷贝：由该Kernel自己的正常消费完成状态提供原Stamp／serial和root、pelvis、head、双脚、双肩目标，Native读者不接受调用者自填目标作为证明。现有Native Backend新增read_consumed_pose，必须在同一C0原版正常结束后、backend.invalidate之前持有原callback／模块／身份准入调用；本批没有在真实回调中启用它，也没有新身体writer或扩展身体写入权限。
+
+读者使用Backend拥有的固定缓冲，重复读取全部115项实际Local／SpaceBases，复核原metadata、reference与Desired，逐骨核对实际Local构成的父子矩阵、单位尺度及原骨长。实际world root／pelvis／head／双脚／双肩再与该确切事务的计划目标比较，沿用既有0.002位置／骨长和1e-4角度界限。原版合法改变非选定叶骨旋转可以通过，矩阵自洽但整个人平移或头部旋转偏离目标仍拒绝。观测QPC单独记录实际读回时间，不续Core／手／HMD原样本时间。
+
+任何失败不修改调用者输出，不CAS、不恢复或注销债务。结果仅是当前CPU Local／SpaceBases及目标几何的重复读取观测，不是原子世界快照、硬件上传、每Draw、physics／HitInfo、碰撞占用或下一帧许可。后续真实运动Backend还须绑定有效身体publication、完整路径／终点占用和同版命中／枪口；不能直接用此成功枚举开放抓边。大候选和复读缓冲在Backend所有存储内，未放在游戏回调栈。
+
+新增停止时序RED：收尾Context合法地允许恢复检查，但读回进行中收到stop后，原新增读者仍返回verified并写出候选，实际441检查中3项失败。现于最终输出边界再核stop，保留该RED，修正后同441项0失败。其中原Native Backend135项继续通过，新增24个读回模式及跨线程／停止检查共306项；覆盖真实VirtualAlloc页的CAS128／读回／SEH、损坏或自洽错误矩阵、变化的Local／尺度／reference／Desired／metadata、错误事务、最终owner撤回、不可读Local／SpaceBases和输出不变。原版Compose输出由明确Host数学构造，owner准入亦为Host，不把它记为实际游戏Compose验证。
+
+当前源三个目标MSVC C++17／O2／W4／WX／EHsc／UNDEBUG／MT编译0；事务25271检查0失败，实际Goal生产路径26个mode／483检查0失败。91项实际编译项目依赖及原夹具SHA保存于consumed-pose-r27/verification.json。没有新完整Native DLL、默认包或本批读回的游戏运行；本批真实game33420仍是准确冻结r13，二者证据分开。实际回调接线、Native cover-motion完成后端、basis交接与恢复、体积扫掠／世界同步、受击／枪口／最终画面和实体头显继续未完成。
