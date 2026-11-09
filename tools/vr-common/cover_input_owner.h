@@ -3,6 +3,7 @@
 #include "cover_view.h"
 #include "left_hand_interaction_owner.h"
 #include "left_interaction_control.h"
+#include "cover_motion.h"
 
 namespace gears_vr {
 struct CoverInputOwnerFrame {
@@ -21,6 +22,7 @@ struct CoverInputOwnerFrame {
     double units_per_metre=100;
     std::int64_t now_ns=0;
     bool allow_sim=false,owner_context_valid=false,allow_index_pinch=false;
+    gears_cover_motion::Binding motion_binding{}; // resolved only by the optional real motion backend
 };
 struct CoverInputOwnerResult {
     CoverResult interaction;
@@ -72,6 +74,12 @@ struct CoverInputOwnerCandidate {
     CoverControllerStatus controller_status=CoverControllerStatus::unavailable;
     bool accepted=false;
 };
+struct CoverInputMotionCandidate {
+    gears_cover_motion::Binding binding{};
+    gears_cover_motion::Hand hand{};
+    CoverOffset requested{};
+    bool available{}; // read-only observation, never execution/collision permission
+};
 
 // Cover's participant in the sole GT left-hand owner. The supplied owner is
 // shared with weapon requests/results; no second arbiter lives in this class.
@@ -87,8 +95,24 @@ class CoverInputOwner {
 public:
     static constexpr unsigned maximum_height_keys=32;
     CoverInputOwner()=default;
+    explicit CoverInputOwner(gears_cover_motion::Backend* motion_backend):motion_backend_(motion_backend){}
     CoverInputOwner(CoverInputOwner const&)=delete;
     CoverInputOwner& operator=(CoverInputOwner const&)=delete;
+    gears_cover_motion::Code motion_status()const noexcept{return motion_code_;}
+    gears_cover_motion::Commit motion_committed()const noexcept{return motion_.committed();}
+    bool pending_motion(gears_cover_motion::Intent& out)const noexcept {
+        if(!motion_.pending())return false;out=motion_.requested();return true;
+    }
+    bool motion_current(gears_cover_motion::Intent const& intent)const noexcept{return motion_.current(intent);}
+    CoverInputMotionCandidate motion_candidate()const noexcept {
+        CoverInputMotionCandidate out{};
+        if(!motion_backend_||!motion_ready_||phase_!=Phase::committed||!drag_.valid||
+           !result_.interaction.owns_left_hand||cover_lease_.kind!=LeftHandInteraction::cover)return out;
+        out.binding=frozen_.motion_binding;out.hand.sample=prepared_hand_;
+        out.hand.grab=result_.interaction.request_id;out.hand.edge=result_.interaction.edge_id;
+        out.hand.axis=drag_.axis;out.hand.limit_clipped=drag_.range_clipped;
+        out.requested=drag_.requested;out.available=true;return out;
+    }
 
     CoverInputOwnerDecoded begin(CoverInputOwnerFrame const& frame,LeftHandInteractionOwner& owner){
         if(!bind(owner))return {};
@@ -100,7 +124,10 @@ public:
             if(snapshot_valid_&&same_snapshot(frame))return decoded_;
             abort_current(owner);return {};
         }
+        // Completed body movement is synchronized BEFORE an abandoned input,
+        // new release or newer hand sample can cancel its old request.
         if(phase_==Phase::decoded||phase_==Phase::decided)abort_current(owner);
+        synchronize_motion(frame);
         lifecycle_=frame.lifecycle;frame_=frame.frame;
         phase_=Phase::aborted;snapshot_valid_=false;decoded_={};candidate_={};result_={};
         if(frame.height_key_count>maximum_height_keys||(!frame.height_curve&&frame.height_key_count)||
@@ -140,6 +167,7 @@ public:
         decoded_.controller_status=hand_.status;decoded_.accepted=true;
         decoded_.left_grip_known=decoded_.left_tracked=tracked&&!barrier_;
         decoded_.left_grip_down=down&&!barrier_;
+        cancel_superseded_motion(frame);
         return decoded_;
     }
 
@@ -178,7 +206,8 @@ public:
         if(external_count)ownership.owner=CoverLeftHandOwner::other;
         else if(cover_lease_.kind==LeftHandInteraction::cover)
             ownership={CoverLeftHandOwner::cover,cover_lease_.id};
-        auto proposal=pending_interaction_.update(cover,hand,ownership,frame.now_ns);
+        prepared_cover_=cover;prepared_hand_=hand;pending_ownership_=ownership;
+        auto proposal=step_cover(pending_interaction_,ownership);
         requests.incumbents=weapon.incumbents;requests.requests=weapon.requests;
         // The cover request is always derived here, never accepted from the
         // weapon side. A held body offset has no hand lease after release.
@@ -189,10 +218,11 @@ public:
         candidate_.left_hand=owner.update(requests);
         if(proposal.request_left_hand&&candidate_.left_hand.lease.kind==LeftHandInteraction::cover&&
            candidate_.left_hand.lease.id==proposal.request_id){
-            proposal=pending_interaction_.update(cover,hand,
-                {CoverLeftHandOwner::cover,proposal.request_id},frame.now_ns);
+            pending_ownership_={CoverLeftHandOwner::cover,proposal.request_id};
+            proposal=step_cover(pending_interaction_,pending_ownership_);
         }else if(proposal.owns_left_hand&&candidate_.left_hand.lease.kind!=LeftHandInteraction::cover){
-            proposal=pending_interaction_.update(frame.cover,hand,{CoverLeftHandOwner::other,0},frame.now_ns);
+            pending_ownership_={CoverLeftHandOwner::other,0};
+            proposal=step_cover(pending_interaction_,pending_ownership_);
         }
         pending_lease_=proposal.owns_left_hand?candidate_.left_hand.lease:LeftHandInteractionLease{};
         pending_result_={};pending_result_.interaction=proposal;pending_result_.left_hand=candidate_.left_hand;
@@ -205,9 +235,44 @@ public:
         if(!bind(owner)||!current(ticket))return {};
         if(phase_==Phase::aborted||(phase_==Phase::committed&&committed))return result_;
         if(phase_==Phase::committed){abort_current(owner);return result_;}
+        const auto before=motion_applied_event_;
+        synchronize_motion(frozen_);
+        if(motion_backend_&&phase_==Phase::decided&&before!=motion_applied_event_&&motion_ready_){
+            // A weapon callback may have consumed a previous body intent.
+            // Re-certify this exact already-decoded input at its actual new
+            // position; no second arbitration or stale pre-commit request.
+            auto c=motion_.committed();
+            if(!pending_interaction_.body_completed(c.binding.epochs,c.position,c.hand.sample,c.hand.grab,c.hand.edge,
+                c.hand.axis,c.completion==gears_cover_motion::Completion::clipped||c.hand.limit_clipped))motion_ready_=false;
+            pending_result_.interaction=step_cover(pending_interaction_,pending_ownership_);
+            pending_lease_=pending_result_.interaction.owns_left_hand?candidate_.left_hand.lease:LeftHandInteractionLease{};
+            drag_.valid=false; // next Scene recomputes movement from this completed version
+            pending_result_.view_valid=pending_result_.body_weight_valid=false;build_view(pending_result_);
+        }
         if(!committed||phase_!=Phase::decided||!candidate_.accepted){abort_current(owner,true);return result_;}
         interaction_=pending_interaction_;cover_lease_=pending_lease_;result_=pending_result_;
-        phase_=Phase::committed;return result_;
+        phase_=Phase::committed;
+        if(motion_backend_&&frozen_.cover.cover_valid){
+            if(!motion_ready_){cancel_motion();withdraw_motion(owner);}
+            else if(!drag_.valid||!result_.interaction.owns_left_hand)cancel_motion();
+            else {
+                const auto candidate=motion_candidate();gears_cover_motion::Intent intent{};
+                motion_code_=motion_.propose(*motion_backend_,candidate.binding,candidate.hand,candidate.requested,frozen_.now_ns,intent);
+                if(motion_code_==gears_cover_motion::Code::no_motion&&candidate.hand.limit_clipped){
+                    // Already at the body-confirmed limit: no new body write
+                    // or commit version is needed. Rebase this fresh overpull
+                    // there, so the very next reverse still responds.
+                    if(!interaction_.rebase_grip(motion_.committed().position,candidate.hand.sample,candidate.hand.grab,
+                       candidate.hand.edge,candidate.hand.axis))motion_code_=gears_cover_motion::Code::rejected;
+                }
+                if(motion_code_!=gears_cover_motion::Code::pending&&motion_code_!=gears_cover_motion::Code::no_motion){
+                    const auto rejected=motion_code_;cancel_motion();
+                    if(motion_code_!=gears_cover_motion::Code::recovery_required)motion_code_=rejected;
+                    motion_ready_=false;withdraw_motion(owner);
+                }
+            }
+        }
+        return result_;
     }
 
     // Native must call this serialized barrier for recenter/reference, world,
@@ -242,6 +307,62 @@ private:
         abort_current(*owner_);owner.invalidate();return false;
     }
     bool current(CoverInputOwnerTicket ticket) const {return ticket&&ticket==decoded_.ticket;}
+    void cancel_motion(){
+        if(motion_backend_&&motion_.bound())motion_code_=motion_.cancel(*motion_backend_);
+    }
+    void cancel_superseded_motion(CoverInputOwnerFrame const& frame){
+        if(!motion_backend_||!motion_.pending())return;
+        const auto intent=motion_.requested();auto current=intent.hand;current.sample=hand_.hand;
+        auto const& range=frame.cover.range;
+        const bool target_legal=std::isfinite(range.min_right)&&std::isfinite(range.max_right)&&
+            std::isfinite(range.min_up)&&std::isfinite(range.max_up)&&
+            intent.requested.right>=range.min_right&&intent.requested.right<=range.max_right&&
+            intent.requested.up>=range.min_up&&intent.requested.up<=range.max_up;
+        if(!motion_ready_||!frame.cover.cover_valid||!frame.cover.interaction_enabled||!decoded_.left_grip_known||
+           !decoded_.left_grip_down||!gears_cover_motion::detail::same(frame.motion_binding,intent.binding)||
+           frame.cover.edge.id!=intent.hand.edge||frame.cover.edge.kind!=intent.hand.axis||!frame.cover.edge.allowed||
+           !target_legal||!gears_cover_motion::detail::same_grip_position(current,intent.hand)||
+           frame.now_ns<intent.hand.sample.observed_ns||frame.now_ns-intent.hand.sample.observed_ns>100000000)
+            cancel_motion();
+        // Cancellation precedes any external weapon prepare/commit callback:
+        // a release or changed real hand cannot execute the old request there.
+    }
+    void withdraw_motion(LeftHandInteractionOwner& owner){
+        result_.interaction=interaction_.suspend();cover_lease_={};
+        if(result_.left_hand.lease.kind==LeftHandInteraction::cover)result_.left_hand=owner.invalidate();
+        candidate_.left_hand=result_.left_hand;
+        result_.view_valid=result_.body_weight_valid=false;
+    }
+    void synchronize_motion(CoverInputOwnerFrame const& frame){
+        if(!motion_backend_)return;
+        motion_ready_=false;
+        if(!frame.cover.cover_valid&&!motion_.bound())return;
+        motion_code_=motion_.synchronize(*motion_backend_);
+        if(!frame.cover.cover_valid){
+            if(motion_.bound()){cancel_motion();motion_domain_ended_=true;}
+            return;
+        }
+        if(motion_code_!=gears_cover_motion::Code::ready||!motion_.bound()||motion_domain_ended_)return;
+        auto const c=motion_.committed();auto expected=frame.motion_binding;expected.epochs=frame.cover.epochs;
+        if(!frame.owner_context_valid||!gears_cover_motion::detail::same(expected,frame.motion_binding)||
+           !gears_cover_motion::detail::same(c.binding,frame.motion_binding))return;
+        if(c.event!=motion_applied_event_){
+            if(!interaction_.body_completed(c.binding.epochs,c.position,c.hand.sample,c.hand.grab,c.hand.edge,c.hand.axis,
+               c.completion==gears_cover_motion::Completion::clipped||c.hand.limit_clipped))return;
+            motion_applied_event_=c.event;
+        }
+        motion_ready_=true;
+    }
+    CoverResult step_cover(CoverInteraction& interaction,CoverOwnership ownership){
+        drag_={};auto cover=prepared_cover_;
+        if(motion_backend_&&cover.cover_valid){
+            if(motion_ready_){drag_=interaction.propose(cover,prepared_hand_,ownership,frozen_.now_ns);return drag_.committed;}
+            cover.interaction_enabled=false;
+            auto out=interaction.update(cover,prepared_hand_,ownership,frozen_.now_ns);
+            out.offset_certified=false;out.phase=CoverPhase::unavailable;return out;
+        }
+        return interaction.update(cover,prepared_hand_,ownership,frozen_.now_ns);
+    }
     LeftHandInteractionFrame owner_frame() const {
         LeftHandInteractionFrame frame{};
         frame.lifecycle=lifecycle_;frame.frame=frame_;frame.press_token=press_token_;
@@ -251,6 +372,7 @@ private:
         return frame;
     }
     void abort_current(LeftHandInteractionOwner& owner,bool recertify_current_scene=false){
+        if(motion_backend_){synchronize_motion(frozen_);cancel_motion();}
         const bool current_scene=recertify_current_scene&&snapshot_valid_&&decoded_.accepted&&
             (phase_==Phase::decoded||phase_==Phase::decided)&&frozen_.owner_context_valid&&
             frozen_.cover.observed_ns>0&&frozen_.cover.observed_ns<=frozen_.now_ns&&
@@ -272,6 +394,9 @@ private:
             cover.interaction_enabled=false;
             hand.input_active=hand.position_valid=hand.position_tracked=hand.lgrip_down=false;
             result_.interaction=certified.update(cover,hand,{CoverLeftHandOwner::other,0},frozen_.now_ns);
+            if(motion_backend_&&frozen_.cover.cover_valid&&!motion_ready_){
+                result_.interaction.offset_certified=false;result_.interaction.phase=CoverPhase::unavailable;
+            }
             if(result_.interaction.offset_certified||result_.interaction.status==CoverStatus::no_cover)
                 interaction_=certified;
             // Stereo time/geometry/reference validation uses only frozen time.
@@ -296,7 +421,7 @@ private:
         auto const& frame=frozen_;auto const& proposal=result.interaction;
         // Losing the left hand releases its grip, while a freshly re-certified
         // held offset and live HMD still produce a valid camera/body target.
-        if(!proposal.offset_certified||!frame.stereo||!frame.stereo.reference_generation||
+        if((motion_backend_&&frame.cover.cover_valid&&!motion_ready_)||!proposal.offset_certified||!frame.stereo||!frame.stereo.reference_generation||
            !stereo_render_active(frame.stereo.sample)||!stereo_tracking_valid(frame.stereo.sample,frame.allow_sim)||
            !stereo_geometry_valid(frame.stereo.sample)||frame.stereo.sample.received_ns<=0||
            frame.stereo.sample.received_ns>frame.now_ns||frame.now_ns-frame.stereo.sample.received_ns>100000000)return;
@@ -383,7 +508,7 @@ private:
            !same(frame.weapon_requests,f.weapon_requests)||(frame.height_curve!=nullptr)!=has_curve_||
            frame.height_key_count!=f.height_key_count||!number_same(frame.units_per_metre,f.units_per_metre)||
            frame.now_ns!=f.now_ns||frame.allow_sim!=f.allow_sim||frame.owner_context_valid!=f.owner_context_valid||
-           frame.allow_index_pinch!=f.allow_index_pinch)return false;
+           frame.allow_index_pinch!=f.allow_index_pinch||!gears_cover_motion::detail::same(frame.motion_binding,f.motion_binding))return false;
         for(unsigned i=0;i<f.height_key_count;++i)
             if(!number_same(frame.height_curve[i].u,height_curve_[i].u)||
                !number_same(frame.height_curve[i].height_metres,height_curve_[i].height_metres))return false;
@@ -393,6 +518,13 @@ private:
     CoverControllerAdapter pinch_adapter_{control_trigger};
     LeftControlSelector control_selector_;
     CoverInteraction interaction_,pending_interaction_;
+    gears_cover_motion::Backend* motion_backend_{};
+    gears_cover_motion::Ledger motion_;
+    gears_cover_motion::Code motion_code_{gears_cover_motion::Code::unavailable};
+    CoverDragProposal drag_{};CoverObservation prepared_cover_{};CoverHandSample prepared_hand_{};
+    CoverOwnership pending_ownership_{};
+    std::uint64_t motion_applied_event_{};
+    bool motion_ready_{},motion_domain_ended_{};
     LeftHandInteractionLease cover_lease_,pending_lease_;
     LeftHandInteractionOwner* owner_=nullptr;
     CoverInputOwnerFrame frozen_;

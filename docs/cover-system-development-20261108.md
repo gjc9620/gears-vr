@@ -586,3 +586,23 @@ runner36635实际terminal0／launcher0；Native cleanup／entries／pad恢复TRU
 新r24计划SHA83be29c74b1f75f589ccf16d640d4cf8e4b180edf6a7d4a32e8f6016b40231f9；23驱动仅cover_trace_query变369f12175e4bdb920ed2b9b213cee61ea6291d2120802b96d398c870d4fddafb，其余22不变，Native／PG／XR仍准确cover-r13，未重建Native。新驱动全部归档drivers-padding-budget-r24，prepare-only0，未stage／启动。下一次仍须新尾位登记与最终唯一交窗，不能追加到已结束60336或占用Snub窗口。
 
 证据query-padding-r24/verification.json及RED／green／final日志。当前账本208检查只证明纯模块，真实输入／body消费与恢复、碰撞快照／扫掠／占用、近裁剪、同版双眼／命中／枪口和头显仍开放，CV-01–24／AC-01–22不缩减。
+
+## 2026年11月9日 r25现有输入归属链接入可选延迟身体提交
+
+上轮5f37931d为源码修复与实际60336首败后的进展。本轮将CoverMotion Ledger接到现有CoverInputOwner／CoverInteraction；控制器解码、唯一LeftHandInteractionOwner、weapon prepare／仲裁／commit／complete仍复用原路径，没有新仲裁器、相机或骨骼写入端。默认构造保留当前geometry-disabled Native的旧路径；显式传入认证Backend才使用延迟模式，尚未在真实Native启用，不能据本批开放实际非零抓边范围。
+
+CoverInteraction新增拥有拷贝的propose输出，推进真实输入和抓取状态，但offset只保留已同步身体位置；请求值不再因输入complete(true)就成为身体位置。CoverInputOwner在新输入前先同步完成记录；新release、失追踪、变化的真实手位／边缘／上下文、目标范围失效或原100ms到期，会在任何外部weapon回调之前取消旧待版本。已实际完成的移动则先同步，随后松手／失败事务保留该位置，不能回滚成旧offset。
+
+等待中手位、抓取及目标完全相同时，后续新序列保留同一intent及其原始sequence／observed_ns，不能每帧替换而饿死多Tick查询，也不刷新旧时间；原100ms过期后产生新id。每次真正执行仍须由后端独立复核当前逻辑左手归属、当前C0来源、完整最终身体路径／占用及from-version；motion_current只表示取消／版本状态，不是再次写入许可。Host提交者明确在自身版本已推进后拒绝同一intent二次执行，即使输入尚未ack。
+
+输入限位的clipped标志随原手样本绑定到intent／完成记录。只有实际身体完成后才重设该抓取起点；几何裁剪也按实际安全位置／对应手位重设。另新增已在实际限位处继续向外拉的RED：无需身体新移动的no_motion分支原本不重基准，反拉1cm仍卡住。现只在请求等于身体已确认位置时重设该新手位，不增加body write、commit event或version；等待尚未完成的位移仍不重设。原RED及修正后green保留。
+
+body若在weapon回调期间完成仍然有效的旧请求，complete先复核真实新位置，并重算本次已解码输入的状态；不重新仲裁，也不提交基于旧位置的候选。回调前已读到release或变化手位的请求则立即失效，不能在回调间隙再执行。后端在最终complete失效、admission拒绝、source中断或未知写入时撤回掩体提案／视图，并保留恢复债务；已有独立weapon grant不因掩体后端缺失被全局撤销。
+
+真实控制器适配器、仲裁器、交互内核与账本组成的新检查最终1157项0失败，其中808为原输入事务检查、349为新增组合检查。覆盖等待／释放顺序、保持／重抓反拉、限位及几何clip、no_motion继续拉、源时限／不续时、回调期间完成、失败weapon事务、非零身体baseline、HMD独立叠加、范围收缩、上下文／snapshot变化、后端丢失、退出及武器隔离。初版15条失败中，静止采样替换确为接线缺口；其余一部分是Host用literal0.3替代原精确计算请求，严格相等正确拒绝，夹具改成实际执行该请求，生产未增浮点容差。
+
+当前源MSVC C++17／O2／W4／WX／EHsc／UNDEBUG／MT六个目标编译0；交互内核原20000帧重复／漂移检查、InputOwner120、Motion Ledger213、Native input62和共享生产消费者六个定向case共158检查均0失败。共享消费者执行的是原outside／cover／source1-cover／held-fallback／pending-magazine／commit-rejected路径，只使用各测试进程自己的Controller映射；不是游戏或真实模块／物理验证。CoverInputMotionTest已注册CMake，完整当前工程Native DLL／CMake构建未据此宣称通过。
+
+证据input-motion-r25/verification.json、编译依赖和原始RED／green／final结果。新模式的BodyBackend仅有显式owned-memory Host和Unavailable实现；真实C0完成／回滚／fresh-retirement认证、跨掩体basis的合法handoff仍未接通。当前实例对退出后的旧域明确拒绝自动复活，不能据本批称反复进出完整通过。输入侧view是已同步逻辑位置与当前追踪的候选；最终绘制、命中与枪口仍必须消费真实身体完成publication的同一版本，不能用本输入结果取代。
+
+r24 plan83be29c7、reader369f1217、23驱动及准确cover-r13三制品保持不变，未stage／启动，也没有把本r25源码混入。新尾申请已由Bol085057经Longshot085615转实际尾端Frag090321，Frag直接确认本r24为其全部终态后的唯一后继；当前队列Snub082247→Bol085057→Longshot085615→Frag090321→Cover r24。对方按prepared.source_snapshot=context-native-r13-source更正了最初source目录假设，实际初核24项声明源／3保存制品／23驱动及AST无差；此为尾位登记，不是当前授窗。完整CV-01–24／AC-01–22、近裁剪、真实碰撞／受击／枪口和实体头显仍未完成，公开v71与历史计分不变。

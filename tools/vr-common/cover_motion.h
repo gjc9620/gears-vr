@@ -15,6 +15,7 @@ struct Hand {
     gears_vr::CoverHandSample sample{};
     std::uint64_t grab{},edge{}; // association only, never a hand lease
     gears_vr::CoverEdgeKind axis{gears_vr::CoverEdgeKind::none};
+    bool limit_clipped{}; // input range limited the request; rebase only after actual completion
 };
 struct Intent {
     Binding binding{};
@@ -70,13 +71,16 @@ inline bool valid(Binding const& b) noexcept {
     auto const& e=b.epochs;
     return b.context&&b.basis&&e.world&&e.pawn&&e.cover&&e.slot&&e.session&&e.space&&e.reference;
 }
-inline bool same(Hand const& a,Hand const& b) noexcept {
+inline bool same_grip_position(Hand const& a,Hand const& b) noexcept {
     auto const& x=a.sample;auto const& y=b.sample;
-    return a.grab==b.grab&&a.edge==b.edge&&a.axis==b.axis&&x.sequence==y.sequence&&x.observed_ns==y.observed_ns&&
+    return a.grab==b.grab&&a.edge==b.edge&&a.axis==b.axis&&a.limit_clipped==b.limit_clipped&&
         x.session_epoch==y.session_epoch&&x.space_epoch==y.space_epoch&&
         x.left_position_metres.x==y.left_position_metres.x&&x.left_position_metres.y==y.left_position_metres.y&&
         x.left_position_metres.z==y.left_position_metres.z&&x.input_active==y.input_active&&
         x.position_valid==y.position_valid&&x.position_tracked==y.position_tracked&&x.lgrip_down==y.lgrip_down;
+}
+inline bool same(Hand const& a,Hand const& b) noexcept {
+    return same_grip_position(a,b)&&a.sample.sequence==b.sample.sequence&&a.sample.observed_ns==b.sample.observed_ns;
 }
 inline bool same(Commit const& a,Commit const& b) noexcept {
     return same(a.binding,b.binding)&&a.event==b.event&&a.previous_event==b.previous_event&&a.version==b.version&&
@@ -172,7 +176,12 @@ public:
                                                   requested.up!=committed_.position.up){pending_=false;return Code::rejected;}
         last_hand_=hand;have_hand_=true;
         if(detail::same(requested,committed_.position)){pending_=false;return Code::no_motion;}
-        if(pending_&&detail::same(binding,intent_.binding)&&detail::same(hand,intent_.hand)&&detail::same(requested,intent_.requested)){
+        if(pending_&&detail::same(binding,intent_.binding)&&detail::same_grip_position(hand,intent_.hand)&&
+           detail::same(requested,intent_.requested)&&now_ns>=intent_.hand.sample.observed_ns&&
+           now_ns-intent_.hand.sample.observed_ns<=100000000){
+            // Stationary newer samples need not starve a query waiting across
+            // Ticks. Retain the EXACT original intent/source/time; expiration
+            // replaces it with a new id, never refreshes the old timestamp.
             out=intent_;return Code::pending;
         }
         pending_=false;

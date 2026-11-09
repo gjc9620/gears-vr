@@ -93,7 +93,7 @@ static void clips_and_orthogonal_retention(){
     }
 }
 static void malformed_body_completions_preserve_debt(){
-    for(unsigned bad=0;bad<24;++bad){
+    for(unsigned bad=0;bad<25;++bad){
         Host f;m::Intent intent{};C(f.propose(intent)==m::Code::pending);const auto old=f.ledger.committed();
         C(f.finish(intent,f.selected));f.force=true;f.forced=f.published;auto& c=f.forced;
         switch(bad){
@@ -105,6 +105,7 @@ static void malformed_body_completions_preserve_debt(){
         case 16:++c.hand.grab;break;case 17:++c.hand.edge;break;case 18:c.hand.axis=gears_vr::CoverEdgeKind::left;break;
         case 19:c.completion=m::Completion::baseline;break;case 20:c.completion=m::Completion::clipped;c.position.up=.6;break;
         case 21:c.position.up=NAN;break;case 22:c.body_publication=old.body_publication;break;case 23:c.completion=static_cast<m::Completion>(99);break;
+        case 24:c.hand.limit_clipped=!c.hand.limit_clipped;break;
         }
         C(f.ledger.synchronize(f)==m::Code::recovery_required);
         C(m::detail::same(f.ledger.committed(),old)&&!f.ledger.pending()&&f.ledger.recovery_required());

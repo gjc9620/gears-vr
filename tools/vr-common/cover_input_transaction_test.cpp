@@ -14,7 +14,7 @@ struct Fixture {
     LeftHandInteractionOwner owner;CoverInputOwner kernel;ControllerEdgeCounter edges;
     ControllerInputFrame hands;CoverInputOwnerFrame frame;CoverInputOwnerDecoded decoded;
     CoverHeightKey curve[3]{{0,0},{.5,.3},{1,.7}};
-    Fixture(){
+    explicit Fixture(gears_cover_motion::Backend* motion_backend=nullptr):kernel(motion_backend){
         frame.lifecycle=1;frame.frame=1;frame.now_ns=1000000000;frame.units_per_metre=100;
         frame.cover.sequence=1;frame.cover.observed_ns=frame.now_ns;frame.cover.epochs={1,1,1,1,1,1,1};
         frame.cover.cover_valid=frame.cover.interaction_enabled=frame.owner_context_valid=true;

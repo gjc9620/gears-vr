@@ -81,6 +81,12 @@ struct CoverResult {
     bool request_left_hand=false,owns_left_hand=false;
     std::uint64_t request_id=0,edge_id=0;
 };
+struct CoverDragProposal {
+    CoverResult committed;
+    CoverOffset requested;
+    CoverEdgeKind axis=CoverEdgeKind::none;
+    bool valid=false,range_clipped=false;
+};
 
 class CoverInteraction {
 public:
@@ -111,6 +117,38 @@ public:
     // grant; a request alone never owns the hand. No external state is mutated.
     CoverResult update(CoverObservation const& cover,CoverHandSample const& hand,
                        CoverOwnership ownership,std::int64_t now_ns) {
+        return step(cover,hand,ownership,now_ns,nullptr);
+    }
+    // Deferred movement: advance the real input/grip stream, but keep offset
+    // at the last body-confirmed position. The caller gets an owned request,
+    // never a body commit. Waiting does not rebase at an unexecuted limit.
+    CoverDragProposal propose(CoverObservation const& cover,CoverHandSample const& hand,
+                              CoverOwnership ownership,std::int64_t now_ns){
+        CoverDragProposal out{};out.committed=step(cover,hand,ownership,now_ns,&out);
+        if(!out.valid)out.requested=out.committed.offset;
+        return out;
+    }
+
+private:
+    friend class CoverInputOwner;
+    // Only the input owner calls this after its authenticated ledger advances.
+    // This is private state synchronization, not an engine/write permission.
+    bool body_completed(CoverEpochs const& epochs,CoverOffset position,CoverHandSample const& hand,
+                        std::uint64_t grab,std::uint64_t edge,CoverEdgeKind axis,bool clipped){
+        if(!valid(epochs)||!std::isfinite(position.right)||!std::isfinite(position.up)||
+           (epochs_&&!same(epochs,*epochs_)))return false;
+        epochs_=epochs;have_cover_=true;offset_=position;offset_certified_=false;
+        if(clipped)rebase_grip(position,hand,grab,edge,axis);
+        return true;
+    }
+    bool rebase_grip(CoverOffset position,CoverHandSample const& hand,std::uint64_t grab,
+                     std::uint64_t edge,CoverEdgeKind axis){
+        if(!grabbing_||request_id_!=grab||edge_id_!=edge||edge_kind_!=axis||
+           position.right!=offset_.right||position.up!=offset_.up||!finite(hand.left_position_metres))return false;
+        grab_offset_=position;grab_hand_=hand.left_position_metres;return true;
+    }
+    CoverResult step(CoverObservation const& cover,CoverHandSample const& hand,
+                     CoverOwnership ownership,std::int64_t now_ns,CoverDragProposal* deferred){
         offset_certified_=false;
         if(now_ns<=0||now_ns<last_now_ns_)return stop(CoverStatus::stale);
         last_now_ns_=now_ns;
@@ -174,8 +212,14 @@ public:
                 if(edge_kind_==CoverEdgeKind::top)candidate.up-=motion;
                 else candidate.right-=motion;
                 if(!std::isfinite(candidate.right)||!std::isfinite(candidate.up))return stop(CoverStatus::invalid);
-                offset_=clamped(candidate,cover.range);
-                const bool clipped=offset_.right!=candidate.right||offset_.up!=candidate.up;
+                const auto limited=clamped(candidate,cover.range);
+                const bool clipped=limited.right!=candidate.right||limited.up!=candidate.up;
+                if(deferred){
+                    deferred->requested=limited;deferred->axis=edge_kind_;
+                    deferred->valid=true;deferred->range_clipped=clipped;
+                    return result(CoverStatus::okay);
+                }
+                offset_=limited;
                 if(clipped){
                     // Rebase at the accepted limit and this real hand sample.
                     // The next reverse motion must respond immediately,
