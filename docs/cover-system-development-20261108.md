@@ -1204,3 +1204,15 @@ visitor在加入命中后检查flags&0x200并可提前返回；在这种不完�
 严格MSVC编译0，BelowNormal实际执行73项0失败，保留原39项尺寸检查，新增组件／owner分组、owner缺失、IEEE754位模式3e99999a、重排会改变结果的溢出／归零、非有限输入和alias。源副本、实际编译依赖全SHA、二进制与原指令证据在analysis/cover-system-20261108/world-component-point-r62。原route核对共997机器字节、25关键指令锚点及6个构造表一致；此为静态／纯数学证据，没有原方法执行或新Native／PG构建。
 
 Coverr54 prepared6ec774ef／plan915215be及24冻结源／37当前驱动SHA+AST／3saved制品再次匹配，仍未收到Snub最终交窗，未stage／run。唯一已正式受理后继为Bol180947；更晚HB185428已直接指向该真实尾，Boom191450仅单次沿Bol转达，并明确保留HB及全部更早先序，Cover未另收第二slot。完整CV-01–24／AC-01–22、当前完整形状来源、实际扫掠／终点占用／Native移动恢复、同版hit／muzzle、严重吸附遮挡、逐点手型及实体头显仍未完成。
+
+## 2026年11月9日 r63聚合PointCheck对形状类型与缩放的覆盖限制
+
+沿r62进入原1d0a50聚合PointCheck并核完整hot／cold片段，另核其凸体leaf E20F0，共3294原机器字节，原code／data全SHA一致。选定函数自己的数组循环只使用Box count+0x18及Convex count+0x38。存在可直接证明的无调用路径：有效单位scale、Box／Convex均空时，从原ESI／R12D清零，两个count判断直接到1254的test／sete／mov EAX，返回1；即使Sphere或Sphyl数组非空也不读取和检查它们。此为该路径覆盖限制，不把它泛化为所有world查询，也不要求本来不参与该碰撞的组件参与。
+
+Box入口另外比较float32的abs(Sx-Sy)及abs(Sy-Sz)，均小于原阈值才进入Box循环。按原RIP读取0x1417070ac原bytes17b7d138，即float32约0.0001；不按伪代码字面猜地址。非均匀scale可绕过Box循环，再在Convex为空时直接返回1。因此只取得该路径的Native no-hit，仍不足以证明所有应参与的形状和缩放情形都受检查；不能把省略的类型当作无碰撞。当前Authored转换的严格均匀scale限制继续保持，不因发现原近似容差就扩大。
+
+保存4条静态路径推导：Sphere-only、Sphyl-only、Sphere+Sphyl-only以及非均匀Box-only，均为原无调用分支到miss1的证明，不是运行了原代码，也不是游戏／碰撞测试通过。16个关键机器指令锚点及完整字节由analysis/cover-system-20261108/aggregate-point-coverage-r63/verify_coverage_paths.py实际核对exit0，完整指令、原常量、静态分支及未知范围保存在native-point-coverage-evidence.json。原聚合其他分支及当前可参与组件仍须实际绑定／覆盖认证。
+
+需求CV-16补充明确有效空返回的覆盖条件：应参与碰撞的类型、缩放分支、骨骼或结果不能被静默省略，未知覆盖范围不能签安全／占用。没有新增需求编号、动作键或每次全矩阵门禁，仍保留全部CV-01–24／AC-01–22；这只是落实已有完整体积／路径要求。本轮未改产品writer或查询调用，也未把已定位的PointCheck直接接成可用Backend。
+
+Coverr54 prepared6ec774ef／plan915215be与24冻结源／37当前驱动SHA+AST／3saved制品再次一致，仍未收到Snub最终交窗、未stage／run。唯一正式后继仍Bol180947，其已直接确认后继HB185428，较晚Boom191450由HB实际核接，Cover未加第二位。本轮没有新Native／PG构建、部署或游戏／XR／头显运行。完整来源关闭、覆盖缺口处理、连续身体扫掠／终点占用／Native移动恢复、同版hit／muzzle、严重吸附遮挡、逐点手型与完整CV／AC保持未完成。
