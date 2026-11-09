@@ -1,0 +1,322 @@
+diff --git a/analysis/hammerburst-20261108/check-c0-latch-resting-fingers.py b/analysis/hammerburst-20261108/check-c0-latch-resting-fingers.py
+--- a/analysis/hammerburst-20261108/check-c0-latch-resting-fingers.py
++++ b/analysis/hammerburst-20261108/check-c0-latch-resting-fingers.py
+@@ -1,17 +1,25 @@
+ """One explicit relaxed three-finger recipe; unchanged wrist/index/thumb."""
+ from pathlib import Path
+-import json,struct,subprocess,hashlib
++import json,struct,subprocess,hashlib,sys
+ import numpy as np
+-R=Path.cwd();A=R/'analysis/hammerburst-20261108';T=A/'c0-mixed-skin-probe';D=T/'natural-rest1';D.mkdir(exist_ok=True)
++R=Path.cwd();A=R/'analysis/hammerburst-20261108';T=A/'c0-mixed-skin-probe';neutral='--neutral-middle' in sys.argv;name='natural-middle-ab' if neutral else 'natural-rest1';D=T/name;D.mkdir(exist_ok=True)
++saved_rest='--saved-rest' in sys.argv
++if saved_rest:name='saved-source-rest';D=T/name;D.mkdir(exist_ok=True)
+ p=A/'check-c0-latch-self-surface.py';s={};exec(compile(p.read_text().split('\ncases=[')[0],str(p),'exec'),s);ctx=s['ctx'];matrix=s['c']['matrix'];original=np.load(T/'fitted-range/key_0-geometry.npz')
+ p=A/'prepare-c0-hb-input.py';q=dict(np=np);exec(compile('def quaternion'+p.read_text().split('def quaternion',1)[1].split('\ndata=numbers',1)[0],str(p),'exec'),q)
+-data=np.frombuffer((T/'fitted-range/key_0-input.bin').read_bytes(),dtype='<f8').copy();before=data.copy();recipe=[[35,50,25],[40,55,30],[45,60,30]]
++data=np.frombuffer((T/'fitted-range/key_0-input.bin').read_bytes(),dtype='<f8').copy();before=data.copy();recipe=[[65,70,30],[70,72,32],[75,70,30]] if neutral else [[35,50,25],[40,55,30],[45,60,30]]
+ for digit,angles in enumerate(recipe):
+     for joint,degrees in enumerate(angles):
+-        bone=15+digit*3+joint;parent=ctx['ref'][bone]['parent'];bind_local=np.linalg.inv(ctx['bind'][parent])@ctx['bind'][bone];rotation=bind_local[:3,:3]@ctx['rot'](ctx['turn'](2,-degrees));data[20+4*(bone-12):24+4*(bone-12)]=q['quaternion'](rotation)
++        bone=15+digit*3+joint
++        if neutral and bone!=15:continue
++        parent=ctx['ref'][bone]['parent'];bind_local=np.linalg.inv(ctx['bind'][parent])@ctx['bind'][bone];rotation=bind_local[:3,:3]@ctx['rot'](ctx['turn'](2,-degrees));data[20+4*(bone-12):24+4*(bone-12)]=q['quaternion'](rotation)
++if saved_rest:
++    data=before.copy();atoms=np.frombuffer((T/'fixture/C0-local.bin').read_bytes(),dtype='<f4').reshape(115,8)
++    for bone in range(15,24):
++        quat=np.asarray(atoms[bone,:4],dtype=float);quat/=np.linalg.norm(quat);data[20+4*(bone-12):24+4*(bone-12)]=quat
+ assert np.array_equal(data[:32],before[:32]) and np.array_equal(data[68:],before[68:])
+ source=D/'input.bin';output=D/'output.bin';source.write_bytes(struct.pack('<80d',*data));exe=T/'build-vs/Release/HammerburstC0SkinProbe.exe';r=subprocess.run([str(exe),str(T/'fixture'),str(source),str(output),'--constructed-gun-pose',str(T/'front-side-hold-pose.bin')],capture_output=True,text=True);assert r.returncode==0,(r.stdout,r.stderr);status=json.loads(r.stdout);values=np.frombuffer(output.read_bytes(),dtype='<f8');gun=matrix(values[:7]);world=np.asarray([matrix(p) for p in values[28:].reshape(115,7)]);delta=np.linalg.inv(gun)@world@ctx['inverse'];hand=np.zeros_like(ctx['v'])
+ for k in range(4):hand+=np.einsum('nij,nj->ni',delta[ctx['indices'][:,k]],ctx['v'])*ctx['weights'][:,k,None]
+-hand=hand[:,:3];self_result=s['audit_skin']('natural-rest1',hand);(D/'self-crossings.json').write_text(json.dumps(self_result,indent=2));print(json.dumps(self_result['summary']),flush=True)
++hand=hand[:,:3];self_result=s['audit_skin'](name,hand);(D/'self-crossings.json').write_text(json.dumps(self_result,indent=2));print(json.dumps(self_result['summary']),flush=True)
+ armfaces=original['arm_faces'];weapon=original['weapon'];wf=original['weapon_faces'];audit=s['audit'];forward=audit['crossings'](hand,audit['edges'](armfaces),weapon[wf]);reverse=audit['crossings'](weapon,audit['edges'](wf),hand[armfaces]);sha=lambda p:hashlib.sha256(p.read_bytes()).hexdigest();np.savez(D/'geometry.npz',hand=hand,arm_faces=armfaces,weapon=weapon,weapon_faces=wf,weapon_bone=original['weapon_bone'])
+-report=dict(geometry_only=True,recipe_degrees=recipe,original_reference_local_MCP_used=True,removed_extra_middle_MCP30=True,wrist_index_thumb_unchanged=True,compose=status,self_crossings=self_result['summary'],gun_crossings=dict(forward=forward,reverse=reverse,total=forward+reverse),input_sha256=sha(source),output_sha256=sha(output),skin_fit_accepted=False,published=False,game_started=False);(A/'latch-c0-resting-fingers-check.json').write_text(json.dumps(report,indent=2));print(json.dumps(report,indent=2))
++report=dict(geometry_only=True,recipe_degrees=None if saved_rest else recipe,saved_source_body_fingers=saved_rest,only_middle_MCP_changed=neutral,original_reference_local_MCP_used=not saved_rest,removed_extra_middle_MCP30=not saved_rest,wrist_index_thumb_unchanged=True,compose=status,self_crossings=self_result['summary'],gun_crossings=dict(forward=forward,reverse=reverse,total=forward+reverse),input_sha256=sha(source),output_sha256=sha(output),skin_fit_accepted=False,published=False,game_started=False);(A/('latch-c0-saved-source-rest-check.json' if saved_rest else 'latch-c0-neutral-middle-check.json' if neutral else 'latch-c0-resting-fingers-check.json')).write_text(json.dumps(report,indent=2));print(json.dumps(report,indent=2))
+diff --git a/analysis/hammerburst-20261108/fit-latch-finger-columns.py b/analysis/hammerburst-20261108/fit-latch-finger-columns.py
+new file mode 100644
+--- /dev/null
++++ b/analysis/hammerburst-20261108/fit-latch-finger-columns.py
+@@ -0,0 +1,35 @@
++"""Bounded MCP plane alignment, then actual existing-C0 and full-skin checks."""
++from pathlib import Path
++import json,struct,subprocess,hashlib,time
++import numpy as np
++R=Path.cwd();A=R/'analysis/hammerburst-20261108';T=A/'c0-mixed-skin-probe';D=T/'finger-columns1';D.mkdir(exist_ok=True)
++p=A/'check-c0-latch-self-surface.py';s={};exec(compile(p.read_text().split('\ncases=[')[0],str(p),'exec'),s);ctx=s['ctx'];matrix=s['c']['matrix'];audit=s['audit'];geometry=np.load(T/'fitted-range/key_0-geometry.npz');base=np.frombuffer((T/'fitted-range/key_0-input.bin').read_bytes(),dtype='<f8').copy();values=np.frombuffer((T/'fitted-range/key_0-output.bin').read_bytes(),dtype='<f8');world=np.asarray([matrix(p) for p in values[28:].reshape(115,7)]);wrist=matrix(values[21:28]);wrist_inverse=np.linalg.inv(wrist);parents=[r['parent'] for r in ctx['ref']];local={i:np.linalg.inv(world[parents[i]])@world[i] for i in range(15,24)};bind_local={i:(np.linalg.inv(ctx['bind'][parents[i]])@ctx['bind'][i])[:3,:3] for i in [15,18,21]};ids=np.where(np.sum(ctx['weights']*np.isin(ctx['indices'],np.arange(15,24)),axis=1)>.999)[0];reference=(ctx['v']@ctx['wrist_inverse'].T)[:,:3]
++def skin(pose,chosen):
++    delta=wrist_inverse@pose@ctx['inverse'];out=np.zeros((len(chosen),4))
++    for k in range(4):out+=np.einsum('nij,nj->ni',delta[ctx['indices'][chosen,k]],ctx['v'][chosen])*ctx['weights'][chosen,k,None]
++    return out[:,:3]
++def evaluate(parameters):
++    pose=world.copy();locals={i:m.copy() for i,m in local.items()}
++    for digit,i in enumerate([15,18,21]):
++        roll,splay=parameters[2*digit:2*digit+2];change=ctx['rot'](ctx['turn'](0,roll))@ctx['rot'](ctx['turn'](1,splay));b=bind_local[i];locals[i][:3,:3]=b@change@b.T@local[i][:3,:3]
++    for i in range(15,24):pose[i]=pose[parents[i]]@locals[i]
++    return skin(pose,ids),pose,locals
++initial=np.zeros(6);baseline=evaluate(initial)[0]
++def residual(parameters):
++    vertices,_,_=evaluate(parameters)
++    return np.r_[(vertices[:,2]-reference[ids,2]),((vertices[:,:2]-baseline[:,:2])*.05).ravel(),parameters*.005]
++best=initial.copy();r=residual(best);cost=float(r@r);damping=.001;history=[]
++for iteration in range(40):
++    J=np.zeros((len(r),6))
++    for i in range(6):
++        trial=best.copy();step=.02 if best[i]<20 else -.02;trial[i]+=step;J[:,i]=(residual(trial)-r)/step
++    delta=-np.linalg.solve(J.T@J+np.eye(6)*damping,J.T@r);delta=np.clip(delta,-2,2);trial=np.clip(best+delta,-20,20);rr=residual(trial);new=float(rr@rr);accepted=new<cost;history.append(dict(iteration=iteration,cost=cost,trial_cost=new,accepted=accepted))
++    if accepted:best=trial;r=rr;cost=new;damping=max(1e-8,damping*.5)
++    else:damping=min(1e6,damping*5)
++    if np.max(np.abs(delta))<1e-7:break
++predicted,pose,locals=evaluate(best);p=A/'prepare-c0-hb-input.py';q=dict(np=np);exec(compile('def quaternion'+p.read_text().split('def quaternion',1)[1].split('\ndata=numbers',1)[0],str(p),'exec'),q);data=base.copy()
++for i in [15,18,21]:data[20+4*(i-12):24+4*(i-12)]=q['quaternion'](locals[i][:3,:3])
++source=D/'input.bin';output=D/'output.bin';source.write_bytes(struct.pack('<80d',*data));exe=T/'build-vs/Release/HammerburstC0SkinProbe.exe';run=subprocess.run([str(exe),str(T/'fixture'),str(source),str(output),'--constructed-gun-pose',str(T/'front-side-hold-pose.bin')],capture_output=True,text=True);assert run.returncode==0,(run.stdout,run.stderr);status=json.loads(run.stdout);d=np.frombuffer(output.read_bytes(),dtype='<f8');gun=matrix(d[:7]);actual=np.asarray([matrix(p) for p in d[28:].reshape(115,7)]);actual_wrist=skin(actual,ids);parity=float(np.linalg.norm(actual_wrist-predicted,axis=1).max());assert parity<.002,parity
++delta=np.linalg.inv(gun)@actual@ctx['inverse'];hand=np.zeros_like(ctx['v'])
++for k in range(4):hand+=np.einsum('nij,nj->ni',delta[ctx['indices'][:,k]],ctx['v'])*ctx['weights'][:,k,None]
++hand=hand[:,:3];self_result=s['audit_skin']('finger-columns1',hand);(D/'self-crossings.json').write_text(json.dumps(self_result,indent=2));print(json.dumps(self_result['summary']),flush=True);weapon=geometry['weapon'];wf=geometry['weapon_faces'];arm=geometry['arm_faces'];forward=audit['crossings'](hand,audit['edges'](arm),weapon[wf]);reverse=audit['crossings'](weapon,audit['edges'](wf),hand[arm]);np.savez(D/'geometry.npz',hand=hand,arm_faces=arm,weapon=weapon,weapon_faces=wf,weapon_bone=geometry['weapon_bone']);sha=lambda p:hashlib.sha256(p.read_bytes()).hexdigest();report=dict(geometry_only=True,MCP_roll_splay_degrees=best.reshape(3,2).tolist(),curl_index_thumb_wrist_unchanged=True,reference_Z_column_proxy_cost=cost,iterations=len(history),history=history,existing_C0_fk_parity_raw=parity,compose=status,self_crossings=self_result['summary'],gun_crossings=dict(forward=forward,reverse=reverse,total=forward+reverse),input_sha256=sha(source),output_sha256=sha(output),published=False,skin_fit_accepted=False,game_started=False);(A/'latch-c0-finger-columns1.json').write_text(json.dumps(report,indent=2));print(json.dumps({k:v for k,v in report.items() if k!='history'},indent=2))
+diff --git a/analysis/hammerburst-20261108/fit-latch-contact-surfaces.py b/analysis/hammerburst-20261108/fit-latch-contact-surfaces.py
+new file mode 100644
+--- /dev/null
++++ b/analysis/hammerburst-20261108/fit-latch-contact-surfaces.py
+@@ -0,0 +1,75 @@
++"""Bounded active surface constraints for the three resting fingers only."""
++from pathlib import Path
++from collections import defaultdict
++import numpy as np,json,struct,subprocess,hashlib
++R=Path.cwd();A=R/'analysis/hammerburst-20261108';T=A/'c0-mixed-skin-probe';D=T/'finger-surfaces1';D.mkdir(exist_ok=True)
++p=A/'fit-latch-finger-columns.py';seed={};exec(compile(p.read_text().split('\ninitial=np.zeros(6)')[0],str(p),'exec'),seed)
++ctx=seed['ctx'];s=seed['s'];audit=s['audit'];matrix=seed['matrix'];world=seed['world'];parents=seed['parents'];local=seed['local'];base=seed['base'];geometry=seed['geometry'];gun=matrix(seed['values'][:7]);inverse_gun=np.linalg.inv(gun);weapon=geometry['weapon'];wf=geometry['weapon_faces'];bodyfaces=s['faces'];armfaces=geometry['arm_faces'];cross_pairs=s['helper']['pairs'];finger_names={'index','middle','ring','little','thumb'}
++moving=np.sum(ctx['weights']*np.isin(ctx['indices'],np.arange(15,24)),axis=1)>0;affected_faces=bodyfaces[np.any(moving[bodyfaces],axis=1)];he=audit['edges'](affected_faces);ge=audit['edges'](wf);gun_incident=defaultdict(list)
++for i,f in enumerate(wf):
++    for a,b in [(f[0],f[1]),(f[1],f[2]),(f[2],f[0])]:gun_incident[tuple(sorted((int(a),int(b))))].append(i)
++def winding_signs(vertices,faces,normals):
++    t=vertices[faces];n=np.cross(t[:,1]-t[:,0],t[:,2]-t[:,0]);packed=normals[faces].mean(1);return np.where(np.einsum('ij,ij->i',n,packed)<0,-1.,1.)
++body_normals=np.asarray([struct.unpack_from('<3B',ctx['raw'],ctx['start']+i*64+16) for i in range(len(ctx['v']))])/127.5-1;body_sign=winding_signs(ctx['v'][:,:3],bodyfaces,body_normals)
++p=A/'check-latch-reference-idle.py';original={};exec(compile(p.read_text().split('\nreport=dict(')[0],str(p),'exec'),original);raw=original['raw'];offset=original['asset']['lod0_skin']['vertex_offset_in_export'];weapon_normals=np.asarray([struct.unpack_from('<3B',raw,offset+i*64+16) for i in range(len(weapon))])/127.5-1;gun_sign=winding_signs(weapon,wf,weapon_normals)
++bind_local={i:(np.linalg.inv(ctx['bind'][parents[i]])@ctx['bind'][i])[:3,:3] for i in range(15,24)};original_curl=np.asarray([[95,70,30],[70,72,32],[75,70,30]])
++def evaluate(parameters):
++    pose=world.copy();locals={i:m.copy() for i,m in local.items()}
++    for digit in range(3):
++        roll,splay,flex,pip,dip=parameters[digit*5:digit*5+5]
++        for joint,delta in enumerate([flex,pip,dip]):
++            i=15+digit*3+joint;turn=ctx['rot'](ctx['turn'](2,-original_curl[digit,joint]-delta))
++            if joint==0:turn=ctx['rot'](ctx['turn'](0,roll))@ctx['rot'](ctx['turn'](1,splay))@turn
++            locals[i][:3,:3]=bind_local[i]@turn
++    for i in range(15,24):pose[i]=pose[parents[i]]@locals[i]
++    delta=inverse_gun@pose@ctx['inverse'];hand=np.zeros_like(ctx['v'])
++    for k in range(4):hand+=np.einsum('nij,nj->ni',delta[ctx['indices'][:,k]],ctx['v'])*ctx['weights'][:,k,None]
++    return hand[:,:3],pose,locals
++def flat(triangle,sign):
++    normal=np.cross(triangle[1]-triangle[0],triangle[2]-triangle[0]);length=np.linalg.norm(normal)
++    return normal*(sign/max(length,1e-20))
++def witnesses(hand):
++    result=s['audit_skin']('finger-surfaces1',hand);active=[];cross_fingers=0
++    for pair in result['pairs']:
++        a,b=pair['triangles'];ra,rb=s['regions'][a][0],s['regions'][b][0]
++        if ra==rb or ra not in finger_names or rb not in finger_names:continue
++        if not (np.any(moving[bodyfaces[a]]) or np.any(moving[bodyfaces[b]])):continue
++        cross_fingers+=1
++        for subject,face in [(a,b),(b,a)]:
++            tri=hand[bodyfaces[face]];normal=flat(tri,body_sign[face]);values=(hand[bodyfaces[subject]]-tri[0])@normal;vertex=int(bodyfaces[subject][values.argmin()])
++            if values.min()<.02:active.append((vertex,False,face))
++    forward=cross_pairs(hand,he,weapon[wf]);reverse=cross_pairs(weapon,ge,hand[affected_faces])
++    for edge,face,point in forward:
++        tri=weapon[wf[face]];normal=flat(tri,gun_sign[face]);vertices=he[edge];dist=(hand[vertices]-tri[0])@normal;vertex=int(vertices[dist.argmin()])
++        if dist.min()<.02:active.append((vertex,True,face))
++    for edge,face,point in reverse:
++        vertices=affected_faces[face]
++        for gun_face in gun_incident[tuple(int(x) for x in ge[edge])]:
++            tri=weapon[wf[gun_face]];normal=flat(tri,gun_sign[gun_face]);dist=(hand[vertices]-tri[0])@normal;vertex=int(vertices[dist.argmin()])
++            if dist.min()<.02:active.append((vertex,True,gun_face))
++    active=list(dict.fromkeys(active));return result,active,cross_fingers,len(forward)+len(reverse)
++def residual(parameters,active):
++    hand,_,_=evaluate(parameters);out=[]
++    for vertex,is_gun,face in active:
++        tri=weapon[wf[face]] if is_gun else hand[bodyfaces[face]];normal=flat(tri,gun_sign[face] if is_gun else body_sign[face]);distance=float((hand[vertex]-tri[0])@normal);out.append(max(0.,.02-distance)*(8 if is_gun else 4))
++    return np.r_[out,parameters*.01]
++lower=[];upper=[]
++for m,p,d in original_curl:lower +=[-20,-20,-float(m),-float(p),-float(d)];upper +=[20,20,95-float(m),110-float(p),90-float(d)]
++lower=np.asarray(lower);upper=np.asarray(upper);parameters=np.zeros(15);history=[];best=None
++for outer in range(12):
++    hand,_,_=evaluate(parameters);self_result,active,cross_fingers,gun_hits=witnesses(hand);score=gun_hits*5+cross_fingers;row=dict(iteration=outer,cross_finger_pairs=cross_fingers,gun_edge_triangle_hits=gun_hits,self_pairs=self_result['summary']['nonadjacent_triangle_pairs'],active_constraints=len(active),score=score);history.append(row);print(json.dumps(row),flush=True)
++    if best is None or score<best[0]:best=(score,parameters.copy(),row)
++    if cross_fingers==0 and gun_hits==0:break
++    r=residual(parameters,active);cost=float(r@r);damping=.01
++    for inner in range(6):
++        J=np.zeros((len(r),15))
++        for i in range(15):
++            trial=parameters.copy();step=.02 if trial[i]+.02<=upper[i] else -.02;trial[i]+=step;J[:,i]=(residual(trial,active)-r)/step
++        change=-np.linalg.solve(J.T@J+np.eye(15)*damping,J.T@r);change=np.clip(change,-2,2);trial=np.clip(parameters+change,lower,upper);rr=residual(trial,active);new=float(rr@rr)
++        if new<cost:parameters=trial;r=rr;cost=new;damping=max(1e-7,damping*.5)
++        else:damping=min(1e6,damping*5)
++parameters=best[1];predicted,pose,locals=evaluate(parameters);p=A/'prepare-c0-hb-input.py';q=dict(np=np);exec(compile('def quaternion'+p.read_text().split('def quaternion',1)[1].split('\ndata=numbers',1)[0],str(p),'exec'),q);data=base.copy()
++for i in range(15,24):data[20+4*(i-12):24+4*(i-12)]=q['quaternion'](locals[i][:3,:3])
++source=D/'input.bin';output=D/'output.bin';source.write_bytes(struct.pack('<80d',*data));exe=T/'build-vs/Release/HammerburstC0SkinProbe.exe';run=subprocess.run([str(exe),str(T/'fixture'),str(source),str(output),'--constructed-gun-pose',str(T/'front-side-hold-pose.bin')],capture_output=True,text=True);assert run.returncode==0,(run.stdout,run.stderr);status=json.loads(run.stdout);values=np.frombuffer(output.read_bytes(),dtype='<f8');actual=np.asarray([matrix(p) for p in values[28:].reshape(115,7)]);delta=inverse_gun@actual@ctx['inverse'];actual_skin=np.zeros_like(ctx['v'])
++for k in range(4):actual_skin+=np.einsum('nij,nj->ni',delta[ctx['indices'][:,k]],ctx['v'])*ctx['weights'][:,k,None]
++actual_skin=actual_skin[:,:3];parity=float(np.linalg.norm(actual_skin[np.unique(bodyfaces)]-predicted[np.unique(bodyfaces)],axis=1).max());assert parity<.002,parity;self_result,active,cross_fingers,gun_hits=witnesses(actual_skin);(D/'self-crossings.json').write_text(json.dumps(self_result,indent=2));np.savez(D/'geometry.npz',hand=actual_skin,arm_faces=armfaces,weapon=weapon,weapon_faces=wf,weapon_bone=geometry['weapon_bone']);sha=lambda p:hashlib.sha256(p.read_bytes()).hexdigest();report=dict(geometry_only=True,bounded_outer_iterations=12,parameters=parameters.reshape(3,5).tolist(),history=history,selected_observed_score=best[2],existing_C0_fk_parity_raw=parity,final_cross_finger_pairs=cross_fingers,final_gun_edge_triangle_hits=gun_hits,self_crossings=self_result['summary'],compose=status,input_sha256=sha(source),output_sha256=sha(output),wrist_index_thumb_unchanged=True,published=False,skin_fit_accepted=False,game_started=False);(A/'latch-c0-finger-surfaces1.json').write_text(json.dumps(report,indent=2));print(json.dumps({k:v for k,v in report.items() if k!='history'},indent=2))
+diff --git a/analysis/hammerburst-20261108/fit-latch-contact-surfaces2.py b/analysis/hammerburst-20261108/fit-latch-contact-surfaces2.py
+new file mode 100644
+--- /dev/null
++++ b/analysis/hammerburst-20261108/fit-latch-contact-surfaces2.py
+@@ -0,0 +1,80 @@
++"""Bounded active surface constraints for the three resting fingers only."""
++from pathlib import Path
++from collections import defaultdict
++import numpy as np,json,struct,subprocess,hashlib
++R=Path.cwd();A=R/'analysis/hammerburst-20261108';T=A/'c0-mixed-skin-probe';D=T/'finger-surfaces2';D.mkdir(exist_ok=True)
++p=A/'fit-latch-finger-columns.py';seed={};exec(compile(p.read_text().split('\ninitial=np.zeros(6)')[0],str(p),'exec'),seed)
++ctx=seed['ctx'];s=seed['s'];audit=s['audit'];matrix=seed['matrix'];world=seed['world'];parents=seed['parents'];local=seed['local'];base=seed['base'];geometry=seed['geometry'];gun=matrix(seed['values'][:7]);inverse_gun=np.linalg.inv(gun);weapon=geometry['weapon'];wf=geometry['weapon_faces'];bodyfaces=s['faces'];armfaces=geometry['arm_faces'];cross_pairs=s['helper']['pairs'];finger_names={'index','middle','ring','little','thumb'}
++moving=np.sum(ctx['weights']*np.isin(ctx['indices'],np.arange(15,24)),axis=1)>0;affected_faces=bodyfaces[np.any(moving[bodyfaces],axis=1)];he=audit['edges'](affected_faces);ge=audit['edges'](wf);gun_incident=defaultdict(list)
++for i,f in enumerate(wf):
++    for a,b in [(f[0],f[1]),(f[1],f[2]),(f[2],f[0])]:gun_incident[tuple(sorted((int(a),int(b))))].append(i)
++def winding_signs(vertices,faces,normals):
++    t=vertices[faces];n=np.cross(t[:,1]-t[:,0],t[:,2]-t[:,0]);packed=normals[faces].mean(1);return np.where(np.einsum('ij,ij->i',n,packed)<0,-1.,1.)
++body_normals=np.asarray([struct.unpack_from('<3B',ctx['raw'],ctx['start']+i*64+16) for i in range(len(ctx['v']))])/127.5-1;body_sign=winding_signs(ctx['v'][:,:3],bodyfaces,body_normals)
++p=A/'check-latch-reference-idle.py';original={};exec(compile(p.read_text().split('\nreport=dict(')[0],str(p),'exec'),original);raw=original['raw'];offset=original['asset']['lod0_skin']['vertex_offset_in_export'];weapon_normals=np.asarray([struct.unpack_from('<3B',raw,offset+i*64+16) for i in range(len(weapon))])/127.5-1;gun_sign=winding_signs(weapon,wf,weapon_normals)
++bind_local={i:(np.linalg.inv(ctx['bind'][parents[i]])@ctx['bind'][i])[:3,:3] for i in range(15,24)};original_curl=np.asarray([[95,70,30],[70,72,32],[75,70,30]])
++def evaluate(parameters):
++    pose=world.copy();locals={i:m.copy() for i,m in local.items()}
++    for digit in range(3):
++        roll,splay,flex,pip,dip=parameters[digit*5:digit*5+5]
++        for joint,delta in enumerate([flex,pip,dip]):
++            i=15+digit*3+joint;turn=ctx['rot'](ctx['turn'](2,-original_curl[digit,joint]-delta))
++            if joint==0:turn=ctx['rot'](ctx['turn'](0,roll))@ctx['rot'](ctx['turn'](1,splay))@turn
++            locals[i][:3,:3]=bind_local[i]@turn
++    for i in range(15,24):pose[i]=pose[parents[i]]@locals[i]
++    delta=inverse_gun@pose@ctx['inverse'];hand=np.zeros_like(ctx['v'])
++    for k in range(4):hand+=np.einsum('nij,nj->ni',delta[ctx['indices'][:,k]],ctx['v'])*ctx['weights'][:,k,None]
++    return hand[:,:3],pose,locals
++def flat(triangle,sign):
++    normal=np.cross(triangle[1]-triangle[0],triangle[2]-triangle[0]);length=np.linalg.norm(normal)
++    return normal*(sign/max(length,1e-20))
++def witnesses(hand):
++    result=s['audit_skin']('finger-surfaces2',hand);active=[];cross_fingers=0
++    for pair in result['pairs']:
++        a,b=pair['triangles'];ra,rb=s['regions'][a][0],s['regions'][b][0]
++        if ra==rb or ra not in finger_names or rb not in finger_names:continue
++        if not (np.any(moving[bodyfaces[a]]) or np.any(moving[bodyfaces[b]])):continue
++        cross_fingers+=1
++        for subject,face in [(a,b),(b,a)]:
++            tri=hand[bodyfaces[face]];normal=flat(tri,body_sign[face]);values=(hand[bodyfaces[subject]]-tri[0])@normal;vertex=int(bodyfaces[subject][values.argmin()])
++            if values.min()<.02:active.append((vertex,False,face))
++    forward=cross_pairs(hand,he,weapon[wf]);reverse=cross_pairs(weapon,ge,hand[affected_faces])
++    for edge,face,point in forward:
++        tri=weapon[wf[face]];normal=flat(tri,gun_sign[face]);vertices=he[edge];dist=(hand[vertices]-tri[0])@normal;vertex=int(vertices[dist.argmin()])
++        if dist.min()<.02:active.append((vertex,True,face))
++    for edge,face,point in reverse:
++        vertices=affected_faces[face]
++        for gun_face in gun_incident[tuple(int(x) for x in ge[edge])]:
++            tri=weapon[wf[gun_face]];normal=flat(tri,gun_sign[gun_face]);dist=(hand[vertices]-tri[0])@normal;vertex=int(vertices[dist.argmin()])
++            if dist.min()<.02:active.append((vertex,True,gun_face))
++    active=list(dict.fromkeys(active));return result,active,cross_fingers,len(forward)+len(reverse)
++def residual(parameters,active):
++    hand,_,_=evaluate(parameters);out=[]
++    for vertex,is_gun,face in active:
++        tri=weapon[wf[face]] if is_gun else hand[bodyfaces[face]];normal=flat(tri,gun_sign[face] if is_gun else body_sign[face]);distance=float((hand[vertex]-tri[0])@normal);out.append(max(0.,.02-distance)*(8 if is_gun else 4))
++    return np.r_[out,parameters*.01]
++lower=[];upper=[]
++for m,p,d in original_curl:lower +=[-20,-20,-float(m),-float(p),-float(d)];upper +=[20,20,95-float(m),110-float(p),90-float(d)]
++lower=np.asarray(lower);upper=np.asarray(upper);parameters=np.asarray(json.loads((A/'latch-c0-finger-surfaces1.json').read_text())['parameters']).ravel();history=[];best=None;pool=set()
++for outer in range(12):
++    hand,_,_=evaluate(parameters);self_result,active,cross_fingers,gun_hits=witnesses(hand)
++    pool.update(active);retained=[]
++    for vertex,is_gun,face in sorted(pool):
++        tri=weapon[wf[face]] if is_gun else hand[bodyfaces[face]];center=tri.mean(0);radius=np.linalg.norm(tri-center,axis=1).max()
++        if np.linalg.norm(hand[vertex]-center)<=radius+1.:retained.append((vertex,is_gun,face))
++    active=retained;score=gun_hits*5+cross_fingers;row=dict(iteration=outer,cross_finger_pairs=cross_fingers,gun_edge_triangle_hits=gun_hits,self_pairs=self_result['summary']['nonadjacent_triangle_pairs'],active_constraints=len(active),pool_constraints=len(pool),parameters=parameters.tolist(),score=score);history.append(row);print(json.dumps(row),flush=True)
++    if best is None or score<best[0]:best=(score,parameters.copy(),row)
++    if cross_fingers==0 and gun_hits==0:break
++    r=residual(parameters,active);cost=float(r@r);damping=.01
++    for inner in range(6):
++        J=np.zeros((len(r),15))
++        for i in range(15):
++            trial=parameters.copy();step=.02 if trial[i]+.02<=upper[i] else -.02;trial[i]+=step;J[:,i]=(residual(trial,active)-r)/step
++        change=-np.linalg.solve(J.T@J+np.eye(15)*damping,J.T@r);change=np.clip(change,-2,2);trial=np.clip(parameters+change,lower,upper);rr=residual(trial,active);new=float(rr@rr)
++        if new<cost:parameters=trial;r=rr;cost=new;damping=max(1e-7,damping*.5)
++        else:damping=min(1e6,damping*5)
++parameters=best[1];predicted,pose,locals=evaluate(parameters);p=A/'prepare-c0-hb-input.py';q=dict(np=np);exec(compile('def quaternion'+p.read_text().split('def quaternion',1)[1].split('\ndata=numbers',1)[0],str(p),'exec'),q);data=base.copy()
++for i in range(15,24):data[20+4*(i-12):24+4*(i-12)]=q['quaternion'](locals[i][:3,:3])
++source=D/'input.bin';output=D/'output.bin';source.write_bytes(struct.pack('<80d',*data));exe=T/'build-vs/Release/HammerburstC0SkinProbe.exe';run=subprocess.run([str(exe),str(T/'fixture'),str(source),str(output),'--constructed-gun-pose',str(T/'front-side-hold-pose.bin')],capture_output=True,text=True);assert run.returncode==0,(run.stdout,run.stderr);status=json.loads(run.stdout);values=np.frombuffer(output.read_bytes(),dtype='<f8');actual=np.asarray([matrix(p) for p in values[28:].reshape(115,7)]);delta=inverse_gun@actual@ctx['inverse'];actual_skin=np.zeros_like(ctx['v'])
++for k in range(4):actual_skin+=np.einsum('nij,nj->ni',delta[ctx['indices'][:,k]],ctx['v'])*ctx['weights'][:,k,None]
++actual_skin=actual_skin[:,:3];parity=float(np.linalg.norm(actual_skin[np.unique(bodyfaces)]-predicted[np.unique(bodyfaces)],axis=1).max());assert parity<.002,parity;self_result,active,cross_fingers,gun_hits=witnesses(actual_skin);(D/'self-crossings.json').write_text(json.dumps(self_result,indent=2));np.savez(D/'geometry.npz',hand=actual_skin,arm_faces=armfaces,weapon=weapon,weapon_faces=wf,weapon_bone=geometry['weapon_bone']);sha=lambda p:hashlib.sha256(p.read_bytes()).hexdigest();report=dict(geometry_only=True,bounded_outer_iterations=12,parameters=parameters.reshape(3,5).tolist(),history=history,selected_observed_score=best[2],existing_C0_fk_parity_raw=parity,final_cross_finger_pairs=cross_fingers,final_gun_edge_triangle_hits=gun_hits,self_crossings=self_result['summary'],compose=status,input_sha256=sha(source),output_sha256=sha(output),wrist_index_thumb_unchanged=True,published=False,skin_fit_accepted=False,game_started=False);(A/'latch-c0-finger-surfaces2.json').write_text(json.dumps(report,indent=2));print(json.dumps({k:v for k,v in report.items() if k!='history'},indent=2))
+diff --git a/analysis/hammerburst-20261108/fit-latch-saved-source-mcp.py b/analysis/hammerburst-20261108/fit-latch-saved-source-mcp.py
+new file mode 100644
+--- /dev/null
++++ b/analysis/hammerburst-20261108/fit-latch-saved-source-mcp.py
+@@ -0,0 +1,77 @@
++"""Bounded active surface constraints for the three resting fingers only."""
++from pathlib import Path
++from collections import defaultdict
++import numpy as np,json,struct,subprocess,hashlib
++R=Path.cwd();A=R/'analysis/hammerburst-20261108';T=A/'c0-mixed-skin-probe';D=T/'finger-source-mcp';D.mkdir(exist_ok=True)
++p=A/'fit-latch-finger-columns.py';seed={};exec(compile(p.read_text().split('\ninitial=np.zeros(6)')[0],str(p),'exec'),seed)
++ctx=seed['ctx'];s=seed['s'];audit=s['audit'];matrix=seed['matrix'];world=seed['world'];parents=seed['parents'];local=seed['local'];base=seed['base'];geometry=seed['geometry'];gun=matrix(seed['values'][:7]);inverse_gun=np.linalg.inv(gun);weapon=geometry['weapon'];wf=geometry['weapon_faces'];bodyfaces=s['faces'];armfaces=geometry['arm_faces'];cross_pairs=s['helper']['pairs'];finger_names={'index','middle','ring','little','thumb'}
++moving=np.sum(ctx['weights']*np.isin(ctx['indices'],np.arange(15,24)),axis=1)>0;affected_faces=bodyfaces[np.any(moving[bodyfaces],axis=1)];he=audit['edges'](affected_faces);ge=audit['edges'](wf);gun_incident=defaultdict(list)
++for i,f in enumerate(wf):
++    for a,b in [(f[0],f[1]),(f[1],f[2]),(f[2],f[0])]:gun_incident[tuple(sorted((int(a),int(b))))].append(i)
++def winding_signs(vertices,faces,normals):
++    t=vertices[faces];n=np.cross(t[:,1]-t[:,0],t[:,2]-t[:,0]);packed=normals[faces].mean(1);return np.where(np.einsum('ij,ij->i',n,packed)<0,-1.,1.)
++body_normals=np.asarray([struct.unpack_from('<3B',ctx['raw'],ctx['start']+i*64+16) for i in range(len(ctx['v']))])/127.5-1;body_sign=winding_signs(ctx['v'][:,:3],bodyfaces,body_normals)
++p=A/'check-latch-reference-idle.py';original={};exec(compile(p.read_text().split('\nreport=dict(')[0],str(p),'exec'),original);raw=original['raw'];offset=original['asset']['lod0_skin']['vertex_offset_in_export'];weapon_normals=np.asarray([struct.unpack_from('<3B',raw,offset+i*64+16) for i in range(len(weapon))])/127.5-1;gun_sign=winding_signs(weapon,wf,weapon_normals)
++bind_local={i:(np.linalg.inv(ctx['bind'][parents[i]])@ctx['bind'][i])[:3,:3] for i in range(15,24)};original_curl=np.asarray([[95,70,30],[70,72,32],[75,70,30]])
++# Reuse actual saved-source finger rotations, without redesigning their curl.
++base=np.frombuffer((T/'saved-source-rest/input.bin').read_bytes(),dtype='<f8').copy();saved_values=np.frombuffer((T/'saved-source-rest/output.bin').read_bytes(),dtype='<f8');world=np.asarray([matrix(p) for p in saved_values[28:].reshape(115,7)]);local={i:np.linalg.inv(world[parents[i]])@world[i] for i in range(15,24)}
++def evaluate(parameters):
++    pose=world.copy();locals={i:m.copy() for i,m in local.items()}
++    for digit,i in enumerate([15,18,21]):
++        roll,splay=parameters[digit*5:digit*5+2];change=ctx['rot'](ctx['turn'](0,roll))@ctx['rot'](ctx['turn'](1,splay));b=bind_local[i];locals[i][:3,:3]=b@change@b.T@local[i][:3,:3]
++    for i in range(15,24):pose[i]=pose[parents[i]]@locals[i]
++    delta=inverse_gun@pose@ctx['inverse'];hand=np.zeros_like(ctx['v'])
++    for k in range(4):hand+=np.einsum('nij,nj->ni',delta[ctx['indices'][:,k]],ctx['v'])*ctx['weights'][:,k,None]
++    return hand[:,:3],pose,locals
++
++def flat(triangle,sign):
++    normal=np.cross(triangle[1]-triangle[0],triangle[2]-triangle[0]);length=np.linalg.norm(normal)
++    return normal*(sign/max(length,1e-20))
++def witnesses(hand):
++    result=s['audit_skin']('finger-source-mcp',hand);active=[];cross_fingers=0
++    for pair in result['pairs']:
++        a,b=pair['triangles'];ra,rb=s['regions'][a][0],s['regions'][b][0]
++        if ra==rb or ra not in finger_names or rb not in finger_names:continue
++        if not (np.any(moving[bodyfaces[a]]) or np.any(moving[bodyfaces[b]])):continue
++        cross_fingers+=1
++        for subject,face in [(a,b),(b,a)]:
++            tri=hand[bodyfaces[face]];normal=flat(tri,body_sign[face]);values=(hand[bodyfaces[subject]]-tri[0])@normal;vertex=int(bodyfaces[subject][values.argmin()])
++            if values.min()<.02:active.append((vertex,False,face))
++    forward=cross_pairs(hand,he,weapon[wf]);reverse=cross_pairs(weapon,ge,hand[affected_faces])
++    for edge,face,point in forward:
++        tri=weapon[wf[face]];normal=flat(tri,gun_sign[face]);vertices=he[edge];dist=(hand[vertices]-tri[0])@normal;vertex=int(vertices[dist.argmin()])
++        if dist.min()<.02:active.append((vertex,True,face))
++    for edge,face,point in reverse:
++        vertices=affected_faces[face]
++        for gun_face in gun_incident[tuple(int(x) for x in ge[edge])]:
++            tri=weapon[wf[gun_face]];normal=flat(tri,gun_sign[gun_face]);dist=(hand[vertices]-tri[0])@normal;vertex=int(vertices[dist.argmin()])
++            if dist.min()<.02:active.append((vertex,True,gun_face))
++    active=list(dict.fromkeys(active));return result,active,cross_fingers,len(forward)+len(reverse)
++def residual(parameters,active):
++    hand,_,_=evaluate(parameters);out=[]
++    for vertex,is_gun,face in active:
++        tri=weapon[wf[face]] if is_gun else hand[bodyfaces[face]];normal=flat(tri,gun_sign[face] if is_gun else body_sign[face]);distance=float((hand[vertex]-tri[0])@normal);out.append(max(0.,.02-distance)*(8 if is_gun else 4))
++    return np.r_[out,parameters*.01]
++lower=np.tile([-15,-15,0,0,0],3);upper=np.tile([15,15,0,0,0],3);parameters=np.zeros(15);history=[];best=None;pool=set()
++for outer in range(8):
++    hand,_,_=evaluate(parameters);self_result,active,cross_fingers,gun_hits=witnesses(hand)
++    pool.update(active);retained=[]
++    for vertex,is_gun,face in sorted(pool):
++        tri=weapon[wf[face]] if is_gun else hand[bodyfaces[face]];center=tri.mean(0);radius=np.linalg.norm(tri-center,axis=1).max()
++        if np.linalg.norm(hand[vertex]-center)<=radius+1.:retained.append((vertex,is_gun,face))
++    active=retained;score=gun_hits*5+cross_fingers;row=dict(iteration=outer,cross_finger_pairs=cross_fingers,gun_edge_triangle_hits=gun_hits,self_pairs=self_result['summary']['nonadjacent_triangle_pairs'],active_constraints=len(active),pool_constraints=len(pool),parameters=parameters.tolist(),score=score);history.append(row);print(json.dumps(row),flush=True)
++    if best is None or score<best[0]:best=(score,parameters.copy(),row)
++    if cross_fingers==0 and gun_hits==0:break
++    r=residual(parameters,active);cost=float(r@r);damping=.01
++    for inner in range(6):
++        J=np.zeros((len(r),15))
++        for i in range(15):
++            trial=parameters.copy();step=.02 if trial[i]+.02<=upper[i] else -.02;trial[i]+=step;J[:,i]=(residual(trial,active)-r)/step
++        change=-np.linalg.solve(J.T@J+np.eye(15)*damping,J.T@r);change=np.clip(change,-2,2);trial=np.clip(parameters+change,lower,upper);rr=residual(trial,active);new=float(rr@rr)
++        if new<cost:parameters=trial;r=rr;cost=new;damping=max(1e-7,damping*.5)
++        else:damping=min(1e6,damping*5)
++parameters=best[1];predicted,pose,locals=evaluate(parameters);p=A/'prepare-c0-hb-input.py';q=dict(np=np);exec(compile('def quaternion'+p.read_text().split('def quaternion',1)[1].split('\ndata=numbers',1)[0],str(p),'exec'),q);data=base.copy()
++for i in range(15,24):data[20+4*(i-12):24+4*(i-12)]=q['quaternion'](locals[i][:3,:3])
++source=D/'input.bin';output=D/'output.bin';source.write_bytes(struct.pack('<80d',*data));exe=T/'build-vs/Release/HammerburstC0SkinProbe.exe';run=subprocess.run([str(exe),str(T/'fixture'),str(source),str(output),'--constructed-gun-pose',str(T/'front-side-hold-pose.bin')],capture_output=True,text=True);assert run.returncode==0,(run.stdout,run.stderr);status=json.loads(run.stdout);values=np.frombuffer(output.read_bytes(),dtype='<f8');actual=np.asarray([matrix(p) for p in values[28:].reshape(115,7)]);delta=inverse_gun@actual@ctx['inverse'];actual_skin=np.zeros_like(ctx['v'])
++for k in range(4):actual_skin+=np.einsum('nij,nj->ni',delta[ctx['indices'][:,k]],ctx['v'])*ctx['weights'][:,k,None]
++actual_skin=actual_skin[:,:3];parity=float(np.linalg.norm(actual_skin[np.unique(bodyfaces)]-predicted[np.unique(bodyfaces)],axis=1).max());assert parity<.002,parity;self_result,active,cross_fingers,gun_hits=witnesses(actual_skin);(D/'self-crossings.json').write_text(json.dumps(self_result,indent=2));np.savez(D/'geometry.npz',hand=actual_skin,arm_faces=armfaces,weapon=weapon,weapon_faces=wf,weapon_bone=geometry['weapon_bone']);sha=lambda p:hashlib.sha256(p.read_bytes()).hexdigest();report=dict(geometry_only=True,bounded_outer_iterations=8,parameters=parameters.reshape(3,5).tolist(),history=history,selected_observed_score=best[2],existing_C0_fk_parity_raw=parity,final_cross_finger_pairs=cross_fingers,final_gun_edge_triangle_hits=gun_hits,self_crossings=self_result['summary'],compose=status,input_sha256=sha(source),output_sha256=sha(output),wrist_index_thumb_unchanged=True,published=False,skin_fit_accepted=False,game_started=False);(A/'latch-c0-finger-source-mcp.json').write_text(json.dumps(report,indent=2));print(json.dumps({k:v for k,v in report.items() if k!='history'},indent=2))

@@ -1,0 +1,171 @@
+{
+  "schema": 1,
+  "status": "REJECTED_REMAINING_INDEX_MIDDLE_SELF_INTERSECTIONS",
+  "purpose": "Saved-source resting fingers with limited MCP-direction changes; offline only",
+  "units_per_metre": 100,
+  "wrist_in_closed_animation_mesh": {
+    "position_raw": [
+      -5.9534989233975955,
+      33.6105881338686,
+      -13.822829813669781
+    ],
+    "orientation_xyzw": [
+      -0.3747784311896723,
+      0.7345594871280441,
+      -0.3327436539991923,
+      -0.4574332171021895
+    ]
+  },
+  "local_finger_rotations": [
+    {
+      "bone": 12,
+      "orientation_xyzw": [
+        0.10043229717822867,
+        -0.04265426829999111,
+        -0.2676931595758391,
+        0.957305771107435
+      ]
+    },
+    {
+      "bone": 13,
+      "orientation_xyzw": [
+        -2.238303777321122e-17,
+        3.3996551545606618e-18,
+        -0.06103365634512316,
+        0.9981357086053707
+      ]
+    },
+    {
+      "bone": 14,
+      "orientation_xyzw": [
+        -5.69148817618631e-17,
+        1.2415060185125915e-17,
+        -0.07409042987095595,
+        0.9972515270489872
+      ]
+    },
+    {
+      "bone": 15,
+      "orientation_xyzw": [
+        0.05032373739101127,
+        -0.1174271306509951,
+        -0.016378761849551192,
+        0.991670371949445
+      ]
+    },
+    {
+      "bone": 16,
+      "orientation_xyzw": [
+        -4.650638583223826e-08,
+        2.753771438065202e-07,
+        -0.6225146598394729,
+        0.782608138396776
+      ]
+    },
+    {
+      "bone": 17,
+      "orientation_xyzw": [
+        1.5762630987701063e-07,
+        -4.131148860517464e-08,
+        -0.3665012212421562,
+        0.9304175701414831
+      ]
+    },
+    {
+      "bone": 18,
+      "orientation_xyzw": [
+        0.07199537574666044,
+        -0.10974904559242898,
+        -0.04608314362609064,
+        0.990276808138101
+      ]
+    },
+    {
+      "bone": 19,
+      "orientation_xyzw": [
+        -1.0523490113116644e-08,
+        3.1959646181758437e-07,
+        -0.6259236885625991,
+        0.7798843094306286
+      ]
+    },
+    {
+      "bone": 20,
+      "orientation_xyzw": [
+        1.2060617985372943e-07,
+        -9.543746278447501e-09,
+        -0.3090169033984988,
+        0.9510565458551811
+      ]
+    },
+    {
+      "bone": 21,
+      "orientation_xyzw": [
+        -0.0481904849695266,
+        -0.20878420490474436,
+        -0.08949724844058442,
+        0.9726649348374083
+      ]
+    },
+    {
+      "bone": 22,
+      "orientation_xyzw": [
+        -7.598618905864798e-08,
+        2.6395382378884785e-07,
+        -0.4539907078778804,
+        0.8910064181365169
+      ]
+    },
+    {
+      "bone": 23,
+      "orientation_xyzw": [
+        1.450702606157328e-07,
+        -3.305848584684873e-08,
+        -0.42261814430294675,
+        0.906307841798752
+      ]
+    },
+    {
+      "bone": 24,
+      "orientation_xyzw": [
+        -0.7382814393640709,
+        0.2795500611341923,
+        0.0016443071281111738,
+        0.6138318791529596
+      ]
+    },
+    {
+      "bone": 25,
+      "orientation_xyzw": [
+        1.9088006911709236e-17,
+        -6.043400127018645e-17,
+        0.10555998100200487,
+        0.9944129375721418
+      ]
+    },
+    {
+      "bone": 26,
+      "orientation_xyzw": [
+        -1.3441958819588486e-17,
+        1.2235166981535212e-18,
+        0.19936689703083285,
+        0.9799249156788991
+      ]
+    }
+  ],
+  "source_body_fixture": 62276,
+  "original_artist_or_current_tracking_provenance_not_claimed": true,
+  "closed_pose_cross_finger_pairs": 9,
+  "closed_pose_gun_edge_triangle_hits": 0,
+  "motion_and_full_natural_skin_acceptance": false,
+  "published": false,
+  "evidence_sha256": {
+    "analysis\\hammerburst-20261108\\c0-mixed-skin-probe\\finger-source-mcp\\input.bin": "86b20e9f4bdd1f0a39b5fa66b81daefadfb56c33fe4ee1be24c2b44db6f139c6",
+    "analysis\\hammerburst-20261108\\c0-mixed-skin-probe\\finger-source-mcp\\output.bin": "8073a0c7df560d71b6e6a0865ac658d93ea220d0d196cdb164c5dd328c3b2ce1",
+    "analysis\\hammerburst-20261108\\latch-c0-finger-source-mcp.json": "8190e4a0535908241cc5637d93739cdb5d6f056353cfc7995edb320ea26995fd",
+    "analysis\\hammerburst-20261108\\latch-c0-finger-surfaces2.json": "5ac72028e350bdf11a8776ed1bec93c245ac6b1d9c2202a418b5558633c3a49f",
+    "analysis\\hammerburst-20261108\\latch-c0-saved-source-rest-check.json": "e7ea9840231448f07375a039d5f4f50f1d381a5fd009b2dc6818bea548b6fac0",
+    "analysis\\hammerburst-20261108\\latch-c0-wrist-axis-audit.json": "6bac7d2a067e59b2878e34bbc0773ca60ecb67f207350925f34178ad687718a0",
+    "docs\\hammerburst-finger-column-repair.patch": "6621a23b719397c4bb23a518911ef653db0431e84d6ae06d8fb217affda90ad2"
+  }
+}
