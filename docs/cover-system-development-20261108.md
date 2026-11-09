@@ -2,7 +2,7 @@
 
 目标：完成掩体系统开发与验证。状态：进行中。
 
-最近结果（2026-11-09）：r40完成保留115骨参考与物理身体名称的纯映射模块，MSVC编译0／178断言通过，尚未形成当前游戏映射或物理许可。r39当前模块／内部接收者／原始形状组合读取已保存bec4d12b；同槽plan关联修正为2b96e8d→prepared8917db74，Longshot133536独立核验并接受为唯一前驱，尚无最终交窗，未stage／run。最新实际仍为r34/20596的29接收者来源读取，严重身体遮挡仍FAIL。完整CV-01–24／AC-01–22、物理同步／真实提交／命中／枪口与实体头显仍未完成。
+最近结果（2026-11-09）：r41复用已认证原MatchRefBone全代码，核原缓存全115名称／索引／hash链及当前拥有C0参考，纯读取184断言、实际Native Backend拥有内存页整套498断言通过。已加入Backend只读接线，未重编Native DLL或给物理／移动许可。Longshot133536实际61036全终后最终唯一交窗，现保存源码并核准确冻结r39（prepared8917db74／plan2b96e8d9），尚未stage／run；唯一后继HB135655。完整CV／AC与实际物理、命中、枪口和头显仍未完成。
 
 ## 2026年11月8日 首批接续
 
@@ -882,3 +882,15 @@ MSVC /std:c++17 /O2 /W4 /WX /EHsc /UNDEBUG /MT编译0；低于普通优先级的
 r39唯一前驱互核发现初始plan c73d4f85仍含旧r34 prepared_sha25659770ded。已保留首个拒绝，仅修这一个plan字段；prepared8917db74、36driver、源提交bec4d12b和3制品均未变。当前plan2b96e8d9976d2501050fd2fd4795953a5f317fcf14a052fc76981b4e77fde456，36driver SHA／AST、24声明源、3制品、所选game／PhysX重新核对及prepare-only0；Longshot133536独立核验0并正式接受唯一后继位置。旧plan明确退役，未stage／run。实际链HB125528→Snub131050→Frag131651→Longshot133536→Coverr39，以最终交接为准；本会话暂无受理后继，不以排队消息当授窗，不读取其他owner游戏内存。
 
 后续仍先执行准确r39只读组合来源，认证当前内部目标及原始形状，再把准确本局BodySetup名称与拥有的同C0全参考记录关联。此后才可继续姿态消费、活动碰撞形状、起点／路径／终点占用与世界同步、实际Native移动／恢复、同版view／hit／muzzle及全部CV／AC。178断言只证明纯值映射，不关闭严重身体遮挡、原暂停失败、完整掩体或实体头显验收。
+
+## 2026年11月9日 r41原引擎骨名缓存与当前C0参考对应
+
+原MatchRefBone并不直接线性遍历RefBone68，而读取SkeletalMesh的骨名缓存。复核知识库中原IDA已保存函数及SHA，并从准确历史section_1000全blob SHA911ab9bc按认证入口0x1d38d4完整解码151字节，逐指令确认mesh+0x218资产、asset+0xb8 pair data／+0xc0 count／+0xc8 hash buckets／+0xd0 hash size，pair stride16、next+0、Name index+4／number+8、骨索引+12；hash按Name index与size-1取桶，完整两字段比较。IDA旧伪代码参数恢复不准确，只沿已有原代码证书与完整汇编确认这些值流，不从伪原型调用。
+
+新增cover_engine_bone_map.h，只读核同一拥有Frame／Model全部Marcus115 canonical及实际asset参考数据，再遍历原hash桶和完整pair链，要求所有115骨名称和索引与参考逐一一致；越界、环、跨桶、重复索引、缺失、非法header／key及读取故障均拒绝。Map+12原函数不消费，保留为opaque四字节并在关闭核对，不猜成容量。原八段getter主／cold代码在两端完整复核，但不调用任何getter；读原参考、缓存header／payload后再复读，身份guard贯穿。重复相等仍不是原子快照或物理栅栏。
+
+在现有full_body_c0_native_backend.h增加显式observe_engine_bone_map方法，绑定已capture的准确asset／source参考、原线程、stop状态、原Context及完整metadata／immutable readback；外部workspace和输出不得与Backend、实际Local／Space／reference／Desired、mesh或asset内存别名。该方法不参与原Kernel prepare／commit／finish，不给写入票，不改变债务账本或刷新来源。仅被明确调用才观察，目前未接入运行候选触发，未编译新Native DLL。
+
+专用读取器MSVC/W4/WX/UNDEBUG编译0／184断言0失败；完整夹具42读／26992字节，使用真实历史code和保留参考配合明确合成缓存，检查42个读取点逐一失败时不重试、三次guard拒绝、header／chain／key／index／coverage、结束变化和code尾改变。实际Backend拥有内存页整套498断言0失败，包含成功缓存关联、未capture／错线程／stop、Context／metadata／reference／代码拒绝、停止发生在末guard、输出别名Local和workspace别名Backend均不写游戏形态缓冲；原CAS／回滚／恢复／已消费姿态检查继续通过。首个Backend编译因新增测试缺<vector>失败，原日志保留，补测试include后编译0；没有放宽生产检查。上述均是离线Host／拥有内存页，不是当前游戏映射或physics消费证明。
+
+证据analysis/cover-system-20261108/engine-bone-map-r41，包括完整原函数汇编／原伪代码及SHA、全部工作区编译依赖、两项原测试日志和首编译失败。r39原36driver和原r13三制品未变。前驱Longshot133536实际61036已按本段所有运行／双路亲审／恢复／encode／retention全终，独立idle并核候选后最终明确唯一交窗；本会话现保存源码后再做自身idle及全冻结复核，只有准确r39可stage／run。HB135655（prepared0d89d185／plan3f1547e8／inputsa9aa206f）已直接受理为r39唯一后继，排队不授窗。

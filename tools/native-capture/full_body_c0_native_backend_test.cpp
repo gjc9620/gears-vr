@@ -7,6 +7,7 @@
 #include <memory>
 #include <string>
 #include <thread>
+#include <vector>
 namespace n=gears_full_body_c0_native;namespace tx=n::tx;namespace body=n::body;namespace p=n::pose;
 unsigned checks{},failures{};
 #define C(x) do{++checks;if(!(x)){++failures;std::printf("FAIL %d %s\n",__LINE__,#x);}}while(0)
@@ -61,7 +62,7 @@ struct Fixture {
 
 };
 unsigned changed(body::Frame const& f,body::Output const& output){unsigned result{};for(unsigned i=0;i<230;++i)result+=unsigned(std::memcmp(reinterpret_cast<unsigned char const*>(f.local.data())+i*16,reinterpret_cast<unsigned char const*>(output.local.data())+i*16,16)!=0);return result;}
-int main(int argc,char**argv){if(argc!=2)return 2;std::string directory=argv[1];auto frame=std::make_unique<body::Frame>();auto workspace=std::make_unique<body::Workspace>();body::Model model{};body::Output output{};
+int main(int argc,char**argv){if(argc!=2&&argc!=3)return 2;std::string directory=argv[1];auto frame=std::make_unique<body::Frame>();auto workspace=std::make_unique<body::Workspace>();body::Model model{};body::Output output{};
     C(read_file(directory+"/reference.bin",frame->reference.data(),sizeof frame->reference));C(read_file(directory+"/C0-local.bin",frame->local.data(),sizeof frame->local));C(read_file(directory+"/C0-component.bin",&frame->component_to_world,sizeof frame->component_to_world));
     C(body::prepare_model(frame->reference,hash,model));for(unsigned i=0;i<16;++i)workspace->component.m[i]=frame->component_to_world.values[i];std::copy(frame->local.begin(),frame->local.end(),workspace->pose.local);C(body::d::rebuild(model,*workspace));
     body::Goal goal{};goal.scope=body::Scope::fixed_cover;goal.body_yaw_delta=-.1;goal.physical_world={1,2,-3};goal.committed_grip_world={2,1,-2};
@@ -209,6 +210,46 @@ int main(int argc,char**argv){if(argc!=2)return 2;std::string directory=argv[1];
               !std::memcmp(observed.get(),&completed,sizeof completed));
             f.backend.request_stop();C(f.backend.read_consumed_pose(k,key,serial,*observed)==n::ConsumedPoseCode::unavailable);
             C(!std::memcmp(observed.get(),&completed,sizeof completed)&&k.pending()==pending);
+        }
+    }
+    if(argc==3){
+        namespace names=gears_cover_engine_bone_map;
+        std::ifstream stream(argv[2],std::ios::binary);std::vector<unsigned char> blob((std::istreambuf_iterator<char>(stream)),{});
+        C(blob.size()==20027727);
+        C(gears_cover_bones::digest_matches(blob.data(),unsigned(blob.size()),"911ab9bcb24cc078420400369a78ffd3f747d915e42c4935a5c82c2dcecc6ae6"));
+        if(failures)return 1;
+        Page code(0xa00000),pairs(4096),buckets(4096);
+        for(auto const& chunk:gears_cover_bones::chunks)std::memcpy(code.data+chunk.rva,blob.data()+chunk.rva-0x1000,chunk.size);
+        auto scratch=std::make_unique<names::Workspace>();
+        names::Observation sentinel{};sentinel.asset=123;
+        for(unsigned mode=0;mode<13;++mode){
+            Fixture f(*frame);if(mode!=1)C(f.capture());
+            std::memset(pairs.data,0,pairs.size);std::array<int,256> heads{};heads.fill(-1);
+            for(unsigned i=0;i<115;++i){const auto name=names::named::detail::name(frame->reference[i]);const auto bucket=unsigned(name.index)&255;
+                pairs.put(i*16,heads[bucket]);pairs.put(i*16+4,name.index);pairs.put(i*16+8,name.number);pairs.put(i*16+12,i);heads[bucket]=int(i);}
+            std::memcpy(buckets.data,heads.data(),sizeof heads);
+            f.asset.put(0xb8,pairs.address());f.asset.put(0xc0,int(115));f.asset.put(0xc4,0x12345678u);
+            f.asset.put(0xc8,buckets.address());f.asset.put(0xd0,int(256));
+            if(mode==2)f.context.allowed=false;
+            if(mode==3)f.mesh.put(0x218,uintptr_t(123));
+            if(mode==4)f.reference.data[8]^=1;
+            if(mode==5)pairs.put(0,int(0));
+            if(mode==6)code.data[0x1d38d4+150]^=1;
+            if(mode==7)f.context.reject_call=int(f.context.calls+3);
+            if(mode==8)f.backend.request_stop();
+            if(mode==10){f.context.stop_backend=&f.backend;f.context.stop_call=int(f.context.calls+3);}
+            const auto calls=f.context.calls;auto observation=sentinel;names::Status result{};
+            if(mode==11)result=f.backend.observe_engine_bone_map(code.address(),model,*scratch,*reinterpret_cast<names::Observation*>(f.local.data));
+            else if(mode==12)result=f.backend.observe_engine_bone_map(code.address(),model,*reinterpret_cast<names::Workspace*>(&f.backend),observation);
+            else if(mode==9){std::thread foreign([&]{result=f.backend.observe_engine_bone_map(code.address(),model,*scratch,observation);});foreign.join();}
+            else result=f.backend.observe_engine_bone_map(code.address(),model,*scratch,observation);
+            if(mode==6)code.data[0x1d38d4+150]^=1;
+            if(mode==0){C(result==names::Status::okay);C(observation.matched_bones==115&&observation.cache_matches_owned_reference);
+                C(!observation.getter_called&&!observation.physical_pose_verified&&!observation.world_sync_verified&&!observation.activation_allowed);}
+            else {C(result!=names::Status::okay);C(!std::memcmp(&observation,&sentinel,sizeof sentinel));}
+            if(mode==9)C(f.context.calls==calls);
+            if(mode==11||mode==12)C(result==names::Status::alias&&f.context.calls==calls);
+            C(!std::memcmp(f.local.data,frame->local.data(),sizeof frame->local));
         }
     }
     std::printf("NativeBackend: %u checks, %u failures; actual_read=1 actual_CAS128=1 actual_SEH=1 Host_context_only=1 fresh_denied=1 consumed_pose_original_Compose=Host_math live_reader_wired=0\n",checks,failures);return failures?1:0;

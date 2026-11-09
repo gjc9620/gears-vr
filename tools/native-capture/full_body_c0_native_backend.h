@@ -2,6 +2,7 @@
 #include "full_body_c0_transaction.h"
 #include "cover_pose_phase.h"
 #include "native_atom_overwrite_receipt.h"
+#include "cover_engine_bone_map.h"
 #include <windows.h>
 #include <intrin.h>
 
@@ -97,6 +98,28 @@ public:
     auto exchange_failure()const noexcept{return first_exchange_failure_;}
     void request_stop() noexcept {stopped_=true;}
     void invalidate() noexcept {permit_.armed=false;context_=nullptr;}
+    // Observation only. Uses this captured C0's exact asset/reference and
+    // current Context; it neither creates a write ticket nor advances Kernel
+    // completion. The caller owns the large scratch buffer outside the stack.
+    gears_cover_engine_bone_map::Status observe_engine_bone_map(std::uintptr_t module_base,
+        body::Model const& model,gears_cover_engine_bone_map::Workspace& work,
+        gears_cover_engine_bone_map::Observation& out) noexcept {
+        namespace names=gears_cover_engine_bone_map;
+        if(!captured_||!context_||stopped_||GetCurrentThreadId()!=thread_)return names::Status::context;
+        const body::d::Range buffers[]={body::d::range(&work,sizeof work),body::d::range(&out,sizeof out),
+            body::d::range(this,sizeof *this),{metadata_.reference.data,sizeof source_.reference},
+            {metadata_.local.data,sizeof source_.local},{metadata_.space.data,115*64},
+            {metadata_.desired.data,115},{request_.owner.mesh.address,0x360},{metadata_.asset,0xd4}};
+        if(!body::d::disjoint(buffers,9))return names::Status::alias;
+        auto read=[](void* to,void const* from,std::size_t size){return read_memory(to,reinterpret_cast<std::uintptr_t>(from),size);};
+        auto current=[&](){
+            if(stopped_||GetCurrentThreadId()!=thread_||!context_->current(tx::Stage::prepare))return false;
+            pose::Metadata now{};
+            return !stopped_&&read_metadata(now)&&pose::metadata_equal(now,metadata_)&&immutable_readback();
+        };
+        try{return names::observe(module_base,metadata_.asset,model,source_,read,current,work,out);}
+        catch(...){return names::Status::read;}
+    }
     // Seed IDs are registrations supplied only by the actual C0 adapter; Local
     // binding/header values are read here, never accepted from the seed.
     bool capture(Context& context,pose::OwnerKey const& owner,tx::Stamp seed,body::Frame& out,tx::Desired& desired,
