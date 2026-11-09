@@ -482,3 +482,21 @@ BodyC0GoalPolicyLiveTest的0–23模式实际453检查通过：原普通身体�
 进一步把带小幅真实头动及Grip的目标送进原完整planner，真实发现三处spine_unreachable：preserve_c0／reference_neutral的requested分别48.0171826／48.0252175，而available约46.86003游戏单位。当前310检查仍有3个失败，原断言和result-moving-diagnose.log保留；不能把前一步295检查通过称作持续身体跟随通过。尚须在保持中立基准、真实头目标、固定骨长和脚位的前提下处理当前身体姿态可达性，并将最终身体路径纳入碰撞认证，不得用普通站立的head projection／native-body fallback冒充完整掩体跟随。
 
 本批以WIP源保存，未编译运行Native或交付。证据analysis/cover-system-20261108/neutral-convert-r18/。此时收到HB070119实际72536完整恢复、全跨度视觉、编码／retention终态及独立idle后的最终唯一交窗，后继Snub071103→Boltok072100→Frag074333→Longshot075334保留。先保存本源码与失败，再独立复核plan859bb156及23驱动、准确r13三制品，执行原先已登记r16窄段；本WIP及r14／15均不混入该运行包。
+
+## 2026年11月9日 reader-r16实际32760：首条严格组件路径通过，第二条读预算首败
+
+先将上述WIP与三个脊柱失败保存为516d0d75，再独立核对plan859bb156、23驱动、所选游戏SHA及准确r13三制品，prepare-only0。实际stage备份prior-private-text-20261109-075847；继续Native5cf4adea／PGf8e6／XR1684，r14／15及本轮中立转换源码均未混入。计划原样归档cover-boundary-runtime-plan-executed-32760.json，Publicv71不变。
+
+实际game32760／creation134386559451489025，owner66992／creation134386559379233619，Native session9905337298675。原A一次到CT2／CA0，Pawn[-3929.994140625,-160.1084747314453,579]，本次geometry严格读取通过，实际进入Trace；61864的统一closing拒绝没有复现，也没有凭本次通过反推其原因已解决。
+
+实际两次原Actor.Trace完成。ray0 acceptedTRUE，reads16240／bytes158219，命中StaticMeshComponent#186308，Owner／Outer为mp_warmachine_SMC#3；空StaticMeshComponents声明下，继承自Actor的Components和AllComponents均100元素、各唯一包含该明确命中组件，完整typed成员及closing路径实际走通。这补上r12成员认证的限定游戏执行证据，不证明完整实体边缘、可达抓边、体积扫掠或世界占用。
+
+ray1原查询也完成，queue_state2、trace_calls1、pending_possibleFALSE、allocation_retainedFALSE；原输出Actor0／location0／normal0，但随后读取达到16385次而触发原16384上限，bytes161212，整条回执acceptedFALSE。首败为World-state read budget exceeded，按原规则停止，没有第三条、retry或提升预算；不能把未完成closing的原空输出当成认证clear端点，整个edge_interval和本段玩法结果仍FAILED。下一窄修应减少有明确证据的重复读取，并保留全部原始依赖、当前值及closing检查，不能删成员／矩阵证明或沿用旧查询结果。
+
+已亲自查看全部22.583478秒paired-review-00.jpg及入掩体附近实际game00382／00392、simulator00440／00450原图，两路仍显示右侧身体／装备大面积近裁剪遮挡，视觉FAIL；启动第三人称仍可见。原采样421游戏／480模拟器，最大捕获缺口1.7666948／0.283333秒，末端覆盖一致；这些是WGC样本，不是窗口标题FPS、逐渲染帧或原子C0／GPU配对证明。编码视频22.600秒、5185541字节，编码工具36194实际terminal0。
+
+runner96509实际terminal0、launcher0，operator的Edge ray not accepted失败保留；Native cleanup／entries／pad恢复TRUE，hand_stop5／drained，body等pending0，XR0、实际游戏退出。原config字节、settings SHA及head原缺精确恢复，结束23驱动全部一致；XR记录terminal exiting／objects destroyed／shutdown completed，其end_session_succeeded仍FALSE，不写成EndSession成功。r13本段authored_eye_applied411／rejected0、missing_basis0、uncomposed1；body_goal_attempts368／rejected139，均只作本段计数，不当作完整身体提交或旧504拒绝的统一因果证明。
+
+全部视觉与编码完成后既有retention6097实际terminal0，删2553媒体／451948482字节，保留32760／72536／50728、最多3局／48小时，源码／数值／文字未删。再次独立核idle后已明确最终唯一交窗Snub071103，后链Boltok072100→Frag074333→Longshot075334保留，本窗不追加case。证据cover-32760-review.json、cover-32760-closure-proof.json及原session continuous-stereo-32760-20261109-075940-3e5ba4de.json。
+
+本轮进展为“严格实际命中组件路径首次通过＋新预算首败明确＋完整正常收尾”，完整掩体仍FALSE。持续身体转换310检查中的3个脊柱可达失败也仍保留，后续须处理当前姿态可达性并认证最终身体碰撞、双眼、受击与枪口。CV-01–24／AC-01–22及实体头显验收没有缩减，历史评分不变。
