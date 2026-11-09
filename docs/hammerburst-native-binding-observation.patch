@@ -1,0 +1,65 @@
+--- a/tools/native-capture/anchor_observer.h
++++ b/tools/native-capture/anchor_observer.h
+@@ -286,11 +286,28 @@
+         before.controller==after.controller&&before.camera==after.camera&&before.level==after.level&&
+         equal_identity(before.target_identity,after.target_identity)&&equal_identity(before.target_level_identity,after.target_level_identity)&&before.cinematic==after.cinematic&&before.unpossessed==after.unpossessed;
+ }
++// Failure observations only, using objects already read by the original guard.
++// The masks never participate in admission or retry classification.
++inline unsigned binding_difference(PawnBinding const& a,Anchor const& b) noexcept {
++    return (!equal_identity(a.pawn,b.pawn_identity)?1u:0u)|(a.pawn.address!=b.pawn?2u:0u)|
++        (a.controller!=b.controller?4u:0u)|(a.camera!=b.camera?8u:0u)|(a.level!=b.level?16u:0u)|
++        (!equal_identity(a.target_identity,b.target_identity)?32u:0u)|
++        (!equal_identity(a.target_level_identity,b.target_level_identity)?64u:0u)|
++        (a.cinematic!=b.cinematic?128u:0u)|(a.unpossessed!=b.unpossessed?256u:0u);
++}
++inline unsigned binding_difference(PawnBinding const& a,PawnBinding const& b) noexcept {
++    return (!equal_identity(a.pawn,b.pawn)?1u:0u)|(a.pawn.address!=b.pawn.address?2u:0u)|
++        (a.controller!=b.controller?4u:0u)|(a.camera!=b.camera?8u:0u)|(a.level!=b.level?16u:0u)|
++        (!equal_identity(a.target_identity,b.target_identity)?32u:0u)|
++        (!equal_identity(a.target_level_identity,b.target_level_identity)?64u:0u)|
++        (a.cinematic!=b.cinematic?128u:0u)|(a.unpossessed!=b.unpossessed?256u:0u)|(a.local!=b.local?512u:0u);
++}
+ enum class GuardReason {success,strict_validation,initial_binding,final_binding,read_failure,
+     strict_timestamp_changed,final_timestamp_changed,deadline,attempt_limit};
+ enum class GuardStage {initial_binding,strict_validation,final_binding,final_timestamp};
+ struct GuardDiagnostic {GuardReason reason{GuardReason::strict_validation};GuardStage stage{GuardStage::strict_validation};
+-    std::uint32_t before_stamp{},strict_after_stamp{},final_stamp{};bool timestamp_only{};};
++    std::uint32_t before_stamp{},strict_after_stamp{},final_stamp{};bool timestamp_only{};
++    unsigned binding_site{},binding_mismatch{};PawnBindingDiagnostic binding_detail{};};
+ inline const char* guard_reason_name(GuardReason reason){static const char* names[]={"success","strict_validation","initial_binding",
+     "final_binding","read_failure","strict_timestamp_changed","final_timestamp_changed","deadline","attempt_limit"};
+     const auto i=unsigned(reason);return i<std::size(names)?names[i]:"unknown";}
+@@ -393,10 +410,15 @@
+     GuardDiagnostic strict{};
+     const bool strict_ok=strict_guard(candidate,read,anchor,observed,&strict,binding.unpossessed);result=strict;
+     if(!strict_ok&&(!diagnostic||!strict.timestamp_only))return finish(false);
+-    if(strict_ok&&!scene_binding_matches(binding,anchor)){result.reason=GuardReason::final_binding;result.stage=GuardStage::final_binding;return finish(false);}
++    if(strict_ok&&!scene_binding_matches(binding,anchor)){result.reason=GuardReason::final_binding;result.stage=GuardStage::final_binding;
++        result.binding_site=1;result.binding_mismatch=binding_difference(binding,anchor);return finish(false);}
+     // Complete the outer identity bracket even after a strict timestamp race.
+     result.stage=GuardStage::final_binding;result.reason=GuardReason::final_binding;result.timestamp_only=false;
+-    PawnBinding final{};if(!capture_pawn_binding(startup,checked_read,final)||!equal_binding(binding,final))return finish(false);
++    PawnBinding final{};PawnBindingDiagnostic final_detail{};
++    if(!capture_pawn_binding(startup,checked_read,final,&final_detail)){
++        result.binding_site=2;result.binding_detail=final_detail;return finish(false);}
++    if(!equal_binding(binding,final)){
++        result.binding_site=3;result.binding_mismatch=binding_difference(binding,final);return finish(false);}
+     std::uint32_t final_stamp{};
+     result.stage=GuardStage::final_timestamp;result.reason=GuardReason::final_binding;
+     if(binding.camera>(std::numeric_limits<std::uintptr_t>::max)()-startup.camera_timestamp||
+--- a/tools/native-capture/capture.cpp
++++ b/tools/native-capture/capture.cpp
+@@ -4212,6 +4212,12 @@
+             expected_identity?1:0,admitted?1:0,guard_diagnostic.attempts,static_cast<unsigned long long>(guard_diagnostic.elapsed_ms),
+             expected_identity?gears_anchor::guard_reason_name(guard_diagnostic.reason):"not_attempted",
+             gears_anchor::guard_reason_name(last.reason),gears_anchor::guard_stage_name(last.stage),last.before_stamp,last.strict_after_stamp,last.final_stamp,last.timestamp_only?1:0);
++        if(!admitted&&last.binding_site){auto const& detail=last.binding_detail;
++            fprintf(diagnostic_status,"anchor_startup_binding_failure site=%u mismatch_mask=%u capture_stage=%s capture_field=%s address=0x%llx expected_valid=%u actual_valid=%u expected=0x%llx actual=0x%llx\n",
++                last.binding_site,last.binding_mismatch,gears_anchor::pawn_binding_stage_name(detail.stage),
++                gears_anchor::pawn_binding_field_name(detail.field),static_cast<unsigned long long>(detail.address),
++                detail.expected_valid?1u:0u,detail.actual_valid?1u:0u,
++                static_cast<unsigned long long>(detail.expected),static_cast<unsigned long long>(detail.actual));}
+         fflush(diagnostic_status);}
+     if(admitted)anchor_config=c;
+     return admitted;
