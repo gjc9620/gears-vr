@@ -2,7 +2,7 @@
 
 目标：完成掩体系统开发与验证。状态：进行中。
 
-最近结果（2026-11-09）：r24/game33420完成当前严格实体边缘截面的8次原Trace，但暂停B恢复、unified武器清理、右身体遮挡与启动捕获缺口仍失败或未闭合。r28的Native真实骨架读回已接生产C0收尾；r30在当前停机资源修复上验证47个Host场景／961检查通过，未清除来源覆盖债务。r29新增准确静止正Extent参数与最多五次原版体积查询对照，73个Python测试方法通过，冻结候选prepare-only通过，已保存7d741ee8，尚未stage或启动。已获Boltok105222接受其后的唯一后继登记，未获最终交窗，当前不占运行窗；沿用准确旧r13三制品，不包含r25–28或后续Native源码修改。完整CV-01–24／AC-01–22与实体头显仍未完成，具体边界见本文末两节。
+最近结果（2026-11-09）：r24/game33420完成严格实体边缘截面，但暂停B恢复、unified武器清理、身体遮挡与启动捕获缺口仍未闭合。r28真实骨架完成读回已接C0收尾；r30当前停机兼容47个Host场景／961检查通过。r31新增当前命名CylinderComponent与CollisionComponent同一性、原尺寸字段和矩阵的严格只读观察，8个新Python方法通过；新plan9a48e15b／prepared3fdf0a9d准备通过，拟同槽替换未执行r29，原A一次／最多5原Trace不变。等待Boltok105222最终交窗，当前不占窗，未stage／启动；已直接受理Snub110649为本槽全部终态后唯一后继。仍沿用准确旧r13三制品，不包含后续Native修改。完整CV-01–24／AC-01–22与实体头显仍未完成，边界见本文末节。
 
 ## 2026年11月8日 首批接续
 
@@ -695,3 +695,17 @@ r29准确源码已先保存为7d741ee8133b9721525fc954c9fe2f477fc65a0c；直接�
 当前生产Native／Kernel、Host原版Compose数学和原Goal路径共47个模式961检查0失败；其中原43模式838检查继续通过，新增4模式123检查通过。真实OFF匿名命名空间目标亦编译与执行0。MSVC C++17／O2／W4／WX／EHsc／UNDEBUG／MT独立构建，实际编译90项项目依赖纳入91项原依赖集合及CMake的构建前后哈希检查，未出现运行期间源改变。输入仍为保留的真实骨架与明确合成Core，不能改记为实际游戏、物理碰撞或头显证据。准确源快照、编译依赖、日志及verification保存在analysis/cover-system-20261108/cover-stop-integration-r30；没有覆盖r28历史结果。
 
 本批只修改上述测试、CMake的模式上限和本文；共享停机生产修复仍由原提交归属保留，不混入本批Git保存。准确r29 plan／prepared／24实际驱动和旧r13三制品不变，未stage／启动，不包含此当前Native；实际unified清理、暂停恢复、身体遮挡及CV-01–24／AC-01–22仍未通过。下一实际动作仍是完成前序后的单局非零Extent／初始重叠对照，之后根据原回执推进体积、占用及唯一身体提交后端，不以此次CPU兼容检查代替运行闭环。
+
+## 2026年11月9日 r31当前原版人物碰撞尺寸来源与同槽候选补充
+
+上一轮b697d557和7d741ee8是已保存的源码／Host验证进展，不是实际体积碰撞通过。本轮核对保留KB中三个脚本的完整SHA：Engine.Pawn.GetCollisionHeight、GetCollisionRadius和Engine.CylinderComponent。前两个getter实际读取命名CylinderComponent的同名字段；只读取某个CollisionComponent或沿用历史34／80等尺寸不足以认证当前来源。脚本并未证明CollisionHeight的半高含义、缩放、物理场景消费或最终探身形状，本轮没有猜原生调用签名、调用setter或在其他游戏运行时开启IDA。
+
+新增生产Python读者cover_collision_shape.py，复用CoverQuery、已有当前掩体roles、字段声明链和完整Matrix读取。它核对当前受控Pawn的CylinderComponent与CollisionComponent是同一非Default对象、类型继承、Outer和Owner均属于Pawn，再读取严格反射FloatProperty宽度／维度／成员链、两个不别名的正有限尺寸和完整typed LocalToWorld。异常、缺失、非有限值、超过诊断上限、字段与矩阵重叠或关闭变化一律拒绝，不填默认值。使用既有16384读／2MiB／3秒关闭预算，保留原closing_rejection，并再次关闭session／game／owner身份。它不生成Extent，不推断半高或世界缩放，更不把原人物移动圆柱当成已认证的骨骼探身／头臂／受击完整形状。
+
+8个新方法执行通过，使用明确合成的反射内存；覆盖当前原字段与矩阵、错误双指针／Owner／Outer／类、零／负／NaN／无穷／超限尺寸、错误属性类型／宽度／维度／脱链／别名、矩阵schema及关闭时尺寸／组件／变换／身份／registry变化。验证无bridge、queue、engine调用或游戏内存写；成功观察仍保持collision_verified／shape_semantics_verified／final_body_coverage_verified／world_synchronization_verified／activation_allowed／实体头显为false。日志、源码SHA、脚本SHA及候选在analysis/cover-system-20261108/cylinder-source-r31。
+
+候选在原边界操作器增加显式--cover-cylinder-source：原A后、原五项体积对照前执行一次严格原字段观察；失败保存后停止。对照结束还比较其当前掩体roles，不能把相同roles解释为体积／物理世界原子快照。仍为原A一次、最多5次原Trace、首次严格或语义失败停止、无重试、不重复未诊断的pause／B。新wrapper／operator及plan独立命名；原r29 plan233b9822与prepared5ac624f4保留为未执行记录，但共享Cover driver已更新，旧r29不能再直接运行。
+
+准确plan analysis/solo-m1-20261028/cover-cylinder-runtime-plan.json SHA256 9a48e15b9113183780c81ba1e30ad76bd207df6b8408ca3d7548265d77766011；prepared equipment-controls-prepared-20261109-cover-cylinder-r31/prepared.json SHA256 3fdf0a9d424ce06a74adfb08eb0845974eee51a8442c7eed9042bd6ba16e6008。25项声明driver及AST、24项原r13声明源、3保存制品、注入原equipment／menu owner字符串compile／AST和prepare-only exit0。Native仍5cf4adea、Playground f8e6f3c2、XR1684；没有新Native构建或混入r25之后C++。r29原73方法结果保留，不伪称本轮重新执行全部73项。
+
+当前同槽前驱仍Boltok105222，尚未最终交窗；本次准确候选拟直接请求替换原未执行r29登记，不新增slot。已直接接受Snub110649为本槽全运行／双路全跨度和原图审看／精确恢复／编码与retention实际终态／独立idle后的唯一后继。更晚HB110627申请已转真实尾Snub直接核对，未作为第二后继。不能据进程暂时空闲或队列消息启动、stage或交窗。完整身体与physics形状、扫掠／终点占用／世界同步、实际Native运动后端与basis恢复、同版view／hit／muzzle、暂停／联合清理／身体遮挡和全部CV／AC／头显要求继续开放，公开v71及历史计分不变。
