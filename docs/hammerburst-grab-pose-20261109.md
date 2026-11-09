@@ -68,3 +68,9 @@ fit-latch-surface-approach.py保留现行机械contact，仅以两候选tip中�
 find-latch-accessible-contact.py改为每个原三角到当前contact的最近点（不是仅三角中心），在3.5raw有限邻域检查97个候选；29个候选沿各自几何外向射线10raw内没有命中完整9966枪三角。最近侧面triangle1576，点(-2.89071918,24.28474939,3.91394645)，法线(-1,0,0)，距当前contact .796410055raw。射线无阻挡不等于掌指空间可用，不改变机械contact/radius，也不把绕序法线当实测腕方向。
 
 在最近侧面外.1raw布置纯视觉夹持中心、保持原骨长权重并单独标明cosmetic_displacement，fit-latch-surface-approach.py --surface-candidate比较12个腕方向；最少仍894 edge/triangle命中（150度，471+423）。三方向图已亲看，手部仍相交且部分形态不自然，不发布C0、不算HB专用手型。结果latch-accessible-contact-candidates.json、latch-surface-approach-side.json/png/log。下一步需联合调整原逐指局部姿态和腕，并复核与实际骨骼消费的姿态一致性；不继续用单条清空射线替代整手检查。
+
+## 生产局部手指消费与离线计算一致性
+
+check-skin-consumer-parity.py冻结当前hand_finger_pose c5c61d71、pose_math d89ece54、stereo_frame bf438b85、hand_reference_continuity 1c5c154b，C++直接调用生产rotation而非复刻函数。loading与generic authored两路径×15关节×闭合amount0/.5/1=90项；与独立Python/offline输出比较最大quat差1.1123893155135927e-16，全通过。该证据只覆盖局部旋转和闭合插值，不证明世界蒙皮、实时wrist、硬件buffer、surface或袖口。
+
+最初独立只include hand_finger_pose编译失败，因其新authored分支stereo_pose_valid声明依赖stereo_frame上游顺序；已告共享编辑者，不擅改root。fixture使用真实声明header后编译0。离线NLERP最初将归一化closed与略非单位reference直接混合，造成3.3805572697e-9预期误差；已按生产loading保留reference范数、authored先归一化的不同路径精确建模，amount0也保留原reference，不是放宽比较容差。证据skin-consumer-parity-check.json、snapshot头SHA、90条输出和首编译错误日志保存。穿模不能仅凭此归咎局部quat实现，下一步仍需联合解决实际接近方向、逐指形态和世界腕基准。
