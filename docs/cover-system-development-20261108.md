@@ -1168,3 +1168,15 @@ wrapper工具90227实际terminal0；operator7456 exit1、error字段null且实�
 首次严格MSVC编译因验证程序新局部before遮蔽旧同名变量而被/WX拒绝，保留失败记录及原验证源码；仅修正变量名后编译0。BelowNormal实际执行1889项检查0失败，保留此前1088项。整份案例采用保留Marcus115参考／C0、8个打乱选择的合成body名称及53个合成形状，以独立四元数／向量FK逐项核位置、朝向、球柱端点和原序号；这些数量不是新游戏观测。另验证最大256项、完整输出alias、漏项／重复／错序、最后一项名称／矩阵／尺寸错误、unsupported Convex、整数超容量以及256项缩至1项后的旧尾清除。证据analysis/cover-system-20261108/body-geometry-r59含三源副本、222编译依赖SHA、fixture与二进制SHA及真实编译／执行日志。
 
 当前清单仍需由实际同源关闭读取消费，未接Native Tick或原版碰撞查询，不以此关闭连续路径扫掠、终点占用、实际移动／恢复、同版hit／muzzle或严重吸附肩／身体遮挡。Coverr54 prepared6ec774ef／plan915215be及24冻结源／37当前驱动SHA+AST／3saved制品再次匹配，尚未收到Snub最终交窗；唯一已受理后继仍Bol180947，未最终交它。本轮无新Native／PG构建、部署、游戏／XR或头显通过。完整CV-01–24／AC-01–22及逐点手型／物理头显验收保持未完成。
+
+## 2026年11月9日 r60世界查询原码后续段与同查询代码观察
+
+沿原Actor.Trace包装器→0x1400cf8f8→0x1400cfa40复核非零体积查询接续点。r43旧记录已明确shared-tail未解，实际只保存0xcfa40–0xcfd58共792字节；其中多个直接分支去0xcfdb3，另有fallthrough进入0xcfd58，均不在旧片段内。本批核原section全SHA后，从既有原始字节补读到0xcfea9，新增337字节、该完整选定段共1129字节；完整线性解码，旧792字节逐项一致，选定段内所有直接跳转均闭合，末端为与原序言对应的恢复及ret。历史结构化range数组只作佐证，不称当前注册unwind或完整调用图证明，不覆盖被调用函数及动态目标。
+
+新增后续段保留原call rsp+0x20的R15、rsp+0x28的R14D及rsp+0x38的来源参数，虚分派字节偏移0x20即十进制32，与原hash表记录的slot32一致；当前receiver／vtable关联尚未认证。返回链表按0x60字节记录复制，存在64项计数上限，随后有array／count／stride／comparator形式的间接调用和最终复制连链返回。“排序”是依据该参数形式的推断，其导入目标未认证。不能从参数转发就宣布初始重叠、自身排除、动态Actor或碰撞世界同步已通过。
+
+新增独立只读模块cover_world_query_code.py，针对已认证当前module与同一CoverQuery检查已知包装器路径5段共3550原字节，包含上述337字节缺口。所有读取走原q.read、执行区间和image身份保护；调用方仍必须关闭同一query。当前码不符时只保留已有read的rva／范围／expected及actual SHA见证，不新增补读。没有原方法／虚函数调用、输入／body写入或第二观察器；返回明确closing_required且dynamic_dispatch／initial_overlap／sweep／worldsync／activation均false。该模块尚未加入任何运行driver，特别未改变待运行r54范围及其原读取数。
+
+实际Python 8项检查通过、0失败、0跳过，以保留原字节和真实CoverQuery逻辑配合合成进程内存验证：每段不符均拒绝；原缺口0xcfd77处变更拒绝；观察后、关闭前改变后续段亦拒绝；正常5段完整保留在q.values并关闭，错误module／profile／执行属性／范围及坏历史源拒绝。首轮夹具继承了占位aaaa EXE hash而未到目标路径，保留1fail／8error日志和旧验证源码；仅修正夹具身份后全通过，产品image检查未放宽。证据analysis/cover-system-20261108/world-query-continuation-r60包含原完整指令／跳转、可复现提取器、两源副本和首轮／最终日志。
+
+Coverr54 prepared6ec774ef／plan915215be及24冻结源／37当前驱动SHA+AST／3saved制品再次匹配。仍等待Snub174315最终唯一交窗，未stage／run；已受理的唯一后继仍Bol180947，未最终交付。本批没有新Native／PG构建或游戏／XR／头显运行。当前完整形状来源、原查询动态目标及重叠语义、完整身体路径扫掠／终点占用／Native移动恢复、同版hit／muzzle、严重吸附肩／身体遮挡、逐点手型及全部CV-01–24／AC-01–22与实体头显继续未完成。
