@@ -405,3 +405,15 @@ Lancer只读确认上述forgiving-profile不是其本轮改动，未补写共享
 33.43s全部2页双路overview及simulator00522/00553/00596/00689实际原图亲看；这只是对应射击附近画面，非缺失射线证明，自然手型/头显仍未接受。Native/entry/pad TRUE、hand_stop5/drained、XR0/launcher0/game absent、config/settings原字节/head原缺恢复；编码80782=0、retention21276=0，删2133媒体/358730210bytes，核idle后最终唯一交Coverr16→Snub071103→Boltok072100→Frag074333→Longshot075334，runtime-72536-review.json完整保存。
 
 7e9c0c1c只恢复共享defer的Lancer-only入口（未接入HB原first-state或finite尾段前不启用），独立HB契约matcher/夹具保留；撤回源码完整PG编译0，非新runtime验证，公共v71和Native未改。后续原有限burst的授权与失效清理需要一起实现：真实有效第一发才可形成有限剩余承诺；每发仍需新鲜Native姿态；实际R2-up不伪造按键，失追/生命周期/收枪需经原版停止和正常状态转换收尾，不能在失效恢复后自动续旧burst。
+
+## 原有限burst授权与原状态撤销的离线实现（未接入运行入口）
+
+保存db7f1737/7e268558/3518de36：HB独立Completion只允许真实有效首发形成最多剩余5发承诺，实际R2-up允许同一press的一次release后继，不重造按键；一轮结束、重复事件/旧ticket、身份/hold/reference/session/space/input/profile变化和中断后旧回调都不再授权。预分发保持100ms和20ms余量，实际回调保持原100ms，不把已完成射击的观察强加未来余量。766项CPU夹具边界检查通过，不是游戏证明。
+
+新增原PendingFire数组全零和Core.Object.GotoState(native113/24bytes)退出适配器，原ButtonRelease必须先完成；只调用原状态转换进入HB BurstDelaying，让原Firing.EndState负责原refire timer清理，不写计数/弹药/VM/定时器。初版夹具错误假定Weapon.InvManager/Byte元素；原包完整object inventory确认Engine.Inventory.InvManager(export14497)、InventoryManager.PendingFire(export14545)及其IntProperty4 inner(export14544)。按真实布局改夹具后，旧适配器实际RED(-1073740791)，保存cancel-original-layout-before源/log；生产修正后103实际adapter fake边界/顺序检查及隔离完整PG0。不能把最初错误夹具的GREEN当真实ABI证明。
+
+离线读取原ShouldRefire37982(83 serialized/111 runtime)、FireAmmunition37971(16/24)和Engine Firing.EndState29658(116/152)，hb-burst-static-contract.json保存原包/原串/hash/属性身份。完整ShouldRefire的真人判断、原WarWeapon super、HasAmmo、Byte BurstCount/NumBurstShots、分支/转换/返回，以及原Byte++再调用WarWeapon.FireAmmunition均逐字节匹配；timer加这两段共454原串重定位/变异/截断/identity CPU检查通过，仍非运行中native/脚本证明。
+
+工作区新增weapon_hammerburst_burst_contract.inl：正常GT预检实际原函数/属性、原IsHumanControlled和完整bytecode，关闭读，不在回调调用getter。weapon_hammerburst_burst_runtime.inl将真实首发、有限尾段scope、POD轨迹观察和原状态撤销串为同一事务；这两模块仅在私有隔离playground.cpp增加compile-only include，完整PG编译0。共享root playground/refire/R2/unified-fire尚未加调用，HB入口继续withdrawn；runtime桥实际生产代码的275项metadata/source/engine fake范围检查通过，原函数certificate在该夹具是stub；原first-event捕获/after-up source准入及正常6发结束边界的共享入口仍需接齐，不能stage/run或交付当前隔离DLL。
+
+Lancer原writer确认这些共享入口当前无其未保存改动，但R2/unified-fire已有Longshot脏改，继续完整保留，只做exact-HB增量且精确暂存自己的hunk。无新HB候选/窗口排队，不重复070119/055335；公共v71、Native和吸附/Grip四态保持现状。

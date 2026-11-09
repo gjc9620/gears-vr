@@ -8,6 +8,7 @@
 #include <cstdio>
 #include <functional>
 #include <type_traits>
+#include "../vr-common/weapon_hand_participant.h"
 #ifdef NDEBUG
 #error Assertions required
 #endif
@@ -18,16 +19,18 @@ struct Array {uptr data{};int count{},capacity{};};
 namespace fixture {
 enum :unsigned {none,engine,core,weapon_owner,inventory_owner,object_owner,hb_owner,burst,
     function_type,class_type,state_type,byte_type,name_type,bool_type,goto_fn,
-    manager_property,pending_property,inner_property,newstate,label,force,keep,inventory_base,count};
+    manager_property,pending_property,inner_property,newstate,label,force,keep,inventory_base,hb_count,hb_limit,count};
 constexpr uptr address(unsigned i){return i?0x1000+0x100*i:0;}
 struct Model {
     bool gt{true},hold{true},registration{true},tables{true},objects{true},receiver{true},game{true},r2{},
         manager_class{true},retained{true},native_function{true},invoke{true},change_state{true},
-        pending_race{},pointer_race{},inner_race{},field_race{},array_race{},read_fail{},post_pending{};
+        pending_race{},pointer_race{},inner_race{},field_race{},array_race{},read_fail{},post_pending{},
+        native_source{true},owned_press{true};
     uptr manager{0xa000},world{0xb000},controller{0xc000},pawn{0xd000},weapon{0xe000};
     Name state{101,0},destination{};
     Array array{0xf000,2,2};std::array<unsigned char,256> bytes{};
     unsigned copies{},pointer_reads{},field_reads{},inner_reads{},array_reads{},go_calls{};
+    unsigned burst_count{},burst_limit{6};std::int64_t now{1000000000};
 } model;
 const wchar_t* text(unsigned i){switch(i){
     case engine:return L"Engine";case core:return L"Core";case weapon_owner:return L"Weapon";
@@ -72,7 +75,8 @@ struct Reader {
             if(model.array_race&&++model.array_reads>1)++out.capacity;return true;
         }else{
             std::uint64_t value{};
-            if(p==address(goto_fn)&&offset==0xf8)value=native_index;
+            if(p==model.weapon&&(offset==48||offset==49))value=offset==48?model.burst_count:model.burst_limit;
+            else if(p==address(goto_fn)&&offset==0xf8)value=native_index;
             else if(p==address(goto_fn)&&offset==0x108)value=return_offset;
             else if(p==address(pending_property)&&offset==0xd0){value=address(inner_property);if(model.inner_race&&++model.inner_reads>1)++value;}
             else return false;
@@ -89,16 +93,14 @@ bool tables(uptr,unsigned&,unsigned&){return fixture::model.tables;}
 bool fresh_name(unsigned,unsigned i,NameText& out){out.index=i;return true;}
 bool exact_text(NameText const& t,wchar_t const* name){return std::wcscmp(fixture::text(t.index),name)==0;}
 }
-namespace gears_weapon_hand {
-struct ObjectIdentity {uptr address{},klass{};};
-bool same(ObjectIdentity const& a,ObjectIdentity const& b){return a.address==b.address;}
-}
 namespace weaponhand {
 using Id=gears_weapon_hand::ObjectIdentity;
-struct HoldBinding {Id world{},controller{},pawn{},weapon{};std::uint64_t native_cookie{1},native_started{2};bool known{true};};
+struct HoldBinding {Id world{},controller{},pawn{},weapon{};
+    std::uint64_t native_cookie{1},native_started{2},world_generation{3},generation{4};bool known{true};};
 HoldBinding held_binding;
 struct Client {bool registration_alive(std::uint64_t,std::uint64_t){return fixture::model.registration;}}client;
 bool current_gt(void*){return fixture::model.gt;}
+std::int64_t clock_ns(void*){return fixture::model.now;}
 bool object(gripdamage_metadata::Reader&,Id const&){return fixture::model.objects;}
 bool core_type(gripdamage_metadata::Reader& r,unsigned slot,wchar_t const* name){return r.named(slot,name);}
 struct BoolField {gripdamage_metadata::Property property{};unsigned owner{};};
@@ -132,7 +134,8 @@ namespace unified_weapon_fire {bool retained_metadata(gripdamage_metadata::Reade
 namespace vrfire {
 namespace lr {struct Actors {gears_weapon_hand::ObjectIdentity world{},controller{},pawn{},weapon{};};
 struct Game {Actors actors{};bool known{},r2_known{},r2_held{};};}
-struct Input {lr::Actors actors(){auto& h=weaponhand::held_binding;return {h.world,h.controller,h.pawn,h.weapon};}}input;
+struct Input {lr::Actors actors(){auto& h=weaponhand::held_binding;return {h.world,h.controller,h.pawn,h.weapon};}
+    bool owns_press(){return fixture::model.owned_press;}}input;
 bool read_game(lr::Actors const& a,void*,lr::Game& g){g={a,true,true,fixture::model.r2};return fixture::model.game;}
 }
 namespace lancerrefire {
@@ -141,6 +144,8 @@ bool state_name(gripdamage_metadata::Reader&,uptr,Name& n){n=fixture::model.stat
 namespace hammerburst_refire {bool receiver(gripdamage_metadata::Reader&,uptr){return fixture::model.receiver;}}
 }
 bool copy(void* out,uptr p,std::size_t n){auto& m=fixture::model;
+    if(!m.read_fail&&n==1&&(p==m.weapon+48||p==m.weapon+49)){
+        *static_cast<unsigned char*>(out)=static_cast<unsigned char>(p==m.weapon+48?m.burst_count:m.burst_limit);return true;}
     if(m.read_fail||p!=m.array.data||n>m.bytes.size())return false;
     std::memcpy(out,m.bytes.data(),n);if(m.pending_race&&++m.copies>1&&n)static_cast<unsigned char*>(out)[0]=1;return true;
 }
@@ -158,9 +163,13 @@ void reset(){
     put(inner_property,byte_type,pending_property);Reader::properties[inner_property]={inner_property,byte_type,1,4,0,0};
     Reader::properties[manager_property]={manager_property,0,1,8,8,0};
     Reader::properties[pending_property]={pending_property,0,1,16,32,0};
-    weaponhand::held_binding={{model.world},{model.controller},{model.pawn},{model.weapon},1,2,true};
+    Reader::properties[hb_count]={hb_count,0,1,1,48,0};Reader::properties[hb_limit]={hb_limit,0,1,1,49,0};
+    weaponhand::held_binding={};weaponhand::held_binding.world.address=model.world;
+    weaponhand::held_binding.controller.address=model.controller;weaponhand::held_binding.pawn.address=model.pawn;
+    weaponhand::held_binding.weapon.address=model.weapon;
     weaponhand::held_binding.weapon.klass=address(hb_owner);
 }
+#ifndef HB_CANCEL_FIXTURE_ONLY
 int main(){
     using namespace fixture;using namespace gripdamage_metadata;unsigned checks{};
     const auto pending=[](){auto s=snapshot;Reader r{s,Stage::final_check};return hammerburst_burst_cancel::pending_up(r,model.weapon);};
@@ -206,3 +215,4 @@ int main(){
     }
     std::printf("HB actual cancellation adapter: %u fake boundary/order checks passed; not a game/ABI proof\n",checks);
 }
+#endif
