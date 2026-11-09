@@ -13,6 +13,7 @@
 #include <vector>
 #include "cover_physx_query_source.h"
 #include "cover_physx_stream.h"
+#include "cover_physx_shape_owner.h"
 
 // Synchronous ORIGINAL scene-query adapter. prime() belongs to Native startup,
 // outside DllMain and game callbacks. Query callers must own the admitted C0/GT
@@ -29,9 +30,16 @@ struct Capsule {Vector first{},second{};float radius{};};
 static_assert(sizeof(Vector)==12&&sizeof(Box)==60&&sizeof(Capsule)==28&&sizeof(Hit)==64&&alignof(Hit)==8);
 static_assert(offsetof(Box,centre)==0&&offsetof(Box,half)==12&&offsetof(Box,rotation)==24&&
     offsetof(Capsule,first)==0&&offsetof(Capsule,second)==12&&offsetof(Capsule,radius)==24);
-enum class Code {queried,unavailable,request,reentrant,source,code,changed,fault_unknown,truncated,callback_rejected};
+enum class Code {queried,unavailable,request,reentrant,source,code,changed,fault_unknown,truncated,callback_rejected,
+    owner_read,owner_unsupported,owner_links};
 struct Overlap {bool raw_hit{};};
 struct Sweep {std::uint32_t raw_count{},reserved{};Hit raw_hit{};};
+// Every raw hit is retained in order, with its observed public actor. This
+// neither identifies the complete player self set nor filters any hit.
+struct AllSweepOwners {
+    AllSweep raw{};
+    std::array<gears_cover_physx_shape_owner::Observation,max_stream_hits> owners{};
+};
 namespace detail {
 inline bool digest(void const* bytes,std::size_t n,Digest& out) noexcept {
     if(!bytes||n>ULONG_MAX)return false;
@@ -143,10 +151,37 @@ public:
         base_=reinterpret_cast<std::uintptr_t>(module_);size_=info.SizeOfImage;return true;
     }catch(...){close();return false;}}
 };
-class Queries {
-    Image image_{};std::atomic<bool> active_{},uncertain_{};
+namespace detail {
+struct OriginalCalls {
+    template<class Shape>static bool overlap(std::uintptr_t fn,std::uintptr_t scene,Shape const& shape,bool& result)noexcept{
+        return gears_cover_physx_query::detail::overlap(fn,scene,shape,result);}
+    template<class Shape>static bool sweep(std::uintptr_t fn,std::uintptr_t scene,Shape const& shape,Vector const& delta,Sweep& result)noexcept{
+        return gears_cover_physx_query::detail::sweep(fn,scene,shape,delta,result);}
+    template<class Shape>static bool sweep_stream(std::uintptr_t fn,std::uintptr_t scene,Shape const& shape,Vector const& delta,
+        Hit* batch,StreamReporter& reporter,std::uint32_t& count)noexcept{
+        return gears_cover_physx_query::detail::sweep_stream(fn,scene,shape,delta,batch,reporter,count);}
+};
+inline Code owner_code(gears_cover_physx_shape_owner::Code value)noexcept{
+    namespace owner=gears_cover_physx_shape_owner;
+    switch(value){
+    case owner::Code::observed:return Code::queried;
+    case owner::Code::request:return Code::request;
+    case owner::Code::guard:return Code::source;
+    case owner::Code::source_changed:case owner::Code::changed:return Code::changed;
+    case owner::Code::read:return Code::owner_read;
+    case owner::Code::unsupported:return Code::owner_unsupported;
+    case owner::Code::module:return Code::code;
+    case owner::Code::links:return Code::owner_links;
+    }return Code::source;
+}
+}
+// Production binds the original Image and original calls below. Explicit Host
+// substitutes can exercise this SAME transaction without executing the DLL.
+template<class ImageType,class Calls> class QueryEngine {
+    ImageType image_{};std::atomic<bool> active_{},uncertain_{};
     source::Snapshot before_{},after_{};
     AllSweep stream_candidate_{};
+    std::array<gears_cover_physx_shape_owner::Observation,max_stream_hits> owners_candidate_{};
     void fault() noexcept {uncertain_=true;image_.retain_for_process();}
     struct Finish {std::atomic<bool>& value;~Finish(){value=false;}};
     template<class Read,class Guard> Code begin(source::Source const& s,Read read,Guard guard) {
@@ -165,7 +200,7 @@ class Queries {
         return detail::source_guard(guard,after_)?Code::queried:Code::changed;
     }
 public:
-    Queries()=default;Queries(Queries const&)=delete;Queries& operator=(Queries const&)=delete;
+    QueryEngine()=default;QueryEngine(QueryEngine const&)=delete;QueryEngine& operator=(QueryEngine const&)=delete;
     // prime/close are owner-serialized startup/stop operations. A query fault
     // may have abandoned an original lock: no automatic unlock/reset/retry.
     bool prime() noexcept {return !active_.load()&&!uncertain_.load()&&image_.prime();}
@@ -183,7 +218,7 @@ public:
         try{const auto ready=begin(request,read,guard);if(ready!=Code::queried)return ready;
             if(!source::same(request,s)||std::memcmp(&geometry,&shape,sizeof shape))return Code::changed;
             Overlap result{};constexpr auto rva=std::is_same<Shape,Box>::value?0x168350:0x1682d0;
-            if(!detail::overlap(image_.base()+rva,before_.public_scene,geometry,result.raw_hit)){fault();return Code::fault_unknown;}
+            if(!Calls::overlap(image_.base()+rva,before_.public_scene,geometry,result.raw_hit)){fault();return Code::fault_unknown;}
             const auto closed=end(request,read,guard);if(closed!=Code::queried)return closed;
             if(!source::same(request,s)||std::memcmp(&geometry,&shape,sizeof shape))return Code::changed;
             output=result;return Code::queried;
@@ -200,16 +235,17 @@ public:
         try{const auto ready=begin(request,read,guard);if(ready!=Code::queried)return ready;
             if(!source::same(request,s)||std::memcmp(&geometry,&shape,sizeof shape)||std::memcmp(&movement,&delta,sizeof delta))return Code::changed;
             Sweep result{};constexpr auto rva=std::is_same<Shape,Box>::value?0x171770:0x1716f0;
-            if(!detail::sweep(image_.base()+rva,before_.public_scene,geometry,movement,result)){fault();return Code::fault_unknown;}
+            if(!Calls::sweep(image_.base()+rva,before_.public_scene,geometry,movement,result)){fault();return Code::fault_unknown;}
             if(result.raw_count>1){fault();return Code::fault_unknown;}
             const auto closed=end(request,read,guard);if(closed!=Code::queried)return closed;
             if(!source::same(request,s)||std::memcmp(&geometry,&shape,sizeof shape)||std::memcmp(&movement,&delta,sizeof delta))return Code::changed;
             output=result;return Code::queried;
         }catch(...){return Code::source;}
     }
-    template<class Shape,class Read,class Guard> Code sweep_all(source::Source const& s,Shape const& shape,Vector const& delta,
-        StreamLimits const& limits,Read read,Guard guard,AllSweep& output)noexcept{
+    template<class Shape,class Read,class Guard,class Output> Code sweep_all(source::Source const& s,Shape const& shape,Vector const& delta,
+        StreamLimits const& limits,Read read,Guard guard,Output& output)noexcept{
         static_assert(std::is_same_v<Shape,Box>||std::is_same_v<Shape,Capsule>);
+        static_assert(std::is_same_v<Output,AllSweep>||std::is_same_v<Output,AllSweepOwners>);
         if(source::aliases(&output,sizeof output,this,sizeof *this)||source::aliases(&output,sizeof output,&s,sizeof s)||
            source::aliases(&output,sizeof output,&shape,sizeof shape)||source::aliases(&output,sizeof output,&delta,sizeof delta)||
            source::aliases(&output,sizeof output,&limits,sizeof limits))return Code::request;
@@ -224,7 +260,7 @@ public:
             detail::StreamReporter reporter{detail::stream_vtable.data(),&stream_candidate_,batch.data(),GetCurrentThreadId(),budget};
             detail::StreamScope callback(reporter);if(!callback.admitted())return Code::reentrant;
             std::uint32_t raw_count{};constexpr auto rva=std::is_same_v<Shape,Box>?0x171770:0x1716f0;
-            const bool returned=detail::sweep_stream(image_.base()+rva,before_.public_scene,geometry,movement,batch.data(),reporter,raw_count);
+            const bool returned=Calls::sweep_stream(image_.base()+rva,before_.public_scene,geometry,movement,batch.data(),reporter,raw_count);
             callback.close();if(!returned){fault();return Code::fault_unknown;}
             const auto closed=end(request,read,guard);if(closed!=Code::queried)return closed;
             if(!source::same(request,s)||std::memcmp(&geometry,&shape,sizeof shape)||std::memcmp(&movement,&delta,sizeof delta)||
@@ -232,8 +268,25 @@ public:
             if(reporter.malformed)return Code::callback_rejected;
             if(reporter.truncated)return Code::truncated;
             if(raw_count!=stream_candidate_.hit_count)return Code::callback_rejected;
-            stream_candidate_.raw_count=raw_count;output=stream_candidate_;return Code::queried;
+            stream_candidate_.raw_count=raw_count;
+            if constexpr(std::is_same_v<Output,AllSweepOwners>){
+                // The active query and Image pin span enumeration AND all
+                // owner reads. No second query or stream filtering occurs.
+                std::fill(owners_candidate_.begin(),owners_candidate_.end(),gears_cover_physx_shape_owner::Observation{});
+                auto current_owner=[&](source::Snapshot const& raw){return source::same(before_,raw)&&detail::source_guard(guard,raw);};
+                for(unsigned i=0;i<stream_candidate_.hit_count;++i){
+                    const auto owner=gears_cover_physx_shape_owner::observe(image_.base(),image_.size(),before_,
+                        stream_candidate_.hits[i],read,current_owner,owners_candidate_[i]);
+                    if(owner!=gears_cover_physx_shape_owner::Code::observed)return detail::owner_code(owner);
+                }
+                const auto owner_closed=end(request,read,guard);if(owner_closed!=Code::queried)return owner_closed;
+                if(!source::same(request,s)||std::memcmp(&geometry,&shape,sizeof shape)||std::memcmp(&movement,&delta,sizeof delta)||
+                   std::memcmp(&budget,&limits,sizeof limits))return Code::changed;
+                output.raw=stream_candidate_;output.owners=owners_candidate_;
+            }else output=stream_candidate_;
+            return Code::queried;
         }catch(...){return Code::source;}
     }
 };
+using Queries=QueryEngine<Image,detail::OriginalCalls>;
 } // namespace gears_cover_physx_query

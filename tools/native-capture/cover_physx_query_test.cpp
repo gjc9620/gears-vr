@@ -153,6 +153,9 @@ static void query_tests(){
     check(q::detail::overlap(reinterpret_cast<std::uintptr_t>(&fake_overlap),0x180000,capsule,hit)&&hit,"capsule overlap ABI");
     check(q::detail::sweep(reinterpret_cast<std::uintptr_t>(&fake_sweep),0x180000,capsule,delta,result)&&result.raw_count==1,"capsule sweep ABI");
     check(abi_calls==4,"synthetic dispatch count");
+    check(q::detail::OriginalCalls::overlap(reinterpret_cast<std::uintptr_t>(&fake_overlap),0x180000,capsule,hit)&&hit,"production overlap forwarding ABI");
+    check(q::detail::OriginalCalls::sweep(reinterpret_cast<std::uintptr_t>(&fake_sweep),0x180000,capsule,delta,result)&&result.raw_count==1,"production sweep forwarding ABI");
+    check(abi_calls==6,"production forwarding calls exactly once");
     hit=false;check(!q::detail::overlap(reinterpret_cast<std::uintptr_t>(&fake_fault),0x180000,box,hit)&&!hit,"SEH does not return miss");
     q::Queries queries;s::Source input=source();q::Overlap output{true};unsigned reads{},guards{};
     auto read=[&](void*,void const*,std::size_t){++reads;return false;};auto guard=[&](){++guards;return true;};

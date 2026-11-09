@@ -46,6 +46,11 @@ struct HostEngine {
         if(stream_truncated)return q::Code::truncated;
         out.raw_count=out.hit_count=2;out.reports=1;out.hits[1].bytes.fill(0x78);return code;
     }
+    template<class Shape,class Read,class Guard>q::Code sweep_all(q::source::Source const& source,Shape const& shape,q::Vector const& delta,q::StreamLimits const& limits,Read read,Guard current,q::AllSweepOwners& out){
+        const auto code=sweep_all(source,shape,delta,limits,read,current,out.raw);
+        if(code==q::Code::queried){out.owners[0].actor=source.mesh;out.owners[1].actor=source.instance;}
+        return code;
+    }
 };
 using HostSession=service::Session<HostEngine>;
 static HostSession* active_session{};static q::Box test_box{{1,2,3},{1,2,3},{1,0,0,0,1,0,0,0,1}};
@@ -104,6 +109,16 @@ int main(){
         C(owner->sweep_all(actor,physics_expected,test_box,delta,q::StreamLimits{},source_read,guard,*all)==q::Code::truncated&&all->raw_count==99&&owner->enabled());
         const auto calls=query_calls;C(owner->sweep_all(actor,physics_expected,test_box,delta,q::StreamLimits{0,1},source_read,guard,*all)==q::Code::request&&query_calls==calls);
         owner->request_drain();C(owner->poll_stop()&&!owner->pending_count());}
+    reset();
+    {auto owner=std::make_unique<HostSession>();auto all=std::make_unique<q::AllSweepOwners>();C(owner->start(true,true));
+        C(owner->sweep_all(actor,physics_expected,test_box,delta,q::StreamLimits{},source_read,guard,*all)==q::Code::queried&&all->raw.hit_count==2&&all->owners[0].actor!=all->owners[1].actor);
+        q::Capsule cap{{0,0,0},{0,0,1},.5f};C(owner->sweep_all(actor,physics_expected,cap,delta,q::StreamLimits{},source_read,guard,*all)==q::Code::queried);
+        all->raw.raw_count=99;all->owners[0].actor=0xdead;stream_truncated=true;
+        C(owner->sweep_all(actor,physics_expected,test_box,delta,q::StreamLimits{},source_read,guard,*all)==q::Code::truncated&&all->raw.raw_count==99&&all->owners[0].actor==0xdead);
+        stream_truncated=false;during_query=replace_root;
+        C(owner->sweep_all(actor,physics_expected,test_box,delta,q::StreamLimits{},source_read,guard,*all)==q::Code::changed&&all->raw.raw_count==99&&all->owners[0].actor==0xdead);
+        owner->request_drain();C(owner->sweep_all(actor,physics_expected,test_box,delta,q::StreamLimits{},source_read,guard,*all)==q::Code::unavailable);
+        C(owner->poll_stop()&&!owner->pending_count());}
     C(native_calls==0&&query_lock_free);C(VirtualFree(reinterpret_cast<void*>(arena),0,MEM_RELEASE)!=0);
     printf("cover_physics_query_live: %u checks, %u failures; dispatch/module are Host seams, no original call\n",checks,failures);return failures?1:0;
 }

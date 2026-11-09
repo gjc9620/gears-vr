@@ -1,5 +1,6 @@
 #include "cover_physics_c0_live.inl"
 #include <cstdio>
+#include <memory>
 namespace c0=cover_physics_c0_live;namespace q=gears_cover_physx_query;
 static unsigned checks{},failures{};
 #define C(x) do{++checks;if(!(x)){++failures;printf("FAIL %u: %s\n",__LINE__,#x);}}while(0)
@@ -13,6 +14,9 @@ int main(){
     q::AllSweep all{};all.raw_count=99;
     C(c0::sweep_all(entry,core,box,delta,q::StreamLimits{},all)==q::Code::unavailable&&all.raw_count==99);
     C(c0::sweep_all(entry,core,capsule,delta,q::StreamLimits{},all)==q::Code::unavailable&&all.raw_count==99);
+    auto owners=std::make_unique<q::AllSweepOwners>();owners->raw.raw_count=99;owners->owners[0].actor=0xdead;
+    C(c0::sweep_all(entry,core,box,delta,q::StreamLimits{},*owners)==q::Code::unavailable&&owners->raw.raw_count==99&&owners->owners[0].actor==0xdead);
+    C(c0::sweep_all(entry,core,capsule,delta,q::StreamLimits{},*owners)==q::Code::unavailable&&owners->raw.raw_count==99&&owners->owners[0].actor==0xdead);
     wchar_t folder[MAX_PATH]{},path[MAX_PATH]{};C(GetTempPathW(MAX_PATH,folder)>0);C(GetTempFileNameW(folder,L"cvq",0,path)>0);
     C(c0::configure(path,nullptr));C(WritePrivateProfileStringW(L"FullBodyC0Native",L"cover_queries",L"1",path)!=0);C(!c0::configure(path,nullptr));
     C(WritePrivateProfileStringW(L"FullBodyC0Native",L"cover_queries",L"invalid",path)!=0);C(!c0::configure(path,nullptr));

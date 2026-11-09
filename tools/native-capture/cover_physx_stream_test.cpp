@@ -45,12 +45,12 @@ int main(){
     for(auto limits:std::array<q::StreamLimits,4>{{{0,1},{1025,1},{1,0},{1,257}}})check(!q::detail::stream_limits(limits),"invalid budgets rejected");
     q::Box box{{1,2,3},{1,2,3},{1,0,0,0,1,0,0,0,1}};q::Capsule capsule{{0,0,0},{0,0,1},.5f};q::Vector delta{.1f,.2f,.3f};expected_delta=&delta;
     auto invoke=[&](auto const& shape){*result={};reporter=make();q::detail::StreamScope scope(reporter);expected_shape=&shape;std::uint32_t raw{};
-        check(q::detail::sweep_stream(reinterpret_cast<std::uintptr_t>(&synthetic),0x180000,shape,delta,batch.data(),reporter,raw),"typed stream dispatch returned");
+        check(q::detail::OriginalCalls::sweep_stream(reinterpret_cast<std::uintptr_t>(&synthetic),0x180000,shape,delta,batch.data(),reporter,raw),"typed stream dispatch returned");
         check(raw==66&&result->hit_count==66&&result->reports==4&&!reporter.truncated&&!reporter.malformed,"all batches consumed including final after empty");
         check(result->hits[0].bytes.front()==0x11&&result->hits[1].bytes.front()==0&&result->hits[64].bytes.back()==63&&result->hits[65].bytes.back()==0xee,"packet order and full record payload");};
     invoke(box);invoke(capsule);
     *result={};reporter=make({1,256});expected_shape=&box;std::uint32_t raw{};
-    {q::detail::StreamScope scope(reporter);check(q::detail::sweep_stream(reinterpret_cast<std::uintptr_t>(&synthetic),0x180000,box,delta,batch.data(),reporter,raw),"truncated native-style return");
+    {q::detail::StreamScope scope(reporter);check(q::detail::OriginalCalls::sweep_stream(reinterpret_cast<std::uintptr_t>(&synthetic),0x180000,box,delta,batch.data(),reporter,raw),"truncated native-style return");
         check(reporter.truncated&&raw==65&&result->hit_count==1,"native count does not hide rejected batch");}
     q::Queries queries;q::source::Source source{};source.thread=GetCurrentThreadId();result->raw_count=99;
     auto read=[](void*,void const*,size_t){return false;};auto guard=[](){return true;};

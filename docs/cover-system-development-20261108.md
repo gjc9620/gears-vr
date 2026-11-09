@@ -1508,3 +1508,19 @@ capture的现有stop请求、cleanup-ready、retained判定、hook-restored与�
 单个聚焦程序在独立冻结r79源加本模块／测试和原PE fixture，/std:c++17 /O2 /W4 /WX /EHsc /UNDEBUG /MT实际编译执行0，202检查／0失败，8实际项目依赖全部位于冻结树并逐SHA。真实原PE仅映射为数据；对象／Scene／双向关系是明确合成fixture。覆盖八个真实主表、其他同Scene actor仍完整返回、15种表／代码／链接／来源错误、全部70个读点失败、6处owner guard失败、两次各自一致却已换actor、最后读／最后guard修改输入及非法Hit指针，所有失败保持输出；进程确认PhysXCore.dll仍未装载。首版因在旧fixture全局base／size之后include新header触发C4459/WX拒绝，保留原冻结与日志，改为新header首include并独立final树重编，没有关警告。未重复原125项旧suite，也未启动新Native／PG编译；未接线的头文件不称生产Native集成编译通过。
 
 证据analysis/cover-system-20261108/physx-shape-owner-r81/shape-owner-certificate.json、rea-evidence.json及verification.json；证书明确分观察、推论和未知。r80原5身份／Native8035与Beam8后序意向不变，当前未正式受理或获窗，本轮无游戏／XR／录制／新玩家动作通过，也没有助手／CUA／其他武器实现或publicv71变更。下一步完整自身集合及同原查询事务的归属消费仍须实现并认证，随后与组合身体路径、终点占用和physics-hit-muzzle同姿态接线；严重肩／身体遮挡仍待r80取得同调用几何与实际双眼后定位修复。完整CV-01–24／AC-01–22、逐点GrabPose／恢复与实体头显仍未完成，工程25%保持，目标active。
+
+## 2026年11月10日 r82命中归属接入原查询事务／完整Native编译
+
+上一轮47ed1125的形状归属读取属于进展；本轮将它接进现有原查询事务及当前C0观察入口，不另起一次查询追认旧结果。新增AllSweepOwners保留完整原AllSweep及按相同索引排列的actor归属。原方法正常返回、callback关闭、数量／截断与原来源关闭检查通过后，在同一个active query及原Image pin期间逐条读取归属，最后再关闭原来源和输入快照才发布。任何归属未知／读取失败／链接不符均整包失败，原结果不被部分写入；未删除自己或外部actor，不能把包名或零命中解释为完整自身排除、无碰撞或终点占用。
+
+QueryEngine在生产中固定别名Queries=原Image+OriginalCalls，配置不能选Host替身；原方法的SEH、flags及参数由原适配函数继续负责。仅为执行同一事务的离线验证，测试明确代换Image和原dispatch，来源、完整code byte检查、真实流收集、r81归属读取、最终closing均执行实际生产事务代码。新owner_read／owner_unsupported／owner_links明确区分归属失败；原fault_unknown仍保留原模块／资源和uncertain，禁止自动关闭／复位。普通只读拒绝不伪造成原方法未返回的锁债。旧裸流接口继续只返回原始流，不隐式过滤或追加归属成本。
+
+Session／C0增加Box与Capsule各一个带归属的sweep_all重载，现有八个观察API均维持同Entry地址、当前captured／未prepared C0、原Core和100ms来源、metadata、Link／slot、owner线程、无Kernel pending及原stop屏障。工作区留在既有串行对象：Engine持raw流和归属数组，Session持较大的组合结果，不在游戏线程额外建立约139KB结果临时量；也去掉裸流外层的一份重复结果。busy／active在归属读取期间仍有效，嵌套调用和worker提前close被拒绝，原调用期间没有新增私锁。GEARS编译／运行开关的默认关闭策略未改；Goal policy仍未调用查询，原no_cover身体写入拒绝保留，没有新Hook／相机／骨骼写入或输入链。
+
+完整独立v3 Native复用r79不可变树，仅本批5个产品文件overlay，1089源文件及全部原GEARS flags不变。实际编译链接0，DLL SHA8eb0bc2a8cb9277ea466c322ae2d2cbb0dec28c329bb0d311da2a3e3731d0bd1；672实际依赖／392冻结项目依赖逐SHA，无外部工作树依赖。两种C0带归属重载在真实ON构建内实例化；这证明生产接线可编译，不是游戏中的原查询通过。Native仍沿原/W4／EHsc及既有警告设置，不称全Native /WX；本批模块未出现新警告。
+
+同一v3冻结源的六个聚焦程序均/std:c++17 /O2 /W4 /WX /EHsc /UNDEBUG /MT实际编译执行0：Owned事务74检查／0，Stream40／0，Session67／0，Raw130／0，Owner202／0，C0 OFF20／0；实际项目依赖并集55项。Owned调用真实QueryEngine，只将模块装载和方法dispatch改为Host：一次原查询保留self／foreign两actor、全部1024最后一条归属、Box／Capsule、空流清旧数据、逐归属读取期间pending／拒绝close和重入、未知表／坏链接／读失败／源变／代码变／计数不符／截断／原fault及错误线程均有检查；失败整包不发布、不重跑原方法。Session使用独立已说明Host engine，覆盖大包接线、源变／截断保留输出与drain；Raw／Stream进一步执行生产OriginalCalls转发到合成x64函数，确认原5／10参数和SEH未变。原DLL仅作实际PE数据，测试进程未装载或执行原DLL，所有输入对象关系仍是合成，不能升级为原游戏／当前物理证明。
+
+首轮单元编译因测试guard只给typed而缺原capture需要的plain接口拒绝，补成与实际SourceGuard相同的两接口。下一轮组合fixture在新header的base局部名触发C4459/WX拒绝；修名时我误将三个std::array::size调用一起替换，第三份冻结也被编译拒绝。已恢复这三个调用，只保留参数明确命名，另建v3完整源后六程序全绿。前三版源／日志独立保留，没有关警告、覆盖失败或在失败输入上反复启动游戏。
+
+证据analysis/cover-system-20261108/physx-owner-stream-r82/verification.json及v3-native／unit源、构建与实际依赖回执。本轮未stage／游戏／XR／录制，无新增玩家动作通过。r80五身份及Native8035保持不变，仍仅有Beam8后序意向、未正式受理／获窗；公共v71、旧b144已消费失败均保留。此包的每条归属仍只是读括号，不能提供shape生命周期／ABA排除、共同物理世界fence、完整自身集合或所有形状覆盖；人物胶囊与所有身体／组件／装备自身集合、组合／形变路径及终点占用、physics-hit-muzzle同姿态、Native实际移动恢复、严重肩／身体遮挡、逐点GrabPose、完整CV24／AC22与实体头显继续未完成。工程25%不变，目标active。
