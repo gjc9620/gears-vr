@@ -1,0 +1,463 @@
+--- /dev/null
++++ b/analysis/hammerburst-20261108/run_empty_normal_admission_v5.py
+@@ -0,0 +1,245 @@
++"""One frozen HB ordinary-empty-reload attempt; --prepare-only never stages or consumes admission."""
++import os
++import sys
++
++# This deliberately precedes argument, ticket, source and dependency validation.
++# The parent is created offline. Never unlink/recreate a consumed attempt.
++_CLAIM = 'C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\admission-v5\\claims\\hammerburst-prepared-20261110-010515-settings-alias.json'
++_PREPARE = sys.argv[1:] == ['--prepare-only']
++if not _PREPARE:
++    _fd = os.open(_CLAIM, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
++    try:
++        os.write(_fd, ('{"state":"consumed_unverified","pid":%d}\n' % os.getpid()).encode('ascii'))
++        os.fsync(_fd)
++    finally:
++        os.close(_fd)
++# END_EXCLUSIVE_BOOTSTRAP
++from pathlib import Path
++import hashlib,json,os,socket,subprocess,sys,time,importlib.util
++ROOT=Path(__file__).resolve().parents[2];E=ROOT/'analysis/hammerburst-20261108';O=ROOT/'analysis/solo-m1-20261028'
++PREFIX='empty-normal-settings-alias'
++_TICKET=Path('C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\admission-v5\\final-window-ticket.json')
++
++PREDECESSOR_THREAD='01a1bf64-8db6-7a20-9953-0e4a76532222'
++PREDECESSOR_CANDIDATE='equipment-controls-prepared-20261110-hod-beam7-tomb'
++PREDECESSOR_EXECUTION='051fe4654985183467ba7a694af8b7343ad30ddbde82c13b7770c92606a6a4eb'
++PREDECESSOR_ROOT=ROOT/'analysis/hod-20261109'
++PREDECESSOR_CLAIM=PREDECESSOR_ROOT/'claims/hod-beam7-execution.json'
++PREDECESSOR_RESULT=PREDECESSOR_ROOT/'beam7-execution-result.json'
++PREDECESSOR_PINS={'prepared':'dcb30643e5ff4ef6f8651396293f46b5e8b9d69d8294d1eca14a0c49ed7ca444','plan':'0a7ad2df8854bea66ef7f5184a7ae395b70cab420d24421448544c28cc0b4466','ready':'618ee7a23c95288dbf71fb39c5e0be16001fb8a84226929bd6e48b5f9c9a98aa','outer':'3f6635891856157bff44a98d82b4a52d2ea94e7b151bb5422f8288eb663a258e'}
++PREDECESSOR={'thread':PREDECESSOR_THREAD,'candidate':PREDECESSOR_CANDIDATE,'execution_sha256':PREDECESSOR_EXECUTION}
++
++def load(p):return json.loads(Path(p).read_text(encoding='utf-8-sig'))
++def sha(p):
++ with Path(p).open('rb') as f:return hashlib.file_digest(f,'sha256').hexdigest()
++def clean_environment(environment):
++ return {key:value for key,value in environment.items() if not key.upper().startswith(('GEARS','PYTHON','XR','OPENXR'))}
++
++def checked_reference(reference,root):
++ path=Path(reference['path'])
++ if path.is_symlink() or not path.resolve().is_relative_to(root.resolve()) or sha(path)!=reference['sha256']:
++  raise RuntimeError('Changed or foreign predecessor evidence')
++ return load(path)
++
++def require_fields(value,expected,label):
++ if not isinstance(value,dict) or any(value.get(key)!=item for key,item in expected.items()):
++  raise RuntimeError('Wrong '+label+' identity')
++
++def verify_predecessor(queue,window,identity,proof,plan):
++ require_fields(queue.get('expected_predecessor'),PREDECESSOR,'queue predecessor')
++ require_fields(window.get('predecessor'),PREDECESSOR,'ticket predecessor')
++ if window.get('predecessor_thread')!=PREDECESSOR_THREAD:raise RuntimeError('Wrong predecessor thread')
++ href=window['handoff_evidence'];handoff=checked_reference(href,PREDECESSOR_ROOT)
++ require_fields(handoff,dict(from_thread=PREDECESSOR_THREAD,to_thread='01a1bb03-7453-7530-afcd-2fb1ea7e7a51',predecessor_candidate=PREDECESSOR_CANDIDATE,predecessor_execution_sha256=PREDECESSOR_EXECUTION,successor_identity=identity),'raw final handoff')
++ flags=('unique_successor','runtime_window_released','all_owned_jobs_terminal','independent_idle','normal_cleanup_verified','paired_review_complete','encoders_terminal','restoration_verified','retention_terminal')
++ if any(handoff.get(key) is not True for key in flags):raise RuntimeError('Incomplete actual final handoff')
++ cref=handoff['predecessor_claim'];tref=handoff['predecessor_terminal']
++ if Path(cref['path']).resolve()!=PREDECESSOR_CLAIM.resolve() or Path(tref['path']).resolve()!=PREDECESSOR_RESULT.resolve():raise RuntimeError('Old or foreign attempt paths')
++ claim=checked_reference(cref,PREDECESSOR_ROOT);terminal=checked_reference(tref,PREDECESSOR_ROOT)
++ expected=dict(candidate=PREDECESSOR_CANDIDATE,execution_sha256=PREDECESSOR_EXECUTION,candidate_hashes=PREDECESSOR_PINS)
++ require_fields(claim,expected,'actual consumed predecessor claim');require_fields(terminal,expected,'actual terminal result')
++ if type(claim.get('pid')) is not int or claim['pid']<=0 or claim.get('state')!='consumed_baseline_verified_before_stage':raise RuntimeError('Unlinked or unconsumed predecessor claim')
++ if terminal.get('pid')!=claim['pid'] or terminal.get('started') is not True or type(terminal.get('outer_exit')) is not int or terminal.get('normal_baseline_restoration') is not True or terminal.get('independent_idle_after') is not True:
++  raise RuntimeError('Active, unstarted or unclean predecessor attempt')
++ require_fields(terminal.get('restoration'),dict(all_ten_exact=True,public_state_written=False),'terminal restoration')
++ bref=claim['baseline_receipt'];baseline=checked_reference(bref,PREDECESSOR_ROOT)
++ if Path(bref['path']).resolve()!=Path(claim['baseline_folder']).resolve()/'receipt.json' or terminal.get('baseline_receipt')!=bref['path'] or terminal.get('baseline_receipt_sha256')!=bref['sha256']:
++  raise RuntimeError('Predecessor baseline/terminal link mismatch')
++ before=baseline['identity'];require_fields(before,dict(expected,pid=claim['pid'],phase='before_stage',before_native_copy=True),'predecessor raw baseline')
++ for key in ('handoff','handoff_sha256','predecessor_thread'):
++  if before.get(key)!=claim.get(key) or terminal.get(key)!=claim.get(key):raise RuntimeError('Predecessor restoration ownership changed')
++ rows=baseline.get('baselines',[]);paths={item['path'] for item in plan['baseline_files']}
++ if len(rows)!=10 or {item['path'] for item in rows}!=paths or len({item['label'] for item in rows})!=10:raise RuntimeError('Wrong predecessor ten raw paths')
++ for row in rows:
++  if type(row.get('existed')) is not bool or row.get('read_only')!=(row['label']=='public_state'):raise RuntimeError('Unknown predecessor baseline policy')
++  if row['existed']:
++   saved=Path(row['saved'])
++   if not saved.resolve().is_relative_to(Path(claim['baseline_folder']).resolve()) or sha(saved)!=row['sha256']:raise RuntimeError('Lost predecessor restoration original')
++  elif row.get('saved') is not None or row.get('sha256') is not None:raise RuntimeError('Wrong absent predecessor baseline')
++  own=proof['files'][row['path']]
++  if own['exists']!=row['existed'] or own['sha256']!=row['sha256']:raise RuntimeError('HB baseline differs from restored predecessor raw bytes')
++ binding=dict(handoff_sha256=href['sha256'],claim_sha256=cref['sha256'],terminal_sha256=tref['sha256'],baseline_sha256=bref['sha256'])
++ require_fields(proof.get('predecessor_binding'),binding,'HB baseline restoration responsibility')
++ review=checked_reference(handoff['review'],PREDECESSOR_ROOT)
++ require_fields(review,dict(candidate=PREDECESSOR_CANDIDATE,execution_sha256=PREDECESSOR_EXECUTION,claim_sha256=cref['sha256'],terminal_sha256=tref['sha256'],baseline_sha256=bref['sha256']),'independent closeout review')
++ if any(review.get(key) is not True for key in flags if key not in ('unique_successor','runtime_window_released')):raise RuntimeError('Incomplete independent cleanup/media review')
++ evidence=review['evidence'];required={'normal_cleanup','launcher_done','paired_review','encode','retention'}
++ if set(evidence)!=required:raise RuntimeError('Missing independent terminal evidence roles')
++ bodies={key:checked_reference(value,PREDECESSOR_ROOT) for key,value in evidence.items()}
++ cleanup=bodies['normal_cleanup'];done=bodies['launcher_done']
++ if not all(cleanup.get(key) is True for key in ('native_cleanup_verified','entry_restore_verified')) or not cleanup.get('vr_gamepad_cleanup',{}).get('restored') or not cleanup.get('unified_weapons_cleanup',{}).get('drained') or cleanup.get('xr_exit_code')!=0 or done.get('launcher_exit_code')!=0 or done.get('remaining_owned_game','unknown') is not None:
++  raise RuntimeError('Predecessor normal runtime cleanup unproven')
++ game=cleanup.get('game_identity',{})
++ if type(game.get('pid')) is not int or not game.get('creation_time') or handoff.get('predecessor_game')!=game or review.get('game')!=game:raise RuntimeError('Actual predecessor game identity missing')
++ paired=bodies['paired_review']
++ if paired.get('game')!=game or paired.get('personally_reviewed') is not True or not paired.get('overview_pages') or not paired.get('raw_images'):raise RuntimeError('Full paired review unproven')
++ if bodies['encode'].get('game')!=game or bodies['encode'].get('exit_code')!=0:raise RuntimeError('Encoder not terminal zero')
++ if done.get('launcher_pid')!=cleanup.get('owner_identity',{}).get('pid'):raise RuntimeError('Wrong launcher cleanup attempt')
++ retention=bodies['retention']
++ if not any(row.get('pid')==game['pid'] and row.get('creation')==game['creation_time'] for row in retention.get('keep_sessions',[])):raise RuntimeError('Retention omits actual predecessor session')
++ if retention.get('dry_run') is not False or retention.get('errors')!=[] or retention.get('deferred') or retention.get('maximum_completed_sessions')!=3 or retention.get('maximum_age_hours')!=48:raise RuntimeError('Retention incomplete')
++ local=checked_reference(dict(path=queue['predecessor_review'],sha256=queue['predecessor_review_sha256']),E)
++ require_fields(local,dict(binding,predecessor=PREDECESSOR,all_predecessor_evidence_checked=True),'HB independent predecessor review')
++ return binding
++
++def bind_attempt(identity,proof_reference,binding):
++ path=Path(_CLAIM);before=load(path)
++ if before!=dict(state='consumed_unverified',pid=os.getpid()):raise RuntimeError('Exclusive attempt owner changed')
++ linked=dict(before,state='consumed_baseline_handoff_verified',identity=identity,baseline_evidence=proof_reference,predecessor_binding=binding)
++ with path.open('r+',encoding='utf-8') as stream:
++  if json.load(stream)!=before:raise RuntimeError('Exclusive claim raced')
++  stream.seek(0);json.dump(linked,stream,indent=2);stream.truncate();stream.flush();os.fsync(stream.fileno())
++ if load(path)!=linked:raise RuntimeError('Attempt binding did not persist')
++ return linked
++
++def verify_attempt(linked):
++ if load(_CLAIM)!=linked or sha(linked['baseline_evidence']['path'])!=linked['baseline_evidence']['sha256']:
++  raise RuntimeError('Restoration responsibility changed')
++
++def admit(queue,ready,plan,actual_host,actual_root):
++ assert actual_host.casefold()==plan['host']['computer_name'].casefold() and plan['host']['codex_host_id']=='local'
++ assert Path(actual_root).resolve()==Path(plan['host']['worktree']).resolve()
++ assert queue['state']=='final_handoff_received_not_staged' and queue['final_handoff_received'] is True
++ assert queue['accepted'] is True and queue['window_owned'] is True
++ assert not queue['staged'] and not queue['recorded']
++ assert queue['candidate']==Path(ready['candidate']).name==Path(plan['candidate']).name
++ assert queue['prepared_sha256']==ready['prepared_sha256']==plan['prepared_sha256']
++ assert queue['ready_sha256']==ready['_actual_sha256'] and queue['plan_sha256']==ready['plan_sha256']
++ require_fields(queue.get('expected_predecessor'),PREDECESSOR,'queue predecessor')
++ assert queue['predecessor_review'] and queue['predecessor_review_sha256']
++ local=checked_reference(dict(path=queue['predecessor_review'],sha256=queue['predecessor_review_sha256']),E)
++ require_fields(local,dict(predecessor=PREDECESSOR,all_predecessor_evidence_checked=True),'queue independent current predecessor review')
++ return True
++
++def prepare():
++ assert sha(PREDECESSOR_ROOT/'beam7-execution.json')==PREDECESSOR_EXECUTION
++ ready_path=E/'empty-normal-admission-v5-ready.json';ready=load(ready_path);ready['_actual_sha256']=sha(ready_path);plan_path=Path(ready['plan']);assert sha(plan_path)==ready['plan_sha256'];plan=load(plan_path)
++ assert socket.gethostname().casefold()==plan['host']['computer_name'].casefold()
++ assert ROOT.resolve()==Path(plan['host']['worktree']).resolve() and plan['host']['codex_host_id']=='local'
++ assert sha(__file__)==plan['entry_sha256']==ready['entry_sha256']
++ target=Path(plan['candidate']);assert target.parent==O and target.name=='hammerburst-prepared-20261110-010515-settings-alias'
++ assert sha(target/'prepared.json')==ready['prepared_sha256']==plan['prepared_sha256'];record=load(target/'prepared.json')
++ for rel,digest in record['source_sha256'].items():assert sha(target/'source'/rel)==digest,rel
++ for rel,digest in record['native_source_sha256'].items():assert sha(target/'native-source'/rel)==digest,rel
++ for key,b in record['builds'].items():assert sha(b['saved'])==b['sha256'],key
++ assert sha(plan['runtime_inputs_receipt'])==plan['runtime_inputs_sha256'];inputs=load(plan['runtime_inputs_receipt'])
++ for path,digest in inputs['sha256'].items():assert sha(path)==digest,path
++ boundary=load(plan['runtime_python_boundary']['path']);assert sha(plan['runtime_python_boundary']['path'])==plan['runtime_python_boundary']['sha256']
++ for rel,digest in boundary['files'].items():assert sha(ROOT/rel)==sha(Path(boundary['archive'])/rel)==digest,rel
++ for path,digest in plan['entry_dependencies'].items():assert sha(path)==digest,path
++ host_path=Path(plan['host_dependencies']['path']);assert sha(host_path)==plan['host_dependencies']['sha256'];host_deps=load(host_path)
++ for path,digest in host_deps['files'].items():assert sha(path)==digest,path
++ for name,expected in host_deps['module_origins'].items():
++  module=importlib.import_module(name);assert Path(module.__spec__.origin).resolve()==Path(expected['path']).resolve();assert sha(module.__spec__.origin)==expected['sha256']
++ import PIL,numpy
++ assert PIL.__version__==host_deps['versions']['Pillow'] and numpy.__version__==host_deps['versions']['numpy']
++ assert sha(plan['selected_game_path'])==plan['selected_game_sha256']
++ assert Path(sys.executable).resolve()==Path(plan['review_interpreter']['path']).resolve() and sha(sys.executable)==plan['review_interpreter']['sha256']
++ return ready,plan,record
++
++def verify_prebirth_failure(done,worker,session):
++ if done.get('session_report') or not isinstance(done.get('launcher_exit_code'),int) or done['launcher_exit_code']==0:
++  raise RuntimeError('Not an explicit failed startup without a runtime report')
++ if done.get('remaining_owned_game','unknown') is not None or done.get('launcher_pid')!=worker.get('launcher_pid'):
++  raise RuntimeError('Startup ownership or game absence is unproven')
++ owner=session.get('owner_identity')
++ if not isinstance(owner,dict) or owner.get('pid')!=worker.get('launcher_pid') or not owner.get('creation_time') or not owner.get('image'):
++  raise RuntimeError('Missing exact startup launcher identity')
++ if session.get('phase')!='incomplete' or session.get('game_identity') or not session.get('error') or session.get('reservation_failure_cleanup',{}).get('status')!='no_birth_receipt':
++  raise RuntimeError('Game-free reservation failure is unproven; retain manual cleanup duty')
++ return dict(owner_identity=owner,startup_error=session['error'],game_born=False,launcher_exit=done['launcher_exit_code'])
++
++def main():
++ assert Path.cwd().resolve()==ROOT
++ if not (sys.flags.optimize==0 and sys.flags.dont_write_bytecode and sys.flags.ignore_environment and sys.flags.no_user_site and sys.flags.utf8_mode and not sys.flags.isolated):raise RuntimeError('Exact -E -s -B -X utf8 without -O/-I required')
++ assert _PREPARE or sys.argv[1:]==['--run','--window-ticket',str(_TICKET)]
++ cleaned=clean_environment(os.environ);os.environ.clear();os.environ.update(cleaned)
++ ready,plan,record=prepare()
++ os.environ.update(plan['environment'])
++ if _PREPARE:
++  print(json.dumps(dict(prepared=Path(plan['candidate']).name,host=socket.gethostname(),static_passed=True,staged=False,started=False,shared_runtime_queried=False,once_claimed=False)));return 0
++ queue_path=E/'settings-alias-queue.json';queue=load(queue_path);admit(queue,ready,plan,socket.gethostname(),ROOT)
++ assert sha(queue['predecessor_review'])==queue['predecessor_review_sha256']
++ window=load(_TICKET);identity=dict(prepared=Path(plan['candidate']).name,prepared_sha256=ready['prepared_sha256'],plan_sha256=ready['plan_sha256'],ready_sha256=ready['_actual_sha256'],entrypoint_sha256=sha(__file__))
++ assert window['identity']==identity and window['owner_thread']=='01a1bb03-7453-7530-afcd-2fb1ea7e7a51'
++ assert window['predecessor_thread']!=window['owner_thread']
++ assert all(window[k] is True for k in ['accepted','final_unique_handoff_received','runtime_window_owned','predecessor_terminal_verified','baseline_verified'])
++ for key in ['handoff_evidence','baseline_evidence']:assert sha(window[key]['path'])==window[key]['sha256']
++ proof=load(window['baseline_evidence']['path']);assert proof['identity']==identity and proof['before_stage'] is True
++ predecessor_binding=verify_predecessor(queue,window,identity,proof,plan)
++ specs={x['path']:x for x in plan['baseline_files']};assert set(proof['files'])==set(specs) and len(specs)==10
++ baseline={'files':[]}
++ for path,item in proof['files'].items():
++  file=Path(path);assert not file.is_symlink() and type(item['exists']) is bool
++  row=dict(path=path,exists=item['exists'],sha256=item['sha256'],public_read_only=specs[path]['public_read_only'])
++  if item['exists']:
++   saved=Path(item['saved']);assert saved.resolve().is_relative_to(E.resolve());assert sha(file)==sha(saved)==item['sha256'];row['backup']=str(saved)
++  else:assert not file.exists()
++  baseline['files'].append(row)
++ linked_attempt=bind_attempt(identity,window['baseline_evidence'],predecessor_binding)
++ helper=Path(plan['selection_helper']);spec=importlib.util.spec_from_file_location('hb_existing_selection_helper',helper);selection=importlib.util.module_from_spec(spec);spec.loader.exec_module(selection)
++ selection.validate(dict(game_path=plan['selected_game_path'],game_sha256=plan['selected_game_sha256'],settings_path=plan['selected_settings_path']),ROOT)
++ sys.path.insert(0,str(O));from retain_test_media import idle
++ assert idle(),'Runtime active: no claim/stage'
++ assert idle(),'Runtime appeared: no stage'
++ verify_attempt(linked_attempt)
++ stage=subprocess.run([sys.executable,'-E','-s','-B','-X','utf8',str(O/'stage_lancer_private.py'),queue['candidate']],cwd=ROOT,capture_output=True,text=True)
++ (E/(PREFIX+'-stage.log')).write_text(stage.stdout+stage.stderr,encoding='utf-8');assert stage.returncode==0,stage.stderr
++ queue.update(state='running_owned',staged=True,started_ns=time.time_ns(),baseline=window['baseline_evidence']['path']);queue_path.write_text(json.dumps(queue,indent=2))
++ instance=ROOT/'analysis/instances/solo-m1-1028d';config=instance/'config.json';config.write_bytes(selection.config_bytes(config.read_bytes(),dict(game_path=plan['selected_game_path'],game_sha256=plan['selected_game_sha256'],settings_path=plan['selected_settings_path']),ROOT))
++ env=dict(os.environ)
++ for name in plan['clear_environment']:env.pop(name,None)
++ env.update(plan['environment'])
++ with (E/(PREFIX+'-run.log')).open('w',encoding='utf-8') as log:
++  launched_wall=time.time();deadline=time.monotonic()+plan['maximum_seconds'];process=subprocess.Popen([sys.executable,'-E','-s','-B','-X','utf8',str(O/'run_hammerburst_check.py')],cwd=ROOT,env=env,stdout=log,stderr=subprocess.STDOUT,creationflags=subprocess.CREATE_NO_WINDOW|subprocess.BELOW_NORMAL_PRIORITY_CLASS)
++  while process.poll() is None and time.monotonic()<deadline:time.sleep(.25)
++  deadline_stop=False
++  if process.poll() is None:
++   sys.path.insert(0,str(ROOT/'tools/native-capture'));from run_stereo_continuous import WindowsControl
++   worker_path=O/'worker.json';worker=load(worker_path);session=load(instance/'launcher-session.json');owner=session.get('owner_identity')
++   assert worker_path.stat().st_mtime>=launched_wall and owner and owner['pid']==worker['launcher_pid'] and WindowsControl().identity(owner['pid'])==owner
++   assert load(instance/'manifest.json')['playground_sha256']==record['builds']['playground']['sha256']
++   (O/'stop-basic').write_text('Owned HB230535360second boundary; existing normal stop requested',encoding='utf-8');deadline_stop=True
++  result=process.wait(timeout=120)
++ done_path=O/'done.json';done=load(done_path);worker=load(O/'worker.json');assert done_path.stat().st_mtime>=launched_wall
++ if not done.get('session_report'):
++  failed_path=instance/'launcher-session.json';assert failed_path.stat().st_mtime>=launched_wall
++  failure=verify_prebirth_failure(done,worker,load(failed_path))
++  assert idle(),'Startup failure not idle: no restoration'
++  verify_attempt(linked_attempt);checks=selection.restore(baseline,ROOT)
++  receipt=dict(failure,exit_code=result or done['launcher_exit_code'],at_ns=time.time_ns(),startup_prebirth_verified=True,baseline_checks=checks,normal_game_cleanup_not_applicable=True,paired_review_encode_not_applicable=True,game_success_not_inferred=True,review_retention_handoff_still_required=True)
++  (E/(PREFIX+'-run-exit.json')).write_text(json.dumps(receipt,indent=2))
++  queue.update(state='startup_failed_terminal_review_pending',runner_exit=receipt['exit_code'],startup_error=failure['startup_error']);queue_path.write_text(json.dumps(queue,indent=2))
++  print(json.dumps(receipt));return receipt['exit_code']
++ report_path=Path(done['session_report']);report=load(report_path);assert report_path.stat().st_mtime>=launched_wall
++ assert report['owner_identity']['pid']==worker['launcher_pid']
++ assert Path(report['game_identity']['image']).resolve()==Path(plan['selected_game_path']).resolve()
++ assert report['diagnostics_artifacts']['native_sha256']==record['builds']['native']['sha256'] and report['diagnostics_artifacts']['xr_sha256']==record['builds']['sim_xr']['sha256']
++ assert report['native_cleanup_verified'] and report['entry_restore_verified'] and report['vr_gamepad_cleanup']['restored'] and report['unified_weapons_cleanup']['drained']
++ assert report['xr_exit_code']==0 and done['launcher_exit_code']==0 and done['remaining_owned_game'] is None
++ assert idle(),'Runtime not idle: no restoration'
++ verify_attempt(linked_attempt);checks=selection.restore(baseline,ROOT)
++ receipt=dict(exit_code=result,at_ns=time.time_ns(),deadline_stop=deadline_stop,game=report['game_identity'],session_report=str(report_path),normal_cleanup_verified=True,baseline_checks=checks,paired_review_encode_retention_still_required=True,game_success_not_inferred=True)
++ (E/(PREFIX+'-run-exit.json')).write_text(json.dumps(receipt,indent=2));queue.update(state='runner_terminal_review_pending',runner_exit=result,runtime_report=str(report_path),game=report['game_identity']);queue_path.write_text(json.dumps(queue,indent=2));print(json.dumps(receipt));return result
++
++if __name__=='__main__':raise SystemExit(main())
+--- /dev/null
++++ b/analysis/hammerburst-20261108/check_admission_v5.py
+@@ -0,0 +1,99 @@
++"""Real extracted v5 boundary functions with synthetic receipts; no entry import or actual runtime files."""
++from pathlib import Path
++import ast,json,hashlib,os,tempfile,copy
++R=Path.cwd();A=R/'analysis/hammerburst-20261108';entry=A/'run_empty_normal_admission_v5.py';source=entry.read_text();tree=ast.parse(source);ns=dict(Path=Path,json=json,hashlib=hashlib,os=os)
++for node in tree.body:
++ if isinstance(node,ast.Assign) and len(node.targets)==1 and isinstance(node.targets[0],ast.Name) and node.targets[0].id in ['PREDECESSOR_THREAD','PREDECESSOR_CANDIDATE','PREDECESSOR_EXECUTION','PREDECESSOR_PINS']:ns[node.targets[0].id]=ast.literal_eval(node.value)
++ns['PREDECESSOR']=dict(thread=ns['PREDECESSOR_THREAD'],candidate=ns['PREDECESSOR_CANDIDATE'],execution_sha256=ns['PREDECESSOR_EXECUTION'])
++functions=[n for n in tree.body if isinstance(n,ast.FunctionDef) and n.name in ['load','sha','clean_environment','checked_reference','require_fields','verify_predecessor','bind_attempt','verify_attempt','admit']];exec(compile(ast.Module(body=functions,type_ignores=[]),'actual_v5_functions','exec'),ns)
++sha=ns['sha'];rows=[]
++def fixture(root,case):
++ H=root/'analysis/hod-20261109';B=H/'beam7-before-stage-123';E=root/'analysis/hammerburst-20261108';B.mkdir(parents=True);E.mkdir(parents=True)
++ ns.update(ROOT=root,E=E,PREDECESSOR_ROOT=H,PREDECESSOR_CLAIM=H/'claims/hod-beam7-execution.json',PREDECESSOR_RESULT=H/'beam7-execution-result.json');ns['PREDECESSOR_CLAIM'].parent.mkdir()
++ def put(name,data):
++  path=H/name;path.write_text(json.dumps(data));return dict(path=str(path),sha256=sha(path))
++ identity=dict(prepared='current_HB',prepared_sha256='a186',plan_sha256='newplan',ready_sha256='newready',entrypoint_sha256='newentry')
++ expected=dict(candidate=ns['PREDECESSOR_CANDIDATE'],execution_sha256=ns['PREDECESSOR_EXECUTION'],candidate_hashes=ns['PREDECESSOR_PINS']);before=dict(expected,pid=4242,phase='before_stage',before_native_copy=True,predecessor_thread='actual_Bol',handoff='prior_Bol.json',handoff_sha256='prior_Bol_hash');base_rows=[];own={};specs=[]
++ for i in range(10):
++  target=root/('target-'+str(i));target.write_bytes(str(i).encode());saved=B/('saved-'+str(i));saved.write_bytes(target.read_bytes());label='public_state' if i==4 else str(i);digest=sha(target)
++  base_rows.append(dict(label=label,path=str(target),existed=True,sha256=digest,saved=str(saved),read_only=i==4));own[str(target)]=dict(exists=True,sha256=digest);specs.append(dict(path=str(target)))
++ if case=='baseline_wrong_identity':before['execution_sha256']='old'
++ if case=='baseline_wrong_phase':before['phase']='after_stage'
++ if case=='baseline_duplicate_path':base_rows[-1]['path']=base_rows[0]['path']
++ if case=='baseline_public_writable':base_rows[4]['read_only']=False
++ bref=put('beam7-before-stage-123/receipt.json',dict(identity=before,baselines=base_rows))
++ claim=dict(expected,pid=4242,phase='before_stage',before_native_copy=True,predecessor_thread='actual_Bol',handoff='prior_Bol.json',handoff_sha256='prior_Bol_hash',state='consumed_baseline_verified_before_stage',baseline_folder=str(B),baseline_receipt=bref)
++ terminal=dict(expected,pid=4242,started=True,outer_exit=1,normal_baseline_restoration=True,independent_idle_after=True,restoration=dict(all_ten_exact=True,public_state_written=False),baseline_receipt=bref['path'],baseline_receipt_sha256=bref['sha256'],predecessor_thread='actual_Bol',handoff='prior_Bol.json',handoff_sha256='prior_Bol_hash')
++ if case=='claim_old_execution':claim['execution_sha256']='old'
++ if case=='claim_not_linked':claim['state']='consumed_before_baseline_stage'
++ if case=='claim_no_pid':claim['pid']=0
++ if case=='active_terminal':terminal.pop('outer_exit')
++ if case=='unstarted_terminal':terminal['started']=False
++ if case=='unclean_terminal':terminal['normal_baseline_restoration']=False
++ if case=='terminal_other_pid':terminal['pid']=123
++ if case=='terminal_wrong_baseline':terminal['baseline_receipt_sha256']='old'
++ if case=='restoration_public_written':terminal['restoration']['public_state_written']=True
++ cref=put('claims/hod-beam7-execution.json',claim);tref=put('beam7-execution-result.json',terminal)
++ game=dict(pid=6789,creation_time=123456,image='selected-game');cleanup=dict(game_identity=game,owner_identity=dict(pid=222),native_cleanup_verified=True,entry_restore_verified=True,vr_gamepad_cleanup=dict(restored=True),unified_weapons_cleanup=dict(drained=True),xr_exit_code=0);done=dict(launcher_pid=222,launcher_exit_code=0,remaining_owned_game=None);paired=dict(game=game,personally_reviewed=True,overview_pages=['all-span'],raw_images=['actual-contact']);encode=dict(game=game,exit_code=0);retention=dict(dry_run=False,errors=[],maximum_completed_sessions=3,maximum_age_hours=48,keep_sessions=[dict(pid=6789,creation=123456)])
++ if case=='normal_cleanup_failed':cleanup['native_cleanup_verified']=False
++ if case=='launcher_other_attempt':done['launcher_pid']=333
++ if case=='review_not_personal':paired['personally_reviewed']=False
++ if case=='paired_old_game':paired['game']=dict(game,pid=1)
++ if case=='encode_active_or_failed':encode['exit_code']=None
++ if case=='encode_old_game':encode['game']=dict(game,pid=1)
++ if case=='retention_dry_run':retention['dry_run']=True
++ if case=='retention_old_session':retention['keep_sessions']=[]
++ flags={key:True for key in ['all_owned_jobs_terminal','independent_idle','normal_cleanup_verified','paired_review_complete','encoders_terminal','restoration_verified','retention_terminal']}
++ review=dict(expected,claim_sha256=cref['sha256'],terminal_sha256=tref['sha256'],baseline_sha256=bref['sha256'],game=game,evidence={key:put(key+'.json',body) for key,body in dict(normal_cleanup=cleanup,launcher_done=done,paired_review=paired,encode=encode,retention=retention).items()},**flags)
++ if case=='independent_review_wrong_attempt':review['claim_sha256']='old'
++ handoff=dict(from_thread=ns['PREDECESSOR_THREAD'],to_thread='01a1bb03-7453-7530-afcd-2fb1ea7e7a51',predecessor_candidate=ns['PREDECESSOR_CANDIDATE'],predecessor_execution_sha256=ns['PREDECESSOR_EXECUTION'],successor_identity=identity,unique_successor=True,runtime_window_released=True,predecessor_claim=cref,predecessor_terminal=tref,predecessor_game=game,review=put('closeout-review.json',review),**flags)
++ if case=='raw_handoff_old13204':handoff['predecessor_execution_sha256']='old13204'
++ if case=='raw_handoff_other_thread':handoff['from_thread']='other'
++ if case=='raw_handoff_not_released':handoff['runtime_window_released']=False
++ if case=='raw_handoff_other_successor':handoff['successor_identity']=dict(identity,prepared_sha256='other')
++ href=put('final-handoff.json',handoff);binding=dict(handoff_sha256=href['sha256'],claim_sha256=cref['sha256'],terminal_sha256=tref['sha256'],baseline_sha256=bref['sha256']);proof=dict(files=own,predecessor_binding=binding.copy());local=E/'review.json';local.write_text(json.dumps(dict(binding,predecessor=ns['PREDECESSOR'],all_predecessor_evidence_checked=True)));q=dict(expected_predecessor=ns['PREDECESSOR'].copy(),predecessor_review=str(local),predecessor_review_sha256=sha(local));window=dict(predecessor=ns['PREDECESSOR'].copy(),predecessor_thread=ns['PREDECESSOR_THREAD'],handoff_evidence=href)
++ if case=='queue_other_predecessor':q['expected_predecessor']['thread']='other'
++ if case=='ticket_other_predecessor':window['predecessor']['execution_sha256']='old13204'
++ if case=='HB_baseline_wrong_claim':proof['predecessor_binding']['claim_sha256']='old'
++ if case=='HB_baseline_changed_raw':next(iter(proof['files'].values()))['sha256']='wrong'
++ if case=='only_claim_no_terminal':ns['PREDECESSOR_RESULT'].unlink()
++ return q,window,identity,proof,dict(baseline_files=specs),binding
++cases=['success','queue_other_predecessor','ticket_other_predecessor','raw_handoff_old13204','raw_handoff_other_thread','raw_handoff_not_released','raw_handoff_other_successor','claim_old_execution','claim_not_linked','claim_no_pid','active_terminal','unstarted_terminal','unclean_terminal','terminal_other_pid','terminal_wrong_baseline','restoration_public_written','baseline_wrong_identity','baseline_wrong_phase','baseline_duplicate_path','baseline_public_writable','normal_cleanup_failed','launcher_other_attempt','review_not_personal','paired_old_game','encode_active_or_failed','encode_old_game','retention_dry_run','retention_old_session','independent_review_wrong_attempt','HB_baseline_wrong_claim','HB_baseline_changed_raw','only_claim_no_terminal']
++for case in cases:
++ with tempfile.TemporaryDirectory() as directory:
++  values=fixture(Path(directory),case);error=None
++  try:result=ns['verify_predecessor'](*values[:5])
++  except (RuntimeError,FileNotFoundError) as e:error=type(e).__name__+': '+str(e)
++  assert (error is None)==(case=='success'),(case,error)
++  if error is None:assert result==values[-1]
++  rows.append(dict(case=case,accepted=error is None,error=error))
++poison={'OPENXR_UNDECLARED':'bad','GEARSUNDECLARED':'bad','PYTHONUNDECLARED':'bad','gearSvR_mode':'bad','xR_flag':'bad','pythonSafePath':'1','SystemRoot':'keep','PATH':'keep'};clean=ns['clean_environment'](poison);assert clean=={'SystemRoot':'keep','PATH':'keep'}
++plan=json.loads((A/'empty-normal-admission-v4-plan.json').read_text());clean.update(plan['environment']);assert clean['PYTHONSAFEPATH']=='' and clean['PYTHONOPTIMIZE']=='0' and clean['PYTHONNOUSERSITE']=='1'
++with tempfile.TemporaryDirectory() as directory:
++ root=Path(directory);claim=root/'claim.json';ns['_CLAIM']=str(claim);claim.write_text(json.dumps(dict(state='consumed_unverified',pid=os.getpid())));proof=root/'baseline.json';proof.write_text('{}');ref=dict(path=str(proof),sha256=sha(proof));binding=dict(handoff_sha256='raw',claim_sha256='claim',terminal_sha256='terminal',baseline_sha256='prestage');linked=ns['bind_attempt']({'prepared':'current'},ref,binding);ns['verify_attempt'](linked);assert linked['predecessor_binding']==binding and linked['baseline_evidence']==ref
++ proof.write_text('{"changed":true}')
++ try:ns['verify_attempt'](linked)
++ except RuntimeError:pass
++ else:raise AssertionError('Changed restoration proof accepted')
++main=next(n for n in tree.body if isinstance(n,ast.FunctionDef) and n.name=='main');text=ast.get_source_segment(source,main);assert text.index('clean_environment(os.environ)')<text.index('prepare()')<text.index('from retain_test_media import idle');assert 'verify_attempt(linked_attempt);checks=selection.restore' in source
++# Execute all actual main environment mutations, without unrelated runtime nodes.
++import types
++nodes=[]
++for node in main.body:
++ code=ast.unparse(node)
++ if (isinstance(node,ast.Assign) and any(isinstance(t,ast.Name) and t.id in ('cleaned','env') for t in node.targets)) or (isinstance(node,ast.Expr) and (code.startswith('os.environ.clear(') or code.startswith('os.environ.update(') or code.startswith('env.update('))) or (isinstance(node,ast.For) and code.startswith("for name in plan['clear_environment']:")):
++  nodes.append(node)
++fake=types.SimpleNamespace(environ=dict(poison));envspace=dict(os=fake,clean_environment=ns['clean_environment'],plan=plan)
++exec(compile(ast.Module(body=nodes,type_ignores=[]),'actual_main_env_mutations','exec'),envspace)
++assert envspace['env']['SystemRoot']=='keep'
++assert {k:v for k,v in envspace['env'].items() if k.upper().startswith(('GEARS','PYTHON','XR','OPENXR'))}==plan['environment']
++# The previously reproduced old13204 review cannot pass even initial admit.
++with tempfile.TemporaryDirectory() as directory:
++ root=Path(directory);values=fixture(root,'success');q=values[0];ready=dict(candidate=str(root/'current_HB'),prepared_sha256='a186',_actual_sha256='newready',plan_sha256='newplan');gameplan=dict(candidate=ready['candidate'],prepared_sha256='a186',host=dict(computer_name='GJC',codex_host_id='local',worktree=str(root)))
++ q.update(state='final_handoff_received_not_staged',final_handoff_received=True,accepted=True,window_owned=True,staged=False,recorded=False,candidate='current_HB',prepared_sha256='a186',ready_sha256='newready',plan_sha256='newplan')
++ assert ns['admit'](q,ready,gameplan,'GJC',root)
++ old=json.loads((R/'analysis/hod-20261109/13204-final-handoff-GN212200.json').read_text());local=Path(q['predecessor_review']);local.write_text(json.dumps(old));q['predecessor_review_sha256']=sha(local)
++ try:ns['admit'](q,ready,gameplan,'GJC',root)
++ except RuntimeError:pass
++ else:raise AssertionError('Old13204 review still admitted')
++report=dict(result='passed',cases=rows,environment_poison_rejected=True,actual_environment_AST_nodes=len(nodes),old_actual13204_admit_rejected=True,OS_environment_preserved=True,claim_durable_link_checked=True,changed_restoration_proof_rejected=True,entry_sha256=sha(entry),scope=__doc__,no_real_claim_ticket_stage_runtime=True);(A/'admission-v5-check.json').write_text(json.dumps(report,indent=2)+'\n');print(json.dumps(dict(result='passed',handoff_cases=len(rows),environment_poison_rejected=True,claim_baseline_link_checked=True,no_real_runtime=True)))
+--- /dev/null
++++ b/analysis/hammerburst-20261108/admission-v5/check_bootstrap.py
+@@ -0,0 +1,25 @@
++"""Actual copied full entry failures/race; claims and metadata only in temporary roots."""
++from pathlib import Path
++import sys,subprocess,tempfile,hashlib,json,os,time
++R=Path.cwd();E=R/'analysis/hammerburst-20261108';V=E/'admission-v5';source=E/'run_empty_normal_admission_v5.py';text=source.read_text();sha=lambda p:hashlib.sha256(Path(p).read_bytes()).hexdigest();rows=[]
++
++def fixture(root,case):
++ h=root/'analysis/hod-20261109';h.mkdir(parents=True);(h/'beam7-execution.json').write_bytes((R/'analysis/hod-20261109/beam7-execution.json').read_bytes())
++ e=root/'analysis/hammerburst-20261108';e.mkdir(parents=True);v=e/'admission-v5';v.mkdir();claim=v/'claim.json';ticket=v/'ticket.json';entry=e/source.name;lines=text.splitlines(True)
++ for i,line in enumerate(lines):
++  if line.startswith('_CLAIM = '):lines[i]='_CLAIM = '+repr(str(claim))+'\n'
++  if line.startswith('_TICKET=Path('):lines[i]='_TICKET=Path('+repr(str(ticket))+')\n'
++ entry.write_text(''.join(lines),newline='\n');plan=e/'plan.json';value=dict(host=dict(computer_name='WRONG' if case=='host' else 'GJC',codex_host_id='local',worktree=str(root)),entry_sha256='wrong' if case=='source' else sha(entry));plan.write_text(json.dumps(value));ready=e/'empty-normal-admission-v5-ready.json';ready.write_text(json.dumps(dict(plan=str(plan),plan_sha256='wrong' if case=='plan' else sha(plan),entry_sha256=value['entry_sha256'])))
++ if case=='missing_ready':ready.unlink()
++ if case=='malformed_ready':ready.write_text('{')
++ return entry,claim,ticket
++
++for case in ['arguments','optimized_flags','cwd','missing_ready','malformed_ready','plan','host','source']:
++ with tempfile.TemporaryDirectory() as name:
++  root=Path(name).resolve();entry,claim,ticket=fixture(root,case);flags=['-E','-s','-B','-X','utf8']+(['-O'] if case=='optimized_flags' else []);args=['--prepare-only','extra'] if case=='arguments' else ['--run','--window-ticket',str(ticket)];command=[sys.executable,*flags,str(entry),*args];cwd=root.parent if case=='cwd' else root
++  first=subprocess.run(command,cwd=cwd,capture_output=True,text=True,creationflags=subprocess.CREATE_NO_WINDOW|subprocess.BELOW_NORMAL_PRIORITY_CLASS);assert first.returncode!=0 and claim.is_file(),(case,first.stdout,first.stderr);before=claim.read_bytes();assert json.loads(before)['state']=='consumed_unverified';second=subprocess.run(command,cwd=cwd,capture_output=True,text=True,creationflags=subprocess.CREATE_NO_WINDOW|subprocess.BELOW_NORMAL_PRIORITY_CLASS);assert second.returncode!=0 and 'FileExistsError' in second.stderr and claim.read_bytes()==before;rows.append(dict(case=case,first_rejected=True,consumed_before_rejection=True,retry_FileExists=True,original_claim_bytes_preserved=True));(V/('test-'+case+'.log')).write_text(first.stdout+first.stderr+'\nRETRY\n'+second.stdout+second.stderr)
++with tempfile.TemporaryDirectory() as name:
++ root=Path(name).resolve();entry,claim,ticket=fixture(root,'missing_ready');first=subprocess.run([sys.executable,'-E','-s','-B','-X','utf8',str(entry),'--prepare-only'],cwd=root,capture_output=True,text=True,creationflags=subprocess.CREATE_NO_WINDOW|subprocess.BELOW_NORMAL_PRIORITY_CLASS);assert first.returncode!=0 and not claim.exists();rows.append(dict(case='prepare_only_failure_does_not_consume',passed=True))
++with tempfile.TemporaryDirectory() as name:
++ root=Path(name).resolve();entry,claim,ticket=fixture(root,'host');go=root/'go';script="import pathlib,time,sys,runpy; p=pathlib.Path(sys.argv[1]);\nwhile not p.exists():time.sleep(.005)\nsys.argv=[sys.argv[2],'--run','--window-ticket',sys.argv[3]];runpy.run_path(sys.argv[0],run_name='__main__')";processes=[subprocess.Popen([sys.executable,'-E','-s','-B','-X','utf8','-c',script,str(go),str(entry),str(ticket)],cwd=root,stdout=subprocess.PIPE,stderr=subprocess.PIPE,text=True,creationflags=subprocess.CREATE_NO_WINDOW|subprocess.BELOW_NORMAL_PRIORITY_CLASS) for _ in range(8)];time.sleep(.1);go.write_text('start');outputs=[p.communicate(timeout=20) for p in processes];assert claim.is_file();owner=json.loads(claim.read_bytes())['pid'];assert sum(p.pid==owner for p in processes)==1 and sum('FileExistsError' in err for out,err in outputs)==7 and all(p.returncode!=0 for p in processes);rows.append(dict(case='eight_processes_one_claim',processes=8,consumers=1,FileExists_rejections=7,all_stopped_before_runtime=True))
++assert not (V/'claims/hammerburst-prepared-20261110-010515-settings-alias.json').exists() and not (V/'final-window-ticket.json').exists();result=dict(source_sha256=sha(source),cases=rows,passed=True,actual_full_copied_entry=True,all_claims_in_temporary_roots=True,real_claim_created=False,real_ticket_created=False,shared_runtime_queried=False,game_started=False);(V/'bootstrap-check.json').write_text(json.dumps(result,indent=2));print(json.dumps(dict(passed=True,early_failure_cases=8,prepare_only_nonconsume=True,race_consumers=1,race_rejections=7,real_claim=False,game_started=False)))
+--- /dev/null
++++ b/analysis/hammerburst-20261108/admission-v5/handoff-contract.json
+@@ -0,0 +1,82 @@
++{
++  "predecessor": {
++    "thread": "01a1bf64-8db6-7a20-9953-0e4a76532222",
++    "candidate": "equipment-controls-prepared-20261110-hod-beam7-tomb",
++    "execution_sha256": "051fe4654985183467ba7a694af8b7343ad30ddbde82c13b7770c92606a6a4eb"
++  },
++  "actual_claim_path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hod-20261109\\claims\\hod-beam7-execution.json",
++  "actual_terminal_path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hod-20261109\\beam7-execution-result.json",
++  "handoff_body": {
++    "from_thread": "exact predecessor thread",
++    "to_thread": "01a1bb03-7453-7530-afcd-2fb1ea7e7a51",
++    "predecessor_candidate": "exact candidate",
++    "predecessor_execution_sha256": "exact execution051",
++    "successor_identity": "five-field HB identity from current ready/plan/entry",
++    "predecessor_claim": "fixed actual claim {path,sha256}",
++    "predecessor_terminal": "fixed terminal result {path,sha256}",
++    "predecessor_game": "actual session report game_identity",
++    "review": "HOD independent closeout JSON {path,sha256}",
++    "true_flags": [
++      "unique_successor",
++      "runtime_window_released",
++      "all_owned_jobs_terminal",
++      "independent_idle",
++      "normal_cleanup_verified",
++      "paired_review_complete",
++      "encoders_terminal",
++      "restoration_verified",
++      "retention_terminal"
++    ]
++  },
++  "independent_closeout_review": {
++    "identity": [
++      "candidate",
++      "execution_sha256",
++      "claim_sha256",
++      "terminal_sha256",
++      "baseline_sha256",
++      "game"
++    ],
++    "true_flags": [
++      "all_owned_jobs_terminal",
++      "independent_idle",
++      "normal_cleanup_verified",
++      "paired_review_complete",
++      "encoders_terminal",
++      "restoration_verified",
++      "retention_terminal"
++    ],
++    "evidence": {
++      "normal_cleanup": "archived actual launcher session report with Native/entry/pad/drain/XR0 and actual game identity",
++      "launcher_done": "archived actual done launcher0/gamegone; launcher PID matches session owner",
++      "paired_review": "actual personal full-span/contact review JSON {game,personally_reviewed:true,overview_pages:[...],raw_images:[...]}",
++      "encode": "actual process completion JSON {game,exit_code:0}; no wrapper success inference",
++      "retention": "actual prune JSON no dry-run/deferred/errors, newest3/48h, actual game pid+creation in kept sessions"
++    }
++  },
++  "HB_baseline_extra_fields": {
++    "predecessor_binding": [
++      "handoff_sha256",
++      "claim_sha256",
++      "terminal_sha256",
++      "baseline_sha256"
++    ]
++  },
++  "HB_independent_review": {
++    "predecessor": "same three-field exact predecessor",
++    "all_predecessor_evidence_checked": true,
++    "binding_fields": [
++      "handoff_sha256",
++      "claim_sha256",
++      "terminal_sha256",
++      "baseline_sha256"
++    ]
++  },
++  "HB_ticket_extra_fields": {
++    "predecessor": "same three-field exact predecessor",
++    "predecessor_thread": "exact HOD thread"
++  },
++  "HB_attempt_durable_link": "Same fixed O_EXCL claim augmented/fsynced only after semantic final proof and complete raw baseline checks; binds own identity, baseline receipt path+SHA, actual HOD final/claim/terminal/baseline SHA. Rechecked immediately before stage and before either restoration path. Permanent claim never removed/retried.",
++  "environment": "Case-insensitive drop GEARS*/PYTHON*/XR*/OPENXR* before prepare/idle/stop and every child; then unchanged fixed ENV including PYTHONOPTIMIZE=0, PYTHONSAFEPATH empty, PYTHONNOUSERSITE=1; OS values preserved.",
++  "no_synthetic_terminal": "Preparation does not require/create actual predecessor claim, terminal, final handoff, own final ticket or own real claim. Test fixtures only. An actual future prebirth/cleanup exception not satisfying this contract remains a failed closed admission, never a fabricated game/media pass."
++}
