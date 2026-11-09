@@ -19,18 +19,20 @@ struct Array {uptr data{};int count{},capacity{};};
 namespace fixture {
 enum :unsigned {none,engine,core,weapon_owner,inventory_owner,object_owner,hb_owner,burst,
     function_type,class_type,state_type,byte_type,name_type,bool_type,goto_fn,
-    manager_property,pending_property,inner_property,newstate,label,force,keep,inventory_base,hb_count,hb_limit,count};
+    manager_property,pending_property,inner_property,newstate,label,force,keep,inventory_base,hb_count,hb_limit,hb_mode,
+    first_fn,outer_fn,engine_timer,hb_timer,hb_ammo,super_ammo,timing_fn,previous,should_fn,returned,small_byte_type,count};
 constexpr uptr address(unsigned i){return i?0x1000+0x100*i:0;}
 struct Model {
     bool gt{true},hold{true},registration{true},tables{true},objects{true},receiver{true},game{true},r2{},
         manager_class{true},retained{true},native_function{true},invoke{true},change_state{true},
         pending_race{},pointer_race{},inner_race{},field_race{},array_race{},read_fail{},post_pending{},
-        native_source{true},owned_press{true};
+        native_source{true},owned_press{true},query_invoke{true},force_refire{},putting_down{};
     uptr manager{0xa000},world{0xb000},controller{0xc000},pawn{0xd000},weapon{0xe000};
     Name state{101,0},destination{};
     Array array{0xf000,2,2};std::array<unsigned char,256> bytes{};
     unsigned copies{},pointer_reads{},field_reads{},inner_reads{},array_reads{},go_calls{};
-    unsigned burst_count{},burst_limit{6};std::int64_t now{1000000000};
+    unsigned burst_count{},burst_limit{6},current_mode{},ammo_used{},capacity{78},query_calls{};
+    std::int64_t now{1000000000};
 } model;
 const wchar_t* text(unsigned i){switch(i){
     case engine:return L"Engine";case core:return L"Core";case weapon_owner:return L"Weapon";
@@ -41,24 +43,29 @@ const wchar_t* text(unsigned i){switch(i){
     case byte_type:return L"IntProperty";case name_type:return L"NameProperty";case bool_type:return L"BoolProperty";
     case goto_fn:return L"GotoState";case newstate:return L"NewState";case label:return L"Label";
     case force:return L"bForceEvents";case keep:return L"bKeepStack";
+    case hb_mode:return L"CurrentFireMode";case previous:return L"PreviousStateName";
+    case first_fn:case outer_fn:return L"BeginState";case engine_timer:case hb_timer:return L"RefireCheckTimer";
+    case hb_ammo:case super_ammo:return L"FireAmmunition";case timing_fn:return L"TimeWeaponFiring";
+    case should_fn:return L"ShouldRefire";case returned:return L"ReturnValue";
+    case small_byte_type:return L"ByteProperty";
     case 100:return L"WarfareGame";case 101:return L"WeaponFiring";case 102:return L"Active";
     default:return L"unknown";}}
 }
 namespace gripdamage_metadata {
 constexpr unsigned max_fields=64;
 enum class Stage {final_check};
-struct Identity {uptr address{},outer{},klass{};Name name{};};
-struct Property {unsigned identity{},type{},dimension{1},element_bytes{},offset{};std::uint64_t flags{0x90};};
+struct Identity {uptr address{},outer{},klass{};Name name{};unsigned index{};};
+struct Property {unsigned identity{},type{},dimension{1},element_bytes{},offset{};std::uint64_t flags{0x90};uptr next{};};
 struct Structure {uptr children{};unsigned extent{24};};
 struct PointerField {Property property{};unsigned owner{};uptr value{};};
 struct NameText {unsigned index{};};
 struct Snapshot {
-    uptr module_base{};unsigned objects{},names{},field_count{};
+    uptr module_base{};unsigned objects{},names{},field_count{},identity_count{128};
     std::array<Identity,128> identities{};std::array<Property,max_fields> fields{};
 };
 Snapshot template_snapshot;
 bool same_property(Property const& a,Property const& b){return a.identity==b.identity&&a.type==b.type&&
-    a.dimension==b.dimension&&a.element_bytes==b.element_bytes&&a.offset==b.offset&&a.flags==b.flags;}
+    a.dimension==b.dimension&&a.element_bytes==b.element_bytes&&a.offset==b.offset&&a.flags==b.flags&&a.next==b.next;}
 bool property_fits(Property const& p,unsigned n){return p.offset<=n&&p.element_bytes<=n-p.offset;}
 struct Reader {
     Snapshot& result;
@@ -67,7 +74,9 @@ struct Reader {
         if(result.identities[i].address==p){slot=i;return true;}return false;}
     bool named(unsigned slot,wchar_t const* name){return std::wcscmp(fixture::text(slot),name)==0;}
     bool property(uptr p,Property& out){unsigned slot{};if(!path(p,slot))return false;out=properties[slot];return true;}
-    bool structure(uptr p,Structure& s){if(p!=fixture::address(fixture::goto_fn))return false;s=structure_value;return true;}
+    bool structure(uptr p,Structure& s){
+        if(p==fixture::address(fixture::first_fn)){s={fixture::address(fixture::previous),8};return true;}
+        if(p!=fixture::address(fixture::goto_fn))return false;s=structure_value;return true;}
     template<class T>bool at(uptr p,unsigned offset,T& out){
         using namespace fixture;
         if constexpr(std::is_same_v<T,Array>){
@@ -75,9 +84,13 @@ struct Reader {
             if(model.array_race&&++model.array_reads>1)++out.capacity;return true;
         }else{
             std::uint64_t value{};
-            if(p==model.weapon&&(offset==48||offset==49))value=offset==48?model.burst_count:model.burst_limit;
+            if(p==model.weapon&&(offset==48||offset==49||offset==50))
+                value=offset==48?model.burst_count:offset==49?model.burst_limit:model.current_mode;
             else if(p==address(goto_fn)&&offset==0xf8)value=native_index;
             else if(p==address(goto_fn)&&offset==0x108)value=return_offset;
+            else if(p==address(first_fn)&&offset==0x106)value=8;
+            else if(p==address(first_fn)&&offset==0x108)value=0xffff;
+            else if(p==address(returned)&&offset==0xd0)value=1;
             else if(p==address(pending_property)&&offset==0xd0){value=address(inner_property);if(model.inner_race&&++model.inner_reads>1)++value;}
             else return false;
             out=static_cast<T>(value);return true;
@@ -98,12 +111,14 @@ using Id=gears_weapon_hand::ObjectIdentity;
 struct HoldBinding {Id world{},controller{},pawn{},weapon{};
     std::uint64_t native_cookie{1},native_started{2},world_generation{3},generation{4};bool known{true};};
 HoldBinding held_binding;
-struct Client {bool registration_alive(std::uint64_t,std::uint64_t){return fixture::model.registration;}}client;
+struct Client {bool registration_alive(std::uint64_t,std::uint64_t){return fixture::model.registration;}
+    bool armed(){return fixture::model.native_source;}}client;
 bool current_gt(void*){return fixture::model.gt;}
 std::int64_t clock_ns(void*){return fixture::model.now;}
 bool object(gripdamage_metadata::Reader&,Id const&){return fixture::model.objects;}
 bool core_type(gripdamage_metadata::Reader& r,unsigned slot,wchar_t const* name){return r.named(slot,name);}
-struct BoolField {gripdamage_metadata::Property property{};unsigned owner{};};
+struct BoolField {gripdamage_metadata::Property property{};unsigned owner{},mask{1},bits{};};
+bool boolean(gripdamage_metadata::Reader&,uptr,wchar_t const*,BoolField& out){out.bits=fixture::model.putting_down?1:0;return true;}
 bool derives(gripdamage_metadata::Reader&,uptr,wchar_t const*,wchar_t const*){return fixture::model.manager_class;}
 bool read_pointer(gripdamage_metadata::Reader&,uptr,wchar_t const*,gripdamage_metadata::PointerField& out){
     using namespace fixture;out.property=gripdamage_metadata::Reader::properties[manager_property];
@@ -118,14 +133,19 @@ namespace playground {
 struct Args {
     struct {uptr function{fixture::address(fixture::goto_fn)};unsigned size{24};}r;
     bool valid{true};
-    Args(uptr,wchar_t const*){}
+    Args(uptr,wchar_t const* name){if(!std::wcscmp(name,L"ShouldRefire")){r.function=fixture::address(fixture::should_fn);r.size=4;}}
     uptr prop(wchar_t const* name){for(unsigned i=fixture::newstate;i<=fixture::keep;++i)
-        if(!std::wcscmp(name,fixture::text(i)))return fixture::address(i);return 0;}
+        if(!std::wcscmp(name,fixture::text(i)))return fixture::address(i);
+        return !std::wcscmp(name,L"ReturnValue")?fixture::address(fixture::returned):0;}
     Args& set(wchar_t const*,Name n){fixture::model.destination=n;return *this;}
-    bool run(){auto& m=fixture::model;++m.go_calls;if(m.invoke&&m.change_state)m.state=m.destination;
+    template<class T>T output(){return static_cast<T>(fixture::model.force_refire||
+        (fixture::model.burst_count<6&&fixture::model.ammo_used<fixture::model.capacity));}
+    bool run(){auto& m=fixture::model;if(r.function==fixture::address(fixture::should_fn)){++m.query_calls;return m.query_invoke;}
+        ++m.go_calls;if(m.invoke&&m.change_state)m.state=m.destination;
         if(m.post_pending)m.bytes[0]=1;return m.invoke;}
 };
-uptr field(uptr,wchar_t const*,wchar_t const*){return fixture::address(fixture::burst);}
+uptr field(uptr,wchar_t const* name,wchar_t const* =nullptr){
+    return fixture::address(!std::wcscmp(name,L"PreviousStateName")?fixture::previous:fixture::burst);}
 }
 namespace weapon_part_assets {
 bool native_function(playground::Args const&,wchar_t const*,wchar_t const*,wchar_t const*){return fixture::model.native_function;}
@@ -133,10 +153,10 @@ bool native_function(playground::Args const&,wchar_t const*,wchar_t const*,wchar
 namespace unified_weapon_fire {bool retained_metadata(gripdamage_metadata::Reader&){return fixture::model.retained;}}
 namespace vrfire {
 namespace lr {struct Actors {gears_weapon_hand::ObjectIdentity world{},controller{},pawn{},weapon{};};
-struct Game {Actors actors{};bool known{},r2_known{},r2_held{};};}
+struct Game {Actors actors{};bool known{},r2_known{},r2_held{},lancer{true},busy{},animation{};};}
 struct Input {lr::Actors actors(){auto& h=weaponhand::held_binding;return {h.world,h.controller,h.pawn,h.weapon};}
     bool owns_press(){return fixture::model.owned_press;}}input;
-bool read_game(lr::Actors const& a,void*,lr::Game& g){g={a,true,true,fixture::model.r2};return fixture::model.game;}
+bool read_game(lr::Actors const& a,gears_weapon_hand::Frame const*,lr::Game& g){g={a,true,true,fixture::model.r2};return fixture::model.game;}
 }
 namespace lancerrefire {
 bool same_hold(weaponhand::HoldBinding const&,weaponhand::HoldBinding const&){return fixture::model.hold;}
@@ -154,7 +174,7 @@ gripdamage_metadata::Snapshot& snapshot=gripdamage_metadata::template_snapshot;
 void reset(){
     using namespace fixture;using namespace gripdamage_metadata;
     model={};snapshot={};Reader::properties={};Reader::structure_value={};Reader::native_index=113;Reader::return_offset=0xffff;
-    auto put=[](unsigned i,unsigned klass,unsigned outer){snapshot.identities[i]={address(i),address(outer),address(klass),{i,0}};};
+    auto put=[](unsigned i,unsigned klass,unsigned outer){snapshot.identities[i]={address(i),address(outer),address(klass),{i,0},i};};
     for(unsigned i=1;i<count;++i)put(i,0,0);
     put(weapon_owner,class_type,engine);put(inventory_owner,class_type,engine);put(inventory_base,class_type,engine);put(object_owner,class_type,core);
     put(hb_owner,class_type,100);put(100,0,0);put(burst,state_type,hb_owner);put(goto_fn,function_type,object_owner);
@@ -163,7 +183,12 @@ void reset(){
     put(inner_property,byte_type,pending_property);Reader::properties[inner_property]={inner_property,byte_type,1,4,0,0};
     Reader::properties[manager_property]={manager_property,0,1,8,8,0};
     Reader::properties[pending_property]={pending_property,0,1,16,32,0};
-    Reader::properties[hb_count]={hb_count,0,1,1,48,0};Reader::properties[hb_limit]={hb_limit,0,1,1,49,0};
+    put(small_byte_type,class_type,core);put(hb_count,small_byte_type,hb_owner);put(hb_limit,small_byte_type,hb_owner);
+    put(hb_mode,small_byte_type,weapon_owner);
+    Reader::properties[hb_count]={hb_count,small_byte_type,1,1,48,0};Reader::properties[hb_limit]={hb_limit,small_byte_type,1,1,49,0};
+    Reader::properties[hb_mode]={hb_mode,small_byte_type,1,1,50,0};
+    put(previous,name_type,first_fn);Reader::properties[previous]={previous,name_type,1,8,0,0x80};
+    put(returned,bool_type,should_fn);Reader::properties[returned]={returned,bool_type,1,4,0,0x580};
     weaponhand::held_binding={};weaponhand::held_binding.world.address=model.world;
     weaponhand::held_binding.controller.address=model.controller;weaponhand::held_binding.pawn.address=model.pawn;
     weaponhand::held_binding.weapon.address=model.weapon;

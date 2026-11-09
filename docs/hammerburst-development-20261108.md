@@ -417,3 +417,14 @@ Lancer只读确认上述forgiving-profile不是其本轮改动，未补写共享
 工作区新增weapon_hammerburst_burst_contract.inl：正常GT预检实际原函数/属性、原IsHumanControlled和完整bytecode，关闭读，不在回调调用getter。weapon_hammerburst_burst_runtime.inl将真实首发、有限尾段scope、POD轨迹观察和原状态撤销串为同一事务；这两模块仅在私有隔离playground.cpp增加compile-only include，完整PG编译0。共享root playground/refire/R2/unified-fire尚未加调用，HB入口继续withdrawn；runtime桥实际生产代码的275项metadata/source/engine fake范围检查通过，原函数certificate在该夹具是stub；原first-event捕获/after-up source准入及正常6发结束边界的共享入口仍需接齐，不能stage/run或交付当前隔离DLL。
 
 Lancer原writer确认这些共享入口当前无其未保存改动，但R2/unified-fire已有Longshot脏改，继续完整保留，只做exact-HB增量且精确暂存自己的hunk。无新HB候选/窗口排队，不重复070119/055335；公共v71、Native和吸附/Grip四态保持现状。
+
+
+## 完整HB首发/尾段事务与共享入口（默认OFF，私有ON已编译，未游戏）
+
+9272e97e后的exact-HB共享入口以GEARS_PLAYGROUND_HB_FINITE_BURST编译隔离，root默认未定义/关闭；公共v71、Nativec985和XR1684保持原制品。私有playground.cpp仅显式ON，已把首发捕获、原timer同一DeferredEvent、真实R2-up后新鲜Source、逐次射击scope及停止/失追清理接入，完整PG编译0，尚未stage或新game。Lancer旧分支及原100ms、20ms余量、250ms原事件期限保留；缓存只保存元数据/原press承诺，不续输入或pose时间。
+
+核原包export37976确认HB外层BeginState为191 serialized/271 runtime、20对象引用/3个虚FName，先由原脚本BurstCount=0/音效反馈再super；不能假定super一定再次经过ProcessEvent。现改为整段外层原事件完整匹配并延后，内部super仍按原VM执行，无新hook/FFrame跳转/计数写。13种引用各自严格原包名/owner/类型，Bool mask/局部Name/函数布局与关闭读校验；旧Lancer/general script默认上限仍256，只有已匹配HB外层显式512容量用于271原串，未扩大旧门槛。574原串逐字节变异/截断/引用检查及实际Reader owned-memory用例通过；第一场新game仍须证明outer=1实际捕获/真实射击。
+
+复核发现跨快照Property.identity/type是本地slot，原meta.same_property跨snapshot会误拒绝。已改按完整UObject注册身份、类型身份及next/flags/dimension/width/offset布局比对，真实Reader的不同发现顺序快照复现旧比较FALSE/新比较TRUE，错误注册身份/布局仍拒绝；不以slot相等替代身份。右手grip失追另行明确撤销有限尾段，因为frame_active本身不要求该手tracked；无输入DOWN伪造或不新鲜pose继续。原timer在6发末尾/真实无弹时仍经原ShouldRefire=false与BurstDelaying状态证明正常退出，不补造射线/弹药。异常范围退出保持已有GT输入/清理owner活着先释放R2/全PendingFire并原状态撤销，避免提前全局fault导致disable来不及收尾；失败单独有界记录，不将后续真实新R2按压当旧事件重放。
+
+同一私有源最终受影响7个测试程序编译/执行0：ledger823、整段outer matcher574、cancel metadata fakes103、实际transaction fakes289、实际event adapter fakes118、真实Reader路径/布局/关闭及canonical cache68、原asset50+新增kind24。原HB timer adapter54和既有Lancer once-only/loop145仍0。不得相加称游戏覆盖；full retail certificate、公共dispatcher和engine在部分夹具是stub，真实tracking/VM/画面仍待新game。默认OFF整PG0、私有ON整PG0；hb-finite-profile-builds.json/hash保存。独立快照应用曾拒绝Stop/Longshot yield同hunk，随后只移除其三行外来增量再移植，Longshot/Boltok脏改未暂存/混进本私有binary。

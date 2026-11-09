@@ -35,6 +35,9 @@ bool set_running(bool value) noexcept {
 enum class MuzzleAxis:unsigned {positive_x,negative_x,positive_y,negative_y,positive_z,negative_z};
 constexpr MuzzleAxis lancer_muzzle_axis=MuzzleAxis::positive_x;
 struct MuzzleSample {
+#if defined(GEARS_PLAYGROUND_HB_FINITE_BURST) && GEARS_PLAYGROUND_HB_FINITE_BURST
+    bool hammerburst{};
+#endif
     std::int64_t render_acquisition_ns{}; // Original render-result age, never renewed by muzzle sampling.
     hand::Frame source{};
     lancermain_asset::Evidence asset{};
@@ -162,8 +165,15 @@ bool prepare_current(hand::Frame const& frame,hand::GripGameState const& game) n
     prepare_stage=1;
     MuzzleSample candidate{};candidate.source=frame;candidate.hold_generation=weaponhand::held_binding.generation;
     candidate.epoch=control_epoch.load(std::memory_order_acquire);
+#if defined(GEARS_PLAYGROUND_HB_FINITE_BURST) && GEARS_PLAYGROUND_HB_FINITE_BURST
+    lancermain_asset::HeldAsset observed_kind{};
+    if(!candidate.hold_generation||lancermain_asset::read(frame,candidate.asset,
+       lancermain_asset::AssetScope::supported_instant_fire,&observed_kind)!=lancermain_asset::Status::ready)return false;
+    candidate.hammerburst=observed_kind==lancermain_asset::HeldAsset::hammerburst;
+#else
     if(!candidate.hold_generation||lancermain_asset::read(frame,candidate.asset,
        lancermain_asset::AssetScope::supported_instant_fire)!=lancermain_asset::Status::ready)return false;
+#endif
     prepare_stage=2;
     Name muzzle{};if(!configured_muzzle(frame,muzzle))return false;
     prepare_stage=3;
@@ -659,6 +669,11 @@ void observe_fire_trace(callabi::Invocation const& call,SourceScope const& sourc
         std::memcpy(slot->record.writes_at_trace,slot->record.writes,sizeof(slot->record.writes));
         slot->record.trace_valid=true;
         ++slot->record.revision;
+#if defined(GEARS_PLAYGROUND_HB_FINITE_BURST) && GEARS_PLAYGROUND_HB_FINITE_BURST
+        if(source.sample.hammerburst)hammerburst_burst_event::trace(source.sample.source,packet.shot,
+            source.sample.render_acquisition_ns,source.sample.sampled_ns,fire_trace.observed_ns,
+            slot->record.write_source_consistent&&slot->record.trace_source_consistent);
+#endif
     }
 }
 void begin(callabi::Invocation const& call,shot::Token const& scope) noexcept {
@@ -673,6 +688,10 @@ void begin(callabi::Invocation const& call,shot::Token const& scope) noexcept {
             source.sample=source_scopes[scope.previous_depth-1].sample;
         else source.sample=muzzle_sample;
         const auto entry_now=weaponhand::clock_ns(nullptr);
+#if defined(GEARS_PLAYGROUND_HB_FINITE_BURST) && GEARS_PLAYGROUND_HB_FINITE_BURST
+        if(source.sample.hammerburst&&!hammerburst_burst_event::source_allowed(source.sample.source,
+            source.sample.render_acquisition_ns,source.sample.sampled_ns,entry_now))return;
+#endif
         if(!live_sample(source.sample,entry_now)){
             ++source_admission_counts[0];
             rejected_source={std::int64_t(source.sample.valid),

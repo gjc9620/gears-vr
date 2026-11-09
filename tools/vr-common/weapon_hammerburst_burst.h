@@ -112,6 +112,22 @@ public:
         if(state_!=State::idle)state_=State::cancel_required;
         active_={};
     }
+    // Normal original terminal timer may end a full burst while R2 remains
+    // held, or a shorter burst after real magazine exhaustion. Unlike abort,
+    // this requires proof of original ShouldRefire==false AND state exit.
+    // It grants no seventh shot and does not clear the real input ledger.
+    bool original_ended(unsigned original_count,bool no_refire,bool firing_ended,bool magazine_empty) noexcept {
+        if((state_!=State::committed&&state_!=State::idle)||!count_||count_!=original_count||
+           count_>6||!no_refire||!firing_ended||(count_<6&&!magazine_empty))return false;
+        state_=State::idle;active_={};return true;
+    }
+    bool leave_original_end(Ticket const& t,unsigned original_count,bool no_refire,
+                            bool firing_ended,bool magazine_empty) noexcept {
+        if(state_!=State::dispatching||t.serial!=active_.serial||t.event!=active_.event||
+           t.frame!=active_.frame||t.before!=active_.before||original_count!=count_||
+           !no_refire||!firing_ended||!magazine_empty)return false;
+        state_=State::idle;active_={};return true;
+    }
     // Runtime must prove original Firing ended and actual PendingFire is UP.
     // A successful cleanup, not merely input release, discharges this debt.
     bool acknowledge_cancel(bool firing_ended,bool pending_up) noexcept {

@@ -2,13 +2,18 @@
 // original-function certificate is a stub here, not retail contract proof.
 #define HB_CANCEL_FIXTURE_ONLY
 #include "weapon_hammerburst_burst_cancel_test.cpp"
+#include "../vr-common/weapon_hammerburst_property_cache.h"
 namespace nativeequipment {
 bool current(void*,gears_weapon_hand::Frame const&){return fixture::model.native_source;}
 }
 namespace hammerburst_burst_contract {
+unsigned stage{},loop_reason{};
 struct Certificate {
     weaponhand::HoldBinding held{};gripdamage_metadata::Property count{},limit{};
     uptr count_property{},limit_property{};bool known{};
+    gripdamage_metadata::Property mode{};uptr mode_property{};
+    gears_weapon_hand::ObjectIdentity count_descriptor{},count_type{},limit_descriptor{},limit_type{},mode_descriptor{},mode_type{};
+    gears_weapon_hand::ObjectIdentity timer{},should{},ammunition{},human{},super_ammunition{},timing{},first{},outer_first{},engine_timer{};
 };
 bool retain(gripdamage_metadata::Reader& r,gripdamage_metadata::Property const& p){
     if(r.result.field_count==gripdamage_metadata::max_fields)return false;
@@ -18,7 +23,17 @@ bool prepare(weaponhand::HoldBinding const& h,uptr,Certificate& out){
     if(!fixture::model.receiver)return false;
     out={h,gripdamage_metadata::Reader::properties[fixture::hb_count],
         gripdamage_metadata::Reader::properties[fixture::hb_limit],
-        fixture::address(fixture::hb_count),fixture::address(fixture::hb_limit),true};return true;
+        fixture::address(fixture::hb_count),fixture::address(fixture::hb_limit),true};
+    out.mode=gripdamage_metadata::Reader::properties[fixture::hb_mode];out.mode_property=fixture::address(fixture::hb_mode);
+    const auto id=[](unsigned slot){auto const& v=gripdamage_metadata::template_snapshot.identities[slot];
+        return gears_weapon_hand::ObjectIdentity{v.address,v.outer,v.klass,v.index,v.name.index,v.name.number,1};};
+    out.timer=id(fixture::hb_timer);out.should=id(fixture::should_fn);out.ammunition=id(fixture::hb_ammo);
+    out.super_ammunition=id(fixture::super_ammo);out.timing=id(fixture::timing_fn);out.first=id(fixture::first_fn);
+    out.engine_timer=id(fixture::engine_timer);
+    out.outer_first=id(fixture::outer_fn);
+    out.count_descriptor=id(fixture::hb_count);out.limit_descriptor=id(fixture::hb_limit);out.mode_descriptor=id(fixture::hb_mode);
+    out.count_type=out.limit_type=out.mode_type=id(fixture::small_byte_type);
+    return true;
 }
 }
 #include "weapon_hammerburst_burst_runtime.inl"
@@ -49,6 +64,7 @@ void first_shot(gears_weapon_hand::Frame const& f){
     prime_first(f);auto s=fresh(f);assert(bridge::enter(true,s,1,fixture::model.now));
     fixture::model.burst_count=1;bridge::trace(s,100,true);assert(bridge::leave(true));
 }
+#ifndef HB_RUNTIME_FIXTURE_ONLY
 int main(){
     unsigned checks{};
     for(unsigned release_after=1;release_after<=6;++release_after){
@@ -114,5 +130,25 @@ int main(){
         assert(!bridge::enter(true,fresh(f),1,fixture::model.now));assert(bridge::cancel());checks+=2;}
     {reset_bridge();auto f=frame();fixture::model.native_source=false;
         assert(!bridge::prime(f,0x1234));assert(!bridge::capture_first());assert(!bridge::firing_debt);checks+=3;}
+    {reset_bridge();auto f=frame();first_shot(f);auto s=fresh(f);
+        assert(bridge::enter(false,s,2,fixture::model.now));
+        assert(!bridge::leave_original_end(1,true,true,false));assert(bridge::scope_active);
+        assert(bridge::leave_original_end(1,true,true,true));assert(!bridge::firing_debt);
+        assert(!bridge::scope_active);assert(!bridge::permits(s));checks+=7;}
+    {reset_bridge();auto f=frame();prime_first(f);fixture::model.burst_count=6;auto s=fresh(f);
+        assert(!bridge::enter(true,s,1,fixture::model.now));
+        assert(bridge::enter(true,s,1,fixture::model.now,true));
+        fixture::model.burst_count=1;bridge::trace(s,100,true);assert(bridge::leave(true));checks+=3;}
+    {reset_bridge();auto f=frame();prime_first(f);
+        // Cached ordinals belong to a DIFFERENT discovery snapshot. Object
+        // identities/layout remain the same and must not be falsely rejected.
+        bridge::certificate.count.identity=90;bridge::certificate.count.type=91;
+        bridge::certificate.limit.identity=92;bridge::certificate.limit.type=93;
+        bridge::certificate.mode.identity=94;bridge::certificate.mode.type=95;
+        auto s=fresh(f);assert(bridge::enter(true,s,1,fixture::model.now));
+        fixture::model.burst_count=1;bridge::trace(s,100,true);assert(bridge::leave(true));checks+=2;}
+    {reset_bridge();auto f=frame();prime_first(f);++bridge::certificate.count_descriptor.registry_index;
+        assert(!bridge::enter(true,fresh(f),1,fixture::model.now));assert(bridge::cancel_requested);checks+=2;}
     std::printf("HB actual completion bridge: %u fake scope/input/cleanup boundary checks passed; original certificate is a stub, no game proof\n",checks);
 }
+#endif

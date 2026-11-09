@@ -129,5 +129,20 @@ int main(){
     {auto b=armed();auto s=source();hb::Ticket t{};assert(b.enter(s,1,s.now,1,6,t));
         b.revoke();assert(!b.permits(t,s));assert(!b.leave(t,101,2,true,true));
         assert(b.needs_cancel());checks+=4;}
+    for(unsigned count=1;count<=6;++count){
+        auto b=armed();auto s=source();
+        for(unsigned i=1;i<count;++i){hb::Ticket t{};assert(b.enter(s,i,s.now,i,6,t));assert(b.leave(t,100+i,i+1,true,true));}
+        assert(!b.original_ended(count,false,true,true));assert(!b.original_ended(count,true,false,true));
+        assert(!b.original_ended(count+1,true,true,true));
+        if(count<6)assert(!b.original_ended(count,true,true,false));
+        assert(b.original_ended(count,true,true,count<6));assert(b.state()==hb::State::idle);
+        assert(!b.commit(s,100,1,6,true));assert(b.commit(s,200,1,6,true));checks+=count<6?8:7;
+    }
+    {auto b=armed();auto s=source();hb::Ticket t{};assert(b.enter(s,1,s.now,1,6,t));
+        assert(!b.leave_original_end(t,1,false,true,true));assert(!b.leave_original_end(t,1,true,false,true));
+        assert(!b.leave_original_end(t,1,true,true,false));assert(!b.leave_original_end(t,2,true,true,true));
+        auto other=t;++other.serial;assert(!b.leave_original_end(other,1,true,true,true));
+        assert(b.leave_original_end(t,1,true,true,true));assert(b.state()==hb::State::idle);
+        assert(!b.leave(t,101,2,true,true));assert(!b.permits(t,s));checks+=10;}
     std::printf("HB finite original-burst ledger: %u CPU boundary checks passed; no runtime adapter enabled\n",checks);
 }

@@ -8,7 +8,7 @@ namespace lancerrefire {
 bool certified_for(gears_weapon_hand::Frame const&) noexcept;
 void begin_owned_press(gears_weapon_hand::Frame const&) noexcept;
 void end_owned_press(bool) noexcept;
-bool release_completed() noexcept;
+bool release_completed(gears_weapon_hand::Frame const* normal_source=nullptr) noexcept;
 bool release_required() noexcept;
 bool has_initial_debt() noexcept;
 void service(std::uintptr_t) noexcept;
@@ -194,6 +194,9 @@ gears_weapon::OriginalR2Execution execute(gears_weapon::OriginalR2Action action,
     if(!enabled.load(std::memory_order_acquire)||!weaponhand::current_gt(nullptr)||!nativeequipment::domain_ready()||
         !input.has_actors()||controller!=input.actors().controller.address||!name_current(r2,L'R'))return reject(L"entry");
     lr::Game game{};
+#if defined(GEARS_PLAYGROUND_HB_FINITE_BURST) && GEARS_PLAYGROUND_HB_FINITE_BURST
+    bool hb_press{};
+#endif
     // advance invokes its press callback synchronously on this GT, directly
     // after tick's authenticated read_game. Reuse exactly that observation for
     // a press; a second full metadata pass consumes the source's remaining
@@ -208,12 +211,21 @@ gears_weapon::OriginalR2Execution execute(gears_weapon::OriginalR2Action action,
         if(!source||!game.main_hand_held||game.busy||game.animation||
             !nativeequipment::current(nullptr,*source))return reject(L"press_state");
         lancermain_asset::Evidence asset{};
+#if defined(GEARS_PLAYGROUND_HB_FINITE_BURST) && GEARS_PLAYGROUND_HB_FINITE_BURST
+        lancermain_asset::HeldAsset observed_kind{};
+        if(lancermain_asset::read(*source,asset,lancermain_asset::AssetScope::supported_instant_fire,&observed_kind)!=lancermain_asset::Status::ready||
+            !nativeequipment::attached_frame(*source,asset.component.address)||
+            !nativeequipment::current(nullptr,*source))return reject(L"attachment");
+        hb_press=observed_kind==lancermain_asset::HeldAsset::hammerburst;
+        if(hb_press&&!hammerburst_burst_event::prepare_press(*source))return gears_weapon::OriginalR2Execution::not_ready;
+#else
         if(lancermain_asset::read(*source,asset,lancermain_asset::AssetScope::supported_instant_fire)!=lancermain_asset::Status::ready||
             !nativeequipment::attached_frame(*source,asset.component.address)||
             !nativeequipment::current(nullptr,*source))return reject(L"attachment");
+#endif
     }else if(!game.r2_held){
 #if defined(GEARS_PLAYGROUND_NATIVE_LANCER_FOLLOW) && defined(GEARS_PLAYGROUND_UNIFIED_MUZZLE_FIRE)
-        lancerrefire::release_completed(); // State cleanup may await the original next PlayerTick.
+        lancerrefire::release_completed(source); // State cleanup may await the original next PlayerTick.
 #endif
         return gears_weapon::OriginalR2Execution::executed; // Freshly certified up.
     }
@@ -239,11 +251,19 @@ gears_weapon::OriginalR2Execution execute(gears_weapon::OriginalR2Action action,
     }
 #if defined(GEARS_PLAYGROUND_NATIVE_LANCER_FOLLOW) && defined(GEARS_PLAYGROUND_UNIFIED_MUZZLE_FIRE)
     const bool owned_press=action==gears_weapon::OriginalR2Action::press;
+#if defined(GEARS_PLAYGROUND_HB_FINITE_BURST) && GEARS_PLAYGROUND_HB_FINITE_BURST
+    if(owned_press&&hb_press&&!hammerburst_burst_event::owned_press(*source))return gears_weapon::OriginalR2Execution::not_ready;
+#endif
     if(owned_press)lancerrefire::begin_owned_press(*source);
     const bool invoked=call.run();
     if(owned_press)lancerrefire::end_owned_press(invoked);
-    if(!invoked)return reject(L"button_call");
-    if(!owned_press)lancerrefire::release_completed();
+    if(!invoked){
+#if defined(GEARS_PLAYGROUND_HB_FINITE_BURST) && GEARS_PLAYGROUND_HB_FINITE_BURST
+        if(owned_press&&hb_press)hammerburst_burst_event::press_failed();
+#endif
+        return reject(L"button_call");
+    }
+    if(!owned_press)lancerrefire::release_completed(source);
 #else
     if(!call.run())return reject(L"button_call");
 #endif
@@ -343,6 +363,9 @@ void tick(uptr pc) noexcept {
     // current XR frame. prepare_current independently rechecks the frozen
     // source, held binding, live asset and game state on this same GT.
     bool muzzle_ready{},trigger_in_use{},preparation_budget{};
+#if defined(GEARS_PLAYGROUND_HB_FINITE_BURST) && GEARS_PLAYGROUND_HB_FINITE_BURST
+    bool hb_source_needed{};
+#endif
     if(unified_weapon_fire::manual_profile()){
         // trigger_active denotes a valid analog channel, not a pressed
         // trigger. Keep the input ledger advancing while the trigger is up,
@@ -352,6 +375,14 @@ void tick(uptr pc) noexcept {
             ((frame.controllers.hands[1].trigger_active==1&&
               (frame.controllers.hands[1].trigger>.35f||input.awaiting_release()))||
               input.owns_press());
+#if defined(GEARS_PLAYGROUND_HB_FINITE_BURST) && GEARS_PLAYGROUND_HB_FINITE_BURST
+        // A finite HB continuation can need a NEW UP-frame muzzle while the
+        // original Input ledger correctly owns no press. Never mark it DOWN.
+        hb_source_needed=have_source&&hammerburst_burst_event::need_source(frame);
+        const bool prepare_source=trigger_in_use||hb_source_needed;
+#else
+        const bool prepare_source=trigger_in_use;
+#endif
         const auto preparation_now=weaponhand::clock_ns(nullptr);
         //7180: a valid copied source with ~87ms already elapsed was sent
         // through the full socket path, which reached100.8ms and invalidated
@@ -365,11 +396,11 @@ void tick(uptr pc) noexcept {
 #if defined(GEARS_PLAYGROUND_NATIVE_LANCER_FOLLOW)
         // Reuse only an already admitted ray for THIS exact Native Frame and
         // its original clock, with dispatch reserve. Otherwise prepare once.
-        const bool cached_ray=state==running&&trigger_in_use&&unified_weapon_fire::ready_for(frame,20000000);
-        if(state==running&&trigger_in_use&&!cached_ray&&preparation_budget)nativelancerfollow::tick(frame,nativelancerfollow::Phase::prepare_only);
+        const bool cached_ray=state==running&&prepare_source&&unified_weapon_fire::ready_for(frame,20000000);
+        if(state==running&&prepare_source&&!cached_ray&&preparation_budget)nativelancerfollow::tick(frame,nativelancerfollow::Phase::prepare_only);
 #endif
-        muzzle_ready=state==running&&trigger_in_use&&unified_weapon_fire::ready_for(frame,20000000);
-        if(state==running&&trigger_in_use&&!muzzle_ready&&preparation_budget)
+        muzzle_ready=state==running&&prepare_source&&unified_weapon_fire::ready_for(frame,20000000);
+        if(state==running&&prepare_source&&!muzzle_ready&&preparation_budget)
             muzzle_ready=unified_weapon_fire::prepare_current(frame,copied_game)&&unified_weapon_fire::ready_for(frame,20000000);
 #if defined(GEARS_PLAYGROUND_NATIVE_LANCER_FOLLOW)
         static std::uint64_t refresh_reported{};static unsigned refresh_rows{};
@@ -450,6 +481,9 @@ void tick(uptr pc) noexcept {
     // service retains its full actor/state/original-loop checks; deliver_ready
     // still requires the same fresh Frame, cohort and20ms dispatch reserve.
     if(current&&!initial_owed_before&&lancerrefire::has_initial_debt())lancerrefire::service(pc);
+#if defined(GEARS_PLAYGROUND_HB_FINITE_BURST) && GEARS_PLAYGROUND_HB_FINITE_BURST
+    hammerburst_burst_event::after_tick(current?&frame:nullptr);
+#endif
     if(current)lancerrefire::deliver_ready(frame);
 #endif
     const auto action_finished=weaponhand::clock_ns(nullptr);
@@ -628,6 +662,9 @@ void tick(uptr pc) noexcept {
     if(state==stopping){
 #if defined(GEARS_PLAYGROUND_NATIVE_LANCER_FOLLOW) && defined(GEARS_PLAYGROUND_UNIFIED_MUZZLE_FIRE)
         if(lancerrefire::has_initial_debt())return; // Keep normal-GT cleanup owner alive.
+#if defined(GEARS_PLAYGROUND_HB_FINITE_BURST) && GEARS_PLAYGROUND_HB_FINITE_BURST
+        if(hammerburst_burst_event::cleanup_pending())return;
+#endif
 #endif
         if(input.owns_press()||aim_owns())mode.store(fault,std::memory_order_release);
         else mode.store(stopped,std::memory_order_release);

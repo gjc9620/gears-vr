@@ -1,13 +1,16 @@
 // Additional original HB finite-burst certificate. Included after the common
 // original-event owner; this has no hook, callback, timer or dispatch owner.
+#include "../vr-common/weapon_hammerburst_property_cache.h"
 namespace hammerburst_burst_contract {
 namespace meta=gripdamage_metadata;
 namespace hand=gears_weapon_hand;
+unsigned stage{},loop_reason{};
 struct Certificate {
     weaponhand::HoldBinding held{};
-    meta::Property count{},limit{};
-    uptr count_property{},limit_property{};
-    hand::ObjectIdentity timer{},should{},ammunition{},human{};
+    meta::Property count{},limit{},mode{};
+    hand::ObjectIdentity count_descriptor{},count_type{},limit_descriptor{},limit_type{},mode_descriptor{},mode_type{};
+    uptr count_property{},limit_property{},mode_property{};
+    hand::ObjectIdentity timer{},should{},ammunition{},human{},super_ammunition{},timing{},first{},outer_first{},engine_timer{};
     bool known{};
 };
 template<std::size_t N,std::size_t P>
@@ -42,14 +45,15 @@ bool human(meta::Reader& r,uptr pawn,playground::Args& query,unsigned& fn) noexc
         unified_weapon_fire::retained_metadata(r);
 }
 bool prepare(weaponhand::HoldBinding const& held,uptr timer,Certificate& out) noexcept {
-    out={};
+    out={};stage=1;loop_reason=0;
     if(!held.known||!weaponhand::current_gt(nullptr)||
        !lancerrefire::same_hold(held,weaponhand::held_binding))return false;
     meta::Snapshot schema{};schema.module_base=base;meta::Reader r{schema,meta::Stage::final_check};
-    unsigned reason{};
     if(!meta::tables(base,schema.objects,schema.names)||!weaponhand::object(r,held.world)||
-       !weaponhand::object(r,held.controller)||!weaponhand::object(r,held.pawn)||!weaponhand::object(r,held.weapon)||
-       !lancerrefire::hammerburst_refire::original_loop(r,held.weapon.address,timer,reason))return false;
+       !weaponhand::object(r,held.controller)||!weaponhand::object(r,held.pawn)||!weaponhand::object(r,held.weapon))return false;
+    stage=2;
+    if(!lancerrefire::hammerburst_refire::original_loop(r,held.weapon.address,timer,loop_reason))return false;
+    stage=3;
     weaponhand::BoolField count{},limit{},mode{};meta::PointerField instigator{},controller{};
     if(!weaponhand::field(r,held.weapon.address,L"BurstCount",L"ByteProperty",1,count)||
        !weaponhand::field(r,held.weapon.address,L"NumBurstShots",L"ByteProperty",1,limit)||
@@ -62,7 +66,7 @@ bool prepare(weaponhand::HoldBinding const& held,uptr timer,Certificate& out) no
        !original_owner(r,controller.owner,L"Pawn",L"Engine"))return false;
     playground::Args should(held.weapon.address,L"ShouldRefire"),ammo(held.weapon.address,L"FireAmmunition"),
         has_ammo(held.weapon.address,L"HasAmmo"),is_human(held.pawn.address,L"IsHumanControlled");
-    unsigned should_slot{},ammo_slot{},has_slot{},human_slot{},super_should_slot{},super_ammo_slot{},timer_slot{};
+    stage=4;unsigned should_slot{},ammo_slot{},has_slot{},human_slot{},super_should_slot{},super_ammo_slot{},timer_slot{};
     meta::Structure hb{},super{},super_should_structure{},super_ammo_structure{},has_structure{};
     if(!should.valid||!ammo.valid||!has_ammo.valid||!r.path(should.r.function,should_slot)||
        !r.path(ammo.r.function,ammo_slot)||!r.path(timer,timer_slot)||
@@ -77,6 +81,22 @@ bool prepare(weaponhand::HoldBinding const& held,uptr timer,Certificate& out) no
        !lancerrefire::weapon_function(r,super_should,L"ShouldRefire",super_should_slot,super_should_structure,true)||
        !lancerrefire::weapon_function(r,super_ammo,L"FireAmmunition",super_ammo_slot,super_ammo_structure,true)||
        r.result.identities[super_should_slot].outer!=hb.super||r.result.identities[super_ammo_slot].outer!=hb.super)return false;
+    playground::Args timing(held.weapon.address,L"TimeWeaponFiring");
+    unsigned timing_slot{},engine_owner{},engine_state{},first_slot{},engine_timer_slot{};
+    meta::Structure timing_structure{};
+    if(!timing.valid||!lancerrefire::weapon_function(r,timing.r.function,L"TimeWeaponFiring",timing_slot,timing_structure)||
+       !r.path(r.result.identities[timing_slot].outer,engine_owner)||
+       !original_owner(r,engine_owner,L"Weapon",L"Engine"))return false;
+    const auto firing_state=playground::field(r.result.identities[engine_owner].address,L"WeaponFiring",L"State");
+    const auto first=firing_state?playground::field(firing_state,L"BeginState",L"Function"):0;
+    const auto engine_timer=firing_state?playground::field(firing_state,L"RefireCheckTimer",L"Function"):0;
+    if(!first||!engine_timer||!r.path(firing_state,engine_state)||
+       r.result.identities[engine_state].outer!=r.result.identities[engine_owner].address||
+       !r.path(first,first_slot)||r.result.identities[first_slot].outer!=firing_state||
+       !r.path(engine_timer,engine_timer_slot)||r.result.identities[engine_timer_slot].outer!=firing_state)return false;
+    const auto hb_state=r.result.identities[timer_slot].outer;
+    const auto outer_first=playground::field(hb_state,L"BeginState",L"Function");unsigned outer_first_slot{};
+    if(!outer_first||!r.path(outer_first,outer_first_slot)||r.result.identities[outer_first_slot].outer!=hb_state)return false;
     meta::Property returned{};const auto return_address=should.prop(L"ReturnValue");
     if(!return_address||!r.property(return_address,returned))return false; // Full shape checked by original_loop above.
     lancerrefire::Script should_body{},ammo_body{};
@@ -85,13 +105,14 @@ bool prepare(weaponhand::HoldBinding const& held,uptr timer,Certificate& out) no
         r.result.identities[instigator.property.identity].address,is_human.r.function,super_should,
         r.result.identities[mode.property.identity].address,r.result.identities[count.property.identity].address,
         r.result.identities[limit.property.identity].address,return_address,{ammo_name.index,ammo_name.number}};
+    stage=5;
     if(!human(r,held.pawn.address,is_human,human_slot)||
        !lancerrefire::script(r,should.r.function,should_body)||!lancerrefire::script(r,ammo.r.function,ammo_body)||
        !gears_hammerburst_refire::should_refire(should_body.bytes.data(),std::size_t(should_body.array.count),bindings)||
        !gears_hammerburst_refire::ammunition(ammo_body.bytes.data(),std::size_t(ammo_body.array.count),bindings.count,super_ammo)||
        !retain(r,count.property)||!retain(r,limit.property)||!retain(r,mode.property)||!retain(r,instigator.property)||
        !retain(r,controller.property)||!retain(r,returned))return false;
-    unsigned char before_count{},before_limit{},before_mode{},after_count{},after_limit{},after_mode{};
+    stage=6;unsigned char before_count{},before_limit{},before_mode{},after_count{},after_limit{},after_mode{};
     if(!r.at(held.weapon.address,count.property.offset,before_count)||before_count>6||
        !r.at(held.weapon.address,limit.property.offset,before_limit)||before_limit!=6||
        !r.at(held.weapon.address,mode.property.offset,before_mode)||before_mode||
@@ -103,10 +124,17 @@ bool prepare(weaponhand::HoldBinding const& held,uptr timer,Certificate& out) no
        !weaponhand::pointer(r,held.weapon.address,L"Instigator",held.pawn.address,instigator)||
        !weaponhand::pointer(r,held.pawn.address,L"Controller",held.controller.address,controller)||
        !weaponhand::object(r,held.weapon)||!lancerrefire::same_hold(held,weaponhand::held_binding))return false;
-    out.held=held;out.count=count.property;out.limit=limit.property;
+    out.held=held;out.count=count.property;out.limit=limit.property;out.mode=mode.property;
+    out.count_descriptor=lancerrefire::identity(r,count.property.identity);out.count_type=lancerrefire::identity(r,count.property.type);
+    out.limit_descriptor=lancerrefire::identity(r,limit.property.identity);out.limit_type=lancerrefire::identity(r,limit.property.type);
+    out.mode_descriptor=lancerrefire::identity(r,mode.property.identity);out.mode_type=lancerrefire::identity(r,mode.property.type);
     out.count_property=bindings.count;out.limit_property=bindings.limit;
+    out.mode_property=bindings.mode;
     out.timer=lancerrefire::identity(r,timer_slot);out.should=lancerrefire::identity(r,should_slot);
     out.ammunition=lancerrefire::identity(r,ammo_slot);out.human=lancerrefire::identity(r,human_slot);
-    out.known=true;return true;
+    out.super_ammunition=lancerrefire::identity(r,super_ammo_slot);out.timing=lancerrefire::identity(r,timing_slot);
+    out.first=lancerrefire::identity(r,first_slot);out.engine_timer=lancerrefire::identity(r,engine_timer_slot);
+    out.outer_first=lancerrefire::identity(r,outer_first_slot);
+    out.known=true;stage=0;return true;
 }
 }

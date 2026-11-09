@@ -51,13 +51,21 @@ bool checked_counts(unsigned& count,unsigned& limit) noexcept {
     if(!certificate.known||!weaponhand::current_gt(nullptr)||
        !lancerrefire::same_hold(certificate.held,weaponhand::held_binding))return false;
     meta::Snapshot schema{};schema.module_base=base;meta::Reader r{schema,meta::Stage::final_check};
-    meta::Property c{},n{};unsigned before_count{},before_limit{},after_count{},after_limit{};
+    meta::Property c{},n{},mode{};unsigned before_count{},before_limit{},after_count{},after_limit{};
+    unsigned char before_mode{},after_mode{};
     if(!meta::tables(base,schema.objects,schema.names)||!weaponhand::object(r,certificate.held.weapon)||
-       !r.property(certificate.count_property,c)||!meta::same_property(c,certificate.count)||
-       !r.property(certificate.limit_property,n)||!meta::same_property(n,certificate.limit)||
+       !r.property(certificate.count_property,c)||!gears_hammerburst_property_cache::same(r,c,certificate.count,
+            certificate.count_descriptor,certificate.count_type)||
+       !r.property(certificate.limit_property,n)||!gears_hammerburst_property_cache::same(r,n,certificate.limit,
+            certificate.limit_descriptor,certificate.limit_type)||
+       !r.property(certificate.mode_property,mode)||!gears_hammerburst_property_cache::same(r,mode,certificate.mode,
+            certificate.mode_descriptor,certificate.mode_type)||
+       !r.at(certificate.held.weapon.address,mode.offset,before_mode)||before_mode||
        !raw_counts(before_count,before_limit)||!hammerburst_burst_contract::retain(r,c)||
-       !hammerburst_burst_contract::retain(r,n)||!unified_weapon_fire::retained_metadata(r)||
-       !raw_counts(after_count,after_limit)||before_count!=after_count||before_limit!=after_limit)return false;
+       !hammerburst_burst_contract::retain(r,n)||!hammerburst_burst_contract::retain(r,mode)||
+       !unified_weapon_fire::retained_metadata(r)||!raw_counts(after_count,after_limit)||
+       before_count!=after_count||before_limit!=after_limit||
+       !r.at(certificate.held.weapon.address,mode.offset,after_mode)||before_mode!=after_mode)return false;
     count=before_count;limit=before_limit;return true;
 }
 bool prime(hand::Frame const& f,uptr original_timer) noexcept {
@@ -96,7 +104,7 @@ bool need_source(hand::Frame const& f) noexcept {
     if(!completion.observe(s,true)){revoke();return false;}
     return true;
 }
-bool enter(bool first,policy::Source actual,std::uint64_t event,std::int64_t captured) noexcept {
+bool enter(bool first,policy::Source actual,std::uint64_t event,std::int64_t captured,bool original_resets_counter=false) noexcept {
     if(scope_active||cancel_requested||!certificate.known)return false;
     unsigned count{},limit{};
     if(!checked_counts(count,limit)){revoke();return false;}
@@ -107,7 +115,7 @@ bool enter(bool first,policy::Source actual,std::uint64_t event,std::int64_t cap
         if(!first_debt||!vrfire::input.owns_press()||!actual.trigger_down||
            !policy::same(pressed,actual.cohort)||actual.cohort.presses!=pressed.presses||
            actual.cohort.releases!=pressed.releases||!event||captured<=0||captured>actual.now||
-           actual.now-captured>250000000||count||limit!=6||!policy::fresh(actual,true))return false;
+           actual.now-captured>250000000||(!original_resets_counter&&count)||limit!=6||!policy::fresh(actual,true))return false;
     }else if(!completion.enter(actual,event,captured,count,limit,ticket)){
         if(completion.needs_cancel())revoke();return false;
     }
@@ -144,6 +152,11 @@ bool leave(bool invoked) noexcept {
         if(accepted)first_debt=false;
     }else accepted=completion.leave(ticket,observed.shot,count,invoked,valid);
     observed={};if(!accepted)revoke();return accepted;
+}
+bool leave_original_end(unsigned original_count,bool no_refire,bool firing_ended,bool magazine_empty) noexcept {
+    if(!scope_active||scope_first||cancel_requested||observed.known||observed.conflict)return false;
+    if(!completion.leave_original_end(ticket,original_count,no_refire,firing_ended,magazine_empty))return false;
+    scope_active=false;firing_debt=false;observed={};return true;
 }
 bool cancel() noexcept {
     revoke();

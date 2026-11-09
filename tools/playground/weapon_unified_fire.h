@@ -1,5 +1,8 @@
 #pragma once
 #include "../vr-common/weapon_support_grip.h"
+#if defined(GEARS_PLAYGROUND_HB_FINITE_BURST) && GEARS_PLAYGROUND_HB_FINITE_BURST
+#include "weapon_hammerburst_burst_runtime.h"
+#endif
 
 // Explicit build profile for the owner-started unified candidate. This is not
 // an input source, engine-call permit or replacement for Native identity and

@@ -7,7 +7,7 @@ namespace lancerrefire {
 namespace meta=gripdamage_metadata;
 namespace wh=gears_weapon_hand;
 struct Script {
-    Array array{};std::array<unsigned char,256> bytes{};
+    Array array{};std::array<unsigned char,512> bytes{};unsigned bound{256};
 };
 namespace policy=gears_lancer_refire_loop;
 struct Cohort {
@@ -51,6 +51,9 @@ bool matches(Cohort const& c,wh::Frame const& f) noexcept {
 void begin_owned_press(wh::Frame const& f) noexcept {press=cohort(f);press_dispatch=true;}
 void end_owned_press(bool invoked) noexcept {press_dispatch=false;if(!invoked)press.known=false;}
 bool release_required() noexcept {
+#if defined(GEARS_PLAYGROUND_HB_FINITE_BURST) && GEARS_PLAYGROUND_HB_FINITE_BURST
+    if(hammerburst_burst_event::requires_release())return true;
+#endif
     return pending_fire.event.release_required(weaponhand::clock_ns(nullptr));
 }
 bool has_initial_debt() noexcept {return pending_fire.event.first_debt();}
@@ -77,14 +80,15 @@ bool certified_for(wh::Frame const& frame) noexcept {
         frame.stereo.session==certified_session&&frame.stereo.space_epoch==certified_space&&
         frame.controllers.input_epoch==certified_input&&frame.controllers.profile_generation==certified_profile;
 }
-bool script(meta::Reader& r,uptr function,Script& out) noexcept {
-    if(!r.at(function,0x8c,out.array)||!out.array.data||out.array.count<1||
-       out.array.count>int(out.bytes.size())||out.array.capacity<out.array.count||out.array.capacity>4096)return false;
+bool script(meta::Reader& r,uptr function,Script& out,unsigned bound=256) noexcept {
+    if(!bound||bound>out.bytes.size()||!r.at(function,0x8c,out.array)||!out.array.data||out.array.count<1||
+       out.array.count>int(bound)||out.array.capacity<out.array.count||out.array.capacity>4096)return false;
+    out.bound=bound;
     return copy(out.bytes.data(),out.array.data,std::size_t(out.array.count));
 }
 bool unchanged(meta::Reader& r,uptr function,Script const& before) noexcept {
     Script after{};
-    return script(r,function,after)&&!std::memcmp(&before.array,&after.array,sizeof(Array))&&
+    return script(r,function,after,before.bound)&&!std::memcmp(&before.array,&after.array,sizeof(Array))&&
         !std::memcmp(before.bytes.data(),after.bytes.data(),std::size_t(before.array.count));
 }
 template<std::size_t N>bool weapon_function(meta::Reader& r,uptr function,
@@ -158,18 +162,18 @@ wh::ObjectIdentity identity(meta::Reader& r,unsigned slot) noexcept {
     return {id.address,id.outer,id.klass,id.index,id.name.index,id.name.number,1};
 }
 bool queue(meta::Reader& r,policy::EventKind kind,uptr function,void const* parameters,
-    unsigned parameter_bytes,uptr refire) noexcept {
+    unsigned parameter_bytes,uptr refire,Cohort const* original_intent=nullptr,unsigned script_bound=256) noexcept {
     const auto now=weaponhand::clock_ns(nullptr);
     if(!pending_fire.event.empty())return pending_fire.function.address==function&&
         same_hold(pending_fire.cohort.held,weaponhand::held_binding)&&pending_fire.event.capture(kind,now);
-    unsigned slot{};Script body{};
-    if(!press.known||parameter_bytes>pending_fire.parameters.size()||!r.path(function,slot)||!script(r,function,body))return false;
+    unsigned slot{};Script body{};auto const& intent=original_intent?*original_intent:press;
+    if(!intent.known||parameter_bytes>pending_fire.parameters.size()||!r.path(function,slot)||!script(r,function,body,script_bound))return false;
     std::array<unsigned char,8> actual{};
     if(parameter_bytes&&(!parameters||!copy(actual.data(),reinterpret_cast<uptr>(parameters),parameter_bytes)))return false;
     if(!pending_fire.event.capture(kind,now))return false;
-    pending_fire.cohort=press;pending_fire.function=identity(r,slot);pending_fire.body=body;
+    pending_fire.cohort=intent;pending_fire.function=identity(r,slot);pending_fire.body=body;
     pending_fire.parameters=actual;pending_fire.parameter_bytes=parameter_bytes;pending_fire.refire=refire;
-    certify(press);return true;
+    certify(intent);return true;
 }
 bool initial_proof(meta::Reader& r,uptr weapon,uptr function,Script& body,unsigned& bytes,uptr& refire,unsigned& reason) noexcept {
     unsigned fn{},type{},state{},timer{};meta::Structure s{};
@@ -215,6 +219,10 @@ bool initial_proof(meta::Reader& r,uptr weapon,uptr function,Script& body,unsign
 // called synchronously INSIDE our authenticated ButtonPress. No engine getter
 // is invoked here and no live FFrame is retained or interpreted.
 bool capture_initial(uptr object,uptr function,void const* parameters) noexcept {
+#if defined(GEARS_PLAYGROUND_HB_FINITE_BURST) && GEARS_PLAYGROUND_HB_FINITE_BURST
+    if(!delivering&&hammerburst_burst_event::targets(object)&&
+       hammerburst_burst_event::capture_initial(object,function,parameters))return true;
+#endif
     if(delivering||!enabled.load(std::memory_order_acquire)||
        vrfire::mode.load(std::memory_order_acquire)!=vrfire::running||!unified_weapon_fire::manual_profile()||
        !weaponhand::current_gt(nullptr)||!nativeequipment::domain_ready()||!press.known||
@@ -245,6 +253,9 @@ bool capture_initial(uptr object,uptr function,void const* parameters) noexcept 
 // Called only after the normal recursion/disabled bypass. Returning true
 // consumes this event invocation, not the original recurring timer.
 bool defer(uptr object,uptr function) noexcept {
+#if defined(GEARS_PLAYGROUND_HB_FINITE_BURST) && GEARS_PLAYGROUND_HB_FINITE_BURST
+    if(hammerburst_burst_event::targets(object)&&hammerburst_burst_event::defer(object,function))return true;
+#endif
     if(vrfire::mode.load(std::memory_order_acquire)!=vrfire::running||
        !unified_weapon_fire::manual_profile()||!vrfire::input.owns_press()||
        !weaponhand::current_gt(nullptr)||!nativeequipment::domain_ready()||
@@ -369,7 +380,13 @@ bool invoke_original(uptr object,uptr function,unsigned size,unsigned char const
 // owner may switch/reset, hand its state back through the ORIGINAL refire
 // function, only after an actual R2-up and original ShouldRefire==false.
 // No source/pose is needed to prove a no-shot state handback.
-bool release_completed() noexcept {
+bool release_completed([[maybe_unused]] wh::Frame const* normal_source) noexcept {
+#if defined(GEARS_PLAYGROUND_HB_FINITE_BURST) && GEARS_PLAYGROUND_HB_FINITE_BURST
+    if(hammerburst_burst_event::cleanup_pending()){
+        press.known=false;certified=false;pending_validated=false;
+        return hammerburst_burst_event::release_completed(normal_source);
+    }
+#endif
     press.known=false;certified=false;pending_validated=false;pending_fire.event.cancel();
     if(!pending_fire.event.first_debt()){handoff_stage=0;return true;}
     handoff_stage=1;if(delivering||!weaponhand::current_gt(nullptr))return false;
@@ -401,6 +418,9 @@ bool release_completed() noexcept {
 }
 void service(uptr pc) noexcept {
     pending_validated=false;
+#if defined(GEARS_PLAYGROUND_HB_FINITE_BURST) && GEARS_PLAYGROUND_HB_FINITE_BURST
+    if(hammerburst_burst_event::service(pc))return;
+#endif
     if(pending_fire.event.empty()||delivering||!weaponhand::current_gt(nullptr)||
        pc!=pending_fire.cohort.held.controller.address)return;
     struct Report {unsigned previous{service_stage};~Report(){report_wait(previous);}} report;
@@ -430,6 +450,9 @@ void service(uptr pc) noexcept {
     pending_validated=true;service_stage=4;
 }
 void deliver_ready(wh::Frame const& frame) noexcept {
+#if defined(GEARS_PLAYGROUND_HB_FINITE_BURST) && GEARS_PLAYGROUND_HB_FINITE_BURST
+    if(hammerburst_burst_event::cleanup_pending()){hammerburst_burst_event::deliver(frame);return;}
+#endif
     if(!pending_validated||pending_fire.event.empty()||delivering||
        vrfire::mode.load(std::memory_order_acquire)!=vrfire::running||!vrfire::input.owns_press()||
        !weaponhand::current_gt(nullptr)||!matches(pending_fire.cohort,frame))return;
@@ -463,3 +486,10 @@ void deliver_ready(wh::Frame const& frame) noexcept {
         unsigned(kind),unsigned(invoked),frame.key.frame,weaponhand::clock_ns(nullptr)-frame.controllers.sync_ns);fflush(log_file);}
 }
 }
+#if defined(GEARS_PLAYGROUND_HB_FINITE_BURST) && GEARS_PLAYGROUND_HB_FINITE_BURST
+#include "weapon_hammerburst_burst_cancel.inl"
+#include "weapon_hammerburst_burst_contract.inl"
+#include "weapon_hammerburst_burst_runtime.inl"
+#include "weapon_hammerburst_first_contract.inl"
+#include "weapon_hammerburst_burst_event.inl"
+#endif
