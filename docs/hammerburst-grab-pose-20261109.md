@@ -74,3 +74,9 @@ find-latch-accessible-contact.py改为每个原三角到当前contact的最近�
 check-skin-consumer-parity.py冻结当前hand_finger_pose c5c61d71、pose_math d89ece54、stereo_frame bf438b85、hand_reference_continuity 1c5c154b，C++直接调用生产rotation而非复刻函数。loading与generic authored两路径×15关节×闭合amount0/.5/1=90项；与独立Python/offline输出比较最大quat差1.1123893155135927e-16，全通过。该证据只覆盖局部旋转和闭合插值，不证明世界蒙皮、实时wrist、硬件buffer、surface或袖口。
 
 最初独立只include hand_finger_pose编译失败，因其新authored分支stereo_pose_valid声明依赖stereo_frame上游顺序；已告共享编辑者，不擅改root。fixture使用真实声明header后编译0。离线NLERP最初将归一化closed与略非单位reference直接混合，造成3.3805572697e-9预期误差；已按生产loading保留reference范数、authored先归一化的不同路径精确建模，amount0也保留原reference，不是放宽比较容差。证据skin-consumer-parity-check.json、snapshot头SHA、90条输出和首编译错误日志保存。穿模不能仅凭此归咎局部quat实现，下一步仍需联合解决实际接近方向、逐指形态和世界腕基准。
+
+## 伸展食指假设未能解除整枪穿插
+
+check-latch-extended-index.py将初始食指设为更伸展的15/45/25度，其余三指用65/70/30、70/72/32、75/70/30而非前次95度过屈；仅离线角度求解，仍使用原两侧接触跨度。拟合gap4.4277739271对原span4.4197947328，保留所有骨长和皮肤权重。随后对完整9966枪三角/1395手三角检查12腕方向，最少仍856 edge/triangle命中（60度，512+344），三方向图已亲看，手/部件相交依旧，不发布。单独换食指初态不足，后续应把碰撞按掌、食指、拇指、其余指归因，针对主要穿插单元修正，不再仅凭总间距或腕枚举判断有效。
+
+原Marcus骨名亦只声明Finger_01..12与Thumb_01..03，当前四组MCP在腕坐标z约-3.58/-0.97/1.92/4.25，thumb根z约-2.29，首指组邻拇指；此几何只辅助原分组，不冒称实时手指追踪。局部quat消费一致性已另证；world/wrist/完整三角与像素验收仍开放。当前HB171233排位和机械接触不变。
