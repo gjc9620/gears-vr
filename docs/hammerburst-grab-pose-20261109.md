@@ -217,7 +217,7 @@ Lancer确认当前V4通用契约2984字节/完整32SHA/reference15稳定，HB真
 
 只去掉中指额外MCP30的窄对照仍有跨指交叉且新增130条枪交线；原Z指列代理六自由度40次拟合把中/无名114降到1，却把无名/小45增到105，虽枪0仍拒绝。纯离线FK与最后实际现有C0的蒙皮差5.22e-6raw，不能将代理改善当自然手型。按实际交叉面建立有界15自由度避让，第一次12轮最优跨指10/枪10；保留已解近面约束的第二次12轮最优跨指15/枪0，两者也拒绝，全部中间计数保留，不把任选分数当通过。
 
-改为直接复用旧62276已保存C0-local中15..23原9个局部旋转（不改腕/食指/拇指），得到枪0，后三指彼此及中/拇不再有交线，剩食/中51；该保存源不冒称已认证原artist或当前tracking。再只改3个MCP方向、保持PIP/DIP和原屈曲，在±15度/8轮有界近面约束下，实际现有C0复核剩食/中9、枪0，仍拒绝，原完整self也未通过。新未发布数据tools/weapon-models/fixtures/hammerburst_latch_saved_source_rest_candidate.json明确REJECTED，后续运动未核，不覆盖旧motion失败夹具。证据latch-c0-neutral-middle-check、latch-c0-finger-columns1、latch-c0-finger-surfaces1/2、latch-c0-saved-source-rest-check、latch-c0-finger-source-mcp各JSON。
+改为直接复用旧62276已保存C0-local中15..23原9个局部旋转（不改腕/食指/拇指），得到枪0，后三指彼此及中/拇不再有交线，剩食/中51；该保存源不冒称已认证原artist或当前tracking。再只改3个MCP方向、保持PIP/DIP和原屈曲，在±15度/8轮有界近面约束下，实际现有C0复核剩中/无名9、枪0（按最终self_crossings纠正旧区域文字），仍拒绝，原完整self也未通过。新未发布数据tools/weapon-models/fixtures/hammerburst_latch_saved_source_rest_candidate.json明确REJECTED，后续运动未核，不覆盖旧motion失败夹具。证据latch-c0-neutral-middle-check、latch-c0-finger-columns1、latch-c0-finger-surfaces1/2、latch-c0-saved-source-rest-check、latch-c0-finger-source-mcp各JSON。
 
 另外测量当前原motion目标姿势的肘→腕线与腕+X（原MCP列前向）的几何夹角，闭合97.4329度、中段74.5193、打开63.7344；这不是临床或实体追踪测量，提示固定该腕、只挪后三指会遗漏整体腕方向问题。保留latch-c0-wrist-axis-audit.json；下一作者步骤应把腕/指根方向及原接触patch一起约束，不继续盲调同一curl计数。新增/修改作者脚本保存在docs/hammerburst-finger-column-repair.patch，反向git apply --check通过。
 
@@ -242,3 +242,14 @@ Steam 迁移还修正 HB 私有 run_hammerburst_check.py 的 capture identity �
 新增 tools/playground/weapon_hammerburst_retail_source_check.py，只读核2256归档源、1338Native源、6制品、19直接运行输入及1050项目Python归档/当前SHA与文件名单。再从原冻结源与实际隔离编译源逐文件还原验证恰为三行新增，并核实际DLL与购买EXE身份；当前运行0/零错误。Python集合只是该时点的静态上界，非实际import执行证据，后续新增/删除/修改会拒绝，外部解释器/stdlib/native依赖另核。结果manual-veto-retail-static-check.json；所有原review/handoff/prepared manifest未改，新Python界限另存补充manifest。
 
 手型方面，新explore-latch-wrist-contact.py仅做15组刚体几何假设：绕原食指皮肤点1002保持其位置，腕向当前构造前臂轴转0/20/40/60/80度，再绕新手纵轴roll-30/0/+30度，检查拇指皮肤点1014到原2232个纯Latch骨三角的最近表面点。使用真实保存C0完整115骨与原4权蒙皮构成的现有9交叉候选，未重算新完整手臂C0，不能当新可用姿势。原0/0拇指间距0.02310raw；轴夹角降至37.4329度的样本中最近仍2.77066raw，17.4329度时最近4.05306raw。这只是构造几何，未作临床/实体自然性结论，raw不自动当厘米。原食/拇patch和手内指角固定时，单纯顺直腕会丢拇指接触；下一方向需要共同重选两个原接触patch及指间开合，不能只继续修后三指或扩大Snap半径。15组原始点/全局三角索引/矩阵在latch-wrist-contact-exploration.json，脚本可重现patch在docs/hammerburst-wrist-contact-exploration.patch。原9对自身交叉、法线/枪交线/新手臂未通过，全部未发布，未混入220220。
+
+
+## 翻盖接触与腕方向联合作者候选（未通过自身表面，未接入产品）
+
+上一轮只转腕丢拇指接触，本轮把腕刚体、食/拇局部旋转和原Latch有限三角接触一起拟合。原局部掌/指骨长度和4权不动，左右原枪/身体骨签名不动。两种腕起点各8×15有界步，60/-30起点比80/-30接触误差小；一轮位置优先及拇指尖五个实际穿插顶点的局部侧面净空修正后，真实现有C0闭合腕误差0.000137raw，食/拇目标误差0.001231/0.005211raw，pad facing0.95713/0.93846。thumb原8条枪交线由真实1013..1021附近两个原Latch三角引起；修正后完整4841左肩臂三角与9966原枪三角双向0。法线取原packed normal校对绕序，目标始终落原有限三角，没有修改Snap半径或自动完成机械动作。
+
+真实C0轴夹角21.2721度，旧候选97.4329度；作者固定肘代理13.6488度不是实际C0结果，本记录分开。零枪交线仍不等于手型通过。源后三指仍有折叠，原reference后三指与轻屈曲两种实际C0对照均枪0，自身分别111/116；reference还剩食/中13和食/掌12，轻屈曲剩食/中21和食/掌9。保留轻屈曲并仅给三个MCP共同向外fan0/5/10/15度，原FK对照9跨指最优在15度，真实现有C0重核枪0，self107=掌/掌86、食/掌10、食/中9、食/食2。四视图关节/接触已实际亲看，仍明确拒绝，原reference自带83掌/掌也未被用作忽略新交叉的理由。另复核旧finger-source-mcp最终9对实际是中/无名，而先前文字和fixture status误写食/中，已按原始self_crossings纠正，原数值证据及其SHA未改。
+
+该新腕/两接触+轻屈曲fan15姿势在原HB_Reload 75键中的5个不同原变换与4个归一化半程quat构造样本，共9个有限原枪蒙皮/完整现有C0采样均枪0；实际C0腕轴夹角19.9999至30.5827度。原5个key来自0/57/10/56/11；4个mid只作为构造几何，没有冒称原时间采样。原模型SHA4b6bd784...、动画18a9499c...保持。不是所有持枪角度、连续扫掠、shader/游戏/头显证据。运动报告latch-c0-joint-rest-fan-motion-check.json与-axis.json；闭合latch-c0-joint-rest-fan-check.json、交线见各级self-crossings.json。
+
+新tools/weapon-models/fixtures/hammerburst_latch_joint_wrist_candidate.json状态REJECTED_REMAINING_INDEX_MIDDLE_AND_INDEX_PALM_SELF_INTERSECTIONS，明确保留115骨现有C0来源、原rig签名/网格动画hash、mesh与Latch-reference两套腕坐标、15局部指quat、两皮肤点和原全局三角、9样本及input/output证据SHA。该数据未接已有纯mount函数/实际route/Native/C0发布，未混入冻结220220，无游戏/公共包改动。9个作者/验证脚本可复现补丁docs/hammerburst-joint-wrist-contact-fitting.patch已反向check通过。下一步针对剩食指MCP与掌/中指的原具体交叉面，保持本轮已通过的接触、枪净空与腕方向；不靠进一步扩大范围或通用握拳替代。

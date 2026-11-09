@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "status": "REJECTED_REMAINING_INDEX_MIDDLE_SELF_INTERSECTIONS",
+  "status": "REJECTED_REMAINING_MIDDLE_RING_SELF_INTERSECTIONS",
   "purpose": "Saved-source resting fingers with limited MCP-direction changes; offline only",
   "units_per_metre": 100,
   "wrist_in_closed_animation_mesh": {
@@ -167,5 +167,15 @@
     "analysis\\hammerburst-20261108\\latch-c0-saved-source-rest-check.json": "e7ea9840231448f07375a039d5f4f50f1d381a5fd009b2dc6818bea548b6fac0",
     "analysis\\hammerburst-20261108\\latch-c0-wrist-axis-audit.json": "6bac7d2a067e59b2878e34bbc0773ca60ecb67f207350925f34178ad687718a0",
     "docs\\hammerburst-finger-column-repair.patch": "6621a23b719397c4bb23a518911ef653db0431e84d6ae06d8fb217affda90ad2"
-  }
+  },
+  "closed_pose_cross_finger_regions": [
+    {
+      "regions": [
+        "middle",
+        "ring"
+      ],
+      "pairs": 9
+    }
+  ],
+  "region_label_correction": "Earlier INDEX_MIDDLE status was an incorrect prose label; preserved final self_crossings records middle/ring9. Original numeric receipts unchanged."
 }

@@ -1,0 +1,310 @@
+{
+  "schema": 1,
+  "status": "REJECTED_REMAINING_INDEX_MIDDLE_AND_INDEX_PALM_SELF_INTERSECTIONS",
+  "purpose": "Joint authored latch contact/wrist plus relaxed three-finger fan; geometry-only candidate, no production entry",
+  "units_per_metre": 100,
+  "body_geometry_sha256": "cc2db56c76efb9354a39affebf95f72c56b60a32624b0cbc760450621a886a4d",
+  "weapon_mesh_sha256": "4b6bd78407481887e6efcd80532fd64b7108dce2ee6c05d259e19e8b44c0152b",
+  "weapon_animation_sha256": "18a9499c76d11344f3f7e9f76f0115ab3891e0b92c738652ab0e125a4373af22",
+  "wrist_in_closed_animation_mesh": {
+    "position_raw": [
+      -13.515407983063357,
+      24.603121685399366,
+      -7.700343296652422
+    ],
+    "orientation_xyzw": [
+      0.10077898597158433,
+      -0.4784188317718496,
+      0.47106111796628086,
+      0.734207355270264
+    ]
+  },
+  "wrist_in_latch_reference_raw": {
+    "position_raw": [
+      -6.761862826929736,
+      13.51540776021747,
+      -9.825709030752767
+    ],
+    "orientation_xyzw": [
+      -0.2670316958116096,
+      -0.4095547045748321,
+      -0.18607248884137081,
+      0.8522535105759178
+    ]
+  },
+  "local_finger_rotations": [
+    {
+      "bone": 12,
+      "orientation_xyzw": [
+        0.19933723128300992,
+        -0.23168862179702007,
+        -0.42103824598783846,
+        0.8539975680115873
+      ]
+    },
+    {
+      "bone": 13,
+      "orientation_xyzw": [
+        7.794234902886884e-10,
+        -2.0535681896649577e-08,
+        -0.08490578540184149,
+        0.9963889840846777
+      ]
+    },
+    {
+      "bone": 14,
+      "orientation_xyzw": [
+        1.906272220085517e-09,
+        -2.274237487725659e-08,
+        0.06945522299139548,
+        0.997585070056291
+      ]
+    },
+    {
+      "bone": 15,
+      "orientation_xyzw": [
+        -0.06398170747082937,
+        -0.09590352729430617,
+        -0.14678198630321426,
+        0.9824275561376068
+      ]
+    },
+    {
+      "bone": 16,
+      "orientation_xyzw": [
+        5.202048703115721e-08,
+        6.248633790900302e-09,
+        -0.30900485552595297,
+        0.9510604603606346
+      ]
+    },
+    {
+      "bone": 17,
+      "orientation_xyzw": [
+        -5.1583401558327316e-09,
+        2.1783100782969314e-08,
+        -0.16073523260716296,
+        0.9869975607866115
+      ]
+    },
+    {
+      "bone": 18,
+      "orientation_xyzw": [
+        0.060646346755870925,
+        -0.15805314357424508,
+        -0.20430284693669135,
+        0.964158478241533
+      ]
+    },
+    {
+      "bone": 19,
+      "orientation_xyzw": [
+        3.887959595062472e-08,
+        1.6469984213281812e-09,
+        -0.33790775531785044,
+        0.9411792331410901
+      ]
+    },
+    {
+      "bone": 20,
+      "orientation_xyzw": [
+        -2.5264575744618258e-08,
+        1.8200960003762036e-08,
+        -0.16934009927619356,
+        0.9855576750130497
+      ]
+    },
+    {
+      "bone": 21,
+      "orientation_xyzw": [
+        0.12236950881402313,
+        -0.25766739220941637,
+        -0.24404222406624312,
+        0.9268638579518651
+      ]
+    },
+    {
+      "bone": 22,
+      "orientation_xyzw": [
+        1.4628145712626767e-08,
+        -2.10515102824357e-08,
+        -0.3745987569199608,
+        0.9271870206781475
+      ]
+    },
+    {
+      "bone": 23,
+      "orientation_xyzw": [
+        -4.5794542557523995e-08,
+        6.389709403818213e-09,
+        -0.17364821537801178,
+        0.9848077463627252
+      ]
+    },
+    {
+      "bone": 24,
+      "orientation_xyzw": [
+        -0.7479806168073763,
+        0.3552105854799411,
+        -0.14421998808035758,
+        0.5418034993256836
+      ]
+    },
+    {
+      "bone": 25,
+      "orientation_xyzw": [
+        -1.6536467392288314e-08,
+        -5.377638541685222e-09,
+        0.28178152368666903,
+        0.9594785942942233
+      ]
+    },
+    {
+      "bone": 26,
+      "orientation_xyzw": [
+        -4.5634431031316904e-08,
+        2.8772100034629526e-09,
+        0.5591919824463494,
+        0.8290381937930964
+      ]
+    }
+  ],
+  "contact_skin_vertices": [
+    1002,
+    1014
+  ],
+  "contact_original_global_latch_triangles": [
+    4917,
+    1252
+  ],
+  "contact_positions_in_closed_mesh_raw": [
+    [
+      -5.084147875761201,
+      31.197118857370057,
+      4.204360702474099
+    ],
+    [
+      -4.010534575437953,
+      29.034327252768584,
+      -3.759992507347315
+    ]
+  ],
+  "contact_outward_normals": [
+    [
+      -0.9505123096463782,
+      0.008078727046684483,
+      0.3105818465075075
+    ],
+    [
+      -0.9999694318788256,
+      0.006982687992786323,
+      0.0035181495610500284
+    ]
+  ],
+  "actual_C0_closed_contact_errors_raw": [
+    0.001231023859813316,
+    0.005210744157276755
+  ],
+  "closed_full_arm_gun_edge_triangle_hits": 0,
+  "closed_self_crossings": {
+    "case": "joint-wrist-patches",
+    "nonadjacent_triangle_pairs": 107,
+    "by_dominant_region": [
+      {
+        "regions": [
+          "palm",
+          "palm"
+        ],
+        "pairs": 86
+      },
+      {
+        "regions": [
+          "index",
+          "palm"
+        ],
+        "pairs": 10
+      },
+      {
+        "regions": [
+          "index",
+          "middle"
+        ],
+        "pairs": 9
+      },
+      {
+        "regions": [
+          "index",
+          "index"
+        ],
+        "pairs": 2
+      }
+    ]
+  },
+  "finite_motion_samples": [
+    {
+      "case": "key_0",
+      "angle_radians": 0.0,
+      "gun_edge_triangle_hits": 0
+    },
+    {
+      "case": "mid_0",
+      "angle_radians": 0.10859825670499845,
+      "gun_edge_triangle_hits": 0
+    },
+    {
+      "case": "key_57",
+      "angle_radians": 0.21719651340999702,
+      "gun_edge_triangle_hits": 0
+    },
+    {
+      "case": "mid_1",
+      "angle_radians": 0.31803779157628737,
+      "gun_edge_triangle_hits": 0
+    },
+    {
+      "case": "key_10",
+      "angle_radians": 0.4188790697425776,
+      "gun_edge_triangle_hits": 0
+    },
+    {
+      "case": "mid_2",
+      "angle_radians": 0.5197202774022297,
+      "gun_edge_triangle_hits": 0
+    },
+    {
+      "case": "key_56",
+      "angle_radians": 0.6205614850618819,
+      "gun_edge_triangle_hits": 0
+    },
+    {
+      "case": "mid_3",
+      "angle_radians": 0.7291597945885139,
+      "gun_edge_triangle_hits": 0
+    },
+    {
+      "case": "key_11",
+      "angle_radians": 0.8377581041151458,
+      "gun_edge_triangle_hits": 0
+    }
+  ],
+  "constructed_hold_count": 1,
+  "original_track_transforms": 5,
+  "constructed_halfway_quaternions": 4,
+  "continuous_motion_or_all_hold_angles_checked": false,
+  "original_body_source_fixture": 62276,
+  "original_artist_or_current_tracking_provenance_not_claimed": true,
+  "mechanical_snap_radius_changed": false,
+  "production_mount_or_C0_hookup": false,
+  "published": false,
+  "skin_fit_accepted": false,
+  "game_started": false,
+  "evidence_sha256": {
+    "analysis/hammerburst-20261108/c0-mixed-skin-probe/joint-wrist-patches/rest-fan/input.bin": "7a3164ca70f9e4f963d8f6c01c700ebe41f4934ff6dc92e178673509bf6a80b4",
+    "analysis/hammerburst-20261108/c0-mixed-skin-probe/joint-wrist-patches/rest-fan/output.bin": "fdf695fc53d570c02c1444930f71b8b3eb218364c6b576fe3db73d689f1a15c4",
+    "analysis/hammerburst-20261108/latch-c0-joint-rest-fan-check.json": "75ca25b0fb256041afdb11e1c1c6f3fe111fbb91d775267ae510096c98ffc60f",
+    "analysis/hammerburst-20261108/latch-c0-joint-rest-fan-motion-check.json": "b99698236da6da638b9ab9e4e58154fcbb1897dde6f8454ec37f0b7520698475",
+    "analysis/hammerburst-20261108/latch-c0-joint-rest-fan-motion-axis.json": "5c33173e87a8dfb6f919a251fd6ecb6a2aca498893b5f28a9c1f6c198ded4213",
+    "analysis/hammerburst-20261108/latch-rest-fan-hypotheses.json": "c0f92b3e0042c80a2b065b79c93905187e7cf6ca07086753b538c960e54219dc",
+    "analysis/hammerburst-20261108/c0-mixed-skin-probe/joint-wrist-patches/tip-clearance.json": "fc53a7dd9f213a3e5e76947d352d7f2c766922034606587962106461b2ddb9c0"
+  }
+}
