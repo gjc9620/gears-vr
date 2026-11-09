@@ -233,3 +233,12 @@ HB185428静态再次核2254PG+1338Native源、6saved、19当前runtime输入和A
 隔离构建采用 HB185428 冻结源与其原 GEARS flags，只加入上述三行；仅构建 GearsPlayground target，configure/build均0，DLL SHA256 a05a6c3ce20b4fa6a82f41a03a38ab690b69543d84193ad96c3b75f8619f0d5c。未启动游戏、未替换公共/私有运行包，未宣称手型或换弹通过。构建记录 analysis/hammerburst-20261108/manual-veto-isolated/result.json。
 
 Steam 迁移还修正 HB 私有 run_hammerburst_check.py 的 capture identity 选定路径；原严格进程路径/PID/creation 校验完整保留。5个无进程夹具通过：Steam首次及重复登记接受，P2P/错误PID/错误creation拒绝。可重现差异保存 docs/hammerburst-steam-capture-path.patch。新源构建冻结 hammerburst-prepared-20261109-220220-manual-veto-retail，prepared SHA22f045ccbb503f98ec47051cd512a5320cf19199918b7b7c73661900ea70ccc3；2256源/19runtime输入沿用既有动作链，未混入拒绝的手型，未stage、未申请窗口。Steam启动wrapper、显式settings绑定和新鲜运行基线仍须在后续完成，当前冻结不是可直接运行的已交付测试包。
+
+
+## Steam 启动前置失败与腕/原接触patch的有界探索
+
+独立读取 Boom runtime-4380-review.json：精确购买Steam路径在Native注入前出现原生Steam-required对话框，原loader deadline后正常关闭；Steam客户端已运行，注册表PID不匹配仅为观察，根因未证明。HB不以新武器候选盲重跑此已知失败，不改Steam登录/许可/registry，不调用共享runtime helper、不抢窗口；已向既有共享启动责任者通报。新220220候选尚无Steam启动wrapper/窗口，目标保持完整，后续先解决合规背景启动再做实际自动补弹/翻盖/弹匣验证。
+
+新增 tools/playground/weapon_hammerburst_retail_source_check.py，只读核2256归档源、1338Native源、6制品、19直接运行输入及1050项目Python归档/当前SHA与文件名单。再从原冻结源与实际隔离编译源逐文件还原验证恰为三行新增，并核实际DLL与购买EXE身份；当前运行0/零错误。Python集合只是该时点的静态上界，非实际import执行证据，后续新增/删除/修改会拒绝，外部解释器/stdlib/native依赖另核。结果manual-veto-retail-static-check.json；所有原review/handoff/prepared manifest未改，新Python界限另存补充manifest。
+
+手型方面，新explore-latch-wrist-contact.py仅做15组刚体几何假设：绕原食指皮肤点1002保持其位置，腕向当前构造前臂轴转0/20/40/60/80度，再绕新手纵轴roll-30/0/+30度，检查拇指皮肤点1014到原2232个纯Latch骨三角的最近表面点。使用真实保存C0完整115骨与原4权蒙皮构成的现有9交叉候选，未重算新完整手臂C0，不能当新可用姿势。原0/0拇指间距0.02310raw；轴夹角降至37.4329度的样本中最近仍2.77066raw，17.4329度时最近4.05306raw。这只是构造几何，未作临床/实体自然性结论，raw不自动当厘米。原食/拇patch和手内指角固定时，单纯顺直腕会丢拇指接触；下一方向需要共同重选两个原接触patch及指间开合，不能只继续修后三指或扩大Snap半径。15组原始点/全局三角索引/矩阵在latch-wrist-contact-exploration.json，脚本可重现patch在docs/hammerburst-wrist-contact-exploration.patch。原9对自身交叉、法线/枪交线/新手臂未通过，全部未发布，未混入220220。

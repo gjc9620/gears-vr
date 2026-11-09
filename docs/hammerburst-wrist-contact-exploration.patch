@@ -1,0 +1,30 @@
+--- /dev/null
++++ b/analysis/hammerburst-20261108/explore-latch-wrist-contact.py
+@@ -0,0 +1,27 @@
++"""Bounded rigid wrist/contact exploration, not an accepted pose or C0 run."""
++from pathlib import Path
++import numpy as np,json,hashlib
++R=Path.cwd();A=R/'analysis/hammerburst-20261108';T=A/'c0-mixed-skin-probe'
++p=A/'check-c0-hb-mixed-skin.py';c={};exec(compile(p.read_text().split('for name,faces in ')[0],str(p),'exec'),c)
++ctx=c['ctx'];matrix=c['matrix'];d=T/'finger-source-mcp';values=np.frombuffer((d/'output.bin').read_bytes(),dtype='<f8');world=np.asarray([matrix(p) for p in values[28:].reshape(115,7)]);inverse_gun=np.linalg.inv(matrix(values[:7]));delta=inverse_gun@world@ctx['inverse'];skin=np.zeros_like(ctx['v'])
++for k in range(4):skin+=np.einsum('nij,nj->ni',delta[ctx['indices'][:,k]],ctx['v'])*ctx['weights'][:,k,None]
++hand=skin[:,:3];g=np.load(T/'fitted-range/key_0-geometry.npz');weapon=g['weapon'];faces=g['weapon_faces'];bone=g['weapon_bone'];selected=np.where(np.all(bone[faces]==1,axis=1))[0];tri=weapon[faces[selected]];pivot=hand[1002].copy();thumb=hand[1014].copy();wrist=(inverse_gun@world[11])[:3,3];elbow=(inverse_gun@world[10])[:3,3];forward=(inverse_gun@world[11])[:3,0];arm=wrist-elbow;arm/=np.linalg.norm(arm);forward/=np.linalg.norm(forward);axis=np.cross(forward,arm);axis/=np.linalg.norm(axis)
++
++def rotation(axis,degrees):
++ x,y,z=axis;K=np.asarray([[0,-z,y],[z,0,-x],[-y,x,0]]);a=np.deg2rad(degrees);return np.eye(3)+np.sin(a)*K+(1-np.cos(a))*(K@K)
++
++def nearest(point):
++ a,b,c=tri[:,0],tri[:,1],tri[:,2];ab=b-a;ac=c-a;normal=np.cross(ab,ac);den=np.einsum('ij,ij->i',normal,normal);valid=den>1e-18;projection=point-normal*(np.einsum('ij,ij->i',point-a,normal)/np.maximum(den,1e-18))[:,None];v=projection-a;dot=lambda x,y:np.einsum('ij,ij->i',x,y)
++ aa=dot(ab,ab);bb=dot(ab,ac);cc=dot(ac,ac);dv=aa*cc-bb*bb;u=(cc*dot(v,ab)-bb*dot(v,ac))/np.maximum(dv,1e-18);w=(aa*dot(v,ac)-bb*dot(v,ab))/np.maximum(dv,1e-18);inside=valid&(u>=0)&(w>=0)&(u+w<=1)
++ choices=[np.where(inside[:,None],projection,a)]
++ for start,end in [(a,b),(b,c),(c,a)]:
++  edge=end-start;t=np.clip(dot(point-start,edge)/np.maximum(dot(edge,edge),1e-18),0,1);choices.append(start+t[:,None]*edge)
++ points=np.stack(choices);distance=np.linalg.norm(points-point,axis=2);i,j=np.unravel_index(distance.argmin(),distance.shape);return float(distance[i,j]),int(selected[j]),points[i,j]
++rows=[]
++for tilt in [0,20,40,60,80]:
++ align=rotation(axis,tilt);direction=align@forward
++ for roll in [-30,0,30]:
++  change=rotation(direction,roll)@align;position=pivot+change@(thumb-pivot);gap,face,point=nearest(position);angle=float(np.degrees(np.arccos(np.clip(direction@arm,-1,1))))
++  rows.append(dict(tilt_degrees=tilt,roll_degrees=roll,forearm_to_hand_axis_degrees=angle,thumb_gap_to_original_latch_raw=gap,original_latch_triangle=face,nearest_original_point_raw=point.tolist(),transformed_thumb_raw=position.tolist(),index_position_delta_raw=0,rigid_rotation=change.tolist()))
++report=dict(geometry_only=True,source_input_sha256=hashlib.sha256((d/'input.bin').read_bytes()).hexdigest(),source_output_sha256=hashlib.sha256((d/'output.bin').read_bytes()).hexdigest(),fixed_skin_vertices=[1002,1014],original_latch_triangles=len(selected),cases=rows,all_finger_rotations_unchanged=True,known_cross_finger_pairs_remain=9,full_arm_C0_not_recomputed=True,normal_facing_and_gun_intersections_not_checked=True,skin_fit_accepted=False,published=False,game_started=False)
++(A/'latch-wrist-contact-exploration.json').write_text(json.dumps(report,indent=2));print(json.dumps([dict((k,v) for k,v in row.items() if k in ['tilt_degrees','roll_degrees','forearm_to_hand_axis_degrees','thumb_gap_to_original_latch_raw','original_latch_triangle']) for row in sorted(rows,key=lambda x:(x['forearm_to_hand_axis_degrees']>45,x['thumb_gap_to_original_latch_raw']))[:6]],indent=2))
