@@ -2,7 +2,7 @@
 
 目标：完成掩体系统开发与验证。状态：进行中。
 
-最近结果（2026-11-09）：r34新增严格只读物理来源／接收者读取器，12项定向方法通过，原入口认证10项通过；封存33个驱动、24项原r13冻结源声明及3个原制品，prepare-only通过，已被Snub122512直接接受为唯一后继，尚未最终交窗、stage或游戏运行。它不调用Trace／getter／虚函数，不授予身体、物理消费或世界同步许可。上次实际r32/game36040的4次非零Trace均strict accepted，但离开已重叠位置返回空，整体对照／操作器exit1保持；严重身体遮挡仍FAIL。该局运行／编码／retention全终后已最终唯一交HB115111，当前不占窗。完整CV-01–24／AC-01–22及实体头显仍未完成，详见末节。
+最近结果（2026-11-09）：r36新增原物理资产组合形状读取：球／盒／胶囊／凸体及继承字段通过8项定向方法，r34原来源12项回归通过；仅同一CoverQuery内的原始形状数据，未接入排队候选，不是活动物理体积或碰撞许可。r34原33driver／24源声明／3制品冻结保持，唯一前驱Snub122512已直接受理，尚未最终交窗、stage或游戏运行。r32/game36040离开初始重叠返回空的对照／操作器exit1和严重身体遮挡仍保留。完整CV-01–24／AC-01–22及实体头显仍未完成，详见末节。
 
 ## 2026年11月8日 首批接续
 
@@ -799,3 +799,16 @@ r32实际已证明moving miss不能排除起点重叠，下一步不重复原四
 新解码器MSVC /std:c++17 /W4 /WX编译0，低优先级离线执行0，原文件hash、原解码行号和冻结header身份记录于analysis/cover-system-20261108/retained-physics-metadata-r35/verification.json。第一次build脚本在已进入的目录又拼接相对根，未创建脚本或执行构建；错误日志保留，修正路径后正常完成。仅生成私有离线分析制品，不修改r34的33driver、plan／prepared或任何Native／PG。
 
 r34同一请求已沿实际尾直接受理：Bol115420→HB121040→Frag122000→Snub122512→Coverr34。Snub核准确prepared59770ded／plan70ee042c、24原r13声明源、3制品和33driver后明确接受；本会话确认唯一前驱且无已受理后继。此为排队，不是最终交窗，不据无游戏进程接管。下次动作仍是前驱全终后核准确候选和独立idle，再执行一次当前物理来源只读；实际接收者、更新覆盖、命中／枪口和碰撞世界同步继续待证，全部CV／AC／头显范围不缩减。
+
+
+## 2026年11月9日 r36原物理资产组合形状读取
+
+为完整身体体积检查补齐真实形状来源，新增cover_physics_shapes.py::read_setup_shapes。它接受调用者当前CoverQuery及准确RB_BodySetup，仅在同一查询中读取KMeshProps.AggGeom的四类完整数组：SphereElems、BoxElems、SphylElems和ConvexElems。原包保存的结构导出经SHA复核，仅用于字段／类型候选；导出中的@NULL、缺失声明和反编译错误不能作为内存布局。所有实际字段偏移、宽度、数组stride、目标结构、继承与Boolean掩码均要求当前反射给出并严格核对；KMeshProps、KAggregateGeom及元素声明归属绑定，缺失、重复、额外字段、重叠、错误类型或关闭变化均拒绝。
+
+球／盒／胶囊读取原TM Matrix四个Plane及正的Radius／X／Y／Z、非负Length、bNoRBCollision。Plane继承Vector的XYZ、自己声明W的真实结构形状被覆盖，不能只数直接子字段。保留原始字段数值和有限矩阵，不推断世界坐标、单位、轴向、半高／全高或刚体正交性。凸体保留VertexData、PermutedVertexData、FaceTriData、EdgeDirections、FaceNormalDirections、FacePlaneData和ElemBox的完整有界原值；未认证cook、索引拓扑、实际启用形状或边界权威。
+
+单setup总形状上限64，顶点256，拓扑数组1536及单数组32768字节；超限明确拒绝、不截断成功，原Query的16384读／2MiB／3秒不变。空数组表示没有该原始形状，不制造替代体积。输出明确closing_required=true，调用者必须在同一当前身份查询中完成finish；完整body／mesh关联、原查询非原子性及真实场景同步责任仍在原来源与消费层，不能把此helper单独用作许可证。
+
+8项定向方法通过，涵盖四类混合形状、继承Plane、无操作／只读／所有许可false、空数组、非法／非有限尺寸与矩阵／顶点、数组类型／指针／容量、完整字段／Boolean、声明归属、关闭期间payload／header／metadata／registry变化、64形状全读及组合超限、原预算拒绝。四类混合合成夹具698读／8898字节；不是实际游戏成本。r34原物理来源12项回归通过。首次夹具缺inner完整metadata和D0尾部映射、随后三项变更在最终值扫掠之后才触发的失败均保留；变更测试改为关闭开始时触发，不改原Query，不声称原子快照或修复并发物理窗口。
+
+本批没有Native／PG编译、游戏／XR或新的运行申请，未修改r34 plan70ee042c／prepared59770ded及33driver；未来须在实际r34来源确认后将形状helper接入同一次来源查询，再核原始形状、活动接收者、骨骼变换和真实命中消费者的对应。当前生产抓边仍不能通过空edge／零range或no_cover检查，未放宽任何准入。完整身体扫掠、起点／终点占用、世界同步、Native提交与恢复和same-pose view／hit／muzzle仍是后续必做项。证据analysis/cover-system-20261108/authored-shapes-r36/verification.json与原测试日志。
