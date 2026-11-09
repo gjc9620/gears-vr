@@ -1,0 +1,189 @@
+diff --git a/analysis/hammerburst-20261108/fit-latch-c0-sleeve.py b/analysis/hammerburst-20261108/fit-latch-c0-sleeve.py
+new file mode 100644
+--- /dev/null
++++ b/analysis/hammerburst-20261108/fit-latch-c0-sleeve.py
+@@ -0,0 +1,60 @@
++"""One bounded contact-constrained C0 sleeve repair; not runtime acceptance."""
++from pathlib import Path
++import json,struct,subprocess,hashlib,time,sys
++import numpy as np
++R=Path.cwd();A=R/'analysis/hammerburst-20261108';T=A/'c0-mixed-skin-probe';edge_only='--index-edge' in sys.argv;refine='--finger-contact' in sys.argv or edge_only;name='sleeve-fit3' if edge_only else 'sleeve-fit2' if refine else 'sleeve-fit';D=T/name;D.mkdir(exist_ok=True)
++p=A/'fit-latch-outer-cap-cup.py';q={};exec(compile(p.read_text().split('\nbest=initial.copy()')[0],str(p),'exec'),q)
++ctx=q['ctx'];prior=json.loads((A/'latch-outer-cap-settle.json').read_text());initial=np.asarray(json.loads((A/'latch-outer-cap-cup-fit.json').read_text())['parameters']);initial[12:]+=prior['rigid_shift_raw'];limits=q['limits']
++if refine:initial=np.asarray(json.loads((A/'latch-c0-sleeve-fit.json').read_text())['parameters'])
++p=A/'prepare-c0-hb-input.py';qq=dict(np=np);exec(compile('def quaternion'+p.read_text().split('def quaternion',1)[1].split('\ndata=numbers',1)[0],str(p),'exec'),qq)
++quat=qq['quaternion'];base=np.frombuffer((T/'outer-cap-input.bin').read_bytes(),dtype='<f8').copy();exe=T/'build-vs/Release/HammerburstC0SkinProbe.exe'
++attribution=json.loads((A/'latch-c0-front-side-hold-attribution.json').read_text());vertices=sorted(set(v for row in attribution['rows'] for v in row['skin_vertices'])|({1003} if edge_only else {1001,1003,1022} if refine else set()));ids=np.asarray([1002,1014]+vertices)
++outward=np.asarray(json.loads((A/'latch-outer-cap-cup-fit.json').read_text())['target_outward_normals']);targets=np.asarray(prior['original_surface_contact_points'])+outward*.02
++raw_normals=np.asarray(q['q']['raw_normals']);witness_plane_x=np.asarray([-5.09091806 if v<2000 else -2.08756852 for v in vertices]);calls=0;history=[];start=time.monotonic()
++
++def matrix(p):
++    m=np.eye(4);m[:3,:3]=ctx['rot'](p[3:]);m[:3,3]=p[:3];return m
++
++def evaluate(parameters,save=False):
++    global calls
++    _,_,posed,rotation,translation=q['evaluate'](parameters)
++    data=base.copy();data[13:16]=translation;data[16:20]=quat(rotation)
++    for j,i in enumerate(range(12,27)):data[20+4*j:24+4*j]=quat((np.linalg.inv(posed[ctx['ref'][i]['parent']])@posed[i])[:3,:3])
++    source=D/'trial-input.bin';output=D/'trial-output.bin';source.write_bytes(struct.pack('<80d',*data))
++    result=subprocess.run([str(exe),str(T/'fixture'),str(source),str(output),'--constructed-gun-pose',str(T/'front-side-hold-pose.bin')],capture_output=True,text=True)
++    assert result.returncode==0,(result.returncode,result.stdout,result.stderr)
++    status=json.loads(result.stdout);assert status['solved_mask']==3 and status['desired_wrist_error_raw']<.002 and status['right_wrist_error_raw']<.002,status
++    values=np.frombuffer(output.read_bytes(),dtype='<f8');assert len(values)==833
++    gun=matrix(values[:7]);world=np.asarray([matrix(p) for p in values[28:].reshape(115,7)]);delta=np.linalg.inv(gun)@world@ctx['inverse'];skin=np.zeros((len(ids),4));normal=np.zeros((2,3))
++    for k in range(4):
++        skin+=np.einsum('nij,nj->ni',delta[ctx['indices'][ids,k]],ctx['v'][ids])*ctx['weights'][ids,k,None]
++        normal+=np.einsum('nij,nj->ni',delta[ctx['indices'][ids[:2],k],:3,:3],raw_normals)*ctx['weights'][ids[:2],k,None]
++    normal/=np.linalg.norm(normal,axis=1)[:,None];facing=np.einsum('ij,ij->i',normal,-outward)
++    # Only the observed original planar magazine wall is used as a local proxy.
++    # A full original-mesh bidirectional check remains mandatory after solving.
++    residual=np.r_[((skin[:2,:3]-targets)/.03).ravel(),np.maximum(0,.97-facing)/.01,np.maximum(0,skin[2:,0]-witness_plane_x+.02)/.03,(parameters-initial)*.0001]
++    calls+=1
++    if save:
++        (D/'final-input.bin').write_bytes(source.read_bytes());(D/'final-output.bin').write_bytes(output.read_bytes());(D/'final-compose.json').write_text(json.dumps(status,indent=2))
++    return residual,dict(contact_errors_raw=np.linalg.norm(skin[:2,:3]-targets,axis=1).tolist(),facing_dot=facing.tolist(),witness_max_plane_violation_raw=float((skin[2:,0]-witness_plane_x).max()),witness_plane_x_raw=witness_plane_x.tolist(),compose=status)
++
++best=initial.copy();res,initial_result=evaluate(best);cost=float(res@res);damping=.001
++for iteration in range(40):
++    J=np.zeros((len(res),15))
++    for i in range(15):
++        trial=best.copy();step=.02 if i<12 else .002
++        # At a parameter bound, differentiate toward its permitted interior.
++        if trial[i]+step>limits[i,1]:step=-step
++        trial[i]+=step;J[:,i]=(evaluate(trial)[0]-res)/step
++    delta=-np.linalg.solve(J.T@J+np.eye(15)*damping,J.T@res);delta=np.clip(delta,np.r_[np.full(12,-1.),np.full(3,-.05)],np.r_[np.full(12,1.),np.full(3,.05)])
++    trial=np.clip(best+delta,limits[:,0],limits[:,1]);rr,detail=evaluate(trial);new=float(rr@rr)
++    accepted=new<cost
++    history.append(dict(iteration=iteration,cost=cost,trial_cost=new,accepted=accepted))
++    if accepted:best=trial;res=rr;cost=new;damping=max(1e-8,damping*.5)
++    else:damping=min(1e5,damping*5)
++    if iteration%5==0:print(json.dumps(dict(iteration=iteration,cost=cost,calls=calls)),flush=True)
++    if cost<1e-5 or np.max(np.abs(delta))<1e-7:break
++_,final=evaluate(best,True);sha=lambda p:hashlib.sha256(p.read_bytes()).hexdigest()
++report=dict(geometry_only=True,single_constructed_pose=True,parameters=best.tolist(),initial=initial_result,final=final,iterations=len(history),calls=calls,cost=cost,history=history,seconds=time.monotonic()-start,witness_vertices=vertices,
++    input_sha256=sha(D/'final-input.bin'),output_sha256=sha(D/'final-output.bin'),binary_sha256=sha(exe),fixed_lengths_weights_and_mechanical_contact=True,full_surface_check_pending=True,skin_fit_accepted=False,published=False,game_started=False)
++(A/('latch-c0-'+name+'.json')).write_text(json.dumps(report,indent=2));print(json.dumps({k:v for k,v in report.items() if k!='history'},indent=2))
+diff --git a/analysis/hammerburst-20261108/check-c0-hb-mixed-skin.py b/analysis/hammerburst-20261108/check-c0-hb-mixed-skin.py
+new file mode 100644
+--- /dev/null
++++ b/analysis/hammerburst-20261108/check-c0-hb-mixed-skin.py
+@@ -0,0 +1,21 @@
++"""Skin the complete influenced domain using the existing C0 composer's full palette."""
++from pathlib import Path
++import json,struct,sys,hashlib,numpy as np
++from PIL import Image,ImageDraw
++R=Path.cwd();A=R/'analysis/hammerburst-20261108';T=A/'c0-mixed-skin-probe';inward='--inward-one-cm' in sys.argv;case='latch-c0-inward-one-cm' if inward else 'latch-c0-mixed-skin-probe';output_name='inward-one-cm-output.bin' if inward else 'outer-cap-output.bin';front='--front-hold' in sys.argv
++if front:case='latch-c0-front-hold';output_name='front-hold-output.bin'
++if '--side-hold' in sys.argv:case='latch-c0-front-side-hold';output_name='front-side-hold-output.bin'
++if '--sleeve-fit' in sys.argv:case='latch-c0-sleeve-fit-surface';output_name='sleeve-fit/final-output.bin'
++if '--sleeve-fit2' in sys.argv:case='latch-c0-sleeve-fit2-surface';output_name='sleeve-fit2/final-output.bin'
++if '--sleeve-fit3' in sys.argv:case='latch-c0-sleeve-fit3-surface';output_name='sleeve-fit3/final-output.bin'
++sys.path.insert(0,str(R/'tools/weapon-models'));from hammerburst_hand_surface import evaluate
++p=A/'fit-latch-outer-cap-cup.py';q={};exec(compile(p.read_text().split('\nbest=initial.copy()')[0],str(p),'exec'),q);ctx=q['ctx'];data=np.frombuffer((T/output_name).read_bytes(),dtype='<f8');assert data.shape==(833,)
++def matrix(p):
++ m=np.eye(4);m[:3,:3]=ctx['rot'](p[3:]);m[:3,3]=p[:3];return m
++gun_world=matrix(data[:7]);component=matrix(data[7:14]);desired=matrix(data[14:21]);actual=matrix(data[21:28]);world_palette=np.asarray([matrix(p) for p in data[28:].reshape(115,7)]);model_palette=np.linalg.inv(component)@world_palette;s=ctx['s']['lod0_skin'];allfaces=np.asarray(struct.unpack_from('<'+'H'*s['index_count'],ctx['raw'],s['index_offset_in_export'])).reshape(-1,3);surface=evaluate(ctx['v'],ctx['indices'],ctx['weights'],allfaces,ctx['inverse'],model_palette);model_homogeneous=np.column_stack([surface.vertices,np.ones(len(surface.vertices))]);chosen=(model_homogeneous@(np.linalg.inv(gun_world)@component).T)[:,:3];g=q['g'];audit=q['q']['c']['audit'];gun=np.concatenate([g['part'],g['root']]);gf=np.concatenate([g['pf'],g['rf']+len(g['part'])]);full=gun[gf];ge=audit['edges'](gf);rows=[]
++arm_weight=np.sum(ctx['weights']*np.isin(ctx['indices'],np.arange(6,30)),axis=1);arm_faces=allfaces[np.any(arm_weight[allfaces]>0,axis=1)]
++for name,faces in [('strict_hand',ctx['tri']),('mixed_complete',surface.triangles),('left_shoulder_arm',arm_faces)]:
++ f=audit['crossings'](chosen,audit['edges'](faces),full);r=audit['crossings'](gun,ge,chosen[faces]);rows.append(dict(domain=name,triangles=len(faces),forward=f,reverse=r,total=f+r));print(json.dumps(rows[-1]),flush=True)
++parents=np.asarray([r['parent'] for r in ctx['ref']]);length_error=max(abs(np.linalg.norm(model_palette[i,:3,3]-model_palette[parents[i],:3,3])-np.linalg.norm(ctx['ref'][i]['position'])) for i in range(1,115));prior=json.loads((A/'latch-outer-cap-settle.json').read_text());finger_error=max(float(np.abs(model_palette[parents[i],:3,:3].T@model_palette[i,:3,:3]-ctx['rot'](np.frombuffer((T/('sleeve-fit3/final-input.bin' if '--sleeve-fit3' in sys.argv else 'sleeve-fit2/final-input.bin' if '--sleeve-fit2' in sys.argv else 'sleeve-fit/final-input.bin' if '--sleeve-fit' in sys.argv else 'outer-cap-input.bin')).read_bytes(),dtype='<f8')[20+4*(i-12):24+4*(i-12)])).max()) for i in range(12,27));wrist_error=float(np.linalg.norm(actual[:3,3]-desired[:3,3]));source_atoms=np.frombuffer((T/'fixture/C0-local.bin').read_bytes(),dtype='<f4').reshape(115,8);source_length_error=max(abs(np.linalg.norm(model_palette[i,:3,3]-model_palette[parents[i],:3,3])-np.linalg.norm(source_atoms[i,4:7])) for i in range(1,115));print(json.dumps(dict(reference_length_max_error=length_error,source_pose_length_max_error=source_length_error,finger_matrix_error=finger_error,wrist_error=wrist_error)),flush=True);assert source_length_error<.002
++faces=arm_faces;row=rows[-1];center=np.asarray(prior['original_surface_contact_points']).mean(0);c=q['q']['c']['c'];renderer=(A/'check-latch-extended-index.py').read_text();renderer=renderer[renderer.index('im=Image.new('):renderer.index('im.save(')].replace('HB index-extension hypothesis / whole gun','HB actual C0 compose / saved fixture / constructed goal');exec(compile(renderer,'existing_offline_renderer','exec'),globals());im.save(A/(case+'.png'))
++report=dict(geometry_only=True,constructed_inward_cm=1 if inward else 0,original_body_sha256=ctx['s']['source']['export']['SHA256'],saved_body_fixture=62276,observed_HB_mount_game=44504,constructed_targets_not_actual_tracking=True,existing_C0_compose_function=True,complete_pose_bones=115,domains=rows,desired_wrist_error_raw=wrist_error,reference_length_max_difference_raw=float(length_error),max_source_bone_length_error_raw=float(source_length_error),authored_local15_matrix_max_difference=finger_error,physical_or_current_runtime_acceptance=False,skin_fit_accepted=False,published=False,game_started=False,source_manifest_sha256=hashlib.sha256((T/'source-manifest.json').read_bytes()).hexdigest(),input_sha256=hashlib.sha256((T/('sleeve-fit3/final-input.bin' if '--sleeve-fit3' in sys.argv else 'sleeve-fit2/final-input.bin' if '--sleeve-fit2' in sys.argv else 'sleeve-fit/final-input.bin' if '--sleeve-fit' in sys.argv else 'outer-cap-input.bin')).read_bytes()).hexdigest(),output_sha256=hashlib.sha256((T/output_name).read_bytes()).hexdigest());(A/(case+'.json')).write_text(json.dumps(report,indent=2));print(json.dumps({k:v for k,v in report.items() if k!='domains'}))
+diff --git a/analysis/hammerburst-20261108/attribute-c0-arm-crossings.py b/analysis/hammerburst-20261108/attribute-c0-arm-crossings.py
+new file mode 100644
+--- /dev/null
++++ b/analysis/hammerburst-20261108/attribute-c0-arm-crossings.py
+@@ -0,0 +1,61 @@
++"""Locate the preserved full-arm failure; no fitting or runtime mutation."""
++from pathlib import Path
++from collections import Counter
++import json, sys
++import numpy as np
++
++R=Path.cwd(); A=R/'analysis/hammerburst-20261108'
++front='--front-hold' in sys.argv
++side='--side-hold' in sys.argv
++fit='--sleeve-fit' in sys.argv
++if not front and not side and not fit:sys.argv.append('--inward-one-cm')
++case='latch-c0-sleeve-fit-surface' if fit else 'latch-c0-front-side-hold' if side else 'latch-c0-front-hold' if front else 'latch-c0-inward-one-cm'
++source=A/'check-c0-hb-mixed-skin.py'; c={}
++exec(compile(source.read_text().split("for name,faces in ")[0],str(source),'exec'),c)
++ctx=c['ctx']; chosen=c['chosen']; faces=c['arm_faces']; gun=c['gun']; gf=c['gf']; full=c['full']; audit=c['audit']
++
++def pairs(vertices, segments, triangles):
++    lo=triangles.min(1); hi=triangles.max(1)
++    e1=triangles[:,1]-triangles[:,0]; e2=triangles[:,2]-triangles[:,0]; result=[]
++    for start in range(0,len(segments),64):
++        pair=vertices[segments[start:start+64]]; origin=pair[:,0]; end=pair[:,1]; direction=end-origin
++        possible=np.all(np.maximum(origin,end)[:,None,:]>=lo[None,:,:]-1e-8,axis=2)&np.all(np.minimum(origin,end)[:,None,:]<=hi[None,:,:]+1e-8,axis=2)
++        a,b=np.where(possible)
++        if not len(a): continue
++        d=direction[a]; pv=np.cross(d,e2[b]); det=np.einsum('ij,ij->i',e1[b],pv); valid=np.abs(det)>1e-10
++        inv=np.zeros(len(det)); inv[valid]=1/det[valid]; w=origin[a]-triangles[b,0]
++        u=np.einsum('ij,ij->i',w,pv)*inv; q=np.cross(w,e1[b]); v=np.einsum('ij,ij->i',q,d)*inv; t=np.einsum('ij,ij->i',e2[b],q)*inv
++        valid&=(u>=-1e-8)&(v>=-1e-8)&(u+v<=1+1e-8)&(t>1e-6)&(t<1-1e-6)
++        for aa,bb,tt in zip(a[valid],b[valid],t[valid]):
++            point=origin[aa]+direction[aa]*tt
++            result.append((int(start+aa),int(bb),point))
++    return result
++
++def bones(vertices):
++    weighted=Counter()
++    for vi in vertices:
++        for bone,weight in zip(ctx['indices'][vi],ctx['weights'][vi]):
++            if weight>0: weighted[int(bone)]+=float(weight)/len(vertices)
++    return sorted(weighted.items(),key=lambda x:-x[1])
++
++segments=audit['edges'](faces); ge=audit['edges'](gf)
++forward=pairs(chosen,segments,full); reverse=pairs(gun,ge,chosen[faces])
++prior=json.loads((A/(case+'.json')).read_text())
++assert len(forward)==audit['crossings'](chosen,segments,full)==prior['domains'][-1]['forward']
++assert len(reverse)==audit['crossings'](gun,ge,chosen[faces])==prior['domains'][-1]['reverse']
++rows=[]
++for direction,hits in [('arm_edge_gun_face',forward),('gun_edge_arm_face',reverse)]:
++    for edge,face,point in hits:
++        verts=segments[edge] if direction=='arm_edge_gun_face' else faces[face]
++        weighted=bones(verts); dominant=weighted[0][0]
++        rows.append(dict(direction=direction,edge=edge,face=face,skin_vertices=verts.tolist(),dominant_bone=dominant,
++                         bone_name=ctx['ref'][dominant].get('name',str(dominant)),weights=weighted,
++                         gun_part=('latch' if face<len(c['g']['pf']) else 'remainder') if direction=='arm_edge_gun_face' else None,
++                         point_raw=point.tolist()))
++summary=Counter((r['direction'],r['dominant_bone'],r['bone_name']) for r in rows)
++report=dict(geometry_only=True,constructed_case=case,crossing_count=len(rows),
++    by_dominant_bone=[dict(direction=d,bone=b,name=n,hits=count) for (d,b,n),count in summary.most_common()],
++    intersection_bounds_raw=dict(min=np.min([r['point_raw'] for r in rows],axis=0).tolist(),max=np.max([r['point_raw'] for r in rows],axis=0).tolist()),
++    complete_hand_domain_crossings=prior['domains'][1]['total'],full_arm_fit_accepted=False,game_started=False,rows=rows)
++(A/((case+'-attribution.json') if (fit or side or front) else 'latch-c0-arm-crossing-attribution.json')).write_text(json.dumps(report,indent=2))
++print(json.dumps({k:v for k,v in report.items() if k!='rows'},indent=2))
+diff --git a/analysis/hammerburst-20261108/check-c0-sleeve-contact.py b/analysis/hammerburst-20261108/check-c0-sleeve-contact.py
+new file mode 100644
+--- /dev/null
++++ b/analysis/hammerburst-20261108/check-c0-sleeve-contact.py
+@@ -0,0 +1,27 @@
++"""Original face contact and coplanar checks for the saved C0 candidate."""
++from pathlib import Path
++import json,sys,struct
++import numpy as np
++sys.argv.append('--sleeve-fit3');R=Path.cwd();A=R/'analysis/hammerburst-20261108'
++p=A/'check-c0-hb-mixed-skin.py';c={};exec(compile(p.read_text().split('for name,faces in ')[0],str(p),'exec'),c)
++ctx=c['ctx'];chosen=c['chosen'];gt=c['full'];ht=chosen[c['arm_faces']]
++p=A/'screen-latch-pad-space.py';near={};exec(compile(p.read_text().split('\nrows=[]')[0],str(p),'exec'),near)
++prior=json.loads((A/'latch-outer-cap-settle.json').read_text());outward=np.asarray(json.loads((A/'latch-outer-cap-cup-fit.json').read_text())['target_outward_normals']);contacts=[]
++delta=np.linalg.inv(c['gun_world'])@c['world_palette']@ctx['inverse']
++for k,vi in enumerate([1002,1014]):
++    point=chosen[vi];distance,face,closest=near['nearest'](point);t=gt[face];n=np.cross(t[1]-t[0],t[2]-t[0]);n/=np.linalg.norm(n)
++    u,v=t[1]-t[0],t[2]-t[0];w=closest-t[0];a,b=np.linalg.solve([[u@u,u@v],[u@v,v@v]],[w@u,w@v]);bary=[float(1-a-b),float(a),float(b)]
++    raw_normal=np.asarray(struct.unpack_from('<3B',ctx['raw'],ctx['start']+vi*64+16))/127.5-1
++    skin_normal=sum(delta[bone,:3,:3]@raw_normal*weight for bone,weight in zip(ctx['indices'][vi],ctx['weights'][vi]));skin_normal/=np.linalg.norm(skin_normal)
++    contacts.append(dict(vertex=vi,point_raw=point.tolist(),nearest_original_face=int(face),latch=bool(face<len(c['g']['pf'])),nearest_distance_raw=float(distance),signed_normal_gap_raw=float((point-closest)@n),barycentric=bary,facing_dot=float(skin_normal@-n),nearest_point_raw=closest.tolist(),old_surface_point_displacement_raw=float(np.linalg.norm(closest-prior['original_surface_contact_points'][k]))))
++p=A/'check-latch-outer-cap-coplanar.py';text=p.read_text();cop=dict(np=np);exec(compile(text[text.index('def overlap('):text.index('\nlo=gt.min(1)')],str(p),'exec'),cop)
++lo=gt.min(1);hi=gt.max(1);gn=np.cross(gt[:,1]-gt[:,0],gt[:,2]-gt[:,0]);gl=np.linalg.norm(gn,axis=1);good=gl>1e-10;gn[good]/=gl[good,None];pairs=[];tested=0
++for i,t in enumerate(ht):
++    n=np.cross(t[1]-t[0],t[2]-t[0]);length=np.linalg.norm(n)
++    if length<1e-10:continue
++    n/=length;possible=good&np.all(t.max(0)>=lo-1e-6,axis=1)&np.all(t.min(0)<=hi+1e-6,axis=1)&(np.abs(gn@n)>1-1e-8)
++    for j in np.where(possible)[0]:
++        tested+=1
++        if cop['overlap'](t,gt[j]):pairs.append([i,int(j)])
++report=dict(geometry_only=True,single_constructed_pose=True,contacts=contacts,coplanar_control_cases=4,full_arm_faces=len(ht),original_gun_faces=len(gt),parallel_AABB_pairs_tested=tested,positive_area_coplanar_pairs=pairs,closed_solid_containment_certified=False,skin_fit_accepted=False,published=False,game_started=False)
++(A/'latch-c0-sleeve-contact-check.json').write_text(json.dumps(report,indent=2));print(json.dumps(report,indent=2))

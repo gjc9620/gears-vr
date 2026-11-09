@@ -176,3 +176,13 @@ Lancer确认当前V4通用契约2984字节/完整32SHA/reference15稳定，HB真
 仅两个人工明确的几何对照，无参数网格：原mesh+Y对齐body+X、mesh+Z对齐body+Z，枪root在body(15,-8,125)raw时，solved_mask3，左右腕误差.000172106/.000030438raw，1395域0、1891域29、4841域44（22+22），44条全主导29。将同一枪朝向移到较近主手肩侧body(10,-15,125)raw，左右腕误差.000165961/.000029890raw，1395域0、1891与4841域均10（6+4）。两份完整三视图均亲看，仍不接受；这只缩小到剩余混合袖口接触，不是游戏或头显通过，也没有消除原raw controller获取中心16.219raw不一致。
 
 证据 `latch-c0-arm-crossing-attribution.json`、`latch-c0-front-hold-attribution.json`、`latch-c0-front-hold.json/png`、`latch-c0-front-side-hold.json/png`，以及私有目录两份front-hold/front-side-hold-receipt.json。下一步应把实际C0袖口表面加入原两指真实接触约束调整作者腕/手指；不能仅继续更换持枪例以挑出一个零计数，更不能把一个离线构造姿势提升为可发布profile。有限供弹HB185428及其sole-successor队列未变。
+
+## 实际 C0 袖口约束后的闭合姿势作者夹具
+
+保持同一构造body(10,-15,125)raw枪位置，进一步定位原10交线：全部主导bone29，原皮肤9869/9870/9871/9872/9873/9916与原枪平面x=-2.08756852相交。将这6顶点面外约束与两指原表面接触、法线及原关节限位一起求解；每次使用独立probe调用现有C0并按完整115骨、原4权重计算所需皮肤，不再用reference父姿替代。首轮5次/82调用将原袖口命中清除，但全4841面×原9966枪面重查新增4交线，全为index distal14的原edge1002/1003与原666/729面，最大穿入约.003526raw。首轮仍拒绝，保留latch-c0-sleeve-fit.json及其surface/attribution。
+
+第二轮加入该index相邻面顶点约束，40次/642调用后，全1395、1891、4841三域双向严格交线都为0。仅用真实穿越edge端点1003的第三轮对照也得到相同最终输入/皮肤；不是新增一次独立游戏通过。局部平面代价仍4.2467且食指相对原固定目标误差.0433667raw，不能称原精确目标约束通过。另行对实际C0皮肤求全原枪最近点，确认1002仍投影在原latch728内部，bary(.117154,.251839,.631007)、外法线gap.06336496raw（约.634mm）、cos.980453；1014投影在原914内部，bary(.031730,.335068,.633203)、gap.02172385raw（约.217mm）、cos.986600。两投影相对原表面接触点仅移动.000387/.000496raw；偏差主要是外移，未把面外点当原模型表面。
+
+完整4841×9966共面检查沿用原SAT，4个解析控制通过，原平面epsilon1e-6raw、parallel cosine1e-8下无正面积共面重叠；与双向严格交线0分开记录。完整上肢三视图已亲看。本轮仍未认证闭合实体包含、所有姿势、卡扣运动全程或实际游戏。旧机械获取中心与作者controller中心不一致仍未解决，不扩大Snap半径或远拉手皮肤。
+
+保存 `tools/weapon-models/fixtures/hammerburst_latch_closed_c0_candidate.json`：明确UNPUBLISHED_OFFLINE_CLOSED_POSE_CANDIDATE，原closed mesh坐标腕姿、原bone12..26的15个局部quat、完整原资产/探针/输入/输出证据SHA及未完成项。最终输入e9956f65741afcb6a26ff83602e6f24ad54fc2925da7dbe3eaf3fc32a68ec8cb，完整115骨输出bbb9e755d8606b387e53a831d7924d11bc7e92b97e3c6c36803ce9ba3ba741ff。作者求解器、全域复查、交线身份及原面/共面复查源码保存在 `docs/hammerburst-c0-sleeve-fitting.patch`，反向git apply --check通过；数值和原失败保留，不混入HB185428。下一步用原3骨/原蒙皮复查卡扣运动，再核对controller anchor与真实lease/provider；当前未生成生产profile、未启动游戏。

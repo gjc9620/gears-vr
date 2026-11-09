@@ -1,0 +1,261 @@
+{
+  "schema": 1,
+  "status": "UNPUBLISHED_OFFLINE_CLOSED_POSE_CANDIDATE",
+  "purpose": "Saved-body authoring fixture; not a production hand profile or runtime admission",
+  "original_body_sha256": "cc2db56c76efb9354a39affebf95f72c56b60a32624b0cbc760450621a886a4d",
+  "original_hammerburst_mesh_sha256": "4b6bd78407481887e6efcd80532fd64b7108dce2ee6c05d259e19e8b44c0152b",
+  "wrist_in_original_closed_mesh": {
+    "position_raw": [
+      -5.721589926472413,
+      33.36014296238638,
+      -13.881935793924333
+    ],
+    "orientation_xyzw": [
+      -0.3721153013624982,
+      0.7346195394517303,
+      -0.34112087511538375,
+      -0.4533220525279347
+    ]
+  },
+  "local_finger_rotations": [
+    {
+      "bone": 12,
+      "orientation_xyzw": [
+        0.10482383740417123,
+        -0.0417165530090851,
+        -0.26809211601596034,
+        0.9567645006201835
+      ]
+    },
+    {
+      "bone": 13,
+      "orientation_xyzw": [
+        -1.1917500643180125e-17,
+        6.003892525482489e-18,
+        -0.06103365634512314,
+        0.9981357086053707
+      ]
+    },
+    {
+      "bone": 14,
+      "orientation_xyzw": [
+        -4.050190867070657e-17,
+        -9.981380888645512e-18,
+        -0.074090429870956,
+        0.9972515270489872
+      ]
+    },
+    {
+      "bone": 15,
+      "orientation_xyzw": [
+        -0.019361325154004065,
+        0.011251068114310944,
+        -0.7327998060516245,
+        0.6800757287282567
+      ]
+    },
+    {
+      "bone": 16,
+      "orientation_xyzw": [
+        3.022210506601158e-17,
+        -5.811967484067558e-17,
+        -0.6156514024874793,
+        0.7880186232667346
+      ]
+    },
+    {
+      "bone": 17,
+      "orientation_xyzw": [
+        -8.941178341883522e-18,
+        -8.903277198684874e-18,
+        -0.2881891273729301,
+        0.9575735099009522
+      ]
+    },
+    {
+      "bone": 18,
+      "orientation_xyzw": [
+        0.11399896016878484,
+        0.0025009610605197905,
+        -0.5920811632276028,
+        0.7977705675350891
+      ]
+    },
+    {
+      "bone": 19,
+      "orientation_xyzw": [
+        -3.536632723632133e-18,
+        3.0661578826497593e-17,
+        -0.6190864197625267,
+        0.7853228666386946
+      ]
+    },
+    {
+      "bone": 20,
+      "orientation_xyzw": [
+        -3.898065480598949e-17,
+        2.1787586935989436e-17,
+        -0.31315470087492214,
+        0.9497021287329718
+      ]
+    },
+    {
+      "bone": 21,
+      "orientation_xyzw": [
+        0.20080221897060047,
+        -0.07098700813485692,
+        -0.6283223883564495,
+        0.7482314413485922
+      ]
+    },
+    {
+      "bone": 22,
+      "orientation_xyzw": [
+        -4.302840565039581e-18,
+        6.854533097209773e-18,
+        -0.6018082164732093,
+        0.7986406392022228
+      ]
+    },
+    {
+      "bone": 23,
+      "orientation_xyzw": [
+        3.29327095000071e-17,
+        1.0011429812710485e-17,
+        -0.2588190451025207,
+        0.9659258262890683
+      ]
+    },
+    {
+      "bone": 24,
+      "orientation_xyzw": [
+        -0.7400070519451192,
+        0.2765543429224749,
+        0.008417872387299475,
+        0.6130549713579387
+      ]
+    },
+    {
+      "bone": 25,
+      "orientation_xyzw": [
+        -1.3276124983597853e-17,
+        -7.481943498171081e-17,
+        0.10698014381151891,
+        0.994261157257019
+      ]
+    },
+    {
+      "bone": 26,
+      "orientation_xyzw": [
+        4.638471335471191e-18,
+        -2.1160297279789885e-17,
+        0.1993668970308328,
+        0.9799249156788991
+      ]
+    }
+  ],
+  "units_per_metre": 100,
+  "saved_body_fixture_game": 62276,
+  "observed_main_hand_to_mesh_game": 44504,
+  "constructed_body_local_gun_root_raw": [
+    10,
+    -15,
+    125
+  ],
+  "evaluated_domains": [
+    {
+      "domain": "strict_hand",
+      "triangles": 1395,
+      "forward": 0,
+      "reverse": 0,
+      "total": 0
+    },
+    {
+      "domain": "mixed_complete",
+      "triangles": 1891,
+      "forward": 0,
+      "reverse": 0,
+      "total": 0
+    },
+    {
+      "domain": "left_shoulder_arm",
+      "triangles": 4841,
+      "forward": 0,
+      "reverse": 0,
+      "total": 0
+    }
+  ],
+  "contacts": [
+    {
+      "vertex": 1002,
+      "point_raw": [
+        -5.154283024159618,
+        30.529478783517305,
+        3.631372527868649
+      ],
+      "nearest_original_face": 728,
+      "latch": true,
+      "nearest_distance_raw": 0.0633649641596179,
+      "signed_normal_gap_raw": 0.0633649641596179,
+      "barycentric": [
+        0.11715404023327347,
+        0.25183900793046393,
+        0.6310069518362625
+      ],
+      "facing_dot": 0.9804529725833713,
+      "nearest_point_raw": [
+        -5.09091806,
+        30.529478783517305,
+        3.631372527868649
+      ],
+      "old_surface_point_displacement_raw": 0.00038683114764213503
+    },
+    {
+      "vertex": 1014,
+      "point_raw": [
+        -3.1495633098669646,
+        33.87563510037546,
+        -2.4525196531143933
+      ],
+      "nearest_original_face": 914,
+      "latch": true,
+      "nearest_distance_raw": 0.02172385246838675,
+      "signed_normal_gap_raw": 0.02172385246838675,
+      "barycentric": [
+        0.031729570728112,
+        0.33506780707605427,
+        0.6332026221958338
+      ],
+      "facing_dot": 0.9866004671828017,
+      "nearest_point_raw": [
+        -3.1495633098669646,
+        33.86403973185701,
+        -2.434149209597984
+      ],
+      "old_surface_point_displacement_raw": 0.0004962657772959114
+    }
+  ],
+  "coplanar_overlap_count": 0,
+  "remaining": [
+    "Original latch motion and moving original skin",
+    "Raw-controller capture-center coherence",
+    "Real lease/provider integration",
+    "Actual game bilateral pixels",
+    "Other weapon part profiles and complete weapon validation"
+  ],
+  "fixed_bone_lengths_and_original_weights": true,
+  "mechanical_contact_changed": false,
+  "snap_radius_expanded": false,
+  "closed_solid_containment_certified": false,
+  "actual_runtime_acceptance": false,
+  "published": false,
+  "evidence": {
+    "analysis\\hammerburst-20261108\\c0-mixed-skin-probe\\sleeve-fit3\\final-input.bin": "e9956f65741afcb6a26ff83602e6f24ad54fc2925da7dbe3eaf3fc32a68ec8cb",
+    "analysis\\hammerburst-20261108\\c0-mixed-skin-probe\\sleeve-fit3\\final-output.bin": "bbb9e755d8606b387e53a831d7924d11bc7e92b97e3c6c36803ce9ba3ba741ff",
+    "analysis\\hammerburst-20261108\\latch-c0-sleeve-fit3.json": "06547ef33f8d26beb19362653816dd9939358d17409c095709d2ca06a271a5d5",
+    "analysis\\hammerburst-20261108\\latch-c0-sleeve-fit3-surface.json": "ecbce53a136830893b4007cc0ade16f61a0fcdc4e3f6353dc2c6fb0d5f57834f",
+    "analysis\\hammerburst-20261108\\latch-c0-sleeve-contact-check.json": "f21e22e36a40e79d0f5d7a7f1c7b917f3970076e06a7bdd99c86e35ef4accdda",
+    "analysis\\hammerburst-20261108\\c0-mixed-skin-probe\\source-manifest.json": "39029b0f24dde6ef4e4b074992155bb814e4cd39f75810d2a90b00062fb0dd2d",
+    "docs\\hammerburst-c0-sleeve-fitting.patch": "ec0ff98c5fabb82e57824581a8a9063d538e808d75612f32803ccf0ba818888b"
+  }
+}
