@@ -5,7 +5,7 @@
 #include <cassert>
 #include <cstdio>
 namespace hb=gears_hammerburst_burst;
-hb::Source source(){
+hb::Source source(bool tracking_only=false){
     hb::Source s{};s.cohort.known=true;
     s.cohort.key={100,101,102,103,1000,104,105,106};
     for(unsigned i=0;i<s.cohort.actors.size();++i)
@@ -15,14 +15,23 @@ hb::Source source(){
     s.cohort.presses=12;s.cohort.releases=11;s.frame=1000;
     s.now=1000000000;s.sync=s.now-20000000;s.stereo=s.now-30000000;
     s.render=s.now-40000000;s.sampled=s.now-1000000;
-    s.trigger_down=true;s.authenticated=true;return s;
+    s.trigger_down=true;s.authenticated=true;s.tracking_only=tracking_only;
+    if(tracking_only)s.render=0;return s;
 }
-hb::Completion armed(){hb::Completion b;assert(b.commit(source(),100,1,6,true));return b;}
+hb::Completion armed(bool tracking_only=false){hb::Completion b;assert(b.commit(source(tracking_only),100,1,6,true));return b;}
 int main(){
     unsigned checks{};
+    // Recorded64316 source ages; identities below remain owned CPU fixtures.
+    for(auto ages:{std::array<std::int64_t,3>{46412000,46417300,19700100},
+                   std::array<std::int64_t,3>{50110100,50116200,21011400},
+                   std::array<std::int64_t,3>{61262900,61267100,24714500}}){
+        auto s=source();s.sync=s.now-ages[0];s.stereo=s.now-ages[1];s.sampled=s.now-ages[2];
+        s.render=0;s.tracking_only=true;
+        assert(hb::fresh(s,true));hb::Completion b;assert(b.commit(s,100,1,6,true));checks+=2;
+    }
     // Full original burst, with real R2-up after ANY of its first five shots.
-    for(unsigned release_after=1;release_after<=6;++release_after){
-        auto b=armed();auto s=source();
+    for(bool tracking_only:{false,true})for(unsigned release_after=1;release_after<=6;++release_after){
+        auto b=armed(tracking_only);auto s=source(tracking_only);
         for(unsigned before=1;before<6;++before){
             if(before>=release_after){s.trigger_down=false;s.cohort.releases=12;}
             hb::Ticket t{};assert(b.enter(s,before,s.now-10000000,before,6,t));
@@ -48,8 +57,8 @@ int main(){
         assert(!b.commit(s,100,count,limit,owner));assert(b.state()==hb::State::idle);checks+=2;
     }
     // Every exact ancestry field, press and release counter is a hard boundary.
-    for(unsigned failure=0;failure<48;++failure){
-        auto b=armed();auto s=source();bool lifecycle=true;
+    for(bool tracking_only:{false,true})for(unsigned failure=0;failure<48;++failure){
+        auto b=armed(tracking_only);auto s=source(tracking_only);bool lifecycle=true;
         if(failure<28){auto& id=s.cohort.actors[failure/7];switch(failure%7){
             case 0:++id.address;break;case 1:++id.outer;break;case 2:++id.klass;break;
             case 3:++id.registry_index;break;case 4:++id.name_index;break;
@@ -144,5 +153,14 @@ int main(){
         auto other=t;++other.serial;assert(!b.leave_original_end(other,1,true,true,true));
         assert(b.leave_original_end(t,1,true,true,true));assert(b.state()==hb::State::idle);
         assert(!b.leave(t,101,2,true,true));assert(!b.permits(t,s));checks+=10;}
+    {auto s=source();s.render=0;assert(!hb::fresh(s));assert(!hb::fresh(s,true));checks+=2;}
+    {auto s=source(true);s.render=s.now;assert(!hb::fresh(s));assert(!hb::fresh(s,true));checks+=2;}
+    for(auto member:{&hb::Source::sync,&hb::Source::stereo,&hb::Source::sampled}){
+        for(auto bad:{std::int64_t(0),std::int64_t(-1),source().now+1,source().now-100000001}){
+            auto s=source(true);s.*member=bad;assert(!hb::fresh(s));assert(!hb::fresh(s,true));checks+=2;}
+        for(std::int64_t age:{80000000LL,80000001LL,100000000LL}){
+            auto s=source(true);s.*member=s.now-age;assert(hb::fresh(s));
+            assert(hb::fresh(s,true)==(age==80000000));checks+=2;}
+    }
     std::printf("HB finite original-burst ledger: %u CPU boundary checks passed; no runtime adapter enabled\n",checks);
 }

@@ -30,13 +30,21 @@ struct Source {
     std::uint64_t frame{};
     std::int64_t now{},sync{},stereo{},render{},sampled{};
     bool trigger_down{},authenticated{};
+    // Explicit provenance from an admitted, exact-Frame tracking plan. An
+    // absent render witness without this certificate remains unknown.
+    bool tracking_only{};
 };
 inline bool fresh(Source const& s,bool dispatch_reserve=false) noexcept {
     constexpr std::int64_t maximum_age=100000000,reserve=20000000;
     if(!s.authenticated||!s.cohort.known||!s.frame||s.frame!=s.cohort.key.frame||s.now<=0)return false;
-    for(auto stamp:{s.sync,s.stereo,s.render,s.sampled})
-        if(stamp<=0||stamp>s.now||s.now-stamp>maximum_age-(dispatch_reserve?reserve:0))return false;
-    return true;
+    const auto current=[&](std::int64_t stamp) noexcept {
+        return stamp>0&&stamp<=s.now&&s.now-stamp<=maximum_age-(dispatch_reserve?reserve:0);
+    };
+    // The original source contract has two admitted paths: a positive render
+    // witness, or an explicitly certified tracking-only plan. Never create a
+    // render timestamp, and never interpret an unknown zero as certification.
+    return current(s.sync)&&current(s.stereo)&&
+        (s.tracking_only?s.render==0:current(s.render))&&current(s.sampled);
 }
 enum class State {idle,committed,dispatching,cancel_required};
 struct Ticket {

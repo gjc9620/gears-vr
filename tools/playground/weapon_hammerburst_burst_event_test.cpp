@@ -30,7 +30,7 @@ bool query(uptr,Counts& out){out={int(fixture::model.capacity),int(fixture::mode
 }
 namespace weapon_metadata_parse {struct TickScope {TickScope(){}~TickScope(){}};}
 namespace unified_weapon_fire {
-struct Muzzle {gears_weapon_hand::Frame source{};std::int64_t render_acquisition_ns{},sampled_ns{};}muzzle_sample;
+struct Muzzle {gears_weapon_hand::Frame source{};std::int64_t render_acquisition_ns{},sampled_ns{};bool follow_target_known{};}muzzle_sample;
 bool manual_profile(){return true;}
 bool ready_for(gears_weapon_hand::Frame const&,std::int64_t){return event_fixture::ready;}
 }
@@ -131,8 +131,8 @@ gears_weapon_hand::Frame active_frame(){
     for(auto& h:input.hands){h.grip_active=h.aim_active=1;h.grip_flags=h.aim_flags=15;}
     assert(gears_weapon_hand::frame_active(f,fixture::model.now));return f;
 }
-void muzzle(gears_weapon_hand::Frame const& f){
-    unified_weapon_fire::muzzle_sample={f,fixture::model.now-10000000,fixture::model.now-1000000};
+void muzzle(gears_weapon_hand::Frame const& f,bool tracking_only=false){
+    unified_weapon_fire::muzzle_sample={f,tracking_only?0:fixture::model.now-10000000,fixture::model.now-1000000,true};
 }
 void captured_first(gears_weapon_hand::Frame const& f){
     assert(adapter::prepare_press(f));assert(adapter::owned_press(f));
@@ -141,18 +141,22 @@ void captured_first(gears_weapon_hand::Frame const& f){
     assert(adapter::capture_initial(f.weapon.address,fixture::address(fixture::first_fn),&previous));
     lancerrefire::press_dispatch=false;
 }
-void actual_first(gears_weapon_hand::Frame const& f){
-    captured_first(f);assert(adapter::service(f.controller.address));muzzle(f);adapter::deliver(f);
+void actual_first(gears_weapon_hand::Frame const& f,bool tracking_only=false){
+    captured_first(f);assert(adapter::service(f.controller.address));muzzle(f,tracking_only);adapter::deliver(f);
     assert(fixture::model.burst_count==1&&bridge::completion.count()==1);
 }
 int main(){
     using namespace fixture;unsigned checks{};
+    {reset_event();auto f=active_frame();captured_first(f);assert(adapter::service(f.controller.address));muzzle(f);
+        unified_weapon_fire::muzzle_sample.render_acquisition_ns=0;
+        adapter::deliver(f);assert(event_fixture::invocations==1&&bridge::completion.count()==1);
+        model.r2=false;model.bytes[0]=0;model.owned_press=false;assert(adapter::release_completed(nullptr));checks+=4;}
     // One inherited original first event, never HB's outer script or an
     // unscoped InstantFire, then five real-UP continuation events.
-    {reset_event();auto f=active_frame();assert(adapter::prepare_press(f));
+    for(bool tracking_only:{false,true}){reset_event();auto f=active_frame();assert(adapter::prepare_press(f));
         assert(!adapter::source_allowed(f,model.now,model.now,model.now));
         assert(!adapter::capture_initial(f.weapon.address,address(hb_ammo),nullptr));checks+=3;
-        actual_first(f);model.owned_press=false;model.r2=false;model.bytes[0]=0;f.controllers.hands[1].trigger=0;
+        actual_first(f,tracking_only);model.owned_press=false;model.r2=false;model.bytes[0]=0;f.controllers.hands[1].trigger=0;
         ++f.controllers.hands[1].released[gears_vr::control_trigger];
         assert(adapter::release_completed(&f));assert(bridge::firing_debt);checks+=2;
         for(unsigned before=1;before<6;++before){
@@ -161,7 +165,7 @@ int main(){
             assert(gears_weapon_hand::frame_active(f,model.now));
             assert(adapter::defer(f.weapon.address,address(hb_timer)));const auto serial=adapter::event.serial;
             assert(adapter::defer(f.weapon.address,address(hb_timer)));assert(adapter::event.serial==serial);
-            assert(adapter::service(f.controller.address));muzzle(f);adapter::deliver(f);adapter::deliver(f);
+            assert(adapter::service(f.controller.address));muzzle(f,tracking_only);adapter::deliver(f);adapter::deliver(f);
             assert(model.burst_count==before+1);assert(event_fixture::invocations==before+1);assert(!model.owned_press);checks+=8;
         }
         assert(adapter::defer(f.weapon.address,address(hb_timer)));
@@ -221,7 +225,7 @@ int main(){
         std::memcpy(&retained,lancerrefire::pending_fire.parameters.data(),8);
         assert(retained.index==0x1234&&retained.number==2&&adapter::event.captured==captured&&adapter::event.serial==serial);
         checks+=2;
-        assert(adapter::service(f.controller.address));muzzle(f);adapter::deliver(f);
+        assert(adapter::service(f.controller.address));muzzle(f,true);adapter::deliver(f);
         Name delivered{};std::memcpy(&delivered,event_fixture::delivered_outer_parameters.data(),8);
         assert(event_fixture::delivered_outer_bytes==8&&delivered.index==0x1234&&delivered.number==2);++checks;
         assert(model.burst_count==1&&bridge::completion.count()==1&&event_fixture::invocations==1);
@@ -252,6 +256,11 @@ int main(){
         model.now+=71000000;muzzle(f);adapter::deliver(f);
         assert(adapter::delivery_stage==10&&bridge::enter_stage==14&&!event_fixture::invocations);
         assert(bridge::attempted_source.sync==f.controllers.sync_ns&&adapter::owns_pending());
+        model.r2=false;model.bytes[0]=0;model.owned_press=false;assert(adapter::release_completed(nullptr));checks+=4;}
+    {reset_event();auto f=active_frame();captured_first(f);assert(adapter::service(f.controller.address));muzzle(f,true);
+        unified_weapon_fire::muzzle_sample.follow_target_known=false;adapter::deliver(f);
+        assert(adapter::delivery_stage==10&&bridge::enter_stage==14&&!event_fixture::invocations);
+        assert(!adapter::source_allowed(f,0,model.now,model.now));
         model.r2=false;model.bytes[0]=0;model.owned_press=false;assert(adapter::release_completed(nullptr));checks+=4;}
     std::printf("HB actual event adapter: %u original-event/scope/UP/expiry/cleanup fake checks passed; common queue, engine and certificate are fakes\n",checks);
 }

@@ -457,3 +457,16 @@ Lancer原writer确认这些共享入口当前无其未保存改动，但R2/unifi
 60477 runner、53189 paired review/encode、91786唯一retention实际terminal0；Native/entries/pad/unified drained1/handstop5/XR0/launcher0/game absent，config/settings原bytes/head原缺恢复核对。20.633333s H2641920x660完整1页paired及game00300/sim00375/game00329/sim00436四实际原图亲审；startup TPS/等待卡/白拾取HUD、完整掌/指/袖及头显不接受保留。retention删797媒体124204776B、保留34836/71888/33016/48h，源文数值不删。全终及独立idle后已最终唯一交Frag122000，其后Snub122512由真实尾维护。
 
 下一增量仅分开原service、delivery和enter的短路条件位置，并在首发等待时最多输出12条已有本地状态和原始Source时间POD。service输出在当前决定后、下一Native Frame复制前，delivery输出在当前决定后；无新增游戏内存读取、getter、Engine调用、输入/pose/时间stamp更新或新writer。attempted_source只作观察，不能用于许可/重放。元数据关闭/身份/Actor/当前Native/手追踪/枪口/按压计数及原100ms、20ms、250ms全部保持。291实际runtime adapter和138实际event adapter fake检查通过，新增区分identity拒绝、muzzle未就绪、手失追和真实时效余量拒绝，均不增加射击或替换原保留事件；原Name8证书83项不变复用。仅GearsPlayground生产目标完整编译0，不称原因修复或游戏成功。
+
+
+## 实际64316：确认纯追踪来源无render回执，显式来源类型修正
+
+125528/PGae6b43bc/prepared d4a2c8ce/源c51451f4在Bol125154/9816全终交窗后，2251源/6制品/19入口/plan及idle核对，实际game64316 creation134386764884888140再次完整271outer/Name8/capture通过。三次service0/validated1，deliver10/enter14：frame219/220/221的sync年龄46.412/50.1101/61.2629ms，stereo46.4173/50.1162/61.2671ms，sample19.7001/21.0114/24.7145ms，原event等待62.4915/133.7835/210.9481ms，render原值全部0。进入14前的身份、按压计数、原事件和BurstCount等均已通过，全部现有时间满足80ms派发余量/250ms事件期限；新账本将原有无render端点的已认证tracking-only分支错误当作未知来源拒绝，原因已实际定位。original-delivered0/rays0/operator72228=1，仍不称开火通过。
+
+71572 runner、9651 paired encode/review、16461唯一retention实际terminal0；Native/entries/pad/unified drained1/handstop5/XR0/launcher0/game absent，config原bytes/head原缺恢复。原settings有UTF8 BOM，初次我方核对器把decode后的text直接encode而误拒绝，原settings raw SHA始终与备份一致；已用记录的原raw SHA复核且BOM完整保留，未改settings。完整1页paired+game00300/sim00375/game00341/sim00444四原图亲审，ffprobe正常；旧startupTPS/等待卡/拾取白HUD及全手型/头显不接受保留。retention删828媒体127441373B，保留64316/9816/28872。全终idle后已明确唯一交Snub131050，真实尾维护Longshot133536等，旧槽不复用。
+
+新Source.tracking_only默认为false。仅正常GT派发先通过原ready_for（同Frame/当前held/registration/muzzle/20ms），且原sample_target的follow_target_known为真、render原值为0，才显式标记已有tracking-only分支。回调只在同一活动scope/Frame继承该类型，无新getter/读取。未知0仍拒绝，tracking-only与非零render冲突仍拒绝；存在render回执时继续检查其原时间，sync/stereo/sample的100ms及20ms、原250ms、全部身份/源/事件/counter/真实UP/防重放保持，不创造或续任何时间。
+
+先把64316真实年龄和已认证tracking-only样本用于旧生产，ledger和event适配器分别实际RED(-1073740791)。修正后1517纯账本、297实际transaction fake、195实际event adapter fake编译执行0，覆盖两种来源的完整6发/真实UP续发/精确身份与counter反例，未知零/冲突来源/过期或未来必需时间仍拒绝；完整outer原Name8 payload在tracking-only路径交付也通过。生产GearsPlayground目标完整编译0，Native/XR/C0/defaultOFF/publicv71不变。
+
+本次同时收紧现有HB core测试断言：原一次R2 .35down/.6up及原记录读取完全不变，已收集的有效ray必须恰好6条，0/1/5/7或无效六条均失败并保留实际数据；六组fake输入对原driver共30项检查通过，断言发生在真实UP之后，不补动作或弹药。该ignored分析源的原字节SHA记录于tracking-only-source-check.json，下一不可变prepared将保存其精确源码及19入口新SHA。尚无修正后Game或ammo守恒证明，仍需新一次既定core验收。

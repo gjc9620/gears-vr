@@ -30,13 +30,14 @@ policy::Cohort cohort(hand::Frame const& f) noexcept {
         f.key.native_started_qpc==certificate.held.native_started&&f.key.world_generation==certificate.held.world_generation;
     return c;
 }
-policy::Source source(hand::Frame const& f,std::int64_t render,std::int64_t sampled,std::int64_t now) noexcept {
+policy::Source source(hand::Frame const& f,std::int64_t render,std::int64_t sampled,std::int64_t now,
+                      bool tracking_only=false) noexcept {
     policy::Source s{};s.cohort=cohort(f);s.frame=f.key.frame;s.now=now;
     s.sync=f.controllers.sync_ns;s.stereo=f.stereo.received_ns;s.render=render;s.sampled=sampled;
     s.trigger_down=f.controllers.hands[1].trigger_active==1&&f.controllers.hands[1].trigger>.35f;
     // Actual source admission remains the caller's unchanged native/muzzle
     // validation. This only identifies a transaction already in progress.
-    s.authenticated=s.cohort.known;return s;
+    s.authenticated=s.cohort.known;s.tracking_only=tracking_only;return s;
 }
 void revoke() noexcept {
     if(firing_debt||first_debt||completion.state()!=policy::State::idle)cancel_requested=true;

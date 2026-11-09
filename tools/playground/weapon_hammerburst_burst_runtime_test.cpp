@@ -151,6 +151,12 @@ int main(){
         fixture::model.burst_count=1;bridge::trace(s,100,true);assert(bridge::leave(true));checks+=2;}
     {reset_bridge();auto f=frame();prime_first(f);++bridge::certificate.count_descriptor.registry_index;
         assert(!bridge::enter(true,fresh(f),1,fixture::model.now));assert(bridge::cancel_requested);checks+=2;}
+    {reset_bridge();auto f=frame();prime_first(f);auto s=bridge::source(f,0,fixture::model.now-1000000,fixture::model.now,true);
+        assert(bridge::enter(true,s,1,fixture::model.now));assert(bridge::permits(s));
+        auto unknown=s;unknown.tracking_only=false;assert(!bridge::permits(unknown));
+        auto conflicting=s;conflicting.render=fixture::model.now;assert(!bridge::permits(conflicting));
+        fixture::model.burst_count=1;bridge::trace(s,100,true);assert(bridge::leave(true));
+        assert(!bridge::permits(s));checks+=6;}
     std::printf("HB actual completion bridge: %u fake scope/input/cleanup boundary checks passed; original certificate is a stub, no game proof\n",checks);
 }
 #endif

@@ -18,9 +18,9 @@ void report_first_wait(wchar_t const* phase) noexcept {
     static unsigned rows{};
     if(!log_file||rows>=12)return;
     ++rows;auto const& source=tx::attempted_source;const auto now=weaponhand::clock_ns(nullptr);
-    fwprintf(log_file,L"native_hammerburst_first_wait phase=%ls service=%u delivery=%u enter=%u validated=%u first_debt=%u cancel=%u source_frame=%llu decision_ns=%lld sync_ns=%lld stereo_ns=%lld render_ns=%lld sampled_ns=%lld event_captured_ns=%lld observed_ns=%lld\n",
+    fwprintf(log_file,L"native_hammerburst_first_wait phase=%ls service=%u delivery=%u enter=%u validated=%u first_debt=%u cancel=%u source_frame=%llu tracking_only=%u decision_ns=%lld sync_ns=%lld stereo_ns=%lld render_ns=%lld sampled_ns=%lld event_captured_ns=%lld observed_ns=%lld\n",
         phase,service_stage,delivery_stage,tx::enter_stage,unsigned(validated),unsigned(tx::first_debt),
-        unsigned(tx::cancel_requested),source.frame,source.now,source.sync,source.stereo,source.render,source.sampled,event.captured,now);
+        unsigned(tx::cancel_requested),source.frame,unsigned(source.tracking_only),source.now,source.sync,source.stereo,source.render,source.sampled,event.captured,now);
     fflush(log_file);
 }
 bool targets(std::uint64_t weapon) noexcept {
@@ -71,11 +71,13 @@ bool need_source(hand::Frame const& f) noexcept {
     return tx::need_source(f);
 }
 bool source_allowed(hand::Frame const& f,std::int64_t render,std::int64_t sampled,std::int64_t now) noexcept {
-    return right_tracked(f)&&tx::permits(tx::source(f,render,sampled,now));
+    return right_tracked(f)&&tx::permits(tx::source(f,render,sampled,now,
+        tx::scope_active&&tx::entered.tracking_only));
 }
 void trace(hand::Frame const& f,std::uint64_t shot,std::int64_t render,std::int64_t sampled,
            std::int64_t now,bool consistent) noexcept {
-    tx::trace(tx::source(f,render,sampled,now),shot,consistent&&right_tracked(f));
+    tx::trace(tx::source(f,render,sampled,now,tx::scope_active&&tx::entered.tracking_only),
+        shot,consistent&&right_tracked(f));
 }
 bool queue(meta::Reader& r,common::policy::EventKind kind,uptr function,void const* parameters,unsigned bytes,unsigned script_bound=256) noexcept {
     if(!original_press.known)return false;
@@ -306,7 +308,12 @@ void deliver(hand::Frame const& f) noexcept {
     delivery_stage=8;if(!unified_weapon_fire::ready_for(f,20000000))return;
     auto const& sample=unified_weapon_fire::muzzle_sample;
     delivery_stage=9;if(!hand::same_frame(f,sample.source))return;
-    const auto actual=tx::source(sample.source,sample.render_acquisition_ns,sample.sampled_ns,weaponhand::clock_ns(nullptr));
+    // ready_for above already proves this exact current Frame/held/muzzle and
+    // original20ms reserve. sample_target's positive follow witness certifies
+    // its existing tracking-only branch when no render endpoint was used.
+    const bool tracking_only=sample.follow_target_known&&sample.render_acquisition_ns==0;
+    const auto actual=tx::source(sample.source,sample.render_acquisition_ns,sample.sampled_ns,
+        weaponhand::clock_ns(nullptr),tracking_only);
     const auto first=event.kind==common::policy::EventKind::first;
     const bool resets_counter=first&&event.function.address==tx::certificate.outer_first.address;
     delivery_stage=10;if(!tx::enter(first,actual,event.serial,event.captured,resets_counter))return;
