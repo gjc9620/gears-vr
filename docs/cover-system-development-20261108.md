@@ -2,7 +2,7 @@
 
 目标：完成掩体系统开发与验证。状态：进行中。
 
-最近结果（2026-11-09）：r39将准确当前PhysX模块、actor内部接收者和完整原始组合形状接入同一CoverQuery，33项定向检查通过；29／64身体合成读取均在原预算完整关闭。原r13只读候选prepared8917db74／planc73d4f85及36driver已冻结，prepare-only0，已向既有真实队尾申请新槽，尚无最终交接、未stage／run。最新实跑仍为r34/20596的29接收者来源读取，严重身体遮挡仍FAIL。全部CV-01–24／AC-01–22、实际提交／物理同步／命中／枪口与实体头显仍未完成。
+最近结果（2026-11-09）：r40完成保留115骨参考与物理身体名称的纯映射模块，MSVC编译0／178断言通过，尚未形成当前游戏映射或物理许可。r39当前模块／内部接收者／原始形状组合读取已保存bec4d12b；同槽plan关联修正为2b96e8d→prepared8917db74，Longshot133536独立核验并接受为唯一前驱，尚无最终交窗，未stage／run。最新实际仍为r34/20596的29接收者来源读取，严重身体遮挡仍FAIL。完整CV-01–24／AC-01–22、物理同步／真实提交／命中／枪口与实体头显仍未完成。
 
 ## 2026年11月8日 首批接续
 
@@ -867,6 +867,18 @@ cover_physics_state.py仅在新显式选择下，在同一查询中读取内部�
 
 33项定向方法通过，包括原来源12、原形状8加同Query约束1、新PhysX12。使用准确原DLL磁盘内容配合合成加载内存，核完整code尾、重定位后的表、缺失／错误路径／双同名／容量及重复base、内部指针、当前模块变更、结束时code／pointer／shape变化及原预算拒绝；这些测试不是当前进程证据，合成内部vtable特意复用可认证原表，不声称真实内部类型已定位。29身体混合四形状7465读／96020字节；64身体256形状15305读／174547字节，均完整关闭，不截断，原16384读／2MiB／3秒不变。首轮30项的1错误是负例只预期RuntimeError而实际只读缺页抛OSError；1失败是变更注入在值扫掠后。测试改为接受真实读取错误并在关闭开始注入，原Query未改，atomic_snapshot仍false。首败及最终原日志保留。
 
-原r13三制品按原SHA复制并复核24冻结源声明，没有重编Native／PG或混用当前武器源码。新equipment-controls-prepared-20261109-cover-physics-r39的prepared SHA8917db74a2bf8ca991380d6b701835e9e012f0c8f78163c24fa02fb966235c0a；cover-physics-combined-runtime-plan.json SHA c73d4f85975ef3e03444cf64502f990391c455dfeed024e5733e0eac5ab0c677；36个当前driver及AST、prepare-only通过，准确driver已归档。已向原已知队尾Snub申请后续唯一槽，尚待真实尾确认，不凭队列消息或空闲文件接管。未stage、未启动game／XR、未操作其他owner的实例。
+原r13三制品按原SHA复制并复核24冻结源声明，没有重编Native／PG或混用当前武器源码。新equipment-controls-prepared-20261109-cover-physics-r39的prepared SHA8917db74a2bf8ca991380d6b701835e9e012f0c8f78163c24fa02fb966235c0a；cover-physics-combined-runtime-plan.json 初始SHA c73d4f85975ef3e03444cf64502f990391c455dfeed024e5733e0eac5ab0c677（旧prepared关联字段有误，未部署）；当前同槽修正SHA 2b96e8d9976d2501050fd2fd4795953a5f317fcf14a052fc76981b4e77fde456；36个当前driver及AST、prepare-only通过，准确driver已归档。已向原已知队尾Snub申请后续唯一槽，尚待真实尾确认，不凭队列消息或空闲文件接管。未stage、未启动game／XR、未操作其他owner的实例。
 
 下一步在最终唯一交窗且独立idle／候选完整复核后，执行一次当前组合来源读取，保留首败，认证实际内部目标再推进原始形状与BoneName／模型映射、同C0物理姿态、查询可见性、Native真实提交与恢复和同版view／hit／muzzle。原始资产形状不是活动场景形状，代码来源不是姿态消费，任何一个源读取通过都不能关闭CV／AC或视觉／头显缺口。公开v71、严重肩／身体遮挡及旧暂停失败状态不变。证据analysis/cover-system-20261108/combined-physics-r39。
+
+## 2026年11月9日 r40完整参考骨名称与物理身体的纯映射
+
+等待r39当前来源运行期间，新增cover_physics_bone_map.h，复用已有full_body_c0_planner的Model／Frame和Native RefBone68拥有缓冲契约。先核准确Marcus115几何签名、全部canonical字节及Model的parent／q／T／scale一致，再逐项比较完整FName index与number，将最多64个RB_BodySetup名称映射到真正参考骨索引，保留RootBodyIndex并报告对应骨。BodyIndex必须与本次完整输入顺序一致；无名称、重复参考名称、重复身体骨、缺失骨、模型或参考变化全部明确拒绝，输出保持原样。不用BodyIndex替代骨索引，不根据115个数推定兼容，不读取Python反射中IntProperty形式的opaque RefSkeleton。
+
+同时报告每个已命名身体最近的已命名骨架祖先；这只是骨架关系，不是PhysX约束父级、活动岛或刚体连接证明。该纯模块不打开进程、不调用getter、不发布身体、不改变原物理源读取或创建第二writer。名称注册表／原生布局及当前World／Pawn／mesh／asset／PhysicsAsset／BodySetup、原始时间和C0身份必须由实际调用者在现有边界独立认证；此模块尚未接入当前Native运行包，不能单独签发当前映射或命中／碰撞许可。
+
+MSVC /std:c++17 /O2 /W4 /WX /EHsc /UNDEBUG /MT编译0；低于普通优先级的纯离线测试0，178断言／0失败。使用61492保留reference.bin，经真实BCrypt SHA准备模型；身体名称输入为从拥有参考记录中明确选择的合成值，未将20596的跨局FName索引直接拼入61492。覆盖29项、乱序／跳过骨／根骨未参与的祖先关系、非零FName编号、错误索引／名称／重复／缺失、参考及Model改动、空／0／65项／root越界、缓冲别名，以及64项完整反序映射，不截断。全部工作区编译依赖按准确/sourceDependencies清单归档，源和制品SHA在physics-bone-map-r40/verification.json。首次构建从根目录调用，产物落在根而非证据目录，已核依赖Source准确属于本测试后将这三份自产物移至独立目录，并修正后续build.cmd自定位；没有重编Native或改其他产品源。
+
+r39唯一前驱互核发现初始plan c73d4f85仍含旧r34 prepared_sha25659770ded。已保留首个拒绝，仅修这一个plan字段；prepared8917db74、36driver、源提交bec4d12b和3制品均未变。当前plan2b96e8d9976d2501050fd2fd4795953a5f317fcf14a052fc76981b4e77fde456，36driver SHA／AST、24声明源、3制品、所选game／PhysX重新核对及prepare-only0；Longshot133536独立核验0并正式接受唯一后继位置。旧plan明确退役，未stage／run。实际链HB125528→Snub131050→Frag131651→Longshot133536→Coverr39，以最终交接为准；本会话暂无受理后继，不以排队消息当授窗，不读取其他owner游戏内存。
+
+后续仍先执行准确r39只读组合来源，认证当前内部目标及原始形状，再把准确本局BodySetup名称与拥有的同C0全参考记录关联。此后才可继续姿态消费、活动碰撞形状、起点／路径／终点占用与世界同步、实际Native移动／恢复、同版view／hit／muzzle及全部CV／AC。178断言只证明纯值映射，不关闭严重身体遮挡、原暂停失败、完整掩体或实体头显验收。
