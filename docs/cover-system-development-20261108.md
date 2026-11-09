@@ -2,7 +2,7 @@
 
 目标：完成掩体系统开发与验证。状态：进行中。
 
-最近结果（2026-11-09）：r36新增原物理资产组合形状读取：球／盒／胶囊／凸体及继承字段通过8项定向方法，r34原来源12项回归通过；仅同一CoverQuery内的原始形状数据，未接入排队候选，不是活动物理体积或碰撞许可。r34原33driver／24源声明／3制品冻结保持，唯一前驱Snub122512已直接受理，尚未最终交窗、stage或游戏运行。r32/game36040离开初始重叠返回空的对照／操作器exit1和严重身体遮挡仍保留。完整CV-01–24／AC-01–22及实体头显仍未完成，详见末节。
+最近结果（2026-11-09）：r34实际20596一次原A→CT2／CA0及严格物理来源读取通过：29身体项／29不同主接收者，辅助全空；5668读／60516字节／341.8213ms。1页完整paired和6原图亲审，严重右肩／身体／装备遮挡仍FAIL。wrapper／operator／encoder／retention实际全终，精确恢复及idle后已最终唯一交Longshot125546并获接管确认，当前不占窗。离线r37三目标代码与PhysXCore.dll同基址及静态vtable对应已定位，不是当前加载模块或同步证明。完整CV-01–24／AC-01–22及实体头显仍未完成。
 
 ## 2026年11月8日 首批接续
 
@@ -812,3 +812,26 @@ r34同一请求已沿实际尾直接受理：Bol115420→HB121040→Frag122000�
 8项定向方法通过，涵盖四类混合形状、继承Plane、无操作／只读／所有许可false、空数组、非法／非有限尺寸与矩阵／顶点、数组类型／指针／容量、完整字段／Boolean、声明归属、关闭期间payload／header／metadata／registry变化、64形状全读及组合超限、原预算拒绝。四类混合合成夹具698读／8898字节；不是实际游戏成本。r34原物理来源12项回归通过。首次夹具缺inner完整metadata和D0尾部映射、随后三项变更在最终值扫掠之后才触发的失败均保留；变更测试改为关闭开始时触发，不改原Query，不声称原子快照或修复并发物理窗口。
 
 本批没有Native／PG编译、游戏／XR或新的运行申请，未修改r34 plan70ee042c／prepared59770ded及33driver；未来须在实际r34来源确认后将形状helper接入同一次来源查询，再核原始形状、活动接收者、骨骼变换和真实命中消费者的对应。当前生产抓边仍不能通过空edge／零range或no_cover检查，未放宽任何准入。完整身体扫掠、起点／终点占用、世界同步、Native提交与恢复和same-pose view／hit／muzzle仍是后续必做项。证据analysis/cover-system-20261108/authored-shapes-r36/verification.json与原测试日志。
+
+
+## 2026年11月9日 r34实际20596物理来源读取通过及完整收尾
+
+Snub122512实际56176全部终态后的最终唯一交窗已收到，独立idle／CIM、plan70ee042c／prepared59770ded、33driver与AST、24原r13声明源、3保存制品、所选EXE与实际Python SHA核对后，仅stage已冻结r34；备份prior-private-text-20261109-130555，公开v71不变。没有把r36形状helper或当前其他Native／PG源码混入本局。
+
+game20596 creation134386743788278499，owner72144 creation134386743712526676。原A一次进入CT2／CA0，当前几何只读及physics来源严格关闭通过；29个Bodies与29个BodySetup逐项Index／OwnerComponent／BoneName关联，RootBodyIndex0，PhysicsAssetInstance.Owner准确当前Pawn；29个不同主接收者，共用一个vtable，BoneSpring辅助指针全部0。骨名涵盖Pelvis、腿／脚、两段Spine、Head、左右锁骨／臂／手、肩甲及背包／挂点；这些是原来源名，不等于115骨映射或实际活动命中体已全部认证。四段原更新代码、唯一入口原32字节live封印、实际已改写前缀及metadata／registry／value关闭均通过。5668读／60516字节，读取341.8213ms；零Trace／getter／virtual调用、零提交或新Hook，无身份／输入时限放宽，也不将观察时间续作输入票。
+
+wrapper工具50167终态0，operator69988退出0，launcher0；Native cleanup／entry restore／pad restore均true，fire_disable0／hand_stop5／drainedtrue，XR0，原game退出。EndSession=false与terminalExiting／objectsDestroyed／shutdownComplete=true分别保留。config／XR settings原bytes、head原不存在、所选game settings SHA、wrapper还原、ending33driver及3stage制品全部独立核对一致。没有重复旧pause／B，33420旧失败仍开放，也没有重跑r32四项。
+
+全部1页完整paired overview及6关键原图亲审：game00339／00355／00364和simulator00423／00439／00448，分别覆盖进入、物理读取和关闭。游戏镜像及XR双眼均有严重右肩／身体／装备遮挡，视觉仍FAIL，启动第三人称及等待卡保留。物理读取相对paired时钟20.7932975–21.1351188秒；game371帧跨度21.4834644秒，simulator455帧21.4667975秒，动作末端两路覆盖通过。最大捕获间隔2200.0231／333.335ms，game大缺口在启动1.1166822–3.3167053秒，不能当作渲染停顿或头显FPS。编码工具82423实际终态0，ffprobe21.5秒／4777357字节。初次挑图脚本误将JSONL resize事件当frame而缺captured_qpc_ns，错误单独保留；随后仅筛实际frame，未改图、重编码或隐藏缺口。
+
+唯一retention工具38495实际终态0，删除769项生成媒体119065870字节，保留20596／56176／28120最新3局及48小时，源／构建／资产／存档／文本数值不删。最终再核Longshot125546准确prepared747365d8／readyc232473a／plan082fe9dd、source子目录1592声明源、6保存制品、18当前driver＋world_state及AST匹配，再次独立idle／CIM无运行或媒体作业后，已最终明确唯一交该后继；对方已确认接管并stage其准确候选，本会话不再占窗或补本局动作。旧Longshot124434未部署，后续Bol125154→HB125528→Snub131050按真实尾维护，不产生第二后继。
+
+本局只关闭“当前身体与物理来源／接收者关联”这一项。所有active_physics／physical_pose／hit_geometry／collision／world_synchronization／atomic_snapshot许可仍为false。r36原始形状尚未在本局读取；完整身体扫掠与起终点占用、当前物理世界可见性、实际Native提交及恢复、同版view／hit／muzzle、严重身体遮挡和全部CV／AC／头显要求继续未完成。记录analysis/cover-system-20261108/physics-source-r34的game-20596-review、closure-proof、selected-visual、retention-result及preflight。
+
+## 2026年11月9日 r37实际虚函数目标的离线模块对应
+
+从20596已严格关闭的三个32字节目标前缀开始，只读取所选原游戏Binaries_x64中的PhysXCore.dll和PhysXLoader.dll。PhysXCore SHA22051aa75312344a824a5f7e29c6375fec3a90df50cbeff6152f0e6c3afddd48，AMD64；原32字节出现次数分别2／1／1。首次“每项前缀必须全局唯一”的假设因此拒绝，保留失败，没有选择第一个匹配或将它命名为方法。
+
+三个目标位置的共同基址交集只有0x7ffb5f120000且64KiB对齐，对应原PhysXCore三个.text RVA0x13c270／0x1360f0／0x136890。实际29接收者共用vtable的RVA0x2330a8位于该文件.rdata，40／104／728字节槽的原磁盘指针在同一重定位基址下逐项精确匹配实际读值。这是更强的文件内容／地址对应，并不补签本局未保存的完整加载模块清单，也没有执行任何目标。
+
+只用既有vendor PE解析器读取磁盘，未启动IDA、游戏、XR或进程读取；原始2／1／1匹配、相同基址筛选和静态vtable关联记录于analysis/cover-system-20261108/virtual-targets-r37/correspondence.json。第一次在普通Python直接import pefile缺少vendor路径，随后沿现有package-inspector/python-libs引入；未安装依赖或改变环境。下一步在这个准确PhysX制品上解析三入口及实际接收者类型／更新语义，再认证query-visible时相；不能凭槽号、函数返回、原始姿态或DLL内容匹配强行调用未知ABI，不能重跑不变r34来源来代替消费证明。
