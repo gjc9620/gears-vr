@@ -1113,3 +1113,13 @@ wrapper工具90227实际terminal0；operator7456 exit1、error字段null且实�
 针对实际target／extent错误，原array函数现在在同一拒绝处抛现有ShapeLayoutRejected，携带已经读取的ArrayProperty、原header、data／count／capacity、inner完整身份及0x28原metadata、dimension／stride、期望结构名、target完整身份，以及实际已读到的target kind／extent。原名称／number不符时仍不查询class或extent，class不符时仍不查extent；未读取值明确None及unknown，不新增进程读取。原target名称、ScriptStruct类型和stride==extent条件、预算与关闭规则全保持，返回仍拒绝／source_acceptedfalse／activationfalse。已有combined capture原catch会保存source_rejection_witness，无新观察器或Engine调用。
 
 实际Python shape14项通过，其中新增名称／编号／class／extent四分支的见证和短路读取检查，以及同query combined失败保留；shape与physics source组合26项通过。与r47归档旧reader在五个独立合成fixture逐项运行比较：合法4shape均710读／9050字节，stride失败均48／632，名称／编号／class失败均47／628，拒绝文本和决定完全相同；仅新失败额外保留本地已有见证。比较与日志在analysis/cover-system-20261108/array-witness-r54。实际26028没有这些已丢失元数据，不能用合成fixture推断它的具体原因或宣布几何修复；尚未新game验证，完整CV／AC／碰撞与恢复／同版hit与muzzle／吸附遮挡／头显保持未完成。
+
+## 2026年11月9日 r55原包Inner声明与原消费者步长取证
+
+继续复用已有原包及历史原指令，不开启游戏、不新建反汇编数据库。REA本会话binary_session显示无活动目标，限定0x140130e7c的retained证据查询为空；这不否定本地已有历史chunk，随后直接核保存源与chunk完整SHA。没有把未建立的REA记录当作新反编译结果。当前包Engine.u完整SHA95b0c8da…e90510，历史原代码section完整SHA911ab9bc…06ae6，函数0x140130e7c的4098字节chunk SHA5f4786ad…63a77均验证。
+
+只读UELib helper实际编译／运行0，保留CS0618旧Deserialize API告警及原stdout。原包四个数组7087／7086／7085／7084依次指向inner7079／7080／7081／7082，ArrayDim均1，目标分别为ScriptStruct KSphereElem7053／KBoxElem7059／KSphylElem7064／KConvexElem7078，均归属Engine.KMeshProps。解析器在这四个inner上报告ElementSize0；这只是该序列化解析路径的返回值，不能据此给当前native stride或PropertySize填0，更不能将其用作实际数组读取步长。
+
+原机器码在0x1401311ea／0x140131448／0x140131d1c分别add元素指针0x50，在0x1401318fc为add0x7c，紧随的count引用位移分别0x28／0x18／0x08／0x38。记录保留原bytes、上下文及源SHA；静态指针推进量为80／80／80／124。将这些循环对应到具名Aggregate数组仍是依据原源布局的推断，不证明26028当前反射stride、结构extent、对齐、分支执行或物理消费完成。
+
+因此当前只得到两个不同来源的事实：原包目标声明正确，原消费者有固定指针步长；尚没有26028拒绝的原inner stride／target extent，不能把对齐补齐当作已证实原因，不能据此放宽stride==extent或忽略字段。下一实际来源仍由r54失败见证获得。证据analysis/cover-system-20261108/array-layout-static-r55，包括只读helper源码／exe／库身份、原声明／压缩摘要、原指令锚点及verification。没有改r54 prepared6ec774ef／plan915215be、Native／PG／XR或其他候选；当前不占运行窗，完整CV／AC与碰撞／移动恢复／hit／muzzle／吸附遮挡／实体头显仍未完成。
