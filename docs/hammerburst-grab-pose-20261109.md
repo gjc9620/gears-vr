@@ -186,3 +186,17 @@ Lancer确认当前V4通用契约2984字节/完整32SHA/reference15稳定，HB真
 完整4841×9966共面检查沿用原SAT，4个解析控制通过，原平面epsilon1e-6raw、parallel cosine1e-8下无正面积共面重叠；与双向严格交线0分开记录。完整上肢三视图已亲看。本轮仍未认证闭合实体包含、所有姿势、卡扣运动全程或实际游戏。旧机械获取中心与作者controller中心不一致仍未解决，不扩大Snap半径或远拉手皮肤。
 
 保存 `tools/weapon-models/fixtures/hammerburst_latch_closed_c0_candidate.json`：明确UNPUBLISHED_OFFLINE_CLOSED_POSE_CANDIDATE，原closed mesh坐标腕姿、原bone12..26的15个局部quat、完整原资产/探针/输入/输出证据SHA及未完成项。最终输入e9956f65741afcb6a26ff83602e6f24ad54fc2925da7dbe3eaf3fc32a68ec8cb，完整115骨输出bbb9e755d8606b387e53a831d7924d11bc7e92b97e3c6c36803ce9ba3ba741ff。作者求解器、全域复查、交线身份及原面/共面复查源码保存在 `docs/hammerburst-c0-sleeve-fitting.patch`，反向git apply --check通过；数值和原失败保留，不混入HB185428。下一步用原3骨/原蒙皮复查卡扣运动，再核对controller anchor与真实lease/provider；当前未生成生产profile、未启动游戏。
+
+## 原动画运动失败、联合约束与九个有限角度样本
+
+本轮直接读取并核SHA的原9576顶点/9966面及原4影响、chunk BoneMap和3骨reference，不再用丢失骨归属的remainder OBJ运动。原骨刚性权重分布7311/1994/271，全部一影响255；原HB_Reload导出SHA18a9499c...的Root/Mag各为常量，唯一变化为Latch75个Float96NoW旋转键。原source闭合姿势相对reference最大顶点差1.97e-6raw，复查0；沿原3骨变换带动腕和全枪原蒙皮，原key10角.418879rad（约24°）出现6交线，key11角.837758rad（约48°）出现14。中段6全为29，打开14为29主导12、11主导2，全部撞原mag骨2的皮肤；后两条也是混合皮肤，不是独立手指穿越。闭合候选因此不能推广为全程通过。原失败保存latch-c0-original-motion-check及attribution，不覆盖。
+
+用同一closed参考腕及同一15局部关节参数，联合这三个原动画姿势作一次40迭代/1926调用的有界C0求解，保留原固定骨长、权重、原关节限位与同一构造枪位置；局部代理代价3.992仍非零，不称数学精确约束全部通过。随后实际完整4841上肢面与原9966枪面双向重查，三个姿势均0；三姿势×三视图已亲看，原Root灰、Latch蓝、Mag绿，未把图当游戏输出。腕目标与实际orientation差约3e-5..5e-5度，未发现腕角被明显截断，不能据这批给共享consumer定故障。
+
+重新核原75键：完整xyz quaternion tuple仅5种（非仅角度round去重），Root/Mag与三骨position键均各1；Latch非铰链分量最大4.43e-8。因此取5种原键姿势代表全部75个原离散变换，并另取4个相邻唯一角度中点，共9个有限样本。9份现有C0完整115骨及原枪完整蒙皮重查均0双向交线，4个解析控制的同一SAT共面检查也均0。覆盖离散原键和4个角度中点，不是连续碰撞数学证明、所有持枪位置或完整游戏动画/实时输入验收。
+
+每样本1002/1014全原枪最近点都落在原Latch面4733/4977内部，正gap .0230322..0870297raw（约.230..870mm）、最小facing .977554、最小bary .0319745。原package索引绕序与先前OBJ相反，初次直接拿原三角cross作外向导致gap/facing符号反转，原unoriented报告及首次过严的packed平行断言失败日志均保留。改用原weapon packed normals确定面外向，原face cross与packed dot分别约-.998759/-.837245；后者是平滑顶点法线而非平面法线，故只验证明显符号一致，不要求两者完全平行。刚性分组由全原顶点Kabsch还原且残差<1e-4raw、det正，再按原法线确定符号；没有翻转或改写枪模型索引。
+
+新未发布作者夹具 `tools/weapon-models/fixtures/hammerburst_latch_motion_c0_candidate.json` 保留原mesh腕及Latch bone-local腕、15局部quat和证据SHA；旧closed夹具仍保留。反算的原down20/left镜像controller中心mesh=(-8.06026716,32.33420587,-8.96293889)raw、Latch-local=(.96922136,8.06026693,-11.08830462)raw，离当前机械contact16.39825426raw（约16.4cm），仍超原3.5cm半径。未改获取点、扩大半径、发布profile或写追踪源；这项不一致明确阻止生产接入。下一步必须将真实获取与同一部件作者抓姿使用同一controller基准，再接既有真实lease/V4消费者。原连续段、游戏双眼和头显、其他部件姿势、有限供弹HB185428实际运行仍待完成。
+
+证据latch-c0-motion-fit、latch-c0-motion-fit-surface、latch-c0-fitted-range-check、latch-c0-fitted-range-contact、latch-c0-motion-grip-coherence各JSON，图latch-c0-motion-fit-views.png；本轮六个作者/检查脚本保存 `docs/hammerburst-c0-motion-fitting.patch`，反向git apply --check通过。未动冻结HB185428、公共制品或共享Native/C0源，未启动游戏。

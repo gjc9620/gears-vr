@@ -1,0 +1,238 @@
+diff --git a/analysis/hammerburst-20261108/check-c0-latch-original-motion.py b/analysis/hammerburst-20261108/check-c0-latch-original-motion.py
+new file mode 100644
+--- /dev/null
++++ b/analysis/hammerburst-20261108/check-c0-latch-original-motion.py
+@@ -0,0 +1,38 @@
++"""Three original HB animation poses with original weapon skin and existing C0."""
++from pathlib import Path
++import json,hashlib,struct,subprocess,sys
++import numpy as np
++R=Path.cwd();A=R/'analysis/hammerburst-20261108';O=R/'analysis/solo-m1-20261028';T=A/'c0-mixed-skin-probe';D=T/'original-motion';D.mkdir(exist_ok=True)
++p=A/'check-c0-hb-mixed-skin.py';c={};saved=sys.argv[:];sys.argv=sys.argv[:1];exec(compile(p.read_text().split('for name,faces in ')[0],str(p),'exec'),c);sys.argv=saved
++ctx=c['ctx'];audit=c['audit'];armfaces=c['arm_faces'];he=audit['edges'](armfaces)
++p=A/'check-latch-reference-idle.py';original={};exec(compile(p.read_text().split('\nreport=dict(')[0],str(p),'exec'),original)
++raw=original['raw'];asset=original['asset'];reference=np.asarray(original['reference']);skin=asset['lod0_skin'];count=skin['vertex_count'];offset=skin['vertex_offset_in_export'];vertices=np.asarray([struct.unpack_from('<3f',raw,offset+i*64) for i in range(count)]);v=np.column_stack([vertices,np.ones(count)])
++indices=np.asarray([struct.unpack_from('<4B',raw,offset+i*64+56) for i in range(count)],dtype=int);weights=np.asarray([struct.unpack_from('<4B',raw,offset+i*64+60) for i in range(count)])/255.;bone_map=np.asarray(skin['chunks'][0]['bone_map']);indices=bone_map[indices]
++faces=np.asarray(struct.unpack_from('<'+'H'*skin['index_count'],raw,skin['index_offset_in_export'])).reshape(-1,3);ge=audit['edges'](faces)
++assert vertices.shape==(9576,3) and faces.shape==(9966,3) and np.all(weights.sum(1)==1) and np.all(np.sum(weights>0,axis=1)==1)
++assert [int(np.sum(np.any((indices==b)&(weights>0),axis=1))) for b in range(3)]==[7311,1994,271]
++inventory=json.loads((O/'hb-original-latch-track.json').read_text());seq=next(s for s in inventory['sequences'] if s['sequence_name']=='HB_Reload')
++with open(inventory['source_package'],'rb') as f:f.seek(seq['export_offset']);animation=f.read(seq['export_size'])
++sha=lambda p:hashlib.sha256(p.read_bytes()).hexdigest();assert hashlib.sha256(animation).hexdigest()==seq['export_sha256'];start=len(animation)-seq['compressed_stream_bytes'];assert struct.unpack_from('<i',animation,start-4)[0]==seq['compressed_stream_bytes']
++track=seq['tracks'][1];keyxyz=np.asarray([struct.unpack_from('<3f',animation,start+track['rotation_offset']+24+12*k) for k in range(track['rotation_keys'])]);angles=2*np.arctan2(keyxyz[:,1],np.sqrt(np.maximum(0,1-np.sum(keyxyz*keyxyz,axis=1))))
++closed=int(np.argmin(angles));opened=int(np.argmax(angles));middle=int(np.argmin(abs(angles[:opened+1]-angles[opened]/2)))
++base=np.frombuffer((T/'sleeve-fit3/final-input.bin').read_bytes(),dtype='<f8').copy();closed_wrist=c['matrix'](base[13:20]);wrist_in_latch=np.linalg.inv(reference[1])@closed_wrist
++p=A/'prepare-c0-hb-input.py';q=dict(np=np);exec(compile('def quaternion'+p.read_text().split('def quaternion',1)[1].split('\ndata=numbers',1)[0],str(p),'exec'),q)
++exe=T/'build-vs/Release/HammerburstC0SkinProbe.exe';rows=[]
++for name,key in [('closed',closed),('middle',middle),('open',opened)]:
++    posed=[]
++    for b,track in enumerate(seq['tracks']):
++        position=struct.unpack_from('<3f',animation,start+track['translation_offset']);xyz=keyxyz[key] if b==1 else struct.unpack_from('<3f',animation,start+track['rotation_offset']);quat=(*xyz,np.sqrt(max(0,1-sum(x*x for x in xyz))))
++        m=original['matrix'](quat,position)
++        if b:m=posed[asset['reference_bones'][b]['parent_index']]@m
++        posed.append(m)
++    weapon_delta=np.asarray(posed)@np.linalg.inv(reference);weapon=np.zeros((count,4))
++    for k in range(4):weapon+=np.einsum('nij,nj->ni',weapon_delta[indices[:,k]],v)*weights[:,k,None]
++    weapon=weapon[:,:3];wrist=posed[1]@wrist_in_latch;data=base.copy();data[13:16]=wrist[:3,3];data[16:20]=q['quaternion'](wrist[:3,:3]);source=D/(name+'-input.bin');output=D/(name+'-output.bin');source.write_bytes(struct.pack('<80d',*data))
++    r=subprocess.run([str(exe),str(T/'fixture'),str(source),str(output),'--constructed-gun-pose',str(T/'front-side-hold-pose.bin')],capture_output=True,text=True);(D/(name+'-compose.log')).write_text(r.stdout+r.stderr);assert r.returncode==0,(name,r.returncode,r.stdout,r.stderr);status=json.loads(r.stdout)
++    values=np.frombuffer(output.read_bytes(),dtype='<f8');gun=c['matrix'](values[:7]);world=np.asarray([c['matrix'](p) for p in values[28:].reshape(115,7)]);delta=np.linalg.inv(gun)@world@ctx['inverse'];hand=np.zeros_like(ctx['v'])
++    for k in range(4):hand+=np.einsum('nij,nj->ni',delta[ctx['indices'][:,k]],ctx['v'])*ctx['weights'][:,k,None]
++    hand=hand[:,:3];forward=audit['crossings'](hand,he,weapon[faces]);reverse=audit['crossings'](weapon,ge,hand[armfaces]);row=dict(case=name,original_key=key,angle_radians=float(angles[key]),original_animation_time_seconds=float(key*seq['sequence_length_seconds']/(seq['frames']-1)),forward=forward,reverse=reverse,total=forward+reverse,compose=status,input_sha256=sha(source),output_sha256=sha(output),weapon_max_displacement_from_reference_raw=float(np.linalg.norm(weapon-vertices,axis=1).max()))
++    rows.append(row);print(json.dumps(row),flush=True);np.savez(D/(name+'-geometry.npz'),hand=hand,arm_faces=armfaces,weapon=weapon,weapon_faces=faces,weapon_bone=np.argmax(np.stack([np.sum(weights*(indices==b),axis=1) for b in range(3)],axis=1),axis=1))
++report=dict(geometry_only=True,constructed_body_and_gun=True,original_mesh_sha256=hashlib.sha256(raw).hexdigest(),original_animation_sha256=seq['export_sha256'],original_skin_counts=[7311,1994,271],samples=rows,three_sample_motion_check_only=True,continuous_motion_checked=False,full_original_animation_checked=False,game_started=False,published=False,skin_fit_accepted=False,binary_sha256=sha(exe))
++(A/'latch-c0-original-motion-check.json').write_text(json.dumps(report,indent=2))
+diff --git a/analysis/hammerburst-20261108/attribute-c0-original-motion.py b/analysis/hammerburst-20261108/attribute-c0-original-motion.py
+new file mode 100644
+--- /dev/null
++++ b/analysis/hammerburst-20261108/attribute-c0-original-motion.py
+@@ -0,0 +1,18 @@
++"""Identify exact original animated-weapon crossing witnesses."""
++from pathlib import Path
++import json,sys
++import numpy as np
++R=Path.cwd();A=R/'analysis/hammerburst-20261108';D=A/'c0-mixed-skin-probe/original-motion'
++p=A/'check-c0-hb-mixed-skin.py';c={};exec(compile(p.read_text().split('for name,faces in ')[0],str(p),'exec'),c);ctx=c['ctx'];audit=c['audit']
++p=A/'attribute-c0-arm-crossings.py';s=p.read_text();helper=dict(np=np);exec(compile(s[s.index('def pairs('):s.index('\ndef bones(')],str(p),'exec'),helper)
++summary=[]
++for name in ['closed','middle','open']:
++    g=np.load(D/(name+'-geometry.npz'));hand=g['hand'];faces=g['arm_faces'];gun=g['weapon'];gf=g['weapon_faces'];bone=g['weapon_bone'];he=audit['edges'](faces);ge=audit['edges'](gf);rows=[]
++    for direction,hits in [('arm_edge_gun_face',helper['pairs'](hand,he,gun[gf])),('gun_edge_arm_face',helper['pairs'](gun,ge,hand[faces]))]:
++        for edge,face,point in hits:
++            skin_vertices=he[edge] if direction=='arm_edge_gun_face' else faces[face];counts=np.bincount(ctx['indices'][skin_vertices].ravel(),weights=ctx['weights'][skin_vertices].ravel(),minlength=115);dominant=int(counts.argmax())
++            gun_vertices=gf[face] if direction=='arm_edge_gun_face' else ge[edge]
++            rows.append(dict(direction=direction,edge=edge,face=face,skin_vertices=skin_vertices.tolist(),dominant_skin_bone=dominant,gun_bones=sorted(set(int(x) for x in bone[gun_vertices])),point_raw=point.tolist()))
++    brief=dict(case=name,total=len(rows),skin_bones={str(b):sum(r['dominant_skin_bone']==b for r in rows) for b in sorted(set(r['dominant_skin_bone'] for r in rows))},gun_bones=sorted(set(b for r in rows for b in r['gun_bones'])),skin_vertices=sorted(set(v for r in rows for v in r['skin_vertices'])))
++    summary.append(brief);(D/(name+'-attribution.json')).write_text(json.dumps(dict(summary=brief,rows=rows),indent=2));print(json.dumps(brief),flush=True)
++(A/'latch-c0-original-motion-attribution.json').write_text(json.dumps(dict(geometry_only=True,samples=summary,published=False,game_started=False),indent=2))
+diff --git a/analysis/hammerburst-20261108/fit-latch-c0-motion.py b/analysis/hammerburst-20261108/fit-latch-c0-motion.py
+new file mode 100644
+--- /dev/null
++++ b/analysis/hammerburst-20261108/fit-latch-c0-motion.py
+@@ -0,0 +1,49 @@
++"""Fit one unchanged grasp against all three observed original-animation poses."""
++from pathlib import Path
++import json,struct,subprocess,hashlib,sys,time
++import numpy as np
++R=Path.cwd();A=R/'analysis/hammerburst-20261108';T=A/'c0-mixed-skin-probe';D=T/'motion-fit';D.mkdir(exist_ok=True)
++p=A/'fit-latch-outer-cap-cup.py';q={};exec(compile(p.read_text().split('\nbest=initial.copy()')[0],str(p),'exec'),q);ctx=q['ctx'];limits=q['limits'];initial=np.asarray(json.loads((A/'latch-c0-sleeve-fit3.json').read_text())['parameters'])
++p=A/'prepare-c0-hb-input.py';qq=dict(np=np);exec(compile('def quaternion'+p.read_text().split('def quaternion',1)[1].split('\ndata=numbers',1)[0],str(p),'exec'),qq);quat=qq['quaternion']
++base=np.frombuffer((T/'sleeve-fit3/final-input.bin').read_bytes(),dtype='<f8').copy();exe=T/'build-vs/Release/HammerburstC0SkinProbe.exe';sha=lambda p:hashlib.sha256(p.read_bytes()).hexdigest()
++def matrix(p):
++    m=np.eye(4);m[:3,:3]=ctx['rot'](p[3:]);m[:3,3]=p[:3];return m
++original=json.loads((A/'latch-c0-original-motion-check.json').read_text());motions=[]
++for sample in original['samples']:
++    name=sample['case'];file=T/'original-motion'/(name+'-input.bin');assert sha(file)==sample['input_sha256'];values=np.frombuffer(file.read_bytes(),dtype='<f8');delta=matrix(values[13:20])@np.linalg.inv(matrix(base[13:20]));assert np.max(np.abs(delta[0]-[1,0,0,0]))<1e-5
++    motions.append((name,delta))
++attributions=json.loads((A/'latch-c0-original-motion-attribution.json').read_text())['samples'];vertices=sorted({1003,9869,9870,9871,9872,9873,9916}|{v for sample in attributions for v in sample['skin_vertices']});ids=np.asarray([1002,1014]+vertices);planes=np.asarray([-5.09091806 if v<2000 else -2.08756852 for v in vertices])
++contact=json.loads((A/'latch-c0-sleeve-contact-check.json').read_text());targets=np.asarray([v['point_raw'] for v in contact['contacts']]);outward=np.asarray(json.loads((A/'latch-outer-cap-cup-fit.json').read_text())['target_outward_normals']);raw_normals=np.asarray(q['q']['raw_normals']);calls=0;history=[];started=time.monotonic()
++def evaluate(parameters,save=False):
++    global calls
++    _,_,posed,rotation,translation=q['evaluate'](parameters);closed=np.eye(4);closed[:3,:3]=rotation;closed[:3,3]=translation;finger=[]
++    for i in range(12,27):finger+=quat((np.linalg.inv(posed[ctx['ref'][i]['parent']])@posed[i])[:3,:3]).tolist()
++    residual=[];details=[]
++    for name,motion in motions:
++        wrist=motion@closed;data=base.copy();data[13:16]=wrist[:3,3];data[16:20]=quat(wrist[:3,:3]);data[20:]=finger;file=D/'trial-input.bin';output=D/'trial-output.bin';file.write_bytes(struct.pack('<80d',*data))
++        r=subprocess.run([str(exe),str(T/'fixture'),str(file),str(output),'--constructed-gun-pose',str(T/'front-side-hold-pose.bin')],capture_output=True,text=True);assert r.returncode==0,(name,r.returncode,r.stdout,r.stderr);status=json.loads(r.stdout);assert status['solved_mask']==3 and status['desired_wrist_error_raw']<.002
++        values=np.frombuffer(output.read_bytes(),dtype='<f8');gun=matrix(values[:7]);world=np.asarray([matrix(p) for p in values[28:].reshape(115,7)]);delta=np.linalg.inv(gun)@world@ctx['inverse'];skin=np.zeros((len(ids),4));normal=np.zeros((2,3))
++        for k in range(4):
++            skin+=np.einsum('nij,nj->ni',delta[ctx['indices'][ids,k]],ctx['v'][ids])*ctx['weights'][ids,k,None]
++            normal+=np.einsum('nij,nj->ni',delta[ctx['indices'][ids[:2],k],:3,:3],raw_normals)*ctx['weights'][ids[:2],k,None]
++        normal/=np.linalg.norm(normal,axis=1)[:,None];normals=outward@motion[:3,:3].T;target=(np.column_stack([targets,np.ones(2)])@motion.T)[:,:3];facing=np.einsum('ij,ij->i',normal,-normals)
++        residual.extend(np.r_[((skin[:2,:3]-target)/.03).ravel(),np.maximum(0,.97-facing)/.01,np.maximum(0,skin[2:,0]-planes+.02)/.03])
++        details.append(dict(case=name,contact_errors_raw=np.linalg.norm(skin[:2,:3]-target,axis=1).tolist(),facing_dot=facing.tolist(),max_witness_plane_violation_raw=float((skin[2:,0]-planes).max()),compose=status))
++        if save:
++            (D/(name+'-final-input.bin')).write_bytes(file.read_bytes());(D/(name+'-final-output.bin')).write_bytes(output.read_bytes())
++        calls+=1
++    return np.r_[residual,(parameters-initial)*.0001],details
++best=initial.copy();res,first=evaluate(best);cost=float(res@res);damping=.001
++for iteration in range(40):
++    J=np.zeros((len(res),15))
++    for i in range(15):
++        trial=best.copy();step=.02 if i<12 else .002
++        if trial[i]+step>limits[i,1]:step=-step
++        trial[i]+=step;J[:,i]=(evaluate(trial)[0]-res)/step
++    delta=-np.linalg.solve(J.T@J+np.eye(15)*damping,J.T@res);delta=np.clip(delta,np.r_[np.full(12,-1.),np.full(3,-.05)],np.r_[np.full(12,1.),np.full(3,.05)]);trial=np.clip(best+delta,limits[:,0],limits[:,1]);rr,detail=evaluate(trial);new=float(rr@rr);accepted=new<cost;history.append(dict(iteration=iteration,cost=cost,trial_cost=new,accepted=accepted))
++    if accepted:best=trial;res=rr;cost=new;damping=max(1e-8,damping*.5)
++    else:damping=min(1e5,damping*5)
++    if iteration%5==0:print(json.dumps(dict(iteration=iteration,cost=cost,calls=calls)),flush=True)
++    if cost<1e-5 or np.max(np.abs(delta))<1e-7:break
++_,final=evaluate(best,True);report=dict(geometry_only=True,three_original_animation_poses_only=True,parameters=best.tolist(),initial=first,final=final,cost=cost,calls=calls,history=history,seconds=time.monotonic()-started,vertices=vertices,binary_sha256=sha(exe),full_surface_check_pending=True,game_started=False,published=False,skin_fit_accepted=False)
++(A/'latch-c0-motion-fit.json').write_text(json.dumps(report,indent=2));print(json.dumps({k:v for k,v in report.items() if k!='history'},indent=2))
+diff --git a/analysis/hammerburst-20261108/check-c0-motion-fit.py b/analysis/hammerburst-20261108/check-c0-motion-fit.py
+new file mode 100644
+--- /dev/null
++++ b/analysis/hammerburst-20261108/check-c0-motion-fit.py
+@@ -0,0 +1,22 @@
++"""Full original-mesh check and views after the joint three-pose fit."""
++from pathlib import Path
++import sys,json,hashlib
++import numpy as np
++from PIL import Image,ImageDraw
++R=Path.cwd();A=R/'analysis/hammerburst-20261108';T=A/'c0-mixed-skin-probe';D=T/'motion-fit'
++p=A/'check-c0-hb-mixed-skin.py';c={};exec(compile(p.read_text().split('for name,faces in ')[0],str(p),'exec'),c);ctx=c['ctx'];audit=c['audit'];sha=lambda p:hashlib.sha256(p.read_bytes()).hexdigest();rows=[];scenes=[]
++for name in ['closed','middle','open']:
++    original=np.load(T/'original-motion'/(name+'-geometry.npz'));weapon=original['weapon'];faces=original['weapon_faces'];armfaces=original['arm_faces'];values=np.frombuffer((D/(name+'-final-output.bin')).read_bytes(),dtype='<f8');gun=c['matrix'](values[:7]);world=np.asarray([c['matrix'](p) for p in values[28:].reshape(115,7)]);delta=np.linalg.inv(gun)@world@ctx['inverse'];hand=np.zeros_like(ctx['v'])
++    for k in range(4):hand+=np.einsum('nij,nj->ni',delta[ctx['indices'][:,k]],ctx['v'])*ctx['weights'][:,k,None]
++    hand=hand[:,:3];forward=audit['crossings'](hand,audit['edges'](armfaces),weapon[faces]);reverse=audit['crossings'](weapon,audit['edges'](faces),hand[armfaces]);row=dict(case=name,forward=forward,reverse=reverse,total=forward+reverse,input_sha256=sha(D/(name+'-final-input.bin')),output_sha256=sha(D/(name+'-final-output.bin')));rows.append(row);print(json.dumps(row),flush=True);scenes.append((name,hand,armfaces,weapon,faces,original['weapon_bone']))
++    np.savez(D/(name+'-fit-geometry.npz'),hand=hand,arm_faces=armfaces,weapon=weapon,weapon_faces=faces,weapon_bone=original['weapon_bone'])
++image=Image.new('RGB',(1800,1500),'#121821');draw=ImageDraw.Draw(image);directions=[np.asarray([1.,-.4,.5]),np.asarray([-1.,.4,.3]),np.asarray([.1,.1,1.])]
++for row,(name,hand,hf,weapon,wf,bones) in enumerate(scenes):
++    for col,view in enumerate(directions):
++        view=view/np.linalg.norm(view);right=np.cross(view,[0,0,1]);right/=np.linalg.norm(right);up=np.cross(right,view);points=np.concatenate([hand[np.unique(hf)],weapon]);projection=np.column_stack([points@right,points@up]);lo=projection.min(0);hi=projection.max(0);scale=min(560/max(hi[0]-lo[0],1),430/max(hi[1]-lo[1],1));center=(lo+hi)/2
++        palette=[(125,130,135),(65,155,195),(95,155,110)];objects=[(hand[f],(195,165,130)) for f in hf]+[(weapon[f],palette[int(bones[f[0]])]) for f in wf];objects.sort(key=lambda x:float(x[0].mean(0)@view))
++        for triangle,color in objects:
++            normal=np.cross(triangle[1]-triangle[0],triangle[2]-triangle[0]);length=np.linalg.norm(normal);shade=.4+.6*abs(normal@view/length) if length>1e-9 else .4;xy=np.column_stack([300+col*600+(triangle@right-center[0])*scale,270+row*500-(triangle@up-center[1])*scale]);draw.polygon([tuple(x) for x in xy],fill=tuple(int(v*shade) for v in color))
++        draw.text((col*600+12,row*500+12),f'{name}: original moving skin / existing C0 / constructed hold',fill='white');draw.text((col*600+12,row*500+30),'OFFLINE, UNPUBLISHED; intersections '+str(rows[row]['total']),fill='#ffcc66')
++image.save(A/'latch-c0-motion-fit-views.png');report=dict(geometry_only=True,single_constructed_hold=True,original_three_pose_samples=rows,original_full_gun_faces=9966,full_arm_faces=4841,all75_keys_checked=False,continuous_interpolation_checked=False,actual_game_or_headset_acceptance=False,skin_fit_accepted=False,published=False,game_started=False)
++(A/'latch-c0-motion-fit-surface.json').write_text(json.dumps(report,indent=2))
+diff --git a/analysis/hammerburst-20261108/check-c0-latch-fitted-range.py b/analysis/hammerburst-20261108/check-c0-latch-fitted-range.py
+new file mode 100644
+--- /dev/null
++++ b/analysis/hammerburst-20261108/check-c0-latch-fitted-range.py
+@@ -0,0 +1,47 @@
++"""Three original HB animation poses with original weapon skin and existing C0."""
++from pathlib import Path
++import json,hashlib,struct,subprocess,sys
++import numpy as np
++R=Path.cwd();A=R/'analysis/hammerburst-20261108';O=R/'analysis/solo-m1-20261028';T=A/'c0-mixed-skin-probe';D=T/'fitted-range';D.mkdir(exist_ok=True)
++p=A/'check-c0-hb-mixed-skin.py';c={};saved=sys.argv[:];sys.argv=sys.argv[:1];exec(compile(p.read_text().split('for name,faces in ')[0],str(p),'exec'),c);sys.argv=saved
++ctx=c['ctx'];audit=c['audit'];armfaces=c['arm_faces'];he=audit['edges'](armfaces)
++p=A/'check-latch-reference-idle.py';original={};exec(compile(p.read_text().split('\nreport=dict(')[0],str(p),'exec'),original)
++raw=original['raw'];asset=original['asset'];reference=np.asarray(original['reference']);skin=asset['lod0_skin'];count=skin['vertex_count'];offset=skin['vertex_offset_in_export'];vertices=np.asarray([struct.unpack_from('<3f',raw,offset+i*64) for i in range(count)]);v=np.column_stack([vertices,np.ones(count)])
++indices=np.asarray([struct.unpack_from('<4B',raw,offset+i*64+56) for i in range(count)],dtype=int);weights=np.asarray([struct.unpack_from('<4B',raw,offset+i*64+60) for i in range(count)])/255.;bone_map=np.asarray(skin['chunks'][0]['bone_map']);indices=bone_map[indices]
++faces=np.asarray(struct.unpack_from('<'+'H'*skin['index_count'],raw,skin['index_offset_in_export'])).reshape(-1,3);ge=audit['edges'](faces)
++assert vertices.shape==(9576,3) and faces.shape==(9966,3) and np.all(weights.sum(1)==1) and np.all(np.sum(weights>0,axis=1)==1)
++assert [int(np.sum(np.any((indices==b)&(weights>0),axis=1))) for b in range(3)]==[7311,1994,271]
++inventory=json.loads((O/'hb-original-latch-track.json').read_text());seq=next(s for s in inventory['sequences'] if s['sequence_name']=='HB_Reload')
++with open(inventory['source_package'],'rb') as f:f.seek(seq['export_offset']);animation=f.read(seq['export_size'])
++sha=lambda p:hashlib.sha256(p.read_bytes()).hexdigest();assert hashlib.sha256(animation).hexdigest()==seq['export_sha256'];start=len(animation)-seq['compressed_stream_bytes'];assert struct.unpack_from('<i',animation,start-4)[0]==seq['compressed_stream_bytes']
++track=seq['tracks'][1];keyxyz=np.asarray([struct.unpack_from('<3f',animation,start+track['rotation_offset']+24+12*k) for k in range(track['rotation_keys'])]);angles=2*np.arctan2(keyxyz[:,1],np.sqrt(np.maximum(0,1-np.sum(keyxyz*keyxyz,axis=1))))
++closed=int(np.argmin(angles));opened=int(np.argmax(angles));middle=int(np.argmin(abs(angles[:opened+1]-angles[opened]/2)))
++base=np.frombuffer((T/'sleeve-fit3/final-input.bin').read_bytes(),dtype='<f8').copy();closed_wrist=c['matrix'](base[13:20]);wrist_in_latch=np.linalg.inv(reference[1])@closed_wrist
++p=A/'prepare-c0-hb-input.py';q=dict(np=np);exec(compile('def quaternion'+p.read_text().split('def quaternion',1)[1].split('\ndata=numbers',1)[0],str(p),'exec'),q)
++exe=T/'build-vs/Release/HammerburstC0SkinProbe.exe';rows=[]
++p=A/'fit-latch-outer-cap-cup.py';fitted={};exec(compile(p.read_text().split('\nbest=initial.copy()')[0],str(p),'exec'),fitted)
++parameters=np.asarray(json.loads((A/'latch-c0-motion-fit.json').read_text())['parameters']);_,_,finger_pose,rotation,translation=fitted['evaluate'](parameters);base[13:16]=translation;base[16:20]=q['quaternion'](rotation)
++for j,i in enumerate(range(12,27)):base[20+4*j:24+4*j]=q['quaternion']((np.linalg.inv(finger_pose[ctx['ref'][i]['parent']])@finger_pose[i])[:3,:3])
++closed_wrist=c['matrix'](base[13:20]);wrist_in_latch=np.linalg.inv(reference[1])@closed_wrist
++unique=np.unique(angles);assert len(unique)==5 and len(angles)==75
++checks=[('key_'+str(int(np.where(angles==angle)[0][0])),int(np.where(angles==angle)[0][0]),float(angle)) for angle in unique]
++checks += [('between_'+str(i),None,float((unique[i]+unique[i+1])/2)) for i in range(len(unique)-1)]
++checks.sort(key=lambda row:row[2])
++
++for name,key,angle in checks:
++    posed=[]
++    for b,track in enumerate(seq['tracks']):
++        position=struct.unpack_from('<3f',animation,start+track['translation_offset']);xyz=(keyxyz[key] if key is not None else np.asarray([0,np.sin(angle/2),0])) if b==1 else struct.unpack_from('<3f',animation,start+track['rotation_offset']);quat=(*xyz,np.sqrt(max(0,1-sum(x*x for x in xyz))))
++        m=original['matrix'](quat,position)
++        if b:m=posed[asset['reference_bones'][b]['parent_index']]@m
++        posed.append(m)
++    weapon_delta=np.asarray(posed)@np.linalg.inv(reference);weapon=np.zeros((count,4))
++    for k in range(4):weapon+=np.einsum('nij,nj->ni',weapon_delta[indices[:,k]],v)*weights[:,k,None]
++    weapon=weapon[:,:3];wrist=posed[1]@wrist_in_latch;data=base.copy();data[13:16]=wrist[:3,3];data[16:20]=q['quaternion'](wrist[:3,:3]);source=D/(name+'-input.bin');output=D/(name+'-output.bin');source.write_bytes(struct.pack('<80d',*data))
++    r=subprocess.run([str(exe),str(T/'fixture'),str(source),str(output),'--constructed-gun-pose',str(T/'front-side-hold-pose.bin')],capture_output=True,text=True);(D/(name+'-compose.log')).write_text(r.stdout+r.stderr);assert r.returncode==0,(name,r.returncode,r.stdout,r.stderr);status=json.loads(r.stdout)
++    values=np.frombuffer(output.read_bytes(),dtype='<f8');gun=c['matrix'](values[:7]);world=np.asarray([c['matrix'](p) for p in values[28:].reshape(115,7)]);delta=np.linalg.inv(gun)@world@ctx['inverse'];hand=np.zeros_like(ctx['v'])
++    for k in range(4):hand+=np.einsum('nij,nj->ni',delta[ctx['indices'][:,k]],ctx['v'])*ctx['weights'][:,k,None]
++    hand=hand[:,:3];forward=audit['crossings'](hand,he,weapon[faces]);reverse=audit['crossings'](weapon,ge,hand[armfaces]);row=dict(case=name,original_key=key,angle_radians=angle,original_animation_time_seconds=float(key*seq['sequence_length_seconds']/(seq['frames']-1)) if key is not None else None,forward=forward,reverse=reverse,total=forward+reverse,compose=status,input_sha256=sha(source),output_sha256=sha(output),weapon_max_displacement_from_reference_raw=float(np.linalg.norm(weapon-vertices,axis=1).max()))
++    rows.append(row);print(json.dumps(row),flush=True);np.savez(D/(name+'-geometry.npz'),hand=hand,arm_faces=armfaces,weapon=weapon,weapon_faces=faces,weapon_bone=np.argmax(np.stack([np.sum(weights*(indices==b),axis=1) for b in range(3)],axis=1),axis=1))
++report=dict(geometry_only=True,constructed_body_and_gun=True,original_mesh_sha256=hashlib.sha256(raw).hexdigest(),original_animation_sha256=seq['export_sha256'],original_skin_counts=[7311,1994,271],samples=rows,finite_angle_samples=9,distinct_original_key_transforms=5,original_key_frames_represented=75,all_original_key_transforms_represented=True,continuous_motion_checked=False,full_original_animation_checked=False,game_started=False,published=False,skin_fit_accepted=False,binary_sha256=sha(exe))
++(A/'latch-c0-fitted-range-check.json').write_text(json.dumps(report,indent=2))
+diff --git a/analysis/hammerburst-20261108/check-c0-range-contact.py b/analysis/hammerburst-20261108/check-c0-range-contact.py
+new file mode 100644
+--- /dev/null
++++ b/analysis/hammerburst-20261108/check-c0-range-contact.py
+@@ -0,0 +1,34 @@
++"""Nearest original moving-face contacts and coplanar checks for nine samples."""
++from pathlib import Path
++import json,struct
++import numpy as np
++R=Path.cwd();A=R/'analysis/hammerburst-20261108';T=A/'c0-mixed-skin-probe';D=T/'fitted-range'
++p=A/'check-c0-hb-mixed-skin.py';c={};exec(compile(p.read_text().split('for name,faces in ')[0],str(p),'exec'),c);ctx=c['ctx']
++p=A/'screen-latch-pad-space.py';text=p.read_text();nearest_source=text[text.index('def nearest('):text.index('\nrows=[]')]
++p=A/'check-latch-outer-cap-coplanar.py';text=p.read_text();cop=dict(np=np);exec(compile(text[text.index('def overlap('):text.index('\nlo=gt.min(1)')],str(p),'exec'),cop)
++source=json.loads((A/'latch-c0-fitted-range-check.json').read_text());rows=[]
++p=A/'check-latch-reference-idle.py';original={};exec(compile(p.read_text().split('\nreport=dict(')[0],str(p),'exec'),original);raw=original['raw'];meta=original['asset']['lod0_skin'];start=meta['vertex_offset_in_export'];reference_vertices=np.asarray([struct.unpack_from('<3f',raw,start+i*64) for i in range(meta['vertex_count'])]);packed_normals=np.asarray([struct.unpack_from('<3B',raw,start+i*64+16) for i in range(meta['vertex_count'])])/127.5-1
++for sample in source['samples']:
++    name=sample['case'];g=np.load(D/(name+'-geometry.npz'));hand=g['hand'];ht=hand[g['arm_faces']];weapon=g['weapon'];wf=g['weapon_faces'];gt=weapon[wf];bone=g['weapon_bone'];origin=gt[:,0];u=gt[:,1]-origin;v=gt[:,2]-origin;uu=(u*u).sum(1);vv=(v*v).sum(1);uv=(u*v).sum(1);den=uu*vv-uv*uv;good=den>1e-12;near=dict(np=np,tri=gt,origin=origin,u=u,v=v,uu=uu,vv=vv,uv=uv,den=den,good=good);exec(compile(nearest_source,'original_triangle_nearest','exec'),near)
++    values=np.frombuffer((D/(name+'-output.bin')).read_bytes(),dtype='<f8');gun=c['matrix'](values[:7]);world=np.asarray([c['matrix'](p) for p in values[28:].reshape(115,7)]);delta=np.linalg.inv(gun)@world@ctx['inverse'];contacts=[]
++    # Original index winding is opposite the packed normal at these faces.
++    # Recover each rigid part transform, then orient the face by ORIGINAL
++    # packed normals, rather than quietly treating an inward winding as out.
++    rigid_rotations={}
++    for b in range(3):
++        ids=np.where(bone==b)[0];src=reference_vertices[ids];dst=weapon[ids];u0,_,vt=np.linalg.svd((src-src.mean(0)).T@(dst-dst.mean(0)));rotation=vt.T@u0.T;assert np.linalg.det(rotation)>.99999;assert np.max(np.linalg.norm((src-src.mean(0))@rotation.T+dst.mean(0)-dst,axis=1))<1e-4;rigid_rotations[b]=rotation
++    for vi in [1002,1014]:
++        point=hand[vi];distance,face,closest=near['nearest'](point);t=gt[face];n=np.cross(t[1]-t[0],t[2]-t[0]);n/=np.linalg.norm(n);facebones=sorted(set(int(x) for x in bone[wf[face]]));assert len(facebones)==1;packed=packed_normals[wf[face]].mean(0)@rigid_rotations[facebones[0]].T;packed/=np.linalg.norm(packed);orientation_dot=float(n@packed);assert abs(orientation_dot)>.5  # Smoothed vertex normals certify the sign, not flat-face equality.
++        if orientation_dot<0:n=-n
++        raw_normal=np.asarray(struct.unpack_from('<3B',ctx['raw'],ctx['start']+vi*64+16))/127.5-1;normal=sum(delta[b,:3,:3]@raw_normal*w for b,w in zip(ctx['indices'][vi],ctx['weights'][vi]));normal/=np.linalg.norm(normal);aa,bb=t[1]-t[0],t[2]-t[0];w=closest-t[0];a,b=np.linalg.solve([[aa@aa,aa@bb],[aa@bb,bb@bb]],[w@aa,w@bb]);contacts.append(dict(vertex=vi,original_face=int(face),gun_bones=facebones,distance_raw=distance,signed_gap_raw=float((point-closest)@n),facing_dot=float(normal@-n),raw_winding_dot_original_packed_normal=orientation_dot,barycentric=[float(1-a-b),float(a),float(b)]))
++    lo=gt.min(1);hi=gt.max(1);gn=np.cross(gt[:,1]-gt[:,0],gt[:,2]-gt[:,0]);gl=np.linalg.norm(gn,axis=1);valid=gl>1e-10;gn[valid]/=gl[valid,None];pairs=[];tested=0
++    for i,t in enumerate(ht):
++        normal=np.cross(t[1]-t[0],t[2]-t[0]);length=np.linalg.norm(normal)
++        if length<1e-10:continue
++        normal/=length;possible=valid&np.all(t.max(0)>=lo-1e-6,axis=1)&np.all(t.min(0)<=hi+1e-6,axis=1)&(np.abs(gn@normal)>1-1e-8)
++        for j in np.where(possible)[0]:
++            tested+=1
++            if cop['overlap'](t,gt[j]):pairs.append([i,int(j)])
++    row=dict(case=name,angle_radians=sample['angle_radians'],contacts=contacts,parallel_AABB_pairs_tested=tested,positive_area_coplanar_pairs=pairs);rows.append(row);print(json.dumps(row),flush=True)
++report=dict(geometry_only=True,nine_finite_samples_only=True,full_arm_faces=4841,original_weapon_faces=9966,coplanar_control_cases=4,samples=rows,continuous_collision_or_closed_solid_proof=False,actual_runtime_acceptance=False,published=False)
++(A/'latch-c0-fitted-range-contact.json').write_text(json.dumps(report,indent=2))

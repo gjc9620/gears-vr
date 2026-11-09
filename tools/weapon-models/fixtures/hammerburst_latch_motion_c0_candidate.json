@@ -1,0 +1,223 @@
+{
+  "schema": 1,
+  "status": "UNPUBLISHED_OFFLINE_NINE_SAMPLE_LATCH_MOTION_CANDIDATE",
+  "units_per_metre": 100,
+  "original_body_sha256": "cc2db56c76efb9354a39affebf95f72c56b60a32624b0cbc760450621a886a4d",
+  "original_hammerburst_mesh_sha256": "4b6bd78407481887e6efcd80532fd64b7108dce2ee6c05d259e19e8b44c0152b",
+  "original_animation_sha256": "18a9499c76d11344f3f7e9f76f0115ab3891e0b92c738652ab0e125a4373af22",
+  "wrist_in_original_closed_mesh": {
+    "position_raw": [
+      -5.953500073839001,
+      33.610587930089,
+      -13.822829813669774
+    ],
+    "orientation_xyzw": [
+      -0.3747784437611221,
+      0.7345594807139846,
+      -0.33274366182782805,
+      -0.45743321140752424
+    ]
+  },
+  "wrist_in_latch_bone_reference": {
+    "position_raw": [
+      2.245603417759895,
+      5.953499850993114,
+      -15.948195547770123
+    ],
+    "orientation_xyzw": [
+      -0.25440361097169667,
+      -0.784420369023758,
+      -0.08816882605089933,
+      0.5587394254015006
+    ]
+  },
+  "local_finger_rotations": [
+    {
+      "bone": 12,
+      "orientation_xyzw": [
+        0.10043229717822867,
+        -0.04265426829999111,
+        -0.2676931595758391,
+        0.957305771107435
+      ]
+    },
+    {
+      "bone": 13,
+      "orientation_xyzw": [
+        -2.238303777321122e-17,
+        3.3996551545606618e-18,
+        -0.06103365634512316,
+        0.9981357086053707
+      ]
+    },
+    {
+      "bone": 14,
+      "orientation_xyzw": [
+        -5.69148817618631e-17,
+        1.2415060185125915e-17,
+        -0.07409042987095595,
+        0.9972515270489872
+      ]
+    },
+    {
+      "bone": 15,
+      "orientation_xyzw": [
+        -0.019361325154004065,
+        0.011251068114310944,
+        -0.7327998060516245,
+        0.6800757287282567
+      ]
+    },
+    {
+      "bone": 16,
+      "orientation_xyzw": [
+        3.022210506601158e-17,
+        -5.811967484067558e-17,
+        -0.6156514024874793,
+        0.7880186232667346
+      ]
+    },
+    {
+      "bone": 17,
+      "orientation_xyzw": [
+        -8.941178341883522e-18,
+        -8.903277198684874e-18,
+        -0.2881891273729301,
+        0.9575735099009522
+      ]
+    },
+    {
+      "bone": 18,
+      "orientation_xyzw": [
+        0.11399896016878484,
+        0.0025009610605197905,
+        -0.5920811632276028,
+        0.7977705675350891
+      ]
+    },
+    {
+      "bone": 19,
+      "orientation_xyzw": [
+        -3.536632723632133e-18,
+        3.0661578826497593e-17,
+        -0.6190864197625267,
+        0.7853228666386946
+      ]
+    },
+    {
+      "bone": 20,
+      "orientation_xyzw": [
+        -3.898065480598949e-17,
+        2.1787586935989436e-17,
+        -0.31315470087492214,
+        0.9497021287329718
+      ]
+    },
+    {
+      "bone": 21,
+      "orientation_xyzw": [
+        0.20080221897060047,
+        -0.07098700813485692,
+        -0.6283223883564495,
+        0.7482314413485922
+      ]
+    },
+    {
+      "bone": 22,
+      "orientation_xyzw": [
+        -4.302840565039581e-18,
+        6.854533097209773e-18,
+        -0.6018082164732093,
+        0.7986406392022228
+      ]
+    },
+    {
+      "bone": 23,
+      "orientation_xyzw": [
+        3.29327095000071e-17,
+        1.0011429812710485e-17,
+        -0.2588190451025207,
+        0.9659258262890683
+      ]
+    },
+    {
+      "bone": 24,
+      "orientation_xyzw": [
+        -0.7382814393640709,
+        0.2795500611341923,
+        0.0016443071281111738,
+        0.6138318791529596
+      ]
+    },
+    {
+      "bone": 25,
+      "orientation_xyzw": [
+        1.9088006911709236e-17,
+        -6.043400127018645e-17,
+        0.10555998100200487,
+        0.9944129375721418
+      ]
+    },
+    {
+      "bone": 26,
+      "orientation_xyzw": [
+        -1.3441958819588486e-17,
+        1.2235166981535212e-18,
+        0.19936689703083285,
+        0.9799249156788991
+      ]
+    }
+  ],
+  "derived_controller_anchor_in_closed_mesh_raw": [
+    -8.060267156267484,
+    32.334205872900235,
+    -8.962938890321736
+  ],
+  "derived_controller_anchor_in_latch_bone_reference_raw": [
+    0.9692213605711358,
+    8.060266933421596,
+    -11.088304624422085
+  ],
+  "current_mechanical_anchor_distance_raw": 16.398254262804464,
+  "current_capture_radius_raw": 3.5,
+  "capture_coherent": false,
+  "evidence_scope": {
+    "single_constructed_hold": true,
+    "saved_body_game": 62276,
+    "observed_hammerburst_mount_game": 44504,
+    "all75_original_key_transforms_represented_by5_distinct_poses": true,
+    "extra_angle_midpoints": 4,
+    "finite_samples": 9,
+    "arm_faces": 4841,
+    "weapon_faces": 9966,
+    "noncoplanar_crossings": 0,
+    "coplanar_positive_area_pairs": 0,
+    "gap_min_raw": 0.02303215931323921,
+    "gap_max_raw": 0.08702965269539314,
+    "minimum_facing_dot": 0.9775541868649944,
+    "continuous_motion_certified": false,
+    "physical_calibration_accepted": false,
+    "actual_runtime_acceptance": false
+  },
+  "current_mechanical_contact_changed": false,
+  "snap_radius_expanded": false,
+  "published": false,
+  "remaining": [
+    "Make capture center and same-part cosmetic grasp coherent",
+    "Check production provider and real lease integration",
+    "Game stereo pixels and physical headset",
+    "Other part poses and complete weapon validation"
+  ],
+  "evidence_sha256": {
+    "analysis\\hammerburst-20261108\\latch-c0-original-motion-check.json": "61d53b813c7a8bc1f1c01cc8663f1169e675c4bc5bb7f0f370185228320924ad",
+    "analysis\\hammerburst-20261108\\latch-c0-original-motion-attribution.json": "127a28b6b27cad3f84cfa963499fbf85e137953c8d994384f885460d6c8f0fa2",
+    "analysis\\hammerburst-20261108\\latch-c0-motion-fit.json": "97f67dc330e1ee37d558327a2dd00aa65cb8811fdccc10dca317bb8442cd068c",
+    "analysis\\hammerburst-20261108\\latch-c0-motion-fit-surface.json": "1ad05d92375dff26f4dde745cfc40c018a0c8cb34b1bf40d759fc9c129627ae7",
+    "analysis\\hammerburst-20261108\\latch-c0-fitted-range-check.json": "1ab8b9999a2069d46476a30985a7203cbda76ba87c7c29bd1aceb717a17ed346",
+    "analysis\\hammerburst-20261108\\latch-c0-fitted-range-contact.json": "a34e632bdbd898c14a8a7db3b112e3180ad5721140f8c5e67955f5a0a425d629",
+    "analysis\\hammerburst-20261108\\latch-c0-motion-grip-coherence.json": "8410a1c6f5a0950dc0a7ac214ec85485f3e80c0afde506981c21d115ea12d4d5",
+    "analysis\\hammerburst-20261108\\c0-mixed-skin-probe\\source-manifest.json": "39029b0f24dde6ef4e4b074992155bb814e4cd39f75810d2a90b00062fb0dd2d",
+    "tools\\weapon-models\\hammerburst_c0_skin_probe.cpp": "1984756f957fd3e2561f19b1fcb6dfa27a41668185e09119e5751e6060e0067e",
+    "docs\\hammerburst-c0-motion-fitting.patch": "25973b17d9cb62aa166fa1cb83e1ce42d58423f66ae652eea864fee977f8a7de"
+  }
+}
