@@ -448,3 +448,12 @@ Lancer原writer确认这些共享入口当前无其未保存改动，但R2/unifi
 离线HBParameterProbe只读原包37975/37976，确认PreviousStateName为NameProperty、ArrayDim1、PropertyFlags原始数值128即0x80参数标记、Next空；不是旧反编译文本所写无参数/local。原包hash与前记录相同，原始字段及日志hash见hb-outer-parameters8-original.json。第一次相对Csc路径及Flags.ToString解析错误分开保留，改安全字段输出后parser0，无游戏调用。
 
 先仅将测试基线改为真实参数8/原flag0x80，旧生产Reader与event适配器均实际RED(-1073740791)，分别卡旧参数证书及旧入队size0，保留before日志。随后生产证书严格要求ParmsSize8/Name参数0x80/width8/offset0/唯一子属性/关闭读，原VM shape也要求8；同一原DeferredEvent保留原调用的8字节，super继续由原VM执行。新测试检查非零Name双word完整保留、调用方随后变更和重复事件不替换原payload/原capture时刻/serial，实际原invoke适配器收到原8字节；空参数地址拒绝并完成原释放清理，0/4/16参数区或local/out/return flags仍拒绝。83真实Reader及127event adapter fake检查通过，生产GearsPlayground目标完整编译0；新增fixture曾有auto混合有/无符号编译失败，分开声明修正后0，日志保留。仍非游戏成功或整枪完成。默认OFF、公共v71、Nativec985/XR1684、100ms/20ms/250ms与单C0/原输入/原事件owner全部不变。
+
+
+## 实际34836：原Name8与完整首发证书通过，保留事件尚未派发
+
+121040/PG882ed93d/prepared e4478363/源6fec538e 在Bol115420/71888全终明确交窗后，独立idle和2251源/6制品/19入口/plan/SHA清单核对，私有game34836 creation134386730624676595实际出现native_hammerburst_first_captured outer1/event1/bytes271/retained1，原Name8、完整原脚本/引用/关闭读证书已被本局实际行使并通过。这不是射击通过：original_delivered记录0、authoritative射线0、operator47288 exit1，R2随后由原路径释放，原总ammo仍156，未typed分项；6发/UP尾段/耗尽/换匣/R0/总零全部未达。旧日志没有HB service/delivery/enter首等待点，不能归因到某个guard或计时。
+
+60477 runner、53189 paired review/encode、91786唯一retention实际terminal0；Native/entries/pad/unified drained1/handstop5/XR0/launcher0/game absent，config/settings原bytes/head原缺恢复核对。20.633333s H2641920x660完整1页paired及game00300/sim00375/game00329/sim00436四实际原图亲审；startup TPS/等待卡/白拾取HUD、完整掌/指/袖及头显不接受保留。retention删797媒体124204776B、保留34836/71888/33016/48h，源文数值不删。全终及独立idle后已最终唯一交Frag122000，其后Snub122512由真实尾维护。
+
+下一增量仅分开原service、delivery和enter的短路条件位置，并在首发等待时最多输出12条已有本地状态和原始Source时间POD。service输出在当前决定后、下一Native Frame复制前，delivery输出在当前决定后；无新增游戏内存读取、getter、Engine调用、输入/pose/时间stamp更新或新writer。attempted_source只作观察，不能用于许可/重放。元数据关闭/身份/Actor/当前Native/手追踪/枪口/按压计数及原100ms、20ms、250ms全部保持。291实际runtime adapter和138实际event adapter fake检查通过，新增区分identity拒绝、muzzle未就绪、手失追和真实时效余量拒绝，均不增加射击或替换原保留事件；原Name8证书83项不变复用。仅GearsPlayground生产目标完整编译0，不称原因修复或游戏成功。

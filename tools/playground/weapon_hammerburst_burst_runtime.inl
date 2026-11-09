@@ -11,6 +11,8 @@ policy::Cohort pressed;
 bool first_debt{},firing_debt{},cancel_requested{},scope_active{},scope_first{};
 policy::Ticket ticket;
 policy::Source entered;
+unsigned enter_stage{};
+policy::Source attempted_source; // Observation only; never a source permit.
 struct Observed {
     policy::Source source{};std::uint64_t shot{};unsigned count{},limit{};
     bool known{},conflict{};
@@ -81,7 +83,7 @@ bool prime(hand::Frame const& f,uptr original_timer) noexcept {
 bool press(hand::Frame const& f) noexcept {
     if(!certificate.known||firing_debt||first_debt||cancel_requested||scope_active)return false;
     auto c=cohort(f);if(!c.known||f.controllers.hands[1].trigger_active!=1||f.controllers.hands[1].trigger<=.35f)return false;
-    pressed=c;return true;
+    pressed=c;enter_stage=0;attempted_source={};return true;
 }
 bool capture_first() noexcept {
     // The adapter must call this only after its exact original Engine
@@ -105,21 +107,35 @@ bool need_source(hand::Frame const& f) noexcept {
     return true;
 }
 bool enter(bool first,policy::Source actual,std::uint64_t event,std::int64_t captured,bool original_resets_counter=false) noexcept {
+    enter_stage=1;attempted_source=actual;
     if(scope_active||cancel_requested||!certificate.known)return false;
+    enter_stage=2;
     unsigned count{},limit{};
     if(!checked_counts(count,limit)){revoke();return false;}
     // Refresh only the decision clock after metadata work, never any source,
     // render, pose or sampling stamp supplied by the real muzzle preparation.
     actual.now=weaponhand::clock_ns(nullptr);
+    attempted_source=actual;
     if(first){
-        if(!first_debt||!vrfire::input.owns_press()||!actual.trigger_down||
-           !policy::same(pressed,actual.cohort)||actual.cohort.presses!=pressed.presses||
-           actual.cohort.releases!=pressed.releases||!event||captured<=0||captured>actual.now||
-           actual.now-captured>250000000||(!original_resets_counter&&count)||limit!=6||!policy::fresh(actual,true))return false;
-    }else if(!completion.enter(actual,event,captured,count,limit,ticket)){
-        if(completion.needs_cancel())revoke();return false;
+        enter_stage=3;if(!first_debt)return false;
+        enter_stage=4;if(!vrfire::input.owns_press())return false;
+        enter_stage=5;if(!actual.trigger_down)return false;
+        enter_stage=6;if(!policy::same(pressed,actual.cohort))return false;
+        enter_stage=7;if(actual.cohort.presses!=pressed.presses)return false;
+        enter_stage=8;if(actual.cohort.releases!=pressed.releases)return false;
+        enter_stage=9;if(!event)return false;
+        enter_stage=10;if(captured<=0||captured>actual.now)return false;
+        enter_stage=11;if(actual.now-captured>250000000)return false;
+        enter_stage=12;if(!original_resets_counter&&count)return false;
+        enter_stage=13;if(limit!=6)return false;
+        enter_stage=14;if(!policy::fresh(actual,true))return false;
+    }else{
+        enter_stage=20;
+        if(!completion.enter(actual,event,captured,count,limit,ticket)){
+            if(completion.needs_cancel())revoke();return false;
+        }
     }
-    entered=actual;observed={};scope_active=true;scope_first=first;return true;
+    entered=actual;observed={};scope_active=true;scope_first=first;enter_stage=0;return true;
 }
 bool permits(policy::Source const& actual) noexcept {
     if(!scope_active||cancel_requested||actual.frame!=entered.frame)return false;

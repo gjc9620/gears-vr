@@ -236,5 +236,22 @@ int main(){
         adapter::after_tick(&f);assert(adapter::requires_release());
         assert(!adapter::source_allowed(f,model.now,model.now,model.now));
         model.r2=false;model.bytes[0]=0;model.owned_press=false;assert(adapter::release_completed(nullptr));checks+=4;}
+    // Same retained event, distinct observed barriers. The probes never grant
+    // a source or replace the first captured invocation/deadline.
+    {reset_event();auto f=active_frame();captured_first(f);event_fixture::identity=false;
+        assert(adapter::service(f.controller.address)&&adapter::service_stage==6&&bridge::cancel_requested);
+        assert(!event_fixture::invocations);model.r2=false;model.bytes[0]=0;model.owned_press=false;
+        assert(adapter::release_completed(nullptr));checks+=3;}
+    {reset_event();auto f=active_frame();captured_first(f);assert(adapter::service(f.controller.address));
+        event_fixture::ready=false;muzzle(f);adapter::deliver(f);
+        assert(adapter::delivery_stage==8&&!event_fixture::invocations&&adapter::owns_pending());
+        event_fixture::ready=true;f.controllers.hands[1].grip_active=0;adapter::deliver(f);
+        assert(adapter::delivery_stage==6&&!event_fixture::invocations&&adapter::owns_pending());
+        model.r2=false;model.bytes[0]=0;model.owned_press=false;assert(adapter::release_completed(nullptr));checks+=4;}
+    {reset_event();auto f=active_frame();captured_first(f);assert(adapter::service(f.controller.address));
+        model.now+=71000000;muzzle(f);adapter::deliver(f);
+        assert(adapter::delivery_stage==10&&bridge::enter_stage==14&&!event_fixture::invocations);
+        assert(bridge::attempted_source.sync==f.controllers.sync_ns&&adapter::owns_pending());
+        model.r2=false;model.bytes[0]=0;model.owned_press=false;assert(adapter::release_completed(nullptr));checks+=4;}
     std::printf("HB actual event adapter: %u original-event/scope/UP/expiry/cleanup fake checks passed; common queue, engine and certificate are fakes\n",checks);
 }

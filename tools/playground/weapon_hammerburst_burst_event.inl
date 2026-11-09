@@ -13,6 +13,16 @@ struct Pending {
 } event;
 std::uint64_t event_serial{};
 bool validated{};
+unsigned service_stage{},delivery_stage{};
+void report_first_wait(wchar_t const* phase) noexcept {
+    static unsigned rows{};
+    if(!log_file||rows>=12)return;
+    ++rows;auto const& source=tx::attempted_source;const auto now=weaponhand::clock_ns(nullptr);
+    fwprintf(log_file,L"native_hammerburst_first_wait phase=%ls service=%u delivery=%u enter=%u validated=%u first_debt=%u cancel=%u source_frame=%llu decision_ns=%lld sync_ns=%lld stereo_ns=%lld render_ns=%lld sampled_ns=%lld event_captured_ns=%lld observed_ns=%lld\n",
+        phase,service_stage,delivery_stage,tx::enter_stage,unsigned(validated),unsigned(tx::first_debt),
+        unsigned(tx::cancel_requested),source.frame,source.now,source.sync,source.stereo,source.render,source.sampled,event.captured,now);
+    fflush(log_file);
+}
 bool targets(std::uint64_t weapon) noexcept {
     return tx::certificate.known&&weapon==tx::certificate.held.weapon.address&&
         common::same_hold(tx::certificate.held,weaponhand::held_binding);
@@ -260,37 +270,51 @@ bool defer(std::uint64_t object,std::uint64_t function) noexcept {
     return true;
 }
 bool service(std::uint64_t controller) noexcept {
+    struct Report {bool first{tx::first_debt};~Report(){if(first)report_first_wait(L"service");}} report;
+    service_stage=1;
     if(!outstanding()&&!owns_pending())return false;
+    service_stage=2;
     if(!tx::certificate.known||controller!=tx::certificate.held.controller.address||
        !weaponhand::current_gt(nullptr)||common::delivering)return false;
     validated=false;
+    service_stage=3;
     if(tx::cancel_requested||vrfire::mode.load(std::memory_order_acquire)!=vrfire::running||
        !weaponhand::client.armed()||(owns_pending()&&common::pending_fire.event.release_required(weaponhand::clock_ns(nullptr)))){
         tx::revoke();release_completed(nullptr);return true;
     }
-    if(!owns_pending())return true;
+    service_stage=4;if(!owns_pending())return true;
     meta::Snapshot schema{};schema.module_base=base;meta::Reader r{schema,meta::Stage::final_check};unsigned reason{};
-    if(!meta::tables(base,schema.objects,schema.names)||!common::pending_identity(r)||!context(r)||!state_firing(r)||
-       !common::hammerburst_refire::original_loop(r,tx::certificate.held.weapon.address,tx::certificate.timer.address,reason)){
+    service_stage=5;if(!meta::tables(base,schema.objects,schema.names)){tx::revoke();return true;}
+    service_stage=6;if(!common::pending_identity(r)){tx::revoke();return true;}
+    service_stage=7;if(!context(r)){tx::revoke();return true;}
+    service_stage=8;if(!state_firing(r)){tx::revoke();return true;}
+    service_stage=9;
+    if(!common::hammerburst_refire::original_loop(r,tx::certificate.held.weapon.address,tx::certificate.timer.address,reason)){
         tx::revoke();return true;
     }
-    validated=true;return true;
+    validated=true;service_stage=0;return true;
 }
 void deliver(hand::Frame const& f) noexcept {
-    if(!validated||!owns_pending()||tx::cancel_requested||common::delivering||
-       vrfire::mode.load(std::memory_order_acquire)!=vrfire::running||!right_tracked(f)||!nativeequipment::current(nullptr,f)||
-       !unified_weapon_fire::ready_for(f,20000000))return;
+    struct Report {bool first{tx::first_debt};~Report(){if(first)report_first_wait(L"deliver");}} report;
+    delivery_stage=1;if(!validated)return;
+    delivery_stage=2;if(!owns_pending())return;
+    delivery_stage=3;if(tx::cancel_requested)return;
+    delivery_stage=4;if(common::delivering)return;
+    delivery_stage=5;if(vrfire::mode.load(std::memory_order_acquire)!=vrfire::running)return;
+    delivery_stage=6;if(!right_tracked(f))return;
+    delivery_stage=7;if(!nativeequipment::current(nullptr,f))return;
+    delivery_stage=8;if(!unified_weapon_fire::ready_for(f,20000000))return;
     auto const& sample=unified_weapon_fire::muzzle_sample;
-    if(!hand::same_frame(f,sample.source))return;
+    delivery_stage=9;if(!hand::same_frame(f,sample.source))return;
     const auto actual=tx::source(sample.source,sample.render_acquisition_ns,sample.sampled_ns,weaponhand::clock_ns(nullptr));
     const auto first=event.kind==common::policy::EventKind::first;
     const bool resets_counter=first&&event.function.address==tx::certificate.outer_first.address;
-    if(!tx::enter(first,actual,event.serial,event.captured,resets_counter))return;
+    delivery_stage=10;if(!tx::enter(first,actual,event.serial,event.captured,resets_counter))return;
     const auto function=common::pending_fire.function.address;
     const auto parameters=common::pending_fire.parameters;const auto bytes=common::pending_fire.parameter_bytes;
-    if(!common::pending_fire.event.claim(weaponhand::clock_ns(nullptr))){tx::leave(false);return;}
+    delivery_stage=11;if(!common::pending_fire.event.claim(weaponhand::clock_ns(nullptr))){tx::leave(false);return;}
     event={};validated=false;common::pending_validated=false;
-    const bool invoked=common::invoke_original(f.weapon.address,function,bytes,parameters.data());
+    delivery_stage=12;const bool invoked=common::invoke_original(f.weapon.address,function,bytes,parameters.data());
     static unsigned delivery_logs{};
     if(log_file&&delivery_logs++<20){fwprintf(log_file,L"native_hammerburst_original_delivered first=%u outer=%u invoked=%u frame=%llu r2_source_down=%u input_owned=%u observed_shot=%llu original_count=%u\n",
         unsigned(first),unsigned(resets_counter),unsigned(invoked),f.key.frame,unsigned(actual.trigger_down),

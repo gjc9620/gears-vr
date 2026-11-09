@@ -125,9 +125,11 @@ int main(){
     }
     {reset_bridge();auto f=frame();prime_first(f);auto s=fresh(f);
         s.sync=fixture::model.now-80000001;assert(!bridge::enter(true,s,1,fixture::model.now));
+        assert(bridge::enter_stage==14&&bridge::attempted_source.sync==s.sync&&bridge::attempted_source.now==fixture::model.now);++checks;
         assert(bridge::first_debt&&!bridge::scope_active);assert(bridge::cancel());checks+=3;}
     {reset_bridge();auto f=frame();prime_first(f);fixture::model.owned_press=false;
-        assert(!bridge::enter(true,fresh(f),1,fixture::model.now));assert(bridge::cancel());checks+=2;}
+        assert(!bridge::enter(true,fresh(f),1,fixture::model.now));
+        assert(bridge::enter_stage==4);assert(bridge::cancel());checks+=3;}
     {reset_bridge();auto f=frame();fixture::model.native_source=false;
         assert(!bridge::prime(f,0x1234));assert(!bridge::capture_first());assert(!bridge::firing_debt);checks+=3;}
     {reset_bridge();auto f=frame();first_shot(f);auto s=fresh(f);
