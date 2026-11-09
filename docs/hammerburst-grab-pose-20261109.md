@@ -275,3 +275,8 @@ Steam 迁移还修正 HB 私有 run_hammerburst_check.py 的 capture identity �
 新增hammerburst_empty_reload_chain.py只做一个普通空仓替换闭环。取枪后原严格6发使L72/R78，必须已有本枪CanReload veto绑定，再复用原真实12个.35DOWN/.6UP六连发把已装72耗至0（这是必要空仓准备，不耗尽全部备弹）。读L0/R78，单次真实空扳机后复读库存/奖励不变、0新轨迹，并要求实际veto消费记录；再进入原替换动作，新增可选首个to1必须真实非零serial且L0/R78，拒绝已自动填满后serial0的inspection fallback。原to4必须经过实骨开盖到位检查，不改任何角度/8次guard。完成入座/关闭需L78/R0，原返射需6轨迹且L72/R0即结束；不再原匣R0复用/剩66耗空/总零/奖励/中断扩展。
 
 入口只允许显式RELOAD+REPLACEMENT+EMPTY_RELOAD_ONLY，拒绝同时support或SUPPLY_BOUNDARIES；旧用途默认不变。复用原core/continuous drain/替换动作及所有时间/身份断言，没有库存setter、动画调用、输入重试或新hook。真实窄driver经10个fake依赖用例检验顺序/首拒绝/文件保留/目录归还/仅一次空扳机：正常、初值错、无/错枪绑定、空仓前自动补满、空扳机自动补满、空扳机射线、无veto消费、返射不完整、实骨下游失败。全部0；不把fake当真实CanReload或原begin serial/实骨覆盖。结果empty-reload-driver-check.json，可复现patch docs/hammerburst-empty-normal-reload-driver.patch。新运行候选待独立标识冻结，尚未stage/申请窗口。
+
+
+新普通空仓候选已冻结 hammerburst-prepared-20261109-230535-empty-normal-once，prepared9ba06095b433d6d5caf484bb7b4100044fdd8132146df5b24ce2c8b189145eeb；仍同PGa05a6c3c和Native806dcbd6，未重编未改姿势hook。2259源/1338Native源/6制品、20个直接HB运行输入及本时点1057项目Python静态上界一次归档供差异核对，不称全部执行。实际入口沿既有run_hammerburst_check.py；plan列明明确前驱全收尾后才fresh idle/十文件原字节备份、既有stage、指定game_path与settings72绑定、原受控runner/原stop/原清理、归档/恢复/实际双路审片/编码/唯一retention/最终交窗，不新增运行封套平台。
+
+ready116c965b384c978232b4b13900228bef4bf78e23e282676910a8a180d7c53493，planb6b1bae74055a1cb9d6a1ef696a6cf0af4e4fa1eb867878c7150b40e7bce1955，直接输入2ccb3a62d4a497cdfb9ce87b316dcfd35e15bc671b6b7c7adb74595c7592bd53。已一次向接Boom4380唯一custody的LS提出尾部路由请求，明确全部早到槽先行、由实际尾独核，不设第二后继。目前仅requested_pending_actual_tail_routing，尚未接受/交窗/stage/采样基线/调用shared idle。源代码最后静态确认：真实before.loaded<capacity且reserve>0时，在stage1之前调用原lancerreload_state::begin并设serial，故新测试在to1要求serial>0与L0/R78确实匹配当前生产路径；原实骨到位guard不变。工程评分仍30%、headsetfalse，不因冻结/排队调整通过率。
