@@ -5,7 +5,7 @@
 #include <memory>
 #include <thread>
 namespace service=cover_physics_query_live;namespace q=gears_cover_physx_query;
-static unsigned prime_calls{},close_calls{},query_calls{};static bool prime_ok=true,fault_query{},wrong_receiver{},query_lock_free=true,stream_truncated{};
+static unsigned prime_calls{},close_calls{},query_calls{};static bool prime_ok=true,fault_query{},wrong_receiver{},query_lock_free=true,stream_truncated{},wrong_asset{};
 static void(*during_query)(){};
 static bool source_read(void* dst,void const* address,size_t n){
     constexpr uintptr_t physx=0x180000000;
@@ -48,7 +48,15 @@ struct HostEngine {
     }
     template<class Shape,class Read,class Guard>q::Code sweep_all(q::source::Source const& source,Shape const& shape,q::Vector const& delta,q::StreamLimits const& limits,Read read,Guard current,q::AllSweepOwners& out){
         const auto code=sweep_all(source,shape,delta,limits,read,current,out.raw);
-        if(code==q::Code::queried){out.owners[0].actor=source.mesh;out.owners[1].actor=source.instance;}
+        if(code==q::Code::queried){
+            namespace asset=gears_cover_physx_asset_actors;
+            q::source::Snapshot scope{};asset::Workspace work{};asset::Snapshot inventory{};
+            if(q::source::capture(0x180000000,0x300000,source,read,current,scope)!=q::source::Code::current)return q::Code::changed;
+            if(asset::observe(0x180000000,0x300000,scope,read,current,work,inventory)!=asset::Code::observed)return q::Code::changed;
+            if(wrong_asset)inventory.bodies[0].actor+=8;
+            if(!current(inventory))return q::Code::changed;
+            out.asset_bodies=inventory;out.owners[0].actor=source.mesh;out.owners[1].actor=source.instance;
+        }
         return code;
     }
 };
@@ -58,7 +66,7 @@ static q::Code nested_code{};static bool pending_during{},poll_during{};
 static void stop_during(){active_session->request_drain();pending_during=active_session->pending_count()!=0;poll_during=active_session->poll_stop();}
 static void nested_query(){q::Overlap out{};nested_code=active_session->overlap(actor,physics_expected,test_box,source_read,guard,out);}
 static void replace_root(){put(physics_instance+0x7c,0);}
-static void reset(){physics_setup();prime_calls=close_calls=query_calls=0;prime_ok=true;fault_query=wrong_receiver=stream_truncated=false;during_query=nullptr;query_lock_free=true;}
+static void reset(){physics_setup();prime_calls=close_calls=query_calls=0;prime_ok=true;fault_query=wrong_receiver=stream_truncated=wrong_asset=false;during_query=nullptr;query_lock_free=true;}
 int main(){
     arena=reinterpret_cast<uintptr_t>(VirtualAlloc(nullptr,saved_arena.size(),MEM_COMMIT|MEM_RESERVE,PAGE_READWRITE));if(!arena)return 99;
     reset();q::Overlap overlap_result{};q::Sweep swept{};q::Vector delta{.1f,.2f,.3f};
@@ -112,8 +120,11 @@ int main(){
     reset();
     {auto owner=std::make_unique<HostSession>();auto all=std::make_unique<q::AllSweepOwners>();C(owner->start(true,true));
         C(owner->sweep_all(actor,physics_expected,test_box,delta,q::StreamLimits{},source_read,guard,*all)==q::Code::queried&&all->raw.hit_count==2&&all->owners[0].actor!=all->owners[1].actor);
+        C(all->asset_bodies.body_count==2&&all->asset_bodies.actor_count==2&&all->asset_bodies.actors[0]==arena+0x88000);
         q::Capsule cap{{0,0,0},{0,0,1},.5f};C(owner->sweep_all(actor,physics_expected,cap,delta,q::StreamLimits{},source_read,guard,*all)==q::Code::queried);
-        all->raw.raw_count=99;all->owners[0].actor=0xdead;stream_truncated=true;
+        all->raw.raw_count=99;all->owners[0].actor=0xdead;all->asset_bodies.actor_count=55;wrong_asset=true;
+        C(owner->sweep_all(actor,physics_expected,test_box,delta,q::StreamLimits{},source_read,guard,*all)==q::Code::changed&&all->asset_bodies.actor_count==55&&all->raw.raw_count==99);
+        wrong_asset=false;stream_truncated=true;
         C(owner->sweep_all(actor,physics_expected,test_box,delta,q::StreamLimits{},source_read,guard,*all)==q::Code::truncated&&all->raw.raw_count==99&&all->owners[0].actor==0xdead);
         stream_truncated=false;during_query=replace_root;
         C(owner->sweep_all(actor,physics_expected,test_box,delta,q::StreamLimits{},source_read,guard,*all)==q::Code::changed&&all->raw.raw_count==99&&all->owners[0].actor==0xdead);

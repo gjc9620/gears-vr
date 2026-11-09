@@ -1,6 +1,7 @@
 #ifndef GEARS_COVER_PHYSICS_ROLES_LIVE_INCLUDED
 #define GEARS_COVER_PHYSICS_ROLES_LIVE_INCLUDED
 #include "cover_physx_query_source.h"
+#include "cover_physx_asset_actors.h"
 
 // Include after weapon_hand_scene_binding. The caller brackets this synchronous
 // read with its admitted ActualContext::current and current backend metadata.
@@ -33,6 +34,20 @@ inline bool matches_query_source(Snapshot const& typed,query_source::Snapshot co
        raw.body!=typed.bodies[unsigned(typed.root)].identity.address||raw.actor!=typed.bodies[unsigned(typed.root)].main)return false;
     for(unsigned i=0;i<typed.bodies.size();++i)if(typed.bodies[i].identity.address!=raw.members[i])return false;
     return true;
+}
+inline bool matches_asset_actors(Snapshot const& typed,gears_cover_physx_asset_actors::Snapshot const& raw){
+    namespace actors=gears_cover_physx_asset_actors;
+    if(!matches_query_source(typed,raw.query_source)||raw.body_count!=unsigned(typed.array.count)||raw.actor_count>raw.body_count)return false;
+    std::array<std::uintptr_t,64> expected{};unsigned unique{};
+    for(unsigned i=0;i<64;++i){auto const& body=raw.bodies[i];
+        if(i>=raw.body_count){if(body.presence!=actors::Presence::not_sampled||body.body||body.actor||body.table||body.scene||body.internal)return false;continue;}
+        if(body.body!=typed.bodies[i].identity.address||body.actor!=typed.bodies[i].main)return false;
+        if(!body.actor){if(body.presence!=actors::Presence::body_data_field_null||body.table||body.scene||body.internal)return false;continue;}
+        if(body.presence!=actors::Presence::actor_observed||body.table!=raw.query_source.actor_table||body.scene!=raw.query_source.scene||!body.internal)return false;
+        bool duplicate=false;for(unsigned n=0;n<unique;++n)duplicate=duplicate||expected[n]==body.actor;
+        if(!duplicate)expected[unique++]=body.actor;
+    }
+    return unique==raw.actor_count&&expected==raw.actors;
 }
 enum class Code {current,unavailable,request,guard,metadata,layout,read,changed,capacity,exception};
 #if defined(GEARS_COVER_BODY_PROTOTYPE) && GEARS_COVER_BODY_PROTOTYPE

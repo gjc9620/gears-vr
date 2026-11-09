@@ -1524,3 +1524,19 @@ Session／C0增加Box与Capsule各一个带归属的sweep_all重载，现有八�
 首轮单元编译因测试guard只给typed而缺原capture需要的plain接口拒绝，补成与实际SourceGuard相同的两接口。下一轮组合fixture在新header的base局部名触发C4459/WX拒绝；修名时我误将三个std::array::size调用一起替换，第三份冻结也被编译拒绝。已恢复这三个调用，只保留参数明确命名，另建v3完整源后六程序全绿。前三版源／日志独立保留，没有关警告、覆盖失败或在失败输入上反复启动游戏。
 
 证据analysis/cover-system-20261108/physx-owner-stream-r82/verification.json及v3-native／unit源、构建与实际依赖回执。本轮未stage／游戏／XR／录制，无新增玩家动作通过。r80五身份及Native8035保持不变，仍仅有Beam8后序意向、未正式受理／获窗；公共v71、旧b144已消费失败均保留。此包的每条归属仍只是读括号，不能提供shape生命周期／ABA排除、共同物理世界fence、完整自身集合或所有形状覆盖；人物胶囊与所有身体／组件／装备自身集合、组合／形变路径及终点占用、physics-hit-muzzle同姿态、Native实际移动恢复、严重肩／身体遮挡、逐点GrabPose、完整CV24／AC22与实体头显继续未完成。工程25%不变，目标active。
+
+## 2026年11月10日 r83完整声明Bodies清单接线与Native编译
+
+上一轮按主人请求核对需求、补充分级与原文索引属于文档进展；本轮继续CV16所需的自身来源读取，将PhysicsAssetInstance声明的Bodies数组中全部BodyData纳入同一次原查询。范围严格限定为该数组：每行保留当前Body身份、空BodyData或实际actor、原NpActor主表、Scene和内部actor反向关系；共享actor只在独立actor列表按首次出现去重，不合并或丢弃Body行。BoneSpring仅有不透明Pointer字段证据，没有把它解释成另一个刚体。空BodyData只表示这个命名字段为空，不等同组件没有其他物理来源。
+
+新增cover_physx_asset_actors.h在当前线程、当前原Image pin和现有C0 owner内，前后关闭原来源、两次完整读取清单并核对typed guard，最终检查输入未变才发布。现有Session SourceGuard通过真实反射角色样本关闭全部Body的类、OwnerComponent、BodyIndex、BodyData及原来源对应；匹配器核对空行、去重顺序和干净尾部。未知actor表、错误Scene或内部反向关系、读取失败、来源改变和所有owner拒绝均保持输出。工作区保留在串行Engine成员，不在游戏栈创建整份大结果。
+
+AllSweepOwners新增asset_bodies；带归属查询在原方法之前取得清单，方法正常返回并完成每条命中归属读取后重新取得并要求一致，最终再关闭原来源和输入后整包发布。缺少typed清单guard或初始非根BodyData未知时，在原调用之前拒绝；原调用后非根项变更则整包拒绝，不重跑原方法，不过滤任何命中。裸AllSweep路径仍不做清单读取。原fault_unknown保持原pin与uncertain，普通只读拒绝不制造锁债。原C0八个观察入口、运行cover_queries默认0及身体Goal拒绝掩体写入保持，没有新增身体／相机writer、Hook或输入。
+
+独立v1冻结r82 v3源，只有4个产品overlay，共1090文件；原GEARS flags逐项不变，GEARS_COVER_BODY_PROTOTYPE和GEARS_COVER_PHYSX_QUERIES均ON。完整Native实际编译链接0，DLL SHA26a97c95270bef68561cb9808c317a2780b2a49a4a71b953a28eb8e891c9833a；673实际依赖／393冻结项目依赖逐SHA，无冻结树外的工作树源码依赖。Native沿原/W4及既有设置，日志37条原有编译警告、本批模块0条；不称整Native /WX。
+
+同一冻结源的8个聚焦程序全部/std:c++17 /O2 /W4 /WX /EHsc /UNDEBUG /MT编译执行0：Owned84／0、Stream40／0、Session69／0、Raw130／0、Owner202／0、C0 OFF20／0、Roles257／0、Asset86／0，实际项目依赖并集57项。新增检查覆盖64行和末项根、共享actor、空字段、非根actor更换、未知主表／错误Scene／反链、每个读取及guard边界失败、过期成员、最后guard修改输入、错误线程、输入／输出别名和超容量拒绝。Owned检查一次查询中的清单关联、typed拒绝发生于原调用前和方法期间变化整包失败；Session实际执行反射SourceGuard与清单读取器，但仍用明确Host替代原engine dispatch。原DLL仅作PE数据、没有装载或执行；对象关系均为合成，没有新增游戏物理证据。
+
+证据analysis/cover-system-20261108/physx-asset-actors-r83/verification.json及v1源、单元／Native构建和实际依赖回执。上述读括号仍不是完整玩家自身集合、actor生命周期、ABA排除或共同物理世界fence。已核对原人物CylinderComponent读取仅证明它等于CollisionComponent以及尺寸／变换；尚无它的物理BodyInstance／actor或确实无该物理来源的证据，不能把本数组当作胶囊、所有组件、附件及装备的全集。下一步继续从已保存字段及原消费者关系核对这部分来源，再与组合身体体积路径、终点占用、physics-hit-muzzle同版和实际移动恢复合流。
+
+本轮未stage／游戏／XR／录制，无新玩家动作通过。r80原五身份／Native8035未改，仍无本方正式受理或当前运行窗，不把队尾意向称verified wait；公共v71及b144已消费失败保留。严重肩／身体遮挡仍FAIL，三方向实际LGrip闭环、完整世界／形状覆盖、身体移动／受击枪口／恢复／逐点GrabPose及CV01–24／AC01–22与头显尚未完成。A20/B30/C20/D15/E15各档.25，工程25%不变；目标active，本轮progress。

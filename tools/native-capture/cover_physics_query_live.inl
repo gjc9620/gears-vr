@@ -22,6 +22,7 @@ template<class Engine=q::Queries> class Session {
             roles::sample(actor,metadata,owner,session.work_,session.after_)==roles::Code::current&&
             roles::same(session.before_,session.after_);}
         bool operator()(q::source::Snapshot const& raw){return (*this)()&&roles::matches_query_source(session.before_,raw);}
+        bool operator()(gears_cover_physx_asset_actors::Snapshot const& raw){return (*this)()&&roles::matches_asset_actors(session.before_,raw);}
     };
     template<class Shape,class Read,class Guard,class Output,class Invoke> q::Code execute(
         weapon_hand_scene_binding::Binding const& actor,gears_cover_pose_phase::Metadata const& metadata,

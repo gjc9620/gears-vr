@@ -14,6 +14,7 @@
 #include "cover_physx_query_source.h"
 #include "cover_physx_stream.h"
 #include "cover_physx_shape_owner.h"
+#include "cover_physx_asset_actors.h"
 
 // Synchronous ORIGINAL scene-query adapter. prime() belongs to Native startup,
 // outside DllMain and game callbacks. Query callers must own the admitted C0/GT
@@ -39,6 +40,7 @@ struct Sweep {std::uint32_t raw_count{},reserved{};Hit raw_hit{};};
 struct AllSweepOwners {
     AllSweep raw{};
     std::array<gears_cover_physx_shape_owner::Observation,max_stream_hits> owners{};
+    gears_cover_physx_asset_actors::Snapshot asset_bodies{};
 };
 namespace detail {
 inline bool digest(void const* bytes,std::size_t n,Digest& out) noexcept {
@@ -174,6 +176,18 @@ inline Code owner_code(gears_cover_physx_shape_owner::Code value)noexcept{
     case owner::Code::links:return Code::owner_links;
     }return Code::source;
 }
+inline Code asset_code(gears_cover_physx_asset_actors::Code value)noexcept{
+    namespace asset=gears_cover_physx_asset_actors;
+    switch(value){
+    case asset::Code::observed:return Code::queried;
+    case asset::Code::request:return Code::request;
+    case asset::Code::guard:return Code::source;
+    case asset::Code::source_changed:case asset::Code::changed:return Code::changed;
+    case asset::Code::read:return Code::owner_read;
+    case asset::Code::unsupported:return Code::owner_unsupported;
+    case asset::Code::links:return Code::owner_links;
+    }return Code::source;
+}
 }
 // Production binds the original Image and original calls below. Explicit Host
 // substitutes can exercise this SAME transaction without executing the DLL.
@@ -182,6 +196,8 @@ template<class ImageType,class Calls> class QueryEngine {
     source::Snapshot before_{},after_{};
     AllSweep stream_candidate_{};
     std::array<gears_cover_physx_shape_owner::Observation,max_stream_hits> owners_candidate_{};
+    gears_cover_physx_asset_actors::Workspace asset_work_{};
+    gears_cover_physx_asset_actors::Snapshot asset_before_{},asset_after_{};
     void fault() noexcept {uncertain_=true;image_.retain_for_process();}
     struct Finish {std::atomic<bool>& value;~Finish(){value=false;}};
     template<class Read,class Guard> Code begin(source::Source const& s,Read read,Guard guard) {
@@ -251,11 +267,26 @@ public:
            source::aliases(&output,sizeof output,&limits,sizeof limits))return Code::request;
         const auto request=s;const Shape geometry=shape;const Vector movement=delta;const auto budget=limits;
         if(!detail::valid(geometry)||!detail::motion(movement)||!detail::stream_limits(budget))return Code::request;
+        if constexpr(std::is_same_v<Output,AllSweepOwners> &&
+            !std::is_invocable_r_v<bool,Guard&,gears_cover_physx_asset_actors::Snapshot const&>)return Code::source;
         if(detail::active_stream_reporter)return Code::reentrant;
         bool expected=false;if(!active_.compare_exchange_strong(expected,true))return Code::reentrant;Finish finish{active_};
         try{const auto ready=begin(request,read,guard);if(ready!=Code::queried)return ready;
             if(!source::same(request,s)||std::memcmp(&geometry,&shape,sizeof shape)||std::memcmp(&movement,&delta,sizeof delta)||
                std::memcmp(&budget,&limits,sizeof limits))return Code::changed;
+            struct AssetGuard {
+                Guard& caller;source::Snapshot const& scope;
+                bool operator()(){return detail::source_guard(caller,scope);}
+                bool operator()(gears_cover_physx_asset_actors::Snapshot const& actors){
+                    if constexpr(std::is_invocable_r_v<bool,Guard&,gears_cover_physx_asset_actors::Snapshot const&>)
+                        return source::same(scope,actors.query_source)&&caller(actors);
+                    else return false;
+                }
+            } asset_guard{guard,before_};
+            if constexpr(std::is_same_v<Output,AllSweepOwners>){
+                const auto code=gears_cover_physx_asset_actors::observe(image_.base(),image_.size(),before_,read,asset_guard,asset_work_,asset_before_);
+                if(code!=gears_cover_physx_asset_actors::Code::observed)return detail::asset_code(code);
+            }
             stream_candidate_={};std::array<Hit,stream_batch_hits> batch{};
             detail::StreamReporter reporter{detail::stream_vtable.data(),&stream_candidate_,batch.data(),GetCurrentThreadId(),budget};
             detail::StreamScope callback(reporter);if(!callback.admitted())return Code::reentrant;
@@ -279,10 +310,13 @@ public:
                         stream_candidate_.hits[i],read,current_owner,owners_candidate_[i]);
                     if(owner!=gears_cover_physx_shape_owner::Code::observed)return detail::owner_code(owner);
                 }
+                const auto asset_closed=gears_cover_physx_asset_actors::observe(image_.base(),image_.size(),before_,read,asset_guard,asset_work_,asset_after_);
+                if(asset_closed!=gears_cover_physx_asset_actors::Code::observed)return detail::asset_code(asset_closed);
+                if(!gears_cover_physx_asset_actors::same(asset_before_,asset_after_))return Code::changed;
                 const auto owner_closed=end(request,read,guard);if(owner_closed!=Code::queried)return owner_closed;
                 if(!source::same(request,s)||std::memcmp(&geometry,&shape,sizeof shape)||std::memcmp(&movement,&delta,sizeof delta)||
                    std::memcmp(&budget,&limits,sizeof limits))return Code::changed;
-                output.raw=stream_candidate_;output.owners=owners_candidate_;
+                output.raw=stream_candidate_;output.owners=owners_candidate_;output.asset_bodies=asset_after_;
             }else output=stream_candidate_;
             return Code::queried;
         }catch(...){return Code::source;}

@@ -39,6 +39,8 @@ static void physics_setup(){
     for(unsigned i=0;i<2;++i){put(arena+0x86000+i*8,body_instances[i]);put(body_instances[i]+0x60,int(i));put(body_instances[i]+0x68,fixture_mesh);
         put(body_instances[i]+0x88,arena+0x88000+i*0x1000);put(body_instances[i]+0x90,uintptr_t{});}
     constexpr uintptr_t physx=0x180000000;
+    for(unsigned i=0;i<2;++i){const auto physical=arena+0x88000+i*0x1000,internal_actor=arena+0x90000+i*0x100;
+        put(physical,physx+0x2330a8);put(physical+0x38,arena+0x8b000);put(physical+0x40,internal_actor);put(internal_actor+0x10,physical);}
     put(arena+0x89000,physx+0x2330a8);put(arena+0x89038,arena+0x8b000);
     put(arena+0x8b000,physx+0x22ccb8);put(arena+0x8b270,arena+0x8c000);
     put(arena+0x8c000,physx+0x23ca98);put(arena+0x8c6b0,arena+0x8b000);
@@ -72,6 +74,35 @@ int GEARS_PHYSICS_ROLES_TEST_MAIN(){
     {auto wrong=raw;wrong.actor=arena+0x88000;C(!roles::matches_query_source(out,wrong));}
     {auto wrong=raw;wrong.source.body_index=0;C(!roles::matches_query_source(out,wrong));}
     {auto wrong=raw;wrong.bodies.data+=8;C(!roles::matches_query_source(out,wrong));}
+    {
+        namespace assets=gears_cover_physx_asset_actors;
+        assets::Snapshot inventory{};inventory.query_source=raw;inventory.body_count=inventory.actor_count=2;
+        for(unsigned i=0;i<2;++i){inventory.bodies[i]={assets::Presence::actor_observed,out.bodies[i].identity.address,
+            out.bodies[i].main,raw.actor_table,raw.scene,arena+0x90000+i*0x100};inventory.actors[i]=out.bodies[i].main;}
+        C(roles::matches_asset_actors(out,inventory));
+        for(unsigned bad=0;bad<12;++bad){auto wrong=inventory;
+            if(bad==0)wrong.bodies[0].body+=8;
+            if(bad==1)wrong.bodies[0].actor+=8;
+            if(bad==2)wrong.bodies[0].table+=8;
+            if(bad==3)wrong.bodies[0].scene+=8;
+            if(bad==4)wrong.bodies[0].internal=0;
+            if(bad==5)wrong.bodies[0].presence=assets::Presence::not_sampled;
+            if(bad==6)wrong.bodies[2].body=8;
+            if(bad==7)wrong.actors[2]=8;
+            if(bad==8)wrong.actor_count=1;
+            if(bad==9)wrong.body_count=1;
+            if(bad==10)wrong.query_source.members[0]+=8;
+            if(bad==11)std::swap(wrong.actors[0],wrong.actors[1]);
+            C(!roles::matches_asset_actors(out,wrong));
+        }
+        auto typed_null=out;typed_null.bodies[0].main=0;
+        auto null_inventory=inventory;null_inventory.bodies[0]={assets::Presence::body_data_field_null,out.bodies[0].identity.address};
+        null_inventory.actor_count=1;null_inventory.actors={out.bodies[1].main};C(roles::matches_asset_actors(typed_null,null_inventory));
+        null_inventory.bodies[0].internal=8;C(!roles::matches_asset_actors(typed_null,null_inventory));
+        auto welded=out;welded.bodies[0].main=out.bodies[1].main;
+        auto shared=inventory;shared.bodies[0].actor=welded.bodies[0].main;shared.actor_count=1;shared.actors={welded.bodies[0].main};
+        C(roles::matches_asset_actors(welded,shared));
+    }
     // The original reflected Owner may refer to the actual Pawn or Mesh; its
     // declared class must match, rather than guessing one universal offset/type.
     put(physics_instance+0x60,fixture_mesh);put(props[2]+0xd0,fixture_mesh_class);C(observe(out)&&out.owner.address==fixture_mesh);

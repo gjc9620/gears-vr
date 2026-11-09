@@ -5,9 +5,10 @@
 #include <memory>
 #include <thread>
 namespace own=gears_cover_physx_shape_owner;
+namespace asset=gears_cover_physx_asset_actors;
 constexpr std::uintptr_t shape0=0x190000,inside0=0x1a0000,body0=0x1b0000,
     shape1=0x1c0000,actor1=0x1d0000,inside1=0x1e0000,body1=0x1f0000;
-enum class Mode {normal,unsupported,links,read,source,malformed,fault,code};
+enum class Mode {normal,unsupported,links,read,source,malformed,fault,code,asset_changed};
 static Mode mode{};static Memory* live_memory{};static unsigned original_calls{},close_calls{},retain_calls{},hit_count=2,owner_reads{};
 static bool probe_called{},pending_inside{},close_inside{};static q::Code nested_code{};
 static void(*owner_probe)(){};
@@ -31,6 +32,7 @@ struct HostCalls {
         if(mode==Mode::links)live_memory->put<std::uintptr_t>(inside1+0xa0,shape1+8);
         if(mode==Mode::source)live_memory->put<std::uintptr_t>(0x150088,actor1);
         if(mode==Mode::code)live_memory->put<unsigned char>(base+0xc4e7,0x90);
+        if(mode==Mode::asset_changed)live_memory->put<std::uintptr_t>(0x140088,actor1);
         count=0;
         while(count<hit_count){const auto take=(std::min)(unsigned(q::stream_batch_hits),hit_count-count);
             for(unsigned k=0;k<take;++k){batch[k]={};const auto shape=(count+k)%2?shape1:shape0;
@@ -60,14 +62,19 @@ static Memory setup(char const* file){
         m.put<std::uintptr_t>(inside,base+(i?0x2272d0:0x226c80));m.put<std::uintptr_t>(inside+0xa0,shape);m.put<std::uintptr_t>(inside+0xd0,body);}
     return m;
 }
+struct Guard {
+    bool operator()(){return true;}
+    bool operator()(s::Snapshot const& raw){return raw.actor==0x160000&&raw.scene==0x170000&&raw.public_scene==0x180000;}
+    bool operator()(asset::Snapshot const& raw){return (*this)(raw.query_source)&&raw.body_count==2;}
+};
 static void probe(){
     pending_inside=current_engine->pending();close_inside=current_engine->close();
     auto nested=std::make_unique<q::AllSweepOwners>();
     nested_code=current_engine->sweep_all(source(),box,delta,q::StreamLimits{},
-        [](void* p,void const* a,std::size_t n){return live_memory->read(p,a,n);},[]{return true;},*nested);
+        [](void* p,void const* a,std::size_t n){return live_memory->read(p,a,n);},Guard{},*nested);
 }
 static bool equal(q::AllSweepOwners const& a,q::AllSweepOwners const& b){
-    if(memcmp(&a.raw,&b.raw,sizeof a.raw))return false;
+    if(memcmp(&a.raw,&b.raw,sizeof a.raw)||!asset::same(a.asset_bodies,b.asset_bodies))return false;
     for(unsigned i=0;i<a.owners.size();++i)if(!own::same(a.owners[i],b.owners[i]))return false;
     return true;
 }
@@ -80,10 +87,7 @@ int main(int argc,char**argv){
         auto read=[&](void* p,void const* a,std::size_t n){const auto at=reinterpret_cast<std::uintptr_t>(a);
             if(at==shape0+0x38||at==shape1+0x38){++owner_reads;if(owner_probe&&!probe_called){probe_called=true;owner_probe();}}
             if(mode==Mode::read&&at==shape1+0x38)return false;return memory.read(p,a,n);};
-        struct Guard {
-            bool operator()(){return true;}
-            bool operator()(s::Snapshot const& raw){return raw.actor==0x160000&&raw.scene==0x170000&&raw.public_scene==0x180000;}
-        } guard;
+        Guard guard;
         {auto engine=std::make_unique<Engine>();current_engine=engine.get();memory.calls=0;
             check(engine->sweep_all(source(),box,delta,q::StreamLimits{},read,guard,*output)==q::Code::unavailable&&equal(*output,*saved)&&!memory.calls,"unprimed actual engine does not read");}
         original_calls=close_calls=retain_calls=owner_reads=0;
@@ -93,6 +97,9 @@ int main(int argc,char**argv){
             check(probe_called&&pending_inside&&!close_inside&&nested_code==q::Code::reentrant&&!close_calls,"pin/in-flight spans owner reads and rejects reentry");
             check(original_calls==1&&output->raw.raw_count==2&&output->raw.hit_count==2&&output->raw.hits[1].bytes.back()==1,"one query retains raw count/order");
             check(output->owners[0].actor==0x160000&&output->owners[1].actor==actor1&&output->owners[1].kind==own::Kind::capsule,"self and foreign actor both retained, no filter");
+            check(output->asset_bodies.body_count==2&&output->asset_bodies.actor_count==1&&
+                output->asset_bodies.bodies[0].presence==asset::Presence::body_data_field_null&&
+                output->asset_bodies.actors[0]==0x160000&&!output->asset_bodies.actors[1],"declared Bodies preserves null row and root actor, foreign hit not added");
             check(output->owners[2].kind==own::Kind::unknown&&!output->owners[2].actor,"unused owner tail cleared");
             owner_probe=nullptr;hit_count=0;
             check(engine->sweep_all(source(),box,delta,q::StreamLimits{},read,guard,*output)==q::Code::queried&&!output->raw.hit_count&&!output->owners[0].actor,"empty data clears old owners, not occupancy permission");
@@ -101,9 +108,9 @@ int main(int argc,char**argv){
             hit_count=2;q::Capsule cap{{0,0,0},{0,0,1},.5f};
             check(engine->sweep_all(source(),cap,delta,q::StreamLimits{},read,guard,*output)==q::Code::queried,"capsule path uses same ownership transaction");
             check(!engine->pending()&&engine->close(),"normal ownership query releases active scope");}
-        const std::array<std::pair<Mode,q::Code>,7> failures{{{Mode::unsupported,q::Code::owner_unsupported},{Mode::links,q::Code::owner_links},
+        const std::array<std::pair<Mode,q::Code>,8> failures{{{Mode::unsupported,q::Code::owner_unsupported},{Mode::links,q::Code::owner_links},
             {Mode::read,q::Code::owner_read},{Mode::source,q::Code::changed},{Mode::malformed,q::Code::callback_rejected},
-            {Mode::fault,q::Code::fault_unknown},{Mode::code,q::Code::code}}};
+            {Mode::fault,q::Code::fault_unknown},{Mode::code,q::Code::code},{Mode::asset_changed,q::Code::changed}}};
         for(auto const& test:failures){memory=initial;mode=test.first;*output=*saved;original_calls=owner_reads=retain_calls=0;
             auto engine=std::make_unique<Engine>();check(engine->prime(),"failure fixture prime");
             check(engine->sweep_all(source(),box,delta,q::StreamLimits{},read,guard,*output)==test.second&&equal(*output,*saved),"whole attributed output unchanged on failure");
@@ -113,6 +120,15 @@ int main(int argc,char**argv){
             else check(!engine->uncertain()&&!engine->pending()&&engine->close(),"read-only rejection does not fabricate original lock debt");}
         memory=initial;mode=Mode::normal;*output=*saved;original_calls=owner_reads=0;
         {auto engine=std::make_unique<Engine>();check(engine->prime(),"truncation fixture");
+            check(engine->sweep_all(source(),box,delta,q::StreamLimits{},read,[]{return true;},*output)==q::Code::source&&
+                equal(*output,*saved)&&!original_calls,"missing typed inventory guard rejects before original");
+            struct Reject:Guard {using Guard::operator();bool operator()(asset::Snapshot const&){return false;}} reject;
+            check(engine->sweep_all(source(),box,delta,q::StreamLimits{},read,reject,*output)==q::Code::source&&
+                equal(*output,*saved)&&!original_calls,"typed inventory rejection precedes original");
+            memory.put<std::uintptr_t>(0x140088,actor1);memory.put<std::uintptr_t>(actor1,base+0x2330b0);
+            check(engine->sweep_all(source(),box,delta,q::StreamLimits{},read,guard,*output)==q::Code::owner_unsupported&&
+                equal(*output,*saved)&&!original_calls,"unsupported non-root BodyData rejects before original");
+            memory=initial;
             check(engine->sweep_all(source(),box,delta,q::StreamLimits{1,2},read,guard,*output)==q::Code::truncated&&equal(*output,*saved)&&!owner_reads,"truncated stream never obtains ownership data");
             const auto calls=original_calls;check(engine->sweep_all(source(),box,delta,q::StreamLimits{0,1},read,guard,*output)==q::Code::request&&original_calls==calls,"bad budget never calls original");
             q::Code wrong{};const auto request=source();std::thread t([&](){wrong=engine->sweep_all(request,box,delta,q::StreamLimits{},read,guard,*output);});t.join();
