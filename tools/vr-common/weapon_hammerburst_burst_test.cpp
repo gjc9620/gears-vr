@@ -31,7 +31,7 @@ int main(){
             assert(b.permits(t,s));
             assert(b.leave(t,100+before,before+1,true,true));
             assert(!b.permits(t,s));assert(!b.leave(t,100+before,before+1,true,true));
-            ++s.frame;checks+=8;
+            ++s.frame;++s.cohort.key.frame;checks+=8;
         }
         assert(b.state()==hb::State::idle);assert(!b.commit(source(),100,1,6,true));
         hb::Ticket seventh{};assert(!b.enter(s,7,s.now,6,6,seventh));checks+=3;
@@ -108,5 +108,26 @@ int main(){
     {auto b=armed();auto s=source();hb::Ticket t{};
         assert(b.enter(s,1,s.now,1,6,t));assert(b.leave(t,101,2,true,true));
         assert(!b.enter(s,1,s.now,2,6,t));assert(b.enter(s,2,s.now,2,6,t));checks+=4;}
+    // Child firing roles can share a ticket only within its actual Native
+    // Frame. No altered ticket can close it or become a new invocation.
+    for(unsigned mutation=0;mutation<4;++mutation){
+        auto b=armed();auto s=source();hb::Ticket t{};assert(b.enter(s,1,s.now,1,6,t));
+        auto other=t;
+        switch(mutation){case 0:++other.serial;break;case 1:++other.event;break;
+            case 2:++other.frame;break;case 3:++other.before;break;}
+        assert(!b.permits(other,s));assert(!b.leave(other,101,2,true,true));
+        assert(b.permits(t,s));auto next=s;++next.frame;++next.cohort.key.frame;
+        assert(!b.permits(t,next));assert(b.leave(t,101,2,true,true));checks+=6;
+    }
+    {auto b=armed();auto s=source();hb::Ticket t{};++s.frame;
+        assert(!b.enter(s,1,s.now,1,6,t));assert(b.state()==hb::State::committed);checks+=2;}
+    // Counter wrap or a second release never looks like the one real UP.
+    {auto s=source();s.cohort.releases=0xffffffffu;hb::Completion b;
+        assert(b.commit(s,100,1,6,true));s.trigger_down=false;s.cohort.releases=0;
+        assert(!b.observe(s,true));assert(b.needs_cancel());checks+=3;}
+    // A revoked in-flight invocation cannot be completed by its old callback.
+    {auto b=armed();auto s=source();hb::Ticket t{};assert(b.enter(s,1,s.now,1,6,t));
+        b.revoke();assert(!b.permits(t,s));assert(!b.leave(t,101,2,true,true));
+        assert(b.needs_cancel());checks+=4;}
     std::printf("HB finite original-burst ledger: %u CPU boundary checks passed; no runtime adapter enabled\n",checks);
 }

@@ -33,7 +33,7 @@ struct Source {
 };
 inline bool fresh(Source const& s,bool dispatch_reserve=false) noexcept {
     constexpr std::int64_t maximum_age=100000000,reserve=20000000;
-    if(!s.authenticated||!s.cohort.known||!s.frame||s.now<=0)return false;
+    if(!s.authenticated||!s.cohort.known||!s.frame||s.frame!=s.cohort.key.frame||s.now<=0)return false;
     for(auto stamp:{s.sync,s.stereo,s.render,s.sampled})
         if(stamp<=0||stamp>s.now||s.now-stamp>maximum_age-(dispatch_reserve?reserve:0))return false;
     return true;
