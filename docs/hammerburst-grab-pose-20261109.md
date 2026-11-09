@@ -200,3 +200,15 @@ Lancer确认当前V4通用契约2984字节/完整32SHA/reference15稳定，HB真
 新未发布作者夹具 `tools/weapon-models/fixtures/hammerburst_latch_motion_c0_candidate.json` 保留原mesh腕及Latch bone-local腕、15局部quat和证据SHA；旧closed夹具仍保留。反算的原down20/left镜像controller中心mesh=(-8.06026716,32.33420587,-8.96293889)raw、Latch-local=(.96922136,8.06026693,-11.08830462)raw，离当前机械contact16.39825426raw（约16.4cm），仍超原3.5cm半径。未改获取点、扩大半径、发布profile或写追踪源；这项不一致明确阻止生产接入。下一步必须将真实获取与同一部件作者抓姿使用同一controller基准，再接既有真实lease/V4消费者。原连续段、游戏双眼和头显、其他部件姿势、有限供弹HB185428实际运行仍待完成。
 
 证据latch-c0-motion-fit、latch-c0-motion-fit-surface、latch-c0-fitted-range-check、latch-c0-fitted-range-contact、latch-c0-motion-grip-coherence各JSON，图latch-c0-motion-fit-views.png；本轮六个作者/检查脚本保存 `docs/hammerburst-c0-motion-fitting.patch`，反向git apply --check通过。未动冻结HB185428、公共制品或共享Native/C0源，未启动游戏。
+
+## 新补核：手指互穿明确拒绝；同基准获取换算源码独立通过
+
+最新工作区要求同手非邻面检查，未穿枪不能替代自然整手。新增1891原手/混合袖口面的双向edge/triangle self检查，按原bind精确float位置与非零骨/byte权重map建立UV缝邻接，绝不以当前顶点重合排除交线。原reference有83对、全为主导palm/palm；当前motion候选closed/middle/open分别582/587/584对，其中按主导区域中/无名114、无名/小45、中/拇13、食/中4，在三姿势一致。不能用原reference83对掩盖这些新跨指交线，明确拒绝当前候选；coplanar self、闭合实体和完整自然拟合仍未认证。
+
+只保持同一腕/食指/拇指，后三指回到原reference MCP并使用35/50/25、40/55/30、45/60/30度屈曲（移除既有中指额外MCP30）的单次放松对照，self313，仍有食/中54、中/无名11等；同时新增完整上肢对枪137交线，仍拒绝。完整两组三视图按指列着色亲看，latch-finger-columns-rejection.png；并未将较少计数当自然通过。motion夹具状态已改REJECTED_CROSS_FINGER_SELF_INTERSECTION并加入self source SHA，旧九样本枪体几何证据保留为局部条件。证据latch-c0-motion-self-surface.json、latch-c0-resting-fingers-check.json；三个脚本保存docs/hammerburst-self-surface-rejection.patch，反向git apply --check通过。
+
+另外完成独立纯计算 `tools/vr-common/weapon_hammerburst_latch_mount.h`。输入同一原part/gun刚体frame、原part-local腕、model scale及完整Marcus115几何签名，先算目标腕，再逆原down20/left calibration得到Grip；机械获取的weapon-local metres位置与显示world Grip来自同一个结果，避免“指腹表面点等于控制器中心”的混用。转换不修改输入，不读引擎/时钟，不提供半径、lease或发布资格；未经self/自然整手接受的fixture没有接入生产，旧3.5cm获取半径、旧机械contact、V4消费者和HB185428冻结均未改。
+
+新增同名_test.cpp，冻结28-header树仅作其项目依赖输入；独立Visual Studio18/x64 Release /W4 /WX /EHsc编译0、实际测试0。1096坐标检查验证原fixture反算中心与旧点距离16.39825426raw、五原角度下单位10/100/500及part/body缩放的腕/Grip/weapon-space往返、末字节错误rig签名、无效单位/缩放、非有限profile和坏quat拒绝且输出保持。数量不是武器通过；纯换算源码与测试已准备，production_hookup=false。准确源码/程序/header manifest SHA及构建结果在analysis/hammerburst-20261108/latch-mount-build/build-check.json。
+
+只读实际44504存档geometry行也补核：相对contact-pivot与原reference同一局部向量旋转残差4.118e-9m，原铰链轴残差6.717e-8，支持该已观测闭合骨基准一致；不是当前原子骨/GPU或新抓姿实际消费证明。latch-44504-reference-basis-check.json绑定原PG日志SHA。下一步继续修后三指和指列排列，同时保留已完成的获取映射基础；先通过自身表面及枪体联合条件，再将真正可接受的profile接到同一真实获取/lease和C0。未启动游戏、未改公共制品。

@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "status": "UNPUBLISHED_OFFLINE_NINE_SAMPLE_LATCH_MOTION_CANDIDATE",
+  "status": "REJECTED_CROSS_FINGER_SELF_INTERSECTION",
   "units_per_metre": 100,
   "original_body_sha256": "cc2db56c76efb9354a39affebf95f72c56b60a32624b0cbc760450621a886a4d",
   "original_hammerburst_mesh_sha256": "4b6bd78407481887e6efcd80532fd64b7108dce2ee6c05d259e19e8b44c0152b",
@@ -203,6 +203,7 @@
   "snap_radius_expanded": false,
   "published": false,
   "remaining": [
+    "Repair cross-finger and finger/palm self intersections; current motion candidate rejected",
     "Make capture center and same-part cosmetic grasp coherent",
     "Check production provider and real lease integration",
     "Game stereo pixels and physical headset",
@@ -219,5 +220,310 @@
     "analysis\\hammerburst-20261108\\c0-mixed-skin-probe\\source-manifest.json": "39029b0f24dde6ef4e4b074992155bb814e4cd39f75810d2a90b00062fb0dd2d",
     "tools\\weapon-models\\hammerburst_c0_skin_probe.cpp": "1984756f957fd3e2561f19b1fcb6dfa27a41668185e09119e5751e6060e0067e",
     "docs\\hammerburst-c0-motion-fitting.patch": "25973b17d9cb62aa166fa1cb83e1ce42d58423f66ae652eea864fee977f8a7de"
+  },
+  "self_surface_check": {
+    "scope_triangles": 1891,
+    "canonical_adjacency": "exact original bind float position plus exact nonzero bone/byte-weight map; never current posed positions",
+    "samples": [
+      {
+        "case": "original_reference",
+        "nonadjacent_triangle_pairs": 83,
+        "by_dominant_region": [
+          {
+            "regions": [
+              "palm",
+              "palm"
+            ],
+            "pairs": 83
+          }
+        ]
+      },
+      {
+        "case": "key_0",
+        "nonadjacent_triangle_pairs": 582,
+        "by_dominant_region": [
+          {
+            "regions": [
+              "palm",
+              "palm"
+            ],
+            "pairs": 121
+          },
+          {
+            "regions": [
+              "middle",
+              "ring"
+            ],
+            "pairs": 114
+          },
+          {
+            "regions": [
+              "middle",
+              "palm"
+            ],
+            "pairs": 88
+          },
+          {
+            "regions": [
+              "forearm",
+              "palm"
+            ],
+            "pairs": 83
+          },
+          {
+            "regions": [
+              "little",
+              "ring"
+            ],
+            "pairs": 45
+          },
+          {
+            "regions": [
+              "little",
+              "palm"
+            ],
+            "pairs": 30
+          },
+          {
+            "regions": [
+              "palm",
+              "ring"
+            ],
+            "pairs": 24
+          },
+          {
+            "regions": [
+              "middle",
+              "middle"
+            ],
+            "pairs": 21
+          },
+          {
+            "regions": [
+              "ring",
+              "ring"
+            ],
+            "pairs": 20
+          },
+          {
+            "regions": [
+              "little",
+              "little"
+            ],
+            "pairs": 19
+          },
+          {
+            "regions": [
+              "middle",
+              "thumb"
+            ],
+            "pairs": 13
+          },
+          {
+            "regions": [
+              "index",
+              "middle"
+            ],
+            "pairs": 4
+          }
+        ]
+      },
+      {
+        "case": "key_10",
+        "nonadjacent_triangle_pairs": 587,
+        "by_dominant_region": [
+          {
+            "regions": [
+              "middle",
+              "ring"
+            ],
+            "pairs": 114
+          },
+          {
+            "regions": [
+              "palm",
+              "palm"
+            ],
+            "pairs": 111
+          },
+          {
+            "regions": [
+              "middle",
+              "palm"
+            ],
+            "pairs": 87
+          },
+          {
+            "regions": [
+              "forearm",
+              "palm"
+            ],
+            "pairs": 86
+          },
+          {
+            "regions": [
+              "little",
+              "ring"
+            ],
+            "pairs": 45
+          },
+          {
+            "regions": [
+              "little",
+              "palm"
+            ],
+            "pairs": 30
+          },
+          {
+            "regions": [
+              "palm",
+              "ring"
+            ],
+            "pairs": 24
+          },
+          {
+            "regions": [
+              "middle",
+              "middle"
+            ],
+            "pairs": 21
+          },
+          {
+            "regions": [
+              "ring",
+              "ring"
+            ],
+            "pairs": 20
+          },
+          {
+            "regions": [
+              "little",
+              "little"
+            ],
+            "pairs": 19
+          },
+          {
+            "regions": [
+              "middle",
+              "thumb"
+            ],
+            "pairs": 13
+          },
+          {
+            "regions": [
+              "forearm",
+              "forearm"
+            ],
+            "pairs": 13
+          },
+          {
+            "regions": [
+              "index",
+              "middle"
+            ],
+            "pairs": 4
+          }
+        ]
+      },
+      {
+        "case": "key_11",
+        "nonadjacent_triangle_pairs": 584,
+        "by_dominant_region": [
+          {
+            "regions": [
+              "palm",
+              "palm"
+            ],
+            "pairs": 119
+          },
+          {
+            "regions": [
+              "middle",
+              "ring"
+            ],
+            "pairs": 114
+          },
+          {
+            "regions": [
+              "middle",
+              "palm"
+            ],
+            "pairs": 87
+          },
+          {
+            "regions": [
+              "forearm",
+              "palm"
+            ],
+            "pairs": 75
+          },
+          {
+            "regions": [
+              "little",
+              "ring"
+            ],
+            "pairs": 45
+          },
+          {
+            "regions": [
+              "little",
+              "palm"
+            ],
+            "pairs": 30
+          },
+          {
+            "regions": [
+              "palm",
+              "ring"
+            ],
+            "pairs": 24
+          },
+          {
+            "regions": [
+              "middle",
+              "middle"
+            ],
+            "pairs": 21
+          },
+          {
+            "regions": [
+              "ring",
+              "ring"
+            ],
+            "pairs": 20
+          },
+          {
+            "regions": [
+              "little",
+              "little"
+            ],
+            "pairs": 19
+          },
+          {
+            "regions": [
+              "middle",
+              "thumb"
+            ],
+            "pairs": 13
+          },
+          {
+            "regions": [
+              "forearm",
+              "forearm"
+            ],
+            "pairs": 13
+          },
+          {
+            "regions": [
+              "index",
+              "middle"
+            ],
+            "pairs": 4
+          }
+        ]
+      }
+    ],
+    "source_sha256": "f66c78c193a711a6383eb495ffa73e9e75bd5c005f1c6f8890631d40de66f263",
+    "accepted": false
   }
 }

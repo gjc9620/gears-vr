@@ -1,0 +1,90 @@
+diff --git a/analysis/hammerburst-20261108/check-c0-latch-self-surface.py b/analysis/hammerburst-20261108/check-c0-latch-self-surface.py
+new file mode 100644
+--- /dev/null
++++ b/analysis/hammerburst-20261108/check-c0-latch-self-surface.py
+@@ -0,0 +1,43 @@
++"""Nonadjacent original hand-skin crossings; UV adjacency is bind/weight based."""
++from pathlib import Path
++from collections import defaultdict,Counter
++import json,sys
++import numpy as np
++R=Path.cwd();A=R/'analysis/hammerburst-20261108';T=A/'c0-mixed-skin-probe'
++p=A/'check-c0-hb-mixed-skin.py';c={};exec(compile(p.read_text().split('for name,faces in ')[0],str(p),'exec'),c);ctx=c['ctx'];faces=c['surface'].triangles;audit=c['audit'];edges=audit['edges'](faces)
++p=A/'attribute-c0-arm-crossings.py';s=p.read_text();helper=dict(np=np);exec(compile(s[s.index('def pairs('):s.index('\ndef bones(')],str(p),'exec'),helper)
++canonical={};ids=[]
++for i,position in enumerate(ctx['v'][:,:3]):
++    weights=defaultdict(int)
++    for b,w in zip(ctx['indices'][i],ctx['weights'][i]):
++        if w>0:weights[int(b)]+=int(round(float(w)*255))
++    key=(tuple(float(x) for x in position),tuple(sorted(weights.items())))
++    if key not in canonical:canonical[key]=len(canonical)
++    ids.append(canonical[key])
++ids=np.asarray(ids);topology=[set(ids[f]) for f in faces];incident=defaultdict(list)
++for i,f in enumerate(faces):
++    for a,b in [(f[0],f[1]),(f[1],f[2]),(f[2],f[0])]:incident[tuple(sorted((int(a),int(b))))].append(i)
++def region(b):
++    return 'index' if 12<=b<=14 else 'middle' if 15<=b<=17 else 'ring' if 18<=b<=20 else 'little' if 21<=b<=23 else 'thumb' if 24<=b<=26 else 'palm' if b==11 else 'forearm' if b in [10,29] else 'other'
++def labels(f):
++    w=Counter()
++    for i in f:
++        for b,weight in zip(ctx['indices'][i],ctx['weights'][i]):
++            if weight>0:w[region(int(b))]+=float(weight)
++    return [name for name,value in w.most_common() if value>.0001]
++regions=[labels(f) for f in faces];rows=[]
++def audit_skin(name,vertices):
++    hits=helper['pairs'](vertices,edges,vertices[faces]);pairs={}
++    for edge,face,point in hits:
++        key=tuple(int(x) for x in edges[edge])
++        for i in incident[key]:
++            if topology[i]&topology[face]:continue
++            pair=tuple(sorted((i,face)))
++            if pair not in pairs:pairs[pair]=dict(triangles=list(pair),original_vertices=[faces[j].tolist() for j in pair],regions=[regions[j] for j in pair],point_raw=point.tolist())
++    kinds=Counter(tuple(sorted((r['regions'][0][0],r['regions'][1][0]))) for r in pairs.values());row=dict(case=name,nonadjacent_triangle_pairs=len(pairs),by_dominant_region=[dict(regions=list(k),pairs=n) for k,n in kinds.most_common()])
++    return dict(summary=row,pairs=list(pairs.values()))
++cases=[('original_reference',ctx['v'][:,:3])]+[(name,np.load(T/'fitted-range'/(name+'-geometry.npz'))['hand']) for name in ['key_0','key_10','key_11']]
++for name,vertices in cases:
++    result=audit_skin(name,vertices);rows.append(result['summary']);(T/(name+'-self-crossings.json')).write_text(json.dumps(result,indent=2));print(json.dumps(result['summary']),flush=True)
++report=dict(geometry_only=True,original_triangles=len(faces),canonical_adjacency='exact original bind float position plus exact nonzero bone/byte-weight map; never current posed positions',samples=rows,coplanar_self_overlap_checked=False,closed_solid_proof=False,skin_fit_accepted=False,published=False,game_started=False)
++(A/'latch-c0-motion-self-surface.json').write_text(json.dumps(report,indent=2))
+diff --git a/analysis/hammerburst-20261108/check-c0-latch-resting-fingers.py b/analysis/hammerburst-20261108/check-c0-latch-resting-fingers.py
+new file mode 100644
+--- /dev/null
++++ b/analysis/hammerburst-20261108/check-c0-latch-resting-fingers.py
+@@ -0,0 +1,17 @@
++"""One explicit relaxed three-finger recipe; unchanged wrist/index/thumb."""
++from pathlib import Path
++import json,struct,subprocess,hashlib
++import numpy as np
++R=Path.cwd();A=R/'analysis/hammerburst-20261108';T=A/'c0-mixed-skin-probe';D=T/'natural-rest1';D.mkdir(exist_ok=True)
++p=A/'check-c0-latch-self-surface.py';s={};exec(compile(p.read_text().split('\ncases=[')[0],str(p),'exec'),s);ctx=s['ctx'];matrix=s['c']['matrix'];original=np.load(T/'fitted-range/key_0-geometry.npz')
++p=A/'prepare-c0-hb-input.py';q=dict(np=np);exec(compile('def quaternion'+p.read_text().split('def quaternion',1)[1].split('\ndata=numbers',1)[0],str(p),'exec'),q)
++data=np.frombuffer((T/'fitted-range/key_0-input.bin').read_bytes(),dtype='<f8').copy();before=data.copy();recipe=[[35,50,25],[40,55,30],[45,60,30]]
++for digit,angles in enumerate(recipe):
++    for joint,degrees in enumerate(angles):
++        bone=15+digit*3+joint;parent=ctx['ref'][bone]['parent'];bind_local=np.linalg.inv(ctx['bind'][parent])@ctx['bind'][bone];rotation=bind_local[:3,:3]@ctx['rot'](ctx['turn'](2,-degrees));data[20+4*(bone-12):24+4*(bone-12)]=q['quaternion'](rotation)
++assert np.array_equal(data[:32],before[:32]) and np.array_equal(data[68:],before[68:])
++source=D/'input.bin';output=D/'output.bin';source.write_bytes(struct.pack('<80d',*data));exe=T/'build-vs/Release/HammerburstC0SkinProbe.exe';r=subprocess.run([str(exe),str(T/'fixture'),str(source),str(output),'--constructed-gun-pose',str(T/'front-side-hold-pose.bin')],capture_output=True,text=True);assert r.returncode==0,(r.stdout,r.stderr);status=json.loads(r.stdout);values=np.frombuffer(output.read_bytes(),dtype='<f8');gun=matrix(values[:7]);world=np.asarray([matrix(p) for p in values[28:].reshape(115,7)]);delta=np.linalg.inv(gun)@world@ctx['inverse'];hand=np.zeros_like(ctx['v'])
++for k in range(4):hand+=np.einsum('nij,nj->ni',delta[ctx['indices'][:,k]],ctx['v'])*ctx['weights'][:,k,None]
++hand=hand[:,:3];self_result=s['audit_skin']('natural-rest1',hand);(D/'self-crossings.json').write_text(json.dumps(self_result,indent=2));print(json.dumps(self_result['summary']),flush=True)
++armfaces=original['arm_faces'];weapon=original['weapon'];wf=original['weapon_faces'];audit=s['audit'];forward=audit['crossings'](hand,audit['edges'](armfaces),weapon[wf]);reverse=audit['crossings'](weapon,audit['edges'](wf),hand[armfaces]);sha=lambda p:hashlib.sha256(p.read_bytes()).hexdigest();np.savez(D/'geometry.npz',hand=hand,arm_faces=armfaces,weapon=weapon,weapon_faces=wf,weapon_bone=original['weapon_bone'])
++report=dict(geometry_only=True,recipe_degrees=recipe,original_reference_local_MCP_used=True,removed_extra_middle_MCP30=True,wrist_index_thumb_unchanged=True,compose=status,self_crossings=self_result['summary'],gun_crossings=dict(forward=forward,reverse=reverse,total=forward+reverse),input_sha256=sha(source),output_sha256=sha(output),skin_fit_accepted=False,published=False,game_started=False);(A/'latch-c0-resting-fingers-check.json').write_text(json.dumps(report,indent=2));print(json.dumps(report,indent=2))
+diff --git a/analysis/hammerburst-20261108/render-latch-finger-columns.py b/analysis/hammerburst-20261108/render-latch-finger-columns.py
+new file mode 100644
+--- /dev/null
++++ b/analysis/hammerburst-20261108/render-latch-finger-columns.py
+@@ -0,0 +1,15 @@
++"""Dense finger-column views; do not hide self intersections behind gun counts."""
++from pathlib import Path
++import json,numpy as np
++from PIL import Image,ImageDraw
++R=Path.cwd();A=R/'analysis/hammerburst-20261108';T=A/'c0-mixed-skin-probe';p=A/'check-c0-latch-self-surface.py';c={};exec(compile(p.read_text().split('\ncases=[')[0],str(p),'exec'),c)
++colors=dict(index=(245,210,60),middle=(240,130,55),ring=(180,110,225),little=(70,190,205),thumb=(225,75,80),palm=(185,150,115),forearm=(145,155,165),other=(120,120,120));im=Image.new('RGB',(1800,1300),'#121821')
++cases=[('Current motion candidate / SELF FAIL',T/'fitted-range/key_0-geometry.npz'),('Relaxed recipe / SELF AND GUN FAIL',T/'natural-rest1/geometry.npz')]
++for row,(name,path) in enumerate(cases):
++    g=np.load(path);hand=g['hand'];gun=g['weapon'];wf=g['weapon_faces'];faces=c['faces'];points=hand[np.unique(faces)];center=(points.min(0)+points.max(0))/2
++    for col,view in enumerate([np.array([1.,-.4,.5]),np.array([-1.,.4,.3]),np.array([.1,.1,1.])]):
++        cell=Image.new('RGB',(600,650),'#121821');draw=ImageDraw.Draw(cell);view/=np.linalg.norm(view);right=np.cross(view,[0,0,1]);right/=np.linalg.norm(right);up=np.cross(right,view);objects=[(hand[f],colors[c['regions'][i][0]]) for i,f in enumerate(faces)]+[(gun[f],(70,75,80)) for f in wf];objects.sort(key=lambda item:float(item[0].mean(0)@view))
++        for triangle,color in objects:
++            n=np.cross(triangle[1]-triangle[0],triangle[2]-triangle[0]);l=np.linalg.norm(n);shade=.5+.5*abs(n@view/l) if l>1e-9 else .5;xy=np.column_stack([300+(triangle-center)@right*24,330-(triangle-center)@up*24]);draw.polygon([tuple(x) for x in xy],fill=tuple(int(v*shade) for v in color))
++        draw.text((12,12),name,fill='white');draw.text((12,32),'Original skin / existing C0 / offline, unpublished',fill='#ffcc66');im.paste(cell,(col*600,row*650))
++im.save(A/'latch-finger-columns-rejection.png');print(A/'latch-finger-columns-rejection.png')
