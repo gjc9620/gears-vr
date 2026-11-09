@@ -9,7 +9,7 @@ namespace gears_cover_grab_pose_adapter {
 namespace body=gears_full_body_c0;
 namespace grab=gears_cover_grab_pose;
 namespace vr=gears_vr;
-enum class Status {prepared,inactive,alias,binding,reference,body,pose,unreachable,residual};
+enum class Status {prepared,inactive,alias,binding,reference,body,pose,unreachable,residual,lod};
 struct Result {Status status{Status::prepared};grab::Code pose{grab::Code::prepared};};
 struct Workspace {
     body::Workspace body_work{};
@@ -19,11 +19,13 @@ struct Workspace {
 };
 inline Result compose(body::Model const& model,body::Frame const& frame,
     grab::Frame const& input,grab::Contact const& contact,grab::Profile const& profile,
+    std::array<std::uint64_t,2> const& desired_bones,
     Workspace& work,body::Output& inout) noexcept {
     using namespace body::d;
     const Range ranges[]={range(&model,sizeof model),range(&frame,sizeof frame),range(&input,sizeof input),
-        range(&contact,sizeof contact),range(&profile,sizeof profile),range(&work,sizeof work),range(&inout,sizeof inout)};
-    if(!disjoint(ranges,7))return {Status::alias};
+        range(&contact,sizeof contact),range(&profile,sizeof profile),range(&desired_bones,sizeof desired_bones),
+        range(&work,sizeof work),range(&inout,sizeof inout)};
+    if(!disjoint(ranges,8))return {Status::alias};
     work.target={};
     if(frame.model_scale!=1||frame.model_scale!=input.model_scale||frame.units_per_metre!=input.units_per_metre||
        model.signature!=input.actual_geometry_signature)return {Status::binding};
@@ -31,6 +33,19 @@ inline Result compose(body::Model const& model,body::Frame const& frame,
         return {Status::reference};
     const auto code=grab::prepare(input,contact,profile,work.target);
     if(code!=grab::Code::prepared)return {code==grab::Code::inactive?Status::inactive:Status::pose,code};
+    // The live C0 owner supplies THIS call's already authenticated DesiredBones
+    // snapshot. There is deliberately no default-all mask. A partial hand is
+    // not an applied contact: require all written joints and their ancestors.
+    // These bits alone do not authenticate a LOD/publication or grant a write.
+    if(desired_bones[1]>>(body::bones-64))return {Status::lod};
+    for(unsigned first=8;first<27;++first){
+        unsigned bone=first;
+        for(;;){
+            if(!(desired_bones[bone/64]&(std::uint64_t(1)<<(bone%64))))return {Status::lod};
+            if(!bone)break;
+            bone=unsigned(model.parents[bone]);
+        }
+    }
     auto& w=work.body_work;
     for(unsigned i=0;i<16;++i)w.component.m[i]=frame.component_to_world.values[i];
     if(!similarity(w.component)||std::abs(length(row(w.component,0))-1)>2e-5||

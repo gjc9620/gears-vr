@@ -20,6 +20,7 @@ bool digest(void const* p,size_t n,b::rig::Signature& out){BCRYPT_ALG_HANDLE alg
 struct Fixture {
     b::Model model{};b::Frame frame{};b::Output body{};b::Workspace fk{};a::Workspace work{};
     g::Frame input{};g::Contact contact{};g::Profile profile{};
+    std::array<std::uint64_t,2> available{{UINT64_MAX,(std::uint64_t(1)<<(b::bones-64))-1}};
     bool initialize(std::string const& path){
         if(!read(path+"/reference.bin",frame.reference.data(),sizeof frame.reference)||
            !read(path+"/C0-local.bin",frame.local.data(),sizeof frame.local)||
@@ -51,7 +52,7 @@ struct Fixture {
         const auto q=v::multiply(pose.orientation,v::inverse(m.calibration.grip_to_wrist_rotation));
         const auto d=v::transform(v::rotation_matrix(q),m.calibration.grip_to_wrist_metres);
         input.physical_grip_world={{pose.position.x-d.x*100,pose.position.y-d.y*100,pose.position.z-d.z*100},q};}
-    a::Result run(){return a::compose(model,frame,input,contact,profile,work,body);}
+    a::Result run(){return a::compose(model,frame,input,contact,profile,available,work,body);}
 };
 int main(int argc,char** argv){if(argc!=2)return 2;const std::string path=argv[1];
     for(auto kind:{v::CoverEdgeKind::left,v::CoverEdgeKind::right,v::CoverEdgeKind::top}){
@@ -94,5 +95,19 @@ int main(int argc,char** argv){if(argc!=2)return 2;const std::string path=argv[1
         if(defect==7)C(result.status==a::Status::unreachable);
         C(!std::memcmp(&before,&x->body,sizeof before));
     }
+    // Every written joint, its root/torso ancestors, and an empty or malformed
+    // snapshot must reject without partially replacing the candidate.
+    for(unsigned bone=0;bone<27;++bone){auto x=std::make_unique<Fixture>();C(x->initialize(path));
+        x->available[bone/64]&=~(std::uint64_t(1)<<(bone%64));const auto before=x->body;
+        // Some reference bones in0..7 are siblings, not left-arm ancestors.
+        bool required=bone>=8;
+        for(unsigned at=8;at;at=unsigned(x->model.parents[at]))required=required||at==bone;
+        required=required||bone==0;
+        C(x->run().status==(required?a::Status::lod:a::Status::prepared));
+        if(required)C(!std::memcmp(&before,&x->body,sizeof before));
+    }
+    for(unsigned defect=0;defect<2;++defect){auto x=std::make_unique<Fixture>();C(x->initialize(path));
+        if(defect)x->available[1]|=std::uint64_t(1)<<63;else x->available={};
+        const auto before=x->body;C(x->run().status==a::Status::lod);C(!std::memcmp(&before,&x->body,sizeof before));}
     std::printf("CoverGrabPoseAdapterTest checks=%u failures=%u\n",checks,failures);return failures?1:0;
 }
