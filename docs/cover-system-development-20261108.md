@@ -550,3 +550,15 @@ full_body_c0_planner新增显式plan_cover入口，共用原输入／模型／�
 receiver入口无条件递增32位全局值，E7030从同一RIP目标读取，与candidate+0xf4比较、跳过已访问项并写回。按真实disp32计算目标为0x141ad1998，IDA显示的1AD0998h仅作标签，不当真实地址。该值证明的是每次查询访问标记，不能用作碰撞世界变更版本，更不能根据Actor不变、射线成功或未看到锁就签发物理快照／身体提交许可。
 
 证据query-synchronization-r22/findings.json及原始chunks／生命周期记录。当前具体receiver实例、动态对象／非零extent执行、并行更新的读租约或等价时相保证以及实际body/view/hit/muzzle同版消费仍待认证。完整掩体目标和验收范围不变，r19仍只执行原已登记窄段。
+
+## 2026年11月9日 r23掩体位移意图与实际提交账本内核
+
+新增既定模块tools/vr-common/cover_motion.h，并将CoverMotionTest注册到现有CMake。Ledger的唯一位置推进源是Backend认证的真实身体完成记录，不接受输入complete(true)、查询排队或调用者提交的success bool。Backend须核对真实body publication及碰撞／占用证据引用；缺省UnavailableBackend始终拒绝。本批没有Native生产后端，也尚未把现有CoverInputOwner切到此账本，不能称为实际身体提交接线完成。
+
+每次新提案、等待或取消先读取已完成提交，再处理输入。Intent只保留拥有拷贝的注册键、CoverEpochs、单调id、from-event／version、原／请求offset和真实手样本、锁定轴、grab／edge关联；不保留跨Tick broker nonce、瞬时input ticket、可写栈指针或可直接执行的旧租约。真正执行端仍须重新认证当前逻辑左手归属、当前几何／完整路径／终点及from-version。等待不更新offset，取消只使待版本失效，已发生提交不会被晚到release抹除；裁剪记录保留其实际位置与确切手样本供输入重基准。
+
+账本核对连续event／version、context／basis／全部epochs、精确请求和手样本，以及实际body publication递增。旧确认不能覆盖新位置；同event不同内容、未知部分写入、取消后又出现的异常提交、观察通道失效和后端替换均保留原已知位置并进入恢复债务。普通占用重获、重新给baseline或取消动作没有清债入口；真正恢复／fresh-retirement后端及其与原C0恢复账本的连接仍待实现。原始输入时钟／序列、时间上限、单轴与另一轴保持、单调id溢出和同线程重入拒绝都有独立检查。
+
+MSVC C++17／O2／W4／WX／EHsc／UNDEBUG／MT实际编译，最终208检查0失败。检查使用显式Host seam，先改本进程拥有的位置再发布模拟body回执，执行的是本生产账本类；这不是游戏内存、物理世界或第二份独立参考算法，也不认证真实body/view/hit/muzzle消费。证据motion-ledger-r23/verification.json、实际依赖与原编译／执行日志；未改r19冻结计划／三制品，未构建新Native。
+
+此时Longshot075334/game65324已在全部进程、恢复、全跨度视觉、编码／retention和idle后唯一交窗本r19。其schema／Interval解码通过但closed-bolt旋转gate6拒绝179.965度，原失败保留，不当作开栓或取弹通过。先完成本源码保存，再独立复核plan16345fcd、23驱动、准确cover-r13三制品及空闲，运行原A一次／最多8ray30秒的首败停止窄段；本r20／21／23源码不混入冻结r19。后继仍唯一Snub082247，再其已受理Bol084022，不能提前或重复交窗。
