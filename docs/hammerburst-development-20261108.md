@@ -491,3 +491,9 @@ Lancer原writer确认这些共享入口当前无其未保存改动，但R2/unifi
 新144203 prepared f35d20f7 / PG56bc12d8，独立2251源/6制品/19root+AST与idle全核后实际62728 creation134386830742508421。原outer271捕获并在同帧真实tracking_only1/render0来源上交付；原计数1..6和6条同源有效权威弹道齐全。前3发r2_source_down1/input_owned1，后3发真实UP为0/0但仍以已提交原有限尾段完成，非伪造按下；after_release总弹药150，未取typed弹匣/备弹快照，不扩称完整ammo守恒。原pause/B返回通过。新增私有状态读取重试本局没有出现重试，不把本局当瞬态分支覆盖；其8CPU记录独立保留。
 
 operator64452=0、runner40138=0、XR0/launcher0/gamegone、Native/entry/pad/drain及config/settings/head原字节恢复通过。26.733333s完整paired1页+8raw亲审，首/末发游戏与sim双端有实际持枪/开火/目标受伤画面；startup第三人称/waitcard与暂停卡保留，整手/手指/袖口/所有角度及实机接受未通过。encode14809=0、retention62202=0，删1511媒体252627541B，保留62728/33732/71440，最后独立idle。证据runtime-62728-review.json，原64316/9896等失败不撤销。全终后唯一交Frag145754（preparedf7bf5137/plan6e830bea），不追加本窗。下一项应另排真实尾、用现有finite-supply driver检验耗尽/换弹/零备弹/总零；当前没有这些新增游戏通过证据，publicv71/defaultOFF/Native/XR未变。
+
+## 60196 finite-supply 在 Native 激活前拒绝（未覆盖供弹）
+
+prepared153818/58a36d0c、PG56bc/Nativec985/XR1684在独立2251源/6制品/19root+AST、idle核对后stage164458。实际60196 creation134386875278469827在原anchor启动保护final_binding首败：before_stamp和strict_after_stamp均1086681247、final_stamp0、timestamp_only0、attempts1、admitted0。未取枪/发射/耗尽/换弹，不覆盖finite-supply，也不撤销62728的strict6通过。当前日志不能区分scene_binding_matches、末次capture_pawn_binding还是equal_binding具体子条件，不能将其称为单纯时间戳竞争或直接重试。
+
+operator29628=1、wrapper70580=0、launcher1/XR1保留。native_started false、native_cleanup_verified false、entry_restore null、unified cleanup null如实保留，不称hand_stop通过；所存session-status属于旧59528，identity_verified false，不作本局证据。当前prime明确stopped cancel/disable_status0/active0/entries_match1，pad恢复，config/settings/head原字节通过，XR对象销毁/shutdown完成、游戏不存在。9.566667s完整paired1页+4raw亲审，仅TPS/等待卡；encode0、retention67340=0全终，删1617媒体269521220B，留60196/26480/59528；独立CIM/idle通过后最终唯一交LS160159（重新1596源/6制品/18root+reader/AST全核0）。证据runtime-60196-review.json。后续仅离线定位原final_binding子条件，不放宽identity/guard、不复用本窗、不重跑未变候选。
