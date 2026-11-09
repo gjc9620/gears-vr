@@ -27,6 +27,12 @@ ACTOR_TARGETS = {40: 0x13c270, 72: 0x133fe0, 104: 0x1360f0, 728: 0x136890}
 INTERNAL_SLOTS = (8, 16, 40, 240, 360)
 
 
+class SourceRejection(RuntimeError):
+    def __init__(self, message, witness):
+        super().__init__(message)
+        self.source_witness = witness
+
+
 def _file_identity(stat):
     # Reading can update access time; size, modification, creation and file ID
     # are the stability witnesses, followed by exact content comparison.
@@ -156,8 +162,20 @@ class PhysXSource:
         self.path = Path(game_image).resolve().with_name('PhysXCore.dll')
         self.artifact = artifact_factory(self.path)
         self.base = self._loaded()
-        if query.read(self.base, len(self.artifact.header)) != self.artifact.header:
-            raise RuntimeError('PhysX current complete PE headers differ')
+        header = query.read(self.base, len(self.artifact.header))
+        if header != self.artifact.header:
+            # Retain the EXACT already-observed bytes on failure. No second
+            # read, header mask, inferred loader exception or admission change.
+            raise SourceRejection('PhysX current complete PE headers differ', dict(
+                kind='physx_complete_pe_header_mismatch', path=str(self.path), base=self.base,
+                artifact_sha256=ARTIFACT_SHA256, expected_header=self.artifact.header.hex(),
+                observed_header=header.hex(), expected_size=len(self.artifact.header), observed_size=len(header),
+                expected_sha256=hashlib.sha256(self.artifact.header).hexdigest(),
+                observed_sha256=hashlib.sha256(header).hexdigest(),
+                differing_offsets=[i for i in range(min(len(header), len(self.artifact.header)))
+                                   if header[i] != self.artifact.header[i]],
+                closing_verified=False, source_accepted=False, activation_allowed=False,
+                difference_cause_verified=False))
         self.code = []
         self.targets = {}
         for rva, size, digest in CHUNKS:

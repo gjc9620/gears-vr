@@ -230,6 +230,30 @@ class PhysXSourceTests(unittest.TestCase):
         self.assertIn('changed', out['rejection'])
         self.assertTrue(all(p.closed for p in m.proofs))
 
+    def test_rejected_header_keeps_exact_original_read_without_retry_or_permission(self):
+        f = self.fixture()
+        at = f.BASE + 0x120
+        original = f.m.read(at, 1)[0]
+        f.m.put(at, bytes([original ^ 1]))
+        out = f.m.capture_physics(include_physx=True, include_shapes=True, physx_factory=f.factory)
+        self.assertFalse(out['accepted'])
+        self.assertEqual(out['reads'], 1)
+        self.assertEqual(out['bytes'], len(self.artifact.header))
+        witness = out['source_rejection_witness']
+        self.assertEqual(witness['differing_offsets'], [0x120])
+        self.assertEqual(bytes.fromhex(witness['expected_header']), self.artifact.header)
+        observed = bytearray(self.artifact.header)
+        observed[0x120] ^= 1
+        self.assertEqual(bytes.fromhex(witness['observed_header']), bytes(observed))
+        self.assertEqual(witness['base'], f.BASE)
+        for key in ('source_accepted', 'closing_verified', 'activation_allowed', 'difference_cause_verified'):
+            self.assertIs(witness[key], False)
+        self.assertFalse(out['physx_source_observed'])
+        self.assertFalse(out['authored_shapes_observed'])
+        self.assertFalse(out['virtual_target_module_verified'])
+        self.assertEqual(out['bodies'], [])
+        self.assertTrue(all(p.closed for p in f.m.proofs))
+
 
 if __name__ == '__main__':
     unittest.main()

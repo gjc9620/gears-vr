@@ -261,6 +261,9 @@ def capture(observer, native_dll, native_sha256, *, query_factory=CoverQuery,
                           'no callable ABI, transformed/active shapes, pose coverage, hit/muzzle or synchronization proof')
     except (RuntimeError, OSError, ValueError, TypeError, KeyError, struct.error) as error:
         out.update(rejection=str(error), rejection_type=type(error).__name__)
+        source_witness = getattr(error, 'source_witness', None)
+        if source_witness is not None:
+            out['source_rejection_witness'] = copy.deepcopy(source_witness)
         witness = getattr(q, 'closing_rejection', None)
         if witness is not None:
             out['closing_rejection'] = copy.deepcopy(witness)
