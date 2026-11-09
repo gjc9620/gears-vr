@@ -31,5 +31,28 @@ int main(){m::Metrics out{};
         case 11:in.kind=m::Kind::convex;break;default:in.kind=static_cast<m::Kind>(42);break;}
         const auto before=out;C(m::compute(in,out)!=m::Code::computed);C(!std::memcmp(&before,&out,sizeof out));
     }
+    m::PointScale source{2,{3,4,5},false,0,{0,0,0}};std::array<float,3> scale{};
+    C(m::point_scale(source,scale)==m::Code::computed);C((scale==std::array<float,3>{6,8,10}));
+    source.owner_present=true;source.owner_scalar=.5f;source.owner_xyz={2,3,4};
+    C(m::point_scale(source,scale)==m::Code::computed);C((scale==std::array<float,3>{6,12,20}));
+    source={.1f,{3,3,3},true,.5f,{2,2,2}};
+    C(m::point_scale(source,scale)==m::Code::computed);for(float x:scale)C(bits(x)==0x3e99999au);
+    // No owner means these values are not part of the original producer.
+    source.owner_present=false;source.owner_scalar=std::numeric_limits<float>::quiet_NaN();
+    source.owner_xyz={-1,0,std::numeric_limits<float>::infinity()};
+    C(m::point_scale(source,scale)==m::Code::computed);for(float x:scale)C(bits(x)==0x3e99999au);
+    for(unsigned defect=0;defect<10;++defect){source={1,{1,1,1},true,1,{1,1,1}};
+        switch(defect){case 0:source.component_scalar=0;break;case 1:source.component_xyz[2]=-1;break;
+        case 2:source.owner_scalar=std::numeric_limits<float>::quiet_NaN();break;case 3:source.owner_xyz[1]=0;break;
+        case 4:source.component_scalar=maximum;source.component_xyz={1.5f,1.5f,1.5f};source.owner_scalar=.5f;break;
+        case 5:source.owner_scalar=maximum;source.owner_xyz={1.5f,1.5f,1.5f};source.component_scalar=.5f;break;
+        case 6:source.component_scalar=std::numeric_limits<float>::denorm_min();source.component_xyz={.25f,.25f,.25f};source.owner_scalar=maximum;break;
+        case 7:source.component_scalar=maximum;source.owner_scalar=2;break;
+        case 8:source.component_scalar=std::numeric_limits<float>::min();source.owner_scalar=std::numeric_limits<float>::min();break;
+        default:source.component_xyz[0]=std::numeric_limits<float>::infinity();break;}
+        const auto old=scale;C(m::point_scale(source,scale)!=m::Code::computed);C(!std::memcmp(&old,&scale,sizeof scale));
+    }
+    source={1,{1,1,1},false,0,{0,0,0}};const auto old_source=source;
+    C(m::point_scale(source,source.component_xyz)==m::Code::invalid);C(!std::memcmp(&source,&old_source,sizeof source));
     std::printf("CoverPrimitiveMetricsTest checks=%u failures=%u\n",checks,failures);return failures?1:0;
 }

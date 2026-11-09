@@ -1192,3 +1192,15 @@ visitor在加入命中后检查flags&0x200并可提前返回；在这种不完�
 完整保存并复核slot24负例、slot40候选、visitor及零extent分类共1263原始字节，26个关键机器指令锚点一致，原section全SHA911ab9bc…06ae6。slot40实际RIP目标0x141afac20不在此次已有六个保存section范围内，因此root-data值未知；从共享插入／查询代码判断它与空间树根数据有关只是推断，不将其猜成已恢复的回调对象或默认世界边界。限定原包伪代码literal搜索实际工具49106已轮询同一作业至exit0，匹配1400cfef0／140136918；不把原伪代码0x1000显示差异用于全局地址平移。提取与核对程序全终0，未新建IDA数据库或调用原方法。证据analysis/cover-system-20261108/world-overlap-route-r61包含原chunks／伪代码／指令锚点／未知值／各日志及可复现脚本。
 
 本轮是原路径取证，未改产品输入、writer、body策略或待运行driver。Coverr54 prepared6ec774ef／plan915215be及24冻结源／37当前驱动SHA+AST／3saved制品再次一致，尚未收到Snub最终交窗；唯一后继仍Bol180947，未最终交它。本轮无新Native／PG构建、部署、游戏／XR／头显运行。完整CV-01–24／AC-01–22、当前来源关闭、完整扫掠／终点占用、实际Native移动恢复、同版hit／muzzle、严重吸附遮挡及逐点手型仍未完成。
+
+## 2026年11月9日 r62构造表定位实际组件重叠入口与缩放来源
+
+继续追踪r61组件虚表+0x2e0。对原只读段中已知0x140339294指针先作有界字面定位，再按原机器码RIP LEA及紧随mov[this],reg确认实际构造表基址；不能凭连续函数指针段或已知函数猜虚表起点。六个构造来源确认表基址分别14137ac50／b098／b4e0／b928／bd70／c1c0。每表+0x2d8为0x14026eca0，+0x2e0为0x1403a6bc4，而已知339294实际是+0x2e8，下一项50c17c是+0x2f0。最初按已知函数减2d8的推导不成立，未据此调用任何方法。数据段完整SHA c5deb081…5231c、代码段911ab9bc…06ae6、6个原构造及每表已检前缀均保留；它们是历史表，不等于当前实例／类身份已认证。
+
+真正+2e0候选3a6bc4读取component+0x248并进入3a6c34，与已有PhysicsAsset反射合同的静态偏移一致。后者按asset+0x68数组／+0x70数量逐个取setup，传完整BoneName的8字节+0xb4给1d38d4，再调用1d40b8取得组件骨矩阵，经f20f4处理后将setup+0x6c聚合几何交1d0a50。该原路径直接使用authored setup与组件骨变换，不是BodyData活动PhysX姿态读取；不能因此取消当前活动物理／hit／muzzle及空间树同步要求。原循环在骨查找返回-1时跳过该body，无命中本身不能证明完整体积检查；r40完整映射的严格准入继续保留。可选fallback、聚合PointCheck、实际查询时相与当前分派仍待认证。
+
+原3a6c34的缩放生产者亦已定位：每轴先float32计算component+1e8乘+1ec／1f0／1f4；owner+78非空时先以owner+198乘+19c／1a0／1a4，再分别乘上述component结果。新增到既有cover_primitive_metrics.h的PointScale／point_scale只计算调用者已认证的这些值，不读native字段，不从矩阵反推scale；保持原分组顺序。正值有限输入、owner实际存在分支分别验证，原中间乘积溢出或归零均拒绝，不能重排乘法把原已损失的结果救回；owner缺失时不消费未用的owner字段。输出与输入重叠拒绝，任何失败保持旧输出。该生产者不授运行许可，非均匀产物仍由后续原有严格转换范围决定支持与否。
+
+严格MSVC编译0，BelowNormal实际执行73项0失败，保留原39项尺寸检查，新增组件／owner分组、owner缺失、IEEE754位模式3e99999a、重排会改变结果的溢出／归零、非有限输入和alias。源副本、实际编译依赖全SHA、二进制与原指令证据在analysis/cover-system-20261108/world-component-point-r62。原route核对共997机器字节、25关键指令锚点及6个构造表一致；此为静态／纯数学证据，没有原方法执行或新Native／PG构建。
+
+Coverr54 prepared6ec774ef／plan915215be及24冻结源／37当前驱动SHA+AST／3saved制品再次匹配，仍未收到Snub最终交窗，未stage／run。唯一已正式受理后继为Bol180947；更晚HB185428已直接指向该真实尾，Boom191450仅单次沿Bol转达，并明确保留HB及全部更早先序，Cover未另收第二slot。完整CV-01–24／AC-01–22、当前完整形状来源、实际扫掠／终点占用／Native移动恢复、同版hit／muzzle、严重吸附遮挡、逐点手型及实体头显仍未完成。
