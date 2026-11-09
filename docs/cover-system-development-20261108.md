@@ -1402,3 +1402,17 @@ LS独立接受这次pregame全终态c1b68a04。Root最终fresh检查又发现其
 新cover_physx_transform_test.cpp以保留的两份实际64字节组件矩阵（6a0656bc／ceb2c34e）和明确合成的非对称单位旋转／平移与identity检查UE行向量点变换和物理列向量点变换的一致性，并验证拒绝和输出保持。8个实际MSVC项目依赖已原字节冻结，/std:c++17 /O2 /W4 /WX /EHsc /UNDEBUG /MT编译0；冻结源测试在两份矩阵上各63检查、0失败，源SHA前后相同。初次测试把非单位合成四元数交给只验证单位长度的函数而失败，原fixture-0.log保留，改为显式归一化夹具后通过，生产convert未据此修改。原机器码只做静态解析，没有执行原函数；CPU测试不等于实际物理查询。证据physx-transform-r74/original-transform-certificate.json SHA324e8f5eadf756031ba7831710268fdc94d2b39e599b96588d046dc3a65cb662及verification.json。
 
 该变换现为源／离线实现，尚未接到实际Native Scene查询或构建Native DLL，没有安装或头显验证。当前形状、查询完整性／自身排除、起终点占用和跨查询／身体／物理／命中／枪口同步仍需闭合；本轮未游戏验证r69 reader修复，最新实际掩体仍41460拒绝与严重遮挡FAIL。完整CV-01–24／AC-01–22、逐点GrabPose、身体执行与恢复及头显继续未完成，goal active，工程25%和公开v71不变。
+
+## 2026年11月10日 r75原场景查询适配源码与冻结离线验证
+
+本轮为进展：从r73已保存的原公开／内部场景查询证据，实现cover_physx_query.h、cover_physx_query_source.h及生成的cover_physx_query_code.h，并增加cover_physx_query_test.cpp。代码尚未包含进Native C0生产入口，没有启动游戏、XR、模拟器、录像或新运行窗口；没有改变公开v71、原r13制品或已消费b144启动前失败的终态。上一轮单纯需求核对按目标进展计为无进展，本轮实际源码和固定源编译／反例结果构成进展。
+
+源码适配提供盒体／胶囊的公开overlap与非零linear sweep调用，保留原公开10参数的8/4/8/8/4/8栈宽度，flags3仅请求原static＋dynamic closest模式，单个64字节raw hit，不声称完整命中枚举。启动prime只增加已加载、与本进程EXE同目录的PhysXCore引用，保留文件读锁并校验原2711552字节／SHA22051aa7；不调用LoadLibrary。当前BodyData主actor经actor+38内部Scene、Scene+270公开NpScene、NpScene+6b0逆关联及10个虚表槽检查，调用方仍负责认证实际C0、类型／字段角色及F26D4原布局；非零地址不授予这些事实。
+
+本次代码校验覆盖10个完整保留函数区间共3544字节。最初只取首个PE unwind片段的2065字节方案已拒绝，code-source.json作为失败选取记录保留，正确依据是code-source-complete.json；公开168350完整125字节通过与保留1682D0逐指令对照、仅268/270槽及126770/126760调用两处差异核定。原DLL8768项非空重定位均未与这10段相交。校验这些函数不代表所有传递被调函数、形状过滤、世界或物理同步均已认证。
+
+查询前后核同源对象及原代码，调用前另重复当前关系读取；请求使用固定副本，拒绝读回调修改Source及输入／输出别名。重复相等读取不能当作原子物理围栏。拒绝零扫掠、非有限／非正常浮点、非刚体盒旋转、退化胶囊及导致原float归一化溢出／下溢或边界溢出的输入；零位移不当作占用查询。原调用发生SEH或返回超出单hit容量时进入fault_unknown，保留uncertain待处理及原模块／文件引用；不能自动解锁、重试或确认正常关闭。此异常停机语义只有源码和合成异常反例，尚未原游戏故障验证。
+
+实际MSVC /std:c++17 /O2 /W4 /WX /EHsc /UNDEBUG /MT编译及固定5个项目依赖编译均exit0，冻结程序119检查／0失败。检查含选定body及双向场景关系、每个读取失败保持输出、数组／指针／重复body／虚表变化、source回调修改和别名拒绝、完整原DLL数据段映射及每段末字节／截短／hash失败拒绝、两种形状的合成5参数overlap和10参数sweep／64字节结果、合成SEH拒绝、未prime不读目标、不加载缺失模块与零／非有限／溢出位移拒绝。首次/WX因Sweep隐式对齐填充拒绝已保留build-0.log，改显式reserved字段后通过。原DLL仅作为数据读取，未加载或执行；合成ABI函数不能替代原方法运行通过。
+
+证据位于analysis/cover-system-20261108/physx-query-r75/，含source-manifest.json、冻结源码、build/test日志和verification.json。下一步将当前C0的typed PhysicsAssetInstance／RootBodyIndex／BodyData角色完整认证接至此适配，并闭合自身排除、实际形状覆盖与查询／物理消费时相；这些之前不发布掩体移动许可。Native实际移动与合法恢复、同版物理／命中／枪口、严重肩部／身体遮挡、每个实际边缘GrabPose、CV-01–24／AC-01–22及实体头显均仍未完成，不提高25%工程review或其他历史评分。
