@@ -83,6 +83,8 @@ bool invoke_original(uptr,uptr function,unsigned,unsigned char const*){
 }
 namespace hammerburst_first_contract {
 unsigned stage{};
+unsigned path_node{},path_gate{},observed_extent{};
+std::uint16_t observed_parameters{},observed_result{};
 bool prove(gripdamage_metadata::Reader& r,uptr,uptr fn,lancerrefire::Script& body){
     return event_fixture::outer_proof&&lancerrefire::script(r,fn,body,512);}
 }

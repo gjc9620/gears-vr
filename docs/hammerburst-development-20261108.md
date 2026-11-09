@@ -428,3 +428,12 @@ Lancer原writer确认这些共享入口当前无其未保存改动，但R2/unifi
 复核发现跨快照Property.identity/type是本地slot，原meta.same_property跨snapshot会误拒绝。已改按完整UObject注册身份、类型身份及next/flags/dimension/width/offset布局比对，真实Reader的不同发现顺序快照复现旧比较FALSE/新比较TRUE，错误注册身份/布局仍拒绝；不以slot相等替代身份。右手grip失追另行明确撤销有限尾段，因为frame_active本身不要求该手tracked；无输入DOWN伪造或不新鲜pose继续。原timer在6发末尾/真实无弹时仍经原ShouldRefire=false与BurstDelaying状态证明正常退出，不补造射线/弹药。异常范围退出保持已有GT输入/清理owner活着先释放R2/全PendingFire并原状态撤销，避免提前全局fault导致disable来不及收尾；失败单独有界记录，不将后续真实新R2按压当旧事件重放。
 
 同一私有源最终受影响7个测试程序编译/执行0：ledger823、整段outer matcher574、cancel metadata fakes103、实际transaction fakes289、实际event adapter fakes118、真实Reader路径/布局/关闭及canonical cache68、原asset50+新增kind24。原HB timer adapter54和既有Lancer once-only/loop145仍0。不得相加称游戏覆盖；full retail certificate、公共dispatcher和engine在部分夹具是stub，真实tracking/VM/画面仍待新game。默认OFF整PG0、私有ON整PG0；hb-finite-profile-builds.json/hash保存。独立快照应用曾拒绝Stop/Longshot yield同hunk，随后只移除其三行外来增量再移植，Longshot/Boltok脏改未暂存/混进本私有binary。
+
+
+## 实际65044：完整首发证书首拒绝，有限尾段未到达
+
+冻结110627/PG0cb1248a（prepared SHA5e9efb76）在Snub110649/17548明确最终交窗后，独立idle、2251源/6制品/13入口hash核对，再于私有实例实际启动game65044 creation134386691257760825，Nativec985/XR1684、0.3后台observe-only/mute/物理隔离，公共v71不变。真实肩部取HB成功；第一真实R2发生native_hammerburst_first_proof_rejected outer=1 stage=1 bytes=0 parent_parameters=0，未取得任何authoritative HB trajectory。operator65804 exit1保留；没有到达原6发、真实UP有限尾段、耗尽守恒、换匣/R0/总零供弹，不称新事务已通过。原有Native总ammo在release后读到156；未另取本局typed弹匣/备用快照，不能从总数虚构分配。
+
+58207 runner、56150配对review/encode、87081 retention均实际terminal0；Native cleanup/entries/pad均TRUE、unified drained1/handstop5/XR0/launcher0/game absent。config/settings逐UTF8字节复核、head原缺恢复。24.333333秒H2641920x660，全部1页paired overview及game00337/sim00338/game00382/sim00382四原图亲审；startup第三人称/等待卡/白色拾取HUD仍保留，后段枪靠右脸，完整手掌/袖口/全角度和头显fit不接受。retention删除1499媒体248444063B，最新3保留65044/17548/30188，48h；源文数值不删。完整记录analysis/hammerburst-20261108/runtime-65044-review.json与restore/PG原日志/ffprobe。所有终态及独立idle后已明确唯一交Longshot112230，再由其维护Coverr32；本聊天不复用窗口或原候选。
+
+原stage1合并了完整原包路径、结构、参数/返回布局、extent、VM形状和脚本数组，尚不能确定某一条件为因果。下一增量仅把原谓词按原读取/短路顺序拆成阶段1..8，并为路径原有各节点/类型检查记录node/gate；有界首拒绝日志附已读extent/parameters/result，不新增游戏内存读取、getter、hook、输入、状态转换或放宽校验。79项实际Reader owned-memory检查（包括11项新首失败位置检查）通过，118项event adapter fake检查通过；初次event夹具编译因无Snapshot.failure成员失败已保留，最终日志不再依赖该stub缺失字段。此为观察修正，尚无拒绝原因修复或游戏成功证明。完整私有PG构建状态单独记录。

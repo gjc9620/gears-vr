@@ -132,8 +132,11 @@ bool capture_initial(std::uint64_t object,std::uint64_t function,void const* par
         // entered Firing, even though this inherited first body was not run.
         tx::first_debt=true;tx::firing_debt=true;
         static unsigned first_rejections{};
-        if(log_file&&first_rejections++<4){fwprintf(log_file,L"native_hammerburst_first_proof_rejected outer=%u stage=%u bytes=%d parent_parameters=%u\n",
-            unsigned(outer),hammerburst_first_contract::stage,outer_body.array.count,bytes);fflush(log_file);}
+        if(log_file&&first_rejections++<4){fwprintf(log_file,L"native_hammerburst_first_proof_rejected outer=%u stage=%u bytes=%d parent_parameters=%u path_node=%u path_gate=%u extent=%u parameters=%u result=%u\n",
+            unsigned(outer),hammerburst_first_contract::stage,outer_body.array.count,bytes,
+            hammerburst_first_contract::path_node,hammerburst_first_contract::path_gate,
+            hammerburst_first_contract::observed_extent,unsigned(hammerburst_first_contract::observed_parameters),
+            unsigned(hammerburst_first_contract::observed_result));fflush(log_file);}
         tx::revoke();return true; // Authenticated owned first target cannot consume ammo on failed proof.
     }
     // A completed prior six-shot event may still await its normal timer's

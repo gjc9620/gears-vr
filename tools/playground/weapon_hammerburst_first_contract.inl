@@ -4,6 +4,8 @@
 namespace hammerburst_first_contract {
 namespace meta=gripdamage_metadata;
 unsigned stage{};
+unsigned path_node{},path_gate{},observed_extent{};
+std::uint16_t observed_parameters{},observed_result{};
 struct Node {wchar_t const* name;wchar_t const* type;wchar_t const* package;};
 bool label(meta::Reader& r,unsigned slot,wchar_t const* name) noexcept {
     if(slot>=r.result.identity_count)return false;auto const& id=r.result.identities[slot];
@@ -13,16 +15,22 @@ bool label(meta::Reader& r,unsigned slot,wchar_t const* name) noexcept {
 }
 bool type(meta::Reader& r,unsigned slot,wchar_t const* name,wchar_t const* package) noexcept {
     unsigned kind{},outer{};
-    return r.path(r.result.identities[slot].klass,kind)&&label(r,kind,name)&&
-        r.path(r.result.identities[kind].outer,outer)&&label(r,outer,package)&&!r.result.identities[outer].outer;
+    path_gate=4;if(!r.path(r.result.identities[slot].klass,kind))return false;
+    path_gate=5;if(!label(r,kind,name))return false;
+    path_gate=6;if(!r.path(r.result.identities[kind].outer,outer))return false;
+    path_gate=7;if(!label(r,outer,package))return false;
+    path_gate=8;return !r.result.identities[outer].outer;
 }
 bool path(meta::Reader& r,uptr address,std::initializer_list<Node> nodes,unsigned* first=nullptr) noexcept {
-    bool initial=true;
+    bool initial=true;path_node=0;
     for(auto const& node:nodes){unsigned slot{};
-        if(!r.path(address,slot)||!label(r,slot,node.name)||!type(r,slot,node.type,node.package))return false;
+        path_gate=1;if(!r.path(address,slot))return false;
+        path_gate=2;if(!label(r,slot,node.name))return false;
+        path_gate=3;if(!type(r,slot,node.type,node.package))return false;
         if(initial&&first)*first=slot;initial=false;address=r.result.identities[slot].outer;
+        ++path_node;
     }
-    return !address;
+    path_gate=9;return !address;
 }
 bool reference(meta::Reader& r,uptr address,unsigned index,unsigned& slot) noexcept {
     const Node engine{L"Engine",L"Package",L"Core"},warfare{L"WarfareGame",L"Package",L"Core"};
@@ -50,14 +58,23 @@ bool reference(meta::Reader& r,uptr address,unsigned index,unsigned& slot) noexc
     }
 }
 bool prove(meta::Reader& r,uptr weapon,uptr function,lancerrefire::Script& body) noexcept {
-    stage=1;
+    stage=1;path_node=path_gate=observed_extent=0;observed_parameters=observed_result=0;
     unsigned fn{},owner{};meta::Structure structure{};std::uint16_t parameters{},result{};
+    // Actual65044 stopped in the former combined stage1. Preserve the exact
+    // predicates/read order, but identify its first failing boundary. These
+    // stages grant no eligibility and add no game-memory observations.
     if(!path(r,function,{{L"BeginState",L"Function",L"Core"},{L"WeaponFiring",L"State",L"Core"},
-         {L"Weap_LocustAssaultRifle",L"Class",L"Core"},{L"WarfareGame",L"Package",L"Core"}},&fn)||
-       !r.structure(function,structure)||!r.at(function,0x106,parameters)||parameters||
-       !r.at(function,0x108,result)||result!=0xffff||structure.extent!=8||
-       !lancerrefire::hammerburst_refire::vm_shape(r,function,0,0xffff)||
-       !lancerrefire::script(r,function,body,512)||body.array.count!=271)return false;
+         {L"Weap_LocustAssaultRifle",L"Class",L"Core"},{L"WarfareGame",L"Package",L"Core"}},&fn))return false;
+    stage=2;if(!r.structure(function,structure))return false;
+    observed_extent=structure.extent;
+    stage=3;if(!r.at(function,0x106,parameters))return false;
+    observed_parameters=parameters;if(parameters)return false;
+    stage=4;if(!r.at(function,0x108,result))return false;
+    observed_result=result;if(result!=0xffff)return false;
+    stage=5;if(structure.extent!=8)return false;
+    stage=6;if(!lancerrefire::hammerburst_refire::vm_shape(r,function,0,0xffff))return false;
+    stage=7;if(!lancerrefire::script(r,function,body,512))return false;
+    stage=8;if(body.array.count!=271)return false;
     gears_hammerburst_first::Bindings bindings{};
     std::array<unsigned,13> slots{};std::array<bool,13> seen{};
     for(unsigned i=0;i<gears_hammerburst_first::runtime_objects.size();++i){

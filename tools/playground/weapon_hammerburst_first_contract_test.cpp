@@ -118,6 +118,24 @@ int main(){
         assert(lancerrefire::script(r,m->outer,body,512)&&body.array.count==271);checks+=2;}
     const auto reject=[&](std::function<void(FirstMemory&)> change){auto m=std::make_unique<FirstMemory>();change(*m);
         assert(!m->prove());++checks;};
+    const auto boundary=[&](unsigned stage,std::function<void(FirstMemory&)> change){
+        auto m=std::make_unique<FirstMemory>();change(*m);
+        assert(!m->prove()&&hammerburst_first_contract::stage==stage);++checks;};
+    boundary(1,[](auto& m){Memory::put(m.outer,0x48,m.text(L"WrongBeginState"));m.tables();});
+    boundary(2,[](auto& m){fail_read=m.outer+0x60;});
+    boundary(3,[](auto& m){Memory::put(m.outer,0x106,std::uint16_t(8));});
+    boundary(4,[](auto& m){Memory::put(m.outer,0x108,std::uint16_t(0));});
+    boundary(5,[](auto& m){Memory::put(m.outer,0x88,16u);});
+    boundary(6,[](auto& m){Memory::put(m.outer,0xf8,std::uint16_t(1));});
+    boundary(7,[](auto& m){Memory::put(m.outer,0x8c,Array{reinterpret_cast<uptr>(m.code.data()),0,271});});
+    boundary(8,[](auto& m){Memory::put(m.outer,0x8c,Array{reinterpret_cast<uptr>(m.code.data()),270,271});});
+    const auto path_boundary=[&](unsigned node,unsigned gate,std::function<void(FirstMemory&)> change){
+        auto m=std::make_unique<FirstMemory>();change(*m);
+        assert(!m->prove()&&hammerburst_first_contract::stage==1&&
+            hammerburst_first_contract::path_node==node&&hammerburst_first_contract::path_gate==gate);++checks;};
+    path_boundary(1,2,[](auto& m){Memory::put(m.hb_state,0x48,m.text(L"WrongFiringState"));m.tables();});
+    path_boundary(0,5,[](auto& m){Memory::put(m.outer,0x50,m.object_type);});
+    path_boundary(0,7,[](auto& m){Memory::put(m.function_type,0x40,m.engine);});
     for(unsigned index=0;index<13;++index){
         reject([=](auto& m){Memory::put(m.references[index],0x48,m.text(L"WrongOriginalReference"));m.tables();});
         reject([=](auto& m){Memory::put(m.references[index],0x40,m.core);});
