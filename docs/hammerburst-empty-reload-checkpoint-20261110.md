@@ -15,3 +15,9 @@ Boom 独立受理当前 v3，同一原排队位；证据 analysis/boomshot-devel
 本次另独立检查唯一后继 Frag232727 v3 的最终交接身份、精确十路径基线及子进程环境隔离，并实际仅执行 prepare-only：8860 host files、冻结源/六制品/运行依赖 bad=[]、六 import 检查通过，队列字节不变、真实 claim 不存在。证据 analysis/hammerburst-20261108/successor-Frag232727-admission-v3-check.json SHA256 7159cb8b1060a88761643c0549591bcadb183f1beb09a10a62bac62be079b91d。仅登记为本枪未来完整收尾后的唯一后继，不授当前执行权。
 
 上一轮 50148 的真实开盖骨姿失败与 serial0/提前补弹观察保留。当前候选不继承旧 PG 的动作通过结论。手型贴合、完整换弹、全部中断条件及头显感受仍未验收；本轮不扩展耗尽总备弹和无限离线手型拟合。
+
+## 运行前证据边界复核
+
+当前源码确认 needs_reload 为未满弹匣且有备弹（或无限备弹），只有该分支调用原始 begin 并取得 serial。50148 的 L78/R0/serial0 走 visual_only 检视分支，因此其骨姿失败不能证明真正空仓原始换弹分支同样失败。保持真实骨姿阈值，不据此提前改变动画实现；下一局必须先观察非零原始 serial。五组纯谓词例子见 analysis/hammerburst-20261108/empty-reload-source-path-audit-20261110.json，不是引擎验证。
+
+另发现现有 empty driver 的 manual_veto_consumption 是全局累计日志，blocked>0 没有本次触发前后增量、武器或 press 绑定。因此只能称本局曾发生原始 CanReload 拦截，不足以独立证明本次空扳机回调；未来报告必须把该弱证据与同枪 typed L0/R78 前后不变、零新射线的可观察行为分开。本次不改已受理候选、不重冻结或扩大实测，保留此限制，不将弱证据升级为单次调用证明。
