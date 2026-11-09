@@ -1135,3 +1135,12 @@ wrapper工具90227实际terminal0；operator7456 exit1、error字段null且实�
 真实MSVC严格编译0、执行39项检查0失败，包括原尺寸例、零Length、不同shape输出清理、非法输入、unsupported Convex及float32极值。特别以原SSE乘法顺序的IEEE754黄金位模式7f3fffff检验最大float scalar与1.5尺寸，避免先乘尺寸造成非原版溢出；极小值归零拒绝。证据analysis/cover-system-20261108/primitive-semantics-r56含完整原chunks、伪代码、原常量／指令锚点、源副本、编译依赖SHA及日志。
 
 该计算还未接入当前native字段／pose／physics消费者；incoming scalar完整语义、非均匀缩放、Convex、连续扫掠／占用及当前场景可见性仍未知。本批无新Native／PG构建、游戏或头显通过；r54 prepared6ec774ef／plan915215be保持不变。Bow已确认r54沿其全终交窗后的唯一后继Lancer165800单次转达，晚到Bol180947排r54之后；当前向Lancer查询实际尾以直接核接同一申请，Cover尚无新窗口／未stage。完整CV／AC、实际移动恢复、hit／muzzle、逐点手型／吸附遮挡及头显继续未完成。
+## 2026年11月9日 r57原primitive与当前骨架的世界空间转换
+
+新增cover_primitive_world.h，复用r40完整FName骨骼映射及r56原primitive尺寸计算，将调用者已认证的形状局部刚性位姿合成到当前Marcus115／C0骨架世界位姿。每次重建并逐项核对整个映射，包括完整名称／number、骨架父级和最近命名body祖先；不能凭旧bone_index继续使用。输入、模型、Frame、Mapping、工作区和输出不得重叠，任何失败均保持旧输出字节不变。
+
+当前范围明确为单位缩放。原model与所有C0 atom scale必须为1，component须为无反射、无非均匀缩放的刚性矩阵；有限浮点旋转容差复用现有数学边界。FK仅归一化合法旋转以避免链中数值缩放累积，使用原translation，不拟合或改变骨长。Sphere／Box输出世界形状位姿及原游戏单位尺寸；Sphyl额外输出世界段轴与两端点。调用者须明确认证shape-space轴，代码不猜+X／+Z；原scalar是否影响局部平移也必须在输入转换前认证，不能将尺寸scalar再次乘到已转换局部位置。Convex明确unsupported，整body消费者必须停止而非漏掉该体积。
+
+实际严格MSVC /std:c++17 /O2 /W4 /WX /EHsc /UNDEBUG /MT编译0，独立程序以BelowNormal运行，760项检查0失败。使用保留Marcus115参考／C0数据、打乱的合成body名称顺序及合成primitive，以独立四元数／向量FK核对8个骨骼、3类形状、原始及旋转平移后的身体；验证中心、朝向、球柱轴／端点、尺寸只缩放一次、零Length和非零FName number。错误映射／参考／缩放／矩阵／轴／姿态／尺寸／溢出／alias均拒绝且原输出保持。证据analysis/cover-system-20261108/primitive-world-r57保存源码副本、原编译与运行日志、221个实际编译依赖SHA、二进制与3个fixture全SHA。
+
+该入口目前只准备一个形状的owned描述，不是活动PhysX姿态、完整body体积、连续扫掠、终点占用或命中证书；实际当前shape字段／scalar／局部TM和轴语义、同源关闭、physics消费及查询世界同步仍须认证。没有新Native／PG构建或游戏／XR运行。r54 prepared6ec774ef／plan915215be及24冻结源／37当前驱动SHA+AST／3saved制品重新全核无误。Bol直接指出Snub174315为无后继的实际尾后，已向Snub递交同一较早Coverr54完整冻结申请，未据此宣称已受理或已交窗。完整CV-01–24／AC-01–22、Native移动恢复、同版hit／muzzle、实际逐点抓握、严重吸附肩／身体／装备遮挡和实体头显继续未完成。
