@@ -94,3 +94,11 @@ refine-latch-index-ik.py在固定腕/拇指/食指tip目标、原骨长/权重�
 audit-latch-pad-normals.py进一步读取原Marcus相同原export内每顶点stride64的packed normalZ(offset16)，使用原骨图/蒙皮旋转和相同腕变换。index vertex1004原字节131,19,59,255，thumb1132为35,112,214,255；posed原打包法线与原三角fan叉积点积分别-.999656/-.996199，说明两者绕序约定相反，不能把未校验fan法线当外向。按打包法线与预期相向接触面法线比较，两点分别-.432070/-.145732，即此前两点位置对齐并未形成正确相向表面。此是两个候选点的方向证据，不宣称已识别解剖指垫或证明全部skin normal消费；原无向edge/triangle穿插计数不受法线翻转影响。
 
 下一步按原皮肤packed法线与真实可触面共同选择指垫区域，再作位置/朝向约束；不继续仅用旧marker最近顶点与两点跨度调关节。结果latch-index-ik.json/png/log、latch-pad-normal-audit.json保留。当前无手型发布，无游戏运行，HB171233与mechanicalcontact均不改。
+
+## 原packed法线筛选与法线/间距联合候选
+
+select-latch-opposing-pads.py在原末节bone14的33个纯权重皮肤顶点、bone26的28个顶点间检查924组配对；同时要求两侧normal朝对方cos>=.7，只有3组满足。旧1004/1132的相向cos为-.432/-.146，不再当有效指垫。选择双侧最小cos最高的1002/1018组（起始.96581/.86885，gap1.73360），这是几何相向皮肤patch，不冒称解剖指垫已认证。
+
+fit-latch-normal-aware.py联合原两侧跨度与朝向约束，固定骨长权重，141次离线求值后gap4.4195235204对原4.4197947328，两侧cos .8503569721/.9668508931，达到本轮明确gap误差<=.1raw与双侧cos>=.85。新index16.25/34.5/14.5、thumb8/4.25/40.75/37，其余中指MCP沿前次+30保留；局部15矩阵归档。只算位置/方向子约束通过，不是GrabPose交付。
+
+check-latch-normal-aware-whole.py随后在完整9966枪三角/1395手三角上复核12个腕方向，最少仍397 edge/triangle命中（60度，230+167），三方向图已亲看。仍有接触区域遮挡和穿插，不发布C0、不称surface/腕/袖口/游戏接受。结果latch-opposing-pad-candidates.json、latch-normal-aware-fit.json、latch-normal-aware-whole.json/png/log；无机械contact/radius、骨长或输入许可变更。下一步针对新候选剩余具体碰撞部位作校准，不回用已否定旧皮肤点。
