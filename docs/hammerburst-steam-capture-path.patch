@@ -1,0 +1,11 @@
+--- a/analysis/solo-m1-20261028/run_hammerburst_check.py
++++ b/analysis/solo-m1-20261028/run_hammerburst_check.py
+@@ -16,7 +16,7 @@
+     s=s.replace(suffix,suffix+"+['--hammerburst-supply-boundaries']")
+ _registered={}
+ def register_capture_identity(game,stamp):
+-    register(O,'J:/gearsVr/Gears.of.War.Reloaded.v1.0.1.3816947-P2P/Gears of War Reloaded/Binaries_x64/GOWDE-Steam.exe',game,stamp,_registered)
++    register(O,'J:/SteamLibrary/steamapps/common/Gears of War Reloaded/Binaries_x64/GOWDE-Steam.exe',game,stamp,_registered)
+ needle='                    if paired_capture is None and not performance_only:'
+ assert s.count(needle)==1
+ s=s.replace(needle,'                    _hammerburst_register_capture_identity(game,stamp)\n'+needle)

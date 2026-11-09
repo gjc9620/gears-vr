@@ -231,3 +231,5 @@ HB185428静态再次核2254PG+1338Native源、6saved、19当前runtime输入和A
 源码确认 weapon_lancer_manual_reload.inl 的 requires_permission 遗漏 Weap_LocustAssaultRifle，因此 HB 未进入已有 CanReload 自动补弹返回值保护。经 Lancer 文件所有者确认无冲突，只增加 HB feature getter、前置声明和启用时的类型分支共三行，沿用原身份检查、原函数一次执行、物理 manual_start scope 及清理。其余武器判定不变。实际提取生产 requires_permission 编译测试，9 类×8 开关组合共72组：修复前4个启用 HB 组合失败，修复后0失败；原始失败结果保留。此项仅证明类型及开关分类，不能证明实际回调绑定/自动补弹阻止，更不能证明50148骨角失败的唯一因果或自然手型修复。
 
 隔离构建采用 HB185428 冻结源与其原 GEARS flags，只加入上述三行；仅构建 GearsPlayground target，configure/build均0，DLL SHA256 a05a6c3ce20b4fa6a82f41a03a38ab690b69543d84193ad96c3b75f8619f0d5c。未启动游戏、未替换公共/私有运行包，未宣称手型或换弹通过。构建记录 analysis/hammerburst-20261108/manual-veto-isolated/result.json。
+
+Steam 迁移还修正 HB 私有 run_hammerburst_check.py 的 capture identity 选定路径；原严格进程路径/PID/creation 校验完整保留。5个无进程夹具通过：Steam首次及重复登记接受，P2P/错误PID/错误creation拒绝。可重现差异保存 docs/hammerburst-steam-capture-path.patch。新源构建冻结 hammerburst-prepared-20261109-220220-manual-veto-retail，prepared SHA22f045ccbb503f98ec47051cd512a5320cf19199918b7b7c73661900ea70ccc3；2256源/19runtime输入沿用既有动作链，未混入拒绝的手型，未stage、未申请窗口。Steam启动wrapper、显式settings绑定和新鲜运行基线仍须在后续完成，当前冻结不是可直接运行的已交付测试包。
