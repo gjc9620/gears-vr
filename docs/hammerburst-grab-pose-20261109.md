@@ -126,3 +126,9 @@ localize-latch-normal-aware.py重建同一15骨蒙皮与归档腕变换，在完
 向下连杆520/431移位的同约束离线对照仍166命中，拒绝。保持532/436精确接触、只锁定食指MCP27.799/42.799/57.799度并解其余关节/腕变换，分别142/140/150，全部保持位置误差<.0001raw与cos>.999999999，但没有实质消除穿插。refine-latch-exact-contact-mcp.py结果保留；不把140称为通过，不继续仅凭调MCP/腕roll整体猜姿态。下一步须定位实际相交面的空间位置与连杆边缘，并保持真实两面接触，不能用更远机械触点、扩大范围或改变骨长消去失败。
 
 本轮所有作者候选未进入产品/C0，未运行游戏。HB171233的19项实际运行脚本再次逐项SHA/AST核对一致，无stage、无抢占Lancer当前窗口。新证据见analysis/hammerburst-20261108下latch-pad-plane-envelope、latch-normal-aware-joint-localization、latch-flexion-side-pad-candidates、latch-true-twoface-candidates、latch-wholepart-twoface-candidates、latch-actual-face-fit/localization及latch-exact-contact-mcp各JSON。
+
+## 精确接触后的实际相交位置与局部避让对照
+
+locate-latch-actual-face-crossings.py使用与原审计完全相同的非共面边/三角判据、AABB、端点eps，逐条导出点位/边/面身份，严格重合94+48=142。全部归属原末节bone14（121：卡扣98、其余枪身23）和bone26（21：全卡扣）。食指命中至最近目标点距离中位1.730868raw、最大2.659799raw；拇指中位1.033462raw、最大1.183081raw。局部三视图将原相交枪面标红、手面标橙并按深度遮挡，已亲看；接触点附近薄边与指面确有可见重合，不能因点误差微小就称拟合完成。数据latch-actual-face-spatial.json/png。
+
+保持同一532/436表面而互换食指外侧/拇指内侧的单候选也解到精确位置/法线，但全手增至820，拒绝，未采用。对原94条forward命中实际涉及的55皮肤顶点/141个顶点-原面配对，加入局部面外半空间避让约束；本轮100次有界求解维持原接触点误差.003303/.002787raw、cos .999415/.999772，但完整枪重检反增204（126+78），拒绝。局部平面代价3.0403降至2.8653并不意味着实体净空或相交减少；不把该代理目标当通过。结果latch-outside-index-fit.json、latch-clearance-fit.json。后续应基于原非凸连杆/邻接枪身的真实曲面，重新选择有皮肤面积净空的抓握patch及手指路径；保持单C0、真实机械权限与原骨长，当前作者候选继续不发布。
