@@ -1028,3 +1028,20 @@ wrapper45383 exit0、encode11472 exit0、唯一retention35173 exit0均终结；N
 新r47 prepared `09720d6cd02bd1e467f9b20a819df9d83778974da38ae6c752baa46ef9f66f02`，plan `83e977197a0d5082f823bcea031d30e8ed8ef9cc27a32c205a23f535d578368d`；入口`analysis/solo-m1-20261028/run_cover_shape_layout_check.py`。原Native5cf4adea／PGf8e6f3c2／XR16840b27未重建。24声明源／3保存制品／37当前驱动SHA与AST及prepare-only0通过，仍仅一次原A及原联合只读来源，不增加调用、写入或游戏输入。已向当前实际Lancer尾路由申请，排在全部更早申请后；尚未受理／stage／run，无运行权。
 
 按主人最新公共合同，需求CV-14及AC-05／12补充每个实际抓边点的独立GrabPose、Snap与Grab权限边界、稳定可退出、不抢手，以及掌心／拇指／四指／食指／腕／袖口和接近至释放过渡的实际双眼检查。保留全部CV-01–24／AC-01–22编号；这是新增明确验收范围，未将其标为已实现或画面通过。继续复用唯一C0写入与公共仲裁，不加writer／Hook，不运行无关武器候选。
+
+## 2026年11月9日 r48实际抓边点姿态规划层
+
+新增 `tools/vr-common/cover_grab_pose.h` 和独立检查程序。规划层接收当前实际边缘的世界坐标、逐点 authored 腕部及15关节姿态、原始手部样本与公共左手归属，区分接近、真实抓稳和释放。输出只供既有C0求解器后续接线，不创建新writer、Hook、武器Kind、租约或身体移动。
+
+- 来源键绑定world／pawn／cover／slot／session／space／reference、边缘、组件、形状代次和姿态profile；调用者仍须认证完整原对象、几何与时相，键值相等不替代UObject或碰撞认证。
+- 当前接触、掩体和原手部样本均检查原100ms时限，拒绝未来和零时间。真实抓稳须匹配当前非零grant、grabbing阶段及同一边缘；真实释放即撤销本规划，不复活旧目标。
+- 被动接近仅限空闲左手、有效范围及未按Grip；已有持物优先。真实抓稳不再依赖新抓取接近标志，但视觉目标仍检查单独的保持范围与腕部转角。当前0.25m配置上界仅是该规划器的防误配限制，不是实际手感标定或身体移动范围。
+- 复用Marcus115原绑定及控制器到解剖腕的换算；逐点腕偏移按model scale应用一次，再由当前边缘旋转变换。输出15个local关节旋转，不改变骨长或原输入。失败、none和release均清除上次proposal，释放blend由既有C0消费端承担。
+
+MSVC真实 `/std:c++17 /O2 /W4 /WX /EHsc /UNDEBUG /MT` 编译后执行125项检查、0失败，覆盖三类边缘、旋转墙面、scale一次、旧身份／错误grant／释放、接近与保持范围、非法姿态和旧proposal清除。首次缺少显式stereo_frame.h引入导致的编译失败保留，补include后编译0。当前105份编译依赖均未在可执行文件之后修改，全部SHA、原编译／运行日志及两份源码副本保存在 `analysis/cover-system-20261108/grab-pose-r48/verification.json` 及相邻sources目录。
+
+这些检查中的关节数据明确是合成样本。实际每个抓点的authoring、真实表面贴合、接近／释放过渡、C0消费与提交、固定骨长全臂可达、实际镜像／双眼画面和头显均未完成；不能据125项结果宣称GrabPose或掩体玩法通过。没有构建、安装或运行新Native／Playground，公开v71保持。
+
+r47已由Bol162411独立全身份核验后正式单一受理，尚未收到最终交窗。Cover独立核验Bow164457的1965冻结源、219当前及归档驱动、438次Python AST、6保存制品、选中EXE及prepared／plan无错误，登记其为唯一后继；两方均明确受理不是窗口。回执shape-layout-r47/prepared-verification.json及bow-successor-check.json。r47冻结源、3制品和37驱动未被本批新增文件修改，未stage／run，不复用旧59528窗口。
+
+本批为源码与文档进展。完整CV-01–24／AC-01–22、实际全身体积扫掠和占用、当前物理／查询世界同步、Native移动与恢复、同版命中枪口、严重吸附肩／身体遮挡及实体头显仍未完成，目标保持进行中。
