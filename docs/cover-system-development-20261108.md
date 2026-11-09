@@ -1300,3 +1300,15 @@ cover_physics_shapes.py不再把本次三类已知native元素的下一项步长
 交接统计另作更正并保留原不可变凭据：Bol支持清单含1项非.py的reloaded-profile.json，实际Python AST数为121，其余JSON只作哈希核对；此前122把该支持项计入。实物SHA、候选身份、作用范围和唯一后继均未改变，独立更正记录为handoff-AST-count-correction.json。完整CV-01–24／AC-01–22、真实完整资产、场景候选／路径／占用、Native移动恢复、同版hit／muzzle、严重吸附肩／身体遮挡、逐点GrabPose与实体头显继续未完成，goal保持active。
 
 r69 prepared578f178e／plan4e1fda1c／readye21af1dd已封存于analysis/solo-m1-20261028/equipment-controls-prepared-20261109-cover-array-extent-r69。复用原r13的3saved制品及24源声明，仅更新明确的reader codec和独立run_cover_array_extent_check.py入口；37current＋37archive driver／74个实际.py AST、6项review-host文件SHA及Pillow13.0.0／numpy2.3.5匹配，原式prepare-only通过。新增范围明确为完整schema元数据读取，不冒用r54零新增RPM身份；不新增方法调用／输入／写入，不放大原预算。新请求仅单次沿既有Bol→HB尾链转达，保留全部早到申请顺序，尚未正式受理、stage或运行，仍须实际尾独立核验及最终唯一交窗。最初未投递的元数据副本保存在initial-preparation，不可作为队列身份使用。
+
+## 2026年11月9日 r69-admission-v2接管约束及完整主机绑定
+
+实际尾Troika核验指出旧r69缺完整host／origin与校验前消耗的排他接管约束。旧prepared578f178e／plan4e1fda1c／readye21af1dd已明确撤回并通知Troika与Bol，不得stage／run；其冻结文件、原只读预检、转达历史及失败原因保留。撤回不改变reader源927ca1c4的34项离线结果，也不把修正说成已游戏验证。
+
+替代equipment-controls-prepared-20261109-cover-array-extent-r69-admission-v2：prepared f10d978e857cfe5cf4ab947f72c262667e5382dd7c0078acdd4a958dea6259a0，plan5e6d566b13fd200192bcf9b2f5db80e6c47015e0e262a637fccce398e42a3dc7，readyccb519fca02046d303c21a2f58737b147e5788f0de419f70dc9edab3bf3f7efa，入口8d3487a5c9bbc9f4f27b0e589ed3c644c46cbbf2cbf5736c9c2b4d0d3160ffc3。仍复用原r13三saved二进制与24原源声明，未混r64–68或重建Native／PG／XR。完整项目Python运行邻域364当前＋364归档逐SHA及真实AST共728；主机依赖9271文件／796019693字节，含两份Python及完整Pillow13／NumPy2.3.5源码／cache／native库、7实际module origin、package-inspector支持库、WGC录像、ffmpeg／ffprobe、private-instance身份、模拟器manifest／bin及quiet-startup依赖。依赖清单SHAeec50fb31abbee784cd799803e3272d98196520f8ecdbaef20cf21b3794ab1a5，OS／GPU／Steam／system DLL仍明确不在此文件绑定内，不冒称完整硬件环境证明。
+
+固定cwd为当前6dof-single checkout；入口使用固定审查Python3c48fbdc、-E -s -B -X utf8且不用-I。实际执行先清继承GEARSVR_／GEARS_／XR_与PYTHONPATH／PYTHONHOME，再设置精确5项outerENV；原driver新增launcherENV逐项记录在plan和tail-packet.md。原0.4、behind-windows、observe-only、test mute、物理输入隔离和原预算保持。一次性接管文件固定于array-extent-r69/admission-v2/claims下，以OS独占新建并fsync，发生在参数、plan／ready、ticket、source／dependency、idle和stage的任何校验之前。任一步失败均保留消耗记录，不得删除或复用；只读prepare-only不消耗。stage仅允许在同一入口消耗＋全核＋最终唯一交窗及10项当前基线ticket＋idle之后执行，不先单独stage。最终ticket及实际claim目前均不存在，未占用运行窗。
+
+真实入口复制到隔离临时根后，7种早失败覆盖坏参数、缺plan、坏ready、缺／坏ticket、身份不符及缺依赖，均先消耗、再次执行FileExists拒绝；8独立进程竞同一临时路径恰1消耗／7拒绝。这只验证准入顺序与OS排他，不是游戏／正常stage成功证明。实际精确入口只读prepare-only再次exit0；未stage／运行，未操作当前owner的done／config／perPID helper。完整命令、ENV、依赖／origin／SHA、claim路径、验证日志及边界在analysis/cover-system-20261108/array-extent-r69/admission-v2。
+
+替代请求已直接提交实际尾Troika独立核验，明确保留Bol212342及全部早到请求在前；尚无受理、最终交窗或运行许可，不倒向前驱重复递交。运行范围仍仅一次原A和source／internal authored shapes／hit filters、首失败停止及完整正常收尾。最新实际仍41460数组拒绝和吸附肩／身体遮挡FAIL；当前完整资产／场景／连续路径／占用、真实Native移动恢复、同姿态hit／muzzle、逐点GrabPose、完整CV-01–24／AC-01–22及实体头显未完成，目标保持active。本轮为已落地的准备／准入验证progress，不是已验证运行句柄的wait。
