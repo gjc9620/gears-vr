@@ -87,6 +87,7 @@ class Artifact:
             raise RuntimeError('PhysX original PE header size rejected')
         self.header = self.raw[:header_size]
         self.layout = _pe_layout(self.header, len(self.raw))
+        self.image_base_offset = self.layout['fields']['pe_offset'] + 24 + 24
         self.preferred = self.layout['fields']['image_base']
         self.image_size = self.layout['fields']['size_of_image']
         self.disk_stat = _file_identity(after)
@@ -152,6 +153,18 @@ class Artifact:
             struct.pack_into('<Q', data, offset, value)
         return bytes(data)
 
+    def header_at_base(self, base):
+        # Actual game33732 retained all header bytes except the PE32+
+        # ImageBase field, which exactly matched independent enumeration.
+        # Construct that complete expected form; never mask observed bytes
+        # or use a live header's value to choose the permitted address.
+        if (type(base) is not int or base <= 0 or base % 65536 or
+                base + self.image_size >= 1 << 64):
+            raise RuntimeError('PhysX bound PE header base rejected')
+        header = bytearray(self.header)
+        struct.pack_into('<Q', header, self.image_base_offset, base)
+        return bytes(header)
+
     def reverify(self):
         # Reopen and hash; equal file timestamps alone are insufficient.
         current = Artifact(self.path)
@@ -165,20 +178,36 @@ class PhysXSource:
         self.path = Path(game_image).resolve().with_name('PhysXCore.dll')
         self.artifact = artifact_factory(self.path)
         self.base = self._loaded()
+        bound_header = self.artifact.header_at_base(self.base)
         header = query.read(self.base, len(self.artifact.header))
-        if header != self.artifact.header:
+        if header == self.artifact.header:
+            header_mode = 'original_preferred_image_base'
+        elif header == bound_header:
+            header_mode = 'independently_bound_image_base'
+        else:
             # Retain the EXACT already-observed bytes on failure. No second
-            # read, header mask, inferred loader exception or admission change.
+            # read or byte mask. Both complete allowed forms are source-bound.
             raise SourceRejection('PhysX current complete PE headers differ', dict(
                 kind='physx_complete_pe_header_mismatch', path=str(self.path), base=self.base,
                 artifact_sha256=ARTIFACT_SHA256, expected_header=self.artifact.header.hex(),
                 observed_header=header.hex(), expected_size=len(self.artifact.header), observed_size=len(header),
                 expected_sha256=hashlib.sha256(self.artifact.header).hexdigest(),
                 observed_sha256=hashlib.sha256(header).hexdigest(),
+                independently_bound_expected_header=bound_header.hex(),
+                independently_bound_expected_sha256=hashlib.sha256(bound_header).hexdigest(),
+                image_base_field_offset=self.artifact.image_base_offset,
                 differing_offsets=[i for i in range(min(len(header), len(self.artifact.header)))
                                    if header[i] != self.artifact.header[i]],
                 closing_verified=False, source_accepted=False, activation_allowed=False,
                 difference_cause_verified=False))
+        self.header_correspondence = dict(
+            mode=header_mode, image_base_field_offset=self.artifact.image_base_offset,
+            preferred_image_base=self.artifact.preferred, independently_enumerated_base=self.base,
+            observed_image_base=struct.unpack_from('<Q', header, self.artifact.image_base_offset)[0],
+            disk_header_sha256=hashlib.sha256(self.artifact.header).hexdigest(),
+            observed_header_sha256=hashlib.sha256(header).hexdigest(),
+            complete_expected_header_equal=True, closing_exact_reread_required=True,
+            loader_cause_verified=False)
         self.code = []
         self.targets = {}
         for rva, size, digest in CHUNKS:
@@ -248,6 +277,7 @@ class PhysXSource:
     def result(self):
         return dict(path=str(self.path), base=self.base, image_size=self.artifact.image_size,
                     artifact_sha256=ARTIFACT_SHA256, current_analyzed_code=self.code,
+                    header_correspondence=copy.deepcopy(self.header_correspondence),
                     targets=list(self.targets.values()), closing_required=True,
                     methods_called=False, physical_pose_verified=False,
                     world_synchronization_verified=False, activation_allowed=False)

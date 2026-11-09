@@ -271,6 +271,74 @@ class PhysXSourceTests(unittest.TestCase):
                     'atomic_snapshot_verified'):
             self.assertIs(out[key], False)
 
+    def test_loaded_image_base_field_matches_independent_module_without_ignoring_bytes(self):
+        f = self.fixture()
+        original = self.artifact.header
+        offset = self.artifact.layout['fields']['pe_offset'] + 24 + 24
+        observed = bytearray(original)
+        struct.pack_into('<Q', observed, offset, f.BASE)
+        f.m.put(f.BASE, bytes(observed))
+        before = copy.deepcopy(f.m.memory)
+        out = capture_image(f.m.observer, source_factory=f.factory)
+        self.assertTrue(out['accepted'], out.get('rejection'))
+        evidence = out['image']['header_correspondence']
+        self.assertEqual(evidence['mode'], 'independently_bound_image_base')
+        self.assertEqual(evidence['image_base_field_offset'], offset)
+        self.assertEqual(evidence['observed_image_base'], f.BASE)
+        self.assertEqual(evidence['preferred_image_base'], 0x180000000)
+        self.assertEqual(self.artifact.header, original)
+        self.assertEqual(self.artifact.preferred, 0x180000000)
+        self.assertEqual(f.m.memory, before)
+        self.assertEqual((out['reads'], out['bytes']), (18, 7720))
+        self.assertEqual(out['image']['targets'], [])
+        self.assertFalse(out['activation_allowed'])
+
+    def test_wrong_image_base_or_any_other_header_change_rejects_first_read(self):
+        offset = self.artifact.layout['fields']['pe_offset'] + 24 + 24
+        for defect in ('foreign_base', 'partial_base', 'zero_base', 'preferred_plus_delta',
+                       'dos', 'pe_offset', 'timestamp', 'entry', 'size', 'import', 'resource', 'section', 'padding'):
+            with self.subTest(defect=defect):
+                f = self.fixture()
+                header = bytearray(self.artifact.header)
+                struct.pack_into('<Q', header, offset, f.BASE)
+                if defect == 'foreign_base':
+                    struct.pack_into('<Q', header, offset, f.BASE + 0x10000)
+                elif defect == 'partial_base':
+                    header[offset + 7] ^= 1
+                elif defect == 'zero_base':
+                    struct.pack_into('<Q', header, offset, 0)
+                elif defect == 'preferred_plus_delta':
+                    struct.pack_into('<Q', header, offset, self.artifact.preferred + 0x10000)
+                else:
+                    at = {'dos': 0, 'pe_offset': 0x3c, 'timestamp': 0x118, 'entry': 0x138,
+                          'size': 0x160, 'import': 0x1a0, 'resource': 0x1a8,
+                          'section': 0x218, 'padding': 1023}[defect]
+                    header[at] ^= 1
+                f.m.put(f.BASE, bytes(header))
+                out = capture_image(f.m.observer, source_factory=f.factory)
+                self.assertFalse(out['accepted'])
+                self.assertEqual((out['reads'], out['bytes']), (1, 1024))
+                self.assertEqual(bytes.fromhex(out['source_rejection_witness']['observed_header']), bytes(header))
+                self.assertNotIn('image', out)
+
+    def test_individually_valid_header_form_change_at_closing_is_not_stable(self):
+        offset = self.artifact.layout['fields']['pe_offset'] + 24 + 24
+        for start_bound in (False, True):
+            with self.subTest(start_bound=start_bound):
+                f = self.fixture()
+                bound = bytearray(self.artifact.header)
+                struct.pack_into('<Q', bound, offset, f.BASE)
+                f.m.put(f.BASE, bytes(bound) if start_bound else self.artifact.header)
+                def change(n):
+                    if n == 2:
+                        f.m.put(f.BASE, self.artifact.header if start_bound else bytes(bound))
+                f.at_enumerate = change
+                out = capture_image(f.m.observer, source_factory=f.factory)
+                self.assertFalse(out['accepted'])
+                self.assertNotIn('image', out)
+                self.assertEqual(f.enumerations, 2)
+                self.assertIn('changed', out['rejection'])
+
     def test_image_rejection_retains_one_exact_header_read_and_current_identity(self):
         f = self.fixture()
         at = f.BASE + 0x120

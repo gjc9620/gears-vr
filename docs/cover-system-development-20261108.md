@@ -2,7 +2,7 @@
 
 目标：完成掩体系统开发与验证。状态：进行中。
 
-最近结果（2026-11-09）：r42独立模块／头／原code观察入口已完成，39项检查通过；新prepared03486f56／plan494fa8c0、24原r13声明源／3保存制品／36driver及AST／prepare-only0已冻结，并向HB实际尾申请新槽，未stage／run。此入口在掩体发现／移动／A之前只读当前模块，首拒绝保存原字节；实际59768的头不匹配原因仍未知，严重身体遮挡仍FAIL。r39全终交HB135655后本会话不占窗，完整CV／AC／物理／恢复／命中／枪口／头显范围保留。
+最近结果（2026-11-09）：r42b实际33732在掩体发现／移动／A前保留了完整PhysX首拒绝：1024字节头仅ImageBase字段不同，值等于独立枚举的加载基址。已据此实现完整头的两种精确对应，并完成保存头部的旧拒绝／新对应重放及42项相关检查；后续code内存为合成，不宣称当前游戏通过。r44恢复原r39的一次原A及身体／内部接收者／原形状只读观察，已冻结、向真实队尾申请，未stage／run。33732运行、审图、编码、恢复和保留均终结，已唯一交HB144203；完整CV／AC／实际身体碰撞、移动恢复、命中枪口及头显范围仍待完成。
 
 ## 2026年11月8日 首批接续
 
@@ -926,3 +926,38 @@ wrapper工具42455终态0／launcher0／原game gone；Native cleanup／入口�
 新候选equipment-controls-prepared-20261109-cover-physx-image-r42，prepared SHA03486f56dd6a37fb3f6515bd196a5fe51d623b7ac1198212dc7529d113a28bd1；cover-physx-image-runtime-plan.json SHA494fa8c0082eebbb8d10fb72b21c19267f13778665e2725931668112faf7f45a。复用准确原r13三制品，仅复制这3保存制品并核24snapshot声明源；36个当前driver及AST、prepared关联、prepare-only通过。只允许相对r39的四个已拥有诊断文件变化，其他旧driver保持原SHA；完整新driver已归档。wrapper现在执行prepared整体SHA关联检查。未重编Native／PG，未stage或启动Game／XR。
 
 新请求已发当前HB135655，请其沿真实已受理尾直接转达，不作为其第二后继、不复用r39旧窗。尚未获得最终交窗；当前无占窗或第二次本局动作。后续先取得真正差异字节并核对应字段，再据证据修复模块认证，继续原组合身体／形状、同C0命名骨、实际物理／查询世界、Native提交恢复及view／hit／muzzle闭环。证据header-rejection-r42/image-prepared-verification.json、image-verification.json及39项原日志。
+
+
+## 2026年11月9日 r42b实际首拒绝与加载基址对应修正
+
+### 实际运行结果及清理
+
+Bol144535/game71440全部终结并最终明确交窗后，本会话独立核对进程空闲、24份原r13声明源、3份保存二进制、36个驱动SHA／AST及所选游戏、PhysX和解释器，stage新r42b；旧未运行r42保留且不再使用。r42b的私有启动读取仅在原45秒期限内处理PermissionError／部分JSON，原身份、错误与就绪条件保持；原循环9个检查通过，共享脚本未修改。
+
+实际game33732／creation134386827342691297，运行owner3340。原保护启动后，在掩体发现、移动及A输入之前读取PhysX模块；首次1024字节读取于36.8024ms内拒绝，操作器71228 exit1。没有读取身体／接收者／形状，没有Trace、getter或虚方法调用，没有掩体输入或身体修改。原失败保持为失败。
+
+本次精确保留的差异为偏移322–325，全部属于PE32+的ImageBase字段（起点320、宽8字节）：磁盘优选地址0x180000000，内存完整字段0x7ffb5f120000，与独立枚举模块base相等，头部其他字节全部一致。这证明本次比较被该字段挡住；不证明由哪个加载组件改写，也不补签game59768未保存的原始头。字段定义回查[Microsoft PE格式](https://learn.microsoft.com/en-us/windows/win32/debug/pe-format#optional-header-windows-specific-fields-image-only)。
+
+已亲审1页完整跨度双路总览及6张关键原图。219张游戏、284张模拟器采样覆盖约13.53秒，双端末尾覆盖通过；游戏最大采集缺口2083.3422ms、模拟器350.0011ms，不是渲染FPS或卡顿归因。掩体外空手视图在镜像与两眼可见；startup第三人称和等待卡仍存在。本次未吸附，不能关闭此前59768的严重肩部／身体遮挡。视频13.566667秒、1554629字节。
+
+wrapper18322 exit0、编码69749 exit0、唯一保留23530 exit0；Native、entry、pad、drain、XR0、launcher0及gamegone通过。XR终态Exiting／对象销毁／shutdown完成，EndSession成功标志为false，分别保留。config、settings、head原缺失和两份游戏设置精确恢复；源码修正前36个末尾驱动及3份已stage制品均一致。保留33732／71440／35152最新三局及48小时，实删324媒体／33954810字节、errors0；源、构建、资源、存档和文字数值不删除。独立空闲并核HB144203的2251份保存源／6制品／19当前驱动及AST后，已最终明确唯一交窗，不追加本窗。
+
+证据：`analysis/cover-system-20261108/header-rejection-r42/game-33732-header-analysis.json`、`r42b-closure-proof.json`、`r42b-selected-visual.json`、`r42b-ending-driver-check.json`、`r42b-retention-result.json`和`r42b-successor-hb144203-check.json`。
+
+### 修正范围与离线结果
+
+`tools/game-playtest/cover_physx_source.py`从已经完整SHA认证的原始头构造第二种预期形式，仅将ImageBase替换成同一路径、唯一且独立枚举的当前base。只接受完整原头或完整绑定头的精确相等；不忽略该字段、不从被检头反推许可地址，也不放宽其他头字节、代码、重定位、对象身份或关闭复读。结果记录所选形式、原始／观察摘要和地址，loader原因仍未证明。原始优选地址仍用于代码及虚表重定位，不被内存头覆盖。
+
+新增真实失败条件的回归先在原实现上FAIL；修正后42项PhysX来源、原形状和物理状态相关方法通过。负例包括其他加载地址、部分字段、零值、其他头字段变化，以及观察期间在两种单独有效头之间切换。精确game33732保存头的离线重放由旧1read／1024B拒绝变为新18reads／7720B对应；其中头及base来自实际保存，后续代码内存是原件派生的合成样本，不能称新读取器已游戏验证。最初新增用例的Python关键字语法错误已修正，首次日志保留；不作为旧生产反例。
+
+本修正不调用任何引擎函数、不写进程、不授予物理／碰撞／姿态／世界同步许可。选中8段code并不等于整个DLL的当前代码都被认证，身体映射、实际碰撞消费者及唯一Native写入闭环仍需后续工作。
+
+### 下一候选与历史证据复用
+
+r44 prepared `dab63424ea36cf92a68d3951697019c10666b2d34b7536338a51d32494dfebe2`，plan `6d678d6453f651e7c07b34a30a00b1fbd6c1315eb99820f2546824ba33d40b88`。路径分别为`analysis/solo-m1-20261028/equipment-controls-prepared-20261109-cover-bound-source-r44/prepared.json`和`cover-bound-source-runtime-plan.json`，入口`run_cover_bound_source_check.py`。原r13 Native5cf4adea、PGf8e6f3c2、XR16840b27未重建；24声明源／3保存制品／36当前驱动SHA与AST及prepare-only0已核，仍不将24声明推广为整棵r13源码一致性。
+
+下一运行复用原r39的目标：一次原A吸附后，在同一关闭查询内观察当前身体、内部接收者及原形状；有首个明确失败即停止，不复跑旧暂停B，不增加Trace／getter／虚调用或身体写入。申请已送往当时真实队尾Snub144724，尚无新槽交窗、未stage／run；当前HB144203→Frag145754→Snub144724原队列保持。
+
+r43离线查到的Actor.Trace→0xcf8f8→0xcfa40→World+0x178／slot32→0xcfef0→0xe6a10→组件slot0x2e8，与原2026-10-29实施包已有证据相同，不算新发现。原包还保存基础SkeletalMeshComponent构造表、0x339294、骨骼矩阵getter及叶级索引几何的更深解析，应直接复用。今天的历史区段数组结构检查不能升级成当前注册unwind或ABI证明，伪代码RIP常量仍须以实际指令核对。后续重点是实际玩家分支与同版bounds／索引／物理消费，而非重做已有静态链。
+
+完整CV-01–24／AC-01–22、全身体积路径与占用、实际Native移动及恢复、同姿态命中／枪口、严重吸附遮挡和实体头显仍未完成。公开v71、固定11／64及36.47%保持。
