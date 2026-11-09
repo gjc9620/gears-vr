@@ -122,7 +122,7 @@ inline bool schema(Workspace& w,Snapshot const& next){
         binding::source_field(i,target,inner,0xd0)&&binding::certified(i,target,w.body_class)&&
         binding::kind(i,w.body_class,L"Class")&&binding::named(w.body_class,L"RB_BodyInstance");
 }
-inline BodyLayout* body_layout(Workspace& w,gears_anchor::Identity const& body){
+template<class Work> inline BodyLayout* body_layout(Work& w,gears_anchor::Identity const& body){
     for(unsigned n=0;n<w.layout_count;++n)if(w.layouts[n].cls.address==body.cls)return &w.layouts[n];
     if(w.layout_count==w.layouts.size())return nullptr;
     auto& l=w.layouts[w.layout_count];auto& p=l.proof;
