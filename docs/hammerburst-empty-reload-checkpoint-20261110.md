@@ -81,3 +81,15 @@ HOD051实际game49912/creation134387215205673057停在原Contacting Gears of War
 基于原归档状态与临时重定向的私有副本、仅OS观察替身，34个正反例及正常dispatch通过；未读写当前共享runtime或当前private文件，未实际执行process query。正常函数AST一致，完整复制入口8前置失败/prepare不消费/8进程race1/7通过，不重跑旧GN/C++。新执行-only v6：prepared仍a1869455，plan93c9130f1e53b3b957ace6b336518b3de7f694214cf1f449ae2e13db0342a930，readyf7ee0986b2000c7d61e28e68b68aa2f5ca826d5bb88d23ac22ced222dde165ca，entryb85850bfe2d7294bbc7cd28d09913b6de8e09742d62ca879bc0b730c83282397，合同89e3fe2caf8438a86f7f6905fe18984e03827319b806a021887d5bc31e6b518f。实际exact primary prepare-only0，无runtime query/stage/claim/ticket。源与精确合同见相邻hod49912-cancelled-admission.patch。首个未发布packet记录ready继承别名，已退役；最终packet见后续精确记录；仍同槽待HOD独核/新raw final，尚未接收窗口。
 
 发布前HOD指出ready两顶层alias继承旧v3，而entry/plan/实际invocation始终为v6；只修ready这两字段，最终ready SHA f7ee0986b2000c7d61e28e68b68aa2f5ca826d5bb88d23ac22ced222dde165ca，plan93c9130f/entryb85850bf/contract89e3保持不变。最终metadata实际prepare-only0，无runtime查询或真实claim/ticket。未发布初包保留并显式retired；最终不可变packet admission-v6/hod051-request-packet-final.json SHA2083a2564b6b3c6035ab2a02ee3a9b1f6333dd0bf6fc971b420b826204e08e87。
+
+## 实际13712：第五轮有限连发不完整，空仓换弹未到达
+
+HOD49912实际最终证据独立复核后，HB v6单次消费真实claim并运行所选原游戏13712/creation134387238055131993。PGa05a6c3c、Native806dcbd6、XR16840b27及原game bdc6705d保持冻结，未借旧attempt。肩部取得与core实际6条一致射线通过；loaded72/reserve78/cap78。后续四轮各6发依次72→66→60→54→48，第五轮仅48→47、实际1发，首次失败即停，operator退出1。总31条实际射线与used31一致，trace_valid/write_source_consistent/trace_source_consistent均真。普通空仓触发、原reload serial、翻盖、取旧匣/装新匣和换弹后回射均未尝试，不能称空仓换弹已通过。
+
+原日志frame269显示preparation rejection时source age94.3283ms；20ms准备余量在100ms边界内不足。记录的stage8/follow_stage6同时也是上次成功端点，跳过准备可能保留旧值，不能将它们直接当本次拒绝根因。随后source/owned变化与held-chain unavailable仍须定位，不能凭图像或时序断言已因果修复。保留100ms/20ms/250ms、原时间戳、release/anti-replay与原回调次数，未延长输入、重试或同窗补跑。
+
+实际33.5秒双路全部2页overview及6张按事件QPC选取原图已亲阅，摄取结束覆盖完整；存在近脸枪身遮挡，手型/全角度/物理头显均未接受。wrapper0，Native/entries/pad/drain正常、XR0、launcher0、game已退出，原十raw存在性与字节恢复。单次编码15493实际terminal0；单次retention83968实际terminal0，保留13712/49912/7760、48小时，删除2489媒体/441941574bytes，errors空，源/文本/数值保留。未重复编码或留存。34个原文本/JSON/数值文件1699177bytes有SHA归档。
+
+实际证据集中在analysis/hammerburst-20261108/runtime-13712-{first-failure-analysis,personal-paired-review,encode-exit,retention,restoration,closeout-review}.json及runtime-13712-evidence/archive-manifest.json。旧v3后继入口实际late-body helper覆盖缺陷由LS自行发现并撤回，当前仅同一LS011500槽v4替换；HB独立核14函数AST不变及真实最后load/sha对str/Path均通过，exact Jvenv prepare-only0，未消费LS claim/ticket。正式释放窗口仍须最终新idle/十raw核验与唯一v4 final。
+
+原版枪栓条件需求已按原模型与三段原动画核查，详hammerburst-development-20261108.md对应章节与hammerburst-bolt-original-audit.json：当前一代HB只有Root/MagLatch/Mag，无独立外露可拉机柄或后拉/回位轨道；按原锁扣/翻盖和弹匣机制继续，不增虚构拉栓步骤。该结论不宣称虚构枪械内部没有枪栓。
