@@ -1298,3 +1298,5 @@ cover_physics_shapes.py不再把本次三类已知native元素的下一项步长
 核对当前运行后继Bol180947的冻结依赖清单，本批两文件不在其24driver／74support中；本方未读取其当前done／config／perPID helpers，也未stage、运行、改变3制品或重建未改的Native／PG／XR。原r54冻结候选及其37归档driver仍保留，不用其旧plan混跑新读取器。下一次必须准备带新reader／driver身份、明确新增完整schema读取范围的候选，排在所有既有后继之后做一次定向检查；当前修正仅完成源码／离线验证，最新实际游戏结论仍是41460的拒绝和遮挡FAIL。
 
 交接统计另作更正并保留原不可变凭据：Bol支持清单含1项非.py的reloaded-profile.json，实际Python AST数为121，其余JSON只作哈希核对；此前122把该支持项计入。实物SHA、候选身份、作用范围和唯一后继均未改变，独立更正记录为handoff-AST-count-correction.json。完整CV-01–24／AC-01–22、真实完整资产、场景候选／路径／占用、Native移动恢复、同版hit／muzzle、严重吸附肩／身体遮挡、逐点GrabPose与实体头显继续未完成，goal保持active。
+
+r69 prepared578f178e／plan4e1fda1c／readye21af1dd已封存于analysis/solo-m1-20261028/equipment-controls-prepared-20261109-cover-array-extent-r69。复用原r13的3saved制品及24源声明，仅更新明确的reader codec和独立run_cover_array_extent_check.py入口；37current＋37archive driver／74个实际.py AST、6项review-host文件SHA及Pillow13.0.0／numpy2.3.5匹配，原式prepare-only通过。新增范围明确为完整schema元数据读取，不冒用r54零新增RPM身份；不新增方法调用／输入／写入，不放大原预算。新请求仅单次沿既有Bol→HB尾链转达，保留全部早到申请顺序，尚未正式受理、stage或运行，仍须实际尾独立核验及最终唯一交窗。最初未投递的元数据副本保存在initial-preparation，不可作为队列身份使用。
