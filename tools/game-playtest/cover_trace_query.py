@@ -7,12 +7,13 @@ cover grab. A returned hit is evidence about one ray, not a collision volume.
 import copy
 import hashlib
 import math
+import mmap
 from pathlib import Path
 import struct
 import time
 
 from cover_state import CoverQuery, struct_type
-from world_state import registry_append_only
+from world_state import Query, registry_append_only
 from cover_geometry_state import _geometry
 from cover_bone_query import _AttachedBridge, _module, _ownership, _reference, _field, _chain, SubmitFailure
 import cover_surface_query as surface
@@ -29,6 +30,27 @@ PARAMS = (
     ('HitInfo', 64, 40, '0x190'), ('ExtraTraceFlags', 104, 4, '0x90'),
     ('ReturnValue', 108, 8, '0x580'),
 )
+
+
+def _closing_blocks(values):
+    """Group selected witnesses within one OS page; retain every comparison.
+
+    Padding between selected ranges is read but never becomes a witness or
+    exported evidence. Original ranges crossing a page remain individual.
+    No process read, cached live value, or fallback/retry happens here.
+    """
+    blocks = []
+    for (address, size), expected in sorted(values):
+        end = address + size
+        page_end = (address // mmap.PAGESIZE + 1) * mmap.PAGESIZE
+        if (blocks and address >= blocks[-1][0] and
+                address // mmap.PAGESIZE == blocks[-1][0] // mmap.PAGESIZE and
+                blocks[-1][1] <= page_end and end <= page_end):
+            start, previous_end, selected = blocks[-1]
+            blocks[-1] = (start, max(previous_end, end), selected + [(address, expected)])
+        else:
+            blocks.append((address, end, [(address, expected)]))
+    return blocks
 
 
 class TraceQuery(CoverQuery):
@@ -115,9 +137,17 @@ class TraceQuery(CoverQuery):
 
     def finish(self):
         self._check_selected_dependencies()
-        for (address, size), expected in list(self.values.items()):
-            if self.read(address, size) != expected:
-                raise RuntimeError('Cover Trace selected value changed at closing boundary')
+        for start, end, selected in _closing_blocks(list(self.values.items())):
+            # Preserve the original read/byte/time accounting. Do not add the
+            # unselected page padding to CoverQuery.values: only its existing
+            # individual witnesses are checked, with their original bytes.
+            current = Query.read(self, start, end - start)
+            for address, expected in selected:
+                actual = current[address - start:address - start + len(expected)]
+                if actual != expected:
+                    self.closing_rejection = dict(kind='value', address=address, size=len(expected),
+                                                  before=expected.hex(), after=actual.hex())
+                    raise RuntimeError('Cover Trace selected value changed at closing boundary')
         self._check_selected_dependencies()
 
 
@@ -299,6 +329,7 @@ def _surface_state(q, roles, actor, selected_component=None):
             q.obj(matrix_type['cls'])['name'] != 'ScriptStruct' or
             struct.unpack('<I', q.read(matrix_type['address'] + 0x88, 4))[0] != 64):
         raise RuntimeError('Edge collision LocalToWorld is not a typed Matrix')
+    checked_plane_types = set()
     for index, label in enumerate(('XPlane', 'YPlane', 'ZPlane', 'WPlane')):
         plane_field = _field(q, matrix_type, label, 'StructProperty', structure=True)
         plane_type = q.obj(struct_type(q, plane_field))
@@ -306,12 +337,17 @@ def _surface_state(q, roles, actor, selected_component=None):
                 plane_type['name'] != 'Plane' or q.obj(plane_type['cls'])['name'] != 'ScriptStruct' or
                 struct.unpack('<I', q.read(plane_type['address'] + 0x88, 4))[0] != 16):
             raise RuntimeError('Edge collision Matrix Plane layout differs')
-        for axis, name in enumerate(('X', 'Y', 'Z', 'W')):
-            # Plane may inherit X/Y/Z from Vector. Use the existing typed
-            # declaring-owner walk, which also pins each actual super link.
-            field = _field(q, plane_type, name, 'FloatProperty', structure=True)
-            if field['size'] != 4 or field['offset'] != axis * 4:
-                raise RuntimeError('Edge collision Plane scalar layout differs')
+        if plane_type['address'] not in checked_plane_types:
+            for axis, name in enumerate(('X', 'Y', 'Z', 'W')):
+                # Plane may inherit X/Y/Z from Vector. Prove each distinct
+                # scalar schema once in THIS surface snapshot. Every matrix
+                # field/link/type above is still reread, and all selected
+                # schema identities/layouts/super/Next bytes remain in the
+                # original Query closing proof. No cross-snapshot cache.
+                field = _field(q, plane_type, name, 'FloatProperty', structure=True)
+                if field['size'] != 4 or field['offset'] != axis * 4:
+                    raise RuntimeError('Edge collision Plane scalar layout differs')
+            checked_plane_types.add(plane_type['address'])
     raw = q.value(component, matrix_field)
     matrix = struct.unpack('<16f', raw)
     if (not all(math.isfinite(x) and abs(x) <= 2 ** 24 for x in matrix) or

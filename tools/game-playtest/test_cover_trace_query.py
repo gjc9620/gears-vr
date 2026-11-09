@@ -5,16 +5,43 @@ from pathlib import Path
 from types import SimpleNamespace
 import sys
 import copy
+import mmap
 from unittest.mock import patch
 
-from cover_trace_query import (TraceQuery, capture_edge_interval, _surface_state,
+from cover_trace_query import (TraceQuery, capture_edge_interval, _surface_state, _closing_blocks,
                                _hit_component_observation, SurfaceOwnershipRejected,
                                HitComponentObservationRejected)
+from cover_state import CoverQuery
+from world_state import Query
+
+
+class SurfaceClosingQuery(CoverQuery):
+    """Actual Trace finish/value reads, with strict fixture registry admission.
+
+    SurfaceMemory models typed reflection, not the production live sampler.
+    TraceRegistryTests independently exercise that sampler's stricter contract.
+    """
+    def __init__(self, observer):
+        # This fixture previously mapped only explicitly initialized bytes.
+        # Windows page protection applies to whole OS pages; represent the
+        # intervening readable bytes without changing any selected witness.
+        memory = observer.resolver.memory
+        pages = {p // mmap.PAGESIZE * mmap.PAGESIZE for p in memory}
+        for page in pages:
+            for address in range(page, page + mmap.PAGESIZE):
+                memory.setdefault(address, 0)
+        super().__init__(observer)
+
+    def _check_selected_dependencies(self):
+        Query.finish(self)
+
+    finish = TraceQuery.finish
 
 
 class Memory:
     def __init__(self):
         self.values = {}
+        self.bytes = {}
         self.objects_header, self.names_header = 0x100, 0x200
         self.objects_data, self.names_data = 0x1000, 0x2000
         self.object_count, self.object_capacity = 10, 100
@@ -28,9 +55,13 @@ class Memory:
 
     def put(self, address, raw):
         self.values[address, len(raw)] = raw
+        self.bytes.update((address + i, b) for i, b in enumerate(raw))
 
     def read(self, address, size):
-        return self.values[address, size]
+        pages = {p // mmap.PAGESIZE for p in self.bytes}
+        if any(p // mmap.PAGESIZE not in pages for p in range(address, address + size)):
+            raise KeyError((address, size))
+        return bytes(self.bytes.get(p, 0) for p in range(address, address + size))
 
     def object(self, *, address=0x5000, index=3, name_index=4, name='CoverLink'):
         entry = 0x6000
@@ -100,6 +131,66 @@ class TraceRegistryTests(unittest.TestCase):
         self.assertEqual(query.last_object_count, 11)
         self.assertTrue(query.registry_observations)
         self.assertEqual(len(query.identities), 1)
+
+    def test_page_closing_preserves_each_witness_and_ignores_unselected_padding(self):
+        memory, query = self.fixture()
+        for address, raw in ((0x9100, b'A' * 8), (0x91f0, b'B' * 8)):
+            memory.put(address, raw)
+            query.read(address, len(raw))
+        expected = copy.deepcopy(query.values)
+        memory.put(0x9180, b'unselected padding changes')
+        query.finish()
+        self.assertEqual(query.values, expected)
+        memory.put(0x91f0, b'C' * 8)
+        with self.assertRaisesRegex(RuntimeError, 'selected value changed'):
+            query.finish()
+        self.assertEqual(query.closing_rejection,
+                         dict(kind='value', address=0x91f0, size=8,
+                              before=(b'B' * 8).hex(), after=(b'C' * 8).hex()))
+        self.assertEqual(query.values, expected)
+
+    def test_failed_merged_closing_read_has_no_individual_retry(self):
+        memory, query = self.fixture()
+        for address in (0x9100, 0x91f0):
+            memory.put(address, bytes(8))
+            query.read(address, 8)
+        original, attempts = memory.read, []
+
+        def read(address, size):
+            if 0x9100 <= address <= 0x91f0:
+                attempts.append((address, size))
+                raise OSError('Original process read unavailable')
+            return original(address, size)
+
+        memory.read = read
+        with self.assertRaisesRegex(OSError, 'read unavailable'):
+            query.finish()
+        self.assertEqual(attempts, [(0x9100, 0xf8)])
+
+    def test_page_closing_keeps_original_byte_and_time_limits(self):
+        for limit in ('bytes', 'time'):
+            with self.subTest(limit=limit):
+                memory, query = self.fixture()
+                for address in (0x9100, 0x91f0):
+                    memory.put(address, bytes(8))
+                    query.read(address, 8)
+                if limit == 'bytes':
+                    query.bytes = 2 * 1024 * 1024 - 16
+                else:
+                    query.started -= 3.1
+                with self.assertRaisesRegex(RuntimeError, 'World-state read budget exceeded'):
+                    query.finish()
+
+    def test_page_groups_do_not_cross_a_page_or_split_original_crossing_read(self):
+        boundary = mmap.PAGESIZE
+        ranges = [((boundary - 4, 4), b'abcd'), ((boundary, 4), b'efgh'),
+                  ((boundary + 32, 4), b'ijkl')]
+        blocks = _closing_blocks(ranges)
+        self.assertEqual([(start, end) for start, end, _ in blocks],
+                         [(boundary - 4, boundary), (boundary, boundary + 36)])
+        crossing = [((boundary - 2, 4), b'abcd'), ((boundary + 16, 4), b'efgh')]
+        self.assertEqual([(start, end) for start, end, _ in _closing_blocks(crossing)],
+                         [(boundary - 2, boundary + 2), (boundary + 16, boundary + 20)])
 
     def test_name_growth_and_count_rollback_are_rejected(self):
         resolver, query = self.fixture()
@@ -485,6 +576,62 @@ class SurfaceSnapshotTests(unittest.TestCase):
         self.assertEqual(result['component'], component)
         self.assertEqual(set(result['collection_membership']['runtime_components']), {'Components', 'AllComponents'})
         q.finish()
+
+    def test_repeated_collection_snapshots_fit_original_read_budget(self):
+        m, q, roles, actor, component, _ = self.attached_collection_fixture()
+        q = SurfaceClosingQuery(m.observer)
+        # A bounded synthetic remainder of Trace preparation, not a replay of
+        # the live process. Consume actual reads under the unchanged Query
+        # counter and 2MiB/3-second limits; do not raise or reset the budget.
+        for _ in range(16000):
+            q.read(m.objects_header, 16)
+        before = _surface_state(q, roles, actor, component)
+        q.finish()
+        after = _surface_state(q, roles, actor, component)
+        q.finish()
+        self.assertEqual(before, after)
+        self.assertLessEqual(q.reads, 16384)
+
+    def test_distinct_plane_type_must_validate_its_own_scalar_layout(self):
+        m, q, roles, actor, component, _ = self.attached_collection_fixture()
+        other = 0x41000
+        m.add_object(other, 'Plane', m.STRUCT_CLASS)
+        m.put(other + m.profile['field_super'], struct.pack('<Q', m.VECTOR))
+        m.put(other + 0x88, struct.pack('<I', 16))
+        m.add_property(other, 'W', 'FloatProperty', 16, 4)  # Must be12.
+        wrong = m.properties[other, 'W']
+        m.objects[wrong['address']]['cls'] = m.kind_classes['FloatProperty']
+        m.put(other + m.profile['struct_children'], struct.pack('<Q', wrong['address']))
+        m.put(wrong['address'] + m.profile['field_next'], bytes(8))
+        plane = m.properties[m.MATRIX, 'YPlane']
+        m.put(plane['address'] + m.profile['struct_property_struct'], struct.pack('<Q', other))
+        with self.assertRaisesRegex(RuntimeError, 'Plane scalar layout'):
+            _surface_state(q, roles, actor, component)
+
+    def test_shared_plane_schema_remains_a_full_closing_dependency(self):
+        for change in ('dimension', 'offset', 'super', 'next', 'identity', 'extent', 'link'):
+            with self.subTest(change=change):
+                m, q, roles, actor, component, _ = self.attached_collection_fixture()
+                q = SurfaceClosingQuery(m.observer)
+                _surface_state(q, roles, actor, component)
+                scalar = m.properties[m.VECTOR, 'X']
+                if change == 'dimension':
+                    m.put(scalar['address'] + 0x70, struct.pack('<I', 2))
+                elif change == 'offset':
+                    m.put(scalar['address'] + 0x94, struct.pack('<I', 4))
+                elif change == 'super':
+                    m.put(m.PLANE + m.profile['field_super'], bytes(8))
+                elif change == 'next':
+                    m.put(scalar['address'] + m.profile['field_next'], bytes(8))
+                elif change == 'identity':
+                    m.objects[scalar['address']]['name'] = 'ChangedX'
+                elif change == 'extent':
+                    m.put(m.PLANE + 0x88, struct.pack('<I', 32))
+                else:
+                    plane = m.properties[m.MATRIX, 'YPlane']
+                    m.put(plane['address'] + m.profile['struct_property_struct'], struct.pack('<Q', m.VECTOR))
+                with self.assertRaises(RuntimeError):
+                    q.finish()
 
     def test_cooked_collection_requires_unique_membership_and_original_identity_checks(self):
         for bad in ('missing', 'duplicate', 'all_missing', 'all_duplicate', 'inner_kind',
