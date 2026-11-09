@@ -15,6 +15,13 @@ MAX_VERTICES = 256
 MAX_TOPOLOGY = 1536
 KINDS = {'SphereElems': 'KSphereElem', 'BoxElems': 'KBoxElem',
          'SphylElems': 'KSphylElem', 'ConvexElems': 'KConvexElem'}
+# Historical aggregate consumer advances all three native primitive arrays by
+# 80 bytes. Reflection describes the occupied fields, not that next-element
+# distance. Keep exact named pairs; never round an arbitrary structure's size.
+# Current identities, complete field schemas and the SAME query still close.
+PRIMITIVE_ARRAY_LAYOUTS = {'SphereElems': (80, 72, ('Radius',)),
+                          'BoxElems': (80, 80, ('X', 'Y', 'Z')),
+                          'SphylElems': (80, 76, ('Radius', 'Length'))}
 
 
 class ShapeLayoutRejected(RuntimeError):
@@ -101,7 +108,49 @@ class ShapeReader:
             rows.append(self.vector(point, target, 'Plane'))
         return rows  # No inferred local/world convention or rigid-transform claim.
 
-    def array(self, base, field, expected, limit):
+    def primitive_array_layout(self, typ, name, owner):
+        stride, extent, dimensions = PRIMITIVE_ARRAY_LAYOUTS[name]
+        if not owner or typ['outer'] != owner:
+            raise RuntimeError('Physics shape element declaring owner rejected')
+        layout = self.layout(typ, ('TM', *dimensions, 'bNoRBCollision'))
+        if layout['size'] != extent:
+            raise RuntimeError('Physics native primitive reflected extent changed')
+        fields = layout['fields']
+        tm = fields['TM']
+        if ((tm['type'], tm['offset'], tm['size']) != ('StructProperty', 0, 64) or
+                tm['target']['name'] != 'Matrix' or tm['target']['number']):
+            raise RuntimeError('Physics native primitive TM schema rejected')
+        planes = self.layout(tm['target'], ('XPlane', 'YPlane', 'ZPlane', 'WPlane'))
+        if planes['size'] != 64:
+            raise RuntimeError('Physics native primitive Matrix schema rejected')
+        for index, plane_name in enumerate(('XPlane', 'YPlane', 'ZPlane', 'WPlane')):
+            plane = planes['fields'][plane_name]
+            if ((plane['type'], plane['offset'], plane['size']) != ('StructProperty', index * 16, 16) or
+                    plane['target']['name'] != 'Plane' or plane['target']['number']):
+                raise RuntimeError('Physics native primitive Matrix plane schema rejected')
+            vector = self.layout(plane['target'], ('X', 'Y', 'Z', 'W'))
+            if vector['size'] != 16 or any(
+                    (vector['fields'][axis]['type'], vector['fields'][axis]['offset'], vector['fields'][axis]['size']) !=
+                    ('FloatProperty', component * 4, 4) for component, axis in enumerate(('X', 'Y', 'Z', 'W'))):
+                raise RuntimeError('Physics native primitive Plane component schema rejected')
+        for index, dimension in enumerate(dimensions):
+            p = fields[dimension]
+            if (p['type'], p['offset'], p['size']) != ('FloatProperty', 64 + 4 * index, 4):
+                raise RuntimeError('Physics native primitive dimension schema rejected')
+        flag = fields['bNoRBCollision']
+        if (flag['type'], flag['offset'], flag['size']) != ('BoolProperty', 64 + 4 * len(dimensions), 4):
+            raise RuntimeError('Physics native primitive Boolean schema rejected')
+        return dict(kind=name, stride=stride, declared_extent=extent, trailing_bytes=stride-extent,
+                    complete_field_schema_verified=True, trailing_bytes_interpreted_as_geometry=False,
+                    closing_required=True, activation_allowed=False)
+
+    def array(self, base, field, expected, limit, *, primitive_kind=None, primitive_owner=None):
+        native = None
+        if primitive_kind is not None:
+            if (primitive_kind not in PRIMITIVE_ARRAY_LAYOUTS or field['name'] != primitive_kind or
+                    expected != (KINDS[primitive_kind],) or not primitive_owner):
+                raise RuntimeError('Physics primitive array codec association rejected')
+            native = PRIMITIVE_ARRAY_LAYOUTS[primitive_kind]
         if field['type'] != 'ArrayProperty' or field['size'] != 16:
             raise RuntimeError('Physics shape array header type/width rejected')
         header = self.raw(base, field)
@@ -134,23 +183,29 @@ class ShapeReader:
                 matches = target_kind == 'ScriptStruct'
             if matches:
                 target_extent = struct.unpack('<I', self.q.read(target['address'] + 0x88, 4))[0]
-                matches = target_extent == stride
+                matches = ((stride, target_extent) == native[:2]) if native else target_extent == stride
             if not matches:
                 raise ShapeLayoutRejected('Physics shape struct array target/extent rejected',
                     dict(kind='physics_shape_array_target_extent_mismatch', field=field,
                          array_header_bytes=header.hex(), data=data, count=count, capacity=capacity,
                          inner=inner, inner_metadata_bytes=raw.hex(), dimension=dimension, stride=stride,
                          expected_structure_names=list(expected), target=target,
+                         expected_native_stride=native[0] if native else None,
+                         expected_declared_extent=native[1] if native else None,
                          target_kind_observed=target_kind, target_extent_observed=target_extent,
                          unread_values_are_unknown=True, additional_process_reads=0,
                          closing_verified=False, source_accepted=False, activation_allowed=False))
+        primitive_layout = self.primitive_array_layout(target, primitive_kind, primitive_owner) if native else None
         if capacity and data >= (1 << 64) - capacity * stride:
             raise RuntimeError('Physics shape array pointer overflow rejected')
         if count * stride > 32768:
             raise RuntimeError('Physics shape array byte budget rejected; no truncation')
         payload = self.q.read(data, count * stride) if count else b''
-        return dict(header=header.hex(), data=data, count=count, capacity=capacity, stride=stride,
-                    inner=inner, structure=target, bytes=payload.hex())
+        result = dict(header=header.hex(), data=data, count=count, capacity=capacity, stride=stride,
+                      inner=inner, structure=target, bytes=payload.hex())
+        if primitive_layout is not None:
+            result['primitive_layout'] = primitive_layout
+        return result
 
     def primitive(self, base, typ):
         dimensions = {'KSphereElem': ('Radius',), 'KBoxElem': ('X', 'Y', 'Z'),
@@ -234,7 +289,9 @@ def read_setup_shapes(query, setup, *, reader=None):
                active_physics_verified=False, world_pose_verified=False, collision_volume_verified=False,
                sweep_verified=False, occupancy_verified=False, activation_allowed=False)
     for name, expected in KINDS.items():
-        array = reader.array(at, fields[name], (expected,), MAX_SHAPES)
+        array = reader.array(at, fields[name], (expected,), MAX_SHAPES,
+                             primitive_kind=name if name in PRIMITIVE_ARRAY_LAYOUTS else None,
+                             primitive_owner=owner['address'])
         if array['structure']['outer'] != owner['address']:
             raise RuntimeError('Physics shape element declaring owner rejected')
         out['arrays'][name] = array

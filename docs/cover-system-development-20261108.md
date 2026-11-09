@@ -1284,3 +1284,17 @@ wrapper工具85918实际exit0，operator46976实际exit1；Native cleanup／entr
 唯一后继保持Bol180947，结束前独立重核其4身份文件、3780保存源／当前及归档驱动／支持文件SHA、24current＋24archive driver、74support、122AST及4bin，原source commit94813f35存在，原主握单段scope与入口不变；41项未解析import仍明确不是完整环境证明。fresh idle／CIM为空，完整核验保存在boltok-ending-successor-check.json；实际最终唯一交接另存final-handoff.json，不向后到申请者并列授窗。
 
 下一步只针对本次72／80布局拒绝核对并修复读取合同，再准备有身份的新候选；不跳过空数组认证、不全局放宽extent、不声称整套掩体已修复。当前完整资产来源、活动物理与世界候选、连续姿态路径／终点占用、Native移动恢复、同版hit／muzzle、严重吸附遮挡、逐点GrabPose、全部CV-01–24／AC-01–22与实体头显均未完成，goal继续active。
+
+## 2026年11月9日 r69原生元素步长与反射范围的读取修正
+
+上一轮41460的SphereElems80／72首拒已在保存的typed-memory夹具中复现，另复现已知字段codec下Sphyl80／76的同类拒绝；先保留旧两源、复现脚本与见证，再修改读取器。原聚合130e7c的三条array循环分别按80递增，count位移8／24／40对应Sphere／Box／Sphyl，原叶函数另核Sphere Radius+64、Box XYZ+64／68／72、Sphyl Radius／Length+64／68。全部原code字节与源SHA911ab9bc…06ae6吻合；这些是保存原码，不是新运行或当前全类布局已通过。
+
+cover_physics_shapes.py不再把本次三类已知native元素的下一项步长当作其反射字段范围。聚合入口显式指定named primitive codec及当前声明owner，严格要求Sphere stride80／extent72、Box80／80、Sphyl80／76。每类还须完整字段表、TM0／64、精确维度偏移与类型、末端4字节Boolean、Matrix四Plane及Plane四float布局全部吻合；即使数组为空仍检查。字段身份、外层、类／number、数组数量／指针、总形状上限、字节／读取预算及同一query关闭规则均保留。Boolean mask仍取当前经过单bit检查的反射值，不猜原码未证明的bit常量。
+
+80字节只用于下一项位置及整段payload读取，Sphere尾8／Sphyl尾4不解释为几何；完整payload仍进入同一query的关闭比对，尾字节变化同样拒绝。其他结构数组继续严格stride==target extent，不按通用16字节对齐或stride>=extent放行；72／72的Sphere、76／76的Sphyl及任意96步长等不符合本native codec的组合也拒绝。当前游戏仅实际观察到Sphere80／72；Box／Sphyl的当前完整字段与范围仍待新游戏逐项验证，不能将本表预期写成实测通过。Convex未据本批扩大支持。
+
+原26项shape／physics检查保持通过，新增8项后共34项0失败、0跳过，使用实际审查Python、BelowNormal执行。新增覆盖空数组完整schema、两个80字节元素步进、NaN样式尾字节不作几何、任意stride／extent拒绝、损坏空schema、关闭时布局／尾字节变化、普通Vector仍严格相等和combined source不产生物理许可。新增直接调用检查首轮误把fixture内部property描述当已解码field，缺size而报1error；保留原日志／源码，仅改为通过实际layout取得field后全通过，未放宽产品guard。7个相关源依赖在最终检查前后SHA一致。证据、原码锚点、旧拒绝、源码副本与真实日志在analysis/cover-system-20261108/array-extent-r69。
+
+核对当前运行后继Bol180947的冻结依赖清单，本批两文件不在其24driver／74support中；本方未读取其当前done／config／perPID helpers，也未stage、运行、改变3制品或重建未改的Native／PG／XR。原r54冻结候选及其37归档driver仍保留，不用其旧plan混跑新读取器。下一次必须准备带新reader／driver身份、明确新增完整schema读取范围的候选，排在所有既有后继之后做一次定向检查；当前修正仅完成源码／离线验证，最新实际游戏结论仍是41460的拒绝和遮挡FAIL。
+
+交接统计另作更正并保留原不可变凭据：Bol支持清单含1项非.py的reloaded-profile.json，实际Python AST数为121，其余JSON只作哈希核对；此前122把该支持项计入。实物SHA、候选身份、作用范围和唯一后继均未改变，独立更正记录为handoff-AST-count-correction.json。完整CV-01–24／AC-01–22、真实完整资产、场景候选／路径／占用、Native移动恢复、同版hit／muzzle、严重吸附肩／身体遮挡、逐点GrabPose与实体头显继续未完成，goal保持active。

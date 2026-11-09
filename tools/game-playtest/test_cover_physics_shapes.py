@@ -41,9 +41,9 @@ class ShapeMemory(PhysicsMemory):
         agg=self.setups[0]+0x60
         self.put(agg+64,struct.pack('<Q',0xfedcba9876543210))
         matrix=struct.pack('<16f',1,0,0,0,0,1,0,0,0,0,1,0,2,3,4,1)
-        rows=[('SphereElems',self.SPHERE,matrix+struct.pack('<fI',2,0)),
+        rows=[('SphereElems',self.SPHERE,matrix+struct.pack('<fI',2,0)+bytes(8)),
               ('BoxElems',self.BOX_ELEM,matrix+struct.pack('<3fI',3,4,5,4)),
-              ('SphylElems',self.SPHYL,matrix+struct.pack('<2fI',2,0,0)),
+              ('SphylElems',self.SPHYL,matrix+struct.pack('<2fI',2,0,0)+bytes(4)),
               ('ConvexElems',self.CONVEX,bytes(128))]
         for i,(name,typ,raw) in enumerate(rows):
             self.shape_array(self.AGG,agg,name,i*16,typ,len(raw),raw)
@@ -155,6 +155,120 @@ class ShapeTests(unittest.TestCase):
             f.put(f.arrays_shape[f.AGG,name]['header'],bytes(16))
         out,_=f.capture_shapes();self.assertEqual(out['shapes'],[])
 
+    def test_game41460_empty_padded_array_tuple_validates_complete_schema(self):
+        f = ShapeMemory()
+        for name in ('SphereElems', 'BoxElems', 'SphylElems', 'ConvexElems'):
+            f.put(f.arrays_shape[f.AGG, name]['header'], bytes(16))
+        out, q = f.capture_shapes()
+        self.assertEqual(out['shapes'], [])
+        for name, extent in (('SphereElems', 72), ('BoxElems', 80), ('SphylElems', 76)):
+            array = out['arrays'][name]
+            self.assertEqual((array['count'], array['stride']), (0, 80))
+            self.assertEqual(array['primitive_layout']['declared_extent'], extent)
+            self.assertTrue(array['primitive_layout']['complete_field_schema_verified'])
+            self.assertFalse(array['primitive_layout']['activation_allowed'])
+        self.assertFalse(out['collision_volume_verified'])
+        self.assertFalse(any((f.arrays_shape[f.AGG, name]['data'], 80) in q.values
+                             for name in ('SphereElems', 'BoxElems', 'SphylElems')))
+
+    def test_two_padded_elements_use_stride_without_interpreting_tail_bytes(self):
+        for name in ('SphereElems', 'SphylElems'):
+            with self.subTest(name=name):
+                f = ShapeMemory();array = f.arrays_shape[f.AGG, name]
+                for other in ('SphereElems', 'BoxElems', 'SphylElems', 'ConvexElems'):
+                    f.put(f.arrays_shape[f.AGG, other]['header'], bytes(16))
+                first = bytearray(f.read(array['data'], 80));second = bytearray(first)
+                struct.pack_into('<f', second, 48, 17.)
+                struct.pack_into('<f', second, 64, 5.)
+                if name == 'SphereElems':
+                    first[72:80] = bytes.fromhex('0000c07f000080ff')
+                    second[72:80] = bytes.fromhex('ffffffff0000c07f')
+                    struct.pack_into('<I', second, 68, 4)
+                else:
+                    first[76:80] = bytes.fromhex('0000c07f')
+                    second[76:80] = bytes.fromhex('000080ff')
+                    struct.pack_into('<fI', second, 68, 6., 4)
+                payload = bytes(first+second)
+                f.put(array['data'], payload);f.put(array['header'], struct.pack('<Qii', array['data'], 2, 2))
+                out, q = f.capture_shapes()
+                self.assertEqual(len(out['shapes']), 2)
+                self.assertEqual([row['dimensions']['Radius'] for row in out['shapes']], [2., 5.])
+                self.assertEqual(out['shapes'][1]['TM'][3], [17., 3., 4., 1.])
+                self.assertTrue(out['shapes'][1]['bNoRBCollision'])
+                if name == 'SphylElems':self.assertEqual(out['shapes'][1]['dimensions']['Length'], 6.)
+                self.assertEqual(bytes.fromhex(out['arrays'][name]['bytes']), payload)
+                self.assertIn((array['data'], 160), q.values)
+                self.assertFalse(out['arrays'][name]['primitive_layout']['trailing_bytes_interpreted_as_geometry'])
+
+    def test_only_exact_named_native_stride_extent_pairs_are_supported(self):
+        cases = (('SphereElems', 72, 72), ('SphereElems', 96, 72), ('SphereElems', 80, 80),
+                 ('SphylElems', 76, 76), ('SphylElems', 96, 76), ('BoxElems', 96, 80))
+        for name, stride, extent in cases:
+            with self.subTest(name=name, stride=stride, extent=extent):
+                f = ShapeMemory();array = f.arrays_shape[f.AGG, name]
+                f.put(array['header'], bytes(16));f.put(array['inner']+0x74, struct.pack('<I', stride))
+                typ = {'SphereElems': f.SPHERE, 'BoxElems': f.BOX_ELEM, 'SphylElems': f.SPHYL}[name]
+                f.put(typ+0x88, struct.pack('<I', extent))
+                with self.assertRaises(ShapeLayoutRejected) as raised:f.capture_shapes()
+                self.assertEqual(raised.exception.source_witness['expected_native_stride'], 80)
+                self.assertFalse(raised.exception.source_witness['source_accepted'])
+
+    def test_padded_empty_array_does_not_bypass_primitive_or_matrix_schema(self):
+        for defect in ('field', 'offset', 'tm', 'matrix', 'plane', 'bool', 'owner'):
+            with self.subTest(defect=defect):
+                f = ShapeMemory();array = f.arrays_shape[f.AGG, 'SphereElems']
+                f.put(array['header'], bytes(16))
+                if defect == 'field':
+                    del f.properties[f.SPHERE, 'bNoRBCollision'];f.relink()
+                elif defect == 'offset':
+                    f.put(f.properties[f.SPHERE, 'Radius']['address']+0x94, struct.pack('<I', 68))
+                    f.put(f.properties[f.SPHERE, 'bNoRBCollision']['address']+0x94, struct.pack('<I', 64))
+                elif defect == 'tm':f.put(f.properties[f.SPHERE, 'TM']['address']+0xd0, struct.pack('<Q', f.VECTOR))
+                elif defect == 'matrix':f.put(f.properties[f.MATRIX, 'WPlane']['address']+0x94, struct.pack('<I', 32))
+                elif defect == 'plane':f.put(f.properties[f.PLANE, 'W']['address']+0x94, struct.pack('<I', 8))
+                elif defect == 'bool':f.put(f.properties[f.SPHERE, 'bNoRBCollision']['address']+0xd0, struct.pack('<I', 3))
+                else:f.objects[f.SPHERE]['outer']=f.BS_CLASS
+                with self.assertRaises(RuntimeError):f.capture_shapes()
+
+    def test_tail_padding_and_layout_changes_still_fail_same_query_closing(self):
+        for defect in ('padding', 'layout'):
+            with self.subTest(defect=defect):
+                f = ShapeMemory();array = f.arrays_shape[f.AGG, 'SphereElems']
+                def change(call):
+                    if call != 1:return
+                    if defect == 'padding':f.put(array['data']+72, b'\xff')
+                    else:f.put(f.SPHERE+0x88, struct.pack('<I', 80))
+                f.at_verify = change
+                with self.assertRaises(RuntimeError):f.capture_shapes()
+
+    def test_generic_vector_array_keeps_exact_extent_rule(self):
+        f = ShapeMemory();array = f.arrays_shape[f.CONVEX, 'VertexData']
+        f.put(array['inner']+0x74, struct.pack('<I', 16))
+        with self.assertRaises(ShapeLayoutRejected) as raised:f.capture_shapes()
+        witness = raised.exception.source_witness
+        self.assertEqual(witness['field']['name'], 'VertexData')
+        self.assertEqual((witness['stride'], witness['target_extent_observed']), (16, 12))
+        self.assertIsNone(witness['expected_native_stride'])
+
+    def test_native_codec_association_is_explicit(self):
+        from cover_physics_shapes import ShapeReader
+        f = ShapeMemory();q = CoverQuery(f.observer)
+        reader = ShapeReader(q)
+        field = reader.layout(q.obj(f.AGG), ('SphereElems', 'BoxElems', 'SphylElems', 'ConvexElems', 'RenderInfo'))['fields']['SphereElems']
+        # Generic callers cannot silently acquire a named primitive exception.
+        with self.assertRaises(ShapeLayoutRejected):
+            ShapeReader(q).array(f.setups[0]+0x60, field, ('KSphereElem',), 64)
+        with self.assertRaisesRegex(RuntimeError, 'codec association'):
+            ShapeReader(q).array(f.setups[0]+0x60, field, ('KSphereElem',), 64,
+                                 primitive_kind='BoxElems', primitive_owner=f.KM)
+
+    def test_combined_source_closes_padded_fields_without_physics_permission(self):
+        f = ShapeMemory();out = f.capture_physics(include_shapes=True)
+        self.assertTrue(out['accepted']);self.assertTrue(out['authored_shapes_observed'])
+        for key in ('physical_pose_verified', 'hit_geometry_verified', 'active_physics_verified',
+                    'world_synchronization_verified', 'activation_allowed'):
+            self.assertFalse(out[key])
+
     def test_nonfinite_dimensions_matrix_and_convex_vertices_reject(self):
         for defect in ['radius','length','matrix','vertex']:
             with self.subTest(defect=defect):
@@ -205,7 +319,7 @@ class ShapeTests(unittest.TestCase):
                 self.assertFalse(witness['closing_verified'])
                 self.assertFalse(witness['source_accepted'])
                 self.assertFalse(witness['activation_allowed'])
-                self.assertEqual(witness['stride'], 64 if defect == 'stride' else 72)
+                self.assertEqual(witness['stride'], 64 if defect == 'stride' else 80)
                 self.assertEqual(witness['target_extent_observed'], 72 if defect == 'stride' else None)
                 target_at = f.BOX_ELEM if defect == 'name' else f.SPHERE
                 self.assertEqual((target_at + 0x88, 4) in q.values, defect == 'stride')
@@ -251,7 +365,7 @@ class ShapeTests(unittest.TestCase):
 
     def test_full_shape_cap_is_read_and_combined_excess_is_not_truncated(self):
         f=ShapeMemory();sphere=f.arrays_shape[f.AGG,'SphereElems']
-        raw=f.read(sphere['data'],72)
+        raw=f.read(sphere['data'],80)
         f.put(sphere['data'],raw*64);f.put(sphere['header'],struct.pack('<Qii',sphere['data'],64,64))
         for name in ('BoxElems','SphylElems','ConvexElems'):
             f.put(f.arrays_shape[f.AGG,name]['header'],bytes(16))
