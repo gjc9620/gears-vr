@@ -25,3 +25,7 @@ Boom 独立受理当前 v3，同一原排队位；证据 analysis/boomshot-devel
 ## 护木四态旋转回归
 
 在现有 weapon_hammerburst_support_test.cpp 中新增五种枪旋转姿态，使用本枪真实已编写握点坐标和原生产 SupportGripParticipant/SupportSocket mode。每种依次检查 Snap/single、移动枪与手后 Snap/single、按 Grip Grab/two、移动后保持 Grab/two、释放回 Snap/single、离开范围 Free/single；Snap 必须无租约，观察不能改写物理 Frame。MSVC /W4 /WX 且 assert 开启，编译0、执行0。原四态和11拒绝检查保留。receipt: analysis/hammerburst-20261108/support-authored-rotations-check.json。该回归只证明合成输入下策略与仲裁，不证明游戏枪变换消费、皮肤接触或头显自然手型；未更换当前已受理运行候选及制品。
+
+## 冻结候选同组护木回归
+
+后续核对发现当前工作区 weapon_support_grip.h 已加入后续的可选 SupportBox 及接触缓存，而本枪2f53冻结候选仍是先前球形接触实现。为避免把工作区检查冒充运行制品检查，把同一测试复制到独立 harness，仅将三处顶层 include 指向候选原存档目录，由该目录解析其全部相对头文件；原存档未改。五旋转/四态/11拒绝及物理 Frame 不变检查在冻结头文件下再次编译0、执行0。当前与冻结两者的结果均为有限离线策略证据。源码差异、harness、build.cmd 和各 SHA 收据在 analysis/hammerburst-20261108/support-frozen-rotations/，result.json SHA256 0912949caf3fa725e46d8e68d27dec24e90b1124c2198a7f8fd2ed619f624845。未替换制品、未重新申请运行位、未 stage/run。
