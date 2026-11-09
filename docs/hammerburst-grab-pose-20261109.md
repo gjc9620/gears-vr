@@ -304,3 +304,12 @@ LS正式受理Boom225349 admission-v1为唯一后继，HB请求只转实际新�
 prepared9ba06095及PGa05a/Native806/20driver和普通空仓动作不变；新readyb0a5631fb84f515507f8f3c659194936b4263c409b6b17bc3f971e480ddad639，planc55e65d0112402b98e1f00ec0c684abd869d4f75d9bf1ba4c3182519ca656532；完整exact argv/cwd/ENV/媒体/claim-ticket在admission-v2/tail-packet.md（0b67bd41...）已经一次交Boom作为同一个pending请求替代。没有正式受理/授窗，真实自有claim/ticket均不存在；旧662及562/b8身份不再使用。三个源码可复现补丁docs/hammerburst-empty-normal-admission-v2.patch。
 
 主人后续明确“完整逻辑→真实双路录像→对照输入/部件/状态库存射击/接触与前后时刻分析→针对问题修正”，本目标沿已有完整普通空仓原动作实现及已编译3行保护，当前只补必要独占入口；未因录像另造平台、未在逻辑零散时追加反复录制，无Computer Use、无新pose拟合或全备弹耗尽扩展。取得真实唯一窗口才做本次一段普通换弹闭环，先败即止并保留录像，随后正常恢复和唯一交窗。
+
+
+## 普通空仓模式首败即停的最后源核对（必要driver-only替代）
+
+Boom独立核v2 prepared/ready/plan/entry/13011host+7origins及真实prepare-only0后正式受理HB230535为其唯一后继，check2b35442c...保留；它仍不是实际窗口。最后源核对发现旧sweep_with_one_regrab在一次reason5/stage2或8后会真实UP/新Grip恢复，虽保存失败并标normal_uninterrupted_pass=false，却不符合本次已声明的首败即停。为防本次普通链掩盖首败，只在require_empty_original_begin=True的新空仓模式加入三行：保存全部新拒绝后立即抛错，不发恢复phase/Grip或第二段sweep；False的旧用途原样。原第一次stroke结束读取处不增加任何engine query/时钟，不改产品100ms或输入节奏/许可。
+
+七个实际嵌套函数执行检查：新模式正常、interval拒绝、其他拒绝、批量拒绝，均无恢复输入；旧模式保留一次合法UP/Grip恢复、其他拒绝与第二次拒绝原断言，全部0。empty-first-failure-check.json与可复现docs/hammerburst-empty-first-rejection.patch保留。此窄修不同于新功能/手型扩展；PG/Native/host安装/实际bootstrap均不重建、不变。
+
+已先向Boom明确：230535旧执行身份撤回但未运行、真实claim/ticket未生成；同一个正式后继位置保留，待这一个必要driver差异的替代独核，不申请第二槽、不阻塞其前提运行。Frag232727仅接到后到意向，Frag正补自身first-consume入口，旧c1d70d95不核不受理不授窗；不会先设未核第二后继。完整逻辑→真实双路录像的次序保持，本次只修首败后不应继续输入的逻辑，再冻结必要差异。

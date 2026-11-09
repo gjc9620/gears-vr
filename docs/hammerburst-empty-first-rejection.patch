@@ -1,0 +1,25 @@
+--- a/analysis/solo-m1-20261028/hammerburst_reload_chain.py
++++ b/analysis/solo-m1-20261028/hammerburst_reload_chain.py
+@@ -90,0 +91,3 @@
++            if require_empty_original_begin:
++                data['first_latch_rejection']=rejected;save()
++                raise AssertionError('First latch rejection stops ordinary empty reload; no recovery input retry')
+--- /dev/null
++++ b/analysis/hammerburst-20261108/check_empty_first_failure.py
+@@ -0,0 +1,16 @@
++"""Execute actual nested stroke policy; strict empty scope never sends recovery input."""
++from pathlib import Path
++import ast,json,types,hashlib
++R=Path.cwd();E=R/'analysis/hammerburst-20261108';source=R/'analysis/solo-m1-20261028/hammerburst_reload_chain.py';tree=ast.parse(source.read_text());node=next(n for n in ast.walk(tree) if isinstance(n,ast.FunctionDef) and n.name=='sweep_with_one_regrab');rows=[]
++for name,strict,receipt,last,expected_error,expected_sweeps in [('strict_ok',True,[],[],False,1),('strict_interval',True,[dict(reason='5',stage='2',angle='.2')],[],True,1),('strict_other',True,[dict(reason='7',stage='2',angle='.2')],[],True,1),('strict_multiple',True,[dict(reason='5',stage='2',angle='.2')]*2,[],True,1),('legacy_recovery',False,[dict(reason='5',stage='2',angle='.2')],[dict(reason='5',stage='2',angle='.2')],False,2),('legacy_other_reject',False,[dict(reason='7',stage='2',angle='.2')],[],True,1),('legacy_second_reject',False,[dict(reason='5',stage='2',angle='.2')],[dict(reason='5',stage='2',angle='.2')]*2,True,2)]:
++ values=iter([[],receipt,last]);calls=[];data={};saved=[];c=types.SimpleNamespace(records=lambda prefix:next(values));g=dict(require_empty_original_begin=strict,c=c,sweep=lambda a,b:calls.append(('sweep',a,b)),data=data,save=lambda:saved.append(True),maximum=1.,phase=lambda label:calls.append(('phase',label)),latch=lambda angle,down:calls.append(('latch',angle,down)))
++ exec(compile(ast.Module(body=[node],type_ignores=[]),str(source),'exec'),g);error=None
++ try:g['sweep_with_one_regrab'](0,.8,2)
++ except AssertionError as e:error=str(e)
++ assert (error is not None)==expected_error,name;assert sum(x[0]=='sweep' for x in calls)==expected_sweeps,name
++ if strict:
++  assert not any(x[0] in ['phase','latch'] for x in calls),name
++  if receipt:assert data['first_latch_rejection']==receipt and saved and 'latch_regrabs' not in data
++ elif name=='legacy_recovery':assert len(data['latch_regrabs'])==1 and data['latch_regrabs'][0]['normal_uninterrupted_pass'] is False
++ rows.append(dict(case=name,strict_mode=strict,error=error,actual_sweeps=expected_sweeps,recovery_inputs=sum(x[0]=='latch' for x in calls)))
++report=dict(passed=True,cases=rows,source_sha256=hashlib.sha256(source.read_bytes()).hexdigest(),actual_nested_function_executed=True,game_started=False,scope='Only driver fail-fast and legacy recovery separation; not native/bone or gameplay proof');(E/'empty-first-failure-check.json').write_text(json.dumps(report,indent=2));print('7 actual stroke-policy checks passed; strict mode has zero recovery input')
