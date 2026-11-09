@@ -114,7 +114,7 @@ struct Publication {Key key{};gears_vr::CoverViewResult render{};b::Matrix64 com
     neutral::Stored stored{};
     uint64_t version{},tick{},compose{},revision{};int64_t ended_ns{};};
 std::mutex view_mutex;Publication view{};uint64_t publication_sequence{};
-struct Pending {Entry const* entry{};Entry copy{};Publication next{};uint64_t revision{};bool committed{};} pending;
+struct Pending {Entry const* entry{};Entry copy{};Publication next{};uint64_t revision{},kernel_serial{};bool committed{};} pending;
 bind::Proof standing_proof{};std::array<unsigned,2> crouch_masks{};
 std::array<unsigned char,sizeof(gears_anchor::Config)> metadata_bytes{};uint64_t metadata_generation{};
 
@@ -289,7 +289,8 @@ void pose_begin(Entry const& e) noexcept {Call call;if(e.kind==0)budget::recorde
         pending.next.render=prepared.render;pending.next.component=s.source.component_to_world;
         pending.next.stored=origin.stored;
         pending.next.tick=s.context.tick;pending.next.compose=e.invocation;pending.next.revision=pending.revision;
-        pending.committed=n::apply_with_view_marker(e,prepared.goal,s.context.source,prepared.render.base_view,origin.marker,&prepared.desired_eye);if(pending.committed)++applied;
+        pending.committed=n::apply_with_view_marker(e,prepared.goal,s.context.source,prepared.render.base_view,origin.marker,&prepared.desired_eye);
+        if(pending.committed){pending.kernel_serial=s.kernel.serial();++applied;}
         else {note_reject(RejectReason::apply,e);++rejected;}
     }catch(...){note_reject(RejectReason::exception,e);++rejected;invalidate();}
 }
@@ -302,7 +303,7 @@ void pose_end(Entry const& e,bool returned,bool original_called) noexcept {Call 
             !n::state.kernel.protocol_debt()&&n::state.context.current(n::tx::Stage::scope_end)&&standing(n::state.context.actor)&&same_key(origin.key);
     }catch(...){publish=false;}
     n::pose_end(e,returned,original_called); // Real finally, even OFF or rejected.
-    try{if(exact){if(publish&&!n::state.kernel.failed()&&!n::state.kernel.protocol_debt()&&!n::state.kernel.original_exception()&&
+    try{if(exact){if(publish&&n::state.kernel.completed_consumer(n::state.backend,n::state.stamp,pending.kernel_serial)&&
            !stopping.load()&&pending.revision==revision.load()){
             std::lock_guard<std::mutex> lock(view_mutex);if(publication_sequence==UINT64_MAX){stopping=true;invalidate();}
             else if(!stopping.load()&&pending.revision==revision.load()) {pending.next.version=++publication_sequence;pending.next.ended_ns=rig::clock_ns();view=pending.next;view_valid=true;++published;}}

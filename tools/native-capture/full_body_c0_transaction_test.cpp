@@ -139,6 +139,61 @@ int main(int argc,char** argv){
     body::Goal goal{};goal.scope=body::Scope::fixed_cover;goal.body_yaw_delta=-.1;goal.physical_world={1,2,-3};goal.committed_grip_world={2,1,-2};
     goal.head_world=body::d::pose(workspace->pose.world[55]);goal.head_world.position=body::d::add(goal.head_world.position,{3,3,-5});for(unsigned i=0;i<2;++i)goal.feet_world[i]=body::d::pose(workspace->pose.world[body::legs[i][2]]);
     C(body::plan(model,*f,goal,*workspace,plan).status==body::Status::solved);const auto bits=changed(*f,plan);C(bits.size()>8&&bits.size()<=tx::max_units&&bits[0]==0&&bits[1]==1);const unsigned count=unsigned(bits.size());
+    // A successful CAS followed by an explicit pre-consumer rollback is not
+    // a consumed planned pose, even when original later returns normally.
+    {Host h(*f,plan);tx::Kernel k;tx::Lease l;
+        C(k.prepare(h,h.current,*f,plan,h.desired,l).code==tx::Code::prepared);
+        C(k.commit(h,l,h.current).code==tx::Code::committed);
+        C(k.rollback(h,l,h.current).code==tx::Code::rolled_back);
+        C(k.notify_consumer_entry(h,l,h.current).code==tx::Code::consumer_marked);
+        C(!k.retained_consumer(h,l,h.current));
+        C(k.finish(h,l,h.current,tx::End::original_returned).code==tx::Code::scope_closed);
+        C(h.original()&&!k.pending());
+    }
+    // Completion comes from the actual Kernel finally, not a copied Result,
+    // input acknowledgement, successful CAS, or a mere consumed fallback.
+    for(unsigned mode=0;mode<10;++mode){
+        Host h(*f,plan);tx::Kernel k;tx::Lease l;
+        C(!k.completed_consumer(h,h.current,k.serial()));
+        C(k.prepare(h,h.current,*f,plan,h.desired,l).code==tx::Code::prepared);
+        const auto serial=k.serial();const auto stamp=h.current;
+        C(!k.completed_consumer(h,stamp,serial));
+        if(mode!=7)C(k.commit(h,l,stamp).code==tx::Code::committed);
+        C(!k.completed_consumer(h,stamp,serial));
+        if(mode==6)C(k.rollback(h,l,stamp).code==tx::Code::rolled_back);
+        if(mode==5)h.deny=true;
+        if(mode!=1){const auto notified=k.notify_consumer_entry(h,l,stamp);
+            C(notified.code==(mode==5?tx::Code::guard_rejected:tx::Code::consumer_marked));}
+        h.deny=false;
+        C(k.retained_consumer(h,l,stamp)==(mode!=1&&mode!=5&&mode!=6&&mode!=7));
+        C(!k.completed_consumer(h,stamp,serial));
+        if(mode==8)k.request_stop();
+        h.deny_end=mode==4;
+        const auto ending=mode==2?tx::End::before_consumer:mode==3?tx::End::original_threw:tx::End::original_returned;
+        const auto ended=k.finish(h,l,stamp,ending);
+        C(ended.code==(mode==4?tx::Code::guard_rejected:tx::Code::scope_closed));
+        C(!k.retained_consumer(h,l,stamp));
+        const auto guards=h.guard_calls,writes=h.cas_calls,pending=k.pending();
+        const bool completed=mode==0||mode==9;
+        C(k.completed_consumer(h,stamp,serial)==completed);
+        C(k.completed_consumer(h,stamp,serial)==completed);
+        auto wrong=stamp;++wrong.scope;C(!k.completed_consumer(h,wrong,serial));
+        C(!k.completed_consumer(h,stamp,serial+1));
+        Host other(*f,plan);C(!k.completed_consumer(other,stamp,serial));
+        bool cross_thread=true;
+        std::thread reader([&]{cross_thread=k.completed_consumer(h,stamp,serial);});reader.join();
+        C(!cross_thread&&k.pending()==pending&&h.guard_calls==guards&&h.cas_calls==writes);
+        if(mode==9){
+            // The normal completed event is no longer current once an actual
+            // later producer has retired its installed fields.
+            const auto fresh=h.producer(whole());C(k.retire_fresh(h,fresh).code==tx::Code::fresh_retired);
+            C(!k.completed_consumer(h,stamp,serial)&&!k.pending());
+            h.current=h.produced.written;tx::Lease next;
+            C(k.prepare(h,h.current,*f,plan,h.desired,next).code==tx::Code::prepared);
+            C(!k.completed_consumer(h,stamp,serial));
+            C(k.finish(h,next,h.current,tx::End::before_consumer).code==tx::Code::scope_closed);
+        }
+    }
     std::array<unsigned char,sizeof(body::Output)> old_plan{};std::memcpy(old_plan.data(),&plan,sizeof plan);const auto old_source=f->local;
     {tx::Kernel k;tx::Lease l;tx::NativeBackendUnavailable native;tx::Stamp key{};tx::Desired d{};C(k.prepare(native,key,*f,plan,d,l).code==tx::Code::unavailable);C(!k.pending());}
     {Host h(*f,plan);tx::Kernel k;tx::Lease l;C(k.prepare(h,h.current,*f,plan,h.desired,l).code==tx::Code::prepared);C(h.cas_calls==0);C(k.commit(h,l,h.current).code==tx::Code::committed);C(std::memcmp(h.memory,plan.local.data(),sizeof plan.local)==0);C(k.outstanding_fields()==count);C(k.rollback(h,l,h.current).code==tx::Code::rolled_back);C(h.original());reverse_is(h.rollback_bits,bits,count);C(k.finish(h,l,h.current,tx::End::before_consumer).pending==0);}

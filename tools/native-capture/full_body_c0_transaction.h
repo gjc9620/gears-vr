@@ -3,8 +3,8 @@
 #include <atomic>
 #include <climits>
 
-// Bounded private journal. There is NO implemented Native authorization or
-// memory backend here. CAS16 alone is not array atomicity or a reader fence.
+// Bounded private journal. Native authorization and memory access belong to
+// its separately supplied Backend. CAS16 is not array atomicity or a reader fence.
 namespace gears_full_body_c0_transaction {
 namespace body=gears_full_body_c0;
 constexpr unsigned max_units=body::bones+1; // Q for115 bones, plus Root T/scale.
@@ -86,7 +86,7 @@ class Kernel {
     std::atomic<unsigned> outstanding_{},active_{},protocol_{};
     std::atomic<bool> stopping_{},failed_{},consumed_{},original_exception_{};
     std::atomic<Failure> failure_{};
-    End ending_{};bool ended_{},commit_finished_{};
+    End ending_{};bool ended_{},commit_finished_{},consumer_verified_{};
     View view() const noexcept{return {stamp_,source_,plan_,desired_,units_.data(),count_};}
     static bool owes(UnitState s) noexcept {return s==UnitState::applied||s==UnitState::uncertain||s==UnitState::conflict;}
     void sync() noexcept {unsigned n{};for(unsigned i=0;i<count_;++i)n+=unsigned(owes(units_[i].state));outstanding_=n;}
@@ -94,6 +94,10 @@ class Kernel {
         if(why==Failure::hard)failure_=why;
         else {auto expected=Failure::none;failure_.compare_exchange_strong(expected,why);}}
     void debt() noexcept {fail(Failure::hard);unsigned x=protocol_.load();while(x!=UINT_MAX&&!protocol_.compare_exchange_weak(x,x+1)){};}
+    bool installed() const noexcept {
+        for(unsigned i=0;i<count_;++i)if(units_[i].state!=UnitState::applied)return false;
+        return true;
+    }
     Result result(Code code,unsigned unit=0) const noexcept{return {code,unit,pending()};}
     Code exact(Backend& b,Lease const& l,Stamp const& actual) noexcept {
         const auto t=b.thread_token();
@@ -176,8 +180,20 @@ public:
         const auto thread=backend.thread_token();
         return thread&&thread==thread_.load()&&backend_==&backend&&active_.load()&&lease_==&lease&&
             lease.self_==reinterpret_cast<std::uintptr_t>(&lease)&&lease.kernel_==this&&lease.serial_==serial_&&!lease.closed_&&
-            same(actual,stamp_)&&consumed_.load()&&commit_finished_&&!ended_&&!failed_.load()&&!stopping_.load()&&
+            same(actual,stamp_)&&consumed_.load()&&consumer_verified_&&commit_finished_&&installed()&&!ended_&&!failed_.load()&&!stopping_.load()&&
             !original_exception_.load()&&!protocol_.load();
+    }
+    // Read-only proof of this kernel's exact, normally completed original
+    // consumption. It is valid only until fresh retirement or another prepare;
+    // it grants no move/write/occupancy permission and does not assert final
+    // SpaceBases, physics or hit geometry. Caller must bind those separately.
+    // Owed applied fields may remain: normal consumption is not restoration.
+    bool completed_consumer(Backend& backend,Stamp const& actual,std::uint64_t serial) const noexcept {
+        const auto thread=backend.thread_token();
+        return thread&&thread==thread_.load()&&backend_==&backend&&serial&&serial==serial_&&
+            same(actual,stamp_)&&!active_.load()&&!lease_&&ended_&&ending_==End::original_returned&&
+            consumed_.load()&&consumer_verified_&&commit_finished_&&installed()&&!failed_.load()&&
+            !stopping_.load()&&!original_exception_.load()&&!protocol_.load();
     }
     bool settled_source_age() const noexcept {return failure_.load()==Failure::source_age_only&&failed_.load()&&stopping_.load()&&
         ended_&&ending_!=End::original_threw&&!original_exception_.load()&&!pending();}
@@ -190,7 +206,7 @@ public:
         if(stopping_.load())return result(Code::stopped);
         const body::d::Range ranges[]={body::d::range(this,sizeof *this),body::d::range(&source,sizeof source),body::d::range(&plan,sizeof plan),body::d::range(&stamp,sizeof stamp),body::d::range(&desired,sizeof desired),body::d::range(&lease,sizeof lease),{stamp.binding.local,body::bones*sizeof(body::Atom)}};
         if(!body::d::disjoint(ranges,7)||lease.kernel_||lease.closed_||lease.self_!=reinterpret_cast<std::uintptr_t>(&lease)||!shape(stamp,source,plan,desired))return result(Code::invalid_plan);
-        stamp_=stamp;source_=source;plan_=plan;desired_=desired;count_=0;units_={};consumed_=false;commit_finished_=false;ended_=false;
+        stamp_=stamp;source_=source;plan_=plan;desired_=desired;count_=0;units_={};consumed_=false;commit_finished_=false;consumer_verified_=false;ended_=false;
         for(unsigned bone=0;bone<body::bones;++bone)for(unsigned half=0;half<2;++half){
             const auto* before=reinterpret_cast<unsigned char const*>(&source_.local[bone])+half*16;const auto* after=reinterpret_cast<unsigned char const*>(&plan_.local[bone])+half*16;
             if(!std::memcmp(before,after,16))continue;
@@ -231,6 +247,7 @@ public:
         auto c=exact(b,lease,actual);if(c!=Code::prepared)return result(c);
         if(already){debt();return result(Code::already_consumed);}
         if(b.validate(view(),Stage::consumer_entry,0)!=Verdict::verified){fail(Failure::hard);return result(Code::guard_rejected);}
+        consumer_verified_=true;
         return result(Code::consumer_marked);
     }
     Result finish(Backend& b,Lease& lease,Stamp const& actual,End ending) noexcept {

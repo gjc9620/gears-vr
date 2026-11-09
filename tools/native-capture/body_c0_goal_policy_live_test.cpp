@@ -24,7 +24,7 @@ void finish_return(Entry const&e){bool called=false,returned=false;__try{live::b
 void finish_throw_inner(Entry const&e){bool called=false;__try{live::before_original(e);called=true;RaiseException(0xe0424242,0,0,nullptr);}
     __finally{goal::pose_end(e,false,called);}}
 bool finish_throw(Entry const&e){__try{finish_throw_inner(e);return false;}__except(GetExceptionCode()==0xe0424242?EXCEPTION_EXECUTE_HANDLER:EXCEPTION_CONTINUE_SEARCH){return true;}}
-int main(int argc,char**argv){if(argc!=4)return 2;unsigned mode=unsigned(std::strtoul(argv[3],nullptr,10));if(mode>23)return 2;const bool cover_case=mode>=16;
+int main(int argc,char**argv){if(argc!=4)return 2;unsigned mode=unsigned(std::strtoul(argv[3],nullptr,10));if(mode>25)return 2;const bool cover_case=mode>=16&&mode<=23;
     auto frame=std::make_unique<body::Frame>();C(read_file(std::string(argv[1])+"/reference.bin",frame->reference.data(),sizeof frame->reference));
     C(read_file(std::string(argv[1])+"/C0-local.bin",frame->local.data(),sizeof frame->local));C(read_file(std::string(argv[1])+"/C0-component.bin",&frame->component_to_world,sizeof frame->component_to_world));
     C(read_file(argv[2],&host_core,sizeof host_core));if(failures)return 1;host_now=int64_t(host_core.published_ns);host_core.world_generation=444;
@@ -60,6 +60,22 @@ int main(int argc,char**argv){if(argc!=4)return 2;unsigned mode=unsigned(std::st
     if(cover_case){goal::current_cover_pose.binding.publication=987;goal::current_cover_pose.binding.slot=123;}
     const auto measurement_before=goal::current_cover_pose;
     const auto entry_before=entry;live::pose_begin(entry);C(live::state.captured);goal::pose_begin(entry);C(!std::memcmp(&entry,&entry_before,sizeof entry));
+    if(mode==24||mode==25){
+        C(goal::pending.committed&&goal::pending.kernel_serial==live::state.kernel.serial());
+        const auto serial=live::state.kernel.serial();const auto stamp=live::state.stamp;
+        const auto fields=live::state.kernel.outstanding_fields();C(fields>0);
+        if(mode==24){
+            C(live::state.kernel.rollback(live::state.backend,live::state.lease,stamp).code==tx::Code::rolled_back);
+            C(!std::memcmp(fixture.local.data,frame->local.data(),sizeof frame->local));
+        }else ++goal::pending.kernel_serial; // wrong producer cannot publish a valid body's view
+        finish_return(entry);
+        C(!goal::view_valid&&goal::published==0&&!goal::pending_count());
+        C(live::state.kernel.completed_consumer(live::state.backend,stamp,serial)==(mode==25));
+        C(live::state.kernel.outstanding_fields()==(mode==25?fields:0));
+        C(native_atom_overwrite_live::retire_calls==0&&lease.world());
+        printf("BodyGoalLive mode=%u: %u checks, %u failures; actual Native finally/Kernel, Host boundaries; Game=0\n",mode,checks,failures);
+        return failures?1:0;
+    }
     if(mode==0||mode>=5&&mode<=8||mode==10||mode==11||cover_case){
         C(goal::applied==0&&!goal::view_valid&&!live::state.prepared);C(!std::memcmp(fixture.local.data,frame->local.data(),sizeof frame->local));
         if(mode==16){C(goal::current_cover_pose_valid);

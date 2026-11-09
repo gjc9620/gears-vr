@@ -606,3 +606,18 @@ body若在weapon回调期间完成仍然有效的旧请求，complete先复核�
 证据input-motion-r25/verification.json、编译依赖和原始RED／green／final结果。新模式的BodyBackend仅有显式owned-memory Host和Unavailable实现；真实C0完成／回滚／fresh-retirement认证、跨掩体basis的合法handoff仍未接通。当前实例对退出后的旧域明确拒绝自动复活，不能据本批称反复进出完整通过。输入侧view是已同步逻辑位置与当前追踪的候选；最终绘制、命中与枪口仍必须消费真实身体完成publication的同一版本，不能用本输入结果取代。
 
 r24 plan83be29c7、reader369f1217、23驱动及准确cover-r13三制品保持不变，未stage／启动，也没有把本r25源码混入。新尾申请已由Bol085057经Longshot085615转实际尾端Frag090321，Frag直接确认本r24为其全部终态后的唯一后继；当前队列Snub082247→Bol085057→Longshot085615→Frag090321→Cover r24。对方按prepared.source_snapshot=context-native-r13-source更正了最初source目录假设，实际初核24项声明源／3保存制品／23驱动及AST无差；此为尾位登记，不是当前授窗。完整CV-01–24／AC-01–22、近裁剪、真实碰撞／受击／枪口和实体头显仍未完成，公开v71与历史计分不变。
+
+
+## 2026年11月9日 r26真实C0消费完成边界与撤回后拒绝发布
+
+上一轮fab0bccf已保存输入与延迟提交账本接线。本轮继续核对实际C0内核与Native Goal发布者，发现一个具体缺口：完整commit之后若在原版消费前成功rollback，随后notify仍可通过，原retained_consumer仅凭commit_finished和consumed将已撤回的候选视为仍被消费。新增生产内核回归在原实现实际24877检查中出现1条失败；原日志保留。修复后要求消费入口真实认证成功，且所有计划修改单元仍为applied。正常撤回、未commit、消费入口拒绝、异常、停止、关闭失败和协议债务均不能获得计划姿态的保留／完成认定。
+
+新增只读completed_consumer查询，检查同一Backend、原Stamp和安装时serial、原版正常返回后的真实finish、关闭的lease与无失败／协议债务。fresh-retired和下一次prepare后旧完成不再有效。查询不做新的游戏读取、CAS、guard调用或债务清除；已有applied字段的恢复责任继续保留。它只证明原消费流程完成，不证明最终SpaceBases、碰撞占用、physics／HitInfo或枪口，因此尚不能独自签发掩体位移完成记录。
+
+现有body_c0_goal_policy_live在apply成功时保存实际kernel serial，在Native真实pose_end之后要求该确切事务completed_consumer才发布视图。新增两条实际Native生产路径检查：原版调用前撤回完整候选，以及正常完成身体却使用错误serial的视图候选；二者均拒绝新视图发布。此处没有新增身体writer，也未删除no_cover或开放掩体非零范围。所有者／Core／actor／receipt准入仍是明确Host seam；实际内存Backend、CAS128、SEH和原生产Kernel／Native apply／finally／Goal路径确实执行。
+
+最终事务25271检查0失败，含逐修改单元正向／反向mismatch和fault-before／after、真实访问异常、时间失效、撤回、消费与fresh-retirement；Native Backend135检查0失败；Goal实际路径26个mode合计483检查0失败，其中原24个mode继续通过，新增24／25已在CMake注册。编译使用MSVC C++17／O2／W4／WX／EHsc／UNDEBUG／MT，未构建新的完整Native DLL或启动游戏／XR。新查询的跨线程拒绝、错误Backend／stamp／serial、重复只读不改变guard／write／pending及真实retirement失效均覆盖。完整证据在body-completion-r26/verification.json和依赖／原RED／最终日志。
+
+本轮同时核对需求汇总，补充简明行为总览；CV-01–24／AC-01–22和工程默认／实际验收的区分保留。实际Native motion Backend、最终身体几何／连续扫掠／占用与世界同步、basis合法交接及恢复、同版双眼／命中／枪口、近裁剪与实体头显继续未完成。完成边界修复是主线接线的必要准备，不将它表述为掩体全功能或实际物理验证通过。
+
+当前未拥有运行窗。r24 plan83be29c7、reader369f1217、23驱动及准确r13三制品均不变，未stage。本轮已按真实尾序接受Snub093107为Cover r24全部终态后的唯一后继，并直接确认Frag090321→Cover r24→Snub093107；Longshot094103的后续新申请由Snub继续核对真实尾。登记不等于交窗，仍须Frag最终唯一全终交接后独立核对再运行。公开v71、完整掩体FALSE、实体头显未验收及历史计分保持不变。
