@@ -1322,3 +1322,15 @@ r69 prepared578f178e／plan4e1fda1c／readye21af1dd已封存于analysis/solo-m1-
 r70另核原Actor.Trace包装到CFA40的5段共3550字节及9个关键锚点：CDF60从RIP实际地址0x141c20890（RVA1c20890）加载global world到RCX，CDF8F调用CF8F8；CF930存RBP、CF966原值转RCX并在CF977调用CFA40；CFAAA保存RDI，CFD3C才从该UWorld+0x178取hash receiver，CFD52取vtable、CFD77调用byte slot0x20。两处load-to-call窗口无RCX改写，静态绑定核验exit0。现有cover_state／world_state中的world／level／world_identity实际来自Actor.WorldInfo，是WorldInfo actor，不能直接对它读+0x178冒充UWorld hash。下一接线须在同一query中认证当前WorldInfo的外层Level／World与global UWorld一致；该外层对应目前只是待观测要求，不是已经实测。
 
 上述只新增保存原码证据和原指令模型，不新增游戏读取、Trace／getter／虚调用、输入、身体writer、构建或部署，也未偷偷放入待验r69-admission-v2。当前global／receiver／root、BSP及special参与范围、完整场景与动态同步继续未认证；这些证据不能给完整身体连续路径／终点占用或Native移动／恢复许可。源事实记录在spatial-root-r70/root-origin-evidence.json。待验包仍仅排队请求；最新游戏41460及其遮挡FAIL、逐点GrabPose、同姿态hit／muzzle、全CV24／AC22与实体头显未完成，目标active。本轮为新的方向性证据progress，无活动运行句柄可称verified wait。
+
+## 2026年11月9日 r70同query只读根观察模块及新包正式受理
+
+新增cover_spatial_root.py，沿已有CoverQuery和当前模块证书观察根来源，不新建observer／session／线程／输入／队列，不调用原函数。它重新认证传入WorldInfo身份和Class链，再要求其outer为当前Level、该Level的outer为World，并与当前module内RVA1c20890的global World指针相等；这是必须实际读到的严格关联，无猜测备用根。只在该UWorld+0x178取hash receiver，核receiver头、原vtable地址及8个精确当前目标；从receiver+8取得root，分开读取静态root cell中心／half，不把静态cell当root指针，也不从WorldInfo+0x178误读。
+
+根观察同时把原wrapper／world-route 3550字节及11段spatial原码4077字节加入同一query的首值／关闭括号，包含旧metadata漏掉的构造loop7字节。数据RVA须落当前模块可读非执行段，所有代码须在允许执行段；原0.5／100常量逐原字节核对。节点只解释已证明的24字节data／count／capacity／children头：root若有children，仅验证count cookie8并读8个child头，拒绝明显自／兄弟／根循环，不追孙节点、不读任何组件数组载荷。容量上限1048576明确只是本观察的保守操作限额，不是原引擎最大值。root／child头、指针、cookie、cell及原码都由同一CoverQuery关闭时重核。没有把这种头尾一致称作原子帧或碰撞世界同步。
+
+真实审查Python3c48、-E -s -B -X utf8、BelowNormal运行新增14项与现有world-code8项，共22项，0失败／0跳过，7源SHA运行前后不变。反例含WorldInfo／Level／World错类／outer／默认／身份／类循环，global错世界且在hash读取前拒绝，空／未对齐／越界指针、vtable及各目标改动、坏容量／data／child cookie／头循环、全部11段原码与先前漏段改动、非有限cell／非正half／原常量不符、模块／section权限及范围；同query关闭会拒绝global／outer身份／hash／root／第8child／cookie／table／cell／常量／代码的变化。有效夹具仍有未映射组件payload和孙节点，模块确实不读取它们，且明确complete_tree／complete_scene／world_sync／path_or_occupancy／activation均false，不把局部空头当完整no-hit。证据和源码副本见spatial-root-r70/last-checks.json所指精确checks目录。此为保存原码＋合成process-memory离线验证，未游戏实读或实体通过，尚未接入runtime driver。
+
+Bol212342+execution779eca在独立9271主机文件、24原声明、364current＋364archive／728AST、3saved、EXE／PhysX／7origin及精确prepare-only核验后，已正式受理Cover r69-admission-v2（f10d978e／5e6d566b／ccb519fc／8d3487a5／eec50fb3）为唯一后继。独立check SHA089d9dc284c19bc089f37c8da8cb61b6ce64c86dbdf7ca0729131338f0e0bf82；正式受理snapshot和额外前序契约另存array-extent-r69/admission-v2/queue-acceptance.json。原independent check内accepted=false保留，不能把当时核验自动改成授权；正式accepted来自后续successor-current和消息。最终ticket前序额外固定为Bol thread01a1bb45-27c8-7870-bf79-0129be8fd5be及该新候选的真实最终证据，不能用旧18152／旧HB／其他前序。当前只是受理，仍无窗／final handoff／ticket／claim／stage／run。
+
+已通知实际前序和Troika避免并列受理，Snub221733仅为待补准入绑定请求，当前未正式受理任何后继。本批两个新文件未加入已经受理的r69包，原364当前driver逐SHA仍匹配；不为新根观察扩大该包scope或换身份。当前完整场景／BSP／特殊分支／动态同步／完整连续路径／占用、Native移动恢复、同姿态hit／muzzle、吸附肩／身体遮挡、逐点GrabPose、全部CV-01–24／AC-01–22与实体头显均未完成。下一源码方向是根之后参与组件／形状的完整性与动态变化证据；游戏仍只待Bol实际全闭环后最终唯一交窗，目标active，本轮为源码和反例证据progress。
