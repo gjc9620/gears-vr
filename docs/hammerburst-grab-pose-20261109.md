@@ -253,3 +253,14 @@ Steam 迁移还修正 HB 私有 run_hammerburst_check.py 的 capture identity �
 该新腕/两接触+轻屈曲fan15姿势在原HB_Reload 75键中的5个不同原变换与4个归一化半程quat构造样本，共9个有限原枪蒙皮/完整现有C0采样均枪0；实际C0腕轴夹角19.9999至30.5827度。原5个key来自0/57/10/56/11；4个mid只作为构造几何，没有冒称原时间采样。原模型SHA4b6bd784...、动画18a9499c...保持。不是所有持枪角度、连续扫掠、shader/游戏/头显证据。运动报告latch-c0-joint-rest-fan-motion-check.json与-axis.json；闭合latch-c0-joint-rest-fan-check.json、交线见各级self-crossings.json。
 
 新tools/weapon-models/fixtures/hammerburst_latch_joint_wrist_candidate.json状态REJECTED_REMAINING_INDEX_MIDDLE_AND_INDEX_PALM_SELF_INTERSECTIONS，明确保留115骨现有C0来源、原rig签名/网格动画hash、mesh与Latch-reference两套腕坐标、15局部指quat、两皮肤点和原全局三角、9样本及input/output证据SHA。该数据未接已有纯mount函数/实际route/Native/C0发布，未混入冻结220220，无游戏/公共包改动。9个作者/验证脚本可复现补丁docs/hammerburst-joint-wrist-contact-fitting.patch已反向check通过。下一步针对剩食指MCP与掌/中指的原具体交叉面，保持本轮已通过的接触、枪净空与腕方向；不靠进一步扩大范围或通用握拳替代。
+
+
+## 原食指坐标约束与实际C0反例（拒绝，并纠正执行优先级）
+
+对上一已保存局部净空候选，原bind相对ZYX分解的食指MCP约49.08/-12.75/-59.50度，PIP约-2.74、DIP+16.46。此只是模型骨轴分解，不能直接叫临床轴角；它提示旧参数累积并非理想自然作者基准。本轮改为原bind坐标定义食指屈曲，作者范围限制轴向±15且DIP不写反弯，不是临床范围或产品运行clamp。
+
+先用固定肘代理时接触facing约.63/.70失败；移去代理、由实际C0复核的自由腕分支，食/拇位置误差.02890/.27301raw但实际腕83.4746度、枪10、自身232，明确拒绝。进一步在离线cost中直接调用未改现有C0纯probe（625次、约11.3秒，无引擎/输入/运行），保留原骨长/4权，原bind食指屈曲改用flex/splay/axial顺序；实际轴40.3276度仍超该作者40度目标，接触.019864/.002126raw、facing.85959/.99961，但完整枪145、自身179，仍拒绝。不能用食/掌从10到8等单项改善称修复，也没有提高40目标来造通过。旧107自身/枪0/实际腕21的候选保留不覆盖。
+
+原始107 inclusive自身记录还做了双三角平面跨越深度敏感性分类，原83掌/掌在1e-3raw阈值仍全在；旧较好候选仅3个新增掌/掌在1e-4以内，食/中9、食/掌10、食/食2全在1e-3以上，不能归为舍入噪声。该分类报告latch-self-straddle-characterization.json保留所有inclusive数值，未改任何验收过滤。新自由腕/实际C0反例及输入输出SHA在各latch-c0-index-*-check.json，5脚本可复现patch为docs/hammerburst-index-bind-c0-rejection.patch。
+
+主人经统筹在22:43专项要求完整方案/进度review，本聊天已在安全边界写独立UTF8 analysis/coordinator-plan-review-20261109-2243/hammerburst.json，8个玩家动作步骤，统一A/B/C/D/E等级.5/.25/.25/.25/.25，权重20/30/20/15/15得到工程开发/可交付评分30%，头显false。旧路径切片不继承当前Steam候选，未为填报告启动任何新构建或运行。自查承认最近过多精力花在离线调姿和工具封套，现停止无新方向微调；下一个优先可玩点是购买Steam受控启动后，L0/R78真实开盖、取旧匣、肩取/插新匣、真实关盖、L78/R0并返射6发L72/R0。先验证已编译的3行CanReload保护实际绑定消费和实骨首败，后补全奖励/无备弹/总零/中断、逐件姿势与交付；不以无窗口结束目标或抢别人的运行窗。共享启动问题尚未解决且未申请HB新窗，公共v71未动。

@@ -1,0 +1,183 @@
+--- /dev/null
++++ b/analysis/hammerburst-20261108/fit-latch-index-bind-frame.py
+@@ -0,0 +1,37 @@
++"""Fit in original index-joint axes, avoiding inherited axial twist/hyperextension.
++Authoring bounds are not clinical limits or runtime clamps. No product writes.
++"""
++from pathlib import Path
++import numpy as np,json
++R=Path.cwd();A=R/'analysis/hammerburst-20261108';T=A/'c0-mixed-skin-probe'
++p=A/'fit-latch-joint-wrist-patches.py';c0={};exec(compile(p.read_text().split('limits=np.asarray')[0],str(p),'exec'),c0)
++ctx=c0['ctx'];matrix=c0['c']['matrix'];nearest=c0['nearest'];rotation=c0['rotation'];normal_skin=c0['normal_skin'];ids=c0['ids'];body=c0['body'];weights=c0['weights'];indices=c0['indices'];parents=c0['parents'];values=np.frombuffer((T/'joint-wrist-patches/rest-fan/output.bin').read_bytes(),dtype='<f8');world=np.asarray([matrix(x) for x in values[28:].reshape(115,7)]);source=np.linalg.inv(matrix(values[:7]))@world;local={i:np.linalg.inv(source[parents[i]])@source[i] for i in range(12,27)};bind={i:(np.linalg.inv(ctx['bind'][parents[i]])@ctx['bind'][i])[:3,:3] for i in [12,13,14]};elbow=source[10,:3,3];D=T/'joint-wrist-patches/index-bind-frame';D.mkdir(exist_ok=True)
++
++def axis(index,degrees):return rotation(np.eye(3)[index],degrees)
++
++def evaluate(x,baseR,baseT):
++ R=axis(0,x[0])@axis(1,x[1])@axis(2,x[2])@baseR;t=baseT+x[3:6];pose=source.copy();pose[11,:3,:3]=R;pose[11,:3,3]=t;locals={i:v.copy() for i,v in local.items()};locals[12][:3,:3]=bind[12]@axis(0,x[6])@axis(1,x[7])@axis(2,-x[8]);locals[13][:3,:3]=bind[13]@axis(2,-x[9]);locals[14][:3,:3]=bind[14]@axis(2,-x[10]);locals[24][:3,:3]=local[24][:3,:3]@axis(0,x[11])@axis(1,x[12])@axis(2,x[13]);locals[25][:3,:3]=local[25][:3,:3]@axis(2,x[14]);locals[26][:3,:3]=local[26][:3,:3]@axis(2,x[15])
++ for i in range(12,27):pose[i]=pose[parents[i]]@locals[i]
++ delta=pose@ctx['inverse'];points=np.zeros((2,4));norms=np.zeros((2,3))
++ for k in range(4):points+=np.einsum('nij,nj->ni',delta[indices[:,k]],body)*weights[:,k,None];norms+=np.einsum('nij,nj->ni',delta[indices[:,k],:3,:3],normal_skin)*weights[:,k,None]
++ norms/=np.linalg.norm(norms,axis=1)[:,None];forearm=t-elbow;forearm/=np.linalg.norm(forearm);alignment=float(R[:,0]@forearm)
++ tip_ids=np.asarray([1013,1014,1015,1016,1021]);tip=np.zeros((5,4))
++ for k in range(4):tip+=np.einsum('nij,nj->ni',delta[ctx['indices'][tip_ids,k]],ctx['v'][tip_ids])*ctx['weights'][tip_ids,k,None]
++ return points[:,:3],norms,alignment,pose,locals,tip[:,:3]
++
++x=np.asarray([0,0,0,0,0,0,0,-12.75,59.5,2.74,0,0,0,0,0,0.],dtype=float);desired=bind[12]@axis(1,x[7])@axis(2,-x[8]);baseR=source[11,:3,:3]@local[12][:3,:3]@desired.T;baseT=source[11,:3,3].copy();original_points=source@ctx['inverse'];old_point=(original_points[14]@ctx['v'][1002])[:3];initial=evaluate(x,baseR,baseT);baseT+=old_point-initial[0][0];limits=np.asarray([[-90,90]]*3+[[-5,5]]*3+[[-15,15],[-20,20],[0,90],[0,100],[0,90]]+[[-60,60]]*5);history=[]
++for outer in range(10):
++ points,norms,*_=evaluate(x,baseR,baseT);targets,outward,faces=nearest(points,norms)
++ def residual(z):
++  p,n,alignment,pose,locals,tip=evaluate(z,baseR,baseT)
++  return np.r_[(p-targets).ravel(),((n+outward)*.5).ravel(),max(0,.766044443-alignment)*5,np.maximum(0,tip[:,0]+3.862)*2,z[:3]*.0002,z[3:6]*.001,z[6]*.01,(z[8:11]-[30,30,15])*.001,z[11:]*.0002]
++ r=residual(x);cost=float(r@r);damping=.001
++ for iteration in range(20):
++  J=np.zeros((len(r),16))
++  for j in range(16):
++   z=x.copy();step=.02 if j<3 or j>=6 else .002;z[j]+=step;J[:,j]=(residual(z)-r)/step
++  step=-np.linalg.solve(J.T@J+np.eye(16)*damping,J.T@r);step=np.clip(step,np.r_[np.full(3,-5.),np.full(3,-.3),np.full(10,-5.)],np.r_[np.full(3,5.),np.full(3,.3),np.full(10,5.)]);z=np.clip(x+step,limits[:,0],limits[:,1]);rr=residual(z);new=float(rr@rr)
++  if new<cost:x=z;r=rr;cost=new;damping=max(1e-8,damping*.5)
++  else:damping=min(1e4,damping*5)
++ points,norms,alignment,*_=evaluate(x,baseR,baseT);history.append(dict(iteration=outer,cost=cost,faces=faces,contact_errors_raw=np.linalg.norm(points-targets,axis=1).tolist(),facing_dot=np.einsum('ij,ij->i',norms,-outward).tolist()));print(json.dumps(history[-1]),flush=True)
++points,norms,alignment,pose,locals,tip=evaluate(x,baseR,baseT);targets,outward,faces=nearest(points,norms);errors=np.linalg.norm(points-targets,axis=1);facing=np.einsum('ij,ij->i',norms,-outward);report=dict(geometry_only=True,parameters=x.tolist(),parameter_definition='wrist_worldXYZ_deg,translation_raw,index_MCP_axial/splay/flex,PIPflex,DIPflex,thumb_MCPXYZ/PIPZ/DIPZ_delta',index_original_bind_frame=True,index_DIP_extension_not_authored=True,index_MCP_axial_bound_degrees=15,authoring_bounds_not_clinical_or_runtime_clamps=True,history=history,original_global_latch_triangles=faces,target_positions=targets.tolist(),outward_normals=outward.tolist(),contact_errors_raw=errors.tolist(),pad_facing_dot=facing.tolist(),forearm_to_hand_axis_degrees=float(np.degrees(np.arccos(np.clip(alignment,-1,1)))),wrist_rotation=pose[11,:3,:3].tolist(),wrist_translation=pose[11,:3,3].tolist(),local15_rotation_matrices=[locals[i][:3,:3].tolist() for i in range(12,27)],contact_only_constraints_pass=bool(max(errors)<.1 and min(facing)>.85 and alignment>.766044443),full_arm_C0_checked=False,full_gun_intersections_checked=False,self_surface_checked=False,skin_fit_accepted=False,published=False,game_started=False);(D/'fit.json').write_text(json.dumps(dict(candidates=[report]),indent=2));print(json.dumps({k:v for k,v in report.items() if k in ['parameters','contact_errors_raw','pad_facing_dot','forearm_to_hand_axis_degrees','contact_only_constraints_pass']},indent=2))
+--- /dev/null
++++ b/analysis/hammerburst-20261108/fit-latch-index-bind-free-arm.py
+@@ -0,0 +1,37 @@
++"""Fit in original index-joint axes, avoiding inherited axial twist/hyperextension.
++Authoring bounds are not clinical limits or runtime clamps. No product writes.
++"""
++from pathlib import Path
++import numpy as np,json
++R=Path.cwd();A=R/'analysis/hammerburst-20261108';T=A/'c0-mixed-skin-probe'
++p=A/'fit-latch-joint-wrist-patches.py';c0={};exec(compile(p.read_text().split('limits=np.asarray')[0],str(p),'exec'),c0)
++ctx=c0['ctx'];matrix=c0['c']['matrix'];nearest=c0['nearest'];rotation=c0['rotation'];normal_skin=c0['normal_skin'];ids=c0['ids'];body=c0['body'];weights=c0['weights'];indices=c0['indices'];parents=c0['parents'];values=np.frombuffer((T/'joint-wrist-patches/rest-fan/output.bin').read_bytes(),dtype='<f8');world=np.asarray([matrix(x) for x in values[28:].reshape(115,7)]);source=np.linalg.inv(matrix(values[:7]))@world;local={i:np.linalg.inv(source[parents[i]])@source[i] for i in range(12,27)};bind={i:(np.linalg.inv(ctx['bind'][parents[i]])@ctx['bind'][i])[:3,:3] for i in [12,13,14]};elbow=source[10,:3,3];D=T/'joint-wrist-patches/index-bind-free-arm';D.mkdir(exist_ok=True)
++
++def axis(index,degrees):return rotation(np.eye(3)[index],degrees)
++
++def evaluate(x,baseR,baseT):
++ R=axis(0,x[0])@axis(1,x[1])@axis(2,x[2])@baseR;t=baseT+x[3:6];pose=source.copy();pose[11,:3,:3]=R;pose[11,:3,3]=t;locals={i:v.copy() for i,v in local.items()};locals[12][:3,:3]=bind[12]@axis(0,x[6])@axis(1,x[7])@axis(2,-x[8]);locals[13][:3,:3]=bind[13]@axis(2,-x[9]);locals[14][:3,:3]=bind[14]@axis(2,-x[10]);locals[24][:3,:3]=local[24][:3,:3]@axis(0,x[11])@axis(1,x[12])@axis(2,x[13]);locals[25][:3,:3]=local[25][:3,:3]@axis(2,x[14]);locals[26][:3,:3]=local[26][:3,:3]@axis(2,x[15])
++ for i in range(12,27):pose[i]=pose[parents[i]]@locals[i]
++ delta=pose@ctx['inverse'];points=np.zeros((2,4));norms=np.zeros((2,3))
++ for k in range(4):points+=np.einsum('nij,nj->ni',delta[indices[:,k]],body)*weights[:,k,None];norms+=np.einsum('nij,nj->ni',delta[indices[:,k],:3,:3],normal_skin)*weights[:,k,None]
++ norms/=np.linalg.norm(norms,axis=1)[:,None];forearm=t-elbow;forearm/=np.linalg.norm(forearm);alignment=float(R[:,0]@forearm)
++ tip_ids=np.asarray([1013,1014,1015,1016,1021]);tip=np.zeros((5,4))
++ for k in range(4):tip+=np.einsum('nij,nj->ni',delta[ctx['indices'][tip_ids,k]],ctx['v'][tip_ids])*ctx['weights'][tip_ids,k,None]
++ return points[:,:3],norms,alignment,pose,locals,tip[:,:3]
++
++x=np.asarray([0,0,0,0,0,0,0,-12.75,59.5,2.74,0,0,0,0,0,0.],dtype=float);desired=bind[12]@axis(1,x[7])@axis(2,-x[8]);baseR=source[11,:3,:3]@local[12][:3,:3]@desired.T;baseT=source[11,:3,3].copy();original_points=source@ctx['inverse'];old_point=(original_points[14]@ctx['v'][1002])[:3];initial=evaluate(x,baseR,baseT);baseT+=old_point-initial[0][0];limits=np.asarray([[-90,90]]*3+[[-8,8]]*3+[[-15,15],[-20,20],[0,90],[0,100],[0,90]]+[[-60,60]]*5);history=[];x=np.asarray(json.loads((T/'joint-wrist-patches/index-bind-frame/fit.json').read_text())['candidates'][0]['parameters'])
++for outer in range(10):
++ points,norms,*_=evaluate(x,baseR,baseT);targets,outward,faces=nearest(points,norms)
++ def residual(z):
++  p,n,alignment,pose,locals,tip=evaluate(z,baseR,baseT)
++  return np.r_[(p-targets).ravel(),((n+outward)*1.5).ravel(),np.maximum(0,tip[:,0]+3.862)*2,z[:3]*.0002,z[3:6]*.001,z[6]*.01,(z[8:11]-[30,30,15])*.001,z[11:]*.0002]
++ r=residual(x);cost=float(r@r);damping=.001
++ for iteration in range(20):
++  J=np.zeros((len(r),16))
++  for j in range(16):
++   z=x.copy();step=.02 if j<3 or j>=6 else .002;z[j]+=step;J[:,j]=(residual(z)-r)/step
++  step=-np.linalg.solve(J.T@J+np.eye(16)*damping,J.T@r);step=np.clip(step,np.r_[np.full(3,-5.),np.full(3,-.3),np.full(10,-5.)],np.r_[np.full(3,5.),np.full(3,.3),np.full(10,5.)]);z=np.clip(x+step,limits[:,0],limits[:,1]);rr=residual(z);new=float(rr@rr)
++  if new<cost:x=z;r=rr;cost=new;damping=max(1e-8,damping*.5)
++  else:damping=min(1e4,damping*5)
++ points,norms,alignment,*_=evaluate(x,baseR,baseT);history.append(dict(iteration=outer,cost=cost,faces=faces,contact_errors_raw=np.linalg.norm(points-targets,axis=1).tolist(),facing_dot=np.einsum('ij,ij->i',norms,-outward).tolist()));print(json.dumps(history[-1]),flush=True)
++points,norms,alignment,pose,locals,tip=evaluate(x,baseR,baseT);targets,outward,faces=nearest(points,norms);errors=np.linalg.norm(points-targets,axis=1);facing=np.einsum('ij,ij->i',norms,-outward);report=dict(geometry_only=True,parameters=x.tolist(),parameter_definition='wrist_worldXYZ_deg,translation_raw,index_MCP_axial/splay/flex,PIPflex,DIPflex,thumb_MCPXYZ/PIPZ/DIPZ_delta',index_original_bind_frame=True,index_DIP_extension_not_authored=True,index_MCP_axial_bound_degrees=15,authoring_bounds_not_clinical_or_runtime_clamps=True,history=history,original_global_latch_triangles=faces,target_positions=targets.tolist(),outward_normals=outward.tolist(),contact_errors_raw=errors.tolist(),pad_facing_dot=facing.tolist(),fixed_elbow_proxy_axis_degrees=float(np.degrees(np.arccos(np.clip(alignment,-1,1)))),wrist_rotation=pose[11,:3,:3].tolist(),wrist_translation=pose[11,:3,3].tolist(),local15_rotation_matrices=[locals[i][:3,:3].tolist() for i in range(12,27)],contact_only_constraints_pass=bool(max(errors)<.1 and min(facing)>.85),actual_C0_axis_acceptance_pending=True,full_arm_C0_checked=False,full_gun_intersections_checked=False,self_surface_checked=False,skin_fit_accepted=False,published=False,game_started=False);(D/'fit.json').write_text(json.dumps(dict(candidates=[report]),indent=2));print(json.dumps({k:v for k,v in report.items() if k in ['parameters','contact_errors_raw','pad_facing_dot','forearm_to_hand_axis_degrees','contact_only_constraints_pass']},indent=2))
+--- /dev/null
++++ b/analysis/hammerburst-20261108/check-c0-index-bind-free-arm.py
+@@ -0,0 +1,26 @@
++"""Compose the joint-patch experiment through existing C0 and inspect full surfaces."""
++from pathlib import Path
++import numpy as np,json,struct,subprocess,hashlib
++from PIL import Image,ImageDraw
++R=Path.cwd();A=R/'analysis/hammerburst-20261108';T=A/'c0-mixed-skin-probe';D=T/'joint-wrist-patches/index-bind-free-arm';D.mkdir(exist_ok=True)
++p=A/'check-c0-latch-self-surface.py';s={};exec(compile(p.read_text().split('\ncases=[')[0],str(p),'exec'),s);ctx=s['ctx'];matrix=s['c']['matrix'];audit=s['audit'];result=json.loads((D/'fit.json').read_text())['candidates'][0]
++p=A/'prepare-c0-hb-input.py';q=dict(np=np);exec(compile('def quaternion'+p.read_text().split('def quaternion',1)[1].split('\ndata=numbers',1)[0],str(p),'exec'),q);data=np.frombuffer((T/'finger-source-mcp/input.bin').read_bytes(),dtype='<f8').copy();data[13:16]=result['wrist_translation'];data[16:20]=q['quaternion'](result['wrist_rotation'])
++for i,m in enumerate(result['local15_rotation_matrices']):data[20+4*i:24+4*i]=q['quaternion'](m)
++source=D/'input.bin';output=D/'output.bin';source.write_bytes(struct.pack('<80d',*data));exe=T/'build-vs/Release/HammerburstC0SkinProbe.exe';run=subprocess.run([str(exe),str(T/'fixture'),str(source),str(output),'--constructed-gun-pose',str(T/'front-side-hold-pose.bin')],capture_output=True,text=True);assert run.returncode==0,(run.stdout,run.stderr);compose=json.loads(run.stdout);values=np.frombuffer(output.read_bytes(),dtype='<f8');gun=matrix(values[:7]);actual=np.asarray([matrix(p) for p in values[28:].reshape(115,7)]);delta=np.linalg.inv(gun)@actual@ctx['inverse'];hand=np.zeros_like(ctx['v'])
++for k in range(4):hand+=np.einsum('nij,nj->ni',delta[ctx['indices'][:,k]],ctx['v'])*ctx['weights'][:,k,None]
++hand=hand[:,:3];geometry=np.load(T/'fitted-range/key_0-geometry.npz');weapon=geometry['weapon'];wf=geometry['weapon_faces'];bodyfaces=s['c']['allfaces'];armfaces=geometry['arm_faces'];cross=s['helper']['pairs'];he=audit['edges'](armfaces);ge=audit['edges'](wf);forward=cross(hand,he,weapon[wf]);reverse=cross(weapon,ge,hand[armfaces]);self_result=s['audit_skin']('joint-wrist-patches',hand);(D/'self-crossings.json').write_text(json.dumps(self_result,indent=2));np.savez(D/'geometry.npz',hand=hand,arm_faces=armfaces,weapon=weapon,weapon_faces=wf,weapon_bone=geometry['weapon_bone']);ids=[1002,1014];gaps=np.linalg.norm(hand[ids]-np.asarray(result['target_positions']),axis=1);wrist=(np.linalg.inv(gun)@actual[11]);elbow=(np.linalg.inv(gun)@actual[10]);arm=wrist[:3,3]-elbow[:3,3];arm/=np.linalg.norm(arm);axis_angle=float(np.degrees(np.arccos(np.clip(wrist[:3,0]@arm,-1,1))))
++report=dict(geometry_only=True,compose=compose,actual_contact_errors_raw=gaps.tolist(),actual_forearm_to_hand_axis_degrees=axis_angle,forearm_to_hand_proxy_degrees=result['fixed_elbow_proxy_axis_degrees'],full_arm_triangles=len(armfaces),gun_crossings=dict(forward=len(forward),reverse=len(reverse),total=len(forward)+len(reverse)),self_crossings=self_result['summary'],input_sha256=hashlib.sha256(source.read_bytes()).hexdigest(),output_sha256=hashlib.sha256(output.read_bytes()).hexdigest(),skin_fit_accepted=False,published=False,game_started=False)
++(A/'latch-c0-index-bind-free-arm-check.json').write_text(json.dumps(report,indent=2));print(json.dumps(report,indent=2),flush=True)
++image=Image.new('RGB',(1200,1000),(240,241,243));draw=ImageDraw.Draw(image);center=np.mean(hand[ids],axis=0);red=set(i for pair in self_result['pairs'] for i in pair['triangles']);handred={tuple(s['faces'][i]) for i in red}
++for panel,(view,right,up) in enumerate([('Side +X',[0,1,0],[0,0,1]),('Side -X',[0,-1,0],[0,0,1]),('Top',[1,0,0],[0,1,0]),('Oblique',[.707,.707,0],[-.35,.35,.866])]):
++ right=np.asarray(right);up=np.asarray(up);depth=np.cross(right,up);origin=np.asarray([300+600*(panel%2),270+500*(panel//2)]);rows=[]
++ for vertices,faces,kind in [(weapon,wf,0),(hand,armfaces,1)]:
++  for face in faces:
++   tri=vertices[face];mid=tri.mean(0)
++   if np.linalg.norm(mid-center)>32:continue
++   normal=np.cross(tri[1]-tri[0],tri[2]-tri[0]);normal/=max(np.linalg.norm(normal),1e-20);light=.5+.5*abs(float(normal@np.asarray([.3,.4,.866])));latch=kind==0 and np.all(geometry['weapon_bone'][face]==1);base=(170,140,55) if latch else (85,105,125) if kind==0 else (217,167,126);base=(220,65,60) if kind and tuple(face) in handred else base;color=tuple(int(v*light) for v in base);xy=np.column_stack([(tri-center)@right,-(tri-center)@up])*8+origin;rows.append((float(mid@depth),xy,color))
++ for _,xy,color in sorted(rows,key=lambda x:x[0]):draw.polygon([tuple(x) for x in xy],fill=color)
++ draw.text((10+600*(panel%2),10+500*(panel//2)),view+' / constructed geometry, not game',fill=(20,25,30))
++ for label,point in zip(['index','thumb'],hand[ids]):
++  xy=np.asarray([(point-center)@right,-(point-center)@up])*8+origin;draw.ellipse((xy[0]-3,xy[1]-3,xy[0]+3,xy[1]+3),fill=(30,80,250));draw.text(tuple(xy+[4,4]),label,fill=(20,40,100))
++image.save(A/'latch-c0-index-bind-free-arm.png')
+--- /dev/null
++++ b/analysis/hammerburst-20261108/fit-latch-index-actual-c0.py
+@@ -0,0 +1,42 @@
++"""Bounded authoring with the actual unchanged C0 function as the arm evaluator."""
++from pathlib import Path
++import numpy as np,json,subprocess,struct,hashlib,time
++R=Path.cwd();A=R/'analysis/hammerburst-20261108';T=A/'c0-mixed-skin-probe'
++p=A/'fit-latch-index-bind-frame.py';s={};exec(compile(p.read_text().split('x=np.asarray([0,0,0')[0],str(p),'exec'),s)
++ctx=s['ctx'];matrix=s['matrix'];nearest=s['nearest'];source=s['source'];baseR=source[11,:3,:3].copy();baseT=source[11,:3,3].copy();D=T/'joint-wrist-patches/index-actual-c0';D.mkdir(exist_ok=True)
++p=A/'prepare-c0-hb-input.py';q=dict(np=np);exec(compile('def quaternion'+p.read_text().split('def quaternion',1)[1].split('\ndata=numbers',1)[0],str(p),'exec'),q);quat=q['quaternion'];template=np.frombuffer((T/'joint-wrist-patches/rest-fan/input.bin').read_bytes(),dtype='<f8').copy();exe=T/'build-vs/Release/HammerburstC0SkinProbe.exe';calls=0;cache={};started=time.monotonic();ids=np.asarray([1002,1014,1013,1015,1016,1021]);weights=ctx['weights'][ids];indices=ctx['indices'][ids];body=ctx['v'][ids];normal_skin=s['normal_skin'];x=np.asarray([0,0,0,0,0,0,0,0,30,30,15,0,0,0,0,0.],dtype=float)
++# A local finger flex uses original bind axes; axial twist follows flex/splay.
++def desired(z):
++ result=s['evaluate'](z,baseR,baseT);points,norms,alignment,pose,locals,tip=result
++ i=12;locals[i][:3,:3]=s['bind'][i]@s['axis'](2,-z[8])@s['axis'](1,z[7])@s['axis'](0,z[6])
++ for i in range(12,27):pose[i]=pose[s['parents'][i]]@locals[i]
++ return pose,locals
++pose,locals=desired(x);delta=pose@ctx['inverse'];point=(delta[14]@ctx['v'][1002])[:3];old=(source@ctx['inverse'])[14]@ctx['v'][1002];baseT+=old[:3]-point
++
++def actual(z):
++ global calls
++ key=z.tobytes()
++ if key in cache:return cache[key]
++ pose,locals=desired(z);data=template.copy();data[13:16]=pose[11,:3,3];data[16:20]=quat(pose[11,:3,:3])
++ for i in range(12,27):data[20+4*(i-12):24+4*(i-12)]=quat(locals[i][:3,:3])
++ inp=D/'trial-input.bin';out=D/'trial-output.bin';inp.write_bytes(struct.pack('<80d',*data));run=subprocess.run([str(exe),str(T/'fixture'),str(inp),str(out),'--constructed-gun-pose',str(T/'front-side-hold-pose.bin')],capture_output=True,text=True);calls+=1;assert run.returncode==0,(calls,run.stdout,run.stderr);raw=out.read_bytes();v=np.frombuffer(raw,dtype='<f8');world=np.asarray([matrix(p) for p in v[28:].reshape(115,7)]);gun=matrix(v[:7]);delta=np.linalg.inv(gun)@world@ctx['inverse'];skin=np.zeros((len(ids),4));norms=np.zeros((2,3))
++ for k in range(4):
++  skin+=np.einsum('nij,nj->ni',delta[indices[:,k]],body)*weights[:,k,None];norms+=np.einsum('nij,nj->ni',delta[indices[:2,k],:3,:3],normal_skin)*weights[:2,k,None]
++ norms/=np.linalg.norm(norms,axis=1)[:,None];forearm=world[11,:3,3]-world[10,:3,3];forearm/=np.linalg.norm(forearm);angle=float(np.degrees(np.arccos(np.clip(world[11,:3,0]@forearm,-1,1))));value=(skin[:2,:3],norms,angle,skin[:,0],pose,locals,data,raw,json.loads(run.stdout));cache[key]=value;return value
++
++limits=np.asarray([[-90,90]]*3+[[-10,10]]*3+[[-15,15],[-20,20],[0,90],[0,100],[0,90]]+[[-60,60]]*5);history=[]
++for outer in range(6):
++ points,norms,*_=actual(x);targets,outward,faces=nearest(points,norms)
++ def residual(z):
++  p,n,angle,tip_x,*_=actual(z)
++  return np.r_[(p-targets).ravel(),((n+outward)*1.5).ravel(),max(0,angle-40)/5,np.maximum(0,tip_x+3.862)*2,z[:3]*.0002,z[3:6]*.001,z[6]*.01,(z[8:11]-[30,30,15])*.001,z[11:]*.0002]
++ r=residual(x);cost=float(r@r);damping=.01
++ for iteration in range(8):
++  J=np.zeros((len(r),16))
++  for j in range(16):
++   z=x.copy();step=.1 if j<3 or j>=6 else .005;z[j]+=step;J[:,j]=(residual(z)-r)/step
++  step=-np.linalg.solve(J.T@J+np.eye(16)*damping,J.T@r);step=np.clip(step,np.r_[np.full(3,-5.),np.full(3,-.3),np.full(10,-5.)],np.r_[np.full(3,5.),np.full(3,.3),np.full(10,5.)]);z=np.clip(x+step,limits[:,0],limits[:,1]);rr=residual(z);new=float(rr@rr)
++  if new<cost:x=z;r=rr;cost=new;damping=max(1e-8,damping*.5)
++  else:damping=min(1e4,damping*5)
++ points,norms,angle,*_=actual(x);row=dict(iteration=outer,calls=calls,seconds=time.monotonic()-started,cost=cost,contact_errors_raw=np.linalg.norm(points-targets,axis=1).tolist(),facing_dot=np.einsum('ij,ij->i',norms,-outward).tolist(),actual_C0_axis_degrees=angle);history.append(row);print(json.dumps(row),flush=True)
++points,norms,angle,tip_x,pose,locals,data,raw,status=actual(x);targets,outward,faces=nearest(points,norms);errors=np.linalg.norm(points-targets,axis=1);facing=np.einsum('ij,ij->i',norms,-outward);(D/'input.bin').write_bytes(struct.pack('<80d',*data));(D/'output.bin').write_bytes(raw);report=dict(geometry_only=True,actual_unchanged_C0_evaluation_calls=calls,parameters=x.tolist(),history=history,original_global_latch_triangles=faces,target_positions=targets.tolist(),outward_normals=outward.tolist(),contact_errors_raw=errors.tolist(),pad_facing_dot=facing.tolist(),actual_C0_axis_degrees=angle,wrist_rotation=pose[11,:3,:3].tolist(),wrist_translation=pose[11,:3,3].tolist(),local15_rotation_matrices=[locals[i][:3,:3].tolist() for i in range(12,27)],contact_and_actual_C0_axis_constraints_pass=bool(max(errors)<.1 and min(facing)>.85 and angle<=40),index_axial_twist_bound=15,index_DIP_hyperextension=False,authoring_constraints_not_clinical_or_runtime_clamps=True,compose=status,full_gun_intersections_checked=False,self_surface_checked=False,input_sha256=hashlib.sha256((D/'input.bin').read_bytes()).hexdigest(),output_sha256=hashlib.sha256((D/'output.bin').read_bytes()).hexdigest(),skin_fit_accepted=False,published=False,game_started=False);(D/'fit.json').write_text(json.dumps(dict(candidates=[report]),indent=2));print(json.dumps({k:v for k,v in report.items() if k in ['parameters','contact_errors_raw','pad_facing_dot','actual_C0_axis_degrees','contact_and_actual_C0_axis_constraints_pass']},indent=2))
+--- /dev/null
++++ b/analysis/hammerburst-20261108/check-c0-index-actual.py
+@@ -0,0 +1,26 @@
++"""Compose the joint-patch experiment through existing C0 and inspect full surfaces."""
++from pathlib import Path
++import numpy as np,json,struct,subprocess,hashlib
++from PIL import Image,ImageDraw
++R=Path.cwd();A=R/'analysis/hammerburst-20261108';T=A/'c0-mixed-skin-probe';D=T/'joint-wrist-patches/index-actual-c0';D.mkdir(exist_ok=True)
++p=A/'check-c0-latch-self-surface.py';s={};exec(compile(p.read_text().split('\ncases=[')[0],str(p),'exec'),s);ctx=s['ctx'];matrix=s['c']['matrix'];audit=s['audit'];result=json.loads((D/'fit.json').read_text())['candidates'][0]
++p=A/'prepare-c0-hb-input.py';q=dict(np=np);exec(compile('def quaternion'+p.read_text().split('def quaternion',1)[1].split('\ndata=numbers',1)[0],str(p),'exec'),q);data=np.frombuffer((T/'finger-source-mcp/input.bin').read_bytes(),dtype='<f8').copy();data[13:16]=result['wrist_translation'];data[16:20]=q['quaternion'](result['wrist_rotation'])
++for i,m in enumerate(result['local15_rotation_matrices']):data[20+4*i:24+4*i]=q['quaternion'](m)
++source=D/'input.bin';output=D/'output.bin';source.write_bytes(struct.pack('<80d',*data));exe=T/'build-vs/Release/HammerburstC0SkinProbe.exe';run=subprocess.run([str(exe),str(T/'fixture'),str(source),str(output),'--constructed-gun-pose',str(T/'front-side-hold-pose.bin')],capture_output=True,text=True);assert run.returncode==0,(run.stdout,run.stderr);compose=json.loads(run.stdout);values=np.frombuffer(output.read_bytes(),dtype='<f8');gun=matrix(values[:7]);actual=np.asarray([matrix(p) for p in values[28:].reshape(115,7)]);delta=np.linalg.inv(gun)@actual@ctx['inverse'];hand=np.zeros_like(ctx['v'])
++for k in range(4):hand+=np.einsum('nij,nj->ni',delta[ctx['indices'][:,k]],ctx['v'])*ctx['weights'][:,k,None]
++hand=hand[:,:3];geometry=np.load(T/'fitted-range/key_0-geometry.npz');weapon=geometry['weapon'];wf=geometry['weapon_faces'];bodyfaces=s['c']['allfaces'];armfaces=geometry['arm_faces'];cross=s['helper']['pairs'];he=audit['edges'](armfaces);ge=audit['edges'](wf);forward=cross(hand,he,weapon[wf]);reverse=cross(weapon,ge,hand[armfaces]);self_result=s['audit_skin']('joint-wrist-patches',hand);(D/'self-crossings.json').write_text(json.dumps(self_result,indent=2));np.savez(D/'geometry.npz',hand=hand,arm_faces=armfaces,weapon=weapon,weapon_faces=wf,weapon_bone=geometry['weapon_bone']);ids=[1002,1014];gaps=np.linalg.norm(hand[ids]-np.asarray(result['target_positions']),axis=1);wrist=(np.linalg.inv(gun)@actual[11]);elbow=(np.linalg.inv(gun)@actual[10]);arm=wrist[:3,3]-elbow[:3,3];arm/=np.linalg.norm(arm);axis_angle=float(np.degrees(np.arccos(np.clip(wrist[:3,0]@arm,-1,1))))
++report=dict(geometry_only=True,compose=compose,actual_contact_errors_raw=gaps.tolist(),actual_forearm_to_hand_axis_degrees=axis_angle,forearm_to_hand_proxy_degrees=None,full_arm_triangles=len(armfaces),gun_crossings=dict(forward=len(forward),reverse=len(reverse),total=len(forward)+len(reverse)),self_crossings=self_result['summary'],input_sha256=hashlib.sha256(source.read_bytes()).hexdigest(),output_sha256=hashlib.sha256(output.read_bytes()).hexdigest(),skin_fit_accepted=False,published=False,game_started=False)
++(A/'latch-c0-index-actual-check.json').write_text(json.dumps(report,indent=2));print(json.dumps(report,indent=2),flush=True)
++image=Image.new('RGB',(1200,1000),(240,241,243));draw=ImageDraw.Draw(image);center=np.mean(hand[ids],axis=0);red=set(i for pair in self_result['pairs'] for i in pair['triangles']);handred={tuple(s['faces'][i]) for i in red}
++for panel,(view,right,up) in enumerate([('Side +X',[0,1,0],[0,0,1]),('Side -X',[0,-1,0],[0,0,1]),('Top',[1,0,0],[0,1,0]),('Oblique',[.707,.707,0],[-.35,.35,.866])]):
++ right=np.asarray(right);up=np.asarray(up);depth=np.cross(right,up);origin=np.asarray([300+600*(panel%2),270+500*(panel//2)]);rows=[]
++ for vertices,faces,kind in [(weapon,wf,0),(hand,armfaces,1)]:
++  for face in faces:
++   tri=vertices[face];mid=tri.mean(0)
++   if np.linalg.norm(mid-center)>32:continue
++   normal=np.cross(tri[1]-tri[0],tri[2]-tri[0]);normal/=max(np.linalg.norm(normal),1e-20);light=.5+.5*abs(float(normal@np.asarray([.3,.4,.866])));latch=kind==0 and np.all(geometry['weapon_bone'][face]==1);base=(170,140,55) if latch else (85,105,125) if kind==0 else (217,167,126);base=(220,65,60) if kind and tuple(face) in handred else base;color=tuple(int(v*light) for v in base);xy=np.column_stack([(tri-center)@right,-(tri-center)@up])*8+origin;rows.append((float(mid@depth),xy,color))
++ for _,xy,color in sorted(rows,key=lambda x:x[0]):draw.polygon([tuple(x) for x in xy],fill=color)
++ draw.text((10+600*(panel%2),10+500*(panel//2)),view+' / constructed geometry, not game',fill=(20,25,30))
++ for label,point in zip(['index','thumb'],hand[ids]):
++  xy=np.asarray([(point-center)@right,-(point-center)@up])*8+origin;draw.ellipse((xy[0]-3,xy[1]-3,xy[0]+3,xy[1]+3),fill=(30,80,250));draw.text(tuple(xy+[4,4]),label,fill=(20,40,100))
++image.save(A/'latch-c0-index-actual.png')
