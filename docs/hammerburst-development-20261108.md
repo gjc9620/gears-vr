@@ -437,3 +437,14 @@ Lancer原writer确认这些共享入口当前无其未保存改动，但R2/unifi
 58207 runner、56150配对review/encode、87081 retention均实际terminal0；Native cleanup/entries/pad均TRUE、unified drained1/handstop5/XR0/launcher0/game absent。config/settings逐UTF8字节复核、head原缺恢复。24.333333秒H2641920x660，全部1页paired overview及game00337/sim00338/game00382/sim00382四原图亲审；startup第三人称/等待卡/白色拾取HUD仍保留，后段枪靠右脸，完整手掌/袖口/全角度和头显fit不接受。retention删除1499媒体248444063B，最新3保留65044/17548/30188，48h；源文数值不删。完整记录analysis/hammerburst-20261108/runtime-65044-review.json与restore/PG原日志/ffprobe。所有终态及独立idle后已明确唯一交Longshot112230，再由其维护Coverr32；本聊天不复用窗口或原候选。
 
 原stage1合并了完整原包路径、结构、参数/返回布局、extent、VM形状和脚本数组，尚不能确定某一条件为因果。下一增量仅把原谓词按原读取/短路顺序拆成阶段1..8，并为路径原有各节点/类型检查记录node/gate；有界首拒绝日志附已读extent/parameters/result，不新增游戏内存读取、getter、hook、输入、状态转换或放宽校验。79项实际Reader owned-memory检查（包括11项新首失败位置检查）通过，118项event adapter fake检查通过；初次event夹具编译因无Snapshot.failure成员失败已保留，最终日志不再依赖该stub缺失字段。此为观察修正，尚无拒绝原因修复或游戏成功证明。完整私有PG构建状态单独记录。
+
+
+## 实际25860：首发参数区8字节，修正原Name参数证书与完整保留
+
+观察候选115111/PGf17cb02e（prepared ebdf0792，源码090133e3）在Coverr32/36040全终明确交窗后，独立idle、2251源/6制品及19实际根入口核对，私有game25860 creation134386704155119374实际首拒绝：outer1 stage3 path_node4/path_gate9 extent8 parameters8。完整原路径/结构已通过，旧证书错误要求parameters0，因此首发未到。result0只是尚未读取的reset值，不是原返回offset。真实肩部取枪PASS、authoritative射线0、operator38380 exit1/runner94753 exit0，未测6发/UP尾段/耗尽或任何换匣边界。仍保存原release后总ammo156，不虚构typed弹匣/备用分配。
+
+45029 review/encode与34663唯一retention实际terminal0；Native/entries/pad均恢复、unified drained1/handstop5、XR0/launcher0/game absent；config/settings逐字节/head原缺复核。全部1页paired overview+game00327/sim00328/game00352/sim00441四实际原图亲审，20.833333s H2641920x660正常；startup TPS/等待卡/白拾取HUD及完整手型/头显未接受保留。一次retention删916媒体146680782B，保留25860/36040/12980；独立idle后已最终明确唯一交Frag120000（114500同槽），Bol115420申请完整转真实尾，不自授新窗。
+
+离线HBParameterProbe只读原包37975/37976，确认PreviousStateName为NameProperty、ArrayDim1、PropertyFlags原始数值128即0x80参数标记、Next空；不是旧反编译文本所写无参数/local。原包hash与前记录相同，原始字段及日志hash见hb-outer-parameters8-original.json。第一次相对Csc路径及Flags.ToString解析错误分开保留，改安全字段输出后parser0，无游戏调用。
+
+先仅将测试基线改为真实参数8/原flag0x80，旧生产Reader与event适配器均实际RED(-1073740791)，分别卡旧参数证书及旧入队size0，保留before日志。随后生产证书严格要求ParmsSize8/Name参数0x80/width8/offset0/唯一子属性/关闭读，原VM shape也要求8；同一原DeferredEvent保留原调用的8字节，super继续由原VM执行。新测试检查非零Name双word完整保留、调用方随后变更和重复事件不替换原payload/原capture时刻/serial，实际原invoke适配器收到原8字节；空参数地址拒绝并完成原释放清理，0/4/16参数区或local/out/return flags仍拒绝。83真实Reader及127event adapter fake检查通过，生产GearsPlayground目标完整编译0；新增fixture曾有auto混合有/无符号编译失败，分开声明修正后0，日志保留。仍非游戏成功或整枪完成。默认OFF、公共v71、Nativec985/XR1684、100ms/20ms/250ms与单C0/原输入/原事件owner全部不变。

@@ -13,6 +13,7 @@ std::atomic<bool> enabled{true};
 namespace event_fixture {
 bool domain{true},loop{true},vm{true},body{true},unchanged{true},ready{true},identity{true},original_success{true},outer_proof{true};
 unsigned invocations{};std::uint64_t shot{99};
+unsigned delivered_outer_bytes{};std::array<unsigned char,8> delivered_outer_parameters{};
 std::array<unsigned char,32> first_body{};
 std::array<unsigned char,24> ammo_body{};
 }
@@ -68,8 +69,12 @@ bool queue(gripdamage_metadata::Reader& r,policy::EventKind kind,uptr fn,void co
     if(bytes)std::memcpy(pending_fire.parameters.data(),params,bytes);certified=true;return true;
 }
 bool pending_identity(gripdamage_metadata::Reader&){return event_fixture::identity;}
-bool invoke_original(uptr,uptr function,unsigned,unsigned char const*){
+bool invoke_original(uptr,uptr function,unsigned bytes,unsigned char const* parameters){
     using namespace fixture;auto& m=model;++event_fixture::invocations;
+    if(function==address(outer_fn)){
+        event_fixture::delivered_outer_bytes=bytes;
+        assert(bytes==8&&parameters);std::memcpy(event_fixture::delivered_outer_parameters.data(),parameters,8);
+    }
     if(function==address(hb_timer)&&(m.burst_count==6||m.ammo_used==m.capacity))m.state={burst,0};
     else{
         if(function==address(outer_fn))m.burst_count=0;
@@ -96,6 +101,7 @@ void reset_event(){
         event_fixture::ready=event_fixture::identity=event_fixture::original_success=true;
     event_fixture::outer_proof=true;
     event_fixture::invocations=0;event_fixture::shot=99;enabled.store(true);vrfire::mode.store(vrfire::running);
+    event_fixture::delivered_outer_bytes=0;event_fixture::delivered_outer_parameters={};
     lancerrefire::pending_fire={};lancerrefire::press={};lancerrefire::press_dispatch=lancerrefire::delivering=false;
     lancerrefire::certified=lancerrefire::pending_validated=false;
     adapter::event={};adapter::event_serial=0;adapter::original_press={};adapter::validated=false;
@@ -204,11 +210,27 @@ int main(){
         assert(!event_fixture::invocations);checks+=4;}
     {reset_event();model.burst_count=6;auto f=active_frame();assert(adapter::prepare_press(f));assert(adapter::owned_press(f));
         model.r2=true;model.bytes[0]=1;lancerrefire::press_dispatch=true;
-        assert(adapter::capture_initial(f.weapon.address,address(outer_fn),nullptr));lancerrefire::press_dispatch=false;
-        assert(lancerrefire::pending_fire.body.array.count==271&&lancerrefire::pending_fire.parameter_bytes==0);
+        Name previous{0x1234,2};
+        assert(adapter::capture_initial(f.weapon.address,address(outer_fn),&previous));lancerrefire::press_dispatch=false;
+        assert(lancerrefire::pending_fire.body.array.count==271&&lancerrefire::pending_fire.parameter_bytes==8);
+        Name retained{};std::memcpy(&retained,lancerrefire::pending_fire.parameters.data(),8);
+        assert(retained.index==previous.index&&retained.number==previous.number);++checks;
+        const auto captured=adapter::event.captured;const auto serial=adapter::event.serial;
+        previous={0x9876,5};++model.now;lancerrefire::press_dispatch=true;
+        assert(adapter::capture_initial(f.weapon.address,address(outer_fn),&previous));lancerrefire::press_dispatch=false;
+        std::memcpy(&retained,lancerrefire::pending_fire.parameters.data(),8);
+        assert(retained.index==0x1234&&retained.number==2&&adapter::event.captured==captured&&adapter::event.serial==serial);
+        checks+=2;
         assert(adapter::service(f.controller.address));muzzle(f);adapter::deliver(f);
+        Name delivered{};std::memcpy(&delivered,event_fixture::delivered_outer_parameters.data(),8);
+        assert(event_fixture::delivered_outer_bytes==8&&delivered.index==0x1234&&delivered.number==2);++checks;
         assert(model.burst_count==1&&bridge::completion.count()==1&&event_fixture::invocations==1);
         model.r2=false;model.bytes[0]=0;assert(adapter::release_completed(nullptr));checks+=7;}
+    {reset_event();auto f=active_frame();assert(adapter::prepare_press(f));assert(adapter::owned_press(f));
+        model.r2=true;model.bytes[0]=1;lancerrefire::press_dispatch=true;
+        assert(adapter::capture_initial(f.weapon.address,address(outer_fn),nullptr));lancerrefire::press_dispatch=false;
+        assert(adapter::requires_release()&&lancerrefire::pending_fire.event.empty()&&!event_fixture::invocations);
+        model.r2=false;model.bytes[0]=0;model.owned_press=false;assert(adapter::release_completed(nullptr));checks+=5;}
     {reset_event();auto f=active_frame();actual_first(f);f.controllers.hands[1].grip_active=0;
         assert(gears_weapon_hand::frame_active(f,model.now)); // Envelope can still be active.
         adapter::after_tick(&f);assert(adapter::requires_release());

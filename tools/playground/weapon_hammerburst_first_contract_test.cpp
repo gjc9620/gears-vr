@@ -72,6 +72,8 @@ struct FirstMemory:Memory {
         put(concrete,0x48,text(L"Weap_LocustAssaultRifle"));frame.weapon=identity(weapon);
         hb_state=node(L"WeaponFiring",state_type,concrete);outer=function(L"BeginState",hb_state);
         previous=property(outer,L"PreviousStateName",name_type,0,8);
+        // Actual25860 parameters8 and original export37975 raw flags0x80.
+        put(outer,0x106,std::uint16_t(8));put(previous,0x78,std::uint64_t(0x80));
         const auto engine_state=node(L"WeaponFiring",state_type,engine_weapon);
         references[0]=property(engine_pawn,L"Controller",object_type,0x110,8);
         references[1]=property(actor_class,L"Instigator",object_type,0x170,8);
@@ -123,7 +125,7 @@ int main(){
         assert(!m->prove()&&hammerburst_first_contract::stage==stage);++checks;};
     boundary(1,[](auto& m){Memory::put(m.outer,0x48,m.text(L"WrongBeginState"));m.tables();});
     boundary(2,[](auto& m){fail_read=m.outer+0x60;});
-    boundary(3,[](auto& m){Memory::put(m.outer,0x106,std::uint16_t(8));});
+    boundary(3,[](auto& m){Memory::put(m.outer,0x106,std::uint16_t(0));});
     boundary(4,[](auto& m){Memory::put(m.outer,0x108,std::uint16_t(0));});
     boundary(5,[](auto& m){Memory::put(m.outer,0x88,16u);});
     boundary(6,[](auto& m){Memory::put(m.outer,0xf8,std::uint16_t(1));});
@@ -145,10 +147,14 @@ int main(){
     reject([](auto& m){Memory::put(m.outer,0xf8,std::uint16_t(1));});
     reject([](auto& m){Memory::put(m.outer,0xf4,0x400u);});
     reject([](auto& m){Memory::put(m.outer,0x114,base+0x1d6ca1);});
-    reject([](auto& m){Memory::put(m.outer,0x106,std::uint16_t(8));});
+    reject([](auto& m){Memory::put(m.outer,0x106,std::uint16_t(0));});
+    reject([](auto& m){Memory::put(m.outer,0x106,std::uint16_t(4));});
+    reject([](auto& m){Memory::put(m.outer,0x106,std::uint16_t(16));});
     reject([](auto& m){Memory::put(m.outer,0x108,std::uint16_t(0));});
     reject([](auto& m){Memory::put(m.outer,0x88,16u);});
-    reject([](auto& m){Memory::put(m.previous,0x78,std::uint64_t(0x80));});
+    reject([](auto& m){Memory::put(m.previous,0x78,std::uint64_t(0));});
+    reject([](auto& m){Memory::put(m.previous,0x78,std::uint64_t(0x180));});
+    reject([](auto& m){Memory::put(m.previous,0x78,std::uint64_t(0x580));});
     reject([](auto& m){Memory::put(m.previous,0x94,4u);});
     reject([](auto& m){Memory::put(m.references[10],0x74,4u);});
     reject([](auto& m){Memory::put(m.references[9],0xd0,3u);});

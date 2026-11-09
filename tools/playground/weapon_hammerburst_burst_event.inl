@@ -144,7 +144,10 @@ bool capture_initial(std::uint64_t object,std::uint64_t function,void const* par
     if(owns_pending()&&common::pending_fire.event.kind()==common::policy::EventKind::refire)clear_pending();
     const bool first_was_owed=tx::first_debt;
     if(!first_was_owed&&!tx::capture_first()){tx::revoke();return true;}
-    if(!queue(r,common::policy::EventKind::first,function,parameters,outer?0:bytes,outer?512:256))tx::revoke();
+    // The authenticated outer BeginState has one original eight-byte Name
+    // parameter. Preserve that actual caller payload in the existing queue;
+    // the original VM still calls its inherited BeginState itself.
+    if(!queue(r,common::policy::EventKind::first,function,parameters,outer?8:bytes,outer?512:256))tx::revoke();
     static unsigned first_captures{};
     if(log_file&&first_captures++<6){fwprintf(log_file,L"native_hammerburst_first_captured outer=%u event=%llu bytes=%d retained=%u\n",
         unsigned(outer),event.serial,outer?outer_body.array.count:common::pending_fire.body.array.count,unsigned(owns_pending()));fflush(log_file);}

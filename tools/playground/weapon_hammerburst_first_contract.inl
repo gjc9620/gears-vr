@@ -68,11 +68,11 @@ bool prove(meta::Reader& r,uptr weapon,uptr function,lancerrefire::Script& body)
     stage=2;if(!r.structure(function,structure))return false;
     observed_extent=structure.extent;
     stage=3;if(!r.at(function,0x106,parameters))return false;
-    observed_parameters=parameters;if(parameters)return false;
+    observed_parameters=parameters;if(parameters!=8)return false;
     stage=4;if(!r.at(function,0x108,result))return false;
     observed_result=result;if(result!=0xffff)return false;
     stage=5;if(structure.extent!=8)return false;
-    stage=6;if(!lancerrefire::hammerburst_refire::vm_shape(r,function,0,0xffff))return false;
+    stage=6;if(!lancerrefire::hammerburst_refire::vm_shape(r,function,8,0xffff))return false;
     stage=7;if(!lancerrefire::script(r,function,body,512))return false;
     stage=8;if(body.array.count!=271)return false;
     gears_hammerburst_first::Bindings bindings{};
@@ -93,7 +93,10 @@ bool prove(meta::Reader& r,uptr weapon,uptr function,lancerrefire::Script& body)
         if(!r.property(address,p)||p.dimension!=1||p.element_bytes!=bytes||
            !r.path(r.result.identities[p.identity].outer,owner)||!r.structure(r.result.identities[owner].address,owned)||
            !meta::property_fits(p,owned.extent)||!hammerburst_burst_contract::retain(r,p))return false;
-        if(index==11&&(p.offset||(p.flags&0x580)||p.next||structure.children!=address))return false;
+        // Original export37975 is CPF_Parm0x80, despite the old decompiler's
+        // misleading local declaration. Actual25860 also reports ParmsSize8.
+        if(index==11&&(p.offset||(p.flags&0x580)!=0x80||p.next||structure.children!=address||
+                       !meta::property_fits(p,parameters)))return false;
         if(index==5||index==9){
             unsigned mask{};if(!r.at(address,0xd0,mask)||!mask||(mask&(mask-1)))return false;
             bools[bool_count]=address;masks[bool_count++]=mask;
@@ -115,7 +118,7 @@ bool prove(meta::Reader& r,uptr weapon,uptr function,lancerrefire::Script& body)
     for(unsigned i=0;i<bool_count;++i){unsigned mask{};if(!r.at(bools[i],0xd0,mask)||mask!=masks[i])return false;}
     stage=80;
     if(!unified_weapon_fire::retained_metadata(r)||!lancerrefire::unchanged(r,function,body)||
-       !lancerrefire::hammerburst_refire::vm_shape(r,function,0,0xffff))return false;
+       !lancerrefire::hammerburst_refire::vm_shape(r,function,8,0xffff))return false;
     stage=0;return true;
 }
 }
