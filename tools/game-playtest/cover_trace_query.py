@@ -30,27 +30,54 @@ PARAMS = (
     ('HitInfo', 64, 40, '0x190'), ('ExtraTraceFlags', 104, 4, '0x90'),
     ('ReturnValue', 108, 8, '0x580'),
 )
+CLOSING_PADDING_LIMIT = 64 * 1024
 
 
 def _closing_blocks(values):
     """Group selected witnesses within one OS page; retain every comparison.
 
-    Padding between selected ranges is read but never becomes a witness or
-    exported evidence. Original ranges crossing a page remain individual.
-    No process read, cached live value, or fallback/retry happens here.
+    At most64KiB of extra gap bytes per closing, cheapest gaps first. Padding
+    never becomes a witness or exported evidence. Original ranges crossing a
+    page remain individual. No process read, cached value or retry happens here.
     """
     blocks = []
     for (address, size), expected in sorted(values):
         end = address + size
         page_end = (address // mmap.PAGESIZE + 1) * mmap.PAGESIZE
-        if (blocks and address >= blocks[-1][0] and
+        if (blocks and address >= blocks[-1][0] and address <= blocks[-1][1] and
                 address // mmap.PAGESIZE == blocks[-1][0] // mmap.PAGESIZE and
                 blocks[-1][1] <= page_end and end <= page_end):
             start, previous_end, selected = blocks[-1]
             blocks[-1] = (start, max(previous_end, end), selected + [(address, expected)])
         else:
             blocks.append((address, end, [(address, expected)]))
-    return blocks
+    # Merging every same-page gap made a live query exceed its original2MiB
+    # cap despite fewer read calls. Gap costs are additive between ordered
+    # nonoverlapping blocks. Spend one bounded allowance on the cheapest edges
+    # instead of consuming it on the earliest sparse page. Unchosen blocks
+    # still receive their full original reads/comparisons and normal budgets.
+    edges = []
+    for i in range(1, len(blocks)):
+        previous, current = blocks[i - 1], blocks[i]
+        page_end = (previous[0] // mmap.PAGESIZE + 1) * mmap.PAGESIZE
+        if (current[0] // mmap.PAGESIZE == previous[0] // mmap.PAGESIZE and
+                previous[1] <= page_end and current[1] <= page_end):
+            edges.append((current[0] - previous[1], i))
+    selected_edges = set()
+    remaining = CLOSING_PADDING_LIMIT
+    for cost, i in sorted(edges):
+        if cost > remaining:
+            break
+        remaining -= cost
+        selected_edges.add(i)
+    merged = []
+    for i, (start, end, selected) in enumerate(blocks):
+        if i in selected_edges:
+            previous_start, previous_end, earlier = merged[-1]
+            merged[-1] = (previous_start, max(previous_end, end), earlier + selected)
+        else:
+            merged.append((start, end, selected))
+    return merged
 
 
 class TraceQuery(CoverQuery):

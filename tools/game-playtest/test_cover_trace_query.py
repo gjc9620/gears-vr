@@ -192,6 +192,32 @@ class TraceRegistryTests(unittest.TestCase):
         self.assertEqual([(start, end) for start, end, _ in _closing_blocks(crossing)],
                          [(boundary - 2, boundary + 2), (boundary + 16, boundary + 20)])
 
+    def test_sparse_closing_witnesses_cannot_expand_to_megabytes_of_page_padding(self):
+        values=[]
+        for i in range(1000):
+            base=(i+1)*mmap.PAGESIZE
+            for offset in (16,3500):values.append(((base+offset,8),bytes(8)))
+        blocks=_closing_blocks(values)
+        actual=sum(end-start for start,end,_ in blocks)
+        self.assertLessEqual(actual,16000+65536)
+        self.assertEqual(sorted((address,expected) for _,_,selected in blocks for address,expected in selected),
+                         sorted((address,expected) for (address,_),expected in values))
+
+    def test_closing_spends_padding_on_smallest_gaps_before_earlier_sparse_pages(self):
+        values=[]
+        # The first pages would exhaust a padding allowance before the useful
+        # close fields if grouping spent it in address order.
+        for i in range(1000):
+            base=(i+1)*mmap.PAGESIZE
+            # Each2048-byte gap divides64KiB exactly: an address-order
+            # greedy merge would leave zero bytes for the later small gaps.
+            for offset in (16,2072):values.append(((base+offset,8),bytes(8)))
+        base=2000*mmap.PAGESIZE
+        for offset in (16,32,48):values.append(((base+offset,8),bytes(8)))
+        blocks=_closing_blocks(values)
+        selected=[(start,end) for start,end,_ in blocks if base<=start<base+mmap.PAGESIZE]
+        self.assertEqual(selected,[(base+16,base+56)])
+
     def test_name_growth_and_count_rollback_are_rejected(self):
         resolver, query = self.fixture()
         resolver.put(resolver.names_header,

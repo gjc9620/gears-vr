@@ -562,3 +562,27 @@ receiver入口无条件递增32位全局值，E7030从同一RIP目标读取，�
 MSVC C++17／O2／W4／WX／EHsc／UNDEBUG／MT实际编译，最终208检查0失败。检查使用显式Host seam，先改本进程拥有的位置再发布模拟body回执，执行的是本生产账本类；这不是游戏内存、物理世界或第二份独立参考算法，也不认证真实body/view/hit/muzzle消费。证据motion-ledger-r23/verification.json、实际依赖与原编译／执行日志；未改r19冻结计划／三制品，未构建新Native。
 
 此时Longshot075334/game65324已在全部进程、恢复、全跨度视觉、编码／retention和idle后唯一交窗本r19。其schema／Interval解码通过但closed-bolt旋转gate6拒绝179.965度，原失败保留，不当作开栓或取弹通过。先完成本源码保存，再独立复核plan16345fcd、23驱动、准确cover-r13三制品及空闲，运行原A一次／最多8ray30秒的首败停止窄段；本r20／21／23源码不混入冻结r19。后继仍唯一Snub082247，再其已受理Bol084022，不能提前或重复交窗。
+
+## 2026年11月9日 r19实际60336：读取次数降低但首条关闭超2MiB
+
+先将r23保存4f4a9fb9，独立CIM／idle及plan16345fcd、23驱动、准确r13三制品均核对，再stage，备份prior-private-text-20261109-085601。第一次包装器误用无Pillow的Python314，在启动游戏／XR前import失败；config原字节恢复、idle和驱动一致后，改用计划中SHA已核的Pillow／NumPy解释器。错误日志和独立恢复证据r19-prelaunch-interpreter-failure.json保留，未改环境或用它算作游戏结果。
+
+实际game60336／creation134386594223021086，owner48548／creation134386594139843738。准确Native5cf4adea／PGf8e6／XR1684和reader a49ea42e运行；原A一次到CT2／CA0，严格geometry读取通过。第一条原Trace完成，queue_state2／trace_calls1、pending_possibleFALSE／allocation_retainedFALSE，返回mp_warmachine_SMC#3及StaticMeshComponent#186308真实命中；之后读取到5487次、2097976字节，超过原2097152字节上限，acceptedFALSE。原r16的读次数瓶颈降低，但整页合并造成额外间隙字节膨胀，本r19仍FAIL。按首败停止，没有第二ray、retry或提升任何上限；未完成closing的surface_after成员解析和raw hit不能改写成严格表面／边缘认证。
+
+已亲自查看全部22.3668148秒paired-review-00及实际game00369／00390、simulator00432／00453原图，两路20.48／21.47秒右侧身体／装备大面积近裁剪仍视觉FAIL。启动第三人称和等待卡仍可见。409游戏／473模拟器样本，最大捕获缺口1.8166894／0.3333357秒，两路末端覆盖；不是窗口标题FPS或原子C0／GPU证明。视频ffprobe22.400秒／4998057字节，原脚本ffmpeg wait0断言后的完整metrics已输出，review／ffmpeg进程消失；统一review工具句柄未保留，单独记入closure，未重复编码以补工具记账。
+
+runner36635实际terminal0／launcher0；Native cleanup／entries／pad恢复TRUE，body／hand／atom等pending0，XR0、游戏退出。config原字节、settings SHA和head原缺失精确恢复，结束23驱动全部一致；XR terminal exiting／objects destroyed／shutdown completed，但EndSession仍FALSE。authored_eye_applied393／rejected0、body_goal_attempts350／rejected117、uncomposed2只作本段计数。旧目录menu-firstperson-60336-021741属于另一历史Steam creation134379442251489996，其PermissionError不算本次故障，身份已分开。
+
+全部视觉和编码完成后retention76724实际terminal0／errors0，删2049媒体／353026582字节，保留60336／65324／4532、最多3局／48小时；源码／文字／数值保留。独立idle后已最终唯一交Snub082247，Snub确认准确stage并启动其原窄段，本会话不再用该窗。其后同一Bol084022槽已由后继在stage前明确更新为Bol085057-phase-timeline（plan45cdcf2e／PG474638af），不是新增或复用旧slot。
+
+原session continuous-stereo-60336-20261109-085736-c8b1bf49、action menu-firstperson-60336-085741/cover-boundary.json及cover-60336-review／closure-proof保存实际首败与恢复。完整掩体、实体头显及历史计分保持未完成／不变。
+
+## 2026年11月9日 r24关闭复核的额外间隙字节预算
+
+针对实际60336，只修正关闭读取的分组策略。先合并同页重叠／相接原范围，再按间隙字节从小到大选择可合并邻接；每次finish额外padding总量最多64KiB。未选中的块仍独立执行全部原读取和逐项原见证比较，不跳过、回退或重试。跨页、身份／metadata／registry／name-slot及原16384次／2MiB／3秒总上限不变；padding仍由Query.read正常记账，不成为证据。
+
+新增1000稀疏页／2000见证，旧r19实际RED：选中16000字节被读成3492000。当前同一夹具78568字节／1982块，保留全部2000原见证，额外62568字节在65536内；另用2048字节间隙恰好整除预算的夹具验证小间隙不会被早地址稀疏页饿死。最终Python58方法0失败，16000次真实预消耗后的原typed组件用例仍16361次／289744字节；原数据改变拒绝、页边界和预算拒绝分支保留。这不是原60336内存重放或游戏通过。
+
+新r24计划SHA83be29c74b1f75f589ccf16d640d4cf8e4b180edf6a7d4a32e8f6016b40231f9；23驱动仅cover_trace_query变369f12175e4bdb920ed2b9b213cee61ea6291d2120802b96d398c870d4fddafb，其余22不变，Native／PG／XR仍准确cover-r13，未重建Native。新驱动全部归档drivers-padding-budget-r24，prepare-only0，未stage／启动。下一次仍须新尾位登记与最终唯一交窗，不能追加到已结束60336或占用Snub窗口。
+
+证据query-padding-r24/verification.json及RED／green／final日志。当前账本208检查只证明纯模块，真实输入／body消费与恢复、碰撞快照／扫掠／占用、近裁剪、同版双眼／命中／枪口和头显仍开放，CV-01–24／AC-01–22不缩减。
