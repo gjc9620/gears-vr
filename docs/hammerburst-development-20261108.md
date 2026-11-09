@@ -485,3 +485,9 @@ Lancer原writer确认这些共享入口当前无其未保存改动，但R2/unifi
 冻结135655实际9896在取枪/开火前失败：共同run_menu_firstperson_check.py:99读取同局session_report JSON遇PermissionError；不是游戏内存权限或输入准入拒绝。operator1、wrapper0，XR1/launcher1如实保留，零projection/零武器覆盖，不证明tracking-only或strict6通过。Native/entry/pad/drain与config/settings/head原始字节恢复通过；8.6s paired全1页+4实际raw已审阅，encode0，retention完整终态（删2592/456291670bytes，留9896/59768/61036），独立idle后最终唯一交Longshot142004。证据runtime-9896-review.json。
 
 仅HB ignored私有run_hammerburst_operator.py在内存装载共同脚本后精确替换该一行：PermissionError/JSONDecodeError记累计数、最多4条首错误，sleep.02后继续原45s循环。每轮原live断言、原ready/error条件、原deadline全部保留，不缓存旧session、不发失败输入；未知IO继续原失败。共享脚本/Native/XR/PG均不修改。实际变换后的原loop经fake IO/clock执行8项：占用及半JSON后ready、永久占用/半JSON原期限超时、identityloss先于read、recordederror、原readygate、未知IO失败、正常ready。CPU0且无游戏/输入动作，check-startup-read-retry.py与startup-read-retry-check.json保存证据。新私有operator SHA01ea4c758427bfc00ced2bc14771d5ac6a6db669b937424eb6d8987553f55f8c；本次为driver修复，旧135655保持不可变，新候选另排尾，不复用已关闭窗口。
+
+## 62728 原始首发与真实UP六连发通过（范围限定）
+
+新144203 prepared f35d20f7 / PG56bc12d8，独立2251源/6制品/19root+AST与idle全核后实际62728 creation134386830742508421。原outer271捕获并在同帧真实tracking_only1/render0来源上交付；原计数1..6和6条同源有效权威弹道齐全。前3发r2_source_down1/input_owned1，后3发真实UP为0/0但仍以已提交原有限尾段完成，非伪造按下；after_release总弹药150，未取typed弹匣/备弹快照，不扩称完整ammo守恒。原pause/B返回通过。新增私有状态读取重试本局没有出现重试，不把本局当瞬态分支覆盖；其8CPU记录独立保留。
+
+operator64452=0、runner40138=0、XR0/launcher0/gamegone、Native/entry/pad/drain及config/settings/head原字节恢复通过。26.733333s完整paired1页+8raw亲审，首/末发游戏与sim双端有实际持枪/开火/目标受伤画面；startup第三人称/waitcard与暂停卡保留，整手/手指/袖口/所有角度及实机接受未通过。encode14809=0、retention62202=0，删1511媒体252627541B，保留62728/33732/71440，最后独立idle。证据runtime-62728-review.json，原64316/9896等失败不撤销。全终后唯一交Frag145754（preparedf7bf5137/plan6e830bea），不追加本窗。下一项应另排真实尾、用现有finite-supply driver检验耗尽/换弹/零备弹/总零；当前没有这些新增游戏通过证据，publicv71/defaultOFF/Native/XR未变。
