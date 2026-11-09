@@ -1,0 +1,242 @@
+--- /dev/null
++++ b/analysis/hammerburst-20261108/run_empty_normal_admission_v4.py
+@@ -0,0 +1,145 @@
++"""One frozen HB ordinary-empty-reload attempt; --prepare-only never stages or consumes admission."""
++import os
++import sys
++
++# This deliberately precedes argument, ticket, source and dependency validation.
++# The parent is created offline. Never unlink/recreate a consumed attempt.
++_CLAIM = 'C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\admission-v4\\claims\\hammerburst-prepared-20261110-010515-settings-alias.json'
++_PREPARE = sys.argv[1:] == ['--prepare-only']
++if not _PREPARE:
++    _fd = os.open(_CLAIM, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
++    try:
++        os.write(_fd, ('{"state":"consumed_unverified","pid":%d}\n' % os.getpid()).encode('ascii'))
++        os.fsync(_fd)
++    finally:
++        os.close(_fd)
++# END_EXCLUSIVE_BOOTSTRAP
++from pathlib import Path
++import hashlib,json,os,socket,subprocess,sys,time,importlib.util
++ROOT=Path(__file__).resolve().parents[2];E=ROOT/'analysis/hammerburst-20261108';O=ROOT/'analysis/solo-m1-20261028'
++PREFIX='empty-normal-settings-alias'
++_TICKET=Path('C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\admission-v4\\final-window-ticket.json')
++def load(p):return json.loads(Path(p).read_text(encoding='utf-8-sig'))
++def sha(p):
++ with Path(p).open('rb') as f:return hashlib.file_digest(f,'sha256').hexdigest()
++def admit(queue,ready,plan,actual_host,actual_root):
++ assert actual_host.casefold()==plan['host']['computer_name'].casefold() and plan['host']['codex_host_id']=='local'
++ assert Path(actual_root).resolve()==Path(plan['host']['worktree']).resolve()
++ assert queue['state']=='final_handoff_received_not_staged' and queue['final_handoff_received'] is True
++ assert queue['accepted'] is True and queue['window_owned'] is True
++ assert not queue['staged'] and not queue['recorded']
++ assert queue['candidate']==Path(ready['candidate']).name==Path(plan['candidate']).name
++ assert queue['prepared_sha256']==ready['prepared_sha256']==plan['prepared_sha256']
++ assert queue['ready_sha256']==ready['_actual_sha256'] and queue['plan_sha256']==ready['plan_sha256']
++ assert queue['predecessor_review'] and queue['predecessor_review_sha256']
++ return True
++
++def prepare():
++ ready_path=E/'empty-normal-admission-v4-ready.json';ready=load(ready_path);ready['_actual_sha256']=sha(ready_path);plan_path=Path(ready['plan']);assert sha(plan_path)==ready['plan_sha256'];plan=load(plan_path)
++ assert socket.gethostname().casefold()==plan['host']['computer_name'].casefold()
++ assert ROOT.resolve()==Path(plan['host']['worktree']).resolve() and plan['host']['codex_host_id']=='local'
++ assert sha(__file__)==plan['entry_sha256']==ready['entry_sha256']
++ target=Path(plan['candidate']);assert target.parent==O and target.name=='hammerburst-prepared-20261110-010515-settings-alias'
++ assert sha(target/'prepared.json')==ready['prepared_sha256']==plan['prepared_sha256'];record=load(target/'prepared.json')
++ for rel,digest in record['source_sha256'].items():assert sha(target/'source'/rel)==digest,rel
++ for rel,digest in record['native_source_sha256'].items():assert sha(target/'native-source'/rel)==digest,rel
++ for key,b in record['builds'].items():assert sha(b['saved'])==b['sha256'],key
++ assert sha(plan['runtime_inputs_receipt'])==plan['runtime_inputs_sha256'];inputs=load(plan['runtime_inputs_receipt'])
++ for path,digest in inputs['sha256'].items():assert sha(path)==digest,path
++ boundary=load(plan['runtime_python_boundary']['path']);assert sha(plan['runtime_python_boundary']['path'])==plan['runtime_python_boundary']['sha256']
++ for rel,digest in boundary['files'].items():assert sha(ROOT/rel)==sha(Path(boundary['archive'])/rel)==digest,rel
++ for path,digest in plan['entry_dependencies'].items():assert sha(path)==digest,path
++ host_path=Path(plan['host_dependencies']['path']);assert sha(host_path)==plan['host_dependencies']['sha256'];host_deps=load(host_path)
++ for path,digest in host_deps['files'].items():assert sha(path)==digest,path
++ for name,expected in host_deps['module_origins'].items():
++  module=importlib.import_module(name);assert Path(module.__spec__.origin).resolve()==Path(expected['path']).resolve();assert sha(module.__spec__.origin)==expected['sha256']
++ import PIL,numpy
++ assert PIL.__version__==host_deps['versions']['Pillow'] and numpy.__version__==host_deps['versions']['numpy']
++ assert sha(plan['selected_game_path'])==plan['selected_game_sha256']
++ assert Path(sys.executable).resolve()==Path(plan['review_interpreter']['path']).resolve() and sha(sys.executable)==plan['review_interpreter']['sha256']
++ return ready,plan,record
++
++def verify_prebirth_failure(done,worker,session):
++ if done.get('session_report') or not isinstance(done.get('launcher_exit_code'),int) or done['launcher_exit_code']==0:
++  raise RuntimeError('Not an explicit failed startup without a runtime report')
++ if done.get('remaining_owned_game','unknown') is not None or done.get('launcher_pid')!=worker.get('launcher_pid'):
++  raise RuntimeError('Startup ownership or game absence is unproven')
++ owner=session.get('owner_identity')
++ if not isinstance(owner,dict) or owner.get('pid')!=worker.get('launcher_pid') or not owner.get('creation_time') or not owner.get('image'):
++  raise RuntimeError('Missing exact startup launcher identity')
++ if session.get('phase')!='incomplete' or session.get('game_identity') or not session.get('error') or session.get('reservation_failure_cleanup',{}).get('status')!='no_birth_receipt':
++  raise RuntimeError('Game-free reservation failure is unproven; retain manual cleanup duty')
++ return dict(owner_identity=owner,startup_error=session['error'],game_born=False,launcher_exit=done['launcher_exit_code'])
++
++def main():
++ assert Path.cwd().resolve()==ROOT
++ if not (sys.flags.optimize==0 and sys.flags.dont_write_bytecode and sys.flags.ignore_environment and sys.flags.no_user_site and sys.flags.utf8_mode and not sys.flags.isolated):raise RuntimeError('Exact -E -s -B -X utf8 without -O/-I required')
++ assert _PREPARE or sys.argv[1:]==['--run','--window-ticket',str(_TICKET)]
++ ready,plan,record=prepare()
++ if _PREPARE:
++  print(json.dumps(dict(prepared=Path(plan['candidate']).name,host=socket.gethostname(),static_passed=True,staged=False,started=False,shared_runtime_queried=False,once_claimed=False)));return 0
++ queue_path=E/'settings-alias-queue.json';queue=load(queue_path);admit(queue,ready,plan,socket.gethostname(),ROOT)
++ assert sha(queue['predecessor_review'])==queue['predecessor_review_sha256']
++ window=load(_TICKET);identity=dict(prepared=Path(plan['candidate']).name,prepared_sha256=ready['prepared_sha256'],plan_sha256=ready['plan_sha256'],ready_sha256=ready['_actual_sha256'],entrypoint_sha256=sha(__file__))
++ assert window['identity']==identity and window['owner_thread']=='01a1bb03-7453-7530-afcd-2fb1ea7e7a51'
++ assert window['predecessor_thread']!=window['owner_thread']
++ assert all(window[k] is True for k in ['accepted','final_unique_handoff_received','runtime_window_owned','predecessor_terminal_verified','baseline_verified'])
++ for key in ['handoff_evidence','baseline_evidence']:assert sha(window[key]['path'])==window[key]['sha256']
++ proof=load(window['baseline_evidence']['path']);assert proof['identity']==identity and proof['before_stage'] is True
++ specs={x['path']:x for x in plan['baseline_files']};assert set(proof['files'])==set(specs) and len(specs)==10
++ baseline={'files':[]}
++ for path,item in proof['files'].items():
++  file=Path(path);assert not file.is_symlink() and type(item['exists']) is bool
++  row=dict(path=path,exists=item['exists'],sha256=item['sha256'],public_read_only=specs[path]['public_read_only'])
++  if item['exists']:
++   saved=Path(item['saved']);assert saved.resolve().is_relative_to(E.resolve());assert sha(file)==sha(saved)==item['sha256'];row['backup']=str(saved)
++  else:assert not file.exists()
++  baseline['files'].append(row)
++ helper=Path(plan['selection_helper']);spec=importlib.util.spec_from_file_location('hb_existing_selection_helper',helper);selection=importlib.util.module_from_spec(spec);spec.loader.exec_module(selection)
++ selection.validate(dict(game_path=plan['selected_game_path'],game_sha256=plan['selected_game_sha256'],settings_path=plan['selected_settings_path']),ROOT)
++ sys.path.insert(0,str(O));from retain_test_media import idle
++ assert idle(),'Runtime active: no claim/stage'
++ assert idle(),'Runtime appeared: no stage'
++ for key in tuple(os.environ):
++  if key.startswith(('GEARSVR_','GEARS_','XR_')) or key in ['PYTHONPATH','PYTHONHOME']:del os.environ[key]
++ os.environ.update(plan['environment'])
++ stage=subprocess.run([sys.executable,'-E','-s','-B','-X','utf8',str(O/'stage_lancer_private.py'),queue['candidate']],cwd=ROOT,capture_output=True,text=True)
++ (E/(PREFIX+'-stage.log')).write_text(stage.stdout+stage.stderr,encoding='utf-8');assert stage.returncode==0,stage.stderr
++ queue.update(state='running_owned',staged=True,started_ns=time.time_ns(),baseline=window['baseline_evidence']['path']);queue_path.write_text(json.dumps(queue,indent=2))
++ instance=ROOT/'analysis/instances/solo-m1-1028d';config=instance/'config.json';config.write_bytes(selection.config_bytes(config.read_bytes(),dict(game_path=plan['selected_game_path'],game_sha256=plan['selected_game_sha256'],settings_path=plan['selected_settings_path']),ROOT))
++ env=dict(os.environ)
++ for name in plan['clear_environment']:env.pop(name,None)
++ env.update(plan['environment'])
++ with (E/(PREFIX+'-run.log')).open('w',encoding='utf-8') as log:
++  launched_wall=time.time();deadline=time.monotonic()+plan['maximum_seconds'];process=subprocess.Popen([sys.executable,'-E','-s','-B','-X','utf8',str(O/'run_hammerburst_check.py')],cwd=ROOT,env=env,stdout=log,stderr=subprocess.STDOUT,creationflags=subprocess.CREATE_NO_WINDOW|subprocess.BELOW_NORMAL_PRIORITY_CLASS)
++  while process.poll() is None and time.monotonic()<deadline:time.sleep(.25)
++  deadline_stop=False
++  if process.poll() is None:
++   sys.path.insert(0,str(ROOT/'tools/native-capture'));from run_stereo_continuous import WindowsControl
++   worker_path=O/'worker.json';worker=load(worker_path);session=load(instance/'launcher-session.json');owner=session.get('owner_identity')
++   assert worker_path.stat().st_mtime>=launched_wall and owner and owner['pid']==worker['launcher_pid'] and WindowsControl().identity(owner['pid'])==owner
++   assert load(instance/'manifest.json')['playground_sha256']==record['builds']['playground']['sha256']
++   (O/'stop-basic').write_text('Owned HB230535360second boundary; existing normal stop requested',encoding='utf-8');deadline_stop=True
++  result=process.wait(timeout=120)
++ done_path=O/'done.json';done=load(done_path);worker=load(O/'worker.json');assert done_path.stat().st_mtime>=launched_wall
++ if not done.get('session_report'):
++  failed_path=instance/'launcher-session.json';assert failed_path.stat().st_mtime>=launched_wall
++  failure=verify_prebirth_failure(done,worker,load(failed_path))
++  assert idle(),'Startup failure not idle: no restoration'
++  checks=selection.restore(baseline,ROOT)
++  receipt=dict(failure,exit_code=result or done['launcher_exit_code'],at_ns=time.time_ns(),startup_prebirth_verified=True,baseline_checks=checks,normal_game_cleanup_not_applicable=True,paired_review_encode_not_applicable=True,game_success_not_inferred=True,review_retention_handoff_still_required=True)
++  (E/(PREFIX+'-run-exit.json')).write_text(json.dumps(receipt,indent=2))
++  queue.update(state='startup_failed_terminal_review_pending',runner_exit=receipt['exit_code'],startup_error=failure['startup_error']);queue_path.write_text(json.dumps(queue,indent=2))
++  print(json.dumps(receipt));return receipt['exit_code']
++ report_path=Path(done['session_report']);report=load(report_path);assert report_path.stat().st_mtime>=launched_wall
++ assert report['owner_identity']['pid']==worker['launcher_pid']
++ assert Path(report['game_identity']['image']).resolve()==Path(plan['selected_game_path']).resolve()
++ assert report['diagnostics_artifacts']['native_sha256']==record['builds']['native']['sha256'] and report['diagnostics_artifacts']['xr_sha256']==record['builds']['sim_xr']['sha256']
++ assert report['native_cleanup_verified'] and report['entry_restore_verified'] and report['vr_gamepad_cleanup']['restored'] and report['unified_weapons_cleanup']['drained']
++ assert report['xr_exit_code']==0 and done['launcher_exit_code']==0 and done['remaining_owned_game'] is None
++ assert idle(),'Runtime not idle: no restoration'
++ checks=selection.restore(baseline,ROOT)
++ receipt=dict(exit_code=result,at_ns=time.time_ns(),deadline_stop=deadline_stop,game=report['game_identity'],session_report=str(report_path),normal_cleanup_verified=True,baseline_checks=checks,paired_review_encode_retention_still_required=True,game_success_not_inferred=True)
++ (E/(PREFIX+'-run-exit.json')).write_text(json.dumps(receipt,indent=2));queue.update(state='runner_terminal_review_pending',runner_exit=result,runtime_report=str(report_path),game=report['game_identity']);queue_path.write_text(json.dumps(queue,indent=2));print(json.dumps(receipt));return result
++
++if __name__=='__main__':raise SystemExit(main())
+--- /dev/null
++++ b/analysis/hammerburst-20261108/check_prebirth_failure.py
+@@ -0,0 +1,26 @@
++"""Exercise actual v4 startup-failure validator on archived attempt and corruptions; no entry import."""
++from pathlib import Path
++import ast,copy,json,hashlib
++A=Path('analysis/hammerburst-20261108');entry=A/'run_empty_normal_admission_v4.py';tree=ast.parse(entry.read_text());node=next(n for n in tree.body if isinstance(n,ast.FunctionDef) and n.name=='verify_prebirth_failure');space={};exec(compile(ast.Module(body=[node],type_ignores=[]),'actual_v4_validator','exec'),space);verify=space['verify_prebirth_failure']
++E=A/'startup-005428-failure';done=json.loads((E/'5-done.json').read_text());worker=json.loads((E/'6-worker.json').read_text());session=json.loads((E/'0-launcher-session.json').read_text());rows=[]
++for name in ['actual_archived_failure','runtime_report_exists','launcher_success','unknown_remaining','remaining_game','wrong_done_pid','wrong_session_pid','missing_creation','missing_image','wrong_phase','game_identity','missing_error','unknown_birth_cleanup']:
++ d=copy.deepcopy(done);w=copy.deepcopy(worker);s=copy.deepcopy(session)
++ if name=='runtime_report_exists':d['session_report']='real-runtime-report.json'
++ elif name=='launcher_success':d['launcher_exit_code']=0
++ elif name=='unknown_remaining':d.pop('remaining_owned_game')
++ elif name=='remaining_game':d['remaining_owned_game']={'pid':99}
++ elif name=='wrong_done_pid':d['launcher_pid']+=1
++ elif name=='wrong_session_pid':s['owner_identity']['pid']+=1
++ elif name=='missing_creation':s['owner_identity'].pop('creation_time')
++ elif name=='missing_image':s['owner_identity'].pop('image')
++ elif name=='wrong_phase':s['phase']='complete'
++ elif name=='game_identity':s['game_identity']={'pid':99}
++ elif name=='missing_error':s.pop('error')
++ elif name=='unknown_birth_cleanup':s['reservation_failure_cleanup']['status']='unknown'
++ try:result=verify(d,w,s);accepted=True
++ except RuntimeError:accepted=False
++ assert accepted==(name=='actual_archived_failure'),name
++ if accepted:assert result['game_born'] is False and result['launcher_exit']==1
++ rows.append(dict(case=name,accepted=accepted,passed=True))
++report=dict(result='passed',cases=rows,entry_sha256=hashlib.sha256(entry.read_bytes()).hexdigest(),actual_archived_failure_used=True,validator_only=True,stage_restore_or_game_not_started=True)
++(A/'prebirth-failure-check.json').write_text(json.dumps(report,indent=2)+'\n');print(json.dumps(dict(result='passed',cases=len(rows),actual_archived_failure_used=True,no_game=True)))
+--- /dev/null
++++ b/analysis/hammerburst-20261108/freeze-settings-alias-candidate.py
+@@ -0,0 +1,35 @@
++"""Freeze only the reviewed settings helper and startup failure closeout delta; no stage/runtime."""
++from pathlib import Path
++import json,hashlib,shutil,subprocess,ast
++R=Path.cwd();A=R/'analysis/hammerburst-20261108';O=R/'analysis/solo-m1-20261028';V=A/'admission-v4';read=lambda p:json.loads(Path(p).read_text(encoding='utf-8-sig'));sha=lambda p:hashlib.sha256(Path(p).read_bytes()).hexdigest()
++oldplan=read(A/'empty-normal-admission-v3-plan.json');oldready=read(A/'empty-normal-admission-v3-ready.json');old=Path(oldplan['candidate']);target=O/read(A/'next-settings-candidate-draft.json')['candidate'];assert not target.exists()
++confirm=R/'analysis/gnasher-development-20261109/reference-lifecycle-source-update.json';assert sha(confirm)=='4423b4d04cbf0821ef2d500c77525484b6c136c3827006776045105d2f597b5c';gn=read(confirm);allowed={x['path']:x['sha256'] for x in gn['owned_sources']};assert len(allowed)==4
++for rel,h in allowed.items():assert sha(R/rel)==h
++boundary=read(A/'empty-first-python-boundary.json');changes={rel for rel,h in boundary['files'].items() if sha(R/rel)!=h};assert changes==set(allowed),changes
++shutil.copytree(old,target);record=read(target/'prepared.json')
++for b in record['builds'].values():b['saved']=str(target/Path(b['saved']).relative_to(old))
++extras=['analysis/hammerburst-20261108/hammerburst_owner_copy_selection.py','analysis/hammerburst-20261108/check_owner_copy_selection.py','analysis/hammerburst-20261108/run_empty_normal_admission_v4.py','analysis/hammerburst-20261108/check_prebirth_failure.py','docs/hammerburst-settings-binding-repair.patch','docs/hammerburst-prebirth-failure-entry.patch','analysis/gnasher-development-20261109/reference-lifecycle-source-update.json']
++for rel in list(allowed)+extras:
++ p=target/'source'/rel;p.parent.mkdir(parents=True,exist_ok=True);shutil.copy2(R/rel,p);record['source_sha256'][rel]=sha(p)
++record.update(source_archive=str(target),native_source_archive=str(target/'native-source'),source_commit=subprocess.check_output(['git','rev-parse','HEAD'],text=True).strip(),stage='prepared_not_staged_not_game_pass',settings_alias_repair=dict(helper_sha256=sha(A/'hammerburst_owner_copy_selection.py'),actual_graphics_policy_cases=10,prebirth_validator_cases=13,prior_attempt_failed_before_game=True),gn_source_update=dict(path=str(confirm),sha256=sha(confirm),changed=list(allowed)))
++(target/'prepared.json').write_text(json.dumps(record,indent=2)+'\n');prepared_sha=sha(target/'prepared.json')
++for rel,h in boundary['files'].items():
++ if rel in allowed:
++  boundary['files'][rel]=allowed[rel];p=target/'runtime-python-boundary'/rel;shutil.copy2(R/rel,p)
++ else:assert sha(R/rel)==h
++boundary.update(archive=str(target/'runtime-python-boundary'),prepared_sha256=prepared_sha,changes_from_parent={rel:dict(before=read(A/'empty-first-python-boundary.json')['files'][rel],after=h) for rel,h in allowed.items()},owner_confirmation=dict(path=str(confirm),sha256=sha(confirm)))
++bp=A/'settings-alias-python-boundary.json';bp.write_text(json.dumps(boundary,indent=2)+'\n')
++inputs=read(A/'empty-first-runtime-inputs.json')
++for path,h in inputs['sha256'].items():assert sha(path)==h,path
++inputs.update(prepared=str(target),prepared_sha256=prepared_sha);ip=A/'settings-alias-runtime-inputs.json';ip.write_text(json.dumps(inputs,indent=2)+'\n')
++plan=json.loads(json.dumps(oldplan));entry=A/'run_empty_normal_admission_v4.py';helper=A/'hammerburst_owner_copy_selection.py';plan.update(candidate=str(target),prepared_sha256=prepared_sha,source_commit=record['source_commit'],runtime_inputs_receipt=str(ip),runtime_inputs_sha256=sha(ip),entry=str(entry),entry_sha256=sha(entry),selection_helper=str(helper),entry_dependencies={str(helper):sha(helper)},exclusive_attempt_receipt=str(V/'claims'/(target.name+'.json')),final_window_ticket=str(V/'final-window-ticket.json'),queue='Not requested; prior consumed startup failure closed only after unique successor handoff. Need actual tail review.',source_delta='Same game binaries and ordinary empty chain. HB-only settings alias replacement, explicit verified prebirth failure restoration/report; four GN source versions owner-confirmed, other1053 Python entries unchanged. No action/identity/freshness/anti-replay changes.',guard_check=dict(path=str(V/'bootstrap-check.json'),sha256=sha(V/'bootstrap-check.json')),prebirth_failure_check=dict(path=str(A/'prebirth-failure-check.json'),sha256=sha(A/'prebirth-failure-check.json')),selection_check=dict(path=str(A/'owner-copy-selection-check.json'),sha256=sha(A/'owner-copy-selection-check.json')))
++plan['runtime_python_boundary']=dict(path=str(bp),sha256=sha(bp));plan['environment']['GEARSVR_LANCER_INTEGRATED_PREPARED']=target.name
++plan['invocation'].update(script=str(entry),run_arguments=['--run','--window-ticket',str(V/'final-window-ticket.json')]);pp=A/'empty-normal-admission-v4-plan.json';pp.write_text(json.dumps(plan,indent=2)+'\n')
++ready=json.loads(json.dumps(oldready));ready.update(candidate=str(target),prepared_sha256=prepared_sha,plan=str(pp),plan_sha256=sha(pp),runtime_inputs_receipt=str(ip),runtime_inputs_sha256=sha(ip),python_boundary=str(bp),python_boundary_sha256=sha(bp),source_commit=record['source_commit'],archived_sources=len(record['source_sha256']),entry=str(entry),entry_sha256=sha(entry),entry_guard_check=str(V/'bootstrap-check.json'),entry_guard_check_sha256=sha(V/'bootstrap-check.json'),invocation=plan['invocation'],request_ready=False,staged=False,game_started=False,runtime_handoff_received=False)
++rp=A/'empty-normal-admission-v4-ready.json';rp.write_text(json.dumps(ready,indent=2)+'\n')
++for rel,h in record['source_sha256'].items():assert sha(target/'source'/rel)==h
++for rel,h in record['native_source_sha256'].items():assert sha(target/'native-source'/rel)==h
++for b in record['builds'].values():assert sha(b['saved'])==b['sha256']
++for rel,h in boundary['files'].items():assert sha(R/rel)==sha(target/'runtime-python-boundary'/rel)==h;ast.parse((R/rel).read_text(encoding='utf-8-sig'))
++receipt=dict(candidate=target.name,prepared_sha256=prepared_sha,ready_sha256=sha(rp),plan_sha256=sha(pp),entry_sha256=sha(entry),source_files=len(record['source_sha256']),native_source_files=len(record['native_source_sha256']),python_boundary_files=len(boundary['files']),changed_python_boundary=list(allowed),unchanged_python_boundary=len(boundary['files'])-4,production_binaries_unchanged=True,stage=False,run=False,requested=False,real_claim_created=False,real_ticket_created=False)
++(A/'settings-alias-prepared-check.json').write_text(json.dumps(receipt,indent=2)+'\n');print(json.dumps(receipt))
+--- /dev/null
++++ b/analysis/hammerburst-20261108/admission-v4/check_bootstrap.py
+@@ -0,0 +1,24 @@
++"""Actual copied full entry failures/race; claims and metadata only in temporary roots."""
++from pathlib import Path
++import sys,subprocess,tempfile,hashlib,json,os,time
++R=Path.cwd();E=R/'analysis/hammerburst-20261108';V=E/'admission-v4';source=E/'run_empty_normal_admission_v4.py';text=source.read_text();sha=lambda p:hashlib.sha256(Path(p).read_bytes()).hexdigest();rows=[]
++
++def fixture(root,case):
++ e=root/'analysis/hammerburst-20261108';e.mkdir(parents=True);v=e/'admission-v4';v.mkdir();claim=v/'claim.json';ticket=v/'ticket.json';entry=e/source.name;lines=text.splitlines(True)
++ for i,line in enumerate(lines):
++  if line.startswith('_CLAIM = '):lines[i]='_CLAIM = '+repr(str(claim))+'\n'
++  if line.startswith('_TICKET=Path('):lines[i]='_TICKET=Path('+repr(str(ticket))+')\n'
++ entry.write_text(''.join(lines),newline='\n');plan=e/'plan.json';value=dict(host=dict(computer_name='WRONG' if case=='host' else 'GJC',codex_host_id='local',worktree=str(root)),entry_sha256='wrong' if case=='source' else sha(entry));plan.write_text(json.dumps(value));ready=e/'empty-normal-admission-v4-ready.json';ready.write_text(json.dumps(dict(plan=str(plan),plan_sha256='wrong' if case=='plan' else sha(plan),entry_sha256=value['entry_sha256'])))
++ if case=='missing_ready':ready.unlink()
++ if case=='malformed_ready':ready.write_text('{')
++ return entry,claim,ticket
++
++for case in ['arguments','optimized_flags','cwd','missing_ready','malformed_ready','plan','host','source']:
++ with tempfile.TemporaryDirectory() as name:
++  root=Path(name).resolve();entry,claim,ticket=fixture(root,case);flags=['-E','-s','-B','-X','utf8']+(['-O'] if case=='optimized_flags' else []);args=['--prepare-only','extra'] if case=='arguments' else ['--run','--window-ticket',str(ticket)];command=[sys.executable,*flags,str(entry),*args];cwd=root.parent if case=='cwd' else root
++  first=subprocess.run(command,cwd=cwd,capture_output=True,text=True,creationflags=subprocess.CREATE_NO_WINDOW|subprocess.BELOW_NORMAL_PRIORITY_CLASS);assert first.returncode!=0 and claim.is_file(),(case,first.stdout,first.stderr);before=claim.read_bytes();assert json.loads(before)['state']=='consumed_unverified';second=subprocess.run(command,cwd=cwd,capture_output=True,text=True,creationflags=subprocess.CREATE_NO_WINDOW|subprocess.BELOW_NORMAL_PRIORITY_CLASS);assert second.returncode!=0 and 'FileExistsError' in second.stderr and claim.read_bytes()==before;rows.append(dict(case=case,first_rejected=True,consumed_before_rejection=True,retry_FileExists=True,original_claim_bytes_preserved=True));(V/('test-'+case+'.log')).write_text(first.stdout+first.stderr+'\nRETRY\n'+second.stdout+second.stderr)
++with tempfile.TemporaryDirectory() as name:
++ root=Path(name).resolve();entry,claim,ticket=fixture(root,'missing_ready');first=subprocess.run([sys.executable,'-E','-s','-B','-X','utf8',str(entry),'--prepare-only'],cwd=root,capture_output=True,text=True,creationflags=subprocess.CREATE_NO_WINDOW|subprocess.BELOW_NORMAL_PRIORITY_CLASS);assert first.returncode!=0 and not claim.exists();rows.append(dict(case='prepare_only_failure_does_not_consume',passed=True))
++with tempfile.TemporaryDirectory() as name:
++ root=Path(name).resolve();entry,claim,ticket=fixture(root,'host');go=root/'go';script="import pathlib,time,sys,runpy; p=pathlib.Path(sys.argv[1]);\nwhile not p.exists():time.sleep(.005)\nsys.argv=[sys.argv[2],'--run','--window-ticket',sys.argv[3]];runpy.run_path(sys.argv[0],run_name='__main__')";processes=[subprocess.Popen([sys.executable,'-E','-s','-B','-X','utf8','-c',script,str(go),str(entry),str(ticket)],cwd=root,stdout=subprocess.PIPE,stderr=subprocess.PIPE,text=True,creationflags=subprocess.CREATE_NO_WINDOW|subprocess.BELOW_NORMAL_PRIORITY_CLASS) for _ in range(8)];time.sleep(.1);go.write_text('start');outputs=[p.communicate(timeout=20) for p in processes];assert claim.is_file();owner=json.loads(claim.read_bytes())['pid'];assert sum(p.pid==owner for p in processes)==1 and sum('FileExistsError' in err for out,err in outputs)==7 and all(p.returncode!=0 for p in processes);rows.append(dict(case='eight_processes_one_claim',processes=8,consumers=1,FileExists_rejections=7,all_stopped_before_runtime=True))
++assert not (V/'claims/hammerburst-prepared-20261110-010515-settings-alias.json').exists() and not (V/'final-window-ticket.json').exists();result=dict(source_sha256=sha(source),cases=rows,passed=True,actual_full_copied_entry=True,all_claims_in_temporary_roots=True,real_claim_created=False,real_ticket_created=False,shared_runtime_queried=False,game_started=False);(V/'bootstrap-check.json').write_text(json.dumps(result,indent=2));print(json.dumps(dict(passed=True,early_failure_cases=8,prepare_only_nonconsume=True,race_consumers=1,race_rejections=7,real_claim=False,game_started=False)))

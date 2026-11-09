@@ -41,3 +41,9 @@ config原有反斜杠P2P key，既有Longshot selection helper又按本枪plan�
 ## 后续入口草稿的无出生失败收尾
 
 新入口v4草稿增加已观察到的无session_report分支：仅在启动器非零退出、done/worker/launcher身份对应、remaining_owned_game明确None、phase=incomplete、无game_identity且no_birth_receipt时可进入；先独立idle，再通过原restore恢复十raw，输出startup_prebirth_verified失败收据且返回非零。不把它当游戏cleanup成功，也不在证据不足时恢复或重试。实际本次归档及12个错误归属/状态反例共13项校验通过；只执行提取的真实校验函数，未导入入口、未stage/restore/game。源码与复现见相邻prebirth-failure-entry.patch。草稿hammerburst-prepared-20261110-010515-settings-alias尚未冻结/受理，不能执行；需同版本GN依赖确认及新身份。原候选和已消费claim/ticket不改。
+
+## 新settings-alias候选仅封存，尚未排队
+
+GN确认4文件版本稳定，原说明SHA4423b4d04cbf0821ef2d500c77525484b6c136c3827006776045105d2f597b5c已核。新候选hammerburst-prepared-20261110-010515-settings-alias：prepared a186945574e57260852df87aca2be769d4db19301843a5932273e35b570ae112，plan aa75ebf064afa17894b1bbd1154575e264aa822f2a9f446d7b27686b7d447704，ready d0a1844503c03d51b86218a84e4aa29ac3a3a66d14027499d05c61cc2a93e632，entry 14ce87a843677ea3985dda7be1b2f1424ea0ff70ef7b1efc2ceb02d45dc73ef9。2270归档源、1338 Native源、六制品核SHA；PGa05a/Native806不变。完整1057 Python边界仅更新四个GN已确认原件，其他1053逐项不变，校验未删除；HB20直接入口不变。采用本枪自己的settings helper，避免依赖仍在编辑的LS辅助函数。
+
+实际精确primary -E -s -B -X utf8 --prepare-only退出0，未查询共享runtime、未stage/start/claim/ticket。新v4完整复制入口八种前置失败与八进程竞争检查通过（仅临时根，1消费7拒绝），真实无出生校验13例通过。入口/冻结复现原文见相邻settings-alias-freeze-source.patch。当前request_ready=false；尚未向尾申请。旧槽仍仅持交接收尾，等待Frag已确认的最小依赖替换，并不利用旧窗口再次运行HB。
