@@ -291,3 +291,16 @@ LS先纠正其retail-no-run已最终交Frag，Cover是受理尾；随后Cover明
 媒体用原单对PairedWindowRecording，30Hz上限、宽1280、原recorder600s界限；正常driver360s+normal wait120s，停录后全程/实际接触审片和编码，之后唯一48h/newest3 retention，不预删媒体。15个真实admit/O_EXCL函数CPU守卫检查通过，实际--prepare-only0无shared运行查询/claim/stage/game；独立复现check_empty_normal_entry.py也0并断言第二次Temp O_EXCL保留原字节。源码可复现docs/hammerburst-empty-normal-once-entry.patch，真实E/empty-normal-230535-once.json及-baseline仍不存在。
 
 prepared9ba06095不变；最终ready3a6038b24b957f55f01968322d0e240b4b48cce4dcba8cf136ce6e993191ffe4、plan8bca95503aad32afdf2709e5eceef1dfe52b6fa6874ee691ed00535547881307（替代之前116c/b6身份，仅同一请求）已交实际尾独核，尚无窗口。来源/host/媒体/单次入口齐备，execution_ready=false仅记录没有实际运行授权，非缺代码；无新编译、不继续离线手型循环。
+
+
+## 实际尾要求的first-consume与完整实际host准入替代（同一请求，未运行）
+
+LS正式受理Boom225349 admission-v1为唯一后继，HB请求只转实际新尾Boom。Boom独读旧entry662指出：其prepare/host/queue/idle之后才claim，不符当前既有统一first-consume，且25路径/17loaded只是有限样本，不能冒称完整host来源闭包；旧身份未被受理，没有执行/真实claim。按明确要求仅替换准入：复用Cover admission-v2既有bootstrap原文，只换HB自有固定claim；唯一精确--prepare-only不消耗，其余首先O_CREAT|O_EXCL+fsync，再做一切参数/plan/ready/ticket/source/host/idle/stage检查。失败不删除重试；-O也以非assert条件拒绝，防止assert被优化移除。
+
+新run_empty_normal_admission_v2.py SHA5b03324e0cdbb98d7e208b32dccaf04efce7d0f68ffbf8242647db828e4df900，精确-E -s -B -X utf8、GJC/C盘cwd；真实--run --window-ticket必须本枪固定ticket，五项identity+HB owner/不同前驱+accepted/final/window/terminal/baseline全真+hash过的handoff/10raw证据，进入后再fresh idle/stage。准备不生成ticket/claim。实际源码完整复制到八个隔离临时根的参数/-O/cwd/ready缺失/坏JSON/plan/host/source早失败，都先consume、二次FileExists且字节不变；精确prepare-only失败不consume；另八个进程通过临时barrier同时争一claim，仅1consume/7FileExists，全部在runtime/helpers前拒绝。bootstrap-check.json和日志保留；非游戏证据。
+
+按同一实际host标准复用Cover全安装路径/root列法，独立重hash并重新扫描实际outer/base C primary和shipped J runtime两套完整Python及package-inspector；13011文件/927047511bytes，含完整Pillow13.0.0/NumPy2.3.5安装/native/cache/源、7实际import origin及WGC/ffmpeg/ffprobe/quiet-startup/simulator身份依赖。Windows/GPU/Steam OS组件明确不冒称全闭包。dependencies SHA796d11d3641117a51fc9d05bf991c040db4ad26b8e363d9013fd2d4df5bc5ffe；不借LS/Jvenv版本。新入口逐文件核hash并实际导入确认origin/版本，最新真实exact-flag prepare-only0，无shared runtime query/真实claim/ticket/stage/game。13011清单只是必要当前准入，未扩游戏检查或工具平台。捕获器重现脚本要求新输出并禁止覆盖冻结依赖/生成ticket/claims，准备不会改已冻结清单。
+
+prepared9ba06095及PGa05a/Native806/20driver和普通空仓动作不变；新readyb0a5631fb84f515507f8f3c659194936b4263c409b6b17bc3f971e480ddad639，planc55e65d0112402b98e1f00ec0c684abd869d4f75d9bf1ba4c3182519ca656532；完整exact argv/cwd/ENV/媒体/claim-ticket在admission-v2/tail-packet.md（0b67bd41...）已经一次交Boom作为同一个pending请求替代。没有正式受理/授窗，真实自有claim/ticket均不存在；旧662及562/b8身份不再使用。三个源码可复现补丁docs/hammerburst-empty-normal-admission-v2.patch。
+
+主人后续明确“完整逻辑→真实双路录像→对照输入/部件/状态库存射击/接触与前后时刻分析→针对问题修正”，本目标沿已有完整普通空仓原动作实现及已编译3行保护，当前只补必要独占入口；未因录像另造平台、未在逻辑零散时追加反复录制，无Computer Use、无新pose拟合或全备弹耗尽扩展。取得真实唯一窗口才做本次一段普通换弹闭环，先败即止并保留录像，随后正常恢复和唯一交窗。
