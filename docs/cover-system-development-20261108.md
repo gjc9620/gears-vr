@@ -2,7 +2,7 @@
 
 目标：完成掩体系统开发与验证。状态：进行中。
 
-最近结果（2026-11-09）：r34实际20596一次原A→CT2／CA0及严格物理来源读取通过：29身体项／29不同主接收者，辅助全空；5668读／60516字节／341.8213ms。1页完整paired和6原图亲审，严重右肩／身体／装备遮挡仍FAIL。wrapper／operator／encoder／retention实际全终，精确恢复及idle后已最终唯一交Longshot125546并获接管确认，当前不占窗。离线r37三目标代码与PhysXCore.dll同基址及静态vtable对应已定位，不是当前加载模块或同步证明。完整CV-01–24／AC-01–22及实体头显仍未完成。
+最近结果（2026-11-09）：r38在准确PhysXCore制品完成8函数REA／Ghidra分析，确认setGlobalPose、moveGlobalPose、readBodyFlag及写锁跳过／姿态读回路线；主／late历史原调用的R8/R9分别1/1与0/0。静态证据已导出、会话关闭，未调用目标或新开游戏，实际物理同步仍未认证。最新实跑r34/20596严格读取29不同主接收者通过，严重身体遮挡仍FAIL；完整收尾后已最终唯一交Longshot125546，当前不占窗。完整CV-01–24／AC-01–22及实体头显仍未完成。
 
 ## 2026年11月8日 首批接续
 
@@ -835,3 +835,24 @@ wrapper工具50167终态0，operator69988退出0，launcher0；Native cleanup／
 三个目标位置的共同基址交集只有0x7ffb5f120000且64KiB对齐，对应原PhysXCore三个.text RVA0x13c270／0x1360f0／0x136890。实际29接收者共用vtable的RVA0x2330a8位于该文件.rdata，40／104／728字节槽的原磁盘指针在同一重定位基址下逐项精确匹配实际读值。这是更强的文件内容／地址对应，并不补签本局未保存的完整加载模块清单，也没有执行任何目标。
 
 只用既有vendor PE解析器读取磁盘，未启动IDA、游戏、XR或进程读取；原始2／1／1匹配、相同基址筛选和静态vtable关联记录于analysis/cover-system-20261108/virtual-targets-r37/correspondence.json。第一次在普通Python直接import pefile缺少vendor路径，随后沿现有package-inspector/python-libs引入；未安装依赖或改变环境。下一步在这个准确PhysX制品上解析三入口及实际接收者类型／更新语义，再认证query-visible时相；不能凭槽号、函数返回、原始姿态或DLL内容匹配强行调用未知ABI，不能重跑不变r34来源来代替消费证明。
+
+
+## 2026年11月9日 r38原PhysX更新入口与锁及读回路线
+
+沿20596实际目标与原DLL的内容／虚表对应，在相同SHA22051aa7…ddd48的PhysXCore.dll上使用已可用的REA Ghidra12.1.4提供者，仅离线分析8个相关函数。未修复或重配不可用的IDA，也未启动GUI／游戏／XR或调用任何目标。三个目标的原诊断字符串和实际调用流分别支持以下身份：
+
+| 实际vtable字节槽 | 原DLL RVA | 静态识别与完成边界 |
+| --- | --- | --- |
+| 40 | 0x13c270 | 原诊断标明NpActor::setGlobalPose；先比较当前12项姿态，相同可直接返回。不同姿态仍须通过写锁准入，失败时跳过调用；静态／动态附属体分支不同 |
+| 104 | 0x1360f0 | 原诊断标明NpActor::moveGlobalPose；先核写锁，再核可用附属体及模式，可能只报告错误并返回；有效分支调用附属体vtable+0x168 |
+| 728 | 0x136890 | 原诊断标明Actor::readBodyFlag；附属体存在时读取其vtable+0xf0结果并与输入掩码求交；缺失时走dynamic错误分支 |
+
+写锁准入helper0x1a55d0读取原actor+0x18关联的锁对象，核计数与线程，进入原Windows CriticalSection；不属于当前线程的占用可返回失败。0x1a5650负责原释放。两个更新入口的汇编都在调用准入前显式从actor+0x18取参，避免采信set入口反编译中遗漏的参数。正常原返回不能单独证明这次实际更新，更不能代表所有29项和碰撞查询已同步；本轮未证明这些跳过分支在20596实际发生，不把静态分支当作本次缺陷的因果结论。
+
+vtable+0x48对应的姿态回传入口0x133fe0进入helper0x1209f0。后者在actor+0x40附属体为空时取原缓存，否则分别经附属体vtable+8／+0x10取得位置与旋转，再组成12个浮点输出。set入口的动态分支使用附属体+0x28，move使用+0x168；不能把两者自动视为同一种完成语义。当前附属体的具体目标／存储布局、游戏与物理单位及矩阵方向、活动场景和query-visible时相尚未认证，不直接调用这些getter或猜结构偏移写值。既有有限性检查保留。
+
+另用准确历史section_1000全SHA911ab9bc…ce6ae6，从已保存原函数入口完整线性解码后定位调用：0xf9ae6前R8D=1／R9D=1，0xfac64前R8D=0／R9D=0；更新函数实际读取0x7e和0x80掩码，并依据R9选择set／move路径。该证据是历史原机器码，不是本局新记录的输入flags，不能据此修改flags或强迫所有分支更新。最初局部caller切片始点落在前一条指令内部，已单独标记无边界权威，替换为完整函数入口锚定解码；原helper／updater主块仍由各自准确入口解码。
+
+REA导出8份完整保留记录，5,147,951字节，SHA7f93687ec7e3766b0d844e500a86a8a1317d2c25bfa44a315075482695b70ab6；各记录value-flow未截断，但间接目标及若干trap/no-return依据仍明确未知。原PE将部分函数拆成多个相邻unwind span，最初“单个.pdata必须等于整函数”比较不成立；已逐项核整个Ghidra观察范围被原连续span分区精确覆盖，保留原差异，不将range覆盖升级为运行或同步证明。静态code certificate记录8个完整观察范围的字节SHA，仅用于后续当前代码认证，不包含调用／写入许可。导出完成后正常close_binary，复查open=false，两个分析工具句柄均已完成。
+
+证据目录analysis/cover-system-20261108/physx-entry-r38，包含rea-evidence、static-code-certificate、caller-flags-anchored、lock-call-assembly、unwind-boundary-differences及verification。下一实际接线应独立认证当前加载的PhysX模块、真实actor附属体及其位置／旋转目标，并将r36完整原始形状、实际BoneName映射和同一C0／物理消费／查询时相绑定；不改变现有HookEntryAttestation仅认证game／Native两base的封印合同，不用旧地址、锁计数或“正常返回”签发身体位移。当前无新Native／PG构建或候选，未重跑r34，所有碰撞／实际提交／恢复／命中／枪口及CV／AC／头显缺口继续保留。
