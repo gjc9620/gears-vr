@@ -37,3 +37,7 @@ Boom 独立受理当前 v3，同一原排队位；证据 analysis/boomshot-devel
 config原有反斜杠P2P key，既有Longshot selection helper又按本枪plan斜杠字符串添加同一安装key；规范化后两个匹配，原唯一绑定保护正确拒绝。独立idle后通过原restore helper精确恢复十项原字节，public只读核；launcher进程已终。一次retention正常完成、删0，保留24964/47996/9764。没有录像则审片/编码不适用，不称encode0或游戏cleanup0。证据analysis/hammerburst-20261108/startup-005428-failure/review.json SHA498f1e012bde619dd2dfb8b7c011926d5bcf18f323e1927a95417ac6b8593612，含原session/config/reserve/done/claim与恢复收据。
 
 新增HB自有选择器，仅在明确owner选择的安装中按与graphics_policy一致的resolve/casefold替换路径别名，保留其他安装绑定，拒绝非法映射。不改共享Longshot helper、不改graphics_policy保护。实际原graphics_policy.locate在临时fixture目录下复现旧函数双别名失败，修复后10例通过：两种slash/case、不同目标的重复别名、无绑定、其他安装、幂等及非法映射拒绝；真实配置/INI未修改、未启动游戏。源码和复现见相邻settings-binding-repair.patch。旧2f53候选已消费，尚未采用新helper、不复用旧ticket/claim；后续需新冻结身份并沿真实尾重新排队。
+
+## 后续入口草稿的无出生失败收尾
+
+新入口v4草稿增加已观察到的无session_report分支：仅在启动器非零退出、done/worker/launcher身份对应、remaining_owned_game明确None、phase=incomplete、无game_identity且no_birth_receipt时可进入；先独立idle，再通过原restore恢复十raw，输出startup_prebirth_verified失败收据且返回非零。不把它当游戏cleanup成功，也不在证据不足时恢复或重试。实际本次归档及12个错误归属/状态反例共13项校验通过；只执行提取的真实校验函数，未导入入口、未stage/restore/game。源码与复现见相邻prebirth-failure-entry.patch。草稿hammerburst-prepared-20261110-010515-settings-alias尚未冻结/受理，不能执行；需同版本GN依赖确认及新身份。原候选和已消费claim/ticket不改。
