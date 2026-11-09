@@ -1312,3 +1312,13 @@ r69 prepared578f178e／plan4e1fda1c／readye21af1dd已封存于analysis/solo-m1-
 真实入口复制到隔离临时根后，7种早失败覆盖坏参数、缺plan、坏ready、缺／坏ticket、身份不符及缺依赖，均先消耗、再次执行FileExists拒绝；8独立进程竞同一临时路径恰1消耗／7拒绝。这只验证准入顺序与OS排他，不是游戏／正常stage成功证明。实际精确入口只读prepare-only再次exit0；未stage／运行，未操作当前owner的done／config／perPID helper。完整命令、ENV、依赖／origin／SHA、claim路径、验证日志及边界在analysis/cover-system-20261108/array-extent-r69/admission-v2。
 
 替代请求已直接提交实际尾Troika独立核验，明确保留Bol212342及全部早到请求在前；尚无受理、最终交窗或运行许可，不倒向前驱重复递交。运行范围仍仅一次原A和source／internal authored shapes／hit filters、首失败停止及完整正常收尾。最新实际仍41460数组拒绝和吸附肩／身体遮挡FAIL；当前完整资产／场景／连续路径／占用、真实Native移动恢复、同姿态hit／muzzle、逐点GrabPose、完整CV-01–24／AC-01–22及实体头显未完成，目标保持active。本轮为已落地的准备／准入验证progress，不是已验证运行句柄的wait。
+
+## 2026年11月9日 r68插入布局与r70根来源区分
+
+在不占当前运行窗的保存原码核查中，r68以完整code911ab9bc／data c5deb081 SHA核对2995字节原函数片段及75锚点，另补核构造helper原函数元数据漏掉的7字节48895c2428ebda。该段实际含stack spill及回跳53eb51；旧chunk记录未改，另存metadata-gap-code.json，不能把旧元数据不连续的loop当完整控制流。原0x14053eb20的0／1／8项整数指令模型分别产生精确构造地址；其8项＋原17字节ctor模型恰覆盖200字节分配中8字节count cookie与192字节records，不执行原函数。
+
+插入原D10F8现直接证明node data+0、count+8、capacity+12、children+16，共24字节record；capacity不是再凭TArray惯例推断。组件反向成员数组为data+0x164、count+0x16c、capacity+0x170、8字节指针步长，不能把data强制改成8字节对齐。既有count至少10、children空且float32(parent half×0.5)严格大于100时走分裂；200字节分配／8对齐、cookie8、8个24字节child、ctor3d0e20与递归dtor1efc5c相互对应。原表byte slot0是deleting destructor，slot8不是插入，slot16才是插入／更新，避免把vtable顺序误标成方法。分裂会清旧count／capacity、移除反向成员再按component+0x160的0x400标记走normal D0CF8或special D0F40重插；因此头尾指针稳定或单次读闭合不等于整世界同步。完整逐字节证据为spatial-insertion-r68/insertion-layout-evidence.json，实际脚本exit0；尚未取得当前树／所有分支或运行许可。
+
+r70另核原Actor.Trace包装到CFA40的5段共3550字节及9个关键锚点：CDF60从RIP实际地址0x141c20890（RVA1c20890）加载global world到RCX，CDF8F调用CF8F8；CF930存RBP、CF966原值转RCX并在CF977调用CFA40；CFAAA保存RDI，CFD3C才从该UWorld+0x178取hash receiver，CFD52取vtable、CFD77调用byte slot0x20。两处load-to-call窗口无RCX改写，静态绑定核验exit0。现有cover_state／world_state中的world／level／world_identity实际来自Actor.WorldInfo，是WorldInfo actor，不能直接对它读+0x178冒充UWorld hash。下一接线须在同一query中认证当前WorldInfo的外层Level／World与global UWorld一致；该外层对应目前只是待观测要求，不是已经实测。
+
+上述只新增保存原码证据和原指令模型，不新增游戏读取、Trace／getter／虚调用、输入、身体writer、构建或部署，也未偷偷放入待验r69-admission-v2。当前global／receiver／root、BSP及special参与范围、完整场景与动态同步继续未认证；这些证据不能给完整身体连续路径／终点占用或Native移动／恢复许可。源事实记录在spatial-root-r70/root-origin-evidence.json。待验包仍仅排队请求；最新游戏41460及其遮挡FAIL、逐点GrabPose、同姿态hit／muzzle、全CV24／AC22与实体头显未完成，目标active。本轮为新的方向性证据progress，无活动运行句柄可称verified wait。
