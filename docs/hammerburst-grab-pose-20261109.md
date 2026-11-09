@@ -156,3 +156,13 @@ screen-latch-pad-space.py对前54个双面候选的两指分配共108种，用�
 已新增本枪离线工具tools/weapon-models/hammerburst_hand_surface.py：必须显式提供完整115 posed矩阵和inverse bind，缺父骨不自动填reference；按任一手骨正权重选三角，保留所有原4影响，输出原三角身份及严格/混合计数。6个回归用例通过，包含混合面保留、bone29真实影响、不悄悄补缺矩阵、非有限父姿、原权重不重归一化。原body SHA cc2db56c...真实集成检查36637→1891=1395+496，bind identity残差5.68434e-14；只在测试中转原ForeTwist29十度会改变所选域289顶点，而旧1395域变化恰0，证明旧域确实观测不到该受影响皮肤。此为工具计算验证，不是实际C0 palette或游戏通过。证据mixed-skin-module-check.json，下一步必须用现有唯一C0的真实/等价解算前臂、扭转、腕姿一起约束蒙皮和raw controller获取；不再仅优化两个指垫点。
 
 Lancer确认当前V4通用契约2984字节/完整32SHA/reference15稳定，HB真实magazine lease可走独立左part profile，不需虚构hammerburst_latch枚举；当前共享consumer实际腕读回差异尚未知。HB不改shared C0，不发布未通过provider，不把离线零数值当实际消费/双眼/头显验收。HB185428仅有限供弹driver修复冻结，所有本节手型/工具均未混入该批。
+
+## 现有 C0 完整父姿探针与扩大皮肤域复核
+
+新增 `tools/weapon-models/hammerburst_c0_skin_probe.cpp`，在独立 owned buffer 中调用现有 `body_c0_hands::compose_common`，输出完整115骨 world palette；无引擎读取、hook、controller publication、真实时钟查询或游戏写入。构建仅独立 HammerburstC0SkinProbe 目标，Visual Studio 18 2026 编译0。源码 e490ebd7cbf20f15d7f208a8bb9155d06ffad5671803d4e146aa2d800add464b，程序6dddfdb8ee36e513fb7cd8bc902ae9009962086057b257352e66bc7a97447458，28个冻结 quoted headers/fixture manifest39029b0f24dde6ef4e4b074992155bb814e4cd39f75810d2a90b00062fb0dd2d。初次 host 调用将嵌入 CoreSnapshot 的 base_view 同时作参数，触发原 alias 防护；改为独立值拷贝后通过，未改产品防护。原失败保留 first-alias-rejection.json。
+
+输入组合旧62276真实保存的 reference/C0-local/component 与44504真实 HB 主手到枪模型的相对挂载，再在该保存身体上构造目标，明确不是同场 tracking/cohort 或实际当前消费。作者15关节使用728/914 cup，现有C0负责肩、肘、扭转、腕和手指。基线 wrist 被固定骨长 reach 投影，目标差 .41184883752raw；1395及1891面域均130条双向严格交线。仅作几何对照，将构造的主手/枪向左肩移1cm，wrist差 .0001885924raw，1395与1891域均0；这不修复真实获取中心16.219raw不一致，也没有发布该姿势。
+
+进一步将任何正权重落在原 bones6..29 的肩/上臂/前臂/手/袖口共4841面全部纳入，原基线仍322（134+188），构造1cm对照仍177（76+101）。扩大域三视图已亲看，肩/臂甲与枪身仍穿插，因此1891的零交线不能升级为整个上肢净空。本探针证明必须同时约束实际身体、枪的位置和作者手型，不允许以仅掌指清楚为通过。两个候选均 `skin_fit_accepted=false`、`published=false`，本轮未启动游戏。
+
+所有115骨相对原reference的最大长度差24.159raw来自保存动画的IK_Hand_L等helper，不是前臂伸长；与原保存C0-local逐骨父子长度比较最大 .0002674804raw，15作者局部矩阵误差小于5.6e-7。保留原保存局部平移，不强行把动画helper改回reference。证据 `analysis/hammerburst-20261108/c0-mixed-skin-probe/probe-validation.json`、`latch-c0-mixed-skin-probe.json/png`、`latch-c0-inward-one-cm.json/png`。这些离线工具仍不混入已冻结HB185428，无共享C0源改动、无第二writer。
