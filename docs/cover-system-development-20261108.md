@@ -1556,3 +1556,23 @@ AllSweepOwners新增asset_bodies；带归属查询在原方法之前取得清单
 首版合成fixture在physics_setup已绑定旧schema后追加Pawn属性，复用了旧base proof；205检查中38失败首先指向layout_changed。没有放宽产品guard，改为在扩展夹具完成后重新建立测试自己的binding，v2为205／0；随后新增动态偏移与无效context边界，final为212／0。三份冻结输入及首败日志保留，不覆盖失败。REA会话查询为closed，本轮未打开原二进制会话；复用既有包声明和保存字段证据，不新增分析进程、助手、CUA或游戏观察器。
 
 直接运行尾状态的一次compact核对仍只见Beam8→Cover-r80登记意向，无正式受理／授窗；该同一完成消息和idle状态不算本方verified wait，也不消费r80。证据analysis/cover-system-20261108/collider-body-source-r84/verification.json。本轮无stage／游戏／XR／录像／新玩家动作通过，公共v71及r80五身份保持，旧b144已消费失败保留。完整自身集合、全部形状／世界覆盖、共同物理时相、组合身体路径及终点占用、实际身体移动与恢复、physics-hit-muzzle同版、严重肩身遮挡、三方向LGrip与逐点GrabPose及CV01–24／AC01–22、实体头显均未完成。工程25%不变，目标active，本轮progress。
+
+## 2026年11月10日 r85胶囊BodyData同Scene认证与查询事务接线
+
+上一轮00d041b1完成声明胶囊BodyInstance字段来源及合成检查，属于进展。本轮将它接入现有带归属的原查询事务及真实C0 SourceGuard。新增cover_physx_collider.h关闭当前原查询来源、组件的命名BodyInstance字段、BodyData88／BoneSpring90，再对非空BodyData核原NpActor主表2330A8、与本次查询相同的Scene、内部actor指针及反向公开actor关系；两次读取一致、typed owner和最后输入关闭后才发布。该原表及关联沿r73／r81已有精确PhysX证据，未新增调用方法或用别版SDK推断ABI。
+
+胶囊来源携带Pawn／Cylinder／RB body地址、实际反射BodyInstance字段偏移、原BodyIndex和BodyData／BoneSpring；组件字段偏移从r84当前反射读取带入，没有另猜固定位置。结果分别表达BodyInstance为空、BodyData为空和已观察到同Scene actor，BoneSpring仍不透明。空字段不证明组件没有其他物理来源；非空actor可以与PAA body共享，也可以是独立同Scene actor，不因为两者不同就丢弃。字段／表／场景／反向关系不符、读取失败或输入变化均整包拒绝。
+
+QueryEngine现有带归属sweep_all必须收到显式胶囊来源及对应typed guard；缺少来源／guard在原调用前拒绝，不降级为裸流。原查询前分别关闭完整声明Bodies清单及胶囊来源，方法正常返回、原callback与全部命中归属完成后重新读取两者并要求一致，再做最后原来源／输入关闭才发布AllSweepOwners。原输入在前置新增读取期间变化，也会在原调用之前拒绝。新增collider_source保留独立来源，raw hit顺序和数量不变，没有过滤self／foreign。裸AllSweep继续不读取胶囊；原fault_unknown仍保留pin／uncertain，普通读取拒绝不伪造原方法锁债。
+
+Session在既有busy／drain屏障内预读当前类型化胶囊；仅带归属输出的SourceGuard追加r84全身份、Owner／OwnerComponent、继承属性和字段前后核对，并把compact来源交给同一个Engine。接线复用原八个C0观察入口，没有新增Hook、输入、骨骼／相机写入或另一次原查询。大结果和反射工作区仍为串行Session／Engine成员；最终SourceGuard及原Image pin在当前事务生命周期内保持。编译宏按原私有配置ON，但运行cover_queries默认0及Goal的no_cover拒绝保持；任何结果都没有授予身体移动。
+
+完整v1 Native从r83不可变源仅4份产品overlay冻结，共1092源文件；所有原GEARS flags逐项不变。实际编译链接0，DLL SHA fdece8a589ae69512aac0250db52f7781b2d4df48cb135bd0dd8f466ee4660e0；675实际依赖／395冻结项目依赖逐SHA，无冻结树外的工作树源码依赖。本批模块没有新增编译警告，原37条警告保留；Native沿原/W4／EHsc等设置，不称全Native /WX。未重建或替换PG／XR／公开包，r80原五身份／Native8035不变。
+
+聚焦程序均/std:c++17 /O2 /W4 /WX /EHsc /UNDEBUG /MT实际编译执行0：Owned93／0、Stream40／0、最终Session76／0、Raw130／0、Owner202／0、C0 OFF20／0、Roles257／0、Asset86／0、新Collider PhysX88／0、Collider Roles219／0、Collider Roles OFF1／0。首批10程序的项目依赖并集61项；增加Session两种空字段贯通后仅重编该程序和本批受影响的Collider OFF，其他未变绿色结果复用，原Session74／0记录保留。原DLL仅作为实际PE数据；模块装载／原dispatch明确为Host或合成函数，Source、code字节、流收集、物理关系和反射读逻辑执行实际实现；关系内存仍是合成，未调用原DLL或游戏。
+
+新检查覆盖同Scene共享／独立actor、两种不同空字段、非根字段／胶囊BodyInstance在查询期间变化、当前类／字段映射匹配、每个读取／guard边界失败、错误Scene／内部反链、来源最后guard被修改、错误线程和别名拒绝；Session使用实际新增SourceGuard与两套读取器，仍明确替代原engine dispatch。关闭状态没有读取／guard／原调用。所有失败输出保持，未知源不变为空结果。编译和合成输入不能替代真实C0时限／查询时相、actor生命周期、ABA排除、世界fence或最终像素。
+
+证据analysis/cover-system-20261108/collider-query-r85/verification.json及v1 Native／单元、final单元的源码／实际依赖回执。本轮未stage／游戏／XR／录像，无新玩家动作通过，没有新运行授窗；沿用r84最后定向核对的仅后序意向状态，不称verified wait，也不消费旧b144或r80。当前清单只覆盖声明的PAA Bodies与当前所选Cylinder.BodyInstance，其他PrimitiveComponent独立BodyInstance、附件与装备、全部原形状／世界覆盖仍未认证；尚不能据此构造完整自身过滤或把空流当占用安全。
+
+下一步继续闭合其余组件／装备的自身来源及原查询完整覆盖，并与组合身体路径、终点占用和同版physics-hit-muzzle合流；实际移动恢复、严重肩身遮挡、三方向真实LGrip、逐点GrabPose、CV01–24／AC01–22与实体头显仍未完成。A20/B30/C20/D15/E15各档.25，工程25%不变，目标active，本轮progress。

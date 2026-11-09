@@ -4,12 +4,16 @@
 #include "cover_collider_roles_live.inl"
 #include <thread>
 namespace collider=cover_collider_roles_live;
+#ifndef GEARS_COLLIDER_ROLES_TEST_MAIN
+#define GEARS_COLLIDER_ROLES_TEST_MAIN main
+#endif
 #if GEARS_COVER_BODY_PROTOTYPE
 static collider::Workspace collider_work;
 static uintptr_t primitive_class{},cylinder_class{},cylinder{},single_body{},cylinder_prop{},collision_prop{},owner_prop{},instance_prop{};
 static void collider_setup(){
     physics_setup();primitive_class=arena+0xa0000;cylinder_class=arena+0xa0400;
     klass(primitive_class,140,L"PrimitiveComponent",0);klass(cylinder_class,141,L"CylinderComponent",primitive_class);
+    put(fixture_mesh_class+0x60,primitive_class);
     cylinder=arena+0xa1000;single_body=arena+0xa2000;
     object(cylinder,142,cylinder_class,fixture_pawn,L"SelectedCylinder",4);
     object(single_body,143,body_class,cylinder,L"SingleBody");
@@ -23,6 +27,7 @@ static void collider_setup(){
     put(fixture_pawn+0x1f0,cylinder);put(fixture_pawn+0x1f8,cylinder);
     put(cylinder+0x170,fixture_pawn);put(cylinder+0x1a0,single_body);
     put(single_body+0x60,-1);put(single_body+0x68,cylinder);put(single_body+0x88,arena+0xb0000);put(single_body+0x90,arena+0xb1000);
+    put(arena+0xb0000,uintptr_t(0x1802330a8));put(arena+0xb0038,arena+0x8b000);put(arena+0xb0040,arena+0xb3000);put(arena+0xb3010,arena+0xb0000);
     put(props[6]+0xd0,primitive_class); // Real RB_BodyInstance owner role is a PrimitiveComponent.
     // physics_setup already sampled its smaller synthetic schema. Construct
     // the extended fixture before obtaining this test's actual binding.
@@ -35,12 +40,18 @@ static collider::Code capture(collider::Snapshot& result){
     C(!memcmp(saved_arena.data(),reinterpret_cast<void*>(arena),saved_arena.size()));C(native_calls==0&&guard_lock_free);
     return code;
 }
-int main(){
+int GEARS_COLLIDER_ROLES_TEST_MAIN(){
     arena=reinterpret_cast<uintptr_t>(VirtualAlloc(nullptr,saved_arena.size(),MEM_COMMIT|MEM_RESERVE,PAGE_READWRITE));if(!arena)return 99;
     collider_setup();collider::Snapshot result{};
     C(capture(result)==collider::Code::current&&result.cylinder.address==cylinder&&result.body.address==single_body);
     C(result.presence==collider::Presence::body_data_nonnull&&result.body_index==-1&&result.body_data==arena+0xb0000&&result.bone_spring==arena+0xb1000);
     const auto initial=result;C(capture(result)==collider::Code::current&&collider::same(result,initial));
+    {namespace cx=gears_cover_physx_collider;cx::Snapshot raw{};raw.fields=collider::input(result);raw.presence=cx::Presence::actor_observed;
+        raw.query_source.actor_table=raw.actor_table=0x1802330a8;raw.query_source.scene=raw.scene=arena+0x8b000;raw.internal=arena+0xb3000;
+        C(collider::matches(result,raw));
+        for(unsigned bad=0;bad<6;++bad){auto wrong=raw;if(bad==0)wrong.fields.component+=8;if(bad==1)wrong.fields.body_index++;
+            if(bad==2)wrong.fields.body_instance_offset+=8;if(bad==3)wrong.actor_table+=8;if(bad==4)wrong.scene+=8;if(bad==5)wrong.internal=0;
+            C(!collider::matches(result,wrong));}}
     put(cylinder+0x1a0,uintptr_t{});C(capture(result)==collider::Code::current&&result.presence==collider::Presence::body_instance_field_null&&!result.body.address&&!result.body_data&&!result.bone_spring);
     put(cylinder+0x1a0,single_body);put(single_body+0x88,uintptr_t{});
     C(capture(result)==collider::Code::current&&result.presence==collider::Presence::body_data_field_null&&result.body.address==single_body&&result.bone_spring==arena+0xb1000);
@@ -99,7 +110,7 @@ int main(){
     printf("CoverColliderRoles checks=%u failures=%u synthetic reflected fields only; no NxActor/complete-self/geometry/movement proof\n",checks,failures);return failures?1:0;
 }
 #else
-int main(){collider::Snapshot result{};result.body_data=99;collider::Workspace work{};unsigned calls{};
+int GEARS_COLLIDER_ROLES_TEST_MAIN(){collider::Snapshot result{};result.body_data=99;collider::Workspace work{};unsigned calls{};
     C(collider::sample(h::Binding{},[&](){++calls;return true;},work,result)==collider::Code::unavailable&&result.body_data==99&&!calls&&!reads&&!native_calls);
     printf("CoverColliderRoles OFF checks=%u failures=%u no reads/guard/calls\n",checks,failures);return failures?1:0;}
 #endif

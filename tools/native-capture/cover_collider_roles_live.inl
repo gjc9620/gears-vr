@@ -1,6 +1,7 @@
 #ifndef GEARS_COVER_COLLIDER_ROLES_LIVE_INCLUDED
 #define GEARS_COVER_COLLIDER_ROLES_LIVE_INCLUDED
 #include "cover_physics_roles_live.inl"
+#include "cover_physx_collider.h"
 
 // Include in the existing Native binding environment. The caller must own the
 // current admitted C0 and keep its actual owner guard current. These reflected
@@ -16,10 +17,21 @@ struct Snapshot {
     gears_anchor::Identity pawn{},cylinder{},body{};
     Presence presence{};
     std::int32_t body_index{};
+    unsigned body_instance_offset{};
     std::uintptr_t body_data{},bone_spring{};
 };
 inline bool same(Snapshot const& a,Snapshot const& b){return gears_anchor::equal_identity(a.pawn,b.pawn)&&gears_anchor::equal_identity(a.cylinder,b.cylinder)&&
-    gears_anchor::equal_identity(a.body,b.body)&&a.presence==b.presence&&a.body_index==b.body_index&&a.body_data==b.body_data&&a.bone_spring==b.bone_spring;}
+    gears_anchor::equal_identity(a.body,b.body)&&a.presence==b.presence&&a.body_index==b.body_index&&a.body_instance_offset==b.body_instance_offset&&a.body_data==b.body_data&&a.bone_spring==b.bone_spring;}
+inline gears_cover_physx_collider::Source input(Snapshot const& value){return {value.pawn.address,value.cylinder.address,value.body.address,
+    value.body_instance_offset,value.body_index,value.body_data,value.bone_spring};}
+inline bool matches(Snapshot const& typed,gears_cover_physx_collider::Snapshot const& value){
+    namespace cx=gears_cover_physx_collider;
+    if(!cx::same(input(typed),value.fields))return false;
+    if(typed.presence==Presence::body_instance_field_null)return value.presence==cx::Presence::body_instance_field_null&&!value.actor_table&&!value.scene&&!value.internal;
+    if(typed.presence==Presence::body_data_field_null)return value.presence==cx::Presence::body_data_field_null&&!value.actor_table&&!value.scene&&!value.internal;
+    return typed.presence==Presence::body_data_nonnull&&value.presence==cx::Presence::actor_observed&&
+        value.actor_table==value.query_source.actor_table&&value.scene==value.query_source.scene&&value.internal;
+}
 #if defined(GEARS_COVER_BODY_PROTOTYPE) && GEARS_COVER_BODY_PROTOTYPE
 struct Workspace {
     binding::Proof pawn{},component{},body{};
@@ -48,6 +60,7 @@ inline Code values(Workspace& w,binding::Binding const& owner,Snapshot& output){
        !roles::role_property(w.component,next.cylinder.cls,L"BodyInstance",L"ObjectProperty",8,L"RB_BodyInstance",w.component_fields[1]))return Code::layout;
     if(!binding::field(component_owner,cylinder,w.component_fields[0].offset)||component_owner!=next.pawn.address||
        !binding::field(body,cylinder,w.component_fields[1].offset))return Code::read;
+    next.body_instance_offset=w.component_fields[1].offset;
     if(!body){next.presence=Presence::body_instance_field_null;output=next;return Code::current;}
     if(!instance(w.body,body,next.body))return Code::read;
     if(!roles::class_role(w.body,next.body.cls,L"RB_BodyInstance",w.component_fields[1].reference.address)||
