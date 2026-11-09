@@ -37,7 +37,7 @@ inline bool same(Snapshot const& a,Snapshot const& b) noexcept {
 inline bool pointer(std::uintptr_t p,std::size_t bytes) noexcept{return !(p&7)&&pose::span(p,bytes);}
 template<class Read,class Hash> bool code_current(std::uintptr_t base,std::uint32_t image_size,Read read,Hash hash) {
     if(!base||base&0xffff||!image_size||image_size>UINTPTR_MAX-base)return false;
-    std::array<unsigned char,1024> scratch{};
+    std::array<unsigned char,8192> scratch{};
     for(auto const& c:gears_cover_physx_query_code::chunks){
         if(!c.size||c.size>scratch.size()||c.rva>=image_size||c.size>image_size-c.rva)return false;
         Digest actual{};

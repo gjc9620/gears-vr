@@ -10,6 +10,9 @@ int main(){
     C(c0::overlap(entry,core,capsule,overlap)==q::Code::unavailable&&overlap.raw_hit);
     C(c0::sweep(entry,core,box,delta,sweep)==q::Code::unavailable&&sweep.raw_count==99);
     C(c0::sweep(entry,core,capsule,delta,sweep)==q::Code::unavailable&&sweep.raw_count==99);
+    q::AllSweep all{};all.raw_count=99;
+    C(c0::sweep_all(entry,core,box,delta,q::StreamLimits{},all)==q::Code::unavailable&&all.raw_count==99);
+    C(c0::sweep_all(entry,core,capsule,delta,q::StreamLimits{},all)==q::Code::unavailable&&all.raw_count==99);
     wchar_t folder[MAX_PATH]{},path[MAX_PATH]{};C(GetTempPathW(MAX_PATH,folder)>0);C(GetTempFileNameW(folder,L"cvq",0,path)>0);
     C(c0::configure(path,nullptr));C(WritePrivateProfileStringW(L"FullBodyC0Native",L"cover_queries",L"1",path)!=0);C(!c0::configure(path,nullptr));
     C(WritePrivateProfileStringW(L"FullBodyC0Native",L"cover_queries",L"invalid",path)!=0);C(!c0::configure(path,nullptr));

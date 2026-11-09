@@ -57,6 +57,9 @@ template<class Shape> q::Code do_overlap(Entry const& e,Core const& c,Shape cons
 template<class Shape> q::Code do_sweep(Entry const& e,Core const& c,Shape const& shape,q::Vector const& delta,q::Sweep& out)noexcept{
     return query(e,c,shape,out,[&](auto const& actor,auto const& metadata,auto const& geometry,auto read,auto guard,auto& output){return session.sweep(actor,metadata,geometry,delta,read,guard,output);});
 }
+template<class Shape> q::Code do_sweep_all(Entry const& e,Core const& c,Shape const& shape,q::Vector const& delta,q::StreamLimits const& limits,q::AllSweep& out)noexcept{
+    return query(e,c,shape,out,[&](auto const& actor,auto const& metadata,auto const& geometry,auto read,auto guard,auto& output){return session.sweep_all(actor,metadata,geometry,delta,limits,read,guard,output);});
+}
 #else
 bool configure(wchar_t const* ini,FILE*){wchar_t value[8]{};GetPrivateProfileStringW(L"FullBodyC0Native",L"cover_queries",L"0",value,8,ini);return !std::wcscmp(value,L"0");}
 void request_drain()noexcept{}
@@ -65,9 +68,12 @@ unsigned pending_count()noexcept{return 0;}
 void summary(FILE*){}
 template<class Shape> q::Code do_overlap(Entry const&,Core const&,Shape const&,q::Overlap&)noexcept{return q::Code::unavailable;}
 template<class Shape> q::Code do_sweep(Entry const&,Core const&,Shape const&,q::Vector const&,q::Sweep&)noexcept{return q::Code::unavailable;}
+template<class Shape> q::Code do_sweep_all(Entry const&,Core const&,Shape const&,q::Vector const&,q::StreamLimits const&,q::AllSweep&)noexcept{return q::Code::unavailable;}
 #endif
 q::Code overlap(Entry const& e,Core const& c,q::Box const& s,q::Overlap& out)noexcept{return do_overlap(e,c,s,out);}
 q::Code overlap(Entry const& e,Core const& c,q::Capsule const& s,q::Overlap& out)noexcept{return do_overlap(e,c,s,out);}
 q::Code sweep(Entry const& e,Core const& c,q::Box const& s,q::Vector const& d,q::Sweep& out)noexcept{return do_sweep(e,c,s,d,out);}
 q::Code sweep(Entry const& e,Core const& c,q::Capsule const& s,q::Vector const& d,q::Sweep& out)noexcept{return do_sweep(e,c,s,d,out);}
+q::Code sweep_all(Entry const& e,Core const& c,q::Box const& s,q::Vector const& d,q::StreamLimits const& l,q::AllSweep& out)noexcept{return do_sweep_all(e,c,s,d,l,out);}
+q::Code sweep_all(Entry const& e,Core const& c,q::Capsule const& s,q::Vector const& d,q::StreamLimits const& l,q::AllSweep& out)noexcept{return do_sweep_all(e,c,s,d,l,out);}
 }

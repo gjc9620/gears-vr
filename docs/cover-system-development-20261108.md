@@ -1448,3 +1448,19 @@ capture的现有stop请求、cleanup-ready、retained判定、hook-restored与�
 证据在analysis/cover-system-20261108/query-c0-r77/，含两次不可变Native源／构建、真实依赖关闭、冻结单元源／运行退出、有限集成patch及verification.json。本轮没有运行安装／游戏／XR／录制，没有申请或借用新窗口，没有重试已消费b144入口，也没有替换公共v71或候选。下一步是让完整身体形状／当前占用与扫掠消费者使用此C0入口，并解决自身排除及物理／命中／枪口共同消费时相，不能用closest单hit或bool overlap跳过完整覆盖。实际原查询、Native身体移动／恢复、严重肩／身体遮挡、逐点GrabPose、CV-01–24／AC-01–22及实体头显继续未完成，25%工程review保持。
 
 提交核对补充：生成补丁在Windows写出CRLF而HEAD为LF，首次git apply --cached --check因此拒绝；当时暂存区为空，未产生部分暂存。保留owned-integration-crlf-rejected.patch，改为LF原字节写出后，两个共享文件的精确HEAD补丁检查通过。此修正只改保存补丁的换行方式，不修改已编译的Native／单元源码或旧运行事实。
+
+## 2026年11月10日 r78有界原版全命中流，截断不放行
+
+上一轮204308c9的C0／收尾接线、隔离Native构建及检查属于进展。本轮补上原sweep最近命中模式不能绕过自身hit继续检查的前置缺口：新增cover_physx_stream.h及原sweep_all入口，仍返回原始记录，不在缺少shape→actor证据时猜测自身归属。复用已保存REA原PhysX SHA22051aa7及worker ev_0a905f6cc36ae824d2c8db2804b18233edade37a5a7792ed983e8ddb652702fd，未新开反编译目标／观察器或运行游戏。
+
+原A71F0完整Ghidra body为A71F0–A8949、5978字节，本轮逐字节对应原DLL、完整解码1232指令并确认该区间没有重定位项。13个原指令见证包含A734D test bl,8、容量／buffer／callback的RBP+338／340／348读取、A7CE1按64字节计算条数、A7CF9 vtable[0]调用的RCX=this／EDX=count／R8=batch，以及AL=false退出分支。据此沿原公开10参数ABI使用flags11（static1＋dynamic2＋all-hit8），明确提供64-record自有batch，避免原动态栈／分配器fallback。新worker加入当前字节校验，11个完整区间共9522字节，scratch扩至8192以容纳5978字节整段；并不据此声称所有传递被调函数已认证。
+
+收集器是手工明确vtable[0] ABI的同步自有descriptor，回调只拷原64字节hit，不读游戏对象、不持binding／stereo／session私锁、不筛Actor。TLS限定当前同线程descriptor；非法self／数据起点／数量／线程、嵌套或晚到回调拒绝。零命中批次消耗报告预算但不是结束标记；最大1024记录／256报告可由调用方降低，容量耗尽返回false并显式truncated。原返回数量必须与已复制条数一致，malformed／计数不符为callback_rejected；截断、源变化或失败均不发布结果。原调用SEH仍走已有fault_unknown及资源保留，正常已返回的截断不伪造成异常锁债。
+
+该入口已接过现有Session与当前C0六个观察API（原overlap／sweep四个加盒／胶囊sweep_all两个），保留原来源／当前metadata／Link-slot／Entry／100ms时限、停止及别名拒绝。运行与编译开关仍默认关闭；Goal policy仍不自动调用查询，no_cover身体写入拒绝仍保留。sweep_all成功只表示本次原选择流未截断，不是无碰撞、完整世界、可移动或占用许可。
+
+最终冻结Native沿r77不可变源仅overlay本批7个实现文件，所有GEARS flags不变，完整生产目标编译链接exit0。DLL SHA31ea732dd259d4c5aa44c1b5a98e87bc7453da1a2ff15578ebbf131d9be18c78；670真实依赖／390冻结项目依赖逐SHA，无外部工作树依赖。Native仍保留旧/W4／EHsc设置及旧警告，不称全Native /WX；最终新模块无警告。首版1825c082保留，局部active名在真实公共fixture下触发C4459／WX拒绝后改current_reporter，另建不可变final源重编，没有覆盖首版或关闭警告。
+
+同一冻结Native／反射源的四个程序均/std:c++17 /O2 /W4 /WX /EHsc /UNDEBUG /MT实际编译执行0：Stream40检查／0，Session58／0，Raw125／0，C0 OFF18／0；实际项目依赖并集52项。覆盖64条批次、零批次后继续、顺序与末记录、hit／report预算、错误／过期／跨线程descriptor、合成原10参数ABI、截断Native计数与复制数量不同、Session截断不发布／仍可正常关闭、两种形状、11段原字节变更拒绝及关闭构建六入口保持输出。原方法dispatch／装载仍为合成或Host seam，原DLL只作数据，不能当原运行通过。final单元Driver因预期57而实际58的汇总marker停止；原58检查已exit0且源码未变，保留记录，仅续编执行尚未进行的Raw／C0Off，没有重复Stream／Session绿色程序。
+
+证据在analysis/cover-system-20261108/physx-stream-r78/，含原指令／合同证书、11段来源、首／最终Native与单元冻结树、运行退出和verification.json。本轮没有stage运行制品／游戏／XR／录制或重试b144，没有新增窗口、助手或其他武器工作，没有替换公共v71。下一步须认证公开hit shape→actor和完整自身集合，再结合当前完整形状／组合形变路径、终点占用及世界／物理／命中／枪口同步；不得把过滤掉首个自身hit、单个bool或本批完整流当作这些证明。严重肩／身体遮挡继续FAIL；应同步从保留同帧头／身体／原生view方向和实际蒙皮关系定位，不靠盲移眼点或隐藏身体绕过。逐点GrabPose、Native实际移动／恢复、CV-01–24／AC-01–22及实体头显仍未完成，25%工程review保持。

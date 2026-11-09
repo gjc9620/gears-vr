@@ -80,6 +80,21 @@ public:
             output=result;return q::Code::queried;
         }catch(...){return q::Code::source;}
     }
+    template<class Shape,class Read,class Guard> q::Code sweep_all(weapon_hand_scene_binding::Binding const& actor,
+        gears_cover_pose_phase::Metadata const& metadata,Shape const& shape,q::Vector const& delta,q::StreamLimits const& limits,
+        Read read,Guard guard,q::AllSweep& output)noexcept{
+        if(!q::detail::motion(delta)||!q::detail::stream_limits(limits)||q::source::aliases(&output,sizeof output,&delta,sizeof delta)||
+           q::source::aliases(&output,sizeof output,&limits,sizeof limits)||q::source::aliases(&output,sizeof output,this,sizeof *this)||
+           q::source::aliases(&output,sizeof output,&actor,sizeof actor)||q::source::aliases(&output,sizeof output,&metadata,sizeof metadata)||
+           q::source::aliases(&output,sizeof output,&shape,sizeof shape))return q::Code::request;
+        const auto movement=delta;const auto budget=limits;q::AllSweep result{};
+        try{const auto code=execute(actor,metadata,shape,read,guard,result,[&](auto& engine,auto const& source,auto const& geometry,auto reader,auto current,auto& raw){
+            return engine.sweep_all(source,geometry,movement,budget,reader,current,raw);});
+            if(code!=q::Code::queried)return code;
+            if(std::memcmp(&movement,&delta,sizeof delta)||std::memcmp(&budget,&limits,sizeof limits))return q::Code::changed;
+            output=result;return q::Code::queried;
+        }catch(...){return q::Code::source;}
+    }
 };
 #endif
 } // namespace cover_physics_query_live

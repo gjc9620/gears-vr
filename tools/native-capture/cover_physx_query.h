@@ -12,6 +12,7 @@
 #include <string>
 #include <vector>
 #include "cover_physx_query_source.h"
+#include "cover_physx_stream.h"
 
 // Synchronous ORIGINAL scene-query adapter. prime() belongs to Native startup,
 // outside DllMain and game callbacks. Query callers must own the admitted C0/GT
@@ -25,11 +26,10 @@ using Digest=source::Digest;
 struct Vector {float x{},y{},z{};};
 struct Box {Vector centre{},half{};float rotation[9]{};};
 struct Capsule {Vector first{},second{};float radius{};};
-struct alignas(8) Hit {std::array<unsigned char,64> bytes{};};
 static_assert(sizeof(Vector)==12&&sizeof(Box)==60&&sizeof(Capsule)==28&&sizeof(Hit)==64&&alignof(Hit)==8);
 static_assert(offsetof(Box,centre)==0&&offsetof(Box,half)==12&&offsetof(Box,rotation)==24&&
     offsetof(Capsule,first)==0&&offsetof(Capsule,second)==12&&offsetof(Capsule,radius)==24);
-enum class Code {queried,unavailable,request,reentrant,source,code,changed,fault_unknown};
+enum class Code {queried,unavailable,request,reentrant,source,code,changed,fault_unknown,truncated,callback_rejected};
 struct Overlap {bool raw_hit{};};
 struct Sweep {std::uint32_t raw_count{},reserved{};Hit raw_hit{};};
 namespace detail {
@@ -96,6 +96,15 @@ template<class Shape> bool sweep(std::uintptr_t fn,std::uintptr_t scene,Shape co
     __try {result.raw_count=reinterpret_cast<Function>(fn)(scene,&shape,&delta,3,nullptr,1,&result.raw_hit,nullptr,UINT32_MAX,nullptr);return true;}
     __except(EXCEPTION_EXECUTE_HANDLER){return false;}
 }
+template<class Shape> bool sweep_stream(std::uintptr_t fn,std::uintptr_t scene,Shape const& shape,Vector const& delta,
+    Hit* batch,StreamReporter& reporter,std::uint32_t& count)noexcept{
+    using Function=std::uint32_t(__fastcall*)(std::uintptr_t,Shape const*,Vector const*,std::uint32_t,
+        void*,std::uint32_t,Hit*,void*,std::uint32_t,void const*);
+    // Flags11 = original static+dynamic+all-hit branch. Caller owns the batch;
+    // supplying it avoids the original dynamic-stack/allocator fallback.
+    __try {count=reinterpret_cast<Function>(fn)(scene,&shape,&delta,11,nullptr,stream_batch_hits,batch,&reporter,UINT32_MAX,nullptr);return true;}
+    __except(EXCEPTION_EXECUTE_HANDLER){return false;}
+}
 }
 class Image {
     HMODULE module_{};HANDLE file_{INVALID_HANDLE_VALUE};std::uintptr_t base_{};std::uint32_t size_{};
@@ -137,6 +146,7 @@ public:
 class Queries {
     Image image_{};std::atomic<bool> active_{},uncertain_{};
     source::Snapshot before_{},after_{};
+    AllSweep stream_candidate_{};
     void fault() noexcept {uncertain_=true;image_.retain_for_process();}
     struct Finish {std::atomic<bool>& value;~Finish(){value=false;}};
     template<class Read,class Guard> Code begin(source::Source const& s,Read read,Guard guard) {
@@ -195,6 +205,34 @@ public:
             const auto closed=end(request,read,guard);if(closed!=Code::queried)return closed;
             if(!source::same(request,s)||std::memcmp(&geometry,&shape,sizeof shape)||std::memcmp(&movement,&delta,sizeof delta))return Code::changed;
             output=result;return Code::queried;
+        }catch(...){return Code::source;}
+    }
+    template<class Shape,class Read,class Guard> Code sweep_all(source::Source const& s,Shape const& shape,Vector const& delta,
+        StreamLimits const& limits,Read read,Guard guard,AllSweep& output)noexcept{
+        static_assert(std::is_same_v<Shape,Box>||std::is_same_v<Shape,Capsule>);
+        if(source::aliases(&output,sizeof output,this,sizeof *this)||source::aliases(&output,sizeof output,&s,sizeof s)||
+           source::aliases(&output,sizeof output,&shape,sizeof shape)||source::aliases(&output,sizeof output,&delta,sizeof delta)||
+           source::aliases(&output,sizeof output,&limits,sizeof limits))return Code::request;
+        const auto request=s;const Shape geometry=shape;const Vector movement=delta;const auto budget=limits;
+        if(!detail::valid(geometry)||!detail::motion(movement)||!detail::stream_limits(budget))return Code::request;
+        if(detail::active_stream_reporter)return Code::reentrant;
+        bool expected=false;if(!active_.compare_exchange_strong(expected,true))return Code::reentrant;Finish finish{active_};
+        try{const auto ready=begin(request,read,guard);if(ready!=Code::queried)return ready;
+            if(!source::same(request,s)||std::memcmp(&geometry,&shape,sizeof shape)||std::memcmp(&movement,&delta,sizeof delta)||
+               std::memcmp(&budget,&limits,sizeof limits))return Code::changed;
+            stream_candidate_={};std::array<Hit,stream_batch_hits> batch{};
+            detail::StreamReporter reporter{detail::stream_vtable.data(),&stream_candidate_,batch.data(),GetCurrentThreadId(),budget};
+            detail::StreamScope callback(reporter);if(!callback.admitted())return Code::reentrant;
+            std::uint32_t raw_count{};constexpr auto rva=std::is_same_v<Shape,Box>?0x171770:0x1716f0;
+            const bool returned=detail::sweep_stream(image_.base()+rva,before_.public_scene,geometry,movement,batch.data(),reporter,raw_count);
+            callback.close();if(!returned){fault();return Code::fault_unknown;}
+            const auto closed=end(request,read,guard);if(closed!=Code::queried)return closed;
+            if(!source::same(request,s)||std::memcmp(&geometry,&shape,sizeof shape)||std::memcmp(&movement,&delta,sizeof delta)||
+               std::memcmp(&budget,&limits,sizeof limits))return Code::changed;
+            if(reporter.malformed)return Code::callback_rejected;
+            if(reporter.truncated)return Code::truncated;
+            if(raw_count!=stream_candidate_.hit_count)return Code::callback_rejected;
+            stream_candidate_.raw_count=raw_count;output=stream_candidate_;return Code::queried;
         }catch(...){return Code::source;}
     }
 };

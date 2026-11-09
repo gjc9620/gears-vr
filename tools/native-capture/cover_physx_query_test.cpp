@@ -110,7 +110,7 @@ static void code_tests(char const* path){
     for(auto const& chunk:c::chunks){bytes+=chunk.size;auto& last=m.blocks[base][chunk.rva+chunk.size-1];last^=1;
         check(!s::code_current(base,size,read,q::detail::digest),"last byte mutation including cold tail");last^=1;
         check(!s::code_current(base,chunk.rva+chunk.size-1,read,q::detail::digest),"truncated code image");}
-    check(bytes==3544,"full ranges not short unwind fragments");
+    check(bytes==9522,"full ranges include complete all-hit worker, not short unwind fragments");
     for(unsigned i=1;i<=c::chunks.size();++i){m.calls=0;m.fail_at=i;check(!s::code_current(base,size,read,q::detail::digest),"each code read failure");}
     m.fail_at=0;
     check(!s::code_current(base,size,read,[](void const*,std::size_t,s::Digest&){return false;}),"hash failure");
