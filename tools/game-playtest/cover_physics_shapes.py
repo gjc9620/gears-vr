@@ -124,9 +124,26 @@ class ShapeReader:
             if _kind(self.q, inner) != 'StructProperty':
                 raise RuntimeError('Physics shape struct array inner type rejected')
             target = self.q.obj(struct.unpack('<Q', self.q.read(inner['address'] + 0xd0, 8))[0])
-            if (target['name'] not in expected or target['number'] or _kind(self.q, target) != 'ScriptStruct' or
-                    struct.unpack('<I', self.q.read(target['address'] + 0x88, 4))[0] != stride):
-                raise RuntimeError('Physics shape struct array target/extent rejected')
+            # Preserve the original short-circuit read order. A rejection must
+            # not probe extra fields after an invalid name/number/class, and
+            # it must retain the already-read declaration that actually failed.
+            target_kind = target_extent = None
+            matches = target['name'] in expected and not target['number']
+            if matches:
+                target_kind = _kind(self.q, target)
+                matches = target_kind == 'ScriptStruct'
+            if matches:
+                target_extent = struct.unpack('<I', self.q.read(target['address'] + 0x88, 4))[0]
+                matches = target_extent == stride
+            if not matches:
+                raise ShapeLayoutRejected('Physics shape struct array target/extent rejected',
+                    dict(kind='physics_shape_array_target_extent_mismatch', field=field,
+                         array_header_bytes=header.hex(), data=data, count=count, capacity=capacity,
+                         inner=inner, inner_metadata_bytes=raw.hex(), dimension=dimension, stride=stride,
+                         expected_structure_names=list(expected), target=target,
+                         target_kind_observed=target_kind, target_extent_observed=target_extent,
+                         unread_values_are_unknown=True, additional_process_reads=0,
+                         closing_verified=False, source_accepted=False, activation_allowed=False))
         if capacity and data >= (1 << 64) - capacity * stride:
             raise RuntimeError('Physics shape array pointer overflow rejected')
         if count * stride > 32768:

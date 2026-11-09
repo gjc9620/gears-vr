@@ -1105,3 +1105,11 @@ wrapper工具90227实际terminal0；operator7456 exit1、error字段null且实�
 结束37驱动SHA／AST及3安装制品在后续源码改动前匹配。保留工具6347及实际python44892进程曾确认仍活跃，仅轮询同一作业、不重启，最终terminal0；实际删除2308媒体／352804738字节、errors0，保留26028／11108／31420最新3局及48小时，源文／数值记录保留。独立核Bow164457的preparedff9504ac／plan9d86138c、1965冻结源、219当前及归档驱动、438AST、6saved制品和选中EXE无错误，并再次idle后已最终明确唯一交该后继。当前不占窗、不补第二局；后到请求均沿Bow真实尾转达，不在Cover登记第二继任。
 
 证据analysis/cover-system-20261108/shape-layout-r47/runtime，包含before-runtime、两个stage日志、wrapper原日志、game-26028-first-failure、ending-driver-check、settings-restoration、selected-visual、closure-proof、retention-result及runtime-jobs。r48–53独立新C++文件不在本次冻结Native内，不能把本局当它们的运行验证。完整CV-01–24／AC-01–22、真实抓边／身体碰撞与占用／Native移动恢复／同版hit与muzzle、严重吸附遮挡及实体头显仍未完成；公开v71及原历史计分保持。
+
+## 2026年11月9日 r54形状数组拒绝保留已有声明见证
+
+26028已全终交Bow，Bow已直接确认接收并独立完整预检；当前Cover不占窗。独立检查确认cover_physics_shapes.py／cover_physics_state.py及形状检查程序均不在Bow164457的219个冻结Root驱动内，本批只改掩体shape reader与其离线检查，不改变后继当前候选。
+
+针对实际target／extent错误，原array函数现在在同一拒绝处抛现有ShapeLayoutRejected，携带已经读取的ArrayProperty、原header、data／count／capacity、inner完整身份及0x28原metadata、dimension／stride、期望结构名、target完整身份，以及实际已读到的target kind／extent。原名称／number不符时仍不查询class或extent，class不符时仍不查extent；未读取值明确None及unknown，不新增进程读取。原target名称、ScriptStruct类型和stride==extent条件、预算与关闭规则全保持，返回仍拒绝／source_acceptedfalse／activationfalse。已有combined capture原catch会保存source_rejection_witness，无新观察器或Engine调用。
+
+实际Python shape14项通过，其中新增名称／编号／class／extent四分支的见证和短路读取检查，以及同query combined失败保留；shape与physics source组合26项通过。与r47归档旧reader在五个独立合成fixture逐项运行比较：合法4shape均710读／9050字节，stride失败均48／632，名称／编号／class失败均47／628，拒绝文本和决定完全相同；仅新失败额外保留本地已有见证。比较与日志在analysis/cover-system-20261108/array-witness-r54。实际26028没有这些已丢失元数据，不能用合成fixture推断它的具体原因或宣布几何修复；尚未新game验证，完整CV／AC／碰撞与恢复／同版hit与muzzle／吸附遮挡／头显保持未完成。

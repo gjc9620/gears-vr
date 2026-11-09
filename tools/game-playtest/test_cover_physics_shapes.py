@@ -6,7 +6,7 @@ import struct
 import unittest
 
 from cover_state import CoverQuery
-from cover_physics_shapes import read_setup_shapes
+from cover_physics_shapes import read_setup_shapes, ShapeLayoutRejected
 from test_cover_physics_state import PhysicsMemory
 
 
@@ -177,6 +177,53 @@ class ShapeTests(unittest.TestCase):
                 elif defect=='target':f.put(array['inner']+0xd0,struct.pack('<Q',f.BOX_ELEM))
                 else:f.objects[array['inner']]['outer']=f.AGG
                 with self.assertRaises(RuntimeError):f.capture_shapes()
+
+    def test_array_target_failure_preserves_only_already_read_declarations(self):
+        for defect in ('stride', 'name', 'number', 'class'):
+            with self.subTest(defect=defect):
+                f = ShapeMemory()
+                array = f.arrays_shape[f.AGG, 'SphereElems']
+                if defect == 'stride':
+                    f.put(array['inner'] + 0x74, struct.pack('<I', 64))
+                elif defect == 'name':
+                    f.put(array['inner'] + 0xd0, struct.pack('<Q', f.BOX_ELEM))
+                elif defect == 'number':
+                    f.objects[f.SPHERE]['number'] = 1
+                else:
+                    f.objects[f.SPHERE]['cls'] = f.kind_classes['StructProperty']
+                q = CoverQuery(f.observer)
+                with self.assertRaises(ShapeLayoutRejected) as raised:
+                    read_setup_shapes(q, q.obj(f.setups[0]))
+                reads, byte_count = q.reads, q.bytes
+                witness = raised.exception.source_witness
+                self.assertEqual(witness['kind'], 'physics_shape_array_target_extent_mismatch')
+                self.assertEqual(witness['field']['name'], 'SphereElems')
+                self.assertEqual(witness['expected_structure_names'], ['KSphereElem'])
+                self.assertEqual(witness['inner']['address'], array['inner'])
+                self.assertEqual(witness['count'], 1)
+                self.assertEqual(witness['additional_process_reads'], 0)
+                self.assertFalse(witness['closing_verified'])
+                self.assertFalse(witness['source_accepted'])
+                self.assertFalse(witness['activation_allowed'])
+                self.assertEqual(witness['stride'], 64 if defect == 'stride' else 72)
+                self.assertEqual(witness['target_extent_observed'], 72 if defect == 'stride' else None)
+                target_at = f.BOX_ELEM if defect == 'name' else f.SPHERE
+                self.assertEqual((target_at + 0x88, 4) in q.values, defect == 'stride')
+                self.assertEqual(witness['target_kind_observed'],
+                                 'ScriptStruct' if defect == 'stride' else 'StructProperty' if defect == 'class' else None)
+                json.dumps(witness, allow_nan=False)
+                self.assertEqual((q.reads, q.bytes), (reads, byte_count))
+
+    def test_array_target_failure_survives_combined_capture_without_acceptance(self):
+        f = ShapeMemory()
+        array = f.arrays_shape[f.AGG, 'SphereElems']
+        f.put(array['inner'] + 0x74, struct.pack('<I', 64))
+        out = f.capture_physics(include_shapes=True)
+        self.assertFalse(out['accepted'])
+        self.assertEqual(out['rejection_type'], 'ShapeLayoutRejected')
+        self.assertEqual(out['source_rejection_witness']['target_extent_observed'], 72)
+        for key in ('authored_shapes_observed', 'physical_pose_verified', 'activation_allowed'):
+            self.assertFalse(out[key])
 
     def test_complete_field_sets_overlap_and_boolean_mask_reject(self):
         for defect in ['missing','extra','overlap','mask','foreign_setup']:
