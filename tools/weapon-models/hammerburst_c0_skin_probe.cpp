@@ -4,6 +4,9 @@
 // and CoreSnapshot are an explicit GEOMETRY-ONLY host seam, never admission.
 //
 // CLI: fixture-directory input.bin output.bin [--inward-one-cm]
+// Or: fixture-directory input.bin output.bin --constructed-gun-pose pose.bin
+// The latter reads7 xyz/xyzw doubles and solves both existing C0 arm targets.
+// It is a geometry counterexample with synthetic placement, never tracking.
 // Input80 doubles: observed HB right Grip xyz/xyzw; mesh xyz/UE PitchYawRoll
 // integer units; authored left wrist xyz/xyzw in mesh;15 local xyzw joints.
 // Output833 doubles: constructed gun, component, desired wrist, actual wrist
@@ -32,7 +35,7 @@ v::Pose grip(v::Pose wrist,a::mount::Mount const& m){const auto q=v::multiply(wr
 v::Pose pose(double const* p){return {{p[0],p[1],p[2]},{p[3],p[4],p[5],p[6]}};}
 void push(std::vector<double>& out,v::Pose p){for(double x:{p.position.x,p.position.y,p.position.z,p.orientation.x,p.orientation.y,p.orientation.z,p.orientation.w})out.push_back(x);}
 int main(int argc,char** argv){
- if(argc!=4&&argc!=5)return 2;const std::string fixtures=argv[1];double data[80]{};if(!read(argv[2],data,sizeof data))return 3;
+ if(argc!=4&&argc!=5&&argc!=6)return 2;const bool constructed=argc==6;if(constructed&&std::string(argv[4])!="--constructed-gun-pose")return 2;const std::string fixtures=argv[1];double data[80]{};if(!read(argv[2],data,sizeof data))return 3;
  auto frame=std::make_unique<b::Frame>();auto model=std::make_unique<b::Model>();auto bw=std::make_unique<b::Workspace>();auto work=std::make_unique<a::Workspace>();
  if(!read((fixtures+"/reference.bin").c_str(),frame->reference.data(),sizeof frame->reference)||!read((fixtures+"/C0-local.bin").c_str(),frame->local.data(),sizeof frame->local)||!read((fixtures+"/C0-component.bin").c_str(),&frame->component_to_world,sizeof frame->component_to_world))return 4;
  if(!b::prepare_model(frame->reference,digest,*model))return 5;
@@ -44,17 +47,18 @@ int main(int argc,char** argv){
  const auto measured_grip=pose(data);const double k=6.283185307179586/65536.;v::Quaternion measured_mesh_q{};
  if(!v::rig_tracking::detail::quaternion(v::ue_matrix({data[10]*k,data[11]*k,data[12]*k}),measured_mesh_q))return 9;
  const v::Pose measured_mesh{{data[7],data[8],data[9]},measured_mesh_q};const auto relative_mesh=multiply(inverse(measured_grip),measured_mesh);
- auto right_grip=grip(right_wrist,right_mount);if(argc==5){if(std::string(argv[4])!="--inward-one-cm")return 12;const auto candidate=multiply(multiply(right_grip,relative_mesh),pose(data+13));auto move=minus(b::d::position(bw->pose.world[8]),candidate.position);const auto length=std::hypot(std::hypot(move.x,move.y),move.z);if(length<1e-6)return 13;right_grip.position=plus(right_grip.position,{move.x/length,move.y/length,move.z/length});}const auto gun=multiply(right_grip,relative_mesh);const auto desired=multiply(gun,pose(data+13));const auto left_grip=grip(desired,left_mount);
+ auto right_grip=grip(right_wrist,right_mount);const auto grip_to_right_wrist=multiply(inverse(right_grip),right_wrist);if(argc==5){if(std::string(argv[4])!="--inward-one-cm")return 12;const auto candidate=multiply(multiply(right_grip,relative_mesh),pose(data+13));auto move=minus(b::d::position(bw->pose.world[8]),candidate.position);const auto length=std::hypot(std::hypot(move.x,move.y),move.z);if(length<1e-6)return 13;right_grip.position=plus(right_grip.position,{move.x/length,move.y/length,move.z/length});}auto gun=multiply(right_grip,relative_mesh);if(constructed){double placement[7]{};if(!read(argv[5],placement,sizeof placement))return 14;gun=pose(placement);if(!v::stereo_pose_valid(gun))return 15;right_grip=multiply(gun,inverse(relative_mesh));}const auto desired=multiply(gun,pose(data+13));const auto left_grip=grip(desired,left_mount);const auto desired_right=multiply(right_grip,grip_to_right_wrist);
  work->left_visual.kind=gears_hand_object_grasp::Kind::magazine;work->left_visual.grip=left_grip;work->left_visual.weight=1;work->left_visual.preset=gears_hand_object_grasp::Preset::authored;work->left_visual.has_authored_pose=true;
  for(unsigned i=0;i<15;++i)work->left_visual.authored_pose[i]={data[20+i*4],data[21+i*4],data[22+i*4],data[23+i*4]};
  work->finger_closure[0]=1;a::core::CoreSnapshot source{};source.units_per_metre=100;for(unsigned i=0;i<4;++i)source.base_view[i*5]=1;
  const auto render_base=source.base_view;
  const a::hand::ObjectIdentity asset{0x70000,0x71000,0x72000,18,19,20,1};b::Output result{};a::Result status{};
- for(unsigned iteration=0;iteration<4;++iteration){result=body;auto prepare=[&](a::adapter::ModelBinding const&,unsigned side){if(side)return a::adapter::Status::hand_untracked;work->computed_wrist[0]=desired;work->eye_targets[0].grip_world=left_grip;return a::adapter::Status::okay;};
+ for(unsigned iteration=0;iteration<4;++iteration){result=body;auto prepare=[&](a::adapter::ModelBinding const&,unsigned side){if(side&&!constructed)return a::adapter::Status::hand_untracked;work->computed_wrist[side]=side?desired_right:desired;work->eye_targets[side].grip_world=side?right_grip:left_grip;return a::adapter::Status::okay;};
   status=a::compose_common(*model,*frame,source,asset,render_base,1000000000+std::int64_t(iteration)*60000000,true,*work,result,a::adapter::MountKind::free_hand,prepare,true);
   if(status.status!=a::Status::okay){std::printf("{\"geometry_only\":true,\"compose_status\":%u,\"side\":%u,\"hand_status\":%u}\n",unsigned(status.status),status.side,unsigned(status.hand_status));return 10;}
  }
  std::vector<double> out;push(out,gun);push(out,b::d::pose(bw->component));push(out,desired);push(out,b::d::pose(work->body_work.pose.world[11]));for(unsigned i=0;i<115;++i)push(out,b::d::pose(work->body_work.pose.world[i]));std::ofstream stream(argv[3],std::ios::binary);stream.write(reinterpret_cast<char const*>(out.data()),std::streamsize(out.size()*sizeof(double)));if(!stream)return 11;
  const auto delta=minus(desired.position,b::d::position(work->body_work.pose.world[11]));const double error=std::hypot(std::hypot(delta.x,delta.y),delta.z);
- std::printf("{\"geometry_only\":true,\"compose_status\":0,\"full_bones\":115,\"saved_fixture_only\":true,\"synthetic_targets\":true,\"game_started\":false,\"solved_mask\":%u,\"left_visual_applied\":%s,\"desired_wrist_error_raw\":%.12g,\"max_length_error_raw\":%.12g,\"doubles\":%zu}\n",work->solved_mask,work->left_visual_applied?"true":"false",error,result.report.max_length_error,out.size());return 0;
+ const auto right_delta=minus(desired_right.position,b::d::position(work->body_work.pose.world[35]));const double right_error=std::hypot(std::hypot(right_delta.x,right_delta.y),right_delta.z);
+ std::printf("{\"geometry_only\":true,\"compose_status\":0,\"full_bones\":115,\"saved_fixture_only\":true,\"synthetic_targets\":true,\"constructed_gun_pose\":%s,\"game_started\":false,\"solved_mask\":%u,\"left_visual_applied\":%s,\"desired_wrist_error_raw\":%.12g,\"right_wrist_error_raw\":%.12g,\"max_length_error_raw\":%.12g,\"doubles\":%zu}\n",constructed?"true":"false",work->solved_mask,work->left_visual_applied?"true":"false",error,right_error,result.report.max_length_error,out.size());return 0;
 }

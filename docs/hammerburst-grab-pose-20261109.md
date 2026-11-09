@@ -166,3 +166,13 @@ Lancer确认当前V4通用契约2984字节/完整32SHA/reference15稳定，HB真
 进一步将任何正权重落在原 bones6..29 的肩/上臂/前臂/手/袖口共4841面全部纳入，原基线仍322（134+188），构造1cm对照仍177（76+101）。扩大域三视图已亲看，肩/臂甲与枪身仍穿插，因此1891的零交线不能升级为整个上肢净空。本探针证明必须同时约束实际身体、枪的位置和作者手型，不允许以仅掌指清楚为通过。两个候选均 `skin_fit_accepted=false`、`published=false`，本轮未启动游戏。
 
 所有115骨相对原reference的最大长度差24.159raw来自保存动画的IK_Hand_L等helper，不是前臂伸长；与原保存C0-local逐骨父子长度比较最大 .0002674804raw，15作者局部矩阵误差小于5.6e-7。保留原保存局部平移，不强行把动画helper改回reference。证据 `analysis/hammerburst-20261108/c0-mixed-skin-probe/probe-validation.json`、`latch-c0-mixed-skin-probe.json/png`、`latch-c0-inward-one-cm.json/png`。这些离线工具仍不混入已冻结HB185428，无共享C0源改动、无第二writer。
+
+## 双臂解算与持枪方向对照
+
+对上述177交线逐条保留原 edge/face/皮肤顶点和主导骨身份：145条主导ForeTwist2_L29、32条主导Forearm10；没有肩或手指主导的命中。保存身体的原主腕方向经free-hand校准和真实HB挂载构成的枪口朝向，在body分量中为(.4386,.8765,.1983)，主要朝身体侧方，因此不能将此构造例的上肢穿插直接当成自然前向持枪的唯一原因。
+
+探针增加显式 `--constructed-gun-pose pose.bin`（7个xyz/xyzw double）模式，在保持原controller到枪的相对挂载、左作者腕/15关节不变的前提下，让现有C0同时解算左右手目标；没有写入追踪源或绕过运行许可。新独立编译0，源码1984756f957fd3e2561f19b1fcb6dfa27a41668185e09119e5751e6060e0067e，程序5de34599f33798cd670e5579bac4029c51aac1d782f45b40eec2e4401093f7c9。旧二进制及源码保留为私有目录 `HammerburstC0SkinProbe-original.exe` 和 `probe-original.cpp`，旧receipt不挪用新binary身份。
+
+仅两个人工明确的几何对照，无参数网格：原mesh+Y对齐body+X、mesh+Z对齐body+Z，枪root在body(15,-8,125)raw时，solved_mask3，左右腕误差.000172106/.000030438raw，1395域0、1891域29、4841域44（22+22），44条全主导29。将同一枪朝向移到较近主手肩侧body(10,-15,125)raw，左右腕误差.000165961/.000029890raw，1395域0、1891与4841域均10（6+4）。两份完整三视图均亲看，仍不接受；这只缩小到剩余混合袖口接触，不是游戏或头显通过，也没有消除原raw controller获取中心16.219raw不一致。
+
+证据 `latch-c0-arm-crossing-attribution.json`、`latch-c0-front-hold-attribution.json`、`latch-c0-front-hold.json/png`、`latch-c0-front-side-hold.json/png`，以及私有目录两份front-hold/front-side-hold-receipt.json。下一步应把实际C0袖口表面加入原两指真实接触约束调整作者腕/手指；不能仅继续更换持枪例以挑出一个零计数，更不能把一个离线构造姿势提升为可发布profile。有限供弹HB185428及其sole-successor队列未变。
