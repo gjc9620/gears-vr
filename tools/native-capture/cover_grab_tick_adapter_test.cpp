@@ -58,5 +58,61 @@ int main(int argc,char** argv){if(argc!=2)return 2;namespace tg=tick_grab;namesp
         C(tg::prepare(in,p,e,key,c,h,interaction,ownership,sig,tg::grab::Mode::held,now,true,out)!=tg::Status::prepared);
         C(bytes(out)==before);
     }
+    {namespace body=gears_full_body_c0;namespace marker=gears_body_head_authored;
+        const std::string folder=argv[1];auto frame=std::make_unique<body::Frame>();auto model=std::make_unique<body::Model>();
+        auto fk=std::make_unique<body::Workspace>();auto work=std::make_unique<tg::Workspace>();
+        C(read(folder+"/reference.bin",frame->reference.data(),sizeof frame->reference));
+        C(read(folder+"/C0-local.bin",frame->local.data(),sizeof frame->local));
+        C(read(folder+"/C0-component.bin",&frame->component_to_world,sizeof frame->component_to_world));
+        frame->units_per_metre=s.units_per_metre;C(body::prepare_model(frame->reference,digest,*model));
+        for(unsigned i=0;i<16;++i)fk->component.m[i]=frame->component_to_world.values[i];
+        std::copy(frame->local.begin(),frame->local.end(),fk->pose.local);C(body::d::rebuild(*model,*fk));
+        body::Output baseline{};baseline.local=frame->local;baseline.root_world=body::d::pose(fk->pose.world[body::root]);
+        baseline.pelvis_world=body::d::pose(fk->pose.world[body::pelvis]);baseline.head_world=body::d::pose(fk->pose.world[body::head]);
+        for(unsigned side=0;side<2;++side){baseline.feet_world[side]=body::d::pose(fk->pose.world[body::legs[side][2]]);
+            baseline.shoulders_world[side]=body::d::pose(fk->pose.world[body::shoulders[side]]);}
+        auto marker_work=std::make_unique<marker::Workspace>();marker::Marker mark{};marker::EyeHmdWorld measured_eye{};
+        C(marker::prepare(*model,*frame,marker::Basis::marcus_mesh_face_forward_y,*marker_work,mark)==marker::Status::okay);
+        C(marker::eye_from_head(mark,*model,*frame,{baseline.head_world},measured_eye)==marker::Status::okay);
+        eye.actual_eye_world=measured_eye.pose;
+        const auto wrist=body::d::pose(fk->pose.world[11]);
+        // HOST input generation: invert the authored mount/eye mapping for a
+        // reachable wrist. No runtime tracking or physical calibration claim.
+        const auto grip_q=v::multiply(wrist.orientation,v::inverse(mount.calibration.grip_to_wrist_rotation));
+        const auto offset=v::transform(v::rotation_matrix(grip_q),mount.calibration.grip_to_wrist_metres);
+        const v::Vector grip_p{wrist.position.x-offset.x*s.units_per_metre,
+            wrist.position.y-offset.y*s.units_per_metre,wrist.position.z-offset.z*s.units_per_metre};
+        const auto relative=v::multiply(v::inverse(eye.actual_eye_world.orientation),grip_q);
+        const v::Quaternion xr_q{-relative.y,-relative.z,relative.x,relative.w};
+        const v::Vector world_d{(grip_p.x-eye.actual_eye_world.position.x)/s.units_per_metre,
+            (grip_p.y-eye.actual_eye_world.position.y)/s.units_per_metre,(grip_p.z-eye.actual_eye_world.position.z)/s.units_per_metre};
+        const auto ue=v::transform(v::rotation_matrix(v::inverse(eye.actual_eye_world.orientation)),world_d);
+        const auto xr=v::transform(v::rotation_matrix(t.stereo.head.orientation),{ue.y,ue.z,-ue.x});
+        t.controllers.hands[0].grip={{t.stereo.head.position.x+xr.x,t.stereo.head.position.y+xr.y,t.stereo.head.position.z+xr.z},
+            v::normalized(v::multiply(t.stereo.head.orientation,xr_q))};
+        t.continuity.input=t.controllers;hand.hand.left_position_metres=t.controllers.hands[0].grip.position;
+        tg::grab::Contact contact{key,wrist,placement.observed_ns};tg::grab::Profile profile{};
+        profile.id=key.profile;profile.kind=cover.edge.kind;profile.geometry_signature=model->signature;
+        profile.acquire_metres=.1;profile.retain_metres=.16;profile.maximum_wrist_turn=1;
+        for(unsigned n=0;n<15;++n){const auto& q=model->reference[12+n].q;profile.approach[n]={q[0],q[1],q[2],q[3]};
+            profile.held[n]=v::normalized(v::multiply(profile.approach[n],{0,0,-std::sin(.05),std::cos(.05)}));}
+        interaction.phase=v::CoverPhase::grabbing;interaction.owns_left_hand=true;interaction.edge_id=key.edge;interaction.request_id=9;
+        ownership={v::CoverLeftHandOwner::cover,9};
+        std::array<std::uint64_t,2> available{{UINT64_MAX,(std::uint64_t(1)<<(body::bones-64))-1}};
+        gears_cover_grab_transition::State state{};auto candidate=baseline;
+        const auto compose=[&](){return tg::compose(input,placement,eye,key,cover,hand,interaction,ownership,
+            contact,profile,*model,*frame,available,tg::grab::Mode::held,now,true,state,*work,candidate);};
+        auto result=compose();C(result.input==tg::Status::prepared);C(result.pose.status==gears_cover_grab_pose_adapter::Status::prepared);
+        C(candidate.report.max_length_error<=.002);C(state.known);
+        for(unsigned fault=0;fault<3;++fault){candidate=baseline;const auto before=bytes(candidate);
+            if(fault==0)++placement.link.name_number;
+            if(fault==1)available={};
+            if(fault==2)++contact.key.shape_generation;
+            result=compose();C(result.input!=tg::Status::prepared||result.pose.status!=gears_cover_grab_pose_adapter::Status::prepared);
+            C(bytes(candidate)==before);C(!state.known);
+            if(fault==0)--placement.link.name_number;
+            if(fault==1)available={{UINT64_MAX,(std::uint64_t(1)<<(body::bones-64))-1}};
+        }
+    }
     std::printf("CoverGrabTickAdapterTest checks=%u failures=%u\n",checks,failures);return failures?1:0;
 }
