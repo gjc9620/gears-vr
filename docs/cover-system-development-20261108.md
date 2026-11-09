@@ -1358,3 +1358,23 @@ Bol212342+execution779eca在独立9271主机文件、24原声明、364current＋
 继续核原leaf发现一个独立于PointCheck的新具体限制：Sphere CE24C从原第7参数位置取向量交DB120，若不全零则在CE277直接置EAX=1并返回，不进入后续Sphere几何；Sphyl CF080在同一第7参数位置比较X非零时直接走CF102置1及恢复返回。原正float32向量(1,1,1)在两leaf都是这条miss1路径，且不调用实际几何。这是保存机器码的具体有限输入分支证明，不是执行原查询，也不证明所有当前组件必到此分支。它说明即便复用原非零体积LineCheck，也不能从这类Sphere/Sphyl的无命中签发完整身体／占用安全。
 
 本批code／data整SHA911ab9bc／c5deb081、33关键锚点和6构造表匹配；BelowNormal核验exit0。证据native-query-reuse-r72/reuse-evidence.json保留visitor、组件／asset片段、正体积反例、3个cold未知及所需的当前GT／self排除／起始重叠／早停／shape/scale/bone／世界同步条件。实施方向保持优先复用可认证原查询，对上述确证的窄覆盖缺口选择补充或另一已有原生查询，不默认重建整个世界，也不以假空结果或删guard放行。本轮没有方法执行、新hook／writer、Native构建、stage或游戏；最新实际仍41460拒绝及吸附遮挡FAIL，全部CV24／AC22和头显未完成，goal active。
+
+## 2026年11月9日 r73原PhysX场景扫掠与占用入口定位
+
+本轮将原引擎查询复用从候选名推进到具体公开／内部接收者和原始调用转发。没有新增世界观察器、手工重建PhysX、调用游戏方法、修改Native或启动掩体录制；它是下一步碰撞后端接线所需的静态证据，不是可玩闭环或遮挡修复。
+
+精确PhysXCore SHA22051aa7在REA／Ghidra12.1.4中核到：内部Scene vtable22ccb8的byte288→A6E30为盒体扫掠、byte290→A6AA0为胶囊扫掠，原函数分别引用linearOBBSweep／linearCapsuleSweep的明确诊断字符串。公开NpScene是另一张表23ca98；公开byte308→171770、byte310→1716F0读取本对象+6b0，再转入上述内部槽，不能将两层slot混用。两原x64包装保留RDX／R8／R9输入、按8/4/8/8/4/8字节复制公开栈参数5–10，并给内部参数11–13置零；反编译得到的单参数void签名不完整，不能照抄为调用ABI。
+
+从既有NpActor表2330a8的byte8→135B00核到actor+38及其虚表byte8；内部Scene getter A0300明确返回Scene+270的公开包装指针。NpActor构造1328B0及其Actor构造1204C0对应这一关系。它提供从已有实际物理Actor通向查询场景的具体接线方向；当前接收者、两向Scene／NpScene关联和同一世界／代次仍未实测认证。
+
+两个扫掠都在全零movement时直接返回0，尚未进入Scene锁或实际查询，因此零位移扫掠不能当静止占用证明。内部重叠候选byte268→A6290、byte270→A60B0会遍历所选静态／动态宽相位并测试形状及过滤；公开byte338→1682D0在内部命中时返回true，否则继续查询本对象+98的额外状态。布尔overlap不能在自身形状尚未排除时直接用作身体占用；后续必须核完整枚举／过滤、回调与截短语义，不能将未认证的空返回放行。原查询明确进入／退出Scene+238关联临界区；这不单独证明多个查询和C0／物理／命中／枪口消费之间具有共同同步保证。
+
+选定13个方法的9,693字节及9个表槽均与精确原DLL重新对应，完整线性解码、原异常表条目及不可确定项保存在physx-scene-query-r73/scene-route-certificate.json（SHA024f4af3983288b56d85273c1024d5ca4c5c405d6bd898af95d771893ea9866f），BelowNormal核验实际exit0。原公开表136方法的有界筛选只用于找出这两项转发；完整REA记录保留，临时库已正常close且open=false。大Scene构造的high-pcode存在截短，未据此宣称完整数据流；仅引用已保存的原汇编vtable写入。游戏内按旧内部slot搜索得到874条／664owner模式匹配，不能证明NxScene类型；公开slot不同，这批匹配没有被当作实际场景调用者或权限。
+
+此前r72组件LineCheck还缺三个cold目标，本轮按原SHA911ab9bc将热／冷联合范围闭合到1,989字节，补入798字节，每个直接分支落到已解码边界。它只关闭结构范围，不是异常展开、所有callee／virtual或当前组件分派认证。新见1D1550经原伪代码及机器码核为矩阵余子式运算，没有将它误报成已有场景查询。原Sphere／Sphyl非零extent的具体miss缺口仍保留。
+
+视觉方面另核41460原保存三组pose：camera pitch与roll均为0，不能据这些样本把原掩体俯仰当遮挡原因并盲做pitch归零。原头部／肩甲CPU计数仍不能代替实际绘制，缺少同一时刻的头、皮肤和眼点几何；严重肩部／身体遮挡FAIL保留，没有扩大隐藏或移动眼点。证据41460-camera-pitch-exclusion.json（SHA16438e1f46ef45be29b42c2b59031c5690b430465bc2f3f6535fda4a5beff644）。下一步仍以低掩体完整动作和清晰视野为目标：在现有唯一Native消费者中接认证过的实际Scene查询／占用及完成账本，处理同姿态身体与视图，而不是删除cover拒绝、签发假范围或继续扩独立观察器。
+
+运行队列的新事实单独保存：Bol212342旧execution779eca因继承PYTHONSAFEPATH风险在未消费时撤回；同一到序的新execution851ea67e已获其前序定向受理并实际执行，尚在自身收尾。本Cover f10五身份及原一次A／形状来源检查范围未改，尚无新最终交窗、ticket、claim或stage/run。LS231059-v2因assert flags门可被优化移除而主动撤回；其同一后继到序的235126-v3已由本方独核并正式受理，旧合同按原字节保留，当前指针为admission-v2/successor-active.json。V3反向源码仅非assert flags拒绝、清继承PYTHON*和身份变化；1596源／6bin／18动作驱动／旧1067快照不变，1068current/archive匹配，固定Jvenv实际prepare-only0。两份完整入口副本的-O／-I均在校验前先消费后拒绝、重试FileExists，十基线前后相同；不重跑未变race。它不是本Cover当前运行权或第二并列槽，后续请求继续沿实际唯一尾传递。
+
+上一需求查找回合只核对并交付已有文档，未推动玩法；本轮按新原始入口和结构闭合证据记progress。全部CV-01–24／AC-01–22、逐点GrabPose、真实身体执行／恢复、同姿态物理／受击／枪口与实体头显验收仍未完成，目标继续active，公开v71不变。
