@@ -1,0 +1,673 @@
+--- /dev/null
++++ b/analysis/hammerburst-20261108/run_empty_normal_admission_v6.py
+@@ -0,0 +1,355 @@
++"""One frozen HB ordinary-empty-reload attempt; --prepare-only never stages or consumes admission."""
++import os
++import sys
++
++# This deliberately precedes argument, ticket, source and dependency validation.
++# The parent is created offline. Never unlink/recreate a consumed attempt.
++_CLAIM = 'C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\admission-v6\\claims\\hammerburst-prepared-20261110-010515-settings-alias.json'
++_PREPARE = sys.argv[1:] == ['--prepare-only']
++if not _PREPARE:
++    _fd = os.open(_CLAIM, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
++    try:
++        os.write(_fd, ('{"state":"consumed_unverified","pid":%d}\n' % os.getpid()).encode('ascii'))
++        os.fsync(_fd)
++    finally:
++        os.close(_fd)
++# END_EXCLUSIVE_BOOTSTRAP
++from pathlib import Path
++import hashlib,json,os,socket,subprocess,sys,time,importlib.util
++ROOT=Path(__file__).resolve().parents[2];E=ROOT/'analysis/hammerburst-20261108';O=ROOT/'analysis/solo-m1-20261028'
++PREFIX='empty-normal-settings-alias'
++_TICKET=Path('C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\admission-v6\\final-window-ticket.json')
++
++PREDECESSOR_THREAD='01a1bf64-8db6-7a20-9953-0e4a76532222'
++PREDECESSOR_CANDIDATE='equipment-controls-prepared-20261110-hod-beam7-tomb'
++PREDECESSOR_EXECUTION='051fe4654985183467ba7a694af8b7343ad30ddbde82c13b7770c92606a6a4eb'
++PREDECESSOR_ROOT=ROOT/'analysis/hod-20261109'
++PREDECESSOR_CLAIM=PREDECESSOR_ROOT/'claims/hod-beam7-execution.json'
++PREDECESSOR_RESULT=PREDECESSOR_ROOT/'beam7-execution-result.json'
++PREDECESSOR_PINS={'prepared':'dcb30643e5ff4ef6f8651396293f46b5e8b9d69d8294d1eca14a0c49ed7ca444','plan':'0a7ad2df8854bea66ef7f5184a7ae395b70cab420d24421448544c28cc0b4466','ready':'618ee7a23c95288dbf71fb39c5e0be16001fb8a84226929bd6e48b5f9c9a98aa','outer':'3f6635891856157bff44a98d82b4a52d2ea94e7b151bb5422f8288eb663a258e'}
++PREDECESSOR={'thread':PREDECESSOR_THREAD,'candidate':PREDECESSOR_CANDIDATE,'execution_sha256':PREDECESSOR_EXECUTION}
++
++CANCELLED_CASE={'case_id': 'HOD051-49912-134387215205673057', 'game': {'pid': 49912, 'creation_time': 134387215205673057, 'image': 'j:\\gearsvr\\gears.of.war.reloaded.v1.0.1.3816947-p2p\\gears of war reloaded\\binaries_x64\\gowde-steam.exe'}, 'launcher': {'pid': 35524, 'creation_time': 134387215114625654, 'image': 'j:\\gearsvr\\candidates\\6dof-unified\\runtime\\python\\python.exe'}, 'xr': {'pid': 8796, 'creation_time': 134387215578652914, 'image': 'c:\\users\\11\\.codex\\worktrees\\6dof-single\\gearsvr\\tools\\openxr-probe\\build-solo-m1-sim\\openxrposeprobe.exe'}, 'claim_pid': 46676, 'claim_sha256': 'cfb312a0074c22cef6513391550149b52f4f59f89ca55893df80c35471504b4c', 'terminal_sha256': '97d4fe95b1f805250a70d7738cb198b2a286ec522c6d6e59341c4e025ba4fa51', 'baseline_sha256': 'a66e1447469b78c869096ae43cbe851e51e5c8b091db4de4ff2e395293c8eeec', 'review_sha256': '2d5d4076b2ccc9e5ae30e45b4117270ba1a39e922bdda55e53dba351a856d027', 'evidence': {'normal_cleanup': {'path': 'C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hod-20261109\\beam7-game49912-closeout\\0-continuous-stereo-49912-20261110-021237-820fae70.json', 'sha256': '7f238793587d72bc9805cd5cfee0aa44fe8db59abe91b5e13789adea40d7e4be'}, 'launcher_done': {'path': 'C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hod-20261109\\beam7-game49912-closeout\\2-done.json', 'sha256': 'b522b3368a42c05ff563f3187b27167e6cefeb2b547fa3d0405430c1604ea121'}, 'paired_review': {'path': 'C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hod-20261109\\49912-personal-paired-review.json', 'sha256': '84bcabba6bd4ab55f63413e0407218c9fd1c4d9462fb77eb1dcbd9e6001c763a'}, 'encode': {'path': 'C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hod-20261109\\49912-encode-terminal.json', 'sha256': '78859459fd4b8b9f71ac7b5a4d806b9fd5750da412f51df54ddc300271ba8bb6'}, 'retention': {'path': 'C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hod-20261109\\49912-retention.json', 'sha256': '053364d2e75ff4a36bc7a669e7a3864efa25085672f7ebfa4fe2b69e1d130be8'}, 'raw_restoration': {'path': 'C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hod-20261109\\runtime-49912-baseline-restoration.json', 'sha256': 'd104da39a5a50beb9f16dc8355825709da261c867e15880d443af3b92075e5e3'}, 'inner_restoration': {'path': 'C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hod-20261109\\beam7-game49912-closeout\\9-beam7-run-restoration-1794247984692406300.json', 'sha256': '74cb324163155659924ec17411f026e9b6afb5ba9774a8709386063ae1f3789c'}}, 'launcher_session': {'path': 'C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hod-20261109\\beam7-game49912-closeout\\1-launcher-session.json', 'sha256': 'fb3d75b0ef17367998ea3823694127b31655bec5714ae25ffe35c3e06ad3c777'}, 'profile_manifest': {'path': 'C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hod-20261109\\beam7-profile-backup-1794247902396938700\\all-private-saves.json', 'sha256': '7b7436aff8ee81c84d9fe33d59132d140705d057cf602e1a72dc617dd8d0828c'}}
++
++def load(p):return json.loads(Path(p).read_text(encoding='utf-8-sig'))
++def sha(p):
++ with Path(p).open('rb') as f:return hashlib.file_digest(f,'sha256').hexdigest()
++def clean_environment(environment):
++ return {key:value for key,value in environment.items() if not key.upper().startswith(('GEARS','PYTHON','XR','OPENXR'))}
++
++def checked_reference(reference,root):
++ path=Path(reference['path'])
++ if path.is_symlink() or not path.resolve().is_relative_to(root.resolve()) or sha(path)!=reference['sha256']:
++  raise RuntimeError('Changed or foreign predecessor evidence')
++ return load(path)
++
++def require_fields(value,expected,label):
++ if not isinstance(value,dict) or any(value.get(key)!=item for key,item in expected.items()):
++  raise RuntimeError('Wrong '+label+' identity')
++
++def verify_normal_predecessor(queue,window,identity,proof,plan):
++ require_fields(queue.get('expected_predecessor'),PREDECESSOR,'queue predecessor')
++ require_fields(window.get('predecessor'),PREDECESSOR,'ticket predecessor')
++ if window.get('predecessor_thread')!=PREDECESSOR_THREAD:raise RuntimeError('Wrong predecessor thread')
++ href=window['handoff_evidence'];handoff=checked_reference(href,PREDECESSOR_ROOT)
++ require_fields(handoff,dict(from_thread=PREDECESSOR_THREAD,to_thread='01a1bb03-7453-7530-afcd-2fb1ea7e7a51',predecessor_candidate=PREDECESSOR_CANDIDATE,predecessor_execution_sha256=PREDECESSOR_EXECUTION,successor_identity=identity),'raw final handoff')
++ flags=('unique_successor','runtime_window_released','all_owned_jobs_terminal','independent_idle','normal_cleanup_verified','paired_review_complete','encoders_terminal','restoration_verified','retention_terminal')
++ if any(handoff.get(key) is not True for key in flags):raise RuntimeError('Incomplete actual final handoff')
++ cref=handoff['predecessor_claim'];tref=handoff['predecessor_terminal']
++ if Path(cref['path']).resolve()!=PREDECESSOR_CLAIM.resolve() or Path(tref['path']).resolve()!=PREDECESSOR_RESULT.resolve():raise RuntimeError('Old or foreign attempt paths')
++ claim=checked_reference(cref,PREDECESSOR_ROOT);terminal=checked_reference(tref,PREDECESSOR_ROOT)
++ expected=dict(candidate=PREDECESSOR_CANDIDATE,execution_sha256=PREDECESSOR_EXECUTION,candidate_hashes=PREDECESSOR_PINS)
++ require_fields(claim,expected,'actual consumed predecessor claim');require_fields(terminal,expected,'actual terminal result')
++ if type(claim.get('pid')) is not int or claim['pid']<=0 or claim.get('state')!='consumed_baseline_verified_before_stage':raise RuntimeError('Unlinked or unconsumed predecessor claim')
++ if terminal.get('pid')!=claim['pid'] or terminal.get('started') is not True or type(terminal.get('outer_exit')) is not int or terminal.get('normal_baseline_restoration') is not True or terminal.get('independent_idle_after') is not True:
++  raise RuntimeError('Active, unstarted or unclean predecessor attempt')
++ require_fields(terminal.get('restoration'),dict(all_ten_exact=True,public_state_written=False),'terminal restoration')
++ bref=claim['baseline_receipt'];baseline=checked_reference(bref,PREDECESSOR_ROOT)
++ if Path(bref['path']).resolve()!=Path(claim['baseline_folder']).resolve()/'receipt.json' or terminal.get('baseline_receipt')!=bref['path'] or terminal.get('baseline_receipt_sha256')!=bref['sha256']:
++  raise RuntimeError('Predecessor baseline/terminal link mismatch')
++ before=baseline['identity'];require_fields(before,dict(expected,pid=claim['pid'],phase='before_stage',before_native_copy=True),'predecessor raw baseline')
++ for key in ('handoff','handoff_sha256','predecessor_thread'):
++  if before.get(key)!=claim.get(key) or terminal.get(key)!=claim.get(key):raise RuntimeError('Predecessor restoration ownership changed')
++ rows=baseline.get('baselines',[]);paths={item['path'] for item in plan['baseline_files']}
++ if len(rows)!=10 or {item['path'] for item in rows}!=paths or len({item['label'] for item in rows})!=10:raise RuntimeError('Wrong predecessor ten raw paths')
++ for row in rows:
++  if type(row.get('existed')) is not bool or row.get('read_only')!=(row['label']=='public_state'):raise RuntimeError('Unknown predecessor baseline policy')
++  if row['existed']:
++   saved=Path(row['saved'])
++   if not saved.resolve().is_relative_to(Path(claim['baseline_folder']).resolve()) or sha(saved)!=row['sha256']:raise RuntimeError('Lost predecessor restoration original')
++  elif row.get('saved') is not None or row.get('sha256') is not None:raise RuntimeError('Wrong absent predecessor baseline')
++  own=proof['files'][row['path']]
++  if own['exists']!=row['existed'] or own['sha256']!=row['sha256']:raise RuntimeError('HB baseline differs from restored predecessor raw bytes')
++ binding=dict(handoff_sha256=href['sha256'],claim_sha256=cref['sha256'],terminal_sha256=tref['sha256'],baseline_sha256=bref['sha256'])
++ require_fields(proof.get('predecessor_binding'),binding,'HB baseline restoration responsibility')
++ review=checked_reference(handoff['review'],PREDECESSOR_ROOT)
++ require_fields(review,dict(candidate=PREDECESSOR_CANDIDATE,execution_sha256=PREDECESSOR_EXECUTION,claim_sha256=cref['sha256'],terminal_sha256=tref['sha256'],baseline_sha256=bref['sha256']),'independent closeout review')
++ if any(review.get(key) is not True for key in flags if key not in ('unique_successor','runtime_window_released')):raise RuntimeError('Incomplete independent cleanup/media review')
++ evidence=review['evidence'];required={'normal_cleanup','launcher_done','paired_review','encode','retention'}
++ if set(evidence)!=required:raise RuntimeError('Missing independent terminal evidence roles')
++ bodies={key:checked_reference(value,PREDECESSOR_ROOT) for key,value in evidence.items()}
++ cleanup=bodies['normal_cleanup'];done=bodies['launcher_done']
++ if not all(cleanup.get(key) is True for key in ('native_cleanup_verified','entry_restore_verified')) or not cleanup.get('vr_gamepad_cleanup',{}).get('restored') or not cleanup.get('unified_weapons_cleanup',{}).get('drained') or cleanup.get('xr_exit_code')!=0 or done.get('launcher_exit_code')!=0 or done.get('remaining_owned_game','unknown') is not None:
++  raise RuntimeError('Predecessor normal runtime cleanup unproven')
++ game=cleanup.get('game_identity',{})
++ if type(game.get('pid')) is not int or not game.get('creation_time') or handoff.get('predecessor_game')!=game or review.get('game')!=game:raise RuntimeError('Actual predecessor game identity missing')
++ paired=bodies['paired_review']
++ if paired.get('game')!=game or paired.get('personally_reviewed') is not True or not paired.get('overview_pages') or not paired.get('raw_images'):raise RuntimeError('Full paired review unproven')
++ if bodies['encode'].get('game')!=game or bodies['encode'].get('exit_code')!=0:raise RuntimeError('Encoder not terminal zero')
++ if done.get('launcher_pid')!=cleanup.get('owner_identity',{}).get('pid'):raise RuntimeError('Wrong launcher cleanup attempt')
++ retention=bodies['retention']
++ if not any(row.get('pid')==game['pid'] and row.get('creation')==game['creation_time'] for row in retention.get('keep_sessions',[])):raise RuntimeError('Retention omits actual predecessor session')
++ if retention.get('dry_run') is not False or retention.get('errors')!=[] or retention.get('deferred') or retention.get('maximum_completed_sessions')!=3 or retention.get('maximum_age_hours')!=48:raise RuntimeError('Retention incomplete')
++ local=checked_reference(dict(path=queue['predecessor_review'],sha256=queue['predecessor_review_sha256']),E)
++ require_fields(local,dict(binding,predecessor=PREDECESSOR,all_predecessor_evidence_checked=True),'HB independent predecessor review')
++ return binding
++
++def verify_cancelled_predecessor(queue,window,identity,proof,plan):
++ require_fields(queue.get('expected_predecessor'),PREDECESSOR,'queue predecessor')
++ require_fields(window.get('predecessor'),PREDECESSOR,'ticket predecessor')
++ if window.get('predecessor_thread')!=PREDECESSOR_THREAD:raise RuntimeError('Wrong predecessor thread')
++ href=window['handoff_evidence'];handoff=checked_reference(href,PREDECESSOR_ROOT)
++ require_fields(handoff,dict(from_thread=PREDECESSOR_THREAD,to_thread='01a1bb03-7453-7530-afcd-2fb1ea7e7a51',predecessor_candidate=PREDECESSOR_CANDIDATE,predecessor_execution_sha256=PREDECESSOR_EXECUTION,successor_identity=identity),'raw final handoff')
++ flags=('unique_successor','runtime_window_released','all_owned_jobs_terminal','independent_idle','startup_cancelled_cleanup_verified','paired_review_complete','encoders_terminal','restoration_verified','retention_terminal')
++ if any(handoff.get(key) is not True for key in flags):raise RuntimeError('Incomplete actual final handoff')
++ require_fields(handoff,dict(exception_case=CANCELLED_CASE['case_id'],cleanup_class='native_never_started_startup_cancelled',normal_cleanup_verified=False),'case-specific cancellation final')
++ if handoff['predecessor_claim']['sha256']!=CANCELLED_CASE['claim_sha256'] or handoff['predecessor_terminal']['sha256']!=CANCELLED_CASE['terminal_sha256']:raise RuntimeError('Not actual HOD49912 consumed attempt')
++ cref=handoff['predecessor_claim'];tref=handoff['predecessor_terminal']
++ if Path(cref['path']).resolve()!=PREDECESSOR_CLAIM.resolve() or Path(tref['path']).resolve()!=PREDECESSOR_RESULT.resolve():raise RuntimeError('Old or foreign attempt paths')
++ claim=checked_reference(cref,PREDECESSOR_ROOT);terminal=checked_reference(tref,PREDECESSOR_ROOT)
++ expected=dict(candidate=PREDECESSOR_CANDIDATE,execution_sha256=PREDECESSOR_EXECUTION,candidate_hashes=PREDECESSOR_PINS)
++ require_fields(claim,expected,'actual consumed predecessor claim');require_fields(terminal,expected,'actual terminal result')
++ if type(claim.get('pid')) is not int or claim['pid']<=0 or claim.get('state')!='consumed_baseline_verified_before_stage':raise RuntimeError('Unlinked or unconsumed predecessor claim')
++ if terminal.get('pid')!=claim['pid'] or terminal.get('started') is not True or type(terminal.get('outer_exit')) is not int or terminal.get('normal_baseline_restoration') is not True or terminal.get('independent_idle_after') is not True:
++  raise RuntimeError('Active, unstarted or unclean predecessor attempt')
++ require_fields(terminal.get('restoration'),dict(all_ten_exact=True,public_state_written=False),'terminal restoration')
++ bref=claim['baseline_receipt'];baseline=checked_reference(bref,PREDECESSOR_ROOT)
++ if Path(bref['path']).resolve()!=Path(claim['baseline_folder']).resolve()/'receipt.json' or terminal.get('baseline_receipt')!=bref['path'] or terminal.get('baseline_receipt_sha256')!=bref['sha256']:
++  raise RuntimeError('Predecessor baseline/terminal link mismatch')
++ before=baseline['identity'];require_fields(before,dict(expected,pid=claim['pid'],phase='before_stage',before_native_copy=True),'predecessor raw baseline')
++ for key in ('handoff','handoff_sha256','predecessor_thread'):
++  if before.get(key)!=claim.get(key) or terminal.get(key)!=claim.get(key):raise RuntimeError('Predecessor restoration ownership changed')
++ rows=baseline.get('baselines',[]);paths={item['path'] for item in plan['baseline_files']}
++ if len(rows)!=10 or {item['path'] for item in rows}!=paths or len({item['label'] for item in rows})!=10:raise RuntimeError('Wrong predecessor ten raw paths')
++ for row in rows:
++  if type(row.get('existed')) is not bool or row.get('read_only')!=(row['label']=='public_state'):raise RuntimeError('Unknown predecessor baseline policy')
++  if row['existed']:
++   saved=Path(row['saved'])
++   if not saved.resolve().is_relative_to(Path(claim['baseline_folder']).resolve()) or sha(saved)!=row['sha256']:raise RuntimeError('Lost predecessor restoration original')
++  elif row.get('saved') is not None or row.get('sha256') is not None:raise RuntimeError('Wrong absent predecessor baseline')
++  own=proof['files'][row['path']]
++  if own['exists']!=row['existed'] or own['sha256']!=row['sha256']:raise RuntimeError('HB baseline differs from restored predecessor raw bytes')
++ binding=dict(handoff_sha256=href['sha256'],claim_sha256=cref['sha256'],terminal_sha256=tref['sha256'],baseline_sha256=bref['sha256'],exception_case=CANCELLED_CASE['case_id'])
++ require_fields(proof.get('predecessor_binding'),binding,'HB baseline restoration responsibility')
++ if handoff['review']['sha256']!=CANCELLED_CASE['review_sha256'] or bref['sha256']!=CANCELLED_CASE['baseline_sha256']:raise RuntimeError('Not actual cancellation review/baseline')
++ review=checked_reference(handoff['review'],PREDECESSOR_ROOT)
++ require_fields(review,dict(normal_cleanup_verified=False,cleanup_class='native_never_started_startup_cancelled',native_started=False,startup_cancelled=True,native_or_XR_normal_pass_claimed=False,xr_exit_code=1),'honest cancelled review')
++ require_fields(review,dict(candidate=PREDECESSOR_CANDIDATE,execution_sha256=PREDECESSOR_EXECUTION,claim_sha256=cref['sha256'],terminal_sha256=tref['sha256'],baseline_sha256=bref['sha256']),'independent closeout review')
++ if any(review.get(key) is not True for key in flags if key not in ('unique_successor','runtime_window_released')):raise RuntimeError('Incomplete independent cleanup/media review')
++ evidence=review['evidence']
++ if evidence!=CANCELLED_CASE['evidence']:raise RuntimeError('Cancellation raw evidence is not exact observed case')
++ bodies={key:checked_reference(value,PREDECESSOR_ROOT) for key,value in evidence.items()}
++ cleanup=bodies['normal_cleanup'];done=bodies['launcher_done'];raw_restore=bodies['raw_restoration'];inner=bodies['inner_restoration']
++ game=CANCELLED_CASE['game']
++ if handoff.get('predecessor_game')!=game or review.get('game')!=game or cleanup.get('game_identity')!=game or cleanup.get('owner_identity')!=CANCELLED_CASE['launcher'] or cleanup.get('xr_identity')!=CANCELLED_CASE['xr'] or claim['pid']!=CANCELLED_CASE['claim_pid']:raise RuntimeError('Wrong exact cancelled process identities')
++ require_fields(cleanup,dict(phase='cancelled',native_started=False,startup_cancelled=True,passed=False,xr_exit_code=1,xr_forced_cleanup_reason=None,xr_cleanup_actions=['stop_signaled','wait']),'actual cancelled session')
++ if any(cleanup.get(key) is not None for key in ('native_cleanup_verified','entry_restore_verified','unified_weapons_cleanup')) or cleanup.get('vr_gamepad_cleanup',{}).get('restored') is not True:raise RuntimeError('Native-not-started or pad restoration unproven')
++ exit_evidence=cleanup.get('session_exit_evidence',{})
++ require_fields(exit_evidence,dict(session_exit_evidence=True,last_state=8,end_session_succeeded=False,terminal_exiting_observed=True,terminal_exit_without_end=True,objects_destroyed=True,shutdown_completed=True),'actual XR cancelled destruction')
++ launcher=checked_reference(CANCELLED_CASE['launcher_session'],PREDECESSOR_ROOT)
++ require_fields(launcher,dict(phase='cancelled_before_activation',native_activated=False,game_identity=game,owner_identity=CANCELLED_CASE['launcher'],control_exit_code=0),'actual cancelled launcher')
++ require_fields(launcher.get('playground_cleanup'),dict(loaded=True,shutdown_code=0,entry_restored=True,passed=True),'activated Playground shutdown')
++ require_fields(launcher.get('prime_cleanup'),dict(cancelled=True,entry_restore_verified=True),'prime entry restoration')
++ require_fields(done,dict(launcher_pid=CANCELLED_CASE['launcher']['pid'],launcher_exit_code=0,remaining_owned_game=None),'actual cancelled done')
++ require_fields(raw_restore,dict(game=game,launcher=CANCELLED_CASE['launcher'],all10_raw_restoration_verified=True,private_save_originals_exact=9,private_save_file_set_exact=True,public_state_written=False,remaining_expected_processes=[],native_or_XR_normal_pass_claimed=False),'actual raw restoration')
++ observed=raw_restore.get('all10_current_exact',[])
++ if len(observed)!=10 or {row['path'] for row in observed}!=paths or any(row.get('exact') is not True for row in observed):raise RuntimeError('Cancelled raw10 restoration incomplete')
++ for row in observed:
++  own=proof['files'][row['path']]
++  if row['existed']!=own['exists'] or row['sha256']!=own['sha256']:raise RuntimeError('Cancelled raw10 bytes do not match own restoration responsibility')
++ require_fields(inner,dict(normal_source_restoration=True,private_saves_restored=True,independent_idle=True),'actual private restore report')
++ require_fields(inner.get('private_restoration'),dict(restored=True,all_exact=True,original_files=9,owner_original_files_touched=False,profile_contents_edited_for_gameplay=False),'private original nine restore')
++ verify_cancelled_private_files(inner)
++ expected_processes=[CANCELLED_CASE['launcher'],game,CANCELLED_CASE['xr']]
++ observed_processes=review.get('exact_process_checks',[])
++ if len(observed_processes)!=3 or any(not any(row.get('expected')==expected and row.get('currently_same_process') is False for row in observed_processes) for expected in expected_processes):raise RuntimeError('Exact cancellation process observations incomplete')
++ if not cancelled_processes_gone():raise RuntimeError('Cancelled case still has a process; no stage or waiver')
++ paired=bodies['paired_review']
++ if paired.get('game')!=game or paired.get('personally_reviewed') is not True or not paired.get('overview_pages') or not paired.get('raw_images'):raise RuntimeError('Full paired review unproven')
++ if bodies['encode'].get('game')!=game or bodies['encode'].get('exit_code')!=0:raise RuntimeError('Encoder not terminal zero')
++ if done.get('launcher_pid')!=cleanup.get('owner_identity',{}).get('pid'):raise RuntimeError('Wrong launcher cleanup attempt')
++ retention=bodies['retention']
++ if not any(row.get('pid')==game['pid'] and row.get('creation')==game['creation_time'] for row in retention.get('keep_sessions',[])):raise RuntimeError('Retention omits actual predecessor session')
++ if retention.get('dry_run') is not False or retention.get('errors')!=[] or retention.get('deferred') or retention.get('maximum_completed_sessions')!=3 or retention.get('maximum_age_hours')!=48:raise RuntimeError('Retention incomplete')
++ local=checked_reference(dict(path=queue['predecessor_review'],sha256=queue['predecessor_review_sha256']),E)
++ require_fields(local,dict(binding,predecessor=PREDECESSOR,all_predecessor_evidence_checked=True),'HB independent predecessor review')
++ return binding
++
++def verify_cancelled_private_files(inner):
++ ref=CANCELLED_CASE['profile_manifest'];snapshot=inner['private_snapshot']
++ if snapshot.get('full_manifest')!=ref['path'] or snapshot.get('full_manifest_sha256')!=ref['sha256'] or snapshot.get('all_files')!=9:raise RuntimeError('Wrong cancelled private snapshot')
++ manifest=checked_reference(ref,PREDECESSOR_ROOT)
++ private=ROOT/'analysis/instances/solo-m1-1028d/LocalAppData/Coalition/WarGame'
++ save_root=private/'SaveData';settings=private/'Config/76561197960271872EngineUserSettings.ini'
++ if Path(manifest['save_root']).resolve()!=save_root.resolve() or Path(manifest['settings']).resolve()!=settings.resolve():raise RuntimeError('Wrong private profile roots')
++ rows=manifest.get('files',[]);source_paths={Path(row['source']).resolve() for row in rows}
++ if len(rows)!=9 or len(source_paths)!=9 or source_paths!={p.resolve() for p in save_root.rglob('*') if p.is_file()}|{settings.resolve()}:raise RuntimeError('Private file set was not restored')
++ for row in rows:
++  source=Path(row['source']);backup=Path(row['backup'])
++  if source.is_symlink() or backup.is_symlink() or not source.resolve().is_relative_to(private.resolve()) or not backup.resolve().is_relative_to(Path(ref['path']).parent.resolve()) or sha(source)!=row['sha256'] or sha(backup)!=row['sha256']:raise RuntimeError('Cancelled private original bytes differ')
++
++def cancelled_processes_gone():
++ # Only this observed attempt; no process control or generic cleanup waiver.
++ result=subprocess.run(['powershell','-NoProfile','-NonInteractive','-Command',"Get-CimInstance Win32_Process -ErrorAction Stop -Filter 'ProcessId=49912 OR ProcessId=35524 OR ProcessId=8796 OR ProcessId=46676' | Select-Object -ExpandProperty ProcessId"],capture_output=True,text=True,timeout=10,creationflags=subprocess.CREATE_NO_WINDOW)
++ if result.returncode:raise RuntimeError('Cannot establish cancelled process termination')
++ return not result.stdout.strip()
++
++def verify_predecessor(queue,window,identity,proof,plan):
++ handoff=checked_reference(window['handoff_evidence'],PREDECESSOR_ROOT)
++ if handoff.get('exception_case') is None:return verify_normal_predecessor(queue,window,identity,proof,plan)
++ if handoff.get('exception_case')!=CANCELLED_CASE['case_id']:raise RuntimeError('Unsupported predecessor exception')
++ return verify_cancelled_predecessor(queue,window,identity,proof,plan)
++
++
++
++def bind_attempt(identity,proof_reference,binding):
++ path=Path(_CLAIM);before=load(path)
++ if before!=dict(state='consumed_unverified',pid=os.getpid()):raise RuntimeError('Exclusive attempt owner changed')
++ linked=dict(before,state='consumed_baseline_handoff_verified',identity=identity,baseline_evidence=proof_reference,predecessor_binding=binding)
++ with path.open('r+',encoding='utf-8') as stream:
++  if json.load(stream)!=before:raise RuntimeError('Exclusive claim raced')
++  stream.seek(0);json.dump(linked,stream,indent=2);stream.truncate();stream.flush();os.fsync(stream.fileno())
++ if load(path)!=linked:raise RuntimeError('Attempt binding did not persist')
++ return linked
++
++def verify_attempt(linked):
++ if load(_CLAIM)!=linked or sha(linked['baseline_evidence']['path'])!=linked['baseline_evidence']['sha256']:
++  raise RuntimeError('Restoration responsibility changed')
++
++def admit(queue,ready,plan,actual_host,actual_root):
++ assert actual_host.casefold()==plan['host']['computer_name'].casefold() and plan['host']['codex_host_id']=='local'
++ assert Path(actual_root).resolve()==Path(plan['host']['worktree']).resolve()
++ assert queue['state']=='final_handoff_received_not_staged' and queue['final_handoff_received'] is True
++ assert queue['accepted'] is True and queue['window_owned'] is True
++ assert not queue['staged'] and not queue['recorded']
++ assert queue['candidate']==Path(ready['candidate']).name==Path(plan['candidate']).name
++ assert queue['prepared_sha256']==ready['prepared_sha256']==plan['prepared_sha256']
++ assert queue['ready_sha256']==ready['_actual_sha256'] and queue['plan_sha256']==ready['plan_sha256']
++ require_fields(queue.get('expected_predecessor'),PREDECESSOR,'queue predecessor')
++ assert queue['predecessor_review'] and queue['predecessor_review_sha256']
++ local=checked_reference(dict(path=queue['predecessor_review'],sha256=queue['predecessor_review_sha256']),E)
++ require_fields(local,dict(predecessor=PREDECESSOR,all_predecessor_evidence_checked=True),'queue independent current predecessor review')
++ return True
++
++def prepare():
++ assert sha(PREDECESSOR_ROOT/'beam7-execution.json')==PREDECESSOR_EXECUTION
++ ready_path=E/'empty-normal-admission-v6-ready.json';ready=load(ready_path);ready['_actual_sha256']=sha(ready_path);plan_path=Path(ready['plan']);assert sha(plan_path)==ready['plan_sha256'];plan=load(plan_path)
++ assert socket.gethostname().casefold()==plan['host']['computer_name'].casefold()
++ assert ROOT.resolve()==Path(plan['host']['worktree']).resolve() and plan['host']['codex_host_id']=='local'
++ assert sha(__file__)==plan['entry_sha256']==ready['entry_sha256']
++ target=Path(plan['candidate']);assert target.parent==O and target.name=='hammerburst-prepared-20261110-010515-settings-alias'
++ assert sha(target/'prepared.json')==ready['prepared_sha256']==plan['prepared_sha256'];record=load(target/'prepared.json')
++ for rel,digest in record['source_sha256'].items():assert sha(target/'source'/rel)==digest,rel
++ for rel,digest in record['native_source_sha256'].items():assert sha(target/'native-source'/rel)==digest,rel
++ for key,b in record['builds'].items():assert sha(b['saved'])==b['sha256'],key
++ assert sha(plan['runtime_inputs_receipt'])==plan['runtime_inputs_sha256'];inputs=load(plan['runtime_inputs_receipt'])
++ for path,digest in inputs['sha256'].items():assert sha(path)==digest,path
++ boundary=load(plan['runtime_python_boundary']['path']);assert sha(plan['runtime_python_boundary']['path'])==plan['runtime_python_boundary']['sha256']
++ for rel,digest in boundary['files'].items():assert sha(ROOT/rel)==sha(Path(boundary['archive'])/rel)==digest,rel
++ for path,digest in plan['entry_dependencies'].items():assert sha(path)==digest,path
++ host_path=Path(plan['host_dependencies']['path']);assert sha(host_path)==plan['host_dependencies']['sha256'];host_deps=load(host_path)
++ for path,digest in host_deps['files'].items():assert sha(path)==digest,path
++ for name,expected in host_deps['module_origins'].items():
++  module=importlib.import_module(name);assert Path(module.__spec__.origin).resolve()==Path(expected['path']).resolve();assert sha(module.__spec__.origin)==expected['sha256']
++ import PIL,numpy
++ assert PIL.__version__==host_deps['versions']['Pillow'] and numpy.__version__==host_deps['versions']['numpy']
++ assert sha(plan['selected_game_path'])==plan['selected_game_sha256']
++ assert Path(sys.executable).resolve()==Path(plan['review_interpreter']['path']).resolve() and sha(sys.executable)==plan['review_interpreter']['sha256']
++ return ready,plan,record
++
++def verify_prebirth_failure(done,worker,session):
++ if done.get('session_report') or not isinstance(done.get('launcher_exit_code'),int) or done['launcher_exit_code']==0:
++  raise RuntimeError('Not an explicit failed startup without a runtime report')
++ if done.get('remaining_owned_game','unknown') is not None or done.get('launcher_pid')!=worker.get('launcher_pid'):
++  raise RuntimeError('Startup ownership or game absence is unproven')
++ owner=session.get('owner_identity')
++ if not isinstance(owner,dict) or owner.get('pid')!=worker.get('launcher_pid') or not owner.get('creation_time') or not owner.get('image'):
++  raise RuntimeError('Missing exact startup launcher identity')
++ if session.get('phase')!='incomplete' or session.get('game_identity') or not session.get('error') or session.get('reservation_failure_cleanup',{}).get('status')!='no_birth_receipt':
++  raise RuntimeError('Game-free reservation failure is unproven; retain manual cleanup duty')
++ return dict(owner_identity=owner,startup_error=session['error'],game_born=False,launcher_exit=done['launcher_exit_code'])
++
++def main():
++ assert Path.cwd().resolve()==ROOT
++ if not (sys.flags.optimize==0 and sys.flags.dont_write_bytecode and sys.flags.ignore_environment and sys.flags.no_user_site and sys.flags.utf8_mode and not sys.flags.isolated):raise RuntimeError('Exact -E -s -B -X utf8 without -O/-I required')
++ assert _PREPARE or sys.argv[1:]==['--run','--window-ticket',str(_TICKET)]
++ cleaned=clean_environment(os.environ);os.environ.clear();os.environ.update(cleaned)
++ ready,plan,record=prepare()
++ os.environ.update(plan['environment'])
++ if _PREPARE:
++  print(json.dumps(dict(prepared=Path(plan['candidate']).name,host=socket.gethostname(),static_passed=True,staged=False,started=False,shared_runtime_queried=False,once_claimed=False)));return 0
++ queue_path=E/'settings-alias-queue.json';queue=load(queue_path);admit(queue,ready,plan,socket.gethostname(),ROOT)
++ assert sha(queue['predecessor_review'])==queue['predecessor_review_sha256']
++ window=load(_TICKET);identity=dict(prepared=Path(plan['candidate']).name,prepared_sha256=ready['prepared_sha256'],plan_sha256=ready['plan_sha256'],ready_sha256=ready['_actual_sha256'],entrypoint_sha256=sha(__file__))
++ assert window['identity']==identity and window['owner_thread']=='01a1bb03-7453-7530-afcd-2fb1ea7e7a51'
++ assert window['predecessor_thread']!=window['owner_thread']
++ assert all(window[k] is True for k in ['accepted','final_unique_handoff_received','runtime_window_owned','predecessor_terminal_verified','baseline_verified'])
++ for key in ['handoff_evidence','baseline_evidence']:assert sha(window[key]['path'])==window[key]['sha256']
++ proof=load(window['baseline_evidence']['path']);assert proof['identity']==identity and proof['before_stage'] is True
++ predecessor_binding=verify_predecessor(queue,window,identity,proof,plan)
++ specs={x['path']:x for x in plan['baseline_files']};assert set(proof['files'])==set(specs) and len(specs)==10
++ baseline={'files':[]}
++ for path,item in proof['files'].items():
++  file=Path(path);assert not file.is_symlink() and type(item['exists']) is bool
++  row=dict(path=path,exists=item['exists'],sha256=item['sha256'],public_read_only=specs[path]['public_read_only'])
++  if item['exists']:
++   saved=Path(item['saved']);assert saved.resolve().is_relative_to(E.resolve());assert sha(file)==sha(saved)==item['sha256'];row['backup']=str(saved)
++  else:assert not file.exists()
++  baseline['files'].append(row)
++ linked_attempt=bind_attempt(identity,window['baseline_evidence'],predecessor_binding)
++ helper=Path(plan['selection_helper']);spec=importlib.util.spec_from_file_location('hb_existing_selection_helper',helper);selection=importlib.util.module_from_spec(spec);spec.loader.exec_module(selection)
++ selection.validate(dict(game_path=plan['selected_game_path'],game_sha256=plan['selected_game_sha256'],settings_path=plan['selected_settings_path']),ROOT)
++ sys.path.insert(0,str(O));from retain_test_media import idle
++ assert idle(),'Runtime active: no claim/stage'
++ assert idle(),'Runtime appeared: no stage'
++ verify_attempt(linked_attempt)
++ stage=subprocess.run([sys.executable,'-E','-s','-B','-X','utf8',str(O/'stage_lancer_private.py'),queue['candidate']],cwd=ROOT,capture_output=True,text=True)
++ (E/(PREFIX+'-stage.log')).write_text(stage.stdout+stage.stderr,encoding='utf-8');assert stage.returncode==0,stage.stderr
++ queue.update(state='running_owned',staged=True,started_ns=time.time_ns(),baseline=window['baseline_evidence']['path']);queue_path.write_text(json.dumps(queue,indent=2))
++ instance=ROOT/'analysis/instances/solo-m1-1028d';config=instance/'config.json';config.write_bytes(selection.config_bytes(config.read_bytes(),dict(game_path=plan['selected_game_path'],game_sha256=plan['selected_game_sha256'],settings_path=plan['selected_settings_path']),ROOT))
++ env=dict(os.environ)
++ for name in plan['clear_environment']:env.pop(name,None)
++ env.update(plan['environment'])
++ with (E/(PREFIX+'-run.log')).open('w',encoding='utf-8') as log:
++  launched_wall=time.time();deadline=time.monotonic()+plan['maximum_seconds'];process=subprocess.Popen([sys.executable,'-E','-s','-B','-X','utf8',str(O/'run_hammerburst_check.py')],cwd=ROOT,env=env,stdout=log,stderr=subprocess.STDOUT,creationflags=subprocess.CREATE_NO_WINDOW|subprocess.BELOW_NORMAL_PRIORITY_CLASS)
++  while process.poll() is None and time.monotonic()<deadline:time.sleep(.25)
++  deadline_stop=False
++  if process.poll() is None:
++   sys.path.insert(0,str(ROOT/'tools/native-capture'));from run_stereo_continuous import WindowsControl
++   worker_path=O/'worker.json';worker=load(worker_path);session=load(instance/'launcher-session.json');owner=session.get('owner_identity')
++   assert worker_path.stat().st_mtime>=launched_wall and owner and owner['pid']==worker['launcher_pid'] and WindowsControl().identity(owner['pid'])==owner
++   assert load(instance/'manifest.json')['playground_sha256']==record['builds']['playground']['sha256']
++   (O/'stop-basic').write_text('Owned HB230535360second boundary; existing normal stop requested',encoding='utf-8');deadline_stop=True
++  result=process.wait(timeout=120)
++ done_path=O/'done.json';done=load(done_path);worker=load(O/'worker.json');assert done_path.stat().st_mtime>=launched_wall
++ if not done.get('session_report'):
++  failed_path=instance/'launcher-session.json';assert failed_path.stat().st_mtime>=launched_wall
++  failure=verify_prebirth_failure(done,worker,load(failed_path))
++  assert idle(),'Startup failure not idle: no restoration'
++  verify_attempt(linked_attempt);checks=selection.restore(baseline,ROOT)
++  receipt=dict(failure,exit_code=result or done['launcher_exit_code'],at_ns=time.time_ns(),startup_prebirth_verified=True,baseline_checks=checks,normal_game_cleanup_not_applicable=True,paired_review_encode_not_applicable=True,game_success_not_inferred=True,review_retention_handoff_still_required=True)
++  (E/(PREFIX+'-run-exit.json')).write_text(json.dumps(receipt,indent=2))
++  queue.update(state='startup_failed_terminal_review_pending',runner_exit=receipt['exit_code'],startup_error=failure['startup_error']);queue_path.write_text(json.dumps(queue,indent=2))
++  print(json.dumps(receipt));return receipt['exit_code']
++ report_path=Path(done['session_report']);report=load(report_path);assert report_path.stat().st_mtime>=launched_wall
++ assert report['owner_identity']['pid']==worker['launcher_pid']
++ assert Path(report['game_identity']['image']).resolve()==Path(plan['selected_game_path']).resolve()
++ assert report['diagnostics_artifacts']['native_sha256']==record['builds']['native']['sha256'] and report['diagnostics_artifacts']['xr_sha256']==record['builds']['sim_xr']['sha256']
++ assert report['native_cleanup_verified'] and report['entry_restore_verified'] and report['vr_gamepad_cleanup']['restored'] and report['unified_weapons_cleanup']['drained']
++ assert report['xr_exit_code']==0 and done['launcher_exit_code']==0 and done['remaining_owned_game'] is None
++ assert idle(),'Runtime not idle: no restoration'
++ verify_attempt(linked_attempt);checks=selection.restore(baseline,ROOT)
++ receipt=dict(exit_code=result,at_ns=time.time_ns(),deadline_stop=deadline_stop,game=report['game_identity'],session_report=str(report_path),normal_cleanup_verified=True,baseline_checks=checks,paired_review_encode_retention_still_required=True,game_success_not_inferred=True)
++ (E/(PREFIX+'-run-exit.json')).write_text(json.dumps(receipt,indent=2));queue.update(state='runner_terminal_review_pending',runner_exit=result,runtime_report=str(report_path),game=report['game_identity']);queue_path.write_text(json.dumps(queue,indent=2));print(json.dumps(receipt));return result
++
++if __name__=='__main__':raise SystemExit(main())
+--- /dev/null
++++ b/analysis/hammerburst-20261108/check_cancelled_49912.py
+@@ -0,0 +1,78 @@
++"""Actual v6 cancellation validator: archived HOD states, temporary receipts/profile originals, stubbed OS observation only."""
++from pathlib import Path
++import ast,json,hashlib,os,tempfile,copy,types
++R=Path.cwd();A=R/'analysis/hammerburst-20261108';H=R/'analysis/hod-20261109';entry=A/'run_empty_normal_admission_v6.py';source=entry.read_text();tree=ast.parse(source);ns=dict(Path=Path,json=json,hashlib=hashlib,os=os)
++for node in tree.body:
++ if isinstance(node,ast.Assign) and len(node.targets)==1 and isinstance(node.targets[0],ast.Name) and node.targets[0].id in ['PREDECESSOR_THREAD','PREDECESSOR_CANDIDATE','PREDECESSOR_EXECUTION','PREDECESSOR_PINS','CANCELLED_CASE']:ns[node.targets[0].id]=ast.literal_eval(node.value)
++ns['PREDECESSOR']=dict(thread=ns['PREDECESSOR_THREAD'],candidate=ns['PREDECESSOR_CANDIDATE'],execution_sha256=ns['PREDECESSOR_EXECUTION']);actual_case=copy.deepcopy(ns['CANCELLED_CASE']);functions=[n for n in tree.body if isinstance(n,ast.FunctionDef)];exec(compile(ast.Module(body=functions,type_ignores=[]),'actual_v6_functions','exec'),ns);sha=ns['sha'];read=lambda p:json.loads(Path(p).read_text(encoding='utf-8-sig'))
++base_tree=ast.parse((A/'check_admission_v5.py').read_text());base=next(n for n in base_tree.body if isinstance(n,ast.FunctionDef) and n.name=='fixture');base_env=dict(Path=Path,json=json,R=R,A=A,ns=ns,sha=sha);exec(compile(ast.Module(body=[base],type_ignores=[]),'existing_normal_fixture','exec'),base_env)
++archived_review=read(H/'49912-independent-closeout-review.json');archived={k:read(v['path']) for k,v in archived_review['evidence'].items()};archived_launcher=read(actual_case['launcher_session']['path']);original_manifest=read(actual_case['profile_manifest']['path'])
++rows=[]
++def fixture(root,case):
++ q,window,identity,proof,plan,_=base_env['fixture'](root,'success');ns['ROOT']=root;localH=ns['PREDECESSOR_ROOT'];facts=copy.deepcopy(actual_case);ns['CANCELLED_CASE']=facts
++ def put(path,body):
++  p=Path(path);p.parent.mkdir(parents=True,exist_ok=True);p.write_text(json.dumps(body));return dict(path=str(p),sha256=sha(p))
++ oldh=read(window['handoff_evidence']['path']);claim=read(oldh['predecessor_claim']['path']);terminal=read(oldh['predecessor_terminal']['path']);baseline=read(claim['baseline_receipt']['path']);claim['pid']=terminal['pid']=baseline['identity']['pid']=facts['claim_pid']
++ bref=put(claim['baseline_receipt']['path'],baseline);claim['baseline_receipt']=bref;terminal['baseline_receipt_sha256']=bref['sha256'];cref=put(ns['PREDECESSOR_CLAIM'],claim);tref=put(ns['PREDECESSOR_RESULT'],terminal)
++ bodies=copy.deepcopy(archived);launcher=copy.deepcopy(archived_launcher);manifest=copy.deepcopy(original_manifest);profile=localH/'profile';profile.mkdir();private=root/'analysis/instances/solo-m1-1028d/LocalAppData/Coalition/WarGame';oldprivate=Path(original_manifest['save_root']).parent
++ manifest['save_root']=str(private/'SaveData');manifest['settings']=str(private/'Config/76561197960271872EngineUserSettings.ini')
++ for i,row in enumerate(manifest['files']):
++  raw=Path(row['backup']).read_bytes();assert hashlib.sha256(raw).hexdigest()==row['sha256'];target=private/Path(row['source']).relative_to(oldprivate);target.parent.mkdir(parents=True,exist_ok=True);target.write_bytes(raw);backup=profile/(str(i)+'.bin');backup.write_bytes(raw);row.update(source=str(target),backup=str(backup))
++ pref=put(profile/'manifest.json',manifest);facts['profile_manifest']=pref;snapshot=bodies['inner_restoration']['private_snapshot'];snapshot.update(full_manifest=pref['path'],full_manifest_sha256=pref['sha256'])
++ bodies['raw_restoration']['all10_current_exact']=[dict(row,exact=True) for row in baseline['baselines']]
++ if case=='native_started':bodies['normal_cleanup']['native_started']=True
++ elif case=='XR_exit_changed':bodies['normal_cleanup']['xr_exit_code']=0
++ elif case=='XR_objects_live':bodies['normal_cleanup']['session_exit_evidence']['objects_destroyed']=False
++ elif case=='XR_shutdown_incomplete':bodies['normal_cleanup']['session_exit_evidence']['shutdown_completed']=False
++ elif case=='XR_end_claimed_success':bodies['normal_cleanup']['session_exit_evidence']['end_session_succeeded']=True
++ elif case=='XR_forced_termination':bodies['normal_cleanup']['xr_forced_cleanup_reason']='forced'
++ elif case=='wrong_game_birth':bodies['normal_cleanup']['game_identity']['creation_time']+=1
++ elif case=='wrong_launcher_birth':bodies['normal_cleanup']['owner_identity']['creation_time']+=1
++ elif case=='wrong_XR_birth':bodies['normal_cleanup']['xr_identity']['creation_time']+=1
++ elif case=='fake_Native_cleanup':bodies['normal_cleanup']['native_cleanup_verified']=True
++ elif case=='pad_not_restored':bodies['normal_cleanup']['vr_gamepad_cleanup']['restored']=False
++ elif case=='PG_shutdown_failed':launcher['playground_cleanup']['shutdown_code']=1
++ elif case=='prime_not_restored':launcher['prime_cleanup']['entry_restore_verified']=False
++ elif case=='launcher_still_owns_game':bodies['launcher_done']['remaining_owned_game']=facts['game']
++ elif case=='raw_ten_incomplete':bodies['raw_restoration']['all10_current_exact'].pop()
++ elif case=='raw_ten_wrong_hash':bodies['raw_restoration']['all10_current_exact'][0]['sha256']='bad'
++ elif case=='public_written':bodies['raw_restoration']['public_state_written']=True
++ elif case=='private_nine_incomplete':bodies['inner_restoration']['private_restoration']['original_files']=8
++ elif case=='private_current_changed':Path(manifest['files'][0]['source']).write_bytes(b'changed')
++ elif case=='private_backup_changed':Path(manifest['files'][0]['backup']).write_bytes(b'changed')
++ elif case=='private_extra_file':(private/'SaveData/extra.bin').write_bytes(b'new')
++ elif case=='paired_not_reviewed':bodies['paired_review']['personally_reviewed']=False
++ elif case=='encoder_failed':bodies['encode']['exit_code']=1
++ elif case=='retention_dry':bodies['retention']['dry_run']=True
++ facts['launcher_session']=put(localH/'launcher-session.json',launcher);evidence={key:put(localH/(key+'.json'),body) for key,body in bodies.items()};facts['evidence']=evidence;facts.update(claim_sha256=cref['sha256'],terminal_sha256=tref['sha256'],baseline_sha256=bref['sha256'])
++ review=copy.deepcopy(archived_review);review.update(claim_sha256=cref['sha256'],terminal_sha256=tref['sha256'],baseline_sha256=bref['sha256'],evidence=evidence)
++ if case=='review_fakes_normal':review['normal_cleanup_verified']=True
++ if case=='wrong_process_observation':review['exact_process_checks'][0]['currently_same_process']=True
++ rref=put(localH/'review.json',review);facts['review_sha256']=rref['sha256']
++ h=oldh;h.update(exception_case=facts['case_id'],cleanup_class='native_never_started_startup_cancelled',normal_cleanup_verified=False,startup_cancelled_cleanup_verified=True,predecessor_game=facts['game'],predecessor_claim=cref,predecessor_terminal=tref,review=rref)
++ if case=='unsupported_case':h['exception_case']='some_other_failure'
++ if case=='handoff_fake_normal':h['normal_cleanup_verified']=True
++ if case=='not_released':h['runtime_window_released']=False
++ if case=='wrong_claim_raw_pin':facts['claim_sha256']='bad'
++ if case=='wrong_terminal_raw_pin':facts['terminal_sha256']='bad'
++ href=put(localH/'final.json',h);window['handoff_evidence']=href;binding=dict(handoff_sha256=href['sha256'],claim_sha256=cref['sha256'],terminal_sha256=tref['sha256'],baseline_sha256=bref['sha256'],exception_case=facts['case_id']);proof['predecessor_binding']=binding.copy();local=Path(q['predecessor_review']);local.write_text(json.dumps(dict(binding,predecessor=ns['PREDECESSOR'],all_predecessor_evidence_checked=True)));q['predecessor_review_sha256']=sha(local)
++ calls=[]
++ def observe(*args,**kwargs):
++  calls.append((args,kwargs));assert 'ProcessId=49912' in args[0][-1] and 'ProcessId=35524' in args[0][-1] and 'ProcessId=8796' in args[0][-1] and 'ProcessId=46676' in args[0][-1] and 'ErrorAction Stop' in args[0][-1];assert kwargs['timeout']==10
++  return types.SimpleNamespace(returncode=1 if case=='process_query_failed' else 0,stdout='49912' if case=='process_still_live' else '')
++ ns['subprocess']=types.SimpleNamespace(run=observe,CREATE_NO_WINDOW=0)
++ return (q,window,identity,proof,plan),binding,calls
++cases=['actual_archived_cancel_state','unsupported_case','handoff_fake_normal','not_released','wrong_claim_raw_pin','wrong_terminal_raw_pin','native_started','XR_exit_changed','XR_objects_live','XR_shutdown_incomplete','XR_end_claimed_success','XR_forced_termination','wrong_game_birth','wrong_launcher_birth','wrong_XR_birth','fake_Native_cleanup','pad_not_restored','PG_shutdown_failed','prime_not_restored','launcher_still_owns_game','raw_ten_incomplete','raw_ten_wrong_hash','public_written','private_nine_incomplete','private_current_changed','private_backup_changed','private_extra_file','paired_not_reviewed','encoder_failed','retention_dry','review_fakes_normal','wrong_process_observation','process_query_failed','process_still_live']
++for case in cases:
++ with tempfile.TemporaryDirectory() as directory:
++  args,binding,calls=fixture(Path(directory),case);error=None
++  try:result=ns['verify_predecessor'](*args)
++  except RuntimeError as e:error=str(e)
++  assert (error is None)==(case=='actual_archived_cancel_state'),(case,error)
++  if error is None:assert result==binding and len(calls)==1
++  rows.append(dict(case=case,accepted=error is None,error=error))
++# Normal verifier implementation is exactly the already-accepted v5 function.
++old=ast.parse((A/'run_empty_normal_admission_v5.py').read_text());before=next(n for n in old.body if isinstance(n,ast.FunctionDef) and n.name=='verify_predecessor');after=copy.deepcopy(next(n for n in tree.body if isinstance(n,ast.FunctionDef) and n.name=='verify_normal_predecessor'));after.name=before.name;assert ast.dump(before,include_attributes=False)==ast.dump(after,include_attributes=False)
++with tempfile.TemporaryDirectory() as directory:
++ q,w,i,p,plan,expected=base_env['fixture'](Path(directory),'success');assert ns['verify_predecessor'](q,w,i,p,plan)==expected
++report=dict(result='passed',cases=rows,normal_verifier_AST_unchanged=True,normal_dispatch_positive=True,source_entry_sha256=sha(entry),actual_archived_states_used=True,private_profile_current_paths_rewritten_to_temporary_fixture=True,private_original_bytes_from_saved_HOD_backups_only=True,actual_process_query_stubbed=True,no_real_claim_ticket_stage_runtime=True,scope=__doc__);(A/'cancelled-49912-check.json').write_text(json.dumps(report,indent=2)+'\n');print(json.dumps(dict(result='passed',cancel_cases=len(rows),normal_AST_unchanged=True,normal_positive=True,actual_shared_runtime_untouched=True)))
+--- /dev/null
++++ b/analysis/hammerburst-20261108/admission-v6/handoff-contract.json
+@@ -0,0 +1,167 @@
++{
++  "predecessor": {
++    "thread": "01a1bf64-8db6-7a20-9953-0e4a76532222",
++    "candidate": "equipment-controls-prepared-20261110-hod-beam7-tomb",
++    "execution_sha256": "051fe4654985183467ba7a694af8b7343ad30ddbde82c13b7770c92606a6a4eb"
++  },
++  "actual_claim_path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hod-20261109\\claims\\hod-beam7-execution.json",
++  "actual_terminal_path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hod-20261109\\beam7-execution-result.json",
++  "handoff_body": {
++    "from_thread": "exact predecessor thread",
++    "to_thread": "01a1bb03-7453-7530-afcd-2fb1ea7e7a51",
++    "predecessor_candidate": "exact candidate",
++    "predecessor_execution_sha256": "exact execution051",
++    "successor_identity": "five-field HB identity from current ready/plan/entry",
++    "predecessor_claim": "fixed actual claim {path,sha256}",
++    "predecessor_terminal": "fixed terminal result {path,sha256}",
++    "predecessor_game": "actual session report game_identity",
++    "review": "HOD independent closeout JSON {path,sha256}",
++    "true_flags": [
++      "unique_successor",
++      "runtime_window_released",
++      "all_owned_jobs_terminal",
++      "independent_idle",
++      "normal_cleanup_verified",
++      "paired_review_complete",
++      "encoders_terminal",
++      "restoration_verified",
++      "retention_terminal"
++    ]
++  },
++  "independent_closeout_review": {
++    "identity": [
++      "candidate",
++      "execution_sha256",
++      "claim_sha256",
++      "terminal_sha256",
++      "baseline_sha256",
++      "game"
++    ],
++    "true_flags": [
++      "all_owned_jobs_terminal",
++      "independent_idle",
++      "normal_cleanup_verified",
++      "paired_review_complete",
++      "encoders_terminal",
++      "restoration_verified",
++      "retention_terminal"
++    ],
++    "evidence": {
++      "normal_cleanup": "archived actual launcher session report with Native/entry/pad/drain/XR0 and actual game identity",
++      "launcher_done": "archived actual done launcher0/gamegone; launcher PID matches session owner",
++      "paired_review": "actual personal full-span/contact review JSON {game,personally_reviewed:true,overview_pages:[...],raw_images:[...]}",
++      "encode": "actual process completion JSON {game,exit_code:0}; no wrapper success inference",
++      "retention": "actual prune JSON no dry-run/deferred/errors, newest3/48h, actual game pid+creation in kept sessions"
++    }
++  },
++  "HB_baseline_extra_fields": {
++    "predecessor_binding": [
++      "handoff_sha256",
++      "claim_sha256",
++      "terminal_sha256",
++      "baseline_sha256"
++    ]
++  },
++  "HB_independent_review": {
++    "predecessor": "same three-field exact predecessor",
++    "all_predecessor_evidence_checked": true,
++    "binding_fields": [
++      "handoff_sha256",
++      "claim_sha256",
++      "terminal_sha256",
++      "baseline_sha256"
++    ]
++  },
++  "HB_ticket_extra_fields": {
++    "predecessor": "same three-field exact predecessor",
++    "predecessor_thread": "exact HOD thread"
++  },
++  "HB_attempt_durable_link": "Same fixed O_EXCL claim augmented/fsynced only after semantic final proof and complete raw baseline checks; binds own identity, baseline receipt path+SHA, actual HOD final/claim/terminal/baseline SHA. Rechecked immediately before stage and before either restoration path. Permanent claim never removed/retried.",
++  "environment": "Case-insensitive drop GEARS*/PYTHON*/XR*/OPENXR* before prepare/idle/stop and every child; then unchanged fixed ENV including PYTHONOPTIMIZE=0, PYTHONSAFEPATH empty, PYTHONNOUSERSITE=1; OS values preserved.",
++  "no_synthetic_terminal": "Preparation does not require/create actual predecessor claim, terminal, final handoff, own final ticket or own real claim. Test fixtures only. An actual future prebirth/cleanup exception not satisfying this contract remains a failed closed admission, never a fabricated game/media pass.",
++  "normal_branch": "The previously accepted v5 verify_predecessor implementation is unchanged as verify_normal_predecessor (AST identity verified). No weakening of normal Native/XR0/media requirements.",
++  "specific_cancelled_branch": {
++    "case_id": "HOD051-49912-134387215205673057",
++    "only_actual_case_facts": {
++      "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\cancelled-49912-case-facts.json",
++      "sha256": "1973480ff5a8b05dcca512691893b556bc4846859f58910377b7e8dcf8739b9a"
++    },
++    "claim_sha256": "cfb312a0074c22cef6513391550149b52f4f59f89ca55893df80c35471504b4c",
++    "terminal_sha256": "97d4fe95b1f805250a70d7738cb198b2a286ec522c6d6e59341c4e025ba4fa51",
++    "baseline_sha256": "a66e1447469b78c869096ae43cbe851e51e5c8b091db4de4ff2e395293c8eeec",
++    "review_sha256": "2d5d4076b2ccc9e5ae30e45b4117270ba1a39e922bdda55e53dba351a856d027",
++    "raw_final_extra_fields": {
++      "exception_case": "HOD051-49912-134387215205673057",
++      "cleanup_class": "native_never_started_startup_cancelled",
++      "normal_cleanup_verified": false,
++      "startup_cancelled_cleanup_verified": true
++    },
++    "true_flags": [
++      "unique_successor",
++      "runtime_window_released",
++      "all_owned_jobs_terminal",
++      "independent_idle",
++      "startup_cancelled_cleanup_verified",
++      "paired_review_complete",
++      "encoders_terminal",
++      "restoration_verified",
++      "retention_terminal"
++    ],
++    "review": "Use immutable actual 49912-independent-closeout-review.json SHA2d5d4076b2ccc9e5ae30e45b4117270ba1a39e922bdda55e53dba351a856d027 unchanged; its pre-transfer exception_admission_pending/runtime_window_released fields are historical, not authority. Only a NEW raw final releases the window.",
++    "evidence": {
++      "normal_cleanup": {
++        "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hod-20261109\\beam7-game49912-closeout\\0-continuous-stereo-49912-20261110-021237-820fae70.json",
++        "sha256": "7f238793587d72bc9805cd5cfee0aa44fe8db59abe91b5e13789adea40d7e4be"
++      },
++      "launcher_done": {
++        "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hod-20261109\\beam7-game49912-closeout\\2-done.json",
++        "sha256": "b522b3368a42c05ff563f3187b27167e6cefeb2b547fa3d0405430c1604ea121"
++      },
++      "paired_review": {
++        "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hod-20261109\\49912-personal-paired-review.json",
++        "sha256": "84bcabba6bd4ab55f63413e0407218c9fd1c4d9462fb77eb1dcbd9e6001c763a"
++      },
++      "encode": {
++        "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hod-20261109\\49912-encode-terminal.json",
++        "sha256": "78859459fd4b8b9f71ac7b5a4d806b9fd5750da412f51df54ddc300271ba8bb6"
++      },
++      "retention": {
++        "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hod-20261109\\49912-retention.json",
++        "sha256": "053364d2e75ff4a36bc7a669e7a3864efa25085672f7ebfa4fe2b69e1d130be8"
++      },
++      "raw_restoration": {
++        "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hod-20261109\\runtime-49912-baseline-restoration.json",
++        "sha256": "d104da39a5a50beb9f16dc8355825709da261c867e15880d443af3b92075e5e3"
++      },
++      "inner_restoration": {
++        "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hod-20261109\\beam7-game49912-closeout\\9-beam7-run-restoration-1794247984692406300.json",
++        "sha256": "74cb324163155659924ec17411f026e9b6afb5ba9774a8709386063ae1f3789c"
++      }
++    },
++    "additional_immutable_evidence": {
++      "launcher_session": {
++        "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hod-20261109\\beam7-game49912-closeout\\1-launcher-session.json",
++        "sha256": "fb3d75b0ef17367998ea3823694127b31655bec5714ae25ffe35c3e06ad3c777"
++      },
++      "private_manifest": {
++        "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hod-20261109\\beam7-profile-backup-1794247902396938700\\all-private-saves.json",
++        "sha256": "7b7436aff8ee81c84d9fe33d59132d140705d057cf602e1a72dc617dd8d0828c"
++      }
++    },
++    "runtime_rules": [
++      "Only exact game49912/creation134387215205673057, launcher35524/creation134387215114625654, XR8796/creation134387215578652914 and claim PID46676",
++      "Actual session cancelled/native_started=false/startup_cancelled=true, Native cleanup fields absent/not activated; pad restored",
++      "XR exit1 retained: terminal_exiting/objects_destroyed/shutdown_completed true, EndSession false, no forced cleanup; never call XR1 a normal pass",
++      "Actual activated Playground shutdown0/entry restored and cancelled prime entry restored must be verified separately",
++      "Actual ten raw plus all9 private save/settings original backups/current bytes AND file set rechecked; public state never written",
++      "Fresh OS observation must establish all four fixed PIDs absent; query failure or any live/reused PID rejects. Existing global idle also remains mandatory before stage.",
++      "Full-span one-page overview and six actual raw images personally reviewed; actual encode0/retention0; no chapter/Beam/headset success inferred"
++    ],
++    "own_baseline_and_same_claim_extra": {
++      "exception_case": "HOD051-49912-134387215205673057"
++    },
++    "no_generic_exception": true
++  },
++  "own_predecessor_review_for_cancelled": "Same exact predecessor+four SHA binding as normal, plus exception_case marker. Must use corresponding marker in own before-stage baseline; same permanent claim fsyncs that binding before stage.",
++  "preparation": "Static preparation never requires, creates or consumes live final/claim/ticket; cancellation process and current private-file checks only execute after actual final custody in real invocation."
++}
+--- /dev/null
++++ b/analysis/hammerburst-20261108/cancelled-49912-case-facts.json
+@@ -0,0 +1,61 @@
++{
++  "case_id": "HOD051-49912-134387215205673057",
++  "game": {
++    "pid": 49912,
++    "creation_time": 134387215205673057,
++    "image": "j:\\gearsvr\\gears.of.war.reloaded.v1.0.1.3816947-p2p\\gears of war reloaded\\binaries_x64\\gowde-steam.exe"
++  },
++  "launcher": {
++    "pid": 35524,
++    "creation_time": 134387215114625654,
++    "image": "j:\\gearsvr\\candidates\\6dof-unified\\runtime\\python\\python.exe"
++  },
++  "xr": {
++    "pid": 8796,
++    "creation_time": 134387215578652914,
++    "image": "c:\\users\\11\\.codex\\worktrees\\6dof-single\\gearsvr\\tools\\openxr-probe\\build-solo-m1-sim\\openxrposeprobe.exe"
++  },
++  "claim_pid": 46676,
++  "claim_sha256": "cfb312a0074c22cef6513391550149b52f4f59f89ca55893df80c35471504b4c",
++  "terminal_sha256": "97d4fe95b1f805250a70d7738cb198b2a286ec522c6d6e59341c4e025ba4fa51",
++  "baseline_sha256": "a66e1447469b78c869096ae43cbe851e51e5c8b091db4de4ff2e395293c8eeec",
++  "review_sha256": "2d5d4076b2ccc9e5ae30e45b4117270ba1a39e922bdda55e53dba351a856d027",
++  "evidence": {
++    "normal_cleanup": {
++      "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hod-20261109\\beam7-game49912-closeout\\0-continuous-stereo-49912-20261110-021237-820fae70.json",
++      "sha256": "7f238793587d72bc9805cd5cfee0aa44fe8db59abe91b5e13789adea40d7e4be"
++    },
++    "launcher_done": {
++      "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hod-20261109\\beam7-game49912-closeout\\2-done.json",
++      "sha256": "b522b3368a42c05ff563f3187b27167e6cefeb2b547fa3d0405430c1604ea121"
++    },
++    "paired_review": {
++      "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hod-20261109\\49912-personal-paired-review.json",
++      "sha256": "84bcabba6bd4ab55f63413e0407218c9fd1c4d9462fb77eb1dcbd9e6001c763a"
++    },
++    "encode": {
++      "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hod-20261109\\49912-encode-terminal.json",
++      "sha256": "78859459fd4b8b9f71ac7b5a4d806b9fd5750da412f51df54ddc300271ba8bb6"
++    },
++    "retention": {
++      "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hod-20261109\\49912-retention.json",
++      "sha256": "053364d2e75ff4a36bc7a669e7a3864efa25085672f7ebfa4fe2b69e1d130be8"
++    },
++    "raw_restoration": {
++      "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hod-20261109\\runtime-49912-baseline-restoration.json",
++      "sha256": "d104da39a5a50beb9f16dc8355825709da261c867e15880d443af3b92075e5e3"
++    },
++    "inner_restoration": {
++      "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hod-20261109\\beam7-game49912-closeout\\9-beam7-run-restoration-1794247984692406300.json",
++      "sha256": "74cb324163155659924ec17411f026e9b6afb5ba9774a8709386063ae1f3789c"
++    }
++  },
++  "launcher_session": {
++    "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hod-20261109\\beam7-game49912-closeout\\1-launcher-session.json",
++    "sha256": "fb3d75b0ef17367998ea3823694127b31655bec5714ae25ffe35c3e06ad3c777"
++  },
++  "profile_manifest": {
++    "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hod-20261109\\beam7-profile-backup-1794247902396938700\\all-private-saves.json",
++    "sha256": "7b7436aff8ee81c84d9fe33d59132d140705d057cf602e1a72dc617dd8d0828c"
++  }
++}
