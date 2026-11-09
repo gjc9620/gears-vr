@@ -1071,3 +1071,13 @@ r49缓冲区合成接口现在强制接收调用者本次已认证DesiredBones�
 严格MSVC编译与执行：姿态／过渡182项0失败，候选合成1226项0失败。实际原Marcus115／C0 fixture验证抓稳→松手→退回基准→重抓、非零腕目标、LOD失败不接受过渡状态；独立案例将旧边缘放到1000单位远，同时平移／旋转新真实手，确认释放跟随新真实手而非旧接触点。首次合成有2个释放未结束断言失败，原因是原float参考四元数虽合法但长度略偏1，未归一化点积使完成阈值永远不到；改比较归一化旋转，加入该误差回归后两组均通过，原失败日志保留。
 
 证据analysis/cover-system-20261108/grab-transition-r51，含两程序编译依赖全SHA、源码副本及首败／最终日志。r47的24冻结源／3保存制品／37当前驱动SHA及AST再次一致，仍未交窗、未stage／run；无新Native或Playground构建、无实际双眼或头显通过。接近释放纯计算与候选合成已接通，但真实Tick来源／LOD身份、实际抓点authoring、完整身体碰撞和移动恢复、同版命中枪口、严重吸附遮挡及CV／AC／实体头显范围全部保持未完成。
+
+## 2026年11月9日 r52当前Tick到抓边视觉Frame的数据转换
+
+新增cover_grab_tick_adapter.h及独立程序。接受已获取的原body_tick_source输入、同Tick实际眼点、当前完整CoverPlacement、原CoverControllerResult、掩体身份／归属及原骨架签名，输出r48／r51所需Frame。复用原40ms追踪／50ms元数据分类、原cover_placement_current完整对象／场景／发布／参考及metadata区间核对、原free_hand_eye_targets控制器到腕换算；不添加第二输入读取、按下沿检测或仲裁器，不把转换成功当成Native写入／碰撞许可。
+
+转换精确保留原控制器sequence／received_ns及原始TrackingSpace grip位置；不会将now写成输入时间，也不从渲染手／已拟合腕反算拉拽。Grip状态直接消费既有掩体adapter的滞回／边沿结果，不重新使用武器0.35阈值推断按下。当前世界Grip仅是同源头／手位和本次C0眼点的一次几何转换，后续皮肤修饰不反向改原hand sample。实际参考字段复用原Placement合同：视图reference_generation与Native reference_revision分别管理，不能因数值曾相同而混用。
+
+实际MSVC严格编译0、执行39项检查0失败，包含原时间和原始手位保持、同一眼点换算一致、不同参考域、滞回带中已按下结果保留；完整Link名称、Scene／publication／Tick／参考、原手序号／时间／位置、旧输入／needs_release、错误签名及metadata区间外观察均拒绝并保持原输出字节。首次35项编译／执行亦通过；语义复核发现参考域及阈值重复解释问题后改为复用原predicate，再加入明确不同域／滞回与观察上界案例到39项，原日志保留。
+
+证据analysis/cover-system-20261108/grab-tick-r52。使用保留61492 source-CT0元数据的明确CPU合成CT2／时钟／cohort及注入的既有adapter结果，仅证明转换契约，不是实际掩体Tick或按下沿运行通过。真实owner必须传递同次已认证数据并在失败时中断视觉消费；世界／人物／reference与kernel epoch映射仍由原live owner维护。本批没有接入实际Native调用、构建新Native／Playground或启动游戏；当前r47仍无最终交窗，当前37驱动无漂移。完整身体扫掠／占用／移动恢复、同版命中枪口、实际抓点手型、吸附遮挡及全部CV／AC／头显要求保持未完成。
