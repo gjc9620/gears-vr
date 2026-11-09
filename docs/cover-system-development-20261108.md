@@ -2,7 +2,7 @@
 
 目标：完成掩体系统开发与验证。状态：进行中。
 
-最近结果（2026-11-09）：r44b实际59528完成原A吸附及首body过滤字段读取，在KAggregateGeom完整字段集处拒绝，整体来源／物理／命中未通过。完整审图再次确认肩／身体遮挡FAIL；运行、编码、恢复、保留全终，已唯一交Lancer原版参考。原包索引及直接反序列化确认遗漏RenderInfo原生Pointer，已严格补字段和原始拒绝见证，56项相关检查通过；新r47冻结并沿真实尾申请，未stage／run。完整CV／AC、实际碰撞、移动恢复、同版命中枪口及头显范围保持。
+最近结果（2026-11-09）：r47实际26028完成原A吸附CT2／CA0，越过KAggregateGeom五字段与RenderInfo检查，首body原始形状数组在target／extent处拒绝；整体来源／物理／命中仍未关闭。1页全span双路与6原图确认严重肩／身体遮挡FAIL。运行／编码／精确恢复／媒体保留全终，已最终唯一交Bow164457。r48–53姿态、过渡、LOD与当前Tick到候选缓冲区代码已提交，但未由实际Native Tick调用；完整碰撞／移动恢复／同版命中枪口／CV与AC及头显要求保持未完成。
 
 ## 2026年11月8日 首批接续
 
@@ -1089,3 +1089,19 @@ cover_grab_tick_adapter新增compose入口，直接串联r52当前输入转换�
 真实MSVC严格编译0、执行59项检查0失败。集成案例加载61492完整参考／C0几何，以真实SHA准备model及原头部authored眼点；明确Host反算一个可达腕对应的原XR输入，再走完整转换→过渡→求解入口。合法候选通过且骨长误差在0.002单位内，错误完整Link身份、空LOD及错误shape generation分别在不同层拒绝，完整body输出字节保持且旧skin状态清除。保留原39项来源／时间／不同参考域／滞回验证。反算的控制器只是CPU输入生成，不是物理校准、实际按下沿或实际掩体运行证据。
 
 原编译依赖全SHA、fixture身份、两源文件副本、编译／运行日志在analysis/cover-system-20261108/grab-entry-r53。该统一入口已连接缓冲区步骤，但尚未由实际Native Tick调用；实际owner的对象／几何／LOD身份与提交许可仍须在原边界认证。没有新Native／Playground构建、安装或游戏运行。Bol已在其11108动作段运行，但尚未最终交窗，Coverr47未stage／run。完整身体碰撞／占用／恢复、同版命中枪口、实际逐点手型、严重吸附遮挡及全部CV／AC／头显要求继续未完成。
+
+## 2026年11月9日 r47实际26028首body数组声明拒绝及全终交接
+
+Bol162411-v3实际11108全终、精确恢复、审片、编码与保留结束后明确唯一交窗，本轮重新完整核r47 prepared09720d6c／plan83e97719、24冻结源、3saved制品、37当前驱动SHA与AST、选中EXE／PhysX／审图解释器及Pillow／numpy，独立idle通过，并保存5配置／设置／head原缺失基线。首次stage调用错误使用Python -I，导入同目录retain_test_media前即退出，未部署；保持原脚本不变、改回已有-B调用后stage0，三安装制品再次SHA匹配。原失败日志保留。
+
+实际game26028 creation134386910322425789，owner13248 creation134386910235770519，session5943137e。原A一次进入CT2／CA0，原只读几何与来源观察继续。第一个body为b_MF_Pelvis、FName27549／0；原hit过滤字4c000000，bBlockZeroExtent／bBlockNonZeroExtent仍为同0xbc字的mask4／8。这些只是未关闭的局部字段证据，不是受击／碰撞许可。
+
+本次已越过KAggregateGeom完整5字段与RenderInfo原8字节Pointer判定，随后严格拒绝Physics shape struct array target/extent rejected。2778读、35529字节、466.5335ms；整体acceptedfalse，1个body部分结果，不代表29body／完整shapes或内部接收者已完成。新增source_at_start及physx_image_at_start实际保留：独立枚举base140720153100288与头ImageBase相等、完整绑定头匹配，8段当前已分析代码已读取，methods_calledfalse且closing_requiredtrue；不能把at-start代码／头观察当整查询关闭、活动形状／当前物理姿态或世界同步通过。数组失败路径未保存其已读inner／target／stride／extent细节，本局结束后不能补读旧地址或断言究竟哪项不一致。下一修复应保留这些已读拒绝见证，不放宽相等式或猜测对齐补丁，不重复未变候选。
+
+wrapper工具90227实际terminal0；operator7456 exit1、error字段null且实际动作失败保留。Native清理、入口及pad恢复true，fire_disable0／hand_stop5／drainedtrue，XR0／launcher0，gamegone。EndSessionfalse与terminalExiting／objectsDestroyed／shutdownCompletedtrue分别记录。原wrapper finally曾一度idlefalse而保留输入备份，独立game／XR终态后核对5基线：config、head原缺失和两gameSettings均原字节；simulator settings语义相同而字节格式不同，原after-wrapper副本保存后恢复启动前原字节，最终5项精确一致。此收尾时相记录不等同Native未关闭，也不隐去原日志。
+
+完整1页paired overview及6张原图已亲审：game00424／00439／00443、simulator00610／00626／00630，覆盖吸附、形状拒绝与收尾。镜像及两XR眼睛仍严重右肩／身体／装备近裁剪遮挡，视觉FAIL；startup第三人称／等待卡仍在。游戏446帧29.6663362s，sim633帧29.6496693s，双路末端覆盖通过。游戏最大捕获缺口3066.6216ms，位于启动1.7499975–4.8166191s；sim最大366.6595ms，不把WGC间隔或窗口FPS当渲染／头显证明。编码90694实际terminal0，视频29.7秒／5372121字节。
+
+结束37驱动SHA／AST及3安装制品在后续源码改动前匹配。保留工具6347及实际python44892进程曾确认仍活跃，仅轮询同一作业、不重启，最终terminal0；实际删除2308媒体／352804738字节、errors0，保留26028／11108／31420最新3局及48小时，源文／数值记录保留。独立核Bow164457的preparedff9504ac／plan9d86138c、1965冻结源、219当前及归档驱动、438AST、6saved制品和选中EXE无错误，并再次idle后已最终明确唯一交该后继。当前不占窗、不补第二局；后到请求均沿Bow真实尾转达，不在Cover登记第二继任。
+
+证据analysis/cover-system-20261108/shape-layout-r47/runtime，包含before-runtime、两个stage日志、wrapper原日志、game-26028-first-failure、ending-driver-check、settings-restoration、selected-visual、closure-proof、retention-result及runtime-jobs。r48–53独立新C++文件不在本次冻结Native内，不能把本局当它们的运行验证。完整CV-01–24／AC-01–22、真实抓边／身体碰撞与占用／Native移动恢复／同版hit与muzzle、严重吸附遮挡及实体头显仍未完成；公开v71及原历史计分保持。
