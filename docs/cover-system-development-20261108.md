@@ -2,7 +2,7 @@
 
 目标：完成掩体系统开发与验证。状态：进行中。
 
-最近结果（2026-11-09）：r39实际59768原A进CT2/CA0／geometry通过，但PhysX完整PE头不匹配，1读／1024B即首败，未到internal／shapes，实际差异字节原因未知。全双路概览＋6原图亲审，严重身体遮挡仍FAIL；wrapper／encoder／retention全终，operator1保留，恢复／ending36driver通过后已最终唯一交HB135655。r41原缓存／C0 Backend读取已保存345ecc99并通过184／498断言；r42仅补PE拒绝原字节回执，34项通过，未新开游戏或放宽准入。全部CV／AC／物理／命中／枪口／头显继续未完成。
+最近结果（2026-11-09）：r42独立模块／头／原code观察入口已完成，39项检查通过；新prepared03486f56／plan494fa8c0、24原r13声明源／3保存制品／36driver及AST／prepare-only0已冻结，并向HB实际尾申请新槽，未stage／run。此入口在掩体发现／移动／A之前只读当前模块，首拒绝保存原字节；实际59768的头不匹配原因仍未知，严重身体遮挡仍FAIL。r39全终交HB135655后本会话不占窗，完整CV／AC／物理／恢复／命中／枪口／头显范围保留。
 
 ## 2026年11月8日 首批接续
 
@@ -914,3 +914,15 @@ wrapper工具42455终态0／launcher0／原game gone；Native cleanup／入口�
 实际r39已关闭并交窗之后，针对首败补SourceRejection结构化回执：完整保留第一次已读当前PE头、准确原文件头、两侧SHA／长度、当前模块路径／base及全部差异偏移，外层来源读取器在失败输出中保存该witness。没有第二次读取，不改变完整PE头一致要求，不为差异分类添加豁免；回执closing／accepted／activation／cause_verified均false。它不能补回59768没有保存的字节，也不是模块修复。
 
 34项定向Python方法通过。新增负例在合成当前模块头翻转一个字节，核原／现完整字节和准确offset都被保存，整个source仍拒绝，只有原1读／1024B、无body结果或内部／形状准入，原attestation关闭。原33项继续通过。r39运行时36driver的ending证明已在本次编辑前保存，旧driver副本仍在r39/drivers；新源码尚无prepared或新运行申请，不能使用旧plan继续启动。后续按新候选与真实尾取得窗口，先取得真实差异字节再决定是否存在有证据的修复；全部身体／物理／恢复／view-hit-muzzle／CV／AC与头显范围保持。证据header-rejection-r42。
+
+## 2026年11月9日 r42独立模块观察入口与新候选
+
+针对59768在完整PE头首次读取即拒绝，新增cover_physx_source.py::capture_image，复用同一CoverQuery、准确action_owner／session／game身份和当前模块选择。模块名／路径、准确磁盘SHA、完整header及8段已分析原code全部通过并完成原查询及身份关闭，才接受这次有限模块来源；回执明确不认证整个image、身体、碰撞、原子性或同步。若header仍不同，保存原1读的完整expected／observed／diff回执后拒绝，不重读、不屏蔽字段。
+
+原cover_boundary_chain在当前Gameplay身份检查后、reader.prepare／发现掩体／行走／A之前增加显式--cover-physx-image-only分支；它只调用这个模块读取并返回，不取身体／形状，不执行旧完整掩体动作。标准启动及正常关闭继续沿原路径。选择器拒绝image-only与combined同时出现；旧body来源分支保持原语义。此为对已发生阻断的定向检查，不改变最终身体／物理／玩法验收范围；模块检查通过本身也不能宣称原掩体内失败已修复。
+
+39项方法通过，包括原34项和5项image入口检查：CT0仍可只读模块；18读／7720B完整关闭，无接收者读／队列／输入／新权限；header负例仍仅1读／1024B且保存当前身份；结束时模块／header／code改变、owner变更和原预算超限均拒绝。以上均为准确原DLL与合成加载内存，未读取其他owner进程。
+
+新候选equipment-controls-prepared-20261109-cover-physx-image-r42，prepared SHA03486f56dd6a37fb3f6515bd196a5fe51d623b7ac1198212dc7529d113a28bd1；cover-physx-image-runtime-plan.json SHA494fa8c0082eebbb8d10fb72b21c19267f13778665e2725931668112faf7f45a。复用准确原r13三制品，仅复制这3保存制品并核24snapshot声明源；36个当前driver及AST、prepared关联、prepare-only通过。只允许相对r39的四个已拥有诊断文件变化，其他旧driver保持原SHA；完整新driver已归档。wrapper现在执行prepared整体SHA关联检查。未重编Native／PG，未stage或启动Game／XR。
+
+新请求已发当前HB135655，请其沿真实已受理尾直接转达，不作为其第二后继、不复用r39旧窗。尚未获得最终交窗；当前无占窗或第二次本局动作。后续先取得真正差异字节并核对应字段，再据证据修复模块认证，继续原组合身体／形状、同C0命名骨、实际物理／查询世界、Native提交恢复及view／hit／muzzle闭环。证据header-rejection-r42/image-prepared-verification.json、image-verification.json及39项原日志。

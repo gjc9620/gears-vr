@@ -5,11 +5,14 @@ listed virtual slots. Observing them does not establish callable ABI, an
 active collision shape, physical pose consumption or a physics-world fence.
 This reader deliberately does not change HookEntryAttestation's two-base set.
 """
+import copy
 import hashlib
 from pathlib import Path
 import struct
+import time
 
 from cover_bone_query import _pe_layout
+from cover_state import CoverQuery
 
 ARTIFACT_SHA256 = '22051aa75312344a824a5f7e29c6375fec3a90df50cbeff6152f0e6c3afddd48'
 ARTIFACT_SIZE = 2711552
@@ -248,3 +251,47 @@ class PhysXSource:
                     targets=list(self.targets.values()), closing_required=True,
                     methods_called=False, physical_pose_verified=False,
                     world_synchronization_verified=False, activation_allowed=False)
+
+
+def capture_image(observer, *, query_factory=CoverQuery, source_factory=PhysXSource):
+    """One owned module/code observation; no cover entry or receiver reads.
+
+    This isolates an actual image/header rejection before doing any cover
+    action. Successful selected-code correspondence is not full-image, body,
+    collision, pose, synchronization or headset acceptance.
+    """
+    from cover_bone_query import _ownership
+    from cover_surface_query import _lifecycle
+    out = dict(schema=1, accepted=False, read_only=True, engine_calls=False,
+               queue_submissions=0, body_modified=False, cover_input_sent=False,
+               full_image_verified=False, physical_pose_verified=False,
+               world_synchronization_verified=False, activation_allowed=False,
+               atomic_snapshot_verified=False, started_perf_counter_ns=time.perf_counter_ns())
+    q = None
+    try:
+        game = _ownership(observer)
+        lifecycle = _lifecycle(observer)
+        out['source_at_start'] = copy.deepcopy(lifecycle)
+        q = query_factory(observer)
+        source = source_factory(q, game['image'])
+        source.reverify()
+        q.finish()
+        _ownership(observer)
+        if _lifecycle(observer) != lifecycle:
+            raise RuntimeError('PhysX image observation session/game/owner changed at closing')
+        out.update(accepted=True, image=source.result(),
+                   limits='Current selected module path/header and eight original code ranges only; '
+                          'no receivers, cover action, body shapes or physical synchronization permission')
+    except (RuntimeError, OSError, ValueError, TypeError, KeyError, struct.error) as error:
+        out.update(rejection=str(error), rejection_type=type(error).__name__)
+        witness = getattr(error, 'source_witness', None)
+        if witness is not None:
+            out['source_rejection_witness'] = copy.deepcopy(witness)
+        witness = getattr(q, 'closing_rejection', None)
+        if witness is not None:
+            out['closing_rejection'] = copy.deepcopy(witness)
+    finally:
+        if q is not None:
+            out.update(reads=q.reads, bytes=q.bytes)
+        out['finished_perf_counter_ns'] = time.perf_counter_ns()
+    return out

@@ -8,7 +8,7 @@ import struct
 import unittest
 
 from cover_state import CoverQuery
-from cover_physx_source import Artifact, PhysXSource, CHUNKS, ACTOR_TARGETS, INTERNAL_SLOTS
+from cover_physx_source import Artifact, PhysXSource, CHUNKS, ACTOR_TARGETS, INTERNAL_SLOTS, capture_image
 from test_cover_physics_state import PhysicsMemory
 from test_cover_physics_shapes import ShapeMemory
 
@@ -253,6 +253,73 @@ class PhysXSourceTests(unittest.TestCase):
         self.assertFalse(out['virtual_target_module_verified'])
         self.assertEqual(out['bodies'], [])
         self.assertTrue(all(p.closed for p in f.m.proofs))
+
+    def test_image_observation_needs_no_cover_entry_and_reads_no_receivers(self):
+        f = self.fixture()
+        f.m.set_value(f.m.PAWN, 'CoverType', 0, '<B')
+        f.m.read_counts.clear()
+        out = capture_image(f.m.observer, source_factory=f.factory)
+        self.assertTrue(out['accepted'], out.get('rejection'))
+        self.assertEqual(out['reads'], 18)
+        self.assertEqual(out['bytes'], 7720)
+        self.assertEqual(len(out['image']['current_analyzed_code']), 8)
+        self.assertEqual(out['image']['targets'], [])
+        self.assertFalse(any(at == 0x5000000 for at, _ in f.m.read_counts))
+        self.assertEqual(f.m.bridges, [])
+        for key in ('cover_input_sent', 'full_image_verified', 'engine_calls', 'body_modified',
+                    'physical_pose_verified', 'world_synchronization_verified', 'activation_allowed',
+                    'atomic_snapshot_verified'):
+            self.assertIs(out[key], False)
+
+    def test_image_rejection_retains_one_exact_header_read_and_current_identity(self):
+        f = self.fixture()
+        at = f.BASE + 0x120
+        f.m.put(at, bytes([f.m.read(at, 1)[0] ^ 1]))
+        out = capture_image(f.m.observer, source_factory=f.factory)
+        self.assertFalse(out['accepted'])
+        self.assertEqual(out['reads'], 1)
+        self.assertEqual(out['bytes'], 1024)
+        self.assertEqual(out['source_rejection_witness']['differing_offsets'], [0x120])
+        self.assertEqual(out['source_at_start']['identities'], f.m.observer.identities)
+        self.assertEqual(f.enumerations, 1)
+
+    def test_image_close_rejects_module_or_observed_code_changes(self):
+        for defect in ('module', 'code', 'header'):
+            with self.subTest(defect=defect):
+                f = self.fixture()
+                def change(n):
+                    if n != 2:
+                        return
+                    if defect == 'module':
+                        f.rows = [(f.BASE + 0x10000, f.path)]
+                    else:
+                        at = f.BASE + (0x13c270 + 1000 if defect == 'code' else 0x120)
+                        f.m.put(at, bytes([f.m.read(at, 1)[0] ^ 1]))
+                f.at_enumerate = change
+                out = capture_image(f.m.observer, source_factory=f.factory)
+                self.assertFalse(out['accepted'])
+                self.assertNotIn('image', out)
+
+    def test_image_close_rejects_changed_owner_identity(self):
+        f = self.fixture()
+        def change(n):
+            if n == 2:
+                f.m.observer.identities['owner_identity']['creation_time'] += 1
+        f.at_enumerate = change
+        out = capture_image(f.m.observer, source_factory=f.factory)
+        self.assertFalse(out['accepted'])
+        self.assertNotIn('image', out)
+
+    def test_image_observation_uses_unchanged_original_query_budget(self):
+        f = self.fixture()
+        def exhausted(observer):
+            q = CoverQuery(observer)
+            q.reads = 16384
+            return q
+        out = capture_image(f.m.observer, source_factory=f.factory, query_factory=exhausted)
+        self.assertFalse(out['accepted'])
+        self.assertEqual(out['reads'], 16385)
+        self.assertIn('budget', out['rejection'])
 
 
 if __name__ == '__main__':
