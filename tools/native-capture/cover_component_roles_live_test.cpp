@@ -24,6 +24,10 @@ static void catalog_setup(){
         typed_property(array_inners[n],178+n,array_props[n],n?L"AllComponents":L"Components",fixture_component_property,8,0,component_base);
         put(array_props[n]+0xd0,array_inners[n]);}
     put(instigator_property+0x68,array_props[0]);put(array_props[0]+0x68,array_props[1]);
+    typed_property(arena+0xc4400,180,fixture_actor,L"Base",fixture_object_property,8,0x520,fixture_actor);
+    typed_property(arena+0xc4800,181,fixture_actor,L"Attached",array_kind,16,0x530);
+    typed_property(arena+0xc4c00,182,arena+0xc4800,L"Attached",fixture_object_property,8,0,fixture_actor);
+    put(array_props[1]+0x68,arena+0xc4400);put(arena+0xc4400+0x68,arena+0xc4800);put(arena+0xc4800+0xd0,arena+0xc4c00);
     put(fixture_weapon+0x188,fixture_world);
     const std::array<std::array<uintptr_t,4>,4> lists{{{{cylinder,0,fixture_mesh,cylinder}},{{fixture_mesh,audio,cylinder,weapon_mesh}},{{weapon_mesh,0,0,0}},{{weapon_mesh,audio,0,0}}}};
     for(unsigned n=0;n<4;++n){const auto at=arena+0xd0000+n*0x1000;const auto owner=n<2?fixture_pawn:fixture_weapon;

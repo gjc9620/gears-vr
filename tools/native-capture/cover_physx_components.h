@@ -11,17 +11,20 @@
 // This qualifies only the supplied DECLARED component/body fields. Owners,
 // foreign rows and duplicates are retained, never interpreted as a self filter.
 // Optional skeletal PAA rows are qualified on this same Scene as well.
-// Attachments, lifetime, ABA/world fencing and complete shape coverage remain
+// Actor.Attached edges and Base fields close the supplied recursive actor
+// catalog. Skeletal attachments, lifetime, ABA/world fencing and shape coverage remain
 // separate. No result is movement permission or a complete self filter.
 namespace gears_cover_physx_components {
 namespace source=gears_cover_physx_query_source;
 namespace raw=source::pose;
-constexpr unsigned root_capacity=2,list_capacity=64,capacity=128,asset_body_capacity=256,actor_capacity=capacity+asset_body_capacity;
+constexpr unsigned root_capacity=16,list_capacity=64,capacity=128,asset_body_capacity=256,actor_capacity=capacity+asset_body_capacity;
 enum class State:unsigned {not_sampled,nonprimitive,body_instance_field_null,body_data_field_null,body_data_nonnull};
 struct Root {
     std::uintptr_t actor{};std::array<unsigned,2> offsets{};
     std::array<raw::ArrayHeader,2> lists{};
     std::array<std::array<std::uintptr_t,list_capacity>,2> members{};
+    std::uintptr_t base{};unsigned base_offset{},attached_offset{};raw::ArrayHeader attached{};
+    std::array<std::uintptr_t,list_capacity> attached_members{};
 };
 struct Component {
     std::uintptr_t component{},owner{},body{},body_owner{},body_owner_actor{};
@@ -38,12 +41,13 @@ struct AssetBody {
     std::uintptr_t data{},spring{};
 };
 struct Source {
-    unsigned root_count{},component_count{},asset_body_count{};bool pawn_mesh_listed{};
+    unsigned seed_count{},root_count{},component_count{},asset_body_count{};bool pawn_mesh_listed{};
     std::array<Root,root_capacity> roots{};std::array<Component,capacity> components{};
     std::array<AssetScope,capacity> assets{};std::array<AssetBody,asset_body_capacity> asset_bodies{};
 };
 inline bool same(Root const& a,Root const& b)noexcept{
-    if(a.actor!=b.actor||a.offsets!=b.offsets||a.members!=b.members)return false;
+    if(a.actor!=b.actor||a.offsets!=b.offsets||a.members!=b.members||a.base!=b.base||a.base_offset!=b.base_offset||
+       a.attached_offset!=b.attached_offset||a.attached_members!=b.attached_members||!raw::header_equal(a.attached,b.attached))return false;
     for(unsigned n=0;n<2;++n)if(!raw::header_equal(a.lists[n],b.lists[n]))return false;return true;
 }
 inline bool same(Component const& a,Component const& b)noexcept{return a.component==b.component&&a.owner==b.owner&&a.body==b.body&&
@@ -55,7 +59,7 @@ inline bool same(AssetScope const& a,AssetScope const& b)noexcept{return a.sampl
 inline bool same(AssetBody const& a,AssetBody const& b)noexcept{return a.body==b.body&&a.owner==b.owner&&a.owner_actor==b.owner_actor&&
     a.owner_roots==b.owner_roots&&a.index==b.index&&a.data==b.data&&a.spring==b.spring;}
 inline bool same(Source const& a,Source const& b)noexcept{
-    if(a.root_count!=b.root_count||a.component_count!=b.component_count||a.asset_body_count!=b.asset_body_count||a.pawn_mesh_listed!=b.pawn_mesh_listed)return false;
+    if(a.seed_count!=b.seed_count||a.root_count!=b.root_count||a.component_count!=b.component_count||a.asset_body_count!=b.asset_body_count||a.pawn_mesh_listed!=b.pawn_mesh_listed)return false;
     for(unsigned n=0;n<root_capacity;++n)if(!same(a.roots[n],b.roots[n]))return false;
     for(unsigned n=0;n<capacity;++n)if(!same(a.components[n],b.components[n])||!same(a.assets[n],b.assets[n]))return false;
     for(unsigned n=0;n<asset_body_capacity;++n)if(!same(a.asset_bodies[n],b.asset_bodies[n]))return false;return true;
@@ -84,13 +88,24 @@ inline bool mesh_listed(Source const& fields,std::uintptr_t mesh)noexcept{
     for(unsigned l=0;l<2;++l)for(unsigned n=0;n<list_capacity;++n)if(fields.roots[0].members[l][n]==mesh)return true;return false;
 }
 inline bool valid(Source const& fields)noexcept{
-    if(!fields.root_count||fields.root_count>root_capacity||fields.component_count>capacity||fields.asset_body_count>asset_body_capacity)return false;
-    unsigned unique{};
+    if(!fields.seed_count||fields.seed_count>2||fields.root_count<fields.seed_count||fields.root_count>root_capacity||
+       fields.component_count>capacity||fields.asset_body_count>asset_body_capacity)return false;
+    unsigned unique{},discovered=fields.seed_count;
     for(unsigned r=0;r<root_capacity;++r){auto const& root=fields.roots[r];
         if(r>=fields.root_count){if(!same(root,Root{}))return false;continue;}
-        if(!source::pointer(root.actor,88)||(r&&root.actor==fields.roots[0].actor))return false;
-        const auto a=root.offsets[0],b=root.offsets[1];
-        if(a<0x60||b<0x60||a>65520||b>65520||(a<=b?b-a<16:a-b<16))return false;
+        if(r>=discovered||!source::pointer(root.actor,88)||(root.base&&!source::pointer(root.base,88)))return false;
+        for(unsigned n=0;n<r;++n)if(root.actor==fields.roots[n].actor)return false;
+        const std::array<unsigned,4> offsets{root.offsets[0],root.offsets[1],root.base_offset,root.attached_offset};
+        for(unsigned a=0;a<4;++a){const unsigned width=a==2?8u:16u;if(offsets[a]<0x60||offsets[a]>65536-width)return false;
+            for(unsigned b=0;b<a;++b){const unsigned other=b==2?8u:16u;
+                if(offsets[a]<=offsets[b]?offsets[b]-offsets[a]<width:offsets[a]-offsets[b]<other)return false;}}
+        auto const& attached=root.attached;
+        if(attached.count<0||attached.count>int(list_capacity)||attached.capacity<attached.count||attached.capacity>256||
+           (!attached.data?(attached.count||attached.capacity):!source::pointer(attached.data,std::size_t(attached.capacity?attached.capacity:1)*8)))return false;
+        for(unsigned k=0;k<list_capacity;++k){const auto at=root.attached_members[k];
+            if(k>=unsigned(attached.count)){if(at)return false;continue;}if(!at)continue;if(!source::pointer(at,88))return false;
+            bool duplicate=false;for(unsigned n=0;n<discovered;++n)duplicate=duplicate||fields.roots[n].actor==at;
+            if(!duplicate){if(discovered>=fields.root_count||fields.roots[discovered].actor!=at)return false;++discovered;}}
         for(unsigned l=0;l<2;++l){auto const& h=root.lists[l];
             if(h.count<0||h.count>int(list_capacity)||h.capacity<h.count||h.capacity>256||
                (!h.data?(h.count||h.capacity):!source::pointer(h.data,std::size_t(h.capacity?h.capacity:1)*8)))return false;
@@ -101,7 +116,7 @@ inline bool valid(Source const& fields)noexcept{
                 if(!duplicate){if(unique>=fields.component_count||fields.components[unique].component!=at)return false;++unique;}
             }}
     }
-    if(unique!=fields.component_count)return false;
+    if(discovered!=fields.root_count||unique!=fields.component_count)return false;
     for(unsigned n=0;n<capacity;++n){auto const& row=fields.components[n];
         if(n>=unique){if(!same(row,Component{}))return false;continue;}
         if(!source::pointer(row.owner,88)||row.owner_roots!=owner_mask(fields,row.owner)||(row.skeletal&&!row.primitive))return false;
@@ -175,12 +190,20 @@ template<class Read> Code sample(std::uintptr_t image_base,source::Snapshot cons
     output.query_source=scope;output.fields=fields;output.actor_count=0;output.actors.fill(0);
     for(auto& value:output.observations)value={};
     for(auto& value:output.asset_observations)value={};
-    for(unsigned r=0;r<fields.root_count;++r)for(unsigned l=0;l<2;++l){auto const& root=fields.roots[r];raw::ArrayHeader header{};
-        if(!raw::field(read,header,root.actor,root.offsets[l]))return Code::read;
-        if(!raw::header_equal(header,root.lists[l]))return Code::changed;
+    for(unsigned r=0;r<fields.root_count;++r){auto const& root=fields.roots[r];raw::ArrayHeader header{};
+        for(unsigned l=0;l<2;++l){
+            if(!raw::field(read,header,root.actor,root.offsets[l]))return Code::read;
+            if(!raw::header_equal(header,root.lists[l]))return Code::changed;
+            std::array<std::uintptr_t,list_capacity> members{};
+            if(header.count&&!raw::bytes(read,members.data(),header.data,std::size_t(header.count)*8))return Code::read;
+            if(members!=root.members[l])return Code::changed;}
+        std::uintptr_t base_actor{};if(!raw::field(read,base_actor,root.actor,root.base_offset)||
+           !raw::field(read,header,root.actor,root.attached_offset))return Code::read;
+        if(base_actor!=root.base||!raw::header_equal(header,root.attached))return Code::changed;
         std::array<std::uintptr_t,list_capacity> members{};
         if(header.count&&!raw::bytes(read,members.data(),header.data,std::size_t(header.count)*8))return Code::read;
-        if(members!=root.members[l])return Code::changed;}
+        if(members!=root.attached_members)return Code::changed;
+    }
     for(unsigned n=0;n<fields.component_count;++n){auto const& row=fields.components[n];auto& value=output.observations[n];
         if(row.state==State::nonprimitive){value.presence=Presence::nonprimitive;continue;}
         std::uintptr_t body{},data{},spring{};

@@ -4,10 +4,11 @@
 #include "cover_physx_components.h"
 #include <algorithm>
 
-// Current Pawn and known current Weapon DECLARED component arrays. The C0
+// Current Pawn/known Weapon and recursively declared Actor.Attached component
+// arrays. The C0
 // caller supplies its actual owner guard. Neither membership nor Owner alone
-// declares a component self or all active physics covered. Attachments, other
-// actors, attachments, lifetime and world synchronization remain separate
+// declares a component self or all active physics covered. Skeletal attachments,
+// other native sources, lifetime and world synchronization remain separate
 // obligations. Optional skeletal PAA rows join the same-Scene qualification in
 // cover_physx_components. No engine method is called or body written here.
 namespace cover_component_roles_live {
@@ -16,7 +17,7 @@ namespace roles=cover_physics_roles_live;
 namespace collider=cover_collider_roles_live;
 namespace source=gears_cover_physx_query_source;
 using Code=roles::Code;
-constexpr unsigned root_capacity=2,list_capacity=64,component_capacity=128,asset_body_capacity=256;
+constexpr unsigned root_capacity=16,list_capacity=64,component_capacity=128,asset_body_capacity=256;
 enum class BodyState:unsigned {not_sampled,nonprimitive,body_instance_field_null,body_data_field_null,body_data_nonnull};
 enum class AssetState:unsigned {not_sampled,nonskeletal,instance_field_null,instance_present};
 struct AssetScope {
@@ -28,20 +29,23 @@ struct AssetBody {
     roles::Body body{};gears_anchor::Identity owner{},owner_actor{};unsigned owner_roots{};
 };
 struct Root {
-    gears_anchor::Identity actor{};
+    gears_anchor::Identity actor{},base{};
     std::array<unsigned,2> offsets{};
     std::array<source::pose::ArrayHeader,2> lists{};
     std::array<std::array<std::uintptr_t,list_capacity>,2> members{};
+    unsigned base_offset{},attached_offset{};source::pose::ArrayHeader attached{};
+    std::array<std::uintptr_t,list_capacity> attached_members{};
 };
 struct Component {
     gears_anchor::Identity identity{},owner{};
     gears_anchor::Identity body_owner{},body_owner_actor{};
-    // Bit0 is Pawn, bit1 is current Weapon. Zero preserves an external Owner.
+    // One bit per observed actor node, starting with Pawn/known Weapon seeds.
+    // A bit records address equality, not permission to classify an actor self.
     unsigned owner_roots{},body_owner_roots{};bool primitive{},skeletal{};
     BodyState body_state{};unsigned body_instance_offset{};roles::Body body{};AssetScope physics{};
 };
 struct Snapshot {
-    unsigned root_count{},component_count{},asset_body_count{};bool pawn_mesh_listed{};
+    unsigned seed_count{},root_count{},component_count{},asset_body_count{};bool pawn_mesh_listed{};
     std::array<Root,root_capacity> roots{};
     // First occurrence order; original array rows (nulls/duplicates included)
     // remain in Root::members instead of being silently dropped.
@@ -59,9 +63,11 @@ inline bool same(AssetScope const& a,AssetScope const& b){return a.state==b.stat
 inline bool same(AssetBody const& a,AssetBody const& b){return same_body(a.body,b.body)&&
     gears_anchor::equal_identity(a.owner,b.owner)&&gears_anchor::equal_identity(a.owner_actor,b.owner_actor)&&a.owner_roots==b.owner_roots;}
 inline bool same(Snapshot const& a,Snapshot const& b){
-    if(a.root_count!=b.root_count||a.component_count!=b.component_count||a.asset_body_count!=b.asset_body_count||a.pawn_mesh_listed!=b.pawn_mesh_listed)return false;
+    if(a.seed_count!=b.seed_count||a.root_count!=b.root_count||a.component_count!=b.component_count||a.asset_body_count!=b.asset_body_count||a.pawn_mesh_listed!=b.pawn_mesh_listed)return false;
     for(unsigned i=0;i<root_capacity;++i){auto const& x=a.roots[i];auto const& y=b.roots[i];
-        if(!gears_anchor::equal_identity(x.actor,y.actor)||x.offsets!=y.offsets||x.members!=y.members)return false;
+        if(!gears_anchor::equal_identity(x.actor,y.actor)||!gears_anchor::equal_identity(x.base,y.base)||x.offsets!=y.offsets||x.members!=y.members||
+           x.base_offset!=y.base_offset||x.attached_offset!=y.attached_offset||x.attached_members!=y.attached_members||
+           !source::pose::header_equal(x.attached,y.attached))return false;
         for(unsigned n=0;n<2;++n)if(!source::pose::header_equal(x.lists[n],y.lists[n]))return false;}
     for(unsigned i=0;i<component_capacity;++i){auto const& x=a.components[i];auto const& y=b.components[i];
         if(!gears_anchor::equal_identity(x.identity,y.identity)||!gears_anchor::equal_identity(x.owner,y.owner)||
@@ -96,18 +102,22 @@ inline gears_cover_physx_components::AssetBody fields(AssetBody const& value){
 }
 inline bool input(Snapshot const& typed,gears_cover_physx_components::Source& output){
     if(source::aliases(&typed,sizeof typed,&output,sizeof output))return false;
-    output.root_count=typed.root_count;output.component_count=typed.component_count;output.asset_body_count=typed.asset_body_count;output.pawn_mesh_listed=typed.pawn_mesh_listed;
+    output.seed_count=typed.seed_count;output.root_count=typed.root_count;output.component_count=typed.component_count;output.asset_body_count=typed.asset_body_count;output.pawn_mesh_listed=typed.pawn_mesh_listed;
     for(unsigned n=0;n<root_capacity;++n){output.roots[n].actor=typed.roots[n].actor.address;output.roots[n].offsets=typed.roots[n].offsets;
-        output.roots[n].lists=typed.roots[n].lists;output.roots[n].members=typed.roots[n].members;}
+        output.roots[n].lists=typed.roots[n].lists;output.roots[n].members=typed.roots[n].members;
+        output.roots[n].base=typed.roots[n].base.address;output.roots[n].base_offset=typed.roots[n].base_offset;
+        output.roots[n].attached_offset=typed.roots[n].attached_offset;output.roots[n].attached=typed.roots[n].attached;
+        output.roots[n].attached_members=typed.roots[n].attached_members;}
     for(unsigned n=0;n<component_capacity;++n){output.components[n]=fields(typed.components[n]);output.assets[n]=fields(typed.components[n].physics);}
     for(unsigned n=0;n<asset_body_capacity;++n)output.asset_bodies[n]=fields(typed.asset_bodies[n]);
     return gears_cover_physx_components::valid(output);
 }
 inline bool matches(Snapshot const& typed,gears_cover_physx_components::Snapshot const& value){
     namespace p=gears_cover_physx_components;auto const& raw=value.fields;
-    if(typed.root_count!=raw.root_count||typed.component_count!=raw.component_count||typed.asset_body_count!=raw.asset_body_count||typed.pawn_mesh_listed!=raw.pawn_mesh_listed)return false;
+    if(typed.seed_count!=raw.seed_count||typed.root_count!=raw.root_count||typed.component_count!=raw.component_count||typed.asset_body_count!=raw.asset_body_count||typed.pawn_mesh_listed!=raw.pawn_mesh_listed)return false;
     for(unsigned n=0;n<root_capacity;++n){auto const& a=typed.roots[n];auto const& b=raw.roots[n];
-        if(a.actor.address!=b.actor||a.offsets!=b.offsets||a.members!=b.members)return false;
+        if(a.actor.address!=b.actor||a.base.address!=b.base||a.offsets!=b.offsets||a.members!=b.members||a.base_offset!=b.base_offset||
+           a.attached_offset!=b.attached_offset||a.attached_members!=b.attached_members||!source::pose::header_equal(a.attached,b.attached))return false;
         for(unsigned l=0;l<2;++l)if(!source::pose::header_equal(a.lists[l],b.lists[l]))return false;}
     for(unsigned n=0;n<component_capacity;++n)if(!p::same(fields(typed.components[n]),raw.components[n])||
         !p::same(fields(typed.components[n].physics),raw.assets[n]))return false;
@@ -115,7 +125,7 @@ inline bool matches(Snapshot const& typed,gears_cover_physx_components::Snapshot
     return p::consistent(value);
 }
 #if defined(GEARS_COVER_BODY_PROTOTYPE) && GEARS_COVER_BODY_PROTOTYPE
-struct RootLayout {binding::Proof proof{};std::array<binding::Property,3> fields{};};
+struct RootLayout {binding::Proof proof{};std::array<binding::Property,5> fields{};};
 struct ComponentLayout {binding::Proof proof{};gears_anchor::Identity cls{};std::array<binding::Property,4> fields{};bool primitive{},skeletal{};};
 struct AssetLayout {binding::Proof proof{};gears_anchor::Identity cls{};std::array<binding::Property,3> fields{};};
 struct BodyLayouts {gears_anchor::Identity body_class{};std::array<roles::BodyLayout,8> layouts{};unsigned layout_count{};};
@@ -137,17 +147,30 @@ inline bool array_schema(binding::Proof& p,binding::Property const& field,gears_
        !binding::named(type,L"ActorComponent"))return false;
     if(component_base.address&&!binding::same(component_base,type))return false;component_base=type;return true;
 }
-inline Code root(Workspace& w,unsigned index,binding::Binding const& context,Root& output){
-    Root next{};auto& l=w.roots[index];auto& p=l.proof;auto const& wanted=index?context.weapon:context.pawn;
-    if(!collider::instance(p,wanted.address,next.actor)||!binding::same(next.actor,wanted))return Code::read;
-    if(!roles::class_role(p,next.actor.cls,index?L"Weapon":L"Pawn")||
+inline bool actor_array_schema(binding::Proof& p,binding::Property const& field){
+    std::uintptr_t inner_descriptor{},target{};gears_anchor::Identity id{},type{};unsigned dim{},width{},offset{};
+    return binding::source_field(p,inner_descriptor,field.id.address,0xd0)&&binding::certified(p,inner_descriptor,id)&&!id.number&&id.outer==field.id.address&&
+        binding::kind(p,id,L"ObjectProperty")&&binding::source_field(p,dim,inner_descriptor,0x70)&&dim==1&&
+        binding::source_field(p,width,inner_descriptor,0x74)&&width==8&&binding::source_field(p,offset,inner_descriptor,0x94)&&!offset&&
+        binding::source_field(p,target,inner_descriptor,0xd0)&&binding::certified(p,target,type)&&binding::kind(p,type,L"Class")&&binding::named(type,L"Actor");
+}
+inline Code root(Workspace& w,unsigned index,std::uintptr_t at,binding::Binding const& context,Root& output){
+    Root next{};auto& l=w.roots[index];auto& p=l.proof;const auto seeds=context.weapon.address?2u:1u;
+    if(!collider::instance(p,at,next.actor))return Code::read;
+    if(index<seeds&&!binding::same(next.actor,index?context.weapon:context.pawn))return Code::changed;
+    if(!roles::class_role(p,next.actor.cls,index<seeds?(index?L"Weapon":L"Pawn"):L"Actor")||
        !roles::role_property(p,next.actor.cls,L"WorldInfo",L"ObjectProperty",8,L"WorldInfo",l.fields[0])||
        !roles::role_property(p,next.actor.cls,L"Components",L"ArrayProperty",16,nullptr,l.fields[1])||
-       !roles::role_property(p,next.actor.cls,L"AllComponents",L"ArrayProperty",16,nullptr,l.fields[2]))return Code::layout;
-    for(unsigned a=0;a<3;++a)for(unsigned b=a+1;b<3;++b)
-        if(!separate(l.fields[a].offset,a?16u:8u,l.fields[b].offset,b?16u:8u))return Code::layout;
-    std::uintptr_t world{};
+       !roles::role_property(p,next.actor.cls,L"AllComponents",L"ArrayProperty",16,nullptr,l.fields[2])||
+       !roles::role_property(p,next.actor.cls,L"Base",L"ObjectProperty",8,L"Actor",l.fields[3])||
+       !roles::role_property(p,next.actor.cls,L"Attached",L"ArrayProperty",16,nullptr,l.fields[4])||!actor_array_schema(p,l.fields[4]))return Code::layout;
+    for(unsigned a=0;a<5;++a)for(unsigned b=a+1;b<5;++b)
+        if(!separate(l.fields[a].offset,a==0||a==3?8u:16u,l.fields[b].offset,b==0||b==3?8u:16u))return Code::layout;
+    std::uintptr_t world{},base_actor{};
     if(!binding::source_field(p,world,next.actor.address,l.fields[0].offset)||world!=context.world.address)return Code::changed;
+    next.base_offset=l.fields[3].offset;next.attached_offset=l.fields[4].offset;
+    if(!binding::source_field(p,base_actor,next.actor.address,next.base_offset))return Code::read;
+    if(base_actor&&(!collider::instance(p,base_actor,next.base)||!roles::class_role(p,next.base.cls,L"Actor",l.fields[3].reference.address)))return Code::layout;
     for(unsigned n=0;n<2;++n){auto const& field=l.fields[n+1];auto& list=next.lists[n];
         next.offsets[n]=field.offset;
         if(!array_schema(p,field,w.component_base))return Code::layout;
@@ -158,6 +181,13 @@ inline Code root(Workspace& w,unsigned index,binding::Binding const& context,Roo
            (!list.data?(list.count||list.capacity):!source::pointer(list.data,std::size_t((std::max)(1,list.capacity))*8)))return Code::capacity;
         if(list.count&&!safe_copy(next.members[n].data(),reinterpret_cast<void const*>(list.data),std::size_t(list.count)*8))return Code::read;
     }
+    auto& list=next.attached;
+    if(!binding::source_field(p,list.data,next.actor.address,next.attached_offset)||
+       !binding::source_field(p,list.count,next.actor.address,next.attached_offset+8)||
+       !binding::source_field(p,list.capacity,next.actor.address,next.attached_offset+12))return Code::read;
+    if(list.count<0||list.count>int(list_capacity)||list.capacity<list.count||list.capacity>256||
+       (!list.data?(list.count||list.capacity):!source::pointer(list.data,std::size_t((std::max)(1,list.capacity))*8)))return Code::capacity;
+    if(list.count&&!safe_copy(next.attached_members.data(),reinterpret_cast<void const*>(list.data),std::size_t(list.count)*8))return Code::read;
     output=next;return Code::current;
 }
 inline ComponentLayout* component_layout(Workspace& w,gears_anchor::Identity const& id){
@@ -290,10 +320,16 @@ inline Code component(Workspace& w,Snapshot const& roots,std::uintptr_t at,Compo
 inline Code values(Workspace& w,binding::Binding const& context,Snapshot& output){
     // Work candidates are already member-owned; do not put the large catalog
     // on the game stack or publish a partial candidate to the caller.
-    auto& next=output;next.root_count=context.weapon.address?2u:1u;next.component_count=next.asset_body_count=0;next.pawn_mesh_listed=false;
+    auto& next=output;next.seed_count=next.root_count=context.weapon.address?2u:1u;next.component_count=next.asset_body_count=0;next.pawn_mesh_listed=false;
     for(auto& item:next.roots)item={};for(auto& item:next.components)item={};
     for(auto& item:next.asset_bodies)item={};
-    for(unsigned i=0;i<next.root_count;++i){const auto code=root(w,i,context,next.roots[i]);if(code!=Code::current)return code;}
+    std::array<std::uintptr_t,root_capacity> actors{};actors[0]=context.pawn.address;if(next.seed_count==2)actors[1]=context.weapon.address;
+    // Breadth-first first-occurrence order terminates cycles while preserving
+    // every original array row. An attached node is observed, not declared self.
+    for(unsigned i=0;i<next.root_count;++i){const auto code=root(w,i,actors[i],context,next.roots[i]);if(code!=Code::current)return code;
+        for(int k=0;k<next.roots[i].attached.count;++k){const auto at=next.roots[i].attached_members[unsigned(k)];if(!at)continue;
+            bool duplicate=false;for(unsigned n=0;n<next.root_count;++n)duplicate=duplicate||actors[n]==at;if(duplicate)continue;
+            if(next.root_count==root_capacity)return Code::capacity;actors[next.root_count++]=at;}}
     for(unsigned r=0;r<next.root_count;++r)for(unsigned l=0;l<2;++l){auto const& list=next.roots[r];
         for(int i=0;i<list.lists[l].count;++i){const auto at=list.members[l][unsigned(i)];if(!at)continue;
             if(!r&&at==context.mesh.address)next.pawn_mesh_listed=true;

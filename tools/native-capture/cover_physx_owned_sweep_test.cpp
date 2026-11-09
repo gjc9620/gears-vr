@@ -12,7 +12,7 @@ static parts::Source parts_input{};
 static cx::Source collider_input{0x220000,0x200000,0x210000,0x180,-1,0x160000,0};
 constexpr std::uintptr_t shape0=0x190000,inside0=0x1a0000,body0=0x1b0000,
     shape1=0x1c0000,actor1=0x1d0000,inside1=0x1e0000,body1=0x1f0000;
-enum class Mode {normal,unsupported,links,read,source,malformed,fault,code,asset_changed,collider_changed,catalog_changed,component_asset_changed};
+enum class Mode {normal,unsupported,links,read,source,malformed,fault,code,asset_changed,collider_changed,catalog_changed,component_asset_changed,actor_edge_changed};
 static Mode mode{};static Memory* live_memory{};static unsigned original_calls{},close_calls{},retain_calls{},hit_count=2,owner_reads{};
 static bool probe_called{},pending_inside{},close_inside{};static q::Code nested_code{};
 static void(*owner_probe)(){};
@@ -40,6 +40,7 @@ struct HostCalls {
         if(mode==Mode::collider_changed)live_memory->put<std::uintptr_t>(0x210088,actor1);
         if(mode==Mode::catalog_changed)live_memory->put<std::uintptr_t>(0x280000,0);
         if(mode==Mode::component_asset_changed)live_memory->put<std::uintptr_t>(0x2b0008,0);
+        if(mode==Mode::actor_edge_changed)live_memory->put<std::uintptr_t>(0x2f0000,0);
         count=0;
         while(count<hit_count){const auto take=(std::min)(unsigned(q::stream_batch_hits),hit_count-count);
             for(unsigned k=0;k<take;++k){batch[k]={};const auto shape=(count+k)%2?shape1:shape0;
@@ -59,8 +60,14 @@ static Memory setup(char const* file){
     auto m=fixture();if(!load_code(file,m))throw 3;
     m.block(0x200000,0x188);m.block(0x210000,0x98);m.block(0x220000,0x320);
     m.block(0x230000,88);m.block(0x240000,0x258);m.block(0x250000,0x98);m.block(0x260000,88);m.block(0x280000,32);m.block(0x290000,32);
-    parts_input={};parts_input.root_count=1;parts_input.component_count=3;
+    parts_input={};parts_input.seed_count=parts_input.root_count=1;parts_input.component_count=3;
     auto& root=parts_input.roots[0];root.actor=0x220000;root.offsets={0x300,0x310};
+    root.base_offset=0x2e0;root.attached_offset=0x2f0;
+    parts_input.root_count=2;root.attached={0x2f0000,1,1};root.attached_members[0]=0x300000;
+    auto& child=parts_input.roots[1];child.actor=0x300000;child.offsets={0x300,0x310};child.base=0x220000;child.base_offset=0x2e0;child.attached_offset=0x2f0;
+    child.attached={0x310000,1,1};child.attached_members[0]=0x220000;
+    m.block(0x2f0000,8);m.block(0x300000,0x320);m.block(0x310000,8);m.put<std::uintptr_t>(0x2f0000,0x300000);m.put<std::uintptr_t>(0x310000,0x220000);
+    m.put(0x2202f0,root.attached);m.put(0x3002e0,child.base);m.put(0x3002f0,child.attached);
     root.lists={s::pose::ArrayHeader{0x280000,4,4},s::pose::ArrayHeader{0x290000,2,4}};
     root.members[0]={0x200000,0,0x230000,0x200000};root.members[1]={0x230000,0x240000};
     for(unsigned n=0;n<2;++n){m.put(root.actor+root.offsets[n],root.lists[n]);for(unsigned k=0;k<4;++k)m.put(root.lists[n].data+k*8,root.members[n][k]);}
@@ -135,6 +142,8 @@ int main(int argc,char**argv){
             check(output->component_sources.fields.component_count==3&&output->component_sources.actor_count==3&&output->component_sources.actors[1]==actor1&&output->component_sources.fields.components[2].owner_roots==0,"all declared actor sources retained including foreign owner, no self filter");
             check(output->component_sources.fields.asset_body_count==2&&output->component_sources.actors[2]==0x2c0000&&
                 output->component_sources.asset_observations[1].presence==parts::Presence::actor_observed,"secondary PAA actor outside the raw hits joins the same transaction");
+            check(output->component_sources.fields.root_count==2&&output->component_sources.fields.seed_count==1&&
+                output->component_sources.fields.roots[1].base==0x220000,"recursive actor edge and actual Base join the same owned transaction");
             check(output->owners[2].kind==own::Kind::unknown&&!output->owners[2].actor,"unused owner tail cleared");
             owner_probe=nullptr;hit_count=0;
             check(engine->sweep_all(source(),box,delta,q::StreamLimits{},read,guard,*output,&collider_input,&parts_input)==q::Code::queried&&!output->raw.hit_count&&!output->owners[0].actor,"empty data clears old owners, not occupancy permission");
@@ -143,9 +152,9 @@ int main(int argc,char**argv){
             hit_count=2;q::Capsule cap{{0,0,0},{0,0,1},.5f};
             check(engine->sweep_all(source(),cap,delta,q::StreamLimits{},read,guard,*output,&collider_input,&parts_input)==q::Code::queried,"capsule path uses same ownership transaction");
             check(!engine->pending()&&engine->close(),"normal ownership query releases active scope");}
-        const std::array<std::pair<Mode,q::Code>,11> failures{{{Mode::unsupported,q::Code::owner_unsupported},{Mode::links,q::Code::owner_links},
+        const std::array<std::pair<Mode,q::Code>,12> failures{{{Mode::unsupported,q::Code::owner_unsupported},{Mode::links,q::Code::owner_links},
             {Mode::read,q::Code::owner_read},{Mode::source,q::Code::changed},{Mode::malformed,q::Code::callback_rejected},
-            {Mode::fault,q::Code::fault_unknown},{Mode::code,q::Code::code},{Mode::asset_changed,q::Code::changed},{Mode::collider_changed,q::Code::changed},{Mode::catalog_changed,q::Code::changed},{Mode::component_asset_changed,q::Code::changed}}};
+            {Mode::fault,q::Code::fault_unknown},{Mode::code,q::Code::code},{Mode::asset_changed,q::Code::changed},{Mode::collider_changed,q::Code::changed},{Mode::catalog_changed,q::Code::changed},{Mode::component_asset_changed,q::Code::changed},{Mode::actor_edge_changed,q::Code::changed}}};
         for(auto const& test:failures){memory=initial;mode=test.first;*output=*saved;original_calls=owner_reads=retain_calls=0;
             auto engine=std::make_unique<Engine>();check(engine->prime(),"failure fixture prime");
             check(engine->sweep_all(source(),box,delta,q::StreamLimits{},read,guard,*output,&collider_input,&parts_input)==test.second&&equal(*output,*saved),"whole attributed output unchanged on failure");

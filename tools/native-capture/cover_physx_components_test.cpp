@@ -13,7 +13,8 @@ static Memory parts_fixture(p::Source& fields){
     m.put<std::uintptr_t>(0x160040,0x1c0000);m.put<std::uintptr_t>(0x1c0010,0x160000);
     m.block(0x1f0000,0x48);m.block(0x210000,0x18);m.put<std::uintptr_t>(0x1f0000,base+0x2330a8);
     m.put<std::uintptr_t>(0x1f0038,0x170000);m.put<std::uintptr_t>(0x1f0040,0x210000);m.put<std::uintptr_t>(0x210010,0x1f0000);
-    fields={};fields.root_count=1;fields.component_count=2;auto& root=fields.roots[0];root.actor=0x1b0000;root.offsets={0x300,0x310};
+    fields={};fields.seed_count=fields.root_count=1;fields.component_count=2;auto& root=fields.roots[0];root.actor=0x1b0000;root.offsets={0x300,0x310};
+    root.base_offset=0x2e0;root.attached_offset=0x2f0;
     root.lists={s::pose::ArrayHeader{0x280000,4,4},s::pose::ArrayHeader{0x290000,2,4}};
     root.members[0]={0x190000,0,0x1d0000,0x190000};root.members[1]={0x1d0000,0x190000};
     for(unsigned n=0;n<2;++n){m.put(root.actor+root.offsets[n],root.lists[n]);for(unsigned k=0;k<4;++k)m.put(root.lists[n].data+k*8,root.members[n][k]);}
