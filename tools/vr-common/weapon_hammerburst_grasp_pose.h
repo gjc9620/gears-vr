@@ -3,8 +3,9 @@
 #include "hand_authored_mount_profile.h"
 #include "rig_tracking_math.h"
 
-// Authored cosmetic pinch fitting to the ORIGINAL HB part frame. Contacts and
-// feed travel use the unchanged tracked hand. No Lancer item/muzzle offsets.
+// Historical, currently unconnected cosmetic fitting draft. Its assumed part
+// and wrist frames need live/skin validation before use. Contacts and feed
+// travel must continue using the unchanged tracked hand, never this output.
 namespace gears_weapon_hammerburst_grasp {
 namespace vr=gears_vr;
 struct MagazineAssist {
@@ -67,8 +68,8 @@ struct PartFit {
             gears_hand_authored_mount::Mount mount{};
             if(!gears_hand_authored_mount::marcus115(gears_hand_authored_mount::marcus115_signature,
                 gears_hand_authored_mount::Side::left,scale,units,mount))return false;
-            // Marcus index/thumb pad anchor, not a weapon coordinate. The
-            // distinct HB latch/magazine finger profiles are selected in C0.
+            // Historical Marcus index/thumb pad estimate, not a weapon
+            // coordinate or proof of a delivered HB-specific C0 finger pose.
             const auto pad=vr::transform(vr::rotation_matrix(wrist),{9.75*scale,-4.6*scale,-2.1*scale});
             const auto grip=vr::normalized(vr::multiply(wrist,vr::inverse(mount.calibration.grip_to_wrist_rotation)));
             const auto d=vr::transform(vr::rotation_matrix(grip),mount.calibration.grip_to_wrist_metres);
