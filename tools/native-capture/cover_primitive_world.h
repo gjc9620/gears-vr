@@ -4,9 +4,10 @@
 
 // Caller-owned geometry preparation, not an active-physics adapter. The caller
 // must authenticate SAME-source body/setup/name, shape transform, dimensions,
-// scalar and (for sphyl) axis conventions before using these values. No native
-// layout, capsule axis, scale-in-translation convention or physics pose is
-// inferred. Only one primitive is described; unsupported convex must stop a
+// scalar and conventions before using these values. The optional Authored
+// path below implements the retained original aggregate/primitive consumers;
+// it still requires authenticated current field/code correspondence. No native
+// layout or active physics pose is inferred. Unsupported convex must stop a
 // complete-body consumer, never disappear from its collision volume.
 namespace gears_cover_primitive_world {
 namespace bones=gears_cover_physics_bones;
@@ -22,6 +23,15 @@ struct Input {
     // Explicit authenticated unit axis IN SHAPE SPACE. No +X/+Z assumption.
     // Sphere and box require zero here, as they have no capsule segment.
     Vec sphyl_axis{};
+};
+struct Authored {
+    std::uint32_t body_index{};bones::Name bone{};
+    body::Matrix64 tm{};
+    metrics::Kind kind{};std::array<float,3> raw_dimensions{};
+    // The original aggregate receiver's incoming vector, NOT a scale guessed
+    // from TM or the current animated bone. This path supports exact positive
+    // uniform scale only; nonuniform/near-uniform cases remain unsupported.
+    std::array<float,3> receiver_scale{};
 };
 struct Primitive {
     std::uint32_t body_index{},bone_index{};bones::Name bone{};
@@ -56,6 +66,34 @@ inline bool compose(Pose const& parent,Pose const& local,Pose& output) noexcept 
     if(!body::d::finite_vector(p))return false;
     output={p,q};return true;
 }
+}
+// Original 0x140130e7c scales TM translation componentwise before TM*parent;
+// dimensions use scale.x. 0x1400cf080 uses local +Z/-Z capsule endpoints.
+// This decodes OWNED fields only. It does not authenticate their current native
+// offsets, source bracket, original caller or active physics consumers.
+inline Code prepare_authored(Authored const& input,Input& output) noexcept {
+    const body::d::Range ranges[]={body::d::range(&input,sizeof input),body::d::range(&output,sizeof output)};
+    if(!body::d::disjoint(ranges,2))return Code::alias;
+    if(input.kind==metrics::Kind::convex||unsigned(input.kind)>unsigned(metrics::Kind::convex))return Code::unsupported;
+    for(float s:input.receiver_scale)if(!std::isfinite(s)||s<=0)return Code::scale;
+    if(input.receiver_scale[0]!=input.receiver_scale[1]||input.receiver_scale[0]!=input.receiver_scale[2])return Code::unsupported;
+    body::ik::Matrix tm{};for(unsigned i=0;i<16;++i)tm.m[i]=input.tm.values[i];
+    if(!detail::rigid(tm))return Code::shape;
+    Input next{};next.body_index=input.body_index;next.bone=input.bone;
+    next.dimensions={input.kind,input.receiver_scale[0],input.raw_dimensions};
+    metrics::Metrics measured{};const auto result=metrics::compute(next.dimensions,measured);
+    if(result==metrics::Code::numeric)return Code::numeric;
+    if(result!=metrics::Code::computed)return Code::dimensions;
+    // Preserve original vmulss float32 translation products before the later
+    // rigid composition. Do not scale the rotation rows or apply scalar twice.
+    const float x=input.tm.values[12]*input.receiver_scale[0];
+    const float y=input.tm.values[13]*input.receiver_scale[1];
+    const float z=input.tm.values[14]*input.receiver_scale[2];
+    if(!std::isfinite(x)||!std::isfinite(y)||!std::isfinite(z)||
+       (input.tm.values[12]!=0&&x==0)||(input.tm.values[13]!=0&&y==0)||(input.tm.values[14]!=0&&z==0))return Code::numeric;
+    next.shape_in_bone={{x,y,z},body::d::rotation(tm)};
+    if(input.kind==metrics::Kind::sphyl)next.sphyl_axis={0,0,1};
+    output=next;return Code::converted;
 }
 inline Code convert(body::Model const& model,body::Frame const& frame,bones::Mapping const& mapping,
                     Input const& input,Workspace& work,Primitive& output) noexcept {
@@ -108,5 +146,15 @@ inline Code convert(body::Model const& model,body::Frame const& frame,bones::Map
         if(!body::d::finite_vector(next.segment_start)||!body::d::finite_vector(next.segment_end))return Code::numeric;
     }
     output=next;return Code::converted;
+}
+inline Code convert_authored(body::Model const& model,body::Frame const& frame,bones::Mapping const& mapping,
+                             Authored const& input,Workspace& work,Primitive& output) noexcept {
+    const body::d::Range ranges[]={body::d::range(&model,sizeof model),body::d::range(&frame,sizeof frame),
+        body::d::range(&mapping,sizeof mapping),body::d::range(&input,sizeof input),
+        body::d::range(&work,sizeof work),body::d::range(&output,sizeof output)};
+    if(!body::d::disjoint(ranges,6))return Code::alias;
+    Input decoded{};const auto result=prepare_authored(input,decoded);
+    if(result!=Code::converted)return result;
+    return convert(model,frame,mapping,decoded,work,output);
 }
 } // namespace gears_cover_primitive_world

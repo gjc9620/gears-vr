@@ -135,6 +135,61 @@ int main(int argc,char** argv){if(argc!=2)return 2;const std::string path=argv[1
     updated[1].bone.number=number;
     C(names::bind(x->model,x->frame,updated.data(),8,2,x->mapping)==names::Status::okay);
     x->input.bone.number=number;C(x->run()==api::Code::converted);C(x->out.bone.number==number);
+    // Retained aggregate convention: scale local translation once, then apply
+    // the body transform. Capsule axis is Z in the original consumer's space,
+    // regardless of which world axis the local TM rotates it onto.
+    for(unsigned turn=0;turn<3;++turn)for(float scale:{.25f,1.f,2.5f}){
+        auto f=std::make_unique<Fixture>();C(f->init(path));
+        f->set_component({{-70,80,90},unit({.3,-.1,.2,.9})});
+        const Quat rotation=turn==0?Quat{0,0,0,1}:turn==1?unit(Quat{0,1,0,1}):unit(Quat{.2,.3,-.1,.8});
+        api::Authored raw{};raw.body_index=f->input.body_index;raw.bone=f->input.bone;raw.receiver_scale={scale,scale,scale};
+        const Vec axes[]={rotate(rotation,{1,0,0}),rotate(rotation,{0,1,0}),rotate(rotation,{0,0,1})};
+        for(unsigned i=0;i<3;++i){raw.tm.values[4*i]=float(axes[i].x);raw.tm.values[4*i+1]=float(axes[i].y);raw.tm.values[4*i+2]=float(axes[i].z);}
+        raw.tm.values[12]=2;raw.tm.values[13]=-3;raw.tm.values[14]=4;raw.tm.values[15]=1;
+        for(auto kind:{m::Kind::sphere,m::Kind::box,m::Kind::sphyl}){
+            raw.kind=kind;raw.raw_dimensions=kind==m::Kind::sphere?std::array<float,3>{3,0,0}:
+                kind==m::Kind::box?std::array<float,3>{3,4,5}:std::array<float,3>{3,8,0};
+            const auto old_raw=raw;api::Input decoded{};C(api::prepare_authored(raw,decoded)==api::Code::converted);
+            C(close(decoded.shape_in_bone.position,{2*scale,-3*scale,4*scale},1e-12));C(same_q(decoded.shape_in_bone.orientation,rotation));
+            C(close(decoded.sphyl_axis,kind==m::Kind::sphyl?Vec{0,0,1}:Vec{},1e-12));
+            C(decoded.dimensions.receiver_scalar==scale&&decoded.dimensions.raw==raw.raw_dimensions);
+            C(api::convert_authored(f->model,f->frame,f->mapping,raw,f->work,f->out)==api::Code::converted);
+            f->input.shape_in_bone={{2*scale,-3*scale,4*scale},rotation};const auto target=f->expected();
+            C(close(f->out.shape_world.position,target.position));C(same_q(f->out.shape_world.orientation,target.orientation));
+            if(kind==m::Kind::sphyl){const auto axis=rotate(target.orientation,{0,0,1});
+                C(close(f->out.segment_start,add(target.position,mul(axis,-4*scale))));
+                C(close(f->out.segment_end,add(target.position,mul(axis,4*scale))));C(f->out.dimensions.radius==3*scale);
+            }
+            C(!std::memcmp(&old_raw,&raw,sizeof raw));
+        }
+    }
+    api::Authored raw{};raw.body_index=x->input.body_index;raw.bone=x->input.bone;raw.kind=m::Kind::sphere;
+    raw.raw_dimensions={1,0,0};raw.receiver_scale={3,3,3};raw.tm.values[0]=raw.tm.values[5]=raw.tm.values[10]=raw.tm.values[15]=1;
+    raw.tm.values[12]=.1f;api::Input decoded{};
+    C(api::prepare_authored(raw,decoded)==api::Code::converted);
+    const unsigned golden=0x3e99999a;float rounded{};std::memcpy(&rounded,&golden,4);C(decoded.shape_in_bone.position.x==double(rounded));
+    for(unsigned defect=0;defect<11;++defect){auto bad=raw;auto expected=api::Code::shape;
+        switch(defect){
+        case 0:bad.receiver_scale[1]=2;expected=api::Code::unsupported;break;
+        case 1:bad.receiver_scale[0]=0;expected=api::Code::scale;break;
+        case 2:bad.receiver_scale[2]=std::numeric_limits<float>::quiet_NaN();expected=api::Code::scale;break;
+        case 3:bad.tm.values[0]=2;break;
+        case 4:bad.tm.values[5]=-1;break;
+        case 5:bad.tm.values[3]=1;break;
+        case 6:bad.tm.values[12]=(std::numeric_limits<float>::max)();expected=api::Code::numeric;break;
+        case 7:bad.tm.values[12]=std::numeric_limits<float>::denorm_min();bad.receiver_scale={.25f,.25f,.25f};expected=api::Code::numeric;break;
+        case 8:bad.raw_dimensions[0]=0;expected=api::Code::dimensions;break;
+        case 9:bad.kind=m::Kind::convex;expected=api::Code::unsupported;break;
+        default:bad.receiver_scale={1,1,1};bad.receiver_scale[1]=1.f+0x1p-23f;expected=api::Code::unsupported;break;
+        }
+        const auto old_decoded=decoded;const auto old_world=x->out;
+        C(api::prepare_authored(bad,decoded)==expected);C(!std::memcmp(&old_decoded,&decoded,sizeof decoded));
+        C(api::convert_authored(x->model,x->frame,x->mapping,bad,x->work,x->out)==expected);C(!std::memcmp(&old_world,&x->out,sizeof old_world));
+    }
+    C(api::prepare_authored(*reinterpret_cast<api::Authored const*>(&decoded),decoded)==api::Code::alias);
+    const auto old_world=x->out;
+    C(api::convert_authored(x->model,x->frame,x->mapping,*reinterpret_cast<api::Authored const*>(&x->out),x->work,x->out)==api::Code::alias);
+    C(!std::memcmp(&old_world,&x->out,sizeof old_world));
     std::printf("CoverPrimitiveWorldTest checks=%u failures=%u retained_C0=true synthetic_shapes=true active_physics_verified=false sweep_verified=false\n",checks,failures);
     return failures?1:0;
 }

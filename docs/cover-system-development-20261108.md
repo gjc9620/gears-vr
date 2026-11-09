@@ -1144,3 +1144,15 @@ wrapper工具90227实际terminal0；operator7456 exit1、error字段null且实�
 实际严格MSVC /std:c++17 /O2 /W4 /WX /EHsc /UNDEBUG /MT编译0，独立程序以BelowNormal运行，760项检查0失败。使用保留Marcus115参考／C0数据、打乱的合成body名称顺序及合成primitive，以独立四元数／向量FK核对8个骨骼、3类形状、原始及旋转平移后的身体；验证中心、朝向、球柱轴／端点、尺寸只缩放一次、零Length和非零FName number。错误映射／参考／缩放／矩阵／轴／姿态／尺寸／溢出／alias均拒绝且原输出保持。证据analysis/cover-system-20261108/primitive-world-r57保存源码副本、原编译与运行日志、221个实际编译依赖SHA、二进制与3个fixture全SHA。
 
 该入口目前只准备一个形状的owned描述，不是活动PhysX姿态、完整body体积、连续扫掠、终点占用或命中证书；实际当前shape字段／scalar／局部TM和轴语义、同源关闭、physics消费及查询世界同步仍须认证。没有新Native／PG构建或游戏／XR运行。r54 prepared6ec774ef／plan915215be及24冻结源／37当前驱动SHA+AST／3saved制品重新全核无误。Bol直接指出Snub174315为无后继的实际尾后，已向Snub递交同一较早Coverr54完整冻结申请，未据此宣称已受理或已交窗。完整CV-01–24／AC-01–22、Native移动恢复、同版hit／muzzle、实际逐点抓握、严重吸附肩／身体／装备遮挡和实体头显继续未完成。
+
+## 2026年11月9日 r58原局部TM缩放与球柱轴接入
+
+沿原aggregate 0x140130e7c到球柱0x1400cf080追踪寄存器和完整指令。REA对该球柱入口没有保留记录，本轮不新开数据库；复用已保存原代码，重新校验原code／data段全SHA，两个chunk逐字节匹配并完整解码，共5761原始字节。球柱伪代码只保留过短片段，不能据其return1否定真实路径。聚合端把形状TM的+0x30／34／38平移分别乘传入scale.xyz，再作形状TM×父变换；传入primitive的xmm3取scale.x。球柱原消费者将查询点减平移后与矩阵三行点乘，局部第三轴与正负半Length比较，两次球查询中心分别为(0,0,+halfLength)和(0,0,-halfLength)。因此该原路径的球柱段轴为形状局部Z，不采用PhysX胶囊常见轴的外部猜测。
+
+原RIP相对地址重新计算并读取同一保留数据段：0x1400cf186取0x141707080的00000080符号位，0x1400cf25e取0x1417070e4的0000003f半值；对应负端与半段长。输入scale向量生产者的完整语义、近似均匀／非均匀路径及当前native字段对应尚未认证，不将该静态消费者结论升级为当前活动物理形状或查询同步证明。
+
+在既有cover_primitive_world.h增加Authored输入及prepare_authored／convert_authored入口，复用同一FName映射、r56尺寸与r57当前C0转换，不新增writer／读取／Hook。仅接受明确正值、三个分量完全相同的receiver scale与刚性TM；非均匀或近似均匀输入明确unsupported，Convex同样不能跳过。按原float32顺序先计算TM平移乘scale，再形成局部pose；仅在该已知原路径解码时设置球柱Z轴。通用显式axis入口继续保留。非法矩阵、尺寸、缩放、溢出／正值归零及alias均保持旧输出字节；未认证current source的调用方仍无运行许可。
+
+实际严格MSVC编译0，以BelowNormal执行1088项检查0失败，保留此前760项。新增原TM旋转、三档scale、三类形状与保留C0的联合转换，独立四元数／向量FK核世界中心／朝向和旋转后的Z轴端点；0.1f×3以原float32位模式3e99999a验证平移先舍入，不把double乘积直接送到世界变换。完整证据analysis/cover-system-20261108/primitive-transform-r58保存原机器字节关系／常量、可重现只读提取器、两源副本、221编译依赖SHA及编译／运行日志。
+
+运行队列已由Snub174315直接完整受理同一Coverr54为其唯一后继，尚未最终交窗；本轮未stage、未运行游戏／XR，未构建新Native／PG。Coverr54 prepared6ec774ef／plan915215be及24冻结源／37当前驱动SHA+AST／3saved制品重新核对一致。后到同一Bol180947已独立全核Native1811+PG1847冻结源、24当前+24归档驱动、74support、122次AST、4saved制品／精确入口与EXE，并正式受理为Cover唯一后继；41未解析import和静态闭包边界明确保留，不授运行窗。首次本地核对错误使用游戏身份path键已记录，改按实际game_path／exe_sha256后全核通过。完整CV／AC、源关闭、连续身体扫掠／终点占用／Native移动恢复、同版hit／muzzle、逐点手型、严重吸附肩／身体／装备遮挡与实体头显均保持未完成。
