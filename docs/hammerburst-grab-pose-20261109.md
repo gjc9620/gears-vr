@@ -102,3 +102,11 @@ select-latch-opposing-pads.py在原末节bone14的33个纯权重皮肤顶点、b
 fit-latch-normal-aware.py联合原两侧跨度与朝向约束，固定骨长权重，141次离线求值后gap4.4195235204对原4.4197947328，两侧cos .8503569721/.9668508931，达到本轮明确gap误差<=.1raw与双侧cos>=.85。新index16.25/34.5/14.5、thumb8/4.25/40.75/37，其余中指MCP沿前次+30保留；局部15矩阵归档。只算位置/方向子约束通过，不是GrabPose交付。
 
 check-latch-normal-aware-whole.py随后在完整9966枪三角/1395手三角上复核12个腕方向，最少仍397 edge/triangle命中（60度，230+167），三方向图已亲看。仍有接触区域遮挡和穿插，不发布C0、不称surface/腕/袖口/游戏接受。结果latch-opposing-pad-candidates.json、latch-normal-aware-fit.json、latch-normal-aware-whole.json/png/log；无机械contact/radius、骨长或输入许可变更。下一步针对新候选剩余具体碰撞部位作校准，不回用已否定旧皮肤点。
+
+## 新法线候选的全枪分组及收紧朝向对照
+
+localize-latch-normal-aware.py重建同一15骨蒙皮与归档腕变换，在完整1395手三角/9966枪三角上精确重合397命中：掌0、食指210、中指17、无名指0、小指0、拇指170。进一步按原枪组件分解：食指卡扣165/其余枪身45，中指卡扣17/其余0，拇指卡扣142/其余28；双向和仍230+167。混合权重面全部归属，无丢弃。此是离线无向边/三角命中定位，不是穿透深度、区域数量、实体包含或游戏验收。三视图再次亲看，仍可见手指被部件遮挡和穿插。
+
+因此只满足相向cos>=.85还不足以保护指垫周围皮肤。fit-latch-strict-normal.py保持同一原骨长、权重、皮肤点1002/1018、腕外的7关节参数，收紧到双侧cos>=.98并加强朝向惩罚，547次有界求值后gap4.3965476660（目标4.4197947328），cos .9621518606/.9662507457，食指MCP到0度边界，仍未达到明确朝向约束，判失败。没有放宽阈值、冒称最优不可达、改骨长或发布姿态。结果latch-normal-aware-localization.json、latch-normal-aware-component-localization.json、latch-strict-normal-fit.json。下一步须检查接触patch周围曲面及可用关节自由度；不把单顶点贴合当成完整指垫贴合，不继续忽略卡扣周边体积。
+
+本次仅离线作者研究；HB171233冻结候选、机械contact、公共v71均未修改。仍等Lancer165800显式最终窗口交接后才启动已接受的有限弹药流程。
