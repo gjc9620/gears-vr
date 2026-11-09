@@ -1123,3 +1123,15 @@ wrapper工具90227实际terminal0；operator7456 exit1、error字段null且实�
 原机器码在0x1401311ea／0x140131448／0x140131d1c分别add元素指针0x50，在0x1401318fc为add0x7c，紧随的count引用位移分别0x28／0x18／0x08／0x38。记录保留原bytes、上下文及源SHA；静态指针推进量为80／80／80／124。将这些循环对应到具名Aggregate数组仍是依据原源布局的推断，不证明26028当前反射stride、结构extent、对齐、分支执行或物理消费完成。
 
 因此当前只得到两个不同来源的事实：原包目标声明正确，原消费者有固定指针步长；尚没有26028拒绝的原inner stride／target extent，不能把对齐补齐当作已证实原因，不能据此放宽stride==extent或忽略字段。下一实际来源仍由r54失败见证获得。证据analysis/cover-system-20261108/array-layout-static-r55，包括只读helper源码／exe／库身份、原声明／压缩摘要、原指令锚点及verification。没有改r54 prepared6ec774ef／plan915215be、Native／PG／XR或其他候选；当前不占运行窗，完整CV／AC与碰撞／移动恢复／hit／muzzle／吸附遮挡／实体头显仍未完成。
+
+## 2026年11月9日 r56原primitive消费者尺寸与浮点顺序
+
+检查确认当前Pawn圆柱原始字段仍不能替代最终探身body体积；为后续逐body几何接线，复用已有静态原代码进一步提取0x1400ce24c／0x1401fe65c／0x1400cf080三个直接消费者。原KB伪代码SHA与原section SHA验证，完整机器码分别281／1713／1663字节全部线性解码。Sphere消费者在0x1400ce33e以scalar乘shape+0x40；Box在0x1401fe7f3先以scalar乘原常量，再在7ff／804／809乘shape+0x40／44／48；Sphyl在0x1400cf25e乘同常量、266乘shape+0x44，33d以scalar乘shape+0x40，并有两次原0x1400cf700及一次0x1400d7b68调用。
+
+常量必须按原机器码RIP重定位及同一保存数据段读取。原section_131b000.bin完整SHA c5deb081…5231c验证，两个RIP目标均为0x1417070e4，原bytes0000003f即float32 0.5。首次根据伪代码显示猜为0x1417060e4的断言失败，原尝试及正确计算均保存；地址显示差异原因未认定，不全局挪动RVA或把它当当前array拒绝原因。Sphyl伪代码仅1631文本字节且看似return1，原1663机器字节实际有3次调用，不能凭伪代码片段宣称该查询无效或无命中。
+
+新增cover_primitive_metrics.h纯float32计算：调用者首先认证当前kind／反射字段和该原消费者scalar后，Sphere计算Radius×S，Box半尺寸计算(S×0.5)×X/Y/Z，Sphyl计算Radius×S和(S×0.5)×Length。保持原游戏单位及原乘法顺序；不从矩阵猜scalar、不换米、不产生世界形状或许可，Convex明确unsupported，完整body消费者必须另行处理，不能默默遗漏。非法尺寸、非有限值、溢出／有损归零拒绝且旧输出字节保持。
+
+真实MSVC严格编译0、执行39项检查0失败，包括原尺寸例、零Length、不同shape输出清理、非法输入、unsupported Convex及float32极值。特别以原SSE乘法顺序的IEEE754黄金位模式7f3fffff检验最大float scalar与1.5尺寸，避免先乘尺寸造成非原版溢出；极小值归零拒绝。证据analysis/cover-system-20261108/primitive-semantics-r56含完整原chunks、伪代码、原常量／指令锚点、源副本、编译依赖SHA及日志。
+
+该计算还未接入当前native字段／pose／physics消费者；incoming scalar完整语义、非均匀缩放、Convex、连续扫掠／占用及当前场景可见性仍未知。本批无新Native／PG构建、游戏或头显通过；r54 prepared6ec774ef／plan915215be保持不变。Bow已确认r54沿其全终交窗后的唯一后继Lancer165800单次转达，晚到Bol180947排r54之后；当前向Lancer查询实际尾以直接核接同一申请，Cover尚无新窗口／未stage。完整CV／AC、实际移动恢复、hit／muzzle、逐点手型／吸附遮挡及头显继续未完成。
