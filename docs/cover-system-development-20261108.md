@@ -1180,3 +1180,15 @@ wrapper工具90227实际terminal0；operator7456 exit1、error字段null且实�
 实际Python 8项检查通过、0失败、0跳过，以保留原字节和真实CoverQuery逻辑配合合成进程内存验证：每段不符均拒绝；原缺口0xcfd77处变更拒绝；观察后、关闭前改变后续段亦拒绝；正常5段完整保留在q.values并关闭，错误module／profile／执行属性／范围及坏历史源拒绝。首轮夹具继承了占位aaaa EXE hash而未到目标路径，保留1fail／8error日志和旧验证源码；仅修正夹具身份后全通过，产品image检查未放宽。证据analysis/cover-system-20261108/world-query-continuation-r60包含原完整指令／跳转、可复现提取器、两源副本和首轮／最终日志。
 
 Coverr54 prepared6ec774ef／plan915215be及24冻结源／37当前驱动SHA+AST／3saved制品再次匹配。仍等待Snub174315最终唯一交窗，未stage／run；已受理的唯一后继仍Bol180947，未最终交付。本批没有新Native／PG构建或游戏／XR／头显运行。当前完整形状来源、原查询动态目标及重叠语义、完整身体路径扫掠／终点占用／Native移动恢复、同版hit／muzzle、严重吸附肩／身体遮挡、逐点手型及全部CV-01–24／AC-01–22与实体头显继续未完成。
+
+## 2026年11月9日 r61体积重叠候选与自身排除的原路径约束
+
+继续按原代码核对起点重叠入口，不用虚表习惯次序命名。原构造表十进制slot24指0x1400caec0，实际指令遍历成员、删除匹配项并清容器计数，不能当作PointCheck调用；该候选已排除，未执行。slot40的0x14018e6c0将R8三分量存至状态+0x30、R9存+0x60，构造center±extent包围盒于+0xd8，以原第五参数存flags+0x3c并调用0x1400d0650递归访问。这是中心／体积重叠查询候选的静态依据，实际当前receiver与ABI仍须认证。
+
+原0x1400db120比较三float与零；对有效有限extent，全零标记使visitor选择组件+0x150字的bit17，非零选择bit18，不能只核原Pawn自身的blocking字而忽略实际被查询组件。visitor在候选组件写+0xf4访问代次，并经Actor侧虚表+0x330过滤，第三寄存器参数R8明确为零；不能假定沿用线段查询的来源对象。随后取组件虚表+0x2e0，将当前result局部存储、center、extent与flags交给原方法，返回EAX=0时才分配／加入命中记录，非零则继续遍历。所有角色名称、字段当前反射对应与动态target都未因此认证，尚不授原调用许可。
+
+visitor在加入命中后检查flags&0x200并可提前返回；在这种不完整返回上丢弃自身命中后直接当作空占用是不成立的。原查询还会修改自己的计数及组件访问stamp，不是可任意线程调用的被动读取器。未来接线须分别认证完整／早停结果语义、self排除及GT／世界同步，不能把“start==end的Actor.Trace”默认为同一重叠查询，也不能直接调用推测的slot。
+
+完整保存并复核slot24负例、slot40候选、visitor及零extent分类共1263原始字节，26个关键机器指令锚点一致，原section全SHA911ab9bc…06ae6。slot40实际RIP目标0x141afac20不在此次已有六个保存section范围内，因此root-data值未知；从共享插入／查询代码判断它与空间树根数据有关只是推断，不将其猜成已恢复的回调对象或默认世界边界。限定原包伪代码literal搜索实际工具49106已轮询同一作业至exit0，匹配1400cfef0／140136918；不把原伪代码0x1000显示差异用于全局地址平移。提取与核对程序全终0，未新建IDA数据库或调用原方法。证据analysis/cover-system-20261108/world-overlap-route-r61包含原chunks／伪代码／指令锚点／未知值／各日志及可复现脚本。
+
+本轮是原路径取证，未改产品输入、writer、body策略或待运行driver。Coverr54 prepared6ec774ef／plan915215be及24冻结源／37当前驱动SHA+AST／3saved制品再次一致，尚未收到Snub最终交窗；唯一后继仍Bol180947，未最终交它。本轮无新Native／PG构建、部署、游戏／XR／头显运行。完整CV-01–24／AC-01–22、当前来源关闭、完整扫掠／终点占用、实际Native移动恢复、同版hit／muzzle、严重吸附遮挡及逐点手型仍未完成。
