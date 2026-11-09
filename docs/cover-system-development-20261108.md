@@ -1388,3 +1388,17 @@ Bol212342+execution779eca在独立9271主机文件、24原声明、364current＋
 精确3c48解释器-E -s -B -X utf8的真实prepare-only实际0。四种完整入口副本（-O、-OO、-I、无-E的环境优化）均先消费后拒绝，重试FileExists；优化prepare拒绝且不消费。真实新增环境循环AST在独立子进程清掉PYTHON／GEARS／XR哨兵并保留普通环境，十基线前后相同。未重跑不变race和旧失败套件。完整绝对argv／ENV／五身份及证据见array-extent-r69/admission-v3/tail-packet.md，verification SHAcd8005c7705754947a7dd110ada13bc8bcc5f33be2913e3b2e38fce5e9fd47d8。
 
 新旧真实claim／ticket仍不存在，尚未stage／运行。已把替代包送Bol独立定向核验，只有绑定新tuple的新最终交接有效；已受理LS235126-v3仍是同一唯一后继，前序绑定须随本替代身份同步。实际动作仍仅一次原A及来源／形状／hit-filter读取，不扩为未接通的抓边录像；严重遮挡、碰撞／身体执行和完整CV24／AC22继续未完成。
+
+## 2026年11月10日 已消费的启动前失败 与r74原物理变换实现
+
+Bol已对b144 admission-v3完成独立检查并发新最终收据66b2397f，绑定其实际9764／execution851ea67e。Root独立核全部终态证据、fresh prepare-only、idle／CIM及十项原始基线后建立本次唯一ticket。实际调用时Root把ticket实参手写为正斜杠，而冻结plan.argv／str(TICKET)为反斜杠字符串，入口第39行精确参数检查拒绝，Python PID34472／wrapper终态1。该消费是Root调用错误，不是游戏或产品失败；原prepare-only没有覆盖真实实参字符串。
+
+b144 claim永久保留，不删除、不以换prefix在本窗重试。失败发生在plan读取与stage前，无attempt-result／stage.log，无新游戏、Native、输入、XR、录制、编码或保留作业。独立idle／CIM空、十项当前与保存原始字节或不存在全部一致，无恢复写入；不伪造未开始模块的cleanup通过，也不复用旧41460图。证据admission-v3/pre-game-failure-closure.json SHA82f956ae1d79c1daabebae0eedbbbe29321d36dd6c80b46967677d8d31da2fc9；后续实际启动须直接使用已冻结plan.invocation.argv，避免手抄路径，不放宽原入口。
+
+LS独立接受这次pregame全终态c1b68a04。Root最终fresh检查又发现其保守闭包内共享hammerburst_reload_chain.py从c7c210b0变d4c106a6，停止旧235126-v3交接且不回滚他人文件；LS按同到序提供002143-v4，变化确为普通空仓首latch拒绝即记录并停止的3行及自身入口身份。Root独核旧其他1067快照保持，fresh1596saved源／6bin／18动作驱动、1069current／archive哈希及AST、固定Jvenv真实prepare-only0、宿主13435文件及7origins、十基线与idle／CIM后，最终唯一交LS002143-v4。最终收据admission-v3/final-handoff-ls002143-v4.json SHA58df4f7c47906ef91eb2d59c7a5ba89364a58a6a4355fd0fff2cc63fd13d993b，检查14ac7933。Root此后不持窗、不写共享runtime或媒体，不stage／run。此交接没有新的游戏身份，未把源检查扩为其他武器开发。
+
+源实现新增tools/native-capture/cover_physx_transform.h，将已是刚体的共同身体世界Matrix64转换成原PhysX使用的48字节Matrix34。原F2610的194字节与SHA911ab9bc对应，3×3转置，平移分别执行一次float32乘法；实际RIP常量位于1417070c4、字节0ad7a33c（0x3ca3d70a，约0.02）。采用原固定游戏→物理换算，不从HMD米／游戏单位校准推导。原F26D4调用者在F2610之前规范化三个轴；本适配不擅自修输入，明确要求已验证刚体矩阵，拒绝非有限、非仿射、缩放、剪切、反射、别名及依赖FTZ／DAZ的下溢值，拒绝时输出保持。没有内存读取、PhysX调用、碰撞许可或新身体写入端。
+
+新cover_physx_transform_test.cpp以保留的两份实际64字节组件矩阵（6a0656bc／ceb2c34e）和明确合成的非对称单位旋转／平移与identity检查UE行向量点变换和物理列向量点变换的一致性，并验证拒绝和输出保持。8个实际MSVC项目依赖已原字节冻结，/std:c++17 /O2 /W4 /WX /EHsc /UNDEBUG /MT编译0；冻结源测试在两份矩阵上各63检查、0失败，源SHA前后相同。初次测试把非单位合成四元数交给只验证单位长度的函数而失败，原fixture-0.log保留，改为显式归一化夹具后通过，生产convert未据此修改。原机器码只做静态解析，没有执行原函数；CPU测试不等于实际物理查询。证据physx-transform-r74/original-transform-certificate.json SHA324e8f5eadf756031ba7831710268fdc94d2b39e599b96588d046dc3a65cb662及verification.json。
+
+该变换现为源／离线实现，尚未接到实际Native Scene查询或构建Native DLL，没有安装或头显验证。当前形状、查询完整性／自身排除、起终点占用和跨查询／身体／物理／命中／枪口同步仍需闭合；本轮未游戏验证r69 reader修复，最新实际掩体仍41460拒绝与严重遮挡FAIL。完整CV-01–24／AC-01–22、逐点GrabPose、身体执行与恢复及头显继续未完成，goal active，工程25%和公开v71不变。
