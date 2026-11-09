@@ -2,7 +2,7 @@
 
 目标：完成掩体系统开发与验证。状态：进行中。
 
-最近结果（2026-11-09）：r24/game33420完成严格实体边缘截面，但暂停B恢复、unified武器清理、身体遮挡与启动捕获缺口仍未闭合。r28真实骨架完成读回已接C0收尾；r30当前停机兼容47个Host场景／961检查通过。r31新增当前命名CylinderComponent与CollisionComponent同一性、原尺寸字段和矩阵的严格只读观察，8个新Python方法通过；新plan9a48e15b／prepared3fdf0a9d准备通过，拟同槽替换未执行r29，原A一次／最多5原Trace不变。等待Boltok105222最终交窗，当前不占窗，未stage／启动；已直接受理Snub110649为本槽全部终态后唯一后继。仍沿用准确旧r13三制品，不包含后续Native修改。完整CV-01–24／AC-01–22与实体头显仍未完成，边界见本文末节。
+最近结果（2026-11-09）：r31/game30188实际完成原A和当前严格圆柱观察，原CollisionRadius=34／CollisionHeight=72；line及静止分离对照通过，第三次正Extent移动查询返回不同BlockingVolume／BrushComponent，被原严格组件绑定拒绝，未执行初始重叠和离开重叠。操作器exit1保留。Native／入口／pad／unified本局清理正常；全部概览与6原图亲审仍有严重右身体遮挡。wrapper／编码／retention均实际终态0，精确恢复后最终唯一交Snub110649，当前不占窗。r28真实C0读回和r30停机兼容证据保持各自范围；完整体积／占用／世界同步、Native掩体提交、CV-01–24／AC-01–22及实体头显仍未完成，详见末节。
 
 ## 2026年11月8日 首批接续
 
@@ -709,3 +709,21 @@ r29准确源码已先保存为7d741ee8133b9721525fc954c9fe2f477fc65a0c；直接�
 准确plan analysis/solo-m1-20261028/cover-cylinder-runtime-plan.json SHA256 9a48e15b9113183780c81ba1e30ad76bd207df6b8408ca3d7548265d77766011；prepared equipment-controls-prepared-20261109-cover-cylinder-r31/prepared.json SHA256 3fdf0a9d424ce06a74adfb08eb0845974eee51a8442c7eed9042bd6ba16e6008。25项声明driver及AST、24项原r13声明源、3保存制品、注入原equipment／menu owner字符串compile／AST和prepare-only exit0。Native仍5cf4adea、Playground f8e6f3c2、XR1684；没有新Native构建或混入r25之后C++。r29原73方法结果保留，不伪称本轮重新执行全部73项。
 
 当前同槽前驱仍Boltok105222，尚未最终交窗；本次准确候选拟直接请求替换原未执行r29登记，不新增slot。已直接接受Snub110649为本槽全运行／双路全跨度和原图审看／精确恢复／编码与retention实际终态／独立idle后的唯一后继。更晚HB110627申请已转真实尾Snub直接核对，未作为第二后继。不能据进程暂时空闲或队列消息启动、stage或交窗。完整身体与physics形状、扫掠／终点占用／世界同步、实际Native运动后端与basis恢复、同版view／hit／muzzle、暂停／联合清理／身体遮挡和全部CV／AC／头显要求继续开放，公开v71及历史计分不变。
+
+## 2026年11月9日 r31实际30188：原圆柱字段通过，非零体积命中对象不同首败
+
+准确源码808b0b7b保存后，Boltok105222确认同槽替换r29为r31，并在实际47536全部审图／编码／恢复／retention终态后最终唯一交窗。独立CIM与idle、plan9a48e15b／prepared3fdf0a9d、25项driver及AST、24项冻结源声明、3保存制品及所选EXE哈希均核对通过，再prepare-only和stage。私有文字备份为prior-private-text-20261109-112126。实际仍是旧r13 Native5cf4adea／PGf8e6f3c2／XR1684，没有混入r25以后新C++；公开v71不变。
+
+实际game30188 creation134386680977958133，owner67820 creation134386680904212657，session8231b492。原A一次取得CT2／CA0，现有geometry关闭通过。新增严格圆柱读者实际accepted：当前CylinderComponent#84同时是Pawn命名及选定碰撞组件，Owner／Outer／World／typed Matrix和关闭一致，CollisionRadius原字段34、CollisionHeight原字段72；4408读／36904字节，约206.5ms完成。不能把72命名成已证明的半高、当作整个探身后的人体范围或直接生成Extent；这只是本局严格当前原字段观察，不是原子物理世界／碰撞消费证明。
+
+实际只执行3次原Trace，均queue2／call1、submit0、pending_possible=false、allocation_retained=false，无重试。当前零Extent线accepted，命中mp_warmachine_SMC#3／StaticMeshComponent#186308；随后正Extent(10,10,10)、起终点完全相等的分离对照accepted，返回Actor0且位置／法线零。第三次正Extent移动调用完成，但原回执记录BlockingVolume#194／BrushComponent#53，与前两次固定的网格表面不同，capture按原different Actor/component守卫拒绝。该新命中尚未走完新表面／关闭证明，只能保留为未通过回执，不能直接当作已认证的替代阻挡面。整体Volume及操作器68448明确exit1；静止初始重叠和离开初始重叠均未执行。
+
+3次Query最大12124读／368451字节，原16384读／2MiB／3秒预算没有放宽。本局不是读取超预算或pending未定失败；也不能仅凭两个对象名称推断全部碰撞差异原因。已证实原计划把零Extent网格命中作为所有非零体积的同一表面准入，在本场景遇到了不同对象并拒绝。下一窄修应独立获取非零体积的实际命中Actor／Component及完整表面关闭，再在该非零组内维持严格同一性；零Extent结果仍单独保留，不能简单允许任意换Actor或把本局首败改绿。不重跑未改的原三查询假设。
+
+Native关闭、入口恢复和pad恢复通过，body／hand／atom等结束pending0；unified fire_disable_code0／hand_stop_code5／drained=true。本局该子项正常不能抹掉33420的drained=false历史失败，也不证明当前新Native停机修复进入了旧r13。XR exit0，terminal exiting／objects destroyed／shutdown completed=true，EndSession=false原样保留。本轮没有重试pause／B，33420恢复失败仍开放。
+
+全部1页paired overview和6张实际原图已亲审，覆盖圆柱观察、line及swept首败附近：game00379／00383／00430、simulator00450／00455／00502。两路均有严重右身体／肩部／装备近裁剪遮挡，完整视觉FAIL；启动仍见第三人称暴露和等待卡。game439帧跨度24.0501595秒，simulator511帧跨度24.0168246秒；最大捕获间隔1883.3474／300.0048ms，game启动1.133–3.017秒捕获缺口不直接证明游戏停顿。动作段最大83.3337／66.6674ms、两路尾覆盖有效，不将WGC或标题FPS当render／GPU／头显证据。ffprobe视频24.066667秒／5601352字节。
+
+wrapper工具77474实际terminal0、encoder81605实际terminal0，与操作器terminal1分别保存。唯一retention20757实际terminal0／errors0，删除4247项生成媒体821152522字节，保留30188／47536／35040最新3局、48小时；源码／构建／资产／存档／文本未删除。config及XR settings原字节、head原不存在、所选游戏settings SHA、结束25driver与3stage制品均独立核对一致；最终CIM及idle无自有游戏／XR／录制／编码残留。详细game-30188-review.json、closure-proof.json、selected-visual.json和retention-result.json在analysis/cover-system-20261108/cylinder-source-r31。
+
+独立核Snub110649准确prepared35fa0494、21helpers和4保存制品后，已最终明确唯一交该后继；HB110627由Snub已直接接受其后，不作第二后继。当前不占运行窗，不补第二局。完整身体形状与连续扫掠／终点占用／世界同步、真正Native掩体提交后端与basis恢复、同版view／hit／muzzle、暂停／身体遮挡与全部CV-01–24／AC-01–22／实体头显继续未完成；目标保持进行中，公开v71及历史计分不变。
