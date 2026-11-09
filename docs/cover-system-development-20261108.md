@@ -2,7 +2,7 @@
 
 目标：完成掩体系统开发与验证。状态：进行中。
 
-最近结果（2026-11-09）：r42b实际33732在掩体发现／移动／A前保留了完整PhysX首拒绝：1024字节头仅ImageBase字段不同，值等于独立枚举的加载基址。已据此实现完整头的两种精确对应，并完成保存头部的旧拒绝／新对应重放及42项相关检查；后续code内存为合成，不宣称当前游戏通过。r44恢复原r39的一次原A及身体／内部接收者／原形状只读观察，已冻结、向真实队尾申请，未stage／run。33732运行、审图、编码、恢复和保留均终结，已唯一交HB144203；完整CV／AC／实际身体碰撞、移动恢复、命中枪口及头显范围仍待完成。
+最近结果（2026-11-09）：实际33732的PhysX头差已定位并完成精确ImageBase对应修正；新r44b将当前身体／内部接收者／原形状及原命中过滤来源接入同一关闭查询，53项相关检查通过，已向Bol153322申请替换同一未运行槽。24原r13声明源／3保存制品／37驱动SHA与AST、prepare-only0已核，未stage／run。33732全终已交HB；完整CV／AC／实际碰撞、移动恢复、同版命中枪口、吸附遮挡和头显范围仍未完成。
 
 ## 2026年11月8日 首批接续
 
@@ -984,3 +984,20 @@ r43离线查到的Actor.Trace→0xcf8f8→0xcfa40→World+0x178／slot32→0xcfe
 r44已由真实尾Bol153322唯一受理，前序为Frag145754→Snub144724→Bol153322→Coverr44；需其最终全终交窗后再独立idle／全SHA核验。按到达顺序唯一后继已登记并获确认：Lancer stock-reference040742，prepared4401a0a3／planca9bf3b6／inputs c78b9182，1354归档声明／855编译源／6保存制品／22当前驱动和AST完整核对。它仍只有排队受理，没有授窗；后到HB有限供弹请求已转Lancer这个实际尾，r44不登记第二后继。
 
 后续仍先执行已冻结r44，取得当前身体／原形状／内部接收者来源。原命中分支的字段核对随后与当前组件slot、骨名映射、同版SpaceBases／缩放和bounds／索引一起接线，不因本轮静态或CPU结果放行抓边、身体移动或受击保护修改。完整CV-01–24／AC-01–22、Native移动与恢复、碰撞与占用、同版命中枪口、吸附遮挡和实体头显保持未完成。
+
+
+## 2026年11月9日 r44b同一身体查询接入命中过滤来源
+
+在r45只读字段适配器基础上，`cover_physics_state.capture`增加默认关闭的`include_hit_filters`选项。选择后从同一完整历史原件核两段0x131e80主／冷代码，并由已有模块范围／原字节校验在当前游戏中复核；之后在当前关联的每个BodySetup读取过滤字段。代码、元数据和共享过滤字全部纳入原CoverQuery关闭复读，原Native封存入口、人物／世界／掩体关联和关闭检查保持。
+
+`FilterReader`仅在同一查询内按当前setup class缓存已认证字段布局；每个setup的共享字仍独立读取并记入关闭证据。缓存不得跨查询使用，不隐去字段或指针变化。未选择新选项时旧来源路径不增加读取。字段及原消费者代码对应不等于当前玩家已经选择该几何分支，所有hit geometry／物理／姿态／世界同步和activation许可继续为false。
+
+53个相关测试方法通过，包括原PhysX、物理状态、原形状及11个hit来源方法。新增覆盖当前完整filter code尾字节错误、结束复读时code／body word变化、布局缓存的查询归属、多个setup独立字和64体联合读取。64体／四类原形状／PhysX内部来源／hit过滤同一次合成查询15468reads、179291字节，保持原16384reads／2MiB／3秒限制，不放宽预算。实际游戏尚未运行该扩展，合成预算不代表零散射线或完整身体扫掠已通过。日志与预算在`analysis/cover-system-20261108/hit-physics-route-r45/integrated-affected-tests-final.log`和`integrated-budget.json`。
+
+### 同一未运行槽替换
+
+旧r44 prepared dab63424／plan6d678d64未stage／run，现明确撤用保存。新r44b prepared `4b42fb1f1c0c1b46c1a31f6f0f8e2b39e0c1f71fa5222334d7d84a3b6beec7aa`，plan `37ad70f335ab54e43793bcdea2645d278ea5adf60932158c34a03a2f8cae5545`；路径为`analysis/solo-m1-20261028/equipment-controls-prepared-20261109-cover-bound-source-r44b/prepared.json`及`cover-bound-source-filters-runtime-plan.json`，入口`run_cover_bound_filters_check.py`。原3份Native／PG／XR制品不变；24声明源、37当前驱动SHA／AST及prepare-only0通过。原A一次、原source／shapes读取和现有启动／清理／录制保护保持，没有Trace／getter／虚调用、身体写入或额外游戏输入，不复跑暂停B。
+
+已把完整冻结身份向唯一前驱Bol153322申请替换同一槽，并通知唯一后继Lancer stock-reference，均未新增运行位置。前驱旧r44末尾核验恰好捕获boundary_chain和physics_state的两项有意变化，原拒绝保存；已说明只允许重新核验新r44b，不能按旧身份授窗。此时前驱game8996已进入全终收尾，仍须其新候选核验和最终唯一交窗后才独立idle／hash并stage，不把本节当成授窗。后到Longshot160159申请已沿Lancer实际尾转交，不在此处登记第二后继。
+
+下一实际动作仍是同一生产路径：原版吸附一次后取得当前身体／原形状／内部接收者及过滤来源。完整的连续身体体积扫掠、占用、实际Native移动与恢复、同姿态命中／枪口和最终画面／头显不因本轮source接线通过而关闭。

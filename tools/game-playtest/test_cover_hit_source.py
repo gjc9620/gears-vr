@@ -3,19 +3,24 @@ import copy
 import struct
 import unittest
 
-from cover_hit_source import read_setup_filters
+from cover_hit_source import read_setup_filters, FilterReader, historical_chunks
 from cover_state import CoverQuery
 from test_cover_physics_shapes import ShapeMemory
 
 
 class HitSourceTests(unittest.TestCase):
-    def fixture(self, bits=12):
-        memory = ShapeMemory()
+    def fixture(self, bits=12, count=1):
+        memory = ShapeMemory(count)
         for name, mask in [('bBlockZeroExtent', 4), ('bBlockNonZeroExtent', 8)]:
             memory.add_property(memory.BS_CLASS, name, 'BoolProperty', 0xbc, 4, mask=mask)
-        memory.put(memory.setups[0] + 0xbc, struct.pack('<I', bits))
+        for setup in memory.setups:
+            memory.put(setup + 0xbc, struct.pack('<I', bits))
         memory.relink()
         return memory
+
+    def seed_code(self, memory):
+        for rva, raw, _ in historical_chunks():
+            memory.put(memory.BASE + rva, raw)
 
     def read(self, memory, *, close=True):
         q = CoverQuery(memory.observer)
@@ -98,6 +103,78 @@ class HitSourceTests(unittest.TestCase):
                 setup['outer'] += 8
             with self.assertRaises(RuntimeError):
                 read_setup_filters(q, setup)
+
+    def test_reader_cache_is_bound_to_one_query_and_keeps_each_setup_word(self):
+        m = self.fixture(count=3)
+        q = CoverQuery(m.observer)
+        reader = FilterReader(q)
+        for index, address in enumerate(m.setups):
+            m.put(address + 0xbc, struct.pack('<I', 4 if index == 1 else 8))
+            out = read_setup_filters(q, q.obj(address), reader=reader)
+            self.assertEqual(out['bBlockZeroExtent'], index == 1)
+        self.assertEqual(len(reader.layouts), 1)
+        q.finish()
+        other = CoverQuery(m.observer)
+        with self.assertRaisesRegex(RuntimeError, 'another query'):
+            read_setup_filters(other, other.obj(m.setups[0]), reader=reader)
+
+    def test_current_source_checks_original_filter_code_and_all_body_words(self):
+        m = self.fixture(count=3)
+        self.seed_code(m)
+        before = copy.deepcopy(m.memory)
+        out = m.capture_physics(include_hit_filters=True)
+        self.assertTrue(out['accepted'], out.get('rejection'))
+        self.assertTrue(out['hit_filters_observed'])
+        self.assertEqual(len(out['code_chunks']), 6)
+        self.assertTrue(all(row['hit_filters']['bBlockZeroExtent'] for row in out['bodies']))
+        self.assertFalse(out['hit_geometry_verified'])
+        self.assertEqual(m.memory, before)
+        self.assertEqual(m.bridges, [])
+        self.assertTrue(all(proof.closed for proof in m.proofs))
+
+    def test_changed_current_filter_code_rejects_before_interpreting_body_flags(self):
+        m = self.fixture()
+        self.seed_code(m)
+        rva, raw, _ = historical_chunks()[0]
+        m.put(m.BASE + rva + len(raw) - 1, bytes([raw[-1] ^ 1]))
+        out = m.capture_physics(include_hit_filters=True)
+        self.assertFalse(out['accepted'])
+        self.assertFalse(out['hit_filters_observed'])
+        self.assertEqual(out['bodies'], [])
+        self.assertIn('full code', out['rejection'])
+        self.assertTrue(all(proof.closed for proof in m.proofs))
+
+    def test_combined_close_rejects_filter_code_or_body_word_changes(self):
+        for defect in ('code', 'word'):
+            with self.subTest(defect=defect):
+                m = self.fixture()
+                self.seed_code(m)
+                rva, raw, _ = historical_chunks()[0]
+                target, size = (m.BASE + rva, len(raw)) if defect == 'code' else (m.setups[0] + 0xbc, 4)
+                def change(address, length, count):
+                    if (address, length, count) == (target, size, 2):
+                        m.put(target, bytes(size))
+                m.before_read = change
+                out = m.capture_physics(include_hit_filters=True)
+                self.assertFalse(out['accepted'])
+                self.assertFalse(out['hit_filters_observed'])
+                self.assertFalse(out['hit_geometry_verified'])
+                self.assertTrue(all(proof.closed for proof in m.proofs))
+
+    def test_full64_body_combined_observation_still_fits_existing_query_budget(self):
+        from cover_physx_source import Artifact
+        from test_cover_physx_source import LoadedFixture, ORIGINAL
+        m = self.fixture(count=64)
+        self.seed_code(m)
+        f = LoadedFixture(m, Artifact(ORIGINAL))
+        out = m.capture_physics(include_shapes=True, include_physx=True, include_hit_filters=True,
+                                physx_factory=f.factory)
+        self.assertTrue(out['accepted'], out.get('rejection'))
+        self.assertEqual(len(out['bodies']), 64)
+        self.assertLess(out['reads'], 16384)
+        self.assertLess(out['bytes'], 2 * 1024 * 1024)
+        self.assertTrue(out['hit_filters_observed'])
+        self.assertFalse(out['activation_allowed'])
 
 
 if __name__ == '__main__':
