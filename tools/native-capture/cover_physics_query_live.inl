@@ -3,16 +3,20 @@
 #include "cover_physx_query.h"
 #include "cover_physics_roles_live.inl"
 #include "cover_collider_roles_live.inl"
+#include "cover_component_roles_live.inl"
 // Original-query ownership on the existing Native worker and admitted C0.
 // No hooks, body writes or safe-movement/occupancy result are supplied here.
 namespace cover_physics_query_live {
 namespace q=gears_cover_physx_query;
 namespace roles=cover_physics_roles_live;
 namespace collider_roles=cover_collider_roles_live;
+namespace component_roles=cover_component_roles_live;
 #if defined(GEARS_COVER_BODY_PROTOTYPE) && GEARS_COVER_BODY_PROTOTYPE
 template<class Engine=q::Queries> class Session {
     Engine engine_{};roles::Workspace work_{};roles::Snapshot before_{},after_{};
     collider_roles::Workspace collider_work_{};collider_roles::Snapshot collider_before_{},collider_after_{};
+    component_roles::Workspace component_work_{};component_roles::Snapshot component_before_{},component_after_{};
+    gears_cover_physx_components::Source component_input_{};
     q::AllSweepOwners owner_result_{};
     struct NoLocalResult {};
     std::atomic<bool> configured_{},enabled_{},stopped_{},busy_{},closed_{true};
@@ -22,6 +26,10 @@ template<class Engine=q::Queries> class Session {
         Session& session;weapon_hand_scene_binding::Binding const& actor;
         gears_cover_pose_phase::Metadata const& metadata;Guard& owner;
         gears_cover_physx_collider::Source collider_source{};
+        gears_cover_physx_components::Source const* component_source{};
+        bool components_current(){if constexpr(WithCollider)return !session.stopped_.load()&&
+            component_roles::sample(actor,owner,session.component_work_,session.component_after_)==roles::Code::current&&
+            component_roles::same(session.component_before_,session.component_after_);return true;}
         bool operator()(){
             if(session.stopped_.load()||roles::sample(actor,metadata,owner,session.work_,session.after_)!=roles::Code::current||
                !roles::same(session.before_,session.after_))return false;
@@ -33,6 +41,8 @@ template<class Engine=q::Queries> class Session {
         bool operator()(gears_cover_physx_asset_actors::Snapshot const& raw){return (*this)()&&roles::matches_asset_actors(session.before_,raw);}
         bool operator()(gears_cover_physx_collider::Snapshot const& raw){return WithCollider&&(*this)()&&
             roles::matches_query_source(session.before_,raw.query_source)&&collider_roles::matches(session.collider_before_,raw);}
+        bool operator()(gears_cover_physx_components::Snapshot const& raw){return WithCollider&&(*this)()&&components_current()&&
+            roles::matches_query_source(session.before_,raw.query_source)&&component_roles::matches(session.component_before_,raw);}
     };
     template<class Shape,class Read,class Guard,class Output,class Invoke> q::Code execute(
         weapon_hand_scene_binding::Binding const& actor,gears_cover_pose_phase::Metadata const& metadata,
@@ -47,8 +57,11 @@ template<class Engine=q::Queries> class Session {
         if(roles::sample(owner,source,guard,work_,before_)!=roles::Code::current)return q::Code::source;
         constexpr bool with_collider=std::is_same_v<Output,q::AllSweepOwners>;
         if constexpr(with_collider){if(collider_roles::sample(owner,guard,collider_work_,collider_before_)!=roles::Code::current)return q::Code::source;}
+        if constexpr(with_collider){if(component_roles::sample(owner,guard,component_work_,component_before_)!=roles::Code::current||
+            !component_roles::input(component_before_,component_input_))return q::Code::source;}
         SourceGuard<Guard,with_collider> current{*this,owner,source,guard};
         if constexpr(with_collider)current.collider_source=collider_roles::input(collider_before_);
+        if constexpr(with_collider)current.component_source=&component_input_;
         // The larger ownership packet lives in the already serialized
         // Session, never as a 139KB temporary on the live game stack.
         std::conditional_t<std::is_same_v<Output,q::AllSweepOwners>,NoLocalResult,Output> local{};
@@ -56,7 +69,7 @@ template<class Engine=q::Queries> class Session {
         const auto code=invoke(engine_,before_.source,geometry,read,current,result);
         if(code==q::Code::fault_unknown||engine_.uncertain())enabled_=false;
         if(code!=q::Code::queried)return code;
-        if(!current()||!weapon_hand_scene_binding::same_key(owner,actor)||owner.scene_invocation!=actor.scene_invocation||
+        if(!current()||!current.components_current()||!weapon_hand_scene_binding::same_key(owner,actor)||owner.scene_invocation!=actor.scene_invocation||
            owner.special_move!=actor.special_move||!gears_cover_pose_phase::metadata_equal(source,metadata)||
            std::memcmp(&geometry,&shape,sizeof shape))return q::Code::changed;
         output=result;return q::Code::queried;
@@ -111,7 +124,7 @@ public:
         const auto movement=delta;const auto budget=limits;
         try{return execute(actor,metadata,shape,read,guard,output,[&](auto& engine,auto const& source,auto const& geometry,auto reader,auto current,auto& raw){
             const auto code=[&](){if constexpr(std::is_same_v<Output,q::AllSweepOwners>)
-                return engine.sweep_all(source,geometry,movement,budget,reader,current,raw,&current.collider_source);
+                return engine.sweep_all(source,geometry,movement,budget,reader,current,raw,&current.collider_source,current.component_source);
                 else return engine.sweep_all(source,geometry,movement,budget,reader,current,raw);}();
             if(code!=q::Code::queried)return code;
             return std::memcmp(&movement,&delta,sizeof delta)||std::memcmp(&budget,&limits,sizeof limits)?q::Code::changed:q::Code::queried;});

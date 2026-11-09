@@ -4,6 +4,9 @@
 #include "cover_component_roles_live.inl"
 #include <memory>
 namespace catalog=cover_component_roles_live;
+#ifndef GEARS_COMPONENT_ROLES_TEST_MAIN
+#define GEARS_COMPONENT_ROLES_TEST_MAIN main
+#endif
 #if GEARS_COVER_BODY_PROTOTYPE
 static catalog::Workspace catalog_work;
 static uintptr_t component_base{},audio_class{},audio{},weapon_mesh{},weapon_body{},array_props[2]{},array_inners[2]{};
@@ -32,7 +35,7 @@ static catalog::Code capture_catalog(catalog::Snapshot& result){
     const auto code=catalog::sample(actor,guard,catalog_work,result);
     C(!memcmp(saved_arena.data(),reinterpret_cast<void*>(arena),saved_arena.size())&&native_calls==0&&guard_lock_free);return code;
 }
-int main(){
+int GEARS_COMPONENT_ROLES_TEST_MAIN(){
     arena=reinterpret_cast<uintptr_t>(VirtualAlloc(nullptr,saved_arena.size(),MEM_COMMIT|MEM_RESERVE,PAGE_READWRITE));if(!arena)return 99;
     auto result=std::make_unique<catalog::Snapshot>();catalog_setup();
     C(capture_catalog(*result)==catalog::Code::current&&result->root_count==2&&result->component_count==4&&result->pawn_mesh_listed);
@@ -118,7 +121,7 @@ int main(){
     printf("CoverComponentRoles checks=%u failures=%u declared Pawn/current Weapon arrays only; no complete self or actor/geometry proof\n",checks,failures);return failures?1:0;
 }
 #else
-int main(){catalog::Snapshot result{};result.component_count=99;catalog::Workspace work{};unsigned calls{};
+int GEARS_COMPONENT_ROLES_TEST_MAIN(){catalog::Snapshot result{};result.component_count=99;catalog::Workspace work{};unsigned calls{};
     C(catalog::sample(h::Binding{},[&](){++calls;return true;},work,result)==catalog::Code::unavailable&&result.component_count==99&&!calls&&!reads&&!native_calls);
     printf("CoverComponentRoles OFF checks=%u failures=%u no reads/guard/calls\n",checks,failures);return failures?1:0;}
 #endif

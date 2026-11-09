@@ -1,11 +1,11 @@
-#define GEARS_COLLIDER_ROLES_TEST_MAIN CoverColliderPriorTestMain
-#include "cover_collider_roles_live_test.cpp"
-#undef GEARS_COLLIDER_ROLES_TEST_MAIN
+#define GEARS_COMPONENT_ROLES_TEST_MAIN CoverComponentsPriorTestMain
+#include "cover_component_roles_live_test.cpp"
+#undef GEARS_COMPONENT_ROLES_TEST_MAIN
 #include "cover_physics_query_live.inl"
 #include <memory>
 #include <thread>
 namespace service=cover_physics_query_live;namespace q=gears_cover_physx_query;
-static unsigned prime_calls{},close_calls{},query_calls{};static bool prime_ok=true,fault_query{},wrong_receiver{},query_lock_free=true,stream_truncated{},wrong_asset{};
+static unsigned prime_calls{},close_calls{},query_calls{};static bool prime_ok=true,fault_query{},wrong_receiver{},query_lock_free=true,stream_truncated{},wrong_asset{},late_component_change{};
 static void(*during_query)(){};
 static bool source_read(void* dst,void const* address,size_t n){
     constexpr uintptr_t physx=0x180000000;
@@ -18,6 +18,7 @@ static bool source_read(void* dst,void const* address,size_t n){
 // Replaces ONLY original module loading/dispatch. Real typed roles, registry,
 // source path and Session code execute above; no original callee is executed.
 struct HostEngine {
+    gears_cover_physx_components::Workspace parts_work{};gears_cover_physx_components::Snapshot parts_value{};
     bool active{},unknown{};
     bool prime(){++prime_calls;return prime_ok;}
     bool close(){++close_calls;return !pending();}
@@ -46,7 +47,7 @@ struct HostEngine {
         if(stream_truncated)return q::Code::truncated;
         out.raw_count=out.hit_count=2;out.reports=1;out.hits[1].bytes.fill(0x78);return code;
     }
-    template<class Shape,class Read,class Guard>q::Code sweep_all(q::source::Source const& source,Shape const& shape,q::Vector const& delta,q::StreamLimits const& limits,Read read,Guard current,q::AllSweepOwners& out,gears_cover_physx_collider::Source const* component_source){
+    template<class Shape,class Read,class Guard>q::Code sweep_all(q::source::Source const& source,Shape const& shape,q::Vector const& delta,q::StreamLimits const& limits,Read read,Guard current,q::AllSweepOwners& out,gears_cover_physx_collider::Source const* component_source,gears_cover_physx_components::Source const* component_catalog){
         const auto code=sweep_all(source,shape,delta,limits,read,current,out.raw);
         if(code==q::Code::queried){
             namespace asset=gears_cover_physx_asset_actors;
@@ -57,8 +58,11 @@ struct HostEngine {
             if(!current(inventory))return q::Code::changed;
             gears_cover_physx_collider::Snapshot component{};
             if(!component_source||gears_cover_physx_collider::observe(0x180000000,0x300000,scope,*component_source,read,current,component)!=gears_cover_physx_collider::Code::observed)return q::Code::changed;
+            if(!component_catalog||gears_cover_physx_components::observe(0x180000000,0x300000,scope,*component_catalog,read,current,parts_work,parts_value)!=gears_cover_physx_components::Code::observed)return q::Code::changed;
+            out.component_sources=parts_value;
             out.collider_source=component;
             out.asset_bodies=inventory;out.owners[0].actor=source.mesh;out.owners[1].actor=source.instance;
+            if(late_component_change)put(audio+0x170,fixture_pawn);
         }
         return code;
     }
@@ -70,7 +74,9 @@ static void stop_during(){active_session->request_drain();pending_during=active_
 static void nested_query(){q::Overlap out{};nested_code=active_session->overlap(actor,physics_expected,test_box,source_read,guard,out);}
 static void replace_root(){put(physics_instance+0x7c,0);}
 static void replace_collider_body(){put(cylinder+0x1a0,uintptr_t{});}
-static void reset(){physics_setup();prime_calls=close_calls=query_calls=0;prime_ok=true;fault_query=wrong_receiver=stream_truncated=wrong_asset=false;during_query=nullptr;query_lock_free=true;}
+static void replace_component_member(){put(arena+0xd0000,uintptr_t{});}
+static void replace_component_owner(){put(audio+0x170,fixture_pawn);}
+static void reset(){physics_setup();prime_calls=close_calls=query_calls=0;prime_ok=true;fault_query=wrong_receiver=stream_truncated=wrong_asset=late_component_change=false;during_query=nullptr;query_lock_free=true;}
 int main(){
     arena=reinterpret_cast<uintptr_t>(VirtualAlloc(nullptr,saved_arena.size(),MEM_COMMIT|MEM_RESERVE,PAGE_READWRITE));if(!arena)return 99;
     reset();q::Overlap overlap_result{};q::Sweep swept{};q::Vector delta{.1f,.2f,.3f};
@@ -122,10 +128,11 @@ int main(){
         const auto calls=query_calls;C(owner->sweep_all(actor,physics_expected,test_box,delta,q::StreamLimits{0,1},source_read,guard,*all)==q::Code::request&&query_calls==calls);
         owner->request_drain();C(owner->poll_stop()&&!owner->pending_count());}
     reset();
-    {collider_setup();auto owner=std::make_unique<HostSession>();auto all=std::make_unique<q::AllSweepOwners>();C(owner->start(true,true));
+    {catalog_setup();auto owner=std::make_unique<HostSession>();auto all=std::make_unique<q::AllSweepOwners>();C(owner->start(true,true));
         C(owner->sweep_all(actor,physics_expected,test_box,delta,q::StreamLimits{},source_read,guard,*all)==q::Code::queried&&all->raw.hit_count==2&&all->owners[0].actor!=all->owners[1].actor);
         C(all->asset_bodies.body_count==2&&all->asset_bodies.actor_count==2&&all->asset_bodies.actors[0]==arena+0x88000);
         C(all->collider_source.presence==gears_cover_physx_collider::Presence::actor_observed&&all->collider_source.fields.body_data==arena+0xb0000);
+        C(all->component_sources.fields.component_count==4&&all->component_sources.actor_count==1&&all->component_sources.fields.components[2].owner_roots==0);
         q::Capsule cap{{0,0,0},{0,0,1},.5f};C(owner->sweep_all(actor,physics_expected,cap,delta,q::StreamLimits{},source_read,guard,*all)==q::Code::queried);
         put(cylinder+0x1a0,uintptr_t{});
         C(owner->sweep_all(actor,physics_expected,test_box,delta,q::StreamLimits{},source_read,guard,*all)==q::Code::queried&&
@@ -140,7 +147,13 @@ int main(){
         C(owner->sweep_all(actor,physics_expected,test_box,delta,q::StreamLimits{},source_read,guard,*all)==q::Code::truncated&&all->raw.raw_count==99&&all->owners[0].actor==0xdead);
         stream_truncated=false;during_query=replace_collider_body;
         C(owner->sweep_all(actor,physics_expected,test_box,delta,q::StreamLimits{},source_read,guard,*all)==q::Code::changed&&all->raw.raw_count==99&&all->owners[0].actor==0xdead);
-        put(cylinder+0x1a0,single_body);during_query=replace_root;
+        put(cylinder+0x1a0,single_body);during_query=replace_component_member;
+        C(owner->sweep_all(actor,physics_expected,test_box,delta,q::StreamLimits{},source_read,guard,*all)==q::Code::changed&&all->raw.raw_count==99);
+        put(arena+0xd0000,cylinder);during_query=replace_component_owner;
+        C(owner->sweep_all(actor,physics_expected,test_box,delta,q::StreamLimits{},source_read,guard,*all)==q::Code::changed&&all->raw.raw_count==99);
+        put(audio+0x170,fixture_pc);during_query=nullptr;late_component_change=true;
+        C(owner->sweep_all(actor,physics_expected,test_box,delta,q::StreamLimits{},source_read,guard,*all)==q::Code::changed&&all->raw.raw_count==99);
+        put(audio+0x170,fixture_pc);late_component_change=false;during_query=replace_root;
         C(owner->sweep_all(actor,physics_expected,test_box,delta,q::StreamLimits{},source_read,guard,*all)==q::Code::changed&&all->raw.raw_count==99&&all->owners[0].actor==0xdead);
         owner->request_drain();C(owner->sweep_all(actor,physics_expected,test_box,delta,q::StreamLimits{},source_read,guard,*all)==q::Code::unavailable);
         C(owner->poll_stop()&&!owner->pending_count());}
