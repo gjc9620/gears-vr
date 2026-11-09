@@ -29,3 +29,11 @@ Boom 独立受理当前 v3，同一原排队位；证据 analysis/boomshot-devel
 ## 冻结候选同组护木回归
 
 后续核对发现当前工作区 weapon_support_grip.h 已加入后续的可选 SupportBox 及接触缓存，而本枪2f53冻结候选仍是先前球形接触实现。为避免把工作区检查冒充运行制品检查，把同一测试复制到独立 harness，仅将三处顶层 include 指向候选原存档目录，由该目录解析其全部相对头文件；原存档未改。五旋转/四态/11拒绝及物理 Frame 不变检查在冻结头文件下再次编译0、执行0。当前与冻结两者的结果均为有限离线策略证据。源码差异、harness、build.cmd 和各 SHA 收据在 analysis/hammerburst-20261108/support-frozen-rotations/，result.json SHA256 0912949caf3fa725e46d8e68d27dec24e90b1124c2198a7f8fd2ed619f624845。未替换制品、未重新申请运行位、未 stage/run。
+
+## 005428 实际一次启动失败及独立恢复
+
+收到Boom新game24964完整收尾交接后，独立核收据33d4a30c、七原文证据及六原图SHA、十基线、idle与精确prepare-only0，再保存本轮即时十项raw baseline。入口v3真实一次消费并stage；launcher30156/creation134387168841386715在创建游戏前失败：graphics_policy.locate报Multiple settings bindings for the selected installation，reservation_failure_cleanup=no_birth_receipt。未生成游戏、未注入Native、未启动XR/动作/双路录像。启动器exit1；外层随后另KeyError session_report/exit1，两个失败分开保留，无自动重试。
+
+config原有反斜杠P2P key，既有Longshot selection helper又按本枪plan斜杠字符串添加同一安装key；规范化后两个匹配，原唯一绑定保护正确拒绝。独立idle后通过原restore helper精确恢复十项原字节，public只读核；launcher进程已终。一次retention正常完成、删0，保留24964/47996/9764。没有录像则审片/编码不适用，不称encode0或游戏cleanup0。证据analysis/hammerburst-20261108/startup-005428-failure/review.json SHA498f1e012bde619dd2dfb8b7c011926d5bcf18f323e1927a95417ac6b8593612，含原session/config/reserve/done/claim与恢复收据。
+
+新增HB自有选择器，仅在明确owner选择的安装中按与graphics_policy一致的resolve/casefold替换路径别名，保留其他安装绑定，拒绝非法映射。不改共享Longshot helper、不改graphics_policy保护。实际原graphics_policy.locate在临时fixture目录下复现旧函数双别名失败，修复后10例通过：两种slash/case、不同目标的重复别名、无绑定、其他安装、幂等及非法映射拒绝；真实配置/INI未修改、未启动游戏。源码和复现见相邻settings-binding-repair.patch。旧2f53候选已消费，尚未采用新helper、不复用旧ticket/claim；后续需新冻结身份并沿真实尾重新排队。

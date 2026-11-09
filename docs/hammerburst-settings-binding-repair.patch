@@ -1,0 +1,111 @@
+--- /dev/null
++++ b/analysis/hammerburst-20261108/hammerburst_owner_copy_selection.py
+@@ -0,0 +1,66 @@
++"""Owner-selected Hammerburst validation copy and exact file baseline; never starts a process."""
++from pathlib import Path
++import hashlib,json,shutil
++
++EXE=Path('J:/gearsVr/Gears.of.War.Reloaded.v1.0.1.3816947-P2P/Gears of War Reloaded/Binaries_x64/GOWDE-Steam.exe')
++EXE_SHA='bdc6705d18ddb335b767df0b38e256ba5da0f49449c8970b302118bb7a4a8fa4'
++sha=lambda p:hashlib.sha256(Path(p).read_bytes()).hexdigest()
++
++def validate(selection,root,check_exe=True):
++ root=Path(root).resolve();instance=root/'analysis/instances/solo-m1-1028d'
++ assert Path(selection['game_path']).resolve()==EXE.resolve()
++ assert selection['game_sha256']==EXE_SHA
++ assert Path(selection['settings_path']).resolve()==instance/'LocalAppData/Coalition/WarGame/Config/76561197960271872EngineUserSettings.ini'
++ # Exact current owner selection, not a broad alternative-path fallback.
++ if check_exe:assert EXE.is_file() and sha(EXE)==EXE_SHA
++ return True
++
++def config_bytes(original,selection,root):
++ validate(selection,root,False)
++ value=json.loads(original.decode('utf-8-sig'))
++ value['game_path']=selection['game_path']
++ bindings=value.get('game_settings_paths',{})
++ if not isinstance(bindings,dict) or any(not isinstance(k,str) or not Path(k).is_absolute() or not isinstance(v,str) or not Path(v).is_absolute() for k,v in bindings.items()):
++  raise ValueError('game_settings_paths must map absolute game paths to settings files')
++ selected=str(Path(selection['game_path']).resolve()).casefold()
++ # Replace only aliases of this owner-selected installation; preserve all
++ # other installations. Use the same normalization as graphics_policy.locate.
++ value['game_settings_paths']={k:v for k,v in bindings.items() if str(Path(k).resolve()).casefold()!=selected}
++ value['game_settings_paths'][str(Path(selection['game_path']).resolve())]=selection['settings_path']
++ return json.dumps(value,indent=2).encode('utf-8')
++
++def capture(paths,folder):
++ folder=Path(folder);assert not folder.exists();folder.mkdir()
++ rows=[]
++ for n,item in enumerate(paths):
++  p=Path(item['path']);assert not p.is_symlink()
++  row=dict(path=str(p),exists=p.exists(),sha256=sha(p) if p.exists() else None,public_read_only=item['public_read_only'])
++  if p.exists():
++   assert p.is_file();backup=folder/(str(n)+'-'+p.name);shutil.copy2(p,backup)
++   assert sha(backup)==row['sha256'];row['backup']=str(backup)
++  rows.append(row)
++ result={'files':rows,'scope':'Immediate exact owned-window baseline; public item read-only'}
++ (folder/'baseline.json').write_text(json.dumps(result,indent=2))
++ return result
++
++def restore(baseline,root):
++ # Caller must first prove its exact runtime's normal cleanup and fresh idle.
++ # No PID/ownership inference or runtime action belongs in this helper.
++ root=Path(root).resolve()
++ for row in baseline['files']:
++  p=Path(row['path']);assert not p.is_symlink()
++  if row['public_read_only']:
++   assert p.exists()==row['exists'] and (sha(p) if p.exists() else None)==row['sha256'],'Public changed: no public write'
++  else:
++   assert p.resolve().is_relative_to(root)
++   if row['exists']:assert sha(Path(row['backup']))==row['sha256']
++   elif p.exists():assert p.is_file() and p.resolve().is_relative_to(root/'analysis/instances/solo-m1-1028d')
++ # Validate the whole set before writing any file.
++ for row in baseline['files']:
++  if row['public_read_only']:continue
++  p=Path(row['path'])
++  if row['exists']:
++   if not p.exists() or sha(p)!=row['sha256']:shutil.copy2(row['backup'],p)
++  elif p.exists():p.unlink()
++ checks=[p.exists()==row['exists'] and (sha(p) if p.exists() else None)==row['sha256'] for row in baseline['files'] for p in [Path(row['path'])]]
++ assert all(checks);return checks
+--- /dev/null
++++ b/analysis/hammerburst-20261108/check_owner_copy_selection.py
+@@ -0,0 +1,39 @@
++"""Actual graphics_policy.locate with private fixture roots; no game or real config writes."""
++from pathlib import Path
++import json,sys,types,tempfile,importlib.util,hashlib
++R=Path.cwd();A=R/'analysis/hammerburst-20261108'
++def module(name,path):
++ spec=importlib.util.spec_from_file_location(name,path);m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m);return m
++new=module('hb_selection',A/'hammerburst_owner_copy_selection.py')
++old=module('old_selection',R/'analysis/longshot-development-20261108/longshot_owner_copy_selection.py')
++rows=[]
++with tempfile.TemporaryDirectory() as directory:
++ root=Path(directory);instance=root/'analysis/instances/solo-m1-1028d';local=instance/'LocalAppData';folder=local/'Coalition/WarGame/Config';folder.mkdir(parents=True)
++ settings=folder/'76561197960271872EngineUserSettings.ini';settings.write_text('fixture')
++ other=folder/'76561198020107697EngineUserSettings.ini';other.write_text('other')
++ sys.modules['instance_policy']=types.SimpleNamespace(context=lambda:instance,local_appdata=lambda:local)
++ sys.modules['steam_account']=types.SimpleNamespace(offline_steam_id=lambda:None)
++ actual=module('actual_graphics_policy',R/'tools/debug-launch/graphics_policy.py')
++ game=str(new.EXE);slash=game.replace('\\','/');upper=game.upper();foreign='J:/SteamLibrary/steamapps/common/Gears of War Reloaded/Binaries_x64/GOWDE-Steam.exe'
++ selection=dict(game_path=slash,game_sha256=new.EXE_SHA,settings_path=str(settings))
++ config=dict(game_path=game,game_settings_paths={game:str(settings),foreign:str(other)},preserved=dict(example=7))
++ broken=old.config_bytes(json.dumps(config).encode(),selection,root);(instance/'config.json').write_bytes(broken)
++ try:actual.locate(slash)
++ except RuntimeError as e:assert 'Multiple settings bindings' in str(e)
++ else:raise AssertionError('Original alias failure did not reproduce')
++ rows.append(dict(case='original_same_install_alias_failure_reproduced',passed=True))
++ for name,bindings in [('backslash',{game:str(settings)}),('slash',{slash:str(settings)}),('case',{upper:str(settings)}),('duplicate_different_settings',{game:str(other),slash:str(settings)}),('missing',{}),('other_only',{foreign:str(other)})]:
++  value=dict(config,game_settings_paths=dict(bindings));before=json.dumps(value).encode();fixed=new.config_bytes(before,selection,root);parsed=json.loads(fixed);(instance/'config.json').write_bytes(fixed)
++  assert actual.locate(slash)==settings.resolve();assert parsed['preserved']==value['preserved']
++  matches=[k for k in parsed['game_settings_paths'] if str(Path(k).resolve()).casefold()==str(new.EXE.resolve()).casefold()];assert len(matches)==1
++  for k,v in bindings.items():
++   if str(Path(k).resolve()).casefold()!=str(new.EXE.resolve()).casefold():assert parsed['game_settings_paths'][k]==v
++  assert new.config_bytes(fixed,selection,root)==fixed
++  rows.append(dict(case=name,passed=True,exact_one_selected_binding=True,idempotent=True))
++ for bad in [[],{'relative.exe':str(settings)},{game:'relative.ini'}]:
++  try:new.config_bytes(json.dumps(dict(config,game_settings_paths=bad)).encode(),selection,root)
++  except ValueError:pass
++  else:raise AssertionError('Invalid bindings accepted')
++  rows.append(dict(case='invalid_binding_rejected',passed=True))
++report=dict(result='passed',cases=rows,no_game=True,real_settings_or_config_modified=False,scope=__doc__,helper_sha256=hashlib.sha256((A/'hammerburst_owner_copy_selection.py').read_bytes()).hexdigest(),graphics_policy_sha256=hashlib.sha256((R/'tools/debug-launch/graphics_policy.py').read_bytes()).hexdigest())
++(A/'owner-copy-selection-check.json').write_text(json.dumps(report,indent=2)+'\n');print(json.dumps(dict(result='passed',cases=len(rows),original_failure_reproduced=True,repaired_actual_locate_passed=True,no_game=True)))
