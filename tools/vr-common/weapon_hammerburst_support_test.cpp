@@ -120,8 +120,42 @@ int main(){
       const auto pressed=y.prepare(true);const auto denied=y.arbitrate(pressed,true);
       assert(gears_weapon_support_socket::mode(y.frame,y.game,denied,y.frame.now_ns,true)==Mode::free);
     }
+    // Actual authored HB socket under changing gun rotations: neutral contact
+    // remains cosmetic, Grip alone grants support, release returns to Snap.
+    // Controller samples are observed unchanged throughout this policy check.
+    const gears_vr::Quaternion rotations[]={{0,0,0,1},{0,.7071067811865475,0,.7071067811865475},
+        {.7071067811865475,0,0,.7071067811865475},{0,0,.7071067811865475,.7071067811865475},
+        {.18301270189221933,.6830127018922193,-.6830127018922193,-.18301270189221933}};
+    for(auto rotation:rotations){
+        Host x;gears_vr::Vector raw{};
+        assert(gears_weapon_hammerburst_foregrip::grip_in_mesh(raw));
+        x.game.mount.support_grip_in_weapon={raw.y/100,raw.z/100,-raw.x/100};
+        auto place=[&](gears_vr::Vector origin){
+            auto& right=x.frame.controllers.hands[1].grip;
+            right.position=origin;right.orientation=rotation;
+            const auto offset=gears_weapon::rotate(rotation,x.game.mount.support_grip_in_weapon);
+            x.frame.controllers.hands[0].grip.position={origin.x+offset.x,origin.y+offset.y,origin.z+offset.z};
+        };
+        auto verify=[&](bool down,Mode expected,Grip authority){
+            const auto proposal=x.prepare(down);const auto decision=x.arbitrate(proposal,down);
+            const auto physical=x.frame;
+            assert(x.participant.commit(x.frame,proposal,decision)==Reply::accepted);
+            assert(mode(x.frame,x.game,decision,x.frame.now_ns)==expected);
+            assert(x.participant.snapshot().grip==authority);
+            assert(same_frame(physical,x.frame));
+            if(expected==Mode::snap)assert(decision.lease.kind==LeaseKind::none);
+            x.next();
+        };
+        place({.2,1.1,-.1});verify(false,Mode::snap,Grip::single);
+        place({.32,1.04,-.27});verify(false,Mode::snap,Grip::single);
+        verify(true,Mode::grab,Grip::two);
+        place({.25,1.16,-.2});verify(true,Mode::grab,Grip::two);
+        verify(false,Mode::snap,Grip::single);
+        x.frame.controllers.hands[0].grip.position.x+=.5;
+        verify(false,Mode::free,Grip::single);
+    }
     gears_vr::Vector point{};
     assert(gears_weapon_hammerburst_foregrip::grip_in_mesh(point));
     assert(gears_vr::finite(point));
-    std::puts("HB support: Snap/Grab/release/exit and 11 rejection cases passed; geometry finite");
+    std::puts("HB support: Snap/Grab/release/exit, 11 rejection cases, five rotated authored sockets and unchanged physical frames passed; geometry finite");
 }

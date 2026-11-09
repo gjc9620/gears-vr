@@ -21,3 +21,7 @@ Boom 独立受理当前 v3，同一原排队位；证据 analysis/boomshot-devel
 当前源码确认 needs_reload 为未满弹匣且有备弹（或无限备弹），只有该分支调用原始 begin 并取得 serial。50148 的 L78/R0/serial0 走 visual_only 检视分支，因此其骨姿失败不能证明真正空仓原始换弹分支同样失败。保持真实骨姿阈值，不据此提前改变动画实现；下一局必须先观察非零原始 serial。五组纯谓词例子见 analysis/hammerburst-20261108/empty-reload-source-path-audit-20261110.json，不是引擎验证。
 
 另发现现有 empty driver 的 manual_veto_consumption 是全局累计日志，blocked>0 没有本次触发前后增量、武器或 press 绑定。因此只能称本局曾发生原始 CanReload 拦截，不足以独立证明本次空扳机回调；未来报告必须把该弱证据与同枪 typed L0/R78 前后不变、零新射线的可观察行为分开。本次不改已受理候选、不重冻结或扩大实测，保留此限制，不将弱证据升级为单次调用证明。
+
+## 护木四态旋转回归
+
+在现有 weapon_hammerburst_support_test.cpp 中新增五种枪旋转姿态，使用本枪真实已编写握点坐标和原生产 SupportGripParticipant/SupportSocket mode。每种依次检查 Snap/single、移动枪与手后 Snap/single、按 Grip Grab/two、移动后保持 Grab/two、释放回 Snap/single、离开范围 Free/single；Snap 必须无租约，观察不能改写物理 Frame。MSVC /W4 /WX 且 assert 开启，编译0、执行0。原四态和11拒绝检查保留。receipt: analysis/hammerburst-20261108/support-authored-rotations-check.json。该回归只证明合成输入下策略与仲裁，不证明游戏枪变换消费、皮肤接触或头显自然手型；未更换当前已受理运行候选及制品。
