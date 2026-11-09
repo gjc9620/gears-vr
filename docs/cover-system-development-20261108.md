@@ -2,7 +2,7 @@
 
 目标：完成掩体系统开发与验证。状态：进行中。
 
-最近结果（2026-11-09）：r24/game33420首次完成当前严格实体边缘截面的8次原Trace，宽度1.5625游戏单位；后续暂停B恢复失败、unified武器清理drained=false、双路右身体遮挡与启动捕获缺口均保留。r28已将Native真实Local／SpaceBases读回接到生产C0收尾路径，43个Host生产路径场景／838检查通过；真实游戏启用、掩体提交后端与碰撞占用仍未接通。当前不占运行窗，已最终唯一交Snub093107；完整CV-01–24／AC-01–22及实体头显仍未完成。具体边界见本文末两节。
+最近结果（2026-11-09）：r24/game33420完成当前严格实体边缘截面的8次原Trace，但暂停B恢复、unified武器清理、右身体遮挡与启动捕获缺口仍失败或未闭合。r28的Native真实骨架读回已接生产C0收尾，43个Host场景／838检查通过。r29新增准确静止正Extent参数与最多五次原版体积查询对照，73个Python测试方法通过，冻结候选prepare-only通过，尚未stage或启动。已获Boltok105222接受其后的唯一后继登记，未获最终交窗，当前不占运行窗；沿用准确旧r13三制品，不包含r25–28或后续Native源码修改。完整CV-01–24／AC-01–22与实体头显仍未完成，具体边界见本文末节。
 
 ## 2026年11月8日 首批接续
 
@@ -665,3 +665,23 @@ runner27002 terminal0／launcher0，encoder37789 terminal0，原操作器termina
 另仅检查33420保存证据：B输入指令于54.626184秒写出，54.778906秒释放，约152.721ms；之后四次UI读取直至60.4021秒仍为DeltaPause-Campaign-Host／LBtnResumeSingle。原Native状态保留8978次成功来源读取／5594次game poll，说明虚拟pad在局内确曾工作；结束enabled0属于正常关闭，不是本次B期间的状态。6564次来源拒绝是全程聚合，缺少该B具体Route准入、原game poll实际返回和stow-fence证据，不能据此归因为定时器、身份、新鲜度或fence。冻结r13本就包含display-mode交接保留数字沿的修复，不能重复将其当作本次新修复；没有重发B、放宽时限或改动其他会话的pad／scope源。定向证据见pause-33420-evidence.json。
 
 后续需将同一C0事实接入实际cover-motion完成后端，并取得真正体积扫掠／终点占用／世界同步及同版命中／枪口证据；本接口仅证实CPU骨架与目标，不证实这些条件。暂停／联合清理失败、右身体遮挡与实体头显继续开放。当前不占运行窗，已交Snub093107的窗口不复用；未再stage／启动。公开v71、完整CV-01–24／AC-01–22、完整掩体FALSE及历史计分保持不变。
+
+## 2026年11月9日 r29非零体积与初始重叠查询对照候选
+
+上一开发轮15ad6a4c保存了r28真实C0完成读回接线；随后需求核对没有新增运行证据。本轮改为补足实际碰撞查询语义所缺的非零Extent对照，不重复r24已经通过的八射线边界二分。
+
+原生产cover_trace_query参数检查现允许起终点完全相等、三个float32编码后的Extent分量均不小于0.001的静止诊断形状。零Extent点查询、退化静止形状，以及规划长度或float32编码长度不在0.001–300内的移动查询仍拒绝；正Extent编码成零亦拒绝。不注入epsilon移动，不修改原typed header、116字节布局、native277入口、身份／关闭检查、16384读／2MiB／3秒预算或无重试规则。报告保留原输入，并另记实际float32输入及stationary标志。
+
+新增cover_volume_query复用原capture，每次外部调用前持久化attempted_result_unknown，返回后保留原回执并核对call1、无pending／无保留allocation。同一组必须保持确切session／game／owner／Pawn／slot／位置／module／function；后续每次调用前后核对同一实体Actor／Component及完整表面变换。最多依次调用当前零Extent墙面线、静止分离正Extent、移动正Extent、静止初始重叠、离开初始重叠；30秒只限制新调用准入，已经开始的查询仍使用原截止和正常收尾。首次严格或命中／空对照失败立即停止，不取消或重试原调用。
+
+本次Extent为(10,10,10)游戏单位，仅作语义校准，不是已认证人体尺寸。重叠中心由本局当前实际命中点和法线计算，诊断深度不是穿透恢复距离；初始重叠的零法线如实保留。反射Actor.Trace不提供FCheckResult.Time，不能制造原始命中时间。即使五项对照通过，collision_verified、grab_authorized、body_modified、shape_semantics_verified与实体头显验收仍为false；完整身体扫掠、终点占用、动态世界同步及提交时相继续缺证。
+
+实际离线检查共73个Python方法通过：Trace48、Surface13、Volume12。使用明确合成的反射内存和原查询替身，Game=0。旧参数守卫拒绝准确静止正Extent的RED保留；初版float32打包遗漏元组展开导致8个错误，修正后通过。首次prepare-only因默认GBK不能读取UTF-8破折号退出，保留失败；新wrapper显式UTF-8读取，新prepared／plan按ASCII JSON序列化供未改共享加载器使用，最终prepare-only exit0。注入后的原equipment／menu owner字符串已compile及AST核对，未执行游戏状态。
+
+准确plan为analysis/solo-m1-20261028/cover-volume-runtime-plan.json，SHA256 233b9822925de64e947fcb3a4c5031afeb8bf034e139286d9d36ea41e1d24542；prepared为equipment-controls-prepared-20261109-cover-volume-r29，prepared.json SHA256 5ac624f4fb9481233812454c371acb7fb5c9dc51a588b4e476ad238f3b4a77aa。24项声明冻结源、24个驱动及AST、3保存制品已核对并归档。Native 5cf4adea9df910fd35d6a9a4ace70a317dfb3c9edfd05fc1c27b249dd7e88380、Playground f8e6f3c2715b244e8250976c3eb1279cb306c2a50576e078f64bf8b23daf4807、XR 16840b27dc40ebb489f93121758cb7bc0daa2700df046e508babbd50c578a7fc均为原r13准确制品；不包含r25–28新C++，不重新声称这些源码已在实际游戏执行。
+
+本次几何操作器保留原finally／正常关闭，仅移除原操作器中未取得新诊断依据的暂停B重复动作；game33420该失败仍开放，不因此改记通过。保留0.4、后台／observe-only、测试静音、物理控制器输入隔离、身份新鲜度、存档音频与正常清理保护。登记链为Snub102805→Longshot104905→Boltok105222→Cover r29；Boltok已直接接受此准确候选为其后唯一后继，但尚未最终交窗。登记不授当前stage／启动权，不复用r24旧窗口。完整日志与准确驱动存于analysis/cover-system-20261108/volume-query-r29。
+
+另收到当前共享Native的consumed-output停机资源窄修复：正常验证消费并返回、scope关闭后的对齐Local浮点POD覆盖债务，永久停止时可不再算Native资源存活；原pending及来源重用守卫仍保留，active／异常／部分或未消费债务仍阻止结束。修改保留r28 completed-cover接口。Frag私有Native5e51dfdd的game54784停机证据与当前根源码分别记录，本轮没有重建此完整Native，也未将其混入r29旧r13制品或本次源码提交；它不能自动证明掩体unified清理已修好。原回执见analysis/frag-grip-20261108/20261109-101526-consumed-output-stop/shared-merge-receipt.json。
+
+真实cover-motion后端、合法neutral／basis交接与恢复、体积与占用／世界同步、同版view／hit／muzzle、右身体遮挡、暂停／联合清理与实体头显均继续未完成。公开v71和历史计分不变，本目标保持进行中。

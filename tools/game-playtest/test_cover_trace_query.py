@@ -928,5 +928,47 @@ class SurfaceSnapshotTests(unittest.TestCase):
                     self.assertEqual(witness['component_owner']['address'], m.PAWN)
 
 
+class TraceStationaryShapeTests(unittest.TestCase):
+    @staticmethod
+    def function():
+        from cover_trace_query import PARAMS
+        return dict(native_index=277, parms_size=116, return_offset=108,
+                    function_flags_offset=0xf4, function_flags=0x424401, entry_rva='0xcdacc',
+                    fields=[dict(name=n, offset=o, size=s, flags_hex=f,
+                                 **({'bool_mask': 1} if n == 'bTraceActors' else {}))
+                            for n, o, s, f in PARAMS])
+
+    def test_exact_stationary_positive_box_has_identical_packed_endpoints(self):
+        from cover_trace_query import _parameters
+        raw, inputs = _parameters(self.function(), (1, 2, 3), (1, 2, 3), (10, 10, 10), trace_actors=False)
+        self.assertEqual(raw[24:36], raw[36:48])
+        self.assertEqual(struct.unpack_from('<3f', raw, 52), (10, 10, 10))
+        self.assertEqual(inputs['start'], inputs['end'])
+
+
+    def test_zero_line_degenerate_box_tiny_move_and_encoding_collapse_stay_rejected(self):
+        from cover_trace_query import _parameters
+        for start, end, extent in [((0, 0, 0), (0, 0, 0), (0, 0, 0)),
+                                   ((0, 0, 0), (0, 0, 0), (1, 0, 1)),
+                                   ((0, 0, 0), (.0001, 0, 0), (1, 1, 1)),
+                                   ((2**24, 0, 0), (2**24 - .01, 0, 0), (1, 1, 1)),
+                                   ((0, 0, 0), (1, 0, 0), (1e-48, 1, 1)),
+                                   ((0, 0, 0), (0, 0, 0), (1e-8, 1, 1))]:
+            with self.subTest(start=start, end=end, extent=extent):
+                with self.assertRaises(ValueError):
+                    _parameters(self.function(), start, end, extent)
+
+    def test_regular_trace_and_extent_bytes_keep_original_layout(self):
+        from cover_trace_query import _parameters
+        raw, inputs = _parameters(self.function(), (1.2, 2, 3), (100, 2, 3), (10, 12, 14), trace_actors=False)
+        self.assertEqual(len(raw), 116)
+        self.assertEqual(raw[24:36], struct.pack('<3f', 100, 2, 3))
+        self.assertEqual(raw[36:48], struct.pack('<3f', 1.2, 2, 3))
+        self.assertEqual(raw[52:64], struct.pack('<3f', 10, 12, 14))
+        self.assertEqual(inputs['encoded_start'], struct.unpack('<3f', raw[36:48]))
+        self.assertEqual(inputs['encoded_end'], struct.unpack('<3f', raw[24:36]))
+        self.assertFalse(inputs['stationary'])
+
+
 if __name__ == '__main__':
     unittest.main()

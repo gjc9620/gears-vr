@@ -214,15 +214,25 @@ def _parameters(function, start, end, extent, *, trace_actors=True, extra_flags=
     if type(extra_flags) is not int or extra_flags not in (0, TRACE_FLAGS):
         raise ValueError('ExtraTraceFlags requires explicit diagnostic 0 or Blocking')
     start, end, extent = _point(start, 'TraceStart'), _point(end, 'TraceEnd'), _point(extent, 'Extent', extent=True)
-    if not .001 <= math.dist(start, end) <= 300:
-        raise ValueError('Cover Trace diagnostic segment length outside 0.001..300 game units')
+    # Admit an exact stationary positive box only as a diagnostic query. A
+    # zero-extent point/line remains invalid; no epsilon motion is invented.
+    encoded_start, encoded_end, encoded_extent = (
+        struct.unpack('<3f', struct.pack('<3f', *p)) for p in (start, end, extent))
+    if any(original > 0 and encoded == 0 for original, encoded in zip(extent, encoded_extent)):
+        raise ValueError('Cover Trace extent collapses during float32 encoding')
+    stationary = start == end and min(encoded_extent) >= .001
+    if not stationary and not (.001 <= math.dist(start, end) <= 300 and
+                               .001 <= math.dist(encoded_start, encoded_end) <= 300):
+        raise ValueError('Cover Trace diagnostic segment length outside 0.001..300 game units or valid stationary box')
     params = bytearray(function['parms_size'])
     struct.pack_into('<3f', params, 24, *end)
     struct.pack_into('<3f', params, 36, *start)
     struct.pack_into('<I', params, 48, int(trace_actors))
     struct.pack_into('<3f', params, 52, *extent)
     struct.pack_into('<I', params, 104, extra_flags)
-    return bytes(params), dict(start=start, end=end, extent=extent, trace_actors=trace_actors, extra_flags=extra_flags)
+    return bytes(params), dict(start=start, end=end, extent=extent, trace_actors=trace_actors, extra_flags=extra_flags,
+                               encoded_start=encoded_start, encoded_end=encoded_end,
+                               encoded_extent=encoded_extent, stationary=stationary)
 
 
 def _certificate(q, roles, module, expected_chunks):
