@@ -1378,3 +1378,13 @@ Bol212342+execution779eca在独立9271主机文件、24原声明、364current＋
 运行队列的新事实单独保存：Bol212342旧execution779eca因继承PYTHONSAFEPATH风险在未消费时撤回；同一到序的新execution851ea67e已获其前序定向受理并实际执行，尚在自身收尾。本Cover f10五身份及原一次A／形状来源检查范围未改，尚无新最终交窗、ticket、claim或stage/run。LS231059-v2因assert flags门可被优化移除而主动撤回；其同一后继到序的235126-v3已由本方独核并正式受理，旧合同按原字节保留，当前指针为admission-v2/successor-active.json。V3反向源码仅非assert flags拒绝、清继承PYTHON*和身份变化；1596源／6bin／18动作驱动／旧1067快照不变，1068current/archive匹配，固定Jvenv实际prepare-only0。两份完整入口副本的-O／-I均在校验前先消费后拒绝、重试FileExists，十基线前后相同；不重跑未变race。它不是本Cover当前运行权或第二并列槽，后续请求继续沿实际唯一尾传递。
 
 上一需求查找回合只核对并交付已有文档，未推动玩法；本轮按新原始入口和结构闭合证据记progress。全部CV-01–24／AC-01–22、逐点GrabPose、真实身体执行／恢复、同姿态物理／受击／枪口与实体头显验收仍未完成，目标继续active，公开v71不变。
+
+## 2026年11月10日 r69入口优化模式修正 未运行
+
+启动前实际源码核对发现本Cover旧admission-v2也仅用assert拒绝Python优化模式，-O可移除后续校验。真实旧claim／ticket仍不存在，本方立即撤回f10 v2及交叉到达的Bol9764最终收据728a259b；Bol明确确认作废并保留同一唯一到序。未执行旧入口，未将旧最终授权套给替代包。
+
+窄替代equipment-controls-prepared-20261110-cover-array-extent-r69-admission-v3已冻结：prepared b14404ca／plan dae50212／ready279b1e6c／entry7cca15a7／deps原eec50fb3。反向字节对应只增加独占claim之后、其他校验之前的非assert exact-flags拒绝，并在子进程前清除所有继承PYTHON*（包括PYTHONSAFEPATH），另改本次身份。原claim／校验／stage／执行／正常结束代码其余字节保持；不接受-O／-OO／-I，无新重试路径。旧364当前／归档快照全部不刷新，仅新入口增为365；24原declared源、3保存二进制、9271宿主文件／796019693B和7module origins保持原哈希。
+
+精确3c48解释器-E -s -B -X utf8的真实prepare-only实际0。四种完整入口副本（-O、-OO、-I、无-E的环境优化）均先消费后拒绝，重试FileExists；优化prepare拒绝且不消费。真实新增环境循环AST在独立子进程清掉PYTHON／GEARS／XR哨兵并保留普通环境，十基线前后相同。未重跑不变race和旧失败套件。完整绝对argv／ENV／五身份及证据见array-extent-r69/admission-v3/tail-packet.md，verification SHAcd8005c7705754947a7dd110ada13bc8bcc5f33be2913e3b2e38fce5e9fd47d8。
+
+新旧真实claim／ticket仍不存在，尚未stage／运行。已把替代包送Bol独立定向核验，只有绑定新tuple的新最终交接有效；已受理LS235126-v3仍是同一唯一后继，前序绑定须随本替代身份同步。实际动作仍仅一次原A及来源／形状／hit-filter读取，不扩为未接通的抓边录像；严重遮挡、碰撞／身体执行和完整CV24／AC22继续未完成。
