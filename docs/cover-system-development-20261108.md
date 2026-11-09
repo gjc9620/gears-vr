@@ -2,7 +2,7 @@
 
 目标：完成掩体系统开发与验证。状态：进行中。
 
-最近结果（2026-11-09）：r32/game36040的4次全非零原Trace均strict accepted，同一实际BlockingVolume／Brush表面关闭通过；静止初始重叠命中且法线0，离开该重叠却返回空，预设对照／操作器exit1保留，不能用moving miss证明起点无重叠。圆柱原字段仍34／72；1页全跨度与6原图亲审，严重身体遮挡仍FAIL。运行／编码／retention均全终，精确恢复后已最终唯一交HB115111，当前不占窗。r33历史变换比较叶函数的50有限对照及单个NaN返回相同边界另记，非物理消费／世界同步证明。完整CV-01–24／AC-01–22及实体头显仍未完成，详见末节。
+最近结果（2026-11-09）：r34新增严格只读物理来源／接收者读取器，12项定向方法通过，原入口认证10项通过；封存33个驱动、24项原r13冻结源声明及3个原制品，prepare-only通过，尚未stage或游戏运行。它不调用Trace／getter／虚函数，不授予身体、物理消费或世界同步许可。上次实际r32/game36040的4次非零Trace均strict accepted，但离开已重叠位置返回空，整体对照／操作器exit1保持；严重身体遮挡仍FAIL。该局运行／编码／retention全终后已最终唯一交HB115111，当前不占窗。完整CV-01–24／AC-01–22及实体头显仍未完成，详见末节。
 
 ## 2026年11月8日 首批接续
 
@@ -771,3 +771,20 @@ Native关闭、入口恢复、pad恢复通过；unified fire_disable0／hand_sto
 唯一retention85297实际terminal0／errors0，删除4342项生成媒体824496767字节，保留36040／12980／65044最新三局48小时，源／构建／资产／存档／文本不删。config和XR settings原字节、head原不存在、所选game settings SHA、ending27driver与3stage制品均独立核对一致，最终CIM／idle无残留。准确game-36040-review.json、closure-proof.json、selected-visual.json、retention-result.json和preflight在analysis/cover-system-20261108/nonzero-surface-r32。
 
 运行期间已直接受理HB115111为本槽唯一后继，末尾独立核其准确preparedebdf0792、source子目录2251声明源及6保存制品匹配后，已最终明确唯一交该后继。首次核对误把source_archive自身当源根，发现实际源在其source子目录；没有源不匹配或运行修改，准确路径记录于successor-check.json。新Frag114500申请已沿真实尾转HB处理，不作第二后继。当前不占窗、不补第二局；完整最终身体／physics形状、路径／终点占用与世界同步、Native掩体提交及basis恢复、同版view／hit／muzzle、身体遮挡／暂停和全部CV-01–24／AC-01–22／实体头显仍未完成，目标保持进行中。
+
+
+## 2026年11月9日 r34物理来源读取器与只读候选
+
+r32实际已证明moving miss不能排除起点重叠，下一步不重复原四项，而是核对当前人物物理实例与原身体更新接收者，明确后续同姿态物理／命中消费的真实来源。新增tools/game-playtest/cover_physics_state.py，复用原CoverQuery的16384读、2MiB、3秒预算及完整身份、反射字段、数组、注册表和值关闭检查；只读，无引擎调用、排队、分配游戏内存或写入。
+
+读取绑定同一当前PC／Pawn／World／CoverLink／slot、非零CoverType和当前mesh；按反射类型与原消费者偏移核PhysicsAsset／PhysicsAssetInstance、Bodies／BodySetup完整同数量数组、RootBodyIndex、每项BodyIndex／OwnerComponent及BoneName。PAI Owner只接受准确当前Pawn或mesh，Body OwnerComponent必须准确当前mesh。数组1–64项，超容量、空项、重复项、布局不符或关闭变化均拒绝，不截断为成功。BodyData和BoneSpring只按认证的8字节Pointer结构读取；空接收者明确保留，别名只统计唯一数。非空指针只读取vtable的40／104／728数值槽及32字节目标前缀，不调用，不猜方法语义、可执行模块或物理变换。
+
+四段原更新代码全字节比较历史已核artifact；实际已安装的主入口32字节只可来自现有HookEntryAttestation的当前进程／owner／准确Native SHA封印，同时在原Query里保留实际已改写入口，结束时再次核封印。不改Resolver，不跳过入口前缀，不加Hook。源、数组、指针和前缀关闭不证明物理活动场景、骨骼映射、更新覆盖、有限物理姿态、查询同步或同版hit／muzzle；这些输出许可全部保持false。
+
+12项读取器测试方法通过，覆盖完整来源、准确Owner／Index、数组类型／边界／重复／超限、指针结构、空及别名接收者、完整代码与live封印、BoneName及注册表、关闭期间变化、原预算、64项不截断、结束封印失败和当前cover失效；原HookEntryAttestation的10项通过记录另存。三body与64body夹具分别504读／16536字节和2212读／31826字节，均为合成内存，不是实际游戏成本。初次导入路径和夹具构造／类型链失败保留；新增关闭测试最初两个目标值恰等于夹具原值，改为真正变化后12项通过，没有放宽生产读取器。
+
+只读候选equipment-controls-prepared-20261109-cover-physics-r34沿用准确原r13 Native5cf4adea／PGf8e6f3c2／XR1684，仅复制3个原保存制品并复核24项冻结源声明；没有重编或混入当前其他Native／武器源。新plan70ee042c、prepared59770ded，33个声明driver及AST、原owner注入字符串编译、prepare-only均通过。新操作器仅接受--cover-physics-source-only，原A一次后读取一次当前物理来源；禁止旧volume／cylinder／nonzero控制，不重跑已知pause／B失败。保留原关闭、恢复、双路录像和retention路径。
+
+本批尚未申请／取得新窗、未stage、未启动游戏或XR。下一步完成源码保存后，按当前实际队尾申请新槽；仅最终唯一交接及独立idle／准确候选核验后才能部署。读取若遇当前空PAI、偏移／类型或Owner不符，应保留首败，不据函数名强行调用或放松认证。后续仍须完成真正物理姿态消费／查询世界同步、完整身体路径与终点占用、Native提交与合法恢复、同版view／hit／muzzle及全部CV／AC；公开v71与头显状态不变。
+
+需求文档同步补明保持位置的持续占用、被占据后的合法恢复、同姿态命中和未认证骨架／联机边界，保留24项CV和22项AC。证据analysis/cover-system-20261108/physics-source-r34/verification.json及相邻原日志。
