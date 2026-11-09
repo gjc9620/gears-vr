@@ -18,7 +18,7 @@ struct Array {uptr data{};int count{},capacity{};};
 namespace fixture {
 enum :unsigned {none,engine,core,weapon_owner,inventory_owner,object_owner,hb_owner,burst,
     function_type,class_type,state_type,byte_type,name_type,bool_type,goto_fn,
-    manager_property,pending_property,inner_property,newstate,label,force,keep,count};
+    manager_property,pending_property,inner_property,newstate,label,force,keep,inventory_base,count};
 constexpr uptr address(unsigned i){return i?0x1000+0x100*i:0;}
 struct Model {
     bool gt{true},hold{true},registration{true},tables{true},objects{true},receiver{true},game{true},r2{},
@@ -26,15 +26,16 @@ struct Model {
         pending_race{},pointer_race{},inner_race{},field_race{},array_race{},read_fail{},post_pending{};
     uptr manager{0xa000},world{0xb000},controller{0xc000},pawn{0xd000},weapon{0xe000};
     Name state{101,0},destination{};
-    Array array{0xf000,2,2};std::array<unsigned char,64> bytes{};
+    Array array{0xf000,2,2};std::array<unsigned char,256> bytes{};
     unsigned copies{},pointer_reads{},field_reads{},inner_reads{},array_reads{},go_calls{};
 } model;
 const wchar_t* text(unsigned i){switch(i){
     case engine:return L"Engine";case core:return L"Core";case weapon_owner:return L"Weapon";
     case inventory_owner:return L"InventoryManager";case object_owner:return L"Object";
+    case inventory_base:return L"Inventory";
     case hb_owner:return L"Weap_LocustAssaultRifle";case burst:return L"BurstDelaying";
     case function_type:return L"Function";case class_type:return L"Class";case state_type:return L"State";
-    case byte_type:return L"ByteProperty";case name_type:return L"NameProperty";case bool_type:return L"BoolProperty";
+    case byte_type:return L"IntProperty";case name_type:return L"NameProperty";case bool_type:return L"BoolProperty";
     case goto_fn:return L"GotoState";case newstate:return L"NewState";case label:return L"Label";
     case force:return L"bForceEvents";case keep:return L"bKeepStack";
     case 100:return L"WarfareGame";case 101:return L"WeaponFiring";case 102:return L"Active";
@@ -104,7 +105,7 @@ struct BoolField {gripdamage_metadata::Property property{};unsigned owner{};};
 bool derives(gripdamage_metadata::Reader&,uptr,wchar_t const*,wchar_t const*){return fixture::model.manager_class;}
 bool read_pointer(gripdamage_metadata::Reader&,uptr,wchar_t const*,gripdamage_metadata::PointerField& out){
     using namespace fixture;out.property=gripdamage_metadata::Reader::properties[manager_property];
-    out.owner=weapon_owner;out.value=model.manager;if(model.pointer_race&&++model.pointer_reads>1)++out.value;return true;
+    out.owner=inventory_base;out.value=model.manager;if(model.pointer_race&&++model.pointer_reads>1)++out.value;return true;
 }
 bool field(gripdamage_metadata::Reader&,uptr,wchar_t const*,wchar_t const*,unsigned,BoolField& out){
     using namespace fixture;out.property=gripdamage_metadata::Reader::properties[pending_property];out.owner=inventory_owner;
@@ -150,11 +151,11 @@ void reset(){
     model={};snapshot={};Reader::properties={};Reader::structure_value={};Reader::native_index=113;Reader::return_offset=0xffff;
     auto put=[](unsigned i,unsigned klass,unsigned outer){snapshot.identities[i]={address(i),address(outer),address(klass),{i,0}};};
     for(unsigned i=1;i<count;++i)put(i,0,0);
-    put(weapon_owner,class_type,engine);put(inventory_owner,class_type,engine);put(object_owner,class_type,core);
+    put(weapon_owner,class_type,engine);put(inventory_owner,class_type,engine);put(inventory_base,class_type,engine);put(object_owner,class_type,core);
     put(hb_owner,class_type,100);put(100,0,0);put(burst,state_type,hb_owner);put(goto_fn,function_type,object_owner);
     for(unsigned i=newstate;i<=keep;++i){put(i,i<=label?name_type:bool_type,goto_fn);
         Reader::properties[i]={i,i<=label?name_type:bool_type,1,i<=label?8u:4u,i==newstate?0u:i==label?8u:i==force?16u:20u,0x90};}
-    put(inner_property,byte_type,pending_property);Reader::properties[inner_property]={inner_property,byte_type,1,1,0,0};
+    put(inner_property,byte_type,pending_property);Reader::properties[inner_property]={inner_property,byte_type,1,4,0,0};
     Reader::properties[manager_property]={manager_property,0,1,8,8,0};
     Reader::properties[pending_property]={pending_property,0,1,16,32,0};
     weaponhand::held_binding={{model.world},{model.controller},{model.pawn},{model.weapon},1,2,true};
@@ -165,14 +166,14 @@ int main(){
     const auto pending=[](){auto s=snapshot;Reader r{s,Stage::final_check};return hammerburst_burst_cancel::pending_up(r,model.weapon);};
     const auto layout=[](){auto s=snapshot;Reader r{s,Stage::final_check};playground::Args a(model.weapon,L"GotoState");return hammerburst_burst_cancel::goto_layout(r,a);};
     reset();assert(pending());++checks;
-    for(unsigned mode=0;mode<2;++mode){reset();model.bytes[mode]=1;assert(!pending());assert(!model.go_calls);checks+=2;}
+    for(unsigned mode=0;mode<2;++mode){reset();model.bytes[mode*4]=1;assert(!pending());assert(!model.go_calls);checks+=2;}
     const auto reject=[&](std::function<void()> f){reset();f();assert(!pending());assert(!model.go_calls);checks+=2;};
     reject([]{model.manager=0;});reject([]{model.manager_class=false;});
     reject([]{model.array.count=-1;});reject([]{model.array.capacity=1;});reject([]{model.array.capacity=65;});
     reject([]{model.array.data=0;});reject([]{model.read_fail=true;});reject([]{model.pending_race=true;});
     reject([]{model.pointer_race=true;});reject([]{model.inner_race=true;});reject([]{model.field_race=true;});
     reject([]{model.array_race=true;});reject([]{model.retained=false;});
-    reject([]{Reader::properties[inner_property].element_bytes=4;});
+    reject([]{Reader::properties[inner_property].element_bytes=1;});
     reject([]{Reader::properties[inner_property].offset=1;});
     reject([]{snapshot.identities[inner_property].outer=address(manager_property);});
     reject([]{snapshot.identities[inventory_owner].outer=address(core);});

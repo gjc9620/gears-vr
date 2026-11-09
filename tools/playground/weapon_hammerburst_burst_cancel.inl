@@ -18,19 +18,19 @@ bool owner(meta::Reader& r,unsigned slot,wchar_t const(&label)[N],wchar_t const(
 bool pending_up(meta::Reader& r,uptr weapon) noexcept {
     meta::PointerField manager{},manager_after{};weaponhand::BoolField field{},field_after{};
     if(!weaponhand::read_pointer(r,weapon,L"InvManager",manager)||!manager.value||
-       !owner(r,manager.owner,L"Weapon",L"Engine")||
+       !owner(r,manager.owner,L"Inventory",L"Engine")||
        !weaponhand::derives(r,manager.value,L"InventoryManager",L"Engine")||
        !weaponhand::field(r,manager.value,L"PendingFire",L"ArrayProperty",16,field)||
        !owner(r,field.owner,L"InventoryManager",L"Engine"))return false;
     const auto property=r.result.identities[field.property.identity].address;
     uptr inner_address{},inner_after{};meta::Property inner{},inner_again{};
     if(!r.at(property,0xd0,inner_address)||!inner_address||!r.property(inner_address,inner)||
-       r.result.identities[inner.identity].outer!=property||!weaponhand::core_type(r,inner.type,L"ByteProperty")||
-       inner.dimension!=1||inner.element_bytes!=1||inner.offset)return false;
-    Array array{},again{};std::array<unsigned char,64> bytes{},closing{};
+       r.result.identities[inner.identity].outer!=property||!weaponhand::core_type(r,inner.type,L"IntProperty")||
+       inner.dimension!=1||inner.element_bytes!=4||inner.offset)return false;
+    Array array{},again{};std::array<std::int32_t,64> bytes{},closing{};
     if(!r.at(manager.value,field.property.offset,array)||array.count<0||array.capacity<array.count||
        array.capacity>int(bytes.size())||(!array.data&&(array.count||array.capacity))||
-       (array.count&&!copy(bytes.data(),array.data,std::size_t(array.count))))return false;
+       (array.count&&!copy(bytes.data(),array.data,std::size_t(array.count)*sizeof(bytes[0]))))return false;
     for(int i=0;i<array.count;++i)if(bytes[std::size_t(i)])return false;
     if(!weaponhand::read_pointer(r,weapon,L"InvManager",manager_after)||manager_after.value!=manager.value||
        manager_after.owner!=manager.owner||!meta::same_property(manager.property,manager_after.property)||
@@ -39,7 +39,7 @@ bool pending_up(meta::Reader& r,uptr weapon) noexcept {
        !r.at(property,0xd0,inner_after)||inner_after!=inner_address||!r.property(inner_address,inner_again)||
        !meta::same_property(inner,inner_again)||!r.at(manager.value,field.property.offset,again)||
        std::memcmp(&array,&again,sizeof array)||
-       (array.count&&(!copy(closing.data(),array.data,std::size_t(array.count))||bytes!=closing)))return false;
+       (array.count&&(!copy(closing.data(),array.data,std::size_t(array.count)*sizeof(bytes[0]))||bytes!=closing)))return false;
     return unified_weapon_fire::retained_metadata(r);
 }
 bool goto_layout(meta::Reader& r,playground::Args& call) noexcept {
