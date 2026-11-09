@@ -58,3 +58,7 @@ refine-latch-wrist.py对原1395手三角与2232卡扣三角双向检查非共面
 关键源范围纠正：上述离线旧marker(0,24.0049845123,6.0003657341)是历史authoring目标，不是当前runtime机械抓点。当前root及171233冻结runtime都已使用local(-7.09357487,2.10061312,1.88769577)/units，原代码明确为最近表面外1mm。复核原mesh/Idle export SHA并直接比对原serialized quat/position/parent记录，三骨reference与HB_Idle组合变换最大差3.4228541557e-8，排除当前离线差异来自不同开盖动画的假设，但不代替实时矩阵证明。把当前local抓点组成reference mesh坐标，恰为最近原表面沿法线+.1raw（1mm标准尺度），误差<1e-6；报告runtime-contact-reference-check.json及latch-reference-idle-check.json。
 
 因此保留现行机械contact和所有冻结候选，继续修正视觉手型接触面／腕和逐指姿态；不得将前面历史marker偏差或跨整块盖的失败夹持假设描述为当前机械抓点错误。尚无新的HB专用手型或游戏通过证据。
+
+## 同面接近与完整枪身复核仍未接受
+
+fit-latch-surface-approach.py保留现行机械contact，仅以两候选tip中点对准既有表面、夹持轴沿表面切线，收拢其余三指；骨长／权重不变。将完整9966枪三角与1395手三角双向检查，12个腕方向最少仍923 edge/triangle命中（30度，563+360）；完整三方向图已亲看，仍见手与接收机/部件相交。同面两点接近不等于对夹，也未证明掌面、法线接触或袖口。不能发布。下一步在现contact周围的真实外露表面和手的接近方向上联合约束，不靠单一表面法线强设腕方向，不改机械许可或扩大接触范围。结果latch-surface-approach.json/png/log。
