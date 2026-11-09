@@ -1187,6 +1187,7 @@ void reset_after_drain() noexcept;
 }
 namespace lancersaw_contact {void tick(gears_weapon_hand::Frame const&) noexcept;}
 namespace hammerburst_runtime {
+bool manual_enabled() noexcept;
 bool matrix(std::array<float,16> const&,gears_vr::Pose&,double&) noexcept;
 void propose(gears_weapon_hand::Frame const&,gears_weapon_hand::GripGameState&) noexcept;
 bool tick(uptr) noexcept;

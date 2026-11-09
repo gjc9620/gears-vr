@@ -24,6 +24,7 @@ bool requires_permission(hand::Frame const& source) noexcept {
     // CanReload is currently vetoed only for the exact Lancer adapter.
     // Shared HB acceptance must not require a nonexistent Lancer binding.
     return playground::instance(source.weapon.address,L"Weap_AssaultRifle")||
+        (hammerburst_runtime::manual_enabled()&&playground::instance(source.weapon.address,L"Weap_LocustAssaultRifle"))||
         (snub_runtime::manual_enabled()&&playground::instance(source.weapon.address,L"Weap_COGPistol"));
 }
 bool enter(hand::Frame const& source) noexcept {

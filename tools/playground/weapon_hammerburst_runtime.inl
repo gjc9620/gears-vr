@@ -6,6 +6,7 @@ namespace inv=lancerreload_inventory;
 namespace anim=hammerburst_animation;
 namespace visual=lancerreload_visual;
 std::atomic<std::uint64_t> configured_policy{gears_weapon::LancerReloadPolicy{}.packed()};
+bool manual_enabled() noexcept {return weapon_part_inputs::original_source_enabled.load(std::memory_order_acquire);}
 gears_weapon::LancerReloadPolicy opening_policy;
 bool ui_pending{};
 gears_weapon::ReloadSupplyRejection empty_supply;

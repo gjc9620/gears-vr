@@ -222,3 +222,12 @@ Lancer确认当前V4通用契约2984字节/完整32SHA/reference15稳定，HB真
 另外测量当前原motion目标姿势的肘→腕线与腕+X（原MCP列前向）的几何夹角，闭合97.4329度、中段74.5193、打开63.7344；这不是临床或实体追踪测量，提示固定该腕、只挪后三指会遗漏整体腕方向问题。保留latch-c0-wrist-axis-audit.json；下一作者步骤应把腕/指根方向及原接触patch一起约束，不继续盲调同一curl计数。新增/修改作者脚本保存在docs/hammerburst-finger-column-repair.patch，反向git apply --check通过。
 
 HB185428静态再次核2254PG+1338Native源、6saved、19当前runtime输入和AST一致，未stage/采样基线，证据completion-window-current-static-check.json。本研究数据与所有新手型仍未混入冻结185428。已收到Bol180947完整全终后的唯一交接，接下来仅做新鲜idle/配置基线预检，按原有限供弹scope进入185428；先完成本节Git保存，不把未通过手型带入该次运行。
+
+
+## Steam 路径范围纠正与自动补弹保护遗漏
+
+50148 实际启动了历史 P2P 目录，违反 2026-10-21 的 Steam-only 要求；EXE 哈希相同不能替代路径要求。原始日志、数值、失败、视频及不可变交接保持原样，但本次只算旧路径观察，不计 Steam 版验收。其他使用旧 P2P 路径的 HB 历史用例同样不能继承 Steam 验收。补充记录 runtime-50148-retail-scope-correction.json。后续只允许 J:/SteamLibrary/steamapps/common/Gears of War Reloaded/Binaries_x64/GOWDE-Steam.exe。原唯一 Boom191450 交接槽已由同源 Steam 衍生 Boom214704 取代，独立静态核对后接受，没有增加第二个运行槽，本聊天不再调用共享运行/配置/retention 帮助器。
+
+源码确认 weapon_lancer_manual_reload.inl 的 requires_permission 遗漏 Weap_LocustAssaultRifle，因此 HB 未进入已有 CanReload 自动补弹返回值保护。经 Lancer 文件所有者确认无冲突，只增加 HB feature getter、前置声明和启用时的类型分支共三行，沿用原身份检查、原函数一次执行、物理 manual_start scope 及清理。其余武器判定不变。实际提取生产 requires_permission 编译测试，9 类×8 开关组合共72组：修复前4个启用 HB 组合失败，修复后0失败；原始失败结果保留。此项仅证明类型及开关分类，不能证明实际回调绑定/自动补弹阻止，更不能证明50148骨角失败的唯一因果或自然手型修复。
+
+隔离构建采用 HB185428 冻结源与其原 GEARS flags，只加入上述三行；仅构建 GearsPlayground target，configure/build均0，DLL SHA256 a05a6c3ce20b4fa6a82f41a03a38ab690b69543d84193ad96c3b75f8619f0d5c。未启动游戏、未替换公共/私有运行包，未宣称手型或换弹通过。构建记录 analysis/hammerburst-20261108/manual-veto-isolated/result.json。
