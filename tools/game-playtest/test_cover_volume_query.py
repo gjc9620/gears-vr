@@ -1,4 +1,4 @@
-"""Owned synthetic receipts around the production five-query algorithm; Game=0."""
+"""Owned synthetic receipts around the production nonzero query algorithm; Game=0."""
 import copy
 import struct
 import unittest
@@ -13,10 +13,10 @@ def encoded(p):
 class VolumeControlsTests(unittest.TestCase):
     def probe(self, *, mutate=None, save=None, clock=None, **options):
         calls = []
-        actor = dict(address=9, name='Wall', number=1)
-        component = dict(address=90, name='Component', number=1)
+        actor = dict(address=9, name='BlockingVolume', number=1)
+        component = dict(address=90, name='BrushComponent', number=1)
         surface = dict(actor=actor, component=component, transform='unchanged')
-        plans = ['current_line', 'stationary_separated', 'swept_extent', 'stationary_initial_overlap', 'leaving_initial_overlap']
+        plans = ['swept_extent', 'stationary_separated', 'stationary_initial_overlap', 'leaving_initial_overlap']
 
         def original(observer, path, digest, start, end, **kwargs):
             index = len(calls)
@@ -25,10 +25,11 @@ class VolumeControlsTests(unittest.TestCase):
             self.assertTrue(kwargs['snapshot_surface'])
             self.assertFalse(kwargs['trace_actors'])
             self.assertEqual(kwargs['extra_flags'], 8)
+            self.assertEqual(kwargs['extent'], (10., 10., 10.))
             calls.append((plans[index], start, end, kwargs['extent']))
             blocked = index != 1
-            point = (50., 0., 0.) if index in (0, 2) else start
-            normal = (-1., 0., 0.) if index in (0, 2, 4) else (0., 0., 0.)
+            point = (50., 0., 0.) if index == 0 else start
+            normal = (-1., 0., 0.) if index in (0, 3) else (0., 0., 0.)
             receipt = dict(accepted=True, trace_calls=1, pending_possible=False, allocation_retained=False,
                            session_id='owned', game_identity=dict(pid=100, created=200), owner_identity=dict(pid=300),
                            roles=dict(pawn=dict(address=1), controller=dict(address=2), link=dict(address=3), current_slot=0),
@@ -56,14 +57,18 @@ class VolumeControlsTests(unittest.TestCase):
                                               capture_query=original, save_result=save, **options)
         return result, calls
 
-    def test_five_original_controls_retain_zero_normal_and_exact_stationary_points(self):
+    def test_four_nonzero_controls_acquire_box_surface_and_retain_exact_stationary_points(self):
         result, calls = self.probe()
         self.assertTrue(result['accepted'], result.get('rejection'))
-        self.assertEqual(len(calls), 5)
+        self.assertEqual(len(calls), 4)
+        self.assertEqual(calls[0][0], 'swept_extent')
+        self.assertEqual(result['surface_acquired_by'], 'swept_extent')
+        self.assertFalse(result['zero_extent_surface_reused'])
+        self.assertEqual(result['actor_identity']['name'], 'BlockingVolume')
         self.assertEqual(calls[1][1], calls[1][2])
-        self.assertEqual(calls[3][1], calls[3][2])
-        self.assertEqual(calls[3][1], (55., 0., 0.))
-        self.assertEqual(result['queries'][3]['returned_normal'], (0., 0., 0.))
+        self.assertEqual(calls[2][1], calls[2][2])
+        self.assertEqual(calls[2][1], (55., 0., 0.))
+        self.assertEqual(result['queries'][2]['returned_normal'], (0., 0., 0.))
         self.assertFalse(result['raw_hit_time_available'])
         for flag in ['collision_verified', 'body_modified', 'grab_authorized', 'shape_semantics_verified']:
             self.assertFalse(result[flag])
@@ -71,7 +76,7 @@ class VolumeControlsTests(unittest.TestCase):
     def test_bad_or_unknown_original_call_stops_without_retry(self):
         for change in [dict(accepted=False), dict(trace_calls=0), dict(trace_calls=True),
                        dict(pending_possible=True), dict(allocation_retained=True)]:
-            for at in range(5):
+            for at in range(4):
                 with self.subTest(change=change, at=at):
                     result, calls = self.probe(mutate=lambda r, i: r.update(change) if i == at else None)
                     self.assertFalse(result['accepted'])
@@ -109,29 +114,29 @@ class VolumeControlsTests(unittest.TestCase):
 
     def test_missing_initial_overlap_is_a_failure_not_empty_occupancy_permission(self):
         def mutate(r, i):
-            if i == 3:
+            if i == 2:
                 r['hit'] = dict(actor_address=0, location=(0, 0, 0), normal=(0, 0, 0))
         result, calls = self.probe(mutate=mutate)
         self.assertFalse(result['accepted'])
-        self.assertEqual(len(calls), 4)
+        self.assertEqual(len(calls), 3)
         self.assertIn('stationary_initial_overlap', result['rejection'])
 
     def test_separated_control_hit_is_not_ignored(self):
         def mutate(r, i):
             if i == 1:
-                r['hit'] = dict(actor_address=9, actor_identity=dict(address=9, name='Wall', number=1),
-                                component_identity=dict(address=90, name='Component', number=1), location=(0, 0, 0), normal=(0, 0, 0))
+                r['hit'] = dict(actor_address=9, actor_identity=dict(address=9, name='BlockingVolume', number=1),
+                                component_identity=dict(address=90, name='BrushComponent', number=1), location=(0, 0, 0), normal=(0, 0, 0))
         result, calls = self.probe(mutate=mutate)
         self.assertFalse(result['accepted'])
         self.assertEqual(len(calls), 2)
 
     def test_moving_out_of_overlap_miss_is_preserved_and_stops(self):
         def mutate(r, i):
-            if i == 4:
+            if i == 3:
                 r['hit'] = dict(actor_address=0, location=(0, 0, 0), normal=(0, 0, 0))
         result, calls = self.probe(mutate=mutate)
         self.assertFalse(result['accepted'])
-        self.assertEqual(len(calls), 5)
+        self.assertEqual(len(calls), 4)
         self.assertIn('leaving_initial_overlap', result['rejection'])
 
     def test_save_records_unknown_before_each_external_call_and_cannot_mutate_result(self):
@@ -142,8 +147,37 @@ class VolumeControlsTests(unittest.TestCase):
         result, calls = self.probe(save=save)
         self.assertTrue(result['accepted'])
         unknown = [s for s in snapshots if s['queries'] and s['queries'][-1]['outcome'] == 'attempted_result_unknown']
-        self.assertEqual(len(unknown), 5)
-        self.assertEqual([len(s['queries']) for s in unknown], [1, 2, 3, 4, 5])
+        self.assertEqual(len(unknown), 4)
+        self.assertEqual([len(s['queries']) for s in unknown], [1, 2, 3, 4])
+
+    def test_box_baseline_must_be_an_interior_facing_contact(self):
+        for change in [dict(location=(0, 0, 0)), dict(location=(50, 1, 0)),
+                       dict(location=(101, 0, 0)), dict(normal=(0, 0, 0)),
+                       dict(normal=(1, 0, 0)), dict(normal=(0, 0, 1)), dict(normal=(-2, 0, 0))]:
+            with self.subTest(change=change):
+                result, calls = self.probe(mutate=lambda r, i: r['hit'].update(change) if i == 0 else None)
+                self.assertFalse(result['accepted'])
+                self.assertEqual(len(calls), 1)
+
+    def test_new_box_surface_does_not_allow_later_actor_substitution_or_self_hits(self):
+        def substitute(r, i):
+            if i == 2:
+                actor = dict(address=10, name='AnotherBlockingVolume', number=1)
+                r['hit'].update(actor_address=10, actor_identity=copy.deepcopy(actor))
+                r['surface_before']['actor'] = copy.deepcopy(actor)
+                r['surface_after']['actor'] = copy.deepcopy(actor)
+        result, calls = self.probe(mutate=substitute)
+        self.assertFalse(result['accepted'])
+        self.assertEqual(len(calls), 3)
+        for address in (1, 2, 3):
+            def own(r, i):
+                if i == 0:
+                    r['hit']['actor_address'] = address
+                    r['hit']['actor_identity']['address'] = address
+                    r['surface_after']['actor']['address'] = address
+            result, calls = self.probe(mutate=own)
+            self.assertFalse(result['accepted'])
+            self.assertEqual(len(calls), 1)
 
     def test_save_failure_before_call_submits_nothing(self):
         def fail(value):

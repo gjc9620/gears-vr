@@ -13,19 +13,22 @@ def _encoded(value):
 
 def capture_volume_probe(observer, dll_path, dll_sha256, start, end, *, extent=(10, 10, 10),
                          maximum_seconds=30.0, capture_query=capture, save_result=None):
-    """Five original queries: line, separated, swept, overlapped, leaving.
+    """Four nonzero queries: swept, separated, overlapped, leaving.
 
-    The first current line supplies this run's actual surface/normal. It is
-    not reused from a prior game. All later observations must retain that
-    exact component/transform/context. Static overlap uses EXACT equal end
+    The first current positive-Extent sweep acquires its own actual surface
+    and normal. A zero-Extent mesh is neither queried nor used as a surface
+    permit: game30188 showed a different nonzero BlockingVolume hit. All later
+    observations retain the exact acquired component/transform/context and
+    query extent. Static overlap uses EXACT equal end
     points. Expected hit/empty contrasts are diagnostic controls; they do not
     certify shape coverage, penetration recovery, world synchronization or a
     whole body. FCheckResult.Time is not exposed by Actor.Trace's reflected ABI.
     """
-    result = dict(schema=1, accepted=False, diagnostic_only=True, queries=[],
+    result = dict(schema=2, accepted=False, diagnostic_only=True, queries=[],
                   collision_verified=False, grab_authorized=False, body_modified=False,
                   physical_headset_acceptance=False, raw_hit_time_available=False,
-                  shape_semantics_verified=False, started_perf_counter_ns=time.perf_counter_ns())
+                  shape_semantics_verified=False, zero_extent_surface_reused=False,
+                  surface_acquired_by='swept_extent', started_perf_counter_ns=time.perf_counter_ns())
     deadline = None
     cohort = actor = surface = None
 
@@ -42,12 +45,12 @@ def capture_volume_probe(observer, dll_path, dll_sha256, start, end, *, extent=(
         if type(maximum_seconds) not in (int, float) or not math.isfinite(maximum_seconds) or not 0 < maximum_seconds <= 30:
             raise ValueError('Volume controls require a positive maximum thirty-second budget')
         deadline = time.monotonic() + maximum_seconds
-        result.update(start=start, end=end, extent=extent, maximum_calls=5, maximum_seconds=maximum_seconds)
+        result.update(start=start, end=end, extent=extent, maximum_calls=4, maximum_seconds=maximum_seconds)
         direction = tuple((end[i] - start[i]) / length for i in range(3))
 
         def query(label, origin, target, shape, wanted_hit):
             nonlocal cohort, actor, surface
-            if len(result['queries']) >= 5 or time.monotonic() >= deadline:
+            if len(result['queries']) >= 4 or time.monotonic() >= deadline:
                 raise TimeoutError('Volume control budget exhausted before original call')
             row = dict(label=label, start=origin, end=target, extent=shape,
                        outcome='attempted_result_unknown', wanted_hit=wanted_hit)
@@ -102,24 +105,23 @@ def capture_volume_probe(observer, dll_path, dll_sha256, start, end, *, extent=(
             row.update(hit_observed=blocked, returned_location=location, returned_normal=normal)
             if blocked != wanted_hit:
                 raise RuntimeError('Volume control hit/empty contrast failed: ' + label)
-            if label == 'current_line':
+            if label == 'swept_extent':
                 distance = sum((location[i] - origin[i]) * direction[i] for i in range(3))
                 off = math.sqrt(sum((location[i] - origin[i] - distance * direction[i]) ** 2 for i in range(3)))
                 norm = math.sqrt(sum(x*x for x in normal))
                 if (not .001 < distance < length - .001 or off > .01 or not .99 <= norm <= 1.01 or
                         abs(normal[2]) > .1 or sum(normal[i]*direction[i] for i in range(3)) > -.9):
-                    raise RuntimeError('Volume baseline is not an interior facing wall contact')
+                    raise RuntimeError('Volume swept baseline is not an interior facing wall contact')
             # Zero normal at initial overlap is retained verbatim, not changed
             # into a push-out vector. No raw collision Time is manufactured.
             return location, normal
 
-        point, normal = query('current_line', start, end, (0., 0., 0.), True)
+        point, normal = query('swept_extent', start, end, extent, True)
         depth = min(extent) * .5
         overlap = tuple(point[i] - depth * normal[i] for i in range(3))
-        result.update(current_line_contact=point, contact_normal=normal, planned_overlap_center=overlap,
+        result.update(current_swept_contact=point, contact_normal=normal, planned_overlap_center=overlap,
                       diagnostic_depth=depth, not_a_penetration_recovery_distance=True)
         query('stationary_separated', start, start, extent, False)
-        query('swept_extent', start, end, extent, True)
         query('stationary_initial_overlap', overlap, overlap, extent, True)
         query('leaving_initial_overlap', overlap, start, extent, True)
         result.update(accepted=True, actor_identity=actor, surface_state=surface,

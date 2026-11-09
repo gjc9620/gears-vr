@@ -872,6 +872,27 @@ class SurfaceSnapshotTests(unittest.TestCase):
         with self.assertRaises(RuntimeError):
             q.finish()
 
+    def test_independently_selected_brush_surface_keeps_strict_ownership_and_closing(self):
+        # The nonzero baseline may select a BlockingVolume instead of a
+        # zero-extent mesh. Its OWN fields must still close; no old mesh is
+        # supplied, and no Actor/Component mismatch exception is suppressed.
+        m, q, roles, actor, component = self.fixture()
+        volume_class = 0x2a000
+        m.add_class(volume_class, 'BlockingVolume', m.ACTOR)
+        m.put(volume_class + m.profile['struct_children'], bytes(8))
+        m.objects[actor['address']]['cls'] = volume_class
+        m.objects[actor['address']]['name'] = 'CurrentBlockingVolume'
+        m.objects[m.MESH_CLASS]['name'] = 'BrushComponent'
+        selected = m.fresh(actor['address'])
+        chosen_component = m.fresh(component)
+        result = _surface_state(q, roles, selected, chosen_component)
+        self.assertEqual(result['actor'], selected)
+        self.assertEqual(result['component'], chosen_component)
+        q.finish()
+        m.set_value(component, 'Owner', m.PAWN, '<Q')
+        with self.assertRaises(RuntimeError):
+            q.finish()
+
     def test_bad_world_owner_matrix_and_plane_are_rejected(self):
         for bad in ('world', 'owner', 'size', 'plane', 'scalar', 'nonfinite', 'perspective'):
             with self.subTest(bad=bad):

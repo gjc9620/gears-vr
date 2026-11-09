@@ -2,7 +2,7 @@
 
 目标：完成掩体系统开发与验证。状态：进行中。
 
-最近结果（2026-11-09）：r31/game30188实际完成原A和当前严格圆柱观察，原CollisionRadius=34／CollisionHeight=72；line及静止分离对照通过，第三次正Extent移动查询返回不同BlockingVolume／BrushComponent，被原严格组件绑定拒绝，未执行初始重叠和离开重叠。操作器exit1保留。Native／入口／pad／unified本局清理正常；全部概览与6原图亲审仍有严重右身体遮挡。wrapper／编码／retention均实际终态0，精确恢复后最终唯一交Snub110649，当前不占窗。r28真实C0读回和r30停机兼容证据保持各自范围；完整体积／占用／世界同步、Native掩体提交、CV-01–24／AC-01–22及实体头显仍未完成，详见末节。
+最近结果（2026-11-09）：r31/game30188严格圆柱原字段34／72通过，但第三次正Extent因不同BlockingVolume／BrushComponent首败，操作器exit1、严重右身体遮挡保留；全终后已唯一交Snub110649，当前不占窗。r32针对该实际首败改为4次全非零查询，先独立认证移动体积的实际表面，再严格绑定该组；零Extent基线不再执行。63个Python方法通过，新plan5ad2a094／preparedf04ee0c4准备通过，未stage／启动，将申请新尾而不复用r31。完整体积／占用／世界同步、Native掩体提交、CV-01–24／AC-01–22及实体头显仍未完成，详见末节。
 
 ## 2026年11月8日 首批接续
 
@@ -727,3 +727,17 @@ Native关闭、入口恢复和pad恢复通过，body／hand／atom等结束pendi
 wrapper工具77474实际terminal0、encoder81605实际terminal0，与操作器terminal1分别保存。唯一retention20757实际terminal0／errors0，删除4247项生成媒体821152522字节，保留30188／47536／35040最新3局、48小时；源码／构建／资产／存档／文本未删除。config及XR settings原字节、head原不存在、所选游戏settings SHA、结束25driver与3stage制品均独立核对一致；最终CIM及idle无自有游戏／XR／录制／编码残留。详细game-30188-review.json、closure-proof.json、selected-visual.json和retention-result.json在analysis/cover-system-20261108/cylinder-source-r31。
 
 独立核Snub110649准确prepared35fa0494、21helpers和4保存制品后，已最终明确唯一交该后继；HB110627由Snub已直接接受其后，不作第二后继。当前不占运行窗，不补第二局。完整身体形状与连续扫掠／终点占用／世界同步、真正Native掩体提交后端与basis恢复、同版view／hit／muzzle、暂停／身体遮挡与全部CV-01–24／AC-01–22／实体头显继续未完成；目标保持进行中，公开v71及历史计分不变。
+
+## 2026年11月9日 r32独立非零体积表面准入，不沿用零射线网格
+
+上一轮为实质进展：808b0b7b及实际30188确认当前圆柱原字段，同时保留非零查询不同Actor／Component的首败。该局并未认证新的BlockingVolume表面，不能直接把其地址或回执改为成功。本轮改的是对照流程：原capture及其typed schema、原生代码证书、Actor／Component／Owner／矩阵／关闭／身份／预算规则均未放宽。
+
+capture_volume_probe的schema升至2，最多4次、全部使用同一正Extent。第一次swept_extent不给旧表面身份，要求原capture从本局当前实际命中取得完整surface_after并完成原严格关闭；这是独立非零表面准入，不是忽略不同Actor异常。之后stationary_separated、stationary_initial_overlap和leaving_initial_overlap全部提供该确切Actor／Component，核对同一完整表面、session／game／owner／Pawn／slot／位置／module／function及规划和float32编码输入。任何后续更换Actor或组件、变换变化、自身／Controller／CoverLink命中、pending／allocation未清或命中／空对照不符均停止。首扫还必须是线段内部、方向迎向且近水平的单位法线，不能用无命中、零法线或地面建立候选。
+
+零Extent查询完全移出本次流程，不再次用已经通过的线查询认证体积。重叠中心仅从本局已严格关闭的非零扫掠返回位置／法线计算，诊断深度仍非穿透恢复距离；等起终点保持完全相等，初始零法线原样保留，不制造FCheckResult.Time。原30秒新调用准入、各已开始查询的原截止与正常收尾、每次调用前attempted_result_unknown持久化和无重试规则保留。成功对照也不签发body／grab／collision／shape／occupancy／world-sync或头显许可，10单位Extent仍不是已认证人体尺寸。
+
+新正Extent-only合同在旧流程上实际14方法47个断言失败，主要因为旧流程首先提交零Extent；这是离线流程合同RED，不是重放实际30188或新游戏失败。改正后14个Volume方法通过，包含非零新表面、后续表面／Actor／Component更换拒绝、基线接触、静止重叠零法线和未知回执保存等。另在原生产typed surface helper增加BlockingVolume／BrushComponent独立选择及Owner关闭变化拒绝，Trace49方法通过，合计63方法0失败；合成内存／原查询替身仍是CPU证据，不把它推广为实际Brush表面已关闭。日志和准确源在analysis/cover-system-20261108/nonzero-surface-r32。
+
+新准确plan analysis/solo-m1-20261028/cover-nonzero-runtime-plan.json SHA256 5ad2a094e90eb003fba8f9ff2836b740aeed05047fc200c02040a819d0a2dfca；prepared equipment-controls-prepared-20261109-cover-nonzero-r32/prepared.json SHA256 f04ee0c4d178b2836ce4395954a45e242c160638e4eb5bc34c6696e62d94d209。27项声明driver及AST（含原idle／retention和review入口）、24项冻结源声明、3保存制品均核对，注入equipment／menu owner字符串compile／AST、prepare-only exit0。仍原r13 Native5cf4adea／PGf8e6f3c2／XR1684，没有新Native构建或混入后续C++。
+
+运行范围为原A一次、当前严格圆柱观察一次、最多4次原非零Trace／30秒准入，首败停，不重复pause／B；0.4、后台observe-only、测试静音、物理输入隔离、身份新鲜度与存档音频／清理保护保持。旧r31实际执行driver已原样归档且结束哈希在交窗前核对，本轮源码更新不改写其历史结果。当前未拥有窗口、未stage／启动，新候选须沿实际已受理尾申请，不复用已经最终交出的r31槽。完整最终身体／physics形状、连续扫掠／终点占用／世界同步、Native提交与basis恢复、同版view／hit／muzzle、暂停／身体遮挡与所有CV／AC／实体头显仍开放；公开v71及历史计分保持。
