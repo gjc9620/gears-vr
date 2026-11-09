@@ -503,3 +503,19 @@ operator29628=1、wrapper70580=0、launcher1/XR1保留。native_started false、
 准确c985来源为equipment-controls-prepared-20261108-205200及其source SHA、CMakeCache-native、lancer-hover-handoff-source-before.json。独立副本native-binding-source基于1332保存源，只改anchor_observer.h/capture.cpp两个生产文件：保留原scene_binding_matches/equal_binding和原读取顺序、时钟、重试；失败后仅记录site/mismatch mask或已有PawnBindingDiagnostic字段，无新游戏读取、输入、hook、C0写者或Native ABI。可审核源码差异保存在hammerburst-native-binding-observation.patch，不改root共享两文件，也不混入新Lancer手型。
 
 同一完整原guard夹具分别执行旧/新header，23335条Read地址/大小/返回逐项一致，两次原CPU夹具均0；新增断言区分final read_failure与原number变化的final_compare mask1。首个夹具误将后者预期为capture失败，已改正期望，失败日志保留；生产判据未变。最初归档全CMake配置因未收录continuous_hand_owner_test.cpp失败，未用测试桩掩盖。按原生成生产vcxproj精确提取7个C++/ASM源和有效编译定义、/MT，补6个git-clean原ASM并记录commit/SHA，复用hash-pinned原minhook.x64.lib及归档头；只构建GearsCapture生产目标，配置/编译均0，Native806dcbd6a92ecd337923f4ecf315e56ab7afd475e247a8a3cacdfe2ab30b8b0c。107原cache选项、有效定义、依赖SHA及补充源在native-binding-source-check.json/native-binding-build.json保存。未stage/run，不称60196根因修复或供弹通过；需新冻结与真实尾受理再验证，旧153818不原样重跑。
+
+## 2026-11-09 实际44504：启动及核心六射通过，有限耗尽首败并闭环
+
+HB171233 prepared81d07ec554d98e87148f7cb1ff96804395562bd56f694863662608c6f1cbf119沿Lancer165800明确最终交窗后，独立核2253 PG源、1338独立Native源、6saved制品、19实际运行脚本SHA/AST与idle，才stage/run。Native806dcbd6和PG56bc12d8保持冻结，不混入任何作者手型。实际game44504 creation134386943167237575，Native激活通过，不等于已证明60196启动问题因观察补丁修复。
+
+肩部原取枪及一轮严格六发实际轨迹通过，六条trace_valid/write_source_consistent/trace_source_consistent均1；typed初始loaded72/reserve78/cap78、非无限。耗尽过程第6个真实press/release后没有进一步耗弹而首败，最后loaded58/reserve78，之前实际共消耗14发；停止后续动作。replacement、R0 loaded reuse、total0 empty_supply均未触达，不继承旧机械运行结果作为本轮通过。原日志可见第一组耗尽original_count仅1..5，后一次新press计数已出现；后续组也在count5或4时出现新press。原核心使用.35DOWN/.6UP，旧drain使用.35DOWN/.25UP，测试节奏差异已找到；不能把输入counter/新鲜度撤销当库存逻辑通过，也不削弱新press不可复用旧burst的防重放规则。
+
+wrapper44619=0、operator44840=1，首败停；Native/entry/pad恢复TRUE，hand_stop_code5但drainedTRUE、fire_disable0，XR0/launcher0/gamegone。wrapper最终idle guard因当时录制收尾未idle而跳过文本恢复，原notice保留。独立idle后用本轮原备份恢复config9b5773b5、settings af500f0b（UTF8 BOM保留）、head原缺，逐字节SHA匹配预检；没有以settings_text去BOM后的ee74ffa9冒称原字节，也无依据归因其他会话写入。14份原PG/Native/prime/session/入口日志状态已归档。encode31486=0，ffprobe30.100000s/5191433B，完整2页与game00360/00441、sim00489/00637原图亲审；445game/642sim末端均覆盖，game最大采集间隔2133.3728ms是采集缺口，不是FPS或游戏卡顿结论。画面可见主手持枪、左空手及部分枪身近相机遮挡，本轮不是手型接受。
+
+retention68003=0仅执行一次，实删1081媒体159600676B/errors0，保留44504/48324/31716、48h，原文/源码/数值记录保留。独立再次idle、3基线复核、Boom173042完整3954归档源/6saved/15实际driver+AST/1024归档py/86实际runtime依赖+AST、原game与review解释器及两outer guards均过后，明确最终唯一交Boom173042。Boom已回执受理并将原scope stage/run，随后唯一后继更新为HODcore4-query，旧core2/core3撤回。HB不再有旧窗，不追加本局测试。证据runtime-44504-review.json、runtime-44504-restore.json、runtime-44504-successor-Boom173042-check.json。
+
+## 44504 后仅修正耗尽脚本完成窗口并收紧每轮断言（未再次游戏验证）
+
+hammerburst_supply_boundary_chain.py改为与已观察到完整六发的core同一.35DOWN/.6UP，每轮typed弹量必须精确减少min(6,previous_loaded)，不再只接受大于0。部分/无进展均首败立即停，不重试输入；保留真实UP、18s总界、原128轨迹上限与129截断标记、库存/奖励不写与原所有身份/新鲜度/anti-replay规则。新增每轮前后loaded/实际spent/expected落盘，防止只保留最后一次快照丢掉早期部分burst信息。
+
+10个离线fake用例通过，覆盖同core按放时长、9→3→0两轮真实按放、部分12→8立即停且不发第二press、无进展、timeout、备弹突变、无效/缺失轨迹、原128截断有/无marker和所有失败后的真实UP。此是测试脚本修正，不声称生产枪械修复或有限弹药链已通过。driver旧SHA b95f3bf5aec1a9b626ed55cd94dbbc3c57c5489d920c29d38fa2c5942bb298a5，新7aaca77db2c12677d0247fa8562f8373ae3f30b3791ddd37345b49f926b935bb；check_supply_driver.py SHA1928a97add18661b006487535dd89ce43cb579805215ac12806a3fa09d508e29。可审补丁docs/hammerburst-supply-driver-44504.patch、数值receipt supply-completion-window-repair.json。HB171233原冻结不改且已消费；下一验证必须另冻结身份、沿实际队尾申请，不复用已交出的窗口。

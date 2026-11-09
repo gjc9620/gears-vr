@@ -1,0 +1,24 @@
+--- a/analysis/solo-m1-20261028/hammerburst_supply_boundary_chain.py
++++ b/analysis/solo-m1-20261028/hammerburst_supply_boundary_chain.py
+@@ -20,11 +20,20 @@
+         while clock()<deadline:
+             # The already recorded HB gesture is one genuine press/release
+             # burst. Do not assume holding one press empties a burst weapon.
+-            c.live();g.pad(1,wait=.35,trigger=1);g.pad(1,wait=.25);bursts+=1
++            # Match the core's already observed complete six-shot gesture.
++            # The old .25s UP began a new counter cohort before the preceding
++            # original burst finished in game44504. Never relax that cohort
++            # guard or retry its rejected press to manufacture depletion.
++            c.live();g.pad(1,wait=.35,trigger=1);g.pad(1,wait=.6);bursts+=1
+             observed=counts(c,label+'_after_burst_'+str(bursts))
++            evidence.setdefault('burst_observations',[]).append(dict(
++                burst=bursts,loaded_before=previous,loaded_after=observed['loaded'],
++                actual_spent=previous-observed['loaded'],expected_spent=min(6,previous)))
+             remember(genuine_press_release_bursts=bursts,last_observed_counts=observed)
+             assert observed['reserve']==before['reserve'] and observed['capacity']==before['capacity']
+             assert observed['loaded']<previous,'Real burst did not spend ammunition; no input retry loop'
++            assert previous-observed['loaded']==min(6,previous),\
++                'Original burst incomplete at the core completion window; stop without retry'
+             previous=observed['loaded']
+             if observed['loaded']==0:break
+         else:raise AssertionError('Finite real-fire drain did not reach empty before deadline')
