@@ -2,7 +2,7 @@
 
 目标：完成掩体系统开发与验证。状态：进行中。
 
-最近结果（2026-11-09）：r38在准确PhysXCore制品完成8函数REA／Ghidra分析，确认setGlobalPose、moveGlobalPose、readBodyFlag及写锁跳过／姿态读回路线；主／late历史原调用的R8/R9分别1/1与0/0。静态证据已导出、会话关闭，未调用目标或新开游戏，实际物理同步仍未认证。最新实跑r34/20596严格读取29不同主接收者通过，严重身体遮挡仍FAIL；完整收尾后已最终唯一交Longshot125546，当前不占窗。完整CV-01–24／AC-01–22及实体头显仍未完成。
+最近结果（2026-11-09）：r39将准确当前PhysX模块、actor内部接收者和完整原始组合形状接入同一CoverQuery，33项定向检查通过；29／64身体合成读取均在原预算完整关闭。原r13只读候选prepared8917db74／planc73d4f85及36driver已冻结，prepare-only0，已向既有真实队尾申请新槽，尚无最终交接、未stage／run。最新实跑仍为r34/20596的29接收者来源读取，严重身体遮挡仍FAIL。全部CV-01–24／AC-01–22、实际提交／物理同步／命中／枪口与实体头显仍未完成。
 
 ## 2026年11月8日 首批接续
 
@@ -856,3 +856,17 @@ vtable+0x48对应的姿态回传入口0x133fe0进入helper0x1209f0。后者在ac
 REA导出8份完整保留记录，5,147,951字节，SHA7f93687ec7e3766b0d844e500a86a8a1317d2c25bfa44a315075482695b70ab6；各记录value-flow未截断，但间接目标及若干trap/no-return依据仍明确未知。原PE将部分函数拆成多个相邻unwind span，最初“单个.pdata必须等于整函数”比较不成立；已逐项核整个Ghidra观察范围被原连续span分区精确覆盖，保留原差异，不将range覆盖升级为运行或同步证明。静态code certificate记录8个完整观察范围的字节SHA，仅用于后续当前代码认证，不包含调用／写入许可。导出完成后正常close_binary，复查open=false，两个分析工具句柄均已完成。
 
 证据目录analysis/cover-system-20261108/physx-entry-r38，包含rea-evidence、static-code-certificate、caller-flags-anchored、lock-call-assembly、unwind-boundary-differences及verification。下一实际接线应独立认证当前加载的PhysX模块、真实actor附属体及其位置／旋转目标，并将r36完整原始形状、实际BoneName映射和同一C0／物理消费／查询时相绑定；不改变现有HookEntryAttestation仅认证game／Native两base的封印合同，不用旧地址、锁计数或“正常返回”签发身体位移。当前无新Native／PG构建或候选，未重跑r34，所有碰撞／实际提交／恢复／命中／枪口及CV／AC／头显缺口继续保留。
+
+## 2026年11月9日 r39当前PhysX内部来源与原始形状组合接线
+
+r38静态分析后，新增cover_physx_source.py，独立使用现有Resolver只读句柄枚举模块，完整上限2048项，缺失／歧义／路径截断／重复base拒绝；不改变HookEntryAttestation仅game／Native两base的合同。只接受所选game同目录PhysXCore.dll，准确2711552字节／SHA22051aa7，PE完整headers与当前读值一致，8段r38原函数全字节认证。原DIR64重定位逐项应用，vtable槽必须落在原文件只读数据、目标在非可写可执行区并比对准确原前缀，不用仅首个相同字节猜模块。结束再次枚举当前加载路径／base、核文件身份与全内容，并关闭同一个原CoverQuery。最初完整stat比较将读取导致的access time改变也当失败，已改为size／mtime／ctime／file ID及全内容核对；不忽略内容变化。
+
+准确actor的40／72／104／728字节槽绑定r38分析过的目标，再只读actor+0x40内部体指针和内部vtable的8／16／40／240／360字节槽。空内部体保留为缺失，不推成动态身体；非空内部目标仅取得准确模块／代码来源，位置／旋转返回布局、调用ABI、活动场景和更新消费时相仍未认证。零virtual／getter／Trace调用、零写入或新Hook，不读猜测的姿态内存，也不赋予物理同步或身体位移许可。
+
+cover_physics_state.py仅在新显式选择下，在同一查询中读取内部来源及各RB_BodySetup完整Sphere／Box／Sphyl／Convex原始形状。ShapeReader只共享本次查询中的反射布局，拒绝另一个Query的reader；每setup的实际header／payload仍逐项读并在统一关闭核对，不能跨样本缓存。原r34默认来源行为保持；新operator显式--cover-physics-source-only加--cover-physics-internal-shapes，不执行旧r32四对照或pause／B。
+
+33项定向方法通过，包括原来源12、原形状8加同Query约束1、新PhysX12。使用准确原DLL磁盘内容配合合成加载内存，核完整code尾、重定位后的表、缺失／错误路径／双同名／容量及重复base、内部指针、当前模块变更、结束时code／pointer／shape变化及原预算拒绝；这些测试不是当前进程证据，合成内部vtable特意复用可认证原表，不声称真实内部类型已定位。29身体混合四形状7465读／96020字节；64身体256形状15305读／174547字节，均完整关闭，不截断，原16384读／2MiB／3秒不变。首轮30项的1错误是负例只预期RuntimeError而实际只读缺页抛OSError；1失败是变更注入在值扫掠后。测试改为接受真实读取错误并在关闭开始注入，原Query未改，atomic_snapshot仍false。首败及最终原日志保留。
+
+原r13三制品按原SHA复制并复核24冻结源声明，没有重编Native／PG或混用当前武器源码。新equipment-controls-prepared-20261109-cover-physics-r39的prepared SHA8917db74a2bf8ca991380d6b701835e9e012f0c8f78163c24fa02fb966235c0a；cover-physics-combined-runtime-plan.json SHA c73d4f85975ef3e03444cf64502f990391c455dfeed024e5733e0eac5ab0c677；36个当前driver及AST、prepare-only通过，准确driver已归档。已向原已知队尾Snub申请后续唯一槽，尚待真实尾确认，不凭队列消息或空闲文件接管。未stage、未启动game／XR、未操作其他owner的实例。
+
+下一步在最终唯一交窗且独立idle／候选完整复核后，执行一次当前组合来源读取，保留首败，认证实际内部目标再推进原始形状与BoneName／模型映射、同C0物理姿态、查询可见性、Native真实提交与恢复和同版view／hit／muzzle。原始资产形状不是活动场景形状，代码来源不是姿态消费，任何一个源读取通过都不能关闭CV／AC或视觉／头显缺口。公开v71、严重肩／身体遮挡及旧暂停失败状态不变。证据analysis/cover-system-20261108/combined-physics-r39。

@@ -127,7 +127,8 @@ def _receiver(q, pointer, prefixes):
 
 
 def capture(observer, native_dll, native_sha256, *, query_factory=CoverQuery,
-            attestation_factory=_attestation, historical_loader=_historical):
+            attestation_factory=_attestation, historical_loader=_historical,
+            include_shapes=False, include_physx=False, physx_factory=None):
     """Close one current source observation; never certify active physics/pose.
 
     Array/index/component associations and readable code prefixes do not prove
@@ -140,6 +141,7 @@ def capture(observer, native_dll, native_sha256, *, query_factory=CoverQuery,
                update_coverage_verified=False, matched_bones_verified=False,
                virtual_target_module_verified=False, virtual_target_executable_verified=False,
                world_synchronization_verified=False, atomic_snapshot_verified=False,
+               authored_shapes_observed=False, physx_source_observed=False,
                physical_headset_acceptance=False, bodies=[], started_perf_counter_ns=time.perf_counter_ns())
     q = proof = None
     try:
@@ -155,6 +157,19 @@ def capture(observer, native_dll, native_sha256, *, query_factory=CoverQuery,
                                     game_creation=game['creation_time'], owner_identity=owner,
                                     dll=dll, expected_dll_sha256=native_sha256)
         q = query_factory(observer)
+        if type(include_shapes) is not bool or type(include_physx) is not bool:
+            raise ValueError('Physics optional source selections must be Boolean')
+        if physx_factory is not None and not include_physx:
+            raise ValueError('PhysX factory supplied without selecting PhysX observation')
+        shape_reader = physx = None
+        if include_shapes:
+            from cover_physics_shapes import ShapeReader
+            shape_reader = ShapeReader(q)
+        if include_physx:
+            if physx_factory is None:
+                from cover_physx_source import PhysXSource
+                physx_factory = PhysXSource
+            physx = physx_factory(q, game['image'])
         module = _module(q, SimpleNamespace(module=disk), game)
         if proof.module_base != module['base']:
             raise RuntimeError('Physics sealed Native and reader module bases differ')
@@ -215,11 +230,19 @@ def capture(observer, native_dll, native_sha256, *, query_factory=CoverQuery,
             named['number'] = number
             row = dict(index=index, instance=body, setup=setup, bone_name=named, bone_name_bytes=raw.hex())
             out['bodies'].append(row)
+            if shape_reader is not None:
+                from cover_physics_shapes import read_setup_shapes
+                row['authored_shapes'] = read_setup_shapes(q, setup, reader=shape_reader)
             for label in ('main', 'auxiliary'):
                 raw = q.value(body, fields[label]['field'])
                 pointer = struct.unpack('<Q', raw)[0]
                 row[label] = _receiver(q, pointer, prefixes)
                 row[label]['field_bytes'] = raw.hex()
+                if physx is not None and pointer:
+                    row[label]['physx'] = physx.receiver(pointer)
+        if physx is not None:
+            physx.reverify()
+            out['physx'] = physx.result()
         q.finish()
         proof.reverify()
         if surface._lifecycle(observer) != lifecycle:
@@ -230,9 +253,12 @@ def capture(observer, native_dll, native_sha256, *, query_factory=CoverQuery,
                    body_array=arrays, setup_array=setups_layout, root_body_index=root,
                    body_layouts=layouts, setup_layouts=setup_layouts, virtual_target_prefixes=list(prefixes.values()),
                    unique_main_receivers=len({b['main']['address'] for b in out['bodies'] if b['main']['present']}),
+                   authored_shapes_observed=include_shapes, physx_source_observed=include_physx,
+                   virtual_target_module_verified=include_physx,
+                   virtual_target_executable_verified=include_physx,
                    native_sha256=native_sha256,
-                   limits='Closed source/array/index/owner and receiver/vtable/code-byte observations only; '
-                          'no method names, pose coverage, active scene, hit/muzzle or synchronization proof')
+                   limits='Closed source/array/index/owner and selected receiver/module/authored-shape observations only; '
+                          'no callable ABI, transformed/active shapes, pose coverage, hit/muzzle or synchronization proof')
     except (RuntimeError, OSError, ValueError, TypeError, KeyError, struct.error) as error:
         out.update(rejection=str(error), rejection_type=type(error).__name__)
         witness = getattr(q, 'closing_rejection', None)

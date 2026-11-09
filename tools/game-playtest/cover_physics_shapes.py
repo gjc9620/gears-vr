@@ -172,8 +172,12 @@ class ShapeReader:
         return result  # Cook, topology correctness, activity and bounds authority remain unknown.
 
 
-def read_setup_shapes(query, setup):
+def read_setup_shapes(query, setup, *, reader=None):
     """Observe every declared authored shape; the same query must finish later."""
+    if reader is None:
+        reader = ShapeReader(query)
+    elif not isinstance(reader, ShapeReader) or reader.q is not query:
+        raise RuntimeError('Physics shape reader belongs to another query')
     if (query.obj(setup['address']) != setup or setup['name'].startswith('Default__') or
             not any(c['name'] == 'RB_BodySetup' for c in _chain(query, setup['cls']))):
         raise RuntimeError('Physics shape setup identity/class rejected')
@@ -182,7 +186,6 @@ def read_setup_shapes(query, setup):
     if owner['name'] != 'KMeshProps' or owner['number'] or _kind(query, owner) != 'Class':
         raise RuntimeError('Physics aggregate declaring class rejected')
     prop = _property(query, query.obj(field['address']), owner, field['offset'] + field['size'])
-    reader = ShapeReader(query)
     at, typ = reader.embedded(setup['address'], prop, 'KAggregateGeom')
     if typ['outer'] != owner['address']:
         raise RuntimeError('Physics aggregate structure owner rejected')

@@ -13,8 +13,8 @@ from test_cover_physics_state import PhysicsMemory
 class ShapeMemory(PhysicsMemory):
     KM, AGG, SPHERE, BOX_ELEM, SPHYL, CONVEX, BOUNDS, VEC4 = range(0x5800000,0x5808000,0x1000)
 
-    def __init__(self):
-        super().__init__(1)
+    def __init__(self, count=1):
+        super().__init__(count)
         self.add_class(self.KM,'KMeshProps',0x20400)
         self.supers[self.BS_CLASS]=self.KM
         self.put(self.BS_CLASS+0x60,struct.pack('<Q',self.KM))
@@ -56,6 +56,8 @@ class ShapeMemory(PhysicsMemory):
             self.shape_array(self.CONVEX,convex,name,i*16,typ,stride,raw)
         self.add_property(self.CONVEX,'ElemBox','StructProperty',96,28,target=self.BOUNDS)
         self.put(convex+96,struct.pack('<6fB3x',0,0,0,1,1,1,1))
+        for setup in self.setups[1:]:
+            self.put(setup+0x60,self.read(agg,64))
         self.relink()
 
     def shape_array(self,owner,base,name,offset,typ,stride,raw):
@@ -176,6 +178,13 @@ class ShapeTests(unittest.TestCase):
         f=ShapeMemory();q=CoverQuery(f.observer);q.reads=16384
         with self.assertRaisesRegex(RuntimeError,'read budget'):
             read_setup_shapes(q,q.obj(f.setups[0]))
+
+    def test_shared_layout_reader_requires_the_same_query(self):
+        from cover_physics_shapes import ShapeReader
+        f=ShapeMemory()
+        first,second=CoverQuery(f.observer),CoverQuery(f.observer)
+        with self.assertRaisesRegex(RuntimeError,'another query'):
+            read_setup_shapes(second,second.obj(f.setups[0]),reader=ShapeReader(first))
 
 
 if __name__=='__main__':unittest.main()
