@@ -142,7 +142,9 @@ public:
         return true;
     }
 };
-Status read(gears_weapon_hand::Frame const& f,Evidence& out,AssetScope scope=AssetScope::lancer_only) noexcept {
+Status read(gears_weapon_hand::Frame const& f,Evidence& out,AssetScope scope=AssetScope::lancer_only,
+            HeldAsset* observed_kind=nullptr) noexcept {
+    if(observed_kind)*observed_kind=HeldAsset::unknown;
     const auto gt=weaponhand::current_gt(nullptr);
     if(!gt||(f.key.thread_id&&gt!=f.key.thread_id))return Status::wrong_thread;
     meta::Snapshot schema{};schema.module_base=base;meta::Reader r{schema,meta::Stage::final_check};
@@ -198,6 +200,6 @@ Status read(gears_weapon_hand::Frame const& f,Evidence& out,AssetScope scope=Ass
     if(!meta::tables(schema.module_base,objects_table,names_table)||!meta::same_table(objects_table,schema.objects)||
        !meta::same_table(names_table,schema.names)||base!=schema.module_base||weaponhand::current_gt(nullptr)!=gt||
        r.result.failure.reason!=meta::Reason::none)return Status::changed;
-    out=candidate;return Status::ready;
+    out=candidate;if(observed_kind)*observed_kind=expected_asset;return Status::ready;
 }
 } // namespace lancermain_asset
