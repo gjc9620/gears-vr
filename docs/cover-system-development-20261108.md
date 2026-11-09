@@ -1494,3 +1494,17 @@ capture的现有stop请求、cleanup-ready、retained判定、hook-restored与�
 本次五身份：prepared0905884d8c7145528598b404e4d31e2f49d0b84e1a5e9cdf1f20e9c587b071b9；planb4f0155935a958e555520ec3a6a72992b8a619557487e1eb017b206c1e35aa83；ready62b5e59027c852c8d22c21dbd64d68b0b53f46fea7eeac9b514c1e7875e0b4c0；entry6709dc5681294dd34c2a26c2e5fa549838be0be0238d4f519e980ed80f91239e；depsff5bd4b7a22a165acafa171de358a18a19bda7fb9e01854e49878e043169c32b。唯一tail-intent-packet SHAa7df6d25b516f875c442efdbc4b08322ab0cee7bc2f22245c7ebe7ecd2f4e3a0已按必要直接交接送Beam8队尾，回执68f872f9347be7778dbf168af8b930ac7fd6385d8e20d8c30214c74dd3fd3029仅确认登记。HB→LS→GN→Frag→Bol→Beam8→Cover顺序保留；对方未独核此source／entry／deps，Beam8实际outer尚未固定，未正式受理／无当前窗／无最终票据，不借旧HOD49912取消例外或旧final授窗。没有可确认本方live运行handle，不称verified wait。
 
 证据analysis/cover-system-20261108/view-alignment-r80/verification.json，六份本轮代码在source-checkpoint保留原字节；原b144已消费失败、所有历史失败均保留。按本次主人汇总请求另写analysis/coordinator-progress-20261110-0305/cover.json，不为汇报新增测试或构建。本轮新检查与准备均服务此目标，没有游戏／XR／录制或新增玩家动作通过。仍在完整任务步骤1，严重肩／身体遮挡FAIL，核心抓边／碰撞／占用／受击枪口／恢复／逐点GrabPose和完整CV24／AC22、头显均未完成；A20/B30/C20/D15/E15各档.25、工程25%保持。下一玩家检查仍是实际单次入掩体的同调用几何与双眼关联，定位后修复，不将新封套或CPU数据当修复完成。
+
+## 2026年11月10日 r81原命中形状归属只读模块／未接Native
+
+上一轮r80候选、离线读取工具及队尾意向属于进展；本轮没有重封r80或重复其准备检查，在未取得正式交窗时推进CV16必需的形状／刚体归属。REA直接复用指定PhysXCore.dll，完整SHA22051aa75312344a824a5f7e29c6375fec3a90df50cbeff6152f0e6c3afddd48，Ghidra12.1.4只做静态分析，关闭会话后保存612909字节／77条完整证据。没有执行DLL或目标游戏。
+
+原八类NpBox/Capsule/Convex/HeightField/Plane/Sphere/TriangleMesh/Wheel主表的virtual+8都指向13E730，完整5字节488b4138c3确实读取公开shape+38。RTTI／CompleteObjectLocator关闭到每类主表，offset均0；getActor地址的12项数据交叉引用中，只采用8项实际匹配RTTI的主表，其他代码／调度数据位置未误当形状表。NpActor主表2330A8的实际RTTI也已确认。NpBoxShape构造明确含+18的NpShape副基，不把副基地址直接解释成查询返回的公开shape。内部BoxShape／CapsuleShape表virtual+40共享C4E0，完整8字节488b81a0000000c3读取internal shape+A0。原r73 A71F0已保存指令A7C8A调用此虚槽、A7C8D将RAX写Hit+8，和当前相同原文件对应；没有根据别版SDK猜getActor槽位或把Hit首8字节当shape。
+
+新增cover_physx_shape_owner.h提供observe纯读取：调用方须保有原精确Image pin和当前C0 owner，接口只收当前source Snapshot及原64字节Hit，不产生许可。关闭重取原BodyData／Actor／Scene来源；按已认证8主表及两个完整getter字节读公开shape→actor，要求同当前Scene，并核对shape+30→internal shape、internal shape+A0→公开shape、internal shape+D0与公开actor+40相同，以及internal actor+10→公开actor。前后独立读取的身份／指针／类别一致，最终guard后还比较调用方source和原Hit未变。未知表、未认证getter、任何读失败／链接不符／来源改变均返回明确失败，输出保持；不会将未知或其他同Scene actor自动过滤，也没有“只排除首个self hit”逻辑。
+
+这只是当前字段和关系的CPU读取括号，不是引擎原子快照、shape生命周期、ABA排除、物理世界fence或完整碰撞几何。内部shape虚表只校验模块内地址及实际+40 getter，未据此宣称所有内部几何类型／世界覆盖通过。既有mesh BodyData来源只认证当前选中身体及其数组，尚不是包含人物胶囊、所有骨身体、其他组件与装备的完整自身集合。本模块暂未接入Native查询／决策，不授过滤、无碰撞、终点占用或身体移动许可。
+
+单个聚焦程序在独立冻结r79源加本模块／测试和原PE fixture，/std:c++17 /O2 /W4 /WX /EHsc /UNDEBUG /MT实际编译执行0，202检查／0失败，8实际项目依赖全部位于冻结树并逐SHA。真实原PE仅映射为数据；对象／Scene／双向关系是明确合成fixture。覆盖八个真实主表、其他同Scene actor仍完整返回、15种表／代码／链接／来源错误、全部70个读点失败、6处owner guard失败、两次各自一致却已换actor、最后读／最后guard修改输入及非法Hit指针，所有失败保持输出；进程确认PhysXCore.dll仍未装载。首版因在旧fixture全局base／size之后include新header触发C4459/WX拒绝，保留原冻结与日志，改为新header首include并独立final树重编，没有关警告。未重复原125项旧suite，也未启动新Native／PG编译；未接线的头文件不称生产Native集成编译通过。
+
+证据analysis/cover-system-20261108/physx-shape-owner-r81/shape-owner-certificate.json、rea-evidence.json及verification.json；证书明确分观察、推论和未知。r80原5身份／Native8035与Beam8后序意向不变，当前未正式受理或获窗，本轮无游戏／XR／录制／新玩家动作通过，也没有助手／CUA／其他武器实现或publicv71变更。下一步完整自身集合及同原查询事务的归属消费仍须实现并认证，随后与组合身体路径、终点占用和physics-hit-muzzle同姿态接线；严重肩／身体遮挡仍待r80取得同调用几何与实际双眼后定位修复。完整CV-01–24／AC-01–22、逐点GrabPose／恢复与实体头显仍未完成，工程25%保持，目标active。
