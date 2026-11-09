@@ -50,7 +50,7 @@
 | 完美/取消、换弹中断/收枪 | 有实现与部分纯测试 | 仍缺本枪实际动作证据 |
 | 完整自然手型、舒适度、实体头显 | 尚无接受 | 未通过 |
 
-下一不可变候选为hammerburst-prepared-20261109-070119-refire-supply，PG30239f21a306c31d5fd1d357556aa11c1f32201d2b57cbe824c28aa109f719ce，2236源/6制品核验。先复核53624耗弹缺轨迹/来源陈旧的有因HB timer适配，再只在前提通过后继续已有零备弹/总零目标；不增Native/Hook/写者或射线预算。167原包matcher、52生产adapter假metadata、145既有事件/loop与9驱动边界检查通过，完整隔离PG0；没有live timer证明，未stage/run，按新队尾交接。失败前已读弹量/射线现在先写现有驱动JSON再断言，避免重现53624缺原始数值的问题，不补造旧数据。实际原匣7712、新匣53224与耗弹53624的范围/失败/影像/正常收尾见本文末尾；早期章节为历史记录。
+当前070119-refire-supply已在实际72536后撤回，不得交付或不变重跑。其HB timer认证/延迟路径实际执行，但78射击编号只54条有效轨迹，耗弹目标仍失败，尚未进入零备弹/总零。共享源码7e9c0c1c恢复Lancer-only defer入口，独立契约/测试保留研究，撤回后的隔离PG仅编译通过，未stage/game。current-candidate-state.json保存retired状态；下一步是原六发burst在R2-up后的已提交尾段与撤销契约，不放宽源时效、不删射线断言。实际原匣7712、新匣53224及失败53624/72536范围、影像与正常收尾见本文末尾。
 
 ## 第一批实现与离线构建
 
@@ -394,3 +394,14 @@ Lancer只读确认上述forgiving-profile不是其本轮改动，未补写共享
 
 
 静态继承链补核：PutDownWeapon由WarfareGame.WarWeapon export35863覆盖（UC SHA045eb54e），非仅Engine基类。旧47f69b96生产adapter在此原包归属的metadata夹具实际断言RED(-1073740791)，保留war-owner-before源与log；50a208b4仅给HB此调用启用既有严格Engine/WarWeapon函数白名单，默认War归属+Engine兼容及外来归属拒绝54项GREEN，已有145事件检查及完整PG0。没有为过测接受同名其他类。065400未stage/run，后续精确冻结hammerburst-prepared-20261109-070119-refire-supply、PG30239f21a306c31d5fd1d357556aa11c1f32201d2b57cbe824c28aa109f719ce，仍2236源/6制品，替换同一队尾位置。
+
+
+## 72536：已进timer路径但缺轨迹恶化，撤回不完整接入
+
+070119/PG30239f21全2236源/6制品及13关键运行输入核验后stage，实际72536/134386554201091833。Native timer原契约admitted、deferred及normal PostTick delivered确实执行；不能再说路径没触达。首6发通过，随后13次真实R2按下/释放耗弹before L72/R78→after L0/R78，typed数值和所有已导出trajectory在断言前保存。全局54条有效同源轨迹，其中耗弹48而非72，缺shot18/23/24/29/30/35/36/41/42/47/48/52/53/54/57/58/59/60/64/65/66/70/71/72；operator1，未到任何换匣/R0/总零，断言未放宽。
+
+此结果比53624的75/78更差，退回候选且不交付。源码确定本版defer/deliver仍要求owns_press/trigger held，而原HB ShouldRefire对本地真人按BurstCount<NumBurstShots继续原突发，即使已R2-up；六发尾段的新鲜姿态/原意图授权及撤销尚未接齐。此缺口与缺失增加高度相关，但尚不把所有逐发因果当已证明。不得伪造R2-down、续旧时间、增加原100ms/20ms/250ms、补造射线或改原弹药来过测。
+
+33.43s全部2页双路overview及simulator00522/00553/00596/00689实际原图亲看；这只是对应射击附近画面，非缺失射线证明，自然手型/头显仍未接受。Native/entry/pad TRUE、hand_stop5/drained、XR0/launcher0/game absent、config/settings原字节/head原缺恢复；编码80782=0、retention21276=0，删2133媒体/358730210bytes，核idle后最终唯一交Coverr16→Snub071103→Boltok072100→Frag074333→Longshot075334，runtime-72536-review.json完整保存。
+
+7e9c0c1c只恢复共享defer的Lancer-only入口（未接入HB原first-state或finite尾段前不启用），独立HB契约matcher/夹具保留；撤回源码完整PG编译0，非新runtime验证，公共v71和Native未改。后续原有限burst的授权与失效清理需要一起实现：真实有效第一发才可形成有限剩余承诺；每发仍需新鲜Native姿态；实际R2-up不伪造按键，失追/生命周期/收枪需经原版停止和正常状态转换收尾，不能在失效恢复后自动续旧burst。
