@@ -17,6 +17,12 @@ KINDS = {'SphereElems': 'KSphereElem', 'BoxElems': 'KBoxElem',
          'SphylElems': 'KSphylElem', 'ConvexElems': 'KConvexElem'}
 
 
+class ShapeLayoutRejected(RuntimeError):
+    def __init__(self, message, witness):
+        super().__init__(message)
+        self.source_witness = witness
+
+
 class ShapeReader:
     def __init__(self, query):
         self.q = query
@@ -35,7 +41,11 @@ class ShapeReader:
         declared = [(owner, child) for owner in ancestry for child in _children(self.q, owner)]
         if (not 0 < size <= 1024 or any(_kind(self.q, owner) != 'ScriptStruct' for owner in ancestry) or
                 len(declared) != len(names) or {child['name'] for _, child in declared} != set(names)):
-            raise RuntimeError('Physics shape structure extent/complete field set rejected: ' + typ['name'])
+            raise ShapeLayoutRejected('Physics shape structure extent/complete field set rejected: ' + typ['name'],
+                dict(kind='physics_shape_structure_layout_mismatch', structure=typ, observed_size=size,
+                     expected_field_names=sorted(names), ancestry=ancestry,
+                     declared_fields=[dict(owner=owner, field=child) for owner, child in declared],
+                     closing_verified=False, source_accepted=False, activation_allowed=False))
         fields = {child['name']: _property(self.q, child, owner, size) for owner, child in declared}
         spans = sorted((p['offset'], p['offset'] + p['size']) for p in fields.values())
         if any(end > begin for (_, end), (begin, _) in zip(spans, spans[1:])):
@@ -189,8 +199,21 @@ def read_setup_shapes(query, setup, *, reader=None):
     at, typ = reader.embedded(setup['address'], prop, 'KAggregateGeom')
     if typ['outer'] != owner['address']:
         raise RuntimeError('Physics aggregate structure owner rejected')
-    fields = reader.layout(typ, KINDS)['fields']
+    # The retained original package inventory declares RenderInfo in addition
+    # to the four shape arrays. It is an opaque native Pointer, never geometry
+    # evidence or permission to dereference a render cache.
+    fields = reader.layout(typ, (*KINDS, 'RenderInfo'))['fields']
+    render = fields['RenderInfo']
+    if (render['type'] != 'StructProperty' or render['size'] != 8 or
+            render['target']['name'] != 'Pointer' or
+            struct.unpack('<I', query.read(render['target']['address'] + 0x88, 4))[0] != 8):
+        raise ShapeLayoutRejected('Physics aggregate RenderInfo native Pointer layout rejected',
+            dict(kind='physics_shape_render_info_layout_mismatch', structure=typ, field=render,
+                 closing_verified=False, source_accepted=False, activation_allowed=False))
+    render_raw = reader.raw(at, render)
     out = dict(setup=setup, aggregate=typ, arrays={}, shapes=[], closing_required=True,
+               render_info=dict(field=render, bytes=render_raw.hex(),
+                                value=struct.unpack('<Q', render_raw)[0], dereferenced=False),
                active_physics_verified=False, world_pose_verified=False, collision_volume_verified=False,
                sweep_verified=False, occupancy_verified=False, activation_allowed=False)
     for name, expected in KINDS.items():

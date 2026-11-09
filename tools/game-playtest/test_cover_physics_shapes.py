@@ -18,14 +18,15 @@ class ShapeMemory(PhysicsMemory):
         self.add_class(self.KM,'KMeshProps',0x20400)
         self.supers[self.BS_CLASS]=self.KM
         self.put(self.BS_CLASS+0x60,struct.pack('<Q',self.KM))
-        for at,name,size in [(self.AGG,'KAggregateGeom',64),(self.SPHERE,'KSphereElem',72),
+        for at,name,size in [(self.AGG,'KAggregateGeom',72),(self.SPHERE,'KSphereElem',72),
                              (self.BOX_ELEM,'KBoxElem',80),(self.SPHYL,'KSphylElem',76),
                              (self.CONVEX,'KConvexElem',128),(self.BOUNDS,'Box',28),(self.VEC4,'Vector4',16)]:
             self.add_object(at,name,self.STRUCT_CLASS,outer=self.KM if at in (self.AGG,self.SPHERE,self.BOX_ELEM,self.SPHYL,self.CONVEX) else 0)
             self.put(at+0x60,bytes(8));self.put(at+0x88,struct.pack('<I',size))
         for at,size in [(self.VECTOR,12),(self.PLANE,16),(self.MATRIX,64)]:
             self.put(at+0x88,struct.pack('<I',size))
-        self.add_property(self.KM,'AggGeom','StructProperty',0x60,64,target=self.AGG)
+        self.add_property(self.KM,'AggGeom','StructProperty',0x60,72,target=self.AGG)
+        self.add_property(self.AGG,'RenderInfo','StructProperty',64,8,target=self.POINTER)
         for at,dims in [(self.SPHERE,('Radius',)),(self.BOX_ELEM,('X','Y','Z')),
                         (self.SPHYL,('Radius','Length'))]:
             self.add_property(at,'TM','StructProperty',0,64,target=self.MATRIX)
@@ -38,6 +39,7 @@ class ShapeMemory(PhysicsMemory):
         self.next_shape_data=0x6000000
         self.arrays_shape={}
         agg=self.setups[0]+0x60
+        self.put(agg+64,struct.pack('<Q',0xfedcba9876543210))
         matrix=struct.pack('<16f',1,0,0,0,0,1,0,0,0,0,1,0,2,3,4,1)
         rows=[('SphereElems',self.SPHERE,matrix+struct.pack('<fI',2,0)),
               ('BoxElems',self.BOX_ELEM,matrix+struct.pack('<3fI',3,4,5,4)),
@@ -57,7 +59,7 @@ class ShapeMemory(PhysicsMemory):
         self.add_property(self.CONVEX,'ElemBox','StructProperty',96,28,target=self.BOUNDS)
         self.put(convex+96,struct.pack('<6fB3x',0,0,0,1,1,1,1))
         for setup in self.setups[1:]:
-            self.put(setup+0x60,self.read(agg,64))
+            self.put(setup+0x60,self.read(agg,72))
         self.relink()
 
     def shape_array(self,owner,base,name,offset,typ,stride,raw):
@@ -90,6 +92,48 @@ class ShapeMemory(PhysicsMemory):
 
 
 class ShapeTests(unittest.TestCase):
+    def test_render_info_is_observed_as_opaque_native_pointer_without_dereference(self):
+        f = ShapeMemory()
+        out, q = f.capture_shapes()
+        self.assertEqual(out['render_info']['value'], 0xfedcba9876543210)
+        self.assertEqual(out['render_info']['bytes'], '1032547698badcfe')
+        self.assertFalse(out['render_info']['dereferenced'])
+        self.assertFalse(any(at == 0xfedcba9876543210 for at, _ in q.values))
+        self.assertFalse(out['activation_allowed'])
+
+    def test_missing_extra_or_incompatible_render_field_rejects_with_layout_witness(self):
+        for defect in ('missing', 'extra', 'target'):
+            with self.subTest(defect=defect):
+                f = ShapeMemory()
+                if defect == 'missing':
+                    del f.properties[f.AGG, 'RenderInfo']
+                elif defect == 'extra':
+                    f.add_property(f.AGG, 'Unknown', 'IntProperty', 68, 4)
+                else:
+                    field = f.properties[f.AGG, 'RenderInfo']
+                    f.put(field['address'] + 0xd0, struct.pack('<Q', f.VECTOR))
+                f.relink()
+                out = f.capture_physics(include_shapes=True)
+                self.assertFalse(out['accepted'])
+                witness = out['source_rejection_witness']
+                self.assertFalse(witness['closing_verified'])
+                self.assertFalse(witness['activation_allowed'])
+                if defect != 'target':
+                    self.assertEqual(witness['kind'], 'physics_shape_structure_layout_mismatch')
+                    self.assertIn('RenderInfo', witness['expected_field_names'])
+                    self.assertEqual(len(witness['declared_fields']), 4 if defect == 'missing' else 6)
+
+    def test_render_info_change_at_closing_rejects_instead_of_dropping_native_field(self):
+        f = ShapeMemory()
+        target = f.setups[0] + 0x60 + 64
+        def change(address, length, count):
+            if (address, length, count) == (target, 8, 2):
+                f.put(target, bytes(8))
+        f.before_read = change
+        out = f.capture_physics(include_shapes=True)
+        self.assertFalse(out['accepted'])
+        self.assertFalse(out['authored_shapes_observed'])
+
     def test_all_authored_shape_kinds_and_inherited_plane_fields_are_read_without_permission(self):
         f=ShapeMemory();before=copy.deepcopy(f.memory);out,q=f.capture_shapes()
         self.assertEqual([r['structure']['name'] for r in out['shapes']],['KSphereElem','KBoxElem','KSphylElem','KConvexElem'])

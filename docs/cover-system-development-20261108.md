@@ -2,7 +2,7 @@
 
 目标：完成掩体系统开发与验证。状态：进行中。
 
-最近结果（2026-11-09）：实际33732的PhysX头差已定位并完成精确ImageBase对应修正；新r44b将当前身体／内部接收者／原形状及原命中过滤来源接入同一关闭查询，53项相关检查通过，已向Bol153322申请替换同一未运行槽。24原r13声明源／3保存制品／37驱动SHA与AST、prepare-only0已核，未stage／run。33732全终已交HB；完整CV／AC／实际碰撞、移动恢复、同版命中枪口、吸附遮挡和头显范围仍未完成。
+最近结果（2026-11-09）：r44b实际59528完成原A吸附及首body过滤字段读取，在KAggregateGeom完整字段集处拒绝，整体来源／物理／命中未通过。完整审图再次确认肩／身体遮挡FAIL；运行、编码、恢复、保留全终，已唯一交Lancer原版参考。原包索引及直接反序列化确认遗漏RenderInfo原生Pointer，已严格补字段和原始拒绝见证，56项相关检查通过；新r47冻结并沿真实尾申请，未stage／run。完整CV／AC、实际碰撞、移动恢复、同版命中枪口及头显范围保持。
 
 ## 2026年11月8日 首批接续
 
@@ -1001,3 +1001,30 @@ r44已由真实尾Bol153322唯一受理，前序为Frag145754→Snub144724→Bol
 已把完整冻结身份向唯一前驱Bol153322申请替换同一槽，并通知唯一后继Lancer stock-reference，均未新增运行位置。前驱旧r44末尾核验恰好捕获boundary_chain和physics_state的两项有意变化，原拒绝保存；已说明只允许重新核验新r44b，不能按旧身份授窗。此时前驱game8996已进入全终收尾，仍须其新候选核验和最终唯一交窗后才独立idle／hash并stage，不把本节当成授窗。后到Longshot160159申请已沿Lancer实际尾转交，不在此处登记第二后继。
 
 下一实际动作仍是同一生产路径：原版吸附一次后取得当前身体／原形状／内部接收者及过滤来源。完整的连续身体体积扫掠、占用、实际Native移动与恢复、同姿态命中／枪口和最终画面／头显不因本轮source接线通过而关闭。
+
+
+## 2026年11月9日 r44b实际59528及原Aggregate RenderInfo修正
+
+### 实际结果与完整收尾
+
+收到Bol153322/game8996的最终唯一交窗后，独立CIM／idle、24原r13声明源／3保存制品／37驱动SHA与AST、所选游戏／PhysX／解释器全核通过，仅stage新r44b（备份prior-private-text-20261109-161307），旧r44未运行且撤用。源码检查点1035ccff先于本次运行保存。
+
+实际game59528／creation134386856117449624，owner69380。原A完成CT2／CA0，查询继续越过此前PhysX头比较和原code入口，读到第一个BodySetup及两项原命中过滤字段，随后在`KAggregateGeom`结构完整字段集检查处首次拒绝。2741reads／35041字节，267.1848ms；operator2912 exit1，完整查询没有关闭成功，全部hit／physics／pose／world同步许可false。首条目只具本次定位意义，不宣称整个身体来源或当前过滤分支通过；内部接收者及形状尚未完成读取。没有Trace、getter、虚方法或身体写入。
+
+完整1页双路总览及6张关键原图已亲审。364张游戏／464张模拟器约21.83秒，末端双路覆盖通过；最大采集缺口游戏2116.6878ms（启动段0.9000138–3.0167016s）、模拟器316.6649ms，不作FPS证明。吸附后镜像和两眼均仍有严重肩部／身体／装备遮挡，保留FAIL；startup第三人称和等待卡保留。视频21.866667秒／5120234字节。
+
+wrapper45383 exit0、encode11472 exit0、唯一retention35173 exit0均终结；Native／entry／pad／drain／XR0／launcher0／gamegone通过。XR终态Exiting、对象销毁与shutdown完成，EndSession成功为false单列。config、settings、head原缺失、两份游戏设置精确恢复；新源码修正前37个ending驱动与3份stage制品无漂移。保留59528／8996／71348及48小时，实删2384媒体／389587758字节、errors0，源／构建／资源／存档／文字数值保留。再次核Lancer stock-reference的1354归档声明／855编译源／6制品／22当前驱动SHA与AST及独立idle后，已最终唯一交窗，不追加旧窗。证据集中在`analysis/cover-system-20261108/hit-filters-combined-r46/`，包括first-failure、closure-proof、selected-visual、ending-driver-check、retention-result及successor检查。
+
+### 原始声明与严格修正
+
+旧读取器将KAggregateGeom完整字段集限定为四个形状数组。只读原包知识库对象索引明确还包含export7083 StructProperty RenderInfo；重新核原Engine.u完整SHA，并使用现有UELib直接反序列化该属性，结果指向`ScriptStruct'Core.Object.Pointer'`。其他四类形状的直接字段也按原包索引核对。原59528未保存当时完整声明列表，所以RenderInfo缺项是有原件依据的修正方向，真实本次差异原因仍未补签。
+
+读取器现严格要求原五字段；RenderInfo必须为当前反射的8字节Pointer，只记录原字节和数值，绝不解引用或作为几何／活动缓存证明。缺项、未知字段、错误类型仍拒绝。新增ShapeLayoutRejected在失败时携带已经读到的结构身份、size、预期字段名、声明者与完整字段身份列表，不新增查询、不忽略字段；Physics capture复用原异常见证通道保存。另在查询开始保存原lifecycle和已经读到的PhysX image-at-start，明确close尚未完成，后续失败不再丢失该阶段证据。
+
+旧生产读取器对原包五字段fixture复现同样的KAggregateGeom拒绝；新读取器闭合通过、710reads／9050字节，只是合成重放。56项相关检查通过，新增覆盖RenderInfo不解引用、缺／多字段／错误target的精确拒绝见证和关闭时指针变化。64体联合15668reads／180699字节，原16384／2MiB／3秒预算不变。原始声明、解析器源码／结果、字段索引、预算及旧新重放保存于`analysis/cover-system-20261108/shape-layout-r47/`；测试日志仍按实际文件保存在r46的shape-render-info-final-tests.log。
+
+### 下一候选与抓边姿势要求
+
+新r47 prepared `09720d6cd02bd1e467f9b20a819df9d83778974da38ae6c752baa46ef9f66f02`，plan `83e977197a0d5082f823bcea031d30e8ed8ef9cc27a32c205a23f535d578368d`；入口`analysis/solo-m1-20261028/run_cover_shape_layout_check.py`。原Native5cf4adea／PGf8e6f3c2／XR16840b27未重建。24声明源／3保存制品／37当前驱动SHA与AST及prepare-only0通过，仍仅一次原A及原联合只读来源，不增加调用、写入或游戏输入。已向当前实际Lancer尾路由申请，排在全部更早申请后；尚未受理／stage／run，无运行权。
+
+按主人最新公共合同，需求CV-14及AC-05／12补充每个实际抓边点的独立GrabPose、Snap与Grab权限边界、稳定可退出、不抢手，以及掌心／拇指／四指／食指／腕／袖口和接近至释放过渡的实际双眼检查。保留全部CV-01–24／AC-01–22编号；这是新增明确验收范围，未将其标为已实现或画面通过。继续复用唯一C0写入与公共仲裁，不加writer／Hook，不运行无关武器候选。

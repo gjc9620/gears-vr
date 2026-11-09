@@ -149,6 +149,7 @@ def capture(observer, native_dll, native_sha256, *, query_factory=CoverQuery,
                 any(c not in '0123456789abcdef' for c in native_sha256)):
             raise ValueError('Exact already loaded Native SHA required')
         lifecycle = surface._lifecycle(observer)
+        out['source_at_start'] = copy.deepcopy(lifecycle)
         disk = surface._disk_module(observer)
         chunks = historical_loader()
         if type(include_hit_filters) is not bool:
@@ -178,6 +179,9 @@ def capture(observer, native_dll, native_sha256, *, query_factory=CoverQuery,
                 from cover_physx_source import PhysXSource
                 physx_factory = PhysXSource
             physx = physx_factory(q, game['image'])
+            # Preserve already-read image evidence if a later setup/layout
+            # rejects. This is explicitly before closing, never a source pass.
+            out['physx_image_at_start'] = physx.result()
         module = _module(q, SimpleNamespace(module=disk), game)
         if proof.module_base != module['base']:
             raise RuntimeError('Physics sealed Native and reader module bases differ')
