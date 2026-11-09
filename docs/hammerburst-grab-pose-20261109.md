@@ -32,3 +32,9 @@ HB153818 finite-supply 继续其原已受理范围和不可变 PG56bc／Nativec9
 已重新核对原HB卡扣OBJ SHA69d1a394...与原mesh SHA4b6bd784...，1994顶点/2232三角，最近原三角1617得到接触(-2.10061312,24.28469712494818,3.9139482172608178)，相对历史目标(0,24.0049845123,6.0003657341)距离2.973878390278255原模型单位，与历史surface结果独立重算一致。三角绕序法向(0,-.13287482034451467,.9911328276867905)同时记录导出曾反转绕序，不冒称已重新证明外向或闭合实体；原始mesh坐标不等于已验证的运行骨／腕／世界坐标。脚本audit-latch-contact.py、报告latch-contact-original-triangle-audit.json保存原三角顶点。尚未生成或接受本枪15关节手型，不把最近点当实际抓握／机械权限。
 
 当前源码检索未发现hammerburst_grasp.inl／weapon_hammerburst_grasp_pose.h被Playground或Native调用链include；后者原注释“HB profiles selected in C0”缺乏当前接线，已仅修正注释，未改变代码行为和任何冻结候选。下一标定必须用原表面、实际当前组件／骨变换及Marcus手皮肤，独立处理拇指食指夹持和其他三指避让，再经唯一C0消费与实际双眼验收。
+
+## 原 Marcus 皮肤夹持基线（未作为本枪 profile 发布）
+
+audit-pinch-skin-baseline.py复用原只读decoder前段，重新核原body export SHA cc2db56c76efb9354a39affebf95f72c56b60a32624b0cbc760450621a886a4d、BoneMap与权重，1395左手三角，bind/inverse skin残差5.684341886080802e-14；骨长／权重未改。对当前通用loading姿态实际计算15局部quat与皮肤：旧pad anchor(9.75,-4.6,-2.1)最近的纯index支撑皮肤vertex1004位于(10.1238046743,-4.6103144500,-1.4191517935)，距离.7767822106；thumb vertex1132位于(10.2317838010,-4.7571822559,-2.3493756429)，距离.5648097943。两选点分隔.9479166916原模型单位；只是到旧marker最近的顶点距离，不等于完整两指表面最短间距、夹紧厚度或已适配原卡扣。
+
+结果保存pinch-skin-original-baseline.json并含原decoder/当前finger header SHA及local15表。该表明确为generic baseline，不发给C0、不冒称HB authored。尚未把原卡扣mesh frame与运行腕frame闭合；下一步须用原卡扣双面及实际腕基准拟合本枪手型和接触锚点，避免用历史抽象pad中心掩盖皮肤偏差。Native171233冻结及19运行入口保持不变，当前仍未stage/run。
