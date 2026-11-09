@@ -470,3 +470,12 @@ Lancer原writer确认这些共享入口当前无其未保存改动，但R2/unifi
 先把64316真实年龄和已认证tracking-only样本用于旧生产，ledger和event适配器分别实际RED(-1073740791)。修正后1517纯账本、297实际transaction fake、195实际event adapter fake编译执行0，覆盖两种来源的完整6发/真实UP续发/精确身份与counter反例，未知零/冲突来源/过期或未来必需时间仍拒绝；完整outer原Name8 payload在tracking-only路径交付也通过。生产GearsPlayground目标完整编译0，Native/XR/C0/defaultOFF/publicv71不变。
 
 本次同时收紧现有HB core测试断言：原一次R2 .35down/.6up及原记录读取完全不变，已收集的有效ray必须恰好6条，0/1/5/7或无效六条均失败并保留实际数据；六组fake输入对原driver共30项检查通过，断言发生在真实UP之后，不补动作或弹药。该ignored分析源的原字节SHA记录于tracking-only-source-check.json，下一不可变prepared将保存其精确源码及19入口新SHA。尚无修正后Game或ammo守恒证明，仍需新一次既定core验收。
+
+
+## 主人新增：核查是否存在枪栓/拉机柄（原资产核对结果）
+
+主人要求“查下有没有枪栓，有的话做拉栓”。核对对象限定当前Reloaded实际装备的一代Locust_Hammerburst，不套用后续HammerburstII外观。重新读取原SkeletalMesh导出62424426/1238355bytes，SHA4b6bd78407481887e6efcd80532fd64b7108dce2ee6c05d259e19e8b44c0152b与既有清单一致；9576顶点/9966三角均按原骨归属，只有b_HB_Root、b_HB_MagLatch、b_HB_Mag三骨，无独立bolt/charging-handle骨。完整原对象目录同族只有该SkeletalMesh与独立Hammerburst_Magazine静态网格，无单独枪栓/拉机柄模型。
+
+原HB_Idle、HB_Reload、HB_Reload_Fail三段导出全部重新核SHA，三轨均为Root/MagLatch/Mag；只有MagLatch有75/120旋转键，枪身与弹匣相对父骨的位移/旋转键均常量，无后拉/回位轨道。已将原LOD0位置/索引按原骨颜色画出两侧、顶部、底部及四分之三视角并亲看，未找到原资产独立外露可拉机柄。报告analysis/hammerburst-20261108/hammerburst-bolt-original-audit.json，模型侧视hammerburst-original-side-inspection.png；仅离线检查图，未替换资产。首选matplotlib不可用，改用已有Pillow/NumPy对原三角作软件深度排序，未安装依赖；初图正面/背面label不准确，另生成明确Side+X/-X及Top/Bottom图，结论用后者核对。
+
+结论限定原模型提供的可操作部件，不宣称虚构枪械内部不存在枪栓；本版原资源没有可独立拉动的枪栓/拉机柄及对应动画，按已确认弹匣锁扣/翻盖与弹匣机制继续，不增凭空拉栓步骤。条件性拉栓要求已核查；不改变冻结135655的源码、制品、strict6 core范围或排队身份，首发/有限尾段/耗尽验证目标继续。
