@@ -1000,6 +1000,7 @@ namespace cover_pose_phase_live {struct Scope;}
 #include "body_recoil_observer.h"
 #include "fresh_pose_producer.h"
 #include "full_body_c0_native_live.h"
+#include "cover_physics_c0_live.h"
 #include "../vr-common/weapon_main_mount_provider.h"
 #include "body_c0_goal_policy_live.h"
 #include "native_atom_overwrite_live.h"
@@ -1047,7 +1048,7 @@ unsigned cover_body_stop_line{};
 void request_session_stop_at(SessionStop reason,const char* source_file,unsigned source_line) {
     if(!continuous_session)return;
     hand_goal_observer_live::request_drain();
-    native_atom_overwrite_live::request_drain();body_c0_goal_policy_live::request_drain();full_body_c0_native_live::request_drain();fresh_pose_producer_live::request_drain();body_recoil_observer_live::request_drain();continuous_hand_owner_live::request_drain();
+    native_atom_overwrite_live::request_drain();body_c0_goal_policy_live::request_drain();full_body_c0_native_live::request_drain();cover_physics_c0_live::request_drain();fresh_pose_producer_live::request_drain();body_recoil_observer_live::request_drain();continuous_hand_owner_live::request_drain();
     cover_native_rig_observer_live::request_drain();
     rig_tracking_live::stop();
     vr_gamepad_live::request_stop();
@@ -1160,7 +1161,7 @@ struct SessionBuildScope {
 };
 bool session_native_cleanup_ready() {
     if(vr_gamepad_live::pending_count())return false;
-    return weapon_hand_runtime::cleanup_ready()&&!cover_body_live::pending_count()&&!cover_pose_phase_live::pending_count()&&!cover_control_observer_live::pending_count()&&!native_atom_overwrite_live::pending_count()&&!body_c0_goal_policy_live::pending_count()&&!full_body_c0_native_live::pending_count()&&!fresh_pose_producer_live::pending_count()&&!body_recoil_observer_live::pending_count()&&!continuous_hand_owner_live::pending_count()&&!cover_native_rig_observer_live::pending_count()&&!hand_goal_observer_live::pending_count()&&submitted_lifetime.is_closed()&&!submitted_lifetime.pending()&&!submit_retained.load()&&left_view_history.retired()&&
+    return weapon_hand_runtime::cleanup_ready()&&!cover_body_live::pending_count()&&!cover_pose_phase_live::pending_count()&&!cover_control_observer_live::pending_count()&&!native_atom_overwrite_live::pending_count()&&!body_c0_goal_policy_live::pending_count()&&!(full_body_c0_native_live::pending_count()||cover_physics_c0_live::pending_count())&&!fresh_pose_producer_live::pending_count()&&!body_recoil_observer_live::pending_count()&&!continuous_hand_owner_live::pending_count()&&!cover_native_rig_observer_live::pending_count()&&!hand_goal_observer_live::pending_count()&&submitted_lifetime.is_closed()&&!submitted_lifetime.pending()&&!submit_retained.load()&&left_view_history.retired()&&
         (!state_created.load()||(state_release_returned.load()==1&&state_destroyed.load()==1&&(state_delete_flags&1)));
 }
 bool session_cleanup_expired() {
@@ -1450,6 +1451,7 @@ bool read_attested_hook_entry(void* output,void const* source,size_t size);
 #include "fresh_pose_producer_live.inl"
 #include "native_atom_overwrite_live.inl"
 #include "full_body_c0_native_live.inl"
+#include "cover_physics_c0_live.inl"
 #include "body_c0_goal_policy_live.inl"
 #include "lancer_handle_morph_live.inl"
 #include "first_person_head_render_live.inl"
@@ -1993,7 +1995,7 @@ void write_session_status(bool resources_retained=true,bool entries_restored=fal
     resources_retained=resources_retained||support_startup.call("native_owned_scene_retained",[&]{return native_owned_scene_retained();});
     resources_retained=resources_retained||cover_body_live::pending_count()!=0;
     resources_retained=resources_retained||cover_pose_phase_live::pending_count()!=0;
-    resources_retained=resources_retained||native_atom_overwrite_live::pending_count()!=0||body_c0_goal_policy_live::pending_count()!=0||full_body_c0_native_live::pending_count()!=0||fresh_pose_producer_live::pending_count()!=0||body_recoil_observer_live::pending_count()!=0||continuous_hand_owner_live::pending_count()!=0||cover_control_observer_live::pending_count()!=0||cover_native_rig_observer_live::pending_count()!=0||hand_goal_observer_live::pending_count()!=0;
+    resources_retained=resources_retained||native_atom_overwrite_live::pending_count()!=0||body_c0_goal_policy_live::pending_count()!=0||(full_body_c0_native_live::pending_count()||cover_physics_c0_live::pending_count())!=0||fresh_pose_producer_live::pending_count()!=0||body_recoil_observer_live::pending_count()!=0||continuous_hand_owner_live::pending_count()!=0||cover_control_observer_live::pending_count()!=0||cover_native_rig_observer_live::pending_count()!=0||hand_goal_observer_live::pending_count()!=0;
     resources_retained=resources_retained||weapon_hand_runtime::retained();
     if(!continuous_session){support_startup.record("session_status","exit");return;}
     support_startup.call("swapchain_status",[&]{write_swapchain_output_status(recording.load()&&session_phase.load()==SessionPhase::running,"running");});
@@ -2024,7 +2026,7 @@ void write_session_status(bool resources_retained=true,bool entries_restored=fal
     support_startup.call("path_choice_layout_observer_progress",[&]{path_choice_layout_observer::progress(output);});
     support_startup.call("path_choice_close_observer_progress",[&]{path_choice_close_observer::progress(output);});
     cover_body_live::progress(output);
-    {std::lock_guard<decltype(stereo_mutex)> lock(stereo_mutex);cover_camera_live::summary(output);cover_input_live::summary(output);cover_shared_input_live::summary(output);cover_geometry_observer_live::summary(output);cover_full_goal_live::summary(output);run_camera_live::summary(output);cover_pose_phase_live::summary(output);cover_control_observer_live::summary(output);rig_tracking_live::summary(output);continuous_hand_owner_live::summary(output);body_recoil_observer_live::summary(output);fresh_pose_producer_live::summary(output);full_body_c0_native_live::summary(output);body_c0_goal_policy_live::summary(output);first_person_head_render_live::summary(output);native_atom_overwrite_live::summary(output);cover_native_rig_observer_live::summary(output);hand_goal_observer_live::summary(output);}
+    {std::lock_guard<decltype(stereo_mutex)> lock(stereo_mutex);cover_camera_live::summary(output);cover_input_live::summary(output);cover_shared_input_live::summary(output);cover_geometry_observer_live::summary(output);cover_full_goal_live::summary(output);run_camera_live::summary(output);cover_pose_phase_live::summary(output);cover_control_observer_live::summary(output);rig_tracking_live::summary(output);continuous_hand_owner_live::summary(output);body_recoil_observer_live::summary(output);fresh_pose_producer_live::summary(output);full_body_c0_native_live::summary(output);cover_physics_c0_live::summary(output);body_c0_goal_policy_live::summary(output);first_person_head_render_live::summary(output);native_atom_overwrite_live::summary(output);cover_native_rig_observer_live::summary(output);hand_goal_observer_live::summary(output);}
     weapon_hand_runtime::summary(output);
     // Diagnostic rates use this sample's QPC, not the owner's polling time.
     // Existing bound/top-level Present observations exclude DXGI_PRESENT_TEST
@@ -4304,7 +4306,7 @@ bool install(void* target,void* detour,void** original) {
     return created==MH_OK && queued==MH_OK;
 }
 bool session_hooks_restored() {
-    if(active.load()||cover_body_live::pending_count()||cover_pose_phase_live::pending_count()||cover_control_observer_live::pending_count()||native_atom_overwrite_live::pending_count()||body_c0_goal_policy_live::pending_count()||full_body_c0_native_live::pending_count()||fresh_pose_producer_live::pending_count()||body_recoil_observer_live::pending_count()||continuous_hand_owner_live::pending_count()||cover_native_rig_observer_live::pending_count()||hand_goal_observer_live::pending_count())return false;
+    if(active.load()||cover_body_live::pending_count()||cover_pose_phase_live::pending_count()||cover_control_observer_live::pending_count()||native_atom_overwrite_live::pending_count()||body_c0_goal_policy_live::pending_count()||(full_body_c0_native_live::pending_count()||cover_physics_c0_live::pending_count())||fresh_pose_producer_live::pending_count()||body_recoil_observer_live::pending_count()||continuous_hand_owner_live::pending_count()||cover_native_rig_observer_live::pending_count()||hand_goal_observer_live::pending_count())return false;
     for(unsigned i=0;i<session_hook_entry_count;++i){std::array<unsigned char,32> bytes{};
         if(!safe_copy(bytes.data(),session_hook_entries[i].target,bytes.size())||bytes!=session_hook_entries[i].bytes)return false;}
     if(prime_ready.load())for(unsigned i=0;i<prime_targets.size();++i){std::array<unsigned char,32> bytes{};
@@ -5396,7 +5398,7 @@ DWORD WINAPI worker(void*) {
         fprintf(status,"rejected: native rig observer requires passive pose/control and configured Core provider\n");fclose(status);return 2;}
     if(!continuous_hand_owner_live::configure(ini,status)||!body_recoil_observer_live::configure(ini,status)||!hand_goal_observer_live::configure(ini,status)){
         fprintf(status,"rejected: hand goal observer requires data-only Core event support and explicit length policy\n");fclose(status);return 2;}
-    if(!fresh_pose_producer_live::configure(ini,status)||!fresh_pose_producer_live::reserve()||!full_body_c0_native_live::configure(ini,status)||!body_c0_goal_policy_live::configure(ini,status)||!native_atom_overwrite_live::configure(ini,status)||!native_atom_overwrite_live::reserve()){
+    if(!fresh_pose_producer_live::configure(ini,status)||!fresh_pose_producer_live::reserve()||!full_body_c0_native_live::configure(ini,status)||!cover_physics_c0_live::configure(ini,status)||!body_c0_goal_policy_live::configure(ini,status)||!native_atom_overwrite_live::configure(ini,status)||!native_atom_overwrite_live::reserve()){
         fprintf(status,"rejected: fresh pose observer requires exact producer code and continuous owner\n");fclose(status);return 2;}
     if(rig_tracking_live::enabled)stereo_gate.set_continuity_observer(rig_tracking_live::reference_observer,nullptr);
 #if !defined(GEARS_UI_CALL_BOUNDARY_OBSERVER) || !GEARS_UI_CALL_BOUNDARY_OBSERVER
@@ -5839,6 +5841,12 @@ DWORD WINAPI worker(void*) {
             {std::lock_guard<FrameHookMutex> lock(frame_hook_mutex);owned_scene_gpu::poll();
                 if(owned_scene_gpu::publication_failed())request_session_stop(SessionStop::proof_failure);}
             if(submitted_lifetime.stopping()){
+                cover_physics_c0_live::poll_stop(); // Worker only, outside private locks.
+                if(cover_physics_c0_live::pending_count()&&session_cleanup_expired()){
+                    session_cleanup_timeout=true;write_session_status(true,false);cover_physics_c0_live::summary(status);
+                    fprintf(status,"cover_query_stop_incomplete hooks_retained=1 resources_retained=1\n");
+                    diagnostic_status=nullptr;fclose(file);fclose(status);return ERROR_BUSY;
+                }
                 if(!weapon_hand_runtime::cleanup_ready()&&session_cleanup_expired()){
                     session_cleanup_timeout=true;write_session_status(true,false);weapon_hand_runtime::summary(status);
                     fprintf(status,"weapon_hand_stop_incomplete hooks_retained=1 resources_retained=1\n");
@@ -5923,7 +5931,7 @@ DWORD WINAPI worker(void*) {
     cover_body_live::print(status,disabled==MH_OK);
     cover_pose_phase_live::print(status,disabled==MH_OK);
     cover_control_observer_live::print(status,disabled==MH_OK);
-    continuous_hand_owner_live::print(status,disabled==MH_OK);body_recoil_observer_live::print(status,disabled==MH_OK);fresh_pose_producer_live::print(status,disabled==MH_OK);full_body_c0_native_live::summary(status);body_c0_goal_policy_live::summary(status);native_atom_overwrite_live::summary(status);cover_native_rig_observer_live::print(status,disabled==MH_OK);
+    continuous_hand_owner_live::print(status,disabled==MH_OK);body_recoil_observer_live::print(status,disabled==MH_OK);fresh_pose_producer_live::print(status,disabled==MH_OK);full_body_c0_native_live::summary(status);cover_physics_c0_live::summary(status);body_c0_goal_policy_live::summary(status);native_atom_overwrite_live::summary(status);cover_native_rig_observer_live::print(status,disabled==MH_OK);
     hand_goal_observer_live::print(status,disabled==MH_OK);
     print_native_surface_probe(status);
     print_native_owned_probe(status);

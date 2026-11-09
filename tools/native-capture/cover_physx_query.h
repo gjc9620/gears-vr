@@ -52,6 +52,10 @@ inline bool motion(Vector v) noexcept {
     const float length2=(xx+yy)+zz;
     return std::isnormal(length2)&&length2>0;
 }
+template<class Guard> bool source_guard(Guard& guard,source::Snapshot const& snapshot){
+    if constexpr(std::is_invocable_r_v<bool,Guard&,source::Snapshot const&>)return guard(snapshot);
+    else return guard();
+}
 inline bool valid(Box const& b) noexcept {
     if(!finite(b.centre)||!finite(b.half)||b.half.x<=0||b.half.y<=0||b.half.z<=0)return false;
     for(float v:b.rotation)if(!scalar(v))return false;
@@ -142,13 +146,13 @@ class Queries {
         if(!source::code_current(image_.base(),image_.size(),read,detail::digest))return Code::code;
         if(source::capture(image_.base(),image_.size(),s,read,guard,after_)!=source::Code::current||
            !source::same(before_,after_))return Code::changed;
-        return guard()?Code::queried:Code::source;
+        return detail::source_guard(guard,before_)?Code::queried:Code::source;
     }
     template<class Read,class Guard> Code end(source::Source const& s,Read read,Guard guard) {
         if(source::capture(image_.base(),image_.size(),s,read,guard,after_)!=source::Code::current||
            !source::same(before_,after_))return Code::changed;
         if(!source::code_current(image_.base(),image_.size(),read,detail::digest))return Code::code;
-        return guard()?Code::queried:Code::changed;
+        return detail::source_guard(guard,after_)?Code::queried:Code::changed;
     }
 public:
     Queries()=default;Queries(Queries const&)=delete;Queries& operator=(Queries const&)=delete;

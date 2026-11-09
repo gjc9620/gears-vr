@@ -128,6 +128,12 @@ static bool __fastcall fake_fault(std::uintptr_t,void const*,std::uint32_t,std::
     RaiseException(0xe0000075,0,0,nullptr);return false;
 }
 static void query_tests(){
+    s::Snapshot observed{};observed.public_scene=0x180000;
+    auto legacy=[](){return true;};check(q::detail::source_guard(legacy,observed),"legacy no-argument guard");
+    struct TypedGuard {unsigned plain{},typed{};bool operator()(){++plain;return true;}
+        bool operator()(s::Snapshot const& value){++typed;return value.public_scene==0x180000;}} typed;
+    check(q::detail::source_guard(typed,observed)&&typed.typed==1&&!typed.plain,"typed source guard sees actual receiver");
+    observed.public_scene=0;check(!q::detail::source_guard(typed,observed)&&typed.typed==2&&!typed.plain,"typed source mismatch rejected");
     q::Box box{{1,2,3},{4,5,6},{1,0,0,0,1,0,0,0,1}};q::Capsule capsule{{1,2,3},{1,2,4},.25f};q::Vector delta{.1f,.2f,.3f};
     check(q::detail::valid(box)&&q::detail::valid(capsule)&&q::detail::motion(delta),"valid geometry");
     auto bad=box;bad.rotation[0]=-1;check(!q::detail::valid(bad),"reflected box rejected");

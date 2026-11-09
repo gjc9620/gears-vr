@@ -5,6 +5,9 @@
 #undef main
 #include "cover_physics_roles_live.inl"
 namespace roles=cover_physics_roles_live;
+#ifndef GEARS_PHYSICS_ROLES_TEST_MAIN
+#define GEARS_PHYSICS_ROLES_TEST_MAIN main
+#endif
 #if GEARS_COVER_BODY_PROTOTYPE
 static roles::Workspace workspace;
 static uintptr_t asset_class{},instance_class{},body_class{},integer_kind{},array_kind{},structure_kind{},script_kind{},pointer_type{};
@@ -50,7 +53,7 @@ static bool observe(roles::Snapshot& out){
     C(!memcmp(saved_arena.data(),reinterpret_cast<void*>(arena),saved_arena.size()));C(!native_calls&&guard_lock_free);
     return role_verdict==roles::Code::current;
 }
-int main(){
+int GEARS_PHYSICS_ROLES_TEST_MAIN(){
     arena=reinterpret_cast<uintptr_t>(VirtualAlloc(nullptr,saved_arena.size(),MEM_COMMIT|MEM_RESERVE,PAGE_READWRITE));if(!arena)return 99;
     physics_setup();roles::Snapshot out{};C(observe(out));C(out.root==1&&out.source.body_index==1&&out.source.mesh==fixture_mesh&&out.source.thread==GetCurrentThreadId());
     C(out.bodies[0].index==0&&out.bodies[1].index==1&&out.bodies[1].main==arena+0x89000&&out.owner.address==fixture_pawn);
@@ -142,7 +145,7 @@ int main(){
     printf("cover_physics_roles_live: %u checks, %u failures; typed source only, no query/writer\n",checks,failures);return failures?1:0;
 }
 #else
-int main(){roles::Snapshot out{};out.root=999;roles::Workspace w{};unsigned calls{};
+int GEARS_PHYSICS_ROLES_TEST_MAIN(){roles::Snapshot out{};out.root=999;roles::Workspace w{};unsigned calls{};
     C(roles::sample(h::Binding{},roles::pose::Metadata{},[&](){++calls;return true;},w,out)==roles::Code::unavailable);
     C(out.root==999&&calls==0&&reads==0&&native_calls==0);
     printf("cover_physics_roles_live OFF: %u checks, %u failures; no reads/guard/calls\n",checks,failures);return failures?1:0;

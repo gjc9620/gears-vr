@@ -1430,3 +1430,21 @@ matches_query_source把本层完整body指针数组、array头、RootBodyIndex�
 实际MSVC /std:c++17 /O2 /W4 /WX /EHsc /UNDEBUG /MT编译和冻结15个实际项目依赖的ON／OFF构建均exit0。ON 241检查／0失败，OFF 2检查／0失败；涵盖Owner两种合法归属、根索引与完整64-body边界、非根换主、重复／错误类成员、数组布局、Pointer结构、字段声明类型、同地址源／继承／元数据／线程变化、异常及guard释放锁、9派生布局容量拒绝、raw场景来源对应与错误actor／root／成员／array头拒绝。首次编译因本地property名称ADL歧义及测试全局名遮蔽分别失败，已窄修命名，原build-0／1.log保留，没有关闭/WX或削弱条件。全部程序使用合成已注册内存，没有C0／原查询运行证据。
 
 证据在analysis/cover-system-20261108/physics-roles-r76/，包括冻结源码、MSVC依赖与SHA、启用／关闭编译和执行退出记录及verification.json。本轮未修改现有脏Native／武器文件、公共v71、已消费b144入口或共享运行配置，没有stage／游戏／XR／录像／窗口交接。下一步把这份可失效来源接入现有C0查询guard与启动／关闭生命周期，再闭合自身排除、实际查询形状及消费时相；保留原no_cover写入保护。完整身体移动／占用／恢复、同版命中／枪口、严重肩／身体遮挡、逐边缘GrabPose、CV-01–24／AC-01–22和实体头显仍未完成，25%工程review保持。
+
+## 2026年11月10日 r77实际C0查询入口与Native收尾接线编译
+
+上一轮118c3d21的类型化来源及冻结验证属于进展。本轮将r75原查询和r76类型化来源组合为cover_physics_query_live::Session，并增加cover_physics_c0_live的四个原始观察入口：盒／胶囊overlap及sweep。入口使用现有实际captured C0、同一Entry地址及未变Core、当前owner线程、未prepare／无Kernel pending、ActualContext prepare当前性、当前Backend metadata及当前Link／slot字节关闭检查；原查询前后重取全部类型化物理来源，与原查询实际使用的raw身体／场景关系对应。普通no-argument guard仍兼容，typed guard额外收到实际raw Snapshot，错误actor不能只凭外层Owner当前而通过。
+
+服务在原Native启动／收尾工作线程prime／释放已加载PhysX模块引用与文件pin，原查询跨越期间不持binding／stereo／session私有锁。新GEARS_COVER_PHYSX_QUERIES编译开关默认OFF；运行FullBodyC0Native.cover_queries同样默认0并严格解析，只有已有Native C0／typed continuous owner及continuous session才可开启。未开启或未编入时不启动查询。没有增加Hook或身体写入端，也未在Goal policy自动调用这些入口；现有no_cover拒绝继续保留，原始空返回不是移动／占用许可。
+
+capture的现有stop请求、cleanup-ready、retained判定、hook-restored与日志摘要均加入此服务的pending。工作线程在无私有锁的位置poll_stop；在途／错误线程不能释放。query的fault_unknown立即关闭后续调用，实际C0入口请求原proof-failure停止流程；uncertain保留原资源及清理屏障，到现有截止仍pending时记录cover_query_stop_incomplete并返回ERROR_BUSY，不能打印正常卸载或强制解锁。此故障／线程／重入行为仅有Host调度与装载seam验证，没有原游戏故障证据。
+
+完整Native在独立冻结r13源码基底构建，原有GEARS开关保持，仅新增查询编译开关ON；8项记录overlay和capture／CMake两项有限替换，未混共享工作树的其他脏Native／武器实现。最终编译链接exit0，DLL SHA3fb600768d0b31a0c8c24c0d237fc90a7e402d0d1453d1fd5676637ece391aa6。Ninja实际669依赖，其中389项目依赖全部位于1086文件冻结树并逐SHA核对，没有外部工作树依赖或缺失项；8个新接线依赖均入编译。第一版46b167a2也编译成功，但未包含随后“fault后立即禁止下一次调用并请求原停止”的新增修正，保留独立记录，不作为最终制品。Native保持原/W4／EHsc及既有警告，不能称全Native /WX无警告；新模块未产生警告。
+
+同一冻结Native／反射源码加当前测试，实际/std:c++17 /O2 /W4 /WX /EHsc /UNDEBUG /MT三程序均编译执行0：Session50检查／0失败，Raw122／0，C0关闭构建16／0；实际项目依赖并集50项。Session保留真实反射／身份／来源读取，只将模块装载与原方法dispatch替成Host seam；覆盖双查询、私锁释放、重入拒绝、错误raw接收者、根变化、查询中stop、错误线程关闭、fault后不再dispatch及永不假关闭。Raw增加typed／legacy guard分派和错误接收者拒绝；C0 OFF覆盖四入口不调用原方法／输出保持、配置0／1／invalid与关闭无pending。原DLL只读数据，未加载或执行。首个Session编译因继承测试main宏及局部hit遮蔽拒绝，改测试入口宏与局部名后通过；保留失败日志，没有关闭/WX。
+
+共享capture／CMake原本已有其他未提交工作；本轮用精确替换分别生成HEAD与工作树改动，只暂存自己的HEAD补丁，不整文件提交那些既有改动。首次生成因HEAD仍用pending_count而工作树用resource_pending_count触发断言，未写文件；分别按原接口保留后接线。依赖核对首轮误把Ninja相对路径按工作区解析，按真实build目录解析后逐SHA通过，未修改构建源码或依赖记录来通过。
+
+证据在analysis/cover-system-20261108/query-c0-r77/，含两次不可变Native源／构建、真实依赖关闭、冻结单元源／运行退出、有限集成patch及verification.json。本轮没有运行安装／游戏／XR／录制，没有申请或借用新窗口，没有重试已消费b144入口，也没有替换公共v71或候选。下一步是让完整身体形状／当前占用与扫掠消费者使用此C0入口，并解决自身排除及物理／命中／枪口共同消费时相，不能用closest单hit或bool overlap跳过完整覆盖。实际原查询、Native身体移动／恢复、严重肩／身体遮挡、逐点GrabPose、CV-01–24／AC-01–22及实体头显继续未完成，25%工程review保持。
+
+提交核对补充：生成补丁在Windows写出CRLF而HEAD为LF，首次git apply --cached --check因此拒绝；当时暂存区为空，未产生部分暂存。保留owned-integration-crlf-rejected.patch，改为LF原字节写出后，两个共享文件的精确HEAD补丁检查通过。此修正只改保存补丁的换行方式，不修改已编译的Native／单元源码或旧运行事实。
