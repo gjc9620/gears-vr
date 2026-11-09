@@ -147,7 +147,9 @@ inline bool motion_world(Vec physical_metres,Vec committed_metres,Vec forward,Ve
     if(!d::finite_vector(result))return false;out=result;return true;
 }
 
-inline Report plan(Model const& model,Frame const& frame,Goal const& goal,Workspace& work,Output& output) noexcept {
+namespace d {
+inline Report plan_impl(Model const& model,Frame const& frame,Goal const& goal,Workspace& work,Output& output,
+    bool cover_pelvis_reach) noexcept {
     using namespace d;
     const Range ranges[]={range(&model,sizeof model),range(&frame,sizeof frame),range(&goal,sizeof goal),range(&work,sizeof work),range(&output,sizeof output)};
     if(!disjoint(ranges,5))return fail(Status::alias);
@@ -162,6 +164,7 @@ inline Report plan(Model const& model,Frame const& frame,Goal const& goal,Worksp
        std::abs(goal.body_yaw_delta)>max_body_yaw_delta||!goal_pose(goal.head_world)||!goal_pose(goal.feet_world[0])||!goal_pose(goal.feet_world[1]))return fail(Status::goal);
     if(goal.target_mode!=BodyTargetMode::source_relative&&goal.target_mode!=BodyTargetMode::world_absolute)return fail(Status::policy);
     const bool absolute=goal.target_mode==BodyTargetMode::world_absolute;Quat absolute_root{};
+    if(cover_pelvis_reach&&(!absolute||goal.scope!=Scope::fixed_cover))return fail(Status::policy);
     if(absolute&&(goal.body_yaw_delta!=0||!finite_vector(goal.absolute.neutral_pelvis_world)||
        !normalized(goal.absolute.root_orientation.value,absolute_root)))return fail(Status::goal);
     for(unsigned j=0;j<16;++j)work.component.m[j]=frame.component_to_world.values[j];
@@ -188,7 +191,7 @@ inline Report plan(Model const& model,Frame const& frame,Goal const& goal,Worksp
         if(!rebuild(model,work))return fail(Status::numerical);
     }
     const Vec desired_pelvis=add(absolute?goal.absolute.neutral_pelvis_world:base_pelvis,add(goal.physical_world,goal.committed_grip_world));
-    Vec centres[2]{},correction[2]{},point=desired_pelvis;double radii[2]{};
+    Vec centres[3]{},correction[3]{},point=desired_pelvis;double radii[3]{};
     for(unsigned side=0;side<2;++side){
         const auto hip=position(work.pose.world[legs[side][0]]),knee=position(work.pose.world[legs[side][1]]),foot=position(work.pose.world[legs[side][2]]);
         centres[side]=sub(goal.feet_world[side].position,sub(hip,position(work.pose.world[pelvis])));
@@ -196,20 +199,34 @@ inline Report plan(Model const& model,Frame const& frame,Goal const& goal,Worksp
         if(!std::isfinite(radii[side])||radii[side]<1e-6)return fail(Status::atom,legs[side][0]);
     }
     if(length(sub(centres[0],centres[1]))>radii[0]+radii[1])return fail(Status::feet_incompatible);
+    const unsigned constraints=cover_pelvis_reach?3u:2u;
+    if(cover_pelvis_reach){
+        // Current pose solve, never a recalibration of the frozen neutral.
+        // Root/posture are already selected. Moving the pelvis translates
+        // the spine anchor by the same vector, so the exact head target adds
+        // one reach ball to the two fixed-foot balls. Head/feet, orientation,
+        // segment lengths, physical/Grip inputs and Goal all remain unchanged.
+        centres[2]=sub(goal.head_world.position,sub(position(work.pose.world[spine[0]]),position(work.pose.world[pelvis])));
+        for(unsigned i=0;i<4;++i)radii[2]+=length(sub(position(work.pose.world[spine[i+1]]),position(work.pose.world[spine[i]])));
+        if(!std::isfinite(radii[2])||radii[2]<1e-6)return fail(Status::atom,head);
+    }
     // Bounded pelvis projection onto the two fixed-foot maximum-reach balls.
     // Only when actual projection is needed, reserve .001 native unit inside
     // reach for float Atom root encoding; this never changes a segment length
     // or head/foot target. Already feasible C0 pelvis remains exactly in place.
-    // Crucially, this calculation does not inspect head position/orientation.
-    const bool needs_projection=length(sub(point,centres[0]))>radii[0]||length(sub(point,centres[1]))>radii[1];
-    const double project_radii[]={radii[0]-(needs_projection?.001:0),radii[1]-(needs_projection?.001:0)};
+    // Ordinary plan retains its head-independent pelvis policy. The explicit
+    // cover solve additionally fits the current pelvis to the exact head;
+    // its final body path still needs external collision/write certification.
+    bool needs_projection=false;
+    for(unsigned i=0;i<constraints;++i)if(length(sub(point,centres[i]))>radii[i])needs_projection=true;
+    const double project_radii[]={radii[0]-(needs_projection?.001:0),radii[1]-(needs_projection?.001:0),radii[2]-(needs_projection?.001:0)};
     for(unsigned iteration=0;iteration<128;++iteration){
         const Vec prior=point;
-        for(unsigned side=0;side<2;++side){const auto x=add(point,correction[side]);const auto v=sub(x,centres[side]);const double n=length(v);
+        for(unsigned side=0;side<constraints;++side){const auto x=add(point,correction[side]);const auto v=sub(x,centres[side]);const double n=length(v);
             const auto projected=n>project_radii[side]?add(centres[side],mul(v,project_radii[side]/n)):x;correction[side]=sub(x,projected);point=projected;}
         if(length(sub(point,prior))<1e-9)break;
     }
-    for(unsigned side=0;side<2;++side)if(length(sub(point,centres[side]))>radii[side]+1e-5)return fail(Status::pelvis_iterations,legs[side][0],length(sub(point,centres[side])),radii[side]);
+    for(unsigned side=0;side<constraints;++side)if(length(sub(point,centres[side]))>radii[side]+1e-5)return fail(Status::pelvis_iterations,side<2?legs[side][0]:head,length(sub(point,centres[side])),radii[side]);
     const auto root_position=add(position(work.pose.world[root]),sub(point,position(work.pose.world[pelvis])));
     if(!same_position(root_position,position(work.pose.world[root]))&&!world_root_position(model,work,root_position))return fail(Status::numerical);
     Report report{};report.pelvis_projection=length(sub(point,desired_pelvis));
@@ -289,6 +306,17 @@ inline Report plan(Model const& model,Frame const& frame,Goal const& goal,Worksp
     work.candidate.root_world=pose(work.pose.world[root]);work.candidate.pelvis_world=pose(work.pose.world[pelvis]);work.candidate.head_world=pose(work.pose.world[head]);
     for(unsigned side=0;side<2;++side){work.candidate.feet_world[side]=pose(work.pose.world[legs[side][2]]);work.candidate.shoulders_world[side]=pose(work.pose.world[shoulders[side]]);}
     work.candidate.report=report;output=work.candidate;return report;
+}
+} // namespace d
+inline Report plan(Model const& model,Frame const& frame,Goal const& goal,Workspace& work,Output& output) noexcept {
+    return d::plan_impl(model,frame,goal,work,output,false);
+}
+// Explicit exact-head cover solver. Adjusts only this invocation's actual
+// pelvis/root, within fixed-foot and spine reach; never edits/re-fits Goal or
+// neutral calibration and never projects the requested head. Failure leaves
+// Output unchanged. Not a collision certificate or Native write permission.
+inline Report plan_cover(Model const& model,Frame const& frame,Goal const& goal,Workspace& work,Output& output) noexcept {
+    return d::plan_impl(model,frame,goal,work,output,true);
 }
 // Standing first-person fallback for an HMD goal beyond fixed spine reach.
 // Solve the SAME neutral body/feet/root toward the nearest reachable head

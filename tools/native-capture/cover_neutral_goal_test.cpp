@@ -94,9 +94,83 @@ int main(int argc,char** argv){
         C(distance(frozen_conversion.goal.committed_grip_world,moving.goal.committed_grip_world)<1e-9);
         C(bytes(frozen_conversion.goal.feet_world)==bytes(placement.feet_world));
         C(distance(frozen_conversion.desired_eye.position,moving.desired_eye.position)<1e-9);
-        const auto moving_plan=b::plan(*model,*frame,frozen_conversion.goal,work->fitting.body_work,work->fitting.planned);
+        const auto original_plan=b::plan(*model,*frame,frozen_conversion.goal,work->fitting.body_work,work->fitting.planned);
+        C(original_plan.status==b::Status::spine_unreachable);
+        const auto moving_plan=b::plan_cover(*model,*frame,frozen_conversion.goal,work->fitting.body_work,work->fitting.planned);
         if(moving_plan.status!=b::Status::solved)printf("frozen moving posture=%u status=%u bone=%u requested=%.9g available=%.9g head=%.9g\n",unsigned(posture),unsigned(moving_plan.status),moving_plan.failed_bone,moving_plan.requested_distance,moving_plan.available_reach,moving_plan.head_error);
         C(moving_plan.status==b::Status::solved);
+        C(moving_plan.pelvis_projection>0);
+        const auto moving_output=work->fitting.planned;
+        // Follow a bounded 3D tracking neighbourhood, including rotation's
+        // authored eye-to-head pivot, while the same neutral remains frozen.
+        unsigned trajectories{};
+        for(v::Vector p: {v::Vector{},physical,v::Vector{-.025,-.015,.02}})
+        for(unsigned rotation=0;rotation<7;++rotation)
+        for(v::CoverOffset held: {v::CoverOffset{},grip}){
+            auto sample=source;
+            sample.stereo.head.position=plus(source.reference.position,rotate(source.reference.orientation,p));
+            const auto relative=rotation?axis((rotation-1)/2,(rotation%2?.15:-.15)):v::Quaternion{0,0,0,1};
+            sample.stereo.head.orientation=oracle_multiply(source.reference.orientation,relative);
+            const auto sample_before=bytes(sample);
+            a::Output target{};
+            C(ng::convert(result,placement,sample,*model,*frame,marker,held,policy,target)==ng::Status::okay);
+            const auto goal_before=bytes(target.goal);
+            const auto solved=b::plan_cover(*model,*frame,target.goal,work->fitting.body_work,work->fitting.planned);
+            if(solved.status!=b::Status::solved)printf("trajectory posture=%u rotation=%u status=%u requested=%.9g available=%.9g\n",unsigned(posture),rotation,unsigned(solved.status),solved.requested_distance,solved.available_reach);
+            C(solved.status==b::Status::solved);
+            if(solved.status==b::Status::solved){
+                auto const& output=work->fitting.planned;
+                C(distance(output.head_world.position,target.goal.head_world.position)<=.002);
+                C(b::d::angle(output.head_world.orientation,target.goal.head_world.orientation)<=1e-4);
+                for(unsigned i=0;i<2;++i){
+                    C(distance(output.feet_world[i].position,target.goal.feet_world[i].position)<=.002);
+                    C(b::d::angle(output.feet_world[i].orientation,target.goal.feet_world[i].orientation)<=1e-4);
+                }
+                for(unsigned i=0;i<b::bones;++i){
+                    C(output.local[i].scale==frame->local[i].scale);
+                    if(i)C(!memcmp(output.local[i].translation,frame->local[i].translation,12));
+                }
+                C(solved.max_length_error<=.002);
+            }
+            C(bytes(sample)==sample_before&&bytes(target.goal)==goal_before&&bytes(result)==bytes(saved));
+            ++trajectories;
+        }
+        C(trajectories==42);
+        for(double heading: {1.5707963267948966,3.1415926535897932,-1.5707963267948966}){
+            const auto turn=b::d::yaw(heading);const b::Vec translation{100,-200,20};
+            const auto point=[&](b::Vec p){return b::d::add(b::d::rotate(turn,p),translation);};
+            const auto pose=[&](b::Pose p){return b::Pose{point(p.position),b::d::product(turn,p.orientation)};};
+            auto frame_rotated=*frame;auto goal_rotated=frozen_conversion.goal;
+            b::Atom atom{};b::d::set_quat(atom,turn);atom.scale=1;
+            atom.translation[0]=100;atom.translation[1]=-200;atom.translation[2]=20;
+            b::ik::Matrix component{};for(unsigned i=0;i<16;++i)component.m[i]=frame->component_to_world.values[i];
+            const auto matrix=b::d::multiply(component,b::d::atom_matrix(atom));
+            for(unsigned i=0;i<16;++i)frame_rotated.component_to_world.values[i]=float(matrix.m[i]);
+            goal_rotated.absolute.neutral_pelvis_world=point(goal_rotated.absolute.neutral_pelvis_world);
+            goal_rotated.absolute.root_orientation.value=b::d::product(turn,goal_rotated.absolute.root_orientation.value);
+            goal_rotated.physical_world=b::d::rotate(turn,goal_rotated.physical_world);
+            goal_rotated.committed_grip_world=b::d::rotate(turn,goal_rotated.committed_grip_world);
+            goal_rotated.head_world=pose(goal_rotated.head_world);
+            for(unsigned i=0;i<2;++i)goal_rotated.feet_world[i]=pose(goal_rotated.feet_world[i]);
+            C(b::plan_cover(*model,frame_rotated,goal_rotated,work->fitting.body_work,work->fitting.planned).status==b::Status::solved);
+            C(distance(work->fitting.planned.head_world.position,point(moving_output.head_world.position))<.003);
+            C(distance(work->fitting.planned.pelvis_world.position,point(moving_output.pelvis_world.position))<.003);
+        }
+        // Empty intersections and unsupported policies must not return a
+        // projected head, a partial pose or a rewritten neutral as success.
+        for(unsigned bad=0;bad<6;++bad){
+            auto rejected=frozen_conversion.goal;
+            if(bad==0)rejected.scope=b::Scope::stationary;
+            if(bad==1)rejected.target_mode=b::BodyTargetMode::source_relative;
+            if(bad==2)rejected.head_world.position.z+=200;
+            if(bad==3)rejected.feet_world[0].position.x+=500;
+            if(bad==4)rejected.head_world.position.x=NAN;
+            const auto output_before=bytes(work->fitting.planned);const auto goal_before=bytes(rejected);
+            auto& output=bad==5?work->fitting.body_work.candidate:work->fitting.planned;
+            const auto alias_before=bytes(output);
+            C(b::plan_cover(*model,*frame,rejected,work->fitting.body_work,output).status!=b::Status::solved);
+            C(bytes(output)==alias_before&&bytes(work->fitting.planned)==output_before&&bytes(rejected)==goal_before);
+        }
         C(bytes(result)==bytes(saved));
         printf("neutral posture=%u shift=%.9g hip=%.9g; tracking+grip applied once\n",unsigned(posture),result.fitting.horizontal_units,result.neutral.pelvis_world.z);
     }
@@ -176,7 +250,7 @@ int main(int argc,char** argv){
     C(same_converted(current_frozen,current_math));
     C(distance(current_frozen.goal.absolute.neutral_pelvis_world,with_current_head.neutral.pelvis_world)==0);
     C(bytes(with_current_head)==fitted_before&&bytes(input)==tracked_input_before);
-    const auto current_plan=b::plan(*model,*frame,current_frozen.goal,work->fitting.body_work,work->fitting.planned);
+    const auto current_plan=b::plan_cover(*model,*frame,current_frozen.goal,work->fitting.body_work,work->fitting.planned);
     if(current_plan.status!=b::Status::solved)printf("frozen current status=%u bone=%u requested=%.9g available=%.9g head=%.9g\n",unsigned(current_plan.status),current_plan.failed_bone,current_plan.requested_distance,current_plan.available_reach,current_plan.head_error);
     C(current_plan.status==b::Status::solved);
     // A later Scene/publication is allowed only with its independently current
