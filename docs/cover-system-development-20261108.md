@@ -2,7 +2,7 @@
 
 目标：完成掩体系统开发与验证。状态：进行中。
 
-最近结果（2026-11-09）：r31/game30188圆柱原字段34／72通过，但正Extent不同BlockingVolume首败、身体遮挡保留，已全终交出。r32改为4次全非零查询，独立认证并严格绑定实际表面；63个Python方法通过，源码a3528968、plan5ad2a094／preparedf04ee0c4准备通过，已获Longshot112230直接接受为其后唯一后继，尚未交窗／stage／启动。r33原样重放115字节历史变换比较叶函数，50个有限对照通过，另发现单个NaN平移分量可返回相同；不能以该谓词或P1正常返回替代有限性／逐body／世界同步证明。完整CV-01–24／AC-01–22及实体头显仍未完成，详见末两节。
+最近结果（2026-11-09）：r32/game36040的4次全非零原Trace均strict accepted，同一实际BlockingVolume／Brush表面关闭通过；静止初始重叠命中且法线0，离开该重叠却返回空，预设对照／操作器exit1保留，不能用moving miss证明起点无重叠。圆柱原字段仍34／72；1页全跨度与6原图亲审，严重身体遮挡仍FAIL。运行／编码／retention均全终，精确恢复后已最终唯一交HB115111，当前不占窗。r33历史变换比较叶函数的50有限对照及单个NaN返回相同边界另记，非物理消费／世界同步证明。完整CV-01–24／AC-01–22及实体头显仍未完成，详见末节。
 
 ## 2026年11月8日 首批接续
 
@@ -755,3 +755,19 @@ r32源码已保存a35289683a80026caa1504ed92c28be8095a077b。经HB真实尾转�
 小程序MSVC C++17／O2／W4／WX／EHsc／UNDEBUG／MT编译0、修正后exit0，低于正常优先级；只在自身映射131072字节历史代码／常量及只读输入页，W^X分离，结束正常释放。首次准备脚本相对路径错误、未生成build.cmd而未编译／运行的失败也保留；首次mask字按float显示为NaN的准备记录保留，最终准备记录使用uint32位mask。本批原始文件、准确源码／EXE／依赖SHA、失败及最终结果在analysis/cover-system-20261108/physics-transform-gate-r33。
 
 此结果明确后续逐body观察须使用准确调用边界、显式有限性检查和实际body覆盖；不能把这个宽松比较谓词、普通P1或辅助路调用完成当作HitInfo／枪口／碰撞世界同步。现有Local／SpaceBases／Matrix有限性守卫保持，不新增或放宽生产许可。具体物理接收对象vtable目标、同步／延迟查询可见性和完整消费仍未认证。没有新Native DLL或本批游戏验证；准确r32候选不变，公开v71、全部CV／AC、身体遮挡／暂停及实体头显仍未完成。
+
+## 2026年11月9日 r32实际36040：非零表面严格通过，离开重叠返回空
+
+Longshot112230实际12980全部运行、审图、编码、恢复和retention终态后最终唯一交窗，独立CIM／idle核空闲，重新核plan5ad2a094／preparedf04ee0c4、27driver及AST、24冻结源声明、3保存制品、所选EXE与实际Python解释器SHA和恢复基线。prepare-only0后stage准确旧r13 Native5cf4adea／PGf8e6f3c2／XR1684，备份prior-private-text-20261109-115208；没有把r33重放或其他新C++编入游戏制品，公开v71不变。
+
+game36040 creation134386699398055069，owner15000 creation134386699323010745，session31aabc3e。原A一次CT2／CA0，geometry及当前严格圆柱观察通过，原CollisionRadius34／CollisionHeight72保留原义。四次查询均正Extent(10,10,10)，queue2／call1、submit0、pending_possible=false／allocation_retained=false且完整严格关闭通过：swept_extent独立取得BlockingVolume#194／BrushComponent#53，静止分离返回空，静止初始重叠命中同一组件且法线(0,0,0)，leaving_initial_overlap返回Actor0、位置／法线零。原表面、组件变换、当前角色／掩体／模块／函数及float32输入全程核对。单次最大11881读／353943字节，预算未改，没有重试或第五次调用。
+
+这实际证明r32独立非零表面准入在本场景通过，修正了r31将线网格身份套到体积查询的准入假设；不能把r31旧首败改绿。当前整段预设要求leaving也命中，实际返回空，故Volume和操作器28264明确exit1。四次strict accepted与整体semantic contrast失败分别记录，session自身passed=true也不覆盖操作器失败。静止重叠中心来自本局严格首扫接触，查询位置约(-3906.07884,-194.50493,584)；静止返回该float32位置、零法线，不能推成穿透深度或恢复向量，也没有原始FCheckResult.Time。
+
+旧r16隔离三角叶函数的离开重叠行为不能推广为本次完整Actor.Trace／BlockingVolume行为。本局至少观察到“先静止重叠命中，再由该位置向外移动返回空”，所以moving miss不能证明初始未重叠。当前只有此场景／此诊断盒的严格区间证据；同Actor及变换不证明原子碰撞世界，也不证明终点时相或整个人体安全。后续真实提交端必须分别消费起点占用、连续路径和终点占用；已重叠状态须走经认证的原版恢复／退出链，不能简单把wantedHit改false、把本局改绿或用空返回放行。不能重跑未改的同四项来制造修复结论。
+
+Native关闭、入口恢复、pad恢复通过；unified fire_disable0／hand_stop5／drained=true，XR0／launcher0／game absent。EndSession=false、terminal exiting／objects destroyed／shutdown complete=true分别保留。没有重复pause／B，33420旧暂停失败仍开放。wrapper工具74831与encoder11063均实际terminal0，操作器terminal1保持。全部1页paired overview与6张关键原图亲审：game00375／00428／00444，simulator00443／00498／00515；两路严重右身体／肩／装备近裁剪遮挡仍FAIL，启动第三人称／等待卡仍有。game451帧跨度24.6168345秒，simulator522帧24.5835005秒，最大捕获间隔1933.3558／316.6676ms；动作窗最大99.9992／66.6695ms、尾部有效。启动game1.050–2.983秒捕获缺口不直接证明渲染停顿，WGC／窗口标题FPS不当render或头显证明；ffprobe视频24.666667秒／5668305字节。
+
+唯一retention85297实际terminal0／errors0，删除4342项生成媒体824496767字节，保留36040／12980／65044最新三局48小时，源／构建／资产／存档／文本不删。config和XR settings原字节、head原不存在、所选game settings SHA、ending27driver与3stage制品均独立核对一致，最终CIM／idle无残留。准确game-36040-review.json、closure-proof.json、selected-visual.json、retention-result.json和preflight在analysis/cover-system-20261108/nonzero-surface-r32。
+
+运行期间已直接受理HB115111为本槽唯一后继，末尾独立核其准确preparedebdf0792、source子目录2251声明源及6保存制品匹配后，已最终明确唯一交该后继。首次核对误把source_archive自身当源根，发现实际源在其source子目录；没有源不匹配或运行修改，准确路径记录于successor-check.json。新Frag114500申请已沿真实尾转HB处理，不作第二后继。当前不占窗、不补第二局；完整最终身体／physics形状、路径／终点占用与世界同步、Native掩体提交及basis恢复、同版view／hit／muzzle、身体遮挡／暂停和全部CV-01–24／AC-01–22／实体头显仍未完成，目标保持进行中。
