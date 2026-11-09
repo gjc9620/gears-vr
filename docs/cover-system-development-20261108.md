@@ -961,3 +961,26 @@ r44 prepared `dab63424ea36cf92a68d3951697019c10666b2d34b7536338a51d32494dfebe2`�
 r43离线查到的Actor.Trace→0xcf8f8→0xcfa40→World+0x178／slot32→0xcfef0→0xe6a10→组件slot0x2e8，与原2026-10-29实施包已有证据相同，不算新发现。原包还保存基础SkeletalMeshComponent构造表、0x339294、骨骼矩阵getter及叶级索引几何的更深解析，应直接复用。今天的历史区段数组结构检查不能升级成当前注册unwind或ABI证明，伪代码RIP常量仍须以实际指令核对。后续重点是实际玩家分支与同版bounds／索引／物理消费，而非重做已有静态链。
 
 完整CV-01–24／AC-01–22、全身体积路径与占用、实际Native移动及恢复、同姿态命中／枪口、严重吸附遮挡和实体头显仍未完成。公开v71、固定11／64及36.47%保持。
+
+
+## 2026年11月9日 r45原版身体命中过滤与骨骼来源接线
+
+本轮沿原实施包尚未解析的0x131e80分支继续，复用历史原件911ab9bc及只读知识库，没有游戏／XR／引擎调用。原0x339294可见分支从mesh+0x248取PhysicsAsset，令R8=mesh并调用0x131e80；该函数主区1535字节、冷区361字节，以及下游0x130e7c的4098字节，均按原件逐段验SHA并完整线性解码。保存区段数组与这些边界一致；该数组仍不代表当前注册unwind。0x339294另有已知共享尾未纳入本轮提取，不将三段KB区段宣称完整依赖闭包。
+
+实际指令将PhysicsAsset+0x68／+0x70作为BodySetup数组与数量，读取条目+0xbc的过滤字。零体积判别来自既有0xdb120；对应两条分支检查掩码4和8，再从BodySetup+0xb4读取完整FName。后续使用mesh+0x218的骨架asset，按asset+0xb8／+0xc8／+0xd0缓存和16字节条目匹配FName的index与number；这与r41现有engine骨名缓存读取合同一致，不另造第二套骨名表。
+
+无MasterPose时，查询从mesh+0x26c读取SpaceBases、+0x274检查数量，索引乘64后取矩阵，并与mesh+0xa0至+0xd0的四行共同计算。MasterPose有另外分支，无效索引存在原identity fallback，现有严格读取不能据此接受缺骨。随后原函数会归一化矩阵的轴，并传递单独计算的缩放；不能将未经同版验证的裸SpaceBases直接当成最终查询形状。原调用把BodySetup+0x6c与该变换传入0x130e7c；后者可见四组数组的遍历，前三组步长80、末组124。数组／结构仍以当前反射认证为准，不能把原纯字段fixture的紧凑尺寸当成原生布局通过。
+
+这提供了另一条实际命中数据来源：身体设置、骨名缓存、SpaceBases及组件变换参与原版形状查询。它不允许把所有命中消费者统一归于PhysX刚体pose，也不证明当前玩家选择了该分支、派生组件未覆盖slot、所有下游助手已闭合，或当前broadphase bounds／查询索引已消费同一姿态。物理世界与实际身体占用要求继续保留。
+
+### 新增只读适配器
+
+新增`tools/game-playtest/cover_hit_source.py::read_setup_filters`，供已有当前BodySetup／mesh关联的调用者在同一CoverQuery中使用。它以实时反射核对RB_BodySetup的`bBlockZeroExtent`与`bBlockNonZeroExtent`：必须认证当前继承链中的实际声明者、BoolProperty、偏移0xbc／宽4／掩码4与8，不从脚本默认值猜声明类；读取完整共享字并要求调用者关闭查询。关闭或缺失标志分别处理；不能用形状的`bNoRBCollision`代替这两项查询过滤。输出的当前route代码、实际选择、命中几何、物理／世界同步及activation标志全部保持false。
+
+6个实际读取器测试方法、16组情形通过：四种开关组合和其他位、错误偏移／宽度／掩码、缺项、关闭时共享字或元数据变化、真实默认对象、身份替换及父类声明字段。全部使用生产读取器与既有合成反射内存，无进程、无写入、无引擎调用。代码中两段历史FILTER_CODE哈希重新对原件核验，22处关键指令锚点一致。证据保存于`analysis/cover-system-20261108/hit-physics-route-r45/verification.json`、`consumer-code.json`及`reader-tests-final2.log`。该模块尚未接入或运行，不改变r44的36个冻结驱动与候选。
+
+### 当前运行队列与下一步
+
+r44已由真实尾Bol153322唯一受理，前序为Frag145754→Snub144724→Bol153322→Coverr44；需其最终全终交窗后再独立idle／全SHA核验。按到达顺序唯一后继已登记并获确认：Lancer stock-reference040742，prepared4401a0a3／planca9bf3b6／inputs c78b9182，1354归档声明／855编译源／6保存制品／22当前驱动和AST完整核对。它仍只有排队受理，没有授窗；后到HB有限供弹请求已转Lancer这个实际尾，r44不登记第二后继。
+
+后续仍先执行已冻结r44，取得当前身体／原形状／内部接收者来源。原命中分支的字段核对随后与当前组件slot、骨名映射、同版SpaceBases／缩放和bounds／索引一起接线，不因本轮静态或CPU结果放行抓边、身体移动或受击保护修改。完整CV-01–24／AC-01–22、Native移动与恢复、碰撞与占用、同版命中枪口、吸附遮挡和实体头显保持未完成。
