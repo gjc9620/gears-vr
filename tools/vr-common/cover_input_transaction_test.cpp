@@ -224,16 +224,23 @@ static void failed_transaction_recertifies_current_context_only(){
         f.frame.view_anchor.neutral_eye_world=f.frame.anchor.neutral_eye_world;
         auto r=f.next(0,CoverWeaponContribution{});
         C(!r.accepted&&no_lease(r.left_hand)&&!r.interaction.owns_left_hand);
-        C(close(r.interaction.offset.up,change==3?.1:0));
+        C(close(r.interaction.offset.up,change==3?.3:0));
         if(change==4){
             C(!r.view_valid&&!r.body_weight_valid&&r.interaction.status==CoverStatus::no_cover);
             // A failed participant cannot hide a certified cover exit and
             // resurrect the old offset on reentry under the same epochs.
             f.frame.cover.cover_valid=true;r=f.next(0,CoverWeaponContribution{});
             C(r.view_valid&&close(r.interaction.offset.up,0)&&close(r.requested_up_metres,.1));
+        }else if(change==3){
+            C(!r.view_valid&&!r.body_weight_valid&&!r.interaction.offset_certified);
+            C(r.interaction.status==CoverStatus::range_invalidated);
+            // A failed participant cannot turn a range clamp into a newly
+            // certified body/view position. Restore the old legal range only.
+            f.frame.cover.range.max_up=.7;r=f.next(0,CoverWeaponContribution{});
+            C(r.view_valid&&close(r.interaction.offset.up,.3)&&close(r.requested_up_metres,.4));
         }else{
             C(r.view_valid&&r.body_weight_valid&&r.interaction.offset_certified);
-            C(close(r.view.base_eye_world.z,change==3?410:400)&&close(r.requested_up_metres,change==3?.2:.1));
+            C(close(r.view.base_eye_world.z,400)&&close(r.requested_up_metres,.1));
             C(close(r.view.base_eye_world.x,200)&&close(r.view.base_eye_world.y,300));
         }
     }
@@ -481,11 +488,39 @@ static void owner_invalidate_poison_and_contribution_validation(){
     }
 }
 
+static void clipping_and_range_loss_use_actual_completed_input_state(){
+    Fixture f;f.run();f.next(.8f);
+    f.hands.hands[0].grip.position.y=-1.2;
+    auto r=f.next(.8f);
+    C(r.accepted&&r.view_valid&&r.interaction.owns_left_hand&&
+      r.interaction.status==CoverStatus::clipped&&close(r.interaction.offset.up,.7));
+    f.hands.hands[0].grip.position.y+=.01;r=f.next(.8f);
+    C(r.view_valid&&r.interaction.owns_left_hand&&close(r.interaction.offset.up,.69));
+    f.next(0);f.frame.cover.range.max_up=.2;r=f.next(0);
+    C(!r.view_valid&&!r.body_weight_valid&&!r.interaction.offset_certified&&
+      !r.interaction.owns_left_hand&&close(r.interaction.offset.up,.69));
+    C(r.interaction.status==CoverStatus::range_invalidated&&no_lease(r.left_hand));
+    f.frame.cover.range.max_up=.7;r=f.next(.8f);
+    C(r.view_valid&&close(r.interaction.offset.up,.69)&&!r.interaction.owns_left_hand);
+    f.next(0);r=f.next(.8f);C(r.interaction.owns_left_hand&&close(r.interaction.offset.up,.69));
+
+    Fixture failed;failed.run();failed.next(.8f);
+    failed.hands.hands[0].grip.position.y=-1.2;failed.advance(.8f);
+    auto decoded=failed.begin();
+    C(failed.kernel.update_with_decoded(decoded.ticket,absent(),failed.owner).accepted);
+    r=failed.kernel.complete(decoded.ticket,false,failed.owner);
+    C(!r.accepted&&!r.interaction.owns_left_hand&&close(r.interaction.offset.up,0));
+    failed.next(0);r=failed.next(.8f);C(r.interaction.owns_left_hand&&close(r.interaction.offset.up,0));
+    failed.hands.hands[0].grip.position.y-=.01;r=failed.next(.8f);
+    C(close(r.interaction.offset.up,.01)); // Aborted clip did not install its offset or new origin.
+}
+
 int main(){
     exact_snapshot_and_opaque_ticket();snapshot_mutations_abort();prepare_busy_and_abandoned_frames();
     failed_commit_keeps_only_committed_offset();blocked_hand_keeps_held_offset_and_live_head();
     failed_transaction_recertifies_current_context_only();raw_epoch_counters_do_not_become_tokens();outside_cover_outage_and_global_barriers();
     broker_prepare_unavailable_and_commit_busy_keep_physical_pose();unregister_between_prepare_and_commit();
     owner_invalidate_poison_and_contribution_validation();
+    clipping_and_range_loss_use_actual_completed_input_state();
     std::printf("cover_input_transaction: %u checks, %u failures\n",checks,failures);return failures?1:0;
 }

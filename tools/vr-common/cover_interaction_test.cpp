@@ -107,6 +107,47 @@ static void acquisition_reach_does_not_tether_owned_grip(){
     }
 }
 
+static void clipping_reverse_and_held_range_loss(){
+    for(CoverEdgeKind kind:{CoverEdgeKind::left,CoverEdgeKind::right,CoverEdgeKind::top}){
+        Fixture f(kind);f.start();
+        const Vector pull=kind==CoverEdgeKind::left?Vector{2,0,0}:
+            kind==CoverEdgeKind::right?Vector{-2,0,0}:Vector{0,-2,0};
+        auto clipped=f.move(pull);
+        const double right=kind==CoverEdgeKind::left?-.6:kind==CoverEdgeKind::right?.5:0;
+        const double up=kind==CoverEdgeKind::top?.7:0;
+        CHECK(offset_is(clipped,right,up)&&clipped.owns_left_hand&&clipped.offset_certified&&clipped.status==CoverStatus::clipped);
+        // The reverse starts at the actual limited position, not at the
+        // original press's out-of-range request. A centimetre must respond.
+        const auto reverse=plus(pull,times(pull,-.005));
+        const auto moved=f.move(reverse);
+        CHECK(offset_is(moved,right+(kind==CoverEdgeKind::left?.01:kind==CoverEdgeKind::right?-.01:0),
+                              up-(kind==CoverEdgeKind::top?.01:0)));
+        for(unsigned i=0;i<10;++i)CHECK(offset_is(f.tick(),moved.offset.right,moved.offset.up));
+        f.release();
+        const auto held=moved.offset;
+        if(kind==CoverEdgeKind::left)f.cover.range.min_right=-.2;
+        if(kind==CoverEdgeKind::right)f.cover.range.max_right=.2;
+        if(kind==CoverEdgeKind::top)f.cover.range.max_up=.2;
+        auto invalid=f.tick();
+        CHECK(!invalid.offset_certified&&!invalid.owns_left_hand&&offset_is(invalid,held.right,held.up)&&invalid.status==CoverStatus::range_invalidated);
+        f.hand.lgrip_down=true;
+        CHECK(!f.tick().request_left_hand&&!f.run().offset_certified);
+        f.cover.range={-.6,.5,0,.7};
+        auto recovered=f.tick();
+        CHECK(recovered.offset_certified&&!recovered.owns_left_hand&&!recovered.request_left_hand&&
+              offset_is(recovered,held.right,held.up));
+        f.release();CHECK(offset_is(f.press(),held.right,held.up));
+    }
+    Fixture grabbing;grabbing.start();grabbing.move({.3,0,0});
+    grabbing.cover.range.min_right=-.2;auto lost=grabbing.tick();
+    CHECK(!lost.owns_left_hand&&!lost.offset_certified&&offset_is(lost,-.3,0));
+    grabbing.cover.range.min_right=-.6;CHECK(!grabbing.tick().owns_left_hand);
+    grabbing.release();CHECK(offset_is(grabbing.press(),-.3,0));
+    Fixture gain(CoverEdgeKind::left,2);gain.cover.right_axis_tracking={0,0,-1};gain.start();
+    CHECK(offset_is(gain.move({0,0,-2}),-.6,0));
+    CHECK(offset_is(gain.move({0,0,-1.99}),-.58,0));
+}
+
 static void common_bounds_and_axis_changes(){
     Fixture f;f.start();CHECK(offset_is(f.move({.55,0,0}),-.55,0));f.release();
     for(unsigned i=0;i<20;++i){
@@ -118,9 +159,11 @@ static void common_bounds_and_axis_changes(){
     f.release();f.cover.edge={18,CoverEdgeKind::top,true,true};f.move({0,0,0});
     CHECK(offset_is(f.press(),-.35,0));CHECK(offset_is(f.move({0,-1,0}),-.35,.7));
     f.release();f.move({0,0,0});f.press();CHECK(offset_is(f.move({0,-1,0}),-.35,.7));
-    f.release();f.cover.range={-.2,.15,0,.4};CHECK(offset_is(f.tick(),-.2,.4));
+    f.release();f.cover.range={-.2,.15,0,.4};
+    auto lost=f.tick();CHECK(!lost.offset_certified&&offset_is(lost,-.35,.7));
+    f.cover.range={-.6,.5,0,.7};CHECK(offset_is(f.tick(),-.35,.7));
     f.cover.edge={19,CoverEdgeKind::right,true,true};f.move({0,0,0});f.press();
-    CHECK(offset_is(f.move({-2,0,0}),.15,.4)); // Both retained axes remain within the common rectangle.
+    CHECK(offset_is(f.move({-2,0,0}),.5,.7)); // Both retained axes remain within the common rectangle.
 }
 
 static void ownership_and_edge_lock(){
@@ -299,6 +342,7 @@ static void physical_head_motion_stays_separate(){
 
 int main(){
     try{
+        clipping_reverse_and_held_range_loss();
         directions_and_release();frozen_rotated_axes_and_no_drift();acquisition_reach_does_not_tether_owned_grip();
         common_bounds_and_axis_changes();
         ownership_and_edge_lock();freshness_replay_and_clocks();tracking_interruptions_and_epochs();

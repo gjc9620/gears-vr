@@ -263,7 +263,8 @@ private:
         if(current_scene){
             // Re-certify ONLY committed offset against this fresh Scene, not
             // pending_interaction_'s tentative drag. The normal kernel clears
-            // it for a new world/pawn/cover or cover exit, and clamps new bounds.
+            // it for a new world/pawn/cover or cover exit. Bounds that exclude
+            // the held offset withdraw certification without moving it.
             // Disable interaction in this copy so certification stops BEFORE
             // touching the hand stream; a synthetic inactive sample must not
             // poison a later Scene reusing the same valid XR release packet.

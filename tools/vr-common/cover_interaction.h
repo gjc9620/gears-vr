@@ -68,7 +68,7 @@ struct CoverOwnership {
 enum class CoverPhase { outside,unavailable,attached,held,requesting,grabbing };
 enum class CoverStatus {
     okay,no_cover,inactive,stale,replayed,invalid,epoch_changed,
-    needs_release,edge_unavailable,ownership_conflict
+    needs_release,edge_unavailable,ownership_conflict,clipped,range_invalidated
 };
 struct CoverResult {
     CoverOffset offset;
@@ -135,7 +135,11 @@ public:
         }else if(changed)interrupt();
         if(source_changed)last_hand_.reset();
         epochs_=cover.epochs;have_cover_=true;
-        offset_=clamped(offset_,cover.range);
+        // A shrinking allowed range is not proof that the existing body can
+        // move to its new boundary. Preserve the last position for recovery,
+        // withdraw certification and release the hand; never publish a clamp
+        // as if a sweep/body commit had actually happened.
+        if(!contains(offset_,cover.range))return stop(CoverStatus::range_invalidated);
         offset_certified_=true;
         if(changed)return result(CoverStatus::epoch_changed);
         if(!cover.interaction_enabled)return stop(CoverStatus::inactive);
@@ -171,7 +175,14 @@ public:
                 else candidate.right-=motion;
                 if(!std::isfinite(candidate.right)||!std::isfinite(candidate.up))return stop(CoverStatus::invalid);
                 offset_=clamped(candidate,cover.range);
-                return result(CoverStatus::okay);
+                const bool clipped=offset_.right!=candidate.right||offset_.up!=candidate.up;
+                if(clipped){
+                    // Rebase at the accepted limit and this real hand sample.
+                    // The next reverse motion must respond immediately,
+                    // without consuming any accumulated out-of-range pull.
+                    grab_hand_=hand.left_position_metres;grab_offset_=offset_;
+                }
+                return result(clipped?CoverStatus::clipped:CoverStatus::okay);
             }
             if(!cover.edge.within_acquisition_reach)return stop(CoverStatus::edge_unavailable);
             if(ownership.owner==CoverLeftHandOwner::free)return result(CoverStatus::okay);
@@ -249,6 +260,9 @@ private:
     }
     static CoverOffset clamped(CoverOffset d,CoverRange const& r){
         return {std::clamp(d.right,r.min_right,r.max_right),std::clamp(d.up,r.min_up,r.max_up)};
+    }
+    static bool contains(CoverOffset d,CoverRange const& r){
+        return d.right>=r.min_right&&d.right<=r.max_right&&d.up>=r.min_up&&d.up<=r.max_up;
     }
     void interrupt(){
         grabbing_=false;requesting_=false;release_required_=true;previous_down_=true;
