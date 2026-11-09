@@ -1416,3 +1416,17 @@ LS独立接受这次pregame全终态c1b68a04。Root最终fresh检查又发现其
 实际MSVC /std:c++17 /O2 /W4 /WX /EHsc /UNDEBUG /MT编译及固定5个项目依赖编译均exit0，冻结程序119检查／0失败。检查含选定body及双向场景关系、每个读取失败保持输出、数组／指针／重复body／虚表变化、source回调修改和别名拒绝、完整原DLL数据段映射及每段末字节／截短／hash失败拒绝、两种形状的合成5参数overlap和10参数sweep／64字节结果、合成SEH拒绝、未prime不读目标、不加载缺失模块与零／非有限／溢出位移拒绝。首次/WX因Sweep隐式对齐填充拒绝已保留build-0.log，改显式reserved字段后通过。原DLL仅作为数据读取，未加载或执行；合成ABI函数不能替代原方法运行通过。
 
 证据位于analysis/cover-system-20261108/physx-query-r75/，含source-manifest.json、冻结源码、build/test日志和verification.json。下一步将当前C0的typed PhysicsAssetInstance／RootBodyIndex／BodyData角色完整认证接至此适配，并闭合自身排除、实际形状覆盖与查询／物理消费时相；这些之前不发布掩体移动许可。Native实际移动与合法恢复、同版物理／命中／枪口、严重肩部／身体遮挡、每个实际边缘GrabPose、CV-01–24／AC-01–22及实体头显均仍未完成，不提高25%工程review或其他历史评分。
+
+## 2026年11月10日 r76类型化物理来源与原查询来源对应
+
+上一轮r75适配源码、冻结编译与119项检查已经提交c910a987，属于进展。本轮继续完成缺失的类型化读取层：新增cover_physics_roles_live.inl及实际公共反射夹具测试，复用weapon_hand_scene_binding的对象注册表、identity、property、继承与当前元数据关闭读取，不建立另一套反射器、输入或骨骼写入端。此层仍未包含进Native生产C0或自动执行；调用方必须提供ActualContext当前性guard和当前Backend metadata，普通非零地址不能取得C0许可。
+
+读取严格核对当前Mesh的PhysicsAsset+248及PhysicsAssetInstance+250、各自声明引用类型与实际继承关系、实例Owner为当前Pawn／Mesh并兼容声明类型、Bodies数组+6c的ObjectProperty inner／宽度／所属数组／RB_BodyInstance目标类、动态RootBodyIndex，以及每个body的BodyIndex／OwnerComponent／BodyData+88／BoneSpring+90。OwnerComponent采用实际声明引用类和当前Mesh继承匹配，没有猜成固定Primitive／Skeletal类型。根body必须有主actor；非根BodyData空值或auxiliary缺失只作为来源事实，不能据此跳过全身物理覆盖。最多64个body，最多8种不同派生布局，既有Proof身份／源容量均保持严格拒绝，不截短成功。
+
+字段来源额外保存声明owner的完整兄弟链、名称和身份，包括选中字段之后的节点；保留所有已用类型的完整继承链及super值。两次来源读取后再次核这些布局，防止同地址字段追加／换名／链变和缓存body类继承变化漏过。整个操作仅写自有Workspace／输出，guard在binding mutex之外运行；失败时不改调用方输出，关闭构建不读对象或调用guard。重复读取相等仍非原子快照、查询世界围栏或物理同步。
+
+matches_query_source把本层完整body指针数组、array头、RootBodyIndex来源及选中BodyData与r75原始场景路径逐项对应；合成注册表正例已接通至r75 source::capture，原DLL没有加载或执行，没有调用引擎方法。该对应也不授予抓边／身体移动。生产调用还须在原查询前后持续重取并比较此类型化来源，不能只在启动时校验一次，也不能把这份只读Snapshot当作不再失效的能力。
+
+实际MSVC /std:c++17 /O2 /W4 /WX /EHsc /UNDEBUG /MT编译和冻结15个实际项目依赖的ON／OFF构建均exit0。ON 241检查／0失败，OFF 2检查／0失败；涵盖Owner两种合法归属、根索引与完整64-body边界、非根换主、重复／错误类成员、数组布局、Pointer结构、字段声明类型、同地址源／继承／元数据／线程变化、异常及guard释放锁、9派生布局容量拒绝、raw场景来源对应与错误actor／root／成员／array头拒绝。首次编译因本地property名称ADL歧义及测试全局名遮蔽分别失败，已窄修命名，原build-0／1.log保留，没有关闭/WX或削弱条件。全部程序使用合成已注册内存，没有C0／原查询运行证据。
+
+证据在analysis/cover-system-20261108/physics-roles-r76/，包括冻结源码、MSVC依赖与SHA、启用／关闭编译和执行退出记录及verification.json。本轮未修改现有脏Native／武器文件、公共v71、已消费b144入口或共享运行配置，没有stage／游戏／XR／录像／窗口交接。下一步把这份可失效来源接入现有C0查询guard与启动／关闭生命周期，再闭合自身排除、实际查询形状及消费时相；保留原no_cover写入保护。完整身体移动／占用／恢复、同版命中／枪口、严重肩／身体遮挡、逐边缘GrabPose、CV-01–24／AC-01–22和实体头显仍未完成，25%工程review保持。
