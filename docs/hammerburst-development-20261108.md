@@ -479,3 +479,9 @@ Lancer原writer确认这些共享入口当前无其未保存改动，但R2/unifi
 原HB_Idle、HB_Reload、HB_Reload_Fail三段导出全部重新核SHA，三轨均为Root/MagLatch/Mag；只有MagLatch有75/120旋转键，枪身与弹匣相对父骨的位移/旋转键均常量，无后拉/回位轨道。已将原LOD0位置/索引按原骨颜色画出两侧、顶部、底部及四分之三视角并亲看，未找到原资产独立外露可拉机柄。报告analysis/hammerburst-20261108/hammerburst-bolt-original-audit.json，模型侧视hammerburst-original-side-inspection.png；仅离线检查图，未替换资产。首选matplotlib不可用，改用已有Pillow/NumPy对原三角作软件深度排序，未安装依赖；初图正面/背面label不准确，另生成明确Side+X/-X及Top/Bottom图，结论用后者核对。
 
 结论限定原模型提供的可操作部件，不宣称虚构枪械内部不存在枪栓；本版原资源没有可独立拉动的枪栓/拉机柄及对应动画，按已确认弹匣锁扣/翻盖与弹匣机制继续，不增凭空拉栓步骤。条件性拉栓要求已核查；不改变冻结135655的源码、制品、strict6 core范围或排队身份，首发/有限尾段/耗尽验证目标继续。
+
+## 9896 startup 状态读取首败及HB私有修复
+
+冻结135655实际9896在取枪/开火前失败：共同run_menu_firstperson_check.py:99读取同局session_report JSON遇PermissionError；不是游戏内存权限或输入准入拒绝。operator1、wrapper0，XR1/launcher1如实保留，零projection/零武器覆盖，不证明tracking-only或strict6通过。Native/entry/pad/drain与config/settings/head原始字节恢复通过；8.6s paired全1页+4实际raw已审阅，encode0，retention完整终态（删2592/456291670bytes，留9896/59768/61036），独立idle后最终唯一交Longshot142004。证据runtime-9896-review.json。
+
+仅HB ignored私有run_hammerburst_operator.py在内存装载共同脚本后精确替换该一行：PermissionError/JSONDecodeError记累计数、最多4条首错误，sleep.02后继续原45s循环。每轮原live断言、原ready/error条件、原deadline全部保留，不缓存旧session、不发失败输入；未知IO继续原失败。共享脚本/Native/XR/PG均不修改。实际变换后的原loop经fake IO/clock执行8项：占用及半JSON后ready、永久占用/半JSON原期限超时、identityloss先于read、recordederror、原readygate、未知IO失败、正常ready。CPU0且无游戏/输入动作，check-startup-read-retry.py与startup-read-retry-check.json保存证据。新私有operator SHA01ea4c758427bfc00ced2bc14771d5ac6a6db669b937424eb6d8987553f55f8c；本次为driver修复，旧135655保持不可变，新候选另排尾，不复用已关闭窗口。
