@@ -1,6 +1,7 @@
 #pragma once
 #include "body_head_authored_mount.h"
 #include "../vr-common/cover_grab_pose.h"
+#include "../vr-common/cover_grab_transition.h"
 
 // Owned-buffer append to the EXISTING C0 transaction, never a second writer.
 // The live owner authenticates the frame, edge and lease and supplies the
@@ -16,11 +17,13 @@ struct Workspace {
     grab::Plan target{};
     body::two::Input arm{};
     body::two::Solution solution{};
+    gears_cover_grab_transition::State transition_next{};
 };
-inline Result compose(body::Model const& model,body::Frame const& frame,
+template<class Prepare>
+inline Result compose_common(body::Model const& model,body::Frame const& frame,
     grab::Frame const& input,grab::Contact const& contact,grab::Profile const& profile,
     std::array<std::uint64_t,2> const& desired_bones,
-    Workspace& work,body::Output& inout) noexcept {
+    Workspace& work,body::Output& inout,Prepare prepare) noexcept {
     using namespace body::d;
     const Range ranges[]={range(&model,sizeof model),range(&frame,sizeof frame),range(&input,sizeof input),
         range(&contact,sizeof contact),range(&profile,sizeof profile),range(&desired_bones,sizeof desired_bones),
@@ -31,7 +34,7 @@ inline Result compose(body::Model const& model,body::Frame const& frame,
        model.signature!=input.actual_geometry_signature)return {Status::binding};
     if(gears_body_head_authored::detail::context(model,frame,model.canonical)!=gears_body_head_authored::Status::okay)
         return {Status::reference};
-    const auto code=grab::prepare(input,contact,profile,work.target);
+    const auto code=prepare();
     if(code!=grab::Code::prepared)return {code==grab::Code::inactive?Status::inactive:Status::pose,code};
     // The live C0 owner supplies THIS call's already authenticated DesiredBones
     // snapshot. There is deliberately no default-all mask. A partial hand is
@@ -102,5 +105,35 @@ inline Result compose(body::Model const& model,body::Frame const& frame,
     w.candidate.report.max_length_error=error;
     w.candidate.shoulders_world[0]=pose(w.pose.world[8]);
     std::memcpy(&inout,&w.candidate,sizeof inout);return {};
+}
+inline Result compose(body::Model const& model,body::Frame const& frame,
+    grab::Frame const& input,grab::Contact const& contact,grab::Profile const& profile,
+    std::array<std::uint64_t,2> const& desired_bones,Workspace& work,body::Output& inout) noexcept {
+    return compose_common(model,frame,input,contact,profile,desired_bones,work,inout,
+        [&](){return grab::prepare(input,contact,profile,work.target);});
+}
+// The incoming body candidate contains THIS tick's independently solved free
+// hand/fingers. Never feed last tick's fitted result back as its physical base.
+// Accept cosmetic history only together with a complete owned C0 candidate.
+inline Result compose_transition(body::Model const& model,body::Frame const& frame,
+    grab::Frame const& input,grab::Contact const& contact,grab::Profile const& profile,
+    std::array<std::uint64_t,2> const& desired_bones,
+    gears_cover_grab_transition::State& state,Workspace& work,body::Output& inout) noexcept {
+    using namespace body::d;namespace transition=gears_cover_grab_transition;
+    const Range ranges[]={range(&model,sizeof model),range(&frame,sizeof frame),range(&input,sizeof input),
+        range(&contact,sizeof contact),range(&profile,sizeof profile),range(&desired_bones,sizeof desired_bones),
+        range(&state,sizeof state),range(&work,sizeof work),range(&inout,sizeof inout)};
+    if(!disjoint(ranges,9))return {Status::alias};
+    work.transition_next=state;
+    const auto result=compose_common(model,frame,input,contact,profile,desired_bones,work,inout,[&](){
+        transition::Joints physical{};
+        for(unsigned n=0;n<15;++n){const auto& q=inout.local[12+n].q;physical[n]={q[0],q[1],q[2],q[3]};}
+        const auto code=transition::prepare(input,contact,profile,physical,work.transition_next,work.target);
+        return code==transition::Code::prepared?grab::Code::prepared:
+            code==transition::Code::inactive?grab::Code::inactive:grab::Code::geometry;
+    });
+    if(result.status==Status::prepared||result.status==Status::inactive)state=work.transition_next;
+    else state={};
+    return result;
 }
 } // namespace gears_cover_grab_pose_adapter

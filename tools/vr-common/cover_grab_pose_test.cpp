@@ -1,4 +1,5 @@
 #include "cover_grab_pose.h"
+#include "cover_grab_transition.h"
 #include <cstdio>
 #include <limits>
 namespace cp=gears_cover_grab_pose;namespace vr=gears_vr;namespace mount=gears_hand_authored_mount;
@@ -37,6 +38,48 @@ struct Fixture {
     cp::Code run(){return cp::prepare(f,contact,profile,plan);}
 };
 int main(){
+    namespace transition=gears_cover_grab_transition;
+    {Fixture x;transition::State state{};transition::Joints free{};free[0].w=std::sqrt(.99999);
+        x.wrist({{108,200,300},{}});
+        const auto step=[&](){x.f.hand.observed_ns=x.f.cover.observed_ns=x.contact.observed_ns=x.f.now_ns;
+            return transition::prepare(x.f,x.contact,x.profile,free,state,x.plan);};
+        C(step()==transition::Code::prepared);C(near(x.plan.wrist_world.position.x,108));
+        for(unsigned n=1;n<=3;++n){x.f.now_ns+=40000000;C(step()==transition::Code::prepared);}
+        C(near(x.plan.wrist_world.position.x,110));C(near(state.weight,1));
+        x.grab();x.f.now_ns+=20000000;C(step()==transition::Code::prepared);
+        C(x.plan.joints[14].z!=0);
+        // Release follows a newly moved/rotated physical wrist. An obsolete
+        // contact1000 units away must never become the release target.
+        x.f.mode=cp::Mode::release;x.f.hand.lgrip_down=false;x.f.ownership={};
+        x.f.interaction.owns_left_hand=false;x.f.interaction.request_left_hand=false;
+        x.contact.edge_world.position.x=1000;
+        x.wrist({{200,300,400},{0,0,std::sqrt(.5),std::sqrt(.5)}});x.f.now_ns+=40000000;
+        C(step()==transition::Code::prepared);C(x.plan.mode==cp::Mode::release);
+        C(near(x.plan.wrist_world.position.x,200));C(x.plan.wrist_world.position.y>300&&x.plan.wrist_world.position.y<302);
+        C(near(x.plan.wrist_world.position.z,400));
+        for(unsigned n=0;n<8;++n){x.f.now_ns+=40000000;step();}
+        C(!state.known);C(!x.plan.active);
+    }
+    for(unsigned failure=0;failure<6;++failure){Fixture x;transition::State state{};transition::Joints free{};
+        C(transition::prepare(x.f,x.contact,x.profile,free,state,x.plan)==transition::Code::prepared);
+        x.f.now_ns+=20000000;x.f.cover.observed_ns=x.f.hand.observed_ns=x.contact.observed_ns=x.f.now_ns;
+        switch(failure){case 0:x.f.ownership.owner=vr::CoverLeftHandOwner::other;break;
+        case 1:x.f.hand.observed_ns=0;break;case 2:x.f.physical_grip_world.orientation={0,0,0,0};break;
+        case 3:free[5]={0,0,0,0};break;case 4:x.f.now_ns=1;break;
+        default:x.contact.key.component++;break;}
+        C(transition::prepare(x.f,x.contact,x.profile,free,state,x.plan)!=transition::Code::prepared);
+        C(!state.known);C(!x.plan.active);
+    }
+    {Fixture x;transition::State state{};transition::Joints free{};
+        C(transition::prepare(x.f,x.contact,x.profile,free,state,x.plan)==transition::Code::prepared);
+        x.f.now_ns+=500000000;x.f.cover.observed_ns=x.f.hand.observed_ns=x.contact.observed_ns=x.f.now_ns;
+        x.wrist({{108,200,300},{}});
+        C(transition::prepare(x.f,x.contact,x.profile,free,state,x.plan)==transition::Code::prepared);
+        C(near(state.weight,0));C(near(x.plan.wrist_world.position.x,108));
+        ++x.f.expected.epochs.reference;x.f.cover.epochs=x.f.expected.epochs;x.contact.key=x.f.expected;
+        x.f.now_ns+=40000000;x.f.cover.observed_ns=x.f.hand.observed_ns=x.contact.observed_ns=x.f.now_ns;
+        C(transition::prepare(x.f,x.contact,x.profile,free,state,x.plan)==transition::Code::prepared);C(near(state.weight,0));
+    }
     for(auto kind:{vr::CoverEdgeKind::left,vr::CoverEdgeKind::right,vr::CoverEdgeKind::top}){
         Fixture x(kind);C(x.run()==cp::Code::prepared);C(x.plan.active);
         C(x.plan.mode==cp::Mode::approach);C(near(x.plan.wrist_world.position.x,110));

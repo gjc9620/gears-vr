@@ -109,5 +109,26 @@ int main(int argc,char** argv){if(argc!=2)return 2;const std::string path=argv[1
     for(unsigned defect=0;defect<2;++defect){auto x=std::make_unique<Fixture>();C(x->initialize(path));
         if(defect)x->available[1]|=std::uint64_t(1)<<63;else x->available={};
         const auto before=x->body;C(x->run().status==a::Status::lod);C(!std::memcmp(&before,&x->body,sizeof before));}
+    {auto x=std::make_unique<Fixture>();C(x->initialize(path));
+        const auto baseline=x->body;gears_cover_grab_transition::State state{};
+        const auto delta=b::d::sub(baseline.shoulders_world[0].position,x->contact.edge_world.position);
+        const double distance=b::d::length(delta);
+        x->profile.wrist_in_edge.position=v::transform(v::transpose(v::rotation_matrix(x->contact.edge_world.orientation)),
+            {delta.x/distance,delta.y/distance,delta.z/distance});
+        const auto step=[&](){x->body=baseline;
+            x->input.cover.observed_ns=x->input.hand.observed_ns=x->contact.observed_ns=x->input.now_ns;
+            return a::compose_transition(x->model,x->frame,x->input,x->contact,x->profile,x->available,state,x->work,x->body);};
+        for(unsigned n=0;n<4;++n){C(step().status==a::Status::prepared);x->input.now_ns+=40000000;}
+        C(state.weight==1);C(x->body.report.max_length_error<=.002);
+        x->input.mode=g::Mode::release;x->input.hand.lgrip_down=false;x->input.ownership={};
+        x->input.interaction.owns_left_hand=false;
+        for(unsigned n=0;n<12;++n){const auto r=step();C(r.status==a::Status::prepared||r.status==a::Status::inactive);x->input.now_ns+=40000000;}
+        C(!state.known);C(!std::memcmp(&baseline,&x->body,sizeof baseline));
+        x->input.mode=g::Mode::held;x->input.hand.lgrip_down=true;x->input.ownership={v::CoverLeftHandOwner::cover,9};x->input.interaction.owns_left_hand=true;
+        C(step().status==a::Status::prepared);x->input.now_ns+=40000000;
+        C(step().status==a::Status::prepared);C(state.weight>0);
+        x->available={};x->input.now_ns+=40000000;
+        C(step().status==a::Status::lod);C(!state.known);C(!std::memcmp(&baseline,&x->body,sizeof baseline));
+    }
     std::printf("CoverGrabPoseAdapterTest checks=%u failures=%u\n",checks,failures);return failures?1:0;
 }
