@@ -1,3 +1,5 @@
+> 当前执行路径以主人在本次方案review后的最新直接纠正为准：使用指定P2P目录，保留全部原身份/后台/输入保护。此前本聊天把该目录观察一概排除的解释已撤回；旧切片仍只属于原构成。当前主线先L0/R78保持→完整普通换弹返射，暂停无边界手型微调与总备弹耗尽扩展。
+
 # Hammerburst 逐部件 GrabPose 与吸附验收
 
 按主人 2026-11-09 追加要求及 [逐部件合同](weapon-development-20261109/grasp-and-snap.md) 执行。位置、角度、接触范围由本枪根据原模型自行标定；不能用通用握拳、机构成功回执或目标矩阵代替皮肤贴合。本文是当前缺口与实施清单，不是已完成证明。固定骨长、公共手部仲裁和唯一 C0 writer 保持。
@@ -264,3 +266,12 @@ Steam 迁移还修正 HB 私有 run_hammerburst_check.py 的 capture identity �
 原始107 inclusive自身记录还做了双三角平面跨越深度敏感性分类，原83掌/掌在1e-3raw阈值仍全在；旧较好候选仅3个新增掌/掌在1e-4以内，食/中9、食/掌10、食/食2全在1e-3以上，不能归为舍入噪声。该分类报告latch-self-straddle-characterization.json保留所有inclusive数值，未改任何验收过滤。新自由腕/实际C0反例及输入输出SHA在各latch-c0-index-*-check.json，5脚本可复现patch为docs/hammerburst-index-bind-c0-rejection.patch。
 
 主人经统筹在22:43专项要求完整方案/进度review，本聊天已在安全边界写独立UTF8 analysis/coordinator-plan-review-20261109-2243/hammerburst.json，8个玩家动作步骤，统一A/B/C/D/E等级.5/.25/.25/.25/.25，权重20/30/20/15/15得到工程开发/可交付评分30%，头显false。旧路径切片不继承当前Steam候选，未为填报告启动任何新构建或运行。自查承认最近过多精力花在离线调姿和工具封套，现停止无新方向微调；下一个优先可玩点是购买Steam受控启动后，L0/R78真实开盖、取旧匣、肩取/插新匣、真实关盖、L78/R0并返射6发L72/R0。先验证已编译的3行CanReload保护实际绑定消费和实骨首败，后补全奖励/无备弹/总零/中断、逐件姿势与交付；不以无窗口结束目标或抢别人的运行窗。共享启动问题尚未解决且未申请HB新窗，公共v71未动。
+
+
+## 主人较新路径指令纠正与单次普通空仓换弹入口
+
+主人经本次专项review明确：较新直接指定的验证路径是J:/gearsVr/Gears.of.War.Reloaded.v1.0.1.3816947-P2P/Gears of War Reloaded/Binaries_x64，旧10-21 AGENTS不覆盖该指令。本聊天此前Steam-only推断撤回，旧路径成功/失败观察不能称未授权，也仍不能给新PG继承通过。runtime-path-owner-override-20261109.json补充并引用旧纠正SHA；50148原review/handoff与旧解释记录均保留不重写。恢复HB capture identity到该精确路径，不改DRM/许可/原文件/身份/时效/后台保护，不再因Steam4380阻断走相同失败路线。
+
+新增hammerburst_empty_reload_chain.py只做一个普通空仓替换闭环。取枪后原严格6发使L72/R78，必须已有本枪CanReload veto绑定，再复用原真实12个.35DOWN/.6UP六连发把已装72耗至0（这是必要空仓准备，不耗尽全部备弹）。读L0/R78，单次真实空扳机后复读库存/奖励不变、0新轨迹，并要求实际veto消费记录；再进入原替换动作，新增可选首个to1必须真实非零serial且L0/R78，拒绝已自动填满后serial0的inspection fallback。原to4必须经过实骨开盖到位检查，不改任何角度/8次guard。完成入座/关闭需L78/R0，原返射需6轨迹且L72/R0即结束；不再原匣R0复用/剩66耗空/总零/奖励/中断扩展。
+
+入口只允许显式RELOAD+REPLACEMENT+EMPTY_RELOAD_ONLY，拒绝同时support或SUPPLY_BOUNDARIES；旧用途默认不变。复用原core/continuous drain/替换动作及所有时间/身份断言，没有库存setter、动画调用、输入重试或新hook。真实窄driver经10个fake依赖用例检验顺序/首拒绝/文件保留/目录归还/仅一次空扳机：正常、初值错、无/错枪绑定、空仓前自动补满、空扳机自动补满、空扳机射线、无veto消费、返射不完整、实骨下游失败。全部0；不把fake当真实CanReload或原begin serial/实骨覆盖。结果empty-reload-driver-check.json，可复现patch docs/hammerburst-empty-normal-reload-driver.patch。新运行候选待独立标识冻结，尚未stage/申请窗口。

@@ -1,0 +1,146 @@
+--- a/analysis/solo-m1-20261028/run_hammerburst_check.py
++++ b/analysis/solo-m1-20261028/run_hammerburst_check.py
+@@ -4,0 +5 @@
++assert os.environ.get('GEARSVR_HAMMERBURST_EMPTY_RELOAD_ONLY')!='1' or (os.environ.get('GEARSVR_HAMMERBURST_RELOAD')=='1' and os.environ.get('GEARSVR_HAMMERBURST_REPLACEMENT')=='1' and os.environ.get('GEARSVR_HAMMERBURST_SUPPLY_BOUNDARIES')!='1' and os.environ.get('GEARSVR_HAMMERBURST_SUPPORT')!='1'),'One ordinary empty reload only; no support or reserve-exhaustion extension'
+--- a/analysis/solo-m1-20261028/hammerburst_core_chain.py
++++ b/analysis/solo-m1-20261028/hammerburst_core_chain.py
+@@ -38 +38,3 @@
+-            if '--hammerburst-supply-boundaries' in __import__('sys').argv:
++            if __import__('os').environ.get('GEARSVR_HAMMERBURST_EMPTY_RELOAD_ONLY')=='1':
++                from hammerburst_empty_reload_chain import run as reload_run
++            elif '--hammerburst-supply-boundaries' in __import__('sys').argv:
+--- a/analysis/solo-m1-20261028/hammerburst_reload_chain.py
++++ b/analysis/solo-m1-20261028/hammerburst_reload_chain.py
+@@ -12 +12 @@
+-def run(c, *, empty_supply_only=False):
++def run(c, *, empty_supply_only=False, require_empty_original_begin=False):
+@@ -104,0 +105,5 @@
++        if require_empty_original_begin:
++            begun=wait('hammerburst_reload_transition',transitions,lambda r:r.get('to')=='1',expected='to=1 (empty original reload acquisition)')
++            data['empty_original_begin']=begun;save()
++            assert int(begun.get('serial','0'))>0 and begun.get('loaded')=='0' and begun.get('reserve')=='78', \
++                'Empty original reload did not retain L0/R78 and a real nonzero reload serial; no inspection fallback'
+--- /dev/null
++++ b/analysis/solo-m1-20261028/hammerburst_empty_reload_chain.py
+@@ -0,0 +1,78 @@
++"""One ordinary empty reload: prove no automatic refill, replace, close, fire.
++
++No reserve-exhaustion tail, inventory setter, game function call or input retry.
++The existing core spends six; genuine fire drains the remaining loaded72 only.
++"""
++import json
++from hammerburst_count_snapshot import sample as counts
++from hammerburst_supply_boundary_chain import drain
++from hammerburst_reload_chain import run as reload_run
++
++
++def run(c):
++    g = c.g
++    root = g.directory
++    destination = root / 'hammerburst-empty-reload.json'
++    data = dict(game=g.game, checks={}, gameplay_setters=False,
++                scope='L72/R78 -> L0/R78 -> one empty trigger -> ordinary replacement -> L78/R0 -> six shots L72/R0',
++                reserve_exhaustion_attempted=False, physical_headset_accepted=False)
++
++    def save():
++        destination.write_text(json.dumps(data, indent=2), encoding='utf-8')
++
++    try:
++        initial = counts(c, 'empty_reload_initial')
++        data['initial'] = initial
++        assert initial['loaded'] == 72 and initial['reserve'] == initial['capacity'] == 78
++        assert not initial['infinite_reserve']
++        weapon = int(initial['weapon'], 16)
++        bound = [r for r in c.records('lancer_manual_auto_reload_bound')
++                 if int(r.get('weapon', '0'), 16) == weapon]
++        data['manual_veto_binding'] = bound
++        save()
++        assert bound, 'No actual CanReload veto binding for this HB; stop before drain'
++        data['drain_loaded_only'] = {}
++        drain(c, 'empty_reload_drain', evidence=data['drain_loaded_only'], persist=save)
++        empty = counts(c, 'empty_reload_before_empty_trigger')
++        data['empty_before_trigger'] = empty
++        save()
++        assert empty['weapon'] == initial['weapon']
++        assert empty['loaded'] == 0 and empty['reserve'] == empty['capacity'] == 78
++        assert not empty['infinite_reserve'], 'Empty boundary changed before its real trigger'
++        shot_start = len(c.records('native_lancer_shot_trajectory'))
++        c.live()
++        g.pad(1, wait=.35, trigger=1)
++        g.pad(1, wait=.6)
++        after_empty = counts(c, 'empty_reload_after_empty_trigger')
++        data['empty_after_trigger'] = after_empty
++        data['empty_trigger_shots'] = c.records('native_lancer_shot_trajectory')[shot_start:]
++        data['manual_veto_consumption'] = c.records('lancer_manual_auto_reload')
++        save()
++        assert all(empty[k] == after_empty[k] for k in
++                   ('weapon', 'loaded', 'used', 'reserve', 'capacity', 'infinite_reserve', 'active_reload_bonus_shots'))
++        assert not data['empty_trigger_shots'], 'Empty trigger produced a shot'
++        assert any(int(r.get('blocked', '0')) > 0 for r in data['manual_veto_consumption']), \
++            'No actual non-action CanReload veto consumption receipt'
++        data['checks']['empty_trigger_preserves_L0_R78_no_shot'] = True
++        target = root / 'ordinary_empty_replacement'
++        target.mkdir()
++        g.directory = target
++        try:
++            reload_run(c, require_empty_original_begin=True)
++        finally:
++            g.directory = root
++        replacement = json.loads((target / 'hammerburst-replacement.json').read_text())
++        data['replacement'] = replacement
++        save()
++        assert 'error' not in replacement
++        assert replacement['before']['loaded'] == 0 and replacement['before']['reserve'] == 78
++        assert replacement['after']['loaded'] == 78 and replacement['after']['reserve'] == 0
++        assert replacement['after_return_fire']['loaded'] == 72 and replacement['after_return_fire']['reserve'] == 0
++        assert len(replacement['shots']) == 6
++        data['checks']['ordinary_empty_reload_close_and_six_return_fire'] = True
++    except BaseException as error:
++        data['error'] = repr(error)
++        raise
++    finally:
++        g.directory = root
++        save()
+--- /dev/null
++++ b/analysis/hammerburst-20261108/check_empty_reload_driver.py
+@@ -0,0 +1,40 @@
++"""Execute the real narrow driver with fake external observations/actions only."""
++from pathlib import Path
++import json,sys,tempfile,types,hashlib,ast
++R=Path.cwd();A=R/'analysis/hammerburst-20261108';O=R/'analysis/solo-m1-20261028';sys.path.insert(0,str(O));import hammerburst_empty_reload_chain as m
++rows=[]
++for name in ['success','bad_initial','no_binding','wrong_binding','autofill_before_empty_trigger','autofill_on_empty_trigger','empty_trigger_shot','no_veto_receipt','partial_return_fire','reload_failure']:
++ with tempfile.TemporaryDirectory() as directory:
++  root=Path(directory);calls=[];shots=[];initial=dict(weapon='0x1234',loaded=72,used=6,reserve=78,capacity=78,infinite_reserve=False,active_reload_bonus_shots=0);empty=dict(initial,loaded=0,used=78);after=dict(empty)
++  if name=='bad_initial':initial['loaded']=71
++  if name=='autofill_before_empty_trigger':empty.update(loaded=78,used=0,reserve=0)
++  if name=='autofill_on_empty_trigger':after.update(loaded=78,used=0,reserve=0)
++  sequence=iter([initial,empty,after]);m.counts=lambda c,label:dict(next(sequence),label=label)
++  def pad(hand,**kwargs):
++   calls.append(('pad',hand,kwargs))
++   if kwargs.get('trigger') and name=='empty_trigger_shot':shots.append(dict(trace_valid='1'))
++  g=types.SimpleNamespace(directory=root,game=dict(pid=1,creation_time=2,image='fixture'),pad=pad)
++  def records(prefix):
++   if prefix=='lancer_manual_auto_reload_bound':return [] if name=='no_binding' else [dict(weapon='9999' if name=='wrong_binding' else '1234')]
++   if prefix=='lancer_manual_auto_reload':return [dict(blocked='0' if name=='no_veto_receipt' else '1')]
++   if prefix=='native_lancer_shot_trajectory':return shots.copy()
++   raise AssertionError(prefix)
++  c=types.SimpleNamespace(g=g,records=records,live=lambda:calls.append(('live',)))
++  def drain(c,label,*,evidence,persist):calls.append(('drain',));evidence.update(complete=True);persist()
++  def reload(c,*,require_empty_original_begin):
++   assert require_empty_original_begin is True;calls.append(('reload',))
++   if name=='reload_failure':raise AssertionError('preserved real-bone prerequisite failure')
++   value=dict(before=dict(loaded=0,reserve=78),after=dict(loaded=78,reserve=0),after_return_fire=dict(loaded=73 if name=='partial_return_fire' else 72,reserve=0),shots=[{} for _ in range(5 if name=='partial_return_fire' else 6)])
++   (g.directory/'hammerburst-replacement.json').write_text(json.dumps(value))
++  m.drain=drain;m.reload_run=reload;error=None
++  try:m.run(c)
++  except AssertionError as e:error=str(e)
++  result=json.loads((root/'hammerburst-empty-reload.json').read_text());assert g.directory==root;assert result['reserve_exhaustion_attempted'] is False
++  assert (error is None)==(name=='success'),(name,error)
++  reload_calls=sum(x[0]=='reload' for x in calls)
++  assert reload_calls==int(name in ['success','partial_return_fire','reload_failure'])
++  pad_calls=[x for x in calls if x[0]=='pad'];assert len(pad_calls)==(0 if name in ['bad_initial','no_binding','wrong_binding','autofill_before_empty_trigger'] else 2)
++  if pad_calls:assert pad_calls[0][2]==dict(wait=.35,trigger=1) and pad_calls[1][2]==dict(wait=.6)
++  rows.append(dict(case=name,expected_success=name=='success',actual_success=error is None,stops_without_retry=True,error=error))
++for path in [O/'run_hammerburst_check.py',O/'hammerburst_core_chain.py',O/'hammerburst_reload_chain.py',O/'hammerburst_empty_reload_chain.py']:ast.parse(path.read_text())
++report=dict(cases=rows,passed=True,game_started=False,actual_CanReload_or_bone_not_mock_proven=True,scope='Driver ordering/fail-fast/persistence only; actual reload original-begin serial and bone guards still require game',source_sha256=hashlib.sha256((O/'hammerburst_empty_reload_chain.py').read_bytes()).hexdigest());(A/'empty-reload-driver-check.json').write_text(json.dumps(report,indent=2));print('10 driver checks passed; no game, no physical or CanReload callback acceptance')
