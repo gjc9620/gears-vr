@@ -62,3 +62,9 @@ refine-latch-wrist.py对原1395手三角与2232卡扣三角双向检查非共面
 ## 同面接近与完整枪身复核仍未接受
 
 fit-latch-surface-approach.py保留现行机械contact，仅以两候选tip中点对准既有表面、夹持轴沿表面切线，收拢其余三指；骨长／权重不变。将完整9966枪三角与1395手三角双向检查，12个腕方向最少仍923 edge/triangle命中（30度，563+360）；完整三方向图已亲看，仍见手与接收机/部件相交。同面两点接近不等于对夹，也未证明掌面、法线接触或袖口。不能发布。下一步在现contact周围的真实外露表面和手的接近方向上联合约束，不靠单一表面法线强设腕方向，不改机械许可或扩大接触范围。结果latch-surface-approach.json/png/log。
+
+## 当前抓点邻域外露侧面与整手接近失败
+
+find-latch-accessible-contact.py改为每个原三角到当前contact的最近点（不是仅三角中心），在3.5raw有限邻域检查97个候选；29个候选沿各自几何外向射线10raw内没有命中完整9966枪三角。最近侧面triangle1576，点(-2.89071918,24.28474939,3.91394645)，法线(-1,0,0)，距当前contact .796410055raw。射线无阻挡不等于掌指空间可用，不改变机械contact/radius，也不把绕序法线当实测腕方向。
+
+在最近侧面外.1raw布置纯视觉夹持中心、保持原骨长权重并单独标明cosmetic_displacement，fit-latch-surface-approach.py --surface-candidate比较12个腕方向；最少仍894 edge/triangle命中（150度，471+423）。三方向图已亲看，手部仍相交且部分形态不自然，不发布C0、不算HB专用手型。结果latch-accessible-contact-candidates.json、latch-surface-approach-side.json/png/log。下一步需联合调整原逐指局部姿态和腕，并复核与实际骨骼消费的姿态一致性；不继续用单条清空射线替代整手检查。
