@@ -1156,3 +1156,15 @@ wrapper工具90227实际terminal0；operator7456 exit1、error字段null且实�
 实际严格MSVC编译0，以BelowNormal执行1088项检查0失败，保留此前760项。新增原TM旋转、三档scale、三类形状与保留C0的联合转换，独立四元数／向量FK核世界中心／朝向和旋转后的Z轴端点；0.1f×3以原float32位模式3e99999a验证平移先舍入，不把double乘积直接送到世界变换。完整证据analysis/cover-system-20261108/primitive-transform-r58保存原机器字节关系／常量、可重现只读提取器、两源副本、221编译依赖SHA及编译／运行日志。
 
 运行队列已由Snub174315直接完整受理同一Coverr54为其唯一后继，尚未最终交窗；本轮未stage、未运行游戏／XR，未构建新Native／PG。Coverr54 prepared6ec774ef／plan915215be及24冻结源／37当前驱动SHA+AST／3saved制品重新核对一致。后到同一Bol180947已独立全核Native1811+PG1847冻结源、24当前+24归档驱动、74support、122次AST、4saved制品／精确入口与EXE，并正式受理为Cover唯一后继；41未解析import和静态闭包边界明确保留，不授运行窗。首次本地核对错误使用游戏身份path键已记录，改按实际game_path／exe_sha256后全核通过。完整CV／AC、源关闭、连续身体扫掠／终点占用／Native移动恢复、同版hit／muzzle、逐点手型、严重吸附肩／身体／装备遮挡与实体头显均保持未完成。
+
+## 2026年11月9日 r59完整形状清单与同一C0姿态转换
+
+实际接线检查仍见body_c0_goal_policy_live在掩体分支只sample_current_cover_pose后拒绝写入，运动Backend仍UnavailableBackend。本批不删除这些准入检查。r57／58只转换单个形状，不能证明一个完整body清单未漏项；后续身体扫掠必须先具备同一姿态下完整、可核对的几何输入，不能把若干成功单项组合称作完整体积。
+
+新增cover_body_geometry.h，输入为调用者已经关闭并认证的逐body四类数组count，以及按body／kind／原array index排序的Authored记录。body数必须等于当前完整FName映射；逐数组count总和、kind、body index与原序号必须全部吻合，缺项、重复序号、交换、超容量与整份空清单均拒绝，无截断成功。声明含Convex时即使调用者遗漏它，也明确unsupported；不静默移除体积。该有界工作区可容纳256个primitive，超过容量保持拒绝，不声称已覆盖未知当前资产。
+
+抽出r57同一骨架准备步骤供单项与整份转换复用。整份清单只核一次完整模型／引用／FName映射并重建一次当前C0骨架，各形状仍复用r58原float32局部TM缩放与局部Z球柱解码。所有body及形状共用此姿态；第一个到最后一个形状全部成功后才整体替换公开owned输出。最后一项失败同样保持旧结果全部字节不变。新清单比旧结果小时清除尾部旧形状；大工作区由调用者放heap／TLS，不在原游戏栈建立整份临时Geometry。这里只输出几何描述，没有活动物理、占用或执行许可。
+
+首次严格MSVC编译因验证程序新局部before遮蔽旧同名变量而被/WX拒绝，保留失败记录及原验证源码；仅修正变量名后编译0。BelowNormal实际执行1889项检查0失败，保留此前1088项。整份案例采用保留Marcus115参考／C0、8个打乱选择的合成body名称及53个合成形状，以独立四元数／向量FK逐项核位置、朝向、球柱端点和原序号；这些数量不是新游戏观测。另验证最大256项、完整输出alias、漏项／重复／错序、最后一项名称／矩阵／尺寸错误、unsupported Convex、整数超容量以及256项缩至1项后的旧尾清除。证据analysis/cover-system-20261108/body-geometry-r59含三源副本、222编译依赖SHA、fixture与二进制SHA及真实编译／执行日志。
+
+当前清单仍需由实际同源关闭读取消费，未接Native Tick或原版碰撞查询，不以此关闭连续路径扫掠、终点占用、实际移动／恢复、同版hit／muzzle或严重吸附肩／身体遮挡。Coverr54 prepared6ec774ef／plan915215be及24冻结源／37当前驱动SHA+AST／3saved制品再次匹配，尚未收到Snub最终交窗；唯一已受理后继仍Bol180947，未最终交它。本轮无新Native／PG构建、部署、游戏／XR或头显通过。完整CV-01–24／AC-01–22及逐点手型／物理头显验收保持未完成。

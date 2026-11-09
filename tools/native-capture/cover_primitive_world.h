@@ -38,7 +38,7 @@ struct Primitive {
     Pose shape_world{};metrics::Metrics dimensions{};
     Vec segment_axis_world{},segment_start{},segment_end{};
 };
-enum class Code {converted,request,alias,mapping,model,scale,component,atom,shape,dimensions,unsupported,numeric};
+enum class Code {converted,request,alias,mapping,model,scale,component,atom,shape,dimensions,unsupported,numeric,inventory};
 // Large scratch stays on the caller's heap/TLS, never the live game stack.
 struct Workspace {
     std::array<bones::Input,bones::max_bodies> names{};
@@ -95,19 +95,15 @@ inline Code prepare_authored(Authored const& input,Input& output) noexcept {
     if(input.kind==metrics::Kind::sphyl)next.sphyl_axis={0,0,1};
     output=next;return Code::converted;
 }
-inline Code convert(body::Model const& model,body::Frame const& frame,bones::Mapping const& mapping,
-                    Input const& input,Workspace& work,Primitive& output) noexcept {
-    const body::d::Range ranges[]={body::d::range(&model,sizeof model),body::d::range(&frame,sizeof frame),
-        body::d::range(&mapping,sizeof mapping),body::d::range(&input,sizeof input),
-        body::d::range(&work,sizeof work),body::d::range(&output,sizeof output)};
-    if(!body::d::disjoint(ranges,6))return Code::alias;
-    if(!mapping.count||mapping.count>bones::max_bodies||mapping.root_body_index>=mapping.count||input.body_index>=mapping.count)return Code::request;
+namespace detail {
+// Internal shared preparation. Public single/batch entrypoints guard ALL
+// caller ranges first; batch conversion calls this once for the whole pose.
+inline Code prepare_skeleton(body::Model const& model,body::Frame const& frame,bones::Mapping const& mapping,Workspace& work) noexcept {
+    if(!mapping.count||mapping.count>bones::max_bodies||mapping.root_body_index>=mapping.count)return Code::request;
     for(unsigned i=0;i<mapping.count;++i)work.names[i]={mapping.rows[i].body_index,mapping.rows[i].name};
     const auto bound=bones::bind(model,frame,work.names.data(),mapping.count,mapping.root_body_index,work.checked);
     if(bound==bones::Status::model)return Code::model;
     if(bound!=bones::Status::okay||!detail::same_mapping(mapping,work.checked))return Code::mapping;
-    const auto& row=work.checked.rows[input.body_index];
-    if(!bones::same(row.name,input.bone))return Code::mapping;
     if(frame.model_scale!=1)return Code::scale;
     body::ik::Matrix component{};for(unsigned j=0;j<16;++j)component.m[j]=frame.component_to_world.values[j];
     if(!detail::rigid(component))return Code::component;
@@ -115,6 +111,21 @@ inline Code convert(body::Model const& model,body::Frame const& frame,bones::Map
     // This converter deliberately has unit-scale scope. It does not silently
     // strip animation/model scale or derive the original receiver scalar.
     for(auto const& atom:frame.local)if(atom.scale!=1)return Code::scale;
+    const Pose component_pose{body::d::position(component),body::d::rotation(component)};
+    // Normalized quaternion FK avoids numerical scale accumulating along the
+    // chain. Source translation bytes are used unchanged; no length fitting.
+    for(unsigned i=0;i<body::bones;++i){const auto& a=frame.local[i];Quat q{};
+        if(!body::d::normalized({a.q[0],a.q[1],a.q[2],a.q[3]},q))return Code::atom;
+        const Pose local{{a.translation[0],a.translation[1],a.translation[2]},q};
+        const Pose& parent=i?work.world[unsigned(model.parents[i])]:component_pose;
+        if(!detail::compose(parent,local,work.world[i]))return Code::numeric;
+    }
+    return Code::converted;
+}
+inline Code place(Input const& input,Workspace const& work,Primitive& output) noexcept {
+    if(input.body_index>=work.checked.count)return Code::request;
+    const auto& row=work.checked.rows[input.body_index];
+    if(!bones::same(row.name,input.bone))return Code::mapping;
     Quat local_rotation{};
     if(!body::d::finite_vector(input.shape_in_bone.position)||
        !body::d::normalized(input.shape_in_bone.orientation,local_rotation))return Code::shape;
@@ -128,15 +139,6 @@ inline Code convert(body::Model const& model,body::Frame const& frame,bones::Map
     if(measured==metrics::Code::unsupported)return Code::unsupported;
     if(measured==metrics::Code::numeric)return Code::numeric;
     if(measured!=metrics::Code::computed)return Code::dimensions;
-    const Pose component_pose{body::d::position(component),body::d::rotation(component)};
-    // Normalized quaternion FK avoids numerical scale accumulating along the
-    // chain. Source translation bytes are used unchanged; no length fitting.
-    for(unsigned i=0;i<body::bones;++i){const auto& a=frame.local[i];Quat q{};
-        if(!body::d::normalized({a.q[0],a.q[1],a.q[2],a.q[3]},q))return Code::atom;
-        const Pose local{{a.translation[0],a.translation[1],a.translation[2]},q};
-        const Pose& parent=i?work.world[unsigned(model.parents[i])]:component_pose;
-        if(!detail::compose(parent,local,work.world[i]))return Code::numeric;
-    }
     if(!detail::compose(work.world[row.bone_index],{input.shape_in_bone.position,local_rotation},next.shape_world))return Code::numeric;
     next.body_index=input.body_index;next.bone_index=row.bone_index;next.bone=row.name;
     if(sphyl){next.segment_axis_world=body::d::rotate(next.shape_world.orientation,axis);
@@ -146,6 +148,18 @@ inline Code convert(body::Model const& model,body::Frame const& frame,bones::Map
         if(!body::d::finite_vector(next.segment_start)||!body::d::finite_vector(next.segment_end))return Code::numeric;
     }
     output=next;return Code::converted;
+}
+} // namespace detail
+inline Code convert(body::Model const& model,body::Frame const& frame,bones::Mapping const& mapping,
+                    Input const& input,Workspace& work,Primitive& output) noexcept {
+    const body::d::Range ranges[]={body::d::range(&model,sizeof model),body::d::range(&frame,sizeof frame),
+        body::d::range(&mapping,sizeof mapping),body::d::range(&input,sizeof input),
+        body::d::range(&work,sizeof work),body::d::range(&output,sizeof output)};
+    if(!body::d::disjoint(ranges,6))return Code::alias;
+    if(input.body_index>=mapping.count)return Code::request;
+    const auto prepared=detail::prepare_skeleton(model,frame,mapping,work);
+    if(prepared!=Code::converted)return prepared;
+    return detail::place(input,work,output);
 }
 inline Code convert_authored(body::Model const& model,body::Frame const& frame,bones::Mapping const& mapping,
                              Authored const& input,Workspace& work,Primitive& output) noexcept {

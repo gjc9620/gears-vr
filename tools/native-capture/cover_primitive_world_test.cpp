@@ -3,12 +3,14 @@
 #include <windows.h>
 #include <bcrypt.h>
 #include "cover_primitive_world.h"
+#include "cover_body_geometry.h"
 #include <cstdio>
 #include <fstream>
 #include <memory>
 #include <string>
 namespace api=gears_cover_primitive_world;
 namespace b=api::body;namespace names=api::bones;namespace m=api::metrics;
+namespace group=gears_cover_body_geometry;
 using Vec=api::Vec;using Quat=api::Quat;using Pose=api::Pose;
 unsigned checks{},failures{};
 #define C(x) do{++checks;if(!(x)){++failures;std::printf("FAIL %d: %s\n",__LINE__,#x);}}while(0)
@@ -64,6 +66,26 @@ struct Fixture {
         return compose(world[mapping.rows[input.body_index].bone_index],input.shape_in_bone);
     }
     api::Code run(){return api::convert(model,frame,mapping,input,work,out);}
+};
+struct Group {
+    std::array<group::Inventory,8> inventory{};std::array<group::Shape,group::max_primitives> shapes{};
+    group::Workspace work{};group::Geometry out{};unsigned count{};
+    void fill(Fixture const& f,unsigned mode){inventory={};count=0;
+        for(unsigned bidx=0;bidx<8;++bidx){
+            inventory[bidx].count=mode==0?std::array<std::uint32_t,4>{2u+(bidx<5),2,2,0}:
+                mode==1?std::array<std::uint32_t,4>{11,11,10,0}:std::array<std::uint32_t,4>{bidx==0?1u:0u,0,0,0};
+            for(unsigned k=0;k<3;++k)for(unsigned n=0;n<inventory[bidx].count[k];++n){auto& s=shapes[count++];s={};
+                auto& a=s.authored;a.body_index=bidx;a.bone=f.mapping.rows[bidx].name;a.kind=static_cast<m::Kind>(k);s.array_index=n;
+                const float scale=1+float(k)*.25f;a.receiver_scale={scale,scale,scale};
+                a.raw_dimensions=k==0?std::array<float,3>{3,0,0}:k==1?std::array<float,3>{3,4,5}:std::array<float,3>{3,8,0};
+                const auto q=k==2?unit(Quat{0,1,0,1}):Quat{0,0,0,1};
+                const Vec axes[]={rotate(q,{1,0,0}),rotate(q,{0,1,0}),rotate(q,{0,0,1})};
+                for(unsigned j=0;j<3;++j){a.tm.values[4*j]=float(axes[j].x);a.tm.values[4*j+1]=float(axes[j].y);a.tm.values[4*j+2]=float(axes[j].z);}
+                a.tm.values[12]=float(1+n);a.tm.values[13]=float(bidx);a.tm.values[14]=3;a.tm.values[15]=1;
+            }
+        }
+    }
+    api::Code run(Fixture const& f){return group::convert(f.model,f.frame,f.mapping,inventory.data(),8,shapes.data(),count,work,out);}
 };
 int main(int argc,char** argv){if(argc!=2)return 2;const std::string path=argv[1];
     for(unsigned variant=0;variant<3;++variant){auto x=std::make_unique<Fixture>();C(x->init(path));if(failures)return 1;
@@ -190,6 +212,52 @@ int main(int argc,char** argv){if(argc!=2)return 2;const std::string path=argv[1
     const auto old_world=x->out;
     C(api::convert_authored(x->model,x->frame,x->mapping,*reinterpret_cast<api::Authored const*>(&x->out),x->work,x->out)==api::Code::alias);
     C(!std::memcmp(&old_world,&x->out,sizeof old_world));
+    // Whole-pose conversion must cover the exact supplied inventory, including
+    // empty body groups, and commit nothing if even the last shape is invalid.
+    auto f=std::make_unique<Fixture>();C(f->init(path));f->set_component({{30,-40,50},unit({.2,-.1,.3,.9})});
+    auto all=std::make_unique<Group>();all->fill(*f,0);C(all->count==53);C(all->run(*f)==api::Code::converted);
+    C(all->out.count==53&&all->out.body_count==8);
+    for(unsigned i=0;i<all->count;++i){const auto& a=all->shapes[i].authored;const auto& p=all->out.rows[i].primitive;
+        f->input.body_index=a.body_index;f->input.shape_in_bone={{a.tm.values[12]*a.receiver_scale[0],a.tm.values[13]*a.receiver_scale[1],a.tm.values[14]*a.receiver_scale[2]},
+            a.kind==m::Kind::sphyl?unit(Quat{0,1,0,1}):Quat{0,0,0,1}};
+        const auto expected=f->expected();C(close(p.shape_world.position,expected.position));C(same_q(p.shape_world.orientation,expected.orientation));
+        C(p.body_index==a.body_index&&p.bone_index==f->mapping.rows[a.body_index].bone_index&&names::same(p.bone,a.bone));
+        C(all->out.rows[i].array_index==all->shapes[i].array_index);
+        if(a.kind==m::Kind::sphyl){const auto axis=rotate(expected.orientation,{0,0,1});const double h=4*a.receiver_scale[0];
+            C(close(p.segment_start,add(expected.position,mul(axis,-h))));C(close(p.segment_end,add(expected.position,mul(axis,h))));}
+    }
+    for(unsigned defect=0;defect<16;++defect){all->fill(*f,0);const auto group_before=all->out;const auto old_frame=f->frame;
+        auto expected=api::Code::inventory;
+        switch(defect){
+        case 0:all->inventory[0].count[0]--;break;
+        case 1:all->inventory[0].count[0]++;break;
+        case 2:all->count--;break;
+        case 3:all->count=257;expected=api::Code::request;break;
+        case 4:all->shapes[1].array_index=0;break;
+        case 5:std::swap(all->shapes[0],all->shapes[52]);break;
+        case 6:all->shapes[52].authored.bone.number++;expected=api::Code::mapping;break;
+        case 7:all->shapes[52].authored.tm.values[0]=2;expected=api::Code::shape;break;
+        case 8:all->shapes[52].authored.raw_dimensions[0]=0;expected=api::Code::dimensions;break;
+        case 9:all->shapes[52].authored.receiver_scale[1]=2;expected=api::Code::unsupported;break;
+        case 10:all->inventory[7].count[3]=1;expected=api::Code::unsupported;break;
+        case 11:all->shapes[52].authored.kind=static_cast<m::Kind>(99);break;
+        case 12:all->count=0;expected=api::Code::request;break;
+        case 13:f->frame.model_scale=2;expected=api::Code::scale;break;
+        case 14:all->inventory[0].count[0]=UINT32_MAX;break;
+        default:f->frame.reference[55].bytes[12]^=1;expected=api::Code::model;break;
+        }
+        C(all->run(*f)==expected);C(!std::memcmp(&group_before,&all->out,sizeof group_before));f->frame=old_frame;
+    }
+    all->fill(*f,1);C(all->count==group::max_primitives);C(all->run(*f)==api::Code::converted);C(all->out.count==256);
+    const auto full=all->out;
+    C(group::convert(f->model,f->frame,f->mapping,all->inventory.data(),8,all->shapes.data(),all->count,all->work,all->work.candidate)==api::Code::alias);
+    C(group::convert(f->model,f->frame,f->mapping,reinterpret_cast<group::Inventory const*>(&all->out),8,all->shapes.data(),all->count,all->work,all->out)==api::Code::alias);
+    C(!std::memcmp(&full,&all->out,sizeof full));
+    C(group::convert(f->model,f->frame,f->mapping,all->inventory.data(),7,all->shapes.data(),all->count,all->work,all->out)==api::Code::request);
+    C(!std::memcmp(&full,&all->out,sizeof full));
+    all->fill(*f,2);C(all->count==1);C(all->run(*f)==api::Code::converted);C(all->out.count==1&&all->out.body_count==8);
+    for(unsigned i=1;i<group::max_primitives;++i){C(all->out.rows[i].primitive.dimensions.radius==0);
+        C(close(all->out.rows[i].primitive.shape_world.position,{},1e-12));}
     std::printf("CoverPrimitiveWorldTest checks=%u failures=%u retained_C0=true synthetic_shapes=true active_physics_verified=false sweep_verified=false\n",checks,failures);
     return failures?1:0;
 }
