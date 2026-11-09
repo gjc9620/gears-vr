@@ -10,12 +10,13 @@
 // Exact Image pin/current C0 and typed full-identity/metadata guard required.
 // This qualifies only the supplied DECLARED component/body fields. Owners,
 // foreign rows and duplicates are retained, never interpreted as a self filter.
-// Extra skeletal PAA bodies, attachments, lifetime, ABA/world fencing and
-// complete shape coverage remain separate. No result is movement permission.
+// Optional skeletal PAA rows are qualified on this same Scene as well.
+// Attachments, lifetime, ABA/world fencing and complete shape coverage remain
+// separate. No result is movement permission or a complete self filter.
 namespace gears_cover_physx_components {
 namespace source=gears_cover_physx_query_source;
 namespace raw=source::pose;
-constexpr unsigned root_capacity=2,list_capacity=64,capacity=128;
+constexpr unsigned root_capacity=2,list_capacity=64,capacity=128,asset_body_capacity=256,actor_capacity=capacity+asset_body_capacity;
 enum class State:unsigned {not_sampled,nonprimitive,body_instance_field_null,body_data_field_null,body_data_nonnull};
 struct Root {
     std::uintptr_t actor{};std::array<unsigned,2> offsets{};
@@ -28,9 +29,18 @@ struct Component {
     bool primitive{},skeletal{};State state{};std::int32_t body_index{};
     std::uintptr_t body_data{},bone_spring{};
 };
+struct AssetScope {
+    bool sampled{};std::uintptr_t asset{},instance{},owner{};
+    std::array<unsigned,3> offsets{};raw::ArrayHeader array{};std::int32_t root{};unsigned first_body{};
+};
+struct AssetBody {
+    std::uintptr_t body{},owner{},owner_actor{};unsigned owner_roots{};std::int32_t index{};
+    std::uintptr_t data{},spring{};
+};
 struct Source {
-    unsigned root_count{},component_count{};bool pawn_mesh_listed{};
+    unsigned root_count{},component_count{},asset_body_count{};bool pawn_mesh_listed{};
     std::array<Root,root_capacity> roots{};std::array<Component,capacity> components{};
+    std::array<AssetScope,capacity> assets{};std::array<AssetBody,asset_body_capacity> asset_bodies{};
 };
 inline bool same(Root const& a,Root const& b)noexcept{
     if(a.actor!=b.actor||a.offsets!=b.offsets||a.members!=b.members)return false;
@@ -40,21 +50,29 @@ inline bool same(Component const& a,Component const& b)noexcept{return a.compone
     a.body_owner==b.body_owner&&a.body_owner_actor==b.body_owner_actor&&a.owner_roots==b.owner_roots&&a.body_owner_roots==b.body_owner_roots&&
     a.body_instance_offset==b.body_instance_offset&&a.primitive==b.primitive&&a.skeletal==b.skeletal&&a.state==b.state&&
     a.body_index==b.body_index&&a.body_data==b.body_data&&a.bone_spring==b.bone_spring;}
+inline bool same(AssetScope const& a,AssetScope const& b)noexcept{return a.sampled==b.sampled&&a.asset==b.asset&&a.instance==b.instance&&
+    a.owner==b.owner&&a.offsets==b.offsets&&raw::header_equal(a.array,b.array)&&a.root==b.root&&a.first_body==b.first_body;}
+inline bool same(AssetBody const& a,AssetBody const& b)noexcept{return a.body==b.body&&a.owner==b.owner&&a.owner_actor==b.owner_actor&&
+    a.owner_roots==b.owner_roots&&a.index==b.index&&a.data==b.data&&a.spring==b.spring;}
 inline bool same(Source const& a,Source const& b)noexcept{
-    if(a.root_count!=b.root_count||a.component_count!=b.component_count||a.pawn_mesh_listed!=b.pawn_mesh_listed)return false;
+    if(a.root_count!=b.root_count||a.component_count!=b.component_count||a.asset_body_count!=b.asset_body_count||a.pawn_mesh_listed!=b.pawn_mesh_listed)return false;
     for(unsigned n=0;n<root_capacity;++n)if(!same(a.roots[n],b.roots[n]))return false;
-    for(unsigned n=0;n<capacity;++n)if(!same(a.components[n],b.components[n]))return false;return true;
+    for(unsigned n=0;n<capacity;++n)if(!same(a.components[n],b.components[n])||!same(a.assets[n],b.assets[n]))return false;
+    for(unsigned n=0;n<asset_body_capacity;++n)if(!same(a.asset_bodies[n],b.asset_bodies[n]))return false;return true;
 }
-enum class Presence:unsigned {not_sampled,nonprimitive,body_instance_field_null,body_data_field_null,actor_observed};
+enum class Presence:unsigned {not_sampled,nonprimitive,body_instance_field_null,body_data_field_null,actor_observed,body_field_null};
 struct Actor {Presence presence{};std::uintptr_t table{},scene{},internal{};};
 struct Snapshot {
     source::Snapshot query_source{};Source fields{};
     std::array<Actor,capacity> observations{};unsigned actor_count{};
-    std::array<std::uintptr_t,capacity> actors{};
+    std::array<Actor,asset_body_capacity> asset_observations{};
+    std::array<std::uintptr_t,actor_capacity> actors{};
 };
 inline bool same(Snapshot const& a,Snapshot const& b)noexcept{
     if(!source::same(a.query_source,b.query_source)||!same(a.fields,b.fields)||a.actor_count!=b.actor_count||a.actors!=b.actors)return false;
     for(unsigned n=0;n<capacity;++n){auto const& x=a.observations[n];auto const& y=b.observations[n];
+        if(x.presence!=y.presence||x.table!=y.table||x.scene!=y.scene||x.internal!=y.internal)return false;}
+    for(unsigned n=0;n<asset_body_capacity;++n){auto const& x=a.asset_observations[n];auto const& y=b.asset_observations[n];
         if(x.presence!=y.presence||x.table!=y.table||x.scene!=y.scene||x.internal!=y.internal)return false;}return true;
 }
 struct Workspace {Source key{};Snapshot first{},last{};std::atomic<bool> active{};};
@@ -66,7 +84,7 @@ inline bool mesh_listed(Source const& fields,std::uintptr_t mesh)noexcept{
     for(unsigned l=0;l<2;++l)for(unsigned n=0;n<list_capacity;++n)if(fields.roots[0].members[l][n]==mesh)return true;return false;
 }
 inline bool valid(Source const& fields)noexcept{
-    if(!fields.root_count||fields.root_count>root_capacity||fields.component_count>capacity)return false;
+    if(!fields.root_count||fields.root_count>root_capacity||fields.component_count>capacity||fields.asset_body_count>asset_body_capacity)return false;
     unsigned unique{};
     for(unsigned r=0;r<root_capacity;++r){auto const& root=fields.roots[r];
         if(r>=fields.root_count){if(!same(root,Root{}))return false;continue;}
@@ -97,25 +115,66 @@ inline bool valid(Source const& fields)noexcept{
            (row.bone_spring&&!source::pointer(row.bone_spring,8)))return false;
         if(row.state==State::body_data_field_null){if(row.body_data)return false;}
         else if(!source::pointer(row.body_data,0x48))return false;
+    }
+    unsigned body_count{};
+    for(unsigned n=0;n<capacity;++n){auto const& asset=fields.assets[n];
+        if(n>=unique||!fields.components[n].skeletal){if(!same(asset,AssetScope{}))return false;continue;}
+        if(!asset.sampled||(asset.asset&&!source::pointer(asset.asset,88)))return false;
+        if(!asset.instance){auto absent=asset;absent.asset=0;absent.sampled=false;if(!same(absent,AssetScope{}))return false;continue;}
+        if(!source::pointer(asset.instance,88)||(asset.owner&&!source::pointer(asset.owner,88))||asset.first_body!=body_count)return false;
+        for(unsigned a=0;a<3;++a){const auto off=asset.offsets[a];const unsigned width=a==1?16u:a==2?4u:8u;
+            if(off<0x60||off>65536-width||(a==1&&off!=0x6c))return false;
+            for(unsigned b=0;b<a;++b){const auto other=asset.offsets[b];const unsigned ow=b==1?16u:b==2?4u:8u;
+                if(off<=other?other-off<width:off-other<ow)return false;}}
+        auto const& h=asset.array;
+        if(h.count<0||h.count>int(list_capacity)||h.capacity<h.count||h.capacity>256||
+           (!h.data?(h.count||h.capacity):!source::pointer(h.data,std::size_t(h.capacity?h.capacity:1)*8))||
+           asset.root < -1||(asset.root>=0&&asset.root>=h.count)||unsigned(h.count)>asset_body_capacity-body_count)return false;
+        body_count+=unsigned(h.count);
+    }
+    if(body_count!=fields.asset_body_count)return false;
+    for(unsigned n=0;n<asset_body_capacity;++n){auto const& body=fields.asset_bodies[n];
+        if(n>=body_count||!body.body){if(!same(body,AssetBody{}))return false;continue;}
+        if(!source::pointer(body.body,0x98)||!source::pointer(body.owner,88)||!source::pointer(body.owner_actor,88)||
+           body.owner_roots!=owner_mask(fields,body.owner_actor)||(body.data&&!source::pointer(body.data,0x48))||
+           (body.spring&&!source::pointer(body.spring,8)))return false;
     }return true;
 }
 inline bool consistent(Snapshot const& packet)noexcept{
-    if(!valid(packet.fields)||packet.actor_count>capacity||packet.fields.pawn_mesh_listed!=mesh_listed(packet.fields,packet.query_source.source.mesh))return false;
-    unsigned count{};std::array<std::uintptr_t,capacity> actors{};
+    if(!valid(packet.fields)||packet.actor_count>actor_capacity||packet.fields.pawn_mesh_listed!=mesh_listed(packet.fields,packet.query_source.source.mesh))return false;
+    unsigned count{};std::array<std::uintptr_t,actor_capacity> actors{};
+    auto accept=[&](Actor const& value,Presence expected,std::uintptr_t at){
+        if(value.presence!=expected)return false;
+        if(expected!=Presence::actor_observed)return !value.table&&!value.scene&&!value.internal;
+        if(value.table!=packet.query_source.actor_table||value.scene!=packet.query_source.scene||!source::pointer(value.internal,0x18))return false;
+        bool duplicate=false;for(unsigned k=0;k<count;++k)duplicate=duplicate||actors[k]==at;
+        if(!duplicate)actors[count++]=at;return true;};
     for(unsigned n=0;n<capacity;++n){auto const& row=packet.fields.components[n];auto const& value=packet.observations[n];
         const auto expected=n>=packet.fields.component_count?Presence::not_sampled:row.state==State::nonprimitive?Presence::nonprimitive:
             row.state==State::body_instance_field_null?Presence::body_instance_field_null:row.state==State::body_data_field_null?Presence::body_data_field_null:Presence::actor_observed;
-        if(value.presence!=expected)return false;
-        if(expected!=Presence::actor_observed){if(value.table||value.scene||value.internal)return false;continue;}
-        if(value.table!=packet.query_source.actor_table||value.scene!=packet.query_source.scene||!source::pointer(value.internal,0x18))return false;
-        bool duplicate=false;for(unsigned k=0;k<count;++k)duplicate=duplicate||actors[k]==row.body_data;
-        if(!duplicate)actors[count++]=row.body_data;
+        if(!accept(value,expected,row.body_data))return false;
+    }
+    for(unsigned n=0;n<asset_body_capacity;++n){auto const& body=packet.fields.asset_bodies[n];
+        const auto expected=n>=packet.fields.asset_body_count?Presence::not_sampled:!body.body?Presence::body_field_null:
+            !body.data?Presence::body_data_field_null:Presence::actor_observed;
+        if(!accept(packet.asset_observations[n],expected,body.data))return false;
     }return count==packet.actor_count&&actors==packet.actors;
 }
 namespace detail {
+template<class Read> Code actor(std::uintptr_t image_base,source::Snapshot const& scope,std::uintptr_t data,Read& read,Actor& value,Snapshot& output){
+    if(!data){value.presence=Presence::body_data_field_null;return Code::observed;}
+    if(!raw::field(read,value.table,data,0)||!raw::field(read,value.scene,data,0x38)||!raw::field(read,value.internal,data,0x40))return Code::read;
+    if(value.table!=image_base+0x2330a8)return Code::unsupported;
+    if(value.scene!=scope.scene||!source::pointer(value.internal,0x18))return Code::links;
+    std::uintptr_t reverse{};if(!raw::field(read,reverse,value.internal,0x10))return Code::read;
+    if(reverse!=data)return Code::links;value.presence=Presence::actor_observed;
+    bool duplicate=false;for(unsigned k=0;k<output.actor_count;++k)duplicate=duplicate||output.actors[k]==data;
+    if(!duplicate)output.actors[output.actor_count++]=data;return Code::observed;
+}
 template<class Read> Code sample(std::uintptr_t image_base,source::Snapshot const& scope,Source const& fields,Read& read,Snapshot& output){
     output.query_source=scope;output.fields=fields;output.actor_count=0;output.actors.fill(0);
     for(auto& value:output.observations)value={};
+    for(auto& value:output.asset_observations)value={};
     for(unsigned r=0;r<fields.root_count;++r)for(unsigned l=0;l<2;++l){auto const& root=fields.roots[r];raw::ArrayHeader header{};
         if(!raw::field(read,header,root.actor,root.offsets[l]))return Code::read;
         if(!raw::header_equal(header,root.lists[l]))return Code::changed;
@@ -130,14 +189,26 @@ template<class Read> Code sample(std::uintptr_t image_base,source::Snapshot cons
         if(!body){value.presence=Presence::body_instance_field_null;continue;}
         if(!raw::field(read,data,body,0x88)||!raw::field(read,spring,body,0x90))return Code::read;
         if(data!=row.body_data||spring!=row.bone_spring)return Code::changed;
-        if(!data){value.presence=Presence::body_data_field_null;continue;}
-        if(!raw::field(read,value.table,data,0)||!raw::field(read,value.scene,data,0x38)||!raw::field(read,value.internal,data,0x40))return Code::read;
-        if(value.table!=image_base+0x2330a8)return Code::unsupported;
-        if(value.scene!=scope.scene||!source::pointer(value.internal,0x18))return Code::links;
-        std::uintptr_t reverse{};if(!raw::field(read,reverse,value.internal,0x10))return Code::read;
-        if(reverse!=data)return Code::links;value.presence=Presence::actor_observed;
-        bool duplicate=false;for(unsigned k=0;k<output.actor_count;++k)duplicate=duplicate||output.actors[k]==data;
-        if(!duplicate)output.actors[output.actor_count++]=data;
+        const auto code=actor(image_base,scope,data,read,value,output);if(code!=Code::observed)return code;
+    }
+    for(unsigned n=0;n<fields.component_count;++n){auto const& component=fields.components[n];if(!component.skeletal)continue;
+        auto const& asset=fields.assets[n];std::uintptr_t asset_at{},instance_at{},owner{};raw::ArrayHeader header{};std::int32_t root{};
+        if(!raw::field(read,asset_at,component.component,0x248)||!raw::field(read,instance_at,component.component,0x250))return Code::read;
+        if(asset_at!=asset.asset||instance_at!=asset.instance)return Code::changed;
+        if(!instance_at)continue;
+        if(!raw::field(read,owner,instance_at,asset.offsets[0])||!raw::field(read,header,instance_at,asset.offsets[1])||
+           !raw::field(read,root,instance_at,asset.offsets[2]))return Code::read;
+        if(owner!=asset.owner||!raw::header_equal(header,asset.array)||root!=asset.root)return Code::changed;
+        std::array<std::uintptr_t,list_capacity> members{};
+        if(header.count&&!raw::bytes(read,members.data(),header.data,std::size_t(header.count)*8))return Code::read;
+        for(unsigned k=0;k<unsigned(header.count);++k){const auto index=asset.first_body+k;auto const& body=fields.asset_bodies[index];
+            if(members[k]!=body.body)return Code::changed;auto& value=output.asset_observations[index];
+            if(!body.body){value.presence=Presence::body_field_null;continue;}
+            std::uintptr_t data{},spring{};
+            if(!raw::field(read,data,body.body,0x88)||!raw::field(read,spring,body.body,0x90))return Code::read;
+            if(data!=body.data||spring!=body.spring)return Code::changed;
+            const auto code=actor(image_base,scope,data,read,value,output);if(code!=Code::observed)return code;
+        }
     }return Code::observed;
 }
 }

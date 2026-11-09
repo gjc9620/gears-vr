@@ -1620,3 +1620,23 @@ Session在既有busy／stop／worker-close范围内预读r86完整类型化目�
 证据analysis/cover-system-20261108/component-query-r87/verification.json及v1源、单元／OFF／Native实际依赖回执。本轮无stage／游戏／XR／录像／新增玩家动作验收，未取得或使用新的运行授权，不称verified wait。当前仅关闭声明组件的独立BodyInstance；Actor.Attached、骨骼Attachments、其他SkeletalMeshComponent的额外PAA Bodies及其他原生来源仍未覆盖。重复读不是actor生命周期／ABA排除或共同物理world fence；每个actor同Scene不证明完整世界／形状覆盖或同一物理时相。没有把actor副表当完整self集合，也没有把空流签成占用安全。
 
 下一步继续额外骨身体与附件来源、完整查询／同步和真正自身过滤，再接组合身体体积路径、终点占用及实际移动恢复。严重肩身遮挡、同版physics-hit-muzzle、真实三方向LGrip／逐点GrabPose、CV01–24／AC01–22与实体头显仍未完成。工程25%不变，目标active，本轮progress。
+
+## 2026年11月10日 r88其他骨骼组件PAA来源与同查询Scene认证
+
+上一目标轮核对需求并保存阅读导航，属于文档进展；导航单独提交3cd36260。本轮继续r87尚未覆盖的其他SkeletalMeshComponent.PhysicsAssetInstance.Bodies。扩展现有cover_component_roles_live目录，不新增查询、输入、Hook、身体或相机写入端；当前Pawn及已知当前Weapon的声明组件仍是本轮来源范围，数组成员或Owner本身均不授予self身份。
+
+每个实际骨骼组件分别认证命名PhysicsAsset／PhysicsAssetInstance字段及其声明目标、实际实例类型；两字段独立可空。实例存在时认证Owner、Bodies、RootBodyIndex及ObjectProperty inner，记录实际完整Owner身份、字段偏移、数组头、原始行次和根索引。共享实例不强制Owner等于当前组件；可选／禁用组件允许空数组和-1根索引，原主Pawn严格非空／有效根／根BodyData检查不变。各身体保留完整RB_BodyInstance身份、实际OwnerComponent及其Owner Actor、原有符号BodyIndex、BodyData和不透明BoneSpring；不假设BodyIndex等于数组行号。空身体行与重复／共享身体均保留，未采样、非骨骼、实例字段空和实例存在分别表达。
+
+单数组最多64行，组件最多128，额外身体池最多256；容量不足或布局／来源不一致整笔拒绝，不能截断成功。候选、双读目录和反射Proof均为原Workspace／Session成员，没有新增大目录栈临时或扩大线程栈。所有实际字段与注册身份两次读取，反射兄弟成员、声明引用及来源关闭后才发布；每次空目录均清除旧池行。
+
+紧凑来源同时携带各组件PAA及其完整身体行，cover_physx_components在现有原查询Scene范围内重新读取组件资产字段、实例Owner／数组／根、每个成员及BodyData88／BoneSpring90，再核非空BodyData的原NpActor主表2330A8、同Scene、内部actor和反向公开actor关系。独立BodyInstance和额外PAA的全部来源行分别保留，actor副表仅按首次出现去重，最大384；外部Owner也不静默丢弃。沿用r87同一QueryEngine前后来源核对、原Image pin、一次原stream及最终Session目录关闭；PAA来源／成员在方法中或最终发布前改变均整包拒绝。没有把副表解释为完整self集合，也未过滤任何raw命中。
+
+最终v2冻结r87 Native源，仅2个产品overlay，共1094文件。实际编译链接0，Native SHA256为956fb5f292b22d0c31d2dd0806f22a312b457bfb75f9f3bad388bb8bb532c09d；677实际依赖／397冻结项目依赖逐SHA，原GEARS flags逐项保持，无冻结树外工作树源码依赖。原37条警告保留，两个改动模块0新增；不称全Native /WX。cover_queries运行默认0及Goal no_cover写入拒绝保持，未重建或替换PG／XR、公开v71、手动入口及r80原五身份／Native8035。
+
+最终14个程序均以/std:c++17 /O2 /W4 /WX /EHsc /UNDEBUG /MT编译执行0：Owned109／0、Stream40／0、Session84／0、Raw130／0、Owner202／0、C0 OFF20／0、Roles257／0、Asset86／0、Collider PhysX88／0、Collider Roles219／0、Component Roles207／0、Components PhysX100／0、新Component Assets178／0、新Component Assets PhysX151／0；实际项目依赖并集67项，全部来自冻结树。另3个同源关闭程序各1／0，无读取、guard或原调用。第一阶段仅字段读取的13程序绿色回执保留；最终版增加同Scene来源及实际事务回归，不复用旧结果冒充最终验证。
+
+新检查覆盖共享实例／身体和不同实际Owner、独立可空资产与实例、空数组及预留容量、空身体槽／空BodyData、可选-1根、原样负BodyIndex、全部256行及溢出拒绝、错误布局／声明目标／Owner／表／Scene／反链、每次读取和guard失败、数组及来源两次读取间改变、最后guard修改输入，以及查询中和原方法后目录变化的整包拒绝。Owned实际QueryEngine收到raw命中以外的额外PAA actor，仍只执行一次Host原调用并保持原命中顺序；Session实际SourceGuard关闭新增字段。对象／物理关系均为合成fixture，原DLL仅作PE数据，加载和dispatch为明确Host seam，没有执行原DLL或游戏方法。
+
+Native首次构建启动在编译前被来源哈希检查拒绝：派生脚本误将v2清单配到v1源码目录。两份冻结源均逐SHA未变，没有启动编译或运行；保留rejected脚本和native-input-rejection.json，仅更正构建路径后v2成功，未放宽哈希保护。证据为analysis/cover-system-20261108/component-assets-r88/verification.json及对应冻结源码、单元／OFF／Native依赖回执。
+
+本轮无stage／游戏／XR／录像／新增玩家动作通过，未收到或消费新的正式运行窗口，不称verified wait。Actor.Attached、骨骼Attachments及其他原生物理来源仍待闭合；重复读与各actor同Scene不证明生命周期／ABA排除、完整形状世界覆盖或共同物理时相。下一步继续附件来源与完整自身集合／查询同步，再接组合身体体积路径、终点占用及实际移动恢复。严重肩身遮挡、同版physics-hit-muzzle、真实三方向LGrip／逐点GrabPose、CV01–24／AC01–22与实体头显仍未完成。A20/B30/C20/D15/E15各档.25，工程25%不变，目标active，本轮progress。

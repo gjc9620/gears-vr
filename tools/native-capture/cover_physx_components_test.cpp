@@ -25,7 +25,10 @@ struct PartsGuard {
     bool operator()(){return !count||++*count!=fail_at;}
     bool operator()(p::Snapshot const& value){return (*this)()&&p::same(fields,value.fields)&&p::consistent(value);}
 };
-int main(){
+#ifndef GEARS_COMPONENTS_PHYSX_TEST_MAIN
+#define GEARS_COMPONENTS_PHYSX_TEST_MAIN main
+#endif
+int GEARS_COMPONENTS_PHYSX_TEST_MAIN(){
     auto fields=std::make_unique<p::Source>();auto memory=parts_fixture(*fields);
     auto read=[&](void* dst,void const* at,std::size_t bytes){return memory.read(dst,at,bytes);};s::Snapshot scope{};
     check(s::capture(base,size,source(),read,[]{return true;},scope)==s::Code::current,"query source");

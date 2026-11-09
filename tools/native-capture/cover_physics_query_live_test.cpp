@@ -5,7 +5,7 @@
 #include <memory>
 #include <thread>
 namespace service=cover_physics_query_live;namespace q=gears_cover_physx_query;
-static unsigned prime_calls{},close_calls{},query_calls{};static bool prime_ok=true,fault_query{},wrong_receiver{},query_lock_free=true,stream_truncated{},wrong_asset{},late_component_change{};
+static unsigned prime_calls{},close_calls{},query_calls{};static bool prime_ok=true,fault_query{},wrong_receiver{},query_lock_free=true,stream_truncated{},wrong_asset{},late_component_change{},late_asset_change{};
 static void(*during_query)(){};
 static bool source_read(void* dst,void const* address,size_t n){
     constexpr uintptr_t physx=0x180000000;
@@ -63,6 +63,7 @@ struct HostEngine {
             out.collider_source=component;
             out.asset_bodies=inventory;out.owners[0].actor=source.mesh;out.owners[1].actor=source.instance;
             if(late_component_change)put(audio+0x170,fixture_pawn);
+            if(late_asset_change)put(weapon_mesh+0x250,physics_instance);
         }
         return code;
     }
@@ -76,7 +77,8 @@ static void replace_root(){put(physics_instance+0x7c,0);}
 static void replace_collider_body(){put(cylinder+0x1a0,uintptr_t{});}
 static void replace_component_member(){put(arena+0xd0000,uintptr_t{});}
 static void replace_component_owner(){put(audio+0x170,fixture_pawn);}
-static void reset(){physics_setup();prime_calls=close_calls=query_calls=0;prime_ok=true;fault_query=wrong_receiver=stream_truncated=wrong_asset=late_component_change=false;during_query=nullptr;query_lock_free=true;}
+static void replace_component_asset(){put(weapon_mesh+0x250,physics_instance);}
+static void reset(){physics_setup();prime_calls=close_calls=query_calls=0;prime_ok=true;fault_query=wrong_receiver=stream_truncated=wrong_asset=late_component_change=late_asset_change=false;during_query=nullptr;query_lock_free=true;}
 int main(){
     arena=reinterpret_cast<uintptr_t>(VirtualAlloc(nullptr,saved_arena.size(),MEM_COMMIT|MEM_RESERVE,PAGE_READWRITE));if(!arena)return 99;
     reset();q::Overlap overlap_result{};q::Sweep swept{};q::Vector delta{.1f,.2f,.3f};
@@ -132,7 +134,9 @@ int main(){
         C(owner->sweep_all(actor,physics_expected,test_box,delta,q::StreamLimits{},source_read,guard,*all)==q::Code::queried&&all->raw.hit_count==2&&all->owners[0].actor!=all->owners[1].actor);
         C(all->asset_bodies.body_count==2&&all->asset_bodies.actor_count==2&&all->asset_bodies.actors[0]==arena+0x88000);
         C(all->collider_source.presence==gears_cover_physx_collider::Presence::actor_observed&&all->collider_source.fields.body_data==arena+0xb0000);
-        C(all->component_sources.fields.component_count==4&&all->component_sources.actor_count==1&&all->component_sources.fields.components[2].owner_roots==0);
+        C(all->component_sources.fields.component_count==4&&all->component_sources.actor_count==3&&all->component_sources.fields.components[2].owner_roots==0);
+        C(all->component_sources.fields.asset_body_count==2&&all->component_sources.asset_observations[0].presence==gears_cover_physx_components::Presence::actor_observed&&
+            all->component_sources.fields.assets[3].sampled&&!all->component_sources.fields.assets[3].instance);
         q::Capsule cap{{0,0,0},{0,0,1},.5f};C(owner->sweep_all(actor,physics_expected,cap,delta,q::StreamLimits{},source_read,guard,*all)==q::Code::queried);
         put(cylinder+0x1a0,uintptr_t{});
         C(owner->sweep_all(actor,physics_expected,test_box,delta,q::StreamLimits{},source_read,guard,*all)==q::Code::queried&&
@@ -153,7 +157,11 @@ int main(){
         C(owner->sweep_all(actor,physics_expected,test_box,delta,q::StreamLimits{},source_read,guard,*all)==q::Code::changed&&all->raw.raw_count==99);
         put(audio+0x170,fixture_pc);during_query=nullptr;late_component_change=true;
         C(owner->sweep_all(actor,physics_expected,test_box,delta,q::StreamLimits{},source_read,guard,*all)==q::Code::changed&&all->raw.raw_count==99);
-        put(audio+0x170,fixture_pc);late_component_change=false;during_query=replace_root;
+        put(audio+0x170,fixture_pc);late_component_change=false;during_query=replace_component_asset;
+        C(owner->sweep_all(actor,physics_expected,test_box,delta,q::StreamLimits{},source_read,guard,*all)==q::Code::changed&&all->raw.raw_count==99);
+        put(weapon_mesh+0x250,uintptr_t{});during_query=nullptr;late_asset_change=true;
+        C(owner->sweep_all(actor,physics_expected,test_box,delta,q::StreamLimits{},source_read,guard,*all)==q::Code::changed&&all->raw.raw_count==99);
+        put(weapon_mesh+0x250,uintptr_t{});late_asset_change=false;during_query=replace_root;
         C(owner->sweep_all(actor,physics_expected,test_box,delta,q::StreamLimits{},source_read,guard,*all)==q::Code::changed&&all->raw.raw_count==99&&all->owners[0].actor==0xdead);
         owner->request_drain();C(owner->sweep_all(actor,physics_expected,test_box,delta,q::StreamLimits{},source_read,guard,*all)==q::Code::unavailable);
         C(owner->poll_stop()&&!owner->pending_count());}
