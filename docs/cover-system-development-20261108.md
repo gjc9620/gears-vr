@@ -2,7 +2,7 @@
 
 目标：完成掩体系统开发与验证。状态：进行中。
 
-最近结果（2026-11-09）：r24/game33420完成当前严格实体边缘截面的8次原Trace，但暂停B恢复、unified武器清理、右身体遮挡与启动捕获缺口仍失败或未闭合。r28的Native真实骨架读回已接生产C0收尾，43个Host场景／838检查通过。r29新增准确静止正Extent参数与最多五次原版体积查询对照，73个Python测试方法通过，冻结候选prepare-only通过，尚未stage或启动。已获Boltok105222接受其后的唯一后继登记，未获最终交窗，当前不占运行窗；沿用准确旧r13三制品，不包含r25–28或后续Native源码修改。完整CV-01–24／AC-01–22与实体头显仍未完成，具体边界见本文末节。
+最近结果（2026-11-09）：r24/game33420完成当前严格实体边缘截面的8次原Trace，但暂停B恢复、unified武器清理、右身体遮挡与启动捕获缺口仍失败或未闭合。r28的Native真实骨架读回已接生产C0收尾；r30在当前停机资源修复上验证47个Host场景／961检查通过，未清除来源覆盖债务。r29新增准确静止正Extent参数与最多五次原版体积查询对照，73个Python测试方法通过，冻结候选prepare-only通过，已保存7d741ee8，尚未stage或启动。已获Boltok105222接受其后的唯一后继登记，未获最终交窗，当前不占运行窗；沿用准确旧r13三制品，不包含r25–28或后续Native源码修改。完整CV-01–24／AC-01–22与实体头显仍未完成，具体边界见本文末两节。
 
 ## 2026年11月8日 首批接续
 
@@ -685,3 +685,13 @@ runner27002 terminal0／launcher0，encoder37789 terminal0，原操作器termina
 另收到当前共享Native的consumed-output停机资源窄修复：正常验证消费并返回、scope关闭后的对齐Local浮点POD覆盖债务，永久停止时可不再算Native资源存活；原pending及来源重用守卫仍保留，active／异常／部分或未消费债务仍阻止结束。修改保留r28 completed-cover接口。Frag私有Native5e51dfdd的game54784停机证据与当前根源码分别记录，本轮没有重建此完整Native，也未将其混入r29旧r13制品或本次源码提交；它不能自动证明掩体unified清理已修好。原回执见analysis/frag-grip-20261108/20261109-101526-consumed-output-stop/shared-merge-receipt.json。
 
 真实cover-motion后端、合法neutral／basis交接与恢复、体积与占用／世界同步、同版view／hit／muzzle、右身体遮挡、暂停／联合清理与实体头显均继续未完成。公开v71和历史计分不变，本目标保持进行中。
+
+## 2026年11月9日 r30当前停机资源修复与掩体完成结果兼容验证
+
+r29准确源码已先保存为7d741ee8133b9721525fc954c9fe2f477fc65a0c；直接向既有Boltok105222前驱确认同一plan233b9822／prepared5ac624f4及24项最终驱动清单，没有替换候选或占运行窗。
+
+共享Native新增停机资源计数后，原r28结果已不代表当前修改的Kernel／Native。为验证其与本功能实际C0收尾接线的相互作用，在已有BodyC0GoalPolicyLiveTest增加43–46四个模式，并把现有CMake注册扩至0–46；未另建生产writer、reader hook或停止路径。覆盖正常消费返回后停止、原版异常、遗漏消费通知、消费已通知但事务仍active时停止。检查正常完成可在停止前复制原owned结果；停止后getter拒绝且输出不变。正常闭合的POD仅结束资源存活责任，pending／outstanding字段债务保持；异常或未通知保留原屏障；active阶段不能提前结束，必须等待真实scope收尾。
+
+当前生产Native／Kernel、Host原版Compose数学和原Goal路径共47个模式961检查0失败；其中原43模式838检查继续通过，新增4模式123检查通过。真实OFF匿名命名空间目标亦编译与执行0。MSVC C++17／O2／W4／WX／EHsc／UNDEBUG／MT独立构建，实际编译90项项目依赖纳入91项原依赖集合及CMake的构建前后哈希检查，未出现运行期间源改变。输入仍为保留的真实骨架与明确合成Core，不能改记为实际游戏、物理碰撞或头显证据。准确源快照、编译依赖、日志及verification保存在analysis/cover-system-20261108/cover-stop-integration-r30；没有覆盖r28历史结果。
+
+本批只修改上述测试、CMake的模式上限和本文；共享停机生产修复仍由原提交归属保留，不混入本批Git保存。准确r29 plan／prepared／24实际驱动和旧r13三制品不变，未stage／启动，不包含此当前Native；实际unified清理、暂停恢复、身体遮挡及CV-01–24／AC-01–22仍未通过。下一实际动作仍是完成前序后的单局非零Extent／初始重叠对照，之后根据原回执推进体积、占用及唯一身体提交后端，不以此次CPU兼容检查代替运行闭环。

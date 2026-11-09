@@ -24,7 +24,7 @@ void finish_return(Entry const&e){bool called=false,returned=false;__try{live::b
 void finish_throw_inner(Entry const&e){bool called=false;__try{live::before_original(e);called=true;RaiseException(0xe0424242,0,0,nullptr);}
     __finally{goal::pose_end(e,false,called);}}
 bool finish_throw(Entry const&e){__try{finish_throw_inner(e);return false;}__except(GetExceptionCode()==0xe0424242?EXCEPTION_EXECUTE_HANDLER:EXCEPTION_CONTINUE_SEARCH){return true;}}
-int main(int argc,char**argv){if(argc!=4)return 2;unsigned mode=unsigned(std::strtoul(argv[3],nullptr,10));if(mode>42)return 2;const bool cover_case=(mode>=16&&mode<=23)||(mode>=26&&mode!=38);
+int main(int argc,char**argv){if(argc!=4)return 2;unsigned mode=unsigned(std::strtoul(argv[3],nullptr,10));if(mode>46)return 2;const bool cover_case=(mode>=16&&mode<=23)||(mode>=26&&mode!=38);
     auto frame=std::make_unique<body::Frame>();C(read_file(std::string(argv[1])+"/reference.bin",frame->reference.data(),sizeof frame->reference));
     C(read_file(std::string(argv[1])+"/C0-local.bin",frame->local.data(),sizeof frame->local));C(read_file(std::string(argv[1])+"/C0-component.bin",&frame->component_to_world,sizeof frame->component_to_world));
     C(read_file(argv[2],&host_core,sizeof host_core));if(failures)return 1;host_now=int64_t(host_core.published_ns);host_core.world_generation=444;
@@ -75,20 +75,27 @@ int main(int argc,char**argv){if(argc!=4)return 2;unsigned mode=unsigned(std::st
         C(live::apply(entry,requested,host_core));
         C(!live::read_completed_cover(entry,host_core,*observed));
         const auto installed=current.kernel.outstanding_fields();C(installed>0);
-        if(mode!=30&&mode!=41)live::before_original(entry);
+        if(mode!=30&&mode!=41&&mode!=45)live::before_original(entry);
         fixture.captured=current.source;
         if(mode!=27)fixture.original_space(); // Explicit Host original-Compose math, not game execution.
         if(mode==28){fixture.atoms()[0].translation[0]+=.1f;fixture.original_space();}
         if(mode==31)live::request_drain();
-        live::pose_end(entry,mode!=29&&mode!=30,mode!=30);
+        if(mode==46){
+            // Permanent stop cannot release an active transaction, even if
+            // the original consumer has already been validly notified.
+            const auto debt=live::pending_count();C(debt>=installed);
+            C(live::resource_pending_count()==debt);
+            live::request_drain();C(live::resource_pending_count()==debt);
+        }
+        live::pose_end(entry,mode!=29&&mode!=30&&mode!=44,mode!=30);
         C(!current.captured&&!current.prepared&&current.context.expired);
         C(current.kernel.outstanding_fields()==(mode==30?0:installed));
         const auto attempts=live::cover_pose_attempts.load();
         C(attempts==(mode==37||mode==38?0:1));
         if(mode==27)C(current.cover_completed_code==n::ConsumedPoseCode::geometry);
         if(mode==28)C(current.cover_completed_code==n::ConsumedPoseCode::target);
-        if(mode==29||mode==30||mode==41)C(current.cover_completed_code==n::ConsumedPoseCode::transaction);
-        if(mode==31)C(current.cover_completed_code==n::ConsumedPoseCode::unavailable);
+        if(mode==29||mode==30||mode==41||mode==44||mode==45)C(current.cover_completed_code==n::ConsumedPoseCode::transaction);
+        if(mode==31||mode==46)C(current.cover_completed_code==n::ConsumedPoseCode::unavailable);
         auto source=host_core;
         if(mode==32)++source.publication_sequence;
         if(mode==35){Entry next=entry;++next.invocation;next.selected=false;live::pose_begin(next);}
@@ -108,7 +115,7 @@ int main(int argc,char**argv){if(argc!=4)return 2;unsigned mode=unsigned(std::st
             C(VirtualProtect(fixture.local.data,fixture.local.size,local_protection,&ignored)!=FALSE);
             C(VirtualProtect(fixture.space.data,fixture.space.size,space_protection,&ignored)!=FALSE);
         }
-        const bool expected=mode==26||mode==40;
+        const bool expected=mode==26||mode==40||mode==43;
         C(accepted==expected);
         if(expected){
             C(observed->observed_qpc>0&&observed->consumed.serial==current.kernel.serial()&&
@@ -117,6 +124,22 @@ int main(int argc,char**argv){if(argc!=4)return 2;unsigned mode=unsigned(std::st
             const auto original_qpc=observed->observed_qpc;
             C(live::read_completed_cover(entry,source,*observed)&&observed->observed_qpc==original_qpc);
         }else C(!std::memcmp(observed.get(),&untouched,sizeof untouched));
+        if(mode>=43){
+            const auto source_debt=live::pending_count();C(source_debt>=installed);
+            C(current.kernel.pending()>0&&current.kernel.outstanding_fields()==installed);
+            const bool normally_consumed=mode==43||mode==46;
+            C(current.kernel.completed_consumed_output()==normally_consumed);
+            if(mode!=46)C(live::resource_pending_count()==source_debt);
+            // Stop clears neither the Local field obligations nor the source
+            // reuse barrier. It only distinguishes the Native lifetime debt.
+            live::request_drain();
+            C(live::pending_count()==source_debt&&current.kernel.pending()>0);
+            C(live::resource_pending_count()==(normally_consumed?0:source_debt));
+            const auto saved=*observed;
+            C(!live::read_completed_cover(entry,source,*observed));
+            C(!std::memcmp(observed.get(),&saved,sizeof saved));
+            C(current.kernel.outstanding_fields()==installed);
+        }
         C(current.kernel.outstanding_fields()==(mode==30?0:installed));
         C(!std::memcmp(&entry,&entry_before,sizeof entry));
         C(lease.world());
