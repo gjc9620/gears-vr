@@ -1350,3 +1350,11 @@ Bol212342+execution779eca在独立9271主机文件、24原声明、364current＋
 本轮重新核41460保存Native状态及r13源：旧cover_camera enabled0／attempts0，不能把开启旧preview当已证修复；authored-eye350次采用／0拒绝，head palette362／肩甲mask362／head-section362及write_failure0，不能再笼统归因为眼点来源缺失或mask未启用。计数不是每Draw／硬件像素证明，不据此盲扩身体隐藏。standing view reader自身要求当前CoverType0，因此aggregate held标记也不能直接证明掩体用了旧站姿眼点。fallback读取当前原动画head的作者眼点，而当前C0仍因cover拒绝；准确眼点／身体／视线关系还需同场景几何。原6张关键图当前已不在原路径（正常滚动媒体范围），当时亲审与FAIL记录保留，本轮不冒称重新看过图。来源排查及未知范围在spatial-inventory-r71/41460-view-source-review.json，尚无因果修复或Native改动。
 
 已受理r69-admission-v2仍只做原一次A/source/internal shapes/hit filters，未混r70／r71、未stage/run。Cover没有最终交窗、ticket或claim。Snub221733现明确因整手交线拒绝撤回整个申请与排队意向；LS222840在先、Boom225349在后均仅待补静态准入身份，Cover尚无正式后继，不并列授窗。正常排队不记产品失败，也不把它当全局blocked。完整CV-01–24／AC-01–22、真实身体执行／恢复、同姿态hit／muzzle、逐点GrabPose与实体头显均未完成，goal active，本轮为源码／检查和实施方向证据progress。
+
+## 2026年11月9日 r72优先复用原连续查询的具体覆盖缺口
+
+按主人方案review优先评估原连续入口，未再新增世界观察器或重建PhysX。沿原CFEF0核到非零extent走E6A10、零extent走E7030，两visitor均从实际组件虚表byte+0x2e8取LineCheck，而r63的PointCheck是+0x2e0。六个已有构造定位表再次核到2e0=3a6bc4、2e8=339294，不能因PointCheck缺口便推断所有LineCheck同样不可用。339294有经asset+0x248→131e80→130e7c聚合的已见分支，但该组件旧metadata仍漏3个直接cold目标，明确未闭合，不签完整当前分派或调用权限。
+
+继续核原leaf发现一个独立于PointCheck的新具体限制：Sphere CE24C从原第7参数位置取向量交DB120，若不全零则在CE277直接置EAX=1并返回，不进入后续Sphere几何；Sphyl CF080在同一第7参数位置比较X非零时直接走CF102置1及恢复返回。原正float32向量(1,1,1)在两leaf都是这条miss1路径，且不调用实际几何。这是保存机器码的具体有限输入分支证明，不是执行原查询，也不证明所有当前组件必到此分支。它说明即便复用原非零体积LineCheck，也不能从这类Sphere/Sphyl的无命中签发完整身体／占用安全。
+
+本批code／data整SHA911ab9bc／c5deb081、33关键锚点和6构造表匹配；BelowNormal核验exit0。证据native-query-reuse-r72/reuse-evidence.json保留visitor、组件／asset片段、正体积反例、3个cold未知及所需的当前GT／self排除／起始重叠／早停／shape/scale/bone／世界同步条件。实施方向保持优先复用可认证原查询，对上述确证的窄覆盖缺口选择补充或另一已有原生查询，不默认重建整个世界，也不以假空结果或删guard放行。本轮没有方法执行、新hook／writer、Native构建、stage或游戏；最新实际仍41460拒绝及吸附遮挡FAIL，全部CV24／AC22和头显未完成，goal active。
