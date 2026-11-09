@@ -2,7 +2,7 @@
 
 目标：完成掩体系统开发与验证。状态：进行中。
 
-最近结果（2026-11-09）：r47实际26028完成原A吸附CT2／CA0，越过KAggregateGeom五字段与RenderInfo检查，首body原始形状数组在target／extent处拒绝；整体来源／物理／命中仍未关闭。1页全span双路与6原图确认严重肩／身体遮挡FAIL。运行／编码／精确恢复／媒体保留全终，已最终唯一交Bow164457。r48–53姿态、过渡、LOD与当前Tick到候选缓冲区代码已提交，但未由实际Native Tick调用；完整碰撞／移动恢复／同版命中枪口／CV与AC及头显要求保持未完成。
+最近结果（2026-11-09）：r54实际41460完成原A吸附CT2／CA0，并保留首body SphereElems拒绝见证：空数组、inner stride80、目标KSphereElem为ScriptStruct但extent72，现有等值条件拒绝。源查询未关闭／accepted=false。完整双路总览及6原图仍确认严重肩／身体遮挡FAIL。wrapper／Native／入口／XR／编码／媒体保留全终，10项原始基线精确恢复，唯一交接对象Bol180947。r64–66数学与完整清单消费均已提交，但未据此接通真实场景或身体移动；完整CV／AC及头显要求保持未完成。
 
 ## 2026年11月8日 首批接续
 
@@ -1268,3 +1268,19 @@ D093C的cell输入是float32中心xyz于0／4／8、半边长于12。原RIP常�
 同目录另保存新的r54准备核验：prepared6ec774ef／plan915215be、24冻结声明、37当前及归档driver SHA＋AST、3saved制品、所选EXE／PhysX及审查Python SHA全部匹配；实际Pillow／numpy／native imaging导入及原wrapper --prepare-only均exit0。独立CIM快照当时未见游戏／XR／录制／该路径编码进程，但它仅是当时的进程快照，不替代Snub最终唯一交接。Snub仍在核本方实际清理／双路证据；Cover未stage／run、未保存新运行设置基线，也未交唯一正式后继Bol180947运行权。
 
 本批没有产品写入、原查询调用、新Native／PG构建或部署，也没有将静态树路径偷偷加入r54。当前场景参与组件、原树插入／迁移规则、同源完整资产、连续身体路径／终点占用、Native移动恢复、同版hit／muzzle、严重吸附肩／身体遮挡、逐点GrabPose及全部CV-01–24／AC-01–22和实体头显仍未完成。下一步在收到实际最终交窗后先运行既定r54一次原A及读取见证，取得当前数组失败事实；未来场景候选接线必须按本批区分的节点与cell来源认证，不能把Native no-hit或单盒检查当完整占用。
+
+## 2026年11月9日 r54实跑41460数组范围见证与闭环
+
+Snub11036最终唯一交窗后，先独立核其review9836f6f9、正常清理、8项精确恢复及全部job终态，再fresh核r54 prepared6ec774ef／plan915215be、24原冻结声明、37当前与归档driver SHA＋AST、3saved制品及所选EXE／PhysX／审查Python与Pillow／numpy。独立idle／CIM空，另保存10项当前基线后，只stage原r13 Native5cf4adea／PGf8e6f3c2／XR16840b27。保持0.4、behind-windows、observe-only、test mute及物理输入隔离；r64–68新代码均未加入本次候选，没有新增Trace／方法调用／身体写入或第二case。
+
+实际game41460、creation134387024382995393完成一次原A，CoverType2／CoverAction0。首body仍为完整FName b_MF_Pelvis27549／0；SphereElems header全0（data／count／capacity均0），ArrayProperty维数1、大小16，inner StructProperty维数1、stride80，target确为KSphereElem／ScriptStruct，而target_extent_observed为72。见证明确closing_verified=false、source_accepted=false、activation_allowed=false及additional_process_reads=0。由此定位当前等值准入的72!=80拒绝事实，不能把它叫作资产损坏或直接放宽所有结构。真实原生步长与反射范围能否以特定布局兼容仍须按原消费者／字段边界证明，空数组也不绕过身份与布局认证。首失败后即正常停止，未继续其余body、hit或暂停恢复，不重跑相同行为。
+
+实际2778次读取、35529字节、源读取段314.1502ms；读取消费错误独立保留。完整同源查询没有关闭，不能将开始时的PhysX原码观察、单body字段或空Sphere数组称作完整物理／命中覆盖。原26028同一错误仍保留为先前缺见证的失败；本次新增的是已经读取的target／inner／extent事实，没有新增RPM或改变原短路判定。
+
+实际双路372张game／453张sim帧，span约21.27／21.23秒，最终覆盖差16.67／0ms，配对视频21.3秒且ffprobe有效。1页完整paired总览和6张约18.0／20.0／21.2秒game／sim原图已亲自检查：接近时头手／世界可见，原A吸附后肩部与身体在镜像及双眼严重遮挡，视觉仍FAIL；起始标题／等待卡及第三人称曝光保留，不算第一人称／掩体完整体验通过。未从这组图接受逐点手型、真实身体碰撞或头显舒适度。
+
+wrapper工具85918实际exit0，operator46976实际exit1；Native cleanup／entry restore=true、pad restored、XR0、launcher0、remaining_owned_game=null。session的EndSession成功仍false，与terminal exiting／objects destroyed／shutdown completed分别记录，不能改写。paired编码工具76995实际exit0；唯一媒体保留工具25671实际exit0，最新3=41460／11036／18952、48小时，删除30项既定旧媒体、2712582字节，errors0。运行后37driver SHA＋AST全匹配，安装的3制品在恢复前匹配本候选；manifest、config、原BOM settings、原本不存在的head command、公开candidate-state、3私有制品和2份私有EngineUserSettings共10项恢复原字节／存在状态。公开v71及手动入口未变。全部证据和闭环见analysis/cover-system-20261108/array-witness-r54/runtime/closure-proof.json。
+
+唯一后继保持Bol180947，结束前独立重核其4身份文件、3780保存源／当前及归档驱动／支持文件SHA、24current＋24archive driver、74support、122AST及4bin，原source commit94813f35存在，原主握单段scope与入口不变；41项未解析import仍明确不是完整环境证明。fresh idle／CIM为空，完整核验保存在boltok-ending-successor-check.json；实际最终唯一交接另存final-handoff.json，不向后到申请者并列授窗。
+
+下一步只针对本次72／80布局拒绝核对并修复读取合同，再准备有身份的新候选；不跳过空数组认证、不全局放宽extent、不声称整套掩体已修复。当前完整资产来源、活动物理与世界候选、连续姿态路径／终点占用、Native移动恢复、同版hit／muzzle、严重吸附遮挡、逐点GrabPose、全部CV-01–24／AC-01–22与实体头显均未完成，goal继续active。
