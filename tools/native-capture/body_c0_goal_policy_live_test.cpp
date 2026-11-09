@@ -24,7 +24,7 @@ void finish_return(Entry const&e){bool called=false,returned=false;__try{live::b
 void finish_throw_inner(Entry const&e){bool called=false;__try{live::before_original(e);called=true;RaiseException(0xe0424242,0,0,nullptr);}
     __finally{goal::pose_end(e,false,called);}}
 bool finish_throw(Entry const&e){__try{finish_throw_inner(e);return false;}__except(GetExceptionCode()==0xe0424242?EXCEPTION_EXECUTE_HANDLER:EXCEPTION_CONTINUE_SEARCH){return true;}}
-int main(int argc,char**argv){if(argc!=4)return 2;unsigned mode=unsigned(std::strtoul(argv[3],nullptr,10));if(mode>25)return 2;const bool cover_case=mode>=16&&mode<=23;
+int main(int argc,char**argv){if(argc!=4)return 2;unsigned mode=unsigned(std::strtoul(argv[3],nullptr,10));if(mode>42)return 2;const bool cover_case=(mode>=16&&mode<=23)||(mode>=26&&mode!=38);
     auto frame=std::make_unique<body::Frame>();C(read_file(std::string(argv[1])+"/reference.bin",frame->reference.data(),sizeof frame->reference));
     C(read_file(std::string(argv[1])+"/C0-local.bin",frame->local.data(),sizeof frame->local));C(read_file(std::string(argv[1])+"/C0-component.bin",&frame->component_to_world,sizeof frame->component_to_world));
     C(read_file(argv[2],&host_core,sizeof host_core));if(failures)return 1;host_now=int64_t(host_core.published_ns);host_core.world_generation=444;
@@ -59,7 +59,71 @@ int main(int argc,char**argv){if(argc!=4)return 2;unsigned mode=unsigned(std::st
     if(mode==23)cover_context_live::host_key_hook=[](unsigned n){if(n==2)++goal::revision;};
     if(cover_case){goal::current_cover_pose.binding.publication=987;goal::current_cover_pose.binding.slot=123;}
     const auto measurement_before=goal::current_cover_pose;
-    const auto entry_before=entry;live::pose_begin(entry);C(live::state.captured);goal::pose_begin(entry);C(!std::memcmp(&entry,&entry_before,sizeof entry));
+    const auto entry_before=entry;live::pose_begin(entry);C(live::state.captured);
+    if(mode>=26){
+        auto observed=std::make_unique<n::ConsumedPose>();observed->observed_qpc=123;const auto untouched=*observed;
+        C(!live::read_completed_cover(entry,host_core,*observed));
+        auto& current=live::state;auto& work=current.workspace;
+        for(unsigned i=0;i<16;++i)work.component.m[i]=current.source.component_to_world.values[i];
+        std::copy(current.source.local.begin(),current.source.local.end(),work.pose.local);
+        C(body::d::rebuild(current.model,work));
+        body::Goal requested{};requested.scope=mode==37?body::Scope::stationary:body::Scope::fixed_cover;
+        requested.body_yaw_delta=-.1;requested.physical_world={1,2,-3};requested.committed_grip_world={2,1,-2};
+        requested.head_world=body::d::pose(work.pose.world[body::head]);
+        requested.head_world.position=body::d::add(requested.head_world.position,{3,3,-5});
+        for(unsigned i=0;i<2;++i)requested.feet_world[i]=body::d::pose(work.pose.world[body::legs[i][2]]);
+        C(live::apply(entry,requested,host_core));
+        C(!live::read_completed_cover(entry,host_core,*observed));
+        const auto installed=current.kernel.outstanding_fields();C(installed>0);
+        if(mode!=30&&mode!=41)live::before_original(entry);
+        fixture.captured=current.source;
+        if(mode!=27)fixture.original_space(); // Explicit Host original-Compose math, not game execution.
+        if(mode==28){fixture.atoms()[0].translation[0]+=.1f;fixture.original_space();}
+        if(mode==31)live::request_drain();
+        live::pose_end(entry,mode!=29&&mode!=30,mode!=30);
+        C(!current.captured&&!current.prepared&&current.context.expired);
+        C(current.kernel.outstanding_fields()==(mode==30?0:installed));
+        const auto attempts=live::cover_pose_attempts.load();
+        C(attempts==(mode==37||mode==38?0:1));
+        if(mode==27)C(current.cover_completed_code==n::ConsumedPoseCode::geometry);
+        if(mode==28)C(current.cover_completed_code==n::ConsumedPoseCode::target);
+        if(mode==29||mode==30||mode==41)C(current.cover_completed_code==n::ConsumedPoseCode::transaction);
+        if(mode==31)C(current.cover_completed_code==n::ConsumedPoseCode::unavailable);
+        auto source=host_core;
+        if(mode==32)++source.publication_sequence;
+        if(mode==35){Entry next=entry;++next.invocation;next.selected=false;live::pose_begin(next);}
+        if(mode==36)current.kernel.request_stop();
+        if(mode==39)live::enabled=false;
+        DWORD local_protection{},space_protection{},ignored{};
+        if(mode==40){
+            C(VirtualProtect(fixture.local.data,fixture.local.size,PAGE_NOACCESS,&local_protection)!=FALSE);
+            C(VirtualProtect(fixture.space.data,fixture.space.size,PAGE_NOACCESS,&space_protection)!=FALSE);
+        }
+        bool accepted{};
+        if(mode==33){const Entry copy=entry;accepted=live::read_completed_cover(copy,source,*observed);}
+        else if(mode==42){const auto saved=current.cover_completed;accepted=live::read_completed_cover(entry,source,current.cover_completed);C(!std::memcmp(&saved,&current.cover_completed,sizeof saved));}
+        else if(mode==34){std::thread reader([&]{accepted=live::read_completed_cover(entry,source,*observed);});reader.join();}
+        else accepted=live::read_completed_cover(entry,source,*observed);
+        if(mode==40){
+            C(VirtualProtect(fixture.local.data,fixture.local.size,local_protection,&ignored)!=FALSE);
+            C(VirtualProtect(fixture.space.data,fixture.space.size,space_protection,&ignored)!=FALSE);
+        }
+        const bool expected=mode==26||mode==40;
+        C(accepted==expected);
+        if(expected){
+            C(observed->observed_qpc>0&&observed->consumed.serial==current.kernel.serial()&&
+                tx::same(observed->consumed.stamp,current.stamp));
+            C(observed->max_position_error<=.002&&observed->max_angle_error<=1e-4);
+            const auto original_qpc=observed->observed_qpc;
+            C(live::read_completed_cover(entry,source,*observed)&&observed->observed_qpc==original_qpc);
+        }else C(!std::memcmp(observed.get(),&untouched,sizeof untouched));
+        C(current.kernel.outstanding_fields()==(mode==30?0:installed));
+        C(!std::memcmp(&entry,&entry_before,sizeof entry));
+        C(lease.world());
+        printf("CoverCompletedLive mode=%u: %u checks, %u failures; actual_C0_apply_finish_readback=1 original_Compose_math=Host Game=0\n",mode,checks,failures);
+        return failures?1:0;
+    }
+    goal::pose_begin(entry);C(!std::memcmp(&entry,&entry_before,sizeof entry));
     if(mode==24||mode==25){
         C(goal::pending.committed&&goal::pending.kernel_serial==live::state.kernel.serial());
         const auto serial=live::state.kernel.serial();const auto stamp=live::state.stamp;

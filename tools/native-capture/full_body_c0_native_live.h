@@ -7,6 +7,7 @@
 #include "../vr-common/committed_hand_endpoint.h"
 #include "../vr-common/committed_hand_interaction.h"
 #include "../vr-common/weapon_lancer_held_contact.h"
+namespace gears_full_body_c0_native {struct ConsumedPose;}
 namespace full_body_c0_native_live {
 // Passive correlation for the existing opt-in GPU palette journal. No source,
 // pose, lease or writer permission can be obtained from this observation.
@@ -26,6 +27,12 @@ struct ComposeObservation {
 bool observe_last_compose(uintptr_t,ComposeObservation&) noexcept;
 gears_rig_tracking::Reply read_endpoint(gears_committed_hand::Request const*,gears_committed_hand::Frame*) noexcept;
 gears_rig_tracking::Reply read_interaction(gears_committed_interaction::Request const*,gears_committed_interaction::Frame*) noexcept;
+// Retrospective CPU pose data from the exact original C0 callback. The reader
+// runs after Kernel finish and before Backend invalidate; this API only copies
+// that result and never reacquires a write/geometry lease. Call synchronously
+// with the original Entry and unmodified Core; do not retain callback pointers.
+bool read_completed_cover(gears_continuous_hand_entry::Entry const&,
+    gears_native_rig_tracking::CoreSnapshot const&,gears_full_body_c0_native::ConsumedPose&) noexcept;
 bool main_mount_policy_enabled() noexcept;
 bool body_mount_policy_enabled() noexcept;
 bool body_mount_source_current(gears_body_main_mount_provider::Source const&) noexcept;

@@ -2,7 +2,7 @@
 
 目标：完成掩体系统开发与验证。状态：进行中。
 
-最近结果（2026-11-09）：r24/game33420首次完成当前严格实体边缘截面的8次原Trace，宽度1.5625游戏单位；后续暂停B恢复失败、unified武器清理drained=false、双路右身体遮挡与启动捕获缺口均保留。r27已实现并离线检查Native真实Local／SpaceBases读回，尚未接入真实C0回调或掩体提交后端。当前不占运行窗，已最终唯一交Snub093107；完整CV-01–24／AC-01–22及实体头显仍未完成。具体边界见本文末两节。
+最近结果（2026-11-09）：r24/game33420首次完成当前严格实体边缘截面的8次原Trace，宽度1.5625游戏单位；后续暂停B恢复失败、unified武器清理drained=false、双路右身体遮挡与启动捕获缺口均保留。r28已将Native真实Local／SpaceBases读回接到生产C0收尾路径，43个Host生产路径场景／838检查通过；真实游戏启用、掩体提交后端与碰撞占用仍未接通。当前不占运行窗，已最终唯一交Snub093107；完整CV-01–24／AC-01–22及实体头显仍未完成。具体边界见本文末两节。
 
 ## 2026年11月8日 首批接续
 
@@ -650,3 +650,18 @@ runner27002 terminal0／launcher0，encoder37789 terminal0，原操作器termina
 新增停止时序RED：收尾Context合法地允许恢复检查，但读回进行中收到stop后，原新增读者仍返回verified并写出候选，实际441检查中3项失败。现于最终输出边界再核stop，保留该RED，修正后同441项0失败。其中原Native Backend135项继续通过，新增24个读回模式及跨线程／停止检查共306项；覆盖真实VirtualAlloc页的CAS128／读回／SEH、损坏或自洽错误矩阵、变化的Local／尺度／reference／Desired／metadata、错误事务、最终owner撤回、不可读Local／SpaceBases和输出不变。原版Compose输出由明确Host数学构造，owner准入亦为Host，不把它记为实际游戏Compose验证。
 
 当前源三个目标MSVC C++17／O2／W4／WX／EHsc／UNDEBUG／MT编译0；事务25271检查0失败，实际Goal生产路径26个mode／483检查0失败。91项实际编译项目依赖及原夹具SHA保存于consumed-pose-r27/verification.json。没有新完整Native DLL、默认包或本批读回的游戏运行；本批真实game33420仍是准确冻结r13，二者证据分开。实际回调接线、Native cover-motion完成后端、basis交接与恢复、体积扫掠／世界同步、受击／枪口／最终画面和实体头显继续未完成。
+
+
+## 2026年11月9日 r28读回接入生产C0收尾与只读结果消费
+
+上一轮a4ab6a94的读回方法已保存，r24真实game33420仍是准确旧r13。本轮在现有full_body_c0_native_live接通读回时点：只有已有apply／Kernel守卫成功提交、Goal为fixed_cover且原Core携带掩体键的调用，才在真实Kernel.finish之后、ActualContext.expired和Backend.invalidate之前执行。普通持枪／stationary Goal及没有原掩体键的来源不进入该读回路径，现有body_goal_policy的no_cover保持，未据此开放任何新身体或抓边写入。
+
+新增模块接口read_completed_cover供同一原C0回调同步复制结果。它要求原Entry地址／内容、原未改Core、同一Kernel完成Stamp／serial以及同一GT；输出不得与Native自有状态或输入别名。它不再次读游戏、不重算／刷新观测QPC，不授予占用／写入／跨Tick许可，不能保存回调栈指针作为下一Tick权利。新的同mesh Compose（含未选中／passthrough）在选择门之前撤回旧结果；停止、OFF、错误来源／回调／线程、Kernel失败和无验证结果均拒绝。读回失败不撤销已经消费的动作，也不注销任何实际applied字段／恢复责任。
+
+实际生产apply→before_original→pose_end／Kernel.finish→Native真实内存读回→invalidate→只读消费链已在Host执行；原版Compose的Local／SpaceBases生成仍是明确Host数学构造，actor／Core／receipt准入亦为Host。原26个Goal场景483项继续通过，新增17个场景355项，最终43个mode共838项0失败。覆盖正常完成、没有生成SpaceBases、矩阵自洽但身体偏离目标、原异常、消费前结束、停止、错Core／Entry／线程、未选中新Compose、Kernel停止、非cover Goal／来源、runtime OFF、遗漏消费通知及输出别名。正常结果在backend.invalidate后仍可读取；测试把实际游戏样式的Local与SpaceBases页改为PAGE_NOACCESS，复制仍成功且原QPC不变，证明getter只读自有已完成结果而不重新访问那些页。
+
+新增BodyC0CoverCompletionOffTest在capture式匿名命名空间编译真实OFF分支并执行，确认无结果输出、无新增hook／write／debt。初版Host封装错误地将NativeAtom前置声明放到全局并遗漏Scope声明，产生编译错误；改正测试包含边界后通过，未放宽生产代码。43场景及OFF目标已注册现有CMake，MSVC C++17／O2／W4／WX／EHsc／UNDEBUG／MT编译0；91项实际项目依赖、夹具SHA与原日志保存于cover-completed-live-r28/verification.json。没有据此宣称完整capture DLL／默认包已编译或这些场景在实际游戏中通过。
+
+另仅检查33420保存证据：B输入指令于54.626184秒写出，54.778906秒释放，约152.721ms；之后四次UI读取直至60.4021秒仍为DeltaPause-Campaign-Host／LBtnResumeSingle。原Native状态保留8978次成功来源读取／5594次game poll，说明虚拟pad在局内确曾工作；结束enabled0属于正常关闭，不是本次B期间的状态。6564次来源拒绝是全程聚合，缺少该B具体Route准入、原game poll实际返回和stow-fence证据，不能据此归因为定时器、身份、新鲜度或fence。冻结r13本就包含display-mode交接保留数字沿的修复，不能重复将其当作本次新修复；没有重发B、放宽时限或改动其他会话的pad／scope源。定向证据见pause-33420-evidence.json。
+
+后续需将同一C0事实接入实际cover-motion完成后端，并取得真正体积扫掠／终点占用／世界同步及同版命中／枪口证据；本接口仅证实CPU骨架与目标，不证实这些条件。暂停／联合清理失败、右身体遮挡与实体头显继续开放。当前不占运行窗，已交Snub093107的窗口不复用；未再stage／启动。公开v71、完整CV-01–24／AC-01–22、完整掩体FALSE及历史计分保持不变。

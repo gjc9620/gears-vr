@@ -128,6 +128,10 @@ struct State {
     ActualContext context{};native::Backend backend{};tx::Kernel kernel{};tx::Lease lease{};
     body::Frame source{};body::Output output{};body::Workspace workspace{};body::Model model{};
     tx::Desired desired{};tx::Stamp stamp{};bool captured{},prepared{},notified{},atom_installed{},joint_committed{},consumer_verified{};
+    // Owned completed observation; failed readback never undoes consumed atoms.
+    native::ConsumedPose cover_completed{};
+    native::ConsumedPoseCode cover_completed_code{native::ConsumedPoseCode::unavailable};
+    bool cover_plan{},cover_completed_valid{};
     uint32_t alpha_grant_mask{},alpha_grant_count{};std::array<uint64_t,4> alpha_grant_nodes{};std::array<uint32_t,4> alpha_grant_original{};
     hands::Workspace hand_work{};
     hands::adapter::MountKind right_mount{hands::adapter::MountKind::free_hand};
@@ -145,6 +149,7 @@ struct State {
 };
 // One registered GT owner, persistent storage so unknown end never destroys debt.
 State state{};
+std::atomic<uint64_t> cover_pose_attempts{},cover_pose_accepted{},cover_pose_rejected{};
 bool diagnostic_first_failure{};
 struct PendingObservation {
     std::uint64_t tick{},compose{},mesh{};unsigned pending{},fields{},protocol{},failure{};
@@ -1160,6 +1165,17 @@ bool observe_last_compose(uintptr_t mesh,ComposeObservation& out) noexcept {
        !mesh||last_compose_observation.mesh!=mesh)return false;
     out=last_compose_observation;return true;
 }
+bool read_completed_cover(Entry const& e,gears_native_rig_tracking::CoreSnapshot const& source,
+                          native::ConsumedPose& out) noexcept {Call call;
+    if(GetCurrentThreadId()!=owner_thread.load()||!enabled||stopping.load()||e.kind!=0||!e.selected||
+       !state.cover_completed_valid||!state.cover_plan||!same_entry(e)||
+       std::memcmp(&source,&state.context.source,sizeof source)||
+       !state.kernel.completed_consumer(state.backend,state.cover_completed.consumed.stamp,state.cover_completed.consumed.serial))return false;
+    const body::d::Range ranges[]={body::d::range(&state,sizeof state),body::d::range(&out,sizeof out)};
+    const body::d::Range inputs[]={body::d::range(&source,sizeof source),body::d::range(&out,sizeof out),body::d::range(&e,sizeof e)};
+    if(!body::d::disjoint(ranges,2)||!body::d::disjoint(inputs,3))return false;
+    out=state.cover_completed;return true;
+}
 void pose_begin(Entry const& e) noexcept {Call call;if(e.kind==0)budget::recorder.mark_entry(budget::Stage::native_entry,reinterpret_cast<uintptr_t>(&e),e.invocation);
     using Begin=held_outcome::NativeBegin;
     if(diagnostic_first_failure&&e.kind==0&&GetCurrentThreadId()==owner_thread.load()&&
@@ -1174,6 +1190,9 @@ void pose_begin(Entry const& e) noexcept {Call call;if(e.kind==0)budget::recorde
         held_outcome::recorder.native_result(reinterpret_cast<uintptr_t>(&e),e.invocation,result);ready_wrist::native_result(e,result);};
     // Even a passthrough/unselected Compose can replace the previous result.
     // Invalidate before the selection gate, without granting it a new write.
+    if(e.kind==0&&owner_thread.load()==GetCurrentThreadId()&&e.rcx==state.context.owner.mesh.address){
+        state.cover_completed_valid=false;state.cover_plan=false;
+    }
     if(e.kind==0&&owner_thread.load()==GetCurrentThreadId()&&e.rcx==endpoint_value.mesh.address){
         endpoint_valid=false;endpoint_observable=false;notify_endpoint(gears_committed_hand_consumer::Kind::revoke);}
     if(!enabled||stopping.load()||e.kind!=0||!e.selected){note(Begin::policy);return;}
@@ -1208,6 +1227,7 @@ void pose_begin(Entry const& e) noexcept {Call call;if(e.kind==0)budget::recorde
         // Compose identities remain independently checked by ActualContext.
         seed.frame=seed.producer=seed.scope=uint64_t(phase::qpc());
         state.prepared=false;state.notified=false;state.atom_installed=false;state.hand_record=0;
+        state.cover_plan=false;state.cover_completed_valid=false;state.cover_completed_code=native::ConsumedPoseCode::unavailable;
         state.right_mount=hands::adapter::MountKind::free_hand;state.mount_response={};
         state.joint_committed=false;state.consumer_verified=false;state.hand_work.solved_mask=0;state.alpha_grant_mask=state.alpha_grant_count=0;
         state.alpha_grant_nodes={};state.alpha_grant_original={};
@@ -1357,7 +1377,10 @@ bool apply_impl(Entry const& e,body::Goal const& goal,gears_native_rig_tracking:
             o.commit_result=unsigned(result.code);o.solved_mask=state.hand_work.solved_mask;
             if(o.solved_mask&2){o.right_target=state.hand_work.computed_wrist[1].position;
                 o.right_solved_target=state.hand_work.inputs[1].target.position;}}
-        if(result.code==tx::Code::committed){endpoint_commit_ns=rig_tracking_live::clock_ns();++commits;if(hand_plan){state.joint_committed=true;++hands_commits;
+        if(result.code==tx::Code::committed){
+            state.cover_plan=goal.scope==body::Scope::fixed_cover&&
+                (source.flags&gears_rig_tracking::cover_key_known)&&source.cover_type&&source.cover_link.address&&source.cover_slot>=0;
+            endpoint_commit_ns=rig_tracking_live::clock_ns();++commits;if(hand_plan){state.joint_committed=true;++hands_commits;
             if(state.hand_work.left_visual_applied){const unsigned kind=unsigned(state.hand_work.left_blend.kind);if(kind<contextual_grasp_commits.size())++contextual_grasp_commits[kind];}
             if(state.right_mount==hands::adapter::MountKind::held_lancer)++main_mount_commits;trace_hands_commit();
             if(state.right_mount==hands::adapter::MountKind::held_lancer)held_outcome::recorder.held(main_mount_commits.load(),state.hand_record);}return true;}
@@ -1414,6 +1437,18 @@ void pose_end(Entry const& e,bool returned,bool original_called) noexcept {Call 
             last_compose_observation.finish_failure=unsigned(state.kernel.failure());
         }
         ready_wrist::closed(e,result);
+        // The retained Context/module/owner still lives here, before invalidate.
+        // Ordinary hands never enter this path; existing apply/Kernel guards
+        // already admitted the Cover Goal. This grants no additional write.
+        if(state.cover_plan){
+            state.cover_completed_valid=false;++cover_pose_attempts;
+            state.cover_completed_code=stopping.load()?native::ConsumedPoseCode::unavailable:
+                result.code==tx::Code::scope_closed&&returned&&original_called&&same_entry(e)?
+                state.backend.read_consumed_pose(state.kernel,state.stamp,state.kernel.serial(),state.cover_completed):
+                native::ConsumedPoseCode::transaction;
+            state.cover_completed_valid=state.cover_completed_code==native::ConsumedPoseCode::verified;
+            if(state.cover_completed_valid)++cover_pose_accepted;else ++cover_pose_rejected;
+        }
         if(result.code==tx::Code::scope_closed&&returned&&original_called&&same_entry(e)&&
            !state.kernel.failed()&&!state.kernel.protocol_debt()&&!state.kernel.original_exception())publish_endpoint();
         if(state.hand_record&&result.code==tx::Code::scope_closed&&returned&&original_called&&!state.kernel.failed()&&
@@ -1525,7 +1560,10 @@ void export_held_outcome()noexcept {
     bool ok=write(&h,sizeof h);if(ok&&h.count)ok=write(r.rows.data(),DWORD(h.count*sizeof(held_outcome::Record)));
     if(!CloseHandle(file)){held_outcome_error=GetLastError();ok=false;}held_outcome_written=ok;
 }
-void summary(FILE* f){export_pending();ready_wrist::export_records();export_held_outcome();export_failure(first_failure,L"body-c0-first-failure.bin",failure_file_attempted,failure_file_written,failure_file_error);
+void summary(FILE* f){
+    if(f)fprintf(f,"body_cover_pose_attempts=%llu body_cover_pose_accepted=%llu body_cover_pose_rejected=%llu ",
+        cover_pose_attempts.load(),cover_pose_accepted.load(),cover_pose_rejected.load());
+    export_pending();ready_wrist::export_records();export_held_outcome();export_failure(first_failure,L"body-c0-first-failure.bin",failure_file_attempted,failure_file_written,failure_file_error);
     if(f)fprintf(f,"body_tick_lancer_state_refreshed=%llu ",binding::tick_lancer_state_refreshes.load());
     if(f){fprintf(f,"body_gun_transform_attempts=%llu body_gun_transform_completed=%llu body_gun_transform_rejected=%llu ",
         lancer_transform_finish::attempts.load(),lancer_transform_finish::completed.load(),lancer_transform_finish::rejected.load());
@@ -1613,6 +1651,7 @@ void arm_weight_return(gears_body_c0_arm_alpha::WeightReturn const&) noexcept{}
 void pose_begin(Entry const&) noexcept {}bool apply(Entry const&,body::Goal const&,gears_native_rig_tracking::CoreSnapshot const&) noexcept{return false;}
 bool apply_with_view(Entry const&,body::Goal const&,gears_native_rig_tracking::CoreSnapshot const&,gears_vr::StereoMatrix const&) noexcept{return false;}
 bool apply_with_view_marker(Entry const&,body::Goal const&,gears_native_rig_tracking::CoreSnapshot const&,gears_vr::StereoMatrix const&,gears_body_head_authored::Marker const&,gears_vr::Pose const*) noexcept{return false;}
+bool read_completed_cover(Entry const&,gears_native_rig_tracking::CoreSnapshot const&,gears_full_body_c0_native::ConsumedPose&) noexcept{return false;}
 void before_original(Entry const&) noexcept {}void after_original(Entry const&) noexcept {}void pose_end(Entry const&,bool,bool) noexcept {}void request_drain(){}unsigned pending_count(){return 0;}void summary(FILE*){}
 void atom_overwrite_completed(uint64_t)noexcept{}
 #endif
