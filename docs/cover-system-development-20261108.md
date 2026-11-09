@@ -1334,3 +1334,19 @@ r70另核原Actor.Trace包装到CFA40的5段共3550字节及9个关键锚点：C
 Bol212342+execution779eca在独立9271主机文件、24原声明、364current＋364archive／728AST、3saved、EXE／PhysX／7origin及精确prepare-only核验后，已正式受理Cover r69-admission-v2（f10d978e／5e6d566b／ccb519fc／8d3487a5／eec50fb3）为唯一后继。独立check SHA089d9dc284c19bc089f37c8da8cb61b6ce64c86dbdf7ca0729131338f0e0bf82；正式受理snapshot和额外前序契约另存array-extent-r69/admission-v2/queue-acceptance.json。原independent check内accepted=false保留，不能把当时核验自动改成授权；正式accepted来自后续successor-current和消息。最终ticket前序额外固定为Bol thread01a1bb45-27c8-7870-bf79-0129be8fd5be及该新候选的真实最终证据，不能用旧18152／旧HB／其他前序。当前只是受理，仍无窗／final handoff／ticket／claim／stage／run。
 
 已通知实际前序和Troika避免并列受理，Snub221733仅为待补准入绑定请求，当前未正式受理任何后继。本批两个新文件未加入已经受理的r69包，原364当前driver逐SHA仍匹配；不为新根观察扩大该包scope或换身份。当前完整场景／BSP／特殊分支／动态同步／完整连续路径／占用、Native移动恢复、同姿态hit／muzzle、吸附肩／身体遮挡、逐点GrabPose、全部CV-01–24／AC-01–22与实体头显均未完成。下一源码方向是根之后参与组件／形状的完整性与动态变化证据；游戏仍只待Bol实际全闭环后最终唯一交窗，目标active，本轮为源码和反例证据progress。
+
+## 2026年11月9日 r71可达树清单与玩家动作顺序纠偏
+
+新增cover_spatial_inventory.py及测试，复用r70同一CoverQuery根认证，迭代遍历所有可达child，不按查询位置裁掉任何分支、不写原component访问stamp。每个child分配含cookie的范围不得与root或既有child分配重叠，读取8项后为每个24字节头保留首值，弹出时再读；因此深层别名／循环或group见证后头变化会拒绝。全部node组件指针载荷进入同query首值／关闭括号，同一node内重复拒绝，不同node共享同一PrimitiveComponent则只认证一次对象并保留全部来源node。最后从该组件实际+0x164读取16字节反向成员头及完整payload，严格核集合等于全部正向成员node；不误对齐成+0x168，不丢第8项或最后一个孙节点。
+
+节点4096、深度64、总组件槽16384、唯一组件4096及单组件反向成员4096均为本观察操作限额，不是声称原引擎最大值。越界就拒绝整次观察，不截短后称成功；原Query16384reads／2MiB／3秒预算未放宽。输出仅称all reachable tree records observed，明确树外／overflow storage、BSP、owner world、全部shape／filter、世界同步和身体路径／占用未认证，即使可达树空也valid_empty_collision_result=false。此模块不是替代原引擎连续查询的新碰撞后端，未接runtime或已受理r69。
+
+新增14项及已有根／world-code22项共36项，0失败／0跳过，真实审查Python3c48、-E -s -B -X utf8、BelowNormal实际exit0，9源SHA前后相同。17节点／3组件／5正向槽夹具覆盖共享组件、第8孙节点及双向关联；反例包括节点内重复、坏Primitive类／默认／类循环、空／错对齐／越界成员指针、缺失／额外／重复反向节点、坏cap／storage、深层cookie／头、共享child分配／祖先循环、全部操作限额、读后变化和原预算拒绝。有效观察前后合成内存不变、无bridge或engine调用。日志和源码副本见spatial-inventory-r71/last-checks.json。离线树遍历通过不构成当前完整碰撞世界证据。
+
+主人经统筹要求这一次完整方案与进度review；仅据已有证据写analysis/coordinator-plan-review-20261109-2243/cover.json，没有为填报告新跑测试／构建。7步覆盖进入视图退出、真实探身与跑动稳定、抓边拉拽保持重抓、完整碰撞占用恢复、受击枪口与射击、逐点手姿及全部中断交付。按指定A20%／B30%／C20%／D15%／E15%的离散工程评分，各块均只够部分已编译实现0.25，合计25%；这是开发／可交付粗粒度评估，不是可玩完成率、工时、头显接受或更改历史固定分数。当前真正缺口仍是零range／空edge、UnavailableBackend、C0 cover拒绝、严重吸附遮挡以及完整姿态的碰撞／命中／枪口闭环。
+
+实施顺序已纠偏：保存本轮既成树模块后停止继续扩大独立观察器／封套／手工世界重建作为主交付。优先基于41460已保存来源修复可见遮挡，并优先认证复用原引擎已有连续查询和起终点占用路径；只有具体入口／覆盖缺口被证明不可用时，才补对应窄缺口。原r63 PointCheck会跳Sphere／Sphyl的事实保留，不泛化为所有原LineCheck／Trace路径均不可用；现有Actor.Trace参数入口支持有界非零extent和stationary诊断输入，仍须认证完整形状、初始重叠、self排除、早停、当前动态target和GT／世界同步后才可作安全证据，不能因它能返回就放行。下一可玩交付按一个低掩体整段动作：清晰进入→真实小探→LGrip拉出／松手保持／重抓缩回→合法半探射击和枪口墙挡→原版退出，物理／受击／枪口绑定同一有效姿态；通过后扩高墙／转角／动态及全部恢复，逐点GrabPose仍必交。
+
+本轮重新核41460保存Native状态及r13源：旧cover_camera enabled0／attempts0，不能把开启旧preview当已证修复；authored-eye350次采用／0拒绝，head palette362／肩甲mask362／head-section362及write_failure0，不能再笼统归因为眼点来源缺失或mask未启用。计数不是每Draw／硬件像素证明，不据此盲扩身体隐藏。standing view reader自身要求当前CoverType0，因此aggregate held标记也不能直接证明掩体用了旧站姿眼点。fallback读取当前原动画head的作者眼点，而当前C0仍因cover拒绝；准确眼点／身体／视线关系还需同场景几何。原6张关键图当前已不在原路径（正常滚动媒体范围），当时亲审与FAIL记录保留，本轮不冒称重新看过图。来源排查及未知范围在spatial-inventory-r71/41460-view-source-review.json，尚无因果修复或Native改动。
+
+已受理r69-admission-v2仍只做原一次A/source/internal shapes/hit filters，未混r70／r71、未stage/run。Cover没有最终交窗、ticket或claim。Snub221733现明确因整手交线拒绝撤回整个申请与排队意向；LS222840在先、Boom225349在后均仅待补静态准入身份，Cover尚无正式后继，不并列授窗。正常排队不记产品失败，也不把它当全局blocked。完整CV-01–24／AC-01–22、真实身体执行／恢复、同姿态hit／muzzle、逐点GrabPose与实体头显均未完成，goal active，本轮为源码／检查和实施方向证据progress。
