@@ -86,3 +86,11 @@ check-latch-extended-index.py将初始食指设为更伸展的15/45/25度，其�
 localize-latch-hand-crossings.py按原4影响权重，对每条手边/手三角作最大权重组归属，不丢弃混合面；掌0、食指368、中指330、无名指33、小指0、拇指125，双向分组严格重合原512+344=856总命中。数值是edge/triangle命中，不当作穿透体积、毫米深度或独立区域。当前姿态不是掌面主导，因此不再凭总数整体移腕。
 
 固定腕、食指、拇指、接触、其余骨姿，仅改变中指MCP bone15：侧向Y -20..20度五个针对性对照最少846，改善小；另仅追加局部-Z屈曲0/15/30度，原0度重现856，+15=761，+30=634（377+257）。更强屈曲有明确减少但仍严重穿插；最佳三方向图已亲看，仍不自然且有遮挡，拒绝发布。不增加骨长或改权重，不修改机械contact/radius及HB171233。数据latch-hand-crossing-localization.json、latch-middle-splay.json、latch-middle-flex.json/png。下一步在已定位食指/中指/拇指上分别处理，再做全手协调和实际骨骼/双眼验收，不以局部计数降低称通过。
+
+## 固定食指接触IK未改善，原法线发现接触朝向不成立
+
+refine-latch-index-ik.py在固定腕/拇指/食指tip目标、原骨长/权重条件下，只改变食指MCP局部两侧轴及PIP/DIP作有界IK：MCP14.25度候选tip误差.6352raw超过.1raw上限拒绝；原29.25度/45.5/24精确重现634；MCP44.25度候选tip误差.00409raw但全枪相交增至745。因此不以点位误差小接受姿态，也不放宽骨长/接触容差。
+
+audit-latch-pad-normals.py进一步读取原Marcus相同原export内每顶点stride64的packed normalZ(offset16)，使用原骨图/蒙皮旋转和相同腕变换。index vertex1004原字节131,19,59,255，thumb1132为35,112,214,255；posed原打包法线与原三角fan叉积点积分别-.999656/-.996199，说明两者绕序约定相反，不能把未校验fan法线当外向。按打包法线与预期相向接触面法线比较，两点分别-.432070/-.145732，即此前两点位置对齐并未形成正确相向表面。此是两个候选点的方向证据，不宣称已识别解剖指垫或证明全部skin normal消费；原无向edge/triangle穿插计数不受法线翻转影响。
+
+下一步按原皮肤packed法线与真实可触面共同选择指垫区域，再作位置/朝向约束；不继续仅用旧marker最近顶点与两点跨度调关节。结果latch-index-ik.json/png/log、latch-pad-normal-audit.json保留。当前无手型发布，无游戏运行，HB171233与mechanicalcontact均不改。
