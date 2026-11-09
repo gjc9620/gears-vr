@@ -117,6 +117,37 @@ int main(int argc,char**argv){
         C(!fp::authored_eye(&s,eye));C(!memcmp(&before,&eye,sizeof eye));
     }
     reset();C(fp::authored_eye(&scene,eye));C(!memcmp(&expected,&eye,sizeof eye));
+    // Opt-in read bracket observes the same production reader. Extra evidence
+    // failure must not change a normally accepted eye or leave stale closure.
+    auto diagnostic=std::make_unique<gears_first_person_eye_trace::Geometry>();
+    const auto epochs=[&](){put(mesh+0x334,uint32_t(7));put(mesh+0x338,uint32_t(9));};
+    reset();epochs();C(fp::authored_eye_observed(&scene,eye,diagnostic.get()));
+    C(diagnostic->status==gears_first_person_eye_trace::Status::ready&&diagnostic->owner_closed==1);
+    C(diagnostic->tick_epoch==7&&diagnostic->pose_epoch==9);
+    C(!memcmp(diagnostic->space.data(),space.data(),sizeof space));
+    C(!memcmp(diagnostic->reference.data(),reference.data(),sizeof reference));
+    C(!memcmp(&expected,&eye,sizeof eye));
+    for(unsigned bad=0;bad<6;++bad){
+        reset();epochs();
+        if(bad==0)denied=mesh+0x334;
+        if(bad==1){change_address=mesh+0x338;change_read=2;}
+        if(bad==2){change_address=metadata.space.data;change_read=2;}
+        if(bad==3){auto changed=space;changed[4].values[0]=NAN;put_bytes(metadata.space.data,changed.data(),sizeof changed);}
+        if(bad==4){
+            // Prime the normal cache, then mutate an equal-header reference.
+            C(fp::authored_eye(&scene,eye));auto changed=reference;changed[3].bytes[0]^=1;
+            put_bytes(metadata.reference.data,changed.data(),sizeof changed);
+        }
+        if(bad==5)denied=metadata.space.data;
+        C(fp::authored_eye_observed(&scene,eye,diagnostic.get()));
+        C(diagnostic->status!=gears_first_person_eye_trace::Status::ready&&diagnostic->owner_closed==1);
+        C(!memcmp(&expected,&eye,sizeof eye));
+    }
+    reset();epochs();closing_ok=false;
+    C(!fp::authored_eye_observed(&scene,eye,diagnostic.get()));C(diagnostic->owner_closed==0);
+    reset();owner_ok=false;
+    C(!fp::authored_eye_observed(&scene,eye,diagnostic.get()));
+    C(diagnostic->owner_closed==0&&diagnostic->status==gears_first_person_eye_trace::Status::not_read);
     printf("first_person_authored_eye_live: %u checks, %u failures; retained matrices, CPU binding seam; no camera/write permission\n",checks,failures);
     return failures?1:0;
 }

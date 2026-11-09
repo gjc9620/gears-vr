@@ -1464,3 +1464,19 @@ capture的现有stop请求、cleanup-ready、retained判定、hook-restored与�
 同一冻结Native／反射源的四个程序均/std:c++17 /O2 /W4 /WX /EHsc /UNDEBUG /MT实际编译执行0：Stream40检查／0，Session58／0，Raw125／0，C0 OFF18／0；实际项目依赖并集52项。覆盖64条批次、零批次后继续、顺序与末记录、hit／report预算、错误／过期／跨线程descriptor、合成原10参数ABI、截断Native计数与复制数量不同、Session截断不发布／仍可正常关闭、两种形状、11段原字节变更拒绝及关闭构建六入口保持输出。原方法dispatch／装载仍为合成或Host seam，原DLL只作数据，不能当原运行通过。final单元Driver因预期57而实际58的汇总marker停止；原58检查已exit0且源码未变，保留记录，仅续编执行尚未进行的Raw／C0Off，没有重复Stream／Session绿色程序。
 
 证据在analysis/cover-system-20261108/physx-stream-r78/，含原指令／合同证书、11段来源、首／最终Native与单元冻结树、运行退出和verification.json。本轮没有stage运行制品／游戏／XR／录制或重试b144，没有新增窗口、助手或其他武器工作，没有替换公共v71。下一步须认证公开hit shape→actor和完整自身集合，再结合当前完整形状／组合形变路径、终点占用及世界／物理／命中／枪口同步；不得把过滤掉首个自身hit、单个bool或本批完整流当作这些证明。严重肩／身体遮挡继续FAIL；应同步从保留同帧头／身体／原生view方向和实际蒙皮关系定位，不靠盲移眼点或隐藏身体绕过。逐点GrabPose、Native实际移动／恢复、CV-01–24／AC-01–22及实体头显仍未完成，25%工程review保持。
+
+## 2026年11月10日 r79眼点同调用诊断与61492跨Scene证据纠正
+
+上一目标轮仅核对已存在需求文档，未推进功能，按no progress重新核对当前状态。本轮回到严重肩／身体遮挡，不把原PhysX未闭合当作等待全部视图工作的理由。保留61492的实际SpaceBases与Local重算头／眼点接近，但原probe-61492-cover-placement.cpp明确把standing->source写成source-CT0.bin，同时从较后CPOSE episode row0取掩体metadata／local／space。前者Scene2／CT0，后者Scene292／scene_qpc9813103981965；同Pawn／mesh／reference不是同一时相。旧算出的41.3436度差值不能归因为视角与身体失配，也不说明41460原因。用新冻结依赖重新编译原数值probe，26项目依赖关闭核验、执行0，数值与旧输出完全一致；更正单独保存，不覆盖原证据。
+
+沿现有first_person_live::prepare和authored_eye读取路径增加first_person_eye_trace有界内存记录，不增加Hook／世界观察器／骨骼写入或相机控制链。GEARSVR_AUTHORED_EYE_TRACE默认未启用；只接受空／0／1的精确值，1还要求simulator_operator、continuous session及body_basis。默认空指针路径不新增游戏读取。显式启用时最多10Hz／512行，先到先保存、满额明确overflow，不静默覆盖。每行把同次prepare的当前Scene／family／renderer QPC、来源对象键、人物与mesh／asset身份、component、完整115 SpaceBases、完整reference、实际head局部眼点、输入视图及prepare输出放在一起；不是拿旧Core或最近时间记录配对。prepare输出仍只是后续共同body view接管前的本层结果，不称最终双眼／GPU图像。
+
+可选几何读取按原SpaceBases／reference完整复制与重复比对，关闭检查tick／pose epoch、数组头、component和用于正常眼点的head55，reference须与当前缓存所用完整记录一致。read_failed／reference_changed／payload_changed／nonfinite分别保留，最终visual owner关闭成功单独标记。诊断失败不改变正常眼点接受及视图结果；反之原眼点失败不会留下旧owner_closed。此为CPU重复读取括号，只能证明所读字节前后相同，不能证明引擎原子快照、ABA不存在、每Draw硬件buffer或真实物理／命中／枪口。
+
+仅现有日志端在session draining／stopped、recording=false及active=0时写authored-eye-geometry.bin；其他阶段只写摘要。格式记录magic/version/row_bytes/count/capacity/due/overflow/QPC频率，写入和关闭结果检查，失败不标记exported。产品prepare、期满及诊断不授权身体位移、不改视点方向／偏移、不放宽no_cover或现有输入／身份／新鲜度／恢复约束。
+
+三个聚焦程序/std:c++17 /O2 /W4 /WX /EHsc /UNDEBUG /MT实际编译执行0：Journal542检查／0，production prepare与drained导出41／0，原眼点读取81／0；共30实际项目依赖。覆盖默认不读诊断、精确配置、节流／倒退／容量不覆盖、格式读回、同调用输入输出与失败标记、诊断读取／epoch／payload／reference／非有限失败不改原眼点、原owner失败不留旧closure，以及运行中／录制中／回调未退出不导出。绑定与eye部分使用明确CPU seam，61492姿态用于正常读取反例，不当游戏身份或原子姿态证明。第一版prepare测试缺真实weapon类型include及已有initializer shadow警告，在独立最终fixture修正include并仅包住旧C4456；未关闭其他/WX。新产品模块没有通过关警告掩盖问题。
+
+完整生产Native复用r78不可变源，仅3文件overlay，所有GEARS编译开关不变。最终DLL SHA8035bf35049efe954f80c6947ce582281d5f576d62a812a1c1bd12964404cfb4，671真实依赖／391冻结项目依赖全部逐SHA，无外部工作树依赖，编译链接exit0。首版因first_person include时尚无后续phase命名空间而编译拒绝，保留原日志／冻结源，改用已有SessionPhase生命周期，再在独立v2树完整编译；最终Native保留原/W4／EHsc及旧C4456等警告，不称全Native /WX。未变的542／81绿色程序经完整实际依赖SHA一致性复用，只重编有变化的prepare程序。
+
+证据analysis/cover-system-20261108/view-alignment-r79/verification.json及61492-provenance-correction.json。没有stage运行制品、游戏／XR／录制、新运行窗口、助手、CUA或其他武器工作；Publicv71不变，b144消费失败不重试。下一步在实际唯一交窗后使用这项材料变化的新候选，短时复现严重遮挡，取得同调用几何与实际双眼关联，定位后修复；当前不按跨Scene的41度旋转相机、不盲移眼点或隐藏身体。原PhysX完整覆盖、自身集合／shape归属、组合形变路径／终点占用、同版physics-hit-muzzle、Native移动恢复、逐点GrabPose、完整CV-01–24／AC-01–22及实体头显仍未完成；严重肩／身体遮挡继续FAIL，25%工程review保持，目标active。

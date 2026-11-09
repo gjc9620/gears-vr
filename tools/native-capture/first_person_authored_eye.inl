@@ -6,6 +6,7 @@
 // fallback as one complete basis. No pose, scale or game memory is set.
 #include "body_head_authored_mount.h"
 #include "cover_pose_phase.h"
+#include "first_person_eye_trace.h"
 #include <bcrypt.h>
 #if defined(GEARS_COVER_BODY_PROTOTYPE) && GEARS_COVER_BODY_PROTOTYPE
 namespace first_person_live {
@@ -31,8 +32,10 @@ bool authored_digest(void const* p,size_t n,eye_body::rig::Signature& result){
     if(ok)ok=BCryptFinishHash(h,result.data(),ULONG(result.size()),0)>=0;
     if(h)BCryptDestroyHash(h);if(a)BCryptCloseAlgorithmProvider(a,0);return ok;
 }
-bool authored_eye(gears_anchor::Receipt const* anchor,gears_vr::Vector& output){
+bool authored_eye_observed(gears_anchor::Receipt const* anchor,gears_vr::Vector& output,
+    gears_first_person_eye_trace::Geometry* diagnostic){
     namespace binding=weapon_hand_scene_binding;
+    if(diagnostic)*diagnostic={};
     if(!anchor)return false;
     binding::Binding owner{},closing{};
     // Inventory/Instigator can be in a legitimate handoff during original
@@ -89,6 +92,14 @@ bool authored_eye(gears_anchor::Receipt const* anchor,gears_vr::Vector& output){
            std::abs(eye.x-a.location[0])>stereo_units_per_metre||
            std::abs(eye.y-a.location[1])>stereo_units_per_metre||
            p.z<stereo_units_per_metre*.1||eye.z-a.location[2]>stereo_units_per_metre*1.5)return false;
+        if(diagnostic){
+            // Optional failure only invalidates the evidence, not the normal
+            // eye result. No extra read occurs on the default/null path.
+            diagnostic->world_generation=owner.world_generation;
+            diagnostic->mesh=owner.mesh;diagnostic->asset=asset_id;
+            gears_first_person_eye_trace::capture(read,*diagnostic,mesh,asset,ref,space,
+                component,head,cache.frame.reference,{local.x,local.y,local.z});
+        }
         if(!eye_phase::field(read,again_asset,mesh,0x218)||again_asset!=asset||
            !eye_phase::field(read,again_ref,asset,0xa4)||!eye_phase::header_equal(ref,again_ref)||
            !eye_phase::field(read,again_component,mesh,0xa0)||std::memcmp(&component,&again_component,sizeof component)||
@@ -97,9 +108,14 @@ bool authored_eye(gears_anchor::Receipt const* anchor,gears_vr::Vector& output){
            !binding::identity(asset,again_id)||!binding::same(asset_id,again_id)||!binding::metadata_current())return false;
     }
     if(!binding::sample_visual(anchor,closing)||!binding::same_visual_key(owner,closing))return false;
+    if(diagnostic)diagnostic->owner_closed=1;
     output=eye;authored_eye_last={eye.x,eye.y,eye.z};++authored_eye_applied;return true;
 }
+bool authored_eye(gears_anchor::Receipt const* anchor,gears_vr::Vector& output){return authored_eye_observed(anchor,output,nullptr);}
 }
 #else
-namespace first_person_live {bool authored_eye(gears_anchor::Receipt const*,gears_vr::Vector&){return false;}}
+namespace first_person_live {
+bool authored_eye_observed(gears_anchor::Receipt const*,gears_vr::Vector&,gears_first_person_eye_trace::Geometry*){return false;}
+bool authored_eye(gears_anchor::Receipt const*,gears_vr::Vector&){return false;}
+}
 #endif

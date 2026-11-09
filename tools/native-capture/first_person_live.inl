@@ -1,6 +1,12 @@
 // Included after crosshair_live and before stereo pair construction. All state
 // is owned by stereo_mutex; the requested mode persists across world recovery.
+#include "first_person_eye_trace.h"
 namespace first_person_live {
+namespace eye_trace=gears_first_person_eye_trace;
+bool eye_trace_enabled{},eye_trace_exported{};
+unsigned long long eye_trace_export_failures{};
+eye_trace::Journal eye_journal;
+eye_trace::Row eye_trace_scratch;
 bool enabled{},preview_current{},initial_requested{},body_basis{},body_view_required{};gears_first_person::Toggle toggle;
 unsigned long long missing_basis_rejected{},uncomposed_view_rejected{};
 double near_clip_metres{};
@@ -11,10 +17,15 @@ unsigned long long transitions{},applied{},excluded{},rejected{},weapon_unknown{
 unsigned long long authored_eye_applied{},authored_eye_rejected{};
 std::array<double,3> authored_eye_last{};
 bool authored_eye(gears_anchor::Receipt const*,gears_vr::Vector&);
+bool authored_eye_observed(gears_anchor::Receipt const*,gears_vr::Vector&,eye_trace::Geometry*);
 gears_first_person::ZoomHint zoom_hint{};
 void close(){if(event){CloseHandle(event);event=nullptr;}}
 bool initialize(){
     if(!enabled)return true;
+    wchar_t trace_option[8]{};
+    const auto trace_length=GetEnvironmentVariableW(L"GEARSVR_AUTHORED_EYE_TRACE",trace_option,unsigned(std::size(trace_option)));
+    if(trace_length>=std::size(trace_option)||!eye_trace::option(trace_option,simulator_operator,eye_trace_enabled))return false;
+    if(eye_trace_enabled&&(!continuous_session||!body_basis))return false;
     // The coherent 6DoF body/hand basis always starts in first person.
     toggle.initialize(body_basis||initial_requested);
     wchar_t name[128]{};swprintf_s(name,L"Local\\GearsVR.FirstPersonToggle.%lu",GetCurrentProcessId());
@@ -25,6 +36,37 @@ bool initialize(){
         if(xinput_module){get_pad=reinterpret_cast<GetPad>(GetProcAddress(xinput_module,"XInputGetState"));if(get_pad)break;}
     }
     return true;
+}
+bool begin_eye_trace(gears_anchor::Receipt const* anchor,gears_vr::StereoMatrix const& view){
+    if(!body_basis||!anchor||!eye_journal.due(eye_trace_enabled,GetTickCount64()))return false;
+    auto& row=eye_trace_scratch;row={};row.scene=anchor->invocation;row.thread=GetCurrentThreadId();
+    row.scene_qpc=anchor->scene_qpc;row.family_qpc=anchor->family_qpc;row.renderer_qpc=anchor->renderer_qpc;
+    row.family=anchor->key.family;row.source=anchor->key.source;row.local=anchor->key.local;
+    row.pawn=anchor->anchor.pawn_identity;row.pawn_location=anchor->anchor.location;
+    row.units_per_metre=stereo_units_per_metre;row.incoming_view=view;row.begin_qpc=now();return true;
+}
+void finish_eye_trace(bool observing,bool accepted,bool prepared,gears_vr::Vector eye,gears_vr::StereoMatrix const& view){
+    if(!observing)return;
+    auto& row=eye_trace_scratch;row.eye_accepted=unsigned(accepted);row.view_prepared=unsigned(prepared);
+    row.eye=eye;row.prepared_view=view;row.end_qpc=now();eye_journal.append(row);
+}
+void print_eye_trace(FILE* file){
+    // The existing stereo log owner holds stereo_mutex. No GT file IO or
+    // concurrent row export: only after Native admission and hooks drain.
+    const auto lifecycle=session_phase.load();
+    if(eye_trace_enabled&&!eye_trace_exported&&eye_journal.count&&
+       (lifecycle==SessionPhase::draining||lifecycle==SessionPhase::stopped)&&!recording.load()&&!active.load()){
+        wchar_t path[MAX_PATH]{};FILE* trace_file{};LARGE_INTEGER frequency{};
+        if(directory[0]&&swprintf_s(path,L"%s\\authored-eye-geometry.bin",directory)>0&&
+           QueryPerformanceFrequency(&frequency)&&!_wfopen_s(&trace_file,path,L"wb")&&trace_file){
+            const bool written=eye_trace::write(trace_file,eye_journal,frequency.QuadPart);
+            const int closed=fclose(trace_file);eye_trace_exported=written&&closed==0;
+            if(!eye_trace_exported)++eye_trace_export_failures;
+        }else ++eye_trace_export_failures;
+    }
+    fprintf(file,"authored_eye_trace enabled=%u rows=%u due=%llu overflow=%llu exported=%u export_failures=%llu cpu_read_bracket_only=1 gpu_draw_proof=0\n",
+        unsigned(eye_trace_enabled),eye_journal.count,static_cast<unsigned long long>(eye_journal.due_count),
+        static_cast<unsigned long long>(eye_journal.overflow),unsigned(eye_trace_exported),eye_trace_export_failures);
 }
 bool ordinary(gears_anchor::Receipt const* anchor){return anchor&&!anchor->anchor.unpossessed&&
     anchor_config.cinematic_enabled&&!anchor_config.mounted_enabled&&!anchor->anchor.cinematic&&
@@ -67,12 +109,15 @@ bool prepare(gears_anchor::Receipt const* anchor,gears_vr::StereoMatrix& view){
     }
     const auto& a=anchor->anchor;
     gears_vr::Vector eye{a.location[0],a.location[1],double(a.location[2])+a.eye_height};
-    if(body_basis&&!authored_eye(anchor,eye)){++authored_eye_rejected;++rejected;return false;}
+    const bool observing=begin_eye_trace(anchor,view);
+    if(body_basis&&!(observing?authored_eye_observed(anchor,eye,&eye_trace_scratch.geometry):authored_eye(anchor,eye))){
+        finish_eye_trace(observing,false,false,eye,view);++authored_eye_rejected;++rejected;return false;}
     gears_first_person::Result result{};
     if(!gears_first_person::prepare(view,eye,stereo_units_per_metre,result,body_basis)){
-        ++rejected;return false;}
+        finish_eye_trace(observing,true,false,eye,view);++rejected;return false;}
+    finish_eye_trace(observing,true,true,eye,result.view);
     view=result.view;preview_current=true;++applied;if(weapon.sniper)++sniper_applied;return true;
 }
 void print(FILE* file){fprintf(file,"first_person_missing_basis_rejected=%llu first_person_uncomposed_view_rejected=%llu\n",missing_basis_rejected,uncomposed_view_rejected);fprintf(file,"first_person_preview enabled=%u requested=%u transitions=%llu applied=%llu excluded=%llu rejected=%llu weapon_unknown=%llu sniper_applied=%llu sniper_scoped=%llu body_basis=%u authored_eye_applied=%llu authored_eye_rejected=%llu authored_eye_x=%.6f authored_eye_y=%.6f authored_eye_z=%.6f anchor_forward_metres=%.2f anchor_up_metres=%.2f pitch_height_coupling=0 weapon_animation_modified=0\n",
-    unsigned(enabled),unsigned(toggle.requested()),transitions,applied,excluded,rejected,weapon_unknown,sniper_applied,sniper_scoped,unsigned(body_basis),authored_eye_applied,authored_eye_rejected,authored_eye_last[0],authored_eye_last[1],authored_eye_last[2],body_basis?0.:.35,body_basis?0.:.10);}
+    unsigned(enabled),unsigned(toggle.requested()),transitions,applied,excluded,rejected,weapon_unknown,sniper_applied,sniper_scoped,unsigned(body_basis),authored_eye_applied,authored_eye_rejected,authored_eye_last[0],authored_eye_last[1],authored_eye_last[2],body_basis?0.:.35,body_basis?0.:.10);print_eye_trace(file);}
 }
