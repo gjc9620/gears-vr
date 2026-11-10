@@ -147,3 +147,7 @@ continuation-rejection-isolated-r1从manual-veto-isolated原2253文件逐项复�
 ## 主人最新独立执行要求：撤销远期交接依赖
 
 收到主人明确覆盖旧链条流程的要求：各枪独立推进，只在实际启动协调占用，动作结束立即正常停止并核恢复，离线编码/审片/保留不占共享使用权。HB已停止等待远期前后继/互审/票据，派生run_hammerburst_standalone_r2.py及独立plan/ready；原v6保护/原十raw目标/选择路径/环境清理/固定时效/库存/原动作和正常停止不改。旧HOD取消例外与整个前驱读取依赖均不带入。新首次O_EXCL claim绑定本次启动前fsync原件，stage/restore前复核，恢复后queue立即window_owned=false。prepare-only精确primary参数实际0，无claim/stage/启动；运行前仍须简短核对当前真实共享访问/正在启动者，沿既有launcher互斥，不能靠旧idle或旧终态抢启动。
+
+## 独立入口首次尝试：真实外部占用拒绝，未stage
+
+Bow53536实际正常恢复释放后，HB重新核对四PID无并告知即将启动。独立入口55716在原idle处发现另一实际Steam game39644（2026-11-10 14:53:34 +08出生），退出1；没有prestage目录/基线、stage/config/bin写入或HB game/输入。不是ffmpeg误判；原真实占用保护保留。独立核55716已终，O_EXCL原claim consumed_unverified保留不可复用，occupied-start-refusal.json保存实际事实。无HB共享占用或需恢复的改动，不停止他人游戏；以后确认当前使用者释放后以新的独立attempt再启动，不借本消费claim。目标active，未增加玩法通过。
