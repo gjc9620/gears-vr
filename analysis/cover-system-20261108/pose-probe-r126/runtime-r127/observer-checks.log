@@ -1,0 +1,13 @@
+test_active_or_untrusted_menu_rejected (test_cover_playground_observation.EmptyPlaygroundAdmission.test_active_or_untrusted_menu_rejected) ... ok
+test_certified_empty_menu (test_cover_playground_observation.EmptyPlaygroundAdmission.test_certified_empty_menu) ... ok
+test_unknown_or_incomplete_menu_rejected (test_cover_playground_observation.EmptyPlaygroundAdmission.test_unknown_or_incomplete_menu_rejected) ... ok
+test_new_discovery_still_rejects_wrong_actor (test_cover_playground_observation.RegistryReacquisition.test_new_discovery_still_rejects_wrong_actor) ... ok
+test_non_registry_failure_has_no_retry (test_cover_playground_observation.RegistryReacquisition.test_non_registry_failure_has_no_retry) ... ok
+test_registry_failure_rebuilds_full_resolver_once (test_cover_playground_observation.RegistryReacquisition.test_registry_failure_rebuilds_full_resolver_once) ... ok
+test_second_registry_failure_stops (test_cover_playground_observation.RegistryReacquisition.test_second_registry_failure_stops) ... ok
+test_session_change_prevents_second_discovery (test_cover_playground_observation.RegistryReacquisition.test_session_change_prevents_second_discovery) ... ok
+
+----------------------------------------------------------------------
+Ran 8 tests in 0.021s
+
+OK

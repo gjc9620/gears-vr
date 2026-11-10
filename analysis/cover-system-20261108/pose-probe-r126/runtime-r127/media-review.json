@@ -1,0 +1,42 @@
+{
+  "frames": 129,
+  "recording_sha256": "79d9beba3023db7f767da366356435db1f41c92d19975b0588668686537291c6",
+  "pages": [
+    {
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\pose-probe-r126\\runtime-r127\\overview-1.jpg",
+      "sha256": "edd00d1e9faf2cef13d59271d8dd7ffd1af623192719dde2a1e837fb36574cd3"
+    },
+    {
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\pose-probe-r126\\runtime-r127\\overview-2.jpg",
+      "sha256": "8dc4968b6fb8d606bfb592d5a07240dea341102d4695c6d2bd1cc184d24a9f77"
+    },
+    {
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\pose-probe-r126\\runtime-r127\\overview-3.jpg",
+      "sha256": "f40edf2d7a84cecee0b77a8800a327a8f286f2a066d433f7d703180012645ed6"
+    },
+    {
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\pose-probe-r126\\runtime-r127\\overview-4.jpg",
+      "sha256": "1fedd2a66caffc3f7a0229eb6aca4f8392afe96cae2770b3ba2c4948022944fc"
+    },
+    {
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\pose-probe-r126\\runtime-r127\\overview-5.jpg",
+      "sha256": "19dd66e4e9d1bfa356c5b785ac9dcde624ce5673994e1e342886dd1aec81ad43"
+    },
+    {
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\pose-probe-r126\\runtime-r127\\overview-6.jpg",
+      "sha256": "3dbc01abaf9c11ee2006890c796ba37789380efa4c2a68f935e56172063e882f"
+    },
+    {
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\pose-probe-r126\\runtime-r127\\overview-7.jpg",
+      "sha256": "b73a442af26130f1b44a7ad43ade8ec7bb7b48de23671d185f3aa24ccaba55b3"
+    }
+  ],
+  "contacts": [],
+  "source": "actual private simulator projection",
+  "desktop_capture": false,
+  "full_span_personally_reviewed": true,
+  "headset_accepted": false,
+  "encode_exit": 0,
+  "encoded_sha256": "e35f2e4ee0334fced0b1600d4eb4a69e84291c8c4fd4d913290e6c423e563fef",
+  "visual_result": "Entry not attempted: static Playground start with arms/hands, transient missing hand pixels near 0.9 and 9.8 seconds; no cover phase or contact acceptance"
+}

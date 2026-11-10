@@ -1,0 +1,12 @@
+[
+  {
+    "at_ns": 1794320020471954500,
+    "available": {
+      "available_commit": 16962424832,
+      "available_physical": 11975258112,
+      "active_instances": [
+        "boltok-1110-221120"
+      ]
+    }
+  }
+]

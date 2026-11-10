@@ -13,6 +13,32 @@ def empty_playground(menu):
 
 
 def sample(observer, root, expected_controller, expected_pawn):
+    from anchor_config import AnchorRegistryChanged
+    # Discovery may finish just before an object-registry allocation. A failed
+    # bracket is discarded, never accepted or patched. Rebuild discovery once
+    # under the same live session; this read-only adapter sends no input.
+    session = observer.verify()
+    keys = ('session_id', 'game_identity', 'owner_identity', 'xr_identity')
+    bound = {key: session[key] for key in keys}
+    failures = []
+    for attempt in range(2):
+        if attempt:
+            current = observer.verify()
+            if any(current.get(key) != bound[key] for key in keys):
+                raise RuntimeError('Playground session changed during registry reacquisition')
+        try:
+            row = _sample_once(observer, root, expected_controller, expected_pawn)
+            if failures:
+                row['registry_reacquisition'] = failures
+            return row
+        except AnchorRegistryChanged as error:
+            failures.append(dict(reason=str(error), evidence=getattr(error, 'evidence', None)))
+            if attempt:
+                error.registry_reacquisition = failures
+                raise
+
+
+def _sample_once(observer, root, expected_controller, expected_pawn):
     from anchor_config import LiveRegistryAnchorSampler, acquire_anchor_sample
     from resolve_camera import Resolver
     row = observer.sample()

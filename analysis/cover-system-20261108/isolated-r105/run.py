@@ -49,6 +49,7 @@ def main():
                            (SELECTED/'config.json', prepared['config_sha256']),
                            (Path(action['operator']), action['operator_sha256']),
                            (Path(action['input_reader']), action['input_reader_sha256']),
+                           (Path(action['observation_adapter']), action['observation_adapter_sha256']),
                            (TOOLS, prepared['isolation_source_sha256'])):
         if sha(path) != expected:
             raise RuntimeError('Prepared input changed: ' + str(path))

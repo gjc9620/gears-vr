@@ -1,0 +1,41 @@
+Traceback (most recent call last):
+  File "C:\Users\11\.codex\worktrees\6dof-single\gearsVr\tools\native-capture\anchor_config.py", line 149, in guard
+    try:value=self._strict_guard()
+              ^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\11\.codex\worktrees\6dof-single\gearsVr\tools\native-capture\anchor_config.py", line 132, in _strict_guard
+    return super().guard()
+           ^^^^^^^^^^^^^^^
+  File "C:\Users\11\.codex\worktrees\6dof-single\gearsVr\tools\package-inspector\sample_player_anchor.py", line 135, in guard
+    _check_registry_header('objects',objects,(r.objects_data,r.object_count,r.object_capacity))
+  File "C:\Users\11\.codex\worktrees\6dof-single\gearsVr\tools\package-inspector\sample_player_anchor.py", line 34, in _check_registry_header
+    raise RegistryHeaderChanged(reason,registry,expected,observed)
+sample_player_anchor.RegistryHeaderChanged: Object registry changed since resolution
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\11\.codex\worktrees\6dof-single\gearsVr\analysis\instances\cover-1110-r127-cloak-pose-gate\cover-output\cover_action.py", line 101, in <module>
+    exec(compile(s, str(O / 'run_menu_firstperson_check.py'), 'exec'),
+  File "C:\Users\11\.codex\worktrees\6dof-single\gearsVr\analysis\solo-m1-20261028\run_menu_firstperson_check.py", line 193, in <module>
+    if rec:
+    ^^^^^^^^
+  File "C:\Users\11\.codex\worktrees\6dof-single\gearsVr\analysis\solo-m1-20261028\equipment_controller_chain.py", line 119, in run
+    # VR pad, ordinary walking feedback and existing paired recorder.
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\11\.codex\worktrees\6dof-single\gearsVr\analysis\solo-m1-20261028\cover_boundary_chain.py", line 91, in run
+    current()
+  File "C:\Users\11\.codex\worktrees\6dof-single\gearsVr\analysis\solo-m1-20261028\cover_boundary_chain.py", line 80, in current
+    row = sample_playground(observer, g.ROOT, ctx.pc, ctx.pawn)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\11\.codex\worktrees\6dof-single\gearsVr\tools\game-playtest\cover_playground_observation.py", line 30, in sample
+    observer.sampler = LiveRegistryAnchorSampler(observer.resolver, cinematic_camera=True)
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\11\.codex\worktrees\6dof-single\gearsVr\tools\native-capture\anchor_config.py", line 56, in __init__
+    try:super().__init__(resolver,prepared_camera=prepared_camera,
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\11\.codex\worktrees\6dof-single\gearsVr\tools\package-inspector\sample_player_anchor.py", line 78, in __init__
+    self.initial=self.guard()
+                 ^^^^^^^^^^^^
+  File "C:\Users\11\.codex\worktrees\6dof-single\gearsVr\tools\native-capture\anchor_config.py", line 178, in guard
+    raise AnchorRegistryChanged(reason,failure) from last_error
+anchor_config.AnchorRegistryChanged: Object registry changed since resolution

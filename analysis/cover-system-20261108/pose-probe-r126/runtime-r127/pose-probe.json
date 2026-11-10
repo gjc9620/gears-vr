@@ -1,0 +1,15 @@
+{
+  "game": {
+    "pid": 42268,
+    "creation_time": 134387936291943740,
+    "image": "j:\\gearsvr\\gears.of.war.reloaded.v1.0.1.3816947-p2p\\gears of war reloaded\\binaries_x64\\gowde-steam.exe"
+  },
+  "native_sha256": "d7cb104d3dcf7e77dfa127f28064d1b3cfbb3df2c6a8f16d416fee2c9c88c2e5",
+  "rows": [],
+  "missing": [],
+  "complete_gate_observed": false,
+  "query_attempted": false,
+  "collision_clear": null,
+  "movement_authorized": false,
+  "same_C0_across_rows": false
+}

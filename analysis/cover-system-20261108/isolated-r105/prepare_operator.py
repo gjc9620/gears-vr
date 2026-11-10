@@ -22,10 +22,17 @@ def main():
         if sha(selected / filename) != receipt[filename.removesuffix('.json') + '_sha256']:
             raise RuntimeError('Private launch inputs changed')
     output = selected / 'cover-output'
+    adapter = output / 'cover_private_playground_observation.py'
+    adapter_source = ROOT / 'tools/game-playtest/cover_playground_observation.py'
+    with adapter.open('x', encoding='utf-8') as stream:
+        stream.write(adapter_source.read_text(encoding='utf-8'))
     sources = {}
     for filename in ('cover_boundary_chain.py', 'equipment_controller_chain.py', 'run_menu_firstperson_check.py'):
         sources[filename] = (OLD / filename).read_text(encoding='utf-8')
     boundary = sources['cover_boundary_chain.py']
+    sources['cover_boundary_chain.py'] = replace_once(boundary,
+        'from cover_playground_observation import sample as sample_playground',
+        'from cover_private_playground_observation import sample as sample_playground')
     equipment = sources['equipment_controller_chain.py']
     menu = sources['run_menu_firstperson_check.py']
     # All cover/weapon observer selections refer to this exact namespace;
@@ -71,6 +78,7 @@ def live():
         """if '--prepare-import-check' in sys.argv:
     import ast
     import cover_ordinary_approach
+    import cover_private_playground_observation
     imports = [node for node in ast.parse(s).body if isinstance(node, (ast.Import, ast.ImportFrom))]
     exec(compile(ast.fix_missing_locations(ast.Module(body=imports,type_ignores=[])),
         str(O / 'run_menu_firstperson_check.py'), 'exec'),
@@ -105,6 +113,8 @@ exec(compile(s, str(O / 'run_menu_firstperson_check.py'), 'exec'),""")
         generator_sha256=sha(__file__),
         syntax_checked=True, shared_instance_references=0,
         input_reader=str(output / 'read_private_input.py'), input_reader_sha256=receipt['input_reader_sha256'],
+        observation_adapter=str(adapter), observation_adapter_sha256=sha(adapter),
+        observation_adapter_source=str(adapter_source), observation_adapter_source_sha256=sha(adapter_source),
         actual_input_or_recording_started=False, gameplay_accepted=False,
         flags=['--cover-eye-observation','--equipment-chain','--playground-ready','--dual-output'],
         remaining='Launch/stop owner and one-shot source-stage environment still require explicit r105 runner.'))

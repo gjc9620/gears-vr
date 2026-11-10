@@ -1,0 +1,60 @@
+{
+  "classification": "progress: actual observer constructor failure located and bounded fresh discovery repaired",
+  "game": {
+    "pid": 42268,
+    "creation_time": 134387936291943740,
+    "image": "j:\\gearsvr\\gears.of.war.reloaded.v1.0.1.3816947-p2p\\gears of war reloaded\\binaries_x64\\gowde-steam.exe"
+  },
+  "owner": {
+    "pid": 58124,
+    "creation_time": 134387936211889401,
+    "image": "c:\\users\\11\\.cache\\codex-runtimes\\codex-primary-runtime\\dependencies\\python\\python.exe"
+  },
+  "xr": {
+    "pid": 27304,
+    "creation_time": 134387936362884730,
+    "image": "c:\\users\\11\\.codex\\worktrees\\6dof-single\\gearsvr\\tools\\openxr-probe\\build-cover-1110-r127-cloak-pose-gate\\openxrposeprobe.exe"
+  },
+  "source_commit": "0d734832",
+  "native_sha256": "d7cb104d3dcf7e77dfa127f28064d1b3cfbb3df2c6a8f16d416fee2c9c88c2e5",
+  "original_report": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\runtime\\continuous-stereo-42268-20261110-221356-d8b39940.json",
+  "original_report_sha256": "9cbf8f77c009bf9d1131797063c2c15863d7e0164d4c7e6a11714a1e01da5f6b",
+  "operator_log_sha256": "7c27535bdc71dc7052d25c0194eb926c5d9a3e6bd7fa9259d0f8cbe0e72f1e04",
+  "first_failure": "AnchorRegistryChanged during LiveRegistryAnchorSampler construction before first cover current() observation",
+  "cover_entry_executed": false,
+  "probe_executed": false,
+  "collision_clear": null,
+  "movement_authorized": false,
+  "normal_cleanup_verified": true,
+  "unified_weapons_cleanup": {
+    "fire_disable_code": 0,
+    "hand_stop_code": 5,
+    "drained": true
+  },
+  "cloak": {
+    "samples": 505,
+    "failures": []
+  },
+  "mute": {
+    "event": "mute_verification_summary",
+    "pid": 42268,
+    "initially_muted_sessions": 1,
+    "verified_muted_observations": 216,
+    "verify_failed": 0,
+    "target_shared_rejected": 0,
+    "shared_rejected_is_global_scan_count": true
+  },
+  "observer_repair": {
+    "test_cases": 8,
+    "test_exit": 0,
+    "source_sha256": "686dd471f78016ca143628a33ea9ff89c20d3b68cf27bc29c391a66f669b6935",
+    "tests_sha256": "c97a6d86c24ac664ed25d3b0507f23fb61172c8fa209268b8ccc8fd6d92787ff",
+    "game_verified": false
+  },
+  "remaining": [
+    "actual entry with fresh observer",
+    "pre-probe failure witness",
+    "PhysicsRoles layout and actual query",
+    "complete cover gameplay and headset"
+  ]
+}

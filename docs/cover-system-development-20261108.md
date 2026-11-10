@@ -2111,3 +2111,17 @@ Session同一串行owner导出见证，现有一次Sphere观察通过原summary�
 实际Goal/adapter/marker/Backend/Kernel路径定向8场景（16–23）共158检查0失败，W4/WX/O2/UNDEBUG编译通过；身份/属性/Core/原查询为明确Host缝，未当游戏证据。共享手型在研导致首轮编译失败；隔离61e93fd1源码后只叠本方方法/测试，排除未使用的cosmetic include及不执行的mode>=26新API分支。首轮私有截取误删实际pose_begin，断言实际拒绝，改为精确括号范围恢复真实入口后v8全通过。失败编译、私有断言与准备错误完整保留，不改产品保护来通过。
 
 证据pose-probe-r126/{verification,probe-stages,native-build-result}.json、checks-v8及prepare_checks.py/instrument.py。下一步使用新候选一次定向后台验证，先取得probe前拒绝项，再决定如何接回已存在的当前Tick测量。完整CV01–24/AC01–22、头肩遮挡、身体碰撞/占用/唯一C0提交与联合战斗、物理头显仍未通过；工程25%不变，目标active。
+
+## r127：观察器注册表变化首败与一次完整重新解析修正（2026-11-10）
+
+前轮0d734832为源码/定向检查进展。本轮新建cover-1110-r127-cloak-pose-gate，Native d7cb104d…c2e5，匹配PG/XR冻结版，0.4。首次资源检查先后见两组其他worker仍活，均在claim前拒绝；本方没有重绑票据或抢占。只读精确PID/creation/image与进程handle等待后，资源guard允许同一未消费候选实际启动一次；admission-wait.json保留等待，未作为玩法失败。
+
+实际game42268/creation134387936291943740，owner58124/creation134387936211889401。实际epoch1双眼投影后，ordinary operator在第一次current()的sample_playground构造LiveRegistryAnchorSampler时抛AnchorRegistryChanged: Object registry changed since resolution，operator1。原版接近/A进入及五段phase均未执行，前置姿态各gate计数0、Sphere attempted0；本次不复现r125未测量的具体原因，也不把Native session passed或raw0当玩法通过/空碰撞。
+
+129张实际投影、录制错误0/线程joined，VFR编码exit0；7张全跨度overview均亲自查看，只有起点场景与双臂/手部，局部约0.9s/9.8s有手部像素缺失，无掩体phase/contact验收。没有对本次未执行的掩体动作作视觉结论；r123/r125头肩遮挡FAIL保持。
+
+正常stop、Native/entry/pad恢复true，fire_disable0/hand_stop5/drainedtrue、XR0/launcher0，本方game/owner/XR精确身份已不存在，无强杀。CLOAK505次失败0；目标静音读回216、initially_muted1/verify_failed0/target_shared_rejected0。原报告与operator原日志已复制并逐SHA绑定，早败保留。
+
+针对这次真实观察器构造失败，read-only Playground adapter只在AnchorRegistryChanged时丢弃失败括号、关闭旧Resolver，并在同一session/game/owner/XR身份下最多完整重新发现一次；第二次仍失败、其他错误或人物/会话变化均终止。成功保留第一次拒绝原evidence和新样本原始时间，不修改旧证据/100ms/原guard，不发输入。8项实际adapter路径检查（读进程为Host缝）全通过，覆盖重建/关闭、二次失败、非registry错误、换会话、错误人物及原空UI约束。新operator generator将此adapter独立冻结为私有模块，runner校验散列，避免运行时无记录地变化。该修正尚未新游戏验证；Native不需重编。
+
+证据pose-probe-r126/runtime-r127/{closeout,pose-probe,media-review,session-original}.json与operator-original.log/observer-checks.log，解析器7项合成报告检查通过。下一步用新鲜票据和冻结修正观察器定向进入，读取r126原拒绝见证；公共v71、工程25%和完整CV01–24/AC01–22/物理头显未完成状态保持。
