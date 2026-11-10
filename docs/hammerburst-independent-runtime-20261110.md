@@ -234,3 +234,15 @@ source-loss-r2只扩大观察覆盖：idle故障独立最多6条，已承诺burs
 224756进程已终态exit1，start明确因两个其他自动worker的实际身份仍存活而拒绝，未产生launcher-session/game/operator；不是service-loss候选的游戏失败。本枪runner现prepare前调用同一共享require_disk/require_memory作只读预检，避免已知资源不足时先复制约1GiB实例；start仍在原共享短事务中复查并登记，预检不占名额/锁/内存，不代替最终准入。`--resources`只读模式同样在mkdir之前返回；当前读到两个实际存活worker，继续离线工作，不将资源等待标blocked，不停止其他会话。
 
 动作录制边界另补充中途失效处理：每次既有live检查在原实例身份通过后检查本方recorder.errors，若捕获已经失败，后续动作立即拒绝；不会因曾拿到第一帧就继续整套无画面动作。新增两项回归验证“首帧后捕获失败”和“原身份失败仍拒绝”，现7项动作录制检查及15项既有身份/适配检查通过。仍须实际场景录像和机械流程验证，不能据此宣称连发或贴合修复。
+
+## 实际3112：取消首因与已松键事务等待候选
+
+hb-cloak-1110-225401，game3112/creation134387960636960786，service-loss-r1实际验证已终态。首轮6发typed72/78；两次排弹各6发，typed66/78、60/78；下一轮4/6被明确取消，总22条有效且write/trace来源一致射线。最后独立typed60/78在第三轮之前，第三轮后缺失，不能补写推算56/78。
+
+唯一service_loss实际记录：gate3（client.armed=false），count4、first_debt0、firing_debt1、cancel_before0、client_phase2、registration_alive1、metadata_epoch11902；同期最近撤回记录stale_before5、frame303/sequence3820、age102,130,700ns，leftUP、flags13、lease0。其前实际第22条射线frame302；同次R2后续copy失败与撤回记录对应。证明本次首个service取消条件是姿态publication撤回；没有证明每次历史部分连发均同因，也不能将102ms过期姿态用来射击。详见`runtime-3112-first-failure-analysis.json`，7份文本原件归档逐SHA核对。
+
+continuous/session passed=true，launcher0/operator1/stop0、Native正常清理、XR0、game/子进程消失、无强杀；1394前台/2395CLOAK零违规。动作录制174帧errors空、离线encode exit0；亲看全跨度48双眼样本三页概览及原图00140/00158/00173，实际场景、取枪及射击可见。近脸大遮挡与叠影仍明显，完整贴合/连续性不接受；不把录制修复提升成整枪验收。
+
+released-debt-r1为本次首因的私有修正，默认未启用公共功能：仅在现有release_completed全部16项检查通过的真实UP处捕获既有ExistingActionLifetime。只有原六连发已commit、count1..5、firing_debt、first_debt无、cancel无、实际输入无owned press、同持枪、明确stale_before且同原action epoch/父关联仍有效，才保留债务等待。service失去publication与after_tick无Frame时不立刻取消这一已松键事务；不会返回Frame/枪口/输入/新事件许可。任意射线仍经过既有新Frame、右手跟踪、native current、20ms余量和100ms source检查；原pending event250ms期限、serial及captured不续期。显式撤销、失去注册、非stale撤回、未松键、first debt或换持枪不进入该等待。
+
+候选完整PG编译成功，SHA df22727d9bc35578f36e39bcc111679054eacf59a2b6f346de08f27aea5547f6；Native/XR未重建。实际事件适配器308项检查通过，其中新增28项覆盖过期时不发射/不续event、新鲜源恢复后仅下一发、8种拒绝、原250ms到期正常取消；队列、引擎、证书和Client lifetime调用为夹具，不冒充实际Native epoch验证。源补丁`docs/hammerburst-released-debt-wait.patch`；实际该修正尚未运行。

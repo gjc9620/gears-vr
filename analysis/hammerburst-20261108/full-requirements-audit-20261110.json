@@ -1,8 +1,8 @@
 {
   "schema": 1,
   "scope": "full HB objective; no scope reduction",
-  "current_candidate": "service-loss-r1 (bounded exact first service guard witness only, compiled, event280 checks passed)",
-  "prepared_sha256": "b84ae16ba7822bd9cfa2e06794198bf4fd839317807d9d4a903b62074ea1a343",
+  "current_candidate": "released-debt-r1: private repair for actual3112 stale pose cancellation after real UP; compiled/event308, not game exercised",
+  "prepared_sha256": "760c1e41920344136c4ca8582c2df85f7de8e3bb555f430a69b4690a527ffb47",
   "requirements": [
     {
       "id": "acquire_stow",
@@ -224,5 +224,6 @@
     "limit": "Actual restore chain, native reacquisition, original UI and interruption/reward still require owned game validation; Source1 first-fire failure remains open."
   },
   "historical_runtime_status_56252": "Actual56252 shoulder/core6+12six-shot drain+empty trigger+replacement/latch closure passed; return six actual consistent rays but first typed sample73/0 before sixth15.6313ms; final72/0 not yet observed, operator1 preserved. Return observation driver fixed offline12cases.",
-  "restore_verifier_status": "Prepared with synthetic positive/negative cases and independent typed before/after count interface; actual switch-action driver integration and game evidence pending."
+  "restore_verifier_status": "Prepared with synthetic positive/negative cases and independent typed before/after count interface; actual switch-action driver integration and game evidence pending.",
+  "latest_service_first_failure": "runtime-3112-first-failure-analysis.json"
 }

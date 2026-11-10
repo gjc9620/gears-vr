@@ -1,0 +1,7 @@
+{
+  "weapon_hammerburst_burst_event.inl": "5d9f597e7389059539a85a06b2f674b7023aec1a9cb0cf853e6b8749322bc72c",
+  "weapon_hammerburst_stale_debt_wait.inl": "4a336237612fbebf2ffaa86f6ba0f632003c225ee4f5c2bdc955b647c44557da",
+  "weapon_hammerburst_burst_event_test.cpp": "df87badba30803098a55b48b843ffe27d36165d8c846b2cdaddea762347b192b",
+  "weapon_hammerburst_burst_cancel_test.cpp": "5b5cae177df0c4694b2f849e4d076a449473a6a1a42dbd8916bf564eb7276243",
+  "CMakeLists.txt": "18b3e18ea618ce4ccefa8334fc0e4b1cd4dad85eacefcb6cebc4e0f16fba2975"
+}

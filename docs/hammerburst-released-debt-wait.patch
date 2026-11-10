@@ -1,0 +1,52 @@
+--- a/tools/playground/weapon_hammerburst_burst_event.inl
++++ b/tools/playground/weapon_hammerburst_burst_event.inl
+@@ -57,9 +57,10 @@
+         weaponhand::clock_ns(nullptr)-f.controllers.sync_ns);fflush(log_file);}
+     return ready;
+ }
++#include "weapon_hammerburst_stale_debt_wait.inl"
+ bool owned_press(hand::Frame const& f) noexcept {
+     if(!tx::press(f))return false;
+-    original_press=common::cohort(f);return original_press.known;
++    clear_released_lifetime();original_press=common::cohort(f);return original_press.known;
+ }
+ void press_failed() noexcept {tx::revoke();validated=false;}
+ bool right_tracked(hand::Frame const& f) noexcept {
+@@ -180,7 +181,7 @@
+        gate(6,hand::frame_active(*f,weaponhand::clock_ns(nullptr)))&&gate(7,right_tracked(*f))&&
+        gate(8,vrfire::read_game(vrfire::input.actors(),f,game))&&gate(9,game.known)&&gate(10,game.r2_known)&&gate(11,!game.r2_held)&&
+        gate(12,!game.busy)&&gate(13,!game.animation)&&gate(14,!lancerreload_runtime::blocks_fire(f->weapon))&&gate(15,nativeequipment::current(nullptr,*f))&&
+-       gate(16,tx::need_source(*f)))return true;
++       gate(16,tx::need_source(*f))){remember_released_source(*f);return true;}
+     static unsigned rows{};
+     if(log_file&&rows<16){
+         ++rows;
+@@ -195,7 +196,7 @@
+     // captured original owner rather than re-evaluating targets afterwards.
+     if(event.serial&&!common::pending_fire.event.empty()&&hand::same(event.function,common::pending_fire.function)&&
+        common::same_hold(original_press.held,common::pending_fire.cohort.held))common::pending_fire.event.reset();
+-    event={};original_press={};return true;
++    event={};original_press={};clear_released_lifetime();return true;
+ }
+ // First failed gate only: preserve evaluation order/count and never re-read
+ // game/controller data to explain a rejection. Bounded rows cannot grant input.
+@@ -213,6 +214,10 @@
+ void after_tick(hand::Frame const* f) noexcept {
+     if(!outstanding())return;
+     after_tick_rejection=0;
++    // No dispatch, stale pose reuse or input edge. A new fresh Frame must
++    // still pass the original delivery and muzzle checks before another ray.
++    if(!f&&vrfire::mode.load(std::memory_order_acquire)==vrfire::running&&
++       !requires_release()&&retain_stale_debt())return;
+     if(!f)after_tick_rejection=1;
+     else if(vrfire::mode.load(std::memory_order_acquire)!=vrfire::running)after_tick_rejection=2;
+     else if(tx::cancel_requested)after_tick_rejection=3;
+@@ -331,7 +336,7 @@
+         if(gate_failed&&!service_rejection)service_rejection=gate_number;return gate_failed;
+     };
+     if(service_failed(1,tx::cancel_requested)||service_failed(2,vrfire::mode.load(std::memory_order_acquire)!=vrfire::running)||
+-       service_failed(3,!weaponhand::client.armed())||service_failed(4,owns_pending()&&common::pending_fire.event.release_required(weaponhand::clock_ns(nullptr)))){
++       service_failed(3,!weaponhand::client.armed()&&!retain_stale_debt())||service_failed(4,owns_pending()&&common::pending_fire.event.release_required(weaponhand::clock_ns(nullptr)))){
+ #include "weapon_hammerburst_service_loss_observation.inl"
+         tx::revoke();release_completed(nullptr);return true;
+     }

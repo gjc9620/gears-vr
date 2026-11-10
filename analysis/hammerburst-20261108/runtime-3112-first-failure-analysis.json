@@ -1,0 +1,156 @@
+{
+  "game": {
+    "pid": 3112,
+    "creation_time": 134387960636960786,
+    "image": "j:\\gearsvr\\gears.of.war.reloaded.v1.0.1.3816947-p2p\\gears of war reloaded\\binaries_x64\\gowde-steam.exe"
+  },
+  "candidate": "8c798dcc10b9e296313b1e85387fbb8bdf2536202e818a9b6da81ce83a689526",
+  "operator_exit": 1,
+  "cleanup": {
+    "launcher_exit": 0,
+    "owned_game_absent": true,
+    "owned_children": {
+      "recorded": 0,
+      "remaining": []
+    },
+    "forced_termination": false,
+    "worker_error": null
+  },
+  "continuous_passed": true,
+  "native_cleanup_verified": true,
+  "xr_exit_code": 0,
+  "service_loss": [
+    {
+      "gate": "3",
+      "count": "4",
+      "first_debt": "0",
+      "firing_debt": "1",
+      "cancel_before": "0",
+      "client_phase": "2",
+      "registration_alive": "1",
+      "metadata_epoch": "11902",
+      "disarm_reason": "257",
+      "withdrawal_failure": "5",
+      "withdrawal_difference": "0",
+      "withdrawal_frame": "303",
+      "withdrawal_sequence": "3820",
+      "withdrawal_age_ns": "102130700",
+      "withdrawal_left_down": "0",
+      "withdrawal_candidate_flags": "13",
+      "withdrawal_lease": "0"
+    }
+  ],
+  "first_service_loss_context": [
+    "native_lancer_hud_admission live=168 controller=147 functions=147 fields=147 arguments=147 capture=147 applied=147 accepted=147",
+    "native_lancer_admission unknown=0 candidates=42 bind_reject=0 receiver_reject=0 caller_reject=0 bound=42 stale_sample=0 identity_reject=0 source_ready=42 packet_reject=0 packet_ready=252",
+    "native_lancer_rejected_source valid=0 sync_age_ns=0 sample_age_ns=0 held_current=0 stereo_age_ns=0 render_age_ns=0 frame_age_ns=0 frame_active=0 tracking_position_difference_ue_x1e6=0 tracking_quaternion_difference_x1e9=0",
+    "native_lancer_shot_trajectory shot=21 epoch=2 revision=12 trace_valid=1 write_source_consistent=1 trace_source_consistent=1 trace_count=21 trace_frame=301 trace_sequence=3814 trace_sync_ns=107329668560100 trace_observed_ns=107329739543400 write_frame=301 write_sequence=3814 write_sync_ns=107329668560100 aim_writes=2 trace_writes=3 pushed_writes=2 physical_writes=2 aim_before_trace=2 origin_before_trace=3 pushed_before_trace=2 start=-3843.78003,-2.55910993,664.094299 end=3198.323,-3363.01733,3159.08252 pushed=-3843.78003,-2.55910993,664.094299 muzzle_origin=-3843.78003,-2.55910993,664.094299 muzzle_aim=3129,-4551,0",
+    "native_lancer_impact_stage shot=21 stage=6",
+    "native_lancer_shot_impact shot=21 epoch=2 revision=12 location=-2063.76855,-851.972229,1294.74512",
+    "native_lancer_admission unknown=0 candidates=44 bind_reject=0 receiver_reject=0 caller_reject=0 bound=44 stale_sample=0 identity_reject=0 source_ready=44 packet_reject=0 packet_ready=264",
+    "native_lancer_rejected_source valid=0 sync_age_ns=0 sample_age_ns=0 held_current=0 stereo_age_ns=0 render_age_ns=0 frame_age_ns=0 frame_active=0 tracking_position_difference_ue_x1e6=0 tracking_quaternion_difference_x1e9=0",
+    "native_lancer_shot_trajectory shot=22 epoch=2 revision=12 trace_valid=1 write_source_consistent=1 trace_source_consistent=1 trace_count=22 trace_frame=302 trace_sequence=3817 trace_sync_ns=107329763061500 trace_observed_ns=107329850712300 write_frame=302 write_sequence=3817 write_sync_ns=107329763061500 aim_writes=2 trace_writes=3 pushed_writes=2 physical_writes=2 aim_before_trace=2 origin_before_trace=3 pushed_before_trace=2 start=-3843.77979,-2.55911493,664.094299 end=3169.85889,-3604.01001,2888.33911 pushed=-3843.77979,-2.55911493,664.094299 muzzle_origin=-3843.77979,-2.55911493,664.094299 muzzle_aim=3129,-4551,0",
+    "native_lancer_impact_stage shot=22 stage=6",
+    "native_lancer_shot_impact shot=22 epoch=2 revision=12 location=-2130.95972,-882.079407,1207.2832",
+    "hammerburst_input_consumed frame=302 sequence=3817 current=1 status=2 source_status=1 owned=0 game_known=1 game_r2=0 trigger_active=1 trigger_value=0.000 trigger_pressed=4 trigger_released=4 input_sync_ns=107329763061500 admitted_ns=107329840448100 active_at_admission=1 preparation_budget=1",
+    "hammerburst_service_loss gate=3 count=4 first_debt=0 firing_debt=1 cancel_before=0 client_phase=2 registration_alive=1 metadata_epoch=11902 disarm_reason=257 withdrawal_failure=5 withdrawal_difference=0 withdrawal_frame=303 withdrawal_sequence=3820 withdrawal_age_ns=102130700 withdrawal_left_down=0 withdrawal_candidate_flags=13 withdrawal_lease=0",
+    "native_hammerburst_release_rejected gate=1 source_stage=0 frame=0 count=4 first_debt=0 firing_debt=1 cancel=1",
+    "hammerburst_source_loss pending_before=0 copy_ok=0 current=0 owned_before=0 result=2 copy_failure=1 copy_difference=0 copy_frame=0 copy_sequence=0 copy_age_ns=-1 commit_age_ns=-1 since_commit_ns=-1 copy_candidate_flags=0 withdrawal_failure=5 withdrawal_difference=0 withdrawal_frame=303 withdrawal_sequence=3820 withdrawal_age_ns=102130700 withdrawal_left_down=0 withdrawal_candidate_flags=13 withdrawal_lease=0 game_known=1 game_r2=0 admitted_ns=107329967714500",
+    "native_lancer_r2 status=2 source_status=0 mode=1 owned=0 game_known=1 game_r2=0 before_action=1 frame=0 sequence=0 trigger_pressed=0 trigger_released=0 trigger_active=0 trigger_value=0.000 muzzle_ready=0 input_sync_ns=0 observed_ns=107329967713600 ammo_known=0 ammo=-1 previous_sync_ns=107329763061500 previous_observed_ns=107329840448100 game_elapsed_ns=1675500 action_elapsed_ns=2300 ammo_queried=0 diagnostic_elapsed_ns=1200 ready_after_ammo_read=0 copy_elapsed_ns=600 input_elapsed_ns=1676100 continuity_matched=0 continuous_poll_gap=0 copied_source=0 copied_frame=0 copied_input_age_ns=-1 preparation_budget=0 continuity_failure=0 continuity_native_selected=0 input_admission_ns=107329967714500 input_admission_delay_ns=900 input_frame_now_ns=0 input_stereo_received_ns=0 input_controller_received_ns=0 input_frame_flags=0 input_stereo_status=0 input_frame_shape=0 input_frame_active=0",
+    "native_lancer_l2 status=0 mode=1 owned=0 game_known=1 game_l2=0 toggle=0 allow=0 part_reserved=0 frame=0 sequence=0 left_trigger=0.000"
+  ],
+  "final_drain_typed": {
+    "capacity": 78.0,
+    "used": 18,
+    "reserve": 78,
+    "infinite_reserve": false,
+    "duration": 2.5,
+    "started": 0.0,
+    "active_reload_bonus_shots": 0,
+    "game": {
+      "pid": 3112,
+      "creation_time": 134387960636960786,
+      "image": "j:\\gearsvr\\gears.of.war.reloaded.v1.0.1.3816947-p2p\\gears of war reloaded\\binaries_x64\\gowde-steam.exe"
+    },
+    "weapon": "0x1628e16700",
+    "observed_ns": 107329035863000,
+    "game_time": 25.021255493164062,
+    "loaded": 60,
+    "bones": {},
+    "game_function_calls": 0,
+    "reader_reused": true,
+    "read_bracket_misses": [],
+    "query_local_selectors": true,
+    "limits": "Double-read actual inventory and typed schema, current registered objects/held identity; no game calls. Not physical-headset acceptance."
+  },
+  "burst_observations": [
+    {
+      "burst": 1,
+      "loaded_before": 72,
+      "loaded_after": 66,
+      "actual_spent": 6,
+      "expected_spent": 6
+    },
+    {
+      "burst": 2,
+      "loaded_before": 66,
+      "loaded_after": 60,
+      "actual_spent": 6,
+      "expected_spent": 6
+    }
+  ],
+  "drain_complete": false,
+  "actual_trajectory_count": 22,
+  "trajectory_consistency": true,
+  "foreground_samples": 1394,
+  "cloak_samples": 2395,
+  "foreground_violations": [],
+  "cloak_violations": [],
+  "media": {
+    "frames": 174,
+    "errors": [],
+    "encoded": true,
+    "full_fit_accepted": false,
+    "review": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-3112-media-review\\prepared.json"
+  },
+  "verified_archive": [
+    {
+      "source": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\tools\\playground\\build-hb-cloak-1110-225401\\playground-3112.log",
+      "archive": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-3112-text\\playground-3112.log",
+      "sha256": "9c1706f9b2e9fcc115952e1038ee1101b19e7d648ecc342ffb05c8fe00e66e98"
+    },
+    {
+      "source": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\hb-cloak-1110-225401\\actions\\menu-firstperson-3112-225439\\result.json",
+      "archive": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-3112-text\\result.json",
+      "sha256": "ce6c6182bd1a7655f2101dcfd42451cfd0144ca70b8fa9ab7983439b110a76a9"
+    },
+    {
+      "source": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\hb-cloak-1110-225401\\actions\\menu-firstperson-3112-225439\\equipment-chain.json",
+      "archive": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-3112-text\\equipment-chain.json",
+      "sha256": "79352d0a4fa702c03604c9c260d01572accb3c6d9e6625c32b3775a2315451ac"
+    },
+    {
+      "source": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\hb-cloak-1110-225401\\actions\\menu-firstperson-3112-225439\\hammerburst-core.json",
+      "archive": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-3112-text\\hammerburst-core.json",
+      "sha256": "d37790fd57df6589f959e2a6ebf805d0dfdf0d44632748024d26e71c8acb60f0"
+    },
+    {
+      "source": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\hb-cloak-1110-225401\\actions\\menu-firstperson-3112-225439\\hammerburst-empty-reload.json",
+      "archive": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-3112-text\\hammerburst-empty-reload.json",
+      "sha256": "b51cb9f8bfc6df5d8f67fcc98f2c28938fbd861dbf1d70eafac4f9365aa6626a"
+    },
+    {
+      "source": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\runtime\\continuous-stereo-3112-20261110-225432-ad5812ef.json",
+      "archive": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-3112-text\\continuous-stereo-3112-20261110-225432-ad5812ef.json",
+      "sha256": "f152167a4143463d9c73d10e2069fd902571b5bc36cb9ba812d60a96e7879abc"
+    },
+    {
+      "source": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\hb-cloak-1110-225401\\isolated-done.json",
+      "archive": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-3112-text\\isolated-done.json",
+      "sha256": "283ec01454add73da9d7dc3d51a2f241f008239fb70c8c6351caed26a2c0f044"
+    }
+  ],
+  "interpretation": "First service cancellation gate is unpublished pose (armed=false), with registration_alive=1 and latest stale_before withdrawal age102.1307ms. This proves the local service trigger; it does not authorize dispatch from expired input or prove all previous partial bursts share this cause.",
+  "gameplay_accepted": false,
+  "physical_headset_accepted": false
+}

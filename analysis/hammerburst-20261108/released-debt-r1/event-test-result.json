@@ -1,0 +1,12 @@
+{
+  "passed": true,
+  "checks": 308,
+  "added_checks": 28,
+  "game_execution": false,
+  "fixture_seams": [
+    "queue",
+    "engine",
+    "certificate",
+    "Client lifetime"
+  ]
+}

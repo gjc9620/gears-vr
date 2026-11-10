@@ -13,11 +13,11 @@ SOURCE = ROOT / 'analysis/instances/hb-cloak-1110-221519/actions/menu-firstperso
 OUTPUT = AREA / 'runtime-11644-media-review'
 
 
-def main():
+def main(expected_frames=306, game=11644):
     recording = SOURCE / 'recording.json'
     data = json.loads(recording.read_text(encoding='utf-8'))
     frames = data['frames']
-    assert len(frames) == 306
+    assert len(frames) == expected_frames
     OUTPUT.mkdir(exist_ok=True)
     selected = sorted(set(round(i * (len(frames)-1) / 47) for i in range(48)))
     pages = []
@@ -41,7 +41,7 @@ def main():
         target = OUTPUT / f'overview-{page+1}.jpg'
         sheet.save(target, quality=91)
         pages.append(dict(path=str(target), entries=entries))
-    proof = dict(game=11644, source=str(SOURCE), frames=len(frames),
+    proof = dict(game=game, source=str(SOURCE), frames=len(frames),
                  recording_sha256=hashlib.sha256(recording.read_bytes()).hexdigest(),
                  capture_errors=data['errors'], start_time=frames[0]['time'], end_time=frames[-1]['time'],
                  sample_count=len(selected), overview_pages=pages,
