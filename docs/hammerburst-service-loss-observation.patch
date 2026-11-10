@@ -1,0 +1,18 @@
+--- a/tools/playground/weapon_hammerburst_burst_event.inl
++++ b/tools/playground/weapon_hammerburst_burst_event.inl
+@@ -326,8 +326,13 @@
+        !weaponhand::current_gt(nullptr)||common::delivering)return false;
+     validated=false;
+     service_stage=3;
+-    if(tx::cancel_requested||vrfire::mode.load(std::memory_order_acquire)!=vrfire::running||
+-       !weaponhand::client.armed()||(owns_pending()&&common::pending_fire.event.release_required(weaponhand::clock_ns(nullptr)))){
++    unsigned service_rejection{};
++    const auto service_failed=[&](unsigned gate_number,bool gate_failed)noexcept {
++        if(gate_failed&&!service_rejection)service_rejection=gate_number;return gate_failed;
++    };
++    if(service_failed(1,tx::cancel_requested)||service_failed(2,vrfire::mode.load(std::memory_order_acquire)!=vrfire::running)||
++       service_failed(3,!weaponhand::client.armed())||service_failed(4,owns_pending()&&common::pending_fire.event.release_required(weaponhand::clock_ns(nullptr)))){
++#include "weapon_hammerburst_service_loss_observation.inl"
+         tx::revoke();release_completed(nullptr);return true;
+     }
+     service_stage=4;if(!owns_pending())return true;
