@@ -195,3 +195,11 @@ latch-history-isolated-r1由原冻结2253树派生，只增加HB接线、纯HB h
 真实新same_context函数与冻结实际Frame/输入类型提取编译，2个positive（同一context、frame号前进）与26个game/native/registration/lifecycle/world/thread/flags/reference/token/control/actor/mesh/weapon/publisher/units/scale/mount变化拒绝通过；不声称capture/transport或真实ring已覆盖。context-check目录保存实际生成源和输出程序。
 
 新product hammerburst-prepared-20261110-latch-history，prepared SHAe6b2bf0f77aa27230aafda5b97c8e33525fa348e62a08285630fec2499120cc3，PG095bfbe3，2274source及原Native1338/6bins全核。独立history-r1入口/plan/ready已生成，普通完整空仓换弹回射动作不改、生产者数据不插值。首次prepare因公共guard后来增加可选timeout_ms（默认仍0、仅允许0..45000）而精确SHA拒绝，已读全文件确认同一OS名/默认零等待/abandoned拒绝不变，再更新此单依赖；最终实际prepare0，无claim/stage。下一次实际guard+占用允许后执行，不借外层0或纯测试判整流程成功。
+
+## 历史候选54632首发前拒绝与HB未派发press分支修复（尚未复测）
+
+历史候选e6b2/PG095b实际54632/creation134387704792641282，operator55244退出1：初次core没有权威射线，未到空仓/手动reload/history。原日志frame229 execute_not_ready，sync_age80.0181ms、reserved_frame_current0/reserved_live0，frame current/held/registration/live/epoch均真；严格20ms派发余量未满足，原ButtonPress未调用。下一新frame230新鲜但无新press，旧R2 wrapper返回blocked后baseline消费该边沿。源码明确仅bound_is_lancer开启既有未派发press deferral，HB被排除。按现有原意图250ms和原100ms/current source/20ms约束，最小修补只将已bound、同weapon/hold的HB并入该原分支，不造边沿、不延长原deadline，不改变已执行/撤销路径。
+
+实际冻结wrapper+original ledger2095 checks通过，完整隔离PG再次编译0；源码delta和新PG身份在hb-press-deferral-check/result.json与docs/hammerburst-original-press-deferral.patch。不是历史接线已失败或已通过；该分支未到，不能从本轮评价。新修补尚未game。
+
+54632 Native/entries/pad/drain/XR/launcher正常、十raw恢复全true，guard及时释放；原文本/动作记录及capture已隔离，独立编码61621实际terminal0，图像审阅待完成；无共享占用。原52960实际112ms关盖拒绝仍保留，不放宽端点/采样。下一步封存此唯一实际首发拒绝修补后，直接完整空仓关盖回射验证。

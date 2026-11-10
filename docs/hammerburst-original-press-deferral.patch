@@ -1,0 +1,11 @@
+--- a/tools/playground/weapon_lancer_r2_native.inl
++++ b/tools/playground/weapon_lancer_r2_native.inl
+@@ -436,7 +436,7 @@
+         game.press_ready=muzzle_ready&&unified_weapon_fire::ready_for(frame,20000000);
+ #if defined(GEARS_PLAYGROUND_NATIVE_LANCER_FOLLOW) && defined(GEARS_PLAYGROUND_UNIFIED_MUZZLE_FIRE)
+         game.retain_owned_for_muzzle=current&&input.owns_press()&&lancerrefire::certified_for(frame);
+-        game.defer_new_press_for_muzzle=current&&nativelancerfollow::bound_is_lancer&&nativelancerfollow::bound_key_known&&
++        game.defer_new_press_for_muzzle=current&&(nativelancerfollow::bound_is_lancer||nativelancerfollow::bound_is_hammerburst)&&nativelancerfollow::bound_key_known&&
+             wh::same(nativelancerfollow::bound_key.weapon,frame.weapon)&&
+             nativelancerfollow::bound_key.hold_generation==vrequip::model.hold_generation();
+         if(lancerrefire::release_required()){
