@@ -112,7 +112,7 @@ def main():
         else:raise TimeoutError('Owned startup readiness timed out')
         operator_log=(target/'operator.log').open('wb')
         command=python+[str(AREA/'hammerburst_isolated_operator.py'),'--instance',name,'--output',str(selected/'actions'),
-                        '--startup-handoff','--equipment-chain','--hammerburst-core',
+                        '--startup-handoff','--playground-ready','--equipment-chain','--hammerburst-core',
                         '--hammerburst-reload','--hammerburst-replacement']
         operator=subprocess.Popen(command,stdin=subprocess.DEVNULL,stdout=operator_log,stderr=subprocess.STDOUT,**common)
         result['operator_started']=True;result['operator_pid']=operator.pid;write(target/'active.json',result)
