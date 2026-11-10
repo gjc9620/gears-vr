@@ -1,0 +1,34 @@
+--- a/tools/playground/weapon_lancer_r2_native.inl
++++ b/tools/playground/weapon_lancer_r2_native.inl
+@@ -471,7 +471,10 @@
+ #if defined(GEARS_PLAYGROUND_NATIVE_LANCER_FOLLOW) && defined(GEARS_PLAYGROUND_UNIFIED_MUZZLE_FIRE)
+     const bool initial_owed_before=lancerrefire::has_initial_debt();
+ #endif
+-    const auto result=input.advance(current?&frame:nullptr,current,game,weaponhand::clock_ns(nullptr),
++    // Preserve the exact admission clock already sampled here. The earlier
++    // `now` predates aim.advance and cannot describe this input admission.
++    const auto input_admission_ns=weaponhand::clock_ns(nullptr);
++    const auto result=input.advance(current?&frame:nullptr,current,game,input_admission_ns,
+         [&](gears_weapon::OriginalR2Action a,std::uint64_t c){return execute(a,c,current?&frame:nullptr,current?&game:nullptr);},
+         state==stopping,continuity_matched?&continuity:nullptr);
+ #if defined(GEARS_PLAYGROUND_NATIVE_LANCER_FOLLOW) && defined(GEARS_PLAYGROUND_UNIFIED_MUZZLE_FIRE)
+@@ -633,7 +636,7 @@
+     const auto diagnostic_finished=weaponhand::clock_ns(nullptr);
+     if(log_file&&logs<64&&(previous_status!=unsigned(result)||previous_source!=unsigned(input.source_status())||
+         ready_after_ammo||ammo_queried||(ammo_known&&count!=last_ammo))){
+-        fwprintf(log_file,L"native_lancer_r2 status=%u source_status=%u mode=%u owned=%u game_known=%u game_r2=%u before_action=1 frame=%llu sequence=%llu trigger_pressed=%u trigger_released=%u trigger_active=%u trigger_value=%.3f muzzle_ready=%u input_sync_ns=%lld observed_ns=%lld ammo_known=%u ammo=%d previous_sync_ns=%lld previous_observed_ns=%lld game_elapsed_ns=%lld action_elapsed_ns=%lld ammo_queried=%u diagnostic_elapsed_ns=%lld ready_after_ammo_read=%u copy_elapsed_ns=%lld input_elapsed_ns=%lld continuity_matched=%u continuous_poll_gap=%u copied_source=%u copied_frame=%llu copied_input_age_ns=%lld preparation_budget=%u continuity_failure=%u continuity_native_selected=%u\n",
++        fwprintf(log_file,L"native_lancer_r2 status=%u source_status=%u mode=%u owned=%u game_known=%u game_r2=%u before_action=1 frame=%llu sequence=%llu trigger_pressed=%u trigger_released=%u trigger_active=%u trigger_value=%.3f muzzle_ready=%u input_sync_ns=%lld observed_ns=%lld ammo_known=%u ammo=%d previous_sync_ns=%lld previous_observed_ns=%lld game_elapsed_ns=%lld action_elapsed_ns=%lld ammo_queried=%u diagnostic_elapsed_ns=%lld ready_after_ammo_read=%u copy_elapsed_ns=%lld input_elapsed_ns=%lld continuity_matched=%u continuous_poll_gap=%u copied_source=%u copied_frame=%llu copied_input_age_ns=%lld preparation_budget=%u continuity_failure=%u continuity_native_selected=%u input_admission_ns=%lld input_admission_delay_ns=%lld input_frame_now_ns=%lld input_stereo_received_ns=%lld input_controller_received_ns=%lld input_frame_flags=%u input_stereo_status=%u input_frame_shape=%u input_frame_active=%u\n",
+             unsigned(result),unsigned(input.source_status()),state,unsigned(input.owns_press()),unsigned(game.known),unsigned(game.r2_held),
+             current?frame.key.frame:0,current?frame.controllers.sequence:0,
+             current?frame.controllers.hands[1].pressed[gears_vr::control_trigger]:0,
+@@ -643,7 +646,9 @@
+             current?frame.controllers.sync_ns:0,now,unsigned(ammo_known),count,previous_sync,previous_observed,
+             now-observation_started,action_finished-now,unsigned(ammo_queried),diagnostic_finished-action_finished,ready_after_ammo,
+             copy_finished-source_started,now-source_started,unsigned(continuity_matched),unsigned(input.continuous_poll_gap()),
+-            unsigned(have_source),frame.key.frame,have_source?now-frame.controllers.sync_ns:-1,unsigned(preparation_budget),unsigned(continuity_failure),unsigned(continuity_native_selected));
++            unsigned(have_source),frame.key.frame,have_source?now-frame.controllers.sync_ns:-1,unsigned(preparation_budget),unsigned(continuity_failure),unsigned(continuity_native_selected),
++            input_admission_ns,input_admission_ns-now,frame.now_ns,frame.stereo.received_ns,frame.controllers.received_ns,
++            frame.flags,frame.stereo_status,unsigned(wh::frame_shape_valid(frame)),unsigned(wh::frame_active(frame,input_admission_ns)));
+         fflush(log_file);++logs;
+     }
+     previous_status=unsigned(result);previous_source=unsigned(input.source_status());if(ammo_known)last_ammo=count;

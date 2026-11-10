@@ -1,0 +1,81 @@
+{
+  "game": 34780,
+  "operator_exit": 1,
+  "wrapper_exit": 1,
+  "actual_valid_consistent_rays": 6,
+  "initial_core_pass": true,
+  "drain_first_burst": {
+    "burst": 1,
+    "loaded_before": 72,
+    "loaded_after": 72,
+    "actual_spent": 0,
+    "expected_spent": 6
+  },
+  "first_failure": "Next retained original first event7 captured; frame231 Input rejected SourceStatus2=inactive via frame_active; first_debt1 while completion was idle/previous count6 then cancellation; zero new ammo spent.",
+  "copied_input_age_ms": 97.7204,
+  "copy_elapsed_ms": 15.3889,
+  "frame231_trigger_value": 1,
+  "diagnostic_limit": "Input age is recorded before actual advance; inactive predicate does not identify which Frame stamp/shape failed. Do not equate this with physical release or invent a >100ms observed value.",
+  "normal_game_cleanup": true,
+  "automatic_wrapper_restoration": false,
+  "recovery_completed": true,
+  "recovery_receipt": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\standalone-return-observation-r1-recovery.json",
+  "shared_stage_retired": true,
+  "next_run_mode": "Own isolated instance; no further solo stage/restore or global busy gate.",
+  "prepared_independent_instance": "hb-1110-181318",
+  "independent_actions_wired": false,
+  "independent_game_started": false,
+  "encoder_exit": 0,
+  "paired_overviews_reviewed": 1,
+  "raw_contacts_reviewed": true,
+  "raw_contacts": [
+    {
+      "lane": "game",
+      "event": "core_sixth",
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-34780-offline\\capture\\dual-output\\game-00390.jpg",
+      "target_qpc_ns": 88706157583400,
+      "delta_ns": -4911700
+    },
+    {
+      "lane": "game",
+      "event": "next_first_captured",
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-34780-offline\\capture\\dual-output\\game-00393.jpg",
+      "target_qpc_ns": 88706505786100,
+      "delta_ns": -53117300
+    },
+    {
+      "lane": "game",
+      "event": "inactive_rejection",
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-34780-offline\\capture\\dual-output\\game-00394.jpg",
+      "target_qpc_ns": 88706600193100,
+      "delta_ns": -30857400
+    },
+    {
+      "lane": "simulator",
+      "event": "core_sixth",
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-34780-offline\\capture\\dual-output\\simulator-00586.jpg",
+      "target_qpc_ns": 88706157583400,
+      "delta_ns": 11754500
+    },
+    {
+      "lane": "simulator",
+      "event": "next_first_captured",
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-34780-offline\\capture\\dual-output\\simulator-00593.jpg",
+      "target_qpc_ns": 88706505786100,
+      "delta_ns": -3117800
+    },
+    {
+      "lane": "simulator",
+      "event": "inactive_rejection",
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-34780-offline\\capture\\dual-output\\simulator-00595.jpg",
+      "target_qpc_ns": 88706600193100,
+      "delta_ns": -14191200
+    }
+  ],
+  "raw_contact_count_reviewed": 6,
+  "visual_findings": [
+    "Personally reviewed paired overview00 and six listed actual raw contacts. Core sixth game contact shows muzzle flash; temporal proximity alone does not prove input admission.",
+    "Weapon is very near the viewpoint and obstructs much of the right-eye view in simulator00586/00593; simulator00595 has a broad white region outside the rendered arena on the right. Preserve visual defects; complete fitting and stereo comfort remain unaccepted.",
+    "No reload reached this run. These contacts do not prove magazine pose or full hand contact."
+  ]
+}
