@@ -492,3 +492,17 @@ launcher0/operator1/stop0、Native/PG入口/XR0与本方进程正常清理，无
 13项helper测试通过，包含7原例/延迟真实投影/缺失15秒不得start/identity丢失/实际投影之后仍5秒capture门、11种receipt反例及缺失/坏JSON；8adapter解析通过。未新建/修改Native/XR/PG制品，同一endpoint-baseline-r1 SHA63b915a9保持；修复尚未game验证。
 
 本次launcher0/operator1/stop0、Native清理/PG入口恢复/XR0与本方进程正常退出，无强杀/workererror，1264前台/2141CLOAK零违规。2帧及原录像error完整保留，未encode（失败recorder未生成frames.txt），8原文本SHA归档，runtime-21288-first-failure-analysis.json与完整13项audit更新。启动/截图现象的全部根因仍未知，此改消除已知错误就绪条件，不称已修好renderer或全武器。下一步先保存源码，再用新唯一实例验证startup→精确端点取枪→首发分项耗时；原13项/30%/publicv71保持。
+
+## 实际54720：首实际投影门＋完整端点取枪通过，首次DOWN原源过期
+
+原exec5500续跑后terminal1，endpoint-baseline-r1/hb-cloak-1111-043643/game54720/creation134388169642126146。资源只读347.469秒319次后同一次start；无另启/重放旧实例。实际事件依次native_hand_connection_ready→HB_real_projection_ready→HB_first_action_capture_ready；152录像frames/errors空，首幅及亲看48全跨度paired样本均实际场景。startup门此狭窄分支已实测，不等于全部startup/renderer/头显通过。
+
+原完整gesture endpoint实际记录x.23/y1.5850000477/z-.17/yaw0/pitch-.3000000223/roll0；真实UP128217868964300→NativeUP148/seq3440 sync128219832250400→唯一Grip128219893729200→matching held151/seq3449，确认后才移动。无source-gap重试；新完整端点driver/5mm observer已实测到，非单靠17fixtures。
+
+首发UP baseline238原sync128228193001200/admitted128228262132900，source在admission已69.1317ms，随后DOWN命令128228274868300。实际首DOWN239/seq3820原sync128228343425200，muzzle rejection源102.0321ms，Input admission128228448301800时104.8766ms/current0，正确seal；240新鲜source50.6063ms只baseline，241 blocked8不重放。原helper误将后来242/status8叫consumedDOWN并等射线；本轮仍零ButtonPress/first/射线、没有press_assets/handoff/reload触达，不能归咎到未执行的资产耗时或交接代码。旧故障保留，不因后续driver修正抹去。
+
+修正仅测试driver：UP就绪须producer距当前观察<=60ms且原preparation_budget1，admission>=原producer；这是发出唯一DOWN之前更严格的setup选窗，**产品100ms/20ms/250ms限制与source/anti-replay代码均未改**。DOWN若已有明确Input status8则保存first_down_rejection并立即失败/实际释放，不再误报成功消费，也不重按。9 helper tests通过，含旧source/新日志不能当就绪、budget缺失、等待更及时UP才唯一DOWN、blocked立即失败、原whole-flow deadline/尾段与错误发数；fixtures不证明稳定游戏射击。
+
+本次launcher0/operator1/stop0、Native清理/PG入口/XR0与本方game/children正常退出，无强杀/workererror，1329前台/2248CLOAK零违规。152frames/errors空encode0，亲看三页48paired全跨度，有取枪持枪，但右眼近大枪/间歇消失重影/手臂重叠仍未接受，非全帧/全角度/五处贴合/头显。7份原文本SHA归档，runtime-54720-first-failure-analysis.json与13项audit同步。
+
+C余量实际降至3.47GB，禁止再启动。只归档本方6个已terminal＋逐一identity gone的033308/034331/035727/040600/042322/043643着色器PSOCache，各105文件885049318bytes，共5310295908bytes；先复制J、全SHA/文件集合/长度核验，再保留C原路径junction并核验读回，才移除已验证临时副本。源码/日志/制品/录像未移动，其他owner/活动实例未触碰。archive_terminal_shader_caches_r2.ps1及terminal-shader-archive-20261111-r2.json保留全部证据。下一步保存后仅新唯一实例验证修正setup；PG/Native/XR未重建。全13项/30%/publicv71/头显false保持。

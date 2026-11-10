@@ -1,0 +1,12 @@
+{
+  "helper_tests": 9,
+  "game_execution": false,
+  "driver_only": true,
+  "production_source_or_limits_changed": false,
+  "source_sha256": {
+    "confirmed_first_fire.py": "dbd4f16c9892810d6fe45f5a1439d338e154e159c6777425e5e679c693029735",
+    "check_confirmed_first_fire.py": "860c5a21933de9b2af7fa70f0bec0b7308517390b742e95b67041075b691ff80"
+  },
+  "current_binary_sha256": "63b915a914b08e9d2a834c1946b454a0d642b9cb3e00945bec5e68a681b3d93b",
+  "requirements_complete": false
+}

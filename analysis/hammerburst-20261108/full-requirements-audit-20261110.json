@@ -7,8 +7,8 @@
     {
       "id": "acquire_stow",
       "requirement": "取枪与收枪",
-      "status": "current_driver_full_endpoint_repair_not_live",
-      "limit": "Actual20284 freshUP and singleGrip yielded no matching held; premature observer-region stopping in driver source corrected. New full endpoint/5mm observer10+driver17 only offline, no runtime yet. Prior actual pickups retained; stow/restore/full stability open.",
+      "status": "current_full_endpoint_pickup_observed_stow_open",
+      "limit": "Actual54720 full original commanded endpoint +freshUP148 +oneGrip +matching held151 before moving away. No source-gap retry. Single run only; stow/restore/full stability remain open.",
       "evidence": [
         {
           "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-13712-first-failure-analysis.json",
@@ -49,14 +49,18 @@
         {
           "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-20284-first-failure-analysis.json",
           "sha256": "1bc4d285a5fc34e963b3d880f86a1fd112982f932b7861220a7bde0eed6793e3"
+        },
+        {
+          "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-54720-first-failure-analysis.json",
+          "sha256": "3e7bfee7e31d4e70f1db9925dcaf313e8d4805a9dc208ea770a227f2e56f3dd3"
         }
       ]
     },
     {
       "id": "finite_fire",
       "requirement": "单手/双手瞄准与原版有限六连发",
-      "status": "partial_current_first_press_preparation_expiry",
-      "limit": "Actual24648 first224 final20ms reserve failed before ButtonPress;225 same-edge250ms intent expired, zero rays. Actual22896 first1/tail failure separate. New exact real-UP handoff430 fake checks, not exercised game. Full finite6/two-hand/stability unaccepted.",
+      "status": "current_first_down_source_expiry",
+      "limit": "Actual54720 DOWN239 source104.8766ms/current0 correctly sealed before ButtonPress; fresh240 baseline and241 blocked cannot replay. Test UP baseline stricter60ms/budget now9 synthetic tests only. Actual first/tail/reload unaccepted.",
       "evidence": [
         {
           "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-13712-first-failure-analysis.json",
@@ -109,6 +113,10 @@
         {
           "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-24648-first-failure-analysis.json",
           "sha256": "005baced2bb7f8b01a9cad11e9f0ce20f21d7243efff40ffa2e85181c770f7b7"
+        },
+        {
+          "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-54720-first-failure-analysis.json",
+          "sha256": "3e7bfee7e31d4e70f1db9925dcaf313e8d4805a9dc208ea770a227f2e56f3dd3"
         }
       ]
     },
@@ -283,15 +291,19 @@
         {
           "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-21288-first-failure-analysis.json",
           "sha256": "1e5ebec568d360d1a2e4e37c523e61d923742429b9d0aac17aac6f64cb7523bb"
+        },
+        {
+          "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-54720-first-failure-analysis.json",
+          "sha256": "3e7bfee7e31d4e70f1db9925dcaf313e8d4805a9dc208ea770a227f2e56f3dd3"
         }
       ]
     }
   ],
   "completion_proven": false,
   "goal_active": true,
-  "immediate_next": "Save identity-bound first-real-projection startup gate/13 helper tests+8 syntax checks, then one fresh instance with unchanged compiled endpoint-baseline-r1. Keep per-frame5s timeout and stop failed recording before actions. Full13 requirements retained.",
+  "immediate_next": "Save UP-only stricter60ms/budget test setup and explicit blockedDOWN failure (9 helper tests), then fresh instance with same compiled candidate. First resolve workspace disk margin using only verified-terminal own cache archive with SHA/junction safeguards. Preserve all13 requirements.",
   "historical_evidence_does_not_certify_current_PG": true,
-  "candidate_runtime_status": "endpoint-baseline-r1 actual21288 stopped on recording error before equipment/core actions. Two personally reviewed images only startup cards; no acquisition/press/handoff exercised. Normal cleanup.",
+  "candidate_runtime_status": "endpoint-baseline-r1 actual54720 bound real-projection gate +full endpointUP148/singleGrip/held151 exercised. ActualDOWN239 stale104.8766ms seals;240 fresh baseline/241blocked cannot replay. Zero first/rays/timing/handoff/reload. Normal cleanup.",
   "previous_recorded_candidate": {
     "name": "hammerburst-prepared-20261110-unheld-input-r1",
     "prepared_sha256": "76a2ae8cc56e4165b77ca5d17a9e6469ff66323e917be5a8b46da44df4f0bb58"
@@ -313,5 +325,5 @@
   "restore_verifier_status": "Optional --hammerburst-park-restore input action hook integrated into private reload adapter; five synthetic action/receipt regressions passed. Actual park/redraw/new-grant/native-resume, typed conservation, UI/reward and complete return-fire require game evidence.",
   "latest_service_first_failure": "runtime-3112-first-failure-analysis.json",
   "latest_startup_failure": "runtime-49732-startup-failure.json",
-  "latest_runtime_failure": "runtime-21288-first-failure-analysis.json"
+  "latest_runtime_failure": "runtime-54720-first-failure-analysis.json"
 }

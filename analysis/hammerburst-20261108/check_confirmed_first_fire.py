@@ -18,10 +18,13 @@ class Host:
             return [{'trace_valid':'1'}]*count if self.fired else []
         row=dict(frame='100',current='1',source_status='1',trigger_active='1',active_at_admission='1',
                  input_sync_ns=str(self.now),admitted_ns=str(self.now),status='1',owned='0',game_known='1',game_r2='0',
-                 trigger_value='1' if self.state=='down' else '0',trigger_pressed='1',trigger_released='0')
+                 trigger_value='1' if self.state=='down' else '0',trigger_pressed='1',trigger_released='0',preparation_budget='1')
         if self.fault=='stale':row['input_sync_ns']='1'
         if self.fault=='inactive':row['active_at_admission']='0'
         if self.fault=='owned':row['owned']='1'
+        if self.fault=='old_source_recent_receipt' or self.fault=='late_then_fresh' and self.now<1_150_000_000:row['input_sync_ns']=str(self.now-70_000_000)
+        if self.fault=='no_budget':row['preparation_budget']='0'
+        if self.fault=='blocked_down' and self.state=='down':row['status']='8'
         if self.fault=='down_missing' and self.state=='down':row['trigger_value']='0';row['trigger_released']='1'
         return [row]
     def run(self):
@@ -54,5 +57,23 @@ class Tests(unittest.TestCase):
                 h=Host(shots=n)
                 with self.assertRaises(TimeoutError if n==0 else AssertionError):h.run()
                 self.assertEqual(h.inputs,[{},dict(trigger=1),{}])
+
+    def test_recent_receipt_does_not_hide_near_expired_up_source(self):
+        for fault in ('old_source_recent_receipt','no_budget'):
+            h=Host(fault)
+            with self.assertRaises(TimeoutError):h.run()
+            self.assertEqual(h.inputs,[{}])
+
+    def test_wait_for_better_up_before_only_press(self):
+        h=Host('late_then_fresh');d=h.run()
+        self.assertEqual(h.inputs,[{},dict(trigger=1),{}])
+        self.assertGreaterEqual(d['first_fire_input']['down_sent_ns'],1_150_000_000)
+
+    def test_blocked_down_is_failure_not_successful_consumption(self):
+        h=Host('blocked_down');data={'checks':{}}
+        with self.assertRaisesRegex(AssertionError,'Original DOWN blocked'):
+            first_fire(h,data,clock=lambda:h.now,sleep=h.sleep)
+        self.assertEqual(h.inputs,[{},dict(trigger=1),{}])
+        self.assertEqual(data['first_fire_input']['first_down_rejection']['status'],'8')
 
 if __name__=='__main__':unittest.main(verbosity=2)

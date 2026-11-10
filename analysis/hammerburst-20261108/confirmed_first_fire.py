@@ -17,10 +17,15 @@ def first_fire(c,data,*,clock=time.perf_counter_ns,sleep=time.sleep,expected_sho
         stamp=number(row,'admitted_ns');now=clock()
         try:value=float(row.get('trigger_value','nan'))
         except (ValueError,TypeError):return False
-        return (number(row,'input_sync_ns')>=sent and stamp>=sent and 0<=now-stamp<=100_000_000 and
+        # A recent log receipt can still describe a nearly expired producer
+        # sample. Choose a stricter UP-only test setup window before the one
+        # press; this does not change the production100ms/20ms/250ms gates.
+        return (number(row,'input_sync_ns')>=sent and stamp>=number(row,'input_sync_ns') and 0<=now-stamp<=100_000_000 and
                 all(number(row,key)==1 for key in ('current','source_status','trigger_active','active_at_admission','game_known')) and
                 (value>.35 if down else value<=.35 and number(row,'status') in (1,2) and
-                 number(row,'owned')==0 and number(row,'game_r2')==0))
+                 number(row,'owned')==0 and number(row,'game_r2')==0 and
+                 number(row,'preparation_budget')==1 and
+                 0<=now-number(row,'input_sync_ns')<=60_000_000))
     def consumed(sent,down,seconds):
         deadline=clock()+int(seconds*1e9)
         if deadline_ns is not None:deadline=min(deadline,deadline_ns)
@@ -28,7 +33,11 @@ def first_fire(c,data,*,clock=time.perf_counter_ns,sleep=time.sleep,expected_sho
             assert g.live(),'Owned runtime ended before input consumption'
             rows=c.records('hammerburst_input_consumed')
             for row in reversed(rows):
-                if candidate(row,sent,down):return row
+                if candidate(row,sent,down):
+                    if down and number(row,'status')==8:
+                        receipt['first_down_rejection']=row
+                        raise AssertionError('Original DOWN blocked by Input; no press retry')
+                    return row
             sleep(.01)
         raise TimeoutError('No fresh actual '+('DOWN' if down else 'UP baseline')+' consumption receipt')
     receipt['baseline_sent_ns']=clock();g.pad(1,wait=0)
