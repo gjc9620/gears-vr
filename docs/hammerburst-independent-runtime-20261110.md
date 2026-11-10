@@ -448,3 +448,11 @@ first-priority-r1/hb-cloak-1111-033308/game22896/creation134388128429694897。32
 上一目标轮为progress：源改/完整编译/实际22896及322项真adapter局部复现均有证据。本轮在成功release_completed全部16个原gate之后，仅当已有refire pending时保存原serial/captured及本次frame/sync。原Input::advance完成实际owned→released后才调用after_release，一次消费handoff，要求原事件/本帧/sync/原cohort/press及唯一release匹配、跟踪可用、无cancel/firstdebt，再重新执行完整service。service只验证；原after_tick/deliver仍唯一发射点，原100ms源/20msreserve/250ms事件及identity/state/metadata检查不变。无新队列、重捕获、更新时间、松手补按或新许可。日志最多8行记录原captured/serial与service结果，不能借此授权。
 
 完整PG SHAe75af846db1529aaeaa2576f7df52380436e67720339f93ff48c7be299609beb，Native/XR未重建。430实际adapter fake检查通过（原308+新增21情形122项），覆盖同一pending尾段、new press/release、取消、reference/sourceframe/sync/hold变动、仍owned、event串/时间变化、元数据/registration/state失败、reserve失败、250ms过期、handoff缺失/一次消费、UP变DOWN、stop、tracking与pendingFIRST取消。queue/retailcontract/engine/source仍fake，不证明实际game或头显。准备脚本一次边界匹配断言失败在编译前终态，改用完整行边界后生成，最终编译0；未复用游戏名字。下一步单次新隔离实例，保留单Grip与首失败停止。全13项/30%/publicv71保持。
+
+## 实际24648：首发准备过期，新增UP交接未触达
+
+release-handoff-r1/hb-cloak-1111-034331/game24648/creation134388136103748532。178.515秒149次资源只读等待后同一次首次start；未停止其他实例。fresh UP130→单Grip→matching held132成功，无source-gap重试。224同一次扳机DOWN入Input后status10 defer；真实execute entry source年龄76.302ms，entry checks2.317ms/asset6.3101ms/contract3.5035ms/schema.0796ms，最终20msreserve拒绝，ButtonPress invoked0。225 source read年龄91.5502ms、preparation_budget0，原edge sync124868388918600+250ms=124868638918600，Input admission124868664114200已经晚25.1956ms，原Input status8封掉该press；226更新鲜的source也不能重放已过期按下。零first capture/零射线，不是同一次按钮多次重按。
+
+没有hammerburst_release_handoff，新增交接/430fake checks的产品分支本次未触达，不能称修复通过或失败。没有reload/priority/history触达。下一步检查重复首发资产反射：当前muzzle准备已有MuzzleSample.asset与两次asset read，ready_for/live又读对象/指针；execute另做全asset read。需逐项对比type/selector/hidden/attachment/identity/结构变化检查并证明等价或建立同Frame完整准备，不能简单删除新鲜检查或延长100/20/250ms。
+
+launcher0/operator1/stop0，Native清理/PG入口恢复/XR0、本方game及子进程退出，无强杀/workererror，1264前台/2216CLOAK零违规。149帧errors空encode0，亲看3页48双眼全跨度，真实场景/取枪/持枪可见，反复贴近右眼的大枪与间歇枪可见性/手臂枪重叠仍未接受；非所有帧/五处贴合/全部角度/头显验收。7原文本SHA归档，runtime-24648-first-failure-analysis.json与完整13项audit已更新。所有本方运行终态，不重复同实例，不再跑未改候选；完整目标active，30%/publicv71不变。

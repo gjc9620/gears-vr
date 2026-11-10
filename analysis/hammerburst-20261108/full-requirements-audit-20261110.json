@@ -37,14 +37,18 @@
         {
           "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-22896-first-failure-analysis.json",
           "sha256": "c2e2b6e033a808e1f61900ef81c6be37f223fa58f4c080969197b55f005be0c7"
+        },
+        {
+          "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-24648-first-failure-analysis.json",
+          "sha256": "005baced2bb7f8b01a9cad11e9f0ce20f21d7243efff40ffa2e85181c770f7b7"
         }
       ]
     },
     {
       "id": "finite_fire",
       "requirement": "单手/双手瞄准与原版有限六连发",
-      "status": "partial_current_first1_tail_expiry",
-      "limit": "Actual22896 originalfirst206 one consistent ray; realUP207 then remaining finite burst expired at count1 gate4. Current first stability/two-hand/finite6 unaccepted. Offline322 exact adapter checks identify release validation loss path but not sole game cause.",
+      "status": "partial_current_first_press_preparation_expiry",
+      "limit": "Actual24648 first224 final20ms reserve failed before ButtonPress;225 same-edge250ms intent expired, zero rays. Actual22896 first1/tail failure separate. New exact real-UP handoff430 fake checks, not exercised game. Full finite6/two-hand/stability unaccepted.",
       "evidence": [
         {
           "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-13712-first-failure-analysis.json",
@@ -93,6 +97,10 @@
         {
           "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-22896-first-failure-analysis.json",
           "sha256": "c2e2b6e033a808e1f61900ef81c6be37f223fa58f4c080969197b55f005be0c7"
+        },
+        {
+          "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-24648-first-failure-analysis.json",
+          "sha256": "005baced2bb7f8b01a9cad11e9f0ce20f21d7243efff40ffa2e85181c770f7b7"
         }
       ]
     },
@@ -268,9 +276,9 @@
   ],
   "completion_proven": false,
   "goal_active": true,
-  "immediate_next": "One fresh isolated run of release-handoff-r1. Check actual after_release original serial/capture logging and finite6. No game acceptance yet. Preserve all13 requirements and first failure.",
+  "immediate_next": "Inspect duplicate HB press asset reflection against existing exact-current MuzzleSample.asset/ready_for live checks. Do not simply remove fresh type/selector/hidden/attachment/identity or contract checks; prove equivalence or implement validated same-frame preparation. No widening/retiming/replay.",
   "historical_evidence_does_not_certify_current_PG": true,
-  "candidate_runtime_status": "first-priority-r1 actual22896: freshUP129/singleGrip/held131, originalfirst206 and one consistent ray; realUP207, pending tail expired at count1 gate4. No reload reached. Normal cleanup. Not full first stability or finite6 acceptance.",
+  "candidate_runtime_status": "release-handoff-r1 actual24648 pickupUP130/held132 succeeds; press224 reserve failure then same-edge defer expiry225, zero rays. New release handoff not reached; neither proved nor disproved live. Normal cleanup.",
   "previous_recorded_candidate": {
     "name": "hammerburst-prepared-20261110-unheld-input-r1",
     "prepared_sha256": "76a2ae8cc56e4165b77ca5d17a9e6469ff66323e917be5a8b46da44df4f0bb58"
@@ -292,5 +300,5 @@
   "restore_verifier_status": "Optional --hammerburst-park-restore input action hook integrated into private reload adapter; five synthetic action/receipt regressions passed. Actual park/redraw/new-grant/native-resume, typed conservation, UI/reward and complete return-fire require game evidence.",
   "latest_service_first_failure": "runtime-3112-first-failure-analysis.json",
   "latest_startup_failure": "runtime-49732-startup-failure.json",
-  "latest_runtime_failure": "runtime-22896-first-failure-analysis.json"
+  "latest_runtime_failure": "runtime-24648-first-failure-analysis.json"
 }
