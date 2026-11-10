@@ -162,6 +162,13 @@ def main():
 if __name__=='__main__':
  if _PREPARE:raise SystemExit(main())
  sys.path.insert(0,str(ROOT/'tools/debug-launch'))
- from runtime_stage_guard import RuntimeGuard
- with RuntimeGuard('solo-m1-1028d',timeout_ms=45000):
-  raise SystemExit(main())
+ from runtime_stage_guard import RuntimeGuard,RuntimeBusy
+ while True:
+  guard=RuntimeGuard('solo-m1-1028d',timeout_ms=45000)
+  try:guard.__enter__()
+  except RuntimeBusy:
+   print('HB startup mutex occupied; no attempt consumed; waiting',flush=True)
+   continue
+  break
+ try:raise SystemExit(main())
+ finally:guard.__exit__(*sys.exc_info())
