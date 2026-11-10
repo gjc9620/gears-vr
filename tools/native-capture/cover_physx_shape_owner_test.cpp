@@ -22,7 +22,10 @@ static Memory ownership_fixture(char const* path){
     m.put<std::uintptr_t>(other_actor_at+0x40,other_internal_actor_at);m.put<std::uintptr_t>(other_internal_actor_at+0x10,other_actor_at);
     links(m,0x160000,internal_actor_at);return m;
 }
-int main(int argc,char** argv){
+#ifndef GEARS_SHAPE_OWNER_TEST_MAIN
+#define GEARS_SHAPE_OWNER_TEST_MAIN main
+#endif
+int GEARS_SHAPE_OWNER_TEST_MAIN(int argc,char** argv){
     if(argc!=2)return 2;
     try{
         auto initial=ownership_fixture(argv[1]);auto m=initial;

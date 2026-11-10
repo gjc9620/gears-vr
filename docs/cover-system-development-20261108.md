@@ -1696,3 +1696,13 @@ Compound RTTI类型描述277470、COL2491F0与主表227950交叉核对。表+398
 证据analysis/cover-system-20261108/actor-shapes-r91/rea-evidence.json，68条、10411201字节；verification.json保留12个关键函数完整伪代码／汇编、原读取器SHA与明确下一修复。REA会话已正常关闭。本轮有证据改变下一行动，属于progress；没有产品代码修改、编译或重复测试，无stage／游戏／XR／录像／新增玩家动作验收，未使用新的运行窗口。最新Native仍为r90的945e7b3b，公开v71和r80五身份保持。
 
 完整自身与世界Shape覆盖、生命周期／ABA排除和共同物理时相仍未完成；实际身体路径／终点占用／移动恢复、严重肩身遮挡、physics-hit-muzzle同版、真实LGrip／GrabPose及实体头显也未完成。保留CV01–24／AC01–22完整目标，工程25%不变，目标active。
+
+## 2026年11月10日 r92原Actor Shape成员读取模块
+
+上一轮da8d33bf的原静态分支取证改变修复方向，属于进展。本轮新增cover_physx_actor_shapes.h，按r91原字段建立空／单Shape／Compound只读清单。Actor主表与同Scene必须匹配；动态Body非空时保持Body+10反链，静态Body为空则不伪造动态对象。根从Actor+48读取；单Shape关闭根公开槽、公开Shape主表／Actor及internal反链；Compound要求原227950表与对应getter槽，内部1B0／1B8／1C0及公开1D8／1E0／1E8两套向量头均合法、等计数且最多64行，再逐行核对应指针、子parent为根、公开／内部／Actor关系及Body一致。重复内部或公开成员拒绝，不截断超容量。
+
+清单双读一致且最后guard通过后发布，读取失败、变更与错误关系均保持调用方完整输出。Workspace具有重入拒绝，成员清空可清除旧行；无引擎调用或身体写入。当前CodeGuard仍是显式调用方合同：接线前必须认证r91原getter／count／dispatch代码及Image、当前C0 owner／线程／身份。此模块尚未接入QueryEngine或旧命中归属读取器，因此旧静态误拒绝尚未修复，不能把这份单独清单与另一时相hit直接合并，也不授权self过滤、身体移动或world fence。
+
+独立v2冻结r90 final单元源及3份本轮文件，严格/std:c++17 /O2 /W4 /WX /EHsc /UNDEBUG /MT编译执行0，66项／0失败。覆盖动态单体反链、静态单Shape、静态Compound平行成员、每次读取失败、错误成员／父关系／Body／Actor／Scene／计数／表、双读间根变化及空根清旧成员。原DLL只作PE数据，CodeGuard与owner为明确测试seam，无实际C0、原调用或游戏。首版测试嵌套include将main宏重定义，/WX拒绝并报告重复main；新增可重命名测试入口后v2通过。首版日志与冻结源保留，不扩大栈或放宽产品检查。
+
+证据analysis/cover-system-20261108/actor-shapes-r92/verification.json及source／source-v2、build／build-v2。新模块尚非Native依赖，故本轮未重建或替换Native／PG／XR，最新编译仍r90的945e7b3b；公开v71及r80封存身份保持，无stage／游戏／XR／录像或新玩家动作通过。下一步将实际原代码证书和该清单接入同一hit归属事务，以成员关系补静态路径并保持动态反链，而后完成原查询前后关闭。完整自身与形状世界覆盖、物理同步、身体路径／占用／移动恢复、严重肩身遮挡、physics-hit-muzzle、真实LGrip／GrabPose、CV01–24／AC01–22及实体头显仍未完成。工程25%不变，目标active。
