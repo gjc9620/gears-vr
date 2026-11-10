@@ -194,3 +194,13 @@ hb-cloak-1110-212845再次在start前被现有2实例资源保护拒绝，未生
 本方verify_restore_observations把阶段序列与既有typed double-read快照的game/weapon/capacity/loaded/reserve/infinite/bonus/game_time对照；检查新hold、已知tracked UP再新press、原钟不变、正确原生/visual-only分支和回到真实机械阶段。2个测试方法覆盖两条正例及15种错误/重放/改弹数/改奖励/倒退时间拒绝；这是验证器夹具证据，尚无实际切枪动作驱动接线或新玩法证据，不称切枪恢复通过。
 
 冻结Resume19/284、Park17/109仍通过，完整Playground编译链接成功。restore-receipts-r1 SHA 94b0b1f21380402ee57352b8fda2754a6d9c77c26c3a24715a6ed1597c02c0fb，只加阶段观察，Native/XR未重编，公共v71未变。新原图/时序检查均未涨工程分；本次统筹一次性采集沿用HB A.5/B.25/C.25/D.25/E.25=30%，头显false。下一步仍优先修正单次持按首发→六连发→普通空仓完整返射，再接入实际中断动作验证器。
+
+## restore-receipts-r1 实际36568：首发与11轮排弹通过，末轮3/6拒绝
+
+实际hb-cloak-1110-214502肩取成功；新脚本等首条原版trajectory后才UP，core得到恰好6条有效射线，typed实际72/78。原first event1与后续原timer均实际交付，首轮3..6在实际UP/input_owned0下完成，不能推广为失去绑定后的全部timer分支通过。之后11次真实按下/松开均恰好6发，typed从72/78逐轮降到6/78。最后第12次排弹只完成3发，typed3/78；共75条trace_valid/write_source_consistent/trace_source_consistent全部1，与实际used75一致，无库存setter。
+
+首个拒绝为native_hammerburst_release_rejected gate1/frame0/source_stage0/count3，随后after_tick null Frame取消；最后成功源Frame404。原通用R2日志64条上限已用完，当前辅助观察也只记录have_source，无法证明null源是过期、observe、publication还是其他状态。保留失败，不猜C0/超时/身份原因，不重跑原样timer。普通空仓0/78与换弹尚未到达。
+
+continuous/session passed=true、launcher0/operator1/stop0，Native清理/PG入口恢复、XR exit0，本方game及私有子进程全无、无强杀。1486前台与2666CLOAK检查零违规；目标音频265次明确mute读回、verify_failed0/target_shared_rejected0。528帧GPU录制无错误、离线编码exit0；3张全时段overview及6张首发/尾失败原图亲看。真实近脸遮挡、低位/近位跳变、白色几何及重叠表面仍在，完整皮肤贴合/全角度未接受。runtime-36568-first-failure-analysis.json与text归档保留。
+
+新增source-loss-r1只将现有copy_frame_on_gt可选失败观察与withdrawal_on_gt快照接到同一次读上；拒绝处最多12条，保留copy与withdrawal各自Frame/原因/difference/原commit年龄，不把旧withdrawal冒认为本次原因。不增时钟、不重读Frame、不改取消/输入规则。完整Playground编译成功，SHA 39bda734f56dce4141a0fd718bb5026b571b75196e64d586d0a05ee12f551b34；Native/XR未重编、公共v71不改。下次受控窗口只定位这个新首败，再按实因修复；整枪目标与13项需求保持，评分不因诊断涨分。

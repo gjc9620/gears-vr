@@ -1,0 +1,31 @@
+--- a/tools/playground/weapon_lancer_r2_native.inl
++++ b/tools/playground/weapon_lancer_r2_native.inl
+@@ -345,7 +345,10 @@
+     }
+     const auto source_started=weaponhand::clock_ns(nullptr);
+     wh::Frame frame{};wh::GripGameState copied_game{};wh::Decision copied_decision{};
+-    const bool have_source=state==running&&weaponhand::client.copy_frame_on_gt(frame,copied_game,copied_decision);
++    wh::FrameReadObservation copy_observation{};
++    const bool hb_pending_before=hammerburst_burst_event::cleanup_pending();
++    const bool r2_owned_before=input.owns_press();
++    const bool have_source=state==running&&weaponhand::client.copy_frame_on_gt(frame,copied_game,copied_decision,&copy_observation);
+     lr::Continuity continuity{};
+     gears_current_tracking::Failure continuity_failure{};
+     const auto native_selected_before=nativeequipment::input_continuity_native_selected;
+@@ -426,6 +429,8 @@
+     bool current{};lr::Game game{};
+     if(have_source)read_game(actors(frame),&frame,game,&current,&copied_game);
+     if(!current&&input.has_actors()&&input.actors().controller.address==pc)read_game(input.actors(),nullptr,game);
++    wh::FrameReadObservation source_withdrawal{};
++    if(hb_pending_before&&(!have_source||!current))source_withdrawal=weaponhand::client.withdrawal_on_gt();
+     if(have_source&&lancerreload_runtime::blocks_fire(frame.weapon)){
+         game.main_hand_held=false;muzzle_ready=false;
+     }
+@@ -635,6 +640,7 @@
+     }
+     const auto diagnostic_finished=weaponhand::clock_ns(nullptr);
+ #include "weapon_hammerburst_input_consumed_observation.inl"
++#include "weapon_hammerburst_source_loss_observation.inl"
+     if(log_file&&logs<64&&(previous_status!=unsigned(result)||previous_source!=unsigned(input.source_status())||
+         ready_after_ammo||ammo_queried||(ammo_known&&count!=last_ammo))){
+         fwprintf(log_file,L"native_lancer_r2 status=%u source_status=%u mode=%u owned=%u game_known=%u game_r2=%u before_action=1 frame=%llu sequence=%llu trigger_pressed=%u trigger_released=%u trigger_active=%u trigger_value=%.3f muzzle_ready=%u input_sync_ns=%lld observed_ns=%lld ammo_known=%u ammo=%d previous_sync_ns=%lld previous_observed_ns=%lld game_elapsed_ns=%lld action_elapsed_ns=%lld ammo_queried=%u diagnostic_elapsed_ns=%lld ready_after_ammo_read=%u copy_elapsed_ns=%lld input_elapsed_ns=%lld continuity_matched=%u continuous_poll_gap=%u copied_source=%u copied_frame=%llu copied_input_age_ns=%lld preparation_budget=%u continuity_failure=%u continuity_native_selected=%u input_admission_ns=%lld input_admission_delay_ns=%lld input_frame_now_ns=%lld input_stereo_received_ns=%lld input_controller_received_ns=%lld input_frame_flags=%u input_stereo_status=%u input_frame_shape=%u input_frame_active=%u\n",

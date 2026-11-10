@@ -1,0 +1,257 @@
+{
+  "schema": 1,
+  "instance": "hb-cloak-1110-214502",
+  "game_identity": {
+    "pid": 36568,
+    "creation_time": 134387919149886043,
+    "image": "j:\\gearsvr\\gears.of.war.reloaded.v1.0.1.3816947-p2p\\gears of war reloaded\\binaries_x64\\gowde-steam.exe"
+  },
+  "candidate": "restore-receipts-r1",
+  "full_weapon_passed": false,
+  "actual_core_checks": {
+    "actual_shoulder_acquisition": true,
+    "actual_fire": true
+  },
+  "first_fire_input": {
+    "baseline_sent_ns": 103171904197800,
+    "baseline": {
+      "frame": "269",
+      "sequence": "3402",
+      "current": "1",
+      "status": "1",
+      "source_status": "1",
+      "owned": "0",
+      "game_known": "1",
+      "game_r2": "0",
+      "trigger_active": "1",
+      "trigger_value": "0.000",
+      "trigger_pressed": "0",
+      "trigger_released": "0",
+      "input_sync_ns": "103172147910300",
+      "admitted_ns": "103172197771600",
+      "active_at_admission": "1",
+      "preparation_budget": "1"
+    },
+    "down_sent_ns": 103172205023200,
+    "down": {
+      "frame": "270",
+      "sequence": "3406",
+      "current": "1",
+      "status": "3",
+      "source_status": "1",
+      "owned": "1",
+      "game_known": "1",
+      "game_r2": "0",
+      "trigger_active": "1",
+      "trigger_value": "1.000",
+      "trigger_pressed": "1",
+      "trigger_released": "0",
+      "input_sync_ns": "103172236618900",
+      "admitted_ns": "103172268721500",
+      "active_at_admission": "1",
+      "preparation_budget": "1"
+    },
+    "first_shot_observed_ns": 103172375775300,
+    "shots_at_release": 1,
+    "release_sent_ns": 103172375776400
+  },
+  "first_burst_rays": 6,
+  "typed_after_core": {
+    "capacity": 78.0,
+    "used": 6,
+    "reserve": 78,
+    "infinite_reserve": false,
+    "duration": 2.5,
+    "started": 0.0,
+    "active_reload_bonus_shots": 0,
+    "game": {
+      "pid": 36568,
+      "creation_time": 134387919149886043,
+      "image": "j:\\gearsvr\\gears.of.war.reloaded.v1.0.1.3816947-p2p\\gears of war reloaded\\binaries_x64\\gowde-steam.exe"
+    },
+    "weapon": "0x162a626700",
+    "observed_ns": 103173201159800,
+    "game_time": 22.40985107421875,
+    "loaded": 72,
+    "bones": {},
+    "game_function_calls": 0,
+    "reader_reused": true,
+    "read_bracket_misses": [],
+    "query_local_selectors": true,
+    "limits": "Double-read actual inventory and typed schema, current registered objects/held identity; no game calls. Not physical-headset acceptance."
+  },
+  "complete_drain_bursts": [
+    {
+      "burst": 1,
+      "loaded_before": 72,
+      "loaded_after": 66,
+      "actual_spent": 6,
+      "expected_spent": 6
+    },
+    {
+      "burst": 2,
+      "loaded_before": 66,
+      "loaded_after": 60,
+      "actual_spent": 6,
+      "expected_spent": 6
+    },
+    {
+      "burst": 3,
+      "loaded_before": 60,
+      "loaded_after": 54,
+      "actual_spent": 6,
+      "expected_spent": 6
+    },
+    {
+      "burst": 4,
+      "loaded_before": 54,
+      "loaded_after": 48,
+      "actual_spent": 6,
+      "expected_spent": 6
+    },
+    {
+      "burst": 5,
+      "loaded_before": 48,
+      "loaded_after": 42,
+      "actual_spent": 6,
+      "expected_spent": 6
+    },
+    {
+      "burst": 6,
+      "loaded_before": 42,
+      "loaded_after": 36,
+      "actual_spent": 6,
+      "expected_spent": 6
+    },
+    {
+      "burst": 7,
+      "loaded_before": 36,
+      "loaded_after": 30,
+      "actual_spent": 6,
+      "expected_spent": 6
+    },
+    {
+      "burst": 8,
+      "loaded_before": 30,
+      "loaded_after": 24,
+      "actual_spent": 6,
+      "expected_spent": 6
+    },
+    {
+      "burst": 9,
+      "loaded_before": 24,
+      "loaded_after": 18,
+      "actual_spent": 6,
+      "expected_spent": 6
+    },
+    {
+      "burst": 10,
+      "loaded_before": 18,
+      "loaded_after": 12,
+      "actual_spent": 6,
+      "expected_spent": 6
+    },
+    {
+      "burst": 11,
+      "loaded_before": 12,
+      "loaded_after": 6,
+      "actual_spent": 6,
+      "expected_spent": 6
+    }
+  ],
+  "attempted_drain_bursts": 12,
+  "last_typed_counts": {
+    "capacity": 78.0,
+    "used": 75,
+    "reserve": 78,
+    "infinite_reserve": false,
+    "duration": 2.5,
+    "started": 0.0,
+    "active_reload_bonus_shots": 0,
+    "game": {
+      "pid": 36568,
+      "creation_time": 134387919149886043,
+      "image": "j:\\gearsvr\\gears.of.war.reloaded.v1.0.1.3816947-p2p\\gears of war reloaded\\binaries_x64\\gowde-steam.exe"
+    },
+    "weapon": "0x162a626700",
+    "observed_ns": 103185014586700,
+    "game_time": 34.2301025390625,
+    "loaded": 3,
+    "bones": {},
+    "game_function_calls": 0,
+    "reader_reused": true,
+    "read_bracket_misses": [],
+    "query_local_selectors": true,
+    "limits": "Double-read actual inventory and typed schema, current registered objects/held identity; no game calls. Not physical-headset acceptance."
+  },
+  "total_rays": 75,
+  "all_rays_valid_consistent": true,
+  "first_failure": "AssertionError('Original burst explicitly rejected; stop without retry')",
+  "partial_burst": {
+    "count": 3,
+    "remaining_loaded": 3,
+    "reserve": 78,
+    "first_cancel_record": "release gate1 / frame0 / source_stage0",
+    "continuation_rejected": "gate1 null current Frame",
+    "cause": "Unknown; no same-call copy/withdrawal witness was captured. Last successful ray used Frame404."
+  },
+  "cleanup": {
+    "launcher_exit": 0,
+    "owned_game_absent": true,
+    "owned_children": {
+      "recorded": 0,
+      "remaining": []
+    },
+    "forced_termination": false,
+    "worker_error": null
+  },
+  "operator_exit": 1,
+  "continuous_passed": true,
+  "native_cleanup_verified": true,
+  "xr_exit_code": 0,
+  "playground_cleanup": {
+    "loaded": true,
+    "shutdown_code": 0,
+    "entry_restored": true,
+    "passed": true
+  },
+  "foreground_samples": 1486,
+  "cloak_samples": 2666,
+  "foreground_violations": [],
+  "cloak_violations": [],
+  "audio_mute_readback": [
+    {
+      "event": "mute_verification_summary",
+      "pid": 36568,
+      "initially_muted_sessions": 1,
+      "verified_muted_observations": 265,
+      "verify_failed": 0,
+      "target_shared_rejected": 0,
+      "shared_rejected_is_global_scan_count": true
+    }
+  ],
+  "media": {
+    "directory": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\hb-cloak-1110-214502\\actions\\menu-firstperson-36568-214526",
+    "frames": 528,
+    "errors": [],
+    "reviewed": true,
+    "encoded": true,
+    "encode_exit": 0,
+    "overview_pages": [
+      "overview-1.jpg",
+      "overview-2.jpg",
+      "overview-3.jpg"
+    ],
+    "actual_contacts": [
+      "frame-00407.jpg",
+      "frame-00412.jpg",
+      "frame-00437.jpg",
+      "frame-00449.jpg",
+      "frame-00514.jpg",
+      "frame-00527.jpg"
+    ],
+    "visual_acceptance": false,
+    "findings": "Actual scene, muzzle flashes and main-hand weapon visible. Alternating near-face large occlusion/low gun, white geometry and ghosted surfaces observed; full hand fit and all-angle continuity unaccepted."
+  },
+  "next_action": "One narrow same-call copy observation + existing withdrawal snapshot, preserving release/100ms/20ms/250ms; do not rerun unchanged input/timer."
+}

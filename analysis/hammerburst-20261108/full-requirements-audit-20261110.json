@@ -1,8 +1,8 @@
 {
   "schema": 1,
   "scope": "full HB objective; no scope reduction",
-  "current_candidate": "restore-receipts-r1 (same restore/consumed-input chain plus bounded transition receipts; compiled, no new gameplay pass)",
-  "prepared_sha256": "ee7eb77592a38cff96e0c4c367048c376d636ffce0da11889b8b9c5da6a0e0ab",
+  "current_candidate": "source-loss-r1 (compiled copy/withdrawal observation only; actual first6+11 complete drain bursts belong parent restore-receipts-r1)",
+  "prepared_sha256": "f403bb7d2cf849ed005114032319eb6693213767db48bfe7013010bc8eed5c1d",
   "requirements": [
     {
       "id": "acquire_stow",
@@ -19,8 +19,8 @@
     {
       "id": "finite_fire",
       "requirement": "\u5355\u624b/\u53cc\u624b\u7784\u51c6\u4e0e\u539f\u7248\u6709\u9650\u516d\u8fde\u53d1",
-      "status": "failed_latest_live",
-      "limit": "Latest actual40524 separatedUP/DOWN, DOWN status3/owned1/muzzle1/source age55.6672ms; script release9.1905ms after press admission cancelled uncommitted first event, zero rays. Corrected first-discharge release not yet game exercised.",
+      "status": "partial_latest_live_final_burst_failed",
+      "limit": "Actual36568 current parent candidate first burst6+typed72/78;11 subsequent six-shot drain bursts to6/78; last3/6 left3/78.75 rays all valid/write+trace source consistent. No current two-hand acceptance; whole finite-fire stability not passed. Null-current Frame cause unproven.",
       "evidence": [
         {
           "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-13712-first-failure-analysis.json",
@@ -49,6 +49,10 @@
         {
           "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-40524-first-failure-analysis.json",
           "sha256": "843aa37cd4b674e78895606b409bb5bf141b942740464eb8a6b62f36304a67a9"
+        },
+        {
+          "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-36568-first-failure-analysis.json",
+          "sha256": "0af9fcea380c41446408706b29e4fb3c63729e421490c212643a2e95baf69854"
         }
       ]
     },
@@ -199,9 +203,9 @@
   ],
   "completion_proven": false,
   "goal_active": true,
-  "immediate_next": "When resource admission permits a fresh independent instance, verify the corrected single held press through first original discharge, then six rays and full ordinary empty reload with final typed return counts. Do not restart212609 or rerun unchanged early-release input. All13 requirements remain.",
+  "immediate_next": "One new source-loss-r1 owned run to identify exact copy/read/withdrawal predicate at partial-burst loss, no changed original release/identity/100/20/250ms. Then repair the concrete cause and finish ordinary empty reload/typed return counts plus all remaining requirements.",
   "historical_evidence_does_not_certify_current_PG": true,
-  "candidate_runtime_status": "Actual40524 separately consumed valid UP then DOWN status3/owned1/muzzle1 but script released before first original event delivery; no rays. Corrected helper now waits original first ray before release, source committed764994e7. Next fresh attempt212609 rejected before game by existing2-instance resource guard; no own runtime remains.",
+  "candidate_runtime_status": "Parent36568 first six valid/consistent rays and typed72/78, then11 genuine six-shot drain bursts to6/78; final attempt3/6, typed3/78, total75 consistent rays. Null currentFrame triggered original cancel; cause unproven. Cleanup normal. New same-call diagnostic child compiled, unexercised.",
   "previous_recorded_candidate": {
     "name": "hammerburst-prepared-20261110-unheld-input-r1",
     "prepared_sha256": "76a2ae8cc56e4165b77ca5d17a9e6469ff66323e917be5a8b46da44df4f0bb58"
