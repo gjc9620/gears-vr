@@ -1,0 +1,105 @@
+{
+  "game": {
+    "pid": 21596,
+    "creation_time": 134388183099827305,
+    "image": "j:\\gearsvr\\gears.of.war.reloaded.v1.0.1.3816947-p2p\\gears of war reloaded\\binaries_x64\\gowde-steam.exe"
+  },
+  "candidate": "63b915a914b08e9d2a834c1946b454a0d642b9cb3e00945bec5e68a681b3d93b",
+  "operator_started": false,
+  "actual_trajectory_count": 0,
+  "first_failure": "mark_launch_stage injection_attempted: same birth.json.tmp ->birth.json atomic replace WinError5. Reservation stopped; no startup retry. Earlier PG reservation may already have run; injection state remains unknown, not safe to retry.",
+  "error": "RuntimeError('Owned launcher rejected startup: RuntimeError(\"Fresh reservation failed; no retry (exit code 1): PermissionError: [WinError 5] \u62d2\u7edd\u8bbf\u95ee\u3002: \\'C:\\\\\\\\\\\\\\\\Users\\\\\\\\\\\\\\\\11\\\\\\\\\\\\\\\\.codex\\\\\\\\\\\\\\\\worktrees\\\\\\\\\\\\\\\\6dof-single\\\\\\\\\\\\\\\\gearsVr\\\\\\\\\\\\\\\\analysis\\\\\\\\\\\\\\\\instances\\\\\\\\\\\\\\\\hb-cloak-1111-045812\\\\\\\\\\\\\\\\launcher-session.reserve.log.090a2ee8371047719b0f863d4a5372ab.birth.json.tmp\\' -> \\'C:\\\\\\\\\\\\\\\\Users\\\\\\\\\\\\\\\\11\\\\\\\\\\\\\\\\.codex\\\\\\\\\\\\\\\\worktrees\\\\\\\\\\\\\\\\6dof-single\\\\\\\\\\\\\\\\gearsVr\\\\\\\\\\\\\\\\analysis\\\\\\\\\\\\\\\\instances\\\\\\\\\\\\\\\\hb-cloak-1111-045812\\\\\\\\\\\\\\\\launcher-session.reserve.log.090a2ee8371047719b0f863d4a5372ab.birth.json\\'\\\\nDetails: C:\\\\\\\\Users\\\\\\\\11\\\\\\\\.codex\\\\\\\\worktrees\\\\\\\\6dof-single\\\\\\\\gearsVr\\\\\\\\analysis\\\\\\\\instances\\\\\\\\hb-cloak-1111-045812\\\\\\\\launcher-session.reserve.log\")')",
+  "birth_receipt": {
+    "schema": 1,
+    "kind": "reservation_birth",
+    "game_identity": {
+      "pid": 21596,
+      "creation_time": 134388183099827305,
+      "image": "j:\\gearsvr\\gears.of.war.reloaded.v1.0.1.3816947-p2p\\gears of war reloaded\\binaries_x64\\gowde-steam.exe"
+    },
+    "injection_attempted": true,
+    "prime_attempted": false
+  },
+  "pending_payload": {
+    "schema": 1,
+    "kind": "reservation_birth",
+    "game_identity": {
+      "pid": 21596,
+      "creation_time": 134388183099827305,
+      "image": "j:\\gearsvr\\gears.of.war.reloaded.v1.0.1.3816947-p2p\\gears of war reloaded\\binaries_x64\\gowde-steam.exe"
+    },
+    "injection_attempted": true,
+    "prime_attempted": false
+  },
+  "note": "Both final observed birth/pending have injection_attempted true: stage is marked before optional PG reservation and again before capture DLL load. Do not infer no prior injection from this failed second publication.",
+  "cleanup": {
+    "launcher_exit": 1,
+    "owned_game_absent": true,
+    "owned_children": {
+      "recorded": 0,
+      "remaining": []
+    },
+    "forced_termination": false,
+    "worker_error": null
+  },
+  "launcher_exit": 1,
+  "stop_exit": 1,
+  "normal_full_runtime_cleanup_pass": false,
+  "owned_game_absent": true,
+  "native_xr_gameplay_evidence": "No continuous session report/operator; no Native/XR/action acceptance. Preserve unknown-injection cleanup classification.",
+  "media": {
+    "frames": 0,
+    "recording_started": false,
+    "encoded": false
+  },
+  "foreground_samples": 85,
+  "foreground_violations": [],
+  "cloak_samples": 0,
+  "cloak_violations": [],
+  "verified_archive": [
+    {
+      "source": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\hb-cloak-1111-045812\\result.json",
+      "archive": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-21596-text\\result.json",
+      "sha256": "77d4657fedf533e64a06340dbad9bff713913773f4ae3fa0c3f8966f7367f751"
+    },
+    {
+      "source": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\hb-cloak-1111-045812\\launcher-session.json",
+      "archive": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-21596-text\\launcher-session.json",
+      "sha256": "6d5ddd6c17971f2ed3164ebb601b8f4ab291bea0fef5e01e00ed2d9b4c5f6eb3"
+    },
+    {
+      "source": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\hb-cloak-1111-045812\\launcher-session.reserve.log",
+      "archive": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-21596-text\\launcher-session.reserve.log",
+      "sha256": "aedc4a121e067b92e172e94b2aec1cff50e6b7e8c9c07386136c8b80e3b4faeb"
+    },
+    {
+      "source": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\hb-cloak-1111-045812\\isolated-done.json",
+      "archive": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-21596-text\\isolated-done.json",
+      "sha256": "a6b3be90ae2d22f4ff6f78765cef918e42e44ef24498ff8258fa166fb3208934"
+    },
+    {
+      "source": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\hb-cloak-1111-045812\\launcher-session.reserve.log.090a2ee8371047719b0f863d4a5372ab.birth.json",
+      "archive": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-21596-text\\launcher-session.reserve.log.090a2ee8371047719b0f863d4a5372ab.birth.json",
+      "sha256": "7b0dbf6c723d1fec5b3a77eed032956089870ca1ab6608e89fee89b03f8a4edf"
+    },
+    {
+      "source": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\hb-cloak-1111-045812\\launcher-session.reserve.log.090a2ee8371047719b0f863d4a5372ab.birth.json.tmp",
+      "archive": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-21596-text\\launcher-session.reserve.log.090a2ee8371047719b0f863d4a5372ab.birth.json.tmp",
+      "sha256": "7b0dbf6c723d1fec5b3a77eed032956089870ca1ab6608e89fee89b03f8a4edf"
+    },
+    {
+      "source": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\hb-cloak-1111-045812\\launcher-session.reserve.log.090a2ee8371047719b0f863d4a5372ab.startup.jsonl",
+      "archive": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-21596-text\\launcher-session.reserve.log.090a2ee8371047719b0f863d4a5372ab.startup.jsonl",
+      "sha256": "5978565e544950294d97dff226f2b133413a259e5ffd2e99a042b6ba0632e355"
+    },
+    {
+      "source": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\hb-cloak-1111-045812\\launcher-session.reserve.log.090a2ee8371047719b0f863d4a5372ab.startup.jsonl.first-failure.json",
+      "archive": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-21596-text\\launcher-session.reserve.log.090a2ee8371047719b0f863d4a5372ab.startup.jsonl.first-failure.json",
+      "sha256": "b00f8fec6b2904140d607624dbc8e2d8d73db8372877d43803a1fb87f6dbf16d"
+    }
+  ],
+  "shared_fix": "Existing coordinator owns shared launch_reserve bounded same-payload atomic replacement.6 attempts,5/32/33 only,25ms between, original full receipt equality before later attempt; no reserve/inject/prime/game retry.12 offline tests, no live repair proof.",
+  "own_reader_experiment": "Actual Windows temp-file probe4 tests:2pass/2error. SHARE_DELETE alone did not permit replacement with held reader. Unwired from runner; failed source/evidence retained, not shipped as fix.",
+  "gameplay_accepted": false,
+  "physical_headset_accepted": false
+}

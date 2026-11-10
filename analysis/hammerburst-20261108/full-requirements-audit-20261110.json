@@ -295,15 +295,19 @@
         {
           "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-54720-first-failure-analysis.json",
           "sha256": "3e7bfee7e31d4e70f1db9925dcaf313e8d4805a9dc208ea770a227f2e56f3dd3"
+        },
+        {
+          "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-21596-first-failure-analysis.json",
+          "sha256": "f40e3c9f696c558822db12fd19b10373c892c2321a82c8dcf5825ecba62655bc"
         }
       ]
     }
   ],
   "completion_proven": false,
   "goal_active": true,
-  "immediate_next": "Save UP-only stricter60ms/budget test setup and explicit blockedDOWN failure (9 helper tests), then fresh instance with same compiled candidate. First resolve workspace disk margin using only verified-terminal own cache archive with SHA/junction safeguards. Preserve all13 requirements.",
+  "immediate_next": "Verify coordinator shared source hashes/bounded same-payload patch, preserve failed share-delete experiment unwired, save then one fresh instance. Never reuse045812/72902. Retain9 first-fire fixture results; no live readiness proof yet. All13 requirements retained.",
   "historical_evidence_does_not_certify_current_PG": true,
-  "candidate_runtime_status": "endpoint-baseline-r1 actual54720 bound real-projection gate +full endpointUP148/singleGrip/held151 exercised. ActualDOWN239 stale104.8766ms seals;240 fresh baseline/241blocked cannot replay. Zero first/rays/timing/handoff/reload. Normal cleanup.",
+  "candidate_runtime_status": "endpoint-baseline-r1 actual21596 startup failure publishing birth stage WinError5; operator not started. launcher1/stop1, owned game gone/no force. No stricter first-fire setup/handoff/weapon action tested.",
   "previous_recorded_candidate": {
     "name": "hammerburst-prepared-20261110-unheld-input-r1",
     "prepared_sha256": "76a2ae8cc56e4165b77ca5d17a9e6469ff66323e917be5a8b46da44df4f0bb58"
@@ -325,5 +329,5 @@
   "restore_verifier_status": "Optional --hammerburst-park-restore input action hook integrated into private reload adapter; five synthetic action/receipt regressions passed. Actual park/redraw/new-grant/native-resume, typed conservation, UI/reward and complete return-fire require game evidence.",
   "latest_service_first_failure": "runtime-3112-first-failure-analysis.json",
   "latest_startup_failure": "runtime-49732-startup-failure.json",
-  "latest_runtime_failure": "runtime-54720-first-failure-analysis.json"
+  "latest_runtime_failure": "runtime-21596-first-failure-analysis.json"
 }

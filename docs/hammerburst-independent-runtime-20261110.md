@@ -506,3 +506,15 @@ launcher0/operator1/stop0、Native/PG入口/XR0与本方进程正常清理，无
 本次launcher0/operator1/stop0、Native清理/PG入口/XR0与本方game/children正常退出，无强杀/workererror，1329前台/2248CLOAK零违规。152frames/errors空encode0，亲看三页48paired全跨度，有取枪持枪，但右眼近大枪/间歇消失重影/手臂重叠仍未接受，非全帧/全角度/五处贴合/头显。7份原文本SHA归档，runtime-54720-first-failure-analysis.json与13项audit同步。
 
 C余量实际降至3.47GB，禁止再启动。只归档本方6个已terminal＋逐一identity gone的033308/034331/035727/040600/042322/043643着色器PSOCache，各105文件885049318bytes，共5310295908bytes；先复制J、全SHA/文件集合/长度核验，再保留C原路径junction并核验读回，才移除已验证临时副本。源码/日志/制品/录像未移动，其他owner/活动实例未触碰。archive_terminal_shader_caches_r2.ps1及terminal-shader-archive-20261111-r2.json保留全部证据。下一步保存后仅新唯一实例验证修正setup；PG/Native/XR未重建。全13项/30%/publicv71/头显false保持。
+
+## 实际21596：出生回执重复阶段发布WinError5，非武器结果
+
+续原exec72902后terminal1，hb-cloak-1111-045812/game21596/creation134388183099827305，operator未启动。原reserve.log确证mark_launch_stage更新injection_attempted时birth.json.tmp replace birth.json抛WinError5；launcher1/stop1，不是正常完整runtime清理通过。done仍确证本方game absent/children空/无强杀/workererror，85前台零违规，CLOAK0样本不冒称覆盖。无continuous session/Native/XR/武器/录像证据。
+
+两个最终birth与tmp均stage injection_attempted true；源码在optional Playground reserve之前和capture DLL load之前各标一次，因此不能因本次replace失败声称没有任何此前PG远程操作。保留原injection unknown清理分类与原失败，不复用旧实例。8份原文本SHA归档，runtime-21596-first-failure-analysis.json/13项audit/active-runtime-wait终态同步。
+
+已按主人既有“模拟器测试自行协调”范围向既有协调会话报告具体新共享故障；未创建helper或新chat，未修改共享launch_reserve。本方先做真实Windows临时文件reader实验4例：旧Path.open持有时replace拒绝复现；仅CreateFileW只读且SHARE_READ|WRITE|DELETE也仍拒绝，故2通过/2error，明确失败而非修复。本方runner接线已撤回；shared_receipt_reader.py/其check标FAILED并保留实验，运行不import它。不能宣称原故障唯一原因已证明。
+
+协调者已单独窄修共享publisher：同一payload只写一次、replace最多6次，仅5/32/33、最多5次25ms等待，后来每次前要求完整原receipt仍等于previous。identity/schema/stage不放宽，其他错误立即退出；绝不重跑game/reserve/inject/prime，最终失败保留tmp和原injection未知保护。12项离线检查原记录复用、不重复跑，本方核对两文件完整SHA与实际变更hunk。launch_reserve SHAa4c44d9dc20afb11edb84beffe70c5b968ab0b76be7d3958bd2efe04c9899edf，test6385698f3262c9afd0d86f6de5fc1fa418bcbbd531dd969f43b78d9fed8961f4；birth-publication-integration-check.json保存审阅与共享proof SHA，无game实证或根因修复声明。
+
+下一步保存后新唯一实例，使用原endpoint-baseline-r1/新首发UP-only60ms setup及共享publisher窄改；产品DLL/Native/XR不重建、不改旧实例SHA。54720 startup/完整取枪的局部实证保留，首发9fixture仍未live验证，全部13项/30%/publicv71/头显false保持。

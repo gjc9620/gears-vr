@@ -1,0 +1,19 @@
+{
+  "actual_windows_probe": true,
+  "tests": 4,
+  "passed": 2,
+  "errors": 2,
+  "exit_code": 1,
+  "runtime_wired": false,
+  "game_started": false,
+  "failed_tests": [
+    "test_held_reader_keeps_old_payload_through_multiple_atomic_publications",
+    "test_old_reader_reproduces_replace_denial_new_reader_allows_it"
+  ],
+  "observed_error": "PermissionError WinError5 at tmp.replace(p) even with held FILE_SHARE_DELETE reader",
+  "source_sha256": {
+    "shared_receipt_reader.py": "b2faaf42d46f1ea9d9dba7ae8e6da8bee7f4e75efe055eb06024cdd325ab588d",
+    "check_shared_receipt_reader.py": "c61acb7021ad5cce26284f4b1b7673b9e1e9f32566b1fd20c39b802d51547a60"
+  },
+  "limitation": "Header subsequently marked FAILED; executable probe statements unchanged. Does not prove sole original game failure cause. Runtime import reverted, not shipped as a repair."
+}

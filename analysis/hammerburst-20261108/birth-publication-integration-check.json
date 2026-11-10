@@ -1,0 +1,13 @@
+{
+  "shared_proof_sha256": "e53022afbf78b6813800b1285400a5fd558e589dcc04d74c28abf8540c8b5d9e",
+  "source_sha256": {
+    "tools/native-capture/launch_reserve.py": "a4c44d9dc20afb11edb84beffe70c5b968ab0b76be7d3958bd2efe04c9899edf",
+    "tools/native-capture/test_launch_reserve_lifecycle.py": "6385698f3262c9afd0d86f6de5fc1fa418bcbbd531dd969f43b78d9fed8961f4"
+  },
+  "read_only_review_passed": true,
+  "repeated_tests": false,
+  "coordinator_offline_tests": 12,
+  "game_execution": false,
+  "own_failed_reader_unwired": true,
+  "gameplay_accepted": false
+}
