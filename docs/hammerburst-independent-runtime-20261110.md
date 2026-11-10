@@ -424,3 +424,11 @@ pickup-baseline-r1/hb-cloak-1111-030749/game13492/creation134388115233198588。�
 下一步只对已经实际owned、service validated、同一原press/counters/cohort且仍真实Down的HB FIRST pending，在当前muzzle准备后、read_game/aim/input冗余等待前调用原deliver；所有原native/current/20ms/source100ms/event250ms/claim/engine证据仍跑。不得早发新按下、尾部、UP/新边沿或其他枪事件；同Frame最多一次attempt，避免后面默认deliver再试。此调度修正尚未实现/编译/运行，不能先称首发修复。
 
 launcher0/operator1/stop0，Native清理/PG入口恢复/XR0、本方game/子进程退出、无强杀，1626前台/2710CLOAK零违规。168帧errors空、encode0，亲看48双眼全跨度三页，取枪/持枪可见，近脸/白面重叠/间歇近枪可见性仍未接受，非全部角度或头显证明。7份原文本SHA归档；详见runtime-13492-first-failure-analysis.json。无reload transition/priority/history分支，13项需求与30%保持，本方所有运行/请求终态。
+
+## 已编译 first-priority-r1：保留完整Input，首发优先于L2
+
+复核context只要求r2_known，不要求r2_held；完整Input还检查continuity、producer gap、actor/cohort、UP与新边沿。因此撤回上节“read_game/input之前直接deliver”的实现计划，不能绕开这些检查。实际窄改为：只有本轮进入前已经owns_press、精确HB targets、已有initial debt时，将原L2 aim.advance块延后到原Input::advance→after_tick→deliver_ready之后；新按下、其他枪、无source/无债保持原顺序。所有Input/射击语句与20ms/100ms/250ms门保持；L2延后执行使用实际较晚的admission clock，不改任何原输入source或event时间。
+
+完整PG编译SHA787a60f424a948d260ccde981a48316dfa106464b9c25521ae49015276b6e8ba；Native/XR未重建。10项实际C++调度块call-order检查通过，覆盖四个资格条件、前后aim fault、Input拒绝与abort；Input/engine为spies，不能称游戏、anti-replay或首发修复通过。变换逆向还原与原源码逐字一致，完整Input/delivery块未删。构建中因原日志仍使用aim_result/aim_allowed/part_input_reserved而发生两轮变量作用域编译错误，已移到外层，最终完整编译0。
+
+下一步使用全新本方CLOAK实例验证本候选，保留原取枪UP确认及单次Grip，不重按失败射击。候选未运行，完整13项/30%/头显false均保持；不改publicv71或稳定手动入口。

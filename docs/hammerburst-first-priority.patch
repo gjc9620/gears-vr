@@ -1,0 +1,48 @@
+--- a/tools/playground/weapon_lancer_r2_native.inl
++++ b/tools/playground/weapon_lancer_r2_native.inl
+@@ -468,19 +468,30 @@
+     }
+     const auto now=weaponhand::clock_ns(nullptr);
+ #if defined(GEARS_PLAYGROUND_NATIVE_LANCER_L2_TRIAL)
++    // Only an ALREADY owned/captured HB first may postpone L2 work. R2's
++    // complete current-frame/continuity/UP checks still precede delivery.
++    // No new edge, source clock, event lifetime or firing permit is created.
++    const bool hb_first_before_aim=have_source&&input.owns_press()&&
++        hammerburst_burst_event::targets(frame.weapon.address)&&lancerrefire::has_initial_debt();
++    bool part_input_reserved{},aim_allowed{};
++    gears_weapon::OriginalL2Status aim_result{};
++    const auto advance_aim=[&](std::int64_t aim_now) noexcept -> bool {
+     // The Native arbiter can grant the magazine on this very press, before
+     // PG's reload consumer makes game.busy true. Let that existing owner win
+     // now, rather than sending one stock aim press and cancelling next tick.
+-    const bool part_input_reserved=current&&wh::part_reserves_secondary_trigger(frame,copied_decision);
+-    const bool aim_allowed=state==running&&current&&!part_input_reserved&&aim_game.main_hand_held&&
++    part_input_reserved=current&&wh::part_reserves_secondary_trigger(frame,copied_decision);
++    aim_allowed=state==running&&current&&!part_input_reserved&&aim_game.main_hand_held&&
+         !aim_game.animation&&!aim_game.busy&&frame.controllers.hands[0].trigger_active==1&&
+         nativeequipment::current(nullptr,frame);
+-    const auto aim_result=aim.advance(current?frame.controllers:gears_vr::ControllerInputFrame{},
+-        current?frame.stereo:gears_vr::StereoSample{},aim_context(aim_game,aim_allowed),now,
++    aim_result=aim.advance(current?frame.controllers:gears_vr::ControllerInputFrame{},
++        current?frame.stereo:gears_vr::StereoSample{},aim_context(aim_game,aim_allowed),aim_now,
+         [&](gears_weapon::OriginalL2Action a,std::uint64_t c){
+             return execute_aim(a,c,current?&frame:nullptr,current?&aim_game:nullptr);
+         },current&&frame.stereo.source==gears_vr::StereoSource::MetaOperatorSimulated);
+-    if(aim_result==gears_weapon::OriginalL2Status::abort_required){mode.store(fault,std::memory_order_release);return;}
++    if(aim_result==gears_weapon::OriginalL2Status::abort_required){mode.store(fault,std::memory_order_release);return false;}
++        return true;
++    };
++    if(!hb_first_before_aim&&!advance_aim(now))return;
+ #endif
+     const auto previous_sync=input.last_sync_ns(),previous_observed=input.last_observed_ns();
+ #if defined(GEARS_PLAYGROUND_NATIVE_LANCER_FOLLOW) && defined(GEARS_PLAYGROUND_UNIFIED_MUZZLE_FIRE)
+@@ -503,6 +514,9 @@
+     hammerburst_burst_event::after_tick(current?&frame:nullptr);
+ #endif
+     if(current)lancerrefire::deliver_ready(frame);
++#endif
++#if defined(GEARS_PLAYGROUND_NATIVE_LANCER_L2_TRIAL)
++    if(hb_first_before_aim&&!advance_aim(weaponhand::clock_ns(nullptr)))return;
+ #endif
+     const auto action_finished=weaponhand::clock_ns(nullptr);
+     // Held HUD queries prepare their muzzle in pre_original_held_shot before
