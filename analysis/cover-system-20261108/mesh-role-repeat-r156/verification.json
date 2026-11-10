@@ -1,0 +1,38 @@
+{
+  "runtime_delta": [
+    "tools/native-capture/cover_physics_roles_live.inl"
+  ],
+  "dll_sha256": "ababb095c3fd5a24ff37a368d99a895cecf4d4dc06e07ddfd769dd670a39f2d8",
+  "project_dependencies": 409,
+  "outside_worktree_dependencies": 0,
+  "flags_unchanged": true,
+  "sample_transaction_unchanged": true,
+  "closing_layout_proof_unchanged": true,
+  "all_dynamic_body_reads_unchanged": true,
+  "two_pass_mutation_checks": true,
+  "read_comparison": {
+    "2": {
+      "before": 7224,
+      "after": 7076,
+      "reduction": 0.02048726467331119
+    },
+    "16": {
+      "before": 9800,
+      "after": 7580,
+      "reduction": 0.226530612244898
+    },
+    "64": {
+      "before": 18632,
+      "after": 9308,
+      "reduction": 0.5004293688278231
+    }
+  },
+  "previous_failures": "checks-v1 lacked copied CPU fixture sources; retained. No product gate changed for this setup failure.",
+  "old_evidence_rejected_for_new_native": true,
+  "build_only": true,
+  "game_started": false,
+  "query_latency_verified": false,
+  "source_age_repaired": false,
+  "movement_authorized": false,
+  "headset_accepted": false
+}

@@ -1,0 +1,18 @@
+[
+  {
+    "variant": "before",
+    "name": "cover_mesh_role_pass",
+    "build_exit": 0,
+    "test_exit": 0,
+    "output": "cover_physics_roles_live: 282 checks, 0 failures; typed source only, no query/writer\r\nmesh_role_pass bodies=2 reads=7224\r\nmesh_role_pass bodies=16 reads=9800\r\nmesh_role_pass bodies=64 reads=18632\r\ncover_mesh_role_pass: 373 checks, 0 failures; includes original typed-reader checks\r\n",
+    "outside_worktree_dependencies": []
+  },
+  {
+    "variant": "after",
+    "name": "cover_mesh_role_pass",
+    "build_exit": 0,
+    "test_exit": 0,
+    "output": "cover_physics_roles_live: 282 checks, 0 failures; typed source only, no query/writer\r\nmesh_role_pass bodies=2 reads=7076\r\nmesh_role_pass bodies=16 reads=7580\r\nmesh_role_pass bodies=64 reads=9308\r\ncover_mesh_role_pass: 388 checks, 0 failures; includes original typed-reader checks\r\n",
+    "outside_worktree_dependencies": []
+  }
+]

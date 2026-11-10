@@ -1,0 +1,5 @@
+cover_physics_roles_live: 282 checks, 0 failures; typed source only, no query/writer
+mesh_role_pass bodies=2 reads=7224
+mesh_role_pass bodies=16 reads=9800
+mesh_role_pass bodies=64 reads=18632
+cover_mesh_role_pass: 373 checks, 0 failures; includes original typed-reader checks

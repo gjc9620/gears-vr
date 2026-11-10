@@ -1,0 +1,52 @@
+[
+  {
+    "variant": "before",
+    "name": "cover_mesh_role_pass",
+    "build_exit": 2
+  },
+  {
+    "variant": "after",
+    "name": "cover_mesh_role_pass",
+    "build_exit": 2
+  },
+  {
+    "variant": "after",
+    "name": "cover_physics_roles_live",
+    "build_exit": 2
+  },
+  {
+    "variant": "after",
+    "name": "cover_collider_roles_live",
+    "build_exit": 2
+  },
+  {
+    "variant": "after",
+    "name": "cover_component_roles_live",
+    "build_exit": 2
+  },
+  {
+    "variant": "after",
+    "name": "cover_query_guard_live",
+    "build_exit": 2
+  },
+  {
+    "variant": "after",
+    "name": "cover_physics_query_live",
+    "build_exit": 2
+  },
+  {
+    "variant": "after",
+    "name": "cover_physics_capsule_path_live",
+    "build_exit": 2
+  },
+  {
+    "variant": "after",
+    "name": "cover_physics_overlap_query_live",
+    "build_exit": 2
+  },
+  {
+    "variant": "after",
+    "name": "cover_physics_c0_off",
+    "build_exit": 2
+  }
+]

@@ -102,7 +102,10 @@ struct LayoutObservation {
     unsigned member_identities{};bool member_capacity{};
 };
 #if defined(GEARS_COVER_BODY_PROTOTYPE) && GEARS_COVER_BODY_PROTOTYPE
-struct BodyLayout {binding::Proof proof{};gears_anchor::Identity cls{};std::array<binding::Property,4> fields{};};
+struct BodyLayout {
+    binding::Proof proof{};gears_anchor::Identity cls{};std::array<binding::Property,4> fields{};
+    std::uintptr_t mesh_role_class{},mesh_role_reference{};unsigned mesh_role_pass{};
+};
 using MemberStore=cover_member_witness_live::Store;
 struct Workspace {
     LayoutObservation witness{};
@@ -124,6 +127,19 @@ inline bool class_role(binding::Proof& proof,std::uintptr_t cls,wchar_t const* n
         gears_anchor::Identity actual{};std::uintptr_t next{};
         if(!binding::certified(proof,wanted.address,actual)||!binding::same(wanted,actual)||!binding::kind(proof,actual,L"Class")||
            !binding::source_field(proof,next,wanted.address,binding::metadata.field_super)||next!=parent)return false;}
+    return true;
+}
+inline bool body_mesh_role(BodyLayout& layout,std::uintptr_t mesh_class,unsigned pass){
+    const auto reference=layout.fields[1].reference.address;
+    // One successful certification per exact layout/key and values pass.
+    // sample() clears ALL layouts before pass1; pass2 independently certifies
+    // again. Every class path/source remains in proof for layouts_current().
+    // This skips only repeated same-pass derivation for sibling body instances,
+    // never their identity, owner, pointers, indices or the closing proof.
+    if(pass&&layout.mesh_role_pass==pass&&layout.mesh_role_class==mesh_class&&
+       layout.mesh_role_reference==reference)return true;
+    if(!class_role(layout.proof,mesh_class,L"SkeletalMeshComponent",reference))return false;
+    layout.mesh_role_class=mesh_class;layout.mesh_role_reference=reference;layout.mesh_role_pass=pass;
     return true;
 }
 // Close every sibling, including those AFTER the selected property. The common
@@ -250,7 +266,7 @@ inline Code values(Workspace& w,binding::Binding const& actor,pose::Metadata con
         if(!binding::identity(pointers[unsigned(n)],body.identity,true))return Code::read;
         auto* l=body_layout(w,body.identity,&w.witness,&w.members);if(!l)return w.layout_count==w.layouts.size()?Code::capacity:Code::layout;
         step(w,LayoutStep::body_mesh_reference);
-        if(!class_role(l->proof,next.mesh.cls,L"SkeletalMeshComponent",l->fields[1].reference.address))return Code::layout;
+        if(!body_mesh_role(*l,next.mesh.cls,w.witness.pass))return Code::layout;
         if(!binding::field(body.index,body.identity.address,l->fields[0].offset)||
            !binding::field(body.owner,body.identity.address,l->fields[1].offset)||
            !binding::field(body.main,body.identity.address,l->fields[2].offset)||

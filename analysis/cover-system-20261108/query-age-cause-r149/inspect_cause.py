@@ -14,8 +14,10 @@ def decode(text,compose,thread):
         raise ValueError('Source cause key/stage/verdict mismatch')
     return dict(observed=True,entry=entry,compose=compose,thread=thread,stage=stage,verdict=verdict,causes=causes,
         body_source_age=bool(causes&1),equipment_age=bool(causes&2))
-def inspect(report):
-    native=json.loads((H/'native-build-result.json').read_text())['dll_sha256']
+def inspect(report,expected_native=None):
+    native=json.loads((H/'native-build-result.json').read_text())['dll_sha256'] if expected_native is None else expected_native
+    if not isinstance(native,str) or len(native)!=64 or any(c not in '0123456789abcdef' for c in native):
+        raise ValueError('Exact expected Native SHA256 required')
     spec=importlib.util.spec_from_file_location('cause_guard',H.parent/'guard-witness-r137/inspect_guard_probe.py')
     base=importlib.util.module_from_spec(spec);spec.loader.exec_module(base)
     result=base.inspect(report,native);raw=result['raw']
