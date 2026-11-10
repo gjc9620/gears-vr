@@ -1,0 +1,47 @@
+{
+  "scope": "Source, synthetic immutable data, compiler/linker only; no game/XR started",
+  "dll_sha256": "5522ac2a49119075662a24176601bee613eec20467d672cdadeefe54d04ec093",
+  "project_dependencies": 408,
+  "external_worktree_dependencies": 0,
+  "frozen_delta": [
+    "tools/native-capture/body_c0_goal_policy_live.inl",
+    "tools/native-capture/cover_measurement_core_observation.h"
+  ],
+  "flags_unchanged": true,
+  "checks": [
+    {
+      "name": "cover_measurement_core_observation",
+      "build_exit": 0,
+      "source_sha256": "0de63c95ef47251bf711443815466486c0d6f61e46a9c33c31446a520742d7b8",
+      "test_exit": 0,
+      "output": "cover measurement core observation 50 checks, 0 failures; synthetic copies only\r\n"
+    }
+  ],
+  "parser_cases": 8,
+  "measurement_policy_ns": 50000000,
+  "tracking_policy_unchanged": true,
+  "gate_transform": [
+    {
+      "mode": "canonical",
+      "measurement_gates_and_source_choice_unchanged": true,
+      "before_sha256": "3550cfc6a35373eb6ebc6e39ad3c6708e17223b38afba8ab64021dbb8af6028e",
+      "after_sha256": "cf57a1869e90bb42778d823eb057014f862a582d092d9254429a4cfe55ddb9ad"
+    },
+    {
+      "mode": "frozen-r139",
+      "measurement_gates_and_source_choice_unchanged": true,
+      "before_sha256": "aaf0fa637a30e45c8da7afc01a2395fa7571d1bbbdf4207aa566a2b8df0a25a3",
+      "after_sha256": "a3717f987a11c787ddb3a6fddbab998097fbf66f91fb83589136da980057d40f"
+    }
+  ],
+  "initial_failures_preserved": {
+    "checks_v1": "Existing generic Core test has fixed size/offset assertions that do not match current headers; importing it also produced fixture-name shadow warnings.",
+    "checks_v2": "Boundary fixture incorrectly put newer controller clocks after its older publication; corrected synthetic cohort ordering, without changing validators."
+  },
+  "game_cause_proven": false,
+  "query_called": false,
+  "movement_authorized": false,
+  "public_changed": false,
+  "headset_accepted": false,
+  "remaining": "One new exact private runtime check to read the first actual core predicate witness; retain original age and identity checks."
+}

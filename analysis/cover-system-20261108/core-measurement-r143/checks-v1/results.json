@@ -1,0 +1,12 @@
+[
+  {
+    "name": "cover_measurement_core_observation",
+    "build_exit": 2,
+    "source_sha256": "91b6852ccfdeda2d797a064f4c44042d665091fc334bdef47c0182ef433c9779"
+  },
+  {
+    "name": "native_rig_tracking_frame",
+    "build_exit": 2,
+    "source_sha256": "e190cf0217e60da1429d21b30d654d516674ecfc1947ec100a38d3a1a44289d2"
+  }
+]

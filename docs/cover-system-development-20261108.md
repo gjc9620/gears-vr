@@ -2297,3 +2297,15 @@ path requested1、attempted0、finished0，owner/session guard调用均0，原�
 launcher0、Native/entry/input恢复、武器fire_disable0/hand_stop5/drained、XR0、gamegone/worker正常，独立精确身份复核全不在，无强杀。CLOAK717/失败0、前台453/owned_activation false；静音305/initial1/失败0/共享目标拒绝0。原始session、anchor、run-result及done保存于camera-discovery-r141/runtime-r142，保留r140原失败。
 
 下一窄点是在现有测量first-failure记录中区分core谓词失败及原始时间，不重读游戏、不刷新来源、不放宽50ms或100ms。不要原样重跑本批。完整身体几何与世界覆盖、实际抓边移动、身体遮挡／暴露／枪口／受击、CV01–24／AC01–22仍未完成；工程25%和目标active保持。
+
+## r143：同一测量首个 core 拒绝的只读分项候选（2026-11-11，未实跑）
+
+r142实际measurement258/core、query attempted0保留。新cover_measurement_core_observation.h只检查已持有数据：记录原policy.now、50ms上限、原publication/HMD/controller时间、票据/引用代次/头部标记、严格Core与原non-age谓词、控制器当前匹配，以及独立Tick模式的实际classify/rejection_detail和metadata/Tick原时间。未来/无效时钟不转换为巨大无符号年龄；旧Core年龄诊断与Tick分类分开，不把旧Scene过期直接解释为当前Tick过期。
+
+沿用既有measurement首个失败CAS槽，同一条Scene/Compose/seq下附加cover_pose_probe_core_8 CSV；只在detail=core的首个失败写一次，release/acquire发布，不新增game read、clock、锁、writer、查询或自动重试。原接受条件、源选择、顺序和关闭复核保持；canonical及精确冻结测量函数去除observer参数后的文本与各自之前逐字相同。
+
+专用合成数据50项通过，覆盖50ms边界/超界、publication/头部/控制器分别过期、未来时间、引用奇数、空票据、非法flags、旧Scene与合法当前Tick区分、Tick年龄/硬拒绝及输入字节保持；CSV解释8项通过。第一版复用旧通用Core测试因固定ABI尺寸/偏移断言与当前头不匹配而编译失败，日志保留，未改旧测试。第二版边界夹具时钟排列不合法而失败，按有效cohort顺序修正后第三版50项通过；没有放宽产品校验。
+
+完整Native在r139原冻结树只改body_c0_goal_policy_live.inl并新增一个观察头，SHA5522ac2a49119075662a24176601bee613eec20467d672cdadeefe54d04ec093；408项目依赖均来自冻结树、外部worktree依赖0、GEARS开关相同、编译链接0。当前主线的Tick来源分支与冻结旧Core分支分别原样保留，未混入共享未提交Native改动。prepare新增--native-r143，只接受这两个delta与上述冻结编译证明。
+
+本轮未启动游戏/XR，不能认定r142的core首败是年龄或其他具体条件，也没有新的查询/身体移动/画面通过证据。下一次用新票限定读取首个实际拒绝分项，保留50ms/100ms与原身份、输入、恢复检查；不重跑未改玩法矩阵。r142模型遮挡FAIL、完整身体/世界碰撞覆盖、CV01–24/AC01–22与头显仍开放；工程25%、publicv71、固定手动入口不变，目标active。

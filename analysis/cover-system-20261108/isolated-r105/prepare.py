@@ -79,8 +79,9 @@ def main():
     parser.add_argument('--native-r134', action='store_true')
     parser.add_argument('--native-r137', action='store_true')
     parser.add_argument('--native-r139', action='store_true')
+    parser.add_argument('--native-r143', action='store_true')
     args = parser.parse_args()
-    if sum((args.native_r106,args.native_r111,args.native_r117,args.native_r122,args.native_r124,args.native_r126,args.native_r131,args.native_r134,args.native_r137,args.native_r139))>1:
+    if sum((args.native_r106,args.native_r111,args.native_r117,args.native_r122,args.native_r124,args.native_r126,args.native_r131,args.native_r134,args.native_r137,args.native_r139,args.native_r143))>1:
         raise ValueError('Select one frozen Native')
     if not args.name.startswith('cover-'):
         raise ValueError('Cover owns only its cover- prefixed new instance')
@@ -102,8 +103,8 @@ def main():
             raise RuntimeError('r106 frozen delta differs')
         expected['native'] = receipt['dll_sha256']
         prepared['builds']['native'] = dict(saved=str(current/'native-build/GearsCapture.dll'), sha256=expected['native'])
-    if args.native_r111 or args.native_r117 or args.native_r122 or args.native_r124 or args.native_r126 or args.native_r131 or args.native_r134 or args.native_r137 or args.native_r139:
-        current = HERE.parent / ('member-chain-r139' if args.native_r139 else 'guard-witness-r137' if args.native_r137 else 'path-probe-r134' if args.native_r134 else 'member-witness-r131' if args.native_r131 else 'pose-probe-r126' if args.native_r126 else 'layout-witness-r124' if args.native_r124 else 'overlap-query-r122' if args.native_r122 else 'overlap-collector-r117' if args.native_r117 else 'self-evidence-r111')
+    if args.native_r111 or args.native_r117 or args.native_r122 or args.native_r124 or args.native_r126 or args.native_r131 or args.native_r134 or args.native_r137 or args.native_r139 or args.native_r143:
+        current = HERE.parent / ('core-measurement-r143' if args.native_r143 else 'member-chain-r139' if args.native_r139 else 'guard-witness-r137' if args.native_r137 else 'path-probe-r134' if args.native_r134 else 'member-witness-r131' if args.native_r131 else 'pose-probe-r126' if args.native_r126 else 'layout-witness-r124' if args.native_r124 else 'overlap-query-r122' if args.native_r122 else 'overlap-collector-r117' if args.native_r117 else 'self-evidence-r111')
         receipt = load(current / 'native-build-result.json')
         overlays = ('cover_physx_overlap_stream.h','cover_physx_query.h','cover_physx_stream.h') if args.native_r117 else (
             'cover_physx_self_evidence.h','cover_physx_query.h','cover_physics_query_live.inl')
@@ -121,6 +122,8 @@ def main():
             overlays=('cover_physics_c0_live.inl','cover_physics_query_live.inl','cover_query_guard_observation.h')
         if args.native_r139:
             overlays=('cover_member_witness_live.inl','cover_physics_roles_live.inl')
+        if args.native_r143:
+            overlays=('body_c0_goal_policy_live.inl','cover_measurement_core_observation.h')
         changed = {'tools/native-capture/'+name for name in overlays}
         if (set(receipt['changed']) != changed or receipt['external_worktree_dependencies']
                 or not receipt['flags_unchanged'] or not receipt['build_only'] or receipt['staged']):
@@ -193,7 +196,7 @@ def main():
             raise RuntimeError('Shared build output selected')
     write_new(inputs / 'prepared.json', dict(
         instance=str(selected), output=str(output), started=False,
-        path_probe_supported=args.native_r134 or args.native_r137 or args.native_r139,
+        path_probe_supported=args.native_r134 or args.native_r137 or args.native_r139 or args.native_r143,
         native_sha256=expected['native'], playground_sha256=expected['playground'], xr_sha256=expected['sim_xr'],
         manifest_sha256=sha(selected / 'manifest.json'), config_sha256=sha(selected / 'config.json'),
         input_reader_sha256=sha(output / 'read_private_input.py'),

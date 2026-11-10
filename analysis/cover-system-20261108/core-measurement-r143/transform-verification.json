@@ -1,0 +1,14 @@
+[
+  {
+    "mode": "canonical",
+    "measurement_gates_and_source_choice_unchanged": true,
+    "before_sha256": "3550cfc6a35373eb6ebc6e39ad3c6708e17223b38afba8ab64021dbb8af6028e",
+    "after_sha256": "cf57a1869e90bb42778d823eb057014f862a582d092d9254429a4cfe55ddb9ad"
+  },
+  {
+    "mode": "frozen-r139",
+    "measurement_gates_and_source_choice_unchanged": true,
+    "before_sha256": "aaf0fa637a30e45c8da7afc01a2395fa7571d1bbbdf4207aa566a2b8df0a25a3",
+    "after_sha256": "a3717f987a11c787ddb3a6fddbab998097fbf66f91fb83589136da980057d40f"
+  }
+]

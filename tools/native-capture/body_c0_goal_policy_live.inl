@@ -1,6 +1,7 @@
 // Include after Native backend and its real receipt implementation. The pure
 // body_c0_neutral.h is included globally before capture's anonymous namespace.
 #include "first_person_body_visibility.h"
+#include "cover_measurement_core_observation.h"
 namespace body_c0_goal_policy_live {
 namespace budget=::gears_body_c0_budget;
 namespace n=full_body_c0_native_live;namespace b=gears_full_body_c0;namespace a=gears_body_goal_view;
@@ -211,14 +212,18 @@ bool initialize(){auto& s=n::state;
     origin.marker=marker;origin.stored=stored;origin.initialized=true;return true;
 }
 enum class CoverProbeStep:unsigned {stopping,idle,current_before,key_before,type,slot,link,marker,measurement,key_after,same_key_after,current_after,stopping_after,revision_after,entry,complete,exception,count};
-struct CoverProbeRow {uint64_t scene{},compose{},sequence{},world{},pawn{};unsigned detail{~0u};};
+struct CoverProbeRow {uint64_t scene{},compose{},sequence{},world{},pawn{};unsigned detail{~0u};gears_cover_measurement_core::Witness core{};};
 struct CoverProbeSlot {std::atomic<unsigned> state{};std::atomic<uint64_t> count{};CoverProbeRow row{};};
 std::array<CoverProbeSlot,unsigned(CoverProbeStep::count)> cover_probe_rows;
-void note_cover_probe(CoverProbeStep step,unsigned detail=~0u)noexcept{
+void note_cover_probe(CoverProbeStep step,unsigned detail=~0u,a::Policy const* policy=nullptr)noexcept{
     auto& slot=cover_probe_rows[unsigned(step)];++slot.count;
     unsigned expected=0;if(!slot.state.compare_exchange_strong(expected,1))return;
     auto const& s=n::state;slot.row={s.context.source.scene_invocation,s.context.copy.invocation,
         s.context.source.stereo.sequence,s.context.source.world.address,s.context.source.pawn.address,detail};
+    if(policy&&step==CoverProbeStep::measurement&&detail==unsigned(a::Status::core))
+        slot.row.core=body_tick_source_live::enabled?
+            gears_cover_measurement_core::observe(s.context.body_source,policy->now_ns,a::maximum_age_ns,policy->allow_sim):
+            gears_cover_measurement_core::observe(s.context.source,policy->now_ns,a::maximum_age_ns,policy->allow_sim);
     slot.state.store(2,std::memory_order_release);
 }
 void sample_current_cover_pose() noexcept {
@@ -229,7 +234,7 @@ void sample_current_cover_pose() noexcept {
     try{auto& s=n::state;a::marker::Marker marker{};a::CoverPoseMeasurement candidate{};a::Policy policy{};
         cover_context_live::CurrentKey before{},after{};
         policy.now_ns=rig::clock_ns();policy.allow_sim=simulator_operator;
-        auto check=[](CoverProbeStep stage,bool okay,unsigned detail=~0u){if(!okay)note_cover_probe(stage,detail);return okay;};
+        auto check=[&policy](CoverProbeStep stage,bool okay,unsigned detail=~0u){if(!okay)note_cover_probe(stage,detail,&policy);return okay;};
         a::marker::Status marker_status{};
         if(!check(CoverProbeStep::current_before,s.context.current(n::tx::Stage::prepare))||
            !check(CoverProbeStep::key_before,cover_context_live::sample_current(s.context.actor,before))||
@@ -433,7 +438,13 @@ void summary(FILE* f){if(!f)return;
     for(unsigned i=0;i<cover_probe_rows.size();++i){auto const& slot=cover_probe_rows[i];
         fprintf(f,"cover_pose_probe_count_%u=%llu ",i,slot.count.load());
         if(slot.state.load(std::memory_order_acquire)==2){auto const& r=slot.row;
-            fprintf(f,"cover_pose_probe_first_%u=%u,%llu,%llu,%llu,%llu,%llu ",i,r.detail,r.scene,r.compose,r.sequence,r.world,r.pawn);}}
+            fprintf(f,"cover_pose_probe_first_%u=%u,%llu,%llu,%llu,%llu,%llu ",i,r.detail,r.scene,r.compose,r.sequence,r.world,r.pawn);
+            auto const& w=r.core;if(w.mode){
+                fprintf(f,"cover_pose_probe_core_%u=%u,%u,%u,%u,%u,%u,%u,",i,w.mode,w.valid,w.non_age_valid,w.expired,w.controllers_match,w.verdict,w.hard_detail);
+                fprintf(f,"%lld,%lld,%lld,%lld,%lld,%lld,%lld,%lld,",(long long)w.now,(long long)w.stereo_received,(long long)w.controller_received,(long long)w.controller_sync,
+                    (long long)w.metadata_begin,(long long)w.metadata_end,(long long)w.tick_begin,(long long)w.tick_end);
+                fprintf(f,"%llu,%llu,%llu,%llu,%u,%u,%u,%u ",(unsigned long long)w.limit,(unsigned long long)w.published,
+                    (unsigned long long)w.ticket,(unsigned long long)w.reference_revision,w.size,w.abi,w.flags,w.status);}}}
 
     fprintf(f,"body_goal_enabled=%u body_goal_attempts=%llu body_goal_plans=%llu body_goal_applied=%llu body_goal_published=%llu body_goal_rejected=%llu body_goal_view_rejected=%llu body_goal_view_used=%llu body_goal_pending=%u body_goal_view_available=%u body_goal_view_held=%llu ",unsigned(enabled),attempts.load(),plans.load(),applied.load(),published.load(),rejected.load(),view_rejected.load(),view_used.load(),pending_count(),unsigned(view_valid.load()),view_held.load());
     fprintf(f,"body_goal_neutral_rebind_attempts=%llu body_goal_neutral_rebind_deferred=%llu body_goal_neutral_rebinds=%llu body_goal_pickup_view_used=%llu body_goal_lancer_animation_view_used=%llu body_goal_lancer_execution_eye_used=%llu ",neutral_rebind_attempts.load(),neutral_rebind_deferred.load(),neutral_rebinds.load(),pickup_view_used.load(),lancer_animation_view_used.load(),lancer_execution_eye_used.load());

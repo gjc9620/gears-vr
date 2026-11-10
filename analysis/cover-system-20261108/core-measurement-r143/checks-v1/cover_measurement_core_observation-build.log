@@ -1,0 +1,20 @@
+cover_measurement_core_observation_test.cpp
+C:\Users\11\.codex\worktrees\6dof-single\gearsVr\tools\native-capture\../vr-common/native_rig_tracking_frame_test.cpp(101): error C2607: 静态断言失败
+C:\Users\11\.codex\worktrees\6dof-single\gearsVr\tools\native-capture\../vr-common/native_rig_tracking_frame_test.cpp(103): error C2607: 静态断言失败
+C:\Users\11\.codex\worktrees\6dof-single\gearsVr\tools\native-capture\../vr-common/native_rig_tracking_frame_test.cpp(104): error C2607: 静态断言失败
+C:\Users\11\.codex\worktrees\6dof-single\gearsVr\tools\native-capture\body_tick_input.h(47): warning C4459: “now”的声明隐藏了全局声明
+C:\Users\11\.codex\worktrees\6dof-single\gearsVr\tools\native-capture\../vr-common/native_rig_tracking_frame_test.cpp(24): note: 参见“`anonymous-namespace'::now”的声明
+C:\Users\11\.codex\worktrees\6dof-single\gearsVr\tools\native-capture\body_tick_input.h(82): warning C4459: “now”的声明隐藏了全局声明
+C:\Users\11\.codex\worktrees\6dof-single\gearsVr\tools\native-capture\../vr-common/native_rig_tracking_frame_test.cpp(24): note: 参见“`anonymous-namespace'::now”的声明
+C:\Users\11\.codex\worktrees\6dof-single\gearsVr\tools\native-capture\body_tick_input.h(86): warning C4459: “age”的声明隐藏了全局声明
+C:\Users\11\.codex\worktrees\6dof-single\gearsVr\tools\native-capture\../vr-common/native_rig_tracking_frame_test.cpp(25): note: 参见“`anonymous-namespace'::age”的声明
+C:\Users\11\.codex\worktrees\6dof-single\gearsVr\tools\native-capture\body_tick_source.h(40): warning C4459: “now”的声明隐藏了全局声明
+C:\Users\11\.codex\worktrees\6dof-single\gearsVr\tools\native-capture\../vr-common/native_rig_tracking_frame_test.cpp(24): note: 参见“`anonymous-namespace'::now”的声明
+C:\Users\11\.codex\worktrees\6dof-single\gearsVr\tools\native-capture\body_tick_source.h(76): warning C4459: “now”的声明隐藏了全局声明
+C:\Users\11\.codex\worktrees\6dof-single\gearsVr\tools\native-capture\../vr-common/native_rig_tracking_frame_test.cpp(24): note: 参见“`anonymous-namespace'::now”的声明
+C:\Users\11\.codex\worktrees\6dof-single\gearsVr\tools\native-capture\body_tick_source.h(90): warning C4459: “age”的声明隐藏了全局声明
+C:\Users\11\.codex\worktrees\6dof-single\gearsVr\tools\native-capture\../vr-common/native_rig_tracking_frame_test.cpp(25): note: 参见“`anonymous-namespace'::age”的声明
+C:\Users\11\.codex\worktrees\6dof-single\gearsVr\tools\native-capture\cover_measurement_core_observation.h(15): warning C4459: “now”的声明隐藏了全局声明
+C:\Users\11\.codex\worktrees\6dof-single\gearsVr\tools\native-capture\../vr-common/native_rig_tracking_frame_test.cpp(24): note: 参见“`anonymous-namespace'::now”的声明
+C:\Users\11\.codex\worktrees\6dof-single\gearsVr\tools\native-capture\cover_measurement_core_observation.h(34): warning C4459: “now”的声明隐藏了全局声明
+C:\Users\11\.codex\worktrees\6dof-single\gearsVr\tools\native-capture\../vr-common/native_rig_tracking_frame_test.cpp(24): note: 参见“`anonymous-namespace'::now”的声明
