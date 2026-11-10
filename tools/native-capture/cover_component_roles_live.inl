@@ -5,10 +5,10 @@
 #include <algorithm>
 
 // Current Pawn/known Weapon and recursively declared Actor.Attached component
-// arrays. The C0
-// caller supplies its actual owner guard. Neither membership nor Owner alone
-// declares a component self or all active physics covered. Skeletal attachments,
-// other native sources, lifetime and world synchronization remain separate
+// arrays, the current Pawn Mesh and recursive skeletal Attachment components.
+// The C0 caller supplies its actual owner guard. Neither membership nor Owner
+// alone declares a component self or all active physics covered. Other native
+// sources, lifetime and world synchronization remain separate
 // obligations. Optional skeletal PAA rows join the same-Scene qualification in
 // cover_physx_components. No engine method is called or body written here.
 namespace cover_component_roles_live {
@@ -18,6 +18,7 @@ namespace collider=cover_collider_roles_live;
 namespace source=gears_cover_physx_query_source;
 using Code=roles::Code;
 constexpr unsigned root_capacity=16,list_capacity=64,component_capacity=128,asset_body_capacity=256;
+constexpr unsigned attachment_capacity=256,attachment_stride_capacity=128;
 enum class BodyState:unsigned {not_sampled,nonprimitive,body_instance_field_null,body_data_field_null,body_data_nonnull};
 enum class AssetState:unsigned {not_sampled,nonskeletal,instance_field_null,instance_present};
 struct AssetScope {
@@ -28,6 +29,10 @@ struct AssetScope {
 struct AssetBody {
     roles::Body body{};gears_anchor::Identity owner{},owner_actor{};unsigned owner_roots{};
 };
+struct AttachmentScope {
+    bool sampled{};gears_anchor::Identity structure{};unsigned offset{},stride{},component_offset{},first_row{};source::pose::ArrayHeader array{};
+};
+using AttachmentRow=gears_cover_physx_components::AttachmentRow;
 struct Root {
     gears_anchor::Identity actor{},base{};
     std::array<unsigned,2> offsets{};
@@ -42,10 +47,10 @@ struct Component {
     // One bit per observed actor node, starting with Pawn/known Weapon seeds.
     // A bit records address equality, not permission to classify an actor self.
     unsigned owner_roots{},body_owner_roots{};bool primitive{},skeletal{};
-    BodyState body_state{};unsigned body_instance_offset{};roles::Body body{};AssetScope physics{};
+    BodyState body_state{};unsigned body_instance_offset{};roles::Body body{};AssetScope physics{};AttachmentScope attachments{};
 };
 struct Snapshot {
-    unsigned seed_count{},root_count{},component_count{},asset_body_count{};bool pawn_mesh_listed{};
+    unsigned seed_count{},root_count{},component_count{},asset_body_count{},attachment_count{};bool pawn_mesh_listed{};gears_anchor::Identity mesh_seed{};
     std::array<Root,root_capacity> roots{};
     // First occurrence order; original array rows (nulls/duplicates included)
     // remain in Root::members instead of being silently dropped.
@@ -53,6 +58,7 @@ struct Snapshot {
     // One row per original array slot, including nulls and shared bodies.
     // Pool exhaustion rejects the whole observation instead of truncating it.
     std::array<AssetBody,asset_body_capacity> asset_bodies{};
+    std::array<AttachmentRow,attachment_capacity> attachment_rows{};
 };
 inline bool same_body(roles::Body const& a,roles::Body const& b){return gears_anchor::equal_identity(a.identity,b.identity)&&
     a.owner==b.owner&&a.main==b.main&&a.auxiliary==b.auxiliary&&a.index==b.index;}
@@ -62,8 +68,11 @@ inline bool same(AssetScope const& a,AssetScope const& b){return a.state==b.stat
     source::pose::header_equal(a.array,b.array)&&a.root==b.root&&a.first_body==b.first_body;}
 inline bool same(AssetBody const& a,AssetBody const& b){return same_body(a.body,b.body)&&
     gears_anchor::equal_identity(a.owner,b.owner)&&gears_anchor::equal_identity(a.owner_actor,b.owner_actor)&&a.owner_roots==b.owner_roots;}
+inline bool same(AttachmentScope const& a,AttachmentScope const& b){return a.sampled==b.sampled&&gears_anchor::equal_identity(a.structure,b.structure)&&
+    a.offset==b.offset&&a.stride==b.stride&&a.component_offset==b.component_offset&&a.first_row==b.first_row&&source::pose::header_equal(a.array,b.array);}
 inline bool same(Snapshot const& a,Snapshot const& b){
-    if(a.seed_count!=b.seed_count||a.root_count!=b.root_count||a.component_count!=b.component_count||a.asset_body_count!=b.asset_body_count||a.pawn_mesh_listed!=b.pawn_mesh_listed)return false;
+    if(a.seed_count!=b.seed_count||a.root_count!=b.root_count||a.component_count!=b.component_count||a.asset_body_count!=b.asset_body_count||
+       a.attachment_count!=b.attachment_count||a.pawn_mesh_listed!=b.pawn_mesh_listed||!gears_anchor::equal_identity(a.mesh_seed,b.mesh_seed))return false;
     for(unsigned i=0;i<root_capacity;++i){auto const& x=a.roots[i];auto const& y=b.roots[i];
         if(!gears_anchor::equal_identity(x.actor,y.actor)||!gears_anchor::equal_identity(x.base,y.base)||x.offsets!=y.offsets||x.members!=y.members||
            x.base_offset!=y.base_offset||x.attached_offset!=y.attached_offset||x.attached_members!=y.attached_members||
@@ -73,8 +82,9 @@ inline bool same(Snapshot const& a,Snapshot const& b){
         if(!gears_anchor::equal_identity(x.identity,y.identity)||!gears_anchor::equal_identity(x.owner,y.owner)||
            !gears_anchor::equal_identity(x.body_owner,y.body_owner)||!gears_anchor::equal_identity(x.body_owner_actor,y.body_owner_actor)||
            x.owner_roots!=y.owner_roots||x.body_owner_roots!=y.body_owner_roots||x.primitive!=y.primitive||x.skeletal!=y.skeletal||x.body_state!=y.body_state||
-           x.body_instance_offset!=y.body_instance_offset||!same_body(x.body,y.body)||!same(x.physics,y.physics))return false;}
+           x.body_instance_offset!=y.body_instance_offset||!same_body(x.body,y.body)||!same(x.physics,y.physics)||!same(x.attachments,y.attachments))return false;}
     for(unsigned i=0;i<asset_body_capacity;++i)if(!same(a.asset_bodies[i],b.asset_bodies[i]))return false;
+    for(unsigned i=0;i<attachment_capacity;++i)if(!gears_cover_physx_components::same(a.attachment_rows[i],b.attachment_rows[i]))return false;
     return true;
 }
 inline gears_cover_physx_components::Component fields(Component const& value){
@@ -100,33 +110,42 @@ inline gears_cover_physx_components::AssetScope fields(AssetScope const& value){
 inline gears_cover_physx_components::AssetBody fields(AssetBody const& value){
     return {value.body.identity.address,value.owner.address,value.owner_actor.address,value.owner_roots,value.body.index,value.body.main,value.body.auxiliary};
 }
+inline gears_cover_physx_components::AttachmentScope fields(AttachmentScope const& value){
+    return {value.sampled,value.structure.address,value.offset,value.stride,value.component_offset,value.first_row,value.array};
+}
 inline bool input(Snapshot const& typed,gears_cover_physx_components::Source& output){
     if(source::aliases(&typed,sizeof typed,&output,sizeof output))return false;
     output.seed_count=typed.seed_count;output.root_count=typed.root_count;output.component_count=typed.component_count;output.asset_body_count=typed.asset_body_count;output.pawn_mesh_listed=typed.pawn_mesh_listed;
+    output.mesh_seed=typed.mesh_seed.address;output.attachment_count=typed.attachment_count;output.attachment_rows=typed.attachment_rows;
     for(unsigned n=0;n<root_capacity;++n){output.roots[n].actor=typed.roots[n].actor.address;output.roots[n].offsets=typed.roots[n].offsets;
         output.roots[n].lists=typed.roots[n].lists;output.roots[n].members=typed.roots[n].members;
         output.roots[n].base=typed.roots[n].base.address;output.roots[n].base_offset=typed.roots[n].base_offset;
         output.roots[n].attached_offset=typed.roots[n].attached_offset;output.roots[n].attached=typed.roots[n].attached;
         output.roots[n].attached_members=typed.roots[n].attached_members;}
-    for(unsigned n=0;n<component_capacity;++n){output.components[n]=fields(typed.components[n]);output.assets[n]=fields(typed.components[n].physics);}
+    for(unsigned n=0;n<component_capacity;++n){output.components[n]=fields(typed.components[n]);output.assets[n]=fields(typed.components[n].physics);output.attachments[n]=fields(typed.components[n].attachments);}
     for(unsigned n=0;n<asset_body_capacity;++n)output.asset_bodies[n]=fields(typed.asset_bodies[n]);
     return gears_cover_physx_components::valid(output);
 }
 inline bool matches(Snapshot const& typed,gears_cover_physx_components::Snapshot const& value){
     namespace p=gears_cover_physx_components;auto const& raw=value.fields;
     if(typed.seed_count!=raw.seed_count||typed.root_count!=raw.root_count||typed.component_count!=raw.component_count||typed.asset_body_count!=raw.asset_body_count||typed.pawn_mesh_listed!=raw.pawn_mesh_listed)return false;
+    if(typed.mesh_seed.address!=raw.mesh_seed||typed.attachment_count!=raw.attachment_count)return false;
     for(unsigned n=0;n<root_capacity;++n){auto const& a=typed.roots[n];auto const& b=raw.roots[n];
         if(a.actor.address!=b.actor||a.base.address!=b.base||a.offsets!=b.offsets||a.members!=b.members||a.base_offset!=b.base_offset||
            a.attached_offset!=b.attached_offset||a.attached_members!=b.attached_members||!source::pose::header_equal(a.attached,b.attached))return false;
         for(unsigned l=0;l<2;++l)if(!source::pose::header_equal(a.lists[l],b.lists[l]))return false;}
     for(unsigned n=0;n<component_capacity;++n)if(!p::same(fields(typed.components[n]),raw.components[n])||
-        !p::same(fields(typed.components[n].physics),raw.assets[n]))return false;
+        !p::same(fields(typed.components[n].physics),raw.assets[n])||!p::same(fields(typed.components[n].attachments),raw.attachments[n]))return false;
     for(unsigned n=0;n<asset_body_capacity;++n)if(!p::same(fields(typed.asset_bodies[n]),raw.asset_bodies[n]))return false;
+    for(unsigned n=0;n<attachment_capacity;++n)if(!p::same(typed.attachment_rows[n],raw.attachment_rows[n]))return false;
     return p::consistent(value);
 }
 #if defined(GEARS_COVER_BODY_PROTOTYPE) && GEARS_COVER_BODY_PROTOTYPE
 struct RootLayout {binding::Proof proof{};std::array<binding::Property,5> fields{};};
-struct ComponentLayout {binding::Proof proof{};gears_anchor::Identity cls{};std::array<binding::Property,4> fields{};bool primitive{},skeletal{};};
+struct ComponentLayout {
+    binding::Proof proof{};gears_anchor::Identity cls{},attachment_struct{};std::array<binding::Property,5> fields{},attachment_fields{};
+    unsigned attachment_stride{};bool primitive{},skeletal{};
+};
 struct AssetLayout {binding::Proof proof{};gears_anchor::Identity cls{};std::array<binding::Property,3> fields{};};
 struct BodyLayouts {gears_anchor::Identity body_class{};std::array<roles::BodyLayout,8> layouts{};unsigned layout_count{};};
 struct Workspace {
@@ -190,6 +209,45 @@ inline Code root(Workspace& w,unsigned index,std::uintptr_t at,binding::Binding 
     if(list.count&&!safe_copy(next.attached_members.data(),reinterpret_cast<void const*>(list.data),std::size_t(list.count)*8))return Code::read;
     output=next;return Code::current;
 }
+inline bool attachment_schema(Workspace& w,ComponentLayout& layout){
+    auto& p=layout.proof;auto const& field=layout.fields[4];std::uintptr_t inner_descriptor{},structure{},parent{},child{};
+    gears_anchor::Identity inner_id{};unsigned dim{},inner_offset{},extent{};
+    if(!binding::source_field(p,inner_descriptor,field.id.address,0xd0)||!binding::certified(p,inner_descriptor,inner_id)||
+       inner_id.number||inner_id.outer!=field.id.address||!binding::kind(p,inner_id,L"StructProperty")||
+       !binding::source_field(p,dim,inner_descriptor,0x70)||dim!=1||!binding::source_field(p,inner_offset,inner_descriptor,0x94)||inner_offset||
+       !binding::source_field(p,layout.attachment_stride,inner_descriptor,0x74)||layout.attachment_stride<8||layout.attachment_stride>attachment_stride_capacity||
+       !binding::source_field(p,structure,inner_descriptor,0xd0)||!binding::certified(p,structure,layout.attachment_struct)||
+       !binding::kind(p,layout.attachment_struct,L"ScriptStruct")||!binding::named(layout.attachment_struct,L"Attachment")||
+       layout.attachment_struct.outer!=field.owner.address||!binding::source_field(p,extent,structure,0x88)||extent!=layout.attachment_stride||
+       !binding::source_field(p,parent,structure,binding::metadata.field_super)||parent||!binding::source_field(p,child,structure,0x80))return false;
+    // binding::property is deliberately class-only. Close this ScriptStruct's
+    // actual members here rather than pretending it is a UClass.
+    constexpr std::array<wchar_t const*,5> names{L"Component",L"BoneName",L"RelativeLocation",L"RelativeRotation",L"RelativeScale"};
+    std::array<std::uintptr_t,128> visited{};unsigned count{},found{};
+    while(child&&count<visited.size()){
+        for(unsigned n=0;n<count;++n)if(visited[n]==child)return false;visited[count++]=child;
+        gears_anchor::Identity id{};if(!binding::certified(p,child,id)||id.outer!=structure)return false;
+        for(unsigned n=0;n<names.size();++n)if(!std::wcscmp(id.name.data(),names[n])){
+            if(id.number||(found&(1u<<n)))return false;auto& selected=layout.attachment_fields[n];selected.id=id;selected.owner=layout.attachment_struct;
+            const unsigned width=n<2?8u:12u;
+            if(!binding::kind(p,id,n==0?L"ComponentProperty":n==1?L"NameProperty":L"StructProperty")||
+               !binding::source_field(p,selected.dimension,child,0x70)||selected.dimension!=1||
+               !binding::source_field(p,selected.width,child,0x74)||selected.width!=width||
+               !binding::source_field(p,selected.offset,child,0x94)||extent<width||selected.offset>extent-width)return false;
+            if(n!=1){std::uintptr_t target{};if(!binding::source_field(p,target,child,0xd0)||!binding::certified(p,target,selected.reference))return false;
+                if(!n){if(!binding::kind(p,selected.reference,L"Class")||!binding::same(selected.reference,w.component_base))return false;}
+                else{unsigned size{};if(!binding::kind(p,selected.reference,L"ScriptStruct")||
+                    !binding::named(selected.reference,n==3?L"Rotator":L"Vector")||!binding::source_field(p,size,target,0x88)||size!=12)return false;}}
+            found|=1u<<n;
+        }
+        if(!binding::source_field(p,child,child,0x68))return false;
+    }
+    if(child||found!=31)return false;
+    for(unsigned a=0;a<5;++a)for(unsigned b=a+1;b<5;++b)
+        if(!separate(layout.attachment_fields[a].offset,layout.attachment_fields[a].width,
+            layout.attachment_fields[b].offset,layout.attachment_fields[b].width))return false;
+    return true;
+}
 inline ComponentLayout* component_layout(Workspace& w,gears_anchor::Identity const& id){
     for(unsigned n=0;n<w.layout_count;++n)if(w.layouts[n].cls.address==id.cls)return &w.layouts[n];
     if(w.layout_count==w.layouts.size())return nullptr;
@@ -208,9 +266,10 @@ inline ComponentLayout* component_layout(Workspace& w,gears_anchor::Identity con
     if(l.skeletal){
         if(!l.primitive||!roles::role_property(p,id.cls,L"PhysicsAsset",L"ObjectProperty",8,L"PhysicsAsset",l.fields[2])||
            !roles::role_property(p,id.cls,L"PhysicsAssetInstance",L"ObjectProperty",8,L"PhysicsAssetInstance",l.fields[3])||
-           l.fields[2].offset!=0x248||l.fields[3].offset!=0x250)return nullptr;
-        for(unsigned a=0;a<4;++a)for(unsigned b=a+1;b<4;++b)
-            if(!separate(l.fields[a].offset,8,l.fields[b].offset,8))return nullptr;
+           l.fields[2].offset!=0x248||l.fields[3].offset!=0x250||
+           !roles::role_property(p,id.cls,L"Attachments",L"ArrayProperty",16,nullptr,l.fields[4])||!attachment_schema(w,l))return nullptr;
+        for(unsigned a=0;a<5;++a)for(unsigned b=a+1;b<5;++b)
+            if(!separate(l.fields[a].offset,a==4?16u:8u,l.fields[b].offset,b==4?16u:8u))return nullptr;
     }
     ++w.layout_count;return &l;
 }
@@ -317,12 +376,34 @@ inline Code component(Workspace& w,Snapshot const& roots,std::uintptr_t at,Compo
     for(unsigned i=0;i<roots.root_count;++i)if(binding::same(next.body_owner_actor,roots.roots[i].actor))next.body_owner_roots|=1u<<i;
     next.body_state=next.body.main?BodyState::body_data_nonnull:BodyState::body_data_field_null;output=next;return Code::current;
 }
+inline Code enqueue_component(std::array<std::uintptr_t,component_capacity>& queue,unsigned& count,std::uintptr_t at){
+    if(!at)return Code::current;if(!source::pointer(at,88))return Code::layout;
+    for(unsigned n=0;n<count;++n)if(queue[n]==at)return Code::current;
+    if(count==component_capacity)return Code::capacity;queue[count++]=at;return Code::current;
+}
+inline Code component_attachments(Workspace& w,Snapshot& snapshot,Component& row,std::array<std::uintptr_t,component_capacity>& queue,unsigned& queued){
+    auto& next=row.attachments;next={};if(!row.skeletal)return Code::current;
+    auto* layout=component_layout(w,row.identity);if(!layout)return Code::layout;
+    next.sampled=true;next.structure=layout->attachment_struct;next.offset=layout->fields[4].offset;
+    next.stride=layout->attachment_stride;next.component_offset=layout->attachment_fields[0].offset;next.first_row=snapshot.attachment_count;
+    if(!binding::field(next.array,row.identity.address,next.offset))return Code::read;auto const& h=next.array;
+    if(h.count<0||h.count>int(list_capacity)||h.capacity<h.count||h.capacity>256||
+       (!h.data?(h.count||h.capacity):!source::pointer(h.data,std::size_t((std::max)(1,h.capacity))*next.stride))||
+       unsigned(h.count)>attachment_capacity-snapshot.attachment_count)return Code::capacity;
+    for(int n=0;n<h.count;++n){auto& value=snapshot.attachment_rows[snapshot.attachment_count];value={};
+        if(!safe_copy(value.bytes.data(),reinterpret_cast<void const*>(h.data+std::size_t(n)*next.stride),next.stride))return Code::read;
+        std::memcpy(&value.component,value.bytes.data()+next.component_offset,sizeof value.component);
+        const auto code=enqueue_component(queue,queued,value.component);if(code!=Code::current)return code;++snapshot.attachment_count;
+    }return Code::current;
+}
 inline Code values(Workspace& w,binding::Binding const& context,Snapshot& output){
     // Work candidates are already member-owned; do not put the large catalog
     // on the game stack or publish a partial candidate to the caller.
-    auto& next=output;next.seed_count=next.root_count=context.weapon.address?2u:1u;next.component_count=next.asset_body_count=0;next.pawn_mesh_listed=false;
+    auto& next=output;next.seed_count=next.root_count=context.weapon.address?2u:1u;
+    next.component_count=next.asset_body_count=next.attachment_count=0;next.pawn_mesh_listed=false;next.mesh_seed=context.mesh;
     for(auto& item:next.roots)item={};for(auto& item:next.components)item={};
     for(auto& item:next.asset_bodies)item={};
+    for(auto& item:next.attachment_rows)item={};
     std::array<std::uintptr_t,root_capacity> actors{};actors[0]=context.pawn.address;if(next.seed_count==2)actors[1]=context.weapon.address;
     // Breadth-first first-occurrence order terminates cycles while preserving
     // every original array row. An attached node is observed, not declared self.
@@ -330,15 +411,20 @@ inline Code values(Workspace& w,binding::Binding const& context,Snapshot& output
         for(int k=0;k<next.roots[i].attached.count;++k){const auto at=next.roots[i].attached_members[unsigned(k)];if(!at)continue;
             bool duplicate=false;for(unsigned n=0;n<next.root_count;++n)duplicate=duplicate||actors[n]==at;if(duplicate)continue;
             if(next.root_count==root_capacity)return Code::capacity;actors[next.root_count++]=at;}}
+    std::array<std::uintptr_t,component_capacity> queue{};unsigned queued{};
     for(unsigned r=0;r<next.root_count;++r)for(unsigned l=0;l<2;++l){auto const& list=next.roots[r];
         for(int i=0;i<list.lists[l].count;++i){const auto at=list.members[l][unsigned(i)];if(!at)continue;
             if(!r&&at==context.mesh.address)next.pawn_mesh_listed=true;
-            bool duplicate=false;for(unsigned n=0;n<next.component_count;++n)duplicate=duplicate||next.components[n].identity.address==at;
-            if(duplicate)continue;
-            if(next.component_count==component_capacity)return Code::capacity;
-            auto& row=next.components[next.component_count];auto code=component(w,next,at,row);if(code!=Code::current)return code;
-            code=component_asset(w,next,row);if(code!=Code::current)return code;++next.component_count;
+            const auto code=enqueue_component(queue,queued,at);if(code!=Code::current)return code;
         }}
+    // The actual Pawn Mesh remains an explicit source even if neither Actor
+    // array lists it. This does not change the separate mesh-listed fact.
+    auto code=enqueue_component(queue,queued,context.mesh.address);if(code!=Code::current)return code;
+    for(unsigned n=0;n<queued;++n){auto& row=next.components[n];code=component(w,next,queue[n],row);if(code!=Code::current)return code;
+        if(row.identity.address==context.mesh.address&&!binding::same(row.identity,context.mesh))return Code::changed;
+        code=component_asset(w,next,row);if(code!=Code::current)return code;
+        code=component_attachments(w,next,row,queue,queued);if(code!=Code::current)return code;++next.component_count;
+    }
     return Code::current;
 }
 inline bool current(Workspace const& w,unsigned roots){
@@ -358,13 +444,13 @@ inline void clear_proof(binding::Proof& proof){
 }
 inline void clear(Workspace& work){
     for(auto& r:work.roots){clear_proof(r.proof);r.fields={};}
-    for(auto& l:work.layouts){clear_proof(l.proof);l.cls={};l.fields={};l.primitive=l.skeletal=false;}
+    for(auto& l:work.layouts){clear_proof(l.proof);l.cls={};l.fields={};l.attachment_struct={};l.attachment_fields={};l.attachment_stride=0;l.primitive=l.skeletal=false;}
     for(auto& l:work.assets){clear_proof(l.proof);l.cls={};l.fields={};}work.asset_layout_count=0;
     work.layout_count=0;work.component_base={};work.bodies.body_class={};work.bodies.layout_count=0;
     for(auto& l:work.bodies.layouts){clear_proof(l.proof);l.cls={};l.fields={};}
 }
 template<class Guard> Code sample(binding::Binding const& context,Guard guard,Workspace& work,Snapshot& output)noexcept{
-    if(!context.context_valid||!context.world_generation||!context.weapon_known||!context.pawn.address||!context.world.address||
+    if(!context.context_valid||!context.world_generation||!context.weapon_known||!context.pawn.address||!context.world.address||!context.mesh.address||
        (!context.weapon.address&&!gears_anchor::equal_identity(context.weapon,gears_anchor::Identity{}))||
        source::aliases(&work,sizeof work,&output,sizeof output)||source::aliases(&work,sizeof work,&context,sizeof context)||
        source::aliases(&output,sizeof output,&context,sizeof context))return Code::request;

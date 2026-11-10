@@ -1660,3 +1660,23 @@ Native首次构建启动在编译前被来源哈希检查拒绝：派生脚本�
 证据analysis/cover-system-20261108/actor-attachments-r89/verification.json及v1冻结源、单元／OFF／Native实际依赖回执。本轮无stage／游戏／XR／录像／新增玩家动作通过，没有新的正式运行窗口，不称verified wait。当前只是递归声明Actor来源闭合；骨骼Attachments结构、其他原生物理来源、完整自身集合、actor生命周期／ABA排除、共同物理时相和完整形状世界覆盖仍未认证。同Scene与双读不能替代这些条件，也不能把空流签成身体占用安全。
 
 下一步按实际Attachment结构及Component声明继续骨骼附件来源，再闭合自身过滤／查询同步、组合身体路径、终点占用与移动恢复。严重肩身遮挡、同版physics-hit-muzzle、真实三方向LGrip／逐点GrabPose、CV01–24／AC01–22及实体头显均未完成。A20/B30/C20/D15/E15各档.25，工程25%不变，目标active，本轮progress。
+
+## 2026年11月10日 r90骨骼Attachment结构与递归组件来源
+
+上一轮582a13dd完成递归Actor.Attached及同查询来源关闭，属于进展。本轮在同一目录内接入SkeletalMeshComponent.Attachments，不将其误读为组件指针数组。原Engine.u保持SHA95b0c8da438a5acaf1ebfcdd0d94ac4d42c06422e717ce1ffe3f095e8ce90510，8个相关原导出逐SHA核对，保存在package-witness.json；原声明只确定结构与字段用途，不提供当前内存偏移或行大小。
+
+当前反射路径要求Attachments为ArrayProperty，其inner为一维StructProperty，指向声明类拥有的Attachment ScriptStruct；实际行大小由inner和结构extent一致认证，最多128字节。单独遍历ScriptStruct成员并关闭完整链，不把它冒作Class交给只支持UClass的property helper。Component须为8字节ActorComponent引用，BoneName为8字节NameProperty，RelativeLocation／RelativeRotation／RelativeScale分别为12字节Vector／Rotator／Vector；五字段尺寸、范围、不重叠、引用类型及完整身份均认证。每行完整原字节保留，包括骨名、相对变换及填充；不将这些源字节解释为已认证世界几何。
+
+先保持r89 Actor图和原声明组件顺序，再补当前Pawn Mesh显式种子，随后按组件顺序递归发现结构行引用的新组件。主Mesh即使未列在Actor组件数组中仍读取其独立身体、PAA及Attachments，pawn_mesh_listed继续只记录实际数组成员事实。组件队列去重以终止自引用和循环，但原结构行中的空引用、重复引用及不同相对变换均保留。新增组件沿原Owner／OwnerComponent、独立BodyInstance及PAA同Scene核对，不凭附件成员或Owner给予self权限。组件上限128、结构行池上限256、单数组上限64；任一耗尽或来源不符整笔拒绝，不截断成功。
+
+紧凑来源追加显式主Mesh、每组件结构身份／实际行布局／数组头／原始行；原查询事务在同一Scene内重读数组和每行全部字节，前后及最终Session目录关闭覆盖新增字段。Component指针未变而仅骨名、相对变换或填充改变也会拒绝。原raw hit及其归属保持，不新增查询、Hook、输入、骨骼或相机writer。大目录、Proof及结果仍为原Workspace／Session成员，递归队列只含128个地址，没有扩大线程栈。
+
+第一版17个聚焦程序全部编译执行0；补充原事务行内容变更及原始结构程序后，仅对受影响的Owned、Component Assets PhysX和新Skeletal Attachments PhysX做最终冻结重编，其他程序按实际依赖逐SHA复用。最终18个不同程序全部/std:c++17 /O2 /W4 /WX /EHsc /UNDEBUG /MT通过：新结构来源193／0、新原始结构150／0、Owned122／0；其余回归结果和冻结依赖见verification.json。五个同源关闭程序各1／0，无读取、guard或原调用。
+
+新检查覆盖递归骨骼与非Primitive组件、循环／重复／空引用行、外部Owner、主Mesh不在数组时的显式入口、56与64字节动态行及0／8字节Component位置、类型／字段引用／继承／重叠／范围／结构大小错误、读取中引用／骨名／相对变换／填充／布局／数组地址改变、全部256行与第257行拒绝，以及所有原始行读取／guard边界失败、孤立或伪造组件、隐藏尾和主Mesh来源不匹配。清空声明数组时仍保留实际主Mesh，清空骨骼附件则清除旧递归节点和行尾。所有对象与物理关系为合成fixture，原DLL仅作PE数据、加载与dispatch为Host seam，未执行原游戏方法。
+
+Native从r89不可变源仅2个产品overlay冻结，1094文件；实际编译链接0，SHA为945e7b3b90fc3aa364563b838ad3e4eb0f797af86c0aeadebe0ea5828bc839f0。677实际依赖／397冻结项目依赖逐SHA，无冻结树外工作树源码依赖；原GEARS flags逐项保持，原37条警告保留，改动模块0新增，不称全Native /WX。PG／XR、公开v71、手动入口及封存r80五身份／Native8035未替换；运行cover_queries默认0、Goal no_cover拒绝及既有C0身份／原始时间／输入与单写入保护保持。
+
+证据analysis/cover-system-20261108/skeletal-attachments-r90/verification.json及v1 Native／首批单元、final单元／OFF实际依赖回执。当前闭合的是声明Actor图、显式主Mesh、递归骨骼结构组件及其字段／同Scene来源；其他原生物理来源、完整自身与形状集合、生命周期／ABA排除和共同物理world fence仍未认证，不能据此签发自身排除或身体占用安全。双读和同Scene不等于运动及原消费者同步。
+
+本轮无stage／游戏／XR／录像／新增玩家动作通过，也未收到或使用新的正式运行窗口，不称verified wait。下一步核对剩余原生物理来源、完整自身范围及查询同步，再接组合身体路径、终点占用、实际移动与恢复。严重肩身遮挡、physics-hit-muzzle同版、真实三方向LGrip／逐点GrabPose、CV01–24／AC01–22及实体头显均未完成。工程25%不变，目标active，本轮progress。

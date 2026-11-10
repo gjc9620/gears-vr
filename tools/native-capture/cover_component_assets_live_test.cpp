@@ -78,8 +78,8 @@ int main(){
     }
     // A full pool is valid; the next body slot rejects, even with shared PAA.
     catalog_setup();
-    for(unsigned n=0;n<128;++n){const auto at=arena+0xd8000+n*0x300;
-        object(at,800+n,fixture_mesh_class,fixture_pawn,L"SharedSkeletal",n);put(at+0x170,fixture_pawn);
+    for(unsigned n=0;n<128;++n){const auto at=n?arena+0xd8000+n*0x300:fixture_mesh;
+        if(n){object(at,800+n,fixture_mesh_class,fixture_pawn,L"SharedSkeletal",n);put(at+0x170,fixture_pawn);}
         put(at+0x248,physics_asset);put(at+0x250,physics_instance);put(arena+0xd0000+(n/64)*0x1000+(n%64)*8,at);}
     for(unsigned n=0;n<2;++n)put(fixture_pawn+0x500+n*16,roles::pose::ArrayHeader{arena+0xd0000+n*0x1000,64,64});
     put(fixture_weapon+0x500,roles::pose::ArrayHeader{});put(fixture_weapon+0x510,roles::pose::ArrayHeader{});
@@ -89,7 +89,8 @@ int main(){
     C(capture_catalog(*result)==catalog::Code::capacity&&catalog::same(*result,*full));
     // Returning to an empty catalog clears every previous scope and pool row.
     for(auto root:{fixture_pawn,fixture_weapon})for(unsigned n=0;n<2;++n)put(root+0x500+n*16,roles::pose::ArrayHeader{});
-    C(capture_catalog(*result)==catalog::Code::current&&!result->asset_body_count&&!result->component_count&&
+    put(physics_instance+0x6c,roles::pose::ArrayHeader{arena+0x86000,2,2});
+    C(capture_catalog(*result)==catalog::Code::current&&result->asset_body_count==2&&result->component_count==1&&!result->pawn_mesh_listed&&
         catalog::same(result->asset_bodies[255],catalog::AssetBody{})&&catalog::same(result->components[127].physics,catalog::AssetScope{}));
     C(VirtualFree(reinterpret_cast<void*>(arena),0,MEM_RELEASE)!=0);
     printf("CoverComponentAssets checks=%u failures=%u optional PAA sources only; no original calls or complete self proof\n",checks,failures);return failures?1:0;

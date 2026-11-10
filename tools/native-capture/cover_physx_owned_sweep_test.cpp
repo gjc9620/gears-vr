@@ -12,7 +12,7 @@ static parts::Source parts_input{};
 static cx::Source collider_input{0x220000,0x200000,0x210000,0x180,-1,0x160000,0};
 constexpr std::uintptr_t shape0=0x190000,inside0=0x1a0000,body0=0x1b0000,
     shape1=0x1c0000,actor1=0x1d0000,inside1=0x1e0000,body1=0x1f0000;
-enum class Mode {normal,unsupported,links,read,source,malformed,fault,code,asset_changed,collider_changed,catalog_changed,component_asset_changed,actor_edge_changed};
+enum class Mode {normal,unsupported,links,read,source,malformed,fault,code,asset_changed,collider_changed,catalog_changed,component_asset_changed,actor_edge_changed,skeletal_changed};
 static Mode mode{};static Memory* live_memory{};static unsigned original_calls{},close_calls{},retain_calls{},hit_count=2,owner_reads{};
 static bool probe_called{},pending_inside{},close_inside{};static q::Code nested_code{};
 static void(*owner_probe)(){};
@@ -41,6 +41,7 @@ struct HostCalls {
         if(mode==Mode::catalog_changed)live_memory->put<std::uintptr_t>(0x280000,0);
         if(mode==Mode::component_asset_changed)live_memory->put<std::uintptr_t>(0x2b0008,0);
         if(mode==Mode::actor_edge_changed)live_memory->put<std::uintptr_t>(0x2f0000,0);
+        if(mode==Mode::skeletal_changed)live_memory->put<unsigned char>(0x340008,9);
         count=0;
         while(count<hit_count){const auto take=(std::min)(unsigned(q::stream_batch_hits),hit_count-count);
             for(unsigned k=0;k<take;++k){batch[k]={};const auto shape=(count+k)%2?shape1:shape0;
@@ -59,7 +60,7 @@ static q::Vector delta{1,0,0};
 static Memory setup(char const* file){
     auto m=fixture();if(!load_code(file,m))throw 3;
     m.block(0x200000,0x188);m.block(0x210000,0x98);m.block(0x220000,0x320);
-    m.block(0x230000,88);m.block(0x240000,0x258);m.block(0x250000,0x98);m.block(0x260000,88);m.block(0x280000,32);m.block(0x290000,32);
+    m.block(0x230000,88);m.block(0x240000,0x280);m.block(0x250000,0x98);m.block(0x260000,88);m.block(0x280000,32);m.block(0x290000,32);
     parts_input={};parts_input.seed_count=parts_input.root_count=1;parts_input.component_count=3;
     auto& root=parts_input.roots[0];root.actor=0x220000;root.offsets={0x300,0x310};
     root.base_offset=0x2e0;root.attached_offset=0x2f0;
@@ -75,6 +76,10 @@ static Memory setup(char const* file){
     parts_input.components[1]={0x230000,0x260000,0,0,0,0,0,0,false,false,parts::State::nonprimitive};
     parts_input.components[2]={0x240000,0x260000,0x250000,0x240000,0x260000,0,0,0x180,true,false,parts::State::body_data_nonnull,-1,actor1,0};
     parts_input.components[2].skeletal=true;parts_input.asset_body_count=2;
+    parts_input.attachments[2]={true,0x330000,0x260,56,0,0,{}};
+    parts_input.attachments[2].array={0x340000,1,1};parts_input.attachment_count=1;
+    auto& attachment=parts_input.attachment_rows[0];attachment.component=0x230000;memcpy(attachment.bytes.data(),&attachment.component,8);attachment.bytes[8]=7;
+    m.block(0x340000,56);memcpy(m.blocks[0x340000].data(),attachment.bytes.data(),56);m.put(0x240260,parts_input.attachments[2].array);
     auto& extra=parts_input.assets[2];extra.sampled=true;extra.asset=0x110000;extra.instance=0x2a0000;extra.owner=0x260000;
     extra.offsets={0x60,0x6c,0x7c};extra.array={0x2b0000,2,2};extra.root=-1;
     parts_input.asset_bodies[0]={0x250000,0x240000,0x260000,0,-1,actor1,0};
@@ -152,9 +157,9 @@ int main(int argc,char**argv){
             hit_count=2;q::Capsule cap{{0,0,0},{0,0,1},.5f};
             check(engine->sweep_all(source(),cap,delta,q::StreamLimits{},read,guard,*output,&collider_input,&parts_input)==q::Code::queried,"capsule path uses same ownership transaction");
             check(!engine->pending()&&engine->close(),"normal ownership query releases active scope");}
-        const std::array<std::pair<Mode,q::Code>,12> failures{{{Mode::unsupported,q::Code::owner_unsupported},{Mode::links,q::Code::owner_links},
+        const std::array<std::pair<Mode,q::Code>,13> failures{{{Mode::unsupported,q::Code::owner_unsupported},{Mode::links,q::Code::owner_links},
             {Mode::read,q::Code::owner_read},{Mode::source,q::Code::changed},{Mode::malformed,q::Code::callback_rejected},
-            {Mode::fault,q::Code::fault_unknown},{Mode::code,q::Code::code},{Mode::asset_changed,q::Code::changed},{Mode::collider_changed,q::Code::changed},{Mode::catalog_changed,q::Code::changed},{Mode::component_asset_changed,q::Code::changed},{Mode::actor_edge_changed,q::Code::changed}}};
+            {Mode::fault,q::Code::fault_unknown},{Mode::code,q::Code::code},{Mode::asset_changed,q::Code::changed},{Mode::collider_changed,q::Code::changed},{Mode::catalog_changed,q::Code::changed},{Mode::component_asset_changed,q::Code::changed},{Mode::actor_edge_changed,q::Code::changed},{Mode::skeletal_changed,q::Code::changed}}};
         for(auto const& test:failures){memory=initial;mode=test.first;*output=*saved;original_calls=owner_reads=retain_calls=0;
             auto engine=std::make_unique<Engine>();check(engine->prime(),"failure fixture prime");
             check(engine->sweep_all(source(),box,delta,q::StreamLimits{},read,guard,*output,&collider_input,&parts_input)==test.second&&equal(*output,*saved),"whole attributed output unchanged on failure");

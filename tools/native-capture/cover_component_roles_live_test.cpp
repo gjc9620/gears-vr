@@ -28,6 +28,20 @@ static void catalog_setup(){
     typed_property(arena+0xc4800,181,fixture_actor,L"Attached",array_kind,16,0x530);
     typed_property(arena+0xc4c00,182,arena+0xc4800,L"Attached",fixture_object_property,8,0,fixture_actor);
     put(array_props[1]+0x68,arena+0xc4400);put(arena+0xc4400+0x68,arena+0xc4800);put(arena+0xc4800+0xd0,arena+0xc4c00);
+    object(arena+0xc5000,183,script_kind,fixture_mesh_class,L"Attachment");put(arena+0xc5088,56u);
+    typed_property(arena+0xc5400,184,arena+0xc5800,L"Attachments",structure_kind,56,0,arena+0xc5000);
+    typed_property(arena+0xc5800,185,fixture_mesh_class,L"Attachments",array_kind,16,0x260,arena+0xc5400);
+    put(props[1]+0x68,arena+0xc5800);
+    object(arena+0xc7000,186,script_kind,0,L"Vector");put(arena+0xc7088,12u);
+    object(arena+0xc7400,187,script_kind,0,L"Rotator");put(arena+0xc7488,12u);
+    const std::array<wchar_t const*,5> names{L"Component",L"BoneName",L"RelativeLocation",L"RelativeRotation",L"RelativeScale"};
+    const std::array<unsigned,5> offsets{0,8,16,28,40};
+    for(unsigned n=0;n<5;++n){const auto at=arena+0xc5c00+n*0x400;
+        typed_property(at,194+n,arena+0xc5000,names[n],n==0?fixture_component_property:n==1?integer_kind:structure_kind,n<2?8u:12u,offsets[n],n==0?component_base:n==3?arena+0xc7400:arena+0xc7000);
+        put(at+0x68,n==4?uintptr_t{}:at+0x400);}
+    // NameProperty has its own metadata class; this fixture does not alias it
+    // to IntProperty merely because both hold opaque source words here.
+    klass(arena+0xc7800,188,L"NameProperty",0);put(arena+0xc6000+0x50,arena+0xc7800);put(arena+0xc5080,arena+0xc5c00);
     put(fixture_weapon+0x188,fixture_world);
     const std::array<std::array<uintptr_t,4>,4> lists{{{{cylinder,0,fixture_mesh,cylinder}},{{fixture_mesh,audio,cylinder,weapon_mesh}},{{weapon_mesh,0,0,0}},{{weapon_mesh,audio,0,0}}}};
     for(unsigned n=0;n<4;++n){const auto at=arena+0xd0000+n*0x1000;const auto owner=n<2?fixture_pawn:fixture_weapon;
@@ -59,8 +73,8 @@ int GEARS_COMPONENT_ROLES_TEST_MAIN(){
     C(capture_catalog(*result)==catalog::Code::current&&result->components[0].body_instance_offset==0x1b0&&result->components[0].body.identity.address==single_body);
     for(auto root:{fixture_pawn,fixture_weapon})for(unsigned n=0;n<2;++n)put(root+0x500+n*16,roles::pose::ArrayHeader{});
     put(fixture_pawn+0x500,roles::pose::ArrayHeader{arena+0xd0000,0,4});
-    C(capture_catalog(*result)==catalog::Code::current&&!result->component_count&&!result->pawn_mesh_listed&&
-        !result->components[0].identity.address&&result->components[0].body_state==catalog::BodyState::not_sampled);
+    C(capture_catalog(*result)==catalog::Code::current&&result->component_count==1&&!result->pawn_mesh_listed&&result->mesh_seed.address==fixture_mesh&&
+        result->components[0].identity.address==fixture_mesh&&!result->components[1].identity.address&&result->components[1].body_state==catalog::BodyState::not_sampled);
     catalog_setup();put(fixture_pawn+0x1d0,uintptr_t{});C(h::sample(&scene,actor));
     C(capture_catalog(*result)==catalog::Code::current&&result->root_count==1&&result->components[3].owner_roots==0&&!result->roots[1].actor.address);
     for(unsigned bad=0;bad<21;++bad){catalog_setup();*result=*initial;
@@ -97,11 +111,11 @@ int GEARS_COMPONENT_ROLES_TEST_MAIN(){
         C(h::mutex.try_lock());h::mutex.unlock();
     }
     catalog_setup();
-    for(unsigned n=0;n<128;++n){const auto at=arena+0xe0000+n*0x200;object(at,800+n,audio_class,fixture_pawn,L"BoundedComponent",n);put(at+0x170,fixture_pawn);
+    for(unsigned n=0;n<128;++n){const auto at=n?arena+0xe0000+n*0x200:fixture_mesh;if(n){object(at,800+n,audio_class,fixture_pawn,L"BoundedComponent",n);put(at+0x170,fixture_pawn);}
         put(arena+0xd0000+(n/64)*0x1000+(n%64)*8,at);}
     for(unsigned n=0;n<2;++n)put(fixture_pawn+0x500+n*16,roles::pose::ArrayHeader{arena+0xd0000+n*0x1000,64,256});
     put(fixture_weapon+0x500,roles::pose::ArrayHeader{});put(fixture_weapon+0x510,roles::pose::ArrayHeader{});
-    C(capture_catalog(*result)==catalog::Code::current&&result->component_count==128&&!result->pawn_mesh_listed&&result->components[127].identity.address==arena+0xefe00);
+    C(capture_catalog(*result)==catalog::Code::current&&result->component_count==128&&result->pawn_mesh_listed&&result->components[127].identity.address==arena+0xefe00);
     const auto full=std::make_unique<catalog::Snapshot>(*result);
     object(arena+0xf0000,928,audio_class,fixture_weapon,L"OverflowComponent");put(arena+0xf0170,fixture_weapon);put(arena+0xd2000,arena+0xf0000);
     put(fixture_weapon+0x500,roles::pose::ArrayHeader{arena+0xd2000,1,1});

@@ -2,9 +2,10 @@
 #include "cover_physx_components_test.cpp"
 #undef GEARS_COMPONENTS_PHYSX_TEST_MAIN
 static Memory asset_fixture(p::Source& fields){
-    auto m=parts_fixture(fields);m.block(0x190000,0x258);m.block(0x300000,0x80);m.block(0x310000,32);m.block(0x320000,0x98);
+    auto m=parts_fixture(fields);m.block(0x190000,0x280);m.block(0x300000,0x80);m.block(0x310000,32);m.block(0x320000,0x98);
     fields.components[0].skeletal=true;auto& asset=fields.assets[0];asset.sampled=true;asset.asset=0x110000;asset.instance=0x300000;
     asset.owner=0x1e0000;asset.offsets={0x60,0x6c,0x7c};asset.array={0x310000,4,4};asset.root=-1;fields.asset_body_count=4;
+    fields.attachments[0]={true,0x330000,0x260,56,0,0,{}};
     fields.asset_bodies[0]={0x1a0000,0x190000,0x1b0000,1,-1,0x160000,0x220000};
     fields.asset_bodies[1]={0x320000,0x190000,0x1b0000,1,-7,0x1f0000,0};fields.asset_bodies[3]=fields.asset_bodies[1];
     m.put<std::uintptr_t>(0x190248,asset.asset);m.put<std::uintptr_t>(0x190250,asset.instance);m.put<std::uintptr_t>(0x300060,asset.owner);
@@ -12,7 +13,10 @@ static Memory asset_fixture(p::Source& fields){
     for(unsigned n=0;n<4;++n)m.put<std::uintptr_t>(0x310000+n*8,fields.asset_bodies[n].body);
     m.put<std::uintptr_t>(0x320088,0x1f0000);return m;
 }
-int main(){
+#ifndef GEARS_COMPONENT_ASSETS_PHYSX_TEST_MAIN
+#define GEARS_COMPONENT_ASSETS_PHYSX_TEST_MAIN main
+#endif
+int GEARS_COMPONENT_ASSETS_PHYSX_TEST_MAIN(){
     auto fields=std::make_unique<p::Source>();auto memory=asset_fixture(*fields);auto original=std::make_unique<p::Source>(*fields);const auto initial=memory;
     auto read=[&](void* dst,void const* at,std::size_t bytes){return memory.read(dst,at,bytes);};s::Snapshot scope{};
     check(s::capture(base,size,source(),read,[]{return true;},scope)==s::Code::current,"root source");
@@ -75,9 +79,10 @@ int main(){
     // Four shared arrays fill the bounded pool. Each source row is retained.
     *fields=*original;memory=initial;fields->component_count=4;fields->asset_body_count=256;fields->components={};fields->assets={};
     fields->roots[0].members={};fields->roots[0].lists[0]={0x280000,4,4};fields->roots[0].lists[1]={0x290000,0,4};
-    for(unsigned n=0;n<4;++n){const auto at=std::uintptr_t(0x400000+n*0x400);memory.block(at,0x258);auto& row=fields->components[n];
+    for(unsigned n=0;n<4;++n){const auto at=std::uintptr_t(0x400000+n*0x400);memory.block(at,0x280);auto& row=fields->components[n];
         row.component=at;row.owner=0x1b0000;row.owner_roots=1;row.body_instance_offset=0x180;row.primitive=row.skeletal=true;row.state=p::State::body_instance_field_null;
         fields->roots[0].members[0][n]=at;fields->assets[n]=original->assets[0];fields->assets[n].array={0x310000,64,64};fields->assets[n].first_body=n*64;
+        fields->attachments[n]={true,0x330000,0x260,56,0,0,{}};
         memory.put<std::uintptr_t>(at+0x248,0x110000);memory.put<std::uintptr_t>(at+0x250,0x300000);}
     memory.block(0x310000,512);memory.put(0x30006c,fields->assets[0].array);
     for(unsigned n=0;n<256;++n)fields->asset_bodies[n]=original->asset_bodies[0];

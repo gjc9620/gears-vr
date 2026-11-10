@@ -12,12 +12,14 @@
 // foreign rows and duplicates are retained, never interpreted as a self filter.
 // Optional skeletal PAA rows are qualified on this same Scene as well.
 // Actor.Attached edges and Base fields close the supplied recursive actor
-// catalog. Skeletal attachments, lifetime, ABA/world fencing and shape coverage remain
+// catalog. Skeletal attachment structure rows retain their raw source bytes.
+// Lifetime, ABA/world fencing and complete shape coverage remain
 // separate. No result is movement permission or a complete self filter.
 namespace gears_cover_physx_components {
 namespace source=gears_cover_physx_query_source;
 namespace raw=source::pose;
 constexpr unsigned root_capacity=16,list_capacity=64,capacity=128,asset_body_capacity=256,actor_capacity=capacity+asset_body_capacity;
+constexpr unsigned attachment_capacity=256,attachment_stride_capacity=128;
 enum class State:unsigned {not_sampled,nonprimitive,body_instance_field_null,body_data_field_null,body_data_nonnull};
 struct Root {
     std::uintptr_t actor{};std::array<unsigned,2> offsets{};
@@ -40,10 +42,15 @@ struct AssetBody {
     std::uintptr_t body{},owner{},owner_actor{};unsigned owner_roots{};std::int32_t index{};
     std::uintptr_t data{},spring{};
 };
+struct AttachmentScope {
+    bool sampled{};std::uintptr_t structure{};unsigned offset{},stride{},component_offset{},first_row{};raw::ArrayHeader array{};
+};
+struct AttachmentRow {std::uintptr_t component{};std::array<unsigned char,attachment_stride_capacity> bytes{};};
 struct Source {
-    unsigned seed_count{},root_count{},component_count{},asset_body_count{};bool pawn_mesh_listed{};
+    unsigned seed_count{},root_count{},component_count{},asset_body_count{},attachment_count{};bool pawn_mesh_listed{};std::uintptr_t mesh_seed{};
     std::array<Root,root_capacity> roots{};std::array<Component,capacity> components{};
     std::array<AssetScope,capacity> assets{};std::array<AssetBody,asset_body_capacity> asset_bodies{};
+    std::array<AttachmentScope,capacity> attachments{};std::array<AttachmentRow,attachment_capacity> attachment_rows{};
 };
 inline bool same(Root const& a,Root const& b)noexcept{
     if(a.actor!=b.actor||a.offsets!=b.offsets||a.members!=b.members||a.base!=b.base||a.base_offset!=b.base_offset||
@@ -58,11 +65,16 @@ inline bool same(AssetScope const& a,AssetScope const& b)noexcept{return a.sampl
     a.owner==b.owner&&a.offsets==b.offsets&&raw::header_equal(a.array,b.array)&&a.root==b.root&&a.first_body==b.first_body;}
 inline bool same(AssetBody const& a,AssetBody const& b)noexcept{return a.body==b.body&&a.owner==b.owner&&a.owner_actor==b.owner_actor&&
     a.owner_roots==b.owner_roots&&a.index==b.index&&a.data==b.data&&a.spring==b.spring;}
+inline bool same(AttachmentScope const& a,AttachmentScope const& b)noexcept{return a.sampled==b.sampled&&a.structure==b.structure&&
+    a.offset==b.offset&&a.stride==b.stride&&a.component_offset==b.component_offset&&a.first_row==b.first_row&&raw::header_equal(a.array,b.array);}
+inline bool same(AttachmentRow const& a,AttachmentRow const& b)noexcept{return a.component==b.component&&a.bytes==b.bytes;}
 inline bool same(Source const& a,Source const& b)noexcept{
-    if(a.seed_count!=b.seed_count||a.root_count!=b.root_count||a.component_count!=b.component_count||a.asset_body_count!=b.asset_body_count||a.pawn_mesh_listed!=b.pawn_mesh_listed)return false;
+    if(a.seed_count!=b.seed_count||a.root_count!=b.root_count||a.component_count!=b.component_count||a.asset_body_count!=b.asset_body_count||
+       a.attachment_count!=b.attachment_count||a.pawn_mesh_listed!=b.pawn_mesh_listed||a.mesh_seed!=b.mesh_seed)return false;
     for(unsigned n=0;n<root_capacity;++n)if(!same(a.roots[n],b.roots[n]))return false;
-    for(unsigned n=0;n<capacity;++n)if(!same(a.components[n],b.components[n])||!same(a.assets[n],b.assets[n]))return false;
-    for(unsigned n=0;n<asset_body_capacity;++n)if(!same(a.asset_bodies[n],b.asset_bodies[n]))return false;return true;
+    for(unsigned n=0;n<capacity;++n)if(!same(a.components[n],b.components[n])||!same(a.assets[n],b.assets[n])||!same(a.attachments[n],b.attachments[n]))return false;
+    for(unsigned n=0;n<asset_body_capacity;++n)if(!same(a.asset_bodies[n],b.asset_bodies[n]))return false;
+    for(unsigned n=0;n<attachment_capacity;++n)if(!same(a.attachment_rows[n],b.attachment_rows[n]))return false;return true;
 }
 enum class Presence:unsigned {not_sampled,nonprimitive,body_instance_field_null,body_data_field_null,actor_observed,body_field_null};
 struct Actor {Presence presence{};std::uintptr_t table{},scene{},internal{};};
@@ -89,7 +101,7 @@ inline bool mesh_listed(Source const& fields,std::uintptr_t mesh)noexcept{
 }
 inline bool valid(Source const& fields)noexcept{
     if(!fields.seed_count||fields.seed_count>2||fields.root_count<fields.seed_count||fields.root_count>root_capacity||
-       fields.component_count>capacity||fields.asset_body_count>asset_body_capacity)return false;
+       fields.component_count>capacity||fields.asset_body_count>asset_body_capacity||fields.attachment_count>attachment_capacity)return false;
     unsigned unique{},discovered=fields.seed_count;
     for(unsigned r=0;r<root_capacity;++r){auto const& root=fields.roots[r];
         if(r>=fields.root_count){if(!same(root,Root{}))return false;continue;}
@@ -116,7 +128,35 @@ inline bool valid(Source const& fields)noexcept{
                 if(!duplicate){if(unique>=fields.component_count||fields.components[unique].component!=at)return false;++unique;}
             }}
     }
-    if(discovered!=fields.root_count||unique!=fields.component_count)return false;
+    if(discovered!=fields.root_count)return false;
+    if(fields.mesh_seed){
+        if(!source::pointer(fields.mesh_seed,88))return false;unsigned n{};
+        for(;n<unique;++n)if(fields.components[n].component==fields.mesh_seed)break;
+        if(n==unique){if(unique>=fields.component_count||fields.components[unique].component!=fields.mesh_seed)return false;++unique;}
+        if(!fields.components[n].skeletal)return false;
+    }
+    unsigned attachment_count{};
+    for(unsigned n=0;n<capacity;++n){auto const& scope=fields.attachments[n];
+        if(n>=fields.component_count){if(!same(scope,AttachmentScope{}))return false;continue;}
+        if(n>=unique)return false;auto const& component=fields.components[n];
+        if(!component.skeletal){if(!same(scope,AttachmentScope{}))return false;continue;}
+        if(!scope.sampled||!source::pointer(scope.structure,88)||scope.offset<0x60||scope.offset>65520||
+           scope.stride<8||scope.stride>attachment_stride_capacity||scope.component_offset>scope.stride-8||scope.first_row!=attachment_count)return false;
+        for(auto off:{component.body_instance_offset,0x248u,0x250u})if(scope.offset<=off?off-scope.offset<16:scope.offset-off<8)return false;
+        auto const& h=scope.array;
+        if(h.count<0||h.count>int(list_capacity)||h.capacity<h.count||h.capacity>256||
+           (!h.data?(h.count||h.capacity):!source::pointer(h.data,std::size_t(h.capacity?h.capacity:1)*scope.stride))||
+           unsigned(h.count)>attachment_capacity-attachment_count)return false;
+        for(int k=0;k<h.count;++k){auto const& row=fields.attachment_rows[attachment_count++];std::uintptr_t at{};
+            std::memcpy(&at,row.bytes.data()+scope.component_offset,sizeof at);if(at!=row.component)return false;
+            for(unsigned tail=scope.stride;tail<attachment_stride_capacity;++tail)if(row.bytes[tail])return false;
+            if(!at)continue;if(!source::pointer(at,88))return false;
+            bool duplicate=false;for(unsigned i=0;i<unique;++i)duplicate=duplicate||fields.components[i].component==at;
+            if(!duplicate){if(unique>=fields.component_count||fields.components[unique].component!=at)return false;++unique;}
+        }
+    }
+    if(unique!=fields.component_count||attachment_count!=fields.attachment_count)return false;
+    for(unsigned n=attachment_count;n<attachment_capacity;++n)if(!same(fields.attachment_rows[n],AttachmentRow{}))return false;
     for(unsigned n=0;n<capacity;++n){auto const& row=fields.components[n];
         if(n>=unique){if(!same(row,Component{}))return false;continue;}
         if(!source::pointer(row.owner,88)||row.owner_roots!=owner_mask(fields,row.owner)||(row.skeletal&&!row.primitive))return false;
@@ -156,7 +196,8 @@ inline bool valid(Source const& fields)noexcept{
     }return true;
 }
 inline bool consistent(Snapshot const& packet)noexcept{
-    if(!valid(packet.fields)||packet.actor_count>actor_capacity||packet.fields.pawn_mesh_listed!=mesh_listed(packet.fields,packet.query_source.source.mesh))return false;
+    if(!valid(packet.fields)||packet.actor_count>actor_capacity||packet.fields.pawn_mesh_listed!=mesh_listed(packet.fields,packet.query_source.source.mesh)||
+       (packet.fields.mesh_seed&&packet.fields.mesh_seed!=packet.query_source.source.mesh))return false;
     unsigned count{};std::array<std::uintptr_t,actor_capacity> actors{};
     auto accept=[&](Actor const& value,Presence expected,std::uintptr_t at){
         if(value.presence!=expected)return false;
@@ -232,6 +273,16 @@ template<class Read> Code sample(std::uintptr_t image_base,source::Snapshot cons
             if(data!=body.data||spring!=body.spring)return Code::changed;
             const auto code=actor(image_base,scope,data,read,value,output);if(code!=Code::observed)return code;
         }
+    }
+    for(unsigned n=0;n<fields.component_count;++n){auto const& component=fields.components[n];if(!component.skeletal)continue;
+        auto const& attachment=fields.attachments[n];raw::ArrayHeader header{};
+        if(!raw::field(read,header,component.component,attachment.offset))return Code::read;
+        if(!raw::header_equal(header,attachment.array))return Code::changed;
+        for(int k=0;k<header.count;++k){AttachmentRow row{};
+            if(!raw::bytes(read,row.bytes.data(),header.data+std::size_t(k)*attachment.stride,attachment.stride))return Code::read;
+            std::memcpy(&row.component,row.bytes.data()+attachment.component_offset,sizeof row.component);
+            if(!same(row,fields.attachment_rows[attachment.first_row+unsigned(k)]))return Code::changed;
+        }
     }return Code::observed;
 }
 }
@@ -239,6 +290,7 @@ template<class Read,class Guard> Code observe(std::uintptr_t image_base,std::uin
     Source const& input,Read read,Guard guard,Workspace& work,Snapshot& output)noexcept{
     static_assert(std::is_invocable_r_v<bool,Guard&>&&std::is_invocable_r_v<bool,Guard&,Snapshot const&>);
     if(!image_base||(image_base&0xffff)||image_size<0x23cdd8||image_size>UINTPTR_MAX-image_base||scope.source.thread!=GetCurrentThreadId()||!valid(input)||input.pawn_mesh_listed!=mesh_listed(input,scope.source.mesh)||
+       (input.mesh_seed&&input.mesh_seed!=scope.source.mesh)||
        source::aliases(&work,sizeof work,&input,sizeof input)||source::aliases(&work,sizeof work,&scope,sizeof scope)||source::aliases(&work,sizeof work,&output,sizeof output)||
        source::aliases(&output,sizeof output,&scope,sizeof scope)||source::aliases(&output,sizeof output,&input,sizeof input))return Code::request;
     bool expected=false;if(!work.active.compare_exchange_strong(expected,true))return Code::request;
