@@ -394,3 +394,5 @@ launcher0/operator1/stop0，Native清理/PG入口恢复/XR0，本方game/子进�
 023254本次仅prepare后只读等资源115.172秒/99次拒绝。advisory看到只有Lancer，正式start短事务时Boltok已先占第二名额，原入口拒绝。工具59437终态exit1，未出现worker/session/done，本方game/operator均未创建；实际进程查询无该实例命令。此为资源准入竞争，不是库存/武器运行失败；记录admission-rejected-023254.json，保留旧名字且不重启。新候选仍未运行，下一次用新唯一prepare等待首次start，不改共享准入/名额或重复旧start。
 
 023618新唯一prepare同样等待158.047秒/132次拒绝，正式start时HOD已登记第二worker，再次被原入口拒绝。工具41155终态exit1、无worker/session/done，无game/operator创建；记录admission-rejected-023618.json，旧名字不重启。已向原协调会话01a1bb5e-5946-7271-af0d-1068759697e0发送具体两次race证据，请其在原共享入口提供“尚未准入的同一首次请求在锁外有界等待→原短事务首度登记”的处理办法，不预留名额、不重启已准入实例、不弱化身份/资源检查。此为实际共享故障协调，不是常规占用通知；没有新线程/助手/共享入口写入。暂不继续重复新prepare竞争，同步做离线检查；inventory-timing-r1仍未游戏运行，库存根因尚未知。
+
+协调会话现已完成原入口修正：isolated_sim创建独占first-start request，runtime_receipts.first_admission只对登记前ResourceUnavailable/短锁忙在锁外等待，再在原锁内重复fresh/pause/disk/实际身份/内存检查；committing在任何spawn/登记开始前设定，之后失败绝不重试。默认60秒，可显式0..600；旧已结束请求拒绝重启。14项共享离线检查报告、三个当前源SHA与first-admission-wait-20261111.json核对一致；本方已读关键hunk，未写共享入口。仅把本枪首次start显式等待设600秒，继续新唯一prepare，不复用两个旧名字；等待全在游戏创建前，不改枪内任何时钟/许可。证据first-admission-integration-check.json；共享实际竞争效果和本枪库存观测仍待新运行。

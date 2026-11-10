@@ -161,7 +161,7 @@ def main():
             write(target/'active.json',result)
         with (target/'start.log').open('wb') as log:
             result['start_attempted']=True
-            subprocess.run(python+[str(TOOL),'start','--name',name],check=True,stdout=log,stderr=subprocess.STDOUT,**common)
+            subprocess.run(python+[str(TOOL),'start','--name',name,'--wait-resources-seconds','600'],check=True,stdout=log,stderr=subprocess.STDOUT,**common)
         launched=True;result['worker_started']=True
         deadline=time.monotonic()+180
         state={}

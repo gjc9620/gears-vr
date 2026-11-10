@@ -1,0 +1,14 @@
+{
+  "shared_source_hashes_verified": {
+    "tools\\multi-instance\\isolated_sim.py": "e6b4a0ae31aadb4299e37522af0463ceec7be1e4501d68e2b1ad89b605842c2b",
+    "tools\\multi-instance\\runtime_receipts.py": "7db0a08436af9b8c865aa6efb3c943c5817cd61887cd2837f873c07b29dabefb",
+    "tools\\multi-instance\\test_runtime_receipts.py": "298415ded613bc285e45f0710602b2796b1613c0d1cb12d22483975bd10d01a5"
+  },
+  "source_proof_sha256": "c8a9af7a406ff20c5198b03cfd2df199c8eb73b40e0cf413ed1312fbb57db207",
+  "shared_offline_tests_reported": 14,
+  "shared_code_hunk_reviewed": true,
+  "own_runner_explicit_first_admission_wait_seconds": 600,
+  "no_old_name_reused": true,
+  "new_game_started": false,
+  "scope": "Pre-registration only, lock-outside waiting; no retry after commit/spawn starts. Original2-instance/memory/disk/identity/pause gates retained."
+}
