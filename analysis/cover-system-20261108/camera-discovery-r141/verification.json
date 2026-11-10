@@ -1,0 +1,30 @@
+{
+  "scope": "Synthetic memory and source only; no game/XR/Native activation",
+  "baseline_anchor": {
+    "exit_code": 1,
+    "stdout": "",
+    "stderr": ".......F..................F.....\n======================================================================\nFAIL: test_guard_attempts_exhaustion_not_retried_by_sample_layer (test_anchor_config.AnchorConfigTests.test_guard_attempts_exhaustion_not_retried_by_sample_layer)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\tools\\native-capture\\test_anchor_config.py\", line 319, in test_guard_attempts_exhaustion_not_retried_by_sample_layer\n    self.assertEqual(strict.call_count,5)\nAssertionError: 160 != 5\n\n======================================================================\nFAIL: test_sample_after_guard_exhaustion_keeps_actual_partial_sample (test_anchor_config.AnchorConfigTests.test_sample_after_guard_exhaustion_keeps_actual_partial_sample)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\tools\\native-capture\\test_anchor_config.py\", line 334, in test_sample_after_guard_exhaustion_keeps_actual_partial_sample\n    self.assertEqual(sample.call_count,1)\nAssertionError: 32 != 1\n\n----------------------------------------------------------------------\nRan 32 tests in 0.091s\n\nFAILED (failures=2)\n"
+  },
+  "current_anchor": {
+    "exit_code": 1,
+    "stdout": "",
+    "stderr": ".......F..................F.....\n======================================================================\nFAIL: test_guard_attempts_exhaustion_not_retried_by_sample_layer (test_anchor_config.AnchorConfigTests.test_guard_attempts_exhaustion_not_retried_by_sample_layer)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\tools\\native-capture\\test_anchor_config.py\", line 319, in test_guard_attempts_exhaustion_not_retried_by_sample_layer\n    self.assertEqual(strict.call_count,5)\nAssertionError: 160 != 5\n\n======================================================================\nFAIL: test_sample_after_guard_exhaustion_keeps_actual_partial_sample (test_anchor_config.AnchorConfigTests.test_sample_after_guard_exhaustion_keeps_actual_partial_sample)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\tools\\native-capture\\test_anchor_config.py\", line 334, in test_sample_after_guard_exhaustion_keeps_actual_partial_sample\n    self.assertEqual(sample.call_count,1)\nAssertionError: 32 != 1\n\n----------------------------------------------------------------------\nRan 32 tests in 0.089s\n\nFAILED (failures=2)\n"
+  },
+  "focused": {
+    "exit_code": 0,
+    "stdout": "",
+    "stderr": ".........................................\n----------------------------------------------------------------------\nRan 41 tests in 0.184s\n\nOK\n"
+  },
+  "mapped_read_counts": {
+    "exit_code": 0,
+    "stdout": "{\"objects\": 771, \"legacy_reads\": 771, \"class_hint_reads\": 7, \"same_candidates\": true}\n",
+    "stderr": ""
+  },
+  "files": {
+    "tools\\native-capture\\cinematic_anchor.py": "f3c8b4135c57c1e8697ffe08dfdf59084b6fcb93bb1862979c688eab24ab4a44",
+    "tools\\native-capture\\test_cinematic_anchor.py": "8371e42fe703cdc46a828353c3e4db9b012114ad000881c2fa05757981d0412a",
+    "tools\\package-inspector\\resolve_camera.py": "39e3272ffcc850fdfc8c4daf79fe2a7477f855e2f51adb21e67b47831fd376a6"
+  },
+  "runtime_r140_cause": "Unproven: no per-substep latency witness",
+  "runtime_r139_optimization": "Still unexecuted in game; r140 rejected before activation"
+}

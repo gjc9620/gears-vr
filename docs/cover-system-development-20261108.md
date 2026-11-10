@@ -2273,3 +2273,13 @@ r139源码及离线读量先保存b7a9f8cd；新票cover-1111-r140-cloak-chain�
 launcher1、Native cleanup false/error incomplete or deadline、entry restore无证明、XR1（terminal exiting without end、对象销毁和shutdown完成），input pad恢复true。本轮normal_cleanup_verified=false完整保留，不补签；isolated-cleanup-pending旧回执owned_game_absent=false也不修改。其后独立isolated-done为owned_game_absent=true，保存时精确game/owner/XR/worker全不在，remaining_owned空、无强杀；进程退出与正常恢复证明分开。CLOAK405次失败0，静音验证367/initially_muted1/verify_failed0/target_shared_rejected0，不虚构玩法画面或编码。
 
 证据member-chain-r139/runtime-r140/{session-original,config-failure-original,closeout}.json及prepare/operator日志。下一步检查本次激活前配置获取的慢路径，保留严格获取/身份/新鲜度条件；r139实际查询效果仍待新候选复查。已有离线1404与读量减少28.3%不替代此项实际结果。完整身体/世界覆盖、唯一C0同版视图/命中/枪口、自身遮挡及CV01–24/AC01–22继续未完成，工程25%、公共v71与固定入口不变，目标active。
+
+## r141：激活前 CameraActor 发现路径收窄（2026-11-11，源码／离线）
+
+- r140 的 3536.1894 ms 严格采集超时仍按原始失败保留：Native 未激活，r139 DLL 未执行；本次没有子步骤实测，不能认定 CameraActor 查找是唯一原因。
+- `cinematic_anchor.py` 冷查找复用现有 Resolver 的批量类候选发现，避免逐个解码普通游戏实例名称；已有 CameraActor 缓存候选仍先处理，兼容无该能力的原精确查找。只改变发现提示，选中对象仍经过 fresh 注册表／名称／类证明、完整证书复核及时间戳括号内两次目标验证。
+- 额外拒绝提示称 CameraActor、但实时名称或 number 已变的候选；发现提示不能更名当前类。原 200 ms 获取期限、身份、新鲜度、输入及恢复保护全部保持，不把发现移到期限外，也不续时。
+- 41 项相关离线检查全部通过，包括真实生产类扫描器与合成反射内存接线、热缓存避免全扫描、假提示、注册表后变、扫描失败和冷发现超过原期限。独立 771 对象固定内存比较取得相同候选，旧逐对象查找 771 次读取、现有类提示扫描 7 次；只证明此合成读取量，不是实际延迟或 r140 因果修复。
+- 配置组有两项既有失败：`test_guard_attempts_exhaustion_not_retried_by_sample_layer` 和 `test_sample_after_guard_exhaustion_keeps_actual_partial_sample`。修改前 HEAD 的 cinematic 源码与修改后分别复跑同组，均为相同两项失败（160 对 5、32 对 1）；不报告整组全绿，也不在此改动采样重试策略。
+- 本次尚未启动游戏／XR、未更换任何 DLL 或公开 v71；r139 实际查询耗时、完整身体路径与占用、抓边移动、遮蔽／受击／枪口及头显仍待验证。工程进度 25% 保持。下次先绑定实际启动脚本哈希，再使用新私有实例定向验证启动与已有 path 查询；不复用已消费 r140。
+- 证据：`analysis/cover-system-20261108/camera-discovery-r141/verification.json`、对应基线／修改后日志及 `verify.py`。本轮是源码与验证证据进展，完整 CV-01–24／AC-01–22 目标继续 active。

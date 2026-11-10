@@ -56,14 +56,24 @@ class CinematicTargetCertificate:
                       if x['name'] == 'CameraActor' and x['number'] == 0]
         candidate_set = set(candidates)
         def addresses():
-            yield from candidates
-            yield from (x for x in r.object_pointers if x and x not in candidate_set)
+            for address in candidates:
+                yield address, r.identity(address)
+            remaining = (x for x in r.object_pointers if x and x not in candidate_set)
+            discover = getattr(r, 'discovery_class_candidates', None)
+            if callable(discover):
+                # Scan-local hints avoid decoding every gameplay instance name.
+                # They never replace the live registry/name proofs below.
+                yield from discover(remaining)
+            else:
+                for address in remaining:
+                    yield address, r.identity(address)
         self.camera_class = None
-        for address in addresses():
-            hint = r.identity(address)
+        for address, hint in addresses():
             if hint['name'] != 'CameraActor' or hint['number']:
                 continue
             identity = sampler.fresh(address)
+            if identity['name'] != 'CameraActor' or identity['number']:
+                raise AnchorRejected('CameraActor discovery hint changed')
             meta = sampler.fresh(identity['cls'])
             if meta['name'] == 'Class' and not meta['number']:
                 self.camera_class = remember(address)

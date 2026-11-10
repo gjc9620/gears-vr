@@ -1,0 +1,1403 @@
+{
+  "game": {
+    "pid": 53560,
+    "creation_time": 134388059272218729,
+    "image": "j:\\gearsvr\\gears.of.war.reloaded.v1.0.1.3816947-p2p\\gears of war reloaded\\binaries_x64\\gowde-steam.exe"
+  },
+  "candidate": "c5c04aee6c3e54bb0c9fc3e93cddb1aefcc17a0eb89d4bf4651e6d5a6e3041b9",
+  "test_mode": {
+    "empty_only": "0",
+    "scope": "loaded replacement insertion diagnostic; empty reload still pending"
+  },
+  "operator_exit": 1,
+  "stop_exit": 0,
+  "cleanup": {
+    "launcher_exit": 0,
+    "owned_game_absent": true,
+    "owned_children": {
+      "recorded": 0,
+      "remaining": []
+    },
+    "forced_termination": false,
+    "worker_error": null
+  },
+  "continuous_passed": true,
+  "native_cleanup_verified": true,
+  "xr_exit_code": 0,
+  "playground_cleanup": {
+    "loaded": true,
+    "shutdown_code": 0,
+    "entry_restored": true,
+    "passed": true
+  },
+  "audio": {
+    "enabled": true,
+    "game_identity": {
+      "pid": 53560,
+      "creation_time": 134388059272218729
+    },
+    "owner_identity": {
+      "pid": 55112,
+      "creation_time": 134388059197716935
+    },
+    "log": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\hb-cloak-1111-013604\\launcher-session.7ec9cc98766141a3932138061d1640b3.audio.jsonl",
+    "restored": true,
+    "startup": {
+      "ready_observed": true,
+      "ready_timeout_seconds": 15.0,
+      "waited_seconds": 0.031000000002677552,
+      "helper_exit_code": null
+    },
+    "exit_code": 0,
+    "event": "guard_cleanup",
+    "reason": "stop",
+    "matched": 1,
+    "muted": 0,
+    "restore_attempted": 0,
+    "restore_pending": 0,
+    "read_failed": 0,
+    "mute_failed": 0,
+    "scans": 384,
+    "endpoint_unavailable": 0,
+    "shared_rejected": 4224,
+    "sessions_restored": 0,
+    "mute_verification": {
+      "event": "mute_verification_summary",
+      "pid": 53560,
+      "initially_muted_sessions": 1,
+      "verified_muted_observations": 384,
+      "verify_failed": 0,
+      "target_shared_rejected": 0,
+      "shared_rejected_is_global_scan_count": true
+    }
+  },
+  "replacement": {
+    "game": {
+      "pid": 53560,
+      "creation_time": 134388059272218729,
+      "image": "j:\\gearsvr\\gears.of.war.reloaded.v1.0.1.3816947-p2p\\gears of war reloaded\\binaries_x64\\gowde-steam.exe"
+    },
+    "checks": {},
+    "phases": [
+      {
+        "label": "original_return_prepare",
+        "ns": 117190305265200
+      },
+      {
+        "label": "open_original_latch",
+        "ns": 117191464230900
+      },
+      {
+        "label": "continuous_latch_opening",
+        "ns": 117197856089200
+      },
+      {
+        "label": "extract_original_for_replacement",
+        "ns": 117199907555200
+      },
+      {
+        "label": "left_shoulder_actual_replacement",
+        "ns": 117201459327000
+      }
+    ],
+    "observations": [
+      {
+        "label": "world",
+        "value": {
+          "game": {
+            "pid": 53560,
+            "creation_time": 134388059272218729,
+            "image": "j:\\gearsvr\\gears.of.war.reloaded.v1.0.1.3816947-p2p\\gears of war reloaded\\binaries_x64\\gowde-steam.exe"
+          },
+          "publisher": {
+            "pid": 52688,
+            "creation_time": 134388059339216683,
+            "image": "c:\\users\\11\\.codex\\worktrees\\6dof-single\\gearsvr\\tools\\openxr-probe\\build-hb-cloak-1111-013604\\openxrposeprobe.exe"
+          },
+          "source": 1,
+          "sequence": 3430,
+          "observed_ns": 117190549906500,
+          "sync_ns": 117190483787800,
+          "world_generation": 1,
+          "weapon": "0x162a9f6700",
+          "units": 100.0,
+          "raw": [
+            {
+              "xyz": [
+                -0.20000000298023224,
+                1.4000000953674316,
+                -0.4000000059604645
+              ],
+              "quat": [
+                -0.14943814277648926,
+                0.0,
+                0.0,
+                0.9887710809707642
+              ],
+              "squeeze": 0.0,
+              "trigger": 0.0
+            },
+            {
+              "xyz": [
+                0.1599999964237213,
+                1.5200001001358032,
+                0.05999999865889549
+              ],
+              "quat": [
+                0.14589586853981018,
+                0.21400924026966095,
+                -0.032344333827495575,
+                0.9653332829475403
+              ],
+              "squeeze": 0.0,
+              "trigger": 0.0
+            }
+          ],
+          "world": [
+            {
+              "xyz": [
+                -3839.2204575869287,
+                -16.37146294367524,
+                624.2672166824341
+              ],
+              "rotation": [
+                -0.3000000194673931,
+                4.8951591224977125e-08,
+                -0.0
+              ]
+            },
+            {
+              "xyz": [
+                -3885.220459811122,
+                19.628534744946855,
+                636.2672171592712
+              ],
+              "rotation": [
+                0.30000002406170945,
+                -0.43633227213021114,
+                -4.241938913145641e-09
+              ]
+            }
+          ],
+          "limits": "Current original world tracking targets, not solved or rendered bone positions."
+        }
+      },
+      {
+        "label": "gun",
+        "value": {
+          "game": {
+            "pid": 53560,
+            "creation_time": 134388059272218729,
+            "image": "j:\\gearsvr\\gears.of.war.reloaded.v1.0.1.3816947-p2p\\gears of war reloaded\\binaries_x64\\gowde-steam.exe"
+          },
+          "observed_ns": 117191434350100,
+          "controller": "0x8a1b1590",
+          "weapon": "0x162a9f6700",
+          "mesh": "0x3cd4c6e00",
+          "mesh_world_xyz": [
+            -3891.14599609375,
+            19.325292587280273,
+            634.8566284179688
+          ],
+          "mesh_component_to_world": [
+            -0.4226952791213989,
+            -0.9062715768814087,
+            0.0,
+            0.0,
+            0.8658229112625122,
+            -0.40382957458496094,
+            0.2954181730747223,
+            0.0,
+            -0.26772913336753845,
+            0.12487189471721649,
+            0.9553678631782532,
+            0.0,
+            -3891.14599609375,
+            19.325292587280273,
+            634.8566284179688,
+            1.0
+          ],
+          "hud_query_world_xyz": [
+            -2017.32666015625,
+            -854.4276733398438,
+            1287.740234375
+          ],
+          "limits": "read-only bracketed snapshot; HUD query is not proof of a rendered reticle or firing ray"
+        }
+      }
+    ],
+    "gameplay_setters": false,
+    "visual_accepted": false,
+    "physical_headset_accepted": false,
+    "replacement_mode": true,
+    "before": {
+      "capacity": 78.0,
+      "used": 6,
+      "reserve": 78,
+      "infinite_reserve": false,
+      "duration": 2.5,
+      "started": 0.0,
+      "active_reload_bonus_shots": 0,
+      "game": {
+        "pid": 53560,
+        "creation_time": 134388059272218729,
+        "image": "j:\\gearsvr\\gears.of.war.reloaded.v1.0.1.3816947-p2p\\gears of war reloaded\\binaries_x64\\gowde-steam.exe"
+      },
+      "weapon": "0x162a9f6700",
+      "observed_ns": 117190357097900,
+      "game_time": 29.65863037109375,
+      "loaded": 72,
+      "bones": {},
+      "game_function_calls": 0,
+      "reader_reused": true,
+      "read_bracket_misses": [],
+      "query_local_selectors": true,
+      "limits": "Double-read actual inventory and typed schema, current registered objects/held identity; no game calls. Not physical-headset acceptance."
+    },
+    "input_planning": {
+      "production": {
+        "frame": "482",
+        "publication": "0",
+        "source_sequence": "3463",
+        "sync_ns": "117191218526300",
+        "observed_ns": "117191259391400",
+        "hold": "1",
+        "accepted": "1",
+        "mesh_read": "1",
+        "grip_world": "-3885.22046,19.6285347,636.267217",
+        "grip_quat": "-0.0323443292,-0.145895865,-0.21400921,0.965333258",
+        "target_world": "-3891.14664,19.3252967,634.856755",
+        "target_rot": "0,-20935,-3129",
+        "asset_origin": "0,-16384,0",
+        "component_translation": "-3891.14673,19.3252964,634.85675",
+        "gun_world": "-3891.146,19.3252888,634.856689",
+        "gun_rot": "3129,-4551,0",
+        "dirty": "7"
+      },
+      "geometry": {
+        "weapon": "162a9f6700",
+        "pivot": "1.78404448e-07,0.31364943,0.0212537477",
+        "axis": "1,-5.2561605e-08,1.09400175e-08",
+        "contact": "-0.0210059567,0.242713682,0.0401307058",
+        "units": "100"
+      },
+      "actual_mesh": [
+        [
+          -0.4226952791213989,
+          0.8658229112625122,
+          -0.26772913336753845,
+          -3891.14599609375
+        ],
+        [
+          -0.9062715768814087,
+          -0.40382957458496094,
+          0.12487189471721649,
+          19.325292587280273
+        ],
+        [
+          0.0,
+          0.2954181730747223,
+          0.9553678631782532,
+          634.8566284179688
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "planning_is_not_outcome_evidence": true
+    },
+    "latch_sweeps": [
+      {
+        "start": 0,
+        "end": 0.837758104,
+        "samples": [
+          {
+            "ns": 117197862300200,
+            "angle": 8.328649775144052e-05,
+            "xyz": [
+              0.08302524185141656,
+              1.6159520803169973,
+              -0.08901796179423685
+            ]
+          },
+          {
+            "ns": 117197901802700,
+            "angle": 0.0006444250054579128,
+            "xyz": [
+              0.08302454109940688,
+              1.6159109236248652,
+              -0.08901946460432128
+            ]
+          },
+          {
+            "ns": 117197940015700,
+            "angle": 0.002102451223371097,
+            "xyz": [
+              0.0830226746851487,
+              1.6158039891346565,
+              -0.08902346725586605
+            ]
+          },
+          {
+            "ns": 117197980509500,
+            "angle": 0.004814899980185642,
+            "xyz": [
+              0.08301902718694026,
+              1.615605070454059,
+              -0.08903128956202483
+            ]
+          },
+          {
+            "ns": 117198019050800,
+            "angle": 0.009080733845970452,
+            "xyz": [
+              0.08301282956029297,
+              1.6152922829661303,
+              -0.08904458079002317
+            ]
+          },
+          {
+            "ns": 117198061226600,
+            "angle": 0.01514327174509997,
+            "xyz": [
+              0.08300305156438509,
+              1.6148478680704985,
+              -0.08906555035968017
+            ]
+          },
+          {
+            "ns": 117198101301300,
+            "angle": 0.023193117569185483,
+            "xyz": [
+              0.08298830901641141,
+              1.614258005541165,
+              -0.0890971667425996
+            ]
+          },
+          {
+            "ns": 117198143450900,
+            "angle": 0.033371088790006366,
+            "xyz": [
+              0.08296679730248355,
+              1.6135126361202852,
+              -0.0891433000523939
+            ]
+          },
+          {
+            "ns": 117198184395200,
+            "angle": 0.045771145072441455,
+            "xyz": [
+              0.08293625851373959,
+              1.6126052952603733,
+              -0.0892087925235126
+            ]
+          },
+          {
+            "ns": 117198226745500,
+            "angle": 0.060443316887400185,
+            "xyz": [
+              0.08289398608911719,
+              1.6115329568933894,
+              -0.08929944855446592
+            ]
+          },
+          {
+            "ns": 117198266303000,
+            "angle": 0.07739663412475407,
+            "xyz": [
+              0.08283686786997949,
+              1.6102958836552266,
+              -0.08942194237438156
+            ]
+          },
+          {
+            "ns": 117198307852400,
+            "angle": 0.09660205470626781,
+            "xyz": [
+              0.08276146594240973,
+              1.608897477573159,
+              -0.08958364681594153
+            ]
+          },
+          {
+            "ns": 117198347049500,
+            "angle": 0.11799539319853071,
+            "xyz": [
+              0.08266412950426433,
+              1.6073441232446686,
+              -0.08979239126454958
+            ]
+          },
+          {
+            "ns": 117198386413700,
+            "angle": 0.14148024942588797,
+            "xyz": [
+              0.08254113520670728,
+              1.6056450143354464,
+              -0.09005616068669586
+            ]
+          },
+          {
+            "ns": 117198425455800,
+            "angle": 0.1669309370833717,
+            "xyz": [
+              0.08238884796745685,
+              1.6038119540334053,
+              -0.0903827507553403
+            ]
+          },
+          {
+            "ns": 117198463691500,
+            "angle": 0.1941954123496327,
+            "xyz": [
+              0.0822038941427141,
+              1.6018591210242716,
+              -0.09077939647133035
+            ]
+          },
+          {
+            "ns": 117198502076700,
+            "angle": 0.2230982024998712,
+            "xyz": [
+              0.08198333820378316,
+              1.5998027945862907,
+              -0.09125239326877355
+            ]
+          },
+          {
+            "ns": 117198541098600,
+            "angle": 0.2534433345187688,
+            "xyz": [
+              0.08172485373084509,
+              1.5976610353980325,
+              -0.09180673030761236
+            ]
+          },
+          {
+            "ns": 117198578899400,
+            "angle": 0.2850172637134189,
+            "xyz": [
+              0.08142687964755056,
+              1.5954533223677982,
+              -0.09244575541827912
+            ]
+          },
+          {
+            "ns": 117198619669000,
+            "angle": 0.3175918023262589,
+            "xyz": [
+              0.08108875319969283,
+              1.5932001498940238,
+              -0.09317088992019282
+            ]
+          },
+          {
+            "ns": 117198657732300,
+            "angle": 0.3509270481480006,
+            "xyz": [
+              0.08071081222729518,
+              1.590922594068057,
+              -0.09398140929252821
+            ]
+          },
+          {
+            "ns": 117198695994900,
+            "angle": 0.38477431313056254,
+            "xyz": [
+              0.0802944607558509,
+              1.5886418600321088,
+              -0.09487430250952159
+            ]
+          },
+          {
+            "ns": 117198734568800,
+            "angle": 0.418879052,
+            "xyz": [
+              0.07984219376497739,
+              1.5863788256282751,
+              -0.09584421892243855
+            ]
+          },
+          {
+            "ns": 117198773080500,
+            "angle": 0.45298379086943746,
+            "xyz": [
+              0.07935757907105775,
+              1.5841535983047517,
+              -0.09688350711350396
+            ]
+          },
+          {
+            "ns": 117198813160900,
+            "angle": 0.48683105585199926,
+            "xyz": [
+              0.07884519644583302,
+              1.5819851027649376,
+              -0.09798234546005063
+            ]
+          },
+          {
+            "ns": 117198851654900,
+            "angle": 0.520166301673741,
+            "xyz": [
+              0.07831053623096582,
+              1.5798907159564983,
+              -0.09912895956232107
+            ]
+          },
+          {
+            "ns": 117198890632000,
+            "angle": 0.5527408402865811,
+            "xyz": [
+              0.07775986164507559,
+              1.5778859637341704,
+              -0.10030991753506718
+            ]
+          },
+          {
+            "ns": 117198931595400,
+            "angle": 0.5843147694812311,
+            "xyz": [
+              0.07720004057738031,
+              1.575984290052517,
+              -0.10151049073720478
+            ]
+          },
+          {
+            "ns": 117198972169800,
+            "angle": 0.6146599015001286,
+            "xyz": [
+              0.07663835381590137,
+              1.574196905122513,
+              -0.10271506503903377
+            ]
+          },
+          {
+            "ns": 117199014351100,
+            "angle": 0.6435626916503673,
+            "xyz": [
+              0.07608228730705895,
+              1.5725327139481582,
+              -0.10390758633523403
+            ]
+          },
+          {
+            "ns": 117199055538700,
+            "angle": 0.6708271669166285,
+            "xyz": [
+              0.07553931617620922,
+              1.5709983214392735,
+              -0.10507202372703467
+            ]
+          },
+          {
+            "ns": 117199093553700,
+            "angle": 0.6962778545741122,
+            "xyz": [
+              0.07501668789376296,
+              1.5695981052727939,
+              -0.10619283453675565
+            ]
+          },
+          {
+            "ns": 117199134412700,
+            "angle": 0.7197627108014693,
+            "xyz": [
+              0.07452121123063579,
+              1.5683343432161534,
+              -0.10725541690673576
+            ]
+          },
+          {
+            "ns": 117199177198500,
+            "angle": 0.7411560492937319,
+            "xyz": [
+              0.07405905662275813,
+              1.567207378044943,
+              -0.10824653793079375
+            ]
+          },
+          {
+            "ns": 117199215223900,
+            "angle": 0.7603614698752459,
+            "xyz": [
+              0.07363557238536299,
+              1.5662158007204998,
+              -0.10915472779476179
+            ]
+          },
+          {
+            "ns": 117199254800400,
+            "angle": 0.7773147871125995,
+            "xyz": [
+              0.07325512000941439,
+              1.5653566312987615,
+              -0.10997063299415191
+            ]
+          },
+          {
+            "ns": 117199296879100,
+            "angle": 0.791986958927558,
+            "xyz": [
+              0.07292093064030163,
+              1.5646254771991313,
+              -0.11068732412503718
+            ]
+          },
+          {
+            "ns": 117199335782600,
+            "angle": 0.804387015209993,
+            "xyz": [
+              0.07263498385245909,
+              1.5640166499839165,
+              -0.11130055585986098
+            ]
+          },
+          {
+            "ns": 117199374720700,
+            "angle": 0.8145649864308145,
+            "xyz": [
+              0.07239790901489697,
+              1.5635232246443698,
+              -0.1118089784755481
+            ]
+          },
+          {
+            "ns": 117199414268600,
+            "angle": 0.8226148322548998,
+            "xyz": [
+              0.0722089088592883,
+              1.5631370294776674,
+              -0.11221430176677838
+            ]
+          },
+          {
+            "ns": 117199452636600,
+            "angle": 0.8286773701540299,
+            "xyz": [
+              0.07206570422662648,
+              1.5628485598608748,
+              -0.11252141354041201
+            ]
+          },
+          {
+            "ns": 117199493877200,
+            "angle": 0.8329432040198139,
+            "xyz": [
+              0.07196449824372653,
+              1.5626468154522617,
+              -0.11273845644135375
+            ]
+          },
+          {
+            "ns": 117199533064400,
+            "angle": 0.8356556527766293,
+            "xyz": [
+              0.07189995719418997,
+              1.5625190674319784,
+              -0.11287686897603794
+            ]
+          },
+          {
+            "ns": 117199574165500,
+            "angle": 0.8371136789945429,
+            "xyz": [
+              0.07186520391171766,
+              1.5624505701830778,
+              -0.11295139968090986
+            ]
+          },
+          {
+            "ns": 117199614505300,
+            "angle": 0.8376748175022484,
+            "xyz": [
+              0.07185181746119715,
+              1.5624242401765285,
+              -0.11298010780635842
+            ]
+          },
+          {
+            "ns": 117199653844100,
+            "angle": 0.837758104,
+            "xyz": [
+              0.07184983005677971,
+              1.5624203336830926,
+              -0.11298436992611965
+            ]
+          }
+        ],
+        "input_only": true
+      }
+    ],
+    "magazine_input_planning": {
+      "left_in_model": [
+        [
+          -0.4037334629741179,
+          -0.9063122682999042,
+          -0.12488940389003761
+        ],
+        [
+          0.7398356844138181,
+          -0.4037348244490117,
+          0.5381833810097288
+        ],
+        [
+          -0.5381844023593251,
+          0.12488500252715724,
+          0.8335234161083466
+        ]
+      ],
+      "observed_world_grip_rotation": [
+        -0.3000000194673931,
+        4.8951591224977125e-08,
+        -0.0
+      ],
+      "raw_orientation_unchanged": true,
+      "actual_seating_must_be_observed": true
+    },
+    "wait_failures": [
+      {
+        "prefix": "hammerburst_reload_transition",
+        "start": 0,
+        "expected": "to=7 (closing after actual seating)",
+        "latest": [
+          {
+            "from": "1",
+            "to": "2",
+            "serial": "1",
+            "angle": "0",
+            "loaded": "72",
+            "reserve": "78",
+            "pending": "0",
+            "stationary_holds": "0"
+          },
+          {
+            "from": "2",
+            "to": "3",
+            "serial": "1",
+            "angle": "0.822599954",
+            "loaded": "72",
+            "reserve": "78",
+            "pending": "0",
+            "stationary_holds": "0"
+          },
+          {
+            "from": "3",
+            "to": "4",
+            "serial": "1",
+            "angle": "0.822599954",
+            "loaded": "72",
+            "reserve": "78",
+            "pending": "0",
+            "stationary_holds": "0"
+          },
+          {
+            "from": "4",
+            "to": "5",
+            "serial": "1",
+            "angle": "0.822599954",
+            "loaded": "72",
+            "reserve": "78",
+            "pending": "0",
+            "stationary_holds": "0"
+          },
+          {
+            "from": "5",
+            "to": "6",
+            "serial": "1",
+            "angle": "0.822599954",
+            "loaded": "72",
+            "reserve": "78",
+            "pending": "0",
+            "stationary_holds": "0"
+          }
+        ]
+      }
+    ],
+    "error": "AssertionError('No fresh hammerburst_reload_transition to=7 (closing after actual seating) in 8 seconds')"
+  },
+  "actual_trajectory_count": 6,
+  "trajectory_consistent": true,
+  "feed_outcome_rows": [
+    {
+      "region": "0",
+      "frame": "737",
+      "sequence": "4361",
+      "item": "2",
+      "result": "0",
+      "gap_ns": "65855100",
+      "rearmed": "0",
+      "depth": "0.0557582463",
+      "lateral": "0.042592603",
+      "orientation_dot": "1",
+      "sync_ns": "117211205556000",
+      "frame_now_ns": "117211224118800"
+    },
+    {
+      "region": "0",
+      "frame": "739",
+      "sequence": "4368",
+      "item": "2",
+      "result": "1",
+      "gap_ns": "66413600",
+      "rearmed": "0",
+      "depth": "0.0619564157",
+      "lateral": "0.0288804098",
+      "orientation_dot": "1",
+      "sync_ns": "117211360482300",
+      "frame_now_ns": "117211382321800"
+    },
+    {
+      "region": "0",
+      "frame": "741",
+      "sequence": "4375",
+      "item": "2",
+      "result": "1",
+      "gap_ns": "66930900",
+      "rearmed": "0",
+      "depth": "0.066895865",
+      "lateral": "0.0179528482",
+      "orientation_dot": "1",
+      "sync_ns": "117211515994300",
+      "frame_now_ns": "117211537643600"
+    },
+    {
+      "region": "0",
+      "frame": "743",
+      "sequence": "4382",
+      "item": "2",
+      "result": "1",
+      "gap_ns": "66794400",
+      "rearmed": "0",
+      "depth": "0.0705579168",
+      "lateral": "0.00985122608",
+      "orientation_dot": "1",
+      "sync_ns": "117211672498000",
+      "frame_now_ns": "117211691404100"
+    },
+    {
+      "region": "0",
+      "frame": "750",
+      "sequence": "4407",
+      "item": "2",
+      "result": "0",
+      "gap_ns": "67537700",
+      "rearmed": "0",
+      "depth": "0.0750004039",
+      "lateral": "2.32620664e-05",
+      "orientation_dot": "1",
+      "sync_ns": "117212233282900",
+      "frame_now_ns": "117212253418200"
+    },
+    {
+      "region": "0",
+      "frame": "751",
+      "sequence": "4411",
+      "item": "2",
+      "result": "1",
+      "gap_ns": "88002500",
+      "rearmed": "0",
+      "depth": "0.0750112859",
+      "lateral": "3.12137743e-06",
+      "orientation_dot": "1",
+      "sync_ns": "117212321285400",
+      "frame_now_ns": "117212328414600"
+    },
+    {
+      "region": "0",
+      "frame": "752",
+      "sequence": "4414",
+      "item": "2",
+      "result": "0",
+      "gap_ns": "66660600",
+      "rearmed": "0",
+      "depth": "0.0750112859",
+      "lateral": "3.12137743e-06",
+      "orientation_dot": "1",
+      "sync_ns": "117212387946000",
+      "frame_now_ns": "117212410185300"
+    },
+    {
+      "region": "0",
+      "frame": "753",
+      "sequence": "4418",
+      "item": "2",
+      "result": "1",
+      "gap_ns": "89591200",
+      "rearmed": "0",
+      "depth": "0.0748546316",
+      "lateral": "3.11842891e-06",
+      "orientation_dot": "1",
+      "sync_ns": "117212477537200",
+      "frame_now_ns": "117212485326000"
+    },
+    {
+      "region": "0",
+      "frame": "759",
+      "sequence": "4439",
+      "item": "2",
+      "result": "1",
+      "gap_ns": "89271600",
+      "rearmed": "0",
+      "depth": "0.068393646",
+      "lateral": "3.31797199e-06",
+      "orientation_dot": "1",
+      "sync_ns": "117212944327900",
+      "frame_now_ns": "117212953383700"
+    },
+    {
+      "region": "0",
+      "frame": "764",
+      "sequence": "4456",
+      "item": "2",
+      "result": "1",
+      "gap_ns": "66471300",
+      "rearmed": "0",
+      "depth": "0.0639819243",
+      "lateral": "3.4640256e-06",
+      "orientation_dot": "1",
+      "sync_ns": "117213321337200",
+      "frame_now_ns": "117213334908400"
+    },
+    {
+      "region": "0",
+      "frame": "769",
+      "sequence": "4474",
+      "item": "2",
+      "result": "1",
+      "gap_ns": "88412400",
+      "rearmed": "0",
+      "depth": "0.058290182",
+      "lateral": "3.64133707e-06",
+      "orientation_dot": "1",
+      "sync_ns": "117213721724500",
+      "frame_now_ns": "117213729280600"
+    },
+    {
+      "region": "0",
+      "frame": "774",
+      "sequence": "4492",
+      "item": "2",
+      "result": "1",
+      "gap_ns": "88510800",
+      "rearmed": "0",
+      "depth": "0.0531091022",
+      "lateral": "3.8167786e-06",
+      "orientation_dot": "1",
+      "sync_ns": "117214121953400",
+      "frame_now_ns": "117214138510600"
+    },
+    {
+      "region": "0",
+      "frame": "778",
+      "sequence": "4507",
+      "item": "2",
+      "result": "1",
+      "gap_ns": "89125300",
+      "rearmed": "0",
+      "depth": "0.0494666223",
+      "lateral": "3.93949106e-06",
+      "orientation_dot": "1",
+      "sync_ns": "117214455581500",
+      "frame_now_ns": "117214456632800"
+    },
+    {
+      "region": "0",
+      "frame": "784",
+      "sequence": "4528",
+      "item": "2",
+      "result": "1",
+      "gap_ns": "88671100",
+      "rearmed": "0",
+      "depth": "0.0441288882",
+      "lateral": "4.11786658e-06",
+      "orientation_dot": "1",
+      "sync_ns": "117214924021100",
+      "frame_now_ns": "117214927984800"
+    },
+    {
+      "region": "0",
+      "frame": "787",
+      "sequence": "4539",
+      "item": "2",
+      "result": "0",
+      "gap_ns": "110739000",
+      "rearmed": "1",
+      "depth": "0.0419230863",
+      "lateral": "4.20775336e-06",
+      "orientation_dot": "1",
+      "sync_ns": "117215168885700",
+      "frame_now_ns": "117215170990900"
+    },
+    {
+      "region": "0",
+      "frame": "788",
+      "sequence": "4543",
+      "item": "2",
+      "result": "0",
+      "gap_ns": "89228100",
+      "rearmed": "0",
+      "depth": "0.0398737045",
+      "lateral": "4.27029959e-06",
+      "orientation_dot": "1",
+      "sync_ns": "117215258113800",
+      "frame_now_ns": "117215263126600"
+    },
+    {
+      "region": "0",
+      "frame": "796",
+      "sequence": "4573",
+      "item": "2",
+      "result": "0",
+      "gap_ns": "81142800",
+      "rearmed": "0",
+      "depth": "0.0330995259",
+      "lateral": "4.52584851e-06",
+      "orientation_dot": "1",
+      "sync_ns": "117215924816200",
+      "frame_now_ns": "117215930149500"
+    },
+    {
+      "region": "0",
+      "frame": "801",
+      "sequence": "4590",
+      "item": "2",
+      "result": "0",
+      "gap_ns": "67166100",
+      "rearmed": "0",
+      "depth": "0.0286878057",
+      "lateral": "4.69249254e-06",
+      "orientation_dot": "1",
+      "sync_ns": "117216304076300",
+      "frame_now_ns": "117216323437900"
+    },
+    {
+      "region": "0",
+      "frame": "802",
+      "sequence": "4595",
+      "item": "2",
+      "result": "0",
+      "gap_ns": "109894100",
+      "rearmed": "1",
+      "depth": "0.0266384247",
+      "lateral": "4.7590039e-06",
+      "orientation_dot": "1",
+      "sync_ns": "117216413970400",
+      "frame_now_ns": "117216416283000"
+    },
+    {
+      "region": "0",
+      "frame": "806",
+      "sequence": "4609",
+      "item": "2",
+      "result": "0",
+      "gap_ns": "66848600",
+      "rearmed": "0",
+      "depth": "0.0229960619",
+      "lateral": "4.90540865e-06",
+      "orientation_dot": "1",
+      "sync_ns": "117216725257000",
+      "frame_now_ns": "117216747193200"
+    },
+    {
+      "region": "0",
+      "frame": "810",
+      "sequence": "4624",
+      "item": "2",
+      "result": "0",
+      "gap_ns": "88207500",
+      "rearmed": "0",
+      "depth": "0.0198642461",
+      "lateral": "5.02436838e-06",
+      "orientation_dot": "1",
+      "sync_ns": "117217059740200",
+      "frame_now_ns": "117217063668400"
+    },
+    {
+      "region": "1",
+      "frame": "816",
+      "sequence": "4645",
+      "item": "2",
+      "result": "0",
+      "gap_ns": "88889300",
+      "rearmed": "0",
+      "depth": "0.0134031449",
+      "lateral": "5.26438715e-06",
+      "orientation_dot": "1",
+      "sync_ns": "117217527079600",
+      "frame_now_ns": "117217536632700"
+    },
+    {
+      "region": "1",
+      "frame": "820",
+      "sequence": "4661",
+      "item": "2",
+      "result": "0",
+      "gap_ns": "110514600",
+      "rearmed": "1",
+      "depth": "0.00976078209",
+      "lateral": "5.41507819e-06",
+      "orientation_dot": "1",
+      "sync_ns": "117217883138800",
+      "frame_now_ns": "117217889237200"
+    },
+    {
+      "region": "1",
+      "frame": "826",
+      "sequence": "4683",
+      "item": "2",
+      "result": "0",
+      "gap_ns": "89172700",
+      "rearmed": "0",
+      "depth": "0.004423048",
+      "lateral": "5.61355459e-06",
+      "orientation_dot": "1",
+      "sync_ns": "117218372733100",
+      "frame_now_ns": "117218384780000"
+    },
+    {
+      "region": "1",
+      "frame": "851",
+      "sequence": "4773",
+      "item": "2",
+      "result": "0",
+      "gap_ns": "112952800",
+      "rearmed": "1",
+      "depth": "1.13263217e-05",
+      "lateral": "5.79742196e-06",
+      "orientation_dot": "1",
+      "sync_ns": "117220379368400",
+      "frame_now_ns": "117220385887700"
+    },
+    {
+      "region": "1",
+      "frame": "856",
+      "sequence": "4794",
+      "item": "2",
+      "result": "0",
+      "gap_ns": "133852600",
+      "rearmed": "1",
+      "depth": "1.13263217e-05",
+      "lateral": "5.79742196e-06",
+      "orientation_dot": "1",
+      "sync_ns": "117220845563000",
+      "frame_now_ns": "117220854800200"
+    },
+    {
+      "region": "1",
+      "frame": "857",
+      "sequence": "4800",
+      "item": "2",
+      "result": "0",
+      "gap_ns": "142194900",
+      "rearmed": "1",
+      "depth": "1.13263217e-05",
+      "lateral": "5.79742196e-06",
+      "orientation_dot": "1",
+      "sync_ns": "117220987757900",
+      "frame_now_ns": "117220991054400"
+    }
+  ],
+  "feed_move_rejected_rows": [],
+  "feed_rejected_rows": [],
+  "first_observed_rearm": {
+    "region": "0",
+    "frame": "787",
+    "sequence": "4539",
+    "item": "2",
+    "result": "0",
+    "gap_ns": "110739000",
+    "rearmed": "1",
+    "depth": "0.0419230863",
+    "lateral": "4.20775336e-06",
+    "orientation_dot": "1",
+    "sync_ns": "117215168885700",
+    "frame_now_ns": "117215170990900"
+  },
+  "endpoint": {
+    "region": "1",
+    "frame": "851",
+    "sequence": "4773",
+    "item": "2",
+    "result": "0",
+    "gap_ns": "112952800",
+    "rearmed": "1",
+    "depth": "1.13263217e-05",
+    "lateral": "5.79742196e-06",
+    "orientation_dot": "1",
+    "sync_ns": "117220379368400",
+    "frame_now_ns": "117220385887700"
+  },
+  "latch_handoff_rows": [
+    {
+      "frame": "566",
+      "sequence": "3747",
+      "token": "1",
+      "request_magazine": "1",
+      "defer_incumbent": "1"
+    },
+    {
+      "frame": "566",
+      "sequence": "3747",
+      "token": "1",
+      "request_magazine": "1",
+      "defer_incumbent": "1"
+    },
+    {
+      "frame": "566",
+      "sequence": "3747",
+      "token": "1",
+      "request_magazine": "1",
+      "defer_incumbent": "1"
+    },
+    {
+      "frame": "566",
+      "sequence": "3747",
+      "token": "1",
+      "request_magazine": "1",
+      "defer_incumbent": "1"
+    }
+  ],
+  "supply_handoff_rows": [
+    {
+      "frame": "701",
+      "sequence": "4226",
+      "token": "2",
+      "request_ammo": "1",
+      "defer_incumbent": "1"
+    },
+    {
+      "frame": "701",
+      "sequence": "4226",
+      "token": "2",
+      "request_ammo": "1",
+      "defer_incumbent": "1"
+    }
+  ],
+  "service_loss_rows": [],
+  "stale_wait_rows": [],
+  "support_withdrawal_rows": [],
+  "identity_lost_rows": [],
+  "transitions": [
+    {
+      "from": "1",
+      "to": "2",
+      "serial": "1",
+      "angle": "0",
+      "loaded": "72",
+      "reserve": "78",
+      "pending": "0",
+      "stationary_holds": "0"
+    },
+    {
+      "from": "2",
+      "to": "3",
+      "serial": "1",
+      "angle": "0.822599954",
+      "loaded": "72",
+      "reserve": "78",
+      "pending": "0",
+      "stationary_holds": "0"
+    },
+    {
+      "from": "3",
+      "to": "4",
+      "serial": "1",
+      "angle": "0.822599954",
+      "loaded": "72",
+      "reserve": "78",
+      "pending": "0",
+      "stationary_holds": "0"
+    },
+    {
+      "from": "4",
+      "to": "5",
+      "serial": "1",
+      "angle": "0.822599954",
+      "loaded": "72",
+      "reserve": "78",
+      "pending": "0",
+      "stationary_holds": "0"
+    },
+    {
+      "from": "5",
+      "to": "6",
+      "serial": "1",
+      "angle": "0.822599954",
+      "loaded": "72",
+      "reserve": "78",
+      "pending": "0",
+      "stationary_holds": "0"
+    },
+    {
+      "from": "6",
+      "to": "5",
+      "serial": "1",
+      "angle": "0.822599954",
+      "loaded": "72",
+      "reserve": "78",
+      "pending": "0",
+      "stationary_holds": "0"
+    }
+  ],
+  "foreground_samples": 2079,
+  "cloak_samples": 3855,
+  "foreground_violations": [],
+  "cloak_violations": [],
+  "media": {
+    "frames": 551,
+    "errors": [],
+    "review": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-53560-media-review\\prepared.json",
+    "full_fit_accepted": false,
+    "encoded": true,
+    "encode_exit_code": 0
+  },
+  "verified_archive": [
+    {
+      "source": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\tools\\playground\\build-hb-cloak-1111-013604\\playground-53560.log",
+      "archive": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-53560-text\\playground-53560.log",
+      "sha256": "76b3903999ca8e783ff165e5fb41a53c1504e50a73989d579171032028c64919"
+    },
+    {
+      "source": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\hb-cloak-1111-013604\\actions\\menu-firstperson-53560-013858\\result.json",
+      "archive": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-53560-text\\result.json",
+      "sha256": "8cd64838edec2b30fd03ddba9d4da5aaf3661fe8099eabfd9eaa4b5653794f3f"
+    },
+    {
+      "source": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\hb-cloak-1111-013604\\actions\\menu-firstperson-53560-013858\\equipment-chain.json",
+      "archive": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-53560-text\\equipment-chain.json",
+      "sha256": "a1aafe7886da506d8817455f888d426b3372f248c95e2f83c6106f47756f2db1"
+    },
+    {
+      "source": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\hb-cloak-1111-013604\\actions\\menu-firstperson-53560-013858\\hammerburst-core.json",
+      "archive": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-53560-text\\hammerburst-core.json",
+      "sha256": "5f34b348bfbdf9864152abedf9452693281d9bc834f622f3a85b763e8a7b3351"
+    },
+    {
+      "source": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\hb-cloak-1111-013604\\actions\\menu-firstperson-53560-013858\\hammerburst-replacement.json",
+      "archive": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-53560-text\\hammerburst-replacement.json",
+      "sha256": "5f23e088f49654d2b29a61131c138dd52b4966fb529f9244cdc58cc95f5bab19"
+    },
+    {
+      "source": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\runtime\\continuous-stereo-53560-20261111-013853-3239b45a.json",
+      "archive": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-53560-text\\continuous-stereo-53560-20261111-013853-3239b45a.json",
+      "sha256": "064320c9f1c45930fe7fbfdae9e3ae1f33d4782bd17cf281b885cfe74fd6c305"
+    },
+    {
+      "source": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\hb-cloak-1111-013604\\isolated-done.json",
+      "archive": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-53560-text\\isolated-done.json",
+      "sha256": "283ec01454add73da9d7dc3d51a2f241f008239fb70c8c6351caed26a2c0f044"
+    },
+    {
+      "source": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\hb-cloak-1111-013604\\launcher-session.7ec9cc98766141a3932138061d1640b3.audio.jsonl",
+      "archive": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-53560-text\\launcher-session.7ec9cc98766141a3932138061d1640b3.audio.jsonl",
+      "sha256": "3015a312debd6a9af4be0a758ee5440622e9737777c4d9868c0fcc124e92b978"
+    }
+  ],
+  "interpretation": "Focused loaded replacement only. Core6 passed, actual72/R78 original reload, latch/extraction/new supply reached6. Kernel approaching before Frame787; actual source gap110.739ms rearms below45mm approach at41.923mm, loses stroke. Later endpoint depth.011326mm/lateral.005797mm/orientation_dot1 still rejected. No move/early/identity/support rejection recorded. No seating/closure/return. Do not widen100ms or synthesize samples; next inspect authenticated original producer motion history with exact current authority. Empty full flow and intermittent event expiry remain open.",
+  "gameplay_accepted": false,
+  "physical_headset_accepted": false
+}

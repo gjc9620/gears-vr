@@ -1,0 +1,21 @@
+.......F..................F.....
+======================================================================
+FAIL: test_guard_attempts_exhaustion_not_retried_by_sample_layer (test_anchor_config.AnchorConfigTests.test_guard_attempts_exhaustion_not_retried_by_sample_layer)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\11\.codex\worktrees\6dof-single\gearsVr\tools\native-capture\test_anchor_config.py", line 319, in test_guard_attempts_exhaustion_not_retried_by_sample_layer
+    self.assertEqual(strict.call_count,5)
+AssertionError: 160 != 5
+
+======================================================================
+FAIL: test_sample_after_guard_exhaustion_keeps_actual_partial_sample (test_anchor_config.AnchorConfigTests.test_sample_after_guard_exhaustion_keeps_actual_partial_sample)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\11\.codex\worktrees\6dof-single\gearsVr\tools\native-capture\test_anchor_config.py", line 334, in test_sample_after_guard_exhaustion_keeps_actual_partial_sample
+    self.assertEqual(sample.call_count,1)
+AssertionError: 32 != 1
+
+----------------------------------------------------------------------
+Ran 32 tests in 0.089s
+
+FAILED (failures=2)

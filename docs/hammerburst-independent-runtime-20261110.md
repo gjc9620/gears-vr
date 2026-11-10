@@ -336,3 +336,11 @@ feed-observe-r1/hb-cloak-1111-013055/game20672/creation134388054697893946，实�
 launcher0/operator1/stop0、Native清理/PG入口恢复/XR0，本方game/子进程消失无强杀；1522前台/2530CLOAK零违规。225帧无capture errors，亲看48双眼样本三页全跨度概览，真实动作可见，近脸遮挡/重叠与近处枪体偶发降低/消失外观仍在，未接受完整贴合。8份原文本SHA归档；详见runtime-20672-first-failure-analysis.json。原54452插入失败与本次射击期限失败都保留。
 
 为取得已有插入失败的端点证据，runner增加显式--focused-loaded-replacement：新唯一实例仍经原取枪/core6和原replacement/return-fire动作，只跳过十二次排空前置，使用已有普通部分弹量换弹路径，不改生产代码/库存/许可/动作期限。默认完整空仓路径不变；聚焦结果即使通过也不接受空仓流程或关闭当前射击期限失败。4项mode/环境接线离线检查通过，待一次新聚焦运行。
+
+## 实际53560：插入连续性缺样重置已明确
+
+hb-cloak-1111-013604资源等待134.266秒/124次拒绝读后首次start，game53560/creation134388059272218729。聚焦loaded replacement，core6有效/write+trace来源一致，实际72/R78开始原换弹，锁扣/旧匣/肩取新匣到6。接近阶段result1，Frame784 depth44.1288882mm仍approaching；Frame787/seq4539实际gap110.739ms触发原rearm，depth41.9230863mm已低于45mm外侧接近门，result0。后续Frame802等间隙109.8941ms继续重置。最终Frame851端点depth0.0113263217mm/lateral0.00579742196mm/orientation_dot1仍result0，故本次不是最终未推到位的猜测：已抓到原连续性超限清除approach状态的实际分支。全程move/early rejection、support withdrawal、identity-lost均0。finally真实leftUP后6→5仍不是最初原因。
+
+launcher0/operator1/stop0，Native清理/PG入口恢复/XR0，本方game/子进程消失、无强杀，2079前台/3855CLOAK零违规。551帧errors空、encode0；亲看48双眼全跨度样本三页与原图00398/00445/00491，白面/重叠/近脸遮挡与偶发近处枪体可见性问题仍在，不接受完整手型/连续性/全角度。8份文本原件SHA归档，详见runtime-53560-first-failure-analysis.json与媒体索引。该次是部分弹量换弹诊断，没有排空，不当空仓或有限连发稳定性验收。
+
+下一步采用已有生产端真实运动history补齐游戏回调之间的中间几何样本：保留当前Frame/grant及精确身份/mount/publisher/control检查，每对原样本仍须100ms内、序号/时间单调、真实持握无释放、最终点与实际当前pose一致，缺样或身份变化原子拒绝，不捏造插值/时间、不新增枪/骨骼writer、不加宽几何/输入/原事件期限。现有latch_history/controller_relative_motion仅是可复用构件，尚未完成feed接线或验收；不再原样重跑feed-observe版本。20672原pending250ms期限失败、空仓完整回射及其余13项要求仍开放。

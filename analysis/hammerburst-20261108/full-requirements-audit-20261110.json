@@ -99,8 +99,8 @@
     {
       "id": "replacement",
       "requirement": "肩取新匣、持续持握入槽、普通换弹",
-      "status": "partial_current_seating_failed",
-      "limit": "Historical56252 replacement/closure observed. Current54452 both exact-source latch/supply handoffs exercised, zero support withdrawal/identity-lost; stage6 did not seat within8s. Endpoint/kernel/gap cause unknown.20672 failed before reload and provides no seating evidence.",
+      "status": "current_seating_sample_gap_failure_proven",
+      "limit": "Actual53560 loaded replacement reached6; approaching before787 then110.739ms gap rearmed below45mm, endpoint aligned at.011326mm depth rejected. No move/early/support/identity reject. Need authenticated real intermediate-motion ingestion; no geometry or deadline widening. Historical56252 remains separate.",
       "evidence": [
         {
           "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-53224-review.json",
@@ -121,6 +121,10 @@
         {
           "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-20672-first-failure-analysis.json",
           "sha256": "cf56505bfc98802e373195f23b1d61d5fc4d431d2e606912c6b3f7d777b96191"
+        },
+        {
+          "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-53560-first-failure-analysis.json",
+          "sha256": "6f6dc36a38ab2485071b25f63ec036ddd8818166833dbbd565599b6428541850"
         }
       ]
     },
@@ -240,9 +244,9 @@
   ],
   "completion_proven": false,
   "goal_active": true,
-  "immediate_next": "One separate focused loaded-replacement diagnostic through unchanged production code to obtain insertion endpoint/kernel/gap witnesses without twelve prerequisite drain bursts. This does not accept empty reload or close intermittent firing deadline failure. Full original requirements retained.",
+  "immediate_next": "Implement/test authenticated original producer intermediate-motion ingestion for HB insertion, preserving current Frame/grant/identity and all per-sample100ms/geometry/monotonic checks. Prove exact current endpoint, same held controls/mount/publisher, no fabricated poses/timestamps, and atomic rejection of missing/changed history. Do not rerun unchanged feed-observe candidate. Original event expiry and full13 requirements remain open.",
   "historical_evidence_does_not_certify_current_PG": true,
-  "candidate_runtime_status": "feed-observe-r1 actual20672: core6+five drain6 then1 ray of sixth burst; service gate4 pending original event release_required, total37 consistent rays. Normal cleanup. No reload/feed observer reached. Original250ms/100ms retained. Prior54452 seating failure still open.",
+  "candidate_runtime_status": "Actual53560 focused loaded replacement: core6, original72/R78 reload, latch/extract/supply to6. Observed kernel approaching; Frame787 gap110.739ms resets stroke at41.923mm below45mm approach. Endpoint depth.011326mm/lateral.005797mm/orientation1 rejected. No move/early/support/identity reject. Normal cleanup; not empty-flow validation.",
   "previous_recorded_candidate": {
     "name": "hammerburst-prepared-20261110-unheld-input-r1",
     "prepared_sha256": "76a2ae8cc56e4165b77ca5d17a9e6469ff66323e917be5a8b46da44df4f0bb58"
@@ -264,5 +268,5 @@
   "restore_verifier_status": "Optional --hammerburst-park-restore input action hook integrated into private reload adapter; five synthetic action/receipt regressions passed. Actual park/redraw/new-grant/native-resume, typed conservation, UI/reward and complete return-fire require game evidence.",
   "latest_service_first_failure": "runtime-3112-first-failure-analysis.json",
   "latest_startup_failure": "runtime-49732-startup-failure.json",
-  "latest_runtime_failure": "runtime-20672-first-failure-analysis.json"
+  "latest_runtime_failure": "runtime-53560-first-failure-analysis.json"
 }

@@ -117,6 +117,57 @@ class CinematicAnchorTests(unittest.TestCase):
     def sampler(self):
         return LiveRegistryAnchorSampler(self.r, cinematic_camera=True)
 
+    def class_discovery(self):
+        # Use the production scanner against the same synthetic reflected memory.
+        from resolve_camera import Resolver
+        resolver = Resolver.__new__(Resolver)
+        resolver.profile = self.r.profile
+        resolver.read = self.r.read
+        resolver.name = self.r.name
+        resolver.ident_cache = self.r.ident_cache
+        return resolver.discovery_class_candidates
+
+    def test_cold_camera_discovery_uses_production_class_scanner(self):
+        self.r.ident_cache.clear()
+        discover = mock.Mock(wraps=self.class_discovery())
+        self.r.discovery_class_candidates = discover
+        sampler = self.sampler()
+        discover.assert_called_once()
+        self.assertEqual(sampler.cinematic_contract.camera_class['address'], self.r.CAMERA_CLASS)
+        # Discovery hints still cannot hide a subsequent registry mutation.
+        identity = sampler.cinematic_contract.camera_class
+        self.r.ptr(self.r.objects_data + identity['internal_index'] * 8, 0)
+        with self.assertRaises(AnchorRejected):sampler.guard()
+
+    def test_cached_camera_candidate_does_not_start_full_scan(self):
+        self.r.discovery_class_candidates = mock.Mock(side_effect=AssertionError('unneeded scan'))
+        self.assertEqual(self.sampler().cinematic_contract.camera_class['address'], self.r.CAMERA_CLASS)
+        self.r.discovery_class_candidates.assert_not_called()
+
+    def test_camera_discovery_hint_cannot_rename_live_class(self):
+        for cached in (False, True):
+            with self.subTest(cached=cached):
+                self.r = CinematicFixture()
+                hint = self.r.identity(self.r.CAMERA_CLASS).copy()
+                self.r.word(self.r.CAMERA_CLASS + 72, 0)  # Live name is Class.
+                self.r.ident_cache.clear()
+                if cached:
+                    self.r.ident_cache[self.r.CAMERA_CLASS] = hint
+                    identity = self.r.identity
+                    self.r.identity = lambda a: hint if a == self.r.CAMERA_CLASS else identity(a)
+                else:
+                    self.r.discovery_class_candidates = lambda _: iter(((self.r.CAMERA_CLASS, hint),))
+                with self.assertRaisesRegex(AnchorRejected, 'discovery hint changed'):
+                    self.sampler()
+
+    def test_class_discovery_missing_camera_or_read_failure_is_rejected(self):
+        for failure in (False, True):
+            with self.subTest(failure=failure):
+                self.r = CinematicFixture();self.r.ident_cache.clear()
+                discover = mock.Mock(side_effect=RuntimeError('scan failed')) if failure else lambda _: iter(())
+                self.r.discovery_class_candidates = discover
+                with self.assertRaises(AnchorRejected):self.sampler()
+
     def test_cold_discovery_precedes_timestamp_and_both_verifications_stay_fresh(self):
         events=[];read=self.r.read
         init=cinematic_anchor.CinematicTargetCertificate.__init__
@@ -140,6 +191,8 @@ class CinematicAnchorTests(unittest.TestCase):
             self.assertNotIn('construct_begin',events)
 
     def test_cold_discovery_consumes_existing_guard_deadline(self):
+        self.r.ident_cache.clear()
+        self.r.discovery_class_candidates = self.class_discovery()
         clock=[0];init=cinematic_anchor.CinematicTargetCertificate.__init__
         def constructing(contract,sampler):
             init(contract,sampler);clock[0]=201000000
