@@ -1891,3 +1891,16 @@ QueryEngine分别记录进入Calls包装的次数与其正常返回次数；生�
 
 
 r104运行入口补充：共享进程40964、42324、34780、54756先后实际占用。一次run模式请求被同一OS guard拒绝，尚未backup／stage、claim仍未消耗，拒绝日志另存。新未消耗入口将run模式的零等待锁获取移到冻结来源校验之前：这是当下实际启动尝试，校验失败立即释放且无stage；没有未来队列、等待票或prepare-only预占。所有来源校验、真实占用复核、全量新鲜备份和恢复仍在该guard中；prepare-only继续完全不获取guard。实际入口异常路径7项离线检查通过，并确认run校验在fake guard已进入后才执行；未使用真实锁／游戏。重新prepare-only退出0，Native DLL未变，r102已消耗入口未修改。
+
+
+## r105：独立掩体实例准备与动作输入隔离（2026-11-10，尚未运行）
+
+上一目标轮仅核对既有需求文档，对开发／玩法没有新增完成证据；本轮据当前源树重新核对r102终局，确认自有正常清理、29项恢复和runtime_released已闭合。按最新主人独立运行要求，后续不执行旧r104的solo stage／restore入口，不排共享窗口、不控制其他实例，也未通知统筹。HB历史恢复回执另核SHA256 03146891…8e42，10项baseline_checks均true；它不构成掩体或HB玩法通过。
+
+新增隔离准备脚本，为唯一cover-1110-r105-source-stage创建自有Native、PG、XR、配置／存档、私有输入及cover-output。三个制品逐项复核：Native48770826…2a6（r104来源层次观测）、PGf8e6f3c2…807、XR16840b27…7fc；不复用seed的其他武器二进制。仅新私有config保持本掩体检查0.4，公共工具默认、用户文件、publicv71和原EXE未改。prepare实际退出0，未启动游戏、未消耗运行尝试。
+
+原Source1输入读取器保留共享内存magic／版本／游戏及publisher creation／序列／reference／100ms时效检查，将全机唯一XR枚举替换为本次launcher和session中精确XR身份、独立XR路径及source1核对。原普通接近／CT2吸附和五段眼点观察脚本已冻结派生到本次输出；不修改共享原脚本或原动作。输入前live同时复核本次目录／报告／session ID、owner／game／XR完整身份和实时creation，不使用全机唯一game／8720作为条件。双路录制继续使用原按PID+creation+HWND绑定的录制模块。
+
+实际生成live函数的离线反例14项通过：更换目录／报告、owner／game／XR、session、phase或任一实时creation均拒绝；无关额外进程不阻塞本实例。这里使用明确假身份提供者和临时合成报告，没有发输入或运行游戏；语法检查不能代替实跑。新原查询报告解释器的6项合成控制此前通过，旧r102缺新字段仍返回unknown，不将raw_hit0或查询错误签发无碰撞证明。
+
+证据：analysis/cover-system-20261108/isolated-r105/cover-1110-r105-source-stage/prepared.json、operator-prepared.json与identity-check.json。下一步完成本次启动／正常停止owner、显式一次probe环境和原动作接线，按真实内存准入执行一次来源层次观测；当前没有自有game／XR运行。来源拒绝原因、完整身体扫掠／当前占用、唯一C0实际提交、双眼遮挡及CV-01–24／AC-01–22和实体头显仍未完成，工程25%不变。
