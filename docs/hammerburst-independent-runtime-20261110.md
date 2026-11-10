@@ -414,3 +414,13 @@ launcher0/operator1/stop0、Native清理/PG入口恢复/XR0，本方game/子进�
 原库存observer增加独立最多16条Source1肩部UP观察，限肩部位置只选择观测，不授予动作/改变几何。只有原库存current_after成功phase4且实际Input evidence同sequence/sync并为baseline/quiet才输出hammerburst_pickup_up，记录原Frame/input/epochs/p/r/clock。已有idle4/down12限额保留。11项driver输入/回执fixtures与9项精确observer C++ fixtures通过：旧UP/错误source/未释放/错误target/frame/press/断源不发送或不再重复Grip，计数上限、Input序号/时间/status不符不发布基线。最初矛盾fixture同时出现source-gap与held时会先返回held，已修正为先保留source-gap；生产取枪门未改。
 
 完整PG SHA04f39bad7cd10271978084abe8b3009e4eb2493edff33c0108cd11494334a812，Native/XR未重建；仅扩展观测及测试驱动，不能称取枪/换弹已修复。原43项history与9项priority结果覆盖的代码未变，不重复扩大测试。下一步新唯一实例实际验证一次，保持全部13项及首发/尾部/空仓/贴合/头显要求。
+
+## 实际13492：取枪驱动通过，原首发事件超时
+
+pickup-baseline-r1/hb-cloak-1111-030749/game13492/creation134388115233198588。实际新UP命令122794824617000→Native肩部UP Frame110/seq4473 sync122794858045100/admitted122794915882200；随后唯一Grip命令122794930125300→真实matching held Frame112/seq4482/event1/press1/current HB，source sync122794971318900，回执后才移手。没有source-gap重试，该新driver分支已实测到，不把11项synthetic fixture当作游戏替代。
+
+之后Frame180原ButtonPress调用成功；真实首发event captured122804597859400，仍无射线。Frame181/source4905 sync122804660699000，read-game之后observed122804740625600（79.9266ms），input admission122804743183300（82.4843ms），原deliver gate8在122804744635700（83.9367ms）不能满足20ms reserve；下一service122804852207200距原event254.3478ms，原250ms门取消。最晚withdrawal177是更早的记录，不能借它解释当前181；当前失败证据来自同Frame source与现有delivery gate。原UP/edge/source/expiry门保持，helper停止后真实释放，没有重按。
+
+下一步只对已经实际owned、service validated、同一原press/counters/cohort且仍真实Down的HB FIRST pending，在当前muzzle准备后、read_game/aim/input冗余等待前调用原deliver；所有原native/current/20ms/source100ms/event250ms/claim/engine证据仍跑。不得早发新按下、尾部、UP/新边沿或其他枪事件；同Frame最多一次attempt，避免后面默认deliver再试。此调度修正尚未实现/编译/运行，不能先称首发修复。
+
+launcher0/operator1/stop0，Native清理/PG入口恢复/XR0、本方game/子进程退出、无强杀，1626前台/2710CLOAK零违规。168帧errors空、encode0，亲看48双眼全跨度三页，取枪/持枪可见，近脸/白面重叠/间歇近枪可见性仍未接受，非全部角度或头显证明。7份原文本SHA归档；详见runtime-13492-first-failure-analysis.json。无reload transition/priority/history分支，13项需求与30%保持，本方所有运行/请求终态。

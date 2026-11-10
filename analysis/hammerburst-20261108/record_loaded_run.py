@@ -30,7 +30,8 @@ def main(name,pid,action,candidate,interpretation):
  for prefix in ('hammerburst_press_timing','hammerburst_reload_transition','hammerburst_latch_frame','hammerburst_supply_frame','hammerburst_identity_lost',
   'native_equipment_support_withdrawal','hammerburst_feed_history','hammerburst_feed_outcome','hammerburst_feed_rejected','hammerburst_feed_move_rejected',
   'hammerburst_service_loss','hammerburst_stale_debt_wait','hammerburst_reload_complete','hammerburst_early_reload',
-  'hammerburst_inventory_timing','native_equipment_input_gap','native_equipment_frame_read','native_equipment'):
+  'hammerburst_inventory_timing','hammerburst_pickup_up','native_equipment_input_gap','native_equipment_frame_read','native_equipment',
+  'native_hammerburst_first_wait','native_hammerburst_release_rejected','native_hammerburst_continuation_rejected'):
   proof[prefix+'_rows']=rows(prefix)
  (A/f'runtime-{pid}-first-failure-analysis.json').write_text(json.dumps(proof,indent=2))
  review.SOURCE=action;review.OUTPUT=A/f'runtime-{pid}-media-review';review.main(len(media['frames']),pid)
