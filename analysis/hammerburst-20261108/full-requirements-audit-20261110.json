@@ -20,7 +20,7 @@
       "id": "finite_fire",
       "requirement": "\u5355\u624b/\u53cc\u624b\u7784\u51c6\u4e0e\u539f\u7248\u6709\u9650\u516d\u8fde\u53d1",
       "status": "failed_latest_live",
-      "limit": "Latest actual38240 acquired shoulder frame106, lost established held model on failed republication frame148, first trigger frame195 blocked, zero authoritative rays. Exact admission Source1 active, source age82.7828ms. Callback failure cause remains unproven. Narrow republication repair compiled; actual retest pending.",
+      "limit": "Latest actual53012 acquired frame109; first trigger frame191 baseline with both pressed/released, valueUP, exact source age98.5964ms/no20ms prep reserve, zero rays. Failed republish193 later holding returned202; full fire/reload still failed. Consumer gap cause unproven.",
       "evidence": [
         {
           "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-13712-first-failure-analysis.json",
@@ -41,6 +41,10 @@
         {
           "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-38240-first-failure-analysis.json",
           "sha256": "d88fe9276a5992c4e42e04ffe224a90ffab14aaacce1e12667e4e7b5d1c528ea"
+        },
+        {
+          "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-53012-first-failure-analysis.json",
+          "sha256": "833db5826ca8144ffbdb521d7089f64a1ef2d470dbeab53736a3229404e9392c"
         }
       ]
     },
@@ -195,14 +199,14 @@
     "prepared_sha256": "76a2ae8cc56e4165b77ca5d17a9e6469ff66323e917be5a8b46da44df4f0bb58"
   },
   "development_snapshot": {
-    "name": "restore-rebind-r1",
-    "prepared_sha256": "4f4d7ccfcc65e28e6e0a07d5656dcb8ffe1b1e0785c040e8c392daf5649d5af6",
+    "name": "restore-display-r1",
+    "prepared_sha256": "b78898389009662778c58bb3a50db65fdf5e2fea180c845544e47acc17e87848",
     "full_playground_compiled": true,
     "runtime_ready": false,
     "default_enabled": false,
     "selected_for_game": false,
     "restoration_rebind_integrated": true,
-    "restoration_display_integrated": false,
+    "restoration_display_integrated": true,
     "fresh_intent_resume_integrated": false
   }
 }

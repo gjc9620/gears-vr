@@ -36,6 +36,15 @@ bool begin() noexcept {
     if(!enabled())return false;
     if(stage==Stage::parked)return true;
     if(stage==Stage::parking)return finish();
+    if(stage==Stage::restoring){
+        // Repark the rebound ledger unchanged; cosmetic restoration acquired
+        // no native reload. Never replace its saved original timing lease.
+        if(!parked_plan.valid||lancerreload_state::lease.acquired||
+           !inv::counts_equal(transaction.inventory(),parked_plan.transaction.inventory())||
+           (anim::ownership.active&&!(anim::ownership.inventory==opening.identity))||
+           (visual::active&&!hand::same(visual::saved.weapon,opening.identity.weapon)))return false;
+        stage=Stage::parking;return finish();
+    }
     park_ledger::Plan proposed{};
     if(!park_ledger::prepare(stage,transaction,old_item,new_item,extraction.complete(),proposed))return false;
     if(serial&&(!lancerreload_state::lease.acquired||lancerreload_state::lease.serial!=serial||!(lancerreload_state::lease.identity==opening.identity)))return false;

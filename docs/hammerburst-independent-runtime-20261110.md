@@ -128,3 +128,19 @@ parked没有活跃原调用／显示资源，不继续占用共享服务；其�
 该步骤转入restoring，明确拦住原生UI/旧手动作落入；显示恢复与新鲜意图续接仍未接完，不能选作实际候选。共享开关默认OFF，独立开发snapshot显式ON用于编译，当前运行入口仍选择held-republish-r1。
 
 冻结RestoreRebind 22场景213检查、RestoreAdmission 25场景266检查、ParkControl 11场景65检查通过。前者为生产控制+实际台账，库存/挂接等引擎读数为夹具；后者另覆盖真实Frame时效/曲线。完整Playground编译链接成功，开发DLL SHA256 98751248c8329d724b5eb35767715ef62e99a99858f0f3e9913dc61e8b4ac334。首次编译因局部observed遮蔽既有全局被/WX拒绝，改名后通过，失败日志保留。补丁hammerburst-restore-rebind.patch。
+
+## held-republish-r1 实际53012：握持回归出现，首发仍失败
+
+hb-cloak-1110-204446已进入真实场景，session finished/passed=true，原launcher0、operator1、stop0，Native/入口恢复及XR退出走正常流程，owned game消失、无子进程残留/无强杀。1455次前台与2490次CLOAK检查零违规；增强音频helper明确读回initially_muted_sessions1、verified_muted_observations252、verify_failed0、target_shared_rejected0。不是完整武器通过。
+
+frame109肩部取枪成功；frame191首个trigger_pressed=1且trigger_released=1、value0，Input状态baseline1、Source ready1、精确admission active1，源年龄98.5964ms、preparation_budget0，零权威射线。previous_sync到当前sync相隔2225.4604ms，长消费间隔原因尚未证明，不扩大100ms/20ms/250ms约束。随后frame193 hold_failed，frame202 held1重新发布，本区间未发送新的Grip获取；证明本轮在失败后恢复过持枪，不能推广为全部生命周期通过。
+
+488张私有GPU组合帧、录制errors空，离线编码exit0；已亲看frame00478，场景和低位枪口可见，手部完整贴合及遮挡仍未接受。runtime-53012-first-failure-analysis.json与runtime-53012-text保存文本原件。下一步核对真实UP基线、DOWN消费及录制时序，不能用固定等待脚本的一次失败声称武器本体原因已定。
+
+## 恢复显示接入（开发版本，尚缺新意图续接）
+
+restore_control::display现在由实际restoring分支调用。以每帧短作用域限定原始gun-only clip启动/停止、原曲线保存角度seek、缺失弹匣的原显示隐藏；不同步执行多个阶段，不调用ForceReload、不改库存、不授予旧手授权。每步重新读实际库存并核对原台账；未知或过期只等待，部分派发失败保留原拥有者收据，转回parking清理，不自动重放启动。恢复中再收枪可回parked，保留原serial/游戏计时。
+
+新增Display18场景185检查、Rebind22/213、Admission25/266、ParkControl14/86均通过。Display为实际派发控制/真实台账，原动画/显示调用是夹具；Admission另验证真实Frame/曲线。完整Playground编译链接成功：restore-display-r1 SHAcebec05c8a705336ae606f707c423a5a2416ce52ec41848f455176063f0d8248。第一次构建因准备脚本在嵌套switch处截断分支失败，修正严格外层锚点后编译通过，失败日志保留。
+
+新鲜松开/再次按下的续接、原生重新接管与闭锁奖励计时仍待接完，开关默认OFF，未选作游戏候选。当前实际入口仍为held-republish-r1。补丁hammerburst-restore-display.patch，未缩减原十三项需求。

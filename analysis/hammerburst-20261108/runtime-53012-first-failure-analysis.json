@@ -1,0 +1,67 @@
+{
+  "schema": 1,
+  "instance": "hb-cloak-1110-204446",
+  "game_identity": {
+    "pid": 53012,
+    "creation_time": 134387882976739372,
+    "image": "j:\\gearsvr\\gears.of.war.reloaded.v1.0.1.3816947-p2p\\gears of war reloaded\\binaries_x64\\gowde-steam.exe"
+  },
+  "candidate": "held-republish-r1",
+  "candidate_sha256": "094a283297083020c62d69aadd86267d993fc98bed6050b8d8cf1e6bca9a48df",
+  "gameplay_passed": false,
+  "shoulder_acquisition_frame": 109,
+  "fire": {
+    "frame": 191,
+    "r2_status": 1,
+    "source_status": 1,
+    "trigger_pressed": 1,
+    "trigger_released": 1,
+    "trigger_value": 0,
+    "input_frame_active": 1,
+    "source_sync_ns": 99569008556900,
+    "input_admission_ns": 99569107153300,
+    "source_age_at_admission_ms": 98.5964,
+    "previous_sync_ns": 99566783096500,
+    "source_gap_ms": 2225.4604,
+    "preparation_budget": 0,
+    "authoritative_rays": 0
+  },
+  "hold_republication": {
+    "hold_failed_frame": 193,
+    "later_main_hand_held_frame": 202,
+    "same_loss_not_reproduced": "Published holding returned after failure; no new grip acquisition was sent during this interval. Does not prove all lifetimes."
+  },
+  "cleanup": {
+    "launcher_exit": 0,
+    "owned_game_absent": true,
+    "owned_children": {
+      "recorded": 0,
+      "remaining": []
+    },
+    "forced_termination": false,
+    "worker_error": null
+  },
+  "operator_exit": 1,
+  "foreground_checks": 1455,
+  "cloak_checks": 2490,
+  "foreground_violations": [],
+  "cloak_violations": [],
+  "audio": {
+    "initially_muted_sessions": 1,
+    "verified_muted_observations": 252,
+    "verify_failed": 0,
+    "target_shared_rejected": 0,
+    "limit": "Bounded helper target-session readback; not every instant of audio processing"
+  },
+  "recording": {
+    "frames": 488,
+    "errors": [],
+    "encoded": true,
+    "personally_reviewed": [
+      "frame-00478.jpg"
+    ],
+    "limit": "Actual scene and low gun visible; full hand fit/all-angle acceptance absent"
+  },
+  "first_failure": "No authoritative first burst; consumed trigger state was UP with both edge counters; admission age98.5964ms and no20ms firing reserve. Exact cause of long consumer gap remains unproven.",
+  "next_action": "Inspect real UP baseline and DOWN consumption and recording timing; preserve all original deadlines and guards"
+}

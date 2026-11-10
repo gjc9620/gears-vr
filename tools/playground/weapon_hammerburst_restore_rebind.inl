@@ -2,7 +2,7 @@
 // copies first; no original reload, animation, hand lease or ammo write here.
 namespace restore_control {
 bool rebind(hand::Frame const& source) noexcept {
-    if(!park_control::enabled()||stage!=Stage::parked||!parked_plan.valid||
+    if(!park_control::enabled()||stage!=Stage::parked||!parked_plan.valid||restoration_failed||
        !fresh_restore_main(source)||!eligible(source)||
        !(parked_plan.transaction.inventory().identity==opening.identity)||
        !inv::same_instance_across_hold(opening.identity,inv::identity(source))||
@@ -31,7 +31,7 @@ bool rebind(hand::Frame const& source) noexcept {
     opening.identity=rebound_inventory.identity; // Preserve original pre-insert counts/reward basis.
     if(parked_native_lease.serial)parked_native_lease.identity=rebound_inventory.identity;
     held={};stroke.reset();insertion.reset();extraction.reset();
-    released=false;restore_display_ready=false;stage=Stage::restoring;
+    released=false;restore_display_ready=false;restore_display_step=0;stage=Stage::restoring;
     return true;
 }
 }

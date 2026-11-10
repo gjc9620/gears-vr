@@ -129,6 +129,19 @@ int main(){
         visual::restore_ok=true;C(!park_control::finish());
         C(lancerreload_state::lease.acquired&&lancerreload_state::exits==1&&stage==Stage::parking);++cases;
     }
+    for(unsigned fault=0;fault<3;++fault){
+        Fixture f;setup(f,Stage::opening);C(park_control::begin());
+        const auto saved_serial=parked_native_lease.serial;const auto saved_begin=parked_native_lease.accepted_begin_ms;
+        stage=Stage::restoring;anim::ownership={opening.identity,true,false};
+        if(fault==1)++anim::ownership.inventory.world;
+        if(fault==2)lancerreload_state::lease.acquired=true;
+        C(park_control::begin()==(fault==0));
+        C(parked_native_lease.serial==saved_serial&&parked_native_lease.accepted_begin_ms==saved_begin);
+        C(transaction.inventory().loaded==70&&transaction.inventory().reserve==3);
+        if(!fault)C(stage==Stage::parked&&!anim::ownership.active&&lancerreload_state::exits==1);
+        else C(stage==Stage::restoring&&anim::ownership.active&&lancerreload_state::exits==1);
+        ++cases;
+    }
     std::printf("HammerburstParkControlTest: %u cases, %u checks passed; actual parking adapter and real ledger\n",cases,checks);return 0;
 #endif
 }
