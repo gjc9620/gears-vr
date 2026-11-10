@@ -143,3 +143,7 @@ continuation-rejection-isolated-r1从manual-veto-isolated原2253文件逐项复�
 ## 新失败记录的离线解释边界
 
 新增纯函数analyze_hb_continuation_rejection.py读取有限失败行，不访问进程/输入/游戏。release仅gate16、continuation仅gate7表示当前真正执行need_source，其余路径把source_stage标为历史值而不归因；cancel already requested不被当成根因。23个已知gate与重复/无效字段反例、实际13712旧原日志无新记录不造诊断，共30项通过（重复字段与独立无效值均拒绝）。原日志没有新增记录不能据缺失判通过。receipt-reader-check.json保存源码SHA/合成边界与实际旧日志观察。本工具不进入生产driver/不改候选或已冻结Python边界。
+
+## 主人最新独立执行要求：撤销远期交接依赖
+
+收到主人明确覆盖旧链条流程的要求：各枪独立推进，只在实际启动协调占用，动作结束立即正常停止并核恢复，离线编码/审片/保留不占共享使用权。HB已停止等待远期前后继/互审/票据，派生run_hammerburst_standalone_r2.py及独立plan/ready；原v6保护/原十raw目标/选择路径/环境清理/固定时效/库存/原动作和正常停止不改。旧HOD取消例外与整个前驱读取依赖均不带入。新首次O_EXCL claim绑定本次启动前fsync原件，stage/restore前复核，恢复后queue立即window_owned=false。prepare-only精确primary参数实际0，无claim/stage/启动；运行前仍须简短核对当前真实共享访问/正在启动者，沿既有launcher互斥，不能靠旧idle或旧终态抢启动。
