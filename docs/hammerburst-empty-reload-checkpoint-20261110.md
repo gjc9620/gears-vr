@@ -151,3 +151,9 @@ continuation-rejection-isolated-r1从manual-veto-isolated原2253文件逐项复�
 ## 独立入口首次尝试：真实外部占用拒绝，未stage
 
 Bow53536实际正常恢复释放后，HB重新核对四PID无并告知即将启动。独立入口55716在原idle处发现另一实际Steam game39644（2026-11-10 14:53:34 +08出生），退出1；没有prestage目录/基线、stage/config/bin写入或HB game/输入。不是ffmpeg误判；原真实占用保护保留。独立核55716已终，O_EXCL原claim consumed_unverified保留不可复用，occupied-start-refusal.json保存实际事实。无HB共享占用或需恢复的改动，不停止他人游戏；以后确认当前使用者释放后以新的独立attempt再启动，不借本消费claim。目标active，未增加玩法通过。
+
+## 独立53484实际：78轨迹至空仓，首次阻断是driver判据错误
+
+新attempt2未借旧claim：游戏53484/creation134387673793929071，PG daee9726/Native806d；实际全部78条原始一致射线、L72/R78→L0/R78，空仓真实trigger后无射线且L0/R78不变、无自动装填。此前13712少发未在本轮重现，不称因果修复。实际operator45852退出1，错误等待8秒to1；wrapper0不能当玩法通过。原PG日志实际存在reload_begin serial1/accepted_ms78664253及transition from1 to2/serial1/L0R78。生产begin分支直接设acquiring并return，transition日志只在后续step变化时写，所以不会有to1；旧测试条件不符合真实生产回执。修driver只核本次fresh begin非零serial＋同一serial真实1→2与L0R78，后续实际开/取/插/关/返射要求不删、不延时。提取真实改后driver函数，实际原件positive/旧to1不存在及9个拒绝条件共11项通过；没有改引擎逻辑或补库存。
+
+所有Native/entries/pad/drain/XR/launcher正常，十raw恢复全true，own runtime16716终态0，已第一时间释放并通知Bow/LS；LS随后已独立使用并结束，不等HB离线工作。共享done/worker/session/原PG日志已复制到runtime-53484-evidence，双路capture停止后硬链接隔离到runtime-53484-offline，不改原图，独立encode85217实际terminal0；两页全跨度overview与6张按QPC取样实际图亲阅。自然手型/右眼近枪遮挡/启动第三人称等未接受，按主人新三阶段要求不阻挡流程推进。媒体retention尚待独立处理，不占游戏。完整replacement/close/return-fire未执行，整体未完成。
