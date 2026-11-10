@@ -163,3 +163,7 @@ Bow53536实际正常恢复释放后，HB重新核对四PID无并告知即将启�
 Lancer35276实际退出、launcher finished后，Bow补充GN早先stage后未生game仍需恢复十原件。HB没有claim/stage，已直接通知GN完成既有恢复，仅等实际共享释放，不要求前驱资格。采用统一tools/debug-launch/runtime_stage_guard.py RuntimeGuard('solo-m1-1028d')，固定同一OS mutex覆盖consume→原件保存→stage/config→启动→正常停止恢复，prepare-only在锁外只读；busy不消费claim，原launcher内层Owner锁保持。guard源码SHA进入entry_dependencies，没有另造互不相认锁。
 
 必要准备检查发现公共run_v63_startup_repro.py后来仅新增Lancer logic-chain动作分派和该scope成功即stop、失败文字reason变化；HB empty-normal scope不变。已定向阅读三hunk，只有这一个直接/1057边界文件变化，其余不变。新runtime boundary独立复制到standalone-r3，不改已冻结product；新实际prepare-only0，无claim/stage/game。新优先级明确第一阶段逻辑全流程、第二体验、第三逐部件GrabPose，保留最终范围。
+
+## r3实际占用拒绝（未stage）
+
+GN十原件实际恢复释放后，第一次统一guard争用Busy，HB没有消费；真实持有者为HOD beam9/53920，不是HB或Bol。其实际运行终态/正常十原件恢复及空闲已观察后再试，HB取得guard，但原idle发现Longshot55436/XR34068/录制43704/operator27712已在用；HB54984在原件保存前拒绝退出，claim consumed_unverified保留、无prestage/部署/共享写入。已简短告LS正常完成、随后使用同一外层guard；不打断其运行，不据单一锁代替真实占用。后续独立入口把O_EXCL消费放到guard内且真实idle通过之后，避免纯争用/已占用检查消耗attempt；仍在任何baseline/stage前，不能复用旧54984消费记录。
