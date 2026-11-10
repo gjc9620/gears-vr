@@ -175,3 +175,9 @@ GN恢复全终、HOD退出后本枪r3曾取得guard但实际Longshot55436占用�
 首次失败为closing stage7/reason5：previous_ms80358027→sample_ms80358139=112ms，大于既有100ms；已接近闭合angle0.0242935rad，previous seek12.9137ms，retained_same1、hand_delta1.783mm。严格首拒绝停止，无恢复重抓或重复输入，真实关盖和返射未执行，不称完整流程通过。下一步核采样/消费路径，不改100ms、不绕闭合端点。game/Native/entries/pad/drain/XR/launcher正常，十raw全恢复，统一guard及时释放并已通知；随后Bow独立使用54588，本枪离线工作不持窗。
 
 本枪共享易变文本先隔离归档，随后capture硬链接独立目录。初始目录遍历遇另一interrupted stub重名而中断，已明确只选唯一dual-output目录完成隔离，没有覆盖原动作记录。编码73228实际terminal0，全部76.2秒三页双路overview亲阅；六张实际事件原图补审仍待完成，不伪称已阅。runtime-52960-review.json及runtime-sidecar-archive.json保存实际数值/原件SHA；媒体留存待独立安全处理。主枪遮挡/自然手型未接受，按主人第一阶段逻辑优先，不拿它们阻止该gap修复。
+
+## 关盖112ms缺口的原样本连续性方向（尚未live接线）
+
+复核hand_sample使用原controllers.sequence/sync_ns，local_hand由同一两只原raw grip和固定枪挂点求局部米坐标。公共controller continuity已有8点原producer ring与controller_relative_motion::build，保留每段100ms、同press/release/tracking/publisher约束；不必创造新writer或时间戳。不能照搬Longshot私有history context作为HB证明，HB仍须独立核固定mount和当前rig/source一致性。
+
+新增HB专用纯机械weapon_hammerburst_latch_history.h：调用者必须先鉴权原ring/同抓取/固定挂点和当前Frame；输入含之前原点、中间原点及精确当前点，逐点通过原stroke.observe（retain_stationary=false），不插值、不延长100ms、不产生Frame/lease/seek/bone回执，只有最终当前点结果可交给原消费者，任一点拒绝撤销、不提交部分推进。合成实际112ms形状测试证明直接跨gap仍拒绝、两段原56ms可闭合，8种缺点/过期/乱序/换token/失追/不同基线/端点不符/几何异常均拒绝。MSVC /W4 /WX /UNDEBUG编译执行0；latch-history-r1/result.json保存源SHA及边界。这不是已取得真实历史或游戏修复，尚未include入生产PG，当前候选不改。下一步HB独立current-context/raw-ring绑定与实际原样本证据，不以纯测试声称关盖通过。
