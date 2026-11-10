@@ -1,0 +1,309 @@
+{
+  "name": "cover-1111-r151-cloak-entry",
+  "waiting_identity": {
+    "pid": 32488,
+    "creation_time": 134388131889753947,
+    "image": "c:\\users\\11\\.cache\\codex-runtimes\\codex-primary-runtime\\dependencies\\python\\python.exe"
+  },
+  "started_ns": 1794339589144603000,
+  "observations": [
+    {
+      "at_ns": 1794339589211726500,
+      "reason": "Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: bow-1111-033243, lancer-natural-v139-225928"
+    },
+    {
+      "at_ns": 1794339591319307100,
+      "reason": "Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: bow-1111-033243, lancer-natural-v139-225928"
+    },
+    {
+      "at_ns": 1794339593464460500,
+      "reason": "Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: bow-1111-033243, lancer-natural-v139-225928"
+    },
+    {
+      "at_ns": 1794339595550788700,
+      "reason": "Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: bow-1111-033243, lancer-natural-v139-225928"
+    },
+    {
+      "at_ns": 1794339597641121300,
+      "reason": "Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: bow-1111-033243, lancer-natural-v139-225928"
+    },
+    {
+      "at_ns": 1794339599802375500,
+      "reason": "Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: bow-1111-033243, lancer-natural-v139-225928"
+    },
+    {
+      "at_ns": 1794339601919156500,
+      "reason": "Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: bow-1111-033243, lancer-natural-v139-225928"
+    },
+    {
+      "at_ns": 1794339603993223900,
+      "reason": "Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: bow-1111-033243, lancer-natural-v139-225928"
+    },
+    {
+      "at_ns": 1794339606082722400,
+      "reason": "Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: bow-1111-033243, lancer-natural-v139-225928"
+    },
+    {
+      "at_ns": 1794339608201201100,
+      "reason": "Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: bow-1111-033243, lancer-natural-v139-225928"
+    },
+    {
+      "at_ns": 1794339610298667700,
+      "reason": "Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: bow-1111-033243, lancer-natural-v139-225928"
+    },
+    {
+      "at_ns": 1794339612409536100,
+      "reason": "Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: bow-1111-033243, lancer-natural-v139-225928"
+    },
+    {
+      "at_ns": 1794339614524463100,
+      "reason": "Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: bow-1111-033243, lancer-natural-v139-225928"
+    },
+    {
+      "at_ns": 1794339616617522000,
+      "reason": "Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: bow-1111-033243, lancer-natural-v139-225928"
+    },
+    {
+      "at_ns": 1794339618716281900,
+      "reason": "Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: bow-1111-033243, lancer-natural-v139-225928"
+    },
+    {
+      "at_ns": 1794339620794713000,
+      "reason": "Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: bow-1111-033243, lancer-natural-v139-225928"
+    },
+    {
+      "at_ns": 1794339622869312400,
+      "reason": "Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: bow-1111-033243, lancer-natural-v139-225928"
+    },
+    {
+      "at_ns": 1794339624947393500,
+      "reason": "Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: bow-1111-033243, lancer-natural-v139-225928"
+    },
+    {
+      "at_ns": 1794339627037643000,
+      "reason": "Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: bow-1111-033243, lancer-natural-v139-225928"
+    },
+    {
+      "at_ns": 1794339629131350100,
+      "reason": "Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: bow-1111-033243, lancer-natural-v139-225928"
+    },
+    {
+      "at_ns": 1794339631224421800,
+      "reason": "Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: bow-1111-033243, lancer-natural-v139-225928"
+    },
+    {
+      "at_ns": 1794339633288765700,
+      "reason": "Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: gnasher-1111-c34-cold-filter, lancer-natural-v139-225928"
+    },
+    {
+      "at_ns": 1794339635363703800,
+      "reason": "Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: gnasher-1111-c34-cold-filter, lancer-natural-v139-225928"
+    },
+    {
+      "at_ns": 1794339637437650000,
+      "reason": "Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: gnasher-1111-c34-cold-filter, lancer-natural-v139-225928"
+    },
+    {
+      "at_ns": 1794339639523586300,
+      "reason": "Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: gnasher-1111-c34-cold-filter, lancer-natural-v139-225928"
+    },
+    {
+      "at_ns": 1794339641583331200,
+      "reason": "Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: gnasher-1111-c34-cold-filter, lancer-natural-v139-225928"
+    },
+    {
+      "at_ns": 1794339643651679200,
+      "reason": "Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: gnasher-1111-c34-cold-filter, lancer-natural-v139-225928"
+    },
+    {
+      "at_ns": 1794339645794608000,
+      "reason": "Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: gnasher-1111-c34-cold-filter, lancer-natural-v139-225928"
+    },
+    {
+      "at_ns": 1794339647894527500,
+      "reason": "Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: gnasher-1111-c34-cold-filter, lancer-natural-v139-225928"
+    },
+    {
+      "at_ns": 1794339649962020400,
+      "reason": "Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: gnasher-1111-c34-cold-filter, lancer-natural-v139-225928"
+    },
+    {
+      "at_ns": 1794339652063102700,
+      "reason": "Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: gnasher-1111-c34-cold-filter, lancer-natural-v139-225928"
+    },
+    {
+      "at_ns": 1794339654200514700,
+      "reason": "Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: gnasher-1111-c34-cold-filter, lancer-natural-v139-225928"
+    },
+    {
+      "at_ns": 1794339656330088400,
+      "reason": "Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: gnasher-1111-c34-cold-filter, lancer-natural-v139-225928"
+    },
+    {
+      "at_ns": 1794339658474410200,
+      "reason": "Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: gnasher-1111-c34-cold-filter, lancer-natural-v139-225928"
+    },
+    {
+      "at_ns": 1794339660543395800,
+      "reason": "Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: gnasher-1111-c34-cold-filter, lancer-natural-v139-225928"
+    },
+    {
+      "at_ns": 1794339662608429100,
+      "reason": "Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: gnasher-1111-c34-cold-filter, lancer-natural-v139-225928"
+    },
+    {
+      "at_ns": 1794339664724572100,
+      "reason": "Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: gnasher-1111-c34-cold-filter, lancer-natural-v139-225928"
+    },
+    {
+      "at_ns": 1794339666791110100,
+      "reason": "Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: gnasher-1111-c34-cold-filter, lancer-natural-v139-225928"
+    },
+    {
+      "at_ns": 1794339668865503700,
+      "reason": "Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: gnasher-1111-c34-cold-filter, lancer-natural-v139-225928"
+    },
+    {
+      "at_ns": 1794339670939303500,
+      "reason": "Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: gnasher-1111-c34-cold-filter, lancer-natural-v139-225928"
+    },
+    {
+      "at_ns": 1794339673028074500,
+      "reason": "Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: gnasher-1111-c34-cold-filter, lancer-natural-v139-225928"
+    },
+    {
+      "at_ns": 1794339675112916000,
+      "reason": "Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: gnasher-1111-c34-cold-filter, lancer-natural-v139-225928"
+    },
+    {
+      "at_ns": 1794339677214453800,
+      "reason": "Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: gnasher-1111-c34-cold-filter, lancer-natural-v139-225928"
+    },
+    {
+      "at_ns": 1794339679306032200,
+      "reason": "Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: gnasher-1111-c34-cold-filter, lancer-natural-v139-225928"
+    },
+    {
+      "at_ns": 1794339681447837600,
+      "reason": "Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: gnasher-1111-c34-cold-filter, lancer-natural-v139-225928"
+    },
+    {
+      "at_ns": 1794339683629858000,
+      "reason": "Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: gnasher-1111-c34-cold-filter, lancer-natural-v139-225928"
+    },
+    {
+      "at_ns": 1794339685882605600,
+      "reason": "Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: gnasher-1111-c34-cold-filter, lancer-natural-v139-225928"
+    },
+    {
+      "at_ns": 1794339688046170000,
+      "reason": "Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: gnasher-1111-c34-cold-filter, lancer-natural-v139-225928"
+    },
+    {
+      "at_ns": 1794339690144830700,
+      "reason": "Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: gnasher-1111-c34-cold-filter, lancer-natural-v139-225928"
+    },
+    {
+      "at_ns": 1794339692247675600,
+      "reason": "Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: gnasher-1111-c34-cold-filter, lancer-natural-v139-225928"
+    },
+    {
+      "at_ns": 1794339694318200300,
+      "reason": "Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: gnasher-1111-c34-cold-filter, lancer-natural-v139-225928"
+    },
+    {
+      "at_ns": 1794339696386376800,
+      "reason": "Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: gnasher-1111-c34-cold-filter, lancer-natural-v139-225928"
+    },
+    {
+      "at_ns": 1794339698469527300,
+      "reason": "Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: gnasher-1111-c34-cold-filter, lancer-natural-v139-225928"
+    },
+    {
+      "at_ns": 1794339700681204800,
+      "reason": "Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: gnasher-1111-c34-cold-filter, lancer-natural-v139-225928"
+    },
+    {
+      "at_ns": 1794339702817298800,
+      "reason": "Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: gnasher-1111-c34-cold-filter, lancer-natural-v139-225928"
+    },
+    {
+      "at_ns": 1794339704988477800,
+      "reason": "Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: gnasher-1111-c34-cold-filter, lancer-natural-v139-225928"
+    },
+    {
+      "at_ns": 1794339707257707000,
+      "reason": "Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: gnasher-1111-c34-cold-filter, lancer-natural-v139-225928"
+    },
+    {
+      "at_ns": 1794339713020446200,
+      "reason": "Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: gnasher-1111-c34-cold-filter, lancer-natural-v139-225928"
+    },
+    {
+      "at_ns": 1794339715392813300,
+      "reason": "Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: gnasher-1111-c34-cold-filter, lancer-natural-v139-225928"
+    },
+    {
+      "at_ns": 1794339717485737000,
+      "reason": "Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: gnasher-1111-c34-cold-filter, lancer-natural-v139-225928"
+    },
+    {
+      "at_ns": 1794339719573403100,
+      "reason": "Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: gnasher-1111-c34-cold-filter, lancer-natural-v139-225928"
+    },
+    {
+      "at_ns": 1794339721727439900,
+      "reason": "Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: gnasher-1111-c34-cold-filter, lancer-natural-v139-225928"
+    },
+    {
+      "at_ns": 1794339723903126600,
+      "reason": "Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: gnasher-1111-c34-cold-filter, lancer-natural-v139-225928"
+    },
+    {
+      "at_ns": 1794339726044895400,
+      "reason": "Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: gnasher-1111-c34-cold-filter, lancer-natural-v139-225928"
+    },
+    {
+      "at_ns": 1794339728138565400,
+      "reason": "Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: gnasher-1111-c34-cold-filter, lancer-natural-v139-225928"
+    },
+    {
+      "at_ns": 1794339730217617900,
+      "reason": "Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: gnasher-1111-c34-cold-filter, lancer-natural-v139-225928"
+    },
+    {
+      "at_ns": 1794339732290890300,
+      "reason": "Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: gnasher-1111-c34-cold-filter, lancer-natural-v139-225928"
+    },
+    {
+      "at_ns": 1794339734382204600,
+      "reason": "Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: gnasher-1111-c34-cold-filter, lancer-natural-v139-225928"
+    },
+    {
+      "at_ns": 1794339736472073600,
+      "reason": "Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: gnasher-1111-c34-cold-filter, lancer-natural-v139-225928"
+    },
+    {
+      "at_ns": 1794339738799317000,
+      "reason": "Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: gnasher-1111-c34-cold-filter, lancer-natural-v139-225928"
+    }
+  ],
+  "admitted": true,
+  "admitted_ns": 1794339743528216800,
+  "memory": {
+    "available_commit": 14032326656,
+    "available_physical": 10229567488,
+    "active_instances": [
+      "lancer-natural-v139-225928"
+    ]
+  },
+  "disk": {
+    "check": "disk_admission",
+    "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr",
+    "free_bytes": 51584147456,
+    "minimum_free_bytes": 4294967296,
+    "admitted": true
+  },
+  "runner_exit": 1,
+  "finished_ns": 1794339805349973200
+}
