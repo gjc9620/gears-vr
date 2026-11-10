@@ -1,0 +1,5647 @@
+{
+  "game": {
+    "pid": 10688,
+    "creation_time": 134388186580061229,
+    "image": "j:\\gearsvr\\gears.of.war.reloaded.v1.0.1.3816947-p2p\\gears of war reloaded\\binaries_x64\\gowde-steam.exe"
+  },
+  "passed": true,
+  "diagnostic_only": true,
+  "grab_authorized": false,
+  "body_modified": false,
+  "headset_accepted": false,
+  "trace_started": false,
+  "steps": [
+    {
+      "elapsed": 0.0,
+      "game_identity": {
+        "pid": 10688,
+        "creation_time": 134388186580061229,
+        "image": "j:\\gearsvr\\gears.of.war.reloaded.v1.0.1.3816947-p2p\\gears of war reloaded\\binaries_x64\\gowde-steam.exe"
+      },
+      "errors": [],
+      "menu": {
+        "pid": 10688,
+        "client": "0x175ede00",
+        "active_scenes": [],
+        "input_block_count": 0,
+        "top": null,
+        "focus_chain": [],
+        "focused_leaf": null,
+        "read_only": true,
+        "player_index": null,
+        "verified_reads": 255,
+        "consistent_reread": true
+      },
+      "native": {
+        "published": 244,
+        "epoch_submit_total": 249,
+        "world_generation": 1,
+        "started_qpc": 1298950074812,
+        "reference_generation": 1,
+        "owned_ui_faults": 0,
+        "owned_material_faults": 0,
+        "owned_ui_semantic_incomplete": 0,
+        "mirror_inventory_rejected": 17,
+        "anchor_submission_rejected": 0,
+        "telemetry_present_failures": 0,
+        "owned_ui_first_fault": 0,
+        "owned_material_first_fault": 0,
+        "owned_ui_first_fault_name": "none"
+      },
+      "pawn_identity": {
+        "address": 95227484800,
+        "internal_index": 207058,
+        "name": "Pawn_COGMarcus",
+        "number": 1,
+        "cls": 429639616,
+        "outer": 2625811760,
+        "name_index": 5927
+      },
+      "cinematic": false,
+      "special_move_raw": 0,
+      "health": 450,
+      "cover_state_raw": {
+        "CoverType": 0,
+        "CoverAction": 0
+      },
+      "pose": {
+        "position": [
+          -3900.0,
+          0.0,
+          583.9485473632812
+        ],
+        "yaw_ru": 0,
+        "controller_rotation_ru": [
+          0,
+          0,
+          0
+        ],
+        "camera_position": [
+          -4060.0,
+          48.0,
+          659.9485473632812
+        ],
+        "camera_rotation_ru": [
+          0,
+          0,
+          0
+        ],
+        "pawn_rotation_ru": [
+          0,
+          0,
+          0
+        ],
+        "fov": 80.0
+      },
+      "observation_adapter": "owned_empty_ui_playground",
+      "anchor_acquisition": {
+        "started_perf_counter_ns": 129908951544100,
+        "finished_perf_counter_ns": 129908954022200
+      }
+    },
+    {
+      "elapsed": 7.014999999999418,
+      "game_identity": {
+        "pid": 10688,
+        "creation_time": 134388186580061229,
+        "image": "j:\\gearsvr\\gears.of.war.reloaded.v1.0.1.3816947-p2p\\gears of war reloaded\\binaries_x64\\gowde-steam.exe"
+      },
+      "errors": [],
+      "menu": {
+        "pid": 10688,
+        "client": "0x175ede00",
+        "active_scenes": [],
+        "input_block_count": 0,
+        "top": null,
+        "focus_chain": [],
+        "focused_leaf": null,
+        "read_only": true,
+        "player_index": null,
+        "verified_reads": 14,
+        "consistent_reread": true
+      },
+      "native": {
+        "published": 336,
+        "epoch_submit_total": 342,
+        "world_generation": 1,
+        "started_qpc": 1298950074812,
+        "reference_generation": 1,
+        "owned_ui_faults": 0,
+        "owned_material_faults": 0,
+        "owned_ui_semantic_incomplete": 0,
+        "mirror_inventory_rejected": 17,
+        "anchor_submission_rejected": 0,
+        "telemetry_present_failures": 0,
+        "owned_ui_first_fault": 0,
+        "owned_material_first_fault": 0,
+        "owned_ui_first_fault_name": "none"
+      },
+      "pawn_identity": {
+        "address": 95227484800,
+        "internal_index": 207058,
+        "name": "Pawn_COGMarcus",
+        "number": 1,
+        "cls": 429639616,
+        "outer": 2625811760,
+        "name_index": 5927
+      },
+      "cinematic": false,
+      "special_move_raw": 0,
+      "health": 450,
+      "cover_state_raw": {
+        "CoverType": 0,
+        "CoverAction": 0
+      },
+      "pose": {
+        "position": [
+          -3976.563720703125,
+          -134.80902099609375,
+          579.0
+        ],
+        "yaw_ru": -5994,
+        "controller_rotation_ru": [
+          0,
+          -5994,
+          0
+        ],
+        "camera_position": [
+          -4084.756591796875,
+          -7.5298919677734375,
+          655.0
+        ],
+        "camera_rotation_ru": [
+          0,
+          -5994,
+          0
+        ],
+        "pawn_rotation_ru": [
+          0,
+          -5994,
+          0
+        ],
+        "fov": 80.0
+      },
+      "observation_adapter": "owned_empty_ui_playground",
+      "anchor_acquisition": {
+        "started_perf_counter_ns": 129913942351200,
+        "finished_perf_counter_ns": 129913945311800
+      }
+    },
+    {
+      "elapsed": 8.46799999999348,
+      "game_identity": {
+        "pid": 10688,
+        "creation_time": 134388186580061229,
+        "image": "j:\\gearsvr\\gears.of.war.reloaded.v1.0.1.3816947-p2p\\gears of war reloaded\\binaries_x64\\gowde-steam.exe"
+      },
+      "errors": [],
+      "menu": {
+        "pid": 10688,
+        "client": "0x175ede00",
+        "active_scenes": [],
+        "input_block_count": 0,
+        "top": null,
+        "focus_chain": [],
+        "focused_leaf": null,
+        "read_only": true,
+        "player_index": null,
+        "verified_reads": 14,
+        "consistent_reread": true
+      },
+      "native": {
+        "published": 377,
+        "epoch_submit_total": 382,
+        "world_generation": 1,
+        "started_qpc": 1298950074812,
+        "reference_generation": 1,
+        "owned_ui_faults": 0,
+        "owned_material_faults": 0,
+        "owned_ui_semantic_incomplete": 0,
+        "mirror_inventory_rejected": 17,
+        "anchor_submission_rejected": 0,
+        "telemetry_present_failures": 0,
+        "owned_ui_first_fault": 0,
+        "owned_material_first_fault": 0,
+        "owned_ui_first_fault_name": "none"
+      },
+      "pawn_identity": {
+        "address": 95227484800,
+        "internal_index": 207058,
+        "name": "Pawn_COGMarcus",
+        "number": 1,
+        "cls": 429639616,
+        "outer": 2625811760,
+        "name_index": 5927
+      },
+      "cinematic": false,
+      "special_move_raw": 0,
+      "health": 450,
+      "cover_state_raw": {
+        "CoverType": 2,
+        "CoverAction": 0
+      },
+      "pose": {
+        "position": [
+          -3930.808837890625,
+          -161.0412139892578,
+          579.0
+        ],
+        "yaw_ru": -5994,
+        "controller_rotation_ru": [
+          0,
+          -5994,
+          0
+        ],
+        "camera_position": [
+          -4139.28125,
+          -129.7357177734375,
+          627.0098876953125
+        ],
+        "camera_rotation_ru": [
+          0,
+          -5994,
+          0
+        ],
+        "pawn_rotation_ru": [
+          0,
+          -6628,
+          0
+        ],
+        "fov": 95.0
+      },
+      "observation_adapter": "owned_empty_ui_playground",
+      "anchor_acquisition": {
+        "started_perf_counter_ns": 129915404938100,
+        "finished_perf_counter_ns": 129915409168800
+      }
+    },
+    {
+      "elapsed": 8.687000000005355,
+      "game_identity": {
+        "pid": 10688,
+        "creation_time": 134388186580061229,
+        "image": "j:\\gearsvr\\gears.of.war.reloaded.v1.0.1.3816947-p2p\\gears of war reloaded\\binaries_x64\\gowde-steam.exe"
+      },
+      "errors": [],
+      "menu": {
+        "pid": 10688,
+        "client": "0x175ede00",
+        "active_scenes": [],
+        "input_block_count": 0,
+        "top": null,
+        "focus_chain": [],
+        "focused_leaf": null,
+        "read_only": true,
+        "player_index": null,
+        "verified_reads": 14,
+        "consistent_reread": true
+      },
+      "native": {
+        "published": 377,
+        "epoch_submit_total": 382,
+        "world_generation": 1,
+        "started_qpc": 1298950074812,
+        "reference_generation": 1,
+        "owned_ui_faults": 0,
+        "owned_material_faults": 0,
+        "owned_ui_semantic_incomplete": 0,
+        "mirror_inventory_rejected": 17,
+        "anchor_submission_rejected": 0,
+        "telemetry_present_failures": 0,
+        "owned_ui_first_fault": 0,
+        "owned_material_first_fault": 0,
+        "owned_ui_first_fault_name": "none"
+      },
+      "pawn_identity": {
+        "address": 95227484800,
+        "internal_index": 207058,
+        "name": "Pawn_COGMarcus",
+        "number": 1,
+        "cls": 429639616,
+        "outer": 2625811760,
+        "name_index": 5927
+      },
+      "cinematic": false,
+      "special_move_raw": 0,
+      "health": 450,
+      "cover_state_raw": {
+        "CoverType": 2,
+        "CoverAction": 0
+      },
+      "pose": {
+        "position": [
+          -3930.808837890625,
+          -161.0412139892578,
+          579.0
+        ],
+        "yaw_ru": -5994,
+        "controller_rotation_ru": [
+          0,
+          -5994,
+          0
+        ],
+        "camera_position": [
+          -4139.3896484375,
+          -129.88172912597656,
+          627.0018310546875
+        ],
+        "camera_rotation_ru": [
+          0,
+          -5994,
+          0
+        ],
+        "pawn_rotation_ru": [
+          0,
+          -6628,
+          0
+        ],
+        "fov": 95.0
+      },
+      "observation_adapter": "owned_empty_ui_playground",
+      "anchor_acquisition": {
+        "started_perf_counter_ns": 129915610700600,
+        "finished_perf_counter_ns": 129915613943500
+      }
+    },
+    {
+      "elapsed": 10.812000000005355,
+      "game_identity": {
+        "pid": 10688,
+        "creation_time": 134388186580061229,
+        "image": "j:\\gearsvr\\gears.of.war.reloaded.v1.0.1.3816947-p2p\\gears of war reloaded\\binaries_x64\\gowde-steam.exe"
+      },
+      "errors": [],
+      "menu": {
+        "pid": 10688,
+        "client": "0x175ede00",
+        "active_scenes": [],
+        "input_block_count": 0,
+        "top": null,
+        "focus_chain": [],
+        "focused_leaf": null,
+        "read_only": true,
+        "player_index": null,
+        "verified_reads": 14,
+        "consistent_reread": true
+      },
+      "native": {
+        "published": 428,
+        "epoch_submit_total": 433,
+        "world_generation": 1,
+        "started_qpc": 1298950074812,
+        "reference_generation": 1,
+        "owned_ui_faults": 0,
+        "owned_material_faults": 0,
+        "owned_ui_semantic_incomplete": 0,
+        "mirror_inventory_rejected": 17,
+        "anchor_submission_rejected": 0,
+        "telemetry_present_failures": 0,
+        "owned_ui_first_fault": 0,
+        "owned_material_first_fault": 0,
+        "owned_ui_first_fault_name": "none"
+      },
+      "pawn_identity": {
+        "address": 95227484800,
+        "internal_index": 207058,
+        "name": "Pawn_COGMarcus",
+        "number": 1,
+        "cls": 429639616,
+        "outer": 2625811760,
+        "name_index": 5927
+      },
+      "cinematic": false,
+      "special_move_raw": 0,
+      "health": 450,
+      "cover_state_raw": {
+        "CoverType": 2,
+        "CoverAction": 0
+      },
+      "pose": {
+        "position": [
+          -3930.808837890625,
+          -161.0412139892578,
+          579.0
+        ],
+        "yaw_ru": -5994,
+        "controller_rotation_ru": [
+          0,
+          -5994,
+          0
+        ],
+        "camera_position": [
+          -4139.4140625,
+          -129.91477966308594,
+          627.0
+        ],
+        "camera_rotation_ru": [
+          0,
+          -5994,
+          0
+        ],
+        "pawn_rotation_ru": [
+          0,
+          -6628,
+          0
+        ],
+        "fov": 95.0
+      },
+      "observation_adapter": "owned_empty_ui_playground",
+      "anchor_acquisition": {
+        "started_perf_counter_ns": 129917729082900,
+        "finished_perf_counter_ns": 129917731686100
+      }
+    },
+    {
+      "elapsed": 13.281000000002678,
+      "game_identity": {
+        "pid": 10688,
+        "creation_time": 134388186580061229,
+        "image": "j:\\gearsvr\\gears.of.war.reloaded.v1.0.1.3816947-p2p\\gears of war reloaded\\binaries_x64\\gowde-steam.exe"
+      },
+      "errors": [],
+      "menu": {
+        "pid": 10688,
+        "client": "0x175ede00",
+        "active_scenes": [],
+        "input_block_count": 0,
+        "top": null,
+        "focus_chain": [],
+        "focused_leaf": null,
+        "read_only": true,
+        "player_index": null,
+        "verified_reads": 14,
+        "consistent_reread": true
+      },
+      "native": {
+        "published": 493,
+        "epoch_submit_total": 498,
+        "world_generation": 1,
+        "started_qpc": 1298950074812,
+        "reference_generation": 1,
+        "owned_ui_faults": 0,
+        "owned_material_faults": 0,
+        "owned_ui_semantic_incomplete": 0,
+        "mirror_inventory_rejected": 17,
+        "anchor_submission_rejected": 0,
+        "telemetry_present_failures": 0,
+        "owned_ui_first_fault": 0,
+        "owned_material_first_fault": 0,
+        "owned_ui_first_fault_name": "none"
+      },
+      "pawn_identity": {
+        "address": 95227484800,
+        "internal_index": 207058,
+        "name": "Pawn_COGMarcus",
+        "number": 1,
+        "cls": 429639616,
+        "outer": 2625811760,
+        "name_index": 5927
+      },
+      "cinematic": false,
+      "special_move_raw": 0,
+      "health": 450,
+      "cover_state_raw": {
+        "CoverType": 2,
+        "CoverAction": 0
+      },
+      "pose": {
+        "position": [
+          -3930.808837890625,
+          -161.0412139892578,
+          579.0
+        ],
+        "yaw_ru": -5994,
+        "controller_rotation_ru": [
+          0,
+          -5994,
+          0
+        ],
+        "camera_position": [
+          -4139.4140625,
+          -129.91477966308594,
+          627.0
+        ],
+        "camera_rotation_ru": [
+          0,
+          -5994,
+          0
+        ],
+        "pawn_rotation_ru": [
+          0,
+          -6628,
+          0
+        ],
+        "fov": 95.0
+      },
+      "observation_adapter": "owned_empty_ui_playground",
+      "anchor_acquisition": {
+        "started_perf_counter_ns": 129920203442400,
+        "finished_perf_counter_ns": 129920211683300
+      }
+    },
+    {
+      "elapsed": 15.71799999999348,
+      "game_identity": {
+        "pid": 10688,
+        "creation_time": 134388186580061229,
+        "image": "j:\\gearsvr\\gears.of.war.reloaded.v1.0.1.3816947-p2p\\gears of war reloaded\\binaries_x64\\gowde-steam.exe"
+      },
+      "errors": [],
+      "menu": {
+        "pid": 10688,
+        "client": "0x175ede00",
+        "active_scenes": [],
+        "input_block_count": 0,
+        "top": null,
+        "focus_chain": [],
+        "focused_leaf": null,
+        "read_only": true,
+        "player_index": null,
+        "verified_reads": 14,
+        "consistent_reread": true
+      },
+      "native": {
+        "published": 531,
+        "epoch_submit_total": 537,
+        "world_generation": 1,
+        "started_qpc": 1298950074812,
+        "reference_generation": 1,
+        "owned_ui_faults": 0,
+        "owned_material_faults": 0,
+        "owned_ui_semantic_incomplete": 0,
+        "mirror_inventory_rejected": 17,
+        "anchor_submission_rejected": 0,
+        "telemetry_present_failures": 0,
+        "owned_ui_first_fault": 0,
+        "owned_material_first_fault": 0,
+        "owned_ui_first_fault_name": "none"
+      },
+      "pawn_identity": {
+        "address": 95227484800,
+        "internal_index": 207058,
+        "name": "Pawn_COGMarcus",
+        "number": 1,
+        "cls": 429639616,
+        "outer": 2625811760,
+        "name_index": 5927
+      },
+      "cinematic": false,
+      "special_move_raw": 0,
+      "health": 450,
+      "cover_state_raw": {
+        "CoverType": 2,
+        "CoverAction": 0
+      },
+      "pose": {
+        "position": [
+          -3930.808837890625,
+          -161.0412139892578,
+          579.0
+        ],
+        "yaw_ru": -5994,
+        "controller_rotation_ru": [
+          0,
+          -5994,
+          0
+        ],
+        "camera_position": [
+          -4139.4140625,
+          -129.91477966308594,
+          627.0
+        ],
+        "camera_rotation_ru": [
+          0,
+          -5994,
+          0
+        ],
+        "pawn_rotation_ru": [
+          0,
+          -6628,
+          0
+        ],
+        "fov": 95.0
+      },
+      "observation_adapter": "owned_empty_ui_playground",
+      "anchor_acquisition": {
+        "started_perf_counter_ns": 129922638681900,
+        "finished_perf_counter_ns": 129922642964700
+      }
+    },
+    {
+      "elapsed": 18.23399999999674,
+      "game_identity": {
+        "pid": 10688,
+        "creation_time": 134388186580061229,
+        "image": "j:\\gearsvr\\gears.of.war.reloaded.v1.0.1.3816947-p2p\\gears of war reloaded\\binaries_x64\\gowde-steam.exe"
+      },
+      "errors": [],
+      "menu": {
+        "pid": 10688,
+        "client": "0x175ede00",
+        "active_scenes": [],
+        "input_block_count": 0,
+        "top": null,
+        "focus_chain": [],
+        "focused_leaf": null,
+        "read_only": true,
+        "player_index": null,
+        "verified_reads": 14,
+        "consistent_reread": true
+      },
+      "native": {
+        "published": 566,
+        "epoch_submit_total": 572,
+        "world_generation": 1,
+        "started_qpc": 1298950074812,
+        "reference_generation": 1,
+        "owned_ui_faults": 0,
+        "owned_material_faults": 0,
+        "owned_ui_semantic_incomplete": 0,
+        "mirror_inventory_rejected": 17,
+        "anchor_submission_rejected": 0,
+        "telemetry_present_failures": 0,
+        "owned_ui_first_fault": 0,
+        "owned_material_first_fault": 0,
+        "owned_ui_first_fault_name": "none"
+      },
+      "pawn_identity": {
+        "address": 95227484800,
+        "internal_index": 207058,
+        "name": "Pawn_COGMarcus",
+        "number": 1,
+        "cls": 429639616,
+        "outer": 2625811760,
+        "name_index": 5927
+      },
+      "cinematic": false,
+      "special_move_raw": 0,
+      "health": 450,
+      "cover_state_raw": {
+        "CoverType": 2,
+        "CoverAction": 0
+      },
+      "pose": {
+        "position": [
+          -3930.808837890625,
+          -161.0412139892578,
+          579.0
+        ],
+        "yaw_ru": -5994,
+        "controller_rotation_ru": [
+          0,
+          -5994,
+          0
+        ],
+        "camera_position": [
+          -4139.4140625,
+          -129.91477966308594,
+          627.0
+        ],
+        "camera_rotation_ru": [
+          0,
+          -5994,
+          0
+        ],
+        "pawn_rotation_ru": [
+          0,
+          -6628,
+          0
+        ],
+        "fov": 95.0
+      },
+      "observation_adapter": "owned_empty_ui_playground",
+      "anchor_acquisition": {
+        "started_perf_counter_ns": 129925152173000,
+        "finished_perf_counter_ns": 129925156344300
+      }
+    }
+  ],
+  "global_cover_hints": 257,
+  "nearby_world_cover_hints": [
+    "0x8a1bf820",
+    "0x8a1b2f50",
+    "0x8a1b3b20",
+    "0x8a1b3f10",
+    "0x8a1b4300",
+    "0x8a1b46f0",
+    "0x8a1b4ae0",
+    "0x8a1b4ed0",
+    "0x8a1b52c0",
+    "0x8a1b56b0",
+    "0x8a1b5e90",
+    "0x8a1b6280",
+    "0x8a1399a0",
+    "0x8a139d90",
+    "0x8a13a180",
+    "0x8a130fd0",
+    "0x8a131f90"
+  ],
+  "link_hints": [
+    "0x8a1bf820",
+    "0x8a1b2f50",
+    "0x8a1b3b20",
+    "0x8a1b3f10",
+    "0x8a1b4300",
+    "0x8a1b46f0",
+    "0x8a1b4ae0",
+    "0x8a1b4ed0",
+    "0x8a1b52c0",
+    "0x8a1b56b0",
+    "0x8a1b5e90",
+    "0x8a1b6280",
+    "0x8a1399a0",
+    "0x8a139d90",
+    "0x8a13a180",
+    "0x8a130fd0",
+    "0x8a131f90"
+  ],
+  "unrelated_discovery_hints_skipped": 4,
+  "candidates": [
+    {
+      "link": {
+        "address": 2317088800,
+        "internal_index": 170270,
+        "name": "CoverLink",
+        "number": 245,
+        "cls": 428261632,
+        "outer": 2625811760,
+        "name_index": 2972
+      },
+      "slot": 0,
+      "raw": {
+        "index": 0,
+        "bEnabled": true,
+        "bLeanLeft": true,
+        "bLeanRight": true,
+        "bCanPopUp": true,
+        "CoverType": 2,
+        "LocationOffset": [
+          25.441265106201172,
+          -85.64994812011719,
+          1.999999761581421
+        ],
+        "RotationOffset": [
+          0,
+          -1730,
+          0
+        ]
+      },
+      "computed": {
+        "index": 0,
+        "position": [
+          -3789.394679551199,
+          744.699184905249,
+          563.9999997615814
+        ],
+        "forward": [
+          -0.9984808677621759,
+          -0.05509951644880448,
+          0.0
+        ],
+        "right": [
+          0.05509951644880448,
+          -0.9984808677621759,
+          0.0
+        ],
+        "up": [
+          0.0,
+          0.0,
+          1.0
+        ]
+      },
+      "distance": 753.1323638388816
+    },
+    {
+      "link": {
+        "address": 2317037392,
+        "internal_index": 170346,
+        "name": "CoverLink",
+        "number": 156,
+        "cls": 428261632,
+        "outer": 2625811760,
+        "name_index": 2972
+      },
+      "slot": 0,
+      "raw": {
+        "index": 0,
+        "bEnabled": true,
+        "bLeanLeft": true,
+        "bLeanRight": false,
+        "bCanPopUp": true,
+        "CoverType": 2,
+        "LocationOffset": [
+          135.20838928222656,
+          -226.42742919921875,
+          1.999999761581421
+        ],
+        "RotationOffset": [
+          0,
+          3671,
+          0
+        ]
+      },
+      "computed": {
+        "index": 0,
+        "position": [
+          -4248.637686080453,
+          570.3630537116684,
+          563.9999997615814
+        ],
+        "forward": [
+          0.8058836298949625,
+          -0.5920739608083766,
+          0.0
+        ],
+        "right": [
+          0.5920739608083766,
+          0.8058836298949625,
+          0.0
+        ],
+        "up": [
+          0.0,
+          0.0,
+          1.0
+        ]
+      },
+      "distance": 668.775144384306
+    },
+    {
+      "link": {
+        "address": 2317037392,
+        "internal_index": 170346,
+        "name": "CoverLink",
+        "number": 156,
+        "cls": 428261632,
+        "outer": 2625811760,
+        "name_index": 2972
+      },
+      "slot": 1,
+      "raw": {
+        "index": 1,
+        "bEnabled": true,
+        "bLeanLeft": false,
+        "bLeanRight": false,
+        "bCanPopUp": true,
+        "CoverType": 2,
+        "LocationOffset": [
+          88.55205535888672,
+          -78.88129425048828,
+          1.999999761581421
+        ],
+        "RotationOffset": [
+          0,
+          1783,
+          0
+        ]
+      },
+      "computed": {
+        "index": 1,
+        "position": [
+          -4151.416011274836,
+          690.7566639302597,
+          563.9999997615814
+        ],
+        "forward": [
+          0.6861305687141211,
+          -0.7274784138900869,
+          0.0
+        ],
+        "right": [
+          0.7274784138900869,
+          0.6861305687141211,
+          0.0
+        ],
+        "up": [
+          0.0,
+          0.0,
+          1.0
+        ]
+      },
+      "distance": 735.358908316767
+    },
+    {
+      "link": {
+        "address": 2317037392,
+        "internal_index": 170346,
+        "name": "CoverLink",
+        "number": 156,
+        "cls": 428261632,
+        "outer": 2625811760,
+        "name_index": 2972
+      },
+      "slot": 2,
+      "raw": {
+        "index": 2,
+        "bEnabled": true,
+        "bLeanLeft": false,
+        "bLeanRight": false,
+        "bCanPopUp": true,
+        "CoverType": 2,
+        "LocationOffset": [
+          92.09732055664062,
+          61.32005310058594,
+          1.999999761581421
+        ],
+        "RotationOffset": [
+          0,
+          -890,
+          0
+        ]
+      },
+      "computed": {
+        "index": 2,
+        "position": [
+          -4032.5866736217154,
+          765.2454229298536,
+          563.9999997615814
+        ],
+        "forward": [
+          0.47932548164441713,
+          -0.8776372158508021,
+          0.0
+        ],
+        "right": [
+          0.8776372158508021,
+          0.47932548164441713,
+          0.0
+        ],
+        "up": [
+          0.0,
+          0.0,
+          1.0
+        ]
+      },
+      "distance": 776.902650200512
+    },
+    {
+      "link": {
+        "address": 2317037392,
+        "internal_index": 170346,
+        "name": "CoverLink",
+        "number": 156,
+        "cls": 428261632,
+        "outer": 2625811760,
+        "name_index": 2972
+      },
+      "slot": 3,
+      "raw": {
+        "index": 3,
+        "bEnabled": true,
+        "bLeanLeft": false,
+        "bLeanRight": true,
+        "bCanPopUp": true,
+        "CoverType": 2,
+        "LocationOffset": [
+          148.55931091308594,
+          212.61700439453125,
+          1.999999761581421
+        ],
+        "RotationOffset": [
+          0,
+          -5338,
+          0
+        ]
+      },
+      "computed": {
+        "index": 3,
+        "position": [
+          -3875.2780973766176,
+          801.752075276982,
+          563.9999997615814
+        ],
+        "forward": [
+          0.07337333419839909,
+          -0.997304544173248,
+          0.0
+        ],
+        "right": [
+          0.997304544173248,
+          0.07337333419839909,
+          0.0
+        ],
+        "up": [
+          0.0,
+          0.0,
+          1.0
+        ]
+      },
+      "distance": 802.3811483526297
+    },
+    {
+      "link": {
+        "address": 2317040416,
+        "internal_index": 170349,
+        "name": "CoverLink",
+        "number": 119,
+        "cls": 428261632,
+        "outer": 2625811760,
+        "name_index": 2972
+      },
+      "slot": 0,
+      "raw": {
+        "index": 0,
+        "bEnabled": true,
+        "bLeanLeft": true,
+        "bLeanRight": false,
+        "bCanPopUp": true,
+        "CoverType": 2,
+        "LocationOffset": [
+          -154.49583435058594,
+          -583.6243896484375,
+          1.999999761581421
+        ],
+        "RotationOffset": [
+          0,
+          -9826,
+          0
+        ]
+      },
+      "computed": {
+        "index": 0,
+        "position": [
+          -3914.495834350586,
+          296.3756103515625,
+          563.9999997615814
+        ],
+        "forward": [
+          0.5881264795280599,
+          -0.8087689682956009,
+          0.0
+        ],
+        "right": [
+          0.8087689682956009,
+          0.5881264795280599,
+          0.0
+        ],
+        "up": [
+          0.0,
+          0.0,
+          1.0
+        ]
+      },
+      "distance": 297.3996909483904
+    },
+    {
+      "link": {
+        "address": 2317040416,
+        "internal_index": 170349,
+        "name": "CoverLink",
+        "number": 119,
+        "cls": 428261632,
+        "outer": 2625811760,
+        "name_index": 2972
+      },
+      "slot": 1,
+      "raw": {
+        "index": 1,
+        "bEnabled": true,
+        "bLeanLeft": false,
+        "bLeanRight": false,
+        "bCanPopUp": true,
+        "CoverType": 2,
+        "LocationOffset": [
+          -46.398677825927734,
+          -505.4573669433594,
+          1.999999761581421
+        ],
+        "RotationOffset": [
+          0,
+          -11315,
+          0
+        ]
+      },
+      "computed": {
+        "index": 1,
+        "position": [
+          -3806.3986778259277,
+          374.5426330566406,
+          563.9999997615814
+        ],
+        "forward": [
+          0.4670789087278386,
+          -0.884215637173202,
+          0.0
+        ],
+        "right": [
+          0.884215637173202,
+          0.4670789087278386,
+          0.0
+        ],
+        "up": [
+          0.0,
+          0.0,
+          1.0
+        ]
+      },
+      "distance": 386.57642975374625
+    },
+    {
+      "link": {
+        "address": 2317040416,
+        "internal_index": 170349,
+        "name": "CoverLink",
+        "number": 119,
+        "cls": 428261632,
+        "outer": 2625811760,
+        "name_index": 2972
+      },
+      "slot": 2,
+      "raw": {
+        "index": 2,
+        "bEnabled": true,
+        "bLeanLeft": false,
+        "bLeanRight": false,
+        "bCanPopUp": true,
+        "CoverType": 2,
+        "LocationOffset": [
+          42.622554779052734,
+          -469.4873046875,
+          1.999999761581421
+        ],
+        "RotationOffset": [
+          0,
+          -15057,
+          0
+        ]
+      },
+      "computed": {
+        "index": 2,
+        "position": [
+          -3717.3774452209473,
+          410.5126953125,
+          563.9999997615814
+        ],
+        "forward": [
+          0.12688159814546943,
+          -0.991917869610207,
+          0.0
+        ],
+        "right": [
+          0.991917869610207,
+          0.12688159814546943,
+          0.0
+        ],
+        "up": [
+          0.0,
+          0.0,
+          1.0
+        ]
+      },
+      "distance": 449.74394390383833
+    },
+    {
+      "link": {
+        "address": 2317040416,
+        "internal_index": 170349,
+        "name": "CoverLink",
+        "number": 119,
+        "cls": 428261632,
+        "outer": 2625811760,
+        "name_index": 2972
+      },
+      "slot": 3,
+      "raw": {
+        "index": 3,
+        "bEnabled": true,
+        "bLeanLeft": false,
+        "bLeanRight": false,
+        "bCanPopUp": false,
+        "CoverType": 2,
+        "LocationOffset": [
+          65.99999237060547,
+          -429.14019775390625,
+          1.999999761581421
+        ],
+        "RotationOffset": [
+          0,
+          0,
+          0
+        ]
+      },
+      "computed": {
+        "index": 3,
+        "position": [
+          -3694.0000076293945,
+          450.85980224609375,
+          563.9999997615814
+        ],
+        "forward": [
+          1.0,
+          0.0,
+          0.0
+        ],
+        "right": [
+          0.0,
+          1.0,
+          0.0
+        ],
+        "up": [
+          0.0,
+          0.0,
+          1.0
+        ]
+      },
+      "distance": 496.09323991513287
+    },
+    {
+      "link": {
+        "address": 2317040416,
+        "internal_index": 170349,
+        "name": "CoverLink",
+        "number": 119,
+        "cls": 428261632,
+        "outer": 2625811760,
+        "name_index": 2972
+      },
+      "slot": 6,
+      "raw": {
+        "index": 6,
+        "bEnabled": true,
+        "bLeanLeft": false,
+        "bLeanRight": false,
+        "bCanPopUp": true,
+        "CoverType": 2,
+        "LocationOffset": [
+          65.99999237060547,
+          -248.46853637695312,
+          1.999999761581421
+        ],
+        "RotationOffset": [
+          0,
+          0,
+          0
+        ]
+      },
+      "computed": {
+        "index": 6,
+        "position": [
+          -3694.0000076293945,
+          631.5314636230469,
+          563.9999997615814
+        ],
+        "forward": [
+          1.0,
+          0.0,
+          0.0
+        ],
+        "right": [
+          0.0,
+          1.0,
+          0.0
+        ],
+        "up": [
+          0.0,
+          0.0,
+          1.0
+        ]
+      },
+      "distance": 664.5795143953616
+    },
+    {
+      "link": {
+        "address": 2317040416,
+        "internal_index": 170349,
+        "name": "CoverLink",
+        "number": 119,
+        "cls": 428261632,
+        "outer": 2625811760,
+        "name_index": 2972
+      },
+      "slot": 7,
+      "raw": {
+        "index": 7,
+        "bEnabled": true,
+        "bLeanLeft": false,
+        "bLeanRight": false,
+        "bCanPopUp": true,
+        "CoverType": 2,
+        "LocationOffset": [
+          65.99999237060547,
+          -136.38499450683594,
+          1.999999761581421
+        ],
+        "RotationOffset": [
+          0,
+          0,
+          0
+        ]
+      },
+      "computed": {
+        "index": 7,
+        "position": [
+          -3694.0000076293945,
+          743.6150054931641,
+          563.9999997615814
+        ],
+        "forward": [
+          1.0,
+          0.0,
+          0.0
+        ],
+        "right": [
+          0.0,
+          1.0,
+          0.0
+        ],
+        "up": [
+          0.0,
+          0.0,
+          1.0
+        ]
+      },
+      "distance": 771.8790175945355
+    },
+    {
+      "link": {
+        "address": 2317040416,
+        "internal_index": 170349,
+        "name": "CoverLink",
+        "number": 119,
+        "cls": 428261632,
+        "outer": 2625811760,
+        "name_index": 2972
+      },
+      "slot": 10,
+      "raw": {
+        "index": 10,
+        "bEnabled": true,
+        "bLeanLeft": false,
+        "bLeanRight": false,
+        "bCanPopUp": false,
+        "CoverType": 2,
+        "LocationOffset": [
+          65.99999237060547,
+          110.64366149902344,
+          1.999999761581421
+        ],
+        "RotationOffset": [
+          0,
+          0,
+          0
+        ]
+      },
+      "computed": {
+        "index": 10,
+        "position": [
+          -3694.0000076293945,
+          990.6436614990234,
+          563.9999997615814
+        ],
+        "forward": [
+          1.0,
+          0.0,
+          0.0
+        ],
+        "right": [
+          0.0,
+          1.0,
+          0.0
+        ],
+        "up": [
+          0.0,
+          0.0,
+          1.0
+        ]
+      },
+      "distance": 1012.0320180094593
+    },
+    {
+      "link": {
+        "address": 2317040416,
+        "internal_index": 170349,
+        "name": "CoverLink",
+        "number": 119,
+        "cls": 428261632,
+        "outer": 2625811760,
+        "name_index": 2972
+      },
+      "slot": 11,
+      "raw": {
+        "index": 11,
+        "bEnabled": true,
+        "bLeanLeft": false,
+        "bLeanRight": false,
+        "bCanPopUp": true,
+        "CoverType": 2,
+        "LocationOffset": [
+          40.052486419677734,
+          149.99998474121094,
+          1.999999761581421
+        ],
+        "RotationOffset": [
+          0,
+          16384,
+          0
+        ]
+      },
+      "computed": {
+        "index": 11,
+        "position": [
+          -3719.9475135803223,
+          1029.999984741211,
+          563.9999997615814
+        ],
+        "forward": [
+          6.123233995736766e-17,
+          1.0,
+          0.0
+        ],
+        "right": [
+          -1.0,
+          6.123233995736766e-17,
+          0.0
+        ],
+        "up": [
+          0.0,
+          0.0,
+          1.0
+        ]
+      },
+      "distance": 1045.8091656627514
+    },
+    {
+      "link": {
+        "address": 2317040416,
+        "internal_index": 170349,
+        "name": "CoverLink",
+        "number": 119,
+        "cls": 428261632,
+        "outer": 2625811760,
+        "name_index": 2972
+      },
+      "slot": 12,
+      "raw": {
+        "index": 12,
+        "bEnabled": true,
+        "bLeanLeft": false,
+        "bLeanRight": true,
+        "bCanPopUp": true,
+        "CoverType": 2,
+        "LocationOffset": [
+          -56.46776580810547,
+          149.99998474121094,
+          1.999999761581421
+        ],
+        "RotationOffset": [
+          0,
+          16384,
+          0
+        ]
+      },
+      "computed": {
+        "index": 12,
+        "position": [
+          -3816.4677658081055,
+          1029.999984741211,
+          563.9999997615814
+        ],
+        "forward": [
+          6.123233995736766e-17,
+          1.0,
+          0.0
+        ],
+        "right": [
+          -1.0,
+          6.123233995736766e-17,
+          0.0
+        ],
+        "up": [
+          0.0,
+          0.0,
+          1.0
+        ]
+      },
+      "distance": 1033.5741614743479
+    },
+    {
+      "link": {
+        "address": 2317041424,
+        "internal_index": 170398,
+        "name": "CoverLink",
+        "number": 246,
+        "cls": 428261632,
+        "outer": 2625811760,
+        "name_index": 2972
+      },
+      "slot": 0,
+      "raw": {
+        "index": 0,
+        "bEnabled": true,
+        "bLeanLeft": true,
+        "bLeanRight": true,
+        "bCanPopUp": true,
+        "CoverType": 2,
+        "LocationOffset": [
+          24.63495635986328,
+          82.61231994628906,
+          1.999999761581421
+        ],
+        "RotationOffset": [
+          0,
+          62911,
+          0
+        ]
+      },
+      "computed": {
+        "index": 0,
+        "position": [
+          -3796.609634555258,
+          -769.9126734821989,
+          563.9999997615814
+        ],
+        "forward": [
+          -0.9807852804032305,
+          0.19509032201612814,
+          0.0
+        ],
+        "right": [
+          -0.19509032201612814,
+          -0.9807852804032305,
+          0.0
+        ],
+        "up": [
+          0.0,
+          0.0,
+          1.0
+        ]
+      },
+      "distance": 777.0798137943885
+    },
+    {
+      "link": {
+        "address": 2317042432,
+        "internal_index": 170399,
+        "name": "CoverLink",
+        "number": 244,
+        "cls": 428261632,
+        "outer": 2625811760,
+        "name_index": 2972
+      },
+      "slot": 0,
+      "raw": {
+        "index": 0,
+        "bEnabled": true,
+        "bLeanLeft": true,
+        "bLeanRight": false,
+        "bCanPopUp": true,
+        "CoverType": 2,
+        "LocationOffset": [
+          36.75293731689453,
+          60.8221321105957,
+          1.999999761581421
+        ],
+        "RotationOffset": [
+          0,
+          -1687,
+          0
+        ]
+      },
+      "computed": {
+        "index": 0,
+        "position": [
+          -4238.84716832612,
+          471.3719759975351,
+          563.9999997615814
+        ],
+        "forward": [
+          0.646688055838557,
+          0.7627545859814593,
+          0.0
+        ],
+        "right": [
+          -0.7627545859814593,
+          0.646688055838557,
+          0.0
+        ],
+        "up": [
+          0.0,
+          0.0,
+          1.0
+        ]
+      },
+      "distance": 580.8673581721284
+    },
+    {
+      "link": {
+        "address": 2317042432,
+        "internal_index": 170399,
+        "name": "CoverLink",
+        "number": 244,
+        "cls": 428261632,
+        "outer": 2625811760,
+        "name_index": 2972
+      },
+      "slot": 1,
+      "raw": {
+        "index": 1,
+        "bEnabled": true,
+        "bLeanLeft": false,
+        "bLeanRight": true,
+        "bCanPopUp": true,
+        "CoverType": 2,
+        "LocationOffset": [
+          36.71521759033203,
+          69.54013061523438,
+          1.999999761581421
+        ],
+        "RotationOffset": [
+          0,
+          -1520,
+          0
+        ]
+      },
+      "computed": {
+        "index": 1,
+        "position": [
+          -4246.337402471239,
+          475.8330647834639,
+          563.9999997615814
+        ],
+        "forward": [
+          0.6343932841636457,
+          0.7730104533627369,
+          0.0
+        ],
+        "right": [
+          -0.7730104533627369,
+          0.6343932841636457,
+          0.0
+        ],
+        "up": [
+          0.0,
+          0.0,
+          1.0
+        ]
+      },
+      "distance": 588.8672570649235
+    },
+    {
+      "link": {
+        "address": 2317043440,
+        "internal_index": 170400,
+        "name": "CoverLink",
+        "number": 98,
+        "cls": 428261632,
+        "outer": 2625811760,
+        "name_index": 2972
+      },
+      "slot": 0,
+      "raw": {
+        "index": 0,
+        "bEnabled": true,
+        "bLeanLeft": true,
+        "bLeanRight": true,
+        "bCanPopUp": true,
+        "CoverType": 2,
+        "LocationOffset": [
+          36.92683410644531,
+          118.4807357788086,
+          1.999999761581421
+        ],
+        "RotationOffset": [
+          0,
+          3706,
+          0
+        ]
+      },
+      "computed": {
+        "index": 0,
+        "position": [
+          -3927.340589891685,
+          -178.8303190730618,
+          563.9999997615814
+        ],
+        "forward": [
+          0.8049175654763921,
+          -0.5933866469575785,
+          0.0
+        ],
+        "right": [
+          0.5933866469575785,
+          0.8049175654763921,
+          0.0
+        ],
+        "up": [
+          0.0,
+          0.0,
+          1.0
+        ]
+      },
+      "distance": 182.0047675936421
+    },
+    {
+      "link": {
+        "address": 2317044448,
+        "internal_index": 170401,
+        "name": "CoverLink",
+        "number": 83,
+        "cls": 428261632,
+        "outer": 2625811760,
+        "name_index": 2972
+      },
+      "slot": 0,
+      "raw": {
+        "index": 0,
+        "bEnabled": true,
+        "bLeanLeft": true,
+        "bLeanRight": true,
+        "bCanPopUp": true,
+        "CoverType": 2,
+        "LocationOffset": [
+          42.61936950683594,
+          121.45836639404297,
+          1.999999761581421
+        ],
+        "RotationOffset": [
+          0,
+          67582,
+          0
+        ]
+      },
+      "computed": {
+        "index": 0,
+        "position": [
+          -3955.3574194324306,
+          192.7017305595739,
+          563.9999997615814
+        ],
+        "forward": [
+          0.7922236021750083,
+          0.6102309105222827,
+          0.0
+        ],
+        "right": [
+          -0.6102309105222827,
+          0.7922236021750083,
+          0.0
+        ],
+        "up": [
+          0.0,
+          0.0,
+          1.0
+        ]
+      },
+      "distance": 201.4853478501351
+    },
+    {
+      "link": {
+        "address": 2317045456,
+        "internal_index": 170402,
+        "name": "CoverLink",
+        "number": 114,
+        "cls": 428261632,
+        "outer": 2625811760,
+        "name_index": 2972
+      },
+      "slot": 0,
+      "raw": {
+        "index": 0,
+        "bEnabled": true,
+        "bLeanLeft": true,
+        "bLeanRight": true,
+        "bCanPopUp": true,
+        "CoverType": 2,
+        "LocationOffset": [
+          45.55064010620117,
+          115.79722595214844,
+          1.999999761581421
+        ],
+        "RotationOffset": [
+          0,
+          64904,
+          0
+        ]
+      },
+      "computed": {
+        "index": 0,
+        "position": [
+          -4262.438966651185,
+          -416.5272934858201,
+          563.9999997615814
+        ],
+        "forward": [
+          -0.3826834323650901,
+          0.9238795325112866,
+          0.0
+        ],
+        "right": [
+          -0.9238795325112866,
+          -0.3826834323650901,
+          0.0
+        ],
+        "up": [
+          0.0,
+          0.0,
+          1.0
+        ]
+      },
+      "distance": 552.4988102405459
+    },
+    {
+      "link": {
+        "address": 2317046464,
+        "internal_index": 170403,
+        "name": "CoverLink",
+        "number": 118,
+        "cls": 428261632,
+        "outer": 2625811760,
+        "name_index": 2972
+      },
+      "slot": 0,
+      "raw": {
+        "index": 0,
+        "bEnabled": true,
+        "bLeanLeft": true,
+        "bLeanRight": true,
+        "bCanPopUp": true,
+        "CoverType": 2,
+        "LocationOffset": [
+          30.421497344970703,
+          116.58930969238281,
+          1.999999761581421
+        ],
+        "RotationOffset": [
+          0,
+          -318,
+          0
+        ]
+      },
+      "computed": {
+        "index": 0,
+        "position": [
+          -4236.488294364119,
+          -485.7104897779495,
+          563.9999997615814
+        ],
+        "forward": [
+          0.5224658659909638,
+          -0.8526602012961038,
+          0.0
+        ],
+        "right": [
+          0.8526602012961038,
+          0.5224658659909638,
+          0.0
+        ],
+        "up": [
+          0.0,
+          0.0,
+          1.0
+        ]
+      },
+      "distance": 591.216539582433
+    },
+    {
+      "link": {
+        "address": 2317047472,
+        "internal_index": 170404,
+        "name": "CoverLink",
+        "number": 99,
+        "cls": 428261632,
+        "outer": 2625811760,
+        "name_index": 2972
+      },
+      "slot": 0,
+      "raw": {
+        "index": 0,
+        "bEnabled": true,
+        "bLeanLeft": true,
+        "bLeanRight": true,
+        "bCanPopUp": true,
+        "CoverType": 2,
+        "LocationOffset": [
+          39.97552490234375,
+          119.07119750976562,
+          1.999999761581421
+        ],
+        "RotationOffset": [
+          0,
+          -609,
+          0
+        ]
+      },
+      "computed": {
+        "index": 0,
+        "position": [
+          -4281.6884770480165,
+          405.2971637586952,
+          563.9999997615814
+        ],
+        "forward": [
+          -0.4731713961923218,
+          -0.8809703910038118,
+          0.0
+        ],
+        "right": [
+          0.8809703910038118,
+          -0.4731713961923218,
+          0.0
+        ],
+        "up": [
+          0.0,
+          0.0,
+          1.0
+        ]
+      },
+      "distance": 557.090503431439
+    },
+    {
+      "link": {
+        "address": 2317049488,
+        "internal_index": 170406,
+        "name": "CoverLink",
+        "number": 153,
+        "cls": 428261632,
+        "outer": 2625811760,
+        "name_index": 2972
+      },
+      "slot": 0,
+      "raw": {
+        "index": 0,
+        "bEnabled": true,
+        "bLeanLeft": true,
+        "bLeanRight": false,
+        "bCanPopUp": true,
+        "CoverType": 2,
+        "LocationOffset": [
+          138.38134765625,
+          -62.17470169067383,
+          1.999999761581421
+        ],
+        "RotationOffset": [
+          0,
+          -61718,
+          0
+        ]
+      },
+      "computed": {
+        "index": 0,
+        "position": [
+          -4123.25086321469,
+          -509.7292774318383,
+          563.9999997615814
+        ],
+        "forward": [
+          -0.8061106281495443,
+          -0.5917648647768361,
+          0.0
+        ],
+        "right": [
+          0.5917648647768361,
+          -0.8061106281495443,
+          0.0
+        ],
+        "up": [
+          0.0,
+          0.0,
+          1.0
+        ]
+      },
+      "distance": 556.8328553064246
+    },
+    {
+      "link": {
+        "address": 2317049488,
+        "internal_index": 170406,
+        "name": "CoverLink",
+        "number": 153,
+        "cls": 428261632,
+        "outer": 2625811760,
+        "name_index": 2972
+      },
+      "slot": 1,
+      "raw": {
+        "index": 1,
+        "bEnabled": true,
+        "bLeanLeft": false,
+        "bLeanRight": false,
+        "bCanPopUp": true,
+        "CoverType": 2,
+        "LocationOffset": [
+          95.08796691894531,
+          29.572858810424805,
+          1.999999761581421
+        ],
+        "RotationOffset": [
+          0,
+          -58826,
+          0
+        ]
+      },
+      "computed": {
+        "index": 1,
+        "position": [
+          -4057.2694945635394,
+          -586.7902316465957,
+          563.9999997615814
+        ],
+        "forward": [
+          -0.6133402810007847,
+          -0.7898187764936198,
+          0.0
+        ],
+        "right": [
+          0.7898187764936198,
+          -0.6133402810007847,
+          0.0
+        ],
+        "up": [
+          0.0,
+          0.0,
+          1.0
+        ]
+      },
+      "distance": 607.8276190068643
+    },
+    {
+      "link": {
+        "address": 2317049488,
+        "internal_index": 170406,
+        "name": "CoverLink",
+        "number": 153,
+        "cls": 428261632,
+        "outer": 2625811760,
+        "name_index": 2972
+      },
+      "slot": 2,
+      "raw": {
+        "index": 2,
+        "bEnabled": true,
+        "bLeanLeft": false,
+        "bLeanRight": false,
+        "bCanPopUp": true,
+        "CoverType": 2,
+        "LocationOffset": [
+          32.22407913208008,
+          115.75251007080078,
+          1.999999761581421
+        ],
+        "RotationOffset": [
+          0,
+          -56574,
+          0
+        ]
+      },
+      "computed": {
+        "index": 2,
+        "position": [
+          -3973.8822067872516,
+          -653.3136178829722,
+          563.9999997615814
+        ],
+        "forward": [
+          -0.42989371831082457,
+          -0.9028794996880223,
+          0.0
+        ],
+        "right": [
+          0.9028794996880223,
+          -0.42989371831082457,
+          0.0
+        ],
+        "up": [
+          0.0,
+          0.0,
+          1.0
+        ]
+      },
+      "distance": 657.7805168462423
+    },
+    {
+      "link": {
+        "address": 2317049488,
+        "internal_index": 170406,
+        "name": "CoverLink",
+        "number": 153,
+        "cls": 428261632,
+        "outer": 2625811760,
+        "name_index": 2972
+      },
+      "slot": 3,
+      "raw": {
+        "index": 3,
+        "bEnabled": true,
+        "bLeanLeft": false,
+        "bLeanRight": true,
+        "bCanPopUp": true,
+        "CoverType": 2,
+        "LocationOffset": [
+          -56.60707092285156,
+          174.67440795898438,
+          1.999999761581421
+        ],
+        "RotationOffset": [
+          0,
+          -54010,
+          0
+        ]
+      },
+      "computed": {
+        "index": 3,
+        "position": [
+          -3872.6460558116823,
+          -686.6903314191944,
+          563.9999997615814
+        ],
+        "forward": [
+          -0.19725257300941912,
+          -0.9803527030824997,
+          0.0
+        ],
+        "right": [
+          0.9803527030824997,
+          -0.19725257300941912,
+          0.0
+        ],
+        "up": [
+          0.0,
+          0.0,
+          1.0
+        ]
+      },
+      "distance": 687.5243952607631
+    },
+    {
+      "link": {
+        "address": 2317050496,
+        "internal_index": 170407,
+        "name": "CoverLink",
+        "number": 155,
+        "cls": 428261632,
+        "outer": 2625811760,
+        "name_index": 2972
+      },
+      "slot": 0,
+      "raw": {
+        "index": 0,
+        "bEnabled": true,
+        "bLeanLeft": true,
+        "bLeanRight": false,
+        "bCanPopUp": true,
+        "CoverType": 2,
+        "LocationOffset": [
+          150.57949829101562,
+          -74.02978515625,
+          1.999999761581421
+        ],
+        "RotationOffset": [
+          0,
+          3079,
+          0
+        ]
+      },
+      "computed": {
+        "index": 0,
+        "position": [
+          -3856.518069956323,
+          665.9775178461655,
+          563.9999997615814
+        ],
+        "forward": [
+          -0.14625627706392424,
+          0.9892467343486158,
+          0.0
+        ],
+        "right": [
+          -0.9892467343486158,
+          -0.14625627706392424,
+          0.0
+        ],
+        "up": [
+          0.0,
+          0.0,
+          1.0
+        ]
+      },
+      "distance": 667.6935502670968
+    },
+    {
+      "link": {
+        "address": 2317050496,
+        "internal_index": 170407,
+        "name": "CoverLink",
+        "number": 155,
+        "cls": 428261632,
+        "outer": 2625811760,
+        "name_index": 2972
+      },
+      "slot": 1,
+      "raw": {
+        "index": 1,
+        "bEnabled": true,
+        "bLeanLeft": false,
+        "bLeanRight": false,
+        "bCanPopUp": true,
+        "CoverType": 2,
+        "LocationOffset": [
+          104.4977798461914,
+          35.12934875488281,
+          1.999999761581421
+        ],
+        "RotationOffset": [
+          0,
+          6371,
+          0
+        ]
+      },
+      "computed": {
+        "index": 1,
+        "position": [
+          -3971.2912527737094,
+          636.5435613159349,
+          563.9999997615814
+        ],
+        "forward": [
+          -0.4460967560401172,
+          0.8949847396746405,
+          0.0
+        ],
+        "right": [
+          -0.8949847396746405,
+          -0.4460967560401172,
+          0.0
+        ],
+        "up": [
+          0.0,
+          0.0,
+          1.0
+        ]
+      },
+      "distance": 640.8339041641254
+    },
+    {
+      "link": {
+        "address": 2317050496,
+        "internal_index": 170407,
+        "name": "CoverLink",
+        "number": 155,
+        "cls": 428261632,
+        "outer": 2625811760,
+        "name_index": 2972
+      },
+      "slot": 2,
+      "raw": {
+        "index": 2,
+        "bEnabled": true,
+        "bLeanLeft": false,
+        "bLeanRight": false,
+        "bCanPopUp": true,
+        "CoverType": 2,
+        "LocationOffset": [
+          39.687007904052734,
+          125.1793441772461,
+          1.999999761581421
+        ],
+        "RotationOffset": [
+          0,
+          8623,
+          0
+        ]
+      },
+      "computed": {
+        "index": 2,
+        "position": [
+          -4069.934798389074,
+          585.7608010154836,
+          563.9999997615814
+        ],
+        "forward": [
+          -0.6274757938408825,
+          0.7786360691258493,
+          0.0
+        ],
+        "right": [
+          -0.7786360691258493,
+          -0.6274757938408825,
+          0.0
+        ],
+        "up": [
+          0.0,
+          0.0,
+          1.0
+        ]
+      },
+      "distance": 610.2388845863999
+    },
+    {
+      "link": {
+        "address": 2317050496,
+        "internal_index": 170407,
+        "name": "CoverLink",
+        "number": 155,
+        "cls": 428261632,
+        "outer": 2625811760,
+        "name_index": 2972
+      },
+      "slot": 3,
+      "raw": {
+        "index": 3,
+        "bEnabled": true,
+        "bLeanLeft": false,
+        "bLeanRight": true,
+        "bCanPopUp": true,
+        "CoverType": 2,
+        "LocationOffset": [
+          -64.3792724609375,
+          186.855712890625,
+          1.999999761581421
+        ],
+        "RotationOffset": [
+          0,
+          10741,
+          0
+        ]
+      },
+      "computed": {
+        "index": 3,
+        "position": [
+          -4146.321276954377,
+          491.9585032874117,
+          563.9999997615814
+        ],
+        "forward": [
+          -0.7716096761626734,
+          0.6360963037560696,
+          0.0
+        ],
+        "right": [
+          -0.6360963037560696,
+          -0.7716096761626734,
+          0.0
+        ],
+        "up": [
+          0.0,
+          0.0,
+          1.0
+        ]
+      },
+      "distance": 550.5409021940536
+    },
+    {
+      "link": {
+        "address": 2316540320,
+        "internal_index": 170496,
+        "name": "CoverLink",
+        "number": 158,
+        "cls": 428261632,
+        "outer": 2625811760,
+        "name_index": 2972
+      },
+      "slot": 0,
+      "raw": {
+        "index": 0,
+        "bEnabled": true,
+        "bLeanLeft": true,
+        "bLeanRight": false,
+        "bCanPopUp": true,
+        "CoverType": 2,
+        "LocationOffset": [
+          324.7929382324219,
+          18.169523239135742,
+          1.999999761581421
+        ],
+        "RotationOffset": [
+          0,
+          4604,
+          0
+        ]
+      },
+      "computed": {
+        "index": 0,
+        "position": [
+          -4363.207061767578,
+          -365.83047676086426,
+          563.9999997615814
+        ],
+        "forward": [
+          0.9041531919699918,
+          0.4272083864467963,
+          0.0
+        ],
+        "right": [
+          -0.4272083864467963,
+          0.9041531919699918,
+          0.0
+        ],
+        "up": [
+          0.0,
+          0.0,
+          1.0
+        ]
+      },
+      "distance": 590.5850187313013
+    },
+    {
+      "link": {
+        "address": 2316540320,
+        "internal_index": 170496,
+        "name": "CoverLink",
+        "number": 158,
+        "cls": 428261632,
+        "outer": 2625811760,
+        "name_index": 2972
+      },
+      "slot": 1,
+      "raw": {
+        "index": 1,
+        "bEnabled": true,
+        "bLeanLeft": false,
+        "bLeanRight": false,
+        "bCanPopUp": true,
+        "CoverType": 2,
+        "LocationOffset": [
+          282.7787780761719,
+          107.08802795410156,
+          1.999999761581421
+        ],
+        "RotationOffset": [
+          0,
+          4604,
+          0
+        ]
+      },
+      "computed": {
+        "index": 1,
+        "position": [
+          -4405.221221923828,
+          -276.91197204589844,
+          563.9999997615814
+        ],
+        "forward": [
+          0.9041531919699918,
+          0.4272083864467963,
+          0.0
+        ],
+        "right": [
+          -0.4272083864467963,
+          0.9041531919699918,
+          0.0
+        ],
+        "up": [
+          0.0,
+          0.0,
+          1.0
+        ]
+      },
+      "distance": 576.4778121454214
+    },
+    {
+      "link": {
+        "address": 2316540320,
+        "internal_index": 170496,
+        "name": "CoverLink",
+        "number": 158,
+        "cls": 428261632,
+        "outer": 2625811760,
+        "name_index": 2972
+      },
+      "slot": 2,
+      "raw": {
+        "index": 2,
+        "bEnabled": true,
+        "bLeanLeft": false,
+        "bLeanRight": false,
+        "bCanPopUp": true,
+        "CoverType": 2,
+        "LocationOffset": [
+          244.78756713867188,
+          139.99945068359375,
+          1.999999761581421
+        ],
+        "RotationOffset": [
+          0,
+          16384,
+          0
+        ]
+      },
+      "computed": {
+        "index": 2,
+        "position": [
+          -4443.212432861328,
+          -244.00054931640625,
+          563.9999997615814
+        ],
+        "forward": [
+          6.123233995736766e-17,
+          1.0,
+          0.0
+        ],
+        "right": [
+          -1.0,
+          6.123233995736766e-17,
+          0.0
+        ],
+        "up": [
+          0.0,
+          0.0,
+          1.0
+        ]
+      },
+      "distance": 595.8304791073114
+    },
+    {
+      "link": {
+        "address": 2316540320,
+        "internal_index": 170496,
+        "name": "CoverLink",
+        "number": 158,
+        "cls": 428261632,
+        "outer": 2625811760,
+        "name_index": 2972
+      },
+      "slot": 4,
+      "raw": {
+        "index": 4,
+        "bEnabled": true,
+        "bLeanLeft": false,
+        "bLeanRight": false,
+        "bCanPopUp": true,
+        "CoverType": 2,
+        "LocationOffset": [
+          -332.1386413574219,
+          139.99945068359375,
+          1.999999761581421
+        ],
+        "RotationOffset": [
+          0,
+          16384,
+          0
+        ]
+      },
+      "computed": {
+        "index": 4,
+        "position": [
+          -5020.138641357422,
+          -244.00054931640625,
+          563.9999997615814
+        ],
+        "forward": [
+          6.123233995736766e-17,
+          1.0,
+          0.0
+        ],
+        "right": [
+          -1.0,
+          6.123233995736766e-17,
+          0.0
+        ],
+        "up": [
+          0.0,
+          0.0,
+          1.0
+        ]
+      },
+      "distance": 1146.579604074735
+    },
+    {
+      "link": {
+        "address": 2316540320,
+        "internal_index": 170496,
+        "name": "CoverLink",
+        "number": 158,
+        "cls": 428261632,
+        "outer": 2625811760,
+        "name_index": 2972
+      },
+      "slot": 5,
+      "raw": {
+        "index": 5,
+        "bEnabled": true,
+        "bLeanLeft": false,
+        "bLeanRight": false,
+        "bCanPopUp": true,
+        "CoverType": 2,
+        "LocationOffset": [
+          -360.5634460449219,
+          118.45570373535156,
+          1.999999761581421
+        ],
+        "RotationOffset": [
+          0,
+          32764,
+          0
+        ]
+      },
+      "computed": {
+        "index": 5,
+        "position": [
+          -5048.563446044922,
+          -265.54429626464844,
+          563.9999997615814
+        ],
+        "forward": [
+          -0.9999999264657179,
+          0.0003834951875713363,
+          0.0
+        ],
+        "right": [
+          -0.0003834951875713363,
+          -0.9999999264657179,
+          0.0
+        ],
+        "up": [
+          0.0,
+          0.0,
+          1.0
+        ]
+      },
+      "distance": 1179.0291376470263
+    },
+    {
+      "link": {
+        "address": 2316540320,
+        "internal_index": 170496,
+        "name": "CoverLink",
+        "number": 158,
+        "cls": 428261632,
+        "outer": 2625811760,
+        "name_index": 2972
+      },
+      "slot": 6,
+      "raw": {
+        "index": 6,
+        "bEnabled": true,
+        "bLeanLeft": false,
+        "bLeanRight": true,
+        "bCanPopUp": true,
+        "CoverType": 2,
+        "LocationOffset": [
+          -360.5961608886719,
+          32.74935531616211,
+          1.999999761581421
+        ],
+        "RotationOffset": [
+          0,
+          32764,
+          0
+        ]
+      },
+      "computed": {
+        "index": 6,
+        "position": [
+          -5048.596160888672,
+          -351.2506446838379,
+          563.9999997615814
+        ],
+        "forward": [
+          -0.9999999264657179,
+          0.0003834951875713363,
+          0.0
+        ],
+        "right": [
+          -0.0003834951875713363,
+          -0.9999999264657179,
+          0.0
+        ],
+        "up": [
+          0.0,
+          0.0,
+          1.0
+        ]
+      },
+      "distance": 1201.2693706036232
+    },
+    {
+      "link": {
+        "address": 2316541328,
+        "internal_index": 170497,
+        "name": "CoverLink",
+        "number": 157,
+        "cls": 428261632,
+        "outer": 2625811760,
+        "name_index": 2972
+      },
+      "slot": 0,
+      "raw": {
+        "index": 0,
+        "bEnabled": true,
+        "bLeanLeft": true,
+        "bLeanRight": false,
+        "bCanPopUp": true,
+        "CoverType": 2,
+        "LocationOffset": [
+          97.61499786376953,
+          -320.92181396484375,
+          -2.948547124862671
+        ],
+        "RotationOffset": [
+          0,
+          -3238,
+          0
+        ]
+      },
+      "computed": {
+        "index": 0,
+        "position": [
+          -4242.261673826567,
+          328.8681204829399,
+          564.0000002384186
+        ],
+        "forward": [
+          -0.9259932181102514,
+          0.37754014357922305,
+          0.0
+        ],
+        "right": [
+          -0.37754014357922305,
+          -0.9259932181102514,
+          0.0
+        ],
+        "up": [
+          0.0,
+          0.0,
+          1.0
+        ]
+      },
+      "distance": 475.0739295866883
+    },
+    {
+      "link": {
+        "address": 2316541328,
+        "internal_index": 170497,
+        "name": "CoverLink",
+        "number": 157,
+        "cls": 428261632,
+        "outer": 2625811760,
+        "name_index": 2972
+      },
+      "slot": 1,
+      "raw": {
+        "index": 1,
+        "bEnabled": true,
+        "bLeanLeft": false,
+        "bLeanRight": false,
+        "bCanPopUp": true,
+        "CoverType": 2,
+        "LocationOffset": [
+          125.47430419921875,
+          -234.07891845703125,
+          -2.948547124862671
+        ],
+        "RotationOffset": [
+          0,
+          -3238,
+          0
+        ]
+      },
+      "computed": {
+        "index": 1,
+        "position": [
+          -4276.693313749272,
+          244.41522460656165,
+          564.0000002384186
+        ],
+        "forward": [
+          -0.9259932181102514,
+          0.37754014357922305,
+          0.0
+        ],
+        "right": [
+          -0.37754014357922305,
+          -0.9259932181102514,
+          0.0
+        ],
+        "up": [
+          0.0,
+          0.0,
+          1.0
+        ]
+      },
+      "distance": 449.48259051411173
+    },
+    {
+      "link": {
+        "address": 2316541328,
+        "internal_index": 170497,
+        "name": "CoverLink",
+        "number": 157,
+        "cls": 428261632,
+        "outer": 2625811760,
+        "name_index": 2972
+      },
+      "slot": 4,
+      "raw": {
+        "index": 4,
+        "bEnabled": true,
+        "bLeanLeft": false,
+        "bLeanRight": false,
+        "bCanPopUp": true,
+        "CoverType": 2,
+        "LocationOffset": [
+          80.97764587402344,
+          242.29541015625,
+          -2.948547124862671
+        ],
+        "RotationOffset": [
+          0,
+          -60581,
+          0
+        ]
+      },
+      "computed": {
+        "index": 4,
+        "position": [
+          -4268.829112996067,
+          -233.96810276843888,
+          564.0000002384186
+        ],
+        "forward": [
+          -0.921700094030644,
+          -0.387903256835905,
+          0.0
+        ],
+        "right": [
+          0.387903256835905,
+          -0.921700094030644,
+          0.0
+        ],
+        "up": [
+          0.0,
+          0.0,
+          1.0
+        ]
+      },
+      "distance": 437.234413374475
+    },
+    {
+      "link": {
+        "address": 2316541328,
+        "internal_index": 170497,
+        "name": "CoverLink",
+        "number": 157,
+        "cls": 428261632,
+        "outer": 2625811760,
+        "name_index": 2972
+      },
+      "slot": 5,
+      "raw": {
+        "index": 5,
+        "bEnabled": true,
+        "bLeanLeft": false,
+        "bLeanRight": true,
+        "bCanPopUp": true,
+        "CoverType": 2,
+        "LocationOffset": [
+          37.70501708984375,
+          326.4488220214844,
+          -2.948547124862671
+        ],
+        "RotationOffset": [
+          0,
+          -60581,
+          0
+        ]
+      },
+      "computed": {
+        "index": 5,
+        "position": [
+          -4232.131862063167,
+          -321.1898254321248,
+          564.0000002384186
+        ],
+        "forward": [
+          -0.921700094030644,
+          -0.387903256835905,
+          0.0
+        ],
+        "right": [
+          0.387903256835905,
+          -0.921700094030644,
+          0.0
+        ],
+        "up": [
+          0.0,
+          0.0,
+          1.0
+        ]
+      },
+      "distance": 462.4634280578935
+    },
+    {
+      "link": {
+        "address": 2316542336,
+        "internal_index": 170498,
+        "name": "CoverLink",
+        "number": 154,
+        "cls": 428261632,
+        "outer": 2625811760,
+        "name_index": 2972
+      },
+      "slot": 0,
+      "raw": {
+        "index": 0,
+        "bEnabled": true,
+        "bLeanLeft": true,
+        "bLeanRight": false,
+        "bCanPopUp": true,
+        "CoverType": 2,
+        "LocationOffset": [
+          143.90066528320312,
+          -236.3539276123047,
+          1.999999761581421
+        ],
+        "RotationOffset": [
+          0,
+          4257,
+          0
+        ]
+      },
+      "computed": {
+        "index": 0,
+        "position": [
+          -3879.2751983371527,
+          -819.6772643144803,
+          563.9999997615814
+        ],
+        "forward": [
+          0.16103485112243887,
+          0.9869487204125521,
+          0.0
+        ],
+        "right": [
+          -0.9869487204125521,
+          0.16103485112243887,
+          0.0
+        ],
+        "up": [
+          0.0,
+          0.0,
+          1.0
+        ]
+      },
+      "distance": 820.1818576324717
+    },
+    {
+      "link": {
+        "address": 2316542336,
+        "internal_index": 170498,
+        "name": "CoverLink",
+        "number": 154,
+        "cls": 428261632,
+        "outer": 2625811760,
+        "name_index": 2972
+      },
+      "slot": 1,
+      "raw": {
+        "index": 1,
+        "bEnabled": true,
+        "bLeanLeft": false,
+        "bLeanRight": false,
+        "bCanPopUp": true,
+        "CoverType": 2,
+        "LocationOffset": [
+          87.90391540527344,
+          -66.98521423339844,
+          1.999999761581421
+        ],
+        "RotationOffset": [
+          0,
+          -141,
+          0
+        ]
+      },
+      "computed": {
+        "index": 1,
+        "position": [
+          -4052.0901047396055,
+          -775.4459949043772,
+          563.9999997615814
+        ],
+        "forward": [
+          0.5508581170534929,
+          0.8345989065870386,
+          0.0
+        ],
+        "right": [
+          -0.8345989065870386,
+          0.5508581170534929,
+          0.0
+        ],
+        "up": [
+          0.0,
+          0.0,
+          1.0
+        ]
+      },
+      "distance": 790.4719068533435
+    },
+    {
+      "link": {
+        "address": 2316542336,
+        "internal_index": 170498,
+        "name": "CoverLink",
+        "number": 154,
+        "cls": 428261632,
+        "outer": 2625811760,
+        "name_index": 2972
+      },
+      "slot": 2,
+      "raw": {
+        "index": 2,
+        "bEnabled": true,
+        "bLeanLeft": false,
+        "bLeanRight": false,
+        "bCanPopUp": true,
+        "CoverType": 2,
+        "LocationOffset": [
+          92.6306381225586,
+          60.42854309082031,
+          1.999999761581421
+        ],
+        "RotationOffset": [
+          0,
+          -2554,
+          0
+        ]
+      },
+      "computed": {
+        "index": 2,
+        "position": [
+          -4156.818354103216,
+          -702.7232250977042,
+          563.9999997615814
+        ],
+        "forward": [
+          0.7275441924909729,
+          0.6860608194414386,
+          0.0
+        ],
+        "right": [
+          -0.6860608194414386,
+          0.7275441924909729,
+          0.0
+        ],
+        "up": [
+          0.0,
+          0.0,
+          1.0
+        ]
+      },
+      "distance": 748.4474214314729
+    },
+    {
+      "link": {
+        "address": 2316542336,
+        "internal_index": 170498,
+        "name": "CoverLink",
+        "number": 154,
+        "cls": 428261632,
+        "outer": 2625811760,
+        "name_index": 2972
+      },
+      "slot": 3,
+      "raw": {
+        "index": 3,
+        "bEnabled": true,
+        "bLeanLeft": false,
+        "bLeanRight": true,
+        "bCanPopUp": true,
+        "CoverType": 2,
+        "LocationOffset": [
+          140.81521606445312,
+          197.0870361328125,
+          1.999999761581421
+        ],
+        "RotationOffset": [
+          0,
+          -4217,
+          0
+        ]
+      },
+      "computed": {
+        "index": 3,
+        "position": [
+          -4245.8837484390915,
+          -588.4225129225746,
+          563.9999997615814
+        ],
+        "forward": [
+          0.8272378979434442,
+          0.5618518133868681,
+          0.0
+        ],
+        "right": [
+          -0.5618518133868681,
+          0.8272378979434442,
+          0.0
+        ],
+        "up": [
+          0.0,
+          0.0,
+          1.0
+        ]
+      },
+      "distance": 682.843002233904
+    },
+    {
+      "link": {
+        "address": 2316505040,
+        "internal_index": 170650,
+        "name": "CoverLink",
+        "number": 280,
+        "cls": 428261632,
+        "outer": 2625811760,
+        "name_index": 2972
+      },
+      "slot": 0,
+      "raw": {
+        "index": 0,
+        "bEnabled": true,
+        "bLeanLeft": true,
+        "bLeanRight": false,
+        "bCanPopUp": true,
+        "CoverType": 2,
+        "LocationOffset": [
+          205.40951538085938,
+          354.11846923828125,
+          1.999999761581421
+        ],
+        "RotationOffset": [
+          0,
+          -19969,
+          0
+        ]
+      },
+      "computed": {
+        "index": 0,
+        "position": [
+          -3702.5980099568746,
+          124.2863958798248,
+          568.0156247615814
+        ],
+        "forward": [
+          0.5555702330196023,
+          -0.8314696123025452,
+          0.0
+        ],
+        "right": [
+          0.8314696123025452,
+          0.5555702330196023,
+          0.0
+        ],
+        "up": [
+          0.0,
+          0.0,
+          1.0
+        ]
+      },
+      "distance": 233.8129848755506
+    },
+    {
+      "link": {
+        "address": 2316505040,
+        "internal_index": 170650,
+        "name": "CoverLink",
+        "number": 280,
+        "cls": 428261632,
+        "outer": 2625811760,
+        "name_index": 2972
+      },
+      "slot": 1,
+      "raw": {
+        "index": 1,
+        "bEnabled": true,
+        "bLeanLeft": false,
+        "bLeanRight": false,
+        "bCanPopUp": true,
+        "CoverType": 2,
+        "LocationOffset": [
+          313.7518005371094,
+          288.07818603515625,
+          1.999999761581421
+        ],
+        "RotationOffset": [
+          0,
+          -26113,
+          0
+        ]
+      },
+      "computed": {
+        "index": 1,
+        "position": [
+          -3585.0191051094125,
+          171.9788574780543,
+          568.0156247615814
+        ],
+        "forward": [
+          3.3306690738754696e-16,
+          -0.9999999999999999,
+          0.0
+        ],
+        "right": [
+          0.9999999999999999,
+          3.3306690738754696e-16,
+          0.0
+        ],
+        "up": [
+          0.0,
+          0.0,
+          1.0
+        ]
+      },
+      "distance": 359.2263208454581
+    },
+    {
+      "link": {
+        "address": 2316505040,
+        "internal_index": 170650,
+        "name": "CoverLink",
+        "number": 280,
+        "cls": 428261632,
+        "outer": 2625811760,
+        "name_index": 2972
+      },
+      "slot": 2,
+      "raw": {
+        "index": 2,
+        "bEnabled": true,
+        "bLeanLeft": false,
+        "bLeanRight": false,
+        "bCanPopUp": true,
+        "CoverType": 2,
+        "LocationOffset": [
+          360.7900390625,
+          151.93203735351562,
+          1.999999761581421
+        ],
+        "RotationOffset": [
+          0,
+          -36353,
+          0
+        ]
+      },
+      "computed": {
+        "index": 2,
+        "position": [
+          -3447.640694443511,
+          128.67132964136187,
+          568.0156247615814
+        ],
+        "forward": [
+          -0.8314696123025451,
+          -0.5555702330196024,
+          0.0
+        ],
+        "right": [
+          0.5555702330196024,
+          -0.8314696123025451,
+          0.0
+        ],
+        "up": [
+          0.0,
+          0.0,
+          1.0
+        ]
+      },
+      "distance": 470.5731722249544
+    },
+    {
+      "link": {
+        "address": 2316505040,
+        "internal_index": 170650,
+        "name": "CoverLink",
+        "number": 280,
+        "cls": 428261632,
+        "outer": 2625811760,
+        "name_index": 2972
+      },
+      "slot": 3,
+      "raw": {
+        "index": 3,
+        "bEnabled": true,
+        "bLeanLeft": false,
+        "bLeanRight": false,
+        "bCanPopUp": true,
+        "CoverType": 2,
+        "LocationOffset": [
+          280.9620056152344,
+          49.23797607421875,
+          1.999999761581421
+        ],
+        "RotationOffset": [
+          0,
+          -40449,
+          0
+        ]
+      },
+      "computed": {
+        "index": 3,
+        "position": [
+          -3412.6975428090195,
+          3.3814206305294476,
+          568.0156247615814
+        ],
+        "forward": [
+          -0.9807852804032304,
+          -0.19509032201612847,
+          0.0
+        ],
+        "right": [
+          0.19509032201612847,
+          -0.9807852804032304,
+          0.0
+        ],
+        "up": [
+          0.0,
+          0.0,
+          1.0
+        ]
+      },
+      "distance": 487.5745858968448
+    },
+    {
+      "link": {
+        "address": 2316505040,
+        "internal_index": 170650,
+        "name": "CoverLink",
+        "number": 280,
+        "cls": 428261632,
+        "outer": 2625811760,
+        "name_index": 2972
+      },
+      "slot": 4,
+      "raw": {
+        "index": 4,
+        "bEnabled": true,
+        "bLeanLeft": false,
+        "bLeanRight": false,
+        "bCanPopUp": true,
+        "CoverType": 2,
+        "LocationOffset": [
+          151.649169921875,
+          14.17917251586914,
+          1.999999761581421
+        ],
+        "RotationOffset": [
+          0,
+          14847,
+          0
+        ]
+      },
+      "computed": {
+        "index": 4,
+        "position": [
+          -3461.557653592976,
+          -121.37281278934387,
+          568.0156247615814
+        ],
+        "forward": [
+          -0.7071067811865475,
+          0.7071067811865475,
+          0.0
+        ],
+        "right": [
+          -0.7071067811865475,
+          -0.7071067811865475,
+          0.0
+        ],
+        "up": [
+          0.0,
+          0.0,
+          1.0
+        ]
+      },
+      "distance": 455.21083997410017
+    },
+    {
+      "link": {
+        "address": 2316505040,
+        "internal_index": 170650,
+        "name": "CoverLink",
+        "number": 280,
+        "cls": 428261632,
+        "outer": 2625811760,
+        "name_index": 2972
+      },
+      "slot": 5,
+      "raw": {
+        "index": 5,
+        "bEnabled": true,
+        "bLeanLeft": false,
+        "bLeanRight": false,
+        "bCanPopUp": true,
+        "CoverType": 2,
+        "LocationOffset": [
+          51.34117126464844,
+          65.57831573486328,
+          1.999999761581421
+        ],
+        "RotationOffset": [
+          0,
+          8703,
+          0
+        ]
+      },
+      "computed": {
+        "index": 5,
+        "position": [
+          -3562.590448240814,
+          -171.33220553898104,
+          568.0156247615814
+        ],
+        "forward": [
+          -0.19509032201612825,
+          0.9807852804032304,
+          0.0
+        ],
+        "right": [
+          -0.9807852804032304,
+          -0.19509032201612825,
+          0.0
+        ],
+        "up": [
+          0.0,
+          0.0,
+          1.0
+        ]
+      },
+      "distance": 378.75293833291664
+    },
+    {
+      "link": {
+        "address": 2316505040,
+        "internal_index": 170650,
+        "name": "CoverLink",
+        "number": 280,
+        "cls": 428261632,
+        "outer": 2625811760,
+        "name_index": 2972
+      },
+      "slot": 6,
+      "raw": {
+        "index": 6,
+        "bEnabled": true,
+        "bLeanLeft": false,
+        "bLeanRight": true,
+        "bCanPopUp": true,
+        "CoverType": 2,
+        "LocationOffset": [
+          5.7094268798828125,
+          205.98980712890625,
+          1.999999761581421
+        ],
+        "RotationOffset": [
+          0,
+          511,
+          0
+        ]
+      },
+      "computed": {
+        "index": 6,
+        "position": [
+          -3702.5573186157603,
+          -124.35435747695303,
+          568.0156247615814
+        ],
+        "forward": [
+          0.5555702330196023,
+          0.8314696123025452,
+          0.0
+        ],
+        "right": [
+          -0.8314696123025452,
+          0.5555702330196023,
+          0.0
+        ],
+        "up": [
+          0.0,
+          0.0,
+          1.0
+        ]
+      },
+      "distance": 233.883468159543
+    },
+    {
+      "link": {
+        "address": 2316509072,
+        "internal_index": 170685,
+        "name": "CoverLink",
+        "number": 120,
+        "cls": 428261632,
+        "outer": 2625811760,
+        "name_index": 2972
+      },
+      "slot": 0,
+      "raw": {
+        "index": 0,
+        "bEnabled": true,
+        "bLeanLeft": true,
+        "bLeanRight": false,
+        "bCanPopUp": true,
+        "CoverType": 2,
+        "LocationOffset": [
+          150.377685546875,
+          -86.35529327392578,
+          -13.794797897338867
+        ],
+        "RotationOffset": [
+          0,
+          -13469,
+          0
+        ]
+      },
+      "computed": {
+        "index": 0,
+        "position": [
+          -3841.552731704903,
+          -178.74064835832536,
+          564.0000019073486
+        ],
+        "forward": [
+          -0.6915515302332826,
+          -0.7223271288218415,
+          0.0
+        ],
+        "right": [
+          0.7223271288218415,
+          -0.6915515302332826,
+          0.0
+        ],
+        "up": [
+          0.0,
+          0.0,
+          1.0
+        ]
+      },
+      "distance": 189.10908759898598
+    },
+    {
+      "link": {
+        "address": 2316509072,
+        "internal_index": 170685,
+        "name": "CoverLink",
+        "number": 120,
+        "cls": 428261632,
+        "outer": 2625811760,
+        "name_index": 2972
+      },
+      "slot": 1,
+      "raw": {
+        "index": 1,
+        "bEnabled": true,
+        "bLeanLeft": false,
+        "bLeanRight": false,
+        "bCanPopUp": true,
+        "CoverType": 2,
+        "LocationOffset": [
+          303.5738830566406,
+          7.969818115234375,
+          -13.794797897338867
+        ],
+        "RotationOffset": [
+          0,
+          -8622,
+          0
+        ]
+      },
+      "computed": {
+        "index": 1,
+        "position": [
+          -3682.9182301270307,
+          -263.6016905341583,
+          564.0000019073486
+        ],
+        "forward": [
+          -0.29450213384557156,
+          -0.9556508217756132,
+          0.0
+        ],
+        "right": [
+          0.9556508217756132,
+          -0.29450213384557156,
+          0.0
+        ],
+        "up": [
+          0.0,
+          0.0,
+          1.0
+        ]
+      },
+      "distance": 342.064746107304
+    },
+    {
+      "link": {
+        "address": 2316509072,
+        "internal_index": 170685,
+        "name": "CoverLink",
+        "number": 120,
+        "cls": 428261632,
+        "outer": 2625811760,
+        "name_index": 2972
+      },
+      "slot": 2,
+      "raw": {
+        "index": 2,
+        "bEnabled": true,
+        "bLeanLeft": false,
+        "bLeanRight": false,
+        "bCanPopUp": true,
+        "CoverType": 2,
+        "LocationOffset": [
+          418.42767333984375,
+          173.3683624267578,
+          -13.794797897338867
+        ],
+        "RotationOffset": [
+          0,
+          -1408,
+          0
+        ]
+      },
+      "computed": {
+        "index": 2,
+        "position": [
+          -3482.185085475874,
+          -279.5477320883161,
+          564.0000019073486
+        ],
+        "forward": [
+          0.38268343236508984,
+          -0.9238795325112866,
+          0.0
+        ],
+        "right": [
+          0.9238795325112866,
+          0.38268343236508984,
+          0.0
+        ],
+        "up": [
+          0.0,
+          0.0,
+          1.0
+        ]
+      },
+      "distance": 503.1045435894323
+    },
+    {
+      "link": {
+        "address": 2316509072,
+        "internal_index": 170685,
+        "name": "CoverLink",
+        "number": 120,
+        "cls": 428261632,
+        "outer": 2625811760,
+        "name_index": 2972
+      },
+      "slot": 3,
+      "raw": {
+        "index": 3,
+        "bEnabled": true,
+        "bLeanLeft": false,
+        "bLeanRight": false,
+        "bCanPopUp": true,
+        "CoverType": 2,
+        "LocationOffset": [
+          384.5315856933594,
+          367.03485107421875,
+          -9.779173851013184
+        ],
+        "RotationOffset": [
+          0,
+          4864,
+          0
+        ]
+      },
+      "computed": {
+        "index": 3,
+        "position": [
+          -3331.9304773322247,
+          -152.74392175765777,
+          568.0156259536743
+        ],
+        "forward": [
+          0.838224705554838,
+          -0.5453249884220465,
+          0.0
+        ],
+        "right": [
+          0.5453249884220465,
+          0.838224705554838,
+          0.0
+        ],
+        "up": [
+          0.0,
+          0.0,
+          1.0
+        ]
+      },
+      "distance": 588.4620176379682
+    },
+    {
+      "link": {
+        "address": 2316509072,
+        "internal_index": 170685,
+        "name": "CoverLink",
+        "number": 120,
+        "cls": 428261632,
+        "outer": 2625811760,
+        "name_index": 2972
+      },
+      "slot": 4,
+      "raw": {
+        "index": 4,
+        "bEnabled": true,
+        "bLeanLeft": false,
+        "bLeanRight": false,
+        "bCanPopUp": true,
+        "CoverType": 2,
+        "LocationOffset": [
+          277.158203125,
+          484.97906494140625,
+          -13.794797897338867
+        ],
+        "RotationOffset": [
+          0,
+          10746,
+          0
+        ]
+      },
+      "computed": {
+        "index": 4,
+        "position": [
+          -3284.0964975280103,
+          -0.5867949281526137,
+          564.0000019073486
+        ],
+        "forward": [
+          0.9999174772858718,
+          -0.012846735704377554,
+          0.0
+        ],
+        "right": [
+          0.012846735704377554,
+          0.9999174772858718,
+          0.0
+        ],
+        "up": [
+          0.0,
+          0.0,
+          1.0
+        ]
+      },
+      "distance": 616.226754653966
+    },
+    {
+      "link": {
+        "address": 2316509072,
+        "internal_index": 170685,
+        "name": "CoverLink",
+        "number": 120,
+        "cls": 428261632,
+        "outer": 2625811760,
+        "name_index": 2972
+      },
+      "slot": 5,
+      "raw": {
+        "index": 5,
+        "bEnabled": true,
+        "bLeanLeft": false,
+        "bLeanRight": false,
+        "bCanPopUp": true,
+        "CoverType": 2,
+        "LocationOffset": [
+          162.72491455078125,
+          522.8257446289062,
+          -13.794797897338867
+        ],
+        "RotationOffset": [
+          0,
+          14976,
+          0
+        ]
+      },
+      "computed": {
+        "index": 5,
+        "position": [
+          -3309.019546756763,
+          117.33771615592957,
+          564.0000019073486
+        ],
+        "forward": [
+          0.9238795325112867,
+          0.3826834323650898,
+          0.0
+        ],
+        "right": [
+          -0.3826834323650898,
+          0.9238795325112867,
+          0.0
+        ],
+        "up": [
+          0.0,
+          0.0,
+          1.0
+        ]
+      },
+      "distance": 602.8465644043092
+    },
+    {
+      "link": {
+        "address": 2316509072,
+        "internal_index": 170685,
+        "name": "CoverLink",
+        "number": 120,
+        "cls": 428261632,
+        "outer": 2625811760,
+        "name_index": 2972
+      },
+      "slot": 6,
+      "raw": {
+        "index": 6,
+        "bEnabled": true,
+        "bLeanLeft": false,
+        "bLeanRight": false,
+        "bCanPopUp": true,
+        "CoverType": 2,
+        "LocationOffset": [
+          -4.5322418212890625,
+          490.4418029785156,
+          -9.779173851013184
+        ],
+        "RotationOffset": [
+          0,
+          21260,
+          0
+        ]
+      },
+      "computed": {
+        "index": 6,
+        "position": [
+          -3421.2187915030772,
+          245.5368016161764,
+          568.0156259536743
+        ],
+        "forward": [
+          0.5443602622884003,
+          0.8388515392137658,
+          0.0
+        ],
+        "right": [
+          -0.8388515392137658,
+          0.5443602622884003,
+          0.0
+        ],
+        "up": [
+          0.0,
+          0.0,
+          1.0
+        ]
+      },
+      "distance": 538.3062553438517
+    },
+    {
+      "link": {
+        "address": 2316509072,
+        "internal_index": 170685,
+        "name": "CoverLink",
+        "number": 120,
+        "cls": 428261632,
+        "outer": 2625811760,
+        "name_index": 2972
+      },
+      "slot": 7,
+      "raw": {
+        "index": 7,
+        "bEnabled": true,
+        "bLeanLeft": false,
+        "bLeanRight": false,
+        "bCanPopUp": true,
+        "CoverType": 2,
+        "LocationOffset": [
+          -150.82662963867188,
+          321.8569030761719,
+          -13.794797897338867
+        ],
+        "RotationOffset": [
+          0,
+          26946,
+          0
+        ]
+      },
+      "computed": {
+        "index": 7,
+        "position": [
+          -3640.536408560385,
+          287.04221367593163,
+          564.0000019073486
+        ],
+        "forward": [
+          0.03048314524847706,
+          0.9995352809459805,
+          0.0
+        ],
+        "right": [
+          -0.9995352809459805,
+          0.03048314524847706,
+          0.0
+        ],
+        "up": [
+          0.0,
+          0.0,
+          1.0
+        ]
+      },
+      "distance": 387.4435858038303
+    },
+    {
+      "link": {
+        "address": 2316509072,
+        "internal_index": 170685,
+        "name": "CoverLink",
+        "number": 120,
+        "cls": 428261632,
+        "outer": 2625811760,
+        "name_index": 2972
+      },
+      "slot": 8,
+      "raw": {
+        "index": 8,
+        "bEnabled": true,
+        "bLeanLeft": false,
+        "bLeanRight": false,
+        "bCanPopUp": true,
+        "CoverType": 2,
+        "LocationOffset": [
+          -167.55194091796875,
+          269.84906005859375,
+          -13.794797897338867
+        ],
+        "RotationOffset": [
+          0,
+          29939,
+          0
+        ]
+      },
+      "computed": {
+        "index": 8,
+        "position": [
+          -3693.891609441892,
+          275.3044834172962,
+          564.0000019073486
+        ],
+        "forward": [
+          -0.25366026175616835,
+          0.9672933741144886,
+          0.0
+        ],
+        "right": [
+          -0.9672933741144886,
+          -0.25366026175616835,
+          0.0
+        ],
+        "up": [
+          0.0,
+          0.0,
+          1.0
+        ]
+      },
+      "distance": 344.48682371598096
+    },
+    {
+      "link": {
+        "address": 2316509072,
+        "internal_index": 170685,
+        "name": "CoverLink",
+        "number": 120,
+        "cls": 428261632,
+        "outer": 2625811760,
+        "name_index": 2972
+      },
+      "slot": 9,
+      "raw": {
+        "index": 9,
+        "bEnabled": true,
+        "bLeanLeft": false,
+        "bLeanRight": false,
+        "bCanPopUp": true,
+        "CoverType": 2,
+        "LocationOffset": [
+          -169.138427734375,
+          255.39486694335938,
+          -13.794797897338867
+        ],
+        "RotationOffset": [
+          0,
+          30407,
+          0
+        ]
+      },
+      "computed": {
+        "index": 9,
+        "position": [
+          -3707.1784969579294,
+          269.3969239239615,
+          564.0000019073486
+        ],
+        "forward": [
+          -0.2967918325910316,
+          0.9549422014484735,
+          0.0
+        ],
+        "right": [
+          -0.9549422014484735,
+          -0.2967918325910316,
+          0.0
+        ],
+        "up": [
+          0.0,
+          0.0,
+          1.0
+        ]
+      },
+      "distance": 331.8927223078315
+    },
+    {
+      "link": {
+        "address": 2316509072,
+        "internal_index": 170685,
+        "name": "CoverLink",
+        "number": 120,
+        "cls": 428261632,
+        "outer": 2625811760,
+        "name_index": 2972
+      },
+      "slot": 10,
+      "raw": {
+        "index": 10,
+        "bEnabled": true,
+        "bLeanLeft": false,
+        "bLeanRight": true,
+        "bCanPopUp": true,
+        "CoverType": 2,
+        "LocationOffset": [
+          -167.5968475341797,
+          88.28541564941406,
+          -13.794797897338867
+        ],
+        "RotationOffset": [
+          0,
+          33076,
+          0
+        ]
+      },
+      "computed": {
+        "index": 10,
+        "position": [
+          -3850.7802820748807,
+          183.91901746561345,
+          564.0000019073486
+        ],
+        "forward": [
+          -0.528827524036962,
+          0.8487293148118169,
+          0.0
+        ],
+        "right": [
+          -0.8487293148118169,
+          -0.528827524036962,
+          0.0
+        ],
+        "up": [
+          0.0,
+          0.0,
+          1.0
+        ]
+      },
+      "distance": 191.43335676927452
+    }
+  ],
+  "chosen_candidate_only": {
+    "link": {
+      "address": 2317043440,
+      "internal_index": 170400,
+      "name": "CoverLink",
+      "number": 98,
+      "cls": 428261632,
+      "outer": 2625811760,
+      "name_index": 2972
+    },
+    "slot": 0,
+    "raw": {
+      "index": 0,
+      "bEnabled": true,
+      "bLeanLeft": true,
+      "bLeanRight": true,
+      "bCanPopUp": true,
+      "CoverType": 2,
+      "LocationOffset": [
+        36.92683410644531,
+        118.4807357788086,
+        1.999999761581421
+      ],
+      "RotationOffset": [
+        0,
+        3706,
+        0
+      ]
+    },
+    "computed": {
+      "index": 0,
+      "position": [
+        -3927.340589891685,
+        -178.8303190730618,
+        563.9999997615814
+      ],
+      "forward": [
+        0.8049175654763921,
+        -0.5933866469575785,
+        0.0
+      ],
+      "right": [
+        0.5933866469575785,
+        0.8049175654763921,
+        0.0
+      ],
+      "up": [
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    "distance": 182.0047675936421
+  },
+  "before_original_A_observation_begin_ns": 129914113551300,
+  "before_original_A": {
+    "elapsed": 7.202999999994063,
+    "game_identity": {
+      "pid": 10688,
+      "creation_time": 134388186580061229,
+      "image": "j:\\gearsvr\\gears.of.war.reloaded.v1.0.1.3816947-p2p\\gears of war reloaded\\binaries_x64\\gowde-steam.exe"
+    },
+    "errors": [],
+    "menu": {
+      "pid": 10688,
+      "client": "0x175ede00",
+      "active_scenes": [],
+      "input_block_count": 0,
+      "top": null,
+      "focus_chain": [],
+      "focused_leaf": null,
+      "read_only": true,
+      "player_index": null,
+      "verified_reads": 14,
+      "consistent_reread": true
+    },
+    "native": {
+      "published": 336,
+      "epoch_submit_total": 342,
+      "world_generation": 1,
+      "started_qpc": 1298950074812,
+      "reference_generation": 1,
+      "owned_ui_faults": 0,
+      "owned_material_faults": 0,
+      "owned_ui_semantic_incomplete": 0,
+      "mirror_inventory_rejected": 17,
+      "anchor_submission_rejected": 0,
+      "telemetry_present_failures": 0,
+      "owned_ui_first_fault": 0,
+      "owned_material_first_fault": 0,
+      "owned_ui_first_fault_name": "none"
+    },
+    "pawn_identity": {
+      "address": 95227484800,
+      "internal_index": 207058,
+      "name": "Pawn_COGMarcus",
+      "number": 1,
+      "cls": 429639616,
+      "outer": 2625811760,
+      "name_index": 5927
+    },
+    "cinematic": false,
+    "special_move_raw": 0,
+    "health": 450,
+    "cover_state_raw": {
+      "CoverType": 0,
+      "CoverAction": 0
+    },
+    "pose": {
+      "position": [
+        -3957.435791015625,
+        -147.2012939453125,
+        579.0
+      ],
+      "yaw_ru": -5994,
+      "controller_rotation_ru": [
+        0,
+        -5994,
+        0
+      ],
+      "camera_position": [
+        -4081.39404296875,
+        -9.70269775390625,
+        655.0
+      ],
+      "camera_rotation_ru": [
+        0,
+        -5994,
+        0
+      ],
+      "pawn_rotation_ru": [
+        0,
+        -5994,
+        0
+      ],
+      "fov": 80.0
+    },
+    "observation_adapter": "owned_empty_ui_playground",
+    "anchor_acquisition": {
+      "started_perf_counter_ns": 129914140148100,
+      "finished_perf_counter_ns": 129914144551600
+    }
+  },
+  "before_original_A_observation_end_ns": 129914158655100,
+  "after_original_A": {
+    "elapsed": 8.46799999999348,
+    "game_identity": {
+      "pid": 10688,
+      "creation_time": 134388186580061229,
+      "image": "j:\\gearsvr\\gears.of.war.reloaded.v1.0.1.3816947-p2p\\gears of war reloaded\\binaries_x64\\gowde-steam.exe"
+    },
+    "errors": [],
+    "menu": {
+      "pid": 10688,
+      "client": "0x175ede00",
+      "active_scenes": [],
+      "input_block_count": 0,
+      "top": null,
+      "focus_chain": [],
+      "focused_leaf": null,
+      "read_only": true,
+      "player_index": null,
+      "verified_reads": 14,
+      "consistent_reread": true
+    },
+    "native": {
+      "published": 377,
+      "epoch_submit_total": 382,
+      "world_generation": 1,
+      "started_qpc": 1298950074812,
+      "reference_generation": 1,
+      "owned_ui_faults": 0,
+      "owned_material_faults": 0,
+      "owned_ui_semantic_incomplete": 0,
+      "mirror_inventory_rejected": 17,
+      "anchor_submission_rejected": 0,
+      "telemetry_present_failures": 0,
+      "owned_ui_first_fault": 0,
+      "owned_material_first_fault": 0,
+      "owned_ui_first_fault_name": "none"
+    },
+    "pawn_identity": {
+      "address": 95227484800,
+      "internal_index": 207058,
+      "name": "Pawn_COGMarcus",
+      "number": 1,
+      "cls": 429639616,
+      "outer": 2625811760,
+      "name_index": 5927
+    },
+    "cinematic": false,
+    "special_move_raw": 0,
+    "health": 450,
+    "cover_state_raw": {
+      "CoverType": 2,
+      "CoverAction": 0
+    },
+    "pose": {
+      "position": [
+        -3930.808837890625,
+        -161.0412139892578,
+        579.0
+      ],
+      "yaw_ru": -5994,
+      "controller_rotation_ru": [
+        0,
+        -5994,
+        0
+      ],
+      "camera_position": [
+        -4139.28125,
+        -129.7357177734375,
+        627.0098876953125
+      ],
+      "camera_rotation_ru": [
+        0,
+        -5994,
+        0
+      ],
+      "pawn_rotation_ru": [
+        0,
+        -6628,
+        0
+      ],
+      "fov": 95.0
+    },
+    "observation_adapter": "owned_empty_ui_playground",
+    "anchor_acquisition": {
+      "started_perf_counter_ns": 129915404938100,
+      "finished_perf_counter_ns": 129915409168800
+    }
+  },
+  "cover_state": {
+    "schema": 1,
+    "read_only": true,
+    "atomic_snapshot_verified": false,
+    "renderer_alignment_verified": false,
+    "native_cover_state_certified": false,
+    "started_perf_counter_ns": 129915427268900,
+    "accepted": true,
+    "controller": {
+      "address": 2522158480,
+      "internal_index": 206931,
+      "name": "WarPC",
+      "number": 1,
+      "cls": 429714944,
+      "outer": 2625811760,
+      "name_index": 6209
+    },
+    "pawn": {
+      "address": 95227484800,
+      "internal_index": 207058,
+      "name": "Pawn_COGMarcus",
+      "number": 1,
+      "cls": 429639616,
+      "outer": 2625811760,
+      "name_index": 5927
+    },
+    "world": {
+      "address": 2321973504,
+      "internal_index": 171514,
+      "name": "WorldInfo",
+      "number": 9,
+      "cls": 428635264,
+      "outer": 2625811760,
+      "name_index": 3531
+    },
+    "link": {
+      "address": 2317043440,
+      "internal_index": 170400,
+      "name": "CoverLink",
+      "number": 98,
+      "cls": 428261632,
+      "outer": 2625811760,
+      "name_index": 2972
+    },
+    "values": {
+      "CoverType": 2,
+      "CoverAction": 0,
+      "CoverDirection": 0,
+      "CurrentSlotIdx": 0,
+      "LeftSlotIdx": 0,
+      "RightSlotIdx": 0,
+      "CurrentSlotPct": 0.0,
+      "bIsInStationaryCover": true,
+      "bCircular": false
+    },
+    "slots": {
+      "count": 1,
+      "stride": 212,
+      "structure": {
+        "address": 842464416,
+        "internal_index": 12963,
+        "name": "CoverSlot",
+        "number": 0,
+        "cls": 333554624,
+        "outer": 428261632,
+        "name_index": 12987
+      },
+      "fields": [
+        {
+          "address": 842591648,
+          "offset": 196,
+          "type": "BoolProperty",
+          "size": 4,
+          "name": "bEnabled"
+        },
+        {
+          "address": 843062400,
+          "offset": 196,
+          "type": "BoolProperty",
+          "size": 4,
+          "name": "bLeanLeft"
+        },
+        {
+          "address": 842590080,
+          "offset": 196,
+          "type": "BoolProperty",
+          "size": 4,
+          "name": "bLeanRight"
+        },
+        {
+          "address": 842590304,
+          "offset": 196,
+          "type": "BoolProperty",
+          "size": 4,
+          "name": "bCanPopUp"
+        },
+        {
+          "address": 843061504,
+          "offset": 9,
+          "type": "ByteProperty",
+          "size": 1,
+          "name": "CoverType"
+        },
+        {
+          "address": 843061728,
+          "offset": 12,
+          "type": "StructProperty",
+          "size": 12,
+          "name": "LocationOffset"
+        },
+        {
+          "address": 843061952,
+          "offset": 24,
+          "type": "StructProperty",
+          "size": 12,
+          "name": "RotationOffset"
+        }
+      ],
+      "rows": [
+        {
+          "index": 0,
+          "bEnabled": true,
+          "bLeanLeft": true,
+          "bLeanRight": true,
+          "bCanPopUp": true,
+          "CoverType": 2,
+          "LocationOffset": [
+            36.92683410644531,
+            118.4807357788086,
+            1.999999761581421
+          ],
+          "RotationOffset": [
+            0,
+            3706,
+            0
+          ]
+        }
+      ]
+    },
+    "limits": "Slot permissions and fields only; not a certified attached state, collision surface, or firing ray.",
+    "finished_perf_counter_ns": 129915507332200
+  },
+  "geometry": {
+    "schema": 1,
+    "accepted": true,
+    "read_only": true,
+    "engine_calls": false,
+    "activation_allowed": false,
+    "actor_or_mesh_fields_written": false,
+    "atomic_snapshot_verified": false,
+    "native_cover_state_certified": false,
+    "native_getter_verified": false,
+    "collision_verified": false,
+    "renderer_alignment_verified": false,
+    "started_perf_counter_ns": 129915507365200,
+    "controller": {
+      "address": 2522158480,
+      "internal_index": 206931,
+      "name": "WarPC",
+      "number": 1,
+      "cls": 429714944,
+      "outer": 2625811760,
+      "name_index": 6209
+    },
+    "pawn": {
+      "address": 95227484800,
+      "internal_index": 207058,
+      "name": "Pawn_COGMarcus",
+      "number": 1,
+      "cls": 429639616,
+      "outer": 2625811760,
+      "name_index": 5927
+    },
+    "world": {
+      "address": 2321973504,
+      "internal_index": 171514,
+      "name": "WorldInfo",
+      "number": 9,
+      "cls": 428635264,
+      "outer": 2625811760,
+      "name_index": 3531
+    },
+    "link": {
+      "address": 2317043440,
+      "internal_index": 170400,
+      "name": "CoverLink",
+      "number": 98,
+      "cls": 428261632,
+      "outer": 2625811760,
+      "name_index": 2972
+    },
+    "values": {
+      "CoverType": 2,
+      "CoverAction": 0,
+      "CoverDirection": 0,
+      "CurrentSlotIdx": 0,
+      "LeftSlotIdx": 0,
+      "RightSlotIdx": 0,
+      "CurrentSlotPct": 0.0,
+      "bIsInStationaryCover": true,
+      "bCircular": false
+    },
+    "booleans": {
+      "bIsInStationaryCover": {
+        "field": {
+          "address": 885116896,
+          "offset": 1196,
+          "type": "BoolProperty",
+          "size": 4,
+          "name": "bIsInStationaryCover"
+        },
+        "mask": 2048,
+        "mask_bytes": "00080000",
+        "raw": "550d4808",
+        "value": true
+      },
+      "bCircular": {
+        "field": {
+          "address": 843057024,
+          "offset": 864,
+          "type": "BoolProperty",
+          "size": 4,
+          "name": "bCircular"
+        },
+        "mask": 16,
+        "mask_bytes": "10000000",
+        "raw": "04000000",
+        "value": false
+      }
+    },
+    "link_transform": {
+      "Location": {
+        "available": true,
+        "value": [
+          -4046.67431640625,
+          -212.89991760253906,
+          562.0
+        ],
+        "raw": "caea7cc561e654c300800c44",
+        "layout": {
+          "field": {
+            "address": 422130496,
+            "offset": 304,
+            "type": "StructProperty",
+            "size": 12,
+            "name": "Location"
+          },
+          "structure": {
+            "address": 429019840,
+            "internal_index": 2208,
+            "name": "Vector",
+            "number": 0,
+            "cls": 333554624,
+            "outer": 333536192,
+            "name_index": 87
+          },
+          "components": [
+            {
+              "address": 421731232,
+              "offset": 0,
+              "type": "FloatProperty",
+              "size": 4,
+              "name": "X"
+            },
+            {
+              "address": 421731008,
+              "offset": 4,
+              "type": "FloatProperty",
+              "size": 4,
+              "name": "Y"
+            },
+            {
+              "address": 421730560,
+              "offset": 8,
+              "type": "FloatProperty",
+              "size": 4,
+              "name": "Z"
+            }
+          ]
+        }
+      },
+      "Rotation": {
+        "available": true,
+        "value": [
+          0,
+          -10332,
+          0
+        ],
+        "raw": "00000000a4d7ffff00000000",
+        "layout": {
+          "field": {
+            "address": 422130720,
+            "offset": 316,
+            "type": "StructProperty",
+            "size": 12,
+            "name": "Rotation"
+          },
+          "structure": {
+            "address": 429035968,
+            "internal_index": 2257,
+            "name": "Rotator",
+            "number": 0,
+            "cls": 333554624,
+            "outer": 333536192,
+            "name_index": 88
+          },
+          "components": [
+            {
+              "address": 421737280,
+              "offset": 0,
+              "type": "IntProperty",
+              "size": 4,
+              "name": "Pitch"
+            },
+            {
+              "address": 421737056,
+              "offset": 4,
+              "type": "IntProperty",
+              "size": 4,
+              "name": "Yaw"
+            },
+            {
+              "address": 421736832,
+              "offset": 8,
+              "type": "IntProperty",
+              "size": 4,
+              "name": "Roll"
+            }
+          ]
+        }
+      }
+    },
+    "pawn_transform": {
+      "Location": {
+        "available": true,
+        "value": [
+          -3930.808837890625,
+          -161.0412139892578,
+          579.0
+        ],
+        "raw": "f1ac75c58d0a21c300c01044",
+        "layout": {
+          "field": {
+            "address": 422130496,
+            "offset": 304,
+            "type": "StructProperty",
+            "size": 12,
+            "name": "Location"
+          },
+          "structure": {
+            "address": 429019840,
+            "internal_index": 2208,
+            "name": "Vector",
+            "number": 0,
+            "cls": 333554624,
+            "outer": 333536192,
+            "name_index": 87
+          },
+          "components": [
+            {
+              "address": 421731232,
+              "offset": 0,
+              "type": "FloatProperty",
+              "size": 4,
+              "name": "X"
+            },
+            {
+              "address": 421731008,
+              "offset": 4,
+              "type": "FloatProperty",
+              "size": 4,
+              "name": "Y"
+            },
+            {
+              "address": 421730560,
+              "offset": 8,
+              "type": "FloatProperty",
+              "size": 4,
+              "name": "Z"
+            }
+          ]
+        }
+      },
+      "Rotation": {
+        "available": true,
+        "value": [
+          0,
+          -6628,
+          0
+        ],
+        "raw": "000000001ce6ffff00000000",
+        "layout": {
+          "field": {
+            "address": 422130720,
+            "offset": 316,
+            "type": "StructProperty",
+            "size": 12,
+            "name": "Rotation"
+          },
+          "structure": {
+            "address": 429035968,
+            "internal_index": 2257,
+            "name": "Rotator",
+            "number": 0,
+            "cls": 333554624,
+            "outer": 333536192,
+            "name_index": 88
+          },
+          "components": [
+            {
+              "address": 421737280,
+              "offset": 0,
+              "type": "IntProperty",
+              "size": 4,
+              "name": "Pitch"
+            },
+            {
+              "address": 421737056,
+              "offset": 4,
+              "type": "IntProperty",
+              "size": 4,
+              "name": "Yaw"
+            },
+            {
+              "address": 421736832,
+              "offset": 8,
+              "type": "IntProperty",
+              "size": 4,
+              "name": "Roll"
+            }
+          ]
+        }
+      }
+    },
+    "link_parameters": {
+      "StandHeight": {
+        "available": true,
+        "value": 130.0,
+        "raw": "00000243",
+        "layout": {
+          "field": {
+            "address": 843059040,
+            "offset": 892,
+            "type": "FloatProperty",
+            "size": 4,
+            "name": "StandHeight"
+          }
+        }
+      },
+      "MidHeight": {
+        "available": true,
+        "value": 70.0,
+        "raw": "00008c42",
+        "layout": {
+          "field": {
+            "address": 843059264,
+            "offset": 896,
+            "type": "FloatProperty",
+            "size": 4,
+            "name": "MidHeight"
+          }
+        }
+      },
+      "StandingLeanOffset": {
+        "available": true,
+        "value": [
+          0.0,
+          78.0,
+          69.0
+        ],
+        "raw": "0000000000009c4200008a42",
+        "layout": {
+          "field": {
+            "address": 843059488,
+            "offset": 900,
+            "type": "StructProperty",
+            "size": 12,
+            "name": "StandingLeanOffset"
+          },
+          "structure": {
+            "address": 429019840,
+            "internal_index": 2208,
+            "name": "Vector",
+            "number": 0,
+            "cls": 333554624,
+            "outer": 333536192,
+            "name_index": 87
+          },
+          "components": [
+            {
+              "address": 421731232,
+              "offset": 0,
+              "type": "FloatProperty",
+              "size": 4,
+              "name": "X"
+            },
+            {
+              "address": 421731008,
+              "offset": 4,
+              "type": "FloatProperty",
+              "size": 4,
+              "name": "Y"
+            },
+            {
+              "address": 421730560,
+              "offset": 8,
+              "type": "FloatProperty",
+              "size": 4,
+              "name": "Z"
+            }
+          ]
+        }
+      },
+      "CrouchLeanOffset": {
+        "available": true,
+        "value": [
+          0.0,
+          70.0,
+          19.0
+        ],
+        "raw": "0000000000008c4200009841",
+        "layout": {
+          "field": {
+            "address": 843059712,
+            "offset": 912,
+            "type": "StructProperty",
+            "size": 12,
+            "name": "CrouchLeanOffset"
+          },
+          "structure": {
+            "address": 429019840,
+            "internal_index": 2208,
+            "name": "Vector",
+            "number": 0,
+            "cls": 333554624,
+            "outer": 333536192,
+            "name_index": 87
+          },
+          "components": [
+            {
+              "address": 421731232,
+              "offset": 0,
+              "type": "FloatProperty",
+              "size": 4,
+              "name": "X"
+            },
+            {
+              "address": 421731008,
+              "offset": 4,
+              "type": "FloatProperty",
+              "size": 4,
+              "name": "Y"
+            },
+            {
+              "address": 421730560,
+              "offset": 8,
+              "type": "FloatProperty",
+              "size": 4,
+              "name": "Z"
+            }
+          ]
+        }
+      }
+    },
+    "slots": {
+      "count": 1,
+      "stride": 212,
+      "structure": {
+        "address": 842464416,
+        "internal_index": 12963,
+        "name": "CoverSlot",
+        "number": 0,
+        "cls": 333554624,
+        "outer": 428261632,
+        "name_index": 12987
+      },
+      "fields": [
+        {
+          "address": 842591648,
+          "offset": 196,
+          "type": "BoolProperty",
+          "size": 4,
+          "name": "bEnabled"
+        },
+        {
+          "address": 843062400,
+          "offset": 196,
+          "type": "BoolProperty",
+          "size": 4,
+          "name": "bLeanLeft"
+        },
+        {
+          "address": 842590080,
+          "offset": 196,
+          "type": "BoolProperty",
+          "size": 4,
+          "name": "bLeanRight"
+        },
+        {
+          "address": 842590304,
+          "offset": 196,
+          "type": "BoolProperty",
+          "size": 4,
+          "name": "bCanPopUp"
+        },
+        {
+          "address": 843061504,
+          "offset": 9,
+          "type": "ByteProperty",
+          "size": 1,
+          "name": "CoverType"
+        },
+        {
+          "address": 843061728,
+          "offset": 12,
+          "type": "StructProperty",
+          "size": 12,
+          "name": "LocationOffset"
+        },
+        {
+          "address": 843061952,
+          "offset": 24,
+          "type": "StructProperty",
+          "size": 12,
+          "name": "RotationOffset"
+        }
+      ],
+      "rows": [
+        {
+          "index": 0,
+          "bEnabled": true,
+          "bLeanLeft": true,
+          "bLeanRight": true,
+          "bCanPopUp": true,
+          "CoverType": 2,
+          "LocationOffset": [
+            36.92683410644531,
+            118.4807357788086,
+            1.999999761581421
+          ],
+          "RotationOffset": [
+            0,
+            3706,
+            0
+          ],
+          "raw_fields": {
+            "bEnabled": "772f0000",
+            "bLeanLeft": "772f0000",
+            "bLeanRight": "772f0000",
+            "bCanPopUp": "772f0000",
+            "CoverType": "02",
+            "LocationOffset": "14b5134223f6ec42feffff3f",
+            "RotationOffset": "000000007a0e000000000000"
+          }
+        }
+      ],
+      "geometry_layouts": {
+        "LocationOffset": {
+          "field": {
+            "address": 843061728,
+            "offset": 12,
+            "type": "StructProperty",
+            "size": 12,
+            "name": "LocationOffset"
+          },
+          "structure": {
+            "address": 429019840,
+            "internal_index": 2208,
+            "name": "Vector",
+            "number": 0,
+            "cls": 333554624,
+            "outer": 333536192,
+            "name_index": 87
+          },
+          "components": [
+            {
+              "address": 421731232,
+              "offset": 0,
+              "type": "FloatProperty",
+              "size": 4,
+              "name": "X"
+            },
+            {
+              "address": 421731008,
+              "offset": 4,
+              "type": "FloatProperty",
+              "size": 4,
+              "name": "Y"
+            },
+            {
+              "address": 421730560,
+              "offset": 8,
+              "type": "FloatProperty",
+              "size": 4,
+              "name": "Z"
+            }
+          ]
+        },
+        "RotationOffset": {
+          "field": {
+            "address": 843061952,
+            "offset": 24,
+            "type": "StructProperty",
+            "size": 12,
+            "name": "RotationOffset"
+          },
+          "structure": {
+            "address": 429035968,
+            "internal_index": 2257,
+            "name": "Rotator",
+            "number": 0,
+            "cls": 333554624,
+            "outer": 333536192,
+            "name_index": 88
+          },
+          "components": [
+            {
+              "address": 421737280,
+              "offset": 0,
+              "type": "IntProperty",
+              "size": 4,
+              "name": "Pitch"
+            },
+            {
+              "address": 421737056,
+              "offset": 4,
+              "type": "IntProperty",
+              "size": 4,
+              "name": "Yaw"
+            },
+            {
+              "address": 421736832,
+              "offset": 8,
+              "type": "IntProperty",
+              "size": 4,
+              "name": "Roll"
+            }
+          ]
+        }
+      },
+      "boolean_masks": {
+        "bEnabled": {
+          "field": {
+            "address": 842591648,
+            "offset": 196,
+            "type": "BoolProperty",
+            "size": 4,
+            "name": "bEnabled"
+          },
+          "mask": 256,
+          "mask_bytes": "00010000"
+        },
+        "bLeanLeft": {
+          "field": {
+            "address": 843062400,
+            "offset": 196,
+            "type": "BoolProperty",
+            "size": 4,
+            "name": "bLeanLeft"
+          },
+          "mask": 1,
+          "mask_bytes": "01000000"
+        },
+        "bLeanRight": {
+          "field": {
+            "address": 842590080,
+            "offset": 196,
+            "type": "BoolProperty",
+            "size": 4,
+            "name": "bLeanRight"
+          },
+          "mask": 2,
+          "mask_bytes": "02000000"
+        },
+        "bCanPopUp": {
+          "field": {
+            "address": 842590304,
+            "offset": 196,
+            "type": "BoolProperty",
+            "size": 4,
+            "name": "bCanPopUp"
+          },
+          "mask": 4,
+          "mask_bytes": "04000000"
+        }
+      }
+    },
+    "slot_world_candidates": {
+      "candidate_only": true,
+      "native_getter_verified": false,
+      "collision_verified": false,
+      "convention": "Link.Location + Rz(Yaw) Ry(-Pitch) Rx(-Roll) * LocationOffset; slot basis composes Link and slot rotations; 65536 rotator units/revolution; no scale, native getter or collision equivalence verified",
+      "rows": [
+        {
+          "index": 0,
+          "position": [
+            -3927.340589891685,
+            -178.8303190730618,
+            563.9999997615814
+          ],
+          "forward": [
+            0.8049175654763921,
+            -0.5933866469575785,
+            0.0
+          ],
+          "right": [
+            0.5933866469575785,
+            0.8049175654763921,
+            0.0
+          ],
+          "up": [
+            0.0,
+            0.0,
+            1.0
+          ]
+        }
+      ]
+    },
+    "unavailable": [],
+    "source": {
+      "game_identity": {
+        "pid": 10688,
+        "creation_time": 134388186580061229,
+        "image": "j:\\gearsvr\\gears.of.war.reloaded.v1.0.1.3816947-p2p\\gears of war reloaded\\binaries_x64\\gowde-steam.exe"
+      },
+      "disk_game_sha256": "bdc6705d18ddb335b767df0b38e256ba5da0f49449c8970b302118bb7a4a8fa4",
+      "module_base": 5368709120
+    },
+    "limits": "Reflected raw values within a checked interval; candidate slot composition does not authenticate fixed facing, cover edges, top collision height, native getters or shooting.",
+    "finished_perf_counter_ns": 129915595098600
+  },
+  "scope": "One original CT2 entry, neutral, fixed-position turn/return and tracked rise/return; one opt-in Native raw Sphere observation; no grasp/body movement",
+  "eye_observation": [
+    {
+      "label": "cover_eye_neutral",
+      "at_ns": 129915631902500,
+      "begin_qpc": 1299156319197,
+      "end_qpc": 1299164373737,
+      "observation": {
+        "elapsed": 8.687000000005355,
+        "game_identity": {
+          "pid": 10688,
+          "creation_time": 134388186580061229,
+          "image": "j:\\gearsvr\\gears.of.war.reloaded.v1.0.1.3816947-p2p\\gears of war reloaded\\binaries_x64\\gowde-steam.exe"
+        },
+        "errors": [],
+        "menu": {
+          "pid": 10688,
+          "client": "0x175ede00",
+          "active_scenes": [],
+          "input_block_count": 0,
+          "top": null,
+          "focus_chain": [],
+          "focused_leaf": null,
+          "read_only": true,
+          "player_index": null,
+          "verified_reads": 14,
+          "consistent_reread": true
+        },
+        "native": {
+          "published": 377,
+          "epoch_submit_total": 382,
+          "world_generation": 1,
+          "started_qpc": 1298950074812,
+          "reference_generation": 1,
+          "owned_ui_faults": 0,
+          "owned_material_faults": 0,
+          "owned_ui_semantic_incomplete": 0,
+          "mirror_inventory_rejected": 17,
+          "anchor_submission_rejected": 0,
+          "telemetry_present_failures": 0,
+          "owned_ui_first_fault": 0,
+          "owned_material_first_fault": 0,
+          "owned_ui_first_fault_name": "none"
+        },
+        "pawn_identity": {
+          "address": 95227484800,
+          "internal_index": 207058,
+          "name": "Pawn_COGMarcus",
+          "number": 1,
+          "cls": 429639616,
+          "outer": 2625811760,
+          "name_index": 5927
+        },
+        "cinematic": false,
+        "special_move_raw": 0,
+        "health": 450,
+        "cover_state_raw": {
+          "CoverType": 2,
+          "CoverAction": 0
+        },
+        "pose": {
+          "position": [
+            -3930.808837890625,
+            -161.0412139892578,
+            579.0
+          ],
+          "yaw_ru": -5994,
+          "controller_rotation_ru": [
+            0,
+            -5994,
+            0
+          ],
+          "camera_position": [
+            -4139.3896484375,
+            -129.88172912597656,
+            627.0018310546875
+          ],
+          "camera_rotation_ru": [
+            0,
+            -5994,
+            0
+          ],
+          "pawn_rotation_ru": [
+            0,
+            -6628,
+            0
+          ],
+          "fov": 95.0
+        },
+        "observation_adapter": "owned_empty_ui_playground",
+        "anchor_acquisition": {
+          "started_perf_counter_ns": 129915610700600,
+          "finished_perf_counter_ns": 129915613943500
+        }
+      }
+    },
+    {
+      "label": "cover_eye_turned",
+      "at_ns": 129917748133700,
+      "begin_qpc": 1299177481397,
+      "end_qpc": 1299185555610,
+      "observation": {
+        "elapsed": 10.812000000005355,
+        "game_identity": {
+          "pid": 10688,
+          "creation_time": 134388186580061229,
+          "image": "j:\\gearsvr\\gears.of.war.reloaded.v1.0.1.3816947-p2p\\gears of war reloaded\\binaries_x64\\gowde-steam.exe"
+        },
+        "errors": [],
+        "menu": {
+          "pid": 10688,
+          "client": "0x175ede00",
+          "active_scenes": [],
+          "input_block_count": 0,
+          "top": null,
+          "focus_chain": [],
+          "focused_leaf": null,
+          "read_only": true,
+          "player_index": null,
+          "verified_reads": 14,
+          "consistent_reread": true
+        },
+        "native": {
+          "published": 428,
+          "epoch_submit_total": 433,
+          "world_generation": 1,
+          "started_qpc": 1298950074812,
+          "reference_generation": 1,
+          "owned_ui_faults": 0,
+          "owned_material_faults": 0,
+          "owned_ui_semantic_incomplete": 0,
+          "mirror_inventory_rejected": 17,
+          "anchor_submission_rejected": 0,
+          "telemetry_present_failures": 0,
+          "owned_ui_first_fault": 0,
+          "owned_material_first_fault": 0,
+          "owned_ui_first_fault_name": "none"
+        },
+        "pawn_identity": {
+          "address": 95227484800,
+          "internal_index": 207058,
+          "name": "Pawn_COGMarcus",
+          "number": 1,
+          "cls": 429639616,
+          "outer": 2625811760,
+          "name_index": 5927
+        },
+        "cinematic": false,
+        "special_move_raw": 0,
+        "health": 450,
+        "cover_state_raw": {
+          "CoverType": 2,
+          "CoverAction": 0
+        },
+        "pose": {
+          "position": [
+            -3930.808837890625,
+            -161.0412139892578,
+            579.0
+          ],
+          "yaw_ru": -5994,
+          "controller_rotation_ru": [
+            0,
+            -5994,
+            0
+          ],
+          "camera_position": [
+            -4139.4140625,
+            -129.91477966308594,
+            627.0
+          ],
+          "camera_rotation_ru": [
+            0,
+            -5994,
+            0
+          ],
+          "pawn_rotation_ru": [
+            0,
+            -6628,
+            0
+          ],
+          "fov": 95.0
+        },
+        "observation_adapter": "owned_empty_ui_playground",
+        "anchor_acquisition": {
+          "started_perf_counter_ns": 129917729082900,
+          "finished_perf_counter_ns": 129917731686100
+        }
+      }
+    },
+    {
+      "label": "cover_eye_turn_restored",
+      "at_ns": 129920279034100,
+      "begin_qpc": 1299202790407,
+      "end_qpc": 1299211110481,
+      "observation": {
+        "elapsed": 13.281000000002678,
+        "game_identity": {
+          "pid": 10688,
+          "creation_time": 134388186580061229,
+          "image": "j:\\gearsvr\\gears.of.war.reloaded.v1.0.1.3816947-p2p\\gears of war reloaded\\binaries_x64\\gowde-steam.exe"
+        },
+        "errors": [],
+        "menu": {
+          "pid": 10688,
+          "client": "0x175ede00",
+          "active_scenes": [],
+          "input_block_count": 0,
+          "top": null,
+          "focus_chain": [],
+          "focused_leaf": null,
+          "read_only": true,
+          "player_index": null,
+          "verified_reads": 14,
+          "consistent_reread": true
+        },
+        "native": {
+          "published": 493,
+          "epoch_submit_total": 498,
+          "world_generation": 1,
+          "started_qpc": 1298950074812,
+          "reference_generation": 1,
+          "owned_ui_faults": 0,
+          "owned_material_faults": 0,
+          "owned_ui_semantic_incomplete": 0,
+          "mirror_inventory_rejected": 17,
+          "anchor_submission_rejected": 0,
+          "telemetry_present_failures": 0,
+          "owned_ui_first_fault": 0,
+          "owned_material_first_fault": 0,
+          "owned_ui_first_fault_name": "none"
+        },
+        "pawn_identity": {
+          "address": 95227484800,
+          "internal_index": 207058,
+          "name": "Pawn_COGMarcus",
+          "number": 1,
+          "cls": 429639616,
+          "outer": 2625811760,
+          "name_index": 5927
+        },
+        "cinematic": false,
+        "special_move_raw": 0,
+        "health": 450,
+        "cover_state_raw": {
+          "CoverType": 2,
+          "CoverAction": 0
+        },
+        "pose": {
+          "position": [
+            -3930.808837890625,
+            -161.0412139892578,
+            579.0
+          ],
+          "yaw_ru": -5994,
+          "controller_rotation_ru": [
+            0,
+            -5994,
+            0
+          ],
+          "camera_position": [
+            -4139.4140625,
+            -129.91477966308594,
+            627.0
+          ],
+          "camera_rotation_ru": [
+            0,
+            -5994,
+            0
+          ],
+          "pawn_rotation_ru": [
+            0,
+            -6628,
+            0
+          ],
+          "fov": 95.0
+        },
+        "observation_adapter": "owned_empty_ui_playground",
+        "anchor_acquisition": {
+          "started_perf_counter_ns": 129920203442400,
+          "finished_perf_counter_ns": 129920211683300
+        }
+      }
+    },
+    {
+      "label": "cover_eye_raised",
+      "at_ns": 129922681793300,
+      "begin_qpc": 1299226818010,
+      "end_qpc": 1299235083097,
+      "observation": {
+        "elapsed": 15.71799999999348,
+        "game_identity": {
+          "pid": 10688,
+          "creation_time": 134388186580061229,
+          "image": "j:\\gearsvr\\gears.of.war.reloaded.v1.0.1.3816947-p2p\\gears of war reloaded\\binaries_x64\\gowde-steam.exe"
+        },
+        "errors": [],
+        "menu": {
+          "pid": 10688,
+          "client": "0x175ede00",
+          "active_scenes": [],
+          "input_block_count": 0,
+          "top": null,
+          "focus_chain": [],
+          "focused_leaf": null,
+          "read_only": true,
+          "player_index": null,
+          "verified_reads": 14,
+          "consistent_reread": true
+        },
+        "native": {
+          "published": 531,
+          "epoch_submit_total": 537,
+          "world_generation": 1,
+          "started_qpc": 1298950074812,
+          "reference_generation": 1,
+          "owned_ui_faults": 0,
+          "owned_material_faults": 0,
+          "owned_ui_semantic_incomplete": 0,
+          "mirror_inventory_rejected": 17,
+          "anchor_submission_rejected": 0,
+          "telemetry_present_failures": 0,
+          "owned_ui_first_fault": 0,
+          "owned_material_first_fault": 0,
+          "owned_ui_first_fault_name": "none"
+        },
+        "pawn_identity": {
+          "address": 95227484800,
+          "internal_index": 207058,
+          "name": "Pawn_COGMarcus",
+          "number": 1,
+          "cls": 429639616,
+          "outer": 2625811760,
+          "name_index": 5927
+        },
+        "cinematic": false,
+        "special_move_raw": 0,
+        "health": 450,
+        "cover_state_raw": {
+          "CoverType": 2,
+          "CoverAction": 0
+        },
+        "pose": {
+          "position": [
+            -3930.808837890625,
+            -161.0412139892578,
+            579.0
+          ],
+          "yaw_ru": -5994,
+          "controller_rotation_ru": [
+            0,
+            -5994,
+            0
+          ],
+          "camera_position": [
+            -4139.4140625,
+            -129.91477966308594,
+            627.0
+          ],
+          "camera_rotation_ru": [
+            0,
+            -5994,
+            0
+          ],
+          "pawn_rotation_ru": [
+            0,
+            -6628,
+            0
+          ],
+          "fov": 95.0
+        },
+        "observation_adapter": "owned_empty_ui_playground",
+        "anchor_acquisition": {
+          "started_perf_counter_ns": 129922638681900,
+          "finished_perf_counter_ns": 129922642964700
+        }
+      }
+    },
+    {
+      "label": "cover_eye_rise_restored",
+      "at_ns": 129925200948300,
+      "begin_qpc": 1299252009603,
+      "end_qpc": 1299261120040,
+      "observation": {
+        "elapsed": 18.23399999999674,
+        "game_identity": {
+          "pid": 10688,
+          "creation_time": 134388186580061229,
+          "image": "j:\\gearsvr\\gears.of.war.reloaded.v1.0.1.3816947-p2p\\gears of war reloaded\\binaries_x64\\gowde-steam.exe"
+        },
+        "errors": [],
+        "menu": {
+          "pid": 10688,
+          "client": "0x175ede00",
+          "active_scenes": [],
+          "input_block_count": 0,
+          "top": null,
+          "focus_chain": [],
+          "focused_leaf": null,
+          "read_only": true,
+          "player_index": null,
+          "verified_reads": 14,
+          "consistent_reread": true
+        },
+        "native": {
+          "published": 566,
+          "epoch_submit_total": 572,
+          "world_generation": 1,
+          "started_qpc": 1298950074812,
+          "reference_generation": 1,
+          "owned_ui_faults": 0,
+          "owned_material_faults": 0,
+          "owned_ui_semantic_incomplete": 0,
+          "mirror_inventory_rejected": 17,
+          "anchor_submission_rejected": 0,
+          "telemetry_present_failures": 0,
+          "owned_ui_first_fault": 0,
+          "owned_material_first_fault": 0,
+          "owned_ui_first_fault_name": "none"
+        },
+        "pawn_identity": {
+          "address": 95227484800,
+          "internal_index": 207058,
+          "name": "Pawn_COGMarcus",
+          "number": 1,
+          "cls": 429639616,
+          "outer": 2625811760,
+          "name_index": 5927
+        },
+        "cinematic": false,
+        "special_move_raw": 0,
+        "health": 450,
+        "cover_state_raw": {
+          "CoverType": 2,
+          "CoverAction": 0
+        },
+        "pose": {
+          "position": [
+            -3930.808837890625,
+            -161.0412139892578,
+            579.0
+          ],
+          "yaw_ru": -5994,
+          "controller_rotation_ru": [
+            0,
+            -5994,
+            0
+          ],
+          "camera_position": [
+            -4139.4140625,
+            -129.91477966308594,
+            627.0
+          ],
+          "camera_rotation_ru": [
+            0,
+            -5994,
+            0
+          ],
+          "pawn_rotation_ru": [
+            0,
+            -6628,
+            0
+          ],
+          "fov": 95.0
+        },
+        "observation_adapter": "owned_empty_ui_playground",
+        "anchor_acquisition": {
+          "started_perf_counter_ns": 129925152173000,
+          "finished_perf_counter_ns": 129925156344300
+        }
+      }
+    }
+  ],
+  "visual_accepted": false,
+  "limits": "Input/observation sequence only. Native same-callback CPU bracket and actual stereo review required; no complete lean/body/collision/exit acceptance."
+}

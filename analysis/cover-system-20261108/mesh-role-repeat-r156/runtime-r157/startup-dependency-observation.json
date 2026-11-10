@@ -1,0 +1,14 @@
+{
+  "observed_ns": 1794345047464789700,
+  "source": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\tools\\native-capture\\launch_reserve.py",
+  "sha256": "a4c44d9dc20afb11edb84beffe70c5b968ab0b76be7d3958bd2efe04c9899edf",
+  "evidence": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\coordinator-multi-20261110\\birth-stage-publication-20261111.json",
+  "evidence_sha256": "e53022afbf78b6813800b1285400a5fd558e589dcc04d74c28abf8540c8b5d9e",
+  "worker_registered": false,
+  "prepared_hashes_modified": false,
+  "native_delta_unchanged": true,
+  "shared_change_live_verified": false,
+  "after_sha256": "a4c44d9dc20afb11edb84beffe70c5b968ab0b76be7d3958bd2efe04c9899edf",
+  "observed_before_after_equal": true,
+  "exact_loaded_source_proven": false
+}

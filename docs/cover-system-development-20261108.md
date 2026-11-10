@@ -2429,3 +2429,15 @@ checks-v2相关consumer/guard/path/overlap/OFF各程序均0，原physics282项�
 Native ababb095c3fd5a24ff37a368d99a895cecf4d4dc06e07ddfd769dd670a39f2d8 编译链接0。exact r149冻结树仅cover_physics_roles_live.inl一处运行文件delta，409项目依赖均来自本冻结树、外部worktree0，GEARS flags不变。verify确认原sample事务/全部dynamic读取（除该重复class调用）/layouts_current原文保持，既有r155证据在新SHA下拒绝，inspect_cause新增显式expected_native支持，默认仍严格r149。prepare支持--native-r156并认证单文件delta、未staged/flags/依赖；尚未准备/运行新实例。
 
 源、比较、初失败、依赖、构建manifest和核对在mesh-role-repeat-r156。下一步Git保存后，以新私有实例一次定向检查原CT2入口、实际query层次/耗时及画面；不原样重跑r155，不放宽source_age或其他守卫。完整CV01–24/AC01–22仍开放，工程25%、publicv71/固定入口和实体头显状态不变，目标active。
+
+## r157：新去重候选实际CT2通过、collider复核仍body年龄拒绝（2026-11-11）
+
+eb8c46b5源码/构建保存后，以新cover-1111-r157-cloak-meshrole、Native ababb095…f2d8及冻结PG/XR，既有runner共享600秒准入做一次定向运行。实际game10688/creation134388186580061229、owner3196/creation134388186507862975、XR56032/creation134388186649960118、worker25076/creation134388186506656610。十项准备时anchor/启动来源前后相同。原A进入CT2、五段eye观察与operator0，Native/entry/input/武器正常恢复，XR0、launcher0、正常清理true、无强杀；独立精确进程身份均不在。
+
+complete2首键Scene396/Compose24437/seq3244/world2321973504/pawn95227484800与本path逐项相同；另measurement266/detail4 neutral首键Scene400/Compose24682/seq3252，不能混合。path code4，first engine/source_begin/guard；Owner第15次context/source_age_expired/detail6，Session第2次collider_read/detailguard，engineStage1/sourceCode2。匹配原因entry14674320/Compose24437/thread25376/stage0/verdict3/causes1，仍body_source_age true/equipment_age false，原started/returned0/0。query129914469800400→129914502250100，32.4497ms；与r155的35.9755ms处在不同拒绝阶段且开始年龄/调度未匹配，不能据此称实际全query提速，更不能称年龄故障修复。
+
+277实际投影帧/errors0，编码0；14页全跨度及5原始contact均亲看，阶段候选8/7/7/7/8，五段自身头肩/躯干遮挡仍FAIL，图像哈希与原图副本保留，不声称同C0/GPU或头显证明。CLOAK590/失败0，前台373/owned_activation false；disk_before5430648832，仍过原4GiB门但余量不多，下一运行前须重新检查，不删他人或未清理实例。
+
+等待期间收到共享launch_reserve.py出生回执原子发布窄修正通知：最多6次同payload替换，仅Win5/32/33、重试前整份原回执相等，非启动/注入重试；本方未改该共享文件，未回复/转发或为此新增运行。在本方worker登记前另记source SHA a4c44d9d…99edf及对应只读证据，结束后源文件SHA相同；不改旧prepared哈希，不把源码前后观察当作精确已加载版本或真实Win5修复验证。此后新prepare将launch_reserve作为第11项启动来源绑定，当前r157仍明确是原10项加独立观察。
+
+原始session/launcher/动作/新artifact解释/媒体/关闭结果在mesh-role-repeat-r156/runtime-r157。已证明的合成读取量收益保留，实际来源年龄与画面缺口仍在；下一窄点继续检查collider/source复核成本及来源到query调度，不放宽新鲜度、不刷新旧样本、不原样重跑。完整CV01–24/AC01–22仍开放，工程25%、publicv71/固定入口及实体头显状态不变，目标active。

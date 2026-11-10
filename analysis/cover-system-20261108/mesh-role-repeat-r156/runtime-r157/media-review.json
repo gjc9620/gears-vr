@@ -1,0 +1,169 @@
+{
+  "frames": 277,
+  "recording_sha256": "63318f5ee48cf54becaae1066cbdcda567960d9f98ec2bcf30694429fe33b7aa",
+  "pages": [
+    {
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\mesh-role-repeat-r156\\runtime-r157\\overview-1.jpg",
+      "sha256": "38b9c30562542b4d1a93dfad492e6195d9e95a831d0b63bf9b692912c5c3ea7f"
+    },
+    {
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\mesh-role-repeat-r156\\runtime-r157\\overview-2.jpg",
+      "sha256": "ed7584a8303a48a436110149f46baa332e9a26b07354cca0acc89202e67ef472"
+    },
+    {
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\mesh-role-repeat-r156\\runtime-r157\\overview-3.jpg",
+      "sha256": "be352063839c431bd5535c32ab9d09b41bc63c3dd2f307b78556369c05685326"
+    },
+    {
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\mesh-role-repeat-r156\\runtime-r157\\overview-4.jpg",
+      "sha256": "4a1324ac5887a446d7f23ec39b67b36ecbc24eebbf82e05952b81d686d38ed65"
+    },
+    {
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\mesh-role-repeat-r156\\runtime-r157\\overview-5.jpg",
+      "sha256": "24f04cc2e3c4123f4297dd83b814b3b9c2be90fd06501d686aa1c986203175b5"
+    },
+    {
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\mesh-role-repeat-r156\\runtime-r157\\overview-6.jpg",
+      "sha256": "dce6f388f0fe704a754ecf38f1fb2d6359e62812635911ecf7d1a0522cedc7c3"
+    },
+    {
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\mesh-role-repeat-r156\\runtime-r157\\overview-7.jpg",
+      "sha256": "f800e59735cd2374c97a673ea54bfa0528636e29137de36ae0bd37dddacab4f7"
+    },
+    {
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\mesh-role-repeat-r156\\runtime-r157\\overview-8.jpg",
+      "sha256": "47024e0fd0ed60fb85346fbf6c83c461a022fe2cfc8fca590a8da134ced05851"
+    },
+    {
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\mesh-role-repeat-r156\\runtime-r157\\overview-9.jpg",
+      "sha256": "5f1e7b72c908313444134ff391db126fa9d9d6359e07198d535720897bc8bef1"
+    },
+    {
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\mesh-role-repeat-r156\\runtime-r157\\overview-10.jpg",
+      "sha256": "9e64871bac90cb4607123eb6f32f6a36ab13b7cdfd72d2837d30173b2dbda4a3"
+    },
+    {
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\mesh-role-repeat-r156\\runtime-r157\\overview-11.jpg",
+      "sha256": "943092ede31a8543411dbf369f6bd07928db056f314cf0dfb1268c243a22f9f5"
+    },
+    {
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\mesh-role-repeat-r156\\runtime-r157\\overview-12.jpg",
+      "sha256": "d8b664e60ec09765588c4cf5b834d20c93932a1ab4af0dcd40b72f90dbccef31"
+    },
+    {
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\mesh-role-repeat-r156\\runtime-r157\\overview-13.jpg",
+      "sha256": "a4e23a107b068c737f47357ea13e74a24e1be8a4de55604126c22890950f8696"
+    },
+    {
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\mesh-role-repeat-r156\\runtime-r157\\overview-14.jpg",
+      "sha256": "3de9cbcc3ad146fe011751bf999c79fd68180b7e73912a61477a65908c532479"
+    }
+  ],
+  "contacts": [
+    {
+      "label": "cover_eye_neutral",
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\cover-1111-r157-cloak-meshrole\\cover-output\\projection\\frame-00179.jpg",
+      "sha256": "e84d3995af93cd5ff03993842f809fff2d2413c584fea2e7c1f74efd77ae0e84",
+      "event_wall_ns": 1794345114676075100,
+      "duration_seconds": 0.805454,
+      "eligible_frames": 8,
+      "frame": {
+        "file": "frame-00179.jpg",
+        "time": 19.510614299986628,
+        "requested": 19.49636209999153,
+        "observed_wall_ns": 1794345115141398900,
+        "requested_wall_ns": 1794345115122604700,
+        "width": 960,
+        "height": 540
+      },
+      "same_C0_proven": false,
+      "archived_file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\mesh-role-repeat-r156\\runtime-r157\\cover_eye_neutral.jpg"
+    },
+    {
+      "label": "cover_eye_turned",
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\cover-1111-r157-cloak-meshrole\\cover-output\\projection\\frame-00198.jpg",
+      "sha256": "a41928f8033347137c1c48db2611a1fc8092db4e3ca8bc524e379aff737e4913",
+      "event_wall_ns": 1794345116792570200,
+      "duration_seconds": 0.8074213,
+      "eligible_frames": 7,
+      "frame": {
+        "file": "frame-00198.jpg",
+        "time": 21.57980699998734,
+        "requested": 21.563778899988392,
+        "observed_wall_ns": 1794345117209640200,
+        "requested_wall_ns": 1794345117188876400,
+        "width": 960,
+        "height": 540
+      },
+      "same_C0_proven": false,
+      "archived_file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\mesh-role-repeat-r156\\runtime-r157\\cover_eye_turned.jpg"
+    },
+    {
+      "label": "cover_eye_turn_restored",
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\cover-1111-r157-cloak-meshrole\\cover-output\\projection\\frame-00221.jpg",
+      "sha256": "781ddb52076eeeee961fd290f77fb08653456bf475f9de678b37a4d7fb768528",
+      "event_wall_ns": 1794345119324423800,
+      "duration_seconds": 0.8320074,
+      "eligible_frames": 7,
+      "frame": {
+        "file": "frame-00221.jpg",
+        "time": 24.10737239998707,
+        "requested": 24.06902869998885,
+        "observed_wall_ns": 1794345119737673900,
+        "requested_wall_ns": 1794345119694406500,
+        "width": 960,
+        "height": 540
+      },
+      "same_C0_proven": false,
+      "archived_file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\mesh-role-repeat-r156\\runtime-r157\\cover_eye_turn_restored.jpg"
+    },
+    {
+      "label": "cover_eye_raised",
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\cover-1111-r157-cloak-meshrole\\cover-output\\projection\\frame-00243.jpg",
+      "sha256": "1fe8700c41a498449925c17d5046c356e58c47b59691362108860cfd3005fb49",
+      "event_wall_ns": 1794345121726793800,
+      "duration_seconds": 0.8265087,
+      "eligible_frames": 7,
+      "frame": {
+        "file": "frame-00243.jpg",
+        "time": 26.47365689999424,
+        "requested": 26.457251999992877,
+        "observed_wall_ns": 1794345122103529400,
+        "requested_wall_ns": 1794345122083365800,
+        "width": 960,
+        "height": 540
+      },
+      "same_C0_proven": false,
+      "archived_file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\mesh-role-repeat-r156\\runtime-r157\\cover_eye_raised.jpg"
+    },
+    {
+      "label": "cover_eye_rise_restored",
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\cover-1111-r157-cloak-meshrole\\cover-output\\projection\\frame-00267.jpg",
+      "sha256": "c67279f452afb7fb1f5f1dc7aa6d55d4b8e7ad33883056c90fc93e337211880c",
+      "event_wall_ns": 1794345124245985000,
+      "duration_seconds": 0.9110437,
+      "eligible_frames": 8,
+      "frame": {
+        "file": "frame-00267.jpg",
+        "time": 29.102434499989613,
+        "requested": 29.068976699985797,
+        "observed_wall_ns": 1794345124731973600,
+        "requested_wall_ns": 1794345124695163300,
+        "width": 960,
+        "height": 540
+      },
+      "same_C0_proven": false,
+      "archived_file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\mesh-role-repeat-r156\\runtime-r157\\cover_eye_rise_restored.jpg"
+    }
+  ],
+  "source": "actual private simulator projection",
+  "desktop_capture": false,
+  "full_span_personally_reviewed": true,
+  "headset_accepted": false,
+  "encode_exit": 0,
+  "encoded_sha256": "3591071e9b3058bb06ba2b8e1c99ae263e8eecdb48ab0bdb54d01e81bd6548ab",
+  "reviewed_pages": 14,
+  "reviewed_original_contacts": 5,
+  "verdict": "All five actual phases retain severe self-model obstruction; FAIL",
+  "cover_view_accepted": false
+}
