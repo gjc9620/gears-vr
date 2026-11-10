@@ -1,0 +1,13 @@
+{
+  "source_sha256": {
+    "hammerburst_action_recording.py": "a9d70a4d3e30183618a3d65db98397e487a32d82d7b16aba051bf7d21c112b0c",
+    "hammerburst_isolated_operator.py": "2c3815c498900678a790dbdf5318cad274b6c356ac4926a5144efdc8052e884c",
+    "check_action_recording.py": "a5c47fe20b656ad3369ceb238b5bbc01c2fa3a02abf1a69b9050b1d344810628"
+  },
+  "helper_tests": 13,
+  "receipt_negative_variants": 11,
+  "adapter_syntax_checks": 8,
+  "native_xr_playground_rebuilt": false,
+  "runtime_verified": false,
+  "requirements_complete": false
+}

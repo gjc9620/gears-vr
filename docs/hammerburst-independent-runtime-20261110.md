@@ -482,3 +482,13 @@ launcher0/operator1/stop0、Native/PG入口/XR0与本方进程正常清理，无
 本轮driver取消callback早停：每个原gesture sample继续完成，仅观察；最终g.poses必须与原shoulder请求字典完全一致并记录shoulder_endpoint，否则不发Grip；只去掉本次取枪的后置250mssettle，其他reach原样。新private endpoint-baseline-r1仅把observer区域从40mm缩到5mm，防粗观察区提前消耗16行预算，**实际取枪Volume/动作几何/时效均未变**。17driver fixtures（含未到endpoint不得Grip和原真实改写reach必须执行全部sample）/10真observerfixture（额外三轴6mm不记行）及8adapter解析通过。完整PG SHA63b915a914b08e9d2a834c1946b454a0d642b9cb3e00945bec5e68a681b3d93b，Native/XR未重建；该新版本尚未game验证。
 
 20284 launcher0/operator1/stop0、Native/PG入口/XR0、本方game/子进程正常退出，无强杀/workererror，1229前台/2114CLOAK零违规。54帧errors空encode0，亲看3页48双眼全跨度；00000..3等待卡、00016黑帧保留，其余有真实场景与肩部手臂，无成功持枪/射击/换弹或全贴合/全角度/头显证明。7份原文本SHA归档，runtime-20284-first-failure-analysis.json/13项audit/active-runtime-wait已同步终态。下一步仅一个全新endpoint-baseline-r1实例，先actual exact-endpoint+freshUP+单Grip/held再测首发拆分耗时。无本方live运行；30%/publicv71/全部未验收范围不变。
+
+## 实际21288：记录等待卡后超时，动作未触达；首张实际投影startup门已接线
+
+本轮接续endpoint-baseline-r1/hb-cloak-1111-042322/game21288/creation134388160595100885。资源只读228.86秒206次后单次start。Native手部连接后录像启动，只保存2张相同SHA的STARTING VR等待卡，亲看原图确认，第三个请求5秒未得到fresh完整截图。action_live抛错阻止equipment/core，未产生hammerburst-core.json、无Grip/首发/计时/新handoff/reload。没有把截图失败当成武器失败，也不认图像ready或补造video。
+
+首张等待卡可以触发旧HB_first_action_capture_ready，故“Native手部连接+第一张composed image”不够。现有共享continuous报告会在实际XR epoch1投影成功xrEndFrame后独立写入startup_timings.first_stereo_submission，带原QPC；本轮只复用它，不新增共享writer。Binding存本方初始report/sessionid，读取时仍要求本方live/pinned publisher、原game及XR完整identity、原session/source1、真实非未来QPC及非runner观测的明确actual marker。start_action_recording先以15秒有界等待这个startup正证，期间无截图或武器输入，然后启动原recorder；原first capture5秒、每张请求5秒和录像错误停止后续动作保持。这个startup marker只准开始录像，不能充当当前Frame/输入/发射许可。
+
+13项helper测试通过，包含7原例/延迟真实投影/缺失15秒不得start/identity丢失/实际投影之后仍5秒capture门、11种receipt反例及缺失/坏JSON；8adapter解析通过。未新建/修改Native/XR/PG制品，同一endpoint-baseline-r1 SHA63b915a9保持；修复尚未game验证。
+
+本次launcher0/operator1/stop0、Native清理/PG入口恢复/XR0与本方进程正常退出，无强杀/workererror，1264前台/2141CLOAK零违规。2帧及原录像error完整保留，未encode（失败recorder未生成frames.txt），8原文本SHA归档，runtime-21288-first-failure-analysis.json与完整13项audit更新。启动/截图现象的全部根因仍未知，此改消除已知错误就绪条件，不称已修好renderer或全武器。下一步先保存源码，再用新唯一实例验证startup→精确端点取枪→首发分项耗时；原13项/30%/publicv71保持。

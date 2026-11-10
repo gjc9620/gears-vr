@@ -279,14 +279,19 @@
       "requirement": "手动候选交付、真实头显舒适度与接受",
       "status": "not_accepted",
       "limit": "构建/模拟器均不等于物理头显接受",
-      "evidence": []
+      "evidence": [
+        {
+          "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-21288-first-failure-analysis.json",
+          "sha256": "1e5ebec568d360d1a2e4e37c523e61d923742429b9d0aac17aac6f64cb7523bb"
+        }
+      ]
     }
   ],
   "completion_proven": false,
   "goal_active": true,
-  "immediate_next": "Save new source then one fresh endpoint-baseline-r1 instance. Confirm commanded endpoint+freshUP+singleGrip+matching held before first split timing/finite6. Do not reuse20284 or43764, both terminal. Preserve all13 requirements.",
+  "immediate_next": "Save identity-bound first-real-projection startup gate/13 helper tests+8 syntax checks, then one fresh instance with unchanged compiled endpoint-baseline-r1. Keep per-frame5s timeout and stop failed recording before actions. Full13 requirements retained.",
   "historical_evidence_does_not_certify_current_PG": true,
-  "candidate_runtime_status": "Previous press-assets-r1 actual20284: fresh realUP499 and oneGrip but no matching held; no source-gap rows/no first/no timing/handoff/reload. Normal cleanup. Early-stop driver flaw corrected, sole actual failure cause unproven.",
+  "candidate_runtime_status": "endpoint-baseline-r1 actual21288 stopped on recording error before equipment/core actions. Two personally reviewed images only startup cards; no acquisition/press/handoff exercised. Normal cleanup.",
   "previous_recorded_candidate": {
     "name": "hammerburst-prepared-20261110-unheld-input-r1",
     "prepared_sha256": "76a2ae8cc56e4165b77ca5d17a9e6469ff66323e917be5a8b46da44df4f0bb58"
@@ -308,5 +313,5 @@
   "restore_verifier_status": "Optional --hammerburst-park-restore input action hook integrated into private reload adapter; five synthetic action/receipt regressions passed. Actual park/redraw/new-grant/native-resume, typed conservation, UI/reward and complete return-fire require game evidence.",
   "latest_service_first_failure": "runtime-3112-first-failure-analysis.json",
   "latest_startup_failure": "runtime-49732-startup-failure.json",
-  "latest_runtime_failure": "runtime-20284-first-failure-analysis.json"
+  "latest_runtime_failure": "runtime-21288-first-failure-analysis.json"
 }

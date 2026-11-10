@@ -1,0 +1,183 @@
+{
+  "game": {
+    "pid": 21288,
+    "creation_time": 134388160595100885,
+    "image": "j:\\gearsvr\\gears.of.war.reloaded.v1.0.1.3816947-p2p\\gears of war reloaded\\binaries_x64\\gowde-steam.exe"
+  },
+  "candidate": "63b915a914b08e9d2a834c1946b454a0d642b9cb3e00945bec5e68a681b3d93b",
+  "actual_trajectory_count": 0,
+  "acquisition_attempted": false,
+  "core_not_reached": true,
+  "press_timing_not_reached": true,
+  "release_handoff_not_reached": true,
+  "first_failure": "Private recorder captured two identical startup wait cards then no complete fresh screenshot within unchanged5s. action_live stopped before equipment/core inputs. No first-world/action visual evidence; do not call weapon/driver passed or failed.",
+  "startup_evidence": {
+    "xr_preflight": {
+      "elapsed_ms": 3356.2882,
+      "since_runner_start_ms": 3466.7887,
+      "evidence": "strict focused source0 CSV and required startup panel",
+      "clock": "Windows QPC / perf_counter_ns",
+      "timing_is_runner_observation": true
+    },
+    "camera_ready": {
+      "elapsed_ms": 34514.1108,
+      "since_runner_start_ms": 37984.4538,
+      "evidence": "before_native_activation callback returned and startup remained live",
+      "clock": "Windows QPC / perf_counter_ns",
+      "timing_is_runner_observation": true
+    },
+    "native_prepare": {
+      "elapsed_ms": 8751.739,
+      "since_runner_start_ms": 46805.4432,
+      "evidence": "native preparation command exited 0; does not prove a stereo frame",
+      "clock": "Windows QPC / perf_counter_ns",
+      "timing_is_runner_observation": true
+    },
+    "native_running": {
+      "elapsed_ms": 10.8337,
+      "since_runner_start_ms": 46818.3963,
+      "evidence": "fresh running status with matching owner; does not prove a stereo frame",
+      "clock": "Windows QPC / perf_counter_ns",
+      "timing_is_runner_observation": true
+    },
+    "first_stereo_submission": {
+      "elapsed_ms": 11731.5745,
+      "since_runner_start_ms": 49785.2787,
+      "evidence": "XR epoch1 actual projection successful xrEndFrame marker",
+      "clock": "Windows QPC / perf_counter_ns",
+      "timing_is_runner_observation": false,
+      "xr_monotonic_ns": 127317635531900,
+      "runner_observation_delay_ms": 276.4998
+    }
+  },
+  "media": {
+    "frames": 2,
+    "errors": [
+      "Traceback (most recent call last):\n  File \"C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\solo-m1-20261028\\record_projection.py\", line 42, in capture\n    if time.perf_counter()>deadline: raise RuntimeError('No complete fresh projection frame')\n                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nRuntimeError: No complete fresh projection frame\n"
+    ],
+    "images": [
+      {
+        "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\hb-cloak-1111-042322\\actions\\menu-firstperson-21288-042751\\frame-00000.jpg",
+        "sha256": "57e7449b3c728ad317dc3467c89e494666afc7bafcd25f26e914d7a38f7e2237"
+      },
+      {
+        "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\hb-cloak-1111-042322\\actions\\menu-firstperson-21288-042751\\frame-00001.jpg",
+        "sha256": "57e7449b3c728ad317dc3467c89e494666afc7bafcd25f26e914d7a38f7e2237"
+      }
+    ],
+    "personally_reviewed_both": true,
+    "findings": "Both actual saved images are identical STARTING VR waiting cards, not actual gameplay. No overview or all-angle fitting acceptance.",
+    "encoded": false,
+    "encoding_not_attempted": "Failed recorder did not produce frames.txt; retain original errors and images, no passing video fabricated."
+  },
+  "cleanup": {
+    "launcher_exit": 0,
+    "owned_game_absent": true,
+    "owned_children": {
+      "recorded": 0,
+      "remaining": []
+    },
+    "forced_termination": false,
+    "worker_error": null
+  },
+  "stop_exit": 0,
+  "operator_exit": 1,
+  "native_cleanup_verified": true,
+  "xr_exit_code": 0,
+  "playground_cleanup": {
+    "loaded": true,
+    "shutdown_code": 0,
+    "entry_restored": true,
+    "passed": true
+  },
+  "audio": {
+    "enabled": true,
+    "game_identity": {
+      "pid": 21288,
+      "creation_time": 134388160595100885
+    },
+    "owner_identity": {
+      "pid": 15268,
+      "creation_time": 134388160364945819
+    },
+    "log": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\hb-cloak-1111-042322\\launcher-session.ceac3f2a50f746c39c6df1906a552ba0.audio.jsonl",
+    "restored": true,
+    "startup": {
+      "ready_observed": true,
+      "ready_timeout_seconds": 15.0,
+      "waited_seconds": 0.07800000000861473,
+      "helper_exit_code": null
+    },
+    "exit_code": 0,
+    "event": "guard_cleanup",
+    "reason": "stop",
+    "matched": 1,
+    "muted": 0,
+    "restore_attempted": 0,
+    "restore_pending": 0,
+    "read_failed": 0,
+    "mute_failed": 0,
+    "scans": 235,
+    "endpoint_unavailable": 0,
+    "shared_rejected": 2585,
+    "sessions_restored": 0,
+    "mute_verification": {
+      "event": "mute_verification_summary",
+      "pid": 21288,
+      "initially_muted_sessions": 1,
+      "verified_muted_observations": 235,
+      "verify_failed": 0,
+      "target_shared_rejected": 0,
+      "shared_rejected_is_global_scan_count": true
+    }
+  },
+  "foreground_samples": 1264,
+  "cloak_samples": 2141,
+  "foreground_violations": [],
+  "cloak_violations": [],
+  "verified_archive": [
+    {
+      "source": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\tools\\playground\\build-hb-cloak-1111-042322\\playground-21288.log",
+      "archive": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-21288-text\\playground-21288.log",
+      "sha256": "47cc77d8259e685a0125f1c31bf8a0672cd8df39bf360c7520902eecb2290c06"
+    },
+    {
+      "source": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\hb-cloak-1111-042322\\actions\\menu-firstperson-21288-042751\\result.json",
+      "archive": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-21288-text\\result.json",
+      "sha256": "3367e18665710a357f97eceeb235b8a840a671d3e2a661bef70e343f0e8a6a44"
+    },
+    {
+      "source": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\hb-cloak-1111-042322\\actions\\menu-firstperson-21288-042751\\recording.json",
+      "archive": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-21288-text\\recording.json",
+      "sha256": "2ca0917a4fbe5acc2fd4fb56cf3c6516d1a4b41760e6eb5880e6aed70a05e2bb"
+    },
+    {
+      "source": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\hb-cloak-1111-042322\\launcher-session.json",
+      "archive": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-21288-text\\launcher-session.json",
+      "sha256": "29087d900fd0978a01a618f2335fef3a0615fd6490bc1cab0ef0f79db3196db9"
+    },
+    {
+      "source": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\runtime\\continuous-stereo-21288-20261111-042746-4aa23bed.json",
+      "archive": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-21288-text\\continuous-stereo-21288-20261111-042746-4aa23bed.json",
+      "sha256": "dfba0e30f7bfdafbb14282e7809e2538996de67a8fd58c5a89d216472221bd2f"
+    },
+    {
+      "source": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\hb-cloak-1111-042322\\isolated-done.json",
+      "archive": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-21288-text\\isolated-done.json",
+      "sha256": "283ec01454add73da9d7dc3d51a2f241f008239fb70c8c6351caed26a2c0f044"
+    },
+    {
+      "source": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\hb-cloak-1111-042322\\launcher-session.ceac3f2a50f746c39c6df1906a552ba0.audio.jsonl",
+      "archive": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-21288-text\\launcher-session.ceac3f2a50f746c39c6df1906a552ba0.audio.jsonl",
+      "sha256": "7d5c4dcb7763b7d6586642de3f23f55dba05d53694eb18625d5aa14eb7005cc0"
+    },
+    {
+      "source": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\hb-cloak-1111-042322\\xr-input\\LocalAppData\\OpenXR-Simulator\\screenshot_status.json",
+      "archive": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-21288-text\\screenshot_status.json",
+      "sha256": "1cbce328e1f712c33179419b2f1cd23a60071872a6081d6b5576d54a806a9041"
+    }
+  ],
+  "repair": "Before starting capture or any weapon action, wait<=15s for existing same-instance/session/game/XR identity-bound first_stereo_submission actual successful xrEndFrame receipt. This is startup evidence only; recorder request5s timeout, source100ms/reserve20ms/event250ms and all action checks unchanged. No writer/retry/input added.",
+  "gameplay_accepted": false,
+  "physical_headset_accepted": false
+}

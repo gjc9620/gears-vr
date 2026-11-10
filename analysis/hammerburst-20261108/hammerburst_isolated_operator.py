@@ -38,6 +38,8 @@ class Binding:
             raise ValueError('Action output must belong to this exact instance')
         self.control = control
         self.pinned = None
+        self.report = None
+        self.continuous_session_id = None
 
     def state(self):
         state = json.loads((self.instance / 'launcher-session.json').read_text(encoding='utf-8'))
@@ -61,7 +63,29 @@ class Binding:
         if hashlib.sha256(executable.read_bytes()).hexdigest() != manifest['xr_sha256']:
             raise RuntimeError('Frozen XR artifact changed')
         self.pinned = (state['owner_identity'], state['game_identity'], publisher)
+        self.report = report
+        self.continuous_session_id = details['session_id']
         return state
+
+    def projection_ready(self,game,*,now=None):
+        # Existing launcher receipt only, never a new writer or frame permit.
+        if not self.pinned or self.report is None or not self.live(game):return False
+        try:details=json.loads(self.report.read_text(encoding='utf-8-sig'))
+        except (OSError,ValueError):return False
+        if not isinstance(details,dict):return False
+        if (details.get('game_identity')!=game or details.get('xr_identity')!=self.pinned[2] or
+            details.get('session_id')!=self.continuous_session_id or details.get('source')!=1):return False
+        timings=details.get('startup_timings',{})
+        if not isinstance(timings,dict):return False
+        timing=timings.get('first_stereo_submission',{})
+        if not isinstance(timing,dict):return False
+        stamp=timing.get('xr_monotonic_ns')
+        if now is None:
+            import time
+            now=time.perf_counter_ns()
+        return (isinstance(stamp,int) and not isinstance(stamp,bool) and 0<stamp<=now and
+            timing.get('timing_is_runner_observation') is False and
+            timing.get('evidence')=='XR epoch1 actual projection successful xrEndFrame marker')
 
     def publisher(self):
         state = self.state()
@@ -186,7 +210,7 @@ def menu_source():
         "    rec=ProjectionRecording(folder,directory,live,layer='all',capture_enabled=False)")
     source = replace_once(source,
         "\n    head_rest=dict(zip(('x','y','z'),initial['head']['xyz']),**euler(initial['head']['quat']))",
-        "\n    if '--dual-output' not in sys.argv:start_action_recording(rec,live)\n    else:rec.start()\n    head_rest=dict(zip(('x','y','z'),initial['head']['xyz']),**euler(initial['head']['quat']))")
+        "\n    if '--dual-output' not in sys.argv:start_action_recording(rec,live,projection_ready=lambda:BOUND.projection_ready(game))\n    else:rec.start()\n    head_rest=dict(zip(('x','y','z'),initial['head']['xyz']),**euler(initial['head']['quat']))")
     source = replace_once(source, "OUT=Path(__file__).resolve().parent;ROOT=OUT.parents[1]", "CODE=Path(__file__).resolve().parent;ROOT=CODE.parents[1];OUT=BOUND.output")
     source = replace_once(source, "state=json.loads((ROOT/'analysis/instances/solo-m1-1028d/launcher-session.json').read_text(encoding='utf-8'))", 'state=BOUND.state()')
     source = replace_once(source, "folder=ROOT/'analysis/instances/solo-m1-1028d/xr-input/LocalAppData/OpenXR-Simulator'", "folder=BOUND.instance/'xr-input/LocalAppData/OpenXR-Simulator'")
