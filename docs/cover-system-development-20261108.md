@@ -1888,3 +1888,6 @@ QueryEngine分别记录进入Calls包装的次数与其正常返回次数；生�
 在r102 v3冻结源码上仅覆盖三个相关生产文件，Native编译通过：SHA256 `487708269814b99c6b8c487da4bc6be67f36c3ea044a0c9196905a41a86b82a6`，400项项目依赖核对、原开关及无外部工作树依赖通过。独立新尝试`equipment-controls-prepared-20261110-cover-source-stage-r104`和入口准备退出0，复用已验证的普通接近／吸附和短观测动作，仅新增上述来源阶段／原调用记录；r102已消耗尝试完全保留。本次尚未stage或启动游戏，cause仍未证明，不能先称来源修复。
 
 证据：`analysis/cover-system-20261108/source-stage-r104/verification.json`。继续同一RuntimeGuard与真实占用检查，正常清理／恢复完成才释放；错误保留运行锁逻辑复用已保存的r102入口。public v71、工程25%及完整CV-01–24／AC-01–22范围不变。
+
+
+r104运行入口补充：共享进程40964、42324、34780、54756先后实际占用。一次run模式请求被同一OS guard拒绝，尚未backup／stage、claim仍未消耗，拒绝日志另存。新未消耗入口将run模式的零等待锁获取移到冻结来源校验之前：这是当下实际启动尝试，校验失败立即释放且无stage；没有未来队列、等待票或prepare-only预占。所有来源校验、真实占用复核、全量新鲜备份和恢复仍在该guard中；prepare-only继续完全不获取guard。实际入口异常路径7项离线检查通过，并确认run校验在fake guard已进入后才执行；未使用真实锁／游戏。重新prepare-only退出0，Native DLL未变，r102已消耗入口未修改。
