@@ -142,4 +142,4 @@ continuation-rejection-isolated-r1从manual-veto-isolated原2253文件逐项复�
 
 ## 新失败记录的离线解释边界
 
-新增纯函数analyze_hb_continuation_rejection.py读取有限失败行，不访问进程/输入/游戏。release仅gate16、continuation仅gate7表示当前真正执行need_source，其余路径把source_stage标为历史值而不归因；cancel already requested不被当成根因。23个已知gate与重复/无效字段反例、实际13712旧原日志无新记录不造诊断，共27项通过。原日志没有新增记录不能据缺失判通过。receipt-reader-check.json保存源码SHA/合成边界与实际旧日志观察。本工具不进入生产driver/不改候选或已冻结Python边界。
+新增纯函数analyze_hb_continuation_rejection.py读取有限失败行，不访问进程/输入/游戏。release仅gate16、continuation仅gate7表示当前真正执行need_source，其余路径把source_stage标为历史值而不归因；cancel already requested不被当成根因。23个已知gate与重复/无效字段反例、实际13712旧原日志无新记录不造诊断，共30项通过（重复字段与独立无效值均拒绝）。原日志没有新增记录不能据缺失判通过。receipt-reader-check.json保存源码SHA/合成边界与实际旧日志观察。本工具不进入生产driver/不改候选或已冻结Python边界。
