@@ -4,6 +4,7 @@ import ast
 import argparse
 import json
 import sys
+import subprocess
 from prepare import ROOT, HERE, OLD, R104, sha, load, replace_once, write_new
 
 
@@ -65,12 +66,17 @@ def live():
         raise RuntimeError('Shared instance selection remains in a frozen action module')
     for filename, source in sources.items():
         ast.parse(source, filename=filename)
-    ast.parse(wrapper, filename='operator.py')
-    path = output / 'operator.py'
+    ast.parse(wrapper, filename='cover_action.py')
+    path = output / 'cover_action.py'
     with path.open('x', encoding='utf-8') as stream:
         stream.write(wrapper)
+    # Reproduce the interpreter's initial imports from this actual directory,
+    # before any game/input execution. operator.py previously shadowed stdlib.
+    subprocess.run([sys.executable,'-E','-s','-B','-X','utf8','-c',
+        'from pathlib import Path; import operator; assert operator.or_(1,2)==3'],
+        cwd=output,check=True,capture_output=True,timeout=10,creationflags=subprocess.CREATE_NO_WINDOW)
     write_new(HERE / selected.name / 'operator-prepared.json', dict(
-        instance=str(selected), operator=str(path), operator_sha256=sha(path),
+        instance=str(selected), operator=str(path), operator_sha256=sha(path), bootstrap_stdlib_passed=True,
         source_sha256={str(OLD / filename):sha(OLD / filename) for filename in sources},
         wrapper_source_sha256=sha(R104 / 'run_cover_eye_approach_operator.py'),
         generator_sha256=sha(__file__),

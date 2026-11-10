@@ -60,7 +60,7 @@ def main():
     memory = isolated.require_memory()
     sys.path[:0] = [str(ROOT/'tools/native-capture'), str(OLD)]
     from run_stereo_continuous import WindowsControl
-    from record_paired_windows import PairedWindowRecording
+    from record_projection import ProjectionRecording
     control = WindowsControl()
     env = os.environ.copy()
     for key in ('GEARSVR_LANCER_INTEGRATED_PREPARED', 'GEARSVR_LANCER_INTEGRATED_CHECK', 'GEARSVR_STARTUP_REPLAY_ACTIONS'):
@@ -71,9 +71,16 @@ def main():
     result = dict(name=NAME, memory_before=memory, started_at_ns=time.time_ns(),
                   source=1, forced_termination=False, gameplay_accepted=False, headset_accepted=False)
     result['foreground_observations'] = dict(samples=0, owned_activation=False)
+    result['cloak_observations'] = dict(samples=0, failures=[])
+    result['runner_sha256'] = sha(__file__)
     user = ctypes.WinDLL('user32', use_last_error=True)
     user.GetForegroundWindow.restype = ctypes.c_void_p
     user.GetWindowThreadProcessId.argtypes = [ctypes.c_void_p, ctypes.POINTER(ctypes.c_uint32)]
+    user.IsWindowVisible.argtypes = [ctypes.c_void_p]
+    user.EnumWindows.argtypes = [ctypes.c_void_p, ctypes.c_ssize_t]
+    dwm = ctypes.WinDLL('dwmapi')
+    dwm.DwmGetWindowAttribute.argtypes = [ctypes.c_void_p, ctypes.c_uint32, ctypes.c_void_p, ctypes.c_uint32]
+    enum_callback = ctypes.WINFUNCTYPE(ctypes.c_int, ctypes.c_void_p, ctypes.c_ssize_t)
     write_new(OUTPUT/'claim.json', dict(state='consumed', at_ns=time.time_ns(), pid=os.getpid()))
     paired = operator = None
     log = None
@@ -95,6 +102,23 @@ def main():
         if any(identity and identity['pid']==pid.value and control.identity(pid.value)==identity for identity in own):
             result['foreground_observations'].update(owned_activation=True, foreground_pid=pid.value)
             raise RuntimeError('Own private process activated; stop our action and clean up normally')
+        identities = {i['pid']:i for i in (state.get('game_identity'), session.get('xr_identity')) if i}
+        @enum_callback
+        def visit(hwnd, _):
+            target = ctypes.c_uint32()
+            user.GetWindowThreadProcessId(hwnd, ctypes.byref(target))
+            identity = identities.get(target.value)
+            if identity and control.identity(target.value)==identity and user.IsWindowVisible(hwnd):
+                value = ctypes.c_uint32()
+                hr = dwm.DwmGetWindowAttribute(hwnd,14,ctypes.byref(value),ctypes.sizeof(value))
+                result['cloak_observations']['samples'] += 1
+                if hr or not value.value:
+                    result['cloak_observations']['failures'].append(dict(hwnd=int(hwnd),identity=identity,hr=hr,cloak=value.value))
+            return 1
+        if not user.EnumWindows(visit,0):
+            raise RuntimeError('Own cloak window enumeration failed')
+        if result['cloak_observations']['failures']:
+            raise RuntimeError('Own visible window is not DWM cloaked; normal stop required')
     try:
         start = subprocess.run([sys.executable, '-E', '-s', '-B', '-X', 'utf8', str(TOOLS), 'start', '--name', NAME],
             cwd=ROOT, env=env, capture_output=True, timeout=30, creationflags=subprocess.CREATE_NO_WINDOW)
@@ -115,23 +139,7 @@ def main():
                 raise RuntimeError('Private launcher ended before observation: '+str(load(SELECTED/'isolated-done.json')))
             if session.get('error'):
                 raise RuntimeError('Private session error: '+str(session['error']))
-            if paired is None and session.get('xr_identity') and session.get('xr_command'):
-                directory = OUTPUT/'startup'
-                directory.mkdir(exist_ok=True)
-                candidate = PairedWindowRecording(state, directory, control, max_seconds=600)
-                try:
-                    candidate.start()
-                except AssertionError as error:
-                    detail = error.args[0] if error.args else None
-                    if not (candidate.process is None and isinstance(detail, tuple) and detail == ('Expected exactly one owned simulator preview', [])):
-                        raise
-                else:
-                    paired = candidate
-                    result['paired_directory'] = str(directory)
-                    save()
             if session.get('phase')=='running' and session.get('native_started') is True:
-                if paired is None:
-                    raise RuntimeError('No exact-owned paired recording before Native readiness')
                 if state.get('vr_gamepad', {}).get('source') != 1:
                     raise RuntimeError('No own Source1 input')
                 for key in ('game_identity', 'owner_identity', 'xr_identity'):
@@ -139,6 +147,18 @@ def main():
                     if control.identity(identity['pid']) != identity:
                         raise RuntimeError('Readiness identity changed: '+key)
                 result['running_identities'] = {key:session[key] for key in ('game_identity','owner_identity','xr_identity')}
+                directory = OUTPUT/'projection'
+                game_identity,xr_identity=session['game_identity'],session['xr_identity']
+                def projection_live():
+                    return control.identity(game_identity['pid'])==game_identity and control.identity(xr_identity['pid'])==xr_identity
+                paired = ProjectionRecording(SELECTED/'xr-input/LocalAppData/OpenXR-Simulator',directory,projection_live)
+                paired.start()
+                result['projection_directory']=str(directory)
+                ready_until=time.monotonic()+7
+                while len(paired.frames)<2 and not paired.errors and time.monotonic()<ready_until:
+                    check_background(*current());time.sleep(.05)
+                if paired.errors or len(paired.frames)<2:
+                    raise RuntimeError('No two fresh actual projection frames before cover input: '+repr(paired.errors))
                 save()
                 break
             time.sleep(.2)
@@ -165,6 +185,15 @@ def main():
         result['error'] = repr(error)
         result['traceback'] = traceback.format_exc()
     finally:
+        # Finish GPU capture while the exact game/XR identities still exist.
+        # Never reveal a window to record and never substitute desktop pixels.
+        if paired:
+            try:
+                paired.stop()
+                result['projection_frames']=len(paired.frames)
+                result['projection_errors']=paired.errors
+            except BaseException as error:
+                result['projection_error']=repr(error)
         # The isolated tool selects the exact private owner. No global stop,
         # shared restore or process termination is used on any exit path.
         state, session = current()
@@ -176,12 +205,6 @@ def main():
                 result.update(stop_exit=stop.returncode, stop_stdout=stop.stdout.decode('utf-8', errors='replace'), stop_stderr=stop.stderr.decode('utf-8', errors='replace'))
             except BaseException as error:
                 result['stop_error'] = repr(error)
-        if paired:
-            try:
-                paired.stop()
-                result['paired_exit'] = paired.process.returncode
-            except BaseException as error:
-                result['paired_error'] = repr(error)
         if operator and operator.poll() is None:
             try:
                 operator.wait(timeout=20)
@@ -207,7 +230,9 @@ def main():
             and result['isolated_done']['launcher_exit']==0 and result['isolated_done']['owned_game_absent'] is True)
         save()
     print(json.dumps({key:result.get(key) for key in ('error','operator_exit','paired_exit','normal_cleanup_verified','remaining_owned')}))
-    return 0 if not result.get('error') and result['normal_cleanup_verified'] else 1
+    return 0 if (not result.get('error') and not result.get('projection_error')
+        and result.get('projection_frames',0)>1 and result['cloak_observations']['samples']>0
+        and not result['cloak_observations']['failures'] and result['normal_cleanup_verified']) else 1
 
 
 if __name__ == '__main__':

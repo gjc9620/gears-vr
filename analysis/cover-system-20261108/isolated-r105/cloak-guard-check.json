@@ -1,0 +1,7 @@
+{
+  "checks": 8,
+  "passed": true,
+  "scope": "actual runner guard AST; synthetic Win32 APIs only",
+  "game_started": false,
+  "runner_sha256": "410649c5a861cbe4da33aad5cde65667faa52354e093d3fa1c2698fed2f669f8"
+}

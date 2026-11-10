@@ -1,0 +1,42 @@
+{
+  "name": "cover-1110-r112-cloak-source-stage",
+  "result_sha256": "b2512f2fe7a9b89b1bda9b5e47a51dc7ccbd0340fb5dc86ea7c3eb62d2384a1e",
+  "result": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\cover-1110-r112-cloak-source-stage\\cover-output\\run-result.json",
+  "native_sha256": "58bdbf940abb2e087ff845df7715087f452c2a71a581033caa3bb382d023f333",
+  "actual_query_attempted": false,
+  "first_failure": "operator.py shadows Python stdlib operator during pathlib import; no cover input",
+  "native_restore": true,
+  "entry_restore": true,
+  "pad_restore": true,
+  "xr_exit": 0,
+  "launcher_exit": 0,
+  "owned_absent": true,
+  "unified_drained": false,
+  "fire_disable_code": 2,
+  "hand_stop_code": 5,
+  "normal_cleanup_verified": false,
+  "forced_termination": false,
+  "cloak_samples": 310,
+  "cloak_failures": 0,
+  "frames": [
+    {
+      "file": "frame-00000.jpg",
+      "sha256": "57e7449b3c728ad317dc3467c89e494666afc7bafcd25f26e914d7a38f7e2237",
+      "review": "startup waiting card"
+    },
+    {
+      "file": "frame-00001.jpg",
+      "sha256": "57e7449b3c728ad317dc3467c89e494666afc7bafcd25f26e914d7a38f7e2237",
+      "review": "startup waiting card"
+    },
+    {
+      "file": "frame-00002.jpg",
+      "sha256": "aeff03de75196a1990ee6e5a97b0e970d28f1d424f0dda2cd4056404c1894d73",
+      "review": "actual stereo scene, both hands; no cover action"
+    }
+  ],
+  "fix": "fresh output cover_action.py; generator verifies standard imports from actual output directory",
+  "next_instance": "cover-1110-r113-cloak-source-stage",
+  "next_claim_consumed": false,
+  "remaining": "source4 not re-exercised; fire stop acknowledgement not passed; full CV01-24/AC01-22 open"
+}
