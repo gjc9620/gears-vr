@@ -1,0 +1,9 @@
+{
+  "passed": true,
+  "cases": 8,
+  "actual_client": true,
+  "source_sha256": "b28f7c5ff95da616006b16d9602068c4456a25e94550c1458a723a483192461f",
+  "header_sha256": "85d916ade33fee190b63aa29835641642d561f76acf6f4fca9e02c19ec27ffeb",
+  "game_observations": "Synthetic local Host",
+  "game_execution": false
+}

@@ -300,3 +300,17 @@ C盘再次跌至启动下限，排查确认旧私有实例各复制的PSOCache�
 过去名额短暂释放后，复制约0.9GB准备文件再start可能又遇其他worker完成登记。为减少此延迟，本枪runner新增显式`--prepare-then-wait`：要求5GiB（共享4GiB+已测私有准备1GiB余量），只准备一个新唯一名字，随后最多180秒只读等待资源，最多一次首次start。等待期间无worker、无游戏、无输入、不占运行名额、不持共享锁；start仍调用原共享入口，在原短事务下重新核对磁盘/实际存活身份/内存，拒绝也不重新启动这个名字。原默认preflight行为不变。
 
 暂停标记、未知错误、等待截止或迟到准入均中止该未启动尝试；同一个绝对截止不续期。5项针对性离线检查通过（忙后空闲、不预留slot，暂停，不重试未知错误，不续截止，迟到/暂停成功不准入）。此调整只减少本次准备与首次启动之间的竞争，不新增排队/票据/平台，不弱化任何游戏/input保护或构成武器运行验收。
+
+## 实际55584：初始锁扣交接失败，supply修正分支未到达
+
+hb-cloak-1111-000647一次准备，等资源58.532秒/55次拒绝读，名额释放后首次start通过原准入。game55584/creation134388004760825295，supply-frame-r1实际core6+12次六连排空72→0/R78、78条有效/write+trace一致射线、空仓trigger不补弹不出射线通过。但最初锁扣Frame734/sequence4808首次grant后，读回reason7/game_difference6（request_magazine与incumbent）撤回；Frame741输入100.330ms过期；新鲜Frame748到来后原identity精确比较不等，cleanup line640在stage2/angle0.00210334807正常退出原动画。具体变动identity字段当时未记录，不声称只改了hold或lifecycle。没有到旧弹匣stage4，故本次未触发新supply-frame修正分支。
+
+launcher0/operator1/stop0、Native清理/PG入口恢复/XR0、game及子进程退出、无强杀；2147前台/4001CLOAK零违规。517帧errors空、离线encode0；亲看48双眼样本三页全跨度概览及原图00329/00384/00395，实际动作可见，近脸/叠影/白面仍在，00384近处枪手消失后00395又可见；不凭此认定渲染或pose单一根因，不接受完整贴合/连续性。9份文本原件SHA归档；详见`runtime-55584-first-failure-analysis.json`及媒体索引。
+
+## part-frame-r1准备与余下终态缓存归档
+
+新候选仅将同一exact-source交接法显式用于最初锁扣magazine grant：默认Snapshot仍只接受ammo，锁扣须明确传magazine；其他LeaseKind拒绝。只有acquiring/opening且旧item、持有lease和原Frame/source全同，HB propose在该Frame保持原at_latch请求，下一Frame照常提交实际incumbent；不放宽共享Client、first grant、身份/跟踪/输入/期限检查。另在原identity不等的同一次POD比较前输出最多8条位掩码与原/现hold、lifecycle/world generation/input/space；仍走原cleanup，不新增读、clock或身份例外。
+
+完整PG SHA18131f8a91ea7a22463afd3edb515e9c75ec057590e28687c880e9711794f6e6；Native/XR及共享Client未改。45项exact-source检查通过；真实冻结HandClient加本地Host的8项整合覆盖ammo/magazine两种difference5/6重现、首次Frame保留、下一Frame严格retained、busy及invalidate拒绝。不是实际Native/game验证，尚未运行该候选。
+
+为继续实际复测，将本枪余下已终态212059、211559、204446、200135、194156、1111-000647的PSOCache按前述相同身份/完整SHA/junction读回流程归档，又完整保留630文件/5,310,295,908bytes。未动日志/录像/源码/当前制品。首次进程查询遇到进程在取得StartTime前退出，原脚本在任何复制/移动前中止；现最多再查一次，只接受明确NoProcessFound或正读到不同creation，仍未知/同身份存活则拒绝。没有把空StartTime当作退出。总表`terminal-shader-archive-20261111.json`与六份逐文件索引保留，旧总表不覆盖；目录名仍为首次创建的20261110归档根，非伪改实验日期。

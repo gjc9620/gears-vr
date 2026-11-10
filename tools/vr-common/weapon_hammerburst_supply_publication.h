@@ -2,7 +2,8 @@
 #include "weapon_hand_participant.h"
 
 // HB's contribution to a read-consumer observation must not change halfway
-// through the EXACT Frame that just granted shoulder supply. This POD only
+// through the EXACT Frame that just granted a part. Shoulder supply remains
+// the default; the initial latch must explicitly select magazine kind. POD only
 // identifies that acquisition Frame. It cannot grant a lease or renew input.
 namespace gears_hammerburst_supply_publication {
 namespace hand=gears_weapon_hand;
@@ -13,10 +14,12 @@ struct Snapshot {
     std::int64_t sync{};
     bool known{};
     void reset() noexcept {*this={};}
-    bool remember(hand::Frame const& f,hand::Decision const& d) noexcept {
+    bool remember(hand::Frame const& f,hand::Decision const& d,
+                  hand::LeaseKind expected=hand::LeaseKind::ammo) noexcept {
         reset();
         if(!hand::same(f.key,d.key)||!d.proposal_nonce||!d.new_grant||d.release_required||
-           d.status!=hand::DecisionStatus::granted||d.lease.kind!=hand::LeaseKind::ammo||
+           (expected!=hand::LeaseKind::ammo&&expected!=hand::LeaseKind::magazine)||
+           d.status!=hand::DecisionStatus::granted||d.lease.kind!=expected||
            !hand::lease_valid(d.lease,f.key.lifecycle)||d.lease.id!=f.press_token||
            d.press_token!=f.press_token||!f.left_grip_known||!f.left_grip_down||!f.left_tracked||
            !f.key.frame||!f.controllers.sequence||f.controllers.sync_ns<=0)return false;

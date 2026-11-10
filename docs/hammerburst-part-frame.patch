@@ -1,0 +1,68 @@
+--- a/tools/playground/weapon_hammerburst_runtime.inl
++++ b/tools/playground/weapon_hammerburst_runtime.inl
+@@ -39,7 +39,7 @@
+ gears_weapon::HammerburstMagazineExtraction extraction;
+ gears_weapon::FeedPortMount feed;
+ hand::Lease held{};
+-gears_hammerburst_supply_publication::Snapshot supply_publication;
++gears_hammerburst_supply_publication::Snapshot supply_publication,latch_publication;
+ std::uint64_t serial{},old_item{},new_item{};
+ inv::Identity last_started_identity{};
+ std::uint64_t last_started_grip{};
+@@ -212,6 +212,13 @@
+             f.key.frame,f.controllers.sequence,f.press_token,unsigned(game.request_ammo));fflush(log_file);++rows;}
+         return;
+     }
++    if((stage==Stage::acquiring||stage==Stage::opening)&&latch_publication.same_acquisition_source(f,held,old_item)){
++        game.request_magazine=at_latch(f);
++        static unsigned rows{};
++        if(log_file&&rows<8){fwprintf(log_file,L"hammerburst_latch_frame frame=%llu sequence=%llu token=%llu request_magazine=%u defer_incumbent=1\n",
++            f.key.frame,f.controllers.sequence,f.press_token,unsigned(game.request_magazine));fflush(log_file);++rows;}
++        return;
++    }
+     if(held.id==f.press_token&&hand::lease_valid(held,f.key.lifecycle)){
+         for(auto& slot:game.object_incumbents){if(hand::same(slot,held))return;
+             if(slot.kind==hand::LeaseKind::none){slot=held;return;}}
+@@ -255,7 +262,7 @@
+     restore_resume_step=0;restore_resume_intent=0;resume_grant_ready=restore_native_uncertain=false;
+     const bool release_outstanding=stage!=Stage::parked;
+     stage=Stage::idle;observer={};transaction={};writer={};opening={};completion={};reward={};
+-    supply_publication.reset();held={};serial=old_item=new_item=0;angle=0;released=switch_requested=native_exited=ui_pending=false;
++    supply_publication.reset();latch_publication.reset();held={};serial=old_item=new_item=0;angle=0;released=switch_requested=native_exited=ui_pending=false;
+     feed_item=feed_sequence=0;feed_ns=0;
+     open_pose_reads=open_stable_reads=feed_failure=0;last_open_observed=0;
+     stroke.reset();insertion.reset();extraction.reset();feed={};if(!preserve_geometry)geometry.known=false;
+@@ -637,7 +644,24 @@
+             if(lancerreload_runtime::weapon_retired(opening.identity.weapon))cleanup(__LINE__);return true;}
+         return false;
+     }
+-    if(stage!=Stage::idle&&!(inv::identity(f)==opening.identity)){cleanup(__LINE__);return true;}
++    if(stage!=Stage::idle){
++        const auto actual_identity=inv::identity(f);
++        if(!(actual_identity==opening.identity)){
++            const auto& old=opening.identity;const auto& now=actual_identity;
++            const unsigned difference=unsigned(!hand::same(old.world,now.world))|
++                (unsigned(!hand::same(old.pawn,now.pawn))<<1)|(unsigned(!hand::same(old.weapon,now.weapon))<<2)|
++                (unsigned(old.game_start!=now.game_start)<<3)|(unsigned(old.native_start!=now.native_start)<<4)|
++                (unsigned(old.registration!=now.registration)<<5)|(unsigned(old.lifecycle!=now.lifecycle)<<6)|
++                (unsigned(old.world_generation!=now.world_generation)<<7)|(unsigned(old.hold_generation!=now.hold_generation)<<8)|
++                (unsigned(old.session!=now.session)<<9)|(unsigned(old.space!=now.space)<<10)|(unsigned(old.input!=now.input)<<11);
++            static unsigned rows{};
++            if(log_file&&rows<8){fwprintf(log_file,L"hammerburst_identity_lost difference=%u frame=%llu sequence=%llu stage=%u old_hold=%llu now_hold=%llu old_lifecycle=%llu now_lifecycle=%llu old_world_generation=%llu now_world_generation=%llu old_input=%llu now_input=%llu old_space=%llu now_space=%llu\n",
++                difference,f.key.frame,f.controllers.sequence,unsigned(stage),old.hold_generation,now.hold_generation,
++                old.lifecycle,now.lifecycle,old.world_generation,now.world_generation,old.input,now.input,old.space,now.space);
++                fflush(log_file);++rows;}
++            cleanup(__LINE__);return true;
++        }
++    }
+     if(stage!=Stage::idle&&serial&&!native_exited){
+         if(ui_pending){
+             const auto display=opening.loaded?opening_policy.tactical_ms:opening_policy.empty_ms;
+@@ -674,6 +698,7 @@
+         const auto result=reload_begin::acquire(f,before,serial,reward);
+         if(result==lancerreload_state::BeginResult::rejected)return true;
+         last_started_identity=starting;last_started_grip=f.press_token;
++        latch_publication.remember(f,decision,hand::LeaseKind::magazine);
+         opening=before;old_item=f.press_token;held=decision.lease;ui_pending=needs_reload;
+         if(log_file){fwprintf(log_file,L"hammerburst_reload_begin serial=%llu accepted_ms=%lld perfect_window_ms=%lld game_start=%.9g\n",
+             serial,lancerreload_state::lease.accepted_begin_ms,lancerreload_state::lease.perfect_end_ms,

@@ -1,8 +1,8 @@
 {
   "schema": 1,
   "scope": "full HB objective; no scope reduction",
-  "current_candidate": "supply-frame-r1: exact acquisition-source HB supply proposal handoff, compiled/checks38, not game exercised",
-  "prepared_sha256": "e557df8f7ddd79282f2ffe2a949620958c5aadf7bf4455504984ba9ecad09e39",
+  "current_candidate": "part-frame-r1: explicit initial latch and supply acquisition Frame proposal consistency; compiled45+actualClient8, no game yet",
+  "prepared_sha256": "9b16f6ef5d036cc529c1c2a933378def062ed28e1c777cc54ca5c5738d1dc2a2",
   "requirements": [
     {
       "id": "acquire_stow",
@@ -203,9 +203,9 @@
   ],
   "completion_proven": false,
   "goal_active": true,
-  "immediate_next": "Fresh supply-frame-r1 ordinary empty reload: require actual seating to7, latch close, typed78/0 then return6/typed72/0; preserve grant/read and all original clocks.",
+  "immediate_next": "One fresh part-frame-r1 run: initial latch same-Frame marker then strict next-Frame retention, full old/new magazine seating, closure and actual return6/typed72/0. Keep all identity/input/mount/expiry checks.",
   "historical_evidence_does_not_certify_current_PG": true,
-  "candidate_runtime_status": "Actual45736 released-debt-r1 core6+12six-shot drain72->0/R78,78 consistent rays, empty trigger veto passed. No stale-wait branch observed. Replacementstage6, Frame710 difference5, then Frame712 expiry; seating to7 timed out, operator1 preserved.",
+  "candidate_runtime_status": "Actual55584 source supply-frame-r1 core6+12six-shot drain to0/R78,78 consistent rays and empty trigger veto passed; initial latch grant Frame734 difference6, Frame741 expiry100.330ms then Frame748 full identity mismatchcleanup. No stage4 or supply/stale-wait branch exercise. New part-frame-r1 fixes exact latch publication and observes original identity reject only.",
   "previous_recorded_candidate": {
     "name": "hammerburst-prepared-20261110-unheld-input-r1",
     "prepared_sha256": "76a2ae8cc56e4165b77ca5d17a9e6469ff66323e917be5a8b46da44df4f0bb58"
@@ -227,5 +227,5 @@
   "restore_verifier_status": "Optional --hammerburst-park-restore input action hook integrated into private reload adapter; five synthetic action/receipt regressions passed. Actual park/redraw/new-grant/native-resume, typed conservation, UI/reward and complete return-fire require game evidence.",
   "latest_service_first_failure": "runtime-3112-first-failure-analysis.json",
   "latest_startup_failure": "runtime-49732-startup-failure.json",
-  "latest_runtime_failure": "runtime-45736-first-failure-analysis.json"
+  "latest_runtime_failure": "runtime-55584-first-failure-analysis.json"
 }

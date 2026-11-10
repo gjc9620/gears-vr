@@ -52,5 +52,14 @@ int main(){
         assert(!s.remember(source,bad));assert(!s.same_acquisition_source(f,d.lease,2));checks+=2;
     }
     assert(s.remember(f,d));s.reset();assert(!s.same_acquisition_source(f,d.lease,2));checks+=2;
+    {auto latch=d;latch.lease.kind=hand::LeaseKind::magazine;
+        assert(!s.remember(f,latch)); // Default supply cannot adopt a latch.
+        assert(s.remember(f,latch,hand::LeaseKind::magazine));
+        assert(s.same_acquisition_source(f,latch.lease,2));
+        auto next=f;++next.key.frame;assert(!s.same_acquisition_source(next,latch.lease,2));
+        assert(!s.same_acquisition_source(f,d.lease,2));
+        assert(!s.remember(f,latch,hand::LeaseKind::support));
+        assert(!s.same_acquisition_source(f,latch.lease,2));checks+=7;
+    }
     std::printf("HB supply publication: %u exact-source/first-grant rejection checks; no grant, input renewal or game execution\n",checks);
 }

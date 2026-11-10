@@ -1,16 +1,34 @@
+param(
+    [ValidateCount(1,12)][string[]]$SelectedNames=@('hb-cloak-1110-221519','hb-cloak-1110-215931','hb-cloak-1110-214502','hb-cloak-1110-225401','hb-cloak-1110-232025','hb-cloak-1110-233210'),
+    [ValidateSet('terminal-shader-archive-20261110.json','terminal-shader-archive-20261111.json')][string]$SummaryName='terminal-shader-archive-20261110.json'
+)
 $ErrorActionPreference='Stop'
 $workspaceRoot='C:\Users\11\.codex\worktrees\6dof-single\gearsVr'
 $instances=Join-Path $workspaceRoot 'analysis\instances'
 $area=Join-Path $workspaceRoot 'analysis\hammerburst-20261108'
 $archiveRoot='J:\gearsVr\analysis\hammerburst-archive-20261110\terminal-shader-caches'
-$names=@('hb-cloak-1110-221519','hb-cloak-1110-215931','hb-cloak-1110-214502','hb-cloak-1110-225401','hb-cloak-1110-232025','hb-cloak-1110-233210')
+$allowed=@('hb-cloak-1110-221519','hb-cloak-1110-215931','hb-cloak-1110-214502','hb-cloak-1110-225401','hb-cloak-1110-232025','hb-cloak-1110-233210','hb-cloak-1110-212059','hb-cloak-1110-211559','hb-cloak-1110-204446','hb-cloak-1110-200135','hb-cloak-1110-194156','hb-cloak-1111-000647')
+if(@($SelectedNames|Where-Object {$_ -notin $allowed}).Count -or @($SelectedNames|Select-Object -Unique).Count -ne $SelectedNames.Count){throw 'Only explicit known own terminal instances are allowed'}
+$names=$SelectedNames
+if(Test-Path -LiteralPath (Join-Path $area $SummaryName)){throw 'Preserve existing archive summary'}
 $receipts=@();$beforeFree=(Get-PSDrive C).Free
 function Assert-IdentityGone($identity){
     if($null -eq $identity -or -not $identity.pid){return}
-    $process=Get-Process -Id $identity.pid -ErrorAction SilentlyContinue
-    if($null -ne $process){
-        if($process.StartTime.ToUniversalTime().ToFileTimeUtc() -eq $identity.creation_time){throw 'Exact owned runtime process is still live; cache archive refused'}
+    for($attempt=0;$attempt -lt 2;$attempt++){
+        $cacheArchiveLookupErrors=@()
+        $process=Get-Process -Id $identity.pid -ErrorAction SilentlyContinue -ErrorVariable cacheArchiveLookupErrors
+        if($null -eq $process){
+            if(@($cacheArchiveLookupErrors|Where-Object {$_.FullyQualifiedErrorId -notlike 'NoProcessFoundForGivenId*'}).Count){throw 'Process lookup failed; not evidence of exit'}
+            return
+        }
+        $started=$process.StartTime
+        if($null -ne $started){
+            if($started.ToUniversalTime().ToFileTimeUtc() -eq $identity.creation_time){throw 'Exact owned runtime process is still live; cache archive refused'}
+            return # Recycled PID with a positively observed different lifetime.
+        }
+        Start-Sleep -Milliseconds 10 # Recheck a process that exited during lookup.
     }
+    throw 'Unresolved process creation time; cache archive refused'
 }
 foreach($name in $names){
     $instance=[IO.Path]::GetFullPath((Join-Path $instances $name))
@@ -70,4 +88,4 @@ foreach($name in $names){
     Write-Output ($receipts[-1]|ConvertTo-Json -Compress)
 }
 @{before_free=$beforeFree;after_free=(Get-PSDrive C).Free;instances=$receipts;game_started=$false;source_logs_media_moved=$false;cache_contents_preserved=$true}|
-    ConvertTo-Json -Depth 5|Set-Content -LiteralPath (Join-Path $area 'terminal-shader-archive-20261110.json') -Encoding utf8
+    ConvertTo-Json -Depth 5|Set-Content -LiteralPath (Join-Path $area $SummaryName) -Encoding utf8
