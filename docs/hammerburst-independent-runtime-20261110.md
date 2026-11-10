@@ -288,3 +288,9 @@ launcher0/stop0、Native清理/PGshutdown0入口恢复/XR0、game及子进程正
 完整PG SHA0d48710fff11b256880d8b512054656f80beaff4b45503500e2f20eab6e43e64；Native/XR未重建。38项source/first-grant安全检查通过，包括实际difference5继续被共享Client严格拒绝、14种source变化和9种非法grant清空marker；不是游戏验证。初始测试fixture误保留Decision默认release_required=1，记忆被正确拒绝，已将合法fixture设0后通过；未改变生产拒绝条件。runner现在选择此候选，尚未实际运行。所有13项原需求保留，整体完成和头显均未接受。
 
 追加实际冻结HandClient整合检查4项：使用本地Host模拟HB提案贡献切换，旧即时incumbent/request切换由真实copy_frame_on_gt重现game_difference5并撤回；采用Snapshot后同Frame首次grant读取保持原观察，下一Frame严格prepare/commit产生retained同lease且无new_grant；同Framegame.busy或显式invalidate仍拒绝并撤回。结果`supply-frame-r1/supply-client-test-result.json`，实际Client头SHA记录；不是Native或游戏运行证明，PG候选DLL未改变。新候选仍等待两个实际存活自动worker之一正常释放后验证，不为此修改其他实例。
+
+## 终态本枪私有shader缓存归档
+
+C盘再次跌至启动下限，排查确认旧私有实例各复制的PSOCache约885MB，旧build仅8至15MB，并非本方当前源码/制品占用主体。仅对本枪已终态221519、215931、214502、225401、232025、233210的`LocalAppData/Coalition/WarGame/PSOCache`归档至J盘。每份先核对isolated-done的game/子进程消失、无强杀/worker_error，再用实际进程PID+creation核对原game/birth/worker/owner/XR身份不再存活。随后同一PowerShell路径执行copy→SHA/大小/文件集核对→原C路径junction读回核对→严格校验本方handoff绝对路径后删除副本。任何不确定/既存映射均拒绝重做。
+
+共630文件/5,310,295,908bytes完整保留，源码、当前候选、日志和录像未移动，其他会话目录未动，旧名仍不重启。观测before_free3,100,655,616/after_free7,835,598,848bytes包含同时外部变化，不归因于本方全部增减。原路径可读，原样内容在`J:/gearsVr/analysis/hammerburst-archive-20261110/terminal-shader-caches/`；六份逐文件SHA索引和总表`terminal-shader-archive-20261110.json`保留在本枪分析目录。归档没有启动游戏或给予任何新运行验收。

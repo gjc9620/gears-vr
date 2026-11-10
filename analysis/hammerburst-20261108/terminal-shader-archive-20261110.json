@@ -1,0 +1,45 @@
+{
+  "after_free": 7835598848,
+  "game_started": false,
+  "instances": [
+    {
+      "bytes": 885049318.0,
+      "files": 105,
+      "archive": "J:\\gearsVr\\analysis\\hammerburst-archive-20261110\\terminal-shader-caches\\hb-cloak-1110-221519\\PSOCache",
+      "name": "hb-cloak-1110-221519"
+    },
+    {
+      "bytes": 885049318.0,
+      "files": 105,
+      "archive": "J:\\gearsVr\\analysis\\hammerburst-archive-20261110\\terminal-shader-caches\\hb-cloak-1110-215931\\PSOCache",
+      "name": "hb-cloak-1110-215931"
+    },
+    {
+      "bytes": 885049318.0,
+      "files": 105,
+      "archive": "J:\\gearsVr\\analysis\\hammerburst-archive-20261110\\terminal-shader-caches\\hb-cloak-1110-214502\\PSOCache",
+      "name": "hb-cloak-1110-214502"
+    },
+    {
+      "bytes": 885049318.0,
+      "files": 105,
+      "archive": "J:\\gearsVr\\analysis\\hammerburst-archive-20261110\\terminal-shader-caches\\hb-cloak-1110-225401\\PSOCache",
+      "name": "hb-cloak-1110-225401"
+    },
+    {
+      "bytes": 885049318.0,
+      "files": 105,
+      "archive": "J:\\gearsVr\\analysis\\hammerburst-archive-20261110\\terminal-shader-caches\\hb-cloak-1110-232025\\PSOCache",
+      "name": "hb-cloak-1110-232025"
+    },
+    {
+      "bytes": 885049318.0,
+      "files": 105,
+      "archive": "J:\\gearsVr\\analysis\\hammerburst-archive-20261110\\terminal-shader-caches\\hb-cloak-1110-233210\\PSOCache",
+      "name": "hb-cloak-1110-233210"
+    }
+  ],
+  "before_free": 3100655616,
+  "source_logs_media_moved": false,
+  "cache_contents_preserved": true
+}
