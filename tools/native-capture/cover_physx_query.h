@@ -93,8 +93,16 @@ inline bool valid(Capsule const& c) noexcept {
     if(!finite(c.first)||!finite(c.second)||!scalar(c.radius)||c.radius<=0||
        !motion({c.second.x-c.first.x,c.second.y-c.first.y,c.second.z-c.first.z}))return false;
     const float first[]{c.first.x,c.first.y,c.first.z},second[]{c.second.x,c.second.y,c.second.z};
-    for(unsigned i=0;i<3;++i)if((std::max)(std::abs(double(first[i])),std::abs(double(second[i])))+c.radius>
-        (std::numeric_limits<float>::max)())return false;
+    for(unsigned i=0;i<3;++i){
+        // Original 1A5740 adds float endpoints BEFORE multiplying by 0.5.
+        // Individually finite endpoints and a valid axis do not bound this
+        // intermediate. Never enter the native broadphase with an Inf centre.
+        const float sum=first[i]+second[i];
+        const float midpoint=sum*.5f;
+        if(!scalar(sum)||!scalar(midpoint)||
+           (std::max)(std::abs(double(first[i])),std::abs(double(second[i])))+c.radius>
+           (std::numeric_limits<float>::max)())return false;
+    }
     return true;
 }
 template<class Shape> bool overlap(std::uintptr_t fn,std::uintptr_t scene,Shape const& shape,bool& result) noexcept {

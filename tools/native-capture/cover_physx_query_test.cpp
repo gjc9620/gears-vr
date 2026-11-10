@@ -110,7 +110,7 @@ static void code_tests(char const* path){
     for(auto const& chunk:c::chunks){bytes+=chunk.size;auto& last=m.blocks[base][chunk.rva+chunk.size-1];last^=1;
         check(!s::code_current(base,size,read,q::detail::digest),"last byte mutation including cold tail");last^=1;
         check(!s::code_current(base,chunk.rva+chunk.size-1,read,q::detail::digest),"truncated code image");}
-    check(bytes==9522,"full ranges include complete all-hit worker, not short unwind fragments");
+    check(bytes==10049,"full worker, capsule conversion/thunk and its numeric constants");
     for(unsigned i=1;i<=c::chunks.size();++i){m.calls=0;m.fail_at=i;check(!s::code_current(base,size,read,q::detail::digest),"each code read failure");}
     m.fail_at=0;
     check(!s::code_current(base,size,read,[](void const*,std::size_t,s::Digest&){return false;}),"hash failure");
@@ -145,6 +145,12 @@ static void query_tests(){
     check(!q::detail::motion({maximum,0,0})&&!q::detail::motion({tiny,0,0}),"float normalization overflow/underflow rejected");
     check(!q::detail::motion({std::numeric_limits<float>::denorm_min(),0,0}),"DAZ dependent motion rejected");
     cap=capsule;cap.first.x=-maximum;cap.second.x=maximum;check(!q::detail::valid(cap),"capsule segment subtraction overflow rejected");
+    cap=capsule;cap.first={maximum*.75f,0,0};cap.second={maximum*.75f,1,0};
+    check(!q::detail::valid(cap),"capsule native midpoint addition overflow rejected before dispatch");
+    cap.first.x=-maximum*.75f;cap.second.x=cap.first.x;
+    check(!q::detail::valid(cap),"negative capsule native midpoint addition overflow rejected");
+    cap.first.x=maximum*.49f;cap.second.x=cap.first.x;
+    check(q::detail::valid(cap),"finite native midpoint retains otherwise valid geometry");
     bad=box;bad.centre.x=maximum;bad.half.x=maximum;check(!q::detail::valid(bad),"box bound overflow rejected");
     bool hit=false;q::Sweep result{};expected_shape=&box;expected_delta=&delta;
     check(q::detail::overlap(reinterpret_cast<std::uintptr_t>(&fake_overlap),0x180000,box,hit)&&hit,"box overlap ABI");
