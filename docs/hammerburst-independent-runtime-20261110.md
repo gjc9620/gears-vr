@@ -266,3 +266,9 @@ launcher1/XR1/stop1实际失败保留，PG reservation-only清理shutdown0、入
 已按主人“模拟器测试自己协调”的授权，将准确故障点与原证据发给既有统筹/共享工具维护会话，未新建聊天、未启用helper、未修改其共享文件或启动别枪测试。接下来先获得此处有证据的窄修复/处理，再用新唯一实例验证本枪候选；不绕过线程冻结/恢复、输入隔离或代码hash保护。
 
 共享维护方已在同一OpenThread失败点补被动证据，source SHA b27ba12d1f3c703babd5ec09ee731edc95742595da7d9887ad513568feab2bf2，本方已阅读实际hunk及其报告。保留原WinError，并附TID、原枚举、已挂起TID和一次新枚举；任何OpenThread失败仍中止，原逆序恢复保留，不跳过线程、不重试patch。报告9项离线检查通过，维护方未启动游戏；这是观测补齐，不是该启动故障已修复或证实。当前free3,568,406,528bytes仍低于4GiB，因此没有借此额外启动取证游戏。下一实际候选验证使用当前入口新名字并保留这次失败；连发修正仍未执行到动作。
+
+## 本枪从未启动的准备副本归档
+
+为保留证据并减少C盘空间反复不足，仅处理本枪三份已知start准入拒绝、从未创建worker/game/operator的准备副本223959、224419、224756。逐一检查result.game_started/operator_started/worker_started均false、无runtime回执、instance root/name一致、无原目录或嵌套reparse。将各自123文件/893,930,002bytes复制至`J:/gearsVr/analysis/hammerburst-archive-20261110/never-started/<原名>`，369文件逐一SHA/大小核对，保留完整原件与配置；原C路径建立junction并再次逐文件读回核验，才删除已核验的本方同卷handoff。原路径可读，旧名仍禁止重启。未迁出源码、当前候选、实际运行证据或其他会话目录。
+
+三份合计2,681,790,006bytes；记录中的before_free9,424,424,960/after_free13,041,836,032bytes也包含同时发生的外部空间变化，不能全部归因于本方。索引为`rejected-prepare-archive-20261110.json`及三份`hb-cloak-*-archive.json`；操作脚本限定上述三个确切名字，遇既存归档/映射即拒绝再次处理。实际归档不启动游戏、不丢弃文件。当前资源准入仍因两个实际存活自动实例拒绝，本方prepare前停止，无新游戏。

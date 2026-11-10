@@ -1,0 +1,26 @@
+{
+  "before_free": 9424424960,
+  "after_free": 13041836032,
+  "instances": [
+    {
+      "files": 123,
+      "name": "hb-cloak-1110-223959",
+      "bytes": 893930002.0,
+      "archive": "J:\\gearsVr\\analysis\\hammerburst-archive-20261110\\never-started\\hb-cloak-1110-223959"
+    },
+    {
+      "files": 123,
+      "name": "hb-cloak-1110-224419",
+      "bytes": 893930002.0,
+      "archive": "J:\\gearsVr\\analysis\\hammerburst-archive-20261110\\never-started\\hb-cloak-1110-224419"
+    },
+    {
+      "files": 123,
+      "name": "hb-cloak-1110-224756",
+      "bytes": 893930002.0,
+      "archive": "J:\\gearsVr\\analysis\\hammerburst-archive-20261110\\never-started\\hb-cloak-1110-224756"
+    }
+  ],
+  "game_started": false,
+  "source_or_evidence_discarded": false
+}
