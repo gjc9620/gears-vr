@@ -318,3 +318,13 @@ launcher0/operator1/stop0、Native清理/PG入口恢复/XR0、game及子进程�
 002724本次仅prepare后等待资源180秒，原父工具进程已终态exit1，未出现start.log/isolated-worker/launcher-session/isolated-done，game/operator均未启动，不计part-frame-r1游戏验证。原result中prepared_waiting=true是最后中间标记，不能当成进程仍存活；原结果保留，并以`resource-wait-002724.json`补充已终态、未start的证据。后续finally清除等待标记、记录prepared_only_no_start，避免这个状态歧义。按主人临时资源不足继续等待的偏好，未来单份准备后的资源等待改600秒（仅游戏创建前），仍同一绝对截止、不预留slot、不改任何枪内计时；默认资源/首次start的共享检查保持原样。旧名字不重启。
 
 后续C盘虽然仍高于共享4GiB，却低于另一次新prepare所需5GiB余量，因此新调用在mkdir/prepare前拒绝，未产生新游戏。将已确认父工具终态且从未start的002724按原“never-started”归档流程复制/核验/原路径映射：123文件893,930,176bytes完整保留；严格允许列表只加此已知本方名字，新总表`rejected-prepare-archive-20261111.json`不覆盖旧表。未复用此名字启动，也未降低5/4GiB检查。
+
+## 实际54452与插入阶段观测候选（2026-11-11）
+
+part-frame-r1实际hb-cloak-1111-005137/game54452/creation134388031077158286，core6+12次六连排空至0/R78、78条有效且write/trace来源一致射线、空仓禁射通过。锁扣Frame547/sequence5133/token1及新弹匣Frame676/sequence5611/token2两个exact-source交接标记实际出现；全程support withdrawal与identity-lost日志均0。流程到stage6，但原8秒内未到7；finally真实leftUP后6→5，不能倒置为最初失败原因。旧feed_sample共24条在从肩部移动到插入口之前耗尽，最终端点/内核结果/采样间隙/move gate未知，不据猜测放宽几何或期限。
+
+launcher0/operator1/stop0，Native清理/PG入口恢复/XR0，game与本方子进程消失、无强杀；2501前台/4625CLOAK零违规。667帧errors空、encode0；亲看48双眼全跨度样本三页概览及原图00326/00468/00524/00595，近脸遮挡、重叠/白色几何仍在，完整手型/连续性/全角度未接受。9份文本原件逐SHA归档，详见runtime-54452-first-failure-analysis.json及媒体索引。released stale-debt wait未出现，不宣称该分支实测修复。
+
+feed-observe-r1只观测已有插入计算结果、已有source时间差/rearm及失败门；不增加source/metadata/clock读取或引擎调用，不改几何、100ms/250ms、真实库存/identity/lease许可。接近区和端点区各24条上限，另早期拒绝12条/move拒绝16条，避免肩部行程耗尽端点记录。完整PG编译SHA c5c04aee6c3e54bb0c9fc3e93cddb1aefcc17a0eb89d4bf4651e6d5a6e3041b9；Native/XR/共享Client不改。真实冻结FeedInsertionStroke加精确提取的修改前后insertion_step，用合成Frame/local_hand完成8场景84成对样本，返回值、arm/observe/reset次数、source游标及原弹匣extraction调用一致；包含连续插入、超100ms间隙、偏轴、丢失local pose、重复source、超速和分区日志限额。不是游戏验收。测试最初因tmpfile弃用警告不编译，改用tmpfile_s；重复source原逻辑保留已有stroke，修正测试预期，未改生产判定。runner选新候选后进行一次新的实际验证。
+
+历史离线媒体runtime-52960/56252/53484共7307文件1,288,578,715bytes已逐文件SHA/大小/文件集验证归档J盘，原C路径junction读回一致；保留原图、录像及文本，没有删掉失败或改变旧验收。索引offline-media-archive-20261111.json。源码仍在C盘工作树，公共v71和整体30%/headsetfalse保持。

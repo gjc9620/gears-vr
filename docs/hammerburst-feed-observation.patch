@@ -1,0 +1,69 @@
+--- a/tools/playground/weapon_hammerburst_runtime.inl
++++ b/tools/playground/weapon_hammerburst_runtime.inl
+@@ -63,6 +63,7 @@
+ std::int64_t geometry_retry_ns{};
+ unsigned geometry_failure{},last_geometry_failure{~0u};
+ #include "weapon_hammerburst_restore_log.inl"
++#include "weapon_hammerburst_feed_observation.inl"
+ 
+ V add(V a,V b) noexcept {return {a.x+b.x,a.y+b.y,a.z+b.z};}
+ V sub(V a,V b) noexcept {return {a.x-b.x,a.y-b.y,a.z-b.z};}
+@@ -310,13 +311,16 @@
+     latch_history::capture(f,out);return true;
+ }
+ bool move_magazine(hand::Frame const& f) noexcept {
++    feed_move_gate=1;
+     gears_rig_tracking::Frame rig{};
+     if(!(nativelancerfollow::prepared_for(f,rig)||nativeequipment_rig::acquire(f,rig).status==nativeequipment_rig::Status::ready)||
+        !(rig.world_pose_mask&gears_rig_tracking::left_grip_pose)||!gears_vr::stereo_pose_valid(rig.world_grip[0]))return false;
+     const auto& left=rig.world_grip[0];
+     const auto position=add(left.position,scale(gears_weapon::rotate(left.orientation,feed.item_in_left_grip.position),rig.units_per_metre));
+     const auto orientation=gears_vr::multiply(left.orientation,feed.item_in_left_grip.orientation);
+-    return visual::move_target(f,{position,gears_vr::ue_angles(gears_vr::rotation_matrix(orientation))},left.position);
++    feed_move_gate=2;
++    const bool moved=visual::move_target(f,{position,gears_vr::ue_angles(gears_vr::rotation_matrix(orientation))},left.position);
++    if(moved)feed_move_gate=0;return moved;
+ }
+ bool prepare_feed(hand::Frame const& f) noexcept {
+     feed_failure=1;
+@@ -365,15 +369,17 @@
+     feed_failure=0;return true;
+ }
+ gears_weapon::FeedResult insertion_step(hand::Frame const& f,std::uint64_t item) noexcept {
+-    P left{};if(!local_hand(f,left)){insertion.reset();return gears_weapon::FeedResult::rejected;}
+-    if(feed_item!=item||!feed_ns||f.controllers.sync_ns-feed_ns>feed.maximum_sample_gap_ns){
++    P left{};if(!local_hand(f,left)){insertion.reset();observe_feed_rejection(f,1);return gears_weapon::FeedResult::rejected;}
++    const auto sample_gap_ns=feed_ns?f.controllers.sync_ns-feed_ns:0;
++    const bool rearmed=feed_item!=item||!feed_ns||sample_gap_ns>feed.maximum_sample_gap_ns;
++    if(rearmed){
+         // A gap cannot carry approach progress. Start a new stroke at this
+         // current authenticated held-item pose; it must approach again from
+         // outside before seating. Tracking-loss regrab is separately gated.
+         if(!insertion.arm(f.weapon.address,item,f.world.address,f.stereo.space_epoch))return gears_weapon::FeedResult::rejected;
+         feed_sequence=0;
+     }
+-    if(f.controllers.sequence<=feed_sequence||f.controllers.sync_ns<=feed_ns)return gears_weapon::FeedResult::rejected;
++    if(f.controllers.sequence<=feed_sequence||f.controllers.sync_ns<=feed_ns){observe_feed_rejection(f,2);return gears_weapon::FeedResult::rejected;}
+     feed_item=item;feed_sequence=f.controllers.sequence;feed_ns=f.controllers.sync_ns;
+     const auto position=add(left.position,gears_weapon::rotate(left.orientation,feed.item_in_left_grip.position));
+     const auto delta=sub(position,feed.port_in_weapon.position);
+@@ -392,7 +398,8 @@
+     gears_weapon::FeedSample sample{f.weapon.address,item,f.world.address,f.stereo.space_epoch,f.controllers.sequence,
+         f.controllers.sync_ns,{{0,0,0},{0,0,0,1}},left,f.left_tracked!=0,true};
+     if(stage==Stage::old_magazine&&!extraction.complete())extraction.observe(sample,feed);
+-    return insertion.observe(sample,feed);
++    const auto result=insertion.observe(sample,feed);
++    observe_feed_result(f,item,result,sample_gap_ns,rearmed,depth,lateral,aligned);return result;
+ }
+ void step(hand::Frame const& f,hand::Decision const& decision) noexcept {
+     if(stage==Stage::acquiring){
+@@ -546,7 +553,8 @@
+         if(!insertion.arm(f.weapon.address,old_item,f.world.address,f.stereo.space_epoch)){cleanup(__LINE__);return;}
+         held=decision.lease;released=false;insertion_step(f,old_item);return;
+     }
+-    if(!granted(f,decision,kind)||!move_magazine(f))return;
++    const bool part_granted=granted(f,decision,kind);
++    if(!part_granted||!move_magazine(f)){observe_move_rejection(f,decision,part_granted);return;}
+     const auto item=stage==Stage::old_magazine?old_item:new_item;
+     if(insertion_step(f,item)!=gears_weapon::FeedResult::inserted)return;
+     if(stage==Stage::old_magazine){if(!transaction.restore_original(old_item)){cleanup(__LINE__);return;}}

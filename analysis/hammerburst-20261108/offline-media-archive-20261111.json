@@ -1,0 +1,26 @@
+{
+  "source_or_binary_moved": false,
+  "after_free": 5602054144,
+  "all_original_data_preserved": true,
+  "archives": [
+    {
+      "archive": "J:\\gearsVr\\analysis\\hammerburst-archive-20261110\\offline-media\\runtime-52960-offline",
+      "name": "runtime-52960-offline",
+      "bytes": 466308560.0,
+      "files": 2641
+    },
+    {
+      "archive": "J:\\gearsVr\\analysis\\hammerburst-archive-20261110\\offline-media\\runtime-56252-offline",
+      "name": "runtime-56252-offline",
+      "bytes": 465869448.0,
+      "files": 2635
+    },
+    {
+      "archive": "J:\\gearsVr\\analysis\\hammerburst-archive-20261110\\offline-media\\runtime-53484-offline",
+      "name": "runtime-53484-offline",
+      "bytes": 356400707.0,
+      "files": 2031
+    }
+  ],
+  "before_free": 4311261184
+}

@@ -1,0 +1,9 @@
+{
+  "passed": true,
+  "scenarios": 8,
+  "paired_samples": 84,
+  "real_feed_kernel": true,
+  "exact_extracted_functions": true,
+  "game_execution": false,
+  "source_sha256": "bde1ff74fea29bf11f24f4b8561314f037de427f3645f0a8c1d2bbcbc18708fa"
+}

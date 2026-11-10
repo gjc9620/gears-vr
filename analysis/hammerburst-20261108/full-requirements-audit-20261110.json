@@ -1,14 +1,14 @@
 {
   "schema": 1,
   "scope": "full HB objective; no scope reduction",
-  "current_candidate": "part-frame-r1: explicit initial latch and supply acquisition Frame proposal consistency; compiled45+actualClient8, no game yet",
-  "prepared_sha256": "9b16f6ef5d036cc529c1c2a933378def062ed28e1c777cc54ca5c5738d1dc2a2",
+  "current_candidate": "feed-observe-r1: existing insertion outcome, sample-gap rearm and early/move gates; compiled; exact before/after8 scenarios84 paired samples using real FeedInsertionStroke",
+  "prepared_sha256": "c559a2f1959f4b0fabfeb025b3c79da8213bee715bf8e622123a323e328adbef",
   "requirements": [
     {
       "id": "acquire_stow",
-      "requirement": "\u53d6\u67aa\u4e0e\u6536\u67aa",
+      "requirement": "取枪与收枪",
       "status": "partial",
-      "limit": "13712\u53d6\u67aa\u5b9e\u5f55\uff0c\u5b8c\u6574\u6536\u67aa\u884c\u4e3a\u4ecd\u987b\u5bf9\u5e94\u8bc1\u636e",
+      "limit": "13712取枪实录，完整收枪行为仍须对应证据",
       "evidence": [
         {
           "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-13712-first-failure-analysis.json",
@@ -18,7 +18,7 @@
     },
     {
       "id": "finite_fire",
-      "requirement": "\u5355\u624b/\u53cc\u624b\u7784\u51c6\u4e0e\u539f\u7248\u6709\u9650\u516d\u8fde\u53d1",
+      "requirement": "单手/双手瞄准与原版有限六连发",
       "status": "partial_latest_live_final_burst_failed",
       "limit": "Actual36568 current parent candidate first burst6+typed72/78;11 subsequent six-shot drain bursts to6/78; last3/6 left3/78.75 rays all valid/write+trace source consistent. No current two-hand acceptance; whole finite-fire stability not passed. Null-current Frame cause unproven.",
       "evidence": [
@@ -58,9 +58,9 @@
     },
     {
       "id": "foregrip_states",
-      "requirement": "\u56db\u6001\u62a4\u6728Snap/Grip Grab/\u91ca\u653eSnap/\u9000\u51fa",
+      "requirement": "四态护木Snap/Grip Grab/释放Snap/退出",
       "status": "historical_functional_only",
-      "limit": "70816\u884c\u4e3a\u8bc1\u636e\u4e0d\u7b49\u540c\u65b0PG\u540c\u6784\u6210\u56de\u5f52\u6216\u76ae\u80a4\u8d34\u5408",
+      "limit": "70816行为证据不等同新PG同构成回归或皮肤贴合",
       "evidence": [
         {
           "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-70816-review.json",
@@ -70,9 +70,9 @@
     },
     {
       "id": "retained_mag",
-      "requirement": "\u8fde\u7eed\u539f\u5323\u62d4\u51fa/\u8fd4\u5ea7/\u9501\u6263\u5173\u5230\u4f4d\u3001\u65e0\u8865\u5f39\u5956\u52b1",
+      "requirement": "连续原匣拔出/返座/锁扣关到位、无补弹奖励",
       "status": "historical_functional_only",
-      "limit": "7712\u539f\u5323\u4fdd\u630172/78\uff0c\u56de\u5c0466/78\uff1b\u65b0PG\u672a\u590d\u9a8c",
+      "limit": "7712原匣保持72/78，回射66/78；新PG未复验",
       "evidence": [
         {
           "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-7712-review.json",
@@ -82,7 +82,7 @@
     },
     {
       "id": "replacement",
-      "requirement": "\u80a9\u53d6\u65b0\u5323\u3001\u6301\u7eed\u6301\u63e1\u5165\u69fd\u3001\u666e\u901a\u6362\u5f39",
+      "requirement": "肩取新匣、持续持握入槽、普通换弹",
       "status": "actual_replacement_and_closure_observed",
       "limit": "56252 same actual reload serial1 replacement seated78/0, original raw-history close used, original complete result2. Whole return-count assertion and fitting still pending.",
       "evidence": [
@@ -102,7 +102,7 @@
     },
     {
       "id": "empty_reload",
-      "requirement": "\u7a7a\u4ed3\u540c\u673a\u68b0\u6d41\u7a0b\u3001\u539f\u81ea\u52a8\u88c5\u586b\u88ab\u63a5\u7ba1\u3001\u5b8c\u6574\u56de\u5c04",
+      "requirement": "空仓同机械流程、原自动装填被接管、完整回射",
       "status": "mechanism_and_six_rays_observed_final_count_unverified",
       "limit": "56252 actual0/78 original begin, extraction/replacement78/0 and latch7to8/complete passed;6 actual return rays, initial typed73/0 raced sixth15.6313ms later, no final72/0 read. Original run remains failed.",
       "evidence": [
@@ -122,7 +122,7 @@
     },
     {
       "id": "perfect_cancel",
-      "requirement": "\u5b8c\u7f8e\u6362\u5f39\u3001\u53d6\u6d88\u4e0e\u91cd\u590d\u901a\u77e5\u4e0d\u91cd\u590d\u5199\u5e93\u5b58",
+      "requirement": "完美换弹、取消与重复通知不重复写库存",
       "status": "qualification_repair_compiled_live_missing",
       "limit": "Production HB begin omitted qualification capture required by perfect_reward. Repaired opening capture before original begin; rejected attempts publish no stale qualification. Actual helper10 cases/28 checks and full Playground build pass. Actual perfect reward, cancellation and duplicate notifications remain unverified live.",
       "evidence": [
@@ -134,14 +134,14 @@
     },
     {
       "id": "finite_zero_reserve",
-      "requirement": "\u6709\u9650\u5907\u5f39\u3001L>0/R0\u4e0eL0/R0\u5b88\u6052/\u5355\u6b21\u5931\u8d25\u97f3",
+      "requirement": "有限备弹、L>0/R0与L0/R0守恒/单次失败音",
       "status": "deferred_live",
-      "limit": "\u6309\u4e3b\u4eba\u5f53\u524d\u4f18\u5148\u666e\u901a\u7a7a\u4ed3\u56de\u5c04\uff0c\u4fdd\u7559\u540e\u7eed\u8981\u6c42\u3001\u4e0d\u6269\u5c55\u8017\u5c3d\u8fd0\u884c",
+      "limit": "按主人当前优先普通空仓回射，保留后续要求、不扩展耗尽运行",
       "evidence": []
     },
     {
       "id": "interruptions",
-      "requirement": "\u6682\u505c/\u5931\u8ffd/\u5207\u67aa/\u6536\u67aa\u9000\u51fa\u3001\u4e0d\u5f97\u91cd\u653e\u65e7\u8fb9\u6cbf",
+      "requirement": "暂停/失追/切枪/收枪退出、不得重放旧边沿",
       "status": "restore_continuation_compiled_offline_game_missing",
       "limit": "Park/rebind/display/fresh-UP-new-grant/native reacquire-or-inserted-visual-close/game-clock connected in actual runtime. Five focused frozen suites pass; engine calls/grants are fixture seams. No game restore/switch acceptance. Unknown original dispatch cannot be replayed or acknowledged as cleaned.",
       "evidence": [
@@ -169,23 +169,23 @@
     },
     {
       "id": "guides",
-      "requirement": "\u5168\u8fc7\u7a0b\u6b65\u9aa4\u5f15\u5bfc\u4e0e\u4ea4\u4e92\u4ef6Snap/Grab",
+      "requirement": "全过程步骤引导与交互件Snap/Grab",
       "status": "unaccepted_visual",
-      "limit": "\u9700\u5bf9\u5e94\u5f53\u524d\u52a8\u4f5c\u7684\u53ef\u89c1\u6b65\u9aa4\u5f15\u5bfc\uff0c\u673a\u6784\u6210\u529f\u4e0d\u80fd\u4ee3\u66ff\u753b\u9762",
+      "limit": "需对应当前动作的可见步骤引导，机构成功不能代替画面",
       "evidence": []
     },
     {
       "id": "part_fitting",
-      "requirement": "\u4e3b\u63e1/\u62a4\u6728/\u9501\u6263/\u65e7\u5323/\u65b0\u5323\u9010\u4ef6\u638c\u6307\u8155\u8896\u53e3",
+      "requirement": "主握/护木/锁扣/旧匣/新匣逐件掌指腕袖口",
       "status": "unaccepted",
-      "limit": "\u4e3b\u4eba\u6682\u505c\u65e0\u8fb9\u754c\u624b\u578b\u5fae\u8c03\uff1b\u4fdd\u7559\u6240\u6709\u90e8\u4ef6\u6700\u7ec8\u8981\u6c42",
+      "limit": "主人暂停无边界手型微调；保留所有部件最终要求",
       "evidence": []
     },
     {
       "id": "bolt",
-      "requirement": "\u539f\u7248\u82e5\u6709\u53ef\u64cd\u4f5c\u67aa\u6813\u5219\u62c9\u6813",
+      "requirement": "原版若有可操作枪栓则拉栓",
       "status": "conditional_resolved",
-      "limit": "\u539fRoot/MagLatch/Mag\u53ca\u4e09\u539f\u52a8\u753b\u65e0\u72ec\u7acb\u5916\u9732\u53ef\u62c9\u6813\u67c4\uff0c\u4e0d\u589e\u865a\u6784\u62c9\u6813",
+      "limit": "原Root/MagLatch/Mag及三原动画无独立外露可拉栓柄，不增虚构拉栓",
       "evidence": [
         {
           "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\hammerburst-bolt-original-audit.json",
@@ -195,17 +195,17 @@
     },
     {
       "id": "delivery_headset",
-      "requirement": "\u624b\u52a8\u5019\u9009\u4ea4\u4ed8\u3001\u771f\u5b9e\u5934\u663e\u8212\u9002\u5ea6\u4e0e\u63a5\u53d7",
+      "requirement": "手动候选交付、真实头显舒适度与接受",
       "status": "not_accepted",
-      "limit": "\u6784\u5efa/\u6a21\u62df\u5668\u5747\u4e0d\u7b49\u4e8e\u7269\u7406\u5934\u663e\u63a5\u53d7",
+      "limit": "构建/模拟器均不等于物理头显接受",
       "evidence": []
     }
   ],
   "completion_proven": false,
   "goal_active": true,
-  "immediate_next": "One fresh part-frame-r1 run: initial latch same-Frame marker then strict next-Frame retention, full old/new magazine seating, closure and actual return6/typed72/0. Keep all identity/input/mount/expiry checks.",
+  "immediate_next": "One fresh feed-observe-r1 attempt through canonical isolated runtime. Preserve original source100ms/event250ms, geometry and all ownership guards. Use actual insertion result/gap/move witnesses to choose repair; no unchanged part-frame rerun.",
   "historical_evidence_does_not_certify_current_PG": true,
-  "candidate_runtime_status": "Actual55584 source supply-frame-r1 core6+12six-shot drain to0/R78,78 consistent rays and empty trigger veto passed; initial latch grant Frame734 difference6, Frame741 expiry100.330ms then Frame748 full identity mismatchcleanup. No stage4 or supply/stale-wait branch exercise. New part-frame-r1 fixes exact latch publication and observes original identity reject only.",
+  "candidate_runtime_status": "Actual54452 part-frame-r1: core6+12six-shot drain to0/R78,78 consistent rays, empty veto; both handoff markers exercised, zero support withdrawal/identity-lost. Stage6 seating failed within8s; endpoint cause unknown. New observation candidate not yet game executed.",
   "previous_recorded_candidate": {
     "name": "hammerburst-prepared-20261110-unheld-input-r1",
     "prepared_sha256": "76a2ae8cc56e4165b77ca5d17a9e6469ff66323e917be5a8b46da44df4f0bb58"
@@ -227,5 +227,5 @@
   "restore_verifier_status": "Optional --hammerburst-park-restore input action hook integrated into private reload adapter; five synthetic action/receipt regressions passed. Actual park/redraw/new-grant/native-resume, typed conservation, UI/reward and complete return-fire require game evidence.",
   "latest_service_first_failure": "runtime-3112-first-failure-analysis.json",
   "latest_startup_failure": "runtime-49732-startup-failure.json",
-  "latest_runtime_failure": "runtime-55584-first-failure-analysis.json"
+  "latest_runtime_failure": "runtime-54452-first-failure-analysis.json"
 }
