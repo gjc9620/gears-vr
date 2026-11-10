@@ -1,0 +1,13 @@
+{"runtime_render_size_plan": true, "recommended": [4096, 3288], "render_scale": 0.4, "eye": [1639, 1316], "source": [3278, 1316], "engine_sbs_limit": 8192, "dimensions_are_plan_not_gpu_proof": true}
+VR per eye: 1639 x 1316; render scale 0.40 per dimension; desktop resolution is independent.
+{"session_report": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\runtime\\continuous-stereo-20160-20261110-222830-b893a6f9.json", "stop_command": ["C:\\Users\\11\\.cache\\codex-runtimes\\codex-primary-runtime\\dependencies\\python\\python.exe", "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\tools\\native-capture\\run_stereo_continuous.py", "stop", "--session", "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\runtime\\continuous-stereo-20160-20261110-222830-b893a6f9.json"]}
+{"startup_stage": "xr_preflight", "elapsed_ms": 2743.6391, "since_runner_start_ms": 2778.3288, "evidence": "strict focused source0 CSV and required startup panel", "clock": "Windows QPC / perf_counter_ns", "timing_is_runner_observation": true}
+{"waiting_for_level": "Expected one local camera, found 0; no address accepted"}
+{"waiting_for_level": "Waiting for the same guarded player/camera with an advancing timestamp"}
+{"level_player_ready": true}
+{"startup_stage": "camera_ready", "elapsed_ms": 29593.3341, "since_runner_start_ms": 32373.6903, "evidence": "before_native_activation callback returned and startup remained live", "clock": "Windows QPC / perf_counter_ns", "timing_is_runner_observation": true}
+{"startup_stage": "native_prepare", "elapsed_ms": 2588.5868, "since_runner_start_ms": 34965.0851, "evidence": "native preparation command exited 0; does not prove a stereo frame", "clock": "Windows QPC / perf_counter_ns", "timing_is_runner_observation": true}
+{"startup_stage": "native_running", "elapsed_ms": 1.5087, "since_runner_start_ms": 34968.4276, "evidence": "fresh running status with matching owner; does not prove a stereo frame", "clock": "Windows QPC / perf_counter_ns", "timing_is_runner_observation": true}
+{"continuous_running": true, "session_report": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\runtime\\continuous-stereo-20160-20261110-222830-b893a6f9.json"}
+{"startup_stage": "first_stereo_submission", "elapsed_ms": 3156.5523, "since_runner_start_ms": 35533.0506, "evidence": "XR epoch1 actual projection successful xrEndFrame marker", "clock": "Windows QPC / perf_counter_ns", "timing_is_runner_observation": false, "xr_monotonic_ns": 105747035236300, "runner_observation_delay_ms": 616.851}
+[Errno 28] No space left on device

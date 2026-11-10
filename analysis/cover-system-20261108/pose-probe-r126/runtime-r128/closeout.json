@@ -1,0 +1,125 @@
+{
+  "classification": "progress: disk-full failure preserved; only own stopped evidence archived to recover disk",
+  "identities": {
+    "game_identity": {
+      "pid": 20160,
+      "creation_time": 134387945036784154,
+      "image": "j:\\gearsvr\\gears.of.war.reloaded.v1.0.1.3816947-p2p\\gears of war reloaded\\binaries_x64\\gowde-steam.exe"
+    },
+    "owner_identity": {
+      "pid": 55412,
+      "creation_time": 134387944961903055,
+      "image": "c:\\users\\11\\.cache\\codex-runtimes\\codex-primary-runtime\\dependencies\\python\\python.exe"
+    },
+    "xr_identity": {
+      "pid": 42940,
+      "creation_time": 134387945102409663,
+      "image": "c:\\users\\11\\.codex\\worktrees\\6dof-single\\gearsvr\\tools\\openxr-probe\\build-cover-1110-r128-cloak-registry\\openxrposeprobe.exe"
+    },
+    "worker_identity": {
+      "pid": 59280,
+      "creation_time": 134387944960923292,
+      "image": "c:\\users\\11\\.cache\\codex-runtimes\\codex-primary-runtime\\dependencies\\python\\python.exe"
+    }
+  },
+  "process_absence_verified": true,
+  "normal_cleanup_verified": false,
+  "native_cleanup_verified": null,
+  "entry_restore_verified": null,
+  "xr_exit_code": null,
+  "launcher_exit": 1,
+  "forced_termination": false,
+  "final_report_lost": true,
+  "last_report_phase": "running",
+  "first_failure": "ENOSPC during read_private_input evidence write before ordinary cover observation; final report and frame timing manifest also zero-length",
+  "lost_files": {
+    "cover-output/run-result.json": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "cover-output/projection/recording.json": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  },
+  "cover_actions_verified": false,
+  "pre_probe_failure_observed": false,
+  "query_executed": null,
+  "collision_clear": null,
+  "last_running_native_probe_counts": {
+    "cover_pose_probe_count_0": "0",
+    "cover_pose_probe_count_1": "0",
+    "cover_pose_probe_count_2": "0",
+    "cover_pose_probe_count_3": "0",
+    "cover_pose_probe_count_4": "0",
+    "cover_pose_probe_count_5": "0",
+    "cover_pose_probe_count_6": "0",
+    "cover_pose_probe_count_7": "0",
+    "cover_pose_probe_count_8": "0",
+    "cover_pose_probe_count_9": "0",
+    "cover_pose_probe_count_10": "0",
+    "cover_pose_probe_count_11": "0",
+    "cover_pose_probe_count_12": "0",
+    "cover_pose_probe_count_13": "0",
+    "cover_pose_probe_count_14": "0",
+    "cover_pose_probe_count_15": "0",
+    "cover_pose_probe_count_16": "0"
+  },
+  "native_status_is_terminal": false,
+  "media_sha256": "825f0af7ccecf6e7a798d60f3393966e6ab2a546ef40e944e7e1aad66596fa25",
+  "audio_scope": "one surviving mute_state_verified receipt with verified_observations1; no full-span summary",
+  "archives": [
+    {
+      "original": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\cover-1110-r118-cloak-source-stage",
+      "target": "J:\\gearsVr\\analysis\\cover-disk-recovery-20261110-r128\\instances\\cover-1110-r118-cloak-source-stage",
+      "sha_manifest": "J:\\gearsVr\\analysis\\cover-disk-recovery-20261110-r128\\instances\\cover-1110-r118-cloak-source-stage-hashes.json",
+      "sha_manifest_sha256": "472caf6a3923d711a603e487af1b0f3faf73aa09c44de0cdb926bc1206851d31"
+    },
+    {
+      "original": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\cover-1110-r119-cloak-source-stage",
+      "target": "J:\\gearsVr\\analysis\\cover-disk-recovery-20261110-r128\\instances\\cover-1110-r119-cloak-source-stage",
+      "sha_manifest": "J:\\gearsVr\\analysis\\cover-disk-recovery-20261110-r128\\instances\\cover-1110-r119-cloak-source-stage-hashes.json",
+      "sha_manifest_sha256": "be1c15f5dbb63334943565f62f05c771404b5aa1cdfaa6cf14e1920265f9925b"
+    },
+    {
+      "original": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\cover-1110-r120-cloak-source-stage",
+      "target": "J:\\gearsVr\\analysis\\cover-disk-recovery-20261110-r128\\instances\\cover-1110-r120-cloak-source-stage",
+      "sha_manifest": "J:\\gearsVr\\analysis\\cover-disk-recovery-20261110-r128\\instances\\cover-1110-r120-cloak-source-stage-hashes.json",
+      "sha_manifest_sha256": "2ce51e5d2e08a67070f267fae763cc9ad2790f0777bdc4af45d445d2dc548a05"
+    },
+    {
+      "original": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\cover-1110-r123-cloak-source-stage",
+      "target": "J:\\gearsVr\\analysis\\cover-disk-recovery-20261110-r128\\instances\\cover-1110-r123-cloak-source-stage",
+      "sha_manifest": null,
+      "sha_manifest_sha256": null
+    },
+    {
+      "original": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\cover-1110-r125-cloak-layout",
+      "target": "J:\\gearsVr\\analysis\\cover-disk-recovery-20261110-r128\\instances\\cover-1110-r125-cloak-layout",
+      "sha_manifest": null,
+      "sha_manifest_sha256": null
+    },
+    {
+      "original": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\cover-1110-r127-cloak-pose-gate",
+      "target": "J:\\gearsVr\\analysis\\cover-disk-recovery-20261110-r128\\instances\\cover-1110-r127-cloak-pose-gate",
+      "sha_manifest": "J:\\gearsVr\\analysis\\cover-disk-recovery-20261110-r128\\instances\\cover-1110-r127-cloak-pose-gate-hashes.json",
+      "sha_manifest_sha256": "13689a2bdb090a17b8243f53e89de42eb0cdd67802cd6c1ba9eb75a6ffcdf89e"
+    }
+  ],
+  "intermediate_archive": "J:\\gearsVr\\analysis\\cover-disk-recovery-20261110-r128\\moved-intermediates.json",
+  "intermediates_bytes": 63875687,
+  "disk_free_when_failed": 0,
+  "disk_free_after_recovery": 4339937280,
+  "shared_guard_review": {
+    "source_sha256": "9f350220988751c5e78045f79a9547487de99f7ddc1f05e3f14fa2149480345a",
+    "receipts_sha256": "b1a4aeb12b351af53b7c5fe98a6f8727e40334ce3847061c633094dfc9612234",
+    "minimum_bytes": 4294967296,
+    "scope": "read source: prepare, resource admission and worker pre-game check; shared implementation not edited here; no new game verification"
+  },
+  "remaining": [
+    "fresh run under current disk guard",
+    "actual observer repair branch",
+    "pre-probe reject reason and PhysicsRoles layout",
+    "all cover requirements and headset"
+  ]
+}

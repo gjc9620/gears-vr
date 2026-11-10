@@ -1,0 +1,14 @@
+OSError: [Errno 28] No space left on device
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\11\.codex\worktrees\6dof-single\gearsVr\analysis\instances\cover-1110-r128-cloak-registry\cover-output\read_private_input.py", line 49, in <module>
+    target=OUT/(sys.argv[1] if len(sys.argv)>1 else 'private-input.json');target.write_text(json.dumps(result,indent=2));print(json.dumps(result));break
+                                                                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+object address  : 000002523BE644C0
+object refcount : 3
+object type     : 00007FFBFB03C2B0
+object type name: OSError
+
+

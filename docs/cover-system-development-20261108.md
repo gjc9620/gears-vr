@@ -2125,3 +2125,15 @@ Session同一串行owner导出见证，现有一次Sphere观察通过原summary�
 针对这次真实观察器构造失败，read-only Playground adapter只在AnchorRegistryChanged时丢弃失败括号、关闭旧Resolver，并在同一session/game/owner/XR身份下最多完整重新发现一次；第二次仍失败、其他错误或人物/会话变化均终止。成功保留第一次拒绝原evidence和新样本原始时间，不修改旧证据/100ms/原guard，不发输入。8项实际adapter路径检查（读进程为Host缝）全通过，覆盖重建/关闭、二次失败、非registry错误、换会话、错误人物及原空UI约束。新operator generator将此adapter独立冻结为私有模块，runner校验散列，避免运行时无记录地变化。该修正尚未新游戏验证；Native不需重编。
 
 证据pose-probe-r126/runtime-r127/{closeout,pose-probe,media-review,session-original}.json与operator-original.log/observer-checks.log，解析器7项合成报告检查通过。下一步用新鲜票据和冻结修正观察器定向进入，读取r126原拒绝见证；公共v71、工程25%和完整CV01–24/AC01–22/物理头显未完成状态保持。
+
+## r128：C盘耗尽导致证据写失败，保留不完整收尾并恢复本方空间（2026-11-10）
+
+b121d9c4保存r127观察器修正后，新票cover-1110-r128-cloak-registry完成实际冻结adapter导入检查，Native仍d7cb104d…c2e5，PG/XR不变，0.4；资源满时持续只读等待，释放后实际启动一次。game20160/creation134387945036784154，owner55412/creation134387944961903055，XR42940/creation134387945102409663。实际epoch1投影已发生，但read_private_input第一次写证据时ENOSPC，operator未取得输入观测；随后run-result.json及projection/recording.json最终写入也失败，二者保留原始0字节，不重建为成功报告。
+
+现场确认C盘free0。启动器exit1，isolated-done记录owned_game_absent true/无强杀；另以精确PID/creation/image复核game/owner/XR/worker均不在。可读的原session与Native status仍是running旧快照，Native/entry/pad正常恢复、drained与XR exit均无终态回执，normal_cleanup_verified=false（未证），不能由进程消失补签正常清理。最后可读gate计数均0只是旧观察，不当最终查询证明。没有已验证的原版掩体进入、前置姿态拒绝或原查询执行。
+
+保留51张实际JPEG且全部可解码，3张按文件序号的overview均亲自查看，只见起点场景与手臂；计时manifest已丢失，不编造帧时刻、phase对应或VFR视频。音频日志只剩一次mute_state_verified/verified_observations1，无整段summary，不称完整静音验收。原失败日志、最后running报告、Native status和0字节摘要均单独保留。
+
+仅迁移本方已终态且精确进程已不存在的r118/r119/r120/r123/r125/r127旧实例至J:/gearsVr/analysis/cover-disk-recovery-20261110-r128，保留原C路径junction；r118/119/120/127全文件前后SHA一致，r123/125原10张phase图SHA一致。另将本方r124/r126的57份可重建obj/pdb（约64MB）移至同一J归档并逐SHA，源码、DLL、日志及其他会话文件均保留。初始复制后递归删除方案被自动审查拒绝，改用直接Move-Item归档加原路径映射完成，无单独递归删除；不绕开用户文件边界。空间回升约6GB，随后其他正常写入导致浮动，以closeout瞬时读数为准。
+
+已只读审阅统筹新增共享require_disk：prepare、资源准入及worker真正启动前均检查证据卷至少4GiB，不终止现有实例或删文件；本会话未修改共享工具，也不改旧票hash绕过检查。后续使用新票绑定最新来源。证据pose-probe-r126/runtime-r128/{closeout,media-recovery}.json及原始日志。完整CV01–24/AC01–22、工程25%、公共v71、头肩遮挡及物理头显未完成状态保持；下一步仍是新磁盘准入下的定向掩体观察。

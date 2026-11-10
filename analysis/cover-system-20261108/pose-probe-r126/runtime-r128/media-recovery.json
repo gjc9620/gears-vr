@@ -1,0 +1,334 @@
+{
+  "files": 51,
+  "decoded": 51,
+  "rows": [
+    {
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\cover-1110-r128-cloak-registry\\cover-output\\projection\\frame-00000.jpg",
+      "sha256": "f5436d8291545031a9552ccc0d69f909741ed1beb736be1043ae20bed20b2f94",
+      "bytes": 241419,
+      "decoded": true
+    },
+    {
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\cover-1110-r128-cloak-registry\\cover-output\\projection\\frame-00001.jpg",
+      "sha256": "e80eddcd10335881260e63ef15b628fe59ce5b5685b649d54d7caa93c085692b",
+      "bytes": 241169,
+      "decoded": true
+    },
+    {
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\cover-1110-r128-cloak-registry\\cover-output\\projection\\frame-00002.jpg",
+      "sha256": "24ea024908e1f89744fa8d2f91df0e6b6acb37edcd0f73ba7b01672bdbd5ffd9",
+      "bytes": 241407,
+      "decoded": true
+    },
+    {
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\cover-1110-r128-cloak-registry\\cover-output\\projection\\frame-00003.jpg",
+      "sha256": "bf9e87226f79c26c4f6d4e3b4334a84eda902ee38ac9fdf0b386e85f698d18c7",
+      "bytes": 241370,
+      "decoded": true
+    },
+    {
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\cover-1110-r128-cloak-registry\\cover-output\\projection\\frame-00004.jpg",
+      "sha256": "8173d0071a88e944fcdcedfc84a91a3b7826c9273cd89000aaa3298c52c91a35",
+      "bytes": 241067,
+      "decoded": true
+    },
+    {
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\cover-1110-r128-cloak-registry\\cover-output\\projection\\frame-00005.jpg",
+      "sha256": "d0473284ba4573394166cae67ac4c5473bdf59d022decf53c9a1554ad6cbb9ee",
+      "bytes": 241283,
+      "decoded": true
+    },
+    {
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\cover-1110-r128-cloak-registry\\cover-output\\projection\\frame-00006.jpg",
+      "sha256": "7425b0edfc6740cc6ed92ecb8d85290c9d2e9527d34f3ab834238dd831de029e",
+      "bytes": 241236,
+      "decoded": true
+    },
+    {
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\cover-1110-r128-cloak-registry\\cover-output\\projection\\frame-00007.jpg",
+      "sha256": "6f1f57be5e9632b487155e5f62fc640fcb84b367dfbf17881f323b569063a61f",
+      "bytes": 241310,
+      "decoded": true
+    },
+    {
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\cover-1110-r128-cloak-registry\\cover-output\\projection\\frame-00008.jpg",
+      "sha256": "040e90a7a4eeb571cad847a7a27f4e41e2eef7bb1d94f4fd00b539ea14d8c3cf",
+      "bytes": 241409,
+      "decoded": true
+    },
+    {
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\cover-1110-r128-cloak-registry\\cover-output\\projection\\frame-00009.jpg",
+      "sha256": "560ee0af4e97a5d02305259f552b53702609791de6a2f690e46aa622fa7762c9",
+      "bytes": 241381,
+      "decoded": true
+    },
+    {
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\cover-1110-r128-cloak-registry\\cover-output\\projection\\frame-00010.jpg",
+      "sha256": "51919e7c04cbd75b285cc3de1e4ed2104388832854a92c4d955f06f8d8e05c59",
+      "bytes": 241395,
+      "decoded": true
+    },
+    {
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\cover-1110-r128-cloak-registry\\cover-output\\projection\\frame-00011.jpg",
+      "sha256": "23b1dc6f35571f5108bbbd907cc963510adfbaec4e28a0d73d86d99bdac1517f",
+      "bytes": 241375,
+      "decoded": true
+    },
+    {
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\cover-1110-r128-cloak-registry\\cover-output\\projection\\frame-00012.jpg",
+      "sha256": "604f3db0bb42b4d003baaa846e2062804c91371713f08af67674e66a64a22f48",
+      "bytes": 241416,
+      "decoded": true
+    },
+    {
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\cover-1110-r128-cloak-registry\\cover-output\\projection\\frame-00013.jpg",
+      "sha256": "14827410c09b8c1fe573e733c0d5c2aa07b7a30690e300cc2bf5d58e7ad27ffd",
+      "bytes": 241463,
+      "decoded": true
+    },
+    {
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\cover-1110-r128-cloak-registry\\cover-output\\projection\\frame-00014.jpg",
+      "sha256": "1f6c5e3c139e18ebe5c70912bbf18050816aff4c84ecbda05a35b5f66d7ab2be",
+      "bytes": 241500,
+      "decoded": true
+    },
+    {
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\cover-1110-r128-cloak-registry\\cover-output\\projection\\frame-00015.jpg",
+      "sha256": "d66a68551f328d1ffd4457d298faa169f5826f5bf1b6b93c2d924a1315e730cb",
+      "bytes": 241299,
+      "decoded": true
+    },
+    {
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\cover-1110-r128-cloak-registry\\cover-output\\projection\\frame-00016.jpg",
+      "sha256": "7fe53c74f6e72798cb4802d1091cd0138f6ac30afb0b9b513a5fc398fefc7b27",
+      "bytes": 241525,
+      "decoded": true
+    },
+    {
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\cover-1110-r128-cloak-registry\\cover-output\\projection\\frame-00017.jpg",
+      "sha256": "2e618cdb769eb8c0ee03dbaed56f6f92b44b7c979c8827480c638dc06bedc616",
+      "bytes": 241498,
+      "decoded": true
+    },
+    {
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\cover-1110-r128-cloak-registry\\cover-output\\projection\\frame-00018.jpg",
+      "sha256": "50a7985cca34ed372675f2525e34f1261b8fd4b795bad62766edbf67404762ad",
+      "bytes": 241221,
+      "decoded": true
+    },
+    {
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\cover-1110-r128-cloak-registry\\cover-output\\projection\\frame-00019.jpg",
+      "sha256": "a578377b219913a195581818d4ed102c907c8b1d3c59168b75f877208f7eaeb1",
+      "bytes": 241427,
+      "decoded": true
+    },
+    {
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\cover-1110-r128-cloak-registry\\cover-output\\projection\\frame-00020.jpg",
+      "sha256": "527f07b6489a6022824a94c0ab99aa99b0bf0aed946c3c7c75717671c8a8eed6",
+      "bytes": 241484,
+      "decoded": true
+    },
+    {
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\cover-1110-r128-cloak-registry\\cover-output\\projection\\frame-00021.jpg",
+      "sha256": "cbdf972eeb851c76c512961e8e9cfeec9838bcef83a5c842c5199c4d063810b5",
+      "bytes": 241176,
+      "decoded": true
+    },
+    {
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\cover-1110-r128-cloak-registry\\cover-output\\projection\\frame-00022.jpg",
+      "sha256": "fb5babd54d9336dc9f46fe4f867e1ba0d3e6f9a27bc8e1bf0c89e2adb07ceda2",
+      "bytes": 241522,
+      "decoded": true
+    },
+    {
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\cover-1110-r128-cloak-registry\\cover-output\\projection\\frame-00023.jpg",
+      "sha256": "fd2fad569d052b70a55b904310045c4ebf295376a3da52c76e8e931339ad179a",
+      "bytes": 241413,
+      "decoded": true
+    },
+    {
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\cover-1110-r128-cloak-registry\\cover-output\\projection\\frame-00024.jpg",
+      "sha256": "2e4ff0696ebca85103b9da972a19425e7f61838746bd6435cda7689a0aa52aed",
+      "bytes": 241396,
+      "decoded": true
+    },
+    {
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\cover-1110-r128-cloak-registry\\cover-output\\projection\\frame-00025.jpg",
+      "sha256": "ac817cace07e0e914fedf1dc74d3bf29c0bfb1e72f7539a331cb330b2c48312f",
+      "bytes": 241398,
+      "decoded": true
+    },
+    {
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\cover-1110-r128-cloak-registry\\cover-output\\projection\\frame-00026.jpg",
+      "sha256": "a6052cbf61f83e1697b651f558d5d6dd962f2ea0e1f3f111bf0c457b685fb60d",
+      "bytes": 241195,
+      "decoded": true
+    },
+    {
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\cover-1110-r128-cloak-registry\\cover-output\\projection\\frame-00027.jpg",
+      "sha256": "57f887620681ec008fcfe883052a06897a9d97c5e29a3eedafd23ea55ce47273",
+      "bytes": 241348,
+      "decoded": true
+    },
+    {
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\cover-1110-r128-cloak-registry\\cover-output\\projection\\frame-00028.jpg",
+      "sha256": "6ba0ef6391c7d3d9fe491db006a89a81a74040ee3674b434a91bd42d0d75c9c8",
+      "bytes": 241321,
+      "decoded": true
+    },
+    {
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\cover-1110-r128-cloak-registry\\cover-output\\projection\\frame-00029.jpg",
+      "sha256": "2a67da1f348da5fa1ccb43a83deccca550db4fe35e254102b52762588fa1bd1b",
+      "bytes": 241316,
+      "decoded": true
+    },
+    {
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\cover-1110-r128-cloak-registry\\cover-output\\projection\\frame-00030.jpg",
+      "sha256": "14977cfc4bc08647a9bf2e8812ba066a80cfff43b5af28a60a990b3a2008d163",
+      "bytes": 241393,
+      "decoded": true
+    },
+    {
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\cover-1110-r128-cloak-registry\\cover-output\\projection\\frame-00031.jpg",
+      "sha256": "f77e64d326e3d8e639cde1c7ee9e05f89966f789dea12ecc57a494ae3c46bb7a",
+      "bytes": 241321,
+      "decoded": true
+    },
+    {
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\cover-1110-r128-cloak-registry\\cover-output\\projection\\frame-00032.jpg",
+      "sha256": "d9448b2bf8213d29b76ffb5e76d9af5219b42e41a83091ab2efe3401b961fa07",
+      "bytes": 241350,
+      "decoded": true
+    },
+    {
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\cover-1110-r128-cloak-registry\\cover-output\\projection\\frame-00033.jpg",
+      "sha256": "b03b14ebf7265fc867a83655f2f9c6bffee6866ee79950b4fb7cb8ded94debe0",
+      "bytes": 241378,
+      "decoded": true
+    },
+    {
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\cover-1110-r128-cloak-registry\\cover-output\\projection\\frame-00034.jpg",
+      "sha256": "cdf4f9a3472a543b7002e5edbfe8465efc32cd7fa7d109da74412bf365b4ee93",
+      "bytes": 241095,
+      "decoded": true
+    },
+    {
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\cover-1110-r128-cloak-registry\\cover-output\\projection\\frame-00035.jpg",
+      "sha256": "0ae55533fc6e1cbd9f31fcc41eb929d5c446a015cdb5c6e9c7718d7bc5f1f87b",
+      "bytes": 241439,
+      "decoded": true
+    },
+    {
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\cover-1110-r128-cloak-registry\\cover-output\\projection\\frame-00036.jpg",
+      "sha256": "10f9875977361f09c304a8c93fccc0f8392e86597e0669de8a0e6deebd3f7490",
+      "bytes": 241467,
+      "decoded": true
+    },
+    {
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\cover-1110-r128-cloak-registry\\cover-output\\projection\\frame-00037.jpg",
+      "sha256": "51bdb5a949082409c43bd3b1358fd4a903777a6714005bc733f77bcc798c533d",
+      "bytes": 241514,
+      "decoded": true
+    },
+    {
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\cover-1110-r128-cloak-registry\\cover-output\\projection\\frame-00038.jpg",
+      "sha256": "56e65c88f0c72a49c8b59bdf6f91b89b7aa884c091aff8b460a8c57872e9e61d",
+      "bytes": 241416,
+      "decoded": true
+    },
+    {
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\cover-1110-r128-cloak-registry\\cover-output\\projection\\frame-00039.jpg",
+      "sha256": "5b5bc29a6520d6f0cfc6e3420a4905a491cdfdd23056e644084602b9b5ed4d27",
+      "bytes": 241525,
+      "decoded": true
+    },
+    {
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\cover-1110-r128-cloak-registry\\cover-output\\projection\\frame-00040.jpg",
+      "sha256": "14cbc12fb10c532fa59989a6b2280141fee82c8596d5a8d7e21fba91005d85b9",
+      "bytes": 241470,
+      "decoded": true
+    },
+    {
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\cover-1110-r128-cloak-registry\\cover-output\\projection\\frame-00041.jpg",
+      "sha256": "cf5a0ab72eb075c7efabd938f40fe40782db3a2f62367d39417e4ce39654c1b0",
+      "bytes": 241473,
+      "decoded": true
+    },
+    {
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\cover-1110-r128-cloak-registry\\cover-output\\projection\\frame-00042.jpg",
+      "sha256": "fa7d7ae4df23a6230e2453d22148378b360acecc3c27e581310f0340c3933647",
+      "bytes": 241423,
+      "decoded": true
+    },
+    {
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\cover-1110-r128-cloak-registry\\cover-output\\projection\\frame-00043.jpg",
+      "sha256": "0ddf439bf36e32d549584db7d428cd98d0a8af97925760ccfa34ae7b0caa924c",
+      "bytes": 241239,
+      "decoded": true
+    },
+    {
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\cover-1110-r128-cloak-registry\\cover-output\\projection\\frame-00044.jpg",
+      "sha256": "78f64c48cedf496b69c23728cdb5bc6e64f4c59a935fddd135c8e91de0ba4ce9",
+      "bytes": 241457,
+      "decoded": true
+    },
+    {
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\cover-1110-r128-cloak-registry\\cover-output\\projection\\frame-00045.jpg",
+      "sha256": "a9239a360cf24abc502abf20ebcffad2266a1343347cef1a56649ad07207dbd9",
+      "bytes": 241273,
+      "decoded": true
+    },
+    {
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\cover-1110-r128-cloak-registry\\cover-output\\projection\\frame-00046.jpg",
+      "sha256": "2a4f2891b995328f4f6e7016485ddebf2b979d95f7f40c6aa86e36bbed018773",
+      "bytes": 241419,
+      "decoded": true
+    },
+    {
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\cover-1110-r128-cloak-registry\\cover-output\\projection\\frame-00047.jpg",
+      "sha256": "338af3c8e86f803d7efe9c869f7e5b2671bc1bb0216a14c989c7d1ea8323b797",
+      "bytes": 241323,
+      "decoded": true
+    },
+    {
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\cover-1110-r128-cloak-registry\\cover-output\\projection\\frame-00048.jpg",
+      "sha256": "ca1fa408b69d9717dfb70c8d97b5e9b4c03cff5357dbadae7a1c80142b41a221",
+      "bytes": 241178,
+      "decoded": true
+    },
+    {
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\cover-1110-r128-cloak-registry\\cover-output\\projection\\frame-00049.jpg",
+      "sha256": "9c0ea989f93bd43df4e9f9e2b32923467fa3dfd17ef9decdc25017b67bcc6187",
+      "bytes": 241362,
+      "decoded": true
+    },
+    {
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\cover-1110-r128-cloak-registry\\cover-output\\projection\\frame-00050.jpg",
+      "sha256": "98d4a1565287a8a0fb7acdf5045e1148adaae1cc12fb09c49f474b54f0b66810",
+      "bytes": 241317,
+      "decoded": true
+    }
+  ],
+  "pages": [
+    {
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\pose-probe-r126\\runtime-r128\\overview-1.jpg",
+      "sha256": "4dae62d9a19099d7ab43f44acd42347b6b156bf74f955a2332b41cf298b59a03"
+    },
+    {
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\pose-probe-r126\\runtime-r128\\overview-2.jpg",
+      "sha256": "22b9bed4d7175e28ba93d091d918348b2532a592e17b520e060e15eedf0393f6"
+    },
+    {
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\pose-probe-r126\\runtime-r128\\overview-3.jpg",
+      "sha256": "d05e1954245a333f88299c5d875239e7ba9c999bf460048b738b4e8c2c63e755"
+    }
+  ],
+  "contacts": [],
+  "timing_manifest_lost": true,
+  "video_encoded": false,
+  "frame_times_reconstructed": false,
+  "source": "actual private projection files; ordinal gallery, no reliable timing",
+  "full_span_personally_reviewed": true,
+  "headset_accepted": false,
+  "visual_result": "51 surviving ordinal projection files show start scene and arms; no cover entry evidence; no timestamps or VFR manufactured"
+}

@@ -1,0 +1,88 @@
+[
+  {
+    "at_ns": 1794320689372577200,
+    "refused_before_claim": "Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: boltok-1110-222401, longshot-1110-221517"
+  },
+  {
+    "at_ns": 1794320703513525000,
+    "refused_before_claim": "Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: boltok-1110-222401, longshot-1110-221517"
+  },
+  {
+    "at_ns": 1794320713555905800,
+    "refused_before_claim": "Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: boltok-1110-222401, longshot-1110-221517"
+  },
+  {
+    "at_ns": 1794320729944268000,
+    "refused_before_claim": "Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: boltok-1110-222401, longshot-1110-221517"
+  },
+  {
+    "at_ns": 1794320740013695900,
+    "refused_before_claim": "Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: boltok-1110-222401, longshot-1110-221517"
+  },
+  {
+    "at_ns": 1794320750051988900,
+    "refused_before_claim": "Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: boltok-1110-222401, longshot-1110-221517"
+  },
+  {
+    "at_ns": 1794320765100067500,
+    "refused_before_claim": "Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: boltok-1110-222401, longshot-1110-221517"
+  },
+  {
+    "at_ns": 1794320775161425500,
+    "refused_before_claim": "Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: boltok-1110-222401, longshot-1110-221517"
+  },
+  {
+    "at_ns": 1794320785203272400,
+    "refused_before_claim": "Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: boltok-1110-222401, longshot-1110-221517"
+  },
+  {
+    "at_ns": 1794320795238849900,
+    "refused_before_claim": "Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: boltok-1110-222401, longshot-1110-221517"
+  },
+  {
+    "at_ns": 1794320805275057500,
+    "refused_before_claim": "Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: boltok-1110-222401, bow-1110-222548"
+  },
+  {
+    "at_ns": 1794320815310890400,
+    "refused_before_claim": "Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: boltok-1110-222401, bow-1110-222548"
+  },
+  {
+    "at_ns": 1794320825366504900,
+    "refused_before_claim": "Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: boltok-1110-222401, bow-1110-222548"
+  },
+  {
+    "at_ns": 1794320835401447300,
+    "refused_before_claim": "Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: boltok-1110-222401, bow-1110-222548"
+  },
+  {
+    "at_ns": 1794320845443632100,
+    "refused_before_claim": "Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: boltok-1110-222401, bow-1110-222548"
+  },
+  {
+    "at_ns": 1794320855488552800,
+    "refused_before_claim": "Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: boltok-1110-222401, bow-1110-222548"
+  },
+  {
+    "at_ns": 1794320865529885000,
+    "refused_before_claim": "Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: boltok-1110-222401, bow-1110-222548"
+  },
+  {
+    "at_ns": 1794320875574129100,
+    "refused_before_claim": "Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: boltok-1110-222401, bow-1110-222548"
+  },
+  {
+    "at_ns": 1794320885614681000,
+    "refused_before_claim": "Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: boltok-1110-222401, bow-1110-222548"
+  },
+  {
+    "at_ns": 1794320895741015100,
+    "available": {
+      "available_commit": 28191993856,
+      "available_physical": 16404045824,
+      "active_instances": [
+        "boltok-1110-222401"
+      ]
+    }
+  }
+]
