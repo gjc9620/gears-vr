@@ -238,6 +238,7 @@ int main(){
     {reset_event();auto f=active_frame();actual_first(f);f.controllers.hands[1].grip_active=0;
         assert(gears_weapon_hand::frame_active(f,model.now)); // Envelope can still be active.
         adapter::after_tick(&f);assert(adapter::requires_release());
+        assert(adapter::after_tick_rejection==5);
         assert(!adapter::source_allowed(f,model.now,model.now,model.now));
         model.r2=false;model.bytes[0]=0;model.owned_press=false;assert(adapter::release_completed(nullptr));checks+=4;}
     // Same retained event, distinct observed barriers. The probes never grant
@@ -262,5 +263,20 @@ int main(){
         assert(adapter::delivery_stage==10&&bridge::enter_stage==14&&!event_fixture::invocations);
         assert(!adapter::source_allowed(f,0,model.now,model.now));
         model.r2=false;model.bytes[0]=0;model.owned_press=false;assert(adapter::release_completed(nullptr));checks+=4;}
+    // Failure-localization receipts must identify the first real short-circuit
+    // gate, without invoking an additional original shot.
+    for(unsigned gate:{1u,2u,3u,4u,6u,7u}){
+        reset_event();auto f=active_frame();actual_first(f);
+        const auto invocations=event_fixture::invocations;
+        if(gate==2)vrfire::mode.store(vrfire::off);
+        if(gate==3)bridge::cancel_requested=true;
+        if(gate==4)++f.weapon.address;
+        if(gate==6)model.native_source=false;
+        if(gate==7)++f.reference_generation;
+        adapter::after_tick(gate==1?nullptr:&f);
+        assert(adapter::after_tick_rejection==gate);
+        assert(event_fixture::invocations==invocations);
+        assert(adapter::requires_release());checks+=3;
+    }
     std::printf("HB actual event adapter: %u original-event/scope/UP/expiry/cleanup fake checks passed; common queue, engine and certificate are fakes\n",checks);
 }

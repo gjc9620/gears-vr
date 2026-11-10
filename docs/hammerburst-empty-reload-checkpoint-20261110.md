@@ -93,3 +93,9 @@ HOD49912实际最终证据独立复核后，HB v6单次消费真实claim并运�
 实际证据集中在analysis/hammerburst-20261108/runtime-13712-{first-failure-analysis,personal-paired-review,encode-exit,retention,restoration,closeout-review}.json及runtime-13712-evidence/archive-manifest.json。旧v3后继入口实际late-body helper覆盖缺陷由LS自行发现并撤回，当前仅同一LS011500槽v4替换；HB独立核14函数AST不变及真实最后load/sha对str/Path均通过，exact Jvenv prepare-only0，未消费LS claim/ticket。正式释放窗口仍须最终新idle/十raw核验与唯一v4 final。
 
 原版枪栓条件需求已按原模型与三段原动画核查，详hammerburst-development-20261108.md对应章节与hammerburst-bolt-original-audit.json：当前一代HB只有Root/MagLatch/Mag，无独立外露可拉机柄或后拉/回位轨道；按原锁扣/翻盖和弹匣机制继续，不增虚构拉栓步骤。该结论不宣称虚构枪械内部没有枪栓。
+
+## 13712首次失败定位源码（尚未实跑）
+
+在原HB after_tick同一短路顺序上补失败条件编号1无frame、2非running、3已cancel、4目标不符、5右手tracking、6当前装备拒绝、7已commit后need_source拒绝；只记录已有POD，最多16条，不额外读game/控制器或时钟，不授input。need_source同步记录自身已执行到的阶段，避免把旧准备成功stage当本次原因。原tx::revoke/release调用和先后关系保持，100ms/20ms/250ms、原回调及单writer未变。这是观测修补，不是已证实的少发修复。
+
+MSVC /W4 /WX /UNDEBUG实际编译并执行两个受影响夹具退出0：actual completion bridge297、actual event adapter213，包括新增六种首次失败条件和既有tracking条件断言，确认没有增加原shot调用。夹具game/engine/certificate/dispatcher有替身，不能算游戏或头显验证。结果与源码SHA保存analysis/hammerburst-20261108/continuation-rejection-r1/result.json。当前未构建新完整PG、未stage/实跑；既有已消费冻结候选完全未改，公共v71未改。下一步从冻结PG派生隔离构建，再按实际尾申请变更后的单次定位验证，目标仍完整普通空仓换弹回射。

@@ -186,13 +186,34 @@ bool release_completed(hand::Frame const* f) noexcept {
        common::same_hold(original_press.held,common::pending_fire.cohort.held))common::pending_fire.event.reset();
     event={};original_press={};return true;
 }
+// First failed gate only: preserve evaluation order/count and never re-read
+// game/controller data to explain a rejection. Bounded rows cannot grant input.
+unsigned after_tick_rejection{};
+void report_continuation_rejection(hand::Frame const* f) noexcept {
+    static unsigned rows{};
+    if(!log_file||rows>=16)return;
+    ++rows;
+    fwprintf(log_file,L"native_hammerburst_continuation_rejected gate=%u source_stage=%u frame=%llu state=%u count=%u first_debt=%u firing_debt=%u cancel=%u\n",
+        after_tick_rejection,tx::source_stage,f?f->key.frame:0,
+        unsigned(tx::completion.state()),tx::completion.count(),unsigned(tx::first_debt),
+        unsigned(tx::firing_debt),unsigned(tx::cancel_requested));
+    fflush(log_file);
+}
 void after_tick(hand::Frame const* f) noexcept {
     if(!outstanding())return;
-    if(!f||vrfire::mode.load(std::memory_order_acquire)!=vrfire::running||tx::cancel_requested||
-       !targets(f->weapon.address)||!right_tracked(*f)||!nativeequipment::current(nullptr,*f)){
-        tx::revoke();release_completed(nullptr);return;
+    after_tick_rejection=0;
+    if(!f)after_tick_rejection=1;
+    else if(vrfire::mode.load(std::memory_order_acquire)!=vrfire::running)after_tick_rejection=2;
+    else if(tx::cancel_requested)after_tick_rejection=3;
+    else if(!targets(f->weapon.address))after_tick_rejection=4;
+    else if(!right_tracked(*f))after_tick_rejection=5;
+    else if(!nativeequipment::current(nullptr,*f))after_tick_rejection=6;
+    if(after_tick_rejection){
+        report_continuation_rejection(f);tx::revoke();release_completed(nullptr);return;
     }
-    if(tx::completion.state()==tx::policy::State::committed&&!tx::need_source(*f))release_completed(nullptr);
+    if(tx::completion.state()==tx::policy::State::committed&&!tx::need_source(*f)){
+        after_tick_rejection=7;report_continuation_rejection(f);release_completed(nullptr);
+    }
 }
 bool context(meta::Reader& r) noexcept {
     auto const& held=tx::certificate.held;vrfire::lr::Game game{};

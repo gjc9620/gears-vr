@@ -11,7 +11,7 @@ policy::Cohort pressed;
 bool first_debt{},firing_debt{},cancel_requested{},scope_active{},scope_first{};
 policy::Ticket ticket;
 policy::Source entered;
-unsigned enter_stage{};
+unsigned enter_stage{},source_stage{}; // Observation only; zero means committed source admission passed.
 policy::Source attempted_source; // Observation only; never a source permit.
 struct Observed {
     policy::Source source{};std::uint64_t shot{};unsigned count{},limit{};
@@ -94,18 +94,20 @@ bool capture_first() noexcept {
     first_debt=true;firing_debt=true;return true;
 }
 bool need_source(hand::Frame const& f) noexcept {
+    source_stage=1;
     if(!certificate.known||cancel_requested||scope_active)return false;
-    auto c=cohort(f);
+    source_stage=2;auto c=cohort(f);
     if(!policy::same(c,pressed)){revoke();return false;}
+    source_stage=3;
     if(first_debt)return f.controllers.hands[1].trigger_active==1&&f.controllers.hands[1].trigger>.35f&&
         c.presses==pressed.presses&&c.releases==pressed.releases;
-    if(completion.state()!=policy::State::committed)return false;
+    source_stage=4;if(completion.state()!=policy::State::committed)return false;
     // No stale pose is retained here. Freshness is checked on the actual
     // muzzle sample in enter(), then independently at every callback.
     policy::Source s{};s.cohort=c;s.frame=f.key.frame;s.authenticated=c.known;
     s.trigger_down=f.controllers.hands[1].trigger_active==1&&f.controllers.hands[1].trigger>.35f;
-    if(!completion.observe(s,true)){revoke();return false;}
-    return true;
+    source_stage=5;if(!completion.observe(s,true)){revoke();return false;}
+    source_stage=0;return true;
 }
 bool enter(bool first,policy::Source actual,std::uint64_t event,std::int64_t captured,bool original_resets_counter=false) noexcept {
     enter_stage=1;attempted_source=actual;
