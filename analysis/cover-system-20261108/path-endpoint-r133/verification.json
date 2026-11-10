@@ -1,0 +1,39 @@
+{
+  "classification": "progress: complete endpoint packet connected to serialized capsule path",
+  "source_sha256": {
+    "cover_physics_query_live.inl": "7329fdd3a96be2a8df65d65864579340bf5e3003e5abd2d28999c4e5a3970983",
+    "cover_physx_capsule_path_observation.h": "cd93e167bd9aca41831c217be8acc6d405a5f6198b638cc24dbf04b7a8699d7f"
+  },
+  "test_sha256": "ff4bf3232abb277d21945a552aecce2b8e552722ea434cbd8731b65ddb2059a6",
+  "checks": {
+    "cover_physics_capsule_path_live": 391,
+    "cover_physics_query_live": 105,
+    "cover_physics_overlap_query_live": 53,
+    "cover_physics_c0_off": 38
+  },
+  "total_checks": 587,
+  "failures": 0,
+  "native_sha256": "d23474316dbbaa272f94b3cbca09877abf265e18b5ec4def5b0ed74f21cd8d2b",
+  "project_dependencies": 406,
+  "flags_unchanged": true,
+  "external_worktree_dependencies": [],
+  "endpoint": "original capsule overlap_all stream: raw shape order, duplicates, owners and positive self provenance retained",
+  "budget": "segments and endpoint share max_hits/max_reports; no endpoint call with exhausted remaining capacity",
+  "closure": "endpoint asset bodies, collider and component snapshots must match path; final Session closing unchanged",
+  "storage": "large endpoint packet lives in serialized Session RawPath; cleared in place without aggregate stack temporary",
+  "offline_scope": "actual typed reader and Session; module/dispatch Host fixtures, not original runtime calls",
+  "staged": false,
+  "game_started": false,
+  "query_called": false,
+  "world_coverage_verified": false,
+  "occupancy_authorized": false,
+  "movement_authorized": false,
+  "public_changed": false,
+  "headset_accepted": false,
+  "remaining": [
+    "certify actual body path and endpoint query behavior and complete current collision world coverage",
+    "connect current occupancy and same-pose C0 body/view/hit/muzzle commit",
+    "repair own head/shoulder obstruction and separately inspect Core measurement refusal",
+    "complete all CV01-24 and AC01-22 including physical headset acceptance"
+  ]
+}

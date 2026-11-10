@@ -2179,3 +2179,15 @@ r131源码已保存d59ff30d。新独立实例cover-1110-r132-cloak-member-witnes
 正常停止、Native/入口/pad恢复，fire_disable0/hand_stop5/drainedtrue，XR0/launcher0，无强杀，保存时精确game/owner/XR/worker均不在。CLOAK626次失败0，静音验证273/verify_failed0/target_shared_rejected0。实际disk_before free6725824512≥4294967296；不追补r128缺失恢复回执。r128与r130仅本方已消费实例全文件SHA前后一致归档J盘、原C路径junction保持，各921792452/1017521687字节，未动其他实例。
 
 证据member-witness-r131/runtime-r132/{session-original,query-probe,pose-probe,media-review,closeout,additional-owned-archive}.json。下一步接完整身体路径/终点的形状枚举与当前世界覆盖，再连接唯一C0身体提交及同版视图/命中/枪口；自身头肩遮挡和Core拒绝仍需分别修复。全部CV01–24/AC01–22未完成，工程25%、公共v71、固定手动入口不变，目标active。
+
+## r133：完整路径终点改接原版形状枚举与归属闭合（2026-11-10，未运行游戏）
+
+上轮r132已按2bfd8918保存原版Sphere执行1/返回1及双眼遮挡FAIL。本轮沿CV-16完整路径/终点要求继续实现：RawPath终点由Overlap布尔值改为AllOverlapOwners，Session在最后一段后调用现有原版capsule overlap_all接口，保留每个原始shape顺序、重复项、owner及正向self来源。它与路径扫掠共用同一max_hits/max_reports剩余额度；额度已耗尽时拒绝终点查询，返回数量/报告超预算或raw_count不一致时拒绝。终点asset bodies/collider/component清单与路径任一不一致，整次操作changed，最终Session身份/输入/元数据closing保持。
+
+较大的终点包仍置于既有序列化Session的RawPath中，原地清零，不引入游戏栈大型临时对象、新writer、hook或输入。空枚举仍不签发完整世界覆盖、自身排除、当前占用或身体移动许可；这些证据与实际消费者尚未接完。
+
+四组实际typed-reader/Session离线检查共587项0失败：path391、Session105、overlapSession53、C0关闭38。覆盖原始形状/归属保留、空返回、跨所有查询共享预算、终点数量与报告超限、三类来源清单不一致、终点调用中身份变化/故障/停止/输入突变/重入及未完整操作不改调用者输出。原查询模块/dispatch使用Host fixture，不是游戏执行。
+
+在r131冻结Native源上仅叠cover_physics_query_live.inl与cover_physx_capsule_path_observation.h，完整编译链接通过；Native SHA256 d23474316dbbaa272f94b3cbca09877abf265e18b5ec4def5b0ed74f21cd8d2b，406项项目依赖均来自冻结源，外部工作树依赖0，原GEARS开关不变。未stage、未启动游戏、未调用原版路径/终点枚举。证据path-endpoint-r133/{verification,native-build-result,native-source-manifest}.json与checks-v1/。
+
+下一步认证实际身体体积路径和终点枚举、完整当前碰撞世界覆盖，并接唯一C0提交及同版视图/命中/枪口；自身头肩遮挡、Core测量拒绝和完整抓边/保持/重抓/战斗/恢复仍开放。工程25%、公共v71、固定入口和CV01–24/AC01–22总范围保持，目标active。

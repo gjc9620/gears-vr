@@ -125,7 +125,9 @@ public:
         try{return execute(actor,metadata,shape,read,current_owner,output,[&](auto& engine,auto const& source,auto const& geometry,auto reader,auto current,auto& result){
             const auto prepared=path::prepare(geometry,movement,options,path_work_,result.plan);
             if(prepared!=path::Code::planned)return prepared==path::Code::capacity?q::Code::truncated:q::Code::request;
-            result.spans={};result.endpoint={};
+            result.spans={};
+            static_assert(std::is_trivially_copyable_v<q::AllOverlapOwners>);
+            std::memset(&result.endpoint,0,sizeof result.endpoint);
             static_assert(std::is_trivially_copyable_v<q::AllSweepOwners>);
             std::memset(&result.collected,0,sizeof result.collected); // no large stack temporary
             auto& accumulated=result.collected;
@@ -152,8 +154,20 @@ public:
                 accumulated.raw.hit_count+=raw.hit_count;accumulated.raw.raw_count+=raw.raw_count;accumulated.raw.reports+=raw.reports;
             }
             if(stopped_.load())return q::Code::unavailable;
-            const auto code=engine.overlap(source,result.plan.endpoint,reader,current,result.endpoint);
-            return code==q::Code::queried&&!stable()?q::Code::changed:code;
+            auto const& totals=accumulated.raw;
+            if(totals.hit_count>=budget.max_hits||totals.reports>=budget.max_reports)return q::Code::truncated;
+            const q::StreamLimits remaining{budget.max_hits-totals.hit_count,budget.max_reports-totals.reports};
+            const auto code=engine.overlap_all(source,result.plan.endpoint,remaining,reader,current,result.endpoint,
+                                               &current.collider_source,current.component_source);
+            if(code!=q::Code::queried)return code;
+            if(!stable())return q::Code::changed;
+            auto const& endpoint=result.endpoint;
+            if(endpoint.raw.raw_count!=endpoint.raw.shape_count||endpoint.raw.shape_count>remaining.max_hits||
+               endpoint.raw.reports>remaining.max_reports)return q::Code::callback_rejected;
+            if(!gears_cover_physx_asset_actors::same(accumulated.asset_bodies,endpoint.asset_bodies)||
+               !gears_cover_physx_collider::same(accumulated.collider_source,endpoint.collider_source)||
+               !gears_cover_physx_components::same(accumulated.component_sources,endpoint.component_sources))return q::Code::changed;
+            return q::Code::queried;
         });}catch(...){return q::Code::source;}
     }
     Session()=default;Session(Session const&)=delete;Session& operator=(Session const&)=delete;
