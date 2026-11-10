@@ -1,0 +1,8 @@
+{
+  "result": "red",
+  "exit": 1,
+  "failure": "FAIL line13: h.model.held() after established hold callback rejection",
+  "source": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\tools\\playground\\weapon_equipment_runtime.h",
+  "source_sha256": "b54f79850261014452837688d8e6f6a4379cc9da59ffeb441162df565ba42f42",
+  "runtime_started": false
+}

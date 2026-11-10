@@ -1,0 +1,34 @@
+{
+  "schema": 1,
+  "game_pid": 38240,
+  "instance": "hb-cloak-1110-200135",
+  "candidate": "reload-cleanup-r1",
+  "passed": false,
+  "shoulder_acquisition_frame": 106,
+  "first_failure": {
+    "frame": 148,
+    "status": "hold_failed",
+    "effect": "Established private held model cleared during failed republication",
+    "callback_rejection_cause": "unproven"
+  },
+  "first_trigger": {
+    "frame": 195,
+    "status": 8,
+    "source_status": 1,
+    "frame_active_at_input_admission": true,
+    "input_admission_ns": 96983091500400,
+    "source_age_ms": 82.7828,
+    "authoritative_rays": 0
+  },
+  "next_action": "Targeted retained-hold republication repair, preserving initial acquisition, identity, attachment, clock and freshness checks",
+  "cleanup": {
+    "launcher_exit": 0,
+    "owned_game_absent": true,
+    "owned_children": {
+      "recorded": 0,
+      "remaining": []
+    },
+    "forced_termination": false
+  },
+  "audio_limit": "Old muted counts mute writes; shared_rejected spans all sessions. Target mute state unknown from old counters. No audible failure inferred."
+}

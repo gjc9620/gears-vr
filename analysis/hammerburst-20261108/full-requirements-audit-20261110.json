@@ -1,8 +1,8 @@
 {
   "schema": 1,
   "scope": "full HB objective; no scope reduction",
-  "current_candidate": "reload-cleanup-r1 (compiled private snapshot, not game accepted)",
-  "prepared_sha256": "1f01b6199c52f1568fcb20ed955536c90f4f04dda6fd307abe254ca0481c60a8",
+  "current_candidate": "held-republish-r1 (full compiled, focused offline regressions passed, game acceptance pending)",
+  "prepared_sha256": "a49e85dbd8555620d659266cabde1b86e940e728bfe7ad863837ea65ab3f7e88",
   "requirements": [
     {
       "id": "acquire_stow",
@@ -20,7 +20,7 @@
       "id": "finite_fire",
       "requirement": "\u5355\u624b/\u53cc\u624b\u7784\u51c6\u4e0e\u539f\u7248\u6709\u9650\u516d\u8fde\u53d1",
       "status": "failed_latest_live",
-      "limit": "Latest actual34780 core6 valid consistent rays; next original event7 captured but Input inactive, loaded72/reserve78 unchanged. Earlier observed97.7204ms predates exact admission, so failing Frame predicate remains unproven. Exact admission observation compiled, not game exercised.",
+      "limit": "Latest actual38240 acquired shoulder frame106, lost established held model on failed republication frame148, first trigger frame195 blocked, zero authoritative rays. Exact admission Source1 active, source age82.7828ms. Callback failure cause remains unproven. Narrow republication repair compiled; actual retest pending.",
       "evidence": [
         {
           "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-13712-first-failure-analysis.json",
@@ -37,6 +37,10 @@
         {
           "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-34780-first-failure-analysis.json",
           "sha256": "30038c1aeef714af0d323c3fe44f6ad0901716237f5ba9f161d845476d949eca"
+        },
+        {
+          "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-38240-first-failure-analysis.json",
+          "sha256": "d88fe9276a5992c4e42e04ffe224a90ffab14aaacce1e12667e4e7b5d1c528ea"
         }
       ]
     },

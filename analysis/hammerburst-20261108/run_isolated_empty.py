@@ -26,11 +26,11 @@ def main():
     name='hb-cloak-'+time.strftime('%m%d-%H%M%S')
     target=AREA/name;target.mkdir()
     manifest=json.loads((AREA/'independent-r1/candidate-manifest.json').read_text())
-    proof=json.loads((AREA/'reload-cleanup-r1/prepared.json').read_text())
+    proof=json.loads((AREA/'held-republish-r1/prepared.json').read_text())
     assert proof['full_playground_compiled'] and not proof['runtime_exercised']
     dll=Path(proof['dll']);assert hashlib.sha256(dll.read_bytes()).hexdigest()==proof['dll_sha256']
     manifest.update(playground_build=str(dll.parent.relative_to(ROOT)),playground_sha256=proof['dll_sha256'],
-                    lancer_interaction_ranges=False,candidate_validation='Private HB qualification repair + exact admission timing; whole weapon acceptance pending')
+                    lancer_interaction_ranges=False,candidate_validation='Private HB established-hold republication repair; whole weapon acceptance pending')
     write(target/'candidate-manifest.json',manifest)
     env={k:v for k,v in os.environ.items() if not k.upper().startswith(('GEARS','PYTHON','XR','OPENXR'))}
     env.update(GEARSVR_TEST_FINITE_RANGE_AMMO='1',GEARSVR_HAMMERBURST_EMPTY_RELOAD_ONLY='1',
@@ -92,8 +92,6 @@ def main():
             subprocess.run(python+[str(TOOL),'prepare','--name',name,'--manifest',str(target/'candidate-manifest.json'),
                                   '--config',str(AREA/'independent-r1/candidate-config.json')],check=True,stdout=log,stderr=subprocess.STDOUT,**common)
         write(target/'instance-binding.json',dict(name=name,root=str(selected),candidate=proof['dll_sha256']))
-        from silence_private_settings import prepare as prepare_sound
-        result['private_sound_settings']=prepare_sound(selected)
         with (target/'start.log').open('wb') as log:
             subprocess.run(python+[str(TOOL),'start','--name',name],check=True,stdout=log,stderr=subprocess.STDOUT,**common)
         launched=True;result['worker_started']=True

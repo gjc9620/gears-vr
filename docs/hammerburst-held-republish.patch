@@ -1,0 +1,30 @@
+--- a/tools/playground/weapon_equipment_runtime.h
++++ b/tools/playground/weapon_equipment_runtime.h
+@@ -190,6 +190,18 @@
+             gears_weapon::BodySlot::weapon_2,gears_weapon::BodySlot::weapon_1};
+         return slot<4?slots[slot]:gears_weapon::BodySlot::none;
+     }
++    Outcome republish_hold(Frame const& f,Backend const& b,EquipmentSnapshot const& game,WeaponEquipmentModel& model,Outcome out) noexcept {
++        // Only the already-held branch calls this after authenticating the
++        // same actor/object identity and actual attachment on a fresh Frame.
++        // A publication failure revokes live authority, not that private
++        // established grasp. New acquisitions still use commit_hold below.
++        const bool accepted=b.hold(b.context,f,game);
++        if(!accepted||!current(f,b)){
++            suspend(b);out.status=accepted?Status::unavailable:Status::hold_failed;return out;
++        }
++        std::uint64_t now{};if(!clock(b,now))return bad_clock(b,model);
++        state_.hold_published=true;return out;
++    }
+     Outcome commit_hold(Frame const& f,Backend const& b,EquipmentSnapshot const& game,
+                         WeaponEquipmentModel& model,WeaponEquipmentModel const& proposed,
+                         ObjectIdentity const& target,Outcome out) noexcept {
+@@ -448,7 +460,7 @@
+                 if(!current(f,b))return lost(b);
+                 if(!attached){clear_model(b,model);return {Status::attachment_unavailable};}
+                 if(!state_.hold_published){
+-                    const auto out=commit_hold(f,b,game,model,model,actual,{Status::held,model.held_slot(),actual.address});
++                    const auto out=republish_hold(f,b,game,model,{Status::held,model.held_slot(),actual.address});
+                     if(out.status!=Status::held)return out;
+                 }
+             }
