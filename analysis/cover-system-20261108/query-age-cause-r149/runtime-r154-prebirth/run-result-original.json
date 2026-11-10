@@ -1,0 +1,70 @@
+{
+  "name": "cover-1111-r154-cloak-start",
+  "memory_before": {
+    "admitted": false,
+    "advisory_refusal": "Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: hb-cloak-1111-042322, lancer-natural-v139-225928",
+    "authoritative_gate": "isolated_sim.first_admission"
+  },
+  "disk_before": {
+    "check": "disk_admission",
+    "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr",
+    "free_bytes": 18151342080,
+    "minimum_free_bytes": 4294967296,
+    "admitted": true
+  },
+  "started_at_ns": 1794342438108234000,
+  "source": 1,
+  "probe_mode": "path",
+  "forced_termination": false,
+  "gameplay_accepted": false,
+  "headset_accepted": false,
+  "foreground_observations": {
+    "samples": 0,
+    "owned_activation": false
+  },
+  "cloak_observations": {
+    "samples": 0,
+    "failures": []
+  },
+  "runner_sha256": "6ef1cc9cb2a39d5bfa1c2d34132f32c0285956d92d4b7d9df619a98e031218a1",
+  "isolation_source_sha256": "e6b4a0ae31aadb4299e37522af0463ceec7be1e4501d68e2b1ad89b605842c2b",
+  "runtime_receipts_source_sha256": "7db0a08436af9b8c865aa6efb3c943c5817cd61887cd2837f873c07b29dabefb",
+  "anchor_source_sha256": {
+    "analysis/solo-m1-20261028/sim_entry.py": "41de185d816683cc020397b56abe62528e1ffdcef925b75059f064fe117d4709",
+    "tools/native-capture/sixdof_manual_profile.py": "9480c2a056bb375b2678ce75fb600092f8e547cdcf8d9cbc11b2aea2d49247e7",
+    "tools/native-capture/anchor_config.py": "fe28f1f84ad26ac91aa6b67dc1431f150a8e707d78e3a7a5c9b396244d7c4592",
+    "tools/native-capture/cinematic_anchor.py": "f3c8b4135c57c1e8697ffe08dfdf59084b6fcb93bb1862979c688eab24ab4a44",
+    "tools/native-capture/world_rebind_runtime.py": "73b6f9606db5961e2890e49ae81a611f198abbef5b307a4d94947adb37052257",
+    "tools/native-capture/native_class_discovery.py": "3fd533c006f3546249d88b75d5a324ab3c4271da5ab0a39554e9d6089506b44d",
+    "tools/package-inspector/resolve_camera.py": "39e3272ffcc850fdfc8c4daf79fe2a7477f855e2f51adb21e67b47831fd376a6",
+    "tools/package-inspector/sample_player_anchor.py": "efbc5b65b4bc21a83001cbdea10c083e50ac20a8deca6dba01e7a65d5ca3c04e",
+    "tools/vr-launcher/playground_loader.py": "1eb3293661dc4ac810bfc4e9315900b6feb2cb7e22b823ac0ac50ff0337310dc",
+    "tools/game-io/background_input.py": "b27ba12d1f3c703babd5ec09ee731edc95742595da7d9887ad513568feab2bf2"
+  },
+  "projection_recorder_sha256": "e8cc69bcd34218ac5cab34b8c7dd098c64bb704c5ec845cb2552686694238ab6",
+  "start_exit": 1,
+  "start_stdout": "",
+  "start_stderr": "Traceback (most recent call last):\r\n  File \"C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\tools\\multi-instance\\isolated_sim.py\", line 270, in <module>\r\n    if __name__=='__main__':main()\r\n                            ^^^^^^\r\n  File \"C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\tools\\multi-instance\\isolated_sim.py\", line 266, in main\r\n    receipt=first_admission(lambda:RuntimeGuard('IndependentMemoryAdmission',timeout_ms=1000),\r\n            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\r\n  File \"C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\tools\\multi-instance\\runtime_receipts.py\", line 24, in first_admission\r\n    probe_result=probe()\r\n                 ^^^^^^^\r\n  File \"C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\tools\\multi-instance\\isolated_sim.py\", line 255, in probe\r\n    memory=require_memory()\r\n           ^^^^^^^^^^^^^^^^\r\n  File \"C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\tools\\multi-instance\\isolated_sim.py\", line 112, in require_memory\r\n    raise ResourceUnavailable('Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: '+', '.join(active))\r\nruntime_receipts.ResourceUnavailable: Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: hb-cloak-1111-042322, lancer-natural-v139-225928\r\n",
+  "error": "RuntimeError('Private launcher start refused; retain original output')",
+  "traceback": "Traceback (most recent call last):\n  File \"C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\isolated-r105\\run.py\", line 181, in main\n    raise RuntimeError('Private launcher start refused; retain original output')\nRuntimeError: Private launcher start refused; retain original output\n",
+  "prebirth_resource_refusal": true,
+  "normal_cleanup_required": false,
+  "terminal_state": {},
+  "terminal_session": {},
+  "isolated_done": null,
+  "remaining_owned": {},
+  "normal_cleanup_verified": false,
+  "anchor_sources_after": {
+    "analysis/solo-m1-20261028/sim_entry.py": "41de185d816683cc020397b56abe62528e1ffdcef925b75059f064fe117d4709",
+    "tools/native-capture/sixdof_manual_profile.py": "9480c2a056bb375b2678ce75fb600092f8e547cdcf8d9cbc11b2aea2d49247e7",
+    "tools/native-capture/anchor_config.py": "fe28f1f84ad26ac91aa6b67dc1431f150a8e707d78e3a7a5c9b396244d7c4592",
+    "tools/native-capture/cinematic_anchor.py": "f3c8b4135c57c1e8697ffe08dfdf59084b6fcb93bb1862979c688eab24ab4a44",
+    "tools/native-capture/world_rebind_runtime.py": "73b6f9606db5961e2890e49ae81a611f198abbef5b307a4d94947adb37052257",
+    "tools/native-capture/native_class_discovery.py": "3fd533c006f3546249d88b75d5a324ab3c4271da5ab0a39554e9d6089506b44d",
+    "tools/package-inspector/resolve_camera.py": "39e3272ffcc850fdfc8c4daf79fe2a7477f855e2f51adb21e67b47831fd376a6",
+    "tools/package-inspector/sample_player_anchor.py": "efbc5b65b4bc21a83001cbdea10c083e50ac20a8deca6dba01e7a65d5ca3c04e",
+    "tools/vr-launcher/playground_loader.py": "1eb3293661dc4ac810bfc4e9315900b6feb2cb7e22b823ac0ac50ff0337310dc",
+    "tools/game-io/background_input.py": "b27ba12d1f3c703babd5ec09ee731edc95742595da7d9887ad513568feab2bf2"
+  },
+  "anchor_sources_unchanged": true
+}

@@ -1,0 +1,11 @@
+{
+  "scope": "Actual prebirth admission refusal",
+  "worker_registered": false,
+  "game_started": false,
+  "normal_cleanup_required": false,
+  "normal_cleanup_verified": false,
+  "claim_consumed": true,
+  "start_request_consumed": true,
+  "error": "Traceback (most recent call last):\r\n  File \"C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\tools\\multi-instance\\isolated_sim.py\", line 270, in <module>\r\n    if __name__=='__main__':main()\r\n                            ^^^^^^\r\n  File \"C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\tools\\multi-instance\\isolated_sim.py\", line 266, in main\r\n    receipt=first_admission(lambda:RuntimeGuard('IndependentMemoryAdmission',timeout_ms=1000),\r\n            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\r\n  File \"C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\tools\\multi-instance\\runtime_receipts.py\", line 24, in first_admission\r\n    probe_result=probe()\r\n                 ^^^^^^^\r\n  File \"C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\tools\\multi-instance\\isolated_sim.py\", line 255, in probe\r\n    memory=require_memory()\r\n           ^^^^^^^^^^^^^^^^\r\n  File \"C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\tools\\multi-instance\\isolated_sim.py\", line 112, in require_memory\r\n    raise ResourceUnavailable('Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: '+', '.join(active))\r\nruntime_receipts.ResourceUnavailable: Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: hb-cloak-1111-042322, lancer-natural-v139-225928\r\n",
+  "next": "Fresh request using existing shared bounded wait 600 seconds; no relaxed resource gate"
+}

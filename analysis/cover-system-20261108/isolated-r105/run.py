@@ -17,6 +17,14 @@ OUTPUT = SELECTED / 'cover-output'
 TOOLS = ROOT / 'tools/multi-instance/isolated_sim.py'
 
 
+def admission_settings(seconds=60):
+    # The shared first-admission implementation supports this exact bound.
+    # Its locked resource/freshness gates and one-shot commit remain mandatory.
+    if type(seconds) is not int or not 0 <= seconds <= 600:
+        raise ValueError('Admission wait must be an integer within 0..600 seconds')
+    return str(seconds), seconds+30
+
+
 def require_start_allowed():
     pause = ROOT / 'tools/multi-instance/automatic-runtime-pause.json'
     if pause.exists() and load(pause).get('automatic_start_disabled') is True:
@@ -57,7 +65,9 @@ def main():
     parser.add_argument('--name', required=True)
     parser.add_argument('--run', action='store_true', required=True)
     parser.add_argument('--probe', choices=('sphere','path'), default='sphere')
+    parser.add_argument('--admission-wait-seconds', type=int, default=60)
     args = parser.parse_args()
+    wait_argument, launch_timeout = admission_settings(args.admission_wait_seconds)
     name = args.name
     if not name.startswith('cover-') or any(c not in 'abcdefghijklmnopqrstuvwxyz0123456789_-' for c in name):
         raise ValueError('Exact cover instance name required')
@@ -118,6 +128,7 @@ def main():
     result['foreground_observations'] = dict(samples=0, owned_activation=False)
     result['cloak_observations'] = dict(samples=0, failures=[])
     result['runner_sha256'] = sha(__file__)
+    result['admission_wait_seconds'] = args.admission_wait_seconds
     result['isolation_source_sha256'] = prepared['isolation_source_sha256']
     result['runtime_receipts_source_sha256'] = prepared['runtime_receipts_source_sha256']
     result['anchor_source_sha256'] = anchor_sources
@@ -172,8 +183,8 @@ def main():
         # The same first request can wait 60s BEFORE registration. Preserve
         # the original 30s dispatch margin after that bounded resource wait.
         start = subprocess.run([sys.executable, '-E', '-s', '-B', '-X', 'utf8', str(TOOLS), 'start', '--name', NAME,
-                                '--wait-resources-seconds', '60'],
-            cwd=ROOT, env=env, capture_output=True, timeout=90, creationflags=subprocess.CREATE_NO_WINDOW)
+                                '--wait-resources-seconds', wait_argument],
+            cwd=ROOT, env=env, capture_output=True, timeout=launch_timeout, creationflags=subprocess.CREATE_NO_WINDOW)
         result.update(start_exit=start.returncode, start_stdout=start.stdout.decode('utf-8', errors='replace'),
                       start_stderr=start.stderr.decode('utf-8', errors='replace'))
         save()

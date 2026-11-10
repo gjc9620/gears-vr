@@ -2399,3 +2399,9 @@ Native continuous native_started false，operator未启动、projection0、未�
 未改当前已有未提交的background_input.py，也未跳过任何线程。playground_loader增加_enable_gamepad_gate，仅当原FrozenThreads已完整展开并抛出带唯一见证的OpenThread87、失败tid来自旧枚举且在新快照消失时，允许最多3次完整enable事务；每次保留check_live、精确创建身份、完整status原代码认证，不接受enabled/pending/未知代码，不重复Native Start或GateLease。其他87、仍存活线程、观察失败、权限/恢复错误均直接拒绝；第三次不再重试。成功报告保留原异常和见证，失败保留重试历史。原Freeze的异常恢复失败会变RuntimeError，不能进入此重试。源码与离线检查不证明实际恢复或入口已修好。
 
 26项startup/loader检查及9项background_input检查通过，包含真实start_gamepad函数的模拟依赖调用、首败留存、身份变化/代码未知拒绝、次数界及原回滚/释放；没有调用游戏/真实冻结。prepare现在绑定原8项来源以及loader和background_input两项启动依赖SHA，已有准备记录不改哈希，新运行须重新准备。下一步保存后使用新私有实例定向验证启动、定时步行及原CT2入口，再继续原查询原因定位。完整CV01–24/AC01–22、工程25%、publicv71/固定入口及实体头显状态不变，目标active。
+
+## r154准入未出生与共享有界等待参数接线（2026-11-11）
+
+r154已准备绑定10项启动/anchor来源，操作导入检查0；等待活句柄持续观察名额占用，外层见名额后，原共享first_admission再次争用，60秒届满typed ResourceUnavailable退出1、stdout空。无worker.json/log、launcher-session和game，normal_cleanup_required false、verified false，原claim/start-request和拒绝原文另存runtime-r154-prebirth。没有启动/输入/投影或正常清理证据，启动/脉冲/查询修正尚未实证。
+
+本方runner增加--admission-wait-seconds，默认保持60；只接入共享工具原本支持的整数0..600秒上限，subprocess超时为该预算+原30秒调度余量，参数及实际调用均记录。12项实际参数/dispatch检查及20项原准入兼容检查通过，无资源预留或游戏。下一新请求直接使用现有runner和共享600秒等待，避免外层先等空位再竞争；共享锁外等待、锁内名额2/内存/磁盘4GiB/暂停/身份/新实例检查、首次commit后不重试全部保持。未编辑共享准入工具，不修改或重用旧票据。目标active，完整掩体未完成，25%/publicv71不变。
