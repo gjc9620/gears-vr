@@ -1,8 +1,8 @@
 {
   "schema": 1,
   "scope": "full HB objective; no scope reduction",
-  "current_candidate": "reload-eligibility-r1 (compiled private snapshot, not game accepted)",
-  "prepared_sha256": "4255d8a803a7c8a4d462d16e999d05ad2a4b83e892ff3aff775a904e42a289b2",
+  "current_candidate": "reload-cleanup-r1 (compiled private snapshot, not game accepted)",
+  "prepared_sha256": "1f01b6199c52f1568fcb20ed955536c90f4f04dda6fd307abe254ca0481c60a8",
   "requirements": [
     {
       "id": "acquire_stow",
@@ -126,9 +126,14 @@
     {
       "id": "interruptions",
       "requirement": "\u6682\u505c/\u5931\u8ffd/\u5207\u67aa/\u6536\u67aa\u9000\u51fa\u3001\u4e0d\u5f97\u91cd\u653e\u65e7\u8fb9\u6cbf",
-      "status": "missing_live",
-      "limit": "\u90e8\u5206\u7eaf\u6d4b\u8bd5\u4e0d\u80fd\u66ff\u4ee3\u672c\u67aa\u6362\u5f39\u4e2d\u65ad\u5b9e\u5f55",
-      "evidence": []
+      "status": "stop_completion_repair_compiled_switch_mechanics_missing",
+      "limit": "Stop/switch now precede completing; an uncalled perfect reward is cancelled while committed ammo remains, dispatched reward drains without redispatch;10 cases130 checks and full frozen Playground compile pass. Same-weapon mechanical parking/resume across switch remains missing because reset discards angle/stage; no live interruption acceptance.",
+      "evidence": [
+        {
+          "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\reload-cleanup-r1\\prepared.json",
+          "sha256": "1f01b6199c52f1568fcb20ed955536c90f4f04dda6fd307abe254ca0481c60a8"
+        }
+      ]
     },
     {
       "id": "guides",

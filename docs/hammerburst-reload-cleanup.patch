@@ -1,0 +1,53 @@
+--- a/tools/playground/weapon_hammerburst_runtime.inl
++++ b/tools/playground/weapon_hammerburst_runtime.inl
+@@ -28,6 +28,7 @@
+ inv::Request completion;
+ lancerreload_state::RewardReceipt reward;
+ #include "weapon_hammerburst_reload_begin.inl"
++#include "weapon_hammerburst_reload_cleanup.inl"
+ gears_weapon::HammerburstLatchStroke stroke;
+ gears_weapon::FeedInsertionStroke insertion;
+ gears_weapon::HammerburstMagazineExtraction extraction;
+@@ -236,21 +237,7 @@
+     inv::Request pending_request{};
+     if(transaction.dispatched_request(pending_request)&&!lancerreload_state::restore_partial_insert(pending_request,observer))return false;
+     if(!lancerreload_state::recover_owned()||!restore_animation()||!visual::restore())return false;
+-    if(transaction.dispatched_request(pending_request)){
+-        inv::Inventory counts{};if(!observer.sample_owned(pending_request.identity,counts))return false;
+-        bool applied=false;
+-        if(pending_request.call==gears_weapon::ReloadTxnCall::insert){
+-            if(inv::counts_equal(counts,pending_request.expected))applied=true;
+-            else if(!inv::counts_equal(counts,pending_request.before))return false;
+-        }else{
+-            if(!inv::counts_equal(counts,pending_request.expected))return false;
+-            if(pending_request.result==gears_weapon::ReloadTxnResult::perfect&&!reward.applied)return false;
+-            applied=true;
+-        }
+-        const auto result=pending_request.call==gears_weapon::ReloadTxnCall::insert||pending_request.result==gears_weapon::ReloadTxnResult::inspection?
+-            gears_weapon::ReloadTxnResult::none:pending_request.result;
+-        if(!transaction.acknowledge({pending_request.token,applied,counts,result}))return false;
+-    }
++    if(!cleanup_completion::settle(transaction,observer,opening,reward))return false;
+     reset();return true;
+ }
+ #include "weapon_hammerburst_latch_history.inl"
+@@ -512,6 +499,9 @@
+ bool tick(uptr pc) noexcept {
+     if(stage==Stage::idle&&lancerreload_runtime::stage!=lancerreload_runtime::Stage::idle)return false;
+     if(stage==Stage::recovering){cleanup(__LINE__);return true;}
++    if(lancerreload_runtime::stop_requested.load(std::memory_order_acquire)||switch_requested){
++        if(stage!=Stage::idle){cleanup(__LINE__);return true;}return false;
++    }
+     if(stage==Stage::completing){
+         if(!serial){
+             inv::Inventory counts{};
+@@ -539,9 +529,6 @@
+             reset(true); // Immutable same-instance closed geometry, not a grant.
+         }else stage=Stage::recovering;
+         return true;
+-    }
+-    if(lancerreload_runtime::stop_requested.load(std::memory_order_acquire)||switch_requested){
+-        if(stage!=Stage::idle){cleanup(__LINE__);return true;}return false;
+     }
+     hand::Frame f{};hand::GripGameState game{};hand::Decision decision{};
+     if(!weaponhand::client.copy_frame_on_gt(f,game,decision)||f.controller.address!=pc||

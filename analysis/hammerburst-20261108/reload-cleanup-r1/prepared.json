@@ -1,0 +1,20 @@
+{
+  "base": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\reload-eligibility-r1",
+  "full_playground_compiled": true,
+  "build_exit": 0,
+  "frozen_cleanup_tests_passed": true,
+  "test_exit": 0,
+  "runtime_exercised": false,
+  "changed_source_files": [
+    "tools/playground/weapon_hammerburst_reload_cleanup.inl",
+    "tools/playground/weapon_hammerburst_reload_cleanup_test.cpp",
+    "tools/playground/weapon_hammerburst_runtime.inl"
+  ],
+  "dll": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\reload-cleanup-r1\\build\\Release\\GearsPlayground6DofUnified3.dll",
+  "dll_sha256": "ceff6e61a4175fc28f07e4564a6af4a2e3200b19b7aa0c363cd038a23a390306",
+  "first_build_failed": true,
+  "first_build_failure": "C4459 parameters shadowed parent-namespace runtime variables; /WX rejected",
+  "first_build_log": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\reload-cleanup-r1\\build.log",
+  "repair": "Renamed helper parameters, copied only corrected helper into existing private snapshot; existing target rebuilt normally, exit0; original failed log retained",
+  "shared_instance_changed": false
+}
