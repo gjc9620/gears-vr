@@ -50,6 +50,9 @@ struct FrameReadObservation {
     std::int64_t input_age_ns{-1};std::uint32_t left_grip_down{};
     std::uint32_t frame_difference{},game_flags{};
     CandidateObservation candidate{}; // Existing failure receipt only; never a permit.
+    // Last successful commit's existing freshness-check clock, not a source
+    // stamp or an action permit. Negative values mean unavailable.
+    std::int64_t commit_check_input_age_ns{-1},since_commit_check_ns{-1};
 };
 // Lifetime of an already journalled ORIGINAL action through a normal pose/
 // animation handoff. This is neither a pose/input Frame nor an action grant.
@@ -149,6 +152,7 @@ class HandClient {
     SupportGripParticipant participant_;
     Frame committed_{};GripGameState prepared_game_{},committed_game_{};
     Decision committed_decision_{};
+    std::int64_t committed_check_ns_{}; // Observation only; never used by admission.
     FrameReadObservation last_withdrawal_{};
     std::atomic<std::uint32_t> last_disarm_reason_{};
     std::uint64_t seen_epoch_{},prepared_epoch_{};bool pending_{};
@@ -288,7 +292,8 @@ class HandClient {
         if(!active(epoch)||!fresh(*frame,now))return fail_gt(Reply::unavailable);
         const auto reply=participant_.commit(*frame,*proposal,*decision);
         if(reply!=Reply::accepted)return fail_gt(reply);
-        committed_=*frame;committed_game_=game;committed_decision_=*decision;published_.store(epoch,std::memory_order_release);
+        committed_=*frame;committed_game_=game;committed_decision_=*decision;committed_check_ns_=now;
+        published_.store(epoch,std::memory_order_release);
         if(!active(epoch))return fail_gt(Reply::unavailable);
         if(adapter_.committed)adapter_.committed(adapter_.context,*frame,*decision);
         if(!active(epoch))return fail_gt(Reply::unavailable);
@@ -532,6 +537,11 @@ public:
             observation->press_token=committed_.press_token;observation->left_grip_down=committed_.left_grip_down;
             observation->input_age_ns=committed_.controllers.sync_ns>0&&now>=committed_.controllers.sync_ns?
                 now-committed_.controllers.sync_ns:-1;
+            observation->commit_check_input_age_ns=committed_.controllers.sync_ns>0&&
+                committed_check_ns_>=committed_.controllers.sync_ns?
+                committed_check_ns_-committed_.controllers.sync_ns:-1;
+            observation->since_commit_check_ns=committed_check_ns_>0&&now>=committed_check_ns_?
+                now-committed_check_ns_:-1;
             observation->candidate=candidate_observation(committed_,committed_game_,committed_decision_);
         }
         if(!key_valid(committed_)){clear_gt(FrameReadFailure::key);return fail(FrameReadFailure::key);}

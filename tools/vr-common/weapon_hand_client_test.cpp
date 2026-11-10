@@ -600,7 +600,40 @@ unsigned retained_input_cases(){
     }
     return cases;
 }
+unsigned publication_age_observation_cases(){
+    unsigned cases{};
+    for(bool support:{false,true})for(auto delay:{0LL,20000000LL,90000000LL,100000001LL}){
+        Host h;HandClient c(h.adapter());h.connect(c);
+        if(support)h.ready();else {h.step();h.next();assert(h.step()==Grip::single);}
+        const auto committed_check=h.now,original_sync=h.frame.controllers.sync_ns;
+        const auto expected_age=committed_check-original_sync;
+        h.now+=delay;const auto reads=h.reads;
+        Frame out{};GripGameState game{};Decision decision{};FrameReadObservation observation{};
+        bool copied{};{GT gt;copied=c.copy_frame_on_gt(out,game,decision,&observation);}
+        assert(observation.commit_check_input_age_ns==expected_age);
+        assert(observation.since_commit_check_ns==delay);
+        assert(observation.input_age_ns==expected_age+delay);
+        assert(h.frame.controllers.sync_ns==original_sync);
+        if(delay<=20000000){assert(copied&&observation.failure==FrameReadFailure::none&&h.reads==reads+1);}
+        else {assert(!copied&&observation.failure==FrameReadFailure::stale_before&&h.reads==reads);
+            assert(same_frame(out,Frame{}));
+            observation={};{GT gt;assert(!c.copy_frame_on_gt(out,game,decision,&observation));}
+            assert(observation.failure==FrameReadFailure::thread_or_unarmed&&
+                observation.commit_check_input_age_ns==-1&&observation.since_commit_check_ns==-1);
+            h.frame.now_ns+=delay;h.frame.stereo.received_ns+=delay;
+            h.frame.controllers.received_ns+=delay;h.frame.controllers.sync_ns+=delay;
+            h.next();h.step();const auto check=h.now;
+            h.now+=2000000;{GT gt;assert(c.copy_frame_on_gt(out,game,decision,&observation));}
+            assert(observation.commit_check_input_age_ns==check-h.frame.controllers.sync_ns&&
+                observation.since_commit_check_ns==2000000);
+        }
+        ++cases;
+    }
+    return cases;
+}
 int main(){
+    const auto publication_age_cases=publication_age_observation_cases();
+    std::printf("Publication age observation: %u cases; original clocks and admission unchanged\n",publication_age_cases);
     unsigned cases{};
     {Host h;HandClient c(h.adapter());h.client=&c;h.registration=c.registration();
         assert(c.begin_connect({11,44})==Reply::accepted);

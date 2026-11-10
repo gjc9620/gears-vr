@@ -1,0 +1,16 @@
+--- a/tools/playground/weapon_equipment_backend.inl
++++ b/tools/playground/weapon_equipment_backend.inl
+@@ -339,10 +339,11 @@
+         static unsigned first_failures{},grip_failures{};
+         if(frame_read.frame&&log_file&&((frame_read.left_grip_down&&grip_failures++<24)||
+            (!frame_read.left_grip_down&&first_failures++<8))){
+-            fwprintf(log_file,L"native_equipment_frame_read failure=%u game_difference=%u frame=%llu sequence=%llu press=%llu left_grip_down=%u input_age_ns=%lld candidate_flags=%u candidate_decision=%u candidate_lease=%u support_distance_m=%.9g\n",
++            fwprintf(log_file,L"native_equipment_frame_read failure=%u game_difference=%u frame=%llu sequence=%llu press=%llu left_grip_down=%u input_age_ns=%lld candidate_flags=%u candidate_decision=%u candidate_lease=%u support_distance_m=%.9g commit_check_input_age_ns=%lld since_commit_check_ns=%lld\n",
+                 unsigned(frame_read.failure),frame_read.game_difference,frame_read.frame,frame_read.sequence,
+                 frame_read.press_token,frame_read.left_grip_down,frame_read.input_age_ns,frame_read.candidate.flags,
+-                frame_read.candidate.decision,frame_read.candidate.lease,frame_read.candidate.support_distance_metres);fflush(log_file);
++                frame_read.candidate.decision,frame_read.candidate.lease,frame_read.candidate.support_distance_metres,
++                frame_read.commit_check_input_age_ns,frame_read.since_commit_check_ns);fflush(log_file);
+         }
+ #if defined(GEARS_PLAYGROUND_NATIVE_LANCER_FOLLOW)
+         weapon_part_assets::on_frame_unavailable();

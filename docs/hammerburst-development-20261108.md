@@ -547,3 +547,11 @@ wrapper79361=0只是生命周期正常，operator29164=1是实际功能失败；
 
 证据：analysis/hammerburst-20261108/runtime-51936-first-failure-analysis.json（含解析的5条拒绝、原日志SHA、6份冻结源码SHA、6张原图QPC偏差及18份sidecar SHA）。完整拿枪→开火→耗尽→换弹→再开火仍未完成；不变候选不重跑，先针对已定位的时效链推进。
 
+## 2026-11-10 时效链窄记录已编译，未进游戏
+
+针对51936已证明的stale_before，HandClient仅保存成功commit前最后一次现有fresh检查的now，现有copy失败记录附带commit_check_input_age_ns及since_commit_check_ns。它们分别描述该检查时输入已多旧、到首次读取又经过多久；不将该检查时刻称为精确发布完成时刻。沿用原时钟读取，不新增clock、游戏观察、输入读取、Frame、Native写入器或准入分支，不改变100/20/250ms。无当前发布时字段保持-1；后续独立真实commit替换观察值。该变化用于分段定位，不是少发修复。
+
+由实际51936候选source独立复制，仅3文件变化（client头、client测试、装备失败log），逐文件SHA比较确认未带入其他武器未完成修改。完整PG编译exit0，DLL cd28c194374223496efd19ac9de38fb75ccb6ae601a5b31ee33efa7734ca0c55。初次生成独立副本时字符串替换误落在更早的support日志，被MSVC格式检查阻止；已从不可变父文件重新生成正确限定修改并编译通过，失败产物未使用。
+
+冻结副本WeaponHandClientSourceStateTest编译/执行exit0，新增8组覆盖单手与support、新鲜/延迟/过期、拒绝不触发observe、发布消失不保留可用时钟及新发布替换观察值；其余既有客户端用例全部通过。证据analysis/hammerburst-20261108/publication-age-isolated-r1/result.json、unit-result.log、build-final.log；共享backend尚有他人改动，仅将本次独立日志差异保存为docs/hammerburst-frame-age-observation.patch，不整体提交该共享文件。未获取运行锁、未stage或启动游戏，完整换弹与再开火仍待验证。
+
