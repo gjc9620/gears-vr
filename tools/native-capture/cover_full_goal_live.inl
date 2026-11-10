@@ -48,6 +48,19 @@ bool read(gears_vr::CoverBodyTargetKey const& key,std::int64_t stamp,gears_vr::C
     if(!available||!gears_vr::cover_body_target_current(latest,key,stamp))return false;
     out=latest;return true;
 }
+// Entry point for the existing owner with its current C0 source and independently
+// fitted placement. The store lock ends before conversion or any Native call.
+// A prepared value is not a body commit, collision result or view publication.
+template<class Source> gears_cover_c0_target::Code prepare_c0(
+    gears_cover_neutral_goal::Result const& frozen,gears_body_goal_view::CoverPlacement const& placement,
+    Source const& source,gears_vr::CoverBodyTargetKey const& key,
+    gears_full_body_c0::Model const& model,gears_full_body_c0::Frame const& frame,
+    gears_body_head_authored::Marker const& marker,gears_body_goal_view::Policy const& policy,
+    gears_cover_c0_target::Prepared& out){
+    gears_vr::CoverBodyTarget target{};
+    if(!read(key,policy.now_ns,target))return gears_cover_c0_target::Code::unavailable;
+    return gears_cover_c0_target::prepare(frozen,placement,source,key,target,model,frame,marker,policy,out);
+}
 void summary(FILE* file){
     std::lock_guard<std::mutex> lock(mutex);
     fprintf(file,"cover_full_goal_stored=%u cover_full_goal_attempts=%llu cover_full_goal_accepted=%llu cover_full_goal_rejected=%llu cover_full_goal_reason=%s cover_full_goal_frame=%llu cover_full_goal_sequence=%llu cover_full_goal_reference=%llu cover_full_goal_world=%llu cover_full_goal_right=%.9g cover_full_goal_up=%.9g cover_full_goal_forward=%.9g cover_full_goal_xyz=%.9g,%.9g,%.9g cover_full_goal_pose_applied=0 cover_full_goal_collision_verified=0 ",

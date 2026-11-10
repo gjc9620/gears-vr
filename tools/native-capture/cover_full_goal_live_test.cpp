@@ -1,6 +1,7 @@
 // Real shared consumer/owner/broker and FullGoal store, synthetic native actor
 // and neutral provider. This does not certify C0 lifecycle, collision or writes.
 #include "../vr-common/cover_body_target.h"
+#include "cover_c0_target_adapter.h"
 #define main PriorSharedConsumerMain
 #include "cover_shared_input_live_test.cpp"
 #undef main
@@ -36,6 +37,19 @@ int main(){
 
     selected.wall_anchor.neutral_eye_world.x+=1;
     goal::prepare(&scene,stereo);C(!goal::available&&!std::strcmp(goal::reason,"input_wall_binding"));
+    // No stored target means no conversion and no output modification. This
+    // instantiates the actual store bridge, without granting a C0 lifecycle.
+    namespace c0=gears_cover_c0_target;
+    static gears_full_body_c0::Model model{};
+    static gears_full_body_c0::Frame frame{};
+    gears_cover_neutral_goal::Result frozen{};
+    gears_body_goal_view::CoverPlacement placement{};
+    gears_native_rig_tracking::CoreSnapshot source{};
+    gears_body_head_authored::Marker marker{};
+    gears_body_goal_view::Policy policy{};
+    c0::Prepared prepared{};prepared.target_observed_ns=123;
+    C(goal::prepare_c0(frozen,placement,source,value.key,model,frame,marker,policy,prepared)==c0::Code::unavailable);
+    C(prepared.target_observed_ns==123&&prepared.tracking_received_ns==0);
     finish();
     std::printf("cover_full_goal_live: %u checks, %u failures; synthetic provider, no C0/physics permission\n",checks,failures);
     return failures?1:0;

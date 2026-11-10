@@ -1806,3 +1806,14 @@ Native／entry／pad／weapons drain正常、XR exit0，owned进程退出核对�
 新离线工具首版缺Windows类型，第二版Windows small宏与冻结纯数学变量冲突；保留两份failed-source／build.log，仅在新离线translation unit补Windows头并undef small，未改冻结或产品头，v3严格通过。证据r97/runtime/closeout-review.json、phase-coverage.json、实际视频，以及r98/verification.json／pre-A-face-control.json／phase-face-comparison.json／evidence-index.json。r98未启动额外game／XR／Native。
 
 本次媒体retention实际terminal0、errors空、删除0，最新3=54632／38416／53976、48h；未占游戏窗口，所有自有任务终态。r97已consume，后续不重跑同一观察；publicv71、最新产品查询Native r93的9f375dc7及未验收完整CV01–24／AC01–22、工程25%保留，目标active。源码、离线、游戏动作、像素和头显证据继续分开。
+
+
+## r99：Scene 掩体目标到冻结 C0 中立姿态的转换入口（2026-11-10）
+
+新增 `cover_c0_target_adapter.h`，把已有 Scene 掩体目标转换为已拟合、冻结的 C0 身体目标。转换核对当前世界／人物／网格／Link／槽位、Scene、原始追踪空间与序列、独立墙面／观察基准及显式脚位；拒绝提案自行标记已应用、碰撞通过或同版姿态完成。原请求及追踪时间保持不变，不因重新计算刷新证据。失败不修改输出，输入与冻结校准保持不变。
+
+`cover_full_goal_live::prepare_c0` 提供实际存储读取到转换的入口，读取锁在转换之前释放。当前主 C0 `pose_begin` 尚未调用此入口，原有 cover／standing 保护保持；因此这不是实际写入接通或头肩遮挡修复。
+
+严格 `/W4 /WX` 编译与运行：目标转换159项通过，实际存储25项通过。使用保留的61492参考／C0几何及明确构造的CPU掩体身份与时钟，覆盖普通Core和独立当前Tick追踪；旧Scene样本不可替代新Tick，过期与身份／目标篡改均拒绝。v1/v2编译错误、v4错误阶段预期及其日志保留；v5和store-v2最终退出均0。证据：`analysis/cover-system-20261108/c0-target-r99/verification.json`。
+
+本轮未构建Native DLL、未修改运行包、未启动游戏／XR，public v71与工程25%不变。完整CV-01–24／AC-01–22、实际双眼及实体头显验收仍未完成。下一步补齐当前独立掩体放置及占用证据、唯一C0写入事务和提交后视图发布；不能删除no_cover／standing检查或启用旧相机原型代替。

@@ -105,6 +105,7 @@ gears_support::Recorder support_diagnostics;
 #include "hand_core_target_adapter.h"
 #include "continuous_hand_owner_entry.h"
 #include "body_c0_neutral.h"
+#include "cover_c0_target_adapter.h"
 #include "body_c0_hands.h"
 #include "body_mount_commit.h"
 #include "body_tick_tracking_probe.h"
