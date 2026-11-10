@@ -264,6 +264,16 @@ int main(){
         assert(adapter::delivery_stage==10&&bridge::enter_stage==14&&!event_fixture::invocations);
         assert(!adapter::source_allowed(f,0,model.now,model.now));
         model.r2=false;model.bytes[0]=0;model.owned_press=false;assert(adapter::release_completed(nullptr));checks+=4;}
+    for(unsigned gate:{1u,5u,15u}){
+        reset_event();auto f=active_frame();actual_first(f);
+        model.r2=false;model.bytes[0]=0;model.owned_press=false;
+        f.controllers.hands[1].trigger=0;
+        if(gate==5)f.controllers.hands[1].trigger=1;
+        if(gate==15)model.native_source=false;
+        const auto calls=event_fixture::invocations;
+        adapter::release_completed(gate==1?nullptr:&f);
+        assert(adapter::release_rejection==gate&&event_fixture::invocations==calls);checks+=2;
+    }
     // Failure-localization receipts must identify the first real short-circuit
     // gate, without invoking an additional original shot.
     for(unsigned gate:{1u,2u,3u,4u,6u,7u}){

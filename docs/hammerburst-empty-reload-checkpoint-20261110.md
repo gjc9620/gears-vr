@@ -123,3 +123,9 @@ continuation-rejection-isolated-r1从manual-veto-isolated原2253文件逐项复�
 ## 13712同场六次真实按压时序对照
 
 重新解析原PG日志31条实际轨迹与status3/4观测，以同一递增trigger press/release六轮分组：前五轮（含core）均6发，末发在真实UP诊断观测后335.513/411.326/391.775/312.420/316.278ms；最后失败轮仅shot31，首发后272.377ms才观测UP。成功首发延迟91.031–107.263ms，失败110.385ms；各轮DOWN→UP诊断观测294.351–430.435ms，失败382.762ms在其内。实际同场已有UP后完整续段，不支持用“松太早”或一概首发延迟异常解释失败，不能以延长按压作为修复。诊断观测不等于实际物理dispatch时刻，具体取消/身份/current-source根因仍不明。原件SHA与分组方法见runtime-13712-burst-timing-comparison.json。本次纯读原证据，不修改候选/输入/保护或新增运行。
+
+## 原调用顺序发现释放观测缺口并补齐
+
+直接核冻结weapon_lancer_r2_native.inl：input.advance先经execute调用lancerrefire::release_completed(source)，后面才HB after_tick；HB release_completed可能已清掉outstanding，故单after_tick观测不足以捕捉最初拒绝。给原release_completed十六个原&&条件附失败编号，仍按原短路顺序、同样一次原read_game/frame_active/clock/current/need_source，不新增engine读取或回调；拒绝时仅已有POD有限16行，再原revoke/cancel。实际297runtime/237event夹具编译执行0，新增null-frame/trigger仍DOWN/current拒绝三个条件及无额外shot断言；原UP续段测试仍过。未称根因已修。
+
+原r1 product保留不改、尚无执行资格，已向Bol仅更新同一到序意向：待新r2隔离构建封存后单一替换，不增加队位。当前新release源码尚未完整PG构建/实跑，不得将旧f48d制品当作含该新增记录。下一步构建/封存新r2并补实际失败记录输出测试，再按真实尾绑定一次入口。

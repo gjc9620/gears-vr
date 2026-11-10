@@ -165,19 +165,30 @@ bool capture_initial(std::uint64_t object,std::uint64_t function,void const* par
         unsigned(outer),event.serial,outer?outer_body.array.count:common::pending_fire.body.array.count,unsigned(owns_pending()));fflush(log_file);}
     return true;
 }
+unsigned release_rejection{};
 bool release_completed(hand::Frame const* f) noexcept {
     if(!outstanding())return true;
     validated=false;common::press.known=false;common::certified=false;common::pending_validated=false;
     // Only a current real UP can preserve a committed finite burst. A raw
     // release callback from source loss/stop carries no such continuation.
     vrfire::lr::Game game{};
-    if(f&&vrfire::mode.load(std::memory_order_acquire)==vrfire::running&&
-       tx::completion.state()==tx::policy::State::committed&&
-       f->controllers.hands[1].trigger_active==1&&f->controllers.hands[1].trigger<=.35f&&
-       hand::frame_active(*f,weaponhand::clock_ns(nullptr))&&right_tracked(*f)&&
-       vrfire::read_game(vrfire::input.actors(),f,game)&&game.known&&game.r2_known&&!game.r2_held&&
-       !game.busy&&!game.animation&&!lancerreload_runtime::blocks_fire(f->weapon)&&nativeequipment::current(nullptr,*f)&&
-       tx::need_source(*f))return true;
+    const auto gate=[](unsigned n,bool accepted) noexcept {if(!accepted)release_rejection=n;return accepted;};
+    release_rejection=0;
+    if(gate(1,f!=nullptr)&&gate(2,vrfire::mode.load(std::memory_order_acquire)==vrfire::running)&&
+       gate(3,tx::completion.state()==tx::policy::State::committed)&&
+       gate(4,f->controllers.hands[1].trigger_active==1)&&gate(5,f->controllers.hands[1].trigger<=.35f)&&
+       gate(6,hand::frame_active(*f,weaponhand::clock_ns(nullptr)))&&gate(7,right_tracked(*f))&&
+       gate(8,vrfire::read_game(vrfire::input.actors(),f,game))&&gate(9,game.known)&&gate(10,game.r2_known)&&gate(11,!game.r2_held)&&
+       gate(12,!game.busy)&&gate(13,!game.animation)&&gate(14,!lancerreload_runtime::blocks_fire(f->weapon))&&gate(15,nativeequipment::current(nullptr,*f))&&
+       gate(16,tx::need_source(*f)))return true;
+    static unsigned rows{};
+    if(log_file&&rows<16){
+        ++rows;
+        fwprintf(log_file,L"native_hammerburst_release_rejected gate=%u source_stage=%u frame=%llu count=%u first_debt=%u firing_debt=%u cancel=%u\n",
+            release_rejection,tx::source_stage,f?f->key.frame:0,tx::completion.count(),
+            unsigned(tx::first_debt),unsigned(tx::firing_debt),unsigned(tx::cancel_requested));
+        fflush(log_file);
+    }
     tx::revoke();
     if(!tx::cancel())return false;
     // complete() invalidates the certificate, so clear the event using the
