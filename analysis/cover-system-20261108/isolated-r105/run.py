@@ -34,7 +34,9 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--name', required=True)
     parser.add_argument('--run', action='store_true', required=True)
-    name = parser.parse_args().name
+    parser.add_argument('--probe', choices=('sphere','path'), default='sphere')
+    args = parser.parse_args()
+    name = args.name
     if not name.startswith('cover-') or any(c not in 'abcdefghijklmnopqrstuvwxyz0123456789_-' for c in name):
         raise ValueError('Exact cover instance name required')
     NAME = name
@@ -44,6 +46,8 @@ def main():
         raise RuntimeError('Use --run in the canonical worktree without optimization')
     require_start_allowed()
     prepared = load(HERE / NAME / 'prepared.json')
+    if args.probe=='path' and not prepared.get('path_probe_supported'):
+        raise RuntimeError('Selected frozen Native has no prepared path probe')
     action = load(HERE / NAME / 'operator-prepared.json')
     for path, expected in ((SELECTED/'manifest.json', prepared['manifest_sha256']),
                            (SELECTED/'config.json', prepared['config_sha256']),
@@ -75,11 +79,13 @@ def main():
     env = os.environ.copy()
     for key in ('GEARSVR_LANCER_INTEGRATED_PREPARED', 'GEARSVR_LANCER_INTEGRATED_CHECK', 'GEARSVR_STARTUP_REPLAY_ACTIONS'):
         env.pop(key, None)
-    env.update(GEARSVR_COVER_SPHERE_PROBE='1', GEARSVR_AUTHORED_EYE_TRACE='1', GEARSVR_LANCER_REVIEW_VOLUMES='0',
+    env.update(GEARSVR_COVER_SPHERE_PROBE='1' if args.probe=='sphere' else '0',
+               GEARSVR_COVER_PATH_PROBE='1' if args.probe=='path' else '0',
+               GEARSVR_AUTHORED_EYE_TRACE='1', GEARSVR_LANCER_REVIEW_VOLUMES='0',
                GEARSVR_QUIET_NATIVE_FOREGROUND='1', GEARSVR_TEST_WINDOWS_BEHIND='1', GEARSVR_TEST_MUTE_GAME='1',
                GEARSVR_TEST_TINY_OUTPUT_OBSERVE_ONLY='1', XR_SIMULATOR_NO_ACTIVATE='1')
     result = dict(name=NAME, memory_before=memory, disk_before=disk, started_at_ns=time.time_ns(),
-                  source=1, forced_termination=False, gameplay_accepted=False, headset_accepted=False)
+                  source=1, probe_mode=args.probe, forced_termination=False, gameplay_accepted=False, headset_accepted=False)
     result['foreground_observations'] = dict(samples=0, owned_activation=False)
     result['cloak_observations'] = dict(samples=0, failures=[])
     result['runner_sha256'] = sha(__file__)

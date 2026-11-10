@@ -1,0 +1,27 @@
+{
+  "classification": "progress",
+  "native_sha256": "0098be93163f11c4f3007115d8f2154f484c9bf15338d59cbf5f440a048c37cb",
+  "native_build_exit": 0,
+  "project_dependencies": 406,
+  "external_worktree_dependencies": [],
+  "flags_unchanged": true,
+  "off_checks": 51,
+  "parser_cases": 9,
+  "failures": 0,
+  "probe": "exclusive private one-shot capsule path+endpoint; current C0 original queries; no new hook or body writer",
+  "geometry": "centimetre-scale ABI control at measured eye; not body geometry",
+  "limits": {
+    "max_hits": 32,
+    "max_reports": 8,
+    "max_segments": 2
+  },
+  "archive": {
+    "path": "J:\\gearsVr\\analysis\\cover-disk-recovery-20261110-r128\\instances\\cover-1110-r132-cloak-member-witness-hashes.json",
+    "sha256": "9c6173916212b5b25513f868add6a47141cd1103e78f57fa40bdf6f0b5a8867a",
+    "bytes": 1009501963,
+    "all_hashes_verified": true
+  },
+  "game_started": false,
+  "movement_authorized": false,
+  "headset_accepted": false
+}

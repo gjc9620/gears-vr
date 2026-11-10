@@ -2191,3 +2191,15 @@ r131源码已保存d59ff30d。新独立实例cover-1110-r132-cloak-member-witnes
 在r131冻结Native源上仅叠cover_physics_query_live.inl与cover_physx_capsule_path_observation.h，完整编译链接通过；Native SHA256 d23474316dbbaa272f94b3cbca09877abf265e18b5ec4def5b0ed74f21cd8d2b，406项项目依赖均来自冻结源，外部工作树依赖0，原GEARS开关不变。未stage、未启动游戏、未调用原版路径/终点枚举。证据path-endpoint-r133/{verification,native-build-result,native-source-manifest}.json与checks-v1/。
 
 下一步认证实际身体体积路径和终点枚举、完整当前碰撞世界覆盖，并接唯一C0提交及同版视图/命中/枪口；自身头肩遮挡、Core测量拒绝和完整抓边/保持/重抓/战斗/恢复仍开放。工程25%、公共v71、固定入口和CV01–24/AC01–22总范围保持，目标active。
+
+## r134：独立一次胶囊路径/终点原查询入口已编译（2026-11-10，启动前保存）
+
+沿r133终点枚举接线新增明确私有cover_path_probe，仅受控simulator/continuous/observe-only可启用，与sphere probe互斥。沿用原有当前C0姿态测量入口与全部身份/原时间/当前cover/owner检查，一次尝试后不重试；实际调用现有sweep_capsule_path，段与终点共享32hits/8reports，最多2段。大RawPath包置于静态序列化scratch，调用不持有私有锁，完成后发布小回执并保留每项原始hit/shape/owner/self来源。故障沿既有停止/未确定清理机制处理。
+
+用于此次调用认证的是当前测得eye处厘米级诊断胶囊及1厘米平移，不是假定人物碰撞体。现有CylinderComponent半径/高度及transform仍欠原版语义、有效shape和最终身体覆盖认证，不能直接以历史34/72合成正式身体。此诊断即使空返回也不给完整身体、世界覆盖、终点占用或移动许可。
+
+在r133冻结源上只叠cover_physics_c0_live.inl，Native0098be93163f11c4f3007115d8f2154f484c9bf15338d59cbf5f440a048c37cb完整编译链接0，406项项目依赖、外部工作树依赖0、开关不变。关闭状态51检查0；精确SHA解析器9合成报告检查0。prepare增加r134精确来源选项，runner明确--probe path且拒绝无匹配能力票，原sphere默认保留；两脚本语法通过。尚未启动游戏。
+
+磁盘准入实际3490852864<4GiB拒绝，本轮未因此启动游戏。确认r132精确game/owner/XR/worker不在且normal_cleanup后，将本方626文件/1009501963字节全哈希核对迁至J盘，原C路径junction保持，迁后哈希一致；其他实例未动，C空闲恢复7565504512。证据path-probe-r134/verification.json及J盘r132-hashes.json。
+
+下一步只用新独立票定向调用路径及终点原查询，保留首失败、不改身份/释放/时效；之后继续完整身体几何、当前世界覆盖、唯一C0提交、视图/命中/枪口与遮挡修复。全部CV01–24/AC01–22未完成，工程25%、公共v71、固定入口保持，目标active。

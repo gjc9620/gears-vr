@@ -37,6 +37,13 @@ int main(){
     C(SetEnvironmentVariableW(L"GEARSVR_COVER_SPHERE_PROBE",L"invalid")!=0);C(!c0::configure(path,nullptr));
     C(SetEnvironmentVariableW(L"GEARSVR_COVER_SPHERE_PROBE",L"0")!=0);C(c0::configure(path,nullptr));
     C(SetEnvironmentVariableW(L"GEARSVR_COVER_SPHERE_PROBE",nullptr)!=0);
+    C(WritePrivateProfileStringW(L"FullBodyC0Native",L"cover_path_probe",L"1",path)!=0);C(!c0::configure(path,nullptr));
+    C(WritePrivateProfileStringW(L"FullBodyC0Native",L"cover_path_probe",L"invalid",path)!=0);C(!c0::configure(path,nullptr));
+    C(WritePrivateProfileStringW(L"FullBodyC0Native",L"cover_path_probe",L"0",path)!=0);C(c0::configure(path,nullptr));
+    C(SetEnvironmentVariableW(L"GEARSVR_COVER_PATH_PROBE",L"1")!=0);C(!c0::configure(path,nullptr));
+    C(SetEnvironmentVariableW(L"GEARSVR_COVER_PATH_PROBE",L"invalid")!=0);C(!c0::configure(path,nullptr));
+    C(SetEnvironmentVariableW(L"GEARSVR_COVER_PATH_PROBE",L"0")!=0);C(c0::configure(path,nullptr));
+    C(SetEnvironmentVariableW(L"GEARSVR_COVER_PATH_PROBE",nullptr)!=0);
     c0::request_drain();C(c0::pending_count()==0&&c0::poll_stop());C(!GetModuleHandleW(L"PhysXCore.dll"));C(DeleteFileW(path)!=0);
     printf("cover_physics_c0 OFF: %u checks, %u failures; no game/module/query\n",checks,failures);return failures?1:0;
 }
