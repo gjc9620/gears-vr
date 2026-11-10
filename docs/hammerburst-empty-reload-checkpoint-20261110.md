@@ -111,3 +111,7 @@ continuation-rejection-isolated-r1从manual-veto-isolated原2253文件逐项复�
 原LS v5-repair早已实际game37448全收尾交GN，再GN21120→Frag2956→Bol；不再沿旧LS持窗状态推断许可。本轮经LS明确指向Bol，Bol实际47300当前持窗、正核Beam8唯一具体包，明确仅将HB continuation13712-r1后到意向列在Beam8→Cover-r80→Bow034115→Troika045716/core2→LS050140→Snub051707→Frag064450之后，未独核受理/未授窗。pending-intent.json保存此边界，无第二槽，无共享runtime写入。
 
 原20直接运行文件、1057 Python当前/归档及AST、13011主机依赖均重新逐项通过，2270/1338源与6bin再次核过。runtime-plan-draft.json明确offline_draft_not_runnable：entry/invocation/expected_predecessor/claim/ticket均null，execution_ready/request_ready均false；原selected游戏/设置、十raw目标、动作范围和360秒正常stop边界保留。offline-runtime-readiness.json是实际离线观察，不称prepare-only新入口、窗口等待进程或game结果。目标保持active，真实尾身份到位后再一次绑定冻结执行包；少发根因、完整空仓换弹回射仍未证实。
+
+## 实际日志输出路径检查
+
+补测原report_continuation_rejection的真实fwprintf到临时FILE并逐行读回，20次实际调用精确只有16行，gate/source_stage/frame和first/firing/cancel字段正确，原shot调用数不增加。MSVC /W4 /WX /UNDEBUG编译执行0：event231、runtime297；仅测试源变化，生产两inl/已封存product及完整PG完全未变，不重新构建PG或变更已发布product哈希。actual-log-output-check.json保存独立新检查，不覆盖先前冻结引用的213原收据。此项是日志观测可靠性，非少发原因修复或游戏通过。

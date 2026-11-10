@@ -7,6 +7,7 @@
 #include "../vr-common/weapon_hammerburst_refire.h"
 #include "weapon_hammerburst_burst_runtime.h"
 #include <atomic>
+#include <cwchar>
 FILE* log_file{};
 bool inside{};
 std::atomic<bool> enabled{true};
@@ -277,6 +278,21 @@ int main(){
         assert(adapter::after_tick_rejection==gate);
         assert(event_fixture::invocations==invocations);
         assert(adapter::requires_release());checks+=3;
+    }
+    // Exercise the actual fwprintf path, including its lifetime row cap.
+    // No original callback is dispatched by the observation function.
+    {reset_event();auto f=active_frame();actual_first(f);
+        const auto invocations=event_fixture::invocations;
+        assert(tmpfile_s(&log_file)==0&&log_file);
+        adapter::after_tick_rejection=6;bridge::source_stage=2;
+        for(unsigned i=0;i<20;++i)adapter::report_continuation_rejection(&f);
+        std::rewind(log_file);wchar_t line[512]{};unsigned rows{};
+        while(std::fgetws(line,512,log_file)){
+            assert(std::wcsstr(line,L"native_hammerburst_continuation_rejected gate=6 source_stage=2 frame="));
+            assert(std::wcsstr(line,L" first_debt=0 firing_debt=1 cancel=0"));++rows;
+        }
+        assert(rows==16&&event_fixture::invocations==invocations);
+        std::fclose(log_file);log_file=nullptr;checks+=18;
     }
     std::printf("HB actual event adapter: %u original-event/scope/UP/expiry/cleanup fake checks passed; common queue, engine and certificate are fakes\n",checks);
 }
