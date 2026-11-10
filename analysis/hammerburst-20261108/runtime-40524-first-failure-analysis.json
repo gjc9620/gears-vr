@@ -1,0 +1,93 @@
+{
+  "schema": 1,
+  "instance": "hb-cloak-1110-212059",
+  "game_identity": {
+    "pid": 40524,
+    "creation_time": 134387904808961685,
+    "image": "j:\\gearsvr\\gears.of.war.reloaded.v1.0.1.3816947-p2p\\gears of war reloaded\\binaries_x64\\gowde-steam.exe"
+  },
+  "candidate": "consumed-input-r2",
+  "gameplay_passed": false,
+  "core_checks": {
+    "actual_shoulder_acquisition": true
+  },
+  "error": "AssertionError('No authoritative HB trajectory after consumed DOWN')",
+  "first_fire_input": {
+    "baseline_sent_ns": 101736331073900,
+    "baseline": {
+      "frame": "830",
+      "sequence": "2978",
+      "current": "1",
+      "status": "1",
+      "source_status": "1",
+      "owned": "0",
+      "game_known": "1",
+      "game_r2": "0",
+      "trigger_active": "1",
+      "trigger_value": "0.000",
+      "trigger_pressed": "0",
+      "trigger_released": "0",
+      "input_sync_ns": "101736489594800",
+      "admitted_ns": "101736528620200",
+      "active_at_admission": "1",
+      "preparation_budget": "1"
+    },
+    "down_sent_ns": 101736533478500,
+    "down": {
+      "frame": "831",
+      "sequence": "2981",
+      "current": "1",
+      "status": "3",
+      "source_status": "1",
+      "owned": "1",
+      "game_known": "1",
+      "game_r2": "0",
+      "trigger_active": "1",
+      "trigger_value": "1.000",
+      "trigger_pressed": "1",
+      "trigger_released": "0",
+      "input_sync_ns": "101736556668500",
+      "admitted_ns": "101736612335700",
+      "active_at_admission": "1",
+      "preparation_budget": "1"
+    },
+    "release_sent_ns": 101736621526200
+  },
+  "authoritative_rays": 0,
+  "original_event": {
+    "first_captured_ns": 101736627257700,
+    "event": 1,
+    "bytes": 271,
+    "release_rejection_gate": 3,
+    "completion_state": 0,
+    "first_debt": 1,
+    "cancel_requested_after_release": 1
+  },
+  "interpretation": "UP and DOWN were separately consumed. DOWN status3/owned1/muzzle-ready1 at55.6672ms source age. Script released9.1905ms after press admission, before original first event delivery. Pending uncommitted first event cancelled under existing release guard; not proof of a production first-shot fault.",
+  "repair": "Keep one real physical DOWN until actual first trajectory or bounded timeout; release once, no re-press, unchanged game rules.",
+  "continuous_passed": true,
+  "native_cleanup_verified": true,
+  "entry_restore_verified": true,
+  "xr_exit_code": 0,
+  "owned_cleanup": {
+    "launcher_exit": 0,
+    "owned_game_absent": true,
+    "owned_children": {
+      "recorded": 0,
+      "remaining": []
+    },
+    "forced_termination": false,
+    "worker_error": null
+  },
+  "operator_exit": 1,
+  "foreground_samples": 1475,
+  "cloak_samples": 2555,
+  "foreground_violations": [],
+  "cloak_violations": [],
+  "media": {
+    "frames": 362,
+    "errors": [],
+    "encoded": false,
+    "review_pending": true
+  }
+}

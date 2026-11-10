@@ -172,3 +172,11 @@ consumed-input-r2完整Playground编译成功，SHA a8d937ccebef5416bbeea08287e6
 实际native_started=false、native_cleanup_verified=false/cleanup deadline error、XR exit1、launcher1/operator1，全部保留失败；Playground shutdown0/entry_restored=true、prime取消且入口恢复，本方game消失、无子进程残留/无强杀。1081前台与1857CLOAK检查零违规，302张GPU帧但录制失败，不作场景/武器证据，不称完整运行正常。
 
 本方适配器将观察等待对齐既有180秒启动预算（所有真实准备/身份/时效保护不改），并在已有原异常时只存储录制次因，不覆盖首因。此为具体失败后的单次复查准备，不改变100/20/250ms游戏输入边界。
+
+## consumed-input-r2 实际40524：UP/DOWN已分开消费，脚本在首发前松开
+
+本次startup观察修复后进入真实场景，frame734肩部取枪。frame830实际UP baseline，frame831 DOWN为status3/owned1、Source ready/current、active、muzzle_ready1/preparation_budget1，精确源年龄55.6672ms。脚本仅等待逻辑按下，9.1905ms后即发UP（整个命令DOWN约88.0477ms）；原首发event1在101736627257700被捕获，尚未交付。frame832 UP触发release gate3（completion不是committed/count0/first_debt1），按原规则取消待执行首发，无权威射线。该结果保留为脚本释放过早，不能说生产首发已证实损坏；未改释放/反重放保护。
+
+脚本改为消费DOWN后继续同一次真实持按，等首条真实trajectory后才UP；等不到首发则有界超时释放，无补按。仍要求总计恰好6条有效射线，全部游戏时限原样。4项时序测试通过。
+
+本轮continuous/session passed=true、launcher0、operator1、stop0，Native清理/入口恢复/XR退出0，本方game消失、无子进程残留/无强杀；1475前台/2555CLOAK检查零违规。362帧GPU录制errors空，媒体复核与编码另记，不称整枪通过。raw text归档runtime-40524-text，首因记录runtime-40524-first-failure-analysis.json。

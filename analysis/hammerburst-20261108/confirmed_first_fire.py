@@ -32,6 +32,16 @@ def first_fire(c,data,*,clock=time.perf_counter_ns,sleep=time.sleep):
     try:
         g.pad(1,wait=0,trigger=1)
         receipt['down']=consumed(receipt['down_sent_ns'],True,2)
+        deadline=clock()+2_000_000_000
+        while clock()<deadline:
+            assert g.live(),'Owned runtime ended before original first shot'
+            first=c.records('native_lancer_shot_trajectory')[before:]
+            if first:
+                assert all(x.get('trace_valid')=='1' for x in first),'Invalid original first HB trajectory'
+                receipt['first_shot_observed_ns']=clock();receipt['shots_at_release']=len(first)
+                break
+            sleep(.01)
+        else:raise TimeoutError('Consumed DOWN did not produce an original first HB trajectory')
     finally:
         receipt['release_sent_ns']=clock();g.pad(1,wait=0)
     sleep(.7) # Drain the existing original finite burst; send no second press.
