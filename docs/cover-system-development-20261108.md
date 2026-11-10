@@ -2239,3 +2239,15 @@ SessionStage分别记录stopped、physics/collider/component读取与相同快�
 确认r136精确game/owner/XR/worker全不在及normal_cleanup后，仅将本方533文件/998890209字节录像实例完整归档J盘，前后全文件SHA一致、原C路径junction保持。C空闲恢复10776584192；未动其他实例。证据guard-witness-r137/{verification,native-build-result,native-source-manifest}.json与checks-v1/，归档manifest为J盘cover-1111-r136-cloak-path-hashes.json。
 
 完整身体几何/当前世界覆盖、实际路径/终点原调用、唯一C0提交及同版视图/命中/枪口、自身头肩遮挡和CV01–24/AC01–22仍未完成，工程25%、公共v71与固定入口不变，目标active。
+
+## r138：真实首拒绝为ActualContext来源过期，未放宽时限（2026-11-11）
+
+r137源码先保存b0a73357后，新票cover-1111-r138-cloak-guard在两实例资源释放后只启动一次。Native10880b1c…6ff5、冻结PG/XR、Source1、0.4、独立path模式；game58172/creation134388022483876946、owner54612/creation134388022438460371、XR51104/creation134388022549958139、worker58904/creation134388022437680932。原版接近/A进入CT2及五段观察完成，operator0；无抓边或虚拟身体移动。
+
+path requested/attempted/finished均1，code6；Session engine5/detail6，Engine source_repeat3/source2=guard，original_started/returned前后均0。LayoutStep40、225成员见证、capacity0。新增外层见证21,21,8,3,6明确第21次Owner guard在ActualContext.current返回false，原Verdict3=source_age_expired、detail6；内层4,4,2,3,0表示第4次SourceGuard在physics_read得到typed Code3=guard。当前冻结ActualContext的detail6来自身体来源/装备来源时效判断，hard依赖先检查；它尚不区分其中哪项age失败，未观测起始age，不将本次37.2984ms自身耗时直接等同完整source age。不称身份失败，也不改原时间、延长时限或删除二次复核。
+
+本次Scene395/Compose24378/sequence3992/thread36648，World2319417600/gen1、Pawn95208479360、Link2314748672/slot0；诊断capsule(-3920.83569,-190.812454,621.348755)→(-3920.83569,-190.812454,623.348755),r1，delta(1,0,0)，括号113513466828200→113513504126600ns。姿态complete2首份同该C0；measurement/core328首份Scene399/Compose24623/sequence4000，是另一C0。零segments/hits/endpoint是未成功输出，不是空碰撞证明，原版路径/终点均未调用。
+
+267张实际双眼投影、录制错误0/线程joined、编码0；14页全跨度overview及5张原始phase图全部亲自查看。各段仍严重自身头肩/躯干遮挡，visualFAIL；长静止开头及间歇手部可见性保留。phase完整请求/观察区间内各7可选帧，不称同C0/GPU证明。正常stop，Native/入口/pad恢复、fire_disable0/hand_stop5/drainedtrue、XR0/launcher0；保存时精确game/owner/XR/worker全不在，无强杀。CLOAK660次失败0，静音验证274/initially_muted1/verify_failed0/target_shared_rejected0，启动disk_before5136269312≥4GiB。
+
+证据guard-witness-r137/runtime-r138/{session-original,guard-probe,pose-probe,media-review,closeout}.json。下一步减少重复全反射解析的读取成本，保留完整兄弟链/身份/声明/字段闭合及原时效，先定向证明等价拒绝与读量，再编译复查；若须进一步拆分年龄源，沿现有拒绝码记录，绝不刷新旧数据时间。完整身体/世界覆盖、实际路径与终点调用、唯一C0同版视图/命中/枪口、头肩遮挡及CV01–24/AC01–22仍未完成。工程25%、公共v71和固定入口保持，目标active。

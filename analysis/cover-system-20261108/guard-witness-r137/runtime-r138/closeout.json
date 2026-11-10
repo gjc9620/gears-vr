@@ -1,0 +1,121 @@
+{
+  "classification": "progress: actual capsule path rejected by repeated-source guard before any original call",
+  "identities": {
+    "game_identity": {
+      "pid": 58172,
+      "creation_time": 134388022483876946,
+      "image": "j:\\gearsvr\\gears.of.war.reloaded.v1.0.1.3816947-p2p\\gears of war reloaded\\binaries_x64\\gowde-steam.exe"
+    },
+    "owner_identity": {
+      "pid": 54612,
+      "creation_time": 134388022438460371,
+      "image": "c:\\users\\11\\.cache\\codex-runtimes\\codex-primary-runtime\\dependencies\\python\\python.exe"
+    },
+    "xr_identity": {
+      "pid": 51104,
+      "creation_time": 134388022549958139,
+      "image": "c:\\users\\11\\.codex\\worktrees\\6dof-single\\gearsvr\\tools\\openxr-probe\\build-cover-1111-r138-cloak-guard\\openxrposeprobe.exe"
+    },
+    "worker_identity": {
+      "pid": 58904,
+      "creation_time": 134388022437680932,
+      "image": "c:\\users\\11\\.cache\\codex-runtimes\\codex-primary-runtime\\dependencies\\python\\python.exe"
+    }
+  },
+  "exact_owned_processes_absent_at_closeout": true,
+  "native_sha256": "10880b1c1e259adf56a09ad238efe4a35d070d98f2a6dec5ff5c575dff066ff5",
+  "original_report": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\runtime\\continuous-stereo-58172-20261111-003734-93e04beb.json",
+  "original_report_sha256": "e3f52fed5473a101004854ed73c05fb9d959803b8f6b086f9dd73fe920a95c5f",
+  "operator_exit": 0,
+  "input_and_five_phases_completed": true,
+  "first_failure": "engine/source_repeat/guard",
+  "original_started": 0,
+  "original_returned": 0,
+  "failure_cause": "ActualContext source_age_expired/detail6; body-source or equipment-source age not separately witnessed",
+  "owner_guard": {
+    "calls": 21,
+    "failed_call": 21,
+    "stage": 8,
+    "name": "context",
+    "detail": 3,
+    "extra": 6,
+    "context_verdict": "source_age_expired",
+    "context_detail": 6
+  },
+  "session_guard": {
+    "calls": 4,
+    "failed_call": 4,
+    "stage": 2,
+    "name": "physics_read",
+    "detail": 3,
+    "extra": 0
+  },
+  "diagnostic_capsule": "-3920.83569,-190.812454,621.348755,-3920.83569,-190.812454,623.348755,1",
+  "diagnostic_delta": "1,0,0",
+  "body_geometry_verified": false,
+  "world_coverage_verified": false,
+  "collision_clear": null,
+  "movement_authorized": false,
+  "same_C0_across_rows": false,
+  "probe_admission": {
+    "step": 15,
+    "name": "complete",
+    "count": 2,
+    "detail": 0,
+    "scene": 395,
+    "compose": 24378,
+    "sequence": 3992,
+    "world": 2319417600,
+    "pawn": 95208479360
+  },
+  "separate_measurement": {
+    "step": 8,
+    "name": "measurement",
+    "count": 328,
+    "detail": 2,
+    "scene": 399,
+    "compose": 24623,
+    "sequence": 4000,
+    "world": 2319417600,
+    "pawn": 95208479360,
+    "measurement_status": "core"
+  },
+  "registry_reacquisition_branch_observed": false,
+  "normal_cleanup_verified": true,
+  "unified_weapons_cleanup": {
+    "fire_disable_code": 0,
+    "hand_stop_code": 5,
+    "drained": true
+  },
+  "cloak": {
+    "samples": 660,
+    "failures": []
+  },
+  "mute": {
+    "event": "mute_verification_summary",
+    "pid": 58172,
+    "initially_muted_sessions": 1,
+    "verified_muted_observations": 274,
+    "verify_failed": 0,
+    "target_shared_rejected": 0,
+    "shared_rejected_is_global_scan_count": true
+  },
+  "disk_before": {
+    "check": "disk_admission",
+    "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr",
+    "free_bytes": 5136269312,
+    "minimum_free_bytes": 4294967296,
+    "admitted": true
+  },
+  "visual_result": "FAIL",
+  "public_changed": false,
+  "headset_accepted": false,
+  "remaining": [
+    "reduce repeated reflection parsing with complete closing proofs and unchanged original source ages; distinguish body/equipment age if needed",
+    "actual original path and endpoint execution",
+    "complete body geometry and complete current collision-world coverage",
+    "same-pose C0 body/view/hit/muzzle",
+    "own head/shoulder obstruction",
+    "CV01-24 AC01-22 headset"
+  ]
+}
