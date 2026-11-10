@@ -92,6 +92,8 @@ def main():
             subprocess.run(python+[str(TOOL),'prepare','--name',name,'--manifest',str(target/'candidate-manifest.json'),
                                   '--config',str(AREA/'independent-r1/candidate-config.json')],check=True,stdout=log,stderr=subprocess.STDOUT,**common)
         write(target/'instance-binding.json',dict(name=name,root=str(selected),candidate=proof['dll_sha256']))
+        from silence_private_settings import prepare as prepare_sound
+        result['private_sound_settings']=prepare_sound(selected)
         with (target/'start.log').open('wb') as log:
             subprocess.run(python+[str(TOOL),'start','--name',name],check=True,stdout=log,stderr=subprocess.STDOUT,**common)
         launched=True;result['worker_started']=True
