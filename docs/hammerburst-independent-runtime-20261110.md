@@ -156,3 +156,11 @@ restore_control::display现在由实际restoring分支调用。以每帧短作�
 冻结Resume19场景284检查、Display18/185、Rebind22/213、Admission25/266、ParkControl17/109通过，共101场景1057检查。Resume/park使用实际控制与台账，原生/动画/授权调用是夹具，不是游戏证据；Admission另覆盖真实Frame/曲线。restore-resume-r3完整Playground编译链接成功，SHA 1a320f2c360723baf7f55b75e7b381b88d49a2100550c896714caa4aa0ed0897。初版编译发现冻结API没有较新begin_for_part，未引入其他武器代码，改为原suspended begin并补可选派发回执；此前失败及r1/r2证据保留。
 
 当前本段源码控制链已接入，但真实native重新取得、UI、切枪恢复、闭锁奖励及整体首发仍待实测。开关默认OFF、未换当前游戏入口；runtime_ready保持false，不把编译当玩法验收。原十三项要求保留。源码差量hammerburst-restore-resume.patch；共享较新API的小包装差量另存hammerburst-restore-resume-state-api.patch，未将其他人的共享源改动纳入提交。
+
+## 首发按实际消费确认（新测试候选，尚未实测）
+
+53012首发记录DOWN/UP都已发生而当前UP，不能据固定0.35秒脚本断言实际DOWN被游戏消费。新增本方confirmed_first_fire：先发送UP并等待原PG实际消费到fresh/current/Source1 ready/game_known/unowned/原R2 UP的基线；只发送一次真实DOWN，最多2秒等待PG消费DOWN，再无条件发UP。仅等待输入回执，不放宽游戏100ms/20ms/原press时限；超时不补按。之后原有限连发应恰好6条有效权威射线，零/不足/多发均失败。
+
+新私有观察点在Input.advance后记录原input_admission_ns与原source sync、active、状态、trigger counters/value以及准备预算；不新读时钟、不查游戏、不写输入/姿态/库存。只本方HB绑定、250ms或真实counter变化时输出，最多192条。共享旧脚本不改，仅本方模块装配替换首发段。4项时序测试与15项独立身份/装配检查通过，覆盖无UP不按、DOWN超时只释放一次、错发数不重试。
+
+consumed-input-r2完整Playground编译成功，SHA a8d937ccebef5416bbeea08287e6deb78fb0ad2577c828754fe61e0d1443b323，基于已编译restore-resume-r3；Native/XR未重编、公共v71未变。r1缺少game_known观察字段，未运行，r2补齐后供本方受控验证。恢复控制链显式私有开关ON，仍无游戏恢复/整枪接受结论；接下来同一owned实例先core再普通empty reload，遇首个失败即正常收尾。

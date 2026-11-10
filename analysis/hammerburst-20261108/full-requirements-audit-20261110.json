@@ -1,8 +1,8 @@
 {
   "schema": 1,
   "scope": "full HB objective; no scope reduction",
-  "current_candidate": "held-republish-r1 (full compiled, focused offline regressions passed, game acceptance pending)",
-  "prepared_sha256": "a49e85dbd8555620d659266cabde1b86e940e728bfe7ad863837ea65ab3f7e88",
+  "current_candidate": "consumed-input-r2 (restore-resume-r3 + passive post-consumption receipts; compiled, owned game validation pending)",
+  "prepared_sha256": "9bea36a50e5ec124119222dda8dc709c7108d3faf6977e59361dc1b8949a9704",
   "requirements": [
     {
       "id": "acquire_stow",

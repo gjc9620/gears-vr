@@ -1,0 +1,10 @@
+--- a/tools/playground/weapon_lancer_r2_native.inl
++++ b/tools/playground/weapon_lancer_r2_native.inl
+@@ -634,6 +634,7 @@
+             unsigned(ammo_known),count,unsigned(key_down),post_ammo_samples,ammo_reads);fflush(log_file);}
+     }
+     const auto diagnostic_finished=weaponhand::clock_ns(nullptr);
++#include "weapon_hammerburst_input_consumed_observation.inl"
+     if(log_file&&logs<64&&(previous_status!=unsigned(result)||previous_source!=unsigned(input.source_status())||
+         ready_after_ammo||ammo_queried||(ammo_known&&count!=last_ammo))){
+         fwprintf(log_file,L"native_lancer_r2 status=%u source_status=%u mode=%u owned=%u game_known=%u game_r2=%u before_action=1 frame=%llu sequence=%llu trigger_pressed=%u trigger_released=%u trigger_active=%u trigger_value=%.3f muzzle_ready=%u input_sync_ns=%lld observed_ns=%lld ammo_known=%u ammo=%d previous_sync_ns=%lld previous_observed_ns=%lld game_elapsed_ns=%lld action_elapsed_ns=%lld ammo_queried=%u diagnostic_elapsed_ns=%lld ready_after_ammo_read=%u copy_elapsed_ns=%lld input_elapsed_ns=%lld continuity_matched=%u continuous_poll_gap=%u copied_source=%u copied_frame=%llu copied_input_age_ns=%lld preparation_budget=%u continuity_failure=%u continuity_native_selected=%u input_admission_ns=%lld input_admission_delay_ns=%lld input_frame_now_ns=%lld input_stereo_received_ns=%lld input_controller_received_ns=%lld input_frame_flags=%u input_stereo_status=%u input_frame_shape=%u input_frame_active=%u\n",

@@ -128,6 +128,17 @@ def equipment_source():
     return replace_once(source, needle, needle + '\n        from types import SimpleNamespace\n        from hammerburst_core_chain import run as hb_run\n        hb_run(SimpleNamespace(**locals()))\n        return')
 
 
+def core_source():
+    source=(CODE/'hammerburst_core_chain.py').read_text(encoding='utf-8')
+    old="""            before=len(c.records('native_lancer_shot_trajectory'))
+            g.pad(1,wait=.35,trigger=1);g.pad(1,wait=.6)
+            shots=c.records('native_lancer_shot_trajectory')[before:];data['shots']=shots
+            assert shots and all(x.get('trace_valid')=='1' for x in shots),'No authoritative HB trajectory'
+            assert len(shots)==6,('Original HB burst must export exactly six valid shots',len(shots))
+            data['checks']['actual_fire']=True"""
+    return replace_once(source,old,"            from confirmed_first_fire import first_fire\n            first_fire(c,data)")
+
+
 def menu_source():
     source = (CODE / 'run_menu_firstperson_check.py').read_text(encoding='utf-8')
     source = replace_once(source, "OUT=Path(__file__).resolve().parent;ROOT=OUT.parents[1]", "CODE=Path(__file__).resolve().parent;ROOT=CODE.parents[1];OUT=BOUND.output")
@@ -158,6 +169,7 @@ def menu_source():
 def check_sources():
     sources = {name: reader_source(name) for name in READERS}
     sources['equipment_controller_chain.py'] = equipment_source()
+    sources['hammerburst_core_chain.py'] = core_source()
     sources['run_menu_firstperson_check.py'] = menu_source()
     for name, source in sources.items():
         compile(source, str(CODE / name), 'exec')
@@ -194,6 +206,10 @@ def main():
              {'__file__': str(CODE / args.reader), '__name__': '__main__', 'BOUND': binding})
         return
     sys.argv = [str(CODE / 'run_menu_firstperson_check.py'), *actions]
+    core=types.ModuleType('hammerburst_core_chain')
+    core.__file__=str(CODE/'hammerburst_core_chain.py')
+    exec(compile(core_source(),core.__file__,'exec'),core.__dict__)
+    sys.modules[core.__name__]=core
     module = types.ModuleType('equipment_controller_chain')
     module.__file__ = str(CODE / 'equipment_controller_chain.py')
     exec(compile(equipment_source(), module.__file__, 'exec'), module.__dict__)
