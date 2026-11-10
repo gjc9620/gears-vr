@@ -432,3 +432,13 @@ launcher0/operator1/stop0，Native清理/PG入口恢复/XR0、本方game/子进�
 完整PG编译SHA787a60f424a948d260ccde981a48316dfa106464b9c25521ae49015276b6e8ba；Native/XR未重建。10项实际C++调度块call-order检查通过，覆盖四个资格条件、前后aim fault、Input拒绝与abort；Input/engine为spies，不能称游戏、anti-replay或首发修复通过。变换逆向还原与原源码逐字一致，完整Input/delivery块未删。构建中因原日志仍使用aim_result/aim_allowed/part_input_reserved而发生两轮变量作用域编译错误，已移到外层，最终完整编译0。
 
 下一步使用全新本方CLOAK实例验证本候选，保留原取枪UP确认及单次Grip，不重按失败射击。候选未运行，完整13项/30%/头显false均保持；不改publicv71或稳定手动入口。
+
+## 实际22896：原首发1发通过，松手尾段仍失败
+
+first-priority-r1/hb-cloak-1111-033308/game22896/creation134388128429694897。32.312秒/25次纯只读资源等待后同一次首次start准入。fresh UP129→唯一Grip→matching held131成功；204首按因最终reserve未执行而由原Input defer，205同一原press实际ButtonPress调用。206原first outer实际交付、count1，唯一射线trace/write/current来源一致。当前已有owned/first debt符合L2后移条件，206 input admission与observed同刻；单次未配对运行不证明调度因果或稳定首发修复。
+
+测试见首发后真实UP，207原Input status4/owned0/p1r1，保留burst尾段。208 source原sync124117990271100，read-game observed124118072713100，源年龄82.442ms，已不满足20ms reserve。随后service gate4/count1明确原事件过期，withdrawal208年龄101.3219ms同时记录，但日志缺尾事件原capture/serial及207验证状态，不能断言该withdrawal是唯一根因。无重按、无尾段补造、无reload触达。
+
+检查真实源码发现service-before-Input→真实UP release_completed清validated→after_tick→deliver路径未重新service。check_release_handoff_order.py用原实际adapter复现：已pending并service validated的refire，在真实UP成功后validation变false，本帧deliver gate1不派发；原事件未改serial/capture，重新完整service后同事件派发且第二次deliver不重复；超过250ms仍取消无射线。新增14加原308=322通过，common queue/engine/contract为fake；它证明存在该处理顺序缺口，尚不能证明游戏207当时已pending或该缺口是唯一原因。下一步只为成功真实UP、已有同一refire事件补完整验证，保留原全部source/20ms/100ms/250ms/identity/cancel门，并记录原pending capture以辨别实际时间。
+
+本方launcher0/operator1/stop0，Native清理/PG入口恢复/XR0、game及子进程退出，无强杀或workererror；1491前台/2534CLOAK零违规。161帧errors空、encode0，亲看3页48双眼全跨度样本，实际场景/取枪/持枪可见，前段手臂枪重叠、后段枪贴近右眼仍不接受；非全部帧/全部角度/头显证明。7原文本SHA保留，runtime-22896-first-failure-analysis.json与13项audit已更新。完整六连发、换弹、四态、贴合、交付仍未完成；分数30%/头显false保持。全部本方运行终态，不重复启动同实例。

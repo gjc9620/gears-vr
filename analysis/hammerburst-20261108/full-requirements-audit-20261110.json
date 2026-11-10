@@ -1,14 +1,14 @@
 {
   "schema": 1,
   "scope": "full HB objective; no scope reduction",
-  "current_candidate": "pickup-baseline-r1: full PG compiled,9 exact observer fixtures and11 driver receipt fixtures passed; actual shoulder UP required before one Grip, no game yet",
-  "prepared_sha256": "16a56a01e49a308115a28fbdd5cfe827890b1baf40c71f66fed2a003f9f8d6e9",
+  "current_candidate": "first-priority-r1: full PG compiled,10 exact scheduler spy cases passed; unchanged full Input gates before first delivery, L2 postponed only for already-owned HB first debt",
+  "prepared_sha256": "84a1f2402153a22b497652ecd355528491756ce5a1f5f444c104dafb44b9c943",
   "requirements": [
     {
       "id": "acquire_stow",
       "requirement": "取枪与收枪",
       "status": "current_fresh_baseline_pickup_observed_stow_open",
-      "limit": "Actual13492 required released Native baseline110, issued one Grip, observed matching held112 before moving away. No source-gap retry. Core fire then failed independently; whole stability/stow/restore remain open.",
+      "limit": "Actual13492 and22896 fresh UP baseline followed by one matching Grip/held before moving. Stow/restore/full stability remain open.",
       "evidence": [
         {
           "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-13712-first-failure-analysis.json",
@@ -33,14 +33,18 @@
         {
           "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-13492-first-failure-analysis.json",
           "sha256": "d8b361f3fdfe22e43395bda4611bd79cc71a53ff6d74cc13595ef526ff14aa92"
+        },
+        {
+          "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-22896-first-failure-analysis.json",
+          "sha256": "c2e2b6e033a808e1f61900ef81c6be37f223fa58f4c080969197b55f005be0c7"
         }
       ]
     },
     {
       "id": "finite_fire",
       "requirement": "单手/双手瞄准与原版有限六连发",
-      "status": "partial_current_first_event_expiry",
-      "limit": "Actual13492 original ButtonPress invoked180 but actual queued first event could not meet20ms reserve at delivery181/source83.9367ms and expired at next service254.3478ms; zero rays. Need earlier existing-first scheduling, no source/expiry widening. Previous full bursts remain separate; two-hand/full stability unaccepted.",
+      "status": "partial_current_first1_tail_expiry",
+      "limit": "Actual22896 originalfirst206 one consistent ray; realUP207 then remaining finite burst expired at count1 gate4. Current first stability/two-hand/finite6 unaccepted. Offline322 exact adapter checks identify release validation loss path but not sole game cause.",
       "evidence": [
         {
           "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-13712-first-failure-analysis.json",
@@ -85,6 +89,10 @@
         {
           "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-56348-first-failure-analysis.json",
           "sha256": "1891d4ec7d2be00e6a5260ea2cae823158bef94ce5afd23f505e2c82620f4486"
+        },
+        {
+          "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-22896-first-failure-analysis.json",
+          "sha256": "c2e2b6e033a808e1f61900ef81c6be37f223fa58f4c080969197b55f005be0c7"
         }
       ]
     },
@@ -260,9 +268,9 @@
   ],
   "completion_proven": false,
   "goal_active": true,
-  "immediate_next": "Implement early scheduling of ONLY already-owned/validated pending HB FIRST event on same original held trigger/counters/cohort, immediately after current muzzle preparation before read_game/aim/input overhead. Keep existing deliver/native/current/20ms/100ms/250ms/claim checks; at most one delivery attempt per Frame. Test actual adapter UP/new-edge/cohort/cancel/expiry/no double dispatch, build, save, then one fresh focused run. All13 requirements retained.",
+  "immediate_next": "Repair exact successful real-UP handoff: fully revalidate existing pending HB refire after Input release and before original delivery, with no new capture/time/source/permit. First add actual adapter regression including UP/new-edge/cancel/cohort/expiry/no-double cases. Preserve original release checks; build/save before fresh runtime. Record original pending capture clock/serial at handoff to resolve actual timing cause. All13 requirements remain.",
   "historical_evidence_does_not_certify_current_PG": true,
-  "candidate_runtime_status": "pickup-baseline-r1 actual13492: fresh UP110 +one Grip+matching held112 before move succeeded. First press invoked180; pending original first event unable to deliver at83.9367ms source age on181 (20ms reserve), expired next service254.3478ms old, zero rays. No reload priority/history reached. Normal cleanup.",
+  "candidate_runtime_status": "first-priority-r1 actual22896: freshUP129/singleGrip/held131, originalfirst206 and one consistent ray; realUP207, pending tail expired at count1 gate4. No reload reached. Normal cleanup. Not full first stability or finite6 acceptance.",
   "previous_recorded_candidate": {
     "name": "hammerburst-prepared-20261110-unheld-input-r1",
     "prepared_sha256": "76a2ae8cc56e4165b77ca5d17a9e6469ff66323e917be5a8b46da44df4f0bb58"
@@ -284,5 +292,5 @@
   "restore_verifier_status": "Optional --hammerburst-park-restore input action hook integrated into private reload adapter; five synthetic action/receipt regressions passed. Actual park/redraw/new-grant/native-resume, typed conservation, UI/reward and complete return-fire require game evidence.",
   "latest_service_first_failure": "runtime-3112-first-failure-analysis.json",
   "latest_startup_failure": "runtime-49732-startup-failure.json",
-  "latest_runtime_failure": "runtime-13492-first-failure-analysis.json"
+  "latest_runtime_failure": "runtime-22896-first-failure-analysis.json"
 }
