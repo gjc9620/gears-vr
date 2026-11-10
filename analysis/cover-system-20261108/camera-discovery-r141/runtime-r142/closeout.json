@@ -1,0 +1,131 @@
+{
+  "classification": "progress: actual bounded anchor acquisition success; query never attempted",
+  "identities": {
+    "game_identity": {
+      "pid": 11788,
+      "creation_time": 134388064387918283,
+      "image": "j:\\gearsvr\\gears.of.war.reloaded.v1.0.1.3816947-p2p\\gears of war reloaded\\binaries_x64\\gowde-steam.exe"
+    },
+    "owner_identity": {
+      "pid": 21348,
+      "creation_time": 134388064304674851,
+      "image": "c:\\users\\11\\.cache\\codex-runtimes\\codex-primary-runtime\\dependencies\\python\\python.exe"
+    },
+    "xr_identity": {
+      "pid": 39640,
+      "creation_time": 134388064477169381,
+      "image": "c:\\users\\11\\.codex\\worktrees\\6dof-single\\gearsvr\\tools\\openxr-probe\\build-cover-1111-r142-cloak-discovery\\openxrposeprobe.exe"
+    },
+    "worker_identity": {
+      "pid": 31316,
+      "creation_time": 134388064303553040,
+      "image": "c:\\users\\11\\.cache\\codex-runtimes\\codex-primary-runtime\\dependencies\\python\\python.exe"
+    }
+  },
+  "exact_owned_processes_absent": true,
+  "native_sha256": "8814ea68079dcb16b6815f3d72dd32ec3d5a7fdf2395d6302a5d19fb4eccc32b",
+  "anchor_guards": [
+    {
+      "stage": "initial",
+      "accepted": true,
+      "deadline_ns": 200000000,
+      "attempts": [
+        {
+          "elapsed_ms": 59.6409,
+          "accepted": true
+        }
+      ]
+    },
+    {
+      "stage": "sample_before",
+      "accepted": true,
+      "deadline_ns": 200000000,
+      "attempts": [
+        {
+          "elapsed_ms": 1.7749,
+          "accepted": true
+        }
+      ]
+    },
+    {
+      "stage": "sample_after",
+      "accepted": true,
+      "deadline_ns": 200000000,
+      "attempts": [
+        {
+          "elapsed_ms": 6.3687,
+          "accepted": true
+        }
+      ]
+    },
+    {
+      "stage": "assembly_after",
+      "accepted": true,
+      "deadline_ns": 200000000,
+      "attempts": [
+        {
+          "elapsed_ms": 2.0053,
+          "accepted": true
+        }
+      ]
+    },
+    {
+      "stage": "final_boundary",
+      "accepted": true,
+      "deadline_ns": 200000000,
+      "attempts": [
+        {
+          "elapsed_ms": 1.547,
+          "accepted": true
+        }
+      ]
+    }
+  ],
+  "anchor_sources_unchanged": true,
+  "normal_cleanup_verified": true,
+  "cloak": {
+    "samples": 717,
+    "failures": []
+  },
+  "foreground": {
+    "samples": 453,
+    "owned_activation": false
+  },
+  "mute": {
+    "event": "mute_verification_summary",
+    "pid": 11788,
+    "initially_muted_sessions": 1,
+    "verified_muted_observations": 305,
+    "verify_failed": 0,
+    "target_shared_rejected": 0,
+    "shared_rejected_is_global_scan_count": true
+  },
+  "disk_before": {
+    "check": "disk_admission",
+    "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr",
+    "free_bytes": 128625233920,
+    "minimum_free_bytes": 4294967296,
+    "admitted": true
+  },
+  "query_requested": true,
+  "query_attempted": false,
+  "original_query_calls": 0,
+  "pose_measurement_rejections": 258,
+  "first_measurement_status": "core",
+  "core_predicate_failure_detail": "not recorded; source age versus other predicates unproven",
+  "core_policy_maximum_age_ns": 50000000,
+  "query_optimization_game_effect": "unproven; caller gate not reached",
+  "frames": 302,
+  "encode_exit": 0,
+  "reviewed_pages": 16,
+  "reviewed_contacts": 5,
+  "cover_view_accepted": false,
+  "collision_clear": null,
+  "body_geometry_verified": false,
+  "world_coverage_verified": false,
+  "movement_authorized": false,
+  "public_changed": false,
+  "headset_accepted": false,
+  "engineering_percent": 25,
+  "remaining": "Observe the exact failing core predicate at the existing cover measurement, without renewing timestamps or weakening the 50ms policy; no unchanged rerun. Full CV01-24/AC01-22 remains open."
+}

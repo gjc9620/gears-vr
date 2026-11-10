@@ -1,0 +1,141 @@
+{
+  "name": "cover-1111-r142-cloak-discovery",
+  "waiting_identity": {
+    "pid": 21900,
+    "creation_time": 134388063704078309,
+    "image": "c:\\users\\11\\.cache\\codex-runtimes\\codex-primary-runtime\\dependencies\\python\\python.exe"
+  },
+  "started_ns": 1794332770505997000,
+  "observations": [
+    {
+      "at_ns": 1794332770584052600,
+      "reason": "Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: boom-1110-014451-98500, lancer-natural-v139-225928"
+    },
+    {
+      "at_ns": 1794332772707370000,
+      "reason": "Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: boom-1110-014451-98500, lancer-natural-v139-225928"
+    },
+    {
+      "at_ns": 1794332774831415500,
+      "reason": "Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: boom-1110-014451-98500, lancer-natural-v139-225928"
+    },
+    {
+      "at_ns": 1794332776980244600,
+      "reason": "Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: boom-1110-014451-98500, lancer-natural-v139-225928"
+    },
+    {
+      "at_ns": 1794332779122324600,
+      "reason": "Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: boom-1110-014451-98500, lancer-natural-v139-225928"
+    },
+    {
+      "at_ns": 1794332781246496900,
+      "reason": "Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: boom-1110-014451-98500, lancer-natural-v139-225928"
+    },
+    {
+      "at_ns": 1794332783355402500,
+      "reason": "Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: boom-1110-014451-98500, lancer-natural-v139-225928"
+    },
+    {
+      "at_ns": 1794332785466938800,
+      "reason": "Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: boom-1110-014451-98500, lancer-natural-v139-225928"
+    },
+    {
+      "at_ns": 1794332787588385100,
+      "reason": "Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: boom-1110-014451-98500, lancer-natural-v139-225928"
+    },
+    {
+      "at_ns": 1794332789689063700,
+      "reason": "Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: boom-1110-014451-98500, lancer-natural-v139-225928"
+    },
+    {
+      "at_ns": 1794332791808359100,
+      "reason": "Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: boom-1110-014451-98500, lancer-natural-v139-225928"
+    },
+    {
+      "at_ns": 1794332793917420300,
+      "reason": "Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: boom-1110-014451-98500, lancer-natural-v139-225928"
+    },
+    {
+      "at_ns": 1794332796045567700,
+      "reason": "Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: boom-1110-014451-98500, lancer-natural-v139-225928"
+    },
+    {
+      "at_ns": 1794332798184569200,
+      "reason": "Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: boom-1110-014451-98500, lancer-natural-v139-225928"
+    },
+    {
+      "at_ns": 1794332800312173800,
+      "reason": "Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: boom-1110-014451-98500, lancer-natural-v139-225928"
+    },
+    {
+      "at_ns": 1794332802418240200,
+      "reason": "Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: boom-1110-014451-98500, lancer-natural-v139-225928"
+    },
+    {
+      "at_ns": 1794332804515580900,
+      "reason": "Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: boom-1110-014451-98500, lancer-natural-v139-225928"
+    },
+    {
+      "at_ns": 1794332806629847300,
+      "reason": "Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: boom-1110-014451-98500, lancer-natural-v139-225928"
+    },
+    {
+      "at_ns": 1794332808724241000,
+      "reason": "Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: boom-1110-014451-98500, lancer-natural-v139-225928"
+    },
+    {
+      "at_ns": 1794332810824991000,
+      "reason": "Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: boom-1110-014451-98500, lancer-natural-v139-225928"
+    },
+    {
+      "at_ns": 1794332812940757100,
+      "reason": "Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: boom-1110-014451-98500, lancer-natural-v139-225928"
+    },
+    {
+      "at_ns": 1794332815055464800,
+      "reason": "Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: boom-1110-014451-98500, lancer-natural-v139-225928"
+    },
+    {
+      "at_ns": 1794332817170323800,
+      "reason": "Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: boom-1110-014451-98500, lancer-natural-v139-225928"
+    },
+    {
+      "at_ns": 1794332819321115200,
+      "reason": "Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: boom-1110-014451-98500, lancer-natural-v139-225928"
+    },
+    {
+      "at_ns": 1794332821456791100,
+      "reason": "Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: boom-1110-014451-98500, lancer-natural-v139-225928"
+    },
+    {
+      "at_ns": 1794332823571433200,
+      "reason": "Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: boom-1110-014451-98500, lancer-natural-v139-225928"
+    },
+    {
+      "at_ns": 1794332825662947100,
+      "reason": "Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: boom-1110-014451-98500, lancer-natural-v139-225928"
+    },
+    {
+      "at_ns": 1794332827799807500,
+      "reason": "Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: boom-1110-014451-98500, lancer-natural-v139-225928"
+    }
+  ],
+  "admitted": true,
+  "admitted_ns": 1794332829888794200,
+  "memory": {
+    "available_commit": 12367548416,
+    "available_physical": 10592206848,
+    "active_instances": [
+      "lancer-natural-v139-225928"
+    ]
+  },
+  "disk": {
+    "check": "disk_admission",
+    "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr",
+    "free_bytes": 128625254400,
+    "minimum_free_bytes": 4294967296,
+    "admitted": true
+  },
+  "runner_exit": 0,
+  "finished_ns": 1794332938830963000
+}

@@ -1,0 +1,177 @@
+{
+  "frames": 302,
+  "recording_sha256": "d09dd5668f4d492f180cd8b01e157dda760c21c14cdd2fd03f821fcac766cea6",
+  "pages": [
+    {
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\camera-discovery-r141\\runtime-r142\\overview-1.jpg",
+      "sha256": "badfa57a701679c02eed41e74abd91848419d85f2b81c30318b0361e55557543"
+    },
+    {
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\camera-discovery-r141\\runtime-r142\\overview-2.jpg",
+      "sha256": "d5fd0fc084a2c457f9e5bb6b20ed6a3748ed30eae65f5f7d283c7916fda8036a"
+    },
+    {
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\camera-discovery-r141\\runtime-r142\\overview-3.jpg",
+      "sha256": "22b9330e5ea28aacb6132e87a17b3696fcf449ae63286c8e2f19984237a9d714"
+    },
+    {
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\camera-discovery-r141\\runtime-r142\\overview-4.jpg",
+      "sha256": "9e384b919d3dbc653e4b5e1394fd467edd13730d93685c21782780b3b3efd4e3"
+    },
+    {
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\camera-discovery-r141\\runtime-r142\\overview-5.jpg",
+      "sha256": "ed61dc81c90d28180e7b62c23cb171ea41e63c2cd2b296e235a68298689d0454"
+    },
+    {
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\camera-discovery-r141\\runtime-r142\\overview-6.jpg",
+      "sha256": "f03db09137b5fff7ac97710be525dc79f09595d85e80c52a60e69d1431f186e8"
+    },
+    {
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\camera-discovery-r141\\runtime-r142\\overview-7.jpg",
+      "sha256": "47731d7ed1e5e55bd01559e05d1a0f43a99c92598224c679aa842a14c7562929"
+    },
+    {
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\camera-discovery-r141\\runtime-r142\\overview-8.jpg",
+      "sha256": "4dba518151b432a23147c9a262bbd11330ecc91b2ee8ab126fd338358160c98a"
+    },
+    {
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\camera-discovery-r141\\runtime-r142\\overview-9.jpg",
+      "sha256": "5eee070d1274ef0cb526771dee8175aa060ad52808dcba29e5a9c6e27069a5e5"
+    },
+    {
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\camera-discovery-r141\\runtime-r142\\overview-10.jpg",
+      "sha256": "814a9501a3d963e7d0a3dd6e66cf05422c82823a4b4d8ee278bfb52c70e6a6c2"
+    },
+    {
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\camera-discovery-r141\\runtime-r142\\overview-11.jpg",
+      "sha256": "9f17d250705db89071d2831935b0cd884d4b47f1db968ea36af16636acf2c442"
+    },
+    {
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\camera-discovery-r141\\runtime-r142\\overview-12.jpg",
+      "sha256": "ef4d52a0761e72fc0184321d103646ec3e7f665afebe4f02cfbc4be17d19446d"
+    },
+    {
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\camera-discovery-r141\\runtime-r142\\overview-13.jpg",
+      "sha256": "5f885ca11da7fc42acca9ec26639adc1d9e63a5b9f1c1080b32add5567cf33ca"
+    },
+    {
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\camera-discovery-r141\\runtime-r142\\overview-14.jpg",
+      "sha256": "451de81678b9f3cc2d8a7c9553a509691ff874aca6555871b4b68f95bb2c914a"
+    },
+    {
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\camera-discovery-r141\\runtime-r142\\overview-15.jpg",
+      "sha256": "40fba9a0521ccbce7bf512adaf2e0e16aebee6c158e67ccada143bf88164191a"
+    },
+    {
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\camera-discovery-r141\\runtime-r142\\overview-16.jpg",
+      "sha256": "ebb5d40b1b48838060d9727a2878fe9710a465383e41964f6bbb3c8af5a12b96"
+    }
+  ],
+  "contacts": [
+    {
+      "label": "cover_eye_neutral",
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\cover-1111-r142-cloak-discovery\\cover-output\\projection\\frame-00212.jpg",
+      "sha256": "31ed988b6ddcb81e9f1dd02941e5b7583a10830bd5ee2e15168ae0495f4b6149",
+      "event_wall_ns": 1794332912341550400,
+      "duration_seconds": 0.8100346,
+      "eligible_frames": 7,
+      "frame": {
+        "file": "frame-00212.jpg",
+        "time": 23.11185739999928,
+        "requested": 23.082612999991397,
+        "observed_wall_ns": 1794332912795439800,
+        "requested_wall_ns": 1794332912761019400,
+        "width": 960,
+        "height": 540
+      },
+      "same_C0_proven": false,
+      "archived_file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\camera-discovery-r141\\runtime-r142\\cover_eye_neutral.jpg"
+    },
+    {
+      "label": "cover_eye_turned",
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\cover-1111-r142-cloak-discovery\\cover-output\\projection\\frame-00232.jpg",
+      "sha256": "1873825465d8ace2ff5c0ddc7a4b1a76afa905807b2a8d444ad036528c462211",
+      "event_wall_ns": 1794332914530219500,
+      "duration_seconds": 0.8117469,
+      "eligible_frames": 7,
+      "frame": {
+        "file": "frame-00232.jpg",
+        "time": 25.280269199996837,
+        "requested": 25.25251369999023,
+        "observed_wall_ns": 1794332914962612200,
+        "requested_wall_ns": 1794332914931099300,
+        "width": 960,
+        "height": 540
+      },
+      "same_C0_proven": false,
+      "archived_file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\camera-discovery-r141\\runtime-r142\\cover_eye_turned.jpg"
+    },
+    {
+      "label": "cover_eye_turn_restored",
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\cover-1111-r142-cloak-discovery\\cover-output\\projection\\frame-00252.jpg",
+      "sha256": "974b6fd77d2523f81ed19d36750fd475cef682acbbe10c9bfd5a50275491dacd",
+      "event_wall_ns": 1794332916721749900,
+      "duration_seconds": 0.8098006,
+      "eligible_frames": 7,
+      "frame": {
+        "file": "frame-00252.jpg",
+        "time": 27.449617899997975,
+        "requested": 27.429455799996504,
+        "observed_wall_ns": 1794332917131622200,
+        "requested_wall_ns": 1794332917107486800,
+        "width": 960,
+        "height": 540
+      },
+      "same_C0_proven": false,
+      "archived_file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\camera-discovery-r141\\runtime-r142\\cover_eye_turn_restored.jpg"
+    },
+    {
+      "label": "cover_eye_raised",
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\cover-1111-r142-cloak-discovery\\cover-output\\projection\\frame-00273.jpg",
+      "sha256": "6e2ff4b7b169e116a7955d2eb8ecc234cd277c6b8bf747331aea30b102ed4a65",
+      "event_wall_ns": 1794332918971110600,
+      "duration_seconds": 0.8111973,
+      "eligible_frames": 7,
+      "frame": {
+        "file": "frame-00273.jpg",
+        "time": 29.756280699992203,
+        "requested": 29.71289149999211,
+        "observed_wall_ns": 1794332919440521900,
+        "requested_wall_ns": 1794332919391359200,
+        "width": 960,
+        "height": 540
+      },
+      "same_C0_proven": false,
+      "archived_file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\camera-discovery-r141\\runtime-r142\\cover_eye_raised.jpg"
+    },
+    {
+      "label": "cover_eye_rise_restored",
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\cover-1111-r142-cloak-discovery\\cover-output\\projection\\frame-00293.jpg",
+      "sha256": "ffaf67cf9cb27cae4309828b2cae41f5b43d8e04c62175af12b870b690220de5",
+      "event_wall_ns": 1794332921131661500,
+      "duration_seconds": 0.8086339,
+      "eligible_frames": 8,
+      "frame": {
+        "file": "frame-00293.jpg",
+        "time": 31.920162499998696,
+        "requested": 31.891987199996947,
+        "observed_wall_ns": 1794332921602068900,
+        "requested_wall_ns": 1794332921570474300,
+        "width": 960,
+        "height": 540
+      },
+      "same_C0_proven": false,
+      "archived_file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\camera-discovery-r141\\runtime-r142\\cover_eye_rise_restored.jpg"
+    }
+  ],
+  "source": "actual private simulator projection",
+  "desktop_capture": false,
+  "full_span_personally_reviewed": true,
+  "headset_accepted": false,
+  "encode_exit": 0,
+  "encoded_sha256": "5453a24568f5c740d4faad317c056d62257240495a66fceb835aa093894327e1",
+  "reviewed_overview_pages": 16,
+  "reviewed_original_contacts": 5,
+  "cover_view_result": "FAIL: head/shoulder/torso mesh obstructs both eyes in all five contact phases",
+  "same_C0_proven": false
+}

@@ -2283,3 +2283,17 @@ launcher1、Native cleanup false/error incomplete or deadline、entry restore无
 - 配置组有两项既有失败：`test_guard_attempts_exhaustion_not_retried_by_sample_layer` 和 `test_sample_after_guard_exhaustion_keeps_actual_partial_sample`。修改前 HEAD 的 cinematic 源码与修改后分别复跑同组，均为相同两项失败（160 对 5、32 对 1）；不报告整组全绿，也不在此改动采样重试策略。
 - 本次尚未启动游戏／XR、未更换任何 DLL 或公开 v71；r139 实际查询耗时、完整身体路径与占用、抓边移动、遮蔽／受击／枪口及头显仍待验证。工程进度 25% 保持。下次先绑定实际启动脚本哈希，再使用新私有实例定向验证启动与已有 path 查询；不复用已消费 r140。
 - 证据：`analysis/cover-system-20261108/camera-discovery-r141/verification.json`、对应基线／修改后日志及 `verify.py`。本轮是源码与验证证据进展，完整 CV-01–24／AC-01–22 目标继续 active。
+
+## r142：严格启动采集通过，姿态 core 门未到查询入口（2026-11-11）
+
+先保存583a74af，准备新票cover-1111-r142-cloak-discovery，并绑定8个实际anchor启动来源SHA；结束后逐项一致。等待真实worker资源释放后准入，disk_before128625233920≥4GiB。game11788/creation134388064387918283、owner21348/creation134388064304674851、XR39640/creation134388064477169381、worker31316/creation134388064303553040。Native仍8814ea68…cc32b，PG/XR保留原冻结版本；公开v71不变。
+
+实际anchor五次guard均在原200ms内accepted：initial59.6409ms、sample_before1.7749ms、sample_after6.3687ms、assembly_after2.0053ms、final_boundary1.547ms。Native启动、实际projection及原A进入CT2与五段eye观察完成。只证明本次采集成功，不以跨进程59.64对3536.19宣称速度倍率或r140唯一因果。
+
+path requested1、attempted0、finished0，owner/session guard调用均0，原查询started/returned均0；r139成员链优化的实际调用收益仍未被执行验证。既有姿态first-failure统计只有measurement258次/detail2=core，首证Scene340/Compose20953/seq4277；complete0。精确冻结body_goal_view_adapter规定50ms且core_snapshot_valid是多条件谓词，当前回执没有失败分项，不能把全部失败定性为年龄、布局或本次优化回归；也不能用最后一次状态拼成首证同C0。
+
+302实际私有projection帧/errors0、编码0；16页全跨度总览与5张原始contact已亲看，五个阶段头／肩／躯干模型严重遮挡双眼，画面验收FAIL。每阶段整段落内7/7/7/7/8张候选；取中间contact只说明时间段，非同C0／GPU骨证明。没有抓边或虚拟身体移动，不宣称路径／占用安全。
+
+launcher0、Native/entry/input恢复、武器fire_disable0/hand_stop5/drained、XR0、gamegone/worker正常，独立精确身份复核全不在，无强杀。CLOAK717/失败0、前台453/owned_activation false；静音305/initial1/失败0/共享目标拒绝0。原始session、anchor、run-result及done保存于camera-discovery-r141/runtime-r142，保留r140原失败。
+
+下一窄点是在现有测量first-failure记录中区分core谓词失败及原始时间，不重读游戏、不刷新来源、不放宽50ms或100ms。不要原样重跑本批。完整身体几何与世界覆盖、实际抓边移动、身体遮挡／暴露／枪口／受击、CV01–24／AC01–22仍未完成；工程25%和目标active保持。
