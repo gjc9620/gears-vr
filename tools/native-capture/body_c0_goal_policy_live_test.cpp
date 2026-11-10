@@ -17,6 +17,13 @@ void retired(uint64_t version,uint64_t event)noexcept{++retire_calls;registry.re
 }
 #define GEARS_NATIVE_ATOM_OVERWRITE_RECEIPT 1
 #define GEARS_BODY_C0_GOAL_POLICY 1
+#include "cover_physx_query.h"
+#include "cover_physics_c0_live.h"
+// Query dispatch remains a Host seam in this actual Goal-path test.
+namespace cover_physics_c0_live {
+void observe_sphere_once(gears_continuous_hand_entry::Entry const&,gears_native_rig_tracking::CoreSnapshot const&,
+    gears_cover_physx_query::Vector const&)noexcept{}
+}
 #include "body_c0_goal_policy_live.inl"
 namespace goal=body_c0_goal_policy_live;namespace neutral=gears_body_c0_neutral;namespace adapter=gears_body_goal_view;
 void finish_return(Entry const&e){bool called=false,returned=false;__try{live::before_original(e);called=true;returned=true;}
@@ -166,12 +173,20 @@ int main(int argc,char**argv){if(argc!=4)return 2;unsigned mode=unsigned(std::st
     if(mode==0||mode>=5&&mode<=8||mode==10||mode==11||cover_case){
         C(goal::applied==0&&!goal::view_valid&&!live::state.prepared);C(!std::memcmp(fixture.local.data,frame->local.data(),sizeof frame->local));
         if(mode==16){C(goal::current_cover_pose_valid);
+            auto const& witness=goal::cover_probe_rows[unsigned(goal::CoverProbeStep::complete)];
+            C(witness.state.load()==2&&witness.count.load()==1&&witness.row.detail==0);
+            C(witness.row.scene==host_core.scene_invocation&&witness.row.sequence==host_core.stereo.sequence);
             C(goal::current_cover_pose.binding.publication==host_core.publication_sequence&&
               goal::current_cover_pose.binding.slot==host_core.cover_slot);
             C(!goal::origin.initialized&&!native_atom_overwrite_live::ready_calls);}
         if(cover_case&&mode!=16){C(!goal::current_cover_pose_valid);
             C(!std::memcmp(&measurement_before,&goal::current_cover_pose,sizeof measurement_before));
             C(!goal::origin.initialized&&!native_atom_overwrite_live::ready_calls);}
+        if(mode>=17&&mode<=23&&mode!=22){using S=goal::CoverProbeStep;
+            const S expected[]={S::same_key_after,S::key_before,S::link,S::slot,S::stopping_after,S::measurement,S::revision_after};
+            auto const& witness=goal::cover_probe_rows[unsigned(expected[mode-17])];
+            C(witness.state.load()==2&&witness.count.load()==1);
+            C(goal::cover_probe_rows[unsigned(S::complete)].count.load()==0);}
         if(cover_case)C(native_atom_overwrite_live::install_calls==0&&!live::state.kernel.outstanding_fields());
         if(mode==0){adapter::Neutral moved{};adapter::Output prepared{};adapter::Policy policy{host_now,true,body::Scope::stationary};
             C(neutral::move(goal::origin.stored,live::state.source.component_to_world,moved));

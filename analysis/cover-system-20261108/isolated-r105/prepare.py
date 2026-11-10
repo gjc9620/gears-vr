@@ -74,8 +74,9 @@ def main():
     parser.add_argument('--native-r117', action='store_true')
     parser.add_argument('--native-r122', action='store_true')
     parser.add_argument('--native-r124', action='store_true')
+    parser.add_argument('--native-r126', action='store_true')
     args = parser.parse_args()
-    if sum((args.native_r106,args.native_r111,args.native_r117,args.native_r122,args.native_r124))>1:
+    if sum((args.native_r106,args.native_r111,args.native_r117,args.native_r122,args.native_r124,args.native_r126))>1:
         raise ValueError('Select one frozen Native')
     if not args.name.startswith('cover-'):
         raise ValueError('Cover owns only its cover- prefixed new instance')
@@ -97,8 +98,8 @@ def main():
             raise RuntimeError('r106 frozen delta differs')
         expected['native'] = receipt['dll_sha256']
         prepared['builds']['native'] = dict(saved=str(current/'native-build/GearsCapture.dll'), sha256=expected['native'])
-    if args.native_r111 or args.native_r117 or args.native_r122 or args.native_r124:
-        current = HERE.parent / ('layout-witness-r124' if args.native_r124 else 'overlap-query-r122' if args.native_r122 else 'overlap-collector-r117' if args.native_r117 else 'self-evidence-r111')
+    if args.native_r111 or args.native_r117 or args.native_r122 or args.native_r124 or args.native_r126:
+        current = HERE.parent / ('pose-probe-r126' if args.native_r126 else 'layout-witness-r124' if args.native_r124 else 'overlap-query-r122' if args.native_r122 else 'overlap-collector-r117' if args.native_r117 else 'self-evidence-r111')
         receipt = load(current / 'native-build-result.json')
         overlays = ('cover_physx_overlap_stream.h','cover_physx_query.h','cover_physx_stream.h') if args.native_r117 else (
             'cover_physx_self_evidence.h','cover_physx_query.h','cover_physics_query_live.inl')
@@ -106,6 +107,8 @@ def main():
             overlays=('cover_physx_overlap_code.h','cover_physx_shape_owner.h','cover_physx_query.h','cover_physics_query_live.inl','cover_physics_c0_live.h','cover_physics_c0_live.inl')
         if args.native_r124:
             overlays=('cover_physics_roles_live.inl','cover_physics_query_live.inl','cover_physics_c0_live.inl')
+        if args.native_r126:
+            overlays=('body_c0_goal_policy_live.inl',)
         changed = {'tools/native-capture/'+name for name in overlays}
         if (set(receipt['changed']) != changed or receipt['external_worktree_dependencies']
                 or not receipt['flags_unchanged'] or not receipt['build_only'] or receipt['staged']):

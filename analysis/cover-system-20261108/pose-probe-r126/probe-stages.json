@@ -1,0 +1,19 @@
+{
+  "0": "stopping",
+  "1": "idle",
+  "2": "current_before",
+  "3": "key_before",
+  "4": "type",
+  "5": "slot",
+  "6": "link",
+  "7": "marker",
+  "8": "measurement",
+  "9": "key_after",
+  "10": "same_key_after",
+  "11": "current_after",
+  "12": "stopping_after",
+  "13": "revision_after",
+  "14": "entry",
+  "15": "complete",
+  "16": "exception"
+}

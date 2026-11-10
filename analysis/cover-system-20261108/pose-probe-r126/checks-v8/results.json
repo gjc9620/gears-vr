@@ -1,0 +1,62 @@
+[
+  {
+    "name": "body_c0_goal_policy_live",
+    "build_exit": 0,
+    "source_sha256": "2c8b273df5ba608bf7abe7b1b2e24b3d983b380aeb8f561b17191df712bd8c4e",
+    "command": [
+      "E:/vs/VC/Tools/MSVC/14.51.36231/bin/Hostx64/x64/cl.exe",
+      "/nologo",
+      "/std:c++17",
+      "/O2",
+      "/W4",
+      "/WX",
+      "/EHsc",
+      "/UNDEBUG",
+      "/MT",
+      "/IC:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\tools\\third-party\\minhook\\include",
+      "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\pose-probe-r126\\check-source\\tools\\native-capture\\body_c0_goal_policy_live_test.cpp",
+      "/Fo:C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\pose-probe-r126\\checks-v8\\body_c0_goal_policy_live.obj",
+      "/sourceDependencies",
+      "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\pose-probe-r126\\checks-v8\\body_c0_goal_policy_live-dependencies.json",
+      "/Fe:C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\pose-probe-r126\\checks-v8\\body_c0_goal_policy_live.exe",
+      "/link",
+      "bcrypt.lib",
+      "psapi.lib"
+    ],
+    "cases": [
+      {
+        "mode": 16,
+        "exit": 0
+      },
+      {
+        "mode": 17,
+        "exit": 0
+      },
+      {
+        "mode": 18,
+        "exit": 0
+      },
+      {
+        "mode": 19,
+        "exit": 0
+      },
+      {
+        "mode": 20,
+        "exit": 0
+      },
+      {
+        "mode": 21,
+        "exit": 0
+      },
+      {
+        "mode": 22,
+        "exit": 0
+      },
+      {
+        "mode": 23,
+        "exit": 0
+      }
+    ],
+    "test_exit": 0
+  }
+]

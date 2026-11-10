@@ -2099,3 +2099,15 @@ Session同一串行owner导出见证，现有一次Sphere观察通过原summary�
 正常stop、Native/入口/手柄恢复true、fire_disable0/hand_stop5/drainedtrue，XR0/launcher0，本方精确game/owner/XR均已不存在，无强杀。CLOAK617次失败0；目标静音回读260次、verify_failed0/target_shared_rejected0，保留其他会话及系统音量。原报告按launcher-session索引原样复制，SHA与实际身份绑定；失败路径不改写此前早停记录。
 
 证据layout-witness-r124/runtime-r125/{probe,closeout,media-review,session-original}.json。下一步先给现有sample_current_cover_pose的早退条件增加有界失败见证，再定向修复实际拒绝；r124布局见证保持可用。公共v71、完整CV01–24/AC01–22、工程25%及物理头显未完成状态不变。
+
+## r126：掩体姿态测量前置拒绝见证，编译与定向检查（2026-11-10）
+
+上轮r125已正常CT2但probe attempted0，本轮继续定位之前的掩体姿态测量。核对发现当前canonical早已包含035f9d7f的当前Tick测量重载与e60a3af7完成消费者核验，而冻结r124继承的r102候选仍使用更早Scene测量/原完成逻辑。版本差异成立，是否导致r125未测量仍未证明；不将差异直接说成根因，也不盲目切算法或混入共享在研源码。
+
+在同一sample_current_cover_pose增加17类固定见证：stopping/idle、current、key/type/slot/link、marker及measurement原Status、closing key/current/stop/revision、缺entry、complete与exception。每项只保存首份不可变Scene/Compose/sequence/world/Pawn/原Status，固定计数；摘要通过acquire读已完成槽，不在原查询/读取期间持锁。不增加游戏内存读取、原调用或身体写者；保持每个谓词原顺序和原返回语义，complete只表示到达probe入口，不是查询/移动许可。
+
+同一instrument变换分别用于canonical与r124冻结方法，并逐文本复核；冻结候选仅body_c0_goal_policy_live.inl一文件变化，405项项目依赖、外部工作树依赖0、开关不变，Native编译链接exit0，SHA256 d7cb104d3dcf7e77dfa127f28064d1b3cfbb3df2c6a8f16d416fee2c9c88c2e5。本次未启动游戏/XR，未替换公共v71或固定手动入口。canonical的Tick/完成消费者改动保持，但本私有DLL未暗中吸收它们。
+
+实际Goal/adapter/marker/Backend/Kernel路径定向8场景（16–23）共158检查0失败，W4/WX/O2/UNDEBUG编译通过；身份/属性/Core/原查询为明确Host缝，未当游戏证据。共享手型在研导致首轮编译失败；隔离61e93fd1源码后只叠本方方法/测试，排除未使用的cosmetic include及不执行的mode>=26新API分支。首轮私有截取误删实际pose_begin，断言实际拒绝，改为精确括号范围恢复真实入口后v8全通过。失败编译、私有断言与准备错误完整保留，不改产品保护来通过。
+
+证据pose-probe-r126/{verification,probe-stages,native-build-result}.json、checks-v8及prepare_checks.py/instrument.py。下一步使用新候选一次定向后台验证，先取得probe前拒绝项，再决定如何接回已存在的当前Tick测量。完整CV01–24/AC01–22、头肩遮挡、身体碰撞/占用/唯一C0提交与联合战斗、物理头显仍未通过；工程25%不变，目标active。

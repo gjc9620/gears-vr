@@ -210,30 +210,46 @@ bool initialize(){auto& s=n::state;
     k.ref=s.source.reference;k.units=s.source.units_per_metre;k.model_scale=s.source.model_scale;
     origin.marker=marker;origin.stored=stored;origin.initialized=true;return true;
 }
+enum class CoverProbeStep:unsigned {stopping,idle,current_before,key_before,type,slot,link,marker,measurement,key_after,same_key_after,current_after,stopping_after,revision_after,entry,complete,exception,count};
+struct CoverProbeRow {uint64_t scene{},compose{},sequence{},world{},pawn{};unsigned detail{~0u};};
+struct CoverProbeSlot {std::atomic<unsigned> state{};std::atomic<uint64_t> count{};CoverProbeRow row{};};
+std::array<CoverProbeSlot,unsigned(CoverProbeStep::count)> cover_probe_rows;
+void note_cover_probe(CoverProbeStep step,unsigned detail=~0u)noexcept{
+    auto& slot=cover_probe_rows[unsigned(step)];++slot.count;
+    unsigned expected=0;if(!slot.state.compare_exchange_strong(expected,1))return;
+    auto const& s=n::state;slot.row={s.context.source.scene_invocation,s.context.copy.invocation,
+        s.context.source.stereo.sequence,s.context.source.world.address,s.context.source.pawn.address,detail};
+    slot.state.store(2,std::memory_order_release);
+}
 void sample_current_cover_pose() noexcept {
     current_cover_pose_valid=false;
-    if(stopping.load()||!observed_rebind_idle())return;
+    if(stopping.load()){note_cover_probe(CoverProbeStep::stopping);return;}
+    if(!observed_rebind_idle()){note_cover_probe(CoverProbeStep::idle);return;}
     const auto expected_revision=revision.load();
     try{auto& s=n::state;a::marker::Marker marker{};a::CoverPoseMeasurement candidate{};a::Policy policy{};
         cover_context_live::CurrentKey before{},after{};
         policy.now_ns=rig::clock_ns();policy.allow_sim=simulator_operator;
-        if(!s.context.current(n::tx::Stage::prepare)||
-           !cover_context_live::sample_current(s.context.actor,before)||
-           before.type!=s.context.source.cover_type||before.slot!=s.context.source.cover_slot||
-           !gears_weapon_hand::same(rig::object(before.link),s.context.source.cover_link)||
-           a::marker::prepare(s.model,s.source,a::marker::Basis::marcus_mesh_face_forward_y,origin.work,marker)!=a::marker::Status::okay)return;
+        auto check=[](CoverProbeStep stage,bool okay,unsigned detail=~0u){if(!okay)note_cover_probe(stage,detail);return okay;};
+        a::marker::Status marker_status{};
+        if(!check(CoverProbeStep::current_before,s.context.current(n::tx::Stage::prepare))||
+           !check(CoverProbeStep::key_before,cover_context_live::sample_current(s.context.actor,before))||
+           !check(CoverProbeStep::type,before.type==s.context.source.cover_type)||!check(CoverProbeStep::slot,before.slot==s.context.source.cover_slot)||
+           !check(CoverProbeStep::link,gears_weapon_hand::same(rig::object(before.link),s.context.source.cover_link))||
+           !([&](){marker_status=a::marker::prepare(s.model,s.source,a::marker::Basis::marcus_mesh_face_forward_y,origin.work,marker);return check(CoverProbeStep::marker,marker_status==a::marker::Status::okay,unsigned(marker_status));})())return;
         const auto measured=body_tick_source_live::enabled?
             a::measure_cover_pose(s.context.body_source,s.model,s.source,marker,policy,s.workspace,candidate):
             a::measure_cover_pose(s.context.source,s.model,s.source,marker,policy,s.workspace,candidate);
-        if(measured!=a::Status::okay||
-           !cover_context_live::sample_current(s.context.actor,after)||!cover_context_live::same(before,after)||
-           !s.context.current(n::tx::Stage::prepare)||stopping.load()||revision.load()!=expected_revision)return;
+        if(!check(CoverProbeStep::measurement,measured==a::Status::okay,unsigned(measured))||
+           !check(CoverProbeStep::key_after,cover_context_live::sample_current(s.context.actor,after))||!check(CoverProbeStep::same_key_after,cover_context_live::same(before,after))||
+           !check(CoverProbeStep::current_after,s.context.current(n::tx::Stage::prepare))||!check(CoverProbeStep::stopping_after,!stopping.load())||!check(CoverProbeStep::revision_after,revision.load()==expected_revision))return;
         current_cover_pose=candidate;current_cover_pose_valid=true;
+        if(!s.context.entry)note_cover_probe(CoverProbeStep::entry);
+        else {note_cover_probe(CoverProbeStep::complete,0);}
         if(s.context.entry)cover_physics_c0_live::observe_sphere_once(*s.context.entry,s.context.source,
             {float(candidate.eye.position.x),float(candidate.eye.position.y),float(candidate.eye.position.z)});
         if(stopping.load()||revision.load()!=expected_revision||!s.context.current(n::tx::Stage::prepare)||
            !cover_context_live::sample_current(s.context.actor,after)||!cover_context_live::same(before,after))current_cover_pose_valid=false;
-    }catch(...){current_cover_pose_valid=false;}
+    }catch(...){note_cover_probe(CoverProbeStep::exception);current_cover_pose_valid=false;}
 }
 void pose_begin(Entry const& e) noexcept {Call call;if(e.kind==0)budget::recorder.mark_entry(budget::Stage::goal_entry,reinterpret_cast<uintptr_t>(&e),e.invocation);if(!enabled||e.kind!=0||!e.selected)return;++attempts;
     if(first_person_live::body_basis&&!first_person_live::toggle.requested()){invalidate();return;}
@@ -413,6 +429,12 @@ bool configure(wchar_t const* ini,FILE* file){wchar_t value[8]{};GetPrivateProfi
     if(file)fprintf(file,"body_goal_policy_compiled=1 body_goal_policy_enabled=%u body_goal_scope=standing_SM0_or_current_held_Lancer_SM33_CT0_not_crouched body_goal_scene_view_wired=1 body_goal_virtual_offset=0\n",unsigned(enabled));return true;}
 void request_drain(){stopping=true;invalidate();}unsigned pending_count(){return callbacks.load()+open_ends.load();}
 void summary(FILE* f){if(!f)return;
+    // First immutable witness per gate; no lock or extra game read.
+    for(unsigned i=0;i<cover_probe_rows.size();++i){auto const& slot=cover_probe_rows[i];
+        fprintf(f,"cover_pose_probe_count_%u=%llu ",i,slot.count.load());
+        if(slot.state.load(std::memory_order_acquire)==2){auto const& r=slot.row;
+            fprintf(f,"cover_pose_probe_first_%u=%u,%llu,%llu,%llu,%llu,%llu ",i,r.detail,r.scene,r.compose,r.sequence,r.world,r.pawn);}}
+
     fprintf(f,"body_goal_enabled=%u body_goal_attempts=%llu body_goal_plans=%llu body_goal_applied=%llu body_goal_published=%llu body_goal_rejected=%llu body_goal_view_rejected=%llu body_goal_view_used=%llu body_goal_pending=%u body_goal_view_available=%u body_goal_view_held=%llu ",unsigned(enabled),attempts.load(),plans.load(),applied.load(),published.load(),rejected.load(),view_rejected.load(),view_used.load(),pending_count(),unsigned(view_valid.load()),view_held.load());
     fprintf(f,"body_goal_neutral_rebind_attempts=%llu body_goal_neutral_rebind_deferred=%llu body_goal_neutral_rebinds=%llu body_goal_pickup_view_used=%llu body_goal_lancer_animation_view_used=%llu body_goal_lancer_execution_eye_used=%llu ",neutral_rebind_attempts.load(),neutral_rebind_deferred.load(),neutral_rebinds.load(),pickup_view_used.load(),lancer_animation_view_used.load(),lancer_execution_eye_used.load());
     fprintf(f,"body_goal_absent_epoch=%llu ",static_cast<unsigned long long>(cover_shared_input_live::goal_absent_epoch.load(std::memory_order_acquire)));
