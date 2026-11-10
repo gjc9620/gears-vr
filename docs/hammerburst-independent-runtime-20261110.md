@@ -294,3 +294,9 @@ launcher0/stop0、Native清理/PGshutdown0入口恢复/XR0、game及子进程正
 C盘再次跌至启动下限，排查确认旧私有实例各复制的PSOCache约885MB，旧build仅8至15MB，并非本方当前源码/制品占用主体。仅对本枪已终态221519、215931、214502、225401、232025、233210的`LocalAppData/Coalition/WarGame/PSOCache`归档至J盘。每份先核对isolated-done的game/子进程消失、无强杀/worker_error，再用实际进程PID+creation核对原game/birth/worker/owner/XR身份不再存活。随后同一PowerShell路径执行copy→SHA/大小/文件集核对→原C路径junction读回核对→严格校验本方handoff绝对路径后删除副本。任何不确定/既存映射均拒绝重做。
 
 共630文件/5,310,295,908bytes完整保留，源码、当前候选、日志和录像未移动，其他会话目录未动，旧名仍不重启。观测before_free3,100,655,616/after_free7,835,598,848bytes包含同时外部变化，不归因于本方全部增减。原路径可读，原样内容在`J:/gearsVr/analysis/hammerburst-archive-20261110/terminal-shader-caches/`；六份逐文件SHA索引和总表`terminal-shader-archive-20261110.json`保留在本枪分析目录。归档没有启动游戏或给予任何新运行验收。
+
+## 单次准备后等待首次启动（2026-11-11）
+
+过去名额短暂释放后，复制约0.9GB准备文件再start可能又遇其他worker完成登记。为减少此延迟，本枪runner新增显式`--prepare-then-wait`：要求5GiB（共享4GiB+已测私有准备1GiB余量），只准备一个新唯一名字，随后最多180秒只读等待资源，最多一次首次start。等待期间无worker、无游戏、无输入、不占运行名额、不持共享锁；start仍调用原共享入口，在原短事务下重新核对磁盘/实际存活身份/内存，拒绝也不重新启动这个名字。原默认preflight行为不变。
+
+暂停标记、未知错误、等待截止或迟到准入均中止该未启动尝试；同一个绝对截止不续期。5项针对性离线检查通过（忙后空闲、不预留slot，暂停，不重试未知错误，不续截止，迟到/暂停成功不准入）。此调整只减少本次准备与首次启动之间的竞争，不新增排队/票据/平台，不弱化任何游戏/input保护或构成武器运行验收。

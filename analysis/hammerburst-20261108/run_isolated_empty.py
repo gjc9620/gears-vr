@@ -31,11 +31,37 @@ def resource_preflight():
     return dict(disk=require_disk(ROOT), memory=require_memory())
 
 
+def wait_for_resource_admission(*,check=resource_preflight,paused=None,timeout=180,
+                                clock=time.monotonic,sleep=time.sleep):
+    paused=paused or PAUSE.exists
+    started=clock();deadline=started+timeout;checks=0
+    while True:
+        if paused():raise RuntimeError('Owner paused automatic runtime; prepared instance not started')
+        if clock()>=deadline:raise TimeoutError('Prepared instance resource wait expired; no start attempted')
+        try:
+            resources=check()
+        except RuntimeError as error:
+            message=str(error)
+            if not (message.startswith('Two automatic instances') or
+                    message.startswith('Insufficient currently available memory') or
+                    '"check": "disk_admission"' in message):raise
+            checks+=1
+            sleep(min(1,max(0,deadline-clock())))
+            continue
+        if paused():raise RuntimeError('Owner paused automatic runtime; prepared instance not started')
+        if clock()>=deadline:raise TimeoutError('Prepared instance resource wait expired; no start attempted')
+        return dict(resources=resources,waited_seconds=clock()-started,rejected_checks=checks,
+                    runtime_slot_reserved=False)
+
+
 def main():
     if PAUSE.exists():raise RuntimeError('Automatic runtime is paused by the owner; no preparation/start attempt')
     if shutil.disk_usage(ROOT).free<4*1024**3:
         raise RuntimeError('Insufficient free workspace disk for owned runtime evidence; no prepare/start attempted')
-    resources=resource_preflight()
+    prepare_then_wait='--prepare-then-wait' in sys.argv and '--resources' not in sys.argv
+    if prepare_then_wait and shutil.disk_usage(ROOT).free<5*1024**3:
+        raise RuntimeError('Need existing4GiB plus1GiB private-prepare margin; no prepare/start attempted')
+    resources=None if prepare_then_wait else resource_preflight()
     if '--resources' in sys.argv:
         print(json.dumps(resources,indent=2))
         return 0
@@ -118,6 +144,13 @@ def main():
             subprocess.run(python+[str(TOOL),'prepare','--name',name,'--manifest',str(target/'candidate-manifest.json'),
                                   '--config',str(AREA/'independent-r1/candidate-config.json')],check=True,stdout=log,stderr=subprocess.STDOUT,**common)
         write(target/'instance-binding.json',dict(name=name,root=str(selected),candidate=proof['dll_sha256']))
+        if prepare_then_wait:
+            result['prepared_waiting_for_resources']=True
+            write(target/'active.json',result)
+            print(json.dumps(dict(instance=name,prepared=True,game_started=False,waiting_for_resources=True)),flush=True)
+            result['resource_admission_wait']=wait_for_resource_admission()
+            result['prepared_waiting_for_resources']=False
+            write(target/'active.json',result)
         with (target/'start.log').open('wb') as log:
             subprocess.run(python+[str(TOOL),'start','--name',name],check=True,stdout=log,stderr=subprocess.STDOUT,**common)
         launched=True;result['worker_started']=True
