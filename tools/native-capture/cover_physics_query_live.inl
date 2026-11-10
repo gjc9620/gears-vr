@@ -129,7 +129,7 @@ public:
                         !gears_cover_physx_components::same(accumulated.component_sources,packet.component_sources))return q::Code::changed;
                 const auto start=accumulated.raw.hit_count;
                 result.spans[i]={start,raw.hit_count,raw.raw_count,raw.reports};
-                for(unsigned j=0;j<raw.hit_count;++j){accumulated.raw.hits[start+j]=raw.hits[j];accumulated.owners[start+j]=packet.owners[j];}
+                for(unsigned j=0;j<raw.hit_count;++j){accumulated.raw.hits[start+j]=raw.hits[j];accumulated.owners[start+j]=packet.owners[j];accumulated.self_sources[start+j]=packet.self_sources[j];}
                 accumulated.raw.hit_count+=raw.hit_count;accumulated.raw.raw_count+=raw.raw_count;accumulated.raw.reports+=raw.reports;
             }
             if(stopped_.load())return q::Code::unavailable;

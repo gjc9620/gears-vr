@@ -1,0 +1,108 @@
+{
+  "sources": {
+    "cover_physx_self_evidence.h": "8f0fbf09146f26bf55cb4c3078d5d9bcd8502490c05108109fbf3b92e0c60fcd",
+    "cover_physx_query.h": "a0ae8a4dc1b70180a807bb4034f5d37365327d411f63cd53d22971302369003a",
+    "cover_physics_query_live.inl": "59c07ae0043bf2ab9e8fac78b1b0f209e992bd30bc38634506b6dc5c120b7f11",
+    "cover_physx_owned_sweep_test.cpp": "b41c365324ca131bb7eb9f3f72f24321138c2fb06e4077483131364165bff121",
+    "cover_physics_capsule_path_live_test.cpp": "19ed68ee39a2f1a313b82e533868c1f5f9d132ffd5ce8385cc952fd1c31cac50"
+  },
+  "checks": [
+    {
+      "name": "cover_physx_owned_sweep",
+      "build_exit": 0,
+      "source_sha256": "b41c365324ca131bb7eb9f3f72f24321138c2fb06e4077483131364165bff121",
+      "command": [
+        "E:/vs/VC/Tools/MSVC/14.51.36231/bin/Hostx64/x64/cl.exe",
+        "/nologo",
+        "/std:c++17",
+        "/O2",
+        "/W4",
+        "/WX",
+        "/EHsc",
+        "/UNDEBUG",
+        "/MT",
+        "/IC:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\tools\\third-party\\minhook\\include",
+        "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\tools\\native-capture\\cover_physx_owned_sweep_test.cpp",
+        "/Fo:C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\capsule-executor-r110\\..\\self-evidence-r111\\checks-v2\\cover_physx_owned_sweep.obj",
+        "/sourceDependencies",
+        "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\capsule-executor-r110\\..\\self-evidence-r111\\checks-v2\\cover_physx_owned_sweep-dependencies.json",
+        "/Fe:C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\capsule-executor-r110\\..\\self-evidence-r111\\checks-v2\\cover_physx_owned_sweep.exe",
+        "/link",
+        "bcrypt.lib",
+        "psapi.lib"
+      ],
+      "test_exit": 0
+    },
+    {
+      "name": "cover_physics_capsule_path_live",
+      "build_exit": 0,
+      "source_sha256": "19ed68ee39a2f1a313b82e533868c1f5f9d132ffd5ce8385cc952fd1c31cac50",
+      "command": [
+        "E:/vs/VC/Tools/MSVC/14.51.36231/bin/Hostx64/x64/cl.exe",
+        "/nologo",
+        "/std:c++17",
+        "/O2",
+        "/W4",
+        "/WX",
+        "/EHsc",
+        "/UNDEBUG",
+        "/MT",
+        "/IC:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\tools\\third-party\\minhook\\include",
+        "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\tools\\native-capture\\cover_physics_capsule_path_live_test.cpp",
+        "/Fo:C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\capsule-executor-r110\\..\\self-evidence-r111\\checks-v2\\cover_physics_capsule_path_live.obj",
+        "/sourceDependencies",
+        "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\capsule-executor-r110\\..\\self-evidence-r111\\checks-v2\\cover_physics_capsule_path_live-dependencies.json",
+        "/Fe:C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\capsule-executor-r110\\..\\self-evidence-r111\\checks-v2\\cover_physics_capsule_path_live.exe",
+        "/link",
+        "bcrypt.lib",
+        "psapi.lib"
+      ],
+      "test_exit": 0
+    },
+    {
+      "name": "cover_physics_query_live",
+      "build_exit": 0,
+      "source_sha256": "746ccd1ac1ecf4b9408144de5711ee980d96f3e8aa8e5c8b24e56c83bcceae62",
+      "command": [
+        "E:/vs/VC/Tools/MSVC/14.51.36231/bin/Hostx64/x64/cl.exe",
+        "/nologo",
+        "/std:c++17",
+        "/O2",
+        "/W4",
+        "/WX",
+        "/EHsc",
+        "/UNDEBUG",
+        "/MT",
+        "/IC:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\tools\\third-party\\minhook\\include",
+        "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\tools\\native-capture\\cover_physics_query_live_test.cpp",
+        "/Fo:C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\capsule-executor-r110\\..\\self-evidence-r111\\checks-v2\\cover_physics_query_live.obj",
+        "/sourceDependencies",
+        "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\capsule-executor-r110\\..\\self-evidence-r111\\checks-v2\\cover_physics_query_live-dependencies.json",
+        "/Fe:C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\capsule-executor-r110\\..\\self-evidence-r111\\checks-v2\\cover_physics_query_live.exe",
+        "/link",
+        "bcrypt.lib",
+        "psapi.lib"
+      ],
+      "test_exit": 0
+    }
+  ],
+  "native_sha256": "58bdbf940abb2e087ff845df7715087f452c2a71a581033caa3bb382d023f333",
+  "project_dependencies": 403,
+  "game_started": false,
+  "original_dll_executed": false,
+  "public_changed": false,
+  "headset_accepted": false,
+  "evidence_scope": "per-returned-shape positive provenance in closed query; raw hits retained; path propagation; no self-inventory/world fence/clearance",
+  "initial_failures": [
+    "check output parent absent before first compiler launch",
+    "checks-v1: owned144/OFF36 passed, path and Session C4459 /WX name collisions; renamed parameters, checks-v2 all pass"
+  ],
+  "remaining": [
+    "actual source4 query failure",
+    "complete body and shape coverage",
+    "world/transform fence",
+    "endpoint self-aware occupancy",
+    "actual C0 body commit and view/weapon/hit consumers",
+    "CV01-24 AC01-22 and headset"
+  ]
+}

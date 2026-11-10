@@ -17,6 +17,7 @@
 #include "cover_physx_asset_actors.h"
 #include "cover_physx_collider.h"
 #include "cover_physx_components.h"
+#include "cover_physx_self_evidence.h"
 
 // Synchronous ORIGINAL scene-query adapter. prime() belongs to Native startup,
 // outside DllMain and game callbacks. Query callers must own the admitted C0/GT
@@ -49,6 +50,9 @@ struct QueryProgress {bool supported{},exception{};QueryStage stage{};unsigned s
 struct AllSweepOwners {
     AllSweep raw{};
     std::array<gears_cover_physx_shape_owner::Observation,max_stream_hits> owners{};
+    // Positive per-shape provenance only. Zero MUST remain an obstacle or
+    // unknown; neither the array nor a fully self-marked sweep is clearance.
+    std::array<unsigned char,max_stream_hits> self_sources{};
     gears_cover_physx_asset_actors::Snapshot asset_bodies{};
     gears_cover_physx_collider::Snapshot collider_source{};
     gears_cover_physx_components::Snapshot component_sources{};
@@ -436,6 +440,10 @@ public:
                    std::memcmp(&budget,&limits,sizeof limits)||!gears_cover_physx_collider::same(collider_key,*component_source)||
                    !gears_cover_physx_components::same(component_key_,*component_catalog))return Code::changed;
                 output.raw=stream_candidate_;output.owners=owners_candidate_;output.asset_bodies=asset_after_;output.collider_source=collider_after_;output.component_sources=components_after_;
+                output.self_sources.fill(0);
+                if(gears_cover_physx_self_evidence::qualified(asset_after_,collider_after_,components_after_))
+                    for(unsigned i=0;i<stream_candidate_.hit_count;++i)
+                        output.self_sources[i]=gears_cover_physx_self_evidence::match(owners_candidate_[i],asset_after_,collider_after_,components_after_);
             }else output=stream_candidate_;
             progress_.stage=QueryStage::complete;return Code::queried;
         }catch(...){progress_.exception=true;return Code::source;}

@@ -117,6 +117,7 @@ static void probe(){
         [](void* p,void const* a,std::size_t n){return live_memory->read(p,a,n);},Guard{},*nested,&collider_input,&parts_input);
 }
 static bool equal(q::AllSweepOwners const& a,q::AllSweepOwners const& b){
+    if(a.self_sources!=b.self_sources)return false;
     if(memcmp(&a.raw,&b.raw,sizeof a.raw)||!asset::same(a.asset_bodies,b.asset_bodies)||!cx::same(a.collider_source,b.collider_source)||!parts::same(a.component_sources,b.component_sources))return false;
     for(unsigned i=0;i<a.owners.size();++i)if(!own::same(a.owners[i],b.owners[i]))return false;
     return true;
@@ -150,8 +151,36 @@ int main(int argc,char**argv){
             check(output->component_sources.fields.root_count==2&&output->component_sources.fields.seed_count==1&&
                 output->component_sources.fields.roots[1].base==0x220000,"recursive actor edge and actual Base join the same owned transaction");
             check(output->owners[2].kind==own::Kind::unknown&&!output->owners[2].actor,"unused owner tail cleared");
+            namespace self=gears_cover_physx_self_evidence;
+            check(self::qualified(output->asset_bodies,output->collider_source,output->component_sources),"production closed role snapshots qualify together");
+            check(!output->self_sources[0]&&!output->self_sources[1],"unproven primary mesh owner and foreign catalog actor both remain unexcluded");
+            check(std::all_of(output->self_sources.begin(),output->self_sources.end(),[](auto v){return !v;}),"unused evidence tail zero");
+            // Mutation controls exercise the production classifier against
+            // explicit role packets. They do not fabricate a live guard pass.
+            auto proof=std::make_unique<q::AllSweepOwners>(*output);
+            auto classify=[&](){return self::match(proof->owners[0],proof->asset_bodies,proof->collider_source,proof->component_sources);};
+            auto& fields=proof->component_sources.fields;
+            fields.components[1].component=proof->asset_bodies.query_source.source.mesh;
+            fields.components[1].owner=proof->collider_source.fields.pawn;
+            check(classify()==(self::collider|self::pawn_component|self::pawn_asset),"exact current collider component and mesh asset give positive provenance");
+            const auto positive=std::make_unique<q::AllSweepOwners>(*proof);
+            proof->owners[0].internal_actor+=8;check(!classify(),"same actor different internal body remains obstacle");*proof=*positive;
+            proof->owners[0].scene+=8;check(!classify(),"different scene remains obstacle");*proof=*positive;
+            proof->owners[0].actor_table+=8;check(!classify(),"different actor class remains obstacle");*proof=*positive;
+            proof->owners[0].kind=own::Kind::unknown;check(!classify(),"unknown shape remains obstacle");*proof=*positive;
+            proof->owners[0].internal_shape=0;check(!classify(),"missing actual shape membership remains obstacle");*proof=*positive;
+            proof->asset_bodies.bodies[1].body+=8;check(!classify(),"wrong main asset body member vetoes otherwise matching collider");*proof=*positive;
+            fields.components[0].body_owner=fields.components[2].component;check(!classify(),"cross component body owner vetoes exclusion");*proof=*positive;
+            fields.components[0].owner=fields.roots[1].actor;check(!classify(),"attached actor is not Pawn ownership");*proof=*positive;
+            fields.components[2].body_data=proof->owners[0].actor;check(!classify(),"foreign component alias vetoes positive collider proof");*proof=*positive;
+            fields.asset_bodies[0].data=proof->owners[0].actor;check(!classify(),"foreign skeletal body alias vetoes positive proof");*proof=*positive;
+            proof->collider_source.query_source.source.mesh+=8;
+            check(!self::qualified(proof->asset_bodies,proof->collider_source,proof->component_sources),"different source generation cannot qualify");*proof=*positive;
+            fields.roots[0].actor+=8;
+            check(!self::qualified(proof->asset_bodies,proof->collider_source,proof->component_sources),"catalog root must be exact current Pawn");
             owner_probe=nullptr;hit_count=0;
             check(engine->sweep_all(source(),box,delta,q::StreamLimits{},read,guard,*output,&collider_input,&parts_input)==q::Code::queried&&!output->raw.hit_count&&!output->owners[0].actor,"empty data clears old owners, not occupancy permission");
+            check(std::all_of(output->self_sources.begin(),output->self_sources.end(),[](auto v){return !v;}),"empty sweep clears all old self evidence");
             hit_count=q::max_stream_hits;
             check(engine->sweep_all(source(),box,delta,q::StreamLimits{},read,guard,*output,&collider_input,&parts_input)==q::Code::queried&&output->raw.hit_count==q::max_stream_hits&&output->owners.back().actor==actor1,"all1024 owners including final record");
             hit_count=2;q::Capsule cap{{0,0,0},{0,0,1},.5f};

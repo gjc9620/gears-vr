@@ -1,0 +1,48 @@
+{
+  "document": "J:\\gearsVr\\docs\\cover-system-requirements-20261108.md",
+  "document_sha256": "63458cfba38d5b9cc482db06cf6a26520f280219d9c1d4a379e25f0f37330d0a",
+  "source_copy": "J:\\gearsVr\\docs\\cover-specs-20261028",
+  "source_sha256": {
+    "acceptance.md": "b5585ba3ae5236aff46dcc7e701a941bab9dab381312be931caf0039a918aab6",
+    "code-locations.json": "4368de4f1a2e97c62f25f3a58937d9e76ec912902aa9af25344169006a76c6de",
+    "code-locations.md": "4690253769c51589c0f48b25b4748efc325d7813eb7512933ff057f7a2c792fa",
+    "contract-check-results.json": "7a0def59e05c41ff389fb42479e027a8bca9cde9d4f7806f682698f3a8f112ad",
+    "contract-vectors.json": "b7099a2a4b288d3943cd026208797eb9d3a2594527d59766c7435f939283b728",
+    "findings.md": "74c72af1a3196b3f92ea10d13d8d67cc009563d2e2338b298dc0bdeedf5d7c84",
+    "implementation-handoff.md": "4552438890fb93e6674eccf1fcf2c4f8bfe1259fcd1daf9e89dfff11688831ce",
+    "interaction-contract.md": "6caff390ab4cc8b1029144563aa8ab7a721ecfd04a813fc1e2aa0895a346c3c5",
+    "manifest.json": "044949eddbf8a7d4270c2be49dc67d2b229d42a8b569a8cd39832a340e4ca2f9",
+    "offline-contract-checker.py": "52f77e2aae0330caca9c1ca48896167f9a36dcaa52cd473dda7f96d72287ec9c",
+    "offline-validation.json": "2a7e957beca5d0507e329f274e750ad72b87d78b2df36e1ce6d22555e38c4da6",
+    "original-entry-map.md": "177284e2ec831bc80f43238b1624d8300b9582d305ae9ed7f7d37f86683ad13a",
+    "README.md": "ad437e7643172371b34857d050d183b64134950450ebd864575155e1c3e59720",
+    "research-followup-v2.md": "45a33e863329f93b582fed89f534dba2efd7d408540caea95c403a205f1d38fb",
+    "revision2-code-locations.json": "10ad71d902f575ac12794923dcd5d41d491558e12f0fb264ee0bfae29b760623"
+  },
+  "previous_document_sha256": [
+    "54c636b59880d973f493b31206a7df5807ab6b9cd5b7301e93a3d2b9354a0fec",
+    "68952d6fafae9be2221b42f5cdd50eee50b790bfc70a7ec73a63725e2fec4858",
+    "d88ff34a263aaf097ceb5776794e44b9dc9555282856309d7ac2740508c7925c",
+    "92329517aa7e4058f9c7ce0c2f377510c1e8baa27b5e3d465742ed413c95455d",
+    "5f4f8d27f6750c9352b0fdfb888d5845d7057daa340e6a0c5aa3b45b1c89b570",
+    "dfdedcd9bdaa6f8ec356d021443062d9ab6b2fb8fe876120e8eb9c4091887d2d",
+    "bb344e6af1b3cf82c94640c030bc138efc9bfcb34f06509a792eed6ed7608e59",
+    "4e62c806ed8877e675639a9595aa1db3da4547bffa4664992167aae0a4159b85",
+    "17572c236930ae48d71cbe88654f66ad3a7994a8353150c3d1cd031439d9ef26",
+    "df5dc4dcecf370e59fa24be7222fe5f3f13aa33ec2f22699827e11debf6792e8"
+  ],
+  "as_of": "2026-11-10T19:40:12.241799+08:00",
+  "module_interfaces_commit": "7b6effc",
+  "development_copy": {
+    "path": "J:/gearsVr/docs/cover-system-development-20261108.md",
+    "sha256": "dfad05352c900c23c2b51ebe60c7de4205fa7f6e2b5d274baddbb3de096537df"
+  },
+  "requirements_overview": "Added concise behavior and requirement-group overview; retained all CV-01–24 and AC-01–22 definitions.",
+  "requirements_review": "Reconciled cover source specifications; clarified held-position occupancy recovery, same-pose hit/physics evidence, supported skeleton/local authority boundaries, and engineering acceptance. Retained CV-01-24 and AC-01-22.",
+  "requirements_source_index": "Added original-source index and reconciled R01 first/third person VR mode coverage; all CV-01-24 and AC-01-22 retained.",
+  "requirements_grab_pose_20261109": "Added owner-mandated per-cover-point GrabPose, passiveSnap boundary, full hand/cuff transitions and actual paired-image checks; CV24/AC22 IDs retained.",
+  "requirements_usage_flow": "Added a seven-step player flow from attach and real leaning through edge drag, release/hold, re-grab/retract and exit/recovery; retained all CV-01–24 and AC-01–22 definitions.",
+  "requirements_query_coverage": "Clarified CV16 valid-empty-result coverage of participating component/shape kinds, scale branches, bones and early-exit results; retained CV24/AC22 IDs.",
+  "requirements_document_review_20261110": "Reconciled existing docs for the requested cover requirements document; distinguished confirmed behavior, consistency requirements, engineering defaults and tuning parameters, and completed per-grab-point pose source index. All CV-01-24 and AC-01-22 retained.",
+  "requirements_navigation_review_20261110": "Reviewed existing cover source requirements; added section navigation and verified CV-01-24, AC-01-22, local source links and document mirrors. No gameplay status changed."
+}

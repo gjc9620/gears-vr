@@ -69,7 +69,10 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--name', required=True)
     parser.add_argument('--native-r106', action='store_true')
+    parser.add_argument('--native-r111', action='store_true')
     args = parser.parse_args()
+    if args.native_r106 and args.native_r111:
+        raise ValueError('Select one frozen Native')
     if not args.name.startswith('cover-'):
         raise ValueError('Cover owns only its cover- prefixed new instance')
     if Path.cwd().resolve() != ROOT or sys.flags.optimize:
@@ -88,6 +91,16 @@ def main():
         if (receipt['changed'] != ['tools/native-capture/cover_physx_query_code.h']
                 or receipt['external_worktree_dependencies'] or not receipt['flags_unchanged']):
             raise RuntimeError('r106 frozen delta differs')
+        expected['native'] = receipt['dll_sha256']
+        prepared['builds']['native'] = dict(saved=str(current/'native-build/GearsCapture.dll'), sha256=expected['native'])
+    if args.native_r111:
+        current = HERE.parent / 'self-evidence-r111'
+        receipt = load(current / 'native-build-result.json')
+        changed = {'tools/native-capture/'+name for name in (
+            'cover_physx_self_evidence.h','cover_physx_query.h','cover_physics_query_live.inl')}
+        if (set(receipt['changed']) != changed or receipt['external_worktree_dependencies']
+                or not receipt['flags_unchanged'] or not receipt['build_only'] or receipt['staged']):
+            raise RuntimeError('r111 frozen delta differs')
         expected['native'] = receipt['dll_sha256']
         prepared['builds']['native'] = dict(saved=str(current/'native-build/GearsCapture.dll'), sha256=expected['native'])
     for key in ('native', 'playground', 'sim_xr'):
@@ -114,7 +127,7 @@ def main():
         manifest[prefix + '_sha256'] = expected[key]
         if prefix != 'xr':
             manifest[prefix + '_dll'] = artifact.name
-    manifest['candidate_validation'] = 'Cover r105 isolated source-stage observation; r104 Native, no gameplay acceptance'
+    manifest['candidate_validation'] = 'Cover isolated source-stage observation; selected frozen Native, no gameplay acceptance'
     manifest['candidate_id'] = args.name
     manifest['private_main_grip_ab'] = False
     manifest['lancer_interaction_ranges'] = False

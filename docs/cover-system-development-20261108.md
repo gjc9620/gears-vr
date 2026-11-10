@@ -1983,3 +1983,17 @@ D7E30的顶点分支在D823B加载RVA22A510常量，D824C／D826C可拒绝投影
 在r109最终冻结源上只覆盖C0 h／inl、Session inl、新观测头四个生产文件完成Native编译：SHA256 0da3cf99b9d340c8fbf5bd74749c8a356c9f0e716ea1622f2ef00fc8a59b5e6f，402项目依赖、无外部工作树依赖、原开关不变。本轮制品未stage／交付或载入；不是整个当前多武器脏树集成。证据analysis/cover-system-20261108/capsule-executor-r110/verification.json、checks-v5／checks-v4及native-build-result.json。
 
 下一步仍需完整身体形状与姿态路径、当前世界／碰撞参与范围、精确自身排除和终点占用证明，再把结果关联到from-version及共同身体实际提交／视图／命中消费者；不能凭本轮raw结果解除原no_cover保护。r102 Code4首拒绝、头肩遮挡、真实抓边闭环、联合战斗与实体头显仍未验收，完整CV-01–24／AC-01–22、publicv71和工程25%保持，目标active。
+
+## r111：逐命中自身来源证据与整条路径保留（2026-11-10）
+
+在 r110 原始查询结果上增加 self_sources：只给当前查询已认证的具体形状记录人物碰撞体、Pawn 自有组件或主 Mesh 物理体的正向来源。形状所属公共 Actor、内部物理体、Scene、组件 BodyOwner 和主数组成员必须一致；附件根／清单成员身份不授予自身排除。任一外部组件或外部骨骼体与该 Actor 别名冲突、主 Mesh 归属缺失、内部体／场景不符时，标记为零，继续保留命中。主查询关闭全部 typed source 后计算，无额外原版调用、输入刷新或写入端。
+
+所有原始命中、顺序与重复项继续保留，整条分段路径复制相应来源字节，空结果及尾部清零。正向标记仅证明这些已返回形状的来源，不证明完整自身集合、物理世界静止、空返回覆盖完整，也不授予身体移动；终点原始 overlap 仍未区分自身，尚不能放行。
+
+CPU：OwnedSweep 144、CapsulePathSession 191、Session 96、OFF 36，均 exit0。真实生产 QueryEngine／Session 配 Host 模块与派发缝；没有执行原 DLL 或游戏。正向来源及内部体不符、外部组件／PAA 别名、场景／来源不符等为明确包变异检查，不能称实际游戏分支已覆盖。首轮输出目录父级缺失、以及 /WX C4459 测试全局名冲突均保存，修正后检查通过。
+
+从 r110 冻结 Native 源仅覆盖 self_evidence、query、query_live 三文件，403 项项目依赖全在冻结树，开关不变。Native SHA256 `58bdbf940abb2e087ff845df7715087f452c2a71a581033caa3bb382d023f333`。仅编译，未安装／运行，公共 v71 不变。证据 `analysis/cover-system-20261108/self-evidence-r111/verification.json` 与 native-build-result.json。
+
+收到主人最新“修复后台后继续跑”转达并核对 independent-runtime-20261110.md 最后一节；中央暂停标记已由维护方归档。后续仅以 cloak1110／绑定模拟器重新 prepare 全新本方实例，保留身份、新鲜度、静音、存档和正常清理。旧 background1110b 不复用，旧仅前台焦点检查不作为桌面不可见证明。先完成隐藏录制接线与定向 source-stage 运行，再推进终点占用、完整身体与实际提交；不向统筹主动发送占用／进度。
+
+全目标及 CV-01–24／AC-01–22 未完成，工程 25% 不变；实际 source4、头肩遮挡及完整游戏／双眼／头显验收继续开放。

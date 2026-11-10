@@ -25,6 +25,7 @@ struct PathEngine:HostEngine {
         C(q::detail::sweep_motion(shape,step));
         if(path_seen_count<64){path_seen_shapes[path_seen_count]=shape;path_seen_steps[path_seen_count]=step;path_seen_limits[path_seen_count]=limits;++path_seen_count;}
         const auto code=HostEngine::sweep_all(source,shape,step,limits,read,current,out,collider,components);
+        if(code==q::Code::queried){out.self_sources[0]=1;out.self_sources[1]=0;}
         if(code==q::Code::queried&&empty_path){out.raw={};out.owners={};}
         if(code==q::Code::queried&&(out.raw.hit_count>limits.max_hits||out.raw.reports>limits.max_reports))return q::Code::truncated;
         return code;
@@ -48,6 +49,7 @@ int main(){
         C(output->collected.raw.hit_count==8&&output->collected.raw.raw_count==8&&output->collected.raw.reports==4);
         for(unsigned i=0;i<4;++i){C(output->spans[i].first==i*2&&output->spans[i].count==2&&output->spans[i].reports==1);
             C(output->collected.owners[i*2].actor==fixture_mesh&&output->collected.owners[i*2+1].actor==physics_instance);
+            C(output->collected.self_sources[i*2]==1&&output->collected.self_sources[i*2+1]==0);
             C(path_seen_shapes[i].first.x==1+75.f*i&&path_seen_shapes[i].second.x==1+75.f*i&&path_seen_shapes[i].radius==.5f);
             C(path_seen_steps[i].x==75&&path_seen_steps[i].y==0&&path_seen_steps[i].z==0);}
         C(path_seen_endpoint.first.x==301&&path_seen_endpoint.second.x==301&&path_seen_endpoint.radius==.5f);
