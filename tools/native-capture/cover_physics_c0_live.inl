@@ -9,10 +9,32 @@ using Entry=gears_continuous_hand_entry::Entry;using Core=gears_native_rig_track
 #if defined(GEARS_COVER_PHYSX_QUERIES) && GEARS_COVER_PHYSX_QUERIES
 namespace n=full_body_c0_native_live;
 cover_physics_query_live::Session<> session;
+bool sphere_probe_requested{};
+struct SphereObservation {
+    bool attempted{},finished{};q::Code code{q::Code::unavailable};bool raw_hit{};
+    uint64_t world{},world_generation{},pawn{},link{},scene{},compose{},sequence{};int slot{-1};unsigned thread{};
+    int64_t begin_ns{},end_ns{};q::Sphere shape{};
+};
+std::mutex sphere_probe_mutex;SphereObservation sphere_probe;
 bool configure(wchar_t const* ini,FILE* log){
     wchar_t value[8]{};GetPrivateProfileStringW(L"FullBodyC0Native",L"cover_queries",L"0",value,8,ini);
     if(std::wcscmp(value,L"0")&&std::wcscmp(value,L"1"))return false;
-    const bool requested=!std::wcscmp(value,L"1");
+    bool requested=!std::wcscmp(value,L"1");
+    GetPrivateProfileStringW(L"FullBodyC0Native",L"cover_sphere_probe",L"0",value,8,ini);
+    if(std::wcscmp(value,L"0")&&std::wcscmp(value,L"1"))return false;
+    sphere_probe_requested=!std::wcscmp(value,L"1");
+    // Explicit private simulator option; normal profiles remain unchanged.
+    // This follows the existing observer-only child environment, not input
+    // from a page, game object or received query result.
+    const auto length=GetEnvironmentVariableW(L"GEARSVR_COVER_SPHERE_PROBE",value,8);
+    if(length>=8||(length&&std::wcscmp(value,L"0")&&std::wcscmp(value,L"1")))return false;
+    if(length&&!std::wcscmp(value,L"1")){
+        wchar_t controlled[8]{};
+        if(!simulator_operator||!continuous_session||
+           GetEnvironmentVariableW(L"GEARSVR_TEST_TINY_OUTPUT_OBSERVE_ONLY",controlled,8)!=1||std::wcscmp(controlled,L"1"))return false;
+        requested=true;sphere_probe_requested=true;
+    }
+    if(sphere_probe_requested&&!requested)return false;
     const bool okay=session.start(requested,n::enabled&&continuous_session);
     if(log)fprintf(log,"cover_queries_compiled=1 requested=%u ready=%u raw_observations_only=1 movement_permission=0\n",unsigned(requested),unsigned(session.enabled()));
     return okay;
@@ -20,7 +42,14 @@ bool configure(wchar_t const* ini,FILE* log){
 void request_drain()noexcept{session.request_drain();}
 bool poll_stop()noexcept{return session.poll_stop();}
 unsigned pending_count()noexcept{return session.pending_count();}
-void summary(FILE* f){if(f)fprintf(f,"cover_queries_ready=%u pending=%u uncertain=%u raw_observations_only=1\n",unsigned(session.enabled()),session.pending_count(),unsigned(session.uncertain()));}
+void summary(FILE* f){if(!f)return;
+    SphereObservation copy{};{std::lock_guard<std::mutex> lock(sphere_probe_mutex);copy=sphere_probe;}
+    fprintf(f,"cover_queries_ready=%u pending=%u uncertain=%u raw_observations_only=1 ",unsigned(session.enabled()),session.pending_count(),unsigned(session.uncertain()));
+    fprintf(f,"cover_sphere_probe_requested=%u cover_sphere_probe_attempted=%u cover_sphere_probe_finished=%u cover_sphere_probe_code=%u cover_sphere_probe_raw_hit=%u cover_sphere_probe_world=%llu cover_sphere_probe_world_generation=%llu cover_sphere_probe_pawn=%llu cover_sphere_probe_link=%llu cover_sphere_probe_slot=%d cover_sphere_probe_scene=%llu cover_sphere_probe_compose=%llu cover_sphere_probe_sequence=%llu cover_sphere_probe_thread=%u cover_sphere_probe_begin_ns=%lld cover_sphere_probe_end_ns=%lld cover_sphere_probe_sphere=%.9g,%.9g,%.9g,%.9g cover_sphere_probe_movement_permission=0\n",
+        unsigned(sphere_probe_requested),unsigned(copy.attempted),unsigned(copy.finished),unsigned(copy.code),unsigned(copy.raw_hit),
+        copy.world,copy.world_generation,copy.pawn,copy.link,copy.slot,copy.scene,copy.compose,copy.sequence,copy.thread,copy.begin_ns,copy.end_ns,
+        double(copy.shape.centre.x),double(copy.shape.centre.y),double(copy.shape.centre.z),double(copy.shape.radius));
+}
 template<class Shape,class Output,class Invoke> q::Code query(Entry const& entry,Core const& source,Shape const& shape,Output& output,Invoke invoke)noexcept{
     n::Call call;auto& s=n::state;
     if(!session.enabled()||GetCurrentThreadId()!=n::owner_thread.load()||!n::enabled||n::stopping.load()||entry.kind||!entry.selected||
@@ -61,7 +90,9 @@ template<class Shape,class Output> q::Code do_sweep_all(Entry const& e,Core cons
     return query(e,c,shape,out,[&](auto const& actor,auto const& metadata,auto const& geometry,auto read,auto guard,auto& output){return session.sweep_all(actor,metadata,geometry,delta,limits,read,guard,output);});
 }
 #else
-bool configure(wchar_t const* ini,FILE*){wchar_t value[8]{};GetPrivateProfileStringW(L"FullBodyC0Native",L"cover_queries",L"0",value,8,ini);return !std::wcscmp(value,L"0");}
+bool configure(wchar_t const* ini,FILE*){wchar_t value[8]{};GetPrivateProfileStringW(L"FullBodyC0Native",L"cover_queries",L"0",value,8,ini);if(std::wcscmp(value,L"0"))return false;
+    GetPrivateProfileStringW(L"FullBodyC0Native",L"cover_sphere_probe",L"0",value,8,ini);if(std::wcscmp(value,L"0"))return false;
+    const auto length=GetEnvironmentVariableW(L"GEARSVR_COVER_SPHERE_PROBE",value,8);return !length||(length==1&&!std::wcscmp(value,L"0"));}
 void request_drain()noexcept{}
 bool poll_stop()noexcept{return true;}
 unsigned pending_count()noexcept{return 0;}
@@ -73,6 +104,28 @@ template<class Shape,class Output> q::Code do_sweep_all(Entry const&,Core const&
 q::Code overlap(Entry const& e,Core const& c,q::Sphere const& s,q::Overlap& out)noexcept{return do_overlap(e,c,s,out);}
 q::Code overlap(Entry const& e,Core const& c,q::Box const& s,q::Overlap& out)noexcept{return do_overlap(e,c,s,out);}
 q::Code overlap(Entry const& e,Core const& c,q::Capsule const& s,q::Overlap& out)noexcept{return do_overlap(e,c,s,out);}
+void observe_sphere_once(Entry const& e,Core const& source,q::Vector const& eye)noexcept{
+#if defined(GEARS_COVER_PHYSX_QUERIES) && GEARS_COVER_PHYSX_QUERIES
+    if(!sphere_probe_requested||!session.enabled()||GetCurrentThreadId()!=n::owner_thread.load())return;
+    try{
+        SphereObservation row{};row.attempted=true;row.world=source.world.address;row.world_generation=source.world_generation;row.pawn=source.pawn.address;
+        row.link=source.cover_link.address;row.slot=source.cover_slot;row.scene=source.scene_invocation;
+        row.compose=e.invocation;row.sequence=source.stereo.sequence;row.thread=GetCurrentThreadId();
+        // One centimetre is a diagnostic query radius, NOT a head collider.
+        row.shape={eye,float(source.units_per_metre*.01)};
+        row.begin_ns=rig_tracking_live::clock_ns();
+        {std::lock_guard<std::mutex> lock(sphere_probe_mutex);if(sphere_probe.attempted)return;sphere_probe=row;}
+        // No private lock across the original call. Failure is terminal for
+        // this observation too; never silently retry a different source.
+        q::Overlap result{};row.code=overlap(e,source,row.shape,result);
+        row.raw_hit=row.code==q::Code::queried&&result.raw_hit;
+        row.end_ns=rig_tracking_live::clock_ns();row.finished=true;
+        {std::lock_guard<std::mutex> lock(sphere_probe_mutex);sphere_probe=row;}
+    }catch(...){/* attempted remains visible; never claim a result or retry */}
+#else
+    (void)e;(void)source;(void)eye;
+#endif
+}
 q::Code sweep(Entry const& e,Core const& c,q::Box const& s,q::Vector const& d,q::Sweep& out)noexcept{return do_sweep(e,c,s,d,out);}
 q::Code sweep(Entry const& e,Core const& c,q::Capsule const& s,q::Vector const& d,q::Sweep& out)noexcept{return do_sweep(e,c,s,d,out);}
 q::Code sweep_all(Entry const& e,Core const& c,q::Box const& s,q::Vector const& d,q::StreamLimits const& l,q::AllSweep& out)noexcept{return do_sweep_all(e,c,s,d,l,out);}

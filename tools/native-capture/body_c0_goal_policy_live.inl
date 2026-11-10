@@ -229,7 +229,10 @@ void sample_current_cover_pose() noexcept {
            !cover_context_live::sample_current(s.context.actor,after)||!cover_context_live::same(before,after)||
            !s.context.current(n::tx::Stage::prepare)||stopping.load()||revision.load()!=expected_revision)return;
         current_cover_pose=candidate;current_cover_pose_valid=true;
-        if(stopping.load()||revision.load()!=expected_revision)current_cover_pose_valid=false;
+        if(s.context.entry)cover_physics_c0_live::observe_sphere_once(*s.context.entry,s.context.source,
+            {float(candidate.eye.position.x),float(candidate.eye.position.y),float(candidate.eye.position.z)});
+        if(stopping.load()||revision.load()!=expected_revision||!s.context.current(n::tx::Stage::prepare)||
+           !cover_context_live::sample_current(s.context.actor,after)||!cover_context_live::same(before,after))current_cover_pose_valid=false;
     }catch(...){current_cover_pose_valid=false;}
 }
 void pose_begin(Entry const& e) noexcept {Call call;if(e.kind==0)budget::recorder.mark_entry(budget::Stage::goal_entry,reinterpret_cast<uintptr_t>(&e),e.invocation);if(!enabled||e.kind!=0||!e.selected)return;++attempts;

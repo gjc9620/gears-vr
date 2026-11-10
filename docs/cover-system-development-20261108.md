@@ -1843,3 +1843,16 @@ Native／entry／pad／weapons drain正常、XR exit0，owned进程退出核对�
 在r100冻结Native源码上仅覆盖5个相关生产文件完成集成编译，400项项目依赖核对通过，无外部工作树依赖，原开关保持（CoverBodyPrototype与PhysXQueries编译ON，运行配置不变）。DLL SHA256 `46c26ee3fde78c65281d9137ba87721e3c2c3a60677c407a84ce5d20664865d7`，只保存在证据目录，未stage／安装；未启动游戏／XR。不是当前所有武器脏改动的集成或完整碰撞通过。
 
 证据：`analysis/cover-system-20261108/sphere-overlap-r101/verification.json`。下一步在已有受控游戏路径验证一次有界的原版球体读取调用，继续完成连续球体扫掠、完整当前几何／世界时相／终点占用和唯一C0事务接线；完整CV-01–24／AC-01–22、双眼与实体头显验收仍未完成。public v71及工程25%保持不变。
+
+
+## r102：当前掩体C0的一次原版球体观测入口与独立准备（2026-11-10）
+
+`sample_current_cover_pose`在当前掩体眼点测量后调用现有C0球体适配。新增观测默认OFF，每次Native载入最多尝试一次；失败亦消耗该次观测，不换来源重试。原版调用外不持私有锁，既有身份／源码／元数据前后复核及故障不确定保留机制继续生效。观测后重新核对当前上下文和掩体键，不把调用前测量冒充调用后的当前数据。
+
+显式INI选项`FullBodyC0Native.cover_sphere_probe`须同时启用cover_queries；独立私有入口使用`GEARSVR_COVER_SPHERE_PROBE=1`，仅在实际simulator_operator、continuous_session及既有observe-only子进程环境均成立时允许开启原查询会话。普通配置及物理头显配置不自动开启。状态字段统一使用cover_sphere_probe_前缀，记录尝试／完成、原始返回、世界及代次、人物、Link／槽位、Scene／Compose／序列／线程、开始结束时间及实际球体。1cm半径仅为原调用诊断输入，不是已认证头部碰撞体，不授予占用或移动。
+
+关闭分支严格编译和35项检查通过，包含INI／环境请求及非法值拒绝。首次隔离Native编译因历史保存策略缺少before／after变量失败，原源码与日志保留；v2补充只读掩体身份闭合后编译通过，v3加入受控显式环境入口与唯一状态前缀再编译通过。最终DLL SHA256 `2e65bfd483935f0c15fa89313701274e48d0528ed6b92a4f2e946c7ebe27d862`，400项项目依赖、原开关及无外部工作树依赖核对通过。冻结基线保留原Core眼点测量分支，只加入本轮查询与身份闭合；当前源码已有V3测量，不将这个隔离DLL宣称为整个当前源树或V3运行通过。
+
+新独立尝试`equipment-controls-prepared-20261110-cover-sphere-r102`与`analysis/cover-system-20261108/sphere-call-r102/run_cover_eye_independent.py`准备检查退出0；新Native、原PG／XR、363项运行驱动与依赖身份已绑定。复用r97普通接近／原版吸附和五个短观测阶段，新增一次Native原查询；旧r97已消耗尝试和r80原始五文件未修改，未重绑旧窗口票。仍使用同一RuntimeGuard，从新鲜备份经stage／运行到正常恢复全程持有，离线编码／审阅在其外。
+
+本轮只离线准备，claim未创建、未stage、未启动游戏／XR。实时发现共享游戏先为54968，随后9596，最后55756（XR55112、录制56968），均不是本轮启动，不干预其窗口。新入口原版查询的实际执行、语义及正常清理仍待运行窗口，不把准备通过计为游戏通过。证据：`analysis/cover-system-20261108/sphere-call-r102/verification.json`。完整球体扫掠、几何／世界时相／占用、身体提交及双眼／实体头显验收仍未完成；public v71及工程25%保持不变。
