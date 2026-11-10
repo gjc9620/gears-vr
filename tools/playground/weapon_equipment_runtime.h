@@ -332,15 +332,16 @@ public:
             input_status=state_.baseline_ready?Status::baseline:Status::baseline_waiting;
         }
 
-        // A held weapon requires fresh inventory/identity/attachment work
-        // below. Sample its input before that work, at the same early boundary
-        // used by a new baseline. This local event grants no authority: every
+        // Held AND unheld input must precede fresh inventory/identity work.
+        // Otherwise that observation can age an original recorded press out
+        // before it is even decoded. This local event grants no authority: every
         // currentness, inventory, attachment and action-age check still runs.
         // It is discarded on every early return and never retained/retried.
         EquipmentIntentEvent held_input{};
-        const bool sampled_held=input_status==Status::idle&&!state_.pending&&model.held()&&!state_.future_known;
+        const bool sampled_input=input_status==Status::idle&&!state_.pending&&!state_.future_known;
+        const bool sampled_held=sampled_input&&model.held();
         std::uint64_t held_cursor{};bool have_held_input{};
-        if(sampled_held){
+        if(sampled_input){
             held_cursor=state_.cursor;
             have_held_input=b.next(b.context,f,state_.cursor,held_input);
             if(!current(f,b))return lost(b);
@@ -463,9 +464,9 @@ public:
         EquipmentIntentEvent event{};
         if(state_.future_known){event=state_.future;state_.future_known=false;state_.future={};}
         else {
-            const auto cursor=sampled_held?held_cursor:state_.cursor;
+            const auto cursor=sampled_input?held_cursor:state_.cursor;
             bool have_event{};
-            if(sampled_held){event=held_input;have_event=have_held_input;}
+            if(sampled_input){event=held_input;have_event=have_held_input;}
             else {
                 have_event=b.next(b.context,f,state_.cursor,event);
                 if(!current(f,b))return lost(b);

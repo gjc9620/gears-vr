@@ -1,0 +1,40 @@
+--- a/tools/playground/weapon_equipment_runtime_test.cpp
++++ b/tools/playground/weapon_equipment_runtime_test.cpp
+@@ -595,7 +595,37 @@
+     C(!malformed.runtime.observe_input_while_blocked(malformed.frame,malformed.backend(),[&]() noexcept {++malformed_checks;return true;}));
+     C(malformed_checks==0&&!malformed.published_hold&&!malformed.runtime.state().future_known);
+ }
++void unheld_input_order_cases(){
++    static std::uint64_t expected_input_ms{};
++    for(unsigned variant=0;variant<8;++variant){
++        ++cases;Host h;h.baseline();h.press();h.event(0);
++        const auto original_created=h.events.back().created_ms;
++        const auto full_reads=h.inventory_calls;
++        expected_input_ms=h.ms;
++        auto backend=h.backend();
++        backend.next=[](void* p,wh::Frame const& f,std::uint64_t& cursor,gw::EquipmentIntentEvent& event) noexcept {
++            C(Host::host(p).ms==expected_input_ms);
++            return Host::next(p,f,cursor,event);
++        };
++        h.age_at=Callback::inventory;
++        h.delay_ms=variant==0?0:variant==1?20:variant==2?60:variant==3?101:10;
++        if(variant==4)h.inventory_ok=false;
++        if(variant==5)h.game.pawn+=8;
++        if(variant==6)h.invalidate_at=Callback::inventory;
++        if(variant==7)h.identify_ok=false;
++        const auto out=h.runtime.tick(h.frame,backend,h.model);
++        C(h.inventory_calls==full_reads+1&&h.held_inventory_calls==0);
++        C(h.events.back().created_ms==original_created&&!h.runtime.state().future_known);
++        if(variant<3)C(out.status==er::Status::held&&h.model.held()&&h.hold_calls==1);
++        else {C(!h.model.held()&&!h.published_hold&&h.hold_calls==0&&h.switch_calls==0);
++            h.age_at=h.invalidate_at=Callback::none;h.current_ok=h.inventory_ok=h.identify_ok=true;
++            h.game.pawn=h.frame.pawn.address;h.advance();h.tick();
++            C(!h.model.held()&&!h.published_hold); // No retained local event replay.
++        }
++    }
++}
+ int main(){
++    unheld_input_order_cases();
+     baseline_cases();press_cases();future_cases();event_rejections();source_cases();boundary_cases();
+     decision_cases();observe_cases();final_checks();integrated_stow_cases();
+     blocked_input_cases();index_acquisition_cases();

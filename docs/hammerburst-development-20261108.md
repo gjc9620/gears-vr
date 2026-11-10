@@ -581,3 +581,15 @@ same-burst-completion-r1 preparedf04504cd、PG86dc3b36/Native806dcbd6，入口�
 
 运行入口29256终止0只是生命周期正常，操作者失败；Native/入口/输入/XR/launcher正常收尾，十原件SHA全恢复，共享锁已释放。27份原文本/sidecar、PG日志、动作记录及停止capture独立保存；编码93073终止0。一页完整paired overview及6张事件QPC前中后原图亲审，近脸/右眼遮挡持续；simulator00575右眼出现大片白色几何，作为未接受视觉缺陷保留，不推断根因。旧媒体清理仍未执行。空匣/换弹/回射与完整视觉接受仍未完成。下一次仅带本次窄修复继续受控验证，先核对取消后弹药与射线是否一致。
 
+## 2026-11-10 game55756：未持枪按压读取晚于库存观察，提前同帧读取已编译
+
+retained-timer-r1 prepareddcefb581/PG714db1bf/Native806dcbd6，入口计划5b771360保存后实际game55756 creation134387753202710275。肩取未取得held receipt即操作者失败，0条实际射线；没有练到旧timer拦截修复，更未到耗尽/换弹/回射。wrapper38445终止0仅代表正常生命周期，Native/入口/输入/XR/launcher正常结束，十原件SHA恢复全通过，共享锁释放。27份原文本/sidecar、动作记录、PG日志独立归档，停止capture独立硬链接保存；编码62983终止0，一页完整paired overview及6张失败前中后原图亲审。右手靠近右肩/头侧并返回，未见持枪/火光，不能称为取枪或手型通过。旧媒体保留清理仍未执行。
+
+实际frame103 input_gap=producer_sync_gap，前后选中原sync间隔112.3757ms，读取时最新样本57.5027ms、实际记录按压121.0891ms；原Frame.now到读取38.7007ms。当前源码对未持枪输入先做完整库存观察、后调用next；原有持枪路径已提前采样。不能仅凭这些数值把38.7007ms全部归于库存，但该顺序确实会消耗按压的100ms解码有效期。更早frame35的failure8并非该按压失败证据，独立保留。
+
+窄改Runtime：未持枪和持枪都在同一同步tick的库存工作前采样现有输入，随后只消费这一次局部结果；pending/future路径保持原处理。原完整库存/身份/附件/当前Frame/250ms原事件/提交检查不变，任何失败仍丢弃局部结果；不保存、重放或续期按压。现有只读简化库存路径仍仅用于原先已发布持枪的quiet状态，不拿它替代未持枪的完整库存或改变idle视觉条件。
+
+从实际冻结父源复制，只改Runtime头和私有测试2文件；未覆盖root共享测试中的他人修改。新增8场景在旧顺序先明确触发输入时钟断言失败；新顺序下实际Runtime/模型共128场景1639检查通过。覆盖不同库存耗时、过期、库存拒绝、身份变化、当前性丢失和目标识别失败，保留完整库存调用、原创建时刻、失败无动作且后续无局部事件重放。私有测试差异保存在docs/hammerburst-unheld-input-order-tests.patch。完整PG编译exit0，DLLae1f81c5100411aebb60c7378816771cc91403847bf5081664e3bd1eaa4124f0；尚未进游戏，不能称取枪失败已修复。
+
+证据analysis/hammerburst-20261108/runtime-55756-first-failure-analysis.json、runtime-55756-evidence/与unheld-input-order-isolated-r1/result.json。下一轮仅带提前读取改动继续原完整流程，同时保留旧timer拦截修复及其实际取消分支尚未验证的状态；全枪目标仍未完成。
+
