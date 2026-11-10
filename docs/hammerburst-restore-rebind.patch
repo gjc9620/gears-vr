@@ -1,0 +1,60 @@
+--- a/tools/playground/weapon_hammerburst_runtime.inl
++++ b/tools/playground/weapon_hammerburst_runtime.inl
+@@ -49,6 +49,7 @@
+ std::int64_t last_latch_seek_elapsed_ns{};
+ double angle{};
+ bool released{},switch_requested{},native_exited{};
++bool restore_display_ready{};
+ unsigned open_pose_reads{},open_stable_reads{},feed_failure{};
+ double last_open_observed{};
+ std::int64_t geometry_retry_ns{};
+@@ -92,6 +93,13 @@
+         nativelancerfollow::bound_session==f.stereo.session&&nativelancerfollow::bound_space==f.stereo.space_epoch&&
+         nativelancerfollow::bound_input==f.controllers.input_epoch&&
+         nativelancerfollow::bound_reference==f.reference_generation&&nativelancerfollow::bound_world==f.key.world_generation;
++}
++bool fresh_restore_main(hand::Frame const& f) noexcept {
++    const auto now=weaponhand::clock_ns(nullptr);
++    return now>=f.now_ns&&now-f.now_ns<=100000000&&f.controllers.sync_ns>0&&
++        now>=f.controllers.sync_ns&&now-f.controllers.sync_ns<=100000000&&
++        gears_vr::controller_pose_usable(f.controllers.hands[1].grip,f.controllers.hands[1].grip_flags,f.controllers.hands[1].grip_active)&&
++        hand::frame_active(f,now)&&nativeequipment::current(nullptr,f);
+ }
+ // All relative measurements use the same two raw tracked grips and the same
+ // fixed gun mount. They do not depend on a later render/Scene publication.
+@@ -218,6 +226,7 @@
+ }
+ void reset(bool preserve_geometry=false) noexcept {
+     restoration_admission::cancel();
++    restore_display_ready=false;
+     const bool release_outstanding=stage!=Stage::parked;
+     stage=Stage::idle;observer={};transaction={};writer={};opening={};completion={};reward={};
+     held={};serial=old_item=new_item=0;angle=0;released=switch_requested=native_exited=ui_pending=false;
+@@ -249,6 +258,7 @@
+ }
+ #include "weapon_hammerburst_reload_park.inl"
+ #include "weapon_hammerburst_restore_admission.inl"
++#include "weapon_hammerburst_restore_rebind.inl"
+ #include "weapon_hammerburst_latch_history.inl"
+ bool hand_sample(hand::Frame const& f,gears_weapon::HammerburstLatchSample& out) noexcept {
+     P left{};if(!local_hand(f,left))return false;
+@@ -521,7 +531,18 @@
+     }
+     if(stage==Stage::parked){
+         if(lancerreload_runtime::weapon_retired(opening.identity.weapon)){reset();return false;}
+-        return uptr(vrequip::model.held_weapon())==opening.identity.weapon.address;
++        if(uptr(vrequip::model.held_weapon())!=opening.identity.weapon.address)return false;
++        hand::Frame resumed{};hand::GripGameState resumed_game{};hand::Decision resumed_decision{};
++        if(weaponhand::client.copy_frame_on_gt(resumed,resumed_game,resumed_decision)&&resumed.controller.address==pc&&
++           resumed_game.known&&resumed_game.main_hand_held&&!resumed_game.busy&&!resumed_game.animation_owns_hands)
++            restore_control::rebind(resumed);
++        return true; // No hand action or display mutation on the rebind frame.
++    }
++    if(stage==Stage::restoring){
++        if(lancerreload_runtime::weapon_retired(opening.identity.weapon)){cleanup(__LINE__);return true;}
++        // Display restoration and fresh-intent resume are separate phases.
++        // Do not fall through to live-native UI or old hand actions here.
++        return true;
+     }
+     if(switch_requested){
+         if(stage!=Stage::idle&&(!park_control::enabled()||(!park_control::begin()&&stage!=Stage::parking)))cleanup(__LINE__);

@@ -194,5 +194,15 @@
     "name": "hammerburst-prepared-20261110-unheld-input-r1",
     "prepared_sha256": "76a2ae8cc56e4165b77ca5d17a9e6469ff66323e917be5a8b46da44df4f0bb58"
   },
-  "development_snapshot": "restore-admission-r3 (restoration dispatch missing, default off; not runtime eligible)"
+  "development_snapshot": {
+    "name": "restore-rebind-r1",
+    "prepared_sha256": "4f4d7ccfcc65e28e6e0a07d5656dcb8ffe1b1e0785c040e8c392daf5649d5af6",
+    "full_playground_compiled": true,
+    "runtime_ready": false,
+    "default_enabled": false,
+    "selected_for_game": false,
+    "restoration_rebind_integrated": true,
+    "restoration_display_integrated": false,
+    "fresh_intent_resume_integrated": false
+  }
 }
