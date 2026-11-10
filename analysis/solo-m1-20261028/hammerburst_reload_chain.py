@@ -19,6 +19,36 @@ def verify_empty_original_begin(begin_rows,transition):
     assert int(accepted.get('accepted_ms','0'))>0 and float(accepted.get('game_start','0'))>0
     return dict(transition=transition,original_acceptance=accepted)
 
+def observe_return_burst(c, after, shot_start, deadline, rejection_offsets, data, save,
+                         *, clock=time.monotonic, sleep=time.sleep):
+    """Observe the same already pressed burst; no input or deadline renewal."""
+    expected=min(6,int(after['loaded']))
+    assert expected>0,'No loaded ammunition for authoritative return-fire'
+    previous=after['loaded']
+    while True:
+        c.live()
+        shots=c.records('native_lancer_shot_trajectory')[shot_start:]
+        assert shots and len(shots)<=expected and all(
+            r.get('trace_valid')=='1' and r.get('trace_source_consistent')=='1' and
+            r.get('write_source_consistent')=='1' for r in shots),'Invalid authoritative return-fire'
+        current=counts(c,'hb_original_after_return_fire')
+        data['shots']=shots;data['after_return_fire']=current
+        data.setdefault('return_fire_observations',[]).append(dict(counts=current,exported_rays=len(shots)))
+        save()
+        assert all(after[k]==current[k] for k in ('capacity','reserve','infinite_reserve'))
+        spent=after['loaded']-current['loaded']
+        assert current['loaded']<=previous and 0<=spent<=expected,'Unexpected return-fire inventory progress'
+        previous=current['loaded']
+        assert clock()<=deadline,'Original return burst observation exceeded existing reload deadline'
+        if spent==expected and len(shots)==expected:return shots,current
+        for prefix,offset in rejection_offsets.items():
+            assert not any(0<int(r.get('count',0))<6 for r in c.records(prefix)[offset:]),\
+                'Original return burst explicitly rejected; stop without retry'
+        remaining=deadline-clock()
+        assert remaining>0,'Original return burst did not complete within existing reload deadline'
+        sleep(min(.1,remaining))
+        assert clock()<=deadline,'Original return burst exceeded existing reload deadline'
+
 def run(c, *, empty_supply_only=False, require_empty_original_begin=False):
     g=c.g; saved=dict(g.poses[0]); levels=dict(trigger=0,squeeze=0)
     data=dict(game=g.game,checks={},phases=[],observations=[],gameplay_setters=False,
@@ -191,11 +221,12 @@ def run(c, *, empty_supply_only=False, require_empty_original_begin=False):
             save();assert data['checks']['original_rounds_preserved'],('Original return changed inventory',before,after)
         phase('original_return_authoritative_fire');command(saved,False)
         shot_start=len(c.records('native_lancer_shot_trajectory'))
+        rejection_offsets={p:len(c.records(p)) for p in (
+            'native_hammerburst_continuation_rejected','native_hammerburst_release_rejected',
+            'native_hammerburst_owned_timer_blocked')}
         g.pad(1,wait=.35,trigger=1);g.pad(1,wait=.6)
-        shots=c.records('native_lancer_shot_trajectory')[shot_start:];data['shots']=shots
-        assert shots and all(r.get('trace_valid')=='1' and r.get('trace_source_consistent')=='1' and
-                            r.get('write_source_consistent')=='1' for r in shots),'No authoritative return-fire'
-        after_fire=counts(c,'hb_original_after_return_fire');data['after_return_fire']=after_fire
+        # Reuse the existing closure/completion deadline, not a new wait budget.
+        shots,after_fire=observe_return_burst(c,after,shot_start,deadline,rejection_offsets,data,save)
         data['checks']['return_fire_actual_ammo_matches_traces']=(
             after['loaded']-after_fire['loaded']==len(shots) and
             all(after[k]==after_fire[k] for k in ('capacity','reserve','infinite_reserve')))

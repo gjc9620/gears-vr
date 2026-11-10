@@ -593,3 +593,15 @@ retained-timer-r1 prepareddcefb581/PG714db1bf/Native806dcbd6，入口计划5b771
 
 证据analysis/hammerburst-20261108/runtime-55756-first-failure-analysis.json、runtime-55756-evidence/与unheld-input-order-isolated-r1/result.json。下一轮仅带提前读取改动继续原完整流程，同时保留旧timer拦截修复及其实际取消分支尚未验证的状态；全枪目标仍未完成。
 
+## 2026-11-10 game56252：空仓机械闭环和六条回射已记录，最终库存采样过早
+
+unheld-input-r1 prepared76a2ae8c/PGae1f81c5/Native806dcbd6，fc2f21a7保存入口后实际game56252 creation134387765681624264。肩取、核心6发及12轮各6发真实耗弹72→0/reserve78通过；空仓真实扣扳机保持0/78、无新射线。实际原begin serial1、1→2→3→4→5→6→7，新匣入槽后78/0；首次实际使用原raw-history latch路径（gate8 used1，多组112/111ms跨段），随后7→8 angle0.00606436423，原reload_complete result2/78/0。此处不是逻辑阶段替代真实机构，现有实际原骨/写入ACK检查保持不变；不等于全表面贴合。
+
+回射driver仍在固定.35DOWN/.6UP结束即取首个样本：五条回射、typed73/0 observed87881907941200，因此外层期望72/0断言失败。随后第84条实际有效且来源一致的射线在87881923572500记录，即该次第六条回射晚15.6313ms。整局84条全部trace_valid/write_source_consistent/trace_source_consistent=1，没有HB continuation/release/frame-read拒绝，也没有owned_timer_blocked记录；旧timer修复的取消分支本轮仍未练到。没有新的typed最终72/0样本，不能追改原操作者exit1为通过。
+
+窄修复只在reload测试driver补入observe_return_burst：保持一次原按压，复用原closure/completion的8秒截止时刻，不新开或续期等待；要求准确min(6,loaded)实际射线及typed库存消耗同时到位，字段/有效来源全核。新拒绝、旧timer拦截、库存增加/异常、过量射线和超时立即失败；不发新输入，不补按、不改库存或生产保护。12组离线检查通过，覆盖射线/库存各自先到、延后第六条、明确拒绝、读取本身越过原期限和异常值；原10组耗弹检查也通过。实际源码及docs/hammerburst-return-burst-observation.patch保存这项差异，PG/Native无需重编。
+
+wrapper97983终止0仅生命周期正常，操作者48544=1。Native/入口/输入/XR/launcher正常退出、十原件SHA恢复全真、锁已释放。27份原文本/sidecar、PG与动作记录独立归档，停止capture硬链接保存；编码41651终止0。完整3页paired overview及原history-close/关闭后库存/第六条回射双路6原图亲审：机械变化与火光可见，但近脸/右眼枪体遮挡和掌指腕袖口贴合仍未接受；不能从图像代替最终72/0数值读数。旧媒体清理仍未执行。
+
+证据analysis/hammerburst-20261108/runtime-56252-first-failure-analysis.json、runtime-56252-evidence/、return-burst-observation-check.json。下一轮只带同一次回射观察修正重新读取最终准确库存，然后继续其余完整需求；不开新枪、不把本次阶段进展缩成全枪完成。
+
