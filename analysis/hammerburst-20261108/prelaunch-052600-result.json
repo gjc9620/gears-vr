@@ -1,0 +1,84 @@
+{
+  "instance": "hb-cloak-1111-052600",
+  "observed_ns": 131332581669300,
+  "wrapper_session": 34409,
+  "wrapper_terminal_exit": 1,
+  "game_identity": null,
+  "game_started_recorded": false,
+  "operator_started": false,
+  "first_failure": "Start-DebugGame.ps1 Find-GearsVrPython guard refused explicit interpreter before game_install/instance_policy/game creation; original probe failure cause not logged.",
+  "guard_log_exact": "GEARSVR_PYTHON is not a usable Python 3 executable; no game startup actions were taken.",
+  "ps1_sha256_at_observation": "6dd22653ff8831180cef28d51ac321735304dfed9cd5aabe8453ded015c8ff48",
+  "source_hash_is_not_launch_time_attestation": true,
+  "source_order": "Observed guard before $python assignment/PythonCheckOnly exit and all game startup commands; compatible with captured error at line48. No fabricated birth/game identity.",
+  "current_check_only_probe": {
+    "exit_code": 0,
+    "elapsed_seconds": 0.4604311,
+    "check_only": true,
+    "python": "C:/Users/11/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/python.exe",
+    "game_started": false,
+    "scope": "Single explicit -PythonCheckOnly check passed now; not original failure cause proof or repaired startup proof."
+  },
+  "cleanup": {
+    "stop_exit": 1,
+    "unresolved": true,
+    "done_receipt_exists": false,
+    "exact_worker_live": {
+      "pid": 53716,
+      "creation_time": 134388198120486950,
+      "image": "c:\\users\\11\\.cache\\codex-runtimes\\codex-primary-runtime\\dependencies\\python\\python.exe"
+    },
+    "owned_game_absent_verified": false,
+    "forced_termination": false,
+    "forged_birth": false
+  },
+  "verified_observed_text": [
+    {
+      "source": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\hb-cloak-1111-052600\\result.json",
+      "archive": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\prelaunch-052600-text\\result.json",
+      "sha256_of_observed_bytes": "78fa41957cc4e10801526d49b041957c478040f89cab54ca4d937074714b9834",
+      "mutable_snapshot": false
+    },
+    {
+      "source": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\hb-cloak-1111-052600\\launcher-session.json",
+      "archive": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\prelaunch-052600-text\\launcher-session.json",
+      "sha256_of_observed_bytes": "8587509dbd87eac84dd5c8e8cd3c52b994917fa473cfb07b21b93a3142e904ba",
+      "mutable_snapshot": false
+    },
+    {
+      "source": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\hb-cloak-1111-052600\\launcher-session.reserve.log",
+      "archive": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\prelaunch-052600-text\\launcher-session.reserve.log",
+      "sha256_of_observed_bytes": "6ad2331d052d5e5132a3d805a14d6068840b7b19f7ee19d6ab40c04a633c153c",
+      "mutable_snapshot": false
+    },
+    {
+      "source": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\hb-cloak-1111-052600\\isolated-worker.json",
+      "archive": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\prelaunch-052600-text\\isolated-worker.json",
+      "sha256_of_observed_bytes": "e09bedd686877f3cb7cc6e4f49477a366a3c5f8845343858ccd8b98b2f364ad3",
+      "mutable_snapshot": false
+    },
+    {
+      "source": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\hb-cloak-1111-052600\\isolated-cleanup-pending.json",
+      "archive": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\prelaunch-052600-text\\isolated-cleanup-pending.json",
+      "sha256_of_observed_bytes": "713f06c9899916f4a108c90829bdf28f3ff56459bd87ed790bfcb3722b7b5b4f",
+      "mutable_snapshot": true
+    }
+  ],
+  "actions_not_reached": [
+    "acquisition",
+    "first_fire",
+    "drain78",
+    "empty_veto",
+    "empty_reload",
+    "return_fire",
+    "pause"
+  ],
+  "media": {
+    "recording_started": false,
+    "frames": 0,
+    "encoded": false
+  },
+  "coordination": "Existing coordinator notified of exact prelaunch guard and permanent known.game None finally loop. No new helpers/chats/runtime, no shared edits by HB, no worker kill, no release of unknown resource reservation.",
+  "gameplay_accepted": false,
+  "full_goal_complete": false
+}

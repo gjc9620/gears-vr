@@ -540,3 +540,13 @@ actual exact-endpoint pickup与bound first-real-projection gate再次成功。�
 582帧errors空、encode0，亲看3页48paired全跨度及6个实际contact185/297/334/420/470/494。实际取枪/锁扣/弹匣手动作/暂停恢复可见，右眼近大枪、重影/穿插/副手张开和分离仍存在，指南细字可读性未验收；不是全部帧/全角度/五处皮肤贴合/头显通过。8份原文本SHA归档。输出runtime-22992-focused-result.json明确focused_actions_passed=true/full_goal_complete=false，旧latest failure21596保留，未把成功批次伪称failure。
 
 这次刻意focused-loaded-replacement，**未**做empty drain/零备弹、retained原匣复插、双手及护木四态、perfect cancel、tracking/switch/stowrestore或完整贴合。全13项audit已按实际局部结果更新，30%/publicv71/头显false不抬升为整项通过。下一步保存后新唯一实例跑原FULL empty路径（不传focused标记），验证78发耗尽/empty veto/empty换78/0/复射6typed72/0；首失败停止，不重复已通过的普通loaded聚焦路径。原其他未验收项继续保留。
+
+## FULL empty052600在Python预检拒绝，原wrapper结束但本方worker仍live
+
+上轮progress为实际22992普通loaded链通过/保存/发起FULL empty。续原exec34409确认terminal1，hb-cloak-1111-052600无game_identity、无birth、无operator/continuous session/录像/武器动作。reserve.log首故障Start-DebugGame.ps1:48明确GEARSVR_PYTHON not usable；原5秒probe失败原因未输出（timeout/exit/stdout/stderr均缺），不能断言解释器坏或是此前birth replace问题。资源只读4.547秒4次后原single start，启动不重试。
+
+wrapper stop1/cleanup_unresolved true，**不是**game absent或正常cleanup通过。读取原worker.json并用WindowsControl逐一核对，worker53716/creation134388198120486950 exact still live。isolated_sim.py finally在known.game=None时children固定unknownTrue，所以保守循环，不生成done并继续占资源；无按进程名杀/无强杀/无补造birth/无释放未知reservation。本方暂停新增runtime，旧139的no_birth未知不借本次日志一起洗白。
+
+只进行一次明确GEARSVR_PYTHON同一路径的Start-DebugGame.ps1 -PythonCheckOnly：exit0/0.4604311秒，返回相同解释器/check_only true；代码在该开关返回前不启动game。此当前正例不修复、不解释原失败，不作为重开旧实例的理由。已向既有协调会话发送原日志、exact live worker与prelaunch源码顺序，没创建helper/新chat，也没并行改共享文件。协调snapshot cursor07910094-1b3c-4665-8069-e920b2d0b42e:4显示其正在增加绑定本次attempt的预启动拒绝回执与Python probe具体诊断；仍不把普通缺birth当作无game，尚未收到完成/收尾结果。
+
+prelaunch-052600-result.json和5份原观察文本保留；cleanup-pending标为mutable observed-byte snapshot，未把它当静态原件或已终态。本次Start-DebugGame源码SHA仅observation-time，不伪称launch-time证明。完整13项audit明确full empty未执行；22992的12射线/ordinary replace/pause局部通过保留，empty/retained/four-state/其他interruptions/fit/headset仍开。下一步跟踪本方exact worker与协调修复，正常收尾确认前不新增测试、不重用052600。目标active，30%/publicv71不变。
