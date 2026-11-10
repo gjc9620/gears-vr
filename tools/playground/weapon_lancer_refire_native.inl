@@ -254,7 +254,7 @@ bool capture_initial(uptr object,uptr function,void const* parameters) noexcept 
 // consumes this event invocation, not the original recurring timer.
 bool defer(uptr object,uptr function) noexcept {
 #if defined(GEARS_PLAYGROUND_HB_FINITE_BURST) && GEARS_PLAYGROUND_HB_FINITE_BURST
-    if(hammerburst_burst_event::targets(object)&&hammerburst_burst_event::defer(object,function))return true;
+    if(hammerburst_burst_event::defer(object,function))return true;
 #endif
     if(vrfire::mode.load(std::memory_order_acquire)!=vrfire::running||
        !unified_weapon_fire::manual_profile()||!vrfire::input.owns_press()||

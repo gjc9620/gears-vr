@@ -276,13 +276,27 @@ bool ended(meta::Reader& r) noexcept {
         meta::fresh_name(r.result.names,current.index,text)&&meta::exact_text(text,L"BurstDelaying");
 }
 bool defer(std::uint64_t object,std::uint64_t function) noexcept {
-    if(!targets(object)||function!=tx::certificate.timer.address||!outstanding()||common::delivering||
+    if(!tx::certificate.known||object!=tx::certificate.held.weapon.address||
+       function!=tx::certificate.timer.address||!outstanding()||common::delivering||
        !weaponhand::current_gt(nullptr))return false;
     struct Recursion {bool before{inside};Recursion(){inside=true;}~Recursion(){inside=before;}} recursion;
     weapon_metadata_parse::TickScope parsing;
     meta::Snapshot schema{};schema.module_base=base;meta::Reader r{schema,meta::Stage::final_check};unsigned reason{};
     if(!meta::tables(base,schema.objects,schema.names)||!weaponhand::object(r,tx::certificate.held.weapon)||
        !weaponhand::object(r,tx::certificate.timer)){tx::revoke();return false;}
+    // The live binding can disappear before normal cancellation discharges
+    // this ORIGINAL firing-state debt. Losing permission to dispatch must not
+    // release its still-authenticated timer to stock unscoped firing. Retain
+    // interception only: no event capture, source, engine call or ammo change.
+    // Registration/source loss still cannot authorize dispatch through context.
+    if(!targets(object)){
+        tx::revoke();static unsigned reports{};
+        if(log_file&&reports++<8){
+            fwprintf(log_file,L"native_hammerburst_owned_timer_blocked object=%llx function=%llx count=%u no_dispatch=1\n",
+                object,function,tx::completion.count());fflush(log_file);
+        }
+        return true;
+    }
     if(vrfire::mode.load(std::memory_order_acquire)!=vrfire::running||tx::cancel_requested){tx::revoke();return true;}
     if(!context(r)||!state_firing(r)||
        !common::hammerburst_refire::original_loop(r,object,function,reason)){tx::revoke();return true;}

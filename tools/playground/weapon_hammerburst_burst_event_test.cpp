@@ -148,6 +148,35 @@ void actual_first(gears_weapon_hand::Frame const& f,bool tracking_only=false){
 }
 int main(){
     using namespace fixture;unsigned checks{};
+    {reset_event();auto f=active_frame();actual_first(f);
+        const auto retained=weaponhand::held_binding;const auto calls=event_fixture::invocations;
+        weaponhand::held_binding={};model.hold=false; // Fixture's same_hold witness.
+        assert(!adapter::targets(f.weapon.address));
+        // Lost live holding must forbid dispatch WITHOUT releasing the owed
+        // original timer back to stock, where it can spend untraced ammo.
+        assert(adapter::defer(f.weapon.address,address(hb_timer)));
+        assert(bridge::cancel_requested&&event_fixture::invocations==calls&&model.ammo_used==1);
+        const auto serial=adapter::event_serial;
+        for(unsigned repeat=0;repeat<3;++repeat)assert(adapter::defer(f.weapon.address,address(hb_timer)));
+        assert(adapter::event_serial==serial&&lancerrefire::pending_fire.event.empty());
+        assert(!adapter::defer(f.weapon.address+8,address(hb_timer)));
+        assert(!adapter::defer(f.weapon.address,address(engine_timer)));
+        weaponhand::held_binding=retained;model.hold=true;model.r2=false;model.bytes[0]=0;model.owned_press=false;
+        assert(adapter::release_completed(nullptr)&&!adapter::outstanding());checks+=10;
+    }
+    for(unsigned invalid=0;invalid<6;++invalid){
+        reset_event();auto f=active_frame();actual_first(f);model.hold=false;
+        const auto calls=event_fixture::invocations;
+        if(invalid==0)model.gt=false;
+        if(invalid==1)model.registration=false;
+        if(invalid==2)model.objects=false;
+        if(invalid==3)lancerrefire::delivering=true;
+        if(invalid==4)bridge::certificate.known=false;
+        if(invalid==5){bridge::completion={};bridge::first_debt=bridge::firing_debt=bridge::cancel_requested=false;}
+        assert(adapter::defer(f.weapon.address,address(hb_timer))==(invalid==1));
+        if(invalid==1)assert(bridge::cancel_requested); // Registration loss grants no stock fallback.
+        assert(event_fixture::invocations==calls&&model.ammo_used==1);checks+=2;
+    }
     {reset_event();auto f=active_frame();captured_first(f);assert(adapter::service(f.controller.address));muzzle(f);
         unified_weapon_fire::muzzle_sample.render_acquisition_ns=0;
         adapter::deliver(f);assert(event_fixture::invocations==1&&bridge::completion.count()==1);

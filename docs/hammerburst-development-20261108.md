@@ -567,3 +567,17 @@ wrapper36320终止0，操作者54992=1；原Native/入口/输入/XR/launcher正�
 
 证据analysis/hammerburst-20261108/runtime-40928-first-failure-analysis.json、runtime-40928-evidence/、same-burst-completion-check.json和supply-driver-check.json。下一步冻结仅此driver等待修正后继续同一完整空仓换弹链；51936真正过期失败仍单独保留，完整开发目标未完成。
 
+## 2026-11-10 game57052：明确拒绝即止步，修复持枪关联丢失后的原定时器漏拦截
+
+same-burst-completion-r1 preparedf04504cd、PG86dc3b36/Native806dcbd6，入口与冻结计划在51ef8bf9保存；公共锁等待后实际运行game57052 creation134387740078685230。核心6发与第一轮耗弹6发通过。第二轮frame249装备copy已拿到当前源，随后held_chain_observation返回unavailable，当前持枪关联清空；R2无当前帧触发release gate1与count2取消。新driver遇明确拒绝立即停止，没有把取消当作可继续等待，更无补按。
+
+本轮仅14条实际有效/写入来源一致/射线来源一致的导出射线，最后typed loaded61/reserve78，即库存累计使用17发，存在3发未解释差额，必须保留为失败。较早frame63确有stale_before：commit_check_input_age_ns96280400加since_commit_check_ns4159300等于input_age_ns100439700；它属于先前启动阶段，不得当成frame249的因果证据。frame265后另采到装备工作81.5161ms，但不是frame249精确分段证明。不得把全部差额或全部少发归因于已知输入年龄。
+
+源码追查发现具体缺口：公共refire路由先要求HB targets匹配当前held_binding，HB defer自身也要求相同；一旦当前关联清空，仍欠正常清理的原RefireCheckTimer会返回false，可能落回stock、脱离本次来源一致射线适配。用实际事件适配器fixture将same_hold见证置false后，新回归在旧defer处明确失败；初次仅清空假binding不会改变fixture固定的same_hold，已纠正fixture后才采用该复现，不把第一次断言错误当作产品证据。
+
+窄修复：公共路由始终让HB适配器先判断；适配器仅对已认证证书、准确武器地址、准确原timer地址、未清债务、原GT、当前对象/函数身份仍通过的回调保留拦截。当前held关联失效时只撤销并消费这个原回调，不捕获新事件、不执行引擎调用、不写弹药/计数器/定时器，不提供新Frame或开火权限；原上下文/注册/时效/20ms/250ms验证仍约束任何实际派发。不同对象/函数、无欠债、非原GT等保持不误拦；注册失效不允许该旧债回落stock。最多8条owned_timer_blocked记录用于之后确认实际分支是否练到。
+
+独立副本相对本轮冻结源仅事件适配、公共路由和事件测试3文件变化，完整PG编译exit0，最终DLL714db1bfd2f62ba090e93a2edd1d45eefd462de58d591b7b667263492dd1ff18；冻结副本实际事件适配280项fake检查exit0，包括丢关联、重复旧回调不建新事件、错误对象/函数、注册丢失、无债、同GT正常清理与既有连发路径。证据analysis/hammerburst-20261108/retained-refire-target-isolated-r1/result.json及retained-refire-target-check/frozen-result.log。此修复尚未进游戏，不声称实际3发差额已解决，也没有修复导致持枪库存观察失效的耗时链。
+
+运行入口29256终止0只是生命周期正常，操作者失败；Native/入口/输入/XR/launcher正常收尾，十原件SHA全恢复，共享锁已释放。27份原文本/sidecar、PG日志、动作记录及停止capture独立保存；编码93073终止0。一页完整paired overview及6张事件QPC前中后原图亲审，近脸/右眼遮挡持续；simulator00575右眼出现大片白色几何，作为未接受视觉缺陷保留，不推断根因。旧媒体清理仍未执行。空匣/换弹/回射与完整视觉接受仍未完成。下一次仅带本次窄修复继续受控验证，先核对取消后弹药与射线是否一致。
+
