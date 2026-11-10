@@ -1,0 +1,23 @@
+{
+  "scope": "New shared startup cleanup source reviewed before any launch",
+  "source_hashes": {
+    "tools/debug-launch/Start-DebugGame.ps1": "b131810bfa1af9cc66c5e3ae7b9d118627bc9e9c0e1d908134a4dbf49d15267c",
+    "tools/vr-launcher/launcher.py": "f8df6dd59e0d950c48e33a303a79c54e233f63815199d6eb9a771fbd97f22896",
+    "tools/multi-instance/isolated_sim.py": "7e630461b584319d1d51991bbc0b7025324c78ad4a0d59a7a4a18162b618eaa8",
+    "tools/multi-instance/runtime_receipts.py": "385f5e5a8989a20e71906dc0f259196045c3648b57fb1e2477510622b5f1eee3"
+  },
+  "evidence": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\coordinator-multi-20261110\\python-prelaunch-rejection-20261111.json",
+  "evidence_sha256": "b22b838746451e1a24a759fb86c15fd246aa05d4af48e574bd672ee96d7e4759",
+  "shared_admission_reverse_to_previous_exact_hash": true,
+  "resource_identity_and_wait_code_unchanged": true,
+  "reused_recorded_shared_checks": {
+    "python_discovery_readonly": 5,
+    "launcher_offline": 81,
+    "runtime_receipts_offline": 15,
+    "python_parse": true
+  },
+  "new_game_started": false,
+  "retired_prepared_only_instance": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\cover-1111-r159-cloak-schema",
+  "old_prepared_hashes_modified": false,
+  "next_fresh_preparation_source_count": 13
+}

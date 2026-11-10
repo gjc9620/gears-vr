@@ -2453,3 +2453,9 @@ actual冻结r156对照与新两文件覆盖均通过同一focused738检查（包
 Native58c2fe1d9fa2a108010f33008278060f9ad3a2ccde53d3d87f3e27c829680c7f编译链接0；exact r156冻结树仅cover_physics_roles_live.inl和cover_collider_roles_live.inl两运行文件delta，409项目依赖、外部worktree0、GEARS flags保持。delta.patch/verification.json核对完整关闭和动态调用；prepare新增--native-r158认证精确delta/flags/构建状态，后续启动来源含launch_reserve在内11项绑定。源、对照、测试依赖与构建记录在schema-repeat-r158。本条仅源码/离线/编译，未准备或启动新实例，不替换publicv71和固定入口。
 
 下一步Git保存后准备新私有实例，做一次原CT2/同query实际拒绝或原调用及画面检查，保留r155/r157年龄失败；不刷新旧样本、不放宽年龄、不原样重跑r157。完整CV01–24/AC01–22仍开放，工程25%、实体头显未验收，目标active。
+
+### r159仅准备与共享预启动正证更新核对
+
+r159准备时绑定到新的isolated_sim/runtime_receipts SHA7e630461…eaa8/385f5e5a…eee3；启动前发现变化并停止进入启动步骤。核对python-prelaunch-rejection-20261111.json四项实际源SHA，且把当前两个共享工具中仅有的新typed prelaunch cleanup分支反向移除后，恢复到此前e6b4a0ae/7db0a084精确哈希，证明原准入/等待/资源/身份代码未改。launcher/Start-DebugGame的新正证须exact receipt路径、脚本SHA、三种attempt均false、出生回执不存在；worker仅在exact自有launcher退出后采用，不伪造game identity或owned_game_absent，旧worker不热更新。不回复/转发，不启动额外检查游戏；复用来源记录的5/81/15离线结果，未称本方重新执行。
+
+r159无claim/start-request/worker/index，原准备记录不改、不复用此名；下一新实例将launcher.py和Start-DebugGame.ps1补为第12/13项启动绑定，另仍绑定共享两个准入工具SHA。详情schema-repeat-r158/shared-startup-review.json。Native58c2fe1d候选仍未运行，完整目标active。
