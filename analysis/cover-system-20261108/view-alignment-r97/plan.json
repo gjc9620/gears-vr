@@ -1,0 +1,60 @@
+{
+  "interpreter": "C:\\Users\\11\\.cache\\codex-runtimes\\codex-primary-runtime\\dependencies\\python\\python.exe",
+  "interpreter_sha256": "3c48fbdcc2ed5c55290e39bef50bd6b1da76f43f3069a4a2624d0b8876a605f5",
+  "original_five": {
+    "prepared": {
+      "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\solo-m1-20261028\\equipment-controls-prepared-20261110-cover-eye-r80\\prepared.json",
+      "sha256": "0905884d8c7145528598b404e4d31e2f49d0b84e1a5e9cdf1f20e9c587b071b9"
+    },
+    "plan": {
+      "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\solo-m1-20261028\\cover-eye-r80-plan.json",
+      "sha256": "b4f0155935a958e555520ec3a6a72992b8a619557487e1eb017b206c1e35aa83"
+    },
+    "ready": {
+      "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\solo-m1-20261028\\equipment-controls-prepared-20261110-cover-eye-r80\\runtime-ready.json",
+      "sha256": "62b5e59027c852c8d22c21dbd64d68b0b53f46fea7eeac9b514c1e7875e0b4c0"
+    },
+    "entry": {
+      "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\solo-m1-20261028\\run_cover_eye_r80.py",
+      "sha256": "6709dc5681294dd34c2a26c2e5fa549838be0be0238d4f519e980ed80f91239e"
+    },
+    "dependencies": {
+      "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\solo-m1-20261028\\equipment-controls-prepared-20261110-cover-eye-r80\\runtime\\dependencies.json",
+      "sha256": "ff5bd4b7a22a165acafa171de358a18a19bda7fb9e01854e49878e043169c32b"
+    }
+  },
+  "source_sha256": {
+    "analysis\\cover-system-20261108\\view-alignment-r97\\run_cover_eye_independent.py": "85f1e7af6ff1c138519563d5df4278325a5a42f26fc5a6ce68ce7dc1cc718cc0",
+    "analysis\\cover-system-20261108\\view-alignment-r97\\cover_observation_runtime.py": "f99803d4c8af70e37e9d2143a375e2b6c6271137a990310ab05f3f50ede9c118",
+    "analysis\\cover-system-20261108\\view-alignment-r97\\inner.py": "f6584e37f0e53e3c1669464eaebb6d190c6879cef2df9b7e8435b1be0f899998",
+    "analysis\\cover-system-20261108\\view-alignment-r97\\stage.py": "d91b447e23294786972e9ed529f74b69286f7ef859d30bc15fd859bcc1a60988",
+    "analysis\\cover-system-20261108\\view-alignment-r97\\prepare_entry.py": "e3c4b78685e34acd036999651fb5dd9e63c3dea04ea320f66c4a463c21ac38d5",
+    "tools\\game-playtest\\cover_launch_preflight.py": "3c0ff7004cd254ba3eecf30c02045711f503e8ae997d2e6ac3b42ba392eebd99",
+    "tools\\game-playtest\\cover_observation_baseline.py": "339e913c81ba724154722f5556a8e94f35185fefb11820343f34db4712cae496",
+    "tools\\debug-launch\\runtime_stage_guard.py": "5d39e58434edd4031fa40c5f5bb53c31a42c8f6b8a767bd0e0d3261c88d6a54a",
+    "analysis\\cover-system-20261108\\view-alignment-r97\\run_cover_eye_approach_operator.py": "8b3f4fa4af04e18d3797cbafe7def6002d0a72e58795622b5eb7f872af1eb836",
+    "tools\\game-playtest\\cover_ordinary_approach.py": "62eb6fdbebcc38e51fb59781a97e103351af7bb5c774aa50aabbafdf1c09229f"
+  },
+  "game_path": "J:\\gearsVr\\Gears.of.War.Reloaded.v1.0.1.3816947-P2P\\Gears of War Reloaded\\Binaries_x64\\GOWDE-Steam.exe",
+  "build_sha256": {
+    "native": "8035bf35049efe954f80c6947ce582281d5f576d62a812a1c1bd12964404cfb4",
+    "playground": "f8e6f3c2715b244e8250976c3eb1279cb306c2a50576e078f64bf8b23daf4807",
+    "sim_xr": "16840b27dc40ebb489f93121758cb7bc0daa2700df046e508babbd50c578a7fc",
+    "eye_inspector": "0e63a70741088529ddc45623f23eb9fad4196100f79a90ab4a788ef843960a81"
+  },
+  "public_read_only": "J:\\gearsVr\\candidates\\6dof-unified\\candidate-state.json",
+  "policy": "Independent module; coordinate only actual launch. Existing launcher mutex, real occupancy, own fresh baseline and immediate restore.",
+  "material_change": "Cover-specific ordinary approach keeps responding .62 amplitude and brakes with .04s pulses instead of .22 amplitude; arrival35, stall3, step42 and original input/identity protections retained. Actual operator failure is reported independently of normal cleanup.",
+  "startup_source": "Sealed r80 driver-source copy, not the independently updated shared run_v63_startup_repro.py",
+  "query_grab_or_weapon_actions_added": false,
+  "original_r80_claim_consumed": false,
+  "complete_goal": false,
+  "gameplay_accepted": false,
+  "outstanding_restoration": {
+    "baseline": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\gnasher-development-20261109\\independent-sg35-r2-owned-run\\baseline.json",
+    "baseline_sha256": "e224c804dc51506b2b81dd3cf1c23a97e8b29db6c4ea85080d5907a382f2f2e1",
+    "claim": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\gnasher-development-20261109\\claims\\equipment-controls-prepared-20261110-gnasher-sg35-readiness-r2.json",
+    "claim_sha256": "8f91eb419cc5a218b6fb356b01f6323253c58278136dc7827153e79c3aa02db7",
+    "receipt": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\gnasher-development-20261109\\independent-sg35-r2-owned-run\\recovery-restoration.json"
+  }
+}

@@ -1765,3 +1765,18 @@ r95已保存177988c8，属于进展。本轮将只读实际占用检查接入独
 隔离眼点bin983368bytes已保存SHA57ebd97320dc5b69205363140d66fd680f3a7828b41fc635c2bbc4d682662e2b，原inspector实际0：61行／61eligible／0numeric_mismatch／0overflow；仅CPU callback读取，未进入掩体五相位，不是GPU／双眼／碰撞／肩身遮挡验收。双路recorder0、encode0，完整1overview及4实际raw亲看：启动waiting card、非掩体自由手双眼场景及正常停止末帧保留；不以最后黑帧判断新渲染根因。game285帧17.216s，simulator343帧16.150s；game有2.25s捕获空隙，simulator尾覆盖差1.05s，both_lanes_cover_end_within_500ms=false，不能称完整行动双路覆盖。
 
 retention实际调用被随后另一活动game55436／XR34068阻止，结果deferred且未删媒体；本会话所有运行及编码均终态，不持有共享使用权，不监控或停止他人游戏。证据runtime/closeout-review.json、原失败动作／cover-boundary、eye-inspection、paired视频和retention记录。r96已consume，不再运行或重新prepare；r80原五件与claim保持。下一动作聚焦普通掩体接近停滞及有效入掩体，确认未完共享恢复后才另建有实质修复的新尝试；先完整逻辑，后体验，再GrabPose。publicv71、r93产品Native、CV01–24／AC01–22、25%和目标active不变。
+
+
+## 2026年11月10日 r97原版接近停滞定向调整
+
+上一轮71bd7c54保存56276真实首败及正常撤回，属于进展。本轮以原motion及输入timeline核实：0.62幅度产生58.60units位移，随后0.22输入对应位置连续不变。尚无游戏死区读取或完整碰撞证据，根因仍未证明，不宣称已修复deadzone／墙体。新增掩体专用cover_ordinary_approach.py，使用实际曾有响应的0.62幅度，近处将平台保持缩短到0.04s作刹停；仍走原ctx.stick平滑Source1发布与live／Pawn／Controller／World身份，不修改其他武器共用navigate、任何原版输入消费或碰撞。
+
+35units到达标准、连续3次停滞拒绝、42步总上限保持；实际位置才决定到达，不能靠请求或时间宣布成功。5项离线检查实际0：重放56276停滞位置仍拒绝，所有发出输入均0.62／近处0.04s；覆盖实际到达、原Player yaw轴映射、慢进展不能绕过总步数、NaN／Inf及放宽到达距离拒绝。该检查不运行游戏，不证明新输入将通过真实碰撞或进入掩体。
+
+建立独立view-alignment-r97入口、cover专用operator及元数据；r96已消费源码／claim／原失败保持，不重跑。实际新operator只将cover_boundary中一次ctx.navigate换成本次模块，其余候选选择、原A、身份认证及五相位观察保持。原r80 Native8035、PG／XR、9271依赖与363原驱动仍绑定；共享启动脚本继续采用已封存3f297b3d副本，不混其他会话新改动。完整派生函数离线构建／字节码检查确认只导入并调用一次本次接近模块，未执行菜单或游戏部分。首次生成漏复制relocated runtime helper而拒绝；首次模块构建发现旧driver目录未入新operator路径，加入显式O后通过，均未stage或consume。
+
+另修新入口的结果报告：r96外层child0不能覆盖实际operator1。新入口在共享恢复后分别记录operator退出／错误、当前同game结果、boundary与完整5个QPC区间；观察序列未完成则返回非零，仍不签发完整玩法／GPU／头显通过。用保留56276实际文件离线重放，明确得到operator1／0phase／原walking错误；当前指针已属于另一game时同样拒绝，不将不同局拼接。重放仅将可变current指针重定向到原保存结果，不改原文件。
+
+已读GN具体未完恢复的recovery-restoration.json，时间15:16:45、SHA26b2b78c078e061d6fdf166d7172c3ffdcdcaf9abe1aafd74f2ba01f419e8784：与原claim8f91eb及baseline e224c8身份对应，10项checks全true、restored／released true、public_written false。新入口在统一guard内明确核对此已知未完恢复已完成，避免再次把空闲当恢复；这不是远期队列／前驱FINAL或互审前置。每次实际启动仍用共同RuntimeGuard及现场占用，从新即时备份到正常恢复后释放，离线不占用。
+
+最后独立prepare-only0，5项检查0，r97未consume／stage／start。实际看到他人game5212（15:33:48创建）后不启动；狙击枪询本会话是否持锁时只确认自身仅离线准备、未取得guard且无预留窗口，不追查或要求对方签收。r96媒体retention此前因他人运行deferred，不以此占用共享资源。证据view-alignment-r97/verification.json、offline-transform-verification.json、replayed-56276-action-result.json及两份实际日志。新接近逻辑仍待一次游戏定向验证，后续先完成可见视野／入掩体／探身抓边／保持缩回／退出，再体验与GrabPose。publicv71、最新产品Native9f375dc7、完整CV01–24／AC01–22及工程25%不变，目标active。
