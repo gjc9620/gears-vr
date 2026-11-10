@@ -1,0 +1,11 @@
+{
+  "prebirth_resource_refusal": true,
+  "worker_created": false,
+  "game_created": false,
+  "query_attempted": false,
+  "claim_consumed": true,
+  "normal_cleanup_required": false,
+  "normal_cleanup_verified": false,
+  "forced_termination": false,
+  "reason": "Last free worker slot taken at shared locked launch admission; no runtime was born."
+}

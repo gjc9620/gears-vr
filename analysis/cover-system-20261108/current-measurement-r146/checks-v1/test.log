@@ -1,0 +1,5 @@
+FAIL line 29: src::classify(input,source,now,true)==src::Verdict::okay
+FAIL line 34: a::measure_cover_pose(input,*model,*frame,marker,policy,*work,output)==a::Status::okay
+FAIL line 36: output.binding.observed_ns==input.metadata_end_ns&&output.binding.publication==source.publication_sequence&&output.binding.scene==source.scene_invocation
+FAIL line 38: a::measure_cover_pose(different_head,*model,*frame,marker,policy,*work,unchanged)==a::Status::okay
+current cover C0 measurement: 32 checks, 4 failures; synthetic Core/Tick and recorded skeleton only

@@ -1,0 +1,54 @@
+{
+  "game": {
+    "pid": 32320,
+    "creation_time": 134388087505037769,
+    "image": "j:\\gearsvr\\gears.of.war.reloaded.v1.0.1.3816947-p2p\\gears of war reloaded\\binaries_x64\\gowde-steam.exe"
+  },
+  "native_sha256": "5522ac2a49119075662a24176601bee613eec20467d672cdadeefe54d04ec093",
+  "rows": [
+    {
+      "step": 8,
+      "name": "measurement",
+      "count": 241,
+      "detail": 2,
+      "scene": 337,
+      "compose": 20751,
+      "sequence": 5433,
+      "world": 2209054976,
+      "pawn": 95208990336,
+      "measurement_status": "core"
+    }
+  ],
+  "missing": [],
+  "complete_gate_observed": false,
+  "query_attempted": false,
+  "collision_clear": null,
+  "movement_authorized": false,
+  "same_C0_across_rows": false,
+  "core_witness": {
+    "mode": 1,
+    "valid": 0,
+    "non_age_valid": 1,
+    "expired": 2,
+    "controllers_match": 1,
+    "verdict": 4294967295,
+    "hard_detail": 0,
+    "now": 120038702219900,
+    "stereo_received": 120038643428200,
+    "controller_received": 120038643459500,
+    "controller_sync": 120038643433400,
+    "metadata_begin": 0,
+    "metadata_end": 0,
+    "tick_begin": 0,
+    "tick_end": 0,
+    "limit": 50000000,
+    "published": 120038664074200,
+    "ticket": 338,
+    "reference_revision": 6,
+    "size": 1864,
+    "abi": 1,
+    "flags": 7,
+    "status": 1,
+    "legacy_age_only_proven": true
+  }
+}

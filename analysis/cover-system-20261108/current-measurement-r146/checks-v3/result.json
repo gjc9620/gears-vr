@@ -1,0 +1,29 @@
+{
+  "build_exit": 0,
+  "test_source_sha256": "05442489b3ff0a65e54697d9d55fbf97f7dd95a760bced16c92fe55ccdbbfda9",
+  "command": [
+    "E:/vs/VC/Tools/MSVC/14.51.36231/bin/Hostx64/x64/cl.exe",
+    "/nologo",
+    "/std:c++17",
+    "/O2",
+    "/W4",
+    "/WX",
+    "/EHsc",
+    "/UNDEBUG",
+    "/MT",
+    "/IC:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\current-measurement-r146\\native-source\\tools\\native-capture",
+    "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\current-measurement-r146\\current_measurement_test.cpp",
+    "/Fo:C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\current-measurement-r146\\checks-v3\\check.obj",
+    "/Fe:C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\current-measurement-r146\\checks-v3\\check.exe",
+    "/sourceDependencies",
+    "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\current-measurement-r146\\checks-v3\\dependencies.json",
+    "/link",
+    "bcrypt.lib"
+  ],
+  "test_exit": 0,
+  "output": "current cover C0 measurement: 31 checks, 0 failures; synthetic Core/Tick and recorded skeleton only\r\n",
+  "arguments": [
+    "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\current-measurement-r146\\checks-v3\\check.exe",
+    "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\solo-m1-20261028\\observed-backend-fixture"
+  ]
+}

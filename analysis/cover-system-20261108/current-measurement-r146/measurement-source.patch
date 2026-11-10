@@ -1,0 +1,72 @@
+--- r143/tools/native-capture/body_goal_view_adapter.h
++++ r146/tools/native-capture/body_goal_view_adapter.h
+@@ -51,14 +51,17 @@
+     vr::Pose eye{};
+     body::Pose root{},pelvis{},feet[2]{};
+ };
+-inline Status measure_cover_pose(core::CoreSnapshot const& source,body::Model const& model,
++// Math over an independently admitted source. observed_ns is the original
++// Scene publication for Core, or the actual V3 metadata observation end.
++inline Status measure_cover_pose_math(core::CoreSnapshot const& source,std::int64_t observed_ns,body::Model const& model,
+     body::Frame const& frame,marker::Marker const& authored,Policy const& policy,
+     body::Workspace& work,CoverPoseMeasurement& out) noexcept {
+     using namespace body::d;
+     const Range ranges[]={range(&source,sizeof source),range(&model,sizeof model),range(&frame,sizeof frame),
+         range(&authored,sizeof authored),range(&policy,sizeof policy),range(&work,sizeof work),range(&out,sizeof out)};
+     if(!disjoint(ranges,7))return Status::alias;
+-    if(!core::core_snapshot_valid(source,policy.now_ns,maximum_age_ns,policy.allow_sim))return Status::core;
++    if(observed_ns<=0||observed_ns>policy.now_ns||
++       std::uint64_t(policy.now_ns-observed_ns)>maximum_age_ns)return Status::core;
+     if(!(source.flags&core::rig::cover_key_known)||!source.cover_type||source.cover_slot<0)return Status::cover;
+     if(frame.model_scale!=1||frame.units_per_metre!=source.units_per_metre)return Status::units;
+     if(marker::detail::context(model,frame,model.canonical)!=marker::Status::okay)return Status::head_marker;
+@@ -75,8 +78,24 @@
+     auto& key=next.binding;key.world=source.world;key.pawn=source.pawn;key.mesh=source.mesh;key.link=source.cover_link;
+     key.world_generation=source.world_generation;key.scene=source.scene_invocation;key.publication=source.publication_sequence;
+     key.reference=source.reference_generation;key.slot=source.cover_slot;key.type=source.cover_type;
+-    key.observed_ns=std::int64_t(source.published_ns); // Never refresh the source clock.
++    key.observed_ns=observed_ns; // Original receipt; never refresh any source clock.
+     out=next;return Status::okay;
++}
++inline Status measure_cover_pose(core::CoreSnapshot const& source,body::Model const& model,
++    body::Frame const& frame,marker::Marker const& authored,Policy const& policy,
++    body::Workspace& work,CoverPoseMeasurement& out) noexcept {
++    if(!core::core_snapshot_valid(source,policy.now_ns,maximum_age_ns,policy.allow_sim))return Status::core;
++    return measure_cover_pose_math(source,std::int64_t(source.published_ns),model,frame,authored,policy,work,out);
++}
++inline Status measure_cover_pose(gears_body_tick_source::Input const& input,body::Model const& model,
++    body::Frame const& frame,marker::Marker const& authored,Policy const& policy,
++    body::Workspace& work,CoverPoseMeasurement& out) noexcept {
++    using namespace body::d;
++    const Range ranges[]={range(&input,sizeof input),range(&model,sizeof model),range(&frame,sizeof frame),
++        range(&authored,sizeof authored),range(&policy,sizeof policy),range(&work,sizeof work),range(&out,sizeof out)};
++    if(!disjoint(ranges,7))return Status::alias;
++    if(gears_body_tick_source::classify(input,input.observed.parent_scene,policy.now_ns,policy.allow_sim)!=gears_body_tick_source::Verdict::okay)return Status::core;
++    return measure_cover_pose_math(input.observed.parent_scene,input.metadata_end_ns,model,frame,authored,policy,work,out);
+ }
+ inline Status place_cover(Neutral const& calibrated,vr::CoverViewAnchor const& anchor,
+                          body::Pose const (&feet)[2],Neutral& out) noexcept {
+--- r143/tools/native-capture/body_c0_goal_policy_live.inl
++++ r146/tools/native-capture/body_c0_goal_policy_live.inl
+@@ -221,7 +221,9 @@
+     auto const& s=n::state;slot.row={s.context.source.scene_invocation,s.context.copy.invocation,
+         s.context.source.stereo.sequence,s.context.source.world.address,s.context.source.pawn.address,detail};
+     if(policy&&step==CoverProbeStep::measurement&&detail==unsigned(a::Status::core))
+-        slot.row.core=gears_cover_measurement_core::observe(s.context.source,policy->now_ns,a::maximum_age_ns,policy->allow_sim);
++        slot.row.core=body_tick_source_live::enabled?
++            gears_cover_measurement_core::observe(s.context.body_source,policy->now_ns,a::maximum_age_ns,policy->allow_sim):
++            gears_cover_measurement_core::observe(s.context.source,policy->now_ns,a::maximum_age_ns,policy->allow_sim);
+     slot.state.store(2,std::memory_order_release);
+ }
+ void sample_current_cover_pose() noexcept {
+@@ -239,7 +241,9 @@
+            !check(CoverProbeStep::type,before.type==s.context.source.cover_type)||!check(CoverProbeStep::slot,before.slot==s.context.source.cover_slot)||
+            !check(CoverProbeStep::link,gears_weapon_hand::same(rig::object(before.link),s.context.source.cover_link))||
+            !([&](){marker_status=a::marker::prepare(s.model,s.source,a::marker::Basis::marcus_mesh_face_forward_y,origin.work,marker);return check(CoverProbeStep::marker,marker_status==a::marker::Status::okay,unsigned(marker_status));})()||
+-           !([&](){measurement_status=a::measure_cover_pose(s.context.source,s.model,s.source,marker,policy,s.workspace,candidate);return check(CoverProbeStep::measurement,measurement_status==a::Status::okay,unsigned(measurement_status));})()||
++           !([&](){measurement_status=body_tick_source_live::enabled?
++                a::measure_cover_pose(s.context.body_source,s.model,s.source,marker,policy,s.workspace,candidate):
++                a::measure_cover_pose(s.context.source,s.model,s.source,marker,policy,s.workspace,candidate);return check(CoverProbeStep::measurement,measurement_status==a::Status::okay,unsigned(measurement_status));})()||
+            !check(CoverProbeStep::current_after,s.context.current(n::tx::Stage::prepare))||!check(CoverProbeStep::stopping_after,!stopping.load())||!check(CoverProbeStep::revision_after,revision.load()==expected_revision))return;
+         current_cover_pose=candidate;current_cover_pose_valid=true;
+         if(!s.context.entry)note_cover_probe(CoverProbeStep::entry);

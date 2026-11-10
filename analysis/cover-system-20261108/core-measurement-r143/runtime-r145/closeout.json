@@ -1,0 +1,110 @@
+{
+  "classification": "progress: first actual legacy Core measurement rejected specifically on original head-sample age",
+  "identities": {
+    "game_identity": {
+      "pid": 32320,
+      "creation_time": 134388087505037769,
+      "image": "j:\\gearsvr\\gears.of.war.reloaded.v1.0.1.3816947-p2p\\gears of war reloaded\\binaries_x64\\gowde-steam.exe"
+    },
+    "owner_identity": {
+      "pid": 19072,
+      "creation_time": 134388087423454902,
+      "image": "c:\\users\\11\\.cache\\codex-runtimes\\codex-primary-runtime\\dependencies\\python\\python.exe"
+    },
+    "xr_identity": {
+      "pid": 56340,
+      "creation_time": 134388087589602262,
+      "image": "c:\\users\\11\\.codex\\worktrees\\6dof-single\\gearsvr\\tools\\openxr-probe\\build-cover-1111-r145-cloak-core\\openxrposeprobe.exe"
+    },
+    "worker_identity": {
+      "pid": 53052,
+      "creation_time": 134388087422152174,
+      "image": "c:\\users\\11\\.cache\\codex-runtimes\\codex-primary-runtime\\dependencies\\python\\python.exe"
+    }
+  },
+  "exact_owned_processes_absent": true,
+  "native_sha256": "5522ac2a49119075662a24176601bee613eec20467d672cdadeefe54d04ec093",
+  "first_pose": {
+    "step": 8,
+    "name": "measurement",
+    "count": 241,
+    "detail": 2,
+    "scene": 337,
+    "compose": 20751,
+    "sequence": 5433,
+    "world": 2209054976,
+    "pawn": 95208990336,
+    "measurement_status": "core"
+  },
+  "first_core": {
+    "mode": 1,
+    "valid": 0,
+    "non_age_valid": 1,
+    "expired": 2,
+    "controllers_match": 1,
+    "verdict": 4294967295,
+    "hard_detail": 0,
+    "now": 120038702219900,
+    "stereo_received": 120038643428200,
+    "controller_received": 120038643459500,
+    "controller_sync": 120038643433400,
+    "metadata_begin": 0,
+    "metadata_end": 0,
+    "tick_begin": 0,
+    "tick_end": 0,
+    "limit": 50000000,
+    "published": 120038664074200,
+    "ticket": 338,
+    "reference_revision": 6,
+    "size": 1864,
+    "abi": 1,
+    "flags": 7,
+    "status": 1,
+    "legacy_age_only_proven": true
+  },
+  "ages": {
+    "head_ns": 58791700,
+    "publication_ns": 38145700,
+    "controller_ns": 58760400
+  },
+  "first_cause_proven": true,
+  "all_241_causes_proven": false,
+  "query_requested": true,
+  "query_attempted": false,
+  "original_query_calls": 0,
+  "normal_cleanup_verified": true,
+  "cloak": {
+    "samples": 860,
+    "failures": []
+  },
+  "foreground": {
+    "samples": 524,
+    "owned_activation": false
+  },
+  "mute": {
+    "event": "mute_verification_summary",
+    "pid": 32320,
+    "initially_muted_sessions": 1,
+    "verified_muted_observations": 349,
+    "verify_failed": 0,
+    "target_shared_rejected": 0,
+    "shared_rejected_is_global_scan_count": true
+  },
+  "disk_before": {
+    "check": "disk_admission",
+    "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr",
+    "free_bytes": 104385679360,
+    "minimum_free_bytes": 4294967296,
+    "admitted": true
+  },
+  "frames": 323,
+  "reviewed_pages": 17,
+  "reviewed_contacts": 5,
+  "encode_exit": 0,
+  "world_coverage_verified": false,
+  "movement_authorized": false,
+  "cover_view_accepted": false,
+  "public_changed": false,
+  "headset_accepted": false,
+  "remaining": "Reuse the already implemented current Tick measurement overload in the frozen candidate; do not renew old Core clocks or relax 50ms/40ms predicates."
+}

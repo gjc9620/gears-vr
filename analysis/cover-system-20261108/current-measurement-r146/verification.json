@@ -1,0 +1,82 @@
+{
+  "dll_sha256": "49f76f0135f8393ff7035afc51450401e484f4a10cf95c6c7511090c1201a472",
+  "build_only": true,
+  "game_started": false,
+  "query_called": false,
+  "source_reused_from_commit": "2f042279",
+  "measurement_block_sha256": "a0629d4dd4b0d76f8edc572ddf30512b917b1ce5cbba73182d2034505d35b3a1",
+  "project_dependencies": 408,
+  "external_native_worktree_dependencies": 0,
+  "flags_unchanged": true,
+  "tests": {
+    "build_exit": 0,
+    "test_source_sha256": "05442489b3ff0a65e54697d9d55fbf97f7dd95a760bced16c92fe55ccdbbfda9",
+    "command": [
+      "E:/vs/VC/Tools/MSVC/14.51.36231/bin/Hostx64/x64/cl.exe",
+      "/nologo",
+      "/std:c++17",
+      "/O2",
+      "/W4",
+      "/WX",
+      "/EHsc",
+      "/UNDEBUG",
+      "/MT",
+      "/IC:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\current-measurement-r146\\native-source\\tools\\native-capture",
+      "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\current-measurement-r146\\current_measurement_test.cpp",
+      "/Fo:C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\current-measurement-r146\\checks-v3\\check.obj",
+      "/Fe:C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\current-measurement-r146\\checks-v3\\check.exe",
+      "/sourceDependencies",
+      "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\current-measurement-r146\\checks-v3\\dependencies.json",
+      "/link",
+      "bcrypt.lib"
+    ],
+    "test_exit": 0,
+    "output": "current cover C0 measurement: 31 checks, 0 failures; synthetic Core/Tick and recorded skeleton only\r\n",
+    "arguments": [
+      "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\current-measurement-r146\\checks-v3\\check.exe",
+      "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\solo-m1-20261028\\observed-backend-fixture"
+    ]
+  },
+  "test_project_headers": {
+    "tools/native-capture/body_goal_view_adapter_test.cpp": "7b205e2c55c7f5b3e1886cdecbca29e33dd815856e4ad8da5c24b22ce25a1407",
+    "tools/native-capture/body_goal_view_adapter.h": "0c8dc1ad6deac4c21bb564e1635275351928f49d60096e1082bbc24a9cdb49ac",
+    "tools/native-capture/body_head_authored_mount.h": "43f092089cbec86507e791eafbad49d441913d5b7ed46c1ebc41eec1edd9614e",
+    "tools/native-capture/full_body_c0_planner.h": "d73a15064611d898a81113b1e5583a3f96f7b9c9c1f8ba3ca77cc45c7b918f16",
+    "tools/native-capture/cover_skeleton_ik.h": "6c7552302a028de515df48d4befa2a10a28fdc7e4a9f1725827d4d01444b980f",
+    "tools/vr-common/pose_math.h": "c4a0fee9d2c61f18eca3d9fa192773d582b204bf432552ab2e087937caeb88ca",
+    "tools/vr-common/hand_two_bone_pose.h": "f9306a9829ab25e688a1f0f528e91a81b58ddcb78551279863389147c6c7c654",
+    "tools/vr-common/hand_authored_mount_profile.h": "81fa7c668d726bc207646b209d9ee62c16bbefa41f6a83b3560b9767f6b813a6",
+    "tools/vr-common/hand_wrist_calibration.h": "d73d075c7b854c14addb5fa919292d6301f4116dff0b864987009b32ccdad224",
+    "tools/native-capture/body_tick_input.h": "47fb69f16d69b4fdf3c62ae7dbb4a6728240ad427aad81d0eb04cfb2c0f42abb",
+    "tools/vr-common/native_rig_tracking_frame.h": "315efbcaf5d1171faa2f4a84f5ecec14dc2c630d2ac651c60349ded6b56cd418",
+    "tools/vr-common/rig_tracking_frame.h": "6e29ea4280304bd3837797dd74ccd8413a56adc80cf5979db56213a001836b92",
+    "tools/vr-common/weapon_hand_participant.h": "e895dd495ab5b30bf20bc696d172525307a3b4685de19ead176d78034a624388",
+    "tools/vr-common/controller_input_frame.h": "bada596e469823574d7b4dc68e6e53cacf95afcee0d9a5d586d0d1eb66814434",
+    "tools/vr-common/stereo_frame.h": "bf919472026037926a77e9dc876a6354f1b6d6b3395cf2abfc62ee71bad00d15",
+    "tools/vr-common/hand_reference_continuity.h": "4c11dfd367196664e302aedaab979598ed2a10ce5a254ec5e03cb1581e93dd82",
+    "tools/vr-common/left_interaction_control.h": "6c314e6bb9735820ff82c4f35e733f7bd8933d9c743b4dd72fabe1d6ef922940",
+    "tools/vr-common/rig_tracking_math.h": "d52efa9df50d7bbe8158500db15664c435b3b20242a3e140f032935d747f7502",
+    "tools/vr-common/view_origin.h": "a576f2aa12ce36ff0cb6e8fede5be89687859c38c1ae6b1aed4f5ecaf00f9c9c",
+    "tools/vr-common/controller_continuity_frame.h": "fc927d62a36d209592309ba242c0281952fea7c264922e0771333792979b1fa7",
+    "tools/vr-common/current_continuity_for_metadata.h": "ff9b163e9278cd087b142be9d71e07e7e784f1d4b5dcc9b001457aca934a6456",
+    "tools/native-capture/body_tick_source.h": "5cef4897fe9b7cd0966d055d010ea718523c5bfcda1ee73c923f6fe21a8fa1a2",
+    "tools/vr-common/cover_view.h": "aa300105f86e6a3f368de643e4e362a19a98b8b6739e4df5958700bb1a677814",
+    "tools/vr-common/cover_interaction.h": "83e3e34d56ab88bd516c2bf5e1f86be06959c79001c891c9a56f9a4f239a1d5c"
+  },
+  "test_only_external_fixture": [
+    {
+      "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\tools\\native-capture\\cover_measurement_core_fixture.h",
+      "sha256": "02cf8b2203945e4564ff2a941f376d8058e6ed8017195d04e3093965aeea37a5",
+      "role": "explicit test-only immutable fixture"
+    }
+  ],
+  "previous_fixture_failures_preserved": "checks-v1/v2: head-only synthetic Core had flags4 and no valid independent controller cohort; original classify rejected hard 0xcd08. v3 uses existing complete Core/controller fixture, without changing product checks.",
+  "current_tracking_limit_ns": 40000000,
+  "current_metadata_limit_ns": 50000000,
+  "legacy_core_limit_ns": 50000000,
+  "original_timestamps_preserved": true,
+  "current_cover_key_checks_preserved": true,
+  "body_writer_or_movement_permission_added": false,
+  "public_changed": false,
+  "headset_accepted": false
+}

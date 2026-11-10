@@ -1,0 +1,30 @@
+{
+  "build_exit": 0,
+  "test_source_sha256": "3f74006905a2b036e6802c4df947a44848bdcc411e00e96d6e5fffd891b7ab7c",
+  "command": [
+    "E:/vs/VC/Tools/MSVC/14.51.36231/bin/Hostx64/x64/cl.exe",
+    "/nologo",
+    "/std:c++17",
+    "/O2",
+    "/W4",
+    "/WX",
+    "/EHsc",
+    "/UNDEBUG",
+    "/MT",
+    "/IC:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\current-measurement-r146\\native-source\\tools\\native-capture",
+    "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\current-measurement-r146\\current_measurement_test.cpp",
+    "/Fo:C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\current-measurement-r146\\checks-v1\\check.obj",
+    "/Fe:C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\current-measurement-r146\\checks-v1\\check.exe",
+    "/sourceDependencies",
+    "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\current-measurement-r146\\checks-v1\\dependencies.json",
+    "/link",
+    "bcrypt.lib"
+  ],
+  "test_exit": 1,
+  "output": "FAIL line 29: src::classify(input,source,now,true)==src::Verdict::okay\r\nFAIL line 34: a::measure_cover_pose(input,*model,*frame,marker,policy,*work,output)==a::Status::okay\r\nFAIL line 36: output.binding.observed_ns==input.metadata_end_ns&&output.binding.publication==source.publication_sequence&&output.binding.scene==source.scene_invocation\r\nFAIL line 38: a::measure_cover_pose(different_head,*model,*frame,marker,policy,*work,unchanged)==a::Status::okay\r\ncurrent cover C0 measurement: 32 checks, 4 failures; synthetic Core/Tick and recorded skeleton only\r\n",
+  "arguments": [
+    "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\current-measurement-r146\\checks-v1\\check.exe",
+    "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\synthetic-core-current.bin",
+    "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\solo-m1-20261028\\observed-backend-fixture"
+  ]
+}
