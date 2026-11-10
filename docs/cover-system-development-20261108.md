@@ -1680,3 +1680,19 @@ Native从r89不可变源仅2个产品overlay冻结，1094文件；实际编译�
 证据analysis/cover-system-20261108/skeletal-attachments-r90/verification.json及v1 Native／首批单元、final单元／OFF实际依赖回执。当前闭合的是声明Actor图、显式主Mesh、递归骨骼结构组件及其字段／同Scene来源；其他原生物理来源、完整自身与形状集合、生命周期／ABA排除和共同物理world fence仍未认证，不能据此签发自身排除或身体占用安全。双读和同Scene不等于运动及原消费者同步。
 
 本轮无stage／游戏／XR／录像／新增玩家动作通过，也未收到或使用新的正式运行窗口，不称verified wait。下一步核对剩余原生物理来源、完整自身范围及查询同步，再接组合身体路径、终点占用、实际移动与恢复。严重肩身遮挡、physics-hit-muzzle同版、真实三方向LGrip／逐点GrabPose、CV01–24／AC01–22及实体头显均未完成。工程25%不变，目标active，本轮progress。
+
+## 2026年11月10日 r91静态Actor误拒绝与Shape集合原路径
+
+上一条排队确认没有源码或验证进展；本轮复核704da34b当前源码，继续原生物理来源与同步缺口。readonly SQLite先查NpActor／getNbShapes无匹配；BoneSpring仅见相关native声明及历史文字候选，不能将不透明BoneSpring认作第二Actor。未改公共包、封存r80或其他武器文件。
+
+REA绑定同一原PhysXCore.dll，SHA22051aa75312344a824a5f7e29c6375fec3a90df50cbeff6152f0e6c3afddd48，只做静态读取／反编译，没有装载执行原DLL或游戏。原NpActor表2330A8、字段和虚调用入口按实际字节核对。135C00直接判断Actor+40是否非空；13C730的同一字段为空分支明示Static actor moved并处理静态姿态，非空则调用动态Body。现cover_physx_shape_owner.h第55行却强制该字段满足非空pointer并读Body+10反链；因此现有归属读取不能接受该合法静态路径。这是源码与原静态分支已证实的覆盖缺陷，尚未游戏复现或修复。
+
+Shape集合原路径也已收窄：Actor表+98的135810转到嵌入Actor+28，再由121330读取+20，即公开Actor+48的根Shape。根为空返回0；非空根类型getter+8返回9时走Compound计数+398，否则返回1。Actor表+A0的135B10经121380走根Shape虚表+38取公开Shape列表。单Shape的C4F0返回internal+ A0这个槽位地址，与旧C4E0读取该槽中的公开Shape指针不同，不能把两者混为一条getter。
+
+Compound RTTI类型描述277470、COL2491F0与主表227950交叉核对。表+398的28A60返回(begin@1B0到end@1B8之差)/8；表+38的28A90返回公开Shape数组指针1D8。28B00插入子Shape时写child+8为Compound；28 080原插入流程分别向内部Shape向量1B0／1B8和公开Shape向量1D8／1E0追加，后者取实际子Shape虚表+40的公开指针。静态Compound创建分支存在明确原日志与调用流，故不能仅补单Shape或假设多Shape一定动态。
+
+下一步修复已有归属事务时，应同时关闭空／单／Compound表示、内部与公开成员的对应关系、同一Actor／Scene及当前代码／表身份；动态Body非空时保留原反链，静态路径以实际Shape成员关系提供归属证明，不能简单删除非空检查后宣布通过。原数组换址、成员／计数／代码改变及超容量均须整笔拒绝，原读锁／重入／未知fault保护不弱化。Actor+40既不是通用非空Actor身份，也不能替代完整Shape集合或物理同步。
+
+证据analysis/cover-system-20261108/actor-shapes-r91/rea-evidence.json，68条、10411201字节；verification.json保留12个关键函数完整伪代码／汇编、原读取器SHA与明确下一修复。REA会话已正常关闭。本轮有证据改变下一行动，属于progress；没有产品代码修改、编译或重复测试，无stage／游戏／XR／录像／新增玩家动作验收，未使用新的运行窗口。最新Native仍为r90的945e7b3b，公开v71和r80五身份保持。
+
+完整自身与世界Shape覆盖、生命周期／ABA排除和共同物理时相仍未完成；实际身体路径／终点占用／移动恢复、严重肩身遮挡、physics-hit-muzzle同版、真实LGrip／GrabPose及实体头显也未完成。保留CV01–24／AC01–22完整目标，工程25%不变，目标active。
