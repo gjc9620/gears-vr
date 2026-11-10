@@ -1787,3 +1787,22 @@ retention实际调用被随后另一活动game55436／XR34068阻止，结果defe
 保存f5fb1f46后，实际现场暂时无game／XR／paired recorder、launcher index为finished；已确认GN原件恢复记录，向狙击枪仅发实际启动通知，随后调用r97。静态检查通过后，统一RuntimeGuard的WaitForSingleObject(0)返回busy，入口实际exit1，未进入run_owned：无prestage目录、inner.log或claim，无备份／stage／输入／游戏启动，未获得或持有任何共享窗口。guard-refusal.json记录实际入口SHA及拒绝；已简短通知询问占用的狙击枪本会话不持锁，无须等待本会话释放，不追查／停止他人进程。该拒绝不是已确认进程handle上的verified wait，也不是本目标无进展：本轮接近定向修改、实际函数接线和离线证据已完成并保存；尚缺游戏检查，r97保持未消费，不重新prepare或创建替代票据。
 
 随后仅独立调用一次r96未完媒体retention。工具执行到inventory关闭检查时检测新game／XR启动，正常返回deferred='A game/XR started during inventory; no media removed'，未删除媒体；同一工具handle65396已terminal0，无本会话运行／编码／retention作业留存，不占共享guard。结果保存在view-alignment-r97/retention-after-r96.json。下次实际共享释放后方可做r97一次定向运行；原完整目标、公开v71和25%不变，目标active。
+
+
+## 2026年11月10日 r97实际53976接近通过与r98同局头身视向证据
+
+上一轮c02d6139／f5fb1f46已保存定向接近修改和互斥拒绝，属于进展。本轮先确认他人game55152／XR44844／recorder40280真实live，等待并复核同组进程实际消失；现场无game／XR／录制后发一次启动通知，按原已封存r97静态检查取得共同RuntimeGuard。已知GN具体未完恢复仍按原claim／baseline及10项恢复收据核对，然后即时29项备份／stage0。未重prepare或重跑已消费r96。
+
+实际game53976／creation134387701469138129、owner39756／creation134387701394358574，Native仍8035bf35、PGf8e6f3c2、XR16840b27。4条实际位置反馈后距离30.3885units，满足原35标准；原A进入CT2并认证当前Link／slot，完成中立、固定位置转头／返回、真实样本抬高10cm／返回5相位。operator0、outer0，动作和正常清理分开判断。该实跑支持本次接近驱动修正，仍不证明旧0.22停滞的唯一根因是deadzone。没有抓边／身体拉拽／松手保持／缩回／退出或战斗动作，不称完整掩体流程通过。
+
+Native／entry／pad／weapons drain正常、XR exit0，owned进程退出核对后恢复29项字节／缺失和私有文件集，public／原用户文件未写，立即释放统一guard并发一次实际释放通知，之后只离线。XR保留原terminal_exiting／objects_destroyed／shutdown_completed，EndSession false，不改写成API EndSession通过。session原始报告已复制并逐SHA保存在r97/runtime/continuous-session-original.json，防止后续媒体保留标记影响原报告身份。
+
+原inspector实际0：眼点bin3030608bytes／188rows／188eligible／0numeric_mismatch／0overflow。五相位按本人物／world_generation及各begin≤row.begin≤row.end≤end精确选取7／6／7／7／7条，共34条，不用近时拼接；CPU读取／准备结果不能当GPU原子pose。双路recorder0、encode0，1张完整span overview及7张实际相位raw亲看，五相位均严重头／肩自身遮挡，实际视野FAIL。game531帧29.266s、simulator624帧29.216s，尾覆盖均0ms；game启动段有1.817s捕获gap，simulator最大266.7ms。保留gap及启动第三人称／waiting card，不能用编码0称完整可玩。
+
+新增仅离线eye_face_inspect.cpp，直接复用r80原ABI reader及r79实际冻结的canonical115／Marker／head-to-eye计算；逐row真实SHA准备模型，确认捕获mount与同版marker相同，再将author面向通过同一head55及component矩阵转到world。另直接读取当前57／60眼骨中点，不用另一局或渲染结果反馈校准。/W4 /WX v3编译／执行0，19项项目依赖逐SHA；188／188同版basis与mount匹配。原eye等于当前双眼中点沿当前face方向前3units，最大向量残差0.0002553units；这支持当前authored3cm点确在实际眼骨前方，不是任意头中心偏移。
+
+同局入A前两个CT0观察之间44条同pawn／world CPU bracket，基础view与authored头面向夹角最大0.01647°；入掩体五时间窗61.44–66.69°，水平58.24–63.25°。比较对象是HMD合成前基础view，不冒称最终GPU／头显姿态或唯一根因。实际Native状态cover_camera disabled、cover_full_goal inactive／attempts0，body_goal_view_available0；与该Native实际编译依赖SHA核对的body_c0_goal_policy_live.inl在cover分支只sample_current_cover_pose，随后按cover拒绝普通body目标。当前源码同样保留这条保护。下一修复范围因此收窄到当前cover头／身目标与观察基准的实际consumer接线；沿现有唯一C0和已有fitted adapter实现，保留普通no_cover、身份／时效／输入／路径占用边界，不靠盲改yaw、挪眼或隐藏全身。尚未修改该产品代码或放行任何身体位移。
+
+新离线工具首版缺Windows类型，第二版Windows small宏与冻结纯数学变量冲突；保留两份failed-source／build.log，仅在新离线translation unit补Windows头并undef small，未改冻结或产品头，v3严格通过。证据r97/runtime/closeout-review.json、phase-coverage.json、实际视频，以及r98/verification.json／pre-A-face-control.json／phase-face-comparison.json／evidence-index.json。r98未启动额外game／XR／Native。
+
+本次媒体retention实际terminal0、errors空、删除0，最新3=54632／38416／53976、48h；未占游戏窗口，所有自有任务终态。r97已consume，后续不重跑同一观察；publicv71、最新产品查询Native r93的9f375dc7及未验收完整CV01–24／AC01–22、工程25%保留，目标active。源码、离线、游戏动作、像素和头显证据继续分开。
