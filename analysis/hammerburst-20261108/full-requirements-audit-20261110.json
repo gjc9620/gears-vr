@@ -1,8 +1,8 @@
 {
   "schema": 1,
   "scope": "full HB objective; no scope reduction",
-  "current_candidate": "release-handoff-r1 full PG compiled,430 actual adapter fake checks passed; exact successful real-UP same pending refire reservice after full Input",
-  "prepared_sha256": "e4e0f339ce64d37e4f5d5c97a19bb2a5e0a10691a413032e14d16d74e090bfae",
+  "current_candidate": "press-assets-r1 compiled,10 exact observer cases passed; diagnostic split of original asset/attachment/current calls, no gates removed",
+  "prepared_sha256": "c6f0ea63014e5a24ccd631e77fab9a248affb33e1ce9b302ae9b833a6aeaf102",
   "requirements": [
     {
       "id": "acquire_stow",
@@ -276,7 +276,7 @@
   ],
   "completion_proven": false,
   "goal_active": true,
-  "immediate_next": "Inspect duplicate HB press asset reflection against existing exact-current MuzzleSample.asset/ready_for live checks. Do not simply remove fresh type/selector/hidden/attachment/identity or contract checks; prove equivalence or implement validated same-frame preparation. No widening/retiming/replay.",
+  "immediate_next": "One fresh isolated run to measure asset_read/attachment/post-current under unchanged full gates; ready_for is not equivalent to full asset validation. Existing release handoff still awaiting actual exercise. Preserve all13 requirements.",
   "historical_evidence_does_not_certify_current_PG": true,
   "candidate_runtime_status": "release-handoff-r1 actual24648 pickupUP130/held132 succeeds; press224 reserve failure then same-edge defer expiry225, zero rays. New release handoff not reached; neither proved nor disproved live. Normal cleanup.",
   "previous_recorded_candidate": {

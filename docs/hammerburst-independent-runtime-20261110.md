@@ -456,3 +456,11 @@ release-handoff-r1/hb-cloak-1111-034331/game24648/creation134388136103748532。1
 没有hammerburst_release_handoff，新增交接/430fake checks的产品分支本次未触达，不能称修复通过或失败。没有reload/priority/history触达。下一步检查重复首发资产反射：当前muzzle准备已有MuzzleSample.asset与两次asset read，ready_for/live又读对象/指针；execute另做全asset read。需逐项对比type/selector/hidden/attachment/identity/结构变化检查并证明等价或建立同Frame完整准备，不能简单删除新鲜检查或延长100/20/250ms。
 
 launcher0/operator1/stop0，Native清理/PG入口恢复/XR0、本方game及子进程退出，无强杀/workererror，1264前台/2216CLOAK零违规。149帧errors空encode0，亲看3页48双眼全跨度，真实场景/取枪/持枪可见，反复贴近右眼的大枪与间歇枪可见性/手臂枪重叠仍未接受；非所有帧/五处贴合/全部角度/头显验收。7原文本SHA归档，runtime-24648-first-failure-analysis.json与完整13项audit已更新。所有本方运行终态，不重复同实例，不再跑未改候选；完整目标active，30%/publicv71不变。
+
+## press-assets-r1：拆分既有首发准备耗时，未删校验
+
+上一目标轮progress为release-handoff源/编译/430fake/实际24648首发失败证据。当前逐项比对纠正上一段猜测：ready_for/live_sample本身只检查Frame/持枪/epoch/registration/源时效，**没有**资产selector/hidden/挂接metadata校验；完整指针检查在typed_result等独立consumer，不能混同。现有MuzzleSample.asset不能直接替换execute全资产read，故不实施该删减。
+
+原press_timing的asset_ns实际包含lancermain_asset::read、nativeequipment::attached_frame及末次current三项，24648的6.3101ms无法指认其中哪项。新私有press-assets-r1仅在原三个短路布尔结果上加原样返回的计时wrapper，每个原调用仍一次、原顺序和失败短路不变；只有原最多12行active HB timing新增3次时钟读，既有行输出细分asset_read_ns/attachment_ns/post_asset_current_ns。无source/许可/事件时效/输入动作改动；非active零时钟读。
+
+完整PG SHA4174354ac6c4d7243560379c0f85b7027ed1a0d288ac458b230371c3571d0d33、Native/XR未重建；10个精确observer fixture覆盖disabled/无log/null/完整与3个失败短路/缺失阶段/无效index/12行封顶，全部通过。源变换逆向恢复原condition逐字一致；无新产品优化或修复通过声明。下一步用单个新隔离实例取得三项实际耗时及已有交接路径情况，随后针对实测最慢部分改实现；不重复未改候选，不放宽100/20/250ms。13项/30%/publicv71保持。
