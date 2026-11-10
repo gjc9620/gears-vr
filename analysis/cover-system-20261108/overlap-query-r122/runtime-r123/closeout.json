@@ -1,0 +1,53 @@
+{
+  "classification": "progress",
+  "game": {
+    "pid": 19480,
+    "creation_time": 134387893621457706,
+    "image": "j:\\gearsvr\\gears.of.war.reloaded.v1.0.1.3816947-p2p\\gears of war reloaded\\binaries_x64\\gowde-steam.exe"
+  },
+  "xr": {
+    "pid": 55936,
+    "creation_time": 134387893666015908,
+    "image": "c:\\users\\11\\.codex\\worktrees\\6dof-single\\gearsvr\\tools\\openxr-probe\\build-cover-1110-r123-cloak-source-stage\\openxrposeprobe.exe"
+  },
+  "native_sha256": "34c15590a10a1fa9f2f380ed0b2285afbd3d5889939e1c30f3f46542076dd1e9",
+  "original_report": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\runtime\\continuous-stereo-19480-20261110-210246-c1773b90.json",
+  "original_report_sha256": "95297377bac0232b218cbfd893bab17a15e9ecbe3507075ebf82ff84ea711567",
+  "run_result_sha256": "da93770423160f76cc61d410dbeb7de4d114420ed7d32674ab8de1c845299916",
+  "input_and_phase_sequence": true,
+  "query_success": false,
+  "first_failure": "physics_roles/layout before QueryEngine dispatch",
+  "original_query_started": 0,
+  "original_query_returned": 0,
+  "collision_clear": null,
+  "movement_authorized": false,
+  "specific_layout_field": "unknown: schema/owner class/array root/body layout/declared membership still need bounded witness",
+  "new_capsule_enumeration_executed": false,
+  "normal_cleanup_verified": true,
+  "unified_weapons_cleanup": {
+    "fire_disable_code": 0,
+    "hand_stop_code": 5,
+    "drained": true
+  },
+  "cloak": {
+    "samples": 585,
+    "failures": []
+  },
+  "mute_verification": {
+    "event": "mute_verification_summary",
+    "pid": 19480,
+    "initially_muted_sessions": 1,
+    "verified_muted_observations": 241,
+    "verify_failed": 0,
+    "target_shared_rejected": 0,
+    "shared_rejected_is_global_scan_count": true
+  },
+  "media_review_sha256": "9eb12034e883f99a449ad2bef853bd8bee50fdbcb2dee2f5987edd9d22a31670",
+  "remaining": [
+    "specific physics layout rejection",
+    "actual original query execution",
+    "head/shoulder obstruction",
+    "endpoint enumeration/path/body C0 integration",
+    "CV01-24 AC01-22 and headset"
+  ]
+}
