@@ -1,0 +1,79 @@
+[
+  {
+    "at_ns": 1794326755600214200,
+    "refused_before_claim": "Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: boom-1110-235650-34400, lancer-natural-v139-225928"
+  },
+  {
+    "at_ns": 1794326757661887300,
+    "refused_before_claim": "Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: boom-1110-235650-34400, lancer-natural-v139-225928"
+  },
+  {
+    "at_ns": 1794326759714023700,
+    "refused_before_claim": "Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: boom-1110-235650-34400, lancer-natural-v139-225928"
+  },
+  {
+    "at_ns": 1794326761768673600,
+    "refused_before_claim": "Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: boom-1110-235650-34400, lancer-natural-v139-225928"
+  },
+  {
+    "at_ns": 1794326763816191800,
+    "refused_before_claim": "Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: boom-1110-235650-34400, lancer-natural-v139-225928"
+  },
+  {
+    "at_ns": 1794326765876106800,
+    "refused_before_claim": "Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: boom-1110-235650-34400, lancer-natural-v139-225928"
+  },
+  {
+    "at_ns": 1794326767951756400,
+    "refused_before_claim": "Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: boom-1110-235650-34400, lancer-natural-v139-225928"
+  },
+  {
+    "at_ns": 1794326770012355900,
+    "refused_before_claim": "Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: boom-1110-235650-34400, lancer-natural-v139-225928"
+  },
+  {
+    "at_ns": 1794326772075623900,
+    "refused_before_claim": "Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: boom-1110-235650-34400, lancer-natural-v139-225928"
+  },
+  {
+    "at_ns": 1794326774122091900,
+    "refused_before_claim": "Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: boom-1110-235650-34400, lancer-natural-v139-225928"
+  },
+  {
+    "at_ns": 1794326776504977700,
+    "refused_before_claim": "Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: boom-1110-235650-34400, lancer-natural-v139-225928"
+  },
+  {
+    "at_ns": 1794326778592430500,
+    "refused_before_claim": "Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: boom-1110-235650-34400, lancer-natural-v139-225928"
+  },
+  {
+    "at_ns": 1794326780643190900,
+    "refused_before_claim": "Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: boom-1110-235650-34400, lancer-natural-v139-225928"
+  },
+  {
+    "at_ns": 1794326782693060500,
+    "refused_before_claim": "Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: boom-1110-235650-34400, lancer-natural-v139-225928"
+  },
+  {
+    "at_ns": 1794326784739523400,
+    "refused_before_claim": "Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: boom-1110-235650-34400, lancer-natural-v139-225928"
+  },
+  {
+    "at_ns": 1794326786782395700,
+    "memory": {
+      "available_commit": 26769338368,
+      "available_physical": 16426856448,
+      "active_instances": [
+        "lancer-natural-v139-225928"
+      ]
+    },
+    "disk": {
+      "check": "disk_admission",
+      "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr",
+      "free_bytes": 7454490624,
+      "minimum_free_bytes": 4294967296,
+      "admitted": true
+    }
+  }
+]

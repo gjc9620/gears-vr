@@ -23,6 +23,13 @@ def inspect(report,expected_native=NATIVE):
     if v['end_ns']<v['begin_ns'] or v['begin_ns']<=0:raise ValueError('Invalid original read bracket')
     if v['diagnostic_geometry']!=1 or v['body_geometry'] or v['movement_permission']:raise ValueError('Wrong evidence scope')
     out.update(original_started=started,original_returned=returned)
+    if v['code']!=0:
+        session=('idle','geometry','physics_roles','collider_roles','component_roles','engine','closing','complete')
+        engine=('idle','source_begin','code_begin','source_repeat','source_guard','dispatch','returned','source_end','code_end','guard_end','complete')
+        source=('current','request','guard','read','changed','layout','module')
+        name=lambda values,n:values[n] if 0<=n<len(values) else 'unknown_'+str(n)
+        out['first_rejection_layer']=('engine/'+name(engine,v['engine_stage'])+'/'+name(source,v['engine_source_code'])
+            if v['session_entered'] and v['session_stage']==5 else 'session/'+name(session,v['session_stage']))
     if v['code']==0:
         if not 1<=v['segments']<=2 or started!=v['segments']+1 or returned!=started:raise ValueError('Incomplete path calls')
         if not 0<=v['hits']+v['endpoint_shapes']<=32 or not 0<=v['reports']+v['endpoint_reports']<=8:raise ValueError('Invalid shared budget')
@@ -50,7 +57,11 @@ def selftest():
     bad=copy.deepcopy(r);bad['diagnostics_artifacts']['native_sha256']='other'
     try:inspect(bad);raise AssertionError('Wrong Native accepted')
     except ValueError:pass
-    print(json.dumps(dict(cases=9,failures=0,scope='report interpretation, no game')))
+    bad=copy.deepcopy(r);bad['native_status'].update(cover_path_probe_code='6',cover_path_probe_engine_stage='3',
+        cover_path_probe_engine_source_code='2',cover_path_probe_session_stage='5',
+        cover_path_probe_original_started_after='0',cover_path_probe_original_returned_after='0')
+    assert inspect(bad)['first_rejection_layer']=='engine/source_repeat/guard' and not inspect(bad)['queried_and_returned']
+    print(json.dumps(dict(cases=10,failures=0,scope='report interpretation, no game')))
 if __name__=='__main__':
     if sys.argv[1:]==['--selftest']:selftest()
     else:print(json.dumps(inspect(json.loads(Path(sys.argv[1]).read_text(encoding='utf-8-sig'))),indent=2))

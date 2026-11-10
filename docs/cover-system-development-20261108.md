@@ -2213,3 +2213,15 @@ r134源码已保存dc2d9874。新票cover-1110-r135-cloak-path准备与真实ada
 等待期间复用已编译EyeFaceInspect重新读r132真实283条CPU眼点几何，283匹配/0拒绝。五段完整CPU读括号内分别4/6/6/7/7条，模型眼骨中点到authored眼点约3raw units，base forward与authored face约82.6–87.3度；前者吻合原mount，后者未含最终HMD旋转，不能据此断言最终视线错误或唯一遮挡根因。不添加任意相机偏移；最终双眼遮挡仍FAIL。新证据path-probe-r134/r132-eye-{face,phase-comparison}.json和runtime-r135/prebirth-refusal.json。
 
 下一次用新票继续同一r134候选的第一次实际路径/终点调用；本轮资源拒绝不算游戏复查，不重跑已通过Sphere。完整身体几何/世界覆盖、C0同版提交/视图/受击/枪口、遮挡和全部CV01–24/AC01–22保持未完成，目标active。
+
+## r136：实际路径在source_repeat/guard拒绝，原版调用0；正常关闭与双眼失败已核验（2026-11-11）
+
+r135预创建拒绝及等待分类修复已保存626c6dd0。新票cover-1111-r136-cloak-path在精确worker资源释放后只启动一次，Native0098be93…37cb、冻结PG/XR、Source1、0.4、path模式，sphere requested/attempted均0。game16040/creation134388003952038420、owner21152/creation134388003872202839、XR55760/creation134388004017415947，worker47672/creation134388003871254438。原版接近/A进入CT2及五段观察完成，operator0；没有抓边或虚拟身体移动。
+
+path requested/attempted/finished均1，code6=changed；Session engine5/detail6，Engine source_repeat3/source_code2=guard、exception0，original_started/returned前后均0。LayoutStep40、225独立成员见证、capacity0，已越过physics/collider/component初始读取，未越过引擎第二次来源复核。source::capture返回guard只证明其调用的当前来源guard为false，尚未区分内部typed读闭合、身份、元数据、原时间或owner等具体条件，不猜计时/身份根因、不删除复核。零hit/endpoint/segment字段是未成功输出，不是空碰撞证据。
+
+本次Scene431/Compose26633/sequence3588/thread25192，World2312601856/gen1、Pawn95194022016、Link2309112576/slot0；诊断胶囊(-3921.29443,-148.927185,615.215271)→(-3921.29443,-148.927185,617.215271),r1，delta(1,0,0)，括号111654972425700→111655005645500ns。仍是厘米级ABI控制，非正式身体体积。姿态complete316，首份同该C0；measurement/core24首份Scene448/Compose27715/sequence3615，属于另一C0，分开保留。
+
+251张实际私有双眼投影、录制错误0/线程joined、编码0；13页完整跨度overview和5张原始phase图全部亲自查看。头肩/躯干仍遮挡双眼大块区域，visualFAIL。phase完整请求/观察括号内各7可选帧，不称同C0/GPU消费。正常stop，Native/入口/pad恢复、fire_disable0/hand_stop5/drainedtrue、XR0/launcher0；精确game/owner/XR/worker均不在，无强杀。CLOAK618次失败0，静音验证248/initially_muted1/verify_failed0/target_shared_rejected0；启动disk_before7454486528≥4GiB。新prebirth分类在本次为false，真实启动清理分支保持；不拿此运行冒充跳过等待特殊分支实测。
+
+原报告原样复制并按精确SHA解释，解析器新增本次source_repeat/guard拒绝案例后10项合成检查0。证据path-probe-r134/runtime-r136/{session-original,path-probe,pose-probe,media-review,closeout}.json。下一步记录来源guard首个具体拒绝谓词，定向修复后再查；不重跑未改Sphere或同一失败路径，不放宽原始时效/身份/释放。完整身体/世界覆盖、唯一C0提交及同版视图/命中/枪口、遮挡与全部CV01–24/AC01–22仍未完成。工程25%、公共v71和固定手动入口保持，目标active。

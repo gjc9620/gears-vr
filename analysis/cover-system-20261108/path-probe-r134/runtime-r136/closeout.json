@@ -1,0 +1,103 @@
+{
+  "classification": "progress: actual capsule path rejected by repeated-source guard before any original call",
+  "identities": {
+    "game_identity": {
+      "pid": 16040,
+      "creation_time": 134388003952038420,
+      "image": "j:\\gearsvr\\gears.of.war.reloaded.v1.0.1.3816947-p2p\\gears of war reloaded\\binaries_x64\\gowde-steam.exe"
+    },
+    "owner_identity": {
+      "pid": 21152,
+      "creation_time": 134388003872202839,
+      "image": "c:\\users\\11\\.cache\\codex-runtimes\\codex-primary-runtime\\dependencies\\python\\python.exe"
+    },
+    "xr_identity": {
+      "pid": 55760,
+      "creation_time": 134388004017415947,
+      "image": "c:\\users\\11\\.codex\\worktrees\\6dof-single\\gearsvr\\tools\\openxr-probe\\build-cover-1111-r136-cloak-path\\openxrposeprobe.exe"
+    },
+    "worker_identity": {
+      "pid": 47672,
+      "creation_time": 134388003871254438,
+      "image": "c:\\users\\11\\.cache\\codex-runtimes\\codex-primary-runtime\\dependencies\\python\\python.exe"
+    }
+  },
+  "exact_owned_processes_absent_at_closeout": true,
+  "native_sha256": "0098be93163f11c4f3007115d8f2154f484c9bf15338d59cbf5f440a048c37cb",
+  "original_report": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\runtime\\continuous-stereo-16040-20261111-000641-730ce0b6.json",
+  "original_report_sha256": "ef6463b2ac874f9e1a0236d7fbf51454995d3606fa4274182b40e2a0ac1559d3",
+  "operator_exit": 0,
+  "input_and_five_phases_completed": true,
+  "first_failure": "engine/source_repeat/guard",
+  "original_started": 0,
+  "original_returned": 0,
+  "failure_cause": "guard returned false; exact nested predicate not witnessed; no timer/identity root-cause claim",
+  "diagnostic_capsule": "-3921.29443,-148.927185,615.215271,-3921.29443,-148.927185,617.215271,1",
+  "diagnostic_delta": "1,0,0",
+  "body_geometry_verified": false,
+  "world_coverage_verified": false,
+  "collision_clear": null,
+  "movement_authorized": false,
+  "same_C0_across_rows": false,
+  "probe_admission": {
+    "step": 15,
+    "name": "complete",
+    "count": 316,
+    "detail": 0,
+    "scene": 431,
+    "compose": 26633,
+    "sequence": 3588,
+    "world": 2312601856,
+    "pawn": 95194022016
+  },
+  "separate_measurement": {
+    "step": 8,
+    "name": "measurement",
+    "count": 24,
+    "detail": 2,
+    "scene": 448,
+    "compose": 27715,
+    "sequence": 3615,
+    "world": 2312601856,
+    "pawn": 95194022016,
+    "measurement_status": "core"
+  },
+  "registry_reacquisition_branch_observed": false,
+  "normal_cleanup_verified": true,
+  "unified_weapons_cleanup": {
+    "fire_disable_code": 0,
+    "hand_stop_code": 5,
+    "drained": true
+  },
+  "cloak": {
+    "samples": 618,
+    "failures": []
+  },
+  "mute": {
+    "event": "mute_verification_summary",
+    "pid": 16040,
+    "initially_muted_sessions": 1,
+    "verified_muted_observations": 248,
+    "verify_failed": 0,
+    "target_shared_rejected": 0,
+    "shared_rejected_is_global_scan_count": true
+  },
+  "disk_before": {
+    "check": "disk_admission",
+    "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr",
+    "free_bytes": 7454486528,
+    "minimum_free_bytes": 4294967296,
+    "admitted": true
+  },
+  "visual_result": "FAIL",
+  "public_changed": false,
+  "headset_accepted": false,
+  "remaining": [
+    "first failed predicate in repeated source guard, preserving all current-source checks",
+    "actual original path and endpoint execution",
+    "complete body geometry and complete current collision-world coverage",
+    "same-pose C0 body/view/hit/muzzle",
+    "own head/shoulder obstruction",
+    "CV01-24 AC01-22 headset"
+  ]
+}

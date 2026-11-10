@@ -1,0 +1,39 @@
+{
+  "game": {
+    "pid": 16040,
+    "creation_time": 134388003952038420,
+    "image": "j:\\gearsvr\\gears.of.war.reloaded.v1.0.1.3816947-p2p\\gears of war reloaded\\binaries_x64\\gowde-steam.exe"
+  },
+  "native_sha256": "0098be93163f11c4f3007115d8f2154f484c9bf15338d59cbf5f440a048c37cb",
+  "rows": [
+    {
+      "step": 8,
+      "name": "measurement",
+      "count": 24,
+      "detail": 2,
+      "scene": 448,
+      "compose": 27715,
+      "sequence": 3615,
+      "world": 2312601856,
+      "pawn": 95194022016,
+      "measurement_status": "core"
+    },
+    {
+      "step": 15,
+      "name": "complete",
+      "count": 316,
+      "detail": 0,
+      "scene": 431,
+      "compose": 26633,
+      "sequence": 3588,
+      "world": 2312601856,
+      "pawn": 95194022016
+    }
+  ],
+  "missing": [],
+  "complete_gate_observed": true,
+  "query_attempted": false,
+  "collision_clear": null,
+  "movement_authorized": false,
+  "same_C0_across_rows": false
+}
