@@ -4,8 +4,8 @@ import json,sys
 NATIVE='d7cb104d3dcf7e77dfa127f28064d1b3cfbb3df2c6a8f16d416fee2c9c88c2e5'
 STEPS=('stopping','idle','current_before','key_before','type','slot','link','marker','measurement','key_after','same_key_after','current_after','stopping_after','revision_after','entry','complete','exception')
 MEASURE=('okay','alias','core','units','neutral','policy','view','physical','head_marker','numerical','cover')
-def inspect(report):
-    if report.get('diagnostics_artifacts',{}).get('native_sha256')!=NATIVE:raise ValueError('Exact diagnostic Native required')
+def inspect(report,expected_native=NATIVE):
+    if report.get('diagnostics_artifacts',{}).get('native_sha256')!=expected_native:raise ValueError('Exact diagnostic Native required')
     status=report['native_status'];game=report['game_identity']
     if int(status['pid'])!=game['pid']:raise ValueError('Game/Native PID mismatch')
     rows=[];missing=[]
@@ -26,7 +26,7 @@ def inspect(report):
         rows.append(row)
     # Different gates may refer to different C0s. Do not combine them into a
     # fictional single transaction or infer that a count is the first failure.
-    return dict(game=game,native_sha256=NATIVE,rows=rows,missing=missing,
+    return dict(game=game,native_sha256=expected_native,rows=rows,missing=missing,
         complete_gate_observed=any(r['name']=='complete' for r in rows),
         query_attempted=status.get('cover_sphere_probe_attempted')=='1',
         collision_clear=None,movement_authorized=False,same_C0_across_rows=False)

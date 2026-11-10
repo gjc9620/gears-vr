@@ -1,0 +1,23 @@
+[
+  {
+    "at_ns": 1794324409153133400,
+    "refused_before_claim": "{\"check\": \"disk_admission\", \"path\": \"C:\\\\Users\\\\11\\\\.codex\\\\worktrees\\\\6dof-single\\\\gearsVr\", \"free_bytes\": 3204440064, \"minimum_free_bytes\": 4294967296, \"admitted\": false}; insufficient evidence-volume space; no new game started; continue independent work and retry after space is released"
+  },
+  {
+    "at_ns": 1794324419209271100,
+    "available": {
+      "available_commit": 27501785088,
+      "available_physical": 16609718272,
+      "active_instances": [
+        "lancer-natural-v139-225928"
+      ]
+    },
+    "disk": {
+      "check": "disk_admission",
+      "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr",
+      "free_bytes": 6674460672,
+      "minimum_free_bytes": 4294967296,
+      "admitted": true
+    }
+  }
+]

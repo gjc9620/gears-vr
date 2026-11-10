@@ -2165,3 +2165,17 @@ PhysicsRoles、ColliderRoles、ComponentRoles三个已有读取Workspace各拥�
 同一192成员fixture修复后完整通过，记录201成员且普通Proof不到128。50项新增检查保留public legacy路径128拒绝，覆盖末端循环/重复选名/错误owner、第二遍之后类型/Next/注册表变化、拒读、碰撞/存储耗尽/clear恢复。实际8程序合计1145项0失败（Member50/Physics282/Collider219/Component207/Session105/OverlapSession53/Path191/OFF38），MSVC W4/WX/O2/UNDEBUG；派发和内存为明确Host缝，不是游戏/原查询证据。首次检查目录父路径遗漏在编译前拒绝，创建本方目录后复现；未放宽警告。初版Native成功但审查调整component结束复核先metadata后成员，final重编与受影响4程序after-v2通过。
 
 最终Native以r126冻结树仅叠5文件，406项目依赖、外部工作树依赖0、开关不变，编译链接0；SHA256 4a9a6f6b77c52538c75e19651a7ed20e233ab34e5025d0b7224fda9754bb744b。当前尚未stage或启动新game/XR；公共v71/固定手动入口保持。证据member-witness-r131/{verification,native-build-result}.json、before-v1与after-v1/v2。下一步保存本源码后新票定向进入，检查是否越过具体layout阻断再按实际下一拒绝修复；r130后续Core拒绝、完整当前占用/世界覆盖/唯一C0身体及视图/命中/枪口、抓边联合战斗与头显均未通过，工程25%及全部CV01–24/AC01–22保持。
+
+## r132：完整成员闭合后原版Sphere首次实际执行；双眼遮挡仍失败（2026-11-10）
+
+r131源码已保存d59ff30d。新独立实例cover-1110-r132-cloak-member-witness使用Native4a9a6f6b…744b，原冻结PG/XR、Source1、0.4；game51668/creation134387980269591055、owner18892/creation134387980196534942、XR31304/creation134387980465030763。原版接近/A进入CT2及五段观察完成，operator0；本次没有抓边或虚拟身体移动。
+
+首次Sphere requested/attempted/finished均1，code0、raw_hit0；Session complete7、Engine complete10，original_started/returned均0→1。完整LayoutStep40/pass2，225项独立成员见证、capacity0，offsets584,592,96,108,104，结束复核通过。Scene447/Compose27519/sequence3345，世界2448851200/gen1、Pawn95227143808、Link2302462176/slot0；原球(-3914.51929,-154.767059,614.237732,r1)，读取括号109300844682600→109300863139300ns。这证明该次原始球查询调用并返回，不证明完整形状/世界覆盖、身体路径、终点占用或移动许可；新capsule枚举接口仍未在游戏调用。
+
+姿态预检complete279，首份同Scene447/Compose27519/sequence3345；measurement/core拒绝54，首份Scene451/Compose27767/sequence3352。它们属于不同C0，不拼成一次事务，也不以数量对比宣称时限或测量根因修复。后续Core拒绝单独保留。
+
+276张真实私有双眼投影、错误0、线程joined、编码0；14张全跨度overview和5张原始phase接触图全部亲自查看。中立、转头、恢复、抬高、恢复五段均严重自身头肩/躯干遮挡，visualFAIL；开头长静止及间歇手部可见性保留。phase严格按事件区间内完整请求/观察括号选图，不称同C0或GPU消费证明。
+
+正常停止、Native/入口/pad恢复，fire_disable0/hand_stop5/drainedtrue，XR0/launcher0，无强杀，保存时精确game/owner/XR/worker均不在。CLOAK626次失败0，静音验证273/verify_failed0/target_shared_rejected0。实际disk_before free6725824512≥4294967296；不追补r128缺失恢复回执。r128与r130仅本方已消费实例全文件SHA前后一致归档J盘、原C路径junction保持，各921792452/1017521687字节，未动其他实例。
+
+证据member-witness-r131/runtime-r132/{session-original,query-probe,pose-probe,media-review,closeout,additional-owned-archive}.json。下一步接完整身体路径/终点的形状枚举与当前世界覆盖，再连接唯一C0身体提交及同版视图/命中/枪口；自身头肩遮挡和Core拒绝仍需分别修复。全部CV01–24/AC01–22未完成，工程25%、公共v71、固定手动入口不变，目标active。

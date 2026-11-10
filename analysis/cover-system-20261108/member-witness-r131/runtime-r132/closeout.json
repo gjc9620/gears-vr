@@ -1,0 +1,100 @@
+{
+  "classification": "progress: original Sphere query executed and returned after full member closure",
+  "identities": {
+    "game_identity": {
+      "pid": 51668,
+      "creation_time": 134387980269591055,
+      "image": "j:\\gearsvr\\gears.of.war.reloaded.v1.0.1.3816947-p2p\\gears of war reloaded\\binaries_x64\\gowde-steam.exe"
+    },
+    "owner_identity": {
+      "pid": 18892,
+      "creation_time": 134387980196534942,
+      "image": "c:\\users\\11\\.cache\\codex-runtimes\\codex-primary-runtime\\dependencies\\python\\python.exe"
+    },
+    "xr_identity": {
+      "pid": 31304,
+      "creation_time": 134387980465030763,
+      "image": "c:\\users\\11\\.codex\\worktrees\\6dof-single\\gearsvr\\tools\\openxr-probe\\build-cover-1110-r132-cloak-member-witness\\openxrposeprobe.exe"
+    },
+    "worker_identity": {
+      "pid": 16648,
+      "creation_time": 134387980195740288,
+      "image": "c:\\users\\11\\.cache\\codex-runtimes\\codex-primary-runtime\\dependencies\\python\\python.exe"
+    }
+  },
+  "exact_owned_processes_absent_at_closeout": true,
+  "native_sha256": "4a9a6f6b77c52538c75e19651a7ed20e233ab34e5025d0b7224fda9754bb744b",
+  "original_report": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\runtime\\continuous-stereo-51668-20261110-232726-888d7245.json",
+  "original_report_sha256": "25e08ce21b877e1f7bd6a6e57d280edecc20925ceaca664a8afd6008c0a4f9c8",
+  "input_and_phase_sequence": true,
+  "complete_member_witnesses": 225,
+  "capacity_exhausted": false,
+  "original_query_started": 1,
+  "original_query_returned": 1,
+  "raw_hit": 0,
+  "collision_clear": null,
+  "movement_authorized": false,
+  "complete_body_path_verified": false,
+  "capsule_enumeration_game_executed": false,
+  "probe_admission": {
+    "step": 15,
+    "name": "complete",
+    "count": 279,
+    "detail": 0,
+    "scene": 447,
+    "compose": 27519,
+    "sequence": 3345,
+    "world": 2448851200,
+    "pawn": 95227143808
+  },
+  "separate_measurement": {
+    "step": 8,
+    "name": "measurement",
+    "count": 54,
+    "detail": 2,
+    "scene": 451,
+    "compose": 27767,
+    "sequence": 3352,
+    "world": 2448851200,
+    "pawn": 95227143808,
+    "measurement_status": "core"
+  },
+  "same_C0_across_rows": false,
+  "registry_reacquisition_branch_observed": false,
+  "normal_cleanup_verified": true,
+  "unified_weapons_cleanup": {
+    "fire_disable_code": 0,
+    "hand_stop_code": 5,
+    "drained": true
+  },
+  "cloak": {
+    "samples": 626,
+    "failures": []
+  },
+  "mute": {
+    "event": "mute_verification_summary",
+    "pid": 51668,
+    "initially_muted_sessions": 1,
+    "verified_muted_observations": 273,
+    "verify_failed": 0,
+    "target_shared_rejected": 0,
+    "shared_rejected_is_global_scan_count": true
+  },
+  "disk_before": {
+    "check": "disk_admission",
+    "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr",
+    "free_bytes": 6725824512,
+    "minimum_free_bytes": 4294967296,
+    "admitted": true
+  },
+  "visual_result": "FAIL",
+  "public_changed": false,
+  "headset_accepted": false,
+  "remaining": [
+    "complete body path and endpoint with full world coverage and current occupancy",
+    "Core measurement refusals in distinct C0s",
+    "same-pose C0 body/view/hit/muzzle consumers",
+    "head and shoulder view obstruction",
+    "CV01-24 AC01-22 and physical headset acceptance"
+  ]
+}

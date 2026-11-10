@@ -1,0 +1,14 @@
+[
+  {
+    "original": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\cover-1110-r128-cloak-registry",
+    "target": "J:\\gearsVr\\analysis\\cover-disk-recovery-20261110-r128\\instances\\cover-1110-r128-cloak-registry",
+    "manifest": "J:\\gearsVr\\analysis\\cover-disk-recovery-20261110-r128\\instances\\cover-1110-r128-cloak-registry-hashes.json",
+    "sha256": "feef7e1cbff6efe983bad617a12299636782b5325f8f57f66af5cbf924835a4f"
+  },
+  {
+    "original": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\cover-1110-r130-cloak-pose-witness",
+    "target": "J:\\gearsVr\\analysis\\cover-disk-recovery-20261110-r128\\instances\\cover-1110-r130-cloak-pose-witness",
+    "manifest": "J:\\gearsVr\\analysis\\cover-disk-recovery-20261110-r128\\instances\\cover-1110-r130-cloak-pose-witness-hashes.json",
+    "sha256": "65e1ade2153c65025e19b105bba4bf29722324df50cf79ed978023265f4134f0"
+  }
+]
