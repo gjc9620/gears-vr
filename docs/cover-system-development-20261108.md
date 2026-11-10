@@ -1706,3 +1706,15 @@ Compound RTTI类型描述277470、COL2491F0与主表227950交叉核对。表+398
 独立v2冻结r90 final单元源及3份本轮文件，严格/std:c++17 /O2 /W4 /WX /EHsc /UNDEBUG /MT编译执行0，66项／0失败。覆盖动态单体反链、静态单Shape、静态Compound平行成员、每次读取失败、错误成员／父关系／Body／Actor／Scene／计数／表、双读间根变化及空根清旧成员。原DLL只作PE数据，CodeGuard与owner为明确测试seam，无实际C0、原调用或游戏。首版测试嵌套include将main宏重定义，/WX拒绝并报告重复main；新增可重命名测试入口后v2通过。首版日志与冻结源保留，不扩大栈或放宽产品检查。
 
 证据analysis/cover-system-20261108/actor-shapes-r92/verification.json及source／source-v2、build／build-v2。新模块尚非Native依赖，故本轮未重建或替换Native／PG／XR，最新编译仍r90的945e7b3b；公开v71及r80封存身份保持，无stage／游戏／XR／录像或新玩家动作通过。下一步将实际原代码证书和该清单接入同一hit归属事务，以成员关系补静态路径并保持动态反链，而后完成原查询前后关闭。完整自身与形状世界覆盖、物理同步、身体路径／占用／移动恢复、严重肩身遮挡、physics-hit-muzzle、真实LGrip／GrabPose、CV01–24／AC01–22及实体头显仍未完成。工程25%不变，目标active。
+
+## 2026年11月10日 r93静态Shape归属事务接线
+
+上一轮98013c4f的清单模块及66项检查属于进展。本轮将r91精确getter／count／dispatch字节证书和r92空／单／Compound清单接入原cover_physx_shape_owner::observe。拆出共享公开Shape主表，避免循环include；Actor原98／A0分派槽、Compound表和计数／列表方法槽均关闭，code header逐字节匹配r91原函数。原Actor归属、同Scene、公开／内部Shape反链保持；动态Body非空仍读原反链，静态Body为空只有命中Shape在实际Actor成员清单中恰好出现一次才能通过，不以空值相等代替归属。
+
+命中归属前后各关闭完整成员清单，并要求整个空／单／Compound表示、数组头及逐成员相同；没有第二次原查询或任何写入。已有QueryEngine同一次stream自动使用新归属器；raw命中顺序、输入、callback和fault_unknown pin／清理保护保持。新工作区只是单次归属的有界局部清单，未将64成员数组复制到每个Hit结果。此修复解决源码的静态误拒绝路径，不证明原游戏静态墙体、完整自身集合或物理world fence。
+
+v2冻结r90 Native源，仅4个产品overlay，共1097文件。实际编译链接0，Native SHA为9f375dc7c453b7c0692f1c1b5e223023e66a092ac963e17f64173b88514fec2b；680实际依赖／400冻结项目依赖逐SHA，原flags保持。19个聚焦程序严格/W4 /WX编译执行0，Owner499／0、Owned122／0；最终ActorShapes程序补查完整静态Compound归属及新计数代码字节破坏，73／0。其余结果见verification.json。原37条警告保留，改动模块0新增；未替换PG／XR、publicv71、手动入口或r80封存包，运行cover_queries默认0及Goal no_cover拒绝保持。
+
+首版/WX发现新增参数base遮蔽旧fixture全局，重命名为image_base后v2通过；最终新检查初期待module，但原代码证书通过CodeGuard返回guard拒绝，实际拒绝且输出保持，修正预期后通过，未放宽产品条件。两份失败及冻结输入保留。测试仍是原PE数据、合成对象和Host加载／dispatch，独立清单的owner/code准入为显式seam；新增完整owner调用执行实际代码证书与成员关闭。无原DLL执行／游戏／XR／录像或新玩家动作通过。
+
+本轮收到HOD41008／ee031实际取消前驱预告：窗口仍属HOD，retention及固定完整closeout尚待交付，不是FINAL。后续只准备准确取消分支，保留正常分支，不复用49912例外、不重复产品prepare或消费r80。其余完整Shape／自身覆盖、生命周期／ABA和共同物理同步、身体路径／占用／移动恢复、严重肩身遮挡、physics-hit-muzzle、LGrip／GrabPose及实体头显仍未完成。保留CV01–24／AC01–22，工程25%不变，目标active。

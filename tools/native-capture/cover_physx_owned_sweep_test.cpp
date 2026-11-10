@@ -92,10 +92,10 @@ static Memory setup(char const* file){
     m.put<std::uintptr_t>(0x240180,0x250000);m.put<std::uintptr_t>(0x250088,actor1);
     m.put<std::uintptr_t>(0x200180,0x210000);m.put<std::uintptr_t>(0x210088,0x160000);
     for(auto const at:{shape0,shape1})m.block(at,0x40);
-    for(auto const at:{inside0,inside1})m.block(at,0xd8);
+    for(auto const at:{inside0,inside1})m.block(at,0x170);
     for(auto const at:{body0,body1})m.block(at,0x18);
-    m.block(0x160000,0x48);m.block(actor1,0x48);
-    m.put<std::uintptr_t>(0x160040,body0);m.put<std::uintptr_t>(body0+0x10,0x160000);
+    m.block(0x160000,0x50);m.block(actor1,0x50);
+    m.put<std::uintptr_t>(0x160048,inside0);m.put<std::uintptr_t>(actor1+0x48,inside1);m.put<std::uintptr_t>(0x160040,body0);m.put<std::uintptr_t>(body0+0x10,0x160000);
     m.put<std::uintptr_t>(actor1,base+0x2330a8);m.put<std::uintptr_t>(actor1+0x38,0x170000);
     m.put<std::uintptr_t>(actor1+0x40,body1);m.put<std::uintptr_t>(body1+0x10,actor1);
     for(unsigned i=0;i<2;++i){const auto shape=i?shape1:shape0,inside=i?inside1:inside0,actor=i?actor1:0x160000,body=i?body1:body0;

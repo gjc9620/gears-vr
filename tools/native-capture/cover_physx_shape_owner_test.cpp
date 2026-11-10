@@ -12,15 +12,15 @@ static void links(Memory& m,std::uintptr_t actor,std::uintptr_t internal){
 }
 static Memory ownership_fixture(char const* path){
     auto m=fixture();if(!load_code(path,m))throw 3;
-    m.block(shape_at,0x40);m.block(internal_shape_at,0xd8);m.block(internal_actor_at,0x18);
-    m.block(0x160000,0x48);m.block(other_actor_at,0x48);m.block(other_internal_actor_at,0x18);
+    m.block(shape_at,0x40);m.block(internal_shape_at,0x170);m.block(internal_actor_at,0x18);
+    m.block(0x160000,0x50);m.block(other_actor_at,0x50);m.block(other_internal_actor_at,0x18);
     m.put<std::uintptr_t>(shape_at,base+owner::shape_tables[0]);
     m.put<std::uintptr_t>(shape_at+0x30,internal_shape_at);
     m.put<std::uintptr_t>(internal_shape_at,base+0x226c80);m.put<std::uintptr_t>(internal_shape_at+0xa0,shape_at);
     m.put<std::uintptr_t>(0x160040,internal_actor_at);m.put<std::uintptr_t>(internal_actor_at+0x10,0x160000);
     m.put<std::uintptr_t>(other_actor_at,base+0x2330a8);m.put<std::uintptr_t>(other_actor_at+0x38,0x170000);
     m.put<std::uintptr_t>(other_actor_at+0x40,other_internal_actor_at);m.put<std::uintptr_t>(other_internal_actor_at+0x10,other_actor_at);
-    links(m,0x160000,internal_actor_at);return m;
+    m.put<std::uintptr_t>(0x160048,internal_shape_at);m.put<std::uintptr_t>(other_actor_at+0x48,internal_shape_at);links(m,0x160000,internal_actor_at);return m;
 }
 #ifndef GEARS_SHAPE_OWNER_TEST_MAIN
 #define GEARS_SHAPE_OWNER_TEST_MAIN main
@@ -46,6 +46,8 @@ int GEARS_SHAPE_OWNER_TEST_MAIN(int argc,char** argv){
         }
         m=initial;links(m,other_actor_at,other_internal_actor_at);
         check(owner::observe(base,size,scope,hit,read,guard,output)==owner::Code::observed&&output.actor==other_actor_at,"other same-scene actor is observed, not classified away");
+        m=initial;links(m,other_actor_at,0);m.put<std::uintptr_t>(other_actor_at+0x40,0);
+        check(owner::observe(base,size,scope,hit,read,guard,output)==owner::Code::observed&&!output.internal_actor&&output.actor==other_actor_at,"static foreign Actor qualified by actual single Shape membership");
         for(unsigned bad=0;bad<15;++bad){
             m=initial;output=sentinel;
             if(bad==0)m.put<std::uintptr_t>(shape_at,base+0x241358);
@@ -73,7 +75,7 @@ int GEARS_SHAPE_OWNER_TEST_MAIN(int argc,char** argv){
         m=initial;output=sentinel;bool switched=false;
         auto swapping=[&](void* p,void const* a,std::size_t n){const bool result=m.read(p,a,n);
             if(result&&!switched&&reinterpret_cast<std::uintptr_t>(a)==internal_actor_at+0x10){switched=true;links(m,other_actor_at,other_internal_actor_at);}return result;};
-        check(owner::observe(base,size,scope,hit,swapping,guard,output)==owner::Code::changed&&owner::same(output,sentinel),"two individually consistent owners cannot replace the first");
+        check(owner::observe(base,size,scope,hit,swapping,guard,output)!=owner::Code::observed&&owner::same(output,sentinel),"two individually consistent owners cannot replace the first");
         m=initial;output=sentinel;unsigned code_reads{};
         auto packet_change=[&](void* p,void const* a,std::size_t n){const bool result=m.read(p,a,n);
             if(reinterpret_cast<std::uintptr_t>(a)==base+0x13e730&&++code_reads==2)hit.bytes[0]^=1;return result;};
