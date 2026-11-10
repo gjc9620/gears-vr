@@ -1,0 +1,8 @@
+{
+  "passed": true,
+  "actual_client": true,
+  "source_sha256": "c816fd201e32192e1a6b1bfc81f64df9047a59dc6db26eade315a2f9cc440ce2",
+  "header_sha256": "85d916ade33fee190b63aa29835641642d561f76acf6f4fca9e02c19ec27ffeb",
+  "stale_single_and_support_cases": 2,
+  "game_execution": false
+}

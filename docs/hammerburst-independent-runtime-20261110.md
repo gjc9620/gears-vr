@@ -246,3 +246,5 @@ continuous/session passed=true，launcher0/operator1/stop0、Native正常清理�
 released-debt-r1为本次首因的私有修正，默认未启用公共功能：仅在现有release_completed全部16项检查通过的真实UP处捕获既有ExistingActionLifetime。只有原六连发已commit、count1..5、firing_debt、first_debt无、cancel无、实际输入无owned press、同持枪、明确stale_before且同原action epoch/父关联仍有效，才保留债务等待。service失去publication与after_tick无Frame时不立刻取消这一已松键事务；不会返回Frame/枪口/输入/新事件许可。任意射线仍经过既有新Frame、右手跟踪、native current、20ms余量和100ms source检查；原pending event250ms期限、serial及captured不续期。显式撤销、失去注册、非stale撤回、未松键、first debt或换持枪不进入该等待。
 
 候选完整PG编译成功，SHA df22727d9bc35578f36e39bcc111679054eacf59a2b6f346de08f27aea5547f6；Native/XR未重建。实际事件适配器308项检查通过，其中新增28项覆盖过期时不发射/不续event、新鲜源恢复后仅下一发、8种拒绝、原250ms到期正常取消；队列、引擎、证书和Client lifetime调用为夹具，不冒充实际Native epoch验证。源补丁`docs/hammerburst-released-debt-wait.patch`；实际该修正尚未运行。
+
+另用同冻结树的实际HandClient头执行12项原action lifetime身份/epoch案例，并补2项102.1307ms过期publication案例（single/support分别覆盖）：Frame copy拒绝、armed false、snapshot无权限，原action身份可仅供既有债务保留，显式invalidate后立即拒绝。14项通过；这是实际Client代码加本地主机/观察器，不是Native运行或游戏身份验证。结果`released-debt-r1/client-test-result.json`，编译未改PG候选DLL。
