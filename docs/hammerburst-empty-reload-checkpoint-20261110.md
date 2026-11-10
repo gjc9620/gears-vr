@@ -139,3 +139,7 @@ continuation-rejection-isolated-r1从manual-veto-isolated原2253文件逐项复�
 ## r2精确冻结头文件夹具验证
 
 将受影响runtime/event两个测试直接从r2 product/source编译，所有项目头与inl均由MSVC /showIncludes实际输出解析，逐项要求路径位于该冻结source且SHA等prepared map，禁止根worktree头混入。/W4 /WX /UNDEBUG编译执行0，runtime297/event258仍通过；continuation-rejection-frozen-tests-r2/result.json保存实际include闭包与SHA。没有修改已封存product、重建PG或启动游戏，原engine/certificate/dispatcher替身限制仍在。这项补齐前面root测试与实际候选版本的一致性，不增加玩法接受范围。
+
+## 新失败记录的离线解释边界
+
+新增纯函数analyze_hb_continuation_rejection.py读取有限失败行，不访问进程/输入/游戏。release仅gate16、continuation仅gate7表示当前真正执行need_source，其余路径把source_stage标为历史值而不归因；cancel already requested不被当成根因。23个已知gate与重复/无效字段反例、实际13712旧原日志无新记录不造诊断，共27项通过。原日志没有新增记录不能据缺失判通过。receipt-reader-check.json保存源码SHA/合成边界与实际旧日志观察。本工具不进入生产driver/不改候选或已冻结Python边界。
