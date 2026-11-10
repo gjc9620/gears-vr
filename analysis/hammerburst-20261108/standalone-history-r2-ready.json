@@ -2,6 +2,6 @@
   "candidate": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\solo-m1-20261028\\hammerburst-prepared-20261110-latch-history-press",
   "prepared_sha256": "98b9a1ee7ff97a5af40918f7a4cd4e5b5fd2bf00646c888484d9324446156fe5",
   "plan": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\standalone-history-r2-plan.json",
-  "plan_sha256": "488d9a6c6ab243b3db5d1f6184d5aa6c74fb88be2776272ba5e86fbad5715bb2",
-  "entry_sha256": "e86ca13754d446fedecdec33346303d789c55e8c71a238bb4c2a1b514849c550"
+  "plan_sha256": "8db020c19b1db526c070abdb0f817cbfc14cb8b8731adcb8e2ecd7ff66eab116",
+  "entry_sha256": "9016f04de2ddf2019633c15959e49dbf9fb1f0bb9b1a21192dbf1a9691f8e62a"
 }

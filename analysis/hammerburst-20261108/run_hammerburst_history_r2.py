@@ -163,5 +163,5 @@ if __name__=='__main__':
  if _PREPARE:raise SystemExit(main())
  sys.path.insert(0,str(ROOT/'tools/debug-launch'))
  from runtime_stage_guard import RuntimeGuard
- with RuntimeGuard('solo-m1-1028d'):
+ with RuntimeGuard('solo-m1-1028d',timeout_ms=45000):
   raise SystemExit(main())
