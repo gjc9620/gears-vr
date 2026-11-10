@@ -8,6 +8,43 @@ import math
 import time
 
 
+def timed_pulse(ctx, right, forward, duration, *, clock=time.monotonic, sleep=time.sleep):
+    """Use elapsed time, rather than fixed slow publication counts, for ramps.
+
+    The existing owned publisher performs every input write and identity check.
+    A slow check/publication may still overrun; record it and release on the
+    first opportunity. This is not a hard scheduling/deadline guarantee.
+    """
+    if not all(math.isfinite(v) for v in (right, forward, duration)) or duration not in (.04, .22):
+        raise ValueError('Invalid bounded cover pulse')
+    if math.hypot(right, forward) > .620001:
+        raise ValueError('Cover pulse amplitude exceeds the existing bound')
+    ramp=.14; total=2*ramp+duration; started=clock(); samples=0
+    try:
+        for _ in range(64):
+            ctx.live()
+            elapsed=clock()-started
+            if elapsed<0:raise RuntimeError('Cover pulse clock regressed')
+            if elapsed>=total:break
+            fraction=min(elapsed/ramp,1.,(total-elapsed)/ramp)
+            weight=fraction*fraction*(3.-2.*fraction)
+            ctx.g.put(0,ctx.g.poses[0],stickX=right*weight,stickY=forward*weight)
+            samples+=1
+            remaining=total-(clock()-started)
+            if remaining>0:sleep(min(.02,remaining))
+        else:
+            raise RuntimeError('Cover pulse exceeded bounded publication count')
+    finally:
+        # No alternate writer or identity bypass on error. Normal owner cleanup
+        # remains responsible if the existing publisher cannot release.
+        ctx.g.put(0,ctx.g.poses[0])
+        finished=clock()
+        ctx.g.rec.event('cover_ordinary_pulse_released',planned_seconds=total,
+                        actual_seconds=finished-started,samples=samples,
+                        scheduling_overrun_seconds=max(0.,finished-started-total))
+    sleep(.12)
+
+
 def navigate(ctx, target, *, arrival_distance=35.0):
     if (len(target) != 3 or not all(math.isfinite(v) for v in target)
             or not math.isfinite(arrival_distance) or arrival_distance != 35.0):
@@ -43,7 +80,8 @@ def navigate(ctx, target, *, arrival_distance=35.0):
         ctx.g.rec.event('cover_ordinary_approach_step', distance=distance,
                         stick=[right, forward], duration=duration,
                         amplitude=.62, collision_or_deadzone_cause_proven=False)
-        # Same fresh original gamepad publisher and smooth start/stop path.
-        ctx.stick(0, right, forward, duration)
+        # Same owned publisher. Slow reads no longer extend a fixed-count ramp
+        # through every remaining publication after its planned end.
+        timed_pulse(ctx, right, forward, duration)
         previous, previous_distance = pos, distance
     raise RuntimeError('Bounded VR walking did not reach cover')

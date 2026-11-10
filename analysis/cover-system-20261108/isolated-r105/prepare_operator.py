@@ -70,6 +70,14 @@ def live():
     # No pause/resume expansion here; r104 already retains that known failure.
     sources['run_menu_firstperson_check.py'] = menu
     wrapper = (R104 / 'run_cover_eye_approach_operator.py').read_text(encoding='utf-8')
+    approach_source = ROOT / 'tools/game-playtest/cover_ordinary_approach.py'
+    approach_text = approach_source.read_text(encoding='utf-8')
+    ast.parse(approach_text, filename=str(approach_source))
+    wrapper = replace_once(wrapper, 'import sys, types', 'import sys, types\n' +
+        "cover_approach_module = types.ModuleType('cover_ordinary_approach')\n" +
+        f'cover_approach_module.__file__ = {str(approach_source)!r}\n' +
+        f'exec(compile({approach_text!r}, cover_approach_module.__file__, "exec"), cover_approach_module.__dict__)\n' +
+        "sys.modules['cover_ordinary_approach'] = cover_approach_module")
     wrapper = replace_once(wrapper,
         "O = Path(__file__).resolve().parents[3] / 'analysis/solo-m1-20261028'",
         f'O = Path({str(OLD)!r})')
@@ -118,6 +126,7 @@ exec(compile(s, str(O / 'run_menu_firstperson_check.py'), 'exec'),""")
         wrapper_source_sha256=sha(R104 / 'run_cover_eye_approach_operator.py'),
         generator_sha256=sha(__file__),
         entry_observation_source_sha256=sha(entry_observer),
+        ordinary_approach_source_sha256=sha(approach_source), ordinary_approach_frozen_in_operator=True,
         syntax_checked=True, shared_instance_references=0,
         input_reader=str(output / 'read_private_input.py'), input_reader_sha256=receipt['input_reader_sha256'],
         observation_adapter=str(adapter), observation_adapter_sha256=sha(adapter),

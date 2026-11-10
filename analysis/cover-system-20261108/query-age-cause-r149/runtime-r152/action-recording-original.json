@@ -1,0 +1,169 @@
+{
+  "source": "Event timeline for independent game/simulator HWND recordings",
+  "layer": "all",
+  "desktop_capture": false,
+  "audio": false,
+  "synchronous_projection_capture": false,
+  "physical_headset_acceptance": false,
+  "started_wall_ns": 1794340145293612100,
+  "clock": "Python perf_counter; wall_ns brackets for independent window recording alignment",
+  "frames": [],
+  "events": [
+    {
+      "time": 8.319999324157834e-05,
+      "wall_ns": 1794340145293612100,
+      "label": "independent_WGC_recording",
+      "synchronous_screenshot_requests": false
+    },
+    {
+      "time": 1.1968401999911293,
+      "wall_ns": 1794340146490070300,
+      "label": "owned_Playground_already_loaded",
+      "top": null,
+      "focus": null,
+      "number": null
+    },
+    {
+      "time": 1.1970316999941133,
+      "wall_ns": 1794340146490070300,
+      "label": "focused_Lancer_check_after_existing_controlled_Playground_entry",
+      "title_navigation_exercised": false
+    },
+    {
+      "time": 2.0007226999878185,
+      "wall_ns": 1794340147293744900,
+      "label": "before_original_X_pickup",
+      "weapon": "0x16339e73c0",
+      "cls": "Weap_LocustAssaultRifle"
+    },
+    {
+      "time": 6.08678179999697,
+      "wall_ns": 1794340151379638800,
+      "label": "cover_ordinary_approach",
+      "target": [
+        -3979.6602316476506,
+        -140.2601870208192,
+        563.9999997615814
+      ],
+      "candidate_only": true
+    },
+    {
+      "time": 6.100620599987451,
+      "wall_ns": 1794340151393822300,
+      "label": "cover_ordinary_approach_step",
+      "distance": 161.30304575324212,
+      "stick": [
+        -0.5391176313306534,
+        -0.3061897770802052
+      ],
+      "duration": 0.04,
+      "amplitude": 0.62,
+      "collision_or_deadzone_cause_proven": false
+    },
+    {
+      "time": 7.081613799993647,
+      "wall_ns": 1794340152373869400,
+      "label": "cover_ordinary_approach_step",
+      "distance": 113.885332561687,
+      "stick": [
+        -0.5391184802451381,
+        -0.30618828236588774
+      ],
+      "duration": 0.04,
+      "amplitude": 0.62,
+      "collision_or_deadzone_cause_proven": false
+    },
+    {
+      "time": 8.638656699986313,
+      "wall_ns": 1794340153931497100,
+      "label": "cover_ordinary_approach_step",
+      "distance": 207.80206868446695,
+      "stick": [
+        0.5179506316515361,
+        0.3407743288039385
+      ],
+      "duration": 0.22,
+      "amplitude": 0.62,
+      "collision_or_deadzone_cause_proven": false
+    },
+    {
+      "time": 9.705764099999215,
+      "wall_ns": 1794340154999063100,
+      "label": "cover_ordinary_approach_step",
+      "distance": 341.58911882915714,
+      "stick": [
+        0.49495529579034825,
+        0.3733888792788141
+      ],
+      "duration": 0.22,
+      "amplitude": 0.62,
+      "collision_or_deadzone_cause_proven": false
+    },
+    {
+      "time": 10.683356399997137,
+      "wall_ns": 1794340155976792400,
+      "label": "cover_ordinary_approach_step",
+      "distance": 233.56461148923103,
+      "stick": [
+        0.5711292144586232,
+        -0.2412704299989452
+      ],
+      "duration": 0.22,
+      "amplitude": 0.62,
+      "collision_or_deadzone_cause_proven": false
+    },
+    {
+      "time": 11.425821199998609,
+      "wall_ns": 1794340156719195800,
+      "label": "cover_ordinary_approach_step",
+      "distance": 269.47857141440295,
+      "stick": [
+        0.5190606257606414,
+        -0.3390812097196945
+      ],
+      "duration": 0.22,
+      "amplitude": 0.62,
+      "collision_or_deadzone_cause_proven": false
+    },
+    {
+      "time": 12.231980499986093,
+      "wall_ns": 1794340157525671600,
+      "label": "cover_ordinary_approach_step",
+      "distance": 180.2515164907474,
+      "stick": [
+        0.5145360988042292,
+        -0.3459083737455982
+      ],
+      "duration": 0.22,
+      "amplitude": 0.62,
+      "collision_or_deadzone_cause_proven": false
+    },
+    {
+      "time": 13.007178999992902,
+      "wall_ns": 1794340158300898600,
+      "label": "cover_ordinary_approach_step",
+      "distance": 180.2515164907474,
+      "stick": [
+        0.5145360988042292,
+        -0.3459083737455982
+      ],
+      "duration": 0.22,
+      "amplitude": 0.62,
+      "collision_or_deadzone_cause_proven": false
+    },
+    {
+      "time": 13.742861699996865,
+      "wall_ns": 1794340159035995100,
+      "label": "cover_ordinary_approach_step",
+      "distance": 180.2515164907474,
+      "stick": [
+        0.5145360988042292,
+        -0.3459083737455982
+      ],
+      "duration": 0.22,
+      "amplitude": 0.62,
+      "collision_or_deadzone_cause_proven": false
+    }
+  ],
+  "errors": []
+}

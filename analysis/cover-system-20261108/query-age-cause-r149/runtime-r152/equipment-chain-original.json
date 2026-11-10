@@ -1,0 +1,189 @@
+{
+  "game": {
+    "pid": 38096,
+    "creation_time": 134388136853985148,
+    "image": "j:\\gearsvr\\gears.of.war.reloaded.v1.0.1.3816947-p2p\\gears of war reloaded\\binaries_x64\\gowde-steam.exe"
+  },
+  "source": 1,
+  "desktop_input": false,
+  "direct_gameplay_calls": false,
+  "motion": [
+    {
+      "step": 0,
+      "ns": 124952405725400,
+      "position": [
+        -3900.0,
+        0.0,
+        583.9485473632812
+      ],
+      "target": [
+        -3979.6602316476506,
+        -140.2601870208192,
+        563.9999997615814
+      ],
+      "distance": 161.30304575324212,
+      "scope": "cover ordinary approach; no setter"
+    },
+    {
+      "step": 1,
+      "ns": 124953393771800,
+      "position": [
+        -3923.417724609375,
+        -41.231658935546875,
+        583.9485473632812
+      ],
+      "target": [
+        -3979.6602316476506,
+        -140.2601870208192,
+        563.9999997615814
+      ],
+      "distance": 113.885332561687,
+      "scope": "cover ordinary approach; no setter"
+    },
+    {
+      "step": 2,
+      "ns": 124954950688700,
+      "position": [
+        -4093.875732421875,
+        -313.8589172363281,
+        579.0
+      ],
+      "target": [
+        -3979.6602316476506,
+        -140.2601870208192,
+        563.9999997615814
+      ],
+      "distance": 207.80206868446695,
+      "scope": "cover ordinary approach; no setter"
+    },
+    {
+      "step": 3,
+      "ns": 124956017407700,
+      "position": [
+        -4185.37890625,
+        -412.9559020996094,
+        579.0
+      ],
+      "target": [
+        -3979.6602316476506,
+        -140.2601870208192,
+        563.9999997615814
+      ],
+      "distance": 341.58911882915714,
+      "scope": "cover ordinary approach; no setter"
+    },
+    {
+      "step": 4,
+      "ns": 124956995557500,
+      "position": [
+        -3888.76953125,
+        -355.4143371582031,
+        579.0
+      ],
+      "target": [
+        -3979.6602316476506,
+        -140.2601870208192,
+        563.9999997615814
+      ],
+      "distance": 233.56461148923103,
+      "scope": "cover ordinary approach; no setter"
+    },
+    {
+      "step": 5,
+      "ns": 124957738114800,
+      "position": [
+        -3832.281005859375,
+        -365.8661804199219,
+        579.0
+      ],
+      "target": [
+        -3979.6602316476506,
+        -140.2601870208192,
+        563.9999997615814
+      ],
+      "distance": 269.47857141440295,
+      "scope": "cover ordinary approach; no setter"
+    },
+    {
+      "step": 6,
+      "ns": 124958543831000,
+      "position": [
+        -3913.15576171875,
+        -307.7945556640625,
+        579.0
+      ],
+      "target": [
+        -3979.6602316476506,
+        -140.2601870208192,
+        563.9999997615814
+      ],
+      "distance": 180.2515164907474,
+      "scope": "cover ordinary approach; no setter"
+    },
+    {
+      "step": 7,
+      "ns": 124959319284300,
+      "position": [
+        -3913.15576171875,
+        -307.7945556640625,
+        579.0
+      ],
+      "target": [
+        -3979.6602316476506,
+        -140.2601870208192,
+        563.9999997615814
+      ],
+      "distance": 180.2515164907474,
+      "scope": "cover ordinary approach; no setter"
+    },
+    {
+      "step": 8,
+      "ns": 124960054391700,
+      "position": [
+        -3913.15576171875,
+        -307.7945556640625,
+        579.0
+      ],
+      "target": [
+        -3979.6602316476506,
+        -140.2601870208192,
+        563.9999997615814
+      ],
+      "distance": 180.2515164907474,
+      "scope": "cover ordinary approach; no setter"
+    },
+    {
+      "step": 9,
+      "ns": 124960821039300,
+      "position": [
+        -3913.15576171875,
+        -307.7945556640625,
+        579.0
+      ],
+      "target": [
+        -3979.6602316476506,
+        -140.2601870208192,
+        563.9999997615814
+      ],
+      "distance": 180.2515164907474,
+      "scope": "cover ordinary approach; no setter"
+    }
+  ],
+  "states": [
+    {
+      "label": "before_original_X_pickup",
+      "ns": 124948304824000,
+      "weapon": "0x16339e73c0",
+      "name": "Weap_LocustAssaultRifle",
+      "cls": "Weap_LocustAssaultRifle",
+      "location": [
+        -3900.0,
+        0.0,
+        583.9485473632812
+      ],
+      "special": 0
+    }
+  ],
+  "checks": {},
+  "error": "RuntimeError('Controlled walking blocked before cover; no teleport fallback')"
+}

@@ -1,6 +1,7 @@
 import math
 from types import SimpleNamespace
 import unittest
+from unittest.mock import patch
 
 from cover_ordinary_approach import navigate
 
@@ -17,6 +18,12 @@ def fixture(positions, angle=0.0):
 
 
 class ApproachProtocolTest(unittest.TestCase):
+    def setUp(self):
+        self.pulse_patch=patch('cover_ordinary_approach.timed_pulse',
+            side_effect=lambda ctx,right,forward,duration:ctx.stick(0,right,forward,duration))
+        self.pulse_patch.start()
+        self.addCleanup(self.pulse_patch.stop)
+
     def test_recorded_56276_stall_still_rejects(self):
         start = (-3900.0, 0.0, 583.9485473632812)
         stopped = (-3928.939453125, -50.95433044433594, start[2])

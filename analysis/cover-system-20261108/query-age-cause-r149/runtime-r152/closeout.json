@@ -1,0 +1,217 @@
+{
+  "scope": "Actual ordinary walking failure before A",
+  "identities": {
+    "game_identity": {
+      "pid": 38096,
+      "creation_time": 134388136853985148,
+      "image": "j:\\gearsvr\\gears.of.war.reloaded.v1.0.1.3816947-p2p\\gears of war reloaded\\binaries_x64\\gowde-steam.exe"
+    },
+    "owner_identity": {
+      "pid": 45044,
+      "creation_time": 134388136772782280,
+      "image": "c:\\users\\11\\.cache\\codex-runtimes\\codex-primary-runtime\\dependencies\\python\\python.exe"
+    },
+    "xr_identity": {
+      "pid": 14264,
+      "creation_time": 134388136933501846,
+      "image": "c:\\users\\11\\.codex\\worktrees\\6dof-single\\gearsvr\\tools\\openxr-probe\\build-cover-1111-r152-cloak-entry\\openxrposeprobe.exe"
+    },
+    "worker_identity": {
+      "pid": 51936,
+      "creation_time": 134388136771900244,
+      "image": "c:\\users\\11\\.cache\\codex-runtimes\\codex-primary-runtime\\dependencies\\python\\python.exe"
+    }
+  },
+  "exact_owned_processes_absent": true,
+  "normal_cleanup_verified": true,
+  "original_A_issued": false,
+  "pose_request_issued": false,
+  "query_cause": "unknown; no request",
+  "motion": [
+    {
+      "step": 0,
+      "ns": 124952405725400,
+      "position": [
+        -3900.0,
+        0.0,
+        583.9485473632812
+      ],
+      "target": [
+        -3979.6602316476506,
+        -140.2601870208192,
+        563.9999997615814
+      ],
+      "distance": 161.30304575324212,
+      "scope": "cover ordinary approach; no setter"
+    },
+    {
+      "step": 1,
+      "ns": 124953393771800,
+      "position": [
+        -3923.417724609375,
+        -41.231658935546875,
+        583.9485473632812
+      ],
+      "target": [
+        -3979.6602316476506,
+        -140.2601870208192,
+        563.9999997615814
+      ],
+      "distance": 113.885332561687,
+      "scope": "cover ordinary approach; no setter"
+    },
+    {
+      "step": 2,
+      "ns": 124954950688700,
+      "position": [
+        -4093.875732421875,
+        -313.8589172363281,
+        579.0
+      ],
+      "target": [
+        -3979.6602316476506,
+        -140.2601870208192,
+        563.9999997615814
+      ],
+      "distance": 207.80206868446695,
+      "scope": "cover ordinary approach; no setter"
+    },
+    {
+      "step": 3,
+      "ns": 124956017407700,
+      "position": [
+        -4185.37890625,
+        -412.9559020996094,
+        579.0
+      ],
+      "target": [
+        -3979.6602316476506,
+        -140.2601870208192,
+        563.9999997615814
+      ],
+      "distance": 341.58911882915714,
+      "scope": "cover ordinary approach; no setter"
+    },
+    {
+      "step": 4,
+      "ns": 124956995557500,
+      "position": [
+        -3888.76953125,
+        -355.4143371582031,
+        579.0
+      ],
+      "target": [
+        -3979.6602316476506,
+        -140.2601870208192,
+        563.9999997615814
+      ],
+      "distance": 233.56461148923103,
+      "scope": "cover ordinary approach; no setter"
+    },
+    {
+      "step": 5,
+      "ns": 124957738114800,
+      "position": [
+        -3832.281005859375,
+        -365.8661804199219,
+        579.0
+      ],
+      "target": [
+        -3979.6602316476506,
+        -140.2601870208192,
+        563.9999997615814
+      ],
+      "distance": 269.47857141440295,
+      "scope": "cover ordinary approach; no setter"
+    },
+    {
+      "step": 6,
+      "ns": 124958543831000,
+      "position": [
+        -3913.15576171875,
+        -307.7945556640625,
+        579.0
+      ],
+      "target": [
+        -3979.6602316476506,
+        -140.2601870208192,
+        563.9999997615814
+      ],
+      "distance": 180.2515164907474,
+      "scope": "cover ordinary approach; no setter"
+    },
+    {
+      "step": 7,
+      "ns": 124959319284300,
+      "position": [
+        -3913.15576171875,
+        -307.7945556640625,
+        579.0
+      ],
+      "target": [
+        -3979.6602316476506,
+        -140.2601870208192,
+        563.9999997615814
+      ],
+      "distance": 180.2515164907474,
+      "scope": "cover ordinary approach; no setter"
+    },
+    {
+      "step": 8,
+      "ns": 124960054391700,
+      "position": [
+        -3913.15576171875,
+        -307.7945556640625,
+        579.0
+      ],
+      "target": [
+        -3979.6602316476506,
+        -140.2601870208192,
+        563.9999997615814
+      ],
+      "distance": 180.2515164907474,
+      "scope": "cover ordinary approach; no setter"
+    },
+    {
+      "step": 9,
+      "ns": 124960821039300,
+      "position": [
+        -3913.15576171875,
+        -307.7945556640625,
+        579.0
+      ],
+      "target": [
+        -3979.6602316476506,
+        -140.2601870208192,
+        563.9999997615814
+      ],
+      "distance": 180.2515164907474,
+      "scope": "cover ordinary approach; no setter"
+    }
+  ],
+  "frames": 175,
+  "reviewed_pages": 9,
+  "contacts": 0,
+  "encode_exit": 0,
+  "cloak": {
+    "samples": 640,
+    "failures": []
+  },
+  "foreground": {
+    "samples": 408,
+    "owned_activation": false
+  },
+  "source_repair": "Cover timed_pulse uses elapsed ramps and existing owner publisher; finally neutral, unchanged amplitude/arrival/stall/42-step limits.",
+  "offline_tests": 11,
+  "offline_failures": 0,
+  "initial_test_failure": "Float comparison: 0.6799999999999999 >= 0.68; changed assertion to assertAlmostEqual, no product change.",
+  "r152_preparation_failure": "Operator preparation initially ran before prepared.json existed; no writes/action/claim then; rerun only preparation after predecessor completed.",
+  "r153_prepared_only": true,
+  "r153_game_started": false,
+  "pulse_runtime_verified": false,
+  "world_coverage_verified": false,
+  "movement_authorized": false,
+  "gameplay_accepted": false,
+  "public_changed": false,
+  "headset_accepted": false
+}

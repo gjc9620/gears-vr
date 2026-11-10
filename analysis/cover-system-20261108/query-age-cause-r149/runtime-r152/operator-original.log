@@ -1,0 +1,15 @@
+Traceback (most recent call last):
+  File "C:\Users\11\.codex\worktrees\6dof-single\gearsVr\analysis\instances\cover-1111-r152-cloak-entry\cover-output\cover_action.py", line 102, in <module>
+    exec(compile(s, str(O / 'run_menu_firstperson_check.py'), 'exec'),
+  File "C:\Users\11\.codex\worktrees\6dof-single\gearsVr\analysis\solo-m1-20261028\run_menu_firstperson_check.py", line 193, in <module>
+    if rec:
+    ^^^^^^^^
+  File "C:\Users\11\.codex\worktrees\6dof-single\gearsVr\analysis\solo-m1-20261028\equipment_controller_chain.py", line 119, in run
+    # VR pad, ordinary walking feedback and existing paired recorder.
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\11\.codex\worktrees\6dof-single\gearsVr\analysis\solo-m1-20261028\cover_boundary_chain.py", line 233, in run
+    ctx.face(p)
+    ^^^^^^^^^^^^
+  File "C:\Users\11\.codex\worktrees\6dof-single\gearsVr\tools\game-playtest\cover_ordinary_approach.py", line 35, in navigate
+    raise RuntimeError('Controlled walking blocked before cover; no teleport fallback')
+RuntimeError: Controlled walking blocked before cover; no teleport fallback

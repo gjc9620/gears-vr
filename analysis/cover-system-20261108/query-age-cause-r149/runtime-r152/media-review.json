@@ -1,0 +1,52 @@
+{
+  "frames": 175,
+  "recording_sha256": "5eff680896465f285956d8fdb7efe9470130cbbc7693be4fb7efe052a9c97d0d",
+  "pages": [
+    {
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\query-age-cause-r149\\runtime-r152\\overview-1.jpg",
+      "sha256": "f137788a8be98c2faee6697b310af5486e55446673c2f06fac61589dcae83560"
+    },
+    {
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\query-age-cause-r149\\runtime-r152\\overview-2.jpg",
+      "sha256": "56a759f9161c5638d80203f85a33132553871630d2a3f504ca1d434c7d31d65d"
+    },
+    {
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\query-age-cause-r149\\runtime-r152\\overview-3.jpg",
+      "sha256": "f4c9d3f727b44b6f45276fe6d8903258da6bef72855bb03b005ad207eb96873e"
+    },
+    {
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\query-age-cause-r149\\runtime-r152\\overview-4.jpg",
+      "sha256": "1dd5972a25de6c875e54d5acd7f9f10c4cb422f1ed65a3d2e750fbc4bb6c329e"
+    },
+    {
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\query-age-cause-r149\\runtime-r152\\overview-5.jpg",
+      "sha256": "259469005ab560e03b66e1885b5ee0b7cc143934c9938b89eb48ad27036ff6d8"
+    },
+    {
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\query-age-cause-r149\\runtime-r152\\overview-6.jpg",
+      "sha256": "ef3e8f8ba5efe07feab988d70a698eabeba2af2f65d8db436c069ef200997c78"
+    },
+    {
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\query-age-cause-r149\\runtime-r152\\overview-7.jpg",
+      "sha256": "269edc4c3653173d7448cf1c9fb7f9cda400b1f61c8d8643d7eb42d99301d003"
+    },
+    {
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\query-age-cause-r149\\runtime-r152\\overview-8.jpg",
+      "sha256": "9cdfeb07e0596644dd1734b3d6a051ae660a5391ab7cc6ef456d5d1d660c9136"
+    },
+    {
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\query-age-cause-r149\\runtime-r152\\overview-9.jpg",
+      "sha256": "c0db9a5d46ad585b4d950f43e15a3691387c1b3feafc1f1585568cc4ac7f86d7"
+    }
+  ],
+  "contacts": [],
+  "source": "actual private simulator projection",
+  "desktop_capture": false,
+  "full_span_personally_reviewed": true,
+  "headset_accepted": false,
+  "encode_exit": 0,
+  "encoded_sha256": "e050166fb60a95c331622af87ce1328630ec18ebe570a6266a39022e114ed877",
+  "reviewed_pages": 9,
+  "verdict": "Blocked walking before A; overshooting navigation, self-body intersections and final self occlusion. No five eye phases executed.",
+  "cover_view_accepted": false
+}
