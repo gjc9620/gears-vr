@@ -115,3 +115,7 @@ continuation-rejection-isolated-r1从manual-veto-isolated原2253文件逐项复�
 ## 实际日志输出路径检查
 
 补测原report_continuation_rejection的真实fwprintf到临时FILE并逐行读回，20次实际调用精确只有16行，gate/source_stage/frame和first/firing/cancel字段正确，原shot调用数不增加。MSVC /W4 /WX /UNDEBUG编译执行0：event231、runtime297；仅测试源变化，生产两inl/已封存product及完整PG完全未变，不重新构建PG或变更已发布product哈希。actual-log-output-check.json保存独立新检查，不覆盖先前冻结引用的213原收据。此项是日志观测可靠性，非少发原因修复或游戏通过。
+
+## 全目标证据边界核对
+
+重新读取用户四态/弹匣完整范围、W02机构卡和逐部件合同，直接检查70816/7712/53224/13712原JSON，生成analysis/hammerburst-20261108/full-requirements-audit-20261110.json十三项及原件SHA。历史护木四态/原匣/替换功能证据保留，不移作新PG证明；当前有限连发失败、空仓未达、完美/取消/中断/步骤引导完整图像与逐部件全角度/头显未接受均保留。枪栓条件要求按原资产核查解决，不意味着其余项目通过。当前仅优先少发定位→普通空仓完整换弹回射，耗尽和无边界拟合仍不扩展。没有为审计启动测试或修改产品。
