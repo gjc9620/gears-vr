@@ -38,6 +38,12 @@ enum class Code {queried,unavailable,request,reentrant,source,code,changed,fault
     owner_read,owner_unsupported,owner_links};
 struct Overlap {bool raw_hit{};};
 struct Sweep {std::uint32_t raw_count{},reserved{};Hit raw_hit{};};
+enum class QueryStage:unsigned {idle,source_begin,code_begin,source_repeat,source_guard,
+    dispatch,returned,source_end,code_end,guard_end,complete};
+// Owner-thread observation only, read after the serialized query returns.
+// Counts surround Calls, not an inferred hit/miss or body permission.
+struct QueryProgress {bool supported{},exception{};QueryStage stage{};unsigned source_code{};
+    std::uint64_t original_started{},original_returned{};};
 // Every raw hit is retained in order, with its observed public actor. This
 // neither identifies the complete player self set nor filters any hit.
 struct AllSweepOwners {
@@ -236,6 +242,7 @@ inline Code components_code(gears_cover_physx_components::Code value)noexcept{
 // substitutes can exercise this SAME transaction without executing the DLL.
 template<class ImageType,class Calls> class QueryEngine {
     ImageType image_{};std::atomic<bool> active_{},uncertain_{};
+    QueryProgress progress_{true};
     source::Snapshot before_{},after_{};
     AllSweep stream_candidate_{};
     std::array<gears_cover_physx_shape_owner::Observation,max_stream_hits> owners_candidate_{};
@@ -248,18 +255,28 @@ template<class ImageType,class Calls> class QueryEngine {
     void fault() noexcept {uncertain_=true;image_.retain_for_process();}
     struct Finish {std::atomic<bool>& value;~Finish(){value=false;}};
     template<class Read,class Guard> Code begin(source::Source const& s,Read read,Guard guard) {
+        progress_.exception=false;progress_.stage=QueryStage::source_begin;progress_.source_code=0;
         if(!image_.base()||uncertain_.load())return Code::unavailable;
         if(s.thread!=GetCurrentThreadId())return Code::source;
-        if(source::capture(image_.base(),image_.size(),s,read,guard,before_)!=source::Code::current)return Code::source;
+        const auto first=source::capture(image_.base(),image_.size(),s,read,guard,before_);progress_.source_code=unsigned(first);
+        if(first!=source::Code::current)return Code::source;
+        progress_.stage=QueryStage::code_begin;
         if(!source::code_current(image_.base(),image_.size(),read,detail::digest))return Code::code;
-        if(source::capture(image_.base(),image_.size(),s,read,guard,after_)!=source::Code::current||
+        progress_.stage=QueryStage::source_repeat;
+        const auto repeat=source::capture(image_.base(),image_.size(),s,read,guard,after_);progress_.source_code=unsigned(repeat);
+        if(repeat!=source::Code::current||
            !source::same(before_,after_))return Code::changed;
+        progress_.stage=QueryStage::source_guard;
         return detail::source_guard(guard,before_)?Code::queried:Code::source;
     }
     template<class Read,class Guard> Code end(source::Source const& s,Read read,Guard guard) {
-        if(source::capture(image_.base(),image_.size(),s,read,guard,after_)!=source::Code::current||
+        progress_.stage=QueryStage::source_end;
+        const auto last=source::capture(image_.base(),image_.size(),s,read,guard,after_);progress_.source_code=unsigned(last);
+        if(last!=source::Code::current||
            !source::same(before_,after_))return Code::changed;
+        progress_.stage=QueryStage::code_end;
         if(!source::code_current(image_.base(),image_.size(),read,detail::digest))return Code::code;
+        progress_.stage=QueryStage::guard_end;
         return detail::source_guard(guard,after_)?Code::queried:Code::changed;
     }
 public:
@@ -270,6 +287,7 @@ public:
     bool close() noexcept {if(pending())return false;image_.close();return true;}
     bool pending()const noexcept{return active_.load()||uncertain_.load();}
     bool uncertain()const noexcept{return uncertain_.load();}
+    QueryProgress observation()const noexcept{return progress_;}
     template<class Shape,class Read,class Guard> Code overlap(source::Source const& s,Shape const& shape,
         Read read,Guard guard,Overlap& output) noexcept {
         static_assert(std::is_same<Shape,Box>::value||std::is_same<Shape,Capsule>::value||std::is_same_v<Shape,Sphere>);
@@ -283,11 +301,13 @@ public:
             // Sphere has its own original overlap entry. Do not feed a
             // zero-axis capsule to the separate sweep/overlap paths.
             Overlap result{};constexpr auto rva=std::is_same_v<Shape,Sphere>?0x1683d0:std::is_same<Shape,Box>::value?0x168350:0x1682d0;
+            progress_.stage=QueryStage::dispatch;++progress_.original_started;
             if(!Calls::overlap(image_.base()+rva,before_.public_scene,geometry,result.raw_hit)){fault();return Code::fault_unknown;}
+            ++progress_.original_returned;progress_.stage=QueryStage::returned;
             const auto closed=end(request,read,guard);if(closed!=Code::queried)return closed;
             if(!source::same(request,s)||std::memcmp(&geometry,&shape,sizeof shape))return Code::changed;
-            output=result;return Code::queried;
-        }catch(...){return Code::source;}
+            output=result;progress_.stage=QueryStage::complete;return Code::queried;
+        }catch(...){progress_.exception=true;return Code::source;}
     }
     template<class Shape,class Read,class Guard> Code sweep(source::Source const& s,Shape const& shape,Vector const& delta,
         Read read,Guard guard,Sweep& output) noexcept {
@@ -300,12 +320,14 @@ public:
         try{const auto ready=begin(request,read,guard);if(ready!=Code::queried)return ready;
             if(!source::same(request,s)||std::memcmp(&geometry,&shape,sizeof shape)||std::memcmp(&movement,&delta,sizeof delta))return Code::changed;
             Sweep result{};constexpr auto rva=std::is_same<Shape,Box>::value?0x171770:0x1716f0;
+            progress_.stage=QueryStage::dispatch;++progress_.original_started;
             if(!Calls::sweep(image_.base()+rva,before_.public_scene,geometry,movement,result)){fault();return Code::fault_unknown;}
+            ++progress_.original_returned;progress_.stage=QueryStage::returned;
             if(result.raw_count>1){fault();return Code::fault_unknown;}
             const auto closed=end(request,read,guard);if(closed!=Code::queried)return closed;
             if(!source::same(request,s)||std::memcmp(&geometry,&shape,sizeof shape)||std::memcmp(&movement,&delta,sizeof delta))return Code::changed;
-            output=result;return Code::queried;
-        }catch(...){return Code::source;}
+            output=result;progress_.stage=QueryStage::complete;return Code::queried;
+        }catch(...){progress_.exception=true;return Code::source;}
     }
     template<class Shape,class Read,class Guard,class Output> Code sweep_all(source::Source const& s,Shape const& shape,Vector const& delta,
         StreamLimits const& limits,Read read,Guard guard,Output& output,gears_cover_physx_collider::Source const* component_source=nullptr,
@@ -367,8 +389,10 @@ public:
             detail::StreamReporter reporter{detail::stream_vtable.data(),&stream_candidate_,batch.data(),GetCurrentThreadId(),budget};
             detail::StreamScope callback(reporter);if(!callback.admitted())return Code::reentrant;
             std::uint32_t raw_count{};constexpr auto rva=std::is_same_v<Shape,Box>?0x171770:0x1716f0;
+            progress_.stage=QueryStage::dispatch;++progress_.original_started;
             const bool returned=Calls::sweep_stream(image_.base()+rva,before_.public_scene,geometry,movement,batch.data(),reporter,raw_count);
             callback.close();if(!returned){fault();return Code::fault_unknown;}
+            ++progress_.original_returned;progress_.stage=QueryStage::returned;
             const auto closed=end(request,read,guard);if(closed!=Code::queried)return closed;
             if(!source::same(request,s)||std::memcmp(&geometry,&shape,sizeof shape)||std::memcmp(&movement,&delta,sizeof delta)||
                std::memcmp(&budget,&limits,sizeof limits))return Code::changed;
@@ -401,8 +425,8 @@ public:
                    !gears_cover_physx_components::same(component_key_,*component_catalog))return Code::changed;
                 output.raw=stream_candidate_;output.owners=owners_candidate_;output.asset_bodies=asset_after_;output.collider_source=collider_after_;output.component_sources=components_after_;
             }else output=stream_candidate_;
-            return Code::queried;
-        }catch(...){return Code::source;}
+            progress_.stage=QueryStage::complete;return Code::queried;
+        }catch(...){progress_.exception=true;return Code::source;}
     }
 };
 using Queries=QueryEngine<Image,detail::OriginalCalls>;

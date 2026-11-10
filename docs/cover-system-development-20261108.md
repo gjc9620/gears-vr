@@ -1875,3 +1875,16 @@ Native及entries正常清理、虚拟手柄恢复、武器drained、XR退出0（
 并行的原版静态扫掠调查另存 `analysis/cover-system-20261108/sweep-research-r103/findings.json`：胶囊分派行index4指向3字节XOR AL,AL／RET，返回false；该index的当前形状标签尚未新认证。球体helper有相等端点分支，但胶囊helper会先计算轴叉积归一化再走边测试，完整零轴等价性仍未证明；mesh／height／convex的D9490和Box的D5A70仍待针对性解释。没有启用球体扫掠，没有将原空返回签发完整覆盖证明。
 
 下一步为来源Code4增加有界层次与原调用观测，定位C0准入／类型读取／查询内部的第一拒绝，不放宽校验，不重复未改动的查询。CV-01–24／AC-01–22、完整路径／占用、实际身体／视图／命中合流及头显验收仍未完成；public v71及工程25%不变。
+
+
+## r104：来源拒绝层次与原调用开始／返回观测（2026-11-10，尚未运行）
+
+针对42332的实际Code4总错误，增加三层只读观测：C0外层准入／掩体／guard／alias／Session；Session的几何、PhysicsRoles、ColliderRoles、ComponentRoles、Engine及关闭复核，保留实际roles返回码；QueryEngine的来源开始／重复／guard、代码核验、原调用、返回、关闭复核及异常标记。现有许可、原始时间、查询参数、Code返回语义和失败时输出不变。
+
+QueryEngine分别记录进入Calls包装的次数与其正常返回次数；生产Calls立即转入既有原函数SEH包装，Host测试替身仍明确不是原函数执行。Probe记录调用前／后的计数，未进入Session时不抄旧Session阶段。该观测只供已序列化的同一owner调用后读取，最终发布仍经已有Probe互斥快照；不新增跨线程原始查询读取者或身体写入端。
+
+严格离线检查全部退出0：球体入口36项，真实Session适配94项，完整命中归属122项，关闭分支35项，原查询／文件数据176项。新增反例证明：调用前来源拒绝不增加开始计数；正常原调用替身返回后再抛读取异常，仍可返回同一个Code4，但开始／返回计数均增加、阶段指向source_end且exception=true；SEH式故障只增加开始、不增加正常返回，并继续保留不确定资源。Session类型来源拒绝保留其roles子码，Host callee无Native证据时supported=false。
+
+在r102 v3冻结源码上仅覆盖三个相关生产文件，Native编译通过：SHA256 `487708269814b99c6b8c487da4bc6be67f36c3ea044a0c9196905a41a86b82a6`，400项项目依赖核对、原开关及无外部工作树依赖通过。独立新尝试`equipment-controls-prepared-20261110-cover-source-stage-r104`和入口准备退出0，复用已验证的普通接近／吸附和短观测动作，仅新增上述来源阶段／原调用记录；r102已消耗尝试完全保留。本次尚未stage或启动游戏，cause仍未证明，不能先称来源修复。
+
+证据：`analysis/cover-system-20261108/source-stage-r104/verification.json`。继续同一RuntimeGuard与真实占用检查，正常清理／恢复完成才释放；错误保留运行锁逻辑复用已保存的r102入口。public v71、工程25%及完整CV-01–24／AC-01–22范围不变。

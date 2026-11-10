@@ -24,6 +24,7 @@ struct HostEngine {
     bool close(){++close_calls;return !pending();}
     bool pending()const{return active||unknown;}
     bool uncertain()const{return unknown;}
+    q::QueryProgress observation()const noexcept{return {};}// Host callee has no native evidence.
     template<class Guard,class Read>q::Code dispatch(q::source::Source const& source,Read read,Guard current){
         ++query_calls;active=true;
         if(!h::mutex.try_lock()){query_lock_free=false;active=false;return q::Code::source;}h::mutex.unlock();
@@ -97,9 +98,16 @@ int main(){
         C(owner->sweep(actor,physics_expected,test_box,delta,source_read,guard,swept)==q::Code::queried&&swept.raw_count==1&&swept.raw_hit.bytes.back()==0x75);
         C(!memcmp(saved_arena.data(),reinterpret_cast<void*>(arena),saved_arena.size())&&query_lock_free&&query_calls==2);
         C(owner->overlap(actor,physics_expected,q::Sphere{{1,2,3},.25f},source_read,guard,overlap_result)==q::Code::queried&&overlap_result.raw_hit&&query_calls==3);
+        C(owner->observation().stage==service::Stage::complete&&!owner->observation().engine.supported);
         during_query=nested_query;C(owner->overlap(actor,physics_expected,test_box,source_read,guard,overlap_result)==q::Code::queried&&nested_code==q::Code::reentrant);
         during_query=nullptr;owner->request_drain();bool other_worker=true;std::thread thread([&](){other_worker=owner->poll_stop();});thread.join();
         C(!other_worker&&close_calls==0&&owner->pending_count());C(owner->poll_stop()&&close_calls==1&&!owner->pending_count());C(owner->poll_stop()&&close_calls==1);}
+    reset();
+    {auto owner=std::make_unique<HostSession>();C(owner->start(true,true));auto saved=actor;actor.context_valid=false;
+        const auto before=query_calls;overlap_result.raw_hit=false;
+        C(owner->overlap(actor,physics_expected,test_box,source_read,guard,overlap_result)==q::Code::source&&!overlap_result.raw_hit&&query_calls==before);
+        C(owner->observation().stage==service::Stage::physics_roles&&owner->observation().detail==unsigned(roles::Code::request));
+        actor=saved;owner->request_drain();C(owner->poll_stop());}
     reset();
     {auto owner=std::make_unique<HostSession>();C(owner->start(true,true));wrong_receiver=true;overlap_result.raw_hit=false;
         C(owner->overlap(actor,physics_expected,test_box,source_read,guard,overlap_result)==q::Code::changed&&!overlap_result.raw_hit);

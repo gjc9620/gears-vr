@@ -9,11 +9,17 @@ using Entry=gears_continuous_hand_entry::Entry;using Core=gears_native_rig_track
 #if defined(GEARS_COVER_PHYSX_QUERIES) && GEARS_COVER_PHYSX_QUERIES
 namespace n=full_body_c0_native_live;
 cover_physics_query_live::Session<> session;
+enum class QueryAdmission:unsigned {idle,admission,cover,guard,alias,session,returned};
+thread_local QueryAdmission query_admission{};
+thread_local bool query_session_entered{};
 bool sphere_probe_requested{};
 struct SphereObservation {
     bool attempted{},finished{};q::Code code{q::Code::unavailable};bool raw_hit{};
     uint64_t world{},world_generation{},pawn{},link{},scene{},compose{},sequence{};int slot{-1};unsigned thread{};
     int64_t begin_ns{},end_ns{};q::Sphere shape{};
+    QueryAdmission admission{};bool session_entered{};
+    cover_physics_query_live::Observation progress{};
+    uint64_t original_started_before{},original_returned_before{};
 };
 std::mutex sphere_probe_mutex;SphereObservation sphere_probe;
 bool configure(wchar_t const* ini,FILE* log){
@@ -49,8 +55,13 @@ void summary(FILE* f){if(!f)return;
         unsigned(sphere_probe_requested),unsigned(copy.attempted),unsigned(copy.finished),unsigned(copy.code),unsigned(copy.raw_hit),
         copy.world,copy.world_generation,copy.pawn,copy.link,copy.slot,copy.scene,copy.compose,copy.sequence,copy.thread,copy.begin_ns,copy.end_ns,
         double(copy.shape.centre.x),double(copy.shape.centre.y),double(copy.shape.centre.z),double(copy.shape.radius));
+    fprintf(f,"cover_sphere_probe_outer_stage=%u cover_sphere_probe_session_entered=%u cover_sphere_probe_session_stage=%u cover_sphere_probe_session_detail=%u cover_sphere_probe_engine_observed=%u cover_sphere_probe_engine_stage=%u cover_sphere_probe_engine_source_code=%u cover_sphere_probe_engine_exception=%u cover_sphere_probe_original_started_before=%llu cover_sphere_probe_original_started_after=%llu cover_sphere_probe_original_returned_before=%llu cover_sphere_probe_original_returned_after=%llu ",
+        unsigned(copy.admission),unsigned(copy.session_entered),unsigned(copy.progress.stage),copy.progress.detail,
+        unsigned(copy.progress.engine.supported),unsigned(copy.progress.engine.stage),copy.progress.engine.source_code,unsigned(copy.progress.engine.exception),
+        copy.original_started_before,copy.progress.engine.original_started,copy.original_returned_before,copy.progress.engine.original_returned);
 }
 template<class Shape,class Output,class Invoke> q::Code query(Entry const& entry,Core const& source,Shape const& shape,Output& output,Invoke invoke)noexcept{
+    query_admission=QueryAdmission::admission;query_session_entered=false;
     n::Call call;auto& s=n::state;
     if(!session.enabled()||GetCurrentThreadId()!=n::owner_thread.load()||!n::enabled||n::stopping.load()||entry.kind||!entry.selected||
        !s.captured||s.prepared||s.kernel.pending()||!n::same_entry(entry)||!source.cover_type||
@@ -58,6 +69,7 @@ template<class Shape,class Output,class Invoke> q::Code query(Entry const& entry
     const auto metadata=s.backend.metadata();
     const Core expected_source=source;
     cover_context_live::CurrentKey cover{};
+    query_admission=QueryAdmission::cover;
     if(!cover_context_live::sample_current(s.context.actor,cover)||cover.type!=source.cover_type||cover.slot!=source.cover_slot||
        !gears_weapon_hand::same(rig_tracking_live::object(cover.link),source.cover_link))return q::Code::source;
     auto guard=[&](){
@@ -71,12 +83,16 @@ template<class Shape,class Output,class Invoke> q::Code query(Entry const& entry
             cover_context_live::same(cover,current_cover)&&
             gears_cover_pose_phase::metadata(reader,request,current)&&gears_cover_pose_phase::metadata_equal(metadata,current)&&
             gears_cover_pose_phase::metadata_equal(metadata,s.backend.metadata());};
+    query_admission=QueryAdmission::guard;
     if(!guard())return q::Code::source;
     // No binding/stereo/session lock is held across this original operation.
     auto read=[](void* out,void const* address,size_t size){return n::native::read_memory(out,reinterpret_cast<uintptr_t>(address),size);};
+    query_admission=QueryAdmission::alias;
     if(q::source::aliases(&output,sizeof output,&s,sizeof s)||q::source::aliases(&output,sizeof output,&entry,sizeof entry)||
        q::source::aliases(&output,sizeof output,&source,sizeof source))return q::Code::request;
+    query_admission=QueryAdmission::session;query_session_entered=true;
     const auto code=invoke(s.context.actor,metadata,shape,read,guard,output);
+    query_admission=QueryAdmission::returned;
     if(code==q::Code::fault_unknown)request_session_stop(SessionStop::proof_failure);
     return code;
 }
@@ -117,7 +133,12 @@ void observe_sphere_once(Entry const& e,Core const& source,q::Vector const& eye)
         {std::lock_guard<std::mutex> lock(sphere_probe_mutex);if(sphere_probe.attempted)return;sphere_probe=row;}
         // No private lock across the original call. Failure is terminal for
         // this observation too; never silently retry a different source.
+        const auto before=session.observation().engine;
+        row.original_started_before=before.original_started;row.original_returned_before=before.original_returned;
         q::Overlap result{};row.code=overlap(e,source,row.shape,result);
+        row.admission=query_admission;row.session_entered=query_session_entered;
+        if(row.session_entered)row.progress=session.observation();
+        else {row.progress.engine=before;}// Counts unchanged; do not copy an old Session stage.
         row.raw_hit=row.code==q::Code::queried&&result.raw_hit;
         row.end_ns=rig_tracking_live::clock_ns();row.finished=true;
         {std::lock_guard<std::mutex> lock(sphere_probe_mutex);sphere_probe=row;}
