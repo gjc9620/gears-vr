@@ -384,3 +384,9 @@ press-timing-r1/hb-cloak-1111-020257/game53152/creation134388074371033031，资�
 reload-priority-r1/hb-cloak-1111-021724/game56032/creation134388083969403034，资源等待138.359秒/117次拒绝后首次start。core在取枪回执检查失败，没有匹配本次原HB对象的native_equipment held receipt；实际射线0，无reload transition、early reload或feed history标记。部分库存读取inventory_unavailable/current_after；源码该阶段就是snapshot之后原current(nullptr,frame)校验拒绝，现有记录不足区分输入过期、game/identity变化及库存读取具体成本，不能把它定为单一计时根因。不得算作新priority/history实测成功或否定，也不再原样重跑碰运气/重按旧边沿。
 
 launcher0/operator1/stop0，Native清理/PG入口恢复/XR0，本方game/子进程退出无强杀，1786前台/3098CLOAK零违规。163帧errors空、encode0；亲看48双眼全跨度三页，实际场景/手及短暂近右侧枪体可见，这些像素不替代权威取枪回执/稳定持枪证明。7份文本SHA归档，补入完整设备状态/input-gap/frame-read行，详见runtime-56032-first-failure-analysis.json。下一步核对取枪原右肩输入/边沿与current_after检查；不跳过库存/身份/新鲜度门。全部13项需求、完整换弹与回射、护木四态/最终贴合/头显仍开放，公共v71/30%不变。本方运行已全部终态。
+
+## inventory-timing-r1：区分库存前后失效
+
+56032现有frame_read记录包含stale_before5及stale_after8，但不能把早期记录套到后面current_after上。完整snapshot仍调用四原GetWeaponInSlot/各ammo/CanSwitch/animation/grenade读；Input已经在库存之前采样，不能以重复移动Input作为修复。新增最多4条idle+12条实际right Grip按住的库存分段观测，记录current_before、原snapshot、绑定、current_after和原Client withdrawal的frame/sequence关联；不重读source/game，不增加库存/输入/engine调用，不改变原语句/返回/许可/期限。原current拒绝若没有同frame+sequence撤回记录，明确withdrawal_same=0，不借旧原因断言。
+
+完整PG SHA9e846150eee799ea90708912ebc1e6df2d10a61a0432a1b334df1813b1c0d224，Native/XR未重建；剥离observer后生产源码逐字等于reload-priority-r1，6项真实observer+合成clock/client/FILE检查通过，限额后clock/withdrawal查询均0。不是功能修复或游戏验收；runner选该候选做一次新聚焦动作，保留priority/history修正和全部13项最终要求。

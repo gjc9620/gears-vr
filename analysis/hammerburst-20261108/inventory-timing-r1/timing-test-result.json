@@ -1,0 +1,8 @@
+{
+  "passed": true,
+  "cases": 6,
+  "exact_observer": true,
+  "local_clock_and_client_fixture": true,
+  "game_execution": false,
+  "source_sha256": "492fdbb6f0a45f3eb8f4cd820e58c9bcce5689e3848087f58940567342ffce03"
+}

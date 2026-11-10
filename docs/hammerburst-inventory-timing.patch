@@ -1,0 +1,24 @@
+--- a/tools/playground/weapon_equipment_backend.inl
++++ b/tools/playground/weapon_equipment_backend.inl
+@@ -118,15 +118,21 @@
+     const abi::ObjectIdentity b{again.address,again.outer,again.klass,again.index,again.name.index,again.name.number,1};
+     if(!abi::identity_valid(a)||!abi::same(a,b))return false;out=a;return true;
+ }
++#include "weapon_hammerburst_inventory_timing.inl"
+ bool inventory(void*,abi::Frame const& frame,Snapshot& out) noexcept {
++    HammerburstInventoryTiming inventory_timing(frame);
+     try{
+         inventory_stage=L"current_before";
+         if(!current(nullptr,frame))return false;
++        inventory_timing.mark(1);
+         if(!vrequip::snapshot(frame.controller.address,out,inventory_stage))return false;
++        inventory_timing.mark(2);
+         inventory_stage=L"frame_binding";
+         if(out.world!=frame.world.address||out.pawn!=frame.pawn.address||out.current_weapon!=frame.weapon.address)return false;
++        inventory_timing.mark(3);
+         inventory_stage=L"current_after";
+         if(!current(nullptr,frame))return false;
++        inventory_timing.mark(4);
+         inventory_stage=L"ok";return true;
+     }catch(...){inventory_stage=L"cpp_exception";out={};return false;}
+ }
