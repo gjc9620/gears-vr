@@ -7,6 +7,7 @@ static unsigned checks{},failures{};
 int main(){
     gears_continuous_hand_entry::Entry entry{};gears_native_rig_tracking::CoreSnapshot core{};
     q::Box box{};q::Capsule capsule{};q::Vector delta{};q::Overlap overlap{true};q::Sweep sweep{};sweep.raw_count=99;
+    C(c0::overlap(entry,core,q::Sphere{{1,2,3},.25f},overlap)==q::Code::unavailable&&overlap.raw_hit);
     C(c0::overlap(entry,core,box,overlap)==q::Code::unavailable&&overlap.raw_hit);
     C(c0::overlap(entry,core,capsule,overlap)==q::Code::unavailable&&overlap.raw_hit);
     C(c0::sweep(entry,core,box,delta,sweep)==q::Code::unavailable&&sweep.raw_count==99);

@@ -46,12 +46,13 @@ static Memory fixture(){
     m.put<std::uintptr_t>(0x160038,0x170000);m.put<std::uintptr_t>(0x170000,base+0x22ccb8);
     m.put<std::uintptr_t>(0x170270,0x180000);m.put<std::uintptr_t>(0x180000,base+0x23ca98);
     m.put<std::uintptr_t>(0x1806b0,0x170000);
-    constexpr std::array<std::array<unsigned,3>,10> slots{{
+    constexpr std::array<std::array<unsigned,3>,12> slots{{
         {{0x2330a8,8,0x135b00}},{{0x22ccb8,8,0xa0300}},
         {{0x23ca98,0x308,0x171770}},{{0x23ca98,0x310,0x1716f0}},
         {{0x23ca98,0x330,0x168350}},{{0x23ca98,0x338,0x1682d0}},
         {{0x22ccb8,0x288,0xa6e30}},{{0x22ccb8,0x290,0xa6aa0}},
-        {{0x22ccb8,0x268,0xa6290}},{{0x22ccb8,0x270,0xa60b0}}}};
+        {{0x22ccb8,0x268,0xa6290}},{{0x22ccb8,0x270,0xa60b0}},
+        {{0x23ca98,0x320,0x1683d0}},{{0x22ccb8,0x258,0xa6560}}}};
     for(auto const& slot:slots)m.put<std::uintptr_t>(base+slot[0]+slot[1],base+slot[2]);
     return m;
 }
@@ -76,7 +77,7 @@ static void source_tests(){
     {auto changed=fixture();changed.put<std::uintptr_t>(0x130000,0x140001);reject(changed);}
     for(auto h:std::array<s::pose::ArrayHeader,6>{{{0x130000,0,2},{0x130000,-1,2},{0x130000,65,65},
         {0x130000,2,1},{0x130000,2,257},{UINTPTR_MAX-7,2,2}}}){auto changed=fixture();changed.put(0x12006c,h);reject(changed);}
-    for(auto offset:{0x2330b0u,0x22ccc0u,0x23cda0u,0x23cda8u,0x23cdc8u,0x23cdd0u,0x22cf40u,0x22cf48u,0x22cf20u,0x22cf28u}){
+    for(auto offset:{0x2330b0u,0x22ccc0u,0x23cda0u,0x23cda8u,0x23cdc8u,0x23cdd0u,0x22cf40u,0x22cf48u,0x22cf20u,0x22cf28u,0x23cdb8u,0x22cf10u}){
         auto changed=fixture();changed.put<std::uintptr_t>(base+offset,base+0x1000);reject(changed);}
     m=fixture();bool altered=false;
     auto mutate=[&](void* p,void const* a,std::size_t n){const bool ok=m.read(p,a,n);if(!altered){input.body_index=0;altered=true;}return ok;};
@@ -110,7 +111,7 @@ static void code_tests(char const* path){
     for(auto const& chunk:c::chunks){bytes+=chunk.size;auto& last=m.blocks[base][chunk.rva+chunk.size-1];last^=1;
         check(!s::code_current(base,size,read,q::detail::digest),"last byte mutation including cold tail");last^=1;
         check(!s::code_current(base,chunk.rva+chunk.size-1,read,q::detail::digest),"truncated code image");}
-    check(bytes==10049,"full worker, capsule conversion/thunk and its numeric constants");
+    check(bytes==10970,"full worker, capsule conversion/constants and sphere overlap route");
     for(unsigned i=1;i<=c::chunks.size();++i){m.calls=0;m.fail_at=i;check(!s::code_current(base,size,read,q::detail::digest),"each code read failure");}
     m.fail_at=0;
     check(!s::code_current(base,size,read,[](void const*,std::size_t,s::Digest&){return false;}),"hash failure");
@@ -140,6 +141,8 @@ static void query_tests(){
     bad=box;bad.rotation[1]=.1f;check(!q::detail::valid(bad),"sheared box rejected");
     bad=box;bad.half.x=0;check(!q::detail::valid(bad),"zero extent rejected");
     auto cap=capsule;cap.second=cap.first;check(!q::detail::valid(cap),"sphere not guessed capsule");
+    q::Sphere sphere{{1,2,3},.25f};check(q::detail::valid(sphere),"valid sphere");
+    auto bad_sphere=sphere;bad_sphere.radius=0;check(!q::detail::valid(bad_sphere),"zero sphere radius rejected");
     check(!q::detail::motion({})&&!q::detail::motion({std::numeric_limits<float>::infinity(),0,0}),"zero or nonfinite sweep rejected");
     const auto maximum=(std::numeric_limits<float>::max)(),tiny=(std::numeric_limits<float>::min)();
     check(!q::detail::motion({maximum,0,0})&&!q::detail::motion({tiny,0,0}),"float normalization overflow/underflow rejected");
@@ -162,11 +165,15 @@ static void query_tests(){
     check(q::detail::OriginalCalls::overlap(reinterpret_cast<std::uintptr_t>(&fake_overlap),0x180000,capsule,hit)&&hit,"production overlap forwarding ABI");
     check(q::detail::OriginalCalls::sweep(reinterpret_cast<std::uintptr_t>(&fake_sweep),0x180000,capsule,delta,result)&&result.raw_count==1,"production sweep forwarding ABI");
     check(abi_calls==6,"production forwarding calls exactly once");
+    expected_shape=&sphere;
+    check(q::detail::OriginalCalls::overlap(reinterpret_cast<std::uintptr_t>(&fake_overlap),0x180000,sphere,hit)&&hit,"sphere production five-argument forwarding ABI");
+    check(abi_calls==7,"sphere forwarding calls exactly once");
     hit=false;check(!q::detail::overlap(reinterpret_cast<std::uintptr_t>(&fake_fault),0x180000,box,hit)&&!hit,"SEH does not return miss");
     q::Queries queries;s::Source input=source();q::Overlap output{true};unsigned reads{},guards{};
     auto read=[&](void*,void const*,std::size_t){++reads;return false;};auto guard=[&](){++guards;return true;};
     check(queries.overlap(input,box,read,guard,output)==q::Code::unavailable&&output.raw_hit,"unprimed box keeps output");
     check(queries.overlap(input,capsule,read,guard,output)==q::Code::unavailable,"unprimed capsule");
+    check(queries.overlap(input,sphere,read,guard,output)==q::Code::unavailable&&output.raw_hit,"unprimed sphere keeps output");
     result.raw_count=77;
     check(queries.sweep(input,box,delta,read,guard,result)==q::Code::unavailable&&result.raw_count==77,"unprimed sweep keeps output");
     check(queries.sweep(input,capsule,delta,read,guard,result)==q::Code::unavailable,"unprimed capsule sweep");

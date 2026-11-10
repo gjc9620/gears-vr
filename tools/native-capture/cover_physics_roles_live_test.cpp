@@ -61,9 +61,9 @@ int GEARS_PHYSICS_ROLES_TEST_MAIN(){
     C(out.bodies[0].index==0&&out.bodies[1].index==1&&out.bodies[1].main==arena+0x89000&&out.owner.address==fixture_pawn);
     const auto accepted=out;C(observe(out)&&roles::same(accepted,out));
     constexpr uintptr_t physx=0x180000000;
-    const std::array<std::pair<unsigned,unsigned>,10> slots{{
+    const std::array<std::pair<unsigned,unsigned>,12> slots{{
         {0x2330b0,0x135b00},{0x22ccc0,0xa0300},{0x23cda0,0x171770},{0x23cda8,0x1716f0},{0x23cdc8,0x168350},
-        {0x23cdd0,0x1682d0},{0x22cf40,0xa6e30},{0x22cf48,0xa6aa0},{0x22cf20,0xa6290},{0x22cf28,0xa60b0}}};
+        {0x23cdd0,0x1682d0},{0x22cf40,0xa6e30},{0x22cf48,0xa6aa0},{0x22cf20,0xa6290},{0x22cf28,0xa60b0},{0x23cdb8,0x1683d0},{0x22cf10,0xa6560}}};
     auto source_read=[&](void* dst,void const* address,size_t n){
         for(auto const& slot:slots)if(reinterpret_cast<uintptr_t>(address)==physx+slot.first&&n==8){const auto target=physx+slot.second;memcpy(dst,&target,8);return true;}
         return safe_copy(dst,address,n);};

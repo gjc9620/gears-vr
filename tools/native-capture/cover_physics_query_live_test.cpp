@@ -9,9 +9,9 @@ static unsigned prime_calls{},close_calls{},query_calls{};static bool prime_ok=t
 static void(*during_query)(){};
 static bool source_read(void* dst,void const* address,size_t n){
     constexpr uintptr_t physx=0x180000000;
-    constexpr std::array<std::pair<unsigned,unsigned>,10> slots{{
+    constexpr std::array<std::pair<unsigned,unsigned>,12> slots{{
         {0x2330b0,0x135b00},{0x22ccc0,0xa0300},{0x23cda0,0x171770},{0x23cda8,0x1716f0},{0x23cdc8,0x168350},
-        {0x23cdd0,0x1682d0},{0x22cf40,0xa6e30},{0x22cf48,0xa6aa0},{0x22cf20,0xa6290},{0x22cf28,0xa60b0}}};
+        {0x23cdd0,0x1682d0},{0x22cf40,0xa6e30},{0x22cf48,0xa6aa0},{0x22cf20,0xa6290},{0x22cf28,0xa60b0},{0x23cdb8,0x1683d0},{0x22cf10,0xa6560}}};
     for(auto const& slot:slots)if(reinterpret_cast<uintptr_t>(address)==physx+slot.first&&n==8){const auto target=physx+slot.second;memcpy(dst,&target,8);return true;}
     return safe_copy(dst,address,n);
 }
@@ -96,6 +96,7 @@ int main(){
         C(owner->overlap(actor,physics_expected,test_box,source_read,guard,overlap_result)==q::Code::queried&&overlap_result.raw_hit);
         C(owner->sweep(actor,physics_expected,test_box,delta,source_read,guard,swept)==q::Code::queried&&swept.raw_count==1&&swept.raw_hit.bytes.back()==0x75);
         C(!memcmp(saved_arena.data(),reinterpret_cast<void*>(arena),saved_arena.size())&&query_lock_free&&query_calls==2);
+        C(owner->overlap(actor,physics_expected,q::Sphere{{1,2,3},.25f},source_read,guard,overlap_result)==q::Code::queried&&overlap_result.raw_hit&&query_calls==3);
         during_query=nested_query;C(owner->overlap(actor,physics_expected,test_box,source_read,guard,overlap_result)==q::Code::queried&&nested_code==q::Code::reentrant);
         during_query=nullptr;owner->request_drain();bool other_worker=true;std::thread thread([&](){other_worker=owner->poll_stop();});thread.join();
         C(!other_worker&&close_calls==0&&owner->pending_count());C(owner->poll_stop()&&close_calls==1&&!owner->pending_count());C(owner->poll_stop()&&close_calls==1);}

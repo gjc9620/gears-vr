@@ -28,9 +28,10 @@ namespace gears_cover_physx_query {
 namespace source=gears_cover_physx_query_source;
 using Digest=source::Digest;
 struct Vector {float x{},y{},z{};};
+struct Sphere {Vector centre{};float radius{};};
 struct Box {Vector centre{},half{};float rotation[9]{};};
 struct Capsule {Vector first{},second{};float radius{};};
-static_assert(sizeof(Vector)==12&&sizeof(Box)==60&&sizeof(Capsule)==28&&sizeof(Hit)==64&&alignof(Hit)==8);
+static_assert(sizeof(Vector)==12&&sizeof(Sphere)==16&&offsetof(Sphere,radius)==12&&sizeof(Box)==60&&sizeof(Capsule)==28&&sizeof(Hit)==64&&alignof(Hit)==8);
 static_assert(offsetof(Box,centre)==0&&offsetof(Box,half)==12&&offsetof(Box,rotation)==24&&
     offsetof(Capsule,first)==0&&offsetof(Capsule,second)==12&&offsetof(Capsule,radius)==24);
 enum class Code {queried,unavailable,request,reentrant,source,code,changed,fault_unknown,truncated,callback_rejected,
@@ -65,6 +66,12 @@ inline bool motion(Vector v) noexcept {
     const float xx=v.x*v.x,yy=v.y*v.y,zz=v.z*v.z;
     const float length2=(xx+yy)+zz;
     return std::isnormal(length2)&&length2>0;
+}
+inline bool valid(Sphere const& s) noexcept {
+    if(!finite(s.centre)||!scalar(s.radius)||s.radius<=0)return false;
+    const float centre[]{s.centre.x,s.centre.y,s.centre.z};
+    for(float c:centre)if(std::abs(double(c))+s.radius>(std::numeric_limits<float>::max)())return false;
+    return true;
 }
 template<class Guard> bool source_guard(Guard& guard,source::Snapshot const& snapshot){
     if constexpr(std::is_invocable_r_v<bool,Guard&,source::Snapshot const&>)return guard(snapshot);
@@ -265,7 +272,7 @@ public:
     bool uncertain()const noexcept{return uncertain_.load();}
     template<class Shape,class Read,class Guard> Code overlap(source::Source const& s,Shape const& shape,
         Read read,Guard guard,Overlap& output) noexcept {
-        static_assert(std::is_same<Shape,Box>::value||std::is_same<Shape,Capsule>::value);
+        static_assert(std::is_same<Shape,Box>::value||std::is_same<Shape,Capsule>::value||std::is_same_v<Shape,Sphere>);
         if(source::aliases(&output,sizeof output,&s,sizeof s)||source::aliases(&output,sizeof output,&shape,sizeof shape)||
            source::aliases(&output,sizeof output,this,sizeof *this))return Code::request;
         const source::Source request=s;const Shape geometry=shape;
@@ -273,7 +280,9 @@ public:
         bool expected=false;if(!active_.compare_exchange_strong(expected,true))return Code::reentrant;Finish finish{active_};
         try{const auto ready=begin(request,read,guard);if(ready!=Code::queried)return ready;
             if(!source::same(request,s)||std::memcmp(&geometry,&shape,sizeof shape))return Code::changed;
-            Overlap result{};constexpr auto rva=std::is_same<Shape,Box>::value?0x168350:0x1682d0;
+            // Sphere has its own original overlap entry. Do not feed a
+            // zero-axis capsule to the separate sweep/overlap paths.
+            Overlap result{};constexpr auto rva=std::is_same_v<Shape,Sphere>?0x1683d0:std::is_same<Shape,Box>::value?0x168350:0x1682d0;
             if(!Calls::overlap(image_.base()+rva,before_.public_scene,geometry,result.raw_hit)){fault();return Code::fault_unknown;}
             const auto closed=end(request,read,guard);if(closed!=Code::queried)return closed;
             if(!source::same(request,s)||std::memcmp(&geometry,&shape,sizeof shape))return Code::changed;

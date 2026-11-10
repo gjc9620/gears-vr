@@ -72,12 +72,13 @@ template<class Read,class Guard> Code capture(std::uintptr_t base,std::uint32_t 
     std::uintptr_t reverse{};
     if(!pose::field(read,next.public_table,next.public_scene,0)||!pose::field(read,reverse,next.public_scene,0x6b0))return Code::read;
     if(next.public_table!=base+0x23ca98||reverse!=next.scene)return Code::module;
-    constexpr std::array<std::array<std::uint32_t,3>,10> slots{{
+    constexpr std::array<std::array<std::uint32_t,3>,12> slots{{
         {{0x2330a8,8,0x135b00}},{{0x22ccb8,8,0xa0300}},
         {{0x23ca98,0x308,0x171770}},{{0x23ca98,0x310,0x1716f0}},
         {{0x23ca98,0x330,0x168350}},{{0x23ca98,0x338,0x1682d0}},
         {{0x22ccb8,0x288,0xa6e30}},{{0x22ccb8,0x290,0xa6aa0}},
-        {{0x22ccb8,0x268,0xa6290}},{{0x22ccb8,0x270,0xa60b0}}}};
+        {{0x22ccb8,0x268,0xa6290}},{{0x22ccb8,0x270,0xa60b0}},
+        {{0x23ca98,0x320,0x1683d0}},{{0x22ccb8,0x258,0xa6560}}}};
     for(auto const& s:slots){std::uintptr_t value{};if(s[0]>=image_size||s[1]+8>image_size-s[0]||s[2]>=image_size)return Code::module;
         if(!pose::field(read,value,base+s[0],s[1]))return Code::read;
         if(value!=base+s[2])return Code::module;}
