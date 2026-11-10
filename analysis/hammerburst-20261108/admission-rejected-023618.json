@@ -1,0 +1,33 @@
+{
+  "name": "hb-cloak-1111-023618",
+  "terminal_tool_session": 41155,
+  "terminal_tool_exit": 1,
+  "game_created": false,
+  "operator_created": false,
+  "resource_start_rejected": true,
+  "cause": "Canonical quota recheck rejected after advisory wait observed one active instance; another worker registered before this start transaction. No gameplay or authority change.",
+  "resource_admission_wait": {
+    "resources": {
+      "disk": {
+        "check": "disk_admission",
+        "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr",
+        "free_bytes": 97515589632,
+        "minimum_free_bytes": 4294967296,
+        "admitted": true
+      },
+      "memory": {
+        "available_commit": 19708121088,
+        "available_physical": 18103713792,
+        "active_instances": [
+          "lancer-natural-v139-225928"
+        ]
+      }
+    },
+    "waited_seconds": 158.04699999999139,
+    "rejected_checks": 132,
+    "runtime_slot_reserved": false
+  },
+  "result_sha256": "be31749606740567d461278744d07f63ab41c6a0bb0d02925ee9f3a97bd9727b",
+  "start_log_sha256": "9b8dd9a7e5edc957cee99f2026e0bc3c5446128fa9f9048a5ebfc8e9ca20e007",
+  "old_name_never_restart": true
+}

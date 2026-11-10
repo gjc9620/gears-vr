@@ -392,3 +392,5 @@ launcher0/operator1/stop0，Native清理/PG入口恢复/XR0，本方game/子进�
 完整PG SHA9e846150eee799ea90708912ebc1e6df2d10a61a0432a1b334df1813b1c0d224，Native/XR未重建；剥离observer后生产源码逐字等于reload-priority-r1，6项真实observer+合成clock/client/FILE检查通过，限额后clock/withdrawal查询均0。不是功能修复或游戏验收；runner选该候选做一次新聚焦动作，保留priority/history修正和全部13项最终要求。
 
 023254本次仅prepare后只读等资源115.172秒/99次拒绝。advisory看到只有Lancer，正式start短事务时Boltok已先占第二名额，原入口拒绝。工具59437终态exit1，未出现worker/session/done，本方game/operator均未创建；实际进程查询无该实例命令。此为资源准入竞争，不是库存/武器运行失败；记录admission-rejected-023254.json，保留旧名字且不重启。新候选仍未运行，下一次用新唯一prepare等待首次start，不改共享准入/名额或重复旧start。
+
+023618新唯一prepare同样等待158.047秒/132次拒绝，正式start时HOD已登记第二worker，再次被原入口拒绝。工具41155终态exit1、无worker/session/done，无game/operator创建；记录admission-rejected-023618.json，旧名字不重启。已向原协调会话01a1bb5e-5946-7271-af0d-1068759697e0发送具体两次race证据，请其在原共享入口提供“尚未准入的同一首次请求在锁外有界等待→原短事务首度登记”的处理办法，不预留名额、不重启已准入实例、不弱化身份/资源检查。此为实际共享故障协调，不是常规占用通知；没有新线程/助手/共享入口写入。暂不继续重复新prepare竞争，同步做离线检查；inventory-timing-r1仍未游戏运行，库存根因尚未知。
