@@ -396,3 +396,13 @@ launcher0/operator1/stop0，Native清理/PG入口恢复/XR0，本方game/子进�
 023618新唯一prepare同样等待158.047秒/132次拒绝，正式start时HOD已登记第二worker，再次被原入口拒绝。工具41155终态exit1、无worker/session/done，无game/operator创建；记录admission-rejected-023618.json，旧名字不重启。已向原协调会话01a1bb5e-5946-7271-af0d-1068759697e0发送具体两次race证据，请其在原共享入口提供“尚未准入的同一首次请求在锁外有界等待→原短事务首度登记”的处理办法，不预留名额、不重启已准入实例、不弱化身份/资源检查。此为实际共享故障协调，不是常规占用通知；没有新线程/助手/共享入口写入。暂不继续重复新prepare竞争，同步做离线检查；inventory-timing-r1仍未游戏运行，库存根因尚未知。
 
 协调会话现已完成原入口修正：isolated_sim创建独占first-start request，runtime_receipts.first_admission只对登记前ResourceUnavailable/短锁忙在锁外等待，再在原锁内重复fresh/pause/disk/实际身份/内存检查；committing在任何spawn/登记开始前设定，之后失败绝不重试。默认60秒，可显式0..600；旧已结束请求拒绝重启。14项共享离线检查报告、三个当前源SHA与first-admission-wait-20261111.json核对一致；本方已读关键hunk，未写共享入口。仅把本枪首次start显式等待设600秒，继续新唯一prepare，不复用两个旧名字；等待全在游戏创建前，不改枪内任何时钟/许可。证据first-admission-integration-check.json；共享实际竞争效果和本枪库存观测仍待新运行。
+
+## 实际57324：库存通过，原按下已过期
+
+inventory-timing-r1/hb-cloak-1111-024442/game57324/creation134388101714967603。原canonical首次请求PID4856/creation134388098990567222曾正读到仍活、无worker/session；之后同一个新实例首次登记运行并正常清理，没有退出换名争抢/重复start。request与worker回执逐SHA保留；这是一次实际同请求等待到准入观察，不宣称所有竞争场景完成。
+
+实际初始Grip Frame331/seq3337：Input producer_sync_gap，previous sync121482017180500→current121482176556000相隔159.3755ms；真实记录的right press seq3333/sync121482085699800，消费observed121482228658600时已142.9588ms，超过原100ms，因此拒绝、重新baseline，held DOWN不重放。相关4条down inventory均phase4/stageok，elapsed4.5663/10.5288/4.5333/8.0841ms，exit input age58.6153/75.6599/54.4694/60.7873ms，均未过100ms。这一轮不能再归因库存snapshot超时，56032 current_after具体原因仍不倒推。无matching held receipt、射线0、priority/history/reload未到。
+
+下一步修正本枪测试驱动的取枪前置：在真实肩部位置先确认fresh released Native baseline，再发一次新的实际Grip并等待真实matching held回执后才把手移开。保持原100ms/source/边沿/身份/库存门，不给过期边沿续命，不加静默重复press；首次/尾部射击、换弹priority/history、空仓/回射与全部13项要求仍开放。
+
+launcher0/operator1/stop0、Native清理/PG入口恢复/XR0，本方game/子进程退出、无强杀，2148前台/3751CLOAK零违规。86帧errors空、encode0；亲看48双眼全跨度三页，初始00000/00002是等待卡、00009黑图，后续实际场景/手/近右枪体可见；不称全部图像为实际动作证明，完整贴合/连续性/头显未接受。7份文本+request/worker原件逐SHA归档，详见runtime-57324-first-failure-analysis.json。公共v71与30%不变，本方所有请求/运行均终态。

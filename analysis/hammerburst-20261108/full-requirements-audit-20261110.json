@@ -1,14 +1,14 @@
 {
   "schema": 1,
   "scope": "full HB objective; no scope reduction",
-  "current_candidate": "reload-priority-r1: exact HB reload once before follow visuals; compiled+9 local schedule cases; retains feed-history43 local checks; no game yet",
-  "prepared_sha256": "01afaa3478514066738c84036e41c32d799ce7c30a07e91a77078a1b0b456149",
+  "current_candidate": "inventory-timing-r1: compiled+6 observer checks, actual57324 inventory timing reached; reload priority/history still not game exercised",
+  "prepared_sha256": "dd37edb4d23b063aa1455a3444b0d7fde44ee0ee3b5fed72a47f1501aa6b0438",
   "requirements": [
     {
       "id": "acquire_stow",
       "requirement": "取枪与收枪",
-      "status": "partial_latest_acquisition_unverified",
-      "limit": "Earlier54452/53152 acquisition and original fire observed. Latest56032 no matching HB held receipt; inventory current_after rejection, cause unproven. Brief gun pixels do not prove acquisition. Full stow/restore unverified.",
+      "status": "partial_latest_grip_expired_before_admission",
+      "limit": "Actual57324 inventory passed, but right recorded Grip edge142.9588ms old across producer sync gap159.3755ms, correctly rejected by original100ms bound. No held receipt. Need fresh released Native baseline before new physical test intent; prior successful acquisitions remain separate, full stow/restore open.",
       "evidence": [
         {
           "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-13712-first-failure-analysis.json",
@@ -25,6 +25,10 @@
         {
           "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-56032-first-failure-analysis.json",
           "sha256": "99c0145d74ec8b7f1db28f54ee6b06bbae333a36dcaa5cf1c0bf5f98e1bc3bc4"
+        },
+        {
+          "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-57324-first-failure-analysis.json",
+          "sha256": "c1f6bd9d500ca98dbaa62c227f158e247589120056b24fed719c2990eedf7c08"
         }
       ]
     },
@@ -252,9 +256,9 @@
   ],
   "completion_proven": false,
   "goal_active": true,
-  "immediate_next": "Inspect first acquisition inventory current_after and original right-shoulder source/edge/receipt timing from56032. Any targeted observation must retain original current/identity/freshness/selection checks. Do not rerun unchanged candidate, retry blocked edge, or call priority/history exercised. Full13 requirements remain open.",
+  "immediate_next": "Improve isolated pickup driver to require observed fresh released Native baseline at actual shoulder before ONE new Grip, then await actual matching held receipt before moving away. Preserve original100ms edge/source and all product gates; no silent blocked-edge retry or deadline expansion. Then validate priority/history/seating/closure/return and full13 requirements.",
   "historical_evidence_does_not_certify_current_PG": true,
-  "candidate_runtime_status": "reload-priority-r1 actual56032 reached game but no matching initial HB acquisition receipt. Inventory rows include current_after rejection; exact cause unproven. Zero rays/reload/early-priority/history rows. Candidate43 feed+9 schedule local checks remain separate. Normal cleanup.",
+  "candidate_runtime_status": "Actual57324 initial Grip Frame331 rejected producer_sync_gap159.3755ms; exact original edge142.9588ms old. Down inventory checks all passed in4.5333-10.5288ms, exit ages54.4694-75.6599ms. Zero authoritative acquisition/rays/reload. Normal cleanup. Does not establish56032 cause.",
   "previous_recorded_candidate": {
     "name": "hammerburst-prepared-20261110-unheld-input-r1",
     "prepared_sha256": "76a2ae8cc56e4165b77ca5d17a9e6469ff66323e917be5a8b46da44df4f0bb58"
@@ -276,5 +280,5 @@
   "restore_verifier_status": "Optional --hammerburst-park-restore input action hook integrated into private reload adapter; five synthetic action/receipt regressions passed. Actual park/redraw/new-grant/native-resume, typed conservation, UI/reward and complete return-fire require game evidence.",
   "latest_service_first_failure": "runtime-3112-first-failure-analysis.json",
   "latest_startup_failure": "runtime-49732-startup-failure.json",
-  "latest_runtime_failure": "runtime-56032-first-failure-analysis.json"
+  "latest_runtime_failure": "runtime-57324-first-failure-analysis.json"
 }
