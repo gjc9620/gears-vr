@@ -2011,3 +2011,17 @@ CPU：OwnedSweep 144、CapsulePathSession 191、Session 96、OFF 36，均 exit0�
 新的 cover-1110-r113-cloak-source-stage 使用同 r111 Native、冻结PG/XR及cloak1110准备，动作文件已修正；资源检查仍发现两个活跃自动实例时在 claim／启动前拒绝，不占运行、不操作他人。r113尚未启动／消耗，接下来只在资源允许后运行这一已修正的定向 source-stage 流程。r112不可重跑。证据 isolated-r105/r112-closeout.json、cloak-guard-check.json 与实例原始 run-result／projection，公共v71不变。
 
 本轮不是掩体功能通过。原 source4 与头肩遮挡未解决，工程25%不变，CV-01–24／AC-01–22和物理头显继续开放。
+
+## r113–r116：实际脚本路径修复与终点形状枚举取证（2026-11-10）
+
+r113 在资源允许后启动，game59296／creation134387853785518413，XR53608／creation134387853851311494；Native仍r111。脚本已不再遮蔽标准 operator，但旧 wrapper 根据 parents[3] 构造依赖目录，迁移后误指 analysis/analysis，resolve_camera 导入失败，未发掩体输入；probe attempted0，不是 source4 重现。382 次本方窗口 CLOAKED 观察无失败，实际双眼3帧：前两帧与已审启动等待卡逐字节一致，最后真实场景和双手已亲自看图。完整原图与失败日志保留。
+
+本方 Native／入口／手柄恢复true、XR0／launcher0，game／owner／XR 精确身份已不存在，未强杀。fire_disable2／hand_stop5／drainedfalse及 normal_cleanup_verified=false 原样保留，不能称全部收尾通过；实际查询、动作及早停开火确认问题仍未解决。
+
+准备器改为显式绑定 canonical OLD，补 game-playtest 依赖；新增实际生成动作 --prepare-import-check，只执行依赖导入、原有源码转换与编译，早于游戏／输入部分退出，不修改产品规则。r115 新检查在启动前抓到缺失 game-playtest，失败保留且无game。修正后 r116 完成该实际预检和14项 live() 身份检查；0.4、原制品哈希、私有读写与新鲜度保护不变。r116 申请在两个其他活跃worker资源上限处被拒绝，尚无 claim／launcher-session，后续只在资源允许时运行；r113已消耗不可重跑。
+
+等待资源期间对原SHA22051aa7…dd48 PhysX做只读静态取证。公共 Scene vtable+2f0 → RVA172160（完整201bytes），内部+248 → A9F10。该候选通过1AB130枚举，准确分支逐形状virtual+120，virtual+40返回公共形状，输出为8字节形状指针；与既有64字节 sweep Hit 不同。公共原count经1275A0尾跳188440作备用场景合并，不能仅据反编译void误判无返回。
+
+重要接线边界：备用场景分支会按已返回数移动 caller buffer、减少容量；耗尽时还可能传null/0触发原分配，回调数据不保证等于初始batch。后续必须认证全部参数、缓冲区及回调预算／计数，不能直接复用现有等基址64字节Hit collector。准确参数9与候选-only分支要分清。此为静态候选，不是实际原版枚举调用；尚无终点占用、自身完整集合或移动许可，零Capsule／Sphere sweep仍不启用。
+
+REA provider已关闭，完整snapshot及8条聚焦证据已保存。证据 overlap-enumeration-r114/{findings,selected-evidence,verification}.json。当前没有新的 Native／PG 实现或构建；公共v71不变。下一步先运行r116定位实际source4，再实现并校验终点形状枚举、完整身体路径和C0提交接线。工程25%及全部CV-01–24／AC-01–22、头肩遮挡、物理头显未完成状态不变。

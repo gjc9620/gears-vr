@@ -57,9 +57,27 @@ def live():
     # No pause/resume expansion here; r104 already retains that known failure.
     sources['run_menu_firstperson_check.py'] = menu
     wrapper = (R104 / 'run_cover_eye_approach_operator.py').read_text(encoding='utf-8')
+    wrapper = replace_once(wrapper,
+        "O = Path(__file__).resolve().parents[3] / 'analysis/solo-m1-20261028'",
+        f'O = Path({str(OLD)!r})')
+    wrapper = replace_once(wrapper,
+        "for name in ('package-inspector', 'game-io', 'native-capture'):",
+        "for name in ('package-inspector', 'game-io', 'native-capture', 'game-playtest'):")
     for filename in sources:
         expression = f"s = (O / '{filename}').read_text(encoding='utf-8')"
         wrapper = replace_once(wrapper, expression, 's = ' + repr(sources[filename]))
+    wrapper = replace_once(wrapper,
+        "exec(compile(s, str(O / 'run_menu_firstperson_check.py'), 'exec'),",
+        """if '--prepare-import-check' in sys.argv:
+    import ast
+    import cover_ordinary_approach
+    imports = [node for node in ast.parse(s).body if isinstance(node, (ast.Import, ast.ImportFrom))]
+    exec(compile(ast.fix_missing_locations(ast.Module(body=imports,type_ignores=[])),
+        str(O / 'run_menu_firstperson_check.py'), 'exec'),
+        {'__file__':str(O / 'run_menu_firstperson_check.py'),'__name__':'cover_import_check'})
+    print('Cover action imports and transformations passed; no game/input access')
+    raise SystemExit(0)
+exec(compile(s, str(O / 'run_menu_firstperson_check.py'), 'exec'),""")
     # The generated action has its own read-only input helper and result paths.
     # Existing recording modules consume its supplied own directory/identities.
     if any('solo-m1-1028d' in source for source in sources.values()):
@@ -75,6 +93,11 @@ def live():
     subprocess.run([sys.executable,'-E','-s','-B','-X','utf8','-c',
         'from pathlib import Path; import operator; assert operator.or_(1,2)==3'],
         cwd=output,check=True,capture_output=True,timeout=10,creationflags=subprocess.CREATE_NO_WINDOW)
+    imports = subprocess.run([sys.executable,'-E','-s','-B','-X','utf8',str(path),
+        '--cover-eye-observation','--equipment-chain','--playground-ready','--dual-output','--prepare-import-check'],
+        cwd=ROOT,capture_output=True,timeout=20,creationflags=subprocess.CREATE_NO_WINDOW)
+    (output/'import-check.log').write_bytes(imports.stdout+imports.stderr)
+    imports.check_returncode()
     write_new(HERE / selected.name / 'operator-prepared.json', dict(
         instance=str(selected), operator=str(path), operator_sha256=sha(path), bootstrap_stdlib_passed=True,
         source_sha256={str(OLD / filename):sha(OLD / filename) for filename in sources},

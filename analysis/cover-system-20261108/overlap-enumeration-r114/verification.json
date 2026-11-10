@@ -1,0 +1,61 @@
+{
+  "classification": "progress",
+  "runtime_report": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\cover-1110-r113-cloak-source-stage\\cover-output\\run-result.json",
+  "runtime_report_sha256": "ef0185fa5d13c206d34f4575c51e4938ce31749e1be0eeb693e89fc89bd8dd96",
+  "game": {
+    "pid": 59296,
+    "creation_time": 134387853785518413,
+    "image": "j:\\gearsvr\\gears.of.war.reloaded.v1.0.1.3816947-p2p\\gears of war reloaded\\binaries_x64\\gowde-steam.exe"
+  },
+  "xr": {
+    "pid": 53608,
+    "creation_time": 134387853851311494,
+    "image": "c:\\users\\11\\.codex\\worktrees\\6dof-single\\gearsvr\\tools\\openxr-probe\\build-cover-1110-r113-cloak-source-stage\\openxrposeprobe.exe"
+  },
+  "source4_reexercised": false,
+  "first_failure": "r113 generated wrapper derives O from old parent depth; resolve_camera import fails before input",
+  "original_query_attempted": false,
+  "cloak": {
+    "samples": 382,
+    "failures": []
+  },
+  "projection_frames": 3,
+  "normal_cleanup_verified": false,
+  "unified_weapons_cleanup": {
+    "fire_disable_code": 2,
+    "hand_stop_code": 5,
+    "fire_disable_initial_code": 2,
+    "fire_disable_after_hand_stop": true,
+    "drained": false
+  },
+  "native_restore": true,
+  "entry_restore": true,
+  "pad_restore": true,
+  "xr_exit": 0,
+  "launcher_exit": 0,
+  "remaining_owned": {},
+  "visual_review": [
+    "r113 frames0/1 byte-identical to personally reviewed r112 startup waiting card",
+    "r113 frame2 personally reviewed: actual stereo scene and both hands; no cover action"
+  ],
+  "offline_failure": "r115 import-only preflight found missing tools/game-playtest path; never launched",
+  "fix": "absolute canonical OLD binding + game-playtest path + actual generated action --prepare-import-check",
+  "next_instance": "cover-1110-r116-cloak-source-stage",
+  "next_instance_started": false,
+  "next_import_check_sha256": "1054522a3797a2e1a713d9eba942045fe84bccddcec32707637e0e6f98f6d979",
+  "identity_checks": 14,
+  "identity_checks_scope": "actual generated live() with synthetic identities",
+  "enumeration_findings_sha256": "0d3108a48c1cf8974eeaa3957a126279c321294f2e5e214f2bb6d9874e9ca4d6",
+  "enumeration_evidence_sha256": "87e256fdcfd9202669623e640ae490efe52c0d5379254e4ee7981e1fbc536dc2",
+  "implemented_enumeration": false,
+  "original_enumeration_executed": false,
+  "provider_closed": true,
+  "public_v71_changed": false,
+  "remaining": [
+    "actual source4 stage",
+    "early-stop fire disable acknowledgement2",
+    "full endpoint observation and world/shape coverage",
+    "body C0 commit/view/hit/muzzle consumers",
+    "CV01-24 AC01-22 and headset"
+  ]
+}

@@ -1,0 +1,35 @@
+{
+  "binary_sha256": "22051aa75312344a824a5f7e29c6375fec3a90df50cbeff6152f0e6c3afddd48",
+  "snapshot_sha256": "262e22efaff72c815c2bcb437b21388024031dc85e27d01d2b4a679fe20e2d75",
+  "evidence_ids": [
+    "ev_039c7fa1aeada481d2bfdaf39062b54d149912e672dcfd1c492a16be0cb22410",
+    "ev_0684871cf1004efcdf77df153b27c27c5998d0f477267dcb1b1aadca57a92463",
+    "ev_09201d525f18e09134876fdb405b1caaff27089cc8ba87bf3f878c79b76dd3f2",
+    "ev_0cb1268601b51b8d86af190aecbd61e1ea0a6fb48b570cc52e3e7957b342ff1f",
+    "ev_6e2689ca2e9e3972cf47a776417c5e4b48ca62826420c505050b2d68dd93c693",
+    "ev_a75991e5d2d49d0ae7fa902a00ff6fcc1508f6f815869f36b8c97577f5aeacfd",
+    "ev_b2a79a606dfe61caa2ddb960f2fc961252c13e052afc495a0a29f7980ff1f5fa",
+    "ev_d89985f4beb2d6a46186338884f6593d776d209ed42d1a4264ec8d67568446e7"
+  ],
+  "provider_closed": true,
+  "game_executed": false,
+  "observations": [
+    "Public Scene vtable 0x23ca98 +0x2f0 ->0x172160. Internal Scene vtable 0x22ccb8 +0x248 ->0xa9f10.",
+    "Public 0x172160 body has 201 bytes through RET 0x172228. Internal EAX is passed as tenth argument to 0x1275a0; that bridge tail-jumps to 0x188440 and public returns final EAX.",
+    "0xa9f10 obtains candidate list through 0x1ab130; argument9 selects exact virtual +0x120 test versus candidates-only path. Returned entries are public shapes from internal shape virtual +0x40, eight bytes each.",
+    "Arguments3/4 select object types and caller capacity; argument5 supplies shape-pointer buffer, argument6 synchronous callback object, argument7 groups, argument8 mask, argument9 accurate predicate.",
+    "Callback vtable[0](reporter,uint32_count,shape_pointer_array) can be invoked repeatedly, returns bool continuation. Internal default batch64 when capacity0; caller buffer avoids original allocation path.",
+    "0x188440 walks fallback scene actors and calls their internal +0x248. It can advance caller buffer by prior returned count and reduce available capacity; callback data need not equal original base.",
+    "If remaining capacity is exhausted fallback may pass null buffer/capacity0, invoking its own original buffer allocation. Raw callback count, early stop, truncation and buffer provenance need explicit handling."
+  ],
+  "inferences": [
+    "This is the capsule shape-enumeration candidate, inferred from same broadphase and shape method as the established capsule-any route. It can support self-aware endpoint observation after its exact ABI and transitive consumers are certified.",
+    "Existing 64-byte sweep Hit collector must not be reused: this route emits 8-byte pointers and fallback callbacks may use subspans or internal buffers."
+  ],
+  "unknowns": [
+    "No original enumerating call executed; no current C0 integration or ownership closure on these results yet.",
+    "Complete collision type/scale/bone coverage, internal narrowphase correctness and world/transform fence remain unproven.",
+    "Exact batch budget and all fallback scene count semantics need full assembly review and callback tests before production invocation.",
+    "No endpoint occupancy certificate or movement permission issued; zero-axis Capsule and Sphere sweep remain prohibited."
+  ]
+}

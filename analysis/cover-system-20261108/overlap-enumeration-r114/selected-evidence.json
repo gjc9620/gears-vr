@@ -1,0 +1,834 @@
+[
+  {
+    "analysis_profile": {
+      "digest": "90e13888e18b7d587414bb259f5e3dc44a7c9293bdf290ad8c459be524747d9f",
+      "parameters": {
+        "analyzer_preset": "ghidra-default",
+        "annotation_policy": "atomic-function-entry-metadata-v1",
+        "architecture": "x86_64",
+        "available_architectures": [
+          "x86_64"
+        ],
+        "compiler_spec_id": "auto-default",
+        "decompiler_jump_loads": true,
+        "executable_role": "shared-library",
+        "function_body_evidence": "complete-inclusive-ranges-v1",
+        "function_boundary_observations": "ghidra-terminal-call-limitations-v1",
+        "function_references": "complete-body-and-entry-reference-manager-v2",
+        "import_mode": "ephemeral-source-immutable",
+        "instruction_flow_evidence": "decoded-return-pcode-v1",
+        "jump_table_evidence": "typed-case-default-blocks-v1",
+        "language_id": "auto-from-header",
+        "load_image_observations": "source-mappings-entry-context-v2",
+        "loader": "auto-from-header",
+        "location_resolution": "explicit-address-exact-entry-symbol-first-v3",
+        "managed": false,
+        "native_aot_metadata": {
+          "contract_revision": "rtr-9.1-x64-pe-read-only-v3",
+          "report_bytes": 4194304,
+          "source_bytes": 134217728,
+          "work_units": 67108864,
+          "working_memory_bytes": 67108864
+        },
+        "no_return_repair": "disabled-windows-p0",
+        "process_launch": "official-headless-script-v1",
+        "string_inventory_evidence": "defined-data-coverage-v1",
+        "target_format": "pe",
+        "target_kind": "executable"
+      },
+      "provider": {
+        "id": "ghidra",
+        "name": "Ghidra",
+        "version": "12.1.4"
+      }
+    },
+    "authority": "shipped-artifact",
+    "confidence": "observed",
+    "environment": null,
+    "evidence_id": "ev_039c7fa1aeada481d2bfdaf39062b54d149912e672dcfd1c492a16be0cb22410",
+    "evidence_links": [],
+    "limitations": [
+      "The session serves operations only after Ghidra reports default auto-analysis complete; incomplete analysis does not expose partial results.",
+      "The imported Program and temporary project are ephemeral and deleted on close. Annotation operations edit session database metadata; original executable bytes are never written.",
+      "Cancelling an active Ghidra request terminates its ephemeral database and discards session annotations. The selected target remains open; the next provider query imports the original artifact again.",
+      "Default-space addresses use lowercase 0x-prefixed hexadecimal; other address spaces use <percent-encoded-space>:0x<hex>.",
+      "Pseudocode is Ghidra decompiler output, not original source and not text-equivalent to Hopper output.",
+      "External functions and functions without an analyzable body return null; other decompiler failures remain explicit.",
+      "Windows Ghidra P0 accepts approved native x86 and x86-64 PE applications and DLLs; managed, hostile, sensitive, and mutable-path targets are unsupported.",
+      "The Windows bridge uses authenticated IPv4 loopback because Node path-based IPC does not expose Java AF_UNIX sockets; the endpoint file contains no bearer token.",
+      "Windows sessions require the matching packaged Windows x64 native addon, local NTFS targets and runtimes, and Windows 10 or later. Native handles enforce path admission, private DACLs, and Job Object ownership automatically."
+    ],
+    "locations": [],
+    "normalized_result": "\r\nuint FUN_180188440(longlong *param_1,undefined8 param_2,ulonglong param_3,uint param_4,\r\n                  longlong param_5,undefined8 param_6,undefined4 param_7,undefined8 param_8,\r\n                  undefined1 param_9,uint param_10)\r\n\r\n{\r\n  longlong *plVar1;\r\n  uint uVar2;\r\n  uint uVar3;\r\n  ulonglong uVar4;\r\n  ulonglong uVar5;\r\n  longlong lVar6;\r\n  \r\n  lVar6 = *param_1;\r\n  uVar4 = 0;\r\n  uVar5 = param_3;\r\n  uVar2 = param_10;\r\n  if ((int)(param_1[1] - lVar6 >> 3) != 0) {\r\n    do {\r\n      lVar6 = *(longlong *)(lVar6 + uVar4 * 8);\r\n      if (*(int *)(lVar6 + 0x20) == 0) {\r\n        plVar1 = *(longlong **)(*(longlong *)(lVar6 + 0x38) + 0x40);\r\n        if (param_10 < param_4) {\r\n          param_4 = param_4 - param_10;\r\n          param_5 = param_5 + (ulonglong)param_10 * 8;\r\n        }\r\n        else {\r\n          param_4 = 0;\r\n          param_5 = 0;\r\n        }\r\n        param_10 = (**(code **)(*plVar1 + 0x248))\r\n                             (plVar1,param_2,uVar5,param_4,param_5,param_6,param_7,param_8,param_9);\r\n        uVar5 = param_3 & 0xffffffff;\r\n        uVar2 = uVar2 + param_10;\r\n      }\r\n      lVar6 = *param_1;\r\n      uVar3 = (int)uVar4 + 1;\r\n      uVar4 = (ulonglong)uVar3;\r\n    } while (uVar3 < (uint)(param_1[1] - lVar6 >> 3));\r\n  }\r\n  return uVar2;\r\n}\r\n\r\n",
+    "operation": "procedure_pseudo_code",
+    "parameters": {
+      "procedure": "0x180188440"
+    },
+    "predicate_type": "rea.analysis",
+    "provider": {
+      "id": "ghidra",
+      "name": "Ghidra",
+      "version": "12.1.4"
+    },
+    "raw_result": {
+      "limitations": [],
+      "value": "\r\nuint FUN_180188440(longlong *param_1,undefined8 param_2,ulonglong param_3,uint param_4,\r\n                  longlong param_5,undefined8 param_6,undefined4 param_7,undefined8 param_8,\r\n                  undefined1 param_9,uint param_10)\r\n\r\n{\r\n  longlong *plVar1;\r\n  uint uVar2;\r\n  uint uVar3;\r\n  ulonglong uVar4;\r\n  ulonglong uVar5;\r\n  longlong lVar6;\r\n  \r\n  lVar6 = *param_1;\r\n  uVar4 = 0;\r\n  uVar5 = param_3;\r\n  uVar2 = param_10;\r\n  if ((int)(param_1[1] - lVar6 >> 3) != 0) {\r\n    do {\r\n      lVar6 = *(longlong *)(lVar6 + uVar4 * 8);\r\n      if (*(int *)(lVar6 + 0x20) == 0) {\r\n        plVar1 = *(longlong **)(*(longlong *)(lVar6 + 0x38) + 0x40);\r\n        if (param_10 < param_4) {\r\n          param_4 = param_4 - param_10;\r\n          param_5 = param_5 + (ulonglong)param_10 * 8;\r\n        }\r\n        else {\r\n          param_4 = 0;\r\n          param_5 = 0;\r\n        }\r\n        param_10 = (**(code **)(*plVar1 + 0x248))\r\n                             (plVar1,param_2,uVar5,param_4,param_5,param_6,param_7,param_8,param_9);\r\n        uVar5 = param_3 & 0xffffffff;\r\n        uVar2 = uVar2 + param_10;\r\n      }\r\n      lVar6 = *param_1;\r\n      uVar3 = (int)uVar4 + 1;\r\n      uVar4 = (ulonglong)uVar3;\r\n    } while (uVar3 < (uint)(param_1[1] - lVar6 >> 3));\r\n  }\r\n  return uVar2;\r\n}\r\n\r\n"
+    },
+    "subject": {
+      "architecture": "x86_64",
+      "digest": {
+        "sha256": "22051aa75312344a824a5f7e29c6375fec3a90df50cbeff6152f0e6c3afddd48"
+      },
+      "format": "pe",
+      "local_path": "J:\\gearsVr\\Gears.of.War.Reloaded.v1.0.1.3816947-P2P\\Gears of War Reloaded\\Binaries_x64\\PhysXCore.dll",
+      "name": "J:\\gearsVr\\Gears.of.War.Reloaded.v1.0.1.3816947-P2P\\Gears of War Reloaded\\Binaries_x64\\PhysXCore.dll"
+    }
+  },
+  {
+    "analysis_profile": {
+      "digest": "90e13888e18b7d587414bb259f5e3dc44a7c9293bdf290ad8c459be524747d9f",
+      "parameters": {
+        "analyzer_preset": "ghidra-default",
+        "annotation_policy": "atomic-function-entry-metadata-v1",
+        "architecture": "x86_64",
+        "available_architectures": [
+          "x86_64"
+        ],
+        "compiler_spec_id": "auto-default",
+        "decompiler_jump_loads": true,
+        "executable_role": "shared-library",
+        "function_body_evidence": "complete-inclusive-ranges-v1",
+        "function_boundary_observations": "ghidra-terminal-call-limitations-v1",
+        "function_references": "complete-body-and-entry-reference-manager-v2",
+        "import_mode": "ephemeral-source-immutable",
+        "instruction_flow_evidence": "decoded-return-pcode-v1",
+        "jump_table_evidence": "typed-case-default-blocks-v1",
+        "language_id": "auto-from-header",
+        "load_image_observations": "source-mappings-entry-context-v2",
+        "loader": "auto-from-header",
+        "location_resolution": "explicit-address-exact-entry-symbol-first-v3",
+        "managed": false,
+        "native_aot_metadata": {
+          "contract_revision": "rtr-9.1-x64-pe-read-only-v3",
+          "report_bytes": 4194304,
+          "source_bytes": 134217728,
+          "work_units": 67108864,
+          "working_memory_bytes": 67108864
+        },
+        "no_return_repair": "disabled-windows-p0",
+        "process_launch": "official-headless-script-v1",
+        "string_inventory_evidence": "defined-data-coverage-v1",
+        "target_format": "pe",
+        "target_kind": "executable"
+      },
+      "provider": {
+        "id": "ghidra",
+        "name": "Ghidra",
+        "version": "12.1.4"
+      }
+    },
+    "authority": "shipped-artifact",
+    "confidence": "observed",
+    "environment": null,
+    "evidence_id": "ev_0684871cf1004efcdf77df153b27c27c5998d0f477267dcb1b1aadca57a92463",
+    "evidence_links": [],
+    "limitations": [
+      "The session serves operations only after Ghidra reports default auto-analysis complete; incomplete analysis does not expose partial results.",
+      "The imported Program and temporary project are ephemeral and deleted on close. Annotation operations edit session database metadata; original executable bytes are never written.",
+      "Cancelling an active Ghidra request terminates its ephemeral database and discards session annotations. The selected target remains open; the next provider query imports the original artifact again.",
+      "Default-space addresses use lowercase 0x-prefixed hexadecimal; other address spaces use <percent-encoded-space>:0x<hex>.",
+      "Assembly is Ghidra Listing text and does not claim textual equivalence with Hopper output.",
+      "Ghidra Listing reports a terminal call at 0x1801275b0 to 0x180188440 FUN_180188440 (external=false, thunk=false, hasNoReturn=false); fallthrough is excluded by Ghidra's flow model. The reason for the terminal flow is not established by this observation.",
+      "Windows Ghidra P0 accepts approved native x86 and x86-64 PE applications and DLLs; managed, hostile, sensitive, and mutable-path targets are unsupported.",
+      "The Windows bridge uses authenticated IPv4 loopback because Node path-based IPC does not expose Java AF_UNIX sockets; the endpoint file contains no bearer token.",
+      "Windows sessions require the matching packaged Windows x64 native addon, local NTFS targets and runtimes, and Windows 10 or later. Native handles enforce path admission, private DACLs, and Job Object ownership automatically."
+    ],
+    "locations": [],
+    "normalized_result": "0x1801275a0: ADD RCX, 0x188\n0x1801275a7: MOVZX EAX, byte ptr [RSP + 0x48]\n0x1801275ac: MOV byte ptr [RSP + 0x48], AL\n0x1801275b0: JMP 0x180188440",
+    "operation": "procedure_assembly",
+    "parameters": {
+      "procedure": "0x1801275a0"
+    },
+    "predicate_type": "rea.analysis",
+    "provider": {
+      "id": "ghidra",
+      "name": "Ghidra",
+      "version": "12.1.4"
+    },
+    "raw_result": {
+      "limitations": [
+        "Ghidra Listing reports a terminal call at 0x1801275b0 to 0x180188440 FUN_180188440 (external=false, thunk=false, hasNoReturn=false); fallthrough is excluded by Ghidra's flow model. The reason for the terminal flow is not established by this observation."
+      ],
+      "value": "0x1801275a0: ADD RCX, 0x188\n0x1801275a7: MOVZX EAX, byte ptr [RSP + 0x48]\n0x1801275ac: MOV byte ptr [RSP + 0x48], AL\n0x1801275b0: JMP 0x180188440"
+    },
+    "subject": {
+      "architecture": "x86_64",
+      "digest": {
+        "sha256": "22051aa75312344a824a5f7e29c6375fec3a90df50cbeff6152f0e6c3afddd48"
+      },
+      "format": "pe",
+      "local_path": "J:\\gearsVr\\Gears.of.War.Reloaded.v1.0.1.3816947-P2P\\Gears of War Reloaded\\Binaries_x64\\PhysXCore.dll",
+      "name": "J:\\gearsVr\\Gears.of.War.Reloaded.v1.0.1.3816947-P2P\\Gears of War Reloaded\\Binaries_x64\\PhysXCore.dll"
+    }
+  },
+  {
+    "analysis_profile": {
+      "digest": "90e13888e18b7d587414bb259f5e3dc44a7c9293bdf290ad8c459be524747d9f",
+      "parameters": {
+        "analyzer_preset": "ghidra-default",
+        "annotation_policy": "atomic-function-entry-metadata-v1",
+        "architecture": "x86_64",
+        "available_architectures": [
+          "x86_64"
+        ],
+        "compiler_spec_id": "auto-default",
+        "decompiler_jump_loads": true,
+        "executable_role": "shared-library",
+        "function_body_evidence": "complete-inclusive-ranges-v1",
+        "function_boundary_observations": "ghidra-terminal-call-limitations-v1",
+        "function_references": "complete-body-and-entry-reference-manager-v2",
+        "import_mode": "ephemeral-source-immutable",
+        "instruction_flow_evidence": "decoded-return-pcode-v1",
+        "jump_table_evidence": "typed-case-default-blocks-v1",
+        "language_id": "auto-from-header",
+        "load_image_observations": "source-mappings-entry-context-v2",
+        "loader": "auto-from-header",
+        "location_resolution": "explicit-address-exact-entry-symbol-first-v3",
+        "managed": false,
+        "native_aot_metadata": {
+          "contract_revision": "rtr-9.1-x64-pe-read-only-v3",
+          "report_bytes": 4194304,
+          "source_bytes": 134217728,
+          "work_units": 67108864,
+          "working_memory_bytes": 67108864
+        },
+        "no_return_repair": "disabled-windows-p0",
+        "process_launch": "official-headless-script-v1",
+        "string_inventory_evidence": "defined-data-coverage-v1",
+        "target_format": "pe",
+        "target_kind": "executable"
+      },
+      "provider": {
+        "id": "ghidra",
+        "name": "Ghidra",
+        "version": "12.1.4"
+      }
+    },
+    "authority": "shipped-artifact",
+    "confidence": "observed",
+    "environment": null,
+    "evidence_id": "ev_09201d525f18e09134876fdb405b1caaff27089cc8ba87bf3f878c79b76dd3f2",
+    "evidence_links": [],
+    "limitations": [
+      "The session serves operations only after Ghidra reports default auto-analysis complete; incomplete analysis does not expose partial results.",
+      "The imported Program and temporary project are ephemeral and deleted on close. Annotation operations edit session database metadata; original executable bytes are never written.",
+      "Cancelling an active Ghidra request terminates its ephemeral database and discards session annotations. The selected target remains open; the next provider query imports the original artifact again.",
+      "Default-space addresses use lowercase 0x-prefixed hexadecimal; other address spaces use <percent-encoded-space>:0x<hex>.",
+      "Pseudocode is Ghidra decompiler output, not original source and not text-equivalent to Hopper output.",
+      "External functions and functions without an analyzable body return null; other decompiler failures remain explicit.",
+      "Windows Ghidra P0 accepts approved native x86 and x86-64 PE applications and DLLs; managed, hostile, sensitive, and mutable-path targets are unsupported.",
+      "The Windows bridge uses authenticated IPv4 loopback because Node path-based IPC does not expose Java AF_UNIX sockets; the endpoint file contains no bearer token.",
+      "Windows sessions require the matching packaged Windows x64 native addon, local NTFS targets and runtimes, and Windows 10 or later. Native handles enforce path admission, private DACLs, and Job Object ownership automatically."
+    ],
+    "locations": [],
+    "normalized_result": "\r\nundefined8\r\nFUN_1801ab130(longlong param_1,undefined8 param_2,undefined8 param_3,undefined8 param_4,uint param_5\r\n             ,undefined4 param_6)\r\n\r\n{\r\n  longlong *plVar1;\r\n  \r\n  if ((*(longlong **)(param_1 + 8) != (longlong *)0x0) && ((param_5 & 1) != 0)) {\r\n    (**(code **)(**(longlong **)(param_1 + 8) + 0x48))();\r\n  }\r\n  plVar1 = *(longlong **)(param_1 + 0x10);\r\n  if ((plVar1 != (longlong *)0x0) && ((param_5 & 2) != 0)) {\r\n    (**(code **)(*plVar1 + 0x48))(plVar1,param_2,param_3,param_4,(byte)(param_5 >> 2) & 1,param_6);\r\n  }\r\n  return 1;\r\n}\r\n\r\n",
+    "operation": "procedure_pseudo_code",
+    "parameters": {
+      "procedure": "0x1801ab130"
+    },
+    "predicate_type": "rea.analysis",
+    "provider": {
+      "id": "ghidra",
+      "name": "Ghidra",
+      "version": "12.1.4"
+    },
+    "raw_result": {
+      "limitations": [],
+      "value": "\r\nundefined8\r\nFUN_1801ab130(longlong param_1,undefined8 param_2,undefined8 param_3,undefined8 param_4,uint param_5\r\n             ,undefined4 param_6)\r\n\r\n{\r\n  longlong *plVar1;\r\n  \r\n  if ((*(longlong **)(param_1 + 8) != (longlong *)0x0) && ((param_5 & 1) != 0)) {\r\n    (**(code **)(**(longlong **)(param_1 + 8) + 0x48))();\r\n  }\r\n  plVar1 = *(longlong **)(param_1 + 0x10);\r\n  if ((plVar1 != (longlong *)0x0) && ((param_5 & 2) != 0)) {\r\n    (**(code **)(*plVar1 + 0x48))(plVar1,param_2,param_3,param_4,(byte)(param_5 >> 2) & 1,param_6);\r\n  }\r\n  return 1;\r\n}\r\n\r\n"
+    },
+    "subject": {
+      "architecture": "x86_64",
+      "digest": {
+        "sha256": "22051aa75312344a824a5f7e29c6375fec3a90df50cbeff6152f0e6c3afddd48"
+      },
+      "format": "pe",
+      "local_path": "J:\\gearsVr\\Gears.of.War.Reloaded.v1.0.1.3816947-P2P\\Gears of War Reloaded\\Binaries_x64\\PhysXCore.dll",
+      "name": "J:\\gearsVr\\Gears.of.War.Reloaded.v1.0.1.3816947-P2P\\Gears of War Reloaded\\Binaries_x64\\PhysXCore.dll"
+    }
+  },
+  {
+    "analysis_profile": {
+      "digest": "90e13888e18b7d587414bb259f5e3dc44a7c9293bdf290ad8c459be524747d9f",
+      "parameters": {
+        "analyzer_preset": "ghidra-default",
+        "annotation_policy": "atomic-function-entry-metadata-v1",
+        "architecture": "x86_64",
+        "available_architectures": [
+          "x86_64"
+        ],
+        "compiler_spec_id": "auto-default",
+        "decompiler_jump_loads": true,
+        "executable_role": "shared-library",
+        "function_body_evidence": "complete-inclusive-ranges-v1",
+        "function_boundary_observations": "ghidra-terminal-call-limitations-v1",
+        "function_references": "complete-body-and-entry-reference-manager-v2",
+        "import_mode": "ephemeral-source-immutable",
+        "instruction_flow_evidence": "decoded-return-pcode-v1",
+        "jump_table_evidence": "typed-case-default-blocks-v1",
+        "language_id": "auto-from-header",
+        "load_image_observations": "source-mappings-entry-context-v2",
+        "loader": "auto-from-header",
+        "location_resolution": "explicit-address-exact-entry-symbol-first-v3",
+        "managed": false,
+        "native_aot_metadata": {
+          "contract_revision": "rtr-9.1-x64-pe-read-only-v3",
+          "report_bytes": 4194304,
+          "source_bytes": 134217728,
+          "work_units": 67108864,
+          "working_memory_bytes": 67108864
+        },
+        "no_return_repair": "disabled-windows-p0",
+        "process_launch": "official-headless-script-v1",
+        "string_inventory_evidence": "defined-data-coverage-v1",
+        "target_format": "pe",
+        "target_kind": "executable"
+      },
+      "provider": {
+        "id": "ghidra",
+        "name": "Ghidra",
+        "version": "12.1.4"
+      }
+    },
+    "authority": "shipped-artifact",
+    "confidence": "observed",
+    "environment": null,
+    "evidence_id": "ev_0cb1268601b51b8d86af190aecbd61e1ea0a6fb48b570cc52e3e7957b342ff1f",
+    "evidence_links": [],
+    "limitations": [
+      "The session serves operations only after Ghidra reports default auto-analysis complete; incomplete analysis does not expose partial results.",
+      "The imported Program and temporary project are ephemeral and deleted on close. Annotation operations edit session database metadata; original executable bytes are never written.",
+      "Cancelling an active Ghidra request terminates its ephemeral database and discards session annotations. The selected target remains open; the next provider query imports the original artifact again.",
+      "Default-space addresses use lowercase 0x-prefixed hexadecimal; other address spaces use <percent-encoded-space>:0x<hex>.",
+      "Windows Ghidra P0 accepts approved native x86 and x86-64 PE applications and DLLs; managed, hostile, sensitive, and mutable-path targets are unsupported.",
+      "The Windows bridge uses authenticated IPv4 loopback because Node path-based IPC does not expose Java AF_UNIX sockets; the endpoint file contains no bearer token.",
+      "Windows sessions require the matching packaged Windows x64 native addon, local NTFS targets and runtimes, and Windows 10 or later. Native handles enforce path admission, private DACLs, and Job Object ownership automatically."
+    ],
+    "locations": [],
+    "normalized_result": {
+      "basicblock_count": 1,
+      "body": {
+        "available": true,
+        "contains_entry": true,
+        "non_contiguous": false,
+        "provenance": "ghidra-function-body-address-set",
+        "ranges": [
+          {
+            "end": "0x180172228",
+            "start": "0x180172160"
+          }
+        ],
+        "span_bytes": 201,
+        "total_bytes": 201
+      },
+      "classification": {
+        "external": false,
+        "provenance": "ghidra-function-manager",
+        "thunk": false,
+        "thunk_target": null
+      },
+      "entrypoint": "0x180172160",
+      "length": 201,
+      "locals": [
+        {
+          "description": "undefined local_28 @ Stack[-0x28]:1",
+          "provenance": "ghidra-function-database"
+        },
+        {
+          "description": "undefined4 local_30 @ Stack[-0x30]:4",
+          "provenance": "ghidra-function-database"
+        },
+        {
+          "description": "undefined1 local_38 @ Stack[-0x38]:1",
+          "provenance": "ghidra-function-database"
+        },
+        {
+          "description": "undefined8 local_40 @ Stack[-0x40]:8",
+          "provenance": "ghidra-function-database"
+        },
+        {
+          "description": "undefined4 local_48 @ Stack[-0x48]:4",
+          "provenance": "ghidra-function-database"
+        },
+        {
+          "description": "undefined8 local_50 @ Stack[-0x50]:8",
+          "provenance": "ghidra-function-database"
+        },
+        {
+          "description": "undefined8 local_58 @ Stack[-0x58]:8",
+          "provenance": "ghidra-function-database"
+        },
+        {
+          "description": "undefined8 local_res10 @ Stack[0x10]:8",
+          "provenance": "ghidra-function-database"
+        },
+        {
+          "description": "undefined8 local_res18 @ Stack[0x18]:8",
+          "provenance": "ghidra-function-database"
+        },
+        {
+          "description": "undefined8 local_res20 @ Stack[0x20]:8",
+          "provenance": "ghidra-function-database"
+        },
+        {
+          "description": "undefined8 local_res8 @ Stack[0x8]:8",
+          "provenance": "ghidra-function-database"
+        }
+      ],
+      "name": "FUN_180172160",
+      "signature": "undefined FUN_180172160()"
+    },
+    "operation": "procedure_info",
+    "parameters": {
+      "procedure": "0x180172160"
+    },
+    "predicate_type": "rea.analysis",
+    "provider": {
+      "id": "ghidra",
+      "name": "Ghidra",
+      "version": "12.1.4"
+    },
+    "raw_result": {
+      "limitations": [],
+      "value": {
+        "basicblock_count": 1,
+        "body": {
+          "available": true,
+          "contains_entry": true,
+          "non_contiguous": false,
+          "provenance": "ghidra-function-body-address-set",
+          "ranges": [
+            {
+              "end": "0x180172228",
+              "start": "0x180172160"
+            }
+          ],
+          "span_bytes": 201,
+          "total_bytes": 201
+        },
+        "classification": {
+          "external": false,
+          "provenance": "ghidra-function-manager",
+          "thunk": false,
+          "thunk_target": null
+        },
+        "entrypoint": "0x180172160",
+        "length": 201,
+        "locals": [
+          {
+            "description": "undefined local_28 @ Stack[-0x28]:1",
+            "provenance": "ghidra-function-database"
+          },
+          {
+            "description": "undefined4 local_30 @ Stack[-0x30]:4",
+            "provenance": "ghidra-function-database"
+          },
+          {
+            "description": "undefined1 local_38 @ Stack[-0x38]:1",
+            "provenance": "ghidra-function-database"
+          },
+          {
+            "description": "undefined8 local_40 @ Stack[-0x40]:8",
+            "provenance": "ghidra-function-database"
+          },
+          {
+            "description": "undefined4 local_48 @ Stack[-0x48]:4",
+            "provenance": "ghidra-function-database"
+          },
+          {
+            "description": "undefined8 local_50 @ Stack[-0x50]:8",
+            "provenance": "ghidra-function-database"
+          },
+          {
+            "description": "undefined8 local_58 @ Stack[-0x58]:8",
+            "provenance": "ghidra-function-database"
+          },
+          {
+            "description": "undefined8 local_res10 @ Stack[0x10]:8",
+            "provenance": "ghidra-function-database"
+          },
+          {
+            "description": "undefined8 local_res18 @ Stack[0x18]:8",
+            "provenance": "ghidra-function-database"
+          },
+          {
+            "description": "undefined8 local_res20 @ Stack[0x20]:8",
+            "provenance": "ghidra-function-database"
+          },
+          {
+            "description": "undefined8 local_res8 @ Stack[0x8]:8",
+            "provenance": "ghidra-function-database"
+          }
+        ],
+        "name": "FUN_180172160",
+        "signature": "undefined FUN_180172160()"
+      }
+    },
+    "subject": {
+      "architecture": "x86_64",
+      "digest": {
+        "sha256": "22051aa75312344a824a5f7e29c6375fec3a90df50cbeff6152f0e6c3afddd48"
+      },
+      "format": "pe",
+      "local_path": "J:\\gearsVr\\Gears.of.War.Reloaded.v1.0.1.3816947-P2P\\Gears of War Reloaded\\Binaries_x64\\PhysXCore.dll",
+      "name": "J:\\gearsVr\\Gears.of.War.Reloaded.v1.0.1.3816947-P2P\\Gears of War Reloaded\\Binaries_x64\\PhysXCore.dll"
+    }
+  },
+  {
+    "analysis_profile": {
+      "digest": "90e13888e18b7d587414bb259f5e3dc44a7c9293bdf290ad8c459be524747d9f",
+      "parameters": {
+        "analyzer_preset": "ghidra-default",
+        "annotation_policy": "atomic-function-entry-metadata-v1",
+        "architecture": "x86_64",
+        "available_architectures": [
+          "x86_64"
+        ],
+        "compiler_spec_id": "auto-default",
+        "decompiler_jump_loads": true,
+        "executable_role": "shared-library",
+        "function_body_evidence": "complete-inclusive-ranges-v1",
+        "function_boundary_observations": "ghidra-terminal-call-limitations-v1",
+        "function_references": "complete-body-and-entry-reference-manager-v2",
+        "import_mode": "ephemeral-source-immutable",
+        "instruction_flow_evidence": "decoded-return-pcode-v1",
+        "jump_table_evidence": "typed-case-default-blocks-v1",
+        "language_id": "auto-from-header",
+        "load_image_observations": "source-mappings-entry-context-v2",
+        "loader": "auto-from-header",
+        "location_resolution": "explicit-address-exact-entry-symbol-first-v3",
+        "managed": false,
+        "native_aot_metadata": {
+          "contract_revision": "rtr-9.1-x64-pe-read-only-v3",
+          "report_bytes": 4194304,
+          "source_bytes": 134217728,
+          "work_units": 67108864,
+          "working_memory_bytes": 67108864
+        },
+        "no_return_repair": "disabled-windows-p0",
+        "process_launch": "official-headless-script-v1",
+        "string_inventory_evidence": "defined-data-coverage-v1",
+        "target_format": "pe",
+        "target_kind": "executable"
+      },
+      "provider": {
+        "id": "ghidra",
+        "name": "Ghidra",
+        "version": "12.1.4"
+      }
+    },
+    "authority": "shipped-artifact",
+    "confidence": "observed",
+    "environment": null,
+    "evidence_id": "ev_6e2689ca2e9e3972cf47a776417c5e4b48ca62826420c505050b2d68dd93c693",
+    "evidence_links": [],
+    "limitations": [
+      "The session serves operations only after Ghidra reports default auto-analysis complete; incomplete analysis does not expose partial results.",
+      "The imported Program and temporary project are ephemeral and deleted on close. Annotation operations edit session database metadata; original executable bytes are never written.",
+      "Cancelling an active Ghidra request terminates its ephemeral database and discards session annotations. The selected target remains open; the next provider query imports the original artifact again.",
+      "Default-space addresses use lowercase 0x-prefixed hexadecimal; other address spaces use <percent-encoded-space>:0x<hex>.",
+      "Pseudocode is Ghidra decompiler output, not original source and not text-equivalent to Hopper output.",
+      "External functions and functions without an analyzable body return null; other decompiler failures remain explicit.",
+      "Windows Ghidra P0 accepts approved native x86 and x86-64 PE applications and DLLs; managed, hostile, sensitive, and mutable-path targets are unsupported.",
+      "The Windows bridge uses authenticated IPv4 loopback because Node path-based IPC does not expose Java AF_UNIX sockets; the endpoint file contains no bearer token.",
+      "Windows sessions require the matching packaged Windows x64 native addon, local NTFS targets and runtimes, and Windows 10 or later. Native handles enforce path admission, private DACLs, and Job Object ownership automatically."
+    ],
+    "locations": [],
+    "normalized_result": "\r\n/* WARNING: Function: __security_check_cookie replaced with injection: security_check_cookie */\r\n/* WARNING: Function: __chkstk replaced with injection: alloca_probe */\r\n\r\nint FUN_1800a9f10(longlong param_1,undefined8 param_2,uint param_3,uint param_4,char *param_5,\r\n                 undefined8 *param_6,undefined4 param_7,longlong param_8,char param_9)\r\n\r\n{\r\n  int *piVar1;\r\n  longlong *plVar2;\r\n  int iVar3;\r\n  int iVar4;\r\n  longlong *plVar5;\r\n  code *pcVar6;\r\n  longlong lVar7;\r\n  char cVar8;\r\n  longlong lVar9;\r\n  ulonglong uVar10;\r\n  ulonglong uVar11;\r\n  undefined8 uVar12;\r\n  undefined1 *puVar13;\r\n  longlong *plVar14;\r\n  int iVar15;\r\n  char *pcVar16;\r\n  ulonglong uVar17;\r\n  undefined1 auStack_b8 [32];\r\n  uint local_98;\r\n  undefined4 local_90;\r\n  char local_88 [4];\r\n  int local_84;\r\n  undefined8 local_80;\r\n  int local_78;\r\n  int local_74;\r\n  undefined8 local_70;\r\n  int local_68;\r\n  int local_64;\r\n  longlong local_60;\r\n  undefined1 local_58 [16];\r\n  undefined1 local_48 [16];\r\n  ulonglong local_38;\r\n  \r\n  local_38 = DAT_180276e80 ^ (ulonglong)local_88;\r\n  local_70 = param_2;\r\n  FUN_1801a5590(param_1 + 0x238);\r\n  lVar9 = FUN_180085c70(*(undefined8 *)(param_1 + 0x220));\r\n  if (*(int *)(lVar9 + 0x564) != 0) {\r\n    *(undefined4 *)(lVar9 + 0x564) = 0;\r\n  }\r\n  local_90 = param_7;\r\n  local_98 = param_3 & 1 | 2;\r\n  if ((param_3 & 2) == 0) {\r\n    local_98 = param_3 & 1;\r\n  }\r\n  local_60 = lVar9;\r\n  FUN_1801ab130(param_1 + 0x200,lVar9 + 0x610,lVar9 + 0x560,param_2);\r\n  local_88[0] = '\\0';\r\n  uVar10 = 0x40;\r\n  if (param_4 != 0) {\r\n    uVar10 = (ulonglong)param_4;\r\n  }\r\n  uVar17 = uVar10 * 8;\r\n  puVar13 = auStack_b8;\r\n  if (param_5 == (char *)0x0) {\r\n    if ((ulonglong)DAT_180276300 < uVar10 << 4) {\r\n      param_5 = (char *)(**(code **)(*DAT_18027e580 + 0x10))(DAT_18027e580,uVar17,1);\r\n      local_88[0] = '\\x01';\r\n      puVar13 = auStack_b8;\r\n    }\r\n    else {\r\n      uVar11 = uVar17 + 0xf;\r\n      if (uVar11 <= uVar17) {\r\n        uVar11 = 0xffffffffffffff0;\r\n      }\r\n      puVar13 = auStack_b8 + -(uVar11 & 0xfffffffffffffff0);\r\n      param_5 = local_88 + -(uVar11 & 0xfffffffffffffff0);\r\n    }\r\n  }\r\n  plVar14 = *(longlong **)(lVar9 + 0x568);\r\n  local_84 = 0;\r\n  plVar2 = plVar14 + *(uint *)(lVar9 + 0x564);\r\n  local_80 = plVar2;\r\n  if (param_9 == '\\0') {\r\n    iVar15 = 0;\r\n    if (plVar14 != plVar2) {\r\n      iVar15 = 0;\r\n      pcVar16 = param_5;\r\njoined_r0x0001800aa216:\r\n      do {\r\n        while ((pcVar16 == param_5 + uVar10 * 8 || (iVar15 = local_84, plVar14 == plVar2))) {\r\n          uVar17 = (longlong)pcVar16 - (longlong)param_5 >> 3;\r\n          iVar15 = iVar15 + (int)uVar17;\r\n          lVar9 = local_60;\r\n          local_84 = iVar15;\r\n          if (param_6 == (undefined8 *)0x0) goto LAB_1800aa351;\r\n          pcVar6 = *(code **)*param_6;\r\n          *(undefined8 *)(puVar13 + -8) = 0x1800aa32b;\r\n          cVar8 = (*pcVar6)(param_6,uVar17 & 0xffffffff,param_5);\r\n          lVar9 = local_60;\r\n          if ((cVar8 == '\\0') || (pcVar16 = param_5, plVar14 == plVar2)) goto LAB_1800aa351;\r\n        }\r\n        lVar9 = *plVar14;\r\n        plVar14 = plVar14 + 1;\r\n        plVar5 = *(longlong **)(lVar9 + 8);\r\n      } while ((*(byte *)((longlong)plVar5 + 0x174) & 1) != 0);\r\n      if (param_8 != 0) {\r\n        pcVar6 = (code *)(&PTR_LAB_180229688)[*(int *)(param_1 + 0x3c8)];\r\n        *(undefined8 *)(puVar13 + -8) = 0x1800aa267;\r\n        (*pcVar6)(local_58,param_8,param_1 + 0x3a8);\r\n        pcVar6 = (code *)(&PTR_LAB_180229688)[*(int *)(param_1 + 0x3cc)];\r\n        *(undefined8 *)(puVar13 + -8) = 0x1800aa28e;\r\n        (*pcVar6)(local_48,plVar5 + 0x2b,param_1 + 0x3b8);\r\n        pcVar6 = (code *)(&PTR_LAB_180229688)[*(int *)(param_1 + 0x3d0)];\r\n        *(undefined8 *)(puVar13 + -8) = 0x1800aa2af;\r\n        (*pcVar6)(&local_70,local_58,local_48);\r\n        if (((((int)local_70 == 0) && (local_70._4_4_ == 0)) && (local_68 == 0)) && (local_64 == 0))\r\n        {\r\n          cVar8 = '\\0';\r\n        }\r\n        else {\r\n          cVar8 = '\\x01';\r\n        }\r\n        iVar15 = local_84;\r\n        if (cVar8 != *(char *)(param_1 + 0x3d4)) goto joined_r0x0001800aa216;\r\n      }\r\n      pcVar6 = *(code **)(*plVar5 + 0x40);\r\n      *(undefined8 *)(puVar13 + -8) = 0x1800aa2e5;\r\n      uVar12 = (*pcVar6)(plVar5);\r\n      *(undefined8 *)pcVar16 = uVar12;\r\n      pcVar16 = pcVar16 + 8;\r\n      iVar15 = local_84;\r\n      goto joined_r0x0001800aa216;\r\n    }\r\n  }\r\n  else {\r\n    iVar15 = 0;\r\n    if (plVar14 != plVar2) {\r\n      pcVar16 = param_5;\r\njoined_r0x0001800aa0a6:\r\n      do {\r\n        while ((pcVar16 == param_5 + uVar10 * 8 || (plVar14 == plVar2))) {\r\n          uVar17 = (longlong)pcVar16 - (longlong)param_5 >> 3;\r\n          local_84 = local_84 + (int)uVar17;\r\n          lVar9 = local_60;\r\n          iVar15 = local_84;\r\n          if (param_6 == (undefined8 *)0x0) goto LAB_1800aa351;\r\n          pcVar6 = *(code **)*param_6;\r\n          *(undefined8 *)(puVar13 + -8) = 0x1800aa1c8;\r\n          cVar8 = (*pcVar6)(param_6,uVar17 & 0xffffffff,param_5);\r\n          lVar9 = local_60;\r\n          iVar15 = local_84;\r\n          if ((cVar8 == '\\0') || (pcVar16 = param_5, plVar14 == plVar2)) goto LAB_1800aa351;\r\n        }\r\n        lVar9 = *plVar14;\r\n        plVar14 = plVar14 + 1;\r\n        plVar5 = *(longlong **)(lVar9 + 8);\r\n      } while ((*(byte *)((longlong)plVar5 + 0x174) & 1) != 0);\r\n      if (param_8 != 0) {\r\n        pcVar6 = (code *)(&PTR_LAB_180229688)[*(int *)(param_1 + 0x3c8)];\r\n        *(undefined8 *)(puVar13 + -8) = 0x1800aa0f6;\r\n        (*pcVar6)(local_48,param_8,param_1 + 0x3a8);\r\n        pcVar6 = (code *)(&PTR_LAB_180229688)[*(int *)(param_1 + 0x3cc)];\r\n        *(undefined8 *)(puVar13 + -8) = 0x1800aa11d;\r\n        (*pcVar6)(local_58,plVar5 + 0x2b,param_1 + 0x3b8);\r\n        pcVar6 = (code *)(&PTR_LAB_180229688)[*(int *)(param_1 + 0x3d0)];\r\n        *(undefined8 *)(puVar13 + -8) = 0x1800aa13e;\r\n        (*pcVar6)(&local_80,local_48,local_58);\r\n        if (((((int)local_80 == 0) && (local_80._4_4_ == 0)) && (local_78 == 0)) && (local_74 == 0))\r\n        {\r\n          cVar8 = '\\0';\r\n        }\r\n        else {\r\n          cVar8 = '\\x01';\r\n        }\r\n        if (cVar8 != *(char *)(param_1 + 0x3d4)) goto joined_r0x0001800aa0a6;\r\n      }\r\n      uVar12 = local_70;\r\n      pcVar6 = *(code **)(*plVar5 + 0x120);\r\n      *(undefined8 *)(puVar13 + -8) = 0x1800aa17b;\r\n      cVar8 = (*pcVar6)(plVar5,uVar12);\r\n      if (cVar8 != '\\0') {\r\n        pcVar6 = *(code **)(*plVar5 + 0x40);\r\n        *(undefined8 *)(puVar13 + -8) = 0x1800aa188;\r\n        uVar12 = (*pcVar6)(plVar5);\r\n        *(undefined8 *)pcVar16 = uVar12;\r\n        pcVar16 = pcVar16 + 8;\r\n      }\r\n      goto joined_r0x0001800aa0a6;\r\n    }\r\n  }\r\nLAB_1800aa351:\r\n  if ((local_88[0] != '\\0') && (param_5 != (char *)0x0)) {\r\n    pcVar6 = *(code **)(*DAT_18027e580 + 0x28);\r\n    *(undefined8 *)(puVar13 + -8) = 0x1800aa369;\r\n    (*pcVar6)();\r\n  }\r\n  lVar7 = *(longlong *)(param_1 + 0x508);\r\n  piVar1 = (int *)(lVar7 + 0x1a28);\r\n  *piVar1 = *piVar1 + 1;\r\n  iVar3 = *(int *)(lVar7 + 0x1a28);\r\n  iVar4 = *(int *)(*(longlong *)(param_1 + 0x508) + 0x1a2c);\r\n  if (iVar3 < iVar4) {\r\n    iVar3 = iVar4;\r\n  }\r\n  *(int *)(*(longlong *)(param_1 + 0x508) + 0x1a2c) = iVar3;\r\n  uVar12 = *(undefined8 *)(param_1 + 0x220);\r\n  *(undefined8 *)(puVar13 + -8) = 0x1800aa3a7;\r\n  FUN_180086710(uVar12,lVar9);\r\n  *(undefined8 *)(puVar13 + -8) = 0x1800aa3af;\r\n  FUN_1801a5650(param_1 + 0x238);\r\n  *(undefined8 *)(puVar13 + -8) = 0x1800aa3be;\r\n  return iVar15;\r\n}\r\n\r\n",
+    "operation": "procedure_pseudo_code",
+    "parameters": {
+      "procedure": "0x1800a9f10"
+    },
+    "predicate_type": "rea.analysis",
+    "provider": {
+      "id": "ghidra",
+      "name": "Ghidra",
+      "version": "12.1.4"
+    },
+    "raw_result": {
+      "limitations": [],
+      "value": "\r\n/* WARNING: Function: __security_check_cookie replaced with injection: security_check_cookie */\r\n/* WARNING: Function: __chkstk replaced with injection: alloca_probe */\r\n\r\nint FUN_1800a9f10(longlong param_1,undefined8 param_2,uint param_3,uint param_4,char *param_5,\r\n                 undefined8 *param_6,undefined4 param_7,longlong param_8,char param_9)\r\n\r\n{\r\n  int *piVar1;\r\n  longlong *plVar2;\r\n  int iVar3;\r\n  int iVar4;\r\n  longlong *plVar5;\r\n  code *pcVar6;\r\n  longlong lVar7;\r\n  char cVar8;\r\n  longlong lVar9;\r\n  ulonglong uVar10;\r\n  ulonglong uVar11;\r\n  undefined8 uVar12;\r\n  undefined1 *puVar13;\r\n  longlong *plVar14;\r\n  int iVar15;\r\n  char *pcVar16;\r\n  ulonglong uVar17;\r\n  undefined1 auStack_b8 [32];\r\n  uint local_98;\r\n  undefined4 local_90;\r\n  char local_88 [4];\r\n  int local_84;\r\n  undefined8 local_80;\r\n  int local_78;\r\n  int local_74;\r\n  undefined8 local_70;\r\n  int local_68;\r\n  int local_64;\r\n  longlong local_60;\r\n  undefined1 local_58 [16];\r\n  undefined1 local_48 [16];\r\n  ulonglong local_38;\r\n  \r\n  local_38 = DAT_180276e80 ^ (ulonglong)local_88;\r\n  local_70 = param_2;\r\n  FUN_1801a5590(param_1 + 0x238);\r\n  lVar9 = FUN_180085c70(*(undefined8 *)(param_1 + 0x220));\r\n  if (*(int *)(lVar9 + 0x564) != 0) {\r\n    *(undefined4 *)(lVar9 + 0x564) = 0;\r\n  }\r\n  local_90 = param_7;\r\n  local_98 = param_3 & 1 | 2;\r\n  if ((param_3 & 2) == 0) {\r\n    local_98 = param_3 & 1;\r\n  }\r\n  local_60 = lVar9;\r\n  FUN_1801ab130(param_1 + 0x200,lVar9 + 0x610,lVar9 + 0x560,param_2);\r\n  local_88[0] = '\\0';\r\n  uVar10 = 0x40;\r\n  if (param_4 != 0) {\r\n    uVar10 = (ulonglong)param_4;\r\n  }\r\n  uVar17 = uVar10 * 8;\r\n  puVar13 = auStack_b8;\r\n  if (param_5 == (char *)0x0) {\r\n    if ((ulonglong)DAT_180276300 < uVar10 << 4) {\r\n      param_5 = (char *)(**(code **)(*DAT_18027e580 + 0x10))(DAT_18027e580,uVar17,1);\r\n      local_88[0] = '\\x01';\r\n      puVar13 = auStack_b8;\r\n    }\r\n    else {\r\n      uVar11 = uVar17 + 0xf;\r\n      if (uVar11 <= uVar17) {\r\n        uVar11 = 0xffffffffffffff0;\r\n      }\r\n      puVar13 = auStack_b8 + -(uVar11 & 0xfffffffffffffff0);\r\n      param_5 = local_88 + -(uVar11 & 0xfffffffffffffff0);\r\n    }\r\n  }\r\n  plVar14 = *(longlong **)(lVar9 + 0x568);\r\n  local_84 = 0;\r\n  plVar2 = plVar14 + *(uint *)(lVar9 + 0x564);\r\n  local_80 = plVar2;\r\n  if (param_9 == '\\0') {\r\n    iVar15 = 0;\r\n    if (plVar14 != plVar2) {\r\n      iVar15 = 0;\r\n      pcVar16 = param_5;\r\njoined_r0x0001800aa216:\r\n      do {\r\n        while ((pcVar16 == param_5 + uVar10 * 8 || (iVar15 = local_84, plVar14 == plVar2))) {\r\n          uVar17 = (longlong)pcVar16 - (longlong)param_5 >> 3;\r\n          iVar15 = iVar15 + (int)uVar17;\r\n          lVar9 = local_60;\r\n          local_84 = iVar15;\r\n          if (param_6 == (undefined8 *)0x0) goto LAB_1800aa351;\r\n          pcVar6 = *(code **)*param_6;\r\n          *(undefined8 *)(puVar13 + -8) = 0x1800aa32b;\r\n          cVar8 = (*pcVar6)(param_6,uVar17 & 0xffffffff,param_5);\r\n          lVar9 = local_60;\r\n          if ((cVar8 == '\\0') || (pcVar16 = param_5, plVar14 == plVar2)) goto LAB_1800aa351;\r\n        }\r\n        lVar9 = *plVar14;\r\n        plVar14 = plVar14 + 1;\r\n        plVar5 = *(longlong **)(lVar9 + 8);\r\n      } while ((*(byte *)((longlong)plVar5 + 0x174) & 1) != 0);\r\n      if (param_8 != 0) {\r\n        pcVar6 = (code *)(&PTR_LAB_180229688)[*(int *)(param_1 + 0x3c8)];\r\n        *(undefined8 *)(puVar13 + -8) = 0x1800aa267;\r\n        (*pcVar6)(local_58,param_8,param_1 + 0x3a8);\r\n        pcVar6 = (code *)(&PTR_LAB_180229688)[*(int *)(param_1 + 0x3cc)];\r\n        *(undefined8 *)(puVar13 + -8) = 0x1800aa28e;\r\n        (*pcVar6)(local_48,plVar5 + 0x2b,param_1 + 0x3b8);\r\n        pcVar6 = (code *)(&PTR_LAB_180229688)[*(int *)(param_1 + 0x3d0)];\r\n        *(undefined8 *)(puVar13 + -8) = 0x1800aa2af;\r\n        (*pcVar6)(&local_70,local_58,local_48);\r\n        if (((((int)local_70 == 0) && (local_70._4_4_ == 0)) && (local_68 == 0)) && (local_64 == 0))\r\n        {\r\n          cVar8 = '\\0';\r\n        }\r\n        else {\r\n          cVar8 = '\\x01';\r\n        }\r\n        iVar15 = local_84;\r\n        if (cVar8 != *(char *)(param_1 + 0x3d4)) goto joined_r0x0001800aa216;\r\n      }\r\n      pcVar6 = *(code **)(*plVar5 + 0x40);\r\n      *(undefined8 *)(puVar13 + -8) = 0x1800aa2e5;\r\n      uVar12 = (*pcVar6)(plVar5);\r\n      *(undefined8 *)pcVar16 = uVar12;\r\n      pcVar16 = pcVar16 + 8;\r\n      iVar15 = local_84;\r\n      goto joined_r0x0001800aa216;\r\n    }\r\n  }\r\n  else {\r\n    iVar15 = 0;\r\n    if (plVar14 != plVar2) {\r\n      pcVar16 = param_5;\r\njoined_r0x0001800aa0a6:\r\n      do {\r\n        while ((pcVar16 == param_5 + uVar10 * 8 || (plVar14 == plVar2))) {\r\n          uVar17 = (longlong)pcVar16 - (longlong)param_5 >> 3;\r\n          local_84 = local_84 + (int)uVar17;\r\n          lVar9 = local_60;\r\n          iVar15 = local_84;\r\n          if (param_6 == (undefined8 *)0x0) goto LAB_1800aa351;\r\n          pcVar6 = *(code **)*param_6;\r\n          *(undefined8 *)(puVar13 + -8) = 0x1800aa1c8;\r\n          cVar8 = (*pcVar6)(param_6,uVar17 & 0xffffffff,param_5);\r\n          lVar9 = local_60;\r\n          iVar15 = local_84;\r\n          if ((cVar8 == '\\0') || (pcVar16 = param_5, plVar14 == plVar2)) goto LAB_1800aa351;\r\n        }\r\n        lVar9 = *plVar14;\r\n        plVar14 = plVar14 + 1;\r\n        plVar5 = *(longlong **)(lVar9 + 8);\r\n      } while ((*(byte *)((longlong)plVar5 + 0x174) & 1) != 0);\r\n      if (param_8 != 0) {\r\n        pcVar6 = (code *)(&PTR_LAB_180229688)[*(int *)(param_1 + 0x3c8)];\r\n        *(undefined8 *)(puVar13 + -8) = 0x1800aa0f6;\r\n        (*pcVar6)(local_48,param_8,param_1 + 0x3a8);\r\n        pcVar6 = (code *)(&PTR_LAB_180229688)[*(int *)(param_1 + 0x3cc)];\r\n        *(undefined8 *)(puVar13 + -8) = 0x1800aa11d;\r\n        (*pcVar6)(local_58,plVar5 + 0x2b,param_1 + 0x3b8);\r\n        pcVar6 = (code *)(&PTR_LAB_180229688)[*(int *)(param_1 + 0x3d0)];\r\n        *(undefined8 *)(puVar13 + -8) = 0x1800aa13e;\r\n        (*pcVar6)(&local_80,local_48,local_58);\r\n        if (((((int)local_80 == 0) && (local_80._4_4_ == 0)) && (local_78 == 0)) && (local_74 == 0))\r\n        {\r\n          cVar8 = '\\0';\r\n        }\r\n        else {\r\n          cVar8 = '\\x01';\r\n        }\r\n        if (cVar8 != *(char *)(param_1 + 0x3d4)) goto joined_r0x0001800aa0a6;\r\n      }\r\n      uVar12 = local_70;\r\n      pcVar6 = *(code **)(*plVar5 + 0x120);\r\n      *(undefined8 *)(puVar13 + -8) = 0x1800aa17b;\r\n      cVar8 = (*pcVar6)(plVar5,uVar12);\r\n      if (cVar8 != '\\0') {\r\n        pcVar6 = *(code **)(*plVar5 + 0x40);\r\n        *(undefined8 *)(puVar13 + -8) = 0x1800aa188;\r\n        uVar12 = (*pcVar6)(plVar5);\r\n        *(undefined8 *)pcVar16 = uVar12;\r\n        pcVar16 = pcVar16 + 8;\r\n      }\r\n      goto joined_r0x0001800aa0a6;\r\n    }\r\n  }\r\nLAB_1800aa351:\r\n  if ((local_88[0] != '\\0') && (param_5 != (char *)0x0)) {\r\n    pcVar6 = *(code **)(*DAT_18027e580 + 0x28);\r\n    *(undefined8 *)(puVar13 + -8) = 0x1800aa369;\r\n    (*pcVar6)();\r\n  }\r\n  lVar7 = *(longlong *)(param_1 + 0x508);\r\n  piVar1 = (int *)(lVar7 + 0x1a28);\r\n  *piVar1 = *piVar1 + 1;\r\n  iVar3 = *(int *)(lVar7 + 0x1a28);\r\n  iVar4 = *(int *)(*(longlong *)(param_1 + 0x508) + 0x1a2c);\r\n  if (iVar3 < iVar4) {\r\n    iVar3 = iVar4;\r\n  }\r\n  *(int *)(*(longlong *)(param_1 + 0x508) + 0x1a2c) = iVar3;\r\n  uVar12 = *(undefined8 *)(param_1 + 0x220);\r\n  *(undefined8 *)(puVar13 + -8) = 0x1800aa3a7;\r\n  FUN_180086710(uVar12,lVar9);\r\n  *(undefined8 *)(puVar13 + -8) = 0x1800aa3af;\r\n  FUN_1801a5650(param_1 + 0x238);\r\n  *(undefined8 *)(puVar13 + -8) = 0x1800aa3be;\r\n  return iVar15;\r\n}\r\n\r\n"
+    },
+    "subject": {
+      "architecture": "x86_64",
+      "digest": {
+        "sha256": "22051aa75312344a824a5f7e29c6375fec3a90df50cbeff6152f0e6c3afddd48"
+      },
+      "format": "pe",
+      "local_path": "J:\\gearsVr\\Gears.of.War.Reloaded.v1.0.1.3816947-P2P\\Gears of War Reloaded\\Binaries_x64\\PhysXCore.dll",
+      "name": "J:\\gearsVr\\Gears.of.War.Reloaded.v1.0.1.3816947-P2P\\Gears of War Reloaded\\Binaries_x64\\PhysXCore.dll"
+    }
+  },
+  {
+    "analysis_profile": {
+      "digest": "90e13888e18b7d587414bb259f5e3dc44a7c9293bdf290ad8c459be524747d9f",
+      "parameters": {
+        "analyzer_preset": "ghidra-default",
+        "annotation_policy": "atomic-function-entry-metadata-v1",
+        "architecture": "x86_64",
+        "available_architectures": [
+          "x86_64"
+        ],
+        "compiler_spec_id": "auto-default",
+        "decompiler_jump_loads": true,
+        "executable_role": "shared-library",
+        "function_body_evidence": "complete-inclusive-ranges-v1",
+        "function_boundary_observations": "ghidra-terminal-call-limitations-v1",
+        "function_references": "complete-body-and-entry-reference-manager-v2",
+        "import_mode": "ephemeral-source-immutable",
+        "instruction_flow_evidence": "decoded-return-pcode-v1",
+        "jump_table_evidence": "typed-case-default-blocks-v1",
+        "language_id": "auto-from-header",
+        "load_image_observations": "source-mappings-entry-context-v2",
+        "loader": "auto-from-header",
+        "location_resolution": "explicit-address-exact-entry-symbol-first-v3",
+        "managed": false,
+        "native_aot_metadata": {
+          "contract_revision": "rtr-9.1-x64-pe-read-only-v3",
+          "report_bytes": 4194304,
+          "source_bytes": 134217728,
+          "work_units": 67108864,
+          "working_memory_bytes": 67108864
+        },
+        "no_return_repair": "disabled-windows-p0",
+        "process_launch": "official-headless-script-v1",
+        "string_inventory_evidence": "defined-data-coverage-v1",
+        "target_format": "pe",
+        "target_kind": "executable"
+      },
+      "provider": {
+        "id": "ghidra",
+        "name": "Ghidra",
+        "version": "12.1.4"
+      }
+    },
+    "authority": "shipped-artifact",
+    "confidence": "observed",
+    "environment": null,
+    "evidence_id": "ev_a75991e5d2d49d0ae7fa902a00ff6fcc1508f6f815869f36b8c97577f5aeacfd",
+    "evidence_links": [],
+    "limitations": [
+      "The session serves operations only after Ghidra reports default auto-analysis complete; incomplete analysis does not expose partial results.",
+      "The imported Program and temporary project are ephemeral and deleted on close. Annotation operations edit session database metadata; original executable bytes are never written.",
+      "Cancelling an active Ghidra request terminates its ephemeral database and discards session annotations. The selected target remains open; the next provider query imports the original artifact again.",
+      "Default-space addresses use lowercase 0x-prefixed hexadecimal; other address spaces use <percent-encoded-space>:0x<hex>.",
+      "Assembly is Ghidra Listing text and does not claim textual equivalence with Hopper output.",
+      "Windows Ghidra P0 accepts approved native x86 and x86-64 PE applications and DLLs; managed, hostile, sensitive, and mutable-path targets are unsupported.",
+      "The Windows bridge uses authenticated IPv4 loopback because Node path-based IPC does not expose Java AF_UNIX sockets; the endpoint file contains no bearer token.",
+      "Windows sessions require the matching packaged Windows x64 native addon, local NTFS targets and runtimes, and Windows 10 or later. Native handles enforce path admission, private DACLs, and Job Object ownership automatically."
+    ],
+    "locations": [],
+    "normalized_result": "0x180172160: MOV R11, RSP\n0x180172163: MOV qword ptr [R11 + 0x8], RBX\n0x180172167: MOV qword ptr [R11 + 0x18], RBP\n0x18017216b: MOV qword ptr [R11 + 0x20], RSI\n0x18017216f: MOV qword ptr [R11 + 0x10], RDX\n0x180172173: PUSH RDI\n0x180172174: PUSH R12\n0x180172176: PUSH R13\n0x180172178: PUSH R14\n0x18017217a: PUSH R15\n0x18017217c: SUB RSP, 0x50\n0x180172180: MOVZX R14D, byte ptr [RSP + 0xc0]\n0x180172189: MOV R15, RCX\n0x18017218c: MOV RCX, qword ptr [RCX + 0x6b0]\n0x180172193: MOV R12D, R9D\n0x180172196: MOV RBP, qword ptr [RSP + 0xb8]\n0x18017219e: MOV R13D, R8D\n0x1801721a1: MOV ESI, dword ptr [RSP + 0xb0]\n0x1801721a8: MOV RDI, qword ptr [RSP + 0xa8]\n0x1801721b0: MOV RAX, qword ptr [RCX]\n0x1801721b3: MOV RBX, qword ptr [RSP + 0xa0]\n0x1801721bb: MOV byte ptr [R11 + -0x38], R14B\n0x1801721bf: MOV qword ptr [R11 + -0x40], RBP\n0x1801721c3: MOV dword ptr [RSP + 0x30], ESI\n0x1801721c7: MOV qword ptr [R11 + -0x50], RDI\n0x1801721cb: MOV qword ptr [R11 + -0x58], RBX\n0x1801721cf: CALL qword ptr [RAX + 0x248]\n0x1801721d5: MOV RDX, qword ptr [RSP + 0x88]\n0x1801721dd: LEA RCX, [R15 + 0x98]\n0x1801721e4: MOV dword ptr [RSP + 0x48], EAX\n0x1801721e8: MOV R9D, R12D\n0x1801721eb: MOV byte ptr [RSP + 0x40], R14B\n0x1801721f0: MOV R8D, R13D\n0x1801721f3: MOV qword ptr [RSP + 0x38], RBP\n0x1801721f8: MOV dword ptr [RSP + 0x30], ESI\n0x1801721fc: MOV qword ptr [RSP + 0x28], RDI\n0x180172201: MOV qword ptr [RSP + 0x20], RBX\n0x180172206: CALL 0x1801275a0\n0x18017220b: LEA R11, [RSP + 0x50]\n0x180172210: MOV RBX, qword ptr [R11 + 0x30]\n0x180172214: MOV RBP, qword ptr [R11 + 0x40]\n0x180172218: MOV RSI, qword ptr [R11 + 0x48]\n0x18017221c: MOV RSP, R11\n0x18017221f: POP R15\n0x180172221: POP R14\n0x180172223: POP R13\n0x180172225: POP R12\n0x180172227: POP RDI\n0x180172228: RET",
+    "operation": "procedure_assembly",
+    "parameters": {
+      "procedure": "0x180172160"
+    },
+    "predicate_type": "rea.analysis",
+    "provider": {
+      "id": "ghidra",
+      "name": "Ghidra",
+      "version": "12.1.4"
+    },
+    "raw_result": {
+      "limitations": [],
+      "value": "0x180172160: MOV R11, RSP\n0x180172163: MOV qword ptr [R11 + 0x8], RBX\n0x180172167: MOV qword ptr [R11 + 0x18], RBP\n0x18017216b: MOV qword ptr [R11 + 0x20], RSI\n0x18017216f: MOV qword ptr [R11 + 0x10], RDX\n0x180172173: PUSH RDI\n0x180172174: PUSH R12\n0x180172176: PUSH R13\n0x180172178: PUSH R14\n0x18017217a: PUSH R15\n0x18017217c: SUB RSP, 0x50\n0x180172180: MOVZX R14D, byte ptr [RSP + 0xc0]\n0x180172189: MOV R15, RCX\n0x18017218c: MOV RCX, qword ptr [RCX + 0x6b0]\n0x180172193: MOV R12D, R9D\n0x180172196: MOV RBP, qword ptr [RSP + 0xb8]\n0x18017219e: MOV R13D, R8D\n0x1801721a1: MOV ESI, dword ptr [RSP + 0xb0]\n0x1801721a8: MOV RDI, qword ptr [RSP + 0xa8]\n0x1801721b0: MOV RAX, qword ptr [RCX]\n0x1801721b3: MOV RBX, qword ptr [RSP + 0xa0]\n0x1801721bb: MOV byte ptr [R11 + -0x38], R14B\n0x1801721bf: MOV qword ptr [R11 + -0x40], RBP\n0x1801721c3: MOV dword ptr [RSP + 0x30], ESI\n0x1801721c7: MOV qword ptr [R11 + -0x50], RDI\n0x1801721cb: MOV qword ptr [R11 + -0x58], RBX\n0x1801721cf: CALL qword ptr [RAX + 0x248]\n0x1801721d5: MOV RDX, qword ptr [RSP + 0x88]\n0x1801721dd: LEA RCX, [R15 + 0x98]\n0x1801721e4: MOV dword ptr [RSP + 0x48], EAX\n0x1801721e8: MOV R9D, R12D\n0x1801721eb: MOV byte ptr [RSP + 0x40], R14B\n0x1801721f0: MOV R8D, R13D\n0x1801721f3: MOV qword ptr [RSP + 0x38], RBP\n0x1801721f8: MOV dword ptr [RSP + 0x30], ESI\n0x1801721fc: MOV qword ptr [RSP + 0x28], RDI\n0x180172201: MOV qword ptr [RSP + 0x20], RBX\n0x180172206: CALL 0x1801275a0\n0x18017220b: LEA R11, [RSP + 0x50]\n0x180172210: MOV RBX, qword ptr [R11 + 0x30]\n0x180172214: MOV RBP, qword ptr [R11 + 0x40]\n0x180172218: MOV RSI, qword ptr [R11 + 0x48]\n0x18017221c: MOV RSP, R11\n0x18017221f: POP R15\n0x180172221: POP R14\n0x180172223: POP R13\n0x180172225: POP R12\n0x180172227: POP RDI\n0x180172228: RET"
+    },
+    "subject": {
+      "architecture": "x86_64",
+      "digest": {
+        "sha256": "22051aa75312344a824a5f7e29c6375fec3a90df50cbeff6152f0e6c3afddd48"
+      },
+      "format": "pe",
+      "local_path": "J:\\gearsVr\\Gears.of.War.Reloaded.v1.0.1.3816947-P2P\\Gears of War Reloaded\\Binaries_x64\\PhysXCore.dll",
+      "name": "J:\\gearsVr\\Gears.of.War.Reloaded.v1.0.1.3816947-P2P\\Gears of War Reloaded\\Binaries_x64\\PhysXCore.dll"
+    }
+  },
+  {
+    "analysis_profile": {
+      "digest": "90e13888e18b7d587414bb259f5e3dc44a7c9293bdf290ad8c459be524747d9f",
+      "parameters": {
+        "analyzer_preset": "ghidra-default",
+        "annotation_policy": "atomic-function-entry-metadata-v1",
+        "architecture": "x86_64",
+        "available_architectures": [
+          "x86_64"
+        ],
+        "compiler_spec_id": "auto-default",
+        "decompiler_jump_loads": true,
+        "executable_role": "shared-library",
+        "function_body_evidence": "complete-inclusive-ranges-v1",
+        "function_boundary_observations": "ghidra-terminal-call-limitations-v1",
+        "function_references": "complete-body-and-entry-reference-manager-v2",
+        "import_mode": "ephemeral-source-immutable",
+        "instruction_flow_evidence": "decoded-return-pcode-v1",
+        "jump_table_evidence": "typed-case-default-blocks-v1",
+        "language_id": "auto-from-header",
+        "load_image_observations": "source-mappings-entry-context-v2",
+        "loader": "auto-from-header",
+        "location_resolution": "explicit-address-exact-entry-symbol-first-v3",
+        "managed": false,
+        "native_aot_metadata": {
+          "contract_revision": "rtr-9.1-x64-pe-read-only-v3",
+          "report_bytes": 4194304,
+          "source_bytes": 134217728,
+          "work_units": 67108864,
+          "working_memory_bytes": 67108864
+        },
+        "no_return_repair": "disabled-windows-p0",
+        "process_launch": "official-headless-script-v1",
+        "string_inventory_evidence": "defined-data-coverage-v1",
+        "target_format": "pe",
+        "target_kind": "executable"
+      },
+      "provider": {
+        "id": "ghidra",
+        "name": "Ghidra",
+        "version": "12.1.4"
+      }
+    },
+    "authority": "shipped-artifact",
+    "confidence": "observed",
+    "environment": null,
+    "evidence_id": "ev_b2a79a606dfe61caa2ddb960f2fc961252c13e052afc495a0a29f7980ff1f5fa",
+    "evidence_links": [],
+    "limitations": [
+      "The session serves operations only after Ghidra reports default auto-analysis complete; incomplete analysis does not expose partial results.",
+      "The imported Program and temporary project are ephemeral and deleted on close. Annotation operations edit session database metadata; original executable bytes are never written.",
+      "Cancelling an active Ghidra request terminates its ephemeral database and discards session annotations. The selected target remains open; the next provider query imports the original artifact again.",
+      "Default-space addresses use lowercase 0x-prefixed hexadecimal; other address spaces use <percent-encoded-space>:0x<hex>.",
+      "Bytes reflect Ghidra's initialized memory, including loader fixups. Reads stop at an unmapped or uninitialized byte and report completeness explicitly.",
+      "Windows Ghidra P0 accepts approved native x86 and x86-64 PE applications and DLLs; managed, hostile, sensitive, and mutable-path targets are unsupported.",
+      "The Windows bridge uses authenticated IPv4 loopback because Node path-based IPC does not expose Java AF_UNIX sockets; the endpoint file contains no bearer token.",
+      "Windows sessions require the matching packaged Windows x64 native addon, local NTFS targets and runtimes, and Windows 10 or later. Native handles enforce path admission, private DACLs, and Job Object ownership automatically."
+    ],
+    "locations": [],
+    "normalized_result": {
+      "address": "0x18022cef0",
+      "bytes_hex": "50890a8001000000f0a30a8001000000109f0a8001000000",
+      "complete": true,
+      "requested_bytes": 24,
+      "returned_bytes": 24
+    },
+    "operation": "read_bytes",
+    "parameters": {
+      "address": "0x18022CEF0",
+      "length": 24
+    },
+    "predicate_type": "rea.analysis",
+    "provider": {
+      "id": "ghidra",
+      "name": "Ghidra",
+      "version": "12.1.4"
+    },
+    "raw_result": {
+      "address": "0x18022cef0",
+      "bytes_hex": "50890a8001000000f0a30a8001000000109f0a8001000000",
+      "complete": true,
+      "requested_bytes": 24,
+      "returned_bytes": 24
+    },
+    "subject": {
+      "architecture": "x86_64",
+      "digest": {
+        "sha256": "22051aa75312344a824a5f7e29c6375fec3a90df50cbeff6152f0e6c3afddd48"
+      },
+      "format": "pe",
+      "local_path": "J:\\gearsVr\\Gears.of.War.Reloaded.v1.0.1.3816947-P2P\\Gears of War Reloaded\\Binaries_x64\\PhysXCore.dll",
+      "name": "J:\\gearsVr\\Gears.of.War.Reloaded.v1.0.1.3816947-P2P\\Gears of War Reloaded\\Binaries_x64\\PhysXCore.dll"
+    }
+  },
+  {
+    "analysis_profile": {
+      "digest": "90e13888e18b7d587414bb259f5e3dc44a7c9293bdf290ad8c459be524747d9f",
+      "parameters": {
+        "analyzer_preset": "ghidra-default",
+        "annotation_policy": "atomic-function-entry-metadata-v1",
+        "architecture": "x86_64",
+        "available_architectures": [
+          "x86_64"
+        ],
+        "compiler_spec_id": "auto-default",
+        "decompiler_jump_loads": true,
+        "executable_role": "shared-library",
+        "function_body_evidence": "complete-inclusive-ranges-v1",
+        "function_boundary_observations": "ghidra-terminal-call-limitations-v1",
+        "function_references": "complete-body-and-entry-reference-manager-v2",
+        "import_mode": "ephemeral-source-immutable",
+        "instruction_flow_evidence": "decoded-return-pcode-v1",
+        "jump_table_evidence": "typed-case-default-blocks-v1",
+        "language_id": "auto-from-header",
+        "load_image_observations": "source-mappings-entry-context-v2",
+        "loader": "auto-from-header",
+        "location_resolution": "explicit-address-exact-entry-symbol-first-v3",
+        "managed": false,
+        "native_aot_metadata": {
+          "contract_revision": "rtr-9.1-x64-pe-read-only-v3",
+          "report_bytes": 4194304,
+          "source_bytes": 134217728,
+          "work_units": 67108864,
+          "working_memory_bytes": 67108864
+        },
+        "no_return_repair": "disabled-windows-p0",
+        "process_launch": "official-headless-script-v1",
+        "string_inventory_evidence": "defined-data-coverage-v1",
+        "target_format": "pe",
+        "target_kind": "executable"
+      },
+      "provider": {
+        "id": "ghidra",
+        "name": "Ghidra",
+        "version": "12.1.4"
+      }
+    },
+    "authority": "shipped-artifact",
+    "confidence": "observed",
+    "environment": null,
+    "evidence_id": "ev_d89985f4beb2d6a46186338884f6593d776d209ed42d1a4264ec8d67568446e7",
+    "evidence_links": [],
+    "limitations": [
+      "The session serves operations only after Ghidra reports default auto-analysis complete; incomplete analysis does not expose partial results.",
+      "The imported Program and temporary project are ephemeral and deleted on close. Annotation operations edit session database metadata; original executable bytes are never written.",
+      "Cancelling an active Ghidra request terminates its ephemeral database and discards session annotations. The selected target remains open; the next provider query imports the original artifact again.",
+      "Default-space addresses use lowercase 0x-prefixed hexadecimal; other address spaces use <percent-encoded-space>:0x<hex>.",
+      "Pseudocode is Ghidra decompiler output, not original source and not text-equivalent to Hopper output.",
+      "External functions and functions without an analyzable body return null; other decompiler failures remain explicit.",
+      "Windows Ghidra P0 accepts approved native x86 and x86-64 PE applications and DLLs; managed, hostile, sensitive, and mutable-path targets are unsupported.",
+      "The Windows bridge uses authenticated IPv4 loopback because Node path-based IPC does not expose Java AF_UNIX sockets; the endpoint file contains no bearer token.",
+      "Windows sessions require the matching packaged Windows x64 native addon, local NTFS targets and runtimes, and Windows 10 or later. Native handles enforce path admission, private DACLs, and Job Object ownership automatically."
+    ],
+    "locations": [],
+    "normalized_result": "\r\nvoid FUN_180172160(longlong param_1,undefined8 param_2,undefined4 param_3,undefined4 param_4,\r\n                  undefined8 param_5,undefined8 param_6,undefined4 param_7,undefined8 param_8,\r\n                  undefined1 param_9)\r\n\r\n{\r\n  undefined4 uVar1;\r\n  \r\n  uVar1 = (**(code **)(**(longlong **)(param_1 + 0x6b0) + 0x248))();\r\n  FUN_1801275a0(param_1 + 0x98,param_2,param_3,param_4,param_5,param_6,param_7,param_8,param_9,uVar1\r\n               );\r\n  return;\r\n}\r\n\r\n",
+    "operation": "procedure_pseudo_code",
+    "parameters": {
+      "procedure": "0x180172160"
+    },
+    "predicate_type": "rea.analysis",
+    "provider": {
+      "id": "ghidra",
+      "name": "Ghidra",
+      "version": "12.1.4"
+    },
+    "raw_result": {
+      "limitations": [],
+      "value": "\r\nvoid FUN_180172160(longlong param_1,undefined8 param_2,undefined4 param_3,undefined4 param_4,\r\n                  undefined8 param_5,undefined8 param_6,undefined4 param_7,undefined8 param_8,\r\n                  undefined1 param_9)\r\n\r\n{\r\n  undefined4 uVar1;\r\n  \r\n  uVar1 = (**(code **)(**(longlong **)(param_1 + 0x6b0) + 0x248))();\r\n  FUN_1801275a0(param_1 + 0x98,param_2,param_3,param_4,param_5,param_6,param_7,param_8,param_9,uVar1\r\n               );\r\n  return;\r\n}\r\n\r\n"
+    },
+    "subject": {
+      "architecture": "x86_64",
+      "digest": {
+        "sha256": "22051aa75312344a824a5f7e29c6375fec3a90df50cbeff6152f0e6c3afddd48"
+      },
+      "format": "pe",
+      "local_path": "J:\\gearsVr\\Gears.of.War.Reloaded.v1.0.1.3816947-P2P\\Gears of War Reloaded\\Binaries_x64\\PhysXCore.dll",
+      "name": "J:\\gearsVr\\Gears.of.War.Reloaded.v1.0.1.3816947-P2P\\Gears of War Reloaded\\Binaries_x64\\PhysXCore.dll"
+    }
+  }
+]
