@@ -1,0 +1,436 @@
+{
+  "evidence_id": "ev_e9b3cb3631efd8bd70e4a75cafca7792fc877a24271f42a18542f76c98a44d63",
+  "subject": {
+    "name": "J:\\gearsVr\\Gears.of.War.Reloaded.v1.0.1.3816947-P2P\\Gears of War Reloaded\\Binaries_x64\\PhysXCore.dll",
+    "digest": {
+      "sha256": "22051aa75312344a824a5f7e29c6375fec3a90df50cbeff6152f0e6c3afddd48"
+    },
+    "format": "pe",
+    "architecture": "x86_64",
+    "local_path": "J:\\gearsVr\\Gears.of.War.Reloaded.v1.0.1.3816947-P2P\\Gears of War Reloaded\\Binaries_x64\\PhysXCore.dll"
+  },
+  "analysis_profile": {
+    "provider": {
+      "id": "ghidra",
+      "name": "Ghidra",
+      "version": "12.1.4"
+    },
+    "parameters": {
+      "target_kind": "executable",
+      "target_format": "pe",
+      "executable_role": "shared-library",
+      "managed": false,
+      "native_aot_metadata": {
+        "contract_revision": "rtr-9.1-x64-pe-read-only-v3",
+        "source_bytes": 134217728,
+        "work_units": 67108864,
+        "working_memory_bytes": 67108864,
+        "report_bytes": 4194304
+      },
+      "architecture": "x86_64",
+      "available_architectures": [
+        "x86_64"
+      ],
+      "import_mode": "ephemeral-source-immutable",
+      "annotation_policy": "atomic-function-entry-metadata-v1",
+      "load_image_observations": "source-mappings-entry-context-v2",
+      "function_body_evidence": "complete-inclusive-ranges-v1",
+      "function_references": "complete-body-and-entry-reference-manager-v2",
+      "string_inventory_evidence": "defined-data-coverage-v1",
+      "location_resolution": "explicit-address-exact-entry-symbol-first-v3",
+      "instruction_flow_evidence": "decoded-return-pcode-v1",
+      "function_boundary_observations": "ghidra-terminal-call-limitations-v1",
+      "no_return_repair": "disabled-windows-p0",
+      "process_launch": "official-headless-script-v1",
+      "jump_table_evidence": "typed-case-default-blocks-v1",
+      "decompiler_jump_loads": true,
+      "loader": "auto-from-header",
+      "language_id": "auto-from-header",
+      "compiler_spec_id": "auto-default",
+      "analyzer_preset": "ghidra-default"
+    },
+    "digest": "90e13888e18b7d587414bb259f5e3dc44a7c9293bdf290ad8c459be524747d9f"
+  },
+  "operation": "analyze_function",
+  "parameters": {
+    "procedure": "0x1800d5a70"
+  },
+  "raw_result": {
+    "procedure": {
+      "address": "0x1800d5a70",
+      "name": "FUN_1800d5a70",
+      "classification": {
+        "external": false,
+        "thunk": false,
+        "thunk_target": null,
+        "provenance": "ghidra-function-manager"
+      },
+      "body": {
+        "available": true,
+        "provenance": "ghidra-function-body-address-set",
+        "ranges": [
+          {
+            "start": "0x1800d5a70",
+            "end": "0x1800d5c73"
+          }
+        ],
+        "total_bytes": 516,
+        "span_bytes": 516,
+        "non_contiguous": false,
+        "contains_entry": true
+      },
+      "signature": "undefined FUN_1800d5a70()",
+      "locals": [
+        {
+          "description": "undefined4 local_148 @ Stack[-0x148]:4",
+          "provenance": "ghidra-function-database"
+        },
+        {
+          "description": "undefined local_30 @ Stack[-0x30]:1",
+          "provenance": "ghidra-function-database"
+        },
+        {
+          "description": "undefined1[16] local_48 @ Stack[-0x48]:16",
+          "provenance": "ghidra-function-database"
+        },
+        {
+          "description": "undefined1[16] local_58 @ Stack[-0x58]:16",
+          "provenance": "ghidra-function-database"
+        },
+        {
+          "description": "undefined8 local_68 @ Stack[-0x68]:8",
+          "provenance": "ghidra-function-database"
+        },
+        {
+          "description": "undefined4 local_70 @ Stack[-0x70]:4",
+          "provenance": "ghidra-function-database"
+        },
+        {
+          "description": "undefined4 local_74 @ Stack[-0x74]:4",
+          "provenance": "ghidra-function-database"
+        },
+        {
+          "description": "undefined4 local_78 @ Stack[-0x78]:4",
+          "provenance": "ghidra-function-database"
+        },
+        {
+          "description": "undefined local_a8 @ Stack[-0xa8]:1",
+          "provenance": "ghidra-function-database"
+        },
+        {
+          "description": "undefined local_b8 @ Stack[-0xb8]:1",
+          "provenance": "ghidra-function-database"
+        },
+        {
+          "description": "undefined4 local_bc @ Stack[-0xbc]:4",
+          "provenance": "ghidra-function-database"
+        },
+        {
+          "description": "undefined8 local_c4 @ Stack[-0xc4]:8",
+          "provenance": "ghidra-function-database"
+        },
+        {
+          "description": "undefined4 local_c8 @ Stack[-0xc8]:4",
+          "provenance": "ghidra-function-database"
+        },
+        {
+          "description": "undefined4 local_cc @ Stack[-0xcc]:4",
+          "provenance": "ghidra-function-database"
+        },
+        {
+          "description": "undefined4 local_cc8 @ Stack[-0xcc8]:4",
+          "provenance": "ghidra-function-database"
+        },
+        {
+          "description": "undefined8 local_cd0 @ Stack[-0xcd0]:8",
+          "provenance": "ghidra-function-database"
+        },
+        {
+          "description": "undefined8 local_cd8 @ Stack[-0xcd8]:8",
+          "provenance": "ghidra-function-database"
+        },
+        {
+          "description": "undefined8 local_ce0 @ Stack[-0xce0]:8",
+          "provenance": "ghidra-function-database"
+        },
+        {
+          "description": "undefined8 local_ce8 @ Stack[-0xce8]:8",
+          "provenance": "ghidra-function-database"
+        },
+        {
+          "description": "undefined4 local_cf0 @ Stack[-0xcf0]:4",
+          "provenance": "ghidra-function-database"
+        },
+        {
+          "description": "undefined8 local_cf8 @ Stack[-0xcf8]:8",
+          "provenance": "ghidra-function-database"
+        },
+        {
+          "description": "undefined4 local_d0 @ Stack[-0xd0]:4",
+          "provenance": "ghidra-function-database"
+        },
+        {
+          "description": "undefined4 local_d8 @ Stack[-0xd8]:4",
+          "provenance": "ghidra-function-database"
+        },
+        {
+          "description": "undefined8 local_e0 @ Stack[-0xe0]:8",
+          "provenance": "ghidra-function-database"
+        },
+        {
+          "description": "undefined local_e4 @ Stack[-0xe4]:1",
+          "provenance": "ghidra-function-database"
+        },
+        {
+          "description": "undefined4 local_e8 @ Stack[-0xe8]:4",
+          "provenance": "ghidra-function-database"
+        },
+        {
+          "description": "undefined4 local_f0 @ Stack[-0xf0]:4",
+          "provenance": "ghidra-function-database"
+        },
+        {
+          "description": "undefined4 local_f4 @ Stack[-0xf4]:4",
+          "provenance": "ghidra-function-database"
+        },
+        {
+          "description": "undefined4 local_f8 @ Stack[-0xf8]:4",
+          "provenance": "ghidra-function-database"
+        }
+      ]
+    },
+    "pseudocode": "\r\n/* WARNING: Function: __security_check_cookie replaced with injection: security_check_cookie */\r\n\r\nulonglong FUN_1800d5a70(float *param_1,undefined4 *param_2,undefined8 param_3,undefined4 param_4,\r\n                       undefined4 *param_5,undefined8 *param_6)\r\n\r\n{\r\n  undefined4 uVar1;\r\n  ulonglong uVar2;\r\n  float fVar3;\r\n  undefined1 local_cc8 [2936];\r\n  undefined8 uStack_150;\r\n  float local_f8;\r\n  float local_f4;\r\n  float local_f0;\r\n  undefined4 local_e8;\r\n  undefined1 local_e4 [4];\r\n  undefined8 local_e0;\r\n  undefined4 local_d8;\r\n  uint local_d0;\r\n  uint local_cc;\r\n  uint local_c8;\r\n  undefined8 local_c4;\r\n  undefined4 local_bc;\r\n  undefined1 local_b8 [16];\r\n  undefined1 local_a8 [48];\r\n  undefined4 local_78;\r\n  undefined4 local_74;\r\n  undefined4 local_70;\r\n  ulonglong local_68;\r\n  \r\n  local_68 = DAT_180276e80 ^ (ulonglong)&local_f8;\r\n  fVar3 = 0.5;\r\n  local_bc = param_2[5];\r\n  local_f8 = (param_1[3] - *param_1) * 0.5;\r\n  local_f4 = (param_1[4] - param_1[1]) * 0.5;\r\n  local_f0 = (param_1[5] - param_1[2]) * 0.5;\r\n  local_d0 = param_2[3] ^ 0x80000000;\r\n  local_cc = param_2[4] ^ 0x80000000;\r\n  local_c8 = param_2[5] ^ 0x80000000;\r\n  local_c4 = *(undefined8 *)(param_2 + 3);\r\n  uStack_150 = 0x1800d5b50;\r\n  FUN_1801c5d90(param_2 + 6,local_a8);\r\n  local_78 = *param_2;\r\n  local_74 = param_2[1];\r\n  local_70 = param_2[2];\r\n  uVar1 = FUN_1800cc030(&local_d0,local_a8,&local_f8,local_cc8,param_3);\r\n  local_f8 = (param_1[3] + *param_1) * fVar3;\r\n  local_f4 = (param_1[1] + param_1[4]) * fVar3;\r\n  local_f0 = (param_1[5] + param_1[2]) * fVar3;\r\n  uVar2 = FUN_1800d7570(uVar1,local_cc8,&local_f8,param_1[6],param_3,param_4,local_b8,&local_e0,\r\n                        &local_e8,local_e4);\r\n  if ((char)uVar2 == '\\0') {\r\n    *param_5 = param_4;\r\n    uVar2 = uVar2 & 0xffffffffffffff00;\r\n  }\r\n  else {\r\n    *param_6 = local_e0;\r\n    *(undefined4 *)(param_6 + 1) = local_d8;\r\n    uVar2 = CONCAT71((uint7)(uint3)((uint)local_d8 >> 8),1);\r\n    *param_5 = local_e8;\r\n  }\r\n  return uVar2;\r\n}\r\n\r\n",
+    "assembly": [
+      "0x1800d5a70: PUSH RBP",
+      "0x1800d5a72: PUSH RBX",
+      "0x1800d5a73: PUSH RSI",
+      "0x1800d5a74: PUSH RDI",
+      "0x1800d5a75: PUSH R14",
+      "0x1800d5a77: PUSH R15",
+      "0x1800d5a79: SUB RSP, 0x118",
+      "0x1800d5a80: LEA RBP, [RSP + 0x50]",
+      "0x1800d5a85: VMOVAPS xmmword ptr [RBP + 0xb0], XMM6",
+      "0x1800d5a8d: VMOVAPS xmmword ptr [RBP + 0xa0], XMM7",
+      "0x1800d5a95: MOV RAX, qword ptr [0x180276e80]",
+      "0x1800d5a9c: XOR RAX, RBP",
+      "0x1800d5a9f: MOV qword ptr [RBP + 0x90], RAX",
+      "0x1800d5aa6: VMOVSS XMM0, dword ptr [RCX + 0xc]",
+      "0x1800d5aab: VSUBSS XMM1, XMM0, dword ptr [RCX]",
+      "0x1800d5aaf: VMOVSS XMM0, dword ptr [RCX + 0x10]",
+      "0x1800d5ab4: VSUBSS XMM2, XMM0, dword ptr [RCX + 0x4]",
+      "0x1800d5ab9: VMOVSS XMM0, dword ptr [RCX + 0x14]",
+      "0x1800d5abe: VMOVSS XMM6, dword ptr [0x180226b38]",
+      "0x1800d5ac6: MOV EAX, dword ptr [RDX + 0x14]",
+      "0x1800d5ac9: MOV RDI, RCX",
+      "0x1800d5acc: MOV R14, qword ptr [RBP + 0x120]",
+      "0x1800d5ad3: MOV RBX, RDX",
+      "0x1800d5ad6: MOV R15, qword ptr [RBP + 0x128]",
+      "0x1800d5add: MOV RSI, R8",
+      "0x1800d5ae0: VMULSS XMM1, XMM1, XMM6",
+      "0x1800d5ae4: VMOVSS dword ptr [RBP], XMM1",
+      "0x1800d5ae9: VMULSS XMM1, XMM2, XMM6",
+      "0x1800d5aed: VSUBSS XMM2, XMM0, dword ptr [RCX + 0x8]",
+      "0x1800d5af2: VMOVSS XMM0, dword ptr [RDX + 0xc]",
+      "0x1800d5af7: VMOVSS dword ptr [RBP + 0x4], XMM1",
+      "0x1800d5afc: VMULSS XMM1, XMM2, XMM6",
+      "0x1800d5b00: VMOVSS dword ptr [RBP + 0x8], XMM1",
+      "0x1800d5b05: VMOVSS XMM1, dword ptr [RDX + 0x10]",
+      "0x1800d5b0a: VMOVAPS XMM7, XMM3",
+      "0x1800d5b0e: VMOVSS XMM3, dword ptr [0x180226b70]",
+      "0x1800d5b16: VXORPS XMM0, XMM0, XMM3",
+      "0x1800d5b1a: VMOVSS dword ptr [RBP + 0x28], XMM0",
+      "0x1800d5b1f: VMOVSS XMM0, dword ptr [RDX + 0x14]",
+      "0x1800d5b24: VXORPS XMM2, XMM1, XMM3",
+      "0x1800d5b28: VXORPS XMM1, XMM0, XMM3",
+      "0x1800d5b2c: VMOVSD XMM0, qword ptr [RDX + 0xc]",
+      "0x1800d5b31: LEA RCX, [RDX + 0x18]",
+      "0x1800d5b35: MOV dword ptr [RBP + 0x3c], EAX",
+      "0x1800d5b38: LEA RDX, [RBP + 0x50]",
+      "0x1800d5b3c: VMOVSD qword ptr [RBP + 0x34], XMM0",
+      "0x1800d5b41: VMOVSS dword ptr [RBP + 0x2c], XMM2",
+      "0x1800d5b46: VMOVSS dword ptr [RBP + 0x30], XMM1",
+      "0x1800d5b4b: CALL 0x1801c5d90",
+      "0x1800d5b50: VMOVSS XMM0, dword ptr [RBX]",
+      "0x1800d5b54: VMOVSS XMM1, dword ptr [RBX + 0x4]",
+      "0x1800d5b59: MOV EAX, dword ptr [RSP]",
+      "0x1800d5b5c: VMOVSS dword ptr [RBP + 0x80], XMM0",
+      "0x1800d5b64: VMOVSS XMM0, dword ptr [RBX + 0x8]",
+      "0x1800d5b69: VMOVSS dword ptr [RBP + 0x88], XMM0",
+      "0x1800d5b71: VMOVSS dword ptr [RBP + 0x84], XMM1",
+      "0x1800d5b79: MOV EAX, 0xbd0",
+      "0x1800d5b7e: SUB RSP, RAX",
+      "0x1800d5b81: LEA RBX, [RSP + 0x50]",
+      "0x1800d5b86: MOV EAX, dword ptr [RBX]",
+      "0x1800d5b88: MOV R9, RBX",
+      "0x1800d5b8b: MOV qword ptr [RSP + 0x20], RSI",
+      "0x1800d5b90: LEA R8, [RBP]",
+      "0x1800d5b94: LEA RDX, [RBP + 0x50]",
+      "0x1800d5b98: LEA RCX, [RBP + 0x28]",
+      "0x1800d5b9c: CALL 0x1800cc030",
+      "0x1800d5ba1: VMOVSS XMM0, dword ptr [RDI + 0xc]",
+      "0x1800d5ba6: VADDSS XMM1, XMM0, dword ptr [RDI]",
+      "0x1800d5baa: VMOVSS XMM0, dword ptr [RDI + 0x4]",
+      "0x1800d5baf: VMOVSS XMM3, dword ptr [RDI + 0x18]",
+      "0x1800d5bb4: VMULSS XMM2, XMM1, XMM6",
+      "0x1800d5bb8: VADDSS XMM1, XMM0, dword ptr [RDI + 0x10]",
+      "0x1800d5bbd: VMOVSS XMM0, dword ptr [RDI + 0x14]",
+      "0x1800d5bc2: VMOVSS dword ptr [RBP], XMM2",
+      "0x1800d5bc7: VMULSS XMM2, XMM1, XMM6",
+      "0x1800d5bcb: VADDSS XMM1, XMM0, dword ptr [RDI + 0x8]",
+      "0x1800d5bd0: LEA RCX, [RBP + 0x14]",
+      "0x1800d5bd4: MOV RDX, RBX",
+      "0x1800d5bd7: MOV qword ptr [RSP + 0x48], RCX",
+      "0x1800d5bdc: LEA R8, [RBP]",
+      "0x1800d5be0: LEA RCX, [RBP + 0x10]",
+      "0x1800d5be4: MOV qword ptr [RSP + 0x40], RCX",
+      "0x1800d5be9: LEA RCX, [RBP + 0x18]",
+      "0x1800d5bed: MOV qword ptr [RSP + 0x38], RCX",
+      "0x1800d5bf2: LEA RCX, [RBP + 0x40]",
+      "0x1800d5bf6: MOV qword ptr [RSP + 0x30], RCX",
+      "0x1800d5bfb: MOV ECX, EAX",
+      "0x1800d5bfd: VMOVSS dword ptr [RBP + 0x4], XMM2",
+      "0x1800d5c02: VMULSS XMM2, XMM1, XMM6",
+      "0x1800d5c06: VMOVSS dword ptr [RSP + 0x28], XMM7",
+      "0x1800d5c0c: MOV qword ptr [RSP + 0x20], RSI",
+      "0x1800d5c11: VMOVSS dword ptr [RBP + 0x8], XMM2",
+      "0x1800d5c16: CALL 0x1800d7570",
+      "0x1800d5c1b: TEST AL, AL",
+      "0x1800d5c1d: JZ 0x1800d5c3e",
+      "0x1800d5c1f: MOV EAX, dword ptr [RBP + 0x20]",
+      "0x1800d5c22: VMOVSD XMM0, qword ptr [RBP + 0x18]",
+      "0x1800d5c27: VMOVSS XMM1, dword ptr [RBP + 0x10]",
+      "0x1800d5c2c: VMOVSD qword ptr [R15], XMM0",
+      "0x1800d5c31: MOV dword ptr [R15 + 0x8], EAX",
+      "0x1800d5c35: MOV AL, 0x1",
+      "0x1800d5c37: VMOVSS dword ptr [R14], XMM1",
+      "0x1800d5c3c: JMP 0x1800d5c45",
+      "0x1800d5c3e: VMOVSS dword ptr [R14], XMM7",
+      "0x1800d5c43: XOR AL, AL",
+      "0x1800d5c45: MOV RCX, qword ptr [RBP + 0x90]",
+      "0x1800d5c4c: XOR RCX, RBP",
+      "0x1800d5c4f: CALL 0x1802235d0",
+      "0x1800d5c54: VMOVAPS XMM6, xmmword ptr [RBP + 0xb0]",
+      "0x1800d5c5c: VMOVAPS XMM7, xmmword ptr [RBP + 0xa0]",
+      "0x1800d5c64: LEA RSP, [RBP + 0xc8]",
+      "0x1800d5c6b: POP R15",
+      "0x1800d5c6d: POP R14",
+      "0x1800d5c6f: POP RDI",
+      "0x1800d5c70: POP RSI",
+      "0x1800d5c71: POP RBX",
+      "0x1800d5c72: POP RBP",
+      "0x1800d5c73: RET"
+    ],
+    "callees": [
+      {
+        "address": "0x1800cc030",
+        "name": "FUN_1800cc030",
+        "classification": {
+          "external": false,
+          "thunk": false,
+          "thunk_target": null,
+          "provenance": "ghidra-function-manager"
+        },
+        "body": {
+          "available": true,
+          "provenance": "ghidra-function-body-address-set",
+          "ranges": [
+            {
+              "start": "0x1800cc030",
+              "end": "0x1800cc811"
+            }
+          ],
+          "total_bytes": 2018,
+          "span_bytes": 2018,
+          "non_contiguous": false,
+          "contains_entry": true
+        }
+      },
+      {
+        "address": "0x1800d7570",
+        "name": "FUN_1800d7570",
+        "classification": {
+          "external": false,
+          "thunk": false,
+          "thunk_target": null,
+          "provenance": "ghidra-function-manager"
+        },
+        "body": {
+          "available": true,
+          "provenance": "ghidra-function-body-address-set",
+          "ranges": [
+            {
+              "start": "0x1800d7570",
+              "end": "0x1800d7e27"
+            }
+          ],
+          "total_bytes": 2232,
+          "span_bytes": 2232,
+          "non_contiguous": false,
+          "contains_entry": true
+        }
+      },
+      {
+        "address": "0x1801c5d90",
+        "name": "FUN_1801c5d90",
+        "classification": {
+          "external": false,
+          "thunk": false,
+          "thunk_target": null,
+          "provenance": "ghidra-function-manager"
+        },
+        "body": {
+          "available": true,
+          "provenance": "ghidra-function-body-address-set",
+          "ranges": [
+            {
+              "start": "0x1801c5d90",
+              "end": "0x1801c5de1"
+            }
+          ],
+          "total_bytes": 82,
+          "span_bytes": 82,
+          "non_contiguous": false,
+          "contains_entry": true
+        }
+      },
+      {
+        "address": "0x1802235d0",
+        "name": "__security_check_cookie",
+        "classification": {
+          "external": false,
+          "thunk": false,
+          "thunk_target": null,
+          "provenance": "ghidra-function-manager"
+        },
+        "body": {
+          "available": true,
+          "provenance": "ghidra-function-body-address-set",
+          "ranges": [
+            {
+              "start": "0x1802235d0",
+              "end": "0x1802235ed"
+            }
+          ],
+          "total_bytes": 30,
+          "span_bytes": 30,
+          "non_contiguous": false,
+          "contains_entry": true
+        }
+      }
+    ]
+  },
+  "limitations": [
+    "The session serves operations only after Ghidra reports default auto-analysis complete; incomplete analysis does not expose partial results.",
+    "The imported Program and temporary project are ephemeral and deleted on close. Annotation operations edit session database metadata; original executable bytes are never written.",
+    "Cancelling an active Ghidra request terminates its ephemeral database and discards session annotations. The selected target remains open; the next provider query imports the original artifact again.",
+    "Default-space addresses use lowercase 0x-prefixed hexadecimal; other address spaces use <percent-encoded-space>:0x<hex>.",
+    "References cover the complete Ghidra function-body AddressSet and exact entry. Dossier incoming edges omit sources owned by that function; procedure_references also retains those internal edges.",
+    "The dossier combines Ghidra FunctionManager, Listing, ReferenceManager, BasicBlockModel, and decompiler observations; provider-specific pseudocode and assembly are not cross-provider text invariants.",
+    "Resolved reference metadata identifies computed, indirect, external, call, jump, and data edges; unresolved targetless flows remain unknown, and function classifications distinguish thunks and externals.",
+    "Synthetic Ghidra entry-point references without actionable memory sources are omitted.",
+    "The Java bridge serializes one function request per Program and lets each decompilation run until it completes or the caller cancels.",
+    "Windows Ghidra P0 accepts approved native x86 and x86-64 PE applications and DLLs; managed, hostile, sensitive, and mutable-path targets are unsupported.",
+    "The Windows bridge uses authenticated IPv4 loopback because Node path-based IPC does not expose Java AF_UNIX sockets; the endpoint file contains no bearer token.",
+    "Windows sessions require the matching packaged Windows x64 native addon, local NTFS targets and runtimes, and Windows 10 or later. Native handles enforce path admission, private DACLs, and Job Object ownership automatically."
+  ]
+}

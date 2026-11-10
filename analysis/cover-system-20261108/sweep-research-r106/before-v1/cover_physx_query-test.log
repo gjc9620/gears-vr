@@ -1,0 +1,5 @@
+FAIL changed swept box/triangle/ray-capsule/sphere-triangle callee rejected
+FAIL changed swept box/triangle/ray-capsule/sphere-triangle callee rejected
+FAIL changed swept box/triangle/ray-capsule/sphere-triangle callee rejected
+FAIL changed swept box/triangle/ray-capsule/sphere-triangle callee rejected
+CoverPhysXQuery checks=180 failed=4 original-executed=false game-started=false

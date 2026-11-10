@@ -1,0 +1,50 @@
+{
+  "image": "J:\\gearsVr\\Gears.of.War.Reloaded.v1.0.1.3816947-P2P\\Gears of War Reloaded\\Binaries_x64\\PhysXCore.dll",
+  "image_sha256": "22051aa75312344a824a5f7e29c6375fec3a90df50cbeff6152f0e6c3afddd48",
+  "before_header_sha256": "b2033ee8cb227b1ad9db75cd2f0ab48d3c69730fd25d92396d5b50549f27453e",
+  "after_header_sha256": "112f37e9cb136bbcf56c1cbe6d23ac232eb1843d1283f55ab4f9a93afa7cd97e",
+  "added_bytes": 5735,
+  "total_chunks": 26,
+  "total_bytes": 16705,
+  "records": [
+    {
+      "evidence": "box-inner.json",
+      "evidence_id": "ev_e9b3cb3631efd8bd70e4a75cafca7792fc877a24271f42a18542f76c98a44d63",
+      "evidence_sha256": "eec58980743340693f290733586b9633f081bec58bb38068adb826e878d06035",
+      "rva": "0xd5a70",
+      "file_offset": 872048,
+      "size": 516,
+      "sha256": "f86f40ea78d6551e13689285d0fdfd852a93d506bb36948c50ed2fa49617393e"
+    },
+    {
+      "evidence": "triangles-inner.json",
+      "evidence_id": "ev_63f495744629cec5b07e831721c6f64bfcf62be7867afe0653a121cd0e2de296",
+      "evidence_sha256": "1bfd7da2ae053f9a4420aa4403cc93e5d979110ba5386629b94615236a08c04b",
+      "rva": "0xd9490",
+      "file_offset": 886928,
+      "size": 1354,
+      "sha256": "783892d93edff27980c81169a280bcba1a36411a8bfd3cc53c10f6ea65a59339"
+    },
+    {
+      "evidence": "ray-capsule.json",
+      "evidence_id": "ev_c572eaa3507c2ca2397f45d56cef14e80c11f9be0999db43386599ed0e943c35",
+      "evidence_sha256": "59eebf57ab8f4b9b3d13aee618fd0f65363796c54dfe5f3408c60ab8fe5ee2dd",
+      "rva": "0xd0180",
+      "file_offset": 849280,
+      "size": 1633,
+      "sha256": "40fb0d51ea39f2595214d8d8f753bb8f8415db41d27efdab52f514c5a156200d"
+    },
+    {
+      "evidence": "sphere-triangles.json",
+      "evidence_id": "ev_d528971e5ddbc62c56cf7679a0f60aef650d422ddd2899fcc14834168b3582c5",
+      "evidence_sha256": "037c21f1da83f401600f7e23dbb2ebbe7a6c3565b77245db3727d1e57742ae8d",
+      "rva": "0xd7570",
+      "file_offset": 878960,
+      "size": 2232,
+      "sha256": "49c3f0bc10e5258912591e4e4f4c3cef03e015a9ad03775fe7ee09821a67a5d2"
+    }
+  ],
+  "complete_call_graph_certified": false,
+  "sphere_sweep_enabled": false,
+  "movement_authorized": false
+}

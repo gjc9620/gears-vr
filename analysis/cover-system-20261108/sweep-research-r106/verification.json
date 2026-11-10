@@ -1,0 +1,38 @@
+{
+  "classification": "progress",
+  "source_files": [
+    "tools/native-capture/cover_physx_query_code.h",
+    "tools/native-capture/cover_physx_query_test.cpp"
+  ],
+  "before_counterexamples_failed": 4,
+  "after_checks": {
+    "query": 192,
+    "sphere_overlap": 36,
+    "owned_sweep": 122
+  },
+  "native_sha256": "66bf94166d40e2c449c928cc72689e346eef5b29ebb3b1edd15ff650669b2140",
+  "native_source_delta": [
+    "tools/native-capture/cover_physx_query_code.h"
+  ],
+  "project_dependencies": 400,
+  "flags_unchanged": true,
+  "outside_worktree_dependencies": [],
+  "original_physx_loaded_or_executed": false,
+  "game_started": false,
+  "xr_started": false,
+  "staged": false,
+  "sphere_sweep_enabled": false,
+  "zero_capsule_enabled": false,
+  "complete_call_graph_certified": false,
+  "movement_authorized": false,
+  "gameplay_accepted": false,
+  "headset_accepted": false,
+  "provider_closed": true,
+  "requirements_unchanged": true,
+  "goal_complete": false,
+  "evidence_sha256": {
+    "findings.json": "134cb06f0bd8d679c248a5684029f7362432076d47fc383418dbb298e94bf7f3",
+    "certificate-ranges.json": "103efea5398414818fb779cf374944fa080b63efb5a3af8a0a5e5e81597aa6a6",
+    "native-build-result.json": "18c851e8102043dbbdafc489ca6f748ba149e5ff0842e0bf917c8fc84116d709"
+  }
+}

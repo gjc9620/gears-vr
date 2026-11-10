@@ -1,0 +1,77 @@
+{
+  "scope": "Offline original-code and strict production query certificate checks only; original DLL never loaded or executed; no game/XR started.",
+  "image_sha256": "22051aa75312344a824a5f7e29c6375fec3a90df50cbeff6152f0e6c3afddd48",
+  "facts": [
+    {
+      "procedure": "0x1800d9490",
+      "evidence": "triangles-inner.json",
+      "observation": "Half endpoint differences are tested for exact zero at D95D4/D95E3/D95F2. Equal endpoints directly call D7570 at D9635; nonzero segments first call CC820 then D7570 at D97D3."
+    },
+    {
+      "procedure": "0x1800d5a70",
+      "evidence": "box-inner.json",
+      "observation": "Builds half endpoint difference, calls CC030 to prepare data, computes midpoint and invokes D7570 at D5C16. The transitive CC030 and D7570 leaf behavior is not fully certified."
+    },
+    {
+      "procedure": "0x1800d7570",
+      "evidence": "sphere-triangles.json",
+      "observation": "D79B9 skips zero-area face; D79D6/D79DB compares unnormalized face-normal dot sweep direction with zero and skips positive dot faces, before D7E30 at D7A27. No hit and UINT32_MAX face paths exist."
+    },
+    {
+      "procedure": "0x1800d0180",
+      "evidence": "ray-capsule.json",
+      "observation": "D0206 computes segment length and D020A divides by it before later shape tests; there is no preceding equal-endpoint sphere branch in this helper."
+    }
+  ],
+  "inferences": [
+    "The triangles wrapper contains a deliberate equal-endpoint path. A zero denominator seen in another helper alone is insufficient to prove the whole original sphere-equivalent sweep fails.",
+    "The retained triangle consumer has directional face rejection. A valid empty result cannot certify complete cover-body path coverage until current source shape/face policy and participating world geometry are established.",
+    "Four old-certificate counterexamples changed one callee tail each while keeping wrapper/source identity unchanged; all four were wrongly accepted before adding these ranges."
+  ],
+  "repair": {
+    "new_ranges": 4,
+    "added_bytes": 5735,
+    "total_ranges": 26,
+    "total_bytes": 16705,
+    "before_test_checks": 180,
+    "before_test_failures": 4,
+    "after_query_checks": 192,
+    "after_sphere_overlap_checks": 36,
+    "after_owned_sweep_checks": 122,
+    "all_final_tests_exit": 0
+  },
+  "remaining": [
+    "CC030/CC820 generated triangles and their degeneracy/face policy",
+    "D7E30 and CF9E0 leaf geometry and transitive constants",
+    "All target-type table mappings and current participating shapes",
+    "Current world/source synchronization and endpoint occupancy",
+    "Actual source-stage rejection in r102; unchanged because no game call was made"
+  ],
+  "sphere_sweep_enabled": false,
+  "zero_capsule_enabled": false,
+  "movement_authorized": false,
+  "gameplay_accepted": false,
+  "headset_accepted": false,
+  "evidence": {
+    "box-inner.json": {
+      "sha256": "eec58980743340693f290733586b9633f081bec58bb38068adb826e878d06035",
+      "evidence_id": "ev_e9b3cb3631efd8bd70e4a75cafca7792fc877a24271f42a18542f76c98a44d63",
+      "procedure": "0x1800d5a70"
+    },
+    "triangles-inner.json": {
+      "sha256": "1bfd7da2ae053f9a4420aa4403cc93e5d979110ba5386629b94615236a08c04b",
+      "evidence_id": "ev_63f495744629cec5b07e831721c6f64bfcf62be7867afe0653a121cd0e2de296",
+      "procedure": "0x1800d9490"
+    },
+    "ray-capsule.json": {
+      "sha256": "59eebf57ab8f4b9b3d13aee618fd0f65363796c54dfe5f3408c60ab8fe5ee2dd",
+      "evidence_id": "ev_c572eaa3507c2ca2397f45d56cef14e80c11f9be0999db43386599ed0e943c35",
+      "procedure": "0x1800d0180"
+    },
+    "sphere-triangles.json": {
+      "sha256": "037c21f1da83f401600f7e23dbb2ebbe7a6c3565b77245db3727d1e57742ae8d",
+      "evidence_id": "ev_d528971e5ddbc62c56cf7679a0f60aef650d422ddd2899fcc14834168b3582c5",
+      "procedure": "0x1800d7570"
+    }
+  }
+}

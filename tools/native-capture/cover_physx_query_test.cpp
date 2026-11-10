@@ -107,11 +107,18 @@ static void code_tests(char const* path){
     Memory m;check(load_code(path,m),"original disk identity and section bounds");if(m.blocks.empty())return;
     auto read=[&](void* p,void const* a,std::size_t n){return m.read(p,a,n);};
     check(s::code_current(base,size,read,q::detail::digest),"all complete original chunks hash");
+    // Newly traced narrow-phase consumers must be bound too. A matching
+    // public wrapper does not authenticate a changed target-specific callee.
+    for(auto const tail:{0xd5c73u,0xd99d9u,0xd07e0u,0xd7e27u}){
+        auto& byte=m.blocks[base][tail];byte^=1;
+        check(!s::code_current(base,size,read,q::detail::digest),"changed swept box/triangle/ray-capsule/sphere-triangle callee rejected");
+        byte^=1;
+    }
     unsigned bytes{};
     for(auto const& chunk:c::chunks){bytes+=chunk.size;auto& last=m.blocks[base][chunk.rva+chunk.size-1];last^=1;
         check(!s::code_current(base,size,read,q::detail::digest),"last byte mutation including cold tail");last^=1;
         check(!s::code_current(base,chunk.rva+chunk.size-1,read,q::detail::digest),"truncated code image");}
-    check(bytes==10970,"full worker, capsule conversion/constants and sphere overlap route");
+    check(bytes==16705,"retained worker, conversion/constants, sphere overlap and four traced sweep consumers");
     for(unsigned i=1;i<=c::chunks.size();++i){m.calls=0;m.fail_at=i;check(!s::code_current(base,size,read,q::detail::digest),"each code read failure");}
     m.fail_at=0;
     check(!s::code_current(base,size,read,[](void const*,std::size_t,s::Digest&){return false;}),"hash failure");
