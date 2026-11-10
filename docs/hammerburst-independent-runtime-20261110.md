@@ -272,3 +272,17 @@ launcher1/XR1/stop1实际失败保留，PG reservation-only清理shutdown0、入
 为保留证据并减少C盘空间反复不足，仅处理本枪三份已知start准入拒绝、从未创建worker/game/operator的准备副本223959、224419、224756。逐一检查result.game_started/operator_started/worker_started均false、无runtime回执、instance root/name一致、无原目录或嵌套reparse。将各自123文件/893,930,002bytes复制至`J:/gearsVr/analysis/hammerburst-archive-20261110/never-started/<原名>`，369文件逐一SHA/大小核对，保留完整原件与配置；原C路径建立junction并再次逐文件读回核验，才删除已核验的本方同卷handoff。原路径可读，旧名仍禁止重启。未迁出源码、当前候选、实际运行证据或其他会话目录。
 
 三份合计2,681,790,006bytes；记录中的before_free9,424,424,960/after_free13,041,836,032bytes也包含同时发生的外部空间变化，不能全部归因于本方。索引为`rejected-prepare-archive-20261110.json`及三份`hb-cloak-*-archive.json`；操作脚本限定上述三个确切名字，遇既存归档/映射即拒绝再次处理。实际归档不启动游戏、不丢弃文件。当前资源准入仍因两个实际存活自动实例拒绝，本方prepare前停止，无新游戏。
+
+## 实际45736：完整有限排空通过，新弹匣就位失败
+
+hb-cloak-1110-233210，game45736/creation134387983499765929，released-debt-r1实际动作已结束。core6后typed72/78；随后12次各六发，typed72→0、reserve78不变；总78条有效/write+trace来源一致射线，空仓再扣扳机保持L0/R78无射线/无自动补弹。没有stale_debt_wait或service_loss记录，故证明这一次普通排空通过，不能声称过期等待分支已实际触发或因果修复。
+
+普通换弹原begin serial1、锁扣打开、旧弹匣完整抽出/释放、新弹匣shoulder token2/78rounds拿取到stage6；后续8秒未见实际就位to7，operator1保留，没有关锁扣、返射或最终L78/R0证据。Frame710第一次supply后相同Frame读回reason7/game_difference5（request_ammo与incumbent变化，candidate_flags77）；Frame712又发生101.0417ms过期，随后main/mount撤回并恢复。两者分别保留，不把所有后续现象归因于首个difference5，库存不得按计划填入。
+
+launcher0/stop0、Native清理/PGshutdown0入口恢复/XR0、game及子进程正常退出，无强杀；2479前台/4332CLOAK零违规。677实际帧errors空、离线encode exit0；亲看48双眼样本全跨度三页概览和原图00331/00489/00518/00532，实际取枪、射击、锁扣/旧新弹匣与黄色引导可见。近脸遮挡、叠影/白色几何及00518碎块画面仍在，逐件手型/全部角度未接受。9份文本原件逐SHA归档；详见`runtime-45736-first-failure-analysis.json`及媒体审阅索引。
+
+## supply-frame-r1准备
+
+只修本枪新supply首次grant后的同Frame提案变化：原Frame已严格prepare/commit并允许take_replacement后，记录该FrameKey、sequence、sync、press、input/profile/reference及原ammo lease。仅stage6、同source、同held/item时，HB propose保持原肩部request_ammo并延迟新增incumbent到下一Frame。实际incoming game/其他incumbent保持原样；新Frame、源/对象/控制身份变化、松手或跟踪丢失不匹配此记录。marker不是Frame、lease或动作许可；共享Client的prepare/commit/read比较、首次grant、输入/几何/真实库存检查全部未改。源码接线只在私有冻结树，公共v71未变。
+
+完整PG SHA0d48710fff11b256880d8b512054656f80beaff4b45503500e2f20eab6e43e64；Native/XR未重建。38项source/first-grant安全检查通过，包括实际difference5继续被共享Client严格拒绝、14种source变化和9种非法grant清空marker；不是游戏验证。初始测试fixture误保留Decision默认release_required=1，记忆被正确拒绝，已将合法fixture设0后通过；未改变生产拒绝条件。runner现在选择此候选，尚未实际运行。所有13项原需求保留，整体完成和头显均未接受。

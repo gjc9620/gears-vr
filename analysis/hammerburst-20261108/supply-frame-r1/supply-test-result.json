@@ -1,0 +1,7 @@
+{
+  "passed": true,
+  "checks": 38,
+  "game_execution": false,
+  "shared_client_unchanged": true,
+  "initial_fixture_failure": "Default release_required1 correctly rejected; legal grant fixture corrected to0, production guards unchanged"
+}

@@ -1,0 +1,50 @@
+--- a/tools/playground/weapon_hammerburst_runtime.inl
++++ b/tools/playground/weapon_hammerburst_runtime.inl
+@@ -1,3 +1,4 @@
++#include "../vr-common/weapon_hammerburst_supply_publication.h"
+ // One GT consumer, sharing the existing native reload lease, inventory writer,
+ // component restoration and stop/drain boundary with Lancer. No second runner.
+ namespace hammerburst_runtime {
+@@ -38,6 +39,7 @@
+ gears_weapon::HammerburstMagazineExtraction extraction;
+ gears_weapon::FeedPortMount feed;
+ hand::Lease held{};
++gears_hammerburst_supply_publication::Snapshot supply_publication;
+ std::uint64_t serial{},old_item{},new_item{};
+ inv::Identity last_started_identity{};
+ std::uint64_t last_started_grip{};
+@@ -199,6 +201,17 @@
+        !geometry_current(f)||game.kind!=hand::WeaponKind::firearm)return;
+     if(stage==Stage::recovering||stage==Stage::completing||(stage==Stage::restoring&&!restore_display_ready))return;
+     const auto interaction_phase=stage==Stage::restoring?parked_plan.resume_stage:stage;
++    // Preserve ONLY this callback's original supply proposal through
++    // its acquisition Frame. The new incumbent enters NEXT Frame prepare/
++    // commit normally. Never relax Client comparison or first-grant checks.
++    if(stage==Stage::new_magazine&&supply_publication.same_acquisition_source(f,held,new_item)){
++        const P body{f.stereo.head.position,f.reference.orientation};
++        game.request_ammo=gears_weapon::body_slot(nativeequipment::calibration,body,f.controllers.hands[0].grip.position,0)==gears_weapon::BodySlot::shoulder_ammo;
++        static unsigned rows{};
++        if(log_file&&rows<8){fwprintf(log_file,L"hammerburst_supply_frame frame=%llu sequence=%llu token=%llu request_ammo=%u defer_incumbent=1\n",
++            f.key.frame,f.controllers.sequence,f.press_token,unsigned(game.request_ammo));fflush(log_file);++rows;}
++        return;
++    }
+     if(held.id==f.press_token&&hand::lease_valid(held,f.key.lifecycle)){
+         for(auto& slot:game.object_incumbents){if(hand::same(slot,held))return;
+             if(slot.kind==hand::LeaseKind::none){slot=held;return;}}
+@@ -242,7 +255,7 @@
+     restore_resume_step=0;restore_resume_intent=0;resume_grant_ready=restore_native_uncertain=false;
+     const bool release_outstanding=stage!=Stage::parked;
+     stage=Stage::idle;observer={};transaction={};writer={};opening={};completion={};reward={};
+-    held={};serial=old_item=new_item=0;angle=0;released=switch_requested=native_exited=ui_pending=false;
++    supply_publication.reset();held={};serial=old_item=new_item=0;angle=0;released=switch_requested=native_exited=ui_pending=false;
+     feed_item=feed_sequence=0;feed_ns=0;
+     open_pose_reads=open_stable_reads=feed_failure=0;last_open_observed=0;
+     stroke.reset();insertion.reset();extraction.reset();feed={};if(!preserve_geometry)geometry.known=false;
+@@ -516,6 +529,7 @@
+            !insertion.arm(f.weapon.address,new_item,f.world.address,f.stereo.space_epoch)){cleanup(__LINE__);return;}
+         if(log_file){fwprintf(log_file,L"hammerburst_supply token=%llu rounds=%u spare_reserved=%u loaded=%u reserve=%u\n",
+             new_item,transaction.held_magazine_rounds(),transaction.reserved(),current.loaded,current.reserve);fflush(log_file);}
++        supply_publication.remember(f,decision);
+         held=decision.lease;released=false;stage=Stage::new_magazine;insertion_step(f,new_item);return;
+     }
+     if(stage!=Stage::old_magazine&&stage!=Stage::new_magazine)return;

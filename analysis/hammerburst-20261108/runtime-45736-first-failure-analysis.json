@@ -1,0 +1,1042 @@
+{
+  "game": {
+    "pid": 45736,
+    "creation_time": 134387983499765929,
+    "image": "j:\\gearsvr\\gears.of.war.reloaded.v1.0.1.3816947-p2p\\gears of war reloaded\\binaries_x64\\gowde-steam.exe"
+  },
+  "candidate": "df22727d9bc35578f36e39bcc111679054eacf59a2b6f346de08f27aea5547f6",
+  "operator_exit": 1,
+  "cleanup": {
+    "launcher_exit": 0,
+    "owned_game_absent": true,
+    "owned_children": {
+      "recorded": 0,
+      "remaining": []
+    },
+    "forced_termination": false,
+    "worker_error": null
+  },
+  "stop_exit": 0,
+  "continuous_passed": true,
+  "native_cleanup_verified": true,
+  "xr_exit_code": 0,
+  "playground_cleanup": {
+    "loaded": true,
+    "shutdown_code": 0,
+    "entry_restored": true,
+    "passed": true
+  },
+  "audio": {
+    "enabled": true,
+    "game_identity": {
+      "pid": 45736,
+      "creation_time": 134387983499765929
+    },
+    "owner_identity": {
+      "pid": 28664,
+      "creation_time": 134387983329190285
+    },
+    "log": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\hb-cloak-1110-233210\\launcher-session.7c6605af28bc44438b33a214a8b7e7ec.audio.jsonl",
+    "restored": true,
+    "startup": {
+      "ready_observed": true,
+      "ready_timeout_seconds": 15.0,
+      "waited_seconds": 0.04700000000593718,
+      "helper_exit_code": null
+    },
+    "exit_code": 0,
+    "event": "guard_cleanup",
+    "reason": "stop",
+    "matched": 1,
+    "muted": 0,
+    "restore_attempted": 0,
+    "restore_pending": 0,
+    "read_failed": 0,
+    "mute_failed": 0,
+    "scans": 434,
+    "endpoint_unavailable": 0,
+    "shared_rejected": 4774,
+    "sessions_restored": 0,
+    "mute_verification": {
+      "event": "mute_verification_summary",
+      "pid": 45736,
+      "initially_muted_sessions": 1,
+      "verified_muted_observations": 434,
+      "verify_failed": 0,
+      "target_shared_rejected": 0,
+      "shared_rejected_is_global_scan_count": true
+    }
+  },
+  "drain_complete": true,
+  "drain_bursts": 12,
+  "drain_before": {
+    "capacity": 78.0,
+    "used": 6,
+    "reserve": 78,
+    "infinite_reserve": false,
+    "duration": 2.5,
+    "started": 0.0,
+    "active_reload_bonus_shots": 0,
+    "game": {
+      "pid": 45736,
+      "creation_time": 134387983499765929,
+      "image": "j:\\gearsvr\\gears.of.war.reloaded.v1.0.1.3816947-p2p\\gears of war reloaded\\binaries_x64\\gowde-steam.exe"
+    },
+    "weapon": "0x1606706700",
+    "observed_ns": 109610523221300,
+    "game_time": 23.414899826049805,
+    "loaded": 72,
+    "bones": {},
+    "game_function_calls": 0,
+    "reader_reused": true,
+    "read_bracket_misses": [],
+    "query_local_selectors": true,
+    "limits": "Double-read actual inventory and typed schema, current registered objects/held identity; no game calls. Not physical-headset acceptance."
+  },
+  "drain_after": {
+    "capacity": 78.0,
+    "used": 78,
+    "reserve": 78,
+    "infinite_reserve": false,
+    "duration": 2.5,
+    "started": 0.0,
+    "active_reload_bonus_shots": 0,
+    "game": {
+      "pid": 45736,
+      "creation_time": 134387983499765929,
+      "image": "j:\\gearsvr\\gears.of.war.reloaded.v1.0.1.3816947-p2p\\gears of war reloaded\\binaries_x64\\gowde-steam.exe"
+    },
+    "weapon": "0x1606706700",
+    "observed_ns": 109625120209400,
+    "game_time": 38.01939392089844,
+    "loaded": 0,
+    "bones": {},
+    "game_function_calls": 0,
+    "reader_reused": true,
+    "read_bracket_misses": [],
+    "query_local_selectors": true,
+    "limits": "Double-read actual inventory and typed schema, current registered objects/held identity; no game calls. Not physical-headset acceptance."
+  },
+  "empty_checks": {
+    "empty_trigger_preserves_L0_R78_no_shot": true
+  },
+  "error": "AssertionError('No fresh hammerburst_reload_transition to=7 (closing after actual seating) in 8 seconds')",
+  "replacement": {
+    "game": {
+      "pid": 45736,
+      "creation_time": 134387983499765929,
+      "image": "j:\\gearsvr\\gears.of.war.reloaded.v1.0.1.3816947-p2p\\gears of war reloaded\\binaries_x64\\gowde-steam.exe"
+    },
+    "checks": {},
+    "phases": [
+      {
+        "label": "original_return_prepare",
+        "ns": 109626176068000
+      },
+      {
+        "label": "open_original_latch",
+        "ns": 109627235704900
+      },
+      {
+        "label": "continuous_latch_opening",
+        "ns": 109633746179400
+      },
+      {
+        "label": "extract_original_for_replacement",
+        "ns": 109635788522900
+      },
+      {
+        "label": "left_shoulder_actual_replacement",
+        "ns": 109637308455100
+      }
+    ],
+    "observations": [
+      {
+        "label": "world",
+        "value": {
+          "game": {
+            "pid": 45736,
+            "creation_time": 134387983499765929,
+            "image": "j:\\gearsvr\\gears.of.war.reloaded.v1.0.1.3816947-p2p\\gears of war reloaded\\binaries_x64\\gowde-steam.exe"
+          },
+          "publisher": {
+            "pid": 59352,
+            "creation_time": 134387983572484941,
+            "image": "c:\\users\\11\\.codex\\worktrees\\6dof-single\\gearsvr\\tools\\openxr-probe\\build-hb-cloak-1110-233210\\openxrposeprobe.exe"
+          },
+          "source": 1,
+          "sequence": 4369,
+          "observed_ns": 109626371218300,
+          "sync_ns": 109626331406200,
+          "world_generation": 1,
+          "weapon": "0x1606706700",
+          "units": 100.0,
+          "raw": [
+            {
+              "xyz": [
+                -0.20000000298023224,
+                1.4000000953674316,
+                -0.4000000059604645
+              ],
+              "quat": [
+                -0.14943814277648926,
+                0.0,
+                0.0,
+                0.9887710809707642
+              ],
+              "squeeze": 0.0,
+              "trigger": 0.0
+            },
+            {
+              "xyz": [
+                0.1599999964237213,
+                1.5200001001358032,
+                0.05999999865889549
+              ],
+              "quat": [
+                0.14589586853981018,
+                0.21400924026966095,
+                -0.032344333827495575,
+                0.9653332829475403
+              ],
+              "squeeze": 0.0,
+              "trigger": 0.0
+            }
+          ],
+          "world": [
+            {
+              "xyz": [
+                -3840.1052231823023,
+                -16.976674006501916,
+                625.1634569168091
+              ],
+              "rotation": [
+                -0.3000000194673931,
+                4.8951591224977125e-08,
+                -0.0
+              ]
+            },
+            {
+              "xyz": [
+                -3886.1052254064957,
+                19.02332368212018,
+                637.1634573936462
+              ],
+              "rotation": [
+                0.30000002406170945,
+                -0.43633227213021114,
+                -4.241938913145641e-09
+              ]
+            }
+          ],
+          "limits": "Current original world tracking targets, not solved or rendered bone positions."
+        }
+      },
+      {
+        "label": "gun",
+        "value": {
+          "game": {
+            "pid": 45736,
+            "creation_time": 134387983499765929,
+            "image": "j:\\gearsvr\\gears.of.war.reloaded.v1.0.1.3816947-p2p\\gears of war reloaded\\binaries_x64\\gowde-steam.exe"
+          },
+          "observed_ns": 109627210272700,
+          "controller": "0x85571590",
+          "weapon": "0x1606706700",
+          "mesh": "0x3bf3e0e30",
+          "mesh_world_xyz": [
+            -3892.02978515625,
+            18.720094680786133,
+            635.7530517578125
+          ],
+          "mesh_component_to_world": [
+            -0.42269518971443176,
+            -0.9062716960906982,
+            0.0,
+            0.0,
+            0.8658227324485779,
+            -0.4038296043872833,
+            0.29541826248168945,
+            0.0,
+            -0.2677290737628937,
+            0.12487190961837769,
+            0.955368161201477,
+            0.0,
+            -3892.02978515625,
+            18.720094680786133,
+            635.7530517578125,
+            1.0
+          ],
+          "hud_query_world_xyz": [
+            -2019.777099609375,
+            -854.3027954101562,
+            1288.10205078125
+          ],
+          "limits": "read-only bracketed snapshot; HUD query is not proof of a rendered reticle or firing ray"
+        }
+      }
+    ],
+    "gameplay_setters": false,
+    "visual_accepted": false,
+    "physical_headset_accepted": false,
+    "replacement_mode": true,
+    "before": {
+      "capacity": 78.0,
+      "used": 78,
+      "reserve": 78,
+      "infinite_reserve": false,
+      "duration": 2.5,
+      "started": 0.0,
+      "active_reload_bonus_shots": 0,
+      "game": {
+        "pid": 45736,
+        "creation_time": 134387983499765929,
+        "image": "j:\\gearsvr\\gears.of.war.reloaded.v1.0.1.3816947-p2p\\gears of war reloaded\\binaries_x64\\gowde-steam.exe"
+      },
+      "weapon": "0x1606706700",
+      "observed_ns": 109626203427900,
+      "game_time": 39.05975341796875,
+      "loaded": 0,
+      "bones": {},
+      "game_function_calls": 0,
+      "reader_reused": true,
+      "read_bracket_misses": [],
+      "query_local_selectors": true,
+      "limits": "Double-read actual inventory and typed schema, current registered objects/held identity; no game calls. Not physical-headset acceptance."
+    },
+    "input_planning": {
+      "production": {
+        "frame": "486",
+        "publication": "0",
+        "source_sequence": "4389",
+        "sync_ns": "109626784490400",
+        "observed_ns": "109626815814300",
+        "hold": "1",
+        "accepted": "1",
+        "mesh_read": "1",
+        "grip_world": "-3886.10523,19.0233237,637.163457",
+        "grip_quat": "-0.0323443292,-0.145895865,-0.21400921,0.965333258",
+        "target_world": "-3892.03146,18.7200972,635.753017",
+        "target_rot": "0,-20935,-3129",
+        "asset_origin": "0,-16384,0",
+        "component_translation": "-3892.03149,18.7200966,635.752991",
+        "gun_world": "-3892.03076,18.7200947,635.752869",
+        "gun_rot": "3129,-4551,0",
+        "dirty": "7"
+      },
+      "geometry": {
+        "weapon": "1606706700",
+        "pivot": "1.84678837e-08,0.313648811,0.0212533196",
+        "axis": "1,-5.8271135e-08,8.8150627e-09",
+        "contact": "-0.021006117,0.242713064,0.0401302767",
+        "units": "100"
+      },
+      "actual_mesh": [
+        [
+          -0.42269518971443176,
+          0.8658227324485779,
+          -0.2677290737628937,
+          -3892.02978515625
+        ],
+        [
+          -0.9062716960906982,
+          -0.4038296043872833,
+          0.12487190961837769,
+          18.720094680786133
+        ],
+        [
+          0.0,
+          0.29541826248168945,
+          0.955368161201477,
+          635.7530517578125
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "planning_is_not_outcome_evidence": true
+    },
+    "empty_original_begin": {
+      "transition": {
+        "from": "1",
+        "to": "2",
+        "serial": "1",
+        "angle": "0",
+        "loaded": "0",
+        "reserve": "78",
+        "pending": "0",
+        "stationary_holds": "0"
+      },
+      "original_acceptance": {
+        "serial": "1",
+        "accepted_ms": "109633421",
+        "perfect_window_ms": "799",
+        "game_start": "46.3160477"
+      }
+    },
+    "latch_sweeps": [
+      {
+        "start": 0,
+        "end": 0.837758104,
+        "samples": [
+          {
+            "ns": 109633751029500,
+            "angle": 8.328649775144052e-05,
+            "xyz": [
+              0.08302571277845015,
+              1.6159517074390606,
+              -0.08901703858857726
+            ]
+          },
+          {
+            "ns": 109633790862000,
+            "angle": 0.0006444250054579128,
+            "xyz": [
+              0.08302501202455455,
+              1.6159105507376448,
+              -0.08901854140304999
+            ]
+          },
+          {
+            "ns": 109633831188200,
+            "angle": 0.002102451223371097,
+            "xyz": [
+              0.08302314560540038,
+              1.6158036162233063,
+              -0.08902254406598167
+            ]
+          },
+          {
+            "ns": 109633872740700,
+            "angle": 0.004814899980185642,
+            "xyz": [
+              0.0830194980980998,
+              1.6156046974977796,
+              -0.08903036639329531
+            ]
+          },
+          {
+            "ns": 109633913381100,
+            "angle": 0.009080733845970452,
+            "xyz": [
+              0.08301330045719607,
+              1.6152919099390977,
+              -0.08904365765444924
+            ]
+          },
+          {
+            "ns": 109633953532800,
+            "angle": 0.01514327174509997,
+            "xyz": [
+              0.08300352244111743,
+              1.61484749494271,
+              -0.08906462727100892
+            ]
+          },
+          {
+            "ns": 109633992132500,
+            "angle": 0.023193117569185483,
+            "xyz": [
+              0.08298877986652588,
+              1.6142576322792328,
+              -0.08909624371579672
+            ]
+          },
+          {
+            "ns": 109634033768200,
+            "angle": 0.033371088790006366,
+            "xyz": [
+              0.08296726811921487,
+              1.613512262688173,
+              -0.08914237710316636
+            ]
+          },
+          {
+            "ns": 109634072934200,
+            "angle": 0.045771145072441455,
+            "xyz": [
+              0.08293672929021428,
+              1.6126049216200846,
+              -0.0892078696677675
+            ]
+          },
+          {
+            "ns": 109634112167800,
+            "angle": 0.060443316887400185,
+            "xyz": [
+              0.08289445681855534,
+              1.6115325830056269,
+              -0.08929852580788744
+            ]
+          },
+          {
+            "ns": 109634151648800,
+            "angle": 0.07739663412475407,
+            "xyz": [
+              0.08283733854588574,
+              1.610295509480024,
+              -0.08942101975194458
+            ]
+          },
+          {
+            "ns": 109634191100300,
+            "angle": 0.09660205470626781,
+            "xyz": [
+              0.08276193655875046,
+              1.6088971030705033,
+              -0.08958272433150671
+            ]
+          },
+          {
+            "ns": 109634232446300,
+            "angle": 0.11799539319853071,
+            "xyz": [
+              0.0826646000556274,
+              1.6073437483751067,
+              -0.08979146893049517
+            ]
+          },
+          {
+            "ns": 109634270341800,
+            "angle": 0.14148024942588797,
+            "xyz": [
+              0.08254160568844111,
+              1.605644639060699,
+              -0.09005523851358566
+            ]
+          },
+          {
+            "ns": 109634310184700,
+            "angle": 0.1669309370833717,
+            "xyz": [
+              0.0823893183757863,
+              1.603811578316955,
+              -0.0903818287516599
+            ]
+          },
+          {
+            "ns": 109634351901200,
+            "angle": 0.1941954123496327,
+            "xyz": [
+              0.08220436447483001,
+              1.6018587448319601,
+              -0.0907784746432779
+            ]
+          },
+          {
+            "ns": 109634394296000,
+            "angle": 0.2230982024998712,
+            "xyz": [
+              0.08198380845790329,
+              1.5998024178868802,
+              -0.09125147162011435
+            ]
+          },
+          {
+            "ns": 109634433098900,
+            "angle": 0.2534433345187688,
+            "xyz": [
+              0.08172532390624519,
+              1.5976606581637436,
+              -0.0918058088396243
+            ]
+          },
+          {
+            "ns": 109634473361700,
+            "angle": 0.2850172637134189,
+            "xyz": [
+              0.08142734974456454,
+              1.5954529445748042,
+              -0.09244483412976165
+            ]
+          },
+          {
+            "ns": 109634511501600,
+            "angle": 0.3175918023262589,
+            "xyz": [
+              0.08108922321968216,
+              1.593199771522887,
+              -0.0931699688075398
+            ]
+          },
+          {
+            "ns": 109634550262100,
+            "angle": 0.3509270481480006,
+            "xyz": [
+              0.080711282172589,
+              1.590922215104084,
+              -0.09398048834988704
+            ]
+          },
+          {
+            "ns": 109634588442600,
+            "angle": 0.38477431313056254,
+            "xyz": [
+              0.0802949306296587,
+              1.5886414804656366,
+              -0.09487338172899332
+            ]
+          },
+          {
+            "ns": 109634628623000,
+            "angle": 0.418879052,
+            "xyz": [
+              0.07984266357127824,
+              1.586378445454847,
+              -0.09584329829437344
+            ]
+          },
+          {
+            "ns": 109634668582200,
+            "angle": 0.45298379086943746,
+            "xyz": [
+              0.07935804881446998,
+              1.5841532175252,
+              -0.09688258662677884
+            ]
+          },
+          {
+            "ns": 109634708150900,
+            "angle": 0.48683105585199926,
+            "xyz": [
+              0.07884566613146958,
+              1.5819847213853548,
+              -0.09798142510246016
+            ]
+          },
+          {
+            "ns": 109634747265200,
+            "angle": 0.520166301673741,
+            "xyz": [
+              0.0783110058642817,
+              1.5798903339881099,
+              -0.09912803932090491
+            ]
+          },
+          {
+            "ns": 109634785455300,
+            "angle": 0.5527408402865811,
+            "xyz": [
+              0.07776033123171242,
+              1.5778855811931016,
+              -0.10030899739651489
+            ]
+          },
+          {
+            "ns": 109634825369000,
+            "angle": 0.5843147694812311,
+            "xyz": [
+              0.07720051012301493,
+              1.5759839069594734,
+              -0.10150957068817859
+            ]
+          },
+          {
+            "ns": 109634864525000,
+            "angle": 0.6146599015001286,
+            "xyz": [
+              0.07663882332610425,
+              1.5741965215023845,
+              -0.10271414506653706
+            ]
+          },
+          {
+            "ns": 109634902873000,
+            "angle": 0.6435626916503673,
+            "xyz": [
+              0.076082756787167,
+              1.5725323298295537,
+              -0.1039066664268885
+            ]
+          },
+          {
+            "ns": 109634942674900,
+            "angle": 0.6708271669166285,
+            "xyz": [
+              0.07553978563121788,
+              1.5709979368540106,
+              -0.10507110387133525
+            ]
+          },
+          {
+            "ns": 109634982555000,
+            "angle": 0.6962778545741122,
+            "xyz": [
+              0.07501715732824099,
+              1.5695977202553484,
+              -0.10619191472327952
+            ]
+          },
+          {
+            "ns": 109635024376600,
+            "angle": 0.7197627108014693,
+            "xyz": [
+              0.07452168064866395,
+              1.5683339578030946,
+              -0.10725449712626525
+            ]
+          },
+          {
+            "ns": 109635065417600,
+            "angle": 0.7411560492937319,
+            "xyz": [
+              0.0740595260278938,
+              1.5672069922743572,
+              -0.10824561817539344
+            ]
+          },
+          {
+            "ns": 109635105809500,
+            "angle": 0.7603614698752459,
+            "xyz": [
+              0.07363604178062891,
+              1.566215414631407,
+              -0.10915380805780603
+            ]
+          },
+          {
+            "ns": 109635144117000,
+            "angle": 0.7773147871125995,
+            "xyz": [
+              0.07325558939731097,
+              1.5653562449305398,
+              -0.10996971327027472
+            ]
+          },
+          {
+            "ns": 109635185743500,
+            "angle": 0.791986958927558,
+            "xyz": [
+              0.07292140002283867,
+              1.5646250905909385,
+              -0.11068640441005481
+            ]
+          },
+          {
+            "ns": 109635224848500,
+            "angle": 0.804387015209993,
+            "xyz": [
+              0.07263545323120417,
+              1.5640162631741115,
+              -0.11129963615063573
+            ]
+          },
+          {
+            "ns": 109635263139800,
+            "angle": 0.8145649864308145,
+            "xyz": [
+              0.07239837839103493,
+              1.5635228376699268,
+              -0.11180805876985167
+            ]
+          },
+          {
+            "ns": 109635301567100,
+            "angle": 0.8226148322548998,
+            "xyz": [
+              0.07220937823368714,
+              1.5631366423735602,
+              -0.1122133820630965
+            ]
+          },
+          {
+            "ns": 109635342421900,
+            "angle": 0.8286773701540299,
+            "xyz": [
+              0.07206617359990398,
+              1.56284817265944,
+              -0.11252049383780333
+            ]
+          },
+          {
+            "ns": 109635381365500,
+            "angle": 0.8329432040198139,
+            "xyz": [
+              0.071964967616312,
+              1.562646428182515,
+              -0.11273753673926801
+            ]
+          },
+          {
+            "ns": 109635421192200,
+            "angle": 0.8356556527766293,
+            "xyz": [
+              0.07190042656637702,
+              1.5625186801188682,
+              -0.1128759492741887
+            ]
+          },
+          {
+            "ns": 109635460172200,
+            "angle": 0.8371136789945429,
+            "xyz": [
+              0.07186567328370401,
+              1.5624501828466832,
+              -0.11295047997915156
+            ]
+          },
+          {
+            "ns": 109635498059700,
+            "angle": 0.8376748175022484,
+            "xyz": [
+              0.07185228683310874,
+              1.5624238528311767,
+              -0.11297918810463195
+            ]
+          },
+          {
+            "ns": 109635537447100,
+            "angle": 0.837758104,
+            "xyz": [
+              0.07185029942868032,
+              1.5624199463364117,
+              -0.11298345022439771
+            ]
+          }
+        ],
+        "input_only": true
+      }
+    ],
+    "magazine_input_planning": {
+      "left_in_model": [
+        [
+          -0.4037334629741179,
+          -0.9063122682999042,
+          -0.12488940389003761
+        ],
+        [
+          0.7398356844138181,
+          -0.4037348244490117,
+          0.5381833810097288
+        ],
+        [
+          -0.5381844023593251,
+          0.12488500252715724,
+          0.8335234161083466
+        ]
+      ],
+      "observed_world_grip_rotation": [
+        -0.3000000194673931,
+        4.8951591224977125e-08,
+        -0.0
+      ],
+      "raw_orientation_unchanged": true,
+      "actual_seating_must_be_observed": true
+    },
+    "wait_failures": [
+      {
+        "prefix": "hammerburst_reload_transition",
+        "start": 0,
+        "expected": "to=7 (closing after actual seating)",
+        "latest": [
+          {
+            "from": "1",
+            "to": "2",
+            "serial": "1",
+            "angle": "0",
+            "loaded": "0",
+            "reserve": "78",
+            "pending": "0",
+            "stationary_holds": "0"
+          },
+          {
+            "from": "2",
+            "to": "3",
+            "serial": "1",
+            "angle": "0.828662163",
+            "loaded": "0",
+            "reserve": "78",
+            "pending": "0",
+            "stationary_holds": "0"
+          },
+          {
+            "from": "3",
+            "to": "4",
+            "serial": "1",
+            "angle": "0.828662163",
+            "loaded": "0",
+            "reserve": "78",
+            "pending": "0",
+            "stationary_holds": "0"
+          },
+          {
+            "from": "4",
+            "to": "5",
+            "serial": "1",
+            "angle": "0.828662163",
+            "loaded": "0",
+            "reserve": "78",
+            "pending": "0",
+            "stationary_holds": "0"
+          },
+          {
+            "from": "5",
+            "to": "6",
+            "serial": "1",
+            "angle": "0.828662163",
+            "loaded": "0",
+            "reserve": "78",
+            "pending": "0",
+            "stationary_holds": "0"
+          }
+        ]
+      }
+    ],
+    "error": "AssertionError('No fresh hammerburst_reload_transition to=7 (closing after actual seating) in 8 seconds')"
+  },
+  "actual_trajectory_count": 78,
+  "trajectory_consistent": true,
+  "stale_debt_wait_rows": [],
+  "service_loss_rows": [],
+  "supply_transition_context": [
+    "lancer_context_grasp kind=1 published=0 frame=710 visual_only=1 gate=10 part_gate=0 age_ns=36549600 hb_observed=39 known=1 main_held=1 mount=1 busy=0 animation=0 down=1 input_known=1 tracked=1 control=0 decision=2 lease=2 pending=0",
+    "native_lancer_l2 status=2 mode=1 owned=0 game_known=1 game_l2=0 toggle=0 allow=0 part_reserved=1 frame=710 sequence=5166 left_trigger=0.000",
+    "hammerburst_supply token=2 rounds=78 spare_reserved=78 loaded=0 reserve=78",
+    "hammerburst_feed_sample stage=6 sequence=5166 item=2 hand=0.228464523,0.430062421,-0.0502450613 hand_quat=-0.204020102,0.204023519,0.812554643,0.506463378 depth=-0.0603961843 lateral=0.30203754 orientation_dot=1",
+    "hammerburst_reload_transition from=5 to=6 serial=1 angle=0.828662163 loaded=0 reserve=78 pending=0 stationary_holds=0",
+    "native_equipment_support_withdrawal frame=710 sequence=5166 token=2 reason=7 game_difference=5 frame_difference=0 game_flags=0 age_ns=59266400 candidate_flags=77 candidate_decision=2 candidate_lease=2 support_distance_m=0.190598907",
+    "hammerburst_input_consumed frame=711 sequence=5170 current=1 status=2 source_status=1 owned=0 game_known=1 game_r2=0 trigger_active=1 trigger_value=0.000 trigger_pressed=14 trigger_released=14 input_sync_ns=109644187242200 admitted_ns=109644246364300 active_at_admission=1 preparation_budget=1",
+    "hammerburst_guide step=3 dispatched=1 world=-3866.55024,6.83801559,641.48059 radius=2.19999977 frame=711 one_frame=1 visibility_probe=0",
+    "native_equipment status=unavailable slot=4 target=0 event=0 press=0 frame=712 source_sequence=5175 cookie=1 inventory_stage=held_chain_observation input_status=quiet input_previous_sync_ns=109644096128300 input_sync_ns=109644187242200 input_received_ns=109644187266000 input_recorded_press_sync_ns=0 input_control=6",
+    "native_lancer_l2 status=0 mode=1 owned=0 game_known=1 game_l2=0 toggle=0 allow=0 part_reserved=0 frame=0 sequence=0 left_trigger=0.000",
+    "native_body_mount_equipment_state status=3 held=0 busy=0 animation=0 frame=712",
+    "native_equipment_support_withdrawal frame=712 sequence=5175 token=2 reason=5 game_difference=0 frame_difference=0 game_flags=0 age_ns=101041700 candidate_flags=13 candidate_decision=1 candidate_lease=2 support_distance_m=0.190596602",
+    "native_equipment status=baseline slot=4 target=0 event=0 press=0 frame=713 source_sequence=5182 cookie=1 inventory_stage=ok input_status=baseline input_previous_sync_ns=0 input_sync_ns=109644457966700 input_received_ns=109644457995100 input_recorded_press_sync_ns=0 input_control=6",
+    "lancer_context_grasp kind=0 published=0 frame=713 visual_only=1 gate=1 part_gate=0 age_ns=34209800 hb_observed=33 known=1 main_held=0 mount=0 busy=0 animation=0 down=1 input_known=1 tracked=1 control=0 decision=12 lease=0 pending=0",
+    "native_body_mount_equipment_state status=0 held=1 busy=0 animation=0 frame=713",
+    "native_equipment_support_withdrawal frame=713 sequence=5182 token=2 reason=7 game_difference=8 frame_difference=0 game_flags=0 age_ns=32667900 candidate_flags=1 candidate_decision=12 candidate_lease=0 support_distance_m=-1",
+    "native_equipment status=idle slot=4 target=0 event=0 press=0 frame=714 source_sequence=5185 cookie=1 inventory_stage=held_chain_observation input_status=quiet input_previous_sync_ns=109644457966700 input_sync_ns=109644523341000 input_received_ns=109644523367000 input_recorded_press_sync_ns=0 input_control=6",
+    "hammerburst_input_consumed frame=714 sequence=5185 current=1 status=8 source_status=1 owned=0 game_known=1 game_r2=0 trigger_active=1 trigger_value=0.000 trigger_pressed=14 trigger_released=14 input_sync_ns=109644523341000 admitted_ns=109644580205800 active_at_admission=1 preparation_budget=1",
+    "native_lancer_l2 status=1 mode=1 owned=0 game_known=1 game_l2=0 toggle=0 allow=0 part_reserved=0 frame=714 sequence=5185 left_trigger=0.000",
+    "lancer_context_grasp kind=0 published=0 frame=714 visual_only=1 gate=1 part_gate=0 age_ns=62652600 hb_observed=39 known=1 main_held=1 mount=1 busy=0 animation=0 down=1 input_known=1 tracked=1 control=0 decision=3 lease=0 pending=0",
+    "native_lancer_l2 status=2 mode=1 owned=0 game_known=1 game_l2=0 toggle=0 allow=0 part_reserved=0 frame=715 sequence=5189 left_trigger=0.000",
+    "hammerburst_input_consumed frame=718 sequence=5200 current=1 status=8 source_status=1 owned=0 game_known=1 game_r2=0 trigger_active=1 trigger_value=0.000 trigger_pressed=14 trigger_released=14 input_sync_ns=109644859407000 admitted_ns=109644910350200 active_at_admission=1 preparation_budget=1",
+    "hammerburst_input_consumed frame=722 sequence=5214 current=1 status=8 source_status=1 owned=0 game_known=1 game_r2=0 trigger_active=1 trigger_value=0.000 trigger_pressed=14 trigger_released=14 input_sync_ns=109645170704100 admitted_ns=109645214089400 active_at_admission=1 preparation_budget=1"
+  ],
+  "transitions": [
+    {
+      "from": "1",
+      "to": "2",
+      "serial": "1",
+      "angle": "0",
+      "loaded": "0",
+      "reserve": "78",
+      "pending": "0",
+      "stationary_holds": "0"
+    },
+    {
+      "from": "2",
+      "to": "3",
+      "serial": "1",
+      "angle": "0.828662163",
+      "loaded": "0",
+      "reserve": "78",
+      "pending": "0",
+      "stationary_holds": "0"
+    },
+    {
+      "from": "3",
+      "to": "4",
+      "serial": "1",
+      "angle": "0.828662163",
+      "loaded": "0",
+      "reserve": "78",
+      "pending": "0",
+      "stationary_holds": "0"
+    },
+    {
+      "from": "4",
+      "to": "5",
+      "serial": "1",
+      "angle": "0.828662163",
+      "loaded": "0",
+      "reserve": "78",
+      "pending": "0",
+      "stationary_holds": "0"
+    },
+    {
+      "from": "5",
+      "to": "6",
+      "serial": "1",
+      "angle": "0.828662163",
+      "loaded": "0",
+      "reserve": "78",
+      "pending": "0",
+      "stationary_holds": "0"
+    },
+    {
+      "from": "6",
+      "to": "5",
+      "serial": "1",
+      "angle": "0.828662163",
+      "loaded": "0",
+      "reserve": "78",
+      "pending": "0",
+      "stationary_holds": "0"
+    }
+  ],
+  "foreground_samples": 2479,
+  "cloak_samples": 4332,
+  "foreground_violations": [],
+  "cloak_violations": [],
+  "media": {
+    "frames": 677,
+    "errors": [],
+    "encoded": true,
+    "review": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-45736-media-review\\prepared.json",
+    "full_fit_accepted": false
+  },
+  "verified_archive": [
+    {
+      "source": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\tools\\playground\\build-hb-cloak-1110-233210\\playground-45736.log",
+      "archive": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-45736-text\\playground-45736.log",
+      "sha256": "0baeab70286a4b78c6604754da678ef9d04695790b2cb2913f1201cf7d7229c1"
+    },
+    {
+      "source": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\hb-cloak-1110-233210\\actions\\menu-firstperson-45736-233241\\result.json",
+      "archive": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-45736-text\\result.json",
+      "sha256": "821ef079bd4387246f5f0e52a8c623a304fca3951cae9dfa1ca25daa37899a70"
+    },
+    {
+      "source": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\hb-cloak-1110-233210\\actions\\menu-firstperson-45736-233241\\equipment-chain.json",
+      "archive": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-45736-text\\equipment-chain.json",
+      "sha256": "54dd70d5afa88f8e3355ba9d258d516969361c4613edd2104aa08204b7b80bc3"
+    },
+    {
+      "source": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\hb-cloak-1110-233210\\actions\\menu-firstperson-45736-233241\\hammerburst-core.json",
+      "archive": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-45736-text\\hammerburst-core.json",
+      "sha256": "2827c5d75f503c32f4ee2be1d2e3fcd5a3a541d130eb4bfb2bf4a10539225966"
+    },
+    {
+      "source": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\hb-cloak-1110-233210\\actions\\menu-firstperson-45736-233241\\hammerburst-empty-reload.json",
+      "archive": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-45736-text\\hammerburst-empty-reload.json",
+      "sha256": "c23c470af156d60281af4bd0f23e12913bf5326a40f49b2b8ce70d30dd85318c"
+    },
+    {
+      "source": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\hb-cloak-1110-233210\\actions\\menu-firstperson-45736-233241\\ordinary_empty_replacement\\hammerburst-replacement.json",
+      "archive": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-45736-text\\hammerburst-replacement.json",
+      "sha256": "c5c9155fa1b45f90a5312697d1b1fdbd1e04b40b3358a09aabc6948de037f00a"
+    },
+    {
+      "source": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\runtime\\continuous-stereo-45736-20261110-233237-a4188592.json",
+      "archive": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-45736-text\\continuous-stereo-45736-20261110-233237-a4188592.json",
+      "sha256": "47d5cc43ff0f1c647c6ce5fb9658f8cfe989b673af1d2371f06c3cbd506b921c"
+    },
+    {
+      "source": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\hb-cloak-1110-233210\\isolated-done.json",
+      "archive": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-45736-text\\isolated-done.json",
+      "sha256": "283ec01454add73da9d7dc3d51a2f241f008239fb70c8c6351caed26a2c0f044"
+    },
+    {
+      "source": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\hb-cloak-1110-233210\\launcher-session.7c6605af28bc44438b33a214a8b7e7ec.audio.jsonl",
+      "archive": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-45736-text\\launcher-session.7c6605af28bc44438b33a214a8b7e7ec.audio.jsonl",
+      "sha256": "2d66c16ea566229229f200c2c1454e3db677406c270fcd735fd296dbf1f1ca46"
+    }
+  ],
+  "gameplay_accepted": false,
+  "physical_headset_accepted": false,
+  "interpretation": "Current candidate completed core6 and12 drain bursts72->0/R78 plus empty-trigger veto. Replacement acquired to stage6; same Frame710 read-consumer withdrawal reason7 difference5 (request_ammo and incumbent), then Frame712 expiry. No seating to7 or return-fire. Retained stale-debt wait branch was not observed; no causal repair claim."
+}
