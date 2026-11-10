@@ -12,6 +12,7 @@ cover_physics_query_live::Session<> session;
 enum class QueryAdmission:unsigned {idle,admission,cover,guard,alias,session,returned};
 thread_local QueryAdmission query_admission{};
 thread_local bool query_session_entered{};
+thread_local gears_cover_query_guard::Witness query_owner_guard;
 bool sphere_probe_requested{};
 bool path_probe_requested{};
 struct SphereObservation {
@@ -21,6 +22,7 @@ struct SphereObservation {
     QueryAdmission admission{};bool session_entered{};
     cover_physics_query_live::Observation progress{};
     uint64_t original_started_before{},original_returned_before{};
+    gears_cover_query_guard::Witness owner_guard{};
 };
 std::mutex sphere_probe_mutex;SphereObservation sphere_probe;
 struct PathObservation {
@@ -98,6 +100,9 @@ void summary(FILE* f){if(!f)return;
     fprintf(f,"cover_path_probe_outer_stage=%u cover_path_probe_session_entered=%u cover_path_probe_session_stage=%u cover_path_probe_session_detail=%u cover_path_probe_engine_observed=%u cover_path_probe_engine_stage=%u cover_path_probe_engine_source_code=%u cover_path_probe_engine_exception=%u cover_path_probe_original_started_before=%llu cover_path_probe_original_started_after=%llu cover_path_probe_original_returned_before=%llu cover_path_probe_original_returned_after=%llu cover_path_probe_layout_step=%u cover_path_probe_layout_member_identities=%u cover_path_probe_layout_member_capacity=%u ",
         unsigned(p.admission),unsigned(p.session_entered),unsigned(p.progress.stage),p.progress.detail,unsigned(p.progress.engine.supported),unsigned(p.progress.engine.stage),p.progress.engine.source_code,unsigned(p.progress.engine.exception),
         p.original_started_before,p.progress.engine.original_started,p.original_returned_before,p.progress.engine.original_returned,unsigned(p.progress.layout.step),p.progress.layout.member_identities,unsigned(p.progress.layout.member_capacity));
+    fprintf(f,"cover_path_probe_owner_guard=%u,%u,%u,%u,%u cover_path_probe_session_guard=%u,%u,%u,%u,%u ",
+        p.owner_guard.calls,p.owner_guard.failed_call,p.owner_guard.stage,p.owner_guard.detail,p.owner_guard.extra,
+        p.progress.guard.calls,p.progress.guard.failed_call,p.progress.guard.stage,p.progress.guard.detail,p.progress.guard.extra);
     // The finished row is published under the mutex after the packet write.
     // The one-shot packet is immutable thereafter; no game read occurs here.
     if(p.finished&&p.code==q::Code::queried){
@@ -114,6 +119,9 @@ void summary(FILE* f){if(!f)return;
 }
 template<class Shape,class Output,class Invoke> q::Code query(Entry const& entry,Core const& source,Shape const& shape,Output& output,Invoke invoke)noexcept{
     query_admission=QueryAdmission::admission;query_session_entered=false;
+    gears_cover_query_guard::Witness owner_witness{};
+    struct PublishGuard {gears_cover_query_guard::Witness const& value;
+        ~PublishGuard(){query_owner_guard=value;}} publish_guard{owner_witness};
     n::Call call;auto& s=n::state;
     if(!session.enabled()||GetCurrentThreadId()!=n::owner_thread.load()||!n::enabled||n::stopping.load()||entry.kind||!entry.selected||
        !s.captured||s.prepared||s.kernel.pending()||!n::same_entry(entry)||!source.cover_type||
@@ -125,16 +133,27 @@ template<class Shape,class Output,class Invoke> q::Code query(Entry const& entry
     if(!cover_context_live::sample_current(s.context.actor,cover)||cover.type!=source.cover_type||cover.slot!=source.cover_slot||
        !gears_weapon_hand::same(rig_tracking_live::object(cover.link),source.cover_link))return q::Code::source;
     auto guard=[&](){
+        using Gate=gears_cover_query_guard::OwnerStage;
+        owner_witness.enter();
+        auto reject=[&](Gate stage,unsigned detail=0,unsigned extra=0){return owner_witness.reject(unsigned(stage),detail,extra);};
         gears_cover_pose_phase::Request request{};request.owner=s.context.owner;
         auto reader=[](void* out,void const* address,size_t size){return n::native::read_memory(out,reinterpret_cast<uintptr_t>(address),size);};
         gears_cover_pose_phase::Metadata current{};
         cover_context_live::CurrentKey current_cover{};
-        return session.enabled()&&s.captured&&!s.prepared&&!s.kernel.pending()&&n::same_entry(entry)&&
-            !std::memcmp(&expected_source,&s.context.source,sizeof source)&&!std::memcmp(&expected_source,&source,sizeof source)&&
-            s.context.current(n::tx::Stage::prepare)&&cover_context_live::sample_current(s.context.actor,current_cover)&&
-            cover_context_live::same(cover,current_cover)&&
-            gears_cover_pose_phase::metadata(reader,request,current)&&gears_cover_pose_phase::metadata_equal(metadata,current)&&
-            gears_cover_pose_phase::metadata_equal(metadata,s.backend.metadata());};
+        if(!session.enabled())return reject(Gate::session);
+        if(!s.captured)return reject(Gate::captured);
+        if(s.prepared)return reject(Gate::prepared);
+        if(s.kernel.pending())return reject(Gate::pending);
+        if(!n::same_entry(entry))return reject(Gate::entry);
+        if(std::memcmp(&expected_source,&s.context.source,sizeof source))return reject(Gate::context_source);
+        if(std::memcmp(&expected_source,&source,sizeof source))return reject(Gate::input_source);
+        if(!s.context.current(n::tx::Stage::prepare))return reject(Gate::context,unsigned(s.context.rejection()),s.context.rejection_detail());
+        if(!cover_context_live::sample_current(s.context.actor,current_cover))return reject(Gate::cover_read);
+        if(!cover_context_live::same(cover,current_cover))return reject(Gate::cover_match);
+        if(!gears_cover_pose_phase::metadata(reader,request,current))return reject(Gate::metadata_read);
+        if(!gears_cover_pose_phase::metadata_equal(metadata,current))return reject(Gate::metadata_match);
+        if(!gears_cover_pose_phase::metadata_equal(metadata,s.backend.metadata()))return reject(Gate::backend_metadata_match);
+        return true;};
     query_admission=QueryAdmission::guard;
     if(!guard())return q::Code::source;
     // No binding/stereo/session lock is held across this original operation.
@@ -215,6 +234,7 @@ void observe_path_once(Entry const& e,Core const& source,q::Vector const& eye)no
         else common.code=sweep_capsule_path(e,source,row.shape,row.delta,
             gears_cover_capsule_path::Policy{2,double(centimetre)*.001},q::StreamLimits{32,8},path_probe_packet);
         common.admission=query_admission;common.session_entered=query_session_entered;
+        common.owner_guard=query_owner_guard;
         if(common.session_entered)common.progress=session.observation();else common.progress.engine=before;
         if(common.code==q::Code::queried){auto const& packet=path_probe_packet;
             row.segments=packet.plan.count;row.hits=packet.collected.raw.hit_count;row.reports=packet.collected.raw.reports;

@@ -1,0 +1,34 @@
+{
+  "classification": "progress",
+  "scope": "first refusal witnesses only; all original guard checks and order preserved",
+  "native_sha256": "10880b1c1e259adf56a09ad238efe4a35d070d98f2a6dec5ff5c575dff066ff5",
+  "project_dependencies": 407,
+  "external_worktree_dependencies": [],
+  "flags_unchanged": true,
+  "checks": {
+    "cover_query_guard_live": 23,
+    "cover_physics_query_live": 105,
+    "cover_physics_capsule_path_live": 391,
+    "cover_physics_overlap_query_live": 53,
+    "cover_physics_c0_off": 51
+  },
+  "total_checks": 623,
+  "parser_checks": 9,
+  "failures": 0,
+  "source_sha256": {
+    "cover_physics_c0_live.inl": "b1e95c4d5c9182f644a3c5a5149bebb2e2ee55b8af9053592af35eb2e2f4e718",
+    "cover_physics_query_live.inl": "fad36a381dbb003c66fb136b00b3c7cfbe32ed0b989c23ce15e5c251dc5550ae",
+    "cover_query_guard_observation.h": "2220a69d52367949a746eb27de2e580b9f87eff2406bf3b11d4c7ca8e20b94ba"
+  },
+  "archive": {
+    "path": "J:\\gearsVr\\analysis\\cover-disk-recovery-20261110-r128\\instances\\cover-1111-r136-cloak-path-hashes.json",
+    "sha256": "1215404e0ef6678ab279b42680d4c79c377764460983034b14e3a66cebedd855",
+    "bytes": 998890209,
+    "all_files_hash_verified": true
+  },
+  "staged": false,
+  "game_started": false,
+  "original_query_called": false,
+  "movement_authorized": false,
+  "headset_accepted": false
+}

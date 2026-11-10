@@ -2225,3 +2225,17 @@ path requested/attempted/finished均1，code6=changed；Session engine5/detail6�
 251张实际私有双眼投影、录制错误0/线程joined、编码0；13页完整跨度overview和5张原始phase图全部亲自查看。头肩/躯干仍遮挡双眼大块区域，visualFAIL。phase完整请求/观察括号内各7可选帧，不称同C0/GPU消费。正常stop，Native/入口/pad恢复、fire_disable0/hand_stop5/drainedtrue、XR0/launcher0；精确game/owner/XR/worker均不在，无强杀。CLOAK618次失败0，静音验证248/initially_muted1/verify_failed0/target_shared_rejected0；启动disk_before7454486528≥4GiB。新prebirth分类在本次为false，真实启动清理分支保持；不拿此运行冒充跳过等待特殊分支实测。
 
 原报告原样复制并按精确SHA解释，解析器新增本次source_repeat/guard拒绝案例后10项合成检查0。证据path-probe-r134/runtime-r136/{session-original,path-probe,pose-probe,media-review,closeout}.json。下一步记录来源guard首个具体拒绝谓词，定向修复后再查；不重跑未改Sphere或同一失败路径，不放宽原始时效/身份/释放。完整身体/世界覆盖、唯一C0提交及同版视图/命中/枪口、遮挡与全部CV01–24/AC01–22仍未完成。工程25%、公共v71和固定手动入口保持，目标active。
+
+## r137：来源guard首个拒绝谓词见证已编译（2026-11-11，启动前保存）
+
+上轮r136实际source_repeat/guard拒绝和正常清理已保存20f47ea4。本轮仅分解原有同序短路判定并记录首失败，不增加游戏读取、时间采样、锁、hook或writer，不改变原时间/身份/释放/metadata/当前来源条件。外层OwnerStage记录session/captured/prepared/pending/entry、两份source、ActualContext.current及其原rejection/rejection_detail、cover读/同一键、metadata读/同一及backend metadata。每次query用局部小Witness保留首拒绝，返回时发布到原线程本地诊断，嵌套调用不会覆盖外层局部记录。
+
+SessionStage分别记录stopped、physics/collider/component读取与相同快照、query_source/asset/collider/component匹配，typed读取失败保留原Code。每个已接纳操作在busy检查后清空见证，重入拒绝不覆盖外层；后续拒绝不覆盖首项。最终小Observation随现有一次path诊断回执发布，没有移动/占用许可。
+
+实际typed reader/Session离线五组623检查0：guard23、Session105、path391、overlapSession53、C0关闭51；新检查覆盖首项锁定、跨操作重置、owner拒绝/原始source错配/停止的具体分支和调用者输出保持。模块/原dispatch为Host替身，无游戏或原查询执行。见证解析器9案例0。
+
+在r134冻结源上仅叠cover_physics_c0_live.inl、cover_physics_query_live.inl、cover_query_guard_observation.h，Native10880b1c1e259adf56a09ad238efe4a35d070d98f2a6dec5ff5c575dff066ff5完整编译链接0；407项项目依赖、工作树外部依赖0、开关不变。prepare增加r137精确来源选择，保持独立path模式准入。尚未stage或启动游戏，下一次只定向复查此前路径的首个guard拒绝。
+
+确认r136精确game/owner/XR/worker全不在及normal_cleanup后，仅将本方533文件/998890209字节录像实例完整归档J盘，前后全文件SHA一致、原C路径junction保持。C空闲恢复10776584192；未动其他实例。证据guard-witness-r137/{verification,native-build-result,native-source-manifest}.json与checks-v1/，归档manifest为J盘cover-1111-r136-cloak-path-hashes.json。
+
+完整身体几何/当前世界覆盖、实际路径/终点原调用、唯一C0提交及同版视图/命中/枪口、自身头肩遮挡和CV01–24/AC01–22仍未完成，工程25%、公共v71与固定入口不变，目标active。

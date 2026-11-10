@@ -2,6 +2,7 @@
 #define GEARS_COVER_PHYSICS_QUERY_LIVE_INCLUDED
 #include "cover_physx_query.h"
 #include "cover_physx_capsule_path_observation.h"
+#include "cover_query_guard_observation.h"
 #include "cover_physics_roles_live.inl"
 #include "cover_collider_roles_live.inl"
 #include "cover_component_roles_live.inl"
@@ -14,7 +15,7 @@ namespace collider_roles=cover_collider_roles_live;
 namespace component_roles=cover_component_roles_live;
 namespace path=gears_cover_capsule_path;
 enum class Stage:unsigned {idle,geometry,physics_roles,collider_roles,component_roles,engine,closing,complete};
-struct Observation {Stage stage{};unsigned detail{};q::QueryProgress engine{};roles::LayoutObservation layout{};};
+struct Observation {Stage stage{};unsigned detail{};q::QueryProgress engine{};roles::LayoutObservation layout{};gears_cover_query_guard::Witness guard{};};
 #if defined(GEARS_COVER_BODY_PROTOTYPE) && GEARS_COVER_BODY_PROTOTYPE
 template<class Engine=q::Queries> class Session {
     Engine engine_{};roles::Workspace work_{};roles::Snapshot before_{},after_{};
@@ -25,6 +26,7 @@ template<class Engine=q::Queries> class Session {
     q::AllOverlapOwners overlap_owner_result_{};
     path::Workspace path_work_{};path::RawPath path_result_{};
     Stage stage_{};unsigned detail_{};
+    gears_cover_query_guard::Witness guard_witness_{};
     struct NoLocalResult {};
     std::atomic<bool> configured_{},enabled_{},stopped_{},busy_{},closed_{true};
     std::atomic<DWORD> worker_{};
@@ -34,22 +36,37 @@ template<class Engine=q::Queries> class Session {
         gears_cover_pose_phase::Metadata const& metadata;Guard& owner;
         gears_cover_physx_collider::Source collider_source{};
         gears_cover_physx_components::Source const* component_source{};
-        bool components_current(){if constexpr(WithCollider)return !session.stopped_.load()&&
-            component_roles::sample(actor,owner,session.component_work_,session.component_after_)==roles::Code::current&&
-            component_roles::same(session.component_before_,session.component_after_);return true;}
+        using Gate=gears_cover_query_guard::SessionStage;
+        bool reject(Gate gate,unsigned detail=0){return session.guard_witness_.reject(unsigned(gate),detail);}
+        bool components_current(){if constexpr(WithCollider){session.guard_witness_.enter();
+            if(session.stopped_.load())return reject(Gate::stopped);
+            const auto code=component_roles::sample(actor,owner,session.component_work_,session.component_after_);
+            if(code!=roles::Code::current)return reject(Gate::component_read,unsigned(code));
+            if(!component_roles::same(session.component_before_,session.component_after_))return reject(Gate::component_match);
+        }return true;}
         bool operator()(){
-            if(session.stopped_.load()||roles::sample(actor,metadata,owner,session.work_,session.after_)!=roles::Code::current||
-               !roles::same(session.before_,session.after_))return false;
-            if constexpr(WithCollider)return collider_roles::sample(actor,owner,session.collider_work_,session.collider_after_)==roles::Code::current&&
-                collider_roles::same(session.collider_before_,session.collider_after_);
+            session.guard_witness_.enter();
+            if(session.stopped_.load())return reject(Gate::stopped);
+            const auto code=roles::sample(actor,metadata,owner,session.work_,session.after_);
+            if(code!=roles::Code::current)return reject(Gate::physics_read,unsigned(code));
+            if(!roles::same(session.before_,session.after_))return reject(Gate::physics_match);
+            if constexpr(WithCollider){
+                const auto collider=collider_roles::sample(actor,owner,session.collider_work_,session.collider_after_);
+                if(collider!=roles::Code::current)return reject(Gate::collider_read,unsigned(collider));
+                if(!collider_roles::same(session.collider_before_,session.collider_after_))return reject(Gate::collider_match);
+            }
             return true;
         }
-        bool operator()(q::source::Snapshot const& raw){return (*this)()&&roles::matches_query_source(session.before_,raw);}
-        bool operator()(gears_cover_physx_asset_actors::Snapshot const& raw){return (*this)()&&roles::matches_asset_actors(session.before_,raw);}
+        bool operator()(q::source::Snapshot const& raw){return (*this)()&&
+            (roles::matches_query_source(session.before_,raw)||reject(Gate::query_source_match));}
+        bool operator()(gears_cover_physx_asset_actors::Snapshot const& raw){return (*this)()&&
+            (roles::matches_asset_actors(session.before_,raw)||reject(Gate::asset_match));}
         bool operator()(gears_cover_physx_collider::Snapshot const& raw){return WithCollider&&(*this)()&&
-            roles::matches_query_source(session.before_,raw.query_source)&&collider_roles::matches(session.collider_before_,raw);}
+            (roles::matches_query_source(session.before_,raw.query_source)||reject(Gate::query_source_match))&&
+            (collider_roles::matches(session.collider_before_,raw)||reject(Gate::collider_source_match));}
         bool operator()(gears_cover_physx_components::Snapshot const& raw){return WithCollider&&(*this)()&&components_current()&&
-            roles::matches_query_source(session.before_,raw.query_source)&&component_roles::matches(session.component_before_,raw);}
+            (roles::matches_query_source(session.before_,raw.query_source)||reject(Gate::query_source_match))&&
+            (component_roles::matches(session.component_before_,raw)||reject(Gate::component_source_match));}
     };
     template<class Shape,class Read,class Guard,class Output,class Invoke> q::Code execute(
         weapon_hand_scene_binding::Binding const& actor,gears_cover_pose_phase::Metadata const& metadata,
@@ -58,7 +75,7 @@ template<class Engine=q::Queries> class Session {
         if(q::source::aliases(&output,sizeof output,this,sizeof *this)||q::source::aliases(&output,sizeof output,&actor,sizeof actor)||
            q::source::aliases(&output,sizeof output,&metadata,sizeof metadata)||q::source::aliases(&output,sizeof output,&shape,sizeof shape))return q::Code::request;
         bool expected=false;if(!busy_.compare_exchange_strong(expected,true))return q::Code::reentrant;Finish finish{busy_};
-        stage_=Stage::geometry;detail_=0;work_.witness={};
+        stage_=Stage::geometry;detail_=0;work_.witness={};guard_witness_={};
         if(stopped_.load())return q::Code::unavailable;
         const auto owner=actor;const auto source=metadata;const Shape geometry=shape;
         if(!q::detail::valid(geometry))return q::Code::request;
@@ -190,7 +207,7 @@ public:
     unsigned pending_count()const noexcept{return unsigned(busy_.load()||engine_.pending()||!closed_.load());}
     bool uncertain()const noexcept{return engine_.uncertain();}
     // Same serialized owner only; this is not a cross-thread publication.
-    Observation observation()const noexcept{return {stage_,detail_,engine_.observation(),roles::observation(work_)};}
+    Observation observation()const noexcept{return {stage_,detail_,engine_.observation(),roles::observation(work_),guard_witness_};}
     bool enabled()const noexcept{return enabled_.load()&&!stopped_.load();}
     template<class Shape,class Read,class Guard> q::Code overlap(weapon_hand_scene_binding::Binding const& actor,
         gears_cover_pose_phase::Metadata const& metadata,Shape const& shape,Read read,Guard guard,q::Overlap& output)noexcept{
