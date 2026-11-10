@@ -58,7 +58,9 @@ def main():
     env = os.environ.copy()
     for key in ('GEARSVR_LANCER_INTEGRATED_PREPARED', 'GEARSVR_LANCER_INTEGRATED_CHECK', 'GEARSVR_STARTUP_REPLAY_ACTIONS'):
         env.pop(key, None)
-    env.update(GEARSVR_COVER_SPHERE_PROBE='1', GEARSVR_AUTHORED_EYE_TRACE='1', GEARSVR_LANCER_REVIEW_VOLUMES='0')
+    env.update(GEARSVR_COVER_SPHERE_PROBE='1', GEARSVR_AUTHORED_EYE_TRACE='1', GEARSVR_LANCER_REVIEW_VOLUMES='0',
+               GEARSVR_QUIET_NATIVE_FOREGROUND='1', GEARSVR_TEST_WINDOWS_BEHIND='1', GEARSVR_TEST_MUTE_GAME='1',
+               GEARSVR_TEST_TINY_OUTPUT_OBSERVE_ONLY='1', XR_SIMULATOR_NO_ACTIVATE='1')
     result = dict(name=NAME, memory_before=memory, started_at_ns=time.time_ns(),
                   source=1, forced_termination=False, gameplay_accepted=False, headset_accepted=False)
     result['foreground_observations'] = dict(samples=0, owned_activation=False)

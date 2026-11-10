@@ -1,0 +1,863 @@
+{
+  "evidence_id": "ev_1cf61c151e9e630bf380be1ab5c6dca9c93a4ed4209863e48b1410e56ea09150",
+  "subject": {
+    "name": "J:\\gearsVr\\Gears.of.War.Reloaded.v1.0.1.3816947-P2P\\Gears of War Reloaded\\Binaries_x64\\PhysXCore.dll",
+    "digest": {
+      "sha256": "22051aa75312344a824a5f7e29c6375fec3a90df50cbeff6152f0e6c3afddd48"
+    },
+    "format": "pe",
+    "architecture": "x86_64",
+    "local_path": "J:\\gearsVr\\Gears.of.War.Reloaded.v1.0.1.3816947-P2P\\Gears of War Reloaded\\Binaries_x64\\PhysXCore.dll"
+  },
+  "analysis_profile": {
+    "provider": {
+      "id": "ghidra",
+      "name": "Ghidra",
+      "version": "12.1.4"
+    },
+    "parameters": {
+      "target_kind": "executable",
+      "target_format": "pe",
+      "executable_role": "shared-library",
+      "managed": false,
+      "native_aot_metadata": {
+        "contract_revision": "rtr-9.1-x64-pe-read-only-v3",
+        "source_bytes": 134217728,
+        "work_units": 67108864,
+        "working_memory_bytes": 67108864,
+        "report_bytes": 4194304
+      },
+      "architecture": "x86_64",
+      "available_architectures": [
+        "x86_64"
+      ],
+      "import_mode": "ephemeral-source-immutable",
+      "annotation_policy": "atomic-function-entry-metadata-v1",
+      "load_image_observations": "source-mappings-entry-context-v2",
+      "function_body_evidence": "complete-inclusive-ranges-v1",
+      "function_references": "complete-body-and-entry-reference-manager-v2",
+      "string_inventory_evidence": "defined-data-coverage-v1",
+      "location_resolution": "explicit-address-exact-entry-symbol-first-v3",
+      "instruction_flow_evidence": "decoded-return-pcode-v1",
+      "function_boundary_observations": "ghidra-terminal-call-limitations-v1",
+      "no_return_repair": "disabled-windows-p0",
+      "process_launch": "official-headless-script-v1",
+      "jump_table_evidence": "typed-case-default-blocks-v1",
+      "decompiler_jump_loads": true,
+      "loader": "auto-from-header",
+      "language_id": "auto-from-header",
+      "compiler_spec_id": "auto-default",
+      "analyzer_preset": "ghidra-default"
+    },
+    "digest": "90e13888e18b7d587414bb259f5e3dc44a7c9293bdf290ad8c459be524747d9f"
+  },
+  "operation": "analyze_function",
+  "parameters": {
+    "procedure": "0x1800cc030"
+  },
+  "raw_result": {
+    "procedure": {
+      "address": "0x1800cc030",
+      "name": "FUN_1800cc030",
+      "classification": {
+        "external": false,
+        "thunk": false,
+        "thunk_target": null,
+        "provenance": "ghidra-function-manager"
+      },
+      "body": {
+        "available": true,
+        "provenance": "ghidra-function-body-address-set",
+        "ranges": [
+          {
+            "start": "0x1800cc030",
+            "end": "0x1800cc811"
+          }
+        ],
+        "total_bytes": 2018,
+        "span_bytes": 2018,
+        "non_contiguous": false,
+        "contains_entry": true
+      },
+      "signature": "undefined FUN_1800cc030()",
+      "locals": [
+        {
+          "description": "undefined8 local_10 @ Stack[-0x10]:8",
+          "provenance": "ghidra-function-database"
+        },
+        {
+          "description": "undefined8 local_18 @ Stack[-0x18]:8",
+          "provenance": "ghidra-function-database"
+        },
+        {
+          "description": "undefined8 local_20 @ Stack[-0x20]:8",
+          "provenance": "ghidra-function-database"
+        },
+        {
+          "description": "undefined local_238 @ Stack[-0x238]:1",
+          "provenance": "ghidra-function-database"
+        },
+        {
+          "description": "undefined8 local_28 @ Stack[-0x28]:8",
+          "provenance": "ghidra-function-database"
+        },
+        {
+          "description": "undefined8 local_30 @ Stack[-0x30]:8",
+          "provenance": "ghidra-function-database"
+        },
+        {
+          "description": "undefined8 local_38 @ Stack[-0x38]:8",
+          "provenance": "ghidra-function-database"
+        },
+        {
+          "description": "undefined4 local_3a4 @ Stack[-0x3a4]:4",
+          "provenance": "ghidra-function-database"
+        },
+        {
+          "description": "undefined4 local_3a8 @ Stack[-0x3a8]:4",
+          "provenance": "ghidra-function-database"
+        },
+        {
+          "description": "undefined4 local_3ac @ Stack[-0x3ac]:4",
+          "provenance": "ghidra-function-database"
+        },
+        {
+          "description": "undefined4 local_3b0 @ Stack[-0x3b0]:4",
+          "provenance": "ghidra-function-database"
+        },
+        {
+          "description": "undefined4 local_3b4 @ Stack[-0x3b4]:4",
+          "provenance": "ghidra-function-database"
+        },
+        {
+          "description": "undefined4 local_3b8 @ Stack[-0x3b8]:4",
+          "provenance": "ghidra-function-database"
+        },
+        {
+          "description": "undefined4 local_3bc @ Stack[-0x3bc]:4",
+          "provenance": "ghidra-function-database"
+        },
+        {
+          "description": "undefined4 local_3c0 @ Stack[-0x3c0]:4",
+          "provenance": "ghidra-function-database"
+        },
+        {
+          "description": "undefined4 local_3c4 @ Stack[-0x3c4]:4",
+          "provenance": "ghidra-function-database"
+        },
+        {
+          "description": "undefined4 local_3c8 @ Stack[-0x3c8]:4",
+          "provenance": "ghidra-function-database"
+        },
+        {
+          "description": "undefined4 local_3cc @ Stack[-0x3cc]:4",
+          "provenance": "ghidra-function-database"
+        },
+        {
+          "description": "undefined4 local_3d0 @ Stack[-0x3d0]:4",
+          "provenance": "ghidra-function-database"
+        },
+        {
+          "description": "undefined4 local_3d4 @ Stack[-0x3d4]:4",
+          "provenance": "ghidra-function-database"
+        },
+        {
+          "description": "undefined4 local_3d8 @ Stack[-0x3d8]:4",
+          "provenance": "ghidra-function-database"
+        },
+        {
+          "description": "undefined4 local_3dc @ Stack[-0x3dc]:4",
+          "provenance": "ghidra-function-database"
+        },
+        {
+          "description": "undefined4 local_3e0 @ Stack[-0x3e0]:4",
+          "provenance": "ghidra-function-database"
+        },
+        {
+          "description": "undefined4 local_3e4 @ Stack[-0x3e4]:4",
+          "provenance": "ghidra-function-database"
+        },
+        {
+          "description": "undefined4 local_3e8 @ Stack[-0x3e8]:4",
+          "provenance": "ghidra-function-database"
+        },
+        {
+          "description": "undefined local_448 @ Stack[-0x448]:1",
+          "provenance": "ghidra-function-database"
+        },
+        {
+          "description": "undefined1[16] local_48 @ Stack[-0x48]:16",
+          "provenance": "ghidra-function-database"
+        },
+        {
+          "description": "undefined local_480 @ Stack[-0x480]:1",
+          "provenance": "ghidra-function-database"
+        },
+        {
+          "description": "undefined8 local_488 @ Stack[-0x488]:8",
+          "provenance": "ghidra-function-database"
+        },
+        {
+          "description": "undefined8 local_490 @ Stack[-0x490]:8",
+          "provenance": "ghidra-function-database"
+        },
+        {
+          "description": "undefined8 local_498 @ Stack[-0x498]:8",
+          "provenance": "ghidra-function-database"
+        },
+        {
+          "description": "undefined8 local_4a0 @ Stack[-0x4a0]:8",
+          "provenance": "ghidra-function-database"
+        },
+        {
+          "description": "undefined8 local_4a8 @ Stack[-0x4a8]:8",
+          "provenance": "ghidra-function-database"
+        },
+        {
+          "description": "undefined8 local_4b0 @ Stack[-0x4b0]:8",
+          "provenance": "ghidra-function-database"
+        },
+        {
+          "description": "undefined8 local_4b8 @ Stack[-0x4b8]:8",
+          "provenance": "ghidra-function-database"
+        },
+        {
+          "description": "undefined4 local_4c0 @ Stack[-0x4c0]:4",
+          "provenance": "ghidra-function-database"
+        },
+        {
+          "description": "undefined4 local_4c4 @ Stack[-0x4c4]:4",
+          "provenance": "ghidra-function-database"
+        },
+        {
+          "description": "undefined4 local_4c8 @ Stack[-0x4c8]:4",
+          "provenance": "ghidra-function-database"
+        },
+        {
+          "description": "undefined4 local_4cc @ Stack[-0x4cc]:4",
+          "provenance": "ghidra-function-database"
+        },
+        {
+          "description": "undefined4 local_4d0 @ Stack[-0x4d0]:4",
+          "provenance": "ghidra-function-database"
+        },
+        {
+          "description": "undefined4 local_4d4 @ Stack[-0x4d4]:4",
+          "provenance": "ghidra-function-database"
+        },
+        {
+          "description": "undefined4 local_4d8 @ Stack[-0x4d8]:4",
+          "provenance": "ghidra-function-database"
+        },
+        {
+          "description": "undefined8 local_4e8 @ Stack[-0x4e8]:8",
+          "provenance": "ghidra-function-database"
+        },
+        {
+          "description": "undefined8 local_4f0 @ Stack[-0x4f0]:8",
+          "provenance": "ghidra-function-database"
+        },
+        {
+          "description": "undefined8 local_4f8 @ Stack[-0x4f8]:8",
+          "provenance": "ghidra-function-database"
+        },
+        {
+          "description": "undefined1[16] local_58 @ Stack[-0x58]:16",
+          "provenance": "ghidra-function-database"
+        },
+        {
+          "description": "undefined1[16] local_68 @ Stack[-0x68]:16",
+          "provenance": "ghidra-function-database"
+        },
+        {
+          "description": "undefined1[16] local_78 @ Stack[-0x78]:16",
+          "provenance": "ghidra-function-database"
+        },
+        {
+          "description": "undefined8 local_8 @ Stack[-0x8]:8",
+          "provenance": "ghidra-function-database"
+        },
+        {
+          "description": "undefined1[16] local_88 @ Stack[-0x88]:16",
+          "provenance": "ghidra-function-database"
+        },
+        {
+          "description": "undefined1[16] local_98 @ Stack[-0x98]:16",
+          "provenance": "ghidra-function-database"
+        },
+        {
+          "description": "undefined1[16] local_a8 @ Stack[-0xa8]:16",
+          "provenance": "ghidra-function-database"
+        },
+        {
+          "description": "undefined1[16] local_b8 @ Stack[-0xb8]:16",
+          "provenance": "ghidra-function-database"
+        },
+        {
+          "description": "undefined1[16] local_c8 @ Stack[-0xc8]:16",
+          "provenance": "ghidra-function-database"
+        },
+        {
+          "description": "undefined1[16] local_d8 @ Stack[-0xd8]:16",
+          "provenance": "ghidra-function-database"
+        },
+        {
+          "description": "undefined8 local_e8 @ Stack[-0xe8]:8",
+          "provenance": "ghidra-function-database"
+        },
+        {
+          "description": "undefined8 local_res10 @ Stack[0x10]:8",
+          "provenance": "ghidra-function-database"
+        }
+      ]
+    },
+    "pseudocode": "\r\n/* WARNING: Function: __security_check_cookie replaced with injection: security_check_cookie */\r\n\r\nvoid FUN_1800cc030(undefined8 param_1,float *param_2,undefined8 param_3,undefined8 param_4,\r\n                  undefined8 param_5)\r\n\r\n{\r\n  float fVar1;\r\n  float fVar2;\r\n  float fVar3;\r\n  float fVar4;\r\n  float fVar5;\r\n  float fVar6;\r\n  float fVar7;\r\n  float fVar8;\r\n  float fVar9;\r\n  float fVar10;\r\n  uint uVar11;\r\n  ulonglong uVar12;\r\n  ulonglong uVar13;\r\n  ulonglong uVar14;\r\n  float *pfVar15;\r\n  uint uVar16;\r\n  float *pfVar17;\r\n  float fVar18;\r\n  float fVar19;\r\n  float fVar20;\r\n  float fVar21;\r\n  float fVar22;\r\n  float fVar23;\r\n  float fVar24;\r\n  undefined8 unaff_XMM8_Qa;\r\n  undefined8 unaff_XMM8_Qb;\r\n  undefined8 unaff_XMM9_Qa;\r\n  undefined8 unaff_XMM9_Qb;\r\n  undefined8 unaff_XMM10_Qa;\r\n  undefined8 unaff_XMM10_Qb;\r\n  undefined8 unaff_XMM11_Qa;\r\n  undefined8 unaff_XMM11_Qb;\r\n  undefined8 unaff_XMM12_Qa;\r\n  undefined8 unaff_XMM12_Qb;\r\n  undefined8 unaff_XMM13_Qa;\r\n  undefined8 unaff_XMM13_Qb;\r\n  undefined8 unaff_XMM14_Qa;\r\n  undefined8 unaff_XMM14_Qb;\r\n  undefined8 unaff_XMM15_Qa;\r\n  undefined8 unaff_XMM15_Qb;\r\n  undefined1 auStack_518 [32];\r\n  undefined8 local_4f8;\r\n  undefined1 *local_4f0;\r\n  undefined8 local_4e8;\r\n  float local_4d8;\r\n  float local_4d4;\r\n  float local_4d0;\r\n  float local_4cc;\r\n  float local_4c8;\r\n  float local_4c4;\r\n  float local_4c0;\r\n  float *local_4b8;\r\n  float *local_4b0;\r\n  float *local_4a8;\r\n  float *local_4a0;\r\n  undefined8 local_498;\r\n  undefined8 local_490;\r\n  undefined8 local_488;\r\n  undefined1 local_480 [56];\r\n  float local_448 [24];\r\n  undefined1 local_3e8 [44];\r\n  float local_3bc [97];\r\n  undefined1 local_238 [336];\r\n  ulonglong local_e8;\r\n  undefined8 local_d8;\r\n  undefined8 uStack_d0;\r\n  undefined8 local_c8;\r\n  undefined8 uStack_c0;\r\n  undefined8 local_b8;\r\n  undefined8 uStack_b0;\r\n  undefined8 local_a8;\r\n  undefined8 uStack_a0;\r\n  undefined8 local_98;\r\n  undefined8 uStack_90;\r\n  undefined8 local_88;\r\n  undefined8 uStack_80;\r\n  undefined8 local_78;\r\n  undefined8 uStack_70;\r\n  undefined8 local_68;\r\n  undefined8 uStack_60;\r\n  \r\n  local_e8 = DAT_180276e80 ^ (ulonglong)auStack_518;\r\n  local_498 = param_5;\r\n  local_490 = param_4;\r\n  local_488 = param_3;\r\n  FUN_1801aaac0(param_1,local_448);\r\n  local_68 = unaff_XMM8_Qa;\r\n  uStack_60 = unaff_XMM8_Qb;\r\n  local_78 = unaff_XMM9_Qa;\r\n  uStack_70 = unaff_XMM9_Qb;\r\n  local_88 = unaff_XMM10_Qa;\r\n  uStack_80 = unaff_XMM10_Qb;\r\n  local_98 = unaff_XMM11_Qa;\r\n  uStack_90 = unaff_XMM11_Qb;\r\n  local_a8 = unaff_XMM12_Qa;\r\n  uStack_a0 = unaff_XMM12_Qb;\r\n  local_4b8 = param_2 + 0xe;\r\n  uVar16 = 0;\r\n  pfVar15 = local_3bc;\r\n  local_4a0 = param_2 + 4;\r\n  local_4b0 = param_2 + 8;\r\n  local_b8 = unaff_XMM13_Qa;\r\n  uStack_b0 = unaff_XMM13_Qb;\r\n  local_4a8 = param_2 + 0xc;\r\n  local_c8 = unaff_XMM14_Qa;\r\n  uStack_c0 = unaff_XMM14_Qb;\r\n  local_d8 = unaff_XMM15_Qa;\r\n  uStack_d0 = unaff_XMM15_Qb;\r\n  do {\r\n    pfVar17 = param_2 + 0xd;\r\n    uVar11 = uVar16 * 3;\r\n    uVar12 = (ulonglong)(uint)(&DAT_180275210)[uVar11];\r\n    uVar13 = (ulonglong)(uint)(&DAT_180275210)[uVar11 + 1];\r\n    fVar22 = local_448[uVar12 * 3];\r\n    fVar19 = local_448[uVar12 * 3 + 1];\r\n    uVar14 = (ulonglong)(uint)(&DAT_180275210)[uVar11 + 2];\r\n    local_4d8 = local_448[uVar13 * 3];\r\n    fVar20 = local_448[uVar13 * 3 + 2];\r\n    fVar21 = local_448[uVar13 * 3 + 1];\r\n    fVar1 = local_448[uVar14 * 3];\r\n    fVar23 = local_448[uVar14 * 3 + 2];\r\n    fVar24 = local_448[uVar14 * 3 + 1];\r\n    fVar18 = local_448[uVar12 * 3 + 2];\r\n    if (param_2 != (float *)0x0) {\r\n      fVar23 = param_2[2];\r\n      fVar24 = param_2[6];\r\n      fVar2 = param_2[10];\r\n      fVar3 = param_2[1];\r\n      fVar4 = param_2[5];\r\n      fVar5 = param_2[9];\r\n      fVar6 = *param_2;\r\n      fVar7 = *local_4b8;\r\n      fVar18 = fVar24 * fVar19 + fVar23 * fVar22 + fVar2 * local_448[uVar12 * 3 + 2] + fVar7;\r\n      fVar8 = *local_4a0;\r\n      fVar9 = *local_4b0;\r\n      fVar19 = fVar4 * local_448[uVar12 * 3 + 1] + fVar3 * fVar22 +\r\n               fVar5 * local_448[uVar12 * 3 + 2] + *pfVar17;\r\n      fVar10 = *local_4a8;\r\n      fVar22 = fVar6 * fVar22 + fVar8 * local_448[uVar12 * 3 + 1] +\r\n               fVar9 * local_448[uVar12 * 3 + 2] + fVar10;\r\n      fVar20 = fVar24 * local_448[uVar13 * 3 + 1] + fVar23 * local_4d8 +\r\n               fVar2 * local_448[uVar13 * 3 + 2] + fVar7;\r\n      fVar21 = fVar4 * local_448[uVar13 * 3 + 1] + fVar3 * local_4d8 +\r\n               fVar5 * local_448[uVar13 * 3 + 2] + *pfVar17;\r\n      local_4d8 = fVar6 * local_4d8 + fVar8 * local_448[uVar13 * 3 + 1] +\r\n                  fVar9 * local_448[uVar13 * 3 + 2] + fVar10;\r\n      fVar23 = fVar24 * local_448[uVar14 * 3 + 1] + fVar23 * fVar1 +\r\n               fVar2 * local_448[uVar14 * 3 + 2] + fVar7;\r\n      fVar24 = fVar4 * local_448[uVar14 * 3 + 1] + fVar3 * fVar1 +\r\n               fVar5 * local_448[uVar14 * 3 + 2] + *pfVar17;\r\n      fVar1 = fVar6 * fVar1 + fVar8 * local_448[uVar14 * 3 + 1] +\r\n              fVar9 * local_448[uVar14 * 3 + 2] + fVar10;\r\n      local_4cc = fVar18;\r\n      local_4c8 = fVar19;\r\n      local_4c4 = fVar20;\r\n      local_4c0 = fVar21;\r\n    }\r\n    pfVar15[-0xb] = fVar22;\r\n    pfVar15[-10] = fVar19;\r\n    pfVar15[-9] = fVar18;\r\n    pfVar15[-8] = local_4d8;\r\n    pfVar15[-7] = fVar21;\r\n    pfVar15[-6] = fVar20;\r\n    pfVar15[-5] = fVar1;\r\n    pfVar15[-4] = fVar24;\r\n    pfVar15[-3] = fVar23;\r\n    uVar12 = (ulonglong)(uint)(&DAT_180275210)[uVar11 + 3];\r\n    uVar13 = (ulonglong)(uint)(&DAT_180275210)[uVar11 + 4];\r\n    local_4d4 = local_448[uVar12 * 3];\r\n    fVar22 = local_448[uVar12 * 3 + 1];\r\n    fVar19 = local_448[uVar12 * 3 + 2];\r\n    uVar14 = (ulonglong)(uint)(&DAT_180275210)[uVar11 + 5];\r\n    local_4d8 = local_448[uVar13 * 3];\r\n    local_4d0 = local_448[uVar14 * 3];\r\n    if (param_2 == (float *)0x0) {\r\n      fVar1 = local_448[uVar13 * 3 + 2];\r\n      fVar23 = local_448[uVar13 * 3 + 1];\r\n      fVar20 = local_448[uVar14 * 3 + 2];\r\n      fVar21 = local_448[uVar14 * 3 + 1];\r\n      local_4b8 = (float *)0x38;\r\n      local_4a0 = (float *)0x10;\r\n      local_4b0 = (float *)&DAT_00000020;\r\n      local_4a8 = (float *)&DAT_00000030;\r\n      fVar24 = local_4d0;\r\n    }\r\n    else {\r\n      fVar20 = param_2[2];\r\n      fVar21 = param_2[6];\r\n      fVar24 = param_2[10];\r\n      fVar18 = param_2[1];\r\n      fVar2 = param_2[5];\r\n      fVar3 = param_2[9];\r\n      fVar4 = *local_4b8;\r\n      fVar5 = *param_2;\r\n      fVar6 = *local_4b0;\r\n      fVar7 = *local_4a0;\r\n      fVar8 = *local_4a8;\r\n      fVar19 = fVar21 * fVar22 + fVar20 * local_4d4 + fVar24 * fVar19 + fVar4;\r\n      fVar22 = fVar2 * local_448[uVar12 * 3 + 1] + fVar18 * local_4d4 +\r\n               fVar3 * local_448[uVar12 * 3 + 2] + *pfVar17;\r\n      local_4d4 = fVar5 * local_4d4 + fVar7 * local_448[uVar12 * 3 + 1] +\r\n                  fVar6 * local_448[uVar12 * 3 + 2] + fVar8;\r\n      fVar1 = fVar21 * local_448[uVar13 * 3 + 1] + fVar20 * local_4d8 +\r\n              fVar24 * local_448[uVar13 * 3 + 2] + fVar4;\r\n      fVar23 = fVar2 * local_448[uVar13 * 3 + 1] + fVar18 * local_4d8 +\r\n               fVar3 * local_448[uVar13 * 3 + 2] + *pfVar17;\r\n      local_4d8 = fVar5 * local_4d8 + fVar7 * local_448[uVar13 * 3 + 1] +\r\n                  fVar6 * local_448[uVar13 * 3 + 2] + fVar8;\r\n      fVar20 = fVar21 * local_448[uVar14 * 3 + 1] + fVar20 * local_4d0 +\r\n               fVar24 * local_448[uVar14 * 3 + 2] + fVar4;\r\n      fVar21 = fVar2 * local_448[uVar14 * 3 + 1] + fVar18 * local_4d0 +\r\n               fVar3 * local_448[uVar14 * 3 + 2] + *pfVar17;\r\n      fVar24 = fVar5 * local_4d0 + fVar7 * local_448[uVar14 * 3 + 1] +\r\n               fVar6 * local_448[uVar14 * 3 + 2] + fVar8;\r\n      local_4cc = fVar22;\r\n      local_4c8 = fVar19;\r\n      local_4c4 = fVar23;\r\n      local_4c0 = fVar1;\r\n    }\r\n    pfVar15[-2] = local_4d4;\r\n    pfVar15[-1] = fVar22;\r\n    *pfVar15 = fVar19;\r\n    pfVar15[1] = local_4d8;\r\n    pfVar15[2] = fVar23;\r\n    pfVar15[3] = fVar1;\r\n    pfVar15[4] = fVar24;\r\n    pfVar15[5] = fVar21;\r\n    pfVar15[6] = fVar20;\r\n    pfVar15 = pfVar15 + 0x12;\r\n    uVar16 = uVar16 + 2;\r\n  } while (uVar16 < 0xc);\r\n  local_4e8 = local_498;\r\n  local_4f0 = local_238;\r\n  local_4f8 = local_490;\r\n  FUN_1800cc820(0xc,local_3e8,local_480,local_488);\r\n  return;\r\n}\r\n\r\n",
+    "assembly": [
+      "0x1800cc030: MOV R11, RSP",
+      "0x1800cc033: SUB RSP, 0x518",
+      "0x1800cc03a: MOV RAX, qword ptr [0x180276e80]",
+      "0x1800cc041: XOR RAX, RSP",
+      "0x1800cc044: MOV qword ptr [RSP + 0x430], RAX",
+      "0x1800cc04c: MOV RAX, qword ptr [RSP + 0x540]",
+      "0x1800cc054: MOV qword ptr [R11 + 0x10], RBX",
+      "0x1800cc058: MOV RBX, RDX",
+      "0x1800cc05b: MOV qword ptr [R11 + -0x8], RBP",
+      "0x1800cc05f: LEA RDX, [R11 + -0x448]",
+      "0x1800cc066: MOV qword ptr [R11 + -0x10], RSI",
+      "0x1800cc06a: MOV qword ptr [R11 + -0x18], RDI",
+      "0x1800cc06e: MOV qword ptr [R11 + -0x20], R12",
+      "0x1800cc072: MOV qword ptr [R11 + -0x28], R13",
+      "0x1800cc076: MOV qword ptr [R11 + -0x30], R14",
+      "0x1800cc07a: MOV qword ptr [R11 + -0x38], R15",
+      "0x1800cc07e: VMOVAPS xmmword ptr [R11 + -0x48], XMM6",
+      "0x1800cc084: VMOVAPS xmmword ptr [R11 + -0x58], XMM7",
+      "0x1800cc08a: MOV qword ptr [RSP + 0x88], R9",
+      "0x1800cc092: MOV qword ptr [RSP + 0x90], R8",
+      "0x1800cc09a: MOV qword ptr [RSP + 0x80], RAX",
+      "0x1800cc0a2: CALL 0x1801aaac0",
+      "0x1800cc0a7: VMOVAPS xmmword ptr [RSP + 0x4b0], XMM8",
+      "0x1800cc0b0: VMOVAPS xmmword ptr [RSP + 0x4a0], XMM9",
+      "0x1800cc0b9: VMOVAPS xmmword ptr [RSP + 0x490], XMM10",
+      "0x1800cc0c2: VMOVAPS xmmword ptr [RSP + 0x480], XMM11",
+      "0x1800cc0cb: VMOVAPS xmmword ptr [RSP + 0x470], XMM12",
+      "0x1800cc0d4: LEA RAX, [RBX + 0x38]",
+      "0x1800cc0d8: XOR R10D, R10D",
+      "0x1800cc0db: MOV qword ptr [RSP + 0x60], RAX",
+      "0x1800cc0e0: LEA R9, [RSP + 0x15c]",
+      "0x1800cc0e8: LEA RAX, [RBX + 0x10]",
+      "0x1800cc0ec: MOV qword ptr [RSP + 0x78], RAX",
+      "0x1800cc0f1: LEA RDI, [RBX + 0x4]",
+      "0x1800cc0f5: LEA RAX, [RBX + 0x20]",
+      "0x1800cc0f9: VMOVAPS xmmword ptr [RSP + 0x460], XMM13",
+      "0x1800cc102: MOV qword ptr [RSP + 0x68], RAX",
+      "0x1800cc107: LEA RSI, [RBX + 0x14]",
+      "0x1800cc10b: LEA RAX, [RBX + 0x30]",
+      "0x1800cc10f: VMOVAPS xmmword ptr [RSP + 0x450], XMM14",
+      "0x1800cc118: MOV qword ptr [RSP + 0x70], RAX",
+      "0x1800cc11d: LEA RBP, [RBX + 0x24]",
+      "0x1800cc121: LEA R14, [RBX + 0x34]",
+      "0x1800cc125: LEA R15, [RBX + 0x8]",
+      "0x1800cc129: LEA R12, [RBX + 0x18]",
+      "0x1800cc12d: LEA R13, [RBX + 0x28]",
+      "0x1800cc131: LEA R8, [0x180275210]",
+      "0x1800cc138: VMOVAPS xmmword ptr [RSP + 0x440], XMM15",
+      "0x1800cc141: NOP dword ptr [RAX]",
+      "0x1800cc145: NOP word ptr [RAX + RAX*0x1]",
+      "0x1800cc150: LEA R11D, [R10 + R10*0x2]",
+      "0x1800cc154: MOV EAX, dword ptr [R8 + R11*0x4]",
+      "0x1800cc158: LEA ECX, [R11 + 0x2]",
+      "0x1800cc15c: LEA RDX, [RAX + RAX*0x2]",
+      "0x1800cc160: LEA EAX, [R11 + 0x1]",
+      "0x1800cc164: MOV EAX, dword ptr [R8 + RAX*0x4]",
+      "0x1800cc168: VMOVSS XMM4, dword ptr [RSP + RDX*0x4 + 0xd0]",
+      "0x1800cc171: VMOVSS XMM1, dword ptr [RSP + RDX*0x4 + 0xd4]",
+      "0x1800cc17a: VMOVSS dword ptr [RSP + 0x44], XMM4",
+      "0x1800cc180: LEA R8, [RAX + RAX*0x2]",
+      "0x1800cc184: LEA RAX, [0x180275210]",
+      "0x1800cc18b: MOV EAX, dword ptr [RAX + RCX*0x4]",
+      "0x1800cc18e: VMOVSS XMM0, dword ptr [RSP + R8*0x4 + 0xd0]",
+      "0x1800cc198: VMOVSS XMM2, dword ptr [RSP + R8*0x4 + 0xd8]",
+      "0x1800cc1a2: VMOVSS XMM3, dword ptr [RSP + R8*0x4 + 0xd4]",
+      "0x1800cc1ac: LEA RCX, [RAX + RAX*0x2]",
+      "0x1800cc1b0: VMOVSS XMM7, dword ptr [RSP + RCX*0x4 + 0xd0]",
+      "0x1800cc1b9: VMOVSS XMM5, dword ptr [RSP + RCX*0x4 + 0xd8]",
+      "0x1800cc1c2: VMOVSS XMM6, dword ptr [RSP + RCX*0x4 + 0xd4]",
+      "0x1800cc1cb: VMOVSS dword ptr [RSP + 0x40], XMM0",
+      "0x1800cc1d1: VMOVSS XMM0, dword ptr [RSP + RDX*0x4 + 0xd8]",
+      "0x1800cc1da: VMOVSS dword ptr [RSP + 0x48], XMM7",
+      "0x1800cc1e0: TEST RBX, RBX",
+      "0x1800cc1e3: JZ 0x1800cc3bb",
+      "0x1800cc1e9: VMOVSS XMM6, dword ptr [R15]",
+      "0x1800cc1ee: VMOVSS XMM5, dword ptr [R12]",
+      "0x1800cc1f4: VMOVSS XMM7, dword ptr [R13]",
+      "0x1800cc1fa: VMOVSS XMM14, dword ptr [RDI]",
+      "0x1800cc1fe: VMOVSS XMM10, dword ptr [RSI]",
+      "0x1800cc202: VMOVSS XMM15, dword ptr [RBP]",
+      "0x1800cc207: VMOVSS XMM9, dword ptr [RBX]",
+      "0x1800cc20b: MOV RAX, qword ptr [RSP + 0x60]",
+      "0x1800cc210: VMULSS XMM1, XMM5, XMM1",
+      "0x1800cc214: VMULSS XMM0, XMM6, XMM4",
+      "0x1800cc218: VADDSS XMM3, XMM1, XMM0",
+      "0x1800cc21c: VMOVSS XMM8, dword ptr [RAX]",
+      "0x1800cc220: VMULSS XMM1, XMM7, dword ptr [RSP + RDX*0x4 + 0xd8]",
+      "0x1800cc229: MOV RAX, qword ptr [RSP + 0x78]",
+      "0x1800cc22e: VADDSS XMM2, XMM1, XMM8",
+      "0x1800cc233: VMULSS XMM1, XMM15, dword ptr [RSP + RDX*0x4 + 0xd8]",
+      "0x1800cc23c: VADDSS XMM0, XMM3, XMM2",
+      "0x1800cc240: VADDSS XMM2, XMM1, dword ptr [R14]",
+      "0x1800cc245: VMOVSS XMM11, dword ptr [RAX]",
+      "0x1800cc249: MOV RAX, qword ptr [RSP + 0x68]",
+      "0x1800cc24e: VMULSS XMM3, XMM10, dword ptr [RSP + RDX*0x4 + 0xd4]",
+      "0x1800cc257: VMOVSS dword ptr [RSP + 0x4c], XMM0",
+      "0x1800cc25d: VMULSS XMM0, XMM14, XMM4",
+      "0x1800cc261: VMOVSS XMM12, dword ptr [RAX]",
+      "0x1800cc265: VMULSS XMM1, XMM12, dword ptr [RSP + RDX*0x4 + 0xd8]",
+      "0x1800cc26e: MOV RAX, qword ptr [RSP + 0x70]",
+      "0x1800cc273: VADDSS XMM4, XMM3, XMM0",
+      "0x1800cc277: VMULSS XMM3, XMM9, dword ptr [RSP + 0x44]",
+      "0x1800cc27d: VADDSS XMM0, XMM4, XMM2",
+      "0x1800cc281: VMOVSS XMM13, dword ptr [RAX]",
+      "0x1800cc285: VMOVSS dword ptr [RSP + 0x50], XMM0",
+      "0x1800cc28b: VMULSS XMM0, XMM11, dword ptr [RSP + RDX*0x4 + 0xd4]",
+      "0x1800cc294: VADDSS XMM4, XMM3, XMM0",
+      "0x1800cc298: VMULSS XMM0, XMM6, dword ptr [RSP + 0x40]",
+      "0x1800cc29e: VADDSS XMM2, XMM1, XMM13",
+      "0x1800cc2a3: VMULSS XMM1, XMM7, dword ptr [RSP + R8*0x4 + 0xd8]",
+      "0x1800cc2ad: VADDSS XMM3, XMM4, XMM2",
+      "0x1800cc2b1: VADDSS XMM2, XMM1, XMM8",
+      "0x1800cc2b6: VMULSS XMM1, XMM15, dword ptr [RSP + R8*0x4 + 0xd8]",
+      "0x1800cc2c0: VMOVSS dword ptr [RSP + 0x44], XMM3",
+      "0x1800cc2c6: VMULSS XMM3, XMM5, dword ptr [RSP + R8*0x4 + 0xd4]",
+      "0x1800cc2d0: VADDSS XMM4, XMM3, XMM0",
+      "0x1800cc2d4: VMULSS XMM3, XMM10, dword ptr [RSP + R8*0x4 + 0xd4]",
+      "0x1800cc2de: VADDSS XMM0, XMM4, XMM2",
+      "0x1800cc2e2: VADDSS XMM2, XMM1, dword ptr [R14]",
+      "0x1800cc2e7: VMULSS XMM1, XMM12, dword ptr [RSP + R8*0x4 + 0xd8]",
+      "0x1800cc2f1: VMOVSS dword ptr [RSP + 0x54], XMM0",
+      "0x1800cc2f7: VMULSS XMM0, XMM14, dword ptr [RSP + 0x40]",
+      "0x1800cc2fd: VADDSS XMM4, XMM3, XMM0",
+      "0x1800cc301: VMULSS XMM3, XMM9, dword ptr [RSP + 0x40]",
+      "0x1800cc307: VADDSS XMM0, XMM4, XMM2",
+      "0x1800cc30b: VMOVSS dword ptr [RSP + 0x58], XMM0",
+      "0x1800cc311: VMULSS XMM0, XMM11, dword ptr [RSP + R8*0x4 + 0xd4]",
+      "0x1800cc31b: VADDSS XMM4, XMM3, XMM0",
+      "0x1800cc31f: VMULSS XMM3, XMM5, dword ptr [RSP + RCX*0x4 + 0xd4]",
+      "0x1800cc328: VADDSS XMM2, XMM1, XMM13",
+      "0x1800cc32d: VADDSS XMM0, XMM4, XMM2",
+      "0x1800cc331: VMOVSS dword ptr [RSP + 0x40], XMM0",
+      "0x1800cc337: VMULSS XMM0, XMM6, dword ptr [RSP + 0x48]",
+      "0x1800cc33d: VMOVSS XMM6, dword ptr [RSP + RCX*0x4 + 0xd8]",
+      "0x1800cc346: VADDSS XMM4, XMM3, XMM0",
+      "0x1800cc34a: VMULSS XMM0, XMM14, dword ptr [RSP + 0x48]",
+      "0x1800cc350: VMULSS XMM1, XMM7, XMM6",
+      "0x1800cc354: VADDSS XMM2, XMM1, XMM8",
+      "0x1800cc359: VMOVSS XMM8, dword ptr [RSP + RCX*0x4 + 0xd4]",
+      "0x1800cc362: VADDSS XMM5, XMM4, XMM2",
+      "0x1800cc366: VMULSS XMM1, XMM15, XMM6",
+      "0x1800cc36a: VADDSS XMM2, XMM1, dword ptr [R14]",
+      "0x1800cc36f: VMULSS XMM1, XMM12, dword ptr [RSP + RCX*0x4 + 0xd8]",
+      "0x1800cc378: VMULSS XMM3, XMM10, XMM8",
+      "0x1800cc37d: VADDSS XMM4, XMM3, XMM0",
+      "0x1800cc381: VMULSS XMM3, XMM9, dword ptr [RSP + 0x48]",
+      "0x1800cc387: VADDSS XMM6, XMM4, XMM2",
+      "0x1800cc38b: VADDSS XMM2, XMM1, XMM13",
+      "0x1800cc390: VMOVSS XMM1, dword ptr [RSP + 0x50]",
+      "0x1800cc396: VMULSS XMM0, XMM11, XMM8",
+      "0x1800cc39b: VADDSS XMM4, XMM3, XMM0",
+      "0x1800cc39f: VMOVSS XMM0, dword ptr [RSP + 0x4c]",
+      "0x1800cc3a5: VMOVSS XMM3, dword ptr [RSP + 0x58]",
+      "0x1800cc3ab: VADDSS XMM7, XMM4, XMM2",
+      "0x1800cc3af: VMOVSS XMM2, dword ptr [RSP + 0x54]",
+      "0x1800cc3b5: VMOVSS XMM4, dword ptr [RSP + 0x44]",
+      "0x1800cc3bb: LEA RDX, [0x180275210]",
+      "0x1800cc3c2: LEA ECX, [R11 + 0x5]",
+      "0x1800cc3c6: LEA EAX, [R11 + 0x3]",
+      "0x1800cc3ca: VMOVSS dword ptr [R9 + -0x2c], XMM4",
+      "0x1800cc3d0: VMOVSS dword ptr [R9 + -0x28], XMM1",
+      "0x1800cc3d6: VMOVSS dword ptr [R9 + -0x24], XMM0",
+      "0x1800cc3dc: VMOVSS XMM0, dword ptr [RSP + 0x40]",
+      "0x1800cc3e2: VMOVSS dword ptr [R9 + -0x20], XMM0",
+      "0x1800cc3e8: VMOVSS dword ptr [R9 + -0x1c], XMM3",
+      "0x1800cc3ee: VMOVSS dword ptr [R9 + -0x18], XMM2",
+      "0x1800cc3f4: VMOVSS dword ptr [R9 + -0x14], XMM7",
+      "0x1800cc3fa: VMOVSS dword ptr [R9 + -0x10], XMM6",
+      "0x1800cc400: VMOVSS dword ptr [R9 + -0xc], XMM5",
+      "0x1800cc406: MOV EAX, dword ptr [RDX + RAX*0x4]",
+      "0x1800cc409: LEA R8, [RAX + RAX*0x2]",
+      "0x1800cc40d: LEA EAX, [R11 + 0x4]",
+      "0x1800cc411: MOV EAX, dword ptr [RDX + RAX*0x4]",
+      "0x1800cc414: VMOVSS XMM4, dword ptr [RSP + R8*0x4 + 0xd0]",
+      "0x1800cc41e: VMOVSS XMM1, dword ptr [RSP + R8*0x4 + 0xd4]",
+      "0x1800cc428: VMOVSS XMM2, dword ptr [RSP + R8*0x4 + 0xd8]",
+      "0x1800cc432: LEA RDX, [RAX + RAX*0x2]",
+      "0x1800cc436: LEA RAX, [0x180275210]",
+      "0x1800cc43d: MOV EAX, dword ptr [RAX + RCX*0x4]",
+      "0x1800cc440: VMOVSS XMM0, dword ptr [RSP + RDX*0x4 + 0xd0]",
+      "0x1800cc449: VMOVSS dword ptr [RSP + 0x44], XMM4",
+      "0x1800cc44f: VMOVSS dword ptr [RSP + 0x40], XMM0",
+      "0x1800cc455: LEA RCX, [RAX + RAX*0x2]",
+      "0x1800cc459: VMOVSS XMM3, dword ptr [RSP + RCX*0x4 + 0xd0]",
+      "0x1800cc462: VMOVSS dword ptr [RSP + 0x48], XMM3",
+      "0x1800cc468: VMOVAPS XMM7, XMM1",
+      "0x1800cc46c: TEST RBX, RBX",
+      "0x1800cc46f: JZ 0x1800cc65f",
+      "0x1800cc475: VMOVSS XMM6, dword ptr [R15]",
+      "0x1800cc47a: VMOVSS XMM5, dword ptr [R12]",
+      "0x1800cc480: VMOVSS XMM7, dword ptr [R13]",
+      "0x1800cc486: MOV RAX, qword ptr [RSP + 0x60]",
+      "0x1800cc48b: VMOVSS XMM14, dword ptr [RDI]",
+      "0x1800cc48f: VMOVSS XMM10, dword ptr [RSI]",
+      "0x1800cc493: VMOVSS XMM15, dword ptr [RBP]",
+      "0x1800cc498: VMOVSS XMM8, dword ptr [RAX]",
+      "0x1800cc49c: VMOVSS XMM9, dword ptr [RBX]",
+      "0x1800cc4a0: MOV RAX, qword ptr [RSP + 0x68]",
+      "0x1800cc4a5: MOV R11, qword ptr [RSP + 0x78]",
+      "0x1800cc4aa: VMULSS XMM0, XMM6, XMM4",
+      "0x1800cc4ae: VMULSS XMM1, XMM5, XMM1",
+      "0x1800cc4b2: VMOVSS XMM12, dword ptr [RAX]",
+      "0x1800cc4b6: VMOVSS XMM11, dword ptr [R11]",
+      "0x1800cc4bb: MOV RAX, qword ptr [RSP + 0x70]",
+      "0x1800cc4c0: VADDSS XMM3, XMM1, XMM0",
+      "0x1800cc4c4: VMULSS XMM1, XMM7, XMM2",
+      "0x1800cc4c8: VADDSS XMM2, XMM1, XMM8",
+      "0x1800cc4cd: VMOVSS XMM13, dword ptr [RAX]",
+      "0x1800cc4d1: VMULSS XMM1, XMM15, dword ptr [RSP + R8*0x4 + 0xd8]",
+      "0x1800cc4db: MOV RAX, qword ptr [RSP + 0x60]",
+      "0x1800cc4e0: VADDSS XMM0, XMM3, XMM2",
+      "0x1800cc4e4: VADDSS XMM2, XMM1, dword ptr [R14]",
+      "0x1800cc4e9: VMULSS XMM3, XMM10, dword ptr [RSP + R8*0x4 + 0xd4]",
+      "0x1800cc4f3: VMULSS XMM1, XMM12, dword ptr [RSP + R8*0x4 + 0xd8]",
+      "0x1800cc4fd: VMOVSS dword ptr [RSP + 0x50], XMM0",
+      "0x1800cc503: VMULSS XMM0, XMM14, XMM4",
+      "0x1800cc507: VADDSS XMM4, XMM3, XMM0",
+      "0x1800cc50b: VMULSS XMM3, XMM9, dword ptr [RSP + 0x44]",
+      "0x1800cc511: VADDSS XMM0, XMM4, XMM2",
+      "0x1800cc515: VMOVSS dword ptr [RSP + 0x4c], XMM0",
+      "0x1800cc51b: VMULSS XMM0, XMM11, dword ptr [RSP + R8*0x4 + 0xd4]",
+      "0x1800cc525: VADDSS XMM4, XMM3, XMM0",
+      "0x1800cc529: VMULSS XMM3, XMM5, dword ptr [RSP + RDX*0x4 + 0xd4]",
+      "0x1800cc532: VADDSS XMM2, XMM1, XMM13",
+      "0x1800cc537: VMULSS XMM1, XMM7, dword ptr [RSP + RDX*0x4 + 0xd8]",
+      "0x1800cc540: VADDSS XMM0, XMM4, XMM2",
+      "0x1800cc544: VMOVSS dword ptr [RSP + 0x44], XMM0",
+      "0x1800cc54a: VMULSS XMM0, XMM6, dword ptr [RSP + 0x40]",
+      "0x1800cc550: VADDSS XMM4, XMM3, XMM0",
+      "0x1800cc554: VMULSS XMM3, XMM10, dword ptr [RSP + RDX*0x4 + 0xd4]",
+      "0x1800cc55d: VADDSS XMM2, XMM1, XMM8",
+      "0x1800cc562: VMULSS XMM1, XMM15, dword ptr [RSP + RDX*0x4 + 0xd8]",
+      "0x1800cc56b: VADDSS XMM0, XMM4, XMM2",
+      "0x1800cc56f: VADDSS XMM2, XMM1, dword ptr [R14]",
+      "0x1800cc574: VMULSS XMM1, XMM12, dword ptr [RSP + RDX*0x4 + 0xd8]",
+      "0x1800cc57d: VMOVSS dword ptr [RSP + 0x58], XMM0",
+      "0x1800cc583: VMULSS XMM0, XMM14, dword ptr [RSP + 0x40]",
+      "0x1800cc589: VADDSS XMM4, XMM3, XMM0",
+      "0x1800cc58d: VMULSS XMM3, XMM9, dword ptr [RSP + 0x40]",
+      "0x1800cc593: VADDSS XMM0, XMM4, XMM2",
+      "0x1800cc597: VMOVSS dword ptr [RSP + 0x54], XMM0",
+      "0x1800cc59d: VMULSS XMM0, XMM11, dword ptr [RSP + RDX*0x4 + 0xd4]",
+      "0x1800cc5a6: VADDSS XMM4, XMM3, XMM0",
+      "0x1800cc5aa: VMULSS XMM3, XMM5, dword ptr [RSP + RCX*0x4 + 0xd4]",
+      "0x1800cc5b3: VADDSS XMM2, XMM1, XMM13",
+      "0x1800cc5b8: VADDSS XMM0, XMM4, XMM2",
+      "0x1800cc5bc: VMOVSS dword ptr [RSP + 0x40], XMM0",
+      "0x1800cc5c2: VMULSS XMM0, XMM6, dword ptr [RSP + 0x48]",
+      "0x1800cc5c8: VMOVSS XMM6, dword ptr [RSP + RCX*0x4 + 0xd8]",
+      "0x1800cc5d1: VADDSS XMM4, XMM3, XMM0",
+      "0x1800cc5d5: VMULSS XMM0, XMM14, dword ptr [RSP + 0x48]",
+      "0x1800cc5db: VMULSS XMM1, XMM7, XMM6",
+      "0x1800cc5df: VMOVSS XMM7, dword ptr [RSP + RCX*0x4 + 0xd4]",
+      "0x1800cc5e8: VADDSS XMM2, XMM1, XMM8",
+      "0x1800cc5ed: VADDSS XMM5, XMM4, XMM2",
+      "0x1800cc5f1: VMULSS XMM1, XMM15, XMM6",
+      "0x1800cc5f5: VADDSS XMM2, XMM1, dword ptr [R14]",
+      "0x1800cc5fa: VMULSS XMM1, XMM12, dword ptr [RSP + RCX*0x4 + 0xd8]",
+      "0x1800cc603: VMULSS XMM3, XMM10, XMM7",
+      "0x1800cc607: VADDSS XMM4, XMM3, XMM0",
+      "0x1800cc60b: VMULSS XMM3, XMM9, dword ptr [RSP + 0x48]",
+      "0x1800cc611: VADDSS XMM6, XMM4, XMM2",
+      "0x1800cc615: VMULSS XMM0, XMM11, XMM7",
+      "0x1800cc619: VADDSS XMM4, XMM3, XMM0",
+      "0x1800cc61d: VADDSS XMM2, XMM1, XMM13",
+      "0x1800cc622: MOV qword ptr [RSP + 0x60], RAX",
+      "0x1800cc627: MOV RAX, qword ptr [RSP + 0x68]",
+      "0x1800cc62c: VADDSS XMM3, XMM4, XMM2",
+      "0x1800cc630: MOV qword ptr [RSP + 0x78], R11",
+      "0x1800cc635: VMOVSS XMM0, dword ptr [RSP + 0x58]",
+      "0x1800cc63b: VMOVSS XMM1, dword ptr [RSP + 0x54]",
+      "0x1800cc641: VMOVSS XMM4, dword ptr [RSP + 0x44]",
+      "0x1800cc647: VMOVSS XMM2, dword ptr [RSP + 0x50]",
+      "0x1800cc64d: VMOVSS XMM7, dword ptr [RSP + 0x4c]",
+      "0x1800cc653: MOV qword ptr [RSP + 0x68], RAX",
+      "0x1800cc658: MOV RAX, qword ptr [RSP + 0x70]",
+      "0x1800cc65d: JMP 0x1800cc6be",
+      "0x1800cc65f: VMOVSS XMM0, dword ptr [RSP + RDX*0x4 + 0xd8]",
+      "0x1800cc668: VMOVSS XMM1, dword ptr [RSP + RDX*0x4 + 0xd4]",
+      "0x1800cc671: VMOVSS XMM5, dword ptr [RSP + RCX*0x4 + 0xd8]",
+      "0x1800cc67a: VMOVSS XMM6, dword ptr [RSP + RCX*0x4 + 0xd4]",
+      "0x1800cc683: LEA RAX, [RBX + 0x38]",
+      "0x1800cc687: MOV qword ptr [RSP + 0x60], RAX",
+      "0x1800cc68c: LEA RDI, [RBX + 0x4]",
+      "0x1800cc690: LEA RAX, [RBX + 0x10]",
+      "0x1800cc694: MOV qword ptr [RSP + 0x78], RAX",
+      "0x1800cc699: LEA RSI, [RBX + 0x14]",
+      "0x1800cc69d: LEA RAX, [RBX + 0x20]",
+      "0x1800cc6a1: MOV qword ptr [RSP + 0x68], RAX",
+      "0x1800cc6a6: LEA RBP, [RBX + 0x24]",
+      "0x1800cc6aa: LEA RAX, [RBX + 0x30]",
+      "0x1800cc6ae: LEA R14, [RBX + 0x34]",
+      "0x1800cc6b2: LEA R15, [RBX + 0x8]",
+      "0x1800cc6b6: LEA R12, [RBX + 0x18]",
+      "0x1800cc6ba: LEA R13, [RBX + 0x28]",
+      "0x1800cc6be: VMOVSS dword ptr [R9 + -0x8], XMM4",
+      "0x1800cc6c4: VMOVSS dword ptr [R9 + -0x4], XMM7",
+      "0x1800cc6ca: VMOVSS dword ptr [R9], XMM2",
+      "0x1800cc6cf: VMOVSS XMM2, dword ptr [RSP + 0x40]",
+      "0x1800cc6d5: VMOVSS dword ptr [R9 + 0x4], XMM2",
+      "0x1800cc6db: VMOVSS dword ptr [R9 + 0x8], XMM1",
+      "0x1800cc6e1: VMOVSS dword ptr [R9 + 0xc], XMM0",
+      "0x1800cc6e7: VMOVSS dword ptr [R9 + 0x10], XMM3",
+      "0x1800cc6ed: VMOVSS dword ptr [R9 + 0x14], XMM6",
+      "0x1800cc6f3: VMOVSS dword ptr [R9 + 0x18], XMM5",
+      "0x1800cc6f9: ADD R9, 0x48",
+      "0x1800cc6fd: MOV qword ptr [RSP + 0x70], RAX",
+      "0x1800cc702: ADD R10D, 0x2",
+      "0x1800cc706: LEA R8, [0x180275210]",
+      "0x1800cc70d: CMP R10D, 0xc",
+      "0x1800cc711: JC 0x1800cc150",
+      "0x1800cc717: MOV RAX, qword ptr [RSP + 0x80]",
+      "0x1800cc71f: LEA R8, [RSP + 0x98]",
+      "0x1800cc727: MOV R9, qword ptr [RSP + 0x90]",
+      "0x1800cc72f: LEA RDX, [RSP + 0x130]",
+      "0x1800cc737: VMOVAPS XMM15, xmmword ptr [RSP + 0x440]",
+      "0x1800cc740: VMOVAPS XMM14, xmmword ptr [RSP + 0x450]",
+      "0x1800cc749: VMOVAPS XMM13, xmmword ptr [RSP + 0x460]",
+      "0x1800cc752: VMOVAPS XMM12, xmmword ptr [RSP + 0x470]",
+      "0x1800cc75b: VMOVAPS XMM11, xmmword ptr [RSP + 0x480]",
+      "0x1800cc764: VMOVAPS XMM10, xmmword ptr [RSP + 0x490]",
+      "0x1800cc76d: VMOVAPS XMM9, xmmword ptr [RSP + 0x4a0]",
+      "0x1800cc776: VMOVAPS XMM8, xmmword ptr [RSP + 0x4b0]",
+      "0x1800cc77f: VMOVAPS XMM7, xmmword ptr [RSP + 0x4c0]",
+      "0x1800cc788: VMOVAPS XMM6, xmmword ptr [RSP + 0x4d0]",
+      "0x1800cc791: MOV R15, qword ptr [RSP + 0x4e0]",
+      "0x1800cc799: MOV ECX, 0xc",
+      "0x1800cc79e: MOV R14, qword ptr [RSP + 0x4e8]",
+      "0x1800cc7a6: MOV R13, qword ptr [RSP + 0x4f0]",
+      "0x1800cc7ae: MOV R12, qword ptr [RSP + 0x4f8]",
+      "0x1800cc7b6: MOV RDI, qword ptr [RSP + 0x500]",
+      "0x1800cc7be: MOV RSI, qword ptr [RSP + 0x508]",
+      "0x1800cc7c6: MOV RBP, qword ptr [RSP + 0x510]",
+      "0x1800cc7ce: MOV RBX, qword ptr [RSP + 0x528]",
+      "0x1800cc7d6: MOV qword ptr [RSP + 0x30], RAX",
+      "0x1800cc7db: LEA RAX, [RSP + 0x2e0]",
+      "0x1800cc7e3: MOV qword ptr [RSP + 0x28], RAX",
+      "0x1800cc7e8: MOV RAX, qword ptr [RSP + 0x88]",
+      "0x1800cc7f0: MOV qword ptr [RSP + 0x20], RAX",
+      "0x1800cc7f5: CALL 0x1800cc820",
+      "0x1800cc7fa: MOV RCX, qword ptr [RSP + 0x430]",
+      "0x1800cc802: XOR RCX, RSP",
+      "0x1800cc805: CALL 0x1802235d0",
+      "0x1800cc80a: ADD RSP, 0x518",
+      "0x1800cc811: RET"
+    ],
+    "callees": [
+      {
+        "address": "0x1800cc820",
+        "name": "FUN_1800cc820",
+        "classification": {
+          "external": false,
+          "thunk": false,
+          "thunk_target": null,
+          "provenance": "ghidra-function-manager"
+        },
+        "body": {
+          "available": true,
+          "provenance": "ghidra-function-body-address-set",
+          "ranges": [
+            {
+              "start": "0x1800cc820",
+              "end": "0x1800cd113"
+            }
+          ],
+          "total_bytes": 2292,
+          "span_bytes": 2292,
+          "non_contiguous": false,
+          "contains_entry": true
+        }
+      },
+      {
+        "address": "0x1801aaac0",
+        "name": "FUN_1801aaac0",
+        "classification": {
+          "external": false,
+          "thunk": false,
+          "thunk_target": null,
+          "provenance": "ghidra-function-manager"
+        },
+        "body": {
+          "available": true,
+          "provenance": "ghidra-function-body-address-set",
+          "ranges": [
+            {
+              "start": "0x1801aaac0",
+              "end": "0x1801aab68"
+            }
+          ],
+          "total_bytes": 169,
+          "span_bytes": 169,
+          "non_contiguous": false,
+          "contains_entry": true
+        }
+      },
+      {
+        "address": "0x1802235d0",
+        "name": "__security_check_cookie",
+        "classification": {
+          "external": false,
+          "thunk": false,
+          "thunk_target": null,
+          "provenance": "ghidra-function-manager"
+        },
+        "body": {
+          "available": true,
+          "provenance": "ghidra-function-body-address-set",
+          "ranges": [
+            {
+              "start": "0x1802235d0",
+              "end": "0x1802235ed"
+            }
+          ],
+          "total_bytes": 30,
+          "span_bytes": 30,
+          "non_contiguous": false,
+          "contains_entry": true
+        }
+      }
+    ],
+    "referenced_names": [
+      {
+        "address": "0x1800cc150",
+        "value": "LAB_1800cc150",
+        "source_address": "0x1800cc711"
+      },
+      {
+        "address": "0x1800cc3bb",
+        "value": "LAB_1800cc3bb",
+        "source_address": "0x1800cc1e3"
+      },
+      {
+        "address": "0x1800cc65f",
+        "value": "LAB_1800cc65f",
+        "source_address": "0x1800cc46f"
+      },
+      {
+        "address": "0x1800cc6be",
+        "value": "LAB_1800cc6be",
+        "source_address": "0x1800cc65d"
+      },
+      {
+        "address": "0x1800cc820",
+        "value": "FUN_1800cc820",
+        "source_address": "0x1800cc7f5"
+      },
+      {
+        "address": "0x1801aaac0",
+        "value": "FUN_1801aaac0",
+        "source_address": "0x1800cc0a2"
+      },
+      {
+        "address": "0x1802235d0",
+        "value": "__security_check_cookie",
+        "source_address": "0x1800cc805"
+      },
+      {
+        "address": "0x180275210",
+        "value": "DAT_180275210",
+        "source_address": "0x1800cc131"
+      },
+      {
+        "address": "0x180275210",
+        "value": "DAT_180275210",
+        "source_address": "0x1800cc154"
+      },
+      {
+        "address": "0x180275210",
+        "value": "DAT_180275210",
+        "source_address": "0x1800cc184"
+      },
+      {
+        "address": "0x180275210",
+        "value": "DAT_180275210",
+        "source_address": "0x1800cc3bb"
+      },
+      {
+        "address": "0x180275210",
+        "value": "DAT_180275210",
+        "source_address": "0x1800cc436"
+      },
+      {
+        "address": "0x180275210",
+        "value": "DAT_180275210",
+        "source_address": "0x1800cc706"
+      },
+      {
+        "address": "0x180275214",
+        "value": "DAT_180275214",
+        "source_address": "0x1800cc164"
+      },
+      {
+        "address": "0x180275218",
+        "value": "DAT_180275218",
+        "source_address": "0x1800cc18b"
+      },
+      {
+        "address": "0x18027521c",
+        "value": "DAT_18027521c",
+        "source_address": "0x1800cc406"
+      },
+      {
+        "address": "0x180275220",
+        "value": "DAT_180275220",
+        "source_address": "0x1800cc411"
+      },
+      {
+        "address": "0x180275224",
+        "value": "DAT_180275224",
+        "source_address": "0x1800cc43d"
+      },
+      {
+        "address": "0x180275228",
+        "value": "DAT_180275228",
+        "source_address": "0x1800cc154"
+      },
+      {
+        "address": "0x18027522c",
+        "value": "DAT_18027522c",
+        "source_address": "0x1800cc164"
+      },
+      {
+        "address": "0x180275230",
+        "value": "DAT_180275230",
+        "source_address": "0x1800cc18b"
+      },
+      {
+        "address": "0x180276e80",
+        "value": "DAT_180276e80",
+        "source_address": "0x1800cc03a"
+      }
+    ]
+  },
+  "limitations": [
+    "The session serves operations only after Ghidra reports default auto-analysis complete; incomplete analysis does not expose partial results.",
+    "The imported Program and temporary project are ephemeral and deleted on close. Annotation operations edit session database metadata; original executable bytes are never written.",
+    "Cancelling an active Ghidra request terminates its ephemeral database and discards session annotations. The selected target remains open; the next provider query imports the original artifact again.",
+    "Default-space addresses use lowercase 0x-prefixed hexadecimal; other address spaces use <percent-encoded-space>:0x<hex>.",
+    "References cover the complete Ghidra function-body AddressSet and exact entry. Dossier incoming edges omit sources owned by that function; procedure_references also retains those internal edges.",
+    "The dossier combines Ghidra FunctionManager, Listing, ReferenceManager, BasicBlockModel, and decompiler observations; provider-specific pseudocode and assembly are not cross-provider text invariants.",
+    "Resolved reference metadata identifies computed, indirect, external, call, jump, and data edges; unresolved targetless flows remain unknown, and function classifications distinguish thunks and externals.",
+    "Synthetic Ghidra entry-point references without actionable memory sources are omitted.",
+    "The Java bridge serializes one function request per Program and lets each decompilation run until it completes or the caller cancels.",
+    "Windows Ghidra P0 accepts approved native x86 and x86-64 PE applications and DLLs; managed, hostile, sensitive, and mutable-path targets are unsupported.",
+    "The Windows bridge uses authenticated IPv4 loopback because Node path-based IPC does not expose Java AF_UNIX sockets; the endpoint file contains no bearer token.",
+    "Windows sessions require the matching packaged Windows x64 native addon, local NTFS targets and runtimes, and Windows 10 or later. Native handles enforce path admission, private DACLs, and Job Object ownership automatically."
+  ]
+}

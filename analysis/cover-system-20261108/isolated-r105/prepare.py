@@ -68,6 +68,7 @@ reader=w.Reader(game,publisher,control.identity)
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--name', required=True)
+    parser.add_argument('--native-r106', action='store_true')
     args = parser.parse_args()
     if not args.name.startswith('cover-'):
         raise ValueError('Cover owns only its cover- prefixed new instance')
@@ -81,6 +82,14 @@ def main():
         raise RuntimeError('Fresh name required; never replace an old attempt')
     prepared = load(FROZEN / 'prepared.json')
     expected = load(R104 / 'plan.json')['build_sha256']
+    if args.native_r106:
+        current = HERE.parent / 'sweep-research-r106'
+        receipt = load(current / 'native-build-result.json')
+        if (receipt['changed'] != ['tools/native-capture/cover_physx_query_code.h']
+                or receipt['external_worktree_dependencies'] or not receipt['flags_unchanged']):
+            raise RuntimeError('r106 frozen delta differs')
+        expected['native'] = receipt['dll_sha256']
+        prepared['builds']['native'] = dict(saved=str(current/'native-build/GearsCapture.dll'), sha256=expected['native'])
     for key in ('native', 'playground', 'sim_xr'):
         item = prepared['builds'][key]
         if item['sha256'] != expected[key] or sha(item['saved']) != expected[key]:

@@ -1,0 +1,55 @@
+{
+  "image_sha256": "22051aa75312344a824a5f7e29c6375fec3a90df50cbeff6152f0e6c3afddd48",
+  "scope": "Offline read-only source evidence; no original DLL execution; no gameplay acceptance.",
+  "facts": [
+    {
+      "function": "CC820",
+      "behavior": "Keeps only original triangles with normal dot movement <=0, emits seven triangles per retained face plus original-face mapping; uses C5DF0 to reverse generated winding where needed."
+    },
+    {
+      "function": "CC030",
+      "behavior": "Constructs 12 triangles from box corners using DAT_180275210, transforms them and passes them through CC820. Original table and full CC030 leaf geometry still need certification."
+    },
+    {
+      "function": "D7E30",
+      "behavior": "Sphere-face/edge/vertex routine. In vertex branch D823B loads constant RVA22A510; D824C and D826C can reject candidates with projected lower bound or resulting distance above 100 native units. This is not the caller max-distance parameter."
+    },
+    {
+      "function": "CF9E0",
+      "behavior": "Projected plane/polygon contact helper; branches to D82F0. This retained function alone does not prove complete contact geometry."
+    }
+  ],
+  "vertex_cutoff": {
+    "rva": "0x22a510",
+    "file_offset": 2265872,
+    "bytes_hex": "0000c842",
+    "float32": 100.0
+  },
+  "consequences": [
+    "Do not certify arbitrary-length sphere/capsule sweep from the public method alone. Check target dispatch applicability and retain the original 100-unit vertex branch as an explicit limitation.",
+    "Do not silently clamp long requested motion and claim the full path passed. Full cover motion still requires complete path handling and current world evidence.",
+    "Backface rejection occurs before extrusion; later winding correction of generated triangles does not restore rejected original faces."
+  ],
+  "production_sweep_domain_changed": false,
+  "movement_authorized": false,
+  "provider_closed": true,
+  "runtime_pause_lifted_only_for_repaired_background_entry": true,
+  "evidence": {
+    "box-triangles.json": {
+      "sha256": "d9b1b2d0d429b8b4fa78bfe74b1b2c1532aebed76cc3818664545df34456ef00",
+      "evidence_id": "ev_1cf61c151e9e630bf380be1ab5c6dca9c93a4ed4209863e48b1410e56ea09150"
+    },
+    "contact.json": {
+      "sha256": "e091e953204f7274fa5af340ce0d605470c62e08faeff17cf8bd96c74fff13e3",
+      "evidence_id": "ev_85128278d0a2fe0d25f64f3a5e8fc29aa93cfa774d3d2fc5b43b9e9113dba309"
+    },
+    "sphere-face.json": {
+      "sha256": "9ae184af8a140a0887c7c90b757c8ec33ab32ef28b9a2f1aa9786f409250e8c8",
+      "evidence_id": "ev_f3e0401f88d5a44b3ce3241929600d1869582fc13141d36ddb2c58b52f561a56"
+    },
+    "triangle-extrusion.json": {
+      "sha256": "7d8c226e564b8ecff4f1462ccee34214c78155dcbb28c9ae81a01f67f881fcfb",
+      "evidence_id": "ev_d727a103e83c0d8828193b9c7b64ae8761cdc646337b3bcdc5b9ee59a3f2d777"
+    }
+  }
+}
