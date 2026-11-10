@@ -518,3 +518,11 @@ C余量实际降至3.47GB，禁止再启动。只归档本方6个已terminal＋�
 协调者已单独窄修共享publisher：同一payload只写一次、replace最多6次，仅5/32/33、最多5次25ms等待，后来每次前要求完整原receipt仍等于previous。identity/schema/stage不放宽，其他错误立即退出；绝不重跑game/reserve/inject/prime，最终失败保留tmp和原injection未知保护。12项离线检查原记录复用、不重复跑，本方核对两文件完整SHA与实际变更hunk。launch_reserve SHAa4c44d9dc20afb11edb84beffe70c5b968ab0b76be7d3958bd2efe04c9899edf，test6385698f3262c9afd0d86f6de5fc1fa418bcbbd531dd969f43b78d9fed8961f4；birth-publication-integration-check.json保存审阅与共享proof SHA，无game实证或根因修复声明。
 
 下一步保存后新唯一实例，使用原endpoint-baseline-r1/新首发UP-only60ms setup及共享publisher窄改；产品DLL/Native/XR不重建、不改旧实例SHA。54720 startup/完整取枪的局部实证保留，首发9fixture仍未live验证，全部13项/30%/publicv71/头显false保持。
+
+## 首次重检在prepare前因磁盘余量拒绝；r3只归档已退出本方缓存
+
+03378682保存后新请求在run_isolated_empty.py:70 existing4GiB+1GiB margin检查抛错，返回1；代码尚未生成实例名/target/prepare/start，因此没有新game或operator，不复用21596。该磁盘前置拒绝与21596共享发布故障分别保留，不伪造runtime启动/cleanup。
+
+使用同一已审阅archive路径/identity/SHA/读回/junction保护，r3仅扩展到本方已terminal正常退出的005137/013055/013604/015245/020257/021724/024442/030749；各自owner/game/XR精确lifetime退出核对后才移动，活动实例和其他owner未碰。实际8目录736文件6195345229bytes，不把首目录已只剩1文件3bytes虚报为885MB；其余7目录各105文件885049318bytes。所有内容J副本SHA/文件集合/长度及C原路径映射读回通过，原源码/日志/录像/制品不动。terminal-shader-archive-20261111-r3.json保存after_free8543346688，后续启动仍需重新查实际资源。
+
+未新增游戏、未改变任何武器/输入/source门，目标active。下一步同一当前候选的新唯一实例，使用已核共享publisher窄改与本方首发setup改；21596实例不重启。

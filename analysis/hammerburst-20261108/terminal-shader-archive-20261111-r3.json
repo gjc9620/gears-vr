@@ -1,0 +1,57 @@
+{
+  "after_free": 8543346688,
+  "cache_contents_preserved": true,
+  "instances": [
+    {
+      "name": "hb-cloak-1111-005137",
+      "archive": "J:\\gearsVr\\analysis\\hammerburst-archive-20261110\\terminal-shader-caches\\hb-cloak-1111-005137\\PSOCache",
+      "files": 1,
+      "bytes": 3.0
+    },
+    {
+      "name": "hb-cloak-1111-013055",
+      "archive": "J:\\gearsVr\\analysis\\hammerburst-archive-20261110\\terminal-shader-caches\\hb-cloak-1111-013055\\PSOCache",
+      "files": 105,
+      "bytes": 885049318.0
+    },
+    {
+      "name": "hb-cloak-1111-013604",
+      "archive": "J:\\gearsVr\\analysis\\hammerburst-archive-20261110\\terminal-shader-caches\\hb-cloak-1111-013604\\PSOCache",
+      "files": 105,
+      "bytes": 885049318.0
+    },
+    {
+      "name": "hb-cloak-1111-015245",
+      "archive": "J:\\gearsVr\\analysis\\hammerburst-archive-20261110\\terminal-shader-caches\\hb-cloak-1111-015245\\PSOCache",
+      "files": 105,
+      "bytes": 885049318.0
+    },
+    {
+      "name": "hb-cloak-1111-020257",
+      "archive": "J:\\gearsVr\\analysis\\hammerburst-archive-20261110\\terminal-shader-caches\\hb-cloak-1111-020257\\PSOCache",
+      "files": 105,
+      "bytes": 885049318.0
+    },
+    {
+      "name": "hb-cloak-1111-021724",
+      "archive": "J:\\gearsVr\\analysis\\hammerburst-archive-20261110\\terminal-shader-caches\\hb-cloak-1111-021724\\PSOCache",
+      "files": 105,
+      "bytes": 885049318.0
+    },
+    {
+      "name": "hb-cloak-1111-024442",
+      "archive": "J:\\gearsVr\\analysis\\hammerburst-archive-20261110\\terminal-shader-caches\\hb-cloak-1111-024442\\PSOCache",
+      "files": 105,
+      "bytes": 885049318.0
+    },
+    {
+      "name": "hb-cloak-1111-030749",
+      "archive": "J:\\gearsVr\\analysis\\hammerburst-archive-20261110\\terminal-shader-caches\\hb-cloak-1111-030749\\PSOCache",
+      "files": 105,
+      "bytes": 885049318.0
+    }
+  ],
+  "source_logs_media_moved": false,
+  "before_free": 3757076480,
+  "game_started": false
+}

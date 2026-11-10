@@ -1,0 +1,10 @@
+{
+  "passed": false,
+  "exit_code": 1,
+  "phase": "before instance-name/prepare",
+  "error": "Need existing4GiB plus1GiB private-prepare margin; no prepare/start attempted",
+  "game_started": false,
+  "instance_created": false,
+  "remediation_archive": "terminal-shader-archive-20261111-r3.json",
+  "next_start_requires_fresh_resource_check": true
+}
