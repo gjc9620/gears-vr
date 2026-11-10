@@ -20,7 +20,7 @@
       "id": "finite_fire",
       "requirement": "\u5355\u624b/\u53cc\u624b\u7784\u51c6\u4e0e\u539f\u7248\u6709\u9650\u516d\u8fde\u53d1",
       "status": "failed_latest_live",
-      "limit": "Latest actual53012 acquired frame109; first trigger frame191 baseline with both pressed/released, valueUP, exact source age98.5964ms/no20ms prep reserve, zero rays. Failed republish193 later holding returned202; full fire/reload still failed. Consumer gap cause unproven.",
+      "limit": "Latest actual40524 separatedUP/DOWN, DOWN status3/owned1/muzzle1/source age55.6672ms; script release9.1905ms after press admission cancelled uncommitted first event, zero rays. Corrected first-discharge release not yet game exercised.",
       "evidence": [
         {
           "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-13712-first-failure-analysis.json",
@@ -45,6 +45,10 @@
         {
           "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-53012-first-failure-analysis.json",
           "sha256": "833db5826ca8144ffbdb521d7089f64a1ef2d470dbeab53736a3229404e9392c"
+        },
+        {
+          "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-40524-first-failure-analysis.json",
+          "sha256": "843aa37cd4b674e78895606b409bb5bf141b942740464eb8a6b62f36304a67a9"
         }
       ]
     },
@@ -195,9 +199,9 @@
   ],
   "completion_proven": false,
   "goal_active": true,
-  "immediate_next": "Current owned consumed-input-r2 run: confirm actual UP/DOWN consumption, exact six authoritative first rays, then full ordinary empty reload and final typed return counts. Stop first failure, inspect source/identity/freshness and preserve all remaining full requirements.",
+  "immediate_next": "When resource admission permits a fresh independent instance, verify the corrected single held press through first original discharge, then six rays and full ordinary empty reload with final typed return counts. Do not restart212609 or rerun unchanged early-release input. All13 requirements remain.",
   "historical_evidence_does_not_certify_current_PG": true,
-  "candidate_runtime_status": "consumed-input-r2 currently under owned background validation; no gameplay acceptance yet. Prior53012 first trigger failed with merged UP/DOWN and no authoritative rays.",
+  "candidate_runtime_status": "Actual40524 separately consumed valid UP then DOWN status3/owned1/muzzle1 but script released before first original event delivery; no rays. Corrected helper now waits original first ray before release, source committed764994e7. Next fresh attempt212609 rejected before game by existing2-instance resource guard; no own runtime remains.",
   "previous_recorded_candidate": {
     "name": "hammerburst-prepared-20261110-unheld-input-r1",
     "prepared_sha256": "76a2ae8cc56e4165b77ca5d17a9e6469ff66323e917be5a8b46da44df4f0bb58"

@@ -180,3 +180,7 @@ consumed-input-r2完整Playground编译成功，SHA a8d937ccebef5416bbeea08287e6
 脚本改为消费DOWN后继续同一次真实持按，等首条真实trajectory后才UP；等不到首发则有界超时释放，无补按。仍要求总计恰好6条有效射线，全部游戏时限原样。4项时序测试通过。
 
 本轮continuous/session passed=true、launcher0、operator1、stop0，Native清理/入口恢复/XR退出0，本方game消失、无子进程残留/无强杀；1475前台/2555CLOAK检查零违规。362帧GPU录制errors空，媒体复核与编码另记，不称整枪通过。raw text归档runtime-40524-text，首因记录runtime-40524-first-failure-analysis.json。
+
+40524媒体后处理：离线编码exit0、stereo-demo.mp4存在；亲看frame00352/00361，两张实际首发附近原图均有近脸/右眼大片枪身遮挡，不接受为完整贴合或全角度证据，仅用于本次失败核对。
+
+修正为等待首条真实弹道后的新申请hb-cloak-1110-212609在start前被现有两实例内存保护拒绝，game_started=false、operator_started=false，无本方运行/恢复责任；不复用该已prepare名字，不通知占用/排队，不标目标blocked。下一轮资源允许时使用新唯一实例，保留当前已编译候选及新单次按下时序继续验证。

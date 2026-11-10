@@ -87,7 +87,13 @@
   "media": {
     "frames": 362,
     "errors": [],
-    "encoded": false,
-    "review_pending": true
+    "encoded": true,
+    "review_pending": false,
+    "encode_exit": 0,
+    "personally_reviewed": [
+      "frame-00352.jpg",
+      "frame-00361.jpg"
+    ],
+    "limit": "Two actual first-failure contacts only, no full-span/all-angle acceptance. Cross-body presentation puts large gun near face/right eye and obscures scene; full fitting remains unaccepted."
   }
 }
