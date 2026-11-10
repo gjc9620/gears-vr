@@ -1,0 +1,20 @@
+--- a/tools/playground/weapon_hammerburst_runtime.inl
++++ b/tools/playground/weapon_hammerburst_runtime.inl
+@@ -27,6 +27,7 @@
+ inv::Inventory opening;
+ inv::Request completion;
+ lancerreload_state::RewardReceipt reward;
++#include "weapon_hammerburst_reload_begin.inl"
+ gears_weapon::HammerburstLatchStroke stroke;
+ gears_weapon::FeedInsertionStroke insertion;
+ gears_weapon::HammerburstMagazineExtraction extraction;
+@@ -583,8 +584,7 @@
+         if(!observer.sample(f,before))return true;
+         const bool needs_reload=before.loaded<before.capacity&&(before.infinite_reserve||before.reserve);
+         if(!gears_weapon::LancerReloadPolicy::unpack(configured_policy.load(std::memory_order_acquire),opening_policy))return true;
+-        serial=0;
+-        const auto result=needs_reload?lancerreload_state::begin(f,serial):lancerreload_state::BeginResult::acquired;
++        const auto result=reload_begin::acquire(f,before,serial,reward);
+         if(result==lancerreload_state::BeginResult::rejected)return true;
+         last_started_identity=starting;last_started_grip=f.press_token;
+         opening=before;old_item=f.press_token;held=decision.lease;ui_pending=needs_reload;

@@ -68,6 +68,8 @@ class Binding:
         return json.loads(Path(state['session_report']).read_text(encoding='utf-8-sig'))['xr_identity']
 
     def live(self, game):
+        if (self.instance / 'stop-actions').exists():
+            return False
         if self.pinned is None:
             self.state()
         owner, selected_game, publisher = self.pinned

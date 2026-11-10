@@ -79,6 +79,11 @@ class BindingTests(unittest.TestCase):
             self.identities[3] = dict(self.xr, creation_time=301)
             self.assertFalse(self.bound.live(self.game))
 
+    def test_own_stop_marker_halts_inputs_before_game_shutdown(self):
+        self.bound.state()
+        (self.instance / 'stop-actions').write_text('Normal own stop requested')
+        self.assertFalse(self.bound.live(self.game))
+
     def test_output_cannot_escape_instance(self):
         with self.assertRaises(ValueError):
             adapter.Binding('hb-test', self.root / 'shared')
