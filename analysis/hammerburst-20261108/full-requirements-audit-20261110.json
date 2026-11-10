@@ -7,8 +7,8 @@
     {
       "id": "acquire_stow",
       "requirement": "取枪与收枪",
-      "status": "current_fresh_baseline_pickup_observed_stow_open",
-      "limit": "Actual13492 and22896 fresh UP baseline followed by one matching Grip/held before moving. Stow/restore/full stability remain open.",
+      "status": "current_driver_marker_cap_failure_repaired_not_live",
+      "limit": "Prior13492/22896/24648 real pickup success retained.57960 noGrip because16 UP rows all predate own command; actual driver now observes during reach,16 fixture checks only. Stow/restore/full stability remain open.",
       "evidence": [
         {
           "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-13712-first-failure-analysis.json",
@@ -41,6 +41,10 @@
         {
           "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-24648-first-failure-analysis.json",
           "sha256": "005baced2bb7f8b01a9cad11e9f0ce20f21d7243efff40ffa2e85181c770f7b7"
+        },
+        {
+          "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-57960-first-failure-analysis.json",
+          "sha256": "e3d58813a73627a4fda880f2229b7b8c1f5b3f7c837786fff9d2fb5c6b80827a"
         }
       ]
     },
@@ -276,9 +280,9 @@
   ],
   "completion_proven": false,
   "goal_active": true,
-  "immediate_next": "One fresh isolated run to measure asset_read/attachment/post-current under unchanged full gates; ready_for is not equivalent to full asset validation. Existing release handoff still awaiting actual exercise. Preserve all13 requirements.",
+  "immediate_next": "One fresh instance with repaired driver and SAME compiled press-assets-r1; actual caller changed, not unchanged replay. Obtain successful currentUP/oneGrip then split press timing. Full13 requirements remain.",
   "historical_evidence_does_not_certify_current_PG": true,
-  "candidate_runtime_status": "release-handoff-r1 actual24648 pickupUP130/held132 succeeds; press224 reserve failure then same-edge defer expiry225, zero rays. New release handoff not reached; neither proved nor disproved live. Normal cleanup.",
+  "candidate_runtime_status": "press-assets-r1 actual57960:16 shoulder-UP marker rows all predate driverUP; noGrip sent, no acquisition/press/timing/handoff/reload. Driver now sendsUP before reach and consumes fresh marker during gesture;16 fixtures +8 adapters compile, not live yet.",
   "previous_recorded_candidate": {
     "name": "hammerburst-prepared-20261110-unheld-input-r1",
     "prepared_sha256": "76a2ae8cc56e4165b77ca5d17a9e6469ff66323e917be5a8b46da44df4f0bb58"
@@ -300,5 +304,5 @@
   "restore_verifier_status": "Optional --hammerburst-park-restore input action hook integrated into private reload adapter; five synthetic action/receipt regressions passed. Actual park/redraw/new-grant/native-resume, typed conservation, UI/reward and complete return-fire require game evidence.",
   "latest_service_first_failure": "runtime-3112-first-failure-analysis.json",
   "latest_startup_failure": "runtime-49732-startup-failure.json",
-  "latest_runtime_failure": "runtime-24648-first-failure-analysis.json"
+  "latest_runtime_failure": "runtime-57960-first-failure-analysis.json"
 }

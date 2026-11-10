@@ -1,15 +1,14 @@
 """One real Grip after a current owned Native UP baseline; no old-edge retry."""
 import time
 
-def acquire(c,data,*,clock=time.perf_counter_ns,sleep=time.sleep):
+def acquire(c,data,*,shoulder=None,clock=time.perf_counter_ns,sleep=time.sleep):
     assert 'pickup_input' not in data,'Pickup input attempt cannot be replayed'
     g=c.g;proof={};data['pickup_input']=proof
     def number(row,key):
         try:return int(row[key])
         except (KeyError,ValueError,TypeError):return -1
     proof['up_sent_ns']=clock();g.pad(1,wait=0,squeeze=0)
-    deadline=clock()+5_000_000_000
-    while clock()<deadline:
+    def released_baseline():
         assert g.live(),'Owned runtime ended before shoulder UP baseline'
         rows=c.records('hammerburst_pickup_up')
         for row in reversed(rows):
@@ -17,8 +16,15 @@ def acquire(c,data,*,clock=time.perf_counter_ns,sleep=time.sleep):
             if (sync>=proof['up_sent_ns'] and stamp>=sync and 0<=now-stamp<=100_000_000 and 0<=now-sync<=100_000_000 and
                 number(row,'source')==1 and number(row,'right_down')==0 and number(row,'right_pressed')>=0 and
                 number(row,'right_pressed')==number(row,'right_released') and row.get('input_status') in ('baseline','quiet')):
-                proof['baseline']=row;break
-        if 'baseline' in proof:break
+                proof['baseline']=row;return True
+        return False
+    # Observe during the existing finite shoulder gesture. Waiting until its
+    # fixed settling tail ends can exhaust the bounded Native UP log budget.
+    # The real UP command still precedes every accepted producer receipt.
+    if shoulder is not None:c.reach(shoulder,ready=released_baseline)
+    deadline=clock()+5_000_000_000
+    while clock()<deadline:
+        if released_baseline():break
         sleep(.01)
     else:raise TimeoutError('No fresh actual released Native baseline at shoulder; no Grip sent')
     baseline=proof['baseline'];before=len(c.records('native_equipment'))

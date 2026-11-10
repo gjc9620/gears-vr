@@ -464,3 +464,11 @@ launcher0/operator1/stop0，Native清理/PG入口恢复/XR0、本方game及子�
 原press_timing的asset_ns实际包含lancermain_asset::read、nativeequipment::attached_frame及末次current三项，24648的6.3101ms无法指认其中哪项。新私有press-assets-r1仅在原三个短路布尔结果上加原样返回的计时wrapper，每个原调用仍一次、原顺序和失败短路不变；只有原最多12行active HB timing新增3次时钟读，既有行输出细分asset_read_ns/attachment_ns/post_asset_current_ns。无source/许可/事件时效/输入动作改动；非active零时钟读。
 
 完整PG SHA4174354ac6c4d7243560379c0f85b7027ed1a0d288ac458b230371c3571d0d33、Native/XR未重建；10个精确observer fixture覆盖disabled/无log/null/完整与3个失败短路/缺失阶段/无效index/12行封顶，全部通过。源变换逆向恢复原condition逐字一致；无新产品优化或修复通过声明。下一步用单个新隔离实例取得三项实际耗时及已有交接路径情况，随后针对实测最慢部分改实现；不重复未改候选，不放宽100/20/250ms。13项/30%/publicv71保持。
+
+## 实际57960：肩部UP日志封顶先于驱动命令，测试驱动已修正
+
+press-assets-r1/hb-cloak-1111-035727/game57960/creation134388143847200248，纯只读资源等待30.297秒20次后准入；actual noGrip。16个shoulderUP marker全部在驱动UP125635619882900之前；末行194/seq3194 sync125635519400700、admitted125635548221200，admitted先于UP71.6617ms，producer先100.4822ms。原驱动先完成reach加250mssettle，再发送UP，首批marker预算已耗尽。没有输入source-gap、没有Grip、取枪/首发计时/新增handoff/reload均未触达；不能拿这次归咎于首发或产品交接。
+
+修复仅在本方Python测试adapter：acquire先发真实UP；原有限reach可选ready回调在每个原gesture sample之后读取真实NativeUP，首次fresh且post-own-command marker成立就停止剩余UP movement，更新测试当前手pose，再发送唯一Grip并等待原matching held。未改变原轨迹生成、姿态/年龄容差、原Native16行预算或产品代码；其他reach默认仍完成原全路径与250ms停顿。失败不重按。16项驱动fixture（含原11+移动期间有效/旧/缺失marker3+实际改写reach函数两条路径）通过，8adapters解析通过；非game证明。
+
+launcher0/operator1/stop0、Native/PG入口/XR0与本方进程正常清理，无强杀，1177前台/2040CLOAK零违规。106帧errors空encode0，亲看三页48双眼全跨度，真实场景/肩部手臂可见，初段重影/手臂重叠仍未接受，无持枪/射击/换弹或全角度/头显证明。7原文本SHA归档，runtime-57960-first-failure-analysis.json与13项audit更新。下一步新实例使用修正driver和**同一已编译**press-assets-r1，测试调用方已变，非无改重跑。全部本方运行终态；13项/30%/publicv71保持。
