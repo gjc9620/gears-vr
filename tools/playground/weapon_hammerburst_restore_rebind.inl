@@ -31,7 +31,8 @@ bool rebind(hand::Frame const& source) noexcept {
     opening.identity=rebound_inventory.identity; // Preserve original pre-insert counts/reward basis.
     if(parked_native_lease.serial)parked_native_lease.identity=rebound_inventory.identity;
     held={};stroke.reset();insertion.reset();extraction.reset();
-    released=false;restore_display_ready=false;restore_display_step=0;stage=Stage::restoring;
+    released=false;restore_display_ready=false;restore_display_step=0;
+    restore_resume_step=0;resume_grant_ready=false;stage=Stage::restoring;
     return true;
 }
 }

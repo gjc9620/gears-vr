@@ -144,3 +144,15 @@ restore_control::display现在由实际restoring分支调用。以每帧短作�
 新增Display18场景185检查、Rebind22/213、Admission25/266、ParkControl14/86均通过。Display为实际派发控制/真实台账，原动画/显示调用是夹具；Admission另验证真实Frame/曲线。完整Playground编译链接成功：restore-display-r1 SHAcebec05c8a705336ae606f707c423a5a2416ce52ec41848f455176063f0d8248。第一次构建因准备脚本在嵌套switch处截断分支失败，修正严格外层锚点后编译通过，失败日志保留。
 
 新鲜松开/再次按下的续接、原生重新接管与闭锁奖励计时仍待接完，开关默认OFF，未选作游戏候选。当前实际入口仍为held-republish-r1。补丁hammerburst-restore-display.patch，未缩减原十三项需求。
+
+## 恢复后新意图续接与原游戏时间（r3源码/离线，未实测）
+
+实际restoring分支在显示恢复后调用restore_control::resume。先要求新鲜且已知UP，跟踪/Frame缺失会撤销该基线，再要求当前新grant、正确部件、严格递增原始press token；旧DOWN/retained grant不得启动。台账先复制resume，再由同一原serial保存的Lease重新取得原生补弹，资格receipt不重新采集、原accepted_begin/reward_start/perfect_end不重置。原启动是否实际派发有可选布尔回执；仅在新意图上调用一次，未派发拒绝也消耗本意图并恢复显示，不自动重试旧按键。
+
+未插入时恢复原native owner后在不同Frame取得/停止动画、seek保存角度、隐藏已拔原匣，再回到原opening/opened/waiting_ammo；当前仍有效的同一新手grant可衔接实际握持，不凭空另授lease。已插入时直接继续原closing，不再ForceReload或插弹。此时animation_owned仅接受同一武器、同一visual-only动画与新鲜Frame，原生UI分支不读取其他owner；物理闭锁按保存reward_start读取真实WorldInfo.TimeSeconds，保持原accepted坐标和奖励期限，不用墙钟补偿暂停。完成时先归还本方visual clip。
+
+恢复中再收枪覆盖原生已重新取得与已插入visual-only两条路径，保留弹数/serial/计时。原调用若可能已派发但没有可认证Lease，标记restore_native_uncertain，既不重新开始也不假装parking/cleanup成功；只有实际对象退役可丢弃该未决原件。
+
+冻结Resume19场景284检查、Display18/185、Rebind22/213、Admission25/266、ParkControl17/109通过，共101场景1057检查。Resume/park使用实际控制与台账，原生/动画/授权调用是夹具，不是游戏证据；Admission另覆盖真实Frame/曲线。restore-resume-r3完整Playground编译链接成功，SHA 1a320f2c360723baf7f55b75e7b381b88d49a2100550c896714caa4aa0ed0897。初版编译发现冻结API没有较新begin_for_part，未引入其他武器代码，改为原suspended begin并补可选派发回执；此前失败及r1/r2证据保留。
+
+当前本段源码控制链已接入，但真实native重新取得、UI、切枪恢复、闭锁奖励及整体首发仍待实测。开关默认OFF、未换当前游戏入口；runtime_ready保持false，不把编译当玩法验收。原十三项要求保留。源码差量hammerburst-restore-resume.patch；共享较新API的小包装差量另存hammerburst-restore-resume-state-api.patch，未将其他人的共享源改动纳入提交。

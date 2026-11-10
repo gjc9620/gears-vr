@@ -134,8 +134,8 @@
     {
       "id": "interruptions",
       "requirement": "\u6682\u505c/\u5931\u8ffd/\u5207\u67aa/\u6536\u67aa\u9000\u51fa\u3001\u4e0d\u5f97\u91cd\u653e\u65e7\u8fb9\u6cbf",
-      "status": "parking_and_restore_admission_compiled_dispatch_missing",
-      "limit": "Parking side compiled with real ledger. Cosmetic restoration scope and original animation/clip/seek/display admission hooks compiled;25 cases266 checks pass on frozen Frame/ledger/curve, including exact100ms boundary and fail-closed revocation. Actual observer rebind, restore dispatch, game-clock reconciliation and fresh release/grab activation are not integrated; shared default OFF, runtime_ready=false, no live interruption acceptance.",
+      "status": "restore_continuation_compiled_offline_game_missing",
+      "limit": "Park/rebind/display/fresh-UP-new-grant/native reacquire-or-inserted-visual-close/game-clock connected in actual runtime. Five focused frozen suites pass; engine calls/grants are fixture seams. No game restore/switch acceptance. Unknown original dispatch cannot be replayed or acknowledged as cleaned.",
       "evidence": [
         {
           "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\reload-cleanup-r1\\prepared.json",
@@ -152,6 +152,10 @@
         {
           "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\restore-admission-r3\\prepared.json",
           "sha256": "b5ff9e1caf711d2d2d7f027e9d18f7f59a42e0b800b5c7a82929fed3673a79ae"
+        },
+        {
+          "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\restore-resume-r3\\prepared.json",
+          "sha256": "2c735c24bde87add51416128547834287f2529c83a9a94fdd2209719c72a4d38"
         }
       ]
     },
@@ -199,14 +203,16 @@
     "prepared_sha256": "76a2ae8cc56e4165b77ca5d17a9e6469ff66323e917be5a8b46da44df4f0bb58"
   },
   "development_snapshot": {
-    "name": "restore-display-r1",
-    "prepared_sha256": "b78898389009662778c58bb3a50db65fdf5e2fea180c845544e47acc17e87848",
+    "name": "restore-resume-r3",
+    "prepared_sha256": "2c735c24bde87add51416128547834287f2529c83a9a94fdd2209719c72a4d38",
     "full_playground_compiled": true,
     "runtime_ready": false,
     "default_enabled": false,
     "selected_for_game": false,
     "restoration_rebind_integrated": true,
     "restoration_display_integrated": true,
-    "fresh_intent_resume_integrated": false
+    "fresh_intent_resume_integrated": true,
+    "retained_game_clock_integrated": true,
+    "limit": "Actual restore chain, native reacquisition, original UI and interruption/reward still require owned game validation; Source1 first-fire failure remains open."
   }
 }

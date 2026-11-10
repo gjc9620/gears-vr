@@ -33,25 +33,34 @@ bool finish() noexcept {
     return true;
 }
 bool begin() noexcept {
-    if(!enabled())return false;
+    if(!enabled()||restore_native_uncertain)return false;
     if(stage==Stage::parked)return true;
     if(stage==Stage::parking)return finish();
     if(stage==Stage::restoring){
         // Repark the rebound ledger unchanged; cosmetic restoration acquired
         // no native reload. Never replace its saved original timing lease.
-        if(!parked_plan.valid||lancerreload_state::lease.acquired||
+        if(!parked_plan.valid||
            !inv::counts_equal(transaction.inventory(),parked_plan.transaction.inventory())||
            (anim::ownership.active&&!(anim::ownership.inventory==opening.identity))||
            (visual::active&&!hand::same(visual::saved.weapon,opening.identity.weapon)))return false;
+        if(lancerreload_state::lease.acquired){
+            if(!serial||lancerreload_state::lease.serial!=serial||!(lancerreload_state::lease.identity==opening.identity))return false;
+            park_ledger::Plan resumed_plan{};
+            if(!park_ledger::prepare(parked_plan.resume_stage,transaction,old_item,0,false,resumed_plan))return false;
+            parked_plan=resumed_plan;parked_native_lease=lancerreload_state::lease;
+        }
         stage=Stage::parking;return finish();
     }
     park_ledger::Plan proposed{};
     if(!park_ledger::prepare(stage,transaction,old_item,new_item,extraction.complete(),proposed))return false;
-    if(serial&&(!lancerreload_state::lease.acquired||lancerreload_state::lease.serial!=serial||!(lancerreload_state::lease.identity==opening.identity)))return false;
+    const bool resumed_visual_owner=serial&&native_exited&&parked_plan.valid&&!lancerreload_state::lease.acquired&&
+        parked_native_lease.serial==serial&&parked_native_lease.identity==opening.identity&&
+        anim::ownership.active&&anim::ownership.visual_only&&anim::ownership.serial==serial;
+    if(serial&&!resumed_visual_owner&&(!lancerreload_state::lease.acquired||lancerreload_state::lease.serial!=serial||!(lancerreload_state::lease.identity==opening.identity)))return false;
     if(!serial&&lancerreload_state::lease.acquired)return false;
     if(anim::ownership.active&&!(anim::ownership.inventory==opening.identity))return false;
     if(anim::ownership.seek_pending&&!anim::reconcile_seek())return false;
-    parked_native_lease=serial?lancerreload_state::lease:lancerreload_state::Lease{};
+    if(!resumed_visual_owner)parked_native_lease=serial?lancerreload_state::lease:lancerreload_state::Lease{};
     parked_plan=proposed;stage=Stage::parking;
     // Publish the parking phase before original exit/display restoration.
     // A partial recovery keeps this plan and cannot lose committed ammunition.

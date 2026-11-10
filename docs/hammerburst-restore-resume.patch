@@ -1,0 +1,377 @@
+--- a/tools/playground/weapon_hammerburst_runtime.inl
++++ b/tools/playground/weapon_hammerburst_runtime.inl
+@@ -52,6 +52,10 @@
+ bool restore_display_ready{};
+ unsigned restore_display_step{};
+ bool restoration_failed{};
++unsigned restore_resume_step{};
++std::uint64_t restore_resume_intent{};
++bool resume_grant_ready{};
++bool restore_native_uncertain{};
+ unsigned open_pose_reads{},open_stable_reads{},feed_failure{};
+ double last_open_observed{};
+ std::int64_t geometry_retry_ns{};
+@@ -192,27 +196,31 @@
+ void propose(hand::Frame const& f,hand::GripGameState& game) noexcept {
+     if(!game.main_hand_held||game.busy||game.animation_owns_hands||!f.left_tracked||!f.left_grip_down||
+        !geometry_current(f)||game.kind!=hand::WeaponKind::firearm)return;
+-    if(stage==Stage::recovering||stage==Stage::completing)return;
++    if(stage==Stage::recovering||stage==Stage::completing||(stage==Stage::restoring&&!restore_display_ready))return;
++    const auto interaction_phase=stage==Stage::restoring?parked_plan.resume_stage:stage;
+     if(held.id==f.press_token&&hand::lease_valid(held,f.key.lifecycle)){
+         for(auto& slot:game.object_incumbents){if(hand::same(slot,held))return;
+             if(slot.kind==hand::LeaseKind::none){slot=held;return;}}
+         return;
+     }
+-    if(stage==Stage::waiting_ammo){
++    if(interaction_phase==Stage::waiting_ammo){
+         if(empty_supply.rejected(f.key.lifecycle,f.press_token))return;
+         const P body{f.stereo.head.position,f.reference.orientation};
+         game.request_ammo=gears_weapon::body_slot(nativeequipment::calibration,body,f.controllers.hands[0].grip.position,0)==gears_weapon::BodySlot::shoulder_ammo;
+-    }else if(stage==Stage::old_magazine&&visual::active&&visual::last_grab_known){
++    }else if(interaction_phase==Stage::old_magazine&&visual::active&&visual::last_grab_known){
+         gears_rig_tracking::Frame rig{};const auto expected=static_cast<std::uint32_t>(f.stereo.source);
+         if(handrig::read(rig,0,expected).reply!=gears_rig_tracking::Reply::accepted||
+            gears_equipment_rig::match(f,rig,weaponhand::clock_ns(nullptr),expected)!=gears_equipment_rig::Status::matched||
+            !(rig.world_pose_mask&gears_rig_tracking::left_grip_pose)||
+            !gears_vr::stereo_pose_valid(rig.world_grip[0])||!std::isfinite(rig.units_per_metre))return;
+         game.request_magazine=length(sub(rig.world_grip[0].position,visual::last_grab_world))<=.08*rig.units_per_metre;
+-    }else if(stage==Stage::idle||stage==Stage::acquiring||stage==Stage::opening||stage==Stage::opened||stage==Stage::closing)
++    }else if(interaction_phase==Stage::idle||interaction_phase==Stage::acquiring||interaction_phase==Stage::opening||interaction_phase==Stage::opened||interaction_phase==Stage::closing)
+         game.request_magazine=at_latch(f);
+ }
+ bool animation_owned(hand::Frame const& f) noexcept {
++    if(serial&&native_exited&&parked_plan.valid&&anim::ownership.active&&anim::ownership.visual_only&&
++       anim::ownership.serial==serial&&anim::ownership.inventory==opening.identity)
++        return fresh_restore_main(f)&&geometry_current(f)&&inv::identity(f)==opening.identity;
+     return serial?lancerreload_state::owns(f,serial):
+         !lancerreload_state::lease.acquired&&nativeequipment::current(nullptr,f)&&
+         opening.identity==inv::identity(f)&&(!anim::ownership.active||
+@@ -230,6 +238,7 @@
+     restoration_admission::cancel();
+     restore_display_ready=false;
+     restore_display_step=0;restoration_failed=false;
++    restore_resume_step=0;restore_resume_intent=0;resume_grant_ready=restore_native_uncertain=false;
+     const bool release_outstanding=stage!=Stage::parked;
+     stage=Stage::idle;observer={};transaction={};writer={};opening={};completion={};reward={};
+     held={};serial=old_item=new_item=0;angle=0;released=switch_requested=native_exited=ui_pending=false;
+@@ -253,6 +262,7 @@
+         visual::active=false;visual::saved={};visual::last_grab_known=false;
+         lancerreload_state::lease={};anim::ownership={};reset();return true;
+     }
++    if(restore_native_uncertain)return false; // Unknown original dispatch cannot be acknowledged as cleaned.
+     inv::Request pending_request{};
+     if(transaction.dispatched_request(pending_request)&&!lancerreload_state::restore_partial_insert(pending_request,observer))return false;
+     if(!lancerreload_state::recover_owned()||!restore_animation()||!visual::restore())return false;
+@@ -263,6 +273,14 @@
+ #include "weapon_hammerburst_restore_admission.inl"
+ #include "weapon_hammerburst_restore_rebind.inl"
+ #include "weapon_hammerburst_restore_display.inl"
++#include "weapon_hammerburst_restore_resume.inl"
++bool restored_game_time(hand::Frame const& source,float& value) noexcept {
++    hand::ObjectIdentity world{};
++    return nativeequipment::identify(nullptr,source.world.address,world)&&hand::same(world,source.world)&&
++        playground::pointer(source.pawn.address,L"WorldInfo")==world.address&&
++        lancerreload_state::time_field(world.address,L"TimeSeconds",value)&&nativeequipment::current(nullptr,source);
++}
++#include "weapon_hammerburst_restore_clock.inl"
+ #include "weapon_hammerburst_latch_history.inl"
+ bool hand_sample(hand::Frame const& f,gears_weapon::HammerburstLatchSample& out) noexcept {
+     P left{};if(!local_hand(f,left))return false;
+@@ -403,7 +421,7 @@
+     }
+     if(!f.left_grip_known)return;
+     if(!f.left_grip_down){
+-        released=true;held={};stroke.reset();
++        released=true;held={};stroke.reset();resume_grant_ready=false;
+         if(stage==Stage::old_magazine){
+             // A premature release cancels and restores the owned component;
+             // it cannot expose shoulder supply without actual extraction.
+@@ -464,9 +482,10 @@
+         if(stage==Stage::opening&&moved==gears_weapon::HammerburstLatchMotion::open){stage=Stage::opened;stroke.reset();}
+         else if(stage==Stage::closing&&moved==gears_weapon::HammerburstLatchMotion::closed){
+             std::int64_t tick=f.controllers.sync_ns/1000000;
+-            const auto window=lancerreload_state::closure_time(f,serial,tick)?lancerreload_state::lease.perfect_end_ms:0;
++            std::int64_t accepted_begin{},window{};
++            if(!closure_clock(f,tick,accepted_begin,window))window=0;
+             if(log_file){fwprintf(log_file,L"hammerburst_reload_closure serial=%llu elapsed_game_ms=%lld perfect_end_ms=%lld inserted=%u target=%u\n",
+-                serial,tick-lancerreload_state::lease.accepted_begin_ms,window,
++                serial,tick-accepted_begin,window,
+                 transaction.inserted(),transaction.target());fflush(log_file);}
+             if(!transaction.confirm_closed(tick,window)||(serial&&!transaction.take_request(completion))){cleanup(__LINE__);return;}
+             stage=Stage::completing;held={};
+@@ -474,7 +493,9 @@
+         return;
+     }
+     if(stage==Stage::waiting_ammo){
+-        if(!released||!granted(f,decision,hand::LeaseKind::ammo,true))return;
++        const bool resumed_grant=resume_grant_ready&&granted(f,decision,hand::LeaseKind::ammo)&&hand::same(held,decision.lease);
++        if(!resumed_grant&&(!released||!granted(f,decision,hand::LeaseKind::ammo,true)))return;
++        resume_grant_ready=false;
+         inv::Inventory current{};
+         if(!observer.sample(f,current))return;
+         const auto expected=transaction.inventory();
+@@ -549,10 +570,13 @@
+         if(weaponhand::client.copy_frame_on_gt(resumed,resumed_game,resumed_decision)&&resumed.controller.address==pc&&
+            resumed_game.known&&resumed_game.main_hand_held&&!resumed_game.busy&&!resumed_game.animation_owns_hands){
+             if(restoration_failed){park_control::begin();return true;}
+-            if(restore_control::display(resumed)==restore_control::DisplayResult::recovery_required){
++            const bool failed=restore_display_ready?
++                restore_control::resume(resumed,resumed_decision)==restore_control::ResumeResult::recovery_required:
++                restore_control::display(resumed)==restore_control::DisplayResult::recovery_required;
++            if(failed){
+                 restoration_failed=true;park_control::begin();
+             }
+-        }
++        }else released=false;
+         // A restored picture is not permission to reuse an old hand action.
+         return true;
+     }
+@@ -574,6 +598,9 @@
+         if(!native_exited){
+             if(!lancerreload_state::recover_owned()||!restore_animation()){cleanup(__LINE__);return true;}
+             native_exited=true;return true;
++        }
++        if(anim::ownership.active){
++            if(!anim::ownership.visual_only||!(anim::ownership.inventory==opening.identity)||!restore_animation())return true;
+         }
+         inv::Inventory counts{};
+         if(completion.result==gears_weapon::ReloadTxnResult::perfect&&
+@@ -596,7 +623,7 @@
+         return false;
+     }
+     if(stage!=Stage::idle&&!(inv::identity(f)==opening.identity)){cleanup(__LINE__);return true;}
+-    if(stage!=Stage::idle&&serial){
++    if(stage!=Stage::idle&&serial&&!native_exited){
+         if(ui_pending){
+             const auto display=opening.loaded?opening_policy.tactical_ms:opening_policy.empty_ms;
+             const auto window=opening_policy.deadline(opening.loaded==0,lancerreload_state::lease.perfect_end_ms);
+--- a/tools/playground/weapon_hammerburst_restore_display_test.cpp
++++ b/tools/playground/weapon_hammerburst_restore_display_test.cpp
+@@ -1,53 +1,4 @@
+-// Actual cosmetic dispatcher, real parked transaction; engine dispatch stubs.
+-// Scope's real Frame/curve policy has its separate production admission suite.
+-#include "weapon_hammerburst_restore_fixture.inl"
+-namespace hb_rebind_fixture {
+-double angle{.6};bool permit_enabled{true},permit_active{};
+-unsigned starts{},seeks{},visual_starts{},stows{};
+-anim::Acquire start_result{anim::Acquire::acquired};
+-bool seek_result{true},seek_pending_result{},visual_result{true},stow_result{true};
+-std::uint64_t animation_serial()noexcept{return serial?serial:old_item;}
+-namespace restoration_admission {
+-struct Scope {bool active{};explicit Scope(hand::Frame const&)noexcept{
+-    active=permit_enabled&&!permit_active;permit_active=active;}
+-    explicit operator bool()const noexcept{return active;}~Scope()noexcept{if(active)permit_active=false;}};
+-}
+-bool restoration_owned(hand::Frame const&)noexcept{return permit_active&&permit_enabled;}
+-}
+-namespace hammerburst_visual_clip {
+-anim::Acquire start(hand::Frame const& f,std::uint64_t token)noexcept{
+-    using namespace hb_rebind_fixture;C(permit_active);++starts;
+-    if(start_result!=anim::Acquire::rejected){anim::ownership.active=anim::ownership.visual_only=anim::ownership.stopped=true;
+-        anim::ownership.serial=unsigned(token);anim::ownership.inventory=f.identity;}
+-    return start_result;
+-}
+-}
+-namespace anim {
+-bool seek_latch_angle(hand::Frame const&,std::uint64_t token,double value)noexcept{
+-    using namespace hb_rebind_fixture;C(permit_active&&token==animation_serial()&&value==angle);++seeks;
+-    ownership.seek_pending=seek_pending_result;return seek_result;
+-}
+-}
+-namespace visual {
+-enum class Profile{hammerburst};bool begin_retryable{true};
+-bool begin(hand::Frame const& f,Profile)noexcept{
+-    using namespace hb_rebind_fixture;C(permit_active);++visual_starts;
+-    if(visual_result){active=true;saved.weapon=f.identity.weapon;}return visual_result;
+-}
+-bool stow()noexcept{using namespace hb_rebind_fixture;C(permit_active);++stows;return stow_result;}
+-}
+-namespace hb_rebind_fixture {
+-#include "weapon_hammerburst_restore_display.inl"
+-hand::Frame display_setup(unsigned mode=0){
+-    auto f=setup(mode==2);
+-    if(mode==1){Fixture missing;C(missing.transaction.stow_original(1));
+-        C(park_ledger::prepare(Stage::waiting_ammo,missing.transaction,1,0,false,parked_plan));
+-        transaction=parked_plan.transaction;observer.value=transaction.inventory();}
+-    C(restore_control::rebind(f));angle=.6;permit_enabled=true;permit_active=false;
+-    starts=seeks=visual_starts=stows=0;start_result=anim::Acquire::acquired;
+-    seek_result=visual_result=stow_result=true;seek_pending_result=false;visual::begin_retryable=true;return f;
+-}
+-}
++#include "weapon_hammerburst_restore_display_fixture.inl"
+ int main(){
+     using namespace hb_rebind_fixture;using D=restore_control::DisplayResult;checks=cases=0;
+     for(unsigned mode=0;mode<3;++mode){
+--- a/tools/playground/weapon_hammerburst_restore_fixture.inl
++++ b/tools/playground/weapon_hammerburst_restore_fixture.inl
+@@ -4,8 +4,14 @@
+ #include "weapon_hammerburst_reload_park_ledger_test.cpp"
+ #undef main
+ namespace hand {
+-struct Frame {inv::Identity identity{};};
++enum class LeaseKind{none,magazine,ammo};
++struct Lease{std::uint64_t id{};LeaseKind kind{};
++    Lease()=default;Lease(unsigned value):id(value){};
++    bool operator!()const noexcept{return !id;}bool operator==(unsigned value)const noexcept{return id==value;}};
++struct Frame {inv::Identity identity{};std::uint64_t press_token{};bool left_tracked{true},left_grip_known{true},left_grip_down{};};
++struct Decision{Lease lease{};bool fresh{true},granted{true};};
+ bool same(unsigned a,unsigned b)noexcept{return a==b;}
++bool same(Lease const& a,Lease const& b)noexcept{return a.id==b.id&&a.kind==b.kind;}
+ }
+ namespace inv {
+ Identity identity(hand::Frame const& f)noexcept{return f.identity;}
+@@ -19,7 +25,8 @@
+ };
+ }
+ namespace nativeequipment {bool current_value{true};bool current(void*,hand::Frame const&)noexcept{return current_value;}}
+-namespace lancerreload_state {struct Lease{inv::Identity identity{};unsigned serial{1};bool acquired{};};Lease lease;}
++namespace lancerreload_state {struct Lease{inv::Identity identity{};unsigned serial{1};bool acquired{};
++    std::int64_t accepted_begin_ms{123},perfect_end_ms{4000};float reward_start{10};};Lease lease;}
+ namespace anim {enum class Acquire{rejected,acquired,recovery_required};
+ struct Ownership{bool active{},visual_only{},stopped{},seek_pending{};unsigned serial{};inv::Identity inventory{};};Ownership ownership;}
+ namespace visual {bool active{};struct Saved{unsigned weapon{7};};Saved saved;}
+@@ -31,8 +38,9 @@
+ lancerreload_state::Lease parked_native_lease;
+ struct Geometry {nativelancerfollow::Key key{};struct Latch{double open_angle{1.2};}latch;bool known{true};};Geometry geometry;
+ struct Stroke {unsigned resets{};void reset()noexcept{++resets;}}stroke,insertion,extraction;
+-unsigned old_item{1},serial{1},held{99};bool released{true},restore_display_ready{true};
+-unsigned restore_display_step{};bool restoration_failed{};
++unsigned old_item{1},serial{1};hand::Lease held{99};bool released{true},restore_display_ready{true};
++unsigned restore_display_step{},restore_resume_step{};bool restoration_failed{},resume_grant_ready{};
++bool restore_native_uncertain{};
+ bool fresh_value{true},eligible_value{true},discover_value{true},final_geometry{true},expire_in_discover{},replace_in_discover{};
+ unsigned discovers{};
+ bool fresh_restore_main(hand::Frame const&)noexcept{return fresh_value;}
+--- a/tools/playground/weapon_hammerburst_restore_rebind.inl
++++ b/tools/playground/weapon_hammerburst_restore_rebind.inl
+@@ -31,7 +31,8 @@
+     opening.identity=rebound_inventory.identity; // Preserve original pre-insert counts/reward basis.
+     if(parked_native_lease.serial)parked_native_lease.identity=rebound_inventory.identity;
+     held={};stroke.reset();insertion.reset();extraction.reset();
+-    released=false;restore_display_ready=false;restore_display_step=0;stage=Stage::restoring;
++    released=false;restore_display_ready=false;restore_display_step=0;
++    restore_resume_step=0;resume_grant_ready=false;stage=Stage::restoring;
+     return true;
+ }
+ }
+--- a/tools/playground/weapon_hammerburst_reload_park.inl
++++ b/tools/playground/weapon_hammerburst_reload_park.inl
+@@ -33,25 +33,34 @@
+     return true;
+ }
+ bool begin() noexcept {
+-    if(!enabled())return false;
++    if(!enabled()||restore_native_uncertain)return false;
+     if(stage==Stage::parked)return true;
+     if(stage==Stage::parking)return finish();
+     if(stage==Stage::restoring){
+         // Repark the rebound ledger unchanged; cosmetic restoration acquired
+         // no native reload. Never replace its saved original timing lease.
+-        if(!parked_plan.valid||lancerreload_state::lease.acquired||
++        if(!parked_plan.valid||
+            !inv::counts_equal(transaction.inventory(),parked_plan.transaction.inventory())||
+            (anim::ownership.active&&!(anim::ownership.inventory==opening.identity))||
+            (visual::active&&!hand::same(visual::saved.weapon,opening.identity.weapon)))return false;
++        if(lancerreload_state::lease.acquired){
++            if(!serial||lancerreload_state::lease.serial!=serial||!(lancerreload_state::lease.identity==opening.identity))return false;
++            park_ledger::Plan resumed_plan{};
++            if(!park_ledger::prepare(parked_plan.resume_stage,transaction,old_item,0,false,resumed_plan))return false;
++            parked_plan=resumed_plan;parked_native_lease=lancerreload_state::lease;
++        }
+         stage=Stage::parking;return finish();
+     }
+     park_ledger::Plan proposed{};
+     if(!park_ledger::prepare(stage,transaction,old_item,new_item,extraction.complete(),proposed))return false;
+-    if(serial&&(!lancerreload_state::lease.acquired||lancerreload_state::lease.serial!=serial||!(lancerreload_state::lease.identity==opening.identity)))return false;
++    const bool resumed_visual_owner=serial&&native_exited&&parked_plan.valid&&!lancerreload_state::lease.acquired&&
++        parked_native_lease.serial==serial&&parked_native_lease.identity==opening.identity&&
++        anim::ownership.active&&anim::ownership.visual_only&&anim::ownership.serial==serial;
++    if(serial&&!resumed_visual_owner&&(!lancerreload_state::lease.acquired||lancerreload_state::lease.serial!=serial||!(lancerreload_state::lease.identity==opening.identity)))return false;
+     if(!serial&&lancerreload_state::lease.acquired)return false;
+     if(anim::ownership.active&&!(anim::ownership.inventory==opening.identity))return false;
+     if(anim::ownership.seek_pending&&!anim::reconcile_seek())return false;
+-    parked_native_lease=serial?lancerreload_state::lease:lancerreload_state::Lease{};
++    if(!resumed_visual_owner)parked_native_lease=serial?lancerreload_state::lease:lancerreload_state::Lease{};
+     parked_plan=proposed;stage=Stage::parking;
+     // Publish the parking phase before original exit/display restoration.
+     // A partial recovery keeps this plan and cannot lose committed ammunition.
+--- a/tools/playground/weapon_hammerburst_reload_park_test.cpp
++++ b/tools/playground/weapon_hammerburst_reload_park_test.cpp
+@@ -29,7 +29,7 @@
+ }
+ namespace lancerreload_runtime {std::atomic<bool> outstanding{true};}
+ namespace anim {
+-struct Ownership {inv::Identity inventory{};bool active{true},seek_pending{};};Ownership ownership;
++struct Ownership {inv::Identity inventory{};bool active{true},seek_pending{},visual_only{};std::uint64_t serial{};};Ownership ownership;
+ bool seek_ok{true};bool reconcile_seek()noexcept{if(!seek_ok)return false;ownership.seek_pending=false;return true;}
+ }
+ namespace visual {
+@@ -46,6 +46,7 @@
+ std::uint64_t serial{1},old_item{1},new_item{},feed_item{},feed_sequence{},held{9};
+ std::int64_t feed_ns{};
+ bool released{},switch_requested{},native_exited{};
++bool restore_native_uncertain{};
+ struct Stroke {void reset()noexcept{}};Stroke stroke,insertion;
+ struct Extraction {bool done{};bool complete()const noexcept{return done;}void reset()noexcept{done=false;}} extraction;
+ bool animation_restore_ok{true};double angle{.6};
+@@ -134,7 +135,7 @@
+         const auto saved_serial=parked_native_lease.serial;const auto saved_begin=parked_native_lease.accepted_begin_ms;
+         stage=Stage::restoring;anim::ownership={opening.identity,true,false};
+         if(fault==1)++anim::ownership.inventory.world;
+-        if(fault==2)lancerreload_state::lease.acquired=true;
++        if(fault==2){lancerreload_state::lease.acquired=true;++lancerreload_state::lease.identity.world;}
+         C(park_control::begin()==(fault==0));
+         C(parked_native_lease.serial==saved_serial&&parked_native_lease.accepted_begin_ms==saved_begin);
+         C(transaction.inventory().loaded==70&&transaction.inventory().reserve==3);
+@@ -142,6 +143,26 @@
+         else C(stage==Stage::restoring&&anim::ownership.active&&lancerreload_state::exits==1);
+         ++cases;
+     }
++    {
++        Fixture f;setup(f,Stage::opening);C(park_control::begin());
++        stage=Stage::restoring;lancerreload_state::lease={opening.identity,1,true,123,4000};
++        anim::ownership={opening.identity,true,false};C(park_control::begin());
++        C(stage==Stage::parked&&parked_plan.valid&&!lancerreload_state::lease.acquired);
++        C(parked_native_lease.serial==1&&parked_native_lease.accepted_begin_ms==123&&lancerreload_state::exits==2);
++        C(transaction.inventory().loaded==70&&transaction.inventory().reserve==3);++cases;
++    }
++    {
++        Fixture f;f.insert();setup(f,Stage::closing);C(park_control::begin());
++        C(transaction.resume(transaction.inventory(),2,1));stage=Stage::closing;
++        anim::ownership={opening.identity,true,false,true,1};C(park_control::begin());
++        C(stage==Stage::parked&&transaction.inventory().loaded==73&&transaction.inventory().reserve==0);
++        C(parked_native_lease.serial==1&&parked_native_lease.accepted_begin_ms==123&&lancerreload_state::exits==1);++cases;
++    }
++    {
++        Fixture f;setup(f,Stage::opening);restore_native_uncertain=true;
++        C(!park_control::begin()&&stage==Stage::opening&&lancerreload_state::exits==0);
++        C(transaction.inventory().loaded==70&&transaction.inventory().reserve==3);restore_native_uncertain=false;++cases;
++    }
+     std::printf("HammerburstParkControlTest: %u cases, %u checks passed; actual parking adapter and real ledger\n",cases,checks);return 0;
+ #endif
+ }
+--- a/tools/playground/weapon_lancer_reload_state.inl
++++ b/tools/playground/weapon_lancer_reload_state.inl
+@@ -481,8 +481,9 @@
+     if(log_file){fwprintf(log_file,L"lancer_reload_automatic_animation_stopped serial=%llu\n",lease.serial);fflush(log_file);}
+     return true;
+ }
+-BeginResult begin(hand::Frame const& source,std::uint64_t& serial,Lease const* suspended=nullptr) noexcept {
++BeginResult begin(hand::Frame const& source,std::uint64_t& serial,Lease const* suspended=nullptr,bool* start_dispatched=nullptr) noexcept {
+     serial=0;
++    if(start_dispatched)*start_dispatched=false;
+     if(lease.acquired||next_serial==UINT64_MAX||!nativeequipment::current(nullptr,source)||
+        (suspended?(!(suspended->identity==inv::identity(source))&&
+                     !inv::same_instance_across_hold(suspended->identity,inv::identity(source))):
+@@ -507,7 +508,9 @@
+     playground::Args start(source.weapon.address,L"ForceReload");
+     if(!start.valid||start.r.size!=0||!nativeequipment::current(nullptr,source))return BeginResult::rejected;
+     const auto call_begin=weaponhand::clock_ns(nullptr);
+-    if(call_begin<=0||!start.run())return BeginResult::rejected;
++    if(call_begin<=0)return BeginResult::rejected;
++    if(start_dispatched)*start_dispatched=true;
++    if(!start.run())return BeginResult::rejected;
+     const auto call_end=weaponhand::clock_ns(nullptr);
+     float started{};
+     if(!start_time(source.weapon.address,started))return BeginResult::recovery_required;

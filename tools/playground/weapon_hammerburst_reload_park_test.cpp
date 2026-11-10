@@ -29,7 +29,7 @@ bool recover_owned()noexcept{return recover_serial(lease.serial);}
 }
 namespace lancerreload_runtime {std::atomic<bool> outstanding{true};}
 namespace anim {
-struct Ownership {inv::Identity inventory{};bool active{true},seek_pending{};};Ownership ownership;
+struct Ownership {inv::Identity inventory{};bool active{true},seek_pending{},visual_only{};std::uint64_t serial{};};Ownership ownership;
 bool seek_ok{true};bool reconcile_seek()noexcept{if(!seek_ok)return false;ownership.seek_pending=false;return true;}
 }
 namespace visual {
@@ -46,6 +46,7 @@ lancerreload_state::Lease parked_native_lease;
 std::uint64_t serial{1},old_item{1},new_item{},feed_item{},feed_sequence{},held{9};
 std::int64_t feed_ns{};
 bool released{},switch_requested{},native_exited{};
+bool restore_native_uncertain{};
 struct Stroke {void reset()noexcept{}};Stroke stroke,insertion;
 struct Extraction {bool done{};bool complete()const noexcept{return done;}void reset()noexcept{done=false;}} extraction;
 bool animation_restore_ok{true};double angle{.6};
@@ -134,13 +135,33 @@ int main(){
         const auto saved_serial=parked_native_lease.serial;const auto saved_begin=parked_native_lease.accepted_begin_ms;
         stage=Stage::restoring;anim::ownership={opening.identity,true,false};
         if(fault==1)++anim::ownership.inventory.world;
-        if(fault==2)lancerreload_state::lease.acquired=true;
+        if(fault==2){lancerreload_state::lease.acquired=true;++lancerreload_state::lease.identity.world;}
         C(park_control::begin()==(fault==0));
         C(parked_native_lease.serial==saved_serial&&parked_native_lease.accepted_begin_ms==saved_begin);
         C(transaction.inventory().loaded==70&&transaction.inventory().reserve==3);
         if(!fault)C(stage==Stage::parked&&!anim::ownership.active&&lancerreload_state::exits==1);
         else C(stage==Stage::restoring&&anim::ownership.active&&lancerreload_state::exits==1);
         ++cases;
+    }
+    {
+        Fixture f;setup(f,Stage::opening);C(park_control::begin());
+        stage=Stage::restoring;lancerreload_state::lease={opening.identity,1,true,123,4000};
+        anim::ownership={opening.identity,true,false};C(park_control::begin());
+        C(stage==Stage::parked&&parked_plan.valid&&!lancerreload_state::lease.acquired);
+        C(parked_native_lease.serial==1&&parked_native_lease.accepted_begin_ms==123&&lancerreload_state::exits==2);
+        C(transaction.inventory().loaded==70&&transaction.inventory().reserve==3);++cases;
+    }
+    {
+        Fixture f;f.insert();setup(f,Stage::closing);C(park_control::begin());
+        C(transaction.resume(transaction.inventory(),2,1));stage=Stage::closing;
+        anim::ownership={opening.identity,true,false,true,1};C(park_control::begin());
+        C(stage==Stage::parked&&transaction.inventory().loaded==73&&transaction.inventory().reserve==0);
+        C(parked_native_lease.serial==1&&parked_native_lease.accepted_begin_ms==123&&lancerreload_state::exits==1);++cases;
+    }
+    {
+        Fixture f;setup(f,Stage::opening);restore_native_uncertain=true;
+        C(!park_control::begin()&&stage==Stage::opening&&lancerreload_state::exits==0);
+        C(transaction.inventory().loaded==70&&transaction.inventory().reserve==3);restore_native_uncertain=false;++cases;
     }
     std::printf("HammerburstParkControlTest: %u cases, %u checks passed; actual parking adapter and real ledger\n",cases,checks);return 0;
 #endif
