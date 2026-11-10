@@ -1,8 +1,8 @@
 {
   "schema": 1,
   "scope": "full HB objective; no scope reduction",
-  "current_candidate": "first-priority-r1: full PG compiled,10 exact scheduler spy cases passed; unchanged full Input gates before first delivery, L2 postponed only for already-owned HB first debt",
-  "prepared_sha256": "84a1f2402153a22b497652ecd355528491756ce5a1f5f444c104dafb44b9c943",
+  "current_candidate": "release-handoff-r1 full PG compiled,430 actual adapter fake checks passed; exact successful real-UP same pending refire reservice after full Input",
+  "prepared_sha256": "e4e0f339ce64d37e4f5d5c97a19bb2a5e0a10691a413032e14d16d74e090bfae",
   "requirements": [
     {
       "id": "acquire_stow",
@@ -268,7 +268,7 @@
   ],
   "completion_proven": false,
   "goal_active": true,
-  "immediate_next": "Repair exact successful real-UP handoff: fully revalidate existing pending HB refire after Input release and before original delivery, with no new capture/time/source/permit. First add actual adapter regression including UP/new-edge/cancel/cohort/expiry/no-double cases. Preserve original release checks; build/save before fresh runtime. Record original pending capture clock/serial at handoff to resolve actual timing cause. All13 requirements remain.",
+  "immediate_next": "One fresh isolated run of release-handoff-r1. Check actual after_release original serial/capture logging and finite6. No game acceptance yet. Preserve all13 requirements and first failure.",
   "historical_evidence_does_not_certify_current_PG": true,
   "candidate_runtime_status": "first-priority-r1 actual22896: freshUP129/singleGrip/held131, originalfirst206 and one consistent ray; realUP207, pending tail expired at count1 gate4. No reload reached. Normal cleanup. Not full first stability or finite6 acceptance.",
   "previous_recorded_candidate": {

@@ -442,3 +442,9 @@ first-priority-r1/hb-cloak-1111-033308/game22896/creation134388128429694897。32
 检查真实源码发现service-before-Input→真实UP release_completed清validated→after_tick→deliver路径未重新service。check_release_handoff_order.py用原实际adapter复现：已pending并service validated的refire，在真实UP成功后validation变false，本帧deliver gate1不派发；原事件未改serial/capture，重新完整service后同事件派发且第二次deliver不重复；超过250ms仍取消无射线。新增14加原308=322通过，common queue/engine/contract为fake；它证明存在该处理顺序缺口，尚不能证明游戏207当时已pending或该缺口是唯一原因。下一步只为成功真实UP、已有同一refire事件补完整验证，保留原全部source/20ms/100ms/250ms/identity/cancel门，并记录原pending capture以辨别实际时间。
 
 本方launcher0/operator1/stop0，Native清理/PG入口恢复/XR0、game及子进程退出，无强杀或workererror；1491前台/2534CLOAK零违规。161帧errors空、encode0，亲看3页48双眼全跨度样本，实际场景/取枪/持枪可见，前段手臂枪重叠、后段枪贴近右眼仍不接受；非全部帧/全部角度/头显证明。7原文本SHA保留，runtime-22896-first-failure-analysis.json与13项audit已更新。完整六连发、换弹、四态、贴合、交付仍未完成；分数30%/头显false保持。全部本方运行终态，不重复启动同实例。
+
+## release-handoff-r1：实际UP交接重新验证已编译
+
+上一目标轮为progress：源改/完整编译/实际22896及322项真adapter局部复现均有证据。本轮在成功release_completed全部16个原gate之后，仅当已有refire pending时保存原serial/captured及本次frame/sync。原Input::advance完成实际owned→released后才调用after_release，一次消费handoff，要求原事件/本帧/sync/原cohort/press及唯一release匹配、跟踪可用、无cancel/firstdebt，再重新执行完整service。service只验证；原after_tick/deliver仍唯一发射点，原100ms源/20msreserve/250ms事件及identity/state/metadata检查不变。无新队列、重捕获、更新时间、松手补按或新许可。日志最多8行记录原captured/serial与service结果，不能借此授权。
+
+完整PG SHAe75af846db1529aaeaa2576f7df52380436e67720339f93ff48c7be299609beb，Native/XR未重建。430实际adapter fake检查通过（原308+新增21情形122项），覆盖同一pending尾段、new press/release、取消、reference/sourceframe/sync/hold变动、仍owned、event串/时间变化、元数据/registration/state失败、reserve失败、250ms过期、handoff缺失/一次消费、UP变DOWN、stop、tracking与pendingFIRST取消。queue/retailcontract/engine/source仍fake，不证明实际game或头显。准备脚本一次边界匹配断言失败在编译前终态，改用完整行边界后生成，最终编译0；未复用游戏名字。下一步单次新隔离实例，保留单Grip与首失败停止。全13项/30%/publicv71保持。

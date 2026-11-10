@@ -1,0 +1,94 @@
+--- a/tools/playground/weapon_hammerburst_burst_event.inl
++++ b/tools/playground/weapon_hammerburst_burst_event.inl
+@@ -12,6 +12,8 @@
+     hand::ObjectIdentity function{};common::policy::EventKind kind{};
+ } event;
+ std::uint64_t event_serial{};
++struct ReleasedPending {Pending pending{};std::uint64_t frame{};std::int64_t sync{};} released_pending;
++void clear_release_handoff() noexcept {released_pending={};}
+ bool validated{};
+ unsigned service_stage{},delivery_stage{};
+ void report_first_wait(wchar_t const* phase) noexcept {
+@@ -44,7 +46,7 @@
+ }
+ void clear_pending() noexcept {
+     if(owns_pending()){common::pending_fire.event.reset();common::pending_validated=false;}
+-    event={};validated=false;
++    event={};validated=false;clear_release_handoff();
+ }
+ bool prepare_press(hand::Frame const& f) noexcept {
+     if(outstanding()&&!release_completed(nullptr))return false;
+@@ -168,6 +170,7 @@
+ }
+ unsigned release_rejection{};
+ bool release_completed(hand::Frame const* f) noexcept {
++    clear_release_handoff();
+     if(!outstanding())return true;
+     validated=false;common::press.known=false;common::certified=false;common::pending_validated=false;
+     // Only a current real UP can preserve a committed finite burst. A raw
+@@ -181,7 +184,12 @@
+        gate(6,hand::frame_active(*f,weaponhand::clock_ns(nullptr)))&&gate(7,right_tracked(*f))&&
+        gate(8,vrfire::read_game(vrfire::input.actors(),f,game))&&gate(9,game.known)&&gate(10,game.r2_known)&&gate(11,!game.r2_held)&&
+        gate(12,!game.busy)&&gate(13,!game.animation)&&gate(14,!lancerreload_runtime::blocks_fire(f->weapon))&&gate(15,nativeequipment::current(nullptr,*f))&&
+-       gate(16,tx::need_source(*f))){remember_released_source(*f);return true;}
++       gate(16,tx::need_source(*f))){
++        remember_released_source(*f);
++        if(owns_pending()&&event.kind==common::policy::EventKind::refire)
++            released_pending={event,f->key.frame,f->controllers.sync_ns};
++        return true;
++    }
+     static unsigned rows{};
+     if(log_file&&rows<16){
+         ++rows;
+@@ -351,6 +359,31 @@
+         tx::revoke();return true;
+     }
+     validated=true;service_stage=0;return true;
++}
++// A successful release deliberately revokes the prior service validation.
++// Consume this ONE same-frame handoff after Input::advance has finished. It
++// supplies no Frame/source/permit; the original service and delivery recheck
++// registration, original body/state, event expiry, current muzzle and reserve.
++void after_release(hand::Frame const& f) noexcept {
++    const auto handoff=released_pending;clear_release_handoff();
++    if(!handoff.pending.serial||handoff.frame!=f.key.frame||handoff.sync!=f.controllers.sync_ns||
++       vrfire::input.owns_press()||tx::first_debt||!tx::firing_debt||tx::cancel_requested||
++       tx::completion.state()!=tx::policy::State::committed||!owns_pending()||
++       event.serial!=handoff.pending.serial||event.captured!=handoff.pending.captured||
++       event.kind!=common::policy::EventKind::refire||!hand::same(event.function,handoff.pending.function)||
++       !right_tracked(f)||f.controllers.hands[1].trigger_active!=1||f.controllers.hands[1].trigger>.35f)return;
++    const auto current=tx::cohort(f);
++    if(!tx::policy::same(current,tx::pressed)||current.presses!=tx::pressed.presses||
++       tx::pressed.releases==(std::numeric_limits<std::uint32_t>::max)()||
++       current.releases!=tx::pressed.releases+1)return;
++    service(f.controller.address);
++    static unsigned rows{};
++    if(log_file&&rows<8){
++        fwprintf(log_file,L"hammerburst_release_handoff frame=%llu event=%llu captured_ns=%lld observed_ns=%lld validated=%u service_stage=%u pending_same=%u no_dispatch=1\n",
++            f.key.frame,handoff.pending.serial,handoff.pending.captured,weaponhand::clock_ns(nullptr),unsigned(validated),service_stage,
++            unsigned(event.serial==handoff.pending.serial&&event.captured==handoff.pending.captured));
++        fflush(log_file);++rows;
++    }
+ }
+ void deliver(hand::Frame const& f) noexcept {
+     struct Report {bool first{tx::first_debt};~Report(){if(first)report_first_wait(L"deliver");}} report;
+--- a/tools/playground/weapon_hammerburst_burst_runtime.h
++++ b/tools/playground/weapon_hammerburst_burst_runtime.h
+@@ -21,4 +21,5 @@
+ void deliver(gears_weapon_hand::Frame const&) noexcept;
+ bool release_completed(gears_weapon_hand::Frame const* normal_source) noexcept;
+ void after_tick(gears_weapon_hand::Frame const* current_source) noexcept;
++void after_release(gears_weapon_hand::Frame const&) noexcept;
+ }
+--- a/tools/playground/weapon_lancer_r2_native.inl
++++ b/tools/playground/weapon_lancer_r2_native.inl
+@@ -511,6 +511,9 @@
+     // still requires the same fresh Frame, cohort and20ms dispatch reserve.
+     if(current&&!initial_owed_before&&lancerrefire::has_initial_debt())lancerrefire::service(pc);
+ #if defined(GEARS_PLAYGROUND_HB_FINITE_BURST) && GEARS_PLAYGROUND_HB_FINITE_BURST
++    // Only a real owned->released transition may revalidate its exact already
++    // pending HB refire. Full Input gates have completed; no new event/edge.
++    if(current&&r2_owned_before&&!input.owns_press())hammerburst_burst_event::after_release(frame);
+     hammerburst_burst_event::after_tick(current?&frame:nullptr);
+ #endif
+     if(current)lancerrefire::deliver_ready(frame);
