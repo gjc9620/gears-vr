@@ -2087,3 +2087,15 @@ Session同一串行owner导出见证，现有一次Sphere观察通过原summary�
 新Native严格以r122冻结树叠加3文件，405个项目依赖、外部工作树依赖0、开关不变，编译链接exit0。SHA256 f5d3cf695c33bb78bde9a3f1d99d1d9546043f549534b99e8eb20bb2f0e39850；未替换公共v71或固定手动入口。本记录时尚未启动新game/XR，实际具体字段拒绝、原版调用、完整占用/世界覆盖、唯一身体C0提交、头肩遮挡和物理头显仍缺证，工程25%与CV01–24/AC01–22未验收保持。下一步仅使用新候选执行一次CLOAK/静音/私有投影的定向验证。
 
 证据 analysis/cover-system-20261108/layout-witness-r124/{verification,layout-steps,native-build-result}.json 及checks-v2/v3；源码先保存后新运行。
+
+## r125：实际进入CT2与五段观察，布局诊断未到达（2026-11-10）
+
+保存b40db9d7后，当前CLOAK/静音入口新建cover-1110-r125-cloak-layout；Native f5d3cf69…9850，PG/XR沿用匹配冻结版本，0.4。game54104/creation134387912043325145，owner59216/creation134387911939008697，XR55772/creation134387912123551617。Source1输入、原版接近及A进入CT2、neutral/turned/restored/raised/restored五段均实际执行，operator0；未做抓边或虚拟身体移动。
+
+关键负结果：Sphere requested1但attempted0/finished0/code1，outer/Session/Engine/layout均idle0、pass0，原版started/returned0。此运行未到r124新布局检查，既不证明布局通过，也不复现r123具体layout5，更不能把raw_hit0当无碰撞。实际C0 captures693/commits376与原CT2已读到；固定源码唯一调用位于body_c0_goal_policy_live::sample_current_cover_pose在current/key/marker/measure/recheck之后。可定位下一观察范围为probe之前的C0准入/掩体姿态测量，哪个条件失败尚未证实，不删这些条件、不盲目重跑同候选。
+
+286张实际双眼投影、录制错误0、线程joined，VFR编码exit0；15张全跨度overview及5张原始phase图全部亲自查看。进入前可见双手/手臂，进入后五段均有自身头肩/躯干严重遮挡，visualFAIL保持。phase图严格选事件区间内完整请求/观察括号（5/8/7/7/7帧可选），不称同C0或GPU消费证明；静止开场持续约16秒也保留。实际probe没有发生，不把“动作脚本passed”当掩体功能或原查询通过。
+
+正常stop、Native/入口/手柄恢复true、fire_disable0/hand_stop5/drainedtrue，XR0/launcher0，本方精确game/owner/XR均已不存在，无强杀。CLOAK617次失败0；目标静音回读260次、verify_failed0/target_shared_rejected0，保留其他会话及系统音量。原报告按launcher-session索引原样复制，SHA与实际身份绑定；失败路径不改写此前早停记录。
+
+证据layout-witness-r124/runtime-r125/{probe,closeout,media-review,session-original}.json。下一步先给现有sample_current_cover_pose的早退条件增加有界失败见证，再定向修复实际拒绝；r124布局见证保持可用。公共v71、完整CV01–24/AC01–22、工程25%及物理头显未完成状态不变。

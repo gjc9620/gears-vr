@@ -1,0 +1,63 @@
+{
+  "classification": "progress: new production witness compiled/tested; actual run exposes earlier unobserved gate",
+  "game": {
+    "pid": 54104,
+    "creation_time": 134387912043325145,
+    "image": "j:\\gearsvr\\gears.of.war.reloaded.v1.0.1.3816947-p2p\\gears of war reloaded\\binaries_x64\\gowde-steam.exe"
+  },
+  "owner": {
+    "pid": 59216,
+    "creation_time": 134387911939008697,
+    "image": "c:\\users\\11\\.cache\\codex-runtimes\\codex-primary-runtime\\dependencies\\python\\python.exe"
+  },
+  "xr": {
+    "pid": 55772,
+    "creation_time": 134387912123551617,
+    "image": "c:\\users\\11\\.codex\\worktrees\\6dof-single\\gearsvr\\tools\\openxr-probe\\build-cover-1110-r125-cloak-layout\\openxrposeprobe.exe"
+  },
+  "native_sha256": "f5d3cf695c33bb78bde9a3f1d99d1d9546043f549534b99e8eb20bb2f0e39850",
+  "source_commit": "b40db9d7",
+  "original_report": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\runtime\\continuous-stereo-54104-20261110-213332-96ae73e3.json",
+  "original_report_sha256": "a791e2d30f3e8c67c1ed6b0ef25c177b0218a7cca71c9b0d70ed7daaf646df6e",
+  "run_result_sha256": "a3331c61c3921420bf8fcce0c7bfb3c281abd3814064c7ecbe40d624539364d1",
+  "input_and_phase_sequence": true,
+  "query_attempted": false,
+  "query_success": false,
+  "layout_rejection_reproduced": false,
+  "layout_field": "unobserved",
+  "original_query_started": false,
+  "collision_clear": null,
+  "movement_authorized": false,
+  "new_capsule_enumeration_executed": false,
+  "pre_probe_gate": "unknown: captured C0 cover-pose admission/measurement before observe_sphere_once; infer path from callsite, exact failed predicate unproven",
+  "body_native_captures": "693",
+  "body_native_commits": "376",
+  "normal_cleanup_verified": true,
+  "unified_weapons_cleanup": {
+    "fire_disable_code": 0,
+    "hand_stop_code": 5,
+    "drained": true
+  },
+  "cloak": {
+    "samples": 617,
+    "failures": []
+  },
+  "mute_verification": {
+    "event": "mute_verification_summary",
+    "pid": 54104,
+    "initially_muted_sessions": 1,
+    "verified_muted_observations": 260,
+    "verify_failed": 0,
+    "target_shared_rejected": 0,
+    "shared_rejected_is_global_scan_count": true
+  },
+  "media_review_sha256": "5e39ce07149428c7630be9fb78ef5a8c3a5383f4323c2df2b81babb196732ef9",
+  "remaining": [
+    "bounded pre-probe admission/cover measurement rejection",
+    "specific physics layout rejection",
+    "actual original query execution",
+    "head shoulder obstruction",
+    "endpoint/world coverage/body commit",
+    "CV01-24 AC01-22 headset"
+  ]
+}
