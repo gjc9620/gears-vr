@@ -105,3 +105,9 @@ MSVC /W4 /WX /UNDEBUG实际编译并执行两个受影响夹具退出0：actual 
 continuation-rejection-isolated-r1从manual-veto-isolated原2253文件逐项复制，仅替换两HB inl；原CMake flags原样重定向私有source/build，configure0、完整Release GearsPlayground编译实际terminal0。新PG SHA f48d50d4ab0b991f2b69979225b4b68624368657d8ce498d8b43b3d846c37f90。冻结product hammerburst-prepared-20261110-continuation13712-r1，prepared SHA cdbce75e7cdbfe263484c9d665f66f234cfad47979536741e75436ff14576c24，归档2270源/1338 Native源/6制品全SHA核过；Native806d及其他五制品未改。
 
 源对应核查首次过严要求全部文档/Python等同旧隔离树，实际六个差异为旧隔离构建后合法更新的文档和Python driver，故在任何copy/封存前停止；随后逐项确认全部C++/h/inl/CMake编译输入一致。新product继承settings-alias的普通空仓完整动作driver，未回退到隔离树旧Python。新event fixture也归档，实际编译输入仅两inl差异。没有改旧product或公共包，没有stage/run/claim/ticket。prepared-check.json保存精确结果。尚待按实际唯一尾绑定新执行计划和新一次性入口，request_ready=false，不复用旧消费许可；已向当前LS唯一持窗会话只发一次新批尾定位意向，不计游戏验收。
+
+## 新批真实路由与离线执行依赖核验
+
+原LS v5-repair早已实际game37448全收尾交GN，再GN21120→Frag2956→Bol；不再沿旧LS持窗状态推断许可。本轮经LS明确指向Bol，Bol实际47300当前持窗、正核Beam8唯一具体包，明确仅将HB continuation13712-r1后到意向列在Beam8→Cover-r80→Bow034115→Troika045716/core2→LS050140→Snub051707→Frag064450之后，未独核受理/未授窗。pending-intent.json保存此边界，无第二槽，无共享runtime写入。
+
+原20直接运行文件、1057 Python当前/归档及AST、13011主机依赖均重新逐项通过，2270/1338源与6bin再次核过。runtime-plan-draft.json明确offline_draft_not_runnable：entry/invocation/expected_predecessor/claim/ticket均null，execution_ready/request_ready均false；原selected游戏/设置、十raw目标、动作范围和360秒正常stop边界保留。offline-runtime-readiness.json是实际离线观察，不称prepare-only新入口、窗口等待进程或game结果。目标保持active，真实尾身份到位后再一次绑定冻结执行包；少发根因、完整空仓换弹回射仍未证实。
