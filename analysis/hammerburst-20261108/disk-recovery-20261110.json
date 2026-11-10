@@ -1,0 +1,13 @@
+{
+  "original_free_bytes": 0,
+  "removed_own_rebuildable_objects": 77,
+  "own_removed_bytes": 69574112,
+  "source_dll_pdb_media_preserved": true,
+  "observed_free_after_bytes": 1883758592,
+  "free_change_not_all_attributed_to_this_cleanup": true,
+  "current_free_bytes": 2331176960,
+  "archive_11644_verified": true,
+  "previous_attempt_did_not_start_game": true,
+  "own_future_minimum_free_bytes": 4294967296,
+  "aligned_with_shared_disk_guard": true
+}

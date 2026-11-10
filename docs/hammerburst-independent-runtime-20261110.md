@@ -216,3 +216,9 @@ source-loss-r2只扩大观察覆盖：idle故障独立最多6条，已承诺burs
 47948 continuous/session passed=true、launcher0/operator1/stop0、Native清理/入口恢复/XR exit0，本方game/私有子进程消失，无强杀；1484前台/2601CLOAK检查零违规。媒体复核另存原recording。source-loss-r2和新统一输入时序尚待实际验证，全部原需求保留。
 
 47948媒体：410帧、recording errors空，离线编码exit0；亲看frame00375/00394实际原图，近脸大遮挡仍在，未通过完整贴合。新输入帮助器补充只观察同一原burst的晚到尾发，保持调用者原绝对截止、不再按键。最终6项press-helper、4项实际drain适配、15项独立身份/装配检查通过。排弹/返射新时序和source-loss-r2尚未实测；首发在两个实际构成中各通过6发，不等于完整排空/换弹稳定。
+
+## service-loss-r1准备与磁盘恢复
+
+11644 actual core6并typed72/78；下一确认手势只4/6，总10条有效一致射线。帮助器在typed再次读取前停止，最终typed缺失；不得补写推算68/78。闲置copy观察未与该4发取消对齐，取消先于R2读；新service gate观察按原序短路记录首因，最多8条，不增clock/Frame读、不改寿命/释放。完整PG SHA 8c798dcc10b9e296313b1e85387fbb8bdf2536202e818a9b6da81ce83a689526，冻结事件适配器280检查通过（队列/引擎/证书为夹具）；未实测该观察点。
+
+11644 continuous/session passed=true，launcher0/operator1/stop0、Native清理/PG入口恢复/XR exit0，game/子进程消失、无强杀、2131前台/3461CLOAK零违规。新实例曾因C盘free0在清单创建阶段失败，未生game。原归档复制同样WinError112中断；随后只清理本枪11个终态build目录77个可重建obj/69,574,112bytes，源码/DLL/PDB/原证据均保留。复查free1,883,758,592bytes，未把全部空闲变化归因于本方。已逐文件SHA核验补齐11644文本归档，并在本方prepare前增加1GiB空闲下限；外部命令失败后停止后续步骤，不再继续未完成的checkpoint/run。先前37907ce6只保存观察头与patch，不代表完整归档已提交；本次补齐。

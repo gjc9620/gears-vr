@@ -1,0 +1,34 @@
+{
+  "verified": true,
+  "files": [
+    {
+      "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-11644-text\\launcher-session.json",
+      "sha256": "00c16e2a4a8755f53990f18e2264f456e3e13fdd52fd0c84be5f6b6dbd878c54"
+    },
+    {
+      "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-11644-text\\isolated-done.json",
+      "sha256": "283ec01454add73da9d7dc3d51a2f241f008239fb70c8c6351caed26a2c0f044"
+    },
+    {
+      "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-11644-text\\hammerburst-core.json",
+      "sha256": "95b63e1fe628ff37cc66bf98eafa50f153ee6045f65b1b01e708759384d7bd53"
+    },
+    {
+      "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-11644-text\\hammerburst-empty-reload.json",
+      "sha256": "c5c0bc20e703b835bfdc9b62b8171077099486b36be9b6d3a65aa288479405c7"
+    },
+    {
+      "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-11644-text\\recording.json",
+      "sha256": "d04258efa8c73c39dbef25b9c63322e1f9166c0bf28f70eb0e1620edde5a22b6"
+    },
+    {
+      "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-11644-text\\continuous-stereo-11644-20261110-221619-c4323bdf.json",
+      "sha256": "f964233ec6fabfca2a6403ebbb652ab5e3e2d2e2376747cdda7a80d35fc7f34a"
+    },
+    {
+      "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-11644-text\\playground-11644.log",
+      "sha256": "031b5f5b49b552236a39148171abed3fb9775a8815a1a5af6e5cb3fa3e145a60"
+    }
+  ],
+  "prior_copy_failed_disk_full": true
+}

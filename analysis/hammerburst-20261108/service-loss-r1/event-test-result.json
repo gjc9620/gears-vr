@@ -1,0 +1,7 @@
+{
+  "passed": true,
+  "checks": 280,
+  "actual_event_adapter": true,
+  "common_queue_engine_certificate": "fixture seams",
+  "game_execution": false
+}

@@ -9,6 +9,7 @@ import hashlib
 import json
 import os
 import subprocess
+import shutil
 import sys
 import time
 
@@ -23,10 +24,12 @@ def write(path,value):path.write_text(json.dumps(value,indent=2),encoding='utf-8
 
 def main():
     if PAUSE.exists():raise RuntimeError('Automatic runtime is paused by the owner; no preparation/start attempt')
+    if shutil.disk_usage(ROOT).free<4*1024**3:
+        raise RuntimeError('Insufficient free workspace disk for owned runtime evidence; no prepare/start attempted')
     name='hb-cloak-'+time.strftime('%m%d-%H%M%S')
     target=AREA/name;target.mkdir()
     manifest=json.loads((AREA/'independent-r1/candidate-manifest.json').read_text())
-    proof=json.loads((AREA/'source-loss-r2/prepared.json').read_text())
+    proof=json.loads((AREA/'service-loss-r1/prepared.json').read_text())
     assert proof['full_playground_compiled'] and not proof['runtime_exercised']
     dll=Path(proof['dll']);assert hashlib.sha256(dll.read_bytes()).hexdigest()==proof['dll_sha256']
     manifest.update(playground_build=str(dll.parent.relative_to(ROOT)),playground_sha256=proof['dll_sha256'],
