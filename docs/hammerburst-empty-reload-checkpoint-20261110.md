@@ -203,3 +203,9 @@ latch-history-isolated-r1由原冻结2253树派生，只增加HB接线、纯HB h
 实际冻结wrapper+original ledger2095 checks通过，完整隔离PG再次编译0；源码delta和新PG身份在hb-press-deferral-check/result.json与docs/hammerburst-original-press-deferral.patch。不是历史接线已失败或已通过；该分支未到，不能从本轮评价。新修补尚未game。
 
 54632 Native/entries/pad/drain/XR/launcher正常、十raw恢复全true，guard及时释放；原文本/动作记录及capture已隔离，独立编码61621实际terminal0，图像审阅待完成；无共享占用。原52960实际112ms关盖拒绝仍保留，不放宽端点/采样。下一步封存此唯一实际首发拒绝修补后，直接完整空仓关盖回射验证。
+
+## 历史＋首发候选已封存，54632原影像补审完成
+
+新product hammerburst-prepared-20261110-latch-history-press prepared SHA98b9a1ee7ff97a5af40918f7a4cd4e5b5fd2bf00646c888484d9324446156fe5，PG305b5447；较e6b2只改已bound同weapon/hold的HB可用原未派发press路径，2274源/1338Native源/6制品全核。新独立history-r2入口/plan/ready实际prepare0；统一guard争用零等待与45秒有界等待均Busy退出，未consume/未stage、claim不存在，不计game尝试或修补通过。保持同一入口等真实释放，不引入前后继审批。
+
+等待期间补完54632全部1页总览和6张按原QPC取样实际game/sim原图亲阅（取枪/首次拒绝/真实UP），runtime-54632-personal-review.json保存原图SHA和对齐差4.9/-1.8/-12.3/21.6/14.9/21.1ms。可见持枪/近枪遮挡，不能从画面反推ButtonPress拒绝根因；真实0射线和未触达history仍按原日志。编码61621已终0，媒体留存仍待安全处理；不复跑原构成、不以等待做额外构建。
