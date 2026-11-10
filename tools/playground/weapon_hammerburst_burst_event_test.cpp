@@ -304,5 +304,19 @@ int main(){
         assert(rows==16&&event_fixture::invocations==invocations);
         std::fclose(log_file);log_file=nullptr;checks+=18;
     }
+    {FILE* receipt{};assert(tmpfile_s(&receipt)==0&&receipt);
+        for(unsigned i=0;i<20;++i){
+            reset_event();auto f=active_frame();actual_first(f);
+            const auto calls=event_fixture::invocations;
+            log_file=receipt;adapter::release_completed(nullptr);log_file=nullptr;
+            assert(adapter::release_rejection==1&&event_fixture::invocations==calls);
+        }
+        std::rewind(receipt);wchar_t line[512]{};unsigned rows{};
+        while(std::fgetws(line,512,receipt)){
+            if(!std::wcsstr(line,L"native_hammerburst_release_rejected"))continue;
+            assert(std::wcsstr(line,L"gate=1 ")&&std::wcsstr(line,L"frame=0 "));++rows;
+        }
+        assert(rows==16);std::fclose(receipt);checks+=21;
+    }
     std::printf("HB actual event adapter: %u original-event/scope/UP/expiry/cleanup fake checks passed; common queue, engine and certificate are fakes\n",checks);
 }

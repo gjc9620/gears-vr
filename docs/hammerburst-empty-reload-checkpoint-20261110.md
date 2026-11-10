@@ -129,3 +129,7 @@ continuation-rejection-isolated-r1从manual-veto-isolated原2253文件逐项复�
 直接核冻结weapon_lancer_r2_native.inl：input.advance先经execute调用lancerrefire::release_completed(source)，后面才HB after_tick；HB release_completed可能已清掉outstanding，故单after_tick观测不足以捕捉最初拒绝。给原release_completed十六个原&&条件附失败编号，仍按原短路顺序、同样一次原read_game/frame_active/clock/current/need_source，不新增engine读取或回调；拒绝时仅已有POD有限16行，再原revoke/cancel。实际297runtime/237event夹具编译执行0，新增null-frame/trigger仍DOWN/current拒绝三个条件及无额外shot断言；原UP续段测试仍过。未称根因已修。
 
 原r1 product保留不改、尚无执行资格，已向Bol仅更新同一到序意向：待新r2隔离构建封存后单一替换，不增加队位。当前新release源码尚未完整PG构建/实跑，不得将旧f48d制品当作含该新增记录。下一步构建/封存新r2并补实际失败记录输出测试，再按真实尾绑定一次入口。
+
+## r2完整PG与实际释放日志验证
+
+新隔离continuation-rejection-isolated-r2完整configure/build实际0，PG SHA daee9726fa4f7da7b684e97907f1e31c8180e3493ab1a7557d0c227b8da6dd21。2253原文件对r1仅event inl变动，原flags不变。新增真实release_completed调用20次写入临时FILE并读回，精确16条gate1/frame0记录、无附加shot调用；runtime297/event258实际编译执行0。原r1产品/收据不改，当前仅准备新r2同一意向替换，没有claim/ticket/stage/game，少发根因仍未实证修复。
