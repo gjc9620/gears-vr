@@ -11,7 +11,11 @@ class Host:
         if self.state=='down':self.fired=True
     def sleep(self,seconds):self.now+=int(seconds*1e9)
     def records(self,prefix):
-        if prefix=='native_lancer_shot_trajectory':return [{'trace_valid':'1'}]*self.shots if self.fired else []
+        if prefix.startswith('native_hammerburst_'):return []
+        if prefix=='native_lancer_shot_trajectory':
+            count=self.shots
+            if self.fault=='delayed_tail':count=1 if self.state=='down' else 5 if self.now<1_800_000_000 else 6
+            return [{'trace_valid':'1'}]*count if self.fired else []
         row=dict(frame='100',current='1',source_status='1',trigger_active='1',active_at_admission='1',
                  input_sync_ns=str(self.now),admitted_ns=str(self.now),status='1',owned='0',game_known='1',game_r2='0',
                  trigger_value='1' if self.state=='down' else '0',trigger_pressed='1',trigger_released='0')
@@ -24,6 +28,13 @@ class Host:
         data={'checks':{}};first_fire(self,data,clock=lambda:self.now,sleep=self.sleep);return data
 
 class Tests(unittest.TestCase):
+    def test_late_tail_observes_same_press_without_retry(self):
+        h=Host('delayed_tail');data=h.run();self.assertTrue(data['checks']['actual_fire'])
+        self.assertEqual(h.inputs,[{},dict(trigger=1),{}]);self.assertGreaterEqual(h.now,1_800_000_000)
+    def test_outer_deadline_is_not_renewed(self):
+        h=Host('down_missing');data={'checks':{}}
+        with self.assertRaises(TimeoutError):first_fire(h,data,clock=lambda:h.now,sleep=h.sleep,deadline_ns=h.now+50_000_000)
+        self.assertLessEqual(h.now,1_050_000_000);self.assertEqual(h.inputs,[{},dict(trigger=1),{}])
     def test_one_press_waits_for_consumption(self):
         h=Host();d=h.run();self.assertEqual(h.inputs,[{},dict(trigger=1),{}]);self.assertTrue(d['checks']['actual_fire'])
         self.assertEqual(len(d['shots']),6);self.assertEqual(d['first_fire_input']['down']['trigger_value'],'1')

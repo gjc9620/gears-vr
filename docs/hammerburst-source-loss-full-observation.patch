@@ -1,0 +1,54 @@
+--- a/tools/playground/weapon_lancer_r2_native.inl
++++ b/tools/playground/weapon_lancer_r2_native.inl
+@@ -347,6 +347,7 @@
+     wh::Frame frame{};wh::GripGameState copied_game{};wh::Decision copied_decision{};
+     wh::FrameReadObservation copy_observation{};
+     const bool hb_pending_before=hammerburst_burst_event::cleanup_pending();
++    const bool hb_bound_before=nativelancerfollow::bound_is_hammerburst;
+     const bool r2_owned_before=input.owns_press();
+     const bool have_source=state==running&&weaponhand::client.copy_frame_on_gt(frame,copied_game,copied_decision,&copy_observation);
+     lr::Continuity continuity{};
+@@ -430,7 +431,7 @@
+     if(have_source)read_game(actors(frame),&frame,game,&current,&copied_game);
+     if(!current&&input.has_actors()&&input.actors().controller.address==pc)read_game(input.actors(),nullptr,game);
+     wh::FrameReadObservation source_withdrawal{};
+-    if(hb_pending_before&&(!have_source||!current))source_withdrawal=weaponhand::client.withdrawal_on_gt();
++    if((hb_pending_before||hb_bound_before)&&(!have_source||!current))source_withdrawal=weaponhand::client.withdrawal_on_gt();
+     if(have_source&&lancerreload_runtime::blocks_fire(frame.weapon)){
+         game.main_hand_held=false;muzzle_ready=false;
+     }
+--- a/tools/playground/weapon_hammerburst_source_loss_observation.inl
++++ b/tools/playground/weapon_hammerburst_source_loss_observation.inl
+@@ -2,15 +2,16 @@
+ // change release/cancellation. The withdrawal may predate this attempt, so
+ // retain both frame numbers rather than treating it as a causal verdict.
+ {
+-    static unsigned source_loss_rows{};
+-    if(log_file&&hb_pending_before&&(!have_source||!current)&&source_loss_rows<12){
+-        fwprintf(log_file,L"hammerburst_source_loss copy_ok=%u current=%u owned_before=%u result=%u copy_failure=%u copy_difference=%u copy_frame=%llu copy_sequence=%llu copy_age_ns=%lld commit_age_ns=%lld since_commit_ns=%lld copy_candidate_flags=%u withdrawal_failure=%u withdrawal_difference=%u withdrawal_frame=%llu withdrawal_sequence=%llu withdrawal_age_ns=%lld withdrawal_left_down=%u withdrawal_candidate_flags=%u withdrawal_lease=%u game_known=%u game_r2=%u admitted_ns=%lld\n",
+-            unsigned(have_source),unsigned(current),unsigned(r2_owned_before),unsigned(result),
++    static unsigned source_loss_rows{},idle_source_loss_rows{};
++    const bool record_source_loss=hb_pending_before?source_loss_rows<12:(hb_bound_before&&idle_source_loss_rows<6);
++    if(log_file&&record_source_loss&&(!have_source||!current)){
++        fwprintf(log_file,L"hammerburst_source_loss pending_before=%u copy_ok=%u current=%u owned_before=%u result=%u copy_failure=%u copy_difference=%u copy_frame=%llu copy_sequence=%llu copy_age_ns=%lld commit_age_ns=%lld since_commit_ns=%lld copy_candidate_flags=%u withdrawal_failure=%u withdrawal_difference=%u withdrawal_frame=%llu withdrawal_sequence=%llu withdrawal_age_ns=%lld withdrawal_left_down=%u withdrawal_candidate_flags=%u withdrawal_lease=%u game_known=%u game_r2=%u admitted_ns=%lld\n",
++            unsigned(hb_pending_before),unsigned(have_source),unsigned(current),unsigned(r2_owned_before),unsigned(result),
+             unsigned(copy_observation.failure),copy_observation.game_difference,copy_observation.frame,copy_observation.sequence,
+             copy_observation.input_age_ns,copy_observation.commit_check_input_age_ns,copy_observation.since_commit_check_ns,
+             copy_observation.candidate.flags,unsigned(source_withdrawal.failure),source_withdrawal.game_difference,
+             source_withdrawal.frame,source_withdrawal.sequence,source_withdrawal.input_age_ns,source_withdrawal.left_grip_down,
+             source_withdrawal.candidate.flags,source_withdrawal.candidate.lease,unsigned(game.known),unsigned(game.r2_held),input_admission_ns);
+-        fflush(log_file);++source_loss_rows;
++        fflush(log_file);if(hb_pending_before)++source_loss_rows;else ++idle_source_loss_rows;
+     }
+ }
+--- a/tools/playground/weapon_hammerburst_input_consumed_observation.inl
++++ b/tools/playground/weapon_hammerburst_input_consumed_observation.inl
+@@ -4,7 +4,7 @@
+     static std::int64_t last_consumed_log_ns{};
+     static std::uint32_t last_consumed_down{},last_consumed_up{};
+     static unsigned consumed_logs{};
+-    if(log_file&&nativelancerfollow::bound_is_hammerburst&&have_source&&consumed_logs<192){
++    if(log_file&&nativelancerfollow::bound_is_hammerburst&&have_source&&consumed_logs<768){
+         const auto& observed_hand=frame.controllers.hands[1];
+         const auto observed_down=observed_hand.pressed[gears_vr::control_trigger];
+         const auto observed_up=observed_hand.released[gears_vr::control_trigger];

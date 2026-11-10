@@ -1,0 +1,147 @@
+{
+  "schema": 1,
+  "instance": "hb-cloak-1110-215931",
+  "game_identity": {
+    "pid": 47948,
+    "creation_time": 134387927833853413,
+    "image": "j:\\gearsvr\\gears.of.war.reloaded.v1.0.1.3816947-p2p\\gears of war reloaded\\binaries_x64\\gowde-steam.exe"
+  },
+  "candidate": "source-loss-r1",
+  "full_weapon_passed": false,
+  "core_checks": {
+    "actual_shoulder_acquisition": true,
+    "actual_fire": true
+  },
+  "first_fire_input": {
+    "baseline_sent_ns": 104050243317600,
+    "baseline": {
+      "frame": "239",
+      "sequence": "3143",
+      "current": "1",
+      "status": "1",
+      "source_status": "1",
+      "owned": "0",
+      "game_known": "1",
+      "game_r2": "0",
+      "trigger_active": "1",
+      "trigger_value": "0.000",
+      "trigger_pressed": "0",
+      "trigger_released": "0",
+      "input_sync_ns": "104050376672700",
+      "admitted_ns": "104050445260600",
+      "active_at_admission": "1",
+      "preparation_budget": "1"
+    },
+    "down_sent_ns": 104050455092900,
+    "down": {
+      "frame": "240",
+      "sequence": "3148",
+      "current": "1",
+      "status": "3",
+      "source_status": "1",
+      "owned": "1",
+      "game_known": "1",
+      "game_r2": "0",
+      "trigger_active": "1",
+      "trigger_value": "1.000",
+      "trigger_pressed": "1",
+      "trigger_released": "0",
+      "input_sync_ns": "104050498465800",
+      "admitted_ns": "104050545110900",
+      "active_at_admission": "1",
+      "preparation_budget": "1"
+    },
+    "first_shot_observed_ns": 104050705022100,
+    "shots_at_release": 1,
+    "release_sent_ns": 104050705024200
+  },
+  "core_rays": 6,
+  "drain_bursts": [
+    {
+      "burst": 1,
+      "loaded_before": 72,
+      "loaded_after": 66,
+      "actual_spent": 6,
+      "expected_spent": 6
+    },
+    {
+      "burst": 2,
+      "loaded_before": 66,
+      "loaded_after": 66,
+      "actual_spent": 0,
+      "expected_spent": 6
+    }
+  ],
+  "last_typed_counts": {
+    "capacity": 78.0,
+    "used": 12,
+    "reserve": 78,
+    "infinite_reserve": false,
+    "duration": 2.5,
+    "started": 0.0,
+    "active_reload_bonus_shots": 0,
+    "game": {
+      "pid": 47948,
+      "creation_time": 134387927833853413,
+      "image": "j:\\gearsvr\\gears.of.war.reloaded.v1.0.1.3816947-p2p\\gears of war reloaded\\binaries_x64\\gowde-steam.exe"
+    },
+    "weapon": "0x162c0f4d80",
+    "observed_ns": 104053657221200,
+    "game_time": 26.164657592773438,
+    "loaded": 66,
+    "bones": {},
+    "game_function_calls": 0,
+    "reader_reused": true,
+    "read_bracket_misses": [],
+    "query_local_selectors": true,
+    "limits": "Double-read actual inventory and typed schema, current registered objects/held identity; no game calls. Not physical-headset acceptance."
+  },
+  "error": "AssertionError('Real burst did not spend ammunition; no input retry loop')",
+  "specific_trigger": {
+    "frame": 266,
+    "pressed": 3,
+    "released": 2,
+    "value": 1,
+    "result": 1,
+    "owned": 0,
+    "source_ready": 1,
+    "active": 1,
+    "preparation_budget": 1,
+    "next_frame_result": 8
+  },
+  "source_loss_rows": 0,
+  "interpretation": "Core6 and first drain6 complete. Next fixed-delay drain press encountered baseline on DOWN then blocked, spent0 and typed66/78. Did not reproduce36568 partial3 null-frame failure; pending-only observer had no active burst to report.",
+  "repair": "Use already validated UP/DOWN/first-trajectory handshake for every genuine drain and return burst, preserving existing18s/8s whole deadlines; add6 idle and12 pending same-call observation slots. No re-press or production policy change.",
+  "continuous_passed": true,
+  "native_cleanup_verified": true,
+  "xr_exit_code": 0,
+  "cleanup": {
+    "launcher_exit": 0,
+    "owned_game_absent": true,
+    "owned_children": {
+      "recorded": 0,
+      "remaining": []
+    },
+    "forced_termination": false,
+    "worker_error": null
+  },
+  "operator_exit": 1,
+  "foreground_samples": 1484,
+  "cloak_samples": 2601,
+  "foreground_violations": [],
+  "cloak_violations": [],
+  "media": {
+    "directory": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\hb-cloak-1110-215931\\actions\\menu-firstperson-47948-220007",
+    "frames": 410,
+    "errors": [],
+    "reviewed": true,
+    "encoded": true,
+    "encode_exit": 0,
+    "actual_contacts": [
+      "frame-00375.jpg",
+      "frame-00394.jpg"
+    ],
+    "visual_acceptance": false,
+    "limit": "Two actual core/failing-input contacts reviewed. Large near-face gun occlusion persists; no full-span/all-angle fit acceptance."
+  }
+}

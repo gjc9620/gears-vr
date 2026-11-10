@@ -204,3 +204,15 @@ hb-cloak-1110-212845再次在start前被现有2实例资源保护拒绝，未生
 continuous/session passed=true、launcher0/operator1/stop0，Native清理/PG入口恢复、XR exit0，本方game及私有子进程全无、无强杀。1486前台与2666CLOAK检查零违规；目标音频265次明确mute读回、verify_failed0/target_shared_rejected0。528帧GPU录制无错误、离线编码exit0；3张全时段overview及6张首发/尾失败原图亲看。真实近脸遮挡、低位/近位跳变、白色几何及重叠表面仍在，完整皮肤贴合/全角度未接受。runtime-36568-first-failure-analysis.json与text归档保留。
 
 新增source-loss-r1只将现有copy_frame_on_gt可选失败观察与withdrawal_on_gt快照接到同一次读上；拒绝处最多12条，保留copy与withdrawal各自Frame/原因/difference/原commit年龄，不把旧withdrawal冒认为本次原因。不增时钟、不重读Frame、不改取消/输入规则。完整Playground编译成功，SHA 39bda734f56dce4141a0fd718bb5026b571b75196e64d586d0a05ee12f551b34；Native/XR未重编、公共v71不改。下次受控窗口只定位这个新首败，再按实因修复；整枪目标与13项需求保持，评分不因诊断涨分。
+
+## source-loss-r1 实际47948：再次core6，旧排弹第二次DOWN只作baseline
+
+新实例hb-cloak-1110-215931再次actual_fire=true，首轮6发；第一轮排弹也6发，typed66/78。下一次旧固定0.35秒输入frame266 pressed3/released2/value1，current/source ready/active/preparation_budget1，但Input结果baseline1/owned0，frame267 blocked8，没有新的原first event，typed仍66/78，原脚本按零耗弹停止。没有复现36568末轮partial3，pending-only source_loss为空，不能说观察器已找出原null原因或修复了它。
+
+适配器现将core已验证的UP消费→一次DOWN→原首条真实trajectory→UP用于每次排弹和返射；所有步骤仍受原18秒排弹/8秒返射总期限约束，typed读取超原总期限也失败。5项真实press-helper检查、4项实际适配drain控制测试、15项身份/适配器检查通过；覆盖多轮同一绝对截止、不重试失败press、晚到typed不能通过及原trace一致性保护。引擎和输入为夹具，不是游戏通过。
+
+source-loss-r2只扩大观察覆盖：idle故障独立最多6条，已承诺burst故障仍12条；保留各自copy/withdrawal frame，不重读、不授帧、不改时钟与释放策略。消费观察768条有界覆盖完整reload时段，避免原192上限先耗尽。完整PG编译成功，SHA 82335ee87e8351e2ecbd43d498df9ede888298eeea828741d603dfde54d760f8，Native/XR及公共v71不变。
+
+47948 continuous/session passed=true、launcher0/operator1/stop0、Native清理/入口恢复/XR exit0，本方game/私有子进程消失，无强杀；1484前台/2601CLOAK检查零违规。媒体复核另存原recording。source-loss-r2和新统一输入时序尚待实际验证，全部原需求保留。
+
+47948媒体：410帧、recording errors空，离线编码exit0；亲看frame00375/00394实际原图，近脸大遮挡仍在，未通过完整贴合。新输入帮助器补充只观察同一原burst的晚到尾发，保持调用者原绝对截止、不再按键。最终6项press-helper、4项实际drain适配、15项独立身份/装配检查通过。排弹/返射新时序和source-loss-r2尚未实测；首发在两个实际构成中各通过6发，不等于完整排空/换弹稳定。

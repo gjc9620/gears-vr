@@ -1,8 +1,8 @@
 {
   "schema": 1,
   "scope": "full HB objective; no scope reduction",
-  "current_candidate": "source-loss-r1 (compiled copy/withdrawal observation only; actual first6+11 complete drain bursts belong parent restore-receipts-r1)",
-  "prepared_sha256": "f403bb7d2cf849ed005114032319eb6693213767db48bfe7013010bc8eed5c1d",
+  "current_candidate": "source-loss-r2 (compiled idle/pending diagnostics; confirmed one-press driver now applies to core/drain/return)",
+  "prepared_sha256": "cba79e15f634922e8558b4f6f1d2da9e3d0b3f3d54aa1c5d2978b04781479ef8",
   "requirements": [
     {
       "id": "acquire_stow",
@@ -203,9 +203,9 @@
   ],
   "completion_proven": false,
   "goal_active": true,
-  "immediate_next": "One new source-loss-r1 owned run to identify exact copy/read/withdrawal predicate at partial-burst loss, no changed original release/identity/100/20/250ms. Then repair the concrete cause and finish ordinary empty reload/typed return counts plus all remaining requirements.",
+  "immediate_next": "One new owned source-loss-r2 run with actual consumption/first-shot acknowledgment for every drain/return press; retain original18s/8s deadlines and100/20/250ms engine guards. Stop first failure; do not repeat failed press.",
   "historical_evidence_does_not_certify_current_PG": true,
-  "candidate_runtime_status": "Parent36568 first six valid/consistent rays and typed72/78, then11 genuine six-shot drain bursts to6/78; final attempt3/6, typed3/78, total75 consistent rays. Null currentFrame triggered original cancel; cause unproven. Cleanup normal. New same-call diagnostic child compiled, unexercised.",
+  "candidate_runtime_status": "Latest47948 core6+first drain6, typed66/78; next old fixed-delay drain DOWN initialized baseline and blocked, no new rays.36568 prior11 complete drain bursts then partial3/null source remains unproven cause. New shared gesture adapter and idle witness compiled/offline only.",
   "previous_recorded_candidate": {
     "name": "hammerburst-prepared-20261110-unheld-input-r1",
     "prepared_sha256": "76a2ae8cc56e4165b77ca5d17a9e6469ff66323e917be5a8b46da44df4f0bb58"

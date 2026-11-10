@@ -4,7 +4,7 @@
     static std::int64_t last_consumed_log_ns{};
     static std::uint32_t last_consumed_down{},last_consumed_up{};
     static unsigned consumed_logs{};
-    if(log_file&&nativelancerfollow::bound_is_hammerburst&&have_source&&consumed_logs<192){
+    if(log_file&&nativelancerfollow::bound_is_hammerburst&&have_source&&consumed_logs<768){
         const auto& observed_hand=frame.controllers.hands[1];
         const auto observed_down=observed_hand.pressed[gears_vr::control_trigger];
         const auto observed_up=observed_hand.released[gears_vr::control_trigger];

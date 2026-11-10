@@ -114,7 +114,7 @@ class BindingTests(unittest.TestCase):
 
 class SourceTests(unittest.TestCase):
     def test_all_existing_action_and_reader_sources_compile(self):
-        self.assertEqual(len(adapter.check_sources()), 6)
+        self.assertEqual(len(adapter.check_sources()), 8)
 
     def test_changed_source_anchor_stops_adaptation(self):
         with self.assertRaises(ValueError):

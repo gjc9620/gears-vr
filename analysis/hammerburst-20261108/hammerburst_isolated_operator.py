@@ -139,6 +139,28 @@ def core_source():
     return replace_once(source,old,"            from confirmed_first_fire import first_fire\n            first_fire(c,data)")
 
 
+def reload_source():
+    source=(CODE/'hammerburst_reload_chain.py').read_text(encoding='utf-8')
+    return replace_once(source,'        g.pad(1,wait=.35,trigger=1);g.pad(1,wait=.6)',
+        '        from confirmed_first_fire import first_fire\n        first_fire(c,data,deadline_ns=time.perf_counter_ns()+int(max(0.,deadline-time.monotonic())*1e9))')
+
+
+def supply_source():
+    source=(CODE/'hammerburst_supply_boundary_chain.py').read_text(encoding='utf-8')
+    source=replace_once(source,'            c.live();g.pad(1,wait=.35,trigger=1);g.pad(1,wait=.6);bursts+=1',
+        '''            c.live();bursts+=1
+            from confirmed_first_fire import first_fire
+            burst_input={'checks':{}}
+            evidence.setdefault('confirmed_inputs',[]).append(burst_input)
+            if persist:persist()
+            try:
+                first_fire(c,burst_input,expected_shots=min(6,previous),deadline_ns=time.perf_counter_ns()+int(max(0.,deadline-clock())*1e9))
+            finally:
+                if persist:persist()''')
+    anchor="            observed=counts(c,label+'_after_burst_'+str(bursts))"
+    return replace_once(source,anchor,anchor+"\n            assert clock()<=deadline,'Typed burst readback exceeded original whole drain deadline'")
+
+
 def menu_source():
     source = (CODE / 'run_menu_firstperson_check.py').read_text(encoding='utf-8')
     source = replace_once(source, "OUT=Path(__file__).resolve().parent;ROOT=OUT.parents[1]", "CODE=Path(__file__).resolve().parent;ROOT=CODE.parents[1];OUT=BOUND.output")
@@ -174,6 +196,8 @@ def check_sources():
     sources = {name: reader_source(name) for name in READERS}
     sources['equipment_controller_chain.py'] = equipment_source()
     sources['hammerburst_core_chain.py'] = core_source()
+    sources['hammerburst_reload_chain.py'] = reload_source()
+    sources['hammerburst_supply_boundary_chain.py'] = supply_source()
     sources['run_menu_firstperson_check.py'] = menu_source()
     for name, source in sources.items():
         compile(source, str(CODE / name), 'exec')
@@ -214,6 +238,9 @@ def main():
     core.__file__=str(CODE/'hammerburst_core_chain.py')
     exec(compile(core_source(),core.__file__,'exec'),core.__dict__)
     sys.modules[core.__name__]=core
+    for name,source in (('hammerburst_reload_chain',reload_source()),('hammerburst_supply_boundary_chain',supply_source())):
+        adapted=types.ModuleType(name);adapted.__file__=str(CODE/(name+'.py'))
+        exec(compile(source,adapted.__file__,'exec'),adapted.__dict__);sys.modules[name]=adapted
     module = types.ModuleType('equipment_controller_chain')
     module.__file__ = str(CODE / 'equipment_controller_chain.py')
     exec(compile(equipment_source(), module.__file__, 'exec'), module.__dict__)

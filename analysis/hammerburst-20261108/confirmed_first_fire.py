@@ -2,9 +2,14 @@
 import time
 
 
-def first_fire(c,data,*,clock=time.perf_counter_ns,sleep=time.sleep):
+def first_fire(c,data,*,clock=time.perf_counter_ns,sleep=time.sleep,expected_shots=6,deadline_ns=None):
     g=c.g
+    assert 1<=expected_shots<=6
     receipt=data.setdefault('first_fire_input',{})
+    rejection_offsets={p:len(c.records(p)) for p in ('native_hammerburst_continuation_rejected','native_hammerburst_release_rejected')}
+    def check_rejection():
+        for prefix,offset in rejection_offsets.items():
+            assert not any(0<=int(row.get('count',-1))<expected_shots for row in c.records(prefix)[offset:]),'Original burst explicitly rejected; no input retry'
     def number(row,key):
         try:return int(row[key])
         except (KeyError,ValueError,TypeError):return -1
@@ -18,6 +23,7 @@ def first_fire(c,data,*,clock=time.perf_counter_ns,sleep=time.sleep):
                  number(row,'owned')==0 and number(row,'game_r2')==0))
     def consumed(sent,down,seconds):
         deadline=clock()+int(seconds*1e9)
+        if deadline_ns is not None:deadline=min(deadline,deadline_ns)
         while clock()<deadline:
             assert g.live(),'Owned runtime ended before input consumption'
             rows=c.records('hammerburst_input_consumed')
@@ -33,8 +39,10 @@ def first_fire(c,data,*,clock=time.perf_counter_ns,sleep=time.sleep):
         g.pad(1,wait=0,trigger=1)
         receipt['down']=consumed(receipt['down_sent_ns'],True,2)
         deadline=clock()+2_000_000_000
+        if deadline_ns is not None:deadline=min(deadline,deadline_ns)
         while clock()<deadline:
             assert g.live(),'Owned runtime ended before original first shot'
+            check_rejection()
             first=c.records('native_lancer_shot_trajectory')[before:]
             if first:
                 assert all(x.get('trace_valid')=='1' for x in first),'Invalid original first HB trajectory'
@@ -43,9 +51,17 @@ def first_fire(c,data,*,clock=time.perf_counter_ns,sleep=time.sleep):
             sleep(.01)
         else:raise TimeoutError('Consumed DOWN did not produce an original first HB trajectory')
     finally:
+        data['shots']=c.records('native_lancer_shot_trajectory')[before:]
         receipt['release_sent_ns']=clock();g.pad(1,wait=0)
-    sleep(.7) # Drain the existing original finite burst; send no second press.
+    remaining=.7 if deadline_ns is None else max(0,min(.7,(deadline_ns-clock())/1e9))
+    sleep(remaining) # Drain this original burst inside the caller's original deadline.
+    if deadline_ns is not None:assert clock()<=deadline_ns,'Original whole-flow deadline expired'
     shots=c.records('native_lancer_shot_trajectory')[before:];data['shots']=shots
+    completion_deadline=deadline_ns if deadline_ns is not None else receipt['release_sent_ns']+1_500_000_000
+    while 0<len(shots)<expected_shots:
+        check_rejection();assert clock()<completion_deadline,'Same original burst did not complete before original observation deadline'
+        sleep(min(.1,(completion_deadline-clock())/1e9));assert g.live()
+        shots=c.records('native_lancer_shot_trajectory')[before:];data['shots']=shots
     assert shots and all(x.get('trace_valid')=='1' for x in shots),'No authoritative HB trajectory after consumed DOWN'
-    assert len(shots)==6,('Original HB burst must export exactly six valid shots',len(shots))
+    assert len(shots)==expected_shots,('Original HB burst exported unexpected shot count',len(shots),expected_shots)
     data['checks']['actual_fire']=True
