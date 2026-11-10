@@ -1,13 +1,19 @@
 """Freeze the existing ordinary cover action for the exact r105 private root."""
 from pathlib import Path
 import ast
+import argparse
 import json
 import sys
 from prepare import ROOT, HERE, OLD, R104, sha, load, replace_once, write_new
 
 
 def main():
-    selected = ROOT / 'analysis/instances/cover-1110-r105-source-stage'
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--name', required=True)
+    name = parser.parse_args().name
+    if not name.startswith('cover-') or any(c not in 'abcdefghijklmnopqrstuvwxyz0123456789_-' for c in name):
+        raise ValueError('Exact cover instance name required')
+    selected = ROOT / 'analysis/instances' / name
     receipt = load(HERE / selected.name / 'prepared.json')
     if (selected / 'launcher-session.json').exists():
         raise RuntimeError('Do not change an attempt after launch')

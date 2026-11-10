@@ -113,6 +113,19 @@ def main():
     inputs.mkdir()
     write_new(inputs / 'manifest.json', manifest)
     write_new(inputs / 'config.json', load(config_row['saved']))
+    # The sealed r104 executable archive contains only the EXE. Include its
+    # actual deployed OpenXR loader dependency in a new, immutable input dir.
+    xr_input = inputs / 'xr'
+    xr_input.mkdir()
+    xr_exe = Path(prepared['builds']['sim_xr']['saved'])
+    isolated.original.copy_stable(xr_exe, xr_input / xr_exe.name)
+    loader = ROOT / 'tools/openxr-probe/build-solo-m1-sim/openxr_loader.dll'
+    loader_sha = '66946ea6e9cc2649e299ec412521c5eafe56c635d05055097fe4db81e11932df'
+    if sha(loader) != loader_sha:
+        raise RuntimeError('Deployed OpenXR loader identity differs')
+    isolated.original.copy_stable(loader, xr_input / loader.name)
+    manifest['xr_build'] = str(xr_input)
+    (inputs / 'manifest.json').write_text(json.dumps(manifest, indent=2), encoding='utf-8')
     selected = isolated.prepare(args.name, manifest=inputs / 'manifest.json', config=inputs / 'config.json')
     # Preserve the cover test's explicitly authorized 0.4 profile. This writes
     # only our newly prepared config; the isolation tool's common default stays.
@@ -139,6 +152,7 @@ def main():
         input_reader_sha256=sha(output / 'read_private_input.py'),
         preparation_source_sha256=sha(__file__), isolation_source_sha256=sha(ROOT / 'tools/multi-instance/isolated_sim.py'),
         input_reader_source_sha256=sha(OLD / 'read_private_input.py'),
+        openxr_loader_sha256=loader_sha,
         render_scale=.4, prepared_at_ns=time.time_ns(),
         operator_migration_complete=False, runtime_admission_consumed=False,
         collision_verified=False, movement_authorized=False, gameplay_accepted=False,

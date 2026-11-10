@@ -2,6 +2,7 @@
 from pathlib import Path
 import importlib.util
 import ctypes
+import argparse
 import json
 import os
 import subprocess
@@ -17,7 +18,17 @@ TOOLS = ROOT / 'tools/multi-instance/isolated_sim.py'
 
 
 def main():
-    if sys.argv[1:] != ['--run'] or Path.cwd().resolve() != ROOT or sys.flags.optimize:
+    global NAME, SELECTED, OUTPUT
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--name', required=True)
+    parser.add_argument('--run', action='store_true', required=True)
+    name = parser.parse_args().name
+    if not name.startswith('cover-') or any(c not in 'abcdefghijklmnopqrstuvwxyz0123456789_-' for c in name):
+        raise ValueError('Exact cover instance name required')
+    NAME = name
+    SELECTED = ROOT / 'analysis/instances' / NAME
+    OUTPUT = SELECTED / 'cover-output'
+    if Path.cwd().resolve() != ROOT or sys.flags.optimize:
         raise RuntimeError('Use --run in the canonical worktree without optimization')
     prepared = load(HERE / NAME / 'prepared.json')
     action = load(HERE / NAME / 'operator-prepared.json')
@@ -29,6 +40,8 @@ def main():
         if sha(path) != expected:
             raise RuntimeError('Prepared input changed: ' + str(path))
     manifest = load(SELECTED/'manifest.json')
+    if 'openxr_loader_sha256' not in prepared or sha(ROOT/manifest['xr_build']/'openxr_loader.dll') != prepared['openxr_loader_sha256']:
+        raise RuntimeError('Private XR loader missing or changed')
     for prefix, filename in (('native', manifest['native_dll']), ('playground', manifest['playground_dll']), ('xr', 'OpenXRPoseProbe.exe')):
         if sha(ROOT/manifest[prefix+'_build']/filename) != manifest[prefix+'_sha256']:
             raise RuntimeError('Private artifact changed: ' + prefix)
