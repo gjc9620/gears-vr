@@ -1,0 +1,264 @@
+{
+  "schema": 1,
+  "pid": 34692,
+  "created_unix_ns": 1794330828169338100,
+  "created_perf_counter_ns": 115629311685100,
+  "accepted": false,
+  "native_activation_attempted": false,
+  "read_only": true,
+  "sample_acquisition": {
+    "accepted": false,
+    "stage": "initial",
+    "reason": "Anchor guard acquisition deadline exceeded",
+    "exception_type": "AnchorRejected",
+    "exception_repr": "AnchorRejected('Anchor guard acquisition deadline exceeded')",
+    "raw_rejection": null,
+    "clock": "perf_counter_ns",
+    "started_perf_counter_ns": 115625775453000,
+    "finished_perf_counter_ns": 115629311661500,
+    "guard_acquisitions": [
+      {
+        "accepted": false,
+        "stage": "initial",
+        "clock": "perf_counter_ns",
+        "started_perf_counter_ns": 115625775453000,
+        "deadline_perf_counter_ns": 115625975453000,
+        "maximum_attempts": 5,
+        "budget_scope": "this guard acquisition only",
+        "attempts": [
+          {
+            "attempt": 1,
+            "started_perf_counter_ns": 115625775455700,
+            "finished_perf_counter_ns": 115629311645100,
+            "elapsed_ms": 3536.1894,
+            "strict_guard_accepted": true,
+            "reason": null,
+            "retryable": false,
+            "exception_type": null,
+            "exception_repr": null,
+            "raw_guard": {
+              "pawn": {
+                "address": 17178945152,
+                "internal_index": 207058,
+                "name": "Pawn_COGMarcus",
+                "number": 1,
+                "cls": 429639616,
+                "outer": 4977636656,
+                "name_index": 5927
+              },
+              "controller": {
+                "address": 4802549136,
+                "internal_index": 206931,
+                "name": "WarPC",
+                "number": 1,
+                "cls": 429714944,
+                "outer": 4977636656,
+                "name_index": 6209
+              },
+              "camera": {
+                "address": 4594068704,
+                "internal_index": 206950,
+                "name": "WarPlayerCamera",
+                "number": 2,
+                "cls": 430183936,
+                "outer": 4977636656,
+                "name_index": 6711
+              },
+              "local_player": {
+                "address": 4733306352,
+                "internal_index": 168078,
+                "name": "WarLocalPlayer",
+                "number": 1,
+                "cls": 429848320,
+                "outer": 4778325472,
+                "name_index": 6419
+              },
+              "level": {
+                "address": 4977636656,
+                "internal_index": 172689,
+                "name": "PersistentLevel",
+                "number": 0,
+                "cls": 428457664,
+                "outer": 4977637664,
+                "name_index": 746
+              },
+              "outer_chain": [
+                {
+                  "address": 4977636656,
+                  "internal_index": 172689,
+                  "name": "PersistentLevel",
+                  "number": 0,
+                  "cls": 428457664,
+                  "outer": 4977637664,
+                  "name_index": 746
+                }
+              ],
+              "view_target": 17178945152,
+              "timestamp_raw": "82357d41",
+              "objects_header": "00003716000000005f540300f86f0300",
+              "names_header": "0000290700000000e3f60000a0860100",
+              "target_proof": {
+                "identity": {
+                  "address": 17178945152,
+                  "internal_index": 207058,
+                  "name": "Pawn_COGMarcus",
+                  "number": 1,
+                  "cls": 429639616,
+                  "outer": 4977636656,
+                  "name_index": 5927
+                },
+                "cinematic": false,
+                "target_level": {
+                  "address": 4977636656,
+                  "internal_index": 172689,
+                  "name": "PersistentLevel",
+                  "number": 0,
+                  "cls": 428457664,
+                  "outer": 4977637664,
+                  "name_index": 746
+                },
+                "world_info": {
+                  "address": 4800807168,
+                  "internal_index": 171514,
+                  "name": "WorldInfo",
+                  "number": 9,
+                  "cls": 428635264,
+                  "outer": 4977636656,
+                  "name_index": 3531
+                }
+              }
+            }
+          }
+        ],
+        "finished_perf_counter_ns": 115629311651100,
+        "failure_reason": "Anchor guard acquisition deadline exceeded",
+        "strict_guard_attempts": 1
+      }
+    ],
+    "strict_guard_attempts": 1,
+    "failure_reason": "Anchor guard acquisition deadline exceeded"
+  },
+  "failure_stage": "initial",
+  "guard_acquisitions": [
+    {
+      "accepted": false,
+      "stage": "initial",
+      "clock": "perf_counter_ns",
+      "started_perf_counter_ns": 115625775453000,
+      "deadline_perf_counter_ns": 115625975453000,
+      "maximum_attempts": 5,
+      "budget_scope": "this guard acquisition only",
+      "attempts": [
+        {
+          "attempt": 1,
+          "started_perf_counter_ns": 115625775455700,
+          "finished_perf_counter_ns": 115629311645100,
+          "elapsed_ms": 3536.1894,
+          "strict_guard_accepted": true,
+          "reason": null,
+          "retryable": false,
+          "exception_type": null,
+          "exception_repr": null,
+          "raw_guard": {
+            "pawn": {
+              "address": 17178945152,
+              "internal_index": 207058,
+              "name": "Pawn_COGMarcus",
+              "number": 1,
+              "cls": 429639616,
+              "outer": 4977636656,
+              "name_index": 5927
+            },
+            "controller": {
+              "address": 4802549136,
+              "internal_index": 206931,
+              "name": "WarPC",
+              "number": 1,
+              "cls": 429714944,
+              "outer": 4977636656,
+              "name_index": 6209
+            },
+            "camera": {
+              "address": 4594068704,
+              "internal_index": 206950,
+              "name": "WarPlayerCamera",
+              "number": 2,
+              "cls": 430183936,
+              "outer": 4977636656,
+              "name_index": 6711
+            },
+            "local_player": {
+              "address": 4733306352,
+              "internal_index": 168078,
+              "name": "WarLocalPlayer",
+              "number": 1,
+              "cls": 429848320,
+              "outer": 4778325472,
+              "name_index": 6419
+            },
+            "level": {
+              "address": 4977636656,
+              "internal_index": 172689,
+              "name": "PersistentLevel",
+              "number": 0,
+              "cls": 428457664,
+              "outer": 4977637664,
+              "name_index": 746
+            },
+            "outer_chain": [
+              {
+                "address": 4977636656,
+                "internal_index": 172689,
+                "name": "PersistentLevel",
+                "number": 0,
+                "cls": 428457664,
+                "outer": 4977637664,
+                "name_index": 746
+              }
+            ],
+            "view_target": 17178945152,
+            "timestamp_raw": "82357d41",
+            "objects_header": "00003716000000005f540300f86f0300",
+            "names_header": "0000290700000000e3f60000a0860100",
+            "target_proof": {
+              "identity": {
+                "address": 17178945152,
+                "internal_index": 207058,
+                "name": "Pawn_COGMarcus",
+                "number": 1,
+                "cls": 429639616,
+                "outer": 4977636656,
+                "name_index": 5927
+              },
+              "cinematic": false,
+              "target_level": {
+                "address": 4977636656,
+                "internal_index": 172689,
+                "name": "PersistentLevel",
+                "number": 0,
+                "cls": 428457664,
+                "outer": 4977637664,
+                "name_index": 746
+              },
+              "world_info": {
+                "address": 4800807168,
+                "internal_index": 171514,
+                "name": "WorldInfo",
+                "number": 9,
+                "cls": 428635264,
+                "outer": 4977636656,
+                "name_index": 3531
+              }
+            }
+          }
+        }
+      ],
+      "finished_perf_counter_ns": 115629311651100,
+      "failure_reason": "Anchor guard acquisition deadline exceeded",
+      "strict_guard_attempts": 1
+    }
+  ],
+  "strict_guard_attempts": 1,
+  "preparation_failures": 1,
+  "preparation_receipt": "first"
+}

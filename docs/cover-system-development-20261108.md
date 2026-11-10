@@ -2263,3 +2263,13 @@ r138实际来源过期及正常清理已保存2f172a9c。本轮针对重复读�
 在r137冻结源上只叠cover_member_witness_live.inl及cover_physics_roles_live.inl，Native8814ea68079dcb16b6815f3d72dd32ec3d5a7fdf2395d6302a5d19fb4eccc32b完整编译链接0；407项目依赖、外部工作树0、开关不变。固定链证书表置于既有Workspace，clear仅清count/索引，无大型栈临时。准备器增加r139精确来源选择，guard解析器接受调用者显式匹配SHA、默认仍拒绝其他artifact。尚未stage/启动游戏，下一步只复查来源过期这一处。
 
 证据member-chain-r139/{verification,native-build-result,native-source-manifest}.json及before-v1/after-v1/cached-threshold.log。完整身体几何/当前世界覆盖、实际路径/终点、唯一C0同版视图/命中/枪口、自身遮挡及CV01–24/AC01–22仍开放，工程25%、公共v71及固定入口保持，目标active。
+
+## r140：激活前严格anchor采集超时，优化Native未执行（2026-11-11）
+
+r139源码及离线读量先保存b7a9f8cd；新票cover-1111-r140-cloak-chain资源准入后启动，game34692/creation134388043499140447、owner39240/creation134388043409774082、XR28276/creation134388043703130168、worker13816/creation134388043408916129。启动disk_before5821665280≥4GiB。候选8814ea68…cc32b按SHA复制正确，但激活前只读anchor配置采集在initial获取拒绝，native_activation_attempted=false、native_started=false、native_status=null，未执行operator或记录私有玩法projection，原查询0。不能将此说成成员链缓存或路径逻辑运行失败，也不能声称优化已在游戏通过。
+
+原始config-failed回执显示单次严格采集strict_guard_accepted=true、无语义异常，但耗时3536.1894ms；本次获取的原deadline为200ms，故acquisition accepted=false，理由Anchor guard acquisition deadline exceeded。计时115625775453000→115629311651100ns，拒绝发生在注入候选Native之前。未延长门限、未改旧样本时间或自动重试，初始原因和完整raw guard保留；慢读的进一步原因尚未确定。
+
+launcher1、Native cleanup false/error incomplete or deadline、entry restore无证明、XR1（terminal exiting without end、对象销毁和shutdown完成），input pad恢复true。本轮normal_cleanup_verified=false完整保留，不补签；isolated-cleanup-pending旧回执owned_game_absent=false也不修改。其后独立isolated-done为owned_game_absent=true，保存时精确game/owner/XR/worker全不在，remaining_owned空、无强杀；进程退出与正常恢复证明分开。CLOAK405次失败0，静音验证367/initially_muted1/verify_failed0/target_shared_rejected0，不虚构玩法画面或编码。
+
+证据member-chain-r139/runtime-r140/{session-original,config-failure-original,closeout}.json及prepare/operator日志。下一步检查本次激活前配置获取的慢路径，保留严格获取/身份/新鲜度条件；r139实际查询效果仍待新候选复查。已有离线1404与读量减少28.3%不替代此项实际结果。完整身体/世界覆盖、唯一C0同版视图/命中/枪口、自身遮挡及CV01–24/AC01–22继续未完成，工程25%、公共v71与固定入口不变，目标active。

@@ -1,0 +1,81 @@
+{
+  "classification": "progress: preserved exact startup rejection before Native activation; optimization game behavior untested",
+  "identities": {
+    "game_identity": {
+      "pid": 34692,
+      "creation_time": 134388043499140447,
+      "image": "j:\\gearsvr\\gears.of.war.reloaded.v1.0.1.3816947-p2p\\gears of war reloaded\\binaries_x64\\gowde-steam.exe"
+    },
+    "owner_identity": {
+      "pid": 39240,
+      "creation_time": 134388043409774082,
+      "image": "c:\\users\\11\\.cache\\codex-runtimes\\codex-primary-runtime\\dependencies\\python\\python.exe"
+    },
+    "xr_identity": {
+      "pid": 28276,
+      "creation_time": 134388043703130168,
+      "image": "c:\\users\\11\\.codex\\worktrees\\6dof-single\\gearsvr\\tools\\openxr-probe\\build-cover-1111-r140-cloak-chain\\openxrposeprobe.exe"
+    },
+    "worker_identity": {
+      "pid": 13816,
+      "creation_time": 134388043408916129,
+      "image": "c:\\users\\11\\.cache\\codex-runtimes\\codex-primary-runtime\\dependencies\\python\\python.exe"
+    }
+  },
+  "exact_owned_processes_absent_at_closeout": true,
+  "native_sha256": "8814ea68079dcb16b6815f3d72dd32ec3d5a7fdf2395d6302a5d19fb4eccc32b",
+  "original_report": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\runtime\\continuous-stereo-34692-20261111-011250-a0360669.json",
+  "original_report_sha256": "26c704430d08ecc9ddff8ea4672ccaf56f8ae75d49ba4745bcd60cba135d3213",
+  "config_failure": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\cover-1111-r140-cloak-chain\\native\\anchor-observer-config-failed-34692-115629311685100.json",
+  "config_failure_sha256": "3756b51b2ec8a9b9d7309b60794396ccf73306b8472defb39e1d2cf67b661b3c",
+  "native_activation_attempted": false,
+  "native_started": false,
+  "candidate_code_executed": false,
+  "operator_executed": false,
+  "first_failure": "initial read-only anchor guard acquisition exceeded 200ms; first strict sample took3536.1894ms",
+  "strict_guard_accepted": true,
+  "acquisition_accepted": false,
+  "original_query_calls": 0,
+  "gameplay_projection_recorded": false,
+  "normal_cleanup_verified": false,
+  "native_cleanup_verified": false,
+  "native_cleanup_error": "RuntimeError('Native cleanup incomplete or deadline expired')",
+  "entry_restore_verified": null,
+  "pad_restored": true,
+  "xr_exit_code": 1,
+  "launcher_exit_code": 1,
+  "forced_termination": false,
+  "stale_cleanup_pending_receipt_preserved": true,
+  "final_done_owned_game_absent": true,
+  "cloak": {
+    "samples": 405,
+    "failures": []
+  },
+  "mute": {
+    "event": "mute_verification_summary",
+    "pid": 34692,
+    "initially_muted_sessions": 1,
+    "verified_muted_observations": 367,
+    "verify_failed": 0,
+    "target_shared_rejected": 0,
+    "shared_rejected_is_global_scan_count": true
+  },
+  "disk_before": {
+    "check": "disk_admission",
+    "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr",
+    "free_bytes": 5821665280,
+    "minimum_free_bytes": 4294967296,
+    "admitted": true
+  },
+  "collision_clear": null,
+  "world_coverage_verified": false,
+  "movement_authorized": false,
+  "public_changed": false,
+  "headset_accepted": false,
+  "remaining": [
+    "reduce or explain actual startup acquisition cost without extending freshness/deadline or reusing old data",
+    "actual r139 original path/endpoint and unchanged source-age checks",
+    "complete body geometry, current world coverage, same-pose C0 body/view/hit/muzzle",
+    "head/shoulder obstruction, CV01-24 AC01-22 headset"
+  ]
+}
