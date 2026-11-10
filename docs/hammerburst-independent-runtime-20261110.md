@@ -344,3 +344,5 @@ hb-cloak-1111-013604资源等待134.266秒/124次拒绝读后首次start，game5
 launcher0/operator1/stop0，Native清理/PG入口恢复/XR0，本方game/子进程消失、无强杀，2079前台/3855CLOAK零违规。551帧errors空、encode0；亲看48双眼全跨度样本三页与原图00398/00445/00491，白面/重叠/近脸遮挡与偶发近处枪体可见性问题仍在，不接受完整手型/连续性/全角度。8份文本原件SHA归档，详见runtime-53560-first-failure-analysis.json与媒体索引。该次是部分弹量换弹诊断，没有排空，不当空仓或有限连发稳定性验收。
 
 下一步采用已有生产端真实运动history补齐游戏回调之间的中间几何样本：保留当前Frame/grant及精确身份/mount/publisher/control检查，每对原样本仍须100ms内、序号/时间单调、真实持握无释放、最终点与实际当前pose一致，缺样或身份变化原子拒绝，不捏造插值/时间、不新增枪/骨骼writer、不加宽几何/输入/原事件期限。现有latch_history/controller_relative_motion仅是可复用构件，尚未完成feed接线或验收；不再原样重跑feed-observe版本。20672原pending250ms期限失败、空仓完整回射及其余13项要求仍开放。
+
+Git保存说明：c6a37b0c提交时共享index同时出现其他会话的cover camera-discovery-r141、requirements-owner-sync、cinematic_anchor及其测试和cover文档，合并进了同一提交。它们不是本枪实现/测试的证据；内容保留，不重写共享历史或撤销他人工作。后续本枪使用明确pathspec的git commit --only避免吸入同时暂存内容。本方53560源码/证据已保存且运行终态，下一次运行须先完成上述真实history修正。
