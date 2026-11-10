@@ -2137,3 +2137,19 @@ b121d9c4保存r127观察器修正后，新票cover-1110-r128-cloak-registry完�
 仅迁移本方已终态且精确进程已不存在的r118/r119/r120/r123/r125/r127旧实例至J:/gearsVr/analysis/cover-disk-recovery-20261110-r128，保留原C路径junction；r118/119/120/127全文件前后SHA一致，r123/125原10张phase图SHA一致。另将本方r124/r126的57份可重建obj/pdb（约64MB）移至同一J归档并逐SHA，源码、DLL、日志及其他会话文件均保留。初始复制后递归删除方案被自动审查拒绝，改用直接Move-Item归档加原路径映射完成，无单独递归删除；不绕开用户文件边界。空间回升约6GB，随后其他正常写入导致浮动，以closeout瞬时读数为准。
 
 已只读审阅统筹新增共享require_disk：prepare、资源准入及worker真正启动前均检查证据卷至少4GiB，不终止现有实例或删文件；本会话未修改共享工具，也不改旧票hash绕过检查。后续使用新票绑定最新来源。证据pose-probe-r126/runtime-r128/{closeout,media-recovery}.json及原始日志。完整CV01–24/AC01–22、工程25%、公共v71、头肩遮挡及物理头显未完成状态保持；下一步仍是新磁盘准入下的定向掩体观察。
+
+## r129/r130：磁盘准入真实拒绝；实际PhysicsAsset成员检查达到128身份见证上限（2026-11-10）
+
+上轮e136b287为实际ENOSPC记录和本方空间恢复进展。本轮先复核r112/r113旧实例stopped及精确game/owner/XR/worker全不在，仅将这两组各约914MB归档J盘、全文件前后SHA一致并保留C路径junction。r129使用最新共享来源9f350220…345a准备，但真正资源准入时free3880353792<4294967296，require_disk明确拒绝；无worker/index/game，独立于玩法失败，未改旧票hash重用。自身runner新增claim前disk检查，原共享start/worker仍再查。改动已在当前Git历史c5bc7f54保存，运行r130实际加载的旧runner没有disk_before字段，不追称其已实跑新前置检查。
+
+空间回升后，新票cover-1110-r130-cloak-pose-witness通过准备与冻结adapter真实导入；两实例资源占用时持续核对精确worker等待，资源释放后同一未消费票只启动一次。Native d7cb104d…c2e5、PG/XR冻结版、0.4；game58348/creation134387957377725571，owner58484/creation134387957292749552，XR55864/creation134387957447722033。Source1输入、原版接近/A进入CT2、五段neutral/turned/restored/raised/restored均执行，operator0。未做抓边/虚拟身体位移。
+
+首次Sphere requested/attempted/finished均1，外层source4，Session physics_roles2/detail layout5，Engine idle0，original_started/returned前后均0。LayoutStep4=mesh_asset_property，pass1，mesh sources132/identities128，instance sources2/identities3，offsets584(0x248),0,0,0,0，body尚未采样。代码清零字段后，binding::property成功才写offset，因此已越过该属性自身解析，失败在role_property的完整成员闭合。身份数已达Proof固定128容量，容量耗尽是当前首要机制；本次未记录membership内部究竟哪个条件拒绝，仍不排除其他同时存在的不符项，不直接叫所有根因修复。
+
+对应首次测量complete1的Scene410/Compose25204/sequence4508与Sphere同C0；之后measurement拒绝243次，原Status2=core，首份Scene411/Compose25266/sequence4509，是另一C0。不能拼成一次失败或据此单独断言时限/字段根因。Sphere读括号107011982808600→107011983642300ns，World2186117376/gen1、Pawn16800153856、Link2320974592/slot0，原球(-3930.43384,-190.230759,614.0177,r1)。无原版调用/完整空碰撞/移动许可。
+
+308张实际双眼投影，错误0/线程joined，VFR编码0；16张全跨度overview与5张原始phase图全部亲自查看。五段仍严重自身头肩/躯干遮挡，visualFAIL；开场约20秒静止和间歇手部缺失保留。phase只按事件区间内完整请求/观察括号选取（7/3/7/6/7可选帧），不称同C0/GPU消费。新adapter完整操作序列通过，但registry重建分支本次是否实际触发为False，不将正常序列当该特殊分支已证。
+
+本次正常stop，Native/entry/pad恢复true、fire_disable0/hand_stop5/drainedtrue、XR0/launcher0、精确game/owner/XR均不在，无强杀；CLOAK744次失败0，目标静音读回317/initially_muted1/verify_failed0/target_shared_rejected0。r128缺失的恢复回执不因此补签。原报告原样复制并按Native SHA解释，证据pose-probe-r126/runtime-r130/{query-probe,pose-probe,closeout,media-review}.json。
+
+下一步为typed完整成员见证提供有界分页/独立存储，维持全部兄弟、身份/字段/声明及closing验证，避免全局Proof扩容引起其他writer/栈尺寸变化；先离线复现跨128成员与末端突变，再编译定向修复。后续Core测量拒绝单独处理；完整当前占用/世界覆盖、原查询、唯一C0身体/视图/命中/枪口、抓边联合战斗和头显仍未完成。工程25%、公共v71与全部CV01–24/AC01–22状态保持，目标active。

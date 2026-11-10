@@ -1,0 +1,170 @@
+{
+  "frames": 308,
+  "recording_sha256": "b9da3a4bbaf9ec5fcb61ea0f01f640d6be4bad937453f4bb80c87299565db07e",
+  "pages": [
+    {
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\pose-probe-r126\\runtime-r130\\overview-1.jpg",
+      "sha256": "ae60da3d0a52f5fe83d01f943814b2513257e4187ee79024b3c6c3c25aa9d680"
+    },
+    {
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\pose-probe-r126\\runtime-r130\\overview-2.jpg",
+      "sha256": "d6d5441db243f184aa11ddcdc46d23e149fb6b27a69ad7a5f9e6ff2deb3d9c27"
+    },
+    {
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\pose-probe-r126\\runtime-r130\\overview-3.jpg",
+      "sha256": "4ec84a8929c1b344b39dd3405e6c2ceaa41def08406941f4c22a9ff339db785b"
+    },
+    {
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\pose-probe-r126\\runtime-r130\\overview-4.jpg",
+      "sha256": "5198643a81ec607dde974ffd44659fdb3b51027ffb6a5b99dd581e9101557900"
+    },
+    {
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\pose-probe-r126\\runtime-r130\\overview-5.jpg",
+      "sha256": "3a9b2faf8f5784973ccdc547275211ae8d9b0844a24e4d89867e04402ad2f183"
+    },
+    {
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\pose-probe-r126\\runtime-r130\\overview-6.jpg",
+      "sha256": "02672471ef37bb5c9e1629517c9d4b366a3b86548fc71edd03f6905077ca544b"
+    },
+    {
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\pose-probe-r126\\runtime-r130\\overview-7.jpg",
+      "sha256": "910f791e75413cf93ff5e579f28707ea3e404036ac459156d900e7313c7217b4"
+    },
+    {
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\pose-probe-r126\\runtime-r130\\overview-8.jpg",
+      "sha256": "41c301a04e13ded3134ca584fdcc3b3694c6cf0cbe8083068a23feeb40e2afb7"
+    },
+    {
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\pose-probe-r126\\runtime-r130\\overview-9.jpg",
+      "sha256": "ed1dbb633086656ada225bda53d81d98b48c552d0cd6938a966e7683c7a95b04"
+    },
+    {
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\pose-probe-r126\\runtime-r130\\overview-10.jpg",
+      "sha256": "8c1b3ca6946fc569f2f79496fa6c5f93726ed98a6b6df7bcece2c2d328512a77"
+    },
+    {
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\pose-probe-r126\\runtime-r130\\overview-11.jpg",
+      "sha256": "49156cb1ac6911a7e05fbbc2b2a2c44dfcee4f2dfd7f6bc1203ab097b40a8e67"
+    },
+    {
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\pose-probe-r126\\runtime-r130\\overview-12.jpg",
+      "sha256": "a3fa33185e6aca0f063db32b877311d01d9a6488b9003690c891fa16f7538f0a"
+    },
+    {
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\pose-probe-r126\\runtime-r130\\overview-13.jpg",
+      "sha256": "b3b10958cbedb1b0a84717c7b686dfad64341d45906449913d3d64b715ee3445"
+    },
+    {
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\pose-probe-r126\\runtime-r130\\overview-14.jpg",
+      "sha256": "2b2df00f59220972e0dc3833f385915bbe4840c143a683430c743141920f7aa8"
+    },
+    {
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\pose-probe-r126\\runtime-r130\\overview-15.jpg",
+      "sha256": "72bf19b9edee0b5ec146fde9c03e441103c18241ebb42e7418967eaf705277d4"
+    },
+    {
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\pose-probe-r126\\runtime-r130\\overview-16.jpg",
+      "sha256": "29277bcdf52e3f6c30b6e6c1917476794c616e688a34f1fbd00d2147b54b4bfe"
+    }
+  ],
+  "contacts": [
+    {
+      "label": "cover_eye_neutral",
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\cover-1110-r130-cloak-pose-witness\\cover-output\\projection\\frame-00227.jpg",
+      "sha256": "929ed045cd39a5bb5734ed1d231787c5067503c8878ad89b4507a03dccdcd889",
+      "event_wall_ns": 1794322211841614200,
+      "duration_seconds": 0.8054284,
+      "eligible_frames": 7,
+      "frame": {
+        "file": "frame-00227.jpg",
+        "time": 24.780830000003334,
+        "requested": 24.7611590000015,
+        "observed_wall_ns": 1794322212258891400,
+        "requested_wall_ns": 1794322212234713200,
+        "width": 960,
+        "height": 540
+      },
+      "same_C0_proven": false
+    },
+    {
+      "label": "cover_eye_turned",
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\cover-1110-r130-cloak-pose-witness\\cover-output\\projection\\frame-00245.jpg",
+      "sha256": "9d00589e238624e28ed4cb3f9484f3dc2336db8e2812cb3dc816d49ea5a17e06",
+      "event_wall_ns": 1794322214057693200,
+      "duration_seconds": 0.8267632,
+      "eligible_frames": 3,
+      "frame": {
+        "file": "frame-00245.jpg",
+        "time": 26.77017389998946,
+        "requested": 26.731426600003033,
+        "observed_wall_ns": 1794322214247860700,
+        "requested_wall_ns": 1794322214205730800,
+        "width": 960,
+        "height": 540
+      },
+      "same_C0_proven": false
+    },
+    {
+      "label": "cover_eye_turn_restored",
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\cover-1110-r130-cloak-pose-witness\\cover-output\\projection\\frame-00263.jpg",
+      "sha256": "3ba126aa3c3c823b7b83ebef48c608920f40ebbc6ab4ec4becdb5ecaae3e418c",
+      "event_wall_ns": 1794322216210955100,
+      "duration_seconds": 0.8054559,
+      "eligible_frames": 7,
+      "frame": {
+        "file": "frame-00263.jpg",
+        "time": 29.144347199995536,
+        "requested": 29.106106099992758,
+        "observed_wall_ns": 1794322216622915200,
+        "requested_wall_ns": 1794322216579134800,
+        "width": 960,
+        "height": 540
+      },
+      "same_C0_proven": false
+    },
+    {
+      "label": "cover_eye_raised",
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\cover-1110-r130-cloak-pose-witness\\cover-output\\projection\\frame-00282.jpg",
+      "sha256": "16b428234bff2bf45068aa27c2e177ee5ec9ddd61ddd8dc2c7c3899a0410c82e",
+      "event_wall_ns": 1794322218261399300,
+      "duration_seconds": 0.8058604,
+      "eligible_frames": 6,
+      "frame": {
+        "file": "frame-00282.jpg",
+        "time": 31.201931899995543,
+        "requested": 31.17477019999933,
+        "observed_wall_ns": 1794322218679199900,
+        "requested_wall_ns": 1794322218649222600,
+        "width": 960,
+        "height": 540
+      },
+      "same_C0_proven": false
+    },
+    {
+      "label": "cover_eye_rise_restored",
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\cover-1110-r130-cloak-pose-witness\\cover-output\\projection\\frame-00301.jpg",
+      "sha256": "19fec15d147e729e074c385660ce561b90c7094bfce165432ac8d4bea4fe1a5e",
+      "event_wall_ns": 1794322220321895400,
+      "duration_seconds": 0.8051175,
+      "eligible_frames": 7,
+      "frame": {
+        "file": "frame-00301.jpg",
+        "time": 33.27710949999164,
+        "requested": 33.23586069999146,
+        "observed_wall_ns": 1794322220754410700,
+        "requested_wall_ns": 1794322220710099300,
+        "width": 960,
+        "height": 540
+      },
+      "same_C0_proven": false
+    }
+  ],
+  "source": "actual private simulator projection",
+  "desktop_capture": false,
+  "full_span_personally_reviewed": true,
+  "headset_accepted": false,
+  "encode_exit": 0,
+  "encoded_sha256": "d53cde713c5de877f33c8cce8b314fb5650e3567c72929a2243163259864066d",
+  "all_contacts_personally_reviewed": true,
+  "visual_result": "FAIL: own head/shoulder/torso obscures both eyes in all five cover phases; intermittent initial hand disappearance retained; first roughly20s static start retained"
+}

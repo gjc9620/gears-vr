@@ -1,0 +1,81 @@
+{
+  "classification": "progress: actual precise membership rejection observed and separate later measurement failures retained",
+  "game": {
+    "pid": 58348,
+    "creation_time": 134387957377725571,
+    "image": "j:\\gearsvr\\gears.of.war.reloaded.v1.0.1.3816947-p2p\\gears of war reloaded\\binaries_x64\\gowde-steam.exe"
+  },
+  "owner": {
+    "pid": 58484,
+    "creation_time": 134387957292749552,
+    "image": "c:\\users\\11\\.cache\\codex-runtimes\\codex-primary-runtime\\dependencies\\python\\python.exe"
+  },
+  "xr": {
+    "pid": 55864,
+    "creation_time": 134387957447722033,
+    "image": "c:\\users\\11\\.codex\\worktrees\\6dof-single\\gearsvr\\tools\\openxr-probe\\build-cover-1110-r130-cloak-pose-witness\\openxrposeprobe.exe"
+  },
+  "native_sha256": "d7cb104d3dcf7e77dfa127f28064d1b3cfbb3df2c6a8f16d416fee2c9c88c2e5",
+  "original_report": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\runtime\\continuous-stereo-58348-20261110-224904-35a3a3b0.json",
+  "original_report_sha256": "3e91283124b9452ad5fca59497de0bbf43fd54d53c75e1a4f9f243b41f7a40ab",
+  "input_and_phase_sequence": true,
+  "original_query_started": 0,
+  "original_query_returned": 0,
+  "collision_clear": null,
+  "movement_authorized": false,
+  "first_failure": "PhysicsRoles mesh_asset_property role membership, pass1; property offset0x248 populated, mesh identity witness count128/128",
+  "capacity_inference": "128 identity capacity is the leading mechanism; exact individual membership rejection is not separately instrumented, so do not declare every schema/root cause resolved",
+  "separate_measurement": {
+    "step": 8,
+    "name": "measurement",
+    "count": 243,
+    "detail": 2,
+    "scene": 411,
+    "compose": 25266,
+    "sequence": 4509,
+    "world": 2186117376,
+    "pawn": 16800153856,
+    "measurement_status": "core"
+  },
+  "probe_admission": {
+    "step": 15,
+    "name": "complete",
+    "count": 1,
+    "detail": 0,
+    "scene": 410,
+    "compose": 25204,
+    "sequence": 4508,
+    "world": 2186117376,
+    "pawn": 16800153856
+  },
+  "same_C0_across_failures": false,
+  "observer_sequence_passed": true,
+  "registry_reacquisition_branch_observed": false,
+  "normal_cleanup_verified": true,
+  "unified_weapons_cleanup": {
+    "fire_disable_code": 0,
+    "hand_stop_code": 5,
+    "drained": true
+  },
+  "cloak": {
+    "samples": 744,
+    "failures": []
+  },
+  "mute": {
+    "event": "mute_verification_summary",
+    "pid": 58348,
+    "initially_muted_sessions": 1,
+    "verified_muted_observations": 317,
+    "verify_failed": 0,
+    "target_shared_rejected": 0,
+    "shared_rejected_is_global_scan_count": true
+  },
+  "new_capsule_enumeration_executed": false,
+  "remaining": [
+    "bounded complete member witness capacity without global Proof/stack growth",
+    "later Core measurement rejection",
+    "original query and full body path endpoint world coverage C0 commit",
+    "head shoulder obstruction",
+    "CV01-24 AC01-22 headset"
+  ]
+}

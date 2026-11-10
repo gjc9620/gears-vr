@@ -1,0 +1,13 @@
+{
+  "disk": {
+    "check": "disk_admission",
+    "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr",
+    "free_bytes": 3880353792,
+    "minimum_free_bytes": 4294967296,
+    "admitted": false
+  },
+  "game_started": false,
+  "worker_created": false,
+  "original_result_sha256": "a3ff9d9924c88cbb31293e2315929e52b6cb5845d602147ce06a5b8311f5f04f",
+  "normal_cleanup_required": false
+}

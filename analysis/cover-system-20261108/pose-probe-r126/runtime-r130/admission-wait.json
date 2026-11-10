@@ -1,0 +1,21 @@
+[
+  {
+    "at_ns": 1794322118715294200,
+    "refused_before_claim": "Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: boltok-1110-224308, gnasher-1110-c23b-intent"
+  },
+  {
+    "at_ns": 1794322128755335700,
+    "available": {
+      "available_commit": 28599152640,
+      "available_physical": 16184360960,
+      "active_instances": []
+    },
+    "disk": {
+      "check": "disk_admission",
+      "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr",
+      "free_bytes": 12234350592,
+      "minimum_free_bytes": 4294967296,
+      "admitted": true
+    }
+  }
+]

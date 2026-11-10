@@ -1,0 +1,14 @@
+[
+  {
+    "original": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\cover-1110-r112-cloak-source-stage",
+    "target": "J:\\gearsVr\\analysis\\cover-disk-recovery-20261110-r128\\instances\\cover-1110-r112-cloak-source-stage",
+    "manifest": "J:\\gearsVr\\analysis\\cover-disk-recovery-20261110-r128\\instances\\cover-1110-r112-cloak-source-stage-hashes.json",
+    "sha256": "fc6e9f3d482ea3a503fa4a70242512e99076a41cf832681f59ed86e1dec750d9"
+  },
+  {
+    "original": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\cover-1110-r113-cloak-source-stage",
+    "target": "J:\\gearsVr\\analysis\\cover-disk-recovery-20261110-r128\\instances\\cover-1110-r113-cloak-source-stage",
+    "manifest": "J:\\gearsVr\\analysis\\cover-disk-recovery-20261110-r128\\instances\\cover-1110-r113-cloak-source-stage-hashes.json",
+    "sha256": "8b2f0d9392deab8cb2171f05de3a9106cb44fa142edc6ff19c6e21e068030b26"
+  }
+]
