@@ -535,3 +535,15 @@ HB185428新位已由实际尾Bol180947正式全核单槽受理，证据analysis/
 wrapper79361=0只是生命周期正常，operator29164=1是实际功能失败；Native/entries/pad restored TRUE、hand_stop5/drained TRUE/fire_disable0、XR0/launcher0/gamegone。27份原PG/Native/prime/session/入口文本与5份现有numeric449504B归档后，独立idle按本轮10项原字节恢复并再次逐项SHA一致，public只读核不写；settings BOM保留。完整63.3秒双路3页overview与game00375/00496/00639、sim00511/00746/00981六原图已亲审，保留startup标题/TPS/等待卡、后续第一人称/实射及近相机遮挡；未看到原匣提取完成，不接受完整手型。857game/1352sim均覆盖末端，最大采集gap1833.3101/233.329ms不是游戏FPS/停顿结论。
 
 编码78985=0，ffprobe H2641920×660、63.300000s/11763129B；唯一retention8700=0，实删1414媒体251779531B/errors0，保留50148/18152/41460、48h，源码/文本/数值保留。新鲜独立idle及10项原字节再次全核0，Boom191450完整3955归档/6saved/1348PG+1583Native snapshot/15current driver+AST/1024listed archive py/86actual runtime+AST/2guards/game+helper/build与旧失败receipt均再次核过。之后仅最终唯一交Boom191450，不能把仍排队的LS等当HB第二后继。证据analysis/hammerburst-20261108/runtime-50148-review.json、runtime-50148-restoration.json、runtime-50148-final-idle-baselines.json、runtime-50148-retention-result.json及successor-boom191450-check.json。
+## 2026-11-10 game51936：首次实测定位到当前帧过期，完整流程仍未通过
+
+独立候选 hammerburst-prepared-20261110-latch-history-press（prepared98b9a1ee、PG305b5447、Native806dcbd6）实际运行后，核心6发和前六轮耗弹各6发通过，第七轮36→33仅3发，合计45条有效且来源一致的射线。尚未到空匣、换弹或历史轨迹分支，不把该分支称为实测通过。
+
+原日志第468行记录 frame303/sequence1868 的 native_equipment_frame_read failure=5、input_age_ns=103046300。对照该候选冻结的 weapon_hand_client.h，5明确为 stale_before；copy_frame_on_gt 在最初 fresh 检查拒绝并撤销发布。紧接 continuation gate1/no_frame、committed count3、firing_debt1、cancel0，随后取消并清理。该证据证明缺少当前帧导致连发中断，不证明输入年龄具体耗在哪个阶段；已有稀疏 PlayerTick 耗时记录没有覆盖失败帧，不能据此归咎原游戏更新、元数据读取或调度。
+
+沿冻结源码确认：Native共享选择绑定同一Scene及Stereo，rig继续消费该选择；PG装备读取在原PlayerTick之后，读取失败会撤销当前动作/持枪发布，R2随后没有当前帧。继续检查此链上的时间消耗和原始输入选择，保留100ms时效、20ms派发余量、250ms原按压窗口及原时间戳。不得以旧姿态补射、续期时间戳、忽略身份丢失或第二个姿态写入器规避失败。
+
+本轮操作者exit1，wrapper0只代表生命周期收尾正常。运行的Native/入口/输入/XR/launcher正常收尾、10项原字节恢复已核对，运行锁已释放。离线编码session35690已终止exit0；两张完整paired overview与按失败QPC前/当时/后各取双路共6张原图均亲看。原图保留近脸枪身、右眼严重遮挡及相邻采集姿态差异；不接受完整贴合，不从画面反推精确输入失效时刻。新增18份原运行sidecar归档，未占用共享游戏窗口作离线审片。
+
+证据：analysis/hammerburst-20261108/runtime-51936-first-failure-analysis.json（含解析的5条拒绝、原日志SHA、6份冻结源码SHA、6张原图QPC偏差及18份sidecar SHA）。完整拿枪→开火→耗尽→换弹→再开火仍未完成；不变候选不重跑，先针对已定位的时效链推进。
+
