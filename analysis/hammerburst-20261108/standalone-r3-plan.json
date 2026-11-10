@@ -163,7 +163,7 @@
   "selected_settings_path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\solo-m1-1028d\\LocalAppData\\Coalition\\WarGame\\Config\\76561197960271872EngineUserSettings.ini",
   "maximum_seconds": 360,
   "execution_ready": true,
-  "runtime_entry": "Self-owned first-consume bootstrap + existing stage/owner-copy config/controlled HB runner/normal stop/normal cleanup/raw restore. No mechanical/input/time change.",
+  "runtime_entry": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\run_hammerburst_standalone_r3.py",
   "review_interpreter": {
     "path": "C:\\Users\\11\\.cache\\codex-runtimes\\codex-primary-runtime\\dependencies\\python\\python.exe",
     "sha256": "3c48fbdcc2ed5c55290e39bef50bd6b1da76f43f3069a4a2624d0b8876a605f5"
@@ -257,7 +257,7 @@
     },
     "no_pre_stage_media_deletion": true
   },
-  "exclusive_attempt_receipt": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\standalone-r2-attempt2\\claims\\continuation13712-r2.json",
+  "exclusive_attempt_receipt": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\standalone-r3\\claims\\empty-acquisition-contract.json",
   "exclusive_policy": "Exact Cover bootstrap adapted only to this HB fixed claim. Every non-prepare invocation consumes O_CREAT|O_EXCL+fsync before all argument/ready/plan/ticket/source/host/idle/stage checks. Only exact sole --prepare-only bypasses. Never delete or retry a consumed attempt.",
   "host_media_receipt": {
     "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\admission-v2\\dependencies.json",
@@ -267,29 +267,7 @@
     "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\admission-v2\\dependencies.json",
     "sha256": "796d11d3641117a51fc9d05bf991c040db4ad26b8e363d9013fd2d4df5bc5ffe"
   },
-  "baseline_ticket_contract": "After real unique final handoff and fresh idle only: capture all ten baseline_files raw bytes/absence with existing helper into this HB evidence folder; proof contains identity, before_stage=true, files keyed exact paths {exists,sha256,saved}; final ticket binds five exact identities, HB owner_thread, different predecessor, final accepted/owned/terminal/baseline booleans and hashed handoff/baseline proofs. Preparation generates neither claim nor ticket.",
-  "guard_check": {
-    "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\admission-v6\\bootstrap-check.json",
-    "sha256": "2799078ecc87fb0219f08b55222fa5bc4c5db915432349a0f61013729e20ae17"
-  },
   "controlled_environment_policy": "Clear inherited GEARSVR_/GEARS_/XR_ and PYTHONPATH/PYTHONHOME before applying exact environment; OS variables preserved; unchanged original run_basic supplies fixed private-instance/quiet-startup/observe-only/mute/physical-isolation/shipped-Python additions.",
-  "source_delta": "Same-slot execution-only actual HOD051/game49912 Native-never-started cancelled-case branch; exact immutable actual receipts and identities, fresh process absence, ten raw and9 private originals/file-set. Previously accepted normal verifier AST unchanged. No product/bin/driver/action/ENV/freshness changes.",
-  "first_rejection_check": {
-    "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\empty-first-failure-check.json",
-    "sha256": "283f767a72fe5f1d4f36de52d78387c05c49005456b38027d3233cc593a2ddec"
-  },
-  "nested_python_environment_check": {
-    "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\admission-v3\\nested-python-environment-check.json",
-    "sha256": "83174163fce13cbe39fcae52de224ce68f57c65c531fac0fe4561e9d50f75c7c"
-  },
-  "prebirth_failure_check": {
-    "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\prebirth-failure-check.json",
-    "sha256": "5d5eb5a0a023724bfdfa3c614e63f0aa2c770b6e4c645b574d23da227c0c60ad"
-  },
-  "selection_check": {
-    "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\owner-copy-selection-check.json",
-    "sha256": "0fc703b51a78a63ab7e64291118f4ca649cfe6e63414366ede80d82251f804a1"
-  },
-  "owner_policy": "independent; coordinate actual startup occupancy only; same raw restore/input/identity guards retained",
-  "prior_attempt_refused_before_stage": true
+  "source_delta": "Only actual empty-acquisition test predicate. Production6 binaries unchanged.",
+  "owner_policy": "independent; coordinate actual startup occupancy only; same raw restore/input/identity guards retained"
 }
