@@ -135,6 +135,8 @@ def menu_source():
     source = replace_once(source, "folder=ROOT/'analysis/instances/solo-m1-1028d/xr-input/LocalAppData/OpenXR-Simulator'", "folder=BOUND.instance/'xr-input/LocalAppData/OpenXR-Simulator'")
     source = replace_once(source, "def live():return control.identity(game['pid'])==game", 'def live():return BOUND.live(game)')
     source = replace_once(source, "    assert live();subprocess.run([sys.executable,'-B',str(OUT/name),*args],check=True,stdout=subprocess.DEVNULL)", '    assert live();BOUND.helper(name,*args)')
+    source = replace_once(source, '            if rec.capture_enabled:encode(directory)',
+                          "            if rec.capture_enabled:result['offline_encode_pending']=True")
     if source.count("(OUT/'launcher.log')") != 2:
         raise ValueError('Launcher observation boundary changed')
     source = source.replace("(OUT/'launcher.log')", "(BOUND.instance/'isolated-launcher.log')")
