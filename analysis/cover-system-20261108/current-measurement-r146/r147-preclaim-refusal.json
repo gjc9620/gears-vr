@@ -1,0 +1,13 @@
+{
+  "name": "cover-1111-r147-cloak-current",
+  "absent": [
+    "isolated-worker.json",
+    "launcher-session.json",
+    "isolated-start-request.json",
+    "cover-output/claim.json"
+  ],
+  "game_created": false,
+  "start_request_created": false,
+  "claim_consumed": false,
+  "reason": "Inner advisory require_memory raced after outer wait; raised before canonical start request."
+}

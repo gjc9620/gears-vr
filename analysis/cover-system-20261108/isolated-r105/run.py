@@ -42,6 +42,15 @@ def prebirth_resource_refusal(result, worker_exists, session_exists):
                      and '; insufficient evidence-volume space; no new game started;' in error)))
 
 
+def advisory_memory(isolated):
+    try:
+        return isolated.require_memory()
+    except isolated.ResourceUnavailable as error:
+        # The mandatory locked first_admission still repeats the same checks.
+        return dict(admitted=False, advisory_refusal=str(error),
+                    authoritative_gate='isolated_sim.first_admission')
+
+
 def main():
     global NAME, SELECTED, OUTPUT
     parser = argparse.ArgumentParser(description=__doc__)
@@ -91,7 +100,7 @@ def main():
     # Keep a disk refusal before our claim too. The shared start/worker gates
     # still recheck the actual launch boundary; this does not reserve space.
     disk = isolated.require_disk(ROOT)
-    memory = isolated.require_memory()
+    memory = advisory_memory(isolated)
     sys.path[:0] = [str(ROOT/'tools/native-capture'), str(OLD)]
     from run_stereo_continuous import WindowsControl
     from cover_projection_recording import ProjectionRecording
