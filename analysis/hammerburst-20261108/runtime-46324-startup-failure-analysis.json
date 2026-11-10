@@ -1,0 +1,27 @@
+{
+  "schema": 1,
+  "instance": "hb-cloak-1110-203109",
+  "weapon_actions_started": false,
+  "candidate": "held-republish-r1",
+  "gameplay_validation": "not_reached",
+  "worker_failure": "PermissionError reading updating birth receipt in owned_windows; worker terminal before isolated-done",
+  "launcher_failure": "Audio helper exact identity acknowledgement timeout; final log has guard_ready then stop, scans0. Causal relationship unproven.",
+  "prime_cleanup": {
+    "cancelled": true,
+    "entry_restore_verified": true
+  },
+  "manual_owned_cleanup": {
+    "owned_game_absent": true,
+    "normal_close_only": true,
+    "forced_termination": false,
+    "reason": "worker PermissionError on transient birth receipt; launcher terminal audio-ready timeout; own exact birth identity cleanup"
+  },
+  "central_evidence_reported": true,
+  "automatic_retry": false,
+  "runner_terminal": {
+    "exit": 1,
+    "reported_game_started": false,
+    "reported_cleanup_unresolved": true,
+    "interpretation": "Session never published game identity; exact birth proves game was started. Supplemental manual-owned-cleanup proves game absent, without rewriting runner failure."
+  }
+}

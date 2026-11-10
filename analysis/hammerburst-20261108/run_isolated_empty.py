@@ -58,6 +58,16 @@ def main():
         if PAUSE.exists():raise RuntimeError('Owner paused automatic runtime; stop own actions and clean up normally')
         identities=[]
         if state.get('game_identity'):identities.append(state['game_identity'])
+        else:
+            # Startup failure can precede the session's game_identity field.
+            # Authenticate only this fresh instance's exact birth receipt.
+            for birth in selected.glob('*.birth.json'):
+                try:
+                    value=json.loads(birth.read_text(encoding='utf-8-sig'))
+                    identity=value.get('game_identity')
+                    if value.get('kind')=='reservation_birth' and identity and control.identity(identity['pid'])==identity:
+                        identities.append(identity);result['birth_game_identity']=identity;result['game_started']=True
+                except (OSError,ValueError,KeyError):pass
         if state.get('game_identity') and control.identity(state['game_identity']['pid'])==state['game_identity']:
             result['game_started']=True;result['game_identity']=state['game_identity']
         report=Path(state['session_report']) if state.get('session_report') else None
@@ -103,6 +113,8 @@ def main():
             if path.exists():
                 try:
                     state=json.loads(path.read_text());observe(state)
+                    if state.get('error'):
+                        raise RuntimeError('Owned launcher rejected startup: '+str(state['error']))
                     report=Path(state['session_report']) if state.get('session_report') else None
                     if report and report.exists():
                         details=json.loads(report.read_text(encoding='utf-8-sig'))
