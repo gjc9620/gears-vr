@@ -1,0 +1,56 @@
+{
+  "runtime_delta": [
+    "tools/native-capture/cover_collider_roles_live.inl",
+    "tools/native-capture/cover_physics_roles_live.inl"
+  ],
+  "dll_sha256": "58c2fe1d9fa2a108010f33008278060f9ad3a2ccde53d3d87f3e27c829680c7f",
+  "project_dependencies": 409,
+  "outside_worktree_dependencies": 0,
+  "flags_unchanged": true,
+  "all_dynamic_read_calls_unchanged": true,
+  "sample_guard_transaction_unchanged_except_second_pass_selection": true,
+  "complete_closing_proofs_unchanged": true,
+  "reuse_scope": "Second values pass only; exact first identities and complete Proof::current required before cached offsets",
+  "null_body_transition_rejected": true,
+  "first_and_second_pass_schema_mutations_rejected": true,
+  "read_comparison": {
+    "physics bodies-2": {
+      "before": 7076,
+      "after": 6313,
+      "reduction": 0.10782928208027132
+    },
+    "physics bodies-16": {
+      "before": 7580,
+      "after": 6817,
+      "reduction": 0.10065963060686012
+    },
+    "physics bodies-64": {
+      "before": 9308,
+      "after": 8545,
+      "reduction": 0.08197249677696605
+    },
+    "collider presence-0": {
+      "before": 5407,
+      "after": 4571,
+      "reduction": 0.1546143887553172
+    },
+    "collider presence-1": {
+      "before": 7455,
+      "after": 6005,
+      "reduction": 0.19450033534540578
+    },
+    "collider presence-2": {
+      "before": 7455,
+      "after": 6005,
+      "reduction": 0.19450033534540578
+    }
+  },
+  "build_only": true,
+  "staged": false,
+  "game_started": false,
+  "query_latency_verified": false,
+  "source_age_repaired": false,
+  "world_coverage_verified": false,
+  "movement_authorized": false,
+  "headset_accepted": false
+}

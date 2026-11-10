@@ -45,17 +45,23 @@ struct Workspace {
 inline bool instance(binding::Proof& proof,std::uintptr_t address,gears_anchor::Identity& result){
     return binding::identity(address,result,true)&&binding::remember(proof,result);
 }
-inline Code values(Workspace& w,binding::Binding const& owner,Snapshot& output){
+inline Code values(Workspace& w,binding::Binding const& owner,Snapshot& output,bool repeat=false){
     Snapshot next{};
     if(!instance(w.pawn,owner.pawn.address,next.pawn)||!binding::same(next.pawn,owner.pawn))return Code::read;
-    if(!roles::class_role(w.pawn,next.pawn.cls,L"Pawn")||
+    if(repeat){
+        if(!binding::same(next.pawn,w.first.pawn)||!binding::metadata_current()||
+           w.generation!=binding::metadata_generation||w.metadata!=binding::metadata_bytes||
+           !binding::current(w.pawn))return Code::changed;
+    }else if(!roles::class_role(w.pawn,next.pawn.cls,L"Pawn")||
        !roles::role_property(w.pawn,next.pawn.cls,L"CylinderComponent",L"ComponentProperty",8,L"CylinderComponent",w.pawn_fields[0],&w.members)||
        !roles::role_property(w.pawn,next.pawn.cls,L"CollisionComponent",L"ComponentProperty",8,L"PrimitiveComponent",w.pawn_fields[1],&w.members))return Code::layout;
     std::uintptr_t cylinder{},selected{},component_owner{},body{};
     if(!binding::field(cylinder,next.pawn.address,w.pawn_fields[0].offset)||
        !binding::field(selected,next.pawn.address,w.pawn_fields[1].offset)||!cylinder||selected!=cylinder||
        !instance(w.component,cylinder,next.cylinder)||next.cylinder.outer!=next.pawn.address)return Code::read;
-    if(!roles::class_role(w.component,next.cylinder.cls,L"CylinderComponent",w.pawn_fields[0].reference.address)||
+    if(repeat){
+        if(!binding::same(next.cylinder,w.first.cylinder)||!binding::current(w.component))return Code::changed;
+    }else if(!roles::class_role(w.component,next.cylinder.cls,L"CylinderComponent",w.pawn_fields[0].reference.address)||
        !roles::class_role(w.component,next.cylinder.cls,L"PrimitiveComponent",w.pawn_fields[1].reference.address)||
        !roles::role_property(w.component,next.cylinder.cls,L"Owner",L"ObjectProperty",8,L"Actor",w.component_fields[0],&w.members)||
        !roles::role_property(w.component,next.cylinder.cls,L"BodyInstance",L"ObjectProperty",8,L"RB_BodyInstance",w.component_fields[1],&w.members))return Code::layout;
@@ -64,7 +70,11 @@ inline Code values(Workspace& w,binding::Binding const& owner,Snapshot& output){
     next.body_instance_offset=w.component_fields[1].offset;
     if(!body){next.presence=Presence::body_instance_field_null;output=next;return Code::current;}
     if(!instance(w.body,body,next.body))return Code::read;
-    if(!roles::class_role(w.body,next.body.cls,L"RB_BodyInstance",w.component_fields[1].reference.address)||
+    if(repeat){
+        // A formerly null/replaced BodyInstance has no reusable body proof.
+        // Reject the changed snapshot before consuming any cached body offset.
+        if(!binding::same(next.body,w.first.body)||!binding::current(w.body))return Code::changed;
+    }else if(!roles::class_role(w.body,next.body.cls,L"RB_BodyInstance",w.component_fields[1].reference.address)||
        !roles::role_property(w.body,next.body.cls,L"BodyIndex",L"IntProperty",4,nullptr,w.body_fields[0],&w.members)||
        !roles::role_property(w.body,next.body.cls,L"OwnerComponent",L"ComponentProperty",8,L"PrimitiveComponent",w.body_fields[1],&w.members)||
        !roles::class_role(w.body,next.cylinder.cls,L"PrimitiveComponent",w.body_fields[1].reference.address)||
@@ -95,7 +105,7 @@ template<class Guard> Code sample(binding::Binding const& actor,Guard guard,Work
             if(!binding::context_ready()||!binding::metadata_current()||actor.world_generation!=binding::metadata_generation)return Code::metadata;
             work.members.clear();work.pawn={};work.component={};work.body={};work.metadata=binding::metadata_bytes;work.generation=binding::metadata_generation;
             auto code=values(work,owner,work.first);if(code!=Code::current)return work.members.exhausted?Code::capacity:code;
-            code=values(work,owner,work.last);if(code!=Code::current)return work.members.exhausted?Code::capacity:code;
+            code=values(work,owner,work.last,true);if(code!=Code::current)return work.members.exhausted?Code::capacity:code;
             if(!same(work.first,work.last)||!current(work))return Code::changed;
         }
         if(!guard())return Code::guard;

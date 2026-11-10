@@ -1,0 +1,82 @@
+[
+  {
+    "variant": "before",
+    "name": "cover_schema_repeat",
+    "build_exit": 0,
+    "test_exit": 0,
+    "output": "cover_physics_roles_live: 282 checks, 0 failures; typed source only, no query/writer\r\nCoverColliderRoles checks=501 failures=0 synthetic reflected fields only; no NxActor/complete-self/geometry/movement proof\r\nschema_repeat physics bodies=2 reads=7076\r\nschema_repeat physics bodies=16 reads=7580\r\nschema_repeat physics bodies=64 reads=9308\r\nschema_repeat collider presence=0 reads=5407\r\nschema_repeat collider presence=1 reads=7455\r\nschema_repeat collider presence=2 reads=7455\r\ncover_schema_repeat: 738 checks, 0 failures; includes existing physics/collider fixtures\r\n",
+    "outside_worktree_dependencies": []
+  },
+  {
+    "variant": "after",
+    "name": "cover_schema_repeat",
+    "build_exit": 0,
+    "test_exit": 0,
+    "output": "cover_physics_roles_live: 282 checks, 0 failures; typed source only, no query/writer\r\nCoverColliderRoles checks=501 failures=0 synthetic reflected fields only; no NxActor/complete-self/geometry/movement proof\r\nschema_repeat physics bodies=2 reads=6313\r\nschema_repeat physics bodies=16 reads=6817\r\nschema_repeat physics bodies=64 reads=8545\r\nschema_repeat collider presence=0 reads=4571\r\nschema_repeat collider presence=1 reads=6005\r\nschema_repeat collider presence=2 reads=6005\r\ncover_schema_repeat: 738 checks, 0 failures; includes existing physics/collider fixtures\r\n",
+    "outside_worktree_dependencies": []
+  },
+  {
+    "variant": "after",
+    "name": "cover_physics_roles_live",
+    "build_exit": 0,
+    "test_exit": 0,
+    "output": "cover_physics_roles_live: 282 checks, 0 failures; typed source only, no query/writer\r\n",
+    "outside_worktree_dependencies": []
+  },
+  {
+    "variant": "after",
+    "name": "cover_collider_roles_live",
+    "build_exit": 0,
+    "test_exit": 0,
+    "output": "CoverColliderRoles checks=219 failures=0 synthetic reflected fields only; no NxActor/complete-self/geometry/movement proof\r\n",
+    "outside_worktree_dependencies": []
+  },
+  {
+    "variant": "after",
+    "name": "cover_component_roles_live",
+    "build_exit": 0,
+    "test_exit": 0,
+    "output": "CoverComponentRoles checks=207 failures=0 declared Pawn/current Weapon arrays only; no complete self or actor/geometry proof\r\n",
+    "outside_worktree_dependencies": []
+  },
+  {
+    "variant": "after",
+    "name": "cover_query_guard_live",
+    "build_exit": 0,
+    "test_exit": 0,
+    "output": "CoverQueryGuard checks=23 failed=0 real typed reader/Session; Host dispatch, no game\r\n",
+    "outside_worktree_dependencies": []
+  },
+  {
+    "variant": "after",
+    "name": "cover_physics_query_live",
+    "build_exit": 0,
+    "test_exit": 0,
+    "output": "cover_physics_query_live: 105 checks, 0 failures; dispatch/module are Host seams, no original call\r\n",
+    "outside_worktree_dependencies": []
+  },
+  {
+    "variant": "after",
+    "name": "cover_physics_capsule_path_live",
+    "build_exit": 0,
+    "test_exit": 0,
+    "output": "CoverCapsulePathSession checks=391 failed=0 typed-source/Session real; module/dispatch Host; no game\r\n",
+    "outside_worktree_dependencies": []
+  },
+  {
+    "variant": "after",
+    "name": "cover_physics_overlap_query_live",
+    "build_exit": 0,
+    "test_exit": 0,
+    "output": "CoverOverlapSession checks=53 failed=0 actual typed roles/Session; Host dispatch/owner packets; no game\r\n",
+    "outside_worktree_dependencies": []
+  },
+  {
+    "variant": "after",
+    "name": "cover_physics_c0_off",
+    "build_exit": 0,
+    "test_exit": 0,
+    "output": "cover_physics_c0 OFF: 51 checks, 0 failures; no game/module/query\r\n",
+    "outside_worktree_dependencies": []
+  }
+]

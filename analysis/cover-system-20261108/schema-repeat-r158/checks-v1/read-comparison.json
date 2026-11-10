@@ -1,0 +1,32 @@
+{
+  "physics bodies-2": {
+    "before": 7076,
+    "after": 6313,
+    "reduction": 0.10782928208027132
+  },
+  "physics bodies-16": {
+    "before": 7580,
+    "after": 6817,
+    "reduction": 0.10065963060686012
+  },
+  "physics bodies-64": {
+    "before": 9308,
+    "after": 8545,
+    "reduction": 0.08197249677696605
+  },
+  "collider presence-0": {
+    "before": 5407,
+    "after": 4571,
+    "reduction": 0.1546143887553172
+  },
+  "collider presence-1": {
+    "before": 7455,
+    "after": 6005,
+    "reduction": 0.19450033534540578
+  },
+  "collider presence-2": {
+    "before": 7455,
+    "after": 6005,
+    "reduction": 0.19450033534540578
+  }
+}

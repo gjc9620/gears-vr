@@ -239,12 +239,20 @@ inline bool layouts_current(Workspace const& w){
     for(unsigned n=0;n<w.layout_count;++n)if(!binding::current(w.layouts[n].proof))return false;
     return true;
 }
-inline Code values(Workspace& w,binding::Binding const& actor,pose::Metadata const& expected,Snapshot& out){
+inline Code values(Workspace& w,binding::Binding const& actor,pose::Metadata const& expected,Snapshot& out,bool repeat=false){
     Snapshot next{};
     if(!binding::identity(actor.mesh.address,next.mesh,true)||!binding::same(next.mesh,actor.mesh)||
        !binding::identity(actor.pawn.address,next.pawn,true)||!binding::same(next.pawn,actor.pawn)||
        !binding::identity(expected.physics_asset,next.asset,true)||!binding::identity(expected.physics_instance,next.instance,true))return Code::read;
-    if(!schema(w,next))return Code::layout;
+    if(repeat){
+        // Only sample's second values pass reuses the already selected schema.
+        // Revalidate its complete identities/source fields BEFORE consuming
+        // offsets, then retain the original complete closing proof below.
+        if(!binding::same(next.mesh,w.first.mesh)||!binding::same(next.asset,w.first.asset)||
+           !binding::same(next.instance,w.first.instance)||!binding::metadata_current()||
+           w.generation!=binding::metadata_generation||w.metadata!=binding::metadata_bytes||
+           !binding::current(w.mesh)||!binding::current(w.instance))return Code::changed;
+    }else if(!schema(w,next))return Code::layout;
     std::uintptr_t asset{},instance{},owner{};
     if(!binding::field(asset,next.mesh.address,w.mesh_fields[0].offset)||asset!=next.asset.address||
        !binding::field(instance,next.mesh.address,w.mesh_fields[1].offset)||instance!=next.instance.address||
@@ -293,7 +301,7 @@ template<class Guard> Code sample(binding::Binding const& actor,pose::Metadata c
             work.members.clear();work.mesh={};work.instance={};work.mesh_fields={};work.instance_fields={};work.body_class={};work.layout_count=0;for(auto& l:work.layouts)l={};
             work.metadata=binding::metadata_bytes;work.generation=binding::metadata_generation;
             work.witness.pass=1;auto code=values(work,owner,expected,work.first);if(code!=Code::current)return work.members.exhausted?Code::capacity:code;
-            work.witness.pass=2;work.witness.body_index=~0u;code=values(work,owner,expected,work.last);if(code!=Code::current)return work.members.exhausted?Code::capacity:code;
+            work.witness.pass=2;work.witness.body_index=~0u;code=values(work,owner,expected,work.last,true);if(code!=Code::current)return work.members.exhausted?Code::capacity:code;
             if(!same(work.first,work.last)||!layouts_current(work))return Code::changed;
         }
         if(!guard())return Code::guard;
