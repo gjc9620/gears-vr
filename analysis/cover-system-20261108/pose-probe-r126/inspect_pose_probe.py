@@ -28,7 +28,7 @@ def inspect(report,expected_native=NATIVE):
     # fictional single transaction or infer that a count is the first failure.
     return dict(game=game,native_sha256=expected_native,rows=rows,missing=missing,
         complete_gate_observed=any(r['name']=='complete' for r in rows),
-        query_attempted=status.get('cover_sphere_probe_attempted')=='1',
+        query_attempted=(status.get('cover_sphere_probe_attempted')=='1' or status.get('cover_path_probe_attempted')=='1'),
         collision_clear=None,movement_authorized=False,same_C0_across_rows=False)
 def selftest():
     import copy
@@ -46,7 +46,9 @@ def selftest():
         try:inspect(bad);raise AssertionError('Invalid report accepted')
         except ValueError:pass
     del s['cover_pose_probe_first_8'];assert inspect(d)['missing']
-    print(json.dumps(dict(cases=7,failures=0,scope='report interpretation only; no game')))
+    s['cover_path_probe_attempted']='1';assert inspect(d)['query_attempted']
+    s['cover_path_probe_attempted']='0';s['cover_sphere_probe_attempted']='1';assert inspect(d)['query_attempted']
+    print(json.dumps(dict(cases=9,failures=0,scope='report interpretation only; no game')))
 if __name__=='__main__':
     if sys.argv[1:]==['--selftest']:selftest()
     else:print(json.dumps(inspect(json.loads(Path(sys.argv[1]).read_text(encoding='utf-8-sig'))),indent=2))

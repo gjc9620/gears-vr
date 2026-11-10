@@ -1,0 +1,10 @@
+Traceback (most recent call last):
+  File "C:\Users\11\.codex\worktrees\6dof-single\gearsVr\analysis\cover-system-20261108\isolated-r105\run.py", line 308, in <module>
+    raise SystemExit(main())
+                     ^^^^^^
+  File "C:\Users\11\.codex\worktrees\6dof-single\gearsVr\analysis\cover-system-20261108\isolated-r105\run.py", line 94, in main
+    memory = isolated.require_memory()
+             ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\11\.codex\worktrees\6dof-single\gearsVr\tools\multi-instance\isolated_sim.py", line 112, in require_memory
+    raise ResourceUnavailable('Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: '+', '.join(active))
+runtime_receipts.ResourceUnavailable: Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: boom-1110-024622-12300, lancer-natural-v139-225928

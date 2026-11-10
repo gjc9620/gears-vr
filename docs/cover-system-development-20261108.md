@@ -2335,3 +2335,17 @@ r145实际game32320/creation134388087505037769，Native5522ac2a…ec093、同冻
 完整Native编译链接0，SHA49f76f0135f8393ff7035afc51450401e484f4a10cf95c6c7511090c1201a472；r143上精确2文件delta、408项目依赖、外部Native worktree依赖0、GEARS开关相同。测试头依赖另逐项核SHA，只有明确的自有测试夹具来自主目录。prepare新增--native-r146并验证该冻结delta；本轮没有再开游戏。下一次用新票限定复查测量完成及原path查询，不重复未改玩法矩阵。
 
 r145只是首个实际旧头部超时的原因证据；r146未实跑，不能称查询、碰撞覆盖或画面修复通过。模型遮挡、完整身体与世界几何、抓边/松手保持/重抓、暴露/命中/枪口、CV01–24/AC01–22及头显保持开放；工程25%、publicv71与固定入口不变，目标active。
+
+## r148：当前Tick测量完成并到达path尝试，组件阶段上下文年龄拒绝（2026-11-11）
+
+先保存68b81740及8e00075a：共享首次准入已支持锁外有界等待60秒，本方启动timeout从30兼容为90秒，并绑定isolated_sim/runtime_receipts新SHA；原名额2、内存、4GiB、身份、暂停检查仍由锁内及worker执行。本方advisory只对明确ResourceUnavailable转入共享等待，不吞其他错误；20项只读兼容检查通过。r147外层见空位后内层advisory被抢占，未产生claim/start-request/worker/index/game，原失败另存，使用新名r148。未修改旧prepared哈希或重用失败请求。
+
+r148实际game54628/creation134388103051301203、owner44832/creation134388102957884329、XR9880/creation134388103149022211、worker35196/creation134388102956219331。Native49f76f01…1a472、冻结PG/XR不变；anchor initial58.0816ms，其余2.0393/5.7539/1.9463/2.0571ms均在原200ms内接受，八个anchor来源前后一致。共享工具SHAe6b4a0ae…42c2b/7db0a084…abefb按新准备记录核对，不替换成历史9f3502哈希。
+
+body_mount_source_enabled1。原A进入CT2，测量complete1的Scene325/Compose20038/seq5513/world2212528384/pawn95434014848与path尝试键逐项相同。此前旧Core年龄门本轮没有记录为测量首败；另有measurement257/detail4=neutral，首证Scene327/Compose20163/seq5519，具体中立数学谓词尚未记录，不能混成同一个C0或称所有姿态都可用。
+
+path requested/attempted/finished1，code4，Session stage4 component_roles/detail3；Owner guard第7次拒绝，context/source_age_expired/detail6，Session SourceGuard尚未进入。layout40/member225/未超容量，engine stage0，原始started/returned均0。query时间121595420167000→121595455453800，35.2868ms；不能拿这段自身耗时当原来源总年龄或判断body/equipment哪个过期。诊断capsule仍1raw半径、2raw高、1raw平移，不是完整身体/世界安全证明。V3测量接线这次确实到达后续消费者，但完整path查询仍未执行。
+
+321实际projection帧/errors0，编码0；17页全跨度总览与5原始contact已亲看，五段模型头肩/躯干遮挡仍FAIL，时间段候选7/7/7/7/8，不声称同C0/GPU骨/头显证明。launcher0、Native/entry/input恢复、fire_disable0/hand_stop5/drained、XR0、gamegone/worker正常、独立身份全不在、无强杀。CLOAK860/失败0、前台534/owned_activation false，静音340/initial1/失败0/共享拒绝0，disk_before87473856512。
+
+修正报告reader将path attempted纳入query_attempted（之前只看sphere），9项解释自测通过；不是改运行行为或补造原调用。下一窄点复用现有source_rejected实际cause bits，区分prepare阶段本次body/tracking年龄与equipment年龄；当前commit-only journal不能证明该分项。不放宽时限或重取/续时旧输入，不原样重跑此批。源/原始结果/画面在current-measurement-r146/runtime-r148；完整CV01–24/AC01–22仍开放，工程25%、publicv71及固定入口不变，目标active。

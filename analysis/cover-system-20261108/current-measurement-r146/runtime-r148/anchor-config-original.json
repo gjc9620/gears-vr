@@ -1,0 +1,2016 @@
+{
+  "schema": 1,
+  "config": {
+    "schema": 2,
+    "objects_header": 5398218544,
+    "names_header": 5398284288,
+    "layout": {
+      "object_internal_index": 8,
+      "object_name": 72,
+      "object_class": 80,
+      "object_outer": 64,
+      "field_super": 96,
+      "name_entry_index": 0,
+      "name_entry_text": 20
+    },
+    "roles": {
+      "controller": 0,
+      "local_player": 1,
+      "camera": 2,
+      "pawn": 3,
+      "level": 4
+    },
+    "fields": {
+      "controller_pawn": 548,
+      "pawn_controller": 560,
+      "pawn_location": 304,
+      "pawn_rotation": 316,
+      "controller_rotation": 316,
+      "eye_height": 784,
+      "base_eye_height": 780,
+      "player_camera": 892,
+      "pc_owner": 548,
+      "player": 884,
+      "camera_timestamp": 940,
+      "camera_pov": 944,
+      "camera_view_target": 972
+    },
+    "identities": [
+      {
+        "address": 2514228624,
+        "internal_index": 206931,
+        "name": "WarPC",
+        "number": 1,
+        "cls": 429780480,
+        "outer": 2568859968,
+        "name_index": 6209,
+        "check_super": 0,
+        "super": 0
+      },
+      {
+        "address": 2186182688,
+        "internal_index": 168078,
+        "name": "WarLocalPlayer",
+        "number": 1,
+        "cls": 429913856,
+        "outer": 2188998112,
+        "name_index": 6419,
+        "check_super": 0,
+        "super": 0
+      },
+      {
+        "address": 2105011424,
+        "internal_index": 206950,
+        "name": "WarPlayerCamera",
+        "number": 2,
+        "cls": 430249472,
+        "outer": 2568859968,
+        "name_index": 6711,
+        "check_super": 0,
+        "super": 0
+      },
+      {
+        "address": 95434014848,
+        "internal_index": 207058,
+        "name": "Pawn_COGMarcus",
+        "number": 1,
+        "cls": 429705152,
+        "outer": 2568859968,
+        "name_index": 5927,
+        "check_super": 0,
+        "super": 0
+      },
+      {
+        "address": 2568859968,
+        "internal_index": 172689,
+        "name": "PersistentLevel",
+        "number": 0,
+        "cls": 428523200,
+        "outer": 2568860976,
+        "name_index": 746,
+        "check_super": 0,
+        "super": 0
+      },
+      {
+        "address": 837459904,
+        "internal_index": 5514,
+        "name": "bCinematicMode",
+        "number": 0,
+        "cls": 333533312,
+        "outer": 413750528,
+        "name_index": 10162,
+        "check_super": 0,
+        "super": 0
+      },
+      {
+        "address": 413757440,
+        "internal_index": 92,
+        "name": "CameraActor",
+        "number": 0,
+        "cls": 333535616,
+        "outer": 388026560,
+        "name_index": 2910,
+        "check_super": 1,
+        "super": 413744768
+      },
+      {
+        "address": 422521472,
+        "internal_index": 3429,
+        "name": "WorldInfo",
+        "number": 0,
+        "cls": 333569600,
+        "outer": 413744768,
+        "name_index": 3531,
+        "check_super": 0,
+        "super": 0
+      },
+      {
+        "address": 2212528384,
+        "internal_index": 171514,
+        "name": "WorldInfo",
+        "number": 9,
+        "cls": 428700800,
+        "outer": 2568859968,
+        "name_index": 3531,
+        "check_super": 0,
+        "super": 0
+      },
+      {
+        "address": 333533312,
+        "internal_index": 39,
+        "name": "BoolProperty",
+        "number": 0,
+        "cls": 333535616,
+        "outer": 336812928,
+        "name_index": 3,
+        "check_super": 1,
+        "super": 333537344
+      },
+      {
+        "address": 333535616,
+        "internal_index": 42,
+        "name": "Class",
+        "number": 0,
+        "cls": 333535616,
+        "outer": 336812928,
+        "name_index": 677,
+        "check_super": 1,
+        "super": 333535040
+      },
+      {
+        "address": 429780480,
+        "internal_index": 1639,
+        "name": "WarPC",
+        "number": 0,
+        "cls": 333535616,
+        "outer": 393329600,
+        "name_index": 6209,
+        "check_super": 1,
+        "super": 429295232
+      },
+      {
+        "address": 429295232,
+        "internal_index": 1135,
+        "name": "GamePlayerController",
+        "number": 0,
+        "cls": 333535616,
+        "outer": 393309888,
+        "name_index": 5036,
+        "check_super": 1,
+        "super": 413750528
+      },
+      {
+        "address": 413750528,
+        "internal_index": 103,
+        "name": "PlayerController",
+        "number": 0,
+        "cls": 333535616,
+        "outer": 388026560,
+        "name_index": 2932,
+        "check_super": 1,
+        "super": 413749952
+      },
+      {
+        "address": 413744768,
+        "internal_index": 51,
+        "name": "Actor",
+        "number": 0,
+        "cls": 333535616,
+        "outer": 388026560,
+        "name_index": 164,
+        "check_super": 1,
+        "super": 333536192
+      },
+      {
+        "address": 333569600,
+        "internal_index": 36,
+        "name": "ObjectProperty",
+        "number": 0,
+        "cls": 333535616,
+        "outer": 336812928,
+        "name_index": 5,
+        "check_super": 1,
+        "super": 333537344
+      },
+      {
+        "address": 413749952,
+        "internal_index": 102,
+        "name": "Controller",
+        "number": 0,
+        "cls": 333535616,
+        "outer": 388026560,
+        "name_index": 2930,
+        "check_super": 1,
+        "super": 413744768
+      },
+      {
+        "address": 429705152,
+        "internal_index": 1498,
+        "name": "Pawn_COGMarcus",
+        "number": 0,
+        "cls": 333535616,
+        "outer": 393329600,
+        "name_index": 5927,
+        "check_super": 1,
+        "super": 429706880
+      },
+      {
+        "address": 429706880,
+        "internal_index": 1496,
+        "name": "Pawn_COGGear",
+        "number": 0,
+        "cls": 333535616,
+        "outer": 393329600,
+        "name_index": 5923,
+        "check_super": 1,
+        "super": 429706304
+      },
+      {
+        "address": 429706304,
+        "internal_index": 1495,
+        "name": "Pawn_Infantry",
+        "number": 0,
+        "cls": 333535616,
+        "outer": 393329600,
+        "name_index": 5921,
+        "check_super": 1,
+        "super": 429705728
+      },
+      {
+        "address": 429705728,
+        "internal_index": 1494,
+        "name": "WarPawn",
+        "number": 0,
+        "cls": 333535616,
+        "outer": 393329600,
+        "name_index": 5919,
+        "check_super": 1,
+        "super": 429295808
+      },
+      {
+        "address": 429295808,
+        "internal_index": 1134,
+        "name": "GamePawn",
+        "number": 0,
+        "cls": 333535616,
+        "outer": 393309888,
+        "name_index": 5034,
+        "check_super": 1,
+        "super": 428637568
+      },
+      {
+        "address": 428637568,
+        "internal_index": 281,
+        "name": "Pawn",
+        "number": 0,
+        "cls": 333535616,
+        "outer": 388026560,
+        "name_index": 2729,
+        "check_super": 1,
+        "super": 413744768
+      },
+      {
+        "address": 428700800,
+        "internal_index": 382,
+        "name": "WorldInfo",
+        "number": 0,
+        "cls": 333535616,
+        "outer": 388026560,
+        "name_index": 3531,
+        "check_super": 1,
+        "super": 428700224
+      },
+      {
+        "address": 333536192,
+        "internal_index": 2,
+        "name": "Object",
+        "number": 0,
+        "cls": 333535616,
+        "outer": 336812928,
+        "name_index": 151,
+        "check_super": 1,
+        "super": 0
+      },
+      {
+        "address": 429913856,
+        "internal_index": 1744,
+        "name": "WarLocalPlayer",
+        "number": 0,
+        "cls": 333535616,
+        "outer": 393329600,
+        "name_index": 6419,
+        "check_super": 1,
+        "super": 428512832
+      },
+      {
+        "address": 428512832,
+        "internal_index": 227,
+        "name": "LocalPlayer",
+        "number": 0,
+        "cls": 333535616,
+        "outer": 388026560,
+        "name_index": 3203,
+        "check_super": 1,
+        "super": 413748224
+      },
+      {
+        "address": 413748224,
+        "internal_index": 105,
+        "name": "Player",
+        "number": 0,
+        "cls": 333535616,
+        "outer": 388026560,
+        "name_index": 2936,
+        "check_super": 1,
+        "super": 333536192
+      },
+      {
+        "address": 430249472,
+        "internal_index": 1890,
+        "name": "WarPlayerCamera",
+        "number": 0,
+        "cls": 333535616,
+        "outer": 393329600,
+        "name_index": 6711,
+        "check_super": 1,
+        "super": 413766656
+      },
+      {
+        "address": 413766656,
+        "internal_index": 77,
+        "name": "Camera",
+        "number": 0,
+        "cls": 333535616,
+        "outer": 388026560,
+        "name_index": 162,
+        "check_super": 1,
+        "super": 413744768
+      },
+      {
+        "address": 428523200,
+        "internal_index": 210,
+        "name": "Level",
+        "number": 0,
+        "cls": 333535616,
+        "outer": 388026560,
+        "name_index": 3170,
+        "check_super": 1,
+        "super": 413768384
+      },
+      {
+        "address": 413768384,
+        "internal_index": 132,
+        "name": "LevelBase",
+        "number": 0,
+        "cls": 333535616,
+        "outer": 388026560,
+        "name_index": 3000,
+        "check_super": 1,
+        "super": 333536192
+      },
+      {
+        "address": 333537344,
+        "internal_index": 7,
+        "name": "Property",
+        "number": 0,
+        "cls": 333535616,
+        "outer": 336812928,
+        "name_index": 161,
+        "check_super": 1,
+        "super": 333536768
+      },
+      {
+        "address": 333536768,
+        "internal_index": 8,
+        "name": "Field",
+        "number": 0,
+        "cls": 333535616,
+        "outer": 336812928,
+        "name_index": 150,
+        "check_super": 1,
+        "super": 333536192
+      },
+      {
+        "address": 333535040,
+        "internal_index": 41,
+        "name": "State",
+        "number": 0,
+        "cls": 333535616,
+        "outer": 336812928,
+        "name_index": 102,
+        "check_super": 1,
+        "super": 333534464
+      },
+      {
+        "address": 333534464,
+        "internal_index": 11,
+        "name": "Struct",
+        "number": 0,
+        "cls": 333535616,
+        "outer": 336812928,
+        "name_index": 86,
+        "check_super": 1,
+        "super": 333536768
+      },
+      {
+        "address": 428700224,
+        "internal_index": 381,
+        "name": "ZoneInfo",
+        "number": 0,
+        "cls": 333535616,
+        "outer": 388026560,
+        "name_index": 3529,
+        "check_super": 1,
+        "super": 413779328
+      },
+      {
+        "address": 413779328,
+        "internal_index": 116,
+        "name": "Info",
+        "number": 0,
+        "cls": 333535616,
+        "outer": 388026560,
+        "name_index": 2968,
+        "check_super": 1,
+        "super": 413744768
+      }
+    ],
+    "cinematic": {
+      "module_base": 5368709120,
+      "role_cinematic_property": 5,
+      "role_camera_actor_class": 6,
+      "cinematic_offset": 956,
+      "cinematic_mask": 32768,
+      "role_world_info_property": 7,
+      "role_world_info": 8,
+      "world_info_offset": 208
+    }
+  },
+  "sampler": {
+    "resolver": {
+      "pid": 54628,
+      "module_base": "0x140000000",
+      "executable": "J:\\gearsVr\\Gears.of.War.Reloaded.v1.0.1.3816947-P2P\\Gears of War Reloaded\\Binaries_x64\\GOWDE-Steam.exe",
+      "sha256": "bdc6705d18ddb335b767df0b38e256ba5da0f49449c8970b302118bb7a4a8fa4",
+      "names_anchor_rva": "0x1c34800",
+      "objects_anchor_rva": "0x1c24730",
+      "name_count": 63203,
+      "object_count": 218207,
+      "camera_address": "0x7d77ece0",
+      "camera_number": 2,
+      "controller_address": "0x95dc1590",
+      "local_player_address": "0x824e8020",
+      "pov_address": "0x7d77f090",
+      "timestamp_address": "0x7d77f08c",
+      "offsets": {
+        "CameraCache": "0x3ac",
+        "POV": "0x4",
+        "TimeStamp": "0x0",
+        "PCOwner": "0x224",
+        "PlayerCamera": "0x37c",
+        "Player": "0x374",
+        "Location": "0x0",
+        "Rotation": "0xc",
+        "FOV": "0x18"
+      },
+      "observed_pov": {
+        "location": [
+          -4060.0,
+          48.0,
+          659.9485473632812
+        ],
+        "rotation_ru": [
+          0,
+          0,
+          0
+        ],
+        "fov": 80.0
+      },
+      "verification": "registry indices + reflected types + reciprocal camera/controller link + WarLocalPlayer + plausible POV"
+    },
+    "layout": {
+      "controller_pawn": {
+        "address": 837019744,
+        "offset": 548,
+        "type": "ObjectProperty"
+      },
+      "pawn_controller": {
+        "address": 836997568,
+        "offset": 560,
+        "type": "ObjectProperty"
+      },
+      "pawn_location": {
+        "address": 422523712,
+        "offset": 304,
+        "type": "StructProperty",
+        "struct_name": "Vector",
+        "components": {
+          "X": {
+            "address": 422124448,
+            "offset": 0,
+            "type": "FloatProperty"
+          },
+          "Y": {
+            "address": 422124224,
+            "offset": 4,
+            "type": "FloatProperty"
+          },
+          "Z": {
+            "address": 422123776,
+            "offset": 8,
+            "type": "FloatProperty"
+          }
+        }
+      },
+      "pawn_rotation": {
+        "address": 422523936,
+        "offset": 316,
+        "type": "StructProperty",
+        "struct_name": "Rotator",
+        "components": {
+          "Pitch": {
+            "address": 422130496,
+            "offset": 0,
+            "type": "IntProperty"
+          },
+          "Yaw": {
+            "address": 422130272,
+            "offset": 4,
+            "type": "IntProperty"
+          },
+          "Roll": {
+            "address": 422130048,
+            "offset": 8,
+            "type": "IntProperty"
+          }
+        }
+      },
+      "controller_rotation": {
+        "address": 422523936,
+        "offset": 316,
+        "type": "StructProperty",
+        "struct_name": "Rotator",
+        "components": {
+          "Pitch": {
+            "address": 422130496,
+            "offset": 0,
+            "type": "IntProperty"
+          },
+          "Yaw": {
+            "address": 422130272,
+            "offset": 4,
+            "type": "IntProperty"
+          },
+          "Roll": {
+            "address": 422130048,
+            "offset": 8,
+            "type": "IntProperty"
+          }
+        }
+      },
+      "eye_height": {
+        "address": 837495648,
+        "offset": 784,
+        "type": "FloatProperty"
+      },
+      "base_eye_height": {
+        "address": 837495424,
+        "offset": 780,
+        "type": "FloatProperty"
+      },
+      "camera_view_target": {
+        "container": {
+          "address": 838714944,
+          "offset": 972,
+          "type": "StructProperty"
+        },
+        "field": {
+          "address": 838722112,
+          "offset": 0,
+          "type": "ObjectProperty"
+        },
+        "address": "0x7d77f0ac"
+      }
+    },
+    "initial_guard": {
+      "pawn": {
+        "address": 95434014848,
+        "internal_index": 207058,
+        "name": "Pawn_COGMarcus",
+        "number": 1,
+        "cls": 429705152,
+        "outer": 2568859968,
+        "name_index": 5927
+      },
+      "controller": {
+        "address": 2514228624,
+        "internal_index": 206931,
+        "name": "WarPC",
+        "number": 1,
+        "cls": 429780480,
+        "outer": 2568859968,
+        "name_index": 6209
+      },
+      "camera": {
+        "address": 2105011424,
+        "internal_index": 206950,
+        "name": "WarPlayerCamera",
+        "number": 2,
+        "cls": 430249472,
+        "outer": 2568859968,
+        "name_index": 6711
+      },
+      "local_player": {
+        "address": 2186182688,
+        "internal_index": 168078,
+        "name": "WarLocalPlayer",
+        "number": 1,
+        "cls": 429913856,
+        "outer": 2188998112,
+        "name_index": 6419
+      },
+      "level": {
+        "address": 2568859968,
+        "internal_index": 172689,
+        "name": "PersistentLevel",
+        "number": 0,
+        "cls": 428523200,
+        "outer": 2568860976,
+        "name_index": 746
+      },
+      "outer_chain": [
+        {
+          "address": 2568859968,
+          "internal_index": 172689,
+          "name": "PersistentLevel",
+          "number": 0,
+          "cls": 428523200,
+          "outer": 2568860976,
+          "name_index": 746
+        }
+      ],
+      "view_target": 95434014848,
+      "timestamp_raw": "124a1b41",
+      "objects_header": "00003316000000005f540300f86f0300",
+      "names_header": "0000790400000000e3f60000a0860100",
+      "target_proof": {
+        "identity": {
+          "address": 95434014848,
+          "internal_index": 207058,
+          "name": "Pawn_COGMarcus",
+          "number": 1,
+          "cls": 429705152,
+          "outer": 2568859968,
+          "name_index": 5927
+        },
+        "cinematic": false,
+        "target_level": {
+          "address": 2568859968,
+          "internal_index": 172689,
+          "name": "PersistentLevel",
+          "number": 0,
+          "cls": 428523200,
+          "outer": 2568860976,
+          "name_index": 746
+        },
+        "world_info": {
+          "address": 2212528384,
+          "internal_index": 171514,
+          "name": "WorldInfo",
+          "number": 9,
+          "cls": 428700800,
+          "outer": 2568859968,
+          "name_index": 3531
+        }
+      }
+    },
+    "view_target_readable": true,
+    "view_target_unavailable": null,
+    "candidate_eye_formula": "Pawn.Location + (0,0,EyeHeight); hypothesis only",
+    "renderer_alignment_verified": false,
+    "standing_verified": false,
+    "limits": "Timestamp/identity bracketing is not an atomic engine snapshot or renderer alignment proof."
+  },
+  "sample": {
+    "started_utc": "2026-11-10T18:52:46.223145+00:00",
+    "started_monotonic": 121567.125,
+    "accepted": true,
+    "values": {
+      "pawn_location": [
+        -3900.0,
+        0.0,
+        583.9485473632812
+      ],
+      "pawn_rotation": [
+        0,
+        0,
+        0
+      ],
+      "controller_rotation": [
+        0,
+        0,
+        0
+      ],
+      "eye_height": 60.0,
+      "base_eye_height": 60.0,
+      "camera_cache_pov": {
+        "location": [
+          -4060.0,
+          48.0,
+          659.9485473632812
+        ],
+        "rotation_ru": [
+          0,
+          0,
+          0
+        ],
+        "fov": 80.0
+      }
+    },
+    "raw_values": {
+      "pawn_location": "00c073c500000000b5fc1144",
+      "pawn_rotation": "000000000000000000000000",
+      "controller_rotation": "000000000000000000000000",
+      "eye_height": "00007042",
+      "base_eye_height": "00007042",
+      "camera_cache_pov": "00c07dc500004042b5fc24440000000000000000000000000000a042"
+    },
+    "guard_before": {
+      "pawn": {
+        "address": 95434014848,
+        "internal_index": 207058,
+        "name": "Pawn_COGMarcus",
+        "number": 1,
+        "cls": 429705152,
+        "outer": 2568859968,
+        "name_index": 5927
+      },
+      "controller": {
+        "address": 2514228624,
+        "internal_index": 206931,
+        "name": "WarPC",
+        "number": 1,
+        "cls": 429780480,
+        "outer": 2568859968,
+        "name_index": 6209
+      },
+      "camera": {
+        "address": 2105011424,
+        "internal_index": 206950,
+        "name": "WarPlayerCamera",
+        "number": 2,
+        "cls": 430249472,
+        "outer": 2568859968,
+        "name_index": 6711
+      },
+      "local_player": {
+        "address": 2186182688,
+        "internal_index": 168078,
+        "name": "WarLocalPlayer",
+        "number": 1,
+        "cls": 429913856,
+        "outer": 2188998112,
+        "name_index": 6419
+      },
+      "level": {
+        "address": 2568859968,
+        "internal_index": 172689,
+        "name": "PersistentLevel",
+        "number": 0,
+        "cls": 428523200,
+        "outer": 2568860976,
+        "name_index": 746
+      },
+      "outer_chain": [
+        {
+          "address": 2568859968,
+          "internal_index": 172689,
+          "name": "PersistentLevel",
+          "number": 0,
+          "cls": 428523200,
+          "outer": 2568860976,
+          "name_index": 746
+        }
+      ],
+      "view_target": 95434014848,
+      "timestamp_raw": "124a1b41",
+      "objects_header": "00003316000000005f540300f86f0300",
+      "names_header": "0000790400000000e3f60000a0860100",
+      "target_proof": {
+        "identity": {
+          "address": 95434014848,
+          "internal_index": 207058,
+          "name": "Pawn_COGMarcus",
+          "number": 1,
+          "cls": 429705152,
+          "outer": 2568859968,
+          "name_index": 5927
+        },
+        "cinematic": false,
+        "target_level": {
+          "address": 2568859968,
+          "internal_index": 172689,
+          "name": "PersistentLevel",
+          "number": 0,
+          "cls": 428523200,
+          "outer": 2568860976,
+          "name_index": 746
+        },
+        "world_info": {
+          "address": 2212528384,
+          "internal_index": 171514,
+          "name": "WorldInfo",
+          "number": 9,
+          "cls": 428700800,
+          "outer": 2568859968,
+          "name_index": 3531
+        }
+      }
+    },
+    "guard_after": {
+      "pawn": {
+        "address": 95434014848,
+        "internal_index": 207058,
+        "name": "Pawn_COGMarcus",
+        "number": 1,
+        "cls": 429705152,
+        "outer": 2568859968,
+        "name_index": 5927
+      },
+      "controller": {
+        "address": 2514228624,
+        "internal_index": 206931,
+        "name": "WarPC",
+        "number": 1,
+        "cls": 429780480,
+        "outer": 2568859968,
+        "name_index": 6209
+      },
+      "camera": {
+        "address": 2105011424,
+        "internal_index": 206950,
+        "name": "WarPlayerCamera",
+        "number": 2,
+        "cls": 430249472,
+        "outer": 2568859968,
+        "name_index": 6711
+      },
+      "local_player": {
+        "address": 2186182688,
+        "internal_index": 168078,
+        "name": "WarLocalPlayer",
+        "number": 1,
+        "cls": 429913856,
+        "outer": 2188998112,
+        "name_index": 6419
+      },
+      "level": {
+        "address": 2568859968,
+        "internal_index": 172689,
+        "name": "PersistentLevel",
+        "number": 0,
+        "cls": 428523200,
+        "outer": 2568860976,
+        "name_index": 746
+      },
+      "outer_chain": [
+        {
+          "address": 2568859968,
+          "internal_index": 172689,
+          "name": "PersistentLevel",
+          "number": 0,
+          "cls": 428523200,
+          "outer": 2568860976,
+          "name_index": 746
+        }
+      ],
+      "view_target": 95434014848,
+      "timestamp_raw": "124a1b41",
+      "objects_header": "00003316000000005f540300f86f0300",
+      "names_header": "0000790400000000e3f60000a0860100",
+      "target_proof": {
+        "identity": {
+          "address": 95434014848,
+          "internal_index": 207058,
+          "name": "Pawn_COGMarcus",
+          "number": 1,
+          "cls": 429705152,
+          "outer": 2568859968,
+          "name_index": 5927
+        },
+        "cinematic": false,
+        "target_level": {
+          "address": 2568859968,
+          "internal_index": 172689,
+          "name": "PersistentLevel",
+          "number": 0,
+          "cls": 428523200,
+          "outer": 2568860976,
+          "name_index": 746
+        },
+        "world_info": {
+          "address": 2212528384,
+          "internal_index": 171514,
+          "name": "WorldInfo",
+          "number": 9,
+          "cls": 428700800,
+          "outer": 2568859968,
+          "name_index": 3531
+        }
+      }
+    },
+    "camera_timestamp": 9.705583572387695,
+    "candidate_eye_hypothesis": [
+      -3900.0,
+      0.0,
+      643.9485473632812
+    ],
+    "finished_monotonic": 121567.125
+  },
+  "pose_sampled": true,
+  "sample_acquisition": {
+    "accepted": true,
+    "stage": "sample",
+    "clock": "perf_counter_ns",
+    "started_perf_counter_ns": 121567287317900,
+    "deadline_perf_counter_ns": 121567487317900,
+    "maximum_attempts": 32,
+    "attempts": [
+      {
+        "attempt": 1,
+        "started_perf_counter_ns": 121567287320000,
+        "finished_perf_counter_ns": 121567295781000,
+        "elapsed_ms": 8.461,
+        "strict_sample_accepted": true,
+        "reason": null,
+        "temporary_reason": null,
+        "exception_type": null,
+        "exception_repr": null,
+        "guard_acquisition_indices": [
+          1,
+          2
+        ],
+        "strict_guard_attempts": 2
+      }
+    ],
+    "reason": null,
+    "exception_type": null,
+    "exception_repr": null,
+    "raw_rejection": null,
+    "guard_acquisitions": [
+      {
+        "accepted": true,
+        "stage": "initial",
+        "clock": "perf_counter_ns",
+        "started_perf_counter_ns": 121567229209400,
+        "deadline_perf_counter_ns": 121567429209400,
+        "maximum_attempts": 5,
+        "budget_scope": "this guard acquisition only",
+        "attempts": [
+          {
+            "attempt": 1,
+            "started_perf_counter_ns": 121567229213200,
+            "finished_perf_counter_ns": 121567287294800,
+            "elapsed_ms": 58.0816,
+            "strict_guard_accepted": true,
+            "reason": null,
+            "retryable": false,
+            "exception_type": null,
+            "exception_repr": null,
+            "raw_guard": {
+              "pawn": {
+                "address": 95434014848,
+                "internal_index": 207058,
+                "name": "Pawn_COGMarcus",
+                "number": 1,
+                "cls": 429705152,
+                "outer": 2568859968,
+                "name_index": 5927
+              },
+              "controller": {
+                "address": 2514228624,
+                "internal_index": 206931,
+                "name": "WarPC",
+                "number": 1,
+                "cls": 429780480,
+                "outer": 2568859968,
+                "name_index": 6209
+              },
+              "camera": {
+                "address": 2105011424,
+                "internal_index": 206950,
+                "name": "WarPlayerCamera",
+                "number": 2,
+                "cls": 430249472,
+                "outer": 2568859968,
+                "name_index": 6711
+              },
+              "local_player": {
+                "address": 2186182688,
+                "internal_index": 168078,
+                "name": "WarLocalPlayer",
+                "number": 1,
+                "cls": 429913856,
+                "outer": 2188998112,
+                "name_index": 6419
+              },
+              "level": {
+                "address": 2568859968,
+                "internal_index": 172689,
+                "name": "PersistentLevel",
+                "number": 0,
+                "cls": 428523200,
+                "outer": 2568860976,
+                "name_index": 746
+              },
+              "outer_chain": [
+                {
+                  "address": 2568859968,
+                  "internal_index": 172689,
+                  "name": "PersistentLevel",
+                  "number": 0,
+                  "cls": 428523200,
+                  "outer": 2568860976,
+                  "name_index": 746
+                }
+              ],
+              "view_target": 95434014848,
+              "timestamp_raw": "124a1b41",
+              "objects_header": "00003316000000005f540300f86f0300",
+              "names_header": "0000790400000000e3f60000a0860100",
+              "target_proof": {
+                "identity": {
+                  "address": 95434014848,
+                  "internal_index": 207058,
+                  "name": "Pawn_COGMarcus",
+                  "number": 1,
+                  "cls": 429705152,
+                  "outer": 2568859968,
+                  "name_index": 5927
+                },
+                "cinematic": false,
+                "target_level": {
+                  "address": 2568859968,
+                  "internal_index": 172689,
+                  "name": "PersistentLevel",
+                  "number": 0,
+                  "cls": 428523200,
+                  "outer": 2568860976,
+                  "name_index": 746
+                },
+                "world_info": {
+                  "address": 2212528384,
+                  "internal_index": 171514,
+                  "name": "WorldInfo",
+                  "number": 9,
+                  "cls": 428700800,
+                  "outer": 2568859968,
+                  "name_index": 3531
+                }
+              }
+            }
+          }
+        ],
+        "finished_perf_counter_ns": 121567287294800,
+        "strict_guard_attempts": 1
+      },
+      {
+        "accepted": true,
+        "stage": "sample_before",
+        "clock": "perf_counter_ns",
+        "started_perf_counter_ns": 121567287351400,
+        "deadline_perf_counter_ns": 121567487351400,
+        "maximum_attempts": 5,
+        "budget_scope": "this guard acquisition only",
+        "attempts": [
+          {
+            "attempt": 1,
+            "started_perf_counter_ns": 121567287352700,
+            "finished_perf_counter_ns": 121567289392000,
+            "elapsed_ms": 2.0393,
+            "strict_guard_accepted": true,
+            "reason": null,
+            "retryable": false,
+            "exception_type": null,
+            "exception_repr": null,
+            "raw_guard": {
+              "pawn": {
+                "address": 95434014848,
+                "internal_index": 207058,
+                "name": "Pawn_COGMarcus",
+                "number": 1,
+                "cls": 429705152,
+                "outer": 2568859968,
+                "name_index": 5927
+              },
+              "controller": {
+                "address": 2514228624,
+                "internal_index": 206931,
+                "name": "WarPC",
+                "number": 1,
+                "cls": 429780480,
+                "outer": 2568859968,
+                "name_index": 6209
+              },
+              "camera": {
+                "address": 2105011424,
+                "internal_index": 206950,
+                "name": "WarPlayerCamera",
+                "number": 2,
+                "cls": 430249472,
+                "outer": 2568859968,
+                "name_index": 6711
+              },
+              "local_player": {
+                "address": 2186182688,
+                "internal_index": 168078,
+                "name": "WarLocalPlayer",
+                "number": 1,
+                "cls": 429913856,
+                "outer": 2188998112,
+                "name_index": 6419
+              },
+              "level": {
+                "address": 2568859968,
+                "internal_index": 172689,
+                "name": "PersistentLevel",
+                "number": 0,
+                "cls": 428523200,
+                "outer": 2568860976,
+                "name_index": 746
+              },
+              "outer_chain": [
+                {
+                  "address": 2568859968,
+                  "internal_index": 172689,
+                  "name": "PersistentLevel",
+                  "number": 0,
+                  "cls": 428523200,
+                  "outer": 2568860976,
+                  "name_index": 746
+                }
+              ],
+              "view_target": 95434014848,
+              "timestamp_raw": "124a1b41",
+              "objects_header": "00003316000000005f540300f86f0300",
+              "names_header": "0000790400000000e3f60000a0860100",
+              "target_proof": {
+                "identity": {
+                  "address": 95434014848,
+                  "internal_index": 207058,
+                  "name": "Pawn_COGMarcus",
+                  "number": 1,
+                  "cls": 429705152,
+                  "outer": 2568859968,
+                  "name_index": 5927
+                },
+                "cinematic": false,
+                "target_level": {
+                  "address": 2568859968,
+                  "internal_index": 172689,
+                  "name": "PersistentLevel",
+                  "number": 0,
+                  "cls": 428523200,
+                  "outer": 2568860976,
+                  "name_index": 746
+                },
+                "world_info": {
+                  "address": 2212528384,
+                  "internal_index": 171514,
+                  "name": "WorldInfo",
+                  "number": 9,
+                  "cls": 428700800,
+                  "outer": 2568859968,
+                  "name_index": 3531
+                }
+              }
+            }
+          }
+        ],
+        "finished_perf_counter_ns": 121567289392000,
+        "strict_guard_attempts": 1
+      },
+      {
+        "accepted": true,
+        "stage": "sample_after",
+        "clock": "perf_counter_ns",
+        "started_perf_counter_ns": 121567289524600,
+        "deadline_perf_counter_ns": 121567489524600,
+        "maximum_attempts": 5,
+        "budget_scope": "this guard acquisition only",
+        "attempts": [
+          {
+            "attempt": 1,
+            "started_perf_counter_ns": 121567289525900,
+            "finished_perf_counter_ns": 121567295279800,
+            "elapsed_ms": 5.7539,
+            "strict_guard_accepted": true,
+            "reason": null,
+            "retryable": false,
+            "exception_type": null,
+            "exception_repr": null,
+            "raw_guard": {
+              "pawn": {
+                "address": 95434014848,
+                "internal_index": 207058,
+                "name": "Pawn_COGMarcus",
+                "number": 1,
+                "cls": 429705152,
+                "outer": 2568859968,
+                "name_index": 5927
+              },
+              "controller": {
+                "address": 2514228624,
+                "internal_index": 206931,
+                "name": "WarPC",
+                "number": 1,
+                "cls": 429780480,
+                "outer": 2568859968,
+                "name_index": 6209
+              },
+              "camera": {
+                "address": 2105011424,
+                "internal_index": 206950,
+                "name": "WarPlayerCamera",
+                "number": 2,
+                "cls": 430249472,
+                "outer": 2568859968,
+                "name_index": 6711
+              },
+              "local_player": {
+                "address": 2186182688,
+                "internal_index": 168078,
+                "name": "WarLocalPlayer",
+                "number": 1,
+                "cls": 429913856,
+                "outer": 2188998112,
+                "name_index": 6419
+              },
+              "level": {
+                "address": 2568859968,
+                "internal_index": 172689,
+                "name": "PersistentLevel",
+                "number": 0,
+                "cls": 428523200,
+                "outer": 2568860976,
+                "name_index": 746
+              },
+              "outer_chain": [
+                {
+                  "address": 2568859968,
+                  "internal_index": 172689,
+                  "name": "PersistentLevel",
+                  "number": 0,
+                  "cls": 428523200,
+                  "outer": 2568860976,
+                  "name_index": 746
+                }
+              ],
+              "view_target": 95434014848,
+              "timestamp_raw": "124a1b41",
+              "objects_header": "00003316000000005f540300f86f0300",
+              "names_header": "0000790400000000e3f60000a0860100",
+              "target_proof": {
+                "identity": {
+                  "address": 95434014848,
+                  "internal_index": 207058,
+                  "name": "Pawn_COGMarcus",
+                  "number": 1,
+                  "cls": 429705152,
+                  "outer": 2568859968,
+                  "name_index": 5927
+                },
+                "cinematic": false,
+                "target_level": {
+                  "address": 2568859968,
+                  "internal_index": 172689,
+                  "name": "PersistentLevel",
+                  "number": 0,
+                  "cls": 428523200,
+                  "outer": 2568860976,
+                  "name_index": 746
+                },
+                "world_info": {
+                  "address": 2212528384,
+                  "internal_index": 171514,
+                  "name": "WorldInfo",
+                  "number": 9,
+                  "cls": 428700800,
+                  "outer": 2568859968,
+                  "name_index": 3531
+                }
+              }
+            }
+          }
+        ],
+        "finished_perf_counter_ns": 121567295279800,
+        "strict_guard_attempts": 1
+      }
+    ],
+    "strict_guard_attempts": 3,
+    "budget_scope": "sample acquisition32/200ms; each nested guard independently5/200ms; not total32reads",
+    "finished_perf_counter_ns": 121567295781000
+  },
+  "guard_acquisitions": [
+    {
+      "accepted": true,
+      "stage": "initial",
+      "clock": "perf_counter_ns",
+      "started_perf_counter_ns": 121567229209400,
+      "deadline_perf_counter_ns": 121567429209400,
+      "maximum_attempts": 5,
+      "budget_scope": "this guard acquisition only",
+      "attempts": [
+        {
+          "attempt": 1,
+          "started_perf_counter_ns": 121567229213200,
+          "finished_perf_counter_ns": 121567287294800,
+          "elapsed_ms": 58.0816,
+          "strict_guard_accepted": true,
+          "reason": null,
+          "retryable": false,
+          "exception_type": null,
+          "exception_repr": null,
+          "raw_guard": {
+            "pawn": {
+              "address": 95434014848,
+              "internal_index": 207058,
+              "name": "Pawn_COGMarcus",
+              "number": 1,
+              "cls": 429705152,
+              "outer": 2568859968,
+              "name_index": 5927
+            },
+            "controller": {
+              "address": 2514228624,
+              "internal_index": 206931,
+              "name": "WarPC",
+              "number": 1,
+              "cls": 429780480,
+              "outer": 2568859968,
+              "name_index": 6209
+            },
+            "camera": {
+              "address": 2105011424,
+              "internal_index": 206950,
+              "name": "WarPlayerCamera",
+              "number": 2,
+              "cls": 430249472,
+              "outer": 2568859968,
+              "name_index": 6711
+            },
+            "local_player": {
+              "address": 2186182688,
+              "internal_index": 168078,
+              "name": "WarLocalPlayer",
+              "number": 1,
+              "cls": 429913856,
+              "outer": 2188998112,
+              "name_index": 6419
+            },
+            "level": {
+              "address": 2568859968,
+              "internal_index": 172689,
+              "name": "PersistentLevel",
+              "number": 0,
+              "cls": 428523200,
+              "outer": 2568860976,
+              "name_index": 746
+            },
+            "outer_chain": [
+              {
+                "address": 2568859968,
+                "internal_index": 172689,
+                "name": "PersistentLevel",
+                "number": 0,
+                "cls": 428523200,
+                "outer": 2568860976,
+                "name_index": 746
+              }
+            ],
+            "view_target": 95434014848,
+            "timestamp_raw": "124a1b41",
+            "objects_header": "00003316000000005f540300f86f0300",
+            "names_header": "0000790400000000e3f60000a0860100",
+            "target_proof": {
+              "identity": {
+                "address": 95434014848,
+                "internal_index": 207058,
+                "name": "Pawn_COGMarcus",
+                "number": 1,
+                "cls": 429705152,
+                "outer": 2568859968,
+                "name_index": 5927
+              },
+              "cinematic": false,
+              "target_level": {
+                "address": 2568859968,
+                "internal_index": 172689,
+                "name": "PersistentLevel",
+                "number": 0,
+                "cls": 428523200,
+                "outer": 2568860976,
+                "name_index": 746
+              },
+              "world_info": {
+                "address": 2212528384,
+                "internal_index": 171514,
+                "name": "WorldInfo",
+                "number": 9,
+                "cls": 428700800,
+                "outer": 2568859968,
+                "name_index": 3531
+              }
+            }
+          }
+        }
+      ],
+      "finished_perf_counter_ns": 121567287294800,
+      "strict_guard_attempts": 1
+    },
+    {
+      "accepted": true,
+      "stage": "sample_before",
+      "clock": "perf_counter_ns",
+      "started_perf_counter_ns": 121567287351400,
+      "deadline_perf_counter_ns": 121567487351400,
+      "maximum_attempts": 5,
+      "budget_scope": "this guard acquisition only",
+      "attempts": [
+        {
+          "attempt": 1,
+          "started_perf_counter_ns": 121567287352700,
+          "finished_perf_counter_ns": 121567289392000,
+          "elapsed_ms": 2.0393,
+          "strict_guard_accepted": true,
+          "reason": null,
+          "retryable": false,
+          "exception_type": null,
+          "exception_repr": null,
+          "raw_guard": {
+            "pawn": {
+              "address": 95434014848,
+              "internal_index": 207058,
+              "name": "Pawn_COGMarcus",
+              "number": 1,
+              "cls": 429705152,
+              "outer": 2568859968,
+              "name_index": 5927
+            },
+            "controller": {
+              "address": 2514228624,
+              "internal_index": 206931,
+              "name": "WarPC",
+              "number": 1,
+              "cls": 429780480,
+              "outer": 2568859968,
+              "name_index": 6209
+            },
+            "camera": {
+              "address": 2105011424,
+              "internal_index": 206950,
+              "name": "WarPlayerCamera",
+              "number": 2,
+              "cls": 430249472,
+              "outer": 2568859968,
+              "name_index": 6711
+            },
+            "local_player": {
+              "address": 2186182688,
+              "internal_index": 168078,
+              "name": "WarLocalPlayer",
+              "number": 1,
+              "cls": 429913856,
+              "outer": 2188998112,
+              "name_index": 6419
+            },
+            "level": {
+              "address": 2568859968,
+              "internal_index": 172689,
+              "name": "PersistentLevel",
+              "number": 0,
+              "cls": 428523200,
+              "outer": 2568860976,
+              "name_index": 746
+            },
+            "outer_chain": [
+              {
+                "address": 2568859968,
+                "internal_index": 172689,
+                "name": "PersistentLevel",
+                "number": 0,
+                "cls": 428523200,
+                "outer": 2568860976,
+                "name_index": 746
+              }
+            ],
+            "view_target": 95434014848,
+            "timestamp_raw": "124a1b41",
+            "objects_header": "00003316000000005f540300f86f0300",
+            "names_header": "0000790400000000e3f60000a0860100",
+            "target_proof": {
+              "identity": {
+                "address": 95434014848,
+                "internal_index": 207058,
+                "name": "Pawn_COGMarcus",
+                "number": 1,
+                "cls": 429705152,
+                "outer": 2568859968,
+                "name_index": 5927
+              },
+              "cinematic": false,
+              "target_level": {
+                "address": 2568859968,
+                "internal_index": 172689,
+                "name": "PersistentLevel",
+                "number": 0,
+                "cls": 428523200,
+                "outer": 2568860976,
+                "name_index": 746
+              },
+              "world_info": {
+                "address": 2212528384,
+                "internal_index": 171514,
+                "name": "WorldInfo",
+                "number": 9,
+                "cls": 428700800,
+                "outer": 2568859968,
+                "name_index": 3531
+              }
+            }
+          }
+        }
+      ],
+      "finished_perf_counter_ns": 121567289392000,
+      "strict_guard_attempts": 1
+    },
+    {
+      "accepted": true,
+      "stage": "sample_after",
+      "clock": "perf_counter_ns",
+      "started_perf_counter_ns": 121567289524600,
+      "deadline_perf_counter_ns": 121567489524600,
+      "maximum_attempts": 5,
+      "budget_scope": "this guard acquisition only",
+      "attempts": [
+        {
+          "attempt": 1,
+          "started_perf_counter_ns": 121567289525900,
+          "finished_perf_counter_ns": 121567295279800,
+          "elapsed_ms": 5.7539,
+          "strict_guard_accepted": true,
+          "reason": null,
+          "retryable": false,
+          "exception_type": null,
+          "exception_repr": null,
+          "raw_guard": {
+            "pawn": {
+              "address": 95434014848,
+              "internal_index": 207058,
+              "name": "Pawn_COGMarcus",
+              "number": 1,
+              "cls": 429705152,
+              "outer": 2568859968,
+              "name_index": 5927
+            },
+            "controller": {
+              "address": 2514228624,
+              "internal_index": 206931,
+              "name": "WarPC",
+              "number": 1,
+              "cls": 429780480,
+              "outer": 2568859968,
+              "name_index": 6209
+            },
+            "camera": {
+              "address": 2105011424,
+              "internal_index": 206950,
+              "name": "WarPlayerCamera",
+              "number": 2,
+              "cls": 430249472,
+              "outer": 2568859968,
+              "name_index": 6711
+            },
+            "local_player": {
+              "address": 2186182688,
+              "internal_index": 168078,
+              "name": "WarLocalPlayer",
+              "number": 1,
+              "cls": 429913856,
+              "outer": 2188998112,
+              "name_index": 6419
+            },
+            "level": {
+              "address": 2568859968,
+              "internal_index": 172689,
+              "name": "PersistentLevel",
+              "number": 0,
+              "cls": 428523200,
+              "outer": 2568860976,
+              "name_index": 746
+            },
+            "outer_chain": [
+              {
+                "address": 2568859968,
+                "internal_index": 172689,
+                "name": "PersistentLevel",
+                "number": 0,
+                "cls": 428523200,
+                "outer": 2568860976,
+                "name_index": 746
+              }
+            ],
+            "view_target": 95434014848,
+            "timestamp_raw": "124a1b41",
+            "objects_header": "00003316000000005f540300f86f0300",
+            "names_header": "0000790400000000e3f60000a0860100",
+            "target_proof": {
+              "identity": {
+                "address": 95434014848,
+                "internal_index": 207058,
+                "name": "Pawn_COGMarcus",
+                "number": 1,
+                "cls": 429705152,
+                "outer": 2568859968,
+                "name_index": 5927
+              },
+              "cinematic": false,
+              "target_level": {
+                "address": 2568859968,
+                "internal_index": 172689,
+                "name": "PersistentLevel",
+                "number": 0,
+                "cls": 428523200,
+                "outer": 2568860976,
+                "name_index": 746
+              },
+              "world_info": {
+                "address": 2212528384,
+                "internal_index": 171514,
+                "name": "WorldInfo",
+                "number": 9,
+                "cls": 428700800,
+                "outer": 2568859968,
+                "name_index": 3531
+              }
+            }
+          }
+        }
+      ],
+      "finished_perf_counter_ns": 121567295279800,
+      "strict_guard_attempts": 1
+    },
+    {
+      "accepted": true,
+      "stage": "assembly_after",
+      "clock": "perf_counter_ns",
+      "started_perf_counter_ns": 121567298632300,
+      "deadline_perf_counter_ns": 121567498632300,
+      "maximum_attempts": 5,
+      "budget_scope": "this guard acquisition only",
+      "attempts": [
+        {
+          "attempt": 1,
+          "started_perf_counter_ns": 121567298636100,
+          "finished_perf_counter_ns": 121567300582400,
+          "elapsed_ms": 1.9463,
+          "strict_guard_accepted": true,
+          "reason": null,
+          "retryable": false,
+          "exception_type": null,
+          "exception_repr": null,
+          "raw_guard": {
+            "pawn": {
+              "address": 95434014848,
+              "internal_index": 207058,
+              "name": "Pawn_COGMarcus",
+              "number": 1,
+              "cls": 429705152,
+              "outer": 2568859968,
+              "name_index": 5927
+            },
+            "controller": {
+              "address": 2514228624,
+              "internal_index": 206931,
+              "name": "WarPC",
+              "number": 1,
+              "cls": 429780480,
+              "outer": 2568859968,
+              "name_index": 6209
+            },
+            "camera": {
+              "address": 2105011424,
+              "internal_index": 206950,
+              "name": "WarPlayerCamera",
+              "number": 2,
+              "cls": 430249472,
+              "outer": 2568859968,
+              "name_index": 6711
+            },
+            "local_player": {
+              "address": 2186182688,
+              "internal_index": 168078,
+              "name": "WarLocalPlayer",
+              "number": 1,
+              "cls": 429913856,
+              "outer": 2188998112,
+              "name_index": 6419
+            },
+            "level": {
+              "address": 2568859968,
+              "internal_index": 172689,
+              "name": "PersistentLevel",
+              "number": 0,
+              "cls": 428523200,
+              "outer": 2568860976,
+              "name_index": 746
+            },
+            "outer_chain": [
+              {
+                "address": 2568859968,
+                "internal_index": 172689,
+                "name": "PersistentLevel",
+                "number": 0,
+                "cls": 428523200,
+                "outer": 2568860976,
+                "name_index": 746
+              }
+            ],
+            "view_target": 95434014848,
+            "timestamp_raw": "124a1b41",
+            "objects_header": "00003316000000005f540300f86f0300",
+            "names_header": "0000790400000000e3f60000a0860100",
+            "target_proof": {
+              "identity": {
+                "address": 95434014848,
+                "internal_index": 207058,
+                "name": "Pawn_COGMarcus",
+                "number": 1,
+                "cls": 429705152,
+                "outer": 2568859968,
+                "name_index": 5927
+              },
+              "cinematic": false,
+              "target_level": {
+                "address": 2568859968,
+                "internal_index": 172689,
+                "name": "PersistentLevel",
+                "number": 0,
+                "cls": 428523200,
+                "outer": 2568860976,
+                "name_index": 746
+              },
+              "world_info": {
+                "address": 2212528384,
+                "internal_index": 171514,
+                "name": "WorldInfo",
+                "number": 9,
+                "cls": 428700800,
+                "outer": 2568859968,
+                "name_index": 3531
+              }
+            }
+          }
+        }
+      ],
+      "finished_perf_counter_ns": 121567300582400,
+      "strict_guard_attempts": 1
+    },
+    {
+      "accepted": true,
+      "stage": "final_boundary",
+      "clock": "perf_counter_ns",
+      "started_perf_counter_ns": 121567301620700,
+      "deadline_perf_counter_ns": 121567501620700,
+      "maximum_attempts": 5,
+      "budget_scope": "this guard acquisition only",
+      "attempts": [
+        {
+          "attempt": 1,
+          "started_perf_counter_ns": 121567301623300,
+          "finished_perf_counter_ns": 121567303680400,
+          "elapsed_ms": 2.0571,
+          "strict_guard_accepted": true,
+          "reason": null,
+          "retryable": false,
+          "exception_type": null,
+          "exception_repr": null,
+          "raw_guard": {
+            "pawn": {
+              "address": 95434014848,
+              "internal_index": 207058,
+              "name": "Pawn_COGMarcus",
+              "number": 1,
+              "cls": 429705152,
+              "outer": 2568859968,
+              "name_index": 5927
+            },
+            "controller": {
+              "address": 2514228624,
+              "internal_index": 206931,
+              "name": "WarPC",
+              "number": 1,
+              "cls": 429780480,
+              "outer": 2568859968,
+              "name_index": 6209
+            },
+            "camera": {
+              "address": 2105011424,
+              "internal_index": 206950,
+              "name": "WarPlayerCamera",
+              "number": 2,
+              "cls": 430249472,
+              "outer": 2568859968,
+              "name_index": 6711
+            },
+            "local_player": {
+              "address": 2186182688,
+              "internal_index": 168078,
+              "name": "WarLocalPlayer",
+              "number": 1,
+              "cls": 429913856,
+              "outer": 2188998112,
+              "name_index": 6419
+            },
+            "level": {
+              "address": 2568859968,
+              "internal_index": 172689,
+              "name": "PersistentLevel",
+              "number": 0,
+              "cls": 428523200,
+              "outer": 2568860976,
+              "name_index": 746
+            },
+            "outer_chain": [
+              {
+                "address": 2568859968,
+                "internal_index": 172689,
+                "name": "PersistentLevel",
+                "number": 0,
+                "cls": 428523200,
+                "outer": 2568860976,
+                "name_index": 746
+              }
+            ],
+            "view_target": 95434014848,
+            "timestamp_raw": "357c1b41",
+            "objects_header": "00003316000000005f540300f86f0300",
+            "names_header": "0000790400000000e3f60000a0860100",
+            "target_proof": {
+              "identity": {
+                "address": 95434014848,
+                "internal_index": 207058,
+                "name": "Pawn_COGMarcus",
+                "number": 1,
+                "cls": 429705152,
+                "outer": 2568859968,
+                "name_index": 5927
+              },
+              "cinematic": false,
+              "target_level": {
+                "address": 2568859968,
+                "internal_index": 172689,
+                "name": "PersistentLevel",
+                "number": 0,
+                "cls": 428523200,
+                "outer": 2568860976,
+                "name_index": 746
+              },
+              "world_info": {
+                "address": 2212528384,
+                "internal_index": 171514,
+                "name": "WorldInfo",
+                "number": 9,
+                "cls": 428700800,
+                "outer": 2568859968,
+                "name_index": 3531
+              }
+            }
+          }
+        }
+      ],
+      "finished_perf_counter_ns": 121567303680400,
+      "strict_guard_attempts": 1
+    }
+  ],
+  "strict_guard_attempts": 5,
+  "acquisition_budget_semantics": "sample5/200ms; each guard independently5/200ms; not total5reads; late success rejected",
+  "registry_policy": "Refresh current data/count/capacity and validate selected slots; no startup count equality requirement",
+  "read_only": true,
+  "renderer_alignment_verified": false,
+  "candidate_eye_formula": "Pawn.Location + world-up EyeHeight; unverified hypothesis only",
+  "certificate_final_guard": {
+    "pawn": {
+      "address": 95434014848,
+      "internal_index": 207058,
+      "name": "Pawn_COGMarcus",
+      "number": 1,
+      "cls": 429705152,
+      "outer": 2568859968,
+      "name_index": 5927
+    },
+    "controller": {
+      "address": 2514228624,
+      "internal_index": 206931,
+      "name": "WarPC",
+      "number": 1,
+      "cls": 429780480,
+      "outer": 2568859968,
+      "name_index": 6209
+    },
+    "camera": {
+      "address": 2105011424,
+      "internal_index": 206950,
+      "name": "WarPlayerCamera",
+      "number": 2,
+      "cls": 430249472,
+      "outer": 2568859968,
+      "name_index": 6711
+    },
+    "local_player": {
+      "address": 2186182688,
+      "internal_index": 168078,
+      "name": "WarLocalPlayer",
+      "number": 1,
+      "cls": 429913856,
+      "outer": 2188998112,
+      "name_index": 6419
+    },
+    "level": {
+      "address": 2568859968,
+      "internal_index": 172689,
+      "name": "PersistentLevel",
+      "number": 0,
+      "cls": 428523200,
+      "outer": 2568860976,
+      "name_index": 746
+    },
+    "outer_chain": [
+      {
+        "address": 2568859968,
+        "internal_index": 172689,
+        "name": "PersistentLevel",
+        "number": 0,
+        "cls": 428523200,
+        "outer": 2568860976,
+        "name_index": 746
+      }
+    ],
+    "view_target": 95434014848,
+    "timestamp_raw": "357c1b41",
+    "objects_header": "00003316000000005f540300f86f0300",
+    "names_header": "0000790400000000e3f60000a0860100",
+    "target_proof": {
+      "identity": {
+        "address": 95434014848,
+        "internal_index": 207058,
+        "name": "Pawn_COGMarcus",
+        "number": 1,
+        "cls": 429705152,
+        "outer": 2568859968,
+        "name_index": 5927
+      },
+      "cinematic": false,
+      "target_level": {
+        "address": 2568859968,
+        "internal_index": 172689,
+        "name": "PersistentLevel",
+        "number": 0,
+        "cls": 428523200,
+        "outer": 2568860976,
+        "name_index": 746
+      },
+      "world_info": {
+        "address": 2212528384,
+        "internal_index": 171514,
+        "name": "WorldInfo",
+        "number": 9,
+        "cls": 428700800,
+        "outer": 2568859968,
+        "name_index": 3531
+      }
+    }
+  },
+  "assembly_semantics": "Static reflected identity/offset certificate; timestamp advance and registry growth are allowed across assembly. Native observations independently revalidate slots, links and strict short timestamp brackets.",
+  "pid": 54628
+}

@@ -1,0 +1,81 @@
+{
+  "name": "cover-1111-r147-cloak-current",
+  "waiting_identity": {
+    "pid": 7792,
+    "creation_time": 134388099892083588,
+    "image": "c:\\users\\11\\.cache\\codex-runtimes\\codex-primary-runtime\\dependencies\\python\\python.exe"
+  },
+  "started_ns": 1794336389386852500,
+  "observations": [
+    {
+      "at_ns": 1794336389551747600,
+      "reason": "Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: gnasher-1111-c31-draw-observation, lancer-natural-v139-225928"
+    },
+    {
+      "at_ns": 1794336391661971500,
+      "reason": "Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: gnasher-1111-c31-draw-observation, lancer-natural-v139-225928"
+    },
+    {
+      "at_ns": 1794336393837386000,
+      "reason": "Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: gnasher-1111-c31-draw-observation, lancer-natural-v139-225928"
+    },
+    {
+      "at_ns": 1794336396011140600,
+      "reason": "Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: gnasher-1111-c31-draw-observation, lancer-natural-v139-225928"
+    },
+    {
+      "at_ns": 1794336398163098900,
+      "reason": "Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: gnasher-1111-c31-draw-observation, lancer-natural-v139-225928"
+    },
+    {
+      "at_ns": 1794336400323267600,
+      "reason": "Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: gnasher-1111-c31-draw-observation, lancer-natural-v139-225928"
+    },
+    {
+      "at_ns": 1794336402493893000,
+      "reason": "Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: gnasher-1111-c31-draw-observation, lancer-natural-v139-225928"
+    },
+    {
+      "at_ns": 1794336404627536300,
+      "reason": "Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: gnasher-1111-c31-draw-observation, lancer-natural-v139-225928"
+    },
+    {
+      "at_ns": 1794336406769327400,
+      "reason": "Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: gnasher-1111-c31-draw-observation, lancer-natural-v139-225928"
+    },
+    {
+      "at_ns": 1794336408899015200,
+      "reason": "Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: gnasher-1111-c31-draw-observation, lancer-natural-v139-225928"
+    },
+    {
+      "at_ns": 1794336411108498200,
+      "reason": "Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: gnasher-1111-c31-draw-observation, lancer-natural-v139-225928"
+    },
+    {
+      "at_ns": 1794336413291227800,
+      "reason": "Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: gnasher-1111-c31-draw-observation, lancer-natural-v139-225928"
+    },
+    {
+      "at_ns": 1794336415504537000,
+      "reason": "Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: gnasher-1111-c31-draw-observation, lancer-natural-v139-225928"
+    }
+  ],
+  "admitted": true,
+  "admitted_ns": 1794336417808564600,
+  "memory": {
+    "available_commit": 15315296256,
+    "available_physical": 12687237120,
+    "active_instances": [
+      "lancer-natural-v139-225928"
+    ]
+  },
+  "disk": {
+    "check": "disk_admission",
+    "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr",
+    "free_bytes": 89537654784,
+    "minimum_free_bytes": 4294967296,
+    "admitted": true
+  },
+  "runner_exit": 1,
+  "finished_ns": 1794336418402135100
+}

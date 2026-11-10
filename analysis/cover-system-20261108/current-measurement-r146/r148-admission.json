@@ -1,0 +1,89 @@
+{
+  "name": "cover-1111-r148-cloak-current",
+  "waiting_identity": {
+    "pid": 19924,
+    "creation_time": 134388102584586097,
+    "image": "c:\\users\\11\\.cache\\codex-runtimes\\codex-primary-runtime\\dependencies\\python\\python.exe"
+  },
+  "started_ns": 1794336659288145600,
+  "observations": [
+    {
+      "at_ns": 1794336659492717700,
+      "reason": "Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: hb-cloak-1111-024442, lancer-natural-v139-225928"
+    },
+    {
+      "at_ns": 1794336661681978200,
+      "reason": "Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: hb-cloak-1111-024442, lancer-natural-v139-225928"
+    },
+    {
+      "at_ns": 1794336664093218000,
+      "reason": "Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: hb-cloak-1111-024442, lancer-natural-v139-225928"
+    },
+    {
+      "at_ns": 1794336666563825400,
+      "reason": "Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: hb-cloak-1111-024442, lancer-natural-v139-225928"
+    },
+    {
+      "at_ns": 1794336669199339100,
+      "reason": "Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: hb-cloak-1111-024442, lancer-natural-v139-225928"
+    },
+    {
+      "at_ns": 1794336672093096900,
+      "reason": "Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: hb-cloak-1111-024442, lancer-natural-v139-225928"
+    },
+    {
+      "at_ns": 1794336674282933200,
+      "reason": "Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: hb-cloak-1111-024442, lancer-natural-v139-225928"
+    },
+    {
+      "at_ns": 1794336676870650300,
+      "reason": "Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: hb-cloak-1111-024442, lancer-natural-v139-225928"
+    },
+    {
+      "at_ns": 1794336679663432600,
+      "reason": "Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: hb-cloak-1111-024442, lancer-natural-v139-225928"
+    },
+    {
+      "at_ns": 1794336681877381200,
+      "reason": "Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: hb-cloak-1111-024442, lancer-natural-v139-225928"
+    },
+    {
+      "at_ns": 1794336684079754800,
+      "reason": "Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: hb-cloak-1111-024442, lancer-natural-v139-225928"
+    },
+    {
+      "at_ns": 1794336686269442100,
+      "reason": "Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: hb-cloak-1111-024442, lancer-natural-v139-225928"
+    },
+    {
+      "at_ns": 1794336688510384500,
+      "reason": "Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: hb-cloak-1111-024442, lancer-natural-v139-225928"
+    },
+    {
+      "at_ns": 1794336690691990900,
+      "reason": "Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: hb-cloak-1111-024442, lancer-natural-v139-225928"
+    },
+    {
+      "at_ns": 1794336692844900000,
+      "reason": "Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: hb-cloak-1111-024442, lancer-natural-v139-225928"
+    }
+  ],
+  "admitted": true,
+  "admitted_ns": 1794336694987638500,
+  "memory": {
+    "available_commit": 18907836416,
+    "available_physical": 16479932416,
+    "active_instances": [
+      "lancer-natural-v139-225928"
+    ]
+  },
+  "disk": {
+    "check": "disk_admission",
+    "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr",
+    "free_bytes": 87473930240,
+    "minimum_free_bytes": 4294967296,
+    "admitted": true
+  },
+  "runner_exit": 0,
+  "finished_ns": 1794336812914434100
+}

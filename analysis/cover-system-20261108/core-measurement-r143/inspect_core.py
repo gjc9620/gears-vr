@@ -18,8 +18,8 @@ def decode(text):
     w['legacy_age_only_proven']=bool(w['mode']==1 and not w['valid'] and w['non_age_valid'] and
         (w['expired'] or w['controllers_match']==0))
     return w
-def inspect(report):
-    native=json.loads((H/'native-build-result.json').read_text())['dll_sha256']
+def inspect(report,expected_native=None):
+    native=expected_native if expected_native is not None else json.loads((H/'native-build-result.json').read_text())['dll_sha256']
     spec=importlib.util.spec_from_file_location('core_pose_base',H.parent/'pose-probe-r126/inspect_pose_probe.py')
     base=importlib.util.module_from_spec(spec);spec.loader.exec_module(base)
     result=base.inspect(report,native);result['core_witness']=None

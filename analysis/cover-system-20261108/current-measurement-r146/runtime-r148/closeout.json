@@ -1,0 +1,93 @@
+{
+  "classification": "progress: current-Tick measurement completed and reached path attempt; original calls still refused",
+  "identities": {
+    "game_identity": {
+      "pid": 54628,
+      "creation_time": 134388103051301203,
+      "image": "j:\\gearsvr\\gears.of.war.reloaded.v1.0.1.3816947-p2p\\gears of war reloaded\\binaries_x64\\gowde-steam.exe"
+    },
+    "owner_identity": {
+      "pid": 44832,
+      "creation_time": 134388102957884329,
+      "image": "c:\\users\\11\\.cache\\codex-runtimes\\codex-primary-runtime\\dependencies\\python\\python.exe"
+    },
+    "xr_identity": {
+      "pid": 9880,
+      "creation_time": 134388103149022211,
+      "image": "c:\\users\\11\\.codex\\worktrees\\6dof-single\\gearsvr\\tools\\openxr-probe\\build-cover-1111-r148-cloak-current\\openxrposeprobe.exe"
+    },
+    "worker_identity": {
+      "pid": 35196,
+      "creation_time": 134388102956219331,
+      "image": "c:\\users\\11\\.cache\\codex-runtimes\\codex-primary-runtime\\dependencies\\python\\python.exe"
+    }
+  },
+  "exact_owned_processes_absent": true,
+  "native_sha256": "49f76f0135f8393ff7035afc51450401e484f4a10cf95c6c7511090c1201a472",
+  "current_tick_source_enabled": true,
+  "completed_measurements": 1,
+  "other_measurement_rejections": 257,
+  "other_measurement_status": "neutral; subpredicate unrecorded",
+  "same_C0_complete_and_query_key": true,
+  "query_requested": true,
+  "query_attempted": true,
+  "query_finished": true,
+  "query_code": 4,
+  "first_rejection": "session/component_roles",
+  "owner_guard": {
+    "calls": 7,
+    "failed_call": 7,
+    "stage": 8,
+    "name": "context",
+    "detail": 3,
+    "extra": 6,
+    "context_verdict": "source_age_expired",
+    "context_detail": 6
+  },
+  "session_guard": {
+    "calls": 0,
+    "failed_call": 0,
+    "stage": 0,
+    "name": "none",
+    "detail": 0,
+    "extra": 0
+  },
+  "query_elapsed_ns": 35286800,
+  "original_query_calls": 0,
+  "age_cause_bits": "not recorded: body/tracking versus equipment unproven",
+  "normal_cleanup_verified": true,
+  "cloak": {
+    "samples": 860,
+    "failures": []
+  },
+  "foreground": {
+    "samples": 534,
+    "owned_activation": false
+  },
+  "mute": {
+    "event": "mute_verification_summary",
+    "pid": 54628,
+    "initially_muted_sessions": 1,
+    "verified_muted_observations": 340,
+    "verify_failed": 0,
+    "target_shared_rejected": 0,
+    "shared_rejected_is_global_scan_count": true
+  },
+  "disk_before": {
+    "check": "disk_admission",
+    "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr",
+    "free_bytes": 87473856512,
+    "minimum_free_bytes": 4294967296,
+    "admitted": true
+  },
+  "frames": 321,
+  "reviewed_pages": 17,
+  "reviewed_contacts": 5,
+  "encode_exit": 0,
+  "world_coverage_verified": false,
+  "movement_authorized": false,
+  "cover_view_accepted": false,
+  "public_changed": false,
+  "headset_accepted": false,
+  "remaining": "Preserve same-call source_rejected cause bits for the private query prepare failure; keep all original age/identity/input gates. Do not rerun unchanged."
+}
