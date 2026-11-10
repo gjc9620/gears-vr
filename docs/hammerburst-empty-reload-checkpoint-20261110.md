@@ -99,3 +99,9 @@ HOD49912实际最终证据独立复核后，HB v6单次消费真实claim并运�
 在原HB after_tick同一短路顺序上补失败条件编号1无frame、2非running、3已cancel、4目标不符、5右手tracking、6当前装备拒绝、7已commit后need_source拒绝；只记录已有POD，最多16条，不额外读game/控制器或时钟，不授input。need_source同步记录自身已执行到的阶段，避免把旧准备成功stage当本次原因。原tx::revoke/release调用和先后关系保持，100ms/20ms/250ms、原回调及单writer未变。这是观测修补，不是已证实的少发修复。
 
 MSVC /W4 /WX /UNDEBUG实际编译并执行两个受影响夹具退出0：actual completion bridge297、actual event adapter213，包括新增六种首次失败条件和既有tracking条件断言，确认没有增加原shot调用。夹具game/engine/certificate/dispatcher有替身，不能算游戏或头显验证。结果与源码SHA保存analysis/hammerburst-20261108/continuation-rejection-r1/result.json。当前未构建新完整PG、未stage/实跑；既有已消费冻结候选完全未改，公共v71未改。下一步从冻结PG派生隔离构建，再按实际尾申请变更后的单次定位验证，目标仍完整普通空仓换弹回射。
+
+## 续段拒绝定位完整隔离构建与制品封存
+
+continuation-rejection-isolated-r1从manual-veto-isolated原2253文件逐项复制，仅替换两HB inl；原CMake flags原样重定向私有source/build，configure0、完整Release GearsPlayground编译实际terminal0。新PG SHA f48d50d4ab0b991f2b69979225b4b68624368657d8ce498d8b43b3d846c37f90。冻结product hammerburst-prepared-20261110-continuation13712-r1，prepared SHA cdbce75e7cdbfe263484c9d665f66f234cfad47979536741e75436ff14576c24，归档2270源/1338 Native源/6制品全SHA核过；Native806d及其他五制品未改。
+
+源对应核查首次过严要求全部文档/Python等同旧隔离树，实际六个差异为旧隔离构建后合法更新的文档和Python driver，故在任何copy/封存前停止；随后逐项确认全部C++/h/inl/CMake编译输入一致。新product继承settings-alias的普通空仓完整动作driver，未回退到隔离树旧Python。新event fixture也归档，实际编译输入仅两inl差异。没有改旧product或公共包，没有stage/run/claim/ticket。prepared-check.json保存精确结果。尚待按实际唯一尾绑定新执行计划和新一次性入口，request_ready=false，不复用旧消费许可；已向当前LS唯一持窗会话只发一次新批尾定位意向，不计游戏验收。
