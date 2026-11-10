@@ -1,0 +1,119 @@
+{
+  "game": {
+    "pid": 49732,
+    "creation_time": 134387976355816944,
+    "image": "j:\\gearsvr\\gears.of.war.reloaded.v1.0.1.3816947-p2p\\gears of war reloaded\\binaries_x64\\gowde-steam.exe"
+  },
+  "candidate": "df22727d9bc35578f36e39bcc111679054eacf59a2b6f346de08f27aea5547f6",
+  "operator_started": false,
+  "native_started": false,
+  "weapon_actions_exercised": false,
+  "error": "OSError(22, '\u53c2\u6570\u9519\u8bef\u3002', None, 87)",
+  "exception_traceback": "Traceback (most recent call last):\n  File \"C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\tools\\native-capture\\run_stereo_continuous.py\", line 655, in run_session\n    before_native_activation(ensure_startup_live)\n  File \"C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\tools\\vr-launcher\\launcher.py\", line 748, in before_activation\n    state['vr_gamepad']=backend.start_vr_gamepad(manifest,identity,owner,check_live)\n                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\solo-m1-20261028\\sim_entry.py\", line 132, in start_private_gamepad\n    return start_gamepad(manifest,identity,owner,check_live=check_live,simulator_operator=True)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\tools\\vr-launcher\\playground_loader.py\", line 108, in start_gamepad\n    gate=background_input.change(identity['pid'],'enable',identity['creation_time'])\n         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\tools\\game-io\\background_input.py\", line 156, in change\n    with FrozenThreads(pid, base) as frozen:\n         ^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\tools\\game-io\\background_input.py\", line 89, in __enter__\n    if not handle: raise c.WinError(c.get_last_error())\n                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nOSError: [WinError 87] \u53c2\u6570\u9519\u8bef\u3002\n",
+  "cleanup": {
+    "launcher_exit": 1,
+    "owned_game_absent": true,
+    "owned_children": {
+      "recorded": 0,
+      "remaining": []
+    },
+    "forced_termination": false,
+    "worker_error": null
+  },
+  "stop_exit": 1,
+  "playground_cleanup": {
+    "loaded": true,
+    "shutdown_code": 0,
+    "entry_restored": true,
+    "passed": true,
+    "reservation_only": true
+  },
+  "prime_cleanup": {
+    "cancelled": true,
+    "entry_restore_verified": true
+  },
+  "xr_exit_code": 1,
+  "native_cleanup_verified": false,
+  "foreground_samples": 732,
+  "cloak_samples": 734,
+  "foreground_violations": [],
+  "cloak_violations": [],
+  "audio": {
+    "enabled": true,
+    "game_identity": {
+      "pid": 49732,
+      "creation_time": 134387976355816944
+    },
+    "owner_identity": {
+      "pid": 35780,
+      "creation_time": 134387976281908804
+    },
+    "log": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\hb-cloak-1110-232025\\launcher-session.6edf4f1706b847a2b47938a8db850cb9.audio.jsonl",
+    "restored": true,
+    "startup": {
+      "ready_observed": true,
+      "ready_timeout_seconds": 15.0,
+      "waited_seconds": 0.014999999999417923,
+      "helper_exit_code": null
+    },
+    "exit_code": 0,
+    "event": "guard_cleanup",
+    "reason": "stop",
+    "matched": 1,
+    "muted": 0,
+    "restore_attempted": 0,
+    "restore_pending": 0,
+    "read_failed": 0,
+    "mute_failed": 0,
+    "scans": 54,
+    "endpoint_unavailable": 0,
+    "shared_rejected": 594,
+    "sessions_restored": 0,
+    "mute_verification": {
+      "event": "mute_verification_summary",
+      "pid": 49732,
+      "initially_muted_sessions": 1,
+      "verified_muted_observations": 54,
+      "verify_failed": 0,
+      "target_shared_rejected": 0,
+      "shared_rejected_is_global_scan_count": true
+    }
+  },
+  "verified_archive": [
+    {
+      "source": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\hb-cloak-1110-232025\\result.json",
+      "archive": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-49732-startup-text\\result.json",
+      "sha256": "1b3a0bcc87f33c16f2a812deff68d563853ffa6533823ccbb42c157797f88133"
+    },
+    {
+      "source": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\runtime\\continuous-stereo-49732-20261110-232042-ae276563.json",
+      "archive": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-49732-startup-text\\continuous-stereo-49732-20261110-232042-ae276563.json",
+      "sha256": "e742b567b6ba93155ca23f67e1616ae8b6bb096b48c046ecfb002d003a63a63a"
+    },
+    {
+      "source": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\hb-cloak-1110-232025\\launcher-session.json",
+      "archive": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-49732-startup-text\\launcher-session.json",
+      "sha256": "fd059bf711ea6f5983577e8905942445258c51e6f2ece51bb9bc84e1f8c2c1d0"
+    },
+    {
+      "source": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\hb-cloak-1110-232025\\isolated-done.json",
+      "archive": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-49732-startup-text\\isolated-done.json",
+      "sha256": "a6b3be90ae2d22f4ff6f78765cef918e42e44ef24498ff8258fa166fb3208934"
+    },
+    {
+      "source": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\hb-cloak-1110-232025\\manifest.json",
+      "archive": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-49732-startup-text\\manifest.json",
+      "sha256": "199b5b77684e29eb1741ff3229652e4da532ef1b260bfe248fb16c0c5e06d9b5"
+    },
+    {
+      "source": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\hb-cloak-1110-232025\\launcher-session.6edf4f1706b847a2b47938a8db850cb9.audio.jsonl",
+      "archive": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-49732-startup-text\\launcher-session.6edf4f1706b847a2b47938a8db850cb9.audio.jsonl",
+      "sha256": "93d2cd396c17fa7b0d44c3200819b731a6b3c6d9099a1f46a3dccdf8aba383a0"
+    }
+  ],
+  "background_input_file_observed_after_run_sha256": "33b3081278d8016f37b08608713e9747166d7458045cadd18d4d919a87ea0d0a",
+  "cause": "OpenThread failed after thread enumeration with WinError87. Thread-exit race is a hypothesis; no failed TID or closing snapshot was recorded, so it is not proven.",
+  "next": "Coordinate bounded shared startup-tool repair/evidence; do not rerun unchanged weapon test or weaken thread/code/input guards.",
+  "gameplay_accepted": false,
+  "physical_headset_accepted": false
+}

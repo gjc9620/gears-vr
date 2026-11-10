@@ -256,3 +256,11 @@ released-debt-r1为本次首因的私有修正，默认未启用公共功能：�
 `hammerburst_restore_chain.py`通过私有适配器的显式`--hammerburst-park-restore`开关，在原弹匣已打开、尚未抽出时接入。释放左手后独立typed before；按现有右肩slot3路径各一次真实Grip完成stow/redraw，要求新equipment回执及原HB对象；等待本次parked→rebound/display_ready→真实UP；同一实例重新读取枪体组件和矩阵，与原规划比较通过后才发出一次新左手magazine Grip。要求原stage3 opened恢复，再用现有独立typed after和七段实际restore记录验证库存、serial、accepted_begin/perfect_end/reward_start、不确定dispatch、原angle、新hold/UP/press身份。调用方还必须等新的to4原弹匣阶段后才继续原抽出/插入/关锁扣/返射。任何缺失、不同实例、不同mesh/矩阵或库存变化均停止，不输入重试。
 
 5项脚本回归通过（成功新记录、收枪缺失不再按键、两类mount错误拦截左手、独立库存改变拒绝、可选实际适配位置编译）；输入/引擎/回执为模拟，不是实际park/resume完成。默认当前连发复测不传该开关，未更改PG候选DLL或生产恢复策略。完整恢复动作、原UI、奖励/中断及画面仍待实际游戏验证。
+
+## released-debt-r1首次启动49732：动作前失败
+
+资源释放后free8,362,479,616bytes、仅一个其他自动实例，按现入口准备新hb-cloak-1110-232025；worker准入free7,461,855,232bytes。game49732/creation134387976355816944确实启动，operator未启动、Native未激活。原trace明确在before_native_activation→start_private_gamepad→background_input.change→FrozenThreads.__enter__→OpenThread处WinError87。不能把它算作连发修正通过/失败；候选仍未执行动作。线程枚举与OpenThread之间线程终止只是可能原因，当前没有失败TID/复核快照，不宣称已证实。
+
+launcher1/XR1/stop1实际失败保留，PG reservation-only清理shutdown0、入口恢复通过，prime取消/入口恢复；本方game/子进程已正常退出、无强杀，worker_error null；732前台/734CLOAK零违规。Native未启动，不能声称Native运行清理通过。音频目标初始muted1/verified54/verify_failed0/target_shared_rejected0，helper清理exit0。无动作录像。6份文本原件逐SHA归档，详见`runtime-49732-startup-failure.json`。
+
+已按主人“模拟器测试自己协调”的授权，将准确故障点与原证据发给既有统筹/共享工具维护会话，未新建聊天、未启用helper、未修改其共享文件或启动别枪测试。接下来先获得此处有证据的窄修复/处理，再用新唯一实例验证本枪候选；不绕过线程冻结/恢复、输入隔离或代码hash保护。
