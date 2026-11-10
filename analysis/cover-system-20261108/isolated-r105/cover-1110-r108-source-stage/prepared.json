@@ -1,0 +1,23 @@
+{
+  "instance": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\cover-1110-r108-source-stage",
+  "output": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\cover-1110-r108-source-stage\\cover-output",
+  "started": false,
+  "native_sha256": "66bf94166d40e2c449c928cc72689e346eef5b29ebb3b1edd15ff650669b2140",
+  "playground_sha256": "f8e6f3c2715b244e8250976c3eb1279cb306c2a50576e078f64bf8b23daf4807",
+  "xr_sha256": "16840b27dc40ebb489f93121758cb7bc0daa2700df046e508babbd50c578a7fc",
+  "manifest_sha256": "07a5264b52f028f60a5334ac5b412983dbfa31b60a7cc4bf45359d3373f06d02",
+  "config_sha256": "de5b8e002f50265e7cb5df9e3bc0247e5afc18316f6f0700e61df6456a9498e4",
+  "input_reader_sha256": "90bac00ba39829e50126698f9cbae5a80ab2ca69445cda096136939488f87081",
+  "preparation_source_sha256": "c3d72dbf715bfa7e4a8c96d1abbc99688c6c9021a63f3cd5598be93fe78ed126",
+  "isolation_source_sha256": "94b656660f364f5da6eaa0d2485687365e9efe5ab7257202e16f276f78cb7c66",
+  "input_reader_source_sha256": "5104fe1fdf371d9e2f3493cea6387d940714857033c66682a59b05039f5cf738",
+  "openxr_loader_sha256": "66946ea6e9cc2649e299ec412521c5eafe56c635d05055097fe4db81e11932df",
+  "render_scale": 0.4,
+  "prepared_at_ns": 1794307044140816000,
+  "operator_migration_complete": false,
+  "runtime_admission_consumed": false,
+  "collision_verified": false,
+  "movement_authorized": false,
+  "gameplay_accepted": false,
+  "remaining": "Migrate existing ordinary cover operator and exact-owned paired recording, then one actual source-stage query; normal private stop required."
+}

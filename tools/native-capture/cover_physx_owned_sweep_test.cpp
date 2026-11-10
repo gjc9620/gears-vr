@@ -156,6 +156,12 @@ int main(int argc,char**argv){
             check(engine->sweep_all(source(),box,delta,q::StreamLimits{},read,guard,*output,&collider_input,&parts_input)==q::Code::queried&&output->raw.hit_count==q::max_stream_hits&&output->owners.back().actor==actor1,"all1024 owners including final record");
             hit_count=2;q::Capsule cap{{0,0,0},{0,0,1},.5f};
             check(engine->sweep_all(source(),cap,delta,q::StreamLimits{},read,guard,*output,&collider_input,&parts_input)==q::Code::queried,"capsule path uses same ownership transaction");
+            const auto before_long=std::make_unique<q::AllSweepOwners>(*output);const auto calls_before_long=original_calls;
+            check(engine->sweep_all(source(),cap,{101,0,0},q::StreamLimits{},read,guard,*output,&collider_input,&parts_input)==q::Code::request,
+                  "primed ownership capsule cast rejects beyond vertex cutoff");
+            check(original_calls==calls_before_long&&equal(*output,*before_long)&&!engine->pending(),"long ownership request neither dispatches nor overwrites completed evidence");
+            check(engine->sweep_all(source(),cap,{60,80,0},q::StreamLimits{},read,guard,*output,&collider_input,&parts_input)==q::Code::queried&&original_calls==calls_before_long+1,
+                  "exact cutoff retains the existing capsule ownership transaction");
             check(!engine->pending()&&engine->close(),"normal ownership query releases active scope");}
         const std::array<std::pair<Mode,q::Code>,13> failures{{{Mode::unsupported,q::Code::owner_unsupported},{Mode::links,q::Code::owner_links},
             {Mode::read,q::Code::owner_read},{Mode::source,q::Code::changed},{Mode::malformed,q::Code::callback_rejected},

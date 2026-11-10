@@ -1,0 +1,28 @@
+[
+  {
+    "name": "cover_physx_query",
+    "build_exit": 0,
+    "source_sha256": "151bde56400cd6b48398ef9acb4436b98f031a295611e25bc05e140fe34bbb2f",
+    "command": [
+      "E:/vs/VC/Tools/MSVC/14.51.36231/bin/Hostx64/x64/cl.exe",
+      "/nologo",
+      "/std:c++17",
+      "/O2",
+      "/W4",
+      "/WX",
+      "/EHsc",
+      "/UNDEBUG",
+      "/MT",
+      "/IC:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\tools\\third-party\\minhook\\include",
+      "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\tools\\native-capture\\cover_physx_query_test.cpp",
+      "/Fo:C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\sweep-research-r107\\before-v1\\cover_physx_query.obj",
+      "/sourceDependencies",
+      "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\sweep-research-r107\\before-v1\\cover_physx_query-dependencies.json",
+      "/Fe:C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\sweep-research-r107\\before-v1\\cover_physx_query.exe",
+      "/link",
+      "bcrypt.lib",
+      "psapi.lib"
+    ],
+    "test_exit": 1
+  }
+]

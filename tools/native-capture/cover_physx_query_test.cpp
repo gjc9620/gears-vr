@@ -1,4 +1,5 @@
 #include "cover_physx_query.h"
+#include <memory>
 #include <cstdio>
 #include <fstream>
 #include <limits>
@@ -118,7 +119,7 @@ static void code_tests(char const* path){
     for(auto const& chunk:c::chunks){bytes+=chunk.size;auto& last=m.blocks[base][chunk.rva+chunk.size-1];last^=1;
         check(!s::code_current(base,size,read,q::detail::digest),"last byte mutation including cold tail");last^=1;
         check(!s::code_current(base,chunk.rva+chunk.size-1,read,q::detail::digest),"truncated code image");}
-    check(bytes==16705,"retained worker, conversion/constants, sphere overlap and four traced sweep consumers");
+    check(bytes==17916,"retained query consumers plus sphere-triangle vertex branch and cutoff constant");
     for(unsigned i=1;i<=c::chunks.size();++i){m.calls=0;m.fail_at=i;check(!s::code_current(base,size,read,q::detail::digest),"each code read failure");}
     m.fail_at=0;
     check(!s::code_current(base,size,read,[](void const*,std::size_t,s::Digest&){return false;}),"hash failure");
@@ -161,6 +162,11 @@ static void query_tests(){
     check(!q::detail::valid(cap),"negative capsule native midpoint addition overflow rejected");
     cap.first.x=maximum*.49f;cap.second.x=cap.first.x;
     check(q::detail::valid(cap),"finite native midpoint retains otherwise valid geometry");
+    check(q::detail::sweep_motion(capsule,{60,80,0})&&q::detail::sweep_motion(capsule,{-100,0,0}),"exact vertex cutoff distance remains available");
+    check(q::detail::sweep_motion(capsule,{std::nextafter(100.f,0.f),0,0})&&
+          !q::detail::sweep_motion(capsule,{-std::nextafter(100.f,200.f),0,0}),"cutoff preserves inside value and rejects either direction outside");
+    cap=capsule;cap.second.z=cap.first.z+200;
+    check(q::detail::valid(cap)&&q::detail::sweep_motion(cap,{1,0,0}),"translation cutoff does not shorten valid capsule geometry");
     bad=box;bad.centre.x=maximum;bad.half.x=maximum;check(!q::detail::valid(bad),"box bound overflow rejected");
     bool hit=false;q::Sweep result{};expected_shape=&box;expected_delta=&delta;
     check(q::detail::overlap(reinterpret_cast<std::uintptr_t>(&fake_overlap),0x180000,box,hit)&&hit,"box overlap ABI");
@@ -185,6 +191,17 @@ static void query_tests(){
     check(queries.sweep(input,box,delta,read,guard,result)==q::Code::unavailable&&result.raw_count==77,"unprimed sweep keeps output");
     check(queries.sweep(input,capsule,delta,read,guard,result)==q::Code::unavailable,"unprimed capsule sweep");
     check(queries.sweep(input,box,q::Vector{},read,guard,result)==q::Code::request,"zero sweep not occupancy");
+    // Original capsule -> triangle -> vertex consumer has a fixed 100-unit
+    // candidate cutoff. Do not accept a longer request as a complete raw cast.
+    auto streamed=std::make_unique<q::AllSweep>();streamed->raw_count=77;
+    for(auto const movement:{q::Vector{std::nextafter(100.f,200.f),0,0},q::Vector{60,std::nextafter(80.f,100.f),0}}){
+        const auto old=result;const auto old_stream=*streamed;
+        check(queries.sweep(input,capsule,movement,read,guard,result)==q::Code::request,"capsule cast above vertex cutoff rejects before source read");
+        check(!std::memcmp(&old,&result,sizeof result),"rejected long capsule cast preserves output");
+        check(queries.sweep_all(input,capsule,movement,q::StreamLimits{},read,guard,*streamed)==q::Code::request,"streamed capsule cast above vertex cutoff rejects");
+        check(!std::memcmp(&old_stream,streamed.get(),sizeof old_stream),"rejected long streamed cast preserves output");
+    }
+    check(queries.sweep(input,box,{101,0,0},read,guard,result)==q::Code::unavailable,"capsule-specific cutoff does not narrow box request");
     check(!reads&&!guards&&!queries.pending()&&queries.close(),"unavailable never reads target or acquires debt");
     check(!GetModuleHandleW(L"PhysXCore.dll"),"original DLL not loaded before prime");
     check(!queries.prime()&&!GetModuleHandleW(L"PhysXCore.dll"),"prime never loads missing module");

@@ -1,0 +1,43 @@
+{
+  "classification": "progress",
+  "native_sha256": "5ef02da97a29906d480e09ddfedfefe3795e5a8052229328b2d9d88fe3de5760",
+  "changed_production_files": [
+    "tools/native-capture/cover_physics_query_live.inl",
+    "tools/native-capture/cover_physx_query.h",
+    "tools/native-capture/cover_physx_query_code.h"
+  ],
+  "project_dependencies": 400,
+  "flags_unchanged": true,
+  "outside_worktree_dependencies": [],
+  "before_query_failures": 4,
+  "before_session_failures": 2,
+  "preserved_fixture_compile_failure": "session-before-v2: AllSweep mistaken raw member; corrected before behavioral reproduction",
+  "final_checks": {
+    "query": 210,
+    "sphere_overlap": 36,
+    "owned_sweep": 127,
+    "session": 96
+  },
+  "native_vertex_cutoff": 100.0,
+  "translation_only": true,
+  "long_query_clamped": false,
+  "long_path_support_complete": false,
+  "sphere_sweep_enabled": false,
+  "zero_capsule_enabled": false,
+  "original_dll_executed": false,
+  "game_started": false,
+  "xr_started": false,
+  "movement_authorized": false,
+  "headset_accepted": false,
+  "goal_complete": false,
+  "automatic_start_paused": true,
+  "r108_prepared_only": true,
+  "r108_claim_absent": true,
+  "provider_closed": true,
+  "native_build_receipt_sha256": "c2c67d6cb4bd7e629d24f5dc625a0dea5ae0ab2dab9792ffeeb45b5d9e9765c8",
+  "evidence": {
+    "findings.json": "6e9758ac0f0691d9e114c1a5a99f50359690d07a6d060486579a5993c8f14605",
+    "cutoff-certificate.json": "79ace74aaa28b34c6b59d0fbcddd27197543c037f696f6feb174e37b7ff0c04a",
+    "vertex-cutoff-witness.json": "afa933912686707f4120badc7de15af6ac894ca9593353a29a1ebb2f0ca64c65"
+  }
+}

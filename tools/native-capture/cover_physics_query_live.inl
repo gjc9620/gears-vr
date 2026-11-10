@@ -113,7 +113,7 @@ public:
     }
     template<class Shape,class Read,class Guard> q::Code sweep(weapon_hand_scene_binding::Binding const& actor,
         gears_cover_pose_phase::Metadata const& metadata,Shape const& shape,q::Vector const& delta,Read read,Guard guard,q::Sweep& output)noexcept{
-        if(q::source::aliases(&output,sizeof output,&delta,sizeof delta)||!q::detail::motion(delta))return q::Code::request;
+        if(q::source::aliases(&output,sizeof output,&delta,sizeof delta)||!q::detail::sweep_motion(shape,delta))return q::Code::request;
         if(q::source::aliases(&output,sizeof output,this,sizeof *this)||q::source::aliases(&output,sizeof output,&actor,sizeof actor)||
            q::source::aliases(&output,sizeof output,&metadata,sizeof metadata)||q::source::aliases(&output,sizeof output,&shape,sizeof shape))return q::Code::request;
         const auto movement=delta;q::Sweep result{};
@@ -128,7 +128,7 @@ public:
         gears_cover_pose_phase::Metadata const& metadata,Shape const& shape,q::Vector const& delta,q::StreamLimits const& limits,
         Read read,Guard guard,Output& output)noexcept{
         static_assert(std::is_same_v<Output,q::AllSweep>||std::is_same_v<Output,q::AllSweepOwners>);
-        if(!q::detail::motion(delta)||!q::detail::stream_limits(limits)||q::source::aliases(&output,sizeof output,&delta,sizeof delta)||
+        if(!q::detail::sweep_motion(shape,delta)||!q::detail::stream_limits(limits)||q::source::aliases(&output,sizeof output,&delta,sizeof delta)||
            q::source::aliases(&output,sizeof output,&limits,sizeof limits)||q::source::aliases(&output,sizeof output,this,sizeof *this)||
            q::source::aliases(&output,sizeof output,&actor,sizeof actor)||q::source::aliases(&output,sizeof output,&metadata,sizeof metadata)||
            q::source::aliases(&output,sizeof output,&shape,sizeof shape))return q::Code::request;

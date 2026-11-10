@@ -1932,3 +1932,20 @@ cover-1110-r105-source-stage实际调用独立工具start成功返回worker57040
 在原r104冻结源码上仅覆盖上述一个生产头文件完成Native编译，SHA256 66bf94166d40e2c449c928cc72689e346eef5b29ebb3b1edd15ff650669b2140；400项目依赖、无外部工作树依赖及原开关一致均通过。不是整个当前多武器脏树集成，旧r104／r105b运行候选未改、未stage／交付。四段证书是增量原代码完整性检查，不是全部传递调用图或几何正确性认证。
 
 证据：analysis/cover-system-20261108/sweep-research-r106/verification.json、findings.json、certificate-ranges.json、四函数原始记录及before-v1／after-v1。实际r102 Code4首次拒绝层仍未知；恢复运行前继续遵循最新后台／静音及启动授权。完整CV-01–24／AC-01–22、当前占用／连续身体路径、实际C0提交／视图／命中合流、头肩遮挡、联合战斗及头显验收仍未完成，publicv71和工程25%保持。
+
+
+## r107：原胶囊扫掠顶点100单位分支与请求域修复（2026-11-10，离线）
+
+上一轮四段代码证书修复属于progress。本轮继续原PhysXCore 22051aa7…ddd48的离线只读分析，新增CC030／CC820／D7E30／CF9E0完整ASM与伪码。CC820先按原面法向与移动方向点积<=0保留面，再为每面生成7个三角面及原索引，并按需要反向生成面绕序；CC030由原box角点表构造12面后交给CC820。因此后续生成面换绕序不会补回已被拒绝的原面。
+
+D7E30的顶点分支在D823B加载RVA22A510常量，D824C／D826C可拒绝投影下界或候选距离超限。原PE节字节0000c842精确解为float32的100；这是原查询参数的native单位，不将其自动宣称为人物世界100cm。独立算术见证：前方顶点投影150、半径1、垂距平方0.5，理论首次相交约149.292892、原调用者请求200，但该顶点分支会在固定100下界检查拒绝。此为绑定原ASM的分析推导，不是执行原DLL或完整原三角面调用重放；当前所有目标类型与世界实际分派仍待证实。
+
+生产QueryEngine新增形状专用sweep_motion：胶囊closest及all-hit平移长度超100即原子拒绝Code::request，既不截短，也不将其记作miss；同时按double长度和原float平方和核对边界。Box输入域不因此收窄，胶囊自身轴长也不受此平移上限裁短；Sphere sweep／零轴Capsule仍未开放。外层Session的closest／stream入口同样先核对，避免先进入typed来源读取再拒绝。完整长路径仍须在共同身体路径层逐段处理和取得当前世界／终点占用证据，本修复不将较短请求冒充原整条路径成功。
+
+先用旧QueryEngine复现4项超范围回归失败，再修复；外层新增回归首次因夹具AllSweep误写raw成员编译失败，保留session-before-v2，改正夹具后旧Session的2项行为回归确实失败，之后接通外层检查。最终严格检查退出均0：query210、sphere overlap36、完整命中归属127、Session96。覆盖100边界、两侧方向、三维长度、nextafter边界、长胶囊短平移、Box域保持、输出不变，以及已prime的真实QueryEngine/Host原调用缝处拒绝不dispatch。Host与只读原文件数据明确分开，无原DLL载入／执行。
+
+原代码核验再绑定D7E30完整1207字节及常量4字节，28段共17916字节；不是完整传递图证书。基于r106冻结树，最终只覆盖query.h／query_code.h／physics_query_live.inl三个生产文件编译Native v2成功：SHA256 5ef02da97a29906d480e09ddfedfefe3795e5a8052229328b2d9d88fe3de5760，400项项目依赖、无外部工作树依赖、原开关保持。中间v1的081b1d23制品及原日志保留，未stage或交付任何本轮制品。
+
+运行安排如实分开：期间收到修复版后台入口恢复授权后，仅重新prepare了cover-1110-r108-source-stage（仍使用r106 Native66bf9416、原PG／XR并补齐loader），派生输入live14项离线检查通过；未调用run、未创建claim或launcher-session。随后用户再次报告前台问题并撤回恢复授权；现automatic-runtime-pause.json仍为true，没有新game／XR启动或重试。自有入口也在消费claim前以及运行观察循环检查该标记，若运行中出现则走本方正常stop，不删除标记、不移动用户窗口、不抢回焦点。r108旧准备材料仅作为未运行记录保留，不据其认为后台已验收。
+
+四函数provider已正常close，保留本次REA快照供后续精确读取，未修改原文件。证据：analysis/cover-system-20261108/sweep-research-r107/verification.json、vertex-cutoff-witness.json、cutoff-certificate.json及原反例／最终检查；独立准备另在isolated-r105/cover-1110-r108-source-stage/。r102来源Code4首拒绝仍待实际观测。完整CV-01–24／AC-01–22、连续身体路径／当前占用、实际C0提交与视图／命中合流、头肩遮挡、联合战斗及实体头显仍未完成；publicv71／工程25%不变，目标active。

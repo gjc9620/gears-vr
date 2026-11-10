@@ -30,10 +30,10 @@
     "Do not silently clamp long requested motion and claim the full path passed. Full cover motion still requires complete path handling and current world evidence.",
     "Backface rejection occurs before extrusion; later winding correction of generated triangles does not restore rejected original faces."
   ],
-  "production_sweep_domain_changed": false,
+  "production_sweep_domain_changed": true,
   "movement_authorized": false,
   "provider_closed": true,
-  "runtime_pause_lifted_only_for_repaired_background_entry": true,
+  "runtime_pause_lifted_only_for_repaired_background_entry": false,
   "evidence": {
     "box-triangles.json": {
       "sha256": "d9b1b2d0d429b8b4fa78bfe74b1b2c1532aebed76cc3818664545df34456ef00",
@@ -51,5 +51,7 @@
       "sha256": "7d8c226e564b8ecff4f1462ccee34214c78155dcbb28c9ae81a01f67f881fcfb",
       "evidence_id": "ev_d727a103e83c0d8828193b9c7b64ae8761cdc646337b3bcdc5b9ee59a3f2d777"
     }
-  }
+  },
+  "current_runtime_direction": "New automatic starts paused again by owner; automatic-runtime-pause.json is present; r108 prepared only, not launched.",
+  "repair": "Capsule closest/all-hit requests exceeding the observed native 100-unit vertex distance domain reject atomically; no clamp or partial-path success. Box motion and capsule geometric segment length unchanged. Full path planning/coverage still unimplemented."
 }

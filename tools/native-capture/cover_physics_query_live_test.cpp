@@ -136,6 +136,12 @@ int main(){
     {auto owner=std::make_unique<HostSession>();auto all=std::make_unique<q::AllSweep>();C(owner->start(true,true));
         C(owner->sweep_all(actor,physics_expected,test_box,delta,q::StreamLimits{},source_read,guard,*all)==q::Code::queried&&all->hit_count==2&&all->reports==1&&all->hits[1].bytes.back()==0x78);
         q::Capsule cap{{0,0,0},{0,0,1},.5f};C(owner->sweep_all(actor,physics_expected,cap,delta,q::StreamLimits{},source_read,guard,*all)==q::Code::queried);
+        unsigned forbidden_guards{};auto forbidden_guard=[&](){++forbidden_guards;return false;};
+        const auto before_long_calls=query_calls;const auto saved_count=all->raw_count;swept.raw_count=99;
+        C(owner->sweep(actor,physics_expected,cap,{101,0,0},source_read,forbidden_guard,swept)==q::Code::request&&
+          !forbidden_guards&&query_calls==before_long_calls&&swept.raw_count==99);
+        C(owner->sweep_all(actor,physics_expected,cap,{101,0,0},q::StreamLimits{},source_read,forbidden_guard,*all)==q::Code::request&&
+          !forbidden_guards&&query_calls==before_long_calls&&all->raw_count==saved_count);
         all->raw_count=99;stream_truncated=true;
         C(owner->sweep_all(actor,physics_expected,test_box,delta,q::StreamLimits{},source_read,guard,*all)==q::Code::truncated&&all->raw_count==99&&owner->enabled());
         const auto calls=query_calls;C(owner->sweep_all(actor,physics_expected,test_box,delta,q::StreamLimits{0,1},source_read,guard,*all)==q::Code::request&&query_calls==calls);

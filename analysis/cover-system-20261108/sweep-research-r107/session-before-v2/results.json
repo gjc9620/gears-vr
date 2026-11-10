@@ -1,0 +1,27 @@
+[
+  {
+    "name": "cover_physics_query_live",
+    "build_exit": 2,
+    "source_sha256": "874dd0caf48b84b3410f99a6193ab58f226e5e0a1fc1b15376191a5119cb1430",
+    "command": [
+      "E:/vs/VC/Tools/MSVC/14.51.36231/bin/Hostx64/x64/cl.exe",
+      "/nologo",
+      "/std:c++17",
+      "/O2",
+      "/W4",
+      "/WX",
+      "/EHsc",
+      "/UNDEBUG",
+      "/MT",
+      "/IC:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\tools\\third-party\\minhook\\include",
+      "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\tools\\native-capture\\cover_physics_query_live_test.cpp",
+      "/Fo:C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\sweep-research-r107\\session-before-v2\\cover_physics_query_live.obj",
+      "/sourceDependencies",
+      "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\sweep-research-r107\\session-before-v2\\cover_physics_query_live-dependencies.json",
+      "/Fe:C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\sweep-research-r107\\session-before-v2\\cover_physics_query_live.exe",
+      "/link",
+      "bcrypt.lib",
+      "psapi.lib"
+    ]
+  }
+]

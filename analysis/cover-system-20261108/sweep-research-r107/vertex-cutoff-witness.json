@@ -1,0 +1,42 @@
+{
+  "scope": "Analyst-derived float32 vertex-branch arithmetic; original binary never loaded or executed. Not a full triangle/native call replay.",
+  "evidence_id": "ev_f3e0401f88d5a44b3ce3241929600d1869582fc13141d36ddb2c58b52f561a56",
+  "origin": [
+    0.0,
+    -0.5,
+    -0.5
+  ],
+  "triangle": [
+    [
+      150.0,
+      0.0,
+      0.0
+    ],
+    [
+      150.0,
+      0.0,
+      10.0
+    ],
+    [
+      150.0,
+      10.0,
+      0.0
+    ]
+  ],
+  "direction": [
+    1.0,
+    0.0,
+    0.0
+  ],
+  "radius": 1.0,
+  "vertex_projection": 150.0,
+  "vertex_distance2": 22500.5,
+  "perpendicular2": 0.5,
+  "theoretical_vertex_entry": 149.2928924560547,
+  "caller_requested_distance": 200.0,
+  "retained_branch_rejects_at_lower_bound": true,
+  "cutoff_native_units": 100.0,
+  "full_dispatch_applicability_certified": false,
+  "movement_authorized": false,
+  "source_sha256": "2208a9b13953a83061aa7987064dd211e698c1f65bda5ef5ef48f7446f98bfe0"
+}

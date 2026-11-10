@@ -118,6 +118,18 @@ inline bool valid(Capsule const& c) noexcept {
     }
     return true;
 }
+inline bool sweep_motion(Box const&,Vector delta) noexcept {return motion(delta);}
+inline bool sweep_motion(Capsule const&,Vector delta) noexcept {
+    if(!motion(delta))return false;
+    // Original D7E30's vertex branch rejects candidate distances above the
+    // authenticated 100-unit constant even if the public cast is longer.
+    // Reject the entire out-of-domain request, never clamp it or report miss.
+    // This bound is on translation, NOT the capsule's own segment length.
+    constexpr double limit=gears_cover_physx_query_code::capsule_vertex_limit;
+    const double length2=double(delta.x)*delta.x+double(delta.y)*delta.y+double(delta.z)*delta.z;
+    const float xx=delta.x*delta.x,yy=delta.y*delta.y,zz=delta.z*delta.z;
+    return length2<=limit*limit&&(xx+yy)+zz<=float(limit*limit);
+}
 template<class Shape> bool overlap(std::uintptr_t fn,std::uintptr_t scene,Shape const& shape,bool& result) noexcept {
     using Function=bool(__fastcall*)(std::uintptr_t,Shape const*,std::uint32_t,std::uint32_t,void const*);
     __try {result=reinterpret_cast<Function>(fn)(scene,&shape,3,UINT32_MAX,nullptr);return true;}
@@ -315,7 +327,7 @@ public:
         if(source::aliases(&output,sizeof output,&s,sizeof s)||source::aliases(&output,sizeof output,&shape,sizeof shape)||
            source::aliases(&output,sizeof output,&delta,sizeof delta)||source::aliases(&output,sizeof output,this,sizeof *this))return Code::request;
         const source::Source request=s;const Shape geometry=shape;const Vector movement=delta;
-        if(!detail::valid(shape)||!detail::motion(delta))return Code::request;
+        if(!detail::valid(shape)||!detail::sweep_motion(geometry,movement))return Code::request;
         bool expected=false;if(!active_.compare_exchange_strong(expected,true))return Code::reentrant;Finish finish{active_};
         try{const auto ready=begin(request,read,guard);if(ready!=Code::queried)return ready;
             if(!source::same(request,s)||std::memcmp(&geometry,&shape,sizeof shape)||std::memcmp(&movement,&delta,sizeof delta))return Code::changed;
@@ -342,7 +354,7 @@ public:
         if constexpr(std::is_same_v<Output,AllSweep>){if(component_source||component_catalog)return Code::request;}
         const auto request=s;const Shape geometry=shape;const Vector movement=delta;const auto budget=limits;
         const auto collider_key=component_source?*component_source:gears_cover_physx_collider::Source{};
-        if(!detail::valid(geometry)||!detail::motion(movement)||!detail::stream_limits(budget))return Code::request;
+        if(!detail::valid(geometry)||!detail::sweep_motion(geometry,movement)||!detail::stream_limits(budget))return Code::request;
         if constexpr(std::is_same_v<Output,AllSweepOwners> &&
             (!std::is_invocable_r_v<bool,Guard&,gears_cover_physx_asset_actors::Snapshot const&>||
              !std::is_invocable_r_v<bool,Guard&,gears_cover_physx_collider::Snapshot const&>))return Code::source;

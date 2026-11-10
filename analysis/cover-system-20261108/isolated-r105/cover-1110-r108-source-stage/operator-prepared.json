@@ -1,0 +1,25 @@
+{
+  "instance": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\cover-1110-r108-source-stage",
+  "operator": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\cover-1110-r108-source-stage\\cover-output\\operator.py",
+  "operator_sha256": "0a236564765e1171cd32635978b60d4a94df999eaacec887754bb89cad2a4a98",
+  "source_sha256": {
+    "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\solo-m1-20261028\\cover_boundary_chain.py": "06f1655206f2a1c2ed61061f453106619f998e2be6cc02d7c485e75450909254",
+    "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\solo-m1-20261028\\equipment_controller_chain.py": "4feb29a57dcbc1a6616197df8bff90f162909e379d0e54cff1f4b3f9447dc39c",
+    "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\solo-m1-20261028\\run_menu_firstperson_check.py": "a032e1b3e06a9159aab6090aa3c041db0a44c189dc1e64d7e163e7de440016a8"
+  },
+  "wrapper_source_sha256": "f45f2dad8b17f68bc7f17efa078217829dd9ae7e8c0c1efcb8ba30f996a289d4",
+  "generator_sha256": "d71ab560c7bb8efa6d2b3cf331f6ca8c6ec174a097c8fcf3d9822aae416111f8",
+  "syntax_checked": true,
+  "shared_instance_references": 0,
+  "input_reader": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\cover-1110-r108-source-stage\\cover-output\\read_private_input.py",
+  "input_reader_sha256": "90bac00ba39829e50126698f9cbae5a80ab2ca69445cda096136939488f87081",
+  "actual_input_or_recording_started": false,
+  "gameplay_accepted": false,
+  "flags": [
+    "--cover-eye-observation",
+    "--equipment-chain",
+    "--playground-ready",
+    "--dual-output"
+  ],
+  "remaining": "Launch/stop owner and one-shot source-stage environment still require explicit r105 runner."
+}

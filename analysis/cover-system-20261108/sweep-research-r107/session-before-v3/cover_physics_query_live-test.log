@@ -1,0 +1,3 @@
+FAIL 142: owner->sweep(actor,physics_expected,cap,{101,0,0},source_read,forbidden_guard,swept)==q::Code::request&& !forbidden_guards&&query_calls==before_long_calls&&swept.raw_count==99 reason=ready stage=ready field=RootBodyIndex
+FAIL 144: owner->sweep_all(actor,physics_expected,cap,{101,0,0},q::StreamLimits{},source_read,forbidden_guard,*all)==q::Code::request&& !forbidden_guards&&query_calls==before_long_calls&&all->raw_count==saved_count reason=ready stage=ready field=RootBodyIndex
+cover_physics_query_live: 96 checks, 2 failures; dispatch/module are Host seams, no original call

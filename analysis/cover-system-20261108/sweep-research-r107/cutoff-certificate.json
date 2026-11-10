@@ -1,0 +1,21 @@
+{
+  "image_sha256": "22051aa75312344a824a5f7e29c6375fec3a90df50cbeff6152f0e6c3afddd48",
+  "evidence_id": "ev_f3e0401f88d5a44b3ce3241929600d1869582fc13141d36ddb2c58b52f561a56",
+  "records": [
+    {
+      "rva": "0xd7e30",
+      "bytes": 1207,
+      "file_offset": 881200,
+      "sha256": "3405ad9c1e3d30a095460bf9f1dadb12df91299330dcf7a87e468c7adc1690b3"
+    },
+    {
+      "rva": "0x22a510",
+      "bytes": 4,
+      "file_offset": 2265872,
+      "sha256": "2238f30df488055daf5e8f362cf904e370011a172d20df193c1b7ae8e5db8e01"
+    }
+  ],
+  "total_chunks": 28,
+  "total_bytes": 17916,
+  "full_path_certified": false
+}

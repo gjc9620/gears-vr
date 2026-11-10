@@ -17,6 +17,12 @@ OUTPUT = SELECTED / 'cover-output'
 TOOLS = ROOT / 'tools/multi-instance/isolated_sim.py'
 
 
+def require_start_allowed():
+    pause = ROOT / 'tools/multi-instance/automatic-runtime-pause.json'
+    if pause.exists() and load(pause).get('automatic_start_disabled') is True:
+        raise RuntimeError('Owner paused automatic game/XR activity; no new input or start, stop our active owner normally')
+
+
 def main():
     global NAME, SELECTED, OUTPUT
     parser = argparse.ArgumentParser(description=__doc__)
@@ -30,6 +36,7 @@ def main():
     OUTPUT = SELECTED / 'cover-output'
     if Path.cwd().resolve() != ROOT or sys.flags.optimize:
         raise RuntimeError('Use --run in the canonical worktree without optimization')
+    require_start_allowed()
     prepared = load(HERE / NAME / 'prepared.json')
     action = load(HERE / NAME / 'operator-prepared.json')
     for path, expected in ((SELECTED/'manifest.json', prepared['manifest_sha256']),
@@ -80,6 +87,7 @@ def main():
         except (FileNotFoundError, PermissionError, json.JSONDecodeError):
             return {}, {}
     def check_background(state, session):
+        require_start_allowed()
         pid = ctypes.c_uint32()
         user.GetWindowThreadProcessId(user.GetForegroundWindow(), ctypes.byref(pid))
         own = [state.get('game_identity'), state.get('owner_identity'), session.get('xr_identity'), result.get('operator_identity')]

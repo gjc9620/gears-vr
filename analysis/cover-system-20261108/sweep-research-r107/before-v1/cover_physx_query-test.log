@@ -1,0 +1,5 @@
+FAIL capsule cast above vertex cutoff rejects before source read
+FAIL streamed capsule cast above vertex cutoff rejects
+FAIL capsule cast above vertex cutoff rejects before source read
+FAIL streamed capsule cast above vertex cutoff rejects
+CoverPhysXQuery checks=201 failed=4 original-executed=false game-started=false
