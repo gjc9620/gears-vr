@@ -2405,3 +2405,15 @@ Native continuous native_started false，operator未启动、projection0、未�
 r154已准备绑定10项启动/anchor来源，操作导入检查0；等待活句柄持续观察名额占用，外层见名额后，原共享first_admission再次争用，60秒届满typed ResourceUnavailable退出1、stdout空。无worker.json/log、launcher-session和game，normal_cleanup_required false、verified false，原claim/start-request和拒绝原文另存runtime-r154-prebirth。没有启动/输入/投影或正常清理证据，启动/脉冲/查询修正尚未实证。
 
 本方runner增加--admission-wait-seconds，默认保持60；只接入共享工具原本支持的整数0..600秒上限，subprocess超时为该预算+原30秒调度余量，参数及实际调用均记录。12项实际参数/dispatch检查及20项原准入兼容检查通过，无资源预留或游戏。下一新请求直接使用现有runner和共享600秒等待，避免外层先等空位再竞争；共享锁外等待、锁内名额2/内存/磁盘4GiB/暂停/身份/新实例检查、首次commit后不重试全部保持。未编辑共享准入工具，不修改或重用旧票据。目标active，完整掩体未完成，25%/publicv71不变。
+
+## r155：定时步行与原CT2进入通过，同查询明确body年龄拒绝、equipment未过期（2026-11-11）
+
+在d264443c保存后，新r155直接调用既有runner --admission-wait-seconds600；共享锁外等待/锁内原准入最终接受，未复用r154请求或放宽名额、内存/磁盘。Native ac5cf37f…ebda及冻结PG/XR不变，10项anchor/启动来源前后相同。实际game58564/creation134388167581202750、worker47468/creation134388167497036032。后台输入门首次成功、attempts1、startup_thread_exit_retries空，正常启动链通过，但未实测新87重试分支。
+
+三个普通步行脉冲planned0.320秒，actual均约0.328秒、samples12/13/13、overrun约8ms，随后原版A确实进入CT2，五段eye观察完成，operator0。新before_A观察记录(-3963.17554,-139.47527,579)、yaw -5792、CT0，实际读取+保存窗口16.8663ms；这个额外耗时仍明确保留，不宣称与旧运行完全同序。该次限定接近/入口已触达，不代表所有路径或掩体玩法通过。
+
+complete2首键Scene400/Compose24726/seq3953/world2248507648/pawn16826695936与path键逐项相同；另measurement334/detail4=neutral首键Scene404/Compose24971/seq3961，不能混成同C0或判定全部测量通过。path requested/attempted/finished，code6；Owner第21次context/source_age_expired/detail6，Session第4次physics_read/guard，实际第一拒绝层engine/source_repeat/guard；engineStage3/sourceCode2，原started/returned0/0。时间128023511475700→128023547451200，共35.9755ms。
+
+本次匹配prepare原因见证observed1/entry14674320/Compose24726/thread55064/stage0/verdict3/causes1：body_source_age true、equipment_age false。这是同查询实际上下文回调，确定本次body年龄分支拒绝且equipment在该次检查仍新鲜；不能细分tracking40ms、metadata50ms、capture或已烧毁age，也不能倒推r138/r148相同分项。仍不刷新旧输入/时间、不放宽年龄门。下一窄点为复核重复physics/source读取开销及source至query调度，保留完整关闭检查；不原样重跑此候选。
+
+259实际投影帧/errors0，编码0；13页全跨度与5原始contact均亲看，候选7/7/7/8/7，五段自身头肩/躯干遮挡仍明显FAIL，接触图另存哈希，不声称同C0/GPU或头显验收。Native/entries/input恢复、fire_disable0/hand_stop5/drained、XR0、launcher0、normal_cleanup true，无强杀，独立精确身份全部不在；CLOAK660/失败0、前台415/owned_activation false，disk_before14328074240。原始session/launcher/操作/查询/媒体在query-age-cause-r149/runtime-r155。完整CV01–24/AC01–22、工程25%、publicv71及固定入口仍不变，目标active。

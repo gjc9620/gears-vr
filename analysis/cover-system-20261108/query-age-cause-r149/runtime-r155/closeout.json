@@ -1,0 +1,120 @@
+{
+  "scope": "Actual timed approach and matched prepare body-source-age refusal",
+  "identities": {
+    "game_identity": {
+      "pid": 58564,
+      "creation_time": 134388167581202750,
+      "image": "j:\\gearsvr\\gears.of.war.reloaded.v1.0.1.3816947-p2p\\gears of war reloaded\\binaries_x64\\gowde-steam.exe"
+    },
+    "owner_identity": {
+      "pid": 43796,
+      "creation_time": 134388167497815736,
+      "image": "c:\\users\\11\\.cache\\codex-runtimes\\codex-primary-runtime\\dependencies\\python\\python.exe"
+    },
+    "xr_identity": {
+      "pid": 38400,
+      "creation_time": 134388167648603220,
+      "image": "c:\\users\\11\\.codex\\worktrees\\6dof-single\\gearsvr\\tools\\openxr-probe\\build-cover-1111-r155-cloak-start\\openxrposeprobe.exe"
+    },
+    "worker_identity": {
+      "pid": 47468,
+      "creation_time": 134388167497036032,
+      "image": "c:\\users\\11\\.cache\\codex-runtimes\\codex-primary-runtime\\dependencies\\python\\python.exe"
+    }
+  },
+  "exact_owned_processes_absent": true,
+  "normal_cleanup_verified": true,
+  "original_low_cover_entered": true,
+  "pulses": [
+    {
+      "time": 5.809725500002969,
+      "wall_ns": 1794343219341226900,
+      "label": "cover_ordinary_pulse_released",
+      "planned_seconds": 0.32,
+      "actual_seconds": 0.32800000000861473,
+      "samples": 12,
+      "scheduling_overrun_seconds": 0.008000000008614727
+    },
+    {
+      "time": 6.263998099995661,
+      "wall_ns": 1794343219795000400,
+      "label": "cover_ordinary_pulse_released",
+      "planned_seconds": 0.32,
+      "actual_seconds": 0.3279999999940628,
+      "samples": 13,
+      "scheduling_overrun_seconds": 0.007999999994062812
+    },
+    {
+      "time": 6.714496200002031,
+      "wall_ns": 1794343220245732100,
+      "label": "cover_ordinary_pulse_released",
+      "planned_seconds": 0.32,
+      "actual_seconds": 0.32800000000861473,
+      "samples": 13,
+      "scheduling_overrun_seconds": 0.008000000008614727
+    }
+  ],
+  "startup_gate_attempts": 1,
+  "startup_retry_branch_exercised": false,
+  "source_age_cause": {
+    "observed": true,
+    "entry": 14674320,
+    "compose": 24726,
+    "thread": 55064,
+    "stage": 0,
+    "verdict": 3,
+    "causes": 1,
+    "body_source_age": true,
+    "equipment_age": false
+  },
+  "owner_guard": {
+    "calls": 21,
+    "failed_call": 21,
+    "stage": 8,
+    "name": "context",
+    "detail": 3,
+    "extra": 6,
+    "context_verdict": "source_age_expired",
+    "context_detail": 6
+  },
+  "session_guard": {
+    "calls": 4,
+    "failed_call": 4,
+    "stage": 2,
+    "name": "physics_read",
+    "detail": 3,
+    "extra": 0
+  },
+  "query_elapsed_ns": 35975500,
+  "query_code": 6,
+  "original_query_started": 0,
+  "original_query_returned": 0,
+  "same_C0_complete_query_key": true,
+  "body_subclock": "Unknown: body tracking, metadata, capture or latched age not separated by this witness",
+  "earlier_r138_r148_cause": "Unknown; this witness only proves r155",
+  "frames": 259,
+  "reviewed_pages": 13,
+  "contacts": 5,
+  "encode_exit": 0,
+  "cloak": {
+    "samples": 660,
+    "failures": []
+  },
+  "foreground": {
+    "samples": 415,
+    "owned_activation": false
+  },
+  "disk_before": {
+    "check": "disk_admission",
+    "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr",
+    "free_bytes": 14328074240,
+    "minimum_free_bytes": 4294967296,
+    "admitted": true
+  },
+  "world_coverage_verified": false,
+  "movement_authorized": false,
+  "cover_view_accepted": false,
+  "headset_accepted": false,
+  "public_changed": false,
+  "next": "Inspect repeated physics/source guard read cost and source-to-query schedule; retain age/identity/closing checks, do not rerun unchanged candidate."
+}

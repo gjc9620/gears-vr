@@ -1,0 +1,165 @@
+{
+  "frames": 259,
+  "recording_sha256": "54235e9cc805ee5763023f4126dd7a8eab09546635dd1486a08d7614dfdaba14",
+  "pages": [
+    {
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\query-age-cause-r149\\runtime-r155\\overview-1.jpg",
+      "sha256": "7772b91199802d342ce9ba6df0119de3fdc069de2482ad9fb107e01b5cc3bfde"
+    },
+    {
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\query-age-cause-r149\\runtime-r155\\overview-2.jpg",
+      "sha256": "57889140d632b3bdac6d6a26614b8663da6b7b07f6cf1181b06a572fd2b5ad71"
+    },
+    {
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\query-age-cause-r149\\runtime-r155\\overview-3.jpg",
+      "sha256": "2015b9611521809d1a3b60441f1fca8ac299364e6c03f0a7a53ef7139031d471"
+    },
+    {
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\query-age-cause-r149\\runtime-r155\\overview-4.jpg",
+      "sha256": "10915312087495adecc640ee2957182494fc8fa394901b8780a68c822dc831f4"
+    },
+    {
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\query-age-cause-r149\\runtime-r155\\overview-5.jpg",
+      "sha256": "fafe58300c65f386fecbfea3a6ed83ce4cf2e8579102490055389d7d8dc163c0"
+    },
+    {
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\query-age-cause-r149\\runtime-r155\\overview-6.jpg",
+      "sha256": "90ef6f1301f46d26e6be26b93d09413ecc921149dd7d5e3c2de4a9aa7c8e2036"
+    },
+    {
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\query-age-cause-r149\\runtime-r155\\overview-7.jpg",
+      "sha256": "1f5f4c5c5b61624edc19ead619d3c7cebaab5569c3319cd27ee7f694749425fe"
+    },
+    {
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\query-age-cause-r149\\runtime-r155\\overview-8.jpg",
+      "sha256": "66ba513f7f97b4a8e1d170c8d0de38331d7fd2f7909ee594e5300637430f135d"
+    },
+    {
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\query-age-cause-r149\\runtime-r155\\overview-9.jpg",
+      "sha256": "bb3a44f37f15a9c5f7f1bb861f35d4add421dde642ce28e1fdba3cf7aa1037d1"
+    },
+    {
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\query-age-cause-r149\\runtime-r155\\overview-10.jpg",
+      "sha256": "17e829d78c1ba736f3f84336ef6bf233af3f45390e61d582d7a1315e7dd2219a"
+    },
+    {
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\query-age-cause-r149\\runtime-r155\\overview-11.jpg",
+      "sha256": "31ee54d332a1f10fcaf63740482b64016203af4b62ab6ea3ad5592f6f2ad997c"
+    },
+    {
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\query-age-cause-r149\\runtime-r155\\overview-12.jpg",
+      "sha256": "d82ff6eb9bfb16612771738f49dc7a4ceb6c1c7130cf1bd97c27131a75fe9db5"
+    },
+    {
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\query-age-cause-r149\\runtime-r155\\overview-13.jpg",
+      "sha256": "786f37403de8adfac1b18af73fe8bc316a30f38c8f59f6d579ebee57f90f902f"
+    }
+  ],
+  "contacts": [
+    {
+      "label": "cover_eye_neutral",
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\cover-1111-r155-cloak-start\\cover-output\\projection\\frame-00174.jpg",
+      "sha256": "a6c88f820f4fbfa8782a9dcefa536ca20019d3a795074554ca6ae4a73ad4be67",
+      "event_wall_ns": 1794343223663323000,
+      "duration_seconds": 0.8055591,
+      "eligible_frames": 7,
+      "frame": {
+        "file": "frame-00174.jpg",
+        "time": 19.038472200001706,
+        "requested": 19.00297970000247,
+        "observed_wall_ns": 1794343224085441600,
+        "requested_wall_ns": 1794343224046265400,
+        "width": 960,
+        "height": 540
+      },
+      "same_C0_proven": false,
+      "archived_file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\query-age-cause-r149\\runtime-r155\\cover_eye_neutral.jpg"
+    },
+    {
+      "label": "cover_eye_turned",
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\cover-1111-r155-cloak-start\\cover-output\\projection\\frame-00193.jpg",
+      "sha256": "6342be3275ae71d664755ccfbc5b6e6a28f20904bc2db62d10cc81e3d9cfe4a8",
+      "event_wall_ns": 1794343225776981300,
+      "duration_seconds": 0.8069416,
+      "eligible_frames": 7,
+      "frame": {
+        "file": "frame-00193.jpg",
+        "time": 21.10307830000238,
+        "requested": 21.077968300000066,
+        "observed_wall_ns": 1794343226149795600,
+        "requested_wall_ns": 1794343226121935100,
+        "width": 960,
+        "height": 540
+      },
+      "same_C0_proven": false,
+      "archived_file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\query-age-cause-r149\\runtime-r155\\cover_eye_turned.jpg"
+    },
+    {
+      "label": "cover_eye_turn_restored",
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\cover-1111-r155-cloak-start\\cover-output\\projection\\frame-00213.jpg",
+      "sha256": "1a3d4a54ca0cf6c0c241b946ef3983f2322fb2501a2f72ac95450456001cf6f5",
+      "event_wall_ns": 1794343227897424000,
+      "duration_seconds": 0.8054495,
+      "eligible_frames": 7,
+      "frame": {
+        "file": "frame-00213.jpg",
+        "time": 23.272264500003075,
+        "requested": 23.257099800001015,
+        "observed_wall_ns": 1794343228318797800,
+        "requested_wall_ns": 1794343228300411300,
+        "width": 960,
+        "height": 540
+      },
+      "same_C0_proven": false,
+      "archived_file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\query-age-cause-r149\\runtime-r155\\cover_eye_turn_restored.jpg"
+    },
+    {
+      "label": "cover_eye_raised",
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\cover-1111-r155-cloak-start\\cover-output\\projection\\frame-00232.jpg",
+      "sha256": "97695456ba39ef80cde64de398773964ad791452767547d42572184abcb53dc3",
+      "event_wall_ns": 1794343229933205900,
+      "duration_seconds": 0.8067608,
+      "eligible_frames": 8,
+      "frame": {
+        "file": "frame-00232.jpg",
+        "time": 25.363011699999333,
+        "requested": 25.32952450000448,
+        "observed_wall_ns": 1794343230410419400,
+        "requested_wall_ns": 1794343230372825500,
+        "width": 960,
+        "height": 540
+      },
+      "same_C0_proven": false,
+      "archived_file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\query-age-cause-r149\\runtime-r155\\cover_eye_raised.jpg"
+    },
+    {
+      "label": "cover_eye_rise_restored",
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\cover-1111-r155-cloak-start\\cover-output\\projection\\frame-00250.jpg",
+      "sha256": "643d2e0a5d78593183049f05dfb423fb7c5b285b0c5241880a95b3f258df4925",
+      "event_wall_ns": 1794343231975859000,
+      "duration_seconds": 0.805932,
+      "eligible_frames": 7,
+      "frame": {
+        "file": "frame-00250.jpg",
+        "time": 27.312448600001517,
+        "requested": 27.285892100000638,
+        "observed_wall_ns": 1794343232359887000,
+        "requested_wall_ns": 1794343232329283900,
+        "width": 960,
+        "height": 540
+      },
+      "same_C0_proven": false,
+      "archived_file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\query-age-cause-r149\\runtime-r155\\cover_eye_rise_restored.jpg"
+    }
+  ],
+  "source": "actual private simulator projection",
+  "desktop_capture": false,
+  "full_span_personally_reviewed": true,
+  "headset_accepted": false,
+  "encode_exit": 0,
+  "encoded_sha256": "aa602b767c2dd9a5d4af5f4589407cfa72500e0c634382af94f75cefd13c0af1",
+  "reviewed_pages": 13,
+  "reviewed_original_contacts": 5,
+  "verdict": "All five actual phase contacts retain severe self head/shoulder/torso obstruction; FAIL",
+  "cover_view_accepted": false
+}
