@@ -1,0 +1,60 @@
+{
+  "frames": 202,
+  "recording_sha256": "db965dfa069773f1f8735076e560703813feb2c3fbe44f043f9ed45ec685b81c",
+  "pages": [
+    {
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\query-age-cause-r149\\runtime-r150\\overview-1.jpg",
+      "sha256": "f3e8874ddf9cd5ad53c15eb8953c7d7e85a7a80684316e37fa05127c3114d054"
+    },
+    {
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\query-age-cause-r149\\runtime-r150\\overview-2.jpg",
+      "sha256": "c93efe543a5629b432ec8865ef4f15384d3663e05552035949c310b4268144e6"
+    },
+    {
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\query-age-cause-r149\\runtime-r150\\overview-3.jpg",
+      "sha256": "80e0b2ebf04de0a5e7ec14e5a4c3027bd5478cd9008023b6eae911fd56a1a3bc"
+    },
+    {
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\query-age-cause-r149\\runtime-r150\\overview-4.jpg",
+      "sha256": "83fd97202cafe13ee9a0c0712324a42fdf5a7edec14364705e5468a414794da0"
+    },
+    {
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\query-age-cause-r149\\runtime-r150\\overview-5.jpg",
+      "sha256": "3582a75ffc0efa2d4c62204173efc232bec9bde6897aaf19e8dae3f7e70600e8"
+    },
+    {
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\query-age-cause-r149\\runtime-r150\\overview-6.jpg",
+      "sha256": "954a58836895db599c6eb2dc5c800c6bb95e44367f01d7e37c3f576429b207b0"
+    },
+    {
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\query-age-cause-r149\\runtime-r150\\overview-7.jpg",
+      "sha256": "abd309026e33041f59f3e2b64fd939a4d7f605420ff1424c7a103d77ac1a104b"
+    },
+    {
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\query-age-cause-r149\\runtime-r150\\overview-8.jpg",
+      "sha256": "76ce461d2893052a7dc6ddc3eefbe5423492a35a6789549fd3c6e42d6aaf2f30"
+    },
+    {
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\query-age-cause-r149\\runtime-r150\\overview-9.jpg",
+      "sha256": "66cb0213417f258656e2cf58c48e6608949d58a16a04aa51298016d93babb484"
+    },
+    {
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\query-age-cause-r149\\runtime-r150\\overview-10.jpg",
+      "sha256": "44ab0d9ac515d44e483cbcbfdf4b80a30bf1ceafd5435d7a2632f6059b00edce"
+    },
+    {
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\query-age-cause-r149\\runtime-r150\\overview-11.jpg",
+      "sha256": "0befee52c8907c83568bdd43406ec24a455dd8d2a3912406433bdbf9a30d5e93"
+    }
+  ],
+  "contacts": [],
+  "source": "actual private simulator projection",
+  "desktop_capture": false,
+  "full_span_personally_reviewed": true,
+  "headset_accepted": false,
+  "encode_exit": 0,
+  "encoded_sha256": "9e61306a871baa6d872eeac2b27fc33fbaa49091c4f74d4f685d9ca7e4c1a962",
+  "reviewed_pages": 11,
+  "verdict": "Original A failed to enter low cover; final frames show roll/body intersection. No five-phase eye observation executed.",
+  "cover_view_accepted": false
+}

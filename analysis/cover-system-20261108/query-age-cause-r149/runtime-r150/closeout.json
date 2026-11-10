@@ -1,0 +1,133 @@
+{
+  "scope": "Actual ordinary entry failure before pose/query request",
+  "identities": {
+    "game_identity": {
+      "pid": 34696,
+      "creation_time": 134388127400340663,
+      "image": "j:\\gearsvr\\gears.of.war.reloaded.v1.0.1.3816947-p2p\\gears of war reloaded\\binaries_x64\\gowde-steam.exe"
+    },
+    "owner_identity": {
+      "pid": 59252,
+      "creation_time": 134388127263657775,
+      "image": "c:\\users\\11\\.cache\\codex-runtimes\\codex-primary-runtime\\dependencies\\python\\python.exe"
+    },
+    "xr_identity": {
+      "pid": 56272,
+      "creation_time": 134388127510031780,
+      "image": "c:\\users\\11\\.codex\\worktrees\\6dof-single\\gearsvr\\tools\\openxr-probe\\build-cover-1111-r150-cloak-cause\\openxrposeprobe.exe"
+    },
+    "worker_identity": {
+      "pid": 4360,
+      "creation_time": 134388127260774890,
+      "image": "c:\\users\\11\\.cache\\codex-runtimes\\codex-primary-runtime\\dependencies\\python\\python.exe"
+    }
+  },
+  "exact_owned_processes_absent": true,
+  "normal_cleanup_verified": true,
+  "operator_exit": 1,
+  "error": "AssertionError('Original A did not enter low cover')",
+  "before_A": {
+    "position": [
+      -3982.512939453125,
+      -145.28207397460938,
+      579.0
+    ],
+    "yaw_ru": -4218,
+    "controller_rotation_ru": [
+      0,
+      -4218,
+      0
+    ],
+    "camera_position": [
+      -4110.720703125,
+      -38.18023681640625,
+      655.0
+    ],
+    "camera_rotation_ru": [
+      0,
+      -4218,
+      0
+    ],
+    "pawn_rotation_ru": [
+      0,
+      -4218,
+      0
+    ],
+    "fov": 80.0
+  },
+  "after_A": {
+    "position": [
+      -3484.23876953125,
+      -271.6319580078125,
+      583.015625
+    ],
+    "yaw_ru": -4218,
+    "controller_rotation_ru": [
+      0,
+      -4218,
+      0
+    ],
+    "camera_position": [
+      -3610.195068359375,
+      -170.288330078125,
+      634.7028198242188
+    ],
+    "camera_rotation_ru": [
+      -1228,
+      -5129,
+      0
+    ],
+    "pawn_rotation_ru": [
+      0,
+      -4220,
+      0
+    ],
+    "fov": 80.0
+  },
+  "chosen_candidate_only": {
+    "index": 0,
+    "position": [
+      -3927.340589891685,
+      -178.8303190730618,
+      563.9999997615814
+    ],
+    "forward": [
+      0.8049175654763921,
+      -0.5933866469575785,
+      0.0
+    ],
+    "right": [
+      0.5933866469575785,
+      0.8049175654763921,
+      0.0
+    ],
+    "up": [
+      0.0,
+      0.0,
+      1.0
+    ]
+  },
+  "before_A_planar_slot_distance": 64.57145580916988,
+  "before_A_normal_distance": -64.31627396088857,
+  "before_A_tangent_distance": -5.7349637403827565,
+  "pose_request_issued": false,
+  "query_cause": "unknown; ordinary entry failed before request",
+  "frames": 202,
+  "reviewed_pages": 11,
+  "contacts": 0,
+  "encode_exit": 0,
+  "cloak": {
+    "samples": 684,
+    "failures": []
+  },
+  "foreground": {
+    "samples": 474,
+    "owned_activation": false
+  },
+  "world_coverage_verified": false,
+  "movement_authorized": false,
+  "gameplay_accepted": false,
+  "public_changed": false,
+  "headset_accepted": false,
+  "next": "Compare actual entry geometry/input trajectory before any new run; do not infer source-age cause or repeat unchanged operator."
+}

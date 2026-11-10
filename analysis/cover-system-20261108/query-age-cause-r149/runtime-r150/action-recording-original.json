@@ -1,0 +1,122 @@
+{
+  "source": "Event timeline for independent game/simulator HWND recordings",
+  "layer": "all",
+  "desktop_capture": false,
+  "audio": false,
+  "synchronous_projection_capture": false,
+  "physical_headset_acceptance": false,
+  "started_wall_ns": 1794339207509593600,
+  "clock": "Python perf_counter; wall_ns brackets for independent window recording alignment",
+  "frames": [],
+  "events": [
+    {
+      "time": 5.299996701069176e-06,
+      "wall_ns": 1794339207509593600,
+      "label": "independent_WGC_recording",
+      "synchronous_screenshot_requests": false
+    },
+    {
+      "time": 2.7805477999936556,
+      "wall_ns": 1794339210289642300,
+      "label": "owned_Playground_already_loaded",
+      "top": null,
+      "focus": null,
+      "number": null
+    },
+    {
+      "time": 2.7807409999950323,
+      "wall_ns": 1794339210289642300,
+      "label": "focused_Lancer_check_after_existing_controlled_Playground_entry",
+      "title_navigation_exercised": false
+    },
+    {
+      "time": 4.1245544999983395,
+      "wall_ns": 1794339211634179600,
+      "label": "before_original_X_pickup",
+      "weapon": "0x1636c15a40",
+      "cls": "Weap_LocustAssaultRifle"
+    },
+    {
+      "time": 13.803327299989178,
+      "wall_ns": 1794339221313126100,
+      "label": "cover_ordinary_approach",
+      "target": [
+        -3979.6602316476506,
+        -140.2601870208192,
+        563.9999997615814
+      ],
+      "candidate_only": true
+    },
+    {
+      "time": 13.833743600000162,
+      "wall_ns": 1794339221343046000,
+      "label": "cover_ordinary_approach_step",
+      "distance": 161.30304575324212,
+      "stick": [
+        -0.5391176313306534,
+        -0.3061897770802052
+      ],
+      "duration": 0.04,
+      "amplitude": 0.62,
+      "collision_or_deadzone_cause_proven": false
+    },
+    {
+      "time": 14.521911299991189,
+      "wall_ns": 1794339222030492200,
+      "label": "cover_ordinary_approach_step",
+      "distance": 61.258166922233386,
+      "stick": [
+        -0.5391168218337891,
+        -0.30619120238150943
+      ],
+      "duration": 0.04,
+      "amplitude": 0.62,
+      "collision_or_deadzone_cause_proven": false
+    },
+    {
+      "time": 15.23064299998805,
+      "wall_ns": 1794339222739319400,
+      "label": "turn_toward_actual_pickup",
+      "radians": -0.5463268379542692
+    },
+    {
+      "time": 15.862421699988772,
+      "wall_ns": 1794339223371957500,
+      "label": "turn_toward_actual_pickup",
+      "radians": -0.3400064219836505
+    },
+    {
+      "time": 16.596882999991067,
+      "wall_ns": 1794339224106722500,
+      "label": "VR_input",
+      "hand": 0,
+      "controls": {
+        "stickY": 0.25
+      }
+    },
+    {
+      "time": 16.761616899995715,
+      "wall_ns": 1794339224271257700,
+      "label": "VR_input",
+      "hand": 1,
+      "controls": {
+        "buttonA": 1
+      }
+    },
+    {
+      "time": 16.92888409999432,
+      "wall_ns": 1794339224438826900,
+      "label": "VR_input",
+      "hand": 1,
+      "controls": {}
+    },
+    {
+      "time": 17.238352899992606,
+      "wall_ns": 1794339224748217400,
+      "label": "VR_input",
+      "hand": 0,
+      "controls": {}
+    }
+  ],
+  "errors": []
+}

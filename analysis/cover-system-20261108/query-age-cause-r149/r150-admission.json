@@ -1,0 +1,121 @@
+{
+  "name": "cover-1111-r150-cloak-cause",
+  "waiting_identity": {
+    "pid": 51036,
+    "creation_time": 134388126738358540,
+    "image": "c:\\users\\11\\.cache\\codex-runtimes\\codex-primary-runtime\\dependencies\\python\\python.exe"
+  },
+  "started_ns": 1794339074088224400,
+  "observations": [
+    {
+      "at_ns": 1794339074205625200,
+      "reason": "Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: boltok-1111-032608, lancer-natural-v139-225928"
+    },
+    {
+      "at_ns": 1794339076341680900,
+      "reason": "Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: boltok-1111-032608, lancer-natural-v139-225928"
+    },
+    {
+      "at_ns": 1794339078509231200,
+      "reason": "Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: boltok-1111-032608, lancer-natural-v139-225928"
+    },
+    {
+      "at_ns": 1794339080649271200,
+      "reason": "Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: boltok-1111-032608, lancer-natural-v139-225928"
+    },
+    {
+      "at_ns": 1794339082828368800,
+      "reason": "Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: boltok-1111-032608, lancer-natural-v139-225928"
+    },
+    {
+      "at_ns": 1794339084984784200,
+      "reason": "Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: boltok-1111-032608, lancer-natural-v139-225928"
+    },
+    {
+      "at_ns": 1794339087235134900,
+      "reason": "Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: boltok-1111-032608, lancer-natural-v139-225928"
+    },
+    {
+      "at_ns": 1794339089421953800,
+      "reason": "Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: boltok-1111-032608, lancer-natural-v139-225928"
+    },
+    {
+      "at_ns": 1794339091611513900,
+      "reason": "Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: boltok-1111-032608, lancer-natural-v139-225928"
+    },
+    {
+      "at_ns": 1794339093789762300,
+      "reason": "Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: boltok-1111-032608, lancer-natural-v139-225928"
+    },
+    {
+      "at_ns": 1794339095935600100,
+      "reason": "Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: boltok-1111-032608, lancer-natural-v139-225928"
+    },
+    {
+      "at_ns": 1794339098097024700,
+      "reason": "Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: boltok-1111-032608, lancer-natural-v139-225928"
+    },
+    {
+      "at_ns": 1794339100292270900,
+      "reason": "Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: boltok-1111-032608, lancer-natural-v139-225928"
+    },
+    {
+      "at_ns": 1794339102487351400,
+      "reason": "Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: boltok-1111-032608, lancer-natural-v139-225928"
+    },
+    {
+      "at_ns": 1794339104730365500,
+      "reason": "Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: boltok-1111-032608, lancer-natural-v139-225928"
+    },
+    {
+      "at_ns": 1794339107085160400,
+      "reason": "Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: boltok-1111-032608, lancer-natural-v139-225928"
+    },
+    {
+      "at_ns": 1794339109309503500,
+      "reason": "Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: boltok-1111-032608, lancer-natural-v139-225928"
+    },
+    {
+      "at_ns": 1794339111545186000,
+      "reason": "Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: boltok-1111-032608, lancer-natural-v139-225928"
+    },
+    {
+      "at_ns": 1794339113796609200,
+      "reason": "Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: boltok-1111-032608, lancer-natural-v139-225928"
+    },
+    {
+      "at_ns": 1794339116086730600,
+      "reason": "Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: boltok-1111-032608, lancer-natural-v139-225928"
+    },
+    {
+      "at_ns": 1794339118338774500,
+      "reason": "Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: boltok-1111-032608, lancer-natural-v139-225928"
+    },
+    {
+      "at_ns": 1794339120534349700,
+      "reason": "Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: boltok-1111-032608, lancer-natural-v139-225928"
+    },
+    {
+      "at_ns": 1794339122680372600,
+      "reason": "Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: boltok-1111-032608, lancer-natural-v139-225928"
+    }
+  ],
+  "admitted": true,
+  "admitted_ns": 1794339124919355800,
+  "memory": {
+    "available_commit": 19090526208,
+    "available_physical": 15757320192,
+    "active_instances": [
+      "lancer-natural-v139-225928"
+    ]
+  },
+  "disk": {
+    "check": "disk_admission",
+    "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr",
+    "free_bytes": 61674520576,
+    "minimum_free_bytes": 4294967296,
+    "admitted": true
+  },
+  "runner_exit": 1,
+  "finished_ns": 1794339233810918200
+}

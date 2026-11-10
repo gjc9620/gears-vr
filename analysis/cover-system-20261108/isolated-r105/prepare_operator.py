@@ -33,6 +33,12 @@ def main():
     sources['cover_boundary_chain.py'] = replace_once(boundary,
         'from cover_playground_observation import sample as sample_playground',
         'from cover_private_playground_observation import sample as sample_playground')
+    entry_observer = HERE.parent / 'query-age-cause-r149/entry_observation.py'
+    import importlib.util
+    spec = importlib.util.spec_from_file_location('cover_entry_observation', entry_observer)
+    entry_module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(entry_module)
+    sources['cover_boundary_chain.py'] = entry_module.instrument(sources['cover_boundary_chain.py'])
     equipment = sources['equipment_controller_chain.py']
     menu = sources['run_menu_firstperson_check.py']
     # All cover/weapon observer selections refer to this exact namespace;
@@ -111,6 +117,7 @@ exec(compile(s, str(O / 'run_menu_firstperson_check.py'), 'exec'),""")
         source_sha256={str(OLD / filename):sha(OLD / filename) for filename in sources},
         wrapper_source_sha256=sha(R104 / 'run_cover_eye_approach_operator.py'),
         generator_sha256=sha(__file__),
+        entry_observation_source_sha256=sha(entry_observer),
         syntax_checked=True, shared_instance_references=0,
         input_reader=str(output / 'read_private_input.py'), input_reader_sha256=receipt['input_reader_sha256'],
         observation_adapter=str(adapter), observation_adapter_sha256=sha(adapter),
