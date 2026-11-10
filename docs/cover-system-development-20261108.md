@@ -1728,3 +1728,14 @@ v2冻结r90 Native源，仅4个产品overlay，共1097文件。实际编译链�
 因此停止继续制作HOD接收ready／新FINAL门禁；原pending取消接收分支明确标记superseded_as_runtime_gate，正常分支与历史证据仍保留。收到Bow准备启动的实际占用询问，仅回复本会话没有游戏／模拟器／恢复／录制或共享写入作业，要求其自行按互斥与实际占用检查启动，未代替全局空闲核验或保留下一窗口。规则保存在independent-execution-owner-policy.json，后续无需等待HOD离线收尾或逐级签收。
 
 原r80五身份、Native8035和封存入口本轮均逐SHA保持，未重新prepare／stage／启动；旧入口仍带过时FINAL检查，下一步须单独适配实际启动互斥与当前占用协议，不能伪造旧accepted／FINAL布尔值绕过。最新已编译源码Native仍r93的9f375dc7；公共v71、实际掩体动作／严重遮挡／物理同步／身体移动／受击枪口／LGrip／头显尚无新通过，CV01–24／AC01–22完整保留，工程25%不变，目标active。此轮进展为准确取消事实独核及当前执行规则落地，不称游戏或verified wait。
+
+
+## 2026年11月10日 r95实际启动前只读占用检查
+
+上一目标轮仅核对需求，未推进实现，按no progress处理；本轮重新核实1bf88a09已保存r94，开发文档两份副本与guard一致。r80原入口--prepare-only通过：363驱动、9271依赖文件和7模块来源均匹配，未消耗claim、stage或启动。按主人最新顺序，先完成可见视野／探身抓边／保持缩回／退出完整流程，其后吸附与Volume，最后逐点GrabPose；最终CV01–24／AC01–22范围保持。
+
+新增tools/game-playtest/cover_launch_preflight.py，作为既有观察入口的只读接线模块，不创建新的调度或锁。前后检查原launcher两个owner mutex并读取现场进程；实际game／XR／paired recorder及已知共享python runner阻止启动。离线ffmpeg／review／retention不占游戏窗口；查询失败、错误进程记录及python.exe命令未知保持拒绝。只排除自身精确PID，不按名称排除其他runner。该检查不授予窗口或原子排他，实际启动器仍必须创建现有owner mutex；只能在stage与start现场使用。
+
+9项定向检查通过，覆盖录制／runner阻止、离线media不占用、互斥在进程读取中出现、查询失败和畸形记录拒绝。Windows真实测试专用互斥完成不存在→创建后存在→关闭后不存在，检查句柄正常关闭。首轮实际枚举将Windows PID0空闲统计项作为坏进程拒绝；读取端明确过滤非执行进程PID0后再查，保留正PID严格验证。后续真实查询确认solo-m1-1028d现有launcher mutex已存在，仅记录当前占用，没有启动、stage、恢复他人文件或结束任何进程。此快照不是未来授窗或verified wait。
+
+证据analysis/cover-system-20261108/launch-preflight-r95/verification.json、unit.log及冻结source。模块尚未接入封存r80入口；旧FINAL门禁未被伪造或删除，下一步在独立标识的新入口接线，取得本次fresh baseline及完整恢复责任后才能运行。未重编未变化Native／PG／XR，最新Native仍r93的9f375dc7；publicv71、r80原五身份与原claim保持。实际视野严重遮挡、身体路径／占用／移动恢复、物理同步／受击枪口、LGrip与头显未新增通过，工程25%不变，目标active。
