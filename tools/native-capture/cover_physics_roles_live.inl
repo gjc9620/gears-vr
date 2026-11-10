@@ -50,9 +50,59 @@ inline bool matches_asset_actors(Snapshot const& typed,gears_cover_physx_asset_a
     return unique==raw.actor_count&&expected==raw.actors;
 }
 enum class Code {current,unavailable,request,guard,metadata,layout,read,changed,capacity,exception};
+// Diagnostic only: last attempted predicate, never a query or movement permit.
+enum class LayoutStep:unsigned {
+    idle,
+    mesh_class,
+    asset_class,
+    instance_class,
+    mesh_asset_property,
+    mesh_instance_property,
+    mesh_asset_offset,
+    mesh_instance_offset,
+    asset_reference,
+    instance_reference,
+    owner_property,
+    bodies_property,
+    root_property,
+    owner_reference,
+    bodies_offset,
+    inner_pointer,
+    inner_identity,
+    inner_number,
+    inner_owner,
+    inner_kind,
+    inner_dimension,
+    inner_width,
+    inner_offset,
+    body_class_pointer,
+    body_class_identity,
+    body_class_kind,
+    body_class_name,
+    owner_class,
+    array_bounds,
+    body_duplicate,
+    body_identity,
+    body_layout_capacity,
+    body_layout_identity,
+    body_layout_class,
+    body_index_property,
+    body_owner_property,
+    body_owner_reference,
+    body_data_property,
+    body_spring_property,
+    body_mesh_reference,
+    complete,
+};
+struct LayoutObservation {
+    LayoutStep step{};unsigned pass{},body_index{~0u};
+    unsigned mesh_sources{},mesh_identities{},instance_sources{},instance_identities{};
+    unsigned mesh_asset_offset{},mesh_instance_offset{},owner_offset{},bodies_offset{},root_offset{};
+};
 #if defined(GEARS_COVER_BODY_PROTOTYPE) && GEARS_COVER_BODY_PROTOTYPE
 struct BodyLayout {binding::Proof proof{};gears_anchor::Identity cls{};std::array<binding::Property,4> fields{};};
 struct Workspace {
+    LayoutObservation witness{};
     binding::Proof mesh{},instance{};
     std::array<binding::Property,2> mesh_fields{};
     std::array<binding::Property,3> instance_fields{};
@@ -102,34 +152,60 @@ inline bool reference_class(binding::Proof& p,binding::Property& field){
     std::uintptr_t at{};return binding::source_field(p,at,field.id.address,0xd0)&&
         binding::certified(p,at,field.reference)&&binding::kind(p,field.reference,L"Class");
 }
+inline bool step(Workspace& w,LayoutStep value){w.witness.step=value;return true;}
+inline void step(LayoutObservation* witness,LayoutStep value){if(witness)witness->step=value;}
+inline LayoutObservation observation(Workspace const& w)noexcept{
+    auto out=w.witness;
+    if(!out.pass)return out; // No layout read this sample; never expose prior proof counts/offsets.
+    out.mesh_sources=w.mesh.source_count;out.mesh_identities=w.mesh.identity_count;
+    out.instance_sources=w.instance.source_count;out.instance_identities=w.instance.identity_count;
+    out.mesh_asset_offset=w.mesh_fields[0].offset;out.mesh_instance_offset=w.mesh_fields[1].offset;
+    out.owner_offset=w.instance_fields[0].offset;out.bodies_offset=w.instance_fields[1].offset;out.root_offset=w.instance_fields[2].offset;
+    return out;
+}
 inline bool schema(Workspace& w,Snapshot const& next){
     auto& m=w.mesh;auto& i=w.instance;
-    if(!class_role(m,next.mesh.cls,L"SkeletalMeshComponent")||!class_role(m,next.asset.cls,L"PhysicsAsset")||
-       !class_role(i,next.instance.cls,L"PhysicsAssetInstance")||
-       !role_property(m,next.mesh.cls,L"PhysicsAsset",L"ObjectProperty",8,L"PhysicsAsset",w.mesh_fields[0])||
-       !role_property(m,next.mesh.cls,L"PhysicsAssetInstance",L"ObjectProperty",8,L"PhysicsAssetInstance",w.mesh_fields[1])||
-       w.mesh_fields[0].offset!=0x248||w.mesh_fields[1].offset!=0x250||
-       !class_role(m,next.asset.cls,L"PhysicsAsset",w.mesh_fields[0].reference.address)||
-       !class_role(i,next.instance.cls,L"PhysicsAssetInstance",w.mesh_fields[1].reference.address)||
-       !role_property(i,next.instance.cls,L"Owner",L"MeshPointer",8,nullptr,w.instance_fields[0])||
-       !role_property(i,next.instance.cls,L"Bodies",L"ArrayProperty",16,nullptr,w.instance_fields[1])||
-       !role_property(i,next.instance.cls,L"RootBodyIndex",L"IntProperty",4,nullptr,w.instance_fields[2])||
-       !reference_class(i,w.instance_fields[0])||w.instance_fields[1].offset!=0x6c)return false;
+    step(w,LayoutStep::mesh_class);if(!(class_role(m,next.mesh.cls,L"SkeletalMeshComponent")))return false;
+    step(w,LayoutStep::asset_class);if(!(class_role(m,next.asset.cls,L"PhysicsAsset")))return false;
+    step(w,LayoutStep::instance_class);if(!(class_role(i,next.instance.cls,L"PhysicsAssetInstance")))return false;
+    step(w,LayoutStep::mesh_asset_property);if(!(role_property(m,next.mesh.cls,L"PhysicsAsset",L"ObjectProperty",8,L"PhysicsAsset",w.mesh_fields[0])))return false;
+    step(w,LayoutStep::mesh_instance_property);if(!(role_property(m,next.mesh.cls,L"PhysicsAssetInstance",L"ObjectProperty",8,L"PhysicsAssetInstance",w.mesh_fields[1])))return false;
+    step(w,LayoutStep::mesh_asset_offset);if(!(w.mesh_fields[0].offset==0x248))return false;
+    step(w,LayoutStep::mesh_instance_offset);if(!(w.mesh_fields[1].offset==0x250))return false;
+    step(w,LayoutStep::asset_reference);if(!(class_role(m,next.asset.cls,L"PhysicsAsset",w.mesh_fields[0].reference.address)))return false;
+    step(w,LayoutStep::instance_reference);if(!(class_role(i,next.instance.cls,L"PhysicsAssetInstance",w.mesh_fields[1].reference.address)))return false;
+    step(w,LayoutStep::owner_property);if(!(role_property(i,next.instance.cls,L"Owner",L"MeshPointer",8,nullptr,w.instance_fields[0])))return false;
+    step(w,LayoutStep::bodies_property);if(!(role_property(i,next.instance.cls,L"Bodies",L"ArrayProperty",16,nullptr,w.instance_fields[1])))return false;
+    step(w,LayoutStep::root_property);if(!(role_property(i,next.instance.cls,L"RootBodyIndex",L"IntProperty",4,nullptr,w.instance_fields[2])))return false;
+    step(w,LayoutStep::owner_reference);if(!(reference_class(i,w.instance_fields[0])))return false;
+    step(w,LayoutStep::bodies_offset);if(!(w.instance_fields[1].offset==0x6c))return false;
     auto const& array=w.instance_fields[1];std::uintptr_t inner{},target{};gears_anchor::Identity id{};unsigned dim{},width{},offset{};
-    return binding::source_field(i,inner,array.id.address,0xd0)&&binding::certified(i,inner,id)&&!id.number&&id.outer==array.id.address&&
-        binding::kind(i,id,L"ObjectProperty")&&binding::source_field(i,dim,inner,0x70)&&dim==1&&
-        binding::source_field(i,width,inner,0x74)&&width==8&&binding::source_field(i,offset,inner,0x94)&&!offset&&
-        binding::source_field(i,target,inner,0xd0)&&binding::certified(i,target,w.body_class)&&
-        binding::kind(i,w.body_class,L"Class")&&binding::named(w.body_class,L"RB_BodyInstance");
+    step(w,LayoutStep::inner_pointer);if(!(binding::source_field(i,inner,array.id.address,0xd0)))return false;
+    step(w,LayoutStep::inner_identity);if(!(binding::certified(i,inner,id)))return false;
+    step(w,LayoutStep::inner_number);if(!(!id.number))return false;
+    step(w,LayoutStep::inner_owner);if(!(id.outer==array.id.address))return false;
+    step(w,LayoutStep::inner_kind);if(!(binding::kind(i,id,L"ObjectProperty")))return false;
+    step(w,LayoutStep::inner_dimension);if(!(binding::source_field(i,dim,inner,0x70)&&dim==1))return false;
+    step(w,LayoutStep::inner_width);if(!(binding::source_field(i,width,inner,0x74)&&width==8))return false;
+    step(w,LayoutStep::inner_offset);if(!(binding::source_field(i,offset,inner,0x94)&&!offset))return false;
+    step(w,LayoutStep::body_class_pointer);if(!(binding::source_field(i,target,inner,0xd0)))return false;
+    step(w,LayoutStep::body_class_identity);if(!(binding::certified(i,target,w.body_class)))return false;
+    step(w,LayoutStep::body_class_kind);if(!(binding::kind(i,w.body_class,L"Class")))return false;
+    step(w,LayoutStep::body_class_name);if(!(binding::named(w.body_class,L"RB_BodyInstance")))return false;
+    return true;
 }
-template<class Work> inline BodyLayout* body_layout(Work& w,gears_anchor::Identity const& body){
+
+template<class Work> inline BodyLayout* body_layout(Work& w,gears_anchor::Identity const& body,LayoutObservation* witness=nullptr){
     for(unsigned n=0;n<w.layout_count;++n)if(w.layouts[n].cls.address==body.cls)return &w.layouts[n];
-    if(w.layout_count==w.layouts.size())return nullptr;
+    step(witness,LayoutStep::body_layout_capacity);if(w.layout_count==w.layouts.size())return nullptr;
     auto& l=w.layouts[w.layout_count];auto& p=l.proof;
-    if(!binding::certified(p,body.cls,l.cls)||!class_role(p,body.cls,L"RB_BodyInstance",w.body_class.address)||
-       !role_property(p,body.cls,L"BodyIndex",L"IntProperty",4,nullptr,l.fields[0])||
-       !role_property(p,body.cls,L"OwnerComponent",L"ComponentProperty",8,nullptr,l.fields[1])||!reference_class(p,l.fields[1])||
-       !pointer_property(p,body.cls,L"BodyData",0x88,l.fields[2])||!pointer_property(p,body.cls,L"BoneSpring",0x90,l.fields[3]))return nullptr;
+    step(witness,LayoutStep::body_layout_identity);if(!(binding::certified(p,body.cls,l.cls)))return nullptr;
+    step(witness,LayoutStep::body_layout_class);if(!(class_role(p,body.cls,L"RB_BodyInstance",w.body_class.address)))return nullptr;
+    step(witness,LayoutStep::body_index_property);if(!(role_property(p,body.cls,L"BodyIndex",L"IntProperty",4,nullptr,l.fields[0])))return nullptr;
+    step(witness,LayoutStep::body_owner_property);if(!(role_property(p,body.cls,L"OwnerComponent",L"ComponentProperty",8,nullptr,l.fields[1])))return nullptr;
+    step(witness,LayoutStep::body_owner_reference);if(!(reference_class(p,l.fields[1])))return nullptr;
+    step(witness,LayoutStep::body_data_property);if(!(pointer_property(p,body.cls,L"BodyData",0x88,l.fields[2])))return nullptr;
+    step(witness,LayoutStep::body_spring_property);if(!(pointer_property(p,body.cls,L"BoneSpring",0x90,l.fields[3])))return nullptr;
     ++w.layout_count;return &l;
 }
 inline bool layouts_current(Workspace const& w){
@@ -149,18 +225,22 @@ inline Code values(Workspace& w,binding::Binding const& actor,pose::Metadata con
        !binding::field(instance,next.mesh.address,w.mesh_fields[1].offset)||instance!=next.instance.address||
        !binding::field(owner,instance,w.instance_fields[0].offset)||!binding::identity(owner,next.owner,true)||
        (!binding::same(next.owner,next.mesh)&&!binding::same(next.owner,next.pawn)))return Code::changed;
+    step(w,LayoutStep::owner_class);
     if(!class_role(w.instance,next.owner.cls,binding::same(next.owner,next.mesh)?L"SkeletalMeshComponent":L"Pawn",
         w.instance_fields[0].reference.address))return Code::layout;
     if(!binding::field(next.array,instance,w.instance_fields[1].offset)||!binding::field(next.root,instance,w.instance_fields[2].offset))return Code::read;
-    const auto& h=next.array;
+    const auto& h=next.array;step(w,LayoutStep::array_bounds);
     if(h.count<=0||h.count>64||h.capacity<h.count||h.capacity>256||next.root<0||next.root>=h.count||
        !query_source::pointer(h.data,std::size_t(h.capacity)*8))return Code::layout;
     std::array<std::uintptr_t,64> pointers{};
     if(!safe_copy(pointers.data(),reinterpret_cast<void const*>(h.data),std::size_t(h.count)*8))return Code::read;
     for(int n=0;n<h.count;++n){auto& body=next.bodies[unsigned(n)];
+        w.witness.body_index=unsigned(n);step(w,LayoutStep::body_duplicate);
         for(int k=0;k<n;++k)if(pointers[unsigned(k)]==pointers[unsigned(n)])return Code::layout;
+        step(w,LayoutStep::body_identity);
         if(!binding::identity(pointers[unsigned(n)],body.identity,true))return Code::read;
-        auto* l=body_layout(w,body.identity);if(!l)return w.layout_count==w.layouts.size()?Code::capacity:Code::layout;
+        auto* l=body_layout(w,body.identity,&w.witness);if(!l)return w.layout_count==w.layouts.size()?Code::capacity:Code::layout;
+        step(w,LayoutStep::body_mesh_reference);
         if(!class_role(l->proof,next.mesh.cls,L"SkeletalMeshComponent",l->fields[1].reference.address))return Code::layout;
         if(!binding::field(body.index,body.identity.address,l->fields[0].offset)||
            !binding::field(body.owner,body.identity.address,l->fields[1].offset)||
@@ -171,23 +251,24 @@ inline Code values(Workspace& w,binding::Binding const& actor,pose::Metadata con
     }
     if(!next.bodies[unsigned(next.root)].main)return Code::changed;
     next.source={next.mesh.address,next.asset.address,next.instance.address,unsigned(next.root),GetCurrentThreadId()};
-    out=next;return Code::current;
+    step(w,LayoutStep::complete);out=next;return Code::current;
 }
 template<class Guard> Code sample(binding::Binding const& actor,pose::Metadata const& metadata,Guard guard,Workspace& work,Snapshot& output) noexcept {
     if(!actor.context_valid||!actor.world_generation||!metadata.physics_asset||!metadata.physics_instance||
        query_source::aliases(&work,sizeof work,&output,sizeof output)||query_source::aliases(&actor,sizeof actor,&output,sizeof output)||
        query_source::aliases(&metadata,sizeof metadata,&output,sizeof output)||query_source::aliases(&work,sizeof work,&actor,sizeof actor)||
        query_source::aliases(&work,sizeof work,&metadata,sizeof metadata))return Code::request;
+    work.witness={};
     const auto owner=actor;const auto expected=metadata;
     try{
         if(!guard())return Code::guard;
         {
             std::unique_lock<std::mutex> lock(binding::mutex,std::try_to_lock);if(!lock.owns_lock())return Code::metadata;
             if(!binding::context_ready()||!binding::metadata_current()||actor.world_generation!=binding::metadata_generation)return Code::metadata;
-            work.mesh={};work.instance={};work.layout_count=0;for(auto& l:work.layouts)l={};
+            work.mesh={};work.instance={};work.mesh_fields={};work.instance_fields={};work.body_class={};work.layout_count=0;for(auto& l:work.layouts)l={};
             work.metadata=binding::metadata_bytes;work.generation=binding::metadata_generation;
-            auto code=values(work,owner,expected,work.first);if(code!=Code::current)return code;
-            code=values(work,owner,expected,work.last);if(code!=Code::current)return code;
+            work.witness.pass=1;auto code=values(work,owner,expected,work.first);if(code!=Code::current)return code;
+            work.witness.pass=2;work.witness.body_index=~0u;code=values(work,owner,expected,work.last);if(code!=Code::current)return code;
             if(!same(work.first,work.last)||!layouts_current(work))return Code::changed;
         }
         if(!guard())return Code::guard;
@@ -198,6 +279,7 @@ template<class Guard> Code sample(binding::Binding const& actor,pose::Metadata c
 }
 #else
 struct Workspace {};
+inline LayoutObservation observation(Workspace const&)noexcept{return {};}
 template<class Guard> Code sample(binding::Binding const&,pose::Metadata const&,Guard,Workspace&,Snapshot&) noexcept{return Code::unavailable;}
 #endif
 } // namespace cover_physics_roles_live

@@ -14,7 +14,7 @@ namespace collider_roles=cover_collider_roles_live;
 namespace component_roles=cover_component_roles_live;
 namespace path=gears_cover_capsule_path;
 enum class Stage:unsigned {idle,geometry,physics_roles,collider_roles,component_roles,engine,closing,complete};
-struct Observation {Stage stage{};unsigned detail{};q::QueryProgress engine{};};
+struct Observation {Stage stage{};unsigned detail{};q::QueryProgress engine{};roles::LayoutObservation layout{};};
 #if defined(GEARS_COVER_BODY_PROTOTYPE) && GEARS_COVER_BODY_PROTOTYPE
 template<class Engine=q::Queries> class Session {
     Engine engine_{};roles::Workspace work_{};roles::Snapshot before_{},after_{};
@@ -58,7 +58,7 @@ template<class Engine=q::Queries> class Session {
         if(q::source::aliases(&output,sizeof output,this,sizeof *this)||q::source::aliases(&output,sizeof output,&actor,sizeof actor)||
            q::source::aliases(&output,sizeof output,&metadata,sizeof metadata)||q::source::aliases(&output,sizeof output,&shape,sizeof shape))return q::Code::request;
         bool expected=false;if(!busy_.compare_exchange_strong(expected,true))return q::Code::reentrant;Finish finish{busy_};
-        stage_=Stage::geometry;detail_=0;
+        stage_=Stage::geometry;detail_=0;work_.witness={};
         if(stopped_.load())return q::Code::unavailable;
         const auto owner=actor;const auto source=metadata;const Shape geometry=shape;
         if(!q::detail::valid(geometry))return q::Code::request;
@@ -176,7 +176,7 @@ public:
     unsigned pending_count()const noexcept{return unsigned(busy_.load()||engine_.pending()||!closed_.load());}
     bool uncertain()const noexcept{return engine_.uncertain();}
     // Same serialized owner only; this is not a cross-thread publication.
-    Observation observation()const noexcept{return {stage_,detail_,engine_.observation()};}
+    Observation observation()const noexcept{return {stage_,detail_,engine_.observation(),roles::observation(work_)};}
     bool enabled()const noexcept{return enabled_.load()&&!stopped_.load();}
     template<class Shape,class Read,class Guard> q::Code overlap(weapon_hand_scene_binding::Binding const& actor,
         gears_cover_pose_phase::Metadata const& metadata,Shape const& shape,Read read,Guard guard,q::Overlap& output)noexcept{

@@ -102,6 +102,7 @@ int GEARS_QUERY_SESSION_TEST_MAIN(){
         C(!memcmp(saved_arena.data(),reinterpret_cast<void*>(arena),saved_arena.size())&&query_lock_free&&query_calls==2);
         C(owner->overlap(actor,physics_expected,q::Sphere{{1,2,3},.25f},source_read,guard,overlap_result)==q::Code::queried&&overlap_result.raw_hit&&query_calls==3);
         C(owner->observation().stage==service::Stage::complete&&!owner->observation().engine.supported);
+        C(owner->observation().layout.step==roles::LayoutStep::complete&&owner->observation().layout.pass==2);
         during_query=nested_query;C(owner->overlap(actor,physics_expected,test_box,source_read,guard,overlap_result)==q::Code::queried&&nested_code==q::Code::reentrant);
         during_query=nullptr;owner->request_drain();bool other_worker=true;std::thread thread([&](){other_worker=owner->poll_stop();});thread.join();
         C(!other_worker&&close_calls==0&&owner->pending_count());C(owner->poll_stop()&&close_calls==1&&!owner->pending_count());C(owner->poll_stop()&&close_calls==1);}
@@ -110,7 +111,16 @@ int GEARS_QUERY_SESSION_TEST_MAIN(){
         const auto before=query_calls;overlap_result.raw_hit=false;
         C(owner->overlap(actor,physics_expected,test_box,source_read,guard,overlap_result)==q::Code::source&&!overlap_result.raw_hit&&query_calls==before);
         C(owner->observation().stage==service::Stage::physics_roles&&owner->observation().detail==unsigned(roles::Code::request));
+        C(owner->observation().layout.pass==0&&owner->observation().layout.step==roles::LayoutStep::idle);
         actor=saved;owner->request_drain();C(owner->poll_stop());}
+    reset();
+    {auto owner=std::make_unique<HostSession>();C(owner->start(true,true));
+        put(inner+0x74,4u);overlap_result.raw_hit=true;
+        C(owner->overlap(actor,physics_expected,test_box,source_read,guard,overlap_result)==q::Code::source&&overlap_result.raw_hit&&!query_calls);
+        const auto witness=owner->observation();
+        C(witness.stage==service::Stage::physics_roles&&witness.detail==unsigned(roles::Code::layout));
+        C(witness.layout.step==roles::LayoutStep::inner_width&&witness.layout.pass==1&&witness.layout.body_index==~0u);
+        owner->request_drain();C(owner->poll_stop());}
     reset();
     {auto owner=std::make_unique<HostSession>();C(owner->start(true,true));wrong_receiver=true;overlap_result.raw_hit=false;
         C(owner->overlap(actor,physics_expected,test_box,source_read,guard,overlap_result)==q::Code::changed&&!overlap_result.raw_hit);

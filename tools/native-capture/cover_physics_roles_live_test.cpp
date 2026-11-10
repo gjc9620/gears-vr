@@ -60,6 +60,10 @@ int GEARS_PHYSICS_ROLES_TEST_MAIN(){
     physics_setup();roles::Snapshot out{};C(observe(out));C(out.root==1&&out.source.body_index==1&&out.source.mesh==fixture_mesh&&out.source.thread==GetCurrentThreadId());
     C(out.bodies[0].index==0&&out.bodies[1].index==1&&out.bodies[1].main==arena+0x89000&&out.owner.address==fixture_pawn);
     const auto accepted=out;C(observe(out)&&roles::same(accepted,out));
+    {const auto witness=roles::observation(workspace);
+        C(witness.step==roles::LayoutStep::complete&&witness.pass==2&&witness.body_index==1);
+        C(witness.mesh_asset_offset==0x248&&witness.mesh_instance_offset==0x250&&witness.owner_offset==0x60&&witness.bodies_offset==0x6c&&witness.root_offset==0x7c);
+        C(witness.mesh_sources>0&&witness.instance_sources>0&&witness.mesh_identities>0&&witness.instance_identities>0);}
     constexpr uintptr_t physx=0x180000000;
     const std::array<std::pair<unsigned,unsigned>,12> slots{{
         {0x2330b0,0x135b00},{0x22ccc0,0xa0300},{0x23cda0,0x171770},{0x23cda8,0x1716f0},{0x23cdc8,0x168350},
@@ -135,6 +139,14 @@ int GEARS_PHYSICS_ROLES_TEST_MAIN(){
         if(bad==25){typed_property(arena+0x7ac00,111,body_class,L"BodyIndex",integer_kind,4,0x60);put(props[8]+0x68,arena+0x7ac00);}
         if(bad==26)denied=arena+0x86000;
         C(!observe(out)&&roles::same(before,out));
+        using S=roles::LayoutStep;
+        const std::array<S,27> expected{{S::idle,S::idle,S::idle,S::array_bounds,S::array_bounds,S::array_bounds,S::array_bounds,S::array_bounds,
+            S::body_duplicate,S::body_layout_class,S::idle,S::idle,S::idle,S::mesh_asset_offset,S::bodies_offset,S::inner_width,S::inner_offset,
+            S::inner_owner,S::body_data_property,S::body_data_property,S::body_owner_property,S::body_mesh_reference,S::owner_class,
+            S::idle,S::body_index_property,S::body_index_property,S::idle}};
+        if(expected[bad]!=S::idle){const auto witness=roles::observation(workspace);
+            C(role_verdict==roles::Code::layout&&witness.step==expected[bad]&&witness.pass==1);
+            if(bad==8||bad==9)C(witness.body_index==1);}
     }
     physics_setup();
     for(unsigned i=0;i<64;++i){const uintptr_t body=arena+0xa0000+i*0x100;
@@ -168,6 +180,7 @@ int GEARS_PHYSICS_ROLES_TEST_MAIN(){
     }
     physics_setup();C(observe(out));const auto before=out;
     C(roles::sample(actor,physics_expected,[](){return false;},workspace,out)==roles::Code::guard&&roles::same(before,out));
+    {const auto witness=roles::observation(workspace);C(witness.step==roles::LayoutStep::idle&&witness.pass==0&&witness.mesh_sources==0&&witness.instance_identities==0&&witness.bodies_offset==0);}
     unsigned closing{};C(roles::sample(actor,physics_expected,[&](){return ++closing<2;},workspace,out)==roles::Code::guard&&roles::same(before,out));
     C(roles::sample(actor,physics_expected,guard,workspace,workspace.first)==roles::Code::request);
     C(roles::sample(actor,physics_expected,[]()->bool{throw 7;},workspace,out)==roles::Code::exception&&roles::same(before,out));

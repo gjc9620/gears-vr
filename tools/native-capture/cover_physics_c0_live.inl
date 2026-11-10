@@ -59,6 +59,10 @@ void summary(FILE* f){if(!f)return;
         unsigned(copy.admission),unsigned(copy.session_entered),unsigned(copy.progress.stage),copy.progress.detail,
         unsigned(copy.progress.engine.supported),unsigned(copy.progress.engine.stage),copy.progress.engine.source_code,unsigned(copy.progress.engine.exception),
         copy.original_started_before,copy.progress.engine.original_started,copy.original_returned_before,copy.progress.engine.original_returned);
+    auto const& l=copy.progress.layout;
+    fprintf(f,"cover_sphere_probe_layout_step=%u cover_sphere_probe_layout_pass=%u cover_sphere_probe_layout_body=%u cover_sphere_probe_layout_mesh_sources=%u cover_sphere_probe_layout_mesh_identities=%u cover_sphere_probe_layout_instance_sources=%u cover_sphere_probe_layout_instance_identities=%u cover_sphere_probe_layout_offsets=%u,%u,%u,%u,%u ",
+        unsigned(l.step),l.pass,l.body_index,l.mesh_sources,l.mesh_identities,l.instance_sources,l.instance_identities,
+        l.mesh_asset_offset,l.mesh_instance_offset,l.owner_offset,l.bodies_offset,l.root_offset);
 }
 template<class Shape,class Output,class Invoke> q::Code query(Entry const& entry,Core const& source,Shape const& shape,Output& output,Invoke invoke)noexcept{
     query_admission=QueryAdmission::admission;query_session_entered=false;
