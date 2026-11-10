@@ -36,6 +36,8 @@ def prebirth_resource_refusal(result, worker_exists, session_exists):
     return (result.get('start_exit') == 1 and not result.get('start_stdout')
             and not worker_exists and not session_exists
             and ('RuntimeError: Two automatic instances already own this 32GiB machine;' in error
+                 or 'runtime_receipts.ResourceUnavailable: Two automatic instances already own this 32GiB machine;' in error
+                 or 'runtime_receipts.ResourceUnavailable: Insufficient currently available memory for another game;' in error
                  or ('RuntimeError: {"check": "disk_admission"' in error
                      and '; insufficient evidence-volume space; no new game started;' in error)))
 
@@ -71,7 +73,8 @@ def main():
                            (Path(action['operator']), action['operator_sha256']),
                            (Path(action['input_reader']), action['input_reader_sha256']),
                            (Path(action['observation_adapter']), action['observation_adapter_sha256']),
-                           (TOOLS, prepared['isolation_source_sha256'])):
+                           (TOOLS, prepared['isolation_source_sha256']),
+                           (ROOT/'tools/multi-instance/runtime_receipts.py', prepared['runtime_receipts_source_sha256'])):
         if sha(path) != expected:
             raise RuntimeError('Prepared input changed: ' + str(path))
     manifest = load(SELECTED/'manifest.json')
@@ -106,6 +109,8 @@ def main():
     result['foreground_observations'] = dict(samples=0, owned_activation=False)
     result['cloak_observations'] = dict(samples=0, failures=[])
     result['runner_sha256'] = sha(__file__)
+    result['isolation_source_sha256'] = prepared['isolation_source_sha256']
+    result['runtime_receipts_source_sha256'] = prepared['runtime_receipts_source_sha256']
     result['anchor_source_sha256'] = anchor_sources
     result['projection_recorder_sha256'] = sha(HERE/'cover_projection_recording.py')
     user = ctypes.WinDLL('user32', use_last_error=True)
@@ -155,8 +160,11 @@ def main():
         if result['cloak_observations']['failures']:
             raise RuntimeError('Own visible window is not DWM cloaked; normal stop required')
     try:
-        start = subprocess.run([sys.executable, '-E', '-s', '-B', '-X', 'utf8', str(TOOLS), 'start', '--name', NAME],
-            cwd=ROOT, env=env, capture_output=True, timeout=30, creationflags=subprocess.CREATE_NO_WINDOW)
+        # The same first request can wait 60s BEFORE registration. Preserve
+        # the original 30s dispatch margin after that bounded resource wait.
+        start = subprocess.run([sys.executable, '-E', '-s', '-B', '-X', 'utf8', str(TOOLS), 'start', '--name', NAME,
+                                '--wait-resources-seconds', '60'],
+            cwd=ROOT, env=env, capture_output=True, timeout=90, creationflags=subprocess.CREATE_NO_WINDOW)
         result.update(start_exit=start.returncode, start_stdout=start.stdout.decode('utf-8', errors='replace'),
                       start_stderr=start.stderr.decode('utf-8', errors='replace'))
         save()
@@ -259,7 +267,7 @@ def main():
             result['operator_exit'] = operator.poll()
         if log:
             log.close()
-        no_birth = prebirth_resource_refusal(result, (SELECTED/'isolated-worker.json').exists(),
+        no_birth = prebirth_resource_refusal(result, (SELECTED/'isolated-worker.json').exists() or (SELECTED/'isolated-worker.log').exists(),
                                              (SELECTED/'launcher-session.json').exists())
         result['prebirth_resource_refusal'] = no_birth
         result['normal_cleanup_required'] = not no_birth

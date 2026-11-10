@@ -204,6 +204,7 @@ def main():
         manifest_sha256=sha(selected / 'manifest.json'), config_sha256=sha(selected / 'config.json'),
         input_reader_sha256=sha(output / 'read_private_input.py'),
         preparation_source_sha256=sha(__file__), isolation_source_sha256=sha(ROOT / 'tools/multi-instance/isolated_sim.py'),
+        runtime_receipts_source_sha256=sha(ROOT / 'tools/multi-instance/runtime_receipts.py'),
         input_reader_source_sha256=sha(OLD / 'read_private_input.py'),
         openxr_loader_sha256=loader_sha,
         anchor_source_sha256={path:sha(ROOT/path) for path in (
