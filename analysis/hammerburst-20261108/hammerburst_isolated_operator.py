@@ -141,6 +141,15 @@ def core_source():
 
 def reload_source():
     source=(CODE/'hammerburst_reload_chain.py').read_text(encoding='utf-8')
+    source=replace_once(source,
+        "        phase('extract_original_for_replacement' if replacement else 'extract_then_return_same_original_without_release')",
+        """        if '--hammerburst-park-restore' in sys.argv:
+            from hammerburst_restore_chain import run as restore_run
+            resumed_transitions=len(c.records('hammerburst_reload_transition'))
+            restore_run(c,count_reader=counts,release_left=lambda:command(saved,False),
+                        grip_left=lambda:magazine(0),mount_reader=lambda:read('read_aim_metrics.py','restore_mount'))
+            wait('hammerburst_reload_transition',resumed_transitions,lambda r:r.get('to')=='4',expected='fresh restored original magazine phase')
+        phase('extract_original_for_replacement' if replacement else 'extract_then_return_same_original_without_release')""")
     return replace_once(source,'        g.pad(1,wait=.35,trigger=1);g.pad(1,wait=.6)',
         '        from confirmed_first_fire import first_fire\n        first_fire(c,data,deadline_ns=time.perf_counter_ns()+int(max(0.,deadline-time.monotonic())*1e9))')
 

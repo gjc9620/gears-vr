@@ -203,9 +203,9 @@
   ],
   "completion_proven": false,
   "goal_active": true,
-  "immediate_next": "One fresh service-loss-r1 owned run: observe first original burst service rejection before existing cancellation, do not treat prior withdrawal as causal without alignment; preserve release/identity/all clocks.",
+  "immediate_next": "Fresh released-debt-r1 game run after resources available: verify fresh-source continuation only, no expired input dispatch or renewed250ms event; then empty reload/return-fire and optional actual park/restore chain.",
   "historical_evidence_does_not_certify_current_PG": true,
-  "candidate_runtime_status": "Latest11644 core6+typed72/78, first confirmed drain4/6 explicitly cancelled before R2 failure reader.10 consistent rays; final typed missing. Pending-copy loss not observed. Earlier36568 first6+11complete drain then3/6 preserved.",
+  "candidate_runtime_status": "Actual3112 service-loss-r1 first6+two complete six-shot drain bursts typed60/78, next4/6 cancelled at service gate3 armed=false, registration alive, aligned stale_before frame303 age102.1307ms;22 consistent rays, final typed after partial missing. Released-debt-r1 compiled/event308/actualClient14 only; not game exercised.",
   "previous_recorded_candidate": {
     "name": "hammerburst-prepared-20261110-unheld-input-r1",
     "prepared_sha256": "76a2ae8cc56e4165b77ca5d17a9e6469ff66323e917be5a8b46da44df4f0bb58"
@@ -224,6 +224,6 @@
     "limit": "Actual restore chain, native reacquisition, original UI and interruption/reward still require owned game validation; Source1 first-fire failure remains open."
   },
   "historical_runtime_status_56252": "Actual56252 shoulder/core6+12six-shot drain+empty trigger+replacement/latch closure passed; return six actual consistent rays but first typed sample73/0 before sixth15.6313ms; final72/0 not yet observed, operator1 preserved. Return observation driver fixed offline12cases.",
-  "restore_verifier_status": "Prepared with synthetic positive/negative cases and independent typed before/after count interface; actual switch-action driver integration and game evidence pending.",
+  "restore_verifier_status": "Optional --hammerburst-park-restore input action hook integrated into private reload adapter; five synthetic action/receipt regressions passed. Actual park/redraw/new-grant/native-resume, typed conservation, UI/reward and complete return-fire require game evidence.",
   "latest_service_first_failure": "runtime-3112-first-failure-analysis.json"
 }

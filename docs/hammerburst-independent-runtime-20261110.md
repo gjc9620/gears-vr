@@ -248,3 +248,11 @@ released-debt-r1为本次首因的私有修正，默认未启用公共功能：�
 候选完整PG编译成功，SHA df22727d9bc35578f36e39bcc111679054eacf59a2b6f346de08f27aea5547f6；Native/XR未重建。实际事件适配器308项检查通过，其中新增28项覆盖过期时不发射/不续event、新鲜源恢复后仅下一发、8种拒绝、原250ms到期正常取消；队列、引擎、证书和Client lifetime调用为夹具，不冒充实际Native epoch验证。源补丁`docs/hammerburst-released-debt-wait.patch`；实际该修正尚未运行。
 
 另用同冻结树的实际HandClient头执行12项原action lifetime身份/epoch案例，并补2项102.1307ms过期publication案例（single/support分别覆盖）：Frame copy拒绝、armed false、snapshot无权限，原action身份可仅供既有债务保留，显式invalidate后立即拒绝。14项通过；这是实际Client代码加本地主机/观察器，不是Native运行或游戏身份验证。结果`released-debt-r1/client-test-result.json`，编译未改PG候选DLL。
+
+## 可选实际换弹park/redraw/resume动作脚本接线
+
+资源检查持续拒绝新游戏，当前C盘free3,347,656,704bytes（观察值随其他实例变化）低于4GiB。没有重启旧实例或创建本枪新游戏；继续补齐既有恢复需求的独立动作脚本，不将等待标blocked。
+
+`hammerburst_restore_chain.py`通过私有适配器的显式`--hammerburst-park-restore`开关，在原弹匣已打开、尚未抽出时接入。释放左手后独立typed before；按现有右肩slot3路径各一次真实Grip完成stow/redraw，要求新equipment回执及原HB对象；等待本次parked→rebound/display_ready→真实UP；同一实例重新读取枪体组件和矩阵，与原规划比较通过后才发出一次新左手magazine Grip。要求原stage3 opened恢复，再用现有独立typed after和七段实际restore记录验证库存、serial、accepted_begin/perfect_end/reward_start、不确定dispatch、原angle、新hold/UP/press身份。调用方还必须等新的to4原弹匣阶段后才继续原抽出/插入/关锁扣/返射。任何缺失、不同实例、不同mesh/矩阵或库存变化均停止，不输入重试。
+
+5项脚本回归通过（成功新记录、收枪缺失不再按键、两类mount错误拦截左手、独立库存改变拒绝、可选实际适配位置编译）；输入/引擎/回执为模拟，不是实际park/resume完成。默认当前连发复测不传该开关，未更改PG候选DLL或生产恢复策略。完整恢复动作、原UI、奖励/中断及画面仍待实际游戏验证。
