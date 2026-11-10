@@ -209,3 +209,9 @@ latch-history-isolated-r1由原冻结2253树派生，只增加HB接线、纯HB h
 新product hammerburst-prepared-20261110-latch-history-press prepared SHA98b9a1ee7ff97a5af40918f7a4cd4e5b5fd2bf00646c888484d9324446156fe5，PG305b5447；较e6b2只改已bound同weapon/hold的HB可用原未派发press路径，2274源/1338Native源/6制品全核。新独立history-r2入口/plan/ready实际prepare0；统一guard争用零等待与45秒有界等待均Busy退出，未consume/未stage、claim不存在，不计game尝试或修补通过。保持同一入口等真实释放，不引入前后继审批。
 
 等待期间补完54632全部1页总览和6张按原QPC取样实际game/sim原图亲阅（取枪/首次拒绝/真实UP），runtime-54632-personal-review.json保存原图SHA和对齐差4.9/-1.8/-12.3/21.6/14.9/21.1ms。可见持枪/近枪遮挡，不能从画面反推ButtonPress拒绝根因；真实0射线和未触达history仍按原日志。编码61621已终0，媒体留存仍待安全处理；不复跑原构成、不以等待做额外构建。
+
+## 有界互斥等待与52960事件原图收尾
+
+history-r2独立入口改为同一进程仅循环RuntimeBusy等待（每次OS wait45秒），尚未取得锁时不consume、不stage；取得后只执行一次main，游戏/断言/已消费失败不自动重试。27ee52ed保存。当前真实其他运行未终，不据无图标/旧终态抢启动。
+
+等待时补完52960的6张实际game/sim原图：真实begin、进入closing前最近follow、首112ms拒绝样本附近各一对，QPC差0.32/-30.76/-29.57/-16.35/2.57/3.76ms，原图SHA与选取时刻加入runtime-52960-review.json，三页全跨度overview先前已阅。近枪遮挡、袖口/手型未接受；只记录图像证据，不把精细GrabPose作为逻辑前置。原stage7拒绝和未回射保持，媒体留存另处理不持游戏锁。
