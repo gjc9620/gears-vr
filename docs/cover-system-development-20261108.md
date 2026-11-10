@@ -1718,3 +1718,13 @@ v2冻结r90 Native源，仅4个产品overlay，共1097文件。实际编译链�
 首版/WX发现新增参数base遮蔽旧fixture全局，重命名为image_base后v2通过；最终新检查初期待module，但原代码证书通过CodeGuard返回guard拒绝，实际拒绝且输出保持，修正预期后通过，未放宽产品条件。两份失败及冻结输入保留。测试仍是原PE数据、合成对象和Host加载／dispatch，独立清单的owner/code准入为显式seam；新增完整owner调用执行实际代码证书与成员关闭。无原DLL执行／游戏／XR／录像或新玩家动作通过。
 
 本轮收到HOD41008／ee031实际取消前驱预告：窗口仍属HOD，retention及固定完整closeout尚待交付，不是FINAL。后续只准备准确取消分支，保留正常分支，不复用49912例外、不重复产品prepare或消费r80。其余完整Shape／自身覆盖、生命周期／ABA和共同物理同步、身体路径／占用／移动恢复、严重肩身遮挡、physics-hit-muzzle、LGrip／GrabPose及实体头显仍未完成。保留CV01–24／AC01–22，工程25%不变，目标active。
+
+## 2026年11月10日 r94取消证据独核与最新独立执行约定
+
+上一轮aa1d4c31完成静态Shape归属接线、19程序与Native编译，属于进展。本轮按HOD必要接收请求窄核41008／ee031取消事实：首claim ce5fd8、bound bfbe55、baseline647e91及独立terminal2d39一致；Windows FILE_ID_INFO前后确认原首claim文件身份[12451548302678751898,2814749770231531]，未改写原件。完整review SHA8875d0b086c5c128c328e10883aaf197eabca36ad3b0e52b47a85a46635a250c及其取消／done／原配置恢复／1overview+4raw／encode0／retention终态引用逐SHA核对，原10当前与保存字节或缺失状态一致，private9与文件集按固定恢复独核记录保留。取消事实仍是normal_cleanup_verified=false、startup_cancelled_cleanup_verified=true、Native未启动、XR1且EndSession false，未冒称Native／XR正常或玩法通过。
+
+审计文件analysis/cover-system-20261108/view-alignment-r80/hod41008_receiver.py及hod41008-cancellation-audit.json只读，不启动或授窗、不消费r80。核对期间收到主人最新独立执行规则：不再以远期前后继、逐级受理、整包互审或一次性票据重绑作为日常工作和启动的先决条件；仅实际准备启动共享游戏／模拟器时，使用现有启动互斥及真实占用检查简短协调。自有动作结束或首失败后立即正常关闭自有游戏／Native／XR／输入／录制，恢复原值、核对释放；已隔离的离线编码／审片／retention不占游戏使用权。身份、新鲜度、库存、存档、单writer及他人源码保护不变。
+
+因此停止继续制作HOD接收ready／新FINAL门禁；原pending取消接收分支明确标记superseded_as_runtime_gate，正常分支与历史证据仍保留。收到Bow准备启动的实际占用询问，仅回复本会话没有游戏／模拟器／恢复／录制或共享写入作业，要求其自行按互斥与实际占用检查启动，未代替全局空闲核验或保留下一窗口。规则保存在independent-execution-owner-policy.json，后续无需等待HOD离线收尾或逐级签收。
+
+原r80五身份、Native8035和封存入口本轮均逐SHA保持，未重新prepare／stage／启动；旧入口仍带过时FINAL检查，下一步须单独适配实际启动互斥与当前占用协议，不能伪造旧accepted／FINAL布尔值绕过。最新已编译源码Native仍r93的9f375dc7；公共v71、实际掩体动作／严重遮挡／物理同步／身体移动／受击枪口／LGrip／头显尚无新通过，CV01–24／AC01–22完整保留，工程25%不变，目标active。此轮进展为准确取消事实独核及当前执行规则落地，不称游戏或verified wait。
