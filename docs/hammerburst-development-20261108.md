@@ -555,3 +555,15 @@ wrapper79361=0只是生命周期正常，operator29164=1是实际功能失败；
 
 冻结副本WeaponHandClientSourceStateTest编译/执行exit0，新增8组覆盖单手与support、新鲜/延迟/过期、拒绝不触发observe、发布消失不保留可用时钟及新发布替换观察值；其余既有客户端用例全部通过。证据analysis/hammerburst-20261108/publication-age-isolated-r1/result.json、unit-result.log、build-final.log；共享backend尚有他人改动，仅将本次独立日志差异保存为docs/hammerburst-frame-age-observation.patch，不整体提交该共享文件。未获取运行锁、未stage或启动游戏，完整换弹与再开火仍待验证。
 
+## 2026-11-10 game40928：同一次连发第六发晚于首次库存检查，修复测试等待
+
+publication-age-r1实际game40928、creation134387732759989314、原指定游戏，PG86dc3b36（保持原GearsPlayground6DofUnified3输出名；此前cd28c194是默认输出名的离线构建记录，不是本次装载DLL），Native806dcbd6。Release编译选项与上一候选逐项相同，源码仅3项观察/测试变化。源、入口、计划均在45ac21c9保存后，公共RuntimeGuard实际获取窗口才消耗新一次性claim并stage。
+
+实际核心6发、耗弹第一/二轮各6发通过，第三轮首次typed观察60→55，于84545563711000记录；随后84545579881300出现第24条有效且写入/射线来源一致的实际射线，相差16.1703ms。这是该轮第六发，最终实际24条均有效一致。原操作者在首次5/6观察处已判失败，exit1；没有补按/重试。整局没有continuation/release拒绝或frame-read失败记录，所以本次没有练到新增年龄记录，不能将本次诊断写成51936的输入过期。也不能因后续第六发出现而把原失败运行改判通过。空匣/换弹仍未到达。
+
+针对这个实际测试缺陷，耗弹driver现在在同一次原始按压得到部分完成时，等待该次连发的实际库存进展；仍使用原整段18秒deadline，不续期，不补按，不放宽原Native/首枪/时效/派发/anti-replay。新出现的明确连发拒绝立即失败，库存增加/储备或容量变化失败，无耗弹保持原立即失败。等待中逐次保存真实typed观察，完成后仍要求精确min(6,loaded)消耗及有效射线。新增9组离线检查覆盖延后完成、重复部分读、原拒绝、原deadline、无进展、库存增加、储备变化及过量消耗；原10组耗弹检查也通过。只保存本人driver差异docs/hammerburst-same-burst-completion.patch及检查源，未重编Native/PG或不变重跑游戏。
+
+wrapper36320终止0，操作者54992=1；原Native/入口/输入/XR/launcher正常退出，十原件SHA全部恢复，共享运行锁已释放并短告知实际使用方Bol。26份初始原运行文本/sidecar、原PG日志与动作记录独立归档；停止capture以硬链接独立保存。编码29645终止0，一页完整paired overview及失败QPC前/中/后双路6原图均亲审；保留启动标题/TPS/等待卡、枪口火光和严重近脸/右眼遮挡，完整手型仍不接受。旧媒体保留清理尚未执行，不冒充已完成。
+
+证据analysis/hammerburst-20261108/runtime-40928-first-failure-analysis.json、runtime-40928-evidence/、same-burst-completion-check.json和supply-driver-check.json。下一步冻结仅此driver等待修正后继续同一完整空仓换弹链；51936真正过期失败仍单独保留，完整开发目标未完成。
+

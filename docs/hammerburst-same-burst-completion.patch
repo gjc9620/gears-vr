@@ -1,0 +1,35 @@
+--- a/analysis/solo-m1-20261028/hammerburst_supply_boundary_chain.py
++++ b/analysis/solo-m1-20261028/hammerburst_supply_boundary_chain.py
+@@ -24,8 +24,32 @@
+             # The old .25s UP began a new counter cohort before the preceding
+             # original burst finished in game44504. Never relax that cohort
+             # guard or retry its rejected press to manufacture depletion.
++            rejection_prefixes=('native_hammerburst_continuation_rejected','native_hammerburst_release_rejected')
++            rejection_offsets={p:len(c.records(p)) for p in rejection_prefixes}
+             c.live();g.pad(1,wait=.35,trigger=1);g.pad(1,wait=.6);bursts+=1
+             observed=counts(c,label+'_after_burst_'+str(bursts))
++            expected=min(6,previous)
++            # 40928's sixth original shot arrived 16.1703ms after this first
++            # typed sample. A partial observation is not a terminal result.
++            # Wait for THIS same real burst only, inside the unchanged whole
++            # drain deadline. Never issue another press to finish it.
++            completion_samples=[observed]
++            evidence.setdefault('completion_observations',[]).append(completion_samples)
++            remember(genuine_press_release_bursts=bursts,last_observed_counts=observed)
++            while 0<previous-observed['loaded']<expected:
++                assert observed['reserve']==before['reserve'] and observed['capacity']==before['capacity']
++                for p in rejection_prefixes:
++                    rejected=c.records(p)[rejection_offsets[p]:]
++                    assert not any(0<int(x.get('count',0))<6 for x in rejected),\
++                        'Original burst explicitly rejected; stop without retry'
++                remaining=deadline-clock()
++                assert remaining>0,'Same original burst did not complete before unchanged drain deadline'
++                sleep(min(.1,remaining));c.live()
++                observed=counts(c,label+'_burst_'+str(bursts)+'_completion_'+str(len(completion_samples)))
++                assert clock()<=deadline,'Same original burst completion exceeded unchanged drain deadline'
++                assert observed['loaded']<=completion_samples[-1]['loaded'],'Inventory increased while waiting for original burst'
++                completion_samples.append(observed)
++                remember(last_observed_counts=observed)
+             evidence.setdefault('burst_observations',[]).append(dict(
+                 burst=bursts,loaded_before=previous,loaded_after=observed['loaded'],
+                 actual_spent=previous-observed['loaded'],expected_spent=min(6,previous)))
