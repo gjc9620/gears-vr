@@ -1856,3 +1856,22 @@ Native／entry／pad／weapons drain正常、XR exit0，owned进程退出核对�
 新独立尝试`equipment-controls-prepared-20261110-cover-sphere-r102`与`analysis/cover-system-20261108/sphere-call-r102/run_cover_eye_independent.py`准备检查退出0；新Native、原PG／XR、363项运行驱动与依赖身份已绑定。复用r97普通接近／原版吸附和五个短观测阶段，新增一次Native原查询；旧r97已消耗尝试和r80原始五文件未修改，未重绑旧窗口票。仍使用同一RuntimeGuard，从新鲜备份经stage／运行到正常恢复全程持有，离线编码／审阅在其外。
 
 本轮只离线准备，claim未创建、未stage、未启动游戏／XR。实时发现共享游戏先为54968，随后9596，最后55756（XR55112、录制56968），均不是本轮启动，不干预其窗口。新入口原版查询的实际执行、语义及正常清理仍待运行窗口，不把准备通过计为游戏通过。证据：`analysis/cover-system-20261108/sphere-call-r102/verification.json`。完整球体扫掠、几何／世界时相／占用、身体提交及双眼／实体头显验收仍未完成；public v71及工程25%保持不变。
+
+
+## r103：r102实际42332来源拒绝与正常恢复（2026-11-10）
+
+上一轮是源码／准备推进。本轮先实际观察共享进程，第一次独立入口被同一RuntimeGuard拒绝，未备份／stage／启动，claim未消耗；拒绝日志另存。随后重新观察游戏／XR／录制均已退出，独立入口取得真实运行锁，持有到全部正常清理和恢复。未通知统筹、未派发其他会话或武器工作。
+
+正式运行使用r102 Native `2e65bfd4…7d862`，游戏42332（creation134387761076846786），launcher8400（creation134387761002794238）。普通接近、原版CT2吸附和五个短观测阶段完成，operator退出0、inner退出0；独立入口最终退出1，正确保留本次球体观测失败。球体确实requested／attempted／finished各1，返回Code4（source），不是queried。记录绑定世界2312208640／代次1、人物16477978880、Link4929110784／slot0、Scene218、Compose13491、序列1502、线程55720；输入球体(-3921.65381,-189.660019,626.241882,r=1游戏单位)。raw_hit=0不构成无碰撞结果。当前总返回码可出自多层来源拒绝／catch；本构建无原调用开始／返回计数，不能断言具体拒绝层或原callee已／未执行。
+
+Native及entries正常清理、虚拟手柄恢复、武器drained、XR退出0（stop_signaled／wait）均有同局记录；手部stop返回5但drained=true，不能改写成所有原返回码0。29项文件字节／缺失状态及Config／SaveData文件集合恢复，public／原用户文件未写；随后真实guard释放。原始终局报告在retention注解前另存，其SHA256为25a653f3de9f8f673befb2be0cca631d1d6f96d0b3f6565e754a44d2c4e8ba6e。
+
+原始眼点trace3046728字节；旧格式检查退出0，189／189 eligible、numeric mismatch0、overflow0；五个完整QPC阶段同Pawn／world的CPU行分别7／6／6／7／6。Trace没有Probe Compose字段，同Scene关联不是同C0／物理姿态证明，未做最近时间拼接。两页完整双路总览及五张阶段原图已逐一查看：头肩仍严重挡视野，画面FAIL，未修复。启动三人称／等待卡保留。双路录制与离线编码退出0；game530帧31.833s，启动采集最大间隙2.267s；sim676帧31.816s、最大间隙283.33ms；两路末端覆盖500ms内均为true，不等于完整渲染／头显通过。
+
+编码／审阅在guard外。常规媒体保留助手因另一运行的game／XR仍活跃而deferred，未删除媒体；稍后实时确认56252／56768，不干预，保留待空闲执行事项。r102 claim已经消耗，不重跑或重生这个尝试。证据：`analysis/cover-system-20261108/sphere-call-r102/runtime/closeout-review.json`、`phase-coverage.json`及原始报告／原图。
+
+启动前还修正新入口的两处问题：计划残留的“无原查询”说明更正；已消耗尝试若不能证明baseline恢复，错误路径保留实际运行锁进程，不自动释放、强停或重试。实际入口的四个离线异常场景共7项检查通过（显式fake guard及注入等待边界，未取得真实锁或运行游戏）；本次正常恢复路径不进入该保留状态。保存独立入口及对应错误路径检查源码供审阅。
+
+并行的原版静态扫掠调查另存 `analysis/cover-system-20261108/sweep-research-r103/findings.json`：胶囊分派行index4指向3字节XOR AL,AL／RET，返回false；该index的当前形状标签尚未新认证。球体helper有相等端点分支，但胶囊helper会先计算轴叉积归一化再走边测试，完整零轴等价性仍未证明；mesh／height／convex的D9490和Box的D5A70仍待针对性解释。没有启用球体扫掠，没有将原空返回签发完整覆盖证明。
+
+下一步为来源Code4增加有界层次与原调用观测，定位C0准入／类型读取／查询内部的第一拒绝，不放宽校验，不重复未改动的查询。CV-01–24／AC-01–22、完整路径／占用、实际身体／视图／命中合流及头显验收仍未完成；public v71及工程25%不变。
