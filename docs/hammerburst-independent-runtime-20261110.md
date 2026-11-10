@@ -222,3 +222,11 @@ source-loss-r2只扩大观察覆盖：idle故障独立最多6条，已承诺burs
 11644 actual core6并typed72/78；下一确认手势只4/6，总10条有效一致射线。帮助器在typed再次读取前停止，最终typed缺失；不得补写推算68/78。闲置copy观察未与该4发取消对齐，取消先于R2读；新service gate观察按原序短路记录首因，最多8条，不增clock/Frame读、不改寿命/释放。完整PG SHA 8c798dcc10b9e296313b1e85387fbb8bdf2536202e818a9b6da81ce83a689526，冻结事件适配器280检查通过（队列/引擎/证书为夹具）；未实测该观察点。
 
 11644 continuous/session passed=true，launcher0/operator1/stop0、Native清理/PG入口恢复/XR exit0，game/子进程消失、无强杀、2131前台/3461CLOAK零违规。新实例曾因C盘free0在清单创建阶段失败，未生game。原归档复制同样WinError112中断；随后只清理本枪11个终态build目录77个可重建obj/69,574,112bytes，源码/DLL/PDB/原证据均保留。复查free1,883,758,592bytes，未把全部空闲变化归因于本方。已逐文件SHA核验补齐11644文本归档，并在本方prepare前增加1GiB空闲下限；外部命令失败后停止后续步骤，不再继续未完成的checkpoint/run。先前37907ce6只保存观察头与patch，不代表完整归档已提交；本次补齐。
+
+## 11644录像实查与动作录制边界修正
+
+已亲看11644全时间跨度48个双眼样本、三页概览；样本全部是启动等待卡。306张原JPEG逐文件SHA核对只有一个不同哈希，证明本次保存的全部帧字节相同。recording.json明确保留一次“No complete fresh projection frame”异常，终帧42.881s；不将其补写成errors空，也不把continuous/session通过当作动作画面。未编码这份失败录像，没有手枪接触或贴合证据。审阅索引及原图哈希在`analysis/hammerburst-20261108/runtime-11644-media-review/prepared.json`；原图、原异常和原游戏日志保留。
+
+本枪私有动作适配器现保留启动交接事件，但将GPU录制开始移到Native手/装备交接就绪后、首个动作之前；首次新完整帧仍限原5秒，失败或失去本方身份直接拒绝进入动作。共享录制器、Native、XR和武器机制均未修改。5项针对性检查与15项既有实例身份/接线检查通过；这只是脚本离线结果，不是实际画面已修复。
+
+223959在启动资源检查时因已有两个自动实例拒绝，未启动game/operator。224419在start时磁盘free3,924,176,896bytes低于现共享4GiB下限拒绝，同样未启动game/operator；本方prepare前也已统一4GiB，先前1GiB只是历史步骤。保留两次拒绝，不计游戏尝试或通过。随后free14,749,691,904bytes，按原入口启动新唯一实例224756；实际结果待原进程终态后记录，不重启旧名、不碰其他实例。

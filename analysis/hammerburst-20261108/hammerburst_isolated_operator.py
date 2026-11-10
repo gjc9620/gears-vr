@@ -163,6 +163,14 @@ def supply_source():
 
 def menu_source():
     source = (CODE / 'run_menu_firstperson_check.py').read_text(encoding='utf-8')
+    source = replace_once(source, 'from record_projection import ProjectionRecording,encode',
+                          'from record_projection import ProjectionRecording,encode\nfrom hammerburst_action_recording import start_action_recording')
+    source = replace_once(source,
+        "    rec=ProjectionRecording(folder,directory,live,layer='all',capture_enabled='--dual-output' not in sys.argv);rec.start()",
+        "    rec=ProjectionRecording(folder,directory,live,layer='all',capture_enabled=False)")
+    source = replace_once(source,
+        "\n    head_rest=dict(zip(('x','y','z'),initial['head']['xyz']),**euler(initial['head']['quat']))",
+        "\n    if '--dual-output' not in sys.argv:start_action_recording(rec,live)\n    else:rec.start()\n    head_rest=dict(zip(('x','y','z'),initial['head']['xyz']),**euler(initial['head']['quat']))")
     source = replace_once(source, "OUT=Path(__file__).resolve().parent;ROOT=OUT.parents[1]", "CODE=Path(__file__).resolve().parent;ROOT=CODE.parents[1];OUT=BOUND.output")
     source = replace_once(source, "state=json.loads((ROOT/'analysis/instances/solo-m1-1028d/launcher-session.json').read_text(encoding='utf-8'))", 'state=BOUND.state()')
     source = replace_once(source, "folder=ROOT/'analysis/instances/solo-m1-1028d/xr-input/LocalAppData/OpenXR-Simulator'", "folder=BOUND.instance/'xr-input/LocalAppData/OpenXR-Simulator'")
