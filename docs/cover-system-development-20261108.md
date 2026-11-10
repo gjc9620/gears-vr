@@ -1904,3 +1904,16 @@ r104运行入口补充：共享进程40964、42324、34780、54756先后实际�
 实际生成live函数的离线反例14项通过：更换目录／报告、owner／game／XR、session、phase或任一实时creation均拒绝；无关额外进程不阻塞本实例。这里使用明确假身份提供者和临时合成报告，没有发输入或运行游戏；语法检查不能代替实跑。新原查询报告解释器的6项合成控制此前通过，旧r102缺新字段仍返回unknown，不将raw_hit0或查询错误签发无碰撞证明。
 
 证据：analysis/cover-system-20261108/isolated-r105/cover-1110-r105-source-stage/prepared.json、operator-prepared.json与identity-check.json。下一步完成本次启动／正常停止owner、显式一次probe环境和原动作接线，按真实内存准入执行一次来源层次观测；当前没有自有game／XR运行。来源拒绝原因、完整身体扫掠／当前占用、唯一C0实际提交、双眼遮挡及CV-01–24／AC-01–22和实体头显仍未完成，工程25%不变。
+
+
+## r105实际启动前失败、依赖修复与当前离线继续（2026-11-10）
+
+上一轮独立准备属于progress。本轮新增并保存独立owner入口d6400b8b：启动前核本次manifest／config／Native／PG／XR及解释器动作源码，正常结束或首败均只请求本实例正常stop；原双路录制按当前game／XR PID+creation+HWND绑定。运行中以200ms间隔抽查前台窗口，发现本方激活即停止动作并正常清理；该抽查不是连续不抢焦点证明，既有静音／behind／no-activate环境亦不等于实际行为验收。
+
+cover-1110-r105-source-stage实际调用独立工具start成功返回worker57040（creation134387794694322429），随后launcher退出1。日志为“VR render size rejected before game launch”；原XR EXE单独尺寸预检退出-1073741515。核对发现原冻结builds/sim_xr只存EXE，独立复制缺openxr_loader.dll。没有launcher-session或birth回执，isolated-done记录launcher1／owned_game_absent=true／forced_termination=false；同一worker身份已实际消失，不能把这次记作Native清理失败、游戏动作失败或来源拒绝重现。前台抽查4次未见本方激活，仅覆盖此启动前短窗口。
+
+7f0baa19修复私有包依赖：新输入目录稳定复制原XR EXE及现部署加载器，loader SHA256 66946ea6…932df；启动前再次核私有loader。新名字cover-1110-r105b-source-stage准备退出0，不覆盖r105失败或原冻结制品；同样Native48770826／PGf8e6f3c2／XR16840b27及0.4保持。新派生live函数14项身份隔离反例通过，仅假身份／合成报告，不是实际输入或游戏通过。
+
+对r105b的实际run请求在claim前被现有内存门槛拒绝。随后只读记录可用物理1001472000字节、可用commit1342246912字节，低于1GiB／6GiB要求；未抢占其他实例。r105b没有claim、launcher-session或本方game／XR。随后收到最新人类转达“刚刚又到前台了”，已暂停所有新的game／XR启动，不自行重启测试焦点，继续离线开发；不暂停完整掩体目标，也不向统筹回复或汇报。
+
+证据：analysis/cover-system-20261108/isolated-r105/closeout.json、failed-prebirth/及cover-1110-r105b-source-stage/。本轮未取得新的原查询执行／游戏／双眼证据，Code4首次拒绝层仍未知。后台修复和资源条件满足并按最新授权恢复运行后，继续本次未消耗来源阶段检查；期间推进离线碰撞及共同身体接线。完整CV-01–24／AC-01–22、身体路径与终点占用、实际C0提交与视图／命中合流、头肩遮挡、联合战斗及实体头显仍未完成。publicv71与工程25%不变。

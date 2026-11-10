@@ -1,5 +1,6 @@
 """Exercise the generated pre-input identity guard with explicit fake sessions."""
 import ast
+import argparse
 import copy
 import json
 from pathlib import Path
@@ -8,7 +9,12 @@ from prepare import HERE, load, sha
 
 
 def main():
-    proof = load(HERE / 'cover-1110-r105-source-stage/operator-prepared.json')
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--name', default='cover-1110-r105-source-stage')
+    name = parser.parse_args().name
+    if not name.startswith('cover-') or any(c not in 'abcdefghijklmnopqrstuvwxyz0123456789_-' for c in name):
+        raise ValueError('Exact cover instance name required')
+    proof = load(HERE / name / 'operator-prepared.json')
     path = Path(proof['operator'])
     if sha(path) != proof['operator_sha256']:
         raise RuntimeError('Generated action differs')
@@ -74,7 +80,7 @@ def main():
     result = dict(checks=checks, passed=True, scope='actual generated live() guard; fake identity provider and synthetic reports only',
                   operator_sha256=proof['operator_sha256'], test_source_sha256=sha(__file__),
                   game_started=False, input_published=False, gameplay_accepted=False)
-    (HERE/'identity-check.json').write_text(json.dumps(result, indent=2), encoding='utf-8')
+    (HERE/name/'identity-check.json').write_text(json.dumps(result, indent=2), encoding='utf-8')
     print(json.dumps(result))
 
 

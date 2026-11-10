@@ -1,0 +1,35 @@
+{
+  "name": "cover-1110-r105-source-stage",
+  "memory_before": {
+    "available_commit": 14324211712,
+    "available_physical": 8800063488
+  },
+  "started_at_ns": 1794305869340777200,
+  "source": 1,
+  "forced_termination": false,
+  "gameplay_accepted": false,
+  "headset_accepted": false,
+  "foreground_observations": {
+    "samples": 4,
+    "owned_activation": false
+  },
+  "start_exit": 0,
+  "start_stdout": "{\"worker_pid\": 57040, \"root\": \"C:\\\\Users\\\\11\\\\.codex\\\\worktrees\\\\6dof-single\\\\gearsVr\\\\analysis\\\\instances\\\\cover-1110-r105-source-stage\", \"command\": [\"C:\\\\Users\\\\11\\\\.cache\\\\codex-runtimes\\\\codex-primary-runtime\\\\dependencies\\\\python\\\\python.exe\", \"-X\", \"utf8\", \"-B\", \"C:\\\\Users\\\\11\\\\.codex\\\\worktrees\\\\6dof-single\\\\gearsVr\\\\analysis\\\\solo-m1-20261028\\\\sim_entry.py\", \"launcher\", \"start\", \"--manifest\", \"C:\\\\Users\\\\11\\\\.codex\\\\worktrees\\\\6dof-single\\\\gearsVr\\\\analysis\\\\instances\\\\cover-1110-r105-source-stage\\\\manifest.json\", \"--config\", \"C:\\\\Users\\\\11\\\\.codex\\\\worktrees\\\\6dof-single\\\\gearsVr\\\\analysis\\\\instances\\\\cover-1110-r105-source-stage\\\\config.json\", \"--runtime\", \"C:\\\\Users\\\\11\\\\.codex\\\\worktrees\\\\6dof-single\\\\gearsVr\\\\analysis\\\\solo-m1-20261028\\\\simulator-stick-source\\\\bin\\\\openxr_simulator.json\", \"--auto-continue\"], \"memory_before_launch\": {\"available_commit\": 14341402624, \"available_physical\": 8782606336}, \"input_directory\": \"C:\\\\Users\\\\11\\\\.codex\\\\worktrees\\\\6dof-single\\\\gearsVr\\\\analysis\\\\instances\\\\cover-1110-r105-source-stage\\\\xr-input\\\\LocalAppData\\\\OpenXR-Simulator\", \"stop_command\": [\"C:\\\\Users\\\\11\\\\.cache\\\\codex-runtimes\\\\codex-primary-runtime\\\\dependencies\\\\python\\\\python.exe\", \"C:\\\\Users\\\\11\\\\.codex\\\\worktrees\\\\6dof-single\\\\gearsVr\\\\tools\\\\multi-instance\\\\isolated_sim.py\", \"stop\", \"--name\", \"cover-1110-r105-source-stage\"]}\r\n",
+  "start_stderr": "",
+  "worker_identity": {
+    "pid": 57040,
+    "creation_time": 134387794694322429,
+    "image": "c:\\users\\11\\.cache\\codex-runtimes\\codex-primary-runtime\\dependencies\\python\\python.exe"
+  },
+  "error": "RuntimeError(\"Private launcher ended before observation: {'launcher_exit': 1, 'owned_game_absent': True, 'forced_termination': False}\")",
+  "traceback": "Traceback (most recent call last):\n  File \"C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\isolated-r105\\run.py\", line 92, in main\n    raise RuntimeError('Private launcher ended before observation: '+str(load(SELECTED/'isolated-done.json')))\nRuntimeError: Private launcher ended before observation: {'launcher_exit': 1, 'owned_game_absent': True, 'forced_termination': False}\n",
+  "terminal_state": {},
+  "terminal_session": {},
+  "isolated_done": {
+    "launcher_exit": 1,
+    "owned_game_absent": true,
+    "forced_termination": false
+  },
+  "remaining_owned": {},
+  "normal_cleanup_verified": false
+}

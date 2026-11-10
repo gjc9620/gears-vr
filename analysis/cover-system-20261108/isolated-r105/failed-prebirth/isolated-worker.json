@@ -1,0 +1,32 @@
+{
+  "worker_pid": 57040,
+  "root": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\cover-1110-r105-source-stage",
+  "command": [
+    "C:\\Users\\11\\.cache\\codex-runtimes\\codex-primary-runtime\\dependencies\\python\\python.exe",
+    "-X",
+    "utf8",
+    "-B",
+    "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\solo-m1-20261028\\sim_entry.py",
+    "launcher",
+    "start",
+    "--manifest",
+    "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\cover-1110-r105-source-stage\\manifest.json",
+    "--config",
+    "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\cover-1110-r105-source-stage\\config.json",
+    "--runtime",
+    "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\solo-m1-20261028\\simulator-stick-source\\bin\\openxr_simulator.json",
+    "--auto-continue"
+  ],
+  "memory_before_launch": {
+    "available_commit": 14341402624,
+    "available_physical": 8782606336
+  },
+  "input_directory": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\cover-1110-r105-source-stage\\xr-input\\LocalAppData\\OpenXR-Simulator",
+  "stop_command": [
+    "C:\\Users\\11\\.cache\\codex-runtimes\\codex-primary-runtime\\dependencies\\python\\python.exe",
+    "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\tools\\multi-instance\\isolated_sim.py",
+    "stop",
+    "--name",
+    "cover-1110-r105-source-stage"
+  ]
+}

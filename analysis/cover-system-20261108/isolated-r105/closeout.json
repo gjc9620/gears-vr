@@ -1,0 +1,32 @@
+{
+  "at_ns": 1794306064089624100,
+  "previous_goal_turn": "progress",
+  "attempt_a": {
+    "result": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\cover-1110-r105-source-stage\\cover-output\\run-result.json",
+    "launcher_exit": 1,
+    "error": "RuntimeError(\"Private launcher ended before observation: {'launcher_exit': 1, 'owned_game_absent': True, 'forced_termination': False}\")",
+    "worker_identity": {
+      "pid": 57040,
+      "creation_time": 134387794694322429,
+      "image": "c:\\users\\11\\.cache\\codex-runtimes\\codex-primary-runtime\\dependencies\\python\\python.exe"
+    },
+    "same_worker_live": false,
+    "launcher_session_absent": true,
+    "birth_receipt_absent": true,
+    "native_cleanup_not_applicable": true,
+    "interpretation": "render-size preflight failed before game reservation; missing openxr_loader.dll, Win32 status -1073741515"
+  },
+  "attempt_b": {
+    "root": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\cover-1110-r105b-source-stage",
+    "loader_sha256": "66946ea6e9cc2649e299ec412521c5eafe56c635d05055097fe4db81e11932df",
+    "memory_admission_refused": true,
+    "last_observed_available_physical": 1001472000,
+    "last_observed_available_commit": 1342246912,
+    "admission_consumed": false,
+    "launcher_session_absent": true,
+    "identity_guard_checks": 14
+  },
+  "latest_runtime_direction": "Pause new game/XR starts after reported foreground problem; offline development continues. No self-restart to test focus.",
+  "gameplay_accepted": false,
+  "goal_complete": false
+}

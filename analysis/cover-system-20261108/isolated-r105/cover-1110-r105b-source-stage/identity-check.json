@@ -1,0 +1,10 @@
+{
+  "checks": 14,
+  "passed": true,
+  "scope": "actual generated live() guard; fake identity provider and synthetic reports only",
+  "operator_sha256": "daaaf0888c38518a6e2c5aa221813f875952f4850cc6851f87e955dc135426cf",
+  "test_source_sha256": "d9814b3d1b51308eed148c4b932b635cfe1b6e000f475adde894f6bb9663bc8d",
+  "game_started": false,
+  "input_published": false,
+  "gameplay_accepted": false
+}
