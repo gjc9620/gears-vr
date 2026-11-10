@@ -1,0 +1,19 @@
+{
+  "passed": true,
+  "kernel_scenarios": 21,
+  "consumer_scenarios": 22,
+  "exact_runtime_functions": true,
+  "real_kernel_and_motion_chain": true,
+  "local_fixtures": true,
+  "game_execution": false,
+  "results": [
+    {
+      "label": "kernel",
+      "source_sha256": "a03b9caf4366fcecc4127de722f932075ad8880d43ae5bf2462442d1c19c8946"
+    },
+    {
+      "label": "consumer",
+      "source_sha256": "19503d5fa113c4b8cdd0579f3d870c26ea9e8f0810dd9e753badbb7b1699265a"
+    }
+  ]
+}

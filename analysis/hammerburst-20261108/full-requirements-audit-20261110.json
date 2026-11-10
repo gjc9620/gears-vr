@@ -1,8 +1,8 @@
 {
   "schema": 1,
   "scope": "full HB objective; no scope reduction",
-  "current_candidate": "feed-observe-r1: existing insertion outcome, sample-gap rearm and early/move gates; compiled; exact before/after8 scenarios84 paired samples using real FeedInsertionStroke",
-  "prepared_sha256": "c559a2f1959f4b0fabfeb025b3c79da8213bee715bf8e622123a323e328adbef",
+  "current_candidate": "feed-history-r1: original producer intermediate motion ingestion; full PG compiled;21 real-kernel +22 exact consumer local fixtures passed, no game yet",
+  "prepared_sha256": "f9a3d90fb8cc0602f47be94f224860eac4a5453b4d84ad31f23dcb942389ee1d",
   "requirements": [
     {
       "id": "acquire_stow",
@@ -244,7 +244,7 @@
   ],
   "completion_proven": false,
   "goal_active": true,
-  "immediate_next": "Implement/test authenticated original producer intermediate-motion ingestion for HB insertion, preserving current Frame/grant/identity and all per-sample100ms/geometry/monotonic checks. Prove exact current endpoint, same held controls/mount/publisher, no fabricated poses/timestamps, and atomic rejection of missing/changed history. Do not rerun unchanged feed-observe candidate. Original event expiry and full13 requirements remain open.",
+  "immediate_next": "One fresh focused loaded replacement on feed-history-r1. Require actual used history marker and original seating/closure/typed conservation/return-fire. Preserve all guards; retain original pending-event expiry and full empty flow as open requirements.",
   "historical_evidence_does_not_certify_current_PG": true,
   "candidate_runtime_status": "Actual53560 focused loaded replacement: core6, original72/R78 reload, latch/extract/supply to6. Observed kernel approaching; Frame787 gap110.739ms resets stroke at41.923mm below45mm approach. Endpoint depth.011326mm/lateral.005797mm/orientation1 rejected. No move/early/support/identity reject. Normal cleanup; not empty-flow validation.",
   "previous_recorded_candidate": {

@@ -346,3 +346,11 @@ launcher0/operator1/stop0，Native清理/PG入口恢复/XR0，本方game/子进�
 下一步采用已有生产端真实运动history补齐游戏回调之间的中间几何样本：保留当前Frame/grant及精确身份/mount/publisher/control检查，每对原样本仍须100ms内、序号/时间单调、真实持握无释放、最终点与实际当前pose一致，缺样或身份变化原子拒绝，不捏造插值/时间、不新增枪/骨骼writer、不加宽几何/输入/原事件期限。现有latch_history/controller_relative_motion仅是可复用构件，尚未完成feed接线或验收；不再原样重跑feed-observe版本。20672原pending250ms期限失败、空仓完整回射及其余13项要求仍开放。
 
 Git保存说明：c6a37b0c提交时共享index同时出现其他会话的cover camera-discovery-r141、requirements-owner-sync、cinematic_anchor及其测试和cover文档，合并进了同一提交。它们不是本枪实现/测试的证据；内容保留，不重写共享历史或撤销他人工作。后续本枪使用明确pathspec的git commit --only避免吸入同时暂存内容。本方53560源码/证据已保存且运行终态，下一次运行须先完成上述真实history修正。
+
+## feed-history-r1：真实生产端中间样本接线
+
+新增本枪专用geometry helper与runtime consumer，仅在stage6同item/source游标且游戏回调间gap超过100ms时尝试existing producer ring。每帧capture使用原read_input_continuity一次获取相同controllers及history；固定mount/scale/units、publisher、游戏/Native/世界/lifecycle/各对象、reference generation、press token/control须与先前消费点一致；真实raw两手tracking/stream/input/profile/space、逐帧序号与原时间、同一左手控制持续按住均由真实relative::build检查。中间点位置及方向从原左右手相对姿态投影，不插值、不造Frame/边沿/许可；最终完整pose须与当前local_hand实际测量一致。
+
+纯geometry helper先检查整个最多9点段，逐对仍100ms和原速度限制；在stroke副本上消费，缺样/身份/时间/端点/超速失败不修改原stroke，交回原rearm路径。若中间真实点已经座入，其余真实点也必须持续座入，不能靠历史触碰后退出完成。当前严格grant和原transaction/native完成路径未改，旧匣extraction路径未改。第一遍编译局部new_item隐藏原全局对象被/WX拒绝，重命名first_item_sample后完整PG编译通过，SHA a38e8e85c6c3464ef1beb9b4a4738a501c36924d16b982cb0348bef1b41613d0；Native/XR/共享Client未改。
+
+21项真实FeedInsertionStroke helper检查和22项精确提取runtime consumer检查通过：真实raw continuity/projector/kernel，合成local context/producer fixtures；包括53560实际深度/110.739ms差值的合成中间点证明、旧单点rearm失败、合法连续点插入、缺序/倒时/丢失两手tracking、松手、input epoch、game/native/lifecycle/object/publisher/mount/reference/control/token变化、端点不符以及原子拒绝。中间点不是53560录到的历史，不冒充实际游戏修复。runner选择新候选，下一步一次新的focused loaded replacement实测；空仓/射击期限/完整贴合/13项最终要求不缩减。

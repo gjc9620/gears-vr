@@ -1,0 +1,81 @@
+--- a/tools/playground/weapon_hammerburst_runtime.inl
++++ b/tools/playground/weapon_hammerburst_runtime.inl
+@@ -1,4 +1,5 @@
+ #include "../vr-common/weapon_hammerburst_supply_publication.h"
++#include "../vr-common/weapon_hammerburst_feed_history.h"
+ // One GT consumer, sharing the existing native reload lease, inventory writer,
+ // component restoration and stop/drain boundary with Lancer. No second runner.
+ namespace hammerburst_runtime {
+@@ -14,6 +15,7 @@
+ using V=gears_vr::Vector;using Q=gears_vr::Quaternion;using M=gears_vr::Matrix;using P=gears_vr::Pose;
+ enum class Stage {idle,acquiring,opening,opened,old_magazine,waiting_ammo,new_magazine,closing,completing,recovering,parking,parked,restoring};
+ Stage stage{};
++namespace feed_history {void clear() noexcept;}
+ #include "weapon_hammerburst_reload_park_ledger.inl"
+ park_ledger::Plan parked_plan;
+ lancerreload_state::Lease parked_native_lease;
+@@ -264,7 +266,7 @@
+     const bool release_outstanding=stage!=Stage::parked;
+     stage=Stage::idle;observer={};transaction={};writer={};opening={};completion={};reward={};
+     supply_publication.reset();latch_publication.reset();held={};serial=old_item=new_item=0;angle=0;released=switch_requested=native_exited=ui_pending=false;
+-    feed_item=feed_sequence=0;feed_ns=0;
++    feed_item=feed_sequence=0;feed_ns=0;feed_history::clear();
+     open_pose_reads=open_stable_reads=feed_failure=0;last_open_observed=0;
+     stroke.reset();insertion.reset();extraction.reset();feed={};if(!preserve_geometry)geometry.known=false;
+     last_latch_seek_elapsed_ns=0;
+@@ -304,6 +306,7 @@
+ }
+ #include "weapon_hammerburst_restore_clock.inl"
+ #include "weapon_hammerburst_latch_history.inl"
++#include "weapon_hammerburst_feed_history.inl"
+ bool hand_sample(hand::Frame const& f,gears_weapon::HammerburstLatchSample& out) noexcept {
+     P left{};if(!local_hand(f,left))return false;
+     out={left.position,f.controllers.sequence,std::uint64_t(f.controllers.sync_ns/1000000),f.press_token,
+@@ -369,17 +372,28 @@
+     feed_failure=0;return true;
+ }
+ gears_weapon::FeedResult insertion_step(hand::Frame const& f,std::uint64_t item) noexcept {
+-    P left{};if(!local_hand(f,left)){insertion.reset();observe_feed_rejection(f,1);return gears_weapon::FeedResult::rejected;}
++    P left{};if(!local_hand(f,left)){insertion.reset();feed_history::clear();observe_feed_rejection(f,1);return gears_weapon::FeedResult::rejected;}
+     const auto sample_gap_ns=feed_ns?f.controllers.sync_ns-feed_ns:0;
+-    const bool rearmed=feed_item!=item||!feed_ns||sample_gap_ns>feed.maximum_sample_gap_ns;
+-    if(rearmed){
+-        // A gap cannot carry approach progress. Start a new stroke at this
+-        // current authenticated held-item pose; it must approach again from
+-        // outside before seating. Tracking-loss regrab is separately gated.
++    const bool first_item_sample=feed_item!=item||!feed_ns;
++    if(first_item_sample){
+         if(!insertion.arm(f.weapon.address,item,f.world.address,f.stereo.space_epoch))return gears_weapon::FeedResult::rejected;
+         feed_sequence=0;
+     }
+     if(f.controllers.sequence<=feed_sequence||f.controllers.sync_ns<=feed_ns){observe_feed_rejection(f,2);return gears_weapon::FeedResult::rejected;}
++    gears_weapon::FeedSample sample{f.weapon.address,item,f.world.address,f.stereo.space_epoch,f.controllers.sequence,
++        f.controllers.sync_ns,{{0,0,0},{0,0,0,1}},left,f.left_tracked!=0,true};
++    if(stage==Stage::new_magazine)feed_history::capture(f,left);
++    gears_weapon::FeedResult result=gears_weapon::FeedResult::rejected;
++    const bool gap=sample_gap_ns>feed.maximum_sample_gap_ns;
++    const bool used_history=!first_item_sample&&gap&&feed_history::advance(f,sample,result);
++    const bool rearmed=first_item_sample||(gap&&!used_history);
++    if(!first_item_sample&&gap&&!used_history){
++        if(!insertion.arm(f.weapon.address,item,f.world.address,f.stereo.space_epoch))return gears_weapon::FeedResult::rejected;
++    }
++    if(stage==Stage::new_magazine&&gap&&log_file){static unsigned rows{};if(rows++<16){
++        fwprintf(log_file,L"hammerburst_feed_history gate=%u used=%u points=%u frame=%llu sequence=%llu gap_ns=%lld result=%u\n",
++            feed_history::gate,unsigned(used_history),feed_history::point_count,f.key.frame,f.controllers.sequence,sample_gap_ns,unsigned(result));fflush(log_file);
++    }}
+     feed_item=item;feed_sequence=f.controllers.sequence;feed_ns=f.controllers.sync_ns;
+     const auto position=add(left.position,gears_weapon::rotate(left.orientation,feed.item_in_left_grip.position));
+     const auto delta=sub(position,feed.port_in_weapon.position);
+@@ -395,10 +409,9 @@
+             left.orientation.x,left.orientation.y,left.orientation.z,left.orientation.w,depth,lateral,aligned);fflush(log_file);
+         ++feed_logs;last_feed_position=left.position;last_feed_position_known=true;
+     }
+-    gears_weapon::FeedSample sample{f.weapon.address,item,f.world.address,f.stereo.space_epoch,f.controllers.sequence,
+-        f.controllers.sync_ns,{{0,0,0},{0,0,0,1}},left,f.left_tracked!=0,true};
+     if(stage==Stage::old_magazine&&!extraction.complete())extraction.observe(sample,feed);
+-    const auto result=insertion.observe(sample,feed);
++    if(!used_history)result=insertion.observe(sample,feed);
++    if(stage==Stage::new_magazine)feed_history::remember(sample);else feed_history::clear();
+     observe_feed_result(f,item,result,sample_gap_ns,rearmed,depth,lateral,aligned);return result;
+ }
+ void step(hand::Frame const& f,hand::Decision const& decision) noexcept {
