@@ -1,0 +1,89 @@
+--- a/tools/playground/weapon_hammerburst_runtime.inl
++++ b/tools/playground/weapon_hammerburst_runtime.inl
+@@ -16,6 +16,7 @@
+ #include "weapon_hammerburst_reload_park_ledger.inl"
+ park_ledger::Plan parked_plan;
+ lancerreload_state::Lease parked_native_lease;
++namespace restoration_admission {void cancel() noexcept;}
+ struct Geometry {
+     nativelancerfollow::Key key{};
+     inv::Identity identity{};
+@@ -216,6 +217,7 @@
+     if(stage!=Stage::idle&&opening.identity==inv::identity(f))switch_requested=true;
+ }
+ void reset(bool preserve_geometry=false) noexcept {
++    restoration_admission::cancel();
+     const bool release_outstanding=stage!=Stage::parked;
+     stage=Stage::idle;observer={};transaction={};writer={};opening={};completion={};reward={};
+     held={};serial=old_item=new_item=0;angle=0;released=switch_requested=native_exited=ui_pending=false;
+@@ -246,6 +248,7 @@
+     reset();return true;
+ }
+ #include "weapon_hammerburst_reload_park.inl"
++#include "weapon_hammerburst_restore_admission.inl"
+ #include "weapon_hammerburst_latch_history.inl"
+ bool hand_sample(hand::Frame const& f,gears_weapon::HammerburstLatchSample& out) noexcept {
+     P left{};if(!local_hand(f,left))return false;
+--- a/tools/playground/playground.cpp
++++ b/tools/playground/playground.cpp
+@@ -1190,6 +1190,8 @@
+ }
+ namespace lancersaw_contact {void tick(gears_weapon_hand::Frame const&) noexcept;}
+ namespace hammerburst_runtime {
++bool restoration_owned(gears_weapon_hand::Frame const&) noexcept;
++bool restoration_seek_owned(gears_weapon_hand::Frame const&,std::uint64_t,float) noexcept;
+ namespace park_control {
+ bool owns_stow(gears_weapon_hand::Frame const&) noexcept;
+ bool prepare_stow(gears_weapon_hand::Frame const&,bool&) noexcept;
+--- a/tools/playground/weapon_hammerburst_visual_clip.inl
++++ b/tools/playground/weapon_hammerburst_visual_clip.inl
+@@ -66,7 +66,7 @@
+ anim::Acquire start(hand::Frame const& f,std::uint64_t transaction) noexcept {
+     failure=1;
+     if(!transaction||anim::ownership.active||!playground::instance(f.weapon.address,L"Weap_LocustAssaultRifle")||
+-       !lancerreload_state::item_owned(f)||!nativeequipment::current(nullptr,f)||!prepare_reload_name(f))return anim::Acquire::rejected;
++       (!lancerreload_state::item_owned(f)&&!hammerburst_runtime::restoration_owned(f))||!nativeequipment::current(nullptr,f)||!prepare_reload_name(f))return anim::Acquire::rejected;
+     bool reloading{};
+     if(lancerreload_state::lease.acquired||!lancerreload_state::bool_call(f.weapon.address,L"IsReloading",reloading)||reloading)return anim::Acquire::rejected;
+     lancermain_asset::Evidence asset{};hand::ObjectIdentity node{};
+--- a/tools/playground/weapon_hammerburst_animation.inl
++++ b/tools/playground/weapon_hammerburst_animation.inl
+@@ -380,7 +380,7 @@
+ Acquire acquire_prepared(hand::Frame const& source,std::uint64_t serial,Observation const& before,
+     Controls const& controls,LatchCurve const& latch={}) noexcept {
+     if(ownership.active||!lancerreload_state::owns(source,serial)||
+-       !lancerreload_state::item_owned(source))return Acquire::rejected;
++       (!lancerreload_state::item_owned(source)&&!hammerburst_runtime::restoration_owned(source)))return Acquire::rejected;
+     const auto actual=before;Controls checked{};
+     // The caller just authenticated its selected node/curve. Do not spend
+     // the same input deadline repeating synchronous getters before StopAnim.
+@@ -403,7 +403,7 @@
+ }
+ Acquire acquire(hand::Frame const& source,std::uint64_t serial) noexcept {
+     if(ownership.active||!lancerreload_state::owns(source,serial)||
+-       !lancerreload_state::item_owned(source))return Acquire::rejected;
++       (!lancerreload_state::item_owned(source)&&!hammerburst_runtime::restoration_owned(source)))return Acquire::rejected;
+     Observation before{};Controls controls{};LatchCurve latch{};
+     if(!observe(source,before)||before.looping||!read_latch_curve(source,latch,&before)||
+        !hand::same(latch.sequence,before.sequence)||!prepare_controls(source,before,controls,true)||
+@@ -440,7 +440,8 @@
+     if(!ownership.active||serial!=ownership.serial||!(lancerreload_inventory::identity(source)==ownership.inventory)||
+        !(ownership.visual_only?nativeequipment::current(nullptr,source):lancerreload_state::owns(source,serial))||
+        (settling?(!playground::instance(source.weapon.address,L"Weap_COGPistol")||
+-            !source.left_grip_known||source.left_grip_down||time<ownership.last.time):!lancerreload_state::item_owned(source))||
++            !source.left_grip_known||source.left_grip_down||time<ownership.last.time):
++            (!lancerreload_state::item_owned(source)&&!hammerburst_runtime::restoration_seek_owned(source,serial,time)))||
+        !std::isfinite(time)||time<0||time>ownership.last.length)return false;
+     Controls controls{};
+     if(playground::instance(source.weapon.address,L"Weap_LocustAssaultRifle")){
+--- a/tools/playground/weapon_lancer_magazine_visual.inl
++++ b/tools/playground/weapon_lancer_magazine_visual.inl
+@@ -310,7 +310,7 @@
+     if(!playground::instance(source.weapon.address,hb?L"Weap_LocustAssaultRifle":L"Weap_AssaultRifle"))return fail(11);
+     if(prepared_game&&decision&&actual){if(!prepared_start(source,*prepared_game,*decision,*actual))return fail(12);}
+     else if(prepared_game||decision||actual)return fail(15);
+-    else if(!lancerreload_state::magazine_owned(source))return fail(13);
++    else if(!lancerreload_state::magazine_owned(source)&&!(hb&&hammerburst_runtime::restoration_owned(source)))return fail(13);
+     if(!nativeequipment::current(nullptr,source))return fail(14);
+     vrequip::MagazineVisualProbe magazine{};vrequip::AmmoBoneVisualProbe bone{};
+     bool magazine_known=vrequip::magazine_visual_probe(source.weapon.address,source.pawn.address,magazine);

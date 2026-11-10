@@ -1,0 +1,17 @@
+{
+  "source_sha256": {
+    "tools/playground/playground.cpp": "0b21a1b6f4a460eeaa47fc109b3a977d8710d2a592ae8dd548184cfbc8c91cf9",
+    "tools/playground/weapon_hammerburst_animation.inl": "cf209a136a630d4c596c622a5d42362a0599a425897cbdd22c82cc5e79ad4177",
+    "tools/playground/weapon_hammerburst_restore_admission.inl": "b904fe4b9b6d29255dcf03203efb33fbf495c66e97e595ecbdcc195ad72f2203",
+    "tools/playground/weapon_hammerburst_restore_admission_test.cpp": "e5a4368c36565b101052db76b6bbb78365a7318bca279a80b92ebd68c5b72b94",
+    "tools/playground/weapon_hammerburst_runtime.inl": "cba0d2c35378c2dcc7243ac0d67cbdfbfcc26c71cda7a066c828ba22a44a664b",
+    "tools/playground/weapon_hammerburst_visual_clip.inl": "b87bb693f1e75161f5dfb24b1021d8eda37ba97dcc855de0fa70362f6a5d776c",
+    "tools/playground/weapon_lancer_magazine_visual.inl": "758d2e67b091726472dc103309d55f4fd45813504f944dca1fd433b258d5a0d6"
+  },
+  "cases": 25,
+  "checks": 266,
+  "frozen_tests_passed": true,
+  "restoration_dispatch_integrated": false,
+  "runtime_started": false,
+  "limits": "Real Frame/ledger/curve; live Native current-source/asset eligibility are test doubles. No game, original engine call or headset acceptance."
+}
