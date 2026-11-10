@@ -1739,3 +1739,16 @@ v2冻结r90 Native源，仅4个产品overlay，共1097文件。实际编译链�
 9项定向检查通过，覆盖录制／runner阻止、离线media不占用、互斥在进程读取中出现、查询失败和畸形记录拒绝。Windows真实测试专用互斥完成不存在→创建后存在→关闭后不存在，检查句柄正常关闭。首轮实际枚举将Windows PID0空闲统计项作为坏进程拒绝；读取端明确过滤非执行进程PID0后再查，保留正PID严格验证。后续真实查询确认solo-m1-1028d现有launcher mutex已存在，仅记录当前占用，没有启动、stage、恢复他人文件或结束任何进程。此快照不是未来授窗或verified wait。
 
 证据analysis/cover-system-20261108/launch-preflight-r95/verification.json、unit.log及冻结source。模块尚未接入封存r80入口；旧FINAL门禁未被伪造或删除，下一步在独立标识的新入口接线，取得本次fresh baseline及完整恢复责任后才能运行。未重编未变化Native／PG／XR，最新Native仍r93的9f375dc7；publicv71、r80原五身份与原claim保持。实际视野严重遮挡、身体路径／占用／移动恢复、物理同步／受击枪口、LGrip与头显未新增通过，工程25%不变，目标active。
+
+
+## 2026年11月10日 r96独立观察入口与完整恢复接线
+
+r95已保存177988c8，属于进展。本轮将只读实际占用检查接入独立run_cover_eye_independent.py，去掉对远期前驱／FINAL票据的依赖，不修改或消费封存r80五原件及原claim。独立父入口／派生inner／stage／helper分别逐SHA；运行前静态核9271依赖、363驱动、7模块来源和原二进制。使用统一tools/debug-launch/runtime_stage_guard.py的RuntimeGuard包住即时备份→stage／config→原launcher→正常关闭／恢复；内部仍用原RepositoryLauncher.Owner，不新增另一套锁名或调度。离线编码和审片放共享保护之外。
+
+新增cover_observation_baseline.py：即时记录原11路径及缺失状态、原用户Config／SaveData只读文件、私有Config／SaveData完整平面文件集。所有备份和只读文件在首次恢复写入前统一复核；只恢复workspace中明确拥有的文件，单文件移除新生成私有存档，不递归删除，不写public或原用户存档。4项定向临时目录检查通过，含二进制字节与缺失恢复、私有新文件删除、后置备份损坏阻止前置写入、只读变化拒绝和意外子目录保留。
+
+正常Native／entry／pad／drain／XR清理、Native前启动取消和无game birth的失败分别判定，不把XR1或未激活Native写成正常通过。所有分支还要求本次owner／game身份、终态时相、进程退出和现场占用检查。数值解码前先保留原眼点记录并恢复完整基线；缺失或异常原始记录不据此冒称可见视野通过。未完成恢复则明确保留错误，不能签发玩法通过。
+
+首次新入口预检查因共享run_v63_startup_repro.py已由其他工作改为a3773503而拒绝，未stage。单独核实其余362驱动仍匹配；后续明确采用封存r80内3f297b3d启动脚本副本并保持其余当前／归档逐SHA，不混新共享修改。最终独立prepare-only实际0，未consume／stage／start；原r80 Native8035及五相位观察动作保持，没有换入r93查询Native或新增抓边／武器动作。当前文件中的2026-11-05启动兼容覆盖明确选定既有本地副本，身份仍bdc6705d；不强制改变认证路线。
+
+证据analysis/cover-system-20261108/view-alignment-r96/offline-verification.json、prepare-only.log、baseline-tests.log及独立源码／plan／ready。本保存点只表示入口接线和离线检查完成，尚未实际运行；下一步按统一共享互斥及现场检查执行一次当前视野观察，结束立即恢复释放再离线分析。完整进入使用退出仍为第一阶段目标；吸附／Volume其次、GrabPose最后。publicv71及最新产品编译r93 Native9f375dc7不变，实际严重肩身遮挡、移动碰撞／受击枪口／真实抓边／头显未新增通过，CV01–24／AC01–22、工程25%和active保留。
