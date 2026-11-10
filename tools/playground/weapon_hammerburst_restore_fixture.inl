@@ -49,6 +49,7 @@ bool geometry_current(hand::Frame const&)noexcept{return final_geometry;}
 bool discover(hand::Frame const&)noexcept{++discovers;if(replace_in_discover)++nativelancerfollow::bound_key.component;
     geometry.key=nativelancerfollow::bound_key;geometry.latch.open_angle=0;
     if(expire_in_discover)fresh_value=false;return discover_value;}
+void log_restore(char const*,hand::Frame const* =nullptr) noexcept {}
 #include "weapon_hammerburst_restore_rebind.inl"
 hand::Frame setup(bool inserted=false){
     Fixture f;if(inserted)f.insert();

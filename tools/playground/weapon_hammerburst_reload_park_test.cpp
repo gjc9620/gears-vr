@@ -51,6 +51,7 @@ struct Stroke {void reset()noexcept{}};Stroke stroke,insertion;
 struct Extraction {bool done{};bool complete()const noexcept{return done;}void reset()noexcept{done=false;}} extraction;
 bool animation_restore_ok{true};double angle{.6};
 bool restore_animation()noexcept{if(!animation_restore_ok)return false;anim::ownership.active=false;return true;}
+void log_restore(char const*,hand::Frame const* =nullptr) noexcept {}
 #include "weapon_hammerburst_reload_park.inl"
 
 void setup(Fixture const& f,Stage phase){

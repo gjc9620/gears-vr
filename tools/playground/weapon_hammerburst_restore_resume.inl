@@ -9,7 +9,7 @@ bool finish_resume(hand::Frame const& source,hand::Decision const& decision) noe
     if(!resume_grant_ready)held={};
     released=false;stroke.reset();insertion.reset();extraction.reset();
     stage=parked_plan.resume_stage;restore_resume_step=0;
-    return true;
+    log_restore("resumed",&source);return true;
 }
 ResumeResult resume(hand::Frame const& source,hand::Decision const& decision) noexcept {
     if(stage!=Stage::restoring||!restore_display_ready||!parked_plan.valid||restoration_failed)return ResumeResult::waiting;
@@ -27,7 +27,7 @@ ResumeResult resume(hand::Frame const& source,hand::Decision const& decision) no
     if(!inv::counts_equal(resume_counts,transaction.inventory()))return ResumeResult::recovery_required;
     if(restore_resume_step==0){
         if(!source.left_tracked||!source.left_grip_known){released=false;return ResumeResult::waiting;}
-        if(!source.left_grip_down){released=true;held={};return ResumeResult::waiting;}
+        if(!source.left_grip_down){if(!released)log_restore("up_baseline",&source);released=true;held={};return ResumeResult::waiting;}
         if(!released||!granted(source,decision,resume_part(),true)||
            source.press_token<=old_item||source.press_token<=restore_resume_intent)return ResumeResult::waiting;
         auto prepared_transaction=transaction;
@@ -38,6 +38,7 @@ ResumeResult resume(hand::Frame const& source,hand::Decision const& decision) no
         // Consume this genuine edge before any original call. Rejection or
         // expiration cannot retry it on a later retained DOWN publication.
         restore_resume_intent=source.press_token;released=false;
+        log_restore("intent",&source);
         const bool needs_native=serial&&!prepared_transaction.feed_present();
         if(needs_native){
             if(lancerreload_state::lease.acquired||parked_native_lease.serial!=serial||
@@ -54,7 +55,7 @@ ResumeResult resume(hand::Frame const& source,hand::Decision const& decision) no
                 if(dispatched||accepted==lancerreload_state::BeginResult::recovery_required)return ResumeResult::recovery_required;
                 restore_display_ready=false;restore_display_step=0;return ResumeResult::waiting;
             }
-            native_exited=false;ui_pending=true;
+            native_exited=false;ui_pending=true;log_restore("native_reacquired",&source);
         }
         transaction=prepared_transaction;parked_plan.transaction=prepared_transaction;
         held=decision.lease;resume_grant_ready=false;

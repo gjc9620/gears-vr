@@ -30,6 +30,7 @@ bool finish() noexcept {
     new_item=feed_item=feed_sequence=0;feed_ns=0;released=false;switch_requested=false;
     native_exited=true;stage=Stage::parked;
     lancerreload_runtime::outstanding.store(false,std::memory_order_release);
+    log_restore("parked");
     return true;
 }
 bool begin() noexcept {

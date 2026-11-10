@@ -39,6 +39,6 @@ DisplayResult display(hand::Frame const& source) noexcept {
     }
     if(!restoration_owned(source))return DisplayResult::waiting;
     restore_display_ready=true;restore_display_step=3;
-    held={};released=false;return DisplayResult::ready;
+    held={};released=false;log_restore("display_ready",&source);return DisplayResult::ready;
 }
 }

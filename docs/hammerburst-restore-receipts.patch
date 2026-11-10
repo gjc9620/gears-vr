@@ -1,0 +1,97 @@
+--- a/tools/playground/weapon_hammerburst_runtime.inl
++++ b/tools/playground/weapon_hammerburst_runtime.inl
+@@ -60,6 +60,7 @@
+ double last_open_observed{};
+ std::int64_t geometry_retry_ns{};
+ unsigned geometry_failure{},last_geometry_failure{~0u};
++#include "weapon_hammerburst_restore_log.inl"
+ 
+ V add(V a,V b) noexcept {return {a.x+b.x,a.y+b.y,a.z+b.z};}
+ V sub(V a,V b) noexcept {return {a.x-b.x,a.y-b.y,a.z-b.z};}
+--- a/tools/playground/weapon_hammerburst_reload_park.inl
++++ b/tools/playground/weapon_hammerburst_reload_park.inl
+@@ -30,6 +30,7 @@
+     new_item=feed_item=feed_sequence=0;feed_ns=0;released=false;switch_requested=false;
+     native_exited=true;stage=Stage::parked;
+     lancerreload_runtime::outstanding.store(false,std::memory_order_release);
++    log_restore("parked");
+     return true;
+ }
+ bool begin() noexcept {
+--- a/tools/playground/weapon_hammerburst_restore_rebind.inl
++++ b/tools/playground/weapon_hammerburst_restore_rebind.inl
+@@ -33,6 +33,6 @@
+     held={};stroke.reset();insertion.reset();extraction.reset();
+     released=false;restore_display_ready=false;restore_display_step=0;
+     restore_resume_step=0;resume_grant_ready=false;stage=Stage::restoring;
+-    return true;
++    log_restore("rebound",&source);return true;
+ }
+ }
+--- a/tools/playground/weapon_hammerburst_restore_display.inl
++++ b/tools/playground/weapon_hammerburst_restore_display.inl
+@@ -39,6 +39,6 @@
+     }
+     if(!restoration_owned(source))return DisplayResult::waiting;
+     restore_display_ready=true;restore_display_step=3;
+-    held={};released=false;return DisplayResult::ready;
++    held={};released=false;log_restore("display_ready",&source);return DisplayResult::ready;
+ }
+ }
+--- a/tools/playground/weapon_hammerburst_restore_resume.inl
++++ b/tools/playground/weapon_hammerburst_restore_resume.inl
+@@ -9,7 +9,7 @@
+     if(!resume_grant_ready)held={};
+     released=false;stroke.reset();insertion.reset();extraction.reset();
+     stage=parked_plan.resume_stage;restore_resume_step=0;
+-    return true;
++    log_restore("resumed",&source);return true;
+ }
+ ResumeResult resume(hand::Frame const& source,hand::Decision const& decision) noexcept {
+     if(stage!=Stage::restoring||!restore_display_ready||!parked_plan.valid||restoration_failed)return ResumeResult::waiting;
+@@ -27,7 +27,7 @@
+     if(!inv::counts_equal(resume_counts,transaction.inventory()))return ResumeResult::recovery_required;
+     if(restore_resume_step==0){
+         if(!source.left_tracked||!source.left_grip_known){released=false;return ResumeResult::waiting;}
+-        if(!source.left_grip_down){released=true;held={};return ResumeResult::waiting;}
++        if(!source.left_grip_down){if(!released)log_restore("up_baseline",&source);released=true;held={};return ResumeResult::waiting;}
+         if(!released||!granted(source,decision,resume_part(),true)||
+            source.press_token<=old_item||source.press_token<=restore_resume_intent)return ResumeResult::waiting;
+         auto prepared_transaction=transaction;
+@@ -38,6 +38,7 @@
+         // Consume this genuine edge before any original call. Rejection or
+         // expiration cannot retry it on a later retained DOWN publication.
+         restore_resume_intent=source.press_token;released=false;
++        log_restore("intent",&source);
+         const bool needs_native=serial&&!prepared_transaction.feed_present();
+         if(needs_native){
+             if(lancerreload_state::lease.acquired||parked_native_lease.serial!=serial||
+@@ -54,7 +55,7 @@
+                 if(dispatched||accepted==lancerreload_state::BeginResult::recovery_required)return ResumeResult::recovery_required;
+                 restore_display_ready=false;restore_display_step=0;return ResumeResult::waiting;
+             }
+-            native_exited=false;ui_pending=true;
++            native_exited=false;ui_pending=true;log_restore("native_reacquired",&source);
+         }
+         transaction=prepared_transaction;parked_plan.transaction=prepared_transaction;
+         held=decision.lease;resume_grant_ready=false;
+--- a/tools/playground/weapon_hammerburst_restore_fixture.inl
++++ b/tools/playground/weapon_hammerburst_restore_fixture.inl
+@@ -49,6 +49,7 @@
+ bool discover(hand::Frame const&)noexcept{++discovers;if(replace_in_discover)++nativelancerfollow::bound_key.component;
+     geometry.key=nativelancerfollow::bound_key;geometry.latch.open_angle=0;
+     if(expire_in_discover)fresh_value=false;return discover_value;}
++void log_restore(char const*,hand::Frame const* =nullptr) noexcept {}
+ #include "weapon_hammerburst_restore_rebind.inl"
+ hand::Frame setup(bool inserted=false){
+     Fixture f;if(inserted)f.insert();
+--- a/tools/playground/weapon_hammerburst_reload_park_test.cpp
++++ b/tools/playground/weapon_hammerburst_reload_park_test.cpp
+@@ -51,6 +51,7 @@
+ struct Extraction {bool done{};bool complete()const noexcept{return done;}void reset()noexcept{done=false;}} extraction;
+ bool animation_restore_ok{true};double angle{.6};
+ bool restore_animation()noexcept{if(!animation_restore_ok)return false;anim::ownership.active=false;return true;}
++void log_restore(char const*,hand::Frame const* =nullptr) noexcept {}
+ #include "weapon_hammerburst_reload_park.inl"
+ 
+ void setup(Fixture const& f,Stage phase){

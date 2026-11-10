@@ -33,6 +33,6 @@ bool rebind(hand::Frame const& source) noexcept {
     held={};stroke.reset();insertion.reset();extraction.reset();
     released=false;restore_display_ready=false;restore_display_step=0;
     restore_resume_step=0;resume_grant_ready=false;stage=Stage::restoring;
-    return true;
+    log_restore("rebound",&source);return true;
 }
 }

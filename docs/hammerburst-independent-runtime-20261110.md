@@ -184,3 +184,13 @@ consumed-input-r2完整Playground编译成功，SHA a8d937ccebef5416bbeea08287e6
 40524媒体后处理：离线编码exit0、stereo-demo.mp4存在；亲看frame00352/00361，两张实际首发附近原图均有近脸/右眼大片枪身遮挡，不接受为完整贴合或全角度证据，仅用于本次失败核对。
 
 修正为等待首条真实弹道后的新申请hb-cloak-1110-212609在start前被现有两实例内存保护拒绝，game_started=false、operator_started=false，无本方运行/恢复责任；不复用该已prepare名字，不通知占用/排队，不标目标blocked。下一轮资源允许时使用新唯一实例，保留当前已编译候选及新单次按下时序继续验证。
+
+## 资源拒绝期间准备切枪恢复的结果核对
+
+hb-cloak-1110-212845再次在start前被现有2实例资源保护拒绝，未生game/operator，不复用该实例名；继续离线工作，无排队/占用通知。
+
+恢复路径新增有界hammerburst_restore记录：parked/rebound/display_ready/up_baseline/intent/native_reacquired/resumed，只在已发生的阶段转移后记录原台账、真实source字段、原serial/accepted game clock、hold和原生归属；上限64，不增clock读、不执行动作、默认OFF。这些private ledger数不能代替真实库存读回。
+
+本方verify_restore_observations把阶段序列与既有typed double-read快照的game/weapon/capacity/loaded/reserve/infinite/bonus/game_time对照；检查新hold、已知tracked UP再新press、原钟不变、正确原生/visual-only分支和回到真实机械阶段。2个测试方法覆盖两条正例及15种错误/重放/改弹数/改奖励/倒退时间拒绝；这是验证器夹具证据，尚无实际切枪动作驱动接线或新玩法证据，不称切枪恢复通过。
+
+冻结Resume19/284、Park17/109仍通过，完整Playground编译链接成功。restore-receipts-r1 SHA 94b0b1f21380402ee57352b8fda2754a6d9c77c26c3a24715a6ed1597c02c0fb，只加阶段观察，Native/XR未重编，公共v71未变。新原图/时序检查均未涨工程分；本次统筹一次性采集沿用HB A.5/B.25/C.25/D.25/E.25=30%，头显false。下一步仍优先修正单次持按首发→六连发→普通空仓完整返射，再接入实际中断动作验证器。
