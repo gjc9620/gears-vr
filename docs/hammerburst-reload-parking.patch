@@ -1,0 +1,90 @@
+--- a/tools/playground/weapon_hammerburst_runtime.inl
++++ b/tools/playground/weapon_hammerburst_runtime.inl
+@@ -11,8 +11,11 @@
+ bool ui_pending{};
+ gears_weapon::ReloadSupplyRejection empty_supply;
+ using V=gears_vr::Vector;using Q=gears_vr::Quaternion;using M=gears_vr::Matrix;using P=gears_vr::Pose;
+-enum class Stage {idle,acquiring,opening,opened,old_magazine,waiting_ammo,new_magazine,closing,completing,recovering};
++enum class Stage {idle,acquiring,opening,opened,old_magazine,waiting_ammo,new_magazine,closing,completing,recovering,parking,parked,restoring};
+ Stage stage{};
++#include "weapon_hammerburst_reload_park_ledger.inl"
++park_ledger::Plan parked_plan;
++lancerreload_state::Lease parked_native_lease;
+ struct Geometry {
+     nativelancerfollow::Key key{};
+     inv::Identity identity{};
+@@ -213,6 +216,7 @@
+     if(stage!=Stage::idle&&opening.identity==inv::identity(f))switch_requested=true;
+ }
+ void reset(bool preserve_geometry=false) noexcept {
++    const bool release_outstanding=stage!=Stage::parked;
+     stage=Stage::idle;observer={};transaction={};writer={};opening={};completion={};reward={};
+     held={};serial=old_item=new_item=0;angle=0;released=switch_requested=native_exited=ui_pending=false;
+     feed_item=feed_sequence=0;feed_ns=0;
+@@ -220,7 +224,8 @@
+     stroke.reset();insertion.reset();extraction.reset();feed={};if(!preserve_geometry)geometry.known=false;
+     last_latch_seek_elapsed_ns=0;
+     latch_stationary_holds=0;
+-    lancerreload_runtime::outstanding.store(false,std::memory_order_release);
++    if(release_outstanding)lancerreload_runtime::outstanding.store(false,std::memory_order_release);
++    parked_plan={};parked_native_lease={};
+ }
+ bool cleanup(unsigned line=0) noexcept {
+     if(stage!=Stage::recovering&&log_file){
+@@ -240,6 +245,7 @@
+     if(!cleanup_completion::settle(transaction,observer,opening,reward))return false;
+     reset();return true;
+ }
++#include "weapon_hammerburst_reload_park.inl"
+ #include "weapon_hammerburst_latch_history.inl"
+ bool hand_sample(hand::Frame const& f,gears_weapon::HammerburstLatchSample& out) noexcept {
+     P left{};if(!local_hand(f,left))return false;
+@@ -499,8 +505,24 @@
+ bool tick(uptr pc) noexcept {
+     if(stage==Stage::idle&&lancerreload_runtime::stage!=lancerreload_runtime::Stage::idle)return false;
+     if(stage==Stage::recovering){cleanup(__LINE__);return true;}
+-    if(lancerreload_runtime::stop_requested.load(std::memory_order_acquire)||switch_requested){
++    if(stage==Stage::parked&&lancerreload_runtime::stop_requested.load(std::memory_order_acquire)){
++        reset();return false; // No live resources; do not touch another owner's services.
++    }
++    if(lancerreload_runtime::stop_requested.load(std::memory_order_acquire)){
+         if(stage!=Stage::idle){cleanup(__LINE__);return true;}return false;
++    }
++    if(stage==Stage::parking){
++        if(lancerreload_runtime::weapon_retired(opening.identity.weapon))cleanup(__LINE__);
++        else park_control::finish();
++        return true;
++    }
++    if(stage==Stage::parked){
++        if(lancerreload_runtime::weapon_retired(opening.identity.weapon)){reset();return false;}
++        return uptr(vrequip::model.held_weapon())==opening.identity.weapon.address;
++    }
++    if(switch_requested){
++        if(stage!=Stage::idle&&(!park_control::enabled()||(!park_control::begin()&&stage!=Stage::parking)))cleanup(__LINE__);
++        return stage!=Stage::idle;
+     }
+     if(stage==Stage::completing){
+         if(!serial){
+--- a/tools/playground/weapon_lancer_reload_runtime.inl
++++ b/tools/playground/weapon_lancer_reload_runtime.inl
+@@ -407,6 +407,7 @@
+         lancerreload_visual::active&&lancerreload_visual::alive();
+ }
+ bool prepare_stow(hand::Frame const& f,bool& changed) noexcept {
++    if(hammerburst_runtime::park_control::owns_stow(f))return hammerburst_runtime::park_control::prepare_stow(f,changed);
+     changed=false;if(!needs_priority()||stow_ready(f))return true;
+     if(stage==Stage::holding_original||stage==Stage::holding_new||stage==Stage::waiting_ammo){
+         // A genuine shoulder press may suspend an accepted magazine reload,
+--- a/tools/playground/playground.cpp
++++ b/tools/playground/playground.cpp
+@@ -1190,6 +1190,10 @@
+ }
+ namespace lancersaw_contact {void tick(gears_weapon_hand::Frame const&) noexcept;}
+ namespace hammerburst_runtime {
++namespace park_control {
++bool owns_stow(gears_weapon_hand::Frame const&) noexcept;
++bool prepare_stow(gears_weapon_hand::Frame const&,bool&) noexcept;
++}
+ bool manual_enabled() noexcept;
+ bool matrix(std::array<float,16> const&,gears_vr::Pose&,double&) noexcept;
+ void propose(gears_weapon_hand::Frame const&,gears_weapon_hand::GripGameState&) noexcept;

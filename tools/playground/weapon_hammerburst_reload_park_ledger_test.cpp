@@ -3,9 +3,9 @@
 #include <cstdlib>
 namespace inv {
 struct Identity {
-    unsigned gun{7},hold{1},world{11},session{13},input{17};
-    bool valid()const noexcept{return gun&&hold&&world&&session&&input;}
-    bool operator==(Identity const& b)const noexcept{return gun==b.gun&&hold==b.hold&&world==b.world&&session==b.session&&input==b.input;}
+    unsigned weapon{7},hold{1},world{11},session{13},input{17};
+    bool valid()const noexcept{return weapon&&hold&&world&&session&&input;}
+    bool operator==(Identity const& b)const noexcept{return weapon==b.weapon&&hold==b.hold&&world==b.world&&session==b.session&&input==b.input;}
 };
 using Inventory=gears_weapon::ReloadTxnInventory<Identity>;
 using Transaction=gears_weapon::ReloadTransaction<Identity>;
@@ -14,10 +14,10 @@ bool counts_equal(Inventory const& a,Inventory const& b)noexcept{
     return a.identity==b.identity&&a.capacity==b.capacity&&a.loaded==b.loaded&&a.reserve==b.reserve&&a.infinite_reserve==b.infinite_reserve;
 }
 bool same_instance_across_hold(Identity const& a,Identity const& b)noexcept{
-    return a.valid()&&b.valid()&&a.gun==b.gun&&b.hold>=a.hold&&a.world==b.world&&a.session==b.session&&a.input==b.input;
+    return a.valid()&&b.valid()&&a.weapon==b.weapon&&b.hold>=a.hold&&a.world==b.world&&a.session==b.session&&a.input==b.input;
 }
 }
-enum class Stage {idle,acquiring,opening,opened,old_magazine,waiting_ammo,new_magazine,closing,completing,recovering};
+enum class Stage {idle,acquiring,opening,opened,old_magazine,waiting_ammo,new_magazine,closing,completing,recovering,parking,parked,restoring};
 #include "weapon_hammerburst_reload_park_ledger.inl"
 unsigned checks{},cases{};
 #define C(x) do{++checks;if(!(x)){std::fprintf(stderr,"FAIL line %d: %s\n",__LINE__,#x);std::abort();}}while(false)
@@ -65,7 +65,7 @@ int main(){
     for(unsigned changed=0;changed<8;++changed){
         Fixture f;f.insert();park_ledger::Plan p{},rebound{};C(park_ledger::prepare(Stage::closing,f.transaction,1,0,false,p));
         auto observed=p.transaction.inventory();observed.identity.hold=2;
-        if(changed==0)++observed.identity.gun;if(changed==1)++observed.identity.world;
+        if(changed==0)++observed.identity.weapon;if(changed==1)++observed.identity.world;
         if(changed==2)++observed.identity.session;if(changed==3)++observed.identity.input;
         if(changed==4)observed.identity.hold=0;if(changed==5)++observed.loaded;
         if(changed==6)++observed.reserve;if(changed==7)observed.infinite_reserve=true;

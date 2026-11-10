@@ -41,14 +41,14 @@ bool prepare(Stage phase,inv::Transaction const& source,std::uint64_t original_i
     if(!inv::counts_equal(before,after)||before.revision!=after.revision||ledger.pending()||ledger.reserved())return false;
     candidate.valid=true;output=candidate;return true;
 }
-bool rebind(Plan const& saved,inv::Inventory const& observed,std::uint64_t original_item,Plan& output) noexcept {
-    if(!saved.valid||!observed.valid()||
-       !inv::same_instance_across_hold(saved.transaction.inventory().identity,observed.identity))return false;
+bool rebind(Plan const& saved,inv::Inventory const& next_inventory,std::uint64_t original_item,Plan& output) noexcept {
+    if(!saved.valid||!next_inventory.valid()||
+       !inv::same_instance_across_hold(saved.transaction.inventory().identity,next_inventory.identity))return false;
     Plan candidate=saved;
     const auto previous=candidate.transaction.inventory().identity;
     const bool accepted=candidate.original_at_feed?
-        candidate.transaction.rebind_retained_original(previous,observed,original_item):
-        candidate.transaction.rebind_suspended(previous,observed);
+        candidate.transaction.rebind_retained_original(previous,next_inventory,original_item):
+        candidate.transaction.rebind_suspended(previous,next_inventory);
     if(!accepted)return false;
     output=candidate;return true;
 }

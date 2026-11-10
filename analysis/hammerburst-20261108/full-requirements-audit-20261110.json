@@ -126,8 +126,8 @@
     {
       "id": "interruptions",
       "requirement": "\u6682\u505c/\u5931\u8ffd/\u5207\u67aa/\u6536\u67aa\u9000\u51fa\u3001\u4e0d\u5f97\u91cd\u653e\u65e7\u8fb9\u6cbf",
-      "status": "stop_completion_repair_compiled_switch_mechanics_missing",
-      "limit": "Stop/switch now precede completing; an uncalled perfect reward is cancelled while committed ammo remains, dispatched reward drains without redispatch;10 cases130 checks and full frozen Playground compile pass. Same-weapon mechanical parking/resume across switch remains missing because reset discards angle/stage; no live interruption acceptance. Park preparation module now preserves the actual ledger, releases only uncommitted reservation in a copy, rejects foreign identities/counts and preserves transaction time;22 cases191 checks pass. Not wired to live switch/animation/Lease/display restoration; whole requirement remains incomplete.",
+      "status": "parking_side_development_integrated_resume_missing",
+      "limit": "Stop/completion repair remains compiled. Actual parking side now connects the existing transaction plan, original exit, animation/display return, exact count reconciliation and stow preparation;11 cases65 checks pass on frozen source, ledger22 cases191 checks pass, default disabled13 checks pass. Resume/render/observer/clock/new-grab side is still absent, so shared default is OFF and private reload-parking-r2 is runtime_ready=false, not selected by the run entry. No live interruption acceptance.",
       "evidence": [
         {
           "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\reload-cleanup-r1\\prepared.json",
@@ -136,6 +136,10 @@
         {
           "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\park-ledger-check.json",
           "sha256": "87a7ca8afe5cdd3e595bf90ecb9cbe8a830a379ab4bbd7d65b5d4cb49551e602"
+        },
+        {
+          "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\reload-parking-r2\\prepared.json",
+          "sha256": "436400e7a05c77043cf5f5bcc540f601abfabc5a810a3df354d675f4bc8007e7"
         }
       ]
     },
@@ -181,5 +185,6 @@
   "previous_recorded_candidate": {
     "name": "hammerburst-prepared-20261110-unheld-input-r1",
     "prepared_sha256": "76a2ae8cc56e4165b77ca5d17a9e6469ff66323e917be5a8b46da44df4f0bb58"
-  }
+  },
+  "development_snapshot": "reload-parking-r2 (parking side only, restoration missing, default off; not runtime eligible)"
 }

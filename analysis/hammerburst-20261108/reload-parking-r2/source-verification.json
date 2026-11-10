@@ -1,0 +1,19 @@
+{
+  "changed_files": {
+    "tools/playground/CMakeLists.txt": "e58b295926a3d7650e1d99138b1997de4424f3f537fbbaa74da121e164acf8de",
+    "tools/playground/playground.cpp": "311a3305ee1e226601a8ed1208ea29f976e47e2469a642b98cd424d0374a2ab6",
+    "tools/playground/weapon_hammerburst_reload_park.inl": "d815b852bcd511354f39d1693ae5dd223de8118e56fac67f92a308a8d0920d59",
+    "tools/playground/weapon_hammerburst_reload_park_ledger.inl": "f00b6ed1b625238ca4699f2c5f53de8076dfb58890a8280f4c0c48d79d234dcb",
+    "tools/playground/weapon_hammerburst_reload_park_ledger_test.cpp": "1170de7f5a47c5504d43dfbab549ed1938f637fa8d3ccd63a1cce17b132f3d25",
+    "tools/playground/weapon_hammerburst_reload_park_test.cpp": "f8892cc4ea551120baeea5691903a3d4c255c9c2d774bce74f3486972ed95cb1",
+    "tools/playground/weapon_hammerburst_runtime.inl": "76114efeffac33ec8bd0fe804df9644dfccc2391e34c82b87e9c34b3f9b08ee0",
+    "tools/playground/weapon_lancer_reload_runtime.inl": "4990b43a31a205c64f2e8d3329b566fa709915856d2f2f30b861038564f6b5c2"
+  },
+  "frozen_parking_cases": 11,
+  "frozen_parking_checks": 65,
+  "current_ledger_cases": 22,
+  "current_ledger_checks": 191,
+  "default_disabled_checks": 13,
+  "runtime_started": false,
+  "restoration_integrated": false
+}
