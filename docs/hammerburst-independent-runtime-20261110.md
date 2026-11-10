@@ -390,3 +390,5 @@ launcher0/operator1/stop0，Native清理/PG入口恢复/XR0，本方game/子进�
 56032现有frame_read记录包含stale_before5及stale_after8，但不能把早期记录套到后面current_after上。完整snapshot仍调用四原GetWeaponInSlot/各ammo/CanSwitch/animation/grenade读；Input已经在库存之前采样，不能以重复移动Input作为修复。新增最多4条idle+12条实际right Grip按住的库存分段观测，记录current_before、原snapshot、绑定、current_after和原Client withdrawal的frame/sequence关联；不重读source/game，不增加库存/输入/engine调用，不改变原语句/返回/许可/期限。原current拒绝若没有同frame+sequence撤回记录，明确withdrawal_same=0，不借旧原因断言。
 
 完整PG SHA9e846150eee799ea90708912ebc1e6df2d10a61a0432a1b334df1813b1c0d224，Native/XR未重建；剥离observer后生产源码逐字等于reload-priority-r1，6项真实observer+合成clock/client/FILE检查通过，限额后clock/withdrawal查询均0。不是功能修复或游戏验收；runner选该候选做一次新聚焦动作，保留priority/history修正和全部13项最终要求。
+
+023254本次仅prepare后只读等资源115.172秒/99次拒绝。advisory看到只有Lancer，正式start短事务时Boltok已先占第二名额，原入口拒绝。工具59437终态exit1，未出现worker/session/done，本方game/operator均未创建；实际进程查询无该实例命令。此为资源准入竞争，不是库存/武器运行失败；记录admission-rejected-023254.json，保留旧名字且不重启。新候选仍未运行，下一次用新唯一prepare等待首次start，不改共享准入/名额或重复旧start。

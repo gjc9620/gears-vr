@@ -1,0 +1,12 @@
+{
+  "name": "hb-cloak-1111-023254",
+  "terminal_tool_exit": 1,
+  "game_created": false,
+  "operator_created": false,
+  "resource_start_rejected": true,
+  "cause": "Canonical quota recheck rejected after advisory wait saw only Lancer; Boltok admitted before this start transaction. No gameplay run or permission weakening.",
+  "result_sha256": "15dab106f8b4b8b4a69ba4a6d6dbe7dc8b15fb55b07d1680cc51efe5406fdc23",
+  "start_log_sha256": "8db0f984e5c634ae32d1eb41ead8ccd29d9ef3b7cb493a75d07d25fe8849aee3",
+  "old_name_never_restart": true,
+  "next": "Fresh unique preparation, bounded resource wait, first start only; same unexercised inventory timing candidate."
+}
