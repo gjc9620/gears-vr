@@ -1,0 +1,66 @@
+--- a/tools/playground/playground.cpp
++++ b/tools/playground/playground.cpp
+@@ -12,6 +12,8 @@
+ #include "../vr-common/weapon_part_visibility.h"
+ #include "../vr-common/weapon_hammerburst_latch_curve.h"
+ #include "../vr-common/weapon_hammerburst_latch.h"
++#include "../vr-common/weapon_hammerburst_latch_history.h"
++#include "../vr-common/controller_relative_motion.h"
+ #include "../vr-common/weapon_reload_geometry.h"
+ #include "../vr-common/weapon_hammerburst_magazine.h"
+ #include "../vr-common/weapon_lancer_interaction_guide.h"
+--- a/tools/playground/weapon_hammerburst_runtime.inl
++++ b/tools/playground/weapon_hammerburst_runtime.inl
+@@ -252,10 +252,12 @@
+     }
+     reset();return true;
+ }
++#include "weapon_hammerburst_latch_history.inl"
+ bool hand_sample(hand::Frame const& f,gears_weapon::HammerburstLatchSample& out) noexcept {
+     P left{};if(!local_hand(f,left))return false;
+     out={left.position,f.controllers.sequence,std::uint64_t(f.controllers.sync_ns/1000000),f.press_token,
+-        f.left_tracked!=0,f.left_grip_known&&f.left_grip_down};return true;
++        f.left_tracked!=0,f.left_grip_known&&f.left_grip_down};
++    latch_history::capture(f,out);return true;
+ }
+ bool move_magazine(hand::Frame const& f) noexcept {
+     gears_rig_tracking::Frame rig{};
+@@ -370,7 +372,7 @@
+         // Initialize the pure stroke now instead of wasting another GT frame
+         // with no motion. The first changed animation pose is still later.
+         gears_weapon::HammerburstLatchSample initial{};
+-        if(hand_sample(f,initial))stroke.begin(geometry.latch,initial,0);
++        if(hand_sample(f,initial)&&stroke.begin(geometry.latch,initial,0))latch_history::previous=latch_history::sampled;
+         return;
+     }
+     if(stage==Stage::opened){
+@@ -408,13 +410,21 @@
+         gears_weapon::HammerburstLatchSample sample{};if(!hand_sample(f,sample))return;
+         if(!stroke.active()){
+             if(held.id!=f.press_token&&(!released||!granted(f,decision,hand::LeaseKind::magazine,true)))return;
+-            if(stroke.begin(geometry.latch,sample,angle)){held=decision.lease;released=false;}
++            if(stroke.begin(geometry.latch,sample,angle)){held=decision.lease;released=false;latch_history::previous=latch_history::sampled;}
+             return;
+         }
+         const auto previous_ms=stroke.last_observation_ms();
+         const bool retained_contact=f.left_tracked&&decision.status==hand::DecisionStatus::retained&&
+             !decision.new_grant&&hand::same(held,decision.lease);
+-        const auto moved=stroke.observe(sample,retained_contact);
++        gears_weapon::HammerburstLatchMotion moved{};
++        const bool history_needed=sample.milliseconds>previous_ms&&sample.milliseconds-previous_ms>geometry.latch.observation_interval_ms;
++        const bool used_history=history_needed&&latch_history::advance(f,sample,retained_contact,moved);
++        if(!used_history)moved=stroke.observe(sample,retained_contact);
++        if(moved!=gears_weapon::HammerburstLatchMotion::rejected)latch_history::previous=latch_history::sampled;
++        if(history_needed&&log_file){static unsigned rows{};if(rows++<12){
++            fwprintf(log_file,L"hammerburst_latch_history gate=%u used=%u result=%u previous_capture=%u current_capture=%u serial=%llu frame=%llu previous_ms=%llu sample_ms=%llu\n",
++                latch_history::gate,unsigned(used_history),unsigned(moved),latch_history::previous.capture_gate,latch_history::sampled.capture_gate,serial,f.key.frame,previous_ms,sample.milliseconds);fflush(log_file);}}
++
+         if(moved==gears_weapon::HammerburstLatchMotion::held_stationary){
+             if(latch_stationary_holds!=~0u)++latch_stationary_holds;
+             return; // No seek, mechanical progress, completion or new grab.
+@@ -611,4 +621,5 @@
+     }
+     return true;
+ }
++
+ } // namespace hammerburst_runtime
