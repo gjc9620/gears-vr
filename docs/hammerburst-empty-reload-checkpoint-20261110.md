@@ -167,3 +167,11 @@ Lancer35276实际退出、launcher finished后，Bow补充GN早先stage后未生
 ## r3实际占用拒绝（未stage）
 
 GN十原件实际恢复释放后，第一次统一guard争用Busy，HB没有消费；真实持有者为HOD beam9/53920，不是HB或Bol。其实际运行终态/正常十原件恢复及空闲已观察后再试，HB取得guard，但原idle发现Longshot55436/XR34068/录制43704/operator27712已在用；HB54984在原件保存前拒绝退出，claim consumed_unverified保留、无prestage/部署/共享写入。已简短告LS正常完成、随后使用同一外层guard；不打断其运行，不据单一锁代替真实占用。后续独立入口把O_EXCL消费放到guard内且真实idle通过之后，避免纯争用/已占用检查消耗attempt；仍在任何baseline/stage前，不能复用旧54984消费记录。
+
+## 独立52960：真实空仓替换至L78/R0，最后关盖gap拒绝
+
+GN恢复全终、HOD退出后本枪r3曾取得guard但实际Longshot55436占用，在任何原件保存/部署前拒绝，已保留54984消费原件。r4将消费移至guard内且实际idle之后、任何原件保存前；Longshot18原件实际恢复释放后r4取得锁执行游戏52960/creation134387690462061371。完整78条实际trace均valid/source一致；空仓触发无射线/无自动补弹。修正后的真实begin serial1及1→2通过，实际阶段依次2→3→4→5→6→7，取出旧匣、释放/肩取新匣并入座后库存L78/R0。没有跳过原机构。
+
+首次失败为closing stage7/reason5：previous_ms80358027→sample_ms80358139=112ms，大于既有100ms；已接近闭合angle0.0242935rad，previous seek12.9137ms，retained_same1、hand_delta1.783mm。严格首拒绝停止，无恢复重抓或重复输入，真实关盖和返射未执行，不称完整流程通过。下一步核采样/消费路径，不改100ms、不绕闭合端点。game/Native/entries/pad/drain/XR/launcher正常，十raw全恢复，统一guard及时释放并已通知；随后Bow独立使用54588，本枪离线工作不持窗。
+
+本枪共享易变文本先隔离归档，随后capture硬链接独立目录。初始目录遍历遇另一interrupted stub重名而中断，已明确只选唯一dual-output目录完成隔离，没有覆盖原动作记录。编码73228实际terminal0，全部76.2秒三页双路overview亲阅；六张实际事件原图补审仍待完成，不伪称已阅。runtime-52960-review.json及runtime-sidecar-archive.json保存实际数值/原件SHA；媒体留存待独立安全处理。主枪遮挡/自然手型未接受，按主人第一阶段逻辑优先，不拿它们阻止该gap修复。
