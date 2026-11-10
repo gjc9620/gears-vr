@@ -1,0 +1,711 @@
+{
+  "name": "cover-1111-r153-cloak-pulse",
+  "memory_before": {
+    "available_commit": 18955120640,
+    "available_physical": 12341702656,
+    "active_instances": [
+      "lancer-natural-v139-225928"
+    ]
+  },
+  "disk_before": {
+    "check": "disk_admission",
+    "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr",
+    "free_bytes": 33557987328,
+    "minimum_free_bytes": 4294967296,
+    "admitted": true
+  },
+  "started_at_ns": 1794341042758382900,
+  "source": 1,
+  "probe_mode": "path",
+  "forced_termination": false,
+  "gameplay_accepted": false,
+  "headset_accepted": false,
+  "foreground_observations": {
+    "samples": 133,
+    "owned_activation": false
+  },
+  "cloak_observations": {
+    "samples": 58,
+    "failures": []
+  },
+  "runner_sha256": "6ef1cc9cb2a39d5bfa1c2d34132f32c0285956d92d4b7d9df619a98e031218a1",
+  "isolation_source_sha256": "e6b4a0ae31aadb4299e37522af0463ceec7be1e4501d68e2b1ad89b605842c2b",
+  "runtime_receipts_source_sha256": "7db0a08436af9b8c865aa6efb3c943c5817cd61887cd2837f873c07b29dabefb",
+  "anchor_source_sha256": {
+    "analysis/solo-m1-20261028/sim_entry.py": "41de185d816683cc020397b56abe62528e1ffdcef925b75059f064fe117d4709",
+    "tools/native-capture/sixdof_manual_profile.py": "9480c2a056bb375b2678ce75fb600092f8e547cdcf8d9cbc11b2aea2d49247e7",
+    "tools/native-capture/anchor_config.py": "fe28f1f84ad26ac91aa6b67dc1431f150a8e707d78e3a7a5c9b396244d7c4592",
+    "tools/native-capture/cinematic_anchor.py": "f3c8b4135c57c1e8697ffe08dfdf59084b6fcb93bb1862979c688eab24ab4a44",
+    "tools/native-capture/world_rebind_runtime.py": "73b6f9606db5961e2890e49ae81a611f198abbef5b307a4d94947adb37052257",
+    "tools/native-capture/native_class_discovery.py": "3fd533c006f3546249d88b75d5a324ab3c4271da5ab0a39554e9d6089506b44d",
+    "tools/package-inspector/resolve_camera.py": "39e3272ffcc850fdfc8c4daf79fe2a7477f855e2f51adb21e67b47831fd376a6",
+    "tools/package-inspector/sample_player_anchor.py": "efbc5b65b4bc21a83001cbdea10c083e50ac20a8deca6dba01e7a65d5ca3c04e"
+  },
+  "projection_recorder_sha256": "e8cc69bcd34218ac5cab34b8c7dd098c64bb704c5ec845cb2552686694238ab6",
+  "start_exit": 0,
+  "start_stdout": "{\"worker_pid\": 1744, \"worker_identity\": {\"pid\": 1744, \"creation_time\": 134388146429265247, \"image\": \"c:\\\\users\\\\11\\\\.cache\\\\codex-runtimes\\\\codex-primary-runtime\\\\dependencies\\\\python\\\\python.exe\"}, \"root\": \"C:\\\\Users\\\\11\\\\.codex\\\\worktrees\\\\6dof-single\\\\gearsVr\\\\analysis\\\\instances\\\\cover-1111-r153-cloak-pulse\", \"command\": [\"C:\\\\Users\\\\11\\\\.cache\\\\codex-runtimes\\\\codex-primary-runtime\\\\dependencies\\\\python\\\\python.exe\", \"-X\", \"utf8\", \"-B\", \"C:\\\\Users\\\\11\\\\.codex\\\\worktrees\\\\6dof-single\\\\gearsVr\\\\analysis\\\\solo-m1-20261028\\\\sim_entry.py\", \"launcher\", \"start\", \"--manifest\", \"C:\\\\Users\\\\11\\\\.codex\\\\worktrees\\\\6dof-single\\\\gearsVr\\\\analysis\\\\instances\\\\cover-1111-r153-cloak-pulse\\\\manifest.json\", \"--config\", \"C:\\\\Users\\\\11\\\\.codex\\\\worktrees\\\\6dof-single\\\\gearsVr\\\\analysis\\\\instances\\\\cover-1111-r153-cloak-pulse\\\\config.json\", \"--runtime\", \"C:\\\\Users\\\\11\\\\.codex\\\\worktrees\\\\6dof-single\\\\gearsVr\\\\analysis\\\\coordinator-multi-20261110\\\\simulator-cloak-source\\\\bin\\\\openxr_simulator.json\", \"--auto-continue\"], \"memory_before_launch\": {\"available_commit\": 18919706624, \"available_physical\": 12238327808, \"active_instances\": [\"lancer-natural-v139-225928\"]}, \"disk_before_launch\": {\"check\": \"disk_admission\", \"path\": \"C:\\\\Users\\\\11\\\\.codex\\\\worktrees\\\\6dof-single\\\\gearsVr\", \"free_bytes\": 33468125184, \"minimum_free_bytes\": 4294967296, \"admitted\": true}, \"input_directory\": \"C:\\\\Users\\\\11\\\\.codex\\\\worktrees\\\\6dof-single\\\\gearsVr\\\\analysis\\\\instances\\\\cover-1111-r153-cloak-pulse\\\\xr-input\\\\LocalAppData\\\\OpenXR-Simulator\", \"stop_command\": [\"C:\\\\Users\\\\11\\\\.cache\\\\codex-runtimes\\\\codex-primary-runtime\\\\dependencies\\\\python\\\\python.exe\", \"C:\\\\Users\\\\11\\\\.codex\\\\worktrees\\\\6dof-single\\\\gearsVr\\\\tools\\\\multi-instance\\\\isolated_sim.py\", \"stop\", \"--name\", \"cover-1111-r153-cloak-pulse\"]}\r\n",
+  "start_stderr": "",
+  "worker_identity": {
+    "pid": 1744,
+    "creation_time": 134388146429265247,
+    "image": "c:\\users\\11\\.cache\\codex-runtimes\\codex-primary-runtime\\dependencies\\python\\python.exe"
+  },
+  "error": "RuntimeError(\"Private session error: OSError(22, '\u53c2\u6570\u9519\u8bef\u3002', None, 87)\")",
+  "traceback": "Traceback (most recent call last):\n  File \"C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\isolated-r105\\run.py\", line 193, in main\n    raise RuntimeError('Private session error: '+str(session['error']))\nRuntimeError: Private session error: OSError(22, '\u53c2\u6570\u9519\u8bef\u3002', None, 87)\n",
+  "stop_exit": 1,
+  "stop_stdout": "",
+  "stop_stderr": "",
+  "prebirth_resource_refusal": false,
+  "normal_cleanup_required": true,
+  "terminal_state": {
+    "schema": 1,
+    "kind": "repository_vr_launcher",
+    "owner_identity": {
+      "pid": 53828,
+      "creation_time": 134388146430178398,
+      "image": "c:\\users\\11\\.cache\\codex-runtimes\\codex-primary-runtime\\dependencies\\python\\python.exe"
+    },
+    "phase": "incomplete",
+    "passed": false,
+    "instance_root": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\cover-1111-r153-cloak-pulse",
+    "render_size_plan": {
+      "runtime_render_size_plan": true,
+      "recommended": [
+        4096,
+        3288
+      ],
+      "render_scale": 0.4,
+      "eye": [
+        1639,
+        1316
+      ],
+      "source": [
+        3278,
+        1316
+      ],
+      "engine_sbs_limit": 8192,
+      "dimensions_are_plan_not_gpu_proof": true
+    },
+    "original_part_preparation": {
+      "schema": 1,
+      "game_path": "J:\\gearsVr\\Gears.of.War.Reloaded.v1.0.1.3816947-P2P\\Gears of War Reloaded\\Binaries_x64\\GOWDE-Steam.exe",
+      "cache_root": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\weapon-part-cache",
+      "stage": "before_game_reservation",
+      "parts": {
+        "magazine": {
+          "prepared": true,
+          "source_sha256": "1f1c5a1405d354f89d352c26547a22a1c4cd791ba769755b6e9317e93ceaecb2"
+        },
+        "lancer_handle": {
+          "prepared": true,
+          "source_sha256": "df356ff3dda45e060f87b5ed94c806d96bbfe36b74b21a0f1d2032596f9dcf4d"
+        },
+        "lancer_magazine": {
+          "prepared": true,
+          "source_sha256": "df356ff3dda45e060f87b5ed94c806d96bbfe36b74b21a0f1d2032596f9dcf4d"
+        }
+      }
+    },
+    "test_audio_guard": {
+      "enabled": true,
+      "game_identity": {
+        "pid": 39264,
+        "creation_time": 134388146522999539
+      },
+      "owner_identity": {
+        "pid": 53828,
+        "creation_time": 134388146430178398
+      },
+      "log": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\cover-1111-r153-cloak-pulse\\launcher-session.e6b8ce8c0e7043eb829f8fcc6fa6266a.audio.jsonl",
+      "restored": true,
+      "startup": {
+        "ready_observed": true,
+        "ready_timeout_seconds": 15.0,
+        "waited_seconds": 0.3279999999940628,
+        "helper_exit_code": null
+      },
+      "exit_code": 0,
+      "event": "guard_cleanup",
+      "reason": "stop",
+      "matched": 1,
+      "muted": 0,
+      "restore_attempted": 0,
+      "restore_pending": 0,
+      "read_failed": 0,
+      "mute_failed": 0,
+      "scans": 50,
+      "endpoint_unavailable": 0,
+      "shared_rejected": 550,
+      "sessions_restored": 0,
+      "mute_verification": {
+        "event": "mute_verification_summary",
+        "pid": 39264,
+        "initially_muted_sessions": 1,
+        "verified_muted_observations": 50,
+        "verify_failed": 0,
+        "target_shared_rejected": 0,
+        "shared_rejected_is_global_scan_count": true
+      }
+    },
+    "game_identity": {
+      "pid": 39264,
+      "creation_time": 134388146522999539,
+      "image": "j:\\gearsvr\\gears.of.war.reloaded.v1.0.1.3816947-p2p\\gears of war reloaded\\binaries_x64\\gowde-steam.exe"
+    },
+    "reservation": {
+      "game_identity": {
+        "pid": 39264,
+        "creation_time": 134388146522999539,
+        "image": "j:\\gearsvr\\gears.of.war.reloaded.v1.0.1.3816947-p2p\\gears of war reloaded\\binaries_x64\\gowde-steam.exe"
+      },
+      "game_sha256": "bdc6705d18ddb335b767df0b38e256ba5da0f49449c8970b302118bb7a4a8fa4",
+      "pid": 39264,
+      "dll": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\cover-1111-r153-cloak-pulse\\native\\GearsCapture.dll",
+      "trampolines_reserved": true,
+      "hooks_enabled": true,
+      "first_view_mask_reserved": true,
+      "native_hooks_enabled": true,
+      "graphics_hooks_enabled": 4,
+      "scene_hooks_enabled": false,
+      "descriptor_hooks_enabled": 3,
+      "independent_entry_checks": [
+        {
+          "rva": "0x15cf08",
+          "matches": true
+        },
+        {
+          "rva": "0x15c968",
+          "matches": true
+        },
+        {
+          "rva": "0x3a148c",
+          "matches": true
+        },
+        {
+          "rva": "0x193d50",
+          "matches": true
+        },
+        {
+          "rva": "0x116250",
+          "matches": true
+        },
+        {
+          "rva": "0x15a80c",
+          "matches": true
+        },
+        {
+          "rva": "0x15a974",
+          "matches": true
+        },
+        {
+          "rva": "0x1fc060",
+          "matches": true
+        },
+        {
+          "rva": "0x13cfcc",
+          "matches": true
+        },
+        {
+          "rva": "0x1af42c",
+          "matches": true
+        },
+        {
+          "rva": "0x2a7e48",
+          "matches": true
+        },
+        {
+          "rva": "0x119bdd",
+          "matches": true
+        },
+        {
+          "rva": "0x33bc70",
+          "matches": true
+        }
+      ],
+      "factory_hooks_enabled": 3,
+      "prime_lifetime": "owner",
+      "prime_owner_pid": 53828,
+      "prime_owner_creation_time": 134388146430178398,
+      "playground_reservation": {
+        "reserved": true,
+        "hook_enabled": false,
+        "entry_restored": true,
+        "dll": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\tools\\playground\\build-cover-1111-r153-cloak-pulse\\GearsPlayground6DofUnified3.dll",
+        "sha256": "f8e6f3c2715b244e8250976c3eb1279cb306c2a50576e078f64bf8b23daf4807",
+        "pid": 39264
+      }
+    },
+    "session_report": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\runtime\\continuous-stereo-39264-20261111-040420-3690fe0c.json",
+    "session_id": "3690fe0c19fc4aa29d9e2c48336f3486",
+    "control_exit_code": 1,
+    "native_activated": false,
+    "playground_cleanup": {
+      "loaded": true,
+      "shutdown_code": 0,
+      "entry_restored": true,
+      "passed": true,
+      "reservation_only": true
+    },
+    "tiny_output_monitor_cleanup": {
+      "joined": true
+    },
+    "prime_cleanup": {
+      "cancelled": true,
+      "entry_restore_verified": true
+    },
+    "prime_watchdog_pending": false
+  },
+  "terminal_session": {
+    "schema": 1,
+    "kind": "continuous_strict_stereo",
+    "session_id": "3690fe0c19fc4aa29d9e2c48336f3486",
+    "phase": "incomplete",
+    "passed": false,
+    "source": 1,
+    "operator_motion_requested": true,
+    "simulation_not_physical_tracking": true,
+    "physical_tracking_verified": false,
+    "outage_diagnostics_enabled": true,
+    "anchor_observer_enabled": true,
+    "cinematic_camera_enabled": true,
+    "origin_trial_enabled": false,
+    "image_ticket_diagnostics_enabled": true,
+    "shutdown_diagnostics_enabled": true,
+    "startup_menu_enabled": true,
+    "world_recovery_enabled": true,
+    "menu_recovery_enabled": true,
+    "movie_display_enabled": true,
+    "ui_observer_enabled": true,
+    "ui_hud_plane_enabled": true,
+    "ui_reticle_late_sample_enabled": false,
+    "crosshair_assignment_observer_enabled": true,
+    "controller_input_observer_enabled": true,
+    "armspan_calibration_loaded": false,
+    "hud_horizontal_fov_degrees": 65.0,
+    "camera_closer_metres": 0.0,
+    "gpu_snapshot_requested": false,
+    "owner_identity": {
+      "pid": 53828,
+      "creation_time": 134388146430178398,
+      "image": "c:\\users\\11\\.cache\\codex-runtimes\\codex-primary-runtime\\dependencies\\python\\python.exe"
+    },
+    "game_identity": {
+      "pid": 39264,
+      "creation_time": 134388146522999539,
+      "image": "j:\\gearsvr\\gears.of.war.reloaded.v1.0.1.3816947-p2p\\gears of war reloaded\\binaries_x64\\gowde-steam.exe"
+    },
+    "session_report": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\runtime\\continuous-stereo-39264-20261111-040420-3690fe0c.json",
+    "native_started": false,
+    "limits": "Explicit persistent session lifecycle; exit0 does not assert uninterrupted frame rate or physical headset acceptance.",
+    "hud_element_scale": 1.2,
+    "hud_center_scale": 0.8,
+    "diagnostics_artifacts": {
+      "native_sha256": "ac5cf37f3683a20900d3927510e56ab42cb0528080f0ea31f360f3537344ebda",
+      "xr_sha256": "16840b27dc40ebb489f93121758cb7bc0daa2700df046e508babbd50c578a7fc",
+      "game_sha256": "bdc6705d18ddb335b767df0b38e256ba5da0f49449c8970b302118bb7a4a8fa4",
+      "native_build": "native"
+    },
+    "requested_configuration": {
+      "render_scale": 0.4,
+      "stereo_units_per_metre": 100.0,
+      "camera_closer_metres": 0.0,
+      "first_person_preview": true,
+      "right_stick_deadzone_percent": 2.0,
+      "hud_horizontal_fov_degrees": 65.0,
+      "hud_element_scale": 1.2,
+      "hud_center_scale": 0.8
+    },
+    "path_choice_center_enabled": true,
+    "startup_timings": {
+      "xr_preflight": {
+        "elapsed_ms": 6324.2828,
+        "since_runner_start_ms": 6548.3442,
+        "evidence": "strict focused source0 CSV and required startup panel",
+        "clock": "Windows QPC / perf_counter_ns",
+        "timing_is_runner_observation": true
+      }
+    },
+    "diagnostics": {
+      "schema": 1,
+      "enabled": true,
+      "samples": 0,
+      "rotations": 0,
+      "error": null,
+      "interval_seconds": 1.0,
+      "rate_definitions": {
+        "game_present_calls_per_second": "Top-level bound game DXGI Present observations, excluding TEST calls; not engine-update or displayed FPS.",
+        "stereo_pairs_per_second": "New native stereo image publications; separate from repeated XR submissions.",
+        "xr_loop_hz": "CSV frame delta / runtime predicted-display-time delta; not verified projection or physical display FPS.",
+        "missing": "null means unavailable, first sample, stale sample, changed identity or reset; it does not mean zero FPS."
+      }
+    },
+    "menu_state_file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\runtime\\continuous-stereo-39264-20261111-040420-3690fe0c.menu.bin",
+    "xr_command": [
+      "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\tools\\openxr-probe\\build-cover-1111-r153-cloak-pulse\\OpenXRPoseProbe.exe",
+      "0",
+      "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\runtime\\continuous-stereo-39264-20261111-040420-3690fe0c.csv",
+      "--stereo-game-pid",
+      "39264",
+      "--continuous-session",
+      "--owner-pid",
+      "53828",
+      "--owner-creation-time",
+      "134388146430178398",
+      "--controller-input",
+      "--render-scale",
+      "0.4",
+      "--startup-menu-window",
+      "76875030",
+      "39264",
+      "--menu-state-file",
+      "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\runtime\\continuous-stereo-39264-20261111-040420-3690fe0c.menu.bin",
+      "--menu-game-creation",
+      "134388146522999539",
+      "--movie-display",
+      "--outage-diagnostics",
+      "--shutdown-diagnostics",
+      "--image-ticket-diagnostics",
+      "--simulator-operator"
+    ],
+    "native_command": [
+      "C:\\Users\\11\\.cache\\codex-runtimes\\codex-primary-runtime\\dependencies\\python\\python.exe",
+      "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\solo-m1-20261028\\sim_entry.py",
+      "native",
+      "--pid",
+      "39264",
+      "--build-dir",
+      "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\cover-1111-r153-cloak-pulse\\native",
+      "--dll-name",
+      "GearsCapture.dll",
+      "--use-reserved",
+      "--continuous-session",
+      "--continuous-owner-pid",
+      "53828",
+      "--continuous-owner-creation-time",
+      "134388146430178398",
+      "--submit-pair",
+      "--submit-background",
+      "--submit-output-bounds",
+      "--viewport-diagnostics",
+      "--color-copy-diagnostics",
+      "--view-union-mask-fix",
+      "--stereo-xr",
+      "--stereo-units-per-metre",
+      "100.0",
+      "--frame-link-diagnostics",
+      "--require-target-prime",
+      "--stereo-gpu-publish",
+      "--first-person-preview",
+      "--sixdof-manual",
+      "--outage-diagnostics",
+      "--anchor-observer",
+      "--cinematic-camera",
+      "--ui-observer",
+      "--menu-display-file",
+      "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\runtime\\continuous-stereo-39264-20261111-040420-3690fe0c.menu.bin",
+      "--ui-hud-plane",
+      "--crosshair-assignment-observer",
+      "--controller-input-observer",
+      "--hud-horizontal-fov-degrees",
+      "65.0",
+      "--hud-element-scale",
+      "1.2",
+      "--hud-center-scale",
+      "0.8",
+      "--armspan-metres",
+      "1.7",
+      "--hands-below-head-metres",
+      "-0.15",
+      "--simulator-operator"
+    ],
+    "xr_owned_pid": 39540,
+    "xr_identity": {
+      "pid": 39540,
+      "creation_time": 134388146609309585,
+      "image": "c:\\users\\11\\.codex\\worktrees\\6dof-single\\gearsvr\\tools\\openxr-probe\\build-cover-1111-r153-cloak-pulse\\openxrposeprobe.exe"
+    },
+    "preflight_frames": 37,
+    "startup_panel_submitted": true,
+    "error": "OSError(22, '\u53c2\u6570\u9519\u8bef\u3002', None, 87)",
+    "exception_traceback": "Traceback (most recent call last):\n  File \"C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\tools\\native-capture\\run_stereo_continuous.py\", line 655, in run_session\n    before_native_activation(ensure_startup_live)\n  File \"C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\tools\\vr-launcher\\launcher.py\", line 748, in before_activation\n    state['vr_gamepad']=backend.start_vr_gamepad(manifest,identity,owner,check_live)\n                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\solo-m1-20261028\\sim_entry.py\", line 132, in start_private_gamepad\n    return start_gamepad(manifest,identity,owner,check_live=check_live,simulator_operator=True)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\tools\\vr-launcher\\playground_loader.py\", line 108, in start_gamepad\n    gate=background_input.change(identity['pid'],'enable',identity['creation_time'])\n         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\tools\\game-io\\background_input.py\", line 170, in change\n    with FrozenThreads(pid, base) as frozen:\n         ^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\tools\\game-io\\background_input.py\", line 103, in __enter__\n    raise error\nOSError: [WinError 87] \u53c2\u6570\u9519\u8bef\u3002\n{\"already_suspended\": [7900, 11972, 16660, 21160, 21164, 21964, 22020, 24240, 25128, 27292, 27668, 34292, 34444, 36024, 36340], \"enumerated\": [7900, 11972, 16660, 21160, 21164, 21964, 22020, 24240, 25128, 27292, 27668, 34292, 34444, 36024, 36340, 36712, 36992, 40608, 41544, 41612, 42296, 43256, 44916, 45520, 45648, 46104, 46320, 46724, 47336, 47516, 50404, 51904, 52104, 54568, 54580, 54664, 54768, 54976, 55168, 55412, 55456, 55564, 56548, 56620, 56904, 57176, 58012, 58392, 58932], \"failed_tid_still_present\": false, \"fresh_threads\": [7900, 11972, 16660, 18368, 19980, 21160, 21164, 21964, 22020, 24240, 25128, 27292, 27668, 34292, 34444, 34612, 36024, 36340, 36992, 40608, 41544, 41612, 42296, 43256, 44916, 45520, 46104, 46320, 46724, 47336, 47516, 50404, 51904, 52104, 54568, 54580, 54664, 54768, 54976, 55168, 55412, 55456, 55564, 56548, 56620, 56904, 57176, 58012, 58392, 58932], \"pid\": 39264, \"stage\": \"OpenThread\", \"tid\": 36712, \"winerror\": 87}\n",
+    "xr_preflight_diagnostics": {
+      "retained_rows": 37,
+      "window_rows": 20,
+      "required_rows": 30,
+      "required_window_rows": 20,
+      "checks": {
+        "published": true,
+        "focused": true,
+        "render": true,
+        "head_valid": true,
+        "views_valid": true,
+        "source_zero": false,
+        "minimum_rows": true,
+        "panel_ready": true
+      },
+      "passing_rows": {
+        "published": 20,
+        "focused": 20,
+        "render": 20,
+        "head_valid": 20,
+        "views_valid": 20,
+        "source_zero": 0
+      },
+      "last_session_state": "5",
+      "ready": false
+    },
+    "xr_preflight_diagnostic_error": null,
+    "menu_observation_worker": {
+      "background": true,
+      "closed": true,
+      "completed": 19,
+      "total_ms": 5343.000000008033,
+      "maximum_ms": 2000.0,
+      "last_ms": 2000.0,
+      "failure": null
+    },
+    "xr_cleanup_actions": [
+      "stop_signaled",
+      "wait"
+    ],
+    "xr_forced_cleanup_reason": null,
+    "xr_stop_signaled": true,
+    "xr_exit_code": 1,
+    "render_pattern_summary": {
+      "frames": 232,
+      "valid_pose_frames": 232,
+      "tracked_pose_frames": 232,
+      "should_render_frames": 232,
+      "focused_frames": 232,
+      "last_session_state": 8,
+      "submitted_image_layers": 0,
+      "left_checksum": 0,
+      "right_checksum": 0
+    },
+    "stereo_bridge_summary": {
+      "stereo_bridge_session": 125862081594400,
+      "published": 232,
+      "publish_skipped": 0,
+      "reference_space_changed": false,
+      "game_projection_layer": false
+    },
+    "stereo_game_summary": {
+      "stereo_game_projection_layers": 0,
+      "stereo_game_copies": 0,
+      "matching_render_ticket_required": true
+    },
+    "stereo_projection_rejections": [
+      {
+        "stereo_projection_rejection": "producer_stopped",
+        "count": 0,
+        "first_ns": 0,
+        "last_ns": 0,
+        "expected_stop": true
+      },
+      {
+        "stereo_projection_rejection": "producer_unavailable",
+        "count": 232,
+        "first_ns": 125867871981500,
+        "last_ns": 125870454346500,
+        "expected_stop": false
+      },
+      {
+        "stereo_projection_rejection": "waiting_image",
+        "count": 0,
+        "first_ns": 0,
+        "last_ns": 0,
+        "expected_stop": false
+      },
+      {
+        "stereo_projection_rejection": "current_inactive",
+        "count": 0,
+        "first_ns": 0,
+        "last_ns": 0,
+        "expected_stop": false
+      },
+      {
+        "stereo_projection_rejection": "current_untracked",
+        "count": 0,
+        "first_ns": 0,
+        "last_ns": 0,
+        "expected_stop": false
+      },
+      {
+        "stereo_projection_rejection": "reference_space_changed",
+        "count": 0,
+        "first_ns": 0,
+        "last_ns": 0,
+        "expected_stop": false
+      },
+      {
+        "stereo_projection_rejection": "empty_ticket",
+        "count": 0,
+        "first_ns": 0,
+        "last_ns": 0,
+        "expected_stop": false
+      },
+      {
+        "stereo_projection_rejection": "session_mismatch",
+        "count": 0,
+        "first_ns": 0,
+        "last_ns": 0,
+        "expected_stop": false
+      },
+      {
+        "stereo_projection_rejection": "ticket_flags",
+        "count": 0,
+        "first_ns": 0,
+        "last_ns": 0,
+        "expected_stop": false
+      },
+      {
+        "stereo_projection_rejection": "ticket_geometry",
+        "count": 0,
+        "first_ns": 0,
+        "last_ns": 0,
+        "expected_stop": false
+      },
+      {
+        "stereo_projection_rejection": "stale_ticket",
+        "count": 0,
+        "first_ns": 0,
+        "last_ns": 0,
+        "expected_stop": false
+      },
+      {
+        "stereo_projection_rejection": "image_rectangle",
+        "count": 0,
+        "first_ns": 0,
+        "last_ns": 0,
+        "expected_stop": false
+      },
+      {
+        "stereo_projection_rejection": "session_lost",
+        "count": 0,
+        "first_ns": 0,
+        "last_ns": 0,
+        "expected_stop": false
+      },
+      {
+        "stereo_projection_rejection": "producer_structure_invalid",
+        "count": 0,
+        "first_ns": 0,
+        "last_ns": 0,
+        "expected_stop": false
+      },
+      {
+        "stereo_projection_rejection": "probe_failure",
+        "count": 0,
+        "first_ns": 0,
+        "last_ns": 0,
+        "expected_stop": false
+      },
+      {
+        "stereo_projection_rejection": "menu_requested",
+        "count": 0,
+        "first_ns": 0,
+        "last_ns": 0,
+        "expected_stop": false
+      },
+      {
+        "stereo_projection_rejection": "menu_recovery_pending",
+        "count": 0,
+        "first_ns": 0,
+        "last_ns": 0,
+        "expected_stop": false
+      },
+      {
+        "stereo_projection_rejection": "reference_epoch_pending",
+        "count": 0,
+        "first_ns": 0,
+        "last_ns": 0,
+        "expected_stop": false
+      },
+      {
+        "stereo_projection_rejection": "source_reconfiguration",
+        "count": 0,
+        "first_ns": 0,
+        "last_ns": 0,
+        "expected_stop": false
+      }
+    ],
+    "startup_menu_evidence": {
+      "startup_menu_evidence": true,
+      "startup_quad_layers": 0,
+      "startup_wait_card_layers": 232,
+      "stereo_handoff": false,
+      "panel_counts_as_stereo": false
+    },
+    "menu_recovery_evidence": {
+      "menu_recovery_evidence": true,
+      "entries": 0,
+      "quad_layers": 0,
+      "recoveries": 0,
+      "panel_counts_as_stereo": false
+    },
+    "session_exit_evidence": {
+      "session_exit_evidence": true,
+      "last_state": 8,
+      "stopping_observed": false,
+      "end_session_succeeded": false,
+      "terminal_exiting_observed": true,
+      "terminal_exit_without_end": true,
+      "loss_observed": false,
+      "objects_destroyed": true,
+      "shutdown_completed": true
+    },
+    "continuous_owner_evidence": {
+      "continuous_owner_evidence": true,
+      "owner_pid": 53828,
+      "owner_creation_time": 134388146430178398,
+      "owner_lost": false
+    },
+    "continuous_session_evidence": {
+      "continuous_session_evidence": true,
+      "stop_reason": "stop_event",
+      "orderly_stop": true,
+      "structural_failure": false,
+      "submitted_frames": 0,
+      "scene_copies": 0,
+      "span_seconds": 0,
+      "maximum_submission_gap_ms": 0,
+      "shutdown_completed": true,
+      "csv_sampled": true,
+      "physical_tracking_verified": false,
+      "simulation_not_physical_tracking": true
+    },
+    "armspan_calibration_saved": false,
+    "startup_cancelled": false,
+    "support_diagnostics": {
+      "records": 48,
+      "rotations": 0,
+      "observer_error": null,
+      "thread_wait_samples": 0,
+      "worker_joined": true,
+      "first_failure_available": true
+    }
+  },
+  "isolated_done": {
+    "launcher_exit": 1,
+    "owned_game_absent": true,
+    "owned_children": {
+      "recorded": 0,
+      "remaining": []
+    },
+    "forced_termination": false,
+    "worker_error": null
+  },
+  "remaining_owned": {},
+  "normal_cleanup_verified": false,
+  "anchor_sources_after": {
+    "analysis/solo-m1-20261028/sim_entry.py": "41de185d816683cc020397b56abe62528e1ffdcef925b75059f064fe117d4709",
+    "tools/native-capture/sixdof_manual_profile.py": "9480c2a056bb375b2678ce75fb600092f8e547cdcf8d9cbc11b2aea2d49247e7",
+    "tools/native-capture/anchor_config.py": "fe28f1f84ad26ac91aa6b67dc1431f150a8e707d78e3a7a5c9b396244d7c4592",
+    "tools/native-capture/cinematic_anchor.py": "f3c8b4135c57c1e8697ffe08dfdf59084b6fcb93bb1862979c688eab24ab4a44",
+    "tools/native-capture/world_rebind_runtime.py": "73b6f9606db5961e2890e49ae81a611f198abbef5b307a4d94947adb37052257",
+    "tools/native-capture/native_class_discovery.py": "3fd533c006f3546249d88b75d5a324ab3c4271da5ab0a39554e9d6089506b44d",
+    "tools/package-inspector/resolve_camera.py": "39e3272ffcc850fdfc8c4daf79fe2a7477f855e2f51adb21e67b47831fd376a6",
+    "tools/package-inspector/sample_player_anchor.py": "efbc5b65b4bc21a83001cbdea10c083e50ac20a8deca6dba01e7a65d5ca3c04e"
+  },
+  "anchor_sources_unchanged": true
+}

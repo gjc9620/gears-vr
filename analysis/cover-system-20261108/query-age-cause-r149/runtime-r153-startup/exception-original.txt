@@ -1,0 +1,19 @@
+Traceback (most recent call last):
+  File "C:\Users\11\.codex\worktrees\6dof-single\gearsVr\tools\native-capture\run_stereo_continuous.py", line 655, in run_session
+    before_native_activation(ensure_startup_live)
+  File "C:\Users\11\.codex\worktrees\6dof-single\gearsVr\tools\vr-launcher\launcher.py", line 748, in before_activation
+    state['vr_gamepad']=backend.start_vr_gamepad(manifest,identity,owner,check_live)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\11\.codex\worktrees\6dof-single\gearsVr\analysis\solo-m1-20261028\sim_entry.py", line 132, in start_private_gamepad
+    return start_gamepad(manifest,identity,owner,check_live=check_live,simulator_operator=True)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\11\.codex\worktrees\6dof-single\gearsVr\tools\vr-launcher\playground_loader.py", line 108, in start_gamepad
+    gate=background_input.change(identity['pid'],'enable',identity['creation_time'])
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\11\.codex\worktrees\6dof-single\gearsVr\tools\game-io\background_input.py", line 170, in change
+    with FrozenThreads(pid, base) as frozen:
+         ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\11\.codex\worktrees\6dof-single\gearsVr\tools\game-io\background_input.py", line 103, in __enter__
+    raise error
+OSError: [WinError 87] 参数错误。
+{"already_suspended": [7900, 11972, 16660, 21160, 21164, 21964, 22020, 24240, 25128, 27292, 27668, 34292, 34444, 36024, 36340], "enumerated": [7900, 11972, 16660, 21160, 21164, 21964, 22020, 24240, 25128, 27292, 27668, 34292, 34444, 36024, 36340, 36712, 36992, 40608, 41544, 41612, 42296, 43256, 44916, 45520, 45648, 46104, 46320, 46724, 47336, 47516, 50404, 51904, 52104, 54568, 54580, 54664, 54768, 54976, 55168, 55412, 55456, 55564, 56548, 56620, 56904, 57176, 58012, 58392, 58932], "failed_tid_still_present": false, "fresh_threads": [7900, 11972, 16660, 18368, 19980, 21160, 21164, 21964, 22020, 24240, 25128, 27292, 27668, 34292, 34444, 34612, 36024, 36340, 36992, 40608, 41544, 41612, 42296, 43256, 44916, 45520, 46104, 46320, 46724, 47336, 47516, 50404, 51904, 52104, 54568, 54580, 54664, 54768, 54976, 55168, 55412, 55456, 55564, 56548, 56620, 56904, 57176, 58012, 58392, 58932], "pid": 39264, "stage": "OpenThread", "tid": 36712, "winerror": 87}

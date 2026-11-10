@@ -1,0 +1,55 @@
+{
+  "scope": "Actual startup failure before Native continuous activation or operator",
+  "identities": {
+    "game_identity": {
+      "pid": 39264,
+      "creation_time": 134388146522999539,
+      "image": "j:\\gearsvr\\gears.of.war.reloaded.v1.0.1.3816947-p2p\\gears of war reloaded\\binaries_x64\\gowde-steam.exe"
+    },
+    "owner_identity": {
+      "pid": 53828,
+      "creation_time": 134388146430178398,
+      "image": "c:\\users\\11\\.cache\\codex-runtimes\\codex-primary-runtime\\dependencies\\python\\python.exe"
+    },
+    "xr_identity": {
+      "pid": 39540,
+      "creation_time": 134388146609309585,
+      "image": "c:\\users\\11\\.codex\\worktrees\\6dof-single\\gearsvr\\tools\\openxr-probe\\build-cover-1111-r153-cloak-pulse\\openxrposeprobe.exe"
+    },
+    "worker_identity": {
+      "pid": 1744,
+      "creation_time": 134388146429265247,
+      "image": "c:\\users\\11\\.cache\\codex-runtimes\\codex-primary-runtime\\dependencies\\python\\python.exe"
+    }
+  },
+  "exact_owned_processes_absent": true,
+  "normal_cleanup_verified": false,
+  "launcher_exit": 1,
+  "xr_exit": 1,
+  "failed_thread": 36712,
+  "failed_thread_still_present": false,
+  "already_suspended_threads": 15,
+  "startup_stage": "before_activation/start_gamepad/background_input.change/FrozenThreads.OpenThread",
+  "operator_started": false,
+  "projection_frames": 0,
+  "pulse_runtime_verified": false,
+  "query_cause_observed": false,
+  "source_repair": "At most 3 whole enable transactions after witnessed absent-thread OpenThread87; unchanged strict freeze; same identity and certified original code required; first failure retained.",
+  "checks": {
+    "startup_loader": 26,
+    "background_input": 9,
+    "failures": 0
+  },
+  "source_sha256": {
+    "tools/vr-launcher/playground_loader.py": "1eb3293661dc4ac810bfc4e9315900b6feb2cb7e22b823ac0ac50ff0337310dc",
+    "tools/game-io/background_input.py": "b27ba12d1f3c703babd5ec09ee731edc95742595da7d9887ad513568feab2bf2",
+    "analysis/cover-system-20261108/isolated-r105/prepare.py": "d1575fbc6d6b3b924564dd8049dc9d4e3862aa841afa77b4339a07c45e29a51c"
+  },
+  "background_input_modified_by_this_turn": false,
+  "startup_retry_runtime_verified": false,
+  "world_coverage_verified": false,
+  "movement_authorized": false,
+  "gameplay_accepted": false,
+  "public_changed": false,
+  "headset_accepted": false
+}

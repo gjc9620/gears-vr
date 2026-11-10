@@ -2389,3 +2389,13 @@ r151等待活进程观察到名额释放后共享锁内准入再次被抢占；�
 检查驱动发现ctx.stick采用固定14次渐变发布，ctx.live/put耗时叠加到每一档保持；本次相邻motion间隔0.74–1.56秒，不能当作已测每次发布延迟，但固定次数时序缺陷由代码可见。修正cover_ordinary_approach改为实际经过时间推进0.14秒升/降渐变，沿用原0.04/0.22秒中段、0.62幅度、35到达界、3次停滞及42步上限；同一原g.put发布端、每次身份检查及finally零输入释放，没有新线程/写入端或位置/旋转setter。慢调用仍可能超时，记录实际时长和超时量，不声称硬实时保证，也不能声称入口已修好。
 
 11项离线检查通过，包括实际脉冲慢检查/慢发布/发布异常/finally释放/停钟上限及原导航限制；初次仅浮点比较0.6799999999999999与0.68失败，改为近似断言，产品未为测试改门。prepare_operator将实际approach源码封入本实例operator并记录SHA，避免之后共享文件变化改变已准备动作。r153新私有实例已准备、实际冻结脚本导入检查0，仅准备未运行。下一步用此已保存候选做一次定向入口/查询检查，保留r150/r152实际失败，不重跑旧claim。完整CV01–24/AC01–22仍开放，工程25%、publicv71及固定入口不变，目标active。
+
+## r153：启动线程消失87拒绝，原冻结不变、完整事务有界重试修正（2026-11-11）
+
+基于bf57aec6准备的r153等待活句柄观察原两名额占用，资源释放后单次启动。实际game39264/creation134388146522999539、owner53828/creation134388146430178398、XR39540/creation134388146609309585。XR preflight6.324秒后，before_activation/start_gamepad/background_input.change/FrozenThreads.OpenThread出现WinError87：枚举到tid36712，已挂起15条；新的同进程快照明确failed_tid_still_present false，失败线程已消失。实际异常堆栈及原诊断已保留，不归咎掩体、Native查询或新步行脉冲。
+
+Native continuous native_started false，operator未启动、projection0、未输入A/步行/pose_request，步行修正和查询年龄分项均未取得运行证据。launcher1/XR1，normal_cleanup_verified false；后续精确game/owner/XR/worker身份均已不存在、无强杀，这一进程事实不替代正常清理。原始结果、首次失败和堆栈在query-age-cause-r149/runtime-r153-startup。
+
+未改当前已有未提交的background_input.py，也未跳过任何线程。playground_loader增加_enable_gamepad_gate，仅当原FrozenThreads已完整展开并抛出带唯一见证的OpenThread87、失败tid来自旧枚举且在新快照消失时，允许最多3次完整enable事务；每次保留check_live、精确创建身份、完整status原代码认证，不接受enabled/pending/未知代码，不重复Native Start或GateLease。其他87、仍存活线程、观察失败、权限/恢复错误均直接拒绝；第三次不再重试。成功报告保留原异常和见证，失败保留重试历史。原Freeze的异常恢复失败会变RuntimeError，不能进入此重试。源码与离线检查不证明实际恢复或入口已修好。
+
+26项startup/loader检查及9项background_input检查通过，包含真实start_gamepad函数的模拟依赖调用、首败留存、身份变化/代码未知拒绝、次数界及原回滚/释放；没有调用游戏/真实冻结。prepare现在绑定原8项来源以及loader和background_input两项启动依赖SHA，已有准备记录不改哈希，新运行须重新准备。下一步保存后使用新私有实例定向验证启动、定时步行及原CT2入口，再继续原查询原因定位。完整CV01–24/AC01–22、工程25%、publicv71/固定入口及实体头显状态不变，目标active。

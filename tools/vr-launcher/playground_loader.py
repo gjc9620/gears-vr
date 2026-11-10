@@ -105,10 +105,10 @@ def start_gamepad(manifest,identity,owner,*,check_live=lambda:None,simulator_ope
             raise RuntimeError('Controller focus gate already has another owner')
         if bridge.export('GearsCaptureVrGamepadGateLease',1):raise RuntimeError('Virtual-only pad gate lease rejected')
         leased=True
-        gate=background_input.change(identity['pid'],'enable',identity['creation_time'])
+        gate,gate_attempts=_enable_gamepad_gate(identity,background_input.change,bridge.control.identity,check_live)
         check_live()
         return dict(enabled=True,before_level_discovery=True,keyboard_required=False,source=1 if simulator_operator else 0,
-                    virtual_pad_only=True,focus_gate=gate,gate_lease_owned=True)
+                    virtual_pad_only=True,focus_gate=gate,gate_lease_owned=True,focus_gate_attempts=gate_attempts)
     except BaseException:
         if leased:
             # Keep the Native neutral-pad retention guard if restoration fails.
@@ -120,6 +120,48 @@ def start_gamepad(manifest,identity,owner,*,check_live=lambda:None,simulator_ope
     finally:
         if returned and address:bridge.free(address)
         bridge.close()
+
+
+def _enable_gamepad_gate(identity,change,check_identity,check_live):
+    """Retry only a fully unwound, witnessed OpenThread disappearance.
+
+    FrozenThreads raises the original OSError only after its cleanup succeeds;
+    failed resume replaces it with RuntimeError and cannot reach this retry.
+    No thread is skipped and no incomplete freeze reaches the patch body.
+    """
+    failures=[]
+    for attempt in range(3):
+        check_live()
+        if check_identity(identity['pid'])!=identity:
+            raise RuntimeError('Gamepad startup retry process identity changed')
+        try:
+            result=change(identity['pid'],'enable',identity['creation_time'])
+            return dict(result,startup_thread_exit_retries=failures),attempt+1
+        except OSError as error:
+            if failures:error.add_note(json.dumps(dict(stage='gamepad_startup_gate_retry_history',failures=failures)))
+            if getattr(error,'winerror',None)!=87 or attempt==2:raise
+            notes=[]
+            for note in getattr(error,'__notes__',()):
+                try:value=json.loads(note)
+                except (TypeError,ValueError):continue
+                if isinstance(value,dict):notes.append(value)
+            matches=[n for n in notes if n.get('stage')=='OpenThread' and n.get('pid')==identity['pid']
+                     and n.get('winerror')==87 and isinstance(n.get('tid'),int) and n['tid']>0
+                     and n.get('failed_tid_still_present') is False
+                     and isinstance(n.get('enumerated'),list) and n['tid'] in n['enumerated']
+                     and isinstance(n.get('fresh_threads'),list) and n['tid'] not in n['fresh_threads']
+                     and not n.get('fresh_snapshot_error')]
+            if len(matches)!=1:raise
+            check_live()
+            if check_identity(identity['pid'])!=identity:
+                raise RuntimeError('Gamepad startup retry process identity changed') from error
+            status=change(identity['pid'],'status',identity['creation_time'])
+            if status.get('identity')!=identity or status.get('state')!='original':
+                raise RuntimeError('Gamepad startup retry requires certified original code') from error
+            failures.append(dict(attempt=attempt+1,error=repr(error),witness=matches[0],
+                                 certified_state=status['state']))
+            time.sleep(.05)
+    raise RuntimeError('Gamepad gate startup did not finish')
 
 
 def _restore_gamepad_gate(identity,change,check_identity):

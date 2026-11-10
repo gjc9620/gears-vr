@@ -1,0 +1,47 @@
+{
+  "worker_pid": 1744,
+  "worker_identity": {
+    "pid": 1744,
+    "creation_time": 134388146429265247,
+    "image": "c:\\users\\11\\.cache\\codex-runtimes\\codex-primary-runtime\\dependencies\\python\\python.exe"
+  },
+  "root": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\cover-1111-r153-cloak-pulse",
+  "command": [
+    "C:\\Users\\11\\.cache\\codex-runtimes\\codex-primary-runtime\\dependencies\\python\\python.exe",
+    "-X",
+    "utf8",
+    "-B",
+    "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\solo-m1-20261028\\sim_entry.py",
+    "launcher",
+    "start",
+    "--manifest",
+    "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\cover-1111-r153-cloak-pulse\\manifest.json",
+    "--config",
+    "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\cover-1111-r153-cloak-pulse\\config.json",
+    "--runtime",
+    "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\coordinator-multi-20261110\\simulator-cloak-source\\bin\\openxr_simulator.json",
+    "--auto-continue"
+  ],
+  "memory_before_launch": {
+    "available_commit": 18919706624,
+    "available_physical": 12238327808,
+    "active_instances": [
+      "lancer-natural-v139-225928"
+    ]
+  },
+  "disk_before_launch": {
+    "check": "disk_admission",
+    "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr",
+    "free_bytes": 33468125184,
+    "minimum_free_bytes": 4294967296,
+    "admitted": true
+  },
+  "input_directory": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\cover-1111-r153-cloak-pulse\\xr-input\\LocalAppData\\OpenXR-Simulator",
+  "stop_command": [
+    "C:\\Users\\11\\.cache\\codex-runtimes\\codex-primary-runtime\\dependencies\\python\\python.exe",
+    "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\tools\\multi-instance\\isolated_sim.py",
+    "stop",
+    "--name",
+    "cover-1111-r153-cloak-pulse"
+  ]
+}

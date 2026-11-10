@@ -1,0 +1,1 @@
+{"support_diagnostics": true, "schema": 1, "role": "controller", "event": "first_failure", "observed_ns": 125870332258000, "category": "session_exception", "message": "OSError(22, '\u53c2\u6570\u9519\u8bef\u3002', None, 87)", "first_observed_failure": true, "ordering": "observer_receipt_order", "phase": "awaiting_level"}

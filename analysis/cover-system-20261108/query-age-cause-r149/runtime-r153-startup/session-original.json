@@ -1,0 +1,430 @@
+{
+  "schema": 1,
+  "kind": "continuous_strict_stereo",
+  "session_id": "3690fe0c19fc4aa29d9e2c48336f3486",
+  "phase": "incomplete",
+  "passed": false,
+  "source": 1,
+  "operator_motion_requested": true,
+  "simulation_not_physical_tracking": true,
+  "physical_tracking_verified": false,
+  "outage_diagnostics_enabled": true,
+  "anchor_observer_enabled": true,
+  "cinematic_camera_enabled": true,
+  "origin_trial_enabled": false,
+  "image_ticket_diagnostics_enabled": true,
+  "shutdown_diagnostics_enabled": true,
+  "startup_menu_enabled": true,
+  "world_recovery_enabled": true,
+  "menu_recovery_enabled": true,
+  "movie_display_enabled": true,
+  "ui_observer_enabled": true,
+  "ui_hud_plane_enabled": true,
+  "ui_reticle_late_sample_enabled": false,
+  "crosshair_assignment_observer_enabled": true,
+  "controller_input_observer_enabled": true,
+  "armspan_calibration_loaded": false,
+  "hud_horizontal_fov_degrees": 65.0,
+  "camera_closer_metres": 0.0,
+  "gpu_snapshot_requested": false,
+  "owner_identity": {
+    "pid": 53828,
+    "creation_time": 134388146430178398,
+    "image": "c:\\users\\11\\.cache\\codex-runtimes\\codex-primary-runtime\\dependencies\\python\\python.exe"
+  },
+  "game_identity": {
+    "pid": 39264,
+    "creation_time": 134388146522999539,
+    "image": "j:\\gearsvr\\gears.of.war.reloaded.v1.0.1.3816947-p2p\\gears of war reloaded\\binaries_x64\\gowde-steam.exe"
+  },
+  "session_report": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\runtime\\continuous-stereo-39264-20261111-040420-3690fe0c.json",
+  "native_started": false,
+  "limits": "Explicit persistent session lifecycle; exit0 does not assert uninterrupted frame rate or physical headset acceptance.",
+  "hud_element_scale": 1.2,
+  "hud_center_scale": 0.8,
+  "diagnostics_artifacts": {
+    "native_sha256": "ac5cf37f3683a20900d3927510e56ab42cb0528080f0ea31f360f3537344ebda",
+    "xr_sha256": "16840b27dc40ebb489f93121758cb7bc0daa2700df046e508babbd50c578a7fc",
+    "game_sha256": "bdc6705d18ddb335b767df0b38e256ba5da0f49449c8970b302118bb7a4a8fa4",
+    "native_build": "native"
+  },
+  "requested_configuration": {
+    "render_scale": 0.4,
+    "stereo_units_per_metre": 100.0,
+    "camera_closer_metres": 0.0,
+    "first_person_preview": true,
+    "right_stick_deadzone_percent": 2.0,
+    "hud_horizontal_fov_degrees": 65.0,
+    "hud_element_scale": 1.2,
+    "hud_center_scale": 0.8
+  },
+  "path_choice_center_enabled": true,
+  "startup_timings": {
+    "xr_preflight": {
+      "elapsed_ms": 6324.2828,
+      "since_runner_start_ms": 6548.3442,
+      "evidence": "strict focused source0 CSV and required startup panel",
+      "clock": "Windows QPC / perf_counter_ns",
+      "timing_is_runner_observation": true
+    }
+  },
+  "diagnostics": {
+    "schema": 1,
+    "enabled": true,
+    "samples": 0,
+    "rotations": 0,
+    "error": null,
+    "interval_seconds": 1.0,
+    "rate_definitions": {
+      "game_present_calls_per_second": "Top-level bound game DXGI Present observations, excluding TEST calls; not engine-update or displayed FPS.",
+      "stereo_pairs_per_second": "New native stereo image publications; separate from repeated XR submissions.",
+      "xr_loop_hz": "CSV frame delta / runtime predicted-display-time delta; not verified projection or physical display FPS.",
+      "missing": "null means unavailable, first sample, stale sample, changed identity or reset; it does not mean zero FPS."
+    }
+  },
+  "menu_state_file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\runtime\\continuous-stereo-39264-20261111-040420-3690fe0c.menu.bin",
+  "xr_command": [
+    "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\tools\\openxr-probe\\build-cover-1111-r153-cloak-pulse\\OpenXRPoseProbe.exe",
+    "0",
+    "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\runtime\\continuous-stereo-39264-20261111-040420-3690fe0c.csv",
+    "--stereo-game-pid",
+    "39264",
+    "--continuous-session",
+    "--owner-pid",
+    "53828",
+    "--owner-creation-time",
+    "134388146430178398",
+    "--controller-input",
+    "--render-scale",
+    "0.4",
+    "--startup-menu-window",
+    "76875030",
+    "39264",
+    "--menu-state-file",
+    "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\runtime\\continuous-stereo-39264-20261111-040420-3690fe0c.menu.bin",
+    "--menu-game-creation",
+    "134388146522999539",
+    "--movie-display",
+    "--outage-diagnostics",
+    "--shutdown-diagnostics",
+    "--image-ticket-diagnostics",
+    "--simulator-operator"
+  ],
+  "native_command": [
+    "C:\\Users\\11\\.cache\\codex-runtimes\\codex-primary-runtime\\dependencies\\python\\python.exe",
+    "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\solo-m1-20261028\\sim_entry.py",
+    "native",
+    "--pid",
+    "39264",
+    "--build-dir",
+    "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\cover-1111-r153-cloak-pulse\\native",
+    "--dll-name",
+    "GearsCapture.dll",
+    "--use-reserved",
+    "--continuous-session",
+    "--continuous-owner-pid",
+    "53828",
+    "--continuous-owner-creation-time",
+    "134388146430178398",
+    "--submit-pair",
+    "--submit-background",
+    "--submit-output-bounds",
+    "--viewport-diagnostics",
+    "--color-copy-diagnostics",
+    "--view-union-mask-fix",
+    "--stereo-xr",
+    "--stereo-units-per-metre",
+    "100.0",
+    "--frame-link-diagnostics",
+    "--require-target-prime",
+    "--stereo-gpu-publish",
+    "--first-person-preview",
+    "--sixdof-manual",
+    "--outage-diagnostics",
+    "--anchor-observer",
+    "--cinematic-camera",
+    "--ui-observer",
+    "--menu-display-file",
+    "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\runtime\\continuous-stereo-39264-20261111-040420-3690fe0c.menu.bin",
+    "--ui-hud-plane",
+    "--crosshair-assignment-observer",
+    "--controller-input-observer",
+    "--hud-horizontal-fov-degrees",
+    "65.0",
+    "--hud-element-scale",
+    "1.2",
+    "--hud-center-scale",
+    "0.8",
+    "--armspan-metres",
+    "1.7",
+    "--hands-below-head-metres",
+    "-0.15",
+    "--simulator-operator"
+  ],
+  "xr_owned_pid": 39540,
+  "xr_identity": {
+    "pid": 39540,
+    "creation_time": 134388146609309585,
+    "image": "c:\\users\\11\\.codex\\worktrees\\6dof-single\\gearsvr\\tools\\openxr-probe\\build-cover-1111-r153-cloak-pulse\\openxrposeprobe.exe"
+  },
+  "preflight_frames": 37,
+  "startup_panel_submitted": true,
+  "error": "OSError(22, '\u53c2\u6570\u9519\u8bef\u3002', None, 87)",
+  "exception_traceback": "Traceback (most recent call last):\n  File \"C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\tools\\native-capture\\run_stereo_continuous.py\", line 655, in run_session\n    before_native_activation(ensure_startup_live)\n  File \"C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\tools\\vr-launcher\\launcher.py\", line 748, in before_activation\n    state['vr_gamepad']=backend.start_vr_gamepad(manifest,identity,owner,check_live)\n                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\solo-m1-20261028\\sim_entry.py\", line 132, in start_private_gamepad\n    return start_gamepad(manifest,identity,owner,check_live=check_live,simulator_operator=True)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\tools\\vr-launcher\\playground_loader.py\", line 108, in start_gamepad\n    gate=background_input.change(identity['pid'],'enable',identity['creation_time'])\n         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\tools\\game-io\\background_input.py\", line 170, in change\n    with FrozenThreads(pid, base) as frozen:\n         ^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\tools\\game-io\\background_input.py\", line 103, in __enter__\n    raise error\nOSError: [WinError 87] \u53c2\u6570\u9519\u8bef\u3002\n{\"already_suspended\": [7900, 11972, 16660, 21160, 21164, 21964, 22020, 24240, 25128, 27292, 27668, 34292, 34444, 36024, 36340], \"enumerated\": [7900, 11972, 16660, 21160, 21164, 21964, 22020, 24240, 25128, 27292, 27668, 34292, 34444, 36024, 36340, 36712, 36992, 40608, 41544, 41612, 42296, 43256, 44916, 45520, 45648, 46104, 46320, 46724, 47336, 47516, 50404, 51904, 52104, 54568, 54580, 54664, 54768, 54976, 55168, 55412, 55456, 55564, 56548, 56620, 56904, 57176, 58012, 58392, 58932], \"failed_tid_still_present\": false, \"fresh_threads\": [7900, 11972, 16660, 18368, 19980, 21160, 21164, 21964, 22020, 24240, 25128, 27292, 27668, 34292, 34444, 34612, 36024, 36340, 36992, 40608, 41544, 41612, 42296, 43256, 44916, 45520, 46104, 46320, 46724, 47336, 47516, 50404, 51904, 52104, 54568, 54580, 54664, 54768, 54976, 55168, 55412, 55456, 55564, 56548, 56620, 56904, 57176, 58012, 58392, 58932], \"pid\": 39264, \"stage\": \"OpenThread\", \"tid\": 36712, \"winerror\": 87}\n",
+  "xr_preflight_diagnostics": {
+    "retained_rows": 37,
+    "window_rows": 20,
+    "required_rows": 30,
+    "required_window_rows": 20,
+    "checks": {
+      "published": true,
+      "focused": true,
+      "render": true,
+      "head_valid": true,
+      "views_valid": true,
+      "source_zero": false,
+      "minimum_rows": true,
+      "panel_ready": true
+    },
+    "passing_rows": {
+      "published": 20,
+      "focused": 20,
+      "render": 20,
+      "head_valid": 20,
+      "views_valid": 20,
+      "source_zero": 0
+    },
+    "last_session_state": "5",
+    "ready": false
+  },
+  "xr_preflight_diagnostic_error": null,
+  "menu_observation_worker": {
+    "background": true,
+    "closed": true,
+    "completed": 19,
+    "total_ms": 5343.000000008033,
+    "maximum_ms": 2000.0,
+    "last_ms": 2000.0,
+    "failure": null
+  },
+  "xr_cleanup_actions": [
+    "stop_signaled",
+    "wait"
+  ],
+  "xr_forced_cleanup_reason": null,
+  "xr_stop_signaled": true,
+  "xr_exit_code": 1,
+  "render_pattern_summary": {
+    "frames": 232,
+    "valid_pose_frames": 232,
+    "tracked_pose_frames": 232,
+    "should_render_frames": 232,
+    "focused_frames": 232,
+    "last_session_state": 8,
+    "submitted_image_layers": 0,
+    "left_checksum": 0,
+    "right_checksum": 0
+  },
+  "stereo_bridge_summary": {
+    "stereo_bridge_session": 125862081594400,
+    "published": 232,
+    "publish_skipped": 0,
+    "reference_space_changed": false,
+    "game_projection_layer": false
+  },
+  "stereo_game_summary": {
+    "stereo_game_projection_layers": 0,
+    "stereo_game_copies": 0,
+    "matching_render_ticket_required": true
+  },
+  "stereo_projection_rejections": [
+    {
+      "stereo_projection_rejection": "producer_stopped",
+      "count": 0,
+      "first_ns": 0,
+      "last_ns": 0,
+      "expected_stop": true
+    },
+    {
+      "stereo_projection_rejection": "producer_unavailable",
+      "count": 232,
+      "first_ns": 125867871981500,
+      "last_ns": 125870454346500,
+      "expected_stop": false
+    },
+    {
+      "stereo_projection_rejection": "waiting_image",
+      "count": 0,
+      "first_ns": 0,
+      "last_ns": 0,
+      "expected_stop": false
+    },
+    {
+      "stereo_projection_rejection": "current_inactive",
+      "count": 0,
+      "first_ns": 0,
+      "last_ns": 0,
+      "expected_stop": false
+    },
+    {
+      "stereo_projection_rejection": "current_untracked",
+      "count": 0,
+      "first_ns": 0,
+      "last_ns": 0,
+      "expected_stop": false
+    },
+    {
+      "stereo_projection_rejection": "reference_space_changed",
+      "count": 0,
+      "first_ns": 0,
+      "last_ns": 0,
+      "expected_stop": false
+    },
+    {
+      "stereo_projection_rejection": "empty_ticket",
+      "count": 0,
+      "first_ns": 0,
+      "last_ns": 0,
+      "expected_stop": false
+    },
+    {
+      "stereo_projection_rejection": "session_mismatch",
+      "count": 0,
+      "first_ns": 0,
+      "last_ns": 0,
+      "expected_stop": false
+    },
+    {
+      "stereo_projection_rejection": "ticket_flags",
+      "count": 0,
+      "first_ns": 0,
+      "last_ns": 0,
+      "expected_stop": false
+    },
+    {
+      "stereo_projection_rejection": "ticket_geometry",
+      "count": 0,
+      "first_ns": 0,
+      "last_ns": 0,
+      "expected_stop": false
+    },
+    {
+      "stereo_projection_rejection": "stale_ticket",
+      "count": 0,
+      "first_ns": 0,
+      "last_ns": 0,
+      "expected_stop": false
+    },
+    {
+      "stereo_projection_rejection": "image_rectangle",
+      "count": 0,
+      "first_ns": 0,
+      "last_ns": 0,
+      "expected_stop": false
+    },
+    {
+      "stereo_projection_rejection": "session_lost",
+      "count": 0,
+      "first_ns": 0,
+      "last_ns": 0,
+      "expected_stop": false
+    },
+    {
+      "stereo_projection_rejection": "producer_structure_invalid",
+      "count": 0,
+      "first_ns": 0,
+      "last_ns": 0,
+      "expected_stop": false
+    },
+    {
+      "stereo_projection_rejection": "probe_failure",
+      "count": 0,
+      "first_ns": 0,
+      "last_ns": 0,
+      "expected_stop": false
+    },
+    {
+      "stereo_projection_rejection": "menu_requested",
+      "count": 0,
+      "first_ns": 0,
+      "last_ns": 0,
+      "expected_stop": false
+    },
+    {
+      "stereo_projection_rejection": "menu_recovery_pending",
+      "count": 0,
+      "first_ns": 0,
+      "last_ns": 0,
+      "expected_stop": false
+    },
+    {
+      "stereo_projection_rejection": "reference_epoch_pending",
+      "count": 0,
+      "first_ns": 0,
+      "last_ns": 0,
+      "expected_stop": false
+    },
+    {
+      "stereo_projection_rejection": "source_reconfiguration",
+      "count": 0,
+      "first_ns": 0,
+      "last_ns": 0,
+      "expected_stop": false
+    }
+  ],
+  "startup_menu_evidence": {
+    "startup_menu_evidence": true,
+    "startup_quad_layers": 0,
+    "startup_wait_card_layers": 232,
+    "stereo_handoff": false,
+    "panel_counts_as_stereo": false
+  },
+  "menu_recovery_evidence": {
+    "menu_recovery_evidence": true,
+    "entries": 0,
+    "quad_layers": 0,
+    "recoveries": 0,
+    "panel_counts_as_stereo": false
+  },
+  "session_exit_evidence": {
+    "session_exit_evidence": true,
+    "last_state": 8,
+    "stopping_observed": false,
+    "end_session_succeeded": false,
+    "terminal_exiting_observed": true,
+    "terminal_exit_without_end": true,
+    "loss_observed": false,
+    "objects_destroyed": true,
+    "shutdown_completed": true
+  },
+  "continuous_owner_evidence": {
+    "continuous_owner_evidence": true,
+    "owner_pid": 53828,
+    "owner_creation_time": 134388146430178398,
+    "owner_lost": false
+  },
+  "continuous_session_evidence": {
+    "continuous_session_evidence": true,
+    "stop_reason": "stop_event",
+    "orderly_stop": true,
+    "structural_failure": false,
+    "submitted_frames": 0,
+    "scene_copies": 0,
+    "span_seconds": 0,
+    "maximum_submission_gap_ms": 0,
+    "shutdown_completed": true,
+    "csv_sampled": true,
+    "physical_tracking_verified": false,
+    "simulation_not_physical_tracking": true
+  },
+  "armspan_calibration_saved": false,
+  "startup_cancelled": false,
+  "support_diagnostics": {
+    "records": 48,
+    "rotations": 0,
+    "observer_error": null,
+    "thread_wait_samples": 0,
+    "worker_joined": true,
+    "first_failure_available": true
+  }
+}
