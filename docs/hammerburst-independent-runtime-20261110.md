@@ -230,3 +230,5 @@ source-loss-r2只扩大观察覆盖：idle故障独立最多6条，已承诺burs
 本枪私有动作适配器现保留启动交接事件，但将GPU录制开始移到Native手/装备交接就绪后、首个动作之前；首次新完整帧仍限原5秒，失败或失去本方身份直接拒绝进入动作。共享录制器、Native、XR和武器机制均未修改。5项针对性检查与15项既有实例身份/接线检查通过；这只是脚本离线结果，不是实际画面已修复。
 
 223959在启动资源检查时因已有两个自动实例拒绝，未启动game/operator。224419在start时磁盘free3,924,176,896bytes低于现共享4GiB下限拒绝，同样未启动game/operator；本方prepare前也已统一4GiB，先前1GiB只是历史步骤。保留两次拒绝，不计游戏尝试或通过。随后free14,749,691,904bytes，按原入口启动新唯一实例224756；实际结果待原进程终态后记录，不重启旧名、不碰其他实例。
+
+224756进程已终态exit1，start明确因两个其他自动worker的实际身份仍存活而拒绝，未产生launcher-session/game/operator；不是service-loss候选的游戏失败。本枪runner现prepare前调用同一共享require_disk/require_memory作只读预检，避免已知资源不足时先复制约1GiB实例；start仍在原共享短事务中复查并登记，预检不占名额/锁/内存，不代替最终准入。`--resources`只读模式同样在mkdir之前返回；当前读到两个实际存活worker，继续离线工作，不将资源等待标blocked，不停止其他会话。

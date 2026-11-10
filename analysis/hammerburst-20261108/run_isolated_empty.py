@@ -22,10 +22,23 @@ PAUSE=ROOT/'tools/multi-instance/automatic-runtime-pause.json'
 def write(path,value):path.write_text(json.dumps(value,indent=2),encoding='utf-8')
 
 
+def resource_preflight():
+    # Advisory before the large private prepare copy. The shared start path
+    # still repeats admission under its resource transaction; this reserves
+    # neither an instance slot nor memory during gameplay.
+    sys.path.insert(0,str(TOOL.parent))
+    from isolated_sim import require_memory, require_disk
+    return dict(disk=require_disk(ROOT), memory=require_memory())
+
+
 def main():
     if PAUSE.exists():raise RuntimeError('Automatic runtime is paused by the owner; no preparation/start attempt')
     if shutil.disk_usage(ROOT).free<4*1024**3:
         raise RuntimeError('Insufficient free workspace disk for owned runtime evidence; no prepare/start attempted')
+    resources=resource_preflight()
+    if '--resources' in sys.argv:
+        print(json.dumps(resources,indent=2))
+        return 0
     name='hb-cloak-'+time.strftime('%m%d-%H%M%S')
     target=AREA/name;target.mkdir()
     manifest=json.loads((AREA/'independent-r1/candidate-manifest.json').read_text())
