@@ -1,0 +1,6 @@
+{
+  "cases": 8,
+  "failures": 0,
+  "runner_sha256": "1ed91ed96e448a1e6cd748128062e956d2de99cf0668cfea49c9e6d76672a4cd",
+  "scope": "exact prebirth refusal classification; no launch or cleanup execution"
+}

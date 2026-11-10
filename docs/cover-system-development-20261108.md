@@ -2203,3 +2203,13 @@ r131源码已保存d59ff30d。新独立实例cover-1110-r132-cloak-member-witnes
 磁盘准入实际3490852864<4GiB拒绝，本轮未因此启动游戏。确认r132精确game/owner/XR/worker不在且normal_cleanup后，将本方626文件/1009501963字节全哈希核对迁至J盘，原C路径junction保持，迁后哈希一致；其他实例未动，C空闲恢复7565504512。证据path-probe-r134/verification.json及J盘r132-hashes.json。
 
 下一步只用新独立票定向调用路径及终点原查询，保留首失败、不改身份/释放/时效；之后继续完整身体几何、当前世界覆盖、唯一C0提交、视图/命中/枪口与遮挡修复。全部CV01–24/AC01–22未完成，工程25%、公共v71、固定入口保持，目标active。
+
+## r135：实际启动前资源竞争拒绝；补齐未创建进程的收尾分类（2026-11-11）
+
+r134源码已保存dc2d9874。新票cover-1110-r135-cloak-path准备与真实adapter导入0；等待时持续按精确worker身份复核资源，资源释放后前置准入available_physical15284228096、free8718278656通过。然而共享isolated_sim启动边界已被新Boltok实例先占用，require_memory在创建worker前明确拒绝，start_exit1。无worker/index/game/XR或原查询，本票claim消费保留，未重用或覆盖。原run-result与启动拒绝stderr完整保留；normal_cleanup_verified原值false，不补签正常清理，实际不需要清理。
+
+自身runner原finally在这种明确未出生分支仍等100秒isolated-done。本轮增加严格分类：只对冻结共享启动器明确Two automatic instances/disk_admission预创建拒绝、exit1、stdout空、无worker和launcher-session回执时跳过不存在的结束等待。缺文件本身不作未出生证明；真实启动、其他故障仍保持原100秒和全部恢复核对。8项实际函数离线检查0，旧r135使用旧runner，不能称新跳过分支已被该次执行。
+
+等待期间复用已编译EyeFaceInspect重新读r132真实283条CPU眼点几何，283匹配/0拒绝。五段完整CPU读括号内分别4/6/6/7/7条，模型眼骨中点到authored眼点约3raw units，base forward与authored face约82.6–87.3度；前者吻合原mount，后者未含最终HMD旋转，不能据此断言最终视线错误或唯一遮挡根因。不添加任意相机偏移；最终双眼遮挡仍FAIL。新证据path-probe-r134/r132-eye-{face,phase-comparison}.json和runtime-r135/prebirth-refusal.json。
+
+下一次用新票继续同一r134候选的第一次实际路径/终点调用；本轮资源拒绝不算游戏复查，不重跑已通过Sphere。完整身体几何/世界覆盖、C0同版提交/视图/受击/枪口、遮挡和全部CV01–24/AC01–22保持未完成，目标active。

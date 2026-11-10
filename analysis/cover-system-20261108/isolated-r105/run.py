@@ -29,6 +29,17 @@ def original_stereo_submitted(session):
             and type(timing.get('xr_monotonic_ns')) is int and timing['xr_monotonic_ns']>0)
 
 
+def prebirth_resource_refusal(result, worker_exists, session_exists):
+    # Only the frozen launcher's explicit pre-spawn resource gates qualify.
+    # Missing output alone cannot prove a worker was never born.
+    error = result.get('start_stderr', '')
+    return (result.get('start_exit') == 1 and not result.get('start_stdout')
+            and not worker_exists and not session_exists
+            and ('RuntimeError: Two automatic instances already own this 32GiB machine;' in error
+                 or ('RuntimeError: {"check": "disk_admission"' in error
+                     and '; insufficient evidence-volume space; no new game started;' in error)))
+
+
 def main():
     global NAME, SELECTED, OUTPUT
     parser = argparse.ArgumentParser(description=__doc__)
@@ -241,7 +252,11 @@ def main():
             result['operator_exit'] = operator.poll()
         if log:
             log.close()
-        deadline = time.monotonic()+100
+        no_birth = prebirth_resource_refusal(result, (SELECTED/'isolated-worker.json').exists(),
+                                             (SELECTED/'launcher-session.json').exists())
+        result['prebirth_resource_refusal'] = no_birth
+        result['normal_cleanup_required'] = not no_birth
+        deadline = time.monotonic()+(0 if no_birth else 100)
         while not (SELECTED/'isolated-done.json').exists() and time.monotonic()<deadline:
             time.sleep(.25)
         state, session = current()

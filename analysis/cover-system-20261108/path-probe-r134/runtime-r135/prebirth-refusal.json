@@ -1,0 +1,15 @@
+{
+  "classification": "prebirth resource race refusal, not gameplay or query failure",
+  "result_path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\cover-1110-r135-cloak-path\\cover-output\\run-result.json",
+  "result_sha256": "4882390234155c178398c507c632bb86fb98a2b6275031289ecd6df4e07ae541",
+  "original_runner_sha256": "8404be5ae226284f62a0d44888db074572b019b1c13901a7f0997af302983e92",
+  "start_exit": 1,
+  "start_stderr": "Traceback (most recent call last):\r\n  File \"C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\tools\\multi-instance\\isolated_sim.py\", line 255, in <module>\r\n    if __name__=='__main__':main()\r\n                            ^^^^^^\r\n  File \"C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\tools\\multi-instance\\isolated_sim.py\", line 246, in main\r\n    memory=require_memory()\r\n           ^^^^^^^^^^^^^^^^\r\n  File \"C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\tools\\multi-instance\\isolated_sim.py\", line 112, in require_memory\r\n    raise RuntimeError('Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: '+', '.join(active))\r\nRuntimeError: Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: boltok-1110-235834, lancer-natural-v139-225928\r\n",
+  "worker_created": false,
+  "game_started": false,
+  "query_called": false,
+  "normal_cleanup_required": false,
+  "normal_cleanup_verified": false,
+  "receipt_classifier_tests": 8,
+  "consumed_claim_preserved": true
+}

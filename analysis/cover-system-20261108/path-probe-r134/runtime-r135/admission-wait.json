@@ -1,0 +1,103 @@
+[
+  {
+    "at_ns": 1794326334716622800,
+    "refused_before_claim": "Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: lancer-natural-v139-225928, troika-parse-1110-next15"
+  },
+  {
+    "at_ns": 1794326344802920600,
+    "refused_before_claim": "Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: lancer-natural-v139-225928, troika-parse-1110-next15"
+  },
+  {
+    "at_ns": 1794326354859669800,
+    "refused_before_claim": "Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: lancer-natural-v139-225928, troika-parse-1110-next15"
+  },
+  {
+    "at_ns": 1794326364917143400,
+    "refused_before_claim": "Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: lancer-natural-v139-225928, troika-parse-1110-next15"
+  },
+  {
+    "at_ns": 1794326374988940500,
+    "refused_before_claim": "Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: lancer-natural-v139-225928, troika-parse-1110-next15"
+  },
+  {
+    "at_ns": 1794326385045534900,
+    "refused_before_claim": "Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: lancer-natural-v139-225928, troika-parse-1110-next15"
+  },
+  {
+    "at_ns": 1794326395094981200,
+    "refused_before_claim": "Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: lancer-natural-v139-225928, troika-parse-1110-next15"
+  },
+  {
+    "at_ns": 1794326405159460200,
+    "refused_before_claim": "Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: lancer-natural-v139-225928, troika-parse-1110-next15"
+  },
+  {
+    "at_ns": 1794326415223183700,
+    "refused_before_claim": "Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: lancer-natural-v139-225928, troika-parse-1110-next15"
+  },
+  {
+    "at_ns": 1794326425273636700,
+    "refused_before_claim": "Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: lancer-natural-v139-225928, troika-parse-1110-next15"
+  },
+  {
+    "at_ns": 1794326435316037600,
+    "refused_before_claim": "Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: lancer-natural-v139-225928, snub-20261110-232708"
+  },
+  {
+    "at_ns": 1794326445396269100,
+    "refused_before_claim": "Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: lancer-natural-v139-225928, snub-20261110-232708"
+  },
+  {
+    "at_ns": 1794326455455559300,
+    "refused_before_claim": "Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: lancer-natural-v139-225928, snub-20261110-232708"
+  },
+  {
+    "at_ns": 1794326465497544700,
+    "refused_before_claim": "Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: lancer-natural-v139-225928, snub-20261110-232708"
+  },
+  {
+    "at_ns": 1794326475578193200,
+    "refused_before_claim": "Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: lancer-natural-v139-225928, snub-20261110-232708"
+  },
+  {
+    "at_ns": 1794326485639731100,
+    "refused_before_claim": "Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: lancer-natural-v139-225928, snub-20261110-232708"
+  },
+  {
+    "at_ns": 1794326495683894600,
+    "refused_before_claim": "Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: lancer-natural-v139-225928, snub-20261110-232708"
+  },
+  {
+    "at_ns": 1794326505742512600,
+    "refused_before_claim": "Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: lancer-natural-v139-225928, snub-20261110-232708"
+  },
+  {
+    "at_ns": 1794326515789295700,
+    "refused_before_claim": "Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: lancer-natural-v139-225928, snub-20261110-232708"
+  },
+  {
+    "at_ns": 1794326525835459000,
+    "refused_before_claim": "Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: lancer-natural-v139-225928, snub-20261110-232708"
+  },
+  {
+    "at_ns": 1794326535904301000,
+    "refused_before_claim": "Two automatic instances already own this 32GiB machine; continue offline work and retry when resources are released: lancer-natural-v139-225928, snub-20261110-232708"
+  },
+  {
+    "at_ns": 1794326545965570000,
+    "memory": {
+      "available_commit": 25947418624,
+      "available_physical": 15343095808,
+      "active_instances": [
+        "lancer-natural-v139-225928"
+      ]
+    },
+    "disk": {
+      "check": "disk_admission",
+      "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr",
+      "free_bytes": 8718282752,
+      "minimum_free_bytes": 4294967296,
+      "admitted": true
+    }
+  }
+]
