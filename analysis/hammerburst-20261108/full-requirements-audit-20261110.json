@@ -8,19 +8,27 @@
       "id": "acquire_stow",
       "requirement": "取枪与收枪",
       "status": "partial",
-      "limit": "13712取枪实录，完整收枪行为仍须对应证据",
+      "limit": "Actual54452 and20672 fresh shoulder acquisition reached original firing. Complete stow and current restore chain still need matching live evidence.",
       "evidence": [
         {
           "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-13712-first-failure-analysis.json",
           "sha256": "b9f41bd7180cc791c8e548da676652cac5a2c0d51db2fd9580268e5db84d7f59"
+        },
+        {
+          "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-54452-first-failure-analysis.json",
+          "sha256": "ea53f06ae941e42d5ef8715b5621ca55db4a5d0a1a8f1a9e1ddc8a3fa988e88b"
+        },
+        {
+          "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-20672-first-failure-analysis.json",
+          "sha256": "cf56505bfc98802e373195f23b1d61d5fc4d431d2e606912c6b3f7d777b96191"
         }
       ]
     },
     {
       "id": "finite_fire",
       "requirement": "单手/双手瞄准与原版有限六连发",
-      "status": "partial_latest_live_final_burst_failed",
-      "limit": "Actual36568 current parent candidate first burst6+typed72/78;11 subsequent six-shot drain bursts to6/78; last3/6 left3/78.75 rays all valid/write+trace source consistent. No current two-hand acceptance; whole finite-fire stability not passed. Null-current Frame cause unproven.",
+      "status": "partial_intermittent_original_event_expiry",
+      "limit": "Actual54452 core6+12 drain6 reached0/R78 with78 consistent rays. Actual20672 core6+5 drain6 then1 of sixth, service gate4 original pending-event expiry;37 consistent rays. Current finite-fire stability and two-hand acceptance remain unproven.",
       "evidence": [
         {
           "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-13712-first-failure-analysis.json",
@@ -53,6 +61,14 @@
         {
           "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-36568-first-failure-analysis.json",
           "sha256": "0af9fcea380c41446408706b29e4fb3c63729e421490c212643a2e95baf69854"
+        },
+        {
+          "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-54452-first-failure-analysis.json",
+          "sha256": "ea53f06ae941e42d5ef8715b5621ca55db4a5d0a1a8f1a9e1ddc8a3fa988e88b"
+        },
+        {
+          "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-20672-first-failure-analysis.json",
+          "sha256": "cf56505bfc98802e373195f23b1d61d5fc4d431d2e606912c6b3f7d777b96191"
         }
       ]
     },
@@ -83,8 +99,8 @@
     {
       "id": "replacement",
       "requirement": "肩取新匣、持续持握入槽、普通换弹",
-      "status": "actual_replacement_and_closure_observed",
-      "limit": "56252 same actual reload serial1 replacement seated78/0, original raw-history close used, original complete result2. Whole return-count assertion and fitting still pending.",
+      "status": "partial_current_seating_failed",
+      "limit": "Historical56252 replacement/closure observed. Current54452 both exact-source latch/supply handoffs exercised, zero support withdrawal/identity-lost; stage6 did not seat within8s. Endpoint/kernel/gap cause unknown.20672 failed before reload and provides no seating evidence.",
       "evidence": [
         {
           "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-53224-review.json",
@@ -97,14 +113,22 @@
         {
           "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-56252-first-failure-analysis.json",
           "sha256": "5c8ad7995eae73009fb1d841b62fe55b0d0e9e17efd44019c05d9d8f71f62044"
+        },
+        {
+          "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-54452-first-failure-analysis.json",
+          "sha256": "ea53f06ae941e42d5ef8715b5621ca55db4a5d0a1a8f1a9e1ddc8a3fa988e88b"
+        },
+        {
+          "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-20672-first-failure-analysis.json",
+          "sha256": "cf56505bfc98802e373195f23b1d61d5fc4d431d2e606912c6b3f7d777b96191"
         }
       ]
     },
     {
       "id": "empty_reload",
       "requirement": "空仓同机械流程、原自动装填被接管、完整回射",
-      "status": "mechanism_and_six_rays_observed_final_count_unverified",
-      "limit": "56252 actual0/78 original begin, extraction/replacement78/0 and latch7to8/complete passed;6 actual return rays, initial typed73/0 raced sixth15.6313ms later, no final72/0 read. Original run remains failed.",
+      "status": "partial_current_seating_failed",
+      "limit": "Current54452 actual drain to0/R78, empty-trigger veto, original begin/latch/extraction and replacement acquisition passed; no seating/closure/return-fire. Historical56252 six return rays lacked final typed72/0. Full empty flow remains failed.",
       "evidence": [
         {
           "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-13712-first-failure-analysis.json",
@@ -117,6 +141,10 @@
         {
           "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-56252-first-failure-analysis.json",
           "sha256": "5c8ad7995eae73009fb1d841b62fe55b0d0e9e17efd44019c05d9d8f71f62044"
+        },
+        {
+          "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-54452-first-failure-analysis.json",
+          "sha256": "ea53f06ae941e42d5ef8715b5621ca55db4a5d0a1a8f1a9e1ddc8a3fa988e88b"
         }
       ]
     },
@@ -178,8 +206,17 @@
       "id": "part_fitting",
       "requirement": "主握/护木/锁扣/旧匣/新匣逐件掌指腕袖口",
       "status": "unaccepted",
-      "limit": "主人暂停无边界手型微调；保留所有部件最终要求",
-      "evidence": []
+      "limit": "Reviewed54452:48 paired full-span samples+4 originals;20672:48 paired full-span samples. Near-face obstruction/overlap/white geometry persist; no all-angle or five-part surface/contact acceptance. Preserve owner order logic then Snap/Volume then GrabPose.",
+      "evidence": [
+        {
+          "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-54452-first-failure-analysis.json",
+          "sha256": "ea53f06ae941e42d5ef8715b5621ca55db4a5d0a1a8f1a9e1ddc8a3fa988e88b"
+        },
+        {
+          "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-20672-first-failure-analysis.json",
+          "sha256": "cf56505bfc98802e373195f23b1d61d5fc4d431d2e606912c6b3f7d777b96191"
+        }
+      ]
     },
     {
       "id": "bolt",

@@ -1574,7 +1574,9 @@
     "frames": 225,
     "errors": [],
     "review": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-20672-media-review\\prepared.json",
-    "full_fit_accepted": false
+    "full_fit_accepted": false,
+    "encoded": true,
+    "encode_exit_code": 0
   },
   "verified_archive": [
     {
