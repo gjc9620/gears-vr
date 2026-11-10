@@ -1,0 +1,13 @@
+{
+  "plans": 27,
+  "segments": 106,
+  "negative_controls": 3,
+  "exact_rational_coverage": true,
+  "sampled_time_proof": false,
+  "scope": "Supplied rigid translating capsule plus final capsule; no original query, world, articulated pose, body or occupancy proof.",
+  "exe_sha256": "c34bfeaf5cb31d6b4c697482716873dcae1c1a6d0911242ff15f6e02aeb805e9",
+  "witness_sha256": "bceae96e05448d71755c2186f2b15ec530508d6fbe1e85c9ba5223bc86f38a12",
+  "checker_sha256": "126ad48819a115813fc4880975004f5613c11175428d956314d3d8419c3b6409",
+  "movement_authorized": false,
+  "game_started": false
+}

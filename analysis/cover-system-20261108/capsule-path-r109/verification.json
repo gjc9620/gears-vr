@@ -1,0 +1,37 @@
+{
+  "classification": "progress",
+  "scope": "Supplied rigid translating capsule geometry only, full path intervals and endpoint; not articulated-body interpolation, native intersection accuracy, world coverage, query result or movement permission.",
+  "final_cpp_checks": 88,
+  "session_checks": 96,
+  "exact_rational_plans": 27,
+  "exact_rational_segments": 106,
+  "oracle_negative_controls": 3,
+  "boundary_failure_preserved": "boundary-before-v7: exact100 primary plus tiny nonzero second axis lost by ordinary length summation; one regression failed before outward squared sum",
+  "initial_integration_failure_preserved": "session-v1: C4459 workspace parameter shadowed fixture global; renamed parameter, final strict checks passed",
+  "native_sha256": "111332fa51d38ae005662133aa6fe05172187592458ddf34ef2b44a1269ee705",
+  "changed_production_files": [
+    "tools/native-capture/cover_physics_query_live.inl",
+    "tools/native-capture/cover_physx_capsule_path.h"
+  ],
+  "project_dependencies": 401,
+  "flags_unchanged": true,
+  "outside_worktree_dependencies": [],
+  "segment_limit_maximum": 64,
+  "subdivision": "Exact power-of-two motion, no lost axes or request truncation",
+  "rounding": "Read-only nearest-mode requirement; error-free TwoSum and outward radius accounting",
+  "collision_radius_expansion": "Explicit caller budget; returned maximum reported; no body/visual scale change",
+  "game_started": false,
+  "xr_started": false,
+  "original_dll_executed": false,
+  "staged": false,
+  "query_executor_connected": false,
+  "articulated_body_path_complete": false,
+  "movement_authorized": false,
+  "goal_complete": false,
+  "automatic_start_paused": true,
+  "evidence_sha256": {
+    "exact-coverage.json": "209070a74f737250c4ff59b1248b1cc35ef6b7954f003502e1fa71aa828ce7d6",
+    "geometry-witness.jsonl": "bceae96e05448d71755c2186f2b15ec530508d6fbe1e85c9ba5223bc86f38a12",
+    "native-v3-build-result.json": "39e09353685c519edd2ce463f9a8561fdae2d5d1122b1f20e87d914827d63093"
+  }
+}

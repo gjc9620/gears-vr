@@ -1,6 +1,7 @@
 #ifndef GEARS_COVER_PHYSICS_QUERY_LIVE_INCLUDED
 #define GEARS_COVER_PHYSICS_QUERY_LIVE_INCLUDED
 #include "cover_physx_query.h"
+#include "cover_physx_capsule_path.h"
 #include "cover_physics_roles_live.inl"
 #include "cover_collider_roles_live.inl"
 #include "cover_component_roles_live.inl"

@@ -1,0 +1,2 @@
+FAIL 40: p::prepare(capsule,movement,policy,*work,*output)==p::Code::planned&&output->count==2
+CoverCapsulePath checks=88 failed=1 pure-geometry-only no-query no-game
