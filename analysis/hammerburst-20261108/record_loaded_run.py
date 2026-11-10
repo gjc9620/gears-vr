@@ -12,7 +12,9 @@ def main(name,pid,action,candidate,interpretation):
  lines=b.decode('utf-16' if b[:2]==b'\xff\xfe' else 'utf8',errors='replace').splitlines()
  def rows(prefix):return [dict(re.findall(r'(\w+)=([^\s]+)',l)) for l in lines if l.startswith(prefix+' ')]
  archive=A/f'runtime-{pid}-text';archive.mkdir(exist_ok=True);copies=[]
- for source in (pg,action/'result.json',action/'equipment-chain.json',action/'hammerburst-core.json',action/'hammerburst-replacement.json',Path(state['session_report']),p/'isolated-done.json',Path(state['test_audio_guard']['log'])):
+ sources=[pg,action/'result.json',action/'equipment-chain.json',action/'hammerburst-core.json',Path(state['session_report']),p/'isolated-done.json',Path(state['test_audio_guard']['log'])]
+ if (action/'hammerburst-replacement.json').exists():sources.append(action/'hammerburst-replacement.json')
+ for source in sources:
   target=archive/source.name;shutil.copy2(source,target);digest=hashlib.sha256(source.read_bytes()).hexdigest()
   assert hashlib.sha256(target.read_bytes()).hexdigest()==digest
   copies.append(dict(source=str(source),archive=str(target),sha256=digest))
@@ -20,7 +22,7 @@ def main(name,pid,action,candidate,interpretation):
  proof=dict(game=result['game_identity'],candidate=read(A/candidate/'prepared.json')['dll_sha256'],test_mode=result['test_mode'],
   operator_exit=result['operator_exit'],stop_exit=result['stop_exit'],cleanup=result['cleanup'],
   continuous_passed=session['passed'],native_cleanup_verified=session['native_cleanup_verified'],xr_exit_code=session['xr_exit_code'],
-  playground_cleanup=state['playground_cleanup'],audio=state['test_audio_guard'],core=read(action/'hammerburst-core.json'),replacement=read(action/'hammerburst-replacement.json'),
+  playground_cleanup=state['playground_cleanup'],audio=state['test_audio_guard'],core=read(action/'hammerburst-core.json'),replacement=read(action/'hammerburst-replacement.json') if (action/'hammerburst-replacement.json').exists() else dict(not_reached=True),
   actual_trajectory_count=len(shots),trajectory_consistent=all(all(r.get(k)=='1' for k in ('trace_valid','trace_source_consistent','write_source_consistent')) for r in shots),
   foreground_samples=result['focus_samples'],cloak_samples=result['cloak_samples'],foreground_violations=result['foreground_violations'],cloak_violations=result['cloak_violations'],
   media=dict(frames=len(media['frames']),errors=media['errors'],encoded=False,review=str(A/f'runtime-{pid}-media-review/prepared.json'),full_fit_accepted=False),
@@ -31,7 +33,7 @@ def main(name,pid,action,candidate,interpretation):
   proof[prefix+'_rows']=rows(prefix)
  (A/f'runtime-{pid}-first-failure-analysis.json').write_text(json.dumps(proof,indent=2))
  review.SOURCE=action;review.OUTPUT=A/f'runtime-{pid}-media-review';review.main(len(media['frames']),pid)
- print(json.dumps(dict(game=pid,frames=len(media['frames']),shots=len(shots),error=proof['replacement'].get('error'),timing=rows('hammerburst_press_timing'),cleanup=result['cleanup'])))
+ print(json.dumps(dict(game=pid,frames=len(media['frames']),shots=len(shots),error=proof['replacement'].get('error') or proof['core'].get('error'),timing=rows('hammerburst_press_timing'),cleanup=result['cleanup'])))
 if __name__=='__main__':
  main('hb-cloak-1111-020257',53152,'menu-firstperson-53152-020413','press-timing-r1',
   'Core6 succeeded; entry source age60.337ms, entry checks.7143ms/asset2.7674ms/contract3.0047ms/ButtonName.1751ms/finalreserve.003ms/owned+dispatch.0745ms. No causal first-press repair claim. Initial latch acquired Native magazine grant Frame280, but source stale101.0049ms before HB open; later retained/revoked snapshots stale, no opening transition or feed history. Existing backend source calls fire then follow tick/apply then reload, so place HB-only reload before follow visual work while retaining exact once/current checks. Full flow remains failed.')

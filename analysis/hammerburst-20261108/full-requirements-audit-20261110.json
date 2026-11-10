@@ -7,8 +7,8 @@
     {
       "id": "acquire_stow",
       "requirement": "取枪与收枪",
-      "status": "partial",
-      "limit": "Actual54452 and20672 fresh shoulder acquisition reached original firing. Complete stow and current restore chain still need matching live evidence.",
+      "status": "partial_latest_acquisition_unverified",
+      "limit": "Earlier54452/53152 acquisition and original fire observed. Latest56032 no matching HB held receipt; inventory current_after rejection, cause unproven. Brief gun pixels do not prove acquisition. Full stow/restore unverified.",
       "evidence": [
         {
           "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-13712-first-failure-analysis.json",
@@ -21,6 +21,10 @@
         {
           "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-20672-first-failure-analysis.json",
           "sha256": "cf56505bfc98802e373195f23b1d61d5fc4d431d2e606912c6b3f7d777b96191"
+        },
+        {
+          "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-56032-first-failure-analysis.json",
+          "sha256": "99c0145d74ec8b7f1db28f54ee6b06bbae333a36dcaa5cf1c0bf5f98e1bc3bc4"
         }
       ]
     },
@@ -248,9 +252,9 @@
   ],
   "completion_proven": false,
   "goal_active": true,
-  "immediate_next": "One fresh focused replacement with HB once-before-visual scheduling. Require actual early reload marker, first latch grant, history adoption/seating/closure/typed conservation/return. Preserve all deadlines, no same-Frame retry. Full13 requirements remain open.",
+  "immediate_next": "Inspect first acquisition inventory current_after and original right-shoulder source/edge/receipt timing from56032. Any targeted observation must retain original current/identity/freshness/selection checks. Do not rerun unchanged candidate, retry blocked edge, or call priority/history exercised. Full13 requirements remain open.",
   "historical_evidence_does_not_certify_current_PG": true,
-  "candidate_runtime_status": "Actual53152 press-timing-r1 core6 passed, entry age60.337ms and stage durations recorded. Initial Native latch magazine grant Frame280; source stale101.0049ms before opening. No feed history reached; first-press stability unaccepted.",
+  "candidate_runtime_status": "reload-priority-r1 actual56032 reached game but no matching initial HB acquisition receipt. Inventory rows include current_after rejection; exact cause unproven. Zero rays/reload/early-priority/history rows. Candidate43 feed+9 schedule local checks remain separate. Normal cleanup.",
   "previous_recorded_candidate": {
     "name": "hammerburst-prepared-20261110-unheld-input-r1",
     "prepared_sha256": "76a2ae8cc56e4165b77ca5d17a9e6469ff66323e917be5a8b46da44df4f0bb58"
@@ -272,5 +276,5 @@
   "restore_verifier_status": "Optional --hammerburst-park-restore input action hook integrated into private reload adapter; five synthetic action/receipt regressions passed. Actual park/redraw/new-grant/native-resume, typed conservation, UI/reward and complete return-fire require game evidence.",
   "latest_service_first_failure": "runtime-3112-first-failure-analysis.json",
   "latest_startup_failure": "runtime-49732-startup-failure.json",
-  "latest_runtime_failure": "runtime-53152-first-failure-analysis.json"
+  "latest_runtime_failure": "runtime-56032-first-failure-analysis.json"
 }

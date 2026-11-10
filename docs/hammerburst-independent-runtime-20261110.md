@@ -378,3 +378,9 @@ press-timing-r1/hb-cloak-1111-020257/game53152/creation134388074371033031，资�
 新完整PG SHAdae40cdbfe03562bc1ef90e03e558ab87c16346c83dcedb15a5e5b6aee5677e8，Native/XR未重建。9项精确调度块+实际POD predicate的local spy检查覆盖early/已经消费/非HB/unknown/weapon或hold变化/idle-UP/active-UP/拒绝后不重复；不是游戏结果。初版直接访问后定义的stage/bound_key导致完整PG编译拒绝，现通过本枪forward函数与既有blocks_fire接口解决，无暴露共享global或改执行许可；最终完整编译及9项检查通过。候选尚未实测。
 
 53152 launcher0/operator1/stop0、Native清理/PG入口恢复/XR0、本方game/子进程退出、无强杀，1943前台/3453CLOAK零违规。376帧errors空、encode0，亲看48双眼全跨度三页，近脸/白面重叠/间歇近枪可见性仍未接受；8份文本SHA保留。详见runtime-53152-first-failure-analysis.json。下一步一次新候选聚焦换弹，保持13项原需求、空仓和首发/尾部期限问题开放，不原样重跑旧候选。
+
+## 实际56032：未证明初始取枪，priority/history未执行
+
+reload-priority-r1/hb-cloak-1111-021724/game56032/creation134388083969403034，资源等待138.359秒/117次拒绝后首次start。core在取枪回执检查失败，没有匹配本次原HB对象的native_equipment held receipt；实际射线0，无reload transition、early reload或feed history标记。部分库存读取inventory_unavailable/current_after；源码该阶段就是snapshot之后原current(nullptr,frame)校验拒绝，现有记录不足区分输入过期、game/identity变化及库存读取具体成本，不能把它定为单一计时根因。不得算作新priority/history实测成功或否定，也不再原样重跑碰运气/重按旧边沿。
+
+launcher0/operator1/stop0，Native清理/PG入口恢复/XR0，本方game/子进程退出无强杀，1786前台/3098CLOAK零违规。163帧errors空、encode0；亲看48双眼全跨度三页，实际场景/手及短暂近右侧枪体可见，这些像素不替代权威取枪回执/稳定持枪证明。7份文本SHA归档，补入完整设备状态/input-gap/frame-read行，详见runtime-56032-first-failure-analysis.json。下一步核对取枪原右肩输入/边沿与current_after检查；不跳过库存/身份/新鲜度门。全部13项需求、完整换弹与回射、护木四态/最终贴合/头显仍开放，公共v71/30%不变。本方运行已全部终态。
