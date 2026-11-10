@@ -148,6 +148,10 @@ def menu_source():
     source = replace_once(source, "    assert live();subprocess.run([sys.executable,'-B',str(OUT/name),*args],check=True,stdout=subprocess.DEVNULL)", '    assert live();BOUND.helper(name,*args)')
     source = replace_once(source, '            if rec.capture_enabled:encode(directory)',
                           "            if rec.capture_enabled:result['offline_encode_pending']=True")
+    source = replace_once(source,'        deadline=time.monotonic()+45',
+                          '        deadline=time.monotonic()+180')
+    source = replace_once(source,'    if recording_error:raise recording_error',
+                          "    if recording_error and 'error' not in result:raise recording_error")
     if source.count("(OUT/'launcher.log')") != 2:
         raise ValueError('Launcher observation boundary changed')
     source = source.replace("(OUT/'launcher.log')", "(BOUND.instance/'isolated-launcher.log')")

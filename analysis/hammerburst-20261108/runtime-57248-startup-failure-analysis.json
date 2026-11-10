@@ -1,0 +1,50 @@
+{
+  "schema": 1,
+  "instance": "hb-cloak-1110-211559",
+  "game_identity": {
+    "pid": 57248,
+    "creation_time": 134387901864559840,
+    "image": "j:\\gearsvr\\gears.of.war.reloaded.v1.0.1.3816947-p2p\\gears of war reloaded\\binaries_x64\\gowde-steam.exe"
+  },
+  "weapon_actions_reached": false,
+  "candidate": "consumed-input-r2",
+  "first_failure": "TimeoutError('Recorded startup did not connect the current hand/equipment session')",
+  "secondary_recording_error": "AssertionError(['Traceback (most recent call last):\\n  File \"C:\\\\Users\\\\11\\\\.codex\\\\worktrees\\\\6dof-single\\\\gearsVr\\\\analysis\\\\solo-m1-20261028\\\\record_projection.py\", line 42, in capture\\n    if time.perf_counter()>deadline: raise RuntimeError(\\'No complete fresh projection frame\\')\\n                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\\nRuntimeError: No complete fresh projection frame\\n'])",
+  "native_start_error": "Owner cancelled camera preparation before activation",
+  "startup_camera_ready_since_runner_start_ms": 49311.648,
+  "operator_handoff_wait_seconds": 45,
+  "native_started": false,
+  "native_cleanup_verified": false,
+  "native_cleanup_error": "RuntimeError('Native cleanup incomplete or deadline expired')",
+  "xr_exit_code": 1,
+  "session_passed": false,
+  "playground_cleanup": {
+    "loaded": true,
+    "shutdown_code": 0,
+    "entry_restored": true,
+    "passed": true
+  },
+  "prime_cleanup": {
+    "cancelled": true,
+    "entry_restore_verified": true
+  },
+  "owned_cleanup": {
+    "launcher_exit": 1,
+    "owned_game_absent": true,
+    "owned_children": {
+      "recorded": 0,
+      "remaining": []
+    },
+    "forced_termination": false,
+    "worker_error": null
+  },
+  "foreground_samples": 1081,
+  "cloak_samples": 1857,
+  "foreground_violations": [],
+  "cloak_violations": [],
+  "raw_gpu_frames": 302,
+  "recording_failed": true,
+  "encoded": false,
+  "interpretation": "Operator 45s handoff timeout is the first recorded failure; its stop request coincides with Native preparation cancellation. Not proof of intrinsic Native activation failure. No UP/DOWN or weapon action evidence.",
+  "repair": "Align own observation wait with existing180s bounded startup budget; keep all strict Native/input gates; preserve primary exception over recording error."
+}
