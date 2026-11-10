@@ -1,7 +1,7 @@
 """Regress the observed startup-only capture and fail before any action."""
 import unittest
 from types import SimpleNamespace
-from hammerburst_action_recording import start_action_recording
+from hammerburst_action_recording import start_action_recording,action_live
 from hammerburst_isolated_operator import menu_source
 
 
@@ -35,6 +35,18 @@ class Tests(unittest.TestCase):
     def test_lost_identity_stops_before_start(self):
         with self.assertRaisesRegex(AssertionError,'Owned game changed'):
             self.run_boundary('frame',live=lambda: False)
+
+    def test_capture_failure_after_first_frame_stops_further_actions(self):
+        binding=SimpleNamespace(live=lambda game: True)
+        recorder=SimpleNamespace(frames=[{'file':'frame-00000.jpg'}],errors=[])
+        self.assertTrue(action_live(binding,object(),recorder))
+        recorder.errors.append('No complete fresh projection frame')
+        with self.assertRaisesRegex(RuntimeError,'further actions stopped'):
+            action_live(binding,object(),recorder)
+
+    def test_capture_guard_keeps_original_identity_failure(self):
+        binding=SimpleNamespace(live=lambda game: False)
+        self.assertFalse(action_live(binding,object(),None))
 
     def test_real_adapter_starts_capture_after_handoff_and_before_actions(self):
         source=menu_source()

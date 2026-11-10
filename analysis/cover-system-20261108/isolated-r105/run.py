@@ -64,6 +64,9 @@ def main():
     spec = importlib.util.spec_from_file_location('r105_isolated_sim', TOOLS)
     isolated = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(isolated)
+    # Keep a disk refusal before our claim too. The shared start/worker gates
+    # still recheck the actual launch boundary; this does not reserve space.
+    disk = isolated.require_disk(ROOT)
     memory = isolated.require_memory()
     sys.path[:0] = [str(ROOT/'tools/native-capture'), str(OLD)]
     from run_stereo_continuous import WindowsControl
@@ -75,7 +78,7 @@ def main():
     env.update(GEARSVR_COVER_SPHERE_PROBE='1', GEARSVR_AUTHORED_EYE_TRACE='1', GEARSVR_LANCER_REVIEW_VOLUMES='0',
                GEARSVR_QUIET_NATIVE_FOREGROUND='1', GEARSVR_TEST_WINDOWS_BEHIND='1', GEARSVR_TEST_MUTE_GAME='1',
                GEARSVR_TEST_TINY_OUTPUT_OBSERVE_ONLY='1', XR_SIMULATOR_NO_ACTIVATE='1')
-    result = dict(name=NAME, memory_before=memory, started_at_ns=time.time_ns(),
+    result = dict(name=NAME, memory_before=memory, disk_before=disk, started_at_ns=time.time_ns(),
                   source=1, forced_termination=False, gameplay_accepted=False, headset_accepted=False)
     result['foreground_observations'] = dict(samples=0, owned_activation=False)
     result['cloak_observations'] = dict(samples=0, failures=[])

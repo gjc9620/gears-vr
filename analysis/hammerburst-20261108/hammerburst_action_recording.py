@@ -6,6 +6,14 @@ boundary does not permit weapon actions before the first captured frame.
 import time
 
 
+def action_live(binding, game, recorder):
+    if not binding.live(game):
+        return False
+    if recorder is not None and recorder.errors:
+        raise RuntimeError('Private HB recording failed; further actions stopped: ' + str(recorder.errors))
+    return True
+
+
 def start_action_recording(recorder, live, *, clock=time.monotonic, sleep=time.sleep):
     assert live(), 'Owned game changed before action recording'
     recorder.capture_enabled = True
