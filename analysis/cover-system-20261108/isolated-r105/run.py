@@ -60,6 +60,12 @@ def main():
     if args.probe=='path' and not prepared.get('path_probe_supported'):
         raise RuntimeError('Selected frozen Native has no prepared path probe')
     action = load(HERE / NAME / 'operator-prepared.json')
+    anchor_sources = prepared.get('anchor_source_sha256')
+    if not isinstance(anchor_sources,dict) or not anchor_sources:
+        raise RuntimeError('Fresh preparation with anchor source hashes required')
+    for path,expected in anchor_sources.items():
+        if sha(ROOT/path)!=expected:
+            raise RuntimeError('Prepared anchor source changed: '+path)
     for path, expected in ((SELECTED/'manifest.json', prepared['manifest_sha256']),
                            (SELECTED/'config.json', prepared['config_sha256']),
                            (Path(action['operator']), action['operator_sha256']),
@@ -100,6 +106,7 @@ def main():
     result['foreground_observations'] = dict(samples=0, owned_activation=False)
     result['cloak_observations'] = dict(samples=0, failures=[])
     result['runner_sha256'] = sha(__file__)
+    result['anchor_source_sha256'] = anchor_sources
     result['projection_recorder_sha256'] = sha(HERE/'cover_projection_recording.py')
     user = ctypes.WinDLL('user32', use_last_error=True)
     user.GetForegroundWindow.restype = ctypes.c_void_p
@@ -279,11 +286,14 @@ def main():
             and session.get('unified_weapons_cleanup',{}).get('drained') is True and session.get('xr_exit_code')==0
             and not result['remaining_owned'] and result['isolated_done'] is not None
             and result['isolated_done']['launcher_exit']==0 and result['isolated_done']['owned_game_absent'] is True)
+        result['anchor_sources_after'] = {path:sha(ROOT/path) for path in anchor_sources}
+        result['anchor_sources_unchanged'] = result['anchor_sources_after']==anchor_sources
         save()
     print(json.dumps({key:result.get(key) for key in ('error','operator_exit','paired_exit','normal_cleanup_verified','remaining_owned')}))
     return 0 if (not result.get('error') and not result.get('projection_error')
         and result.get('projection_frames',0)>1 and result['cloak_observations']['samples']>0
-        and not result['cloak_observations']['failures'] and result['normal_cleanup_verified']) else 1
+        and not result['cloak_observations']['failures'] and result['normal_cleanup_verified']
+        and result['anchor_sources_unchanged']) else 1
 
 
 if __name__ == '__main__':
