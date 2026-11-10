@@ -1,0 +1,45 @@
+--- a/tools/playground/weapon_equipment_backend.inl
++++ b/tools/playground/weapon_equipment_backend.inl
+@@ -1,6 +1,7 @@
+ // Equipment action adapters run on normal PostPlayerTick, never Native
+ // prepare/commit, observe, rollback/NoAuth or input workers. The dedicated
+ // read_attached_frame helper is metadata only and grants no action permission.
++namespace hammerburst_runtime {bool priority_frame(gears_weapon_hand::Frame const&) noexcept;}
+ namespace nativeequipment {
+ namespace runtime=::gears_equipment_runtime;
+ namespace abi=::gears_weapon_hand;
+@@ -420,6 +421,20 @@
+         lancerreload_manual::prepare(frame);
+         vrfire::tick(pc);fire_ticked_early=true;
+     }
++    // HB's existing action consumer must precede the visual mesh lease.
++    // This only selects call order, never grants a Frame/press/lease.
++    if(!reload_ticked_early&&hammerburst_runtime::priority_frame(frame)&&
++       (frame.left_grip_down||hammerburst_runtime::blocks_fire(frame.weapon))){
++        const bool before_hb=hammerburst_runtime::blocks_fire(frame.weapon);
++        const bool consumed_hb=hammerburst_runtime::tick(pc);
++        // Even a rejected attempt is not retried after visual work this Frame.
++        reload_ticked_early=true;
++        static unsigned hb_early_rows{};
++        if(log_file&&hb_early_rows++<12){
++            fwprintf(log_file,L"hammerburst_early_reload frame=%llu sequence=%llu sync_ns=%lld before_active=%u after_active=%u consumed=%u once=1\n",
++                frame.key.frame,frame.controllers.sequence,frame.controllers.sync_ns,unsigned(before_hb),unsigned(hammerburst_runtime::blocks_fire(frame.weapon)),unsigned(consumed_hb));fflush(log_file);
++        }
++    }
+     nativelancerfollow::tick(frame);
+     const auto timing_follow=clock_ns(nullptr);
+     // Display follows this fresh hand publication before reload/reflection
+--- a/tools/playground/weapon_hammerburst_runtime.inl
++++ b/tools/playground/weapon_hammerburst_runtime.inl
+@@ -252,6 +252,11 @@
+ }
+ std::uint64_t animation_serial() noexcept {return serial?serial:old_item;}
+ bool restore_animation() noexcept {return anim::ownership.visual_only?hammerburst_visual_clip::restore():anim::hand_back_after_native_exit();}
++bool priority_frame(hand::Frame const& f) noexcept {
++    return nativelancerfollow::bound_is_hammerburst&&nativelancerfollow::bound_key_known&&
++        hand::same(nativelancerfollow::bound_key.weapon,f.weapon)&&
++        nativelancerfollow::bound_key.hold_generation==vrequip::model.hold_generation();
++}
+ bool blocks_fire(hand::ObjectIdentity const& weapon) noexcept {
+     return stage!=Stage::idle&&hand::same(weapon,opening.identity.weapon);
+ }

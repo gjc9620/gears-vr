@@ -368,3 +368,13 @@ launcher0/operator1/stop0，Native清理/PG入口恢复/XR0，本方game/子进�
 56348只有最终readiness余量不足，不能据此跳过附件/contract/ButtonName检查。新候选保留feed-history-r1，在HB首次press execute添加最多12条RAII分段时长：函数入口、entry/press state、asset、contract、ButtonName schema、最终reserve、owned+dispatch。仅记录器读取clock，绝不替换source时间；析构输出在返回路径，不额外调用游戏/输入/metadata、不中断或延期操作。剥去新增include/observer语句后整份weapon_lancer_r2_native.inl逐字等于父版本，production_statement_parity通过。最大12次观察后无clock读取，7项exact observer合成clock/FILE检查通过。
 
 完整PG编译SHA49aa43dad38eadfb6e207745e725d04766bb4442a7a41584b2836f09a87e6b1f，Native/XR未重建；没有功能修复或游戏结论。runner选择新候选，下一步一次新的focused loaded replacement，先定位真实执行前成本，若到换弹也核对真实history采用；不改20ms/100ms/250ms或缩减13项最终要求。
+
+## 实际53152与reload-priority-r1
+
+press-timing-r1/hb-cloak-1111-020257/game53152/creation134388074371033031，资源等待45.219秒/39次拒绝后首次start。core6通过；首次执行entry source60.337ms、entry checks0.7143ms、asset2.7674ms、contract3.0047ms、ButtonName0.1751ms、final reserve0.003ms、owned+dispatch0.0745ms，实际调用成功。不是首次射击间歇性问题的修复证明，也不据此取消任何重复身份检查。随后初始锁扣Native magazine grant Frame280/seq5135/token1，但source stale101.0049ms撤回，未进opening、未到feed history。
+
+源码与日志顺序均显示原backend先fire，随后nativelancerfollow tick/apply，再reload；本次follow readback在Frame280撤回前记录。新候选只对exact bound HB weapon/hold、left-down或本枪已有active reload，把原HB tick提前到fire之后、follow视觉之前；包括失败在内同一Frame最多一次，设置现有reload_ticked_early避免后续再调，不重试旧输入。原HB tick仍自行copy/校验当前Frame、身份、lease、几何、库存及原动画；分类predicate只是POD调用顺序选择，不是许可。其他武器路径保持原顺序。旧图形组件的恢复/写入仍由原sole follow服务处理，不增加writer。
+
+新完整PG SHAdae40cdbfe03562bc1ef90e03e558ab87c16346c83dcedb15a5e5b6aee5677e8，Native/XR未重建。9项精确调度块+实际POD predicate的local spy检查覆盖early/已经消费/非HB/unknown/weapon或hold变化/idle-UP/active-UP/拒绝后不重复；不是游戏结果。初版直接访问后定义的stage/bound_key导致完整PG编译拒绝，现通过本枪forward函数与既有blocks_fire接口解决，无暴露共享global或改执行许可；最终完整编译及9项检查通过。候选尚未实测。
+
+53152 launcher0/operator1/stop0、Native清理/PG入口恢复/XR0、本方game/子进程退出、无强杀，1943前台/3453CLOAK零违规。376帧errors空、encode0，亲看48双眼全跨度三页，近脸/白面重叠/间歇近枪可见性仍未接受；8份文本SHA保留。详见runtime-53152-first-failure-analysis.json。下一步一次新候选聚焦换弹，保持13项原需求、空仓和首发/尾部期限问题开放，不原样重跑旧候选。

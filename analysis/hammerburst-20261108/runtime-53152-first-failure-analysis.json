@@ -1,0 +1,788 @@
+{
+  "game": {
+    "pid": 53152,
+    "creation_time": 134388074371033031,
+    "image": "j:\\gearsvr\\gears.of.war.reloaded.v1.0.1.3816947-p2p\\gears of war reloaded\\binaries_x64\\gowde-steam.exe"
+  },
+  "candidate": "49aa43dad38eadfb6e207745e725d04766bb4442a7a41584b2836f09a87e6b1f",
+  "test_mode": {
+    "empty_only": "0",
+    "scope": "loaded replacement insertion diagnostic; empty reload still pending"
+  },
+  "operator_exit": 1,
+  "stop_exit": 0,
+  "cleanup": {
+    "launcher_exit": 0,
+    "owned_game_absent": true,
+    "owned_children": {
+      "recorded": 0,
+      "remaining": []
+    },
+    "forced_termination": false,
+    "worker_error": null
+  },
+  "continuous_passed": true,
+  "native_cleanup_verified": true,
+  "xr_exit_code": 0,
+  "playground_cleanup": {
+    "loaded": true,
+    "shutdown_code": 0,
+    "entry_restored": true,
+    "passed": true
+  },
+  "audio": {
+    "enabled": true,
+    "game_identity": {
+      "pid": 53152,
+      "creation_time": 134388074371033031
+    },
+    "owner_identity": {
+      "pid": 53600,
+      "creation_time": 134388074274782124
+    },
+    "log": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\hb-cloak-1111-020257\\launcher-session.68d7a3ae829b40dca6df2522f3fc5737.audio.jsonl",
+    "restored": true,
+    "startup": {
+      "ready_observed": true,
+      "ready_timeout_seconds": 15.0,
+      "waited_seconds": 0.06300000000919681,
+      "helper_exit_code": null
+    },
+    "exit_code": 0,
+    "event": "guard_cleanup",
+    "reason": "stop",
+    "matched": 1,
+    "muted": 0,
+    "restore_attempted": 0,
+    "restore_pending": 0,
+    "read_failed": 0,
+    "mute_failed": 0,
+    "scans": 345,
+    "endpoint_unavailable": 0,
+    "shared_rejected": 3795,
+    "sessions_restored": 0,
+    "mute_verification": {
+      "event": "mute_verification_summary",
+      "pid": 53152,
+      "initially_muted_sessions": 1,
+      "verified_muted_observations": 345,
+      "verify_failed": 0,
+      "target_shared_rejected": 0,
+      "shared_rejected_is_global_scan_count": true
+    }
+  },
+  "core": {
+    "game": {
+      "pid": 53152,
+      "creation_time": 134388074371033031,
+      "image": "j:\\gearsvr\\gears.of.war.reloaded.v1.0.1.3816947-p2p\\gears of war reloaded\\binaries_x64\\gowde-steam.exe"
+    },
+    "checks": {
+      "actual_shoulder_acquisition": true,
+      "actual_fire": true
+    },
+    "initial": {
+      "label": "before_original_X_pickup",
+      "ns": 118698836242800,
+      "weapon": "0x8f4840c0",
+      "name": "Weap_LocustAssaultRifle",
+      "cls": "Weap_LocustAssaultRifle",
+      "location": [
+        -3900.0,
+        0.0,
+        583.9485473632812
+      ],
+      "special": 0
+    },
+    "recorded_scope": "HB initial shoulder acquisition and authoritative fire only",
+    "acquisition_receipt": {
+      "status": "held",
+      "slot": "3",
+      "target": "8f4840c0",
+      "event": "1",
+      "press": "1",
+      "frame": "131",
+      "source_sequence": "4296",
+      "cookie": "1",
+      "inventory_stage": "ok",
+      "input_status": "event",
+      "input_previous_sync_ns": "118702463822100",
+      "input_sync_ns": "118702553331500",
+      "input_received_ns": "118702553359200",
+      "input_recorded_press_sync_ns": "118702543333200",
+      "input_control": "6"
+    },
+    "held": {
+      "label": "HB_actual_shoulder_acquisition",
+      "ns": 118707483439500,
+      "weapon": "0x8f4840c0",
+      "name": "Weap_LocustAssaultRifle",
+      "cls": "Weap_LocustAssaultRifle",
+      "location": [
+        -3900.0,
+        0.0,
+        583.9485473632812
+      ],
+      "special": 0
+    },
+    "reload_presentation_input": {
+      "x": 0.16,
+      "y": 1.5200000476837159,
+      "z": 0.06,
+      "yaw": 0.4363323129985824,
+      "pitch": 0.3,
+      "roll": 0
+    },
+    "first_fire_input": {
+      "baseline_sent_ns": 118711668731700,
+      "baseline": {
+        "frame": "204",
+        "sequence": "4703",
+        "current": "1",
+        "status": "1",
+        "source_status": "1",
+        "owned": "0",
+        "game_known": "1",
+        "game_r2": "0",
+        "trigger_active": "1",
+        "trigger_value": "0.000",
+        "trigger_pressed": "0",
+        "trigger_released": "0",
+        "input_sync_ns": "118711758724800",
+        "admitted_ns": "118711839730100",
+        "active_at_admission": "1",
+        "preparation_budget": "1"
+      },
+      "down_sent_ns": 118711844595700,
+      "down": {
+        "frame": "205",
+        "sequence": "4710",
+        "current": "1",
+        "status": "3",
+        "source_status": "1",
+        "owned": "1",
+        "game_known": "1",
+        "game_r2": "0",
+        "trigger_active": "1",
+        "trigger_value": "1.000",
+        "trigger_pressed": "1",
+        "trigger_released": "0",
+        "input_sync_ns": "118711914873000",
+        "admitted_ns": "118711975208200",
+        "active_at_admission": "1",
+        "preparation_budget": "1"
+      },
+      "first_shot_observed_ns": 118712092931700,
+      "shots_at_release": 1,
+      "release_sent_ns": 118712093258800
+    },
+    "shots": [
+      {
+        "shot": "1",
+        "epoch": "2",
+        "revision": "12",
+        "trace_valid": "1",
+        "write_source_consistent": "1",
+        "trace_source_consistent": "1",
+        "trace_count": "1",
+        "trace_frame": "206",
+        "trace_sequence": "4715",
+        "trace_sync_ns": "118712025287700",
+        "trace_observed_ns": "118712082738000",
+        "write_frame": "206",
+        "write_sequence": "4715",
+        "write_sync_ns": "118712025287700",
+        "aim_writes": "2",
+        "trace_writes": "3",
+        "pushed_writes": "2",
+        "physical_writes": "2",
+        "aim_before_trace": "2",
+        "origin_before_trace": "3",
+        "pushed_before_trace": "2",
+        "start": "-3845.49707,-3.53180313,665.799988",
+        "end": "3260.93311,-3065.95337,3354.49512",
+        "pushed": "-3845.49707,-3.53180313,665.799988",
+        "muzzle_origin": "-3845.49707,-3.53180313,665.799988",
+        "muzzle_aim": "3129,-4551,0"
+      },
+      {
+        "shot": "2",
+        "epoch": "2",
+        "revision": "12",
+        "trace_valid": "1",
+        "write_source_consistent": "1",
+        "trace_source_consistent": "1",
+        "trace_count": "2",
+        "trace_frame": "208",
+        "trace_sequence": "4725",
+        "trace_sync_ns": "118712247074500",
+        "trace_observed_ns": "118712316474600",
+        "write_frame": "208",
+        "write_sequence": "4725",
+        "write_sync_ns": "118712247074500",
+        "aim_writes": "2",
+        "trace_writes": "3",
+        "pushed_writes": "2",
+        "physical_writes": "2",
+        "aim_before_trace": "2",
+        "origin_before_trace": "3",
+        "pushed_before_trace": "2",
+        "start": "-3845.49707,-3.53183746,665.799866",
+        "end": "3418.08887,-3133.67749,2799.19214",
+        "pushed": "-3845.49707,-3.53183746,665.799866",
+        "muzzle_origin": "-3845.49707,-3.53183746,665.799866",
+        "muzzle_aim": "3129,-4551,0"
+      },
+      {
+        "shot": "3",
+        "epoch": "2",
+        "revision": "12",
+        "trace_valid": "1",
+        "write_source_consistent": "1",
+        "trace_source_consistent": "1",
+        "trace_count": "3",
+        "trace_frame": "209",
+        "trace_sequence": "4730",
+        "trace_sync_ns": "118712358483100",
+        "trace_observed_ns": "118712447169600",
+        "write_frame": "209",
+        "write_sequence": "4730",
+        "write_sync_ns": "118712358483100",
+        "aim_writes": "2",
+        "trace_writes": "3",
+        "pushed_writes": "2",
+        "physical_writes": "2",
+        "aim_before_trace": "2",
+        "origin_before_trace": "3",
+        "pushed_before_trace": "2",
+        "start": "-3845.49731,-3.53181863,665.799866",
+        "end": "3324.29126,-3247.69995,2941.39771",
+        "pushed": "-3845.49731,-3.53181863,665.799866",
+        "muzzle_origin": "-3845.49731,-3.53181863,665.799866",
+        "muzzle_aim": "3130,-4552,0"
+      },
+      {
+        "shot": "4",
+        "epoch": "2",
+        "revision": "12",
+        "trace_valid": "1",
+        "write_source_consistent": "1",
+        "trace_source_consistent": "1",
+        "trace_count": "4",
+        "trace_frame": "210",
+        "trace_sequence": "4737",
+        "trace_sync_ns": "118712513774000",
+        "trace_observed_ns": "118712588780500",
+        "write_frame": "210",
+        "write_sequence": "4737",
+        "write_sync_ns": "118712513774000",
+        "aim_writes": "2",
+        "trace_writes": "3",
+        "pushed_writes": "2",
+        "physical_writes": "2",
+        "aim_before_trace": "2",
+        "origin_before_trace": "3",
+        "pushed_before_trace": "2",
+        "start": "-3845.49731,-3.53182483,665.799927",
+        "end": "3376.14868,-3053.40552,3043.81201",
+        "pushed": "-3845.49731,-3.53182483,665.799927",
+        "muzzle_origin": "-3845.49731,-3.53182483,665.799927",
+        "muzzle_aim": "3129,-4551,0"
+      },
+      {
+        "shot": "5",
+        "epoch": "2",
+        "revision": "12",
+        "trace_valid": "1",
+        "write_source_consistent": "1",
+        "trace_source_consistent": "1",
+        "trace_count": "5",
+        "trace_frame": "211",
+        "trace_sequence": "4744",
+        "trace_sync_ns": "118712670818000",
+        "trace_observed_ns": "118712748937600",
+        "write_frame": "211",
+        "write_sequence": "4744",
+        "write_sync_ns": "118712670818000",
+        "aim_writes": "2",
+        "trace_writes": "3",
+        "pushed_writes": "2",
+        "physical_writes": "2",
+        "aim_before_trace": "2",
+        "origin_before_trace": "3",
+        "pushed_before_trace": "2",
+        "start": "-3845.49707,-3.53182244,665.799927",
+        "end": "3175.86914,-3504.10596,3022.75928",
+        "pushed": "-3845.49707,-3.53182244,665.799927",
+        "muzzle_origin": "-3845.49707,-3.53182244,665.799927",
+        "muzzle_aim": "3129,-4551,0"
+      },
+      {
+        "shot": "6",
+        "epoch": "2",
+        "revision": "12",
+        "trace_valid": "1",
+        "write_source_consistent": "1",
+        "trace_source_consistent": "1",
+        "trace_count": "6",
+        "trace_frame": "212",
+        "trace_sequence": "4751",
+        "trace_sync_ns": "118712825563600",
+        "trace_observed_ns": "118712912602200",
+        "write_frame": "212",
+        "write_sequence": "4751",
+        "write_sync_ns": "118712825563600",
+        "aim_writes": "2",
+        "trace_writes": "3",
+        "pushed_writes": "2",
+        "physical_writes": "2",
+        "aim_before_trace": "2",
+        "origin_before_trace": "3",
+        "pushed_before_trace": "2",
+        "start": "-3845.49731,-3.531811,665.799866",
+        "end": "3390.12964,-3171.10522,2838.59717",
+        "pushed": "-3845.49731,-3.531811,665.799866",
+        "muzzle_origin": "-3845.49731,-3.531811,665.799866",
+        "muzzle_aim": "3129,-4551,0"
+      }
+    ],
+    "error": "AssertionError('No fresh hammerburst_reload_transition to=2 (opening) in 8 seconds')"
+  },
+  "replacement": {
+    "game": {
+      "pid": 53152,
+      "creation_time": 134388074371033031,
+      "image": "j:\\gearsvr\\gears.of.war.reloaded.v1.0.1.3816947-p2p\\gears of war reloaded\\binaries_x64\\gowde-steam.exe"
+    },
+    "checks": {},
+    "phases": [
+      {
+        "label": "original_return_prepare",
+        "ns": 118713009676500
+      },
+      {
+        "label": "open_original_latch",
+        "ns": 118714662498500
+      }
+    ],
+    "observations": [
+      {
+        "label": "world",
+        "value": {
+          "game": {
+            "pid": 53152,
+            "creation_time": 134388074371033031,
+            "image": "j:\\gearsvr\\gears.of.war.reloaded.v1.0.1.3816947-p2p\\gears of war reloaded\\binaries_x64\\gowde-steam.exe"
+          },
+          "publisher": {
+            "pid": 39640,
+            "creation_time": 134388074457889090,
+            "image": "c:\\users\\11\\.codex\\worktrees\\6dof-single\\gearsvr\\tools\\openxr-probe\\build-hb-cloak-1111-020257\\openxrposeprobe.exe"
+          },
+          "source": 1,
+          "sequence": 4773,
+          "observed_ns": 118713329717300,
+          "sync_ns": 118713317810500,
+          "world_generation": 1,
+          "weapon": "0x8f4840c0",
+          "units": 100.0,
+          "raw": [
+            {
+              "xyz": [
+                -0.20000000298023224,
+                1.4000000953674316,
+                -0.4000000059604645
+              ],
+              "quat": [
+                -0.14943814277648926,
+                0.0,
+                0.0,
+                0.9887710809707642
+              ],
+              "squeeze": 0.0,
+              "trigger": 0.0
+            },
+            {
+              "xyz": [
+                0.1599999964237213,
+                1.5200001001358032,
+                0.05999999865889549
+              ],
+              "quat": [
+                0.14589586853981018,
+                0.21400924026966095,
+                -0.032344333827495575,
+                0.9653332829475403
+              ],
+              "squeeze": 0.0,
+              "trigger": 0.0
+            }
+          ],
+          "world": [
+            {
+              "xyz": [
+                -3840.6318344954047,
+                -17.2835585594868,
+                625.7996873855591
+              ],
+              "rotation": [
+                -0.3000000194673931,
+                4.8951591224977125e-08,
+                -0.0
+              ]
+            },
+            {
+              "xyz": [
+                -3886.631836719598,
+                18.716439129135296,
+                637.7996878623962
+              ],
+              "rotation": [
+                0.30000002406170945,
+                -0.43633227213021114,
+                -4.241938913145641e-09
+              ]
+            }
+          ],
+          "limits": "Current original world tracking targets, not solved or rendered bone positions."
+        }
+      },
+      {
+        "label": "gun",
+        "value": {
+          "game": {
+            "pid": 53152,
+            "creation_time": 134388074371033031,
+            "image": "j:\\gearsvr\\gears.of.war.reloaded.v1.0.1.3816947-p2p\\gears of war reloaded\\binaries_x64\\gowde-steam.exe"
+          },
+          "observed_ns": 118714623862600,
+          "controller": "0x85c11590",
+          "weapon": "0x8f4840c0",
+          "mesh": "0x3b97c1750",
+          "mesh_world_xyz": [
+            -3892.5576171875,
+            18.413097381591797,
+            636.3892211914062
+          ],
+          "mesh_component_to_world": [
+            -0.4226953089237213,
+            -0.9062716960906982,
+            0.0,
+            0.0,
+            0.865822970867157,
+            -0.4038296043872833,
+            0.29541823267936707,
+            0.0,
+            -0.26772916316986084,
+            0.12487190961837769,
+            0.9553680419921875,
+            0.0,
+            -3892.5576171875,
+            18.413097381591797,
+            636.3892211914062,
+            1.0
+          ],
+          "hud_query_world_xyz": [
+            -2021.2054443359375,
+            -854.189453125,
+            1288.4306640625
+          ],
+          "limits": "read-only bracketed snapshot; HUD query is not proof of a rendered reticle or firing ray"
+        }
+      }
+    ],
+    "gameplay_setters": false,
+    "visual_accepted": false,
+    "physical_headset_accepted": false,
+    "replacement_mode": true,
+    "before": {
+      "capacity": 78.0,
+      "used": 6,
+      "reserve": 78,
+      "infinite_reserve": false,
+      "duration": 2.5,
+      "started": 0.0,
+      "active_reload_bonus_shots": 0,
+      "game": {
+        "pid": 53152,
+        "creation_time": 134388074371033031,
+        "image": "j:\\gearsvr\\gears.of.war.reloaded.v1.0.1.3816947-p2p\\gears of war reloaded\\binaries_x64\\gowde-steam.exe"
+      },
+      "weapon": "0x8f4840c0",
+      "observed_ns": 118713069778400,
+      "game_time": 28.33152961730957,
+      "loaded": 72,
+      "bones": {},
+      "game_function_calls": 0,
+      "reader_reused": true,
+      "read_bracket_misses": [],
+      "query_local_selectors": true,
+      "limits": "Double-read actual inventory and typed schema, current registered objects/held identity; no game calls. Not physical-headset acceptance."
+    },
+    "input_planning": {
+      "production": {
+        "frame": "223",
+        "publication": "0",
+        "source_sequence": "4820",
+        "sync_ns": "118714362537900",
+        "observed_ns": "118714395397600",
+        "hold": "1",
+        "accepted": "1",
+        "mesh_read": "1",
+        "grip_world": "-3886.63184,18.7164391,637.799688",
+        "grip_quat": "-0.0323443292,-0.145895865,-0.21400921,0.965333258",
+        "target_world": "-3892.55813,18.4130986,636.389246",
+        "target_rot": "0,-20935,-3129",
+        "asset_origin": "0,-16384,0",
+        "component_translation": "-3892.55811,18.4130993,636.389221",
+        "gun_world": "-3892.55713,18.4130974,636.38916",
+        "gun_rot": "3129,-4551,0",
+        "dirty": "7"
+      },
+      "geometry": {
+        "weapon": "8f4840c0",
+        "pivot": "2.18912754e-09,0.313648804,0.0212533208",
+        "axis": "1,-6.44250092e-08,-3.18645343e-08",
+        "contact": "-0.021006133,0.242713057,0.0401302788",
+        "units": "100"
+      },
+      "actual_mesh": [
+        [
+          -0.4226953089237213,
+          0.865822970867157,
+          -0.26772916316986084,
+          -3892.5576171875
+        ],
+        [
+          -0.9062716960906982,
+          -0.4038296043872833,
+          0.12487190961837769,
+          18.413097381591797
+        ],
+        [
+          0.0,
+          0.29541823267936707,
+          0.9553680419921875,
+          636.3892211914062
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "planning_is_not_outcome_evidence": true
+    },
+    "wait_failures": [
+      {
+        "prefix": "hammerburst_reload_transition",
+        "start": 0,
+        "expected": "to=2 (opening)",
+        "latest": []
+      }
+    ],
+    "error": "AssertionError('No fresh hammerburst_reload_transition to=2 (opening) in 8 seconds')"
+  },
+  "actual_trajectory_count": 6,
+  "trajectory_consistent": true,
+  "foreground_samples": 1943,
+  "cloak_samples": 3453,
+  "foreground_violations": [],
+  "cloak_violations": [],
+  "media": {
+    "frames": 376,
+    "errors": [],
+    "encoded": true,
+    "review": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-53152-media-review\\prepared.json",
+    "full_fit_accepted": false,
+    "encode_exit_code": 0
+  },
+  "verified_archive": [
+    {
+      "source": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\tools\\playground\\build-hb-cloak-1111-020257\\playground-53152.log",
+      "archive": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-53152-text\\playground-53152.log",
+      "sha256": "ad08fbb44e5b0d9932f320d6291faf4f481a1ea7debf31b7132c9a13aea00526"
+    },
+    {
+      "source": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\hb-cloak-1111-020257\\actions\\menu-firstperson-53152-020413\\result.json",
+      "archive": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-53152-text\\result.json",
+      "sha256": "0d16a1e1ffe1ec6e45905cf8bd9a0760859b3691a21369a68b366487f141fc55"
+    },
+    {
+      "source": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\hb-cloak-1111-020257\\actions\\menu-firstperson-53152-020413\\equipment-chain.json",
+      "archive": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-53152-text\\equipment-chain.json",
+      "sha256": "3b4e1e9419076ac660be15fd35d35642a523a9f5bcf1f1e016fb5ba8391a914c"
+    },
+    {
+      "source": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\hb-cloak-1111-020257\\actions\\menu-firstperson-53152-020413\\hammerburst-core.json",
+      "archive": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-53152-text\\hammerburst-core.json",
+      "sha256": "77dd30dd4ea65ceb6ef6c0c73c1f1dd753799f8a1df91d872a68a18d1e8b456e"
+    },
+    {
+      "source": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\hb-cloak-1111-020257\\actions\\menu-firstperson-53152-020413\\hammerburst-replacement.json",
+      "archive": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-53152-text\\hammerburst-replacement.json",
+      "sha256": "3e3df8517575565eac0c83474fb9ed6dd27779d374291ea9522aff2d628cfd38"
+    },
+    {
+      "source": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\runtime\\continuous-stereo-53152-20261111-020405-d55c3285.json",
+      "archive": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-53152-text\\continuous-stereo-53152-20261111-020405-d55c3285.json",
+      "sha256": "c54ea230123c79d81b304fcc00b74b84fe18a5e5b01dde12607be43559d4f141"
+    },
+    {
+      "source": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\hb-cloak-1111-020257\\isolated-done.json",
+      "archive": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-53152-text\\isolated-done.json",
+      "sha256": "283ec01454add73da9d7dc3d51a2f241f008239fb70c8c6351caed26a2c0f044"
+    },
+    {
+      "source": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\hb-cloak-1111-020257\\launcher-session.68d7a3ae829b40dca6df2522f3fc5737.audio.jsonl",
+      "archive": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-53152-text\\launcher-session.68d7a3ae829b40dca6df2522f3fc5737.audio.jsonl",
+      "sha256": "9a52f331544ea921ba29f987c4d9f6562a81cec1ac4f9f5416840baf169ecf61"
+    }
+  ],
+  "interpretation": "Core6 succeeded; entry source age60.337ms, entry checks.7143ms/asset2.7674ms/contract3.0047ms/ButtonName.1751ms/finalreserve.003ms/owned+dispatch.0745ms. No causal first-press repair claim. Initial latch acquired Native magazine grant Frame280, but source stale101.0049ms before HB open; later retained/revoked snapshots stale, no opening transition or feed history. Existing backend source calls fire then follow tick/apply then reload, so place HB-only reload before follow visual work while retaining exact once/current checks. Full flow remains failed.",
+  "gameplay_accepted": false,
+  "physical_headset_accepted": false,
+  "hammerburst_press_timing_rows": [
+    {
+      "frame": "205",
+      "phase": "7",
+      "invoked": "1",
+      "sync_ns": "118711914873000",
+      "entry_ns": "118711975210000",
+      "entry_age_ns": "60337000",
+      "entry_checks_ns": "714300",
+      "asset_ns": "2767400",
+      "contract_ns": "3004700",
+      "button_schema_ns": "175100",
+      "final_reserve_ns": "3000",
+      "owned_and_dispatch_ns": "74500"
+    }
+  ],
+  "hammerburst_reload_transition_rows": [],
+  "hammerburst_latch_frame_rows": [],
+  "hammerburst_supply_frame_rows": [],
+  "hammerburst_identity_lost_rows": [],
+  "native_equipment_support_withdrawal_rows": [
+    {
+      "frame": "280",
+      "sequence": "5135",
+      "token": "1",
+      "reason": "5",
+      "game_difference": "0",
+      "frame_difference": "0",
+      "game_flags": "0",
+      "age_ns": "101004900",
+      "candidate_flags": "45",
+      "candidate_decision": "2",
+      "candidate_lease": "3",
+      "support_distance_m": "0.198105555"
+    },
+    {
+      "frame": "283",
+      "sequence": "5156",
+      "token": "1",
+      "reason": "5",
+      "game_difference": "0",
+      "frame_difference": "0",
+      "game_flags": "0",
+      "age_ns": "102018600",
+      "candidate_flags": "45",
+      "candidate_decision": "3",
+      "candidate_lease": "0",
+      "support_distance_m": "0.198105555"
+    },
+    {
+      "frame": "285",
+      "sequence": "5169",
+      "token": "1",
+      "reason": "5",
+      "game_difference": "0",
+      "frame_difference": "0",
+      "game_flags": "0",
+      "age_ns": "100238500",
+      "candidate_flags": "45",
+      "candidate_decision": "3",
+      "candidate_lease": "0",
+      "support_distance_m": "0.198105555"
+    },
+    {
+      "frame": "287",
+      "sequence": "5182",
+      "token": "1",
+      "reason": "5",
+      "game_difference": "0",
+      "frame_difference": "0",
+      "game_flags": "0",
+      "age_ns": "102019000",
+      "candidate_flags": "45",
+      "candidate_decision": "3",
+      "candidate_lease": "0",
+      "support_distance_m": "0.198105555"
+    },
+    {
+      "frame": "290",
+      "sequence": "5194",
+      "token": "1",
+      "reason": "5",
+      "game_difference": "0",
+      "frame_difference": "0",
+      "game_flags": "0",
+      "age_ns": "102329500",
+      "candidate_flags": "13",
+      "candidate_decision": "3",
+      "candidate_lease": "0",
+      "support_distance_m": "0.198105555"
+    },
+    {
+      "frame": "291",
+      "sequence": "5200",
+      "token": "1",
+      "reason": "5",
+      "game_difference": "0",
+      "frame_difference": "0",
+      "game_flags": "0",
+      "age_ns": "100565000",
+      "candidate_flags": "13",
+      "candidate_decision": "3",
+      "candidate_lease": "0",
+      "support_distance_m": "0.198105555"
+    },
+    {
+      "frame": "292",
+      "sequence": "5208",
+      "token": "1",
+      "reason": "5",
+      "game_difference": "0",
+      "frame_difference": "0",
+      "game_flags": "0",
+      "age_ns": "101166600",
+      "candidate_flags": "13",
+      "candidate_decision": "3",
+      "candidate_lease": "0",
+      "support_distance_m": "0.198105555"
+    },
+    {
+      "frame": "293",
+      "sequence": "5214",
+      "token": "1",
+      "reason": "5",
+      "game_difference": "0",
+      "frame_difference": "0",
+      "game_flags": "0",
+      "age_ns": "100378700",
+      "candidate_flags": "13",
+      "candidate_decision": "3",
+      "candidate_lease": "0",
+      "support_distance_m": "0.198105555"
+    }
+  ],
+  "hammerburst_feed_history_rows": [],
+  "hammerburst_feed_outcome_rows": [],
+  "hammerburst_feed_rejected_rows": [],
+  "hammerburst_feed_move_rejected_rows": [],
+  "hammerburst_service_loss_rows": [],
+  "hammerburst_stale_debt_wait_rows": [],
+  "hammerburst_reload_complete_rows": [],
+  "hammerburst_early_reload_rows": []
+}

@@ -1,8 +1,8 @@
 {
   "schema": 1,
   "scope": "full HB objective; no scope reduction",
-  "current_candidate": "feed-history-r1: original producer intermediate motion ingestion; full PG compiled;21 real-kernel +22 exact consumer local fixtures passed, no game yet",
-  "prepared_sha256": "f9a3d90fb8cc0602f47be94f224860eac4a5453b4d84ad31f23dcb942389ee1d",
+  "current_candidate": "reload-priority-r1: exact HB reload once before follow visuals; compiled+9 local schedule cases; retains feed-history43 local checks; no game yet",
+  "prepared_sha256": "01afaa3478514066738c84036e41c32d799ce7c30a07e91a77078a1b0b456149",
   "requirements": [
     {
       "id": "acquire_stow",
@@ -248,9 +248,9 @@
   ],
   "completion_proven": false,
   "goal_active": true,
-  "immediate_next": "Inspect and reduce HB first-press pre-dispatch preparation delay using exact56348 evidence; preserve20ms reserve/source100ms/original intent250ms, no retry of blocked edge. Then validate actual feed-history adoption/seating/closure/typed conservation/return-fire and remaining13 requirements. Do not rerun unchanged candidate just to seek a pass.",
+  "immediate_next": "One fresh focused replacement with HB once-before-visual scheduling. Require actual early reload marker, first latch grant, history adoption/seating/closure/typed conservation/return. Preserve all deadlines, no same-Frame retry. Full13 requirements remain open.",
   "historical_evidence_does_not_certify_current_PG": true,
-  "candidate_runtime_status": "feed-history-r1 actual56348 loaded; first core DOWN Frame193 deferred10, Frame19420ms reserve fails at83.8485ms source age, Frame195 blocked8 after original intent deadline. Zero rays, no reload/history branch. Normal cleanup. Feed fix compiled43 local scenarios but not game exercised.",
+  "candidate_runtime_status": "Actual53152 press-timing-r1 core6 passed, entry age60.337ms and stage durations recorded. Initial Native latch magazine grant Frame280; source stale101.0049ms before opening. No feed history reached; first-press stability unaccepted.",
   "previous_recorded_candidate": {
     "name": "hammerburst-prepared-20261110-unheld-input-r1",
     "prepared_sha256": "76a2ae8cc56e4165b77ca5d17a9e6469ff66323e917be5a8b46da44df4f0bb58"
@@ -272,5 +272,5 @@
   "restore_verifier_status": "Optional --hammerburst-park-restore input action hook integrated into private reload adapter; five synthetic action/receipt regressions passed. Actual park/redraw/new-grant/native-resume, typed conservation, UI/reward and complete return-fire require game evidence.",
   "latest_service_first_failure": "runtime-3112-first-failure-analysis.json",
   "latest_startup_failure": "runtime-49732-startup-failure.json",
-  "latest_runtime_failure": "runtime-56348-first-failure-analysis.json"
+  "latest_runtime_failure": "runtime-53152-first-failure-analysis.json"
 }

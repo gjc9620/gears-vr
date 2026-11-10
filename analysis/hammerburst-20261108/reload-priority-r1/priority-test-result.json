@@ -1,0 +1,8 @@
+{
+  "passed": true,
+  "cases": 9,
+  "exact_block": true,
+  "local_call_spies": true,
+  "game_execution": false,
+  "source_sha256": "8c98549033018e0752ccbcf3f4017c9003a3f34b488d958de30b24abee5c4a94"
+}
