@@ -203,9 +203,9 @@
   ],
   "completion_proven": false,
   "goal_active": true,
-  "immediate_next": "Fresh released-debt-r1 game run after resources available: verify fresh-source continuation only, no expired input dispatch or renewed250ms event; then empty reload/return-fire and optional actual park/restore chain.",
+  "immediate_next": "When disk/memory permits, fresh released-debt-r1 actual action validation using current shared OpenThread failure evidence. Actual49732 ended before Native/operator activation; no unchanged blind startup rerun. Keep100ms/20ms/250ms and thread-freeze/input-isolation guards.",
   "historical_evidence_does_not_certify_current_PG": true,
-  "candidate_runtime_status": "Actual3112 service-loss-r1 first6+two complete six-shot drain bursts typed60/78, next4/6 cancelled at service gate3 armed=false, registration alive, aligned stale_before frame303 age102.1307ms;22 consistent rays, final typed after partial missing. Released-debt-r1 compiled/event308/actualClient14 only; not game exercised.",
+  "candidate_runtime_status": "Actual3112 service-loss-r1 first6+two complete six-shot drain bursts typed60/78, next4/6 cancelled at service gate3 armed=false, registration alive, aligned stale_before frame303 age102.1307ms;22 consistent rays, final typed after partial missing. Released-debt-r1 compiled/event308/actualClient14 only; not game exercised. First released-debt-r1 game49732 created but ended before Native and action operator due OpenThread WinError87; release-debt repair not exercised. Normal game/child exit, launcher1/XR1/stop1 preserved.",
   "previous_recorded_candidate": {
     "name": "hammerburst-prepared-20261110-unheld-input-r1",
     "prepared_sha256": "76a2ae8cc56e4165b77ca5d17a9e6469ff66323e917be5a8b46da44df4f0bb58"
@@ -225,5 +225,6 @@
   },
   "historical_runtime_status_56252": "Actual56252 shoulder/core6+12six-shot drain+empty trigger+replacement/latch closure passed; return six actual consistent rays but first typed sample73/0 before sixth15.6313ms; final72/0 not yet observed, operator1 preserved. Return observation driver fixed offline12cases.",
   "restore_verifier_status": "Optional --hammerburst-park-restore input action hook integrated into private reload adapter; five synthetic action/receipt regressions passed. Actual park/redraw/new-grant/native-resume, typed conservation, UI/reward and complete return-fire require game evidence.",
-  "latest_service_first_failure": "runtime-3112-first-failure-analysis.json"
+  "latest_service_first_failure": "runtime-3112-first-failure-analysis.json",
+  "latest_startup_failure": "runtime-49732-startup-failure.json"
 }

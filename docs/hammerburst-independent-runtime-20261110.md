@@ -264,3 +264,5 @@ released-debt-r1为本次首因的私有修正，默认未启用公共功能：�
 launcher1/XR1/stop1实际失败保留，PG reservation-only清理shutdown0、入口恢复通过，prime取消/入口恢复；本方game/子进程已正常退出、无强杀，worker_error null；732前台/734CLOAK零违规。Native未启动，不能声称Native运行清理通过。音频目标初始muted1/verified54/verify_failed0/target_shared_rejected0，helper清理exit0。无动作录像。6份文本原件逐SHA归档，详见`runtime-49732-startup-failure.json`。
 
 已按主人“模拟器测试自己协调”的授权，将准确故障点与原证据发给既有统筹/共享工具维护会话，未新建聊天、未启用helper、未修改其共享文件或启动别枪测试。接下来先获得此处有证据的窄修复/处理，再用新唯一实例验证本枪候选；不绕过线程冻结/恢复、输入隔离或代码hash保护。
+
+共享维护方已在同一OpenThread失败点补被动证据，source SHA b27ba12d1f3c703babd5ec09ee731edc95742595da7d9887ad513568feab2bf2，本方已阅读实际hunk及其报告。保留原WinError，并附TID、原枚举、已挂起TID和一次新枚举；任何OpenThread失败仍中止，原逆序恢复保留，不跳过线程、不重试patch。报告9项离线检查通过，维护方未启动游戏；这是观测补齐，不是该启动故障已修复或证实。当前free3,568,406,528bytes仍低于4GiB，因此没有借此额外启动取证游戏。下一实际候选验证使用当前入口新名字并保留这次失败；连发修正仍未执行到动作。
