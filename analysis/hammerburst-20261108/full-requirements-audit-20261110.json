@@ -27,8 +27,8 @@
     {
       "id": "finite_fire",
       "requirement": "单手/双手瞄准与原版有限六连发",
-      "status": "partial_intermittent_original_event_expiry",
-      "limit": "Actual54452 core6+12 drain6 reached0/R78 with78 consistent rays. Actual20672 core6+5 drain6 then1 of sixth, service gate4 original pending-event expiry;37 consistent rays. Current finite-fire stability and two-hand acceptance remain unproven.",
+      "status": "partial_first_press_deferral_and_tail_expiry_open",
+      "limit": "Actual54452 core+12drain6 passed.20672 pending original tail event expired after1/6.56348 new candidate first DOWN deferred then20ms reserve not available at83.8485ms; original intent expired, zero rays. Need reduce preparation delay while retaining all deadlines; whole stability/two-hand unaccepted.",
       "evidence": [
         {
           "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-13712-first-failure-analysis.json",
@@ -69,6 +69,10 @@
         {
           "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-20672-first-failure-analysis.json",
           "sha256": "cf56505bfc98802e373195f23b1d61d5fc4d431d2e606912c6b3f7d777b96191"
+        },
+        {
+          "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-56348-first-failure-analysis.json",
+          "sha256": "1891d4ec7d2be00e6a5260ea2cae823158bef94ce5afd23f505e2c82620f4486"
         }
       ]
     },
@@ -244,9 +248,9 @@
   ],
   "completion_proven": false,
   "goal_active": true,
-  "immediate_next": "One fresh focused loaded replacement on feed-history-r1. Require actual used history marker and original seating/closure/typed conservation/return-fire. Preserve all guards; retain original pending-event expiry and full empty flow as open requirements.",
+  "immediate_next": "Inspect and reduce HB first-press pre-dispatch preparation delay using exact56348 evidence; preserve20ms reserve/source100ms/original intent250ms, no retry of blocked edge. Then validate actual feed-history adoption/seating/closure/typed conservation/return-fire and remaining13 requirements. Do not rerun unchanged candidate just to seek a pass.",
   "historical_evidence_does_not_certify_current_PG": true,
-  "candidate_runtime_status": "Actual53560 focused loaded replacement: core6, original72/R78 reload, latch/extract/supply to6. Observed kernel approaching; Frame787 gap110.739ms resets stroke at41.923mm below45mm approach. Endpoint depth.011326mm/lateral.005797mm/orientation1 rejected. No move/early/support/identity reject. Normal cleanup; not empty-flow validation.",
+  "candidate_runtime_status": "feed-history-r1 actual56348 loaded; first core DOWN Frame193 deferred10, Frame19420ms reserve fails at83.8485ms source age, Frame195 blocked8 after original intent deadline. Zero rays, no reload/history branch. Normal cleanup. Feed fix compiled43 local scenarios but not game exercised.",
   "previous_recorded_candidate": {
     "name": "hammerburst-prepared-20261110-unheld-input-r1",
     "prepared_sha256": "76a2ae8cc56e4165b77ca5d17a9e6469ff66323e917be5a8b46da44df4f0bb58"
@@ -268,5 +272,5 @@
   "restore_verifier_status": "Optional --hammerburst-park-restore input action hook integrated into private reload adapter; five synthetic action/receipt regressions passed. Actual park/redraw/new-grant/native-resume, typed conservation, UI/reward and complete return-fire require game evidence.",
   "latest_service_first_failure": "runtime-3112-first-failure-analysis.json",
   "latest_startup_failure": "runtime-49732-startup-failure.json",
-  "latest_runtime_failure": "runtime-53560-first-failure-analysis.json"
+  "latest_runtime_failure": "runtime-56348-first-failure-analysis.json"
 }

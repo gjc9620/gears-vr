@@ -1,0 +1,287 @@
+{
+  "game": {
+    "pid": 56348,
+    "creation_time": 134388067907247032,
+    "image": "j:\\gearsvr\\gears.of.war.reloaded.v1.0.1.3816947-p2p\\gears of war reloaded\\binaries_x64\\gowde-steam.exe"
+  },
+  "candidate": "a38e8e85c6c3464ef1beb9b4a4738a501c36924d16b982cb0348bef1b41613d0",
+  "test_mode": {
+    "empty_only": "0",
+    "scope": "loaded replacement insertion diagnostic; empty reload still pending"
+  },
+  "operator_exit": 1,
+  "stop_exit": 0,
+  "cleanup": {
+    "launcher_exit": 0,
+    "owned_game_absent": true,
+    "owned_children": {
+      "recorded": 0,
+      "remaining": []
+    },
+    "forced_termination": false,
+    "worker_error": null
+  },
+  "continuous_passed": true,
+  "native_cleanup_verified": true,
+  "xr_exit_code": 0,
+  "playground_cleanup": {
+    "loaded": true,
+    "shutdown_code": 0,
+    "entry_restored": true,
+    "passed": true
+  },
+  "audio": {
+    "enabled": true,
+    "game_identity": {
+      "pid": 56348,
+      "creation_time": 134388067907247032
+    },
+    "owner_identity": {
+      "pid": 39752,
+      "creation_time": 134388067802787215
+    },
+    "log": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\hb-cloak-1111-015245\\launcher-session.c648d79477ad4946bb2ce24eefaf88f8.audio.jsonl",
+    "restored": true,
+    "startup": {
+      "ready_observed": true,
+      "ready_timeout_seconds": 15.0,
+      "waited_seconds": 0.062000000005355105,
+      "helper_exit_code": null
+    },
+    "exit_code": 0,
+    "event": "guard_cleanup",
+    "reason": "stop",
+    "matched": 1,
+    "muted": 0,
+    "restore_attempted": 0,
+    "restore_pending": 0,
+    "read_failed": 0,
+    "mute_failed": 0,
+    "scans": 257,
+    "endpoint_unavailable": 0,
+    "shared_rejected": 2827,
+    "sessions_restored": 0,
+    "mute_verification": {
+      "event": "mute_verification_summary",
+      "pid": 56348,
+      "initially_muted_sessions": 1,
+      "verified_muted_observations": 257,
+      "verify_failed": 0,
+      "target_shared_rejected": 0,
+      "shared_rejected_is_global_scan_count": true
+    }
+  },
+  "core": {
+    "game": {
+      "pid": 56348,
+      "creation_time": 134388067907247032,
+      "image": "j:\\gearsvr\\gears.of.war.reloaded.v1.0.1.3816947-p2p\\gears of war reloaded\\binaries_x64\\gowde-steam.exe"
+    },
+    "checks": {
+      "actual_shoulder_acquisition": true
+    },
+    "initial": {
+      "label": "before_original_X_pickup",
+      "ns": 118050500289400,
+      "weapon": "0x162c176700",
+      "name": "Weap_LocustAssaultRifle",
+      "cls": "Weap_LocustAssaultRifle",
+      "location": [
+        -3900.0,
+        0.0,
+        583.9485473632812
+      ],
+      "special": 0
+    },
+    "recorded_scope": "HB initial shoulder acquisition and authoritative fire only",
+    "acquisition_receipt": {
+      "status": "held",
+      "slot": "3",
+      "target": "162c176700",
+      "event": "1",
+      "press": "1",
+      "frame": "122",
+      "source_sequence": "4070",
+      "cookie": "1",
+      "inventory_stage": "ok",
+      "input_status": "event",
+      "input_previous_sync_ns": "118054101726700",
+      "input_sync_ns": "118054191731700",
+      "input_received_ns": "118054191760900",
+      "input_recorded_press_sync_ns": "118054191731700",
+      "input_control": "6"
+    },
+    "held": {
+      "label": "HB_actual_shoulder_acquisition",
+      "ns": 118059125256300,
+      "weapon": "0x162c176700",
+      "name": "Weap_LocustAssaultRifle",
+      "cls": "Weap_LocustAssaultRifle",
+      "location": [
+        -3900.0,
+        0.0,
+        583.9485473632812
+      ],
+      "special": 0
+    },
+    "reload_presentation_input": {
+      "x": 0.16,
+      "y": 1.5200000476837159,
+      "z": 0.06,
+      "yaw": 0.4363323129985824,
+      "pitch": 0.3,
+      "roll": 0
+    },
+    "first_fire_input": {
+      "baseline_sent_ns": 118063393954500,
+      "baseline": {
+        "frame": "192",
+        "sequence": "4480",
+        "current": "1",
+        "status": "1",
+        "source_status": "1",
+        "owned": "0",
+        "game_known": "1",
+        "game_r2": "0",
+        "trigger_active": "1",
+        "trigger_value": "0.000",
+        "trigger_pressed": "0",
+        "trigger_released": "0",
+        "input_sync_ns": "118063465971900",
+        "admitted_ns": "118063530741600",
+        "active_at_admission": "1",
+        "preparation_budget": "1"
+      },
+      "down_sent_ns": 118063537755300,
+      "down": {
+        "frame": "193",
+        "sequence": "4485",
+        "current": "1",
+        "status": "10",
+        "source_status": "1",
+        "owned": "0",
+        "game_known": "1",
+        "game_r2": "0",
+        "trigger_active": "1",
+        "trigger_value": "1.000",
+        "trigger_pressed": "1",
+        "trigger_released": "0",
+        "input_sync_ns": "118063577524800",
+        "admitted_ns": "118063660207000",
+        "active_at_admission": "1",
+        "preparation_budget": "1"
+      },
+      "release_sent_ns": 118065671644500
+    },
+    "shots": [],
+    "error": "TimeoutError('Consumed DOWN did not produce an original first HB trajectory')"
+  },
+  "actual_trajectory_count": 0,
+  "execute_not_ready_rows": [
+    {
+      "frame": "194",
+      "valid": "1",
+      "same_frame": "1",
+      "frame_current": "1",
+      "reserved_frame_current": "0",
+      "held": "1",
+      "registration": "1",
+      "live": "1",
+      "reserved_live": "0",
+      "epoch": "1",
+      "sync_age_ns": "83848500",
+      "stereo_age_ns": "83854800",
+      "frame_age_ns": "68770500",
+      "sample_age_ns": "44562800",
+      "render_age_ns": "-1"
+    }
+  ],
+  "feed_history_rows": [],
+  "transitions": [],
+  "failure_context": [
+    "hammerburst_input_consumed frame=183 sequence=4436 current=1 status=1 source_status=1 owned=0 game_known=1 game_r2=0 trigger_active=1 trigger_value=0.000 trigger_pressed=0 trigger_released=0 input_sync_ns=118062488356100 admitted_ns=118062550005200 active_at_admission=1 preparation_budget=1",
+    "native_lancer_r2 status=1 source_status=1 mode=1 owned=0 game_known=1 game_r2=0 before_action=1 frame=183 sequence=4436 trigger_pressed=0 trigger_released=0 trigger_active=1 trigger_value=0.000 muzzle_ready=1 input_sync_ns=118062488356100 observed_ns=118062549224700 ammo_known=0 ammo=-1 previous_sync_ns=118062195938500 previous_observed_ns=118062264432500 game_elapsed_ns=1566100 action_elapsed_ns=782400 ammo_queried=0 diagnostic_elapsed_ns=1300 ready_after_ammo_read=0 copy_elapsed_ns=7338200 input_elapsed_ns=8904400 continuity_matched=1 continuous_poll_gap=0 copied_source=1 copied_frame=183 copied_input_age_ns=60868600 preparation_budget=1 continuity_failure=0 continuity_native_selected=1 input_admission_ns=118062550005200 input_admission_delay_ns=780500 input_frame_now_ns=118062493196600 input_stereo_received_ns=118062488348600 input_controller_received_ns=118062488387500 input_frame_flags=15 input_stereo_status=0 input_frame_shape=1 input_frame_active=1",
+    "native_lancer_hud_admission live=59 controller=59 functions=59 fields=59 arguments=59 capture=59 applied=59 accepted=59",
+    "hammerburst_input_consumed frame=186 sequence=4450 current=1 status=1 source_status=1 owned=0 game_known=1 game_r2=0 trigger_active=1 trigger_value=0.000 trigger_pressed=0 trigger_released=0 input_sync_ns=118062799456000 admitted_ns=118062862467900 active_at_admission=1 preparation_budget=1",
+    "native_lancer_follow frame=188 publication=0 source_sequence=4463 sync_ns=118063098690400 observed_ns=118063138461000 hold=1 accepted=1 mesh_read=1 grip_world=-3886.04275,19.0609081,637.088872 grip_quat=-0.0323439265,-0.145892034,-0.214006555,0.965334439 target_world=-3891.96896,18.7575948,635.678455 target_rot=0,-20935,-3129 asset_origin=0,-16384,0 component_translation=-3891.96899,18.7575951,635.678467 gun_world=-3891.92725,18.7573433,635.681152 gun_rot=3129,-4551,0 dirty=7",
+    "native_lancer_follow_readback frame=188 source_sequence=4463 age_ns=18981500 known=1 target_world=-3891.96896,18.7575948,635.678455 component_translation=-3891.96899,18.7575951,635.678467 gun_world=-3891.96851,18.7575912,635.678406 gun_basis=-0.422695309,-0.906271577,0,0.865822971,-0.403829575,0.295418203,-0.267729163,0.124871895,0.955367923 restored=1 component_rot=3129,-4551,0 absolute=1,1,0",
+    "hammerburst_input_consumed frame=189 sequence=4465 current=1 status=1 source_status=1 owned=0 game_known=1 game_r2=0 trigger_active=1 trigger_value=0.000 trigger_pressed=0 trigger_released=0 input_sync_ns=118063132492900 admitted_ns=118063196654200 active_at_admission=1 preparation_budget=1",
+    "hammerburst_input_consumed frame=192 sequence=4480 current=1 status=1 source_status=1 owned=0 game_known=1 game_r2=0 trigger_active=1 trigger_value=0.000 trigger_pressed=0 trigger_released=0 input_sync_ns=118063465971900 admitted_ns=118063530741600 active_at_admission=1 preparation_budget=1",
+    "hammerburst_input_consumed frame=193 sequence=4485 current=1 status=10 source_status=1 owned=0 game_known=1 game_r2=0 trigger_active=1 trigger_value=1.000 trigger_pressed=1 trigger_released=0 input_sync_ns=118063577524800 admitted_ns=118063660207000 active_at_admission=1 preparation_budget=1",
+    "native_lancer_r2 status=10 source_status=1 mode=1 owned=0 game_known=1 game_r2=0 before_action=1 frame=193 sequence=4485 trigger_pressed=1 trigger_released=0 trigger_active=1 trigger_value=1.000 muzzle_ready=1 input_sync_ns=118063577524800 observed_ns=118063658617000 ammo_known=0 ammo=-1 previous_sync_ns=118063465971900 previous_observed_ns=118063530741600 game_elapsed_ns=2582800 action_elapsed_ns=1591400 ammo_queried=0 diagnostic_elapsed_ns=1400 ready_after_ammo_read=0 copy_elapsed_ns=5117500 input_elapsed_ns=7700500 continuity_matched=1 continuous_poll_gap=1 copied_source=1 copied_frame=193 copied_input_age_ns=81092200 preparation_budget=1 continuity_failure=0 continuity_native_selected=1 input_admission_ns=118063660207000 input_admission_delay_ns=1590000 input_frame_now_ns=118063597695000 input_stereo_received_ns=118063577517900 input_controller_received_ns=118063577554100 input_frame_flags=15 input_stereo_status=0 input_frame_shape=1 input_frame_active=1",
+    "native_lancer_execute_not_ready frame=194 valid=1 same_frame=1 frame_current=1 reserved_frame_current=0 held=1 registration=1 live=1 reserved_live=0 epoch=1 sync_age_ns=83848500 stereo_age_ns=83854800 frame_age_ns=68770500 sample_age_ns=44562800 render_age_ns=-1",
+    "native_lancer_r2 status=8 source_status=1 mode=1 owned=0 game_known=1 game_r2=0 before_action=1 frame=195 sequence=4496 trigger_pressed=1 trigger_released=0 trigger_active=1 trigger_value=1.000 muzzle_ready=1 input_sync_ns=118063822645600 observed_ns=118063893530400 ammo_known=0 ammo=-1 previous_sync_ns=118063710694800 previous_observed_ns=118063784582200 game_elapsed_ns=986600 action_elapsed_ns=672900 ammo_queried=0 diagnostic_elapsed_ns=1800 ready_after_ammo_read=0 copy_elapsed_ns=4827200 input_elapsed_ns=5814100 continuity_matched=1 continuous_poll_gap=1 copied_source=1 copied_frame=195 copied_input_age_ns=70884800 preparation_budget=1 continuity_failure=0 continuity_native_selected=1 input_admission_ns=118063894200400 input_admission_delay_ns=670000 input_frame_now_ns=118063843593600 input_stereo_received_ns=118063822639400 input_controller_received_ns=118063822670900 input_frame_flags=15 input_stereo_status=0 input_frame_shape=1 input_frame_active=1",
+    "native_lancer_follow frame=195 publication=0 source_sequence=4500 sync_ns=118063912055400 observed_ns=118063952328000 hold=1 accepted=1 mesh_read=1 grip_world=-3886.04346,19.0608813,637.088872 grip_quat=-0.0323443292,-0.145895865,-0.21400921,0.965333258 target_world=-3891.96966,18.7575981,635.67841 target_rot=0,-20935,-3129 asset_origin=0,-16384,0 component_translation=-3891.96973,18.7575989,635.678406 gun_world=-3891.84351,18.698761,638.940796 gun_rot=3129,-4551,0 dirty=7",
+    "native_lancer_follow_readback frame=195 source_sequence=4500 age_ns=12196900 known=1 target_world=-3891.96966,18.7575981,635.67841 component_translation=-3891.96973,18.7575989,635.678406 gun_world=-3891.96948,18.757597,635.678406 gun_basis=-0.422695339,-0.906271696,0,0.86582303,-0.403829604,0.295418233,-0.267729163,0.12487191,0.955368042 restored=1 component_rot=3129,-4551,0 absolute=1,1,0",
+    "hammerburst_input_consumed frame=196 sequence=4502 current=1 status=2 source_status=1 owned=0 game_known=1 game_r2=0 trigger_active=1 trigger_value=1.000 trigger_pressed=1 trigger_released=0 input_sync_ns=118063956413000 admitted_ns=118064005237300 active_at_admission=1 preparation_budget=1",
+    "native_lancer_r2 status=2 source_status=1 mode=1 owned=0 game_known=1 game_r2=0 before_action=1 frame=196 sequence=4502 trigger_pressed=1 trigger_released=0 trigger_active=1 trigger_value=1.000 muzzle_ready=1 input_sync_ns=118063956413000 observed_ns=118064004589200 ammo_known=0 ammo=-1 previous_sync_ns=118063822645600 previous_observed_ns=118063894200400 game_elapsed_ns=908100 action_elapsed_ns=649600 ammo_queried=0 diagnostic_elapsed_ns=1300 ready_after_ammo_read=0 copy_elapsed_ns=3659300 input_elapsed_ns=4567500 continuity_matched=1 continuous_poll_gap=1 copied_source=1 copied_frame=196 copied_input_age_ns=48176200 preparation_budget=1 continuity_failure=0 continuity_native_selected=1 input_admission_ns=118064005237300 input_admission_delay_ns=648100 input_frame_now_ns=118063959597100 input_stereo_received_ns=118063956404100 input_controller_received_ns=118063956444000 input_frame_flags=15 input_stereo_status=0 input_frame_shape=1 input_frame_active=1",
+    "hammerburst_input_consumed frame=199 sequence=4516 current=1 status=2 source_status=1 owned=0 game_known=1 game_r2=0 trigger_active=1 trigger_value=1.000 trigger_pressed=1 trigger_released=0 input_sync_ns=118064267218300 admitted_ns=118064348310500 active_at_admission=1 preparation_budget=1",
+    "hammerburst_input_consumed frame=202 sequence=4531 current=1 status=2 source_status=1 owned=0 game_known=1 game_r2=0 trigger_active=1 trigger_value=1.000 trigger_pressed=1 trigger_released=0 input_sync_ns=118064599851600 admitted_ns=118064682006100 active_at_admission=1 preparation_budget=1",
+    "native_lancer_follow frame=202 publication=0 source_sequence=4535 sync_ns=118064691652400 observed_ns=118064735081800 hold=1 accepted=1 mesh_read=1 grip_world=-3886.04346,19.0608813,637.088872 grip_quat=-0.0323443292,-0.145895865,-0.21400921,0.965333258 target_world=-3891.96966,18.7575981,635.67841 target_rot=0,-20935,-3129 asset_origin=0,-16384,0 component_translation=-3891.96973,18.7575989,635.678406 gun_world=-3891.96851,18.7575932,635.678345 gun_rot=3129,-4551,0 dirty=7",
+    "native_lancer_follow_readback frame=202 source_sequence=4535 age_ns=17575100 known=1 target_world=-3891.96966,18.7575981,635.67841 component_translation=-3891.96973,18.7575989,635.678406 gun_world=-3891.96875,18.7575989,635.678345 gun_basis=-0.422695279,-0.906271756,0,0.865822911,-0.403829634,0.295418203,-0.267729133,0.124871917,0.955367982 restored=1 component_rot=3129,-4551,0 absolute=1,1,0",
+    "native_lancer_muzzle_prepare_rejected stage=8 follow_stage=6 plan_frame=204 frame=204 sync_age_ns=80049300 elapsed_ns=2000",
+    "native_lancer_hud_admission live=77 controller=77 functions=77 fields=77 arguments=77 capture=77 applied=77 accepted=77",
+    "hammerburst_input_consumed frame=204 sequence=4542 current=1 status=2 source_status=1 owned=0 game_known=1 game_r2=0 trigger_active=1 trigger_value=1.000 trigger_pressed=1 trigger_released=0 input_sync_ns=118064854453800 admitted_ns=118064937732200 active_at_admission=1 preparation_budget=0",
+    "native_lancer_muzzle_prepare_rejected stage=8 follow_stage=6 plan_frame=206 frame=206 sync_age_ns=82492900 elapsed_ns=800",
+    "hammerburst_input_consumed frame=206 sequence=4555 current=1 status=2 source_status=1 owned=0 game_known=1 game_r2=0 trigger_active=1 trigger_value=1.000 trigger_pressed=1 trigger_released=0 input_sync_ns=118065134805500 admitted_ns=118065219484700 active_at_admission=1 preparation_budget=0",
+    "native_equipment status=unavailable slot=4 target=0 event=0 press=0 frame=207 source_sequence=4562 cookie=1 inventory_stage=held_chain_observation input_status=quiet input_previous_sync_ns=118065134805500 input_sync_ns=118065292682800 input_received_ns=118065292711100 input_recorded_press_sync_ns=0 input_control=6",
+    "native_lancer_r2 status=2 source_status=0 mode=1 owned=0 game_known=1 game_r2=0 before_action=1 frame=0 sequence=0 trigger_pressed=0 trigger_released=0 trigger_active=0 trigger_value=0.000 muzzle_ready=0 input_sync_ns=0 observed_ns=118065400813800 ammo_known=0 ammo=-1 previous_sync_ns=118065134805500 previous_observed_ns=118065219484700 game_elapsed_ns=4981400 action_elapsed_ns=3700 ammo_queried=0 diagnostic_elapsed_ns=3700 ready_after_ammo_read=0 copy_elapsed_ns=800 input_elapsed_ns=4982300 continuity_matched=0 continuous_poll_gap=0 copied_source=0 copied_frame=0 copied_input_age_ns=-1 preparation_budget=0 continuity_failure=0 continuity_native_selected=0 input_admission_ns=118065400815900 input_admission_delay_ns=2100 input_frame_now_ns=0 input_stereo_received_ns=0 input_controller_received_ns=0 input_frame_flags=0 input_stereo_status=0 input_frame_shape=0 input_frame_active=0",
+    "native_lancer_l2 status=0 mode=1 owned=0 game_known=1 game_l2=0 toggle=0 allow=0 part_reserved=0 frame=0 sequence=0 left_trigger=0.000",
+    "native_body_mount_equipment_state status=3 held=0 busy=0 animation=0 frame=207",
+    "native_equipment status=baseline slot=4 target=0 event=0 press=0 frame=208 source_sequence=4570 cookie=1 inventory_stage=ok input_status=baseline input_previous_sync_ns=0 input_sync_ns=118065473423700 input_received_ns=118065473453200 input_recorded_press_sync_ns=0 input_control=6"
+  ],
+  "foreground_samples": 1512,
+  "cloak_samples": 2583,
+  "foreground_violations": [],
+  "cloak_violations": [],
+  "media": {
+    "frames": 174,
+    "errors": [],
+    "review": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-56348-media-review\\prepared.json",
+    "full_fit_accepted": false,
+    "encoded": true,
+    "encode_exit_code": 0
+  },
+  "verified_archive": [
+    {
+      "source": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\tools\\playground\\build-hb-cloak-1111-015245\\playground-56348.log",
+      "archive": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-56348-text\\playground-56348.log",
+      "sha256": "8e928bb6ae2cb30946b50099b459fdb11a2d95463c4b51e69cf585d1dcedce2b"
+    },
+    {
+      "source": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\hb-cloak-1111-015245\\actions\\menu-firstperson-56348-015325\\result.json",
+      "archive": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-56348-text\\result.json",
+      "sha256": "88db4aca20d29ba089bbb3583d48f535c62ec5913cc2566daf30753237cf0163"
+    },
+    {
+      "source": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\hb-cloak-1111-015245\\actions\\menu-firstperson-56348-015325\\equipment-chain.json",
+      "archive": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-56348-text\\equipment-chain.json",
+      "sha256": "97bd5f2d06ffde47af03ee042d6a4feb073b7863c534e3999cd6abd2c77cb7be"
+    },
+    {
+      "source": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\hb-cloak-1111-015245\\actions\\menu-firstperson-56348-015325\\hammerburst-core.json",
+      "archive": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-56348-text\\hammerburst-core.json",
+      "sha256": "520f8803159f5523e4d9a9bc3ed25d7732abb1569a89666abfe164796a979e92"
+    },
+    {
+      "source": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\runtime\\continuous-stereo-56348-20261111-015320-3c0377af.json",
+      "archive": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-56348-text\\continuous-stereo-56348-20261111-015320-3c0377af.json",
+      "sha256": "180354ce3d64f730f11f95647c280d382f2dc88532e4bab35578c50084c21d96"
+    },
+    {
+      "source": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\hb-cloak-1111-015245\\isolated-done.json",
+      "archive": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-56348-text\\isolated-done.json",
+      "sha256": "283ec01454add73da9d7dc3d51a2f241f008239fb70c8c6351caed26a2c0f044"
+    },
+    {
+      "source": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\hb-cloak-1111-015245\\launcher-session.c648d79477ad4946bb2ce24eefaf88f8.audio.jsonl",
+      "archive": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-56348-text\\launcher-session.c648d79477ad4946bb2ce24eefaf88f8.audio.jsonl",
+      "sha256": "fa20af9cfd3d1d00d51a9a00eeeb7b9225ee93b834b42353a37373d57715feb8"
+    }
+  ],
+  "interpretation": "Actual first core press: Frame193 status10 is deferred, not a hard execution failure. Frame194 pre-dispatch evidence valid/same/current/live but reserved_frame_current0/reserved_live0 at83.8485ms source age, so original ButtonPress not called. Frame195 status8 blocked, later held input accepted without original shot; finally real release, zero trajectories. Original intent lifetime expired; full timing cause before dispatch unproven. No reload/history branch reached; cannot accept or reject feed repair from this run. Preserve20ms reserve/100ms source/original intent deadline.",
+  "gameplay_accepted": false,
+  "physical_headset_accepted": false,
+  "derived_original_intent_deadline_ns": 118063827524800,
+  "deadline_basis": "Frozen weapon_lancer_r2.h Input::defer anchors pending_deadline to first deferred controllers.sync_ns; Frame195 input admission118063894200400 is later. This is not event renewal or full pre-dispatch timing attribution."
+}

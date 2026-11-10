@@ -354,3 +354,11 @@ Git保存说明：c6a37b0c提交时共享index同时出现其他会话的cover c
 纯geometry helper先检查整个最多9点段，逐对仍100ms和原速度限制；在stroke副本上消费，缺样/身份/时间/端点/超速失败不修改原stroke，交回原rearm路径。若中间真实点已经座入，其余真实点也必须持续座入，不能靠历史触碰后退出完成。当前严格grant和原transaction/native完成路径未改，旧匣extraction路径未改。第一遍编译局部new_item隐藏原全局对象被/WX拒绝，重命名first_item_sample后完整PG编译通过，SHA a38e8e85c6c3464ef1beb9b4a4738a501c36924d16b982cb0348bef1b41613d0；Native/XR/共享Client未改。
 
 21项真实FeedInsertionStroke helper检查和22项精确提取runtime consumer检查通过：真实raw continuity/projector/kernel，合成local context/producer fixtures；包括53560实际深度/110.739ms差值的合成中间点证明、旧单点rearm失败、合法连续点插入、缺序/倒时/丢失两手tracking、松手、input epoch、game/native/lifecycle/object/publisher/mount/reference/control/token变化、端点不符以及原子拒绝。中间点不是53560录到的历史，不冒充实际游戏修复。runner选择新候选，下一步一次新的focused loaded replacement实测；空仓/射击期限/完整贴合/13项最终要求不缩减。
+
+## 实际56348：首次按下等待余量，未进入换弹
+
+feed-history-r1/hb-cloak-1111-015245/game56348/creation134388067907247032，首次start前资源读等待0.187秒/拒绝0。已正常取枪，第一次core DOWN Frame193/seq4485/status10，真实枚举是deferred而非硬执行失败；sync118063577524800/admission118063660207000。Frame194执行前readiness valid/same_frame/frame_current/held/registration/live/epoch均1，但reserved_frame_current/reserved_live均0，source83.8485ms，不能满足原20ms余量，原ButtonPress未调用。Frame195/status8 blocked，input admission118063894200400已超过原首次defer sync+250ms=118063827524800；后续同一held DOWN只有accepted、无新press，最终真实release，实际射线0。不要把deferred解释成硬拒绝、不要重复新按下掩盖它。前置准备的具体耗时分配尚未证实，不能只凭此归咎某次metadata读取。
+
+因此新feed history分支未到达，不能用这轮接受或否定插入修正。下一步先针对56348检查首次按下执行之前的准备延迟，减少重复工作同时保留实际当前source/20ms余量/250ms意图/身份条件；不加宽保护，不原样重跑碰运气。20672尾部原事件期限及全部13项需求仍开放。
+
+launcher0/operator1/stop0，Native清理/PG入口恢复/XR0，本方game/子进程消失、无强杀，1512前台/2583CLOAK零违规。174帧errors空、encode0，亲看48双眼全跨度样本三页，实际场景/双手/取枪可见，近脸/白面重叠和近处枪体可见性仍未接受。7份文本原件SHA归档，详见runtime-56348-first-failure-analysis.json与媒体索引。源码checkpoint3c20e7d9完整保留新feed43项离线检查及完整PG身份，没有公共安装/整体完成宣称。
