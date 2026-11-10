@@ -22,6 +22,13 @@ PAUSE=ROOT/'tools/multi-instance/automatic-runtime-pause.json'
 def write(path,value):path.write_text(json.dumps(value,indent=2),encoding='utf-8')
 
 
+def reload_test_mode(arguments):
+    # A separate focused action path; never recovery/retry in a failed game.
+    focused='--focused-loaded-replacement' in arguments
+    return dict(empty_only='0' if focused else '1',
+                scope='loaded replacement insertion diagnostic; empty reload still pending' if focused else 'full finite empty reload and return-fire')
+
+
 def resource_preflight():
     # Advisory before the large private prepare copy. The shared start path
     # still repeats admission under its resource transaction; this reserves
@@ -75,7 +82,8 @@ def main():
                     lancer_interaction_ranges=False,candidate_validation=proof.get('scope','Private HB candidate')+'; whole weapon acceptance pending')
     write(target/'candidate-manifest.json',manifest)
     env={k:v for k,v in os.environ.items() if not k.upper().startswith(('GEARS','PYTHON','XR','OPENXR'))}
-    env.update(GEARSVR_TEST_FINITE_RANGE_AMMO='1',GEARSVR_HAMMERBURST_EMPTY_RELOAD_ONLY='1',
+    test_mode=reload_test_mode(sys.argv)
+    env.update(GEARSVR_TEST_FINITE_RANGE_AMMO='1',GEARSVR_HAMMERBURST_EMPTY_RELOAD_ONLY=test_mode['empty_only'],
                GEARSVR_HAMMERBURST_RELOAD='1',GEARSVR_HAMMERBURST_REPLACEMENT='1',
                GEARSVR_LANCER_REVIEW_VOLUMES='0',PYTHONIOENCODING='utf-8')
     python=[sys.executable,'-E','-s','-B','-X','utf8']
@@ -83,7 +91,7 @@ def main():
     selected=ROOT/'analysis/instances'/name
     result=dict(instance=name,game_started=False,operator_started=False,focus_samples=0,foreground_violations=[],
                 cloak_samples=0,cloak_violations=[],recording='private GPU composed frames; encode after owned cleanup',
-                shared_instance_changed=False,physical_headset_accepted=False)
+                shared_instance_changed=False,physical_headset_accepted=False,test_mode=test_mode)
     launched=False;operator=None;operator_log=None
     sys.path.insert(0,str(ROOT/'tools/native-capture'))
     from run_stereo_continuous import WindowsControl

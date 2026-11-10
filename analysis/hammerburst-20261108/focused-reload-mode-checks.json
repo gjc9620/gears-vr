@@ -1,0 +1,5 @@
+{
+  "passed": true,
+  "checks": 4,
+  "scope": "Explicit separate loaded replacement diagnostic; default full empty flow unchanged; no runtime/input"
+}

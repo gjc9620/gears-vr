@@ -328,3 +328,11 @@ launcher0/operator1/stop0，Native清理/PG入口恢复/XR0，game与本方子�
 feed-observe-r1只观测已有插入计算结果、已有source时间差/rearm及失败门；不增加source/metadata/clock读取或引擎调用，不改几何、100ms/250ms、真实库存/identity/lease许可。接近区和端点区各24条上限，另早期拒绝12条/move拒绝16条，避免肩部行程耗尽端点记录。完整PG编译SHA c5c04aee6c3e54bb0c9fc3e93cddb1aefcc17a0eb89d4bf4651e6d5a6e3041b9；Native/XR/共享Client不改。真实冻结FeedInsertionStroke加精确提取的修改前后insertion_step，用合成Frame/local_hand完成8场景84成对样本，返回值、arm/observe/reset次数、source游标及原弹匣extraction调用一致；包含连续插入、超100ms间隙、偏轴、丢失local pose、重复source、超速和分区日志限额。不是游戏验收。测试最初因tmpfile弃用警告不编译，改用tmpfile_s；重复source原逻辑保留已有stroke，修正测试预期，未改生产判定。runner选新候选后进行一次新的实际验证。
 
 历史离线媒体runtime-52960/56252/53484共7307文件1,288,578,715bytes已逐文件SHA/大小/文件集验证归档J盘，原C路径junction读回一致；保留原图、录像及文本，没有删掉失败或改变旧验收。索引offline-media-archive-20261111.json。源码仍在C盘工作树，公共v71和整体30%/headsetfalse保持。
+
+## 实际20672：未到插入，原事件期限拒绝
+
+feed-observe-r1/hb-cloak-1111-013055/game20672/creation134388054697893946，实际core6+五次drain6通过，第六次drain首发后service gate4（原pending event release_required）拒绝，总37条有效且write/trace一致射线。最近withdrawal Frame334/sequence4087 stale_before101.0706ms，属于同时记录，尚不足证明整个原事件等待期限的根因；不放宽250ms事件期限或100ms输入。不重按掩盖失败。尚未进入换弹，feed observer分支未到达，不能当新插入实测。
+
+launcher0/operator1/stop0、Native清理/PG入口恢复/XR0，本方game/子进程消失无强杀；1522前台/2530CLOAK零违规。225帧无capture errors，亲看48双眼样本三页全跨度概览，真实动作可见，近脸遮挡/重叠与近处枪体偶发降低/消失外观仍在，未接受完整贴合。8份原文本SHA归档；详见runtime-20672-first-failure-analysis.json。原54452插入失败与本次射击期限失败都保留。
+
+为取得已有插入失败的端点证据，runner增加显式--focused-loaded-replacement：新唯一实例仍经原取枪/core6和原replacement/return-fire动作，只跳过十二次排空前置，使用已有普通部分弹量换弹路径，不改生产代码/库存/许可/动作期限。默认完整空仓路径不变；聚焦结果即使通过也不接受空仓流程或关闭当前射击期限失败。4项mode/环境接线离线检查通过，待一次新聚焦运行。
