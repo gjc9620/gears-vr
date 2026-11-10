@@ -1966,3 +1966,20 @@ D7E30的顶点分支在D823B加载RVA22A510常量，D824C／D826C可拒绝投影
 基于r107 v2冻结源，最终Native v3仅新增路径头及Session include，编译SHA256 111332fa51d38ae005662133aa6fe05172187592458ddf34ef2b44a1269ee705，401项项目依赖、无外部工作树依赖和原编译开关均通过。早期v1／v2编译、初始检查和边界失败完整保留；未stage、未交付或载入本轮DLL，原query／Sphere sweep许可不变，没有第二写入端。
 
 证据：analysis/cover-system-20261108/capsule-path-r109/verification.json、exact-coverage.json及geometry-witness.jsonl。下一步仍须实际查询执行器在同一当前来源／世界约束下消费所有段与终点，处理命中、自身排除、等待、释放和陈旧结果，再接共同身体事务；Sphere／Box及关节姿态路径、完整当前形状覆盖与世界时相、r102 Code4首拒绝、实际C0／视图／命中合流、头肩遮挡、联合战斗和实体头显均未完成。完整CV-01–24／AC-01–22、publicv71及工程25%保持，目标active。
+
+
+## r110：同一C0下的分段全命中查询与终点原始观测（2026-11-10，离线）
+
+上一轮完整平移几何准备属于progress。本轮继续遵守automatic-runtime-pause=true，没有game／XR启动、安装或窗口操作。新增RawPath：保留原计划、每段命中区间／数量／回报数量、统一平铺的完整原始Hit及归属、首段类型来源快照，以及原始未过滤endpoint overlap布尔值。重复命中逐项保留，不用去重丢失分段来源；路径合计仍限制1024命中／256回报，不按段重置总预算。
+
+现有Session::sweep_capsule_path在同一个串行owner操作内内部准备全部几何，逐段调用原有all-hit完整归属链，再调用原终点胶囊overlap。typed Physics／Collider／Components来源持续复核，后续段的来源快照须与首段一致，输入位移／预算／策略在guard前后复查；原C0、身份、原时间及100ms有效性不刷新。只有整条路径、终点及最终owner／metadata关闭复核都成功后，才把大结果从Session私有空间赋给公共输出。任何中途changed／stop／truncated／fault保留旧公共结果，不交出“成功前缀”。大归属缓冲和路径结果均在Session内，不放139KB级临时到实时调用栈，原调用外不持私有互斥锁。
+
+实际C0入口及编译OFF分支已接线，复用原query准入：当前selected C0、已捕获未prepared／无pending提交、当前cover身份和同一源、原owner及metadata复核；fault_unknown仍请求原proof_failure正常停机，uncertain／pending不强关。默认查询开关保持，未增加按帧自动调用或身体写入端。该API返回的queried只指原始查询序列完成，不能从共同Actor／Scene指针推断物理世界没变化；endpoint overlap未排除自身，false和空命中都不授予占用许可。
+
+最终严格检查均退出0：新路径执行187项、原Session96项、C0关闭36项。新检查记录实际传给Host原调用缝的四段起点／75单位移动与301终点、全命中顺序／重复归属、全空结果、8命中／4回报恰满仍能查终点、前缀预算不足不继续查、末段超预算、第二段来源／component变化、释放drain、输入变化、嵌套查询拒绝、原调用故障后保留pending，以及终点才来源变化时整笔不发布。模块／dispatch均为明确Host替身，真实typed读层与Session代码执行，不是原DLL／游戏动作证据。
+
+原失败保留：checks-v1嵌套main夹具重名；checks-v2新夹具漏分配synthetic arena导致独立测试C0000005，已补VirtualAlloc／正常VirtualFree，且错误C0测试文件名导致原汇总中止；checks-v4 OFF夹具变量path与INI路径重名，改为path_output。它们不记作生产游戏失败或原调用异常；自有CPU进程终态已观察，全部修正后最终检查通过。详见initial-failures.json与原日志。
+
+在r109最终冻结源上只覆盖C0 h／inl、Session inl、新观测头四个生产文件完成Native编译：SHA256 0da3cf99b9d340c8fbf5bd74749c8a356c9f0e716ea1622f2ef00fc8a59b5e6f，402项目依赖、无外部工作树依赖、原开关不变。本轮制品未stage／交付或载入；不是整个当前多武器脏树集成。证据analysis/cover-system-20261108/capsule-executor-r110/verification.json、checks-v5／checks-v4及native-build-result.json。
+
+下一步仍需完整身体形状与姿态路径、当前世界／碰撞参与范围、精确自身排除和终点占用证明，再把结果关联到from-version及共同身体实际提交／视图／命中消费者；不能凭本轮raw结果解除原no_cover保护。r102 Code4首拒绝、头肩遮挡、真实抓边闭环、联合战斗与实体头显仍未验收，完整CV-01–24／AC-01–22、publicv71和工程25%保持，目标active。

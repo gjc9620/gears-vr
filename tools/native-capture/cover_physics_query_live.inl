@@ -1,7 +1,7 @@
 #ifndef GEARS_COVER_PHYSICS_QUERY_LIVE_INCLUDED
 #define GEARS_COVER_PHYSICS_QUERY_LIVE_INCLUDED
 #include "cover_physx_query.h"
-#include "cover_physx_capsule_path.h"
+#include "cover_physx_capsule_path_observation.h"
 #include "cover_physics_roles_live.inl"
 #include "cover_collider_roles_live.inl"
 #include "cover_component_roles_live.inl"
@@ -12,6 +12,7 @@ namespace q=gears_cover_physx_query;
 namespace roles=cover_physics_roles_live;
 namespace collider_roles=cover_collider_roles_live;
 namespace component_roles=cover_component_roles_live;
+namespace path=gears_cover_capsule_path;
 enum class Stage:unsigned {idle,geometry,physics_roles,collider_roles,component_roles,engine,closing,complete};
 struct Observation {Stage stage{};unsigned detail{};q::QueryProgress engine{};};
 #if defined(GEARS_COVER_BODY_PROTOTYPE) && GEARS_COVER_BODY_PROTOTYPE
@@ -21,6 +22,7 @@ template<class Engine=q::Queries> class Session {
     component_roles::Workspace component_work_{};component_roles::Snapshot component_before_{},component_after_{};
     gears_cover_physx_components::Source component_input_{};
     q::AllSweepOwners owner_result_{};
+    path::Workspace path_work_{};path::RawPath path_result_{};
     Stage stage_{};unsigned detail_{};
     struct NoLocalResult {};
     std::atomic<bool> configured_{},enabled_{},stopped_{},busy_{},closed_{true};
@@ -62,7 +64,7 @@ template<class Engine=q::Queries> class Session {
         stage_=Stage::physics_roles;
         const auto physics=roles::sample(owner,source,guard,work_,before_);detail_=unsigned(physics);
         if(physics!=roles::Code::current)return q::Code::source;
-        constexpr bool with_collider=std::is_same_v<Output,q::AllSweepOwners>;
+        constexpr bool with_collider=std::is_same_v<Output,q::AllSweepOwners>||std::is_same_v<Output,path::RawPath>;
         if constexpr(with_collider){stage_=Stage::collider_roles;const auto collider=collider_roles::sample(owner,guard,collider_work_,collider_before_);detail_=unsigned(collider);
             if(collider!=roles::Code::current)return q::Code::source;}
         if constexpr(with_collider){stage_=Stage::component_roles;const auto components=component_roles::sample(owner,guard,component_work_,component_before_);detail_=unsigned(components);
@@ -72,8 +74,9 @@ template<class Engine=q::Queries> class Session {
         if constexpr(with_collider)current.component_source=&component_input_;
         // The larger ownership packet lives in the already serialized
         // Session, never as a 139KB temporary on the live game stack.
-        std::conditional_t<std::is_same_v<Output,q::AllSweepOwners>,NoLocalResult,Output> local{};
-        Output& result=[&]() -> Output& {if constexpr(std::is_same_v<Output,q::AllSweepOwners>)return owner_result_;else return local;}();
+        std::conditional_t<with_collider,NoLocalResult,Output> local{};
+        Output& result=[&]() -> Output& {if constexpr(std::is_same_v<Output,q::AllSweepOwners>)return owner_result_;
+            else if constexpr(std::is_same_v<Output,path::RawPath>)return path_result_;else return local;}();
         stage_=Stage::engine;detail_=0;
         const auto code=invoke(engine_,before_.source,geometry,read,current,result);detail_=unsigned(code);
         if(code==q::Code::fault_unknown||engine_.uncertain())enabled_=false;
@@ -85,6 +88,55 @@ template<class Engine=q::Queries> class Session {
         output=result;stage_=Stage::complete;return q::Code::queried;
     }
 public:
+    // One serialized owner operation. Every segment uses the same typed
+    // source/collider/component closure and original timestamps. A prefix is
+    // private scratch until endpoint and final owner checks both succeed.
+    template<class Read,class Guard> q::Code sweep_capsule_path(
+        weapon_hand_scene_binding::Binding const& actor,gears_cover_pose_phase::Metadata const& metadata,
+        q::Capsule const& shape,q::Vector const& delta,path::Policy const& policy,q::StreamLimits const& limits,
+        Read read,Guard guard,path::RawPath& output)noexcept {
+        if(q::source::aliases(&output,sizeof output,&delta,sizeof delta)||
+           q::source::aliases(&output,sizeof output,&policy,sizeof policy)||
+           q::source::aliases(&output,sizeof output,&limits,sizeof limits)||!q::detail::stream_limits(limits))return q::Code::request;
+        const auto movement=delta;const auto options=policy;const auto budget=limits;
+        auto stable=[&](){return !std::memcmp(&movement,&delta,sizeof delta)&&
+            options.segment_limit==policy.segment_limit&&options.maximum_radius_expansion==policy.maximum_radius_expansion&&
+            budget.max_hits==limits.max_hits&&budget.max_reports==limits.max_reports;};
+        auto current_owner=[&](){if(!stable())return false;const bool okay=guard();return okay&&stable();};
+        try{return execute(actor,metadata,shape,read,current_owner,output,[&](auto& engine,auto const& source,auto const& geometry,auto reader,auto current,auto& result){
+            const auto prepared=path::prepare(geometry,movement,options,path_work_,result.plan);
+            if(prepared!=path::Code::planned)return prepared==path::Code::capacity?q::Code::truncated:q::Code::request;
+            result.spans={};result.endpoint={};
+            static_assert(std::is_trivially_copyable_v<q::AllSweepOwners>);
+            std::memset(&result.collected,0,sizeof result.collected); // no large stack temporary
+            auto& accumulated=result.collected;
+            for(unsigned i=0;i<result.plan.count;++i){
+                if(stopped_.load())return q::Code::unavailable;
+                auto const& totals=accumulated.raw;
+                if(totals.hit_count>=budget.max_hits||totals.reports>=budget.max_reports)return q::Code::truncated;
+                const q::StreamLimits remaining{budget.max_hits-totals.hit_count,budget.max_reports-totals.reports};
+                auto const& segment=result.plan.segments[i];
+                const auto code=engine.sweep_all(source,segment.shape,segment.movement,remaining,reader,current,owner_result_,
+                                                  &current.collider_source,current.component_source);
+                if(code!=q::Code::queried)return code;
+                if(!stable())return q::Code::changed;
+                auto const& packet=owner_result_;auto const& raw=packet.raw;
+                if(raw.raw_count!=raw.hit_count||raw.hit_count>remaining.max_hits||raw.reports>remaining.max_reports)return q::Code::callback_rejected;
+                if(i==0){accumulated.asset_bodies=packet.asset_bodies;accumulated.collider_source=packet.collider_source;
+                    accumulated.component_sources=packet.component_sources;}
+                else if(!gears_cover_physx_asset_actors::same(accumulated.asset_bodies,packet.asset_bodies)||
+                        !gears_cover_physx_collider::same(accumulated.collider_source,packet.collider_source)||
+                        !gears_cover_physx_components::same(accumulated.component_sources,packet.component_sources))return q::Code::changed;
+                const auto start=accumulated.raw.hit_count;
+                result.spans[i]={start,raw.hit_count,raw.raw_count,raw.reports};
+                for(unsigned j=0;j<raw.hit_count;++j){accumulated.raw.hits[start+j]=raw.hits[j];accumulated.owners[start+j]=packet.owners[j];}
+                accumulated.raw.hit_count+=raw.hit_count;accumulated.raw.raw_count+=raw.raw_count;accumulated.raw.reports+=raw.reports;
+            }
+            if(stopped_.load())return q::Code::unavailable;
+            const auto code=engine.overlap(source,result.plan.endpoint,reader,current,result.endpoint);
+            return code==q::Code::queried&&!stable()?q::Code::changed:code;
+        });}catch(...){return q::Code::source;}
+    }
     Session()=default;Session(Session const&)=delete;Session& operator=(Session const&)=delete;
     // One startup attempt; worker only, outside DllMain and game callbacks.
     bool start(bool requested,bool owner_enabled) noexcept {

@@ -1,0 +1,12 @@
+{
+  "scope": "Standalone owned CPU fixture/build failures; no game or original physics module execution.",
+  "checks-v1": "Nested fixture main macro redefinition and duplicate main; added explicit prior-test entry macro.",
+  "checks-v2": {
+    "owned_test_exit": 3221225477,
+    "reason": "New fixture omitted its synthetic VirtualAlloc arena; added allocation and normal VirtualFree.",
+    "later_driver_error": "Mistyped nonexistent cover_physics_c0_live_test.cpp stopped result aggregation; original build/test logs retained.",
+    "owned_process_terminal_observed": true
+  },
+  "checks-v4": "New OFF fixture variable path collided with its existing INI path; renamed path_output.",
+  "final_checks_exit": 0
+}

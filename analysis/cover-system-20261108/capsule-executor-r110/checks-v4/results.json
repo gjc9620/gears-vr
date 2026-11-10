@@ -1,0 +1,79 @@
+[
+  {
+    "name": "cover_physics_capsule_path_live",
+    "build_exit": 0,
+    "source_sha256": "9df9806f8ee1820f6805a1579e94e31af215148d6dda41460abcdc4b0c9c3a56",
+    "command": [
+      "E:/vs/VC/Tools/MSVC/14.51.36231/bin/Hostx64/x64/cl.exe",
+      "/nologo",
+      "/std:c++17",
+      "/O2",
+      "/W4",
+      "/WX",
+      "/EHsc",
+      "/UNDEBUG",
+      "/MT",
+      "/IC:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\tools\\third-party\\minhook\\include",
+      "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\tools\\native-capture\\cover_physics_capsule_path_live_test.cpp",
+      "/Fo:C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\capsule-executor-r110\\checks-v4\\cover_physics_capsule_path_live.obj",
+      "/sourceDependencies",
+      "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\capsule-executor-r110\\checks-v4\\cover_physics_capsule_path_live-dependencies.json",
+      "/Fe:C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\capsule-executor-r110\\checks-v4\\cover_physics_capsule_path_live.exe",
+      "/link",
+      "bcrypt.lib",
+      "psapi.lib"
+    ],
+    "test_exit": 0
+  },
+  {
+    "name": "cover_physics_query_live",
+    "build_exit": 0,
+    "source_sha256": "746ccd1ac1ecf4b9408144de5711ee980d96f3e8aa8e5c8b24e56c83bcceae62",
+    "command": [
+      "E:/vs/VC/Tools/MSVC/14.51.36231/bin/Hostx64/x64/cl.exe",
+      "/nologo",
+      "/std:c++17",
+      "/O2",
+      "/W4",
+      "/WX",
+      "/EHsc",
+      "/UNDEBUG",
+      "/MT",
+      "/IC:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\tools\\third-party\\minhook\\include",
+      "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\tools\\native-capture\\cover_physics_query_live_test.cpp",
+      "/Fo:C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\capsule-executor-r110\\checks-v4\\cover_physics_query_live.obj",
+      "/sourceDependencies",
+      "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\capsule-executor-r110\\checks-v4\\cover_physics_query_live-dependencies.json",
+      "/Fe:C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\capsule-executor-r110\\checks-v4\\cover_physics_query_live.exe",
+      "/link",
+      "bcrypt.lib",
+      "psapi.lib"
+    ],
+    "test_exit": 0
+  },
+  {
+    "name": "cover_physics_c0_off",
+    "build_exit": 2,
+    "source_sha256": "62d49148545072b02fffef198a1a368b6e2d599b21e5cf4c5e1cbf6841f9d798",
+    "command": [
+      "E:/vs/VC/Tools/MSVC/14.51.36231/bin/Hostx64/x64/cl.exe",
+      "/nologo",
+      "/std:c++17",
+      "/O2",
+      "/W4",
+      "/WX",
+      "/EHsc",
+      "/UNDEBUG",
+      "/MT",
+      "/IC:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\tools\\third-party\\minhook\\include",
+      "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\tools\\native-capture\\cover_physics_c0_off_test.cpp",
+      "/Fo:C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\capsule-executor-r110\\checks-v4\\cover_physics_c0_off.obj",
+      "/sourceDependencies",
+      "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\capsule-executor-r110\\checks-v4\\cover_physics_c0_off-dependencies.json",
+      "/Fe:C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\capsule-executor-r110\\checks-v4\\cover_physics_c0_off.exe",
+      "/link",
+      "bcrypt.lib",
+      "psapi.lib"
+    ]
+  }
+]

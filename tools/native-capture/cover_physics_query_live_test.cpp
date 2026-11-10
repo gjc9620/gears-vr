@@ -82,7 +82,10 @@ static void replace_component_owner(){put(audio+0x170,fixture_pawn);}
 static void replace_component_asset(){put(weapon_mesh+0x250,physics_instance);}
 static void replace_actor_base(){put(fixture_pawn+0x520,fixture_weapon);}
 static void reset(){physics_setup();prime_calls=close_calls=query_calls=0;prime_ok=true;fault_query=wrong_receiver=stream_truncated=wrong_asset=late_component_change=late_asset_change=late_base_change=false;during_query=nullptr;query_lock_free=true;}
-int main(){
+#ifndef GEARS_QUERY_SESSION_TEST_MAIN
+#define GEARS_QUERY_SESSION_TEST_MAIN main
+#endif
+int GEARS_QUERY_SESSION_TEST_MAIN(){
     arena=reinterpret_cast<uintptr_t>(VirtualAlloc(nullptr,saved_arena.size(),MEM_COMMIT|MEM_RESERVE,PAGE_READWRITE));if(!arena)return 99;
     reset();q::Overlap overlap_result{};q::Sweep swept{};q::Vector delta{.1f,.2f,.3f};
     {auto owner=std::make_unique<HostSession>();C(owner->start(false,true));C(!owner->enabled()&&!owner->pending_count()&&!prime_calls);

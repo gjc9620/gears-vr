@@ -117,6 +117,15 @@ template<class Shape> q::Code do_overlap(Entry const&,Core const&,Shape const&,q
 template<class Shape> q::Code do_sweep(Entry const&,Core const&,Shape const&,q::Vector const&,q::Sweep&)noexcept{return q::Code::unavailable;}
 template<class Shape,class Output> q::Code do_sweep_all(Entry const&,Core const&,Shape const&,q::Vector const&,q::StreamLimits const&,Output&)noexcept{return q::Code::unavailable;}
 #endif
+q::Code sweep_capsule_path(Entry const& e,Core const& c,q::Capsule const& shape,q::Vector const& delta,
+    gears_cover_capsule_path::Policy const& policy,q::StreamLimits const& limits,gears_cover_capsule_path::RawPath& out)noexcept {
+#if defined(GEARS_COVER_PHYSX_QUERIES) && GEARS_COVER_PHYSX_QUERIES
+    return query(e,c,shape,out,[&](auto const& actor,auto const& metadata,auto const& geometry,auto read,auto guard,auto& output){
+        return session.sweep_capsule_path(actor,metadata,geometry,delta,policy,limits,read,guard,output);});
+#else
+    (void)e;(void)c;(void)shape;(void)delta;(void)policy;(void)limits;(void)out;return q::Code::unavailable;
+#endif
+}
 q::Code overlap(Entry const& e,Core const& c,q::Sphere const& s,q::Overlap& out)noexcept{return do_overlap(e,c,s,out);}
 q::Code overlap(Entry const& e,Core const& c,q::Box const& s,q::Overlap& out)noexcept{return do_overlap(e,c,s,out);}
 q::Code overlap(Entry const& e,Core const& c,q::Capsule const& s,q::Overlap& out)noexcept{return do_overlap(e,c,s,out);}
