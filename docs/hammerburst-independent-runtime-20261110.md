@@ -526,3 +526,17 @@ C余量实际降至3.47GB，禁止再启动。只归档本方6个已terminal＋�
 使用同一已审阅archive路径/identity/SHA/读回/junction保护，r3仅扩展到本方已terminal正常退出的005137/013055/013604/015245/020257/021724/024442/030749；各自owner/game/XR精确lifetime退出核对后才移动，活动实例和其他owner未碰。实际8目录736文件6195345229bytes，不把首目录已只剩1文件3bytes虚报为885MB；其余7目录各105文件885049318bytes。所有内容J副本SHA/文件集合/长度及C原路径映射读回通过，原源码/日志/录像/制品不动。terminal-shader-archive-20261111-r3.json保存after_free8543346688，后续启动仍需重新查实际资源。
 
 未新增游戏、未改变任何武器/输入/source门，目标active。下一步同一当前候选的新唯一实例，使用已核共享publisher窄改与本方首发setup改；21596实例不重启。
+
+## 实际22992：loaded replacement＋两组原六连发聚焦通过，不是全枪完成
+
+原exec29637 terminal0，endpoint-baseline-r1/hb-cloak-1111-051514/game22992/creation134388191263534883。资源只读120.016秒110次后单次start；普通新共享publisher启动通过，不证明本次真的触发WinError5 retry，也不声称根因已查明。operator0/launcher0/stop0；Native清理/PG入口恢复/XR0、本方game与children退出，无强杀/workererror，2171前台/4031CLOAK零违规。
+
+actual exact-endpoint pickup与bound first-real-projection gate再次成功。新的UP-only60ms setup在真实首按前使用更及时source，第一次ButtonPress272 sourceentry40.1577ms，第二次767为54.7879ms；原压检/asset/contract/20msreserve全跑，均invoked1。两段各原六发，共12条trace/write/source一致；每段在首发1射线后真实UP，剩余原有限尾段完成。新release_handoff实际274/event2 captured130386035771100和769/event8 captured130427202034200，原serial/captured相同、service0/validated1/no_dispatch1，然后原deliver产生对应第2射线，未重捕获/更新时间/二次派发。此产品分支已实测到，不再只有430fake检查；单次正例不证明所有延迟稳定性/唯一因果。
+
+普通partial loaded replacement：typed72/78→原lock打开/旧mag抽出/新supply→插入→锁扣闭合，typed78/72；再六发后typed72/72、used6，真实after_return_fire与exported6一致。latch369/token1、supply500/token2同Frame路径、early_reload369 before_active0→1/once1实测。history7行，其中4次used1/points6/result1桥接原producer间距>100ms（如562 gap112.4448ms），strict当前源/20ms门和几何未变；最终feed618 result2。此前feed-history分支未实测的限制在这个具体路径已补证，不宣称所有插入轨迹完成。6条support_withdrawal发生在seat/closure后仍原样保留（含difference6/2），identity_lost0，不冒称全局零withdrawal。pause/Bresume实际通过。
+
+首发asset拆分实测：read.2793/.2771ms，attached1.5100/1.5149ms，postcurrent.6263/1.0278ms；总asset2.4156/2.8198ms，contract2.4497/2.9725ms。更及时来源下原检查可完成，不删读asset/attachment也不把此前6.3101ms断言为单一asset rootcause。
+
+582帧errors空、encode0，亲看3页48paired全跨度及6个实际contact185/297/334/420/470/494。实际取枪/锁扣/弹匣手动作/暂停恢复可见，右眼近大枪、重影/穿插/副手张开和分离仍存在，指南细字可读性未验收；不是全部帧/全角度/五处皮肤贴合/头显通过。8份原文本SHA归档。输出runtime-22992-focused-result.json明确focused_actions_passed=true/full_goal_complete=false，旧latest failure21596保留，未把成功批次伪称failure。
+
+这次刻意focused-loaded-replacement，**未**做empty drain/零备弹、retained原匣复插、双手及护木四态、perfect cancel、tracking/switch/stowrestore或完整贴合。全13项audit已按实际局部结果更新，30%/publicv71/头显false不抬升为整项通过。下一步保存后新唯一实例跑原FULL empty路径（不传focused标记），验证78发耗尽/empty veto/empty换78/0/复射6typed72/0；首失败停止，不重复已通过的普通loaded聚焦路径。原其他未验收项继续保留。

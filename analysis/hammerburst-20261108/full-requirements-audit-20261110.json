@@ -53,14 +53,18 @@
         {
           "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-54720-first-failure-analysis.json",
           "sha256": "3e7bfee7e31d4e70f1db9925dcaf313e8d4805a9dc208ea770a227f2e56f3dd3"
+        },
+        {
+          "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-22992-focused-result.json",
+          "sha256": "577273e37ba5591facb7696cf50ed9ec1dc29347cce195c09c89b7e67e7eebb3"
         }
       ]
     },
     {
       "id": "finite_fire",
       "requirement": "单手/双手瞄准与原版有限六连发",
-      "status": "current_first_down_source_expiry",
-      "limit": "Actual54720 DOWN239 source104.8766ms/current0 correctly sealed before ButtonPress; fresh240 baseline and241 blocked cannot replay. Test UP baseline stricter60ms/budget now9 synthetic tests only. Actual first/tail/reload unaccepted.",
+      "status": "current_two_original6_bursts_released_tail_confirmed_partial",
+      "limit": "Actual22992 two real original6 bursts; both actualUP handoffs revalidate same pending event then tail.12 consistent rays; full two-hand/continuous-load/empty/zero-reserve acceptance remains open.",
       "evidence": [
         {
           "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-13712-first-failure-analysis.json",
@@ -117,6 +121,10 @@
         {
           "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-54720-first-failure-analysis.json",
           "sha256": "3e7bfee7e31d4e70f1db9925dcaf313e8d4805a9dc208ea770a227f2e56f3dd3"
+        },
+        {
+          "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-22992-focused-result.json",
+          "sha256": "577273e37ba5591facb7696cf50ed9ec1dc29347cce195c09c89b7e67e7eebb3"
         }
       ]
     },
@@ -147,8 +155,8 @@
     {
       "id": "replacement",
       "requirement": "肩取新匣、持续持握入槽、普通换弹",
-      "status": "current_seating_sample_gap_failure_proven",
-      "limit": "Actual53560 loaded replacement reached6; approaching before787 then110.739ms gap rearmed below45mm, endpoint aligned at.011326mm depth rejected. No move/early/support/identity reject. Need authenticated real intermediate-motion ingestion; no geometry or deadline widening. Historical56252 remains separate.",
+      "status": "current_loaded_replace_and_return_counts_confirmed",
+      "limit": "Actual22992 loaded replacement typed72/78->78/72 and return6->72/72 passed, live6-point history/early priority/latch/supply. Empty/retained/all-flow stability and visual surface fit remain unaccepted.",
       "evidence": [
         {
           "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-53224-review.json",
@@ -173,6 +181,10 @@
         {
           "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-53560-first-failure-analysis.json",
           "sha256": "6f6dc36a38ab2485071b25f63ec036ddd8818166833dbbd565599b6428541850"
+        },
+        {
+          "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-22992-focused-result.json",
+          "sha256": "577273e37ba5591facb7696cf50ed9ec1dc29347cce195c09c89b7e67e7eebb3"
         }
       ]
     },
@@ -222,8 +234,8 @@
     {
       "id": "interruptions",
       "requirement": "暂停/失追/切枪/收枪退出、不得重放旧边沿",
-      "status": "restore_continuation_compiled_offline_game_missing",
-      "limit": "Park/rebind/display/fresh-UP-new-grant/native reacquire-or-inserted-visual-close/game-clock connected in actual runtime. Five focused frozen suites pass; engine calls/grants are fixture seams. No game restore/switch acceptance. Unknown original dispatch cannot be replayed or acknowledged as cleaned.",
+      "status": "current_pause_B_resume_only_other_interruptions_open",
+      "limit": "Actual22992 pause/B resume passed. Tracking loss, switch, stow restore and all anti-replay interruption chains not covered by this focused batch.",
       "evidence": [
         {
           "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\reload-cleanup-r1\\prepared.json",
@@ -244,6 +256,10 @@
         {
           "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\restore-resume-r3\\prepared.json",
           "sha256": "2c735c24bde87add51416128547834287f2529c83a9a94fdd2209719c72a4d38"
+        },
+        {
+          "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-22992-focused-result.json",
+          "sha256": "577273e37ba5591facb7696cf50ed9ec1dc29347cce195c09c89b7e67e7eebb3"
         }
       ]
     },
@@ -299,15 +315,19 @@
         {
           "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-21596-first-failure-analysis.json",
           "sha256": "f40e3c9f696c558822db12fd19b10373c892c2321a82c8dcf5825ecba62655bc"
+        },
+        {
+          "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-22992-focused-result.json",
+          "sha256": "577273e37ba5591facb7696cf50ed9ec1dc29347cce195c09c89b7e67e7eebb3"
         }
       ]
     }
   ],
   "completion_proven": false,
   "goal_active": true,
-  "immediate_next": "Verify coordinator shared source hashes/bounded same-payload patch, preserve failed share-delete experiment unwired, save then one fresh instance. Never reuse045812/72902. Retain9 first-fire fixture results; no live readiness proof yet. All13 requirements retained.",
+  "immediate_next": "Save focused result; one fresh FULL empty path (omit --focused-loaded-replacement) using same compiled candidate and stricter9-fixture driver. Verify actual78 drain +zero veto +empty replacement78/0 +return6 with final typed72/0; stop first failure. Then retained original/four-state/two-hand/interruptions and fitting remain. Preserve all13 requirements; no unchanged focused rerun.",
   "historical_evidence_does_not_certify_current_PG": true,
-  "candidate_runtime_status": "endpoint-baseline-r1 actual21596 startup failure publishing birth stage WinError5; operator not started. launcher1/stop1, owned game gone/no force. No stricter first-fire setup/handoff/weapon action tested.",
+  "candidate_runtime_status": "endpoint-baseline-r1 actual22992 focused loaded replacement PASS: two real original6 bursts, realUP pending handoff274/769 revalidated, typed72/78->78/72->72/72; original6-point history bridge live, pause/Bresume. Normal cleanup. Full weapon/empty/retained/fit/headset incomplete.",
   "previous_recorded_candidate": {
     "name": "hammerburst-prepared-20261110-unheld-input-r1",
     "prepared_sha256": "76a2ae8cc56e4165b77ca5d17a9e6469ff66323e917be5a8b46da44df4f0bb58"
@@ -329,5 +349,7 @@
   "restore_verifier_status": "Optional --hammerburst-park-restore input action hook integrated into private reload adapter; five synthetic action/receipt regressions passed. Actual park/redraw/new-grant/native-resume, typed conservation, UI/reward and complete return-fire require game evidence.",
   "latest_service_first_failure": "runtime-3112-first-failure-analysis.json",
   "latest_startup_failure": "runtime-49732-startup-failure.json",
-  "latest_runtime_failure": "runtime-21596-first-failure-analysis.json"
+  "latest_runtime_failure": "runtime-21596-first-failure-analysis.json",
+  "latest_runtime_result": "runtime-22992-focused-result.json",
+  "latest_focused_pass": "runtime-22992-focused-result.json"
 }

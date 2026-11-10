@@ -4,7 +4,7 @@ import hashlib,json,re,shutil
 import review_runtime_11644 as review
 A=Path(__file__).resolve().parent;ROOT=A.parents[1]
 def read(p):return json.loads(p.read_text(encoding='utf-8-sig'))
-def main(name,pid,action,candidate,interpretation):
+def main(name,pid,action,candidate,interpretation,result_name=None):
  p=ROOT/'analysis/instances'/name;action=p/'actions'/action
  result=read(A/name/'result.json');state=read(p/'launcher-session.json');session=read(Path(state['session_report']))
  assert result['game_identity']['pid']==pid and result['cleanup']['owned_game_absent'] and not result['cleanup']['owned_children']['remaining']
@@ -33,7 +33,9 @@ def main(name,pid,action,candidate,interpretation):
   'hammerburst_inventory_timing','hammerburst_pickup_up','native_equipment_input_gap','native_equipment_frame_read','native_equipment',
   'native_hammerburst_first_wait','native_hammerburst_release_rejected','native_hammerburst_continuation_rejected'):
   proof[prefix+'_rows']=rows(prefix)
- (A/f'runtime-{pid}-first-failure-analysis.json').write_text(json.dumps(proof,indent=2))
+ output=A/(result_name or f'runtime-{pid}-first-failure-analysis.json')
+ assert output.parent==A and output.name.startswith(f'runtime-{pid}-') and output.suffix=='.json'
+ output.write_text(json.dumps(proof,indent=2))
  review.SOURCE=action;review.OUTPUT=A/f'runtime-{pid}-media-review';review.main(len(media['frames']),pid)
  print(json.dumps(dict(game=pid,frames=len(media['frames']),shots=len(shots),error=proof['replacement'].get('error') or proof['core'].get('error'),timing=rows('hammerburst_press_timing'),cleanup=result['cleanup'])))
 if __name__=='__main__':
