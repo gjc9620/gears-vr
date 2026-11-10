@@ -2153,3 +2153,15 @@ b121d9c4保存r127观察器修正后，新票cover-1110-r128-cloak-registry完�
 本次正常stop，Native/entry/pad恢复true、fire_disable0/hand_stop5/drainedtrue、XR0/launcher0、精确game/owner/XR均不在，无强杀；CLOAK744次失败0，目标静音读回317/initially_muted1/verify_failed0/target_shared_rejected0。r128缺失的恢复回执不因此补签。原报告原样复制并按Native SHA解释，证据pose-probe-r126/runtime-r130/{query-probe,pose-probe,closeout,media-review}.json。
 
 下一步为typed完整成员见证提供有界分页/独立存储，维持全部兄弟、身份/字段/声明及closing验证，避免全局Proof扩容引起其他writer/栈尺寸变化；先离线复现跨128成员与末端突变，再编译定向修复。后续Core测量拒绝单独处理；完整当前占用/世界覆盖、原查询、唯一C0身体/视图/命中/枪口、抓边联合战斗和头显仍未完成。工程25%、公共v71与全部CV01–24/AC01–22状态保持，目标active。
+
+## r131：独立有界成员见证修复128项上限，源码/定向检查/私有编译（2026-11-10）
+
+上轮b85d3480已实际定位PhysicsAsset完整成员检查且shared Proof身份数128。本轮先在真实typed roles/registry代码中追加192个合法合成mesh sibling，before-v1严格复现offset0x248已解析、mesh_asset_property/layout5、identity128和调用方输出不变（8检查0失败，验证的是原缺陷）。未改旧游戏记录或把该before结果算玩法通过。
+
+新增Cover专用MemberStore，固定最多4096个唯一成员及8192查找槽，保存完整Identity和原Next；先按原规则核对身份/declaring owner/唯一选名，再双读链指针、记录与原样比较。重复遍历复用同地址见证，内容不符拒绝；完整链仍保留4096 visited/cycle边界。结束时在同一metadata/锁/当前来源保护下逐成员重新读取身份与Next。存储满明确capacity、无截断成功；clear只重置活动长度/索引，旧scratch不参与输出，不在游戏栈创建整个大Store临时对象。
+
+PhysicsRoles、ColliderRoles、ComponentRoles三个已有读取Workspace各拥有独立存储，所有生产role_property/pointer_property及body_layout都传入并在末尾闭合，支持选中属性之后的兄弟成员。公共weapon_hand_scene_binding::Proof保持128、布局与源码在冻结树逐SHA不变；不触碰其他writer或共享在研binding修改。没有新输入、hook、原调用、身体/骨骼/相机写者，也不从这些源见证签移动许可。Sphere摘要追加member_count/exhausted以便实际验证。
+
+同一192成员fixture修复后完整通过，记录201成员且普通Proof不到128。50项新增检查保留public legacy路径128拒绝，覆盖末端循环/重复选名/错误owner、第二遍之后类型/Next/注册表变化、拒读、碰撞/存储耗尽/clear恢复。实际8程序合计1145项0失败（Member50/Physics282/Collider219/Component207/Session105/OverlapSession53/Path191/OFF38），MSVC W4/WX/O2/UNDEBUG；派发和内存为明确Host缝，不是游戏/原查询证据。首次检查目录父路径遗漏在编译前拒绝，创建本方目录后复现；未放宽警告。初版Native成功但审查调整component结束复核先metadata后成员，final重编与受影响4程序after-v2通过。
+
+最终Native以r126冻结树仅叠5文件，406项目依赖、外部工作树依赖0、开关不变，编译链接0；SHA256 4a9a6f6b77c52538c75e19651a7ed20e233ab34e5025d0b7224fda9754bb744b。当前尚未stage或启动新game/XR；公共v71/固定手动入口保持。证据member-witness-r131/{verification,native-build-result}.json、before-v1与after-v1/v2。下一步保存本源码后新票定向进入，检查是否越过具体layout阻断再按实际下一拒绝修复；r130后续Core拒绝、完整当前占用/世界覆盖/唯一C0身体及视图/命中/枪口、抓边联合战斗与头显均未通过，工程25%及全部CV01–24/AC01–22保持。

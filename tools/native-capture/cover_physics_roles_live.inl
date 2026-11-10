@@ -2,6 +2,7 @@
 #define GEARS_COVER_PHYSICS_ROLES_LIVE_INCLUDED
 #include "cover_physx_query_source.h"
 #include "cover_physx_asset_actors.h"
+#include "cover_member_witness_live.inl"
 
 // Include after weapon_hand_scene_binding. The caller brackets this synchronous
 // read with its admitted ActualContext::current and current backend metadata.
@@ -98,11 +99,14 @@ struct LayoutObservation {
     LayoutStep step{};unsigned pass{},body_index{~0u};
     unsigned mesh_sources{},mesh_identities{},instance_sources{},instance_identities{};
     unsigned mesh_asset_offset{},mesh_instance_offset{},owner_offset{},bodies_offset{},root_offset{};
+    unsigned member_identities{};bool member_capacity{};
 };
 #if defined(GEARS_COVER_BODY_PROTOTYPE) && GEARS_COVER_BODY_PROTOTYPE
 struct BodyLayout {binding::Proof proof{};gears_anchor::Identity cls{};std::array<binding::Property,4> fields{};};
+using MemberStore=cover_member_witness_live::Store;
 struct Workspace {
     LayoutObservation witness{};
+    MemberStore members{};
     binding::Proof mesh{},instance{};
     std::array<binding::Property,2> mesh_fields{};
     std::array<binding::Property,3> instance_fields{};
@@ -125,26 +129,27 @@ inline bool class_role(binding::Proof& proof,std::uintptr_t cls,wchar_t const* n
 // Close every sibling, including those AFTER the selected property. The common
 // property helper only needs the selected descriptor; source consumers here
 // additionally retain full declaring-owner membership/name witnesses.
-inline bool membership(binding::Proof& p,binding::Property const& selected){
+inline bool membership(binding::Proof& p,binding::Property const& selected,MemberStore* members=nullptr){
     std::uintptr_t child{};if(!binding::source_field(p,child,selected.owner.address,0x80))return false;
     std::array<std::uintptr_t,4096> visited{};unsigned count{},matches{};
     while(child&&count<visited.size()){
         for(unsigned i=0;i<count;++i)if(visited[i]==child)return false;visited[count++]=child;
         gears_anchor::Identity id{};
-        if(!binding::certified(p,child,id)||id.outer!=selected.owner.address)return false;
+        if(!(members?binding::identity(child,id):binding::certified(p,child,id))||id.outer!=selected.owner.address)return false;
         if(!std::wcscmp(id.name.data(),selected.id.name.data())){
             if(++matches!=1||!binding::same(id,selected.id))return false;}
-        if(!binding::source_field(p,child,child,0x68))return false;
+        if(members){if(!members->link(id,child))return false;}
+        else if(!binding::source_field(p,child,child,0x68))return false;
     }
     return !child&&matches==1;
 }
 inline bool role_property(binding::Proof& p,std::uintptr_t cls,wchar_t const* name,wchar_t const* kind,unsigned width,
-    wchar_t const* reference,binding::Property& output){
-    return binding::property(p,cls,name,kind,width,reference,output)&&membership(p,output);
+    wchar_t const* reference,binding::Property& output,MemberStore* members=nullptr){
+    return binding::property(p,cls,name,kind,width,reference,output)&&membership(p,output,members);
 }
-inline bool pointer_property(binding::Proof& p,std::uintptr_t cls,wchar_t const* name,unsigned offset,binding::Property& output){
+inline bool pointer_property(binding::Proof& p,std::uintptr_t cls,wchar_t const* name,unsigned offset,binding::Property& output,MemberStore* members=nullptr){
     std::uintptr_t at{};gears_anchor::Identity type{};unsigned extent{};
-    return role_property(p,cls,name,L"StructProperty",8,nullptr,output)&&output.offset==offset&&
+    return role_property(p,cls,name,L"StructProperty",8,nullptr,output,members)&&output.offset==offset&&
         binding::source_field(p,at,output.id.address,0xd0)&&binding::certified(p,at,type)&&binding::named(type,L"Pointer")&&
         binding::kind(p,type,L"ScriptStruct")&&binding::source_field(p,extent,at,0x88)&&extent==8;
 }
@@ -161,6 +166,7 @@ inline LayoutObservation observation(Workspace const& w)noexcept{
     out.instance_sources=w.instance.source_count;out.instance_identities=w.instance.identity_count;
     out.mesh_asset_offset=w.mesh_fields[0].offset;out.mesh_instance_offset=w.mesh_fields[1].offset;
     out.owner_offset=w.instance_fields[0].offset;out.bodies_offset=w.instance_fields[1].offset;out.root_offset=w.instance_fields[2].offset;
+    out.member_identities=w.members.count;out.member_capacity=w.members.exhausted;
     return out;
 }
 inline bool schema(Workspace& w,Snapshot const& next){
@@ -168,15 +174,15 @@ inline bool schema(Workspace& w,Snapshot const& next){
     step(w,LayoutStep::mesh_class);if(!(class_role(m,next.mesh.cls,L"SkeletalMeshComponent")))return false;
     step(w,LayoutStep::asset_class);if(!(class_role(m,next.asset.cls,L"PhysicsAsset")))return false;
     step(w,LayoutStep::instance_class);if(!(class_role(i,next.instance.cls,L"PhysicsAssetInstance")))return false;
-    step(w,LayoutStep::mesh_asset_property);if(!(role_property(m,next.mesh.cls,L"PhysicsAsset",L"ObjectProperty",8,L"PhysicsAsset",w.mesh_fields[0])))return false;
-    step(w,LayoutStep::mesh_instance_property);if(!(role_property(m,next.mesh.cls,L"PhysicsAssetInstance",L"ObjectProperty",8,L"PhysicsAssetInstance",w.mesh_fields[1])))return false;
+    step(w,LayoutStep::mesh_asset_property);if(!(role_property(m,next.mesh.cls,L"PhysicsAsset",L"ObjectProperty",8,L"PhysicsAsset",w.mesh_fields[0],&w.members)))return false;
+    step(w,LayoutStep::mesh_instance_property);if(!(role_property(m,next.mesh.cls,L"PhysicsAssetInstance",L"ObjectProperty",8,L"PhysicsAssetInstance",w.mesh_fields[1],&w.members)))return false;
     step(w,LayoutStep::mesh_asset_offset);if(!(w.mesh_fields[0].offset==0x248))return false;
     step(w,LayoutStep::mesh_instance_offset);if(!(w.mesh_fields[1].offset==0x250))return false;
     step(w,LayoutStep::asset_reference);if(!(class_role(m,next.asset.cls,L"PhysicsAsset",w.mesh_fields[0].reference.address)))return false;
     step(w,LayoutStep::instance_reference);if(!(class_role(i,next.instance.cls,L"PhysicsAssetInstance",w.mesh_fields[1].reference.address)))return false;
-    step(w,LayoutStep::owner_property);if(!(role_property(i,next.instance.cls,L"Owner",L"MeshPointer",8,nullptr,w.instance_fields[0])))return false;
-    step(w,LayoutStep::bodies_property);if(!(role_property(i,next.instance.cls,L"Bodies",L"ArrayProperty",16,nullptr,w.instance_fields[1])))return false;
-    step(w,LayoutStep::root_property);if(!(role_property(i,next.instance.cls,L"RootBodyIndex",L"IntProperty",4,nullptr,w.instance_fields[2])))return false;
+    step(w,LayoutStep::owner_property);if(!(role_property(i,next.instance.cls,L"Owner",L"MeshPointer",8,nullptr,w.instance_fields[0],&w.members)))return false;
+    step(w,LayoutStep::bodies_property);if(!(role_property(i,next.instance.cls,L"Bodies",L"ArrayProperty",16,nullptr,w.instance_fields[1],&w.members)))return false;
+    step(w,LayoutStep::root_property);if(!(role_property(i,next.instance.cls,L"RootBodyIndex",L"IntProperty",4,nullptr,w.instance_fields[2],&w.members)))return false;
     step(w,LayoutStep::owner_reference);if(!(reference_class(i,w.instance_fields[0])))return false;
     step(w,LayoutStep::bodies_offset);if(!(w.instance_fields[1].offset==0x6c))return false;
     auto const& array=w.instance_fields[1];std::uintptr_t inner{},target{};gears_anchor::Identity id{};unsigned dim{},width{},offset{};
@@ -195,22 +201,22 @@ inline bool schema(Workspace& w,Snapshot const& next){
     return true;
 }
 
-template<class Work> inline BodyLayout* body_layout(Work& w,gears_anchor::Identity const& body,LayoutObservation* witness=nullptr){
+template<class Work> inline BodyLayout* body_layout(Work& w,gears_anchor::Identity const& body,LayoutObservation* witness=nullptr,MemberStore* members=nullptr){
     for(unsigned n=0;n<w.layout_count;++n)if(w.layouts[n].cls.address==body.cls)return &w.layouts[n];
     step(witness,LayoutStep::body_layout_capacity);if(w.layout_count==w.layouts.size())return nullptr;
     auto& l=w.layouts[w.layout_count];auto& p=l.proof;
     step(witness,LayoutStep::body_layout_identity);if(!(binding::certified(p,body.cls,l.cls)))return nullptr;
     step(witness,LayoutStep::body_layout_class);if(!(class_role(p,body.cls,L"RB_BodyInstance",w.body_class.address)))return nullptr;
-    step(witness,LayoutStep::body_index_property);if(!(role_property(p,body.cls,L"BodyIndex",L"IntProperty",4,nullptr,l.fields[0])))return nullptr;
-    step(witness,LayoutStep::body_owner_property);if(!(role_property(p,body.cls,L"OwnerComponent",L"ComponentProperty",8,nullptr,l.fields[1])))return nullptr;
+    step(witness,LayoutStep::body_index_property);if(!(role_property(p,body.cls,L"BodyIndex",L"IntProperty",4,nullptr,l.fields[0],members)))return nullptr;
+    step(witness,LayoutStep::body_owner_property);if(!(role_property(p,body.cls,L"OwnerComponent",L"ComponentProperty",8,nullptr,l.fields[1],members)))return nullptr;
     step(witness,LayoutStep::body_owner_reference);if(!(reference_class(p,l.fields[1])))return nullptr;
-    step(witness,LayoutStep::body_data_property);if(!(pointer_property(p,body.cls,L"BodyData",0x88,l.fields[2])))return nullptr;
-    step(witness,LayoutStep::body_spring_property);if(!(pointer_property(p,body.cls,L"BoneSpring",0x90,l.fields[3])))return nullptr;
+    step(witness,LayoutStep::body_data_property);if(!(pointer_property(p,body.cls,L"BodyData",0x88,l.fields[2],members)))return nullptr;
+    step(witness,LayoutStep::body_spring_property);if(!(pointer_property(p,body.cls,L"BoneSpring",0x90,l.fields[3],members)))return nullptr;
     ++w.layout_count;return &l;
 }
 inline bool layouts_current(Workspace const& w){
     if(!binding::metadata_current()||w.generation!=binding::metadata_generation||w.metadata!=binding::metadata_bytes||
-       !binding::current(w.mesh)||!binding::current(w.instance))return false;
+       !binding::current(w.mesh)||!binding::current(w.instance)||!w.members.current())return false;
     for(unsigned n=0;n<w.layout_count;++n)if(!binding::current(w.layouts[n].proof))return false;
     return true;
 }
@@ -239,7 +245,7 @@ inline Code values(Workspace& w,binding::Binding const& actor,pose::Metadata con
         for(int k=0;k<n;++k)if(pointers[unsigned(k)]==pointers[unsigned(n)])return Code::layout;
         step(w,LayoutStep::body_identity);
         if(!binding::identity(pointers[unsigned(n)],body.identity,true))return Code::read;
-        auto* l=body_layout(w,body.identity,&w.witness);if(!l)return w.layout_count==w.layouts.size()?Code::capacity:Code::layout;
+        auto* l=body_layout(w,body.identity,&w.witness,&w.members);if(!l)return w.layout_count==w.layouts.size()?Code::capacity:Code::layout;
         step(w,LayoutStep::body_mesh_reference);
         if(!class_role(l->proof,next.mesh.cls,L"SkeletalMeshComponent",l->fields[1].reference.address))return Code::layout;
         if(!binding::field(body.index,body.identity.address,l->fields[0].offset)||
@@ -265,10 +271,10 @@ template<class Guard> Code sample(binding::Binding const& actor,pose::Metadata c
         {
             std::unique_lock<std::mutex> lock(binding::mutex,std::try_to_lock);if(!lock.owns_lock())return Code::metadata;
             if(!binding::context_ready()||!binding::metadata_current()||actor.world_generation!=binding::metadata_generation)return Code::metadata;
-            work.mesh={};work.instance={};work.mesh_fields={};work.instance_fields={};work.body_class={};work.layout_count=0;for(auto& l:work.layouts)l={};
+            work.members.clear();work.mesh={};work.instance={};work.mesh_fields={};work.instance_fields={};work.body_class={};work.layout_count=0;for(auto& l:work.layouts)l={};
             work.metadata=binding::metadata_bytes;work.generation=binding::metadata_generation;
-            work.witness.pass=1;auto code=values(work,owner,expected,work.first);if(code!=Code::current)return code;
-            work.witness.pass=2;work.witness.body_index=~0u;code=values(work,owner,expected,work.last);if(code!=Code::current)return code;
+            work.witness.pass=1;auto code=values(work,owner,expected,work.first);if(code!=Code::current)return work.members.exhausted?Code::capacity:code;
+            work.witness.pass=2;work.witness.body_index=~0u;code=values(work,owner,expected,work.last);if(code!=Code::current)return work.members.exhausted?Code::capacity:code;
             if(!same(work.first,work.last)||!layouts_current(work))return Code::changed;
         }
         if(!guard())return Code::guard;

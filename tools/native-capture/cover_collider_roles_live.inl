@@ -34,6 +34,7 @@ inline bool matches(Snapshot const& typed,gears_cover_physx_collider::Snapshot c
 }
 #if defined(GEARS_COVER_BODY_PROTOTYPE) && GEARS_COVER_BODY_PROTOTYPE
 struct Workspace {
+    roles::MemberStore members{};
     binding::Proof pawn{},component{},body{};
     std::array<binding::Property,2> pawn_fields{},component_fields{};
     std::array<binding::Property,4> body_fields{};
@@ -48,27 +49,27 @@ inline Code values(Workspace& w,binding::Binding const& owner,Snapshot& output){
     Snapshot next{};
     if(!instance(w.pawn,owner.pawn.address,next.pawn)||!binding::same(next.pawn,owner.pawn))return Code::read;
     if(!roles::class_role(w.pawn,next.pawn.cls,L"Pawn")||
-       !roles::role_property(w.pawn,next.pawn.cls,L"CylinderComponent",L"ComponentProperty",8,L"CylinderComponent",w.pawn_fields[0])||
-       !roles::role_property(w.pawn,next.pawn.cls,L"CollisionComponent",L"ComponentProperty",8,L"PrimitiveComponent",w.pawn_fields[1]))return Code::layout;
+       !roles::role_property(w.pawn,next.pawn.cls,L"CylinderComponent",L"ComponentProperty",8,L"CylinderComponent",w.pawn_fields[0],&w.members)||
+       !roles::role_property(w.pawn,next.pawn.cls,L"CollisionComponent",L"ComponentProperty",8,L"PrimitiveComponent",w.pawn_fields[1],&w.members))return Code::layout;
     std::uintptr_t cylinder{},selected{},component_owner{},body{};
     if(!binding::field(cylinder,next.pawn.address,w.pawn_fields[0].offset)||
        !binding::field(selected,next.pawn.address,w.pawn_fields[1].offset)||!cylinder||selected!=cylinder||
        !instance(w.component,cylinder,next.cylinder)||next.cylinder.outer!=next.pawn.address)return Code::read;
     if(!roles::class_role(w.component,next.cylinder.cls,L"CylinderComponent",w.pawn_fields[0].reference.address)||
        !roles::class_role(w.component,next.cylinder.cls,L"PrimitiveComponent",w.pawn_fields[1].reference.address)||
-       !roles::role_property(w.component,next.cylinder.cls,L"Owner",L"ObjectProperty",8,L"Actor",w.component_fields[0])||
-       !roles::role_property(w.component,next.cylinder.cls,L"BodyInstance",L"ObjectProperty",8,L"RB_BodyInstance",w.component_fields[1]))return Code::layout;
+       !roles::role_property(w.component,next.cylinder.cls,L"Owner",L"ObjectProperty",8,L"Actor",w.component_fields[0],&w.members)||
+       !roles::role_property(w.component,next.cylinder.cls,L"BodyInstance",L"ObjectProperty",8,L"RB_BodyInstance",w.component_fields[1],&w.members))return Code::layout;
     if(!binding::field(component_owner,cylinder,w.component_fields[0].offset)||component_owner!=next.pawn.address||
        !binding::field(body,cylinder,w.component_fields[1].offset))return Code::read;
     next.body_instance_offset=w.component_fields[1].offset;
     if(!body){next.presence=Presence::body_instance_field_null;output=next;return Code::current;}
     if(!instance(w.body,body,next.body))return Code::read;
     if(!roles::class_role(w.body,next.body.cls,L"RB_BodyInstance",w.component_fields[1].reference.address)||
-       !roles::role_property(w.body,next.body.cls,L"BodyIndex",L"IntProperty",4,nullptr,w.body_fields[0])||
-       !roles::role_property(w.body,next.body.cls,L"OwnerComponent",L"ComponentProperty",8,L"PrimitiveComponent",w.body_fields[1])||
+       !roles::role_property(w.body,next.body.cls,L"BodyIndex",L"IntProperty",4,nullptr,w.body_fields[0],&w.members)||
+       !roles::role_property(w.body,next.body.cls,L"OwnerComponent",L"ComponentProperty",8,L"PrimitiveComponent",w.body_fields[1],&w.members)||
        !roles::class_role(w.body,next.cylinder.cls,L"PrimitiveComponent",w.body_fields[1].reference.address)||
-       !roles::pointer_property(w.body,next.body.cls,L"BodyData",0x88,w.body_fields[2])||
-       !roles::pointer_property(w.body,next.body.cls,L"BoneSpring",0x90,w.body_fields[3]))return Code::layout;
+       !roles::pointer_property(w.body,next.body.cls,L"BodyData",0x88,w.body_fields[2],&w.members)||
+       !roles::pointer_property(w.body,next.body.cls,L"BoneSpring",0x90,w.body_fields[3],&w.members))return Code::layout;
     std::uintptr_t body_owner{};
     if(!binding::field(next.body_index,body,w.body_fields[0].offset)||
        !binding::field(body_owner,body,w.body_fields[1].offset)||body_owner!=cylinder||
@@ -81,7 +82,7 @@ inline Code values(Workspace& w,binding::Binding const& owner,Snapshot& output){
     output=next;return Code::current;
 }
 inline bool current(Workspace const& w){return binding::metadata_current()&&w.generation==binding::metadata_generation&&
-    w.metadata==binding::metadata_bytes&&binding::current(w.pawn)&&binding::current(w.component)&&
+    w.metadata==binding::metadata_bytes&&w.members.current()&&binding::current(w.pawn)&&binding::current(w.component)&&
     (w.first.presence==Presence::body_instance_field_null||binding::current(w.body));}
 template<class Guard> Code sample(binding::Binding const& actor,Guard guard,Workspace& work,Snapshot& output)noexcept{
     if(!actor.context_valid||!actor.world_generation||source::aliases(&work,sizeof work,&output,sizeof output)||
@@ -92,9 +93,9 @@ template<class Guard> Code sample(binding::Binding const& actor,Guard guard,Work
         {
             std::unique_lock<std::mutex> lock(binding::mutex,std::try_to_lock);if(!lock.owns_lock())return Code::metadata;
             if(!binding::context_ready()||!binding::metadata_current()||actor.world_generation!=binding::metadata_generation)return Code::metadata;
-            work.pawn={};work.component={};work.body={};work.metadata=binding::metadata_bytes;work.generation=binding::metadata_generation;
-            auto code=values(work,owner,work.first);if(code!=Code::current)return code;
-            code=values(work,owner,work.last);if(code!=Code::current)return code;
+            work.members.clear();work.pawn={};work.component={};work.body={};work.metadata=binding::metadata_bytes;work.generation=binding::metadata_generation;
+            auto code=values(work,owner,work.first);if(code!=Code::current)return work.members.exhausted?Code::capacity:code;
+            code=values(work,owner,work.last);if(code!=Code::current)return work.members.exhausted?Code::capacity:code;
             if(!same(work.first,work.last)||!current(work))return Code::changed;
         }
         if(!guard())return Code::guard;

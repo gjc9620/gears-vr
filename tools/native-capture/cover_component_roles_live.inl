@@ -149,6 +149,7 @@ struct ComponentLayout {
 struct AssetLayout {binding::Proof proof{};gears_anchor::Identity cls{};std::array<binding::Property,3> fields{};};
 struct BodyLayouts {gears_anchor::Identity body_class{};std::array<roles::BodyLayout,8> layouts{};unsigned layout_count{};};
 struct Workspace {
+    roles::MemberStore members{};
     std::array<RootLayout,root_capacity> roots{};
     std::array<ComponentLayout,8> layouts{};unsigned layout_count{};
     std::array<AssetLayout,8> assets{};unsigned asset_layout_count{};
@@ -178,11 +179,11 @@ inline Code root(Workspace& w,unsigned index,std::uintptr_t at,binding::Binding 
     if(!collider::instance(p,at,next.actor))return Code::read;
     if(index<seeds&&!binding::same(next.actor,index?context.weapon:context.pawn))return Code::changed;
     if(!roles::class_role(p,next.actor.cls,index<seeds?(index?L"Weapon":L"Pawn"):L"Actor")||
-       !roles::role_property(p,next.actor.cls,L"WorldInfo",L"ObjectProperty",8,L"WorldInfo",l.fields[0])||
-       !roles::role_property(p,next.actor.cls,L"Components",L"ArrayProperty",16,nullptr,l.fields[1])||
-       !roles::role_property(p,next.actor.cls,L"AllComponents",L"ArrayProperty",16,nullptr,l.fields[2])||
-       !roles::role_property(p,next.actor.cls,L"Base",L"ObjectProperty",8,L"Actor",l.fields[3])||
-       !roles::role_property(p,next.actor.cls,L"Attached",L"ArrayProperty",16,nullptr,l.fields[4])||!actor_array_schema(p,l.fields[4]))return Code::layout;
+       !roles::role_property(p,next.actor.cls,L"WorldInfo",L"ObjectProperty",8,L"WorldInfo",l.fields[0],&w.members)||
+       !roles::role_property(p,next.actor.cls,L"Components",L"ArrayProperty",16,nullptr,l.fields[1],&w.members)||
+       !roles::role_property(p,next.actor.cls,L"AllComponents",L"ArrayProperty",16,nullptr,l.fields[2],&w.members)||
+       !roles::role_property(p,next.actor.cls,L"Base",L"ObjectProperty",8,L"Actor",l.fields[3],&w.members)||
+       !roles::role_property(p,next.actor.cls,L"Attached",L"ArrayProperty",16,nullptr,l.fields[4],&w.members)||!actor_array_schema(p,l.fields[4]))return Code::layout;
     for(unsigned a=0;a<5;++a)for(unsigned b=a+1;b<5;++b)
         if(!separate(l.fields[a].offset,a==0||a==3?8u:16u,l.fields[b].offset,b==0||b==3?8u:16u))return Code::layout;
     std::uintptr_t world{},base_actor{};
@@ -254,20 +255,20 @@ inline ComponentLayout* component_layout(Workspace& w,gears_anchor::Identity con
     auto& l=w.layouts[w.layout_count];auto& p=l.proof;binding::ClassPath path{};
     if(!binding::certified(p,id.cls,l.cls)||!roles::class_role(p,id.cls,L"ActorComponent",w.component_base.address)||
        !binding::derives(id.cls,L"ActorComponent",w.component_base.address,path)||
-       !roles::role_property(p,id.cls,L"Owner",L"ObjectProperty",8,L"Actor",l.fields[0]))return nullptr;
+       !roles::role_property(p,id.cls,L"Owner",L"ObjectProperty",8,L"Actor",l.fields[0],&w.members))return nullptr;
     for(unsigned i=0;i<path.count;++i){l.primitive=l.primitive||binding::named(path.ids[i],L"PrimitiveComponent");
         l.skeletal=l.skeletal||binding::named(path.ids[i],L"SkeletalMeshComponent");}
     if(l.primitive){
-        if(!roles::role_property(p,id.cls,L"BodyInstance",L"ObjectProperty",8,L"RB_BodyInstance",l.fields[1]))return nullptr;
+        if(!roles::role_property(p,id.cls,L"BodyInstance",L"ObjectProperty",8,L"RB_BodyInstance",l.fields[1],&w.members))return nullptr;
         if(!separate(l.fields[0].offset,8,l.fields[1].offset,8))return nullptr;
         if(w.bodies.body_class.address&&!binding::same(w.bodies.body_class,l.fields[1].reference))return nullptr;
         w.bodies.body_class=l.fields[1].reference;
     }
     if(l.skeletal){
-        if(!l.primitive||!roles::role_property(p,id.cls,L"PhysicsAsset",L"ObjectProperty",8,L"PhysicsAsset",l.fields[2])||
-           !roles::role_property(p,id.cls,L"PhysicsAssetInstance",L"ObjectProperty",8,L"PhysicsAssetInstance",l.fields[3])||
+        if(!l.primitive||!roles::role_property(p,id.cls,L"PhysicsAsset",L"ObjectProperty",8,L"PhysicsAsset",l.fields[2],&w.members)||
+           !roles::role_property(p,id.cls,L"PhysicsAssetInstance",L"ObjectProperty",8,L"PhysicsAssetInstance",l.fields[3],&w.members)||
            l.fields[2].offset!=0x248||l.fields[3].offset!=0x250||
-           !roles::role_property(p,id.cls,L"Attachments",L"ArrayProperty",16,nullptr,l.fields[4])||!attachment_schema(w,l))return nullptr;
+           !roles::role_property(p,id.cls,L"Attachments",L"ArrayProperty",16,nullptr,l.fields[4],&w.members)||!attachment_schema(w,l))return nullptr;
         for(unsigned a=0;a<5;++a)for(unsigned b=a+1;b<5;++b)
             if(!separate(l.fields[a].offset,a==4?16u:8u,l.fields[b].offset,b==4?16u:8u))return nullptr;
     }
@@ -278,9 +279,9 @@ inline AssetLayout* asset_layout(Workspace& w,gears_anchor::Identity const& id,s
     if(w.asset_layout_count==w.assets.size())return nullptr;
     auto& l=w.assets[w.asset_layout_count];auto& p=l.proof;
     if(!binding::certified(p,id.cls,l.cls)||!roles::class_role(p,id.cls,L"PhysicsAssetInstance",reference)||
-       !roles::role_property(p,id.cls,L"Owner",L"MeshPointer",8,nullptr,l.fields[0])||!roles::reference_class(p,l.fields[0])||
-       !roles::role_property(p,id.cls,L"Bodies",L"ArrayProperty",16,nullptr,l.fields[1])||l.fields[1].offset!=0x6c||
-       !roles::role_property(p,id.cls,L"RootBodyIndex",L"IntProperty",4,nullptr,l.fields[2]))return nullptr;
+       !roles::role_property(p,id.cls,L"Owner",L"MeshPointer",8,nullptr,l.fields[0],&w.members)||!roles::reference_class(p,l.fields[0])||
+       !roles::role_property(p,id.cls,L"Bodies",L"ArrayProperty",16,nullptr,l.fields[1],&w.members)||l.fields[1].offset!=0x6c||
+       !roles::role_property(p,id.cls,L"RootBodyIndex",L"IntProperty",4,nullptr,l.fields[2],&w.members))return nullptr;
     for(unsigned a=0;a<3;++a)for(unsigned b=a+1;b<3;++b)
         if(!separate(l.fields[a].offset,a==1?16u:a==2?4u:8u,l.fields[b].offset,b==1?16u:b==2?4u:8u))return nullptr;
     std::uintptr_t inner_descriptor{},target{};gears_anchor::Identity id_inner{},type{};unsigned dim{},width{},offset{};
@@ -295,7 +296,7 @@ inline AssetLayout* asset_layout(Workspace& w,gears_anchor::Identity const& id,s
 inline Code asset_body(Workspace& w,Snapshot const& roots,std::uintptr_t at,AssetBody& output){
     AssetBody next{};if(!at){output=next;return Code::current;}
     if(!binding::identity(at,next.body.identity,true))return Code::read;
-    auto* l=roles::body_layout(w.bodies,next.body.identity);if(!l)return w.bodies.layout_count==w.bodies.layouts.size()?Code::capacity:Code::layout;
+    auto* l=roles::body_layout(w.bodies,next.body.identity,nullptr,&w.members);if(!l)return w.bodies.layout_count==w.bodies.layouts.size()?Code::capacity:Code::layout;
     for(unsigned a=0;a<4;++a)for(unsigned b=a+1;b<4;++b)
         if(!separate(l->fields[a].offset,a?8u:4u,l->fields[b].offset,b?8u:4u))return Code::layout;
     if(!binding::field(next.body.owner,at,l->fields[1].offset)||!binding::identity(next.body.owner,next.owner,true)||
@@ -360,7 +361,7 @@ inline Code component(Workspace& w,Snapshot const& roots,std::uintptr_t at,Compo
     if(!binding::field(body,at,next.body_instance_offset))return Code::read;
     if(!body){next.body_state=BodyState::body_instance_field_null;output=next;return Code::current;}
     if(!binding::identity(body,next.body.identity,true))return Code::read;
-    auto* l=roles::body_layout(w.bodies,next.body.identity);if(!l)return w.bodies.layout_count==w.bodies.layouts.size()?Code::capacity:Code::layout;
+    auto* l=roles::body_layout(w.bodies,next.body.identity,nullptr,&w.members);if(!l)return w.bodies.layout_count==w.bodies.layouts.size()?Code::capacity:Code::layout;
     for(unsigned a=0;a<4;++a)for(unsigned b=a+1;b<4;++b)
         if(!separate(l->fields[a].offset,a?8u:4u,l->fields[b].offset,b?8u:4u))return Code::layout;
     if(!roles::class_role(l->proof,next.identity.cls,L"PrimitiveComponent",l->fields[1].reference.address))return Code::layout;
@@ -429,6 +430,7 @@ inline Code values(Workspace& w,binding::Binding const& context,Snapshot& output
 }
 inline bool current(Workspace const& w,unsigned roots){
     if(!binding::metadata_current()||w.metadata!=binding::metadata_bytes||w.generation!=binding::metadata_generation)return false;
+    if(!w.members.current())return false;
     for(unsigned i=0;i<roots;++i)if(!binding::current(w.roots[i].proof))return false;
     for(unsigned i=0;i<w.layout_count;++i)if(!binding::current(w.layouts[i].proof))return false;
     for(unsigned i=0;i<w.asset_layout_count;++i)if(!binding::current(w.assets[i].proof))return false;
@@ -443,6 +445,7 @@ inline void clear_proof(binding::Proof& proof){
     proof.attempted=proof.ready=false;proof.fields={};proof.keys={};
 }
 inline void clear(Workspace& work){
+    work.members.clear();
     for(auto& r:work.roots){clear_proof(r.proof);r.fields={};}
     for(auto& l:work.layouts){clear_proof(l.proof);l.cls={};l.fields={};l.attachment_struct={};l.attachment_fields={};l.attachment_stride=0;l.primitive=l.skeletal=false;}
     for(auto& l:work.assets){clear_proof(l.proof);l.cls={};l.fields={};}work.asset_layout_count=0;
@@ -462,8 +465,8 @@ template<class Guard> Code sample(binding::Binding const& context,Guard guard,Wo
             if(!binding::context_ready()||!binding::metadata_current()||context.world_generation!=binding::metadata_generation)return Code::metadata;
             clear(work);
             work.metadata=binding::metadata_bytes;work.generation=binding::metadata_generation;
-            auto code=values(work,owner,work.first);if(code!=Code::current)return code;
-            code=values(work,owner,work.last);if(code!=Code::current)return code;
+            auto code=values(work,owner,work.first);if(code!=Code::current)return work.members.exhausted?Code::capacity:code;
+            code=values(work,owner,work.last);if(code!=Code::current)return work.members.exhausted?Code::capacity:code;
             if(!same(work.first,work.last)||!current(work,work.first.root_count))return Code::changed;
         }
         if(!guard())return Code::guard;
