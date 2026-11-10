@@ -23,6 +23,12 @@ def require_start_allowed():
         raise RuntimeError('Owner paused automatic game/XR activity; no new input or start, stop our active owner normally')
 
 
+def original_stereo_submitted(session):
+    timing=session.get('startup_timings',{}).get('first_stereo_submission')
+    return (isinstance(timing,dict) and timing.get('timing_is_runner_observation') is False
+            and type(timing.get('xr_monotonic_ns')) is int and timing['xr_monotonic_ns']>0)
+
+
 def main():
     global NAME, SELECTED, OUTPUT
     parser = argparse.ArgumentParser(description=__doc__)
@@ -60,7 +66,7 @@ def main():
     memory = isolated.require_memory()
     sys.path[:0] = [str(ROOT/'tools/native-capture'), str(OLD)]
     from run_stereo_continuous import WindowsControl
-    from record_projection import ProjectionRecording
+    from cover_projection_recording import ProjectionRecording
     control = WindowsControl()
     env = os.environ.copy()
     for key in ('GEARSVR_LANCER_INTEGRATED_PREPARED', 'GEARSVR_LANCER_INTEGRATED_CHECK', 'GEARSVR_STARTUP_REPLAY_ACTIONS'):
@@ -73,6 +79,7 @@ def main():
     result['foreground_observations'] = dict(samples=0, owned_activation=False)
     result['cloak_observations'] = dict(samples=0, failures=[])
     result['runner_sha256'] = sha(__file__)
+    result['projection_recorder_sha256'] = sha(HERE/'cover_projection_recording.py')
     user = ctypes.WinDLL('user32', use_last_error=True)
     user.GetForegroundWindow.restype = ctypes.c_void_p
     user.GetWindowThreadProcessId.argtypes = [ctypes.c_void_p, ctypes.POINTER(ctypes.c_uint32)]
@@ -139,7 +146,8 @@ def main():
                 raise RuntimeError('Private launcher ended before observation: '+str(load(SELECTED/'isolated-done.json')))
             if session.get('error'):
                 raise RuntimeError('Private session error: '+str(session['error']))
-            if session.get('phase')=='running' and session.get('native_started') is True:
+            if (session.get('phase')=='running' and session.get('native_started') is True
+                    and original_stereo_submitted(session)):
                 if state.get('vr_gamepad', {}).get('source') != 1:
                     raise RuntimeError('No own Source1 input')
                 for key in ('game_identity', 'owner_identity', 'xr_identity'):
@@ -154,10 +162,14 @@ def main():
                 paired = ProjectionRecording(SELECTED/'xr-input/LocalAppData/OpenXR-Simulator',directory,projection_live)
                 paired.start()
                 result['projection_directory']=str(directory)
-                ready_until=time.monotonic()+7
+                # Two sequential frames each have the existing five-second
+                # freshness deadline. Start after actual stereo, not merely
+                # Native activation; allow those two bounded frame waits.
+                ready_until=time.monotonic()+12
                 while len(paired.frames)<2 and not paired.errors and time.monotonic()<ready_until:
                     check_background(*current());time.sleep(.05)
                 if paired.errors or len(paired.frames)<2:
+                    result['projection_stage_at_readiness_failure']=dict(paired.capture_stage)
                     raise RuntimeError('No two fresh actual projection frames before cover input: '+repr(paired.errors))
                 save()
                 break
@@ -188,12 +200,17 @@ def main():
         # Finish GPU capture while the exact game/XR identities still exist.
         # Never reveal a window to record and never substitute desktop pixels.
         if paired:
+            result['projection_stage_before_stop']=dict(paired.capture_stage)
             try:
                 paired.stop()
                 result['projection_frames']=len(paired.frames)
                 result['projection_errors']=paired.errors
             except BaseException as error:
                 result['projection_error']=repr(error)
+            finally:
+                result['projection_frames']=len(paired.frames)
+                result['projection_errors']=list(paired.errors)
+                result['projection_stages']=list(paired.capture_stages)
         # The isolated tool selects the exact private owner. No global stop,
         # shared restore or process termination is used on any exit path.
         state, session = current()
@@ -223,6 +240,15 @@ def main():
         result['isolated_done'] = load(SELECTED/'isolated-done.json') if (SELECTED/'isolated-done.json').exists() else None
         result['remaining_owned'] = {key:control.identity(identity['pid']) for key in ('game_identity','owner_identity','xr_identity')
                                      if (identity:=session.get(key)) and control.identity(identity['pid'])==identity}
+        if paired and paired.thread.is_alive():
+            # Rejoin the SAME stopped capture after normal owner shutdown.
+            # Preserve the initial error even if its pending I/O now finishes.
+            try:paired.stop()
+            except BaseException as error:result['projection_final_stop_error']=repr(error)
+            result['projection_frames']=len(paired.frames)
+            result['projection_errors']=list(paired.errors)
+            result['projection_stages']=list(paired.capture_stages)
+        if paired:result['projection_thread_joined']=not paired.thread.is_alive()
         result['normal_cleanup_verified'] = (session.get('native_cleanup_verified') is True
             and session.get('entry_restore_verified') is True and session.get('vr_gamepad_cleanup',{}).get('restored') is True
             and session.get('unified_weapons_cleanup',{}).get('drained') is True and session.get('xr_exit_code')==0

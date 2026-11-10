@@ -13,6 +13,7 @@
 #include <vector>
 #include "cover_physx_query_source.h"
 #include "cover_physx_stream.h"
+#include "cover_physx_overlap_stream.h"
 #include "cover_physx_shape_owner.h"
 #include "cover_physx_asset_actors.h"
 #include "cover_physx_collider.h"

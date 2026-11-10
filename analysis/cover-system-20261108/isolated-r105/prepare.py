@@ -47,7 +47,8 @@ OUT=Path({str(selected / 'cover-output')!r})
 state=json.loads(Path({str(selected / 'launcher-session.json')!r}).read_text())
 assert Path(state['instance_root']).resolve()==Path({str(selected)!r}).resolve()
 session=json.loads(Path(state['session_report']).read_text())
-assert state['phase']=='running' and session['phase']=='running'
+assert state['phase'] in ('session_owned','waiting_for_level') and session['phase']=='running', ('indexed/session phase',state.get('phase'),session.get('phase'))
+assert state['session_id']==session['session_id']
 assert state['owner_identity']==session['owner_identity']
 assert state['game_identity']==session['game_identity']
 assert state.get('vr_gamepad',{{}}).get('source')==1
@@ -70,8 +71,9 @@ def main():
     parser.add_argument('--name', required=True)
     parser.add_argument('--native-r106', action='store_true')
     parser.add_argument('--native-r111', action='store_true')
+    parser.add_argument('--native-r117', action='store_true')
     args = parser.parse_args()
-    if args.native_r106 and args.native_r111:
+    if sum((args.native_r106,args.native_r111,args.native_r117))>1:
         raise ValueError('Select one frozen Native')
     if not args.name.startswith('cover-'):
         raise ValueError('Cover owns only its cover- prefixed new instance')
@@ -93,14 +95,15 @@ def main():
             raise RuntimeError('r106 frozen delta differs')
         expected['native'] = receipt['dll_sha256']
         prepared['builds']['native'] = dict(saved=str(current/'native-build/GearsCapture.dll'), sha256=expected['native'])
-    if args.native_r111:
-        current = HERE.parent / 'self-evidence-r111'
+    if args.native_r111 or args.native_r117:
+        current = HERE.parent / ('overlap-collector-r117' if args.native_r117 else 'self-evidence-r111')
         receipt = load(current / 'native-build-result.json')
-        changed = {'tools/native-capture/'+name for name in (
-            'cover_physx_self_evidence.h','cover_physx_query.h','cover_physics_query_live.inl')}
+        overlays = ('cover_physx_overlap_stream.h','cover_physx_query.h','cover_physx_stream.h') if args.native_r117 else (
+            'cover_physx_self_evidence.h','cover_physx_query.h','cover_physics_query_live.inl')
+        changed = {'tools/native-capture/'+name for name in overlays}
         if (set(receipt['changed']) != changed or receipt['external_worktree_dependencies']
                 or not receipt['flags_unchanged'] or not receipt['build_only'] or receipt['staged']):
-            raise RuntimeError('r111 frozen delta differs')
+            raise RuntimeError('Selected frozen Native delta differs')
         expected['native'] = receipt['dll_sha256']
         prepared['builds']['native'] = dict(saved=str(current/'native-build/GearsCapture.dll'), sha256=expected['native'])
     for key in ('native', 'playground', 'sim_xr'):

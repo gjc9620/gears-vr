@@ -1,0 +1,9 @@
+{
+  "checks": 12,
+  "passed": true,
+  "scope": "actual recorder and readiness function; synthetic producer only",
+  "game_started": false,
+  "recorder_sha256": "e8cc69bcd34218ac5cab34b8c7dd098c64bb704c5ec845cb2552686694238ab6",
+  "original_recorder_sha256": "0f4d64d8266cb3fe64a335de003eef41c3143965f61ffb885bc187d35689e577",
+  "runner_sha256": "4c47ed2040cee85de8d2a9878e75bdf562d4092d621e65e9aefd321a00bf5d09"
+}

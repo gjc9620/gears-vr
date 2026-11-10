@@ -1,0 +1,302 @@
+{
+  "classification": "progress",
+  "production": {
+    "cover_physx_overlap_stream.h": "6f6bd42e7c3cabc18825cb64cf04ca1abd09050085bb73a2840dd9eda7f8d167",
+    "cover_physx_stream.h": "f551b433233401bdd17dcb46cb2d293a01b7ba1ffd1a6e0228ded63b19950bca",
+    "cover_physx_query.h": "fb5317a8831562e2a570195adc3ed38543e7ab6ba209ee4690f96f224bf17ffe"
+  },
+  "native_sha256": "f529a65ecaf4e3f23581b67d92ba680555355b082a3b0e4901633217a3764347",
+  "project_dependencies": 404,
+  "flags_unchanged": true,
+  "final_checks": [
+    {
+      "name": "cover_physx_overlap_stream",
+      "build_exit": 0,
+      "source_sha256": "d5432d5454aba53e964cc8b847a5da91fa1674c1dee09c800d62a0b934a5ca5c",
+      "command": [
+        "E:/vs/VC/Tools/MSVC/14.51.36231/bin/Hostx64/x64/cl.exe",
+        "/nologo",
+        "/std:c++17",
+        "/O2",
+        "/W4",
+        "/WX",
+        "/EHsc",
+        "/UNDEBUG",
+        "/MT",
+        "/IC:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\tools\\third-party\\minhook\\include",
+        "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\tools\\native-capture\\cover_physx_overlap_stream_test.cpp",
+        "/Fo:C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\capsule-executor-r110\\..\\overlap-collector-r117\\checks-v2\\cover_physx_overlap_stream.obj",
+        "/sourceDependencies",
+        "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\capsule-executor-r110\\..\\overlap-collector-r117\\checks-v2\\cover_physx_overlap_stream-dependencies.json",
+        "/Fe:C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\capsule-executor-r110\\..\\overlap-collector-r117\\checks-v2\\cover_physx_overlap_stream.exe",
+        "/link",
+        "bcrypt.lib",
+        "psapi.lib"
+      ],
+      "test_exit": 0
+    },
+    {
+      "name": "cover_physx_stream",
+      "build_exit": 0,
+      "source_sha256": "d09486aa1350718e5724f53affda1e634ae16bac5fde8941541af88e792fcc5a",
+      "command": [
+        "E:/vs/VC/Tools/MSVC/14.51.36231/bin/Hostx64/x64/cl.exe",
+        "/nologo",
+        "/std:c++17",
+        "/O2",
+        "/W4",
+        "/WX",
+        "/EHsc",
+        "/UNDEBUG",
+        "/MT",
+        "/IC:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\tools\\third-party\\minhook\\include",
+        "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\tools\\native-capture\\cover_physx_stream_test.cpp",
+        "/Fo:C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\capsule-executor-r110\\..\\overlap-collector-r117\\checks-v2\\cover_physx_stream.obj",
+        "/sourceDependencies",
+        "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\capsule-executor-r110\\..\\overlap-collector-r117\\checks-v2\\cover_physx_stream-dependencies.json",
+        "/Fe:C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\capsule-executor-r110\\..\\overlap-collector-r117\\checks-v2\\cover_physx_stream.exe",
+        "/link",
+        "bcrypt.lib",
+        "psapi.lib"
+      ],
+      "test_exit": 0
+    },
+    {
+      "name": "cover_physics_query_live",
+      "build_exit": 0,
+      "source_sha256": "746ccd1ac1ecf4b9408144de5711ee980d96f3e8aa8e5c8b24e56c83bcceae62",
+      "command": [
+        "E:/vs/VC/Tools/MSVC/14.51.36231/bin/Hostx64/x64/cl.exe",
+        "/nologo",
+        "/std:c++17",
+        "/O2",
+        "/W4",
+        "/WX",
+        "/EHsc",
+        "/UNDEBUG",
+        "/MT",
+        "/IC:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\tools\\third-party\\minhook\\include",
+        "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\tools\\native-capture\\cover_physics_query_live_test.cpp",
+        "/Fo:C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\capsule-executor-r110\\..\\overlap-collector-r117\\checks-v2\\cover_physics_query_live.obj",
+        "/sourceDependencies",
+        "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\capsule-executor-r110\\..\\overlap-collector-r117\\checks-v2\\cover_physics_query_live-dependencies.json",
+        "/Fe:C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\capsule-executor-r110\\..\\overlap-collector-r117\\checks-v2\\cover_physics_query_live.exe",
+        "/link",
+        "bcrypt.lib",
+        "psapi.lib"
+      ],
+      "test_exit": 0
+    },
+    {
+      "name": "cover_physics_capsule_path_live",
+      "build_exit": 0,
+      "source_sha256": "19ed68ee39a2f1a313b82e533868c1f5f9d132ffd5ce8385cc952fd1c31cac50",
+      "command": [
+        "E:/vs/VC/Tools/MSVC/14.51.36231/bin/Hostx64/x64/cl.exe",
+        "/nologo",
+        "/std:c++17",
+        "/O2",
+        "/W4",
+        "/WX",
+        "/EHsc",
+        "/UNDEBUG",
+        "/MT",
+        "/IC:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\tools\\third-party\\minhook\\include",
+        "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\tools\\native-capture\\cover_physics_capsule_path_live_test.cpp",
+        "/Fo:C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\capsule-executor-r110\\..\\overlap-collector-r117\\checks-v2\\cover_physics_capsule_path_live.obj",
+        "/sourceDependencies",
+        "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\capsule-executor-r110\\..\\overlap-collector-r117\\checks-v2\\cover_physics_capsule_path_live-dependencies.json",
+        "/Fe:C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\capsule-executor-r110\\..\\overlap-collector-r117\\checks-v2\\cover_physics_capsule_path_live.exe",
+        "/link",
+        "bcrypt.lib",
+        "psapi.lib"
+      ],
+      "test_exit": 0
+    }
+  ],
+  "raw_collector_only": true,
+  "enumeration_query_integrated": false,
+  "endpoint_occupancy_verified": false,
+  "original_enumeration_executed": false,
+  "public_changed": false,
+  "runtime": [
+    {
+      "revision": "r118",
+      "game": {
+        "pid": 58584,
+        "creation_time": 134387862529900642,
+        "image": "j:\\gearsvr\\gears.of.war.reloaded.v1.0.1.3816947-p2p\\gears of war reloaded\\binaries_x64\\gowde-steam.exe"
+      },
+      "xr": {
+        "pid": 32368,
+        "creation_time": 134387862575071782,
+        "image": "c:\\users\\11\\.codex\\worktrees\\6dof-single\\gearsvr\\tools\\openxr-probe\\build-cover-1110-r118-cloak-source-stage\\openxrposeprobe.exe"
+      },
+      "result": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\cover-1110-r118-cloak-source-stage\\cover-output\\run-result.json",
+      "result_sha256": "6c10a773de9e1136ebd598ac2b1d59980354d1095b6d5b879dad6ff5e87a1c36",
+      "query_attempted": false,
+      "error": "RuntimeError('No two fresh actual projection frames before cover input: []')",
+      "operator_exit": null,
+      "projection_frames": null,
+      "projection_error": "AssertionError('Capture thread did not stop')",
+      "projection_thread_joined": null,
+      "cloak": {
+        "samples": 567,
+        "failures": []
+      },
+      "mute_verification": {
+        "event": "mute_verification_summary",
+        "pid": 58584,
+        "initially_muted_sessions": 1,
+        "verified_muted_observations": 252,
+        "verify_failed": 0,
+        "target_shared_rejected": 0,
+        "shared_rejected_is_global_scan_count": true
+      },
+      "normal_cleanup_verified": false,
+      "unified": {
+        "fire_disable_code": 2,
+        "hand_stop_code": 5,
+        "fire_disable_initial_code": 2,
+        "fire_disable_after_hand_stop": true,
+        "drained": false
+      },
+      "native_restore": true,
+      "entry_restore": true,
+      "pad_restore": true,
+      "xr_exit": 0,
+      "launcher_exit": 0,
+      "owned_absent": true
+    },
+    {
+      "revision": "r119",
+      "game": {
+        "pid": 54576,
+        "creation_time": 134387868284031570,
+        "image": "j:\\gearsvr\\gears.of.war.reloaded.v1.0.1.3816947-p2p\\gears of war reloaded\\binaries_x64\\gowde-steam.exe"
+      },
+      "xr": {
+        "pid": 4044,
+        "creation_time": 134387868351760136,
+        "image": "c:\\users\\11\\.codex\\worktrees\\6dof-single\\gearsvr\\tools\\openxr-probe\\build-cover-1110-r119-cloak-source-stage\\openxrposeprobe.exe"
+      },
+      "result": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\cover-1110-r119-cloak-source-stage\\cover-output\\run-result.json",
+      "result_sha256": "173a451688d457b9cb0bf16b22b52921afd3dc848c6074229f2eb2e273c15140",
+      "query_attempted": false,
+      "error": "RuntimeError('Own ordinary cover observation failed; preserve operator log')",
+      "operator_exit": 1,
+      "projection_frames": 78,
+      "projection_error": null,
+      "projection_thread_joined": true,
+      "cloak": {
+        "samples": 414,
+        "failures": []
+      },
+      "mute_verification": {
+        "event": "mute_verification_summary",
+        "pid": 54576,
+        "initially_muted_sessions": 1,
+        "verified_muted_observations": 193,
+        "verify_failed": 0,
+        "target_shared_rejected": 0,
+        "shared_rejected_is_global_scan_count": true
+      },
+      "normal_cleanup_verified": false,
+      "unified": {
+        "fire_disable_code": 2,
+        "hand_stop_code": 5,
+        "fire_disable_initial_code": 2,
+        "fire_disable_after_hand_stop": true,
+        "drained": false
+      },
+      "native_restore": true,
+      "entry_restore": true,
+      "pad_restore": true,
+      "xr_exit": 0,
+      "launcher_exit": 0,
+      "owned_absent": true
+    },
+    {
+      "revision": "r120",
+      "game": {
+        "pid": 50960,
+        "creation_time": 134387872011555627,
+        "image": "j:\\gearsvr\\gears.of.war.reloaded.v1.0.1.3816947-p2p\\gears of war reloaded\\binaries_x64\\gowde-steam.exe"
+      },
+      "xr": {
+        "pid": 30088,
+        "creation_time": 134387872079719633,
+        "image": "c:\\users\\11\\.codex\\worktrees\\6dof-single\\gearsvr\\tools\\openxr-probe\\build-cover-1110-r120-cloak-source-stage\\openxrposeprobe.exe"
+      },
+      "result": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\cover-1110-r120-cloak-source-stage\\cover-output\\run-result.json",
+      "result_sha256": "5f8e9110ed9fe70197df37882cdbaab786da67a802fa90123fae383ef8d795bd",
+      "query_attempted": false,
+      "error": "RuntimeError('Own ordinary cover observation failed; preserve operator log')",
+      "operator_exit": 1,
+      "projection_frames": 80,
+      "projection_error": null,
+      "projection_thread_joined": true,
+      "cloak": {
+        "samples": 494,
+        "failures": []
+      },
+      "mute_verification": {
+        "event": "mute_verification_summary",
+        "pid": 50960,
+        "initially_muted_sessions": 1,
+        "verified_muted_observations": 222,
+        "verify_failed": 0,
+        "target_shared_rejected": 0,
+        "shared_rejected_is_global_scan_count": true
+      },
+      "normal_cleanup_verified": false,
+      "unified": {
+        "fire_disable_code": 2,
+        "hand_stop_code": 5,
+        "fire_disable_initial_code": 2,
+        "fire_disable_after_hand_stop": true,
+        "drained": false
+      },
+      "native_restore": true,
+      "entry_restore": true,
+      "pad_restore": true,
+      "xr_exit": 0,
+      "launcher_exit": 0,
+      "owned_absent": true
+    }
+  ],
+  "recorder_checks": {
+    "checks": 12,
+    "passed": true,
+    "scope": "actual recorder and readiness function; synthetic producer only",
+    "game_started": false,
+    "recorder_sha256": "e8cc69bcd34218ac5cab34b8c7dd098c64bb704c5ec845cb2552686694238ab6",
+    "original_recorder_sha256": "0f4d64d8266cb3fe64a335de003eef41c3143965f61ffb885bc187d35689e577",
+    "runner_sha256": "4c47ed2040cee85de8d2a9878e75bdf562d4092d621e65e9aefd321a00bf5d09"
+  },
+  "cloak_checks": {
+    "checks": 8,
+    "passed": true,
+    "scope": "actual runner guard AST; synthetic Win32 APIs only",
+    "game_started": false,
+    "runner_sha256": "4c47ed2040cee85de8d2a9878e75bdf562d4092d621e65e9aefd321a00bf5d09"
+  },
+  "reader_checks": {
+    "checks": 16,
+    "passed": true,
+    "scope": "actual generated reader admission; fake files, identities and Reader constructor",
+    "source_sha256": "27c532f87b304f80f0f2d756b581bb5e2f8143855f0c2e383ae72670247fb735",
+    "game_started": false,
+    "input_published": false
+  },
+  "next_instance": "cover-1110-r121-cloak-source-stage",
+  "next_started": false,
+  "remaining": [
+    "source4 original failure",
+    "typed/code-closed original overlap enumeration",
+    "self-aware endpoint/world coverage",
+    "full C0 body/eye/hit/muzzle transaction",
+    "early stop fire disable2",
+    "CV01-24 AC01-22 and headset"
+  ]
+}

@@ -32,6 +32,9 @@ struct StreamReporter {
 };
 static_assert(std::is_standard_layout_v<StreamReporter>&&offsetof(StreamReporter,vtable)==0);
 inline thread_local StreamReporter* active_stream_reporter{};
+// Shared by differently sized original query reporters; one synchronous
+// callback owner per thread, including across query adapter instances.
+inline thread_local void* active_query_reporter{};
 inline bool __fastcall stream_report(StreamReporter* self,std::uint32_t count,Hit const* data)noexcept{
     // Never dereference an unrecognized/expired callback object. Only the
     // synchronous owner below may install the current thread's reporter.
@@ -53,12 +56,14 @@ class StreamScope {
     StreamReporter* reporter_{};
 public:
     explicit StreamScope(StreamReporter& reporter)noexcept{
-        if(!active_stream_reporter){reporter_=&reporter;active_stream_reporter=reporter_;}
+        if(!active_stream_reporter&&!active_query_reporter){reporter_=&reporter;active_stream_reporter=reporter_;active_query_reporter=reporter_;}
     }
     StreamScope(StreamScope const&)=delete;StreamScope& operator=(StreamScope const&)=delete;
     bool admitted()const noexcept{return reporter_!=nullptr;}
     void close()noexcept{if(reporter_){if(active_stream_reporter==reporter_)active_stream_reporter=nullptr;
-        else reporter_->malformed=true;reporter_=nullptr;}}
+        else reporter_->malformed=true;
+        if(active_query_reporter==reporter_)active_query_reporter=nullptr;else reporter_->malformed=true;
+        reporter_=nullptr;}}
     ~StreamScope(){close();}
 };
 } // namespace detail

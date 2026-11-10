@@ -2025,3 +2025,23 @@ r113 在资源允许后启动，game59296／creation134387853785518413，XR53608
 重要接线边界：备用场景分支会按已返回数移动 caller buffer、减少容量；耗尽时还可能传null/0触发原分配，回调数据不保证等于初始batch。后续必须认证全部参数、缓冲区及回调预算／计数，不能直接复用现有等基址64字节Hit collector。准确参数9与候选-only分支要分清。此为静态候选，不是实际原版枚举调用；尚无终点占用、自身完整集合或移动许可，零Capsule／Sphere sweep仍不启用。
 
 REA provider已关闭，完整snapshot及8条聚焦证据已保存。证据 overlap-enumeration-r114/{findings,selected-evidence,verification}.json。当前没有新的 Native／PG 实现或构建；公共v71不变。下一步先运行r116定位实际source4，再实现并校验终点形状枚举、完整身体路径和C0提交接线。工程25%及全部CV-01–24／AC-01–22、头肩遮挡、物理头显未完成状态不变。
+
+## r117–r121：终点形状收集器、录制与独立读取器修复（2026-11-10）
+
+新增 cover_physx_overlap_stream.h，按 r114 的九参数原版形状枚举 ABI 收集8字节公共形状指针，保留顺序／重复与所有报告；固定64项caller batch、1024项输出及报告预算。允许caller batch内的合法剩余子区间（含零count one-past），错位／越界／未认证的原分配缓冲区明确拒绝而非视为空。容量／报告耗尽保持truncated，返回count不能掩盖未收齐；坏receiver、跨线程、过期回调与别名不读陌生对象／不覆盖输出。原调用异常保留失败，不声称原锁或生命周期已恢复。
+
+Sweep与Overlap共用线程内唯一reporter入口，双向拒绝重入，不增加锁或第二写入端。query.h只包含并编译该适配层，尚无原版枚举生产调用；现有终点仍是原始bool overlap。完整typed source、代码认证、逐形状归属、世界／变换闭合和终点占用还需接入；该collector不是移动许可，未知结果不放行。
+
+最终CPU：OverlapStream54、原Stream40、Session96、CapsulePathSession191，均exit0。54项包括实际九参数适配器配合成callee、正常返回但callback截短、原调用SEH、子区间／尾项、错误缓冲区、预算与跨类型重入。v1的44／40／Owned144亦通过，随后补充边界和异常检查；不是原DLL执行。Native从r111冻结源仅叠加 overlap_stream、stream、query 三文件，404项依赖全在冻结树、开关不变。SHA256 `f529a65ecaf4e3f23581b67d92ba680555355b082a3b0e4901633217a3764347`，私有诊断使用，公共v71未动。
+
+r118 game58584启动后未在七秒取得两帧，record线程第一次stop join也超时，只有一张已审启动等待卡；未启动动作／probe attempted0。保留原projection_error和缺失manifest，不补造录制通过；runner最终终结且game／owner／XR均正常消失。录制原因未被该次无分段记录唯一定位。
+
+本方复制既有ProjectionRecording做局部阶段观察，记录identity、request、等文件、打开／加载／转换／保存及append；等文件期间响应原stop_event。输入前改为等实际 first_stereo_submission（XR单调时间与非runner观察标记）再开始录制；两帧分别五秒的原等待预算合计允许十二秒，不以Native running或等待卡当场景证明。失败后在同一owner正常停止后重等原capture线程，保留初次错误。12项实际recorder／就绪函数配合成BMP检查、8项实际cloak guard检查通过，非游戏证据。
+
+r119 game54576与r120 game50960实际录制分别78／80帧，录制errors空、线程正常结束。两次共8张全跨度overview已逐页亲看，均为真实场景与双手；没有掩体动作，不是手部贴合或完整掩体通过。两份VFR编码exit0，原时间与图像保留。两次reader仍在输入前拒绝：旧断言分别只允许index running／session_owned；启动器on_report交接后 prepare_level 又写 waiting_for_level，不能把该索引阶段当最终游戏运行状态。该真实读取失败不是source4重现。
+
+读取器保留精确实例、原session_id、game／owner／XR完整身份、XR制品和Source1核对；只允许已知交接索引 session_owned／waiting_for_level，且实际同编号session必须running。终态／导航态不放行。16项实际生成reader的合成文件／身份／Reader构造检查及14项live()检查通过，不刷新原样本时间／100ms边界。r121已用当前入口重新prepare并通过实际依赖导入检查，资源上限发现两个其他活跃实例后启动前拒绝，尚无claim／game；r118–120不可重跑，后续只运行已修正r121。
+
+r118／119／120隐藏观察567／414／494次，失败均0。静音回读分别252／193／222次已静音、verify_failed0、target_shared_rejected0、initially_muted_sessions均1；muted0表示原已静音而无须本次写入，shared_rejected为全扫描累计，不当成本实例失败。均Native／入口／手柄恢复true，XR0／launcher0，精确自有进程已不存在，未强杀；三次fire_disable2／hand_stop5／drainedfalse、normal_cleanup_verified=false照实保留，不称全清理通过。保留早停开火确认缺口。
+
+证据 overlap-collector-r117/verification.json、native-build-result.json、review-r119／review-r120/media.json 及各私有实例原报告；原始失败、等待卡与录制错误完整保留。source4根因、掩体头肩遮挡、终点认证及实际C0身体提交仍未解决，工程25%不变，CV-01–24／AC-01–22与物理头显继续开放。
