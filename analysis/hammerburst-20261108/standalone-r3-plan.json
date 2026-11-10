@@ -4,7 +4,7 @@
   "prepared_sha256": "2eea04e910d0899ef9c36a977ce5571fbfb20e7c576ecf621f1e5ddf683cbe8b",
   "source_commit": "35ff8031e11ff2ba849f8f74737c85f1339fe852",
   "runtime_inputs_receipt": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\standalone-r3-runtime-inputs.json",
-  "runtime_inputs_sha256": "18b432a26bf81c1a0c1da2e72a6c869bf14eb9fbaf6b5e756add272d0325db50",
+  "runtime_inputs_sha256": "2ff2c44ddd22b8c90435b6304bca40682ec13b1d9ce017194c3fa395a6f3daf6",
   "run": "analysis/solo-m1-20261028/run_hammerburst_check.py",
   "environment": {
     "GEARSVR_STARTUP_REPLAY_ACTIONS": "1",
@@ -170,7 +170,7 @@
   },
   "runtime_python_boundary": {
     "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\standalone-r3-python-boundary.json",
-    "sha256": "ebee9b70b7c7ca791fb5f25b1b335dedc9581f13387d586ad66ef3a26fd2dd2b"
+    "sha256": "b668c849c263c717cacf0c2eda47b3a4b5b4845733e160662d2ecc9ec0e594ae"
   },
   "baseline_files": [
     {
@@ -225,10 +225,11 @@
   ],
   "request_ready": true,
   "entry": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\run_hammerburst_standalone_r3.py",
-  "entry_sha256": "7046f6448b95e727677ee019e11fa4d26026b3155df6149877def6e6ffc0fe24",
+  "entry_sha256": "146c43653b7c7bdb1b53155a8d1a335deb7fd181a843e83b093efc6321c7391d",
   "selection_helper": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\hammerburst_owner_copy_selection.py",
   "entry_dependencies": {
-    "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\hammerburst_owner_copy_selection.py": "643572541906f76816cbd0fe416ae4018bdc4c13c116f0b83b7daddeea7f927d"
+    "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\hammerburst_owner_copy_selection.py": "643572541906f76816cbd0fe416ae4018bdc4c13c116f0b83b7daddeea7f927d",
+    "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\tools\\debug-launch\\runtime_stage_guard.py": "aae3b0c1f210f61223cf44313622766205c5d4c3c621b005ede2b44030c1f3f8"
   },
   "host": {
     "codex_host_id": "local",

@@ -473,7 +473,7 @@
     "analysis/solo-m1-20261028/run_startup_ui_probe_actions.py": "db48d1d269b6228b0345d1599a52147b08ee8bbc1027da48b3f4f640d64531ec",
     "analysis/solo-m1-20261028/run_torque_bow_check.py": "ef1a66f8dc203efe3eaa22982f1c96be1d373386b666a5006d632f546593612e",
     "analysis/solo-m1-20261028/run_torque_bow_operator.py": "c8f8d66b46d9266ad4d2da4483c4270ae985f13e28635777c79e37822c5b446d",
-    "analysis/solo-m1-20261028/run_v63_startup_repro.py": "3f297b3de50b22d442d176c695892607d5e83624401e0395a400f2693cbab4ea",
+    "analysis/solo-m1-20261028/run_v63_startup_repro.py": "a3773503ae7c8d52e95bd0c3498de2ec560d03523a661639036ae252c4c07e82",
     "analysis/solo-m1-20261028/run_vr_only_hotfix.py": "77ae0387499c60a7ffc0e163d48bfbf528ddfcf995806490159e20bdccf5a9a9",
     "analysis/solo-m1-20261028/save_17656_review.py": "e5f1c9bc329d244c2b04099762eb18b91db4286db0546ee4cd6a03c97241c63b",
     "analysis/solo-m1-20261028/save_41864_review.py": "73914615ecf8dfc6182c125da45660d4f2fab289297a8c0bf74cfc6d4e5f7681",
@@ -1058,7 +1058,7 @@
     "tools/weapon-models/test_hammerburst_hand_surface.py": "4009cdd68187aabfe31adbf7dbd5192e0acb3c3a651bfc203929ad5be209fc51",
     "tools/weapon-models/test_split_weighted_lod0.py": "c666de3e7be2cf5ed8ccd713072af5bfbd324496ef5977c455c7eab2f39368d6"
   },
-  "archive": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\solo-m1-20261028\\hammerburst-prepared-20261110-empty-acquisition-contract\\runtime-python-boundary",
+  "archive": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\standalone-r3\\runtime-python-boundary",
   "prepared_sha256": "2eea04e910d0899ef9c36a977ce5571fbfb20e7c576ecf621f1e5ddf683cbe8b",
   "scope": "One static upper bound snapshot for this new narrowed runtime entry; tools recursive and O top-level Python. Includes unused paths, not executed-import proof; stdlib/interpreter/native dependencies separate.",
   "staged": false,
@@ -1083,5 +1083,6 @@
   "owner_confirmation": {
     "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\gnasher-development-20261109\\reference-lifecycle-source-update.json",
     "sha256": "4423b4d04cbf0821ef2d500c77525484b6c136c3827006776045105d2f597b5c"
-  }
+  },
+  "runtime_delta": "Reviewed logic-chain-only Lancer action route and normal stop after that scope success; HB scope remains hammerburst-empty-normal-once, failure stop reason text only."
 }

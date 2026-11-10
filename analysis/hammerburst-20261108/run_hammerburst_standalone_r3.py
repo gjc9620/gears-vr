@@ -6,7 +6,7 @@ import sys
 # The parent is created offline. Never unlink/recreate a consumed attempt.
 _CLAIM = 'C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\standalone-r3\\claims\\empty-acquisition-contract.json'
 _PREPARE = sys.argv[1:] == ['--prepare-only']
-if not _PREPARE:
+def consume_attempt():
     _fd = os.open(_CLAIM, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
     try:
         os.write(_fd, ('{"state":"consumed_unverified","pid":%d}\n' % os.getpid()).encode('ascii'))
@@ -158,4 +158,10 @@ def main():
  receipt=dict(exit_code=result,at_ns=time.time_ns(),deadline_stop=deadline_stop,game=report['game_identity'],session_report=str(report_path),normal_cleanup_verified=True,baseline_checks=checks,paired_review_encode_retention_still_required=True,game_success_not_inferred=True)
  (E/(PREFIX+'-run-exit.json')).write_text(json.dumps(receipt,indent=2));queue.update(state='runtime_released_offline_review_pending',window_owned=False,runner_exit=result,runtime_report=str(report_path),game=report['game_identity']);queue_path.write_text(json.dumps(queue,indent=2));print(json.dumps(receipt));return result
 
-if __name__=='__main__':raise SystemExit(main())
+if __name__=='__main__':
+ if _PREPARE:raise SystemExit(main())
+ sys.path.insert(0,str(ROOT/'tools/debug-launch'))
+ from runtime_stage_guard import RuntimeGuard
+ with RuntimeGuard('solo-m1-1028d'):
+  consume_attempt()
+  raise SystemExit(main())
