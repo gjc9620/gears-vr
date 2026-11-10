@@ -12,8 +12,8 @@ def witness(value,names):
     calls,failed,stage,detail,extra=row
     if failed>calls or stage>=len(names) or bool(failed)!=bool(stage):raise ValueError('Inconsistent guard witness')
     return dict(calls=calls,failed_call=failed,stage=stage,name=names[stage],detail=detail,extra=extra)
-def inspect(report):
-    native=json.loads((H/'native-build-result.json').read_text())['dll_sha256']
+def inspect(report,expected_native=None):
+    native=expected_native or json.loads((H/'native-build-result.json').read_text())['dll_sha256']
     result=base.inspect(report,native)
     for key,names in (('owner_guard',OWNER),('session_guard',SESSION)):
         if key not in result['raw']:raise ValueError('Missing exact guard witness')

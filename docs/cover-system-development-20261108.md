@@ -2251,3 +2251,15 @@ path requested/attempted/finished均1，code6；Session engine5/detail6，Engine
 267张实际双眼投影、录制错误0/线程joined、编码0；14页全跨度overview及5张原始phase图全部亲自查看。各段仍严重自身头肩/躯干遮挡，visualFAIL；长静止开头及间歇手部可见性保留。phase完整请求/观察区间内各7可选帧，不称同C0/GPU证明。正常stop，Native/入口/pad恢复、fire_disable0/hand_stop5/drainedtrue、XR0/launcher0；保存时精确game/owner/XR/worker全不在，无强杀。CLOAK660次失败0，静音验证274/initially_muted1/verify_failed0/target_shared_rejected0，启动disk_before5136269312≥4GiB。
 
 证据guard-witness-r137/runtime-r138/{session-original,guard-probe,pose-probe,media-review,closeout}.json。下一步减少重复全反射解析的读取成本，保留完整兄弟链/身份/声明/字段闭合及原时效，先定向证明等价拒绝与读量，再编译复查；若须进一步拆分年龄源，沿现有拒绝码记录，绝不刷新旧数据时间。完整身体/世界覆盖、实际路径与终点调用、唯一C0同版视图/命中/枪口、头肩遮挡及CV01–24/AC01–22仍未完成。工程25%、公共v71和固定入口保持，目标active。
+
+## r139：单次采样内复用完整成员链，保留全身份/Next结束复核（2026-11-11，未运行）
+
+r138实际来源过期及正常清理已保存2f172a9c。本轮针对重复读取成本实现同一次typed sample内的完整链证书：第一次仍遍历全部兄弟、声明outer、唯一名字与相同selected身份，完整结束后才记录owner/head及唯一成员区间；之后同owner属性只从该完整区间查找，仍将当前head纳入原Proof。未知/不完整/容量不足不发证书，head不同、重复或不同selected均拒绝。所有成员的完整身份和原Next仍由原有members.current结束重读，所有字段/声明/元数据Proof关闭保持；sample clear即失效，不跨采样、Tick、人物或metadata复用，不更新任何原时间。
+
+实际同一typed reader/192额外成员的前后对照：原完整观察34440 reads，新24696，减少28.2927%；首个membership均3106，第二个3106→2。这里只是合成注册内存fixture的实际读取计数，不是游戏延迟或来源过期已修复。原版调用/输入/writer/时限未变。修复前后基线与两份旧源码均保留member-chain-r139/before-*。
+
+十组受影响离线检查1404项0，加显式cache读量阈值的24项0；覆盖末端cycle/重名/outer/身份/注册表/Next变化、cache后链头/末端变化、容量、Legacy Proof128仍拒绝大链、全部typed physics/collider/component及Session/path/overlap/guard/C0关闭。默认benchmark23项包含在1404中，显式24项为同一程序带阈值复查，不重复算成独立覆盖。
+
+在r137冻结源上只叠cover_member_witness_live.inl及cover_physics_roles_live.inl，Native8814ea68079dcb16b6815f3d72dd32ec3d5a7fdf2395d6302a5d19fb4eccc32b完整编译链接0；407项目依赖、外部工作树0、开关不变。固定链证书表置于既有Workspace，clear仅清count/索引，无大型栈临时。准备器增加r139精确来源选择，guard解析器接受调用者显式匹配SHA、默认仍拒绝其他artifact。尚未stage/启动游戏，下一步只复查来源过期这一处。
+
+证据member-chain-r139/{verification,native-build-result,native-source-manifest}.json及before-v1/after-v1/cached-threshold.log。完整身体几何/当前世界覆盖、实际路径/终点、唯一C0同版视图/命中/枪口、自身遮挡及CV01–24/AC01–22仍开放，工程25%、公共v71及固定入口保持，目标active。

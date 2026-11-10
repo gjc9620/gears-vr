@@ -16,7 +16,10 @@ static uintptr_t add_mesh_siblings(unsigned count){
     put(props[1]+0x68,count?arena+0xa0000:uintptr_t{});
     return count?arena+0xa0000+uintptr_t(count-1)*0x100:0;
 }
-int main(){
+#ifndef GEARS_MEMBER_WITNESS_TEST_MAIN
+#define GEARS_MEMBER_WITNESS_TEST_MAIN main
+#endif
+int GEARS_MEMBER_WITNESS_TEST_MAIN(){
     arena=reinterpret_cast<uintptr_t>(VirtualAlloc(nullptr,saved_arena.size(),MEM_COMMIT|MEM_RESERVE,PAGE_READWRITE));if(!arena)return 99;
     physics_setup();roles::Snapshot out{};const auto tail=add_mesh_siblings(192);
     C(observe(out));const auto accepted=out;

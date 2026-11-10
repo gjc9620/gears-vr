@@ -1,0 +1,45 @@
+{
+  "classification": "progress",
+  "source_sha256": {
+    "cover_member_witness_live.inl": "e04c7e9427ce9d13ebd4ca307ae066bf946d3a3841ed0190173c7d7c1c7ddf5f",
+    "cover_physics_roles_live.inl": "ae7cbf721e4db02908fe227d4153467cd41f0747a52d8b4dc7085c36862bef7b"
+  },
+  "native_sha256": "8814ea68079dcb16b6815f3d72dd32ec3d5a7fdf2395d6302a5d19fb4eccc32b",
+  "project_dependencies": 407,
+  "flags_unchanged": true,
+  "external_worktree_dependencies": [],
+  "checks": {
+    "cover_member_chain_cache": 23,
+    "cover_member_witness_live": 50,
+    "cover_physics_roles_live": 282,
+    "cover_collider_roles_live": 219,
+    "cover_component_roles_live": 207,
+    "cover_query_guard_live": 23,
+    "cover_physics_query_live": 105,
+    "cover_physics_capsule_path_live": 391,
+    "cover_physics_overlap_query_live": 53,
+    "cover_physics_c0_off": 51
+  },
+  "total_checks": 1404,
+  "cached_threshold_checks": 24,
+  "failures": 0,
+  "before_reads": {
+    "whole_reads": 34440,
+    "first_membership_reads": 3106,
+    "second_membership_reads": 3106
+  },
+  "after_reads": {
+    "whole_reads": 24696,
+    "first_membership_reads": 3106,
+    "second_membership_reads": 2
+  },
+  "whole_read_reduction": 0.2829268292682927,
+  "cache_scope": "one typed sample only; cache complete owner chain; head captured in Proof; all member identities and Next reread at closing; clear expires certificates",
+  "capacity": "fixed 4096 member/chain bounds, shared Proof128 unchanged",
+  "not_proven": "actual game latency improvement or source-age repair",
+  "staged": false,
+  "game_started": false,
+  "original_query_called": false,
+  "movement_authorized": false,
+  "headset_accepted": false
+}

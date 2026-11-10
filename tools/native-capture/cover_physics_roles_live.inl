@@ -131,6 +131,9 @@ inline bool class_role(binding::Proof& proof,std::uintptr_t cls,wchar_t const* n
 // additionally retain full declaring-owner membership/name witnesses.
 inline bool membership(binding::Proof& p,binding::Property const& selected,MemberStore* members=nullptr){
     std::uintptr_t child{};if(!binding::source_field(p,child,selected.owner.address,0x80))return false;
+    const auto head=child;const auto first=members?members->count:0;
+    if(members){bool present{};const bool matched=members->match_chain(selected.owner.address,head,selected.id,present);
+        if(present)return matched;}
     std::array<std::uintptr_t,4096> visited{};unsigned count{},matches{};
     while(child&&count<visited.size()){
         for(unsigned i=0;i<count;++i)if(visited[i]==child)return false;visited[count++]=child;
@@ -141,7 +144,7 @@ inline bool membership(binding::Proof& p,binding::Property const& selected,Membe
         if(members){if(!members->link(id,child))return false;}
         else if(!binding::source_field(p,child,child,0x68))return false;
     }
-    return !child&&matches==1;
+    return !child&&matches==1&&(!members||members->finish_chain(selected.owner.address,head,first,count));
 }
 inline bool role_property(binding::Proof& p,std::uintptr_t cls,wchar_t const* name,wchar_t const* kind,unsigned width,
     wchar_t const* reference,binding::Property& output,MemberStore* members=nullptr){
