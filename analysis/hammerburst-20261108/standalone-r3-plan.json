@@ -1,0 +1,295 @@
+{
+  "schema": 1,
+  "candidate": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\solo-m1-20261028\\hammerburst-prepared-20261110-empty-acquisition-contract",
+  "prepared_sha256": "2eea04e910d0899ef9c36a977ce5571fbfb20e7c576ecf621f1e5ddf683cbe8b",
+  "source_commit": "35ff8031e11ff2ba849f8f74737c85f1339fe852",
+  "runtime_inputs_receipt": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\standalone-r3-runtime-inputs.json",
+  "runtime_inputs_sha256": "18b432a26bf81c1a0c1da2e72a6c869bf14eb9fbaf6b5e756add272d0325db50",
+  "run": "analysis/solo-m1-20261028/run_hammerburst_check.py",
+  "environment": {
+    "GEARSVR_STARTUP_REPLAY_ACTIONS": "1",
+    "GEARSVR_LANCER_INTEGRATED_PREPARED": "hammerburst-prepared-20261110-empty-acquisition-contract",
+    "GEARSVR_LANCER_INTEGRATED_CHECK": "hammerburst-empty-normal-once",
+    "GEARSVR_PRIVATE_RENDER_SCALE": "0.3",
+    "GEARSVR_HAMMERBURST_RELOAD": "1",
+    "GEARSVR_HAMMERBURST_REPLACEMENT": "1",
+    "GEARSVR_HAMMERBURST_EMPTY_RELOAD_ONLY": "1",
+    "GEARSVR_LANCER_REVIEW_VOLUMES": "0",
+    "PYTHONOPTIMIZE": "0",
+    "PYTHONSAFEPATH": "",
+    "PYTHONNOUSERSITE": "1"
+  },
+  "clear_environment": [
+    "GEARSVR_TEST_TRAJECTORY_FINITE_TOTAL",
+    "GEARSVR_HAMMERBURST_SUPPLY_BOUNDARIES",
+    "GEARSVR_HAMMERBURST_SUPPORT"
+  ],
+  "action_scope": "One actual ordinary empty reload only: existing shoulder/core exact6 -> initial L72/R78 -> existing genuine twelve6-shot drain to L0/R78 (loaded magazine only) -> one genuine empty trigger verifies unchanged L0/R78/reward and zero shots plus actual CanReload bound/blocked -> nonzero original begin serial with L0/R78 -> actual original bone open -> extract old/release/shoulder replacement/insertion/actual close -> L78/R0 -> six actual return rays and L72/R0 -> normal stop. Stop on first failure. No total reserve drain/R0 reuse/total0/reward/interruption/pose extension, no inventory or animation setters, input retry, clock or identity relaxation.",
+  "previous_game": 50148,
+  "previous_result": "Specific prior composition strict6 and drain72 observed; automatic refill L0/R78->L78/R0 before serial0 inspection and real-bone open failed. New manual veto not game verified.",
+  "binaries_changed": false,
+  "drivers_changed": true,
+  "native_binding_observation": {
+    "parent_native": "c98568f0dd070dbe994114c134c5fb11e523b0c46f2237349366803044b12a59",
+    "production_build": {
+      "parent_native": "c98568f0dd070dbe994114c134c5fb11e523b0c46f2237349366803044b12a59",
+      "original_project_sha256": "36a722e54d7451a6f5466e59489f8d252601aefec3761795b00c64ade5abc197",
+      "definitions": [
+        "WIN32",
+        "_WINDOWS",
+        "NDEBUG",
+        "GEARS_BODY_C0_GOAL_POLICY=1",
+        "GEARS_NATIVE_ATOM_OVERWRITE_RECEIPT=1",
+        "GEARS_FULL_BODY_C0_NATIVE_BACKEND=1",
+        "GEARS_BODY_TICK_INPUT=1",
+        "GEARS_BODY_MAIN_MOUNT_SOURCE=1",
+        "GEARS_WEAPON_MAIN_MOUNT_PROVIDER=1",
+        "GEARS_BODY_RECOIL_OBSERVER=1",
+        "GEARS_CONTINUOUS_HAND_OWNER=1",
+        "GEARS_COVER_BODY_PROTOTYPE=1",
+        "GEARS_COVER_CONTROL_OBSERVER=1",
+        "GEARS_COVER_FUTURE_G_OBSERVER=1",
+        "GEARS_COVER_NATIVE_RIG_OBSERVER=1",
+        "GEARS_HAND_GOAL_OBSERVER=1",
+        "GEARS_INDEPENDENT_LEFT_VIEW_HISTORY=1",
+        "GEARS_UNPOSSESSED_VIEW_TARGET=1",
+        "GEARS_VR_DOF_COMPAT=1",
+        "GEARS_OWNED_OUTPUT_TRACKING=1",
+        "GEARS_GRAPHICS_MENU_LOCK=1",
+        "GEARS_GRAPHICS_STARTUP_LOCK=1",
+        "GEARS_GRAPHICS_RUNTIME_LOCK=1",
+        "GEARS_GRAPHICS_LOCK_OBSERVER=1",
+        "GEARS_OWNED_UI_MATERIAL=1",
+        "GEARS_OWNED_UI_BATCH=1",
+        "GEARS_OWNED_UI_ROUTE_PROBE=1",
+        "GEARS_NATIVE_OWNED_SUSTAINED=1",
+        "GEARS_NATIVE_RESIZE_REUSE=1",
+        "GEARS_NATIVE_RESIZE_PROBE=1",
+        "GEARS_NATIVE_RENDER_COST_PROBE=1",
+        "GEARS_NATIVE_OWNED_XR_PROBE=1",
+        "GEARS_NATIVE_OWNED_CONTINUOUS_PROBE=1",
+        "GEARS_NATIVE_OWNED_PIXELS=1",
+        "GEARS_NATIVE_OWNED_SCENE_PROBE=1",
+        "GEARS_UI_MATERIAL_ROUTE=1",
+        "GEARS_UI_RETICLE_DIRECTION=1",
+        "GEARS_CROSSHAIR_ASSIGNMENT_OBSERVER=1",
+        "GEARS_COVER_CALL_OBSERVER=1",
+        "GEARS_UI_CALL_BOUNDARY_OBSERVER=1",
+        "GEARS_UI_SCENE_ROOT_OBSERVER=1",
+        "GEARS_PATH_CHOICE_POSITION_TRIAL=1",
+        "GEARS_PATH_CHOICE_CLOSE_OBSERVER=1",
+        "GEARS_PATH_CHOICE_CLOSE_RESTORE=1",
+        "GEARS_PATH_CHOICE_LAYOUT_OBSERVER=1",
+        "GEARS_PATH_CHOICE_REFLOW_CONTROL=1",
+        "GEARS_PATH_CHOICE_POSITION_SERVICE=1",
+        "GEARS_UI_RETICLE_FINITE_QUERY=1",
+        "GEARS_OWNED_PENDING_PIPELINE=1",
+        "GEARS_DESKTOP_MIRROR_ASYNC=1",
+        "GEARS_OWNED_WORLD_HANDOFF=1",
+        "GEARS_DESKTOP_MIRROR=1",
+        "GEARS_BACKGROUND_ZERO_EXTENT_CONTROL=1",
+        "GEARS_SWAPCHAIN_STARTUP_TRACE=1",
+        "GEARS_RUNTIME_RENDER_SIZE=1",
+        "WIN32_LEAN_AND_MEAN",
+        "NOMINMAX",
+        "GEARS_OWNED_SIZE_TRACE=0",
+        "GEARS_OWNED_DEPTH_CLEAR_TRIAL=1",
+        "GEARS_FRESH_POSE_PRODUCER_OBSERVER=1"
+      ],
+      "sources": {
+        "tools\\native-capture\\capture.cpp": "507bf502846fe12c2862f6e80b140c7ea67e671267410a64191959f09f168f48",
+        "tools\\native-capture\\native_atom_overwrite_thunks.asm": "b57518e35f5b993ea6821c729f9217327c1b93d538f93d545ba76abbb0bfcbe6",
+        "tools\\native-capture\\cover_body_thunks.asm": "6e2563be2ac3462eb8f41a736dfa38f6e1b455c0e109ef633e3b8327324c0abd",
+        "tools\\native-capture\\cover_pose_phase_thunks.asm": "0cdd3414ecf5a8504bf0839d756d4a711ad690aa116238e39878505d4a94fd64",
+        "tools\\native-capture\\cover_control_observer_thunks.asm": "efa2a80c73aa4cdef473ad422c959fde23779e56e5d25321bcef7ce469c9dfd1",
+        "tools\\native-capture\\cover_future_g_thunks.asm": "3b1ebd8fb20ec188575a6d40505f3fc7810220776bfb55257eef0afff07a1b90",
+        "tools\\native-capture\\fresh_pose_producer_thunks.asm": "03333f4436d52ec2a8d2b761de836c9e526b4f1d7866ff31f999a29ef300b4bc"
+      },
+      "missing_archive_asm_supplement": {
+        "tools\\native-capture\\native_atom_overwrite_thunks.asm": {
+          "sha256": "b57518e35f5b993ea6821c729f9217327c1b93d538f93d545ba76abbb0bfcbe6",
+          "source": "Tracked production ASM clean against HEAD; absent from frozen archive",
+          "commit": "37de6ef6b090e300e176760a553ffc44b39c8f4f"
+        },
+        "tools\\native-capture\\cover_body_thunks.asm": {
+          "sha256": "6e2563be2ac3462eb8f41a736dfa38f6e1b455c0e109ef633e3b8327324c0abd",
+          "source": "Tracked production ASM clean against HEAD; absent from frozen archive",
+          "commit": "90f3a13198af23e4570f6d87e2d61542a1cda525"
+        },
+        "tools\\native-capture\\cover_pose_phase_thunks.asm": {
+          "sha256": "0cdd3414ecf5a8504bf0839d756d4a711ad690aa116238e39878505d4a94fd64",
+          "source": "Tracked production ASM clean against HEAD; absent from frozen archive",
+          "commit": "26fb42bcafbe49bd888dcfc02bacef6906dac12d"
+        },
+        "tools\\native-capture\\cover_control_observer_thunks.asm": {
+          "sha256": "efa2a80c73aa4cdef473ad422c959fde23779e56e5d25321bcef7ce469c9dfd1",
+          "source": "Tracked production ASM clean against HEAD; absent from frozen archive",
+          "commit": "daf746a5a6f1ae673d809c438b0aa3b33e7c849a"
+        },
+        "tools\\native-capture\\cover_future_g_thunks.asm": {
+          "sha256": "3b1ebd8fb20ec188575a6d40505f3fc7810220776bfb55257eef0afff07a1b90",
+          "source": "Tracked production ASM clean against HEAD; absent from frozen archive",
+          "commit": "37de6ef6b090e300e176760a553ffc44b39c8f4f"
+        },
+        "tools\\native-capture\\fresh_pose_producer_thunks.asm": {
+          "sha256": "03333f4436d52ec2a8d2b761de836c9e526b4f1d7866ff31f999a29ef300b4bc",
+          "source": "Tracked production ASM clean against HEAD; absent from frozen archive",
+          "commit": "7c30b73a3b7211a0fb0be9cce96e8995c9a91ddd"
+        }
+      },
+      "minhook_library_sha256": "6140df27659ef4ab121398dac6f886ebe425bbab1265d3583ee782337875d379",
+      "minhook_header_sha256": "c3608e584bd9659aebdbb4c8c82585605989193623f240552d35c43311b3d31a",
+      "cmake_sha256": "80e2d7be63a977720680491057e848f1f5ac12d1b1f34a1098172418f0dfaa24",
+      "root_modified": false,
+      "tests_executed_by_build": false,
+      "game_started": false,
+      "staged": false,
+      "configure_exit_code": 0,
+      "build_exit_code": 0,
+      "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\build-native-binding-production\\Release\\GearsCapture6DofM1.dll",
+      "sha256": "806dcbd6a92ecd337923f4ecf315e56ab7afd475e247a8a3cacdfe2ab30b8b0c"
+    },
+    "read_transcript_count": 23335,
+    "read_transcript_identical": true,
+    "previous_game": 60196,
+    "previous_failure": "final_binding; exact subcondition unknown",
+    "guards_unchanged": true,
+    "new_game_reads": false,
+    "source_archive_separate_from_PG": true,
+    "causal_repair_claimed": false
+  },
+  "selected_game_path": "J:/gearsVr/Gears.of.War.Reloaded.v1.0.1.3816947-P2P/Gears of War Reloaded/Binaries_x64/GOWDE-Steam.exe",
+  "selected_game_sha256": "bdc6705d18ddb335b767df0b38e256ba5da0f49449c8970b302118bb7a4a8fa4",
+  "selected_settings_path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\solo-m1-1028d\\LocalAppData\\Coalition\\WarGame\\Config\\76561197960271872EngineUserSettings.ini",
+  "maximum_seconds": 360,
+  "execution_ready": true,
+  "runtime_entry": "Self-owned first-consume bootstrap + existing stage/owner-copy config/controlled HB runner/normal stop/normal cleanup/raw restore. No mechanical/input/time change.",
+  "review_interpreter": {
+    "path": "C:\\Users\\11\\.cache\\codex-runtimes\\codex-primary-runtime\\dependencies\\python\\python.exe",
+    "sha256": "3c48fbdcc2ed5c55290e39bef50bd6b1da76f43f3069a4a2624d0b8876a605f5"
+  },
+  "runtime_python_boundary": {
+    "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\standalone-r3-python-boundary.json",
+    "sha256": "ebee9b70b7c7ca791fb5f25b1b335dedc9581f13387d586ad66ef3a26fd2dd2b"
+  },
+  "baseline_files": [
+    {
+      "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\solo-m1-1028d\\manifest.json",
+      "public_read_only": false
+    },
+    {
+      "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\solo-m1-1028d\\config.json",
+      "public_read_only": false
+    },
+    {
+      "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\solo-m1-1028d\\xr-input\\LocalAppData\\OpenXR-Simulator\\settings.json",
+      "public_read_only": false
+    },
+    {
+      "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\solo-m1-1028d\\xr-input\\LocalAppData\\OpenXR-Simulator\\head_pose_command.json",
+      "public_read_only": false
+    },
+    {
+      "path": "J:\\gearsVr\\candidates\\6dof-unified\\candidate-state.json",
+      "public_read_only": true
+    },
+    {
+      "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\solo-m1-1028d\\native\\GearsCapture6DofM1.dll",
+      "public_read_only": false
+    },
+    {
+      "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\tools\\playground\\build-solo-metadata2\\GearsPlayground6DofUnified3.dll",
+      "public_read_only": false
+    },
+    {
+      "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\tools\\openxr-probe\\build-solo-m1-sim\\OpenXRPoseProbe.exe",
+      "public_read_only": false
+    },
+    {
+      "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\solo-m1-1028d\\LocalAppData\\Coalition\\WarGame\\Config\\76561197960271872EngineUserSettings.ini",
+      "public_read_only": false
+    },
+    {
+      "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\solo-m1-1028d\\LocalAppData\\Coalition\\WarGame\\Config\\76561198020107697EngineUserSettings.ini",
+      "public_read_only": false
+    }
+  ],
+  "execution_steps": [
+    "Only after explicit unique predecessor final handoff: verify its review/normal cleanup/encode/retention terminal and independent fresh idle; no shared runtime queries before custody",
+    "Verify exact prepared/all six binaries/current20 driver bytes and static Python boundary; capture immediate ten-file raw backups including public read-only state; no baseline sampled now",
+    "Run existing stage_lancer_private.py with exact candidate name once; bind private config game_path to selected owner path and map it to exact selected_settings_path, preserving immediate raw baseline",
+    "Run existing run_hammerburst_check.py with exact environment and cleared exclusions; preserve existing low-priority hidden/background observe-only mute physical-isolation and identity/100ms/20ms/250ms guards",
+    "One ordinary empty reload checkpoint only, first failure stops; existing caller owns normal stop/Native/input/entry/XR cleanup; no input retry or repeated run",
+    "Archive actual private text/numeric/trajectory/paired evidence before restoring; only after owned normal cleanup and idle restore all ten exact bytes/existence (public verify only), review full paired timeline/contact images, encode terminal then retention once",
+    "Reverify idle and ten baselines, then final explicit sole successor handoff; no shared helper mutation after releasing custody"
+  ],
+  "request_ready": true,
+  "entry": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\run_hammerburst_standalone_r3.py",
+  "entry_sha256": "7046f6448b95e727677ee019e11fa4d26026b3155df6149877def6e6ffc0fe24",
+  "selection_helper": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\hammerburst_owner_copy_selection.py",
+  "entry_dependencies": {
+    "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\hammerburst_owner_copy_selection.py": "643572541906f76816cbd0fe416ae4018bdc4c13c116f0b83b7daddeea7f927d"
+  },
+  "host": {
+    "codex_host_id": "local",
+    "computer_name": "GJC",
+    "worktree": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr",
+    "shell": "PowerShell",
+    "no_remote_host_fallback": true,
+    "python_media_versions": {
+      "Pillow": "13.0.0",
+      "NumPy": "2.3.5"
+    }
+  },
+  "media": {
+    "recording": "Existing PairedWindowRecording only, one game+simulator pair",
+    "directory_template": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\solo-m1-20261028\\menu-firstperson-<ownedPID>-startup-<stamp>",
+    "sample_fps_limit": 30,
+    "max_saved_width": 1280,
+    "recorder_max_seconds": 600,
+    "owned_driver_normal_stop_boundary_seconds": 360,
+    "normal_shutdown_wait_seconds": 120,
+    "encode_after_normal_recording_stop": true,
+    "review_full_span_and_actual_contacts": true,
+    "retention_once_after_encode": {
+      "newest": 3,
+      "hours": 48
+    },
+    "no_pre_stage_media_deletion": true
+  },
+  "exclusive_attempt_receipt": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\standalone-r2-attempt2\\claims\\continuation13712-r2.json",
+  "exclusive_policy": "Exact Cover bootstrap adapted only to this HB fixed claim. Every non-prepare invocation consumes O_CREAT|O_EXCL+fsync before all argument/ready/plan/ticket/source/host/idle/stage checks. Only exact sole --prepare-only bypasses. Never delete or retry a consumed attempt.",
+  "host_media_receipt": {
+    "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\admission-v2\\dependencies.json",
+    "sha256": "796d11d3641117a51fc9d05bf991c040db4ad26b8e363d9013fd2d4df5bc5ffe"
+  },
+  "host_dependencies": {
+    "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\admission-v2\\dependencies.json",
+    "sha256": "796d11d3641117a51fc9d05bf991c040db4ad26b8e363d9013fd2d4df5bc5ffe"
+  },
+  "baseline_ticket_contract": "After real unique final handoff and fresh idle only: capture all ten baseline_files raw bytes/absence with existing helper into this HB evidence folder; proof contains identity, before_stage=true, files keyed exact paths {exists,sha256,saved}; final ticket binds five exact identities, HB owner_thread, different predecessor, final accepted/owned/terminal/baseline booleans and hashed handoff/baseline proofs. Preparation generates neither claim nor ticket.",
+  "guard_check": {
+    "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\admission-v6\\bootstrap-check.json",
+    "sha256": "2799078ecc87fb0219f08b55222fa5bc4c5db915432349a0f61013729e20ae17"
+  },
+  "controlled_environment_policy": "Clear inherited GEARSVR_/GEARS_/XR_ and PYTHONPATH/PYTHONHOME before applying exact environment; OS variables preserved; unchanged original run_basic supplies fixed private-instance/quiet-startup/observe-only/mute/physical-isolation/shipped-Python additions.",
+  "source_delta": "Same-slot execution-only actual HOD051/game49912 Native-never-started cancelled-case branch; exact immutable actual receipts and identities, fresh process absence, ten raw and9 private originals/file-set. Previously accepted normal verifier AST unchanged. No product/bin/driver/action/ENV/freshness changes.",
+  "first_rejection_check": {
+    "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\empty-first-failure-check.json",
+    "sha256": "283f767a72fe5f1d4f36de52d78387c05c49005456b38027d3233cc593a2ddec"
+  },
+  "nested_python_environment_check": {
+    "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\admission-v3\\nested-python-environment-check.json",
+    "sha256": "83174163fce13cbe39fcae52de224ce68f57c65c531fac0fe4561e9d50f75c7c"
+  },
+  "prebirth_failure_check": {
+    "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\prebirth-failure-check.json",
+    "sha256": "5d5eb5a0a023724bfdfa3c614e63f0aa2c770b6e4c645b574d23da227c0c60ad"
+  },
+  "selection_check": {
+    "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\owner-copy-selection-check.json",
+    "sha256": "0fc703b51a78a63ab7e64291118f4ca649cfe6e63414366ede80d82251f804a1"
+  },
+  "owner_policy": "independent; coordinate actual startup occupancy only; same raw restore/input/identity guards retained",
+  "prior_attempt_refused_before_stage": true
+}

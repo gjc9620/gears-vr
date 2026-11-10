@@ -1,0 +1,26 @@
+{
+  "prepared": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\solo-m1-20261028\\hammerburst-prepared-20261110-empty-acquisition-contract",
+  "prepared_sha256": "2eea04e910d0899ef9c36a977ce5571fbfb20e7c576ecf621f1e5ddf683cbe8b",
+  "sha256": {
+    "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\solo-m1-20261028\\run_hammerburst_check.py": "2dd57510efea5ae5f8882a1e8d8bc4b75f6102cc2f1ff97881c0b030cac889d3",
+    "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\solo-m1-20261028\\run_hammerburst_operator.py": "01ea4c758427bfc00ced2bc14771d5ac6a6db669b937424eb6d8987553f55f8c",
+    "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\solo-m1-20261028\\hammerburst_core_chain.py": "702c4b8dbe2aeb8bf6ab1d463af4e978476c3abab83cdfe87180af484e5afb92",
+    "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\solo-m1-20261028\\hammerburst_reload_chain.py": "8591ccc252ac929bc02e6a52c6b86ba4a9c790faf99b75f30993f84e5aba8cb1",
+    "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\solo-m1-20261028\\hammerburst_supply_boundary_chain.py": "7aaca77db2c12677d0247fa8562f8373ae3f30b3791ddd37345b49f926b935bb",
+    "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\solo-m1-20261028\\hammerburst_count_snapshot.py": "bca372dcc067d9145f0cdf9a63948516db0e8b2dddda64518cd6cd1596e0637b",
+    "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\solo-m1-20261028\\hammerburst_capture_identity.py": "7ad513f706de4a64437b6c2ec95bd03a2a472121fcb5e98631931e5754086ee4",
+    "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\solo-m1-20261028\\equipment_controller_chain.py": "4feb29a57dcbc1a6616197df8bff90f162909e379d0e54cff1f4b3f9447dc39c",
+    "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\solo-m1-20261028\\run_v63_startup_repro.py": "3f297b3de50b22d442d176c695892607d5e83624401e0395a400f2693cbab4ea",
+    "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\solo-m1-20261028\\read_reload_state.py": "5308acaae431070a8245a0c83d0f9649f0c23b4315d2f77389d3d5521a63e0c9",
+    "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\solo-m1-20261028\\reload_count_snapshot.py": "53d43dfbb3fbf267be84789aeff4a064e3f176d2c421704a7c5092a4217473f5",
+    "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\solo-m1-20261028\\read_world_grips.py": "61df175c12e2f880f337f98500b048ad272f45b910ba0f2ab7d07b158626add5",
+    "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\solo-m1-20261028\\owned_command_io.py": "f48eb5e275e51abacd6fa986adf90afddd4f9a658b076983a2817233b97e5f72",
+    "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\solo-m1-20261028\\stage_lancer_private.py": "c9a2d423043820bbfea6a632ae00f73fec1006efa5dd46ebdd2b742e97a24256",
+    "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\solo-m1-20261028\\record_paired_windows.py": "bc292075e5cd5a4ab7236f3791780dcf229ba7c24d635675a085fd25f0bd5feb",
+    "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\solo-m1-20261028\\review_paired_windows.py": "901d829b88257cf17241abb7e3d8a2c0f978bbeb13a3b99dd65d9a201a5940c4",
+    "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\solo-m1-20261028\\retain_test_media.py": "90427cb5ae693e837a0800b433aa2886f4b3d145b80fd3d476e7494c74407ac4",
+    "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\solo-m1-20261028\\run_vr_only_hotfix.py": "77ae0387499c60a7ffc0e163d48bfbf528ddfcf995806490159e20bdccf5a9a9",
+    "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\solo-m1-20261028\\run_menu_firstperson_check.py": "a032e1b3e06a9159aab6090aa3c041db0a44c189dc1e64d7e163e7de440016a8",
+    "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\solo-m1-20261028\\hammerburst_empty_reload_chain.py": "cec122b76de25b875b6d83c890c5a2bb9857af151bb94f59dbd0c22731942638"
+  }
+}
