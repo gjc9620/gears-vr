@@ -13,6 +13,7 @@ enum class QueryAdmission:unsigned {idle,admission,cover,guard,alias,session,ret
 thread_local QueryAdmission query_admission{};
 thread_local bool query_session_entered{};
 thread_local gears_cover_query_guard::Witness query_owner_guard;
+thread_local n::ready_wrist::cause::Witness query_source_cause;
 bool sphere_probe_requested{};
 bool path_probe_requested{};
 struct SphereObservation {
@@ -23,6 +24,7 @@ struct SphereObservation {
     cover_physics_query_live::Observation progress{};
     uint64_t original_started_before{},original_returned_before{};
     gears_cover_query_guard::Witness owner_guard{};
+    n::ready_wrist::cause::Witness source_cause{};
 };
 std::mutex sphere_probe_mutex;SphereObservation sphere_probe;
 struct PathObservation {
@@ -103,6 +105,9 @@ void summary(FILE* f){if(!f)return;
     fprintf(f,"cover_path_probe_owner_guard=%u,%u,%u,%u,%u cover_path_probe_session_guard=%u,%u,%u,%u,%u ",
         p.owner_guard.calls,p.owner_guard.failed_call,p.owner_guard.stage,p.owner_guard.detail,p.owner_guard.extra,
         p.progress.guard.calls,p.progress.guard.failed_call,p.progress.guard.stage,p.progress.guard.detail,p.progress.guard.extra);
+    auto const& cause=p.source_cause;
+    fprintf(f,"cover_path_probe_source_age_cause=%u,%llu,%llu,%u,%u,%u,%u ",unsigned(cause.observed),
+        uint64_t(cause.key.entry),cause.key.compose,cause.key.thread,cause.key.stage,cause.verdict,cause.causes);
     // The finished row is published under the mutex after the packet write.
     // The one-shot packet is immutable thereafter; no game read occurs here.
     if(p.finished&&p.code==q::Code::queried){
@@ -120,8 +125,9 @@ void summary(FILE* f){if(!f)return;
 template<class Shape,class Output,class Invoke> q::Code query(Entry const& entry,Core const& source,Shape const& shape,Output& output,Invoke invoke)noexcept{
     query_admission=QueryAdmission::admission;query_session_entered=false;
     gears_cover_query_guard::Witness owner_witness{};
-    struct PublishGuard {gears_cover_query_guard::Witness const& value;
-        ~PublishGuard(){query_owner_guard=value;}} publish_guard{owner_witness};
+    n::ready_wrist::cause::Witness cause_witness{};
+    struct PublishGuard {gears_cover_query_guard::Witness const& value;n::ready_wrist::cause::Witness const& cause;
+        ~PublishGuard(){query_owner_guard=value;query_source_cause=cause;}} publish_guard{owner_witness,cause_witness};
     n::Call call;auto& s=n::state;
     if(!session.enabled()||GetCurrentThreadId()!=n::owner_thread.load()||!n::enabled||n::stopping.load()||entry.kind||!entry.selected||
        !s.captured||s.prepared||s.kernel.pending()||!n::same_entry(entry)||!source.cover_type||
@@ -147,7 +153,12 @@ template<class Shape,class Output,class Invoke> q::Code query(Entry const& entry
         if(!n::same_entry(entry))return reject(Gate::entry);
         if(std::memcmp(&expected_source,&s.context.source,sizeof source))return reject(Gate::context_source);
         if(std::memcmp(&expected_source,&source,sizeof source))return reject(Gate::input_source);
-        if(!s.context.current(n::tx::Stage::prepare))return reject(Gate::context,unsigned(s.context.rejection()),s.context.rejection_detail());
+        {
+            n::ready_wrist::cause::Scope observe(path_probe_requested||sphere_probe_requested,
+                {reinterpret_cast<uintptr_t>(&entry),entry.invocation,unsigned(entry.thread),unsigned(n::tx::Stage::prepare)},
+                unsigned(n::tx::Verdict::source_age_expired),cause_witness);
+            if(!s.context.current(n::tx::Stage::prepare))return reject(Gate::context,unsigned(s.context.rejection()),s.context.rejection_detail());
+        }
         if(!cover_context_live::sample_current(s.context.actor,current_cover))return reject(Gate::cover_read);
         if(!cover_context_live::same(cover,current_cover))return reject(Gate::cover_match);
         if(!gears_cover_pose_phase::metadata(reader,request,current))return reject(Gate::metadata_read);
@@ -235,6 +246,7 @@ void observe_path_once(Entry const& e,Core const& source,q::Vector const& eye)no
             gears_cover_capsule_path::Policy{2,double(centimetre)*.001},q::StreamLimits{32,8},path_probe_packet);
         common.admission=query_admission;common.session_entered=query_session_entered;
         common.owner_guard=query_owner_guard;
+        common.source_cause=query_source_cause;
         if(common.session_entered)common.progress=session.observation();else common.progress.engine=before;
         if(common.code==q::Code::queried){auto const& packet=path_probe_packet;
             row.segments=packet.plan.count;row.hits=packet.collected.raw.hit_count;row.reports=packet.collected.raw.reports;

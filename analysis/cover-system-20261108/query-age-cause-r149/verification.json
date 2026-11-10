@@ -1,0 +1,59 @@
+{
+  "scope": "Source, data-only observer, compiler/linker; no game/XR started",
+  "dll_sha256": "ac5cf37f3683a20900d3927510e56ab42cb0528080f0ea31f360f3537344ebda",
+  "project_dependencies": 409,
+  "external_native_worktree_dependencies": 0,
+  "flags_unchanged": true,
+  "changed": [
+    "tools/native-capture/cover_physics_c0_live.inl",
+    "tools/native-capture/cover_query_source_cause.h",
+    "tools/native-capture/ready_wrist_entry_live.inl"
+  ],
+  "tests": {
+    "build_exit": 0,
+    "source_sha256": "f78b70472d4d85764db9f78897240c7f05aec24704eae576a312450a81c70835",
+    "test_exit": 0,
+    "output": "query source cause: 25 checks, 0 failures; data-only observation\r\n"
+  },
+  "parser_cases": 15,
+  "guard_text_verification": [
+    {
+      "mode": "canonical",
+      "query_guard_order_and_conditions_unchanged": true,
+      "original_commit_journal_filter_unchanged": true,
+      "before_sha256": {
+        "ready_wrist_entry_live.inl": "dbe1e6d912fea463d551551e313feb34355d6aa4679441b96d530d205d06abcf",
+        "cover_physics_c0_live.inl": "495d2744aca1fe9b72a4f6ffa5938bbb9d400fda1d560da862647eb3bfadecf9"
+      },
+      "after_sha256": {
+        "ready_wrist_entry_live.inl": "16fe5161658ba2745ced98774c6b6c4482dd7c7ee6eb946e224670e610f43529",
+        "cover_physics_c0_live.inl": "48e1e0ea640df6b015c18e0e65160f470e6715850f08cd803f233b65e4dde3b5"
+      }
+    },
+    {
+      "mode": "frozen-r146",
+      "query_guard_order_and_conditions_unchanged": true,
+      "original_commit_journal_filter_unchanged": true,
+      "before_sha256": {
+        "ready_wrist_entry_live.inl": "dbe1e6d912fea463d551551e313feb34355d6aa4679441b96d530d205d06abcf",
+        "cover_physics_c0_live.inl": "495d2744aca1fe9b72a4f6ffa5938bbb9d400fda1d560da862647eb3bfadecf9"
+      },
+      "after_sha256": {
+        "ready_wrist_entry_live.inl": "16fe5161658ba2745ced98774c6b6c4482dd7c7ee6eb946e224670e610f43529",
+        "cover_physics_c0_live.inl": "48e1e0ea640df6b015c18e0e65160f470e6715850f08cd803f233b65e4dde3b5"
+      }
+    }
+  ],
+  "header_sha256": "ed7271520f910221eda1900a8f1e9fd305737eed83d5bd98c8b484b3b243c961",
+  "observed_data": "Existing source_rejected causes only; bit1 BodyTickSource source_age_only, bit2 equipment freshness false",
+  "scope_key": "Entry address + Compose + thread + prepare stage + source_age_expired verdict; private query only",
+  "new_game_reads": 0,
+  "new_clock_reads": 0,
+  "new_game_writer": false,
+  "new_retry": false,
+  "existing_commit_journal_filter_unchanged": true,
+  "actual_r148_cause_proven": false,
+  "public_changed": false,
+  "headset_accepted": false,
+  "remaining": "One fresh private query check to obtain an actual matching source cause; no unchanged r148 rerun."
+}

@@ -1,0 +1,28 @@
+[
+  {
+    "mode": "canonical",
+    "query_guard_order_and_conditions_unchanged": true,
+    "original_commit_journal_filter_unchanged": true,
+    "before_sha256": {
+      "ready_wrist_entry_live.inl": "dbe1e6d912fea463d551551e313feb34355d6aa4679441b96d530d205d06abcf",
+      "cover_physics_c0_live.inl": "495d2744aca1fe9b72a4f6ffa5938bbb9d400fda1d560da862647eb3bfadecf9"
+    },
+    "after_sha256": {
+      "ready_wrist_entry_live.inl": "16fe5161658ba2745ced98774c6b6c4482dd7c7ee6eb946e224670e610f43529",
+      "cover_physics_c0_live.inl": "48e1e0ea640df6b015c18e0e65160f470e6715850f08cd803f233b65e4dde3b5"
+    }
+  },
+  {
+    "mode": "frozen-r146",
+    "query_guard_order_and_conditions_unchanged": true,
+    "original_commit_journal_filter_unchanged": true,
+    "before_sha256": {
+      "ready_wrist_entry_live.inl": "dbe1e6d912fea463d551551e313feb34355d6aa4679441b96d530d205d06abcf",
+      "cover_physics_c0_live.inl": "495d2744aca1fe9b72a4f6ffa5938bbb9d400fda1d560da862647eb3bfadecf9"
+    },
+    "after_sha256": {
+      "ready_wrist_entry_live.inl": "16fe5161658ba2745ced98774c6b6c4482dd7c7ee6eb946e224670e610f43529",
+      "cover_physics_c0_live.inl": "48e1e0ea640df6b015c18e0e65160f470e6715850f08cd803f233b65e4dde3b5"
+    }
+  }
+]

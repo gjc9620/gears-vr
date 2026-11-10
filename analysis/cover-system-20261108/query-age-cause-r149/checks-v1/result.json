@@ -1,0 +1,6 @@
+{
+  "build_exit": 0,
+  "source_sha256": "f78b70472d4d85764db9f78897240c7f05aec24704eae576a312450a81c70835",
+  "test_exit": 0,
+  "output": "query source cause: 25 checks, 0 failures; data-only observation\r\n"
+}

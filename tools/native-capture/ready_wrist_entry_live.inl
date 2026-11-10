@@ -1,6 +1,8 @@
 // Included inside full_body_c0_native_live, after State and the old observer.
 // No game writer/solver/guard is replaced. Default OFF has no new sampling.
+#include "cover_query_source_cause.h"
 namespace ready_wrist {
+namespace cause=gears_cover_query_source_cause;
 namespace wire=::gears_ready_wrist_entry;
 wire::Recorder recorder;
 std::atomic<bool> attempted{},written{};std::atomic<unsigned> error{};
@@ -18,6 +20,7 @@ wire::Record* current(Entry const& e) noexcept {
     return recorder.current;
 }
 void source_rejected(Entry const* e,tx::Stage stage,tx::Verdict verdict,unsigned causes) noexcept {
+    if(e&&cause::armed())cause::note({reinterpret_cast<uintptr_t>(e),e->invocation,unsigned(e->thread),unsigned(stage)},unsigned(verdict),causes);
     if(!recorder.enabled||!e||stage!=tx::Stage::commit)return;
     if(current(*e))recorder.note_commit_source(reinterpret_cast<uintptr_t>(e),e->invocation,e->thread,unsigned(verdict),causes);
 }

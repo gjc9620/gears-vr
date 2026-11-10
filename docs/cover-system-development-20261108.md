@@ -2349,3 +2349,17 @@ path requested/attempted/finished1，code4，Session stage4 component_roles/deta
 321实际projection帧/errors0，编码0；17页全跨度总览与5原始contact已亲看，五段模型头肩/躯干遮挡仍FAIL，时间段候选7/7/7/7/8，不声称同C0/GPU骨/头显证明。launcher0、Native/entry/input恢复、fire_disable0/hand_stop5/drained、XR0、gamegone/worker正常、独立身份全不在、无强杀。CLOAK860/失败0、前台534/owned_activation false，静音340/initial1/失败0/共享拒绝0，disk_before87473856512。
 
 修正报告reader将path attempted纳入query_attempted（之前只看sphere），9项解释自测通过；不是改运行行为或补造原调用。下一窄点复用现有source_rejected实际cause bits，区分prepare阶段本次body/tracking年龄与equipment年龄；当前commit-only journal不能证明该分项。不放宽时限或重取/续时旧输入，不原样重跑此批。源/原始结果/画面在current-measurement-r146/runtime-r148；完整CV01–24/AC01–22仍开放，工程25%、publicv71及固定入口不变，目标active。
+
+## r149：私有查询同次prepare年龄原因观察候选（2026-11-11，已编译未实跑）
+
+r148组件读取阶段Owner context/source_age_expired/detail6没有body/equipment分项，不能凭35.2868ms推断总年龄。原ActualContext已将原因传入ready_wrist::source_rejected：bit1为BodyTickSource::source_age_only，bit2为equipment_fresh=false；原journal只记录commit，因此不覆盖本次prepare失败。
+
+新增cover_query_source_cause.h纯记录器，只有private sphere/path查询在原context.current(prepare)调用范围临时安装线程局部Scope；按Entry地址、Compose、thread、prepare与source_age_expired精确匹配，只收首个已有回调原因。相同地址晚一Compose、错线程/阶段/判词、嵌套查询和Scope结束后的事件不能串入；退出/异常恢复原Scope，不保留栈指针。ready_wrist原commit journal筛选与行为不动；默认无private查询时不安装观察。没有额外game read/clock/锁/输入/lease/guard/engine调用或writer。
+
+query原RAII发布旁附加原因副本，现有path一发结果保存并输出cover_path_probe_source_age_cause七项。解释器先核精确Native，再核同一Compose/thread及Owner context/detail6才解释两位原因；未观察时保持unknown，不将0视为新鲜或通过。只解释现有拒绝，不授予碰撞/身体移动许可。
+
+实际纯记录器25项通过，覆盖关闭/空key/入口、Compose、thread、stage、verdict不符，其他真实CPU线程、嵌套、异常退出、首证不覆盖和地址重用；解释15项通过。canonical与精确冻结query函数去掉观察代码后，原guard顺序/判据逐字相同，原source_rejected commit筛选亦逐字相同。源码按各自原文窄变换，不把共享其他Native改动带入冻结树。
+
+完整Native在r146冻结上仅改ready_wrist_entry_live.inl、cover_physics_c0_live.inl并新增一个头；编译链接0，SHAac5cf37f3683a20900d3927510e56ab42cb0528080f0ea31f360f3537344ebda。409项目依赖全部冻结，外部Native worktree依赖0，GEARS开关相同。prepare新增--native-r149，只接受这3文件delta。原测量、查询和当前BodyTick来源/装备时限未改。
+
+本轮未再启动游戏，r148具体哪一位为真仍未知，不称已定位或修复。下一次新票只取得同次原因及原查询结果，不重复未改玩法矩阵，不续时旧来源。measurement neutral257的实际数学分项、完整身体/世界覆盖、抓边/松手保持/重抓、遮挡/受击/枪口及CV01–24/AC01–22仍开放；工程25%、publicv71和固定入口不变，目标active。
