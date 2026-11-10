@@ -133,3 +133,5 @@ continuation-rejection-isolated-r1从manual-veto-isolated原2253文件逐项复�
 ## r2完整PG与实际释放日志验证
 
 新隔离continuation-rejection-isolated-r2完整configure/build实际0，PG SHA daee9726fa4f7da7b684e97907f1e31c8180e3493ab1a7557d0c227b8da6dd21。2253原文件对r1仅event inl变动，原flags不变。新增真实release_completed调用20次写入临时FILE并读回，精确16条gate1/frame0记录、无附加shot调用；runtime297/event258实际编译执行0。原r1产品/收据不改，当前仅准备新r2同一意向替换，没有claim/ticket/stage/game，少发根因仍未实证修复。
+
+新冻结product hammerburst-prepared-20261110-continuation13712-r2 prepared SHA80b12d98fca4900fde12bee32d793752e6009d51600d191bec036185daeb7dcf，源2270/Native1338/6bin全核。已向Bol只更新同一原后到意向，r1不请求执行，不增位。entry/claim/ticket均未创建、request_ready=false，待真实尾后绑定；pending-intent.json记录替换与原到序。
