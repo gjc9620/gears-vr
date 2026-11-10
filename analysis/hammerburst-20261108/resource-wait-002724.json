@@ -1,0 +1,15 @@
+{
+  "instance": "hb-cloak-1111-002724",
+  "wrapper_terminal_exit": 1,
+  "result_sha256": "d17d0ebed4c08bf3d383bdcfd8691d62f37234db9790d19acd7e7b80e6473b72",
+  "error": "TimeoutError('Prepared instance resource wait expired; no start attempted')",
+  "runtime_receipts_absent": [
+    "isolated-worker.json",
+    "launcher-session.json",
+    "isolated-done.json"
+  ],
+  "game_started": false,
+  "operator_started": false,
+  "start_log_exists": false,
+  "interpretation": "Prepared once, bounded resource wait expired before any start. Old prepared_waiting=true was last intermediate flag, not evidence of a live job; original result preserved. New finalizer clears that flag. No weapon action validation."
+}

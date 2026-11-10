@@ -31,7 +31,7 @@ def resource_preflight():
     return dict(disk=require_disk(ROOT), memory=require_memory())
 
 
-def wait_for_resource_admission(*,check=resource_preflight,paused=None,timeout=180,
+def wait_for_resource_admission(*,check=resource_preflight,paused=None,timeout=600,
                                 clock=time.monotonic,sleep=time.sleep):
     paused=paused or PAUSE.exists
     started=clock();deadline=started+timeout;checks=0
@@ -152,6 +152,7 @@ def main():
             result['prepared_waiting_for_resources']=False
             write(target/'active.json',result)
         with (target/'start.log').open('wb') as log:
+            result['start_attempted']=True
             subprocess.run(python+[str(TOOL),'start','--name',name],check=True,stdout=log,stderr=subprocess.STDOUT,**common)
         launched=True;result['worker_started']=True
         deadline=time.monotonic()+180
@@ -186,6 +187,9 @@ def main():
     except BaseException as error:
         result['error']=repr(error)
     finally:
+        if result.get('prepared_waiting_for_resources'):
+            result['prepared_waiting_for_resources']=False
+            result['prepared_only_no_start']=not result.get('start_attempted',False)
         if not launched and (selected/'isolated-worker.json').exists():
             admission=json.loads((selected/'isolated-worker.json').read_text())
             own_worker=admission.get('worker_identity')

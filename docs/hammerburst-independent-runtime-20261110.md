@@ -314,3 +314,5 @@ launcher0/operator1/stop0、Native清理/PG入口恢复/XR0、game及子进程�
 完整PG SHA18131f8a91ea7a22463afd3edb515e9c75ec057590e28687c880e9711794f6e6；Native/XR及共享Client未改。45项exact-source检查通过；真实冻结HandClient加本地Host的8项整合覆盖ammo/magazine两种difference5/6重现、首次Frame保留、下一Frame严格retained、busy及invalidate拒绝。不是实际Native/game验证，尚未运行该候选。
 
 为继续实际复测，将本枪余下已终态212059、211559、204446、200135、194156、1111-000647的PSOCache按前述相同身份/完整SHA/junction读回流程归档，又完整保留630文件/5,310,295,908bytes。未动日志/录像/源码/当前制品。首次进程查询遇到进程在取得StartTime前退出，原脚本在任何复制/移动前中止；现最多再查一次，只接受明确NoProcessFound或正读到不同creation，仍未知/同身份存活则拒绝。没有把空StartTime当作退出。总表`terminal-shader-archive-20261111.json`与六份逐文件索引保留，旧总表不覆盖；目录名仍为首次创建的20261110归档根，非伪改实验日期。
+
+002724本次仅prepare后等待资源180秒，原父工具进程已终态exit1，未出现start.log/isolated-worker/launcher-session/isolated-done，game/operator均未启动，不计part-frame-r1游戏验证。原result中prepared_waiting=true是最后中间标记，不能当成进程仍存活；原结果保留，并以`resource-wait-002724.json`补充已终态、未start的证据。后续finally清除等待标记、记录prepared_only_no_start，避免这个状态歧义。按主人临时资源不足继续等待的偏好，未来单份准备后的资源等待改600秒（仅游戏创建前），仍同一绝对截止、不预留slot、不改任何枪内计时；默认资源/首次start的共享检查保持原样。旧名字不重启。
