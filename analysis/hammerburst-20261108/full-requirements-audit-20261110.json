@@ -1,8 +1,8 @@
 {
   "schema": 1,
   "scope": "full HB objective; no scope reduction",
-  "current_candidate": "inventory-timing-r1: compiled+6 observer checks, actual57324 inventory timing reached; reload priority/history still not game exercised",
-  "prepared_sha256": "dd37edb4d23b063aa1455a3444b0d7fde44ee0ee3b5fed72a47f1501aa6b0438",
+  "current_candidate": "pickup-baseline-r1: full PG compiled,9 exact observer fixtures and11 driver receipt fixtures passed; actual shoulder UP required before one Grip, no game yet",
+  "prepared_sha256": "16a56a01e49a308115a28fbdd5cfe827890b1baf40c71f66fed2a003f9f8d6e9",
   "requirements": [
     {
       "id": "acquire_stow",
@@ -256,7 +256,7 @@
   ],
   "completion_proven": false,
   "goal_active": true,
-  "immediate_next": "Improve isolated pickup driver to require observed fresh released Native baseline at actual shoulder before ONE new Grip, then await actual matching held receipt before moving away. Preserve original100ms edge/source and all product gates; no silent blocked-edge retry or deadline expansion. Then validate priority/history/seating/closure/return and full13 requirements.",
+  "immediate_next": "One fresh focused pickup/replacement test. Require actual Source1 shoulder released-baseline marker after UP command, one distinct Grip, matching actual held receipt before moving away. First source gap aborts, no retry or deadline renewal. Then reach actual early reload/history/seating/closure/typed return; all13 requirements open.",
   "historical_evidence_does_not_certify_current_PG": true,
   "candidate_runtime_status": "Actual57324 initial Grip Frame331 rejected producer_sync_gap159.3755ms; exact original edge142.9588ms old. Down inventory checks all passed in4.5333-10.5288ms, exit ages54.4694-75.6599ms. Zero authoritative acquisition/rays/reload. Normal cleanup. Does not establish56032 cause.",
   "previous_recorded_candidate": {

@@ -130,6 +130,8 @@ def equipment_source():
 
 def core_source():
     source=(CODE/'hammerburst_core_chain.py').read_text(encoding='utf-8')
+    source=replace_once(source,'        c.reach(pose(.23,-.115,-.17));g.pad(1,wait=.6,squeeze=1)',
+        '        c.reach(pose(.23,-.115,-.17))\n        from confirmed_shoulder_pickup import acquire\n        acquire(c,data)')
     old="""            before=len(c.records('native_lancer_shot_trajectory'))
             g.pad(1,wait=.35,trigger=1);g.pad(1,wait=.6)
             shots=c.records('native_lancer_shot_trajectory')[before:];data['shots']=shots

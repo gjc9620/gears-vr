@@ -1,0 +1,14 @@
+{
+  "compiled_adapters": {
+    "read_private_input.py": "7295f7438a690282dbe0dc90d3379fb8fe822f475be35c816d78704fea8dc047",
+    "read_world_grips.py": "0c2838ef36dd66790c85d5778a4eec1a427ca7bfb1412b5800a33a2dbc078d4d",
+    "read_aim_metrics.py": "0d88591d76961688d83af63376b2a3345a23a32867a67a2166b9d6a1fc3bea16",
+    "equipment_controller_chain.py": "41ebfd9ae756c7057809b73d451c36d8969504f610bbb75808350ad0d33e5864",
+    "hammerburst_core_chain.py": "9a5b7984d143c7552d3b91b51c4c8549c88518647b5a8a61e2552be30ced2aa0",
+    "hammerburst_reload_chain.py": "1023c631472deed65c788c8271a6db66124598e3351deaec0474cf28e3888688",
+    "hammerburst_supply_boundary_chain.py": "e2cfc6e98c9a8c2fbf400d9dd52432410f9739da7154f29de96b7f325d5b8f76",
+    "run_menu_firstperson_check.py": "f17e20382569c43e8ddabce4b283e87c910a08560bf5620ee067d0fb3a130339"
+  },
+  "game_started": false,
+  "runtime_verified": false
+}

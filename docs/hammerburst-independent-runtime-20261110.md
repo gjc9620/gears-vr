@@ -406,3 +406,11 @@ inventory-timing-r1/hb-cloak-1111-024442/game57324/creation134388101714967603。
 下一步修正本枪测试驱动的取枪前置：在真实肩部位置先确认fresh released Native baseline，再发一次新的实际Grip并等待真实matching held回执后才把手移开。保持原100ms/source/边沿/身份/库存门，不给过期边沿续命，不加静默重复press；首次/尾部射击、换弹priority/history、空仓/回射与全部13项要求仍开放。
 
 launcher0/operator1/stop0、Native清理/PG入口恢复/XR0，本方game/子进程退出、无强杀，2148前台/3751CLOAK零违规。86帧errors空、encode0；亲看48双眼全跨度三页，初始00000/00002是等待卡、00009黑图，后续实际场景/手/近右枪体可见；不称全部图像为实际动作证明，完整贴合/连续性/头显未接受。7份文本+request/worker原件逐SHA归档，详见runtime-57324-first-failure-analysis.json。公共v71与30%不变，本方所有请求/运行均终态。
+
+## pickup-baseline-r1：以实际释放基线和held回执驱动取枪
+
+原core固定0.6秒Grip后即移手，未证明肩部fresh released Native baseline或matching held先到。现私有driver在肩部真实UP后，最多5秒只等与新命令对应的Source1/current source<=100ms、真实right UP/p==r、Input baseline或quiet的原观测，再发一次Grip；最多2秒等新frame/sequence/source_sync/press+1/event/target/input_control匹配的真实held回执，成功前不移手。源间隙记录优先于held，保留第一次失败并发真实UP，不重按/重放/续期。生产Input/100ms/库存/lease/动画/取枪代码均未改。
+
+原库存observer增加独立最多16条Source1肩部UP观察，限肩部位置只选择观测，不授予动作/改变几何。只有原库存current_after成功phase4且实际Input evidence同sequence/sync并为baseline/quiet才输出hammerburst_pickup_up，记录原Frame/input/epochs/p/r/clock。已有idle4/down12限额保留。11项driver输入/回执fixtures与9项精确observer C++ fixtures通过：旧UP/错误source/未释放/错误target/frame/press/断源不发送或不再重复Grip，计数上限、Input序号/时间/status不符不发布基线。最初矛盾fixture同时出现source-gap与held时会先返回held，已修正为先保留source-gap；生产取枪门未改。
+
+完整PG SHA04f39bad7cd10271978084abe8b3009e4eb2493edff33c0108cd11494334a812，Native/XR未重建；仅扩展观测及测试驱动，不能称取枪/换弹已修复。原43项history与9项priority结果覆盖的代码未变，不重复扩大测试。下一步新唯一实例实际验证一次，保持全部13项及首发/尾部/空仓/贴合/头显要求。

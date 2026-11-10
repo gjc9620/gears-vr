@@ -1,0 +1,9 @@
+{
+  "passed": true,
+  "cases": 9,
+  "exact_observer": true,
+  "source_input_time_status_match_required": true,
+  "maximum_shoulder_up_rows": 16,
+  "game_execution": false,
+  "source_sha256": "10d3e8e5d10f30b272050d5460f5720c682f96c4965661745b828e323a7fe88a"
+}

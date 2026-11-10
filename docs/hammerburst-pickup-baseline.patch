@@ -1,0 +1,36 @@
+--- a/tools/playground/weapon_hammerburst_inventory_timing.inl
++++ b/tools/playground/weapon_hammerburst_inventory_timing.inl
+@@ -1,10 +1,15 @@
+ // Observations of the existing inventory path; never source or selection authority.
+ struct HammerburstInventoryTiming {
+-    inline static unsigned idle_rows{},down_rows{};
+-    abi::Frame const& frame;bool active{};unsigned phase{};std::int64_t stamp[5]{};
++    inline static unsigned idle_rows{},down_rows{},shoulder_rows{};
++    abi::Frame const& frame;bool active{},shoulder_up{};unsigned phase{};std::int64_t stamp[5]{};
+     explicit HammerburstInventoryTiming(abi::Frame const& f) noexcept:frame(f){
+         const bool down=f.controllers.hands[1].squeeze_active==1&&f.controllers.hands[1].squeeze>.35f;
+-        auto& count=down?down_rows:idle_rows;const unsigned limit=down?12:4;
++        const auto& right=f.controllers.hands[1];const auto& head=f.stereo.head.position;
++        shoulder_up=f.stereo.source==gears_vr::StereoSource::MetaOperatorSimulated&&right.squeeze_active==1&&right.squeeze<=.35f&&
++            right.pressed[gears_vr::control_squeeze]==right.released[gears_vr::control_squeeze]&&
++            std::abs(right.grip.position.x-head.x-.23)<.04&&std::abs(right.grip.position.y-head.y+.115)<.04&&
++            std::abs(right.grip.position.z-head.z+.17)<.04;
++        auto& count=shoulder_up?shoulder_rows:down?down_rows:idle_rows;const unsigned limit=shoulder_up?16:down?12:4;
+         active=log_file&&count<limit;if(active){++count;mark(0);}
+     }
+     void mark(unsigned value) noexcept {if(active&&value<5){phase=value;stamp[value]=clock_ns(nullptr);}}
+@@ -20,5 +25,14 @@
+             frame.controllers.hands[1].pressed[gears_vr::control_squeeze],frame.controllers.hands[1].released[gears_vr::control_squeeze],
+             unsigned(frame.controllers.hands[1].squeeze>.35f),unsigned(associated),unsigned(w.failure),w.game_difference,w.input_age_ns);
+         fflush(log_file);
++        if(shoulder_up&&phase==4&&input_evidence.sequence==frame.controllers.sequence&&input_evidence.sync_ns==frame.controllers.sync_ns&&
++           (input_evidence.status==gears_equipment_input::Status::baseline||input_evidence.status==gears_equipment_input::Status::quiet)){
++            fwprintf(log_file,L"hammerburst_pickup_up frame=%llu sequence=%llu sync_ns=%lld admitted_ns=%lld frame_now_ns=%lld source=%u right_pressed=%u right_released=%u right_down=0 input_status=%hs session=%llu space=%llu input=%llu profile=%llu reference=%llu lifecycle=%llu world_generation=%llu\n",
++                frame.key.frame,frame.controllers.sequence,frame.controllers.sync_ns,stamp[4],frame.now_ns,unsigned(frame.stereo.source),
++                frame.controllers.hands[1].pressed[gears_vr::control_squeeze],frame.controllers.hands[1].released[gears_vr::control_squeeze],
++                gears_equipment_input::status_name(input_evidence.status),frame.controllers.session,frame.controllers.space_epoch,
++                frame.controllers.input_epoch,frame.controllers.profile_generation,frame.reference_generation,frame.key.lifecycle,frame.key.world_generation);
++            fflush(log_file);
++        }
+     }
+ };
