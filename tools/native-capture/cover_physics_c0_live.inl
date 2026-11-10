@@ -126,6 +126,16 @@ q::Code sweep_capsule_path(Entry const& e,Core const& c,q::Capsule const& shape,
     (void)e;(void)c;(void)shape;(void)delta;(void)policy;(void)limits;(void)out;return q::Code::unavailable;
 #endif
 }
+template<class Output> q::Code overlap_all_impl(Entry const& e,Core const& c,q::Capsule const& shape,q::StreamLimits const& limits,Output& out)noexcept{
+#if defined(GEARS_COVER_PHYSX_QUERIES) && GEARS_COVER_PHYSX_QUERIES
+    return query(e,c,shape,out,[&](auto const& actor,auto const& metadata,auto const& geometry,auto read,auto guard,auto& output){
+        return session.overlap_all(actor,metadata,geometry,limits,read,guard,output);});
+#else
+    (void)e;(void)c;(void)shape;(void)limits;(void)out;return q::Code::unavailable;
+#endif
+}
+q::Code overlap_all(Entry const& e,Core const& c,q::Capsule const& shape,q::StreamLimits const& limits,q::AllOverlap& out)noexcept{return overlap_all_impl(e,c,shape,limits,out);}
+q::Code overlap_all(Entry const& e,Core const& c,q::Capsule const& shape,q::StreamLimits const& limits,q::AllOverlapOwners& out)noexcept{return overlap_all_impl(e,c,shape,limits,out);}
 q::Code overlap(Entry const& e,Core const& c,q::Sphere const& s,q::Overlap& out)noexcept{return do_overlap(e,c,s,out);}
 q::Code overlap(Entry const& e,Core const& c,q::Box const& s,q::Overlap& out)noexcept{return do_overlap(e,c,s,out);}
 q::Code overlap(Entry const& e,Core const& c,q::Capsule const& s,q::Overlap& out)noexcept{return do_overlap(e,c,s,out);}

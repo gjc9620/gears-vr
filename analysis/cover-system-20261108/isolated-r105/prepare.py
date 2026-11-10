@@ -72,8 +72,9 @@ def main():
     parser.add_argument('--native-r106', action='store_true')
     parser.add_argument('--native-r111', action='store_true')
     parser.add_argument('--native-r117', action='store_true')
+    parser.add_argument('--native-r122', action='store_true')
     args = parser.parse_args()
-    if sum((args.native_r106,args.native_r111,args.native_r117))>1:
+    if sum((args.native_r106,args.native_r111,args.native_r117,args.native_r122))>1:
         raise ValueError('Select one frozen Native')
     if not args.name.startswith('cover-'):
         raise ValueError('Cover owns only its cover- prefixed new instance')
@@ -95,11 +96,13 @@ def main():
             raise RuntimeError('r106 frozen delta differs')
         expected['native'] = receipt['dll_sha256']
         prepared['builds']['native'] = dict(saved=str(current/'native-build/GearsCapture.dll'), sha256=expected['native'])
-    if args.native_r111 or args.native_r117:
-        current = HERE.parent / ('overlap-collector-r117' if args.native_r117 else 'self-evidence-r111')
+    if args.native_r111 or args.native_r117 or args.native_r122:
+        current = HERE.parent / ('overlap-query-r122' if args.native_r122 else 'overlap-collector-r117' if args.native_r117 else 'self-evidence-r111')
         receipt = load(current / 'native-build-result.json')
         overlays = ('cover_physx_overlap_stream.h','cover_physx_query.h','cover_physx_stream.h') if args.native_r117 else (
             'cover_physx_self_evidence.h','cover_physx_query.h','cover_physics_query_live.inl')
+        if args.native_r122:
+            overlays=('cover_physx_overlap_code.h','cover_physx_shape_owner.h','cover_physx_query.h','cover_physics_query_live.inl','cover_physics_c0_live.h','cover_physics_c0_live.inl')
         changed = {'tools/native-capture/'+name for name in overlays}
         if (set(receipt['changed']) != changed or receipt['external_worktree_dependencies']
                 or not receipt['flags_unchanged'] or not receipt['build_only'] or receipt['staged']):

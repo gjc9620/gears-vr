@@ -3,9 +3,13 @@
 #include <cwchar>
 #include "continuous_hand_owner_entry.h"
 #include "../vr-common/native_rig_tracking_frame.h"
-namespace gears_cover_physx_query {enum class Code;struct Sphere;struct Box;struct Capsule;struct Vector;struct Overlap;struct Sweep;struct StreamLimits;struct AllSweep;struct AllSweepOwners;}
+namespace gears_cover_physx_query {enum class Code;struct Sphere;struct Box;struct Capsule;struct Vector;struct Overlap;struct Sweep;struct StreamLimits;struct AllSweep;struct AllSweepOwners;struct AllOverlap;struct AllOverlapOwners;}
 namespace gears_cover_capsule_path {struct Policy;struct RawPath;}
 namespace cover_physics_c0_live {
+gears_cover_physx_query::Code overlap_all(gears_continuous_hand_entry::Entry const&,gears_native_rig_tracking::CoreSnapshot const&,
+    gears_cover_physx_query::Capsule const&,gears_cover_physx_query::StreamLimits const&,gears_cover_physx_query::AllOverlap&)noexcept;
+gears_cover_physx_query::Code overlap_all(gears_continuous_hand_entry::Entry const&,gears_native_rig_tracking::CoreSnapshot const&,
+    gears_cover_physx_query::Capsule const&,gears_cover_physx_query::StreamLimits const&,gears_cover_physx_query::AllOverlapOwners&)noexcept;
 gears_cover_physx_query::Code sweep_capsule_path(gears_continuous_hand_entry::Entry const&,gears_native_rig_tracking::CoreSnapshot const&,
     gears_cover_physx_query::Capsule const&,gears_cover_physx_query::Vector const&,gears_cover_capsule_path::Policy const&,
     gears_cover_physx_query::StreamLimits const&,gears_cover_capsule_path::RawPath&)noexcept;

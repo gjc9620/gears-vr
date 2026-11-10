@@ -16,6 +16,10 @@ int main(){
     C(c0::sweep(entry,core,box,delta,sweep)==q::Code::unavailable&&sweep.raw_count==99);
     C(c0::sweep(entry,core,capsule,delta,sweep)==q::Code::unavailable&&sweep.raw_count==99);
     q::AllSweep all{};all.raw_count=99;
+    q::AllOverlap overlaps{};overlaps.raw_count=99;
+    C(c0::overlap_all(entry,core,capsule,q::StreamLimits{},overlaps)==q::Code::unavailable&&overlaps.raw_count==99);
+    auto overlap_owners=std::make_unique<q::AllOverlapOwners>();overlap_owners->raw.raw_count=99;overlap_owners->owners[0].actor=0xdead;
+    C(c0::overlap_all(entry,core,capsule,q::StreamLimits{},*overlap_owners)==q::Code::unavailable&&overlap_owners->raw.raw_count==99&&overlap_owners->owners[0].actor==0xdead);
     C(c0::sweep_all(entry,core,box,delta,q::StreamLimits{},all)==q::Code::unavailable&&all.raw_count==99);
     C(c0::sweep_all(entry,core,capsule,delta,q::StreamLimits{},all)==q::Code::unavailable&&all.raw_count==99);
     auto owners=std::make_unique<q::AllSweepOwners>();owners->raw.raw_count=99;owners->owners[0].actor=0xdead;

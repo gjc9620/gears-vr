@@ -122,7 +122,10 @@ static bool equal(q::AllSweepOwners const& a,q::AllSweepOwners const& b){
     for(unsigned i=0;i<a.owners.size();++i)if(!own::same(a.owners[i],b.owners[i]))return false;
     return true;
 }
-int main(int argc,char**argv){
+#ifndef GEARS_OWNED_SWEEP_TEST_MAIN
+#define GEARS_OWNED_SWEEP_TEST_MAIN main
+#endif
+int GEARS_OWNED_SWEEP_TEST_MAIN(int argc,char**argv){
     if(argc!=2)return 2;
     try{
         const auto initial=setup(argv[1]);auto memory=initial;live_memory=&memory;

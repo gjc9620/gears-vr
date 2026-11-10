@@ -66,6 +66,7 @@ template<class Read> bool code_current(std::uintptr_t image_base,Read& read){
     return raw::bytes(read,a.data(),image_base+0x13e730,a.size())&&a==actor_getter&&
         raw::bytes(read,b.data(),image_base+0xc4e0,b.size())&&b==shape_getter;
 }
+
 }
 template<class Read,class Guard> Code observe(std::uintptr_t image_base,std::uint32_t image_size,
     source::Snapshot const& scope,Hit const& hit,Read read,Guard guard,Observation& output)noexcept{
@@ -106,5 +107,19 @@ template<class Read,class Guard> Code observe(std::uintptr_t image_base,std::uin
         if(!source::same(key,scope)||std::memcmp(&packet,&hit,sizeof packet))return Code::source_changed;
         output=first;return Code::observed;
     }catch(...){return Code::read;}
+}
+// The overlap enumerator returns a public shape address, not a sweep Hit.
+// Reuse the exact membership/backlink observer with a private address carrier;
+// no synthetic sweep packet is exposed as an original collision observation.
+template<class Read,class Guard> Code observe_address(std::uintptr_t image_base,std::uint32_t image_size,
+    source::Snapshot const& scope,std::uintptr_t const& shape_address,Read read,Guard guard,Observation& output)noexcept{
+    if(source::aliases(&output,sizeof output,&shape_address,sizeof shape_address))return Code::request;
+    const auto captured_address=shape_address;Hit address_carrier{};
+    std::memcpy(address_carrier.bytes.data()+8,&captured_address,sizeof captured_address);
+    auto stable=[&](source::Snapshot const& current_scope){
+        if(shape_address!=captured_address)return false;
+        const bool owner_is_current=guard(current_scope);return owner_is_current&&shape_address==captured_address;
+    };
+    return observe(image_base,image_size,scope,address_carrier,read,stable,output);
 }
 }

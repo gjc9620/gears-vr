@@ -14,6 +14,7 @@
 #include "cover_physx_query_source.h"
 #include "cover_physx_stream.h"
 #include "cover_physx_overlap_stream.h"
+#include "cover_physx_overlap_code.h"
 #include "cover_physx_shape_owner.h"
 #include "cover_physx_asset_actors.h"
 #include "cover_physx_collider.h"
@@ -53,6 +54,14 @@ struct AllSweepOwners {
     std::array<gears_cover_physx_shape_owner::Observation,max_stream_hits> owners{};
     // Positive per-shape provenance only. Zero MUST remain an obstacle or
     // unknown; neither the array nor a fully self-marked sweep is clearance.
+    std::array<unsigned char,max_stream_hits> self_sources{};
+    gears_cover_physx_asset_actors::Snapshot asset_bodies{};
+    gears_cover_physx_collider::Snapshot collider_source{};
+    gears_cover_physx_components::Snapshot component_sources{};
+};
+struct AllOverlapOwners {
+    AllOverlap raw{};
+    std::array<gears_cover_physx_shape_owner::Observation,max_stream_hits> owners{};
     std::array<unsigned char,max_stream_hits> self_sources{};
     gears_cover_physx_asset_actors::Snapshot asset_bodies{};
     gears_cover_physx_collider::Snapshot collider_source{};
@@ -197,6 +206,9 @@ public:
 };
 namespace detail {
 struct OriginalCalls {
+    template<class Shape>static bool overlap_shapes(std::uintptr_t fn,std::uintptr_t scene,Shape const& shape,
+        std::uintptr_t* batch,OverlapReporter& reporter,std::uint32_t& count)noexcept{
+        return gears_cover_physx_query::detail::overlap_shapes(fn,scene,shape,batch,reporter,count);}
     template<class Shape>static bool overlap(std::uintptr_t fn,std::uintptr_t scene,Shape const& shape,bool& result)noexcept{
         return gears_cover_physx_query::detail::overlap(fn,scene,shape,result);}
     template<class Shape>static bool sweep(std::uintptr_t fn,std::uintptr_t scene,Shape const& shape,Vector const& delta,Sweep& result)noexcept{
@@ -262,6 +274,7 @@ template<class ImageType,class Calls> class QueryEngine {
     QueryProgress progress_{true};
     source::Snapshot before_{},after_{};
     AllSweep stream_candidate_{};
+    AllOverlap overlap_candidate_{};
     std::array<gears_cover_physx_shape_owner::Observation,max_stream_hits> owners_candidate_{};
     gears_cover_physx_asset_actors::Workspace asset_work_{};
     gears_cover_physx_asset_actors::Snapshot asset_before_{},asset_after_{};
@@ -349,26 +362,43 @@ public:
     template<class Shape,class Read,class Guard,class Output> Code sweep_all(source::Source const& s,Shape const& shape,Vector const& delta,
         StreamLimits const& limits,Read read,Guard guard,Output& output,gears_cover_physx_collider::Source const* component_source=nullptr,
         gears_cover_physx_components::Source const* component_catalog=nullptr)noexcept{
-        static_assert(std::is_same_v<Shape,Box>||std::is_same_v<Shape,Capsule>);
-        static_assert(std::is_same_v<Output,AllSweep>||std::is_same_v<Output,AllSweepOwners>);
+        return collect_all<false>(s,shape,delta,limits,read,guard,output,component_source,component_catalog);
+    }
+    template<class Read,class Guard,class Output> Code overlap_all(source::Source const& s,Capsule const& shape,
+        StreamLimits const& limits,Read read,Guard guard,Output& output,gears_cover_physx_collider::Source const* component_source=nullptr,
+        gears_cover_physx_components::Source const* component_catalog=nullptr)noexcept{
+        return collect_all<true>(s,shape,Vector{},limits,read,guard,output,component_source,component_catalog);
+    }
+private:
+    template<bool Enumerate,class Shape,class Read,class Guard,class Output> Code collect_all(source::Source const& s,Shape const& shape,Vector const& delta,
+        StreamLimits const& limits,Read read,Guard guard,Output& output,gears_cover_physx_collider::Source const* component_source=nullptr,
+        gears_cover_physx_components::Source const* component_catalog=nullptr)noexcept{
+        static_assert(Enumerate?std::is_same_v<Shape,Capsule>:(std::is_same_v<Shape,Box>||std::is_same_v<Shape,Capsule>));
+        constexpr bool with_owners=std::is_same_v<Output,AllSweepOwners>||std::is_same_v<Output,AllOverlapOwners>;
+        if constexpr(Enumerate)static_assert(std::is_same_v<Output,AllOverlap>||std::is_same_v<Output,AllOverlapOwners>);
+        else static_assert(std::is_same_v<Output,AllSweep>||std::is_same_v<Output,AllSweepOwners>);
+        auto& candidate=[this]() -> auto& {if constexpr(Enumerate)return overlap_candidate_;else return stream_candidate_;}();
+        auto result_count=[&](){if constexpr(Enumerate)return candidate.shape_count;else return candidate.hit_count;};
+        auto enumeration_code_current=[&](){if constexpr(Enumerate)return gears_cover_physx_overlap_code::current(image_.base(),image_.size(),read,detail::digest);else return true;};
         if(source::aliases(&output,sizeof output,this,sizeof *this)||source::aliases(&output,sizeof output,&s,sizeof s)||
            source::aliases(&output,sizeof output,&shape,sizeof shape)||source::aliases(&output,sizeof output,&delta,sizeof delta)||
            source::aliases(&output,sizeof output,&limits,sizeof limits))return Code::request;
         if(component_source&&(source::aliases(component_source,sizeof *component_source,this,sizeof *this)||source::aliases(component_source,sizeof *component_source,&output,sizeof output)))return Code::request;
         if(component_catalog&&(source::aliases(component_catalog,sizeof *component_catalog,this,sizeof *this)||source::aliases(component_catalog,sizeof *component_catalog,&output,sizeof output)))return Code::request;
-        if constexpr(std::is_same_v<Output,AllSweep>){if(component_source||component_catalog)return Code::request;}
+        if constexpr(!with_owners){if(component_source||component_catalog)return Code::request;}
         const auto request=s;const Shape geometry=shape;const Vector movement=delta;const auto budget=limits;
         const auto collider_key=component_source?*component_source:gears_cover_physx_collider::Source{};
-        if(!detail::valid(geometry)||!detail::sweep_motion(geometry,movement)||!detail::stream_limits(budget))return Code::request;
-        if constexpr(std::is_same_v<Output,AllSweepOwners> &&
+        if(!detail::valid(geometry)||(!Enumerate&&!detail::sweep_motion(geometry,movement))||!detail::stream_limits(budget))return Code::request;
+        if constexpr(with_owners &&
             (!std::is_invocable_r_v<bool,Guard&,gears_cover_physx_asset_actors::Snapshot const&>||
              !std::is_invocable_r_v<bool,Guard&,gears_cover_physx_collider::Snapshot const&>))return Code::source;
-        if constexpr(std::is_same_v<Output,AllSweepOwners> && !std::is_invocable_r_v<bool,Guard&,gears_cover_physx_components::Snapshot const&>)return Code::source;
-        if constexpr(std::is_same_v<Output,AllSweepOwners>){if(!component_source||!component_catalog)return Code::source;}
-        if(detail::active_stream_reporter)return Code::reentrant;
+        if constexpr(with_owners && !std::is_invocable_r_v<bool,Guard&,gears_cover_physx_components::Snapshot const&>)return Code::source;
+        if constexpr(with_owners){if(!component_source||!component_catalog)return Code::source;}
+        if(detail::active_query_reporter)return Code::reentrant;
         bool expected=false;if(!active_.compare_exchange_strong(expected,true))return Code::reentrant;Finish finish{active_};
-        if constexpr(std::is_same_v<Output,AllSweepOwners>)component_key_=*component_catalog;
+        if constexpr(with_owners)component_key_=*component_catalog;
         try{const auto ready=begin(request,read,guard);if(ready!=Code::queried)return ready;
+            if constexpr(Enumerate){progress_.stage=QueryStage::code_begin;if(!enumeration_code_current())return Code::code;}
             if(!source::same(request,s)||std::memcmp(&geometry,&shape,sizeof shape)||std::memcmp(&movement,&delta,sizeof delta)||
                std::memcmp(&budget,&limits,sizeof limits))return Code::changed;
             struct AssetGuard {
@@ -390,7 +420,7 @@ public:
                     else return false;
                 }
             } asset_guard{guard,before_};
-            if constexpr(std::is_same_v<Output,AllSweepOwners>){
+            if constexpr(with_owners){
                 const auto code=gears_cover_physx_asset_actors::observe(image_.base(),image_.size(),before_,read,asset_guard,asset_work_,asset_before_);
                 if(code!=gears_cover_physx_asset_actors::Code::observed)return detail::asset_code(code);
                 const auto cx=gears_cover_physx_collider::observe(image_.base(),image_.size(),before_,*component_source,read,asset_guard,collider_before_);
@@ -400,31 +430,45 @@ public:
             }
             if(!source::same(request,s)||std::memcmp(&geometry,&shape,sizeof shape)||std::memcmp(&movement,&delta,sizeof delta)||
                std::memcmp(&budget,&limits,sizeof limits))return Code::changed;
-            if constexpr(std::is_same_v<Output,AllSweepOwners>){if(!gears_cover_physx_collider::same(collider_key,*component_source)||
+            if constexpr(with_owners){if(!gears_cover_physx_collider::same(collider_key,*component_source)||
                 !gears_cover_physx_components::same(component_key_,*component_catalog))return Code::changed;}
-            stream_candidate_={};std::array<Hit,stream_batch_hits> batch{};
-            detail::StreamReporter reporter{detail::stream_vtable.data(),&stream_candidate_,batch.data(),GetCurrentThreadId(),budget};
-            detail::StreamScope callback(reporter);if(!callback.admitted())return Code::reentrant;
-            std::uint32_t raw_count{};constexpr auto rva=std::is_same_v<Shape,Box>?0x171770:0x1716f0;
-            progress_.stage=QueryStage::dispatch;++progress_.original_started;
-            const bool returned=Calls::sweep_stream(image_.base()+rva,before_.public_scene,geometry,movement,batch.data(),reporter,raw_count);
-            callback.close();if(!returned){fault();return Code::fault_unknown;}
+            candidate={};std::uint32_t raw_count{};bool malformed{},truncated{},untrusted{};
+            if constexpr(Enumerate){
+                std::array<std::uintptr_t,stream_batch_hits> batch{};
+                detail::OverlapReporter reporter{detail::overlap_vtable.data(),&candidate,batch.data(),GetCurrentThreadId(),budget};
+                detail::OverlapScope callback(reporter);if(!callback.admitted())return Code::reentrant;
+                progress_.stage=QueryStage::dispatch;++progress_.original_started;
+                const bool returned=Calls::overlap_shapes(image_.base()+0x172160,before_.public_scene,geometry,batch.data(),reporter,raw_count);
+                callback.close();if(!returned){fault();return Code::fault_unknown;}
+                malformed=reporter.malformed;truncated=reporter.truncated;untrusted=reporter.untrusted_batch;
+            }else{
+                std::array<Hit,stream_batch_hits> batch{};
+                detail::StreamReporter reporter{detail::stream_vtable.data(),&candidate,batch.data(),GetCurrentThreadId(),budget};
+                detail::StreamScope callback(reporter);if(!callback.admitted())return Code::reentrant;
+                constexpr auto rva=std::is_same_v<Shape,Box>?0x171770:0x1716f0;
+                progress_.stage=QueryStage::dispatch;++progress_.original_started;
+                const bool returned=Calls::sweep_stream(image_.base()+rva,before_.public_scene,geometry,movement,batch.data(),reporter,raw_count);
+                callback.close();if(!returned){fault();return Code::fault_unknown;}
+                malformed=reporter.malformed;truncated=reporter.truncated;
+            }
             ++progress_.original_returned;progress_.stage=QueryStage::returned;
             const auto closed=end(request,read,guard);if(closed!=Code::queried)return closed;
+            if constexpr(Enumerate){progress_.stage=QueryStage::code_end;if(!enumeration_code_current())return Code::code;}
             if(!source::same(request,s)||std::memcmp(&geometry,&shape,sizeof shape)||std::memcmp(&movement,&delta,sizeof delta)||
                std::memcmp(&budget,&limits,sizeof limits))return Code::changed;
-            if(reporter.malformed)return Code::callback_rejected;
-            if(reporter.truncated)return Code::truncated;
-            if(raw_count!=stream_candidate_.hit_count)return Code::callback_rejected;
-            stream_candidate_.raw_count=raw_count;
-            if constexpr(std::is_same_v<Output,AllSweepOwners>){
+            if(malformed||untrusted)return Code::callback_rejected;
+            if(truncated)return Code::truncated;
+            if(raw_count!=result_count())return Code::callback_rejected;
+            candidate.raw_count=raw_count;
+            if constexpr(with_owners){
                 // The active query and Image pin span enumeration AND all
                 // owner reads. No second query or stream filtering occurs.
                 std::fill(owners_candidate_.begin(),owners_candidate_.end(),gears_cover_physx_shape_owner::Observation{});
                 auto current_owner=[&](source::Snapshot const& raw){return source::same(before_,raw)&&detail::source_guard(guard,raw);};
-                for(unsigned i=0;i<stream_candidate_.hit_count;++i){
-                    const auto owner=gears_cover_physx_shape_owner::observe(image_.base(),image_.size(),before_,
-                        stream_candidate_.hits[i],read,current_owner,owners_candidate_[i]);
+                for(unsigned i=0;i<result_count();++i){
+                    const auto owner=[&](){if constexpr(Enumerate)
+                        return gears_cover_physx_shape_owner::observe_address(image_.base(),image_.size(),before_,candidate.shapes[i],read,current_owner,owners_candidate_[i]);
+                        else return gears_cover_physx_shape_owner::observe(image_.base(),image_.size(),before_,candidate.hits[i],read,current_owner,owners_candidate_[i]);}();
                     if(owner!=gears_cover_physx_shape_owner::Code::observed)return detail::owner_code(owner);
                 }
                 const auto asset_closed=gears_cover_physx_asset_actors::observe(image_.base(),image_.size(),before_,read,asset_guard,asset_work_,asset_after_);
@@ -437,15 +481,16 @@ public:
                 if(parts!=gears_cover_physx_components::Code::observed)return detail::components_code(parts);
                 if(!gears_cover_physx_components::same(components_before_,components_after_))return Code::changed;
                 const auto owner_closed=end(request,read,guard);if(owner_closed!=Code::queried)return owner_closed;
+                if constexpr(Enumerate){progress_.stage=QueryStage::code_end;if(!enumeration_code_current())return Code::code;}
                 if(!source::same(request,s)||std::memcmp(&geometry,&shape,sizeof shape)||std::memcmp(&movement,&delta,sizeof delta)||
                    std::memcmp(&budget,&limits,sizeof limits)||!gears_cover_physx_collider::same(collider_key,*component_source)||
                    !gears_cover_physx_components::same(component_key_,*component_catalog))return Code::changed;
-                output.raw=stream_candidate_;output.owners=owners_candidate_;output.asset_bodies=asset_after_;output.collider_source=collider_after_;output.component_sources=components_after_;
+                output.raw=candidate;output.owners=owners_candidate_;output.asset_bodies=asset_after_;output.collider_source=collider_after_;output.component_sources=components_after_;
                 output.self_sources.fill(0);
                 if(gears_cover_physx_self_evidence::qualified(asset_after_,collider_after_,components_after_))
-                    for(unsigned i=0;i<stream_candidate_.hit_count;++i)
+                    for(unsigned i=0;i<result_count();++i)
                         output.self_sources[i]=gears_cover_physx_self_evidence::match(owners_candidate_[i],asset_after_,collider_after_,components_after_);
-            }else output=stream_candidate_;
+            }else output=candidate;
             progress_.stage=QueryStage::complete;return Code::queried;
         }catch(...){progress_.exception=true;return Code::source;}
     }

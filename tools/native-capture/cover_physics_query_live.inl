@@ -22,6 +22,7 @@ template<class Engine=q::Queries> class Session {
     component_roles::Workspace component_work_{};component_roles::Snapshot component_before_{},component_after_{};
     gears_cover_physx_components::Source component_input_{};
     q::AllSweepOwners owner_result_{};
+    q::AllOverlapOwners overlap_owner_result_{};
     path::Workspace path_work_{};path::RawPath path_result_{};
     Stage stage_{};unsigned detail_{};
     struct NoLocalResult {};
@@ -64,7 +65,7 @@ template<class Engine=q::Queries> class Session {
         stage_=Stage::physics_roles;
         const auto physics=roles::sample(owner,source,guard,work_,before_);detail_=unsigned(physics);
         if(physics!=roles::Code::current)return q::Code::source;
-        constexpr bool with_collider=std::is_same_v<Output,q::AllSweepOwners>||std::is_same_v<Output,path::RawPath>;
+        constexpr bool with_collider=std::is_same_v<Output,q::AllSweepOwners>||std::is_same_v<Output,q::AllOverlapOwners>||std::is_same_v<Output,path::RawPath>;
         if constexpr(with_collider){stage_=Stage::collider_roles;const auto collider=collider_roles::sample(owner,guard,collider_work_,collider_before_);detail_=unsigned(collider);
             if(collider!=roles::Code::current)return q::Code::source;}
         if constexpr(with_collider){stage_=Stage::component_roles;const auto components=component_roles::sample(owner,guard,component_work_,component_before_);detail_=unsigned(components);
@@ -76,6 +77,7 @@ template<class Engine=q::Queries> class Session {
         // Session, never as a 139KB temporary on the live game stack.
         std::conditional_t<with_collider,NoLocalResult,Output> local{};
         Output& result=[&]() -> Output& {if constexpr(std::is_same_v<Output,q::AllSweepOwners>)return owner_result_;
+            else if constexpr(std::is_same_v<Output,q::AllOverlapOwners>)return overlap_owner_result_;
             else if constexpr(std::is_same_v<Output,path::RawPath>)return path_result_;else return local;}();
         stage_=Stage::engine;detail_=0;
         const auto code=invoke(engine_,before_.source,geometry,read,current,result);detail_=unsigned(code);
@@ -88,6 +90,23 @@ template<class Engine=q::Queries> class Session {
         output=result;stage_=Stage::complete;return q::Code::queried;
     }
 public:
+    template<class Read,class Guard,class Output> q::Code overlap_all(weapon_hand_scene_binding::Binding const& actor,
+        gears_cover_pose_phase::Metadata const& metadata,q::Capsule const& shape,q::StreamLimits const& limits,
+        Read read,Guard guard,Output& output)noexcept{
+        static_assert(std::is_same_v<Output,q::AllOverlap>||std::is_same_v<Output,q::AllOverlapOwners>);
+        if(!q::detail::stream_limits(limits)||q::source::aliases(&output,sizeof output,&limits,sizeof limits))return q::Code::request;
+        const auto budget=limits;const auto requested_shape=shape;
+        auto stable=[&](){return budget.max_hits==limits.max_hits&&budget.max_reports==limits.max_reports&&
+            !std::memcmp(&requested_shape,&shape,sizeof shape);};
+        auto current_owner=[&](){if(!stable())return false;const bool okay=guard();return okay&&stable();};
+        try{return execute(actor,metadata,shape,read,current_owner,output,[&](auto& engine,auto const& source,auto const& geometry,auto reader,auto current,auto& raw){
+            const auto code=[&](){if constexpr(std::is_same_v<Output,q::AllOverlapOwners>)
+                return engine.overlap_all(source,geometry,budget,reader,current,raw,&current.collider_source,current.component_source);
+                else return engine.overlap_all(source,geometry,budget,reader,current,raw);}();
+            if(code!=q::Code::queried)return code;
+            return stable()?q::Code::queried:q::Code::changed;});
+        }catch(...){return q::Code::source;}
+    }
     // One serialized owner operation. Every segment uses the same typed
     // source/collider/component closure and original timestamps. A prefix is
     // private scratch until endpoint and final owner checks both succeed.

@@ -1,0 +1,30 @@
+{
+  "chunks": [
+    {
+      "rva": "0x172160",
+      "bytes": 201,
+      "sha256": "9c8d6e45ec961d80c70f8c74be68bf14fb5275c4dc809f4b28388d1722a3f6a6"
+    },
+    {
+      "rva": "0xa9f10",
+      "bytes": 1233,
+      "sha256": "d6ea243ba8eac3cb42b5d1612ef7f34fa0d5c935bc102e0a862a8dc212ee55ce"
+    },
+    {
+      "rva": "0x1275a0",
+      "bytes": 21,
+      "sha256": "5bb23d46777bddeeeffab001b4d81743d1d635e5047c54fa5245fd13e77a009d"
+    },
+    {
+      "rva": "0x188440",
+      "bytes": 291,
+      "sha256": "9c34e94b6d5c56b44ab17bca559046b7f0c1a87d693a3b92a59789c6f16fb735"
+    },
+    {
+      "rva": "0x1ab130",
+      "bytes": 151,
+      "sha256": "d22173ab69525ddd1a68e0068ccae567a00f9b8dc7eb73941c3aeb68f93a838b"
+    }
+  ],
+  "total_bytes": 1897
+}

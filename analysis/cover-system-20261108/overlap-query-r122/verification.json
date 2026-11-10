@@ -1,0 +1,270 @@
+{
+  "classification": "progress",
+  "production": {
+    "cover_physx_overlap_code.h": "a89620febeb5b2ce2ca9b9f47af425909d51ddbc4f2a1cae0cd748d58df37d6d",
+    "cover_physx_shape_owner.h": "982f93e5247c3c72770d396a43c87ec3fa00e30f5070ef45e674abddaa99f42c",
+    "cover_physx_query.h": "70507250ccc292ee8397e1e04c7538d6d41ca8bc4e35897994f00906cc91c2c8",
+    "cover_physics_query_live.inl": "e9d4b18bc4b2c82bfbda632368ae28ef21cc42347609c6f249877c8237c9be3e",
+    "cover_physics_c0_live.h": "e66606dd9c3947d70ef225bdc622b98773cff741bde608f8729881adefbe8356",
+    "cover_physics_c0_live.inl": "ad84530e3c336c9d8ad2ca9e0d1ce830d76571c1b4735c586cd87a08d9c68f11"
+  },
+  "native_sha256": "34c15590a10a1fa9f2f380ed0b2285afbd3d5889939e1c30f3f46542076dd1e9",
+  "project_dependencies": 405,
+  "flags_unchanged": true,
+  "selected_enumeration_ranges": {
+    "chunks": [
+      {
+        "rva": "0x172160",
+        "bytes": 201,
+        "sha256": "9c8d6e45ec961d80c70f8c74be68bf14fb5275c4dc809f4b28388d1722a3f6a6"
+      },
+      {
+        "rva": "0xa9f10",
+        "bytes": 1233,
+        "sha256": "d6ea243ba8eac3cb42b5d1612ef7f34fa0d5c935bc102e0a862a8dc212ee55ce"
+      },
+      {
+        "rva": "0x1275a0",
+        "bytes": 21,
+        "sha256": "5bb23d46777bddeeeffab001b4d81743d1d635e5047c54fa5245fd13e77a009d"
+      },
+      {
+        "rva": "0x188440",
+        "bytes": 291,
+        "sha256": "9c34e94b6d5c56b44ab17bca559046b7f0c1a87d693a3b92a59789c6f16fb735"
+      },
+      {
+        "rva": "0x1ab130",
+        "bytes": 151,
+        "sha256": "d22173ab69525ddd1a68e0068ccae567a00f9b8dc7eb73941c3aeb68f93a838b"
+      }
+    ],
+    "total_bytes": 1897
+  },
+  "checks_v2": [
+    {
+      "name": "cover_physx_query",
+      "build_exit": 0,
+      "source_sha256": "e80b909461ec63cea60a89a32fc19bdc53c4537eb7d52f87ef08f00971039d1f",
+      "command": [
+        "E:/vs/VC/Tools/MSVC/14.51.36231/bin/Hostx64/x64/cl.exe",
+        "/nologo",
+        "/std:c++17",
+        "/O2",
+        "/W4",
+        "/WX",
+        "/EHsc",
+        "/UNDEBUG",
+        "/MT",
+        "/IC:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\tools\\third-party\\minhook\\include",
+        "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\tools\\native-capture\\cover_physx_query_test.cpp",
+        "/Fo:C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\overlap-query-r122\\..\\overlap-query-r122\\checks-v2\\cover_physx_query.obj",
+        "/sourceDependencies",
+        "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\overlap-query-r122\\..\\overlap-query-r122\\checks-v2\\cover_physx_query-dependencies.json",
+        "/Fe:C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\overlap-query-r122\\..\\overlap-query-r122\\checks-v2\\cover_physx_query.exe",
+        "/link",
+        "bcrypt.lib",
+        "psapi.lib"
+      ],
+      "test_exit": 0
+    },
+    {
+      "name": "cover_physx_owned_sweep",
+      "build_exit": 0,
+      "source_sha256": "4b421651445bb78599fc759f3f18b2f1c5d7276d2935e55dd51bcae898696090",
+      "command": [
+        "E:/vs/VC/Tools/MSVC/14.51.36231/bin/Hostx64/x64/cl.exe",
+        "/nologo",
+        "/std:c++17",
+        "/O2",
+        "/W4",
+        "/WX",
+        "/EHsc",
+        "/UNDEBUG",
+        "/MT",
+        "/IC:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\tools\\third-party\\minhook\\include",
+        "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\tools\\native-capture\\cover_physx_owned_sweep_test.cpp",
+        "/Fo:C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\overlap-query-r122\\..\\overlap-query-r122\\checks-v2\\cover_physx_owned_sweep.obj",
+        "/sourceDependencies",
+        "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\overlap-query-r122\\..\\overlap-query-r122\\checks-v2\\cover_physx_owned_sweep-dependencies.json",
+        "/Fe:C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\overlap-query-r122\\..\\overlap-query-r122\\checks-v2\\cover_physx_owned_sweep.exe",
+        "/link",
+        "bcrypt.lib",
+        "psapi.lib"
+      ],
+      "test_exit": 0
+    },
+    {
+      "name": "cover_physx_overlap_query",
+      "build_exit": 0,
+      "source_sha256": "6f0e1f69166f6f4622a6113e5be5c35c6920d537c2b2619c384763cc3559cdce",
+      "command": [
+        "E:/vs/VC/Tools/MSVC/14.51.36231/bin/Hostx64/x64/cl.exe",
+        "/nologo",
+        "/std:c++17",
+        "/O2",
+        "/W4",
+        "/WX",
+        "/EHsc",
+        "/UNDEBUG",
+        "/MT",
+        "/IC:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\tools\\third-party\\minhook\\include",
+        "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\tools\\native-capture\\cover_physx_overlap_query_test.cpp",
+        "/Fo:C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\overlap-query-r122\\..\\overlap-query-r122\\checks-v2\\cover_physx_overlap_query.obj",
+        "/sourceDependencies",
+        "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\overlap-query-r122\\..\\overlap-query-r122\\checks-v2\\cover_physx_overlap_query-dependencies.json",
+        "/Fe:C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\overlap-query-r122\\..\\overlap-query-r122\\checks-v2\\cover_physx_overlap_query.exe",
+        "/link",
+        "bcrypt.lib",
+        "psapi.lib"
+      ],
+      "test_exit": 0
+    },
+    {
+      "name": "cover_physics_c0_off",
+      "build_exit": 0,
+      "source_sha256": "4015b8a102529bbfb0e1a080d0660d0959e62673ca3a5df4c5e47ea0a7467787",
+      "command": [
+        "E:/vs/VC/Tools/MSVC/14.51.36231/bin/Hostx64/x64/cl.exe",
+        "/nologo",
+        "/std:c++17",
+        "/O2",
+        "/W4",
+        "/WX",
+        "/EHsc",
+        "/UNDEBUG",
+        "/MT",
+        "/IC:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\tools\\third-party\\minhook\\include",
+        "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\tools\\native-capture\\cover_physics_c0_off_test.cpp",
+        "/Fo:C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\overlap-query-r122\\..\\overlap-query-r122\\checks-v2\\cover_physics_c0_off.obj",
+        "/sourceDependencies",
+        "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\overlap-query-r122\\..\\overlap-query-r122\\checks-v2\\cover_physics_c0_off-dependencies.json",
+        "/Fe:C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\overlap-query-r122\\..\\overlap-query-r122\\checks-v2\\cover_physics_c0_off.exe",
+        "/link",
+        "bcrypt.lib",
+        "psapi.lib"
+      ],
+      "test_exit": 0
+    }
+  ],
+  "checks_v3": [
+    {
+      "name": "cover_physx_overlap_query",
+      "build_exit": 0,
+      "source_sha256": "775e29be8ec68f67979a79bb78a5b1ac735033ac8c4e5d88e1a3433a2d5c23f0",
+      "command": [
+        "E:/vs/VC/Tools/MSVC/14.51.36231/bin/Hostx64/x64/cl.exe",
+        "/nologo",
+        "/std:c++17",
+        "/O2",
+        "/W4",
+        "/WX",
+        "/EHsc",
+        "/UNDEBUG",
+        "/MT",
+        "/IC:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\tools\\third-party\\minhook\\include",
+        "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\tools\\native-capture\\cover_physx_overlap_query_test.cpp",
+        "/Fo:C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\overlap-query-r122\\checks-v3\\cover_physx_overlap_query.obj",
+        "/sourceDependencies",
+        "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\overlap-query-r122\\checks-v3\\cover_physx_overlap_query-dependencies.json",
+        "/Fe:C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\overlap-query-r122\\checks-v3\\cover_physx_overlap_query.exe",
+        "/link",
+        "bcrypt.lib",
+        "psapi.lib"
+      ],
+      "test_exit": 0
+    },
+    {
+      "name": "cover_physics_overlap_query_live",
+      "build_exit": 0,
+      "source_sha256": "7eac06a95c6b6d51db9acd47785d7afe499fc4cd64a79992d53c5b95af80f5b4",
+      "command": [
+        "E:/vs/VC/Tools/MSVC/14.51.36231/bin/Hostx64/x64/cl.exe",
+        "/nologo",
+        "/std:c++17",
+        "/O2",
+        "/W4",
+        "/WX",
+        "/EHsc",
+        "/UNDEBUG",
+        "/MT",
+        "/IC:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\tools\\third-party\\minhook\\include",
+        "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\tools\\native-capture\\cover_physics_overlap_query_live_test.cpp",
+        "/Fo:C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\overlap-query-r122\\checks-v3\\cover_physics_overlap_query_live.obj",
+        "/sourceDependencies",
+        "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\overlap-query-r122\\checks-v3\\cover_physics_overlap_query_live-dependencies.json",
+        "/Fe:C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\overlap-query-r122\\checks-v3\\cover_physics_overlap_query_live.exe",
+        "/link",
+        "bcrypt.lib",
+        "psapi.lib"
+      ],
+      "test_exit": 0
+    },
+    {
+      "name": "cover_physics_query_live",
+      "build_exit": 0,
+      "source_sha256": "746ccd1ac1ecf4b9408144de5711ee980d96f3e8aa8e5c8b24e56c83bcceae62",
+      "command": [
+        "E:/vs/VC/Tools/MSVC/14.51.36231/bin/Hostx64/x64/cl.exe",
+        "/nologo",
+        "/std:c++17",
+        "/O2",
+        "/W4",
+        "/WX",
+        "/EHsc",
+        "/UNDEBUG",
+        "/MT",
+        "/IC:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\tools\\third-party\\minhook\\include",
+        "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\tools\\native-capture\\cover_physics_query_live_test.cpp",
+        "/Fo:C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\overlap-query-r122\\checks-v3\\cover_physics_query_live.obj",
+        "/sourceDependencies",
+        "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\overlap-query-r122\\checks-v3\\cover_physics_query_live-dependencies.json",
+        "/Fe:C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\overlap-query-r122\\checks-v3\\cover_physics_query_live.exe",
+        "/link",
+        "bcrypt.lib",
+        "psapi.lib"
+      ],
+      "test_exit": 0
+    },
+    {
+      "name": "cover_physics_capsule_path_live",
+      "build_exit": 0,
+      "source_sha256": "19ed68ee39a2f1a313b82e533868c1f5f9d132ffd5ce8385cc952fd1c31cac50",
+      "command": [
+        "E:/vs/VC/Tools/MSVC/14.51.36231/bin/Hostx64/x64/cl.exe",
+        "/nologo",
+        "/std:c++17",
+        "/O2",
+        "/W4",
+        "/WX",
+        "/EHsc",
+        "/UNDEBUG",
+        "/MT",
+        "/IC:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\tools\\third-party\\minhook\\include",
+        "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\tools\\native-capture\\cover_physics_capsule_path_live_test.cpp",
+        "/Fo:C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\overlap-query-r122\\checks-v3\\cover_physics_capsule_path_live.obj",
+        "/sourceDependencies",
+        "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\overlap-query-r122\\checks-v3\\cover_physics_capsule_path_live-dependencies.json",
+        "/Fe:C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\overlap-query-r122\\checks-v3\\cover_physics_capsule_path_live.exe",
+        "/link",
+        "bcrypt.lib",
+        "psapi.lib"
+      ],
+      "test_exit": 0
+    }
+  ],
+  "original_enumeration_executed": false,
+  "new_candidate_game_started": false,
+  "public_changed": false,
+  "scope": "raw capsule shape enumeration and every returned shape ownership in same typed C0 transaction; no endpoint occupancy/coverage/world certificate",
+  "initial_failure": "checks-v1 driver omitted DLL-as-data argument for new executable; test exited2 without running; corrected in local driver, checks-v2/v3 pass",
+  "remaining": [
+    "actual original source4 failure",
+    "connect path endpoint to new enumeration",
+    "Sphere/Box enumeration and complete body/shape coverage",
+    "world/transform fence",
+    "actual C0 body commit and view/hit/muzzle consumers",
+    "early-stop fire_disable2",
+    "CV01-24 AC01-22 and headset"
+  ]
+}
