@@ -1,6 +1,6 @@
 {
   "passed": true,
-  "cases": 16,
+  "cases": 17,
   "scope": "Synthetic input and Native-receipt seams; exact one Grip/no replay, fresh released baseline and matching held target required",
   "game_execution": false
 }

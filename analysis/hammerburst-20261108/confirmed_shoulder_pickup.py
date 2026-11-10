@@ -18,10 +18,12 @@ def acquire(c,data,*,shoulder=None,clock=time.perf_counter_ns,sleep=time.sleep):
                 number(row,'right_pressed')==number(row,'right_released') and row.get('input_status') in ('baseline','quiet')):
                 proof['baseline']=row;return True
         return False
-    # Observe during the existing finite shoulder gesture. Waiting until its
-    # fixed settling tail ends can exhaust the bounded Native UP log budget.
-    # The real UP command still precedes every accepted producer receipt.
-    if shoulder is not None:c.reach(shoulder,ready=released_baseline)
+    # Observe during the FULL existing finite gesture, never terminate it at
+    # the observer region's edge. Skip only its post-gesture settling delay.
+    if shoulder is not None:
+        c.reach(shoulder,ready=released_baseline)
+        proof['shoulder_endpoint']=dict(g.poses[1])
+        assert g.poses[1]==shoulder,'Shoulder gesture did not reach its exact requested endpoint; no Grip sent'
     deadline=clock()+5_000_000_000
     while clock()<deadline:
         if released_baseline():break

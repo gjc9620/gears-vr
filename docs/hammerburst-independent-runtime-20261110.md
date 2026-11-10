@@ -472,3 +472,13 @@ press-assets-r1/hb-cloak-1111-035727/game57960/creation134388143847200248，纯�
 修复仅在本方Python测试adapter：acquire先发真实UP；原有限reach可选ready回调在每个原gesture sample之后读取真实NativeUP，首次fresh且post-own-command marker成立就停止剩余UP movement，更新测试当前手pose，再发送唯一Grip并等待原matching held。未改变原轨迹生成、姿态/年龄容差、原Native16行预算或产品代码；其他reach默认仍完成原全路径与250ms停顿。失败不重按。16项驱动fixture（含原11+移动期间有效/旧/缺失marker3+实际改写reach函数两条路径）通过，8adapters解析通过；非game证明。
 
 launcher0/operator1/stop0、Native/PG入口/XR0与本方进程正常清理，无强杀，1177前台/2040CLOAK零违规。106帧errors空encode0，亲看三页48双眼全跨度，真实场景/肩部手臂可见，初段重影/手臂重叠仍未接受，无持枪/射击/换弹或全角度/头显证明。7原文本SHA归档，runtime-57960-first-failure-analysis.json与13项audit更新。下一步新实例使用修正driver和**同一已编译**press-assets-r1，测试调用方已变，非无改重跑。全部本方运行终态；13项/30%/publicv71保持。
+
+## 实际20284：同一准入请求完成；单Grip无held，修正提前结束路径
+
+上轮progress含press-assets源/编译/57960失败/driver修正。本轮先多次精确poll原exec43764确认live，资源只读两实例占用并保留原首次start37620，不另建/重启；该请求后来正常准入，hb-cloak-1111-040600/game20284/creation134388153672707145。advisory资源等待131.969秒121次，canonical首request04:08:15仍在原600秒内获准，不能将中间观察超时当作terminal。现43764实际terminal1。
+
+真实UP126622248619400→NativeUP499/seq3169 sync126623766887900/admitted126623789975900→唯一Grip126623794522500（距原sync27.6346ms），2秒未收到matching held；failureUP126625799517600。无native_equipment_input_gap，零射线/零press timing/无新增handoff/reload。源码复核确认上轮ready回调一旦40mm宽观察区有UP就return并停止剩余gesture，不能保证到达原请求终点；真实提前停手的pose未记录，不能断言这是本次唯一原因。此前16fixture竟将早停当预期，现明确纠正，保留原失败证据。
+
+本轮driver取消callback早停：每个原gesture sample继续完成，仅观察；最终g.poses必须与原shoulder请求字典完全一致并记录shoulder_endpoint，否则不发Grip；只去掉本次取枪的后置250mssettle，其他reach原样。新private endpoint-baseline-r1仅把observer区域从40mm缩到5mm，防粗观察区提前消耗16行预算，**实际取枪Volume/动作几何/时效均未变**。17driver fixtures（含未到endpoint不得Grip和原真实改写reach必须执行全部sample）/10真observerfixture（额外三轴6mm不记行）及8adapter解析通过。完整PG SHA63b915a914b08e9d2a834c1946b454a0d642b9cb3e00945bec5e68a681b3d93b，Native/XR未重建；该新版本尚未game验证。
+
+20284 launcher0/operator1/stop0、Native/PG入口/XR0、本方game/子进程正常退出，无强杀/workererror，1229前台/2114CLOAK零违规。54帧errors空encode0，亲看3页48双眼全跨度；00000..3等待卡、00016黑帧保留，其余有真实场景与肩部手臂，无成功持枪/射击/换弹或全贴合/全角度/头显证明。7份原文本SHA归档，runtime-20284-first-failure-analysis.json/13项audit/active-runtime-wait已同步终态。下一步仅一个全新endpoint-baseline-r1实例，先actual exact-endpoint+freshUP+单Grip/held再测首发拆分耗时。无本方live运行；30%/publicv71/全部未验收范围不变。

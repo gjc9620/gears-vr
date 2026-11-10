@@ -123,7 +123,7 @@ def equipment_source():
     source = (CODE / 'equipment_controller_chain.py').read_text(encoding='utf-8')
     source = replace_once(source, '    def reach(end,squeeze=0):', '    def reach(end,squeeze=0,ready=None):')
     source = replace_once(source, '            live();g.put(1,pose,**controls);time.sleep(interval)',
-        '            live();g.put(1,pose,**controls);time.sleep(interval)\n            if ready is not None and ready():\n                g.poses[1]=dict(pose);return')
+        '            live();g.put(1,pose,**controls);time.sleep(interval)\n            if ready is not None:ready()')
     source = replace_once(source, '        g.poses[1]=dict(end);time.sleep(.25)',
         '        g.poses[1]=dict(end)\n        if ready is None:time.sleep(.25)')
     source = replace_once(source, "g.ROOT/'analysis/instances/solo-m1-1028d/manifest.json'", "g.BOUND.instance/'manifest.json'")

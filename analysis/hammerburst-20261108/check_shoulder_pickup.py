@@ -55,6 +55,7 @@ class ApproachFixture(Fixture):
         if kwargs.get('squeeze',0)==0:self.rows['hammerburst_pickup_up']=[]
     def reach(self,end,*,ready):
         assert self.sent==[0],self.sent
+        self.poses={1:dict(end)}
         self.now+=30_000_000
         row=dict(frame='10',sequence='20',sync_ns=str(self.now),admitted_ns=str(self.now+1),source='1',right_down='0',right_pressed='0',right_released='0',input_status='quiet')
         if self.variant=='approach_old':row['sync_ns']='1'
@@ -66,8 +67,16 @@ for variant in ('approach_good','approach_old','approach_missing'):
     except TimeoutError:assert variant!='approach_good' and f.sent==[0]
     else:assert variant=='approach_good' and f.sent==[0,1] and f.observed_during_reach
     cases+=1
+f=ApproachFixture('approach_good');original_reach=f.reach
+def incomplete_reach(end,*,ready):
+    original_reach(end,ready=ready);f.poses[1]={'x':.20}
+f.reach=incomplete_reach
+try:acquire(f,{},shoulder={'x':.23},clock=f.clock,sleep=f.sleep)
+except AssertionError:pass
+else:raise AssertionError('Observer region accepted an incomplete gesture')
+assert f.sent==[0];cases+=1
 # Execute the actual adapted reach function with a finite gesture spy. Ensure
-# callback success stops remaining UP samples and the old settling delay;
+# callback observations preserve every original UP sample to the endpoint;
 # ordinary later reaches retain their complete gesture and settling delay.
 import ast
 from hammerburst_isolated_operator import equipment_source
@@ -79,8 +88,8 @@ for observe in (False,True):
         gesture=lambda *a,**kw:iter((i,dict(x=float(i),y=0.,z=0.),{},.01) for i in range(1,4)))
     exec(compile(ast.fix_missing_locations(ast.Module(body=[node],type_ignores=[])),'actual-adapted-reach','exec'),env)
     env['reach'](dict(x=3.,y=0.,z=0.),ready=(lambda:True) if observe else None)
-    assert events==(['put',.01] if observe else ['put',.01,'put',.01,'put',.01,.25])
-    assert poses[1]['x']==(1. if observe else 3.);cases+=1
+    assert events==(['put',.01,'put',.01,'put',.01] if observe else ['put',.01,'put',.01,'put',.01,.25])
+    assert poses[1]['x']==3.;cases+=1
 Path(__file__).with_name('shoulder-pickup-driver-checks.json').write_text(json.dumps(dict(passed=True,cases=cases,
  scope='Synthetic input and Native-receipt seams; exact one Grip/no replay, fresh released baseline and matching held target required',game_execution=False),indent=2))
 print(f'{cases} pickup driver checks passed; input/receipt fixtures only')

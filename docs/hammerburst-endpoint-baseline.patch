@@ -1,0 +1,13 @@
+--- a/tools/playground/weapon_hammerburst_inventory_timing.inl
++++ b/tools/playground/weapon_hammerburst_inventory_timing.inl
+@@ -7,8 +7,8 @@
+         const auto& right=f.controllers.hands[1];const auto& head=f.stereo.head.position;
+         shoulder_up=f.stereo.source==gears_vr::StereoSource::MetaOperatorSimulated&&right.squeeze_active==1&&right.squeeze<=.35f&&
+             right.pressed[gears_vr::control_squeeze]==right.released[gears_vr::control_squeeze]&&
+-            std::abs(right.grip.position.x-head.x-.23)<.04&&std::abs(right.grip.position.y-head.y+.115)<.04&&
+-            std::abs(right.grip.position.z-head.z+.17)<.04;
++            std::abs(right.grip.position.x-head.x-.23)<.005&&std::abs(right.grip.position.y-head.y+.115)<.005&&
++            std::abs(right.grip.position.z-head.z+.17)<.005;
+         auto& count=shoulder_up?shoulder_rows:down?down_rows:idle_rows;const unsigned limit=shoulder_up?16:down?12:4;
+         active=log_file&&count<limit;if(active){++count;mark(0);}
+     }
