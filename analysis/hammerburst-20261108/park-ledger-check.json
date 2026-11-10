@@ -1,0 +1,13 @@
+{
+  "scope": "HB park ledger preparation only; not integrated into live switch/display restoration",
+  "cases": 22,
+  "checks": 191,
+  "exit": 0,
+  "runtime_started": false,
+  "production_runtime_integrated": false,
+  "files": {
+    "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\tools\\playground\\weapon_hammerburst_reload_park_ledger.inl": "6d045fda1132b2589f4f555e24a90bebc7a25a758f303a13c13becfa30934bcb",
+    "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\tools\\playground\\weapon_hammerburst_reload_park_ledger_test.cpp": "6d47ef542d9e70680ff0e23bee61f05d7909c921f7f1666572f313f4c71b4a2d",
+    "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\tools\\vr-common\\weapon_reload_transaction.h": "96c4ac47e8a57f030cc2717888e5e0c56663b515b71611b595de091d2bf17f8f"
+  }
+}

@@ -127,11 +127,15 @@
       "id": "interruptions",
       "requirement": "\u6682\u505c/\u5931\u8ffd/\u5207\u67aa/\u6536\u67aa\u9000\u51fa\u3001\u4e0d\u5f97\u91cd\u653e\u65e7\u8fb9\u6cbf",
       "status": "stop_completion_repair_compiled_switch_mechanics_missing",
-      "limit": "Stop/switch now precede completing; an uncalled perfect reward is cancelled while committed ammo remains, dispatched reward drains without redispatch;10 cases130 checks and full frozen Playground compile pass. Same-weapon mechanical parking/resume across switch remains missing because reset discards angle/stage; no live interruption acceptance.",
+      "limit": "Stop/switch now precede completing; an uncalled perfect reward is cancelled while committed ammo remains, dispatched reward drains without redispatch;10 cases130 checks and full frozen Playground compile pass. Same-weapon mechanical parking/resume across switch remains missing because reset discards angle/stage; no live interruption acceptance. Park preparation module now preserves the actual ledger, releases only uncommitted reservation in a copy, rejects foreign identities/counts and preserves transaction time;22 cases191 checks pass. Not wired to live switch/animation/Lease/display restoration; whole requirement remains incomplete.",
       "evidence": [
         {
           "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\reload-cleanup-r1\\prepared.json",
           "sha256": "1f01b6199c52f1568fcb20ed955536c90f4f04dda6fd307abe254ca0481c60a8"
+        },
+        {
+          "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\park-ledger-check.json",
+          "sha256": "87a7ca8afe5cdd3e595bf90ecb9cbe8a830a379ab4bbd7d65b5d4cb49551e602"
         }
       ]
     },
