@@ -1,0 +1,14 @@
+{
+  "game_started": false,
+  "after_free": 5893611520,
+  "source_or_evidence_discarded": false,
+  "instances": [
+    {
+      "archive": "J:\\gearsVr\\analysis\\hammerburst-archive-20261110\\never-started\\hb-cloak-1111-002724",
+      "files": 123,
+      "name": "hb-cloak-1111-002724",
+      "bytes": 893930176.0
+    }
+  ],
+  "before_free": 5000593408
+}

@@ -1,9 +1,17 @@
+param(
+    [ValidateSet('hb-cloak-1110-223959','hb-cloak-1110-224419','hb-cloak-1110-224756','hb-cloak-1111-002724')]
+    [string[]]$SelectedNames=@('hb-cloak-1110-223959','hb-cloak-1110-224419','hb-cloak-1110-224756'),
+    [ValidateSet('rejected-prepare-archive-20261110.json','rejected-prepare-archive-20261111.json')]
+    [string]$SummaryName='rejected-prepare-archive-20261110.json'
+)
 $ErrorActionPreference='Stop'
 $workspaceRoot='C:\Users\11\.codex\worktrees\6dof-single\gearsVr'
 $instanceRoot=Join-Path $workspaceRoot 'analysis\instances'
 $area=Join-Path $workspaceRoot 'analysis\hammerburst-20261108'
 $archiveRoot='J:\gearsVr\analysis\hammerburst-archive-20261110\never-started'
-$names=@('hb-cloak-1110-223959','hb-cloak-1110-224419','hb-cloak-1110-224756')
+$names=$SelectedNames
+if(-not $names.Count -or @($names|Select-Object -Unique).Count -ne $names.Count){throw 'Require unique explicit own names'}
+if(Test-Path -LiteralPath (Join-Path $area $SummaryName)){throw 'Preserve existing archive summary'}
 $records=@()
 $beforeFree=(Get-PSDrive C).Free
 New-Item -ItemType Directory -Path $archiveRoot -Force | Out-Null
@@ -80,4 +88,4 @@ foreach($name in $names){
     }
 }
 @{before_free=$beforeFree;after_free=(Get-PSDrive C).Free;instances=$records;game_started=$false;source_or_evidence_discarded=$false}|
-    ConvertTo-Json -Depth 5|Set-Content -LiteralPath (Join-Path $area 'rejected-prepare-archive-20261110.json') -Encoding utf8
+    ConvertTo-Json -Depth 5|Set-Content -LiteralPath (Join-Path $area $SummaryName) -Encoding utf8

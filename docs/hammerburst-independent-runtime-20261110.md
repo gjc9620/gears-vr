@@ -316,3 +316,5 @@ launcher0/operator1/stop0、Native清理/PG入口恢复/XR0、game及子进程�
 为继续实际复测，将本枪余下已终态212059、211559、204446、200135、194156、1111-000647的PSOCache按前述相同身份/完整SHA/junction读回流程归档，又完整保留630文件/5,310,295,908bytes。未动日志/录像/源码/当前制品。首次进程查询遇到进程在取得StartTime前退出，原脚本在任何复制/移动前中止；现最多再查一次，只接受明确NoProcessFound或正读到不同creation，仍未知/同身份存活则拒绝。没有把空StartTime当作退出。总表`terminal-shader-archive-20261111.json`与六份逐文件索引保留，旧总表不覆盖；目录名仍为首次创建的20261110归档根，非伪改实验日期。
 
 002724本次仅prepare后等待资源180秒，原父工具进程已终态exit1，未出现start.log/isolated-worker/launcher-session/isolated-done，game/operator均未启动，不计part-frame-r1游戏验证。原result中prepared_waiting=true是最后中间标记，不能当成进程仍存活；原结果保留，并以`resource-wait-002724.json`补充已终态、未start的证据。后续finally清除等待标记、记录prepared_only_no_start，避免这个状态歧义。按主人临时资源不足继续等待的偏好，未来单份准备后的资源等待改600秒（仅游戏创建前），仍同一绝对截止、不预留slot、不改任何枪内计时；默认资源/首次start的共享检查保持原样。旧名字不重启。
+
+后续C盘虽然仍高于共享4GiB，却低于另一次新prepare所需5GiB余量，因此新调用在mkdir/prepare前拒绝，未产生新游戏。将已确认父工具终态且从未start的002724按原“never-started”归档流程复制/核验/原路径映射：123文件893,930,176bytes完整保留；严格允许列表只加此已知本方名字，新总表`rejected-prepare-archive-20261111.json`不覆盖旧表。未复用此名字启动，也未降低5/4GiB检查。
