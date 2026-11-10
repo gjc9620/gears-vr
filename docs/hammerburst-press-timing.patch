@@ -1,0 +1,61 @@
+--- a/tools/playground/weapon_lancer_r2_native.inl
++++ b/tools/playground/weapon_lancer_r2_native.inl
+@@ -179,8 +179,10 @@
+ #endif
+     return true;
+ }
++#include "weapon_hammerburst_press_timing.inl"
+ gears_weapon::OriginalR2Execution execute(gears_weapon::OriginalR2Action action,std::uint64_t controller,wh::Frame const* source,
+     lr::Game const* tick_game=nullptr) noexcept {
++    HammerburstPressTiming hb_timing(action==gears_weapon::OriginalR2Action::press&&nativelancerfollow::bound_is_hammerburst,source);
+     auto reject=[&](wchar_t const* stage) noexcept {
+         if(log_file&&execute_failure_logs<8){
+             fwprintf(log_file,L"native_lancer_execute_rejected stage=%ls press=%u frame=%llu age_ns=%lld held=%u animation=%u busy=%u\n",
+@@ -210,14 +212,17 @@
+     if(action==gears_weapon::OriginalR2Action::press){
+         if(!source||!game.main_hand_held||game.busy||game.animation||
+             !nativeequipment::current(nullptr,*source))return reject(L"press_state");
++        hb_timing.mark(2);
+         lancermain_asset::Evidence asset{};
+ #if defined(GEARS_PLAYGROUND_HB_FINITE_BURST) && GEARS_PLAYGROUND_HB_FINITE_BURST
+         lancermain_asset::HeldAsset observed_kind{};
+         if(lancermain_asset::read(*source,asset,lancermain_asset::AssetScope::supported_instant_fire,&observed_kind)!=lancermain_asset::Status::ready||
+             !nativeequipment::attached_frame(*source,asset.component.address)||
+             !nativeequipment::current(nullptr,*source))return reject(L"attachment");
++        hb_timing.mark(3);
+         hb_press=observed_kind==lancermain_asset::HeldAsset::hammerburst;
+         if(hb_press&&!hammerburst_burst_event::prepare_press(*source))return gears_weapon::OriginalR2Execution::not_ready;
++        hb_timing.mark(4);
+ #else
+         if(lancermain_asset::read(*source,asset,lancermain_asset::AssetScope::supported_instant_fire)!=lancermain_asset::Status::ready||
+             !nativeequipment::attached_frame(*source,asset.component.address)||
+@@ -234,12 +239,14 @@
+     if(!call.valid||call.r.size!=sizeof(Name)||!parameter||get<unsigned>(parameter+0x70)!=1||
+         get<unsigned>(parameter+0x74)!=sizeof(Name)||!playground::named(get<uptr>(parameter+0x50),L"NameProperty")||
+        (get<unsigned long long>(parameter+0x78)&0x580)!=0x80||!call.set(L"ButtonName",r2).valid)return reject(L"button_schema");
++    hb_timing.mark(5);
+     // All attachment and ButtonName reflection precedes the last freshness
+     // check. A late preparation has not invoked ButtonPress and can be
+     // deferred by Input within the ORIGINAL press intent's fixed deadline.
+     // Each attempt still needs its own <=100ms source and dispatch reserve.
+     if(action==gears_weapon::OriginalR2Action::press&&unified_weapon_fire::manual_profile()&&
+        !unified_weapon_fire::ready_for(*source,20000000)){
++        hb_timing.mark(6);
+         unified_weapon_fire::ReadinessEvidence evidence{};
+         if(log_file&&execute_failure_logs<8&&unified_weapon_fire::readiness_evidence(*source,20000000,evidence)){
+             fwprintf(log_file,L"native_lancer_execute_not_ready frame=%llu valid=%u same_frame=%u frame_current=%u reserved_frame_current=%u held=%u registration=%u live=%u reserved_live=%u epoch=%u sync_age_ns=%lld stereo_age_ns=%lld frame_age_ns=%lld sample_age_ns=%lld render_age_ns=%lld\n",
+@@ -250,12 +257,14 @@
+         return gears_weapon::OriginalR2Execution::not_ready;
+     }
+ #if defined(GEARS_PLAYGROUND_NATIVE_LANCER_FOLLOW) && defined(GEARS_PLAYGROUND_UNIFIED_MUZZLE_FIRE)
++    hb_timing.mark(6);
+     const bool owned_press=action==gears_weapon::OriginalR2Action::press;
+ #if defined(GEARS_PLAYGROUND_HB_FINITE_BURST) && GEARS_PLAYGROUND_HB_FINITE_BURST
+     if(owned_press&&hb_press&&!hammerburst_burst_event::owned_press(*source))return gears_weapon::OriginalR2Execution::not_ready;
+ #endif
+     if(owned_press)lancerrefire::begin_owned_press(*source);
+     const bool invoked=call.run();
++    hb_timing.invoked=invoked;hb_timing.mark(7);
+     if(owned_press)lancerrefire::end_owned_press(invoked);
+     if(!invoked){
+ #if defined(GEARS_PLAYGROUND_HB_FINITE_BURST) && GEARS_PLAYGROUND_HB_FINITE_BURST

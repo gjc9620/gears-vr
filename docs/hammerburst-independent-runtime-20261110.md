@@ -362,3 +362,9 @@ feed-history-r1/hb-cloak-1111-015245/game56348/creation134388067907247032，首�
 因此新feed history分支未到达，不能用这轮接受或否定插入修正。下一步先针对56348检查首次按下执行之前的准备延迟，减少重复工作同时保留实际当前source/20ms余量/250ms意图/身份条件；不加宽保护，不原样重跑碰运气。20672尾部原事件期限及全部13项需求仍开放。
 
 launcher0/operator1/stop0，Native清理/PG入口恢复/XR0，本方game/子进程消失、无强杀，1512前台/2583CLOAK零违规。174帧errors空、encode0，亲看48双眼全跨度样本三页，实际场景/双手/取枪可见，近脸/白面重叠和近处枪体可见性仍未接受。7份文本原件SHA归档，详见runtime-56348-first-failure-analysis.json与媒体索引。源码checkpoint3c20e7d9完整保留新feed43项离线检查及完整PG身份，没有公共安装/整体完成宣称。
+
+## press-timing-r1：首次执行前分段观测
+
+56348只有最终readiness余量不足，不能据此跳过附件/contract/ButtonName检查。新候选保留feed-history-r1，在HB首次press execute添加最多12条RAII分段时长：函数入口、entry/press state、asset、contract、ButtonName schema、最终reserve、owned+dispatch。仅记录器读取clock，绝不替换source时间；析构输出在返回路径，不额外调用游戏/输入/metadata、不中断或延期操作。剥去新增include/observer语句后整份weapon_lancer_r2_native.inl逐字等于父版本，production_statement_parity通过。最大12次观察后无clock读取，7项exact observer合成clock/FILE检查通过。
+
+完整PG编译SHA49aa43dad38eadfb6e207745e725d04766bb4442a7a41584b2836f09a87e6b1f，Native/XR未重建；没有功能修复或游戏结论。runner选择新候选，下一步一次新的focused loaded replacement，先定位真实执行前成本，若到换弹也核对真实history采用；不改20ms/100ms/250ms或缩减13项最终要求。
