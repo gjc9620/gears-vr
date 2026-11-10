@@ -1752,3 +1752,16 @@ r95已保存177988c8，属于进展。本轮将只读实际占用检查接入独
 首次新入口预检查因共享run_v63_startup_repro.py已由其他工作改为a3773503而拒绝，未stage。单独核实其余362驱动仍匹配；后续明确采用封存r80内3f297b3d启动脚本副本并保持其余当前／归档逐SHA，不混新共享修改。最终独立prepare-only实际0，未consume／stage／start；原r80 Native8035及五相位观察动作保持，没有换入r93查询Native或新增抓边／武器动作。当前文件中的2026-11-05启动兼容覆盖明确选定既有本地副本，身份仍bdc6705d；不强制改变认证路线。
 
 证据analysis/cover-system-20261108/view-alignment-r96/offline-verification.json、prepare-only.log、baseline-tests.log及独立源码／plan／ready。本保存点只表示入口接线和离线检查完成，尚未实际运行；下一步按统一共享互斥及现场检查执行一次当前视野观察，结束立即恢复释放再离线分析。完整进入使用退出仍为第一阶段目标；吸附／Volume其次、GrabPose最后。publicv71及最新产品编译r93 Native9f375dc7不变，实际严重肩身遮挡、移动碰撞／受击枪口／真实抓边／头显未新增通过，CV01–24／AC01–22、工程25%和active保留。
+
+
+### r96实际56276首败与正常撤回
+
+保存6ac463c5后实际尝试一次，取得统一RuntimeGuard、现场进程／原launcher互斥检查通过，即时捕获29项字节／缺失和私有文件集，stage0。此时本会话已收到“先等GN原件恢复”的协调信息，但错误地把可取得guard及无game当作可以继续的充分条件；后续GN未完恢复通知到达时已stage／启动。立即按本次owner精确39660／creation134387685048022998发正常Stop并写自有stop-basic，不杀进程、不继续动作、不重试。该操作失误保留，不把mutex可用解释成前场原件已恢复。后续再次stage须先确认这一具体未完恢复已终结；不恢复远期前驱链。
+
+实际game56276／creation134387685123838574、XR12644，Native确实启动。wrapper／launcher0、operator44724退出1。真正动作首败在原版入掩体A之前：选最近Link98 slot0后，普通导航从[-3900,0,583.9485]移动至[-3928.9395,-50.9543,583.9485]，约58.60units；距目标由161.303降至102.704，随后三轮未移动，按既有guard报告Controlled walking blocked before pickup; no teleport fallback。未到after_original_A，无五相位eye_observation，不能称掩体认证／探身或本次视野修复通过。记录显示首次0.62摇杆后移动、0.22刹停输入后静止，但死区／碰撞／其他原因仍未证明，不把时序相关当根因。
+
+本次Native／entry／pad／weapons drain／XR0正常，owner及game／XR退出身份核对通过；父入口在数值解码前恢复即时29项及私有文件集，无public或原用户文件写入。已现场确认outer53828／inner55548／launcher39660／game56276／XR12644退出、无自有录制，统一guard释放并向Bow发一次释放通知。此baseline可能含GN此前尚未恢复部署，只证明撤回掩体本次更改，绝不签发GN原件完成或完整共享原件恢复通过。
+
+隔离眼点bin983368bytes已保存SHA57ebd97320dc5b69205363140d66fd680f3a7828b41fc635c2bbc4d682662e2b，原inspector实际0：61行／61eligible／0numeric_mismatch／0overflow；仅CPU callback读取，未进入掩体五相位，不是GPU／双眼／碰撞／肩身遮挡验收。双路recorder0、encode0，完整1overview及4实际raw亲看：启动waiting card、非掩体自由手双眼场景及正常停止末帧保留；不以最后黑帧判断新渲染根因。game285帧17.216s，simulator343帧16.150s；game有2.25s捕获空隙，simulator尾覆盖差1.05s，both_lanes_cover_end_within_500ms=false，不能称完整行动双路覆盖。
+
+retention实际调用被随后另一活动game55436／XR34068阻止，结果deferred且未删媒体；本会话所有运行及编码均终态，不持有共享使用权，不监控或停止他人游戏。证据runtime/closeout-review.json、原失败动作／cover-boundary、eye-inspection、paired视频和retention记录。r96已consume，不再运行或重新prepare；r80原五件与claim保持。下一动作聚焦普通掩体接近停滞及有效入掩体，确认未完共享恢复后才另建有实质修复的新尝试；先完整逻辑，后体验，再GrabPose。publicv71、r93产品Native、CV01–24／AC01–22、25%和目标active不变。
