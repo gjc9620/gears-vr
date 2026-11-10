@@ -550,3 +550,11 @@ wrapper stop1/cleanup_unresolved true，**不是**game absent或正常cleanup通
 只进行一次明确GEARSVR_PYTHON同一路径的Start-DebugGame.ps1 -PythonCheckOnly：exit0/0.4604311秒，返回相同解释器/check_only true；代码在该开关返回前不启动game。此当前正例不修复、不解释原失败，不作为重开旧实例的理由。已向既有协调会话发送原日志、exact live worker与prelaunch源码顺序，没创建helper/新chat，也没并行改共享文件。协调snapshot cursor07910094-1b3c-4665-8069-e920b2d0b42e:4显示其正在增加绑定本次attempt的预启动拒绝回执与Python probe具体诊断；仍不把普通缺birth当作无game，尚未收到完成/收尾结果。
 
 prelaunch-052600-result.json和5份原观察文本保留；cleanup-pending标为mutable observed-byte snapshot，未把它当静态原件或已终态。本次Start-DebugGame源码SHA仅observation-time，不伪称launch-time证明。完整13项audit明确full empty未执行；22992的12射线/ordinary replace/pause局部通过保留，empty/retained/four-state/其他interruptions/fit/headset仍开。下一步跟踪本方exact worker与协调修复，正常收尾确认前不新增测试、不重用052600。目标active，30%/publicv71不变。
+
+## 预启动新协议已核；旧53716不热更新，两个旧worker占满准入
+
+协调已完成future-only修正，python-prelaunch-rejection-20261111.json记录5项真实PythonCheckOnly/81项launcher offline/15项runtime offline与parse通过，无新game。本方逐一核四文件完整SHA并读改变hunk：新PS1保留probePID/status/elapsed/exit/stdout/stderr/exception，只有Python guard在game creation/injection/prime全False时发布绑定exact LaunchReceipt和脚本SHA的.no-start sidecar；launcher验证source/path/flags且无任一birth；新worker在自己的exact launcher退出后才采信typed prelaunch_rejected，done另列no_game_started=True、owned_game_absent仍null。普通no_birth/错身份/有birth继续未知，没被放宽。
+
+本方wrapper原样保留done且passed仍须operator0和真正owned_game_absent，因此已兼容这个新类型，无需额外改变或把no-start刷成gameplay pass。prelaunch-rejection-integration-check.json保存源码SHA与审阅，不重复共享测试、不启动runtime。旧53716和旧139未热更新、未回填新sidecar、未停止；本方53716 exact identity再核仍live。
+
+一次只读resource preflight当前明确active=['hb-cloak-1111-052600','lancer-natural-v139-225928']占满两名额。故不是一个会自动释放的普通等待：后续源码修复不能让旧运行代码正常退出；没有新增实例、没有放宽名额/身份、没有伪造game absence。需要单独解决本方旧控制worker的退出权限/资源占位，其他owner139不在本方操作范围。22992 loaded局部通过继续有效，052600完整空仓未执行，全部13项和full goal仍未完成。
