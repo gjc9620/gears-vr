@@ -1780,3 +1780,10 @@ retention实际调用被随后另一活动game55436／XR34068阻止，结果defe
 已读GN具体未完恢复的recovery-restoration.json，时间15:16:45、SHA26b2b78c078e061d6fdf166d7172c3ffdcdcaf9abe1aafd74f2ba01f419e8784：与原claim8f91eb及baseline e224c8身份对应，10项checks全true、restored／released true、public_written false。新入口在统一guard内明确核对此已知未完恢复已完成，避免再次把空闲当恢复；这不是远期队列／前驱FINAL或互审前置。每次实际启动仍用共同RuntimeGuard及现场占用，从新即时备份到正常恢复后释放，离线不占用。
 
 最后独立prepare-only0，5项检查0，r97未consume／stage／start。实际看到他人game5212（15:33:48创建）后不启动；狙击枪询本会话是否持锁时只确认自身仅离线准备、未取得guard且无预留窗口，不追查或要求对方签收。r96媒体retention此前因他人运行deferred，不以此占用共享资源。证据view-alignment-r97/verification.json、offline-transform-verification.json、replayed-56276-action-result.json及两份实际日志。新接近逻辑仍待一次游戏定向验证，后续先完成可见视野／入掩体／探身抓边／保持缩回／退出，再体验与GrabPose。publicv71、最新产品Native9f375dc7、完整CV01–24／AC01–22及工程25%不变，目标active。
+
+
+### r97真实互斥拒绝，未消费候选
+
+保存f5fb1f46后，实际现场暂时无game／XR／paired recorder、launcher index为finished；已确认GN原件恢复记录，向狙击枪仅发实际启动通知，随后调用r97。静态检查通过后，统一RuntimeGuard的WaitForSingleObject(0)返回busy，入口实际exit1，未进入run_owned：无prestage目录、inner.log或claim，无备份／stage／输入／游戏启动，未获得或持有任何共享窗口。guard-refusal.json记录实际入口SHA及拒绝；已简短通知询问占用的狙击枪本会话不持锁，无须等待本会话释放，不追查／停止他人进程。该拒绝不是已确认进程handle上的verified wait，也不是本目标无进展：本轮接近定向修改、实际函数接线和离线证据已完成并保存；尚缺游戏检查，r97保持未消费，不重新prepare或创建替代票据。
+
+随后仅独立调用一次r96未完媒体retention。工具执行到inventory关闭检查时检测新game／XR启动，正常返回deferred='A game/XR started during inventory; no media removed'，未删除媒体；同一工具handle65396已terminal0，无本会话运行／编码／retention作业留存，不占共享guard。结果保存在view-alignment-r97/retention-after-r96.json。下次实际共享释放后方可做r97一次定向运行；原完整目标、公开v71和25%不变，目标active。
