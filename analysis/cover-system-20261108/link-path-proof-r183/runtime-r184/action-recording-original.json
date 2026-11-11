@@ -1,0 +1,41 @@
+{
+  "source": "Event timeline for independent game/simulator HWND recordings",
+  "layer": "all",
+  "desktop_capture": false,
+  "audio": false,
+  "synchronous_projection_capture": false,
+  "physical_headset_acceptance": false,
+  "started_wall_ns": 1794388815509373800,
+  "clock": "Python perf_counter; wall_ns brackets for independent window recording alignment",
+  "frames": [],
+  "events": [
+    {
+      "time": 4.5000051613897085e-06,
+      "wall_ns": 1794388815509373800,
+      "label": "independent_WGC_recording",
+      "synchronous_screenshot_requests": false
+    },
+    {
+      "time": 1.5322662999969907,
+      "wall_ns": 1794388817040877500,
+      "label": "owned_Playground_already_loaded",
+      "top": null,
+      "focus": null,
+      "number": null
+    },
+    {
+      "time": 1.5325516999873798,
+      "wall_ns": 1794388817042423800,
+      "label": "focused_Lancer_check_after_existing_controlled_Playground_entry",
+      "title_navigation_exercised": false
+    },
+    {
+      "time": 2.376549899985548,
+      "wall_ns": 1794388817886559700,
+      "label": "before_original_X_pickup",
+      "weapon": "0x16067e6700",
+      "cls": "Weap_LocustAssaultRifle"
+    }
+  ],
+  "errors": []
+}

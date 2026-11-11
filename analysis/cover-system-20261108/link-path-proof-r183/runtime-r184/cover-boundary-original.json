@@ -1,0 +1,166 @@
+{
+  "game": {
+    "pid": 33600,
+    "creation_time": 134388623588570950,
+    "image": "j:\\gearsvr\\gears.of.war.reloaded.v1.0.1.3816947-p2p\\gears of war reloaded\\binaries_x64\\gowde-steam.exe"
+  },
+  "passed": false,
+  "diagnostic_only": true,
+  "grab_authorized": false,
+  "body_modified": false,
+  "headset_accepted": false,
+  "trace_started": false,
+  "steps": [
+    {
+      "elapsed": 0.0,
+      "game_identity": {
+        "pid": 33600,
+        "creation_time": 134388623588570950,
+        "image": "j:\\gearsvr\\gears.of.war.reloaded.v1.0.1.3816947-p2p\\gears of war reloaded\\binaries_x64\\gowde-steam.exe"
+      },
+      "errors": [],
+      "menu": {
+        "pid": 33600,
+        "client": "0x175ede00",
+        "active_scenes": [],
+        "input_block_count": 0,
+        "top": null,
+        "focus_chain": [],
+        "focused_leaf": null,
+        "read_only": true,
+        "player_index": null,
+        "verified_reads": 255,
+        "consistent_reread": true
+      },
+      "native": {
+        "published": 149,
+        "epoch_submit_total": 155,
+        "world_generation": 1,
+        "started_qpc": 1736044254779,
+        "reference_generation": 1,
+        "owned_ui_faults": 0,
+        "owned_material_faults": 0,
+        "owned_ui_semantic_incomplete": 0,
+        "mirror_inventory_rejected": 11,
+        "anchor_submission_rejected": 0,
+        "telemetry_present_failures": 0,
+        "owned_ui_first_fault": 0,
+        "owned_material_first_fault": 0,
+        "owned_ui_first_fault_name": "none"
+      },
+      "pawn_identity": {
+        "address": 94596104448,
+        "internal_index": 207058,
+        "name": "Pawn_COGMarcus",
+        "number": 1,
+        "cls": 429705152,
+        "outer": 2262806848,
+        "name_index": 5927
+      },
+      "cinematic": false,
+      "special_move_raw": 0,
+      "health": 450,
+      "cover_state_raw": {
+        "CoverType": 0,
+        "CoverAction": 0
+      },
+      "pose": {
+        "position": [
+          -3900.0,
+          0.0,
+          583.9485473632812
+        ],
+        "yaw_ru": 0,
+        "controller_rotation_ru": [
+          0,
+          0,
+          0
+        ],
+        "camera_position": [
+          -4060.0,
+          48.0,
+          659.9485473632812
+        ],
+        "camera_rotation_ru": [
+          0,
+          0,
+          0
+        ],
+        "pawn_rotation_ru": [
+          0,
+          0,
+          0
+        ],
+        "fov": 80.0
+      },
+      "observation_adapter": "owned_empty_ui_playground",
+      "anchor_acquisition": {
+        "started_perf_counter_ns": 173620224735100,
+        "finished_perf_counter_ns": 173620228464800
+      }
+    }
+  ],
+  "global_cover_hints": 257,
+  "nearby_world_cover_hints": [
+    "0x8952f430",
+    "0x89522b60",
+    "0x89523730",
+    "0x89523b20",
+    "0x89523f10",
+    "0x89524300",
+    "0x895246f0",
+    "0x89524ae0",
+    "0x89524ed0",
+    "0x895252c0",
+    "0x89525aa0",
+    "0x89525e90",
+    "0x894d95b0",
+    "0x894d99a0",
+    "0x894d9d90",
+    "0x894d0be0",
+    "0x894d1ba0"
+  ],
+  "link_hints": [
+    "0x8952f430",
+    "0x89522b60",
+    "0x89523730",
+    "0x89523b20",
+    "0x89523f10",
+    "0x89524300",
+    "0x895246f0",
+    "0x89524ae0",
+    "0x89524ed0",
+    "0x895252c0",
+    "0x89525aa0",
+    "0x89525e90",
+    "0x894d95b0",
+    "0x894d99a0",
+    "0x894d9d90",
+    "0x894d0be0",
+    "0x894d1ba0"
+  ],
+  "unrelated_discovery_hints_skipped": 4,
+  "candidate_closing_rejection": {
+    "link_address": 2303863648,
+    "stage": "candidate_selection_before_original_A",
+    "difference": {
+      "kind": "registry",
+      "address": 5398218544,
+      "size": 16,
+      "before": "00002f160000000061540300f86f0300",
+      "after": "00002f160000000062540300f86f0300",
+      "before_header": {
+        "data": 372178944,
+        "count": 218209,
+        "capacity": 225272
+      },
+      "after_header": {
+        "data": 372178944,
+        "count": 218210,
+        "capacity": 225272
+      }
+    },
+    "difference_missing_is_unknown": false
+  },
+  "error": "RuntimeError('World-state metadata/registry changed at closing boundary')"
+}

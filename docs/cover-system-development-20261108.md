@@ -2705,3 +2705,13 @@ physics中fixture Owner guard13140次（56.02%），其余registry headers2500�
 完整Native0d4437fd5427902f84e5571cb1e3f577c201b114bfaf2843b3e4483f998cdf6f编译链接0，exact r177仅cover_context_live.inl一文件delta，413项目依赖、worktree外漏0、GEARS flags不变，其余冻结源前后相同。测试新增main命名宏只为复用原fixture，不属于产品delta。prepare新增--native-r183认证精确候选。代码/反例/读取计数/原失败范围/manifest/build/verify在link-path-proof-r183。
 
 下一步Git保存后用新实例短查实际CoverKey复核和原query入口。该候选尚未启动，实际40ms、完整owner/world/body几何、自身模型遮挡、CV01–24/AC01–22和实体头显未完成；工程25%、publicv71/固定入口不变，目标active。
+
+## r184：新候选在原A前严格拒绝注册表增一，已取得精确前后值（2026-11-11）
+
+c9b8ba8b保存后，新cover-1111-r184-cloak-path使用r183 Native0d4437fd…cdf6f，prepare/导入/启动0。实际game33600、creation134388623588570950，候选CoverQuery.finish拒绝，operator/runner1；原A/五阶段未达，严格reader没有终态query。因此没有r183继承优化的实际query耗时，不能声称40ms已修复或原查询实测0次。
+
+r180记录取得首个差异：candidate link2303863648，stage candidate_selection_before_original_A；registry地址5398218544，16字节before00002f160000000061540300f86f0300→after00002f160000000062540300f86f0300，data372178944/capacity225272保持，count218209→218210，missing-is-unknown=false。只能确认此注册表头的这一差异，未取得新增项的语义，不能证明与候选无关。严格原检查拒绝未变化，未开启append-only放行或复用失败证据。
+
+normal_cleanup true、remaining_owned空、无强杀，保存时独立确认game/owner/XR/worker精确身份不在。CLOAK546/失败0，前台352/owned_activation false，13启动来源前后相同。145投影帧/errors0、编码0，8页实际已有跨度全部亲看，仅进入掩体前场景；contact0/阶段0，明确动作跨度不完整，不作视图或头显验收。原始session/差异/动作/投影清单及review在link-path-proof-r183/runtime-r184。
+
+下一步缩短候选观察中的重复读取，尤其数组头/完整Slots重复采样、逐槽Bool mask重复读取和收尾的重叠数值窗口；必须保持相同身份/字段/目录/slot值的严格收尾和时间/容量限制，不延时等待或跳过变动候选。完整world/body/movement、严重模型遮挡、全CV01–24/AC01–22及头显未完成，工程25%、publicv71/固定入口不变，目标active。

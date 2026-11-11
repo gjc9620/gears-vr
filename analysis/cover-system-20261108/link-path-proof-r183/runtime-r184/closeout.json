@@ -1,0 +1,77 @@
+{
+  "error": "RuntimeError('Own ordinary cover observation failed; preserve operator log')",
+  "operator_exit": 1,
+  "start_exit": 0,
+  "normal_cleanup_verified": true,
+  "normal_cleanup_required": true,
+  "projection_frames": 145,
+  "projection_errors": [],
+  "remaining_owned": {},
+  "anchor_sources_unchanged": true,
+  "cloak_observations": {
+    "samples": 546,
+    "failures": []
+  },
+  "foreground_observations": {
+    "samples": 352,
+    "owned_activation": false
+  },
+  "forced_termination": false,
+  "identities": {
+    "game_identity": {
+      "pid": 33600,
+      "creation_time": 134388623588570950,
+      "image": "j:\\gearsvr\\gears.of.war.reloaded.v1.0.1.3816947-p2p\\gears of war reloaded\\binaries_x64\\gowde-steam.exe"
+    },
+    "owner_identity": {
+      "pid": 28536,
+      "creation_time": 134388623513935045,
+      "image": "c:\\users\\11\\.cache\\codex-runtimes\\codex-primary-runtime\\dependencies\\python\\python.exe"
+    },
+    "xr_identity": {
+      "pid": 34600,
+      "creation_time": 134388623656663185,
+      "image": "c:\\users\\11\\.codex\\worktrees\\6dof-single\\gearsvr\\tools\\openxr-probe\\build-cover-1111-r184-cloak-path\\openxrposeprobe.exe"
+    },
+    "worker_identity": {
+      "pid": 49992,
+      "creation_time": 134388623513071348,
+      "image": "c:\\users\\11\\.cache\\codex-runtimes\\codex-primary-runtime\\dependencies\\python\\python.exe"
+    }
+  },
+  "exact_owned_processes_absent": true,
+  "runner_exit": 1,
+  "native_sha256": "0d4437fd5427902f84e5571cb1e3f577c201b114bfaf2843b3e4483f998cdf6f",
+  "original_A_reached": false,
+  "query_proven": false,
+  "link_path_proof_game_exercised": false,
+  "source_age_repaired": false,
+  "world_coverage_verified": false,
+  "movement_authorized": false,
+  "cover_view_accepted": false,
+  "headset_accepted": false,
+  "public_changed": false,
+  "first_failure": {
+    "link_address": 2303863648,
+    "stage": "candidate_selection_before_original_A",
+    "difference": {
+      "kind": "registry",
+      "address": 5398218544,
+      "size": 16,
+      "before": "00002f160000000061540300f86f0300",
+      "after": "00002f160000000062540300f86f0300",
+      "before_header": {
+        "data": 372178944,
+        "count": 218209,
+        "capacity": 225272
+      },
+      "after_header": {
+        "data": 372178944,
+        "count": 218210,
+        "capacity": 225272
+      }
+    },
+    "difference_missing_is_unknown": false
+  },
+  "next": "Reduce duplicate read-only candidate observation work with unchanged strict registry/identity/metadata/value closing; do not enable append-only permission or rerun unchanged."
+}

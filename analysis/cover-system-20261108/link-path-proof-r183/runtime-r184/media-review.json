@@ -1,0 +1,56 @@
+{
+  "frames": 145,
+  "recording_sha256": "5a55bc3e8ec20f9f260993a9737a595950cafeeb34f2f93d4178fedbfe58e23a",
+  "pages": [
+    {
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\link-path-proof-r183\\runtime-r184\\overview-1.jpg",
+      "sha256": "2978a2b2d390ae343d09e3ab2e4eab80c9d3e0cb534c52b9c67b58be8cf3efea"
+    },
+    {
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\link-path-proof-r183\\runtime-r184\\overview-2.jpg",
+      "sha256": "8851995642bfd54c8ec2b68a4d7f5c970c01bc27a2673c4aab84fadf94487aab"
+    },
+    {
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\link-path-proof-r183\\runtime-r184\\overview-3.jpg",
+      "sha256": "a3e85e3ac0d23f1204a29443e843d8212c8041624075648fb6694b0c0a5b8cbb"
+    },
+    {
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\link-path-proof-r183\\runtime-r184\\overview-4.jpg",
+      "sha256": "eb3a38619d16628cbcf068b958c25b739ebbd55bdc139432cec676c9d14bd042"
+    },
+    {
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\link-path-proof-r183\\runtime-r184\\overview-5.jpg",
+      "sha256": "a6add815d65e7f8e395d5a71ba0c8be1d7d755edbb3abd736c93f2ccaf7d1fc6"
+    },
+    {
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\link-path-proof-r183\\runtime-r184\\overview-6.jpg",
+      "sha256": "28a07baf65c74770e5f5cc5980d71e6ea13314e93313df7829fc0651e62abc94"
+    },
+    {
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\link-path-proof-r183\\runtime-r184\\overview-7.jpg",
+      "sha256": "1d1f21ea5f85da69e4f7dbda388761ff7a390ed365abdc109358c8655de3585a"
+    },
+    {
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\link-path-proof-r183\\runtime-r184\\overview-8.jpg",
+      "sha256": "9fc27166b69bcafa50268b34ea87dcf32c3fa894d64486ad3f811a7807417d61"
+    }
+  ],
+  "contacts": [],
+  "source": "actual private simulator projection",
+  "desktop_capture": false,
+  "full_span_personally_reviewed": false,
+  "headset_accepted": false,
+  "recording_errors": [],
+  "captured_span_complete": false,
+  "missing_contacts": [],
+  "encode_exit": 0,
+  "encoded_sha256": "6064449ae1397635964c6462624297e6ec78263833cd28ca989299155b6d1d82",
+  "captured_span_personally_reviewed": true,
+  "reviewed_pages": 8,
+  "reviewed_original_contacts": 0,
+  "cover_action_span_complete": false,
+  "expected_phase_count": 5,
+  "completed_phase_count": 0,
+  "cover_view_accepted": false,
+  "verdict": "Pre-cover captured span reviewed; original A and all five cover phases not reached"
+}
