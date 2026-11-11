@@ -1,13 +1,13 @@
 {
-  "source_checkpoint": "01b720a4",
-  "next": "Identify original passive target refusal/absence at the matching successful non-passive/release-blend C0 commit and separate whole C0 non-admission. Existing active-support first-rejection observer excludes passive. Add bounded original-return reasons for passive target, including exact broker source/frozen frame association from the existing admission call; no extra game/clock reads or relaxed admission. Preserve anti-replay, identity, freshness, fixed lengths and1cm/2deg tests. Do not rerun wide palette observer unchanged.",
+  "source_checkpoint": "a40c9417",
+  "next": "Implement a fresh-input passive socket path through the existing sole C0 solver: first inspect current BodyMount/hand geometry contract to distinguish reusable certified socket geometry from per-frame requested world pose. Do not extend old Request100ms or replay expired world target; current identity/held attachment/input/contact/no-incumbent checks must certify any newly assembled target. Add regression for valid current input after old world request expiry, real Grip transition and release/cancel/loss. Do not infer all whole-C0 losses fixed or change1cm/2deg thresholds. No unchanged game run.",
   "candidate": "early-released-refire-r1",
   "requirements_complete": false,
-  "native_candidate": "native-passive-commit-r1",
-  "runner_session_id": 23356,
+  "native_candidate": "native-passive-rejection-r1",
+  "runner_session_id": 65662,
   "terminal": true,
   "all13_requirements_retained": true,
-  "instance": "hb-cloak-1111-172045",
-  "runner_last_poll": "23356 terminal1; normal stop/launcher/Native/PG/XR0; noforced/owned game+children absent; encode0",
-  "game_pid": 4312
+  "instance": "hb-cloak-1111-173534",
+  "runner_last_poll": "65662 terminal0; stop/launcher/Native/PG/XR0; noforced/owned game+children absent; encode0",
+  "game_pid": 34808
 }

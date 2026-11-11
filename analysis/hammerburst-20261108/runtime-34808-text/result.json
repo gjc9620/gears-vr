@@ -1,0 +1,89 @@
+{
+  "game": {
+    "pid": 34808,
+    "creation_time": 134388633448656989,
+    "image": "j:\\gearsvr\\gears.of.war.reloaded.v1.0.1.3816947-p2p\\gears of war reloaded\\binaries_x64\\gowde-steam.exe"
+  },
+  "source": 1,
+  "desktop_input": false,
+  "controlled_enter_api_used": false,
+  "physical_headset_accepted": false,
+  "visual_review_pending": true,
+  "ui": [
+    {
+      "label": "owned_Playground_already_loaded",
+      "t": 174592382994900,
+      "top": null,
+      "focus": null,
+      "dialog": null
+    },
+    {
+      "label": "VR_menu_pause",
+      "t": 174661443488300,
+      "top": {
+        "address": "0x162a63f200",
+        "name": "DeltaPause-Campaign-Host",
+        "number": 1,
+        "cls": "WarUIScene",
+        "outer": "0x1413a180",
+        "input_mode": 1,
+        "tag": "DeltaPause-Campaign-Host",
+        "tag_number": 0
+      },
+      "focus": {
+        "address": "0x162a5ec5e0",
+        "name": "LBtnResumeSingle",
+        "number": 0,
+        "cls": "UILabelButton",
+        "outer": "0x1629bf51a0",
+        "states": [
+          "UIState_Enabled",
+          "UIState_Focused"
+        ]
+      },
+      "dialog": null
+    },
+    {
+      "label": "pause_layout",
+      "t": 174664203105200,
+      "top": {
+        "address": "0x162a63f200",
+        "name": "DeltaPause-Campaign-Host",
+        "number": 1,
+        "cls": "WarUIScene",
+        "outer": "0x1413a180",
+        "input_mode": 1,
+        "tag": "DeltaPause-Campaign-Host",
+        "tag_number": 0
+      },
+      "focus": {
+        "address": "0x162a5ec5e0",
+        "name": "LBtnResumeSingle",
+        "number": 0,
+        "cls": "UILabelButton",
+        "outer": "0x1629bf51a0",
+        "states": [
+          "UIState_Enabled",
+          "UIState_Focused"
+        ]
+      },
+      "dialog": null
+    },
+    {
+      "label": "VR_B_resume",
+      "t": 174665777826800,
+      "top": null,
+      "focus": null,
+      "dialog": null
+    }
+  ],
+  "checks": {
+    "focused_gameplay_entry": true,
+    "hammerburst_core": {
+      "actual_shoulder_acquisition": true
+    },
+    "pause_B_resume": true
+  },
+  "offline_encode_pending": true,
+  "directory": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\hb-cloak-1111-173534\\actions\\menu-firstperson-34808-173558"
+}
