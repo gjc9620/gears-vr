@@ -29,6 +29,7 @@ struct SphereObservation {
 std::mutex sphere_probe_mutex;SphereObservation sphere_probe;
 struct PathObservation {
     SphereObservation common{};q::Capsule shape{};q::Vector delta{};
+    gears_cover_query_timing::Report timing{};
     unsigned segments{},hits{},reports{},endpoint_shapes{},endpoint_reports{},self_hits{},endpoint_self{};
 };
 PathObservation path_probe;
@@ -94,6 +95,9 @@ void summary(FILE* f){if(!f)return;
     fprintf(f,"cover_sphere_probe_layout_member_identities=%u cover_sphere_probe_layout_member_capacity=%u ",l.member_identities,unsigned(l.member_capacity));
     PathObservation path_copy{};{std::lock_guard<std::mutex> lock(sphere_probe_mutex);path_copy=path_probe;}
     auto const& p=path_copy.common;
+    fprintf(f,"cover_path_probe_timing_invalid=%llu cover_path_probe_timing_overflow=%llu ",path_copy.timing.invalid,path_copy.timing.overflow);
+    for(unsigned i=0;i<unsigned(gears_cover_query_timing::Stage::count);++i){auto const& bin=path_copy.timing.bins[i];
+        fprintf(f,"cover_path_probe_timing_%u=%llu,%llu,%llu,%llu ",i,bin.calls,bin.completed,bin.total_ns,bin.max_ns);}
     fprintf(f,"cover_path_probe_requested=%u cover_path_probe_attempted=%u cover_path_probe_finished=%u cover_path_probe_code=%u cover_path_probe_world=%llu cover_path_probe_world_generation=%llu cover_path_probe_pawn=%llu cover_path_probe_link=%llu cover_path_probe_slot=%d cover_path_probe_scene=%llu cover_path_probe_compose=%llu cover_path_probe_sequence=%llu cover_path_probe_thread=%u cover_path_probe_begin_ns=%lld cover_path_probe_end_ns=%lld ",
         unsigned(path_probe_requested),unsigned(p.attempted),unsigned(p.finished),unsigned(p.code),p.world,p.world_generation,p.pawn,p.link,p.slot,p.scene,p.compose,p.sequence,p.thread,p.begin_ns,p.end_ns);
     fprintf(f,"cover_path_probe_capsule=%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g cover_path_probe_delta=%.9g,%.9g,%.9g cover_path_probe_segments=%u cover_path_probe_hits=%u cover_path_probe_reports=%u cover_path_probe_endpoint_shapes=%u cover_path_probe_endpoint_reports=%u cover_path_probe_self_hits=%u cover_path_probe_endpoint_self=%u cover_path_probe_max_hits=32 cover_path_probe_max_reports=8 cover_path_probe_diagnostic_geometry=1 cover_path_probe_body_geometry=0 cover_path_probe_movement_permission=0 ",
@@ -240,6 +244,7 @@ void observe_path_once(Entry const& e,Core const& source,q::Vector const& eye)no
         {std::lock_guard<std::mutex> lock(sphere_probe_mutex);if(path_probe.common.attempted)return;path_probe=row;}
         const auto before=session.observation().engine;
         common.original_started_before=before.original_started;common.original_returned_before=before.original_returned;
+        gears_cover_query_timing::Scope timing_scope(true,row.timing,+[]()noexcept{return rig_tracking_live::clock_ns();});
         query_admission=QueryAdmission::admission;query_session_entered=false;
         if(!q::detail::scalar(centimetre)||centimetre<=0||!q::detail::valid(row.shape)||!q::detail::sweep_motion(row.shape,row.delta))common.code=q::Code::request;
         else common.code=sweep_capsule_path(e,source,row.shape,row.delta,

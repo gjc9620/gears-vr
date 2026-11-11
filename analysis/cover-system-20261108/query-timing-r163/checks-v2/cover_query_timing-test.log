@@ -1,0 +1,2 @@
+cover_physics_query_live: 105 checks, 0 failures; dispatch/module are Host seams, no original call
+CoverQueryTiming checks=135 failures=0 observer only; nested times overlap; no original call

@@ -1,0 +1,34 @@
+{
+  "runtime_delta": [
+    "tools/native-capture/cover_physics_c0_live.inl",
+    "tools/native-capture/cover_physics_query_live.inl",
+    "tools/native-capture/cover_query_timing.h"
+  ],
+  "native_sha256": "50ced042f8d7f9a55fb8c4f3e859fbb6ea75872889d7e1dbb27c754cdad65f79",
+  "project_dependencies": 410,
+  "outside_worktree_dependencies": 0,
+  "original_query_control_flow_reconstructed_exactly": true,
+  "original_c0_control_flow_reconstructed_exactly": true,
+  "flags_unchanged": true,
+  "scope": "Only the existing private one-shot path probe arms timing; disabled callers do not read a clock",
+  "timing_bins": 8,
+  "nested_times_overlap": true,
+  "closed_spans_do_not_mean_success": true,
+  "initial_test_compile_failure": "Two test-local identifiers shadowed existing fixture globals under /WX; renamed only those identifiers for v2",
+  "focused_checks": 135,
+  "focused_includes_existing_session_checks": 105,
+  "affected_existing_checks": [
+    23,
+    105,
+    391,
+    53,
+    51
+  ],
+  "build_only": true,
+  "game_started": false,
+  "source_age_repaired": false,
+  "world_coverage_verified": false,
+  "movement_authorized": false,
+  "headset_accepted": false,
+  "public_changed": false
+}

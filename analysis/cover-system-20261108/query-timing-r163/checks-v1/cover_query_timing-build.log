@@ -1,0 +1,6 @@
+cover_query_timing_test.cpp
+C:\Users\11\.codex\worktrees\6dof-single\gearsVr\analysis\cover-system-20261108\query-timing-r163\checks-v1\source\tools\native-capture\cover_query_timing_test.cpp(22): error C2220: 以下警告被视为错误
+C:\Users\11\.codex\worktrees\6dof-single\gearsVr\analysis\cover-system-20261108\query-timing-r163\checks-v1\source\tools\native-capture\cover_query_timing_test.cpp(22): warning C4459: “inner”的声明隐藏了全局声明
+C:\Users\11\.codex\worktrees\6dof-single\gearsVr\analysis\cover-system-20261108\query-timing-r163\checks-v1\source\tools\native-capture\cover_physics_roles_live_test.cpp(14): note: 参见“inner”的声明
+C:\Users\11\.codex\worktrees\6dof-single\gearsVr\analysis\cover-system-20261108\query-timing-r163\checks-v1\source\tools\native-capture\cover_query_timing_test.cpp(49): warning C4459: “denied”的声明隐藏了全局声明
+C:\Users\11\.codex\worktrees\6dof-single\gearsVr\analysis\cover-system-20261108\query-timing-r163\checks-v1\source\tools\native-capture\weapon_hand_scene_binding_test.cpp(23): note: 参见“denied”的声明

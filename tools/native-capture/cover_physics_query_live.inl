@@ -3,6 +3,7 @@
 #include "cover_physx_query.h"
 #include "cover_physx_capsule_path_observation.h"
 #include "cover_query_guard_observation.h"
+#include "cover_query_timing.h"
 #include "cover_physics_roles_live.inl"
 #include "cover_collider_roles_live.inl"
 #include "cover_component_roles_live.inl"
@@ -14,6 +15,7 @@ namespace roles=cover_physics_roles_live;
 namespace collider_roles=cover_collider_roles_live;
 namespace component_roles=cover_component_roles_live;
 namespace path=gears_cover_capsule_path;
+namespace timing=gears_cover_query_timing;
 enum class Stage:unsigned {idle,geometry,physics_roles,collider_roles,component_roles,engine,closing,complete};
 struct Observation {Stage stage{};unsigned detail{};q::QueryProgress engine{};roles::LayoutObservation layout{};gears_cover_query_guard::Witness guard{};};
 #if defined(GEARS_COVER_BODY_PROTOTYPE) && GEARS_COVER_BODY_PROTOTYPE
@@ -40,18 +42,18 @@ template<class Engine=q::Queries> class Session {
         bool reject(Gate gate,unsigned detail=0){return session.guard_witness_.reject(unsigned(gate),detail);}
         bool components_current(){if constexpr(WithCollider){session.guard_witness_.enter();
             if(session.stopped_.load())return reject(Gate::stopped);
-            const auto code=component_roles::sample(actor,owner,session.component_work_,session.component_after_);
+            const auto code=timing::measure(timing::Stage::components_repeat,[&](){return component_roles::sample(actor,owner,session.component_work_,session.component_after_);});
             if(code!=roles::Code::current)return reject(Gate::component_read,unsigned(code));
             if(!component_roles::same(session.component_before_,session.component_after_))return reject(Gate::component_match);
         }return true;}
         bool operator()(){
             session.guard_witness_.enter();
             if(session.stopped_.load())return reject(Gate::stopped);
-            const auto code=roles::sample(actor,metadata,owner,session.work_,session.after_);
+            const auto code=timing::measure(timing::Stage::physics_repeat,[&](){return roles::sample(actor,metadata,owner,session.work_,session.after_);});
             if(code!=roles::Code::current)return reject(Gate::physics_read,unsigned(code));
             if(!roles::same(session.before_,session.after_))return reject(Gate::physics_match);
             if constexpr(WithCollider){
-                const auto collider=collider_roles::sample(actor,owner,session.collider_work_,session.collider_after_);
+                const auto collider=timing::measure(timing::Stage::collider_repeat,[&](){return collider_roles::sample(actor,owner,session.collider_work_,session.collider_after_);});
                 if(collider!=roles::Code::current)return reject(Gate::collider_read,unsigned(collider));
                 if(!collider_roles::same(session.collider_before_,session.collider_after_))return reject(Gate::collider_match);
             }
@@ -80,12 +82,12 @@ template<class Engine=q::Queries> class Session {
         const auto owner=actor;const auto source=metadata;const Shape geometry=shape;
         if(!q::detail::valid(geometry))return q::Code::request;
         stage_=Stage::physics_roles;
-        const auto physics=roles::sample(owner,source,guard,work_,before_);detail_=unsigned(physics);
+        const auto physics=timing::measure(timing::Stage::physics_initial,[&](){return roles::sample(owner,source,guard,work_,before_);});detail_=unsigned(physics);
         if(physics!=roles::Code::current)return q::Code::source;
         constexpr bool with_collider=std::is_same_v<Output,q::AllSweepOwners>||std::is_same_v<Output,q::AllOverlapOwners>||std::is_same_v<Output,path::RawPath>;
-        if constexpr(with_collider){stage_=Stage::collider_roles;const auto collider=collider_roles::sample(owner,guard,collider_work_,collider_before_);detail_=unsigned(collider);
+        if constexpr(with_collider){stage_=Stage::collider_roles;const auto collider=timing::measure(timing::Stage::collider_initial,[&](){return collider_roles::sample(owner,guard,collider_work_,collider_before_);});detail_=unsigned(collider);
             if(collider!=roles::Code::current)return q::Code::source;}
-        if constexpr(with_collider){stage_=Stage::component_roles;const auto components=component_roles::sample(owner,guard,component_work_,component_before_);detail_=unsigned(components);
+        if constexpr(with_collider){stage_=Stage::component_roles;const auto components=timing::measure(timing::Stage::components_initial,[&](){return component_roles::sample(owner,guard,component_work_,component_before_);});detail_=unsigned(components);
             if(components!=roles::Code::current||!component_roles::input(component_before_,component_input_))return q::Code::source;}
         SourceGuard<Guard,with_collider> current{*this,owner,source,guard};
         if constexpr(with_collider)current.collider_source=collider_roles::input(collider_before_);
@@ -97,10 +99,11 @@ template<class Engine=q::Queries> class Session {
             else if constexpr(std::is_same_v<Output,q::AllOverlapOwners>)return overlap_owner_result_;
             else if constexpr(std::is_same_v<Output,path::RawPath>)return path_result_;else return local;}();
         stage_=Stage::engine;detail_=0;
-        const auto code=invoke(engine_,before_.source,geometry,read,current,result);detail_=unsigned(code);
+        const auto code=timing::measure(timing::Stage::engine,[&](){return invoke(engine_,before_.source,geometry,read,current,result);});detail_=unsigned(code);
         if(code==q::Code::fault_unknown||engine_.uncertain())enabled_=false;
         if(code!=q::Code::queried)return code;
         stage_=Stage::closing;
+        timing::Span closing_timing(timing::Stage::closing);
         if(!current()||!current.components_current()||!weapon_hand_scene_binding::same_key(owner,actor)||owner.scene_invocation!=actor.scene_invocation||
            owner.special_move!=actor.special_move||!gears_cover_pose_phase::metadata_equal(source,metadata)||
            std::memcmp(&geometry,&shape,sizeof shape))return q::Code::changed;
