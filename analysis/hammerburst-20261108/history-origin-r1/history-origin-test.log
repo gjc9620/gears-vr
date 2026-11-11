@@ -1,0 +1,3 @@
+history-origin-test.cpp
+History origin: actual ring overwrite, skipped publication, right tracking boundary and full8-ring distinguished; original expiry and history output preserved
+controller continuity source history, exact matching, GVC3 coexistence, ring, identity and lifetime checks passed

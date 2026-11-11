@@ -1,0 +1,10 @@
+{
+  "passed": true,
+  "cases": 4,
+  "original_bridge_suite_passed": true,
+  "exact_policy_reversal": true,
+  "pure_kernel_unchanged": true,
+  "extra_ring_reads": 0,
+  "extra_clocks": 0,
+  "game_started": false
+}

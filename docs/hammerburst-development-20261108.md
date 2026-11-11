@@ -712,3 +712,8 @@ Nativeb9ab7a82 native-mutex-r1基于精确71f280b0冻结源/编译开关，只�
 ## 2026-11-11 实际15820：原始历史拒绝与实际数据内核重放
 
 Nativeb9ab7a82/PG31f7d324完整78条一致射线、空仓0/78禁射通过。Native7条原锁结果成功0/inputloss0，未复现mutex失败，不称修复。开盖505/4633首次采到原始history失败：上次4628，本次4633，history4630..4633共4，缺4629；gap111ms原reason5在angle.166937848拒绝。用12条双手原pose/flags/counters及6条原raw重建，运行实际未修改controller_relative_motion内核，所有shape/project/held计数及已留相邻motion_pair均通过，唯一首失败4628→4630非连续；delta5在原capacity8内。未补造4629/放宽gap。尚不能分辨从未发布/读取前覆盖/原pair无效；下一步保留同一次原packet.latest及history loop停止原因，不增读。完整换弹仍失败。正常清理全0无forced、439帧错误空/编码0，3页48对亲阅视觉仍失败；13项保留。
+
+
+## 2026-11-11 同一次历史读取的停止原因
+
+PGaa02381d history-origin-r1在原连续性ring读取中保留本地latest/selected/stop/stored/read_ns，区分evicted1、未保存序号2、原motion_pair拒绝3；默认不新增查询，仍原packet、原clock、原capacity8、原100ms和原返回。仅在原history拒绝已留存的最多4次日志后输出对应origin；源逆变换精确等于父版，Nativeb9ab7a82和XR未改。实际ring4组覆盖覆盖驱逐、跳过发布、右手tracking边界、完整8记录，原全部bridge身份/生命周期/进程/非阻塞检查通过。初版过期fixture误用sync而非原received作100ms边界，断言失败后修正fixture，未改生产代码；最终检查0。尚无游戏停止原因，不称修复，13项保留。

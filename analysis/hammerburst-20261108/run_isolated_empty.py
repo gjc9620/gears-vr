@@ -84,6 +84,8 @@ def main():
     tick_cost_tail='--tick-cost-tail' in sys.argv
     history_rejection='--history-rejection' in sys.argv
     withdrawal_clock='--withdrawal-clock' in sys.argv
+    history_origin='--history-origin' in sys.argv
+    assert not history_origin or withdrawal_clock,'History origin observer retains the first stale consumer observer'
     assert not withdrawal_clock or history_rejection,'Withdrawal clock observer includes the original history observer'
     assert not history_rejection or tick_cost_tail,'History rejection observer includes the original passive GT tail'
     assert not tick_cost_tail or extraction_history,'Passive tail candidate includes the pending extraction policy'
@@ -96,7 +98,11 @@ def main():
     if tick_cost_tail:pg_candidate='tick-cost-tail-r1'
     if history_rejection:pg_candidate='history-rejection-r1'
     if withdrawal_clock:pg_candidate='withdrawal-clock-r1'
+    if history_origin:pg_candidate='history-origin-r1'
     proof=json.loads((AREA/pg_candidate/'prepared.json').read_text())
+    if history_origin:
+        check=json.loads((AREA/pg_candidate/'history-origin-test-result.json').read_text())
+        assert check['passed'] and check['exact_policy_reversal'] and check['extra_ring_reads']==0 and check['extra_clocks']==0
     if withdrawal_clock:
         check=json.loads((AREA/pg_candidate/'withdrawal-clock-test-result.json').read_text())
         assert check['passed'] and check['exact_policy_reversal'] and check['added_clocks']==0 and check['added_source_reads']==0

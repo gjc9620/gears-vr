@@ -1,0 +1,75 @@
+--- a/tools/vr-common/controller_continuity_bridge.h
++++ b/tools/vr-common/controller_continuity_bridge.h
+@@ -21,7 +21,12 @@
+ 
+ // Separate mapping from GVC3. The Native consumer must also compare this
+ // publisher and the complete input with its independently read GVC3 sample.
++struct MotionReadObservation {
++    std::uint64_t latest{},selected{},stopped{},stored{};
++    std::int64_t read_ns{};unsigned reason{}; // 1evicted,2missing,3original pair reject;0no break.
++};
+ class InputBridge {
++    MotionReadObservation motion_observation_{};
+     HANDLE mapping_{},mutex_{},game_process_{},publisher_process_{};
+     ContinuityPacket* data_{};
+     DWORD game_pid_{};
+@@ -142,16 +147,19 @@
+         }
+         ReleaseMutex(mutex_);return result;
+     }
++    MotionReadObservation motion_observation() const noexcept {return motion_observation_;}
+     bool read_matching(gears_vr::StereoSample const& stereo,std::int64_t now_ns,
+                        TrackedInput& out,Publisher& publisher,bool allow_sim=false,
+                        TrackedInput* right_press=nullptr,bool* contended=nullptr,
+                        MotionHistory* right_motion=nullptr) noexcept {
++        if(right_motion)motion_observation_={};
+         if(contended)*contended=false;
+         out={};publisher={};if(right_press)*right_press={};if(right_motion)*right_motion={};
+         if(producer_||!data_||!process_alive(game_process_,game_pid_,game_start_)||
+            !process_alive(publisher_process_,publisher_.pid,publisher_.start)||!lock_now(mutex_,contended))return false;
+         ContinuityPacket packet{};
+         std::memcpy(&packet,data_,sizeof(packet));ReleaseMutex(mutex_);
++        if(right_motion)motion_observation_={packet.latest_sequence,stereo.sequence,0,0,now_ns,0};
+         if(!header_valid(packet)||!process_alive(game_process_,game_pid_,game_start_)||
+            !process_alive(publisher_process_,publisher_.pid,publisher_.start)||
+            stereo.sequence>packet.latest_sequence||
+@@ -166,9 +174,10 @@
+             // timestamp. Never fill gaps, extend the ring or renew old data.
+             for(unsigned age=1;age<ContinuityPacket::capacity&&age<stereo.sequence;++age){
+                 const auto sequence=stereo.sequence-age;
+-                if(packet.latest_sequence-sequence>=ContinuityPacket::capacity)break;
++                if(packet.latest_sequence-sequence>=ContinuityPacket::capacity){motion_observation_.reason=1;motion_observation_.stopped=sequence;break;}
+                 const auto& prior=packet.frames[sequence%ContinuityPacket::capacity];
+-                if(prior.input.sequence!=sequence||!motion_pair(prior,history.frames[0],1,100000000))break;
++                if(prior.input.sequence!=sequence){motion_observation_.reason=2;motion_observation_.stopped=sequence;motion_observation_.stored=prior.input.sequence;break;}
++                if(!motion_pair(prior,history.frames[0],1,100000000)){motion_observation_.reason=3;motion_observation_.stopped=sequence;motion_observation_.stored=prior.input.sequence;break;}
+                 for(unsigned i=history.count;i>0;--i)history.frames[i]=history.frames[i-1];
+                 history.frames[0]=prior;++history.count;
+             }
+--- a/tools/vr-common/current_tracking_reader.h
++++ b/tools/vr-common/current_tracking_reader.h
+@@ -35,6 +35,7 @@
+     DWORD pid_{},thread_{};bool open_{};
+     void close_handles() noexcept {continuity_.close();controllers_.close();stereo_.close();open_=false;}
+ public:
++    gears_hand_continuity::MotionReadObservation motion_observation() const noexcept {return continuity_.motion_observation();}
+     Reader()=default;Reader(Reader const&)=delete;Reader& operator=(Reader const&)=delete;
+     template<class Clock>
+     Failure read_matching(DWORD pid,Clock clock,bool allow_sim,gears_vr::StereoSample const& expected_stereo,
+--- a/tools/playground/weapon_hammerburst_latch_history.inl
++++ b/tools/playground/weapon_hammerburst_latch_history.inl
+@@ -61,8 +61,14 @@
+     gate=6;relative::Segment segment{};
+     const bool built=relative::build(previous.raw,sampled.raw,history,control,sampled.mount,sampled.size,segment);
+     if(!built||segment.count<3){
++        const auto before_record=hb_history_rejection::records;
+         hb_history_rejection::capture(log_file,f.key.frame,f.controllers.sequence,control,built,segment.count,
+             previous.raw,sampled.raw,history,sampled.mount,sampled.size);
++        if(hb_history_rejection::records>before_record){
++            const auto origin=nativeequipment::input_continuity_reader.motion_observation();
++            fwprintf(log_file,L"hammerburst_history_origin record=%u latest=%llu selected=%llu stopped=%llu stored=%llu read_ns=%lld reason=%u action=0\n",
++                hb_history_rejection::records,origin.latest,origin.selected,origin.stopped,origin.stored,origin.read_ns,origin.reason);fflush(log_file);
++        }
+         return false;
+     }
+     std::array<gears_weapon::HammerburstLatchSample,9> points{};

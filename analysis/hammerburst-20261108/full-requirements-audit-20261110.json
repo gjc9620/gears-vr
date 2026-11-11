@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "scope": "full HB objective; no scope reduction",
-  "current_candidate": "Nativeb9ab7a82/PG31f7d324 actual15820:78 consistent rays/emptyveto pass. Opening history missing4629, original pure kernel actual replay reproduces strict rejection4628->4630; not capacity>8 or bad geometry. Native7 successful mutex receipts/inputloss0; no mutex failure reproduced. Full13 remain incomplete.",
+  "current_candidate": "Private PGaa02381d history-origin-r1 compiled,4 actual ring-origin cases and original bridge suite pass; exact policy reversal, no extra clock/ring reads. Nativeb9ab7a82/XR unchanged. Original actual15820 replay missing4629 preserved; new origin reason not yet game observed, all13 incomplete.",
   "prepared_sha256": "20d8a6cd15b89c89b938aa201086c9d590251a2be74b2bd6d4fa72bd47d27824",
   "requirements": [
     {
