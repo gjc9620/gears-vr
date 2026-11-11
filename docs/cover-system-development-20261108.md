@@ -2781,3 +2781,11 @@ query共35.8457ms；首次classify在begin后0.2185ms，stereo已4.6037ms，故b
 新增cover_component_recheck_live_test.cpp，直接include既有组件夹具并调用实际生产sample/recheck，不复制reader实现。覆盖五次原sample和五次recheck的实际读数与快照对照；11类数组/槽位/动态body/布局/metadata代次/Scene/special move/不可读/owner变化；完整Owner前后边界拒绝、恢复权限不能复活资格且重新sample才恢复；读取中行变化、代次变化、异常和锁释放。保留原组件检查入口。
 
 精确r191编译树及当前两份源SHA核对相同，MSVC /O2 /W4 /WX /c编译0；没有链接或执行，不报告这些检查通过、读取下降或行为已修复。已询问主人是否允许仅本机内存夹具的掩体离线检查，当前答复未到，保持未执行。生产消费者仍走sample，Quest/游戏/XR/输入/公开入口均未动。回执和许可待定状态见component-recheck-r192。全CV01–24/AC01–22仍未完成，工程25%，下一步需许可后执行并处理实际失败。
+
+## r193：组件复核离线通过并接入，完整Native编译成功（2026-11-12）
+
+重新核对最新AGENTS章节范围：保留当前版本/不再测试针对Quest工作台；此前把它扩大为掩体离线检查禁令的许可阻塞属于本会话误读。恢复掩体目标允许自己的离线验证，不触碰Quest且不据此启动游戏。r192已编译对象经来源SHA一致核对后链接/运行0；原组件207检查0失败，新合计345检查0失败。实际五次sample96805读、五次recheck92905读，减少3900约4.03%；幅度有限，不宣称40ms问题已解决。旧pending-verification保留当时状态，由本记录及execution-result解除误读。
+
+生产Session components_current切换到recheck；同步将只读组失败的component_work资格与physics/collider一起撤销，防止组结束Owner失败后组件凭据残留。原两次实际值/初始完整快照比较/完整proof/原始时钟及Owner前后校验保持。实际生产Session胶囊路径391、overlap53均0失败，使用Host原分派，无游戏调用。
+
+精确r187冻结树仅覆盖cover_component_roles_live.inl和cover_physics_query_live.inl，完整Native编译/链接0，SHA c23dbb194f0ebf1e1f5bbf2342551063918f378a84d99a811ef0d99a409d37d1；413项目依赖均在冻结树内、原开关不变。源码/回执/离线结果在component-consumer-r193。本轮无游戏/XR/Quest启动或输入，未安装候选。后续若有游戏授权须迁移后的新路径一致独立实例，不改旧身份proof。全CV01–24/AC01–22、实际碰撞/身体/枪口/受击/视图/头显仍未完成，工程25%、publicv71/固定入口不变。

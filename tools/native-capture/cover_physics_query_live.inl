@@ -37,7 +37,7 @@ template<class Engine=q::Queries> class Session {
         weapon_hand_scene_binding::Binding const& actor,gears_cover_pose_phase::Metadata const& metadata,
         Guard& owner,ReadSources read_sources){
         using Gate=gears_cover_query_guard::SessionStage;
-        auto invalidate=[&](){work_.recheck_ready=false;collider_work_.recheck_ready=false;return false;};
+        auto invalidate=[&](){work_.recheck_ready=false;collider_work_.recheck_ready=false;component_work_.recheck_ready=false;return false;};
         if(!timing::measure(timing::Stage::owner_bracket,[&](){return owner();})){guard_witness_.reject(unsigned(Gate::owner_begin),unsigned(roles::Code::guard));return invalidate();}
         const auto key=actor;const auto source=metadata;const auto thread=GetCurrentThreadId();
         auto read_current=[&](){return enabled()&&busy_.load()&&GetCurrentThreadId()==thread&&
@@ -62,7 +62,7 @@ template<class Engine=q::Queries> class Session {
         bool reject(Gate gate,unsigned detail=0){return session.guard_witness_.reject(unsigned(gate),detail);}
         bool components_current(){if constexpr(WithCollider){session.guard_witness_.enter();
             if(session.stopped_.load())return reject(Gate::stopped);
-            const auto code=timing::measure(timing::Stage::components_repeat,[&](){return component_roles::sample(actor,owner,session.component_work_,session.component_after_);});
+            const auto code=timing::measure(timing::Stage::components_repeat,[&](){return component_roles::recheck(actor,owner,session.component_work_,session.component_after_);});
             if(code!=roles::Code::current)return reject(Gate::component_read,unsigned(code));
             if(!component_roles::same(session.component_before_,session.component_after_))return reject(Gate::component_match);
         }return true;}

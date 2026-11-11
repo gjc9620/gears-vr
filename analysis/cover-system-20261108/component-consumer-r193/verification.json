@@ -1,0 +1,37 @@
+{
+  "native_sha256": "c23dbb194f0ebf1e1f5bbf2342551063918f378a84d99a811ef0d99a409d37d1",
+  "offline_recheck": {
+    "link_exit": 0,
+    "game_started": false,
+    "xr_started": false,
+    "quest_touched": false,
+    "test_exit": 0,
+    "output": "CoverComponentRoles checks=207 failures=0 declared Pawn/current Weapon arrays only; no complete self or actor/geometry proof\r\ncomponent_recheck five_sample_reads=96805 five_recheck_reads=92905\r\nComponentRecheck checks=345 failures=0 actual production reader; no game\r\n"
+  },
+  "query_sessions": [
+    {
+      "name": "cover_physics_capsule_path_live",
+      "build_exit": 0,
+      "test_exit": 0,
+      "output": "CoverCapsulePathSession checks=391 failed=0 typed-source/Session real; module/dispatch Host; no game\r\n",
+      "outside_worktree_dependencies": []
+    },
+    {
+      "name": "cover_physics_overlap_query_live",
+      "build_exit": 0,
+      "test_exit": 0,
+      "output": "CoverOverlapSession checks=53 failed=0 actual typed roles/Session; Host dispatch/owner packets; no game\r\n",
+      "outside_worktree_dependencies": []
+    }
+  ],
+  "consumer_switched": true,
+  "five_sample_reads": 96805,
+  "five_recheck_reads": 92905,
+  "read_reduction": 0.04028717524921233,
+  "game_started": false,
+  "quest_touched": false,
+  "source_age_repaired": false,
+  "engineering_percent": 25,
+  "authorization_scope_correction": "Previous pending permission incorrectly generalized Quest workbench hold to cover offline verification. Resumed cover goal authorizes its own offline verification; Quest hold remains.",
+  "next": "Prepare fresh path-consistent private candidate only if game execution is authorized; do not reuse old instance identity paths. Full requirements remain open."
+}

@@ -1,0 +1,8 @@
+{
+  "link_exit": 0,
+  "game_started": false,
+  "xr_started": false,
+  "quest_touched": false,
+  "test_exit": 0,
+  "output": "CoverComponentRoles checks=207 failures=0 declared Pawn/current Weapon arrays only; no complete self or actor/geometry proof\r\ncomponent_recheck five_sample_reads=96805 five_recheck_reads=92905\r\nComponentRecheck checks=345 failures=0 actual production reader; no game\r\n"
+}

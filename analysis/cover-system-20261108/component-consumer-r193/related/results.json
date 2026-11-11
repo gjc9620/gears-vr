@@ -1,0 +1,16 @@
+[
+  {
+    "name": "cover_physics_capsule_path_live",
+    "build_exit": 0,
+    "test_exit": 0,
+    "output": "CoverCapsulePathSession checks=391 failed=0 typed-source/Session real; module/dispatch Host; no game\r\n",
+    "outside_worktree_dependencies": []
+  },
+  {
+    "name": "cover_physics_overlap_query_live",
+    "build_exit": 0,
+    "test_exit": 0,
+    "output": "CoverOverlapSession checks=53 failed=0 actual typed roles/Session; Host dispatch/owner packets; no game\r\n",
+    "outside_worktree_dependencies": []
+  }
+]
