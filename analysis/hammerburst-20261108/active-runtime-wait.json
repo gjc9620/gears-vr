@@ -1,13 +1,13 @@
 {
-  "all13_requirements_retained": true,
-  "next": "Save bounded test-harness correction then one targeted full empty recheck; no product binary rebuild or unchanged source loop.",
-  "instance": "hb-cloak-1111-135316",
-  "native_candidate": "native-render-age-r1",
-  "runner_session_id": 35497,
-  "source_checkpoint": "7944a982",
-  "candidate": "render-age-pg-r1",
-  "terminal": true,
   "requirements_complete": false,
-  "game_pid": 45516,
-  "runner_last_poll": "35497 terminal1; stop/launcher/Native/PG/XR normal0; game/children gone, noforced"
+  "source_checkpoint": "5abb84db",
+  "terminal": true,
+  "native_candidate": "native-render-age-r1",
+  "instance": "hb-cloak-1111-135901",
+  "next": "Inspect actual R2 Input new DOWN transition after strict prepare invalidation and fresh UP375. No unchanged rerun, no weakening100ms/source/identity/anti-replay. All13 retained.",
+  "candidate": "render-age-pg-r1",
+  "all13_requirements_retained": true,
+  "runner_session_id": 72247,
+  "game_pid": 6896,
+  "runner_last_poll": "72247 terminal1; stop/launcher/Native/PG/XR normal0; game/children gone, noforced"
 }

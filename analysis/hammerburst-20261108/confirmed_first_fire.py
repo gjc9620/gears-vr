@@ -22,7 +22,8 @@ def first_fire(c,data,*,clock=time.perf_counter_ns,sleep=time.sleep,expected_sho
         # press; this does not change the production100ms/20ms/250ms gates.
         return (number(row,'input_sync_ns')>=sent and stamp>=number(row,'input_sync_ns') and 0<=now-stamp<=100_000_000 and
                 all(number(row,key)==1 for key in ('current','source_status','trigger_active','active_at_admission','game_known')) and
-                (value>.35 if down else value<=.35 and number(row,'status') in (1,2) and
+                (value>.35 and (number(row,'status')==8 or
+                 number(row,'status')==3 and number(row,'owned')==1) if down else value<=.35 and number(row,'status') in (1,2) and
                  number(row,'owned')==0 and number(row,'game_r2')==0 and
                  number(row,'preparation_budget')==1 and
                  0<=now-number(row,'input_sync_ns')<=60_000_000))

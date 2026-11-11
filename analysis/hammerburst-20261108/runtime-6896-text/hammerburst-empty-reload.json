@@ -1,0 +1,260 @@
+{
+  "game": {
+    "pid": 6896,
+    "creation_time": 134388503790093731,
+    "image": "j:\\gearsvr\\gears.of.war.reloaded.v1.0.1.3816947-p2p\\gears of war reloaded\\binaries_x64\\gowde-steam.exe"
+  },
+  "checks": {},
+  "gameplay_setters": false,
+  "scope": "L72/R78 -> L0/R78 -> one empty trigger -> ordinary replacement -> L78/R0 -> six shots L72/R0",
+  "reserve_exhaustion_attempted": false,
+  "physical_headset_accepted": false,
+  "initial": {
+    "capacity": 78.0,
+    "used": 6,
+    "reserve": 78,
+    "infinite_reserve": false,
+    "duration": 2.5,
+    "started": 0.0,
+    "active_reload_bonus_shots": 0,
+    "game": {
+      "pid": 6896,
+      "creation_time": 134388503790093731,
+      "image": "j:\\gearsvr\\gears.of.war.reloaded.v1.0.1.3816947-p2p\\gears of war reloaded\\binaries_x64\\gowde-steam.exe"
+    },
+    "weapon": "0x162c6e6700",
+    "observed_ns": 161639832423000,
+    "game_time": 24.69740867614746,
+    "loaded": 72,
+    "bones": {},
+    "game_function_calls": 0,
+    "reader_reused": true,
+    "read_bracket_misses": [],
+    "query_local_selectors": true,
+    "limits": "Double-read actual inventory and typed schema, current registered objects/held identity; no game calls. Not physical-headset acceptance."
+  },
+  "manual_veto_binding": [
+    {
+      "weapon": "162c6e6700",
+      "hold": "1",
+      "mask": "1",
+      "flags": "580",
+      "exec": "1401d6ca0",
+      "script_hash": "77909576bde9c707"
+    }
+  ],
+  "drain_loaded_only": {
+    "before": {
+      "capacity": 78.0,
+      "used": 6,
+      "reserve": 78,
+      "infinite_reserve": false,
+      "duration": 2.5,
+      "started": 0.0,
+      "active_reload_bonus_shots": 0,
+      "game": {
+        "pid": 6896,
+        "creation_time": 134388503790093731,
+        "image": "j:\\gearsvr\\gears.of.war.reloaded.v1.0.1.3816947-p2p\\gears of war reloaded\\binaries_x64\\gowde-steam.exe"
+      },
+      "weapon": "0x162c6e6700",
+      "observed_ns": 161639913280800,
+      "game_time": 24.801895141601562,
+      "loaded": 72,
+      "bones": {},
+      "game_function_calls": 0,
+      "reader_reused": true,
+      "read_bracket_misses": [],
+      "query_local_selectors": true,
+      "limits": "Double-read actual inventory and typed schema, current registered objects/held identity; no game calls. Not physical-headset acceptance."
+    },
+    "complete": false,
+    "confirmed_inputs": [
+      {
+        "checks": {},
+        "first_fire_input": {
+          "baseline_sent_ns": 161639917221500,
+          "baseline_wait": {
+            "samples": [
+              {
+                "row": {
+                  "frame": "371",
+                  "sequence": "3597",
+                  "current": "1",
+                  "status": "1",
+                  "source_status": "1",
+                  "owned": "0",
+                  "game_known": "1",
+                  "game_r2": "0",
+                  "trigger_active": "1",
+                  "trigger_value": "0.000",
+                  "trigger_pressed": "1",
+                  "trigger_released": "1",
+                  "input_sync_ns": "161640144484800",
+                  "admitted_ns": "161640222837800",
+                  "active_at_admission": "1",
+                  "preparation_budget": "1"
+                },
+                "observed_ns": 161640235480100,
+                "source_age_ns": 90995300,
+                "receipt_age_ns": 12642300,
+                "liveness_ns": 1084300,
+                "read_ns": 938400
+              },
+              {
+                "row": {
+                  "frame": "375",
+                  "sequence": "3604",
+                  "current": "1",
+                  "status": "1",
+                  "source_status": "1",
+                  "owned": "0",
+                  "game_known": "1",
+                  "game_r2": "0",
+                  "trigger_active": "1",
+                  "trigger_value": "0.000",
+                  "trigger_pressed": "1",
+                  "trigger_released": "1",
+                  "input_sync_ns": "161640461312400",
+                  "admitted_ns": "161640507636900",
+                  "active_at_admission": "1",
+                  "preparation_budget": "1"
+                },
+                "observed_ns": 161640508899800,
+                "source_age_ns": 47587400,
+                "receipt_age_ns": 1262900,
+                "liveness_ns": 752200,
+                "read_ns": 667700
+              }
+            ],
+            "distinct_rows": 2,
+            "last_sequence": "3604",
+            "minimum_source_age": {
+              "row": {
+                "frame": "375",
+                "sequence": "3604",
+                "current": "1",
+                "status": "1",
+                "source_status": "1",
+                "owned": "0",
+                "game_known": "1",
+                "game_r2": "0",
+                "trigger_active": "1",
+                "trigger_value": "0.000",
+                "trigger_pressed": "1",
+                "trigger_released": "1",
+                "input_sync_ns": "161640461312400",
+                "admitted_ns": "161640507636900",
+                "active_at_admission": "1",
+                "preparation_budget": "1"
+              },
+              "observed_ns": 161640508899800,
+              "source_age_ns": 47587400,
+              "receipt_age_ns": 1262900,
+              "liveness_ns": 752200,
+              "read_ns": 667700
+            }
+          },
+          "baseline": {
+            "frame": "375",
+            "sequence": "3604",
+            "current": "1",
+            "status": "1",
+            "source_status": "1",
+            "owned": "0",
+            "game_known": "1",
+            "game_r2": "0",
+            "trigger_active": "1",
+            "trigger_value": "0.000",
+            "trigger_pressed": "1",
+            "trigger_released": "1",
+            "input_sync_ns": "161640461312400",
+            "admitted_ns": "161640507636900",
+            "active_at_admission": "1",
+            "preparation_budget": "1"
+          },
+          "outer_deadline_ns": 161675916587100,
+          "remaining_before_down_ns": 35407662100,
+          "down_sent_ns": 161640509290900,
+          "down_wait": {
+            "samples": [
+              {
+                "row": {
+                  "frame": "383",
+                  "sequence": "3612",
+                  "current": "1",
+                  "status": "1",
+                  "source_status": "1",
+                  "owned": "0",
+                  "game_known": "1",
+                  "game_r2": "0",
+                  "trigger_active": "1",
+                  "trigger_value": "1.000",
+                  "trigger_pressed": "2",
+                  "trigger_released": "1",
+                  "input_sync_ns": "161640804362000",
+                  "admitted_ns": "161640858889200",
+                  "active_at_admission": "1",
+                  "preparation_budget": "1"
+                },
+                "observed_ns": 161640867977100,
+                "source_age_ns": 63615100,
+                "receipt_age_ns": 9087900,
+                "liveness_ns": 704400,
+                "read_ns": 661100
+              }
+            ],
+            "distinct_rows": 1,
+            "last_sequence": "3612",
+            "minimum_source_age": {
+              "row": {
+                "frame": "383",
+                "sequence": "3612",
+                "current": "1",
+                "status": "1",
+                "source_status": "1",
+                "owned": "0",
+                "game_known": "1",
+                "game_r2": "0",
+                "trigger_active": "1",
+                "trigger_value": "1.000",
+                "trigger_pressed": "2",
+                "trigger_released": "1",
+                "input_sync_ns": "161640804362000",
+                "admitted_ns": "161640858889200",
+                "active_at_admission": "1",
+                "preparation_budget": "1"
+              },
+              "observed_ns": 161640867977100,
+              "source_age_ns": 63615100,
+              "receipt_age_ns": 9087900,
+              "liveness_ns": 704400,
+              "read_ns": 661100
+            }
+          },
+          "down": {
+            "frame": "383",
+            "sequence": "3612",
+            "current": "1",
+            "status": "1",
+            "source_status": "1",
+            "owned": "0",
+            "game_known": "1",
+            "game_r2": "0",
+            "trigger_active": "1",
+            "trigger_value": "1.000",
+            "trigger_pressed": "2",
+            "trigger_released": "1",
+            "input_sync_ns": "161640804362000",
+            "admitted_ns": "161640858889200",
+            "active_at_admission": "1",
+            "preparation_budget": "1"
+          },
+          "release_sent_ns": 161642879521100
+        },
+        "shots": []
+      }
+    ]
+  },
+  "error": "TimeoutError('Consumed DOWN did not produce an original first HB trajectory')"
+}

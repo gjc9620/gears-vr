@@ -19,6 +19,9 @@ class Host:
         row=dict(sequence=str(self.now),frame='100',current='1',source_status='1',trigger_active='1',active_at_admission='1',
                  input_sync_ns=str(self.now),admitted_ns=str(self.now),status='1',owned='0',game_known='1',game_r2='0',
                  trigger_value='1' if self.state=='down' else '0',trigger_pressed='1',trigger_released='0',preparation_budget='1')
+        if self.state=='down':row.update(status='3',owned='1')
+        if self.state=='down' and self.fault=='quiet_down':row.update(status='1',owned='0')
+        if self.state=='down' and self.fault=='quiet_then_blocked':row.update(status='1' if self.now<1_050_000_000 else '8',owned='0')
         if self.fault=='stale':row['input_sync_ns']='1'
         if self.fault=='inactive':row['active_at_admission']='0'
         if self.fault=='owned':row['owned']='1'
@@ -101,5 +104,17 @@ class Tests(unittest.TestCase):
             first_fire(h,data,clock=lambda:h.now,sleep=h.sleep)
         self.assertEqual(h.inputs,[{},dict(trigger=1),{}])
         self.assertEqual(data['first_fire_input']['first_down_rejection']['status'],'8')
+    def test_quiet_unowned_down_is_not_consumption_or_retried(self):
+        h=Host('quiet_down');data={'checks':{}}
+        with self.assertRaisesRegex(TimeoutError,'DOWN.*consumption'):
+            first_fire(h,data,clock=lambda:h.now,sleep=h.sleep)
+        self.assertNotIn('down',data['first_fire_input'])
+        self.assertEqual(h.inputs,[{},dict(trigger=1),{}])
+    def test_quiet_then_blocked_down_reports_original_rejection(self):
+        h=Host('quiet_then_blocked');data={'checks':{}}
+        with self.assertRaisesRegex(AssertionError,'Original DOWN blocked'):
+            first_fire(h,data,clock=lambda:h.now,sleep=h.sleep)
+        self.assertEqual(data['first_fire_input']['first_down_rejection']['status'],'8')
+        self.assertEqual(h.inputs,[{},dict(trigger=1),{}])
 
 if __name__=='__main__':unittest.main(verbosity=2)

@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "scope": "full HB objective; no scope reduction",
-  "current_candidate": "Private Native71f280b0/PGb7dcb9ec actual45516:72 rays, deadline-truncated final drain DOWN; normalcleanup. Harness36s/min3.5s beforeDOWN repaired,12 tests pass. Age27hits beforefire only; no full acceptance.",
+  "current_candidate": "Private Native71f280b0/PGb7dcb9ec actual6896 core6 then strict prepare input_loss stage1. Gate93 age-only kept; full flow failed. Reader quietDOWN ownership correction14tests; next inspect actual Input transition after freshUP without relaxing broker/anti-replay.",
   "prepared_sha256": "20d8a6cd15b89c89b938aa201086c9d590251a2be74b2bd6d4fa72bd47d27824",
   "requirements": [
     {
@@ -518,8 +518,8 @@
   "restore_verifier_status": "Optional --hammerburst-park-restore input action hook integrated into private reload adapter; five synthetic action/receipt regressions passed. Actual park/redraw/new-grant/native-resume, typed conservation, UI/reward and complete return-fire require game evidence.",
   "latest_service_first_failure": "runtime-3112-first-failure-analysis.json",
   "latest_startup_failure": "runtime-49732-startup-failure.json",
-  "latest_runtime_failure": "runtime-45516-first-failure-analysis.json",
-  "latest_runtime_result": "runtime-45516-first-failure-analysis.json",
+  "latest_runtime_failure": "runtime-6896-first-failure-analysis.json",
+  "latest_runtime_result": "runtime-6896-first-failure-analysis.json",
   "latest_focused_pass": "runtime-50828-focused-result.json",
   "visual_audit_recording_repair": "Corrected finalizer wrong ID fivepartfitting\u2192part_fitting, attached reviewed22992 evidence also to guides, asserted target IDs exist. No requirement/score/acceptance change and no overwrite of current052600 runtime blocker.",
   "resource_release_evidence": {
@@ -554,5 +554,13 @@
     "age_only_hits": 27,
     "input_loss": 0,
     "limit": "Hits before fire only; true-loss rejection offline17 cases. Does not prove mid-burst continuity or complete fix."
+  },
+  "latest_strict_prepare_failure": {
+    "evidence": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-6896-first-failure-analysis.json",
+    "frame": 367,
+    "stereo_age_ns": 100276400,
+    "flags": 13,
+    "controllers_sequence": 0,
+    "guard_unchanged": true
   }
 }
