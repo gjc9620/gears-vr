@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "scope": "full HB objective; no scope reduction",
-  "current_candidate": "Native71f280b0/PGb7dcb9ec actual4400 drain78+emptyveto passed; opening seekWAIT568 live hit then245ms originalhistorygap569 rejected. No fullflow or return12s proof. All13 retained.",
+  "current_candidate": "Private latch-observation-wait-r1 PGb03ad129 with unchanged Native71f280b0. Compiled,12 exact seek cases+actual relative/history/stationary caller+existing reload/history tests passed. Not game tested; all13/fullflow/headset still incomplete.",
   "prepared_sha256": "20d8a6cd15b89c89b938aa201086c9d590251a2be74b2bd6d4fa72bd47d27824",
   "requirements": [
     {
@@ -586,5 +586,6 @@
     "next_frame": 569,
     "gap_ms": 245,
     "ring_limits_unchanged": true
-  }
+  },
+  "history_capacity_correction": "Actual frozen MotionHistory capacity is8, not6. Actual4400 rollback4679\u21924689 delta10 necessarily refused by original build guard; retained4683\u21924689 delta6 is only the next required span, not a new capacity. No limit change."
 }

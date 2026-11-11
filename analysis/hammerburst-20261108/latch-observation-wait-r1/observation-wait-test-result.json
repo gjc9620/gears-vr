@@ -1,0 +1,13 @@
+{
+  "passed": true,
+  "original_capacity": 8,
+  "rollback_sequence_gap": 10,
+  "retained_sequence_gap": 6,
+  "original_max_sample_gap_ms": 100,
+  "exact_stationary_caller": true,
+  "actual_kernel": true,
+  "source_sha256": "d0489684eeaf8dd805abf990f1c2555249fddba225ebd68c54743115ae1d6145",
+  "game_started": false,
+  "limits": "Endpoint sequence/time anchored to4400; intermediate history/positions synthetic. Engine setter/grant integration not exercised.",
+  "existing_latch_and_history_tests_passed": true
+}

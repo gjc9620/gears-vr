@@ -1,0 +1,69 @@
+--- a/tools/playground/weapon_hammerburst_runtime.inl
++++ b/tools/playground/weapon_hammerburst_runtime.inl
+@@ -505,7 +505,6 @@
+             if(stroke.begin(geometry.latch,sample,angle)){held=decision.lease;released=false;latch_history::previous=latch_history::sampled;}
+             return;
+         }
+-        const auto stroke_before=stroke;const auto history_before=latch_history::previous;
+         const auto previous_ms=stroke.last_observation_ms();
+         const bool retained_contact=f.left_tracked&&decision.status==hand::DecisionStatus::retained&&
+             !decision.new_grant&&hand::same(held,decision.lease);
+@@ -520,7 +519,11 @@
+ 
+         if(moved==gears_weapon::HammerburstLatchMotion::held_stationary){
+             if(latch_stationary_holds!=~0u)++latch_stationary_holds;
+-            return; // No seek, mechanical progress, completion or new grab.
++            if(std::abs(stroke.angle()-angle)<=1e-7)return;
++            // A previous accepted segment reached this target but its seek
++            // was never dispatched. This current stationary same-grab frame
++            // may retry the normal fresh seek; no new motion is inferred.
++            moved=stroke.observed_motion();
+         }
+         if(moved==gears_weapon::HammerburstLatchMotion::rejected){
+             if(log_file&&latch_rejection_logs++<8){
+@@ -544,10 +547,16 @@
+                 const bool wait=expired_before_latch_dispatch(f,began,ended);
+                 static unsigned rows{};
+                 if(log_file&&rows<16){++rows;
+-                    fwprintf(log_file,L"hammerburst_latch_seek_unavailable frame=%llu sequence=%llu stage=%u wait=%u seek_pending=%u previous_angle=%.9g wanted_angle=%.9g begin_ns=%lld end_ns=%lld sync_ns=%lld no_dispatch=%u\n",
++                    fwprintf(log_file,L"hammerburst_latch_seek_unavailable frame=%llu sequence=%llu stage=%u wait=%u seek_pending=%u previous_angle=%.9g wanted_angle=%.9g begin_ns=%lld end_ns=%lld sync_ns=%lld no_dispatch=%u validated_path_kept=%u\n",
+                         f.key.frame,f.controllers.sequence,unsigned(stage),unsigned(wait),unsigned(anim::ownership.seek_pending),
+-                        angle,stroke.angle(),began,ended,f.controllers.sync_ns,unsigned(wait));fflush(log_file);}
+-                if(wait){stroke=stroke_before;latch_history::previous=history_before;return;}
++                        angle,stroke.angle(),began,ended,f.controllers.sync_ns,unsigned(wait),unsigned(wait));fflush(log_file);}
++                if(wait){
++                    // Keep ONLY the validated pure path/sample. `angle` and
++                    // stage remain at their actual prior committed values.
++                    // Next frame still needs the original grant/context,
++                    // original history continuity and fresh owned animation seek.
++                    return;
++                }
+                 cleanup(__LINE__);return;
+             }
+         }
+--- a/tools/vr-common/weapon_hammerburst_latch.h
++++ b/tools/vr-common/weapon_hammerburst_latch.h
+@@ -43,6 +43,12 @@
+     void reset() noexcept {active_=false;}
+     bool active() const noexcept {return active_;}
+     double angle() const noexcept {return angle_;}
++    // Pure result of already validated observations, never a mechanical write.
++    HammerburstLatchMotion observed_motion() const noexcept {
++        if(angle_<=.02)return HammerburstLatchMotion::closed;
++        if(angle_>=geometry_.open_angle-.02)return HammerburstLatchMotion::open;
++        return HammerburstLatchMotion::moving;
++    }
+     HammerburstLatchRejection last_rejection() const noexcept {return rejection_;}
+     // Diagnostic value only; it grants no continuity or permission.
+     std::uint64_t last_observation_ms() const noexcept {return last_.milliseconds;}
+@@ -93,9 +99,7 @@
+         const double next=angle_+delta;
+         if(!std::isfinite(next)||next<-.05||next>geometry_.open_angle+.05)return reject(HammerburstLatchRejection::range);
+         last_=s;radial_=radial;angle_=std::clamp(next,0.,geometry_.open_angle);
+-        if(angle_<=.02)return HammerburstLatchMotion::closed;
+-        if(angle_>=geometry_.open_angle-.02)return HammerburstLatchMotion::open;
+-        return HammerburstLatchMotion::moving;
++        return observed_motion();
+     }
+ };
+ } // namespace gears_weapon

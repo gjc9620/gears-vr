@@ -76,8 +76,16 @@ def main():
     target=AREA/name;target.mkdir()
     manifest=json.loads((AREA/'independent-r1/candidate-manifest.json').read_text())
     render_age='--render-age-continuity' in sys.argv
+    latch_observation='--latch-observation-wait' in sys.argv
+    assert not latch_observation or render_age,'Observation-wait candidate requires the certified Native pair'
     assert not (render_age and '--native-input-loss' in sys.argv),'Select one explicit Native candidate'
-    proof=json.loads((AREA/('render-age-pg-r1' if render_age else 'latch-seek-gap-r1')/'prepared.json').read_text())
+    pg_candidate='latch-observation-wait-r1' if latch_observation else ('render-age-pg-r1' if render_age else 'latch-seek-gap-r1')
+    proof=json.loads((AREA/pg_candidate/'prepared.json').read_text())
+    if latch_observation:
+        check=json.loads((AREA/pg_candidate/'observation-wait-test-result.json').read_text())
+        assert check['passed'] and check['existing_latch_and_history_tests_passed'] and check['original_capacity']==8
+        event='source/tools/playground/weapon_hammerburst_burst_event.inl'
+        assert (AREA/pg_candidate/event).read_bytes()==(AREA/'render-age-pg-r1'/event).read_bytes()
     assert proof['full_playground_compiled'] and not proof['runtime_exercised']
     dll=Path(proof['dll']);assert hashlib.sha256(dll.read_bytes()).hexdigest()==proof['dll_sha256']
     manifest.update(playground_build=str(dll.parent.relative_to(ROOT)),playground_sha256=proof['dll_sha256'],

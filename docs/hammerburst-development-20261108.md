@@ -633,3 +633,8 @@ Native71f280b0/PGb7dcb9ec实测72条一致射线，core6加11组六连发，最�
 ## 2026-11-11 普通准入4400：首次实际seek WAIT后历史拒绝
 
 普通准入等96.875s后启动，与Lancer共用原2实例上限；Native71f280b0/PGb7dcb9ec未变。78条一致射线、0/78空仓无射线/veto通过。开盖1→2，568原历史108ms分段接受后，seek因派发前过期返回false，首次实际wait1/no_dispatch1/seek_pending0，将纯stroke/history回退到162870638；569原history gate6失败，回退后跨度245ms，原gap reason5拒绝并cleanup642。不是成功恢复，未到弹匣提取/新匣/关盖/回射，新12s回射窗口仍未实测。下一步用实际纯核复现已验证历史被回退丢失的覆盖问题，区分观察轨迹与真实机械角，保留原6点/100ms/同身份/真实释放保护，先覆盖静止待提交端点。正常清理全0、无forced，445帧错误空、编码0、3页48对亲阅，视觉仍不合格。全部13项保留，不原样重跑。
+
+
+## 2026-11-11 已验证观察与实际角度分离候选（尚未game）
+
+4400精确previous序号4679、已验证4683、下一4689：原MotionHistory容量实际8（先前六点描述不准确，六是本次后续跨度），回退后delta10必被原build拒绝，保留观察后delta6可满足原范围。新私有PGb03ad129保留已验证但未派发的纯stroke/history，seek失败时实际angle/stage不动；下一新鲜同Grab帧仍走原setter。静止的待提交关闭/中途/打开端点由原纯核读取已观察结果，已提交端点不重复seek；失跟踪/松手/token/epoch/边沿变化保留拒绝。12项实际谓词/调用块、实际relative/history/stroke与静止调用块检查、原reload/history测试通过，完整PG编译通过。中间轨迹位置/时间是有界合成夹具，不是实际完整producer ring或引擎setter证明；尚未game。Native71f280b0/XR/公共v71不变，全部13项保留。
