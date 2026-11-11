@@ -1,0 +1,41 @@
+{
+  "game": {
+    "pid": 4312,
+    "creation_time": 134388624778947946,
+    "image": "j:\\gearsvr\\gears.of.war.reloaded.v1.0.1.3816947-p2p\\gears of war reloaded\\binaries_x64\\gowde-steam.exe"
+  },
+  "source": 1,
+  "desktop_input": false,
+  "direct_gameplay_calls": false,
+  "motion": [],
+  "states": [
+    {
+      "label": "before_original_X_pickup",
+      "ns": 173725528364700,
+      "weapon": "0x1629ac6700",
+      "name": "Weap_LocustAssaultRifle",
+      "cls": "Weap_LocustAssaultRifle",
+      "location": [
+        -3900.0,
+        0.0,
+        583.9485473632812
+      ],
+      "special": 0
+    },
+    {
+      "label": "HB_actual_shoulder_acquisition",
+      "ns": 173732961009300,
+      "weapon": "0x1629ac6700",
+      "name": "Weap_LocustAssaultRifle",
+      "cls": "Weap_LocustAssaultRifle",
+      "location": [
+        -3900.0,
+        0.0,
+        583.9485473632812
+      ],
+      "special": 0
+    }
+  ],
+  "checks": {},
+  "error": "AssertionError(('Neutral wrist followed physical input instead of snapping', {'wrist_in_gun_change_raw': 2.2106116654671704, 'wrist_in_gun_rotation_change_degrees': 0.001053030031048625, 'passed': False, 'evidence': 'evaluated CPU skeleton and actual mesh; pixels separate'}))"
+}

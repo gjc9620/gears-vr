@@ -761,3 +761,8 @@ PG325200c3/Nativeb9ab7a82只测护木四态，无fire/reload。左手不按Grip�
 后续源码核对：Native backend仅在原C0事务中CAS局部LocalAtoms；SpaceBases原动画可在Compose后更新，GPU Update/queued-palette/PRIMARY shader消费者均已有opt-in观察器。下一次沿完全相同PG325200c3/Nativee4e3155d，明确开启既有diagnostic_first_failure/render_pose_trace（不加base-entry observer），以原显示端bone11/35的selected_space/palette_space与127同类C0记录对应；不会把latest Update自动当作queued payload来源，也不会把CPU shader数组称硬件/每Draw证明。当前四态失败与所有13项保留。已按原进程寿命/terminal回执与逐文件SHA校验，将163604/164852两次终止实例的着色器缓存完整映射至J盘存档，未搬源码/日志/媒体。
 
 PG325200c3/Nativee4e3155d，护木四态仅到被动跟随检查。未按Grip移动左手不驱动枪通过；异步SpaceBases腕跟枪误差1.023891raw/2.285720deg，仍失败，Grab/释放未到。新增127次原成功passive C0 commit全部applied/fitted、106次weight1；请求socket最大移动.904215raw/2.291829deg，最终world[11]也移动，求解target与最终腕最大误差.00020810raw/.00001355deg。这推翻把异步腕近乎不动直接解释为C0目标/求解冻结的假设，但不证明后续skin/palette/upload/每Draw或实际表面贴合。下一步查现有唯一C0 local-atoms到实际皮肤消费者与SpaceBases读取阶段/骨骼映射，不增writer、不放宽阈值、不重复无变化game。正常Native/PG/XR/stop/launcher0、无forced/前台违规，476帧错误空/编码0，3页48对亲阅：近眼大枪、左手张平/分离和过渡重影白几何仍不合格。20924完整空仓换弹/回枪六发通过保留，全13项继续。
+
+
+## 2026-11-11 实际4312：成功C0姿势到达显示消费者，但被动姿势间歇撤回
+
+完全相同PG325200c3/Nativee4e3155d，本次仅既有render-pose/first-failure witness ON，无base-entry observer。未按Grip不驱动枪通过，左手移动后腕相对枪2.210612raw失败，右手跟随/Grab/释放未到。119份latest-compose相关CPU queued palette的左腕与成功C0最终腕最大差.00004312raw，112份weight1，证明这些成功姿势确实到观察到的显示消费者；不称确切queued来源/硬件/每Draw。失败SpaceBases采样前38.211ms的实际palette也处于偏移位置，后43.6221ms回到正确snap；因此真实间歇撤回仍失败，不能将测试改判为异步误报。窗口163显示行中28行solved_mask0，另有成功C0未使用passive目标/释放混合；具体拒绝原因未证，diagnostic模式可影响时序。下一步只记录原passive target拒绝及原broker source/frozen frame关联，不额外读取/时钟/放宽规则，不重复宽观察。正常清理全0无forced/前台违规，393帧错误空/编码0，3页48对亲阅，近眼大枪/张平分离左手/过渡原动画白几何仍不合格，稀疏采样54.33/61.32/69.74s原样保留。20924完整空仓换弹/回枪六发通过与全部13项保留。

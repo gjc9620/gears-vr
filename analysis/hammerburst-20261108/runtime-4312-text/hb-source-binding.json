@@ -1,0 +1,8 @@
+{
+  "candidate_root": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\early-released-refire-r1",
+  "dll_sha256": "325200c37224f1ead6ca305f40d2c7acd344bf76ead1f9bb8825c1a59167e185",
+  "source_sha256": {
+    "tools/vr-common/weapon_hammerburst_foregrip.h": "45834da29714eafa862d694ecf1fc5fdcc8c13c569bfb2217f3c90d0035d0048",
+    "tools/vr-common/hand_finger_pose.h": "02c96c0b0bbacfeb5d330e971b4fba8caf35c028edcf31d04bcd3f5b8a6cf1c0"
+  }
+}

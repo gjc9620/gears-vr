@@ -1,13 +1,13 @@
 {
-  "source_checkpoint": "3af75649",
-  "next": "Inspect existing sole C0 committed local-atoms -> render skin/palette consumer, original SpaceBases update timing, and matching bones/skin mapping for actual HB left hand. Current127 same-GT committed records prove goal and solved world wrist move; not upload/hardware/everyDraw/visible fit. Establish which existing consumer the async SpaceBases reader observes before changing the four-state verdict or pose. Preserve source freshness, fixed lengths, exact identity, single writer and1cm/2deg thresholds. No unchanged game run.",
+  "source_checkpoint": "01b720a4",
+  "next": "Identify original passive target refusal/absence at the matching successful non-passive/release-blend C0 commit and separate whole C0 non-admission. Existing active-support first-rejection observer excludes passive. Add bounded original-return reasons for passive target, including exact broker source/frozen frame association from the existing admission call; no extra game/clock reads or relaxed admission. Preserve anti-replay, identity, freshness, fixed lengths and1cm/2deg tests. Do not rerun wide palette observer unchanged.",
   "candidate": "early-released-refire-r1",
   "requirements_complete": false,
   "native_candidate": "native-passive-commit-r1",
-  "runner_session_id": 73697,
+  "runner_session_id": 23356,
   "terminal": true,
   "all13_requirements_retained": true,
-  "instance": "hb-cloak-1111-171202",
-  "runner_last_poll": "73697 terminal1; stop/launcher/Native/PG/XR normal0; owned game+children gone; noforced;encode0",
-  "game_pid": 58780
+  "instance": "hb-cloak-1111-172045",
+  "runner_last_poll": "23356 terminal1; normal stop/launcher/Native/PG/XR0; noforced/owned game+children absent; encode0",
+  "game_pid": 4312
 }
