@@ -1,0 +1,23 @@
+{
+  "results": {
+    "cache": "ShapeCache checks=129 failures=0 opaque cache pairs only; no descriptor or active shape authority\r\n",
+    "live": "PrimitiveLayout checks=37 failures=0 actual reflection Proof; synthetic registry, no runtime authority\r\nArrayLayout checks=80 failures=0 reflection association only; synthetic registry\r\nBodySetup checks=135 failures=0 synthetic instances; no C0 permission\r\nasset kind=0 begin\r\nasset kind=1 begin\r\nasset kind=2 begin\r\nAssetSetup checks=219 failures=0 authored membership only; synthetic instances\r\nPointScale checks=292 failures=0 synthetic source; original route attestation remains external\r\nShapeCacheLive checks=332 failures=0 typed opaque cache only; no active shape join\r\n"
+  },
+  "sources": {
+    "tools/native-capture/cover_physx_shape_cache.h": "bf2cf909edb629cea9990ed0cdee50a6ac03949ddbb1195bb03cc516fdd17e19",
+    "tools/native-capture/cover_physx_shape_cache_test.cpp": "bea45cc4a3a55bc9389adfc4b2bac9a406c326597b8b97e7f2ae5a39427d7bb3",
+    "tools/native-capture/cover_shape_cache_live.inl": "e1916f523e2327fb8c1c8b53f89214cffdc65a62152b5687802fdd6f091c01e3",
+    "tools/native-capture/cover_shape_cache_live_test.cpp": "6a0667fa2b7e57673805703bbd3f87156fac750b175143f7ecc528b0c77a33c3"
+  },
+  "package_sha256": "95b0c8da438a5acaf1ebfcdd0d94ac4d42c06422e717ce1ffe3f095e8ce90510",
+  "parser_sha256": "863b92a0ab707bbf64363a8e29bf1d586702e7983ad3ba9d96c735e3ecd23c46",
+  "parser_helper_source_sha256": "1a42d429304c04649a2c248738d41faefd954254007d4c535fcf503bfe99ee01",
+  "parser_helper_exe_sha256": "07d76eb46611b303fb707a6ba44692d70fb568a8b0c5dfaa567f2ffb7fef3de3",
+  "certificate_sha256": "21344052d9c6777ee95452996e9a4472337afa0b4e75b52110fdfaddd3ad949a",
+  "change": "Complete paired opaque cache observation,64 entries maximum no truncation; both headers close per pass, two complete passes, typed guard before/between/after. Ordered finite-positive float32 selection uses strict1e-4 and last matching index. Reflected adapter binds same BodySetup/BoneName and exact packed+cc/+dc ArrayProperty16, inner StructProperty dimension1 offset0 width8/12, Pointer/Vector ScriptStruct extent8/12, XYZ float fields.",
+  "tests": "Raw129 checks0: empty/1/3/64, all20 read faults at3entries, header/pointer/scale mutations, mismatch/65 rejection, invalid values, three guard phases, request/busy/alias, duplicates and last match, strict threshold/nextafter on allXYZ, invalid lookup. Typed332 includes point292; three shapes: normal typed snapshot, inner metadata mutation during payload read guard/output preservation, wrong offsets/stride/target/bone/vector extent rejection. Initial builds required atomic include and shadow name fixes; no warning suppression or product relaxation.",
+  "remaining": "Opaque selected descriptor only. No descriptor shape list read, cache-to-active identity or authored correspondence, full self set/world fence/production integration, game/headset or fullCV24/AC22 acceptance.",
+  "game_started": false,
+  "full_native_built": false,
+  "engineering_percent": 25
+}

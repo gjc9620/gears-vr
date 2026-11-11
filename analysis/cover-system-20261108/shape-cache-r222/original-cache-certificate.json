@@ -1,0 +1,108 @@
+{
+  "raw_sha256": "911ab9bcb24cc078420400369a78ffd3f747d915e42c4935a5c82c2dcecc6ae6",
+  "data_sha256": "c5deb08128dea890e2606b7bb6bf30eb3e1045c19b3f477e0bebf6c7fd15231c",
+  "near_zero_function": {
+    "entry": "0x1402c5b5c",
+    "database_entry": "0x2c4b5c",
+    "ranges": [
+      {
+        "start": "0x1402c5b5c",
+        "end_exclusive": "0x1402c5b99",
+        "bytes": "c5fa1001c5fa6f1528154401c5f854c2c5f82fc1720333c0c3c5fa104104c5f854c2c5f82fc173eec5fa104108c5f854c2c5f82fc173dfb801000000c3",
+        "sha256": "15211e6c1c464fe6ac914f857249c83c42cb905c9014a90a5852d0551c3891cb"
+      }
+    ],
+    "instructions": [
+      {
+        "address": "0x1402c5b5c",
+        "text": "vmovss  xmm0, dword ptr [rcx]"
+      },
+      {
+        "address": "0x1402c5b60",
+        "text": "vmovdqu xmm2, xmmword ptr cs:1706090h"
+      },
+      {
+        "address": "0x1402c5b68",
+        "text": "vandps  xmm0, xmm0, xmm2"
+      },
+      {
+        "address": "0x1402c5b6c",
+        "text": "vcomiss xmm0, xmm1"
+      },
+      {
+        "address": "0x1402c5b70",
+        "text": "jb      short loc_2C4B75"
+      },
+      {
+        "address": "0x1402c5b72",
+        "text": "xor     eax, eax"
+      },
+      {
+        "address": "0x1402c5b74",
+        "text": "retn"
+      },
+      {
+        "address": "0x1402c5b75",
+        "text": "vmovss  xmm0, dword ptr [rcx+4]"
+      },
+      {
+        "address": "0x1402c5b7a",
+        "text": "vandps  xmm0, xmm0, xmm2"
+      },
+      {
+        "address": "0x1402c5b7e",
+        "text": "vcomiss xmm0, xmm1"
+      },
+      {
+        "address": "0x1402c5b82",
+        "text": "jnb     short loc_2C4B72"
+      },
+      {
+        "address": "0x1402c5b84",
+        "text": "vmovss  xmm0, dword ptr [rcx+8]"
+      },
+      {
+        "address": "0x1402c5b89",
+        "text": "vandps  xmm0, xmm0, xmm2"
+      },
+      {
+        "address": "0x1402c5b8d",
+        "text": "vcomiss xmm0, xmm1"
+      },
+      {
+        "address": "0x1402c5b91",
+        "text": "jnb     short loc_2C4B72"
+      },
+      {
+        "address": "0x1402c5b93",
+        "text": "mov     eax, 1"
+      },
+      {
+        "address": "0x1402c5b98",
+        "text": "retn"
+      }
+    ],
+    "pseudocode_sha256": "6fb3d5df56c36f85d900e38c6efbd22956a03eb5d5b02e5dc33b16e3258bd701"
+  },
+  "caller_evidence": {
+    "path": "analysis\\cover-system-20261108\\creation-scale-r221\\probe.json",
+    "sha256": "745454f23efbb1b362422d30068f00620ba2a8d832e428dd9e2fccb4eeba4de0",
+    "entry": "0x1402c3efc"
+  },
+  "epsilon": {
+    "address": "0x1417070ac",
+    "bytes": "17b7d138",
+    "value": 9.999999747378752e-05
+  },
+  "abs_mask": {
+    "address": "0x141707090",
+    "bytes": "ffffff7fffffff7fffffff7fffffff7f"
+  },
+  "facts": [
+    "BodySetup+cc CollisionGeom pointer array (8 stride), +dc CollisionGeomScale3D vector array (12 stride), loop count+e4; index associates scale with opaque descriptor at pointers[index].",
+    "2c3efc subtracts cached scale minus request in float32.2c5b5c clears sign bit and JB/JNB implements strict each abs(delta)<epsilon; finite-positive path only admitted here.",
+    "Original cache loop continues after a match and overwrites selected pointer, so last matching entry wins. Duplicate keys/pointers are preserved, not rejected.",
+    "Package declarations associate these arrays with Core.Object.Pointer and Core.Object.Vector. Serialized ElementSize0 is not native extent; live reflection separately requires8/12 and exactXYZ FloatProperty."
+  ],
+  "limitation": "Original static evidence; not a current original call. NaN/unordered behavior is excluded by validated finite-positive keys, no permission inferred from a selected cache entry."
+}

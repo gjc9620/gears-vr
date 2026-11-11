@@ -1,0 +1,16 @@
+[
+  {
+    "array": "ArrayProperty'Engine.RB_BodySetup.CollisionGeom'",
+    "inner": "StructProperty'Engine.RB_BodySetup.CollisionGeom.CollisionGeom'",
+    "dimension": "1",
+    "target": "ScriptStruct'Core.Object.Pointer'",
+    "serialized_element_size": "0"
+  },
+  {
+    "array": "ArrayProperty'Engine.RB_BodySetup.CollisionGeomScale3D'",
+    "inner": "StructProperty'Engine.RB_BodySetup.CollisionGeomScale3D.CollisionGeomScale3D'",
+    "dimension": "1",
+    "target": "ScriptStruct'Core.Object.Vector'",
+    "serialized_element_size": "0"
+  }
+]

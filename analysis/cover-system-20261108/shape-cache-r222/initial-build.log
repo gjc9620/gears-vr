@@ -1,0 +1,10 @@
+cover_physx_shape_cache_test.cpp
+J:\codexWorktree\gearsVr\tools\native-capture\cover_physx_shape_cache.h(21): error C2039: "atomic": 不是 "std" 的成员
+E:\vs\VC\Tools\MSVC\14.51.36231\include\limits(24): note: 参见“std”的声明
+J:\codexWorktree\gearsVr\tools\native-capture\cover_physx_shape_cache.h(21): error C2143: 语法错误: 缺少“;”(在“<”的前面)
+J:\codexWorktree\gearsVr\tools\native-capture\cover_physx_shape_cache.h(21): error C4430: 缺少类型说明符 - 假定为 int。注意: C++ 不支持默认 int
+J:\codexWorktree\gearsVr\tools\native-capture\cover_physx_shape_cache.h(21): error C2334: “{”的前面有意外标记；跳过明显的函数体
+J:\codexWorktree\gearsVr\tools\native-capture\cover_physx_shape_cache_test.cpp(46): error C2039: "active": 不是 "gears_cover_physx_shape_cache::Workspace" 的成员
+J:\codexWorktree\gearsVr\tools\native-capture\cover_physx_shape_cache.h(21): note: 参见“gears_cover_physx_shape_cache::Workspace”的声明
+J:\codexWorktree\gearsVr\tools\native-capture\cover_physx_shape_cache_test.cpp(46): error C2039: "active": 不是 "gears_cover_physx_shape_cache::Workspace" 的成员
+J:\codexWorktree\gearsVr\tools\native-capture\cover_physx_shape_cache.h(21): note: 参见“gears_cover_physx_shape_cache::Workspace”的声明

@@ -1,0 +1,18 @@
+cover_physx_shape_cache_test.cpp
+J:\codexWorktree\gearsVr\tools\native-capture\cover_physx_shape_cache.h(42): error C2220: 以下警告被视为错误
+J:\codexWorktree\gearsVr\tools\native-capture\cover_physx_shape_cache.h(42): warning C4459: “pointers”的声明隐藏了全局声明
+J:\codexWorktree\gearsVr\tools\native-capture\cover_physx_shape_cache_test.cpp(7): note: 参见“pointers”的声明
+J:\codexWorktree\gearsVr\tools\native-capture\cover_physx_shape_cache.h(42): note: 模板实例化上下文(最早的实例化上下文)为
+J:\codexWorktree\gearsVr\tools\native-capture\cover_physx_shape_cache_test.cpp(19): note: 查看对正在编译的函数 模板 实例化“gears_cover_physx_shape_cache::Code gears_cover_physx_shape_cache::observe<main::<lambda_0515022cb664538f39547dcc669c4f16>,main::<lambda_c151eab85ad5613fe226431e85559d5e>>(const gears_cover_physx_shape_cache::Source &,Read,Guard,gears_cover_physx_shape_cache::Workspace &,gears_cover_physx_shape_cache::Snapshot &) noexcept”的引用
+        with
+        [
+            Read=main::<lambda_0515022cb664538f39547dcc669c4f16>,
+            Guard=main::<lambda_c151eab85ad5613fe226431e85559d5e>
+        ]
+J:\codexWorktree\gearsVr\tools\native-capture\cover_physx_shape_cache.h(59): note: 查看对正在编译的函数 模板 实例化“gears_cover_physx_shape_cache::Code gears_cover_physx_shape_cache::detail::pass<Read>(const gears_cover_physx_shape_cache::Source &,Read &,gears_cover_physx_shape_cache::Snapshot &)”的引用
+        with
+        [
+            Read=main::<lambda_0515022cb664538f39547dcc669c4f16>
+        ]
+J:\codexWorktree\gearsVr\tools\native-capture\cover_physx_shape_cache.h(42): warning C4459: “scales”的声明隐藏了全局声明
+J:\codexWorktree\gearsVr\tools\native-capture\cover_physx_shape_cache_test.cpp(7): note: 参见“scales”的声明

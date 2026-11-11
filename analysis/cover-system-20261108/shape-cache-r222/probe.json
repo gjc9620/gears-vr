@@ -1,0 +1,106 @@
+{
+  "refs": [],
+  "records": [
+    {
+      "entry": "0x1402c5b5c",
+      "database_entry": "0x2c4b5c",
+      "ranges": [
+        {
+          "start": "0x1402c5b5c",
+          "end_exclusive": "0x1402c5b99",
+          "bytes": "c5fa1001c5fa6f1528154401c5f854c2c5f82fc1720333c0c3c5fa104104c5f854c2c5f82fc173eec5fa104108c5f854c2c5f82fc173dfb801000000c3",
+          "sha256": "15211e6c1c464fe6ac914f857249c83c42cb905c9014a90a5852d0551c3891cb"
+        }
+      ],
+      "instructions": [
+        {
+          "address": "0x1402c5b5c",
+          "text": "vmovss  xmm0, dword ptr [rcx]"
+        },
+        {
+          "address": "0x1402c5b60",
+          "text": "vmovdqu xmm2, xmmword ptr cs:1706090h"
+        },
+        {
+          "address": "0x1402c5b68",
+          "text": "vandps  xmm0, xmm0, xmm2"
+        },
+        {
+          "address": "0x1402c5b6c",
+          "text": "vcomiss xmm0, xmm1"
+        },
+        {
+          "address": "0x1402c5b70",
+          "text": "jb      short loc_2C4B75"
+        },
+        {
+          "address": "0x1402c5b72",
+          "text": "xor     eax, eax"
+        },
+        {
+          "address": "0x1402c5b74",
+          "text": "retn"
+        },
+        {
+          "address": "0x1402c5b75",
+          "text": "vmovss  xmm0, dword ptr [rcx+4]"
+        },
+        {
+          "address": "0x1402c5b7a",
+          "text": "vandps  xmm0, xmm0, xmm2"
+        },
+        {
+          "address": "0x1402c5b7e",
+          "text": "vcomiss xmm0, xmm1"
+        },
+        {
+          "address": "0x1402c5b82",
+          "text": "jnb     short loc_2C4B72"
+        },
+        {
+          "address": "0x1402c5b84",
+          "text": "vmovss  xmm0, dword ptr [rcx+8]"
+        },
+        {
+          "address": "0x1402c5b89",
+          "text": "vandps  xmm0, xmm0, xmm2"
+        },
+        {
+          "address": "0x1402c5b8d",
+          "text": "vcomiss xmm0, xmm1"
+        },
+        {
+          "address": "0x1402c5b91",
+          "text": "jnb     short loc_2C4B72"
+        },
+        {
+          "address": "0x1402c5b93",
+          "text": "mov     eax, 1"
+        },
+        {
+          "address": "0x1402c5b98",
+          "text": "retn"
+        }
+      ],
+      "pseudocode_sha256": "6fb3d5df56c36f85d900e38c6efbd22956a03eb5d5b02e5dc33b16e3258bd701"
+    }
+  ],
+  "input": "J:\\gearsVr\\analysis\\ghidra\\render-16812-verified\\section_1000.bin",
+  "imagebase": "0x0",
+  "segments": [
+    {
+      "start": "0x0",
+      "name": "seg000"
+    }
+  ],
+  "first_functions": [
+    "0x0",
+    "0x70",
+    "0x130",
+    "0xf70",
+    "0xfe0",
+    "0x1000",
+    "0x1020",
+    "0x1040"
+  ]
+}

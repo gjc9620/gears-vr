@@ -1,0 +1,12 @@
+{
+  "build_exit": 0,
+  "test_exit": 0,
+  "output": "ShapeCache checks=129 failures=0 opaque cache pairs only; no descriptor or active shape authority\r\n",
+  "source_sha256": {
+    "tools\\native-capture\\cover_physx_shape_cache.h": "bf2cf909edb629cea9990ed0cdee50a6ac03949ddbb1195bb03cc516fdd17e19",
+    "tools\\native-capture\\cover_physx_query_source.h": "b363328e6dcc8c24a6d41f4563167f494723d88c15670282f1fd8635db5539c6",
+    "tools\\native-capture\\cover_physx_query_code.h": "476c05b953fd987688baf27f25d8f76bc11be2693fe1c76f785f167e3ac2d296",
+    "tools\\native-capture\\cover_pose_phase.h": "f173e0346bb313e33f4e26f1f9c0b91442009cdf7e903ed4c6a0de67dd7d8f19",
+    "tools\\native-capture\\cover_physx_shape_cache_test.cpp": "bea45cc4a3a55bc9389adfc4b2bac9a406c326597b8b97e7f2ae5a39427d7bb3"
+  }
+}

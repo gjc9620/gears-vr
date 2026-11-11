@@ -3049,3 +3049,15 @@ authored胶囊Z轴→activeY轴创建修正和逐shape对应仍未证明；不�
 356累计检查0失败（含原point292）：三种shape分别验证正常producer/capture，instance Owner或mesh实例引用/typed Owner不一致拒绝且保持输出；Actor缩放/instance Owner更改使旧Proof失效；非均匀输入如12/6/6按原值观察；读取payload时改变instance Owner返回guard且不覆盖旧输出，错误inventory实例在采集前拒绝。新增capture测试首次编译漏局部namespace别名，保留失败log；修正测试别名后build/test0，无产品放宽。
 
 原2c3efc还可从BodySetup cc/dc数组复用按scale索引的cached descriptor，因此“今天字段scale正确”仍不等于“当前active shape当时按它创建”。新producer只证明当前输入与所选原route字段对应；历史cache/active关联仍待闭合，不授予世界或移动权限。原完整源码/证书与记录同步，未游戏/XR/原调用/生产Native构建/安装；完整CV24/AC22、body/view/hit/muzzle事务和视图遮挡继续未完成，工程25%。
+
+## r222：BodySetup配对cache完整读取、原近似匹配和typed字段认证（2026-11-12）
+
+原2c3efc使用BodySetup+cc CollisionGeom指针数组与+dc CollisionGeomScale3D向量数组，index配对，count+e4；helper2c5b5c对cachedScale-request float32差值清sign bit，JB/JNB严格逐XYZ小于float1e-4（1417070ac=17b7d138），匹配后循环不break，最后匹配项覆盖前者。原完整helper与caller全部chunks/指令、abs mask和epsilon字节SHA已核。原Engine.u同SHA95b0c8da…只读UELib声明解析确认数组inner为Core.Object.Pointer/Vector，序列化ElementSize0不当作native extent。
+
+新增cover_physx_shape_cache.h：最多64全部配对、不截断；packed4头与Pointer8/Vector4 payload对齐分别处理，count一致、capacity边界和正normal scale/pointer验证；每pass关闭两个header、两次完整pass比较，typed source guard前/中/后，busy/alias/exception及失败不发布。保留重复pointer/key与原顺序。select按原有限正scale路径float差值及严格epsilon返回最后匹配index和opaque pointer，miss/invalid保留旧输出；不声称复刻NaN/unordered路径，不选择active shape。
+
+新增cover_shape_cache_live.inl：同BodySetup身份/BoneName，CollisionGeom与CollisionGeomScale3D必须ArrayProperty16且offsetcc/dc；inner StructProperty dim1/offset0/stride8或12，目标Pointer/Vector ScriptStruct extent8或12及XYZ FloatProperty4布局；producer Proof贯穿完整raw cache采集，外层仍认证原route、当前asset/body/C0关联。没有在持binding mutex时调用外层guard。
+
+Raw129检查0失败：空/1/3/64全量、3条的20处读失败、header/scale/pointer跨pass变化、两数组count不符/65越界、无效值、三次guard、request/busy/alias、重复项最后匹配、XYZ严格阈值及nextafter边界。typed332累计（含point292）0：三种shape当前反射采集，payload时inner metadata变更触发guard并保持输出，offset/stride/target/BoneName/Vector extent错误拒绝。编译初次补显式atomic include与局部shadow名称；保留失败log，未放宽/WX。C#首次路径斜杠参数被csc误解，改绝对Windows路径，解析完成；旧API弃用warning原样保留。
+
+cache条目目前仍是opaque descriptor；尚未读取其shape vector或证明它与active shape逐项对应。缓存读取/原lookup不提供world或movement权限。所有依赖SHA保存时当前一致，证据shape-cache-r222；无游戏/XR/原getter/生产Native构建/安装，完整CV24/AC22及body/view/hit/muzzle事务、视图遮挡与头显继续未完成，工程25%。

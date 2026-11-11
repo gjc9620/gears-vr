@@ -1,0 +1,23 @@
+IDAPython: Requested to use virtual environment interpreter at C:\Users\11\AppData\Roaming\Hex-Rays\IDA Pro\venv\Scripts\python.exe
+
+  bytes   pages size description
+--------- ----- ---- --------------------------------------------
+ 80396288  9814 8192 allocating memory for b-tree...
+ 80125952  9781 8192 allocating memory for virtual array...
+   262144    32 8192 allocating memory for name pointers...
+-----------------------------------------------------------------
+160784384            total memory allocated
+
+Loading processor module J:\ida94sp1_0915\procs\pc.dll for metapc...OK
+Loading type libraries...
+Autoanalysis subsystem has been initialized.
+Database for file 'section_1000.bin' has been loaded.
+Hex-Rays Decompiler plugin has been loaded (v9.4.0.260915)
+  License: 14-0000-FFFF-88  (1 user)
+  The hotkeys are F5: decompile, Ctrl-F5: decompile all.
+
+  Please check the Edit/Plugins menu for more information.
+Hex-rays version 9.4.0.260915 has been detected, gooMBA plugin ready to use
+Using type parser: legacy
+Flushing buffers, please wait...ok
+Unloading IDP module J:\ida94sp1_0915\procs\pc.dll...
