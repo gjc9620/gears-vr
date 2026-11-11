@@ -658,3 +658,8 @@ PG5b3d71fb/Native71f280b0完整有限空仓流程，78条一致射线/0/78空仓
 ## 2026-11-11 原生产者提取历史候选（尚未game）
 
 私有PGedccad22在old_mag阶段复用现有producer ring/投影/同context与控制检查，按原序号和时戳生成原记录对应的FeedSample（不插值）；原Extraction内部最后已接受sample须与previous逐项匹配，每段序号连续且仍<=原100ms，每点运行原几何/速度/起点/完成规则。试算副本只在全部点和当前真实端点匹配后提交，缺失/畸形历史仍走原直接observe拒绝。原插入advance实现不变，不拓展old_mag登记，不造Frame/lease/动作/新时钟。32项新检查包括38380端点111.4423ms直接拒绝和真实原投影/advance调用块，另原magazine与21项insertion-history通过；中间点/时间为合成夹具，非game历史。完整PG编译通过，Native71f280b0/XR/公共v71不变。下一次原完整空仓流程须记录actual extraction_history gate/used/points与原提取完成；全部13项保留。
+
+
+## 2026-11-11 实际30496：原首发事件到期，提取历史未触达
+
+PGedccad22/Native71f280b0核心6条一致射线后，首次drain原ButtonPress362已调用并捕获事件，未产生首发。FIRST service_loss明确gate4（不是report中的service_stage3），捕获165084982066600至拒绝165085244213900为262.1473ms，原250ms事件到期；先前delivery8在137.0426ms时缺新鲜同帧20ms枪口余量，withdrawal363100.8265ms。Nativeinput_loss0。修正初步record_loaded解释把阶段3误当拒绝gate3的错误，以原gate4为准；count6属上一完整cohort。新提取/登记/WAIT均未到，不判新改动回归或修复。下一步仅在原GT路径用现有PlayerTick分段时钟记录有界被动tail，匹配首发等待实际耗时，不归因未匹配的稀疏34.98/47.79ms样本、不延长原期限/补按/原样重跑。正常清理全0、无forced、158帧错误空/编码0、3页48对亲阅，贴合仍失败。全部13项与实际提取历史覆盖仍保留。

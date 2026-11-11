@@ -1,13 +1,13 @@
 {
-  "source_checkpoint": "81fd40af",
-  "terminal": true,
+  "next": "Use existing PlayerTick phase clocks to capture a bounded passive tail around actual HB first-debt: pre-original, original, service, equipment, follow cost and existing input sync/admission/event-capture scalar values. Reuse source samples and existing GT path, no engine/input/pose writers, no dispatch/source/deadline policy changes. Existing sparse cost rows34.98/47.79ms are not failure-window evidence; cannot blame L2 or GPU/concurrency without matched costs. Extraction implementation remains pending live coverage.",
   "requirements_complete": false,
-  "candidate": "latch-incumbent-gap-r1",
-  "native_candidate": "native-render-age-r1",
-  "instance": "hb-cloak-1111-144453",
+  "candidate": "extraction-history-r1",
+  "source_checkpoint": "47272e0b",
   "all13_requirements_retained": true,
-  "next": "Use existing exact producer motion history for OLD extraction, with original Sample/identity/publisher/control/pose mapping and original contiguous sequence/per-point100ms/speed/alignment checks. Current new-mag feed_history projection can supply original left poses; old stage currently neither captures nor remembers it. Reproduce actual111.4423ms direct rejection, then transactionally feed only authenticated original intermediate points to original Extraction.observe on a trial copy, committing only after full current endpoint validation. No interpolation, no extra Frame/grant, no enlarged gap, no old-mag incumbent broadening without evidence. Log bounded actual segment coverage in next game.",
-  "runner_session_id": 94175,
-  "game_pid": 38380,
-  "runner_last_poll": "94175 terminal1; stop/launcher/Native/PG/XR0; own game+children gone, noforced; encode0"
+  "native_candidate": "native-render-age-r1",
+  "terminal": true,
+  "runner_session_id": 82261,
+  "instance": "hb-cloak-1111-145642",
+  "game_pid": 30496,
+  "runner_last_poll": "82261 terminal1; stop/launcher/Native/PG/XR0; own game+children gone, noforced; encode0"
 }
