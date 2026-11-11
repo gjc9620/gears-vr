@@ -1,0 +1,20 @@
+{
+  "owner_request": "Coordinator conveyed the owner's explicit request to finish current work and release the editor; wait for explicit resume.",
+  "coordinator_thread": "01a1bb5e-5946-7271-af0d-1068759697e0",
+  "last_game": 42980,
+  "last_runner": 4180,
+  "last_runner_terminal": true,
+  "last_runtime_checkpoint": "63ee2461",
+  "runtime_cleanup": "Game/children absent, Native/PG/XR/launcher/stop0, no forced termination. Game42980 and operator11832 absent on final process query.",
+  "unfinished_offline_work": {
+    "actual_skin_review": "actual-foregrip-skin-58352/review.json",
+    "scope": "Saved actual12 hand-bone samples and original strict hand surface863vertices/1395triangles; not a live GPU/full skin or atomic gun/hand proof.",
+    "findings": "Runtime asset path matches Marcus CamSkel source. Actual local15 support error at most0.000010526deg. Thumb unsigned surface gap min1.04405raw, palm min0.45136raw; other fingers have near-surface points. No full fit acceptance.",
+    "thumb_sweep": "fit_foregrip_thumb.py",
+    "thumb_sweep_terminal": "Exited1 at the opposition0 reproduction assertion before any sweep/candidate/report was produced. Difference magnitude/cause not yet inspected. Do not relax the guard or claim an authored candidate exists.",
+    "production_pose_changed_this_turn": false
+  },
+  "requirements_complete": false,
+  "all13_requirements_retained": true,
+  "next_after_explicit_resume": "Inspect opposition0 actual-skin reproduction mismatch before any thumb fitting or candidate deployment; preserve actual source translations and observation provenance. Then continue remaining full requirements. Do not auto-start a game, build, test or editor on resume without revalidating current owner state."
+}
