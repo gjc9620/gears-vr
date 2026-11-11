@@ -76,6 +76,8 @@ def main():
     target=AREA/name;target.mkdir()
     manifest=json.loads((AREA/'independent-r1/candidate-manifest.json').read_text())
     render_age='--render-age-continuity' in sys.argv
+    native_mutex='--native-mutex' in sys.argv
+    assert not native_mutex or render_age,'Mutex observer retains the exact age-continuity Native parent'
     latch_observation='--latch-observation-wait' in sys.argv
     latch_incumbent='--latch-incumbent-gap' in sys.argv
     extraction_history='--extraction-history' in sys.argv
@@ -131,6 +133,12 @@ def main():
         checks=json.loads((AREA/'render-age-pg-r1/release-handoff-test-result.json').read_text())
         assert checks['passed'] and checks['total_checks']==457
         native_proof=json.loads((AREA/'native-render-age-r1/prepared.json').read_text())
+        if native_mutex:
+            mutex_check=json.loads((AREA/'native-mutex-r1/mutex-test-result.json').read_text())
+            assert mutex_check['passed'] and mutex_check['exact_policy_reversal'] and mutex_check['extra_waits']==0
+            mutex_proof=json.loads((AREA/'native-mutex-r1/prepared.json').read_text())
+            assert mutex_proof['parent_native']==native_proof['native_sha256']
+            native_proof=mutex_proof
         assert native_proof['full_native_compiled'] and native_proof['policy_cases']==17 and native_proof['policy_failures']==0
         assert manifest['native_sha256']==native_proof['frozen_native']
         native_dll=Path(native_proof['dll'])

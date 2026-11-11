@@ -1,0 +1,64 @@
+--- a/tools/vr-common/controller_input_bridge.h
++++ b/tools/vr-common/controller_input_bridge.h
+@@ -33,6 +33,7 @@
+     Code code{Code::not_open};
+     std::uint64_t latest_sequence{},selected_sequence{};
+     std::int64_t selected_sync_ns{};
++    DWORD mutex_result{};bool mutex_attempted{},mutex_contended{}; // Receiver-local; never a permit.
+ };
+ 
+ // Independent from StereoBridge v4. A receiver asks for the exact frame key
+@@ -58,9 +59,11 @@
+                            L"Local\\GearsVR.ControllerInput.v4.%lu.%llu",
+                    pid,static_cast<unsigned long long>(created));
+     }
+-    static bool lock_now(HANDLE mutex,bool* contended=nullptr) noexcept {
++    static bool lock_now(HANDLE mutex,bool* contended=nullptr,DWORD* observed=nullptr,bool* attempted=nullptr) noexcept {
++        if(attempted)*attempted=false;
+         if(contended)*contended=false;if(!mutex)return false;
+         const auto result=WaitForSingleObject(mutex,0);
++        if(observed)*observed=result;if(attempted)*attempted=true;
+         if(result==WAIT_ABANDONED){ReleaseMutex(mutex);return false;}
+         if(contended)*contended=result==WAIT_TIMEOUT;
+         return result==WAIT_OBJECT_0;
+@@ -133,7 +136,9 @@
+         using Code=ControllerMatchingRead::Code;
+         if(producer_||!data_||!publisher_process_)return finish(Code::not_open);
+         if(WaitForSingleObject(publisher_process_,0)!=WAIT_TIMEOUT)return finish(Code::publisher_exited);
+-        if(!lock_now(mutex_,contended))return finish(Code::mutex_unavailable);
++        const bool locked=lock_now(mutex_,contended,&local.mutex_result,&local.mutex_attempted);
++        local.mutex_contended=local.mutex_attempted&&local.mutex_result==WAIT_TIMEOUT;
++        if(!locked)return finish(Code::mutex_unavailable);
+         ControllerInputPacket packet{};
+         std::memcpy(&packet,data_,sizeof(packet));ReleaseMutex(mutex_);
+         if(!header_valid(packet))return finish(Code::header_invalid);
+--- a/tools/native-capture/cover_shared_input_live.inl
++++ b/tools/native-capture/cover_shared_input_live.inl
+@@ -28,6 +28,7 @@
+     unsigned read_status{},controller_status{};
+     uint64_t requested_sequence{},latest_sequence{},selected_sequence{};
+     std::int64_t source_age_ns{},selected_age_ns{};
++    unsigned mutex_attempted{},mutex_result{},mutex_contended{};
+ };
+ std::array<GripHandoffObservation,24> grip_handoffs{};
+ unsigned grip_handoff_count{};
+@@ -293,7 +294,8 @@
+                 frame.lifecycle,unsigned(decoded.left_grip_down),unsigned(decoded.left_grip_known),unsigned(decoded.left_tracked),
+                 unsigned(decoded.interaction_control),unsigned(input::left_hand_owner.blocking_status()),
+                 unsigned(matching.code),unsigned(decoded.controller_status),stereo.sample.sequence,matching.latest_sequence,
+-                matching.selected_sequence,stamp-stereo.sample.received_ns,matching.selected_sync_ns?stamp-matching.selected_sync_ns:0};
++                matching.selected_sequence,stamp-stereo.sample.received_ns,matching.selected_sync_ns?stamp-matching.selected_sync_ns:0,
++                unsigned(matching.mutex_attempted),matching.mutex_result,unsigned(matching.mutex_contended)};
+             const auto& old=grip_handoffs[grip_handoff_count?grip_handoff_count-1:0];
+             if(grip_handoff_count<grip_handoffs.size()&&(!grip_handoff_count||row.token!=old.token||row.status!=old.status||
+                row.kind!=old.kind||row.incumbent0!=old.incumbent0||row.incumbent1!=old.incumbent1||row.committed!=old.committed||
+@@ -338,7 +340,8 @@
+         fprintf(file,"shared_grip_handoff_source_%u=%u,%u,%llu,%llu,%llu,%lld,%lld ",i,
+             r.read_status,r.controller_status,static_cast<unsigned long long>(r.requested_sequence),
+             static_cast<unsigned long long>(r.latest_sequence),static_cast<unsigned long long>(r.selected_sequence),
+-            static_cast<long long>(r.source_age_ns),static_cast<long long>(r.selected_age_ns));}
++            static_cast<long long>(r.source_age_ns),static_cast<long long>(r.selected_age_ns));
++        fprintf(file,"shared_grip_handoff_mutex_%u=%u,%u,%u ",i,r.mutex_attempted,r.mutex_result,r.mutex_contended);}
+     fprintf(file,"shared_hand_attempts=%llu shared_hand_bindings=%llu shared_hand_outside_cover=%llu shared_hand_rejected=%llu shared_hand_prepared=%llu shared_hand_committed=%llu shared_hand_aborted=%llu shared_hand_absent=%llu shared_hand_blocked=%llu shared_hand_retries=%llu shared_hand_lifecycle=%llu shared_hand_frame=%llu shared_hand_cookie=%llu shared_hand_revision=%llu shared_hand_prepare_reply=%u shared_hand_commit_reply=%u shared_hand_binding_reason=%s shared_hand_grip_geometry_ready=0 ",
+         diagnostics.attempts,diagnostics.bindings,diagnostics.outside_cover,diagnostics.rejected,diagnostics.prepared,diagnostics.committed,diagnostics.aborted,diagnostics.absent,diagnostics.blocked,diagnostics.retries,
+         static_cast<unsigned long long>(diagnostics.lifecycle),static_cast<unsigned long long>(diagnostics.frame),static_cast<unsigned long long>(diagnostics.cookie),static_cast<unsigned long long>(diagnostics.revision),

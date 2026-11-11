@@ -1,0 +1,3 @@
+mutex-test.cpp
+Original bridge: accepted, real competing-thread TIMEOUT, real ABANDONED, injected WAIT_FAILED and unopened distinguished; no retry, packet/output mutation or changed decision
+controller frame identity, tracking, focus, expiry, payload and bridge ring checks passed

@@ -1,0 +1,12 @@
+{
+  "passed": true,
+  "distinct_outcomes": 5,
+  "real_timeout": true,
+  "real_abandoned": true,
+  "injected_failed": true,
+  "existing_bridge_cases_passed": true,
+  "exact_policy_reversal": true,
+  "packet_layout_unchanged": true,
+  "extra_waits": 0,
+  "game_started": false
+}
