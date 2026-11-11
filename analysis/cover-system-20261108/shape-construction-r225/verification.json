@@ -1,0 +1,14 @@
+{
+  "test": "ShapeConstruction checks=33041 failures=0 original stored representation math only; no active identity\r\n",
+  "sources": {
+    "tools/native-capture/cover_physx_shape_construction.h": "5bc25a16245f96873c975cd54ce02880f9ace623fa1fd4e328015be8711a3e13",
+    "tools/native-capture/cover_physx_shape_construction_test.cpp": "6a4a0f7ffdd8f74a6721ed6fef3483003068123634f4b208a969485f123b7b72"
+  },
+  "certificate_sha256": "76d3c39a65b47cd66cedaec4a851ddb0272e36c00b084b9b685d4981d885c7dc",
+  "tests": "33041 checks0:128 rotations about eachXYZ, two placements and all3 kinds; four points checked with independent Rodrigues and quaternion cross-product oracles against local or Actor-composed world transforms; dimensions/half length retained, zero segment, source invalid/nonfinite/subnormal/min-normal length-to-subnormal half, nonrigid local/static actor, dynamic unused actor, unsupported/alias and nearest-mode refusal/output preservation.",
+  "remaining": "No current active actor/template association or complete body match, static actor source sampling, welds, flags/full self/world fence, production integration/game/headset/fullCV24/AC22.",
+  "game_started": false,
+  "original_constructor_executed": false,
+  "full_native_built": false,
+  "engineering_percent": 25
+}

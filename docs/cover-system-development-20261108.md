@@ -3081,3 +3081,13 @@ cache条目目前仍是opaque descriptor；尚未读取其shape vector或证明�
 Match364累计检查0（含原authored inventory328）：2body/7原形状对应4+2 enabled template，保留disabled第七项；独立硬编码float32 oracle针对current6、cached6.00005（40c00069），scaled3df5c315/radius3e87ae57/box half3e147b24,3e51ebea,3e87ae57/capsule full length3eb85250及负零80000000轴符号，不调用creation converter生成expected fixture。错误source/request/越容差key、raw/decoded/pose/dims/缺项/乱序/convex/mask/bone/scale均拒绝保持输出；把cached scale改成current6仍保留原descriptor会拒绝，证明不是偷偷用当前值。将省略的disabled形状一致地重新启用时缺项拒绝；4个源形状全部disabled时空template匹配仍保留4行disabled。reader709检查0（原705+4来源字段回读断言），依赖SHA均当前。
 
 首次match编译遇既有pose_math参数actor与旧fixture全局actor的/WX shadow，调整测试include顺序使轻量pose数学先于旧fixture解析；未改既有数学/放宽warning。新body/cache匹配仍只使用合成当前元数据与保存原规则的CPU fixture，不称原游戏/实际cache执行。active cache→actor/shape身份、flags/full self/world fence和生产接入、完整CV24/AC22、body/view/hit/muzzle事务与视图遮挡/头显仍未完成，无游戏/XR/原函数/生产Native构建/安装，工程25%。证据authored-cache-r224。
+
+## r225：原descriptor→实际stored形状表示路线与dynamic/static区别明确（2026-11-12）
+
+对原PhysXCore同SHA22051aa7…只读REA：NpActor vtable2330a8 slot88→1336b0 createShape，NpActor+28交Actor120780→124660；Actor+18正是publicNpActor+40可选Body。124660把公开descriptor local Matrix34转换为内部position/quaternion：动态Body存在时保留local；Body为null静态时先与Actor+48（NpActor+70）矩阵合成world，再转换。不能用动态local规则套静态，或把静态stored world再乘一次Actor。
+
+胶囊公开radius80/full length84作为qword复制至内部78/7c；Scene vtable22ccb8 slot70→9ef30 case3→104b0构造，内部78 radius直接入1b0，7c full length乘原0.5后入1b4 half_segment。共同B0790把内部40/44/48位置写stored88/8c/90，4c/50/54/58 quaternion写78/7c/80/84，不normalize。胶囊另外的b4..c0 backend旋转不覆盖这些stored quat。完整11份Evidence导出/REA正常关闭，六个完整函数体与两个vtable slot逐PE字节SHA核对，未运行原constructor/getter。
+
+新增cover_physx_shape_construction.h纯owned表示桥：显式dynamic_local/static_world，静态Actor pose须调用者认证，动态不消费未使用Actor矩阵；保留原float矩阵合成及trace/最大对角分支四元数转换分组，dynamic trace=(m11+m00)+m22、static=(m22+m11)+m00；静态translation row0 Y+X+Z+T、rows1/2 X+Z+Y+T。sphere radius/box half原样，capsule full length转half，不再乘单位或margin。不normalize/clamp，要求nearest；异常、非rigid、subnormal/半段下溢、unsupported/alias拒绝保持输出。
+
+33041检查0：XYZ各128旋转，两种placement和三种kind，每例四个独立点用Rodrigues及quat cross-product oracle核对local/Actor合成world，另核尺寸、零段、min-normal长度除半成subnormal拒绝、NaN/无穷/负数/非rigid、动态忽略无效unused Actor、unsupported/alias/FP mode拒绝。所有依赖SHA当前一致。此为原静态证据和CPU数学重建，不称全部浮点逐位相同、所有初次load路径已证或实际active形状验收；当前actor/template身份、staticActor当前读取、weld和flags/full self/world fence及生产接入仍待完成。无游戏/XR/生产Native构建/安装，完整CV24/AC22、body/view/hit/muzzle事务及视图遮挡/头显未完成，工程25%。证据shape-construction-r225。

@@ -1,0 +1,102 @@
+{
+  "artifact": {
+    "path": "J:\\gearsVr\\Gears.of.War.Reloaded.v1.0.1.3816947-P2P\\Gears of War Reloaded\\Binaries_x64\\PhysXCore.dll",
+    "sha256": "22051aa75312344a824a5f7e29c6375fec3a90df50cbeff6152f0e6c3afddd48",
+    "bytes": 2711552
+  },
+  "evidence": {
+    "path": "analysis\\cover-system-20261108\\shape-construction-r225\\original-evidence.json",
+    "sha256": "5e04e145cc616222006249cba52ee7fde0aaa328c240ea51ebec8531b7120c4f",
+    "records": 11
+  },
+  "functions": [
+    {
+      "entry": "0x1801336b0",
+      "evidence_id": "ev_3adec3388796ec4c784289f7ac8c951ea15de7bed34b66ed8cb27fedfb902d45",
+      "chunks": [
+        {
+          "start": "0x1801336b0",
+          "end_inclusive": "0x180133add",
+          "size": 1070,
+          "sha256": "c0af7a6f4f46c0ec55ce6b69000045e1ef41b35d75992006e70ba29c877a3d44"
+        }
+      ],
+      "complete_body_bytes": 1070
+    },
+    {
+      "entry": "0x180120780",
+      "evidence_id": "ev_8b35e124b633a3104ad6fa5b94ed3ee0523def1b146782191af8972077fbccdd",
+      "chunks": [
+        {
+          "start": "0x180120780",
+          "end_inclusive": "0x1801209a0",
+          "size": 545,
+          "sha256": "227fd8ae67f37c0c1625a2ce47f7677d8be92b3bd9953f2580b67899713df1c4"
+        }
+      ],
+      "complete_body_bytes": 545
+    },
+    {
+      "entry": "0x180124660",
+      "evidence_id": "ev_21af5e354eb8f126c3939c0b7afcf2ba5ebee9bb820e33b71b053fae3c81dde2",
+      "chunks": [
+        {
+          "start": "0x180124660",
+          "end_inclusive": "0x1801254ad",
+          "size": 3662,
+          "sha256": "61c8477f15e7fb0496a716a5ce489ac3e7635228faa68e696e2da2313440a28e"
+        }
+      ],
+      "complete_body_bytes": 3662
+    },
+    {
+      "entry": "0x18009ef30",
+      "evidence_id": "ev_aa2f325f235b5d1c977d3ff05d939f9fe386a6e75c665be05b2d262f863ef4ae",
+      "chunks": [
+        {
+          "start": "0x18009ef30",
+          "end_inclusive": "0x18009f357",
+          "size": 1064,
+          "sha256": "a59f2b08ab8e0e980c7fa083908a89d1598f55bd42d703fd2fb16845158e1bc8"
+        }
+      ],
+      "complete_body_bytes": 1064
+    },
+    {
+      "entry": "0x1800104b0",
+      "evidence_id": "ev_cfef951baaee415f5391b0cd376b4eec540be0536bb98f45d3db18350839672b",
+      "chunks": [
+        {
+          "start": "0x1800104b0",
+          "end_inclusive": "0x180010d52",
+          "size": 2211,
+          "sha256": "3f1af70f773dc4165cbbba60ec7d48c3842b0c5e09e15a8b181e0c59bed1705c"
+        }
+      ],
+      "complete_body_bytes": 2211
+    },
+    {
+      "entry": "0x1800b0790",
+      "evidence_id": "ev_268cc4443e277e15feb9b49f1658c948d01a4c17ff627db8db7e0555050ccb63",
+      "chunks": [
+        {
+          "start": "0x1800b0790",
+          "end_inclusive": "0x1800b0c17",
+          "size": 1160,
+          "sha256": "13995fabce9ec1afee51eebbb76539b3ba91ef2c7c710bc2336a6da4b457e2d9"
+        }
+      ],
+      "complete_body_bytes": 1160
+    }
+  ],
+  "facts": [
+    "Original NpActor vtable2330a8 slot88 ->1336b0 createShape; it passesNpActor+28 toActor120780 ->124660. Actor body member+18 is therefore publicNpActor+40, same optional Body field used by current ownership observations.",
+    "Actor124660 builds internal shape creation structure. Dynamic Body present: descriptor Matrix34 translation30/34/38 copied unchanged and rotation converted to quaternion. Body null: Actor matrix atActor+48 (NpActor+70) is composed with descriptor pose before conversion, so stored pose is world-space.",
+    "Float quaternion conversion uses trace branch and largest diagonal branches, no normalization. Dynamic trace grouping=(m11+m00)+m22; static=(m22+m11)+m00. Static composition translation row0 Y+X+Z+T; rows1/2 X+Z+Y+T.",
+    "Public capsule radius80 and full length84 are copied as one qword to internal78/7c. Scene vtable22ccb8 slot70 ->9ef30 factory, case3 ->104b0. Capsule ctor copies internal78 radius to1b0 and multiplies internal7c by0.5 to half_segment1b4.",
+    "Common B0790 copies internal position40/44/48 into stored88/8c/90 and quaternion4c/50/54/58 into stored78/7c/80/84 without normalization. Additional capsule backend rotation fieldsb4..c0 do not replace those stored quaternion fields.",
+    "Bridge is pure owned supported positive-normal geometry math. It does not prove initial actor loading uses every observed add-shape path, current template/active identity, weld mapping or filter participation. No constructor/getter executed."
+  ],
+  "implementation": "Explicit dynamic_local/static_world placement; caller supplies authenticated static actor pose. Float operation grouping preserved in written math; fixed capsule half conversion, no unit/margin conversion repeated. Nearest rounding only; nonrigid/nonfinite/unsupported/alias and subnormal length/half reject without publishing.",
+  "limitations": "Static analysis and CPU reconstruction, not bit-identical proof for every native floating-point case or original code execution. Full module/lifetime/world scope remains external; native value-flow limits in full evidence remain retained."
+}
