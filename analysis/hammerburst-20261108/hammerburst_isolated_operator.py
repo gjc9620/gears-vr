@@ -14,7 +14,16 @@ import types
 
 ROOT = Path(__file__).resolve().parents[2]
 CODE = ROOT / 'analysis/solo-m1-20261028'
-READERS = ('read_private_input.py', 'read_world_grips.py', 'read_aim_metrics.py')
+READERS = ('read_private_input.py', 'read_world_grips.py', 'read_aim_metrics.py', 'read_private_skeleton.py')
+
+
+def reader_arguments(name,args):
+    if name not in READERS or not args or Path(args[0]).name!=args[0] or not args[0].endswith('.json'):
+        raise ValueError('Expected an allowed reader and one local JSON output name')
+    flags=tuple(args[1:])
+    if flags and (name!='read_private_skeleton.py' or flags not in (('--hands',),('--weapon',))):
+        raise ValueError('Unexpected reader flags')
+    return flags
 
 
 def replace_once(source, old, new):
@@ -101,13 +110,24 @@ class Binding:
                                              for value in (owner, selected_game, publisher))
 
     def helper(self, name, *args):
-        if name not in READERS or len(args) != 1 or Path(args[0]).name != args[0]:
-            raise ValueError('Unexpected HB reader or output name')
+        flags=reader_arguments(name,args)
         self.state()
         subprocess.run([sys.executable, '-E', '-s', '-B', '-X', 'utf8', str(Path(__file__).resolve()),
                         '--instance', self.name, '--output', str(self.output), '--reader', name,
-                        '--reader-output', args[0]], check=True, stdout=subprocess.DEVNULL,
+                        '--reader-output', args[0], *['--reader-flag='+flag for flag in flags]], check=True, stdout=subprocess.DEVNULL,
                        creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0))
+
+    def source_text(self,relative):
+        allowed=('tools/vr-common/weapon_hammerburst_foregrip.h','tools/vr-common/hand_finger_pose.h')
+        if relative not in allowed:raise ValueError('Unexpected authored source')
+        proof=json.loads((self.instance/'hb-source-binding.json').read_text(encoding='utf-8-sig'))
+        manifest=json.loads((self.instance/'manifest.json').read_text(encoding='utf-8-sig'))
+        candidate=Path(proof['candidate_root']).resolve();area=(ROOT/'analysis/hammerburst-20261108').resolve()
+        if candidate.parent!=area or proof['dll_sha256']!=manifest['playground_sha256']:
+            raise RuntimeError('Authored source belongs to another candidate')
+        path=candidate/'source'/relative;raw=path.read_bytes()
+        if hashlib.sha256(raw).hexdigest()!=proof['source_sha256'][relative]:raise RuntimeError('Pinned authored source changed')
+        return raw.decode('utf-8-sig')
 
     def stop(self):
         state = json.loads((self.instance / 'launcher-session.json').read_text())
@@ -125,7 +145,16 @@ def reader_source(name):
     if name not in READERS:
         raise ValueError('Unknown reader')
     source = (CODE / name).read_text(encoding='utf-8')
-    if name == 'read_aim_metrics.py':
+    if name == 'read_private_skeleton.py':
+        source=replace_once(source,"cfg=json.loads((OUT/'private-instance.json').read_text());state=json.loads((Path(cfg['root'])/'launcher-session.json').read_text());game=state['game_identity'];control=WindowsControl()",
+                            "OUT=BOUND.output;state=BOUND.state();game=state['game_identity'];control=WindowsControl()")
+        source=replace_once(source,"r.class_name(wid)=='Weap_AssaultRifle'","r.class_name(wid)=='Weap_LocustAssaultRifle'")
+        for old,new in [('rn==9','rn==3'),('r.read(rp,9*68)','r.read(rp,3*68)'),('for i in range(9):','for i in range(3):'),('bones=tuple(range(9))','bones=tuple(range(3))'),('count==(9 if weapon_mode else 115)','count==(3 if weapon_mode else 115)')]:
+            if source.count(old)!=1 and old!='r.read(rp,9*68)':raise ValueError('Skeleton boundary changed: '+old)
+            source=source.replace(old,new)
+        old=next(line for line in source.splitlines() if line.startswith('        expected='))
+        source=replace_once(source,old,"        expected=['b_HB_Root','b_HB_MagLatch','b_HB_Mag']")
+    elif name == 'read_aim_metrics.py':
         source = replace_once(source, "cfg = json.loads((OUT / 'private-instance.json').read_text())\ngame = json.loads((Path(cfg['root']) / 'launcher-session.json').read_text())['game_identity']",
                               "game = BOUND.state()['game_identity']\nOUT = BOUND.output")
     else:
@@ -215,6 +244,22 @@ def supply_source():
     return replace_once(source,anchor,anchor+"\n            assert clock()<=deadline,'Typed burst readback exceeded original whole drain deadline'")
 
 
+def support_source():
+    source=(CODE/'hammerburst_support_chain.py').read_text(encoding='utf-8')
+    source=replace_once(source,"(g.ROOT/'tools/vr-common/weapon_hammerburst_foregrip.h').read_text(encoding='utf-8')",
+                        "g.BOUND.source_text('tools/vr-common/weapon_hammerburst_foregrip.h')")
+    source=replace_once(source,"(g.ROOT/'tools/vr-common/hand_finger_pose.h').read_text(encoding='utf-8')",
+                        "g.BOUND.source_text('tools/vr-common/hand_finger_pose.h')")
+    source=replace_once(source,"        fire('two_hand_authoritative_fire',support_matrix=steered)",
+                        "        if '--foregrip-four-state-only' not in __import__('sys').argv:fire('two_hand_authoritative_fire',support_matrix=steered)")
+    source=replace_once(source,"        command(0,saved[0]);fire('single_hand_return_fire');data['checks']['source_and_actual_mesh_flow_passed']=True",
+                        """        if '--foregrip-four-state-only' in __import__('sys').argv:
+            data['four_state_only']=True;data['checks']['source_and_actual_mesh_flow_passed']=True
+            save();return
+        command(0,saved[0]);fire('single_hand_return_fire');data['checks']['source_and_actual_mesh_flow_passed']=True""")
+    return source
+
+
 def menu_source():
     source = (CODE / 'run_menu_firstperson_check.py').read_text(encoding='utf-8')
     source = replace_once(source, 'from record_projection import ProjectionRecording,encode',
@@ -260,6 +305,7 @@ def check_sources():
     sources['hammerburst_core_chain.py'] = core_source()
     sources['hammerburst_reload_chain.py'] = reload_source()
     sources['hammerburst_supply_boundary_chain.py'] = supply_source()
+    sources['hammerburst_support_chain.py'] = support_source()
     sources['run_menu_firstperson_check.py'] = menu_source()
     for name, source in sources.items():
         compile(source, str(CODE / name), 'exec')
@@ -275,6 +321,7 @@ def main():
     parser.add_argument('--check', action='store_true')
     parser.add_argument('--reader', choices=READERS)
     parser.add_argument('--reader-output')
+    parser.add_argument('--reader-flag',action='append',default=[])
     args, actions = parser.parse_known_args()
     binding = Binding(args.instance, args.output)
     hashes = check_sources()
@@ -289,9 +336,8 @@ def main():
     binding.state()
     binding.output.mkdir(parents=True, exist_ok=True)
     if args.reader:
-        if not args.reader_output or Path(args.reader_output).name != args.reader_output:
-            raise ValueError('Expected one local reader output name')
-        sys.argv = [str(CODE / args.reader), args.reader_output]
+        reader_arguments(args.reader,(args.reader_output or '',*args.reader_flag))
+        sys.argv = [str(CODE / args.reader), args.reader_output,*args.reader_flag]
         exec(compile(reader_source(args.reader), str(CODE / args.reader), 'exec'),
              {'__file__': str(CODE / args.reader), '__name__': '__main__', 'BOUND': binding})
         return
@@ -300,7 +346,7 @@ def main():
     core.__file__=str(CODE/'hammerburst_core_chain.py')
     exec(compile(core_source(),core.__file__,'exec'),core.__dict__)
     sys.modules[core.__name__]=core
-    for name,source in (('hammerburst_reload_chain',reload_source()),('hammerburst_supply_boundary_chain',supply_source())):
+    for name,source in (('hammerburst_reload_chain',reload_source()),('hammerburst_supply_boundary_chain',supply_source()),('hammerburst_support_chain',support_source())):
         adapted=types.ModuleType(name);adapted.__file__=str(CODE/(name+'.py'))
         exec(compile(source,adapted.__file__,'exec'),adapted.__dict__);sys.modules[name]=adapted
     module = types.ModuleType('equipment_controller_chain')

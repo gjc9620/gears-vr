@@ -25,6 +25,9 @@ def write(path,value):path.write_text(json.dumps(value,indent=2),encoding='utf-8
 def reload_test_mode(arguments):
     # A separate focused action path; never recovery/retry in a failed game.
     focused='--focused-loaded-replacement' in arguments
+    if '--foregrip-four-state' in arguments:
+        assert not focused,'Choose one actual action scope'
+        return dict(empty_only='0',scope='foregrip passive no-drive/follow -> Grip steering -> release passive, actual mesh/skeleton; no firing/reload')
     return dict(empty_only='0' if focused else '1',
                 scope='loaded replacement insertion diagnostic; empty reload still pending' if focused else 'full finite empty reload and return-fire')
 
@@ -170,6 +173,10 @@ def main():
     write(target/'candidate-manifest.json',manifest)
     env={k:v for k,v in os.environ.items() if not k.upper().startswith(('GEARS','PYTHON','XR','OPENXR'))}
     test_mode=reload_test_mode(sys.argv)
+    if '--foregrip-four-state' in sys.argv:
+        check=json.loads((AREA/'foregrip-private-adapter-checks.json').read_text())
+        assert check['passed'] and check['skeleton_exact_HB_class_and3parts'] and check['body115_and_identity_brackets_preserved']
+        assert check['operator_sha256']==hashlib.sha256((AREA/'hammerburst_isolated_operator.py').read_bytes()).hexdigest()
     env.update(GEARSVR_TEST_FINITE_RANGE_AMMO='1',GEARSVR_HAMMERBURST_EMPTY_RELOAD_ONLY=test_mode['empty_only'],
                GEARSVR_HAMMERBURST_RELOAD='1',GEARSVR_HAMMERBURST_REPLACEMENT='1',
                GEARSVR_LANCER_REVIEW_VOLUMES='0',PYTHONIOENCODING='utf-8')
@@ -239,6 +246,9 @@ def main():
             subprocess.run(python+[str(TOOL),'prepare','--name',name,'--manifest',str(target/'candidate-manifest.json'),
                                   '--config',str(AREA/'independent-r1/candidate-config.json')],check=True,stdout=log,stderr=subprocess.STDOUT,**common)
         write(target/'instance-binding.json',dict(name=name,root=str(selected),candidate=proof['dll_sha256']))
+        authored=('tools/vr-common/weapon_hammerburst_foregrip.h','tools/vr-common/hand_finger_pose.h')
+        write(selected/'hb-source-binding.json',dict(candidate_root=str(AREA/pg_candidate),dll_sha256=proof['dll_sha256'],
+              source_sha256={rel:hashlib.sha256((AREA/pg_candidate/'source'/rel).read_bytes()).hexdigest() for rel in authored}))
         if prepare_then_wait:
             result['prepared_waiting_for_resources']=True
             write(target/'active.json',result)
@@ -271,6 +281,8 @@ def main():
         command=python+[str(AREA/'hammerburst_isolated_operator.py'),'--instance',name,'--output',str(selected/'actions'),
                         '--startup-handoff','--playground-ready','--equipment-chain','--hammerburst-core',
                         '--hammerburst-reload','--hammerburst-replacement']
+        if '--foregrip-four-state' in sys.argv:
+            command=command[:-2]+['--hammerburst-support','--C-socket-contract','--foregrip-four-state-only']
         operator=subprocess.Popen(command,stdin=subprocess.DEVNULL,stdout=operator_log,stderr=subprocess.STDOUT,**common)
         result['operator_started']=True;result['operator_pid']=operator.pid;write(target/'active.json',result)
         deadline=time.monotonic()+300

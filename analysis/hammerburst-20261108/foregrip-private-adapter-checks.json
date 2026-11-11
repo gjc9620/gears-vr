@@ -1,0 +1,23 @@
+{
+  "passed": true,
+  "operator_sha256": "0440e195bca463c5d2886644c8cb9dd7f4e6312f22387ca9bb6f30b85241846b",
+  "compiled_sources": {
+    "read_private_input.py": "7295f7438a690282dbe0dc90d3379fb8fe822f475be35c816d78704fea8dc047",
+    "read_world_grips.py": "0c2838ef36dd66790c85d5778a4eec1a427ca7bfb1412b5800a33a2dbc078d4d",
+    "read_aim_metrics.py": "0d88591d76961688d83af63376b2a3345a23a32867a67a2166b9d6a1fc3bea16",
+    "read_private_skeleton.py": "5749ae089da7f85789bb0a3365a7b0c79108ec85661ab2e79a6416fc4542c863",
+    "equipment_controller_chain.py": "e7bf349dff7545b54c8fdf1af3549ae3c9837ce84569d7116df17404501a837f",
+    "hammerburst_core_chain.py": "1737565c47955866ee936dae51b275c2aa27ca06355d1ce2e5973cfd78901250",
+    "hammerburst_reload_chain.py": "dfc8fc5a28b8fce0545ee4af1d915f71dd93ba2d698eaa6906746239fb4c365b",
+    "hammerburst_supply_boundary_chain.py": "9df043ef1c06b1f2791ac67eabe31af8e94a5344b4e49844773717126c34b497",
+    "hammerburst_support_chain.py": "305e6e238a8732230fcab28f2e05685835855eef84344901037c40cd696352ce",
+    "run_menu_firstperson_check.py": "1e7ae1a8bae6fa475bd89a69502d77d999791b7f968c73b4ad6a20dfcae0e2ac"
+  },
+  "reader_flag_and_output_negatives": 6,
+  "pinned_source_negatives": 4,
+  "skeleton_exact_HB_class_and3parts": true,
+  "body115_and_identity_brackets_preserved": true,
+  "default_full_reload_unchanged": true,
+  "game_started": false,
+  "limits": "Adapter compilation and guarded binding/reader-scope tests only. Actual four-state mesh/wrist output still needs game evidence."
+}
