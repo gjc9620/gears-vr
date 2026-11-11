@@ -1,0 +1,24 @@
+{
+  "operator_exit": 0,
+  "normal_cleanup_verified": true,
+  "remaining_owned": {},
+  "projection_frames": 269,
+  "projection_errors": [],
+  "anchor_sources_unchanged": true,
+  "cover_reader_sources_unchanged": true,
+  "cloak_observations": {
+    "samples": 589,
+    "failures": []
+  },
+  "foreground_observations": {
+    "samples": 386,
+    "owned_activation": false
+  },
+  "forced_termination": false,
+  "shape_status": [
+    "cover_shape_snapshot_requested=1 attempted=1 finished=1 code=10 detail=7 bodies=0 actors=0 shapes=0 units=physx movement_permission=0 original_started=0,0 original_returned=0,0 world=2209382656 pawn=95225505408 scene=338 compose=20816 sequence=2771 thread=55008 admission=6 session_entered=1 session_stage=5 session_detail=10 begin_ns=222163784121700 end_ns=222163795877000",
+    "cover_shape_snapshot_owner_guard=35,0,0,0,0 session_guard=16,0,0,0,0 source_cause=0,0,0,0,0,0,0",
+    "cover_shape_snapshot_nested=0,5,0 cover_shape_snapshot_failed=0,4294967295 cover_shape_snapshot_progress=15,0,0,4294967295 cover_shape_snapshot_partial_unpublished=1 cover_shape_snapshot_partial_actor=2208582080,4807829184,95225809664,95226433600,140720218862288,3,1 cover_shape_snapshot_partial_arrays=0,0,0,0,0,0"
+  ],
+  "interpretation": "Actual actor0/member0 fails Stage15 body_link, shape_code5 links; original query calls0, no result published. Need correct exact owner-field qualification based on original constructor."
+}

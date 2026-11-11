@@ -1,0 +1,191 @@
+{
+  "frames": 269,
+  "recording_sha256": "72f88901e0cc974eee39dc27a7d49791e5940bde92b23427d6625997152bddaa",
+  "pages": [
+    {
+      "file": "J:\\codexWorktree\\gearsVr\\analysis\\cover-system-20261108\\shape-stage-runtime-r230\\runtime-r230\\overview-1.jpg",
+      "sha256": "9c33085eb9b9b26f3f8e4cafa6167afc01949387c75731bcb28e26f0989e15ad"
+    },
+    {
+      "file": "J:\\codexWorktree\\gearsVr\\analysis\\cover-system-20261108\\shape-stage-runtime-r230\\runtime-r230\\overview-2.jpg",
+      "sha256": "d9d9544fa445f91fc9129aa2950e2f0002bd68b49a9a02d1b9123cca0e0853d9"
+    },
+    {
+      "file": "J:\\codexWorktree\\gearsVr\\analysis\\cover-system-20261108\\shape-stage-runtime-r230\\runtime-r230\\overview-3.jpg",
+      "sha256": "632e066e37001d64dae22b47ed25f5678690f6d4bb27191343b77e891740e6b8"
+    },
+    {
+      "file": "J:\\codexWorktree\\gearsVr\\analysis\\cover-system-20261108\\shape-stage-runtime-r230\\runtime-r230\\overview-4.jpg",
+      "sha256": "88c98a4272f5b175b58dfa61a251e334940cfdcfee4c5386d2e9920c21cd237b"
+    },
+    {
+      "file": "J:\\codexWorktree\\gearsVr\\analysis\\cover-system-20261108\\shape-stage-runtime-r230\\runtime-r230\\overview-5.jpg",
+      "sha256": "120fcf14c8475fab0b1f699849e4920c9e42c97454806521da211ed13f6f377e"
+    },
+    {
+      "file": "J:\\codexWorktree\\gearsVr\\analysis\\cover-system-20261108\\shape-stage-runtime-r230\\runtime-r230\\overview-6.jpg",
+      "sha256": "e8fccaee2910700648ca3e4385fc5d801f9b3b8f7e68d6cf4849abe4fb477a63"
+    },
+    {
+      "file": "J:\\codexWorktree\\gearsVr\\analysis\\cover-system-20261108\\shape-stage-runtime-r230\\runtime-r230\\overview-7.jpg",
+      "sha256": "a869637d5f292b1669bbe32bf813b2a6cebdaa0195077aec52650937d8659245"
+    },
+    {
+      "file": "J:\\codexWorktree\\gearsVr\\analysis\\cover-system-20261108\\shape-stage-runtime-r230\\runtime-r230\\overview-8.jpg",
+      "sha256": "ca847779cec31dee61dfd07815a9133ee22288e95a65e9bf112848fa6cbedb88"
+    },
+    {
+      "file": "J:\\codexWorktree\\gearsVr\\analysis\\cover-system-20261108\\shape-stage-runtime-r230\\runtime-r230\\overview-9.jpg",
+      "sha256": "e60d9374216a15efa865074fa63b87234f5be8f0ecfe865e013f6f073e608f43"
+    },
+    {
+      "file": "J:\\codexWorktree\\gearsVr\\analysis\\cover-system-20261108\\shape-stage-runtime-r230\\runtime-r230\\overview-10.jpg",
+      "sha256": "bd21d93a768e0fcee4a5d3dd315a52b90f18ba9cc9d62dec3627b7c64f86733d"
+    },
+    {
+      "file": "J:\\codexWorktree\\gearsVr\\analysis\\cover-system-20261108\\shape-stage-runtime-r230\\runtime-r230\\overview-11.jpg",
+      "sha256": "d0f38008764479f3aecd1c9c5de86ebe1a7a68acf17362bd23de0c383deb85e4"
+    },
+    {
+      "file": "J:\\codexWorktree\\gearsVr\\analysis\\cover-system-20261108\\shape-stage-runtime-r230\\runtime-r230\\overview-12.jpg",
+      "sha256": "43c1c059840eee291199d6aa14f79ceaa4c45293d14bc83eeed7c3adac738a69"
+    },
+    {
+      "file": "J:\\codexWorktree\\gearsVr\\analysis\\cover-system-20261108\\shape-stage-runtime-r230\\runtime-r230\\overview-13.jpg",
+      "sha256": "48cadf204dc90690f693afb99ffb95c3a6a7b30e3c2aec9801582c48f5bbfa7c"
+    },
+    {
+      "file": "J:\\codexWorktree\\gearsVr\\analysis\\cover-system-20261108\\shape-stage-runtime-r230\\runtime-r230\\overview-14.jpg",
+      "sha256": "6654afed9817c22df0d1a58e841f4443f3c905fbcc9b5b0a9ee9da24ab297fa7"
+    }
+  ],
+  "contacts": [
+    {
+      "label": "cover_eye_neutral",
+      "file": "J:\\codexWorktree\\gearsVr\\analysis\\instances\\cover-1112-r230-cloak-shape-detail\\cover-output\\projection\\frame-00185.jpg",
+      "sha256": "3388166d628e01ef34f1ab824920e2097c9d1eda0ffdad383c9607fb26611cc0",
+      "event_wall_ns": 1794437365873348900,
+      "duration_seconds": 0.8050608,
+      "eligible_frames": 8,
+      "frame": {
+        "file": "frame-00185.jpg",
+        "time": 20.132475600024918,
+        "requested": 20.094690800004173,
+        "observed_wall_ns": 1794437366355012200,
+        "requested_wall_ns": 1794437366313961600,
+        "width": 960,
+        "height": 540
+      },
+      "same_C0_proven": false
+    },
+    {
+      "label": "cover_eye_turned",
+      "file": "J:\\codexWorktree\\gearsVr\\analysis\\instances\\cover-1112-r230-cloak-shape-detail\\cover-output\\projection\\frame-00204.jpg",
+      "sha256": "6269968c4acae5f0e9a35d5a216f9c6a53aba1c4553945ed756744d7eaf804b0",
+      "event_wall_ns": 1794437367979372300,
+      "duration_seconds": 0.8056924,
+      "eligible_frames": 7,
+      "frame": {
+        "file": "frame-00204.jpg",
+        "time": 22.18521000002511,
+        "requested": 22.16024520000792,
+        "observed_wall_ns": 1794437368406810300,
+        "requested_wall_ns": 1794437368379431100,
+        "width": 960,
+        "height": 540
+      },
+      "same_C0_proven": false
+    },
+    {
+      "label": "cover_eye_turn_restored",
+      "file": "J:\\codexWorktree\\gearsVr\\analysis\\instances\\cover-1112-r230-cloak-shape-detail\\cover-output\\projection\\frame-00223.jpg",
+      "sha256": "072e5765a6037247ac11c55a2211d5c776363f6b1159571f3516531a3a951d2a",
+      "event_wall_ns": 1794437370095848400,
+      "duration_seconds": 0.8066977,
+      "eligible_frames": 7,
+      "frame": {
+        "file": "frame-00223.jpg",
+        "time": 24.251302700024098,
+        "requested": 24.219762799999444,
+        "observed_wall_ns": 1794437370473032400,
+        "requested_wall_ns": 1794437370438378800,
+        "width": 960,
+        "height": 540
+      },
+      "same_C0_proven": false
+    },
+    {
+      "label": "cover_eye_raised",
+      "file": "J:\\codexWorktree\\gearsVr\\analysis\\instances\\cover-1112-r230-cloak-shape-detail\\cover-output\\projection\\frame-00242.jpg",
+      "sha256": "b07b50387af45dbbec1e7a2c87a4b5a15a43f3a7c60623cf55e017dc4eb7ae82",
+      "event_wall_ns": 1794437372138310200,
+      "duration_seconds": 0.8083357,
+      "eligible_frames": 7,
+      "frame": {
+        "file": "frame-00242.jpg",
+        "time": 26.29698750001262,
+        "requested": 26.283059700013837,
+        "observed_wall_ns": 1794437372519046800,
+        "requested_wall_ns": 1794437372501352500,
+        "width": 960,
+        "height": 540
+      },
+      "same_C0_proven": false
+    },
+    {
+      "label": "cover_eye_rise_restored",
+      "file": "J:\\codexWorktree\\gearsVr\\analysis\\instances\\cover-1112-r230-cloak-shape-detail\\cover-output\\projection\\frame-00261.jpg",
+      "sha256": "8aee752014a419f6fbc178cf3f33c3b3adc48eddd18aec4e9997d1b9e417838f",
+      "event_wall_ns": 1794437374181157300,
+      "duration_seconds": 0.8082507,
+      "eligible_frames": 7,
+      "frame": {
+        "file": "frame-00261.jpg",
+        "time": 28.366848300007405,
+        "requested": 28.342204700020375,
+        "observed_wall_ns": 1794437374588399900,
+        "requested_wall_ns": 1794437374561243500,
+        "width": 960,
+        "height": 540
+      },
+      "same_C0_proven": false
+    }
+  ],
+  "source": "actual private simulator projection",
+  "desktop_capture": false,
+  "full_span_personally_reviewed": false,
+  "headset_accepted": false,
+  "recording_errors": [],
+  "captured_span_complete": true,
+  "missing_contacts": [],
+  "encode_exit": 0,
+  "encoded_sha256": "3ef692370bcf7e4f831df3d80a45bb80513d88e43a0fa1ddfeb06c6389fbc699",
+  "personally_reviewed_contacts": [
+    {
+      "label": "cover_eye_neutral",
+      "sha256": "3388166d628e01ef34f1ab824920e2097c9d1eda0ffdad383c9607fb26611cc0",
+      "result": "FAIL own head/shoulder/torso obstruction in both eyes"
+    },
+    {
+      "label": "cover_eye_turned",
+      "sha256": "6269968c4acae5f0e9a35d5a216f9c6a53aba1c4553945ed756744d7eaf804b0",
+      "result": "FAIL own head/shoulder/torso obstruction in both eyes"
+    },
+    {
+      "label": "cover_eye_turn_restored",
+      "sha256": "072e5765a6037247ac11c55a2211d5c776363f6b1159571f3516531a3a951d2a",
+      "result": "FAIL own head/shoulder/torso obstruction in both eyes"
+    },
+    {
+      "label": "cover_eye_raised",
+      "sha256": "b07b50387af45dbbec1e7a2c87a4b5a15a43f3a7c60623cf55e017dc4eb7ae82",
+      "result": "FAIL own head/shoulder/torso obstruction in both eyes"
+    },
+    {
+      "label": "cover_eye_rise_restored",
+      "sha256": "8aee752014a419f6fbc178cf3f33c3b3adc48eddd18aec4e9997d1b9e417838f",
+      "result": "FAIL own head/shoulder/torso obstruction in both eyes"
+    }
+  ],
+  "visual_acceptance": false
+}
