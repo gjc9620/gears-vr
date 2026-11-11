@@ -4,5 +4,7 @@
   "exact_helper_and_caller_block": true,
   "game_started": false,
   "source_sha256": "75bff3808f12aa125e5002c761d6fee3072cc8039db41b628a28bf453293b40e",
-  "limits": "Animation/trajectory holders and cleanup are fakes. Actual predicate and rollback caller text compiled; not full engine/geometry or gameplay proof."
+  "limits": "Animation/trajectory holders and cleanup are fakes. Actual predicate and rollback caller text compiled; not full engine/geometry or gameplay proof.",
+  "original_history_regressions_passed": true,
+  "actual_pure_stroke_rollback_and_fresh_history_passed": true
 }

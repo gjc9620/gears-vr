@@ -626,3 +626,10 @@ extraction-observe-r1实际4条一致射线，随后service gate3/count4；disar
 Native6ff只读分类与PG extraction-observe-r1实际运行，6条一致射线。卡扣1→2、angle0.67082526时seek_latch_angle返回false，cleanup535；368后续source withdrawal104.1648ms。原cleanup pending是transaction.pending，不是seek_pending，故不冒称已确认未派发。Native总记录40，保留16项皆external/frame0/clock0未知；这是有界窗口，不能推断全部40分类或当作43944复现。原capture/session-status独立SHA归档。正常stop/launcher/Native/PG/XR，无FG/CLOAK违规。353帧无capture错误/编码0，3页48组paired概览亲审，视觉仍未接受。
 
 新latch-seek-gap-r1只对同一active/stopped动画inventory+serial、seek_pending=false且原received时间已过100ms、时钟单调的失败，恢复此前纯stroke/history并等待新鲜采样；不写过期姿态，不重放旧setter，不放宽轨迹/时效/授权，已派发/未知继续cleanup。12项实际helper/caller block边界检查及完整PG编译通过，SHA5bce08627e0a752c2293f6b96c6506ad90ac5d866fb0c569d1714068f6ac114e；尚未游戏验证。原匣/新匣及全13项目标保留，WAIT实验未选用。
+
+
+## 2026-11-11 game50828：当前候选短loaded换弹与回射通过
+
+PG5bce0862/Native6ff41044，新132753实际肩取/core6、原卡扣打开、原匣抽出、新匣获取/入座、关扣、return6及pause/B通过。typed72/78→78/72→72/72，12条有效且来源一致射线。原抽出10次observe全部接受，最后49.0108508mm/complete1，最后gap72.789ms。seek_unavailable及pose_gap_incumbent均0，不声称新修复分支已实练或先前失效已修好。全空仓/原匣保留/四态/双手/完美与取消/中断/视觉/头显仍待验证。
+
+operator/stop/launcher/Native/PG/XR均0，无FG/CLOAK违规，无强制终止。562帧无capture错误/编码0，3页48组paired概览亲审，近脸遮挡/重影/手分离/引导小字继续未接受；机械通过不代表视觉通过。下一步当前同构成完整空仓，不重复短路径取代全目标。

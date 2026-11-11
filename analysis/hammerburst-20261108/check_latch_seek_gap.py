@@ -55,3 +55,26 @@ cmd.write_text('@echo off\ncall "E:/vs/VC/Auxiliary/Build/vcvars64.bat" >nul\nif
 with (P/'seek-gap-test.log').open('wb') as log:r=subprocess.run(['cmd','/c',str(cmd)],stdout=log,stderr=subprocess.STDOUT,creationflags=subprocess.CREATE_NO_WINDOW)
 print((P/'seek-gap-test.log').read_text(errors='replace'));r.check_returncode()
 (P/'seek-gap-test-result.json').write_text(json.dumps(dict(exit_code=0,cases=12,exact_helper_and_caller_block=True,game_started=False,source_sha256=hashlib.sha256(code.encode()).hexdigest(),limits='Animation/trajectory holders and cleanup are fakes. Actual predicate and rollback caller text compiled; not full engine/geometry or gameplay proof.'),indent=2))
+
+# The real pure stroke must discard an uncommitted close, then use later
+# individually bounded original producer points rather than replay the old seek.
+text=(P/'source/tools/vr-common/weapon_hammerburst_latch_history_test.cpp').read_text()
+needle='    std::puts("HB original-point mechanical history:'
+case=r'''    {
+        auto a=sample(.0242935013,1,1000);
+        HammerburstLatchStroke stroke;assert(stroke.begin(g,a,.0242935013));const auto before=stroke;
+        assert(hammerburst_latch_history(stroke,points[2],points,3)==HammerburstLatchMotion::closed);
+        stroke=before;assert(stroke.angle()==before.angle()&&stroke.last_observation_ms()==1000);
+        std::array<HammerburstLatchSample,9> fresh{};fresh[0]=a;
+        fresh[1]=sample(.018,2,1030);fresh[2]=sample(.012,3,1060);
+        fresh[3]=sample(.006,4,1090);fresh[4]=sample(0,5,1120);
+        assert(hammerburst_latch_history(stroke,fresh[4],fresh,5)==HammerburstLatchMotion::closed);
+        assert(stroke.angle()==0&&stroke.last_observation_ms()==1120);
+    }
+'''
+assert text.count(needle)==1;text=text.replace(needle,case+needle);target=P/'latch-history-rollback-test.cpp';target.write_text(text)
+cmd=P/'latch-history-rollback-test.cmd';exe=P/'latch-history-rollback-test.exe'
+cmd.write_text('@echo off\ncall "E:/vs/VC/Auxiliary/Build/vcvars64.bat" >nul\nif errorlevel 1 exit /b %errorlevel%\n'+f'cl /nologo /O2 /std:c++17 /W4 /WX /UNDEBUG /EHsc /I"{P / "source/tools/vr-common"}" "{target}" /Fo"{P / "latch-history-rollback-test.obj"}" /Fe"{exe}"\nif errorlevel 1 exit /b %errorlevel%\n"{exe}"\nexit /b %errorlevel%\n')
+with (P/'latch-history-rollback-test.log').open('wb') as log:subprocess.run(['cmd','/c',str(cmd)],check=True,stdout=log,stderr=subprocess.STDOUT,creationflags=subprocess.CREATE_NO_WINDOW)
+p=P/'seek-gap-test-result.json';v=json.loads(p.read_text());v.update(original_history_regressions_passed=True,actual_pure_stroke_rollback_and_fresh_history_passed=True);p.write_text(json.dumps(v,indent=2))
+print((P/'latch-history-rollback-test.log').read_text(errors='replace'))

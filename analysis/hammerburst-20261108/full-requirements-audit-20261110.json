@@ -65,6 +65,10 @@
         {
           "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-22048-first-failure-analysis.json",
           "sha256": "11157487687000fab7d21c4793074047a46e8d9edc74ff5b1bdd1403e7ef4d44"
+        },
+        {
+          "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-50828-focused-result.json",
+          "sha256": "20219257795befa91694f268819ec3d1c42cd4dfc6d994e625f8f3e4c0039378"
         }
       ]
     },
@@ -157,6 +161,10 @@
         {
           "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-22812-first-failure-analysis.json",
           "sha256": "7bfbbcd9a3393ae95d02ff906b07f8b536de3a3a4a4dd9c60ae31e6070bdb994"
+        },
+        {
+          "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-50828-focused-result.json",
+          "sha256": "20219257795befa91694f268819ec3d1c42cd4dfc6d994e625f8f3e4c0039378"
         }
       ]
     },
@@ -192,7 +200,7 @@
       "id": "replacement",
       "requirement": "肩取新匣、持续持握入槽、普通换弹",
       "status": "current_loaded_replace_and_return_counts_confirmed",
-      "limit": "Actual22992 loaded replacement typed72/78->78/72 and return6->72/72 passed, live6-point history/early priority/latch/supply. Empty/retained/all-flow stability and visual surface fit remain unaccepted.",
+      "limit": "Actual50828 PG5bce/Native6ff typed72/78->78/72->72/72; original extraction accepted10samples/complete49.01mm, newmag/close/return6 passed. Pose-gap/seek-gap repairs not exercised; full empty/retained/fit remain open.",
       "evidence": [
         {
           "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-53224-review.json",
@@ -233,6 +241,10 @@
         {
           "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-22812-first-failure-analysis.json",
           "sha256": "7bfbbcd9a3393ae95d02ff906b07f8b536de3a3a4a4dd9c60ae31e6070bdb994"
+        },
+        {
+          "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-50828-focused-result.json",
+          "sha256": "20219257795befa91694f268819ec3d1c42cd4dfc6d994e625f8f3e4c0039378"
         }
       ]
     },
@@ -324,6 +336,10 @@
         {
           "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-22992-focused-result.json",
           "sha256": "577273e37ba5591facb7696cf50ed9ec1dc29347cce195c09c89b7e67e7eebb3"
+        },
+        {
+          "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-50828-focused-result.json",
+          "sha256": "20219257795befa91694f268819ec3d1c42cd4dfc6d994e625f8f3e4c0039378"
         }
       ]
     },
@@ -336,6 +352,10 @@
         {
           "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-22992-focused-result.json",
           "sha256": "577273e37ba5591facb7696cf50ed9ec1dc29347cce195c09c89b7e67e7eebb3"
+        },
+        {
+          "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-50828-focused-result.json",
+          "sha256": "20219257795befa91694f268819ec3d1c42cd4dfc6d994e625f8f3e4c0039378"
         }
       ]
     },
@@ -380,6 +400,10 @@
         {
           "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-22812-first-failure-analysis.json",
           "sha256": "7bfbbcd9a3393ae95d02ff906b07f8b536de3a3a4a4dd9c60ae31e6070bdb994"
+        },
+        {
+          "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-50828-focused-result.json",
+          "sha256": "20219257795befa91694f268819ec3d1c42cd4dfc6d994e625f8f3e4c0039378"
         }
       ]
     },
@@ -444,15 +468,19 @@
         {
           "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-22812-first-failure-analysis.json",
           "sha256": "7bfbbcd9a3393ae95d02ff906b07f8b536de3a3a4a4dd9c60ae31e6070bdb994"
+        },
+        {
+          "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-50828-focused-result.json",
+          "sha256": "20219257795befa91694f268819ec3d1c42cd4dfc6d994e625f8f3e4c0039378"
         }
       ]
     }
   ],
   "completion_proven": false,
   "goal_active": true,
-  "immediate_next": "Save strict pre-dispatch expiry rollback candidate, then one private short loaded with Native loss classification. Verify seek_unavailable wait/pending record and actual opening. No unknown dispatch replay; all13 retained.",
+  "immediate_next": "Fresh FULL empty using same identified PG5bce/Native6ff; actual78 drain/veto/replacement78R0/close/return6 finaltyped72R0. No short-pass substitution for full13 goal.",
   "historical_evidence_does_not_certify_current_PG": true,
-  "candidate_runtime_status": "Actual22812 core6 passed; original latch seekfailed opening angle.6708/cleanup535. Extraction/newmag not reached. Normal cleanup.",
+  "candidate_runtime_status": "latch-seek-gap-r1/Native6ff actual50828 short loaded replacement+return6/counts passed; neither new repair branch exercised. All own cleanup0.",
   "previous_recorded_candidate": {
     "name": "hammerburst-prepared-20261110-unheld-input-r1",
     "prepared_sha256": "76a2ae8cc56e4165b77ca5d17a9e6469ff66323e917be5a8b46da44df4f0bb58"
@@ -475,8 +503,8 @@
   "latest_service_first_failure": "runtime-3112-first-failure-analysis.json",
   "latest_startup_failure": "runtime-49732-startup-failure.json",
   "latest_runtime_failure": "runtime-22812-first-failure-analysis.json",
-  "latest_runtime_result": "runtime-22812-first-failure-analysis.json",
-  "latest_focused_pass": "runtime-22992-focused-result.json",
+  "latest_runtime_result": "runtime-50828-focused-result.json",
+  "latest_focused_pass": "runtime-50828-focused-result.json",
   "visual_audit_recording_repair": "Corrected finalizer wrong ID fivepartfitting→part_fitting, attached reviewed22992 evidence also to guides, asserted target IDs exist. No requirement/score/acceptance change and no overwrite of current052600 runtime blocker.",
   "resource_release_evidence": {
     "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\coordinator-multi-20261110\\owner-resource-release-20261111.json",
