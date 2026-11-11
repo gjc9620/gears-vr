@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "scope": "full HB objective; no scope reduction",
-  "current_candidate": "Private latch-observation-wait-r1 PGb03ad129 with unchanged Native71f280b0. Compiled,12 exact seek cases+actual relative/history/stationary caller+existing reload/history tests passed. Not game tested; all13/fullflow/headset still incomplete.",
+  "current_candidate": "PGb03ad129 observation-retention candidate compiled/tested and actual38256 full flow failed in opening.78rays/emptyveto passed; stale-before581 then incumbent absent587, Nativeinput_loss0. NewWAIT0, causal recovery not exercised. All13 retained.",
   "prepared_sha256": "20d8a6cd15b89c89b938aa201086c9d590251a2be74b2bd6d4fa72bd47d27824",
   "requirements": [
     {
@@ -518,8 +518,8 @@
   "restore_verifier_status": "Optional --hammerburst-park-restore input action hook integrated into private reload adapter; five synthetic action/receipt regressions passed. Actual park/redraw/new-grant/native-resume, typed conservation, UI/reward and complete return-fire require game evidence.",
   "latest_service_first_failure": "runtime-3112-first-failure-analysis.json",
   "latest_startup_failure": "runtime-49732-startup-failure.json",
-  "latest_runtime_failure": "runtime-4400-first-failure-analysis.json",
-  "latest_runtime_result": "runtime-4400-first-failure-analysis.json",
+  "latest_runtime_failure": "runtime-38256-first-failure-analysis.json",
+  "latest_runtime_result": "runtime-38256-first-failure-analysis.json",
   "latest_focused_pass": "runtime-50828-focused-result.json",
   "visual_audit_recording_repair": "Corrected finalizer wrong ID fivepartfitting\u2192part_fitting, attached reviewed22992 evidence also to guides, asserted target IDs exist. No requirement/score/acceptance change and no overwrite of current052600 runtime blocker.",
   "resource_release_evidence": {
@@ -587,5 +587,12 @@
     "gap_ms": 245,
     "ring_limits_unchanged": true
   },
-  "history_capacity_correction": "Actual frozen MotionHistory capacity is8, not6. Actual4400 rollback4679\u21924689 delta10 necessarily refused by original build guard; retained4683\u21924689 delta6 is only the next required span, not a new capacity. No limit change."
+  "history_capacity_correction": "Actual frozen MotionHistory capacity is8, not6. Actual4400 rollback4679\u21924689 delta10 necessarily refused by original build guard; retained4683\u21924689 delta6 is only the next required span, not a new capacity. No limit change.",
+  "latch_observation_retention_candidate": {
+    "source_checkpoint": "c14270a9",
+    "runtime": "runtime-38256-first-failure-analysis.json",
+    "wait_branch_exercised": false,
+    "fullflow_passed": false,
+    "limits": "Actual pure kernels+12seek cases passed; synthetic intermediates, no successful original4400 game recovery yet."
+  }
 }

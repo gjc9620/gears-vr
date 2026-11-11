@@ -1,0 +1,29 @@
+from pathlib import Path
+import hashlib,json,re,shutil
+A=Path(__file__).resolve().parent;R=A.parents[1];I=R/'analysis/instances/hb-cloak-1111-143359';D=I/'actions/menu-firstperson-38256-143418';T=A/'runtime-38256-text'
+def read(p):return json.loads(p.read_text(encoding='utf-8-sig'))
+def write(p,v):p.write_text(json.dumps(v,indent=2),encoding='utf-8')
+def rows(prefix,s):return [dict(re.findall(r'(\w+)=([^\s]+)',l)) for l in s.splitlines() if l.startswith(prefix+' ')]
+p=A/'runtime-38256-first-failure-analysis.json';v=read(p)
+for source in (D/'hammerburst-empty-reload.json',D/'ordinary_empty_replacement/hammerburst-replacement.json',I/'native/capture-status.txt',I/'native/session-status.txt'):
+ target=T/source.name;shutil.copy2(source,target);digest=hashlib.sha256(source.read_bytes()).hexdigest();assert hashlib.sha256(target.read_bytes()).hexdigest()==digest
+ v['verified_archive'].append(dict(source=str(source),archive=str(target),sha256=digest))
+v['empty']=read(D/'hammerburst-empty-reload.json');v['replacement']=read(D/'ordinary_empty_replacement/hammerburst-replacement.json')
+assert v['actual_trajectory_count']==78 and v['trajectory_consistent'] and v['empty']['checks']['empty_trigger_preserves_L0_R78_no_shot']
+raw=(T/'playground-38256.log').read_bytes();pg=raw.decode('utf-16' if raw[:2]==b'\xff\xfe' else 'utf-8-sig',errors='replace')
+for prefix in ('hammerburst_release_debt_wait','hammerburst_stale_debt_wait','hammerburst_pose_gap_incumbent','hammerburst_latch_seek_unavailable','hammerburst_latch_history','hammerburst_latch_rejected','hammerburst_reload_cleanup','native_equipment_support_withdrawal'):
+ v[prefix+'_rows']=rows(prefix,pg)
+assert not v['hammerburst_latch_seek_unavailable_rows']
+w=v['native_equipment_support_withdrawal_rows'];first=next(r for r in w if r.get('frame')=='581');lost=next(r for r in w if r.get('frame')=='587')
+assert first['reason']=='5' and first['candidate_lease']=='3' and lost['candidate_lease']=='0'
+raw=(T/'capture-status.txt').read_bytes();s=raw.decode('utf-16' if raw[:2]==b'\xff\xfe' else 'utf-8-sig',errors='replace');v['native_age_summary']=rows('stereo_hand_loss_summary',s);v['native_input_loss']=dict(re.findall(r'(weapon_hand_input_loss\w*)=([^\s]+)',s));assert v['native_input_loss']['weapon_hand_input_loss_total']=='0'
+v['native_sha256']=read(A/'native-render-age-r1/prepared.json')['native_sha256']
+v['interpretation']='PGb03ad129/Native71f280b0 actual full finite flow78 consistent rays and empty0/78 no-shot/veto passed. Opening1→2 only, actual angle.00908119557 at cleanup, NOT opened3 or oldmag4. First captured source stale_before581 still magazinelease3; successor587 nolease, later590 game_difference10. Nativeinput_loss0. Exact unavailable_frame only preserves new-mag ammo lease and otherwise clearsheld/stroke: opening logical incumbent withdrawal is the next bounded causal hypothesis. No observation-retention WAIT marker; specific4400 recovery not live exercised. Oldmag4 wait8s timed out; cleanup651 followed. No replacement/return12s proof.'
+v['next_bounded_source_question']='Reproduce opening/closing exact magazine-latch incumbent loss through actual Client/Native-owner fixture. Keep only already-owned lease at original lifecycle across publication/stale_before if demonstrated; fresh Native prepare/commit must independently check realUP/tracking/identity/mount. No Frame/action/clock or new grab; no old-mag broadening without evidence. Preserve original stroke/ring checks. Current new-mag-only20-case fixture is reusable but expectations must change only for specifically evidenced latch states.'
+v['media'].update(encoded=True,encode_exit=0,personally_reviewed_overview=True,reviewed_pairs=48,visual='Oversized near-right-eye gun, ghost/separated hand, intermittent white geometry remain. No dense/all-angle contact/headset acceptance.');write(p,v)
+p=A/'runtime-38256-media-review/prepared.json';m=read(p);m.update(overview_reviewed=True,reviewed_pairs=48,full_fit_accepted=False,physical_headset_accepted=False,findings=v['media']['visual']);write(p,m)
+p=A/'full-requirements-audit-20261110.json';a=read(p);assert len(a['requirements'])==13;a.update(latest_runtime_failure='runtime-38256-first-failure-analysis.json',latest_runtime_result='runtime-38256-first-failure-analysis.json',requirements_complete=False,current_candidate='PGb03ad129 observation-retention candidate compiled/tested and actual38256 full flow failed in opening.78rays/emptyveto passed; stale-before581 then incumbent absent587, Nativeinput_loss0. NewWAIT0, causal recovery not exercised. All13 retained.')
+a['latch_observation_retention_candidate']=dict(source_checkpoint='c14270a9',runtime='runtime-38256-first-failure-analysis.json',wait_branch_exercised=False,fullflow_passed=False,limits='Actual pure kernels+12seek cases passed; synthetic intermediates, no successful original4400 game recovery yet.');write(p,a)
+p=A/'active-runtime-wait.json';a=read(p);a.update(terminal=True,game_pid=38256,runner_last_poll='34333 terminal1; stop/launcher/Native/PG/XR0; own game+children gone, noforced; encode0',next=v['next_bounded_source_question']);write(p,a)
+with (R/'docs/hammerburst-development-20261108.md').open('a',encoding='utf-8') as f:f.write('\n\n## 2026-11-11 实际38256：开盖登记在来源撤回后丢失\n\nPGb03ad129/Native71f280b0原普通准入完整空仓流程，78条一致射线和0/78无射线/veto通过。开盖仅1→2，未到打开3/原弹匣4，cleanup时实际角0.00908119557。首次捕获stale_before581仍magazinelease3，587无lease，590game_difference10；Nativeinput_loss0、外层age48次保留。新观察保留WAIT没有命中，不宣称4400恢复修复；后续to4等待8s超时，651正常cleanup。源码unavailable_frame目前只保护new_mag ammo，其余清held/stroke，下一步用原Client/Native-owner复现opening/closing同一latch登记在pose撤回后丢失；只在证据支持的状态保留逻辑incumbent，不返回旧Frame、不派发动作/续时，不拓展old_mag，真实UP/失跟踪/身份与mount仍由下一独立新鲜prepare/commit处理。正常清理全0、无forced，523帧错误空/编码0、3页48对亲阅，贴合仍不合格。全部13项保留，新12s回射窗口仍缺实测。\n')
+print(json.dumps(dict(shots=78,new_wait_count=0,first_withdrawal=first,next_lost=lost,native_input_loss=0)))

@@ -1,14 +1,13 @@
 {
-  "candidate": "render-age-pg-r1",
-  "terminal": true,
-  "native_candidate": "native-render-age-r1",
-  "source_checkpoint": "c5b9ca7f",
   "requirements_complete": false,
-  "runner_session_id": 41741,
-  "next": "Rollback discards an already validated non-dispatched trajectory segment, increasing next required ring span from137ms to245ms. Relative::build caps sequence delta to original six-sample history. Reproduce with actual pure kernel and exact sequence/time fields before changing policy. Candidate direction: distinguish validated path observation from actual mechanical angle; never commit angle/stage/action while seek unavailable, no gap/ring expansion, current lease/current source still mandatory. Must cover stationary pending endpoint and release/identity loss before any repair claim.",
+  "runner_session_id": 34333,
+  "candidate": "latch-observation-wait-r1",
   "all13_requirements_retained": true,
-  "instance": "hb-cloak-1111-141741",
-  "comparison": "None; ordinary canonical resource admission restored after coordinator end notice",
-  "game_pid": 4400,
-  "runner_last_poll": "41741 terminal1; stop/launcher/Native/PG/XR0; own game+children gone, noforced; encode0"
+  "terminal": true,
+  "instance": "hb-cloak-1111-143359",
+  "native_candidate": "native-render-age-r1",
+  "source_checkpoint": "c14270a9",
+  "next": "Reproduce opening/closing exact magazine-latch incumbent loss through actual Client/Native-owner fixture. Keep only already-owned lease at original lifecycle across publication/stale_before if demonstrated; fresh Native prepare/commit must independently check realUP/tracking/identity/mount. No Frame/action/clock or new grab; no old-mag broadening without evidence. Preserve original stroke/ring checks. Current new-mag-only20-case fixture is reusable but expectations must change only for specifically evidenced latch states.",
+  "game_pid": 38256,
+  "runner_last_poll": "34333 terminal1; stop/launcher/Native/PG/XR0; own game+children gone, noforced; encode0"
 }

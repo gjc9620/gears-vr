@@ -638,3 +638,8 @@ Native71f280b0/PGb7dcb9ec实测72条一致射线，core6加11组六连发，最�
 ## 2026-11-11 已验证观察与实际角度分离候选（尚未game）
 
 4400精确previous序号4679、已验证4683、下一4689：原MotionHistory容量实际8（先前六点描述不准确，六是本次后续跨度），回退后delta10必被原build拒绝，保留观察后delta6可满足原范围。新私有PGb03ad129保留已验证但未派发的纯stroke/history，seek失败时实际angle/stage不动；下一新鲜同Grab帧仍走原setter。静止的待提交关闭/中途/打开端点由原纯核读取已观察结果，已提交端点不重复seek；失跟踪/松手/token/epoch/边沿变化保留拒绝。12项实际谓词/调用块、实际relative/history/stroke与静止调用块检查、原reload/history测试通过，完整PG编译通过。中间轨迹位置/时间是有界合成夹具，不是实际完整producer ring或引擎setter证明；尚未game。Native71f280b0/XR/公共v71不变，全部13项保留。
+
+
+## 2026-11-11 实际38256：开盖登记在来源撤回后丢失
+
+PGb03ad129/Native71f280b0原普通准入完整空仓流程，78条一致射线和0/78无射线/veto通过。开盖仅1→2，未到打开3/原弹匣4，cleanup时实际角0.00908119557。首次捕获stale_before581仍magazinelease3，587无lease，590game_difference10；Nativeinput_loss0、外层age48次保留。新观察保留WAIT没有命中，不宣称4400恢复修复；后续to4等待8s超时，651正常cleanup。源码unavailable_frame目前只保护new_mag ammo，其余清held/stroke，下一步用原Client/Native-owner复现opening/closing同一latch登记在pose撤回后丢失；只在证据支持的状态保留逻辑incumbent，不返回旧Frame、不派发动作/续时，不拓展old_mag，真实UP/失跟踪/身份与mount仍由下一独立新鲜prepare/commit处理。正常清理全0、无forced，523帧错误空/编码0、3页48对亲阅，贴合仍不合格。全部13项保留，新12s回射窗口仍缺实测。
