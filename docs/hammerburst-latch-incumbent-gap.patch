@@ -1,0 +1,32 @@
+--- a/tools/playground/weapon_hammerburst_runtime.inl
++++ b/tools/playground/weapon_hammerburst_runtime.inl
+@@ -625,18 +625,24 @@
+     stage=Stage::closing;held={};released=false;stroke.reset();
+ }
+ // A missing/expired render publication is not a physical release. Preserve
+-// only this exact already-held new magazine for the next independent fresh
++// only this exact held new magazine or observed latch for the next independent fresh
+ // Native prepare. No Frame, action, clock, grant or motion is produced here.
+ // Existing insertion/history continuity checks still govern the next sample.
+ void unavailable_frame(hand::FrameReadObservation const& failure) noexcept {
+     const bool pose_gap=failure.failure==hand::FrameReadFailure::publication||
+         failure.failure==hand::FrameReadFailure::stale_before;
+-    if(pose_gap&&stage==Stage::new_magazine&&new_item&&held.kind==hand::LeaseKind::ammo&&
+-       held.id==new_item&&hand::lease_valid(held,opening.identity.lifecycle)){
++    const bool same_lifecycle=hand::lease_valid(held,opening.identity.lifecycle);
++    const bool held_new_magazine=stage==Stage::new_magazine&&new_item&&held.kind==hand::LeaseKind::ammo&&held.id==new_item&&same_lifecycle;
++    // Only an already observed actual latch grab, never acquisition/hover.
++    // The next original prepare independently checks current input/token,
++    // tracking, identities and mount before granting any fresh Frame/action.
++    const bool held_latch=(stage==Stage::opening||stage==Stage::closing)&&
++        !released&&stroke.active()&&held.kind==hand::LeaseKind::magazine&&same_lifecycle;
++    if(pose_gap&&(held_new_magazine||held_latch)){
+         static unsigned rows{};
+         if(log_file&&rows<8){++rows;
+-            fwprintf(log_file,L"hammerburst_pose_gap_incumbent failure=%u frame=%llu sequence=%llu item=%llu action=0\n",
+-                unsigned(failure.failure),failure.frame,failure.sequence,new_item);fflush(log_file);}
++            fwprintf(log_file,L"hammerburst_pose_gap_incumbent failure=%u frame=%llu sequence=%llu item=%llu action=0 stage=%u latch=%u\n",
++                unsigned(failure.failure),failure.frame,failure.sequence,held.id,unsigned(stage),unsigned(held_latch));fflush(log_file);}
+         return;
+     }
+     held={};stroke.reset();insertion.reset();extraction.reset();released=false;

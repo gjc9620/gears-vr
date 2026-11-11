@@ -1,0 +1,14 @@
+{
+  "actual_helper_sha256": "e72b8e9582f3073e72152cadaecc3a3390f11b667d850b193306911280730df1",
+  "fixture_sha256": "336860f1ca9865b35affc03da191344d12460bd4d097e58180c2b6b97b675664",
+  "exit_code": 0,
+  "game_started": false,
+  "scope": "Exact reset helper plus existing real HandClient/owner fixture; not runtime or full geometry evidence",
+  "transcript": "pose-gap-test.cpp\nHB actual HandClient supply handoff: 4 cases; reproduce difference5, preserve first Frame and next strict retained Frame, reject busy/invalidation; local Host only\nHB exact unavailable helper + actual Client/owner: 60 additional cases; old reset reproduces lease_lost, new retains only fresh successor, real UP releases\n",
+  "latch_opening_and_closing_checked": true,
+  "actual_legacy_helper_reproduced_loss": true,
+  "fresh_successor_retains_same_lease": true,
+  "real_up_releases": true,
+  "acquisition_and_old_magazine_not_extended": true,
+  "limits": "Actual Client, sole-owner adapter, exact old/new unavailable helper. Reflected game, animator, geometric contact and full broker remain fixture/model bounds; not game acceptance."
+}

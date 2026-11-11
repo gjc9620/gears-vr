@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "scope": "full HB objective; no scope reduction",
-  "current_candidate": "PGb03ad129 observation-retention candidate compiled/tested and actual38256 full flow failed in opening.78rays/emptyveto passed; stale-before581 then incumbent absent587, Nativeinput_loss0. NewWAIT0, causal recovery not exercised. All13 retained.",
+  "current_candidate": "Private latch-incumbent-gap-r1 PG5b3d71fb with Native71f280b0; full compiled,60 added helper/Client/sole-owner fixture cases pass including actual legacy opening/closing loss and current successor/realUP. No game evidence yet; all13 incomplete.",
   "prepared_sha256": "20d8a6cd15b89c89b938aa201086c9d590251a2be74b2bd6d4fa72bd47d27824",
   "requirements": [
     {
