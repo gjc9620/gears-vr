@@ -1,0 +1,9 @@
+{
+  "scope": "Prebirth admission refusal only",
+  "game_started": false,
+  "worker_registered": false,
+  "normal_cleanup_required": false,
+  "normal_cleanup_verified": false,
+  "start_request_consumed": true,
+  "error": "Traceback (most recent call last):\r\n  File \"C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\tools\\multi-instance\\isolated_sim.py\", line 272, in <module>\r\n    if __name__=='__main__':main()\r\n                            ^^^^^^\r\n  File \"C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\tools\\multi-instance\\isolated_sim.py\", line 268, in main\r\n    receipt=first_admission(lambda:RuntimeGuard('IndependentMemoryAdmission',timeout_ms=1000),\r\n            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\r\n  File \"C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\tools\\multi-instance\\runtime_receipts.py\", line 39, in first_admission\r\n    probe_result=probe()\r\n                 ^^^^^^^\r\n  File \"C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\tools\\multi-instance\\isolated_sim.py\", line 256, in probe\r\n    disk=require_disk(ROOT)\r\n         ^^^^^^^^^^^^^^^^^^\r\n  File \"C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\tools\\multi-instance\\runtime_receipts.py\", line 57, in require_disk\r\n    raise RuntimeError(json.dumps(receipt)+'; insufficient evidence-volume space; no new game started; continue independent work and retry after space is released')\r\nRuntimeError: {\"check\": \"disk_admission\", \"path\": \"C:\\\\Users\\\\11\\\\.codex\\\\worktrees\\\\6dof-single\\\\gearsVr\", \"free_bytes\": 4228911104, \"minimum_free_bytes\": 4294967296, \"admitted\": false}; insufficient evidence-volume space; no new game started; continue independent work and retry after space is released\r\n"
+}

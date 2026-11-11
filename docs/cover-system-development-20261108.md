@@ -2459,3 +2459,11 @@ Native58c2fe1d9fa2a108010f33008278060f9ad3a2ccde53d3d87f3e27c829680c7f编译链�
 r159准备时绑定到新的isolated_sim/runtime_receipts SHA7e630461…eaa8/385f5e5a…eee3；启动前发现变化并停止进入启动步骤。核对python-prelaunch-rejection-20261111.json四项实际源SHA，且把当前两个共享工具中仅有的新typed prelaunch cleanup分支反向移除后，恢复到此前e6b4a0ae/7db0a084精确哈希，证明原准入/等待/资源/身份代码未改。launcher/Start-DebugGame的新正证须exact receipt路径、脚本SHA、三种attempt均false、出生回执不存在；worker仅在exact自有launcher退出后采用，不伪造game identity或owned_game_absent，旧worker不热更新。不回复/转发，不启动额外检查游戏；复用来源记录的5/81/15离线结果，未称本方重新执行。
 
 r159无claim/start-request/worker/index，原准备记录不改、不复用此名；下一新实例将launcher.py和Start-DebugGame.ps1补为第12/13项启动绑定，另仍绑定共享两个准入工具SHA。详情schema-repeat-r158/shared-startup-review.json。Native58c2fe1d候选仍未运行，完整目标active。
+
+## r160名额/r161磁盘出生前拒绝与本方关闭缓存归档（2026-11-11）
+
+r160准备/操作导入检查通过，Native58c2fe1d候选及13项启动绑定不变；共享600秒届满因旧HB052600/旧Lancer139 worker占用拒绝，无worker/log/index/game。收到主人明确授权释放旧worker的协调回执，证据owner-resource-release-20261111.json；是另行强制结束遗留Python worker、非游戏强杀或正常生命周期通过，本方未执行/回复/转发，不把旧失败改绿。r160请求已消费，不复用。
+
+资源释放后用新r161完成准备/导入检查，正式启动边界磁盘4228911104低于原4294967296字节下限而拒绝，无worker/log/index/game，未放宽磁盘阈值。两次normal_cleanup_required false、verified false，不补造正常清理；原结果/start-request保存在schema-repeat-r158/runtime-r160-prebirth和runtime-r161-prebirth。候选仍未执行游戏，无投影或query证据。
+
+随后只检查本方r148/r150/r152/r155/r157的normal_cleanup true且精确game/owner/XR/worker身份均不在，逐文件将各自PSOCache/sp_factory_p/D3DGraphics.ushaderprecache移动到J:/gearsVr/analysis/cover-disk-recovery-20261111-r162/PSOCache。5文件共498835255字节，绝对source/destination均检查留在指定根，逐个移动前后SHA一致；未递归删除，未动源码/二进制/日志/媒体或其他/未清理实例。archive-plan/result保留原路径、目标和哈希，旧实例不重跑。操作后C盘观察6726025216字节可用，不能把全部空间变化归于本方499MB归档。下一次新实例仍重新执行真实磁盘/内存/身份/单次启动门。源码7c853c7f和准备依赖f549aab6已保存；完整掩体/年龄拒绝/画面仍未修复验收，目标active、25%及publicv71不变。

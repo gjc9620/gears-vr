@@ -1,0 +1,32 @@
+[
+  {
+    "name": "cover-1111-r148-cloak-current",
+    "source": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\cover-1111-r148-cloak-current\\LocalAppData\\Coalition\\WarGame\\PSOCache\\sp_factory_p\\D3DGraphics.ushaderprecache",
+    "length": 99767051,
+    "sha256": "99bf3e7b88773e760ae08099d5d6b35168d19f2fa038fa5ab5d9f603fd541740"
+  },
+  {
+    "name": "cover-1111-r150-cloak-cause",
+    "source": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\cover-1111-r150-cloak-cause\\LocalAppData\\Coalition\\WarGame\\PSOCache\\sp_factory_p\\D3DGraphics.ushaderprecache",
+    "length": 99767051,
+    "sha256": "99bf3e7b88773e760ae08099d5d6b35168d19f2fa038fa5ab5d9f603fd541740"
+  },
+  {
+    "name": "cover-1111-r152-cloak-entry",
+    "source": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\cover-1111-r152-cloak-entry\\LocalAppData\\Coalition\\WarGame\\PSOCache\\sp_factory_p\\D3DGraphics.ushaderprecache",
+    "length": 99767051,
+    "sha256": "99bf3e7b88773e760ae08099d5d6b35168d19f2fa038fa5ab5d9f603fd541740"
+  },
+  {
+    "name": "cover-1111-r155-cloak-start",
+    "source": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\cover-1111-r155-cloak-start\\LocalAppData\\Coalition\\WarGame\\PSOCache\\sp_factory_p\\D3DGraphics.ushaderprecache",
+    "length": 99767051,
+    "sha256": "99bf3e7b88773e760ae08099d5d6b35168d19f2fa038fa5ab5d9f603fd541740"
+  },
+  {
+    "name": "cover-1111-r157-cloak-meshrole",
+    "source": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\cover-1111-r157-cloak-meshrole\\LocalAppData\\Coalition\\WarGame\\PSOCache\\sp_factory_p\\D3DGraphics.ushaderprecache",
+    "length": 99767051,
+    "sha256": "99bf3e7b88773e760ae08099d5d6b35168d19f2fa038fa5ab5d9f603fd541740"
+  }
+]
