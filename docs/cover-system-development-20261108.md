@@ -2693,3 +2693,15 @@ physics中fixture Owner guard13140次（56.02%），其余registry headers2500�
 源码进一步确认SourceGuard每轮分别给physics和collider的recheck传完整Owner，各自前后调用；生产CoverKey sample_current又包含两次完整current_tick_actor及三次Cover values读取。当前同一次同步只读操作存在多层完整Owner检查。下一修复须明确同一操作的首尾认证边界，原版调用前后完整实际身份、源龄、当前掩体/姿态和停止/释放仍必须有效，不能简单传true、跳过Owner或缓存授权至下一次guard/execute。先针对实际拒绝/中断的反例证明边界，再实施必要优化，不重跑原候选。
 
 原始probe、类别计数、完整build/dependencies和结果在recheck-cost-r182。r181仍40ms拒绝且严重视图遮挡；完整CV01–24/AC01–22及头显未完成，工程25%、publicv71/固定入口不变，目标active。
+
+## r183：掩体链接完整继承链并入现有Proof，末级父类收尾缺口修复；已编译（2026-11-11）
+
+沿r181的40ms拒绝和r182重复读取证据，未减少Owner/来源/释放的调用次数。找到cover_context_live::link_layout每次values均重新derives完整CoverLink类链，然后又begin_prepare读取属性Proof；同一sample_current三次values、每个Owner又调用sample_current。现在首次完整derives后，把每级类身份、Class类型和父类边全部认证进原link_proof，包含末级祖先的零父类边。后续使用原begin_prepare/current统一fresh复核；metadata generation或class key变化仍使原Proof失效。pawn/link已ready且当前class地址精确匹配时，不再在完整Proof前额外读一次同一class；该class身份仍由完整Proof实际重读。未改共享binding、追踪、骨骼、时间、40ms或Writer，不把缓存当授权，也没有传true跳Owner。
+
+原206项context检查保持通过。真实生产reader前/后各288项0：不同继承层数、字段/父类/类型/身份/槽位/世界代次/录制及线程门禁，以及最后一次slot读取时把末级Actor父类改成环。旧版该晚变更确实被接受，baseline_unclosed_ancestor=1；新版最终link_proof current拒绝且输出保持。类链的初始推导一直存在，新增的是完整落入原有末尾Proof。
+
+五轮完整sample_current（含原Owner绑定与三轮cover values）在额外继承0/4/12级的读取24220→22645（-6.50%）、28560→24345（-14.76%）、37240→27745（-25.50%）。v1只合入完整类链，前后288项0且有收益；v2再去掉Proof之前重复的相同class读。所有原始结果保留。收益依赖实际类深度，不能外推实际游戏耗时或40ms已修；OFF编译/运行0，未动关闭分支。
+
+完整Native0d4437fd5427902f84e5571cb1e3f577c201b114bfaf2843b3e4483f998cdf6f编译链接0，exact r177仅cover_context_live.inl一文件delta，413项目依赖、worktree外漏0、GEARS flags不变，其余冻结源前后相同。测试新增main命名宏只为复用原fixture，不属于产品delta。prepare新增--native-r183认证精确候选。代码/反例/读取计数/原失败范围/manifest/build/verify在link-path-proof-r183。
+
+下一步Git保存后用新实例短查实际CoverKey复核和原query入口。该候选尚未启动，实际40ms、完整owner/world/body几何、自身模型遮挡、CV01–24/AC01–22和实体头显未完成；工程25%、publicv71/固定入口不变，目标active。

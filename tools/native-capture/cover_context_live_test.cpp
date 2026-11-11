@@ -3,6 +3,9 @@
 #include "run_camera_live_test.cpp"
 #include "cover_context_live.inl"
 namespace context=cover_context_live;
+#ifndef GEARS_COVER_CONTEXT_TEST_MAIN
+#define GEARS_COVER_CONTEXT_TEST_MAIN main
+#endif
 #if GEARS_COVER_BODY_PROTOTYPE
 uintptr_t link_class{},link_instance{},slot_type{},inner{},array_kind{};
 std::array<uintptr_t,7> cover_properties{};
@@ -34,7 +37,7 @@ bool observe(context::Observation& out){
     C(!memcmp(saved_arena.data(),reinterpret_cast<void*>(arena),saved_arena.size()));
     C(!b::enabled&&!b::layout_ready&&native_calls==0);return result;
 }
-int main(){
+int GEARS_COVER_CONTEXT_TEST_MAIN(){
     arena=reinterpret_cast<uintptr_t>(VirtualAlloc(nullptr,saved_arena.size(),MEM_COMMIT|MEM_RESERVE,PAGE_READWRITE));if(!arena)return 99;
     cover_setup();context::Observation out{};C(observe(out));C(!out.cover_type&&!out.link.address&&out.slot==-1);
     context::CurrentKey current{};
@@ -104,5 +107,5 @@ int main(){
     printf("cover_context_live: %u checks, %u failures; legacy body disabled, no hooks/writes\n",checks,failures);return failures?1:0;
 }
 #else
-int main(){context::Observation out{};out.scene=999;C(!context::sample(nullptr,out)&&out.scene==999);return failures?1:0;}
+int GEARS_COVER_CONTEXT_TEST_MAIN(){context::Observation out{};out.scene=999;C(!context::sample(nullptr,out)&&out.scene==999);return failures?1:0;}
 #endif

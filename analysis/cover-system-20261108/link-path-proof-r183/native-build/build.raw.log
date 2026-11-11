@@ -1,0 +1,139 @@
+[1/15] Building C object minhook\CMakeFiles\minhook.dir\src\hook.c.obj
+[2/15] Building CXX object CMakeFiles\D3D12AbiTest.dir\d3d12_abi_test.cpp.obj
+[3/15] Linking CXX executable D3D12AbiTest.exe
+[4/15] Building C object minhook\CMakeFiles\minhook.dir\__\gears_minhook_trampoline.c.obj
+[5/15] Building C object minhook\CMakeFiles\minhook.dir\src\hde\hde64.c.obj
+[6/15] Building C object minhook\CMakeFiles\minhook.dir\__\gears_minhook_buffer.c.obj
+[7/15] Building ASM_MASM object CMakeFiles\GearsCapture.dir\native_atom_overwrite_thunks.asm.obj
+Microsoft (R) Macro Assembler (x64) Version 14.51.36256.0
+Copyright (C) Microsoft Corporation.  All rights reserved.
+
+ Assembling: C:\Users\11\.codex\worktrees\6dof-single\gearsVr\analysis\cover-system-20261108\link-path-proof-r183\native-source\tools\native-capture\native_atom_overwrite_thunks.asm
+[8/15] Building ASM_MASM object CMakeFiles\GearsCapture.dir\cover_body_thunks.asm.obj
+Microsoft (R) Macro Assembler (x64) Version 14.51.36256.0
+Copyright (C) Microsoft Corporation.  All rights reserved.
+
+ Assembling: C:\Users\11\.codex\worktrees\6dof-single\gearsVr\analysis\cover-system-20261108\link-path-proof-r183\native-source\tools\native-capture\cover_body_thunks.asm
+[9/15] Building ASM_MASM object CMakeFiles\GearsCapture.dir\cover_pose_phase_thunks.asm.obj
+Microsoft (R) Macro Assembler (x64) Version 14.51.36256.0
+Copyright (C) Microsoft Corporation.  All rights reserved.
+
+ Assembling: C:\Users\11\.codex\worktrees\6dof-single\gearsVr\analysis\cover-system-20261108\link-path-proof-r183\native-source\tools\native-capture\cover_pose_phase_thunks.asm
+[10/15] Building ASM_MASM object CMakeFiles\GearsCapture.dir\cover_control_observer_thunks.asm.obj
+Microsoft (R) Macro Assembler (x64) Version 14.51.36256.0
+Copyright (C) Microsoft Corporation.  All rights reserved.
+
+ Assembling: C:\Users\11\.codex\worktrees\6dof-single\gearsVr\analysis\cover-system-20261108\link-path-proof-r183\native-source\tools\native-capture\cover_control_observer_thunks.asm
+[11/15] Building ASM_MASM object CMakeFiles\GearsCapture.dir\cover_future_g_thunks.asm.obj
+Microsoft (R) Macro Assembler (x64) Version 14.51.36256.0
+Copyright (C) Microsoft Corporation.  All rights reserved.
+
+ Assembling: C:\Users\11\.codex\worktrees\6dof-single\gearsVr\analysis\cover-system-20261108\link-path-proof-r183\native-source\tools\native-capture\cover_future_g_thunks.asm
+[12/15] Building ASM_MASM object CMakeFiles\GearsCapture.dir\fresh_pose_producer_thunks.asm.obj
+Microsoft (R) Macro Assembler (x64) Version 14.51.36256.0
+Copyright (C) Microsoft Corporation.  All rights reserved.
+
+ Assembling: C:\Users\11\.codex\worktrees\6dof-single\gearsVr\analysis\cover-system-20261108\link-path-proof-r183\native-source\tools\native-capture\fresh_pose_producer_thunks.asm
+[13/15] Linking C static library minhook\minhook.x64.lib
+[14/15] Building CXX object CMakeFiles\GearsCapture.dir\capture.cpp.obj
+C:\Users\11\.codex\worktrees\6dof-single\gearsVr\analysis\cover-system-20261108\link-path-proof-r183\native-source\tools\native-capture\owned_scene_gpu.inl(183): warning C4459: “proof”的声明隐藏了全局声明
+C:\Users\11\.codex\worktrees\6dof-single\gearsVr\analysis\cover-system-20261108\link-path-proof-r183\native-source\tools\native-capture\owned_scene_gpu.inl(24): note: 参见“`anonymous-namespace'::owned_scene_gpu::proof”的声明
+C:\Users\11\.codex\worktrees\6dof-single\gearsVr\analysis\cover-system-20261108\link-path-proof-r183\native-source\tools\native-capture\../vr-common/committed_hand_interaction.h(31): warning C4459: “active”的声明隐藏了全局声明
+C:\Users\11\.codex\worktrees\6dof-single\gearsVr\analysis\cover-system-20261108\link-path-proof-r183\native-source\tools\native-capture\capture.cpp(866): note: 参见“`anonymous-namespace'::active”的声明
+C:\Users\11\.codex\worktrees\6dof-single\gearsVr\analysis\cover-system-20261108\link-path-proof-r183\native-source\tools\native-capture\graphics_lock.h(59): warning C4459: “base”的声明隐藏了全局声明
+C:\Users\11\.codex\worktrees\6dof-single\gearsVr\analysis\cover-system-20261108\link-path-proof-r183\native-source\tools\native-capture\capture.cpp(841): note: 参见“`anonymous-namespace'::base”的声明
+C:\Users\11\.codex\worktrees\6dof-single\gearsVr\analysis\cover-system-20261108\link-path-proof-r183\native-source\tools\native-capture\crosshair_assignment_live.inl(43): warning C4459: “config”的声明隐藏了全局声明
+C:\Users\11\.codex\worktrees\6dof-single\gearsVr\analysis\cover-system-20261108\link-path-proof-r183\native-source\tools\native-capture\crosshair_assignment_live.inl(12): note: 参见“`anonymous-namespace'::crosshair_live::config”的声明
+C:\Users\11\.codex\worktrees\6dof-single\gearsVr\analysis\cover-system-20261108\link-path-proof-r183\native-source\tools\native-capture\crosshair_assignment_live.inl(177): warning C4459: “started”的声明隐藏了全局声明
+C:\Users\11\.codex\worktrees\6dof-single\gearsVr\analysis\cover-system-20261108\link-path-proof-r183\native-source\tools\native-capture\capture.cpp(866): note: 参见“`anonymous-namespace'::started”的声明
+C:\Users\11\.codex\worktrees\6dof-single\gearsVr\analysis\cover-system-20261108\link-path-proof-r183\native-source\tools\native-capture\crosshair_assignment_live.inl(273): warning C4459: “started”的声明隐藏了全局声明
+C:\Users\11\.codex\worktrees\6dof-single\gearsVr\analysis\cover-system-20261108\link-path-proof-r183\native-source\tools\native-capture\capture.cpp(866): note: 参见“`anonymous-namespace'::started”的声明
+C:\Users\11\.codex\worktrees\6dof-single\gearsVr\analysis\cover-system-20261108\link-path-proof-r183\native-source\tools\native-capture\crosshair_assignment_live.inl(280): warning C4459: “config”的声明隐藏了全局声明
+C:\Users\11\.codex\worktrees\6dof-single\gearsVr\analysis\cover-system-20261108\link-path-proof-r183\native-source\tools\native-capture\crosshair_assignment_live.inl(12): note: 参见“`anonymous-namespace'::crosshair_live::config”的声明
+C:\Users\11\.codex\worktrees\6dof-single\gearsVr\analysis\cover-system-20261108\link-path-proof-r183\native-source\tools\native-capture\crosshair_assignment_live.inl(287): warning C4459: “started”的声明隐藏了全局声明
+C:\Users\11\.codex\worktrees\6dof-single\gearsVr\analysis\cover-system-20261108\link-path-proof-r183\native-source\tools\native-capture\capture.cpp(866): note: 参见“`anonymous-namespace'::started”的声明
+C:\Users\11\.codex\worktrees\6dof-single\gearsVr\analysis\cover-system-20261108\link-path-proof-r183\native-source\tools\native-capture\crosshair_assignment_live.inl(288): warning C4459: “config”的声明隐藏了全局声明
+C:\Users\11\.codex\worktrees\6dof-single\gearsVr\analysis\cover-system-20261108\link-path-proof-r183\native-source\tools\native-capture\crosshair_assignment_live.inl(12): note: 参见“`anonymous-namespace'::crosshair_live::config”的声明
+C:\Users\11\.codex\worktrees\6dof-single\gearsVr\analysis\cover-system-20261108\link-path-proof-r183\native-source\tools\native-capture\crosshair_assignment_live.inl(307): warning C4459: “config”的声明隐藏了全局声明
+C:\Users\11\.codex\worktrees\6dof-single\gearsVr\analysis\cover-system-20261108\link-path-proof-r183\native-source\tools\native-capture\crosshair_assignment_live.inl(12): note: 参见“`anonymous-namespace'::crosshair_live::config”的声明
+C:\Users\11\.codex\worktrees\6dof-single\gearsVr\analysis\cover-system-20261108\link-path-proof-r183\native-source\tools\native-capture\crosshair_assignment_live.inl(362): warning C4459: “config”的声明隐藏了全局声明
+C:\Users\11\.codex\worktrees\6dof-single\gearsVr\analysis\cover-system-20261108\link-path-proof-r183\native-source\tools\native-capture\crosshair_assignment_live.inl(12): note: 参见“`anonymous-namespace'::crosshair_live::config”的声明
+C:\Users\11\.codex\worktrees\6dof-single\gearsVr\analysis\cover-system-20261108\link-path-proof-r183\native-source\tools\native-capture\crosshair_assignment_live.inl(376): warning C4459: “config”的声明隐藏了全局声明
+C:\Users\11\.codex\worktrees\6dof-single\gearsVr\analysis\cover-system-20261108\link-path-proof-r183\native-source\tools\native-capture\crosshair_assignment_live.inl(12): note: 参见“`anonymous-namespace'::crosshair_live::config”的声明
+C:\Users\11\.codex\worktrees\6dof-single\gearsVr\analysis\cover-system-20261108\link-path-proof-r183\native-source\tools\native-capture\crosshair_assignment_live.inl(378): warning C4459: “started”的声明隐藏了全局声明
+C:\Users\11\.codex\worktrees\6dof-single\gearsVr\analysis\cover-system-20261108\link-path-proof-r183\native-source\tools\native-capture\capture.cpp(866): note: 参见“`anonymous-namespace'::started”的声明
+C:\Users\11\.codex\worktrees\6dof-single\gearsVr\analysis\cover-system-20261108\link-path-proof-r183\native-source\tools\native-capture\crosshair_assignment_live.inl(390): warning C4459: “config”的声明隐藏了全局声明
+C:\Users\11\.codex\worktrees\6dof-single\gearsVr\analysis\cover-system-20261108\link-path-proof-r183\native-source\tools\native-capture\crosshair_assignment_live.inl(12): note: 参见“`anonymous-namespace'::crosshair_live::config”的声明
+C:\Users\11\.codex\worktrees\6dof-single\gearsVr\analysis\cover-system-20261108\link-path-proof-r183\native-source\tools\native-capture\crosshair_assignment_live.inl(401): warning C4459: “started”的声明隐藏了全局声明
+C:\Users\11\.codex\worktrees\6dof-single\gearsVr\analysis\cover-system-20261108\link-path-proof-r183\native-source\tools\native-capture\capture.cpp(866): note: 参见“`anonymous-namespace'::started”的声明
+C:\Users\11\.codex\worktrees\6dof-single\gearsVr\analysis\cover-system-20261108\link-path-proof-r183\native-source\tools\native-capture\startup_ui_draw_observer.inl(92): warning C4459: “target”的声明隐藏了全局声明
+C:\Users\11\.codex\worktrees\6dof-single\gearsVr\analysis\cover-system-20261108\link-path-proof-r183\native-source\tools\native-capture\ui_scene_root_live.inl(17): note: 参见“`anonymous-namespace'::ui_scene_root_live::target”的声明
+C:\Users\11\.codex\worktrees\6dof-single\gearsVr\analysis\cover-system-20261108\link-path-proof-r183\native-source\tools\native-capture\startup_ui_draw_observer.inl(96): warning C4459: “target”的声明隐藏了全局声明
+C:\Users\11\.codex\worktrees\6dof-single\gearsVr\analysis\cover-system-20261108\link-path-proof-r183\native-source\tools\native-capture\ui_scene_root_live.inl(17): note: 参见“`anonymous-namespace'::ui_scene_root_live::target”的声明
+C:\Users\11\.codex\worktrees\6dof-single\gearsVr\analysis\cover-system-20261108\link-path-proof-r183\native-source\tools\native-capture\startup_ui_draw_observer.inl(101): warning C4459: “count”的声明隐藏了全局声明
+C:\Users\11\.codex\worktrees\6dof-single\gearsVr\analysis\cover-system-20261108\link-path-proof-r183\native-source\tools\native-capture\startup_ui_draw_observer.inl(23): note: 参见“`anonymous-namespace'::ui_scene_root_live::startup_draw::count”的声明
+C:\Users\11\.codex\worktrees\6dof-single\gearsVr\analysis\cover-system-20261108\link-path-proof-r183\native-source\tools\native-capture\startup_ui_draw_observer.inl(139): warning C4459: “count”的声明隐藏了全局声明
+C:\Users\11\.codex\worktrees\6dof-single\gearsVr\analysis\cover-system-20261108\link-path-proof-r183\native-source\tools\native-capture\startup_ui_draw_observer.inl(23): note: 参见“`anonymous-namespace'::ui_scene_root_live::startup_draw::count”的声明
+C:\Users\11\.codex\worktrees\6dof-single\gearsVr\analysis\cover-system-20261108\link-path-proof-r183\native-source\tools\native-capture\first_person_live.inl(34): warning C4456: “name”的声明隐藏了上一个本地声明
+C:\Users\11\.codex\worktrees\6dof-single\gearsVr\analysis\cover-system-20261108\link-path-proof-r183\native-source\tools\native-capture\first_person_live.inl(31): note: 参见“name”的声明
+C:\Users\11\.codex\worktrees\6dof-single\gearsVr\analysis\cover-system-20261108\link-path-proof-r183\native-source\tools\native-capture\run_camera_live.inl(96): warning C4459: “started”的声明隐藏了全局声明
+C:\Users\11\.codex\worktrees\6dof-single\gearsVr\analysis\cover-system-20261108\link-path-proof-r183\native-source\tools\native-capture\capture.cpp(866): note: 参见“`anonymous-namespace'::started”的声明
+C:\Users\11\.codex\worktrees\6dof-single\gearsVr\analysis\cover-system-20261108\link-path-proof-r183\native-source\tools\native-capture\fresh_pose_producer_live.inl(362): warning C4459: “count”的声明隐藏了全局声明
+C:\Users\11\.codex\worktrees\6dof-single\gearsVr\analysis\cover-system-20261108\link-path-proof-r183\native-source\tools\native-capture\fresh_pose_producer_live.inl(39): note: 参见“`anonymous-namespace'::fresh_pose_producer_live::count”的声明
+C:\Users\11\.codex\worktrees\6dof-single\gearsVr\analysis\cover-system-20261108\link-path-proof-r183\native-source\tools\native-capture\cover_query_source_cause.h(18): warning C4459: “enabled”的声明隐藏了全局声明
+C:\Users\11\.codex\worktrees\6dof-single\gearsVr\analysis\cover-system-20261108\link-path-proof-r183\native-source\tools\native-capture\full_body_c0_native_live.inl(20): note: 参见“`anonymous-namespace'::full_body_c0_native_live::enabled”的声明
+C:\Users\11\.codex\worktrees\6dof-single\gearsVr\analysis\cover-system-20261108\link-path-proof-r183\native-source\tools\native-capture\capture.cpp(3029): warning C4459: “count”的声明隐藏了全局声明
+C:\Users\11\.codex\worktrees\6dof-single\gearsVr\analysis\cover-system-20261108\link-path-proof-r183\native-source\tools\native-capture\startup_ui_draw_observer.inl(23): note: 参见“`anonymous-namespace'::ui_scene_root_live::startup_draw::count”的声明
+C:\Users\11\.codex\worktrees\6dof-single\gearsVr\analysis\cover-system-20261108\link-path-proof-r183\native-source\tools\native-capture\final_transfer_normalize.h(6): warning C4459: “recording”的声明隐藏了全局声明
+C:\Users\11\.codex\worktrees\6dof-single\gearsVr\analysis\cover-system-20261108\link-path-proof-r183\native-source\tools\native-capture\capture.cpp(868): note: 参见“`anonymous-namespace'::recording”的声明
+C:\Users\11\.codex\worktrees\6dof-single\gearsVr\analysis\cover-system-20261108\link-path-proof-r183\native-source\tools\native-capture\final_transfer_normalize.h(6): warning C4459: “self_testing”的声明隐藏了全局声明
+C:\Users\11\.codex\worktrees\6dof-single\gearsVr\analysis\cover-system-20261108\link-path-proof-r183\native-source\tools\native-capture\capture.cpp(843): note: 参见“`anonymous-namespace'::self_testing”的声明
+C:\Users\11\.codex\worktrees\6dof-single\gearsVr\analysis\cover-system-20261108\link-path-proof-r183\native-source\tools\native-capture\quad_source_control.h(85): warning C4459: “started”的声明隐藏了全局声明
+C:\Users\11\.codex\worktrees\6dof-single\gearsVr\analysis\cover-system-20261108\link-path-proof-r183\native-source\tools\native-capture\capture.cpp(866): note: 参见“`anonymous-namespace'::started”的声明
+C:\Users\11\.codex\worktrees\6dof-single\gearsVr\analysis\cover-system-20261108\link-path-proof-r183\native-source\tools\native-capture\death_pso_cache.h(8): warning C4459: “recording”的声明隐藏了全局声明
+C:\Users\11\.codex\worktrees\6dof-single\gearsVr\analysis\cover-system-20261108\link-path-proof-r183\native-source\tools\native-capture\capture.cpp(868): note: 参见“`anonymous-namespace'::recording”的声明
+C:\Users\11\.codex\worktrees\6dof-single\gearsVr\analysis\cover-system-20261108\link-path-proof-r183\native-source\tools\native-capture\capture.cpp(4557): warning C4267: “参数”: 从“size_t”转换到“const _Ty”，可能丢失数据
+        with
+        [
+            _Ty=unsigned int
+        ]
+C:\Users\11\.codex\worktrees\6dof-single\gearsVr\analysis\cover-system-20261108\link-path-proof-r183\native-source\tools\native-capture\capture.cpp(5144): warning C4456: “deadline”的声明隐藏了上一个本地声明
+C:\Users\11\.codex\worktrees\6dof-single\gearsVr\analysis\cover-system-20261108\link-path-proof-r183\native-source\tools\native-capture\capture.cpp(5118): note: 参见“deadline”的声明
+C:\Users\11\.codex\worktrees\6dof-single\gearsVr\analysis\cover-system-20261108\link-path-proof-r183\native-source\tools\native-capture\capture.cpp(5885): warning C4459: “world_progress”的声明隐藏了全局声明
+C:\Users\11\.codex\worktrees\6dof-single\gearsVr\analysis\cover-system-20261108\link-path-proof-r183\native-source\tools\native-capture\capture.cpp(962): note: 参见“`anonymous-namespace'::world_progress”的声明
+C:\Users\11\.codex\worktrees\6dof-single\gearsVr\analysis\cover-system-20261108\link-path-proof-r183\native-source\tools\native-capture\capture.cpp(5955): warning C4456: “bytes”的声明隐藏了上一个本地声明
+C:\Users\11\.codex\worktrees\6dof-single\gearsVr\analysis\cover-system-20261108\link-path-proof-r183\native-source\tools\native-capture\capture.cpp(5534): note: 参见“bytes”的声明
+C:\Users\11\.codex\worktrees\6dof-single\gearsVr\analysis\cover-system-20261108\link-path-proof-r183\native-source\tools\native-capture\capture.cpp(6018): warning C4456: “name”的声明隐藏了上一个本地声明
+C:\Users\11\.codex\worktrees\6dof-single\gearsVr\analysis\cover-system-20261108\link-path-proof-r183\native-source\tools\native-capture\capture.cpp(5783): note: 参见“name”的声明
+C:\Users\11\.codex\worktrees\6dof-single\gearsVr\analysis\cover-system-20261108\link-path-proof-r183\native-source\tools\native-capture\owned_scene_gpu_check.inl(275): warning C4456: “ref”的声明隐藏了上一个本地声明
+C:\Users\11\.codex\worktrees\6dof-single\gearsVr\analysis\cover-system-20261108\link-path-proof-r183\native-source\tools\native-capture\owned_scene_gpu_check.inl(189): note: 参见“ref”的声明
+C:\Users\11\.codex\worktrees\6dof-single\gearsVr\analysis\cover-system-20261108\link-path-proof-r183\native-source\tools\native-capture\owned_scene_gpu_check.inl(279): warning C4456: “token”的声明隐藏了上一个本地声明
+C:\Users\11\.codex\worktrees\6dof-single\gearsVr\analysis\cover-system-20261108\link-path-proof-r183\native-source\tools\native-capture\owned_scene_gpu_check.inl(197): note: 参见“token”的声明
+C:\Users\11\.codex\worktrees\6dof-single\gearsVr\analysis\cover-system-20261108\link-path-proof-r183\native-source\tools\native-capture\../vr-common/weapon_lancer_handle_morph.h(59): warning C4459: “active”的声明隐藏了全局声明
+C:\Users\11\.codex\worktrees\6dof-single\gearsVr\analysis\cover-system-20261108\link-path-proof-r183\native-source\tools\native-capture\capture.cpp(866): note: 参见“`anonymous-namespace'::active”的声明
+C:\Users\11\.codex\worktrees\6dof-single\gearsVr\analysis\cover-system-20261108\link-path-proof-r183\native-source\tools\native-capture\../vr-common/weapon_lancer_handle_morph.h(59): note: 模板实例化上下文(最早的实例化上下文)为
+C:\Users\11\.codex\worktrees\6dof-single\gearsVr\analysis\cover-system-20261108\link-path-proof-r183\native-source\tools\native-capture\lancer_handle_morph_live.inl(399): note: 查看对正在编译的函数 模板 实例化“bool gears_lancer_handle_morph::regular_blade_lookup<const `anonymous-namespace'::lancer_handle_morph_live::factory::<lambda_8694aad71a64c526eb7afb56531ac794>&>(Read,uintptr_t,uintptr_t,int,int,uintptr_t,uintptr_t,gears_lancer_handle_morph::RegularLookup &) noexcept”的引用
+        with
+        [
+            Read=const `anonymous-namespace'::lancer_handle_morph_live::factory::<lambda_8694aad71a64c526eb7afb56531ac794> &
+        ]
+C:\Users\11\.codex\worktrees\6dof-single\gearsVr\analysis\cover-system-20261108\link-path-proof-r183\native-source\tools\native-capture\anchor_observer.h(427): warning C4459: “started”的声明隐藏了全局声明
+C:\Users\11\.codex\worktrees\6dof-single\gearsVr\analysis\cover-system-20261108\link-path-proof-r183\native-source\tools\native-capture\capture.cpp(866): note: 参见“`anonymous-namespace'::started”的声明
+C:\Users\11\.codex\worktrees\6dof-single\gearsVr\analysis\cover-system-20261108\link-path-proof-r183\native-source\tools\native-capture\anchor_observer.h(427): note: 模板实例化上下文(最早的实例化上下文)为
+C:\Users\11\.codex\worktrees\6dof-single\gearsVr\analysis\cover-system-20261108\link-path-proof-r183\native-source\tools\native-capture\capture.cpp(4212): note: 查看对正在编译的函数 模板 实例化“bool gears_anchor::bounded_guard<bool(__cdecl *)(void *,const void *,size_t),`anonymous-namespace'::load_anchor_config::<lambda_91d2d2a42949b4d7bf8f07119201ecb1>,`anonymous-namespace'::load_anchor_config::<lambda_e7b0810fea7926b760afa11c017f585b>>(const gears_anchor::Config &,Read,Now,Wait,gears_anchor::Anchor &,uint32_t &,gears_anchor::BoundedGuardDiagnostic *)”的引用
+        with
+        [
+            Read=bool (__cdecl *)(void *,const void *,size_t),
+            Now=`anonymous-namespace'::load_anchor_config::<lambda_91d2d2a42949b4d7bf8f07119201ecb1>,
+            Wait=`anonymous-namespace'::load_anchor_config::<lambda_e7b0810fea7926b760afa11c017f585b>
+        ]
+C:\Users\11\.codex\worktrees\6dof-single\gearsVr\analysis\cover-system-20261108\link-path-proof-r183\native-source\tools\native-capture\crosshair_assignment.h(153): warning C4459: “base”的声明隐藏了全局声明
+C:\Users\11\.codex\worktrees\6dof-single\gearsVr\analysis\cover-system-20261108\link-path-proof-r183\native-source\tools\native-capture\capture.cpp(841): note: 参见“`anonymous-namespace'::base”的声明
+C:\Users\11\.codex\worktrees\6dof-single\gearsVr\analysis\cover-system-20261108\link-path-proof-r183\native-source\tools\native-capture\crosshair_assignment.h(153): note: 模板实例化上下文(最早的实例化上下文)为
+C:\Users\11\.codex\worktrees\6dof-single\gearsVr\analysis\cover-system-20261108\link-path-proof-r183\native-source\tools\native-capture\crosshair_assignment_live.inl(210): note: 查看对正在编译的函数 模板 实例化“bool gears_crosshair_assignment::validate_bindings<bool(__cdecl *)(void *,const void *,size_t)>(const gears_crosshair_assignment::Config &,Read,bool,gears_crosshair_assignment::ValidationFailure *)”的引用
+        with
+        [
+            Read=bool (__cdecl *)(void *,const void *,size_t)
+        ]
+C:\Users\11\.codex\worktrees\6dof-single\gearsVr\analysis\cover-system-20261108\link-path-proof-r183\native-source\tools\native-capture\crosshair_assignment.h(234): note: 查看对正在编译的函数 模板 实例化“bool gears_crosshair_assignment::detail::bindings<bool(__cdecl *)(void *,const void *,size_t)>(const gears_crosshair_assignment::Config &,const gears_ui::Reader<bool (__cdecl *)(void *,const void *,size_t)> &,bool)”的引用
+[15/15] Linking CXX shared library GearsCapture.dll

@@ -1,0 +1,38 @@
+-- The C compiler identification is MSVC 19.51.36256.0
+-- The CXX compiler identification is MSVC 19.51.36256.0
+-- Detecting C compiler ABI info
+-- Detecting C compiler ABI info - done
+-- Check for working C compiler: E:/vs/VC/Tools/MSVC/14.51.36231/bin/Hostx64/x64/cl.exe - skipped
+-- Detecting C compile features
+-- Detecting C compile features - done
+-- Detecting CXX compiler ABI info
+-- Detecting CXX compiler ABI info - done
+-- Check for working CXX compiler: E:/vs/VC/Tools/MSVC/14.51.36231/bin/Hostx64/x64/cl.exe - skipped
+-- Detecting CXX compile features
+-- Detecting CXX compile features - done
+-- The ASM_MASM compiler identification is MSVC
+-- Found assembler: E:/vs/VC/Tools/MSVC/14.51.36231/bin/Hostx64/x64/ml64.exe
+-- CoverPosePhaseLiveTest not registered: private matching-code fixture was not supplied
+-- FullBodyC0Planner fixture test not registered: private C0/reference fixtures absent
+-- HandGoalObserver tests not registered: private matrices/reference fixtures were not supplied
+-- ContinuousHandOwner tests not registered: private fixtures missing
+-- BodyRecoilObserver fixture tests not registered: private test fixtures absent
+CMake Warning (deprecated) at C:/Users/11/.codex/worktrees/6dof-single/gearsVr/analysis/cover-system-20261108/link-path-proof-r183/native-source/tools/third-party/minhook/CMakeLists.txt:27 (cmake_minimum_required):
+  Compatibility with CMake < 3.10 will be removed from a future version of
+  CMake.
+
+  Update the VERSION argument <min> value.  Or, use the <min>...<max> syntax
+  to tell CMake that the project requires at least <min> but has been updated
+  to work with policies introduced by <max> or earlier.
+This warning is for project developers.  Use -Wno-author or -Wno-deprecated
+to suppress it.
+
+-- BodyGoalViewAdapter fixture test not registered: private Core/C0/reference fixtures absent
+-- FullBodyC0Planner fixture test not registered: private C0/reference fixtures absent
+-- FullBodyC0Transaction fixture test not registered: private C0/reference fixtures absent
+-- BodyHeadAuthoredMount fixture test not registered: private C0/reference fixtures absent
+-- FullBodyC0Absolute fixture test not registered: private C0/reference fixtures absent
+-- FullBodyC0NativeBackend fixture test not registered: private C0/reference fixtures absent
+-- Configuring done (2.4s)
+-- Generating done (0.6s)
+-- Build files have been written to: C:/Users/11/.codex/worktrees/6dof-single/gearsVr/analysis/cover-system-20261108/link-path-proof-r183/native-build

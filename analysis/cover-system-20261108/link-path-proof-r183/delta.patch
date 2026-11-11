@@ -1,0 +1,40 @@
+diff --git a/tools/native-capture/cover_context_live.inl b/tools/native-capture/cover_context_live.inl
+index 97332d1b..8b4f37f3 100644
+--- a/tools/native-capture/cover_context_live.inl
++++ b/tools/native-capture/cover_context_live.inl
+@@ -55,6 +55,9 @@ bool pawn_layout(binding::Binding const& actor){
+     if(metadata_generation!=binding::metadata_generation||metadata_bytes!=binding::metadata_bytes){
+         pawn_proof={};link_proof={};fields={};link_world={};slots={};transition_mask=0;
+         metadata_generation=binding::metadata_generation;metadata_bytes=binding::metadata_bytes;}
++    // This exact class is already one of the complete proof's identities.
++    // Revalidate it there instead of reading it once immediately beforehand.
++    if(pawn_proof.ready&&pawn_proof.keys[0].address==actor.pawn.cls)return binding::begin_prepare(pawn_proof);
+     gears_anchor::Identity cls{};if(!binding::identity(actor.pawn.cls,cls))return false;
+     binding::keys(pawn_proof,cls);if(!binding::begin_prepare(pawn_proof))return false;
+     if(pawn_proof.ready)return true;
+@@ -69,10 +72,23 @@ bool pawn_layout(binding::Binding const& actor){
+     pawn_proof.ready=true;return true;
+ }
+ bool link_layout(gears_anchor::Identity const& link){
+-    gears_anchor::Identity cls{};binding::ClassPath path{};
+-    if(!binding::identity(link.cls,cls)||!binding::derives(link.cls,L"CoverLink",fields[1].reference.address,path))return false;
++    if(link_proof.ready&&link_proof.keys[0].address==link.cls)return binding::begin_prepare(link_proof);
++    gears_anchor::Identity cls{};
++    if(!binding::identity(link.cls,cls))return false;
+     binding::keys(link_proof,cls);if(!binding::begin_prepare(link_proof))return false;
+     if(link_proof.ready)return true;
++    // Retain the complete initial derivation, including the final ancestor's
++    // parent edge. begin_prepare and every existing closing current() then
++    // re-read it together with the selected property proof. No hierarchy is
++    // reused after its class identity, metadata generation or edge changes.
++    binding::ClassPath path{};
++    if(!binding::derives(link.cls,L"CoverLink",fields[1].reference.address,path))return false;
++    for(unsigned n=0;n<path.count;++n){auto wanted=path.ids[n];const auto parent=wanted.super;
++        wanted.super=0;wanted.check_super=0;gears_anchor::Identity actual{};uintptr_t next{};
++        if(!binding::certified(link_proof,wanted.address,actual)||!binding::same(wanted,actual)||
++           !binding::kind(link_proof,actual,L"Class")||
++           !binding::source_field(link_proof,next,wanted.address,binding::metadata.field_super)||next!=parent)return false;
++    }
+     if(!binding::property(link_proof,cls.address,L"WorldInfo",L"ObjectProperty",8,L"WorldInfo",link_world)||
+        !binding::property(link_proof,cls.address,L"Slots",L"ArrayProperty",16,nullptr,slots))return false;
+     uintptr_t inner{},structure{};unsigned dimension{},stride{},extent{},inner_offset{};

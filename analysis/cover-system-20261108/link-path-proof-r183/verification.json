@@ -1,0 +1,51 @@
+{
+  "native_sha256": "0d4437fd5427902f84e5571cb1e3f577c201b114bfaf2843b3e4483f998cdf6f",
+  "changed": [
+    "tools/native-capture/cover_context_live.inl"
+  ],
+  "comparison": {
+    "0": {
+      "before": 24220,
+      "after": 22645,
+      "reduction": 0.06502890173410403
+    },
+    "4": {
+      "before": 28560,
+      "after": 24345,
+      "reduction": 0.1475840336134454
+    },
+    "12": {
+      "before": 37240,
+      "after": 27745,
+      "reduction": 0.2549677765843179
+    }
+  },
+  "baseline_final_ancestor_accepted": true,
+  "after_final_ancestor_rejected": true,
+  "owner_guard_count_changed": false,
+  "source_times_changed": false,
+  "source_age_repaired": false,
+  "game_started": false,
+  "public_changed": false,
+  "checks": [
+    {
+      "variant": "before",
+      "build_exit": 0,
+      "test_exit": 0,
+      "output": "cover_context_live: 206 checks, 0 failures; legacy body disabled, no hooks/writes\r\ncover_link_path depth=0 five_reads=24220\r\ncover_link_path depth=4 five_reads=28560\r\ncover_link_path depth=12 five_reads=37240\r\nbaseline_unclosed_ancestor=1\r\nCoverLinkPathProof checks=288 failures=0 real context reader; no game/write\r\n",
+      "outside_worktree_dependencies": []
+    },
+    {
+      "variant": "after",
+      "build_exit": 0,
+      "test_exit": 0,
+      "output": "cover_context_live: 206 checks, 0 failures; legacy body disabled, no hooks/writes\r\ncover_link_path depth=0 five_reads=22645\r\ncover_link_path depth=4 five_reads=24345\r\ncover_link_path depth=12 five_reads=27745\r\nCoverLinkPathProof checks=288 failures=0 real context reader; no game/write\r\n",
+      "outside_worktree_dependencies": []
+    }
+  ],
+  "off": {
+    "build_exit": 0,
+    "test_exit": 0,
+    "output": ""
+  }
+}

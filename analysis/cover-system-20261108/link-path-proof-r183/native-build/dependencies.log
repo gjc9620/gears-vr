@@ -1,0 +1,695 @@
+CMakeFiles/GearsCapture.dir/capture.cpp.obj: #deps 693, deps mtime 8160917581814973 (VALID)
+    ../native-source/tools/native-capture/anchor_config_loader.h
+    ../native-source/tools/native-capture/anchor_observer.h
+    ../native-source/tools/native-capture/atomic_status_file.h
+    ../native-source/tools/native-capture/backbuffer_copy_diagnostics.h
+    ../native-source/tools/native-capture/backbuffer_copy_observer.inl
+    ../native-source/tools/native-capture/background_zero_extent_policy.h
+    ../native-source/tools/native-capture/body_c0_arm_alpha_policy.h
+    ../native-source/tools/native-capture/body_c0_budget.h
+    ../native-source/tools/native-capture/body_c0_goal_policy_live.h
+    ../native-source/tools/native-capture/body_c0_goal_policy_live.inl
+    ../native-source/tools/native-capture/body_c0_hands.h
+    ../native-source/tools/native-capture/body_c0_neutral.h
+    ../native-source/tools/native-capture/body_goal_view_adapter.h
+    ../native-source/tools/native-capture/body_head_authored_mount.h
+    ../native-source/tools/native-capture/body_mount_commit.h
+    ../native-source/tools/native-capture/body_recoil_certificate.h
+    ../native-source/tools/native-capture/body_recoil_observer.h
+    ../native-source/tools/native-capture/body_recoil_observer_live.inl
+    ../native-source/tools/native-capture/body_source_age_observation.h
+    ../native-source/tools/native-capture/body_tick_commit.h
+    ../native-source/tools/native-capture/body_tick_input.h
+    ../native-source/tools/native-capture/body_tick_input_live.h
+    ../native-source/tools/native-capture/body_tick_input_live.inl
+    ../native-source/tools/native-capture/body_tick_source.h
+    ../native-source/tools/native-capture/body_tick_source_live.h
+    ../native-source/tools/native-capture/body_tick_source_live.inl
+    ../native-source/tools/native-capture/body_tick_tracking_probe.h
+    ../native-source/tools/native-capture/body_tick_tracking_probe_live.inl
+    ../native-source/tools/native-capture/camera_closer.h
+    ../native-source/tools/native-capture/class_discovery.h
+    ../native-source/tools/native-capture/class_discovery_export.inl
+    ../native-source/tools/native-capture/color_copy_observer.h
+    ../native-source/tools/native-capture/continuous_hand_caller_certificate.h
+    ../native-source/tools/native-capture/continuous_hand_owner_entry.h
+    ../native-source/tools/native-capture/continuous_hand_owner_live.inl
+    ../native-source/tools/native-capture/continuous_owner.h
+    ../native-source/tools/native-capture/cover_body_live.inl
+    ../native-source/tools/native-capture/cover_bone_getters.h
+    ../native-source/tools/native-capture/cover_call_live.inl
+    ../native-source/tools/native-capture/cover_call_trace.h
+    ../native-source/tools/native-capture/cover_call_wire.h
+    ../native-source/tools/native-capture/cover_camera_live.inl
+    ../native-source/tools/native-capture/cover_collider_roles_live.inl
+    ../native-source/tools/native-capture/cover_component_roles_live.inl
+    ../native-source/tools/native-capture/cover_context_live.inl
+    ../native-source/tools/native-capture/cover_control_code_certificate.h
+    ../native-source/tools/native-capture/cover_control_observer_live.inl
+    ../native-source/tools/native-capture/cover_control_output_pose.h
+    ../native-source/tools/native-capture/cover_full_goal_live.inl
+    ../native-source/tools/native-capture/cover_future_g_code_certificate.h
+    ../native-source/tools/native-capture/cover_future_g_observer_live.inl
+    ../native-source/tools/native-capture/cover_geometry_live.inl
+    ../native-source/tools/native-capture/cover_geometry_observer_live.inl
+    ../native-source/tools/native-capture/cover_input_live.inl
+    ../native-source/tools/native-capture/cover_measurement_core_observation.h
+    ../native-source/tools/native-capture/cover_member_witness_live.inl
+    ../native-source/tools/native-capture/cover_native_rig_observer_live.inl
+    ../native-source/tools/native-capture/cover_neutral_eye_live.inl
+    ../native-source/tools/native-capture/cover_owner_link_observation.h
+    ../native-source/tools/native-capture/cover_physics_c0_live.h
+    ../native-source/tools/native-capture/cover_physics_c0_live.inl
+    ../native-source/tools/native-capture/cover_physics_query_live.inl
+    ../native-source/tools/native-capture/cover_physics_roles_live.inl
+    ../native-source/tools/native-capture/cover_physx_actor_backlink.h
+    ../native-source/tools/native-capture/cover_physx_actor_shape_code.h
+    ../native-source/tools/native-capture/cover_physx_actor_shapes.h
+    ../native-source/tools/native-capture/cover_physx_asset_actors.h
+    ../native-source/tools/native-capture/cover_physx_capsule_path.h
+    ../native-source/tools/native-capture/cover_physx_capsule_path_observation.h
+    ../native-source/tools/native-capture/cover_physx_collider.h
+    ../native-source/tools/native-capture/cover_physx_components.h
+    ../native-source/tools/native-capture/cover_physx_overlap_code.h
+    ../native-source/tools/native-capture/cover_physx_overlap_stream.h
+    ../native-source/tools/native-capture/cover_physx_query.h
+    ../native-source/tools/native-capture/cover_physx_query_code.h
+    ../native-source/tools/native-capture/cover_physx_query_source.h
+    ../native-source/tools/native-capture/cover_physx_self_evidence.h
+    ../native-source/tools/native-capture/cover_physx_shape_owner.h
+    ../native-source/tools/native-capture/cover_physx_shape_tables.h
+    ../native-source/tools/native-capture/cover_physx_stream.h
+    ../native-source/tools/native-capture/cover_pose_code_certificate.h
+    ../native-source/tools/native-capture/cover_pose_phase.h
+    ../native-source/tools/native-capture/cover_pose_phase_live.inl
+    ../native-source/tools/native-capture/cover_post_weight_scale_observer.inl
+    ../native-source/tools/native-capture/cover_query_guard_observation.h
+    ../native-source/tools/native-capture/cover_query_source_cause.h
+    ../native-source/tools/native-capture/cover_query_timing.h
+    ../native-source/tools/native-capture/cover_shared_input_live.inl
+    ../native-source/tools/native-capture/cover_skeleton_ik.h
+    ../native-source/tools/native-capture/cover_surface_getters.h
+    ../native-source/tools/native-capture/crosshair_assignment.h
+    ../native-source/tools/native-capture/crosshair_assignment_config_loader.h
+    ../native-source/tools/native-capture/crosshair_assignment_live.inl
+    ../native-source/tools/native-capture/crosshair_finite_query.h
+    ../native-source/tools/native-capture/crosshair_scene_evidence.h
+    ../native-source/tools/native-capture/crosshair_tick_evidence.h
+    ../native-source/tools/native-capture/crosshair_weapon_binding.h
+    ../native-source/tools/native-capture/crosshair_writer_view.h
+    ../native-source/tools/native-capture/death_constant_observer.h
+    ../native-source/tools/native-capture/death_constant_observer.inl
+    ../native-source/tools/native-capture/death_dof_control.h
+    ../native-source/tools/native-capture/death_dof_control.inl
+    ../native-source/tools/native-capture/death_hdr_pixels.h
+    ../native-source/tools/native-capture/death_hdr_pixels.inl
+    ../native-source/tools/native-capture/death_hdr_timeline.h
+    ../native-source/tools/native-capture/death_hdr_timeline.inl
+    ../native-source/tools/native-capture/death_pso_cache.h
+    ../native-source/tools/native-capture/death_pso_cache.inl
+    ../native-source/tools/native-capture/death_source_control.h
+    ../native-source/tools/native-capture/death_source_control.inl
+    ../native-source/tools/native-capture/desktop_mirror_readback.inl
+    ../native-source/tools/native-capture/dlss_output_control.h
+    ../native-source/tools/native-capture/dlss_output_control.inl
+    ../native-source/tools/native-capture/dlss_output_control_live.h
+    ../native-source/tools/native-capture/dlss_route_observer.h
+    ../native-source/tools/native-capture/dlss_route_observer.inl
+    ../native-source/tools/native-capture/final_eye_diagnostics.h
+    ../native-source/tools/native-capture/final_input_observer.h
+    ../native-source/tools/native-capture/final_transfer_bracket.h
+    ../native-source/tools/native-capture/final_transfer_live.inl
+    ../native-source/tools/native-capture/final_transfer_normalize.h
+    ../native-source/tools/native-capture/final_transfer_policy.h
+    ../native-source/tools/native-capture/first_person_authored_eye.inl
+    ../native-source/tools/native-capture/first_person_body_visibility.h
+    ../native-source/tools/native-capture/first_person_eye_trace.h
+    ../native-source/tools/native-capture/first_person_head_render_certificate.h
+    ../native-source/tools/native-capture/first_person_head_render_live.inl
+    ../native-source/tools/native-capture/first_person_head_section.h
+    ../native-source/tools/native-capture/first_person_head_section_certificate.h
+    ../native-source/tools/native-capture/first_person_head_section_live.inl
+    ../native-source/tools/native-capture/first_person_live.inl
+    ../native-source/tools/native-capture/first_person_view.h
+    ../native-source/tools/native-capture/first_person_weapon.h
+    ../native-source/tools/native-capture/first_view_mask_control.h
+    ../native-source/tools/native-capture/frame_link.h
+    ../native-source/tools/native-capture/fresh_pose_call_tree.inl
+    ../native-source/tools/native-capture/fresh_pose_producer.h
+    ../native-source/tools/native-capture/fresh_pose_producer_certificate.h
+    ../native-source/tools/native-capture/fresh_pose_producer_live.inl
+    ../native-source/tools/native-capture/full_body_c0_first_failure.h
+    ../native-source/tools/native-capture/full_body_c0_native_backend.h
+    ../native-source/tools/native-capture/full_body_c0_native_live.h
+    ../native-source/tools/native-capture/full_body_c0_native_live.inl
+    ../native-source/tools/native-capture/full_body_c0_planner.h
+    ../native-source/tools/native-capture/full_body_c0_transaction.h
+    ../native-source/tools/native-capture/game_ui_material.h
+    ../native-source/tools/native-capture/geometry_observer.h
+    ../native-source/tools/native-capture/gpu_readback.h
+    ../native-source/tools/native-capture/gpu_viewport_stats.h
+    ../native-source/tools/native-capture/graphics_lock.h
+    ../native-source/tools/native-capture/graphics_lock_observer.inl
+    ../native-source/tools/native-capture/graphics_lock_routes.h
+    ../native-source/tools/native-capture/graphics_menu_lock.h
+    ../native-source/tools/native-capture/graphics_runtime_contract.h
+    ../native-source/tools/native-capture/hand_core_target_adapter.h
+    ../native-source/tools/native-capture/hand_goal_observer_live.inl
+    ../native-source/tools/native-capture/hand_personal_calibration_live.inl
+    ../native-source/tools/native-capture/hand_personal_reference.h
+    ../native-source/tools/native-capture/held_outcome_journal.h
+    ../native-source/tools/native-capture/hook_entry_attestation.h
+    ../native-source/tools/native-capture/hook_entry_manifest.inl
+    ../native-source/tools/native-capture/independent_view_history.h
+    ../native-source/tools/native-capture/lancer_component_transform_finish.inl
+    ../native-source/tools/native-capture/lancer_grasp_live.inl
+    ../native-source/tools/native-capture/lancer_handle_factory_certificate.h
+    ../native-source/tools/native-capture/lancer_handle_morph_certificate.h
+    ../native-source/tools/native-capture/lancer_handle_morph_live.inl
+    ../native-source/tools/native-capture/lancer_original_handle_live.inl
+    ../native-source/tools/native-capture/lancer_saw_pose_policy.h
+    ../native-source/tools/native-capture/late_quad_diagnostics.h
+    ../native-source/tools/native-capture/late_quad_observer.inl
+    ../native-source/tools/native-capture/material_overlay_plan.h
+    ../native-source/tools/native-capture/material_reticle_plan.h
+    ../native-source/tools/native-capture/mounted_actor_type.h
+    ../native-source/tools/native-capture/mounted_observer.inl
+    ../native-source/tools/native-capture/mounted_recovery_guard.h
+    ../native-source/tools/native-capture/native_action_context.h
+    ../native-source/tools/native-capture/native_atom_overwrite_certificate.h
+    ../native-source/tools/native-capture/native_atom_overwrite_live.h
+    ../native-source/tools/native-capture/native_atom_overwrite_live.inl
+    ../native-source/tools/native-capture/native_atom_overwrite_receipt.h
+    ../native-source/tools/native-capture/native_menu_display.inl
+    ../native-source/tools/native-capture/native_metadata_contract.h
+    ../native-source/tools/native-capture/native_owned_probe.inl
+    ../native-source/tools/native-capture/native_owned_scene.inl
+    ../native-source/tools/native-capture/native_owned_surface.h
+    ../native-source/tools/native-capture/native_owned_surface.inl
+    ../native-source/tools/native-capture/native_render_size.h
+    ../native-source/tools/native-capture/native_scene_boundary.h
+    ../native-source/tools/native-capture/native_source_view_args.h
+    ../native-source/tools/native-capture/native_surface_probe.inl
+    ../native-source/tools/native-capture/ngx_control_capture.inl
+    ../native-source/tools/native-capture/ngx_epoch_pair_probe.h
+    ../native-source/tools/native-capture/ngx_epoch_pair_probe.inl
+    ../native-source/tools/native-capture/ngx_mv_compute_capture.inl
+    ../native-source/tools/native-capture/ngx_mv_constant_snapshot.h
+    ../native-source/tools/native-capture/ngx_mv_constants_capture.inl
+    ../native-source/tools/native-capture/ngx_mv_descriptor_capture.inl
+    ../native-source/tools/native-capture/ngx_mv_target_capture.inl
+    ../native-source/tools/native-capture/ngx_native_create_source.h
+    ../native-source/tools/native-capture/ngx_output_pixels.inl
+    ../native-source/tools/native-capture/ngx_output_pixels_live.h
+    ../native-source/tools/native-capture/ngx_output_pixels_native.inl
+    ../native-source/tools/native-capture/ngx_root_signature_capture.inl
+    ../native-source/tools/native-capture/ngx_route_observer.h
+    ../native-source/tools/native-capture/ngx_route_observer.inl
+    ../native-source/tools/native-capture/ngx_stereo_adapter.h
+    ../native-source/tools/native-capture/ngx_stereo_feature_pair.h
+    ../native-source/tools/native-capture/ngx_stereo_gpu_submit.h
+    ../native-source/tools/native-capture/ngx_stereo_host_live.h
+    ../native-source/tools/native-capture/ngx_stereo_host_live.inl
+    ../native-source/tools/native-capture/ngx_stereo_layout.h
+    ../native-source/tools/native-capture/ngx_stereo_native_api.h
+    ../native-source/tools/native-capture/ngx_stereo_native_bridge.h
+    ../native-source/tools/native-capture/ngx_typed_copy.h
+    ../native-source/tools/native-capture/ngx_typed_quartet.h
+    ../native-source/tools/native-capture/ngx_typed_resources.h
+    ../native-source/tools/native-capture/origin_trial.h
+    ../native-source/tools/native-capture/outage_sources.h
+    ../native-source/tools/native-capture/outage_trace.h
+    ../native-source/tools/native-capture/owned_attachment_observer.h
+    ../native-source/tools/native-capture/owned_depth_clear_trial.h
+    ../native-source/tools/native-capture/owned_depth_clear_trial.inl
+    ../native-source/tools/native-capture/owned_material_draw.inl
+    ../native-source/tools/native-capture/owned_material_route.inl
+    ../native-source/tools/native-capture/owned_output_tracking_check.inl
+    ../native-source/tools/native-capture/owned_plain_output.h
+    ../native-source/tools/native-capture/owned_queue_drain.h
+    ../native-source/tools/native-capture/owned_scene_gpu.inl
+    ../native-source/tools/native-capture/owned_scene_gpu_check.inl
+    ../native-source/tools/native-capture/owned_scene_gpu_hooks.inl
+    ../native-source/tools/native-capture/owned_scene_pipeline.h
+    ../native-source/tools/native-capture/owned_scene_readback.h
+    ../native-source/tools/native-capture/owned_scene_retirement.h
+    ../native-source/tools/native-capture/owned_scene_trial.h
+    ../native-source/tools/native-capture/owned_source_pixels.h
+    ../native-source/tools/native-capture/owned_source_pixels.inl
+    ../native-source/tools/native-capture/owned_ui_ledger.h
+    ../native-source/tools/native-capture/owned_ui_observer.inl
+    ../native-source/tools/native-capture/owned_ui_world_retirement.h
+    ../native-source/tools/native-capture/owned_world_handoff.inl
+    ../native-source/tools/native-capture/path_choice_close_observer.h
+    ../native-source/tools/native-capture/path_choice_close_observer.inl
+    ../native-source/tools/native-capture/path_choice_layout_observer.inl
+    ../native-source/tools/native-capture/path_choice_position_code_contract.h
+    ../native-source/tools/native-capture/path_choice_position_trial.h
+    ../native-source/tools/native-capture/path_choice_position_trial_live.inl
+    ../native-source/tools/native-capture/path_choice_reflow_control.h
+    ../native-source/tools/native-capture/path_choice_reflow_control_live.inl
+    ../native-source/tools/native-capture/per_bone_overwrite_source.h
+    ../native-source/tools/native-capture/projection_control.h
+    ../native-source/tools/native-capture/quad_source_control.h
+    ../native-source/tools/native-capture/ready_wrist_entry_journal.h
+    ../native-source/tools/native-capture/ready_wrist_entry_live.inl
+    ../native-source/tools/native-capture/ready_wrist_outer_tick_live.inl
+    ../native-source/tools/native-capture/recording_capacity.h
+    ../native-source/tools/native-capture/render_cost.h
+    ../native-source/tools/native-capture/resource_identity_observer.h
+    ../native-source/tools/native-capture/resource_resize_probe.h
+    ../native-source/tools/native-capture/resource_resize_probe.inl
+    ../native-source/tools/native-capture/resource_resize_probe_check.inl
+    ../native-source/tools/native-capture/reticle_sample_arm.h
+    ../native-source/tools/native-capture/reticle_sample_live.inl
+    ../native-source/tools/native-capture/rig_tracking_live.inl
+    ../native-source/tools/native-capture/root_blend_overwrite.h
+    ../native-source/tools/native-capture/run_camera_live.inl
+    ../native-source/tools/native-capture/run_camera_stabilizer.h
+    ../native-source/tools/native-capture/sequence_pose_overwrite_source.h
+    ../native-source/tools/native-capture/sequence_set_overwrite_source.h
+    ../native-source/tools/native-capture/source_eye_args.h
+    ../native-source/tools/native-capture/source_map_snapshot.h
+    ../native-source/tools/native-capture/source_output_extent.h
+    ../native-source/tools/native-capture/source_view_shadow.h
+    ../native-source/tools/native-capture/split_source_views.h
+    ../native-source/tools/native-capture/startup_menu_geometry.h
+    ../native-source/tools/native-capture/startup_menu_geometry_live.inl
+    ../native-source/tools/native-capture/startup_menu_readback.inl
+    ../native-source/tools/native-capture/startup_ui_draw_observer.inl
+    ../native-source/tools/native-capture/submitted_view_lifetime.h
+    ../native-source/tools/native-capture/swapchain_binding_observer.h
+    ../native-source/tools/native-capture/swapchain_resize.inl
+    ../native-source/tools/native-capture/swapchain_resize_mode.h
+    ../native-source/tools/native-capture/swapchain_startup_trace.h
+    ../native-source/tools/native-capture/target_prime_owner.h
+    ../native-source/tools/native-capture/two_view_renderer_shadow.h
+    ../native-source/tools/native-capture/ui_aim_locked_plan.h
+    ../native-source/tools/native-capture/ui_call_boundary.h
+    ../native-source/tools/native-capture/ui_call_boundary_live.inl
+    ../native-source/tools/native-capture/ui_canvas_batch.h
+    ../native-source/tools/native-capture/ui_canvas_tail_diagnostic.h
+    ../native-source/tools/native-capture/ui_canvas_text_batch.h
+    ../native-source/tools/native-capture/ui_canvas_tile_batch.h
+    ../native-source/tools/native-capture/ui_execute_bypass_check.inl
+    ../native-source/tools/native-capture/ui_group_placement.h
+    ../native-source/tools/native-capture/ui_hud_first_fault.h
+    ../native-source/tools/native-capture/ui_hud_layout.h
+    ../native-source/tools/native-capture/ui_hud_plan.h
+    ../native-source/tools/native-capture/ui_index_membership.h
+    ../native-source/tools/native-capture/ui_logical_group_observer.h
+    ../native-source/tools/native-capture/ui_logical_group_observer_live.inl
+    ../native-source/tools/native-capture/ui_material_batch.h
+    ../native-source/tools/native-capture/ui_material_bypass_check.inl
+    ../native-source/tools/native-capture/ui_material_observer.inl
+    ../native-source/tools/native-capture/ui_observer.h
+    ../native-source/tools/native-capture/ui_observer_hooks.inl
+    ../native-source/tools/native-capture/ui_payload_observer.inl
+    ../native-source/tools/native-capture/ui_payload_receipts.h
+    ../native-source/tools/native-capture/ui_reticle_direction_plan.h
+    ../native-source/tools/native-capture/ui_runtime_binding.h
+    ../native-source/tools/native-capture/ui_scene_batch.h
+    ../native-source/tools/native-capture/ui_scene_root_bypass_check.inl
+    ../native-source/tools/native-capture/ui_scene_root_candidate.h
+    ../native-source/tools/native-capture/ui_scene_root_live.inl
+    ../native-source/tools/native-capture/ui_scene_transform_trial.h
+    ../native-source/tools/native-capture/ui_scene_transform_trial_live.inl
+    ../native-source/tools/native-capture/ui_segment_sources.h
+    ../native-source/tools/native-capture/ui_text_group_geometry.h
+    ../native-source/tools/native-capture/ui_text_observer.inl
+    ../native-source/tools/native-capture/unpossessed_quad_observer.h
+    ../native-source/tools/native-capture/unpossessed_quad_observer.inl
+    ../native-source/tools/native-capture/view_union_mask_fix.h
+    ../native-source/tools/native-capture/vr_dof_compat.h
+    ../native-source/tools/native-capture/vr_dof_compat.inl
+    ../native-source/tools/native-capture/vr_gamepad_live.inl
+    ../native-source/tools/native-capture/weapon_action_boundary_state.h
+    ../native-source/tools/native-capture/weapon_call_live.inl
+    ../native-source/tools/native-capture/weapon_call_observer_live.inl
+    ../native-source/tools/native-capture/weapon_call_trace.h
+    ../native-source/tools/native-capture/weapon_hand_broker.h
+    ../native-source/tools/native-capture/weapon_hand_runtime.inl
+    ../native-source/tools/native-capture/weapon_hand_scene_binding.inl
+    ../native-source/tools/native-capture/weapon_part_visibility_live.inl
+    ../native-source/tools/native-capture/world_control_wait.h
+    ../native-source/tools/native-capture/world_epoch_gate.h
+    ../native-source/tools/native-capture/world_profile_snapshot.h
+    ../native-source/tools/native-capture/world_rebind_commit.inl
+    ../native-source/tools/native-capture/world_rebind_metadata.h
+    ../native-source/tools/native-capture/world_rebind_prepare.inl
+    ../native-source/tools/native-capture/world_status_cadence.h
+    ../native-source/tools/third-party/minhook/include/MinHook.h
+    ../native-source/tools/vr-common/body_main_mount_provider.h
+    ../native-source/tools/vr-common/body_slots.h
+    ../native-source/tools/vr-common/committed_hand_consumer.h
+    ../native-source/tools/vr-common/committed_hand_endpoint.h
+    ../native-source/tools/vr-common/committed_hand_interaction.h
+    ../native-source/tools/vr-common/controller_continuity_bridge.h
+    ../native-source/tools/vr-common/controller_continuity_frame.h
+    ../native-source/tools/vr-common/controller_input_bridge.h
+    ../native-source/tools/vr-common/controller_input_frame.h
+    ../native-source/tools/vr-common/controller_recenter_request.h
+    ../native-source/tools/vr-common/cover_body_target.h
+    ../native-source/tools/vr-common/cover_controller_adapter.h
+    ../native-source/tools/vr-common/cover_input_owner.h
+    ../native-source/tools/vr-common/cover_interaction.h
+    ../native-source/tools/vr-common/cover_view.h
+    ../native-source/tools/vr-common/current_continuity_for_metadata.h
+    ../native-source/tools/vr-common/current_tracking_reader.h
+    ../native-source/tools/vr-common/death_hdr_match.h
+    ../native-source/tools/vr-common/equipment_intent_bridge.h
+    ../native-source/tools/vr-common/free_hand_eye_targets.h
+    ../native-source/tools/vr-common/gpu_mirror.h
+    ../native-source/tools/vr-common/gpu_share.h
+    ../native-source/tools/vr-common/gpu_transfer_slots.h
+    ../native-source/tools/vr-common/hand_authored_mount_profile.h
+    ../native-source/tools/vr-common/hand_finger_pose.h
+    ../native-source/tools/vr-common/hand_object_grasp.h
+    ../native-source/tools/vr-common/hand_personal_calibration.h
+    ../native-source/tools/vr-common/hand_reference_continuity.h
+    ../native-source/tools/vr-common/hand_shoulder_pose.h
+    ../native-source/tools/vr-common/hand_two_bone_pose.h
+    ../native-source/tools/vr-common/hand_wrist_calibration.h
+    ../native-source/tools/vr-common/left_hand_interaction_owner.h
+    ../native-source/tools/vr-common/left_interaction_control.h
+    ../native-source/tools/vr-common/menu_display_state.h
+    ../native-source/tools/vr-common/mirror_geometry.h
+    ../native-source/tools/vr-common/native_rig_tracking_frame.h
+    ../native-source/tools/vr-common/pose_bridge.h
+    ../native-source/tools/vr-common/pose_gate.h
+    ../native-source/tools/vr-common/pose_math.h
+    ../native-source/tools/vr-common/render_size_bridge.h
+    ../native-source/tools/vr-common/render_size_plan.h
+    ../native-source/tools/vr-common/rig_tracking_frame.h
+    ../native-source/tools/vr-common/rig_tracking_math.h
+    ../native-source/tools/vr-common/stereo_bridge.h
+    ../native-source/tools/vr-common/stereo_frame.h
+    ../native-source/tools/vr-common/stereo_image_ticket.h
+    ../native-source/tools/vr-common/stereo_ticket_store.h
+    ../native-source/tools/vr-common/support_diagnostics.h
+    ../native-source/tools/vr-common/support_startup_trace.h
+    ../native-source/tools/vr-common/ui_plane_projection.h
+    ../native-source/tools/vr-common/ui_projection.h
+    ../native-source/tools/vr-common/view_origin.h
+    ../native-source/tools/vr-common/vr_gamepad_input.h
+    ../native-source/tools/vr-common/weapon_action_boundary.h
+    ../native-source/tools/vr-common/weapon_action_gate.h
+    ../native-source/tools/vr-common/weapon_call_boundary.h
+    ../native-source/tools/vr-common/weapon_hammerburst_latch.h
+    ../native-source/tools/vr-common/weapon_hand_owner_adapter.h
+    ../native-source/tools/vr-common/weapon_hand_participant.h
+    ../native-source/tools/vr-common/weapon_hud_query_receipt.h
+    ../native-source/tools/vr-common/weapon_input_router.h
+    ../native-source/tools/vr-common/weapon_lancer_front_handle.h
+    ../native-source/tools/vr-common/weapon_lancer_handle_morph.h
+    ../native-source/tools/vr-common/weapon_lancer_held_contact.h
+    ../native-source/tools/vr-common/weapon_lancer_instance_factory.h
+    ../native-source/tools/vr-common/weapon_lancer_original_handle.h
+    ../native-source/tools/vr-common/weapon_lancer_wrist_mount.h
+    ../native-source/tools/vr-common/weapon_main_mount_provider.h
+    ../native-source/tools/vr-common/weapon_part_visibility.h
+    ../native-source/tools/vr-common/weapon_pose_solver.h
+    ../native-source/tools/vr-common/weapon_snub_slide.h
+    ../native-source/tools/vr-common/weapon_support_grip.h
+    ../native-source/tools/vr-common/weapon_two_hand_hold.h
+    D:/Windows Kits/10/include/10.0.26100.0/shared/apiset.h
+    D:/Windows Kits/10/include/10.0.26100.0/shared/apisetcconv.h
+    D:/Windows Kits/10/include/10.0.26100.0/shared/basetsd.h
+    D:/Windows Kits/10/include/10.0.26100.0/shared/bcrypt.h
+    D:/Windows Kits/10/include/10.0.26100.0/shared/driverspecs.h
+    D:/Windows Kits/10/include/10.0.26100.0/shared/dxgi.h
+    D:/Windows Kits/10/include/10.0.26100.0/shared/dxgi1_2.h
+    D:/Windows Kits/10/include/10.0.26100.0/shared/dxgi1_3.h
+    D:/Windows Kits/10/include/10.0.26100.0/shared/dxgi1_4.h
+    D:/Windows Kits/10/include/10.0.26100.0/shared/dxgicommon.h
+    D:/Windows Kits/10/include/10.0.26100.0/shared/dxgiformat.h
+    D:/Windows Kits/10/include/10.0.26100.0/shared/dxgitype.h
+    D:/Windows Kits/10/include/10.0.26100.0/shared/guiddef.h
+    D:/Windows Kits/10/include/10.0.26100.0/shared/kernelspecs.h
+    D:/Windows Kits/10/include/10.0.26100.0/shared/ktmtypes.h
+    D:/Windows Kits/10/include/10.0.26100.0/shared/minwindef.h
+    D:/Windows Kits/10/include/10.0.26100.0/shared/poppack.h
+    D:/Windows Kits/10/include/10.0.26100.0/shared/pshpack1.h
+    D:/Windows Kits/10/include/10.0.26100.0/shared/pshpack2.h
+    D:/Windows Kits/10/include/10.0.26100.0/shared/pshpack4.h
+    D:/Windows Kits/10/include/10.0.26100.0/shared/pshpack8.h
+    D:/Windows Kits/10/include/10.0.26100.0/shared/rpc.h
+    D:/Windows Kits/10/include/10.0.26100.0/shared/rpcasync.h
+    D:/Windows Kits/10/include/10.0.26100.0/shared/rpcdce.h
+    D:/Windows Kits/10/include/10.0.26100.0/shared/rpcdcep.h
+    D:/Windows Kits/10/include/10.0.26100.0/shared/rpcndr.h
+    D:/Windows Kits/10/include/10.0.26100.0/shared/rpcnterr.h
+    D:/Windows Kits/10/include/10.0.26100.0/shared/rpcsal.h
+    D:/Windows Kits/10/include/10.0.26100.0/shared/sdkddkver.h
+    D:/Windows Kits/10/include/10.0.26100.0/shared/sdv_driverspecs.h
+    D:/Windows Kits/10/include/10.0.26100.0/shared/specstrings.h
+    D:/Windows Kits/10/include/10.0.26100.0/shared/specstrings_strict.h
+    D:/Windows Kits/10/include/10.0.26100.0/shared/specstrings_undef.h
+    D:/Windows Kits/10/include/10.0.26100.0/shared/stralign.h
+    D:/Windows Kits/10/include/10.0.26100.0/shared/tvout.h
+    D:/Windows Kits/10/include/10.0.26100.0/shared/winapifamily.h
+    D:/Windows Kits/10/include/10.0.26100.0/shared/windef.h
+    D:/Windows Kits/10/include/10.0.26100.0/shared/winerror.h
+    D:/Windows Kits/10/include/10.0.26100.0/shared/winpackagefamily.h
+    D:/Windows Kits/10/include/10.0.26100.0/shared/wnnc.h
+    D:/Windows Kits/10/include/10.0.26100.0/shared/wtypes.h
+    D:/Windows Kits/10/include/10.0.26100.0/shared/wtypesbase.h
+    D:/Windows Kits/10/include/10.0.26100.0/ucrt/corecrt.h
+    D:/Windows Kits/10/include/10.0.26100.0/ucrt/corecrt_io.h
+    D:/Windows Kits/10/include/10.0.26100.0/ucrt/corecrt_malloc.h
+    D:/Windows Kits/10/include/10.0.26100.0/ucrt/corecrt_math.h
+    D:/Windows Kits/10/include/10.0.26100.0/ucrt/corecrt_memcpy_s.h
+    D:/Windows Kits/10/include/10.0.26100.0/ucrt/corecrt_memory.h
+    D:/Windows Kits/10/include/10.0.26100.0/ucrt/corecrt_search.h
+    D:/Windows Kits/10/include/10.0.26100.0/ucrt/corecrt_share.h
+    D:/Windows Kits/10/include/10.0.26100.0/ucrt/corecrt_startup.h
+    D:/Windows Kits/10/include/10.0.26100.0/ucrt/corecrt_stdio_config.h
+    D:/Windows Kits/10/include/10.0.26100.0/ucrt/corecrt_terminate.h
+    D:/Windows Kits/10/include/10.0.26100.0/ucrt/corecrt_wconio.h
+    D:/Windows Kits/10/include/10.0.26100.0/ucrt/corecrt_wctype.h
+    D:/Windows Kits/10/include/10.0.26100.0/ucrt/corecrt_wdirect.h
+    D:/Windows Kits/10/include/10.0.26100.0/ucrt/corecrt_wio.h
+    D:/Windows Kits/10/include/10.0.26100.0/ucrt/corecrt_wprocess.h
+    D:/Windows Kits/10/include/10.0.26100.0/ucrt/corecrt_wstdio.h
+    D:/Windows Kits/10/include/10.0.26100.0/ucrt/corecrt_wstdlib.h
+    D:/Windows Kits/10/include/10.0.26100.0/ucrt/corecrt_wstring.h
+    D:/Windows Kits/10/include/10.0.26100.0/ucrt/corecrt_wtime.h
+    D:/Windows Kits/10/include/10.0.26100.0/ucrt/crtdbg.h
+    D:/Windows Kits/10/include/10.0.26100.0/ucrt/ctype.h
+    D:/Windows Kits/10/include/10.0.26100.0/ucrt/errno.h
+    D:/Windows Kits/10/include/10.0.26100.0/ucrt/fcntl.h
+    D:/Windows Kits/10/include/10.0.26100.0/ucrt/float.h
+    D:/Windows Kits/10/include/10.0.26100.0/ucrt/io.h
+    D:/Windows Kits/10/include/10.0.26100.0/ucrt/malloc.h
+    D:/Windows Kits/10/include/10.0.26100.0/ucrt/math.h
+    D:/Windows Kits/10/include/10.0.26100.0/ucrt/process.h
+    D:/Windows Kits/10/include/10.0.26100.0/ucrt/share.h
+    D:/Windows Kits/10/include/10.0.26100.0/ucrt/stddef.h
+    D:/Windows Kits/10/include/10.0.26100.0/ucrt/stdio.h
+    D:/Windows Kits/10/include/10.0.26100.0/ucrt/stdlib.h
+    D:/Windows Kits/10/include/10.0.26100.0/ucrt/string.h
+    D:/Windows Kits/10/include/10.0.26100.0/ucrt/sys/stat.h
+    D:/Windows Kits/10/include/10.0.26100.0/ucrt/sys/types.h
+    D:/Windows Kits/10/include/10.0.26100.0/ucrt/time.h
+    D:/Windows Kits/10/include/10.0.26100.0/ucrt/wchar.h
+    D:/Windows Kits/10/include/10.0.26100.0/um/Xinput.h
+    D:/Windows Kits/10/include/10.0.26100.0/um/apiquery2.h
+    D:/Windows Kits/10/include/10.0.26100.0/um/cguid.h
+    D:/Windows Kits/10/include/10.0.26100.0/um/combaseapi.h
+    D:/Windows Kits/10/include/10.0.26100.0/um/coml2api.h
+    D:/Windows Kits/10/include/10.0.26100.0/um/consoleapi.h
+    D:/Windows Kits/10/include/10.0.26100.0/um/consoleapi2.h
+    D:/Windows Kits/10/include/10.0.26100.0/um/consoleapi3.h
+    D:/Windows Kits/10/include/10.0.26100.0/um/d3d11shader.h
+    D:/Windows Kits/10/include/10.0.26100.0/um/d3d12.h
+    D:/Windows Kits/10/include/10.0.26100.0/um/d3d12sdklayers.h
+    D:/Windows Kits/10/include/10.0.26100.0/um/d3d12shader.h
+    D:/Windows Kits/10/include/10.0.26100.0/um/d3dcommon.h
+    D:/Windows Kits/10/include/10.0.26100.0/um/d3dcompiler.h
+    D:/Windows Kits/10/include/10.0.26100.0/um/datetimeapi.h
+    D:/Windows Kits/10/include/10.0.26100.0/um/debugapi.h
+    D:/Windows Kits/10/include/10.0.26100.0/um/enclaveapi.h
+    D:/Windows Kits/10/include/10.0.26100.0/um/errhandlingapi.h
+    D:/Windows Kits/10/include/10.0.26100.0/um/fibersapi.h
+    D:/Windows Kits/10/include/10.0.26100.0/um/fileapi.h
+    D:/Windows Kits/10/include/10.0.26100.0/um/fileapifromapp.h
+    D:/Windows Kits/10/include/10.0.26100.0/um/handleapi.h
+    D:/Windows Kits/10/include/10.0.26100.0/um/heapapi.h
+    D:/Windows Kits/10/include/10.0.26100.0/um/ime_cmodes.h
+    D:/Windows Kits/10/include/10.0.26100.0/um/imm.h
+    D:/Windows Kits/10/include/10.0.26100.0/um/interlockedapi.h
+    D:/Windows Kits/10/include/10.0.26100.0/um/ioapiset.h
+    D:/Windows Kits/10/include/10.0.26100.0/um/jobapi.h
+    D:/Windows Kits/10/include/10.0.26100.0/um/jobapi2.h
+    D:/Windows Kits/10/include/10.0.26100.0/um/libloaderapi.h
+    D:/Windows Kits/10/include/10.0.26100.0/um/mcx.h
+    D:/Windows Kits/10/include/10.0.26100.0/um/memoryapi.h
+    D:/Windows Kits/10/include/10.0.26100.0/um/minwinbase.h
+    D:/Windows Kits/10/include/10.0.26100.0/um/msxml.h
+    D:/Windows Kits/10/include/10.0.26100.0/um/namedpipeapi.h
+    D:/Windows Kits/10/include/10.0.26100.0/um/namespaceapi.h
+    D:/Windows Kits/10/include/10.0.26100.0/um/oaidl.h
+    D:/Windows Kits/10/include/10.0.26100.0/um/objbase.h
+    D:/Windows Kits/10/include/10.0.26100.0/um/objidl.h
+    D:/Windows Kits/10/include/10.0.26100.0/um/objidlbase.h
+    D:/Windows Kits/10/include/10.0.26100.0/um/ocidl.h
+    D:/Windows Kits/10/include/10.0.26100.0/um/ole2.h
+    D:/Windows Kits/10/include/10.0.26100.0/um/oleauto.h
+    D:/Windows Kits/10/include/10.0.26100.0/um/oleidl.h
+    D:/Windows Kits/10/include/10.0.26100.0/um/processenv.h
+    D:/Windows Kits/10/include/10.0.26100.0/um/processthreadsapi.h
+    D:/Windows Kits/10/include/10.0.26100.0/um/processtopologyapi.h
+    D:/Windows Kits/10/include/10.0.26100.0/um/profileapi.h
+    D:/Windows Kits/10/include/10.0.26100.0/um/propidl.h
+    D:/Windows Kits/10/include/10.0.26100.0/um/propidlbase.h
+    D:/Windows Kits/10/include/10.0.26100.0/um/psapi.h
+    D:/Windows Kits/10/include/10.0.26100.0/um/realtimeapiset.h
+    D:/Windows Kits/10/include/10.0.26100.0/um/reason.h
+    D:/Windows Kits/10/include/10.0.26100.0/um/rpcnsi.h
+    D:/Windows Kits/10/include/10.0.26100.0/um/rpcnsip.h
+    D:/Windows Kits/10/include/10.0.26100.0/um/securityappcontainer.h
+    D:/Windows Kits/10/include/10.0.26100.0/um/securitybaseapi.h
+    D:/Windows Kits/10/include/10.0.26100.0/um/servprov.h
+    D:/Windows Kits/10/include/10.0.26100.0/um/stringapiset.h
+    D:/Windows Kits/10/include/10.0.26100.0/um/synchapi.h
+    D:/Windows Kits/10/include/10.0.26100.0/um/sysinfoapi.h
+    D:/Windows Kits/10/include/10.0.26100.0/um/systemtopologyapi.h
+    D:/Windows Kits/10/include/10.0.26100.0/um/threadpoolapiset.h
+    D:/Windows Kits/10/include/10.0.26100.0/um/threadpoollegacyapiset.h
+    D:/Windows Kits/10/include/10.0.26100.0/um/timezoneapi.h
+    D:/Windows Kits/10/include/10.0.26100.0/um/unknwn.h
+    D:/Windows Kits/10/include/10.0.26100.0/um/unknwnbase.h
+    D:/Windows Kits/10/include/10.0.26100.0/um/urlmon.h
+    D:/Windows Kits/10/include/10.0.26100.0/um/utilapiset.h
+    D:/Windows Kits/10/include/10.0.26100.0/um/verrsrc.h
+    D:/Windows Kits/10/include/10.0.26100.0/um/winbase.h
+    D:/Windows Kits/10/include/10.0.26100.0/um/wincon.h
+    D:/Windows Kits/10/include/10.0.26100.0/um/wincontypes.h
+    D:/Windows Kits/10/include/10.0.26100.0/um/windows.h
+    D:/Windows Kits/10/include/10.0.26100.0/um/wingdi.h
+    D:/Windows Kits/10/include/10.0.26100.0/um/winnetwk.h
+    D:/Windows Kits/10/include/10.0.26100.0/um/winnls.h
+    D:/Windows Kits/10/include/10.0.26100.0/um/winnt.h
+    D:/Windows Kits/10/include/10.0.26100.0/um/winreg.h
+    D:/Windows Kits/10/include/10.0.26100.0/um/winsvc.h
+    D:/Windows Kits/10/include/10.0.26100.0/um/winuser.h
+    D:/Windows Kits/10/include/10.0.26100.0/um/winver.h
+    D:/Windows Kits/10/include/10.0.26100.0/um/wow64apiset.h
+    D:/Windows Kits/10/include/10.0.26100.0/winrt/activation.h
+    D:/Windows Kits/10/include/10.0.26100.0/winrt/hstring.h
+    D:/Windows Kits/10/include/10.0.26100.0/winrt/inspectable.h
+    D:/Windows Kits/10/include/10.0.26100.0/winrt/roapi.h
+    D:/Windows Kits/10/include/10.0.26100.0/winrt/weakreference.h
+    D:/Windows Kits/10/include/10.0.26100.0/winrt/wrl/client.h
+    D:/Windows Kits/10/include/10.0.26100.0/winrt/wrl/def.h
+    D:/Windows Kits/10/include/10.0.26100.0/winrt/wrl/internal.h
+    E:/vs/VC/Tools/MSVC/14.51.36231/include/__msvc_bit_utils.hpp
+    E:/vs/VC/Tools/MSVC/14.51.36231/include/__msvc_chrono.hpp
+    E:/vs/VC/Tools/MSVC/14.51.36231/include/__msvc_doom_core.hpp
+    E:/vs/VC/Tools/MSVC/14.51.36231/include/__msvc_heap_algorithms.hpp
+    E:/vs/VC/Tools/MSVC/14.51.36231/include/__msvc_int128.hpp
+    E:/vs/VC/Tools/MSVC/14.51.36231/include/__msvc_iter_core.hpp
+    E:/vs/VC/Tools/MSVC/14.51.36231/include/__msvc_minmax.hpp
+    E:/vs/VC/Tools/MSVC/14.51.36231/include/__msvc_sanitizer_annotate_container.hpp
+    E:/vs/VC/Tools/MSVC/14.51.36231/include/__msvc_string_view.hpp
+    E:/vs/VC/Tools/MSVC/14.51.36231/include/__msvc_system_error_abi.hpp
+    E:/vs/VC/Tools/MSVC/14.51.36231/include/__msvc_threads_core.hpp
+    E:/vs/VC/Tools/MSVC/14.51.36231/include/algorithm
+    E:/vs/VC/Tools/MSVC/14.51.36231/include/ammintrin.h
+    E:/vs/VC/Tools/MSVC/14.51.36231/include/array
+    E:/vs/VC/Tools/MSVC/14.51.36231/include/atomic
+    E:/vs/VC/Tools/MSVC/14.51.36231/include/cctype
+    E:/vs/VC/Tools/MSVC/14.51.36231/include/cerrno
+    E:/vs/VC/Tools/MSVC/14.51.36231/include/cfloat
+    E:/vs/VC/Tools/MSVC/14.51.36231/include/charconv
+    E:/vs/VC/Tools/MSVC/14.51.36231/include/chrono
+    E:/vs/VC/Tools/MSVC/14.51.36231/include/climits
+    E:/vs/VC/Tools/MSVC/14.51.36231/include/cmath
+    E:/vs/VC/Tools/MSVC/14.51.36231/include/concurrencysal.h
+    E:/vs/VC/Tools/MSVC/14.51.36231/include/crtdefs.h
+    E:/vs/VC/Tools/MSVC/14.51.36231/include/cstddef
+    E:/vs/VC/Tools/MSVC/14.51.36231/include/cstdint
+    E:/vs/VC/Tools/MSVC/14.51.36231/include/cstdio
+    E:/vs/VC/Tools/MSVC/14.51.36231/include/cstdlib
+    E:/vs/VC/Tools/MSVC/14.51.36231/include/cstring
+    E:/vs/VC/Tools/MSVC/14.51.36231/include/ctime
+    E:/vs/VC/Tools/MSVC/14.51.36231/include/cwchar
+    E:/vs/VC/Tools/MSVC/14.51.36231/include/deque
+    E:/vs/VC/Tools/MSVC/14.51.36231/include/eh.h
+    E:/vs/VC/Tools/MSVC/14.51.36231/include/emmintrin.h
+    E:/vs/VC/Tools/MSVC/14.51.36231/include/exception
+    E:/vs/VC/Tools/MSVC/14.51.36231/include/excpt.h
+    E:/vs/VC/Tools/MSVC/14.51.36231/include/functional
+    E:/vs/VC/Tools/MSVC/14.51.36231/include/immintrin.h
+    E:/vs/VC/Tools/MSVC/14.51.36231/include/initializer_list
+    E:/vs/VC/Tools/MSVC/14.51.36231/include/intrin.h
+    E:/vs/VC/Tools/MSVC/14.51.36231/include/intrin0.h
+    E:/vs/VC/Tools/MSVC/14.51.36231/include/intrin0.inl.h
+    E:/vs/VC/Tools/MSVC/14.51.36231/include/iosfwd
+    E:/vs/VC/Tools/MSVC/14.51.36231/include/iterator
+    E:/vs/VC/Tools/MSVC/14.51.36231/include/limits
+    E:/vs/VC/Tools/MSVC/14.51.36231/include/limits.h
+    E:/vs/VC/Tools/MSVC/14.51.36231/include/list
+    E:/vs/VC/Tools/MSVC/14.51.36231/include/map
+    E:/vs/VC/Tools/MSVC/14.51.36231/include/memory
+    E:/vs/VC/Tools/MSVC/14.51.36231/include/mmintrin.h
+    E:/vs/VC/Tools/MSVC/14.51.36231/include/mutex
+    E:/vs/VC/Tools/MSVC/14.51.36231/include/new
+    E:/vs/VC/Tools/MSVC/14.51.36231/include/nmmintrin.h
+    E:/vs/VC/Tools/MSVC/14.51.36231/include/optional
+    E:/vs/VC/Tools/MSVC/14.51.36231/include/pmmintrin.h
+    E:/vs/VC/Tools/MSVC/14.51.36231/include/ratio
+    E:/vs/VC/Tools/MSVC/14.51.36231/include/sal.h
+    E:/vs/VC/Tools/MSVC/14.51.36231/include/set
+    E:/vs/VC/Tools/MSVC/14.51.36231/include/setjmp.h
+    E:/vs/VC/Tools/MSVC/14.51.36231/include/smmintrin.h
+    E:/vs/VC/Tools/MSVC/14.51.36231/include/stdarg.h
+    E:/vs/VC/Tools/MSVC/14.51.36231/include/stdexcept
+    E:/vs/VC/Tools/MSVC/14.51.36231/include/stdint.h
+    E:/vs/VC/Tools/MSVC/14.51.36231/include/string
+    E:/vs/VC/Tools/MSVC/14.51.36231/include/string_view
+    E:/vs/VC/Tools/MSVC/14.51.36231/include/system_error
+    E:/vs/VC/Tools/MSVC/14.51.36231/include/thread
+    E:/vs/VC/Tools/MSVC/14.51.36231/include/tmmintrin.h
+    E:/vs/VC/Tools/MSVC/14.51.36231/include/tuple
+    E:/vs/VC/Tools/MSVC/14.51.36231/include/type_traits
+    E:/vs/VC/Tools/MSVC/14.51.36231/include/typeinfo
+    E:/vs/VC/Tools/MSVC/14.51.36231/include/unordered_map
+    E:/vs/VC/Tools/MSVC/14.51.36231/include/use_ansi.h
+    E:/vs/VC/Tools/MSVC/14.51.36231/include/utility
+    E:/vs/VC/Tools/MSVC/14.51.36231/include/vadefs.h
+    E:/vs/VC/Tools/MSVC/14.51.36231/include/vcruntime.h
+    E:/vs/VC/Tools/MSVC/14.51.36231/include/vcruntime_exception.h
+    E:/vs/VC/Tools/MSVC/14.51.36231/include/vcruntime_new.h
+    E:/vs/VC/Tools/MSVC/14.51.36231/include/vcruntime_new_debug.h
+    E:/vs/VC/Tools/MSVC/14.51.36231/include/vcruntime_startup.h
+    E:/vs/VC/Tools/MSVC/14.51.36231/include/vcruntime_string.h
+    E:/vs/VC/Tools/MSVC/14.51.36231/include/vcruntime_typeinfo.h
+    E:/vs/VC/Tools/MSVC/14.51.36231/include/vector
+    E:/vs/VC/Tools/MSVC/14.51.36231/include/wmmintrin.h
+    E:/vs/VC/Tools/MSVC/14.51.36231/include/xatomic.h
+    E:/vs/VC/Tools/MSVC/14.51.36231/include/xbit_ops.h
+    E:/vs/VC/Tools/MSVC/14.51.36231/include/xcall_once.h
+    E:/vs/VC/Tools/MSVC/14.51.36231/include/xcharconv.h
+    E:/vs/VC/Tools/MSVC/14.51.36231/include/xcharconv_ryu.h
+    E:/vs/VC/Tools/MSVC/14.51.36231/include/xcharconv_ryu_tables.h
+    E:/vs/VC/Tools/MSVC/14.51.36231/include/xcharconv_tables.h
+    E:/vs/VC/Tools/MSVC/14.51.36231/include/xerrc.h
+    E:/vs/VC/Tools/MSVC/14.51.36231/include/xfilesystem_abi.h
+    E:/vs/VC/Tools/MSVC/14.51.36231/include/xhash
+    E:/vs/VC/Tools/MSVC/14.51.36231/include/xkeycheck.h
+    E:/vs/VC/Tools/MSVC/14.51.36231/include/xmemory
+    E:/vs/VC/Tools/MSVC/14.51.36231/include/xmmintrin.h
+    E:/vs/VC/Tools/MSVC/14.51.36231/include/xnode_handle.h
+    E:/vs/VC/Tools/MSVC/14.51.36231/include/xpolymorphic_allocator.h
+    E:/vs/VC/Tools/MSVC/14.51.36231/include/xsmf_control.h
+    E:/vs/VC/Tools/MSVC/14.51.36231/include/xstring
+    E:/vs/VC/Tools/MSVC/14.51.36231/include/xthreads.h
+    E:/vs/VC/Tools/MSVC/14.51.36231/include/xtimec.h
+    E:/vs/VC/Tools/MSVC/14.51.36231/include/xtr1common
+    E:/vs/VC/Tools/MSVC/14.51.36231/include/xtree
+    E:/vs/VC/Tools/MSVC/14.51.36231/include/xutility
+    E:/vs/VC/Tools/MSVC/14.51.36231/include/yvals.h
+    E:/vs/VC/Tools/MSVC/14.51.36231/include/yvals_core.h
+    E:/vs/VC/Tools/MSVC/14.51.36231/include/zmmintrin.h
+

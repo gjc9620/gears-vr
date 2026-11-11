@@ -1,0 +1,5 @@
+cover_context_live: 206 checks, 0 failures; legacy body disabled, no hooks/writes
+cover_link_path depth=0 five_reads=22645
+cover_link_path depth=4 five_reads=24345
+cover_link_path depth=12 five_reads=27745
+CoverLinkPathProof checks=288 failures=0 real context reader; no game/write

@@ -1,0 +1,16 @@
+[
+  {
+    "variant": "before",
+    "build_exit": 0,
+    "test_exit": 0,
+    "output": "cover_context_live: 206 checks, 0 failures; legacy body disabled, no hooks/writes\r\ncover_link_path depth=0 five_reads=24220\r\ncover_link_path depth=4 five_reads=28560\r\ncover_link_path depth=12 five_reads=37240\r\nbaseline_unclosed_ancestor=1\r\nCoverLinkPathProof checks=288 failures=0 real context reader; no game/write\r\n",
+    "outside_worktree_dependencies": []
+  },
+  {
+    "variant": "after",
+    "build_exit": 0,
+    "test_exit": 0,
+    "output": "cover_context_live: 206 checks, 0 failures; legacy body disabled, no hooks/writes\r\ncover_link_path depth=0 five_reads=22645\r\ncover_link_path depth=4 five_reads=24345\r\ncover_link_path depth=12 five_reads=27745\r\nCoverLinkPathProof checks=288 failures=0 real context reader; no game/write\r\n",
+    "outside_worktree_dependencies": []
+  }
+]
