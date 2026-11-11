@@ -1,14 +1,13 @@
 {
-  "instance": "hb-cloak-1111-133258",
-  "runner_session_id": 20457,
-  "terminal": true,
-  "observed_ns": 160029737609500,
-  "runner_last_poll": "20457 terminal1; operator1 and all own runtime cleanup normal0; no live owned worker retained",
-  "candidate": "latch-seek-gap-r1",
-  "native_candidate": "native-input-loss-r1",
-  "source_checkpoint": "72e4964b",
-  "requirements_complete": false,
   "all13_requirements_retained": true,
-  "next": "Add passive classification at exact frozen capture stereo bridge-read/gate rejection sites, preserving original sample_time/status/continuity. Distinguish unavailable/true loss/age-only before policy repair. No unchanged full rerun; all13 retained.",
-  "game_pid": 58164
+  "next": "Save bounded test-harness correction then one targeted full empty recheck; no product binary rebuild or unchanged source loop.",
+  "instance": "hb-cloak-1111-135316",
+  "native_candidate": "native-render-age-r1",
+  "runner_session_id": 35497,
+  "source_checkpoint": "7944a982",
+  "candidate": "render-age-pg-r1",
+  "terminal": true,
+  "requirements_complete": false,
+  "game_pid": 45516,
+  "runner_last_poll": "35497 terminal1; stop/launcher/Native/PG/XR normal0; game/children gone, noforced"
 }

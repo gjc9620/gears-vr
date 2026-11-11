@@ -187,6 +187,10 @@ def reload_source():
 
 def supply_source():
     source=(CODE/'hammerburst_supply_boundary_chain.py').read_text(encoding='utf-8')
+    # The confirmed UP/first-shot/readback protocol needs more time than the
+    # old fixed .35/.6 gesture. This is the bounded test-flow window only;
+    # production event/source deadlines and per-burst waits remain unchanged.
+    source=replace_once(source,'timeout=18.,clock=time.monotonic','timeout=36.,clock=time.monotonic')
     source=replace_once(source,'            c.live();g.pad(1,wait=.35,trigger=1);g.pad(1,wait=.6);bursts+=1',
         '''            c.live();bursts+=1
             from confirmed_first_fire import first_fire

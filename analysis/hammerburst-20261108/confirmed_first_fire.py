@@ -59,6 +59,14 @@ def first_fire(c,data,*,clock=time.perf_counter_ns,sleep=time.sleep,expected_sho
         raise TimeoutError('No fresh actual '+('DOWN' if down else 'UP baseline')+' consumption receipt')
     receipt['baseline_sent_ns']=clock();g.pad(1,wait=0)
     receipt['baseline']=consumed(receipt['baseline_sent_ns'],False,5)
+    if deadline_ns is not None:
+        receipt['outer_deadline_ns']=deadline_ns
+        receipt['remaining_before_down_ns']=deadline_ns-clock()
+        # Test orchestration only: leave room for the existing two-second
+        # first-shot observation plus its same-burst completion window.
+        # Never send a new DOWN that the whole-test deadline must truncate.
+        if receipt['remaining_before_down_ns']<3_500_000_000:
+            raise TimeoutError('Insufficient whole-test time for one complete original burst; no DOWN sent')
     before=len(c.records('native_lancer_shot_trajectory'))
     receipt['down_sent_ns']=clock()
     try:

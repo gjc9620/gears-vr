@@ -50,7 +50,20 @@ class Tests(unittest.TestCase):
     def test_outer_deadline_is_not_renewed(self):
         h=Host('down_missing');data={'checks':{}}
         with self.assertRaises(TimeoutError):first_fire(h,data,clock=lambda:h.now,sleep=h.sleep,deadline_ns=h.now+50_000_000)
-        self.assertLessEqual(h.now,1_050_000_000);self.assertEqual(h.inputs,[{},dict(trigger=1),{}])
+        self.assertLessEqual(h.now,1_050_000_000);self.assertEqual(h.inputs,[{}])
+        self.assertNotIn('down_sent_ns',data['first_fire_input'])
+    def test_full_burst_budget_boundary_does_not_extend_deadline(self):
+        for budget in (87_620_700,3_499_999_999,3_500_000_000):
+            h=Host();data={'checks':{}};deadline=h.now+budget
+            if budget<3_500_000_000:
+                with self.assertRaisesRegex(TimeoutError,'no DOWN sent'):
+                    first_fire(h,data,clock=lambda:h.now,sleep=h.sleep,deadline_ns=deadline)
+                self.assertEqual(h.inputs,[{}])
+            else:
+                first_fire(h,data,clock=lambda:h.now,sleep=h.sleep,deadline_ns=deadline)
+                self.assertTrue(data['checks']['actual_fire'])
+                self.assertEqual(h.inputs,[{},dict(trigger=1),{}])
+            self.assertEqual(data['first_fire_input']['outer_deadline_ns'],deadline)
     def test_one_press_waits_for_consumption(self):
         h=Host();d=h.run();self.assertEqual(h.inputs,[{},dict(trigger=1),{}]);self.assertTrue(d['checks']['actual_fire'])
         self.assertEqual(len(d['shots']),6);self.assertEqual(d['first_fire_input']['down']['trigger_value'],'1')
