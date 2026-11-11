@@ -17,7 +17,8 @@ static void skeletal_setup(){
     object(attached_body,192,body_class,attached_mesh,L"AttachedSkeletalBody");
     put(attached_mesh+0x170,fixture_pc);put(attached_leaf+0x170,fixture_pawn);put(attached_mesh+0x1a0,attached_body);put(attached_mesh+0x248,physics_asset);
     put(attached_body+0x60,-9);put(attached_body+0x68,attached_mesh);put(attached_body+0x88,arena+0xb6000);
-    put(arena+0xb6000,uintptr_t(0x1802330a8));put(arena+0xb6038,arena+0x8b000);put(arena+0xb6040,arena+0xb7000);put(arena+0xb7010,arena+0xb6000);
+    put(arena+0xb6000,uintptr_t(0x1802330a8));put(arena+0xb6028,uintptr_t(0x1802324f8));put(arena+0xb6030,arena+0xb6000);
+    put(arena+0xb6038,arena+0x8b000);put(arena+0xb6040,arena+0xb7000);put(arena+0xb7010,uintptr_t(28));
     put(fixture_mesh+0x260,roles::pose::ArrayHeader{arena+0xd6000,4,4});attachment_rows(arena+0xd6000,4,56,0,attached_mesh);
     put(arena+0xd6000+56,uintptr_t{});put(arena+0xd6000+56*3,fixture_mesh);
     put(attached_mesh+0x260,roles::pose::ArrayHeader{arena+0xd7000,2,2});attachment_rows(arena+0xd7000,2,56,0,attached_leaf);put(arena+0xd7000+56,weapon_mesh);

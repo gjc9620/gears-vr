@@ -7,6 +7,7 @@
 #include <type_traits>
 #include "cover_physx_query_source.h"
 #include "cover_owner_link_observation.h"
+#include "cover_physx_actor_backlink.h"
 
 // Exact Image pin/current C0 and typed full-identity/metadata guard required.
 // This qualifies only the supplied DECLARED component/body fields. Owners,
@@ -204,7 +205,7 @@ inline bool consistent(Snapshot const& packet)noexcept{
     auto accept=[&](Actor const& value,Presence expected,std::uintptr_t at){
         if(value.presence!=expected)return false;
         if(expected!=Presence::actor_observed)return !value.table&&!value.scene&&!value.internal;
-        if(value.table!=packet.query_source.actor_table||value.scene!=packet.query_source.scene||!source::pointer(value.internal,0x18))return false;
+        if(value.table!=packet.query_source.actor_table||value.scene!=packet.query_source.scene||(value.internal&&!source::pointer(value.internal,0x18)))return false;
         bool duplicate=false;for(unsigned k=0;k<count;++k)duplicate=duplicate||actors[k]==at;
         if(!duplicate)actors[count++]=at;return true;};
     for(unsigned n=0;n<capacity;++n){auto const& row=packet.fields.components[n];auto const& value=packet.observations[n];
@@ -223,12 +224,15 @@ template<class Read> Code actor(std::uintptr_t image_base,source::Snapshot const
     if(!data){value.presence=Presence::body_data_field_null;return Code::observed;}
     if(!raw::field(read,value.table,data,0)||!raw::field(read,value.scene,data,0x38)||!raw::field(read,value.internal,data,0x40))return Code::read;
     if(value.table!=image_base+0x2330a8)return Code::unsupported;
-    if(value.scene!=scope.scene||!source::pointer(value.internal,0x18)){
+    if(value.scene!=scope.scene||(value.internal&&!source::pointer(value.internal,0x18))){
         linkobs::note({false,linkobs::Reader::components,{},linkobs::Branch::scene_or_internal,scope.source.thread,
             data,value.table,scope.scene,value.scene,value.internal,0,false});return Code::links;}
-    std::uintptr_t reverse{};if(!raw::field(read,reverse,value.internal,0x10))return Code::read;
-    if(reverse!=data){
-        linkobs::note({false,linkobs::Reader::components,{},linkobs::Branch::reverse,scope.source.thread,
+    std::uintptr_t reverse{};namespace back=gears_cover_physx_actor_backlink;
+    const auto relation=back::sample(image_base,data,read,reverse);
+    if(relation==back::Code::read)return Code::read;
+    if(relation==back::Code::unsupported)return Code::unsupported;
+    if(relation!=back::Code::current){
+        linkobs::note({false,linkobs::Reader::components,{},linkobs::Branch::embedded_owner,scope.source.thread,
             data,value.table,scope.scene,value.scene,value.internal,reverse,true});return Code::links;}value.presence=Presence::actor_observed;
     bool duplicate=false;for(unsigned k=0;k<output.actor_count;++k)duplicate=duplicate||output.actors[k]==data;
     if(!duplicate)output.actors[output.actor_count++]=data;return Code::observed;

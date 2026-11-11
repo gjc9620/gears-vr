@@ -14,7 +14,7 @@ static Memory actor_edges_fixture(p::Source& fields){
     m.block(0x680000,0x48);m.block(0x690000,0x18);
     fields.components[2]={0x660000,0x610000,0x670000,0x660000,0x610000,4,4,0x180,true,false,p::State::body_data_nonnull,-9,0x680000,0};
     m.put<std::uintptr_t>(0x660180,0x670000);m.put<std::uintptr_t>(0x670088,0x680000);
-    m.put<std::uintptr_t>(0x680000,base+0x2330a8);m.put<std::uintptr_t>(0x680038,0x170000);
+    m.put<std::uintptr_t>(0x680000,base+0x2330a8);m.actor_owner(0x680000,base);m.put<std::uintptr_t>(0x680038,0x170000);
     m.put<std::uintptr_t>(0x680040,0x690000);m.put<std::uintptr_t>(0x690010,0x680000);
     for(unsigned n=0;n<3;++n){auto const& root=fields.roots[n];m.put(root.actor+root.base_offset,root.base);m.put(root.actor+root.attached_offset,root.attached);
         for(unsigned k=0;k<4;++k)m.put(root.attached.data+k*8,root.attached_members[k]);
@@ -42,7 +42,7 @@ int main(){
         if(bad==2)memory.put(0x6102f0,s::pose::ArrayHeader{0x640000,0,4});
         if(bad==3)memory.put<std::uintptr_t>(0x650000,0x190000);
         if(bad==4)memory.put<std::uintptr_t>(0x680038,0x180000);
-        if(bad==5)memory.put<std::uintptr_t>(0x690010,0x160000);
+        if(bad==5)memory.put<std::uintptr_t>(0x680030,0x160000);
         if(bad==6)memory.put<std::uintptr_t>(0x680000,base+0x2330b0);
         if(bad==7)memory.put<std::uintptr_t>(0x670088,0x160000);
         check(p::observe(base,size,scope,*fields,read,PartsGuard{*fields},*work,*output)!=p::Code::observed&&p::same(*output,*saved),"edge Base child member or child actor change rejects the whole packet");}

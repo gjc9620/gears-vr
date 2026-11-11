@@ -89,8 +89,9 @@ def main():
     parser.add_argument('--native-r167', action='store_true')
     parser.add_argument('--native-r169', action='store_true')
     parser.add_argument('--native-r171', action='store_true')
+    parser.add_argument('--native-r173', action='store_true')
     args = parser.parse_args()
-    if sum((args.native_r106,args.native_r111,args.native_r117,args.native_r122,args.native_r124,args.native_r126,args.native_r131,args.native_r134,args.native_r137,args.native_r139,args.native_r143,args.native_r146,args.native_r149,args.native_r156,args.native_r158,args.native_r163,args.native_r165,args.native_r167,args.native_r169,args.native_r171))>1:
+    if sum((args.native_r106,args.native_r111,args.native_r117,args.native_r122,args.native_r124,args.native_r126,args.native_r131,args.native_r134,args.native_r137,args.native_r139,args.native_r143,args.native_r146,args.native_r149,args.native_r156,args.native_r158,args.native_r163,args.native_r165,args.native_r167,args.native_r169,args.native_r171,args.native_r173))>1:
         raise ValueError('Select one frozen Native')
     if not args.name.startswith('cover-'):
         raise ValueError('Cover owns only its cover- prefixed new instance')
@@ -112,8 +113,8 @@ def main():
             raise RuntimeError('r106 frozen delta differs')
         expected['native'] = receipt['dll_sha256']
         prepared['builds']['native'] = dict(saved=str(current/'native-build/GearsCapture.dll'), sha256=expected['native'])
-    if args.native_r111 or args.native_r117 or args.native_r122 or args.native_r124 or args.native_r126 or args.native_r131 or args.native_r134 or args.native_r137 or args.native_r139 or args.native_r143 or args.native_r146 or args.native_r149 or args.native_r156 or args.native_r158 or args.native_r163 or args.native_r165 or args.native_r167 or args.native_r169 or args.native_r171:
-        current = HERE.parent / ('owner-link-detail-r171' if args.native_r171 else 'source-age-detail-r169' if args.native_r169 else 'collider-recheck-r167' if args.native_r167 else 'component-root-repeat-r165' if args.native_r165 else 'query-timing-r163' if args.native_r163 else 'schema-repeat-r158' if args.native_r158 else 'mesh-role-repeat-r156' if args.native_r156 else 'query-age-cause-r149' if args.native_r149 else 'current-measurement-r146' if args.native_r146 else 'core-measurement-r143' if args.native_r143 else 'member-chain-r139' if args.native_r139 else 'guard-witness-r137' if args.native_r137 else 'path-probe-r134' if args.native_r134 else 'member-witness-r131' if args.native_r131 else 'pose-probe-r126' if args.native_r126 else 'layout-witness-r124' if args.native_r124 else 'overlap-query-r122' if args.native_r122 else 'overlap-collector-r117' if args.native_r117 else 'self-evidence-r111')
+    if args.native_r111 or args.native_r117 or args.native_r122 or args.native_r124 or args.native_r126 or args.native_r131 or args.native_r134 or args.native_r137 or args.native_r139 or args.native_r143 or args.native_r146 or args.native_r149 or args.native_r156 or args.native_r158 or args.native_r163 or args.native_r165 or args.native_r167 or args.native_r169 or args.native_r171 or args.native_r173:
+        current = HERE.parent / ('actor-backlink-r173' if args.native_r173 else 'owner-link-detail-r171' if args.native_r171 else 'source-age-detail-r169' if args.native_r169 else 'collider-recheck-r167' if args.native_r167 else 'component-root-repeat-r165' if args.native_r165 else 'query-timing-r163' if args.native_r163 else 'schema-repeat-r158' if args.native_r158 else 'mesh-role-repeat-r156' if args.native_r156 else 'query-age-cause-r149' if args.native_r149 else 'current-measurement-r146' if args.native_r146 else 'core-measurement-r143' if args.native_r143 else 'member-chain-r139' if args.native_r139 else 'guard-witness-r137' if args.native_r137 else 'path-probe-r134' if args.native_r134 else 'member-witness-r131' if args.native_r131 else 'pose-probe-r126' if args.native_r126 else 'layout-witness-r124' if args.native_r124 else 'overlap-query-r122' if args.native_r122 else 'overlap-collector-r117' if args.native_r117 else 'self-evidence-r111')
         receipt = load(current / 'native-build-result.json')
         overlays = ('cover_physx_overlap_stream.h','cover_physx_query.h','cover_physx_stream.h') if args.native_r117 else (
             'cover_physx_self_evidence.h','cover_physx_query.h','cover_physics_query_live.inl')
@@ -151,6 +152,8 @@ def main():
             overlays=('body_source_age_observation.h','body_tick_source_live.inl','cover_physics_c0_live.inl')
         if args.native_r171:
             overlays=('cover_owner_link_observation.h','cover_physx_asset_actors.h','cover_physx_collider.h','cover_physx_components.h','cover_physx_query.h','cover_physics_c0_live.inl')
+        if args.native_r173:
+            overlays=('cover_physx_actor_backlink.h','cover_owner_link_observation.h','cover_physx_asset_actors.h','cover_physx_collider.h','cover_physx_components.h','cover_physx_actor_shapes.h','cover_physx_shape_owner.h','cover_physx_self_evidence.h')
         changed = {'tools/native-capture/'+name for name in overlays}
         if (set(receipt['changed']) != changed or receipt['external_worktree_dependencies']
                 or not receipt['flags_unchanged'] or not receipt['build_only'] or receipt['staged']):
@@ -223,7 +226,7 @@ def main():
             raise RuntimeError('Shared build output selected')
     write_new(inputs / 'prepared.json', dict(
         instance=str(selected), output=str(output), started=False,
-        path_probe_supported=args.native_r134 or args.native_r137 or args.native_r139 or args.native_r143 or args.native_r146 or args.native_r149 or args.native_r156 or args.native_r158 or args.native_r163 or args.native_r165 or args.native_r167 or args.native_r169 or args.native_r171,
+        path_probe_supported=args.native_r134 or args.native_r137 or args.native_r139 or args.native_r143 or args.native_r146 or args.native_r149 or args.native_r156 or args.native_r158 or args.native_r163 or args.native_r165 or args.native_r167 or args.native_r169 or args.native_r171 or args.native_r173,
         native_sha256=expected['native'], playground_sha256=expected['playground'], xr_sha256=expected['sim_xr'],
         manifest_sha256=sha(selected / 'manifest.json'), config_sha256=sha(selected / 'config.json'),
         input_reader_sha256=sha(output / 'read_private_input.py'),

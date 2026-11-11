@@ -35,8 +35,9 @@ int main(){
         memory.put<std::uintptr_t>(0x190180,0x140000);
         memory.put<std::uintptr_t>(0x160000,base+0x2330a8);
         memory.put<std::uintptr_t>(0x160038,failure==0?0x180000:0x170000);
-        memory.put<std::uintptr_t>(0x160040,failure==1?0:0x1a0000);
-        memory.put<std::uintptr_t>(0x1a0010,failure==2?0x180000:0x160000);
+        memory.put<std::uintptr_t>(0x160040,failure==1?1:0x1a0000);
+        memory.put<std::uintptr_t>(0x1a0010,28);
+        memory.put<std::uintptr_t>(0x160030,failure==2?0x180000:0x160000);
         s::Snapshot scope{};scope.source.thread=key.thread;scope.source.body_index=0;scope.scene=0x170000;
         scope.bodies.count=1;scope.members[0]=0x140000;scope.actor=0x160000;
         auto read=[&](void* p,void const* address,std::size_t bytes){return memory.read(p,address,bytes);};
@@ -55,9 +56,9 @@ int main(){
         check(memory.calls==baseline_reads,"observation adds no reads");
         check(row.observed&&unsigned(row.reader)==reader&&row.actor==0x160000&&row.expected_scene==0x170000,
             "exact reader and already-read actor scene recorded");
-        check(row.branch==(failure==2?obs::Branch::reverse:obs::Branch::scene_or_internal),"exact failing branch recorded");
+        check(row.branch==(failure==2?obs::Branch::embedded_owner:obs::Branch::scene_or_internal),"exact failing branch recorded");
         check(row.reverse_read==(failure==2)&&row.reverse==(failure==2?0x180000u:0u),"unread reverse remains unknown");
-        check(row.observed_scene==(failure==0?0x180000u:0x170000u)&&row.internal==(failure==1?0u:0x1a0000u),
+        check(row.observed_scene==(failure==0?0x180000u:0x170000u)&&row.internal==(failure==1?1u:0x1a0000u),
             "actual mismatching values retained");
     }
     check(!GetModuleHandleW(L"PhysXCore.dll"),"no original DLL executed");

@@ -1,4 +1,5 @@
 #pragma once
+#include "cover_physx_actor_backlink.h"
 #include "cover_physx_query_source.h"
 #include "cover_physx_shape_tables.h"
 #include <atomic>
@@ -32,7 +33,12 @@ template<class Read>Code sample(std::uintptr_t image_base,std::uint32_t size,std
     if(!raw::field(read,table,actor,0)||!raw::field(read,actual,actor,0x38)||!raw::field(read,out.body,actor,0x40)||!raw::field(read,out.root,actor,0x48))return Code::read;
     if(table!=image_base+0x2330a8||actual!=scene)return Code::links;
     if(!slot(read,table,0x98,image_base+0x135810)||!slot(read,table,0xa0,image_base+0x135b10))return Code::module;
-    if(out.body&&(!s::pointer(out.body,0x18)||!raw::field(read,reverse,out.body,0x10)||reverse!=actor))return Code::links;
+    if(out.body&&!s::pointer(out.body,0x18))return Code::links;
+    namespace back=gears_cover_physx_actor_backlink;
+    const auto relation=back::sample(image_base,actor,read,reverse);
+    if(relation==back::Code::read)return Code::read;
+    if(relation==back::Code::unsupported)return Code::module;
+    if(relation!=back::Code::current)return Code::links;
     if(!out.root)return Code::observed;
     if(!s::pointer(out.root,0x170)||!raw::field(read,out.root_table,out.root,0)||!raw::field(read,out.type,out.root,0x168))return Code::read;
     if(!in_image(image_base,size,out.root_table,0x48)||!slot(read,out.root_table,8,image_base+0xcb80))return Code::module;

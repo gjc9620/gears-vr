@@ -2589,3 +2589,15 @@ query键world2310045952/Pawn95274860800/Scene396/Compose24376/seq4161/thread2193
 Owner39/Session8均无failed-call，年龄cause未观察，body/equipment原因unknown。classify/current各39次，只有首次两行：身体Tick24375、来源序列4163，与query Compose24376/seq4161分别保留；首查偏移0.2170ms，tracking0.8123ms、stereo1.4843ms、metadata1.4514ms，无记录到年龄拒绝，不将历史年龄问题视为已修复。initial physics0.7406ms/collider2.5525ms/components7.6377ms；physics repeat8共6.9899ms/collider repeat8共4.2953ms/components repeat0，engine11.4666ms含内部复核，不能重复加；全部span闭合。
 
 256投影帧/errors0，已有捕获跨度到29.515秒；13页全跨度概览及五阶段原图00173/00192/00211/00231/00249全部亲看，中立/转头/恢复/升高/下降仍严重自身头肩躯干遮挡，画面FAIL。五段联系只按实际时间区间，不冒充同C0 GPU原子证明；编码0不表示视图通过。原始动作、退出、精确失败值、年龄、分段和审阅在owner-link-detail-r171/runtime-r172。完整CV01–24/AC01–22及头显未完成，工程25%、publicv71/固定入口不变，目标active。
+
+## r173：原二进制确认NpActor内嵌拥有者，五个读取器关联修复已编译（2026-11-11）
+
+本轮progress。从r172实际asset Body+0x10=28失败继续，REA打开精确PhysXCore SHA22051aa75312344a824a5f7e29c6375fec3a90df50cbeff6152f0e6c3afddd48。IDA provider未配置，显式改用Ghidra12.1.4，未改安装/注册。原NpcActor构造1328b0的汇编明确LEA [RSI+28]调用1204c0，并MOV [RSI+30],RSI；后者写入Actor vtable2324f8并将其+18（即NpcActor+40）初始化为空。NpActor后续debug分支分别显示该指针为空的Static和非空的Dynamic。因此旧body/internal+10==public Actor不是已认证的拥有者链。NpcActor+40动态对象与嵌入Actor是两类对象，不能混用；原28的具体语义仍未知，不称flags字段。完整32份REA证据导出owner-link-detail-r171/actor-layout-rea-evidence.json后正常关闭；findings链接原汇编Evidence IDs和局限，无新游戏/原DLL执行。
+
+新增共用纯读取cover_physx_actor_backlink.h：认证NpcActor+28的嵌入Actor表2324f8，读取NpcActor+30并要求它等于当前public Actor。asset/collider/components与actor_shapes/shape_owner五个实际读取器都改为该真实链；保持原primary表、Scene、当前Body指针、各形状/public/internal/compound成员关系、同源guard、两次读取和关闭比较。Body非空仍必须格式有效，合法静态Body空值独立处理；self匹配允许精确全链一致的静态null Body，不凭null或Actor身份单独放行。所有来源、世界覆盖、排除与移动许可仍各守原规则，不增加writer、调用、输入或grant，不续旧时间/放宽年龄。新增读取有成本，不称零成本。
+
+旧/新12项生产reader同输入对照：正确embedded owner但Body+10=28，旧拒绝新接受；embedded owner错误但伪造旧Body+10==Actor，旧接受新拒绝；静态Body为空与错误嵌入类型也分别对照。既有夹具补实际+28/+30字段；原reverse破坏和race刺激移至真实拥有者字段，非法指针刺激由合法null改为1，未删除原检查。asset92/collider94/components110/optional asset169/attachments150/shape owner519/actor shapes77、路径391/OFF51、观察89、完整owned sweep146通过，合计1900；另有旧基线12与解释器23。静态全链匹配有正例，静态shape与非空collider Body冲突仍拒绝。最初夹具脚本一次substring歧义中止后精确修正；checks-v2/v3路径66项失败源于旧host缺嵌入Actor字段，补齐基础和cylinder夹具后checks-v4原391通过，原失败保留。不是游戏实跑结论。
+
+Native f585196291ca8481ef9ffd8db17032a60e2de6c2eff1b58a847cb8f51e8426cd完整编译链接0，exact r171冻结树仅八文件产品delta，413项目依赖、外部worktree0、GEARS flags保持，其他冻结源逐项相同。原始时间/新鲜度/唯一writer和所有不相关源不变；prepare新增--native-r173认证精确delta。source/delta、检查、前后反例、原始失败、来源manifest、依赖、build及核对在actor-backlink-r173。
+
+下一步Git保存后以新实例短查：原版碰撞是否真正开始/返回、真实owner链是否通过，再处理第一个实际剩余失败；不重跑未变年龄候选，不跳过异场景对象或放宽关联。当前仅源码/离线/编译，未准备/启动该候选；实际owner_links修复、完整CV01–24/AC01–22、严重自身模型遮挡和头显仍未验收，工程25%、publicv71/固定入口不变，目标active。

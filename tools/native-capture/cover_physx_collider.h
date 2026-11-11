@@ -6,6 +6,7 @@
 #include <type_traits>
 #include "cover_physx_query_source.h"
 #include "cover_owner_link_observation.h"
+#include "cover_physx_actor_backlink.h"
 
 // Caller owns the exact Image pin and current C0. Its typed guard certifies
 // these named Pawn/component/body fields and their full reflected identities.
@@ -47,13 +48,16 @@ template<class Read> Code sample(std::uintptr_t image_base,source::Snapshot cons
     if(!data){next.presence=Presence::body_data_field_null;output=next;return Code::observed;}
     if(!raw::field(read,next.actor_table,data,0)||!raw::field(read,next.scene,data,0x38)||!raw::field(read,next.internal,data,0x40))return Code::read;
     if(next.actor_table!=image_base+0x2330a8)return Code::unsupported;
-    if(next.scene!=scope.scene||!source::pointer(next.internal,0x18)){
+    if(next.scene!=scope.scene||(next.internal&&!source::pointer(next.internal,0x18))){
         linkobs::note({false,linkobs::Reader::collider,{},linkobs::Branch::scene_or_internal,scope.source.thread,
             data,next.actor_table,scope.scene,next.scene,next.internal,0,false});return Code::links;}
     std::uintptr_t reverse{};
-    if(!raw::field(read,reverse,next.internal,0x10))return Code::read;
-    if(reverse!=data){
-        linkobs::note({false,linkobs::Reader::collider,{},linkobs::Branch::reverse,scope.source.thread,
+    namespace back=gears_cover_physx_actor_backlink;
+    const auto relation=back::sample(image_base,data,read,reverse);
+    if(relation==back::Code::read)return Code::read;
+    if(relation==back::Code::unsupported)return Code::unsupported;
+    if(relation!=back::Code::current){
+        linkobs::note({false,linkobs::Reader::collider,{},linkobs::Branch::embedded_owner,scope.source.thread,
             data,next.actor_table,scope.scene,next.scene,next.internal,reverse,true});return Code::links;}
     next.presence=Presence::actor_observed;output=next;return Code::observed;
 }

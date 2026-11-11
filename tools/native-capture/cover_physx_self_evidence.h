@@ -29,7 +29,7 @@ inline unsigned char match(own::Observation const& shape_owner,asset::Snapshot c
     if(bodies.body_count>asset::capacity||catalog.fields.component_count>parts::capacity||
        catalog.fields.asset_body_count>parts::asset_body_capacity)return none;
     if(shape_owner.kind==own::Kind::unknown||!s::pointer(shape_owner.shape,0x40)||!s::pointer(shape_owner.internal_shape,0xd8)||
-       !s::pointer(shape_owner.internal_actor,0x18)||shape_owner.scene!=scope.scene||shape_owner.actor_table!=scope.actor_table)return none;
+       (shape_owner.internal_actor&&!s::pointer(shape_owner.internal_actor,0x18))||shape_owner.scene!=scope.scene||shape_owner.actor_table!=scope.actor_table)return none;
     const auto pawn=body.fields.pawn;
     unsigned char found=none;bool conflict=false;
     auto actor_matches=[&](std::uintptr_t candidate_actor,std::uintptr_t candidate_table,std::uintptr_t candidate_scene,std::uintptr_t candidate_internal){

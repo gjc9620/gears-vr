@@ -6,7 +6,7 @@
 namespace gears_cover_owner_link_observation {
 enum class Reader:unsigned {none,asset,collider,components};
 enum class Phase:unsigned {none,before_dispatch,after_dispatch};
-enum class Branch:unsigned {none,scene_or_internal,reverse};
+enum class Branch:unsigned {none,scene_or_internal,reverse,embedded_owner};
 struct Key {std::uint64_t world{},pawn{},scene{},compose{};unsigned thread{};};
 struct Row {
     bool observed{};Reader reader{};Phase phase{};Branch branch{};unsigned thread{};

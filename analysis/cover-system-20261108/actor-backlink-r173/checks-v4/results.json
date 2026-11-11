@@ -1,0 +1,9 @@
+[
+  {
+    "name": "cover_physics_capsule_path_live",
+    "build_exit": 0,
+    "test_exit": 0,
+    "output": "CoverCapsulePathSession checks=391 failed=0 typed-source/Session real; module/dispatch Host; no game\r\n",
+    "outside_worktree_dependencies": []
+  }
+]

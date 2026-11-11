@@ -6,6 +6,7 @@
 #include <type_traits>
 #include "cover_physx_query_source.h"
 #include "cover_owner_link_observation.h"
+#include "cover_physx_actor_backlink.h"
 
 // A read bracket of the named PhysicsAssetInstance.Bodies -> BodyData fields.
 // The typed guard must certify EVERY reflected body/owner/index/BodyData role.
@@ -48,13 +49,16 @@ template<class Read> Code sample(std::uintptr_t image_base,source::Snapshot cons
         if(!source::pointer(body.actor,0x48)||!raw::field(read,body.table,body.actor,0)||
            !raw::field(read,body.scene,body.actor,0x38)||!raw::field(read,body.internal,body.actor,0x40))return Code::read;
         if(body.table!=image_base+0x2330a8)return Code::unsupported;
-        if(body.scene!=scope.scene||!source::pointer(body.internal,0x18)){
+        if(body.scene!=scope.scene||(body.internal&&!source::pointer(body.internal,0x18))){
             linkobs::note({false,linkobs::Reader::asset,{},linkobs::Branch::scene_or_internal,scope.source.thread,
                 body.actor,body.table,scope.scene,body.scene,body.internal,0,false});return Code::links;}
         std::uintptr_t actor_back{};
-        if(!raw::field(read,actor_back,body.internal,0x10))return Code::read;
-        if(actor_back!=body.actor){
-            linkobs::note({false,linkobs::Reader::asset,{},linkobs::Branch::reverse,scope.source.thread,
+        namespace back=gears_cover_physx_actor_backlink;
+        const auto relation=back::sample(image_base,body.actor,read,actor_back);
+        if(relation==back::Code::read)return Code::read;
+        if(relation==back::Code::unsupported)return Code::unsupported;
+        if(relation!=back::Code::current){
+            linkobs::note({false,linkobs::Reader::asset,{},linkobs::Branch::embedded_owner,scope.source.thread,
                 body.actor,body.table,scope.scene,body.scene,body.internal,actor_back,true});return Code::links;}
         body.presence=Presence::actor_observed;
         bool duplicate=false;for(unsigned n=0;n<out.actor_count;++n)duplicate=duplicate||out.actors[n]==body.actor;

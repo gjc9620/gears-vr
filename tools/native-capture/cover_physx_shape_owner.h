@@ -54,8 +54,12 @@ template<class Read> Code sample(std::uintptr_t image_base,std::uint32_t image_s
     if(!raw::field(read,public_shape,next.internal_shape,0xa0)||
        !raw::field(read,shape_actor,next.internal_shape,0xd0)||
        !raw::field(read,next.internal_actor,next.actor,0x40))return Code::read;
-    if(next.internal_actor&&(!source::pointer(next.internal_actor,0x18)||!raw::field(read,public_actor,next.internal_actor,0x10)))return Code::read;
-    if(!next.internal_actor)public_actor=next.actor; // Final qualification requires actual Shape membership below.
+    if(next.internal_actor&&!source::pointer(next.internal_actor,0x18))return Code::links;
+    namespace back=gears_cover_physx_actor_backlink;
+    const auto relation=back::sample(image_base,next.actor,read,public_actor);
+    if(relation==back::Code::read)return Code::read;
+    if(relation==back::Code::unsupported)return Code::module;
+    if(relation!=back::Code::current)return Code::links;
     if(public_shape!=shape||shape_actor!=next.internal_actor||public_actor!=next.actor)return Code::links;
     output=next;return Code::observed;
 }

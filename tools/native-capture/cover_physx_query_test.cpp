@@ -22,6 +22,7 @@ struct Memory {
         if(offset>i->second.size()||sizeof value>i->second.size()-offset)throw 2;
         std::memcpy(i->second.data()+offset,&value,sizeof value);
     }
+    void actor_owner(std::uintptr_t at,std::uintptr_t image){put<std::uintptr_t>(at+0x28,image+0x2324f8);put<std::uintptr_t>(at+0x30,at);}
     bool read(void* out,void const* address,std::size_t n){
         if(++calls==fail_at)return false;
         const auto at=reinterpret_cast<std::uintptr_t>(address);
@@ -43,7 +44,7 @@ static Memory fixture(){
     m.put<std::uintptr_t>(0x100248,0x110000);m.put<std::uintptr_t>(0x100250,0x120000);
     m.put(0x12006c,s::pose::ArrayHeader{0x130000,2,2});
     m.put<std::uintptr_t>(0x130000,0x140000);m.put<std::uintptr_t>(0x130008,0x150000);
-    m.put<std::uintptr_t>(0x150088,0x160000);m.put<std::uintptr_t>(0x160000,base+0x2330a8);
+    m.put<std::uintptr_t>(0x150088,0x160000);m.put<std::uintptr_t>(0x160000,base+0x2330a8);m.actor_owner(0x160000,base);
     m.put<std::uintptr_t>(0x160038,0x170000);m.put<std::uintptr_t>(0x170000,base+0x22ccb8);
     m.put<std::uintptr_t>(0x170270,0x180000);m.put<std::uintptr_t>(0x180000,base+0x23ca98);
     m.put<std::uintptr_t>(0x1806b0,0x170000);

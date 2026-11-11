@@ -7,10 +7,10 @@ namespace asset=gears_cover_physx_asset_actors;
 constexpr std::uintptr_t extra_actor=0x190000,root_internal=0x1a0000,extra_internal=0x1b0000;
 static Memory asset_fixture(){
     auto memory=fixture();memory.block(0x160000,0x48);memory.block(extra_actor,0x48);
-    memory.put<std::uintptr_t>(0x160000,base+0x2330a8);memory.put<std::uintptr_t>(0x160038,0x170000);
+    memory.put<std::uintptr_t>(0x160000,base+0x2330a8);memory.actor_owner(0x160000,base);memory.put<std::uintptr_t>(0x160038,0x170000);
     memory.block(root_internal,0x18);memory.block(extra_internal,0x18);
     memory.put<std::uintptr_t>(0x160040,root_internal);memory.put<std::uintptr_t>(root_internal+0x10,0x160000);
-    memory.put<std::uintptr_t>(extra_actor,base+0x2330a8);memory.put<std::uintptr_t>(extra_actor+0x38,0x170000);
+    memory.put<std::uintptr_t>(extra_actor,base+0x2330a8);memory.actor_owner(extra_actor,base);memory.put<std::uintptr_t>(extra_actor+0x38,0x170000);
     memory.put<std::uintptr_t>(extra_actor+0x40,extra_internal);memory.put<std::uintptr_t>(extra_internal+0x10,extra_actor);
     return memory;
 }
@@ -46,8 +46,8 @@ int main(){
     for(unsigned bad=0;bad<5;++bad){memory=two;output=saved;
         if(bad==0)memory.put<std::uintptr_t>(extra_actor,base+0x2330b0);
         if(bad==1)memory.put<std::uintptr_t>(extra_actor+0x38,0x180000);
-        if(bad==2)memory.put<std::uintptr_t>(extra_actor+0x40,0);
-        if(bad==3)memory.put<std::uintptr_t>(extra_internal+0x10,scope.actor);
+        if(bad==2)memory.put<std::uintptr_t>(extra_actor+0x40,1);
+        if(bad==3)memory.put<std::uintptr_t>(extra_actor+0x30,scope.actor);
         if(bad==4)memory.put<std::uintptr_t>(0x140088,extra_actor+1);
         const auto code=asset::observe(base,size,scope,read,AssetGuard{},work,output);
         check(code!=asset::Code::observed&&asset::same(output,saved),"non-root unsupported scene/internal/actor mismatch rejects");}

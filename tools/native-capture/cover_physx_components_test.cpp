@@ -6,12 +6,12 @@
 #include <thread>
 namespace p=gears_cover_physx_components;
 static Memory parts_fixture(p::Source& fields){
-    auto m=fixture();m.block(0x160000,0x48);m.put<std::uintptr_t>(0x160000,base+0x2330a8);m.put<std::uintptr_t>(0x160038,0x170000);
+    auto m=fixture();m.block(0x160000,0x48);m.put<std::uintptr_t>(0x160000,base+0x2330a8);m.actor_owner(0x160000,base);m.put<std::uintptr_t>(0x160038,0x170000);
     m.block(0x190000,0x188);m.block(0x1a0000,0x98);m.block(0x1b0000,0x320);m.block(0x1c0000,0x18);
     m.block(0x1d0000,88);m.block(0x1e0000,88);m.block(0x280000,32);m.block(0x290000,32);
     m.put<std::uintptr_t>(0x190180,0x1a0000);m.put<std::uintptr_t>(0x1a0088,0x160000);m.put<std::uintptr_t>(0x1a0090,0x220000);
     m.put<std::uintptr_t>(0x160040,0x1c0000);m.put<std::uintptr_t>(0x1c0010,0x160000);
-    m.block(0x1f0000,0x48);m.block(0x210000,0x18);m.put<std::uintptr_t>(0x1f0000,base+0x2330a8);
+    m.block(0x1f0000,0x48);m.block(0x210000,0x18);m.put<std::uintptr_t>(0x1f0000,base+0x2330a8);m.actor_owner(0x1f0000,base);
     m.put<std::uintptr_t>(0x1f0038,0x170000);m.put<std::uintptr_t>(0x1f0040,0x210000);m.put<std::uintptr_t>(0x210010,0x1f0000);
     fields={};fields.seed_count=fields.root_count=1;fields.component_count=2;auto& root=fields.roots[0];root.actor=0x1b0000;root.offsets={0x300,0x310};
     root.base_offset=0x2e0;root.attached_offset=0x2f0;
@@ -51,7 +51,7 @@ int GEARS_COMPONENTS_PHYSX_TEST_MAIN(){
         fields->components[0].body_data=0x1f0000;memory.put<std::uintptr_t>(0x1a0088,0x1f0000);
         if(bad==0)memory.put<std::uintptr_t>(0x1f0000,base+0x2330b0);
         if(bad==1)memory.put<std::uintptr_t>(0x1f0038,0x180000);
-        if(bad==2)memory.put<std::uintptr_t>(0x210010,0x160000);
+        if(bad==2)memory.put<std::uintptr_t>(0x1f0030,0x160000);
         if(bad==3)memory.put<std::uintptr_t>(0x280000,0);
         if(bad==4)memory.put<std::uintptr_t>(0x1a0090,0);
         check(p::observe(base,size,scope,*fields,read,PartsGuard{*fields},*work,*output)!=p::Code::observed&&p::same(*output,*saved),"unsupported/Scene/reverse/list/body change rejects");}

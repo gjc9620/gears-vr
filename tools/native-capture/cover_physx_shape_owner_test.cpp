@@ -18,7 +18,7 @@ static Memory ownership_fixture(char const* path){
     m.put<std::uintptr_t>(shape_at+0x30,internal_shape_at);
     m.put<std::uintptr_t>(internal_shape_at,base+0x226c80);m.put<std::uintptr_t>(internal_shape_at+0xa0,shape_at);
     m.put<std::uintptr_t>(0x160040,internal_actor_at);m.put<std::uintptr_t>(internal_actor_at+0x10,0x160000);
-    m.put<std::uintptr_t>(other_actor_at,base+0x2330a8);m.put<std::uintptr_t>(other_actor_at+0x38,0x170000);
+    m.put<std::uintptr_t>(other_actor_at,base+0x2330a8);m.actor_owner(other_actor_at,base);m.put<std::uintptr_t>(other_actor_at+0x38,0x170000);
     m.put<std::uintptr_t>(other_actor_at+0x40,other_internal_actor_at);m.put<std::uintptr_t>(other_internal_actor_at+0x10,other_actor_at);
     m.put<std::uintptr_t>(0x160048,internal_shape_at);m.put<std::uintptr_t>(other_actor_at+0x48,internal_shape_at);links(m,0x160000,internal_actor_at);return m;
 }
@@ -62,7 +62,7 @@ int GEARS_SHAPE_OWNER_TEST_MAIN(int argc,char** argv){
             if(bad==9)m.put<std::uintptr_t>(base+0x226cc0,base+0xc4e8);
             if(bad==10)m.put<std::uintptr_t>(internal_shape_at+0xa0,shape_at+8);
             if(bad==11)m.put<std::uintptr_t>(internal_shape_at+0xd0,other_internal_actor_at);
-            if(bad==12)m.put<std::uintptr_t>(internal_actor_at+0x10,other_actor_at);
+            if(bad==12)m.put<std::uintptr_t>(0x160030,other_actor_at);
             if(bad==13)m.put<std::uintptr_t>(0x160040,0);
             if(bad==14)m.put<std::uintptr_t>(0x150088,other_actor_at);
             check(owner::observe(base,size,scope,hit,read,guard,output)!=owner::Code::observed,"reject unsupported/code/links/source changes");
@@ -74,7 +74,7 @@ int GEARS_SHAPE_OWNER_TEST_MAIN(int argc,char** argv){
             check(owner::observe(base,size,scope,hit,read,[&](s::Snapshot const&){return ++calls!=failure;},output)!=owner::Code::observed,"every owner guard failure rejected");check(owner::same(output,sentinel),"guard failure preserves output");}
         m=initial;output=sentinel;bool switched=false;
         auto swapping=[&](void* p,void const* a,std::size_t n){const bool result=m.read(p,a,n);
-            if(result&&!switched&&reinterpret_cast<std::uintptr_t>(a)==internal_actor_at+0x10){switched=true;links(m,other_actor_at,other_internal_actor_at);}return result;};
+            if(result&&!switched&&reinterpret_cast<std::uintptr_t>(a)==0x160030){switched=true;links(m,other_actor_at,other_internal_actor_at);}return result;};
         check(owner::observe(base,size,scope,hit,swapping,guard,output)!=owner::Code::observed&&owner::same(output,sentinel),"two individually consistent owners cannot replace the first");
         m=initial;output=sentinel;unsigned code_reads{};
         auto packet_change=[&](void* p,void const* a,std::size_t n){const bool result=m.read(p,a,n);

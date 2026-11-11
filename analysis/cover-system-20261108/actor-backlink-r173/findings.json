@@ -1,0 +1,22 @@
+{
+  "original_binary_sha256": "22051aa75312344a824a5f7e29c6375fec3a90df50cbeff6152f0e6c3afddd48",
+  "runtime_source": "owner-link-detail-r171/runtime-r172/owner-links.json",
+  "observed": "The asset reader read Body+0x10=28 and rejected before original dispatch.",
+  "static_observation": "NpActor constructor constructs embedded Actor at +0x28 and writes public owner at +0x30. Embedded Actor table is 2324f8; +0x40 is optional dynamic Body.",
+  "evidence_ids": [
+    "ev_85e7e9a67465153cdbe7582b206826899721bb8d6c3a18f82a0fb66658443ae5",
+    "ev_b10751253945f3c7af148a22949d067c106b8fc9cbf5b6daced494bb1568c8f8",
+    "ev_8859060b68c549911d8541dabbd42a2f7c8139577c940524e2211fb878d7114c"
+  ],
+  "inference": "Old reverse check interprets a distinct object field as public owner; authenticate the actual embedded-owner relation instead.",
+  "unknown": [
+    "Exact semantic name of the r172 value28",
+    "Actual game result of corrected ownership chain",
+    "Complete shape/world/body sweep coverage",
+    "Final unclipped cover view/headset experience"
+  ],
+  "provider": "REA/Ghidra12.1.4; IDA unavailable because this REA registration had no IDA configuration; no configuration changed",
+  "execution": "Original DLL read as data only; analysis session exported and closed; no game started",
+  "evidence_bundle": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\owner-link-detail-r171\\actor-layout-rea-evidence.json",
+  "evidence_bundle_sha256": "2b60e8ecc667b983672512d52edaad63a8aa4a61dab9f245dbf59b9685a33afe"
+}

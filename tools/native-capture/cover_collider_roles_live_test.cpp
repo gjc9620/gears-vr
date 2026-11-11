@@ -27,7 +27,8 @@ static void collider_setup(){
     put(fixture_pawn+0x1f0,cylinder);put(fixture_pawn+0x1f8,cylinder);
     put(cylinder+0x170,fixture_pawn);put(cylinder+0x1a0,single_body);
     put(single_body+0x60,-1);put(single_body+0x68,cylinder);put(single_body+0x88,arena+0xb0000);put(single_body+0x90,arena+0xb1000);
-    put(arena+0xb0000,uintptr_t(0x1802330a8));put(arena+0xb0038,arena+0x8b000);put(arena+0xb0040,arena+0xb3000);put(arena+0xb3010,arena+0xb0000);
+    put(arena+0xb0000,uintptr_t(0x1802330a8));put(arena+0xb0028,uintptr_t(0x1802324f8));put(arena+0xb0030,arena+0xb0000);
+    put(arena+0xb0038,arena+0x8b000);put(arena+0xb0040,arena+0xb3000);put(arena+0xb3010,uintptr_t(28));
     put(props[6]+0xd0,primitive_class); // Real RB_BodyInstance owner role is a PrimitiveComponent.
     // physics_setup already sampled its smaller synthetic schema. Construct
     // the extended fixture before obtaining this test's actual binding.

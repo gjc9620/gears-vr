@@ -1,0 +1,72 @@
+[
+  {
+    "name": "cover_physx_actor_backlink",
+    "build_exit": 0,
+    "test_exit": 0,
+    "output": "CoverPhysXActorBacklink checks=12 failed=0 actual reader contrast; no game/original calls\r\n",
+    "outside_worktree_dependencies": []
+  },
+  {
+    "name": "cover_physx_asset_actors",
+    "build_exit": 0,
+    "test_exit": 0,
+    "output": "CoverPhysXAssetActors checks=92 failed=0 synthetic Bodies/links only; no complete self set or original execution\r\n",
+    "outside_worktree_dependencies": []
+  },
+  {
+    "name": "cover_physx_collider",
+    "build_exit": 0,
+    "test_exit": 0,
+    "output": "CoverPhysXCollider checks=94 failed=0 synthetic source/actor links only; no complete self set or original execution\r\n",
+    "outside_worktree_dependencies": []
+  },
+  {
+    "name": "cover_physx_components",
+    "build_exit": 0,
+    "test_exit": 0,
+    "output": "CoverPhysXComponents checks=110 failed=0 synthetic fields/Scene only; no complete self set, filter or original execution\r\n",
+    "outside_worktree_dependencies": []
+  },
+  {
+    "name": "cover_physx_component_assets",
+    "build_exit": 0,
+    "test_exit": 0,
+    "output": "CoverPhysXComponentAssets checks=169 failed=0 synthetic optional PAA fields and same-Scene actors; no complete self or world proof\r\n",
+    "outside_worktree_dependencies": []
+  },
+  {
+    "name": "cover_physx_actor_attachments",
+    "build_exit": 0,
+    "test_exit": 0,
+    "output": "CoverPhysXActorAttachments checks=150 failed=0 synthetic recursive graph and same-Scene bodies only; no complete self or world fence\r\n",
+    "outside_worktree_dependencies": []
+  },
+  {
+    "name": "cover_physx_shape_owner",
+    "build_exit": 0,
+    "test_exit": 0,
+    "output": "read_budget=222 guard_calls=12\r\nCoverPhysXShapeOwner checks=519 failed=0 original-executed=false game-started=false\r\n",
+    "outside_worktree_dependencies": []
+  },
+  {
+    "name": "cover_physx_actor_shapes",
+    "build_exit": 0,
+    "test_exit": 0,
+    "output": "CoverActorShapes checks=77 failed=0 original PE as data; code/owner guard is a seam, no query integration\r\n",
+    "outside_worktree_dependencies": []
+  },
+  {
+    "name": "cover_physics_capsule_path_live",
+    "build_exit": 0,
+    "test_exit": 1,
+    "output": "FAIL 68: owner->sweep_capsule_path(actor,physics_expected,capsule,delta_path,policy,q::StreamLimits{},source_read,guard,*output)==q::Code::queried reason=ready stage=ready field=BoneSpring\r\nFAIL 69: query_calls==5&&output->plan.count==4&&output->endpoint.raw.shape_count==2 reason=ready stage=ready field=BoneSpring\r\nFAIL 70: output->endpoint.raw.shapes[0]==fixture_mesh&&output->endpoint.raw.shapes[1]==physics_instance reason=ready stage=ready field=BoneSpring\r\nFAIL 71: output->endpoint.owners[0].actor==fixture_mesh&&output->endpoint.owners[1].actor==physics_instance reason=ready stage=ready field=BoneSpring\r\nFAIL 72: output->endpoint.self_sources[0]==1&&output->endpoint.self_sources[1]==0 reason=ready stage=ready field=BoneSpring\r\nFAIL 73: output->collected.raw.hit_count==8&&output->collected.raw.raw_count==8&&output->collected.raw.reports==4 reason=ready stage=ready field=BoneSpring\r\nFAIL 74: output->spans[i].first==i*2&&output->spans[i].count==2&&output->spans[i].reports==1 reason=ready stage=ready field=BoneSpring\r\nFAIL 75: output->collected.owners[i*2].actor==fixture_mesh&&output->collected.owners[i*2+1].actor==physics_instance reason=ready stage=ready field=BoneSpring\r\nFAIL 76: output->collected.self_sources[i*2]==1&&output->collected.self_sources[i*2+1]==0 reason=ready stage=ready field=BoneSpring\r\nFAIL 74: output->spans[i].first==i*2&&output->spans[i].count==2&&output->spans[i].reports==1 reason=ready stage=ready field=BoneSpring\r\nFAIL 75: output->collected.owners[i*2].actor==fixture_mesh&&output->collected.owners[i*2+1].actor==physics_instance reason=ready stage=ready field=BoneSpring\r\nFAIL 76: output->collected.self_sources[i*2]==1&&output->collected.self_sources[i*2+1]==0 reason=ready stage=ready field=BoneSpring\r\nFAIL 77: path_seen_shapes[i].first.x==1+75.f*i&&path_seen_shapes[i].second.x==1+75.f*i&&path_seen_shapes[i].radius==.5f reason=ready stage=ready field=BoneSpring\r\nFAIL 78: path_seen_steps[i].x==75&&path_seen_steps[i].y==0&&path_seen_steps[i].z==0 reason=ready stage=ready field=BoneSpring\r\nFAIL 74: output->spans[i].first==i*2&&output->spans[i].count==2&&output->spans[i].reports==1 reason=ready stage=ready field=BoneSpring\r\nFAIL 75: output->collected.owners[i*2].actor==fixture_mesh&&output->collected.owners[i*2+1].actor==physics_instance reason=ready stage=ready field=BoneSpring\r\nFAIL 76: output->collected.self_sources[i*2]==1&&output->collected.self_sources[i*2+1]==0 reason=ready stage=ready field=BoneSpring\r\nFAIL 77: path_seen_shapes[i].first.x==1+75.f*i&&path_seen_shapes[i].second.x==1+75.f*i&&path_seen_shapes[i].radius==.5f reason=ready stage=ready field=BoneSpring\r\nFAIL 78: path_seen_steps[i].x==75&&path_seen_steps[i].y==0&&path_seen_steps[i].z==0 reason=ready stage=ready field=BoneSpring\r\nFAIL 74: output->spans[i].first==i*2&&output->spans[i].count==2&&output->spans[i].reports==1 reason=ready stage=ready field=BoneSpring\r\nFAIL 75: output->collected.owners[i*2].actor==fixture_mesh&&output->collected.owners[i*2+1].actor==physics_instance reason=ready stage=ready field=BoneSpring\r\nFAIL 76: output->collected.self_sources[i*2]==1&&output->collected.self_sources[i*2+1]==0 reason=ready stage=ready field=BoneSpring\r\nFAIL 77: path_seen_shapes[i].first.x==1+75.f*i&&path_seen_shapes[i].second.x==1+75.f*i&&path_seen_shapes[i].radius==.5f reason=ready stage=ready field=BoneSpring\r\nFAIL 78: path_seen_steps[i].x==75&&path_seen_steps[i].y==0&&path_seen_steps[i].z==0 reason=ready stage=ready field=BoneSpring\r\nFAIL 79: path_seen_endpoint.first.x==301&&path_seen_endpoint.second.x==301&&path_seen_endpoint.radius==.5f reason=ready stage=ready field=BoneSpring\r\nFAIL 84: owner->sweep_capsule_path(actor,physics_expected,capsule,delta_path,policy,q::StreamLimits{},source_read,guard,*output)==q::Code::queried reason=ready stage=ready field=BoneSpring\r\nFAIL 85: query_calls==5&&!output->collected.raw.hit_count&&!output->collected.raw.reports&&!output->endpoint.raw.shape_count&&output->collected.owners[0].actor==0 reason=ready stage=ready field=BoneSpring\r\nFAIL 90: owner->sweep_capsule_path(actor,physics_expected,capsule,delta_path,policy,q::StreamLimits{10,5},source_read,guard,*output)==q::Code::queried reason=ready stage=ready field=BoneSpring\r\nFAIL 91: query_calls==5&&output->collected.raw.hit_count==8&&output->collected.raw.reports==4 reason=ready stage=ready field=BoneSpring\r\nFAIL 92: path_seen_limits[i].max_hits==10-i*2&&path_seen_limits[i].max_reports==5-i reason=ready stage=ready field=BoneSpring\r\nFAIL 92: path_seen_limits[i].max_hits==10-i*2&&path_seen_limits[i].max_reports==5-i reason=ready stage=ready field=BoneSpring\r\nFAIL 92: path_seen_limits[i].max_hits==10-i*2&&path_seen_limits[i].max_reports==5-i reason=ready stage=ready field=BoneSpring\r\nFAIL 93: endpoint_seen_limits.max_hits==2&&endpoint_seen_limits.max_reports==1 reason=ready stage=ready field=BoneSpring\r\nFAIL 96: owner->sweep_capsule_path(actor,physics_expected,capsule,delta_path,policy,budget,source_read,guard,*output)==q::Code::truncated reason=ready stage=ready field=BoneSpring\r\nFAIL 97: query_calls==4&&equal_path(*output,*saved) reason=ready stage=ready field=BoneSpring\r\nFAIL 96: owner->sweep_capsule_path(actor,physics_expected,capsule,delta_path,policy,budget,source_read,guard,*output)==q::Code::truncated reason=ready stage=ready field=BoneSpring\r\nFAIL 97: query_calls==4&&equal_path(*output,*saved) reason=ready stage=ready field=BoneSpring\r\nFAIL 101: owner->sweep_capsule_path(actor,physics_expected,capsule,delta_path,policy,q::StreamLimits{2,20},source_read,guard,*output)==q::Code::truncated reason=ready stage=ready field=BoneSpring\r\nFAIL 108: code!=q::Code::queried&&equal_path(*output,*saved)&&query_calls==2 reason=ready stage=ready field=BoneSpring\r\nFAIL 108: code!=q::Code::queried&&equal_path(*output,*saved)&&query_calls==2 reason=ready stage=ready field=BoneSpring\r\nFAIL 108: code!=q::Code::queried&&equal_path(*output,*saved)&&query_calls==2 reason=ready stage=ready field=BoneSpring\r\nFAIL 110: code==q::Code::fault_unknown&&owner->uncertain()&&!owner->poll_stop()&&owner->pending_count() reason=ready stage=ready field=BoneSpring\r\nFAIL 108: code!=q::Code::queried&&equal_path(*output,*saved)&&query_calls==2 reason=ready stage=ready field=BoneSpring\r\nFAIL 108: code!=q::Code::queried&&equal_path(*output,*saved)&&query_calls==2 reason=ready stage=ready field=BoneSpring\r\nFAIL 107: code==q::Code::queried&&nested_code==q::Code::reentrant&&query_calls==5 reason=ready stage=ready field=BoneSpring\r\nFAIL 119: query_calls==5 reason=ready stage=ready field=BoneSpring\r\nFAIL 119: query_calls==5 reason=ready stage=ready field=BoneSpring\r\nFAIL 119: query_calls==5 reason=ready stage=ready field=BoneSpring\r\nFAIL 120: code==q::Code::fault_unknown&&owner->uncertain()&&!owner->poll_stop() reason=ready stage=ready field=BoneSpring\r\nFAIL 119: query_calls==5 reason=ready stage=ready field=BoneSpring\r\nFAIL 119: query_calls==5 reason=ready stage=ready field=BoneSpring\r\nFAIL 117: code==q::Code::queried&&nested_code==q::Code::reentrant reason=ready stage=ready field=BoneSpring\r\nFAIL 119: query_calls==5 reason=ready stage=ready field=BoneSpring\r\nFAIL 126: code==(corrupt<=3?q::Code::callback_rejected:corrupt<=6?q::Code::changed:q::Code::truncated) reason=ready stage=ready field=BoneSpring\r\nFAIL 127: query_calls==5&&equal_path(*output,*saved) reason=ready stage=ready field=BoneSpring\r\nFAIL 126: code==(corrupt<=3?q::Code::callback_rejected:corrupt<=6?q::Code::changed:q::Code::truncated) reason=ready stage=ready field=BoneSpring\r\nFAIL 127: query_calls==5&&equal_path(*output,*saved) reason=ready stage=ready field=BoneSpring\r\nFAIL 126: code==(corrupt<=3?q::Code::callback_rejected:corrupt<=6?q::Code::changed:q::Code::truncated) reason=ready stage=ready field=BoneSpring\r\nFAIL 127: query_calls==5&&equal_path(*output,*saved) reason=ready stage=ready field=BoneSpring\r\nFAIL 127: query_calls==5&&equal_path(*output,*saved) reason=ready stage=ready field=BoneSpring\r\nFAIL 127: query_calls==5&&equal_path(*output,*saved) reason=ready stage=ready field=BoneSpring\r\nFAIL 127: query_calls==5&&equal_path(*output,*saved) reason=ready stage=ready field=BoneSpring\r\nFAIL 126: code==(corrupt<=3?q::Code::callback_rejected:corrupt<=6?q::Code::changed:q::Code::truncated) reason=ready stage=ready field=BoneSpring\r\nFAIL 127: query_calls==5&&equal_path(*output,*saved) reason=ready stage=ready field=BoneSpring\r\nFAIL 131: owner->sweep_capsule_path(actor,physics_expected,capsule,delta_path,policy,q::StreamLimits{7,20},source_read,guard,*output)==q::Code::truncated reason=ready stage=ready field=BoneSpring\r\nFAIL 132: query_calls==4&&equal_path(*output,*saved) reason=ready stage=ready field=BoneSpring\r\nCoverCapsulePathSession checks=326 failed=66 typed-source/Session real; module/dispatch Host; no game\r\n",
+    "outside_worktree_dependencies": []
+  },
+  {
+    "name": "cover_physics_c0_off",
+    "build_exit": 0,
+    "test_exit": 0,
+    "output": "cover_physics_c0 OFF: 51 checks, 0 failures; no game/module/query\r\n",
+    "outside_worktree_dependencies": []
+  }
+]

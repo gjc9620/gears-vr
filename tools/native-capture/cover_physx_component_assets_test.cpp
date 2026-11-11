@@ -35,7 +35,7 @@ int GEARS_COMPONENT_ASSETS_PHYSX_TEST_MAIN(){
     for(unsigned bad=0;bad<9;++bad){memory=initial;*fields=*original;*output=*saved;
         if(bad==0)memory.put<std::uintptr_t>(0x1f0000,base+0x2330b0);
         if(bad==1)memory.put<std::uintptr_t>(0x1f0038,0x180000);
-        if(bad==2)memory.put<std::uintptr_t>(0x210010,0x160000);
+        if(bad==2)memory.put<std::uintptr_t>(0x1f0030,0x160000);
         if(bad==3)memory.put<std::uintptr_t>(0x310008,0x1a0000);
         if(bad==4)memory.put<std::uintptr_t>(0x300060,0x1b0000);
         if(bad==5)memory.put<std::uintptr_t>(0x190248,0);

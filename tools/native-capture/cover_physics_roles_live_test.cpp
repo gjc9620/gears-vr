@@ -40,7 +40,8 @@ static void physics_setup(){
         put(body_instances[i]+0x88,arena+0x88000+i*0x1000);put(body_instances[i]+0x90,uintptr_t{});}
     constexpr uintptr_t physx=0x180000000;
     for(unsigned i=0;i<2;++i){const auto physical=arena+0x88000+i*0x1000,internal_actor=arena+0x90000+i*0x100;
-        put(physical,physx+0x2330a8);put(physical+0x38,arena+0x8b000);put(physical+0x40,internal_actor);put(internal_actor+0x10,physical);}
+        put(physical,physx+0x2330a8);put(physical+0x28,physx+0x2324f8);put(physical+0x30,physical);
+        put(physical+0x38,arena+0x8b000);put(physical+0x40,internal_actor);put(internal_actor+0x10,uintptr_t(28));}
     put(arena+0x89000,physx+0x2330a8);put(arena+0x89038,arena+0x8b000);
     put(arena+0x8b000,physx+0x22ccb8);put(arena+0x8b270,arena+0x8c000);
     put(arena+0x8c000,physx+0x23ca98);put(arena+0x8c6b0,arena+0x8b000);

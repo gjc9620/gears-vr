@@ -5,12 +5,12 @@
 #include <thread>
 namespace cx=gears_cover_physx_collider;
 static Memory component_fixture(){
-    auto memory=fixture();memory.block(0x160000,0x48);memory.put<std::uintptr_t>(0x160000,base+0x2330a8);memory.put<std::uintptr_t>(0x160038,0x170000);
+    auto memory=fixture();memory.block(0x160000,0x48);memory.put<std::uintptr_t>(0x160000,base+0x2330a8);memory.actor_owner(0x160000,base);memory.put<std::uintptr_t>(0x160038,0x170000);
     memory.block(0x190000,0x188);memory.block(0x1a0000,0x98);memory.block(0x1c0000,0x18);
     memory.put<std::uintptr_t>(0x190180,0x1a0000);memory.put<std::uintptr_t>(0x1a0088,0x160000);memory.put<std::uintptr_t>(0x1a0090,0x1f0000);
     memory.put<std::uintptr_t>(0x160040,0x1c0000);memory.put<std::uintptr_t>(0x1c0010,0x160000);
     memory.block(0x1d0000,0x48);memory.block(0x1e0000,0x18);
-    memory.put<std::uintptr_t>(0x1d0000,base+0x2330a8);memory.put<std::uintptr_t>(0x1d0038,0x170000);
+    memory.put<std::uintptr_t>(0x1d0000,base+0x2330a8);memory.actor_owner(0x1d0000,base);memory.put<std::uintptr_t>(0x1d0038,0x170000);
     memory.put<std::uintptr_t>(0x1d0040,0x1e0000);memory.put<std::uintptr_t>(0x1e0010,0x1d0000);
     return memory;
 }
@@ -46,11 +46,11 @@ int main(){
         if(bad==1)memory.put<std::uintptr_t>(0x1a0088,0x1d0000);
         if(bad==2)memory.put<std::uintptr_t>(0x160000,base+0x2330b0);
         if(bad==3)memory.put<std::uintptr_t>(0x160038,0x180000);
-        if(bad==4)memory.put<std::uintptr_t>(0x160040,0);
-        if(bad==5)memory.put<std::uintptr_t>(0x1c0010,0x1d0000);
+        if(bad==4)memory.put<std::uintptr_t>(0x160040,1);
+        if(bad==5)memory.put<std::uintptr_t>(0x160030,0x1d0000);
         if(bad==6)memory.put<std::uintptr_t>(0x1a0090,0);
         check(cx::observe(base,size,scope,fields,read,ComponentGuard{fields},output)!=cx::Code::observed&&cx::same(output,saved),"changed component/body/table/Scene/internal relation refuses whole output");}
-    memory=component_fixture();memory.put<std::uintptr_t>(0x1e0010,0x160000);
+    memory=component_fixture();memory.put<std::uintptr_t>(0x1d0030,0x160000);
     struct Change {Memory& m;cx::Source const& fields;unsigned typed{};bool operator()(){return true;}
         bool operator()(cx::Snapshot const& v){if(++typed==1)m.put<std::uintptr_t>(0x160040,0x1e0000);return cx::same(fields,v.fields);}} change{memory,fields};
     check(cx::observe(base,size,scope,fields,read,change,output)==cx::Code::changed&&cx::same(output,saved),"two valid internal actors cannot span one observation");

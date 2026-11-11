@@ -1,0 +1,160 @@
+{
+  "native_sha256": "f585196291ca8481ef9ffd8db17032a60e2de6c2eff1b58a847cb8f51e8426cd",
+  "changed": [
+    "tools/native-capture/cover_owner_link_observation.h",
+    "tools/native-capture/cover_physx_actor_backlink.h",
+    "tools/native-capture/cover_physx_actor_shapes.h",
+    "tools/native-capture/cover_physx_asset_actors.h",
+    "tools/native-capture/cover_physx_collider.h",
+    "tools/native-capture/cover_physx_components.h",
+    "tools/native-capture/cover_physx_self_evidence.h",
+    "tools/native-capture/cover_physx_shape_owner.h"
+  ],
+  "binary_sha256": "22051aa75312344a824a5f7e29c6375fec3a90df50cbeff6152f0e6c3afddd48",
+  "original_ctor_evidence": "ev_85e7e9a67465153cdbe7582b206826899721bb8d6c3a18f82a0fb66658443ae5",
+  "embedded_actor_ctor_evidence": "ev_b10751253945f3c7af148a22949d067c106b8fc9cbf5b6daced494bb1568c8f8",
+  "evidence_bundle": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\owner-link-detail-r171\\actor-layout-rea-evidence.json",
+  "evidence_bundle_sha256": "2b60e8ecc667b983672512d52edaad63a8aa4a61dab9f245dbf59b9685a33afe",
+  "project_dependencies": 413,
+  "outside_worktree_dependencies": 0,
+  "flags_unchanged": true,
+  "other_frozen_sources_unchanged": true,
+  "checks": [
+    {
+      "folder": "checks-before",
+      "name": "cover_physx_actor_backlink",
+      "build_exit": 0,
+      "test_exit": 0,
+      "output": "CoverPhysXActorBacklink checks=12 failed=0 actual reader contrast; no game/original calls\r\n",
+      "outside_worktree_dependencies": []
+    },
+    {
+      "folder": "checks-v1",
+      "name": "cover_physx_actor_backlink",
+      "build_exit": 0,
+      "test_exit": 0,
+      "output": "CoverPhysXActorBacklink checks=12 failed=0 actual reader contrast; no game/original calls\r\n",
+      "outside_worktree_dependencies": []
+    },
+    {
+      "folder": "checks-v2",
+      "name": "cover_physx_actor_backlink",
+      "build_exit": 0,
+      "test_exit": 0,
+      "output": "CoverPhysXActorBacklink checks=12 failed=0 actual reader contrast; no game/original calls\r\n",
+      "outside_worktree_dependencies": []
+    },
+    {
+      "folder": "checks-v2",
+      "name": "cover_physx_asset_actors",
+      "build_exit": 0,
+      "test_exit": 0,
+      "output": "CoverPhysXAssetActors checks=92 failed=0 synthetic Bodies/links only; no complete self set or original execution\r\n",
+      "outside_worktree_dependencies": []
+    },
+    {
+      "folder": "checks-v2",
+      "name": "cover_physx_collider",
+      "build_exit": 0,
+      "test_exit": 0,
+      "output": "CoverPhysXCollider checks=94 failed=0 synthetic source/actor links only; no complete self set or original execution\r\n",
+      "outside_worktree_dependencies": []
+    },
+    {
+      "folder": "checks-v2",
+      "name": "cover_physx_components",
+      "build_exit": 0,
+      "test_exit": 0,
+      "output": "CoverPhysXComponents checks=110 failed=0 synthetic fields/Scene only; no complete self set, filter or original execution\r\n",
+      "outside_worktree_dependencies": []
+    },
+    {
+      "folder": "checks-v2",
+      "name": "cover_physx_component_assets",
+      "build_exit": 0,
+      "test_exit": 0,
+      "output": "CoverPhysXComponentAssets checks=169 failed=0 synthetic optional PAA fields and same-Scene actors; no complete self or world proof\r\n",
+      "outside_worktree_dependencies": []
+    },
+    {
+      "folder": "checks-v2",
+      "name": "cover_physx_actor_attachments",
+      "build_exit": 0,
+      "test_exit": 0,
+      "output": "CoverPhysXActorAttachments checks=150 failed=0 synthetic recursive graph and same-Scene bodies only; no complete self or world fence\r\n",
+      "outside_worktree_dependencies": []
+    },
+    {
+      "folder": "checks-v2",
+      "name": "cover_physx_shape_owner",
+      "build_exit": 0,
+      "test_exit": 0,
+      "output": "read_budget=222 guard_calls=12\r\nCoverPhysXShapeOwner checks=519 failed=0 original-executed=false game-started=false\r\n",
+      "outside_worktree_dependencies": []
+    },
+    {
+      "folder": "checks-v2",
+      "name": "cover_physx_actor_shapes",
+      "build_exit": 0,
+      "test_exit": 0,
+      "output": "CoverActorShapes checks=77 failed=0 original PE as data; code/owner guard is a seam, no query integration\r\n",
+      "outside_worktree_dependencies": []
+    },
+    {
+      "folder": "checks-v2",
+      "name": "cover_physics_c0_off",
+      "build_exit": 0,
+      "test_exit": 0,
+      "output": "cover_physics_c0 OFF: 51 checks, 0 failures; no game/module/query\r\n",
+      "outside_worktree_dependencies": []
+    },
+    {
+      "folder": "checks-v3",
+      "name": "cover_owner_link_observation",
+      "build_exit": 0,
+      "test_exit": 0,
+      "output": "CoverOwnerLinkObservation checks=89 failed=0 actual reader branches; no game\r\n",
+      "outside_worktree_dependencies": []
+    },
+    {
+      "folder": "checks-v3",
+      "name": "cover_physx_owned_sweep",
+      "build_exit": 0,
+      "test_exit": 0,
+      "output": "CoverPhysXOwnedSweep checks=144 failed=0 Host image/call seams; actual transaction/source/ownership; no game\r\n",
+      "outside_worktree_dependencies": []
+    },
+    {
+      "folder": "checks-v4",
+      "name": "cover_physics_capsule_path_live",
+      "build_exit": 0,
+      "test_exit": 0,
+      "output": "CoverCapsulePathSession checks=391 failed=0 typed-source/Session real; module/dispatch Host; no game\r\n",
+      "outside_worktree_dependencies": []
+    },
+    {
+      "folder": "checks-v5",
+      "name": "cover_physx_owned_sweep",
+      "build_exit": 0,
+      "test_exit": 0,
+      "output": "CoverPhysXOwnedSweep checks=146 failed=0 Host image/call seams; actual transaction/source/ownership; no game\r\n",
+      "outside_worktree_dependencies": []
+    }
+  ],
+  "parser_checks": 23,
+  "before_after_reader_contrast": true,
+  "new_grant_or_writer": false,
+  "source_time_renewal": false,
+  "original_query_calls_added": false,
+  "shape_inventory_and_closing_preserved": true,
+  "failed_fixture_runs_retained": [
+    "checks-v2 path fixture missing embedded Actor fields",
+    "checks-v3 collider fixture still missing embedded fields"
+  ],
+  "build_only": true,
+  "game_started": false,
+  "owner_links_game_repaired": false,
+  "movement_authorized": false,
+  "world_coverage_verified": false,
+  "public_changed": false
+}

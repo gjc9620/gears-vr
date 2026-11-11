@@ -1,0 +1,184 @@
+--- r171/cover_owner_link_observation.h
++++ r173/cover_owner_link_observation.h
+@@ -6,7 +6,7 @@
+ namespace gears_cover_owner_link_observation {
+ enum class Reader:unsigned {none,asset,collider,components};
+ enum class Phase:unsigned {none,before_dispatch,after_dispatch};
+-enum class Branch:unsigned {none,scene_or_internal,reverse};
++enum class Branch:unsigned {none,scene_or_internal,reverse,embedded_owner};
+ struct Key {std::uint64_t world{},pawn{},scene{},compose{};unsigned thread{};};
+ struct Row {
+     bool observed{};Reader reader{};Phase phase{};Branch branch{};unsigned thread{};
+--- r171/cover_physx_actor_backlink.h
++++ r173/cover_physx_actor_backlink.h
+@@ -0,0 +1,19 @@
++#pragma once
++#include "cover_physx_query_source.h"
++
++// PhysXCore 22051aa7: NpActor constructor 1328b0 constructs Actor at +28,
++// then writes its public-owner field at NpActor+30. Actor constructor 1204c0
++// sets its table to 2324f8. NpActor+40 is an OPTIONAL dynamic Body pointer,
++// not an Actor whose +10 can be interpreted as a public-Actor backlink.
++// Read-only qualification; caller still closes scene/body/shape identities.
++namespace gears_cover_physx_actor_backlink {
++enum class Code {current,read,unsupported,links};
++template<class Read> Code sample(std::uintptr_t base,std::uintptr_t actor,Read& read,std::uintptr_t& owner){
++    namespace raw=gears_cover_physx_query_source::pose;
++    std::uintptr_t table{},back{};
++    if(!raw::field(read,table,actor,0x28)||!raw::field(read,back,actor,0x30))return Code::read;
++    if(table!=base+0x2324f8)return Code::unsupported;
++    owner=back;
++    return back==actor?Code::current:Code::links;
++}
++}
+--- r171/cover_physx_actor_shapes.h
++++ r173/cover_physx_actor_shapes.h
+@@ -1,4 +1,5 @@
+ #pragma once
++#include "cover_physx_actor_backlink.h"
+ #include "cover_physx_query_source.h"
+ #include "cover_physx_shape_tables.h"
+ #include <atomic>
+@@ -32,7 +33,12 @@
+     if(!raw::field(read,table,actor,0)||!raw::field(read,actual,actor,0x38)||!raw::field(read,out.body,actor,0x40)||!raw::field(read,out.root,actor,0x48))return Code::read;
+     if(table!=image_base+0x2330a8||actual!=scene)return Code::links;
+     if(!slot(read,table,0x98,image_base+0x135810)||!slot(read,table,0xa0,image_base+0x135b10))return Code::module;
+-    if(out.body&&(!s::pointer(out.body,0x18)||!raw::field(read,reverse,out.body,0x10)||reverse!=actor))return Code::links;
++    if(out.body&&!s::pointer(out.body,0x18))return Code::links;
++    namespace back=gears_cover_physx_actor_backlink;
++    const auto relation=back::sample(image_base,actor,read,reverse);
++    if(relation==back::Code::read)return Code::read;
++    if(relation==back::Code::unsupported)return Code::module;
++    if(relation!=back::Code::current)return Code::links;
+     if(!out.root)return Code::observed;
+     if(!s::pointer(out.root,0x170)||!raw::field(read,out.root_table,out.root,0)||!raw::field(read,out.type,out.root,0x168))return Code::read;
+     if(!in_image(image_base,size,out.root_table,0x48)||!slot(read,out.root_table,8,image_base+0xcb80))return Code::module;
+--- r171/cover_physx_asset_actors.h
++++ r173/cover_physx_asset_actors.h
+@@ -6,6 +6,7 @@
+ #include <type_traits>
+ #include "cover_physx_query_source.h"
+ #include "cover_owner_link_observation.h"
++#include "cover_physx_actor_backlink.h"
+ 
+ // A read bracket of the named PhysicsAssetInstance.Bodies -> BodyData fields.
+ // The typed guard must certify EVERY reflected body/owner/index/BodyData role.
+@@ -48,13 +49,16 @@
+         if(!source::pointer(body.actor,0x48)||!raw::field(read,body.table,body.actor,0)||
+            !raw::field(read,body.scene,body.actor,0x38)||!raw::field(read,body.internal,body.actor,0x40))return Code::read;
+         if(body.table!=image_base+0x2330a8)return Code::unsupported;
+-        if(body.scene!=scope.scene||!source::pointer(body.internal,0x18)){
++        if(body.scene!=scope.scene||(body.internal&&!source::pointer(body.internal,0x18))){
+             linkobs::note({false,linkobs::Reader::asset,{},linkobs::Branch::scene_or_internal,scope.source.thread,
+                 body.actor,body.table,scope.scene,body.scene,body.internal,0,false});return Code::links;}
+         std::uintptr_t actor_back{};
+-        if(!raw::field(read,actor_back,body.internal,0x10))return Code::read;
+-        if(actor_back!=body.actor){
+-            linkobs::note({false,linkobs::Reader::asset,{},linkobs::Branch::reverse,scope.source.thread,
++        namespace back=gears_cover_physx_actor_backlink;
++        const auto relation=back::sample(image_base,body.actor,read,actor_back);
++        if(relation==back::Code::read)return Code::read;
++        if(relation==back::Code::unsupported)return Code::unsupported;
++        if(relation!=back::Code::current){
++            linkobs::note({false,linkobs::Reader::asset,{},linkobs::Branch::embedded_owner,scope.source.thread,
+                 body.actor,body.table,scope.scene,body.scene,body.internal,actor_back,true});return Code::links;}
+         body.presence=Presence::actor_observed;
+         bool duplicate=false;for(unsigned n=0;n<out.actor_count;++n)duplicate=duplicate||out.actors[n]==body.actor;
+--- r171/cover_physx_collider.h
++++ r173/cover_physx_collider.h
+@@ -6,6 +6,7 @@
+ #include <type_traits>
+ #include "cover_physx_query_source.h"
+ #include "cover_owner_link_observation.h"
++#include "cover_physx_actor_backlink.h"
+ 
+ // Caller owns the exact Image pin and current C0. Its typed guard certifies
+ // these named Pawn/component/body fields and their full reflected identities.
+@@ -47,13 +48,16 @@
+     if(!data){next.presence=Presence::body_data_field_null;output=next;return Code::observed;}
+     if(!raw::field(read,next.actor_table,data,0)||!raw::field(read,next.scene,data,0x38)||!raw::field(read,next.internal,data,0x40))return Code::read;
+     if(next.actor_table!=image_base+0x2330a8)return Code::unsupported;
+-    if(next.scene!=scope.scene||!source::pointer(next.internal,0x18)){
++    if(next.scene!=scope.scene||(next.internal&&!source::pointer(next.internal,0x18))){
+         linkobs::note({false,linkobs::Reader::collider,{},linkobs::Branch::scene_or_internal,scope.source.thread,
+             data,next.actor_table,scope.scene,next.scene,next.internal,0,false});return Code::links;}
+     std::uintptr_t reverse{};
+-    if(!raw::field(read,reverse,next.internal,0x10))return Code::read;
+-    if(reverse!=data){
+-        linkobs::note({false,linkobs::Reader::collider,{},linkobs::Branch::reverse,scope.source.thread,
++    namespace back=gears_cover_physx_actor_backlink;
++    const auto relation=back::sample(image_base,data,read,reverse);
++    if(relation==back::Code::read)return Code::read;
++    if(relation==back::Code::unsupported)return Code::unsupported;
++    if(relation!=back::Code::current){
++        linkobs::note({false,linkobs::Reader::collider,{},linkobs::Branch::embedded_owner,scope.source.thread,
+             data,next.actor_table,scope.scene,next.scene,next.internal,reverse,true});return Code::links;}
+     next.presence=Presence::actor_observed;output=next;return Code::observed;
+ }
+--- r171/cover_physx_components.h
++++ r173/cover_physx_components.h
+@@ -7,6 +7,7 @@
+ #include <type_traits>
+ #include "cover_physx_query_source.h"
+ #include "cover_owner_link_observation.h"
++#include "cover_physx_actor_backlink.h"
+ 
+ // Exact Image pin/current C0 and typed full-identity/metadata guard required.
+ // This qualifies only the supplied DECLARED component/body fields. Owners,
+@@ -204,7 +205,7 @@
+     auto accept=[&](Actor const& value,Presence expected,std::uintptr_t at){
+         if(value.presence!=expected)return false;
+         if(expected!=Presence::actor_observed)return !value.table&&!value.scene&&!value.internal;
+-        if(value.table!=packet.query_source.actor_table||value.scene!=packet.query_source.scene||!source::pointer(value.internal,0x18))return false;
++        if(value.table!=packet.query_source.actor_table||value.scene!=packet.query_source.scene||(value.internal&&!source::pointer(value.internal,0x18)))return false;
+         bool duplicate=false;for(unsigned k=0;k<count;++k)duplicate=duplicate||actors[k]==at;
+         if(!duplicate)actors[count++]=at;return true;};
+     for(unsigned n=0;n<capacity;++n){auto const& row=packet.fields.components[n];auto const& value=packet.observations[n];
+@@ -223,12 +224,15 @@
+     if(!data){value.presence=Presence::body_data_field_null;return Code::observed;}
+     if(!raw::field(read,value.table,data,0)||!raw::field(read,value.scene,data,0x38)||!raw::field(read,value.internal,data,0x40))return Code::read;
+     if(value.table!=image_base+0x2330a8)return Code::unsupported;
+-    if(value.scene!=scope.scene||!source::pointer(value.internal,0x18)){
++    if(value.scene!=scope.scene||(value.internal&&!source::pointer(value.internal,0x18))){
+         linkobs::note({false,linkobs::Reader::components,{},linkobs::Branch::scene_or_internal,scope.source.thread,
+             data,value.table,scope.scene,value.scene,value.internal,0,false});return Code::links;}
+-    std::uintptr_t reverse{};if(!raw::field(read,reverse,value.internal,0x10))return Code::read;
+-    if(reverse!=data){
+-        linkobs::note({false,linkobs::Reader::components,{},linkobs::Branch::reverse,scope.source.thread,
++    std::uintptr_t reverse{};namespace back=gears_cover_physx_actor_backlink;
++    const auto relation=back::sample(image_base,data,read,reverse);
++    if(relation==back::Code::read)return Code::read;
++    if(relation==back::Code::unsupported)return Code::unsupported;
++    if(relation!=back::Code::current){
++        linkobs::note({false,linkobs::Reader::components,{},linkobs::Branch::embedded_owner,scope.source.thread,
+             data,value.table,scope.scene,value.scene,value.internal,reverse,true});return Code::links;}value.presence=Presence::actor_observed;
+     bool duplicate=false;for(unsigned k=0;k<output.actor_count;++k)duplicate=duplicate||output.actors[k]==data;
+     if(!duplicate)output.actors[output.actor_count++]=data;return Code::observed;
+--- r171/cover_physx_self_evidence.h
++++ r173/cover_physx_self_evidence.h
+@@ -29,7 +29,7 @@
+     if(bodies.body_count>asset::capacity||catalog.fields.component_count>parts::capacity||
+        catalog.fields.asset_body_count>parts::asset_body_capacity)return none;
+     if(shape_owner.kind==own::Kind::unknown||!s::pointer(shape_owner.shape,0x40)||!s::pointer(shape_owner.internal_shape,0xd8)||
+-       !s::pointer(shape_owner.internal_actor,0x18)||shape_owner.scene!=scope.scene||shape_owner.actor_table!=scope.actor_table)return none;
++       (shape_owner.internal_actor&&!s::pointer(shape_owner.internal_actor,0x18))||shape_owner.scene!=scope.scene||shape_owner.actor_table!=scope.actor_table)return none;
+     const auto pawn=body.fields.pawn;
+     unsigned char found=none;bool conflict=false;
+     auto actor_matches=[&](std::uintptr_t candidate_actor,std::uintptr_t candidate_table,std::uintptr_t candidate_scene,std::uintptr_t candidate_internal){
+--- r171/cover_physx_shape_owner.h
++++ r173/cover_physx_shape_owner.h
+@@ -54,8 +54,12 @@
+     if(!raw::field(read,public_shape,next.internal_shape,0xa0)||
+        !raw::field(read,shape_actor,next.internal_shape,0xd0)||
+        !raw::field(read,next.internal_actor,next.actor,0x40))return Code::read;
+-    if(next.internal_actor&&(!source::pointer(next.internal_actor,0x18)||!raw::field(read,public_actor,next.internal_actor,0x10)))return Code::read;
+-    if(!next.internal_actor)public_actor=next.actor; // Final qualification requires actual Shape membership below.
++    if(next.internal_actor&&!source::pointer(next.internal_actor,0x18))return Code::links;
++    namespace back=gears_cover_physx_actor_backlink;
++    const auto relation=back::sample(image_base,next.actor,read,public_actor);
++    if(relation==back::Code::read)return Code::read;
++    if(relation==back::Code::unsupported)return Code::module;
++    if(relation!=back::Code::current)return Code::links;
+     if(public_shape!=shape||shape_actor!=next.internal_actor||public_actor!=next.actor)return Code::links;
+     output=next;return Code::observed;
+ }

@@ -87,7 +87,7 @@ static Memory setup(char const* file){
     m.block(0x2a0000,0x80);m.block(0x2b0000,16);m.block(0x2c0000,0x48);m.block(0x2d0000,0x98);m.block(0x2e0000,0x18);
     m.put<std::uintptr_t>(0x240248,extra.asset);m.put<std::uintptr_t>(0x240250,extra.instance);m.put<std::uintptr_t>(0x2a0060,extra.owner);
     m.put(0x2a006c,extra.array);m.put(0x2a007c,extra.root);m.put<std::uintptr_t>(0x2b0000,0x250000);m.put<std::uintptr_t>(0x2b0008,0x2d0000);
-    m.put<std::uintptr_t>(0x2d0088,0x2c0000);m.put<std::uintptr_t>(0x2c0000,base+0x2330a8);m.put<std::uintptr_t>(0x2c0038,0x170000);
+    m.put<std::uintptr_t>(0x2d0088,0x2c0000);m.put<std::uintptr_t>(0x2c0000,base+0x2330a8);m.actor_owner(0x2c0000,base);m.put<std::uintptr_t>(0x2c0038,0x170000);
     m.put<std::uintptr_t>(0x2c0040,0x2e0000);m.put<std::uintptr_t>(0x2e0010,0x2c0000);
     m.put<std::uintptr_t>(0x240180,0x250000);m.put<std::uintptr_t>(0x250088,actor1);
     m.put<std::uintptr_t>(0x200180,0x210000);m.put<std::uintptr_t>(0x210088,0x160000);
@@ -96,7 +96,7 @@ static Memory setup(char const* file){
     for(auto const at:{body0,body1})m.block(at,0x18);
     m.block(0x160000,0x50);m.block(actor1,0x50);
     m.put<std::uintptr_t>(0x160048,inside0);m.put<std::uintptr_t>(actor1+0x48,inside1);m.put<std::uintptr_t>(0x160040,body0);m.put<std::uintptr_t>(body0+0x10,0x160000);
-    m.put<std::uintptr_t>(actor1,base+0x2330a8);m.put<std::uintptr_t>(actor1+0x38,0x170000);
+    m.put<std::uintptr_t>(actor1,base+0x2330a8);m.actor_owner(actor1,base);m.put<std::uintptr_t>(actor1+0x38,0x170000);
     m.put<std::uintptr_t>(actor1+0x40,body1);m.put<std::uintptr_t>(body1+0x10,actor1);
     for(unsigned i=0;i<2;++i){const auto shape=i?shape1:shape0,inside=i?inside1:inside0,actor=i?actor1:0x160000,body=i?body1:body0;
         m.put<std::uintptr_t>(shape,base+own::shape_tables[i]);m.put<std::uintptr_t>(shape+0x30,inside);m.put<std::uintptr_t>(shape+0x38,actor);
@@ -167,6 +167,15 @@ int GEARS_OWNED_SWEEP_TEST_MAIN(int argc,char**argv){
             fields.components[1].owner=proof->collider_source.fields.pawn;
             check(classify()==(self::collider|self::pawn_component|self::pawn_asset),"exact current collider component and mesh asset give positive provenance");
             const auto positive=std::make_unique<q::AllSweepOwners>(*proof);
+            proof->owners[0].internal_actor=0;proof->collider_source.internal=0;
+            for(auto& row:proof->asset_bodies.bodies)if(row.actor==proof->owners[0].actor)row.internal=0;
+            for(unsigned n=0;n<proof->component_sources.fields.component_count;++n)
+                if(proof->component_sources.fields.components[n].body_data==proof->owners[0].actor)proof->component_sources.observations[n].internal=0;
+            for(unsigned n=0;n<proof->component_sources.fields.asset_body_count;++n)
+                if(proof->component_sources.fields.asset_bodies[n].data==proof->owners[0].actor)proof->component_sources.asset_observations[n].internal=0;
+            check(classify()==(self::collider|self::pawn_component|self::pawn_asset),"qualified static actor retains exact typed shape provenance without a dynamic Body");
+            proof->collider_source.internal=body0;
+            check(!classify(),"static shape with inconsistent collider Body remains obstacle");*proof=*positive;
             proof->owners[0].internal_actor+=8;check(!classify(),"same actor different internal body remains obstacle");*proof=*positive;
             proof->owners[0].scene+=8;check(!classify(),"different scene remains obstacle");*proof=*positive;
             proof->owners[0].actor_table+=8;check(!classify(),"different actor class remains obstacle");*proof=*positive;
