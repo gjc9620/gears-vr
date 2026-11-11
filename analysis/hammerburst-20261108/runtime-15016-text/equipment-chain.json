@@ -1,0 +1,171 @@
+{
+  "game": {
+    "pid": 15016,
+    "creation_time": 134388428442014154,
+    "image": "j:\\gearsvr\\gears.of.war.reloaded.v1.0.1.3816947-p2p\\gears of war reloaded\\binaries_x64\\gowde-steam.exe"
+  },
+  "source": 1,
+  "desktop_input": false,
+  "direct_gameplay_calls": false,
+  "motion": [],
+  "states": [
+    {
+      "label": "before_original_X_pickup",
+      "ns": 154111573242300,
+      "weapon": "0x162c665a40",
+      "name": "Weap_LocustAssaultRifle",
+      "cls": "Weap_LocustAssaultRifle",
+      "location": [
+        -3900.0,
+        0.0,
+        583.9485473632812
+      ],
+      "special": 0
+    },
+    {
+      "label": "HB_actual_shoulder_acquisition",
+      "ns": 154119523476900,
+      "weapon": "0x162c665a40",
+      "name": "Weap_LocustAssaultRifle",
+      "cls": "Weap_LocustAssaultRifle",
+      "location": [
+        -3900.0,
+        0.0,
+        583.9485473632812
+      ],
+      "special": 0
+    },
+    {
+      "label": "reload_count_before_empty_reload_initial",
+      "ns": 154124412687000,
+      "weapon": "0x162c665a40",
+      "name": "Weap_LocustAssaultRifle",
+      "cls": "Weap_LocustAssaultRifle",
+      "location": [
+        -3900.0,
+        0.0,
+        583.9485473632812
+      ],
+      "special": 0
+    },
+    {
+      "label": "reload_count_after_empty_reload_initial",
+      "ns": 154124448475900,
+      "weapon": "0x162c665a40",
+      "name": "Weap_LocustAssaultRifle",
+      "cls": "Weap_LocustAssaultRifle",
+      "location": [
+        -3900.0,
+        0.0,
+        583.9485473632812
+      ],
+      "special": 0
+    },
+    {
+      "label": "reload_count_before_empty_reload_drain_before",
+      "ns": 154124452884500,
+      "weapon": "0x162c665a40",
+      "name": "Weap_LocustAssaultRifle",
+      "cls": "Weap_LocustAssaultRifle",
+      "location": [
+        -3900.0,
+        0.0,
+        583.9485473632812
+      ],
+      "special": 0
+    },
+    {
+      "label": "reload_count_after_empty_reload_drain_before",
+      "ns": 154124476338400,
+      "weapon": "0x162c665a40",
+      "name": "Weap_LocustAssaultRifle",
+      "cls": "Weap_LocustAssaultRifle",
+      "location": [
+        -3900.0,
+        0.0,
+        583.9485473632812
+      ],
+      "special": 0
+    },
+    {
+      "label": "reload_count_before_empty_reload_drain_after_burst_1",
+      "ns": 154126178983500,
+      "weapon": "0x162c665a40",
+      "name": "Weap_LocustAssaultRifle",
+      "cls": "Weap_LocustAssaultRifle",
+      "location": [
+        -3900.0,
+        0.0,
+        583.9485473632812
+      ],
+      "special": 0
+    },
+    {
+      "label": "reload_count_after_empty_reload_drain_after_burst_1",
+      "ns": 154126201335900,
+      "weapon": "0x162c665a40",
+      "name": "Weap_LocustAssaultRifle",
+      "cls": "Weap_LocustAssaultRifle",
+      "location": [
+        -3900.0,
+        0.0,
+        583.9485473632812
+      ],
+      "special": 0
+    },
+    {
+      "label": "reload_count_before_empty_reload_drain_after_burst_2",
+      "ns": 154127394009700,
+      "weapon": "0x162c665a40",
+      "name": "Weap_LocustAssaultRifle",
+      "cls": "Weap_LocustAssaultRifle",
+      "location": [
+        -3900.0,
+        0.0,
+        583.9485473632812
+      ],
+      "special": 0
+    },
+    {
+      "label": "reload_count_after_empty_reload_drain_after_burst_2",
+      "ns": 154127416005400,
+      "weapon": "0x162c665a40",
+      "name": "Weap_LocustAssaultRifle",
+      "cls": "Weap_LocustAssaultRifle",
+      "location": [
+        -3900.0,
+        0.0,
+        583.9485473632812
+      ],
+      "special": 0
+    },
+    {
+      "label": "reload_count_before_empty_reload_drain_after_burst_3",
+      "ns": 154128631578500,
+      "weapon": "0x162c665a40",
+      "name": "Weap_LocustAssaultRifle",
+      "cls": "Weap_LocustAssaultRifle",
+      "location": [
+        -3900.0,
+        0.0,
+        583.9485473632812
+      ],
+      "special": 0
+    },
+    {
+      "label": "reload_count_after_empty_reload_drain_after_burst_3",
+      "ns": 154128660016100,
+      "weapon": "0x162c665a40",
+      "name": "Weap_LocustAssaultRifle",
+      "cls": "Weap_LocustAssaultRifle",
+      "location": [
+        -3900.0,
+        0.0,
+        583.9485473632812
+      ],
+      "special": 0
+    }
+  ],
+  "checks": {},
+  "error": "TimeoutError('No fresh actual UP baseline consumption receipt')"
+}

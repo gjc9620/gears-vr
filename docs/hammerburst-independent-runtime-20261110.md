@@ -565,3 +565,10 @@ prelaunch-052600-result.json和5份原观察文本保留；cleanup-pending标为
 22992 finalizer将不存在的fivepartfitting ID改为真实part_fitting，并断言目标需求存在；把已亲审的48组双路概览及6张原始contact证据关联到手部贴合和引导条目。两项继续未接受，不增加运行或头显通过。PG静态复核只确认被动proximity与有效support lease分支边界，不替代Native/当前四态实测。
 
 协调方按用户明确释放指令强制结束旧052600 Python worker，原失败和异常收尾保留；没有强杀游戏或补造birth/done。证据owner-resource-release-20261111.json。新115143经正式入口准备一次并等待准入，继续完整空仓耗弹、换弹和回射，不复用旧实例。完整13项尚未完成。
+
+
+## 2026-11-11 game15016：四次六连发后UP观察超时
+
+新115143正常启动取枪，核心6发与3轮耗弹各6发，24条实际有效且来源一致射线，typed54/78。下一轮只发UP，未取得严格60ms的setup回执而超时，未再按DOWN，未到空仓/换弹。失败窗口11条回执最小写入源年龄54.9158ms，缺少测试观察时年龄，不能断言根因。补充最多8条不同回执及最小源年龄、原producer/log/observation时间和live/read耗时；不改60ms/setup/deadline/生产保护。11helper测试及8adapter编译检查通过，新诊断尚未进游戏。
+
+原operator1保留，stop/launcher/Native/PG/XR正常结束，无强制清理，无FG/CLOAK违规。226帧无capture错误，编码0；3页48组paired概览及raw120/158/196亲审，近脸右眼遮挡、手分离与重影未接受。证据runtime-15016-first-failure-analysis.json，完整目标未完成。

@@ -31,6 +31,18 @@ class Host:
         data={'checks':{}};first_fire(self,data,clock=lambda:self.now,sleep=self.sleep);return data
 
 class Tests(unittest.TestCase):
+    def test_failed_baseline_keeps_bounded_original_age_diagnostics(self):
+        h=Host('old_source_recent_receipt');d={'checks':{}}
+        with self.assertRaises(TimeoutError):first_fire(h,d,clock=lambda:h.now,sleep=h.sleep)
+        wait=d['first_fire_input']['baseline_wait']
+        self.assertEqual(h.inputs,[{}]);self.assertLessEqual(len(wait['samples']),8)
+        self.assertEqual(wait['minimum_source_age']['source_age_ns'],70_000_000)
+        self.assertEqual(wait['minimum_source_age']['receipt_age_ns'],0)
+        self.assertNotIn('down_sent_ns',d['first_fire_input'])
+    def test_diagnostics_do_not_replace_one_press_or_original_producer(self):
+        h=Host();d=h.run();r=d['first_fire_input']
+        self.assertEqual(r['baseline_wait']['minimum_source_age']['row'],r['baseline'])
+        self.assertEqual(h.inputs,[{},dict(trigger=1),{}])
     def test_late_tail_observes_same_press_without_retry(self):
         h=Host('delayed_tail');data=h.run();self.assertTrue(data['checks']['actual_fire'])
         self.assertEqual(h.inputs,[{},dict(trigger=1),{}]);self.assertGreaterEqual(h.now,1_800_000_000)

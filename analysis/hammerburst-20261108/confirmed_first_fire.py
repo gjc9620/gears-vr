@@ -30,8 +30,25 @@ def first_fire(c,data,*,clock=time.perf_counter_ns,sleep=time.sleep,expected_sho
         deadline=clock()+int(seconds*1e9)
         if deadline_ns is not None:deadline=min(deadline,deadline_ns)
         while clock()<deadline:
+            live_started=clock()
             assert g.live(),'Owned runtime ended before input consumption'
+            read_started=clock()
             rows=c.records('hammerburst_input_consumed')
+            observed=clock()
+            # Bounded test-reader diagnostics only. Keep original producer/log
+            # times and the unchanged acceptance predicate/deadline.
+            wait=receipt.setdefault('down_wait' if down else 'baseline_wait',
+                                    dict(samples=[],distinct_rows=0))
+            newest=next((r for r in reversed(rows) if number(r,'input_sync_ns')>=sent),None)
+            if newest is not None and (not wait['distinct_rows'] or newest.get('sequence')!=wait.get('last_sequence')):
+                sample=dict(row=dict(newest),observed_ns=observed,
+                            source_age_ns=observed-number(newest,'input_sync_ns'),
+                            receipt_age_ns=observed-number(newest,'admitted_ns'),
+                            liveness_ns=read_started-live_started,read_ns=observed-read_started)
+                wait['last_sequence']=newest.get('sequence');wait['distinct_rows']+=1
+                wait['samples'].append(sample);wait['samples']=wait['samples'][-8:]
+                if 'minimum_source_age' not in wait or sample['source_age_ns']<wait['minimum_source_age']['source_age_ns']:
+                    wait['minimum_source_age']=sample
             for row in reversed(rows):
                 if candidate(row,sent,down):
                     if down and number(row,'status')==8:
