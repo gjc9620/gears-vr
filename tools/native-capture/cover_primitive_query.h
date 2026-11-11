@@ -9,7 +9,8 @@
 namespace gears_cover_primitive_query {
 namespace w=gears_cover_primitive_world;namespace q=gears_cover_physx_query;
 enum class Code {converted,alias,unsupported,invalid,precision};
-struct Shape {double radius_expansion{};std::array<double,3> box_half_expansion{};unsigned body_index{},bone_index{};w::bones::Name bone{};w::metrics::Kind kind{};q::Sphere sphere{};q::Box box{};q::Capsule capsule{};};
+enum class Units {unspecified,physx};
+struct Shape {Units units{};double radius_expansion{};std::array<double,3> box_half_expansion{};unsigned body_index{},bone_index{};w::bones::Name bone{};w::metrics::Kind kind{};q::Sphere sphere{};q::Box box{};q::Capsule capsule{};};
 inline bool exact(double value,float& out) noexcept {
     if(!std::isfinite(value)||std::abs(value)>(std::numeric_limits<float>::max)())return false;
     const float f=float(value);if(!q::detail::scalar(f)||double(f)!=value)return false;out=f;return true;

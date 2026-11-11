@@ -1,0 +1,44 @@
+{
+  "results": {
+    "verified": "BodyQueryUnits checks=8333 failures=0 original game-to-physics boundary only\r\n",
+    "catalog": "BodyQueryCatalog checks=16 failures=0 supplied inventory only; no world safety/permit\r\n",
+    "catalog-fixture": "BodyCatalogC0 checks=269 failures=0 retained C0 geometry only; no current world/permission\r\n",
+    "observer": "cover_physics_query_live: 110 checks, 0 failures; dispatch/module are Host seams, no original call\r\nBodyQueryObserver checks=124 failures=0 actual Session; Host original dispatch; raw only\r\n",
+    "authored-geometry": "PrimitiveLayout checks=37 failures=0 actual reflection Proof; synthetic registry, no runtime authority\r\nArrayLayout checks=80 failures=0 reflection association only; synthetic registry\r\nBodySetup checks=135 failures=0 synthetic instances; no C0 permission\r\nasset kind=0 begin\r\nasset kind=1 begin\r\nasset kind=2 begin\r\nAssetSetup checks=219 failures=0 authored membership only; synthetic instances\r\nPointScale checks=292 failures=0 synthetic source; original route attestation remains external\r\nAuthoredInventory checks=328 failures=0 synthetic complete authored arrays; no active/world permission\r\nAuthoredGeometry checks=377 failures=0 actual saved C0 + synthetic source shapes; no active physics permission\r\n",
+    "primitive": "PrimitiveQuery checks=2134 failures=0 bounded owned conversion only; no query/permission\r\n",
+    "box": "BoxQueryRounding checks=27140 failures=0 parameter enclosure only; no Native geometry proof\r\n"
+  },
+  "sources": {
+    "tools/native-capture/cover_query_units.h": "4279991b906bdd3725b355102f9f788d49891cb14aa2b8964368412c149de9bb",
+    "tools/native-capture/cover_primitive_query.h": "4986f8522371997ae34b2ab68886c0f648dcbf3d389373dbac8003a755f2136a",
+    "tools/native-capture/cover_body_query_catalog.h": "89a1bfcef62553a930e27dc336ee10b140a0613b1e6531af0aee7fe291b1315f",
+    "tools/native-capture/cover_body_query_observer.h": "2fa3bdf82b0dba965aab50224e4349f66999d9c811dc01b1c20fb65150bf770f",
+    "tools/native-capture/cover_body_query_observer_test.cpp": "27a1d2325302d43e4d1eea00923554aa78c3fd487a53157db53ed316cd5572ed",
+    "tools/native-capture/cover_body_query_units_test.cpp": "000b5b665934709c954547fae7ae6eef184845c45d9e09b16f90339692f01c28",
+    "tools/native-capture/cover_physx_query.h": "2d52968bca0c541e304c28eb5cc2aeb55794515a8e0e117a4c88122688e0cbb5"
+  },
+  "original_transform_certificate_sha256": "324e8f5eadf756031ba7831710268fdc94d2b39e599b96588d046dc3a65cb662",
+  "fixture_sha256": {
+    "C0-component.bin": "ceb2c34e36e442a0cceafde5754c0f320e8fc6ad270d6ee25cb4314731515f09",
+    "C0-local.bin": "4ece225a74b56a5439fca58d72cf4e7332da731455085cb1747a4b8adec68ef2",
+    "C0-metadata.bin": "7c2d16269661af9963535e24261a9c29af04f29212f5d9b4d6c5c2124ccb7357",
+    "C0-space.bin": "a016217704965ad73440b204f349b9de806240d996c3dba6395f1b8559215d9a",
+    "calibrated-neutral.bin": "60660cb5a915f94a509771607ef3f3cb7d9ae5c8d773bb1fc8a6f75528b02dcd",
+    "fitting-goal.bin": "a97f99d9b683349739847658183f7d4fd3fe7ab89c010fd2422eb77c1d756c3f",
+    "pawn-location.bin": "df14dbccdddeac0580c2f7d8433bb5518bfe4504183133ef63f7289b0ff90e39",
+    "reference.bin": "fef334cf78e72a23c1bfd289780652feb12816ba508b92fdc0e052b9c61ed5ce",
+    "source-CT0.bin": "9c0232284ff29c720815459f0fea894c8dcf1429039f45cb8f160aa6ad904d16"
+  },
+  "counterexample": {
+    "before": "FAIL 11: sphere.centre.x==10.f*factor&&sphere.centre.y==20.f*factor&&sphere.centre.z==30.f*factor\r\nFAIL 12: sphere.radius>=2.f*factor&&sphere.radius<.041f\r\nBodyQueryUnits checks=3 failures=2 original game-to-physics boundary only\r\n",
+    "after": "BodyQueryUnits checks=3 failures=0 original game-to-physics boundary only\r\n",
+    "unchanged_counter_source_sha256": "bb2b9d9f781937563f8588ff9a6ee3745b2cd5bc3826376dd15844807fb01a9d"
+  },
+  "fix": "Body Geometry is in original game units; native query ABI consumes PhysX units directly. Catalog now calls explicit query_units conversion with original float0.02 (bits3ca3d70a), exactly once. Generic primitive_query packing stays in supplied units and is unspecified; catalog/rows mark PhysX explicitly and raw observer rejects unspecified units before first dispatch.",
+  "enclosure": "Scale double centres/endpoints with FMA product residual bound; scale float dimensions exactly in double, round upward and include centre/endpoint double error. Reuse existing bounded primitive converter, then account total radius/half expansion against exact scaled original dimensions. Input budget remains game units; bound converted downward to PhysX units; output expansion PhysX units. Near rounding only, no shrinking/clamping.",
+  "tests": "8333 unit/enclosure checks0: same sphere10,20,30/radius2 counterfixture had2 failures before and0 after; marked units, once-only conversion, strict budget/output preservation,128 sets each sphere/capsule and rotated box corners in inverse/transpose interpretations, rounding-mode refusal. Catalog16/C0catalog269/observer124(plus110 Session)/authored geometry377/generic primitive2134/box27140 all0. Original9 C0 files unchanged. Host dispatch only, no original/native query.",
+  "remaining": "Does not establish active authored correspondence, original native internal box interpretation, capsule creation-axis correction, flags/eligibility, current query-visible world fence, production capture integration/build/game/headset or full CV/AC completion. Prior runtime timeouts not attributed to this previously offline-only path.",
+  "game_started": false,
+  "full_native_built": false,
+  "engineering_percent": 25
+}

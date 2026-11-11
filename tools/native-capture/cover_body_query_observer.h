@@ -23,7 +23,7 @@ Code observe(Session& session,Actor const& actor,Metadata const& metadata,c::Cat
     auto unchanged=[&](){return !std::memcmp(&catalog,&work.initial,sizeof catalog)&&
         !std::memcmp(&mapping,&work.mapping,sizeof mapping)&&
         !std::memcmp(inventory,work.inventory.data(),std::size_t(bodies)*sizeof(*inventory));};
-    if(!gears_cover_body_overlap::detail::mapping(mapping,bodies))return Code::catalog;
+    if(catalog.units!=c::p::Units::physx||!gears_cover_body_overlap::detail::mapping(mapping,bodies))return Code::catalog;
     unsigned total=0;
     for(unsigned b=0;b<bodies;++b){if(inventory[b].count[3])return Code::catalog;
       for(unsigned k=0;k<3;++k){if(inventory[b].count[k]>c::g::max_primitives-total)return Code::catalog;total+=inventory[b].count[k];}}
@@ -32,7 +32,7 @@ Code observe(Session& session,Actor const& actor,Metadata const& metadata,c::Cat
     // Preflight ALL shapes before the first query, including the final row.
     for(unsigned b=0;b<bodies;++b)for(unsigned k=0;k<3;++k)for(unsigned n=0;n<inventory[b].count[k];++n){
       const auto& row=catalog.rows[at++];const auto& s=row.shape;
-      if(s.body_index!=b||s.bone_index!=mapping.rows[b].bone_index||!c::g::names::same(s.bone,mapping.rows[b].name)||
+      if(s.units!=c::p::Units::physx||s.body_index!=b||s.bone_index!=mapping.rows[b].bone_index||!c::g::names::same(s.bone,mapping.rows[b].name)||
          unsigned(s.kind)!=k||row.array_index!=n)return Code::catalog;
       const bool valid=k==0?q::detail::valid(s.sphere):k==1?q::detail::valid(s.box):q::detail::valid(s.capsule);
       if(!valid)return Code::catalog;

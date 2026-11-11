@@ -1,0 +1,3 @@
+FAIL 11: sphere.centre.x==10.f*factor&&sphere.centre.y==20.f*factor&&sphere.centre.z==30.f*factor
+FAIL 12: sphere.radius>=2.f*factor&&sphere.radius<.041f
+BodyQueryUnits checks=3 failures=2 original game-to-physics boundary only

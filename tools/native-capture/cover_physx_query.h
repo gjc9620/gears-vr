@@ -30,6 +30,8 @@
 namespace gears_cover_physx_query {
 namespace source=gears_cover_physx_query_source;
 using Digest=source::Digest;
+// Native PhysX units for every shape, position, radius and motion vector.
+// This ABI layer performs no game-unit conversion.
 struct Vector {float x{},y{},z{};};
 struct Sphere {Vector centre{};float radius{};};
 struct Box {Vector centre{},half{};float rotation[9]{};};

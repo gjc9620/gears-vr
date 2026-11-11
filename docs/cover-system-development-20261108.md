@@ -3005,3 +3005,15 @@ PhysicsAsset成员与body ordinal、原receiver scale、原consumer/stride代码
 首次比较用int常量与unsigned序号在/WX下失败，修fixture常量；最终boundary负例初版把计数放可复制guard值内，未到目标边界，改为共享计数后实际scope变更被拒绝，未改产品准入/closing逻辑。原失败/最终编译与回执在asset-shapes-r217。
 
 覆盖范围仅本次已提供主PhysicsAsset BodyData，不是整个player collider/components/equipment/self清单，不签发自身排除/世界fence/占用/移动许可。authored逐项对应、尺寸/单位/轴基/参与语义、同current C0/时相/生命周期、生产Native接入/完整构建/游戏/原查询及body/view/hit/muzzle/头显仍待完成，CV24/AC22保留，工程25%。无游戏/XR或原DLL加载执行。
+
+## r218：完整身体查询目录漏接原game→PhysX单位换算已修正（2026-11-12）
+
+本轮从尺寸/轴基核对转入实际发现的单位边界缺口：body_geometry输出原游戏单位，而query ABI将Sphere/Box/Capsule直接交原PhysX，不做换算；此前catalog.prepare仅调用同单位primitive_query打包。以sphere中心10/20/30、radius2和明确0.001游戏单位预算的同一3检查夹具，原代码编译0/执行1，位置与radius两项失败；修正后同一夹具3检查0失败，原counter源码与前后日志保留。不将此离线路径缺口归因于r194既有超时或声称游戏已修。
+
+新增cover_query_units.h，在catalog.prepare边界明确应用原F2610已认证float0.02（bits3ca3d70a）一次；不是HMD米/游戏校准。double中心/端点乘该精确float常量，用FMA residual界住double乘法误差；float尺寸乘float在double中精确表示，向上float舍入并加入中心/端点误差，再复用既有bounded converter。最终radius/half总外扩相对精确scaled原尺寸核对；输入预算仍为原游戏单位，换成PhysX上限时向下取界，输出expansion为PhysX单位。不缩形、不clamp预算、不通过重排救回异常值；非nearest模式拒绝。
+
+generic primitive_query继续只打包输入同单位值，新增Units::unspecified/physx；catalog与每行明确physx。body_query_observer在第一次dispatch前拒绝目录或任一行单位未指定；手工Host fixture明确native单位。原q ABI增加单位注释，不在raw层再次换算，防止双乘。
+
+新单位/包络8333检查0失败：单次换算与单位标记、零/小预算拒绝保持输出，128组球/胶囊端点及旋转盒全部角点逆坐标/转置投影包络、FP模式拒绝。受影响回归catalog16、原真实C0底座catalog269、observer124（含原Session110）、完整authored geometry377、generic primitive2134、box27140全0；原9 C0夹具SHA保持。对目录/单行unknown单位的拒绝均在Host query计数增长前。完整依赖SHA当前一致；原换算certificate/反例/源码/回执query-units-r218。
+
+实际authored↔active逐项对应、native内部OBB语义、胶囊创建轴修正、flags/参与规则及current query-visible world闭合仍需完成；没有生产Native构建/安装/游戏/原查询/头显。本次是Source与Host原分派seam验证，完整CV24/AC22、body/view/hit/muzzle同版事务及视图遮挡继续待完成，工程25%。
