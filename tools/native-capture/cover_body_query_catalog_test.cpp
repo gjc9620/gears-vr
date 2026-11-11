@@ -19,5 +19,10 @@ int main(){unsigned checks=0,failures=0;
   if(bad==3)changed->rows[5].primitive.segment_end.x=1./3.;if(bad==4)counts[1].count[3]=1;
   C(c::prepare(map,counts.data(),2,*changed,*work,*output)!=c::Code::prepared&&!memcmp(saved.get(),output.get(),sizeof *output));}
  C(c::prepare(map,inventory.data(),2,*geom,*work,work->candidate)==c::Code::alias);
+
+ geom->rows[5].primitive.segment_end.x=1./3.;
+ C(c::prepare(map,inventory.data(),2,*geom,*work,*output,.001)==c::Code::prepared&&output->rows[5].shape.radius_expansion>0);
+ const auto expanded=std::make_unique<c::Catalog>(*output);
+ C(c::prepare(map,inventory.data(),2,*geom,*work,*output,0)!=c::Code::prepared&&!memcmp(expanded.get(),output.get(),sizeof *output));
  C(!GetModuleHandleW(L"PhysXCore.dll"));printf("BodyQueryCatalog checks=%u failures=%u supplied inventory only; no world safety/permit\n",checks,failures);return failures?1:0;
 }

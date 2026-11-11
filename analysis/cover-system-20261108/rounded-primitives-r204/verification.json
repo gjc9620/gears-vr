@@ -1,0 +1,25 @@
+{
+  "results": [
+    "PrimitiveQuery checks=2134 failures=0 bounded owned conversion only; no query/permission\r\n",
+    "BodyQueryCatalog checks=16 failures=0 supplied inventory only; no world safety/permit\r\n",
+    "cover_physics_query_live: 110 checks, 0 failures; dispatch/module are Host seams, no original call\r\nBodyQueryObserver checks=122 failures=0 actual Session; Host original dispatch; raw only\r\n"
+  ],
+  "source_sha256": {
+    "tools/native-capture/cover_primitive_query.h": "787aa26da052f2b2df25677ebcc535edb6ebaddb1767febcd99b75bc6f2cfeff",
+    "tools/native-capture/cover_primitive_query_test.cpp": "67efd464845bad51964c7c939667cba0bc20271e91768c22a6ace64c95c225a9",
+    "tools/native-capture/cover_body_query_catalog.h": "8b32d172087f35672ac4485679fcbbda2b0fae8ce73036ff5f894742f981805f",
+    "tools/native-capture/cover_body_query_catalog_test.cpp": "adeed6e6cde4e18b0fe9c2f7ecf65ade60f22890465b7d0b1b5c954f379eeb86"
+  },
+  "bound": "Nearest rounding only. Upward per-coordinate absolute error and upward L1 sum bound point displacement. Max endpoint error bounds convex combinations along capsule segment. Radius rounded upward to cover original radius plus bound; reject if actual expansion exceeds explicit limit.",
+  "default_maximum_expansion": 0,
+  "metadata": "Converted Shape retains actual radius_expansion. Catalog propagates caller limit.",
+  "limits": [
+    "Box remains exact only",
+    "double-to-float subnormal input rejected",
+    "native internal geometry transformations not covered by this parameter-space proof",
+    "no active inventory/world/path or movement certification"
+  ],
+  "game_started": false,
+  "original_calls": false,
+  "engineering_percent": 25
+}

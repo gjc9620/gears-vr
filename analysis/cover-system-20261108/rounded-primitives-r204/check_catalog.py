@@ -1,0 +1,7 @@
+from pathlib import Path
+import json,subprocess,sys,hashlib
+R=Path.cwd();H=R/'analysis/cover-system-20261108/rounded-primitives-r204';variant=sys.argv[1];sys.path.insert(0,str(R/'tools/native-capture'));from build_verified import vc_environment
+prefix=H/variant;v=subprocess.run(['E:/vs/VC/Tools/MSVC/14.51.36231/bin/Hostx64/x64/cl.exe','/nologo','/std:c++17','/O2','/W4','/WX','/EHsc','/UNDEBUG','/MT',str(R/'tools/native-capture/cover_body_query_catalog_test.cpp'),'/I'+str(R/'tools/third-party/minhook/include'),'/Fo:'+str(prefix)+'.obj','/Fe:'+str(prefix)+'.exe','/sourceDependencies',str(prefix)+'-dependencies.json'],env=vc_environment('E:/vs/VC/Auxiliary/Build/vcvars64.bat'),capture_output=True,creationflags=subprocess.CREATE_NO_WINDOW);Path(str(prefix)+'-build.log').write_bytes(v.stdout+v.stderr);row=dict(build_exit=v.returncode)
+if not v.returncode:
+ t=subprocess.run([str(prefix)+'.exe'],capture_output=True,creationflags=subprocess.CREATE_NO_WINDOW);Path(str(prefix)+'-test.log').write_bytes(t.stdout+t.stderr);row.update(test_exit=t.returncode,output=t.stdout.decode('utf-8','replace'));deps=json.loads(Path(str(prefix)+'-dependencies.json').read_text(encoding='utf-8-sig'))['Data']['Includes'];row['source_sha256']={str(Path(p).relative_to(R)):hashlib.sha256(Path(p).read_bytes()).hexdigest() for p in deps if Path(p).is_relative_to(R)}
+Path(str(prefix)+'-result.json').write_text(json.dumps(row,indent=2)+'\n');print(json.dumps({k:v for k,v in row.items() if k!='source_sha256'}))

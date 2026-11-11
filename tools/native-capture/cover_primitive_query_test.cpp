@@ -22,5 +22,28 @@ int main(){unsigned checks=0,failures=0;
  C(c::convert(p,out)==c::Code::converted&&out.box.rotation[0]==-1&&out.box.rotation[4]==-1&&out.box.rotation[8]==1);
  const auto turned=out;p.bone_index=w::body::bones;
  C(c::convert(p,out)==c::Code::invalid&&!memcmp(&turned,&out,sizeof out));
- C(!GetModuleHandleW(L"PhysXCore.dll"));printf("PrimitiveQuery checks=%u failures=%u exact owned conversion only; no query/permission\n",checks,failures);return failures?1:0;
+
+ p.bone_index=3;p.dimensions.kind=w::metrics::Kind::sphere;p.dimensions.radius=1;
+ for(unsigned i=1;i<=1024;++i){p.shape_world.position={double(i)/7.,-double(i)/11.,double(i)/13.};
+  C(c::convert_bounded(p,.001,out)==c::Code::converted);
+  const double dx=p.shape_world.position.x-out.sphere.centre.x,dy=p.shape_world.position.y-out.sphere.centre.y,dz=p.shape_world.position.z-out.sphere.centre.z;
+  C(double(out.sphere.radius)>=1+std::sqrt(dx*dx+dy*dy+dz*dz)&&out.radius_expansion<=.001);
+ }
+ const auto bounded=out;C(c::convert_bounded(p,0,out)==c::Code::precision&&!memcmp(&out,&bounded,sizeof out));
+ C(c::convert_bounded(p,-1,out)==c::Code::invalid&&!memcmp(&out,&bounded,sizeof out));
+ p.dimensions.kind=w::metrics::Kind::sphyl;p.segment_start={1./3.,2./7.,3};p.segment_end={1./5.,2./9.,7};
+ C(c::convert_bounded(p,.001,out)==c::Code::converted&&out.radius_expansion>0);
+ const auto capped=out;C(c::convert_bounded(p,out.radius_expansion/2,out)==c::Code::precision&&!memcmp(&out,&capped,sizeof out));
+
+ C(c::convert_bounded(p,.001,out)==c::Code::converted);
+ for(unsigned i=0;i<=64;++i){const double t=double(i)/64.;
+  const auto original=w::body::d::add(w::body::d::mul(p.segment_start,1-t),w::body::d::mul(p.segment_end,t));
+  const w::Vec first{out.capsule.first.x,out.capsule.first.y,out.capsule.first.z},second{out.capsule.second.x,out.capsule.second.y,out.capsule.second.z};
+  const auto rounded=w::body::d::add(w::body::d::mul(first,1-t),w::body::d::mul(second,t));
+  C(w::body::d::length(w::body::d::sub(original,rounded))+p.dimensions.radius<=out.capsule.radius);
+ }
+ unsigned control{};C(_controlfp_s(&control,0,0)==0);unsigned prior=control;C(_controlfp_s(&control,_RC_DOWN,_MCW_RC)==0);
+ const auto mode_saved=out;C(c::convert_bounded(p,.001,out)==c::Code::precision&&!memcmp(&out,&mode_saved,sizeof out));
+ C(_controlfp_s(&control,prior&_MCW_RC,_MCW_RC)==0);
+ C(!GetModuleHandleW(L"PhysXCore.dll"));printf("PrimitiveQuery checks=%u failures=%u bounded owned conversion only; no query/permission\n",checks,failures);return failures?1:0;
 }
