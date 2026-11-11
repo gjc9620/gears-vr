@@ -153,11 +153,17 @@
   ],
   "source": "actual private simulator projection",
   "desktop_capture": false,
-  "full_span_personally_reviewed": false,
+  "full_span_personally_reviewed": true,
   "headset_accepted": false,
   "recording_errors": [],
   "captured_span_complete": true,
   "missing_contacts": [],
   "encode_exit": 0,
-  "encoded_sha256": "7070975fca2d09617bc7d359ef778141d8bfd4f607845353b6c889c9a34cf74b"
+  "encoded_sha256": "7070975fca2d09617bc7d359ef778141d8bfd4f607845353b6c889c9a34cf74b",
+  "captured_span_personally_reviewed": true,
+  "reviewed_pages": 14,
+  "reviewed_original_contacts": 5,
+  "cover_view_accepted": false,
+  "verdict": "FAIL: severe self-model obstruction persists in both eyes in all five cover phases; raising and restoring changes visible model region but does not produce usable cover view. Early record includes long static overview before approach.",
+  "same_C0_GPU_atomic_proven": false
 }

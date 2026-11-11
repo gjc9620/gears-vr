@@ -2803,3 +2803,11 @@ prepare增加精确r193两文件delta选择；新cover-1112-r194-cloak-component
 query34.2674ms，code source，engine/source_guard/current；Owner53次context/source_age_expired，Session26次owner_end。原调用started/returned0/0，physics/collider repeat各25次，components repeat0，新组件recheck实际分支未达；不能报告live优化通过或原调用倒退因果。首次classify在begin后0.4579ms，stereo6.5842ms，begin时6.1263ms、距40ms仅33.8737ms；失败classify stereo40.3883ms/controller40.3528ms/sync40.3820ms。52次owner_bracket共15.5095ms，engine24.6388ms含内层，禁止相加。
 
 275投影帧/错误0/编码0，14概览页及5原图已生成，但本轮尚未亲看任何页/原图，保持图像未审阅，不借正常收尾宣称视图通过。原数值/计时/来源/编码回执保存在component-consumer-r193/runtime-r194。下一步先审阅保留图像，再针对完整Owner复核成本定位；不重跑未变候选、不扩40ms或伪造时间。全CV01–24/AC01–22、身体/世界碰撞/受击/枪口/头显仍未完成，工程25%、publicv71和Quest不变。
+
+## r195：r194完整画面已审阅，五阶段自身模型遮挡均FAIL（2026-11-12）
+
+本轮逐页亲看全部14页全跨度概览及五阶段原始00190/00209/00229/00248/00267，逐文件SHA与原记录一致。早期有长时间固定概览，随后接近/吸附，五阶段均在左右眼出现严重人物自身模型遮挡；抬高时可见区域变化，但不是可用掩体视图。不能由动作operator0或骨骼数值推出图像通过，图像FAIL/头显未验收；区间帧仍非同C0/GPU原子证明。media-review及closeout已更正为全部审阅完成。
+
+主人先明确允许掩体离线检查，随后直接要求“请尽情的开发 无任何限制”；本掩体目标后续实现/构建/离线/必要受控游戏验证直接推进，不逐项重复请求。保留存档、身份/来源、原始证据和其他会话保护，不据此扩成无关武器任务。授权原文保存于component-consumer-r193/owner-authorization-20261112.json。本轮只审阅和保存，未新启游戏/测试/构建。
+
+后续必须同时闭合实际查询/几何与第一人称身体/眼点关系，不能只优化到query返回就宣布完成。r194原调用0/0及首次来源过期事实保留，视图遮挡不可归因于组件优化。全CV01–24/AC01–22继续，工程25%、publicv71不变。

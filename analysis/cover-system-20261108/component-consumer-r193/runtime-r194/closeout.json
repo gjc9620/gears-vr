@@ -47,9 +47,11 @@
   "first_rejection": "engine/source_guard/current",
   "component_recheck_live_exercised": false,
   "source_age_repaired": false,
-  "media_reviewed_pages": 0,
-  "media_reviewed_contacts": 0,
-  "media_review_complete": false,
+  "media_reviewed_pages": 14,
+  "media_reviewed_contacts": 5,
+  "media_review_complete": true,
   "engineering_percent": 25,
-  "public_changed": false
+  "public_changed": false,
+  "cover_view_accepted": false,
+  "headset_accepted": false
 }
