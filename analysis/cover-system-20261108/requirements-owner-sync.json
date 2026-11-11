@@ -31,11 +31,11 @@
     "17572c236930ae48d71cbe88654f66ad3a7994a8353150c3d1cd031439d9ef26",
     "df5dc4dcecf370e59fa24be7222fe5f3f13aa33ec2f22699827e11debf6792e8"
   ],
-  "as_of": "2026-11-11T17:32:59.000990+08:00",
+  "as_of": "2026-11-11T17:52:18.663892+08:00",
   "module_interfaces_commit": "7b6effc",
   "development_copy": {
     "path": "J:/gearsVr/docs/cover-system-development-20261108.md",
-    "sha256": "d9c3b5d00758ab0b42aca38df26746ca69443fdefab1f194c8e162144801acc2"
+    "sha256": "88961ff583cf6bbb5eb4ce10adb0d5b23bd97b584c187e0f3d65417da9728ffc"
   },
   "requirements_overview": "Added concise behavior and requirement-group overview; retained all CV-01–24 and AC-01–22 definitions.",
   "requirements_review": "Reconciled cover source specifications; clarified held-position occupancy recovery, same-pose hit/physics evidence, supported skeleton/local authority boundaries, and engineering acceptance. Retained CV-01-24 and AC-01-22.",

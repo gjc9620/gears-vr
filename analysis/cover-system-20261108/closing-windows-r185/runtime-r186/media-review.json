@@ -1,0 +1,176 @@
+{
+  "frames": 311,
+  "recording_sha256": "94bbf6a6b752d5e6fc27be12ae2d89e52cc841fe35b6fc7b6b1db140abb612a2",
+  "pages": [
+    {
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\closing-windows-r185\\runtime-r186\\overview-1.jpg",
+      "sha256": "6c52fb6f7fb5d3bed43eaeb2ec15cf42f419e38ba3501b0c24ee7acd00e67776"
+    },
+    {
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\closing-windows-r185\\runtime-r186\\overview-2.jpg",
+      "sha256": "62aaf775faeabd74c44d5e9b6ff42d690acf76d83b9a78f9faadc56a7a5d214a"
+    },
+    {
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\closing-windows-r185\\runtime-r186\\overview-3.jpg",
+      "sha256": "eb6445d61f67cc135e38e103b5923a4b2b14815fdd494ccb97c99e97b9ee3ca2"
+    },
+    {
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\closing-windows-r185\\runtime-r186\\overview-4.jpg",
+      "sha256": "5e2ad21115a9d38c3b4ffef224d0be05f3046a8a1ec74503d6b03f9f439e5ed8"
+    },
+    {
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\closing-windows-r185\\runtime-r186\\overview-5.jpg",
+      "sha256": "06b3950b6705962debe652045f8f97f63dba9b76d89ca29214b62be38e2c6062"
+    },
+    {
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\closing-windows-r185\\runtime-r186\\overview-6.jpg",
+      "sha256": "53533d9ceca1790a5416a406b25109482e686bc831aa4e1f98cb05dfc77fd572"
+    },
+    {
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\closing-windows-r185\\runtime-r186\\overview-7.jpg",
+      "sha256": "6148d06f1609bf99164ffb742e45628790726774cea4142146b305e00d16a147"
+    },
+    {
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\closing-windows-r185\\runtime-r186\\overview-8.jpg",
+      "sha256": "5110e937fcae6bcd13f5b130f73789f00cd4b9965b69ddcd78c55e62cea806dd"
+    },
+    {
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\closing-windows-r185\\runtime-r186\\overview-9.jpg",
+      "sha256": "f34d0b7522940b384b23a224b1b826592681a8cf67d89f411ab0418ddf982a18"
+    },
+    {
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\closing-windows-r185\\runtime-r186\\overview-10.jpg",
+      "sha256": "b392214645f99d80d296bd67398a7650b86e90f2cb19be06a7415f505d00ad8f"
+    },
+    {
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\closing-windows-r185\\runtime-r186\\overview-11.jpg",
+      "sha256": "8c55d6dadb81e79d66422548d2708162cdef85fdaef3f5d3b0a4720599ffb675"
+    },
+    {
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\closing-windows-r185\\runtime-r186\\overview-12.jpg",
+      "sha256": "a0644285a51b4b0c2364dd5e6f6bc327fd9598818f9c38ca83ab2c078a000339"
+    },
+    {
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\closing-windows-r185\\runtime-r186\\overview-13.jpg",
+      "sha256": "38b0918358d2f6abc2d4cc3c2c6e4d6ef819c9ebd966a25bab8e1b0fe53936c7"
+    },
+    {
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\closing-windows-r185\\runtime-r186\\overview-14.jpg",
+      "sha256": "729c0cb5756cb8e2ea335b2d4c8f60cdf9e6d528767ec5e849aeb3dcd4d97867"
+    },
+    {
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\closing-windows-r185\\runtime-r186\\overview-15.jpg",
+      "sha256": "fde8bb93d67a7695bc5acccfbd455aae4956159c106d6b5646854d16b9a91504"
+    },
+    {
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\closing-windows-r185\\runtime-r186\\overview-16.jpg",
+      "sha256": "d91ea22b847c988beefac4cd3733fe7435880bd3470fbb32ba983870825430e5"
+    }
+  ],
+  "contacts": [
+    {
+      "label": "cover_eye_neutral",
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\cover-1111-r186-cloak-close\\cover-output\\projection\\frame-00221.jpg",
+      "sha256": "844c5bd7740537e896d600d1348ea954cfd414bedec4fb2849f5537570b0d2e9",
+      "event_wall_ns": 1794389782922269900,
+      "duration_seconds": 0.8151432,
+      "eligible_frames": 7,
+      "frame": {
+        "file": "frame-00221.jpg",
+        "time": 24.66463620000286,
+        "requested": 24.64225410000654,
+        "observed_wall_ns": 1794389783365933700,
+        "requested_wall_ns": 1794389783338880600,
+        "width": 960,
+        "height": 540
+      },
+      "same_C0_proven": false
+    },
+    {
+      "label": "cover_eye_turned",
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\cover-1111-r186-cloak-close\\cover-output\\projection\\frame-00241.jpg",
+      "sha256": "7b1b3430ef8bbfa84b1bf7d0b5b532234753f71b16e86296fc420407ec0a17db",
+      "event_wall_ns": 1794389785115791600,
+      "duration_seconds": 0.809058,
+      "eligible_frames": 7,
+      "frame": {
+        "file": "frame-00241.jpg",
+        "time": 26.849011200014502,
+        "requested": 26.820292699994752,
+        "observed_wall_ns": 1794389785550007300,
+        "requested_wall_ns": 1794389785517610000,
+        "width": 960,
+        "height": 540
+      },
+      "same_C0_proven": false
+    },
+    {
+      "label": "cover_eye_turn_restored",
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\cover-1111-r186-cloak-close\\cover-output\\projection\\frame-00262.jpg",
+      "sha256": "eb74b708b1dbdc0e09ddd93f2a5cc4c53a3775569cf59b5dbde3376f523c054f",
+      "event_wall_ns": 1794389787375788300,
+      "duration_seconds": 0.8160748,
+      "eligible_frames": 7,
+      "frame": {
+        "file": "frame-00262.jpg",
+        "time": 29.1199300000153,
+        "requested": 29.1029145999928,
+        "observed_wall_ns": 1794389787822059100,
+        "requested_wall_ns": 1794389787800456600,
+        "width": 960,
+        "height": 540
+      },
+      "same_C0_proven": false
+    },
+    {
+      "label": "cover_eye_raised",
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\cover-1111-r186-cloak-close\\cover-output\\projection\\frame-00284.jpg",
+      "sha256": "08283ee2111032bf31a6953fa75cd84534ad6f1d23b9b1784c56323f6f09b537",
+      "event_wall_ns": 1794389789748119300,
+      "duration_seconds": 0.8167264,
+      "eligible_frames": 8,
+      "frame": {
+        "file": "frame-00284.jpg",
+        "time": 31.526804599998286,
+        "requested": 31.495066900009988,
+        "observed_wall_ns": 1794389790227685200,
+        "requested_wall_ns": 1794389790192521100,
+        "width": 960,
+        "height": 540
+      },
+      "same_C0_proven": false
+    },
+    {
+      "label": "cover_eye_rise_restored",
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\cover-1111-r186-cloak-close\\cover-output\\projection\\frame-00304.jpg",
+      "sha256": "00bab5b1c4353d72a781e0da86ac49650d8d9f9e26448266218280228cff7e4e",
+      "event_wall_ns": 1794389791971300500,
+      "duration_seconds": 0.8147705,
+      "eligible_frames": 6,
+      "frame": {
+        "file": "frame-00304.jpg",
+        "time": 33.69444469999871,
+        "requested": 33.67195280001033,
+        "observed_wall_ns": 1794389792395530900,
+        "requested_wall_ns": 1794389792368866100,
+        "width": 960,
+        "height": 540
+      },
+      "same_C0_proven": false
+    }
+  ],
+  "source": "actual private simulator projection",
+  "desktop_capture": false,
+  "full_span_personally_reviewed": true,
+  "headset_accepted": false,
+  "recording_errors": [],
+  "captured_span_complete": true,
+  "missing_contacts": [],
+  "encode_exit": 0,
+  "encoded_sha256": "6f6652dbcbf8e627faa1aaca83f7a98045c52c2b4c32cc68a3dad582c90cf04d",
+  "captured_span_personally_reviewed": true,
+  "reviewed_pages": 16,
+  "reviewed_original_contacts": 5,
+  "verdict": "All five actual cover phases have severe self-model obstruction; FAIL",
+  "cover_view_accepted": false
+}

@@ -2725,3 +2725,15 @@ normal_cleanup true、remaining_owned空、无强杀，保存时独立确认game
 prepare_operator新增cover_state/world_state两份实际reader来源SHA；私有runner在claim前与正常清理后核对并记录，来源改变不能记通过。原13项启动来源、共享隔离/资源门槛和输入保护不变，两个来源另列，不伪装历史案例已有该回执。生成器/runner AST核对通过。仅Python观察器变化，Native/PG/XR不重编，继续精确r183 Native0d4437fd…cdf6f。原始前后来源/测试/计数/哈希/delta与verify在closing-windows-r185。
 
 下一步Git保存后，新实例绑定这两份reader哈希，短查候选是否通过原严格收尾、r183 query来源/耗时/原调用开始返回。若目录变化仍在原窗口内发生，继续保留实际拒绝，不选择性重跑。r183实际40ms、world/body/movement、严重自身模型遮挡、CV01–24/AC01–22及实体头显仍未完成；工程25%、publicv71/固定入口不变，目标active。
+
+## r186：组合候选进入掩体，首次来源已26.4991ms，query仍在原调用前过40ms（2026-11-11）
+
+feb1f0e4保存后，新cover-1111-r186-cloak-close使用精确r183 Native0d4437fd…cdf6f及r185窗口收尾reader。prepare/导入/启动、原A进入CT2、五阶段与operator/runner全部0。候选严格收尾通过，r184 count增一未重现，不以本轮通过宣称目录race因果修复。两份cover_state/world_state来源SHA在claim前/清理后相同，原13项来源也相同；启动前9291214848字节通过原门槛。CLOAK731/失败0、前台442/owned_activation false。normal_cleanup true、remaining_owned空、无强杀；保存时game/owner/XR/worker精确身份独立确认不在。
+
+query键world2252701952/Pawn95181176960/Scene318/Compose19580/seq4319/thread54900与complete首键一致；174581640226000→174581654719800共14.4938ms。code4 source、engine/source_begin/guard；Owner第8次context/source_age_expired/detail6，Session第1次physics_read/guard，body=true/equipment=false，original started/returned0/0；link witness未观察仍未知。首次重复physics在其Owner前置检查即拒绝，本次未到后续typed owner组。
+
+身体Tick19579、追踪seq4320与query分别保存。首次classify在query begin后0.7327ms，此时tracking2.1943ms、stereo26.4991ms、controller26.2785ms、sync26.3101ms、metadata2.8914ms；最旧stereo距原40ms仅13.5009ms。按同一原时间相减，query begin时该stereo已25.7664ms，可用14.2336ms，实际query14.4938ms，不能把全部26.5ms算成query新耗时。首次age时stereo40.2551ms、controller40.0345ms、sync40.0661ms超原40ms；tracking15.9503ms、metadata16.6474ms、current capture15.6549ms未超，latched=false。没有重写时间或扩大时限。
+
+initial physics1.8795ms/collider4.5246ms/components5.4962ms；physics_repeat1次0.2104ms、collider/components repeat0次，engine0.5644ms含内部复核，不重复相加，span完整无invalid/overflow。query比先前短不代表性能通过，因为更早失败且初始输入更旧；r183优化的完整query仍未验证。下一点应同时考虑来源到查询的延迟和嵌套完整Owner复核成本，不能挑较新输入重跑、延长40ms、续期或跳过中断/身份/closing。
+
+311投影帧/errors0/编码0，16页全跨度概览及五阶段原始00221/00241/00262/00284/00304全部亲看，仍严重自身模型遮挡，视图FAIL。区间帧不是同C0/GPU原子证明或头显验收。原始session/动作/projection数值清单、年龄/分段和审阅在closing-windows-r185/runtime-r186。world/body几何、movement、全CV01–24/AC01–22及实体头显未完成，工程25%、publicv71/固定入口不变，目标active。

@@ -1,0 +1,5 @@
+{
+  "saved": false,
+  "error": "Copied prior save asserted engine_stage4; actual r186 raw stage1 is earlier source_begin/guard. Assertion failed before review/doc mutation; corrected to measured stage1.",
+  "product_affected": false
+}
