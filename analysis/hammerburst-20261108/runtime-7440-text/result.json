@@ -1,0 +1,27 @@
+{
+  "game": {
+    "pid": 7440,
+    "creation_time": 134388582259038612,
+    "image": "j:\\gearsvr\\gears.of.war.reloaded.v1.0.1.3816947-p2p\\gears of war reloaded\\binaries_x64\\gowde-steam.exe"
+  },
+  "source": 1,
+  "desktop_input": false,
+  "controlled_enter_api_used": false,
+  "physical_headset_accepted": false,
+  "visual_review_pending": true,
+  "ui": [
+    {
+      "label": "owned_Playground_already_loaded",
+      "t": 169475057129700,
+      "top": null,
+      "focus": null,
+      "dialog": null
+    }
+  ],
+  "checks": {
+    "focused_gameplay_entry": true
+  },
+  "error": "AssertionError('Original burst explicitly rejected; no input retry')",
+  "offline_encode_pending": true,
+  "directory": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\hb-cloak-1111-161014\\actions\\menu-firstperson-7440-161039"
+}

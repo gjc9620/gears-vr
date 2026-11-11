@@ -1,13 +1,13 @@
 {
-  "source_checkpoint": "4a0a470d",
-  "next": "Determine why original history snapshot lacks4629: preserve original packet.latest_sequence and loop stop reason/index/sequence during the same existing read, not a new ring query. Distinguish eviction versus missing/bad raw pair before repair. Native mutex failure not reproduced; keep strict negative outcomes and no unchanged rerun.",
-  "candidate": "withdrawal-clock-r1",
+  "source_checkpoint": "83976712",
+  "next": "Inspect moving ONLY an already captured HB continuation/refire with previously certified released input to the existing fresh pre-original held-muzzle stage, before hand/visual/equipment observation cost. Keep same event/capture, original250ms/100ms/20ms, actual original six counter, identity/switch/cancel/release/tracking and once-only claim. New presses/first-event/equipment acquisition retain original post-Input path. Prove with exact caller and transaction tests before any game; no unchanged rerun. Missing4629 origin question remains open.",
+  "candidate": "history-origin-r1",
   "requirements_complete": false,
   "native_candidate": "native-mutex-r1",
-  "runner_session_id": 9914,
+  "runner_session_id": 91144,
   "terminal": true,
   "all13_requirements_retained": true,
-  "instance": "hb-cloak-1111-155817",
-  "game_pid": 15820,
-  "runner_last_poll": "9914 terminal1; stop/launcher/Native/PG/XR normal0; owned game+children gone; noforced;encode0"
+  "instance": "hb-cloak-1111-161014",
+  "game_pid": 7440,
+  "runner_last_poll": "91144 terminal1; stop/launcher/Native/PG/XR normal0; owned game+children gone; noforced;encode0"
 }

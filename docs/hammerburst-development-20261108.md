@@ -717,3 +717,8 @@ Nativeb9ab7a82/PG31f7d324完整78条一致射线、空仓0/78禁射通过。Nati
 ## 2026-11-11 同一次历史读取的停止原因
 
 PGaa02381d history-origin-r1在原连续性ring读取中保留本地latest/selected/stop/stored/read_ns，区分evicted1、未保存序号2、原motion_pair拒绝3；默认不新增查询，仍原packet、原clock、原capacity8、原100ms和原返回。仅在原history拒绝已留存的最多4次日志后输出对应origin；源逆变换精确等于父版，Nativeb9ab7a82和XR未改。实际ring4组覆盖覆盖驱逐、跳过发布、右手tracking边界、完整8记录，原全部bridge身份/生命周期/进程/非阻塞检查通过。初版过期fixture误用sync而非原received作100ms边界，断言失败后修正fixture，未改生产代码；最终检查0。尚无游戏停止原因，不称修复，13项保留。
+
+
+## 2026-11-11 实际7440：首次过期读取的执行耗时分解
+
+PGaa02381d/Nativeb9ab7a82实际16条一致射线（core6、drain6、下一组4/6），原servicegate4 pendingevent250ms到期拒绝，未到开盖/新origin观察。首次expired_reader1实录286/4043：commit source19.5092ms，commit→GTbegin4.3015ms，GTbegin→首个stale copy77.1079ms，合100.9186ms；GT完整77.1208ms，首拒绝距GTend12.9us。原R2读取已85.1078ms/preparation_budget0，pendingevent17在最后input admission年龄237.5792ms，下一GTbegin已308.4072ms，原250ms拒绝，不能延长。Nativeinputloss0/Gate27均age-only保留。下一步检查只将已捕获且已有真实UP认证的HB续发交给现有pre-original fresh muzzle阶段，避免等待后段手/视觉/装备观察；首发/新按下/装备仍走原Input次序，必须保留同event/原capture/20ms/100ms/250ms/原六发及一次claim所有身份取消切枪保护，先实际caller+transaction测试，不无变化重跑。4629缺失原因仍开。正常清理全0无forced、182帧错误空/编码0，3页48对亲阅视觉仍失败；13项保留。
