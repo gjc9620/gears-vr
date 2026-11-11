@@ -2601,3 +2601,15 @@ Owner39/Session8均无failed-call，年龄cause未观察，body/equipment原因u
 Native f585196291ca8481ef9ffd8db17032a60e2de6c2eff1b58a847cb8f51e8426cd完整编译链接0，exact r171冻结树仅八文件产品delta，413项目依赖、外部worktree0、GEARS flags保持，其他冻结源逐项相同。原始时间/新鲜度/唯一writer和所有不相关源不变；prepare新增--native-r173认证精确delta。source/delta、检查、前后反例、原始失败、来源manifest、依赖、build及核对在actor-backlink-r173。
 
 下一步Git保存后以新实例短查：原版碰撞是否真正开始/返回、真实owner链是否通过，再处理第一个实际剩余失败；不重跑未变年龄候选，不跳过异场景对象或放宽关联。当前仅源码/离线/编译，未准备/启动该候选；实际owner_links修复、完整CV01–24/AC01–22、严重自身模型遮挡和头显仍未验收，工程25%、publicv71/固定入口不变，目标active。
+
+## r174：修正Actor候选在原owner读取前已发生40ms年龄拒绝（2026-11-11）
+
+4d17da8f保存后，新cover-1111-r174-cloak-backlink、Native f5851962…426cd完成一次现有后台path观察。prepare/导入0，原A进入CT2、五段动作及operator0；启动前C盘7076175872字节，原资源准入通过。13项启动来源前后相同，共享两文件仍7e630461/385f5e5a。CLOAK740/失败0，前台459/owned_activation false。Native/entries/input恢复、XR/launcher/runner正常0、无强杀、normal_cleanup true，game/owner/XR/worker精确身份独立确认不在。
+
+query键world2309259520/Pawn95208079616/Scene376/Compose23187/seq4183/thread40184与complete首键逐项一致；167700877905600→167700907009200共29.1036ms。code4 source，engine/source_guard/current；Owner第35次context/source_age_expired/detail6，Session第7次collider_read/guard，原因body=true/equipment=false。engine begin的source_guard阶段失败早于asset/collider/components owner组，新关联reader尚未到达；first link witness未观察，原版碰撞started/returned0/0。因此不能用本轮未再报owner_links宣称关联修复实跑通过，也不能将本次更早的年龄失败归因于尚未执行的新字段读取。
+
+classify/current各35次，首次与首次age共四行。身体Tick23186/来源序列4184与query Compose23187/seq4183分别保留。首查比query begin晚1.0829ms，此时tracking3.2878ms、stereo12.2946ms、metadata3.9061ms，capture current3.1347ms；原40ms的最旧stereo还剩27.7054ms。首次age记录在167700907006100，stereo40.3122ms、controller40.2832ms、sync40.3065ms全部超原40ms；tracking31.3054ms与metadata31.9237ms未超，current capture31.1519ms也未超，latched=false。首次真实年龄子项已明确，未续时间或放宽期限。
+
+initial physics2.2441ms/collider2.9930ms/components10.1253ms；重复physics7次共6.0740ms、collider7次共4.1032ms、components0次，engine11.8714ms含内部复核，不重复相加。全部span闭合。下一修复方向是同query来源到查询时延或初始组件/元数据与重复读取成本，保留全部身份/动态字段/当前值/收尾及原始时间；不通过不变重跑挑选较新输入或更快调度的一轮。
+
+286投影帧/errors0、编码0，已有跨度到32.773秒；15页全跨度概览和五阶段原始00202/00221/00241/00258/00279均亲看，全部严重自身头肩躯干遮挡，视图FAIL。实际区间帧不是同C0/GPU原子证明，不作头显验收。原始动作、退出、精确原因、四行年龄、分段和审阅在actor-backlink-r173/runtime-r174。完整CV01–24/AC01–22及头显仍未完成，工程25%、publicv71/固定入口不变，目标active。
