@@ -3061,3 +3061,13 @@ authored胶囊Z轴→activeY轴创建修正和逐shape对应仍未证明；不�
 Raw129检查0失败：空/1/3/64全量、3条的20处读失败、header/scale/pointer跨pass变化、两数组count不符/65越界、无效值、三次guard、request/busy/alias、重复项最后匹配、XYZ严格阈值及nextafter边界。typed332累计（含point292）0：三种shape当前反射采集，payload时inner metadata变更触发guard并保持输出，offset/stride/target/BoneName/Vector extent错误拒绝。编译初次补显式atomic include与局部shadow名称；保留失败log，未放宽/WX。C#首次路径斜杠参数被csc误解，改绝对Windows路径，解析完成；旧API弃用warning原样保留。
 
 cache条目目前仍是opaque descriptor；尚未读取其shape vector或证明它与active shape逐项对应。缓存读取/原lookup不提供world或movement权限。所有依赖SHA保存时当前一致，证据shape-cache-r222；无游戏/XR/原getter/生产Native构建/安装，完整CV24/AC22及body/view/hit/muzzle事务、视图遮挡与头显继续未完成，工程25%。
+
+## r223：选中cache的完整shape descriptor清单接通；原地member替换回读缺口修正（2026-11-12）
+
+新增cover_physx_cached_shapes.h，将r222完整cache snapshot和明确requested scale交原lookup选中index，再读取原actor descriptor+104/+112/+120的std-vector形状清单。原1402cfa6c证据逐字节重新核对：actor descriptor136，成员指针stride8；sphere/box/capsule tag1/2/3、alloc136/144/144、game vtable RVA1347dc0/13486f0/1347dd8；local Matrix34在+12，flags+60原样保留，sphere radius128、box half128/132/136、capsule radius128/full segment length132。原rdata三个完整table片段保留；未调用其函数。外层必须pin当前原game image/route并认证typed cache布局/body/C0，不靠读取到相同地址冒充当前模块认证。
+
+最多256全部descriptor，两次完整shape pass，选中cache清单在外层前后各用r222完整双pass回读并与原snapshot一致；逐类型table/tag一致、rigid pose/有限正尺寸、header/capacity/alignment、busy/alias/异常与输出不覆盖。保留完整raw descriptor字节和原列表顺序、重复pointer；未知/convex类整批停止，不丢shape继续。值保持PhysX单位，无半尺寸再除2/0.02再乘，不解读flags为参与权限。
+
+新故障用例找到本轮初版真实缺口：vector header不变，second-pass某成员已读后原地替换该pointer，header-only closure未发现。新增每pass尾部逐member指针回读后再关闭vector header。初版11失败中另有测试sentinel未逐例复位导致连锁误报；先修测试复位后，固定同测试源码原header699检查只1失败；产品补member close后同测试705检查0（新增6处收尾读导致6个额外fault case）。旧header/前后依赖SHA/log都保留，不将测试修正冒称产品修正。
+
+705检查0覆盖空/1/3/256清单、三类字段/flags原样、3条时52个读失败点、9个guard拒绝阶段、shape数据/membership/header/cache中途变化、257越界/错误类型table/NaN/非rigid/错对齐/null成员、reentry busy/alias。只有Mock内存原分派，无原getter/游戏/XR/生产Native构建/安装。active actor确由此cache创建的身份关联、authored逐项匹配、full self set/flags/world fence及生产接入仍未完成；完整CV24/AC22、body/view/hit/muzzle事务、视图遮挡和头显继续待完成，工程25%。证据cached-shapes-r223。

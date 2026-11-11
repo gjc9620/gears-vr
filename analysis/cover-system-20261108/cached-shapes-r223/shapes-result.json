@@ -1,0 +1,15 @@
+{
+  "build_exit": 0,
+  "test_exit": 0,
+  "output": "CachedShapes checks=705 failures=0 reads=52 guards=9 original descriptor fields only; no active identity\r\n",
+  "source_sha256": {
+    "tools\\native-capture\\cover_physx_cached_shapes.h": "890e428888036ba1b4f17806cc19e06b794c6a473996e070be601956f4da9247",
+    "tools\\native-capture\\cover_physx_shape_cache.h": "bf2cf909edb629cea9990ed0cdee50a6ac03949ddbb1195bb03cc516fdd17e19",
+    "tools\\native-capture\\cover_physx_query_source.h": "b363328e6dcc8c24a6d41f4563167f494723d88c15670282f1fd8635db5539c6",
+    "tools\\native-capture\\cover_physx_query_code.h": "476c05b953fd987688baf27f25d8f76bc11be2693fe1c76f785f167e3ac2d296",
+    "tools\\native-capture\\cover_pose_phase.h": "f173e0346bb313e33f4e26f1f9c0b91442009cdf7e903ed4c6a0de67dd7d8f19",
+    "tools\\native-capture\\cover_physx_pose_math.h": "72546f78145de37467ca19c3140fb8085761ab6c41a24942ce4122fd08b73264",
+    "tools\\native-capture\\cover_physx_matrix.h": "c243ee0c239387071aeb85947524dc5a40eb540196ae21041a918b37b38a3069",
+    "tools\\native-capture\\cover_physx_cached_shapes_test.cpp": "dcb153275e973a097617c503e2612c873c2e3d72b1f43c01a770f3d6a0affb64"
+  }
+}

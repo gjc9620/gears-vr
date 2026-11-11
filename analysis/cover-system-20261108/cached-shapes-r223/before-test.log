@@ -1,0 +1,2 @@
+FAIL 48 d::observe(source,inventory,requested,changing,guard,*work,*output)!=d::Code::observed&&output->count==123
+CachedShapes checks=699 failures=1 reads=46 guards=9 original descriptor fields only; no active identity

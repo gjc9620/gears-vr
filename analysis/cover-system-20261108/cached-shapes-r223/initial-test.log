@@ -1,0 +1,12 @@
+FAIL 48 d::observe(source,inventory,requested,changing,guard,*work,*output)!=d::Code::observed&&output->count==123
+FAIL 48 d::observe(source,inventory,requested,changing,guard,*work,*output)!=d::Code::observed&&output->count==123
+FAIL 48 d::observe(source,inventory,requested,changing,guard,*work,*output)!=d::Code::observed&&output->count==123
+FAIL 48 d::observe(source,inventory,requested,changing,guard,*work,*output)!=d::Code::observed&&output->count==123
+FAIL 56 d::observe(source,inventory,requested,read,guard,*work,*output)!=d::Code::observed&&output->count==123
+FAIL 56 d::observe(source,inventory,requested,read,guard,*work,*output)!=d::Code::observed&&output->count==123
+FAIL 56 d::observe(source,inventory,requested,read,guard,*work,*output)!=d::Code::observed&&output->count==123
+FAIL 56 d::observe(source,inventory,requested,read,guard,*work,*output)!=d::Code::observed&&output->count==123
+FAIL 56 d::observe(source,inventory,requested,read,guard,*work,*output)!=d::Code::observed&&output->count==123
+FAIL 56 d::observe(source,inventory,requested,read,guard,*work,*output)!=d::Code::observed&&output->count==123
+FAIL 56 d::observe(source,inventory,requested,read,guard,*work,*output)!=d::Code::observed&&output->count==123
+CachedShapes checks=699 failures=11 reads=46 guards=9 original descriptor fields only; no active identity

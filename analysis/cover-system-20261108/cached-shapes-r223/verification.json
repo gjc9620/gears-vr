@@ -1,0 +1,21 @@
+{
+  "test": "CachedShapes checks=705 failures=0 reads=52 guards=9 original descriptor fields only; no active identity\r\n",
+  "sources": {
+    "tools/native-capture/cover_physx_cached_shapes.h": "890e428888036ba1b4f17806cc19e06b794c6a473996e070be601956f4da9247",
+    "tools/native-capture/cover_physx_cached_shapes_test.cpp": "dcb153275e973a097617c503e2612c873c2e3d72b1f43c01a770f3d6a0affb64"
+  },
+  "certificate_sha256": "c63ab68dda106fcb2b33bca75f5ca169791af621e160e187f1f655d22037f3e6",
+  "counter": {
+    "before": "FAIL 48 d::observe(source,inventory,requested,changing,guard,*work,*output)!=d::Code::observed&&output->count==123\r\nCachedShapes checks=699 failures=1 reads=46 guards=9 original descriptor fields only; no active identity\r\n",
+    "after": "CachedShapes checks=705 failures=0 reads=52 guards=9 original descriptor fields only; no active identity\r\n",
+    "unchanged_test_source_sha256": "dcb153275e973a097617c503e2612c873c2e3d72b1f43c01a770f3d6a0affb64",
+    "old_header_sha256": "b7fc722c7929120c4d539204e360eae862a6d334d93d954e84ca90cbcb8bda33",
+    "issue": "In-place vector member replacement after second-pass member read escaped header-only closure. Now re-read each member at end of each pass before vector header close. Initial11 failures also included a test sentinel reset error; fixed test reset first, then same corrected test showed exactly1 failure before product fix."
+  },
+  "change": "Complete selected cached descriptor shape inventory up to256, no truncation. Cache snapshot re-observed twice at both outer ends; selected scale/index original lookup; two whole shape passes, vector member/header close; exact class-table/tag, rigid pose, positive dimensions. Full raw descriptor bytes retained. Source image and full typed cache guard required, output atomic and reentry blocked.",
+  "tests": "705 checks0: empty/1/3/256 all shapes,52 read points and9 guard failure phases, shape field/membership/header/cache mutation,257/invalid class/type/value/pose/alignment/member, reentry busy and alias. Same corrected counter source before699checks1failure and after705checks0 (6 extra closing reads produce6 additional fault cases). Mock memory only.",
+  "remaining": "No cache-to-active identity, authored matching, current world fence, filter interpretation, complete self set, production integration/game/headset/fullCV24/AC22.",
+  "game_started": false,
+  "full_native_built": false,
+  "engineering_percent": 25
+}
