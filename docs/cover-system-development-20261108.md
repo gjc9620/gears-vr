@@ -3159,3 +3159,11 @@ Engine1741累计0（owner531、parameter702、world1706、asset1732），新增r
 这给r231字段修复取得实际越过旧失败的证据；后续world pose在参数四元数、Body四元数或compose何处拒绝尚未知，补已有raw输入与阶段记录，不提前放宽rigid/normal阈值或归一化原数据。
 
 264实际投影帧/errors0、14总览、5阶段contact逐张亲看仍自身头肩/躯干严重遮挡FAIL；未全数亲看overview，full_span人工验收false，编码0。正常清理true、自有remaining为空、无强杀，CLOAK620失败0、前台412无owned激活，anchor和cover reader前后相同。完整CV24/AC22、full self/world fence、active/template、body/view/hit/muzzle及视图遮挡/头显继续未完成，工程25%，publicv71/固定入口/Quest不变。证据shape-owner-runtime-r232。
+
+## r233：world pose拒绝保留已有原始输入与阶段，数学规则不变（2026-11-12）
+
+针对r232 actual world::pose，world Workspace增加first/last Diagnostic，分参数/shape slot/stored pose/body header/class/values/body pose/compose/complete；保留已有读取的shape stored位置/四元数、Body table/位置/四元数。只在owned scratch记录，仍仅原全部关闭成功发布正式Snapshot；summary在一次finished后输出明确pose_unpublished=1，不增加game读、不执行原getter，不改scalar/normal/rigid/norm阈值或归一化。
+
+新增两处定向检查分别损坏stored与Body的w为2，验证拒绝、正式输出保持、正确阶段以及精确原输入在scratch保留。Engine1743累计0（world1708/asset1734），原owner read_budget228、parameter_reads102、world_reads140保持，OFF65通过；说明诊断没有新增memory reads。完整Native在r231冻结树仅world与C0两个文件overlay，422依赖逐SHA、flags不变、无外部工作树混入，DLL SHA63888223462c41302676357c5303742fc59f205acdd3c92a5e58619a65cf2caa。此版尚无游戏内pose输入证据，下一次明确新版本读取后再判断具体布局/数学问题。
+
+完整CV24/AC22、full self/world fence、active/template、body/view/hit/muzzle、视图遮挡与头显仍未完成，工程25%，publicv71/固定手动入口/Quest不变。证据shape-pose-detail-r233。

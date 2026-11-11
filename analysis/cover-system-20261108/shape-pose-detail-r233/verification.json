@@ -1,0 +1,14 @@
+{
+  "results": {
+    "engine": "read_budget=228 guard_calls=12\r\nCoverPhysXShapeOwner checks=531 failed=0 original-executed=false game-started=false\r\nparameter_reads=102\r\nShapeParameters checks=702 failed=0 original PE as data; stored fields only, no world/eligibility permit\r\nworld_reads=140\r\nShapeWorld checks=1708 failed=0 original PE as data; original-unit CPU pose only, no query fence\r\nAssetShapes checks=1734 failed=0 synthetic object groups; complete supplied asset only, no world/self permit\r\nAssetShapesEngine checks=1743 failed=0 actual QueryEngine/HostImage only; no original dispatch\r\n",
+    "off": "cover_physics_c0 OFF: 65 checks, 0 failures; no game/module/query\r\n"
+  },
+  "native_sha256": "63888223462c41302676357c5303742fc59f205acdd3c92a5e58619a65cf2caa",
+  "dependencies": 422,
+  "flags_unchanged": true,
+  "game_started": false,
+  "installed": false,
+  "change": "World read diagnostic scratch stores named first/last stages and already-read shape/body raw pose. No new memory reads or altered quaternion/rigid thresholds; complete output still atomic. Explicit stored/body invalid quaternion fault cases verify exact failed input preserved only in scratch.",
+  "remaining": "Need actual failed pose input from new candidate; full CV24/AC22, self/world/template/body/view/hit/muzzle/headset open.",
+  "engineering_percent": 25
+}

@@ -62,6 +62,11 @@ static int world_cases(char const* path){try{auto work=std::make_unique<world::W
  check(world::observe(base,size,attribution,read,reentrant,*work,out)==world::Code::observed&&nested==world::Code::busy,"world reader rejects same-work reentry");
  check(world::observe(base,size,attribution,read,admitted,*work,work->first)==world::Code::alias,"world scratch alias rejected");
  check(!GetModuleHandleW(L"PhysXCore.dll"),"world observation never loads original DLL");printf("world_reads=%u\n",reads);
+ // Failed raw input is retained solely as owned diagnostic scratch.
+ m=initial;m.put<float>(internal_shape_at+0x84,2.f);out=sentinel;
+ check(world::observe(base,size,attribution,read,admitted,*work,out)==world::Code::pose&&world::same(out,sentinel)&&work->first_diagnostic.stage==world::Stage::stored_pose&&work->first_diagnostic.partial.parameters.stored_quaternion[3]==2.f,"stored quaternion rejection records exact unpublished source");
+ m=initial;m.put<float>(internal_actor_at+0x208,2.f);out=sentinel;
+ check(world::observe(base,size,attribution,read,admitted,*work,out)==world::Code::pose&&world::same(out,sentinel)&&work->first_diagnostic.stage==world::Stage::body_pose&&work->first_diagnostic.partial.body_quaternion[3]==2.f,"body quaternion rejection records exact unpublished source");
  // Independent point oracle over varied normalized asymmetric quaternions.
  namespace math=gears_cover_physx_pose_math;
  for(unsigned i=0;i<128;++i){const double t=double(i+1)*.017;

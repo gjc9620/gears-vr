@@ -174,6 +174,15 @@ void summary(FILE* f){if(!f)return;
             uint64_t(a.actor),uint64_t(a.scene),uint64_t(a.body),uint64_t(a.root),uint64_t(a.root_table),a.type,a.count,
             uint64_t(a.internal_array[0]),uint64_t(a.internal_array[1]),uint64_t(a.internal_array[2]),uint64_t(a.public_array[0]),uint64_t(a.public_array[1]),uint64_t(a.public_array[2]));
     }
+    if(c.finished){auto const& w=shape_snapshot_work.collection.world_work;
+        for(unsigned pass=0;pass<2;++pass){auto const& d=pass?w.last_diagnostic:w.first_diagnostic;auto const& a=d.partial;
+            fprintf(f,"cover_shape_snapshot_world_pass=%u cover_shape_snapshot_world_stage=%u cover_shape_snapshot_parameter_code=%u cover_shape_snapshot_pose_unpublished=1 cover_shape_snapshot_body=%u,%llu cover_shape_snapshot_stored_p=",pass,unsigned(d.stage),unsigned(w.parameter_code),unsigned(a.body_pose_present),uint64_t(a.body_table));
+            for(unsigned k=0;k<3;++k)fprintf(f,"%s%.9g",k?",":"",double(a.parameters.stored_position[k]));
+            fprintf(f," cover_shape_snapshot_stored_q=");for(unsigned k=0;k<4;++k)fprintf(f,"%s%.9g",k?",":"",double(a.parameters.stored_quaternion[k]));
+            fprintf(f," cover_shape_snapshot_body_p=");for(unsigned k=0;k<3;++k)fprintf(f,"%s%.9g",k?",":"",double(a.body_position[k]));
+            fprintf(f," cover_shape_snapshot_body_q=");for(unsigned k=0;k<4;++k)fprintf(f,"%s%.9g",k?",":"",double(a.body_quaternion[k]));fputc('\n',f);
+        }
+    }
     if(c.finished&&c.code==q::Code::queried)for(unsigned i=0;i<r.shapes;++i){auto const& row=shape_snapshot_packet.rows[i];auto const& g=row.geometry;auto const& x=g.parameters;auto const& owner=x.owner;
         fprintf(f,"cover_shape_snapshot_row=%u,%u,%u,%u,%llu,%llu,%llu,%llu flags=%u local_p=%.9g,%.9g,%.9g local_q=%.9g,%.9g,%.9g,%.9g sizes=%.9g,%.9g,%.9g,%.9g,%.9g world=",
             i,row.actor_index,row.member_ordinal,unsigned(owner.kind),uint64_t(owner.shape),uint64_t(owner.actor),uint64_t(owner.internal_shape),uint64_t(owner.internal_actor),x.flags,
