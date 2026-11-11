@@ -1,13 +1,13 @@
 {
-  "source_checkpoint": "fde58046",
-  "next": "Locate all GT copy consumers and the original first failed copy call. Preserve its existing FrameReadObservation (input age, commit age, since commit, caller) in bounded passive output on the same thread only; no new read/clock/retry, no freshness relaxation. No unchanged game run.",
-  "candidate": "history-rejection-r1",
+  "source_checkpoint": "c7731400",
+  "next": "Preserve exact result of the original one WaitForSingleObject(mutex,0) in receiver-local diagnostic; retain existing contended boolean. No second lock attempt, wait duration change, source query, packet layout or writer change. Export bounded actual failure on existing GT summary. Test timeout versus abandoned/failed separately before considering any transport-gap policy.",
+  "candidate": "withdrawal-clock-r1",
   "requirements_complete": false,
   "native_candidate": "native-render-age-r1",
-  "runner_session_id": 57756,
+  "runner_session_id": 56925,
   "terminal": true,
   "all13_requirements_retained": true,
-  "instance": "hb-cloak-1111-153841",
-  "game_pid": 52000,
-  "runner_last_poll": "57756 terminal1; stop/launcher/Native/PG/XR normal0; owned game+children absent; noforced;encode0"
+  "instance": "hb-cloak-1111-154738",
+  "game_pid": 35716,
+  "runner_last_poll": "56925 terminal1; stop/launcher/Native/PG/XR normal0; owned game+children gone; noforced;encode0"
 }

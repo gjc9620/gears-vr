@@ -1,0 +1,513 @@
+{
+  "game": 35716,
+  "source": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\hb-cloak-1111-154738\\actions\\menu-firstperson-35716-154802",
+  "frames": 481,
+  "recording_sha256": "7487d602fade4b66022bc1633bfc105188b5724b9c6cb58209c91584c2504674",
+  "capture_errors": [],
+  "start_time": 33.97940340000787,
+  "end_time": 86.34186630000477,
+  "sample_count": 48,
+  "overview_pages": [
+    {
+      "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-35716-media-review\\overview-1.jpg",
+      "entries": [
+        {
+          "index": 0,
+          "file": "frame-00000.jpg",
+          "time": 33.97940340000787,
+          "original_size": [
+            960,
+            540
+          ],
+          "sha256": "d3df581462cd04825172dc9155740cbc17fc35db6c3666307960c27893ef9618"
+        },
+        {
+          "index": 10,
+          "file": "frame-00010.jpg",
+          "time": 35.067857100017136,
+          "original_size": [
+            960,
+            540
+          ],
+          "sha256": "dccedbce7c89f0efbd4fedf879474c7689d65722d6a83cd196acab57a8e60954"
+        },
+        {
+          "index": 20,
+          "file": "frame-00020.jpg",
+          "time": 36.15853200000129,
+          "original_size": [
+            960,
+            540
+          ],
+          "sha256": "359bd6034dc34045bcda50f4d62aae6c1844c45065ee046de36e74ea30cc80ba"
+        },
+        {
+          "index": 31,
+          "file": "frame-00031.jpg",
+          "time": 37.35667609999655,
+          "original_size": [
+            960,
+            540
+          ],
+          "sha256": "daafbe5b5866553d680b2c0ef3e1e1c357d14bb8efdcd56a7de288f24192ec48"
+        },
+        {
+          "index": 41,
+          "file": "frame-00041.jpg",
+          "time": 38.46747420000611,
+          "original_size": [
+            960,
+            540
+          ],
+          "sha256": "9677cc6ad14dc6fd5023647f16326ce27e8e67c027472f262cb067d0978b6475"
+        },
+        {
+          "index": 51,
+          "file": "frame-00051.jpg",
+          "time": 39.56160210000235,
+          "original_size": [
+            960,
+            540
+          ],
+          "sha256": "4da4afc65010ffa992a210c021c8efd4f3638f2be072205bbea71e6fee831847"
+        },
+        {
+          "index": 61,
+          "file": "frame-00061.jpg",
+          "time": 40.63578710000729,
+          "original_size": [
+            960,
+            540
+          ],
+          "sha256": "40c64d66ab2064a446e5f8514afc1eeb152787a47339302550faf30a1a6c50c0"
+        },
+        {
+          "index": 71,
+          "file": "frame-00071.jpg",
+          "time": 41.72928310002317,
+          "original_size": [
+            960,
+            540
+          ],
+          "sha256": "750a6efa5885365e2c050eb258303a6ce42c7f2a1d6870d1cf3b06a99e981e85"
+        },
+        {
+          "index": 82,
+          "file": "frame-00082.jpg",
+          "time": 42.90729440000723,
+          "original_size": [
+            960,
+            540
+          ],
+          "sha256": "720f486cd967333e79fbfdc428074cb088b1e7d3e0ddb278b3fa25f223d823c0"
+        },
+        {
+          "index": 92,
+          "file": "frame-00092.jpg",
+          "time": 44.00383210001746,
+          "original_size": [
+            960,
+            540
+          ],
+          "sha256": "7108152a5415f2aa86de558d147ed5028dde8c19944d6b81afd1eb7e5b9dacb0"
+        },
+        {
+          "index": 102,
+          "file": "frame-00102.jpg",
+          "time": 45.108143200021004,
+          "original_size": [
+            960,
+            540
+          ],
+          "sha256": "218415c3f99c518f203f7a70bf653bb1025126d72cb9582144dc724d5b2421ec"
+        },
+        {
+          "index": 112,
+          "file": "frame-00112.jpg",
+          "time": 46.20846930000698,
+          "original_size": [
+            960,
+            540
+          ],
+          "sha256": "09b7169a1cde3ff32979526e7d8c0da50db9e4c7757fd7f9a54fe6fa0a038bd8"
+        },
+        {
+          "index": 123,
+          "file": "frame-00123.jpg",
+          "time": 47.39696620000177,
+          "original_size": [
+            960,
+            540
+          ],
+          "sha256": "f9ae1bee79dc3aa463595de1e7170d4e7848d57412aef6d09b0dfee3ae4ef325"
+        },
+        {
+          "index": 133,
+          "file": "frame-00133.jpg",
+          "time": 48.47199590000673,
+          "original_size": [
+            960,
+            540
+          ],
+          "sha256": "17535423011d92d6b08f960fee91eee30fdaa480d32dfaece5937e14238e06b3"
+        },
+        {
+          "index": 143,
+          "file": "frame-00143.jpg",
+          "time": 49.56418620000477,
+          "original_size": [
+            960,
+            540
+          ],
+          "sha256": "c7e97a03ed5918570051bfda6923d49a69baa237a433a02417384274e3986c13"
+        },
+        {
+          "index": 153,
+          "file": "frame-00153.jpg",
+          "time": 50.6660904000164,
+          "original_size": [
+            960,
+            540
+          ],
+          "sha256": "cda92c2273a5f0581be33cf6dacb0103059da58f8a3a35b3ecd0f249c5ab4fb4"
+        }
+      ]
+    },
+    {
+      "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-35716-media-review\\overview-2.jpg",
+      "entries": [
+        {
+          "index": 163,
+          "file": "frame-00163.jpg",
+          "time": 51.76463980000699,
+          "original_size": [
+            960,
+            540
+          ],
+          "sha256": "401f4b1790e92f8fa21ad001306d2b6528c1bc42a54075ec6bdd78bf3ce420e2"
+        },
+        {
+          "index": 174,
+          "file": "frame-00174.jpg",
+          "time": 52.95740840001963,
+          "original_size": [
+            960,
+            540
+          ],
+          "sha256": "5e8fe76f3034c19a8b2740484461e806211f8bd756936f4cd97977eacc023b66"
+        },
+        {
+          "index": 184,
+          "file": "frame-00184.jpg",
+          "time": 54.03404900000896,
+          "original_size": [
+            960,
+            540
+          ],
+          "sha256": "9a2a1011a7f43817226c6e329c6f28a92eacb19c85338d8586ae1988ac6c39e4"
+        },
+        {
+          "index": 194,
+          "file": "frame-00194.jpg",
+          "time": 55.13380040001357,
+          "original_size": [
+            960,
+            540
+          ],
+          "sha256": "b03a8d96295c60ec627636815ed38b3232a25a8f980ae2eb56f4975e4b432a4a"
+        },
+        {
+          "index": 204,
+          "file": "frame-00204.jpg",
+          "time": 56.23937660001684,
+          "original_size": [
+            960,
+            540
+          ],
+          "sha256": "7df51224934a1f55b1020129e0e512520e4a84899a3e3c677b6ca9b07a98c424"
+        },
+        {
+          "index": 214,
+          "file": "frame-00214.jpg",
+          "time": 57.325519200006966,
+          "original_size": [
+            960,
+            540
+          ],
+          "sha256": "565cd893818be064c73f9c10da983786b921bb5a4a4920f8d12207f733064406"
+        },
+        {
+          "index": 225,
+          "file": "frame-00225.jpg",
+          "time": 58.52925240001059,
+          "original_size": [
+            960,
+            540
+          ],
+          "sha256": "485c11e3a66066fe450e6bbcc901429655e30b175471b9f87c290753a1a9cc84"
+        },
+        {
+          "index": 235,
+          "file": "frame-00235.jpg",
+          "time": 59.60646570002427,
+          "original_size": [
+            960,
+            540
+          ],
+          "sha256": "3938693ecd33920176b1c63b3b006532907a47896a51d4e649e82b2b5958d72d"
+        },
+        {
+          "index": 245,
+          "file": "frame-00245.jpg",
+          "time": 60.70313730000635,
+          "original_size": [
+            960,
+            540
+          ],
+          "sha256": "2a66bbf882a4c45cb1f0b8fc7e4b9f79126c2ddacafd51b87e2f1d54078234a9"
+        },
+        {
+          "index": 255,
+          "file": "frame-00255.jpg",
+          "time": 61.79576960002305,
+          "original_size": [
+            960,
+            540
+          ],
+          "sha256": "a5fbb3202f4309296335f13a4bfff22e77bf8ff54b219a84526956f1937a0b80"
+        },
+        {
+          "index": 266,
+          "file": "frame-00266.jpg",
+          "time": 62.99489510001149,
+          "original_size": [
+            960,
+            540
+          ],
+          "sha256": "a33c6e813ae9b6123bcc967c0274489d75e26e0e50fa8a73cf9c6f8e886bf214"
+        },
+        {
+          "index": 276,
+          "file": "frame-00276.jpg",
+          "time": 64.07362830001512,
+          "original_size": [
+            960,
+            540
+          ],
+          "sha256": "ae47c6304a307a7f32a34c99bc4aad62783b1ade24bbc310cab8541fc8e316d8"
+        },
+        {
+          "index": 286,
+          "file": "frame-00286.jpg",
+          "time": 65.1985052000091,
+          "original_size": [
+            960,
+            540
+          ],
+          "sha256": "7d2d3b3c0a2cd2d7e5f37ed7539b2296aa007d6fe96c6d367ad6c317acda3795"
+        },
+        {
+          "index": 296,
+          "file": "frame-00296.jpg",
+          "time": 66.27533380000386,
+          "original_size": [
+            960,
+            540
+          ],
+          "sha256": "bd2da15674a111a84f8792f71d0473d3c24c8559d5a74215edd1d31267170563"
+        },
+        {
+          "index": 306,
+          "file": "frame-00306.jpg",
+          "time": 67.37065300001996,
+          "original_size": [
+            960,
+            540
+          ],
+          "sha256": "9e59327d554bb14824b333419cf37c3390de16a8ece26e89be7d48f643a46dfb"
+        },
+        {
+          "index": 317,
+          "file": "frame-00317.jpg",
+          "time": 68.56586520001292,
+          "original_size": [
+            960,
+            540
+          ],
+          "sha256": "66b6fec3dfeeb4e583bfd505e72b33182e18b79ca0a04bb6841252bf6839d1ec"
+        }
+      ]
+    },
+    {
+      "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-35716-media-review\\overview-3.jpg",
+      "entries": [
+        {
+          "index": 327,
+          "file": "frame-00327.jpg",
+          "time": 69.6738394999993,
+          "original_size": [
+            960,
+            540
+          ],
+          "sha256": "8c751e99b1d8bc4535715b408850fe56353628215358ea9de0827933fd71d578"
+        },
+        {
+          "index": 337,
+          "file": "frame-00337.jpg",
+          "time": 70.75805800000671,
+          "original_size": [
+            960,
+            540
+          ],
+          "sha256": "fe54ddb9ddf6965bd184d5d43f9d7cc61cfda372703659448829a7d093312abd"
+        },
+        {
+          "index": 347,
+          "file": "frame-00347.jpg",
+          "time": 71.83529830002226,
+          "original_size": [
+            960,
+            540
+          ],
+          "sha256": "756866d4cceed41711400b07c1ebe6cba57936267c9029b643da6e3b7926a3a9"
+        },
+        {
+          "index": 357,
+          "file": "frame-00357.jpg",
+          "time": 72.93316210000194,
+          "original_size": [
+            960,
+            540
+          ],
+          "sha256": "797a0006309473e596691318964907c9d2230a0a7efc2387042f9aee236cb29a"
+        },
+        {
+          "index": 368,
+          "file": "frame-00368.jpg",
+          "time": 74.13553050000337,
+          "original_size": [
+            960,
+            540
+          ],
+          "sha256": "766723fcb280f1f32777436e90d8c14dab329456ad080bc2f19a464a06a4d871"
+        },
+        {
+          "index": 378,
+          "file": "frame-00378.jpg",
+          "time": 75.22440150001785,
+          "original_size": [
+            960,
+            540
+          ],
+          "sha256": "6412df0862d06bd469bb93ee406ccb7cd854a6e817a14917529e19f0cdd6a910"
+        },
+        {
+          "index": 388,
+          "file": "frame-00388.jpg",
+          "time": 76.30606190001708,
+          "original_size": [
+            960,
+            540
+          ],
+          "sha256": "179b7b88feca0b0e5892ae3e7a8665fcfc179b5ca307dfc9a90ab1701c6d7fe0"
+        },
+        {
+          "index": 398,
+          "file": "frame-00398.jpg",
+          "time": 77.40587810002035,
+          "original_size": [
+            960,
+            540
+          ],
+          "sha256": "8048e40938c2455fa43ad62541aacc2ab61a030f8b62577fc0825b02ec8c492c"
+        },
+        {
+          "index": 409,
+          "file": "frame-00409.jpg",
+          "time": 78.60628920001909,
+          "original_size": [
+            960,
+            540
+          ],
+          "sha256": "d9aed40c56800e82a971157fefa965765069db09c182322b35283d15dd4869e7"
+        },
+        {
+          "index": 419,
+          "file": "frame-00419.jpg",
+          "time": 79.69443679999677,
+          "original_size": [
+            960,
+            540
+          ],
+          "sha256": "95f094bd99180f52fc77c1b86dc005cc387fd733c0700c0ef41d30ed2090a9da"
+        },
+        {
+          "index": 429,
+          "file": "frame-00429.jpg",
+          "time": 80.77066360000754,
+          "original_size": [
+            960,
+            540
+          ],
+          "sha256": "4b7bb0381fe3f12f438ec1f92cf25353bb60b9c7d509af05cff43997403ce80c"
+        },
+        {
+          "index": 439,
+          "file": "frame-00439.jpg",
+          "time": 81.87479390000226,
+          "original_size": [
+            960,
+            540
+          ],
+          "sha256": "37943effac7cd135da27da0a100197255d1b87aeb6acc5d0d758b3c5d43c4d00"
+        },
+        {
+          "index": 449,
+          "file": "frame-00449.jpg",
+          "time": 82.97389429999748,
+          "original_size": [
+            960,
+            540
+          ],
+          "sha256": "7fb2aebd8b9f153b9193386eb35af208f358c9cf3a520b142b9fc42e93ebc892"
+        },
+        {
+          "index": 460,
+          "file": "frame-00460.jpg",
+          "time": 84.17287210002542,
+          "original_size": [
+            960,
+            540
+          ],
+          "sha256": "f2ee14408195351d2cdaf05bc9c7411f5953cd7368795ed5e0a37b20901d3138"
+        },
+        {
+          "index": 470,
+          "file": "frame-00470.jpg",
+          "time": 85.23837630002527,
+          "original_size": [
+            960,
+            540
+          ],
+          "sha256": "933729a0f7a7b51616c02013ac98d8caa611cb6f16894370783616b91c41db25"
+        },
+        {
+          "index": 480,
+          "file": "frame-00480.jpg",
+          "time": 86.34186630000477,
+          "original_size": [
+            960,
+            540
+          ],
+          "sha256": "a9df70a9327e4b6d05bca9ef137eb899fee2c6e2ef00ea4bbcf051b663dc2e77"
+        }
+      ]
+    }
+  ],
+  "overview_reviewed": true,
+  "full_fit_accepted": false,
+  "physical_headset_accepted": false,
+  "limitation": "Partial recording: preserve capture failure; contact sheets are samples, not every frame or all-angle proof.",
+  "reviewed_pairs": 48,
+  "findings": "All3 overview pages personally inspected: near-eye oversized gun, ghost/separated hands and white geometry; contact/headset still unaccepted."
+}

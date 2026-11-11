@@ -695,3 +695,10 @@ PGaf4dac2b/Native71f280b0。339帧UP基线p5/r5；341帧新DOWN p6/r5 deferred10
 ## 2026-11-11 首个消费过期观察版本
 
 PG31f7d324 withdrawal-clock-r1在原首个fresh失败调用处保留已有read clock、commit age、since-commit及入口copy1/source2/snapshot3，原撤回函数仍执行一次，未新增clock/source读取或更改时限/输入。实际Client8项覆盖单手/双手和source两种入口，原全部Client检查通过；源码逆变换精确等于原版，Native/XR未重建。仅私有观察版本，尚无游戏证据，不算功能修复或验收。13项保留。两轮已终止实例的shader缓存逐文件SHA核验归档J并映射，原源码/日志/媒体未移动。
+
+
+## 2026-11-11 实际35716：打空通过，开盖时原控制器匹配缺失
+
+PG31f7d324/Native71f280b0完整78条一致射线、空仓0/78禁射通过，开盖1→2后角度0.452992159结束；Native583 prepare stage1 seq0/flags13，Stereo仅17.771ms，controller sync缺失，并非Stereo100ms超期。后584消费game_difference8（广义game/mount/held变化，不命名具体字段），585身份difference64 lifecycle4→5按原保护清理；开盖未完成、无取旧弹匣/换弹后射击。原输入缺失总2（另133为早期），Gate39 age-only全保留。新expired-reader/history观察均未命中，不称修复。下一步定位原Native controller读取/一致性/新鲜度/cohort匹配哪个返回缺失，不能放宽保护或无变化重跑。正常清理全0无forced；481帧错误空/编码0，3页48对亲阅视觉仍失败。13项保留。
+
+35716现存handoff-source精确解码：583→requested4834，read_status3=ControllerMatchingRead::mutex_unavailable，controller_status3，Stereo17.7457ms；packet复制之前lock_now即失败，latest/selected0是未知而非序号0/驱逐。lock_now把WAIT_TIMEOUT、ABANDONED（原逻辑释放后拒绝）、FAILED等映成false，不能仅凭code3宣称普通竞争。下一步保留原一次WaitForSingleObject(0)结果及现有contended标志，区分普通占用与异常，保持一次读取/原时限/数据布局/生产者与输入保护。

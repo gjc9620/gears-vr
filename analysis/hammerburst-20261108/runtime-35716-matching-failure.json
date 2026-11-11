@@ -1,0 +1,50 @@
+{
+  "runtime": 35716,
+  "frame": 583,
+  "handoff": [
+    583,
+    1,
+    7,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+  ],
+  "state": [
+    4,
+    0,
+    0,
+    0,
+    0,
+    7
+  ],
+  "source": [
+    3,
+    3,
+    4834,
+    0,
+    0,
+    17745700,
+    0
+  ],
+  "decoded": {
+    "matching_code": 3,
+    "matching_name": "mutex_unavailable",
+    "controller_status": 3,
+    "requested_sequence": 4834,
+    "latest_sequence_unknown": 0,
+    "selected_sequence_unknown": 0,
+    "stereo_age_at_matching_ns": 17745700,
+    "selected_age_unknown_ns": 0
+  },
+  "source_files": {
+    "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\native-render-age-r1\\source\\tools\\vr-common\\controller_input_bridge.h": "53f970864e1f5d16d9594d9504b1ff2e6c3e090e129123d6f6b05e06368232a5",
+    "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\native-render-age-r1\\source\\tools\\native-capture\\cover_shared_input_live.inl": "fb757ad91ae0ff2b9b7c9d622001c5627e23d6d4bd660fd61df5e33b2418a0c1",
+    "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\native-render-age-r1\\source\\tools\\native-capture\\cover_input_live.inl": "74aaf15df7dc5331995f4576f14d20062ce9a32d8e29fa7c1810d0c9d7c7de51"
+  },
+  "meaning": "Original read_matching rejected lock_now before copying its packet. No packet sequence/timestamps were read; zero fields mean unknown, not eviction or stale packet. Existing source identity check preceded mutex attempt. Controller absence then reached broker prepare stage1, lifecycle4->5 followed; exact input ancestry is not safe to assume.",
+  "limits": "lock_now maps WAIT_TIMEOUT, WAIT_ABANDONED (after existing ReleaseMutex), WAIT_FAILED and null mutex to false; Code3 alone does not prove ordinary contention. No evidence to change freshness, retry acquisition or preserve an input grant across this failure.",
+  "next": "Preserve exact result of the original one WaitForSingleObject(mutex,0) in receiver-local diagnostic; retain existing contended boolean. No second lock attempt, wait duration change, source query, packet layout or writer change. Export bounded actual failure on existing GT summary. Test timeout versus abandoned/failed separately before considering any transport-gap policy."
+}
