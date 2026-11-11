@@ -591,3 +591,10 @@ prelaunch-052600-result.json和5份原观察文本保留；cleanup-pending标为
 ## 2026-11-11 game464：新匣修复未练到，原连发在源失效后按规则取消
 
 pose-gap-incumbent-r1实际core6+6轮耗弹6，42发后typed36/78。下一次first43后真实UP337 handoff validated，339 copy stale_or_changed_after，原release gate1 count1取消；保留43条一致射线，缺失第43发后的最终typed。未到空仓/换弹，新修复分支0条，不能判定通过或失败。正常stop/launcher/Native/PG/XR退出；225帧无capture错误/编码0，3页48组概览亲审，遮挡重影白几何继续未接受。下一步改用短loaded换弹定向练新分支；完整空仓与source339失败仍保留，不缩小13项目标。
+
+
+## 2026-11-11 game47240：原匣抽出未完成，短路径仍未到新匣修复
+
+新123129/core6一致射线通过，原卡扣1→4，随后真实松手触发cleanup474/stage4，因为extraction.complete为false。最后有移动记录深度67.246405mm，原日志只在位移超过10mm时记录，不能据此断言最终命令端点未到。清理前未捕获support withdrawal，新匣helper0条，不能把此失败归因于新修复。原提取器会在样本gap>100ms重置，但本轮缺少逐次observe接受/complete记录，下一步先窄加只读回执定位；不改阈值或原保护，不做不变重跑。
+
+operator1保留，stop/launcher/Native/PG/XR正常0，无强制终止和FG/CLOAK违规。359帧无capture错误/编码0，3页48组paired概览亲审，近脸遮挡/重影/白几何继续不接受。新匣原持有者修复仍仅20新增离线检查、原客户端检查及完整编译通过，尚未实练。全13项目标保留。

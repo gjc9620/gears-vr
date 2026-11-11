@@ -145,6 +145,10 @@
         {
           "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-464-first-failure-analysis.json",
           "sha256": "46231207897dc0a543821cfe5f476a2122b132683d1429f0d1ec3eb4f0133229"
+        },
+        {
+          "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-47240-first-failure-analysis.json",
+          "sha256": "a1fc31ac9840850fadc9b938413455b43724b6e5d6aa8c1cacec0af45b06782b"
         }
       ]
     },
@@ -213,6 +217,10 @@
         {
           "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-22048-first-failure-analysis.json",
           "sha256": "11157487687000fab7d21c4793074047a46e8d9edc74ff5b1bdd1403e7ef4d44"
+        },
+        {
+          "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-47240-first-failure-analysis.json",
+          "sha256": "a1fc31ac9840850fadc9b938413455b43724b6e5d6aa8c1cacec0af45b06782b"
         }
       ]
     },
@@ -348,6 +356,10 @@
         {
           "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-464-first-failure-analysis.json",
           "sha256": "46231207897dc0a543821cfe5f476a2122b132683d1429f0d1ec3eb4f0133229"
+        },
+        {
+          "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-47240-first-failure-analysis.json",
+          "sha256": "a1fc31ac9840850fadc9b938413455b43724b6e5d6aa8c1cacec0af45b06782b"
         }
       ]
     },
@@ -400,15 +412,19 @@
         {
           "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-464-first-failure-analysis.json",
           "sha256": "46231207897dc0a543821cfe5f476a2122b132683d1429f0d1ec3eb4f0133229"
+        },
+        {
+          "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-47240-first-failure-analysis.json",
+          "sha256": "a1fc31ac9840850fadc9b938413455b43724b6e5d6aa8c1cacec0af45b06782b"
         }
       ]
     }
   ],
   "completion_proven": false,
   "goal_active": true,
-  "immediate_next": "Short loaded replacement path with new candidate to reach exact new-magazine pose-gap branch; full empty and339 source-latency failure remain open, never claim narrow pass as full completion.",
+  "immediate_next": "Add bounded observation around original extraction.observe return/complete/sample gap, preserving original call once and all limits; no unchanged runtime rerun. Determine actual incomplete-extraction cause, then reach new-mag incumbent branch and full empty goal.",
   "historical_evidence_does_not_certify_current_PG": true,
-  "candidate_runtime_status": "New pose-gap-incumbent-r1 actual464 reached43 consistent rays, source339 expiry_after cancels tail. New-mag repair not reached; normal cleanup.",
+  "candidate_runtime_status": "pose-gap-incumbent-r1 actual464 failed at original burst source expiry; actual47240 core6/latch1->4, real release canceled incomplete original extraction. Neither reached new-magazine helper; fix remains offline20-case/build only.",
   "previous_recorded_candidate": {
     "name": "hammerburst-prepared-20261110-unheld-input-r1",
     "prepared_sha256": "76a2ae8cc56e4165b77ca5d17a9e6469ff66323e917be5a8b46da44df4f0bb58"
@@ -430,8 +446,8 @@
   "restore_verifier_status": "Optional --hammerburst-park-restore input action hook integrated into private reload adapter; five synthetic action/receipt regressions passed. Actual park/redraw/new-grant/native-resume, typed conservation, UI/reward and complete return-fire require game evidence.",
   "latest_service_first_failure": "runtime-3112-first-failure-analysis.json",
   "latest_startup_failure": "runtime-49732-startup-failure.json",
-  "latest_runtime_failure": "runtime-464-first-failure-analysis.json",
-  "latest_runtime_result": "runtime-464-first-failure-analysis.json",
+  "latest_runtime_failure": "runtime-47240-first-failure-analysis.json",
+  "latest_runtime_result": "runtime-47240-first-failure-analysis.json",
   "latest_focused_pass": "runtime-22992-focused-result.json",
   "visual_audit_recording_repair": "Corrected finalizer wrong ID fivepartfitting→part_fitting, attached reviewed22992 evidence also to guides, asserted target IDs exist. No requirement/score/acceptance change and no overwrite of current052600 runtime blocker.",
   "resource_release_evidence": {

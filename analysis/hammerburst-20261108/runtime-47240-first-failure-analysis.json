@@ -1,0 +1,2170 @@
+{
+  "game": {
+    "pid": 47240,
+    "creation_time": 134388450990036344,
+    "image": "j:\\gearsvr\\gears.of.war.reloaded.v1.0.1.3816947-p2p\\gears of war reloaded\\binaries_x64\\gowde-steam.exe"
+  },
+  "candidate": "b9296d6a6859673e461335efc7caded2bbf1375403d5a667f5d77d6ade096f2d",
+  "test_mode": {
+    "empty_only": "0",
+    "scope": "loaded replacement insertion diagnostic; empty reload still pending"
+  },
+  "operator_exit": 1,
+  "stop_exit": 0,
+  "cleanup": {
+    "launcher_exit": 0,
+    "owned_game_absent": true,
+    "owned_children": {
+      "recorded": 0,
+      "remaining": []
+    },
+    "forced_termination": false,
+    "worker_error": null,
+    "no_game_started": false
+  },
+  "continuous_passed": true,
+  "native_cleanup_verified": true,
+  "xr_exit_code": 0,
+  "playground_cleanup": {
+    "loaded": true,
+    "shutdown_code": 0,
+    "entry_restored": true,
+    "passed": true
+  },
+  "audio": {
+    "enabled": true,
+    "game_identity": {
+      "pid": 47240,
+      "creation_time": 134388450990036344
+    },
+    "owner_identity": {
+      "pid": 14696,
+      "creation_time": 134388450916438823
+    },
+    "log": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\hb-cloak-1111-123129\\launcher-session.5f3edc99206c462190c06009dc03bf20.audio.jsonl",
+    "restored": true,
+    "startup": {
+      "ready_observed": true,
+      "ready_timeout_seconds": 15.0,
+      "waited_seconds": 0.03200000000651926,
+      "helper_exit_code": null
+    },
+    "exit_code": 0,
+    "event": "guard_cleanup",
+    "reason": "stop",
+    "matched": 1,
+    "muted": 0,
+    "restore_attempted": 0,
+    "restore_pending": 0,
+    "read_failed": 0,
+    "mute_failed": 0,
+    "scans": 282,
+    "endpoint_unavailable": 0,
+    "shared_rejected": 3102,
+    "sessions_restored": 0,
+    "mute_verification": {
+      "event": "mute_verification_summary",
+      "pid": 47240,
+      "initially_muted_sessions": 1,
+      "verified_muted_observations": 282,
+      "verify_failed": 0,
+      "target_shared_rejected": 0,
+      "shared_rejected_is_global_scan_count": true
+    }
+  },
+  "core": {
+    "game": {
+      "pid": 47240,
+      "creation_time": 134388450990036344,
+      "image": "j:\\gearsvr\\gears.of.war.reloaded.v1.0.1.3816947-p2p\\gears of war reloaded\\binaries_x64\\gowde-steam.exe"
+    },
+    "checks": {
+      "actual_shoulder_acquisition": true,
+      "actual_fire": true
+    },
+    "initial": {
+      "label": "before_original_X_pickup",
+      "ns": 156339773051800,
+      "weapon": "0x162c486700",
+      "name": "Weap_LocustAssaultRifle",
+      "cls": "Weap_LocustAssaultRifle",
+      "location": [
+        -3900.0,
+        0.0,
+        583.9485473632812
+      ],
+      "special": 0
+    },
+    "recorded_scope": "HB initial shoulder acquisition and authoritative fire only",
+    "pickup_input": {
+      "up_sent_ns": 156340988944900,
+      "baseline": {
+        "frame": "140",
+        "sequence": "2732",
+        "sync_ns": "156342994105500",
+        "admitted_ns": "156343032243000",
+        "frame_now_ns": "156343014197700",
+        "source": "1",
+        "right_pressed": "0",
+        "right_released": "0",
+        "right_down": "0",
+        "input_status": "quiet",
+        "session": "156306564179000",
+        "space": "1",
+        "input": "2",
+        "profile": "2",
+        "reference": "1",
+        "lifecycle": "3",
+        "world_generation": "1"
+      },
+      "shoulder_endpoint": {
+        "x": 0.23,
+        "y": 1.5850000476837158,
+        "z": -0.17,
+        "yaw": 0.0,
+        "pitch": -0.30000002227634565,
+        "roll": 0.0
+      },
+      "down_sent_ns": 156343047500600,
+      "held": {
+        "status": "held",
+        "slot": "3",
+        "target": "162c486700",
+        "event": "1",
+        "press": "1",
+        "frame": "143",
+        "source_sequence": "2740",
+        "cookie": "1",
+        "inventory_stage": "ok",
+        "input_status": "event",
+        "input_previous_sync_ns": "156343061305000",
+        "input_sync_ns": "156343127660500",
+        "input_received_ns": "156343127685700",
+        "input_recorded_press_sync_ns": "156343090641200",
+        "input_control": "6"
+      },
+      "held_observed_ns": 156343222475500
+    },
+    "acquisition_receipt": {
+      "status": "held",
+      "slot": "3",
+      "target": "162c486700",
+      "event": "1",
+      "press": "1",
+      "frame": "143",
+      "source_sequence": "2740",
+      "cookie": "1",
+      "inventory_stage": "ok",
+      "input_status": "event",
+      "input_previous_sync_ns": "156343061305000",
+      "input_sync_ns": "156343127660500",
+      "input_received_ns": "156343127685700",
+      "input_recorded_press_sync_ns": "156343090641200",
+      "input_control": "6"
+    },
+    "held": {
+      "label": "HB_actual_shoulder_acquisition",
+      "ns": 156347210297400,
+      "weapon": "0x162c486700",
+      "name": "Weap_LocustAssaultRifle",
+      "cls": "Weap_LocustAssaultRifle",
+      "location": [
+        -3900.0,
+        0.0,
+        583.9485473632812
+      ],
+      "special": 0
+    },
+    "reload_presentation_input": {
+      "x": 0.16,
+      "y": 1.5200000476837159,
+      "z": 0.06,
+      "yaw": 0.4363323129985824,
+      "pitch": 0.3,
+      "roll": 0
+    },
+    "first_fire_input": {
+      "baseline_sent_ns": 156351014893700,
+      "baseline_wait": {
+        "samples": [
+          {
+            "row": {
+              "frame": "241",
+              "sequence": "3095",
+              "current": "1",
+              "status": "1",
+              "source_status": "1",
+              "owned": "0",
+              "game_known": "1",
+              "game_r2": "0",
+              "trigger_active": "1",
+              "trigger_value": "0.000",
+              "trigger_pressed": "0",
+              "trigger_released": "0",
+              "input_sync_ns": "156351073948400",
+              "admitted_ns": "156351134046400",
+              "active_at_admission": "1",
+              "preparation_budget": "1"
+            },
+            "observed_ns": 156351145257200,
+            "source_age_ns": 71308800,
+            "receipt_age_ns": 11210800,
+            "liveness_ns": 2242600,
+            "read_ns": 684500
+          },
+          {
+            "row": {
+              "frame": "244",
+              "sequence": "3109",
+              "current": "1",
+              "status": "1",
+              "source_status": "1",
+              "owned": "0",
+              "game_known": "1",
+              "game_r2": "0",
+              "trigger_active": "1",
+              "trigger_value": "0.000",
+              "trigger_pressed": "0",
+              "trigger_released": "0",
+              "input_sync_ns": "156351385635600",
+              "admitted_ns": "156351430241600",
+              "active_at_admission": "1",
+              "preparation_budget": "1"
+            },
+            "observed_ns": 156351435057600,
+            "source_age_ns": 49422000,
+            "receipt_age_ns": 4816000,
+            "liveness_ns": 778300,
+            "read_ns": 441500
+          }
+        ],
+        "distinct_rows": 2,
+        "last_sequence": "3109",
+        "minimum_source_age": {
+          "row": {
+            "frame": "244",
+            "sequence": "3109",
+            "current": "1",
+            "status": "1",
+            "source_status": "1",
+            "owned": "0",
+            "game_known": "1",
+            "game_r2": "0",
+            "trigger_active": "1",
+            "trigger_value": "0.000",
+            "trigger_pressed": "0",
+            "trigger_released": "0",
+            "input_sync_ns": "156351385635600",
+            "admitted_ns": "156351430241600",
+            "active_at_admission": "1",
+            "preparation_budget": "1"
+          },
+          "observed_ns": 156351435057600,
+          "source_age_ns": 49422000,
+          "receipt_age_ns": 4816000,
+          "liveness_ns": 778300,
+          "read_ns": 441500
+        }
+      },
+      "baseline": {
+        "frame": "244",
+        "sequence": "3109",
+        "current": "1",
+        "status": "1",
+        "source_status": "1",
+        "owned": "0",
+        "game_known": "1",
+        "game_r2": "0",
+        "trigger_active": "1",
+        "trigger_value": "0.000",
+        "trigger_pressed": "0",
+        "trigger_released": "0",
+        "input_sync_ns": "156351385635600",
+        "admitted_ns": "156351430241600",
+        "active_at_admission": "1",
+        "preparation_budget": "1"
+      },
+      "down_sent_ns": 156351435243800,
+      "down_wait": {
+        "samples": [
+          {
+            "row": {
+              "frame": "246",
+              "sequence": "3116",
+              "current": "1",
+              "status": "3",
+              "source_status": "1",
+              "owned": "1",
+              "game_known": "1",
+              "game_r2": "0",
+              "trigger_active": "1",
+              "trigger_value": "1.000",
+              "trigger_pressed": "1",
+              "trigger_released": "0",
+              "input_sync_ns": "156351540445100",
+              "admitted_ns": "156351584551700",
+              "active_at_admission": "1",
+              "preparation_budget": "1"
+            },
+            "observed_ns": 156351602119800,
+            "source_age_ns": 61674700,
+            "receipt_age_ns": 17568100,
+            "liveness_ns": 872100,
+            "read_ns": 446400
+          }
+        ],
+        "distinct_rows": 1,
+        "last_sequence": "3116",
+        "minimum_source_age": {
+          "row": {
+            "frame": "246",
+            "sequence": "3116",
+            "current": "1",
+            "status": "3",
+            "source_status": "1",
+            "owned": "1",
+            "game_known": "1",
+            "game_r2": "0",
+            "trigger_active": "1",
+            "trigger_value": "1.000",
+            "trigger_pressed": "1",
+            "trigger_released": "0",
+            "input_sync_ns": "156351540445100",
+            "admitted_ns": "156351584551700",
+            "active_at_admission": "1",
+            "preparation_budget": "1"
+          },
+          "observed_ns": 156351602119800,
+          "source_age_ns": 61674700,
+          "receipt_age_ns": 17568100,
+          "liveness_ns": 872100,
+          "read_ns": 446400
+        }
+      },
+      "down": {
+        "frame": "246",
+        "sequence": "3116",
+        "current": "1",
+        "status": "3",
+        "source_status": "1",
+        "owned": "1",
+        "game_known": "1",
+        "game_r2": "0",
+        "trigger_active": "1",
+        "trigger_value": "1.000",
+        "trigger_pressed": "1",
+        "trigger_released": "0",
+        "input_sync_ns": "156351540445100",
+        "admitted_ns": "156351584551700",
+        "active_at_admission": "1",
+        "preparation_budget": "1"
+      },
+      "first_shot_observed_ns": 156351697431700,
+      "shots_at_release": 1,
+      "release_sent_ns": 156351697579900
+    },
+    "shots": [
+      {
+        "shot": "1",
+        "epoch": "2",
+        "revision": "12",
+        "trace_valid": "1",
+        "write_source_consistent": "1",
+        "trace_source_consistent": "1",
+        "trace_count": "1",
+        "trace_frame": "247",
+        "trace_sequence": "3120",
+        "trace_sync_ns": "156351629200800",
+        "trace_observed_ns": "156351686170400",
+        "write_frame": "247",
+        "write_sequence": "3120",
+        "write_sync_ns": "156351629200800",
+        "aim_writes": "2",
+        "trace_writes": "3",
+        "pushed_writes": "2",
+        "physical_writes": "2",
+        "aim_before_trace": "2",
+        "origin_before_trace": "3",
+        "pushed_before_trace": "2",
+        "start": "-3845.47266,-3.41228342,665.816711",
+        "end": "3320.73779,-3023.40161,3241.46289",
+        "pushed": "-3845.47266,-3.41228342,665.816711",
+        "muzzle_origin": "-3845.47266,-3.41228342,665.816711",
+        "muzzle_aim": "3129,-4551,0"
+      },
+      {
+        "shot": "2",
+        "epoch": "2",
+        "revision": "12",
+        "trace_valid": "1",
+        "write_source_consistent": "1",
+        "trace_source_consistent": "1",
+        "trace_count": "2",
+        "trace_frame": "248",
+        "trace_sequence": "3124",
+        "trace_sync_ns": "156351719256000",
+        "trace_observed_ns": "156351776623900",
+        "write_frame": "248",
+        "write_sequence": "3124",
+        "write_sync_ns": "156351719256000",
+        "aim_writes": "2",
+        "trace_writes": "3",
+        "pushed_writes": "2",
+        "physical_writes": "2",
+        "aim_before_trace": "2",
+        "origin_before_trace": "3",
+        "pushed_before_trace": "2",
+        "start": "-3845.47241,-3.41229916,665.816711",
+        "end": "3151.10767,-3299.42188,3366.37866",
+        "pushed": "-3845.47241,-3.41229916,665.816711",
+        "muzzle_origin": "-3845.47241,-3.41229916,665.816711",
+        "muzzle_aim": "3129,-4551,0"
+      },
+      {
+        "shot": "3",
+        "epoch": "2",
+        "revision": "12",
+        "trace_valid": "1",
+        "write_source_consistent": "1",
+        "trace_source_consistent": "1",
+        "trace_count": "3",
+        "trace_frame": "249",
+        "trace_sequence": "3129",
+        "trace_sync_ns": "156351829374600",
+        "trace_observed_ns": "156351879589400",
+        "write_frame": "249",
+        "write_sequence": "3129",
+        "write_sync_ns": "156351829374600",
+        "aim_writes": "2",
+        "trace_writes": "3",
+        "pushed_writes": "2",
+        "physical_writes": "2",
+        "aim_before_trace": "2",
+        "origin_before_trace": "3",
+        "pushed_before_trace": "2",
+        "start": "-3845.47266,-3.41228414,665.816711",
+        "end": "3055.35303,-3476.9939,3390.09399",
+        "pushed": "-3845.47266,-3.41228414,665.816711",
+        "muzzle_origin": "-3845.47266,-3.41228414,665.816711",
+        "muzzle_aim": "3129,-4551,0"
+      },
+      {
+        "shot": "4",
+        "epoch": "2",
+        "revision": "12",
+        "trace_valid": "1",
+        "write_source_consistent": "1",
+        "trace_source_consistent": "1",
+        "trace_count": "4",
+        "trace_frame": "250",
+        "trace_sequence": "3134",
+        "trace_sync_ns": "156351940892100",
+        "trace_observed_ns": "156351988381900",
+        "write_frame": "250",
+        "write_sequence": "3134",
+        "write_sync_ns": "156351940892100",
+        "aim_writes": "2",
+        "trace_writes": "3",
+        "pushed_writes": "2",
+        "physical_writes": "2",
+        "aim_before_trace": "2",
+        "origin_before_trace": "3",
+        "pushed_before_trace": "2",
+        "start": "-3845.47241,-3.41228485,665.81665",
+        "end": "3392.66968,-3191.95166,2799.20898",
+        "pushed": "-3845.47241,-3.41228485,665.81665",
+        "muzzle_origin": "-3845.47241,-3.41228485,665.81665",
+        "muzzle_aim": "3129,-4551,0"
+      },
+      {
+        "shot": "5",
+        "epoch": "2",
+        "revision": "12",
+        "trace_valid": "1",
+        "write_source_consistent": "1",
+        "trace_source_consistent": "1",
+        "trace_count": "5",
+        "trace_frame": "251",
+        "trace_sequence": "3138",
+        "trace_sync_ns": "156352030335000",
+        "trace_observed_ns": "156352092508300",
+        "write_frame": "251",
+        "write_sequence": "3138",
+        "write_sync_ns": "156352030335000",
+        "aim_writes": "2",
+        "trace_writes": "3",
+        "pushed_writes": "2",
+        "physical_writes": "2",
+        "aim_before_trace": "2",
+        "origin_before_trace": "3",
+        "pushed_before_trace": "2",
+        "start": "-3845.47241,-3.41228151,665.816711",
+        "end": "3224.72095,-3195.98706,3298.05713",
+        "pushed": "-3845.47241,-3.41228151,665.816711",
+        "muzzle_origin": "-3845.47241,-3.41228151,665.816711",
+        "muzzle_aim": "3129,-4551,0"
+      },
+      {
+        "shot": "6",
+        "epoch": "2",
+        "revision": "12",
+        "trace_valid": "1",
+        "write_source_consistent": "1",
+        "trace_source_consistent": "1",
+        "trace_count": "6",
+        "trace_frame": "252",
+        "trace_sequence": "3143",
+        "trace_sync_ns": "156352140763700",
+        "trace_observed_ns": "156352182276800",
+        "write_frame": "252",
+        "write_sequence": "3143",
+        "write_sync_ns": "156352140763700",
+        "aim_writes": "2",
+        "trace_writes": "3",
+        "pushed_writes": "2",
+        "physical_writes": "2",
+        "aim_before_trace": "2",
+        "origin_before_trace": "3",
+        "pushed_before_trace": "2",
+        "start": "-3845.47241,-3.41227722,665.816711",
+        "end": "3450.37329,-3068.15186,2784.03906",
+        "pushed": "-3845.47241,-3.41227722,665.816711",
+        "muzzle_origin": "-3845.47241,-3.41227722,665.816711",
+        "muzzle_aim": "3129,-4551,0"
+      }
+    ],
+    "error": "AssertionError('No fresh hammerburst_reload_transition matching receipt in 8 seconds')"
+  },
+  "replacement": {
+    "game": {
+      "pid": 47240,
+      "creation_time": 134388450990036344,
+      "image": "j:\\gearsvr\\gears.of.war.reloaded.v1.0.1.3816947-p2p\\gears of war reloaded\\binaries_x64\\gowde-steam.exe"
+    },
+    "checks": {},
+    "phases": [
+      {
+        "label": "original_return_prepare",
+        "ns": 156352401196700
+      },
+      {
+        "label": "open_original_latch",
+        "ns": 156353512150400
+      },
+      {
+        "label": "continuous_latch_opening",
+        "ns": 156359914510600
+      },
+      {
+        "label": "extract_original_for_replacement",
+        "ns": 156362038600800
+      }
+    ],
+    "observations": [
+      {
+        "label": "world",
+        "value": {
+          "game": {
+            "pid": 47240,
+            "creation_time": 134388450990036344,
+            "image": "j:\\gearsvr\\gears.of.war.reloaded.v1.0.1.3816947-p2p\\gears of war reloaded\\binaries_x64\\gowde-steam.exe"
+          },
+          "publisher": {
+            "pid": 50240,
+            "creation_time": 134388451061455389,
+            "image": "c:\\users\\11\\.codex\\worktrees\\6dof-single\\gearsvr\\tools\\openxr-probe\\build-hb-cloak-1111-123129\\openxrposeprobe.exe"
+          },
+          "source": 1,
+          "sequence": 3161,
+          "observed_ns": 156352607209600,
+          "sync_ns": 156352540756600,
+          "world_generation": 1,
+          "weapon": "0x162c486700",
+          "units": 100.0,
+          "raw": [
+            {
+              "xyz": [
+                -0.20000000298023224,
+                1.4000000953674316,
+                -0.4000000059604645
+              ],
+              "quat": [
+                -0.14943814277648926,
+                0.0,
+                0.0,
+                0.9887710809707642
+              ],
+              "squeeze": 0.0,
+              "trigger": 0.0
+            },
+            {
+              "xyz": [
+                0.1599999964237213,
+                1.5200001001358032,
+                0.05999999865889549
+              ],
+              "quat": [
+                0.14589586853981018,
+                0.21400924026966095,
+                -0.032344333827495575,
+                0.9653332829475403
+              ],
+              "squeeze": 0.0,
+              "trigger": 0.0
+            }
+          ],
+          "world": [
+            {
+              "xyz": [
+                -3840.6071762981232,
+                -17.164190720373856,
+                625.8167161941528
+              ],
+              "rotation": [
+                -0.3000000194673931,
+                4.8951591224977125e-08,
+                -0.0
+              ]
+            },
+            {
+              "xyz": [
+                -3886.6071785223166,
+                18.835806968248235,
+                637.81671667099
+              ],
+              "rotation": [
+                0.30000002406170945,
+                -0.43633227213021114,
+                -4.241938913145641e-09
+              ]
+            }
+          ],
+          "limits": "Current original world tracking targets, not solved or rendered bone positions."
+        }
+      },
+      {
+        "label": "gun",
+        "value": {
+          "game": {
+            "pid": 47240,
+            "creation_time": 134388450990036344,
+            "image": "j:\\gearsvr\\gears.of.war.reloaded.v1.0.1.3816947-p2p\\gears of war reloaded\\binaries_x64\\gowde-steam.exe"
+          },
+          "observed_ns": 156353491691500,
+          "controller": "0x816a1590",
+          "weapon": "0x162c486700",
+          "mesh": "0x3c1160510",
+          "mesh_world_xyz": [
+            -3892.533447265625,
+            18.532623291015625,
+            636.4059448242188
+          ],
+          "mesh_component_to_world": [
+            -0.4226953685283661,
+            -0.9062716364860535,
+            0.0,
+            0.0,
+            0.8658230900764465,
+            -0.40382957458496094,
+            0.2954181730747223,
+            0.0,
+            -0.2677291929721832,
+            0.12487190216779709,
+            0.9553678631782532,
+            0.0,
+            -3892.533447265625,
+            18.532623291015625,
+            636.4059448242188,
+            1.0
+          ],
+          "hud_query_world_xyz": [
+            -2020.9859619140625,
+            -854.1607055664062,
+            1288.513916015625
+          ],
+          "limits": "read-only bracketed snapshot; HUD query is not proof of a rendered reticle or firing ray"
+        }
+      }
+    ],
+    "gameplay_setters": false,
+    "visual_accepted": false,
+    "physical_headset_accepted": false,
+    "replacement_mode": true,
+    "before": {
+      "capacity": 78.0,
+      "used": 6,
+      "reserve": 78,
+      "infinite_reserve": false,
+      "duration": 2.5,
+      "started": 0.0,
+      "active_reload_bonus_shots": 0,
+      "game": {
+        "pid": 47240,
+        "creation_time": 134388450990036344,
+        "image": "j:\\gearsvr\\gears.of.war.reloaded.v1.0.1.3816947-p2p\\gears of war reloaded\\binaries_x64\\gowde-steam.exe"
+      },
+      "weapon": "0x162c486700",
+      "observed_ns": 156352433127900,
+      "game_time": 21.962949752807617,
+      "loaded": 72,
+      "bones": {},
+      "game_function_calls": 0,
+      "reader_reused": true,
+      "read_bracket_misses": [],
+      "query_local_selectors": true,
+      "limits": "Double-read actual inventory and typed schema, current registered objects/held identity; no game calls. Not physical-headset acceptance."
+    },
+    "input_planning": {
+      "production": {
+        "frame": "264",
+        "publication": "0",
+        "source_sequence": "3190",
+        "sync_ns": "156353186235500",
+        "observed_ns": "156353216498900",
+        "hold": "1",
+        "accepted": "1",
+        "mesh_read": "1",
+        "grip_world": "-3886.60718,18.835807,637.816717",
+        "grip_quat": "-0.0323443292,-0.145895865,-0.21400921,0.965333258",
+        "target_world": "-3892.53349,18.5326256,636.406047",
+        "target_rot": "0,-20935,-3129",
+        "asset_origin": "0,-16384,0",
+        "component_translation": "-3892.53345,18.5326252,636.406067",
+        "gun_world": "-3892.5332,18.5326252,636.406006",
+        "gun_rot": "3129,-4551,0",
+        "dirty": "7"
+      },
+      "geometry": {
+        "weapon": "162c486700",
+        "pivot": "2.12626189e-08,0.313648855,0.0212533264",
+        "axis": "1,-6.44250098e-08,-3.18645374e-08",
+        "contact": "-0.0210061139,0.242713107,0.0401302844",
+        "units": "100"
+      },
+      "actual_mesh": [
+        [
+          -0.4226953685283661,
+          0.8658230900764465,
+          -0.2677291929721832,
+          -3892.533447265625
+        ],
+        [
+          -0.9062716364860535,
+          -0.40382957458496094,
+          0.12487190216779709,
+          18.532623291015625
+        ],
+        [
+          0.0,
+          0.2954181730747223,
+          0.9553678631782532,
+          636.4059448242188
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "planning_is_not_outcome_evidence": true
+    },
+    "latch_sweeps": [
+      {
+        "start": 0,
+        "end": 0.837758104,
+        "samples": [
+          {
+            "ns": 156359918358700,
+            "angle": 8.328649775144052e-05,
+            "xyz": [
+              0.08302611727332372,
+              1.615949444453304,
+              -0.08901636351495043
+            ]
+          },
+          {
+            "ns": 156359956649600,
+            "angle": 0.0006444250054579128,
+            "xyz": [
+              0.08302541652330553,
+              1.6159082877600783,
+              -0.08901786632509398
+            ]
+          },
+          {
+            "ns": 156359997401400,
+            "angle": 0.002102451223371097,
+            "xyz": [
+              0.08302355011421536,
+              1.6158013532670332,
+              -0.08902186897679795
+            ]
+          },
+          {
+            "ns": 156360036670900,
+            "angle": 0.004814899980185642,
+            "xyz": [
+              0.08301990262559586,
+              1.615602434581181,
+              -0.08902969128332053
+            ]
+          },
+          {
+            "ns": 156360076669400,
+            "angle": 0.009080733845970452,
+            "xyz": [
+              0.08301370501396202,
+              1.6152896470850484,
+              -0.08904298251202827
+            ]
+          },
+          {
+            "ns": 156360114878900,
+            "angle": 0.01514327174509997,
+            "xyz": [
+              0.08300392703924969,
+              1.614845232177881,
+              -0.08906395208299492
+            ]
+          },
+          {
+            "ns": 156360153065400,
+            "angle": 0.023193117569185483,
+            "xyz": [
+              0.08298918451916186,
+              1.6142553696334578,
+              -0.08909556846818353
+            ]
+          },
+          {
+            "ns": 156360190971900,
+            "angle": 0.033371088790006366,
+            "xyz": [
+              0.0829676728400686,
+              1.613510000193872,
+              -0.08914170178174316
+            ]
+          },
+          {
+            "ns": 156360230090500,
+            "angle": 0.045771145072441455,
+            "xyz": [
+              0.0829371340931208,
+              1.6126026593117344,
+              -0.0892071942587736
+            ]
+          },
+          {
+            "ns": 156360268172800,
+            "angle": 0.060443316887400185,
+            "xyz": [
+              0.08289486171703153,
+              1.611530320919257,
+              -0.08929785029861725
+            ]
+          },
+          {
+            "ns": 156360306443400,
+            "angle": 0.07739663412475407,
+            "xyz": [
+              0.08283774355271559,
+              1.610293247652733,
+              -0.08942034413134764
+            ]
+          },
+          {
+            "ns": 156360345145500,
+            "angle": 0.09660205470626781,
+            "xyz": [
+              0.08276234168560323,
+              1.608894841539962,
+              -0.08958204859072005
+            ]
+          },
+          {
+            "ns": 156360383317000,
+            "angle": 0.11799539319853071,
+            "xyz": [
+              0.08266500531271656,
+              1.6073414871790686,
+              -0.08979079306328874
+            ]
+          },
+          {
+            "ns": 156360423834500,
+            "angle": 0.14148024942588797,
+            "xyz": [
+              0.08254201108423256,
+              1.6056423782364748,
+              -0.0900545625167126
+            ]
+          },
+          {
+            "ns": 156360463568600,
+            "angle": 0.1669309370833717,
+            "xyz": [
+              0.08238972391676228,
+              1.6038093179008859,
+              -0.09038115262512014
+            ]
+          },
+          {
+            "ns": 156360506477000,
+            "angle": 0.1941954123496327,
+            "xyz": [
+              0.0822047701653156,
+              1.6018564848588592,
+              -0.09077779839045028
+            ]
+          },
+          {
+            "ns": 156360545898100,
+            "angle": 0.2230982024998712,
+            "xyz": [
+              0.08198421429995997,
+              1.5998001583894768,
+              -0.0912507952477655
+            ]
+          },
+          {
+            "ns": 156360584073000,
+            "angle": 0.2534433345187688,
+            "xyz": [
+              0.08172572989963449,
+              1.5976583991721183,
+              -0.09180513235779503
+            ]
+          },
+          {
+            "ns": 156360623635100,
+            "angle": 0.2850172637134189,
+            "xyz": [
+              0.08142775588678278,
+              1.5954506861158382,
+              -0.09244415755152594
+            ]
+          },
+          {
+            "ns": 156360661990900,
+            "angle": 0.3175918023262589,
+            "xyz": [
+              0.08108962950606498,
+              1.5931975136197447,
+              -0.09316929214865921
+            ]
+          },
+          {
+            "ns": 156360701788100,
+            "angle": 0.3509270481480006,
+            "xyz": [
+              0.08071168859648173,
+              1.5909199577757493,
+              -0.09397981162834682
+            ]
+          },
+          {
+            "ns": 156360740349200,
+            "angle": 0.38477431313056254,
+            "xyz": [
+              0.0802953371826459,
+              1.5886392237264955,
+              -0.09487270496447034
+            ]
+          },
+          {
+            "ns": 156360779551100,
+            "angle": 0.418879052,
+            "xyz": [
+              0.07984307024346361,
+              1.586376189314366,
+              -0.09584262150761785
+            ]
+          },
+          {
+            "ns": 156360817794200,
+            "angle": 0.45298379086943746,
+            "xyz": [
+              0.07935845559479571,
+              1.5841509619876866,
+              -0.09688190983898648
+            ]
+          },
+          {
+            "ns": 156360857096400,
+            "angle": 0.48683105585199926,
+            "xyz": [
+              0.07884607300806236,
+              1.5819824664498259,
+              -0.09798074833458112
+            ]
+          },
+          {
+            "ns": 156360896584800,
+            "angle": 0.520166301673741,
+            "xyz": [
+              0.07831141282481134,
+              1.57988807964826,
+              -0.09912736259301635
+            ]
+          },
+          {
+            "ns": 156360936486300,
+            "angle": 0.5527408402865811,
+            "xyz": [
+              0.07776073826374896,
+              1.5778833274373871,
+              -0.10030832072719328
+            ]
+          },
+          {
+            "ns": 156360975890200,
+            "angle": 0.5843147694812311,
+            "xyz": [
+              0.07720091721437042,
+              1.575981653771293,
+              -0.10150889409395847
+            ]
+          },
+          {
+            "ns": 156361014882600,
+            "angle": 0.6146599015001286,
+            "xyz": [
+              0.0766392304651453,
+              1.5741942688603645,
+              -0.10271346856142927
+            ]
+          },
+          {
+            "ns": 156361054172800,
+            "angle": 0.6435626916503673,
+            "xyz": [
+              0.07608316396308781,
+              1.5725300777079183,
+              -0.10390599002200701
+            ]
+          },
+          {
+            "ns": 156361092882800,
+            "angle": 0.6708271669166285,
+            "xyz": [
+              0.07554019283426337,
+              1.5709956852230282,
+              -0.10507042757466539
+            ]
+          },
+          {
+            "ns": 156361131759200,
+            "angle": 0.6962778545741122,
+            "xyz": [
+              0.07501756454987321,
+              1.5695954690818463,
+              -0.10619123853950982
+            ]
+          },
+          {
+            "ns": 156361171149300,
+            "angle": 0.7197627108014693,
+            "xyz": [
+              0.07452208788166866,
+              1.5683317070510183,
+              -0.10725382105680076
+            ]
+          },
+          {
+            "ns": 156361213433200,
+            "angle": 0.7411560492937319,
+            "xyz": [
+              0.07405993326642511,
+              1.5672047419053725,
+              -0.10824494221845626
+            ]
+          },
+          {
+            "ns": 156361252082200,
+            "angle": 0.7603614698752459,
+            "xyz": [
+              0.07363644902019426,
+              1.5662131646055337,
+              -0.10915313220866213
+            ]
+          },
+          {
+            "ns": 156361292230400,
+            "angle": 0.7773147871125995,
+            "xyz": [
+              0.07325599663470113,
+              1.5653539952068087,
+              -0.10996903752158904
+            ]
+          },
+          {
+            "ns": 156361331442200,
+            "angle": 0.791986958927558,
+            "xyz": [
+              0.07292180725600929,
+              1.5646228411280687,
+              -0.11068572875229138
+            ]
+          },
+          {
+            "ns": 156361370987300,
+            "angle": 0.804387015209993,
+            "xyz": [
+              0.07263586045911859,
+              1.5640140139312122,
+              -0.11129896057258948
+            ]
+          },
+          {
+            "ns": 156361411778400,
+            "angle": 0.8145649864308145,
+            "xyz": [
+              0.07239878561347883,
+              1.563520588607211,
+              -0.11180738325918532
+            ]
+          },
+          {
+            "ns": 156361449895800,
+            "angle": 0.8226148322548998,
+            "xyz": [
+              0.07220978545106638,
+              1.5631343934531075,
+              -0.1122127066069725
+            ]
+          },
+          {
+            "ns": 156361488191500,
+            "angle": 0.8286773701540299,
+            "xyz": [
+              0.07206658081303882,
+              1.562845923845979,
+              -0.11251981842347061
+            ]
+          },
+          {
+            "ns": 156361527475600,
+            "angle": 0.8329432040198139,
+            "xyz": [
+              0.07196537482623888,
+              1.562644179444259,
+              -0.1127368613547213
+            ]
+          },
+          {
+            "ns": 156361569082000,
+            "angle": 0.8356556527766293,
+            "xyz": [
+              0.07190083377416916,
+              1.562516431428396,
+              -0.1128752739087322
+            ]
+          },
+          {
+            "ns": 156361609125800,
+            "angle": 0.8371136789945429,
+            "xyz": [
+              0.07186608049031801,
+              1.5624479341818835,
+              -0.11294980462401333
+            ]
+          },
+          {
+            "ns": 156361650130800,
+            "angle": 0.8376748175022484,
+            "xyz": [
+              0.07185269403926368,
+              1.5624216041762564,
+              -0.11297851275347273
+            ]
+          },
+          {
+            "ns": 156361688488900,
+            "angle": 0.837758104,
+            "xyz": [
+              0.07185070663476684,
+              1.5624176976829582,
+              -0.11298277487382977
+            ]
+          }
+        ],
+        "input_only": true
+      }
+    ],
+    "magazine_input_planning": {
+      "left_in_model": [
+        [
+          -0.4037334629741179,
+          -0.9063122682999042,
+          -0.12488940389003761
+        ],
+        [
+          0.7398356844138181,
+          -0.4037348244490117,
+          0.5381833810097288
+        ],
+        [
+          -0.5381844023593251,
+          0.12488500252715724,
+          0.8335234161083466
+        ]
+      ],
+      "observed_world_grip_rotation": [
+        -0.3000000194673931,
+        4.8951591224977125e-08,
+        -0.0
+      ],
+      "raw_orientation_unchanged": true,
+      "actual_seating_must_be_observed": true
+    },
+    "wait_failures": [
+      {
+        "prefix": "hammerburst_reload_transition",
+        "start": 0,
+        "expected": "matching receipt",
+        "latest": [
+          {
+            "from": "1",
+            "to": "2",
+            "serial": "1",
+            "angle": "0",
+            "loaded": "72",
+            "reserve": "78",
+            "pending": "0",
+            "stationary_holds": "0"
+          },
+          {
+            "from": "2",
+            "to": "3",
+            "serial": "1",
+            "angle": "0.832928832",
+            "loaded": "72",
+            "reserve": "78",
+            "pending": "0",
+            "stationary_holds": "0"
+          },
+          {
+            "from": "3",
+            "to": "4",
+            "serial": "1",
+            "angle": "0.832928832",
+            "loaded": "72",
+            "reserve": "78",
+            "pending": "0",
+            "stationary_holds": "0"
+          },
+          {
+            "from": "4",
+            "to": "0",
+            "serial": "0",
+            "angle": "0",
+            "loaded": "0",
+            "reserve": "0",
+            "pending": "0",
+            "stationary_holds": "0"
+          }
+        ]
+      }
+    ],
+    "error": "AssertionError('No fresh hammerburst_reload_transition matching receipt in 8 seconds')"
+  },
+  "actual_trajectory_count": 6,
+  "trajectory_consistent": true,
+  "foreground_samples": 1593,
+  "cloak_samples": 2865,
+  "foreground_violations": [],
+  "cloak_violations": [],
+  "media": {
+    "frames": 359,
+    "errors": [],
+    "encoded": true,
+    "review": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-47240-media-review\\prepared.json",
+    "full_fit_accepted": false,
+    "encode_exit_code": 0
+  },
+  "verified_archive": [
+    {
+      "source": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\tools\\playground\\build-hb-cloak-1111-123129\\playground-47240.log",
+      "archive": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-47240-text\\playground-47240.log",
+      "sha256": "7ca28bb4cadc3aa6c67b48a9b8b1139d78946df5f9aa728f0dc91e24fafca466"
+    },
+    {
+      "source": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\hb-cloak-1111-123129\\actions\\menu-firstperson-47240-123150\\result.json",
+      "archive": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-47240-text\\result.json",
+      "sha256": "55327c4a439040f794e1928b9b8937a6659bd42a6a57d1c3bab82f09fd3c0af0"
+    },
+    {
+      "source": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\hb-cloak-1111-123129\\actions\\menu-firstperson-47240-123150\\equipment-chain.json",
+      "archive": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-47240-text\\equipment-chain.json",
+      "sha256": "2d1b5141295785906dea2a791c3f5ddd0c20eb5109db67802994f150744a15d3"
+    },
+    {
+      "source": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\hb-cloak-1111-123129\\actions\\menu-firstperson-47240-123150\\hammerburst-core.json",
+      "archive": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-47240-text\\hammerburst-core.json",
+      "sha256": "143975ee13906cac0b67f615ecca3d5bd7fa60f046d7bbf1f65dd272e851d22a"
+    },
+    {
+      "source": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\runtime\\continuous-stereo-47240-20261111-123146-4d4bd5de.json",
+      "archive": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-47240-text\\continuous-stereo-47240-20261111-123146-4d4bd5de.json",
+      "sha256": "2d65a47b4a9e0d4d899eb680d114ee3551d83429ebe353591e24fb086cc7ef26"
+    },
+    {
+      "source": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\hb-cloak-1111-123129\\isolated-done.json",
+      "archive": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-47240-text\\isolated-done.json",
+      "sha256": "be338989b06751d32086c809f0eabc1397dcbdaa5fba786a8052133cec088402"
+    },
+    {
+      "source": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\hb-cloak-1111-123129\\launcher-session.5f3edc99206c462190c06009dc03bf20.audio.jsonl",
+      "archive": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-47240-text\\launcher-session.5f3edc99206c462190c06009dc03bf20.audio.jsonl",
+      "sha256": "87c18b6aa9eaf35b1082c163d7a102f51c2775f9c966e5d70e29740c150dc210"
+    },
+    {
+      "source": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\hb-cloak-1111-123129\\actions\\menu-firstperson-47240-123150\\hammerburst-replacement.json",
+      "archive": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-47240-text\\hammerburst-replacement.json",
+      "sha256": "aa6d3999b765ee5df6772c0a42e8ee1adcafa2c2095d06f05916fd2226a78fea"
+    }
+  ],
+  "interpretation": "Actualcore6, original latch1->4; original extraction release encountered incomplete extraction andcleanup line474. No source withdrawal captured before this cleanup and no new-mag pose-gap branch; cannot attribute to new repair. Next inspect original extraction observe rejection/sample gap/endpoint rather than unchanged rerun.",
+  "gameplay_accepted": false,
+  "physical_headset_accepted": false,
+  "hammerburst_press_timing_rows": [
+    {
+      "frame": "246",
+      "phase": "7",
+      "invoked": "1",
+      "sync_ns": "156351540445100",
+      "entry_ns": "156351584553100",
+      "entry_age_ns": "44108000",
+      "entry_checks_ns": "638100",
+      "asset_ns": "2419900",
+      "contract_ns": "2565400",
+      "button_schema_ns": "56600",
+      "final_reserve_ns": "1500",
+      "owned_and_dispatch_ns": "58000",
+      "asset_read_ns": "281700",
+      "attachment_ns": "1521100",
+      "post_asset_current_ns": "617000"
+    }
+  ],
+  "hammerburst_reload_transition_rows": [
+    {
+      "from": "1",
+      "to": "2",
+      "serial": "1",
+      "angle": "0",
+      "loaded": "72",
+      "reserve": "78",
+      "pending": "0",
+      "stationary_holds": "0"
+    },
+    {
+      "from": "2",
+      "to": "3",
+      "serial": "1",
+      "angle": "0.832928832",
+      "loaded": "72",
+      "reserve": "78",
+      "pending": "0",
+      "stationary_holds": "0"
+    },
+    {
+      "from": "3",
+      "to": "4",
+      "serial": "1",
+      "angle": "0.832928832",
+      "loaded": "72",
+      "reserve": "78",
+      "pending": "0",
+      "stationary_holds": "0"
+    },
+    {
+      "from": "4",
+      "to": "0",
+      "serial": "0",
+      "angle": "0",
+      "loaded": "0",
+      "reserve": "0",
+      "pending": "0",
+      "stationary_holds": "0"
+    }
+  ],
+  "hammerburst_latch_frame_rows": [
+    {
+      "frame": "346",
+      "sequence": "3478",
+      "token": "1",
+      "request_magazine": "1",
+      "defer_incumbent": "1"
+    },
+    {
+      "frame": "346",
+      "sequence": "3478",
+      "token": "1",
+      "request_magazine": "1",
+      "defer_incumbent": "1"
+    },
+    {
+      "frame": "346",
+      "sequence": "3478",
+      "token": "1",
+      "request_magazine": "1",
+      "defer_incumbent": "1"
+    },
+    {
+      "frame": "346",
+      "sequence": "3478",
+      "token": "1",
+      "request_magazine": "1",
+      "defer_incumbent": "1"
+    },
+    {
+      "frame": "346",
+      "sequence": "3478",
+      "token": "1",
+      "request_magazine": "1",
+      "defer_incumbent": "1"
+    }
+  ],
+  "hammerburst_supply_frame_rows": [],
+  "hammerburst_identity_lost_rows": [],
+  "native_equipment_support_withdrawal_rows": [],
+  "hammerburst_feed_history_rows": [],
+  "hammerburst_feed_outcome_rows": [],
+  "hammerburst_feed_rejected_rows": [],
+  "hammerburst_feed_move_rejected_rows": [],
+  "hammerburst_service_loss_rows": [],
+  "hammerburst_stale_debt_wait_rows": [],
+  "hammerburst_reload_complete_rows": [],
+  "hammerburst_early_reload_rows": [
+    {
+      "frame": "346",
+      "sequence": "3478",
+      "sync_ns": "156359587108100",
+      "before_active": "0",
+      "after_active": "1",
+      "consumed": "1",
+      "once": "1"
+    },
+    {
+      "frame": "347",
+      "sequence": "3482",
+      "sync_ns": "156359676761600",
+      "before_active": "1",
+      "after_active": "1",
+      "consumed": "1",
+      "once": "1"
+    },
+    {
+      "frame": "348",
+      "sequence": "3486",
+      "sync_ns": "156359771256300",
+      "before_active": "1",
+      "after_active": "1",
+      "consumed": "1",
+      "once": "1"
+    },
+    {
+      "frame": "349",
+      "sequence": "3489",
+      "sync_ns": "156359832134800",
+      "before_active": "1",
+      "after_active": "1",
+      "consumed": "1",
+      "once": "1"
+    },
+    {
+      "frame": "350",
+      "sequence": "3493",
+      "sync_ns": "156359920373800",
+      "before_active": "1",
+      "after_active": "1",
+      "consumed": "1",
+      "once": "1"
+    },
+    {
+      "frame": "351",
+      "sequence": "3495",
+      "sync_ns": "156359965801900",
+      "before_active": "1",
+      "after_active": "1",
+      "consumed": "1",
+      "once": "1"
+    },
+    {
+      "frame": "352",
+      "sequence": "3500",
+      "sync_ns": "156360077153400",
+      "before_active": "1",
+      "after_active": "1",
+      "consumed": "1",
+      "once": "1"
+    },
+    {
+      "frame": "353",
+      "sequence": "3504",
+      "sync_ns": "156360165499200",
+      "before_active": "1",
+      "after_active": "1",
+      "consumed": "1",
+      "once": "1"
+    },
+    {
+      "frame": "354",
+      "sequence": "3507",
+      "sync_ns": "156360231799800",
+      "before_active": "1",
+      "after_active": "1",
+      "consumed": "1",
+      "once": "1"
+    },
+    {
+      "frame": "355",
+      "sequence": "3511",
+      "sync_ns": "156360321860500",
+      "before_active": "1",
+      "after_active": "1",
+      "consumed": "1",
+      "once": "1"
+    },
+    {
+      "frame": "356",
+      "sequence": "3514",
+      "sync_ns": "156360387917900",
+      "before_active": "1",
+      "after_active": "1",
+      "consumed": "1",
+      "once": "1"
+    },
+    {
+      "frame": "357",
+      "sequence": "3518",
+      "sync_ns": "156360478587200",
+      "before_active": "1",
+      "after_active": "1",
+      "consumed": "1",
+      "once": "1"
+    }
+  ],
+  "hammerburst_inventory_timing_rows": [
+    {
+      "frame": "39",
+      "sequence": "2453",
+      "phase": "4",
+      "stage": "ok",
+      "entry_age_ns": "17371600",
+      "exit_age_ns": "20155000",
+      "elapsed_ns": "2783400",
+      "current_before_ns": "744100",
+      "snapshot_ns": "1213100",
+      "binding_ns": "100",
+      "current_after_ns": "826000",
+      "right_pressed": "0",
+      "right_released": "0",
+      "right_down": "0",
+      "withdrawal_same": "0",
+      "withdrawal_failure": "0",
+      "withdrawal_difference": "0",
+      "withdrawal_age_ns": "-1"
+    },
+    {
+      "frame": "40",
+      "sequence": "2457",
+      "phase": "4",
+      "stage": "ok",
+      "entry_age_ns": "23068300",
+      "exit_age_ns": "26104900",
+      "elapsed_ns": "3036600",
+      "current_before_ns": "707900",
+      "snapshot_ns": "1239900",
+      "binding_ns": "100",
+      "current_after_ns": "1088700",
+      "right_pressed": "0",
+      "right_released": "0",
+      "right_down": "0",
+      "withdrawal_same": "0",
+      "withdrawal_failure": "0",
+      "withdrawal_difference": "0",
+      "withdrawal_age_ns": "-1"
+    },
+    {
+      "frame": "41",
+      "sequence": "2460",
+      "phase": "4",
+      "stage": "ok",
+      "entry_age_ns": "11395200",
+      "exit_age_ns": "15368100",
+      "elapsed_ns": "3972900",
+      "current_before_ns": "1115200",
+      "snapshot_ns": "1811200",
+      "binding_ns": "0",
+      "current_after_ns": "1046500",
+      "right_pressed": "0",
+      "right_released": "0",
+      "right_down": "0",
+      "withdrawal_same": "0",
+      "withdrawal_failure": "0",
+      "withdrawal_difference": "0",
+      "withdrawal_age_ns": "-1"
+    },
+    {
+      "frame": "42",
+      "sequence": "2462",
+      "phase": "4",
+      "stage": "ok",
+      "entry_age_ns": "21955000",
+      "exit_age_ns": "25848100",
+      "elapsed_ns": "3893100",
+      "current_before_ns": "1201200",
+      "snapshot_ns": "1811800",
+      "binding_ns": "100",
+      "current_after_ns": "880000",
+      "right_pressed": "0",
+      "right_released": "0",
+      "right_down": "0",
+      "withdrawal_same": "0",
+      "withdrawal_failure": "0",
+      "withdrawal_difference": "0",
+      "withdrawal_age_ns": "-1"
+    },
+    {
+      "frame": "136",
+      "sequence": "2723",
+      "phase": "4",
+      "stage": "ok",
+      "entry_age_ns": "10340000",
+      "exit_age_ns": "14254500",
+      "elapsed_ns": "3914500",
+      "current_before_ns": "1280500",
+      "snapshot_ns": "1561400",
+      "binding_ns": "0",
+      "current_after_ns": "1072600",
+      "right_pressed": "0",
+      "right_released": "0",
+      "right_down": "0",
+      "withdrawal_same": "0",
+      "withdrawal_failure": "0",
+      "withdrawal_difference": "0",
+      "withdrawal_age_ns": "-1"
+    },
+    {
+      "frame": "137",
+      "sequence": "2725",
+      "phase": "4",
+      "stage": "ok",
+      "entry_age_ns": "17403900",
+      "exit_age_ns": "19948600",
+      "elapsed_ns": "2544700",
+      "current_before_ns": "711900",
+      "snapshot_ns": "1127900",
+      "binding_ns": "100",
+      "current_after_ns": "704800",
+      "right_pressed": "0",
+      "right_released": "0",
+      "right_down": "0",
+      "withdrawal_same": "0",
+      "withdrawal_failure": "0",
+      "withdrawal_difference": "0",
+      "withdrawal_age_ns": "-1"
+    },
+    {
+      "frame": "138",
+      "sequence": "2727",
+      "phase": "4",
+      "stage": "ok",
+      "entry_age_ns": "33590900",
+      "exit_age_ns": "36037100",
+      "elapsed_ns": "2446200",
+      "current_before_ns": "663200",
+      "snapshot_ns": "1081300",
+      "binding_ns": "0",
+      "current_after_ns": "701700",
+      "right_pressed": "0",
+      "right_released": "0",
+      "right_down": "0",
+      "withdrawal_same": "0",
+      "withdrawal_failure": "0",
+      "withdrawal_difference": "0",
+      "withdrawal_age_ns": "-1"
+    },
+    {
+      "frame": "139",
+      "sequence": "2730",
+      "phase": "4",
+      "stage": "ok",
+      "entry_age_ns": "12139000",
+      "exit_age_ns": "14659900",
+      "elapsed_ns": "2520900",
+      "current_before_ns": "641700",
+      "snapshot_ns": "1199000",
+      "binding_ns": "0",
+      "current_after_ns": "680200",
+      "right_pressed": "0",
+      "right_released": "0",
+      "right_down": "0",
+      "withdrawal_same": "0",
+      "withdrawal_failure": "0",
+      "withdrawal_difference": "0",
+      "withdrawal_age_ns": "-1"
+    },
+    {
+      "frame": "140",
+      "sequence": "2732",
+      "phase": "4",
+      "stage": "ok",
+      "entry_age_ns": "35615700",
+      "exit_age_ns": "38137500",
+      "elapsed_ns": "2521800",
+      "current_before_ns": "675300",
+      "snapshot_ns": "1131400",
+      "binding_ns": "100",
+      "current_after_ns": "715000",
+      "right_pressed": "0",
+      "right_released": "0",
+      "right_down": "0",
+      "withdrawal_same": "0",
+      "withdrawal_failure": "0",
+      "withdrawal_difference": "0",
+      "withdrawal_age_ns": "-1"
+    },
+    {
+      "frame": "141",
+      "sequence": "2735",
+      "phase": "4",
+      "stage": "ok",
+      "entry_age_ns": "26420600",
+      "exit_age_ns": "29500200",
+      "elapsed_ns": "3079600",
+      "current_before_ns": "796900",
+      "snapshot_ns": "1516800",
+      "binding_ns": "0",
+      "current_after_ns": "765900",
+      "right_pressed": "0",
+      "right_released": "0",
+      "right_down": "0",
+      "withdrawal_same": "0",
+      "withdrawal_failure": "0",
+      "withdrawal_difference": "0",
+      "withdrawal_age_ns": "-1"
+    },
+    {
+      "frame": "142",
+      "sequence": "2738",
+      "phase": "4",
+      "stage": "ok",
+      "entry_age_ns": "18932000",
+      "exit_age_ns": "21552700",
+      "elapsed_ns": "2620700",
+      "current_before_ns": "709000",
+      "snapshot_ns": "1177100",
+      "binding_ns": "0",
+      "current_after_ns": "734600",
+      "right_pressed": "1",
+      "right_released": "0",
+      "right_down": "1",
+      "withdrawal_same": "0",
+      "withdrawal_failure": "0",
+      "withdrawal_difference": "0",
+      "withdrawal_age_ns": "-1"
+    },
+    {
+      "frame": "143",
+      "sequence": "2740",
+      "phase": "4",
+      "stage": "ok",
+      "entry_age_ns": "31756000",
+      "exit_age_ns": "35327400",
+      "elapsed_ns": "3571400",
+      "current_before_ns": "1202900",
+      "snapshot_ns": "1539200",
+      "binding_ns": "100",
+      "current_after_ns": "829200",
+      "right_pressed": "1",
+      "right_released": "0",
+      "right_down": "1",
+      "withdrawal_same": "0",
+      "withdrawal_failure": "0",
+      "withdrawal_difference": "0",
+      "withdrawal_age_ns": "-1"
+    },
+    {
+      "frame": "145",
+      "sequence": "2745",
+      "phase": "4",
+      "stage": "ok",
+      "entry_age_ns": "13161000",
+      "exit_age_ns": "15945000",
+      "elapsed_ns": "2784000",
+      "current_before_ns": "635300",
+      "snapshot_ns": "1360200",
+      "binding_ns": "0",
+      "current_after_ns": "788500",
+      "right_pressed": "1",
+      "right_released": "1",
+      "right_down": "0",
+      "withdrawal_same": "0",
+      "withdrawal_failure": "7",
+      "withdrawal_difference": "8",
+      "withdrawal_age_ns": "24115600"
+    }
+  ],
+  "hammerburst_pickup_up_rows": [
+    {
+      "frame": "136",
+      "sequence": "2723",
+      "sync_ns": "156342793480500",
+      "admitted_ns": "156342807735000",
+      "frame_now_ns": "156342795569700",
+      "source": "1",
+      "right_pressed": "0",
+      "right_released": "0",
+      "right_down": "0",
+      "input_status": "quiet",
+      "session": "156306564179000",
+      "space": "1",
+      "input": "2",
+      "profile": "2",
+      "reference": "1",
+      "lifecycle": "3",
+      "world_generation": "1"
+    },
+    {
+      "frame": "137",
+      "sequence": "2725",
+      "sync_ns": "156342839301500",
+      "admitted_ns": "156342859250100",
+      "frame_now_ns": "156342845809900",
+      "source": "1",
+      "right_pressed": "0",
+      "right_released": "0",
+      "right_down": "0",
+      "input_status": "quiet",
+      "session": "156306564179000",
+      "space": "1",
+      "input": "2",
+      "profile": "2",
+      "reference": "1",
+      "lifecycle": "3",
+      "world_generation": "1"
+    },
+    {
+      "frame": "138",
+      "sequence": "2727",
+      "sync_ns": "156342883820700",
+      "admitted_ns": "156342919857800",
+      "frame_now_ns": "156342905569700",
+      "source": "1",
+      "right_pressed": "0",
+      "right_released": "0",
+      "right_down": "0",
+      "input_status": "quiet",
+      "session": "156306564179000",
+      "space": "1",
+      "input": "2",
+      "profile": "2",
+      "reference": "1",
+      "lifecycle": "3",
+      "world_generation": "1"
+    },
+    {
+      "frame": "139",
+      "sequence": "2730",
+      "sync_ns": "156342955979600",
+      "admitted_ns": "156342970639500",
+      "frame_now_ns": "156342959137900",
+      "source": "1",
+      "right_pressed": "0",
+      "right_released": "0",
+      "right_down": "0",
+      "input_status": "quiet",
+      "session": "156306564179000",
+      "space": "1",
+      "input": "2",
+      "profile": "2",
+      "reference": "1",
+      "lifecycle": "3",
+      "world_generation": "1"
+    },
+    {
+      "frame": "140",
+      "sequence": "2732",
+      "sync_ns": "156342994105500",
+      "admitted_ns": "156343032243000",
+      "frame_now_ns": "156343014197700",
+      "source": "1",
+      "right_pressed": "0",
+      "right_released": "0",
+      "right_down": "0",
+      "input_status": "quiet",
+      "session": "156306564179000",
+      "space": "1",
+      "input": "2",
+      "profile": "2",
+      "reference": "1",
+      "lifecycle": "3",
+      "world_generation": "1"
+    },
+    {
+      "frame": "141",
+      "sequence": "2735",
+      "sync_ns": "156343061305000",
+      "admitted_ns": "156343090805200",
+      "frame_now_ns": "156343075861800",
+      "source": "1",
+      "right_pressed": "0",
+      "right_released": "0",
+      "right_down": "0",
+      "input_status": "quiet",
+      "session": "156306564179000",
+      "space": "1",
+      "input": "2",
+      "profile": "2",
+      "reference": "1",
+      "lifecycle": "3",
+      "world_generation": "1"
+    },
+    {
+      "frame": "145",
+      "sequence": "2745",
+      "sync_ns": "156343289708500",
+      "admitted_ns": "156343305653500",
+      "frame_now_ns": "156343293358400",
+      "source": "1",
+      "right_pressed": "1",
+      "right_released": "1",
+      "right_down": "0",
+      "input_status": "baseline",
+      "session": "156306564179000",
+      "space": "1",
+      "input": "2",
+      "profile": "2",
+      "reference": "1",
+      "lifecycle": "3",
+      "world_generation": "1"
+    }
+  ],
+  "native_equipment_input_gap_rows": [],
+  "native_equipment_frame_read_rows": [],
+  "native_equipment_rows": [
+    {
+      "status": "baseline",
+      "slot": "4",
+      "target": "0",
+      "event": "0",
+      "press": "0",
+      "frame": "39",
+      "source_sequence": "2453",
+      "cookie": "1",
+      "inventory_stage": "ok",
+      "input_status": "baseline",
+      "input_previous_sync_ns": "0",
+      "input_sync_ns": "156336828017000",
+      "input_received_ns": "156336828044700",
+      "input_recorded_press_sync_ns": "0",
+      "input_control": "6"
+    },
+    {
+      "status": "idle",
+      "slot": "4",
+      "target": "0",
+      "event": "0",
+      "press": "0",
+      "frame": "40",
+      "source_sequence": "2457",
+      "cookie": "1",
+      "inventory_stage": "ok",
+      "input_status": "quiet",
+      "input_previous_sync_ns": "156336828017000",
+      "input_sync_ns": "156336874996300",
+      "input_received_ns": "156336875029500",
+      "input_recorded_press_sync_ns": "0",
+      "input_control": "6"
+    },
+    {
+      "status": "unholster_pending",
+      "slot": "3",
+      "target": "162c486700",
+      "event": "1",
+      "press": "1",
+      "frame": "142",
+      "source_sequence": "2738",
+      "cookie": "1",
+      "inventory_stage": "ok",
+      "input_status": "event",
+      "input_previous_sync_ns": "156343061305000",
+      "input_sync_ns": "156343127660500",
+      "input_received_ns": "156343127685700",
+      "input_recorded_press_sync_ns": "156343090641200",
+      "input_control": "6"
+    },
+    {
+      "status": "held",
+      "slot": "3",
+      "target": "162c486700",
+      "event": "1",
+      "press": "1",
+      "frame": "143",
+      "source_sequence": "2740",
+      "cookie": "1",
+      "inventory_stage": "ok",
+      "input_status": "event",
+      "input_previous_sync_ns": "156343061305000",
+      "input_sync_ns": "156343127660500",
+      "input_received_ns": "156343127685700",
+      "input_recorded_press_sync_ns": "156343090641200",
+      "input_control": "6"
+    },
+    {
+      "status": "baseline",
+      "slot": "4",
+      "target": "0",
+      "event": "0",
+      "press": "0",
+      "frame": "145",
+      "source_sequence": "2745",
+      "cookie": "1",
+      "inventory_stage": "ok",
+      "input_status": "baseline",
+      "input_previous_sync_ns": "0",
+      "input_sync_ns": "156343289708500",
+      "input_received_ns": "156343289737600",
+      "input_recorded_press_sync_ns": "0",
+      "input_control": "6"
+    },
+    {
+      "status": "idle",
+      "slot": "4",
+      "target": "0",
+      "event": "0",
+      "press": "0",
+      "frame": "146",
+      "source_sequence": "2747",
+      "cookie": "1",
+      "inventory_stage": "held_chain_observation",
+      "input_status": "quiet",
+      "input_previous_sync_ns": "156343289708500",
+      "input_sync_ns": "156343327028100",
+      "input_received_ns": "156343327053400",
+      "input_recorded_press_sync_ns": "0",
+      "input_control": "6"
+    }
+  ],
+  "native_hammerburst_first_wait_rows": [
+    {
+      "phase": "service",
+      "service": "0",
+      "delivery": "0",
+      "enter": "0",
+      "validated": "1",
+      "first_debt": "1",
+      "cancel": "0",
+      "source_frame": "0",
+      "tracking_only": "0",
+      "decision_ns": "0",
+      "sync_ns": "0",
+      "stereo_ns": "0",
+      "render_ns": "0",
+      "sampled_ns": "0",
+      "event_captured_ns": "156351598952700",
+      "observed_ns": "156351663757100"
+    },
+    {
+      "phase": "deliver",
+      "service": "0",
+      "delivery": "12",
+      "enter": "0",
+      "validated": "0",
+      "first_debt": "0",
+      "cancel": "0",
+      "source_frame": "247",
+      "tracking_only": "1",
+      "decision_ns": "156351679083100",
+      "sync_ns": "156351629200800",
+      "stereo_ns": "156351629195400",
+      "render_ns": "0",
+      "sampled_ns": "156351655191500",
+      "event_captured_ns": "0",
+      "observed_ns": "156351686599700"
+    }
+  ],
+  "native_hammerburst_release_rejected_rows": [],
+  "native_hammerburst_continuation_rejected_rows": [],
+  "pose_gap_repair_live_exercised": false,
+  "pose_gap_incumbent_rows": [],
+  "original_extraction_cleanup": [
+    {
+      "line": "474",
+      "stage": "4",
+      "serial": "1",
+      "angle": "0.832928832",
+      "animation": "1",
+      "stopped": "1",
+      "pending": "0",
+      "stationary_holds": "0"
+    }
+  ],
+  "original_feed_samples": [
+    {
+      "stage": "4",
+      "sequence": "3582",
+      "item": "1",
+      "hand": "-0.0210085979,0.252154266,-0.0188418259",
+      "hand_quat": "-0.204020086,0.204023553,0.812554603,0.506463436",
+      "depth": "-9.09253083e-23",
+      "lateral": "6.28223161e-18",
+      "orientation_dot": "1"
+    },
+    {
+      "stage": "4",
+      "sequence": "3603",
+      "item": "1",
+      "hand": "-0.0210095874,0.242053019,-0.036845427",
+      "hand_quat": "-0.204020086,0.204023553,0.812554603,0.506463436",
+      "depth": "0.0206437603",
+      "lateral": "8.47985739e-07",
+      "orientation_dot": "1"
+    },
+    {
+      "stage": "4",
+      "sequence": "3607",
+      "item": "1",
+      "hand": "-0.021010118,0.236656494,-0.0464637118",
+      "hand_quat": "-0.204020086,0.204023553,0.812554603,0.506463436",
+      "depth": "0.0316725355",
+      "lateral": "1.2966202e-06",
+      "orientation_dot": "1"
+    },
+    {
+      "stage": "4",
+      "sequence": "3611",
+      "item": "1",
+      "hand": "-0.0210106775,0.230948003,-0.0566379775",
+      "hand_quat": "-0.204020086,0.204023553,0.812554603,0.506463436",
+      "depth": "0.0433388355",
+      "lateral": "1.75869611e-06",
+      "orientation_dot": "1"
+    },
+    {
+      "stage": "4",
+      "sequence": "3615",
+      "item": "1",
+      "hand": "-0.0210112081,0.225551478,-0.0662562623",
+      "hand_quat": "-0.204020086,0.204023553,0.812554603,0.506463436",
+      "depth": "0.0543676108",
+      "lateral": "2.20739808e-06",
+      "orientation_dot": "1"
+    },
+    {
+      "stage": "4",
+      "sequence": "3619",
+      "item": "1",
+      "hand": "-0.0210118222,0.219249704,-0.0774879578",
+      "hand_quat": "-0.204020086,0.204023553,0.812554603,0.506463436",
+      "depth": "0.067246405",
+      "lateral": "2.72007278e-06",
+      "orientation_dot": "1"
+    }
+  ],
+  "full_goal_complete": false,
+  "first_failure_detail": "Core6 passed, original latch1->4. Real release invokes cleanup474 because extraction.complete is false. Last logged moving sample depth67.246405mm; logs omit stationary/sub10mm samples, so not proof of actual final endpoint. No support withdrawal before cleanup captured; do not label this as the new-magazine pose-gap bug. Original extraction rejects >100ms gaps but per-call acceptance is not logged. Need bounded original extraction observe result before causal repair or another unchanged run."
+}
