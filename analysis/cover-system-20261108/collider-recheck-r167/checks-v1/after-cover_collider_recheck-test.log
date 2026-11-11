@@ -1,0 +1,6 @@
+CoverColliderRoles checks=219 failures=0 synthetic reflected fields only; no NxActor/complete-self/geometry/movement proof
+collider_recheck presence=0 five_reads=18275
+collider_recheck presence=1 five_reads=22055
+collider_recheck presence=2 five_reads=22055
+FAIL 38: repeat(guard,out)!=collider::Code::current&&collider::same(out,first) reason=ready stage=ready field=BoneSpring
+CoverColliderRecheck checks=407 failures=1 existing fixtures, actual readers; no game

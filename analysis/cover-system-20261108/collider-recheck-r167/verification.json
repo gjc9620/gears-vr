@@ -1,0 +1,45 @@
+{
+  "runtime_delta": [
+    "tools/native-capture/cover_collider_roles_live.inl",
+    "tools/native-capture/cover_physics_query_live.inl"
+  ],
+  "native_sha256": "a41fadcf144fdde43a2573b1e5f52530e43ceca8eef256439ed505d0994b3ce8",
+  "project_dependencies": 410,
+  "outside_worktree_dependencies": 0,
+  "scope": "Only SourceGuard collider rechecks in one synchronous execute; initial sample invalidates and rebuilds, owner key/Scene required; entered failure latches false",
+  "dynamic_passes": 2,
+  "dynamic_fields_added_to_existing_closing_proof": 8,
+  "complete_proofs_revalidated_before_offsets": true,
+  "original_full_closing_preserved": true,
+  "initial_sample_guard_transaction_preserved": true,
+  "baseline_owner_mutation_acceptance_reproduced": true,
+  "new_owner_mutation_rejected": true,
+  "checks_before": 380,
+  "checks_after": 407,
+  "includes_existing_collider_checks": 219,
+  "read_comparison": {
+    "0": {
+      "before": 22855,
+      "after": 18375,
+      "reduction": 0.19601837672281774
+    },
+    "1": {
+      "before": 30025,
+      "after": 22255,
+      "reduction": 0.2587843463780183
+    },
+    "2": {
+      "before": 30025,
+      "after": 22255,
+      "reduction": 0.2587843463780183
+    }
+  },
+  "flags_unchanged": true,
+  "build_only": true,
+  "game_started": false,
+  "source_age_repaired": false,
+  "movement_authorized": false,
+  "world_coverage_verified": false,
+  "public_changed": false,
+  "early_failures": "v1 reproduced baseline and candidate unclosed late OwnerComponent mutation. v2 closed all eight dynamic fields; inherited BoneSpring hook moved to its own second read in v3 to preserve between-observation intent under paired reads."
+}

@@ -1,0 +1,5 @@
+CoverColliderRoles checks=219 failures=0 synthetic reflected fields only; no NxActor/complete-self/geometry/movement proof
+collider_recheck presence=0 five_reads=18375
+collider_recheck presence=1 five_reads=22255
+collider_recheck presence=2 five_reads=22255
+CoverColliderRecheck checks=407 failures=0 existing fixtures, actual readers; no game

@@ -53,7 +53,7 @@ template<class Engine=q::Queries> class Session {
             if(code!=roles::Code::current)return reject(Gate::physics_read,unsigned(code));
             if(!roles::same(session.before_,session.after_))return reject(Gate::physics_match);
             if constexpr(WithCollider){
-                const auto collider=timing::measure(timing::Stage::collider_repeat,[&](){return collider_roles::sample(actor,owner,session.collider_work_,session.collider_after_);});
+                const auto collider=timing::measure(timing::Stage::collider_repeat,[&](){return collider_roles::recheck(actor,owner,session.collider_work_,session.collider_after_);});
                 if(collider!=roles::Code::current)return reject(Gate::collider_read,unsigned(collider));
                 if(!collider_roles::same(session.collider_before_,session.collider_after_))return reject(Gate::collider_match);
             }

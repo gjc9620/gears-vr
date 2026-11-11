@@ -86,7 +86,9 @@ int GEARS_COLLIDER_ROLES_TEST_MAIN(){
     }
     for(unsigned change=0;change<7;++change){collider_setup();result=initial;
         if(change==0)plan(single_body+0x88,1,cylinder+0x1a0,0,8);
-        if(change==1)plan(single_body+0x88,2,single_body+0x90,arena+0xb2000,8);
+        // Mutate on BoneSpring's own second observation. This remains a
+        // between-read change with scalar or paired source-field readers.
+        if(change==1)plan(single_body+0x90,2,single_body+0x90,arena+0xb2000,8);
         if(change==2)plan(single_body+0x88,1,instance_prop+0x94,0x1a8,4);
         if(change==3){plan(single_body+0x88,1,0,0,0);change_generation=true;}
         if(change==4){plan(single_body+0x88,1,0,0,0);throw_read=true;}

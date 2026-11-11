@@ -1,0 +1,74 @@
+[
+  {
+    "variant": "before",
+    "name": "cover_collider_recheck",
+    "build_exit": 0,
+    "test_exit": 0,
+    "output": "CoverColliderRoles checks=219 failures=0 synthetic reflected fields only; no NxActor/complete-self/geometry/movement proof\r\ncollider_recheck presence=0 five_reads=22855\r\ncollider_recheck presence=1 five_reads=30025\r\ncollider_recheck presence=2 five_reads=30025\r\nbaseline_unclosed_owner_race=1\r\nCoverColliderRecheck checks=380 failures=0 existing fixtures, actual readers; no game\r\n",
+    "outside_worktree_dependencies": []
+  },
+  {
+    "variant": "after",
+    "name": "cover_collider_recheck",
+    "build_exit": 0,
+    "test_exit": 1,
+    "output": "FAIL 95: collider::sample(actor,guard,collider_work,result)!=collider::Code::current&&collider::same(result,initial) reason=ready stage=ready field=BoneSpring\r\nCoverColliderRoles checks=219 failures=1 synthetic reflected fields only; no NxActor/complete-self/geometry/movement proof\r\n",
+    "outside_worktree_dependencies": []
+  },
+  {
+    "variant": "after",
+    "name": "cover_collider_roles_live",
+    "build_exit": 0,
+    "test_exit": 1,
+    "output": "FAIL 95: collider::sample(actor,guard,collider_work,result)!=collider::Code::current&&collider::same(result,initial) reason=ready stage=ready field=BoneSpring\r\nCoverColliderRoles checks=219 failures=1 synthetic reflected fields only; no NxActor/complete-self/geometry/movement proof\r\n",
+    "outside_worktree_dependencies": []
+  },
+  {
+    "variant": "after",
+    "name": "cover_component_roles_live",
+    "build_exit": 0,
+    "test_exit": 0,
+    "output": "CoverComponentRoles checks=207 failures=0 declared Pawn/current Weapon arrays only; no complete self or actor/geometry proof\r\n",
+    "outside_worktree_dependencies": []
+  },
+  {
+    "variant": "after",
+    "name": "cover_query_guard_live",
+    "build_exit": 0,
+    "test_exit": 0,
+    "output": "CoverQueryGuard checks=23 failed=0 real typed reader/Session; Host dispatch, no game\r\n",
+    "outside_worktree_dependencies": []
+  },
+  {
+    "variant": "after",
+    "name": "cover_physics_query_live",
+    "build_exit": 0,
+    "test_exit": 0,
+    "output": "cover_physics_query_live: 105 checks, 0 failures; dispatch/module are Host seams, no original call\r\n",
+    "outside_worktree_dependencies": []
+  },
+  {
+    "variant": "after",
+    "name": "cover_physics_capsule_path_live",
+    "build_exit": 0,
+    "test_exit": 0,
+    "output": "CoverCapsulePathSession checks=391 failed=0 typed-source/Session real; module/dispatch Host; no game\r\n",
+    "outside_worktree_dependencies": []
+  },
+  {
+    "variant": "after",
+    "name": "cover_physics_overlap_query_live",
+    "build_exit": 0,
+    "test_exit": 0,
+    "output": "CoverOverlapSession checks=53 failed=0 actual typed roles/Session; Host dispatch/owner packets; no game\r\n",
+    "outside_worktree_dependencies": []
+  },
+  {
+    "variant": "after",
+    "name": "cover_physics_c0_off",
+    "build_exit": 0,
+    "test_exit": 0,
+    "output": "cover_physics_c0 OFF: 51 checks, 0 failures; no game/module/query\r\n",
+    "outside_worktree_dependencies": []
+  }
+]

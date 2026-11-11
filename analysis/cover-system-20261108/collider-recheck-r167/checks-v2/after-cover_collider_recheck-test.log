@@ -1,0 +1,2 @@
+FAIL 95: collider::sample(actor,guard,collider_work,result)!=collider::Code::current&&collider::same(result,initial) reason=ready stage=ready field=BoneSpring
+CoverColliderRoles checks=219 failures=1 synthetic reflected fields only; no NxActor/complete-self/geometry/movement proof

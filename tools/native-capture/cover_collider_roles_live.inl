@@ -39,6 +39,7 @@ struct Workspace {
     std::array<binding::Property,2> pawn_fields{},component_fields{};
     std::array<binding::Property,4> body_fields{};
     Snapshot first{},last{};
+    binding::Binding sample_owner{};bool recheck_ready{};
     std::array<unsigned char,sizeof(gears_anchor::Config)> metadata{};
     std::uint64_t generation{};
 };
@@ -56,8 +57,8 @@ inline Code values(Workspace& w,binding::Binding const& owner,Snapshot& output,b
        !roles::role_property(w.pawn,next.pawn.cls,L"CylinderComponent",L"ComponentProperty",8,L"CylinderComponent",w.pawn_fields[0],&w.members)||
        !roles::role_property(w.pawn,next.pawn.cls,L"CollisionComponent",L"ComponentProperty",8,L"PrimitiveComponent",w.pawn_fields[1],&w.members))return Code::layout;
     std::uintptr_t cylinder{},selected{},component_owner{},body{};
-    if(!binding::field(cylinder,next.pawn.address,w.pawn_fields[0].offset)||
-       !binding::field(selected,next.pawn.address,w.pawn_fields[1].offset)||!cylinder||selected!=cylinder||
+    if(!binding::source_field(w.pawn,cylinder,next.pawn.address,w.pawn_fields[0].offset)||
+       !binding::source_field(w.pawn,selected,next.pawn.address,w.pawn_fields[1].offset)||!cylinder||selected!=cylinder||
        !instance(w.component,cylinder,next.cylinder)||next.cylinder.outer!=next.pawn.address)return Code::read;
     if(repeat){
         if(!binding::same(next.cylinder,w.first.cylinder)||!binding::current(w.component))return Code::changed;
@@ -65,8 +66,8 @@ inline Code values(Workspace& w,binding::Binding const& owner,Snapshot& output,b
        !roles::class_role(w.component,next.cylinder.cls,L"PrimitiveComponent",w.pawn_fields[1].reference.address)||
        !roles::role_property(w.component,next.cylinder.cls,L"Owner",L"ObjectProperty",8,L"Actor",w.component_fields[0],&w.members)||
        !roles::role_property(w.component,next.cylinder.cls,L"BodyInstance",L"ObjectProperty",8,L"RB_BodyInstance",w.component_fields[1],&w.members))return Code::layout;
-    if(!binding::field(component_owner,cylinder,w.component_fields[0].offset)||component_owner!=next.pawn.address||
-       !binding::field(body,cylinder,w.component_fields[1].offset))return Code::read;
+    if(!binding::source_field(w.component,component_owner,cylinder,w.component_fields[0].offset)||component_owner!=next.pawn.address||
+       !binding::source_field(w.component,body,cylinder,w.component_fields[1].offset))return Code::read;
     next.body_instance_offset=w.component_fields[1].offset;
     if(!body){next.presence=Presence::body_instance_field_null;output=next;return Code::current;}
     if(!instance(w.body,body,next.body))return Code::read;
@@ -81,10 +82,10 @@ inline Code values(Workspace& w,binding::Binding const& owner,Snapshot& output,b
        !roles::pointer_property(w.body,next.body.cls,L"BodyData",0x88,w.body_fields[2],&w.members)||
        !roles::pointer_property(w.body,next.body.cls,L"BoneSpring",0x90,w.body_fields[3],&w.members))return Code::layout;
     std::uintptr_t body_owner{};
-    if(!binding::field(next.body_index,body,w.body_fields[0].offset)||
-       !binding::field(body_owner,body,w.body_fields[1].offset)||body_owner!=cylinder||
-       !binding::field(next.body_data,body,w.body_fields[2].offset)||
-       !binding::field(next.bone_spring,body,w.body_fields[3].offset)||
+    if(!binding::source_field(w.body,next.body_index,body,w.body_fields[0].offset)||
+       !binding::source_field(w.body,body_owner,body,w.body_fields[1].offset)||body_owner!=cylinder||
+       !binding::source_field(w.body,next.body_data,body,w.body_fields[2].offset)||
+       !binding::source_field(w.body,next.bone_spring,body,w.body_fields[3].offset)||
        (next.body_data&&!source::pointer(next.body_data,8))||(next.bone_spring&&!source::pointer(next.bone_spring,8)))return Code::read;
     // BodyIndex is observed, not constrained to a PAA-array row. BoneSpring is
     // opaque; nonzero BodyData is still only a pointer, not a qualified actor.
@@ -98,6 +99,7 @@ template<class Guard> Code sample(binding::Binding const& actor,Guard guard,Work
     if(!actor.context_valid||!actor.world_generation||source::aliases(&work,sizeof work,&output,sizeof output)||
        source::aliases(&work,sizeof work,&actor,sizeof actor)||source::aliases(&output,sizeof output,&actor,sizeof actor))return Code::request;
     const auto owner=actor;
+    work.recheck_ready=false;
     try{
         if(!guard())return Code::guard;
         {
@@ -110,12 +112,38 @@ template<class Guard> Code sample(binding::Binding const& actor,Guard guard,Work
         }
         if(!guard())return Code::guard;
         if(!binding::same_key(owner,actor)||owner.scene_invocation!=actor.scene_invocation||owner.special_move!=actor.special_move)return Code::changed;
-        output=work.first;return Code::current;
+        output=work.first;work.sample_owner=owner;work.recheck_ready=true;return Code::current;
+    }catch(...){return Code::exception;}
+}
+// Only Session::SourceGuard reuses its initial successful sample within the
+// same synchronous execute. The next execute always starts with sample().
+// Both dynamic passes remain real reads; each stage revalidates its complete
+// prior Proof before offsets, and the original full closing proof remains.
+template<class Guard> Code recheck(binding::Binding const& actor,Guard guard,Workspace& work,Snapshot& output)noexcept{
+    if(!actor.context_valid||!actor.world_generation||source::aliases(&work,sizeof work,&output,sizeof output)||
+       source::aliases(&work,sizeof work,&actor,sizeof actor)||source::aliases(&output,sizeof output,&actor,sizeof actor))return Code::request;
+    const auto owner=actor;const bool prepared=work.recheck_ready;work.recheck_ready=false;
+    try{
+        if(!guard())return Code::guard;
+        if(!prepared||!binding::same_key(owner,work.sample_owner)||owner.scene_invocation!=work.sample_owner.scene_invocation||
+           owner.special_move!=work.sample_owner.special_move)return Code::changed;
+        {
+            std::unique_lock<std::mutex> lock(binding::mutex,std::try_to_lock);if(!lock.owns_lock())return Code::metadata;
+            if(!binding::context_ready()||!binding::metadata_current()||actor.world_generation!=binding::metadata_generation)return Code::metadata;
+            auto code=values(work,owner,work.last,true);if(code!=Code::current)return work.members.exhausted?Code::capacity:code;
+            if(!same(work.first,work.last))return Code::changed;
+            code=values(work,owner,work.last,true);if(code!=Code::current)return work.members.exhausted?Code::capacity:code;
+            if(!same(work.first,work.last)||!current(work))return Code::changed;
+        }
+        if(!guard())return Code::guard;
+        if(!binding::same_key(owner,actor)||owner.scene_invocation!=actor.scene_invocation||owner.special_move!=actor.special_move)return Code::changed;
+        output=work.last;work.recheck_ready=true;return Code::current;
     }catch(...){return Code::exception;}
 }
 #else
 struct Workspace {};
 template<class Guard> Code sample(binding::Binding const&,Guard,Workspace&,Snapshot&)noexcept{return Code::unavailable;}
+template<class Guard> Code recheck(binding::Binding const&,Guard,Workspace&,Snapshot&)noexcept{return Code::unavailable;}
 #endif
 } // namespace cover_collider_roles_live
 #endif
