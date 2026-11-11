@@ -3039,3 +3039,13 @@ authored胶囊Z轴→activeY轴创建修正和逐shape对应仍未证明；不�
 原工具桥接因ida_nexus缺失失败，未安装/升级；改用已安装本地IDA的只读脚本和独立DB副本，最终qexit0，无游戏/目标运行。首次相对地址基准误用导致无xref，纠正为raw0→140001000后定位；原数据常量地址必须加这一1000偏置（.02=1417070c4、.5=1417070e4、.025=14170778c、sign=141707080），证书逐原字节核对完整chunk与SHA，保留远尾块1408f2a3c。证据capsule-creation-r220，原DB未主动保存。
 
 仍需creation-scale当前来源闭合、逐active/authored身份关联、weld/flags参与规则、完整world fence及生产接入；未生产Native构建/安装/游戏/XR/头显，完整CV24/AC22和body/view/hit/muzzle同版事务、视图遮挡继续未完成，工程25%。
+
+## r221：skeletal碰撞体创建scale原调用来源与实例Owner关联已接通（2026-11-12）
+
+原211900保留RCX PhysicsAssetInstance于RSI、RDX SkeletalMeshComponent于RDI；先把mesh78 Actor赋到instance60。211a02…211a2e用component1e8乘1ec/1f0/1f4形成XYZ；211a34…211a76可选Actor198乘19c/1a0/1a4，再乘component各自乘积，原float分组与point route相同。211b69把该stack vector作R9传2c3efc，2c3f44留在RDI，2c47b8同RDI作为RDX传2cfa6c，RCX则BodySetup+6c。四个完整原函数/所有chunks、pseudocode、caller和指令证据creation-scale-r221逐字节SHA与原911ab9bc…快照核对。其余2d1eb0／1016350直接caller保留，不把这个skeletal来源冒充所有创建路径。
+
+新增cover_creation_scale_live.inl：复用已有scalar/vector反射检查，但以独立creation语义核对mesh250实例引用和PhysicsAssetInstance身份、instance60 Owner MeshPointer的schema/reference class，并要求其Actor与mesh78和typed roles Owner身份相同。这里明确要求外层认证211900创建route及当前C0/roles；不只因point公式相同就跳过实例关联。capture还要求同inventory mesh/instance和精确receiver scale，producer Proof贯穿raw payload前后；不在binding mutex内调用外层guard。
+
+356累计检查0失败（含原point292）：三种shape分别验证正常producer/capture，instance Owner或mesh实例引用/typed Owner不一致拒绝且保持输出；Actor缩放/instance Owner更改使旧Proof失效；非均匀输入如12/6/6按原值观察；读取payload时改变instance Owner返回guard且不覆盖旧输出，错误inventory实例在采集前拒绝。新增capture测试首次编译漏局部namespace别名，保留失败log；修正测试别名后build/test0，无产品放宽。
+
+原2c3efc还可从BodySetup cc/dc数组复用按scale索引的cached descriptor，因此“今天字段scale正确”仍不等于“当前active shape当时按它创建”。新producer只证明当前输入与所选原route字段对应；历史cache/active关联仍待闭合，不授予世界或移动权限。原完整源码/证书与记录同步，未游戏/XR/原调用/生产Native构建/安装；完整CV24/AC22、body/view/hit/muzzle事务和视图遮挡继续未完成，工程25%。

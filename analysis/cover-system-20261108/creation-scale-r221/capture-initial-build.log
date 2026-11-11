@@ -1,0 +1,58 @@
+cover_creation_scale_live_test.cpp
+J:\codexWorktree\gearsVr\tools\native-capture\cover_creation_scale_live_test.cpp(9): error C2653: “a”: 不是类或命名空间名称
+J:\codexWorktree\gearsVr\tools\native-capture\cover_creation_scale_live_test.cpp(9): error C2065: “Workspace”: 未声明的标识符
+J:\codexWorktree\gearsVr\tools\native-capture\cover_creation_scale_live_test.cpp(9): error C2672: “std::make_unique”: 未找到匹配的重载函数
+E:\vs\VC\Tools\MSVC\14.51.36231\include\memory(3676): note: 可能是“void std::make_unique(_Types ...)”
+J:\codexWorktree\gearsVr\tools\native-capture\cover_creation_scale_live_test.cpp(9): note: “std::make_unique”:“_Ty”的 模板 参数无效，应为类型
+E:\vs\VC\Tools\MSVC\14.51.36231\include\memory(3670): note: 或    “std::unique_ptr<_Ty,std::default_delete<_Ty>> std::make_unique(const size_t)”
+J:\codexWorktree\gearsVr\tools\native-capture\cover_creation_scale_live_test.cpp(9): note: “std::make_unique”:“_Ty”的 模板 参数无效，应为类型
+E:\vs\VC\Tools\MSVC\14.51.36231\include\memory(3665): note: 或    “std::unique_ptr<_Ty,std::default_delete<_Ty>> std::make_unique(_Types ...)”
+J:\codexWorktree\gearsVr\tools\native-capture\cover_creation_scale_live_test.cpp(9): note: “std::make_unique”:“_Ty”的 模板 参数无效，应为类型
+J:\codexWorktree\gearsVr\tools\native-capture\cover_creation_scale_live_test.cpp(9): error C2653: “a”: 不是类或命名空间名称
+J:\codexWorktree\gearsVr\tools\native-capture\cover_creation_scale_live_test.cpp(9): error C2065: “Snapshot”: 未声明的标识符
+J:\codexWorktree\gearsVr\tools\native-capture\cover_creation_scale_live_test.cpp(9): error C2672: “std::make_unique”: 未找到匹配的重载函数
+E:\vs\VC\Tools\MSVC\14.51.36231\include\memory(3676): note: 可能是“void std::make_unique(_Types ...)”
+J:\codexWorktree\gearsVr\tools\native-capture\cover_creation_scale_live_test.cpp(9): note: “std::make_unique”:“_Ty”的 模板 参数无效，应为类型
+E:\vs\VC\Tools\MSVC\14.51.36231\include\memory(3670): note: 或    “std::unique_ptr<_Ty,std::default_delete<_Ty>> std::make_unique(const size_t)”
+J:\codexWorktree\gearsVr\tools\native-capture\cover_creation_scale_live_test.cpp(9): note: “std::make_unique”:“_Ty”的 模板 参数无效，应为类型
+E:\vs\VC\Tools\MSVC\14.51.36231\include\memory(3665): note: 或    “std::unique_ptr<_Ty,std::default_delete<_Ty>> std::make_unique(_Types ...)”
+J:\codexWorktree\gearsVr\tools\native-capture\cover_creation_scale_live_test.cpp(9): note: “std::make_unique”:“_Ty”的 模板 参数无效，应为类型
+J:\codexWorktree\gearsVr\tools\native-capture\cover_creation_scale_live_test.cpp(15): error C2653: “a”: 不是类或命名空间名称
+J:\codexWorktree\gearsVr\tools\native-capture\cover_creation_scale_live_test.cpp(15): error C2065: “ArrayHeader”: 未声明的标识符
+J:\codexWorktree\gearsVr\tools\native-capture\cover_creation_scale_live_test.cpp(18): error C2653: “a”: 不是类或命名空间名称
+J:\codexWorktree\gearsVr\tools\native-capture\cover_creation_scale_live_test.cpp(18): error C2065: “Source”: 未声明的标识符
+J:\codexWorktree\gearsVr\tools\native-capture\cover_creation_scale_live_test.cpp(18): error C2146: 语法错误: 缺少“;”(在标识符“source”的前面)
+J:\codexWorktree\gearsVr\tools\native-capture\cover_creation_scale_live_test.cpp(18): error C2065: “source”: 未声明的标识符
+J:\codexWorktree\gearsVr\tools\native-capture\cover_creation_scale_live_test.cpp(18): error C2065: “source”: 未声明的标识符
+J:\codexWorktree\gearsVr\tools\native-capture\cover_creation_scale_live_test.cpp(18): error C2065: “source”: 未声明的标识符
+J:\codexWorktree\gearsVr\tools\native-capture\cover_creation_scale_live_test.cpp(18): error C2065: “source”: 未声明的标识符
+J:\codexWorktree\gearsVr\tools\native-capture\cover_creation_scale_live_test.cpp(19): error C2065: “source”: 未声明的标识符
+J:\codexWorktree\gearsVr\tools\native-capture\cover_creation_scale_live_test.cpp(19): error C2653: “a”: 不是类或命名空间名称
+J:\codexWorktree\gearsVr\tools\native-capture\cover_creation_scale_live_test.cpp(19): error C2061: 语法错误: 标识符“Kind”
+J:\codexWorktree\gearsVr\tools\native-capture\cover_creation_scale_live_test.cpp(19): error C2065: “source”: 未声明的标识符
+J:\codexWorktree\gearsVr\tools\native-capture\cover_creation_scale_live_test.cpp(19): error C2065: “source”: 未声明的标识符
+J:\codexWorktree\gearsVr\tools\native-capture\cover_creation_scale_live_test.cpp(20): error C2065: “source”: 未声明的标识符
+J:\codexWorktree\gearsVr\tools\native-capture\cover_creation_scale_live_test.cpp(20): error C2653: “a”: 不是类或命名空间名称
+J:\codexWorktree\gearsVr\tools\native-capture\cover_creation_scale_live_test.cpp(20): error C2061: 语法错误: 标识符“Source”
+J:\codexWorktree\gearsVr\tools\native-capture\cover_creation_scale_live_test.cpp(21): error C2065: “source”: 未声明的标识符
+J:\codexWorktree\gearsVr\tools\native-capture\cover_creation_scale_live_test.cpp(21): error C3536: “scratch”: 初始化之前无法使用
+J:\codexWorktree\gearsVr\tools\native-capture\cover_creation_scale_live_test.cpp(21): error C2100: 无法取消引用类型为“<错误>”的操作数
+J:\codexWorktree\gearsVr\tools\native-capture\cover_creation_scale_live_test.cpp(21): error C3536: “output”: 初始化之前无法使用
+J:\codexWorktree\gearsVr\tools\native-capture\cover_creation_scale_live_test.cpp(21): error C2653: “a”: 不是类或命名空间名称
+J:\codexWorktree\gearsVr\tools\native-capture\cover_creation_scale_live_test.cpp(21): error C2065: “captured”: 未声明的标识符
+J:\codexWorktree\gearsVr\tools\native-capture\cover_creation_scale_live_test.cpp(22): error C2653: “a”: 不是类或命名空间名称
+J:\codexWorktree\gearsVr\tools\native-capture\cover_creation_scale_live_test.cpp(22): error C2065: “Snapshot”: 未声明的标识符
+J:\codexWorktree\gearsVr\tools\native-capture\cover_creation_scale_live_test.cpp(22): error C2100: 无法取消引用类型为“<错误>”的操作数
+J:\codexWorktree\gearsVr\tools\native-capture\cover_creation_scale_live_test.cpp(24): error C2065: “source”: 未声明的标识符
+J:\codexWorktree\gearsVr\tools\native-capture\cover_creation_scale_live_test.cpp(24): error C2100: 无法取消引用类型为“<错误>”的操作数
+J:\codexWorktree\gearsVr\tools\native-capture\cover_creation_scale_live_test.cpp(24): error C2653: “a”: 不是类或命名空间名称
+J:\codexWorktree\gearsVr\tools\native-capture\cover_creation_scale_live_test.cpp(24): error C2660: “memcmp”: 函数不接受 2 个参数
+E:\vs\VC\Tools\MSVC\14.51.36231\include\vcruntime_string.h(29): note: 参见“memcmp”的声明
+J:\codexWorktree\gearsVr\tools\native-capture\cover_creation_scale_live_test.cpp(24): note: 尝试匹配参数列表“()”时
+J:\codexWorktree\gearsVr\tools\native-capture\cover_creation_scale_live_test.cpp(27): error C2065: “source”: 未声明的标识符
+J:\codexWorktree\gearsVr\tools\native-capture\cover_creation_scale_live_test.cpp(27): error C2100: 无法取消引用类型为“<错误>”的操作数
+J:\codexWorktree\gearsVr\tools\native-capture\cover_creation_scale_live_test.cpp(27): error C2653: “a”: 不是类或命名空间名称
+J:\codexWorktree\gearsVr\tools\native-capture\cover_creation_scale_live_test.cpp(27): error C2065: “request”: 未声明的标识符
+J:\codexWorktree\gearsVr\tools\native-capture\cover_creation_scale_live_test.cpp(27): error C2660: “memcmp”: 函数不接受 2 个参数
+E:\vs\VC\Tools\MSVC\14.51.36231\include\vcruntime_string.h(29): note: 参见“memcmp”的声明
+J:\codexWorktree\gearsVr\tools\native-capture\cover_creation_scale_live_test.cpp(27): note: 尝试匹配参数列表“()”时

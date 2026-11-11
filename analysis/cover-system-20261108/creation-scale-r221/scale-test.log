@@ -1,0 +1,9 @@
+PrimitiveLayout checks=37 failures=0 actual reflection Proof; synthetic registry, no runtime authority
+ArrayLayout checks=80 failures=0 reflection association only; synthetic registry
+BodySetup checks=135 failures=0 synthetic instances; no C0 permission
+asset kind=0 begin
+asset kind=1 begin
+asset kind=2 begin
+AssetSetup checks=219 failures=0 authored membership only; synthetic instances
+PointScale checks=292 failures=0 synthetic source; original route attestation remains external
+CreationScale checks=356 failures=0 current reflected inputs only; historical cache correspondence unproven

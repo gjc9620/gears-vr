@@ -1,0 +1,14 @@
+{
+  "test": "PrimitiveLayout checks=37 failures=0 actual reflection Proof; synthetic registry, no runtime authority\r\nArrayLayout checks=80 failures=0 reflection association only; synthetic registry\r\nBodySetup checks=135 failures=0 synthetic instances; no C0 permission\r\nasset kind=0 begin\r\nasset kind=1 begin\r\nasset kind=2 begin\r\nAssetSetup checks=219 failures=0 authored membership only; synthetic instances\r\nPointScale checks=292 failures=0 synthetic source; original route attestation remains external\r\nCreationScale checks=356 failures=0 current reflected inputs only; historical cache correspondence unproven\r\n",
+  "sources": {
+    "tools/native-capture/cover_creation_scale_live.inl": "39f05d87733ba652ade62f40574d06651f69435e05fdaefdb2669e99c305d749",
+    "tools/native-capture/cover_creation_scale_live_test.cpp": "f9042ebf8dc467ad7570c375207964ccc7c11d5594a8839e0b2fb37a6dcc8a21"
+  },
+  "certificate_sha256": "62de713e23609f1ffc077fd4c576e6855fe5acbe7ef6a81e3de21638a5b394af",
+  "change": "Creation-route-specific reflected producer reuses verified scalar/vector selection but additionally proves current mesh250 PhysicsAssetInstance identity, instance60 MeshPointer Owner schema and same Actor as mesh78 and typed roles. Captured authored source must carry same mesh/instance and exact scale, producer Proof closes through payload read.",
+  "tests": "356 total checks0 including existing point292. Three kinds: instance/actor/mesh link failures preserve output, proof expires on actor or instance owner changes, nonuniform input observed, authored capture succeeds, owner mutation during payload read returns guard and preserves output; mismatched inventory instance rejected before capture. Initial capture test build failed missing namespace alias; fixed test alias, no product relaxation.",
+  "remaining": "Current fields are not historical construction/cache identity proof. Need active/authored shape join, cached scale binding, flags/weld behavior, world fence, production integration and game/headset fullCV24/AC22.",
+  "game_started": false,
+  "full_native_built": false,
+  "engineering_percent": 25
+}
