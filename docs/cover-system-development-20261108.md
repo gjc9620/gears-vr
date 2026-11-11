@@ -2775,3 +2775,9 @@ query共35.8457ms；首次classify在begin后0.2185ms，stereo已4.6037ms，故b
 使用精确r187冻结源加这一文件覆盖，实际现有组件夹具include后显式实例化新API，MSVC /O2 /W4 /WX编译ON/OFF均0；仅/c对象编译，没有link或执行夹具/测试/游戏。ON include无外部工作树依赖。源码SHA e6bd3046ccb054eadd99739f3680a90fe494c03dabdd1477c99c8de04f6a0853。编译不证明行为或性能通过。生产Session仍调用原sample，未切消费者；先需实际reader变更/失败恢复检查和读取量对照，再接入并完整构建。
 
 来源/编译回执与未完成项在component-recheck-r191。未动Quest工作台、publicv71或固定入口；无测试/游戏/XR启动。全CV01–24/AC01–22和头显仍未完成，工程25%，目标继续。
+
+## r192：组件复核行为检查已编写并编译，尚未执行（2026-11-12）
+
+新增cover_component_recheck_live_test.cpp，直接include既有组件夹具并调用实际生产sample/recheck，不复制reader实现。覆盖五次原sample和五次recheck的实际读数与快照对照；11类数组/槽位/动态body/布局/metadata代次/Scene/special move/不可读/owner变化；完整Owner前后边界拒绝、恢复权限不能复活资格且重新sample才恢复；读取中行变化、代次变化、异常和锁释放。保留原组件检查入口。
+
+精确r191编译树及当前两份源SHA核对相同，MSVC /O2 /W4 /WX /c编译0；没有链接或执行，不报告这些检查通过、读取下降或行为已修复。已询问主人是否允许仅本机内存夹具的掩体离线检查，当前答复未到，保持未执行。生产消费者仍走sample，Quest/游戏/XR/输入/公开入口均未动。回执和许可待定状态见component-recheck-r192。全CV01–24/AC01–22仍未完成，工程25%，下一步需许可后执行并处理实际失败。

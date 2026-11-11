@@ -1,0 +1,13 @@
+{
+  "source_sha256": {
+    "tools/native-capture/cover_component_recheck_live_test.cpp": "bd319e9ebe7a6e727c0958a7fefebae1c125d672ae651a30e803701b31f27d9b",
+    "tools/native-capture/cover_component_roles_live.inl": "e6bd3046ccb054eadd99739f3680a90fe494c03dabdd1477c99c8de04f6a0853"
+  },
+  "compile_exit": 0,
+  "linked": false,
+  "executed": false,
+  "game_started": false,
+  "consumer_changed": false,
+  "authorization_question_pending": true,
+  "scope": "Actual production reader fixture: five repeated samples vs rechecks; 11 mutations; both owner failures and no revival; in-read mutation/generation/exception; no writes or original game calls. Cases authored and compiled only, not passed."
+}
