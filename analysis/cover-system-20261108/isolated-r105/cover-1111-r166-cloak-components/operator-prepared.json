@@ -1,0 +1,33 @@
+{
+  "instance": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\cover-1111-r166-cloak-components",
+  "operator": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\cover-1111-r166-cloak-components\\cover-output\\cover_action.py",
+  "operator_sha256": "49b89f763726d9e2b0177d27410a014f42795447058e452e9612b4aafaf3b036",
+  "bootstrap_stdlib_passed": true,
+  "source_sha256": {
+    "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\solo-m1-20261028\\cover_boundary_chain.py": "06f1655206f2a1c2ed61061f453106619f998e2be6cc02d7c485e75450909254",
+    "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\solo-m1-20261028\\equipment_controller_chain.py": "4feb29a57dcbc1a6616197df8bff90f162909e379d0e54cff1f4b3f9447dc39c",
+    "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\solo-m1-20261028\\run_menu_firstperson_check.py": "a032e1b3e06a9159aab6090aa3c041db0a44c189dc1e64d7e163e7de440016a8"
+  },
+  "wrapper_source_sha256": "f45f2dad8b17f68bc7f17efa078217829dd9ae7e8c0c1efcb8ba30f996a289d4",
+  "generator_sha256": "233331ac5a9115fceca3cd771e9fb543f850435f282a20168cc384bf7f629da9",
+  "entry_observation_source_sha256": "b148387d9a5214b3074c05407d3aa2a8ae2746896a0d29588698b2019382f0b7",
+  "ordinary_approach_source_sha256": "2a22e3d0765ed3d16a722f19a1ba90bd60e9bebe4637f462e027e4fbd3489160",
+  "ordinary_approach_frozen_in_operator": true,
+  "syntax_checked": true,
+  "shared_instance_references": 0,
+  "input_reader": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\cover-1111-r166-cloak-components\\cover-output\\read_private_input.py",
+  "input_reader_sha256": "f77d55e06845a21a1e824fb8e58717bde13100653314dc4293889c01668df0b2",
+  "observation_adapter": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\cover-1111-r166-cloak-components\\cover-output\\cover_private_playground_observation.py",
+  "observation_adapter_sha256": "c5e4f92f95577cfe503caf9a41243ca7db63e88c2a55c6748e8ea0b29e590678",
+  "observation_adapter_source": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\tools\\game-playtest\\cover_playground_observation.py",
+  "observation_adapter_source_sha256": "686dd471f78016ca143628a33ea9ff89c20d3b68cf27bc29c391a66f669b6935",
+  "actual_input_or_recording_started": false,
+  "gameplay_accepted": false,
+  "flags": [
+    "--cover-eye-observation",
+    "--equipment-chain",
+    "--playground-ready",
+    "--dual-output"
+  ],
+  "remaining": "Launch/stop owner and one-shot source-stage environment still require explicit r105 runner."
+}

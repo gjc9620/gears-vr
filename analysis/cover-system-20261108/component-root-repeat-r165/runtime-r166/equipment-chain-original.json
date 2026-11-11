@@ -1,0 +1,92 @@
+{
+  "game": {
+    "pid": 10200,
+    "creation_time": 134388481368288525,
+    "image": "j:\\gearsvr\\gears.of.war.reloaded.v1.0.1.3816947-p2p\\gears of war reloaded\\binaries_x64\\gowde-steam.exe"
+  },
+  "source": 1,
+  "desktop_input": false,
+  "direct_gameplay_calls": false,
+  "motion": [
+    {
+      "step": 0,
+      "ns": 159400959852600,
+      "position": [
+        -3900.0,
+        0.0,
+        583.9485473632812
+      ],
+      "target": [
+        -3979.6602316476506,
+        -140.2601870208192,
+        563.9999997615814
+      ],
+      "distance": 161.30304575324212,
+      "scope": "cover ordinary approach; no setter"
+    },
+    {
+      "step": 1,
+      "ns": 159401428759900,
+      "position": [
+        -3918.63427734375,
+        -32.80927276611328,
+        583.9485473632812
+      ],
+      "target": [
+        -3979.6602316476506,
+        -140.2601870208192,
+        563.9999997615814
+      ],
+      "distance": 123.57129955161078,
+      "scope": "cover ordinary approach; no setter"
+    },
+    {
+      "step": 2,
+      "ns": 159401886276600,
+      "position": [
+        -3940.95703125,
+        -72.11277770996094,
+        579.0
+      ],
+      "target": [
+        -3979.6602316476506,
+        -140.2601870208192,
+        563.9999997615814
+      ],
+      "distance": 78.370958376189,
+      "scope": "cover ordinary approach; no setter"
+    },
+    {
+      "step": 3,
+      "ns": 159402333260500,
+      "position": [
+        -3970.58837890625,
+        -124.28817749023438,
+        579.0
+      ],
+      "target": [
+        -3979.6602316476506,
+        -140.2601870208192,
+        563.9999997615814
+      ],
+      "distance": 18.368549224333123,
+      "scope": "cover ordinary approach; no setter"
+    }
+  ],
+  "states": [
+    {
+      "label": "before_original_X_pickup",
+      "ns": 159395862084300,
+      "weapon": "0x1634856700",
+      "name": "Weap_LocustAssaultRifle",
+      "cls": "Weap_LocustAssaultRifle",
+      "location": [
+        -3900.0,
+        0.0,
+        583.9485473632812
+      ],
+      "special": 0
+    }
+  ],
+  "checks": {}
+}

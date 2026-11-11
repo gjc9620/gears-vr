@@ -1,0 +1,153 @@
+{
+  "error": null,
+  "operator_exit": 0,
+  "start_exit": 0,
+  "normal_cleanup_verified": true,
+  "normal_cleanup_required": true,
+  "projection_frames": 290,
+  "projection_errors": [],
+  "remaining_owned": {},
+  "anchor_sources_unchanged": true,
+  "cloak_observations": {
+    "samples": 652,
+    "failures": []
+  },
+  "foreground_observations": {
+    "samples": 511,
+    "owned_activation": false
+  },
+  "forced_termination": false,
+  "identities": {
+    "game_identity": {
+      "pid": 10200,
+      "creation_time": 134388481368288525,
+      "image": "j:\\gearsvr\\gears.of.war.reloaded.v1.0.1.3816947-p2p\\gears of war reloaded\\binaries_x64\\gowde-steam.exe"
+    },
+    "owner_identity": {
+      "pid": 58712,
+      "creation_time": 134388481130325869,
+      "image": "c:\\users\\11\\.cache\\codex-runtimes\\codex-primary-runtime\\dependencies\\python\\python.exe"
+    },
+    "xr_identity": {
+      "pid": 6896,
+      "creation_time": 134388481469731532,
+      "image": "c:\\users\\11\\.codex\\worktrees\\6dof-single\\gearsvr\\tools\\openxr-probe\\build-cover-1111-r166-cloak-components\\openxrposeprobe.exe"
+    },
+    "worker_identity": {
+      "pid": 37024,
+      "creation_time": 134388481123559244,
+      "image": "c:\\users\\11\\.cache\\codex-runtimes\\codex-primary-runtime\\dependencies\\python\\python.exe"
+    }
+  },
+  "exact_owned_processes_absent": true,
+  "native_sha256": "3f1d5454286e3991917f462ebab5749f614db22003d31a3810fbd985560be64d",
+  "original_low_cover_entered": true,
+  "same_C0_complete_query_key": true,
+  "query_elapsed_ns": 31772900,
+  "timing": [
+    {
+      "stage": "physics_initial",
+      "calls": 1,
+      "closed_spans": 1,
+      "total_ns": 890300,
+      "max_ns": 890300,
+      "operation_success_proven": false
+    },
+    {
+      "stage": "collider_initial",
+      "calls": 1,
+      "closed_spans": 1,
+      "total_ns": 2761400,
+      "max_ns": 2761400,
+      "operation_success_proven": false
+    },
+    {
+      "stage": "components_initial",
+      "calls": 1,
+      "closed_spans": 1,
+      "total_ns": 7742600,
+      "max_ns": 7742600,
+      "operation_success_proven": false
+    },
+    {
+      "stage": "physics_repeat",
+      "calls": 6,
+      "closed_spans": 6,
+      "total_ns": 6078900,
+      "max_ns": 1202900,
+      "operation_success_proven": false
+    },
+    {
+      "stage": "collider_repeat",
+      "calls": 5,
+      "closed_spans": 5,
+      "total_ns": 13662900,
+      "max_ns": 2868700,
+      "operation_success_proven": false
+    },
+    {
+      "stage": "components_repeat",
+      "calls": 0,
+      "closed_spans": 0,
+      "total_ns": 0,
+      "max_ns": 0,
+      "operation_success_proven": false
+    },
+    {
+      "stage": "engine",
+      "calls": 1,
+      "closed_spans": 1,
+      "total_ns": 19998000,
+      "max_ns": 19998000,
+      "operation_success_proven": false
+    },
+    {
+      "stage": "closing",
+      "calls": 0,
+      "closed_spans": 0,
+      "total_ns": 0,
+      "max_ns": 0,
+      "operation_success_proven": false
+    }
+  ],
+  "source_age_cause": {
+    "observed": true,
+    "entry": 14674320,
+    "compose": 22860,
+    "thread": 34024,
+    "stage": 0,
+    "verdict": 3,
+    "causes": 1,
+    "body_source_age": true,
+    "equipment_age": false
+  },
+  "owner_guard": {
+    "calls": 29,
+    "failed_call": 29,
+    "stage": 8,
+    "name": "context",
+    "detail": 3,
+    "extra": 6,
+    "context_verdict": "source_age_expired",
+    "context_detail": 6
+  },
+  "session_guard": {
+    "calls": 6,
+    "failed_call": 6,
+    "stage": 2,
+    "name": "physics_read",
+    "detail": 3,
+    "extra": 0
+  },
+  "original_query_started": 0,
+  "original_query_returned": 0,
+  "source_age_repaired": false,
+  "cover_view_accepted": false,
+  "world_coverage_verified": false,
+  "movement_authorized": false,
+  "headset_accepted": false,
+  "public_changed": false,
+  "repeated_physics_collider_largest_measured_stage": true,
+  "nested_times_must_not_be_added": true,
+  "next": "Inspect repeated SourceGuard physics/collider sample costs and call sites; retain every identity/dynamic/closing/freshness check. No unchanged rerun."
+}
