@@ -2973,3 +2973,13 @@ PhysicsAsset成员与body ordinal、原receiver scale、原consumer/stride代码
 初次复用oracle Fixture默认component来自更旧帧，导致13个姿态/轴/端点检查失败；改由本次真实保存的平面component矩阵构造独立oracle pose，仅修改期望值，不改输入Frame任何字节。另一个负例原写0到已为0的raw字节并未制造变更，改为XOR后实际拒绝。初失败保留，不能称游戏/几何核修复。最终同时核对C0输入字节不变；一致改变bNoRBCollision后全部7行几何不变、flag随之变化，不会静默漏体积。
 
 仍需caller同current C0/roles/库存/code bracket闭合、active PhysX对应、查询参与语义、真实完整world/path/occupancy及body/view/hit/muzzle同版事务；完整capture生产接入、视图遮挡及头显尚未完成。源码/依赖/原9夹具SHA/回执authored-geometry-r214，无游戏/原函数/完整Native构建，CV24/AC22全部保留，工程25%。
+
+## r215：原PhysX三类形状stored参数getter取证与只读观察器（2026-11-12）
+
+原PhysXCore.dll SHA22051aa7保持，REA Ghidra新静态证据45记录完整导出并关闭本次数据库；未执行原DLL。读取三public table及box/capsule internal table完整相应前缀，由radius getter数据引用定位2303e8，再沿两个代码引用证明原SphereShape constructor/destructor确实赋该表，未以排列猜sphere表。原getter证明box vector在internal+1b8/1bc/1c0，radius在1b0、胶囊长度getter12760返回1b4+1b4；flags在180，stored位置88/8c/90、四元数78..84。胶囊12780以1b4形成轴两侧端点，但含缓存pose更新写入，本实现不调用它。
+
+新增cover_physx_shape_parameters.h与自动生成cover_physx_shape_parameter_code.h，依托原owner观察和typed Guard(Observation)认证当前kind/member/Scene/C0/image归属，准确table和getter槽、10个完整原getter/stub共210bytes及原Actor/shape getter bytes前后匹配后，两个完整参数观察比较，最终再闭合归属/代码/guard才发布。无需任何原函数调用/缓存更新，失败保持输出、释放exclusive workspace；未知类型/convex明确拒绝。保留box_dimensions原向量、radius/half_segment及flags，未声称box单位/半轴语义、世界位姿、活动查询资格或bNoRBCollision等价关系。
+
+687检查0失败，包含当前原owner519项；实际PE仅作为数据夹具，objects为synthetic。三类使用真正生产owner reader作为typed guard；99个parameter-only读取点逐项故障注入，slot/code/kind/value/owner/link、两轮间变化、三guard拒绝、最终输入attribution变化、重入/alias、静态null dynamic Body、异常和convex均保护输出；DLL保持未加载。异常负例初版constant throw令模板后续代码被/WX判不可达，改为volatile运行时故障条件后通过，未据此改产品逻辑，失败保留。
+
+完整证据/范围/原指令在shape-parameters-r215/rea-evidence.json及focused-facts/getter-certificate/verification。仍缺authored库存逐项对应、当前Actor world pose及单位/轴基转换、原参与/过滤语义及全场景world/path/occupancy闭合，尚未生产Native接入/完整构建/游戏/XR/原查询/头显。完整CV24/AC22、视图遮挡和body/view/hit/muzzle同版事务继续待完成，工程25%。

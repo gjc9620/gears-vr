@@ -1,0 +1,98 @@
+{
+  "artifact_sha256": "22051aa75312344a824a5f7e29c6375fec3a90df50cbeff6152f0e6c3afddd48",
+  "bundle_sha256": "ab7805b6e344a4fd51d74de0b0849816985c5cce9b28eb6cfca2619925fcd479",
+  "records": 45,
+  "getters": [
+    {
+      "address": "0x18000c410",
+      "rva": "0xc410",
+      "size": 30,
+      "bytes": "8b81b801000089028b81bc0100008942048b81c0010000894208488bc2c3",
+      "sha256": "2d25bc31e5c28e07b721df8e995560afd3b94a0cb060206af4a6c6bfee58b0a4",
+      "function_evidence": "ev_28b6ec7c98ac0799d12a926ac2276f3787a5657578d9f2a52de17ff9a1d21502",
+      "bytes_evidence": "ev_c015541466444d7ab5da9c236af5cc3c88a0ad44e1c2478edb16b309cabac5b8"
+    },
+    {
+      "address": "0x180012770",
+      "rva": "0x12770",
+      "size": 9,
+      "bytes": "c5fa1081b0010000c3",
+      "sha256": "1eba01a9ece490bd93a127c40dfe0b451248046341dd1ef657b482ed3f4e100e",
+      "function_evidence": "ev_597fcc66aacca25d95854299dba15125de33c3a711a9a03b3edc9144b78b27b5",
+      "bytes_evidence": "ev_4f49fac836c2afb193a78f75fd3d3cac5b7f21427329420b3b8cbac7a97ab5f2"
+    },
+    {
+      "address": "0x180012760",
+      "rva": "0x12760",
+      "size": 13,
+      "bytes": "c5fa1081b4010000c5fa58c0c3",
+      "sha256": "2ae25bcfaa941a2013b34844f613472dcb3a3f5582d4d31b970f17e0313f8c07",
+      "function_evidence": "ev_2556a5b38c6226427ef5756c0d5e900638f4119d529d26254524be59fcd62fb6",
+      "bytes_evidence": "ev_7400d20110e1a7197a3c8b20e326191f9376fd371f3762b454885cb365916a59"
+    },
+    {
+      "address": "0x18000c460",
+      "rva": "0xc460",
+      "size": 7,
+      "bytes": "8b8180010000c3",
+      "sha256": "569ab28f82993f07287833ff42b4deea118c1d42dd7987fabf11244144d9393e",
+      "function_evidence": "ev_52dda517b2a973a0b0b7aba682637584eeea5be0584b631aba32444619e8cd47",
+      "bytes_evidence": "ev_7acca13e218e29e81c1af51ba037a5cd4fff9293154837ef5ba7859608e470d3"
+    },
+    {
+      "address": "0x1800b1350",
+      "rva": "0xb1350",
+      "size": 30,
+      "bytes": "8b818800000089028b818c0000008942048b8190000000894208488bc2c3",
+      "sha256": "8405ef712e5cea41c8bd6004c001df00267db48d6386e716f707e3089cee9fd9",
+      "function_evidence": "ev_efd73c3d36ce189ba6761026fca059dcf4d0664664bd99540f7d82290b518266",
+      "bytes_evidence": "ev_0cbea8861e38a5d9770b6d3a677c8258b8b813185642cbff179315b517d9181e"
+    },
+    {
+      "address": "0x1800b1370",
+      "rva": "0xb1370",
+      "size": 33,
+      "bytes": "8b417889028b417c8942048b81800000008942088b818400000089420c488bc2c3",
+      "sha256": "abb1512d47bdd6b211816ce5422d24a10755140c4094f8966b68d63514f98d1d",
+      "function_evidence": "ev_5e8bb0ec30be75ec2d9a1c99495fbe868a0340d47fb9e3306517689f90f85dda",
+      "bytes_evidence": "ev_5f29761f515626d884144046178a33b8eb9c4640ebda5b27fbac2c62d5f084aa"
+    },
+    {
+      "address": "0x18013e780",
+      "rva": "0x13e780",
+      "size": 31,
+      "bytes": "40534883ec20488b4930488bda488b01ff9040010000488bc34883c4205bc3",
+      "sha256": "30097882d276491d312b43fbade56edf73a0cca7605f95e628a8ab77158b6942",
+      "function_evidence": "ev_24bf5c1634ab65d2b2a1959a2bbce511326e44b5404f5c643bf10bda9e71a5f1",
+      "bytes_evidence": "ev_f24b1220165bd689b0e635fd38858bbf9de18ef9c37eda89817abcb673a73686"
+    },
+    {
+      "address": "0x18013fc90",
+      "rva": "0x13fc90",
+      "size": 14,
+      "bytes": "488b4930488b0148ffa058010000",
+      "sha256": "e38c4ef4c050d900eae03a7b73e0f381660a6f4ab65055da09db83c1b43375bb",
+      "function_evidence": "ev_c14303aeb1e099bed4512deb961275f682cb61bc7c8b14eba2677367dca229f4",
+      "bytes_evidence": "ev_d01581211eb0cf1112701ebb9f7628d7c98fef64ccfed6913f39ab3d3a7f2d82"
+    },
+    {
+      "address": "0x18013fc80",
+      "rva": "0x13fc80",
+      "size": 14,
+      "bytes": "488b4930488b0148ffa060010000",
+      "sha256": "99c6e9f81b79258d38033ffe7da090a538b5cac44b0244f73c144aa6e61b0523",
+      "function_evidence": "ev_ebf8a9925a180d62efa10d40f2aa3efc5d0a9ce94ba87d76b5bdebbea2cc0199",
+      "bytes_evidence": "ev_7083c257eee8d517204751a288c5d423fcc814fdbf2bbea207a61a70424789a7"
+    },
+    {
+      "address": "0x18013e7a0",
+      "rva": "0x13e7a0",
+      "size": 29,
+      "bytes": "40534883ec20488b49308bda488b01ff909800000023c34883c4205bc3",
+      "sha256": "d7d95c10c17fcdf83e45ea5e99b98062e543ac271f50ccfceed716658d000c20",
+      "function_evidence": "ev_65f75ae1f9bf9451874d252b740be205cb43cf5a8b31c4def73aefeb42e2b6f9",
+      "bytes_evidence": "ev_7146fcc57cfee535d7c8d3ae6103bbc9f78c4c7e5d4b497f1c2215ae68b51fa9"
+    }
+  ],
+  "scope": "Exact original direct field getters/public forwarding stubs only. Stored position/quaternion and flags are observations, not a world pose or eligibility decision. Capsule12780 global-capsule getter may write cached pose and is never called by this reader."
+}

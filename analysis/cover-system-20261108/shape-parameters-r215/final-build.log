@@ -1,0 +1,3 @@
+cover_physx_shape_parameters_test.cpp
+J:\codexWorktree\gearsVr\tools\native-capture\cover_physx_shape_parameters.h(65) : error C2220: 以下警告被视为错误
+J:\codexWorktree\gearsVr\tools\native-capture\cover_physx_shape_parameters.h(65) : warning C4702: 无法访问的代码

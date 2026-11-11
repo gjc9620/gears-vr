@@ -1,0 +1,21 @@
+{
+  "result": "read_budget=222 guard_calls=12\r\nCoverPhysXShapeOwner checks=519 failed=0 original-executed=false game-started=false\r\nparameter_reads=99\r\nShapeParameters checks=687 failed=0 original PE as data; stored fields only, no world/eligibility permit\r\n",
+  "sources": {
+    "tools/native-capture/cover_physx_shape_parameters.h": "c883596bc8402ad4946230cf6345fed670465f9172872c4eff7dd8dd90c580c3",
+    "tools/native-capture/cover_physx_shape_parameter_code.h": "a29a025630e961b628e139ee8f1233eeef0374971a6a3f9e6725ff3391e4fc20",
+    "tools/native-capture/cover_physx_shape_parameters_test.cpp": "2e083f7a2376e819135f50b0f12cf178e8796ca7f1836fd59242f679e7dcd87f"
+  },
+  "artifact_sha256": "22051aa75312344a824a5f7e29c6375fec3a90df50cbeff6152f0e6c3afddd48",
+  "rea_records": 45,
+  "rea_bundle_sha256": "ab7805b6e344a4fd51d74de0b0849816985c5cce9b28eb6cfca2619925fcd479",
+  "observations": "Public box/capsule/sphere tables and exact internal tables226c80/2272d0/2303e8; sphere table is supported by original SphereShape constructor/destructor assignments and radius getter references. Current kind and full owner links are re-read. Stored position88/8c/90, quaternion78..84, flags180, box vector1b8..1c0, radius1b0 and capsule half1b4 read via original getter-backed fields.",
+  "code": "Ten complete original getter/stub bodies210 bytes plus existing actor/shape getter byte checks and actual dispatch slots close before/after parameter reads. No original function dispatched.",
+  "interpretation": "Internal box vector retained as raw box_dimensions, no unit/half-extents semantics claimed. Capsule public length getter doubles1b4; global capsule getter uses it on the cached axis to form endpoint offsets but can update cached pose. Stored quaternion/position are not universally a world pose. Raw flags not interpreted as eligibility or authored bNoRBCollision.",
+  "tests": "687 checks0 includes519 current ownership checks. Original exact PE loaded only as fixture data, synthetic object memory, real production ownership reader as typed guard for all3 kinds.99 parameter-only read points each fail-injected with output preservation; code/slot/kind/value/owner/link mismatches, inter-pass mutation, all3 guards, final attribution mutation, reentry/alias, static null dynamic Body, exception and unsupported convex covered. DLL remains unloaded.",
+  "first_failure": "Added constant-throw guard fixture made compiler prove following template code unreachable under /WX; changed fault injection to a volatile runtime condition. Product logic unchanged; failure retained.",
+  "remaining": "Not yet joined to authored body/shape inventory, current actor-world pose and units/conventions, active query participation and full scene/world fencing. No production Native capture integration, game/XR, actual original query, stereo/headset acceptance or full cover completion.",
+  "native_session_closed": true,
+  "game_started": false,
+  "full_native_built": false,
+  "engineering_percent": 25
+}

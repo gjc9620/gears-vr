@@ -1,0 +1,173 @@
+{
+  "0x18000c410": {
+    "evidence_id": "ev_28b6ec7c98ac0799d12a926ac2276f3787a5657578d9f2a52de17ff9a1d21502",
+    "entry": "0x18000c410",
+    "pseudocode": "\r\nundefined4 * FUN_18000c410(longlong param_1,undefined4 *param_2)\r\n\r\n{\r\n  *param_2 = *(undefined4 *)(param_1 + 0x1b8);\r\n  param_2[1] = *(undefined4 *)(param_1 + 0x1bc);\r\n  param_2[2] = *(undefined4 *)(param_1 + 0x1c0);\r\n  return param_2;\r\n}\r\n\r\n",
+    "body": {
+      "available": true,
+      "contains_entry": true,
+      "non_contiguous": false,
+      "provenance": "ghidra-function-body-address-set",
+      "ranges": [
+        {
+          "end": "0x18000c42d",
+          "start": "0x18000c410"
+        }
+      ],
+      "span_bytes": 30,
+      "total_bytes": 30
+    }
+  },
+  "0x180012770": {
+    "evidence_id": "ev_597fcc66aacca25d95854299dba15125de33c3a711a9a03b3edc9144b78b27b5",
+    "entry": "0x180012770",
+    "pseudocode": "\r\nundefined4 FUN_180012770(longlong param_1)\r\n\r\n{\r\n  return *(undefined4 *)(param_1 + 0x1b0);\r\n}\r\n\r\n",
+    "body": {
+      "available": true,
+      "contains_entry": true,
+      "non_contiguous": false,
+      "provenance": "ghidra-function-body-address-set",
+      "ranges": [
+        {
+          "end": "0x180012778",
+          "start": "0x180012770"
+        }
+      ],
+      "span_bytes": 9,
+      "total_bytes": 9
+    }
+  },
+  "0x180012760": {
+    "evidence_id": "ev_2556a5b38c6226427ef5756c0d5e900638f4119d529d26254524be59fcd62fb6",
+    "entry": "0x180012760",
+    "pseudocode": "\r\nfloat FUN_180012760(longlong param_1)\r\n\r\n{\r\n  return *(float *)(param_1 + 0x1b4) + *(float *)(param_1 + 0x1b4);\r\n}\r\n\r\n",
+    "body": {
+      "available": true,
+      "contains_entry": true,
+      "non_contiguous": false,
+      "provenance": "ghidra-function-body-address-set",
+      "ranges": [
+        {
+          "end": "0x18001276c",
+          "start": "0x180012760"
+        }
+      ],
+      "span_bytes": 13,
+      "total_bytes": 13
+    }
+  },
+  "0x180012780": {
+    "evidence_id": "ev_0549d74da31f3d703de8cf07835f04735a178020317f1102ef4d5bb11942f83a",
+    "entry": "0x180012780",
+    "pseudocode": "\r\nvoid FUN_180012780(longlong param_1,float *param_2)\r\n\r\n{\r\n  float fVar1;\r\n  float fVar2;\r\n  float fVar3;\r\n  float fVar4;\r\n  float fVar5;\r\n  float fVar6;\r\n  float fVar7;\r\n  float fVar8;\r\n  float fVar9;\r\n  float fVar10;\r\n  float fVar11;\r\n  float fVar12;\r\n  float fVar13;\r\n  float fVar14;\r\n  float fVar15;\r\n  float fVar16;\r\n  float fVar17;\r\n  longlong lVar18;\r\n  float fVar19;\r\n  float fVar20;\r\n  float fVar21;\r\n  float fVar22;\r\n  float fVar23;\r\n  float fVar24;\r\n  float fVar25;\r\n  float fVar26;\r\n  \r\n  lVar18 = *(longlong *)(param_1 + 0x148);\r\n  if ((lVar18 != 0) && (*(int *)(lVar18 + 0x15c) != *(int *)(param_1 + 0x10))) {\r\n    fVar1 = *(float *)(lVar18 + 0x13c);\r\n    fVar2 = *(float *)(lVar18 + 0x138);\r\n    fVar3 = *(float *)(lVar18 + 0x140);\r\n    fVar4 = *(float *)(param_1 + 0x88);\r\n    fVar5 = *(float *)(param_1 + 0x8c);\r\n    fVar6 = *(float *)(param_1 + 0x90);\r\n    fVar7 = *(float *)(lVar18 + 0x144);\r\n    fVar23 = fVar7 * fVar7 - 0.5;\r\n    fVar20 = (fVar6 * fVar1 - fVar5 * fVar3) * fVar7;\r\n    fVar21 = (fVar4 * fVar3 - fVar6 * fVar2) * fVar7;\r\n    fVar22 = (fVar5 * fVar2 - fVar4 * fVar1) * fVar7;\r\n    fVar19 = fVar5 * fVar1 + fVar4 * fVar2 + fVar6 * fVar3;\r\n    fVar8 = *(float *)(param_1 + 0x80);\r\n    fVar9 = *(float *)(lVar18 + 0x148);\r\n    fVar10 = *(float *)(param_1 + 0x7c);\r\n    fVar11 = *(float *)(lVar18 + 0x13c);\r\n    fVar12 = *(float *)(lVar18 + 0x14c);\r\n    fVar13 = *(float *)(lVar18 + 0x150);\r\n    fVar14 = *(float *)(lVar18 + 0x140);\r\n    fVar15 = *(float *)(lVar18 + 0x138);\r\n    fVar16 = *(float *)(param_1 + 0x78);\r\n    fVar17 = *(float *)(param_1 + 0x84);\r\n    fVar24 = (fVar16 * fVar7 + fVar17 * fVar15 + fVar8 * fVar11) - fVar10 * fVar14;\r\n    fVar25 = (fVar10 * fVar7 + fVar17 * fVar11 + fVar16 * fVar14) - fVar8 * fVar15;\r\n    fVar26 = (fVar8 * fVar7 + fVar17 * fVar14 + fVar10 * fVar15) - fVar16 * fVar11;\r\n    fVar14 = ((fVar17 * fVar7 - fVar16 * fVar15) - fVar10 * fVar11) - fVar8 * fVar14;\r\n    fVar7 = fVar24 + fVar24;\r\n    fVar10 = (fVar26 + fVar26) * fVar14;\r\n    fVar11 = (fVar26 + fVar26) * fVar26;\r\n    fVar15 = 1.0 - fVar7 * fVar24;\r\n    fVar8 = fVar25 + fVar25;\r\n    *(ulonglong *)(param_1 + 0x14) =\r\n         CONCAT44(fVar7 * fVar25 - fVar10,(1.0 - fVar8 * fVar25) - fVar11);\r\n    *(ulonglong *)(param_1 + 0x1c) =\r\n         CONCAT44(fVar7 * fVar25 + fVar10,fVar7 * fVar26 + fVar8 * fVar14);\r\n    *(ulonglong *)(param_1 + 0x24) = CONCAT44(fVar8 * fVar26 - fVar7 * fVar14,fVar15 - fVar11);\r\n    *(ulonglong *)(param_1 + 0x2c) =\r\n         CONCAT44(fVar8 * fVar26 + fVar7 * fVar14,fVar7 * fVar26 - fVar8 * fVar14);\r\n    *(float *)(param_1 + 0x34) = fVar15 - fVar8 * fVar25;\r\n    *(float *)(param_1 + 0x38) =\r\n         (fVar23 + fVar23) * fVar4 + fVar20 + fVar19 * fVar2 + fVar19 * fVar2 + fVar20 + fVar9;\r\n    *(float *)(param_1 + 0x3c) =\r\n         fVar19 * fVar1 + fVar21 + fVar12 + (fVar23 + fVar23) * fVar5 + fVar21 + fVar19 * fVar1;\r\n    *(float *)(param_1 + 0x40) =\r\n         fVar19 * fVar3 + fVar22 + fVar13 + (fVar23 + fVar23) * fVar6 + fVar22 + fVar19 * fVar3;\r\n    *(undefined4 *)(param_1 + 0x10) = *(undefined4 *)(lVar18 + 0x15c);\r\n  }\r\n  fVar1 = *(float *)(param_1 + 0x18);\r\n  param_2[3] = fVar1;\r\n  fVar2 = *(float *)(param_1 + 0x24);\r\n  param_2[4] = fVar2;\r\n  fVar3 = *(float *)(param_1 + 0x30);\r\n  param_2[5] = fVar3;\r\n  fVar4 = *(float *)(param_1 + 0x1b4);\r\n  fVar3 = fVar4 * fVar3;\r\n  fVar1 = fVar1 * fVar4;\r\n  param_2[3] = fVar1;\r\n  param_2[5] = fVar3;\r\n  fVar2 = fVar2 * fVar4;\r\n  param_2[4] = fVar2;\r\n  *param_2 = -fVar1;\r\n  param_2[1] = -fVar2;\r\n  param_2[2] = -fVar3;\r\n  *param_2 = -fVar1 + *(float *)(param_1 + 0x38);\r\n  param_2[1] = -fVar2 + *(float *)(param_1 + 0x3c);\r\n  param_2[2] = -fVar3 + *(float *)(param_1 + 0x40);\r\n  param_2[3] = fVar1 + *(float *)(param_1 + 0x38);\r\n  param_2[4] = fVar2 + *(float *)(param_1 + 0x3c);\r\n  param_2[5] = fVar3 + *(float *)(param_1 + 0x40);\r\n  param_2[6] = *(float *)(param_1 + 0x1b0);\r\n  return;\r\n}\r\n\r\n",
+    "body": {
+      "available": true,
+      "contains_entry": true,
+      "non_contiguous": false,
+      "provenance": "ghidra-function-body-address-set",
+      "ranges": [
+        {
+          "end": "0x180012ba3",
+          "start": "0x180012780"
+        }
+      ],
+      "span_bytes": 1060,
+      "total_bytes": 1060
+    }
+  },
+  "0x18000c460": {
+    "evidence_id": "ev_52dda517b2a973a0b0b7aba682637584eeea5be0584b631aba32444619e8cd47",
+    "entry": "0x18000c460",
+    "pseudocode": "\r\nundefined4 FUN_18000c460(longlong param_1)\r\n\r\n{\r\n  return *(undefined4 *)(param_1 + 0x180);\r\n}\r\n\r\n",
+    "body": {
+      "available": true,
+      "contains_entry": true,
+      "non_contiguous": false,
+      "provenance": "ghidra-function-body-address-set",
+      "ranges": [
+        {
+          "end": "0x18000c466",
+          "start": "0x18000c460"
+        }
+      ],
+      "span_bytes": 7,
+      "total_bytes": 7
+    }
+  },
+  "0x1800b1350": {
+    "evidence_id": "ev_efd73c3d36ce189ba6761026fca059dcf4d0664664bd99540f7d82290b518266",
+    "entry": "0x1800b1350",
+    "pseudocode": "\r\nundefined4 * FUN_1800b1350(longlong param_1,undefined4 *param_2)\r\n\r\n{\r\n  *param_2 = *(undefined4 *)(param_1 + 0x88);\r\n  param_2[1] = *(undefined4 *)(param_1 + 0x8c);\r\n  param_2[2] = *(undefined4 *)(param_1 + 0x90);\r\n  return param_2;\r\n}\r\n\r\n",
+    "body": {
+      "available": true,
+      "contains_entry": true,
+      "non_contiguous": false,
+      "provenance": "ghidra-function-body-address-set",
+      "ranges": [
+        {
+          "end": "0x1800b136d",
+          "start": "0x1800b1350"
+        }
+      ],
+      "span_bytes": 30,
+      "total_bytes": 30
+    }
+  },
+  "0x1800b1370": {
+    "evidence_id": "ev_5e8bb0ec30be75ec2d9a1c99495fbe868a0340d47fb9e3306517689f90f85dda",
+    "entry": "0x1800b1370",
+    "pseudocode": "\r\nundefined4 * FUN_1800b1370(longlong param_1,undefined4 *param_2)\r\n\r\n{\r\n  *param_2 = *(undefined4 *)(param_1 + 0x78);\r\n  param_2[1] = *(undefined4 *)(param_1 + 0x7c);\r\n  param_2[2] = *(undefined4 *)(param_1 + 0x80);\r\n  param_2[3] = *(undefined4 *)(param_1 + 0x84);\r\n  return param_2;\r\n}\r\n\r\n",
+    "body": {
+      "available": true,
+      "contains_entry": true,
+      "non_contiguous": false,
+      "provenance": "ghidra-function-body-address-set",
+      "ranges": [
+        {
+          "end": "0x1800b1390",
+          "start": "0x1800b1370"
+        }
+      ],
+      "span_bytes": 33,
+      "total_bytes": 33
+    }
+  },
+  "0x1800bd210": {
+    "evidence_id": "ev_e67c091b4fc7a606a191a854a93df6d107917f0f09f0e91905f2bbb329401bbe",
+    "entry": "0x1800bd1f0",
+    "pseudocode": "\r\nundefined8 * FUN_1800bd1f0(undefined8 *param_1,longlong param_2,longlong param_3)\r\n\r\n{\r\n  float fVar1;\r\n  float fVar2;\r\n  float fVar3;\r\n  float fVar4;\r\n  float fVar5;\r\n  float fVar6;\r\n  longlong lVar7;\r\n  float fVar8;\r\n  float fVar9;\r\n  float fVar10;\r\n  float fVar11;\r\n  float fVar12;\r\n  float fVar13;\r\n  float fVar14;\r\n  float fVar15;\r\n  float fVar16;\r\n  float fVar17;\r\n  float fVar18;\r\n  float fVar19;\r\n  float fVar20;\r\n  float fVar21;\r\n  float fVar22;\r\n  undefined1 auVar23 [16];\r\n  int iVar24;\r\n  undefined4 uVar25;\r\n  float fVar26;\r\n  float fVar27;\r\n  float fVar28;\r\n  float fVar29;\r\n  float fVar30;\r\n  float fVar31;\r\n  undefined4 local_158 [4];\r\n  undefined4 local_148;\r\n  undefined4 local_144;\r\n  undefined8 local_140;\r\n  float local_138;\r\n  float local_134;\r\n  float local_130;\r\n  float local_12c;\r\n  float local_128;\r\n  undefined4 local_108 [4];\r\n  undefined4 local_f8;\r\n  \r\n  FUN_1800b0790();\r\n  *param_1 = SphereShape::vftable;\r\n  *(undefined4 *)(param_1 + 0x36) = *(undefined4 *)(param_2 + 0x78);\r\n  *(undefined4 *)(param_1 + 0x2d) = 1;\r\n  FUN_1801d7bc0(local_108);\r\n  local_f8 = *(undefined4 *)(param_2 + 0x78);\r\n  local_108[0] = 1;\r\n  iVar24 = FUN_1801d7a70(*(undefined4 *)(param_3 + 0x9b0),local_108);\r\n  *(int *)((longlong)param_1 + 0xac) = iVar24;\r\n  if (iVar24 != 0) {\r\n    FUN_1801d7bc0(local_158);\r\n    lVar7 = param_1[0x29];\r\n    local_158[0] = 10;\r\n    if (lVar7 == 0) {\r\n      fVar2 = *(float *)((longlong)param_1 + 0x84);\r\n      fVar31 = *(float *)((longlong)param_1 + 0x7c);\r\n      fVar3 = *(float *)(param_1 + 0x19);\r\n      fVar4 = *(float *)((longlong)param_1 + 0xcc);\r\n      fVar5 = *(float *)(param_1 + 0xf);\r\n      fVar6 = *(float *)((longlong)param_1 + 0xc4);\r\n      fVar26 = *(float *)(param_1 + 0x10);\r\n      fVar27 = *(float *)(param_1 + 0x18);\r\n      fVar15 = fVar2 * fVar2 - 0.5;\r\n      fVar13 = (fVar31 * fVar4 - fVar3 * fVar26) * fVar2;\r\n      fVar14 = (fVar6 * fVar26 - fVar5 * fVar4) * fVar2;\r\n      fVar2 = (fVar5 * fVar3 - fVar31 * fVar6) * fVar2;\r\n      fVar12 = fVar31 * fVar3 + fVar5 * fVar6 + fVar4 * fVar26;\r\n      fVar1 = *(float *)((longlong)param_1 + 0xbc);\r\n      fVar28 = *(float *)((longlong)param_1 + 0x7c);\r\n      fVar8 = *(float *)((longlong)param_1 + 0x84);\r\n      fVar9 = *(float *)(param_1 + 0x10);\r\n      fVar10 = *(float *)(param_1 + 0xf);\r\n      fVar11 = *(float *)(param_1 + 0x17);\r\n      local_138 = fVar12 * fVar26 + fVar2 + *(float *)(param_1 + 0x12) +\r\n                  (fVar15 + fVar15) * fVar4 + fVar2 + fVar12 * fVar26;\r\n      fVar2 = *(float *)((longlong)param_1 + 0xb4);\r\n      local_134 = (fVar10 * fVar27 + fVar2 * fVar8 + fVar28 * fVar1) - fVar11 * fVar9;\r\n      local_130 = (fVar28 * fVar27 + fVar11 * fVar8 + fVar2 * fVar9) - fVar10 * fVar1;\r\n      local_148 = 0;\r\n      local_12c = (fVar1 * fVar8 + fVar27 * fVar9 + fVar10 * fVar11) - fVar28 * fVar2;\r\n      local_128 = (fVar27 * fVar8 - fVar10 * fVar2) - fVar28 * fVar11;\r\n      auVar23 = vunpcklps_avx(ZEXT416((uint)((fVar6 + fVar6) * fVar15 + *(float *)(param_1 + 0x11) +\r\n                                             fVar13 + fVar5 * fVar12 + fVar13 + fVar5 * fVar12)),\r\n                              ZEXT416((uint)(fVar31 * fVar12 + fVar14 +\r\n                                             *(float *)((longlong)param_1 + 0x8c) +\r\n                                            (fVar15 + fVar15) * fVar3 + fVar14 + fVar31 * fVar12)));\r\n      local_140 = auVar23._0_8_;\r\n      fVar1 = fVar1 * fVar9;\r\n    }\r\n    else {\r\n      fVar1 = *(float *)(lVar7 + 0x128);\r\n      fVar2 = *(float *)(lVar7 + 0x120);\r\n      fVar31 = *(float *)(lVar7 + 0x124);\r\n      fVar3 = *(float *)(lVar7 + 0x11c);\r\n      fVar28 = -*(float *)(lVar7 + 300);\r\n      fVar26 = -*(float *)(lVar7 + 0x130);\r\n      fVar27 = -*(float *)(lVar7 + 0x134);\r\n      fVar14 = fVar1 * fVar1 - 0.5;\r\n      fVar15 = fVar14 * fVar28 - (fVar2 * fVar27 - fVar31 * fVar26) * fVar1;\r\n      fVar16 = fVar14 * fVar26 - (fVar31 * fVar28 - fVar3 * fVar27) * fVar1;\r\n      fVar17 = fVar14 * fVar27 - (fVar3 * fVar26 - fVar2 * fVar28) * fVar1;\r\n      fVar4 = *(float *)((longlong)param_1 + 0x8c);\r\n      fVar30 = -fVar2;\r\n      fVar5 = *(float *)((longlong)param_1 + 0x7c);\r\n      fVar29 = -fVar3;\r\n      fVar6 = *(float *)(param_1 + 0x12);\r\n      fVar28 = fVar2 * fVar26 + fVar3 * fVar28 + fVar31 * fVar27;\r\n      fVar2 = *(float *)(param_1 + 0x11);\r\n      fVar31 = -fVar31;\r\n      fVar3 = *(float *)(param_1 + 0x10);\r\n      fVar9 = (fVar6 * fVar30 - fVar4 * fVar31) * fVar1;\r\n      fVar10 = (fVar2 * fVar31 - fVar6 * fVar29) * fVar1;\r\n      fVar11 = (fVar4 * fVar29 - fVar2 * fVar30) * fVar1;\r\n      fVar26 = *(float *)((longlong)param_1 + 0x84);\r\n      fVar27 = *(float *)(param_1 + 0xf);\r\n      fVar8 = fVar4 * fVar30 + fVar2 * fVar29 + fVar6 * fVar31;\r\n      fVar2 = *(float *)((longlong)param_1 + 0xcc);\r\n      fVar18 = (fVar26 * fVar29 + fVar27 * fVar1 + fVar3 * fVar30) - fVar5 * fVar31;\r\n      fVar19 = (fVar26 * fVar30 + fVar5 * fVar1 + fVar27 * fVar31) - fVar3 * fVar29;\r\n      fVar20 = (fVar26 * fVar31 + fVar3 * fVar1 + fVar5 * fVar29) - fVar27 * fVar30;\r\n      fVar4 = *(float *)((longlong)param_1 + 0xc4);\r\n      fVar6 = *(float *)(param_1 + 0x19);\r\n      fVar21 = ((fVar26 * fVar1 - fVar27 * fVar29) - fVar5 * fVar30) - fVar3 * fVar31;\r\n      fVar22 = fVar21 * fVar21 - 0.5;\r\n      fVar27 = (fVar2 * fVar19 - fVar6 * fVar20) * fVar21;\r\n      fVar12 = (fVar4 * fVar20 - fVar2 * fVar18) * fVar21;\r\n      fVar13 = (fVar6 * fVar18 - fVar4 * fVar19) * fVar21;\r\n      fVar26 = fVar6 * fVar19 + fVar4 * fVar18 + fVar2 * fVar20;\r\n      fVar1 = *(float *)((longlong)param_1 + 0xbc);\r\n      fVar3 = *(float *)(param_1 + 0x17);\r\n      local_148 = *(undefined4 *)(lVar7 + 0xfc);\r\n      fVar5 = *(float *)((longlong)param_1 + 0xb4);\r\n      local_138 = (fVar22 + fVar22) * fVar2 + fVar13 + fVar26 * fVar20 + fVar13 +\r\n                  (*(float *)(param_1 + 0x12) + *(float *)(param_1 + 0x12)) * fVar14 +\r\n                  fVar26 * fVar20 + fVar11 +\r\n                  (fVar28 + fVar28) * *(float *)(lVar7 + 0x124) + fVar17 + fVar17 +\r\n                  fVar11 + fVar8 * fVar31 + fVar8 * fVar31;\r\n      fVar2 = *(float *)(param_1 + 0x18);\r\n      local_134 = (fVar5 * fVar21 + fVar2 * fVar18 + fVar1 * fVar19) - fVar3 * fVar20;\r\n      local_130 = (fVar3 * fVar21 + fVar2 * fVar19 + fVar5 * fVar20) - fVar1 * fVar18;\r\n      local_12c = (fVar1 * fVar21 + fVar2 * fVar20 + fVar3 * fVar18) - fVar5 * fVar19;\r\n      local_128 = (fVar2 * fVar21 - fVar5 * fVar18) - fVar3 * fVar19;\r\n      auVar23 = vunpcklps_avx(ZEXT416((uint)((fVar22 + fVar22) * fVar4 + fVar27 +\r\n                                             fVar26 * fVar18 + fVar27 +\r\n                                             (*(float *)(param_1 + 0x11) +\r\n                                             *(float *)(param_1 + 0x11)) * fVar14 + fVar26 * fVar18\r\n                                             + fVar9 +\r\n                                            (fVar28 + fVar28) * *(float *)(lVar7 + 0x11c) +\r\n                                            fVar15 + fVar15 +\r\n                                            fVar8 * fVar29 + fVar9 + fVar8 * fVar29)),\r\n                              ZEXT416((uint)((fVar22 + fVar22) * fVar6 + fVar12 +\r\n                                             fVar26 * fVar19 + fVar12 +\r\n                                             (*(float *)((longlong)param_1 + 0x8c) +\r\n                                             *(float *)((longlong)param_1 + 0x8c)) * fVar14 +\r\n                                             fVar26 * fVar19 + fVar10 +\r\n                                            (fVar28 + fVar28) * *(float *)(lVar7 + 0x120) +\r\n                                            fVar16 + fVar16 +\r\n                                            fVar10 + fVar8 * fVar30 + fVar8 * fVar30)));\r\n      local_140 = auVar23._0_8_;\r\n      fVar1 = fVar1 * fVar20;\r\n    }\r\n    local_144 = *(undefined4 *)((longlong)param_1 + 0xac);\r\n    local_128 = local_128 - fVar1;\r\n    uVar25 = FUN_1801d7a70(*(undefined4 *)(param_3 + 0x9b0),local_158);\r\n    *(undefined4 *)(param_1 + 0x16) = uVar25;\r\n    return param_1;\r\n  }\r\n  *(undefined4 *)(param_1 + 0x16) = 0;\r\n  return param_1;\r\n}\r\n\r\n",
+    "body": {
+      "available": true,
+      "contains_entry": true,
+      "non_contiguous": false,
+      "provenance": "ghidra-function-body-address-set",
+      "ranges": [
+        {
+          "end": "0x1800bda79",
+          "start": "0x1800bd1f0"
+        }
+      ],
+      "span_bytes": 2186,
+      "total_bytes": 2186
+    }
+  },
+  "0x1800bda8a": {
+    "evidence_id": "ev_e8b5434fd58d47b573958d2f7144417fcdf0b04e7ac53299934e41a80f5563d9",
+    "entry": "0x1800bda80",
+    "pseudocode": "\r\nundefined8 * FUN_1800bda80(undefined8 *param_1,ulonglong param_2)\r\n\r\n{\r\n  *param_1 = SphereShape::vftable;\r\n  FUN_1800b0c70();\r\n  if ((param_2 & 1) != 0) {\r\n    if ((param_2 & 4) == 0) {\r\n      (**(code **)(*DAT_18027e580 + 0x28))(DAT_18027e580,param_1);\r\n      return param_1;\r\n    }\r\n    _guard_check_icall(param_1,0x1b8);\r\n  }\r\n  return param_1;\r\n}\r\n\r\n",
+    "body": {
+      "available": true,
+      "contains_entry": true,
+      "non_contiguous": false,
+      "provenance": "ghidra-function-body-address-set",
+      "ranges": [
+        {
+          "end": "0x1800bdae2",
+          "start": "0x1800bda80"
+        }
+      ],
+      "span_bytes": 99,
+      "total_bytes": 99
+    }
+  }
+}
