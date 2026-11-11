@@ -1,13 +1,13 @@
 {
-  "source_checkpoint": "f48a4124",
-  "next": "One full finite empty/reload/return-fire check on this exact new PG/Native ABI6 pair; no unchanged four-state rerun. Keep two weight0/whole-C0/fit issues and all13 requirements open.",
+  "source_checkpoint": "423b7044",
+  "next": "Use existing saved actual body/weapon/part asset identity and geometry to check visible wrist/palm/fingers against HB foregrip and magazine from unobstructed angles; investigate two weight0/whole-C0 transitions separately. Then add exact missing zero-reserve/perfect-cancel/retained-original/stow cases as separate actions. Do not repeat unchanged four-state/full empty flows. Preserve all13, previous failures and physical-headset boundary.",
   "candidate": "fresh-passive-pg-r1",
   "requirements_complete": false,
   "native_candidate": "fresh-passive-native-r1",
-  "runner_session_id": 21173,
+  "runner_session_id": 4180,
   "terminal": true,
   "all13_requirements_retained": true,
-  "instance": "hb-cloak-1111-180416",
-  "runner_last_poll": "21173 terminal0; normal stop/launcher/Native/PG/XR0; noforced/owned game+children absent; encode0",
-  "game_pid": 58352
+  "instance": "hb-cloak-1111-181143",
+  "runner_last_poll": "4180 terminal0; normal stop/launcher/Native/PG/XR0; noforced/owned game+children absent; encode0",
+  "game_pid": 42980
 }

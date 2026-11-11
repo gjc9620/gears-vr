@@ -1,0 +1,6 @@
+{"event":"helper_boot","helper_pid":23976,"tick_ms":176723796}
+{"event":"audio_service_ready","tick_ms":176723796}
+{"event":"guard_ready","pid":42980,"creation_time":134388655183980420,"owner_pid":33016,"owner_creation_time":134388655074299414,"ready_tick_ms":176723796,"matched":0,"muted":0}
+{"event":"mute_state_verified","pid":42980,"verified_muted_this_scan":true,"initially_muted_sessions":1,"verified_observations":1,"verify_failed":0,"target_shared_rejected_this_scan":0}
+{"event":"mute_verification_summary","pid":42980,"initially_muted_sessions":1,"verified_muted_observations":473,"verify_failed":0,"target_shared_rejected":0,"shared_rejected_is_global_scan_count":true}
+{"event":"guard_cleanup","reason":"stop","matched":1,"muted":0,"restore_attempted":0,"restored":0,"restore_pending":0,"read_failed":0,"mute_failed":0,"scans":473,"endpoint_unavailable":0,"shared_rejected":5203}

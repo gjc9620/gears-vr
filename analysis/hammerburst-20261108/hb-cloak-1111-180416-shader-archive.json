@@ -1,0 +1,537 @@
+{
+  "source_logs_media_moved": false,
+  "handoff_removed": true,
+  "bytes": 885049318.0,
+  "verified_files": [
+    {
+      "relative": "ShaderCacheRefresh",
+      "bytes": 3,
+      "sha256": "13bf7b3039c63bf5a50491fa3cfd8eb4e699d1ba1436315aef9cbe5711530354"
+    },
+    {
+      "relative": "comic_book_P\\D3DCompute.ushaderprecache",
+      "bytes": 472512,
+      "sha256": "ee830f8da11d99093dde6900d1515cf6b4c0eadc0f085eda3d20c43b62030024"
+    },
+    {
+      "relative": "comic_book_P\\D3DGraphics.ushaderprecache",
+      "bytes": 1099612,
+      "sha256": "37ed523d76b5e3a29ae4f4df37f875a6df10783dc97bf7a2f739760959825e04"
+    },
+    {
+      "relative": "MP_ClockTower\\D3DCompute.ushaderprecache",
+      "bytes": 472512,
+      "sha256": "d6cd1d93053bf45b341e275e9ad79738a31fc98e83d6552c35a1e3d1b26bc140"
+    },
+    {
+      "relative": "MP_ClockTower\\D3DGraphics.ushaderprecache",
+      "bytes": 9304451,
+      "sha256": "063714edba05f2e5dc69121b4512356159e4bc03c04e3292e9e78c5361b8187b"
+    },
+    {
+      "relative": "MP_Conservatory\\D3DCompute.ushaderprecache",
+      "bytes": 472512,
+      "sha256": "e2f28b5280b3369797119babf4fd8d9e57bd86ed9e71eccb69056db5edb0df54"
+    },
+    {
+      "relative": "MP_Conservatory\\D3DGraphics.ushaderprecache",
+      "bytes": 9486704,
+      "sha256": "6eae8bdf0a6b188303317c3eb50677fd2c05fb4136a6ea58445df3e4422632d1"
+    },
+    {
+      "relative": "MP_Courtyard\\D3DCompute.ushaderprecache",
+      "bytes": 472512,
+      "sha256": "f5c24058db07c758647fb7cc7341593e339c4517cf4ddce70667965e34663ac6"
+    },
+    {
+      "relative": "MP_Courtyard\\D3DGraphics.ushaderprecache",
+      "bytes": 8845271,
+      "sha256": "c9d853fce29681c30ea5c6fa281cd2130ea7e46cc70fc62239ae7f1ebe6ed7b8"
+    },
+    {
+      "relative": "MP_Depot\\D3DCompute.ushaderprecache",
+      "bytes": 472512,
+      "sha256": "ee28c14efb35812d0a08e8e8ff097b2159dda33f06b3def3b34a5a847f98cdd0"
+    },
+    {
+      "relative": "MP_Depot\\D3DGraphics.ushaderprecache",
+      "bytes": 10406454,
+      "sha256": "e430b4a90b3af57c8d8c178dbd3eee1675fc570a07a4049942a2d12b2a3d70e6"
+    },
+    {
+      "relative": "MP_Escalation\\D3DCompute.ushaderprecache",
+      "bytes": 472512,
+      "sha256": "bd576446d0396c62b8d935e92e07a4565aedf0f65fcef97761592ff5f62bcf5b"
+    },
+    {
+      "relative": "MP_Escalation\\D3DGraphics.ushaderprecache",
+      "bytes": 8903471,
+      "sha256": "e4e11fade102d4a87889f078daae5ce3bdf9d040824d117dcbac3f19000bb9f7"
+    },
+    {
+      "relative": "mp_goldrush\\D3DCompute.ushaderprecache",
+      "bytes": 472512,
+      "sha256": "9a03585d1a63ce981690150df6b549f8ccb1398b3399121890efd624fbbdc684"
+    },
+    {
+      "relative": "mp_goldrush\\D3DGraphics.ushaderprecache",
+      "bytes": 7716286,
+      "sha256": "72c51c510f84ed72d5a0ce82294e182c0c52c5ba328463fc606f7a72fe8579d3"
+    },
+    {
+      "relative": "MP_Gridlock\\D3DCompute.ushaderprecache",
+      "bytes": 472512,
+      "sha256": "ae71945ade510ae93709abde4a4727d7f75dbefabdff92a117c2569e8d4e2f36"
+    },
+    {
+      "relative": "MP_Gridlock\\D3DGraphics.ushaderprecache",
+      "bytes": 8475341,
+      "sha256": "5dd8f1a03f32955f187187ee3c191e049ca9d734ffa70da8f4a5ee7b22e28daf"
+    },
+    {
+      "relative": "mp_mansion\\D3DCompute.ushaderprecache",
+      "bytes": 472512,
+      "sha256": "a150173c37706115201493ba70f590a198af49f51c5643e688577be2cc3a7aeb"
+    },
+    {
+      "relative": "mp_mansion\\D3DGraphics.ushaderprecache",
+      "bytes": 10170728,
+      "sha256": "d53e8abf0e6435e4be4acc67c1fd9389aa813ce691c85bb9ece6d0db88ce8613"
+    },
+    {
+      "relative": "mp_mausoleum\\D3DCompute.ushaderprecache",
+      "bytes": 472512,
+      "sha256": "627eb9d20e1d093cd0c4282a5b26669dccf8a24ce7d412b63a8549ca9e7851a3"
+    },
+    {
+      "relative": "mp_mausoleum\\D3DGraphics.ushaderprecache",
+      "bytes": 8906724,
+      "sha256": "2626c832b79ef555323c75f7f806e15ee440756dbbdc7f56858ef092b08e8766"
+    },
+    {
+      "relative": "mp_museum\\D3DCompute.ushaderprecache",
+      "bytes": 472512,
+      "sha256": "2d5169c893e2d10b79b98932bf2de615016f37999072eb9219e7e4dcde42b0bb"
+    },
+    {
+      "relative": "mp_museum\\D3DGraphics.ushaderprecache",
+      "bytes": 8873230,
+      "sha256": "a7a6723096420d50ffadfd08326f6163fdfdf8375319b281006adc3510f32721"
+    },
+    {
+      "relative": "mp_process\\D3DCompute.ushaderprecache",
+      "bytes": 472512,
+      "sha256": "9c6401be7bd58e2f89c4796e0775cd4f8e8bb7e458ba1843f97eeade638dbce7"
+    },
+    {
+      "relative": "mp_process\\D3DGraphics.ushaderprecache",
+      "bytes": 8649048,
+      "sha256": "58b318062e3c01fbfd37f429e55b81fb351477ea10f5df2e6d7c89262a5b37ad"
+    },
+    {
+      "relative": "MP_RavenDown\\D3DCompute.ushaderprecache",
+      "bytes": 472512,
+      "sha256": "ad25a264b1ca49ddc6a7e8b4952374884fac690c731dc63c1068a81874b30740"
+    },
+    {
+      "relative": "MP_RavenDown\\D3DGraphics.ushaderprecache",
+      "bytes": 9107114,
+      "sha256": "0edcfe59d022675ebdffb82d8ee51888d695d4d14570d1866bec409c5f2df5fd"
+    },
+    {
+      "relative": "mp_rooftops\\D3DCompute.ushaderprecache",
+      "bytes": 472512,
+      "sha256": "db05300d092b78a545b251fd1471d6d6105756f09388ccc7fe0a6c0f14924682"
+    },
+    {
+      "relative": "mp_rooftops\\D3DGraphics.ushaderprecache",
+      "bytes": 9599082,
+      "sha256": "020ec2c247deebd609a7dda7ca2b118437d8faa8861606834d81daa9c342d14a"
+    },
+    {
+      "relative": "MP_Sanctuary\\D3DCompute.ushaderprecache",
+      "bytes": 472512,
+      "sha256": "a24e2cf1696d39e914bf586864755f643af40143ad9ac39e5c726a832606f1bc"
+    },
+    {
+      "relative": "MP_Sanctuary\\D3DGraphics.ushaderprecache",
+      "bytes": 8975795,
+      "sha256": "72924ee18371336eadeb9cca6ef6e214a2f52455c98cb193785e095159720b38"
+    },
+    {
+      "relative": "mp_shallow\\D3DCompute.ushaderprecache",
+      "bytes": 472512,
+      "sha256": "d024b4eadd75ac3bed9a47d7a8dd2c9021dc0a994c9a398211df3967bccf555e"
+    },
+    {
+      "relative": "mp_shallow\\D3DGraphics.ushaderprecache",
+      "bytes": 8258270,
+      "sha256": "80d395cdc6262f316e5e835210a25d8c0934dceb413512d7df7386cd4bd11b38"
+    },
+    {
+      "relative": "mp_subway\\D3DCompute.ushaderprecache",
+      "bytes": 472512,
+      "sha256": "a5974ee71e84f3d8211fc1eac2ebf0e7e6e6b8f64297d70cbb1bc9f58af8ab47"
+    },
+    {
+      "relative": "mp_subway\\D3DGraphics.ushaderprecache",
+      "bytes": 10194447,
+      "sha256": "5538efe1a74ed8b558d952d7a8f9914e39e5718c17216ae4ab552cf5a376e682"
+    },
+    {
+      "relative": "mp_swamp\\D3DCompute.ushaderprecache",
+      "bytes": 472512,
+      "sha256": "8e0e134b9c673ad5921d52668df9fc07ebd914388a81c2e38e41163d5fe8dfd9"
+    },
+    {
+      "relative": "mp_swamp\\D3DGraphics.ushaderprecache",
+      "bytes": 11207469,
+      "sha256": "f54724f67bb027de8aa4199ebe32b15938d074547fecadd7cf4f1facca8e4cfe"
+    },
+    {
+      "relative": "mp_trainstation\\D3DCompute.ushaderprecache",
+      "bytes": 472512,
+      "sha256": "db204eab79af52aa4e0a9f445835888dca95cdf5be4b756308d2081604a809f9"
+    },
+    {
+      "relative": "mp_trainstation\\D3DGraphics.ushaderprecache",
+      "bytes": 10854812,
+      "sha256": "927aa1ad6aa2b66cd3dfabde287864269b44f5562a08b964459ef5b369e3fa9b"
+    },
+    {
+      "relative": "mp_warmachine\\D3DCompute.ushadercompiledcache",
+      "bytes": 1048577,
+      "sha256": "e0a0dcc392d95a04b55ddcee7cb718e4276584a8bca0900e2a35e4c7d3a31754"
+    },
+    {
+      "relative": "mp_warmachine\\D3DCompute.ushaderprecache",
+      "bytes": 472512,
+      "sha256": "ca6e6b155d6ba0c656d038821b26303a0af5440ae78866292d60f5c0af81f1aa"
+    },
+    {
+      "relative": "mp_warmachine\\D3DGraphics.ushadercompiledcache",
+      "bytes": 16777217,
+      "sha256": "b57f3a9d5e2885842f3d3eec4f9a587c32eea2d844619feda625c1b2be948b33"
+    },
+    {
+      "relative": "mp_warmachine\\D3DGraphics.ushaderprecache",
+      "bytes": 10905074,
+      "sha256": "c2cafad6740b196af8c5cdcd9f8f61051b41067e835a0a83de6e225ba4b60dc5"
+    },
+    {
+      "relative": "mp_warmachine_2v2\\D3DCompute.ushaderprecache",
+      "bytes": 472512,
+      "sha256": "6d52fd5a9dce29db877f2e13bf1afdbb13efb39f42b05aaa0f953c3570d8f009"
+    },
+    {
+      "relative": "mp_warmachine_2v2\\D3DGraphics.ushaderprecache",
+      "bytes": 6506725,
+      "sha256": "f1c423166f76a8cc0f5b40abc5be132b6dd21d58f8ccbb77993f9e98a4ca18c8"
+    },
+    {
+      "relative": "sp_adams_p\\D3DCompute.ushaderprecache",
+      "bytes": 472512,
+      "sha256": "7eec582563fbf17b5c949b5d6a58b0635c213fb62a431e7952d83d2764f1d035"
+    },
+    {
+      "relative": "sp_adams_p\\D3DGraphics.ushaderprecache",
+      "bytes": 27143945,
+      "sha256": "afa54c54574b8212b77de905fb8f4e24ead51ea69c3729d205b0681d74a3a097"
+    },
+    {
+      "relative": "sp_alamo_p\\D3DCompute.ushaderprecache",
+      "bytes": 472512,
+      "sha256": "0ddfe1f3988f5f280b97bd1476a2e936a1287f9c51f0ba1977886b89e78fe8c8"
+    },
+    {
+      "relative": "sp_alamo_p\\D3DGraphics.ushaderprecache",
+      "bytes": 13984215,
+      "sha256": "74b4b4a8d4243ed8a1597a26c05da06c3766c3648cef5ca1ebf03cfb32906597"
+    },
+    {
+      "relative": "sp_caves_p\\D3DCompute.ushaderprecache",
+      "bytes": 472512,
+      "sha256": "234e655fb5ce9731790a283b12cb1ede1dfb4e608992ca72e5532d7ba27358d9"
+    },
+    {
+      "relative": "sp_caves_p\\D3DGraphics.ushaderprecache",
+      "bytes": 12764991,
+      "sha256": "9b4e3caf088ebf60a83663ec5e27491c6793eff0d029f0bf411547b066447603"
+    },
+    {
+      "relative": "sp_eba_p\\D3DCompute.ushaderprecache",
+      "bytes": 472512,
+      "sha256": "e7f57725cbacc58f5bd95e079e4164d9638f217f7acc9bd8037824c8c25a64f6"
+    },
+    {
+      "relative": "sp_eba_p\\D3DGraphics.ushaderprecache",
+      "bytes": 27187240,
+      "sha256": "06a3a6aceb574c34e66774949ff5a16f745015e7ceff1b5b0ce90134909522d5"
+    },
+    {
+      "relative": "sp_eba_riverwalk_p\\D3DCompute.ushaderprecache",
+      "bytes": 472512,
+      "sha256": "f0eb2359249f02f7c9ccb21e7b169c314c515ef6264ef361a2e0472612e9655f"
+    },
+    {
+      "relative": "sp_eba_riverwalk_p\\D3DGraphics.ushaderprecache",
+      "bytes": 28716687,
+      "sha256": "040a9786d9e5b4ed76c73ea963ac58a94deef17b0f0ccd34cb3c9c84d6d2752c"
+    },
+    {
+      "relative": "SP_Embry_Benchmark_P\\D3DCompute.ushaderprecache",
+      "bytes": 472512,
+      "sha256": "99644f566db20f71d884c413594f82380c31fa04d8e5162bd4fd59fec310fa6f"
+    },
+    {
+      "relative": "SP_Embry_Benchmark_P\\D3DGraphics.ushaderprecache",
+      "bytes": 7627944,
+      "sha256": "e3645b161a81f1f5ca6bae11011944a39b2f59bed2f48bda89b6060404447729"
+    },
+    {
+      "relative": "sp_embry_p\\D3DCompute.ushadercompiledcache",
+      "bytes": 1048577,
+      "sha256": "ea6c96a37218ac22e9a94df5a6aa42c0271fd45213350049089ab8ef17284848"
+    },
+    {
+      "relative": "sp_embry_p\\D3DCompute.ushaderprecache",
+      "bytes": 472512,
+      "sha256": "08340842f84f84a3ecbd3a745982db7ace491d8aacbc2a052b3d3f099ac6b79a"
+    },
+    {
+      "relative": "sp_embry_p\\D3DGraphics.ushadercompiledcache",
+      "bytes": 33554433,
+      "sha256": "3e083ca4d94715ad4354fc6d200a7ff9d3c65ce8e82a6dce58cf01b562f01c2f"
+    },
+    {
+      "relative": "sp_embry_p\\D3DGraphics.ushaderprecache",
+      "bytes": 23076817,
+      "sha256": "7ca1f50667f02aa0396a0ea235e486690440ff9f78b3c9774004e712acda19ed"
+    },
+    {
+      "relative": "sp_ephyrastreets_p\\D3DCompute.ushadercompiledcache",
+      "bytes": 1048577,
+      "sha256": "ad76ff802c4e28849207cc141c78b37a6dbe438198a6653316baa73ce369592c"
+    },
+    {
+      "relative": "sp_ephyrastreets_p\\D3DCompute.ushaderprecache",
+      "bytes": 472512,
+      "sha256": "ff51fa90daa5ce7b69ef3a3dab4a485c0ee06ca5cad12d6debe90d8384f8db43"
+    },
+    {
+      "relative": "sp_ephyrastreets_p\\D3DGraphics.ushadercompiledcache",
+      "bytes": 42991617,
+      "sha256": "6e4836312d84c1746f1e91ff87ab87a7e6f06f90c8c571762a7e45c7904d5b80"
+    },
+    {
+      "relative": "sp_ephyrastreets_p\\D3DGraphics.ushaderprecache",
+      "bytes": 30275191,
+      "sha256": "8587a97ddd56a48721e0cad431d8eef6a3b4196fcd5a7b760cd220d802600719"
+    },
+    {
+      "relative": "sp_factoryinterior_p\\D3DCompute.ushaderprecache",
+      "bytes": 472512,
+      "sha256": "38d26e4c2ae27b8d87f69fe276b1ceb375f5ad91e3c41d910240e0c312528383"
+    },
+    {
+      "relative": "sp_factoryinterior_p\\D3DGraphics.ushaderprecache",
+      "bytes": 21090587,
+      "sha256": "bb61cbdca7b06c2b24691df6d9fced67b886711fd114a6a02b8dd227931cbf02"
+    },
+    {
+      "relative": "sp_factory_p\\D3DCompute.ushaderprecache",
+      "bytes": 472512,
+      "sha256": "64fbd4ca49a666e26e51b59954f5907670be472611ed7c4d31b8466f3a70c796"
+    },
+    {
+      "relative": "sp_factory_p\\D3DGraphics.ushaderprecache",
+      "bytes": 99767051,
+      "sha256": "99bf3e7b88773e760ae08099d5d6b35168d19f2fa038fa5ab5d9f603fd541740"
+    },
+    {
+      "relative": "sp_hos_p\\D3DCompute.ushadercompiledcache",
+      "bytes": 1048577,
+      "sha256": "a1e20e1bf5a280d1721076759d562ae53981573d5a48490bb8563585968b906b"
+    },
+    {
+      "relative": "sp_hos_p\\D3DCompute.ushaderprecache",
+      "bytes": 472512,
+      "sha256": "ddcde2d0df28a23f0d4f59f0d35cebe0e6598ff86d3fc30b4a95678af3e4e438"
+    },
+    {
+      "relative": "sp_hos_p\\D3DGraphics.ushadercompiledcache",
+      "bytes": 38797313,
+      "sha256": "88c29cbeb17dc39a4b6a00dcc83cdcf519081e285e2c39aceb8df9714fbd5c31"
+    },
+    {
+      "relative": "sp_hos_p\\D3DGraphics.ushaderprecache",
+      "bytes": 27022459,
+      "sha256": "073fd66cf79e75c4adb494fb5afc6cd4129168e3bf5ec84b00a410317f4d54ac"
+    },
+    {
+      "relative": "sp_oldephyra_p\\D3DCompute.ushadercompiledcache",
+      "bytes": 1048577,
+      "sha256": "65033a02a3dd1cb7c199789b1907838c1cb993be9de8c97c4ab4173fcc3fa84e"
+    },
+    {
+      "relative": "sp_oldephyra_p\\D3DCompute.ushaderprecache",
+      "bytes": 472512,
+      "sha256": "bce97390f7e2fea90397d1ee751094f81b21b17c25087e9b82aca20c901b2006"
+    },
+    {
+      "relative": "sp_oldephyra_p\\D3DGraphics.ushadercompiledcache",
+      "bytes": 41943041,
+      "sha256": "3afea31711e054133950b0f4b5aabd5697587918887afa1e599038897b30975e"
+    },
+    {
+      "relative": "sp_oldephyra_p\\D3DGraphics.ushaderprecache",
+      "bytes": 29634388,
+      "sha256": "f6f0187af64a87bb0786a46b1a8bdcfb5790edf514e5306fe6d1419e8dc3a6b6"
+    },
+    {
+      "relative": "sp_prison_p\\D3DCompute.ushaderprecache",
+      "bytes": 472512,
+      "sha256": "d45531b42075979b0a58dd7e079bfcbb37efc4788d8f5d4427d5d91a97e12f88"
+    },
+    {
+      "relative": "sp_prison_p\\D3DGraphics.ushaderprecache",
+      "bytes": 14754783,
+      "sha256": "067f63d9be88de99940692a3f177aefb8b190f058a5588012590dd8c86f0d8c0"
+    },
+    {
+      "relative": "sp_station_p\\D3DCompute.ushaderprecache",
+      "bytes": 472512,
+      "sha256": "58f7645dcb9df5658245feebdd19c2e36416ebfa55c842e895065c4ddbd0c98d"
+    },
+    {
+      "relative": "sp_station_p\\D3DGraphics.ushaderprecache",
+      "bytes": 13337691,
+      "sha256": "131d7d9ec2ad5cc35ebe48ca31c114bd88942776839631286775cf748a0ac459"
+    },
+    {
+      "relative": "sp_timgad_b_p\\D3DCompute.ushaderprecache",
+      "bytes": 472512,
+      "sha256": "b4b3dc33da53a4b587229f487410314a6dc98988972eca283effeb13fb3a8520"
+    },
+    {
+      "relative": "sp_timgad_b_p\\D3DGraphics.ushaderprecache",
+      "bytes": 26329227,
+      "sha256": "66b24c1ba232d8390b2a48a2d562dfbefff731af887bf0d162b4d8ad0fb8d8be"
+    },
+    {
+      "relative": "sp_timgad_p\\D3DCompute.ushaderprecache",
+      "bytes": 472512,
+      "sha256": "e22ee1fc3909db19588e3b2a4fae3a29339d2bcec5784eb38bcbae45cd036e11"
+    },
+    {
+      "relative": "sp_timgad_p\\D3DGraphics.ushaderprecache",
+      "bytes": 30460446,
+      "sha256": "183056657751e3a489a0015e105ea722f44edb1adbf7ba0a83a1f62f23f88f98"
+    },
+    {
+      "relative": "sp_tomb_p\\D3DCompute.ushadercompiledcache",
+      "bytes": 1048577,
+      "sha256": "9d88a80b9f2e39020e967fe8a087f34685724564a390c179844f331ac9f1a28b"
+    },
+    {
+      "relative": "sp_tomb_p\\D3DCompute.ushaderprecache",
+      "bytes": 472512,
+      "sha256": "683edc28173f0a20e223ff7c2d0ae6af523392d58f06b4e193f37c49a0820b26"
+    },
+    {
+      "relative": "sp_tomb_p\\D3DGraphics.ushadercompiledcache",
+      "bytes": 18874369,
+      "sha256": "89b54c7b335d5b567d70f161bc240f399e2b6a899981905921cf9eecc8b449c5"
+    },
+    {
+      "relative": "sp_tomb_p\\D3DGraphics.ushaderprecache",
+      "bytes": 12113544,
+      "sha256": "f987c0e9be6e963370b1bd6c17901587c4cc825a32b48d9ed83bf5d117679958"
+    },
+    {
+      "relative": "sp_tyro_p\\D3DCompute.ushaderprecache",
+      "bytes": 472512,
+      "sha256": "72cffe99a59adce644e43db5d089a7ad23ba03f2fec5f79992713200eed0cd53"
+    },
+    {
+      "relative": "sp_tyro_p\\D3DGraphics.ushaderprecache",
+      "bytes": 15364397,
+      "sha256": "0698cdc9586b9538f20c03de5a6410dfb96ef261338aa5576b332fb4df303b9d"
+    },
+    {
+      "relative": "sp_viaducts_p\\D3DCompute.ushaderprecache",
+      "bytes": 472512,
+      "sha256": "1c90c1548d1abad42ea2c300a45537842de2fb305dcfdcf88cee78d1282c5d58"
+    },
+    {
+      "relative": "sp_viaducts_p\\D3DGraphics.ushaderprecache",
+      "bytes": 9284578,
+      "sha256": "bb15a6bee14a1ffa2628cd77462c5e934d594738f1f9b8029a32b34caf4e0390"
+    },
+    {
+      "relative": "SP_Viaducts_Scripting_01\\D3DCompute.ushadercompiledcache",
+      "bytes": 1048577,
+      "sha256": "971a93a8b4ca3ddf3dad05148ba36fd7605ea926dba8977b7d0a7a2d40a49617"
+    },
+    {
+      "relative": "SP_Viaducts_Scripting_01\\D3DCompute.ushaderprecache",
+      "bytes": 1048577,
+      "sha256": "971a93a8b4ca3ddf3dad05148ba36fd7605ea926dba8977b7d0a7a2d40a49617"
+    },
+    {
+      "relative": "SP_Viaducts_Scripting_01\\D3DGraphics.ushadercompiledcache",
+      "bytes": 1048577,
+      "sha256": "971a93a8b4ca3ddf3dad05148ba36fd7605ea926dba8977b7d0a7a2d40a49617"
+    },
+    {
+      "relative": "SP_Viaducts_Scripting_01\\D3DGraphics.ushaderprecache",
+      "bytes": 1048577,
+      "sha256": "971a93a8b4ca3ddf3dad05148ba36fd7605ea926dba8977b7d0a7a2d40a49617"
+    },
+    {
+      "relative": "WarGame_P\\D3DCompute.ushadercompiledcache",
+      "bytes": 1048577,
+      "sha256": "6d05e388bed352c305786577b250253df1124cca326a38e0d4faa243a45a126c"
+    },
+    {
+      "relative": "WarGame_P\\D3DCompute.ushaderprecache",
+      "bytes": 11692,
+      "sha256": "87dc8aef95f93595abb53086f45c3b7f2479781164d1fbf84feeca20d7b0fe99"
+    },
+    {
+      "relative": "WarGame_P\\D3DGraphics.ushadercompiledcache",
+      "bytes": 1048577,
+      "sha256": "10a5160209a02692671d2efa32a473df54d5bf60d57cb1fbbe5531392caa418a"
+    },
+    {
+      "relative": "WarGame_P\\D3DGraphics.ushaderprecache",
+      "bytes": 128828,
+      "sha256": "a1bf127ac84849fe976bcfb315631433541d7836ea4e23816038421e7f75f045"
+    },
+    {
+      "relative": "warstart\\D3DCompute.ushadercompiledcache",
+      "bytes": 1048577,
+      "sha256": "909624fc71f25b5b2cad8c882f39a8c38b29f8661ee9a39405271568dac99eb2"
+    },
+    {
+      "relative": "warstart\\D3DCompute.ushaderprecache",
+      "bytes": 472512,
+      "sha256": "dc40abd1912d59c0033179b86aad8d23173bb73ed635355d8dcb38ca198efda8"
+    },
+    {
+      "relative": "warstart\\D3DGraphics.ushadercompiledcache",
+      "bytes": 1048577,
+      "sha256": "92cd0abf01cc0af0b96d6c79fa5107c40ff688899ed659c17eb72f0adc3fc167"
+    },
+    {
+      "relative": "warstart\\D3DGraphics.ushaderprecache",
+      "bytes": 1535446,
+      "sha256": "e720d75f89de1231e85836afa9034076171c62aae703aa0adf53d5dccd609277"
+    }
+  ],
+  "source": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\hb-cloak-1111-180416\\LocalAppData\\Coalition\\WarGame\\PSOCache",
+  "identities_checked_absent": true,
+  "name": "hb-cloak-1111-180416",
+  "mapping_created": true,
+  "archive": "J:\\gearsVr\\analysis\\hammerburst-archive-20261110\\terminal-shader-caches\\hb-cloak-1111-180416\\PSOCache"
+}

@@ -780,3 +780,8 @@ PG325200c3/Native4691fdf2，仅窄拒绝记录，宽render witness OFF。无Grip
 ## 2026-11-11 实际58352：新鲜查询吸附路径实际执行，四态七快照通过
 
 PG5fde320a/Nativef0635832已在game执行新路径：275条passive成功C0记录全部带真实fresh BodyMount query id，273 applied/2 weight0。原七快照四态全部通过：无Grip不驱动枪1.71e-6deg；枪实际移动1.237321raw/2.285162deg时腕相对枪.004226raw/.006668deg；Grip左手带枪7.298deg、palm误差.004179raw；松手回单手与snap.0007515raw。多条旧world请求过100ms的原拒绝，与相同当前input sequence、40ms内的新鲜query已应用目标同时存在；拒绝记录无Compose id，不伪称逐Compose一一对应。旧world有效期逐字节未改，当前目标由新query输入/几何重新组装。两条weight0、整段C0不准入和视觉贴合仍未解决，不能称全稳定修复。清理Native/PG/XR/stop/launcher全0、无forced/前台违规，703帧错误空/编码0、3页48对亲阅，近眼大枪/张平分离手/原动画重影白几何仍不合格，111.44-114.74s暂停卡与116.42s世界图像保留。20924完整空仓换弹属于父候选证据，新ABI6 pair下一次需完整空仓/换弹/回枪开火验证；所有13项继续。
+
+
+## 2026-11-11 实际42980：新pair完整普通空仓换弹与回枪六发通过
+
+精确PG5fde320a/Nativef0635832新ABI6 pair复查通过：core6+12drain6=78一致射线，空仓0/78真实禁射，原开盖/提旧mag/取新mag/座入/合盖完成78/0，回枪6射线后typed72/0，总84spent+72remaining=156initial。12条已捕获原early-refire event各不同/count+1/pending0，受原cap12；service/latch/history-origin拒绝无捕获，Nativeinputloss0，不能称未触发分支全修或所有源丢失都覆盖。新增fresh被动路径58352已实际执行，当前42980证明接口改动未阻止完整机械链路；保留父20924和全部历史失败。reserve_exhaustion_attempted=false、仍loaded72，不算0/0；完美/取消/保留原mag/收枪/全中断/贴合/头显仍未验收。一次前置磁盘余量拒绝发生在prepare/game前，原阈值保持，173534/180416已终止缓存逐文件SHA转存J盘并映射回读后再正常准入，无forced。正常stop/launcher/Native/PG/XR0，763帧错误空/编码0、3页48对亲阅，近眼枪体/手臂分离重影/白几何与guide outlines仍未通过全贴合；112.90/114.77s暂停卡、116.56s世界图像不扩称全中断。下一步查保存的真实body/weapon/part资产与皮肤接触、两次weight0/整段C0转换，以及其余独立缺项，禁止无变化重复四态或完整空仓。所有13项保留/public未改。
