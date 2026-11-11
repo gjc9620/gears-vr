@@ -1,0 +1,29 @@
+{
+  "result": "BodyQueryCatalog checks=14 failures=0 supplied inventory only; no world safety/permit\r\n",
+  "source_sha256": {
+    "tools/native-capture/cover_body_query_catalog.h": "c87a644491ba4e73bd5bedc412910b65edd6366dbdb87d00ec09e5b88c94fe7e",
+    "tools/native-capture/cover_body_query_catalog_test.cpp": "6e1d98b63a948ca1eb42c089abd4014e2fb16524bc9e88b963a1bdb4b2910574"
+  },
+  "implements": "Atomic conversion of supplied full inventory to ordered original-query parameter rows, preserving body/bone/name/array ordinal",
+  "tested": [
+    "2 bodies each sphere/box/sphyl",
+    "truncated count",
+    "last ordinal change",
+    "last bone mismatch",
+    "last precision failure",
+    "declared unsupported convex",
+    "scratch/output alias"
+  ],
+  "remaining": [
+    "native inventory certification",
+    "conservative outward precision bounds",
+    "original scene query traversal",
+    "source/shape/world closure",
+    "articulated motion and endpoint occupancy",
+    "unique body commit/view integration"
+  ],
+  "game_started": false,
+  "original_query_called": false,
+  "world_verified": false,
+  "engineering_percent": 25
+}

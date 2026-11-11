@@ -2857,3 +2857,11 @@ query34.2674ms，code source，engine/source_guard/current；Owner53次context/s
 当前仅支持坐标/旋转系数可精确表示为float的输入；非精确返回precision，不静默缩小或丢形状。此边界是未完成项，不把严格拒绝多数非整旋转当成完整转换；还须实现保守外扩误差界和实际native约定核验。convex/未知类型明确unsupported。单形状数学不能授当前C0/active shape/世界碰撞/移动许可，未接Session。后续连接完整目录逐项转换和原查询消费，任何末项失败也不得报告完整成功，旋转/姿态变化还需完整路径认证。
 
 源码、编译/运行及依赖SHA在primitive-query-r201，无完整Native构建/安装；全CV/AC/头显仍未完成，工程25%。
+
+## r202：完整提供目录到query形状目录的原子转换已接（2026-11-12）
+
+新增cover_body_query_catalog.h，复用现有mapping结构验证和r201单形状转换：先核对body数、已声明各kind总数、原始body/kind/ordinal顺序，再逐项核对骨索引/骨名并转换；保留原array_index和body/bone对应。scratch在caller heap/TLS，只有完整成功才发布Catalog，任一末项失败均保持公共输出。convex即使被shape列表省略也因声明计数而unsupported；不将部分目录当完整。
+
+两body各三类型共六形状的正常转换，以及计数截短、末项序号错、末项骨错、末项precision、声明convex、workspace/output alias共14检查0失败；编译/运行回执在body-query-catalog-r202。此处完整仅指所提供目录，尚未证明实时native shape库存真实完整；r201精确float限制仍在，保守外扩和一般旋转仍未完成。未调用原场景查询、未授世界/路径/占用/身体位移许可，无游戏/完整Native构建。
+
+下一层接原query逐项消费和source/world闭合，不能将此目录当作可移动标志；同姿态平移与关节姿态变化的路径仍须分别正确认证。全CV01–24/AC01–22/头显继续，工程25%。
