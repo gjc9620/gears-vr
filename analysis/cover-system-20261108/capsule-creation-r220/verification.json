@@ -1,0 +1,13 @@
+{
+  "test": "ShapeCreation checks=1554 failures=0 original descriptor math only; no runtime correspondence\r\n",
+  "sources": {
+    "tools/native-capture/cover_physx_shape_creation.h": "5d9146dea20062a4126cefea3cf1390930a9734f4a492b59fe04f8ae157a0bc1",
+    "tools/native-capture/cover_physx_shape_creation_test.cpp": "972c6f0eb839fb5a0f8c54466743bea6fd63a3b17f47861ced774e2d477f9897"
+  },
+  "certificate_sha256": "45116f09e4ce9ed8bd3f2e5c4b26629af6e9c196a8e72a2787df3f7c21eb6054",
+  "change": "Owned descriptor builder with original .02 axis scale, fixed .025 margin and capsule [-X,Z,Y] basis; retains full segment length as descriptor does. Explicit creation-scale input, no inference from existing point-scale collector. Invalid/disabled/unsupported/alias preserve output.",
+  "remaining": "Creation-scale live producer, authored-to-active identity, flag eligibility, welds, internal capsule constructor full-to-half route, production collection/integration/query fence, full game/headset CV/AC acceptance.",
+  "game_started": false,
+  "full_native_built": false,
+  "engineering_percent": 25
+}

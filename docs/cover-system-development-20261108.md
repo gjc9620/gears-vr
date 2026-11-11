@@ -3027,3 +3027,15 @@ generic primitive_query继续只打包输入同单位值，新增Units::unspecif
 13840检查0失败：XYZ各轴128组旋转，独立Rodrigues检查全部盒角与胶囊Y端点、端点对称、sphere清空其他字段、零半段、负/非有限/subnormal尺寸、非rigid pose、未知kind和alias，拒绝保持输出。原world1688（含parameter687/owner519）重新编译与PE只读夹具回归0。所有编译依赖SHA在保存时当前一致。
 
 authored胶囊Z轴→activeY轴创建修正和逐shape对应仍未证明；不按actor/member序号猜骨骼。flags/参与规则、current query-visible world闭合、native OBB查询内部矩阵解释及生产接入仍待完成。未运行游戏/XR/原getter、未生产Native构建/安装；body/view/hit/muzzle同版事务、视图遮挡与完整CV24/AC22、头显继续未完成，工程25%。证据shape-geometry-r219。
+
+## r220：找到原aggregate创建路径，胶囊Z→Y及固定margin来源已明确（2026-11-12）
+
+沿F2610十四个caller定位1402c3efc的BodySetup+108 aggregate参数，再到1402cfa6c：依次Sphere/Box/Sphyl原数组，stride80，各自NoRBCollision bit0（44/4c/48）跳过。原胶囊临时UE矩阵行改为[-row0,row2,row1]，translation原样复制；1402cf478将其3x3转置为PhysX行主矩阵。因此PhysX局部Y精确对应原authored局部Z，不能按通用SDK假定简单X轴或任意90度补丁。
+
+同一创建流程的另一个关键差异：原float.02先乘incoming scale各轴；平移各轴再乘该axis scale，而所有尺寸使用scaledX。sphere radius=scaledX*radius+.025；box half=(scaledX*dimension)*.5+.025；capsule radius=scaledX*radius+.025，descriptor full segment length=scaledX*length，无长度margin。原常量PhysX.025而非零，因此不能拿r218未加creation margin的查询几何直接断言与active尺寸相等；不修改既有point语义来掩盖这种差异。
+
+新增cover_physx_shape_creation.h纯owned descriptor转换，显式要求该创建调用的scale；不把既有point-scale proof冒充creation-scale来源。保留full segment length字段，内部构造full→half后续另证；按原规则处理非均匀正scale的尺寸X/平移XYZ，保留异常/disabled/unsupported/alias拒绝不发布。1554检查0失败，包括XYZ各128旋转下新Y列等于原Z行、原尺寸float分组与margin、非均匀平移、零段和拒绝保护；MSVC/W4/WX构建0。
+
+原工具桥接因ida_nexus缺失失败，未安装/升级；改用已安装本地IDA的只读脚本和独立DB副本，最终qexit0，无游戏/目标运行。首次相对地址基准误用导致无xref，纠正为raw0→140001000后定位；原数据常量地址必须加这一1000偏置（.02=1417070c4、.5=1417070e4、.025=14170778c、sign=141707080），证书逐原字节核对完整chunk与SHA，保留远尾块1408f2a3c。证据capsule-creation-r220，原DB未主动保存。
+
+仍需creation-scale当前来源闭合、逐active/authored身份关联、weld/flags参与规则、完整world fence及生产接入；未生产Native构建/安装/游戏/XR/头显，完整CV24/AC22和body/view/hit/muzzle同版事务、视图遮挡继续未完成，工程25%。

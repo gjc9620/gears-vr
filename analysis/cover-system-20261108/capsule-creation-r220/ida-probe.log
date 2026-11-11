@@ -1,0 +1,165 @@
+IDAPython: Requested to use virtual environment interpreter at C:\Users\11\AppData\Roaming\Hex-Rays\IDA Pro\venv\Scripts\python.exe
+
+  bytes   pages size description
+--------- ----- ---- --------------------------------------------
+ 79691776  9728 8192 allocating memory for b-tree...
+ 80125952  9781 8192 allocating memory for virtual array...
+   262144    32 8192 allocating memory for name pointers...
+-----------------------------------------------------------------
+160079872            total memory allocated
+
+Loading processor module J:\ida94sp1_0915\procs\pc.dll for metapc...OK
+Loading type libraries...
+Autoanalysis subsystem has been initialized.
+Database for file 'section_1000.bin' has been loaded.
+Hex-Rays Decompiler plugin has been loaded (v9.4.0.260915)
+  License: 14-0000-FFFF-88  (1 user)
+  The hotkeys are F5: decompile, Ctrl-F5: decompile all.
+
+  Please check the Edit/Plugins menu for more information.
+Hex-rays version 9.4.0.260915 has been detected, gooMBA plugin ready to use
+Using type parser: legacy
+Flushing buffers, please wait...ok
+Unloading IDP module J:\ida94sp1_0915\procs\pc.dll...IDAPython: Requested to use virtual environment interpreter at C:\Users\11\AppData\Roaming\Hex-Rays\IDA Pro\venv\Scripts\python.exe
+
+  bytes   pages size description
+--------- ----- ---- --------------------------------------------
+ 79691776  9728 8192 allocating memory for b-tree...
+ 80125952  9781 8192 allocating memory for virtual array...
+   262144    32 8192 allocating memory for name pointers...
+-----------------------------------------------------------------
+160079872            total memory allocated
+
+Loading processor module J:\ida94sp1_0915\procs\pc.dll for metapc...OK
+Loading type libraries...
+Autoanalysis subsystem has been initialized.
+Database for file 'section_1000.bin' has been loaded.
+Hex-Rays Decompiler plugin has been loaded (v9.4.0.260915)
+  License: 14-0000-FFFF-88  (1 user)
+  The hotkeys are F5: decompile, Ctrl-F5: decompile all.
+
+  Please check the Edit/Plugins menu for more information.
+Hex-rays version 9.4.0.260915 has been detected, gooMBA plugin ready to use
+Using type parser: legacy
+Flushing buffers, please wait...ok
+Unloading IDP module J:\ida94sp1_0915\procs\pc.dll...IDAPython: Requested to use virtual environment interpreter at C:\Users\11\AppData\Roaming\Hex-Rays\IDA Pro\venv\Scripts\python.exe
+
+  bytes   pages size description
+--------- ----- ---- --------------------------------------------
+ 79691776  9728 8192 allocating memory for b-tree...
+ 80125952  9781 8192 allocating memory for virtual array...
+   262144    32 8192 allocating memory for name pointers...
+-----------------------------------------------------------------
+160079872            total memory allocated
+
+Loading processor module J:\ida94sp1_0915\procs\pc.dll for metapc...OK
+Loading type libraries...
+Autoanalysis subsystem has been initialized.
+Database for file 'section_1000.bin' has been loaded.
+Hex-Rays Decompiler plugin has been loaded (v9.4.0.260915)
+  License: 14-0000-FFFF-88  (1 user)
+  The hotkeys are F5: decompile, Ctrl-F5: decompile all.
+
+  Please check the Edit/Plugins menu for more information.
+Hex-rays version 9.4.0.260915 has been detected, gooMBA plugin ready to use
+Using type parser: legacy
+J:/codexWorktree/gearsVr/analysis/cover-system-20261108/capsule-creation-r220/ida_probe.py:12: DeprecationWarning: get_func() is deprecated, use get_func_start or get_func_entry_info()
+  f=ida_funcs.get_func(ref.frm)
+Flushing buffers, please wait...ok
+Unloading IDP module J:\ida94sp1_0915\procs\pc.dll...IDAPython: Requested to use virtual environment interpreter at C:\Users\11\AppData\Roaming\Hex-Rays\IDA Pro\venv\Scripts\python.exe
+
+  bytes   pages size description
+--------- ----- ---- --------------------------------------------
+ 80166912  9786 8192 allocating memory for b-tree...
+ 80125952  9781 8192 allocating memory for virtual array...
+   262144    32 8192 allocating memory for name pointers...
+-----------------------------------------------------------------
+160555008            total memory allocated
+
+Loading processor module J:\ida94sp1_0915\procs\pc.dll for metapc...OK
+Loading type libraries...
+Autoanalysis subsystem has been initialized.
+Database for file 'section_1000.bin' has been loaded.
+Hex-Rays Decompiler plugin has been loaded (v9.4.0.260915)
+  License: 14-0000-FFFF-88  (1 user)
+  The hotkeys are F5: decompile, Ctrl-F5: decompile all.
+
+  Please check the Edit/Plugins menu for more information.
+Hex-rays version 9.4.0.260915 has been detected, gooMBA plugin ready to use
+Using type parser: legacy
+Flushing buffers, please wait...ok
+Unloading IDP module J:\ida94sp1_0915\procs\pc.dll...IDAPython: Requested to use virtual environment interpreter at C:\Users\11\AppData\Roaming\Hex-Rays\IDA Pro\venv\Scripts\python.exe
+
+  bytes   pages size description
+--------- ----- ---- --------------------------------------------
+ 80240640  9795 8192 allocating memory for b-tree...
+ 80125952  9781 8192 allocating memory for virtual array...
+   262144    32 8192 allocating memory for name pointers...
+-----------------------------------------------------------------
+160628736            total memory allocated
+
+Loading processor module J:\ida94sp1_0915\procs\pc.dll for metapc...OK
+Loading type libraries...
+Autoanalysis subsystem has been initialized.
+Database for file 'section_1000.bin' has been loaded.
+Hex-Rays Decompiler plugin has been loaded (v9.4.0.260915)
+  License: 14-0000-FFFF-88  (1 user)
+  The hotkeys are F5: decompile, Ctrl-F5: decompile all.
+
+  Please check the Edit/Plugins menu for more information.
+Hex-rays version 9.4.0.260915 has been detected, gooMBA plugin ready to use
+Using type parser: legacy
+Flushing buffers, please wait...ok
+Unloading IDP module J:\ida94sp1_0915\procs\pc.dll...IDAPython: Requested to use virtual environment interpreter at C:\Users\11\AppData\Roaming\Hex-Rays\IDA Pro\venv\Scripts\python.exe
+
+  bytes   pages size description
+--------- ----- ---- --------------------------------------------
+ 80240640  9795 8192 allocating memory for b-tree...
+ 80125952  9781 8192 allocating memory for virtual array...
+   262144    32 8192 allocating memory for name pointers...
+-----------------------------------------------------------------
+160628736            total memory allocated
+
+Loading processor module J:\ida94sp1_0915\procs\pc.dll for metapc...OK
+Loading type libraries...
+Autoanalysis subsystem has been initialized.
+Database for file 'section_1000.bin' has been loaded.
+Hex-Rays Decompiler plugin has been loaded (v9.4.0.260915)
+  License: 14-0000-FFFF-88  (1 user)
+  The hotkeys are F5: decompile, Ctrl-F5: decompile all.
+
+  Please check the Edit/Plugins menu for more information.
+Hex-rays version 9.4.0.260915 has been detected, gooMBA plugin ready to use
+Using type parser: legacy
+2CE478: restored microcode from idb
+2CE478: restored pseudocode from idb
+2CEA6C: restored microcode from idb
+2CEA6C: restored pseudocode from idb
+Flushing buffers, please wait...ok
+Unloading IDP module J:\ida94sp1_0915\procs\pc.dll...IDAPython: Requested to use virtual environment interpreter at C:\Users\11\AppData\Roaming\Hex-Rays\IDA Pro\venv\Scripts\python.exe
+
+  bytes   pages size description
+--------- ----- ---- --------------------------------------------
+ 80240640  9795 8192 allocating memory for b-tree...
+ 80125952  9781 8192 allocating memory for virtual array...
+   262144    32 8192 allocating memory for name pointers...
+-----------------------------------------------------------------
+160628736            total memory allocated
+
+Loading processor module J:\ida94sp1_0915\procs\pc.dll for metapc...OK
+Loading type libraries...
+Autoanalysis subsystem has been initialized.
+Database for file 'section_1000.bin' has been loaded.
+Hex-Rays Decompiler plugin has been loaded (v9.4.0.260915)
+  License: 14-0000-FFFF-88  (1 user)
+  The hotkeys are F5: decompile, Ctrl-F5: decompile all.
+
+  Please check the Edit/Plugins menu for more information.
+Hex-rays version 9.4.0.260915 has been detected, gooMBA plugin ready to use
+Using type parser: legacy
+2CE478: restored microcode from idb
+2CE478: restored pseudocode from idb
+2CEA6C: restored microcode from idb
+2CEA6C: restored pseudocode from idb
+Flushing buffers, please wait...ok
+Unloading IDP module J:\ida94sp1_0915\procs\pc.dll...
