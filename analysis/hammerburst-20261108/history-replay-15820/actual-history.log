@@ -1,0 +1,2 @@
+actual-history.cpp
+Actual15820 original kernel replay: rejection reproduced. All raw shapes/projections/held counters and retained adjacent pairs pass; previous4628 -> first4630 fails strict consecutive sequence; missing4629. Delta5 within original capacity8. No synthetic missing sample or relaxed gate.

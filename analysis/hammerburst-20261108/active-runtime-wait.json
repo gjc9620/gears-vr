@@ -1,13 +1,13 @@
 {
-  "source_checkpoint": "c7731400",
-  "next": "Preserve exact result of the original one WaitForSingleObject(mutex,0) in receiver-local diagnostic; retain existing contended boolean. No second lock attempt, wait duration change, source query, packet layout or writer change. Export bounded actual failure on existing GT summary. Test timeout versus abandoned/failed separately before considering any transport-gap policy.",
+  "source_checkpoint": "4a0a470d",
+  "next": "Determine why original history snapshot lacks4629: preserve original packet.latest_sequence and loop stop reason/index/sequence during the same existing read, not a new ring query. Distinguish eviction versus missing/bad raw pair before repair. Native mutex failure not reproduced; keep strict negative outcomes and no unchanged rerun.",
   "candidate": "withdrawal-clock-r1",
   "requirements_complete": false,
-  "native_candidate": "native-render-age-r1",
-  "runner_session_id": 56925,
+  "native_candidate": "native-mutex-r1",
+  "runner_session_id": 9914,
   "terminal": true,
   "all13_requirements_retained": true,
-  "instance": "hb-cloak-1111-154738",
-  "game_pid": 35716,
-  "runner_last_poll": "56925 terminal1; stop/launcher/Native/PG/XR normal0; owned game+children gone; noforced;encode0"
+  "instance": "hb-cloak-1111-155817",
+  "game_pid": 15820,
+  "runner_last_poll": "9914 terminal1; stop/launcher/Native/PG/XR normal0; owned game+children gone; noforced;encode0"
 }

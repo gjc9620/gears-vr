@@ -707,3 +707,8 @@ PG31f7d324/Native71f280b0完整78条一致射线、空仓0/78禁射通过，开�
 ## 2026-11-11 原锁调用结果观察版
 
 Nativeb9ab7a82 native-mutex-r1基于精确71f280b0冻结源/编译开关，只将原一次WaitForSingleObject(0)结果及attempted/contended保留为接收端本地诊断，并附于现有有界24条GT handoff summary。bridge packet/生产者/读取次数/有效期/返回布尔不变；源码移除观察增量精确等于父版。实际Windows互斥锁测试区分成功、另一线程占用TIMEOUT、持有线程退出ABANDONED、注入FAILED、未打开5类；原全部bridge用例通过。首版测试C字符串反斜杠转义编译失败已改raw literal，最终编译和检查正常0。PG31f7d324与XR未改，尚无实际锁结果/修复验收。
+
+
+## 2026-11-11 实际15820：原始历史拒绝与实际数据内核重放
+
+Nativeb9ab7a82/PG31f7d324完整78条一致射线、空仓0/78禁射通过。Native7条原锁结果成功0/inputloss0，未复现mutex失败，不称修复。开盖505/4633首次采到原始history失败：上次4628，本次4633，history4630..4633共4，缺4629；gap111ms原reason5在angle.166937848拒绝。用12条双手原pose/flags/counters及6条原raw重建，运行实际未修改controller_relative_motion内核，所有shape/project/held计数及已留相邻motion_pair均通过，唯一首失败4628→4630非连续；delta5在原capacity8内。未补造4629/放宽gap。尚不能分辨从未发布/读取前覆盖/原pair无效；下一步保留同一次原packet.latest及history loop停止原因，不增读。完整换弹仍失败。正常清理全0无forced、439帧错误空/编码0，3页48对亲阅视觉仍失败；13项保留。
