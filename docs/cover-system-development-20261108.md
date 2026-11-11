@@ -2903,3 +2903,11 @@ uniform receiver scale在任何读前验证，空数组也不能绕过来源数�
 实际共享binding::property只接受Class；authored形状/Matrix/Plane是ScriptStruct，不能直接拿Class选择器冒充认证。新增cover_struct_field_live.inl，在当前metadata及caller持有GT/锁边界内复用原certified/kind/source_field/current，选择准确名称/类型/维数/宽度/offset及可选ScriptStruct引用，完整扫描并保留所有成员身份和链，包括选中字段之后的尾链，闭合后才发布Property。ScriptStruct extent必须精确相同，不走Class继承降级；环/超过256成员/共享Proof容量满均拒绝，不截断。
 
 实际身份/Proof helper配synthetic注册表12检查0失败，覆盖正常字段、尾链在选中后变化使proof失效、width/offset/extent/环/dimension/owner错误及输出保持。没有真实进程读取、Native安装/游戏。完整primitive嵌套TM/Matrix/Plane、ArrayProperty inner及BodySetup/current C0关联尚未接，不能把单字段proof当运行许可。源码/依赖/回执struct-field-r207；后续用此接口合成完整schema后接r206传输层，不重复解析Python或改其他武器共享接口。完整CV/AC/头显未完成，工程25%。
+
+## r208：三类primitive嵌套schema认证与数组guard闭合接通（2026-11-12）
+
+新增cover_primitive_layout_live.inl，以当前KMeshProps Class及primitive identity为输入，用r207逐项认证KSphereElem72/KBoxElem80/KSphylElem76、TM StructProperty0/64→Matrix、Matrix四Plane字段0/16/32/48→同一Plane16、Plane的X/Y/Z/W float0/4/8/12、各dimension从64起、bNoRBCollision位置及非零单bit mask。所有结构/字段/类型/引用/成员尾链仍在同一完整binding::Proof中，最终闭合后才发布Layout。原生stride80代码依据另由caller证明，不把occupied extent当stride。
+
+三种正常/嵌套Plane事后变更/Matrix extent/Plane offset/Boolean mask/primitive owner/尾链环先31检查0失败；进一步将同一真实Proof接r206数组capture的typed guard，三种payload均能读取并保留碰撞停用标记，payload读取中改Plane布局会在后续guard拒绝且公共输出保持，合计37检查0失败。身份/Proof/数组传输均为生产实现，注册表和header地址关联仍是synthetic fixture许可，不是实际ArrayProperty或游戏C0证明。
+
+尚需aggregate ArrayProperty/inner/目标结构、BodySetup/骨名/当前资产、原scale/C0世界身份关联，不能将此schema结果当移动或活跃物理认证。源码/回执primitive-layout-r208，无完整Native构建或游戏/原函数调用；完整CV/AC/头显未完成，工程25%。

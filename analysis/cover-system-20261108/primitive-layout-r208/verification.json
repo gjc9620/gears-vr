@@ -1,0 +1,22 @@
+{
+  "result": "PrimitiveLayout checks=37 failures=0 actual reflection Proof; synthetic registry, no runtime authority\r\n",
+  "sources": {
+    "tools/native-capture/cover_primitive_layout_live.inl": "1544fc37d115aecbe77cd6213dde7ed49fa68fe9b420116640972251db89bc16",
+    "tools/native-capture/cover_primitive_layout_live_test.cpp": "fb93164219fc57b5f47e0baf8864443e96e2181aad930a2e134b08418b29e5a1",
+    "tools/native-capture/cover_struct_field_live.inl": "9df7c8a47dce72688126fc6eaf90df2e82b0518b3fb255803125d99affd7834c",
+    "tools/native-capture/cover_authored_array.h": "793531f57540bd256fe9a644ac7f2b61484800bf9f842b2ff7b9d656eab34e15"
+  },
+  "certifies": "KMeshProps declaring Class + exact primitive name/extent + TM Matrix64 + all four Plane16 fields sharing exact Plane identity + X/Y/Z/W float offsets + dimensions + Boolean mask with complete Proof closure",
+  "tests": "all3 kinds; nested Plane mutation invalidates prior proof; bad Matrix extent, component offset, Boolean mask, primitive owner and tail cycle preserve output; actual reflection Proof guards actual array transport, mid-read Plane mutation rejects",
+  "host_seams": "Synthetic registry/array memory; header association preapproved in fixture, not a real ArrayProperty/C0 provider",
+  "remaining": [
+    "array inner/aggregate field association",
+    "BodySetup and current bone/asset association",
+    "native stride/code proof",
+    "original receiver scale provider",
+    "C0 source/lifetime/world binding"
+  ],
+  "game_started": false,
+  "full_native_built": false,
+  "engineering_percent": 25
+}
