@@ -188,7 +188,7 @@ void summary(FILE* f){if(!f)return;
             i,row.actor_index,row.member_ordinal,unsigned(owner.kind),uint64_t(owner.shape),uint64_t(owner.actor),uint64_t(owner.internal_shape),uint64_t(owner.internal_actor),x.flags,
             double(x.stored_position[0]),double(x.stored_position[1]),double(x.stored_position[2]),double(x.stored_quaternion[0]),double(x.stored_quaternion[1]),double(x.stored_quaternion[2]),double(x.stored_quaternion[3]),
             double(x.box_dimensions[0]),double(x.box_dimensions[1]),double(x.box_dimensions[2]),double(x.radius),double(x.half_segment));
-        for(unsigned k=0;k<12;++k)fprintf(f,"%s%.9g",k?",":"",double(g.shape_world.values[k]));fputc('\n',f);
+        for(unsigned k=0;k<12;++k)fprintf(f,"%s%.9g",k?",":"",double(g.shape_world.values[k]));fprintf(f," observed_gram_error=%.17g,%.17g rigid_query_permission=0\n",g.actor_gram_error,g.shape_gram_error);
     }
 }
 template<class Shape,class Output,class Invoke> q::Code query(Entry const& entry,Core const& source,Shape const& shape,Output& output,Invoke invoke)noexcept{

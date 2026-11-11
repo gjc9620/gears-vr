@@ -1,6 +1,7 @@
 #pragma once
 #include "cover_physx_shape_parameters.h"
 #include "cover_physx_pose_math.h"
+#include "cover_physx_observed_pose.h"
 #include "cover_physx_shape_world_code.h"
 // Original static/dynamic global-shape getter route, read without dispatch.
 // Values stay in PhysX units. Caller pins Image, all current shape membership,
@@ -10,9 +11,10 @@ namespace p=gears_cover_physx_shape_parameters;namespace o=p::o;namespace s=p::s
 namespace math=gears_cover_physx_pose_math;
 enum class Code {observed,request,alias,busy,guard,module,parameters,read,pose,changed,owner};
 struct Snapshot {p::Parameters parameters{};bool body_pose_present{};std::uintptr_t body_table{};
-    std::array<float,3> body_position{};std::array<float,4> body_quaternion{};math::Matrix actor_world{},shape_world{};};
+    std::array<float,3> body_position{};std::array<float,4> body_quaternion{};math::Matrix actor_world{},shape_world{};
+    double actor_gram_error{},shape_gram_error{};};
 inline bool same(Snapshot const& a,Snapshot const& b)noexcept{return p::same(a.parameters,b.parameters)&&a.body_pose_present==b.body_pose_present&&
-    a.body_table==b.body_table&&!std::memcmp(a.body_position.data(),b.body_position.data(),sizeof a.body_position)&&
+    a.body_table==b.body_table&&a.actor_gram_error==b.actor_gram_error&&a.shape_gram_error==b.shape_gram_error&&!std::memcmp(a.body_position.data(),b.body_position.data(),sizeof a.body_position)&&
     !std::memcmp(a.body_quaternion.data(),b.body_quaternion.data(),sizeof a.body_quaternion)&&
     !std::memcmp(&a.actor_world,&b.actor_world,sizeof a.actor_world)&&!std::memcmp(&a.shape_world,&b.shape_world,sizeof a.shape_world);}
 enum class Stage:unsigned {idle,parameters,shape_slot,stored_pose,body_header,body_class,body_values,body_pose,composition,complete};
@@ -27,12 +29,12 @@ template<class Read> Code sample(std::uintptr_t image_base,std::uint32_t size,o:
     if(work.parameter_code!=p::Code::observed)return Code::parameters;
     if(diagnostic)diagnostic->partial.parameters=next.parameters;stage(Stage::shape_slot);
     if(!p::detail::slot(read,owner.shape_table,0x80,image_base+0x13e7e0))return Code::module;
-    stage(Stage::stored_pose);math::Matrix stored{};if(!math::quaternion(next.parameters.stored_quaternion,next.parameters.stored_position,stored))return Code::pose;
+    stage(Stage::stored_pose);namespace observed=gears_cover_physx_observed_pose;observed::Pose stored{};if(!observed::quaternion(next.parameters.stored_quaternion,next.parameters.stored_position,stored))return Code::pose;
     const auto body=owner.internal_actor;next.body_pose_present=body!=0;
     if(!body){
       // Original178ff0 static branch uses stored shape pose directly. Never
       // read an unused Actor cache or invent a dynamic Body for that branch.
-      next.shape_world=stored;
+      next.shape_world=stored.matrix;next.shape_gram_error=stored.gram_error;
     }else{
       stage(Stage::body_header);if(!s::pointer(body,0x218)||!raw::field(read,next.body_table,body,0))return Code::read;
       if(diagnostic){diagnostic->partial.body_pose_present=true;diagnostic->partial.body_table=next.body_table;}stage(Stage::body_class);
@@ -42,8 +44,9 @@ template<class Read> Code sample(std::uintptr_t image_base,std::uint32_t size,o:
       stage(Stage::body_values);for(unsigned n=0;n<3;++n)if(!raw::field(read,next.body_position[n],body,0x20c+n*4))return Code::read;
       for(unsigned n=0;n<4;++n)if(!raw::field(read,next.body_quaternion[n],body,0x1fc+n*4))return Code::read;
       if(diagnostic){diagnostic->partial.body_position=next.body_position;diagnostic->partial.body_quaternion=next.body_quaternion;}
-      stage(Stage::body_pose);if(!math::quaternion(next.body_quaternion,next.body_position,next.actor_world))return Code::pose;
-      stage(Stage::composition);if(!math::compose(next.actor_world,stored,next.shape_world))return Code::pose;
+      stage(Stage::body_pose);observed::Pose actor_pose{},joined{};if(!observed::quaternion(next.body_quaternion,next.body_position,actor_pose))return Code::pose;
+      stage(Stage::composition);if(!observed::compose(actor_pose,stored,joined))return Code::pose;
+      next.actor_world=actor_pose.matrix;next.actor_gram_error=actor_pose.gram_error;next.shape_world=joined.matrix;next.shape_gram_error=joined.gram_error;
     }
     stage(Stage::complete);output=next;return Code::observed;
 }

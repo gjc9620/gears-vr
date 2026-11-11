@@ -3175,3 +3175,15 @@ Engine1741累计0（owner531、parameter702、world1706、asset1732），新增r
 原Body q norm平方0.9999879342658389，在已有3e-5 norm范围；按原1209f0逐float算式重建后Gram最大偏差3.289429316311043e-5、Frobenius5.71721064577549e-5、det0.9999596083569477。故现有四元数norm检查通过而严格矩阵3e-5检查拒绝。原getter不归一化。后续用实际数据replay，再以显式原矩阵误差记录区分近旋转读取和严格rigid query权限，不能只提高常量或偷偷归一化。
 
 259实际投影/errors0，13总览已生成、5阶段contact逐张亲看仍双眼自身头肩/躯干遮挡FAIL，未全数亲看overview，编码0。正常清理true、自有remaining为空、无强杀，CLOAK568失败0、前台380无owned激活，anchor/reader前后相同。其他游戏/XR会话未触碰。完整CV24/AC22、active/template/full self/world fence/body/view/hit/muzzle/视图遮挡及头显仍未完成，工程25%，publicv71/固定入口/Quest不变。证据shape-pose-runtime-r234，算式证据另见observed-pose-r235/original-pose-arithmetic.json。
+
+## r235：按原getter保留未归一化观测矩阵及显式Gram误差；实际值replay通过（2026-11-12）
+
+新增cover_physx_observed_pose.h，按原1209f0 float分组构造矩阵，不归一化、不clamp；已有quaternion norm容差3e-5保持。Observed Pose明确携带R^T R-I的Frobenius上界（亦为谱范数上界），double累加/sqrt舍入另加保守margin。原理：精确四元数矩阵Gram特征值1和1+4*(norm平方-1)*|xyz|平方，再计逐float算式operator rounding界；用此导出单Pose资格范围与compose传播界，不将近旋转冒充严格rigid。source/owner/metadata/时间/双pass/关闭guard不改。
+
+world snapshot保留原actor/shape矩阵及各自gram_error，same也比较误差；summary成功行输出两误差并明确rigid_query_permission=0。既有pose_math::rigid、quaternion、compose及shape_geometry/query入口严格判断均不改。新的读取结果仍须后续带数值包络进入几何/查询事务；没有因为读到矩阵授予碰撞/移动权限。
+
+以r234原float记录建立相同replay，旧代码3检查1失败，新代码5检查0（新增成功后断言被执行）：保留raw q/p逐float相同、原矩阵仍不满足strict rigid，不加载原DLL。独立math2060检查0：256组norm边缘±2.9e-5，以未归一化Rodrigues点旋转oracle核对两级变换，显式误差界、超norm/零/NaN或Inf/denormal、反射/低报误差、非nearest舍入拒绝及输出保持；实际原矩阵继续被严格geometry拒绝。Engine1743、Session125、OFF65均0，内存读取预算228/102/140不变。独立Python每op float-round原式及原getter evidence/PE来源SHA保存original-pose-arithmetic.json，原数据norm/Gram/det数值见r234。
+
+完整Native在r233冻结树仅world/observed-pose/C0三文件overlay，423项目依赖逐SHA、flags不变、无外部工作树混入；DLL SHAc9ea318097be628ab96ac48b4c97f9ab6b545e91047bee3b7d8a5e03f4059e25。此修复尚未游戏运行，下一步新版本一次形状读取验证是否越过Body pose，再闭合全清单与非严格rigid数值包络；不称actual asset通过。
+
+完整CV24/AC22、active/template/full self/world fence、body/view/hit/muzzle、视图遮挡及头显仍未完成，工程25%；publicv71/固定手动入口/Quest不变。证据observed-pose-r235。

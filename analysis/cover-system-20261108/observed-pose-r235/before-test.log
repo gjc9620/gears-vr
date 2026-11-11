@@ -1,0 +1,2 @@
+FAIL recorded near-unit quaternion retained with original matrix without normalization
+ObservedPoseReplay checks=3 failed=1 saved game values; no original dispatch
