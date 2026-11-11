@@ -1,0 +1,82 @@
+{
+  "rows": 64,
+  "source_copy_success": 40,
+  "metrics": {
+    "copied_input_age_ns": {
+      "n": 40,
+      "minimum": 32332700,
+      "median": 54844200.0,
+      "maximum": 101866700
+    },
+    "copy_elapsed_ns": {
+      "n": 64,
+      "minimum": 100,
+      "median": 1953700.0,
+      "maximum": 3070600
+    },
+    "game_elapsed_ns": {
+      "n": 64,
+      "minimum": 5100,
+      "median": 972650.0,
+      "maximum": 3353400
+    },
+    "input_elapsed_ns": {
+      "n": 64,
+      "minimum": 672300,
+      "median": 2833800.0,
+      "maximum": 4311000
+    }
+  },
+  "frame377": {
+    "status": "2",
+    "source_status": "0",
+    "mode": "1",
+    "owned": "0",
+    "game_known": "1",
+    "game_r2": "0",
+    "before_action": "1",
+    "frame": "0",
+    "sequence": "0",
+    "trigger_pressed": "0",
+    "trigger_released": "0",
+    "trigger_active": "0",
+    "trigger_value": "0.000",
+    "muzzle_ready": "0",
+    "input_sync_ns": "0",
+    "observed_ns": "161640628660600",
+    "ammo_known": "0",
+    "ammo": "-1",
+    "previous_sync_ns": "161640526793900",
+    "previous_observed_ns": "161640581068500",
+    "game_elapsed_ns": "1450300",
+    "action_elapsed_ns": "1400",
+    "ammo_queried": "0",
+    "diagnostic_elapsed_ns": "1000",
+    "ready_after_ammo_read": "0",
+    "copy_elapsed_ns": "1954800",
+    "input_elapsed_ns": "3405200",
+    "continuity_matched": "0",
+    "continuous_poll_gap": "0",
+    "copied_source": "1",
+    "copied_frame": "377",
+    "copied_input_age_ns": "101866700",
+    "preparation_budget": "0",
+    "continuity_failure": "10",
+    "continuity_native_selected": "0",
+    "input_admission_ns": "161640628661400",
+    "input_admission_delay_ns": "800",
+    "input_frame_now_ns": "161640599774100",
+    "input_stereo_received_ns": "161640526789100",
+    "input_controller_received_ns": "161640526818300",
+    "input_frame_flags": "15",
+    "input_stereo_status": "0",
+    "input_frame_shape": "1",
+    "input_frame_active": "0"
+  },
+  "frame377_decomposition_ns": {
+    "source_to_native_frame": 72985000,
+    "native_frame_to_consumer": 28886500,
+    "total_stereo_age": 101871500
+  },
+  "interpretation": "Bounded change-only logs are not full time series. Source was already72.985ms old at original Native frame stamp, then28.8865ms until R2 observation. Existing per-copy+continuity work1.9548ms; game1.4503ms. No2ms L2 cost is established: original observation-to-admission was0.0008ms. Solo comparison pending coordination; no source/clock/control changes."
+}

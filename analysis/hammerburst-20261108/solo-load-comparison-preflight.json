@@ -1,0 +1,31 @@
+{
+  "observed_ns": 162319647364900,
+  "observed_local": "2026-11-11 14:11:59",
+  "live_exact_instance_workers": [],
+  "old_boltok43144_identity": null,
+  "resources": {
+    "disk": {
+      "check": "disk_admission",
+      "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr",
+      "free_bytes": 36418936832,
+      "minimum_free_bytes": 4294967296,
+      "admitted": true
+    },
+    "memory": {
+      "available_commit": 19778842624,
+      "available_physical": 16355397632,
+      "active_instances": []
+    }
+  },
+  "coordination_thread": "01a1bb5e-5946-7271-af0d-1068759697e0",
+  "acknowledgments": [
+    "Frag14:10:31 no new games/gameXRworker gone",
+    "Boltok latest no new games/game+encode ended",
+    "Cover14:10 no games/encode; no new start",
+    "Lancer latest no new game; source/build only"
+  ],
+  "os_process_scan": "Immediately preceding Win32_Process scan of game/XR/ffmpeg/compiler/known launcher workers empty",
+  "scope": "One controlled solo finite-empty comparison; Native71f280b0/PGb7dcb9ec unchanged. Original source/action deadlines remain. No retry; finish/failure releases coordination.",
+  "coordination_expires_local": "2026-11-11 14:20:31",
+  "whole_weapon_accepted": false
+}

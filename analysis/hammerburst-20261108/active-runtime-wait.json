@@ -1,13 +1,14 @@
 {
-  "requirements_complete": false,
-  "source_checkpoint": "5abb84db",
+  "runner_session_id": 55019,
   "terminal": true,
-  "native_candidate": "native-render-age-r1",
-  "instance": "hb-cloak-1111-135901",
-  "next": "Read original Scene publication/PlayerTick source freshness and cost for actualFrame377101.8667ms gap afterUP. Input correctly baselines nextDOWN383 and blocks384; no replay or guard relaxation, no unchanged run. All13 retained.",
-  "candidate": "render-age-pg-r1",
+  "source_checkpoint": "5ba95997",
+  "requirements_complete": false,
   "all13_requirements_retained": true,
-  "runner_session_id": 72247,
-  "game_pid": 6896,
-  "runner_last_poll": "72247 terminal1; stop/launcher/Native/PG/XR normal0; game/children gone, noforced"
+  "native_candidate": "native-render-age-r1",
+  "candidate": "render-age-pg-r1",
+  "next": "Save corrected independent12s return test phase and original8s completion wait. Next targeted normal-admission recheck after this concrete harness failure; no repeat solo window or product guard relaxation. All13 retained.",
+  "instance": "hb-cloak-1111-141210",
+  "comparison": "One coordinator-agreed solo-load comparison, preflight all exact workers/gameXR/encode/build absent",
+  "game_pid": 36524,
+  "runner_last_poll": "55019 terminal1; stop/launcher/Native/PG/XR0; owned game+children gone, noforced; encode0; coordinator notified release"
 }

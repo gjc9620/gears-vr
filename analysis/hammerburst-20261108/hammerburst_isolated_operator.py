@@ -172,6 +172,16 @@ def core_source():
 
 def reload_source():
     source=(CODE/'hammerburst_reload_chain.py').read_text(encoding='utf-8')
+    source=replace_once(source,"        phase('original_return_authoritative_fire');command(saved,False)",
+        """        # Completion's original8s deadline still applies above. Returning
+        # the hand and verifying a freshUP/one burst are a separate test phase.
+        # Anchor its bounded12s once BEFORE the return gesture, never at DOWN
+        # or after a partial shot. Product event/source clocks are unchanged.
+        deadline=time.monotonic()+12
+        data['return_fire_test_window']={'started':deadline-12,'deadline':deadline,'seconds':12,
+            'scope':'return gesture, freshUP, exactly one burst and typed count readback'}
+        save()
+        phase('original_return_authoritative_fire');command(saved,False)""")
     source=replace_once(source,
         "        phase('extract_original_for_replacement' if replacement else 'extract_then_return_same_original_without_release')",
         """        if '--hammerburst-park-restore' in sys.argv:

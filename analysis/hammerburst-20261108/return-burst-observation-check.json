@@ -1,0 +1,69 @@
+{
+  "cases": 12,
+  "passed": true,
+  "no_input_dispatch": true,
+  "no_deadline_renewal": true,
+  "game_run": false,
+  "results": [
+    {
+      "error": null,
+      "elapsed": 0.1,
+      "reads": 2
+    },
+    {
+      "error": null,
+      "elapsed": 0.1,
+      "reads": 2
+    },
+    {
+      "error": null,
+      "elapsed": 0.1,
+      "reads": 2
+    },
+    {
+      "error": null,
+      "elapsed": 0.0,
+      "reads": 1
+    },
+    {
+      "error": "Original return burst explicitly rejected; stop without retry",
+      "elapsed": 0.0,
+      "reads": 1
+    },
+    {
+      "error": "Original return burst did not complete within existing reload deadline",
+      "elapsed": 0.5,
+      "reads": 6
+    },
+    {
+      "error": "Invalid authoritative return-fire",
+      "elapsed": 0.0,
+      "reads": 0
+    },
+    {
+      "error": "Invalid authoritative return-fire",
+      "elapsed": 0.0,
+      "reads": 0
+    },
+    {
+      "error": "",
+      "elapsed": 0.0,
+      "reads": 1
+    },
+    {
+      "error": "Unexpected return-fire inventory progress",
+      "elapsed": 0.1,
+      "reads": 2
+    },
+    {
+      "error": "Invalid authoritative return-fire",
+      "elapsed": 0.0,
+      "reads": 0
+    },
+    {
+      "error": "Original return burst observation exceeded existing reload deadline",
+      "elapsed": 0.6,
+      "reads": 1
+    }
+  ]
+}

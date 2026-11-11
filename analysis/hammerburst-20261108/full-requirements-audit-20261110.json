@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "scope": "full HB objective; no scope reduction",
-  "current_candidate": "Private Native71f280b0/PGb7dcb9ec actual6896 core6 then strict prepare input_loss stage1. Gate93 age-only kept; full flow failed. Reader quietDOWN ownership correction14tests; next inspect actual Input transition after freshUP without relaxing broker/anti-replay.",
+  "current_candidate": "Native71f280b0/PGb7dcb9ec controlledsolo36524: drain78/emptyveto/reload78R0 passed; no returnDOWN under8s inherited test deadline. Separate12s return test window repaired; no product changes or full acceptance.",
   "prepared_sha256": "20d8a6cd15b89c89b938aa201086c9d590251a2be74b2bd6d4fa72bd47d27824",
   "requirements": [
     {
@@ -255,8 +255,8 @@
     {
       "id": "empty_reload",
       "requirement": "\u7a7a\u4ed3\u540c\u673a\u68b0\u6d41\u7a0b\u3001\u539f\u81ea\u52a8\u88c5\u586b\u88ab\u63a5\u7ba1\u3001\u5b8c\u6574\u56de\u5c04",
-      "status": "current_full_attempt_external_input_loss_before_empty",
-      "limit": "Actual58164 current5bce/6ff stopped after55consistent rays/lastcompletedtyped24R78; no empty/reload. Prior22048 drain78/veto passed butseating failed; old56252 final72R0 missing. Loaded50828 is not full-empty acceptance.",
+      "status": "current_empty_veto_and_reload78R0_observed_return_fire_missing",
+      "limit": "36524 actual78 consistent rays, typed0/78, no-shot/veto and replacement close78/0. ReturnDOWN not sent under test budget; final72/0 absent, wholeflow not passed.",
       "evidence": [
         {
           "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-13712-first-failure-analysis.json",
@@ -518,8 +518,8 @@
   "restore_verifier_status": "Optional --hammerburst-park-restore input action hook integrated into private reload adapter; five synthetic action/receipt regressions passed. Actual park/redraw/new-grant/native-resume, typed conservation, UI/reward and complete return-fire require game evidence.",
   "latest_service_first_failure": "runtime-3112-first-failure-analysis.json",
   "latest_startup_failure": "runtime-49732-startup-failure.json",
-  "latest_runtime_failure": "runtime-6896-first-failure-analysis.json",
-  "latest_runtime_result": "runtime-6896-first-failure-analysis.json",
+  "latest_runtime_failure": "runtime-36524-first-failure-analysis.json",
+  "latest_runtime_result": "runtime-36524-first-failure-analysis.json",
   "latest_focused_pass": "runtime-50828-focused-result.json",
   "visual_audit_recording_repair": "Corrected finalizer wrong ID fivepartfitting\u2192part_fitting, attached reviewed22992 evidence also to guides, asserted target IDs exist. No requirement/score/acceptance change and no overwrite of current052600 runtime blocker.",
   "resource_release_evidence": {
@@ -570,5 +570,11 @@
     "baseline_frame": 383,
     "blocked_frame": 384,
     "anti_replay_preserved": true
+  },
+  "solo_load_comparison": {
+    "evidence": "runtime-36524-first-failure-analysis.json",
+    "preflight": "solo-load-comparison-preflight.json",
+    "scope": "One finite flow, same Native/PG. Original strict guards remain; no causality from one differing outcome.",
+    "coordination_ended": true
   }
 }
