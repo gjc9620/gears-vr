@@ -2579,3 +2579,13 @@ r170排除本次年龄拒绝后，下一实际阻点是原版调用前owner_link
 verify移除纯观察代码后逐字重建r169的三个reader、QueryEngine和C0五份原文件，原判定/调用/读取/关闭次序不变。Native a2b53166f37fbed0329d9019c8e97a21962499e3e0786b69872dc52c901c8b95完整编译链接0；exact r169冻结源六文件delta，412项目依赖、外部worktree0、GEARS flags保持。检查、解释器、构建、依赖及delta保存在owner-link-detail-r171；prepare新增--native-r171，仍认证精确delta及原冻结构建约束。
 
 本条只有源码/离线/编译，尚未准备或启动新游戏。下一步Git保存后在新实例用现有受控path查询取得第一条实际失败关联，按真实分支决定修复；不原样重跑旧年龄候选、不跳过异场景Actor、不弱化关联或释放保护。owner_links、严重自身模型遮挡、CV01–24/AC01–22和实体头显仍开放，工程25%、publicv71/固定入口不变，目标active。
+
+## r172：实际asset内部反向关联值28，原碰撞未执行；正常结束（2026-11-11）
+
+4bb31ba6保存后，新cover-1111-r172-cloak-links以Native a2b53166…c8b95完成一次现有后台path观察。prepare/operator导入0，原A进入CT2、五段eye动作及operator0；启动前C盘14653812736字节、原资源准入通过。13项启动来源前后相同，共享两文件仍7e630461/385f5e5a。CLOAK689/失败0，前台419/owned_activation false。Native/entries/input恢复、XR/launcher/runner正常0、无强杀、normal_cleanup true，game/owner/XR/worker精确身份独立核验不在。
+
+query键world2310045952/Pawn95274860800/Scene396/Compose24376/seq4161/thread21936，与complete首键逐项一致；165621403132800→165621425915900共22.7831ms。code12 owner_links，原碰撞started/returned仍0/0。新首失败见证明确reader=asset、before_dispatch、reverse分支：Actor2309310912/Table140720217927848，预期与实际Scene均15959962496、Internal95275827456格式有效；既有Internal+0x10读取成功但Reverse=28，未指回Actor。不是本次场景错配或内部指针格式失败。仍不证明Actor损坏、具体内部类型、正确反向字段或唯一生命周期原因；下一步按原二进制核对类型与布局，不跳过该Actor、不猜偏移、不删除关联检查。
+
+Owner39/Session8均无failed-call，年龄cause未观察，body/equipment原因unknown。classify/current各39次，只有首次两行：身体Tick24375、来源序列4163，与query Compose24376/seq4161分别保留；首查偏移0.2170ms，tracking0.8123ms、stereo1.4843ms、metadata1.4514ms，无记录到年龄拒绝，不将历史年龄问题视为已修复。initial physics0.7406ms/collider2.5525ms/components7.6377ms；physics repeat8共6.9899ms/collider repeat8共4.2953ms/components repeat0，engine11.4666ms含内部复核，不能重复加；全部span闭合。
+
+256投影帧/errors0，已有捕获跨度到29.515秒；13页全跨度概览及五阶段原图00173/00192/00211/00231/00249全部亲看，中立/转头/恢复/升高/下降仍严重自身头肩躯干遮挡，画面FAIL。五段联系只按实际时间区间，不冒充同C0 GPU原子证明；编码0不表示视图通过。原始动作、退出、精确失败值、年龄、分段和审阅在owner-link-detail-r171/runtime-r172。完整CV01–24/AC01–22及头显未完成，工程25%、publicv71/固定入口不变，目标active。

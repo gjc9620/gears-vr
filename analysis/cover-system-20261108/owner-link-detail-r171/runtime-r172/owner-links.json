@@ -1,0 +1,25 @@
+{
+  "observed": true,
+  "exact_reader_unknown": false,
+  "reader": "asset",
+  "phase": "before_dispatch",
+  "row": {
+    "observed": 1,
+    "reader": 1,
+    "phase": 1,
+    "branch": 2,
+    "thread": 21936,
+    "actor": 2309310912,
+    "table": 140720217927848,
+    "expected_scene": 15959962496,
+    "observed_scene": 15959962496,
+    "internal": 95275827456,
+    "reverse": 28,
+    "reverse_read": 1
+  },
+  "scene_mismatch": false,
+  "internal_invalid": false,
+  "reverse_mismatch": true,
+  "missing_is_unknown": true,
+  "scope": "Already-read failure values only; not an ownership or movement grant"
+}

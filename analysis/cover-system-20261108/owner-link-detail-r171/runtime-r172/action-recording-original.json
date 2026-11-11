@@ -1,0 +1,299 @@
+{
+  "source": "Event timeline for independent game/simulator HWND recordings",
+  "layer": "all",
+  "desktop_capture": false,
+  "audio": false,
+  "synchronous_projection_capture": false,
+  "physical_headset_acceptance": false,
+  "started_wall_ns": 1794380812324198200,
+  "clock": "Python perf_counter; wall_ns brackets for independent window recording alignment",
+  "frames": [],
+  "events": [
+    {
+      "time": 3.4999975468963385e-06,
+      "wall_ns": 1794380812324198200,
+      "label": "independent_WGC_recording",
+      "synchronous_screenshot_requests": false
+    },
+    {
+      "time": 1.0214489000209142,
+      "wall_ns": 1794380813346941900,
+      "label": "owned_Playground_already_loaded",
+      "top": null,
+      "focus": null,
+      "number": null
+    },
+    {
+      "time": 1.02167560000089,
+      "wall_ns": 1794380813346941900,
+      "label": "focused_Lancer_check_after_existing_controlled_Playground_entry",
+      "title_navigation_exercised": false
+    },
+    {
+      "time": 1.7523317000013776,
+      "wall_ns": 1794380814077711000,
+      "label": "before_original_X_pickup",
+      "weapon": "0x162ef26700",
+      "cls": "Weap_LocustAssaultRifle"
+    },
+    {
+      "time": 5.333234500023536,
+      "wall_ns": 1794380817658224800,
+      "label": "cover_ordinary_approach",
+      "target": [
+        -3979.6602316476506,
+        -140.2601870208192,
+        563.9999997615814
+      ],
+      "candidate_only": true
+    },
+    {
+      "time": 5.343001400004141,
+      "wall_ns": 1794380817668554100,
+      "label": "cover_ordinary_approach_step",
+      "distance": 161.30304575324212,
+      "stick": [
+        -0.5391176313306534,
+        -0.3061897770802052
+      ],
+      "duration": 0.04,
+      "amplitude": 0.62,
+      "collision_or_deadzone_cause_proven": false
+    },
+    {
+      "time": 5.66764410000178,
+      "wall_ns": 1794380817992523400,
+      "label": "cover_ordinary_pulse_released",
+      "planned_seconds": 0.32,
+      "actual_seconds": 0.32800000000861473,
+      "samples": 12,
+      "scheduling_overrun_seconds": 0.008000000008614727
+    },
+    {
+      "time": 5.791922300006263,
+      "wall_ns": 1794380818117653300,
+      "label": "cover_ordinary_approach_step",
+      "distance": 109.00543157279346,
+      "stick": [
+        -0.5391175717810643,
+        -0.30618988193094976
+      ],
+      "duration": 0.04,
+      "amplitude": 0.62,
+      "collision_or_deadzone_cause_proven": false
+    },
+    {
+      "time": 6.122943900001701,
+      "wall_ns": 1794380818448274900,
+      "label": "cover_ordinary_pulse_released",
+      "planned_seconds": 0.32,
+      "actual_seconds": 0.3279999999795109,
+      "samples": 13,
+      "scheduling_overrun_seconds": 0.007999999979510897
+    },
+    {
+      "time": 6.246939500008011,
+      "wall_ns": 1794380818572663700,
+      "label": "cover_ordinary_approach_step",
+      "distance": 62.642937626642095,
+      "stick": [
+        -0.5391156771668562,
+        -0.3061932178101306
+      ],
+      "duration": 0.04,
+      "amplitude": 0.62,
+      "collision_or_deadzone_cause_proven": false
+    },
+    {
+      "time": 6.5727926999970805,
+      "wall_ns": 1794380818897936700,
+      "label": "cover_ordinary_pulse_released",
+      "planned_seconds": 0.32,
+      "actual_seconds": 0.32800000000861473,
+      "samples": 13,
+      "scheduling_overrun_seconds": 0.008000000008614727
+    },
+    {
+      "time": 6.699785300006624,
+      "wall_ns": 1794380819025180800,
+      "label": "turn_toward_actual_pickup",
+      "radians": -0.7624000334035124
+    },
+    {
+      "time": 7.307377400022233,
+      "wall_ns": 1794380819632821000,
+      "label": "turn_toward_actual_pickup",
+      "radians": -0.5136173309185899
+    },
+    {
+      "time": 7.8394396000076085,
+      "wall_ns": 1794380820165015200,
+      "label": "turn_toward_actual_pickup",
+      "radians": -0.35542556216788324
+    },
+    {
+      "time": 8.396249000012176,
+      "wall_ns": 1794380820721644600,
+      "label": "VR_input",
+      "hand": 0,
+      "controls": {
+        "stickY": 0.25
+      }
+    },
+    {
+      "time": 8.573026400001254,
+      "wall_ns": 1794380820897906400,
+      "label": "VR_input",
+      "hand": 1,
+      "controls": {
+        "buttonA": 1
+      }
+    },
+    {
+      "time": 8.7271612000186,
+      "wall_ns": 1794380821052959600,
+      "label": "VR_input",
+      "hand": 1,
+      "controls": {}
+    },
+    {
+      "time": 8.982007700018585,
+      "wall_ns": 1794380821307809400,
+      "label": "VR_input",
+      "hand": 0,
+      "controls": {}
+    },
+    {
+      "time": 9.959083800000371,
+      "wall_ns": 1794380822284010000,
+      "label": "cover_eye_neutral",
+      "visual_accepted": false,
+      "CPU_eye_pose_join_pending": true
+    },
+    {
+      "time": 10.767197500012117,
+      "wall_ns": 1794380823092436900,
+      "label": "cover_eye_fixed_position_turn",
+      "start": {
+        "x": 0.0,
+        "y": 1.7000000476837158,
+        "z": 0.0,
+        "yaw": 0.0,
+        "pitch": 0.0,
+        "roll": 0.0
+      },
+      "end": {
+        "x": 0.0,
+        "y": 1.7000000476837158,
+        "z": 0.0,
+        "yaw": 0.16,
+        "pitch": 0.0,
+        "roll": 0.0
+      }
+    },
+    {
+      "time": 12.051505400013411,
+      "wall_ns": 1794380824376163400,
+      "label": "cover_eye_turned",
+      "visual_accepted": false,
+      "CPU_eye_pose_join_pending": true
+    },
+    {
+      "time": 12.859554800001206,
+      "wall_ns": 1794380825184472200,
+      "label": "cover_eye_turn_returns",
+      "start": {
+        "x": 0.0,
+        "y": 1.7000000476837158,
+        "z": 0.0,
+        "yaw": 0.16,
+        "pitch": 0.0,
+        "roll": 0.0
+      },
+      "end": {
+        "x": 0.0,
+        "y": 1.7000000476837158,
+        "z": 0.0,
+        "yaw": 0.0,
+        "pitch": 0.0,
+        "roll": 0.0
+      }
+    },
+    {
+      "time": 14.136965300014708,
+      "wall_ns": 1794380826461961500,
+      "label": "cover_eye_turn_restored",
+      "visual_accepted": false,
+      "CPU_eye_pose_join_pending": true
+    },
+    {
+      "time": 14.947494100022595,
+      "wall_ns": 1794380827272943400,
+      "label": "cover_eye_tracked_rise",
+      "start": {
+        "x": 0.0,
+        "y": 1.7000000476837158,
+        "z": 0.0,
+        "yaw": 0.0,
+        "pitch": 0.0,
+        "roll": 0.0
+      },
+      "end": {
+        "x": 0.0,
+        "y": 1.800000047683716,
+        "z": 0.0,
+        "yaw": 0.0,
+        "pitch": 0.0,
+        "roll": 0.0
+      }
+    },
+    {
+      "time": 17.95752409999841,
+      "wall_ns": 1794380830283304100,
+      "label": "cover_eye_raised",
+      "visual_accepted": false,
+      "CPU_eye_pose_join_pending": true
+    },
+    {
+      "time": 18.76964890002273,
+      "wall_ns": 1794380831094742600,
+      "label": "cover_eye_rise_returns",
+      "start": {
+        "x": 0.0,
+        "y": 1.800000047683716,
+        "z": 0.0,
+        "yaw": 0.0,
+        "pitch": 0.0,
+        "roll": 0.0
+      },
+      "end": {
+        "x": 0.0,
+        "y": 1.7000000476837158,
+        "z": 0.0,
+        "yaw": 0.0,
+        "pitch": 0.0,
+        "roll": 0.0
+      }
+    },
+    {
+      "time": 19.987120800011326,
+      "wall_ns": 1794380832312705200,
+      "label": "cover_eye_rise_restored",
+      "visual_accepted": false,
+      "CPU_eye_pose_join_pending": true
+    },
+    {
+      "time": 20.797228600014932,
+      "wall_ns": 1794380833122928700,
+      "label": "cover_eye_observation_completed",
+      "visual_accepted": false
+    },
+    {
+      "time": 21.03139000001829,
+      "wall_ns": 1794380833357205400,
+      "label": "cover_eye_sequence_finished",
+      "pause_B_failure_still_open": true
+    }
+  ],
+  "errors": []
+}

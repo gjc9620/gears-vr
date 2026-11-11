@@ -1,0 +1,101 @@
+{
+  "observed": true,
+  "calls": [
+    39,
+    39
+  ],
+  "rows": [
+    {
+      "observed": 1,
+      "tick": 24375,
+      "world": 2310045952,
+      "pawn": 95274860800,
+      "scene": 396,
+      "stereo_sequence": 4163,
+      "controller_sequence": 4163,
+      "thread": 21936,
+      "verdict": 0,
+      "latched": 0,
+      "now": 165621403349800,
+      "metadata_begin": 165621401898400,
+      "metadata_end": 165621402054500,
+      "tracking_begin": 165621402537500,
+      "tracking_end": 165621402562400,
+      "stereo_received": 165621401865500,
+      "controller_received": 165621402023500,
+      "sync": 165621401999600,
+      "capture_begin": 0,
+      "slot": 0,
+      "stage": "classify",
+      "age_verifiable": true,
+      "ages_ns": {
+        "tracking_begin": 812300,
+        "tracking_end": 787400,
+        "stereo_received": 1484300,
+        "controller_received": 1326300,
+        "sync": 1350200,
+        "metadata_begin": 1451400
+      },
+      "remaining_ns": {
+        "tracking_begin": 39187700,
+        "tracking_end": 39212600,
+        "stereo_received": 38515700,
+        "controller_received": 38673700,
+        "sync": 38649800,
+        "metadata_begin": 48548600
+      },
+      "expired_fields": [],
+      "capture_age_ns": null,
+      "capture_expired": null
+    },
+    {
+      "observed": 1,
+      "tick": 24375,
+      "world": 2310045952,
+      "pawn": 95274860800,
+      "scene": 396,
+      "stereo_sequence": 4163,
+      "controller_sequence": 4163,
+      "thread": 21936,
+      "verdict": 0,
+      "latched": 0,
+      "now": 165621403350300,
+      "metadata_begin": 165621401898400,
+      "metadata_end": 165621402054500,
+      "tracking_begin": 165621402537500,
+      "tracking_end": 165621402562400,
+      "stereo_received": 165621401865500,
+      "controller_received": 165621402023500,
+      "sync": 165621401999600,
+      "capture_begin": 165621402682700,
+      "slot": 1,
+      "stage": "current",
+      "age_verifiable": true,
+      "ages_ns": {
+        "tracking_begin": 812800,
+        "tracking_end": 787900,
+        "stereo_received": 1484800,
+        "controller_received": 1326800,
+        "sync": 1350700,
+        "metadata_begin": 1451900
+      },
+      "remaining_ns": {
+        "tracking_begin": 39187200,
+        "tracking_end": 39212100,
+        "stereo_received": 38515200,
+        "controller_received": 38673200,
+        "sync": 38649300,
+        "metadata_begin": 48548100
+      },
+      "expired_fields": [],
+      "capture_age_ns": 667600,
+      "capture_expired": false
+    }
+  ],
+  "scope": "First actual check inside query; offset is not zero-time query entry",
+  "first_check_offset_ns": 217000,
+  "classified_expired_fields": null,
+  "missing_is_unknown": true,
+  "tracking_limit_ns": 40000000,
+  "metadata_limit_ns": 50000000
+}
