@@ -1,13 +1,13 @@
 {
-  "next": "At exact latch history gate6, export bounded original previous/current raw samples and history sequence/time/epoch/control fields AFTER original relative::build refusal, without requery/clock or changed predicates. Current data cannot distinguish missing coverage, raw discontinuity, projection or segmentcount<3; do not assume capacity shortage or relax limits. Preserve first-debt cost rows in a separate bounded reservoir so later reloads cannot rotate all successful/failed first attempts out. No unchanged game rerun, no source/dispatch/timer policy change.",
-  "terminal": true,
-  "source_checkpoint": "ddba028e",
-  "instance": "hb-cloak-1111-151210",
-  "candidate": "tick-cost-tail-r1",
-  "all13_requirements_retained": true,
+  "source_checkpoint": "91865014",
+  "next": "One targeted full-flow check after exact counter-cohort receipt reader repair, unchanged production candidate.",
+  "candidate": "history-rejection-r1",
   "requirements_complete": false,
   "native_candidate": "native-render-age-r1",
-  "runner_session_id": 12164,
-  "game_pid": 21052,
-  "runner_last_poll": "12164 terminal1; stop/launcher/Native/PG/XR0; own game+children gone, noforced; encode0"
+  "runner_session_id": 32046,
+  "terminal": true,
+  "all13_requirements_retained": true,
+  "instance": "hb-cloak-1111-152629",
+  "game_pid": 29012,
+  "runner_last_poll": "32046 terminal1; stop/launcher/Native/PG/XR0; owned game+children gone; noforced;encode0"
 }

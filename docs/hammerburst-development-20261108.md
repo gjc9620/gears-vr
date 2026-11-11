@@ -678,3 +678,8 @@ PG0a3540a2/Native71f280b0原完整流程78条一致射线和空仓veto通过；�
 ## 2026-11-11 原历史拒绝现场与首发保留记录候选（尚未game）
 
 私有PGaf4dac2b仅在原relative::build或count拒绝之后导出最多4次现有previous/current/history原记录（序号/时戳/epoch/pose/各控制计数和原mount），不重查bridge/时钟、不重跑算法。原build逐字未改且仍只调用一次，原拒绝布尔和return不变。原GT耗时tail128之外另保留前64条first_debt/event标量，避免reload旋掉全部首发；GT同线程dump不变。空file/cap/原字段序列化/200写128tail+64首发保留/source还原检查通过，完整PG编译通过。Native71f280b0/XR/公共v71及机械/射击权限与100/20/250ms原限制不变，尚未game，全部13项保留。
+
+
+## 2026-11-11 实际29012：测试读取漏认同次合法持有
+
+PGaf4dac2b/Native71f280b0。339帧UP基线p5/r5；341帧新DOWN p6/r5 deferred10未持有；345帧同次p6/r5 accepted2持有且实际开火。原日志仅计数变化或250ms记录，中间pressed3可以不输出。测试只认3漏认已持有2，等待超时导致按住更久；48条一致射线包含额外开火，不能算有限六发通过。修正仅测试读取：新于UP序号、精确press+1/release不变，2或3且owned1；8仍失败，不重按。16项针对检查通过，生产保护未变。新历史观察未到达，first成本seen0/tail225保留128。游戏与Native/PG/XR正常清理0，无forced；206帧、错误空、编码0、3页48对亲阅，近眼过大枪/手分离重影/白几何仍失败。13项完整目标保留。

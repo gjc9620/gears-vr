@@ -18,8 +18,13 @@ class Host:
             return [{'trace_valid':'1'}]*count if self.fired else []
         row=dict(sequence=str(self.now),frame='100',current='1',source_status='1',trigger_active='1',active_at_admission='1',
                  input_sync_ns=str(self.now),admitted_ns=str(self.now),status='1',owned='0',game_known='1',game_r2='0',
-                 trigger_value='1' if self.state=='down' else '0',trigger_pressed='1',trigger_released='0',preparation_budget='1')
+                 trigger_value='1' if self.state=='down' else '0',trigger_pressed='1' if self.fired else '0',
+                 trigger_released='1' if self.fired and self.state=='up' else '0',preparation_budget='1')
         if self.state=='down':row.update(status='3',owned='1')
+        if self.state=='down':row['sequence']=str(self.now+1)
+        if self.state=='down' and self.fault=='deferred_then_owned':row.update(status='10' if self.now<1_150_000_000 else '2',owned='0' if self.now<1_150_000_000 else '1')
+        if self.state=='down' and self.fault=='wrong_counter_down':row['trigger_pressed']='3'
+        if self.state=='down' and self.fault=='released_counter_changed':row['trigger_released']='1'
         if self.state=='down' and self.fault=='quiet_down':row.update(status='1',owned='0')
         if self.state=='down' and self.fault=='quiet_then_blocked':row.update(status='1' if self.now<1_050_000_000 else '8',owned='0')
         if self.fault=='stale':row['input_sync_ns']='1'
@@ -116,5 +121,18 @@ class Tests(unittest.TestCase):
             first_fire(h,data,clock=lambda:h.now,sleep=h.sleep)
         self.assertEqual(data['first_fire_input']['first_down_rejection']['status'],'8')
         self.assertEqual(h.inputs,[{},dict(trigger=1),{}])
+    def test_deferred_press_later_owned_receipt_is_same_original_down(self):
+        h=Host('deferred_then_owned');data=h.run()
+        self.assertEqual(data['first_fire_input']['down']['status'],'2')
+        self.assertEqual(data['first_fire_input']['down']['owned'],'1')
+        self.assertGreaterEqual(h.now,1_150_000_000)
+        self.assertEqual(h.inputs,[{},dict(trigger=1),{}])
+    def test_wrong_or_released_counter_cannot_be_adopted_as_this_down(self):
+        for fault in ('wrong_counter_down','released_counter_changed'):
+            h=Host(fault);data={'checks':{}}
+            with self.assertRaisesRegex(TimeoutError,'DOWN.*consumption'):
+                first_fire(h,data,clock=lambda:h.now,sleep=h.sleep)
+            self.assertNotIn('down',data['first_fire_input'])
+            self.assertEqual(h.inputs,[{},dict(trigger=1),{}])
 
 if __name__=='__main__':unittest.main(verbosity=2)
