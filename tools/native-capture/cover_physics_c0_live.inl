@@ -165,6 +165,15 @@ void summary(FILE* f){if(!f)return;
         c.owner_guard.calls,c.owner_guard.failed_call,c.owner_guard.stage,c.owner_guard.detail,c.owner_guard.extra,
         c.progress.guard.calls,c.progress.guard.failed_call,c.progress.guard.stage,c.progress.guard.detail,c.progress.guard.extra,
         unsigned(c.source_cause.observed),uint64_t(c.source_cause.key.entry),c.source_cause.key.compose,c.source_cause.key.thread,c.source_cause.key.stage,c.source_cause.verdict,c.source_cause.causes);
+    // Only immutable owned scratch after this one-shot finishes. Partial
+    // scratch is diagnostic, never a published inventory or permission.
+    if(c.finished){auto const& w=shape_snapshot_work.collection;auto const& sw=w.shape_work;auto const& a=sw.first;
+        fprintf(f,"cover_shape_snapshot_nested=%u,%u,%u cover_shape_snapshot_failed=%u,%u cover_shape_snapshot_progress=%u,%u,%u,%u cover_shape_snapshot_partial_unpublished=1 cover_shape_snapshot_partial_actor=%llu,%llu,%llu,%llu,%llu,%u,%u cover_shape_snapshot_partial_arrays=%llu,%llu,%llu,%llu,%llu,%llu\n",
+            unsigned(w.asset_code),unsigned(w.shape_code),unsigned(w.world_code),w.failed_actor,w.failed_member,
+            unsigned(sw.first_progress.stage),sw.first_progress.member,unsigned(sw.last_progress.stage),sw.last_progress.member,
+            uint64_t(a.actor),uint64_t(a.scene),uint64_t(a.body),uint64_t(a.root),uint64_t(a.root_table),a.type,a.count,
+            uint64_t(a.internal_array[0]),uint64_t(a.internal_array[1]),uint64_t(a.internal_array[2]),uint64_t(a.public_array[0]),uint64_t(a.public_array[1]),uint64_t(a.public_array[2]));
+    }
     if(c.finished&&c.code==q::Code::queried)for(unsigned i=0;i<r.shapes;++i){auto const& row=shape_snapshot_packet.rows[i];auto const& g=row.geometry;auto const& x=g.parameters;auto const& owner=x.owner;
         fprintf(f,"cover_shape_snapshot_row=%u,%u,%u,%u,%llu,%llu,%llu,%llu flags=%u local_p=%.9g,%.9g,%.9g local_q=%.9g,%.9g,%.9g,%.9g sizes=%.9g,%.9g,%.9g,%.9g,%.9g world=",
             i,row.actor_index,row.member_ordinal,unsigned(owner.kind),uint64_t(owner.shape),uint64_t(owner.actor),uint64_t(owner.internal_shape),uint64_t(owner.internal_actor),x.flags,

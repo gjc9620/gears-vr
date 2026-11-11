@@ -1,0 +1,14 @@
+{
+  "results": {
+    "engine": "read_budget=222 guard_calls=12\r\nCoverPhysXShapeOwner checks=519 failed=0 original-executed=false game-started=false\r\nparameter_reads=99\r\nShapeParameters checks=687 failed=0 original PE as data; stored fields only, no world/eligibility permit\r\nworld_reads=137\r\nShapeWorld checks=1688 failed=0 original PE as data; original-unit CPU pose only, no query fence\r\nAssetShapes checks=1714 failed=0 synthetic object groups; complete supplied asset only, no world/self permit\r\nAssetShapesEngine checks=1723 failed=0 actual QueryEngine/HostImage only; no original dispatch\r\n",
+    "off": "cover_physics_c0 OFF: 65 checks, 0 failures; no game/module/query\r\n"
+  },
+  "native_sha256": "2d252d054acb0c00ee12d9c4fcd0412eea39b2460fd827042bd7d87edcd9df41",
+  "project_dependencies": 422,
+  "flags_unchanged": true,
+  "change": "Preserve exact actor-shape reads and accept/reject policy; store named read progress/member index per pass. One-shot summary exports nested asset/shape/world codes, failed actor/member and partial scratch headers/arrays after transaction finished, clearly unpublished. No extra game reads during logging.",
+  "remaining": "r228 actual failure nested stage unknown; need new controlled r229 shape-mode observation. No active/template identity/world/self/body/view/hit/muzzle/headset acceptance.",
+  "game_started": false,
+  "installed": false,
+  "engineering_percent": 25
+}
