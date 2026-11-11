@@ -1,0 +1,27 @@
+{
+  "instance": "J:\\codexWorktree\\gearsVr\\analysis\\instances\\cover-1112-r194-cloak-components",
+  "native_sha256": "c23dbb194f0ebf1e1f5bbf2342551063918f378a84d99a811ef0d99a409d37d1",
+  "actual_start": false,
+  "claim_consumed": false,
+  "operator_import_checked": true,
+  "all_generated_inputs_in_new_instance": true,
+  "changed_anchors": {
+    "tools/vr-launcher/launcher.py": {
+      "before": "f8df6dd59e0d950c48e33a303a79c54e233f63815199d6eb9a771fbd97f22896",
+      "after": "2e410b78e8d82dc5d61ffdbb7bda2e4c3a861547ad6995e0a5c897274b54da9a"
+    }
+  },
+  "launcher_changes_reviewed": [
+    "verified no-start receipt support",
+    "owned-prime and playground_menu conditional startup before XR",
+    "stop delegates ordered drain without premature Native signal"
+  ],
+  "manifest_launch_gates": {
+    "playground_menu": true,
+    "graphics_startup_lock": true
+  },
+  "strict_comparison_with_r189": false,
+  "remaining": "One controlled game check still needed; no game or movement acceptance from preparation.",
+  "public_changed": false,
+  "quest_touched": false
+}

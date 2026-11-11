@@ -2789,3 +2789,9 @@ query共35.8457ms；首次classify在begin后0.2185ms，stereo已4.6037ms，故b
 生产Session components_current切换到recheck；同步将只读组失败的component_work资格与physics/collider一起撤销，防止组结束Owner失败后组件凭据残留。原两次实际值/初始完整快照比较/完整proof/原始时钟及Owner前后校验保持。实际生产Session胶囊路径391、overlap53均0失败，使用Host原分派，无游戏调用。
 
 精确r187冻结树仅覆盖cover_component_roles_live.inl和cover_physics_query_live.inl，完整Native编译/链接0，SHA c23dbb194f0ebf1e1f5bbf2342551063918f378a84d99a811ef0d99a409d37d1；413项目依赖均在冻结树内、原开关不变。源码/回执/离线结果在component-consumer-r193。本轮无游戏/XR/Quest启动或输入，未安装候选。后续若有游戏授权须迁移后的新路径一致独立实例，不改旧身份proof。全CV01–24/AC01–22、实际碰撞/身体/枪口/受击/视图/头显仍未完成，工程25%、publicv71/固定入口不变。
+
+## r194：迁移后的独立候选已准备，启动器差异保留（2026-11-12）
+
+prepare增加精确r193两文件delta选择；新cover-1112-r194-cloak-components位于J:/codexWorktree/gearsVr，Native c23dbb19…37d1/原PG f8e6f3c2/原XR16840b27，0.4。prepare/operator准备均0、真实import检查通过；生成operator/input reader/adapter均在新实例内，独立确认无start-request/worker/session/done及未消费claim。没有迁移/修改旧实例身份proof，没有启动游戏。collector绑定本次精确Native并强制新增owner_bracket计时槽，准备不等同query通过。
+
+13项anchor重新逐份核对，唯launcher.py较r189变更：预启动无游戏receipt识别、owned-prime且playground_menu时提前启PG、正常stop由owner按序排空不提前signal Native。原shared隔离/receipt哈希未变；保留当前共享启动器，不回滚他人修复。此变化意味着未来r194与r189不是严格单变量性能对照。Quest/公开入口未动，尚无新游戏/视图/碰撞/头显验收。全CV01–24/AC01–22与工程25%不变。准备来源和差异见component-consumer-r193/r194-preparation-review.json。
