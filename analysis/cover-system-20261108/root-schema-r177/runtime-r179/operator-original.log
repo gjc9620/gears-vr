@@ -1,0 +1,16 @@
+Traceback (most recent call last):
+  File "C:\Users\11\.codex\worktrees\6dof-single\gearsVr\analysis\instances\cover-1111-r179-cloak-root\cover-output\cover_action.py", line 106, in <module>
+    exec(compile(s, str(O / 'run_menu_firstperson_check.py'), 'exec'),
+  File "C:\Users\11\.codex\worktrees\6dof-single\gearsVr\analysis\solo-m1-20261028\run_menu_firstperson_check.py", line 193, in <module>
+    if rec:
+    ^^^^^^^^
+  File "C:\Users\11\.codex\worktrees\6dof-single\gearsVr\analysis\solo-m1-20261028\equipment_controller_chain.py", line 119, in run
+    # VR pad, ordinary walking feedback and existing paired recorder.
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\11\.codex\worktrees\6dof-single\gearsVr\analysis\solo-m1-20261028\cover_boundary_chain.py", line 217, in run
+    q.finish()
+  File "C:\Users\11\.codex\worktrees\6dof-single\gearsVr\tools\game-playtest\cover_state.py", line 41, in finish
+    super().finish()
+  File "C:\Users\11\.codex\worktrees\6dof-single\gearsVr\tools\game-playtest\world_state.py", line 209, in finish
+    raise RuntimeError('World-state metadata/registry changed at closing boundary')
+RuntimeError: World-state metadata/registry changed at closing boundary

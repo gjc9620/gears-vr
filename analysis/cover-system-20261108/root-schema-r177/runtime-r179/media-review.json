@@ -1,0 +1,73 @@
+{
+  "frames": 136,
+  "recording_sha256": "b101081c356c5eb4e169a11c88ab7f307311f899b6ec0139ac20bca5831eb0a5",
+  "pages": [
+    {
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\root-schema-r177\\runtime-r179\\overview-1.jpg",
+      "sha256": "0ea561604fd2b05ea1a61c503627c08b2b13ee630789552dedccaee53d245409"
+    },
+    {
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\root-schema-r177\\runtime-r179\\overview-2.jpg",
+      "sha256": "ba93f454092a302e507dd51870d67e277b7bcb60d4ebbebdd6cc256d65314e33"
+    },
+    {
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\root-schema-r177\\runtime-r179\\overview-3.jpg",
+      "sha256": "de10728ef51d861eb100f8dd3decf9999ff2929a35ffa08059cbd5659dc0121e"
+    },
+    {
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\root-schema-r177\\runtime-r179\\overview-4.jpg",
+      "sha256": "1745e321ed23dbb2abac9032a753345a1372d07da5292626638be21ca6e8e643"
+    },
+    {
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\root-schema-r177\\runtime-r179\\overview-5.jpg",
+      "sha256": "ae86a5e8584e8cb8144166e4ead882b4da8b2dabdf43ce5e30a7220a81318c29"
+    },
+    {
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\root-schema-r177\\runtime-r179\\overview-6.jpg",
+      "sha256": "786ecc2c82677ab74db8942cca5a3baf43eb402b02ba2cb931a579a7275da71d"
+    },
+    {
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\root-schema-r177\\runtime-r179\\overview-7.jpg",
+      "sha256": "54ff05e84501fafd1488103ee152c39167ac9b8e2d48d2ce2b8d670110599d57"
+    }
+  ],
+  "contacts": [],
+  "source": "actual private simulator projection",
+  "desktop_capture": false,
+  "full_span_personally_reviewed": false,
+  "headset_accepted": false,
+  "recording_errors": [],
+  "captured_span_complete": false,
+  "missing_contacts": [
+    {
+      "label": "cover_eye_neutral",
+      "reason": "Operator rejected during candidate selection before original A; phase not reached"
+    },
+    {
+      "label": "cover_eye_turned",
+      "reason": "Operator rejected during candidate selection before original A; phase not reached"
+    },
+    {
+      "label": "cover_eye_turn_restored",
+      "reason": "Operator rejected during candidate selection before original A; phase not reached"
+    },
+    {
+      "label": "cover_eye_raised",
+      "reason": "Operator rejected during candidate selection before original A; phase not reached"
+    },
+    {
+      "label": "cover_eye_rise_restored",
+      "reason": "Operator rejected during candidate selection before original A; phase not reached"
+    }
+  ],
+  "encode_exit": 0,
+  "encoded_sha256": "560b7d1e43480f34e6a3f12afb19b21aba637029920e200c5a03ea0ba3d6ca37",
+  "captured_span_personally_reviewed": true,
+  "reviewed_pages": 7,
+  "reviewed_original_contacts": 0,
+  "expected_phase_count": 5,
+  "completed_phase_count": 0,
+  "cover_action_span_complete": false,
+  "verdict": "Captured pre-entry view reviewed; no cover phase reached, no cover-view acceptance",
+  "cover_view_accepted": false
+}

@@ -1,0 +1,42 @@
+{
+  "cases": [
+    {
+      "case": "identity",
+      "passed": true,
+      "strict_refusal_preserved": true,
+      "finish_calls": 1
+    },
+    {
+      "case": "metadata",
+      "passed": true,
+      "strict_refusal_preserved": true,
+      "finish_calls": 1
+    },
+    {
+      "case": "registry",
+      "passed": true,
+      "strict_refusal_preserved": true,
+      "finish_calls": 1
+    },
+    {
+      "case": "unknown",
+      "passed": true,
+      "strict_refusal_preserved": true,
+      "finish_calls": 1
+    },
+    {
+      "case": "success",
+      "passed": true,
+      "strict_refusal_preserved": false,
+      "finish_calls": 1
+    }
+  ],
+  "source_sha256": "06f1655206f2a1c2ed61061f453106619f998e2be6cc02d7c485e75450909254",
+  "instrument_sha256": "50979a3c824a1a51d87a250fa997de4e417dfc033405454029dc58c006041eca",
+  "original_finish_calls": 3,
+  "transformed_finish_calls": 3,
+  "added_game_reads": false,
+  "added_input": false,
+  "added_retry": false,
+  "game_started": false
+}

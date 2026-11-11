@@ -1,0 +1,56 @@
+{
+  "error": "RuntimeError('Own ordinary cover observation failed; preserve operator log')",
+  "operator_exit": 1,
+  "start_exit": 0,
+  "normal_cleanup_verified": true,
+  "normal_cleanup_required": true,
+  "projection_frames": 136,
+  "projection_errors": [],
+  "remaining_owned": {},
+  "anchor_sources_unchanged": true,
+  "cloak_observations": {
+    "samples": 499,
+    "failures": []
+  },
+  "foreground_observations": {
+    "samples": 330,
+    "owned_activation": false
+  },
+  "forced_termination": false,
+  "identities": {
+    "game_identity": {
+      "pid": 58696,
+      "creation_time": 134388601048933864,
+      "image": "j:\\gearsvr\\gears.of.war.reloaded.v1.0.1.3816947-p2p\\gears of war reloaded\\binaries_x64\\gowde-steam.exe"
+    },
+    "owner_identity": {
+      "pid": 50288,
+      "creation_time": 134388600971001087,
+      "image": "c:\\users\\11\\.cache\\codex-runtimes\\codex-primary-runtime\\dependencies\\python\\python.exe"
+    },
+    "xr_identity": {
+      "pid": 19496,
+      "creation_time": 134388601117283594,
+      "image": "c:\\users\\11\\.codex\\worktrees\\6dof-single\\gearsvr\\tools\\openxr-probe\\build-cover-1111-r179-cloak-root\\openxrposeprobe.exe"
+    },
+    "worker_identity": {
+      "pid": 40408,
+      "creation_time": 134388600970203257,
+      "image": "c:\\users\\11\\.cache\\codex-runtimes\\codex-primary-runtime\\dependencies\\python\\python.exe"
+    }
+  },
+  "exact_owned_processes_absent": true,
+  "runner_exit": 1,
+  "original_A_reached": false,
+  "query_proven": false,
+  "query_missing_reason": "ValueError('No terminal query')",
+  "root_schema_game_exercised": false,
+  "source_age_repaired": false,
+  "world_coverage_verified": false,
+  "movement_authorized": false,
+  "cover_view_accepted": false,
+  "headset_accepted": false,
+  "public_changed": false,
+  "first_failure": "Candidate CoverQuery.finish: World-state metadata/registry changed at closing boundary; detailed existing closing_rejection was not saved",
+  "next": "Preserve the already-read closing rejection in the isolated cover operator without changing strict finish or retrying stale queries."
+}

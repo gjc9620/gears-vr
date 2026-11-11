@@ -39,6 +39,11 @@ def main():
     entry_module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(entry_module)
     sources['cover_boundary_chain.py'] = entry_module.instrument(sources['cover_boundary_chain.py'])
+    closing_observer = HERE.parent / 'query-close-detail-r180/instrument.py'
+    spec = importlib.util.spec_from_file_location('cover_candidate_closing', closing_observer)
+    closing_module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(closing_module)
+    sources['cover_boundary_chain.py'] = closing_module.instrument(sources['cover_boundary_chain.py'])
     equipment = sources['equipment_controller_chain.py']
     menu = sources['run_menu_firstperson_check.py']
     # All cover/weapon observer selections refer to this exact namespace;
@@ -126,6 +131,7 @@ exec(compile(s, str(O / 'run_menu_firstperson_check.py'), 'exec'),""")
         wrapper_source_sha256=sha(R104 / 'run_cover_eye_approach_operator.py'),
         generator_sha256=sha(__file__),
         entry_observation_source_sha256=sha(entry_observer),
+        candidate_closing_source_sha256=sha(closing_observer),
         ordinary_approach_source_sha256=sha(approach_source), ordinary_approach_frozen_in_operator=True,
         syntax_checked=True, shared_instance_references=0,
         input_reader=str(output / 'read_private_input.py'), input_reader_sha256=receipt['input_reader_sha256'],

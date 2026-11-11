@@ -2653,3 +2653,21 @@ initial physics0.7613ms/collider2.2084ms/components9.7828ms；重复physics18次
 完整Native de07b0c1daf61f1aa16f5824c986bebe0f136f895bdea51320eae30aae01b8f1编译链接0；exact r175冻结树仅组件角色一文件delta，413项目依赖、worktree外漏0、GEARS flags不变，其他冻结源前后哈希一致。r175 physics复核/r173关联修复保持。原始脚本、失败、前后结果、manifest、build和verification保留在root-schema-r177；没有替换公开包或固定入口，尚未准备/启动此候选。
 
 下一步保存后按资源准入准备精确候选，做一次有修改依据的短path观察，核对初始组件耗时、完整来源、原query started/returned及第一个实际失败；真实年龄修复、完整owner/world/body几何、严重自身模型遮挡、CV01–24/AC01–22和实体头显均未通过。工程25%、publicv71/固定入口不变，目标active。
+
+## r179：新候选在原A前候选读取收尾拒绝，无终态碰撞查询（2026-11-11）
+
+r177接入--native-r177后，仅选择精确一文件delta/原413依赖和原flags，source/build保持。归档正常结束且独立精确身份不在的r176 PSOCache105文件885049318字节到J盘，全部SHA一致后仅移除缓存文件；853791d6保存。r178准备和导入0，但runner前置require_disk实际3938926592字节小于原4294967296，在claim/worker/start请求前拒绝；各attempt文件独立确认不存在，不复用该身份。随后同样核对已结束r166/r168，将210缓存文件1770098636字节逐文件校验归档J:/gearsVr/analysis/cover-cache-archive-20261111-r178；源码/文本数值/媒体/存档/配置及其他实例保持。
+
+新cover-1111-r179-cloak-root、Native de07b0c1…01b8f1 prepare/导入/启动0，启动前4768755712字节通过原磁盘门槛。实际game58696、creation134388601048933864，observer在cover_boundary_chain候选CoverQuery.finish处抛World-state metadata/registry changed at closing boundary，operator/runner1。原A与五阶段未达，严格reader无终态query。没有components耗时或源码修复游戏证明，不将No terminal query伪装0次原调用的已测计数；未观察到的首项身份/字段/registry差异仍未知。
+
+Normal cleanup true，Native/entries/input与XR正常退出、remaining_owned空、无强杀；保存时独立确认game/owner/XR/worker精确身份不在。13项启动来源前后相同，CLOAK499/失败0、前台330/owned_activation false。136投影帧/errors0/编码0，7页实际概览全部亲看，仅覆盖进入掩体前场景；五阶段及contact0，明确标记动作跨度不完整，不作掩体视图验收。
+
+发现Query.finish已记录closing_rejection的before/after，但外层只保存通用异常，具体首差异丢失。下一步仅在本chat的隔离operator生成时保存这份已有差异并重抛原异常；不放松registry变化、不续期、不跳过候选、不使用失败观察或新增重试。先补已存在证据的落盘，再有依据地复查，不原样重跑。r177实际碰撞/40ms、自身模型遮挡、CV01–24/AC01–22与头显未完成，工程25%、publicv71/固定入口不变，目标active。
+
+## r180：候选读取的现有收尾差异落盘，严格拒绝保持（2026-11-11）
+
+r179首败在原A前候选q.finish，Query已在原读取中保存closing_rejection，但operator只保留通用异常。现在仅在本chat prepare_operator生成的私有cover_boundary模块，对该候选收尾调用包一层：失败时保存已存在的link address/stage/closing_rejection及missing-is-unknown，立即重抛原异常。成功时不保存额外诊断，调用数不变。原world_state.py/CoverQuery.finish、原boundary来源文件与全部Native/PG/XR均未更改；没有新读取、输入、重试、registry增长放行或使用失败观察。
+
+实际replacement执行identity/metadata/registry/unknown/success五例全部通过；每例finish一次，四种拒绝保持同一异常对象，成功不多写；原finally继续执行。原来源三处q.finish数量不变，检查原始boundary哈希06f16552…09254。生成器将diagnostic源码SHA纳入operator-prepared回执，AST核对实际变换后来源。仅验证已有差异的保存，不将其称为实际首差异已知、候选选择修复或r177查询实跑通过；没有启动新游戏。r179缺少五阶段，media-review及生成器明确动作跨度不完整，不能因无录制错误就算完整掩体流程。
+
+下一步按资源准入使用新身份执行一次带该确切差异记录的短观察。若原失败重现，针对真实identity/metadata/registry差异修复；若不重现，仅报告未重现，不作原因修复结论。r177性能/40ms、自身模型遮挡、全CV/AC与头显仍待验证，工程25%、publicv71/固定入口不变，目标active。
