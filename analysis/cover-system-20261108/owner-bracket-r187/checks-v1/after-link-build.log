@@ -1,0 +1,26 @@
+cover_query_owner_bracket_test.cpp
+C:\Users\11\.codex\worktrees\6dof-single\gearsVr\analysis\cover-system-20261108\owner-bracket-r187\checks-v1\after\tools\native-capture\cover_physics_query_live.inl(246): error C2220: 以下警告被视为错误
+C:\Users\11\.codex\worktrees\6dof-single\gearsVr\analysis\cover-system-20261108\owner-bracket-r187\checks-v1\after\tools\native-capture\cover_physics_query_live.inl(246): warning C4459: “movement”的声明隐藏了全局声明
+C:\Users\11\.codex\worktrees\6dof-single\gearsVr\analysis\cover-system-20261108\owner-bracket-r187\checks-v1\after\tools\native-capture\cover_query_owner_bracket_test.cpp(23): note: 参见“movement”的声明
+C:\Users\11\.codex\worktrees\6dof-single\gearsVr\analysis\cover-system-20261108\owner-bracket-r187\checks-v1\after\tools\native-capture\cover_physics_query_live.inl(246): note: 模板实例化上下文(最早的实例化上下文)为
+C:\Users\11\.codex\worktrees\6dof-single\gearsVr\analysis\cover-system-20261108\owner-bracket-r187\checks-v1\after\tools\native-capture\cover_physics_query_live_test.cpp(101): note: 查看对正在编译的函数 模板 实例化“gears_cover_physx_query::Code cover_physics_query_live::Session<HostEngine>::sweep<gears_cover_physx_query::Box,bool(__cdecl *)(void *,const void *,size_t),bool(__cdecl *)(void)>(const weapon_hand_scene_binding::Binding &,const gears_cover_pose_phase::Metadata &,const Shape &,const gears_cover_physx_query::Vector &,Read,Guard,gears_cover_physx_query::Sweep &) noexcept”的引用
+        with
+        [
+            Shape=gears_cover_physx_query::Box,
+            Read=bool (__cdecl *)(void *,const void *,size_t),
+            Guard=bool (__cdecl *)(void)
+        ]
+C:\Users\11\.codex\worktrees\6dof-single\gearsVr\analysis\cover-system-20261108\owner-bracket-r187\checks-v1\after\tools\native-capture\cover_physics_query_live_test.cpp(101): note: 请参阅 "PriorOwnerBracketMain" 中对 "cover_physics_query_live::Session<HostEngine>::sweep" 的第一个引用
+C:\Users\11\.codex\worktrees\6dof-single\gearsVr\analysis\cover-system-20261108\owner-bracket-r187\checks-v1\after\tools\native-capture\cover_physics_query_live.inl(262): warning C4459: “movement”的声明隐藏了全局声明
+C:\Users\11\.codex\worktrees\6dof-single\gearsVr\analysis\cover-system-20261108\owner-bracket-r187\checks-v1\after\tools\native-capture\cover_query_owner_bracket_test.cpp(23): note: 参见“movement”的声明
+C:\Users\11\.codex\worktrees\6dof-single\gearsVr\analysis\cover-system-20261108\owner-bracket-r187\checks-v1\after\tools\native-capture\cover_physics_query_live.inl(262): note: 模板实例化上下文(最早的实例化上下文)为
+C:\Users\11\.codex\worktrees\6dof-single\gearsVr\analysis\cover-system-20261108\owner-bracket-r187\checks-v1\after\tools\native-capture\cover_physics_query_live_test.cpp(150): note: 查看对正在编译的函数 模板 实例化“gears_cover_physx_query::Code cover_physics_query_live::Session<HostEngine>::sweep_all<gears_cover_physx_query::Box,bool(__cdecl *)(void *,const void *,size_t),bool(__cdecl *)(void),_Ty>(const weapon_hand_scene_binding::Binding &,const gears_cover_pose_phase::Metadata &,const Shape &,const gears_cover_physx_query::Vector &,const gears_cover_physx_query::StreamLimits &,Read,Guard,Output &) noexcept”的引用
+        with
+        [
+            _Ty=gears_cover_physx_query::AllSweep,
+            Shape=gears_cover_physx_query::Box,
+            Read=bool (__cdecl *)(void *,const void *,size_t),
+            Guard=bool (__cdecl *)(void),
+            Output=gears_cover_physx_query::AllSweep
+        ]
+C:\Users\11\.codex\worktrees\6dof-single\gearsVr\analysis\cover-system-20261108\owner-bracket-r187\checks-v1\after\tools\native-capture\cover_physics_query_live_test.cpp(150): note: 请参阅 "PriorOwnerBracketMain" 中对 "cover_physics_query_live::Session<HostEngine>::sweep_all" 的第一个引用

@@ -9,7 +9,8 @@ def decode(status,elapsed):
     invalid=int(status['cover_path_probe_timing_invalid']);overflow=int(status['cover_path_probe_timing_overflow'])
     if invalid or overflow:raise ValueError('Timing clock or accumulation invalid')
     rows=[]
-    for index,name in enumerate(STAGES):
+    stages=STAGES+('owner_bracket',) if 'cover_path_probe_timing_8' in status else STAGES
+    for index,name in enumerate(stages):
         values=[int(n) for n in status['cover_path_probe_timing_'+str(index)].split(',')]
         if len(values)!=4 or any(n<0 for n in values):raise ValueError('Malformed timing bin')
         calls,completed,total,maximum=values
@@ -32,6 +33,8 @@ def selftest():
     for i in range(8):row['cover_path_probe_timing_'+str(i)]='0,0,0,0'
     assert len(decode(row,100))==8
     good=dict(row,cover_path_probe_timing_0='2,2,70,40');assert decode(good,100)[0]['total_ns']==70
+    extended=dict(row,cover_path_probe_timing_8='2,2,50,30')
+    assert len(decode(extended,100))==9 and decode(extended,100)[8]['stage']=='owner_bracket'
     bad=[dict(row,cover_path_probe_timing_invalid='1'),dict(row,cover_path_probe_timing_overflow='1')]
     bad += [dict(row,cover_path_probe_timing_0=v) for v in ('1,0,10,10','1,1,101,101','1,1,10,11','0,0,1,1','-1,0,0,0','1,1,1')]
     for data in bad:
@@ -40,5 +43,5 @@ def selftest():
     missing=dict(row);del missing['cover_path_probe_timing_7']
     try:decode(missing,100);raise AssertionError('Missing timing accepted')
     except KeyError:pass
-    return dict(cases=11,failures=0,scope='Timing decoding only; no game')
+    return dict(cases=12,failures=0,scope='Timing decoding only; no game')
 if __name__=='__main__':print(json.dumps(selftest()))

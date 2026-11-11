@@ -33,6 +33,26 @@ template<class Engine=q::Queries> class Session {
     std::atomic<bool> configured_{},enabled_{},stopped_{},busy_{},closed_{true};
     std::atomic<DWORD> worker_{};
     struct Finish {std::atomic<bool>& busy;~Finish(){busy=false;}};
+    template<class Guard,class ReadSources> bool read_source_group(
+        weapon_hand_scene_binding::Binding const& actor,gears_cover_pose_phase::Metadata const& metadata,
+        Guard& owner,ReadSources read_sources){
+        using Gate=gears_cover_query_guard::SessionStage;
+        auto invalidate=[&](){work_.recheck_ready=false;collider_work_.recheck_ready=false;return false;};
+        if(!timing::measure(timing::Stage::owner_bracket,[&](){return owner();})){guard_witness_.reject(unsigned(Gate::owner_begin),unsigned(roles::Code::guard));return invalidate();}
+        const auto key=actor;const auto source=metadata;const auto thread=GetCurrentThreadId();
+        auto read_current=[&](){return enabled()&&busy_.load()&&GetCurrentThreadId()==thread&&
+            weapon_hand_scene_binding::context_ready()&&weapon_hand_scene_binding::same_key(key,actor)&&
+            key.scene_invocation==actor.scene_invocation&&key.special_move==actor.special_move&&
+            gears_cover_pose_phase::metadata_equal(source,metadata);};
+        // Synchronous reads only; no original call, body write or result
+        // publication is allowed inside read_sources. Full ownership, cover,
+        // pose and ORIGINAL source times are revalidated before returning.
+        // No decision/buffer from this bracket survives into another group.
+        if(!read_sources(read_current))return invalidate();
+        if(!timing::measure(timing::Stage::owner_bracket,[&](){return owner();})){guard_witness_.reject(unsigned(Gate::owner_end),unsigned(roles::Code::guard));return invalidate();}
+        if(!enabled()){guard_witness_.reject(unsigned(Gate::stopped));return invalidate();}
+        return true;
+    }
     template<class Guard,bool WithCollider> struct SourceGuard {
         Session& session;weapon_hand_scene_binding::Binding const& actor;
         gears_cover_pose_phase::Metadata const& metadata;Guard& owner;
@@ -49,15 +69,28 @@ template<class Engine=q::Queries> class Session {
         bool operator()(){
             session.guard_witness_.enter();
             if(session.stopped_.load())return reject(Gate::stopped);
-            const auto code=timing::measure(timing::Stage::physics_repeat,[&](){return roles::recheck(actor,metadata,owner,session.work_,session.after_);});
-            if(code!=roles::Code::current)return reject(Gate::physics_read,unsigned(code));
-            if(!roles::same(session.before_,session.after_))return reject(Gate::physics_match);
-            if constexpr(WithCollider){
-                const auto collider=timing::measure(timing::Stage::collider_repeat,[&](){return collider_roles::recheck(actor,owner,session.collider_work_,session.collider_after_);});
-                if(collider!=roles::Code::current)return reject(Gate::collider_read,unsigned(collider));
-                if(!collider_roles::same(session.collider_before_,session.collider_after_))return reject(Gate::collider_match);
+            auto read_sources=[&](auto& read_guard){
+                const auto code=timing::measure(timing::Stage::physics_repeat,[&](){return roles::recheck(actor,metadata,read_guard,session.work_,session.after_);});
+                if(code!=roles::Code::current)return reject(Gate::physics_read,unsigned(code));
+                if(!roles::same(session.before_,session.after_))return reject(Gate::physics_match);
+                if constexpr(WithCollider){
+                    const auto collider=timing::measure(timing::Stage::collider_repeat,[&](){return collider_roles::recheck(actor,read_guard,session.collider_work_,session.collider_after_);});
+                    if(collider!=roles::Code::current)return reject(Gate::collider_read,unsigned(collider));
+                    if(!collider_roles::same(session.collider_before_,session.collider_after_))return reject(Gate::collider_match);
+                }
+                return true;
+            };
+            if constexpr(!WithCollider)return read_sources(owner);
+            else {
+                // One synchronous READ-ONLY operation, bracketed by two full
+                // current owner/cover/pose/time checks. Neither typed reader
+                // calls the engine or publishes a result. Their scratch is
+                // untrusted until the final full owner check succeeds here.
+                // No owner decision is carried into another guard/execute.
+                // Retain BOTH actual values passes, all dynamic comparisons,
+                // and complete prior/final proofs in each existing reader.
+                return session.read_source_group(actor,metadata,owner,read_sources);
             }
-            return true;
         }
         bool operator()(q::source::Snapshot const& raw){return (*this)()&&
             (roles::matches_query_source(session.before_,raw)||reject(Gate::query_source_match));}
@@ -81,14 +114,21 @@ template<class Engine=q::Queries> class Session {
         if(stopped_.load())return q::Code::unavailable;
         const auto owner=actor;const auto source=metadata;const Shape geometry=shape;
         if(!q::detail::valid(geometry))return q::Code::request;
-        stage_=Stage::physics_roles;
-        const auto physics=timing::measure(timing::Stage::physics_initial,[&](){return roles::sample(owner,source,guard,work_,before_);});detail_=unsigned(physics);
-        if(physics!=roles::Code::current)return q::Code::source;
         constexpr bool with_collider=std::is_same_v<Output,q::AllSweepOwners>||std::is_same_v<Output,q::AllOverlapOwners>||std::is_same_v<Output,path::RawPath>;
-        if constexpr(with_collider){stage_=Stage::collider_roles;const auto collider=timing::measure(timing::Stage::collider_initial,[&](){return collider_roles::sample(owner,guard,collider_work_,collider_before_);});detail_=unsigned(collider);
-            if(collider!=roles::Code::current)return q::Code::source;}
-        if constexpr(with_collider){stage_=Stage::component_roles;const auto components=timing::measure(timing::Stage::components_initial,[&](){return component_roles::sample(owner,guard,component_work_,component_before_);});detail_=unsigned(components);
-            if(components!=roles::Code::current||!component_roles::input(component_before_,component_input_))return q::Code::source;}
+        auto sample_sources=[&](auto& read_guard){
+            stage_=Stage::physics_roles;
+            const auto physics=timing::measure(timing::Stage::physics_initial,[&](){return roles::sample(owner,source,read_guard,work_,before_);});detail_=unsigned(physics);
+            if(physics!=roles::Code::current)return false;
+            if constexpr(std::is_same_v<Output,q::AllSweepOwners>||std::is_same_v<Output,q::AllOverlapOwners>||std::is_same_v<Output,path::RawPath>){stage_=Stage::collider_roles;const auto collider=timing::measure(timing::Stage::collider_initial,[&](){return collider_roles::sample(owner,read_guard,collider_work_,collider_before_);});detail_=unsigned(collider);
+                if(collider!=roles::Code::current)return false;}
+            if constexpr(std::is_same_v<Output,q::AllSweepOwners>||std::is_same_v<Output,q::AllOverlapOwners>||std::is_same_v<Output,path::RawPath>){stage_=Stage::component_roles;const auto components=timing::measure(timing::Stage::components_initial,[&](){return component_roles::sample(owner,read_guard,component_work_,component_before_);});detail_=unsigned(components);
+                if(components!=roles::Code::current||!component_roles::input(component_before_,component_input_))return false;}
+            return true;
+        };
+        if constexpr(with_collider){
+            guard_witness_.enter();
+            if(!read_source_group(owner,source,guard,sample_sources))return q::Code::source;
+        }else if(!sample_sources(guard))return q::Code::source;
         SourceGuard<Guard,with_collider> current{*this,owner,source,guard};
         if constexpr(with_collider)current.collider_source=collider_roles::input(collider_before_);
         if constexpr(with_collider)current.component_source=&component_input_;

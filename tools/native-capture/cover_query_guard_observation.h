@@ -10,7 +10,8 @@ struct Witness {
     }
 };
 enum class SessionStage:unsigned {none,stopped,physics_read,physics_match,collider_read,collider_match,
-    component_read,component_match,query_source_match,asset_match,collider_source_match,component_source_match};
+    component_read,component_match,query_source_match,asset_match,collider_source_match,component_source_match,
+    owner_begin,owner_end};
 enum class OwnerStage:unsigned {none,session,captured,prepared,pending,entry,context_source,input_source,
     context,cover_read,cover_match,metadata_read,metadata_match,backend_metadata_match};
 }

@@ -8,7 +8,7 @@
 // permissions. Nested durations overlap; totals must never be added together.
 namespace gears_cover_query_timing {
 enum class Stage:unsigned {physics_initial,collider_initial,components_initial,
-    physics_repeat,collider_repeat,components_repeat,engine,closing,count};
+    physics_repeat,collider_repeat,components_repeat,engine,closing,owner_bracket,count};
 struct Bin {std::uint64_t calls{},completed{},total_ns{},max_ns{};};
 struct Report {std::array<Bin,unsigned(Stage::count)> bins{};std::uint64_t invalid{},overflow{};};
 using Clock=std::int64_t(*)()noexcept;

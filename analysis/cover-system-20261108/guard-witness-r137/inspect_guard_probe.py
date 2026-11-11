@@ -5,7 +5,7 @@ H=Path(__file__).resolve().parent
 spec=importlib.util.spec_from_file_location('cover_path_inspect',H.parent/'path-probe-r134/inspect_path_probe.py')
 base=importlib.util.module_from_spec(spec);spec.loader.exec_module(base)
 OWNER=('none','session','captured','prepared','pending','entry','context_source','input_source','context','cover_read','cover_match','metadata_read','metadata_match','backend_metadata_match')
-SESSION=('none','stopped','physics_read','physics_match','collider_read','collider_match','component_read','component_match','query_source_match','asset_match','collider_source_match','component_source_match')
+SESSION=('none','stopped','physics_read','physics_match','collider_read','collider_match','component_read','component_match','query_source_match','asset_match','collider_source_match','component_source_match','owner_begin','owner_end')
 def witness(value,names):
     row=[int(x) for x in value.split(',')]
     if len(row)!=5 or any(x<0 for x in row):raise ValueError('Malformed guard witness')
@@ -28,10 +28,12 @@ def selftest():
     assert witness('4,3,8,3,6',OWNER)['name']=='context'
     assert witness('2,1,2,3,0',SESSION)['name']=='physics_read'
     assert not witness('8,0,0,0,0',OWNER)['failed_call']
+    assert witness('4,3,12,3,0',SESSION)['name']=='owner_begin'
+    assert witness('4,3,13,3,0',SESSION)['name']=='owner_end'
     for value in ('0,1,2,0,0','2,1,99,0,0','2,0,3,0,0','2,1,0,0,0','-1,0,0,0,0','2,1,8,0'):
         try:witness(value,OWNER);raise AssertionError('Invalid witness accepted')
         except ValueError:pass
-    print(json.dumps(dict(cases=9,failures=0,scope='witness interpretation only')))
+    print(json.dumps(dict(cases=11,failures=0,scope='witness interpretation only')))
 if __name__=='__main__':
     if sys.argv[1:]==['--selftest']:selftest()
     else:print(json.dumps(inspect(json.loads(Path(sys.argv[1]).read_text(encoding='utf-8-sig'))),indent=2))

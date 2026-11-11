@@ -1,0 +1,13 @@
+[
+  {
+    "variant": "before",
+    "build_exit": 0,
+    "test_exit": 1,
+    "output": "cover_physics_query_live: 105 checks, 0 failures; dispatch/module are Host seams, no original call\r\nowner_bracket full_calls=16 reads=70488\r\nFAIL 79: session->sweep_all(actor,physics_expected,test_box,bracket_movement,bracket_limits,source_read,current,*output)!=q::Code::queried reason=ready stage=ready field=Owner\r\nFAIL 80: fired&&host_actions==0&&output->raw.raw_count==77 reason=ready stage=ready field=Owner\r\nCoverOwnerBracket checks=390 failures=2 actual typed readers; Host dispatch only\r\n",
+    "outside_worktree_dependencies": []
+  },
+  {
+    "variant": "after",
+    "build_exit": 2
+  }
+]

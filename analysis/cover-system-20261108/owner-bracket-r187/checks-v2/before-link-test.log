@@ -1,0 +1,4 @@
+cover_physics_query_live: 105 checks, 0 failures; dispatch/module are Host seams, no original call
+owner_bracket full_calls=16 reads=70488
+FAIL 63: fired&&host_actions==0&&output->raw.raw_count==77 reason=ready stage=ready field=Owner
+CoverOwnerBracket checks=340 failures=1 actual typed readers; Host dispatch only

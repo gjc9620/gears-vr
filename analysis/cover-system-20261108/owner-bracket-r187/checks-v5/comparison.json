@@ -1,0 +1,12 @@
+{
+  "full_calls": {
+    "before": 16,
+    "after": 8,
+    "reduction": 0.5
+  },
+  "reads": {
+    "before": 70488,
+    "after": 59976,
+    "reduction": 0.1491317671092952
+  }
+}

@@ -1,0 +1,10 @@
+[
+  {
+    "variant": "before",
+    "build_exit": 2
+  },
+  {
+    "variant": "after",
+    "build_exit": 2
+  }
+]

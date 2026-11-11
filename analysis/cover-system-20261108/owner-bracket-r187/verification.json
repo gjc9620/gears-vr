@@ -1,0 +1,106 @@
+{
+  "native_sha256": "e09b3e0ff8ea8da3c6998022254932835763540052a2eb0bc2201a688c64f6af",
+  "product_changes": [
+    "tools/native-capture/cover_physics_query_live.inl",
+    "tools/native-capture/cover_query_guard_observation.h",
+    "tools/native-capture/cover_query_timing.h"
+  ],
+  "comparison": {
+    "full_calls": {
+      "before": 16,
+      "after": 8,
+      "reduction": 0.5
+    },
+    "reads": {
+      "before": 70488,
+      "after": 59976,
+      "reduction": 0.1491317671092952
+    }
+  },
+  "checks": [
+    {
+      "variant": "before",
+      "build_exit": 0,
+      "test_exit": 0,
+      "output": "cover_physics_query_live: 105 checks, 0 failures; dispatch/module are Host seams, no original call\r\nowner_bracket full_calls=16 reads=70488\r\nCoverOwnerBracket checks=400 failures=0 actual typed readers; Host dispatch only\r\n",
+      "outside_worktree_dependencies": []
+    },
+    {
+      "variant": "after",
+      "build_exit": 0,
+      "test_exit": 0,
+      "output": "cover_physics_query_live: 105 checks, 0 failures; dispatch/module are Host seams, no original call\r\nowner_bracket full_calls=8 reads=59976\r\nCoverOwnerBracket checks=328 failures=0 actual typed readers; Host dispatch only\r\n",
+      "outside_worktree_dependencies": []
+    }
+  ],
+  "related": [
+    {
+      "name": "cover_physics_capsule_path_live",
+      "build_exit": 0,
+      "test_exit": 0,
+      "output": "CoverCapsulePathSession checks=391 failed=0 typed-source/Session real; module/dispatch Host; no game\r\n",
+      "outside_worktree_dependencies": []
+    },
+    {
+      "name": "cover_physics_overlap_query_live",
+      "build_exit": 0,
+      "test_exit": 0,
+      "output": "CoverOverlapSession checks=53 failed=0 actual typed roles/Session; Host dispatch/owner packets; no game\r\n",
+      "outside_worktree_dependencies": []
+    },
+    {
+      "name": "cover_query_guard_live",
+      "build_exit": 0,
+      "test_exit": 0,
+      "output": "CoverQueryGuard checks=23 failed=0 real typed reader/Session; Host dispatch, no game\r\n",
+      "outside_worktree_dependencies": []
+    },
+    {
+      "name": "cover_query_timing",
+      "build_exit": 0,
+      "test_exit": 0,
+      "output": "cover_physics_query_live: 105 checks, 0 failures; dispatch/module are Host seams, no original call\r\nCoverQueryTiming checks=136 failures=0 observer only; nested times overlap; no original call\r\n",
+      "outside_worktree_dependencies": []
+    }
+  ],
+  "off": {
+    "build_exit": 0,
+    "test_exit": 0,
+    "output": "cover_physics_c0 OFF: 51 checks, 0 failures; no game/module/query\r\n"
+  },
+  "decoders": [
+    {
+      "file": "guard-witness-r137/inspect_guard_probe.py",
+      "sha256": "2e46ca3ed00632c00e6dec96b334162a1b84dd1516e56e1d72ca70649966dce9",
+      "result": {
+        "cases": 11,
+        "failures": 0,
+        "scope": "witness interpretation only"
+      }
+    },
+    {
+      "file": "query-timing-r163/inspect_timing.py",
+      "sha256": "b4197ff5a2ab3dcb29d4ab408b3684e8a348219f014d69345c5ca116735e3eb4",
+      "result": {
+        "cases": 12,
+        "failures": 0,
+        "scope": "Timing decoding only; no game"
+      }
+    }
+  ],
+  "game_started": false,
+  "query_original_called": false,
+  "source_age_repaired": false,
+  "cover_view_accepted": false,
+  "full_requirements_accepted": false,
+  "headset_accepted": false,
+  "public_changed": false,
+  "engineering_percent": 25,
+  "failures_preserved": {
+    "v1": "test global shadow warning under /WX; no tests ran",
+    "v2": "fixture Owner lacked production session.enabled check; corrected fixture, no production stop bug claim",
+    "v3": "Root=0 was valid initial capture; wrong expectation; after build missing timing header overlay",
+    "v4": "baseline passed; new generic lambda captured constexpr failed MSVC compile; corrected type expression"
+  },
+  "next": "Pin r187 private candidate and require owner_bracket timing bin before one changed-candidate controlled check; preserve original source clocks and 40ms limit."
+}

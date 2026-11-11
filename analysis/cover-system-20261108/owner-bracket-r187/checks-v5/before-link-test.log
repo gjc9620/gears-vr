@@ -1,0 +1,3 @@
+cover_physics_query_live: 105 checks, 0 failures; dispatch/module are Host seams, no original call
+owner_bracket full_calls=16 reads=70488
+CoverOwnerBracket checks=400 failures=0 actual typed readers; Host dispatch only
