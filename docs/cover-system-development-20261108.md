@@ -3151,3 +3151,11 @@ actor_shapes与shape_owner两处同时修正：d0独立等于当前public Actor�
 Engine1741累计0（owner531、parameter702、world1706、asset1732），新增read引出额外故障点逐一拒绝；actor inventory79、Session125、OFF65均0。原DLL未加载/未分派query，Session空Host packet仅作owner事务回归。完整Native以r229冻结树仅两个product header overlay，flags不变，422依赖逐SHA无外部混入；DLL SHA3ca85b2f8642d8a3ef9e58f030ca58be18c94df586c24607c71d3ce36b157471。未安装/未游戏运行此修复，下一次新shape模式须验证实际失败能否越过此点，不提前称整批成功。
 
 完整CV24/AC22、active/template身份、static/weld/flags/full self/world fence、body/view/hit/muzzle同版事务、视图遮挡与头显仍未完成，工程25%；publicv71/固定手动入口/Quest不变。证据shape-owner-fields-r231。
+
+## r232：修正后的Actor/Body归属实际通过；下一拒绝转至world pose（2026-11-12）
+
+新cover-1112-r232-cloak-owner-fields使用r231 Native3ca85b2f…7471；准备422冻结依赖、生成操作导入/身份guard14通过，选择代码ade0214b。实际game39576/creation134389114448133788，原进入掩体和五段eye操作operator0。一次全形状读取19.8285ms，原owner guard47/session guard22无失败，original calls0。actor0/member0的inventory first/last Stage19 complete均成功，原Stage15 body_link拒绝不再出现；nested asset0/shape0/world8 pose，q10 owner_read、asset detail8 world。失败输出整批仍未发布，不能声称整批成功或world/body闭合。
+
+这给r231字段修复取得实际越过旧失败的证据；后续world pose在参数四元数、Body四元数或compose何处拒绝尚未知，补已有raw输入与阶段记录，不提前放宽rigid/normal阈值或归一化原数据。
+
+264实际投影帧/errors0、14总览、5阶段contact逐张亲看仍自身头肩/躯干严重遮挡FAIL；未全数亲看overview，full_span人工验收false，编码0。正常清理true、自有remaining为空、无强杀，CLOAK620失败0、前台412无owned激活，anchor和cover reader前后相同。完整CV24/AC22、full self/world fence、active/template、body/view/hit/muzzle及视图遮挡/头显继续未完成，工程25%，publicv71/固定入口/Quest不变。证据shape-owner-runtime-r232。
