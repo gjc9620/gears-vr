@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "scope": "full HB objective; no scope reduction",
-  "current_candidate": "Private latch-incumbent-gap-r1 PG5b3d71fb with Native71f280b0; full compiled,60 added helper/Client/sole-owner fixture cases pass including actual legacy opening/closing loss and current successor/realUP. No game evidence yet; all13 incomplete.",
+  "current_candidate": "PG5b3d71fb/Native71f280b0 actual38380:78rays/emptyveto/opening1\u21924; first original extraction614111.4423ms gap rejected. New latch pose-gap/WAIT markers0, causal recovery untested. Fullflow/return12s/headset incomplete, all13 retained.",
   "prepared_sha256": "20d8a6cd15b89c89b938aa201086c9d590251a2be74b2bd6d4fa72bd47d27824",
   "requirements": [
     {
@@ -518,8 +518,8 @@
   "restore_verifier_status": "Optional --hammerburst-park-restore input action hook integrated into private reload adapter; five synthetic action/receipt regressions passed. Actual park/redraw/new-grant/native-resume, typed conservation, UI/reward and complete return-fire require game evidence.",
   "latest_service_first_failure": "runtime-3112-first-failure-analysis.json",
   "latest_startup_failure": "runtime-49732-startup-failure.json",
-  "latest_runtime_failure": "runtime-38256-first-failure-analysis.json",
-  "latest_runtime_result": "runtime-38256-first-failure-analysis.json",
+  "latest_runtime_failure": "runtime-38380-first-failure-analysis.json",
+  "latest_runtime_result": "runtime-38380-first-failure-analysis.json",
   "latest_focused_pass": "runtime-50828-focused-result.json",
   "visual_audit_recording_repair": "Corrected finalizer wrong ID fivepartfitting\u2192part_fitting, attached reviewed22992 evidence also to guides, asserted target IDs exist. No requirement/score/acceptance change and no overwrite of current052600 runtime blocker.",
   "resource_release_evidence": {
@@ -594,5 +594,14 @@
     "wait_branch_exercised": false,
     "fullflow_passed": false,
     "limits": "Actual pure kernels+12seek cases passed; synthetic intermediates, no successful original4400 game recovery yet."
+  },
+  "latest_extraction_gap": {
+    "evidence": "runtime-38380-first-failure-analysis.json",
+    "frame": 614,
+    "previous_sequence": 4754,
+    "current_sequence": 4759,
+    "gap_ns": 111442300,
+    "original_limit_ns": 100000000,
+    "complete": false
   }
 }

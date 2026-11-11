@@ -1,13 +1,13 @@
 {
-  "requirements_complete": false,
-  "runner_session_id": 34333,
-  "candidate": "latch-observation-wait-r1",
-  "all13_requirements_retained": true,
+  "source_checkpoint": "81fd40af",
   "terminal": true,
-  "instance": "hb-cloak-1111-143359",
+  "requirements_complete": false,
+  "candidate": "latch-incumbent-gap-r1",
   "native_candidate": "native-render-age-r1",
-  "source_checkpoint": "c14270a9",
-  "next": "Reproduce opening/closing exact magazine-latch incumbent loss through actual Client/Native-owner fixture. Keep only already-owned lease at original lifecycle across publication/stale_before if demonstrated; fresh Native prepare/commit must independently check realUP/tracking/identity/mount. No Frame/action/clock or new grab; no old-mag broadening without evidence. Preserve original stroke/ring checks. Current new-mag-only20-case fixture is reusable but expectations must change only for specifically evidenced latch states.",
-  "game_pid": 38256,
-  "runner_last_poll": "34333 terminal1; stop/launcher/Native/PG/XR0; own game+children gone, noforced; encode0"
+  "instance": "hb-cloak-1111-144453",
+  "all13_requirements_retained": true,
+  "next": "Use existing exact producer motion history for OLD extraction, with original Sample/identity/publisher/control/pose mapping and original contiguous sequence/per-point100ms/speed/alignment checks. Current new-mag feed_history projection can supply original left poses; old stage currently neither captures nor remembers it. Reproduce actual111.4423ms direct rejection, then transactionally feed only authenticated original intermediate points to original Extraction.observe on a trial copy, committing only after full current endpoint validation. No interpolation, no extra Frame/grant, no enlarged gap, no old-mag incumbent broadening without evidence. Log bounded actual segment coverage in next game.",
+  "runner_session_id": 94175,
+  "game_pid": 38380,
+  "runner_last_poll": "94175 terminal1; stop/launcher/Native/PG/XR0; own game+children gone, noforced; encode0"
 }
