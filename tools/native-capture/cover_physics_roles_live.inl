@@ -120,6 +120,7 @@ struct Workspace {
     Snapshot first{},last{};
     std::array<unsigned char,sizeof(gears_anchor::Config)> metadata{};
     std::uint64_t generation{};
+    binding::Binding sample_owner{};pose::Metadata sample_metadata{};bool recheck_ready{};
 };
 inline bool class_role(binding::Proof& proof,std::uintptr_t cls,wchar_t const* name,std::uintptr_t reference=0){
     binding::ClassPath path{};if(!binding::derives(cls,name,reference,path))return false;
@@ -252,33 +253,46 @@ inline Code values(Workspace& w,binding::Binding const& actor,pose::Metadata con
            !binding::same(next.instance,w.first.instance)||!binding::metadata_current()||
            w.generation!=binding::metadata_generation||w.metadata!=binding::metadata_bytes||
            !binding::current(w.mesh)||!binding::current(w.instance))return Code::changed;
+        for(unsigned n=0;n<w.layout_count;++n)if(!binding::current(w.layouts[n].proof))return Code::changed;
     }else if(!schema(w,next))return Code::layout;
     std::uintptr_t asset{},instance{},owner{};
-    if(!binding::field(asset,next.mesh.address,w.mesh_fields[0].offset)||asset!=next.asset.address||
-       !binding::field(instance,next.mesh.address,w.mesh_fields[1].offset)||instance!=next.instance.address||
-       !binding::field(owner,instance,w.instance_fields[0].offset)||!binding::identity(owner,next.owner,true)||
+    if(!binding::source_field(w.mesh,asset,next.mesh.address,w.mesh_fields[0].offset)||asset!=next.asset.address||
+       !binding::source_field(w.mesh,instance,next.mesh.address,w.mesh_fields[1].offset)||instance!=next.instance.address||
+       !binding::source_field(w.instance,owner,instance,w.instance_fields[0].offset)||!binding::identity(owner,next.owner,true)||
        (!binding::same(next.owner,next.mesh)&&!binding::same(next.owner,next.pawn)))return Code::changed;
     step(w,LayoutStep::owner_class);
-    if(!class_role(w.instance,next.owner.cls,binding::same(next.owner,next.mesh)?L"SkeletalMeshComponent":L"Pawn",
+    // A repeat already re-read the complete instance/class-path proof above.
+    // The fresh owner identity must be exactly the initial owner; no class
+    // derivation is cached across samples or used for a changed owner/class.
+    if(repeat){if(!binding::same(next.owner,w.first.owner))return Code::changed;}
+    else if(!class_role(w.instance,next.owner.cls,binding::same(next.owner,next.mesh)?L"SkeletalMeshComponent":L"Pawn",
         w.instance_fields[0].reference.address))return Code::layout;
-    if(!binding::field(next.array,instance,w.instance_fields[1].offset)||!binding::field(next.root,instance,w.instance_fields[2].offset))return Code::read;
+    const auto array_offset=w.instance_fields[1].offset;
+    if(!binding::source_field(w.instance,next.array.data,instance,array_offset)||
+       !binding::source_field(w.instance,next.array.count,instance,array_offset+8)||
+       !binding::source_field(w.instance,next.array.capacity,instance,array_offset+12)||
+       !binding::source_field(w.instance,next.root,instance,w.instance_fields[2].offset))return Code::read;
     const auto& h=next.array;step(w,LayoutStep::array_bounds);
     if(h.count<=0||h.count>64||h.capacity<h.count||h.capacity>256||next.root<0||next.root>=h.count||
        !query_source::pointer(h.data,std::size_t(h.capacity)*8))return Code::layout;
     std::array<std::uintptr_t,64> pointers{};
     if(!safe_copy(pointers.data(),reinterpret_cast<void const*>(h.data),std::size_t(h.count)*8))return Code::read;
     for(int n=0;n<h.count;++n){auto& body=next.bodies[unsigned(n)];
+        std::uintptr_t member{};
+        if(!binding::source_field(w.instance,member,h.data,unsigned(n)*8)||member!=pointers[unsigned(n)])return Code::changed;
         w.witness.body_index=unsigned(n);step(w,LayoutStep::body_duplicate);
         for(int k=0;k<n;++k)if(pointers[unsigned(k)]==pointers[unsigned(n)])return Code::layout;
         step(w,LayoutStep::body_identity);
         if(!binding::identity(pointers[unsigned(n)],body.identity,true))return Code::read;
         auto* l=body_layout(w,body.identity,&w.witness,&w.members);if(!l)return w.layout_count==w.layouts.size()?Code::capacity:Code::layout;
         step(w,LayoutStep::body_mesh_reference);
-        if(!body_mesh_role(*l,next.mesh.cls,w.witness.pass))return Code::layout;
-        if(!binding::field(body.index,body.identity.address,l->fields[0].offset)||
-           !binding::field(body.owner,body.identity.address,l->fields[1].offset)||
-           !binding::field(body.main,body.identity.address,l->fields[2].offset)||
-           !binding::field(body.auxiliary,body.identity.address,l->fields[3].offset))return Code::read;
+        if(repeat){
+            if(l->mesh_role_class!=next.mesh.cls||l->mesh_role_reference!=l->fields[1].reference.address||!l->mesh_role_pass)return Code::changed;
+        }else if(!body_mesh_role(*l,next.mesh.cls,w.witness.pass))return Code::layout;
+        if(!binding::source_field(l->proof,body.index,body.identity.address,l->fields[0].offset)||
+           !binding::source_field(l->proof,body.owner,body.identity.address,l->fields[1].offset)||
+           !binding::source_field(l->proof,body.main,body.identity.address,l->fields[2].offset)||
+           !binding::source_field(l->proof,body.auxiliary,body.identity.address,l->fields[3].offset))return Code::read;
         if(body.index!=n||body.owner!=next.mesh.address||(body.main&&!query_source::pointer(body.main,8))||
            (body.auxiliary&&!query_source::pointer(body.auxiliary,8)))return Code::changed;
     }
@@ -292,6 +306,7 @@ template<class Guard> Code sample(binding::Binding const& actor,pose::Metadata c
        query_source::aliases(&metadata,sizeof metadata,&output,sizeof output)||query_source::aliases(&work,sizeof work,&actor,sizeof actor)||
        query_source::aliases(&work,sizeof work,&metadata,sizeof metadata))return Code::request;
     work.witness={};
+    work.recheck_ready=false;
     const auto owner=actor;const auto expected=metadata;
     try{
         if(!guard())return Code::guard;
@@ -307,13 +322,44 @@ template<class Guard> Code sample(binding::Binding const& actor,pose::Metadata c
         if(!guard())return Code::guard;
         if(!binding::same_key(actor,owner)||actor.scene_invocation!=owner.scene_invocation||actor.special_move!=owner.special_move||
            !pose::metadata_equal(metadata,expected))return Code::changed;
-        output=work.first;return Code::current;
+        output=work.first;work.sample_owner=owner;work.sample_metadata=expected;work.recheck_ready=true;return Code::current;
+    }catch(...){return Code::exception;}
+}
+// Only the serialized Session SourceGuard may reuse the initial successful
+// sample. The next execute always calls sample() and rebuilds all layouts.
+// Rechecks retain two actual dynamic observations, complete prior Proof checks
+// before selected offsets, comparison with the initial result and final close.
+template<class Guard> Code recheck(binding::Binding const& actor,pose::Metadata const& metadata,Guard guard,Workspace& work,Snapshot& output)noexcept{
+    if(!actor.context_valid||!actor.world_generation||!metadata.physics_asset||!metadata.physics_instance||
+       query_source::aliases(&work,sizeof work,&output,sizeof output)||query_source::aliases(&actor,sizeof actor,&output,sizeof output)||
+       query_source::aliases(&metadata,sizeof metadata,&output,sizeof output)||query_source::aliases(&work,sizeof work,&actor,sizeof actor)||
+       query_source::aliases(&work,sizeof work,&metadata,sizeof metadata))return Code::request;
+    const auto owner=actor;const auto expected=metadata;const bool prepared=work.recheck_ready;work.recheck_ready=false;
+    try{
+        if(!guard())return Code::guard;
+        if(!prepared||!binding::same_key(owner,work.sample_owner)||owner.scene_invocation!=work.sample_owner.scene_invocation||
+           owner.special_move!=work.sample_owner.special_move||!pose::metadata_equal(expected,work.sample_metadata))return Code::changed;
+        {
+            std::unique_lock<std::mutex> lock(binding::mutex,std::try_to_lock);if(!lock.owns_lock())return Code::metadata;
+            if(!binding::context_ready()||!binding::metadata_current()||actor.world_generation!=binding::metadata_generation)return Code::metadata;
+            work.witness.pass=1;work.witness.body_index=~0u;
+            auto code=values(work,owner,expected,work.last,true);if(code!=Code::current)return work.members.exhausted?Code::capacity:code;
+            if(!same(work.first,work.last))return Code::changed;
+            work.witness.pass=2;work.witness.body_index=~0u;
+            code=values(work,owner,expected,work.last,true);if(code!=Code::current)return work.members.exhausted?Code::capacity:code;
+            if(!same(work.first,work.last)||!layouts_current(work))return Code::changed;
+        }
+        if(!guard())return Code::guard;
+        if(!binding::same_key(actor,owner)||actor.scene_invocation!=owner.scene_invocation||actor.special_move!=owner.special_move||
+           !pose::metadata_equal(metadata,expected))return Code::changed;
+        output=work.last;work.recheck_ready=true;return Code::current;
     }catch(...){return Code::exception;}
 }
 #else
 struct Workspace {};
 inline LayoutObservation observation(Workspace const&)noexcept{return {};}
 template<class Guard> Code sample(binding::Binding const&,pose::Metadata const&,Guard,Workspace&,Snapshot&) noexcept{return Code::unavailable;}
+template<class Guard> Code recheck(binding::Binding const&,pose::Metadata const&,Guard,Workspace&,Snapshot&) noexcept{return Code::unavailable;}
 #endif
 } // namespace cover_physics_roles_live
 #endif

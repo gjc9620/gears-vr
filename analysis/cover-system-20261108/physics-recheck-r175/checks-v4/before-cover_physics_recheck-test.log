@@ -1,0 +1,17 @@
+cover_physics_roles_live: 282 checks, 0 failures; typed source only, no query/writer
+physics_recheck bodies=2 five_reads=31565
+physics_recheck bodies=16 five_reads=34085
+physics_recheck bodies=64 five_reads=42725
+baseline_unclosed_dynamic=4
+baseline_unclosed_dynamic=5
+baseline_unclosed_dynamic=6
+baseline_unclosed_dynamic=7
+baseline_unclosed_dynamic=9
+baseline_unclosed_dynamic=10
+baseline_unclosed_dynamic=12
+baseline_unclosed_dynamic=13
+baseline_unclosed_dynamic=14
+baseline_unclosed_dynamic=15
+baseline_unclosed_dynamic=16
+baseline_unclosed_dynamic=17
+CoverPhysicsRecheck checks=530 failures=0 actual reader and dynamic races; no game

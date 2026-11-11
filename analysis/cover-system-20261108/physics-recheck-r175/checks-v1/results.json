@@ -1,0 +1,18 @@
+[
+  {
+    "variant": "before",
+    "name": "cover_physics_recheck",
+    "build_exit": 0,
+    "test_exit": 0,
+    "output": "cover_physics_roles_live: 282 checks, 0 failures; typed source only, no query/writer\r\nphysics_recheck bodies=2 five_reads=31565\r\nphysics_recheck bodies=16 five_reads=34085\r\nphysics_recheck bodies=64 five_reads=42725\r\nbaseline_unclosed_dynamic=4\r\nbaseline_unclosed_dynamic=5\r\nbaseline_unclosed_dynamic=6\r\nbaseline_unclosed_dynamic=7\r\nbaseline_unclosed_dynamic=9\r\nCoverPhysicsRecheck checks=434 failures=0 actual reader and dynamic races; no game\r\n",
+    "outside_worktree_dependencies": []
+  },
+  {
+    "variant": "after",
+    "name": "cover_physics_recheck",
+    "build_exit": 0,
+    "test_exit": 0,
+    "output": "cover_physics_roles_live: 282 checks, 0 failures; typed source only, no query/writer\r\nphysics_recheck bodies=2 five_reads=25835\r\nphysics_recheck bodies=16 five_reads=29755\r\nphysics_recheck bodies=64 five_reads=43195\r\nCoverPhysicsRecheck checks=466 failures=0 actual reader and dynamic races; no game\r\n",
+    "outside_worktree_dependencies": []
+  }
+]

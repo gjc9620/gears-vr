@@ -1,0 +1,58 @@
+{
+  "native_sha256": "1e037608fc9b3722f0bc80bd0afbeac1f4499d85033c69b1954fa337f8491dfb",
+  "runtime_delta": [
+    "tools/native-capture/cover_physics_query_live.inl",
+    "tools/native-capture/cover_physics_roles_live.inl"
+  ],
+  "project_dependencies": 413,
+  "outside_worktree_dependencies": 0,
+  "flags_unchanged": true,
+  "other_frozen_sources_unchanged": true,
+  "source_times_or_limits_changed": false,
+  "scope": "Only SourceGuard physics rechecks inside the same synchronous execute; initial sample always invalidates and rebuilds",
+  "dynamic_passes": 2,
+  "initial_owner_scene_full_metadata_bound": true,
+  "failed_recheck_latches_false": true,
+  "prior_proofs_before_offsets": true,
+  "original_complete_closing_preserved": true,
+  "dynamic_source_fields": "7 mesh/instance/header/root values plus 5 per Body including actual array member, index, owner, BodyData and BoneSpring",
+  "dynamic_closing_races_reproduced_before": 12,
+  "dynamic_closing_races_rejected_after": 12,
+  "checks_before": 530,
+  "checks_after": 562,
+  "includes_existing_physics_checks": 282,
+  "read_comparison": {
+    "2": {
+      "before": 31565,
+      "after": 22945,
+      "reduction": 0.2730872802154285
+    },
+    "16": {
+      "before": 34085,
+      "after": 27355,
+      "reduction": 0.19744755757664667
+    },
+    "64": {
+      "before": 42725,
+      "after": 42475,
+      "reduction": 0.005851375073142151
+    }
+  },
+  "related_checks": [
+    219,
+    207,
+    23,
+    105,
+    391,
+    53,
+    51
+  ],
+  "earlier_failures": "v1 all correctness checks passed but 64-body read count increased1.10%; v2 reused already revalidated owner/mesh class paths. v3 expanded tests misclassified BoneSpring mutation as late: read hook runs before copy, so original already rejects that case; v4 retains that rejection. Final source also closes every Bodies array slot.",
+  "build_only": true,
+  "game_started": false,
+  "source_age_repaired": false,
+  "owner_links_game_repaired": false,
+  "movement_authorized": false,
+  "world_coverage_verified": false,
+  "public_changed": false
+}

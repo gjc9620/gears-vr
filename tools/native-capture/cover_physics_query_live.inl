@@ -49,7 +49,7 @@ template<class Engine=q::Queries> class Session {
         bool operator()(){
             session.guard_witness_.enter();
             if(session.stopped_.load())return reject(Gate::stopped);
-            const auto code=timing::measure(timing::Stage::physics_repeat,[&](){return roles::sample(actor,metadata,owner,session.work_,session.after_);});
+            const auto code=timing::measure(timing::Stage::physics_repeat,[&](){return roles::recheck(actor,metadata,owner,session.work_,session.after_);});
             if(code!=roles::Code::current)return reject(Gate::physics_read,unsigned(code));
             if(!roles::same(session.before_,session.after_))return reject(Gate::physics_match);
             if constexpr(WithCollider){

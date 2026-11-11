@@ -1,0 +1,5 @@
+cover_physics_roles_live: 282 checks, 0 failures; typed source only, no query/writer
+physics_recheck bodies=2 five_reads=22875
+physics_recheck bodies=16 five_reads=26795
+physics_recheck bodies=64 five_reads=40235
+CoverPhysicsRecheck checks=466 failures=0 actual reader and dynamic races; no game
