@@ -1,0 +1,18 @@
+fresh-C0-test.cpp
+shoulder-policy side=-1 reach=30 base_bend=55.502 selected_bend=40.9306 displacement=6.42182 max_joint_step=0
+shoulder-policy side=-1 reach=38 base_bend=39.5258 selected_bend=21.534 displacement=6.0356 max_joint_step=0.143536
+shoulder-policy side=1 reach=30 base_bend=55.502 selected_bend=40.9306 displacement=6.42182 max_joint_step=0
+shoulder-policy side=1 reach=38 base_bend=39.5258 selected_bend=21.534 displacement=6.0356 max_joint_step=0.143536
+shoulder-FK side=0 error=1.84333e-05
+shoulder-FK side=1 error=3.83505e-05
+finger-grasp side=0 finger=0 distal_wrist_xyz=13.5838,-3.78925,-3.51044
+finger-grasp side=0 finger=1 distal_wrist_xyz=13.5536,-4.43232,-1.01542
+finger-grasp side=0 finger=2 distal_wrist_xyz=12.8394,-4.08064,1.20033
+finger-grasp side=0 finger=3 distal_wrist_xyz=11.623,-3.63135,3.77975
+finger-grasp side=0 finger=4 distal_wrist_xyz=7.8638,-4.94882,-2.27567
+finger-grasp side=1 finger=0 distal_wrist_xyz=13.5838,-3.78926,3.51044
+finger-grasp side=1 finger=1 distal_wrist_xyz=13.5536,-4.43232,1.01543
+finger-grasp side=1 finger=2 distal_wrist_xyz=12.8394,-4.08064,-1.20033
+finger-grasp side=1 finger=3 distal_wrist_xyz=11.623,-3.63135,-3.77975
+finger-grasp side=1 finger=4 distal_wrist_xyz=7.8638,-4.94882,2.27566
+body_c0_hands: 8190 checks 0 failures max_wrist=0 max_q=0 max_segment=0 owned_buffer_only=1 synthetic_grip_input_seam=1 runtime_proved=0 Workspace=199888

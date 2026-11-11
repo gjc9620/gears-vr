@@ -86,6 +86,8 @@ def main():
     assert not passive_palette or (passive_commit and '--foregrip-four-state' in sys.argv),'Palette observation is bounded to the same passive C0 four-state candidate'
     passive_rejection='--native-passive-rejection' in sys.argv
     assert not passive_rejection or (passive_commit and not passive_palette),'Use the narrow refusal observer without the wide render witness'
+    fresh_passive='--fresh-passive-socket' in sys.argv
+    assert not fresh_passive or (passive_rejection and '--early-released-refire' in sys.argv),'Fresh passive geometry uses the explicit paired PG/Native parents'
     assert not native_mutex or render_age,'Mutex observer retains the exact age-continuity Native parent'
     latch_observation='--latch-observation-wait' in sys.argv
     latch_incumbent='--latch-incumbent-gap' in sys.argv
@@ -150,6 +152,12 @@ def main():
             if history_rejection:
                 check=json.loads((AREA/pg_candidate/'history-observer-test-result.json').read_text())
                 assert check['passed'] and check['original_pure_build_unchanged'] and check['original_build_called_once']
+    if fresh_passive:
+        fresh_checks=json.loads((AREA/'fresh-passive-native-r1/fresh-socket-test-result.json').read_text())
+        assert fresh_checks['passed'] and fresh_checks['actual_sender'] and fresh_checks['actual_broker'] and fresh_checks['actual_C0']
+        pg_candidate='fresh-passive-pg-r1'
+        proof=json.loads((AREA/pg_candidate/'prepared.json').read_text())
+        assert proof['final_source_rebuilt'] and proof['original_request_source_unchanged']
     assert proof['full_playground_compiled'] and not proof['runtime_exercised']
     dll=Path(proof['dll']);assert hashlib.sha256(dll.read_bytes()).hexdigest()==proof['dll_sha256']
     manifest.update(playground_build=str(dll.parent.relative_to(ROOT)),playground_sha256=proof['dll_sha256'],
@@ -181,6 +189,12 @@ def main():
             for key in ('policy_cases','policy_failures'):
                 refusal_proof[key]=native_proof[key]
             native_proof=refusal_proof
+        if fresh_passive:
+            fresh_native=json.loads((AREA/'fresh-passive-native-r1/prepared.json').read_text())
+            assert fresh_native['parent_native']==native_proof['native_sha256'] and fresh_native['final_source_rebuilt']
+            for key in ('policy_cases','policy_failures'):
+                fresh_native[key]=native_proof[key]
+            native_proof=fresh_native
         assert native_proof['full_native_compiled'] and native_proof['policy_cases']==17 and native_proof['policy_failures']==0
         assert manifest['native_sha256']==native_proof['frozen_native']
         native_dll=Path(native_proof['dll'])

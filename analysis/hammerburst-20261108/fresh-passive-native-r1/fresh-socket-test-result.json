@@ -1,0 +1,28 @@
+{
+  "passed": true,
+  "jobs": [
+    {
+      "label": "fresh-sender-test",
+      "exit_code": 0,
+      "source_sha256": "a9513374a169aae8ba7bfecf5dca70196423a7ad45083b2bc55681279f108c16"
+    },
+    {
+      "label": "fresh-broker-test",
+      "exit_code": 0,
+      "source_sha256": "90c4c1e5370b1bc7becdee1f76353f5c6ab54e32e717e82a8225d7a485c362ae"
+    },
+    {
+      "label": "fresh-C0-test",
+      "exit_code": 0,
+      "source_sha256": "2fe9678d2e258e88ad1d80a5c2735a5442f022d708b217f64ea5de26ffee6f49"
+    }
+  ],
+  "actual_sender": true,
+  "actual_broker": true,
+  "actual_C0": true,
+  "independent_FK": true,
+  "synthetic_input_seam": true,
+  "original_age_limits_preserved": true,
+  "old_world_request_not_extended": true,
+  "game_started": false
+}

@@ -1,0 +1,428 @@
+--- fresh-passive-pg-r1/a/tools/vr-common/body_main_mount_provider.h
++++ fresh-passive-pg-r1/b/tools/vr-common/body_main_mount_provider.h
+@@ -1,5 +1,6 @@
+ #pragma once
+ #include "weapon_main_mount_provider.h"
++#include "fresh_support_socket.h"
+ #include "controller_continuity_frame.h"
+ #include <cstddef>
+ #include <cstdint>
+@@ -12,7 +13,7 @@
+ namespace mount=gears_weapon_main_mount_provider;
+ namespace hand=gears_weapon_hand;
+ namespace rig=gears_rig_tracking;
+-inline constexpr std::uint32_t version=5; // Explicit visual hold kind; old Rig/Hand/main-mount V1 stays unchanged.
++inline constexpr std::uint32_t version=6; // Explicit visual hold kind; old Rig/Hand/main-mount V1 stays unchanged.
+ enum class HoldKind:std::uint32_t {unknown,firearm,frag};
+ inline bool hold_kind_valid(HoldKind k) noexcept {return k==HoldKind::firearm||k==HoldKind::frag;}
+ inline constexpr std::uint64_t tracking_age_ns=40000000;
+@@ -61,6 +62,7 @@
+     std::uint64_t maximum_tracking_age_ns{tracking_age_ns};
+     std::uint64_t maximum_scene_age_ns{scene_age_ns};
+     std::uint64_t maximum_equipment_age_ns{equipment_age_ns};
++    std::uint32_t passive_socket_allowed{},passive_reserved{}; // Query-local neutral visual eligibility only.
+     Source source{};
+ };
+ struct SourceKey {
+@@ -113,6 +115,7 @@
+     // Its query_id must also match the outer query; its own headers/reserved
+     // fields/identities/profile still require exact independent validation.
+     mount::Response mount{};
++    gears_fresh_support_socket::Description passive_socket{};
+ };
+ 
+ #if defined(_WIN32)
+@@ -152,10 +155,10 @@
+ // Malformed reply/request mutation/reentry/fault uses the existing parent fault
+ // path. A newer packet may never replace this source during the same C0.
+ static_assert(sizeof(void*)==8&&sizeof(Tracking)==1856&&sizeof(Basis)==256&&sizeof(Source)==4000);
+-static_assert(sizeof(Request)==4056&&sizeof(SourceKey)==176&&sizeof(Response)==736&&sizeof(Registration)==48);
++static_assert(sizeof(Request)==4064&&sizeof(SourceKey)==176&&sizeof(Response)==800&&sizeof(Registration)==48);
+ static_assert(alignof(Tracking)==8&&alignof(Basis)==8&&alignof(Source)==8&&alignof(Request)==8&&alignof(Response)==8);
+ static_assert(offsetof(Registration,hand_cookie)==16&&offsetof(Registration,context)==32&&offsetof(Registration,prepare)==40);
+-static_assert(offsetof(Request,query_id)==8&&offsetof(Request,source)==56);
++static_assert(offsetof(Request,query_id)==8&&offsetof(Request,source)==64);
+ static_assert(offsetof(Response,query_id)==16&&offsetof(Response,source)==40);
+ static_assert(std::is_standard_layout_v<Tracking>&&std::is_trivially_copyable_v<Tracking>);
+ static_assert(std::is_standard_layout_v<Basis>&&std::is_trivially_copyable_v<Basis>);
+--- fresh-passive-pg-r1/a/tools/vr-common/hand_object_grasp.h
++++ fresh-passive-pg-r1/b/tools/vr-common/hand_object_grasp.h
+@@ -56,7 +56,7 @@
+     }
+     return nearest;
+ }
+-struct Target {Kind kind{};vr::Pose grip{};double weight{};bool passive_socket{};};
++struct Target {Kind kind{};vr::Pose grip{};double weight{};bool passive_socket{};bool relative_socket{};};
+ // support carries a fixed foregrip-in-right-grip pose in metres; Native
+ // evaluates it from BOTH current physical hands in the one C0 solve.
+ // A proximity request contains a WORLD socket and grants skin fitting only.
+--- fresh-passive-pg-r1/a/tools/vr-common/fresh_support_socket.h
++++ fresh-passive-pg-r1/b/tools/vr-common/fresh_support_socket.h
+@@ -0,0 +1,51 @@
++#pragma once
++#include "hand_object_grasp.h"
++#include "weapon_two_hand_hold.h"
++#include "weapon_lancer_contact_dimensions.h"
++
++// Query-local cosmetic geometry only. Never a Hand Frame, lease, tracking
++// packet or cached world pose. The caller authenticates the current query.
++namespace gears_fresh_support_socket {
++namespace vr=gears_vr;
++struct Description {
++    unsigned kind{},selected{}; // 0 unsupported, 1 exact Hammerburst.
++    vr::Pose relative{{},{0,0,0,0}};
++};
++inline bool empty_geometry(vr::Pose const& p) noexcept {
++    return p.position.x==0&&p.position.y==0&&p.position.z==0&&p.orientation.x==0&&
++        p.orientation.y==0&&p.orientation.z==0&&p.orientation.w==0;
++}
++inline bool shape(Description const& d) noexcept {
++    return d.kind<=1&&d.selected<=1&&(!d.selected||d.kind==1)&&
++        (d.kind==0?(!d.selected&&empty_geometry(d.relative)):
++         (gears_weapon_two_hand::geometry(d.relative)||(!d.selected&&empty_geometry(d.relative))));
++}
++inline bool neutral(vr::ControllerInputFrame const& input) noexcept {
++    auto const& l=input.hands[0];
++    return l.squeeze_active==1&&l.trigger_active==1&&
++        !gears_weapon_hand::control_held(l,vr::control_squeeze)&&!gears_weapon_hand::control_held(l,vr::control_trigger)&&
++        vr::controller_pose_usable(l.grip,l.grip_flags,l.grip_active)&&
++        vr::controller_pose_usable(input.hands[1].grip,input.hands[1].grip_flags,input.hands[1].grip_active);
++}
++inline bool contact(vr::ControllerInputFrame const& input,vr::Pose const& geometry) noexcept {
++    if(!neutral(input)||!gears_weapon_two_hand::geometry(geometry))return false;
++    const auto& right=input.hands[1].grip;const auto& left=input.hands[0].grip;
++    // Same UE-to-tracking conversion and volume as fill_support_mount.
++    const vr::Vector local{geometry.position.y,geometry.position.z,-geometry.position.x};
++    const auto expected=vr::transform(vr::rotation_matrix(right.orientation),local);
++    const auto actual=gears_weapon_two_hand::sub(left.position,right.position);
++    const auto distance=gears_weapon_two_hand::length(gears_weapon_two_hand::sub(expected,actual));
++    const auto a=gears_weapon_two_hand::length(actual),e=gears_weapon_two_hand::length(expected);
++    const double dot=expected.x*actual.x+expected.y*actual.y+expected.z*actual.z;
++    return std::isfinite(a)&&a>.10&&std::isfinite(distance)&&
++        distance<=gears_weapon::lancer_contact::support_radius&&std::abs(a-e)<=.22&&dot/(a*e)>=std::cos(.8);
++}
++inline bool world(vr::Pose const& right,vr::Pose const& relative,double units,vr::Pose& out) noexcept {
++    if(!vr::stereo_pose_valid(right)||!gears_weapon_two_hand::geometry(relative)||
++       !std::isfinite(units)||units<10||units>500)return false;
++    const auto offset=vr::transform(vr::rotation_matrix(right.orientation),relative.position);
++    out={{right.position.x+offset.x*units,right.position.y+offset.y*units,right.position.z+offset.z*units},
++        vr::normalized(vr::multiply(right.orientation,relative.orientation))};
++    return vr::stereo_pose_valid(out);
++}
++}
+--- fresh-passive-pg-r1/a/tools/playground/weapon_native_lancer_follow.inl
++++ fresh-passive-pg-r1/b/tools/playground/weapon_native_lancer_follow.inl
+@@ -44,13 +44,14 @@
+        !gears_weapon_lancer_wrist_mount::grip_from_palm_endpoint(palm,grip))return false;
+     return mount.model_matrix({grip.position,gears_vr::ue_angles(gears_vr::rotation_matrix(grip.orientation))},out);
+ }
+-bool support_geometry(hand::Frame const& f,gears_vr::Pose& out) noexcept try {
+-    if(!bound_key_known||(!bound_is_lancer&&!bound_is_hammerburst)||!mount.bound()||!hand::same(bound_key.weapon,f.weapon)||
+-       bound_key.hold_generation!=vrequip::model.hold_generation()||!std::isfinite(bound_units)||bound_units<10||bound_units>500||
+-       bound_session!=f.stereo.session||bound_space!=f.stereo.space_epoch||bound_input!=f.controllers.input_epoch||
+-       bound_reference!=f.reference_generation||bound_world!=f.key.world_generation)return false;
++bool support_geometry_context(hand::ObjectIdentity const& weapon,std::uint64_t hold,
++    std::uint64_t session,std::uint64_t space,std::uint64_t input,std::uint64_t reference,std::uint64_t world,gears_vr::Pose& out) noexcept try {
++    if(!bound_key_known||(!bound_is_lancer&&!bound_is_hammerburst)||!mount.bound()||!hand::same(bound_key.weapon,weapon)||
++       bound_key.hold_generation!=hold||!std::isfinite(bound_units)||bound_units<10||bound_units>500||
++       bound_session!=session||bound_space!=space||bound_input!=input||
++       bound_reference!=reference||bound_world!=world)return false;
+     hand::ObjectIdentity component{},asset{};
+-    if(playground::pointer(f.weapon.address,L"Mesh")!=bound_key.component.address||
++    if(playground::pointer(weapon.address,L"Mesh")!=bound_key.component.address||
+        playground::pointer(bound_key.component.address,L"SkeletalMesh")!=bound_key.asset.address||
+        !nativeequipment::identify(nullptr,bound_key.component.address,component)||!hand::same(component,bound_key.component)||
+        !nativeequipment::identify(nullptr,bound_key.asset.address,asset)||!hand::same(asset,bound_key.asset))return false;
+@@ -74,6 +75,10 @@
+         gears_vr::inverse(left.calibration.grip_to_wrist_rotation)));
+     if(!gears_weapon_two_hand::geometry(pose))return false;out=pose;return true;
+ }catch(...){return false;}
++bool support_geometry(hand::Frame const& f,gears_vr::Pose& out) noexcept {
++    return support_geometry_context(f.weapon,vrequip::model.hold_generation(),f.stereo.session,f.stereo.space_epoch,
++        f.controllers.input_epoch,f.reference_generation,f.key.world_generation,out);
++}
+ bool fill_support_mount(hand::Frame const& f,hand::GripGameState& game) noexcept {
+     // Owner contract: neutral proximity fits the hand; only large-object
+     // Grip, not an index-trigger pinch, may steer this secondary handguard.
+--- fresh-passive-pg-r1/a/tools/playground/body_main_mount_sender.h
++++ fresh-passive-pg-r1/b/tools/playground/body_main_mount_sender.h
+@@ -24,6 +24,7 @@
+     hand::EquipmentIdentity& out) noexcept {
+     out={};
+     if(r.size!=sizeof(r)||r.abi_version!=wire::version||!r.query_id||!r.hand_lifecycle||!r.action_generation||
++       r.passive_socket_allowed>1||r.passive_reserved||
+        r.maximum_tracking_age_ns!=wire::tracking_age_ns||r.maximum_scene_age_ns!=wire::scene_age_ns||
+        r.maximum_equipment_age_ns!=wire::equipment_age_ns||!parent.cookie||!parent.native_started_qpc||
+        !parent.game_pid||!parent.game_thread||now<=0)return wire::Status::source_mismatch;
+--- fresh-passive-pg-r1/a/tools/playground/body_main_mount_provider.inl
++++ fresh-passive-pg-r1/b/tools/playground/body_main_mount_provider.inl
+@@ -79,6 +79,21 @@
+         return unsigned(wire::Status::inactive);
+     active_receipt.stage=4;
+     status=sender::response(r,parent,scratch.identity,scratch.observation,weaponhand::clock_ns(nullptr),scratch.response);
++    // Existing fresh query already authenticates actual held asset/attachment.
++    // Reuse only fixed mount geometry; no old Hand Frame/world pose is renewed.
++    if(status==wire::Status::ready&&nativelancerfollow::bound_is_hammerburst&&
++       nativelancerfollow::bound_key_known&&hand::same(nativelancerfollow::bound_key.weapon,scratch.identity.weapon)){
++        auto& socket=scratch.response.passive_socket;socket.kind=1;
++        auto const& tracking=r.source.tracking;
++        if(r.passive_socket_allowed&&!hammerburst_runtime::blocks_fire(scratch.identity.weapon)&&
++           hand::same(nativelancerfollow::bound_key.component,scratch.observation.component)&&
++           hand::same(nativelancerfollow::bound_key.asset,scratch.observation.asset)&&
++           nativelancerfollow::support_geometry_context(scratch.identity.weapon,scratch.observation.hold_generation,
++               tracking.stereo.session,tracking.stereo.space_epoch,tracking.controllers.input_epoch,
++               scratch.identity.reference_generation,scratch.identity.key.world_generation,socket.relative)&&
++           gears_fresh_support_socket::contact(tracking.controllers,socket.relative))socket.selected=1;
++    }
++
+     if(!running(parent,generation)||!bodymountequipment::held_current(scratch.identity,scratch.observation.hold_generation)){
+         scratch.response=empty_response;return unsigned(wire::Status::inactive);
+     }
+--- fresh-passive-pg-r1/a/tools/playground/body_main_mount_sender_test.cpp
++++ fresh-passive-pg-r1/b/tools/playground/body_main_mount_sender_test.cpp
+@@ -7,7 +7,7 @@
+ namespace {
+ namespace sender=gears_body_main_mount_sender;
+ namespace bodywire=gears_body_main_mount_provider;
+-static_assert(bodywire::version==5,"This fixture checks the explicit visual hold context ABI");
++static_assert(bodywire::version==6,"This fixture checks the explicit visual hold context ABI");
+ namespace oldwire=gears_weapon_main_mount_provider;
+ struct BodyFixture {
+     Fixture owned;bodywire::Request request{};sender::Parent parent{};
+@@ -76,12 +76,12 @@
+         bodywire::Response out{};CHECK((f.respond(out)==bodywire::Status::ready)==(age==40000000));if(age>40000000)CHECK(empty(out));}
+     for(std::int64_t age:{50000000LL,50000001LL,250000000LL}){BodyFixture f;auto& o=f.request.source.original_scene;
+         o.scene_qpc=f.request.source.metadata_begin_ns-age;o.published_ns=std::uint64_t(o.scene_qpc);bodywire::Response out{};
+-        CHECK(f.respond(out)==bodywire::Status::ready);CHECK(out.abi_version==5);}
++        CHECK(f.respond(out)==bodywire::Status::ready);CHECK(out.abi_version==bodywire::version);}
+     {BodyFixture f;auto& s=f.request.source;s.original_scene.scene_qpc=fixture_now-55000000;
+         s.original_scene.published_ns=fixture_now-54000000;bodywire::Response out{};
+         CHECK(f.respond(out)==bodywire::Status::ready); // actual GT metadata is 9 ms old, Scene was 46 ms at its BEGIN.
+         CHECK(out.source.metadata_begin_ns==s.metadata_begin_ns&&out.source.metadata_end_ns==s.metadata_end_ns);
+-        CHECK(out.abi_version==5);for(unsigned version:{1u,2u,3u,4u}){auto legacy=f.request;legacy.abi_version=version;wh::EquipmentIdentity identity{};
++        CHECK(out.abi_version==bodywire::version);for(unsigned version:{1u,2u,3u,4u,5u}){auto legacy=f.request;legacy.abi_version=version;wh::EquipmentIdentity identity{};
+             CHECK(sender::context(legacy,f.parent,fixture_now,identity)==bodywire::Status::source_mismatch);}}
+     for(std::int64_t age:{50000000LL,50000001LL}){BodyFixture f;auto& s=f.request.source;
+         s.metadata_begin_ns=fixture_now-age;s.metadata_end_ns=s.metadata_begin_ns;
+--- fresh-passive-native-r1/a/tools/vr-common/body_main_mount_provider.h
++++ fresh-passive-native-r1/b/tools/vr-common/body_main_mount_provider.h
+@@ -1,5 +1,6 @@
+ #pragma once
+ #include "weapon_main_mount_provider.h"
++#include "fresh_support_socket.h"
+ #include "controller_continuity_frame.h"
+ #include <cstddef>
+ #include <cstdint>
+@@ -12,7 +13,7 @@
+ namespace mount=gears_weapon_main_mount_provider;
+ namespace hand=gears_weapon_hand;
+ namespace rig=gears_rig_tracking;
+-inline constexpr std::uint32_t version=5; // Explicit visual hold kind; old Rig/Hand/main-mount V1 stays unchanged.
++inline constexpr std::uint32_t version=6; // Explicit visual hold kind; old Rig/Hand/main-mount V1 stays unchanged.
+ enum class HoldKind:std::uint32_t {unknown,firearm,frag};
+ inline bool hold_kind_valid(HoldKind k) noexcept {return k==HoldKind::firearm||k==HoldKind::frag;}
+ inline constexpr std::uint64_t tracking_age_ns=40000000;
+@@ -61,6 +62,7 @@
+     std::uint64_t maximum_tracking_age_ns{tracking_age_ns};
+     std::uint64_t maximum_scene_age_ns{scene_age_ns};
+     std::uint64_t maximum_equipment_age_ns{equipment_age_ns};
++    std::uint32_t passive_socket_allowed{},passive_reserved{}; // Query-local neutral visual eligibility only.
+     Source source{};
+ };
+ struct SourceKey {
+@@ -113,6 +115,7 @@
+     // Its query_id must also match the outer query; its own headers/reserved
+     // fields/identities/profile still require exact independent validation.
+     mount::Response mount{};
++    gears_fresh_support_socket::Description passive_socket{};
+ };
+ 
+ #if defined(_WIN32)
+@@ -152,10 +155,10 @@
+ // Malformed reply/request mutation/reentry/fault uses the existing parent fault
+ // path. A newer packet may never replace this source during the same C0.
+ static_assert(sizeof(void*)==8&&sizeof(Tracking)==1856&&sizeof(Basis)==256&&sizeof(Source)==4000);
+-static_assert(sizeof(Request)==4056&&sizeof(SourceKey)==176&&sizeof(Response)==736&&sizeof(Registration)==48);
++static_assert(sizeof(Request)==4064&&sizeof(SourceKey)==176&&sizeof(Response)==800&&sizeof(Registration)==48);
+ static_assert(alignof(Tracking)==8&&alignof(Basis)==8&&alignof(Source)==8&&alignof(Request)==8&&alignof(Response)==8);
+ static_assert(offsetof(Registration,hand_cookie)==16&&offsetof(Registration,context)==32&&offsetof(Registration,prepare)==40);
+-static_assert(offsetof(Request,query_id)==8&&offsetof(Request,source)==56);
++static_assert(offsetof(Request,query_id)==8&&offsetof(Request,source)==64);
+ static_assert(offsetof(Response,query_id)==16&&offsetof(Response,source)==40);
+ static_assert(std::is_standard_layout_v<Tracking>&&std::is_trivially_copyable_v<Tracking>);
+ static_assert(std::is_standard_layout_v<Basis>&&std::is_trivially_copyable_v<Basis>);
+--- fresh-passive-native-r1/a/tools/vr-common/hand_object_grasp.h
++++ fresh-passive-native-r1/b/tools/vr-common/hand_object_grasp.h
+@@ -63,7 +63,7 @@
+     return reload_idle&&incumbent==Kind::support&&
+         (holder==hand::LeaseKind::none||holder==hand::LeaseKind::support)?Kind::support:Kind::none;
+ }
+-struct Target {Kind kind{};vr::Pose grip{};double weight{};bool passive_socket{};};
++struct Target {Kind kind{};vr::Pose grip{};double weight{};bool passive_socket{};bool relative_socket{};};
+ // support carries a fixed foregrip-in-right-grip pose in metres; Native
+ // evaluates it from BOTH current physical hands in the one C0 solve.
+ // A proximity request contains a WORLD socket and grants skin fitting only.
+--- fresh-passive-native-r1/a/tools/vr-common/fresh_support_socket.h
++++ fresh-passive-native-r1/b/tools/vr-common/fresh_support_socket.h
+@@ -0,0 +1,51 @@
++#pragma once
++#include "hand_object_grasp.h"
++#include "weapon_two_hand_hold.h"
++#include "weapon_lancer_contact_dimensions.h"
++
++// Query-local cosmetic geometry only. Never a Hand Frame, lease, tracking
++// packet or cached world pose. The caller authenticates the current query.
++namespace gears_fresh_support_socket {
++namespace vr=gears_vr;
++struct Description {
++    unsigned kind{},selected{}; // 0 unsupported, 1 exact Hammerburst.
++    vr::Pose relative{{},{0,0,0,0}};
++};
++inline bool empty_geometry(vr::Pose const& p) noexcept {
++    return p.position.x==0&&p.position.y==0&&p.position.z==0&&p.orientation.x==0&&
++        p.orientation.y==0&&p.orientation.z==0&&p.orientation.w==0;
++}
++inline bool shape(Description const& d) noexcept {
++    return d.kind<=1&&d.selected<=1&&(!d.selected||d.kind==1)&&
++        (d.kind==0?(!d.selected&&empty_geometry(d.relative)):
++         (gears_weapon_two_hand::geometry(d.relative)||(!d.selected&&empty_geometry(d.relative))));
++}
++inline bool neutral(vr::ControllerInputFrame const& input) noexcept {
++    auto const& l=input.hands[0];
++    return l.squeeze_active==1&&l.trigger_active==1&&
++        !gears_weapon_hand::control_held(l,vr::control_squeeze)&&!gears_weapon_hand::control_held(l,vr::control_trigger)&&
++        vr::controller_pose_usable(l.grip,l.grip_flags,l.grip_active)&&
++        vr::controller_pose_usable(input.hands[1].grip,input.hands[1].grip_flags,input.hands[1].grip_active);
++}
++inline bool contact(vr::ControllerInputFrame const& input,vr::Pose const& geometry) noexcept {
++    if(!neutral(input)||!gears_weapon_two_hand::geometry(geometry))return false;
++    const auto& right=input.hands[1].grip;const auto& left=input.hands[0].grip;
++    // Same UE-to-tracking conversion and volume as fill_support_mount.
++    const vr::Vector local{geometry.position.y,geometry.position.z,-geometry.position.x};
++    const auto expected=vr::transform(vr::rotation_matrix(right.orientation),local);
++    const auto actual=gears_weapon_two_hand::sub(left.position,right.position);
++    const auto distance=gears_weapon_two_hand::length(gears_weapon_two_hand::sub(expected,actual));
++    const auto a=gears_weapon_two_hand::length(actual),e=gears_weapon_two_hand::length(expected);
++    const double dot=expected.x*actual.x+expected.y*actual.y+expected.z*actual.z;
++    return std::isfinite(a)&&a>.10&&std::isfinite(distance)&&
++        distance<=gears_weapon::lancer_contact::support_radius&&std::abs(a-e)<=.22&&dot/(a*e)>=std::cos(.8);
++}
++inline bool world(vr::Pose const& right,vr::Pose const& relative,double units,vr::Pose& out) noexcept {
++    if(!vr::stereo_pose_valid(right)||!gears_weapon_two_hand::geometry(relative)||
++       !std::isfinite(units)||units<10||units>500)return false;
++    const auto offset=vr::transform(vr::rotation_matrix(right.orientation),relative.position);
++    out={{right.position.x+offset.x*units,right.position.y+offset.y*units,right.position.z+offset.z*units},
++        vr::normalized(vr::multiply(right.orientation,relative.orientation))};
++    return vr::stereo_pose_valid(out);
++}
++}
+--- fresh-passive-native-r1/a/tools/native-capture/weapon_hand_broker.h
++++ fresh-passive-native-r1/b/tools/native-capture/weapon_hand_broker.h
+@@ -537,7 +537,10 @@
+         if(!mount::status_valid(raw)||outer.size!=sizeof outer||outer.abi_version!=body_mount::version)return false;
+         if(raw!=unsigned(mount::Status::ready))return equal_bytes(outer,empty_body_mount_response_);
+         auto const& r=outer.mount;auto const& b=q.source.basis.geometry;
+-        if(outer.query_id!=q.query_id||outer.hand_lifecycle!=q.hand_lifecycle||outer.action_generation!=q.action_generation||
++        if(!gears_fresh_support_socket::shape(outer.passive_socket)||
++           (outer.passive_socket.selected&&(!q.passive_socket_allowed||
++            !gears_fresh_support_socket::contact(q.source.tracking.controllers,outer.passive_socket.relative)))||
++           outer.query_id!=q.query_id||outer.hand_lifecycle!=q.hand_lifecycle||outer.action_generation!=q.action_generation||
+            !body_mount::hold_kind_valid(outer.hold_kind)||outer.reserved||
+            !body_mount::same(outer.source,body_mount::source_key(q.source))||
+            outer.equipment_begin_ns<=0||outer.equipment_end_ns<outer.equipment_begin_ns||now<outer.equipment_end_ns||
+@@ -989,7 +992,10 @@
+                     invalidate_locked(InvalidateReason::callback_fault,true,invalidation);result.code=Code::fault;result.branch=MainMountQueryResult::Branch::query_limit;
+                 }else{
+                     auto& w=body_mount_work_;w.request={};w.request.query_id=next_body_mount_query_++;w.request.hand_lifecycle=frozen_.key.lifecycle;
+-                    w.request.action_generation=revocation_.generation();snapshot(w.request.source,source);snapshot(w.shadow,w.request);snapshot(w.committed,frozen_);w.response={};
++                    w.request.action_generation=revocation_.generation();snapshot(w.request.source,source);
++                    w.request.passive_socket_allowed=committed_.lease.kind==LeaseKind::none&&!committed_.release_required&&
++                        gears_fresh_support_socket::neutral(source.tracking.controllers);
++                    snapshot(w.shadow,w.request);snapshot(w.committed,frozen_);w.response={};
+                     registration=body_mount_registration_;parent_cookie=cookie_.load();revision=revision_.load();epoch=operation_epoch_;generation=revocation_.generation();
+                     ++callbacks_;++normal_calls_;counted=true;result.query_id=w.request.query_id;
+                 }
+--- fresh-passive-native-r1/a/tools/native-capture/full_body_c0_native_live.inl
++++ fresh-passive-native-r1/b/tools/native-capture/full_body_c0_native_live.inl
+@@ -45,7 +45,7 @@
+ struct PassiveCommitObservation {
+     uint64_t tick{},compose{},frame{},request_sequence{},current_sequence{};
+     int64_t request_sync_ns{},current_sync_ns{};
+-    unsigned applied{},fitted{},solved_mask{},kind{};double weight{};
++    unsigned applied{},fitted{},solved_mask{},kind{};double weight{};uint64_t fresh_query{};
+     gears_vr::Pose grip{},physical{},adjusted{},solved{},right{};
+ };
+ constexpr unsigned passive_commit_capacity=512;
+@@ -334,6 +334,12 @@
+     row.fitted=w.left_blend.position_fitted;row.solved_mask=w.solved_mask;
+     row.kind=unsigned(w.left_blend.kind);row.weight=w.left_blend.weight;
+     row.grip=w.left_visual.grip;row.physical=w.eye_targets[0].grip_world;
++    if(w.left_visual.relative_socket){
++        row.fresh_query=state.body_mount_response.query_id;
++        row.frame=state.body_mount_response.mount.key.frame; // Original metadata Scene, not a new Hand Frame.
++        row.request_sequence=current.controllers.sequence;row.request_sync_ns=current.controllers.sync_ns;
++        gears_fresh_support_socket::world(w.eye_targets[1].grip_world,w.left_visual.grip,state.source.units_per_metre,row.grip);
++    }
+     row.adjusted={w.inputs[0].target.position,w.inputs[0].target.orientation};
+     const auto left=body::d::pose(w.body_work.pose.world[11]);
+     const auto right=body::d::pose(w.body_work.pose.world[35]);
+@@ -348,6 +354,7 @@
+         fprintf(f,"body_passive_commit_%u=%llu,%llu,%llu,%llu,%llu,%lld,%lld,%u,%u,%u,%u,%.17g ",
+             i,r.tick,r.compose,r.frame,r.request_sequence,r.current_sequence,r.request_sync_ns,
+             r.current_sync_ns,r.applied,r.fitted,r.solved_mask,r.kind,r.weight);
++        fprintf(f,"body_passive_commit_%u_fresh_query=%llu ",i,r.fresh_query);
+         const gears_vr::Pose poses[]={r.grip,r.physical,r.adjusted,r.solved,r.right};
+         for(unsigned n=0;n<5;++n){auto const& p=poses[n];
+             fprintf(f,"body_passive_commit_%u_pose_%u=%.17g,%.17g,%.17g,%.17g,%.17g,%.17g,%.17g ",
+@@ -1357,6 +1364,15 @@
+                 auto const& current_input=body_tick_source_live::enabled?
+                     state.context.body_source.observed:state.context.body_input;
+                 lancer_grasp_live::target(source,current_input.controllers,state.hand_work.left_visual);
++                auto const& socket=state.body_mount_response.passive_socket;
++                if(body_tick_source_live::enabled&&socket.kind==1){
++                    // Fresh query-local geometry, not the old world request.
++                    if(state.hand_work.left_visual.passive_socket)state.hand_work.left_visual={};
++                    if(socket.selected&&gears_fresh_support_socket::shape(socket)&&
++                       gears_fresh_support_socket::contact(current_input.controllers,socket.relative))
++                        state.hand_work.left_visual={gears_hand_object_grasp::Kind::support,socket.relative,1.,true,true};
++                }
++
+             }
+             // Cosmetic finger rotations must not add a bone outside this
+             // actual LOD's already captured DesiredBones. Kernel ownership
+--- fresh-passive-native-r1/a/tools/native-capture/body_c0_hands.h
++++ fresh-passive-native-r1/b/tools/native-capture/body_c0_hands.h
+@@ -6,6 +6,7 @@
+ #include "../vr-common/hand_shoulder_pose.h"
+ #include "../vr-common/hand_finger_pose.h"
+ #include "../vr-common/hand_object_grasp.h"
++#include "../vr-common/fresh_support_socket.h"
+ 
+ // Owned-buffer composition only. No clock query, address dereference, engine
+ // invocation or write permission. The caller authenticates this SAME live
+@@ -148,6 +149,14 @@
+         side_prepared[side]=true;
+     }
+     gears_hand_object_grasp::Target visual_goals[2]{work.left_visual,{}};
++    if(work.left_visual.relative_socket){
++        visual_goals[0]={};gears_vr::Pose socket{};
++        if(work.left_visual.passive_socket&&work.left_visual.kind==gears_hand_object_grasp::Kind::support&&
++           independent&&side_prepared[0]&&side_prepared[1]&&right_mount==adapter::MountKind::held_lancer&&
++           gears_fresh_support_socket::world(work.eye_targets[1].grip_world,work.left_visual.grip,frame.units_per_metre,socket))
++            visual_goals[0]={gears_hand_object_grasp::Kind::support,socket,work.left_visual.weight,true};
++    }
++
+     if(work.left_visual.kind==gears_hand_object_grasp::Kind::support&&!work.left_visual.passive_socket){
+         visual_goals[0]={};gears_weapon_two_hand::Solution support{};
+         if(independent&&side_prepared[0]&&side_prepared[1]){
+--- fresh-passive-native-r1/a/tools/native-capture/body_main_mount_broker_test.inl
++++ fresh-passive-native-r1/b/tools/native-capture/body_main_mount_broker_test.inl
+@@ -14,7 +14,7 @@
+ std::uint32_t body_prepare(void* context,bm::Request const* q,bm::Response* out) noexcept {
+     auto& f=*static_cast<Fake*>(context);++body_mount_calls;
+     C(f.broker->pending_callbacks()&&!f.broker->pending_transactions());
+-    static_assert(bm::version==5); // Explicit visual kind, unchanged ownership.
++    static_assert(bm::version==6); // Explicit visual kind, unchanged ownership.
+     C(q->abi_version==bm::version&&q->query_id&&q->hand_lifecycle==f.observed_frame.key.lifecycle);
+     C(q->maximum_tracking_age_ns==40000000&&q->maximum_scene_age_ns==50000000&&q->maximum_equipment_age_ns==50000000);
+     *out={};out->query_id=q->query_id;out->hand_lifecycle=q->hand_lifecycle;out->action_generation=q->action_generation;
