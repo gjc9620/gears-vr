@@ -603,3 +603,12 @@ operator1保留，stop/launcher/Native/PG/XR正常0，无强制终止和FG/CLOAK
 ## 2026-11-11 原匣抽出检查只读诊断
 
 extraction-observe-r1仅把原条件中的extraction.observe一次调用包装为最多32条原结果记录，包含accepted/complete/gap/depth/lateral/aligned/原sync；不改变几何、100ms间隔、授权、轨迹和库存。45次实际wrapper与原kernel结果一致/调用一次/日志cap检查、原连续抽出和10类失效测试通过，完整PG编译通过，Native/XR未重编。下一次短loaded路径只定位47240的原匣抽出失败，不作为完整空仓验收。
+
+
+## 2026-11-11 game43944：实际Native input_lost，纠正清理回调归因
+
+extraction-observe-r1实际4条一致射线，随后service gate3/count4；disarm_reason257=Native input_lost，元数据epoch已变，先撤销再进入null-source release gate1。withdrawal299的99.7802ms是较早读回执，不能当作Native实际失效时刻；更早229的142.7236ms在first294之前，明确排除其直接因果。464则是service gate4原事件过期，均不能绕过。
+
+另外离线复现一个回调WAIT接线缺口：只有先前真实UP证书仍有效且未过原期限，null-source清理才可走原debt-only WAIT。旧码复现exit17，新码335原adapter检查及合并handoff457检查、完整编译通过；停止/epoch失效/重新持压/250ms过期均取消。这个released-pose-gap-r1实验无法修复已明确Native输入失效的43944，也不能修复464原过期，因此未选用，runner继续extraction-observe-r1。保持实际失败，不以绿测试替代因果。
+
+43944正常stop/launcher/Native/PG/XR退出，无强制终止和FG/CLOAK违规。148帧无capture错误/编码0，3页48组paired概览亲审，视觉缺陷继续未接受。下一步从真实806dcbd6冻结Native源码定位broker active_now的prepare/commit失效阶段，必要时只加有界只读分类。原匣诊断和新匣修复均未实练，完整13项目标未完成。

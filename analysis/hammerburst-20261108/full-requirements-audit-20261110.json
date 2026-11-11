@@ -149,6 +149,10 @@
         {
           "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-47240-first-failure-analysis.json",
           "sha256": "a1fc31ac9840850fadc9b938413455b43724b6e5d6aa8c1cacec0af45b06782b"
+        },
+        {
+          "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-43944-first-failure-analysis.json",
+          "sha256": "520db6f8512acb4dbb85b92ed6abad213d713e92772eb7211596ae305260dfa1"
         }
       ]
     },
@@ -360,6 +364,10 @@
         {
           "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-47240-first-failure-analysis.json",
           "sha256": "a1fc31ac9840850fadc9b938413455b43724b6e5d6aa8c1cacec0af45b06782b"
+        },
+        {
+          "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-43944-first-failure-analysis.json",
+          "sha256": "520db6f8512acb4dbb85b92ed6abad213d713e92772eb7211596ae305260dfa1"
         }
       ]
     },
@@ -416,15 +424,19 @@
         {
           "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-47240-first-failure-analysis.json",
           "sha256": "a1fc31ac9840850fadc9b938413455b43724b6e5d6aa8c1cacec0af45b06782b"
+        },
+        {
+          "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-43944-first-failure-analysis.json",
+          "sha256": "520db6f8512acb4dbb85b92ed6abad213d713e92772eb7211596ae305260dfa1"
         }
       ]
     }
   ],
   "completion_proven": false,
   "goal_active": true,
-  "immediate_next": "Short loaded replacement with original extraction observe result; pinpoint incomplete witness without altering physical/time gates. New-mag pose-gap repair and full empty remain unaccepted.",
+  "immediate_next": "Inspect actual frozen806dcbd6 broker active_now input_lost rejection stage/timestamp; add bounded passive classification to exact frozen source if existing records cannot distinguish prepare vscommit. Preserve Native input invalidation and original event deadlines; do not rerun unchanged or promote offline WAIT experiment.",
   "historical_evidence_does_not_certify_current_PG": true,
-  "candidate_runtime_status": "pose-gap-incumbent-r1 actual464 failed at original burst source expiry; actual47240 core6/latch1->4, real release canceled incomplete original extraction. Neither reached new-magazine helper; fix remains offline20-case/build only.",
+  "candidate_runtime_status": "Selected extraction-observe-r1 actual43944 only4 consistent rays then Native input_lost/service gate3 cancellation. Extraction diagnostic/newmag fix not reached. Separate released-pose-gap experiment offline457 checks/build only, NOT selected or causal repair.",
   "previous_recorded_candidate": {
     "name": "hammerburst-prepared-20261110-unheld-input-r1",
     "prepared_sha256": "76a2ae8cc56e4165b77ca5d17a9e6469ff66323e917be5a8b46da44df4f0bb58"
@@ -446,8 +458,8 @@
   "restore_verifier_status": "Optional --hammerburst-park-restore input action hook integrated into private reload adapter; five synthetic action/receipt regressions passed. Actual park/redraw/new-grant/native-resume, typed conservation, UI/reward and complete return-fire require game evidence.",
   "latest_service_first_failure": "runtime-3112-first-failure-analysis.json",
   "latest_startup_failure": "runtime-49732-startup-failure.json",
-  "latest_runtime_failure": "runtime-47240-first-failure-analysis.json",
-  "latest_runtime_result": "runtime-47240-first-failure-analysis.json",
+  "latest_runtime_failure": "runtime-43944-first-failure-analysis.json",
+  "latest_runtime_result": "runtime-43944-first-failure-analysis.json",
   "latest_focused_pass": "runtime-22992-focused-result.json",
   "visual_audit_recording_repair": "Corrected finalizer wrong ID fivepartfitting→part_fitting, attached reviewed22992 evidence also to guides, asserted target IDs exist. No requirement/score/acceptance change and no overwrite of current052600 runtime blocker.",
   "resource_release_evidence": {
@@ -461,5 +473,10 @@
     "runtime_exercised": false,
     "native_or_xr_changed": false
   },
-  "historical_media_availability": "Owner-authorized coordinator media cleanup may remove prior C recordings/screenshots/overview paths; text/hash/numeric records retained, J archives untouched. Prior personally-reviewed findings remain historical; do not claim old images currently available or rerun merely to restore them. New authorized development captures continue."
+  "historical_media_availability": "Owner-authorized coordinator media cleanup may remove prior C recordings/screenshots/overview paths; text/hash/numeric records retained, J archives untouched. Prior personally-reviewed findings remain historical; do not claim old images currently available or rerun merely to restore them. New authorized development captures continue.",
+  "unselected_wait_experiment": {
+    "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\released-pose-gap-r1\\prepared.json",
+    "selected": false,
+    "actual_causal_repair": false
+  }
 }

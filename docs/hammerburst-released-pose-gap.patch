@@ -1,0 +1,23 @@
+--- a/tools/playground/weapon_hammerburst_burst_event.inl
++++ b/tools/playground/weapon_hammerburst_burst_event.inl
+@@ -173,8 +173,19 @@
+     clear_release_handoff();
+     if(!outstanding())return true;
+     validated=false;common::press.known=false;common::certified=false;common::pending_validated=false;
++    // A previous real UP already captured the original lifetime witness.
++    // Route a later pose-expiry cleanup through the SAME debt-only WAIT used
++    // by service/after_tick. No source, event, deadline or dispatch is created.
++    if(!f&&vrfire::mode.load(std::memory_order_acquire)==vrfire::running&&
++       !requires_release()&&retain_stale_debt()){
++        static unsigned wait_rows{};
++        if(log_file&&wait_rows<8){++wait_rows;
++            fwprintf(log_file,L"hammerburst_release_debt_wait count=%u event=%llu captured_ns=%lld no_dispatch=1\n",
++                tx::completion.count(),event.serial,event.captured);fflush(log_file);}
++        return true;
++    }
+     // Only a current real UP can preserve a committed finite burst. A raw
+-    // release callback from source loss/stop carries no such continuation.
++    // release callback without that prior certified UP carries no continuation.
+     vrfire::lr::Game game{};
+     const auto gate=[](unsigned n,bool accepted) noexcept {if(!accepted)release_rejection=n;return accepted;};
+     release_rejection=0;

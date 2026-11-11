@@ -1,0 +1,2 @@
+weapon_hammerburst_burst_event_test.cpp
+HB actual event adapter: 335 original-event/scope/UP/expiry/cleanup fake checks passed; common queue, engine and certificate are fakes

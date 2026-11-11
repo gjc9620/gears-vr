@@ -1,0 +1,2 @@
+hammerburst_release_handoff_regression_test.cpp
+HB actual event adapter: 457 original-event/scope/UP/expiry/cleanup fake checks passed; common queue, engine and certificate are fakes

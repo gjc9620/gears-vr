@@ -1,15 +1,15 @@
 {
-  "instance": "hb-cloak-1111-123129",
-  "runner_session_id": 73599,
+  "instance": "hb-cloak-1111-125354",
+  "runner_session_id": 12357,
   "terminal": true,
   "observed_ns": 156335223035800,
-  "runner_last_poll": "73599 terminal1; all own runtime cleanup normal0, no live owned worker retained",
-  "candidate": "pose-gap-incumbent-r1",
+  "runner_last_poll": "12357 terminal1; all own runtime cleanup normal0",
+  "candidate": "extraction-observe-r1",
   "dll_sha256": "b9296d6a6859673e461335efc7caded2bbf1375403d5a667f5d77d6ade096f2d",
   "source_checkpoint": "0a4d1f3a",
   "all13_requirements_retained": true,
   "requirements_complete": false,
-  "next": "Add bounded observation around original extraction.observe return/complete/sample gap, preserving original call once and all limits; no unchanged runtime rerun. Determine actual incomplete-extraction cause, then reach new-mag incumbent branch and full empty goal.",
-  "game_pid": 47240,
+  "next": "Inspect actual frozen806dcbd6 broker active_now input_lost rejection stage/timestamp; add bounded passive classification to exact frozen source if existing records cannot distinguish prepare vscommit. Preserve Native input invalidation and original event deadlines; do not rerun unchanged or promote offline WAIT experiment.",
+  "game_pid": 43944,
   "test_mode": "Short loaded replacement reaches new-magazine repair; full empty goal retained"
 }
