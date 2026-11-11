@@ -2467,3 +2467,13 @@ r160准备/操作导入检查通过，Native58c2fe1d候选及13项启动绑定�
 资源释放后用新r161完成准备/导入检查，正式启动边界磁盘4228911104低于原4294967296字节下限而拒绝，无worker/log/index/game，未放宽磁盘阈值。两次normal_cleanup_required false、verified false，不补造正常清理；原结果/start-request保存在schema-repeat-r158/runtime-r160-prebirth和runtime-r161-prebirth。候选仍未执行游戏，无投影或query证据。
 
 随后只检查本方r148/r150/r152/r155/r157的normal_cleanup true且精确game/owner/XR/worker身份均不在，逐文件将各自PSOCache/sp_factory_p/D3DGraphics.ushaderprecache移动到J:/gearsVr/analysis/cover-disk-recovery-20261111-r162/PSOCache。5文件共498835255字节，绝对source/destination均检查留在指定根，逐个移动前后SHA一致；未递归删除，未动源码/二进制/日志/媒体或其他/未清理实例。archive-plan/result保留原路径、目标和哈希，旧实例不重跑。操作后C盘观察6726025216字节可用，不能把全部空间变化归于本方499MB归档。下一次新实例仍重新执行真实磁盘/内存/身份/单次启动门。源码7c853c7f和准备依赖f549aab6已保存；完整掩体/年龄拒绝/画面仍未修复验收，目标active、25%及publicv71不变。
+
+## r162：结构复核去重候选完成实跑，原查询前仍拒绝身体来源年龄（2026-11-11）
+
+本轮首先核对当前工作树、启动源及磁盘，再以新cover-1111-r162-cloak-schema验证Native58c2fe1d…0c7f。13项准备来源前后相同，准备与操作导入均0，既有共享600秒准入接受；运行前磁盘73000828928字节。原版A进入CT2、五段eye动作与operator0；274投影帧、errors0、编码0，正常清理true、无强杀，game/owner/XR/worker精确身份独立确认均不在。CLOAK749/失败0，前台456/owned_activation false。原始会话、动作、来源和退出记录保存在schema-repeat-r158/runtime-r162。
+
+本path首键Scene437/Compose26594/seq4372/world2137293056/pawn95255003392与complete首键逐项相同。path code4、engine/source_begin/guard，Owner第9次context/source_age_expired/detail6，Session第1次physics_read/guard；原因见证observed1/entry14674320/Compose26594/thread54328/stage0/verdict3/causes1，身体来源年龄拒绝、装备来源本次未过期。原版碰撞started/returned仍0/0；query156032411584500→156032433858000共22.2735ms。与r157拒绝层内部位置、入口年龄及调度不匹配，不能据此声称实际全query加速或年龄修复。读取优化未打通本次原调用，不刷新旧样本、不放宽时限。
+
+14页全跨度和5张实际阶段contact均亲看，候选7/7/7/8/7；五阶段仍有严重自身头肩/躯干遮挡，画面FAIL，非完整掩体或头显通过。阶段区间不冒充同C0/GPU证明。历史媒体按主人清理指令可能已删除，历史观察仍作为原记录，不重新打开或为补图重跑。
+
+下一窄点是来源到查询的前缀：Session先完成physics/collider/component初始样本，engine入口SourceGuard又进入完整physics采样；本次在该首复核拒绝。后续须定位各层成本与入口实际年龄，再选择保留完整身份/动态读取/关闭证明的修复；不原样重跑本候选。完整CV01–24/AC01–22仍开放，工程25%、publicv71和固定入口不变，目标active。

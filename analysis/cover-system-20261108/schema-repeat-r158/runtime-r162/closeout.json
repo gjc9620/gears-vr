@@ -1,0 +1,90 @@
+{
+  "error": null,
+  "operator_exit": 0,
+  "start_exit": 0,
+  "normal_cleanup_required": true,
+  "normal_cleanup_verified": true,
+  "remaining_owned": {},
+  "projection_frames": 274,
+  "projection_errors": [],
+  "anchor_sources_unchanged": true,
+  "cloak_observations": {
+    "samples": 749,
+    "failures": []
+  },
+  "foreground_observations": {
+    "samples": 456,
+    "owned_activation": false
+  },
+  "forced_termination": false,
+  "gameplay_accepted": false,
+  "headset_accepted": false,
+  "original_result_sha256": "1ce306b8f2fbfe3f5ab3a7ccbc3a40eaa6e048b2db60c5a81ba6b451e98df7aa",
+  "identities": {
+    "game_identity": {
+      "pid": 54616,
+      "creation_time": 134388447586989790,
+      "image": "j:\\gearsvr\\gears.of.war.reloaded.v1.0.1.3816947-p2p\\gears of war reloaded\\binaries_x64\\gowde-steam.exe"
+    },
+    "owner_identity": {
+      "pid": 5112,
+      "creation_time": 134388447509867661,
+      "image": "c:\\users\\11\\.cache\\codex-runtimes\\codex-primary-runtime\\dependencies\\python\\python.exe"
+    },
+    "xr_identity": {
+      "pid": 54684,
+      "creation_time": 134388447656426061,
+      "image": "c:\\users\\11\\.codex\\worktrees\\6dof-single\\gearsvr\\tools\\openxr-probe\\build-cover-1111-r162-cloak-schema\\openxrposeprobe.exe"
+    },
+    "worker_identity": {
+      "pid": 51640,
+      "creation_time": 134388447509087363,
+      "image": "c:\\users\\11\\.cache\\codex-runtimes\\codex-primary-runtime\\dependencies\\python\\python.exe"
+    }
+  },
+  "exact_owned_processes_absent": true,
+  "native_sha256": "58c2fe1d9fa2a108010f33008278060f9ad3a2ccde53d3d87f3e27c829680c7f",
+  "original_low_cover_entered": true,
+  "source_age_cause": {
+    "observed": true,
+    "entry": 14674320,
+    "compose": 26594,
+    "thread": 54328,
+    "stage": 0,
+    "verdict": 3,
+    "causes": 1,
+    "body_source_age": true,
+    "equipment_age": false
+  },
+  "owner_guard": {
+    "calls": 9,
+    "failed_call": 9,
+    "stage": 8,
+    "name": "context",
+    "detail": 3,
+    "extra": 6,
+    "context_verdict": "source_age_expired",
+    "context_detail": 6
+  },
+  "session_guard": {
+    "calls": 1,
+    "failed_call": 1,
+    "stage": 2,
+    "name": "physics_read",
+    "detail": 3,
+    "extra": 0
+  },
+  "query_elapsed_ns": 22273500,
+  "same_C0_complete_query_key": true,
+  "original_query_started": 0,
+  "original_query_returned": 0,
+  "source_age_repaired": false,
+  "latency_improvement_proven": false,
+  "cover_view_accepted": false,
+  "world_coverage_verified": false,
+  "movement_authorized": false,
+  "reviewed_pages": 14,
+  "reviewed_contacts": 5,
+  "public_changed": false,
+  "next": "Inspect the source-to-query prefix: initial typed-role samples precede the engine SourceGuard full resample; preserve all freshness and closing proofs."
+}
