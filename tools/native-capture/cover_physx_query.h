@@ -17,6 +17,7 @@
 #include "cover_physx_overlap_code.h"
 #include "cover_physx_shape_owner.h"
 #include "cover_physx_asset_actors.h"
+#include "cover_physx_asset_shapes.h"
 #include "cover_physx_collider.h"
 #include "cover_physx_components.h"
 #include "cover_physx_self_evidence.h"
@@ -42,6 +43,10 @@ static_assert(offsetof(Box,centre)==0&&offsetof(Box,half)==12&&offsetof(Box,rota
 enum class Code {queried,unavailable,request,reentrant,source,code,changed,fault_unknown,truncated,callback_rejected,
     owner_read,owner_unsupported,owner_links};
 struct Overlap {bool raw_hit{};};
+// Caller-owned heap/TLS scratch for the read-only complete asset observation.
+// Candidate changes on failure; only a successful transaction publishes output.
+struct AssetShapeWorkspace {gears_cover_physx_asset_shapes::Workspace collection{};
+    gears_cover_physx_asset_shapes::Snapshot candidate{};gears_cover_physx_asset_shapes::Code detail{};};
 struct Sweep {std::uint32_t raw_count{},reserved{};Hit raw_hit{};};
 enum class QueryStage:unsigned {idle,source_begin,code_begin,source_repeat,source_guard,
     dispatch,returned,source_end,code_end,guard_end,complete};
@@ -320,6 +325,24 @@ public:
     bool pending()const noexcept{return active_.load()||uncertain_.load();}
     bool uncertain()const noexcept{return uncertain_.load();}
     QueryProgress observation()const noexcept{return progress_;}
+    template<class Read,class Guard> Code observe_asset_shapes(source::Source const& s,Read read,Guard guard,
+        AssetShapeWorkspace& work,gears_cover_physx_asset_shapes::Snapshot& output) noexcept {
+        namespace shapes=gears_cover_physx_asset_shapes;
+        if(source::aliases(&work,sizeof work,this,sizeof *this)||source::aliases(&output,sizeof output,this,sizeof *this)||
+           source::aliases(&work,sizeof work,&s,sizeof s)||source::aliases(&output,sizeof output,&s,sizeof s)||
+           source::aliases(&work,sizeof work,&output,sizeof output))return Code::request;
+        const auto request=s;bool expected=false;
+        if(!active_.compare_exchange_strong(expected,true))return Code::reentrant;Finish finish{active_};
+        work.detail=shapes::Code::request;
+        try{const auto ready=begin(request,read,guard);if(ready!=Code::queried)return ready;
+            if(!source::same(request,s))return Code::changed;
+            work.detail=shapes::observe(image_.base(),image_.size(),before_,read,guard,work.collection,work.candidate);
+            if(work.detail!=shapes::Code::observed)return Code::owner_read;
+            const auto closed=end(request,read,guard);if(closed!=Code::queried)return closed;
+            if(!source::same(request,s))return Code::changed;
+            output=work.candidate;return Code::queried;
+        }catch(...){return Code::source;}
+    }
     template<class Shape,class Read,class Guard> Code overlap(source::Source const& s,Shape const& shape,
         Read read,Guard guard,Overlap& output) noexcept {
         static_assert(std::is_same<Shape,Box>::value||std::is_same<Shape,Capsule>::value||std::is_same_v<Shape,Sphere>);

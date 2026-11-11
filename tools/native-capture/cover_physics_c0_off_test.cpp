@@ -7,6 +7,8 @@ static unsigned checks{},failures{};
 #define C(x) do{++checks;if(!(x)){++failures;printf("FAIL %u: %s\n",__LINE__,#x);}}while(0)
 int main(){
     gears_continuous_hand_entry::Entry entry{};gears_native_rig_tracking::CoreSnapshot core{};
+    auto shape_work=std::make_unique<q::AssetShapeWorkspace>();auto shapes=std::make_unique<gears_cover_physx_asset_shapes::Snapshot>();shapes->count=123;
+    C(c0::observe_asset_shapes(entry,core,*shape_work,*shapes)==q::Code::unavailable&&shapes->count==123);
     q::Box box{};q::Capsule capsule{};q::Vector delta{};q::Overlap overlap{true};q::Sweep sweep{};sweep.raw_count=99;
     auto path_output=std::make_unique<gears_cover_capsule_path::RawPath>();path_output->collected.raw.raw_count=77;
     C(c0::sweep_capsule_path(entry,core,capsule,delta,gears_cover_capsule_path::Policy{},q::StreamLimits{},*path_output)==q::Code::unavailable&&path_output->collected.raw.raw_count==77);

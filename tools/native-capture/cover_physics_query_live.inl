@@ -27,9 +27,11 @@ template<class Engine=q::Queries> class Session {
     q::AllSweepOwners owner_result_{};
     q::AllOverlapOwners overlap_owner_result_{};
     path::Workspace path_work_{};path::RawPath path_result_{};
+    gears_cover_physx_asset_shapes::Snapshot asset_shapes_result_{};
     Stage stage_{};unsigned detail_{};
     gears_cover_query_guard::Witness guard_witness_{};
     struct NoLocalResult {};
+    struct AssetReadRequest {unsigned version{1};};
     std::atomic<bool> configured_{},enabled_{},stopped_{},busy_{},closed_{true};
     std::atomic<DWORD> worker_{};
     struct Finish {std::atomic<bool>& busy;~Finish(){busy=false;}};
@@ -113,7 +115,8 @@ template<class Engine=q::Queries> class Session {
         stage_=Stage::geometry;detail_=0;work_.witness={};guard_witness_={};
         if(stopped_.load())return q::Code::unavailable;
         const auto owner=actor;const auto source=metadata;const Shape geometry=shape;
-        if(!q::detail::valid(geometry))return q::Code::request;
+        constexpr bool asset_read=std::is_same_v<Output,gears_cover_physx_asset_shapes::Snapshot>;
+        if constexpr(!asset_read)if(!q::detail::valid(geometry))return q::Code::request;
         constexpr bool with_collider=std::is_same_v<Output,q::AllSweepOwners>||std::is_same_v<Output,q::AllOverlapOwners>||std::is_same_v<Output,path::RawPath>;
         auto sample_sources=[&](auto& read_guard){
             stage_=Stage::physics_roles;
@@ -134,10 +137,11 @@ template<class Engine=q::Queries> class Session {
         if constexpr(with_collider)current.component_source=&component_input_;
         // The larger ownership packet lives in the already serialized
         // Session, never as a 139KB temporary on the live game stack.
-        std::conditional_t<with_collider,NoLocalResult,Output> local{};
+        std::conditional_t<with_collider||asset_read,NoLocalResult,Output> local{};
         Output& result=[&]() -> Output& {if constexpr(std::is_same_v<Output,q::AllSweepOwners>)return owner_result_;
             else if constexpr(std::is_same_v<Output,q::AllOverlapOwners>)return overlap_owner_result_;
-            else if constexpr(std::is_same_v<Output,path::RawPath>)return path_result_;else return local;}();
+            else if constexpr(std::is_same_v<Output,path::RawPath>)return path_result_;
+            else if constexpr(std::is_same_v<Output,gears_cover_physx_asset_shapes::Snapshot>)return asset_shapes_result_;else return local;}();
         stage_=Stage::engine;detail_=0;
         const auto code=timing::measure(timing::Stage::engine,[&](){return invoke(engine_,before_.source,geometry,read,current,result);});detail_=unsigned(code);
         if(code==q::Code::fault_unknown||engine_.uncertain())enabled_=false;
@@ -150,6 +154,17 @@ template<class Engine=q::Queries> class Session {
         output=result;stage_=Stage::complete;return q::Code::queried;
     }
 public:
+    // Read-only complete supplied PhysicsAsset inventory. Same owner/metadata
+    // transaction and serialization as queries; no geometry placeholder or
+    // original query dispatch. Large result stays in this owner, off GT stack.
+    template<class Read,class Guard>q::Code observe_asset_shapes(weapon_hand_scene_binding::Binding const& actor,
+        gears_cover_pose_phase::Metadata const& metadata,Read read,Guard guard,q::AssetShapeWorkspace& work,
+        gears_cover_physx_asset_shapes::Snapshot& output)noexcept{
+        if(q::source::aliases(&work,sizeof work,this,sizeof *this)||q::source::aliases(&work,sizeof work,&actor,sizeof actor)||
+           q::source::aliases(&work,sizeof work,&metadata,sizeof metadata)||q::source::aliases(&work,sizeof work,&output,sizeof output))return q::Code::request;
+        try{return execute(actor,metadata,AssetReadRequest{},read,guard,output,[&](auto& engine,auto const& source,auto const&,auto reader,auto current,auto& result){
+            return engine.observe_asset_shapes(source,reader,current,work,result);});}catch(...){return q::Code::source;}
+    }
     template<class Read,class Guard,class Output> q::Code overlap_all(weapon_hand_scene_binding::Binding const& actor,
         gears_cover_pose_phase::Metadata const& metadata,q::Capsule const& shape,q::StreamLimits const& limits,
         Read read,Guard guard,Output& output)noexcept{

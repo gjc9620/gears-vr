@@ -101,4 +101,7 @@ static int batch_cases(char const* path){try{auto work=std::make_unique<batch::W
  }catch(...){check(false,"batch fixture exception");}
  printf("AssetShapes checks=%u failed=%u synthetic object groups; complete supplied asset only, no world/self permit\n",checks,failed);return failed?1:0;
 }
-int main(int argc,char** argv){if(argc!=2)return 2;if(PriorAssetShapesWorldMain(argc,argv))return 1;return batch_cases(argv[1]);}
+#ifndef GEARS_ASSET_SHAPES_TEST_MAIN
+#define GEARS_ASSET_SHAPES_TEST_MAIN main
+#endif
+int GEARS_ASSET_SHAPES_TEST_MAIN(int argc,char** argv){if(argc!=2)return 2;if(PriorAssetShapesWorldMain(argc,argv))return 1;return batch_cases(argv[1]);}

@@ -222,6 +222,18 @@ template<class Shape> q::Code do_overlap(Entry const&,Core const&,Shape const&,q
 template<class Shape> q::Code do_sweep(Entry const&,Core const&,Shape const&,q::Vector const&,q::Sweep&)noexcept{return q::Code::unavailable;}
 template<class Shape,class Output> q::Code do_sweep_all(Entry const&,Core const&,Shape const&,q::Vector const&,q::StreamLimits const&,Output&)noexcept{return q::Code::unavailable;}
 #endif
+q::Code observe_asset_shapes(Entry const& entry,Core const& core,q::AssetShapeWorkspace& work,
+    gears_cover_physx_asset_shapes::Snapshot& output)noexcept{
+#if defined(GEARS_COVER_PHYSX_QUERIES) && GEARS_COVER_PHYSX_QUERIES
+    if(q::source::aliases(&work,sizeof work,&n::state,sizeof n::state)||q::source::aliases(&work,sizeof work,&entry,sizeof entry)||
+       q::source::aliases(&work,sizeof work,&core,sizeof core)||q::source::aliases(&work,sizeof work,&output,sizeof output))return q::Code::request;
+    struct ReadOnlyRequest {unsigned version{1};};
+    return query(entry,core,ReadOnlyRequest{},output,[&](auto const& actor,auto const& metadata,auto const&,auto read,auto guard,auto& result){
+        return session.observe_asset_shapes(actor,metadata,read,guard,work,result);});
+#else
+    (void)entry;(void)core;(void)work;(void)output;return q::Code::unavailable;
+#endif
+}
 q::Code sweep_capsule_path(Entry const& e,Core const& c,q::Capsule const& shape,q::Vector const& delta,
     gears_cover_capsule_path::Policy const& policy,q::StreamLimits const& limits,gears_cover_capsule_path::RawPath& out)noexcept {
 #if defined(GEARS_COVER_PHYSX_QUERIES) && GEARS_COVER_PHYSX_QUERIES

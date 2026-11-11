@@ -3091,3 +3091,15 @@ Match364累计检查0（含原authored inventory328）：2body/7原形状对应4
 新增cover_physx_shape_construction.h纯owned表示桥：显式dynamic_local/static_world，静态Actor pose须调用者认证，动态不消费未使用Actor矩阵；保留原float矩阵合成及trace/最大对角分支四元数转换分组，dynamic trace=(m11+m00)+m22、static=(m22+m11)+m00；静态translation row0 Y+X+Z+T、rows1/2 X+Z+Y+T。sphere radius/box half原样，capsule full length转half，不再乘单位或margin。不normalize/clamp，要求nearest；异常、非rigid、subnormal/半段下溢、unsupported/alias拒绝保持输出。
 
 33041检查0：XYZ各128旋转，两种placement和三种kind，每例四个独立点用Rodrigues及quat cross-product oracle核对local/Actor合成world，另核尺寸、零段、min-normal长度除半成subnormal拒绝、NaN/无穷/负数/非rigid、动态忽略无效unused Actor、unsupported/alias/FP mode拒绝。所有依赖SHA当前一致。此为原静态证据和CPU数学重建，不称全部浮点逐位相同、所有初次load路径已证或实际active形状验收；当前actor/template身份、staticActor当前读取、weld和flags/full self/world fence及生产接入仍待完成。无游戏/XR/生产Native构建/安装，完整CV24/AC22、body/view/hit/muzzle事务及视图遮挡/头显未完成，工程25%。证据shape-construction-r225。
+
+## r226：完整actual asset形状读取接入原QueryEngine／Session／C0接口，隔离Native编译通过（2026-11-12）
+
+不再只留独立离线observer：QueryEngine新增observe_asset_shapes，复用实际固定Image、begin/end source/code/typed guard及active/uncertain/cleanup；调用r217完整asset shape observer，全部关闭后才发布输出。外部heap/TLS AssetShapeWorkspace持有candidate，失败不覆盖旧输出。接口在NoCalls空类型下可编译，原query dispatch不能被实例化；Code::queried在这个接口表示只读事务完成，不是原生查询发生。
+
+Session同一序列化execute事务新增无geometry的AssetReadRequest，角色采集、所有者/metadata/源时效及最后关闭检查保留。大Snapshot作为Session成员，避免在GT回调栈新建大结果。cover_physics_c0_live::observe_asset_shapes通过既有当前Entry/C0/cover/metadata/time guard及query admission，额外拒绝scratch与C0 state/Entry/source/output别名；OFF分支unavailable且不覆盖。只新增接口，没有增加默认触发、原查询、body写入或新移动权限。
+
+离线Engine1723累计0（含原asset1714）：实际QueryEngine/HostImage用原DLL作为PE数据，4个模拟原布局形状，跨actor变化拒绝/不覆盖、重入、别名、正常关闭、原DLL未加载。Session125累计0（原110+新15），实际Session/typed roles加明确空Host packet，仅验owner替换、drain及零query dispatch，空包不当成actual形状证据。OFF52累计0，构造数学33041回归0。首次Session编译暴露公共头pose_math参数actor与旧fixture全局actor的/WX shadow，改参数名actor_pose且数学不变；lambda内if constexpr改直接type trait解决MSVC捕获常量问题，未弱化guard或关闭warning，失败log保留。
+
+完整私有Native在精确r193冻结树上做明确22文件overlay（实际14个changed/new，含此前已证r200 nullable Body修复），原全部GEARS布尔flag保持，独立source/build目录、420个项目依赖逐SHA、无外部工作树混入；GearsCapture.dll SHA50b76bd0f0bec9d518ecbef70a26b381b809741c46764d7d537e9af160abc750。未安装/放到公共入口、未启动游戏/XR、未分派原query。编译不等于C0实际调用或玩法验收。
+
+后续先核实/修正既有eye sphere/path探测入口的game→PhysX单位与一次性触发，再做新的受控真实读取；不因接口编译通过重跑旧计时案例或放宽原来源时间。actual template/shape身份关联、static/weld/flags/full self/world fence、body/view/hit/muzzle同版事务、视图遮挡、完整CV24/AC22及头显继续未完成，工程25%。证据asset-shapes-engine-r226，原publicv71和固定手动入口不变。

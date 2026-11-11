@@ -29,15 +29,15 @@ inline bool quaternion(std::array<float,4> const& q,std::array<float,3> const& p
     v[6]=x*q[2]-w*q[1];v[7]=y*q[2]+w*q[0];v[8]=remaining-yy;
     for(unsigned n=0;n<3;++n)v[9+n]=p[n];if(!rigid(next))return false;output=next;return true;
 }
-inline bool compose(Matrix const& actor,Matrix const& shape,Matrix& output)noexcept{
-    if(!rigid(actor)||!rigid(shape))return false;Matrix next{};
+inline bool compose(Matrix const& actor_pose,Matrix const& shape,Matrix& output)noexcept{
+    if(!rigid(actor_pose)||!rigid(shape))return false;Matrix next{};
     for(unsigned r=0;r<3;++r){
-      for(unsigned c=0;c<3;++c){const float a=shape.values[3+c]*actor.values[3*r+1];
-        const float b=actor.values[3*r]*shape.values[c];const float sum=a+b;
-        next.values[3*r+c]=sum+shape.values[6+c]*actor.values[3*r+2];}
-      const float a=shape.values[11]*actor.values[3*r+2],b=shape.values[9]*actor.values[3*r];
-      const float sum=a+b,with_y=sum+shape.values[10]*actor.values[3*r+1];
-      next.values[9+r]=with_y+actor.values[9+r];
+      for(unsigned c=0;c<3;++c){const float a=shape.values[3+c]*actor_pose.values[3*r+1];
+        const float b=actor_pose.values[3*r]*shape.values[c];const float sum=a+b;
+        next.values[3*r+c]=sum+shape.values[6+c]*actor_pose.values[3*r+2];}
+      const float a=shape.values[11]*actor_pose.values[3*r+2],b=shape.values[9]*actor_pose.values[3*r];
+      const float sum=a+b,with_y=sum+shape.values[10]*actor_pose.values[3*r+1];
+      next.values[9+r]=with_y+actor_pose.values[9+r];
     }
     if(!rigid(next))return false;output=next;return true;
 }
