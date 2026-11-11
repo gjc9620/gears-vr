@@ -1,0 +1,23 @@
+{
+  "after": "cover_physics_roles_live: 284 checks, 0 failures; typed source only, no query/writer\r\n",
+  "change": "matches_asset_actors accepts null optional dynamic Body; checks non-null with the exact query_source pointer predicate used by raw asset reader",
+  "initial_failure": "Both null-positive cases failed before repair; negative used value8 which is aligned/in-range under numeric predicate and therefore incorrect expectation. Changed negative to unaligned9. Before and final negative values differ; not identical full-suite A/B.",
+  "preserved_invariants": [
+    "typed body/actor correspondence",
+    "table and scene equality",
+    "root source matching",
+    "body/actor counts and first occurrence order",
+    "empty-row zero fields",
+    "raw embedded owner bracket unchanged"
+  ],
+  "source_sha256": {
+    "tools/native-capture/cover_physics_roles_live.inl": "1308a682838e0fe75213c7462407f54bd3facde217627d8d18c641e4c12b6f45",
+    "tools/native-capture/cover_physics_roles_live_test.cpp": "6da2c37ee18476ef51663ccb72211b6e36496323d32027a96a657a3aad85ba82",
+    "tools/native-capture/cover_physx_asset_actors.h": "fe3da7be049c7cbd945c474a511e2792d0d3997607a338658588ce981dc5a677",
+    "tools/native-capture/cover_physx_actor_backlink.h": "700d82a9a43dd4e21d3ed48afa462234bc6fa679df6cf837c3bb12e3f8f4f404"
+  },
+  "full_native_built": false,
+  "game_started": false,
+  "world_collision_verified": false,
+  "engineering_percent": 25
+}

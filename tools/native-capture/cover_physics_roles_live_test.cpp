@@ -85,12 +85,15 @@ int GEARS_PHYSICS_ROLES_TEST_MAIN(){
         for(unsigned i=0;i<2;++i){inventory.bodies[i]={assets::Presence::actor_observed,out.bodies[i].identity.address,
             out.bodies[i].main,raw.actor_table,raw.scene,arena+0x90000+i*0x100};inventory.actors[i]=out.bodies[i].main;}
         C(roles::matches_asset_actors(out,inventory));
+        {auto optional=inventory;optional.bodies[0].internal=0;C(roles::matches_asset_actors(out,optional));
+         optional.bodies[1].internal=0;C(roles::matches_asset_actors(out,optional));}
+
         for(unsigned bad=0;bad<12;++bad){auto wrong=inventory;
             if(bad==0)wrong.bodies[0].body+=8;
             if(bad==1)wrong.bodies[0].actor+=8;
             if(bad==2)wrong.bodies[0].table+=8;
             if(bad==3)wrong.bodies[0].scene+=8;
-            if(bad==4)wrong.bodies[0].internal=0;
+            if(bad==4)wrong.bodies[0].internal=9;
             if(bad==5)wrong.bodies[0].presence=assets::Presence::not_sampled;
             if(bad==6)wrong.bodies[2].body=8;
             if(bad==7)wrong.actors[2]=8;

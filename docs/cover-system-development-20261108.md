@@ -2833,3 +2833,11 @@ query34.2674ms，code source，engine/source_guard/current；Owner53次context/s
 检查现有geometry observer实际接口只记录native slot getter及候选坐标，collision_verified/grab/view仍明确0，不授完整身体路径或终点占用许可。cover_full_goal.prepare_c0已有纯转换接点，要求独立fitted neutral和当前placement，不能用观察坐标硬塞。当前版本的cover_neutral_goal/cover_c0_target_adapter与其实际全部include重新编译核验，固定61492夹具9文件逐份SHA与历史r99记录一致；20434/159项0失败。证据仅当前纯数学/数据转换，不是运行时认证或身体写入。
 
 初次cl命令漏bcrypt.lib，两目标源码已编译但链接失败；保留原日志，使用原对象补链接bcrypt后两项运行0，没有修改产品或冒认产品修复。当前依赖SHA、fixture哈希和结果在placement-readiness-r198；脚本check_placement_r198.py只构建离线程序，无游戏。下一工作应接实际几何/位置提供者到唯一C0链，复用现有求解/目标转换，不重写第二套。查询40ms及双眼遮挡仍未解决，完整CV/AC/头显未完成，工程25%。
+
+## r199：原始actor读取与typed matcher的可选Body语义一致（2026-11-12）
+
+接实际几何链时发现matches_asset_actors仍用!internal拒绝NpActor+40为空，而现有raw asset reader及保留REA语义将其视为可选动态Body，不是public actor身份链。matcher改为只有非空才调用同一query_source::pointer(internal,0x18)数值规则；合法空值不再误拒，非空未对齐/越界仍拒绝。保留typed body/actor/table/scene、root source、数组计数/原顺序、未采样行零值及raw embedded owner的全部检查；没有放宽当前身份、原调用、来源时间或body移动授权。
+
+新增单个/两个optional null正例，原版均失败；修复后实际reader matcher夹具284检查0失败。初次负例用了8，现有pointer仅对齐/span，不把8数值本身拒绝；这是夹具预期错误，改为明确未对齐9，保留before/after失败日志，前后完整suite并非逐字同一负例，不声称严格全套A/B。没有把null字段当Actor本体或免去raw读取的闭合。
+
+本轮只编译/运行离线检查，无完整Native构建/游戏/头显/世界碰撞通过；记录optional-body-r199。该修改为接线前的明确兼容性修复，不等同认证placement已提供。完整CV/AC仍未完成，工程25%。

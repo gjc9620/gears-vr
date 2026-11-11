@@ -1,0 +1,2 @@
+FAIL 104: !roles::matches_asset_actors(out,wrong) reason=ready stage=ready field=BoneSpring
+cover_physics_roles_live: 284 checks, 1 failures; typed source only, no query/writer

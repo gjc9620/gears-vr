@@ -1,0 +1,25 @@
+{
+  "build_exit": 0,
+  "test_exit": 0,
+  "output": "cover_physics_roles_live: 284 checks, 0 failures; typed source only, no query/writer\r\n",
+  "source_sha256": {
+    "tools\\native-capture\\weapon_hand_scene_binding_test.cpp": "fcf8b4b9b145204b62cafff0dd7589d8dd1da1a09b4de9dd05f8353e84eb7153",
+    "tools\\native-capture\\anchor_observer.h": "f2d8425ba10591c9700937244391f37b5ccf6ec3ffe6685beab34edb51e433fe",
+    "tools\\native-capture\\crosshair_scene_evidence.h": "4030db5fb3ad4d29b5447371f9cc27b6fc22e81eb854b7620bead9662d14bb49",
+    "tools\\native-capture\\crosshair_writer_view.h": "8368f7c112c0357e4b132e8d7d7bfeb1f24ba459678af03d883ebb35607b5927",
+    "tools\\native-capture\\mounted_actor_type.h": "1a9af3c9fcd9e0cd49100503fcfe07a089d59c065ec2f8af83555c1094eefb0a",
+    "tools\\native-capture\\mounted_observer.inl": "fa08e470befaa5c8de28cd5063ffc821e91940714429efdac28fe44f0f91bbb1",
+    "tools\\third-party\\minhook\\include\\minhook.h": "c3608e584bd9659aebdbb4c8c82585605989193623f240552d35c43311b3d31a",
+    "tools\\native-capture\\cover_body_live.inl": "2c593320e3bdb7df960f4f7d12bbee5057b20323e7c8ce31d8de1c30857e05bb",
+    "tools\\native-capture\\weapon_hand_scene_binding.inl": "60a461445d8474f53048c560461c268ef1132b3ac5f46cb5645a609b6db92038",
+    "tools\\native-capture\\lancer_saw_pose_policy.h": "60b9522dc4227f2b012e4026f7dd420ef87c64bcb8c2cdb79f4719640d128d00",
+    "tools\\native-capture\\cover_physics_roles_live.inl": "1308a682838e0fe75213c7462407f54bd3facde217627d8d18c641e4c12b6f45",
+    "tools\\native-capture\\cover_physx_query_source.h": "b363328e6dcc8c24a6d41f4563167f494723d88c15670282f1fd8635db5539c6",
+    "tools\\native-capture\\cover_physx_query_code.h": "476c05b953fd987688baf27f25d8f76bc11be2693fe1c76f785f167e3ac2d296",
+    "tools\\native-capture\\cover_pose_phase.h": "f173e0346bb313e33f4e26f1f9c0b91442009cdf7e903ed4c6a0de67dd7d8f19",
+    "tools\\native-capture\\cover_physx_asset_actors.h": "fe3da7be049c7cbd945c474a511e2792d0d3997607a338658588ce981dc5a677",
+    "tools\\native-capture\\cover_owner_link_observation.h": "d9cd14b4ebd21c40beaeb5636315c57e929af207719bec5155b2df086ea1425f",
+    "tools\\native-capture\\cover_physx_actor_backlink.h": "700d82a9a43dd4e21d3ed48afa462234bc6fa679df6cf837c3bb12e3f8f4f404",
+    "tools\\native-capture\\cover_member_witness_live.inl": "e04c7e9427ce9d13ebd4ca307ae066bf946d3a3841ed0190173c7d7c1c7ddf5f"
+  }
+}

@@ -44,7 +44,8 @@ inline bool matches_asset_actors(Snapshot const& typed,gears_cover_physx_asset_a
         if(i>=raw.body_count){if(body.presence!=actors::Presence::not_sampled||body.body||body.actor||body.table||body.scene||body.internal)return false;continue;}
         if(body.body!=typed.bodies[i].identity.address||body.actor!=typed.bodies[i].main)return false;
         if(!body.actor){if(body.presence!=actors::Presence::body_data_field_null||body.table||body.scene||body.internal)return false;continue;}
-        if(body.presence!=actors::Presence::actor_observed||body.table!=raw.query_source.actor_table||body.scene!=raw.query_source.scene||!body.internal)return false;
+        if(body.presence!=actors::Presence::actor_observed||body.table!=raw.query_source.actor_table||body.scene!=raw.query_source.scene||
+           (body.internal&&!query_source::pointer(body.internal,0x18)))return false;
         bool duplicate=false;for(unsigned n=0;n<unique;++n)duplicate=duplicate||expected[n]==body.actor;
         if(!duplicate)expected[unique++]=body.actor;
     }
