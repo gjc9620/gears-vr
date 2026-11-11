@@ -80,6 +80,8 @@ def main():
     manifest=json.loads((AREA/'independent-r1/candidate-manifest.json').read_text())
     render_age='--render-age-continuity' in sys.argv
     native_mutex='--native-mutex' in sys.argv
+    passive_commit='--native-passive-commit' in sys.argv
+    assert not passive_commit or native_mutex,'Passive commit observer retains the exact mutex Native parent'
     assert not native_mutex or render_age,'Mutex observer retains the exact age-continuity Native parent'
     latch_observation='--latch-observation-wait' in sys.argv
     latch_incumbent='--latch-incumbent-gap' in sys.argv
@@ -158,6 +160,15 @@ def main():
             mutex_proof=json.loads((AREA/'native-mutex-r1/prepared.json').read_text())
             assert mutex_proof['parent_native']==native_proof['native_sha256']
             native_proof=mutex_proof
+        if passive_commit:
+            passive_check=json.loads((AREA/'native-passive-commit-r1/passive-commit-test-result.json').read_text())
+            assert passive_check['passed'] and passive_check['exact_policy_reversal'] and passive_check['full_actual_c0_fixture']
+            passive_proof=json.loads((AREA/'native-passive-commit-r1/prepared.json').read_text())
+            assert passive_proof['parent_native']==native_proof['native_sha256']
+            assert passive_check['build_native_sha256']==passive_proof['native_sha256']
+            for key in ('policy_cases','policy_failures'):
+                passive_proof[key]=native_proof[key]
+            native_proof=passive_proof
         assert native_proof['full_native_compiled'] and native_proof['policy_cases']==17 and native_proof['policy_failures']==0
         assert manifest['native_sha256']==native_proof['frozen_native']
         native_dll=Path(native_proof['dll'])

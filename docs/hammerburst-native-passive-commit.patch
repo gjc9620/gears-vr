@@ -1,0 +1,83 @@
+--- a/tools/native-capture/full_body_c0_native_live.inl
++++ b/tools/native-capture/full_body_c0_native_live.inl
+@@ -40,6 +40,19 @@
+ std::atomic<double> body_plan_foot_residual[2]{},body_plan_angle_residual[3]{};
+ std::atomic<uint64_t> hands_attempts{},hands_solved{},hands_commits{};
+ std::array<std::atomic<uint64_t>,5> contextual_grasp_commits{};
++// Receiver-local, first512 successful passive C0 commits. Original in-memory
++// values only: no clock, query, allocation, input, source or write authority.
++struct PassiveCommitObservation {
++    uint64_t tick{},compose{},frame{},request_sequence{},current_sequence{};
++    int64_t request_sync_ns{},current_sync_ns{};
++    unsigned applied{},fitted{},solved_mask{},kind{};double weight{};
++    gears_vr::Pose grip{},physical{},adjusted{},solved{},right{};
++};
++constexpr unsigned passive_commit_capacity=512;
++std::array<PassiveCommitObservation,passive_commit_capacity> passive_commit_rows{};
++std::array<std::atomic<bool>,passive_commit_capacity> passive_commit_ready{};
++unsigned passive_commit_count{};
++
+ std::atomic<uint64_t> hands_native_body_fallback{};
+ std::atomic<uint64_t> hands_spine_projected{};
+ std::atomic<double> hands_spine_projection_last{},hands_spine_projection_max{};
+@@ -305,6 +318,42 @@
+         if(after&&(!native::read_memory(&matrix,before.space.data+bone*64,64)||std::memcmp(&matrix,&row.after_space[i],64)))return 6;}
+     if(!p::metadata(reader,request,again)||!p::metadata_equal(before,again))return 7;
+     return 1;
++}
++
++void observe_passive_commit() noexcept {
++    auto const& w=state.hand_work;
++    if(!w.left_visual.passive_socket||w.left_visual.kind!=gears_hand_object_grasp::Kind::support||
++       passive_commit_count>=passive_commit_capacity)return;
++    const unsigned i=passive_commit_count++;auto& row=passive_commit_rows[i];
++    auto const& requested=lancer_grasp_live::requested.source;
++    auto const& current=body_tick_source_live::enabled?state.context.body_source.observed:state.context.body_input;
++    row.tick=state.context.tick;row.compose=state.context.copy.invocation;
++    row.frame=requested.key.frame;row.request_sequence=requested.controllers.sequence;
++    row.current_sequence=current.controllers.sequence;row.request_sync_ns=requested.controllers.sync_ns;
++    row.current_sync_ns=current.controllers.sync_ns;row.applied=w.left_visual_applied;
++    row.fitted=w.left_blend.position_fitted;row.solved_mask=w.solved_mask;
++    row.kind=unsigned(w.left_blend.kind);row.weight=w.left_blend.weight;
++    row.grip=w.left_visual.grip;row.physical=w.eye_targets[0].grip_world;
++    row.adjusted={w.inputs[0].target.position,w.inputs[0].target.orientation};
++    const auto left=body::d::pose(w.body_work.pose.world[11]);
++    const auto right=body::d::pose(w.body_work.pose.world[35]);
++    row.solved={left.position,left.orientation};row.right={right.position,right.orientation};
++    passive_commit_ready[i].store(true,std::memory_order_release);
++}
++void summarize_passive_commits(FILE* f) noexcept {
++    if(!f)return;
++    for(unsigned i=0;i<passive_commit_capacity;++i){
++        if(!passive_commit_ready[i].load(std::memory_order_acquire))continue;
++        auto const& r=passive_commit_rows[i];
++        fprintf(f,"body_passive_commit_%u=%llu,%llu,%llu,%llu,%llu,%lld,%lld,%u,%u,%u,%u,%.17g ",
++            i,r.tick,r.compose,r.frame,r.request_sequence,r.current_sequence,r.request_sync_ns,
++            r.current_sync_ns,r.applied,r.fitted,r.solved_mask,r.kind,r.weight);
++        const gears_vr::Pose poses[]={r.grip,r.physical,r.adjusted,r.solved,r.right};
++        for(unsigned n=0;n<5;++n){auto const& p=poses[n];
++            fprintf(f,"body_passive_commit_%u_pose_%u=%.17g,%.17g,%.17g,%.17g,%.17g,%.17g,%.17g ",
++                i,n,p.position.x,p.position.y,p.position.z,p.orientation.x,p.orientation.y,p.orientation.z,p.orientation.w);
++        }
++    }
+ }
+ void trace_hands_commit() noexcept {
+     // First32 successful joint commits in the selected window; no allocation,
+@@ -1359,7 +1408,7 @@
+                 o.right_solved_target=state.hand_work.inputs[1].target.position;}}
+         if(result.code==tx::Code::committed){endpoint_commit_ns=rig_tracking_live::clock_ns();++commits;if(hand_plan){state.joint_committed=true;++hands_commits;
+             if(state.hand_work.left_visual_applied){const unsigned kind=unsigned(state.hand_work.left_blend.kind);if(kind<contextual_grasp_commits.size())++contextual_grasp_commits[kind];}
+-            if(state.right_mount==hands::adapter::MountKind::held_lancer)++main_mount_commits;trace_hands_commit();
++            observe_passive_commit();if(state.right_mount==hands::adapter::MountKind::held_lancer)++main_mount_commits;trace_hands_commit();
+             if(state.right_mount==hands::adapter::MountKind::held_lancer)held_outcome::recorder.held(main_mount_commits.load(),state.hand_record);}return true;}
+         remember_failure(e,goal,failure::Stage::commit,unsigned(result.code),timing,&report,&state.output,result.unit);++rejected;return false;
+     }catch(...){state.kernel.request_stop();sync();++failure_counts.exceptions;remember_failure(e,goal,failure::Stage::exception,0,timing);++rejected;return false;}
+@@ -1525,7 +1574,7 @@
+     bool ok=write(&h,sizeof h);if(ok&&h.count)ok=write(r.rows.data(),DWORD(h.count*sizeof(held_outcome::Record)));
+     if(!CloseHandle(file)){held_outcome_error=GetLastError();ok=false;}held_outcome_written=ok;
+ }
+-void summary(FILE* f){export_pending();ready_wrist::export_records();export_held_outcome();export_failure(first_failure,L"body-c0-first-failure.bin",failure_file_attempted,failure_file_written,failure_file_error);
++void summary(FILE* f){export_pending();summarize_passive_commits(f);ready_wrist::export_records();export_held_outcome();export_failure(first_failure,L"body-c0-first-failure.bin",failure_file_attempted,failure_file_written,failure_file_error);
+     if(f)fprintf(f,"body_tick_lancer_state_refreshed=%llu ",binding::tick_lancer_state_refreshes.load());
+     if(f){fprintf(f,"body_gun_transform_attempts=%llu body_gun_transform_completed=%llu body_gun_transform_rejected=%llu ",
+         lancer_transform_finish::attempts.load(),lancer_transform_finish::completed.load(),lancer_transform_finish::rejected.load());

@@ -1,0 +1,13 @@
+{
+  "passed": true,
+  "exact_policy_reversal": true,
+  "changed_source_files": [
+    "tools/native-capture/full_body_c0_native_live.inl"
+  ],
+  "full_actual_c0_fixture": true,
+  "moving_passive_goal_steps": 3,
+  "independent_fk_oracle": true,
+  "synthetic_input_seam": true,
+  "runtime_proved": false,
+  "build_native_sha256": "e4e3155de9b86a1e7f8107a4a0c53e162a88009ae80b32199d4af0afec8935f2"
+}
