@@ -2889,3 +2889,11 @@ query34.2674ms，code source，engine/source_guard/current；Owner53次context/s
 512组任意三轴四元数/分数中心、全部角点在逆坐标和转置投影中的包络、预算拒绝及异常姿态共27140检查0失败；球/胶囊2134回归0，实际Session批量observer122（含原110）0。实际C0骨架/姿态夹具加8个映射body上的53个合成authored形状整目录转换269检查0；这些形状是测试构造，绝非已从游戏读取的实时库存，原9个夹具文件SHA与历史一致。
 
 上述仅参数空间包络，不认证原生内部OBB解释/再归一化，也不代表active geometry/世界覆盖/路径/移动许可。新查询目录尚未接完整实时库存/身体事务，原超时与视图遮挡未修。回执/公式/依赖/原夹具SHA在rounded-box-r205，无游戏/原分派/完整Native构建，完整CV/AC/头显待完成，工程25%。
+
+## r206：经外层typed guard认证的authored数组读取传输层已实现（2026-11-12）
+
+复用现有Python shape reader/r69保留合同的named primitive stride80、Sphere/Box/Sphyl占用72/80/76及TM/dimension/Boolean结构，新增cover_authored_array.h。调用者必须以Guard(Source)认证当前BodySetup/骨名/字段布局/原receiver scale/C0身份时间；这里不解析反射或伪造认证，未对游戏猜偏移。Source仅在guard许可下读数组header及完整80字节元素，头/尾闭合、两遍payload/Source比较，输出仅完整成功时发布；容量64、cap256为工程上界，越界不截断。原raw80、array_index和bNoRBCollision逐项保留，不把停用碰撞元素丢掉。
+
+uniform receiver scale在任何读前验证，空数组也不能绕过来源数值约束；空数组仍经过全部guard。初版7项、补齐三类型及空数组/三guard边界后23项检查0失败，全部synthetic host memory，没有真实进程内存读取、hook或游戏。guard中止、payload变化和容量失败均保持旧输出。
+
+实际current反射字段/完整aggregate/active PhysX对应、scale生产者及同C0/世界闭合仍需接入，不能将此读取传输层称为已取得真实库存。源码/codec来源SHA/回执authored-array-r206，无完整Native构建/安装，完整CV/AC/头显未完成，工程25%。

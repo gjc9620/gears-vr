@@ -1,0 +1,21 @@
+{
+  "result": "AuthoredArray checks=23 failures=0 synthetic memory/guard only; no native identity/active proof\r\n",
+  "sources": {
+    "tools/native-capture/cover_authored_array.h": "793531f57540bd256fe9a644ac7f2b61484800bf9f842b2ff7b9d656eab34e15",
+    "tools/native-capture/cover_authored_array_test.cpp": "87eaa957ed1e7e80e0beb14c428588a298d511199058f079204981c8f8153585",
+    "tools/game-playtest/cover_physics_shapes.py": "042d4668157e1bfb9ecbe9e9c82b45988458aeb1e31bf31a782dd59a82cb0947"
+  },
+  "layout_contract": "Named primitive arrays: stride80, occupied extents sphere72/box80/sphyl76; TM0..63, dimensions at64, Boolean after dimensions. External typed guard must prove actual field/source correspondence; no guessed offsets applied to game.",
+  "scope": "Read-callback transport with typed Source guard. Two full payload/header passes, source closure and all-or-nothing publication. Keeps raw80 and bNoRBCollision; never filters disabled rows.",
+  "tests": "Synthetic host memory only: all3 kinds, empty, invalid scale in empty, header capacity, mid-read payload mutation, all3 guard boundaries, output preservation",
+  "remaining": [
+    "current reflected layout/BodySetup/bone/owner certification",
+    "current complete aggregate and active shape association",
+    "uniform receiver scale producer association",
+    "same C0/world/path proof"
+  ],
+  "game_started": false,
+  "process_memory_read": false,
+  "installed": false,
+  "engineering_percent": 25
+}
