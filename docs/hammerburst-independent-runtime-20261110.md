@@ -579,3 +579,10 @@ prelaunch-052600-result.json和5份原观察文本保留；cleanup-pending标为
 新115944实际78条有效且来源一致射线，12轮耗弹及typed0/78空扣无射线通过，原begin与换弹1→6、新匣获取通过。插入token2在698源年龄100.1528ms首次撤销，706/707继续过期，708 decision12无lease，709起granted0。最后接受的706深度21.913565mm、lateral约4.9e-6、orientation1；未入座/未关闭/未回射。805 lifecycle difference64为后续现象，不当作首因。保持100ms与anti-replay，下一步追踪Native源选择/发布至support consumer的实际耗时，不能保留过期控制。
 
 新增test-reader记录已实练，12次UP观察45.326～59.517ms，最大读取1.9238ms；本轮未复现15016超时，不声称已经修复。operator1保留，stop/launcher/Native/PG/XR正常0，无FG/CLOAK违规、无强制终止。699帧无capture错误，编码0，3页48组概览亲审；遮挡/重影/白色几何与手贴合仍不接受，密集contact待检查。证据runtime-22048-first-failure-analysis.json及原嵌套ordinary_empty_replacement动作归档。完整13项未完成。
+
+
+## 2026-11-11 新匣姿态空窗持有者修复（尚未游戏验证）
+
+22048源码追查确认：tick在copy_frame失败时清空HB held，即使只是publication/stale_before。下一帧propose不再申报同一新匣incumbent，Native owner按规则返回lease_lost12。窄修复只对stage=new_magazine、非零new_item、held=ammo且id相同/lifecycle有效，保留逻辑原持有者；失败当帧不提供Frame、不移动、不入座、不写库存。下一个独立新鲜prepare/commit仍证明全部对象/输入/身份/原lease，原history/间隔/anti-replay不变。其他原因及阶段保持原reset。
+
+实际旧reset与新helper经同一真实HandClient/Native owner fixture对比，旧路径复现lease_lost，新路径仅新鲜后继retained、真实UP released；20新增检查和原client套件通过。完整PG编译成功，SHA b9296d6a6859673e461335efc7caded2bbf1375403d5a667f5d77d6ade096f2d，Native/XR及publicv71未改。最多8条分支记录供后续实际验证，不能以离线fixture称空仓完成。

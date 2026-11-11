@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "scope": "full HB objective; no scope reduction",
-  "current_candidate": "endpoint-baseline-r1 PG63b915a9; actual22992 focused loaded replacement passed; full empty and remaining requirements pending",
+  "current_candidate": "pose-gap-incumbent-r1 PGb9296d6a6859673e461335efc7caded2bbf1375403d5a667f5d77d6ade096f2d compiled; actual Client/owner20 new cases pass, not game verified",
   "prepared_sha256": "20d8a6cd15b89c89b938aa201086c9d590251a2be74b2bd6d4fa72bd47d27824",
   "requirements": [
     {
@@ -390,7 +390,7 @@
   ],
   "completion_proven": false,
   "goal_active": true,
-  "immediate_next": "Trace exact native selected producer through support decision/consumer698->709. Compare same-Scene source publication against frozen806dcbd6; repair proven selection/latency only, never renew timestamps or retain stale control.",
+  "immediate_next": "Fresh full empty run with exact existing new-magazine incumbent preserved only for publication/stale_before. Confirm bounded branch marker, actual seat/close and typed return72/0. Keep all13 requirements.",
   "historical_evidence_does_not_certify_current_PG": true,
   "candidate_runtime_status": "Actual22048 full78 drain and empty veto0/78 passed. Reload1->6/replacement acquired; source expiry698 then lease loss708/709 beforeseat. No close/return; normal cleanup.",
   "previous_recorded_candidate": {
@@ -422,5 +422,11 @@
     "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\coordinator-multi-20261110\\owner-resource-release-20261111.json",
     "sha256": "e6553e0b37298980777cdfacb30877695399af5777d0ee24d979b7d017a81511",
     "old_worker_exit": "owner-authorized forced supervisor stop; original failure and unresolved normal cleanup remain preserved"
+  },
+  "pending_source_repair": {
+    "candidate": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\pose-gap-incumbent-r1\\prepared.json",
+    "scope": "Exact held HB new-magazine logical incumbent only across publication/stale_before read failure. No stale Frame/action grant, clock extension, actor/input relaxation or changed motion continuity. Other failures and stages retain original reset.",
+    "runtime_exercised": false,
+    "native_or_xr_changed": false
   }
 }

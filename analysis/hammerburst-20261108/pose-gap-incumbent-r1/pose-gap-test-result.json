@@ -1,0 +1,8 @@
+{
+  "actual_helper_sha256": "8bf5f0d0d67008844bcd519d71ddc53a3fbfb7f891b73708e95bd95b2620144e",
+  "fixture_sha256": "d94a25223883f453cac8ed3a3422c891171798f00112ffcd0a5bb817a28caac2",
+  "exit_code": 0,
+  "game_started": false,
+  "scope": "Exact reset helper plus existing real HandClient/owner fixture; not runtime or full geometry evidence",
+  "transcript": "pose-gap-test.cpp\nHB actual HandClient supply handoff: 4 cases; reproduce difference5, preserve first Frame and next strict retained Frame, reject busy/invalidation; local Host only\nHB exact unavailable helper + actual Client/owner: 20 additional cases; old reset reproduces lease_lost, new retains only fresh successor, real UP releases\n"
+}
