@@ -1,0 +1,14 @@
+[
+  {
+    "name": "cover_neutral_goal",
+    "link_exit": 0,
+    "test_exit": 0,
+    "output": "neutral posture=0 shift=10.1788092 hip=546.004803; tracking+grip applied once\r\nneutral posture=1 shift=11.7528148 hip=546.004803; tracking+grip applied once\r\ncover_neutral_goal: 20434 checks, 0 failures; retained geometry, CPU cover binding; no runtime permission\r\n"
+  },
+  {
+    "name": "cover_c0_target_adapter",
+    "link_exit": 0,
+    "test_exit": 0,
+    "output": "CoverC0Target: 159 checks, 0 failures; math only, no current placement/Native/collision permission\r\n"
+  }
+]

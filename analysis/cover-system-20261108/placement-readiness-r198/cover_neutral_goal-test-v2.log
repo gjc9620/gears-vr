@@ -1,0 +1,3 @@
+neutral posture=0 shift=10.1788092 hip=546.004803; tracking+grip applied once
+neutral posture=1 shift=11.7528148 hip=546.004803; tracking+grip applied once
+cover_neutral_goal: 20434 checks, 0 failures; retained geometry, CPU cover binding; no runtime permission

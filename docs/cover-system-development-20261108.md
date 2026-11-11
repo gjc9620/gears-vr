@@ -2827,3 +2827,9 @@ query34.2674ms，code source，engine/source_guard/current；Owner53次context/s
 接线检查发现当前FullGoal.prepare在input/camera disabled时直接return，已存target仍available。先在实际生产store及原共享消费者夹具加两种disable/re-enable/fresh-prepare用例：旧版35检查6失败，确实仍读旧目标；修复为clear("disabled")后返回，新版35检查0失败。关闭输入或相机均使旧target不可读，重新打开标志本身不复活，只有新合法prepare恢复；拒绝读取保持输出不变。synthetic native/neutral provider仅为CPU seam，不授C0/physics权限。
 
 首次夹具用了不存在camera别名而编译失败，日志保留；改为cover_camera_live后先复现再修生产。实际前后源码SHA/依赖/编译/运行回执在goal-disable-r197。本轮无完整Native构建、无游戏/XR/Quest启动；不称视图遮挡或完整接线修好。后续继续认证placement、唯一身体完成事务及同版视图消费，完整CV01–24/AC01–22/头显未完成，工程25%。
+
+## r198：当前中立拟合/目标转换离线成立，缺口是实际placement/几何提供者（2026-11-12）
+
+检查现有geometry observer实际接口只记录native slot getter及候选坐标，collision_verified/grab/view仍明确0，不授完整身体路径或终点占用许可。cover_full_goal.prepare_c0已有纯转换接点，要求独立fitted neutral和当前placement，不能用观察坐标硬塞。当前版本的cover_neutral_goal/cover_c0_target_adapter与其实际全部include重新编译核验，固定61492夹具9文件逐份SHA与历史r99记录一致；20434/159项0失败。证据仅当前纯数学/数据转换，不是运行时认证或身体写入。
+
+初次cl命令漏bcrypt.lib，两目标源码已编译但链接失败；保留原日志，使用原对象补链接bcrypt后两项运行0，没有修改产品或冒认产品修复。当前依赖SHA、fixture哈希和结果在placement-readiness-r198；脚本check_placement_r198.py只构建离线程序，无游戏。下一工作应接实际几何/位置提供者到唯一C0链，复用现有求解/目标转换，不重写第二套。查询40ms及双眼遮挡仍未解决，完整CV/AC/头显未完成，工程25%。

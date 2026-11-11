@@ -1,0 +1,8 @@
+cover_neutral_goal_test.cpp
+cover_neutral_goal.obj : error LNK2019: 无法解析的外部符号 BCryptOpenAlgorithmProvider，函数 "bool __cdecl digest(void const *,unsigned __int64,class std::array<unsigned char,32> &)" (?digest@@YA_NPEBX_KAEAV?$array@E$0CA@@std@@@Z) 中引用了该符号
+cover_neutral_goal.obj : error LNK2019: 无法解析的外部符号 BCryptCloseAlgorithmProvider，函数 "bool __cdecl digest(void const *,unsigned __int64,class std::array<unsigned char,32> &)" (?digest@@YA_NPEBX_KAEAV?$array@E$0CA@@std@@@Z) 中引用了该符号
+cover_neutral_goal.obj : error LNK2019: 无法解析的外部符号 BCryptCreateHash，函数 "bool __cdecl digest(void const *,unsigned __int64,class std::array<unsigned char,32> &)" (?digest@@YA_NPEBX_KAEAV?$array@E$0CA@@std@@@Z) 中引用了该符号
+cover_neutral_goal.obj : error LNK2019: 无法解析的外部符号 BCryptHashData，函数 "bool __cdecl digest(void const *,unsigned __int64,class std::array<unsigned char,32> &)" (?digest@@YA_NPEBX_KAEAV?$array@E$0CA@@std@@@Z) 中引用了该符号
+cover_neutral_goal.obj : error LNK2019: 无法解析的外部符号 BCryptFinishHash，函数 "bool __cdecl digest(void const *,unsigned __int64,class std::array<unsigned char,32> &)" (?digest@@YA_NPEBX_KAEAV?$array@E$0CA@@std@@@Z) 中引用了该符号
+cover_neutral_goal.obj : error LNK2019: 无法解析的外部符号 BCryptDestroyHash，函数 "bool __cdecl digest(void const *,unsigned __int64,class std::array<unsigned char,32> &)" (?digest@@YA_NPEBX_KAEAV?$array@E$0CA@@std@@@Z) 中引用了该符号
+J:\codexWorktree\gearsVr\analysis\cover-system-20261108\placement-readiness-r198\cover_neutral_goal.exe : fatal error LNK1120: 6 个无法解析的外部命令

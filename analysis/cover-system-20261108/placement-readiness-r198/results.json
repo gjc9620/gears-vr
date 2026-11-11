@@ -1,0 +1,10 @@
+[
+  {
+    "name": "cover_neutral_goal",
+    "build_exit": 2
+  },
+  {
+    "name": "cover_c0_target_adapter",
+    "build_exit": 2
+  }
+]
