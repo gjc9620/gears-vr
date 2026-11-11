@@ -2757,3 +2757,13 @@ r188启动前磁盘4255793152字节低于原4GiB门槛，runner1，独立确认�
 新增owner_bracket第8计时槽实际存在，74次全部闭合16.1171ms；physics/collider repeat各36次，components repeat2次。完整query仍未证明通过；实际原始path/timing/age/link记录已保存，不以正常收尾冒充碰撞通过。新旧timing分段范围不同且engine含内部计时，不能相加或直接宣称提速。
 
 主人要求停止新增实现/构建/测试/启动并让出editor。本轮停止在审阅阶段：14页概览仅亲看前4页，5张原始接触均未亲看，完整图像审阅未完成。所有本方运行已终态且未再启动。检查点owner-bracket-r187/owner-pause-checkpoint.json保留，明确恢复后先补余下10页/5图及首败分析，不自动重跑。全CV01–24/AC01–22、身体/世界碰撞/受击/枪口及头显仍未完成，工程25%、publicv71/固定入口不变，目标按主人要求暂停。
+
+## r190：恢复后核对r189，原查询已进入返回但结束来源过期（2026-11-12）
+
+使用迁移后J:/codexWorktree/gearsVr，只分析保留源码/原始数值记录，未启动游戏/XR/测试、未动Quest工作台。r189 query的Scene399/Compose24531/seq3971/world2215870720/Pawn95167971584与实际complete首键一致。original started/returned实际1/1，已越过过去未到原调用的阻点；但code4/source、engine/guard_end/current，Session39次owner_end拒绝，Owner79次context/source_age_expired，不能签发查询成功或移动许可。
+
+query共35.8457ms；首次classify在begin后0.2185ms，stereo已4.6037ms，故begin时4.3852ms、原40ms可用35.6148ms。失败classify的stereo40.2281ms/controller40.1980ms/sync40.2221ms均过期；没有扩大时限或刷新来源。原调用1/1只证明调用返回，不证明结果完整/安全。74次owner_bracket共16.1171ms约占总跨度44.96%，components_repeat2次共6.1748ms；engine包含内部计时，禁止相加。
+
+源码核对发现components_current仍每次调用sample，sample每次clear布局及成员proof再重建并执行两遍实际值。因此下一窄源码候选是同一query内组件schema复核复用：在偏移读取前及双遍实际值后核对全部proof、与初始快照一致、失败消耗ready；不能缓存动态值、跳过完整proof或跨操作复用。该候选尚未实现/编译/验证，仍保留非因果边界。
+
+迁移清理已删除历史图像，r189原14页仅前4页亲看、5张原图均未亲看；余下审阅证据不可用，保持未验收，不用新游戏重造旧证据。分析及来源SHA在owner-bracket-r187/r190-existing-query-analysis.json。全CV01–24/AC01–22、世界/身体几何、视图/受击/枪口及头显仍未完成，工程25%、publicv71/固定入口和Quest0.2.0保留。

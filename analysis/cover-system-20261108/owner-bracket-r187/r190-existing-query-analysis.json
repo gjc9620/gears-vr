@@ -1,0 +1,103 @@
+{
+  "source_sha256": {
+    "path-probe.json": "7b16f6ca5d61f8c5500235c7218fb77e41dd40408b797c395547074dc94ecec1",
+    "timing-probe.json": "4c88e081ab793b94a674fe44bf895482456dfb6a40c6e8267f39052e0c192da2",
+    "age-probe.json": "77264ceccbf49cbfd3ac4a4728fa1400a51120238fa34f79be25911a732880ac",
+    "session-original.json": "e25a3b20a169c23dbdd19890c5e5e1694abcf01ca32c23e4f6acc7202ff888bb"
+  },
+  "exact_complete_key_matches": true,
+  "original_calls_started": 1,
+  "original_calls_returned": 1,
+  "accepted_query": false,
+  "first_rejection": "engine/guard_end/current",
+  "elapsed_ns": 35845700,
+  "first_check_offset_ns": 218500,
+  "stereo_age_at_query_begin_ns": 4385200,
+  "stereo_remaining_at_query_begin_ns": 35614800,
+  "stereo_age_at_failed_classify_ns": 40228100,
+  "timing": [
+    {
+      "stage": "physics_initial",
+      "calls": 1,
+      "closed_spans": 1,
+      "total_ns": 396100,
+      "max_ns": 396100,
+      "operation_success_proven": false
+    },
+    {
+      "stage": "collider_initial",
+      "calls": 1,
+      "closed_spans": 1,
+      "total_ns": 1673500,
+      "max_ns": 1673500,
+      "operation_success_proven": false
+    },
+    {
+      "stage": "components_initial",
+      "calls": 1,
+      "closed_spans": 1,
+      "total_ns": 2467700,
+      "max_ns": 2467700,
+      "operation_success_proven": false
+    },
+    {
+      "stage": "physics_repeat",
+      "calls": 36,
+      "closed_spans": 36,
+      "total_ns": 2914300,
+      "max_ns": 131500,
+      "operation_success_proven": false
+    },
+    {
+      "stage": "collider_repeat",
+      "calls": 36,
+      "closed_spans": 36,
+      "total_ns": 5098900,
+      "max_ns": 212700,
+      "operation_success_proven": false
+    },
+    {
+      "stage": "components_repeat",
+      "calls": 2,
+      "closed_spans": 2,
+      "total_ns": 6174800,
+      "max_ns": 3384700,
+      "operation_success_proven": false
+    },
+    {
+      "stage": "engine",
+      "calls": 1,
+      "closed_spans": 1,
+      "total_ns": 30273200,
+      "max_ns": 30273200,
+      "operation_success_proven": false
+    },
+    {
+      "stage": "closing",
+      "calls": 0,
+      "closed_spans": 0,
+      "total_ns": 0,
+      "max_ns": 0,
+      "operation_success_proven": false
+    },
+    {
+      "stage": "owner_bracket",
+      "calls": 74,
+      "closed_spans": 74,
+      "total_ns": 16117100,
+      "max_ns": 778900,
+      "operation_success_proven": false
+    }
+  ],
+  "timings_nested_do_not_sum": true,
+  "owner_bracket_share_of_elapsed": 0.4496243621968604,
+  "components_repeat_ns": 6174800,
+  "component_sample_clears_layout_every_call": true,
+  "next_source_candidate": "Query-scoped component recheck with full schema proofs before offsets and after both fresh value passes, exact initial snapshot match, failure-consumed readiness; avoid re-discovering identical schema for each repeat. Not implemented or verified.",
+  "media_remaining_review_unavailable": true,
+  "media_reason": "Owner-authorized migration cleanup removed historical images; original pause record had only pages 1-4 reviewed, contacts 0. Do not promote missing review or rerun unchanged game.",
+  "runtime_started": false,
+  "tests_executed": false,
+  "source_product_changed": false,
+  "engineering_percent": 25
+}
