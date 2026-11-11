@@ -1,0 +1,13 @@
+{
+  "passed": true,
+  "rejection_cap": 4,
+  "protected_first_capacity": 64,
+  "tail_capacity": 128,
+  "original_pure_build_unchanged": true,
+  "original_build_called_once": true,
+  "exact_history_rejection_boolean_preserved": true,
+  "new_source_queries": 0,
+  "new_gate_clocks": 0,
+  "game_started": false,
+  "limits": "Passive serialization and source-delta/kernel identity checks; actual failed history and first-debt costs still need game evidence."
+}

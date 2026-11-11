@@ -80,6 +80,8 @@ def main():
     latch_incumbent='--latch-incumbent-gap' in sys.argv
     extraction_history='--extraction-history' in sys.argv
     tick_cost_tail='--tick-cost-tail' in sys.argv
+    history_rejection='--history-rejection' in sys.argv
+    assert not history_rejection or tick_cost_tail,'History rejection observer includes the original passive GT tail'
     assert not tick_cost_tail or extraction_history,'Passive tail candidate includes the pending extraction policy'
     assert not extraction_history or latch_incumbent,'Extraction candidate includes the tested latch incumbent policy'
     assert not latch_incumbent or latch_observation,'Latch incumbent candidate includes the tested observation wait'
@@ -88,6 +90,7 @@ def main():
     pg_candidate='latch-incumbent-gap-r1' if latch_incumbent else ('latch-observation-wait-r1' if latch_observation else ('render-age-pg-r1' if render_age else 'latch-seek-gap-r1'))
     if extraction_history:pg_candidate='extraction-history-r1'
     if tick_cost_tail:pg_candidate='tick-cost-tail-r1'
+    if history_rejection:pg_candidate='history-rejection-r1'
     proof=json.loads((AREA/pg_candidate/'prepared.json').read_text())
     if latch_observation:
         check=json.loads((AREA/'latch-observation-wait-r1/observation-wait-test-result.json').read_text())
@@ -111,6 +114,9 @@ def main():
             assert (AREA/pg_candidate/rel).read_bytes()==(AREA/'extraction-history-r1'/rel).read_bytes()
             check=json.loads((AREA/pg_candidate/'tick-cost-test-result.json').read_text())
             assert check['passed'] and check['exact_removed_insertions_equal_original'] and check['gt_only_dump_before_stopped']
+            if history_rejection:
+                check=json.loads((AREA/pg_candidate/'history-observer-test-result.json').read_text())
+                assert check['passed'] and check['original_pure_build_unchanged'] and check['original_build_called_once']
     assert proof['full_playground_compiled'] and not proof['runtime_exercised']
     dll=Path(proof['dll']);assert hashlib.sha256(dll.read_bytes()).hexdigest()==proof['dll_sha256']
     manifest.update(playground_build=str(dll.parent.relative_to(ROOT)),playground_sha256=proof['dll_sha256'],

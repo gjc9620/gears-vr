@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "scope": "full HB objective; no scope reduction",
-  "current_candidate": "PG0a3540a2 passive tail actual21052 exported525/128,78rays/emptyveto then opening historygate6/gap112ms. Matched GT35.1115ms, source interval111.8282ms; no firstexpiry reproduced/retained firstdebt0, extraction not reached. All13 remain.",
+  "current_candidate": "Private history-rejection-r1 PGaf4dac2b/Native71f280b0 compiled, exact source-reversal and original build-once checks pass; raw observer cap4 and protectedfirst64 checked. Motion/source/dispatch/input/timer unchanged. New history/first costs not yet game observed; all13 incomplete.",
   "prepared_sha256": "20d8a6cd15b89c89b938aa201086c9d590251a2be74b2bd6d4fa72bd47d27824",
   "requirements": [
     {

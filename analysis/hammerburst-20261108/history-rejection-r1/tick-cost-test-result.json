@@ -1,0 +1,13 @@
+{
+  "passed": true,
+  "capacity": 128,
+  "writes": 200,
+  "exported": 128,
+  "exact_removed_insertions_equal_original": true,
+  "gt_only_dump_before_stopped": true,
+  "new_engine_source_input_calls": 0,
+  "new_action_or_gate_clock_uses": 0,
+  "game_started": false,
+  "fixture_sha256": "07eb066f1080aa8dc73c5e025c6a84962aeb341c9665c34f902fccec08b786b7",
+  "limits": "Ring/scalar export and exact source delta checks, not runtime cost or race-detector evidence."
+}
