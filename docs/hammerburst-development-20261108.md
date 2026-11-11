@@ -683,3 +683,10 @@ PG0a3540a2/Native71f280b0原完整流程78条一致射线和空仓veto通过；�
 ## 2026-11-11 实际29012：测试读取漏认同次合法持有
 
 PGaf4dac2b/Native71f280b0。339帧UP基线p5/r5；341帧新DOWN p6/r5 deferred10未持有；345帧同次p6/r5 accepted2持有且实际开火。原日志仅计数变化或250ms记录，中间pressed3可以不输出。测试只认3漏认已持有2，等待超时导致按住更久；48条一致射线包含额外开火，不能算有限六发通过。修正仅测试读取：新于UP序号、精确press+1/release不变，2或3且owned1；8仍失败，不重按。16项针对检查通过，生产保护未变。新历史观察未到达，first成本seen0/tail225保留128。游戏与Native/PG/XR正常清理0，无forced；206帧、错误空、编码0、3页48对亲阅，近眼过大枪/手分离重影/白几何仍失败。13项完整目标保留。
+
+
+## 2026-11-11 实际52000：读取修正后遇到真实源撤回
+
+原candidate PGaf4dac2b/Native71f280b0不变，测试修正fde58046。core6与五组drain6实际36条一致射线、剩42；下一次p7/r6没有持有或射线。源347/seq3550 stale_before100.1348ms撤回，PG无当前Frame关闭输入；恢复355/3557扳机已按下，BASELINE1未持有，后386 BLOCKED8。符合原防重放，不是29012漏认owned2，也不允许补按重试。tail292/128分段和核对，firstseen0，历史观察未到达；Native inputloss0/Gate76均age-only保留逻辑登记，不等于允许输入。下一步只定位原publication stale-before时刻及源到Native/Native到PG延迟，现有GT耗时不证明全链原因，不改期限/续时/旧按下。正常清理全0、无forced，211帧错误空/编码0，3页48对亲阅，视觉仍失败；13项完整目标保留。
+
+52000源边界核对：stale_before5由Playground WeaponHandClient消费时fresh检查产生，并非Native broker prepare/commit失败；Native inputloss0。后续publication1只带已记录的347撤回，无法还原首个失败copy的commit-age/since-commit或调用方。上次成功输入sync908592400→admission974651900为66.0595ms，不能当作347同一源。下一步定位首个消费copy原观察字段的有界保留，现有数据不足以归责调度或并发；不得把100ms改大或沿用恢复时已按住的输入。

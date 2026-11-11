@@ -1,0 +1,22 @@
+{
+  "runtime": 52000,
+  "source": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\history-rejection-r1\\source\\tools\\vr-common\\weapon_hand_client.h",
+  "source_sha256": "85d916ade33fee190b63aa29835641642d561f76acf6f4fca9e02c19ec27ffeb",
+  "classification": "stale_before5 is the Playground WeaponHandClient consumer freshness check, not a Native broker prepare/commit failure. Native inputloss total0. The withdrawal record may predate the logged read; no-current publication failure1 rows report that already-recorded withdrawal.",
+  "source_sites": {
+    "fresh": 217,
+    "copy_fresh_check": 548,
+    "withdraw_expired_pose": 188,
+    "source_loss_observer": "tools/playground/weapon_hammerburst_source_loss_observation.inl"
+  },
+  "measured": {
+    "withdrawal_frame": 347,
+    "withdrawal_sequence": 3550,
+    "withdrawal_input_age_ns": 100134800,
+    "last_successful_input_sync_ns": 167590908592400,
+    "last_successful_input_admission_ns": 167590974651900,
+    "last_successful_input_age_ns": 66059500
+  },
+  "limits": "last successful sync is for the prior admitted source, not proven to be withdrawal347 sync. Idle source-loss logger sees prior withdrawal but loses original failed copy commit-check/since-commit details after publication cleared. Existing data cannot split exact347 producer-to-Native and Native-to-consumer delay or name first reader withdrawing it.",
+  "next": "Locate all GT copy consumers and the original first failed copy call. Preserve its existing FrameReadObservation (input age, commit age, since commit, caller) in bounded passive output on the same thread only; no new read/clock/retry, no freshness relaxation. No unchanged game run."
+}
