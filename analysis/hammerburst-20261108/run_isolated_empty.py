@@ -75,7 +75,7 @@ def main():
     name='hb-cloak-'+time.strftime('%m%d-%H%M%S')
     target=AREA/name;target.mkdir()
     manifest=json.loads((AREA/'independent-r1/candidate-manifest.json').read_text())
-    proof=json.loads((AREA/'pose-gap-incumbent-r1/prepared.json').read_text())
+    proof=json.loads((AREA/'extraction-observe-r1/prepared.json').read_text())
     assert proof['full_playground_compiled'] and not proof['runtime_exercised']
     dll=Path(proof['dll']);assert hashlib.sha256(dll.read_bytes()).hexdigest()==proof['dll_sha256']
     manifest.update(playground_build=str(dll.parent.relative_to(ROOT)),playground_sha256=proof['dll_sha256'],

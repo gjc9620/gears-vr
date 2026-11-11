@@ -1,0 +1,28 @@
+--- a/tools/playground/weapon_hammerburst_runtime.inl
++++ b/tools/playground/weapon_hammerburst_runtime.inl
+@@ -376,6 +376,16 @@
+         feed.item_in_left_grip.position.x,feed.item_in_left_grip.position.y,feed.item_in_left_grip.position.z);fflush(log_file);}
+     feed_failure=0;return true;
+ }
++void observe_original_extraction(hand::Frame const& f,std::uint64_t item,
++    gears_weapon::FeedSample const& sample,std::int64_t gap,double depth,double lateral,double aligned) noexcept {
++    const bool accepted=extraction.observe(sample,feed); // Exact original call, once.
++    static unsigned rows{};
++    if(log_file&&rows<32){++rows;
++        fwprintf(log_file,L"hammerburst_extraction_observed frame=%llu sequence=%llu item=%llu accepted=%u complete=%u gap_ns=%lld depth=%.9g lateral=%.9g aligned=%.9g sync_ns=%lld\n",
++            f.key.frame,f.controllers.sequence,item,unsigned(accepted),unsigned(extraction.complete()),gap,
++            depth,lateral,aligned,f.controllers.sync_ns);fflush(log_file);
++    }
++}
+ gears_weapon::FeedResult insertion_step(hand::Frame const& f,std::uint64_t item) noexcept {
+     P left{};if(!local_hand(f,left)){insertion.reset();feed_history::clear();observe_feed_rejection(f,1);return gears_weapon::FeedResult::rejected;}
+     const auto sample_gap_ns=feed_ns?f.controllers.sync_ns-feed_ns:0;
+@@ -414,7 +424,7 @@
+             left.orientation.x,left.orientation.y,left.orientation.z,left.orientation.w,depth,lateral,aligned);fflush(log_file);
+         ++feed_logs;last_feed_position=left.position;last_feed_position_known=true;
+     }
+-    if(stage==Stage::old_magazine&&!extraction.complete())extraction.observe(sample,feed);
++    if(stage==Stage::old_magazine&&!extraction.complete())observe_original_extraction(f,item,sample,sample_gap_ns,depth,lateral,aligned);
+     if(!used_history)result=insertion.observe(sample,feed);
+     if(stage==Stage::new_magazine)feed_history::remember(sample);else feed_history::clear();
+     observe_feed_result(f,item,result,sample_gap_ns,rearmed,depth,lateral,aligned);return result;

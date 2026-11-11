@@ -1,0 +1,9 @@
+{
+  "exit_code": 0,
+  "wrapper_checks": 45,
+  "log_rows": 32,
+  "original_extraction_test_passed": true,
+  "game_started": false,
+  "source_sha256": "f53da10ab6a79e0e42de1eefd6ed0c435d9309d18b303f372c36962e796c2994",
+  "transcript": "observe-test.cpp\nExact extraction wrapper: 45 call/result checks, original continuous/invalid samples and32-row cap\nweapon_hammerburst_magazine_test.cpp\nHB magazine: continuous extraction and 10 invalidation cases passed\n"
+}

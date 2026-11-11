@@ -598,3 +598,8 @@ pose-gap-incumbent-r1实际core6+6轮耗弹6，42发后typed36/78。下一次fir
 新123129/core6一致射线通过，原卡扣1→4，随后真实松手触发cleanup474/stage4，因为extraction.complete为false。最后有移动记录深度67.246405mm，原日志只在位移超过10mm时记录，不能据此断言最终命令端点未到。清理前未捕获support withdrawal，新匣helper0条，不能把此失败归因于新修复。原提取器会在样本gap>100ms重置，但本轮缺少逐次observe接受/complete记录，下一步先窄加只读回执定位；不改阈值或原保护，不做不变重跑。
 
 operator1保留，stop/launcher/Native/PG/XR正常0，无强制终止和FG/CLOAK违规。359帧无capture错误/编码0，3页48组paired概览亲审，近脸遮挡/重影/白几何继续不接受。新匣原持有者修复仍仅20新增离线检查、原客户端检查及完整编译通过，尚未实练。全13项目标保留。
+
+
+## 2026-11-11 原匣抽出检查只读诊断
+
+extraction-observe-r1仅把原条件中的extraction.observe一次调用包装为最多32条原结果记录，包含accepted/complete/gap/depth/lateral/aligned/原sync；不改变几何、100ms间隔、授权、轨迹和库存。45次实际wrapper与原kernel结果一致/调用一次/日志cap检查、原连续抽出和10类失效测试通过，完整PG编译通过，Native/XR未重编。下一次短loaded路径只定位47240的原匣抽出失败，不作为完整空仓验收。

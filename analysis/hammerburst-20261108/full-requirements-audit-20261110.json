@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "scope": "full HB objective; no scope reduction",
-  "current_candidate": "pose-gap-incumbent-r1 PGb9296d6a6859673e461335efc7caded2bbf1375403d5a667f5d77d6ade096f2d compiled; actual Client/owner20 new cases pass, not game verified",
+  "current_candidate": "extraction-observe-r1 compiled; bounded32-row original extraction diagnostics,45 wrapper checks and original10 invalidation cases pass; not game verified",
   "prepared_sha256": "20d8a6cd15b89c89b938aa201086c9d590251a2be74b2bd6d4fa72bd47d27824",
   "requirements": [
     {
@@ -422,7 +422,7 @@
   ],
   "completion_proven": false,
   "goal_active": true,
-  "immediate_next": "Add bounded observation around original extraction.observe return/complete/sample gap, preserving original call once and all limits; no unchanged runtime rerun. Determine actual incomplete-extraction cause, then reach new-mag incumbent branch and full empty goal.",
+  "immediate_next": "Short loaded replacement with original extraction observe result; pinpoint incomplete witness without altering physical/time gates. New-mag pose-gap repair and full empty remain unaccepted.",
   "historical_evidence_does_not_certify_current_PG": true,
   "candidate_runtime_status": "pose-gap-incumbent-r1 actual464 failed at original burst source expiry; actual47240 core6/latch1->4, real release canceled incomplete original extraction. Neither reached new-magazine helper; fix remains offline20-case/build only.",
   "previous_recorded_candidate": {
