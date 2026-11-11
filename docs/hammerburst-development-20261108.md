@@ -737,3 +737,8 @@ PG325200c3/Nativeb9ab7a82正常资源等待80.547s后单次运行。UP156/3406 p
 ## 2026-11-11 更正44240默认Outcome与延迟取枪读取
 
 撤回凭163 baseline/slot4/target0认定装备model掉持有的推论。Runtime返回{input_status}本就带默认slot4/target0，与model.held独立；suspend清当前binding及输入基线，不清model，下一fresh tick可严格重新认证并发布后仍返回baseline。实际Runtime+model新增复现pending→suspend→same-event held完成→再次suspend→baseline默认outcome同时modelheld+binding已发布；原suite合129cases/1656checks通过。Body query失败out清零也不证明modelheld=false。测试读取仅允许先观察本次真实pending事件，再同cookie/event/press/target和更新frame/sequence/sync的held baseline/quiet延迟完成；无anchor/错事件/错cookie/错计数/旧源/真实中断拒绝，不重按、不改生产代码。原17+新13 driver checks及实际44240原始rows重放均通过。尚不称44240稳定接触验收或早续发实际成功；下一轮须真正到达原续发分支。13项保留。
+
+
+## 2026-11-11 实际20924：完整普通空仓换弹与回枪六发通过
+
+PG325200c3/Nativeb9ab7a82原完整流程单局通过：取枪core6、12组drain6共78条一致射线，空仓0/78真实按下禁射；开盖1→2→3→4、原旧mag提取、新mag取放座入、合盖完成78/0；回枪实际6条射线后typed72/0。总84一致射线，84已用+72剩余=156初始总量；test gameplay_setters=false，reserve_exhaustion_attempted=false，不算零弹药耗尽测试。早续发路径实际12个不同已捕获原event，每条count+1/pending0，受logger cap12，不能称总共只走12次或其他未留存事件都走它；service/latch rejection0，Nativeinputloss0/Gate150 age-only均保留逻辑登记。当前取枪direct_event，修正延迟held读取没有实际命中；旧缺4629/锁失败/首发变体不宣称全修复。3次原latch history接受112ms分段，没有history-origin失败/提取gap修复因果证明。正常清理全0无forced；756帧错误空/编码0，3页48对全时段亲阅，枪经常低于/离开视野、手臂手重影或分离、84.8s近眼换弹与部分白几何仍不合格。可见暂停卡后回world仅本轮观察，不扩成全中断或物理验收。下一步当前fixture四态护木/原弹匣/完美取消等剩余要求与真实接触，不能再无变化重复完整流程；13项全部保留/public未变。

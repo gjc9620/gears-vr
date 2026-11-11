@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "scope": "full HB objective; no scope reduction",
-  "current_candidate": "PG325200c3 early released refire compiled427checks, no live branch proof yet. Corrected44240 baseline slot4target0 model-drop inference: actualRuntime129/1656 proves possible held model/republished binding with baseline; original-action delayed completion reader old17/new13 and actual44240 replay pass. Production unchanged; all13 remain.",
+  "current_candidate": "PG325200c3/Nativeb9ab7a82 actual20924 full ordinary empty reload+return PASS;84consistent rays/0-78veto/78-0reload/72-0return. Actual earlier released refire12events count+1/pending0. Single game only; other13 scope remains, fitting unaccepted.",
   "prepared_sha256": "20d8a6cd15b89c89b938aa201086c9d590251a2be74b2bd6d4fa72bd47d27824",
   "requirements": [
     {
@@ -75,8 +75,8 @@
     {
       "id": "finite_fire",
       "requirement": "\u5355\u624b/\u53cc\u624b\u7784\u51c6\u4e0e\u539f\u7248\u6709\u9650\u516d\u8fde\u53d1",
-      "status": "current_two_original6_bursts_released_tail_confirmed_partial",
-      "limit": "Actual22992 two real original6 bursts; both actualUP handoffs revalidate same pending event then tail.12 consistent rays; full two-hand/continuous-load/empty/zero-reserve acceptance remains open.",
+      "status": "current_14_original_six_bursts_84_consistent_rays_single_game",
+      "limit": "Actual20924 core6+12drain6+return6=84, matching typed counts;12 early released-refire events count+1. Does not establish indefinite hold/reacquisition/all source-loss/zero-reserve cases.",
       "evidence": [
         {
           "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-13712-first-failure-analysis.json",
@@ -169,6 +169,10 @@
         {
           "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-58164-first-failure-analysis.json",
           "sha256": "0ad7e05ebd1e1e6bb3c47cca2591f16190a1359ff620721b37bc074609640fca"
+        },
+        {
+          "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-20924-full-empty-reload.json",
+          "sha256": "be5fd69498f9147cfb96e1a9a4e234793a039e72ca938f98bdca483e7d73a955"
         }
       ]
     },
@@ -249,14 +253,18 @@
         {
           "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-50828-focused-result.json",
           "sha256": "20219257795befa91694f268819ec3d1c42cd4dfc6d994e625f8f3e4c0039378"
+        },
+        {
+          "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-20924-full-empty-reload.json",
+          "sha256": "be5fd69498f9147cfb96e1a9a4e234793a039e72ca938f98bdca483e7d73a955"
         }
       ]
     },
     {
       "id": "empty_reload",
       "requirement": "\u7a7a\u4ed3\u540c\u673a\u68b0\u6d41\u7a0b\u3001\u539f\u81ea\u52a8\u88c5\u586b\u88ab\u63a5\u7ba1\u3001\u5b8c\u6574\u56de\u5c04",
-      "status": "current_empty_veto_and_reload78R0_observed_return_fire_missing",
-      "limit": "36524 actual78 consistent rays, typed0/78, no-shot/veto and replacement close78/0. ReturnDOWN not sent under test budget; final72/0 absent, wholeflow not passed.",
+      "status": "current_full_ordinary_empty_reload_and_return_fire_passed_single_game",
+      "limit": "Actual20924 complete0/78 empty veto->78/0 reload->72/0 after6rays. Single game only; perfect/cancel/retainedoriginal/zero-reserve exhaustion and visual/headset remain separate.",
       "evidence": [
         {
           "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-13712-first-failure-analysis.json",
@@ -293,6 +301,10 @@
         {
           "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-58164-first-failure-analysis.json",
           "sha256": "0ad7e05ebd1e1e6bb3c47cca2591f16190a1359ff620721b37bc074609640fca"
+        },
+        {
+          "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-20924-full-empty-reload.json",
+          "sha256": "be5fd69498f9147cfb96e1a9a4e234793a039e72ca938f98bdca483e7d73a955"
         }
       ]
     },
@@ -519,7 +531,7 @@
   "latest_service_first_failure": "runtime-3112-first-failure-analysis.json",
   "latest_startup_failure": "runtime-49732-startup-failure.json",
   "latest_runtime_failure": "runtime-44240-first-failure-analysis.json",
-  "latest_runtime_result": "runtime-44240-first-failure-analysis.json",
+  "latest_runtime_result": "runtime-20924-full-empty-reload.json",
   "latest_focused_pass": "runtime-50828-focused-result.json",
   "visual_audit_recording_repair": "Corrected finalizer wrong ID fivepartfitting\u2192part_fitting, attached reviewed22992 evidence also to guides, asserted target IDs exist. No requirement/score/acceptance change and no overwrite of current052600 runtime blocker.",
   "resource_release_evidence": {
@@ -611,5 +623,6 @@
     "original_limit_ns": 250000000,
     "native_input_loss": 0
   },
-  "latest_phase_cost_evidence": "runtime-21052-first-failure-analysis.json"
+  "latest_phase_cost_evidence": "runtime-21052-first-failure-analysis.json",
+  "latest_full_empty_reload_pass": "runtime-20924-full-empty-reload.json"
 }

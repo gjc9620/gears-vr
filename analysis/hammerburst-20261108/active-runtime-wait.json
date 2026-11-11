@@ -1,13 +1,13 @@
 {
-  "source_checkpoint": "e5fb69e6",
-  "next": "One full recheck after exact original-action delayed pickup completion reader repair; original single Grip and all guards remain.",
+  "source_checkpoint": "6eec89be",
+  "next": "Preserve full pass; no unchanged full-flow rerun. Validate requested foregrip4 states in current private fixture and current source, then retained original magazine/perfect-cancel/remaining interruptions/zero-reserve as separate unmet requirements. Inspect actual hand/weapon/part correspondence and visible contact; current images fail fit. Keep original historical failures and public baseline.",
   "candidate": "early-released-refire-r1",
   "requirements_complete": false,
   "native_candidate": "native-mutex-r1",
-  "runner_session_id": 22606,
+  "runner_session_id": 31958,
   "terminal": true,
   "all13_requirements_retained": true,
-  "instance": "hb-cloak-1111-162406",
-  "runner_last_poll": "22606 terminal1; normal stop/launcher/Native/PG/XR0; owned game+children gone; noforced;encode0",
-  "game_pid": 44240
+  "instance": "hb-cloak-1111-163604",
+  "runner_last_poll": "31958 terminal0; stop/launcher/Native/PG/XR normal0; owned game+children gone; noforced;encode0",
+  "game_pid": 20924
 }
