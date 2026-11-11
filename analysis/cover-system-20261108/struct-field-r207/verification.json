@@ -1,0 +1,19 @@
+{
+  "result": "CoverStructField checks=12 failures=0 actual reflection helpers with synthetic registry; no native authorization\r\n",
+  "sources": {
+    "tools/native-capture/cover_struct_field_live.inl": "9df7c8a47dce72688126fc6eaf90df2e82b0518b3fb255803125d99affd7834c",
+    "tools/native-capture/cover_struct_field_live_test.cpp": "8c712f9c751873b71ea547aa24151f58d04b4cd1ddaa40204ab3acfea98ecde2",
+    "tools/native-capture/weapon_hand_scene_binding.inl": "60a461445d8474f53048c560461c268ef1132b3ac5f46cb5645a609b6db92038"
+  },
+  "implemented": "Cover-scoped ScriptStruct exact field selection with full sibling-chain retention, shared registry identity/current proof helpers",
+  "requires": "Caller current metadata/GT and binding lock; full native BodySetup/field schema/C0 authority remains outside this selector",
+  "limits": [
+    "bounded256 members, reject overflow/cycle not truncation",
+    "shared Proof bounded128 identities unchanged",
+    "nested Matrix/Plane and full primitive layout certification still to connect",
+    "not runtime actor/source/physics permission"
+  ],
+  "game_started": false,
+  "process_read": false,
+  "engineering_percent": 25
+}

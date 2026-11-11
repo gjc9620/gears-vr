@@ -2897,3 +2897,9 @@ query34.2674ms，code source，engine/source_guard/current；Owner53次context/s
 uniform receiver scale在任何读前验证，空数组也不能绕过来源数值约束；空数组仍经过全部guard。初版7项、补齐三类型及空数组/三guard边界后23项检查0失败，全部synthetic host memory，没有真实进程内存读取、hook或游戏。guard中止、payload变化和容量失败均保持旧输出。
 
 实际current反射字段/完整aggregate/active PhysX对应、scale生产者及同C0/世界闭合仍需接入，不能将此读取传输层称为已取得真实库存。源码/codec来源SHA/回执authored-array-r206，无完整Native构建/安装，完整CV/AC/头显未完成，工程25%。
+
+## r207：形状ScriptStruct字段证明入口已补，不改共享Class选择器（2026-11-12）
+
+实际共享binding::property只接受Class；authored形状/Matrix/Plane是ScriptStruct，不能直接拿Class选择器冒充认证。新增cover_struct_field_live.inl，在当前metadata及caller持有GT/锁边界内复用原certified/kind/source_field/current，选择准确名称/类型/维数/宽度/offset及可选ScriptStruct引用，完整扫描并保留所有成员身份和链，包括选中字段之后的尾链，闭合后才发布Property。ScriptStruct extent必须精确相同，不走Class继承降级；环/超过256成员/共享Proof容量满均拒绝，不截断。
+
+实际身份/Proof helper配synthetic注册表12检查0失败，覆盖正常字段、尾链在选中后变化使proof失效、width/offset/extent/环/dimension/owner错误及输出保持。没有真实进程读取、Native安装/游戏。完整primitive嵌套TM/Matrix/Plane、ArrayProperty inner及BodySetup/current C0关联尚未接，不能把单字段proof当运行许可。源码/依赖/回执struct-field-r207；后续用此接口合成完整schema后接r206传输层，不重复解析Python或改其他武器共享接口。完整CV/AC/头显未完成，工程25%。
