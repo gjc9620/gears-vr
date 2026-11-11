@@ -165,6 +165,10 @@
         {
           "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-50828-focused-result.json",
           "sha256": "20219257795befa91694f268819ec3d1c42cd4dfc6d994e625f8f3e4c0039378"
+        },
+        {
+          "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-58164-first-failure-analysis.json",
+          "sha256": "0ad7e05ebd1e1e6bb3c47cca2591f16190a1359ff620721b37bc074609640fca"
         }
       ]
     },
@@ -251,8 +255,8 @@
     {
       "id": "empty_reload",
       "requirement": "空仓同机械流程、原自动装填被接管、完整回射",
-      "status": "current_full_drain_veto_pass_seating_source_lease_failure",
-      "limit": "Actual22048 78 consistent rays/typed0R78 and empty veto passed; original reload1->6, no seat/close/return. Token2 consumer source expiry698 then lease loss708/709. Upstream cause unproven; historical56252 finaltyped72/0 missing.",
+      "status": "current_full_attempt_external_input_loss_before_empty",
+      "limit": "Actual58164 current5bce/6ff stopped after55consistent rays/lastcompletedtyped24R78; no empty/reload. Prior22048 drain78/veto passed butseating failed; old56252 final72R0 missing. Loaded50828 is not full-empty acceptance.",
       "evidence": [
         {
           "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-13712-first-failure-analysis.json",
@@ -285,6 +289,10 @@
         {
           "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-464-first-failure-analysis.json",
           "sha256": "46231207897dc0a543821cfe5f476a2122b132683d1429f0d1ec3eb4f0133229"
+        },
+        {
+          "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-58164-first-failure-analysis.json",
+          "sha256": "0ad7e05ebd1e1e6bb3c47cca2591f16190a1359ff620721b37bc074609640fca"
         }
       ]
     },
@@ -404,6 +412,10 @@
         {
           "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-50828-focused-result.json",
           "sha256": "20219257795befa91694f268819ec3d1c42cd4dfc6d994e625f8f3e4c0039378"
+        },
+        {
+          "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-58164-first-failure-analysis.json",
+          "sha256": "0ad7e05ebd1e1e6bb3c47cca2591f16190a1359ff620721b37bc074609640fca"
         }
       ]
     },
@@ -472,15 +484,19 @@
         {
           "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-50828-focused-result.json",
           "sha256": "20219257795befa91694f268819ec3d1c42cd4dfc6d994e625f8f3e4c0039378"
+        },
+        {
+          "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-58164-first-failure-analysis.json",
+          "sha256": "0ad7e05ebd1e1e6bb3c47cca2591f16190a1359ff620721b37bc074609640fca"
         }
       ]
     }
   ],
   "completion_proven": false,
   "goal_active": true,
-  "immediate_next": "Fresh FULL empty using same identified PG5bce/Native6ff; actual78 drain/veto/replacement78R0/close/return6 finaltyped72R0. No short-pass substitution for full13 goal.",
+  "immediate_next": "Add passive classification at exact frozen capture stereo bridge-read/gate rejection sites, preserving original sample_time/status/continuity. Distinguish unavailable/true loss/age-only before policy repair. No unchanged full rerun; all13 retained.",
   "historical_evidence_does_not_certify_current_PG": true,
-  "candidate_runtime_status": "latch-seek-gap-r1/Native6ff actual50828 short loaded replacement+return6/counts passed; neither new repair branch exercised. All own cleanup0.",
+  "candidate_runtime_status": "Current5bce/6ff short loaded50828 passed, full58164 reached55 consistent rays then external Native input_lost/service3 canceled beforeempty. Normal cleanup. Neither seek-gap nor newmag gap branch exercised.",
   "previous_recorded_candidate": {
     "name": "hammerburst-prepared-20261110-unheld-input-r1",
     "prepared_sha256": "76a2ae8cc56e4165b77ca5d17a9e6469ff66323e917be5a8b46da44df4f0bb58"
@@ -502,8 +518,8 @@
   "restore_verifier_status": "Optional --hammerburst-park-restore input action hook integrated into private reload adapter; five synthetic action/receipt regressions passed. Actual park/redraw/new-grant/native-resume, typed conservation, UI/reward and complete return-fire require game evidence.",
   "latest_service_first_failure": "runtime-3112-first-failure-analysis.json",
   "latest_startup_failure": "runtime-49732-startup-failure.json",
-  "latest_runtime_failure": "runtime-22812-first-failure-analysis.json",
-  "latest_runtime_result": "runtime-50828-focused-result.json",
+  "latest_runtime_failure": "runtime-58164-first-failure-analysis.json",
+  "latest_runtime_result": "runtime-58164-first-failure-analysis.json",
   "latest_focused_pass": "runtime-50828-focused-result.json",
   "visual_audit_recording_repair": "Corrected finalizer wrong ID fivepartfitting→part_fitting, attached reviewed22992 evidence also to guides, asserted target IDs exist. No requirement/score/acceptance change and no overwrite of current052600 runtime blocker.",
   "resource_release_evidence": {

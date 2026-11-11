@@ -633,3 +633,10 @@ Native6ff只读分类与PG extraction-observe-r1实际运行，6条一致射线�
 PG5bce0862/Native6ff41044，新132753实际肩取/core6、原卡扣打开、原匣抽出、新匣获取/入座、关扣、return6及pause/B通过。typed72/78→78/72→72/72，12条有效且来源一致射线。原抽出10次observe全部接受，最后49.0108508mm/complete1，最后gap72.789ms。seek_unavailable及pose_gap_incumbent均0，不声称新修复分支已实练或先前失效已修好。全空仓/原匣保留/四态/双手/完美与取消/中断/视觉/头显仍待验证。
 
 operator/stop/launcher/Native/PG/XR均0，无FG/CLOAK违规，无强制终止。562帧无capture错误/编码0，3页48组paired概览亲审，近脸遮挡/重影/手分离/引导小字继续未接受；机械通过不代表视觉通过。下一步当前同构成完整空仓，不重复短路径取代全目标。
+
+
+## 2026-11-11 game58164：完整空仓尝试55发，外部Native输入失效
+
+当前PG5bce/Native6ff完整路径core6+8轮6=54发，最后完整typed24/78；下一first55后service3/Native input_lost257取消。55条有效且来源一致射线，缺失55发后的最终typed，未空仓/未换弹。Native累计47，保留16项全stage4/external/time0，shared_hand_rejected0；源码外部路径指向capture.cpp3358的stereo bridge读取失败或3366的gate拒绝。不能从这份有界无时钟记录推断具体gate类别，不能一概称过期姿态并跳过真失效。下一步在这两个原分支窄记原status/sample_time/continuity，不变更原Gate判断，不做不变重跑。
+
+短loaded50828通过独立保留，不能替代本次完整失败。operator1，stop/launcher/Native/PG/XR正常0，无FG/CLOAK违规、无强制终止。264帧无capture错误/编码0，3页48组概览亲审，视觉仍未接受。新增seek-gap/newmag分支本轮均未练到，完整13项与头显接受继续未完成。

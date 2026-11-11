@@ -1,15 +1,14 @@
 {
-  "instance": "hb-cloak-1111-125354",
-  "runner_session_id": 12357,
+  "instance": "hb-cloak-1111-133258",
+  "runner_session_id": 20457,
   "terminal": true,
-  "observed_ns": 156335223035800,
-  "runner_last_poll": "12357 terminal1; all own runtime cleanup normal0",
-  "candidate": "extraction-observe-r1",
-  "dll_sha256": "b9296d6a6859673e461335efc7caded2bbf1375403d5a667f5d77d6ade096f2d",
-  "source_checkpoint": "0a4d1f3a",
-  "all13_requirements_retained": true,
+  "observed_ns": 160029737609500,
+  "runner_last_poll": "20457 terminal1; operator1 and all own runtime cleanup normal0; no live owned worker retained",
+  "candidate": "latch-seek-gap-r1",
+  "native_candidate": "native-input-loss-r1",
+  "source_checkpoint": "72e4964b",
   "requirements_complete": false,
-  "next": "Inspect actual frozen806dcbd6 broker active_now input_lost rejection stage/timestamp; add bounded passive classification to exact frozen source if existing records cannot distinguish prepare vscommit. Preserve Native input invalidation and original event deadlines; do not rerun unchanged or promote offline WAIT experiment.",
-  "game_pid": 43944,
-  "test_mode": "Short loaded replacement reaches new-magazine repair; full empty goal retained"
+  "all13_requirements_retained": true,
+  "next": "Add passive classification at exact frozen capture stereo bridge-read/gate rejection sites, preserving original sample_time/status/continuity. Distinguish unavailable/true loss/age-only before policy repair. No unchanged full rerun; all13 retained.",
+  "game_pid": 58164
 }
