@@ -1,0 +1,32 @@
+{
+  "results": [
+    "BoxQueryRounding checks=27140 failures=0 parameter enclosure only; no Native geometry proof\r\n",
+    "BodyCatalogC0 checks=269 failures=0 retained C0 geometry only; no current world/permission\r\n",
+    "PrimitiveQuery checks=2134 failures=0 bounded owned conversion only; no query/permission\r\n",
+    "cover_physics_query_live: 110 checks, 0 failures; dispatch/module are Host seams, no original call\r\nBodyQueryObserver checks=122 failures=0 actual Session; Host original dispatch; raw only\r\n"
+  ],
+  "source_sha256": {
+    "tools/native-capture/cover_primitive_query.h": "ebb65bf0bfd31b2112a84d6dd21bbb6d4d866a4c30e14e8d44d8d820c78e1ec3",
+    "tools/native-capture/cover_box_query_rounding_test.cpp": "c1bf33b2198ae1ce913643c7bc34e137d7d500bd3ec39d0f1244bdf4da922349",
+    "tools/native-capture/cover_body_query_catalog.h": "72e0ddf88b2e7ca594d34bbbfe72dfd9ac9aafbf7f956a98c694ba8effa262e0",
+    "tools/native-capture/cover_body_query_catalog_fixture_test.cpp": "780fb8b14c1810e0fe7efabc82858a492bdac9a1294851c7581726dd1b1898ff"
+  },
+  "fixture_sha256": {
+    "C0-component.bin": "ceb2c34e36e442a0cceafde5754c0f320e8fc6ad270d6ee25cb4314731515f09",
+    "C0-local.bin": "4ece225a74b56a5439fca58d72cf4e7332da731455085cb1747a4b8adec68ef2",
+    "C0-metadata.bin": "7c2d16269661af9963535e24261a9c29af04f29212f5d9b4d6c5c2124ccb7357",
+    "C0-space.bin": "a016217704965ad73440b204f349b9de806240d996c3dba6395f1b8559215d9a",
+    "calibrated-neutral.bin": "60660cb5a915f94a509771607ef3f3cb7d9ae5c8d773bb1fc8a6f75528b02dcd",
+    "fitting-goal.bin": "a97f99d9b683349739847658183f7d4fd3fe7ab89c010fd2422eb77c1d756c3f",
+    "pawn-location.bin": "df14dbccdddeac0580c2f7d8433bb5518bfe4504183133ef63f7289b0ff90e39",
+    "reference.bin": "fef334cf78e72a23c1bfd289780652feb12816ba508b92fdc0e052b9c61ed5ce",
+    "source-CT0.bin": "9c0232284ff29c720815459f0fea894c8dcf1429039f45cb8f160aa6ad904d16"
+  },
+  "box_bound": "Interval-normalized original quaternion axes A, rounded float matrix B with positive determinant. For each row of inverse(B) and column of B (transpose projection), bound abs(row dot(center-center_float)) + sum_j half_j*abs(row dot A_j). Float half is rounded upward to max bound and original half, limited per-axis. Both representations enclose the parameter-space box.",
+  "native_limits": "No proof of original native internal OBB interpretation/renormalization; not an active geometry/world/path or movement permit.",
+  "fixture_scope": "Retained actual C0/reference frame; 53 SYNTHETIC authored shapes on eight mapped body bones, not recorded native inventory.",
+  "query_dispatch": "Actual Session tested with Host original dispatch only",
+  "game_started": false,
+  "full_native_built": false,
+  "engineering_percent": 25
+}
