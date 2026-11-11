@@ -2865,3 +2865,11 @@ query34.2674ms，code source，engine/source_guard/current；Owner53次context/s
 两body各三类型共六形状的正常转换，以及计数截短、末项序号错、末项骨错、末项precision、声明convex、workspace/output alias共14检查0失败；编译/运行回执在body-query-catalog-r202。此处完整仅指所提供目录，尚未证明实时native shape库存真实完整；r201精确float限制仍在，保守外扩和一般旋转仍未完成。未调用原场景查询、未授世界/路径/占用/身体位移许可，无游戏/完整Native构建。
 
 下一层接原query逐项消费和source/world闭合，不能将此目录当作可移动标志；同姿态平移与关节姿态变化的路径仍须分别正确认证。全CV01–24/AC01–22/头显继续，工程25%。
+
+## r203：目录逐形状重叠观察接入实际Session，整批结果原子发布（2026-11-12）
+
+新增cover_body_query_observer.h，提供目录/mapping/inventory全预检后，球/盒/胶囊分别进入现有Session.overlap；保存逐项raw_hit，不标净空或移动许可。批次前后及逐项前后均Owner校验，另保留catalog/mapping/inventory副本核对，防止回调中改变目录后发布部分结果。任一末项、查询、来源或闭合失败均保持公共输出；大scratch由caller持有，不持私有锁跨引擎调用。
+
+实际Session/typed reader夹具只替代原模块分派：原110检查通过，新增后合计122检查0失败，覆盖三种形状、末项预检失败零query、中途各位置来源失败、查询回调改目录及输出保持。首次include顺序引起Host global base遮蔽生产头的/WX错误，改为先include生产头后fixture；没有改生产数学，日志保留。
+
+当前原完整命中收集只支持box/capsule sweep，完整重叠枚举仅capsule；不能把sphere伪装成未经认证的退化capsule。故本层显式为三形状raw重叠观察，不是路径查询/完整自体过滤/世界覆盖/终点占用许可，即使全miss也不签安全。还须真实库存源、一般旋转/保守精度、路径及当前世界闭合，未安装capture流程。源码/回执body-query-observer-r203，无原调用/游戏/完整Native构建，完整CV/AC和头显仍待完成，工程25%。

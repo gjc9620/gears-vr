@@ -1,0 +1,27 @@
+{
+  "result": "cover_physics_query_live: 110 checks, 0 failures; dispatch/module are Host seams, no original call\r\nBodyQueryObserver checks=122 failures=0 actual Session; Host original dispatch; raw only\r\n",
+  "source_sha256": {
+    "tools/native-capture/cover_body_query_observer.h": "0887b0d828b3dd917955228a382079da95caa839181758112a26583ed243d912",
+    "tools/native-capture/cover_body_query_observer_test.cpp": "324886472c01cffc7fd0b546a3be668b81d8b143fb147798e0c78c413648b8f5"
+  },
+  "actual_production": "Session overlap for Sphere/Box/Capsule plus typed source readers",
+  "host_seams": "original module/dispatch only; no game",
+  "checks": [
+    "all three shapes raw results",
+    "invalid final row rejected before first query",
+    "each query-position source failure preserves output",
+    "catalog mutation during query invalidates batch",
+    "input snapshot closure for catalog/mapping/inventory"
+  ],
+  "first_build_failure": "Host fixture global base shadowed names in later included production headers under /WX; fixed header include order only, preserved log",
+  "limits": [
+    "raw bool overlaps may include self",
+    "all misses are not coverage/safety proof",
+    "not sweep/path",
+    "not full active Native inventory",
+    "not installed into capture pipeline"
+  ],
+  "game_started": false,
+  "original_calls": false,
+  "engineering_percent": 25
+}

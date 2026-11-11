@@ -1,0 +1,6 @@
+cover_body_query_observer_test.cpp
+J:\codexWorktree\gearsVr\tools\native-capture\../vr-common/pose_math.h(77): error C2220: 以下警告被视为错误
+J:\codexWorktree\gearsVr\tools\native-capture\../vr-common/pose_math.h(77): warning C4459: “base”的声明隐藏了全局声明
+J:\codexWorktree\gearsVr\tools\native-capture\weapon_hand_scene_binding_test.cpp(18): note: 参见“base”的声明
+J:\codexWorktree\gearsVr\tools\native-capture\../vr-common/hand_two_bone_pose.h(223): warning C4459: “base”的声明隐藏了全局声明
+J:\codexWorktree\gearsVr\tools\native-capture\weapon_hand_scene_binding_test.cpp(18): note: 参见“base”的声明
