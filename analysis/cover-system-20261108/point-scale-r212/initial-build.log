@@ -1,0 +1,40 @@
+cover_point_scale_live_test.cpp
+J:\codexWorktree\gearsVr\tools\native-capture\cover_point_scale_live_test.cpp(27): error C2220: 以下警告被视为错误
+J:\codexWorktree\gearsVr\tools\native-capture\cover_point_scale_live_test.cpp(27): warning C4002: 类函数宏的调用“C”参数过多
+J:\codexWorktree\gearsVr\tools\native-capture\cover_point_scale_live_test.cpp(27): error C2059: 语法错误:“)”
+J:\codexWorktree\gearsVr\tools\native-capture\cover_point_scale_live_test.cpp(27): error C2143: 语法错误: 缺少“;”(在“{”的前面)
+J:\codexWorktree\gearsVr\tools\native-capture\cover_point_scale_live_test.cpp(28): error C2065: “payload”: 未声明的标识符
+J:\codexWorktree\gearsVr\tools\native-capture\cover_point_scale_live_test.cpp(28): error C2059: 语法错误:“)”
+J:\codexWorktree\gearsVr\tools\native-capture\cover_point_scale_live_test.cpp(29): error C2143: 语法错误: 缺少“;”(在“{”的前面)
+J:\codexWorktree\gearsVr\tools\native-capture\cover_point_scale_live_test.cpp(29): error C2059: 语法错误:“)”
+J:\codexWorktree\gearsVr\tools\native-capture\cover_point_scale_live_test.cpp(29): error C2059: 语法错误:“}”
+J:\codexWorktree\gearsVr\tools\native-capture\cover_point_scale_live_test.cpp(30): error C2065: “dims”: 未声明的标识符
+J:\codexWorktree\gearsVr\tools\native-capture\cover_point_scale_live_test.cpp(30): error C2059: 语法错误:“)”
+J:\codexWorktree\gearsVr\tools\native-capture\cover_point_scale_live_test.cpp(30): error C2947: 应由“>”终止 模板参数列表，却找到“<”
+J:\codexWorktree\gearsVr\tools\native-capture\cover_point_scale_live_test.cpp(30): error C2628: “”后面接“void”是非法的(是否忘记了“;”?)
+J:\codexWorktree\gearsVr\tools\native-capture\cover_point_scale_live_test.cpp(27): error C2062: 意外的类型“<错误>” 
+J:\codexWorktree\gearsVr\tools\native-capture\cover_point_scale_live_test.cpp(37): error C2065: “payload”: 未声明的标识符
+J:\codexWorktree\gearsVr\tools\native-capture\cover_point_scale_live_test.cpp(48): warning C4002: 类函数宏的调用“C”参数过多
+J:\codexWorktree\gearsVr\tools\native-capture\cover_point_scale_live_test.cpp(48): error C2059: 语法错误:“)”
+J:\codexWorktree\gearsVr\tools\native-capture\cover_point_scale_live_test.cpp(48): error C2143: 语法错误: 缺少“;”(在“{”的前面)
+J:\codexWorktree\gearsVr\tools\native-capture\cover_point_scale_live_test.cpp(50): error C2143: 语法错误: 缺少“;”(在“}”的前面)
+J:\codexWorktree\gearsVr\tools\native-capture\cover_point_scale_live_test.cpp(52): error C2059: 语法错误:“)”
+J:\codexWorktree\gearsVr\tools\native-capture\cover_point_scale_live_test.cpp(52): error C2059: 语法错误:“)”
+J:\codexWorktree\gearsVr\tools\native-capture\cover_point_scale_live_test.cpp(53): error C2143: 语法错误: 缺少“;”(在“{”的前面)
+J:\codexWorktree\gearsVr\tools\native-capture\cover_point_scale_live_test.cpp(53): warning C4002: 类函数宏的调用“C”参数过多
+J:\codexWorktree\gearsVr\tools\native-capture\cover_point_scale_live_test.cpp(53): error C2059: 语法错误:“)”
+J:\codexWorktree\gearsVr\tools\native-capture\cover_point_scale_live_test.cpp(54): error C2143: 语法错误: 缺少“;”(在“{”的前面)
+J:\codexWorktree\gearsVr\tools\native-capture\cover_point_scale_live_test.cpp(54): warning C4002: 类函数宏的调用“C”参数过多
+J:\codexWorktree\gearsVr\tools\native-capture\cover_point_scale_live_test.cpp(54): error C2059: 语法错误:“)”
+J:\codexWorktree\gearsVr\tools\native-capture\cover_point_scale_live_test.cpp(55): error C2143: 语法错误: 缺少“;”(在“{”的前面)
+J:\codexWorktree\gearsVr\tools\native-capture\cover_point_scale_live_test.cpp(55): error C2059: 语法错误:“)”
+J:\codexWorktree\gearsVr\tools\native-capture\cover_point_scale_live_test.cpp(56): error C2143: 语法错误: 缺少“;”(在“}”的前面)
+J:\codexWorktree\gearsVr\tools\native-capture\cover_point_scale_live_test.cpp(57): error C2143: 语法错误: 缺少“;”(在“{”的前面)
+J:\codexWorktree\gearsVr\tools\native-capture\cover_point_scale_live_test.cpp(57): error C2947: 应由“>”终止 模板参数列表，却找到“<”
+J:\codexWorktree\gearsVr\tools\native-capture\cover_point_scale_live_test.cpp(57): error C2628: “”后面接“void”是非法的(是否忘记了“;”?)
+J:\codexWorktree\gearsVr\tools\native-capture\cover_point_scale_live_test.cpp(57): error C2947: 应由“>”终止 模板参数列表，却找到“>”
+J:\codexWorktree\gearsVr\tools\native-capture\cover_point_scale_live_test.cpp(57): error C2059: 语法错误:“)”
+J:\codexWorktree\gearsVr\tools\native-capture\cover_point_scale_live_test.cpp(57): error C2059: 语法错误:“)”
+J:\codexWorktree\gearsVr\tools\native-capture\cover_point_scale_live_test.cpp(58): error C2143: 语法错误: 缺少“;”(在“}”的前面)
+J:\codexWorktree\gearsVr\tools\native-capture\cover_point_scale_live_test.cpp(59): error C2143: 语法错误: 缺少“;”(在“}”的前面)
+J:\codexWorktree\gearsVr\tools\native-capture\cover_point_scale_live_test.cpp(59): fatal error C1004: 发现意外的文件尾

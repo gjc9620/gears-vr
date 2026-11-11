@@ -2939,3 +2939,15 @@ PhysicsAsset成员与body ordinal、原receiver scale、原consumer/stride代码
 首次编译全局同名遮蔽/有符号窄化修正；初版64夹具的name-entry区覆盖既有actor/class，导致roles采样失败及后续访问异常，日志保留。改用互不重叠的夹具区域并使初始采样失败立即中止后，最终219项通过；不能把夹具修复称为游戏修复。
 
 完整实时接入、原receiver scale/consumer stride代码证明、活跃PhysX形状对应和同C0世界闭合、全身体查询/事务仍待完成；无游戏/原函数调用/完整Native构建。源码与回执asset-setup-r211，完整CV/AC/头显仍未完成，工程25%。
+
+## r212：原组件point-query缩放生产者已接资产/形状读取链（2026-11-12）
+
+新增cover_point_scale_live.inl，以当前mesh认证Scale/Scale3D字段及原offset1e8/1ec，Owner ObjectProperty78及Actor引用；Owner存在时认证其DrawScale/DrawScale3D198/19c，不存在则不读其数值。两个Vector均认证ScriptStruct12及XYZ FloatProperty4/offset0/4/8，完整成员/身份/字段/值入Proof；复用r62 point_scale保持component scalar*axis、owner scalar*axis、owner product*component product的原float32分组。结果须与Source.receiver_scale精确相同且mesh与r211资产相同；所有raw guard共同闭合scale、membership、shape三Proof及caller typed guard。
+
+原collection-static/objects.tsv确认PrimitiveComponent.Scale/Scale3D与Actor.DrawScale/DrawScale3D不同，初版将component也写成DrawScale，最终验证前纠正并增加错名拒绝。原r62完整代码/consumer证据及该包索引SHA保存在point-scale-r212，未以常见字段名替代原包依据。此生产者是保留的组件point-query路径，不能当作active PhysX缩放认证。
+
+292检查0失败（含219）：三类以receiver6完整读取；payload中改component scalar、owner axis、Owner指针或Vector字段均拒绝并保持输出；错误offset/name/Vector extent、零/负/非有限拒绝。Owner缺失即使其scalar为NaN并禁止读取仍成功；非均匀缩放可记录来源值，但raw形状转换仍明确拒绝。
+
+扩展夹具首次模板逗号与C宏冲突修复；随后默认Windows测试栈溢出，原汇编证明嵌套suite main栈帧154296+414104+127336+126136+125288字节叠加，再加内部调用越界。将新cases放独立noinline函数，在原suite返回后调用，未提高栈上限，最终通过。夹具追加Actor字段初版覆盖原WorldInfo/Instigator头链导致guard拒绝，改为尾部追加并在构造完成后重新取fixture binding，未削弱生产guard。原失败/汇编栈帧摘录保留。
+
+尚未接完整实时库存/current C0世界闭合/原code分派认证及active PhysX对应，无游戏/原函数调用/完整Native构建；完整身体查询/事务、视图遮挡及全CV/AC/头显仍待完成，工程25%。

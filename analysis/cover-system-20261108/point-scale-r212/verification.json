@@ -1,0 +1,27 @@
+{
+  "result": "PrimitiveLayout checks=37 failures=0 actual reflection Proof; synthetic registry, no runtime authority\r\nArrayLayout checks=80 failures=0 reflection association only; synthetic registry\r\nBodySetup checks=135 failures=0 synthetic instances; no C0 permission\r\nasset kind=0 begin\r\nasset kind=1 begin\r\nasset kind=2 begin\r\nAssetSetup checks=219 failures=0 authored membership only; synthetic instances\r\nPointScale checks=292 failures=0 synthetic source; original route attestation remains external\r\n",
+  "sources": {
+    "tools/native-capture/cover_point_scale_live.inl": "694cd143dc7fdd54936e2671325d800175c019386f05b42bb3bfe6f931c70d8a",
+    "tools/native-capture/cover_point_scale_live_test.cpp": "60f7d173a54c29047c991f76edff1859b1a7ea050fa123c3ae3c2af64aba3079",
+    "tools/native-capture/cover_asset_setup_live_test.cpp": "de8d5a08677e57457a947d18dcd8ff0624ca7060d2db169bae40607f610d08ae"
+  },
+  "original_sha256": {
+    "analysis/cover-system-20261108/collection-static/objects.tsv": "cf331d8b9142183f6420d5d68ebfe55082f5d33340209645feebd06d50b7d719",
+    "analysis/cover-system-20261108/world-component-point-r62/component-route-evidence.json": "6c57091bc40b9b0df3ae91c46aacca463e0d208c7d5dc475567c028ffa82d6eb",
+    "analysis/cover-system-20261108/world-component-point-r62/0x1403a6c34-pseudocode.c": "d226c9f59bede63c4bf6d5b0b0f771206434d9bc00c0283ad4527d0ab4db12e8",
+    "tools/native-capture/cover_primitive_metrics.h": "f11c0d19e7efa3f84b1cda2c65c59772762a338075e7895463f4808d3e35bb0c"
+  },
+  "declarations": [
+    "27\tStructProperty\tStructProperty'Engine.Actor.DrawScale3D'",
+    "28\tFloatProperty\tFloatProperty'Engine.Actor.DrawScale'",
+    "989\tStructProperty\tStructProperty'Engine.PrimitiveComponent.Scale3D'",
+    "990\tFloatProperty\tFloatProperty'Engine.PrimitiveComponent.Scale'"
+  ],
+  "association": "Current mesh Scale/Scale3D exact reflected offsets1e8/1ec; Owner ObjectProperty78 -> Actor exact reference; optional owner DrawScale/DrawScale3D198/19c. Both vectors certify ScriptStruct Vector12 and X/Y/Z FloatProperty offsets0/4/8. Complete identity/field/value proofs close before publication.",
+  "bridge": "Original point_scale operation order, exact Source.receiver_scale equals producer result, same mesh as membership inventory; all raw capture guard boundaries include producer, asset membership, shape proofs and caller typed Source guard. Uniform-normal restriction retained at raw transport.",
+  "tests": "292checks0 includes prior219. All3 raw paths at receiver6; mid-payload component scalar/owner vector/owner pointer/Vector field mutation preserve output. Wrong offsets/name/vector extent, zero/negative/nonfinite reject. Null Owner leaves its denied/NaN scalar unread. Nonuniform measured but raw capture refuses.",
+  "corrections": "Initial test C macro rejected template comma; alias fixed. Nested prior suite call frames exhausted default Windows test stack: confirmed emitted main154296+prior414104+127336+126136+125288 frames; moved new cases into noinline function invoked after prior suites return, no stack-limit increase. Fixture initially overwrote Actor member head; append to existing tail and take fresh fixture binding. Initial draft conflated component with Actor names; original package index proves Scale/Scale3D vs DrawScale/DrawScale3D, corrected and wrong-name regression added before final validation.",
+  "remaining": "Only retained original component point-query producer. Current native code/dispatch attestation, live roles/C0 lifetime, complete raw inventory and active PhysX shape correspondence remain caller obligations. No game run/full Native build/movement permission.",
+  "game_started": false,
+  "engineering_percent": 25
+}

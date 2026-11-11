@@ -17,7 +17,10 @@ static void asset_fixture(unsigned kind,unsigned count=2){array_setup(kind);
   object(setup_members[n],1200+n,setup_cls,physics_asset,L"CurrentSetup",n);put(setup_list+n*8,setup_members[n]);
   put(setup_members[n]+0xb4,gears_cover_authored_array::g::names::Name{int(10+n),n});}
 }
-int main(){setvbuf(stdout,nullptr,_IONBF,0);if(PriorAssetBodyMain())return 1;
+#ifndef GEARS_ASSET_SETUP_TEST_MAIN
+#define GEARS_ASSET_SETUP_TEST_MAIN main
+#endif
+int GEARS_ASSET_SETUP_TEST_MAIN(){setvbuf(stdout,nullptr,_IONBF,0);if(PriorAssetBodyMain())return 1;
  arena=reinterpret_cast<uintptr_t>(VirtualAlloc(nullptr,saved_arena.size(),MEM_COMMIT|MEM_RESERVE,PAGE_READWRITE));if(!arena)return 99;
  namespace asset=cover_asset_setup_live;namespace a=gears_cover_authored_array;
  auto member_proof=std::make_unique<h::Proof>();auto shape_proof=std::make_unique<h::Proof>();
