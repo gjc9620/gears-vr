@@ -1,0 +1,273 @@
+{
+  "error": null,
+  "operator_exit": 0,
+  "start_exit": 0,
+  "normal_cleanup_verified": true,
+  "normal_cleanup_required": true,
+  "projection_frames": 248,
+  "projection_errors": [],
+  "remaining_owned": {},
+  "anchor_sources_unchanged": true,
+  "cloak_observations": {
+    "samples": 616,
+    "failures": []
+  },
+  "foreground_observations": {
+    "samples": 387,
+    "owned_activation": false
+  },
+  "forced_termination": false,
+  "identities": {
+    "game_identity": {
+      "pid": 9432,
+      "creation_time": 134388584827332491,
+      "image": "j:\\gearsvr\\gears.of.war.reloaded.v1.0.1.3816947-p2p\\gears of war reloaded\\binaries_x64\\gowde-steam.exe"
+    },
+    "owner_identity": {
+      "pid": 7228,
+      "creation_time": 134388584753967784,
+      "image": "c:\\users\\11\\.cache\\codex-runtimes\\codex-primary-runtime\\dependencies\\python\\python.exe"
+    },
+    "xr_identity": {
+      "pid": 51508,
+      "creation_time": 134388584896087768,
+      "image": "c:\\users\\11\\.codex\\worktrees\\6dof-single\\gearsvr\\tools\\openxr-probe\\build-cover-1111-r176-cloak-physics\\openxrposeprobe.exe"
+    },
+    "worker_identity": {
+      "pid": 11144,
+      "creation_time": 134388584753153990,
+      "image": "c:\\users\\11\\.cache\\codex-runtimes\\codex-primary-runtime\\dependencies\\python\\python.exe"
+    }
+  },
+  "exact_owned_processes_absent": true,
+  "runner_exit": 0,
+  "native_sha256": "1e037608fc9b3722f0bc80bd0afbeac1f4499d85033c69b1954fa337f8491dfb",
+  "same_C0_complete_query_key": true,
+  "query_elapsed_ns": 31614900,
+  "source_age_cause": {
+    "observed": true,
+    "entry": 14674320,
+    "compose": 23802,
+    "thread": 28816,
+    "stage": 0,
+    "verdict": 3,
+    "causes": 1,
+    "body_source_age": true,
+    "equipment_age": false
+  },
+  "source_age_observation": {
+    "observed": true,
+    "calls": [
+      79,
+      79
+    ],
+    "rows": [
+      {
+        "observed": 1,
+        "tick": 23801,
+        "world": 2310373632,
+        "pawn": 95229772032,
+        "scene": 386,
+        "stereo_sequence": 3611,
+        "controller_sequence": 3611,
+        "thread": 28816,
+        "verdict": 0,
+        "latched": 0,
+        "now": 169742703237800,
+        "metadata_begin": 169742702072900,
+        "metadata_end": 169742702222200,
+        "tracking_begin": 169742702453900,
+        "tracking_end": 169742702482300,
+        "stereo_received": 169742694590800,
+        "controller_received": 169742694620500,
+        "sync": 169742694595600,
+        "capture_begin": 0,
+        "slot": 0,
+        "stage": "classify",
+        "age_verifiable": true,
+        "ages_ns": {
+          "tracking_begin": 783900,
+          "tracking_end": 755500,
+          "stereo_received": 8647000,
+          "controller_received": 8617300,
+          "sync": 8642200,
+          "metadata_begin": 1164900
+        },
+        "remaining_ns": {
+          "tracking_begin": 39216100,
+          "tracking_end": 39244500,
+          "stereo_received": 31353000,
+          "controller_received": 31382700,
+          "sync": 31357800,
+          "metadata_begin": 48835100
+        },
+        "expired_fields": [],
+        "capture_age_ns": null,
+        "capture_expired": null
+      },
+      {
+        "observed": 1,
+        "tick": 23801,
+        "world": 2310373632,
+        "pawn": 95229772032,
+        "scene": 386,
+        "stereo_sequence": 3611,
+        "controller_sequence": 3611,
+        "thread": 28816,
+        "verdict": 0,
+        "latched": 0,
+        "now": 169742703238300,
+        "metadata_begin": 169742702072900,
+        "metadata_end": 169742702222200,
+        "tracking_begin": 169742702453900,
+        "tracking_end": 169742702482300,
+        "stereo_received": 169742694590800,
+        "controller_received": 169742694620500,
+        "sync": 169742694595600,
+        "capture_begin": 169742702602500,
+        "slot": 1,
+        "stage": "current",
+        "age_verifiable": true,
+        "ages_ns": {
+          "tracking_begin": 784400,
+          "tracking_end": 756000,
+          "stereo_received": 8647500,
+          "controller_received": 8617800,
+          "sync": 8642700,
+          "metadata_begin": 1165400
+        },
+        "remaining_ns": {
+          "tracking_begin": 39215600,
+          "tracking_end": 39244000,
+          "stereo_received": 31352500,
+          "controller_received": 31382200,
+          "sync": 31357300,
+          "metadata_begin": 48834600
+        },
+        "expired_fields": [],
+        "capture_age_ns": 635800,
+        "capture_expired": false
+      },
+      {
+        "observed": 1,
+        "tick": 23801,
+        "world": 2310373632,
+        "pawn": 95229772032,
+        "scene": 386,
+        "stereo_sequence": 3611,
+        "controller_sequence": 3611,
+        "thread": 28816,
+        "verdict": 1,
+        "latched": 0,
+        "now": 169742734641100,
+        "metadata_begin": 169742702072900,
+        "metadata_end": 169742702222200,
+        "tracking_begin": 169742702453900,
+        "tracking_end": 169742702482300,
+        "stereo_received": 169742694590800,
+        "controller_received": 169742694620500,
+        "sync": 169742694595600,
+        "capture_begin": 0,
+        "slot": 2,
+        "stage": "classify",
+        "age_verifiable": true,
+        "ages_ns": {
+          "tracking_begin": 32187200,
+          "tracking_end": 32158800,
+          "stereo_received": 40050300,
+          "controller_received": 40020600,
+          "sync": 40045500,
+          "metadata_begin": 32568200
+        },
+        "remaining_ns": {
+          "tracking_begin": 7812800,
+          "tracking_end": 7841200,
+          "stereo_received": -50300,
+          "controller_received": -20600,
+          "sync": -45500,
+          "metadata_begin": 17431800
+        },
+        "expired_fields": [
+          "stereo_received",
+          "controller_received",
+          "sync"
+        ],
+        "capture_age_ns": null,
+        "capture_expired": null
+      },
+      {
+        "observed": 1,
+        "tick": 23801,
+        "world": 2310373632,
+        "pawn": 95229772032,
+        "scene": 386,
+        "stereo_sequence": 3611,
+        "controller_sequence": 3611,
+        "thread": 28816,
+        "verdict": 1,
+        "latched": 0,
+        "now": 169742734641600,
+        "metadata_begin": 169742702072900,
+        "metadata_end": 169742702222200,
+        "tracking_begin": 169742702453900,
+        "tracking_end": 169742702482300,
+        "stereo_received": 169742694590800,
+        "controller_received": 169742694620500,
+        "sync": 169742694595600,
+        "capture_begin": 169742702602500,
+        "slot": 3,
+        "stage": "current",
+        "age_verifiable": true,
+        "ages_ns": {
+          "tracking_begin": 32187700,
+          "tracking_end": 32159300,
+          "stereo_received": 40050800,
+          "controller_received": 40021100,
+          "sync": 40046000,
+          "metadata_begin": 32568700
+        },
+        "remaining_ns": {
+          "tracking_begin": 7812300,
+          "tracking_end": 7840700,
+          "stereo_received": -50800,
+          "controller_received": -21100,
+          "sync": -46000,
+          "metadata_begin": 17431300
+        },
+        "expired_fields": [
+          "stereo_received",
+          "controller_received",
+          "sync"
+        ],
+        "capture_age_ns": 32039100,
+        "capture_expired": false
+      }
+    ],
+    "scope": "First actual check inside query; offset is not zero-time query entry",
+    "first_check_offset_ns": 209100,
+    "classified_expired_fields": [
+      "stereo_received",
+      "controller_received",
+      "sync"
+    ],
+    "missing_is_unknown": true,
+    "tracking_limit_ns": 40000000,
+    "metadata_limit_ns": 50000000
+  },
+  "owner_links": {
+    "observed": false,
+    "exact_reader_unknown": true,
+    "missing_is_unknown": true
+  },
+  "repaired_owner_reader_reached": null,
+  "owner_links_game_repaired": false,
+  "source_age_repaired": false,
+  "original_query_started": 0,
+  "original_query_returned": 0,
+  "cover_view_accepted": false,
+  "world_coverage_verified": false,
+  "movement_authorized": false,
+  "headset_accepted": false,
+  "public_changed": false,
+  "next": "Reduce current-query source/metadata read cost or source-to-query delay with unchanged original times and guard semantics. No unchanged rerun."
+}

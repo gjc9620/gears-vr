@@ -1,0 +1,164 @@
+{
+  "frames": 248,
+  "recording_sha256": "91ecc6cc2a6d1110b1306a89cf459fd8db111f3bfe49d9924241b9802dd5eadc",
+  "pages": [
+    {
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\physics-recheck-r175\\runtime-r176\\overview-1.jpg",
+      "sha256": "55fd19f1686c459310844a102eef9a341c485af95ee3b18cf9f47a246afb2b07"
+    },
+    {
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\physics-recheck-r175\\runtime-r176\\overview-2.jpg",
+      "sha256": "1ba81572ed8f95625e53e816461f0275cae443037536ec64c8bce2966d61adcb"
+    },
+    {
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\physics-recheck-r175\\runtime-r176\\overview-3.jpg",
+      "sha256": "ffc4cddd8e0363cdac7009691c509df3f69da4a3dab9ce2ca08bb38b2bf06222"
+    },
+    {
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\physics-recheck-r175\\runtime-r176\\overview-4.jpg",
+      "sha256": "ef66bc265a8aa28728a7db9c0858d05e68b7bb0770e5575d06849e7b16a9dab9"
+    },
+    {
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\physics-recheck-r175\\runtime-r176\\overview-5.jpg",
+      "sha256": "56882f38298bbdac88809afad9044c5b521a61a1391bb707b03fd5bb250696c4"
+    },
+    {
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\physics-recheck-r175\\runtime-r176\\overview-6.jpg",
+      "sha256": "798952fc0f2647fb1c619ee76efe3e7ab32fe73d1a7f40ae9f6e5ce3457c6eef"
+    },
+    {
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\physics-recheck-r175\\runtime-r176\\overview-7.jpg",
+      "sha256": "f76b9c86211a649710b7dbb5064243baa65e60a088befc7f08951655fe3d5595"
+    },
+    {
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\physics-recheck-r175\\runtime-r176\\overview-8.jpg",
+      "sha256": "7af9d7a43082ee251cd8fffa4e28fbcec237b5321a46bf719303046dbc4699a7"
+    },
+    {
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\physics-recheck-r175\\runtime-r176\\overview-9.jpg",
+      "sha256": "908c148facf41dfa4a01e990a1c312fa3313657382240133f27af715ba1c73ee"
+    },
+    {
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\physics-recheck-r175\\runtime-r176\\overview-10.jpg",
+      "sha256": "1b4d2393efe129da737c5fe2ec9894f8681bd440aa8d98a5cbed3d87a8066f81"
+    },
+    {
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\physics-recheck-r175\\runtime-r176\\overview-11.jpg",
+      "sha256": "52e09c6c03f7cdc10b54065a920c8297da586eb1f4f09a017ace0f0921ae00c0"
+    },
+    {
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\physics-recheck-r175\\runtime-r176\\overview-12.jpg",
+      "sha256": "4d5908087a07f6ab8968ba9911e56104614123bde1e49936296ed98a2d550a07"
+    },
+    {
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\cover-system-20261108\\physics-recheck-r175\\runtime-r176\\overview-13.jpg",
+      "sha256": "9d3a9627ab5d2d017c7194a991fee545722ef8e9219ed7d23fee9d10bac52ba5"
+    }
+  ],
+  "contacts": [
+    {
+      "label": "cover_eye_neutral",
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\cover-1111-r176-cloak-physics\\cover-output\\projection\\frame-00165.jpg",
+      "sha256": "145b291ed049c6c7bcf4211d8046360dd0a25ed2e834dd2b0614653e5f2b647b",
+      "event_wall_ns": 1794384943597508000,
+      "duration_seconds": 0.8051397,
+      "eligible_frames": 7,
+      "frame": {
+        "file": "frame-00165.jpg",
+        "time": 18.0543685000157,
+        "requested": 18.018649700010428,
+        "observed_wall_ns": 1794384943989479700,
+        "requested_wall_ns": 1794384943950618400,
+        "width": 960,
+        "height": 540
+      },
+      "same_C0_proven": false
+    },
+    {
+      "label": "cover_eye_turned",
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\cover-1111-r176-cloak-physics\\cover-output\\projection\\frame-00185.jpg",
+      "sha256": "5409034181f8c05e8ab153e05b082da6fbee79629dd7cb23f74b69ed38d66f28",
+      "event_wall_ns": 1794384945807497400,
+      "duration_seconds": 0.8049609,
+      "eligible_frames": 8,
+      "frame": {
+        "file": "frame-00185.jpg",
+        "time": 20.329849600006128,
+        "requested": 20.3106928000052,
+        "observed_wall_ns": 1794384946264800100,
+        "requested_wall_ns": 1794384946243107700,
+        "width": 960,
+        "height": 540
+      },
+      "same_C0_proven": false
+    },
+    {
+      "label": "cover_eye_turn_restored",
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\cover-1111-r176-cloak-physics\\cover-output\\projection\\frame-00204.jpg",
+      "sha256": "430ab4cf46a33103f397c371f37fa91109430f8eed803813f7ceb2449d3d82e2",
+      "event_wall_ns": 1794384947895531800,
+      "duration_seconds": 0.8045456,
+      "eligible_frames": 7,
+      "frame": {
+        "file": "frame-00204.jpg",
+        "time": 22.426551999989897,
+        "requested": 22.394776300003286,
+        "observed_wall_ns": 1794384948361254700,
+        "requested_wall_ns": 1794384948327113500,
+        "width": 960,
+        "height": 540
+      },
+      "same_C0_proven": false
+    },
+    {
+      "label": "cover_eye_raised",
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\cover-1111-r176-cloak-physics\\cover-output\\projection\\frame-00222.jpg",
+      "sha256": "c4c82a0eb80ced07041d730298881876e0261b215a528704620ec51b62cdcabe",
+      "event_wall_ns": 1794384949956257600,
+      "duration_seconds": 0.8056647,
+      "eligible_frames": 7,
+      "frame": {
+        "file": "frame-00222.jpg",
+        "time": 24.39631390001159,
+        "requested": 24.359284900012426,
+        "observed_wall_ns": 1794384950331994800,
+        "requested_wall_ns": 1794384950291362900,
+        "width": 960,
+        "height": 540
+      },
+      "same_C0_proven": false
+    },
+    {
+      "label": "cover_eye_rise_restored",
+      "file": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\cover-1111-r176-cloak-physics\\cover-output\\projection\\frame-00241.jpg",
+      "sha256": "f74a7ee39a27d76c3c388660b76873c248509513a76e6aa450b0274e97483a9e",
+      "event_wall_ns": 1794384951984317700,
+      "duration_seconds": 0.8086729,
+      "eligible_frames": 7,
+      "frame": {
+        "file": "frame-00241.jpg",
+        "time": 26.465049699996598,
+        "requested": 26.433620099996915,
+        "observed_wall_ns": 1794384952400703500,
+        "requested_wall_ns": 1794384952366524500,
+        "width": 960,
+        "height": 540
+      },
+      "same_C0_proven": false
+    }
+  ],
+  "source": "actual private simulator projection",
+  "desktop_capture": false,
+  "full_span_personally_reviewed": true,
+  "headset_accepted": false,
+  "recording_errors": [],
+  "captured_span_complete": true,
+  "missing_contacts": [],
+  "encode_exit": 0,
+  "encoded_sha256": "c7ebbe263b9cd860102d7dfcd92173921c224636bb991ce4f2397e07b4d51222",
+  "captured_span_personally_reviewed": true,
+  "reviewed_pages": 13,
+  "reviewed_original_contacts": 5,
+  "verdict": "All five actual cover phases have severe self-model obstruction; FAIL",
+  "cover_view_accepted": false
+}

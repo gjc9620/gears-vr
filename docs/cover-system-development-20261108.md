@@ -2629,3 +2629,15 @@ initial physics2.2441ms/collider2.9930ms/components10.1253ms；重复physics7次
 为持续验证空间，按既有结束实例缓存整理授权，仅对本chat的r170/r172/r174逐项正常cleanup、精确game/owner/XR/worker不在再次核验后，将315个PSOCache文件共2655147954字节复制到J:/gearsVr/analysis/cover-cache-archive-20261111-r175；全部目标/source SHA复核一致、再次核验进程不在才逐文件移除C盘缓存。只移除这三处缓存文件，目录/源码/文本数值证据/媒体/存档/配置/seed及其他实例均保持；cache-archive.json记录全部哈希与路径。没有删除其他owner或活动实例文件。
 
 下一步Git保存后以新实例短查重复physics实际耗时、40ms入口余量、原查询started/returned和第一个实际失败；不原样重跑未改候选，也不以较好运气的一轮代替修复。真实年龄、NpActor修复实跑、严重自身模型遮挡、完整CV01–24/AC01–22及实体头显仍未完成，工程25%、publicv71/固定入口不变，目标active。
+
+## r176：物理复核候选推进到第18次来源检查，查询仍因40ms超时拒绝（2026-11-11）
+
+757d0807保存后，新cover-1111-r176-cloak-physics使用Native1e037608…91dfb完成一次现有后台path观察。prepare/导入、原A进入CT2、五段动作及operator均0。13项启动来源前后相同；CLOAK616/失败0、前台387/owned_activation false。Native/entries/input恢复、XR/launcher/runner正常0、无强杀、normal_cleanup true；保存时再次独立核对game/owner/XR/worker精确身份不在。
+
+query键world2310373632/Pawn95229772032/Scene386/Compose23802/seq3609/thread28816与complete首键一致；169742703028700→169742734643600共31.6149ms。code4 source，engine/source_guard/current；Owner第79次context/source_age_expired/detail6，Session第18次collider_read/guard，body=true/equipment=false。原碰撞started/returned0/0，owner link witness未观察仍为未知，不用无记录宣称完整关联修复通过。
+
+classify/current各79次，四行保留首次和首次年龄拒绝。身体Tick23801、来源序列3611与query Compose23802/seq3609分别记录。首查在query begin后0.2091ms，tracking0.7839ms、stereo8.6470ms、metadata1.1649ms，current capture0.6358ms；首次age时stereo40.0503ms、controller40.0206ms、sync40.0455ms超原40ms，tracking32.1872ms、metadata32.5682ms、capture32.0391ms未超，latched=false。不续时间、不提高期限，source_age_repaired=false。
+
+initial physics0.7613ms/collider2.2084ms/components9.7828ms；重复physics18次共8.8081ms、collider18次共9.4600ms，components重复0次。engine18.4832ms包含内部复核，不重复相加，span闭合且无overflow。比r174推进7→18次Session来源检查；本次总query31.6149ms并未更快，两次输入/调度非受控对照，不把复核次数或平均耗时差异直接当作因果性能结论。下一步处理首次组件目录中重复属性扫描，完整身份、字段、成员收尾和原时间约束保持，不原样重跑碰运气。
+
+248投影帧/errors0、编码0，13页跨度概览及五阶段原始00165/00185/00204/00222/00241全部亲看。进入掩体后五阶段仍有严重自身模型遮挡，视图FAIL；这批区间帧不是同C0/GPU原子证明或头显验收。原始动作、退出、年龄、分段和审阅在physics-recheck-r175/runtime-r176。body_geometry/world_coverage/movement仍未通过；CV01–24/AC01–22及实体头显未完成，工程25%、publicv71/固定入口不变，目标active。
