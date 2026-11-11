@@ -2921,3 +2921,11 @@ uniform receiver scale在任何读前验证，空数组也不能绕过来源数�
 保留r208原37检查，ArrayLayout合计80检查0失败：三类schema、错误inner stride/target/dimension/outer/offset、尾链环及proof失效；三类完整数组读取、payload读取中换inner目标、错header关联均拒绝并保持输出。注册表/aggregate实例及BodySetup/C0外层guard是synthetic fixture，不声称实际库存/运行许可。首次复用main宏冲突导致编译失败，增加现有r208 test main seam后修复，原日志保留。
 
 回执array-layout-r209，无游戏/原函数/完整Native构建。下一关联是BodySetup→AggGeom实例、当前PhysicsAsset/骨名/原scale/C0身份时间及原stride代码认证；全CV/AC/头显仍未完成，工程25%。
+
+## r210：BodySetup的AggGeom实例与骨名关联已接读取链（2026-11-12）
+
+新增cover_body_setup_live.inl：当前setup身份及RB_BodySetup继承路径、KMeshProps声明的AggGeom StructProperty72与完整r209布局、BoneName NameProperty8及原consumer offset0xb4共同保留在同一Proof。骨名同时匹配FName index和number；aggregate实例地址以反射offset计算，检查溢出和与BoneName重叠，不固化夹具0x60。capture桥接把该实例、骨名及外层typed owner guard接回r209/r206，所有读取边界仍闭合完整Proof，失败保持公共输出。
+
+合计135检查0失败（含原80）：三类读取、aggregate字段移到0xc0仍成功，错误骨名/number、offset/target/继承/重叠/尾链拒绝；payload中改骨名、AggGeom目标或setup自身身份及外层guard拒绝均不发布。补充夹具首次因lambda遮蔽既有全局denied触发/WX，改名后通过，失败日志保留。全部synthetic注册表/实例，无真实进程读取、游戏/原函数/完整Native构建。
+
+PhysicsAsset成员与body ordinal、原receiver scale、原consumer/stride代码认证、当前C0身份时间/世界及活跃PhysX对应仍需接入；本关联不能授予移动。源码/依赖/回执body-setup-r210，完整CV/AC/头显仍未完成，工程25%。

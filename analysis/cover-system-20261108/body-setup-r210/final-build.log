@@ -1,0 +1,4 @@
+cover_body_setup_live_test.cpp
+J:\codexWorktree\gearsVr\tools\native-capture\cover_body_setup_live_test.cpp(46): error C2220: 以下警告被视为错误
+J:\codexWorktree\gearsVr\tools\native-capture\cover_body_setup_live_test.cpp(46): warning C4459: “denied”的声明隐藏了全局声明
+J:\codexWorktree\gearsVr\tools\native-capture\weapon_hand_scene_binding_test.cpp(23): note: 参见“denied”的声明

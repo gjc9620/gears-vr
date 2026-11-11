@@ -10,7 +10,10 @@ static void array_setup(unsigned kind){schema_setup(kind);array_aggregate=arena+
   if(previous)put(previous+0x68,at);else put(array_aggregate+0x80,at);previous=at;if(i==kind)array_field=at;}
  array_tail=previous;typed_property(array_inner,schema_index++,array_field,L"Inner",structure_kind,80,0,schema_element);put(array_field+0xd0,array_inner);
 }
-int main(){if(PriorPrimitiveLayoutMain())return 1;
+#ifndef GEARS_ARRAY_LAYOUT_TEST_MAIN
+#define GEARS_ARRAY_LAYOUT_TEST_MAIN main
+#endif
+int GEARS_ARRAY_LAYOUT_TEST_MAIN(){if(PriorPrimitiveLayoutMain())return 1;
  arena=reinterpret_cast<uintptr_t>(VirtualAlloc(nullptr,saved_arena.size(),MEM_COMMIT|MEM_RESERVE,PAGE_READWRITE));if(!arena)return 99;
  namespace layout=cover_array_layout_live;auto proof=std::make_unique<h::Proof>();layout::Layout out{};
  for(unsigned kind=0;kind<3;++kind){array_setup(kind);gears_anchor::Identity aggregate{},owner{};C(h::identity(array_aggregate,aggregate)&&h::identity(schema_owner,owner));*proof={};

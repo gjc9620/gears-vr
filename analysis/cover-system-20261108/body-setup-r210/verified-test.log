@@ -1,0 +1,3 @@
+PrimitiveLayout checks=37 failures=0 actual reflection Proof; synthetic registry, no runtime authority
+ArrayLayout checks=80 failures=0 reflection association only; synthetic registry
+BodySetup checks=135 failures=0 synthetic instances; no C0 permission

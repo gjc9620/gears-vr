@@ -1,0 +1,15 @@
+{
+  "result": "PrimitiveLayout checks=37 failures=0 actual reflection Proof; synthetic registry, no runtime authority\r\nArrayLayout checks=80 failures=0 reflection association only; synthetic registry\r\nBodySetup checks=135 failures=0 synthetic instances; no C0 permission\r\n",
+  "sources": {
+    "tools/native-capture/cover_body_setup_live.inl": "420be039445b9058583a52d9797dcec03b96e1b5c10531d0882b5b0794ce7c55",
+    "tools/native-capture/cover_body_setup_live_test.cpp": "c8f23dcb5f30bd621f6464de32777077fcc61d9387ed7c2d2eadf112888d583e",
+    "tools/native-capture/cover_array_layout_live_test.cpp": "0f816f4b1d7598b61155967675bbefb8122f380fe2ac6c98e67bd8f557591dfc"
+  },
+  "association": "Current certified RB_BodySetup class path; inherited KMeshProps AggGeom StructProperty72 -> complete ArrayLayout; exact BoneName NameProperty8 at original consumer offset0xb4; expected FName index and number, instance identity and values retained in Proof.",
+  "bridge": "Aggregate base computed from reflected field offset with overflow/disjoint checks; all array guard boundaries include full Proof and external typed owner guard. No hardcoded aggregate offset.",
+  "tests": "All3 kinds, reflected aggregate relocated0x60->0xc0, bone/index-number mismatch, wrong offset/target/inheritance/overlap/tail cycle, mid-payload BoneName/target/instance-identity mutation and denied outer guard; output preserved.",
+  "first_compile_failure": "Additional fixture lambda shadowed existing global denied under /WX; renamed reject_owner. Original log retained.",
+  "remaining": "Synthetic registry and instances only. PhysicsAsset membership/body ordinal, original receiver scale, native consumer/stride attestation, current C0/time/world and active PhysX correspondence remain external obligations. No movement permission.",
+  "game_started": false,
+  "engineering_percent": 25
+}
