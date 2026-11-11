@@ -1,0 +1,45 @@
+{
+  "build_exit": 0,
+  "test_exit": 0,
+  "rows": [
+    {
+      "reader": "physics",
+      "five_reads": 23455,
+      "categories": {
+        "name_identity_blocks": 1250,
+        "name_slots": 1250,
+        "object_identity_blocks": 1250,
+        "object_slots": 1250,
+        "other_16_bytes": 10,
+        "other_4_bytes": 1935,
+        "other_8_bytes": 870,
+        "owner_guard": 13140,
+        "registry_headers": 2500
+      }
+    },
+    {
+      "reader": "collider",
+      "five_reads": 22255,
+      "categories": {
+        "name_identity_blocks": 1140,
+        "name_slots": 1140,
+        "object_identity_blocks": 1140,
+        "object_slots": 1140,
+        "other_4_bytes": 1610,
+        "other_8_bytes": 665,
+        "owner_guard": 13140,
+        "registry_headers": 2280
+      }
+    }
+  ],
+  "outside_worktree_dependencies": [],
+  "probe_sha256": "102af82097548ce7154def1a73984859de2d877e5f20c44d9ec9b99dcbaf7df3",
+  "game_started": false,
+  "original_query_called": false,
+  "production_changed": false,
+  "scope": "Actual r177 frozen physics/collider readers with existing synthetic fixture guard h::current_tick_actor. Native query Owner additionally checks C0 context, CoverKey and pose metadata; do not extrapolate these counts to game time or declare a causal bottleneck fixed.",
+  "owner_guard_fraction": {
+    "physics": 0.5602217011298231,
+    "collider": 0.5904291170523478
+  }
+}

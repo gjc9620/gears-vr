@@ -1,0 +1,3 @@
+{"reader":"physics","five_reads":23455,"categories":{"name_identity_blocks":1250,"name_slots":1250,"object_identity_blocks":1250,"object_slots":1250,"other_16_bytes":10,"other_4_bytes":1935,"other_8_bytes":870,"owner_guard":13140,"registry_headers":2500}}
+{"reader":"collider","five_reads":22255,"categories":{"name_identity_blocks":1140,"name_slots":1140,"object_identity_blocks":1140,"object_slots":1140,"other_4_bytes":1610,"other_8_bytes":665,"owner_guard":13140,"registry_headers":2280}}
+checks=19 failures=0 no game/query/write

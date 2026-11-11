@@ -2683,3 +2683,13 @@ query键world2224455936/Pawn95203878528/Scene403/Compose24829/seq3512/thread2361
 initial physics1.2492ms/collider2.9179ms/components3.3837ms，重复physics18次12.3993ms/collider18次14.3040ms/components0次；engine27.0113ms含内部复核，不重复相加，全部span闭合无invalid/overflow。首次components比r1769.7828ms低，但输入/调度不同，不把时间差全归因于优化；总query仍35.5940ms，真实超时未修复。下一步审查18次重复身份/目录/完整Proof读取的具体成本，在保持所有原始时间、动态字段和closing语义下减少重复工作；不原样重跑挑一轮。
 
 265投影帧/errors0/编码0，14页全跨度概览及五阶段原始00181/00200/00220/00238/00257全部亲看；中立/转头/恢复/上移/恢复仍严重自身模型遮挡，视图FAIL。区间帧不是同C0/GPU原子证明或头显验收。原始session、动作、projection数值清单、年龄、分段及审阅在query-close-detail-r180/runtime-r181。完整world/body几何、movement、CV01–24/AC01–22和实体头显未完成，工程25%、publicv71/固定入口不变，目标active。
+
+## r182：实际冻结reader离线读取构成，下一步定位嵌套Owner复核（2026-11-11）
+
+未启动新游戏、未改产品。以r177冻结源码哈希逐项核对后，在独立scratch复用真实cover_collider_roles_live_test及原safe_copy hook，分别做五轮实际physics/collider recheck，19项检查0，Native call/write0，编译依赖未外漏worktree。physics23455次、collider22255次，均按精确地址/大小分类且总数逐项相等。
+
+physics中fixture Owner guard13140次（56.02%），其余registry headers2500、object/name blocks与slots各1250、4字节1935、8字节870、16字节10；collider中fixture Owner同13140次（59.04%），registry headers2280、object/name blocks与slots各1140、4字节1610、8字节665。这是现有fixture h::current_tick_actor的读次数，不是生产Owner完整成本或真实耗时。实际cover_physics_c0_live::query Owner还检查C0 context、sample_current CoverKey和pose metadata；不以该比例直接认定游戏根因。
+
+源码进一步确认SourceGuard每轮分别给physics和collider的recheck传完整Owner，各自前后调用；生产CoverKey sample_current又包含两次完整current_tick_actor及三次Cover values读取。当前同一次同步只读操作存在多层完整Owner检查。下一修复须明确同一操作的首尾认证边界，原版调用前后完整实际身份、源龄、当前掩体/姿态和停止/释放仍必须有效，不能简单传true、跳过Owner或缓存授权至下一次guard/execute。先针对实际拒绝/中断的反例证明边界，再实施必要优化，不重跑原候选。
+
+原始probe、类别计数、完整build/dependencies和结果在recheck-cost-r182。r181仍40ms拒绝且严重视图遮挡；完整CV01–24/AC01–22及头显未完成，工程25%、publicv71/固定入口不变，目标active。
