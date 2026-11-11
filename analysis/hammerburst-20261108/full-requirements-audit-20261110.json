@@ -434,7 +434,7 @@
   ],
   "completion_proven": false,
   "goal_active": true,
-  "immediate_next": "Inspect actual frozen806dcbd6 broker active_now input_lost rejection stage/timestamp; add bounded passive classification to exact frozen source if existing records cannot distinguish prepare vscommit. Preserve Native input invalidation and original event deadlines; do not rerun unchanged or promote offline WAIT experiment.",
+  "immediate_next": "One private short loaded run with --native-input-loss and selected extraction-observe-r1 PG; inspect original Native prepare/commit input-loss ring after normal cleanup. No WAIT experiment, no policy relaxation. Full13 retained.",
   "historical_evidence_does_not_certify_current_PG": true,
   "candidate_runtime_status": "Selected extraction-observe-r1 actual43944 only4 consistent rays then Native input_lost/service gate3 cancellation. Extraction diagnostic/newmag fix not reached. Separate released-pose-gap experiment offline457 checks/build only, NOT selected or causal repair.",
   "previous_recorded_candidate": {
@@ -478,5 +478,12 @@
     "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\released-pose-gap-r1\\prepared.json",
     "selected": false,
     "actual_causal_repair": false
+  },
+  "pending_native_observation": {
+    "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\native-input-loss-r1\\prepared.json",
+    "native_sha256": "6ff4104439f4bc6faacd22b97e69503dd3d1065453592215672e816458a79829",
+    "broker_checks": 2530,
+    "runtime_exercised": false,
+    "policy_changed": false
   }
 }

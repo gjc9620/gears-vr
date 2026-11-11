@@ -80,6 +80,13 @@ def main():
     dll=Path(proof['dll']);assert hashlib.sha256(dll.read_bytes()).hexdigest()==proof['dll_sha256']
     manifest.update(playground_build=str(dll.parent.relative_to(ROOT)),playground_sha256=proof['dll_sha256'],
                     lancer_interaction_ranges=False,candidate_validation=proof.get('scope','Private HB candidate')+'; whole weapon acceptance pending')
+    if '--native-input-loss' in sys.argv:
+        native_proof=json.loads((AREA/'native-input-loss-r1/prepared.json').read_text())
+        assert native_proof['full_native_compiled'] and native_proof['broker_failures']==0
+        assert manifest['native_sha256']==native_proof['parent_native']
+        native_dll=Path(native_proof['dll'])
+        assert hashlib.sha256(native_dll.read_bytes()).hexdigest()==native_proof['native_sha256']
+        manifest.update(native_build=str(native_dll.parent.relative_to(ROOT)),native_sha256=native_proof['native_sha256'])
     write(target/'candidate-manifest.json',manifest)
     env={k:v for k,v in os.environ.items() if not k.upper().startswith(('GEARS','PYTHON','XR','OPENXR'))}
     test_mode=reload_test_mode(sys.argv)

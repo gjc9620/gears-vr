@@ -1,0 +1,10 @@
+{
+  "exit_code": 0,
+  "actual_broker": true,
+  "baseline_suite_included": true,
+  "all_four_diagnostic_stages": true,
+  "ring_wrap_test": true,
+  "game_started": false,
+  "source_sha256": "200e66be8157d705ad882bd2f72c47c0d7e821bd9873a094537662e7f16f3d71",
+  "limits": "Actual Broker with bounded callback/clock/module/engine fakes; no gameplay/headset acceptance."
+}

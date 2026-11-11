@@ -612,3 +612,10 @@ extraction-observe-r1实际4条一致射线，随后service gate3/count4；disar
 另外离线复现一个回调WAIT接线缺口：只有先前真实UP证书仍有效且未过原期限，null-source清理才可走原debt-only WAIT。旧码复现exit17，新码335原adapter检查及合并handoff457检查、完整编译通过；停止/epoch失效/重新持压/250ms过期均取消。这个released-pose-gap-r1实验无法修复已明确Native输入失效的43944，也不能修复464原过期，因此未选用，runner继续extraction-observe-r1。保持实际失败，不以绿测试替代因果。
 
 43944正常stop/launcher/Native/PG/XR退出，无强制终止和FG/CLOAK违规。148帧无capture错误/编码0，3页48组paired概览亲审，视觉缺陷继续未接受。下一步从真实806dcbd6冻结Native源码定位broker active_now的prepare/commit失效阶段，必要时只加有界只读分类。原匣诊断和新匣修复均未实练，完整13项目标未完成。
+
+
+## 2026-11-11 冻结Native输入失效阶段诊断（尚未运行）
+
+基于真实806dcbd6冻结源码与原生产flags/minhook构建，只有weapon_hand_broker.h及weapon_hand_runtime.inl两处生产源变化。沿原时钟/原active_now结果记录最近16项：prepare过期、commit过期、commit非正时钟、外部input_lost（无已存在时钟，明确0/未知）；不加输入取样或改变失效/返回/清理。实际完整Native编译，SHA 6ff4104439f4bc6faacd22b97e69503dd3d1065453592215672e816458a79829。恢复7c30b73a四份测试inl；其header与冻结仅差proximity方法，实际接口匹配且原回归及新增共2530检查0失败。早期新测试遗漏原Pending RAII abort已修正，拒绝后不伪装自动收尾。
+
+私有wrapper新增显式--native-input-loss，仅该实例manifest替换并验SHA；不带该flag仍原806dcbd6。PG继续extraction-observe-r1，未选用WAIT实验；publicv71及固定手动入口未改。下一步保存后一次短loaded实测实际失效阶段，完整13项未完成。

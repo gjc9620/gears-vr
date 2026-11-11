@@ -1,0 +1,86 @@
+--- a/tools/native-capture/weapon_hand_broker.h
++++ b/tools/native-capture/weapon_hand_broker.h
+@@ -321,6 +321,25 @@
+ }
+ 
+ class Broker {
++public:
++    struct InputLossObservation {
++        unsigned stage{},flags{};std::uint64_t frame{},sequence{};
++        std::int64_t now_ns{},frame_ns{},sync_ns{},controller_ns{},stereo_ns{};
++    };
++private:
++    std::array<InputLossObservation,16> input_losses_{};
++    std::uint64_t input_loss_count_{};
++    // Caller already holds mutex_. No additional clock, input, callback or permit.
++    void record_input_loss(Frame const& f,std::int64_t stamp,unsigned stage) noexcept {
++        if(input_loss_count_==UINT64_MAX)return;
++        input_losses_[input_loss_count_++%input_losses_.size()]={stage,f.flags,f.key.frame,f.controllers.sequence,
++            stamp,f.now_ns,f.controllers.sync_ns,f.controllers.received_ns,f.stereo.received_ns};
++    }
++    bool observed_active_now(Frame const& f,std::int64_t stamp,unsigned stage) noexcept {
++        const bool accepted=active_now(f,stamp);
++        if(!accepted)record_input_loss(f,stamp,stage);
++        return accepted;
++    }
+     enum class State {empty,registering,active,draining,quiescent,collecting};
+     struct CallbackMark {
+         Broker* broker{};bool violated{},action_phase{};CallbackMark* previous{};context::Ticket ticket{};
+@@ -1241,10 +1260,18 @@
+         if(unsigned(reason)>unsigned(InvalidateReason::callback_fault))return Reply::invalid;
+         InvalidateCall call{};
+         {std::lock_guard<std::mutex> lock(mutex_);if(reason==InvalidateReason::native_stopping){stopping_=true;external_.stop();}
++            if(reason==InvalidateReason::input_lost)record_input_loss(attempt_,0,4);
+             invalidate_locked(reason,reason==InvalidateReason::native_stopping||reason==InvalidateReason::unregistering||reason==InvalidateReason::callback_fault,call);}
+         run_invalidate(call);return quiescent()?Reply::quiescent:draining()?Reply::draining:Reply::accepted;
+     }
+ 
++    std::uint64_t input_loss_observations(std::array<InputLossObservation,16>& out,unsigned& count) {
++        std::lock_guard<std::mutex> lock(mutex_);out={};
++        count=unsigned((std::min)(input_loss_count_,std::uint64_t(out.size())));
++        const auto first=input_loss_count_-count;
++        for(unsigned i=0;i<count;++i)out[i]=input_losses_[(first+i)%input_losses_.size()];
++        return input_loss_count_;
++    }
+     // Caller holds its Scene admission/stereo lock and uses one immutable Frame
+     // on this synchronous GT stack. An accepted proposal creates an obligation:
+     // commit it once, or abort_frame in an outer RAII guard. No worker may erase it.
+@@ -1282,7 +1309,7 @@
+                 const bool time_replayed=have_attempt_&&local.now_ns<attempt_.now_ns;
+                 snapshot(attempt_,local);have_attempt_=true;have_commit_=false;
+                 if(time_replayed){invalidate_locked(InvalidateReason::callback_fault,true,invalidation);early=Reply::invalid;}
+-                else if(!active_now(local,backend_.clock_ns(backend_.context))){invalidate_locked(InvalidateReason::input_lost,false,invalidation);early=Reply::unavailable;}
++                else if(!observed_active_now(local,backend_.clock_ns(backend_.context),1)){invalidate_locked(InvalidateReason::input_lost,false,invalidation);early=Reply::unavailable;}
+                 else if(callbacks_.load()||invalidate_running_||invalidate_failed_||(phase_invalid_&&!invalidate_done_)){early=Reply::busy;}
+                 else {r=registration_;revision=revision_.load();snapshot(frozen_,local);proposal_={};frame_stamp_=revocation_.freeze(action_auth(),local.key.frame);
+                     transaction_revision_=revision;epoch=operation_epoch_;commit_started_=false;transactions_.store(1);++callbacks_;++normal_calls_;}
+@@ -1330,9 +1357,9 @@
+             }else if(state_.load()!=State::active||phase_invalid_||transaction_revision_!=revision_.load())return draining()?Reply::draining:Reply::unavailable;
+             else {
+                 const auto stamp=backend_.clock_ns(backend_.context);
+-                if(stamp<=0){invalidate_locked(InvalidateReason::input_lost,false,invalidation);early=Reply::unavailable;}
++                if(stamp<=0){record_input_loss(local,stamp,3);invalidate_locked(InvalidateReason::input_lost,false,invalidation);early=Reply::unavailable;}
+                 else if(!decision_valid(local_decision,local,local_proposal,stamp)){invalidate_locked(InvalidateReason::callback_fault,true,invalidation);early=Reply::invalid;}
+-                else if(!active_now(local,stamp)){invalidate_locked(InvalidateReason::input_lost,false,invalidation);early=Reply::unavailable;}
++                else if(!observed_active_now(local,stamp,2)){invalidate_locked(InvalidateReason::input_lost,false,invalidation);early=Reply::unavailable;}
+                 else {r=registration_;revision=revision_.load();epoch=operation_epoch_;commit_started_=true;++callbacks_;++normal_calls_;}
+             }
+         }
+--- a/tools/native-capture/weapon_hand_runtime.inl
++++ b/tools/native-capture/weapon_hand_runtime.inl
+@@ -349,6 +349,15 @@
+ }
+ void summary(FILE* file) noexcept {
+     if(!file)return;auto* b=current();const auto binding=session();
++    if(b){std::array<api::Broker::InputLossObservation,16> rows{};unsigned count{};
++        const auto total=b->input_loss_observations(rows,count);
++        std::fprintf(file,"weapon_hand_input_loss_total=%llu weapon_hand_input_loss_rows=%u ",total,count);
++        for(unsigned i=0;i<count;++i){const auto& r=rows[i];
++            std::fprintf(file,"weapon_hand_input_loss_%u_stage=%u weapon_hand_input_loss_%u_frame=%llu weapon_hand_input_loss_%u_sequence=%llu weapon_hand_input_loss_%u_now_ns=%lld weapon_hand_input_loss_%u_frame_ns=%lld weapon_hand_input_loss_%u_sync_ns=%lld weapon_hand_input_loss_%u_controller_ns=%lld weapon_hand_input_loss_%u_stereo_ns=%lld weapon_hand_input_loss_%u_flags=%u ",
++                i,r.stage,i,r.frame,i,r.sequence,i,r.now_ns,i,r.frame_ns,i,r.sync_ns,i,r.controller_ns,i,r.stereo_ns,i,r.flags);
++        }
++    }
++
+     std::fprintf(file,"weapon_hand_enabled=%u weapon_hand_initialized=%u weapon_hand_admission_closed=%u weapon_hand_stop_requested=%u weapon_hand_unknown_fault=%u weapon_hand_retained=%u weapon_hand_cleanup_ready=%u weapon_hand_runtime_calls=%llu weapon_hand_register_attempts=%llu weapon_hand_register_accepted=%llu weapon_hand_register_rejected=%llu weapon_hand_unregister_attempts=%llu weapon_hand_stop_requests=%llu weapon_hand_worker_ticks=%llu weapon_hand_wrong_worker_ticks=%llu weapon_hand_collect_attempts=%llu weapon_hand_collect_failed=%llu weapon_hand_faults=%llu ",
+         unsigned(detail::enabled_snapshot.load()),unsigned(b!=nullptr),unsigned(detail::admission_closed.load()),unsigned(detail::stop_requested.load()),unsigned(detail::unknown_fault.load()),unsigned(retained()),unsigned(cleanup_ready()),
+         detail::calls.load(),detail::register_attempts.load(),detail::register_accepted.load(),detail::register_rejected.load(),detail::unregister_attempts.load(),detail::stop_requests.load(),detail::worker_ticks.load(),detail::wrong_worker_ticks.load(),detail::collect_attempts.load(),detail::collect_failed.load(),detail::faults.load());
