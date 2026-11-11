@@ -620,3 +620,6 @@ Native71f280b0/PGb7dcb9ec实测72条一致射线，core6加11组六连发，最�
 ## 2026-11-11 实际6896：严格prepare后输入拒绝
 
 同Native71f280b0/PGb7dcb9ec，修正后的36s测试窗口实际剩余35.4076621s，核心6条一致射线后，Native原prepare367因flags13缺input_matched、controller序号/时戳0、原Stereo年龄100.2764ms拒绝并撤销input。外层年龄分支93次保留不覆盖严格prepare。其后新鲜UP375、DOWN383实际status1/owned0，384明确blocked8，未开火；不能把quiet当已消费DOWN，已修正测试读取仅承认status3/owned1或明确拒绝8，14项检查通过，无补按。尚未证明该新DOWN拒绝的具体转移原因，下一步读实际Input状态流，保留严格时效和防重放。正常清理全0、无forced、170帧/捕获错误空/编码0、3页48对亲阅，手枪贴合仍失败。整枪和空仓仍不通过，全部13项要求保留。
+
+
+6896后续精确转移已查明：OriginalR2Status1是baseline，非quiet；UP375/376后，实际copiedFrame377在PG读取时101.8667ms过期（source_status0/continuity_failure10），Input据此seal。下次新鲜Frame383已经DOWN，按原防重放只作baseline1，384blocked8直到真UP。这是预期安全转移，不再推测Input状态机错误；下一步只查原Scene发布至PlayerTick消费的时效/耗时，不补按、不放宽拒绝、不原样重跑。

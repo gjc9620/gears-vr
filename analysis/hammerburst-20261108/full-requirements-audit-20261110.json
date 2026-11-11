@@ -562,5 +562,13 @@
     "flags": 13,
     "controllers_sequence": 0,
     "guard_unchanged": true
+  },
+  "latest_input_transition": {
+    "evidence": "runtime-6896-first-failure-analysis.json",
+    "stale_frame": 377,
+    "age_ns": 101866700,
+    "baseline_frame": 383,
+    "blocked_frame": 384,
+    "anti_replay_preserved": true
   }
 }

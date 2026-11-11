@@ -4,7 +4,7 @@
   "terminal": true,
   "native_candidate": "native-render-age-r1",
   "instance": "hb-cloak-1111-135901",
-  "next": "Inspect actual R2 Input new DOWN transition after strict prepare invalidation and fresh UP375. No unchanged rerun, no weakening100ms/source/identity/anti-replay. All13 retained.",
+  "next": "Read original Scene publication/PlayerTick source freshness and cost for actualFrame377101.8667ms gap afterUP. Input correctly baselines nextDOWN383 and blocks384; no replay or guard relaxation, no unchanged run. All13 retained.",
   "candidate": "render-age-pg-r1",
   "all13_requirements_retained": true,
   "runner_session_id": 72247,
