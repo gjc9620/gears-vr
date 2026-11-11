@@ -1,6 +1,7 @@
 #pragma once
 #include "full_body_c0_planner.h"
 #include "cover_physx_matrix.h"
+#include "cover_physx_units.h"
 #include <cfloat>
 #include <cstddef>
 #include <cstdint>
@@ -15,7 +16,7 @@
 namespace gears_cover_physx_transform {
 namespace body=gears_full_body_c0;
 enum class Code {converted,alias,nonfinite,affine,nonrigid,numeric};
-inline constexpr float game_to_physics=.02f;
+inline constexpr float game_to_physics=gears_cover_physx_units::game_to_physics;
 namespace detail {
 inline bool disjoint(void const* a,std::size_t an,void const* b,std::size_t bn) noexcept {
     const auto x=reinterpret_cast<std::uintptr_t>(a),y=reinterpret_cast<std::uintptr_t>(b);

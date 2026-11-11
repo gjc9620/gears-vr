@@ -1,0 +1,4 @@
+cover_probe_geometry_test.cpp
+J:\codexWorktree\gearsVr\tools\native-capture\cover_probe_geometry_test.cpp(7): error C2062: 意外的类型“float” 
+J:\codexWorktree\gearsVr\tools\native-capture\cover_probe_geometry_test.cpp(7): error C2143: 语法错误: 缺少“;”(在“{”的前面)
+J:\codexWorktree\gearsVr\tools\native-capture\cover_probe_geometry_test.cpp(7): error C2447: “{”: 缺少函数标题(是否是老式的形式表?)

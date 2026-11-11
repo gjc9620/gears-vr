@@ -24,8 +24,9 @@ void request_drain()noexcept;
 bool poll_stop()noexcept;
 unsigned pending_count()noexcept;
 void summary(FILE*);
-// Explicit opt-in, at most ONE raw sphere observation per Native load. Called
-// only after current C0 eye measurement; never grants movement or occupancy.
+// Explicit mutually-exclusive one-shot sphere/path/shape observation per load.
+// Eye input is in GAME units; sphere/path convert to PhysX before dispatch.
+// Called after current C0 eye measurement; never grants movement or occupancy.
 void observe_sphere_once(gears_continuous_hand_entry::Entry const&,gears_native_rig_tracking::CoreSnapshot const&,
     gears_cover_physx_query::Vector const&)noexcept;
 // Raw query observation inside the current captured C0, before a body commit.

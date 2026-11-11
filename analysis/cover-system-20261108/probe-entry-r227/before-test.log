@@ -1,0 +1,4 @@
+FAIL 14 sphere.centre.x==2&&sphere.centre.y==4&&sphere.centre.z==6&&probe_close(sphere.radius,.01f)
+FAIL 15 probe_close(path.capsule.first.z,5.99f)&&probe_close(path.capsule.second.z,6.01f)&&probe_close(path.capsule.radius,.01f)
+FAIL 16 probe_close(path.delta.x,.01f)&&path.delta.y==0&&path.delta.z==0
+ProbeUnitsCounter checks=3 failures=3 original expressions; no query

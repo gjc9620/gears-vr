@@ -3103,3 +3103,13 @@ Session同一序列化execute事务新增无geometry的AssetReadRequest，角色
 完整私有Native在精确r193冻结树上做明确22文件overlay（实际14个changed/new，含此前已证r200 nullable Body修复），原全部GEARS布尔flag保持，独立source/build目录、420个项目依赖逐SHA、无外部工作树混入；GearsCapture.dll SHA50b76bd0f0bec9d518ecbef70a26b381b809741c46764d7d537e9af160abc750。未安装/放到公共入口、未启动游戏/XR、未分派原query。编译不等于C0实际调用或玩法验收。
 
 后续先核实/修正既有eye sphere/path探测入口的game→PhysX单位与一次性触发，再做新的受控真实读取；不因接口编译通过重跑旧计时案例或放宽原来源时间。actual template/shape身份关联、static/weld/flags/full self/world fence、body/view/hit/muzzle同版事务、视图遮挡、完整CV24/AC22及头显继续未完成，工程25%。证据asset-shapes-engine-r226，原publicv71和固定手动入口不变。
+
+## r227：旧sphere/path探测补原game→PhysX单位；完整形状一次性读取入口已编译（2026-11-12）
+
+实际C0 measurement入口的eye是game units；旧sphere/path直接传eye及units_per_metre*.01给native ABI，遗漏原F2610固定float .02。本轮新增cover_probe_geometry.h统一转换centre、胶囊两端、radius、delta和path epsilon，仅一次game→PhysX转换；cover_physx_units.h与既有transform共享原常量，transform数学不改。旧三个构造表达式用同测试复现3检查3失败；修复28检查0，含已知正负坐标、50/100单位标定、无效值、溢出/退化胶囊、别名、非nearest浮点模式及失败不覆盖。不是头部/body collider，也不把旧r194原calls0超时归因于单位。
+
+通过已有observe_sphere_once入口新增GEARSVR_COVER_SHAPE_SNAPSHOT/INI cover_shape_snapshot显式一次性只读；sphere/path/shape互斥，shape仅现有simulator_operator、continuous_session和observe-only场景允许，默认关闭。读取调用r226实际C0→Session→QueryEngine全形状接口，原时间/角色/owner/metadata/关闭检查不改；大workspace/packet为静态独占一次性存储，回调不持私有锁读游戏。拒绝也算本次终止不重试；预置detail=request避免尚未进入Engine的拒绝被标成observed。只成功才导出完整shape行、stored pose/dims/world matrix及原始调用计数，保留source/guard失败。未授予movement/world权限。
+
+功能关闭65检查0，查询目录16回归0。首次完整构建暴露cfenv首次在anonymous namespace内引入nested std；改用C浮点控制接口，测试在全局引用cfenv，保留失败build/source/log。v2在r226精确冻结Native上仅5文件overlay，原GEARS flags不变、独立源和构建、无外部工作树混入；完整构建通过，DLL SHA为3972af3f35a5c17c37e463a890fdc68654311e28b52a4f696d1f705b9a11f3b7，项目依赖422逐SHA验证。未安装、未启动游戏/XR，尚无新C0实际形状读取证据。
+
+后续进行新的一次受控真实shape读取，保留原source freshness；继续闭合active/template身份、static/weld/flags/full self/world fence及body/view/hit/muzzle同版事务。完整CV24/AC22、视图遮挡及头显仍未完成，工程25%；publicv71与固定手动入口不变。证据probe-entry-r227。

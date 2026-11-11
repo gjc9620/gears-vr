@@ -1,0 +1,20 @@
+{
+  "results": {
+    "before": "FAIL 14 sphere.centre.x==2&&sphere.centre.y==4&&sphere.centre.z==6&&probe_close(sphere.radius,.01f)\r\nFAIL 15 probe_close(path.capsule.first.z,5.99f)&&probe_close(path.capsule.second.z,6.01f)&&probe_close(path.capsule.radius,.01f)\r\nFAIL 16 probe_close(path.delta.x,.01f)&&path.delta.y==0&&path.delta.z==0\r\nProbeUnitsCounter checks=3 failures=3 original expressions; no query\r\n",
+    "units": "ProbeGeometry checks=28 failures=0 game-to-native diagnostic units only; no query\r\n",
+    "off": "cover_physics_c0 OFF: 65 checks, 0 failures; no game/module/query\r\n",
+    "catalog": "BodyQueryCatalog checks=16 failures=0 supplied inventory only; no world safety/permit\r\n"
+  },
+  "native": {
+    "sha256": "3972af3f35a5c17c37e463a890fdc68654311e28b52a4f696d1f705b9a11f3b7",
+    "dependencies": 422,
+    "flags_unchanged": true,
+    "installed": false,
+    "game_started": false
+  },
+  "change": "Legacy sphere/path eye probes now convert game units to original .02 PhysX units once, including capsule endpoints, radius, delta and epsilon. Pure helper rejects bad values, aliases and non-nearest rounding without overwriting output. Lightweight units constant shared with unchanged transform math. Complete asset shape read adds opt-in one-shot C0 trigger, mutually exclusive sphere/path/shape modes, simulator/observe-only restriction, same typed source/time/session guard. Logs current raw shapes and guards, no world/movement permission.",
+  "failure_preserved": "Former probe expressions:3 checks/3 failures. Initial full Native failed because first cfenv standard header inclusion inside anonymous namespace introduced nested std; replaced helper rounding check with C floating control API, test cfenv included globally. Failed source/build/log retained. No guards weakened; full v2 rebuild uses same frozen baseline flags.",
+  "remaining": "No actual new C0 game read yet; full active/template correspondence, static/weld/flags/self/world fence, body/view/hit/muzzle transaction, view obstruction, CV01-24/AC01-22 and physical-headset acceptance remain open.",
+  "engineering_percent": 25,
+  "game_started": false
+}
