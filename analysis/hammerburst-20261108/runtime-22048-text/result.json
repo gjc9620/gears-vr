@@ -1,0 +1,27 @@
+{
+  "game": {
+    "pid": 22048,
+    "creation_time": 134388432060346869,
+    "image": "j:\\gearsvr\\gears.of.war.reloaded.v1.0.1.3816947-p2p\\gears of war reloaded\\binaries_x64\\gowde-steam.exe"
+  },
+  "source": 1,
+  "desktop_input": false,
+  "controlled_enter_api_used": false,
+  "physical_headset_accepted": false,
+  "visual_review_pending": true,
+  "ui": [
+    {
+      "label": "owned_Playground_already_loaded",
+      "t": 154450958075500,
+      "top": null,
+      "focus": null,
+      "dialog": null
+    }
+  ],
+  "checks": {
+    "focused_gameplay_entry": true
+  },
+  "error": "AssertionError('No fresh hammerburst_reload_transition to=7 (closing after actual seating) in 8 seconds')",
+  "offline_encode_pending": true,
+  "directory": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\hb-cloak-1111-115944\\actions\\menu-firstperson-22048-120016"
+}

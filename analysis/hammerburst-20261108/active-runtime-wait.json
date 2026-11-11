@@ -1,0 +1,17 @@
+{
+  "instance": "hb-cloak-1111-115944",
+  "runner_session_id": 35043,
+  "observed_ns": 154456110172300,
+  "terminal": true,
+  "runner_last_poll": "35043 terminal1; operator1 and all own runtime cleanup normal0",
+  "candidate": "endpoint-baseline-r1",
+  "dll_sha256": "63b915a914b08e9d2a834c1946b454a0d642b9cb3e00945bec5e68a681b3d93b",
+  "source_checkpoint": "a105d43c",
+  "test_mode": "FULL empty; unchanged setup predicate plus bounded latency diagnostics",
+  "all13_requirements_retained": true,
+  "requirements_complete": false,
+  "previous_instance": "hb-cloak-1111-115143",
+  "previous_result": "runtime-15016-first-failure-analysis.json",
+  "next": "Trace exact native selected producer through support decision/consumer698->709. Compare same-Scene source publication against frozen806dcbd6; repair proven selection/latency only, never renew timestamps or retain stale control.",
+  "game_pid": 22048
+}

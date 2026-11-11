@@ -5,6 +5,8 @@
   "runtime_exercised": false,
   "source_sha256": {
     "confirmed_first_fire.py": "610fb2652a84e26d3417313f1794f0176c9dd6a9e5c17e3c3412974dbdbe6475",
-    "check_confirmed_first_fire.py": "277a289cddaf61b82fcaaf1f413166cd2bfaecb924187c8cf61fd51968c27628"
-  }
+    "check_confirmed_first_fire.py": "4d6a8aab10c2c11ab37ac87b25adeff996e783c647476d65f7c62876705936bd"
+  },
+  "runtime_exercised_game": 22048,
+  "limit": "12 accepted UP setups recorded; prior15016 timeout cause not reproduced."
 }

@@ -16,7 +16,7 @@ class Host:
             count=self.shots
             if self.fault=='delayed_tail':count=1 if self.state=='down' else 5 if self.now<1_800_000_000 else 6
             return [{'trace_valid':'1'}]*count if self.fired else []
-        row=dict(frame='100',current='1',source_status='1',trigger_active='1',active_at_admission='1',
+        row=dict(sequence=str(self.now),frame='100',current='1',source_status='1',trigger_active='1',active_at_admission='1',
                  input_sync_ns=str(self.now),admitted_ns=str(self.now),status='1',owned='0',game_known='1',game_r2='0',
                  trigger_value='1' if self.state=='down' else '0',trigger_pressed='1',trigger_released='0',preparation_budget='1')
         if self.fault=='stale':row['input_sync_ns']='1'
@@ -35,7 +35,8 @@ class Tests(unittest.TestCase):
         h=Host('old_source_recent_receipt');d={'checks':{}}
         with self.assertRaises(TimeoutError):first_fire(h,d,clock=lambda:h.now,sleep=h.sleep)
         wait=d['first_fire_input']['baseline_wait']
-        self.assertEqual(h.inputs,[{}]);self.assertLessEqual(len(wait['samples']),8)
+        self.assertEqual(h.inputs,[{}]);self.assertEqual(len(wait['samples']),8)
+        self.assertGreater(wait['distinct_rows'],8)
         self.assertEqual(wait['minimum_source_age']['source_age_ns'],70_000_000)
         self.assertEqual(wait['minimum_source_age']['receipt_age_ns'],0)
         self.assertNotIn('down_sent_ns',d['first_fire_input'])

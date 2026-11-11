@@ -61,6 +61,10 @@
         {
           "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-15016-first-failure-analysis.json",
           "sha256": "1f86a31b9090ce60b24fbbcfca3c3d475c4fbdd9165afef3e0b3fbc7555bd9a2"
+        },
+        {
+          "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-22048-first-failure-analysis.json",
+          "sha256": "11157487687000fab7d21c4793074047a46e8d9edc74ff5b1bdd1403e7ef4d44"
         }
       ]
     },
@@ -133,6 +137,10 @@
         {
           "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-15016-first-failure-analysis.json",
           "sha256": "1f86a31b9090ce60b24fbbcfca3c3d475c4fbdd9165afef3e0b3fbc7555bd9a2"
+        },
+        {
+          "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-22048-first-failure-analysis.json",
+          "sha256": "11157487687000fab7d21c4793074047a46e8d9edc74ff5b1bdd1403e7ef4d44"
         }
       ]
     },
@@ -197,14 +205,18 @@
         {
           "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-22992-focused-result.json",
           "sha256": "577273e37ba5591facb7696cf50ed9ec1dc29347cce195c09c89b7e67e7eebb3"
+        },
+        {
+          "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-22048-first-failure-analysis.json",
+          "sha256": "11157487687000fab7d21c4793074047a46e8d9edc74ff5b1bdd1403e7ef4d44"
         }
       ]
     },
     {
       "id": "empty_reload",
       "requirement": "空仓同机械流程、原自动装填被接管、完整回射",
-      "status": "current_drain_setup_timeout_before_empty",
-      "limit": "Actual15016 typed54/78 after24 consistent rays, next UP-only setup timeout. Empty/reload/return not reached. Historical56252 lacked finaltyped72/0;22992 loaded replacement is separate evidence.",
+      "status": "current_full_drain_veto_pass_seating_source_lease_failure",
+      "limit": "Actual22048 78 consistent rays/typed0R78 and empty veto passed; original reload1->6, no seat/close/return. Token2 consumer source expiry698 then lease loss708/709. Upstream cause unproven; historical56252 finaltyped72/0 missing.",
       "evidence": [
         {
           "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-13712-first-failure-analysis.json",
@@ -229,6 +241,10 @@
         {
           "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-15016-first-failure-analysis.json",
           "sha256": "1f86a31b9090ce60b24fbbcfca3c3d475c4fbdd9165afef3e0b3fbc7555bd9a2"
+        },
+        {
+          "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-22048-first-failure-analysis.json",
+          "sha256": "11157487687000fab7d21c4793074047a46e8d9edc74ff5b1bdd1403e7ef4d44"
         }
       ]
     },
@@ -316,6 +332,10 @@
         {
           "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-15016-first-failure-analysis.json",
           "sha256": "1f86a31b9090ce60b24fbbcfca3c3d475c4fbdd9165afef3e0b3fbc7555bd9a2"
+        },
+        {
+          "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-22048-first-failure-analysis.json",
+          "sha256": "11157487687000fab7d21c4793074047a46e8d9edc74ff5b1bdd1403e7ef4d44"
         }
       ]
     },
@@ -360,15 +380,19 @@
         {
           "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-15016-first-failure-analysis.json",
           "sha256": "1f86a31b9090ce60b24fbbcfca3c3d475c4fbdd9165afef3e0b3fbc7555bd9a2"
+        },
+        {
+          "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-22048-first-failure-analysis.json",
+          "sha256": "11157487687000fab7d21c4793074047a46e8d9edc74ff5b1bdd1403e7ef4d44"
         }
       ]
     }
   ],
   "completion_proven": false,
   "goal_active": true,
-  "immediate_next": "Save failure and bounded test-reader latency diagnostics11 tests. New targeted full empty attempt using unchanged compiled candidate and unchanged60ms setup predicate; use saved producer/observation times to locate actual miss before repair. All13 requirements remain.",
+  "immediate_next": "Trace exact native selected producer through support decision/consumer698->709. Compare same-Scene source publication against frozen806dcbd6; repair proven selection/latency only, never renew timestamps or retain stale control.",
   "historical_evidence_does_not_certify_current_PG": true,
-  "candidate_runtime_status": "Actual15016 core6+3drain6/24 consistent rays typed54/78, next UP-only setup timeout before DOWN. Normal cleanup. Full empty not reached.",
+  "candidate_runtime_status": "Actual22048 full78 drain and empty veto0/78 passed. Reload1->6/replacement acquired; source expiry698 then lease loss708/709 beforeseat. No close/return; normal cleanup.",
   "previous_recorded_candidate": {
     "name": "hammerburst-prepared-20261110-unheld-input-r1",
     "prepared_sha256": "76a2ae8cc56e4165b77ca5d17a9e6469ff66323e917be5a8b46da44df4f0bb58"
@@ -390,8 +414,8 @@
   "restore_verifier_status": "Optional --hammerburst-park-restore input action hook integrated into private reload adapter; five synthetic action/receipt regressions passed. Actual park/redraw/new-grant/native-resume, typed conservation, UI/reward and complete return-fire require game evidence.",
   "latest_service_first_failure": "runtime-3112-first-failure-analysis.json",
   "latest_startup_failure": "runtime-49732-startup-failure.json",
-  "latest_runtime_failure": "runtime-15016-first-failure-analysis.json",
-  "latest_runtime_result": "runtime-15016-first-failure-analysis.json",
+  "latest_runtime_failure": "runtime-22048-first-failure-analysis.json",
+  "latest_runtime_result": "runtime-22048-first-failure-analysis.json",
   "latest_focused_pass": "runtime-22992-focused-result.json",
   "visual_audit_recording_repair": "Corrected finalizer wrong ID fivepartfitting→part_fitting, attached reviewed22992 evidence also to guides, asserted target IDs exist. No requirement/score/acceptance change and no overwrite of current052600 runtime blocker.",
   "resource_release_evidence": {

@@ -572,3 +572,10 @@ prelaunch-052600-result.json和5份原观察文本保留；cleanup-pending标为
 新115143正常启动取枪，核心6发与3轮耗弹各6发，24条实际有效且来源一致射线，typed54/78。下一轮只发UP，未取得严格60ms的setup回执而超时，未再按DOWN，未到空仓/换弹。失败窗口11条回执最小写入源年龄54.9158ms，缺少测试观察时年龄，不能断言根因。补充最多8条不同回执及最小源年龄、原producer/log/observation时间和live/read耗时；不改60ms/setup/deadline/生产保护。11helper测试及8adapter编译检查通过，新诊断尚未进游戏。
 
 原operator1保留，stop/launcher/Native/PG/XR正常结束，无强制清理，无FG/CLOAK违规。226帧无capture错误，编码0；3页48组paired概览及raw120/158/196亲审，近脸右眼遮挡、手分离与重影未接受。证据runtime-15016-first-failure-analysis.json，完整目标未完成。
+
+
+## 2026-11-11 game22048：完整耗尽/空扣通过，入座前源时效撤销
+
+新115944实际78条有效且来源一致射线，12轮耗弹及typed0/78空扣无射线通过，原begin与换弹1→6、新匣获取通过。插入token2在698源年龄100.1528ms首次撤销，706/707继续过期，708 decision12无lease，709起granted0。最后接受的706深度21.913565mm、lateral约4.9e-6、orientation1；未入座/未关闭/未回射。805 lifecycle difference64为后续现象，不当作首因。保持100ms与anti-replay，下一步追踪Native源选择/发布至support consumer的实际耗时，不能保留过期控制。
+
+新增test-reader记录已实练，12次UP观察45.326～59.517ms，最大读取1.9238ms；本轮未复现15016超时，不声称已经修复。operator1保留，stop/launcher/Native/PG/XR正常0，无FG/CLOAK违规、无强制终止。699帧无capture错误，编码0，3页48组概览亲审；遮挡/重影/白色几何与手贴合仍不接受，密集contact待检查。证据runtime-22048-first-failure-analysis.json及原嵌套ordinary_empty_replacement动作归档。完整13项未完成。
