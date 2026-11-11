@@ -1,0 +1,4 @@
+CoverComponentRoles checks=207 failures=0 declared Pawn/current Weapon arrays only; no complete self or actor/geometry proof
+root_schema reads=949
+root_schema long_reads=4917
+CoverRootSchema checks=308 failures=0

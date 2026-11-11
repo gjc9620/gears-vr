@@ -174,6 +174,57 @@ inline bool actor_array_schema(binding::Proof& p,binding::Property const& field)
         binding::source_field(p,width,inner_descriptor,0x74)&&width==8&&binding::source_field(p,offset,inner_descriptor,0x94)&&!offset&&
         binding::source_field(p,target,inner_descriptor,0xd0)&&binding::certified(p,target,type)&&binding::kind(p,type,L"Class")&&binding::named(type,L"Actor");
 }
+// Select the five root fields together. All visited member identities and
+// links remain in this sample's full closing witness, including later siblings.
+// A sibling root may reuse only the same owner/head; selected fields are fresh.
+inline bool root_schema(Workspace& w,RootLayout& layout,std::uintptr_t start){
+    constexpr std::array<wchar_t const*,5> names{L"WorldInfo",L"Components",L"AllComponents",L"Base",L"Attached"};
+    constexpr std::array<unsigned,5> widths{8,16,16,8,16};
+    constexpr std::array<wchar_t const*,5> kinds{L"ObjectProperty",L"ArrayProperty",L"ArrayProperty",L"ObjectProperty",L"ArrayProperty"};
+    constexpr std::array<wchar_t const*,5> refs{L"WorldInfo",nullptr,nullptr,L"Actor",nullptr};
+    auto& p=layout.proof;std::array<std::uintptr_t,32> owners{};unsigned owner_count{},found{};
+    for(auto owner=start;owner&&owner_count<owners.size();){
+        for(unsigned n=0;n<owner_count;++n)if(owners[n]==owner)return false;
+        owners[owner_count++]=owner;gears_anchor::Identity owner_id{};unsigned extent{};std::uintptr_t head{};
+        if(!binding::certified(p,owner,owner_id)||!binding::kind(p,owner_id,L"Class")||
+           !binding::source_field(p,extent,owner,0x88)||!extent||extent>0x10000||
+           !binding::source_field(p,head,owner,0x80))return false;
+        unsigned first=w.members.count,count{};bool cached{};
+        for(unsigned n=0;n<w.members.chain_count;++n){auto const& chain=w.members.chains[n];
+            if(chain.owner!=owner)continue;
+            if(chain.head!=head||chain.first>w.members.count||chain.count>w.members.count-chain.first)return false;
+            first=chain.first;count=chain.count;cached=true;break;
+        }
+        if(!cached&&head){
+            std::array<std::uintptr_t,4096> visited{};auto child=head;
+            while(child&&count<visited.size()){
+                for(unsigned n=0;n<count;++n)if(visited[n]==child)return false;
+                visited[count++]=child;gears_anchor::Identity id{};
+                if(!binding::identity(child,id)||id.outer!=owner||!w.members.link(id,child))return false;
+            }
+            if(child||!w.members.finish_chain(owner,head,first,count))return false;
+        }
+        const auto already=found;std::array<unsigned,5> matches{};
+        for(unsigned n=0;n<count;++n){auto const& retained=w.members.members[first+n].identity;
+            for(unsigned k=0;k<names.size();++k){
+                if((already&(1u<<k))||std::wcscmp(retained.name.data(),names[k]))continue;
+                auto& selected=layout.fields[k];std::uintptr_t reference{};
+                if(++matches[k]!=1||retained.number||!binding::certified(p,retained.address,selected.id)||
+                   !binding::same(selected.id,retained)||!binding::kind(p,selected.id,kinds[k])||
+                   !binding::source_field(p,selected.dimension,retained.address,0x70)||selected.dimension!=1||
+                   !binding::source_field(p,selected.width,retained.address,0x74)||selected.width!=widths[k]||
+                   !binding::source_field(p,selected.offset,retained.address,0x94)||extent<widths[k]||selected.offset>extent-widths[k])return false;
+                if(refs[k]&&(!binding::source_field(p,reference,retained.address,0xd0)||
+                   !binding::certified(p,reference,selected.reference)||!binding::kind(p,selected.reference,L"Class")||
+                   !binding::named(selected.reference,refs[k])))return false;
+                selected.owner=owner_id;found|=1u<<k;
+            }
+        }
+        if(found==31)return actor_array_schema(p,layout.fields[4]);
+        if(!binding::source_field(p,owner,owner,binding::metadata.field_super))return false;
+    }
+    return false;
+}
 inline Code root(Workspace& w,unsigned index,std::uintptr_t at,binding::Binding const& context,Root& output,bool repeat=false){
     Root next{};auto& l=w.roots[index];auto& p=l.proof;const auto seeds=context.weapon.address?2u:1u;
     if(!collider::instance(p,at,next.actor))return Code::read;
@@ -186,11 +237,7 @@ inline Code root(Workspace& w,unsigned index,std::uintptr_t at,binding::Binding 
            !binding::metadata_current()||w.metadata!=binding::metadata_bytes||w.generation!=binding::metadata_generation||
            !binding::current(p))return Code::changed;
     }else if(!roles::class_role(p,next.actor.cls,index<seeds?(index?L"Weapon":L"Pawn"):L"Actor")||
-       !roles::role_property(p,next.actor.cls,L"WorldInfo",L"ObjectProperty",8,L"WorldInfo",l.fields[0],&w.members)||
-       !roles::role_property(p,next.actor.cls,L"Components",L"ArrayProperty",16,nullptr,l.fields[1],&w.members)||
-       !roles::role_property(p,next.actor.cls,L"AllComponents",L"ArrayProperty",16,nullptr,l.fields[2],&w.members)||
-       !roles::role_property(p,next.actor.cls,L"Base",L"ObjectProperty",8,L"Actor",l.fields[3],&w.members)||
-       !roles::role_property(p,next.actor.cls,L"Attached",L"ArrayProperty",16,nullptr,l.fields[4],&w.members)||!actor_array_schema(p,l.fields[4]))return Code::layout;
+       !root_schema(w,l,next.actor.cls))return Code::layout;
     for(unsigned a=0;a<5;++a)for(unsigned b=a+1;b<5;++b)
         if(!separate(l.fields[a].offset,a==0||a==3?8u:16u,l.fields[b].offset,b==0||b==3?8u:16u))return Code::layout;
     std::uintptr_t world{},base_actor{};

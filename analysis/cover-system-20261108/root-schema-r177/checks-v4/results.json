@@ -1,0 +1,14 @@
+[
+  {
+    "variant": "before",
+    "build_exit": 0,
+    "test_exit": 1,
+    "output": "CoverComponentRoles checks=207 failures=0 declared Pawn/current Weapon arrays only; no complete self or actor/geometry proof\r\nroot_schema reads=2078\r\nFAIL 74: select_root(catalog_work,catalog_work.roots[0],actor.pawn.cls) reason=ready stage=ready field=WorldInfo\r\nroot_schema long_reads=65\r\nFAIL 78: !catalog_work.members.current() reason=ready stage=ready field=WorldInfo\r\nCoverRootSchema checks=308 failures=2\r\n"
+  },
+  {
+    "variant": "after",
+    "build_exit": 0,
+    "test_exit": 1,
+    "output": "CoverComponentRoles checks=207 failures=0 declared Pawn/current Weapon arrays only; no complete self or actor/geometry proof\r\nroot_schema reads=949\r\nFAIL 74: select_root(catalog_work,catalog_work.roots[0],actor.pawn.cls) reason=ready stage=ready field=none\r\nroot_schema long_reads=65\r\nFAIL 78: !catalog_work.members.current() reason=ready stage=ready field=none\r\nCoverRootSchema checks=308 failures=2\r\n"
+  }
+]

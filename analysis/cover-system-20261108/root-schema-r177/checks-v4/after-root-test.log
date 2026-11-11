@@ -1,0 +1,6 @@
+CoverComponentRoles checks=207 failures=0 declared Pawn/current Weapon arrays only; no complete self or actor/geometry proof
+root_schema reads=949
+FAIL 74: select_root(catalog_work,catalog_work.roots[0],actor.pawn.cls) reason=ready stage=ready field=none
+root_schema long_reads=65
+FAIL 78: !catalog_work.members.current() reason=ready stage=ready field=none
+CoverRootSchema checks=308 failures=2

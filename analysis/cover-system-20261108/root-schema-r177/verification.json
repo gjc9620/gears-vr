@@ -1,0 +1,58 @@
+{
+  "native_sha256": "de07b0c1daf61f1aa16f5824c986bebe0f136f895bdea51320eae30aae01b8f1",
+  "product_changed": [
+    "tools/native-capture/cover_component_roles_live.inl"
+  ],
+  "project_dependencies": 413,
+  "flags_unchanged": true,
+  "comparison": {
+    "reads": {
+      "before": 2078,
+      "after": 949,
+      "reduction": 0.5433108758421559
+    },
+    "long_reads": {
+      "before": 15646,
+      "after": 4917,
+      "reduction": 0.6857343730026844
+    }
+  },
+  "checks": [
+    {
+      "variant": "before",
+      "build_exit": 0,
+      "test_exit": 0,
+      "output": "CoverComponentRoles checks=207 failures=0 declared Pawn/current Weapon arrays only; no complete self or actor/geometry proof\r\nroot_schema reads=2078\r\nroot_schema long_reads=15646\r\nCoverRootSchema checks=308 failures=0\r\n"
+    },
+    {
+      "variant": "after",
+      "build_exit": 0,
+      "test_exit": 0,
+      "output": "CoverComponentRoles checks=207 failures=0 declared Pawn/current Weapon arrays only; no complete self or actor/geometry proof\r\nroot_schema reads=949\r\nroot_schema long_reads=4917\r\nCoverRootSchema checks=308 failures=0\r\n"
+    }
+  ],
+  "related": [
+    {
+      "name": "cover_physics_query_live",
+      "build_exit": 0,
+      "test_exit": 0,
+      "output": "cover_physics_query_live: 105 checks, 0 failures; dispatch/module are Host seams, no original call\r\n",
+      "outside_worktree_dependencies": []
+    },
+    {
+      "name": "cover_physics_capsule_path_live",
+      "build_exit": 0,
+      "test_exit": 0,
+      "output": "CoverCapsulePathSession checks=391 failed=0 typed-source/Session real; module/dispatch Host; no game\r\n",
+      "outside_worktree_dependencies": []
+    }
+  ],
+  "game_started": false,
+  "source_age_repaired": false,
+  "cover_view_accepted": false,
+  "world_coverage_verified": false,
+  "movement_authorized": false,
+  "headset_accepted": false,
+  "public_changed": false,
+  "next": "Prepare exact r177 private candidate, then one changed-candidate short controlled path check after resource admission. Verify original call and first actual refusal; full cover scope remains open."
+}

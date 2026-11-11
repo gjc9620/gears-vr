@@ -1,0 +1,2 @@
+cover_root_schema_test.cpp
+C:\Users\11\.codex\worktrees\6dof-single\gearsVr\analysis\cover-system-20261108\root-schema-r177\after\tools\native-capture\cover_root_schema_test.cpp(4): fatal error C1083: 无法打开包括文件: “cover_component_roles_live_test.cpp”: No such file or directory
