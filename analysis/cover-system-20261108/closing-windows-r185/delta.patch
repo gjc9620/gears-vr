@@ -1,0 +1,84 @@
+diff --git a/analysis/cover-system-20261108/isolated-r105/prepare_operator.py b/analysis/cover-system-20261108/isolated-r105/prepare_operator.py
+index 7a2d4b85..7036f16a 100644
+--- a/analysis/cover-system-20261108/isolated-r105/prepare_operator.py
++++ b/analysis/cover-system-20261108/isolated-r105/prepare_operator.py
+@@ -132,6 +132,8 @@ exec(compile(s, str(O / 'run_menu_firstperson_check.py'), 'exec'),""")
+         generator_sha256=sha(__file__),
+         entry_observation_source_sha256=sha(entry_observer),
+         candidate_closing_source_sha256=sha(closing_observer),
++        cover_reader_source_sha256={name:sha(ROOT/name) for name in
++            ('tools/game-playtest/cover_state.py','tools/game-playtest/world_state.py')},
+         ordinary_approach_source_sha256=sha(approach_source), ordinary_approach_frozen_in_operator=True,
+         syntax_checked=True, shared_instance_references=0,
+         input_reader=str(output / 'read_private_input.py'), input_reader_sha256=receipt['input_reader_sha256'],
+diff --git a/analysis/cover-system-20261108/isolated-r105/run.py b/analysis/cover-system-20261108/isolated-r105/run.py
+index 996d7199..15db6da7 100644
+--- a/analysis/cover-system-20261108/isolated-r105/run.py
++++ b/analysis/cover-system-20261108/isolated-r105/run.py
+@@ -81,6 +81,13 @@ def main():
+     if args.probe=='path' and not prepared.get('path_probe_supported'):
+         raise RuntimeError('Selected frozen Native has no prepared path probe')
+     action = load(HERE / NAME / 'operator-prepared.json')
++    cover_sources = action.get('cover_reader_source_sha256')
++    if not isinstance(cover_sources,dict) or set(cover_sources)!={
++            'tools/game-playtest/cover_state.py','tools/game-playtest/world_state.py'}:
++        raise RuntimeError('Fresh cover reader source hashes required')
++    for path,expected in cover_sources.items():
++        if sha(ROOT/path)!=expected:
++            raise RuntimeError('Prepared cover reader changed: '+path)
+     anchor_sources = prepared.get('anchor_source_sha256')
+     if not isinstance(anchor_sources,dict) or not anchor_sources:
+         raise RuntimeError('Fresh preparation with anchor source hashes required')
+@@ -132,6 +139,7 @@ def main():
+     result['isolation_source_sha256'] = prepared['isolation_source_sha256']
+     result['runtime_receipts_source_sha256'] = prepared['runtime_receipts_source_sha256']
+     result['anchor_source_sha256'] = anchor_sources
++    result['cover_reader_source_sha256'] = cover_sources
+     result['projection_recorder_sha256'] = sha(HERE/'cover_projection_recording.py')
+     user = ctypes.WinDLL('user32', use_last_error=True)
+     user.GetForegroundWindow.restype = ctypes.c_void_p
+@@ -316,12 +324,14 @@ def main():
+             and result['isolated_done']['launcher_exit']==0 and result['isolated_done']['owned_game_absent'] is True)
+         result['anchor_sources_after'] = {path:sha(ROOT/path) for path in anchor_sources}
+         result['anchor_sources_unchanged'] = result['anchor_sources_after']==anchor_sources
++        result['cover_reader_sources_after'] = {path:sha(ROOT/path) for path in cover_sources}
++        result['cover_reader_sources_unchanged'] = result['cover_reader_sources_after']==cover_sources
+         save()
+     print(json.dumps({key:result.get(key) for key in ('error','operator_exit','paired_exit','normal_cleanup_verified','remaining_owned')}))
+     return 0 if (not result.get('error') and not result.get('projection_error')
+         and result.get('projection_frames',0)>1 and result['cloak_observations']['samples']>0
+         and not result['cloak_observations']['failures'] and result['normal_cleanup_verified']
+-        and result['anchor_sources_unchanged']) else 1
++        and result['anchor_sources_unchanged'] and result['cover_reader_sources_unchanged']) else 1
+ 
+ 
+ if __name__ == '__main__':
+diff --git a/tools/game-playtest/cover_state.py b/tools/game-playtest/cover_state.py
+index 6fd48337..6d011b51 100644
+--- a/tools/game-playtest/cover_state.py
++++ b/tools/game-playtest/cover_state.py
+@@ -39,8 +39,22 @@ class CoverQuery(Query):
+     def finish(self):
+         # No append-only relaxation: a rejected sample is useful evidence too.
+         super().finish()
+-        for (address, size), expected in list(self.values.items()):
+-            if self.read(address, size) != expected:
++        # A recorded complete Slots block already contains its recorded field
++        # windows. Read that block freshly once in THIS closing pass, then
++        # compare every contained witness against the corresponding bytes.
++        # No extra byte range is read, no witness is dropped, and this local
++        # buffer never survives finish(). The two strict identity/metadata/
++        # registry barriers still surround the complete value verification.
++        active_address, active = 0, b''
++        for (address, size), expected in sorted(self.values.items(),
++                                                 key=lambda item: (item[0][0], -item[0][1])):
++            if size > 0 and active and active_address <= address and address + size <= active_address + len(active):
++                observed = active[address - active_address:address - active_address + size]
++            else:
++                observed = self.read(address, size)
++                if address + size > active_address + len(active):
++                    active_address, active = address, observed
++            if observed != expected:
+                 raise RuntimeError('Cover value changed at closing boundary')
+         super().finish()
+ 

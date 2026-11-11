@@ -363,6 +363,68 @@ class CoverObservationTests(unittest.TestCase):
         fixture.at_verify = mutate
         self.diagnostic(fixture.capture(), accepted=False)
 
+    def test_closing_reuses_only_a_fresh_containing_recorded_window(self):
+        fixture = MemoryFixture()
+        address = 0x90000
+        fixture.put(address, bytes(range(16)))
+        query = CoverQuery(fixture.observer)
+        for start, size in ((4, 4), (0, 16), (0, 8), (1, 2), (12, 4)):
+            query.read(address + start, size)
+        before = dict(fixture.read_counts)
+        query.finish()
+        self.assertEqual(fixture.read_counts[address, 16] - before[address, 16], 1)
+        for start, size in ((4, 4), (0, 8), (1, 2), (12, 4)):
+            self.assertEqual(fixture.read_counts[address + start, size], before[address + start, size])
+        # A later finish cannot reuse the previous closing buffer.
+        fixture.put(address + 5, b'\xff')
+        with self.assertRaises(RuntimeError):
+            query.finish()
+
+    def test_closing_checks_every_byte_of_the_container_and_nested_witnesses(self):
+        for changed in range(16):
+            with self.subTest(changed=changed):
+                fixture = MemoryFixture()
+                address = 0x90000
+                fixture.put(address, bytes(range(16)))
+                query = CoverQuery(fixture.observer)
+                query.read(address, 16)
+                query.read(address + 4, 4)
+                fixture.put(address + changed, b'\xff')
+                with self.assertRaises(RuntimeError):
+                    query.finish()
+        # Contained first witnesses are compared even if a larger window now
+        # agrees with its own first witness. Incoherent overlap is not erased.
+        fixture = MemoryFixture()
+        fixture.put(0x90000, bytes(range(16)))
+        query = CoverQuery(fixture.observer)
+        query.read(0x90000, 16)
+        query.remember(0x90004, b'xxxx')
+        with self.assertRaises(RuntimeError):
+            query.finish()
+
+    def test_partial_overlaps_still_get_their_own_full_closing_read(self):
+        fixture = MemoryFixture()
+        fixture.put(0x90000, bytes(range(24)))
+        query = CoverQuery(fixture.observer)
+        query.read(0x90000, 16)
+        query.read(0x90008, 16)
+        query.read(0x90014, 4)
+        before = dict(fixture.read_counts)
+        query.finish()
+        self.assertEqual(fixture.read_counts[0x90000, 16] - before[0x90000, 16], 1)
+        self.assertEqual(fixture.read_counts[0x90008, 16] - before[0x90008, 16], 1)
+        self.assertEqual(fixture.read_counts[0x90014, 4], before[0x90014, 4])
+
+    def test_fresh_closing_container_read_fault_is_not_accepted(self):
+        fixture = MemoryFixture()
+        fixture.put(0x90000, bytes(range(16)))
+        query = CoverQuery(fixture.observer)
+        query.read(0x90000, 16)
+        query.read(0x90004, 4)
+        del fixture.memory[0x9000f]
+        with self.assertRaises(OSError):
+            query.finish()
+
     def test_reader_loss_and_partial_decode_failure_remain_rejected_diagnostics(self):
         for reader in ('resolver', 'sampler'):
             fixture = MemoryFixture()

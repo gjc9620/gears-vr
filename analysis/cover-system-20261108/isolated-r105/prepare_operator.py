@@ -132,6 +132,8 @@ exec(compile(s, str(O / 'run_menu_firstperson_check.py'), 'exec'),""")
         generator_sha256=sha(__file__),
         entry_observation_source_sha256=sha(entry_observer),
         candidate_closing_source_sha256=sha(closing_observer),
+        cover_reader_source_sha256={name:sha(ROOT/name) for name in
+            ('tools/game-playtest/cover_state.py','tools/game-playtest/world_state.py')},
         ordinary_approach_source_sha256=sha(approach_source), ordinary_approach_frozen_in_operator=True,
         syntax_checked=True, shared_instance_references=0,
         input_reader=str(output / 'read_private_input.py'), input_reader_sha256=receipt['input_reader_sha256'],

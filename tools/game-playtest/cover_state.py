@@ -39,8 +39,22 @@ class CoverQuery(Query):
     def finish(self):
         # No append-only relaxation: a rejected sample is useful evidence too.
         super().finish()
-        for (address, size), expected in list(self.values.items()):
-            if self.read(address, size) != expected:
+        # A recorded complete Slots block already contains its recorded field
+        # windows. Read that block freshly once in THIS closing pass, then
+        # compare every contained witness against the corresponding bytes.
+        # No extra byte range is read, no witness is dropped, and this local
+        # buffer never survives finish(). The two strict identity/metadata/
+        # registry barriers still surround the complete value verification.
+        active_address, active = 0, b''
+        for (address, size), expected in sorted(self.values.items(),
+                                                 key=lambda item: (item[0][0], -item[0][1])):
+            if size > 0 and active and active_address <= address and address + size <= active_address + len(active):
+                observed = active[address - active_address:address - active_address + size]
+            else:
+                observed = self.read(address, size)
+                if address + size > active_address + len(active):
+                    active_address, active = address, observed
+            if observed != expected:
                 raise RuntimeError('Cover value changed at closing boundary')
         super().finish()
 

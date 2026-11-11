@@ -1,0 +1,20 @@
+[
+  {
+    "slots": 3,
+    "before": 88,
+    "after": 67,
+    "reduction": 0.23863636363636365
+  },
+  {
+    "slots": 16,
+    "before": 179,
+    "after": 67,
+    "reduction": 0.6256983240223464
+  },
+  {
+    "slots": 32,
+    "before": 291,
+    "after": 67,
+    "reduction": 0.7697594501718213
+  }
+]

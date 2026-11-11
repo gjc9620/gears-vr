@@ -2715,3 +2715,13 @@ r180记录取得首个差异：candidate link2303863648，stage candidate_select
 normal_cleanup true、remaining_owned空、无强杀，保存时独立确认game/owner/XR/worker精确身份不在。CLOAK546/失败0，前台352/owned_activation false，13启动来源前后相同。145投影帧/errors0、编码0，8页实际已有跨度全部亲看，仅进入掩体前场景；contact0/阶段0，明确动作跨度不完整，不作视图或头显验收。原始session/差异/动作/投影清单及review在link-path-proof-r183/runtime-r184。
 
 下一步缩短候选观察中的重复读取，尤其数组头/完整Slots重复采样、逐槽Bool mask重复读取和收尾的重叠数值窗口；必须保持相同身份/字段/目录/slot值的严格收尾和时间/容量限制，不延时等待或跳过变动候选。完整world/body/movement、严重模型遮挡、全CV01–24/AC01–22及头显未完成，工程25%、publicv71/固定入口不变，目标active。
+
+## r185：候选CoverQuery收尾复用本次新读完整窗口，严格目录双收尾保持（2026-11-11）
+
+针对r184已知registry count增一的实际拒绝，不放宽append-only、不跳过候选、不增加重试或等待。发现CoverQuery.values同时保留完整Slots raw块和内部每个字段的首次witness；finish原来先重读整个raw，又逐槽逐字段重复读取已包含的字节。现在在同一次finish内按地址/长度排序，新读原先已记录的完整窗口，所有被包含的首次witness逐项对照该新读字节；不包含或只部分重叠的窗口仍分别完整重读。没有扩展读取范围、丢字段或跨finish复用。两个原super.finish仍在全部values前后执行，identity/metadata/registry逐项严格相同，3秒/读取/数组容量限制不变，目录增长仍拒绝。
+
+实际现有cover_state.py reader原14项检查0、新18项检查0；新增覆盖每字节变动、内部首次witness不一致、读取失败、部分重叠、第二次finish不复用缓存。既有目录增一、mask在逐槽期间变化、identity/结构指针和第二收尾中变化的反例仍拒绝。真实slot_snapshot前后对照3/16/32槽，capture读取49/101/165保持、全部46/137/249首次witness数保持、每项解码rows SHA相同。收尾读取88→67（-23.86%）、179→67（-62.57%）、291→67（-76.98%）。这是合成内存的实际reader读取次数，不是游戏时间，也不是registry race已修复。
+
+prepare_operator新增cover_state/world_state两份实际reader来源SHA；私有runner在claim前与正常清理后核对并记录，来源改变不能记通过。原13项启动来源、共享隔离/资源门槛和输入保护不变，两个来源另列，不伪装历史案例已有该回执。生成器/runner AST核对通过。仅Python观察器变化，Native/PG/XR不重编，继续精确r183 Native0d4437fd…cdf6f。原始前后来源/测试/计数/哈希/delta与verify在closing-windows-r185。
+
+下一步Git保存后，新实例绑定这两份reader哈希，短查候选是否通过原严格收尾、r183 query来源/耗时/原调用开始返回。若目录变化仍在原窗口内发生，继续保留实际拒绝，不选择性重跑。r183实际40ms、world/body/movement、严重自身模型遮挡、CV01–24/AC01–22及实体头显仍未完成；工程25%、publicv71/固定入口不变，目标active。

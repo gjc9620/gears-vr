@@ -1,0 +1,100 @@
+{
+  "checks": [
+    {
+      "variant": "before",
+      "test_exit": 0,
+      "probe_exit": 0,
+      "source_sha256": "0925235ebd18675c161c9629da83659f6b43aa6cdc05f7a6e163602eef635950",
+      "test_output": "..............\r\n----------------------------------------------------------------------\r\nRan 14 tests in 0.044s\r\n\r\nOK\r\n",
+      "probe_output": "[{\"slots\": 3, \"capture_reads\": 49, \"closing_reads\": 88, \"witnesses\": 46, \"rows_sha256\": \"5d6f4969c7417eb993e68d2443180287594df231b183f5d3bdadb8e2f495ba08\"}, {\"slots\": 16, \"capture_reads\": 101, \"closing_reads\": 179, \"witnesses\": 137, \"rows_sha256\": \"b8ed8445dce12f370954c727666e7854b583d741e87ba5e3f795f4e252af617d\"}, {\"slots\": 32, \"capture_reads\": 165, \"closing_reads\": 291, \"witnesses\": 249, \"rows_sha256\": \"abea32af1c5c2163156740ca5c2280da80c2dd9f332eeaaede691830d924d844\"}]\r\n",
+      "counts": [
+        {
+          "slots": 3,
+          "capture_reads": 49,
+          "closing_reads": 88,
+          "witnesses": 46,
+          "rows_sha256": "5d6f4969c7417eb993e68d2443180287594df231b183f5d3bdadb8e2f495ba08"
+        },
+        {
+          "slots": 16,
+          "capture_reads": 101,
+          "closing_reads": 179,
+          "witnesses": 137,
+          "rows_sha256": "b8ed8445dce12f370954c727666e7854b583d741e87ba5e3f795f4e252af617d"
+        },
+        {
+          "slots": 32,
+          "capture_reads": 165,
+          "closing_reads": 291,
+          "witnesses": 249,
+          "rows_sha256": "abea32af1c5c2163156740ca5c2280da80c2dd9f332eeaaede691830d924d844"
+        }
+      ]
+    },
+    {
+      "variant": "after",
+      "test_exit": 0,
+      "probe_exit": 0,
+      "source_sha256": "cf16bdd6be07b6d6921e10f0a6d0d98d7672eb1eb008fc5dcc651075781211fe",
+      "test_output": "..................\r\n----------------------------------------------------------------------\r\nRan 18 tests in 0.048s\r\n\r\nOK\r\n",
+      "probe_output": "[{\"slots\": 3, \"capture_reads\": 49, \"closing_reads\": 67, \"witnesses\": 46, \"rows_sha256\": \"5d6f4969c7417eb993e68d2443180287594df231b183f5d3bdadb8e2f495ba08\"}, {\"slots\": 16, \"capture_reads\": 101, \"closing_reads\": 67, \"witnesses\": 137, \"rows_sha256\": \"b8ed8445dce12f370954c727666e7854b583d741e87ba5e3f795f4e252af617d\"}, {\"slots\": 32, \"capture_reads\": 165, \"closing_reads\": 67, \"witnesses\": 249, \"rows_sha256\": \"abea32af1c5c2163156740ca5c2280da80c2dd9f332eeaaede691830d924d844\"}]\r\n",
+      "counts": [
+        {
+          "slots": 3,
+          "capture_reads": 49,
+          "closing_reads": 67,
+          "witnesses": 46,
+          "rows_sha256": "5d6f4969c7417eb993e68d2443180287594df231b183f5d3bdadb8e2f495ba08"
+        },
+        {
+          "slots": 16,
+          "capture_reads": 101,
+          "closing_reads": 67,
+          "witnesses": 137,
+          "rows_sha256": "b8ed8445dce12f370954c727666e7854b583d741e87ba5e3f795f4e252af617d"
+        },
+        {
+          "slots": 32,
+          "capture_reads": 165,
+          "closing_reads": 67,
+          "witnesses": 249,
+          "rows_sha256": "abea32af1c5c2163156740ca5c2280da80c2dd9f332eeaaede691830d924d844"
+        }
+      ]
+    }
+  ],
+  "comparison": [
+    {
+      "slots": 3,
+      "before": 88,
+      "after": 67,
+      "reduction": 0.23863636363636365
+    },
+    {
+      "slots": 16,
+      "before": 179,
+      "after": 67,
+      "reduction": 0.6256983240223464
+    },
+    {
+      "slots": 32,
+      "before": 291,
+      "after": 67,
+      "reduction": 0.7697594501718213
+    }
+  ],
+  "reader_sources": {
+    "tools/game-playtest/cover_state.py": "cf16bdd6be07b6d6921e10f0a6d0d98d7672eb1eb008fc5dcc651075781211fe",
+    "tools/game-playtest/world_state.py": "c1d2de0950fb25770cf9520ffa7cf6b0c46940eed9c45e01f5f1c22d4c3cfff0"
+  },
+  "strict_registry_barriers": 2,
+  "append_only_allowed": false,
+  "cache_lifetime": "one closing call only",
+  "witnesses_dropped": false,
+  "native_rebuilt": false,
+  "native_sha256": "0d4437fd5427902f84e5571cb1e3f577c201b114bfaf2843b3e4483f998cdf6f",
+  "game_started": false,
+  "registry_race_game_repaired": false,
+  "source_age_repaired": false,
+  "public_changed": false
+}

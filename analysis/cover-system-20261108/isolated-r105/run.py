@@ -81,6 +81,13 @@ def main():
     if args.probe=='path' and not prepared.get('path_probe_supported'):
         raise RuntimeError('Selected frozen Native has no prepared path probe')
     action = load(HERE / NAME / 'operator-prepared.json')
+    cover_sources = action.get('cover_reader_source_sha256')
+    if not isinstance(cover_sources,dict) or set(cover_sources)!={
+            'tools/game-playtest/cover_state.py','tools/game-playtest/world_state.py'}:
+        raise RuntimeError('Fresh cover reader source hashes required')
+    for path,expected in cover_sources.items():
+        if sha(ROOT/path)!=expected:
+            raise RuntimeError('Prepared cover reader changed: '+path)
     anchor_sources = prepared.get('anchor_source_sha256')
     if not isinstance(anchor_sources,dict) or not anchor_sources:
         raise RuntimeError('Fresh preparation with anchor source hashes required')
@@ -132,6 +139,7 @@ def main():
     result['isolation_source_sha256'] = prepared['isolation_source_sha256']
     result['runtime_receipts_source_sha256'] = prepared['runtime_receipts_source_sha256']
     result['anchor_source_sha256'] = anchor_sources
+    result['cover_reader_source_sha256'] = cover_sources
     result['projection_recorder_sha256'] = sha(HERE/'cover_projection_recording.py')
     user = ctypes.WinDLL('user32', use_last_error=True)
     user.GetForegroundWindow.restype = ctypes.c_void_p
@@ -316,12 +324,14 @@ def main():
             and result['isolated_done']['launcher_exit']==0 and result['isolated_done']['owned_game_absent'] is True)
         result['anchor_sources_after'] = {path:sha(ROOT/path) for path in anchor_sources}
         result['anchor_sources_unchanged'] = result['anchor_sources_after']==anchor_sources
+        result['cover_reader_sources_after'] = {path:sha(ROOT/path) for path in cover_sources}
+        result['cover_reader_sources_unchanged'] = result['cover_reader_sources_after']==cover_sources
         save()
     print(json.dumps({key:result.get(key) for key in ('error','operator_exit','paired_exit','normal_cleanup_verified','remaining_owned')}))
     return 0 if (not result.get('error') and not result.get('projection_error')
         and result.get('projection_frames',0)>1 and result['cloak_observations']['samples']>0
         and not result['cloak_observations']['failures'] and result['normal_cleanup_verified']
-        and result['anchor_sources_unchanged']) else 1
+        and result['anchor_sources_unchanged'] and result['cover_reader_sources_unchanged']) else 1
 
 
 if __name__ == '__main__':
