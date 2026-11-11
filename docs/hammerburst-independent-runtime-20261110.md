@@ -619,3 +619,10 @@ extraction-observe-r1实际4条一致射线，随后service gate3/count4；disar
 基于真实806dcbd6冻结源码与原生产flags/minhook构建，只有weapon_hand_broker.h及weapon_hand_runtime.inl两处生产源变化。沿原时钟/原active_now结果记录最近16项：prepare过期、commit过期、commit非正时钟、外部input_lost（无已存在时钟，明确0/未知）；不加输入取样或改变失效/返回/清理。实际完整Native编译，SHA 6ff4104439f4bc6faacd22b97e69503dd3d1065453592215672e816458a79829。恢复7c30b73a四份测试inl；其header与冻结仅差proximity方法，实际接口匹配且原回归及新增共2530检查0失败。早期新测试遗漏原Pending RAII abort已修正，拒绝后不伪装自动收尾。
 
 私有wrapper新增显式--native-input-loss，仅该实例manifest替换并验SHA；不带该flag仍原806dcbd6。PG继续extraction-observe-r1，未选用WAIT实验；publicv71及固定手动入口未改。下一步保存后一次短loaded实测实际失效阶段，完整13项未完成。
+
+
+## 2026-11-11 game22812：六连发通过，卡扣SetPosition请求失败后取消
+
+Native6ff只读分类与PG extraction-observe-r1实际运行，6条一致射线。卡扣1→2、angle0.67082526时seek_latch_angle返回false，cleanup535；368后续source withdrawal104.1648ms。原cleanup pending是transaction.pending，不是seek_pending，故不冒称已确认未派发。Native总记录40，保留16项皆external/frame0/clock0未知；这是有界窗口，不能推断全部40分类或当作43944复现。原capture/session-status独立SHA归档。正常stop/launcher/Native/PG/XR，无FG/CLOAK违规。353帧无capture错误/编码0，3页48组paired概览亲审，视觉仍未接受。
+
+新latch-seek-gap-r1只对同一active/stopped动画inventory+serial、seek_pending=false且原received时间已过100ms、时钟单调的失败，恢复此前纯stroke/history并等待新鲜采样；不写过期姿态，不重放旧setter，不放宽轨迹/时效/授权，已派发/未知继续cleanup。12项实际helper/caller block边界检查及完整PG编译通过，SHA5bce08627e0a752c2293f6b96c6506ad90ac5d866fb0c569d1714068f6ac114e；尚未游戏验证。原匣/新匣及全13项目标保留，WAIT实验未选用。

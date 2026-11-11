@@ -1,0 +1,44 @@
+--- a/tools/playground/weapon_hammerburst_runtime.inl
++++ b/tools/playground/weapon_hammerburst_runtime.inl
+@@ -429,6 +429,13 @@
+     if(stage==Stage::new_magazine)feed_history::remember(sample);else feed_history::clear();
+     observe_feed_result(f,item,result,sample_gap_ns,rearmed,depth,lateral,aligned);return result;
+ }
++bool expired_before_latch_dispatch(hand::Frame const& f,std::int64_t begin,std::int64_t end) noexcept {
++    if(!anim::ownership.active||!anim::ownership.stopped||anim::ownership.seek_pending||
++       anim::ownership.serial!=animation_serial()||!(anim::ownership.inventory==opening.identity)||
++       begin<=0||end<begin||end<f.now_ns)return false;
++    const auto expired=[&](std::int64_t stamp) noexcept {return stamp>0&&end>=stamp&&end-stamp>100000000;};
++    return expired(f.controllers.received_ns)||expired(f.stereo.received_ns);
++}
+ void step(hand::Frame const& f,hand::Decision const& decision) noexcept {
+     if(stage==Stage::acquiring){
+         if(!animation_owned(f)||!f.left_grip_known)return;
+@@ -498,6 +505,7 @@
+             if(stroke.begin(geometry.latch,sample,angle)){held=decision.lease;released=false;latch_history::previous=latch_history::sampled;}
+             return;
+         }
++        const auto stroke_before=stroke;const auto history_before=latch_history::previous;
+         const auto previous_ms=stroke.last_observation_ms();
+         const bool retained_contact=f.left_tracked&&decision.status==hand::DecisionStatus::retained&&
+             !decision.new_grant&&hand::same(held,decision.lease);
+@@ -531,8 +539,17 @@
+         if(std::abs(stroke.angle()-angle)>1e-7){
+             const auto began=weaponhand::clock_ns(nullptr);
+             const bool sought=anim::seek_latch_angle(f,animation_serial(),stroke.angle());
+-            last_latch_seek_elapsed_ns=weaponhand::clock_ns(nullptr)-began;
+-            if(!sought){cleanup(__LINE__);return;}
++            const auto ended=weaponhand::clock_ns(nullptr);last_latch_seek_elapsed_ns=ended-began;
++            if(!sought){
++                const bool wait=expired_before_latch_dispatch(f,began,ended);
++                static unsigned rows{};
++                if(log_file&&rows<16){++rows;
++                    fwprintf(log_file,L"hammerburst_latch_seek_unavailable frame=%llu sequence=%llu stage=%u wait=%u seek_pending=%u previous_angle=%.9g wanted_angle=%.9g begin_ns=%lld end_ns=%lld sync_ns=%lld no_dispatch=%u\n",
++                        f.key.frame,f.controllers.sequence,unsigned(stage),unsigned(wait),unsigned(anim::ownership.seek_pending),
++                        angle,stroke.angle(),began,ended,f.controllers.sync_ns,unsigned(wait));fflush(log_file);}
++                if(wait){stroke=stroke_before;latch_history::previous=history_before;return;}
++                cleanup(__LINE__);return;
++            }
+         }
+         angle=stroke.angle();
+         if(stage==Stage::opening&&moved==gears_weapon::HammerburstLatchMotion::open){stage=Stage::opened;stroke.reset();}

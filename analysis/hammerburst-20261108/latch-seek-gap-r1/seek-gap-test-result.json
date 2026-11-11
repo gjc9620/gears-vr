@@ -1,0 +1,8 @@
+{
+  "exit_code": 0,
+  "cases": 12,
+  "exact_helper_and_caller_block": true,
+  "game_started": false,
+  "source_sha256": "75bff3808f12aa125e5002c761d6fee3072cc8039db41b628a28bf453293b40e",
+  "limits": "Animation/trajectory holders and cleanup are fakes. Actual predicate and rollback caller text compiled; not full engine/geometry or gameplay proof."
+}
