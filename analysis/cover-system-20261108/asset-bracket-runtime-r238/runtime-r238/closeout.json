@@ -1,0 +1,26 @@
+{
+  "operator_exit": 0,
+  "normal_cleanup_verified": true,
+  "remaining_owned": {},
+  "projection_frames": 259,
+  "projection_errors": [],
+  "anchor_sources_unchanged": true,
+  "cover_reader_sources_unchanged": true,
+  "cloak_observations": {
+    "samples": 545,
+    "failures": []
+  },
+  "foreground_observations": {
+    "samples": 367,
+    "owned_activation": false
+  },
+  "forced_termination": false,
+  "shape_status": [
+    "cover_shape_snapshot_requested=1 attempted=1 finished=1 code=10 detail=8 bodies=0 actors=0 shapes=0 units=physx movement_permission=0 original_started=0,0 original_returned=0,0 world=2527035648 pawn=95164629248 scene=400 compose=24608 sequence=2664 thread=52368 admission=6 session_entered=1 session_stage=5 session_detail=10 begin_ns=224651026030800 end_ns=224651047190200",
+    "cover_shape_snapshot_owner_guard=4,0,0,0,0 session_guard=250,0,0,0,0 source_cause=0,0,0,0,0,0,0",
+    "cover_shape_snapshot_nested=0,0,8 cover_shape_snapshot_failed=11,0 cover_shape_snapshot_progress=19,0,19,0 cover_shape_snapshot_partial_unpublished=1 cover_shape_snapshot_partial_actor=2313953408,4762547072,95165336064,95166097344,140720154309328,3,1 cover_shape_snapshot_partial_arrays=0,0,0,0,0,0",
+    "cover_shape_snapshot_world_pass=0 cover_shape_snapshot_world_stage=7 cover_shape_snapshot_parameter_code=0 cover_shape_snapshot_pose_unpublished=1 cover_shape_snapshot_body=1,140720154306664 cover_shape_snapshot_stored_p=0.230697528,-3.45637852e-09,0.0249756519 cover_shape_snapshot_stored_q=-0.517145097,-0.482245654,-0.482245654,0.517145157 cover_shape_snapshot_body_p=-78.4930725,-3.67751884,12.5791245 cover_shape_snapshot_body_q=0.401522607,0.304909706,-0.0472320467,0.862281024",
+    "cover_shape_snapshot_world_pass=1 cover_shape_snapshot_world_stage=0 cover_shape_snapshot_parameter_code=0 cover_shape_snapshot_pose_unpublished=1 cover_shape_snapshot_body=0,0 cover_shape_snapshot_stored_p=0,0,0 cover_shape_snapshot_stored_q=0,0,0,0 cover_shape_snapshot_body_p=0,0,0 cover_shape_snapshot_body_q=0,0,0,0"
+  ],
+  "interpretation": "Reaches actor11/member0 at21.1594ms, owner4 no failure / typed guard250 no failure before Body pose rejection. New original quaternion norm_squared=.9999497638780792 exceeds old observed norm cutoff. Need observed matrix error contract independent of strict query eligibility; no complete close/result."
+}

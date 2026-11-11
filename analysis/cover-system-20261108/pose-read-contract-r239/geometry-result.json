@@ -1,0 +1,25 @@
+{
+  "build_exit": 0,
+  "test_exit": 0,
+  "output": "ActiveShapeGeometry checks=13840 failures=0 owned PhysX geometry only; no authored correspondence or authority\r\n",
+  "source_sha256": {
+    "tools\\native-capture\\cover_physx_shape_geometry.h": "91a136170ca1ad74d16806383fc335db4f3452de6fd4c5f2f9a3107525dfba3d",
+    "tools\\native-capture\\cover_physx_shape_world.h": "cbb304eb43557b064b3648ad22e70ab6167e47ec44dcc38b2eded3cb106a6049",
+    "tools\\native-capture\\cover_physx_shape_parameters.h": "df368f06b249763ed5e3db3e506b12095b4860d1272fd1b2383ac798bcafe752",
+    "tools\\native-capture\\cover_physx_shape_owner.h": "ee76376ee29a5caf05794c77a6360bd7227e06d58340cb070ecefa9011313c9b",
+    "tools\\native-capture\\cover_physx_query_source.h": "b363328e6dcc8c24a6d41f4563167f494723d88c15670282f1fd8635db5539c6",
+    "tools\\native-capture\\cover_physx_query_code.h": "476c05b953fd987688baf27f25d8f76bc11be2693fe1c76f785f167e3ac2d296",
+    "tools\\native-capture\\cover_pose_phase.h": "f173e0346bb313e33f4e26f1f9c0b91442009cdf7e903ed4c6a0de67dd7d8f19",
+    "tools\\native-capture\\cover_physx_stream.h": "f551b433233401bdd17dcb46cb2d293a01b7ba1ffd1a6e0228ded63b19950bca",
+    "tools\\native-capture\\cover_physx_actor_shapes.h": "c4e3b1c14fbbd2f6b2a4f8a922a6a41dc225ee9f8457e5f80173feb4d774f929",
+    "tools\\native-capture\\cover_physx_actor_backlink.h": "700d82a9a43dd4e21d3ed48afa462234bc6fa679df6cf837c3bb12e3f8f4f404",
+    "tools\\native-capture\\cover_physx_shape_tables.h": "0b8e2629b22a2d4adfc5000f49aefc753324c710006e359eac064b6b9dd193b6",
+    "tools\\native-capture\\cover_physx_actor_shape_code.h": "14f03ba4875975cb3092dc49960e6775aa8614de82636266b246fa4c87f95243",
+    "tools\\native-capture\\cover_physx_shape_parameter_code.h": "a29a025630e961b628e139ee8f1233eeef0374971a6a3f9e6725ff3391e4fc20",
+    "tools\\native-capture\\cover_physx_pose_math.h": "b0c9e6a0ddc1d4fceb85ceb9c2bdf5f83233ae6c10650cb60cd641226078f516",
+    "tools\\native-capture\\cover_physx_matrix.h": "c243ee0c239387071aeb85947524dc5a40eb540196ae21041a918b37b38a3069",
+    "tools\\native-capture\\cover_physx_observed_pose.h": "b65b6901dcb192eec2558fc759723a80a3335d9ae01feb662992839990ecdd88",
+    "tools\\native-capture\\cover_physx_shape_world_code.h": "535d9db23810f8344b2a227375c65cc207f141716da2366e8cce77f025eea1d6",
+    "tools\\native-capture\\cover_physx_shape_geometry_test.cpp": "a9337bffdb10124ca929e0b7359ea8e6ae8b03da079979492045bc95a94e17db"
+  }
+}

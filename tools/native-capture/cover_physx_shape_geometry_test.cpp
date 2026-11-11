@@ -10,7 +10,7 @@ int main(){
     for(unsigned axis=0;axis<3;++axis)for(unsigned n=0;n<128;++n){
       const double angle=double(n)*.037;const float s=float(std::sin(angle/2)),c=float(std::cos(angle/2));
       std::array<float,4> q{};q[axis]=s;q[3]=c;
-      CHECK(g::w::math::quaternion(q,{10,-20,30},source.shape_world));
+      CHECK(g::w::math::quaternion(q,{10,-20,30},source.shape_world));source.parameters.stored_quaternion=q;source.parameters.stored_position={10,-20,30};
       // Independent Rodrigues rotation, with a positive unit coordinate axis.
       auto rotate=[&](std::array<double,3> v){auto result=v;const unsigned a=(axis+1)%3,b=(axis+2)%3;
         result[a]=std::cos(angle)*v[a]-std::sin(angle)*v[b];result[b]=std::sin(angle)*v[a]+std::cos(angle)*v[b];return result;};

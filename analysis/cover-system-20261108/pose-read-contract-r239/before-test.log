@@ -1,0 +1,2 @@
+FAIL recorded pose retained independently of strict quaternion norm cutoff
+PoseReadContract checks=3 failed=1 saved actor11 values; no query

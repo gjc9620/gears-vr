@@ -1,0 +1,21 @@
+{
+  "results": {
+    "before": "FAIL recorded pose retained independently of strict quaternion norm cutoff\r\nPoseReadContract checks=3 failed=1 saved actor11 values; no query\r\n",
+    "span": "PoseReadContract checks=5 failed=0 saved actor11 values; no query\r\n",
+    "math": "ObservedPoseMath checks=4369 failed=0 unnormalized point oracle; no query permission\r\n",
+    "geometry": "ActiveShapeGeometry checks=13840 failures=0 owned PhysX geometry only; no authored correspondence or authority\r\n",
+    "engine": "read_budget=228 guard_calls=12\r\nCoverPhysXShapeOwner checks=531 failed=0 original-executed=false game-started=false\r\nparameter_reads=102\r\nShapeParameters checks=702 failed=0 original PE as data; stored fields only, no world/eligibility permit\r\nworld_reads=140\r\nShapeWorld checks=1708 failed=0 original PE as data; original-unit CPU pose only, no query fence\r\nAssetShapes checks=1734 failed=0 synthetic object groups; complete supplied asset only, no world/self permit\r\nAssetShapesEngine checks=1743 failed=0 actual QueryEngine/HostImage only; no original dispatch\r\n",
+    "session": "cover_physics_query_live: 110 checks, 0 failures; dispatch/module are Host seams, no original call\r\nAssetReadFullOwner calls=6 repeated_typed_checks=64\r\nAssetShapeSession checks=165 failures=0 actual Session with empty Host packet; original calls0\r\n",
+    "off": "cover_physics_c0 OFF: 65 checks, 0 failures; no game/module/query\r\n"
+  },
+  "same_recorded_replay": true,
+  "native_sha256": "828e7e2400be8456b1ff7de0450480e9b75b7e4ee2ab2b8164fcfec7601682c6",
+  "dependencies": 423,
+  "geometry_is_native_dependency": false,
+  "flags_unchanged": true,
+  "game_started": false,
+  "installed": false,
+  "change": "Observed read qualifies finite nonzero raw quaternion through original float matrix with proper orientation and explicit Gram spectral upper bound G<1. No fixed quaternion norm cutoff in read; no normalization. Strict Geometry now separately rebuilds strict unit-quaternion and derived matrix from raw source and requires exact match. Original strict pose/query math unchanged. Float intermediate and compose translation range checked before overflow.",
+  "remaining": "New observed contract not game-run; complete actual asset close, numerical enclosure into actual geometry/query, full self/world/template/body/view/hit/muzzle/headset pending.",
+  "engineering_percent": 25
+}
