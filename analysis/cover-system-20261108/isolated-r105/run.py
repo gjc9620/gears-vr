@@ -64,7 +64,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--name', required=True)
     parser.add_argument('--run', action='store_true', required=True)
-    parser.add_argument('--probe', choices=('sphere','path'), default='sphere')
+    parser.add_argument('--probe', choices=('sphere','path','shape'), default='sphere')
     parser.add_argument('--admission-wait-seconds', type=int, default=60)
     args = parser.parse_args()
     wait_argument, launch_timeout = admission_settings(args.admission_wait_seconds)
@@ -80,6 +80,8 @@ def main():
     prepared = load(HERE / NAME / 'prepared.json')
     if args.probe=='path' and not prepared.get('path_probe_supported'):
         raise RuntimeError('Selected frozen Native has no prepared path probe')
+    if args.probe=='shape' and not prepared.get('shape_snapshot_supported'):
+        raise RuntimeError('Selected frozen Native has no prepared shape snapshot')
     action = load(HERE / NAME / 'operator-prepared.json')
     cover_sources = action.get('cover_reader_source_sha256')
     if not isinstance(cover_sources,dict) or set(cover_sources)!={
@@ -127,6 +129,7 @@ def main():
         env.pop(key, None)
     env.update(GEARSVR_COVER_SPHERE_PROBE='1' if args.probe=='sphere' else '0',
                GEARSVR_COVER_PATH_PROBE='1' if args.probe=='path' else '0',
+               GEARSVR_COVER_SHAPE_SNAPSHOT='1' if args.probe=='shape' else '0',
                GEARSVR_AUTHORED_EYE_TRACE='1', GEARSVR_LANCER_REVIEW_VOLUMES='0',
                GEARSVR_QUIET_NATIVE_FOREGROUND='1', GEARSVR_TEST_WINDOWS_BEHIND='1', GEARSVR_TEST_MUTE_GAME='1',
                GEARSVR_TEST_TINY_OUTPUT_OBSERVE_ONLY='1', XR_SIMULATOR_NO_ACTIVATE='1')
