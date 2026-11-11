@@ -1,0 +1,12 @@
+{
+  "state": "deferred",
+  "reason": "Other GOWDE-Steam/OpenXRPoseProbe processes appeared after owned run terminal; no cleanup or media sweep against another session.",
+  "observed_pids": [
+    37740,
+    49828
+  ],
+  "owned_game_pid": 42816,
+  "owned_xr_pid": 33080,
+  "owned_run_terminal": true,
+  "other_sessions_touched": false
+}

@@ -1,0 +1,25 @@
+{
+  "operator_exit": 0,
+  "normal_cleanup_verified": true,
+  "remaining_owned": {},
+  "projection_frames": 268,
+  "projection_errors": [],
+  "anchor_sources_unchanged": true,
+  "cover_reader_sources_unchanged": true,
+  "cloak_observations": {
+    "samples": 639,
+    "failures": []
+  },
+  "foreground_observations": {
+    "samples": 421,
+    "owned_activation": false
+  },
+  "forced_termination": false,
+  "shape_status": [
+    "cover_shape_snapshot_requested=1 attempted=1 finished=1 code=10 detail=7 bodies=0 actors=0 shapes=0 units=physx movement_permission=0 original_started=0,0 original_returned=0,0 world=2248245504 pawn=95206860544 scene=396 compose=24340 sequence=3452 thread=42404 admission=6 session_entered=1 session_stage=5 session_detail=10 begin_ns=221681001856000 end_ns=221681016511800",
+    "cover_shape_snapshot_owner_guard=35,0,0,0,0 session_guard=16,0,0,0,0 source_cause=0,0,0,0,0,0,0"
+  ],
+  "interpretation": "Actual one-shot reached Session engine, QueryCode10 owner_read / assetShapes7 shapes, rejected unpublished result; no original query calls. Need nested shape subcode and failed actor/member; no whole-asset/gameplay acceptance.",
+  "gameplay_accepted": false,
+  "headset_accepted": false
+}

@@ -3113,3 +3113,13 @@ Session同一序列化execute事务新增无geometry的AssetReadRequest，角色
 功能关闭65检查0，查询目录16回归0。首次完整构建暴露cfenv首次在anonymous namespace内引入nested std；改用C浮点控制接口，测试在全局引用cfenv，保留失败build/source/log。v2在r226精确冻结Native上仅5文件overlay，原GEARS flags不变、独立源和构建、无外部工作树混入；完整构建通过，DLL SHA为3972af3f35a5c17c37e463a890fdc68654311e28b52a4f696d1f705b9a11f3b7，项目依赖422逐SHA验证。未安装、未启动游戏/XR，尚无新C0实际形状读取证据。
 
 后续进行新的一次受控真实shape读取，保留原source freshness；继续闭合active/template身份、static/weld/flags/full self/world fence及body/view/hit/muzzle同版事务。完整CV24/AC22、视图遮挡及头显仍未完成，工程25%；publicv71与固定手动入口不变。证据probe-entry-r227。
+
+## r228：新全形状读取真实进入C0／Session后在shape inventory拒绝；正常退出（2026-11-12）
+
+私有新实例cover-1112-r228-cloak-shapes使用r227 Native3972af3f…f3b7，prepare新增显式固定r227选择，逐422个冻结依赖SHA认证；runner新增shape模式且三个环境开关全部明确互斥，保持原输入/owner/启动/资源/静音/0.4/CLOAK/清理保护。生成operator导入通过，实际live身份guard14离线检查通过。准备与runner代码已保存9ce46d24；未修改publicv71/固定手动入口/Quest。
+
+实际游戏42816/creation134389104154093969，XR33080；原A进入掩体、五段eye观察operator0。新读取确实触发：attempted1/finished1，admission6/session_entered1、Session engine stage5，q::Code10 owner_read，asset_shapes::Code7 shapes，14.6558ms；owner guard35/session guard16均无failed_call，source_cause未观察，original started/returned均0。整批失败，bodies/actors/shapes发布数0；不能把0解读成真实空清单，也不能声称完整读取或source-end关闭已成功。当前失败位于asset observer内shapes::observe，尚缺nested shape_code与failed_actor/member；下一步补出已有workspace诊断字段，依具体布局失败修复，不重跑旧timer或放宽来源时效。
+
+268实际投影帧、错误0、14全跨度overview已生成、5阶段contact已逐张亲看；五张双眼自身头肩/躯干遮挡严重，视图验收FAIL。overview未全数亲看，保留full_span_personally_reviewed=false，不称全跨度人工验收。实际captured-span编码0。正常清理true，Native/entry/input/weapon drain恢复、XR/launcher正常退出，自有remaining为空、无强杀；CLOAK639次失败0，前台421次无自有激活，13项anchor来源和cover reader前后相同。
+
+本实例终止后观察到另一个游戏37740/XR49828，未触碰；媒体保留清理因其他活动会话暂缓，仅保存deferred记录。完整CV24/AC22、active/template身份、static/weld/flags/full self/world fence、body/view/hit/muzzle同版事务和视图遮挡/头显继续未完成，工程25%。本轮的实际拒绝已缩小下一步范围，证据asset-shape-runtime-r228/runtime-r228。
