@@ -1,13 +1,13 @@
 {
-  "source_checkpoint": "83976712",
-  "next": "Inspect moving ONLY an already captured HB continuation/refire with previously certified released input to the existing fresh pre-original held-muzzle stage, before hand/visual/equipment observation cost. Keep same event/capture, original250ms/100ms/20ms, actual original six counter, identity/switch/cancel/release/tracking and once-only claim. New presses/first-event/equipment acquisition retain original post-Input path. Prove with exact caller and transaction tests before any game; no unchanged rerun. Missing4629 origin question remains open.",
-  "candidate": "history-origin-r1",
+  "source_checkpoint": "e5fb69e6",
+  "next": "Trace original unholster-pending completion161 and subsequent equipment drop163 after rig unavailable159. Determine retained original intent identity versus observer baseline reset, and actual held binding/publication. Harness input_status event restriction can miss delayed completion, but do not adopt unrelated/replayed held or ignore163 drop. No new Grip/retry, source freshness/lifecycle unchanged. Early continuation still needs actual game exercise; history4629 origin still open.",
+  "candidate": "early-released-refire-r1",
   "requirements_complete": false,
   "native_candidate": "native-mutex-r1",
-  "runner_session_id": 91144,
+  "runner_session_id": 22606,
   "terminal": true,
   "all13_requirements_retained": true,
-  "instance": "hb-cloak-1111-161014",
-  "game_pid": 7440,
-  "runner_last_poll": "91144 terminal1; stop/launcher/Native/PG/XR normal0; owned game+children gone; noforced;encode0"
+  "instance": "hb-cloak-1111-162406",
+  "runner_last_poll": "22606 terminal1; normal stop/launcher/Native/PG/XR0; owned game+children gone; noforced;encode0",
+  "game_pid": 44240
 }

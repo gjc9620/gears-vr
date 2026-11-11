@@ -727,3 +727,8 @@ PGaa02381d/Nativeb9ab7a82实际16条一致射线（core6、drain6、下一组4/6
 ## 2026-11-11 已认证UP续发提前到原pre-original枪口阶段
 
 Private PG325200c3 early-released-refire-r1完整编译；只对已捕获refire、已有真实UP lifetime、input不持有、非first/cancel且原有限事务count1..5，现有pre-original fresh muzzle准备后调用原service/deliver。原事件/capture/claim/六发/100ms/20ms/250ms、身份切枪tracking与post-Input新按下/首发逻辑保持。24新增case/92check+原335，实际adapter fixture共427通过：早180ms与晚310ms同一原事件对照、22有效/否定变体、重复pre/post不多打。engine/certificate/source为有界fake，不能作game证明。初次fullbuild缺前置接口声明、fixture混合auto和无reset成员导致编译失败，补声明、拆变量并用空事务赋值修正，未放宽生产判定；最终build/check0。Nativeb9ab7a82/XR不变，未运行新候选，13项保留。
+
+
+## 2026-11-11 实际44240：新续发版本未到达射击，原取枪完成与读取关联
+
+PG325200c3/Nativeb9ab7a82正常资源等待80.547s后单次运行。UP156/3406 p0r0、唯一Grip后158 event1/press1 unholster_pending，159 unavailable/rig source_unavailable，161同event1/press1 held但input_status baseline，随后163装备模型baseline target0。测试限定held+input_status event，未接受延迟完成161；因此不能称完全没held记录，也不能只放宽读取忽略163掉持有。0射线/newearlyrefire0，新功能效果未验证，无回归因果证明。下一步核原pending完成跨baseline及163逻辑model/binding，而非重按或无变化重跑。Nativeinputloss0/Gate28age-only。正常清理全0无forced、64帧错误空/编码0、3页48对亲阅，末段近右眼枪与分离重影手仍无稳定接触验收。完整13项及4629 origin问题保留。

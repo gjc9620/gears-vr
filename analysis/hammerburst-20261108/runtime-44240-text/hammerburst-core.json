@@ -1,0 +1,55 @@
+{
+  "game": {
+    "pid": 44240,
+    "creation_time": 134388591450163927,
+    "image": "j:\\gearsvr\\gears.of.war.reloaded.v1.0.1.3816947-p2p\\gears of war reloaded\\binaries_x64\\gowde-steam.exe"
+  },
+  "checks": {},
+  "initial": {
+    "label": "before_original_X_pickup",
+    "ns": 170393339337600,
+    "weapon": "0x162da16700",
+    "name": "Weap_LocustAssaultRifle",
+    "cls": "Weap_LocustAssaultRifle",
+    "location": [
+      -3900.0,
+      0.0,
+      583.9485473632812
+    ],
+    "special": 0
+  },
+  "recorded_scope": "HB initial shoulder acquisition and authoritative fire only",
+  "pickup_input": {
+    "up_sent_ns": 170394557451900,
+    "baseline": {
+      "frame": "156",
+      "sequence": "3406",
+      "sync_ns": "170396508403400",
+      "admitted_ns": "170396534630400",
+      "frame_now_ns": "170396523417600",
+      "source": "1",
+      "right_pressed": "0",
+      "right_released": "0",
+      "right_down": "0",
+      "input_status": "quiet",
+      "session": "170352771216400",
+      "space": "1",
+      "input": "2",
+      "profile": "2",
+      "reference": "1",
+      "lifecycle": "3",
+      "world_generation": "1"
+    },
+    "shoulder_endpoint": {
+      "x": 0.23,
+      "y": 1.5850000476837158,
+      "z": -0.17,
+      "yaw": 0.0,
+      "pitch": -0.30000002227634565,
+      "roll": 0.0
+    },
+    "down_sent_ns": 170396554564400,
+    "failure_release_sent_ns": 170398563080100
+  },
+  "error": "TimeoutError('Single shoulder Grip produced no matching actual held receipt; no input retry')"
+}
