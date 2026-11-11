@@ -1,0 +1,11 @@
+{
+  "launcher_exit": 0,
+  "owned_game_absent": true,
+  "owned_children": {
+    "recorded": 0,
+    "remaining": []
+  },
+  "forced_termination": false,
+  "worker_error": null,
+  "no_game_started": false
+}

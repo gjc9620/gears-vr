@@ -2749,3 +2749,11 @@ Session witness追加owner_begin/end，原编号不变；timing追加owner_brack
 精确r183冻结源只覆盖cover_physics_query_live.inl、cover_query_guard_observation.h、cover_query_timing.h三份。完整Native编译/链接0，SHA256 e09b3e0ff8ea8da3c6998022254932835763540052a2eb0bc2201a688c64f6af；413份项目依赖均来自本次冻结树，构建开关不变，无外部工作树依赖。源码、来源清单、编译回执和对照在owner-bracket-r187。
 
 保留v1测试全局遮蔽警告、v2夹具漏session.enabled、v3初始Root0原本合法的错误预期及漏timing头覆盖、v4模板constexpr编译失败。v5修正后通过，不将这些夹具/编译失败称为产品已复现故障。本轮未启动游戏、未安装public。下一步精确固定r187候选与新增计时槽后做一次有变化的受控检查。r186严重自身模型遮挡、世界碰撞覆盖、实际身体/枪口/受击、全CV01–24/AC01–22及实体头显仍未完成；工程25%、publicv71/固定入口不变，目标active。
+
+## r189：新候选受控检查已正常收尾，主人使用editor暂停（2026-11-11）
+
+r188启动前磁盘4255793152字节低于原4GiB门槛，runner1，独立确认无start-request/worker/session/done，未启动游戏/XR。不复用该名。已结束r181/r184/r186的315份PSOCache归档到J盘并逐份核对后释放2655147954字节，不删除源码/证据/媒体/存档/设置。新r189使用r187 Native e09b3e0f…f6af，prepare/import/start/operator/runner全部0，正常清理true、remaining_owned空、无强杀；保存时game/owner/XR/worker精确身份均已独立确认不在。CLOAK660无失败，前台409且未激活本方窗口；272投影帧/错误0/编码0。
+
+新增owner_bracket第8计时槽实际存在，74次全部闭合16.1171ms；physics/collider repeat各36次，components repeat2次。完整query仍未证明通过；实际原始path/timing/age/link记录已保存，不以正常收尾冒充碰撞通过。新旧timing分段范围不同且engine含内部计时，不能相加或直接宣称提速。
+
+主人要求停止新增实现/构建/测试/启动并让出editor。本轮停止在审阅阶段：14页概览仅亲看前4页，5张原始接触均未亲看，完整图像审阅未完成。所有本方运行已终态且未再启动。检查点owner-bracket-r187/owner-pause-checkpoint.json保留，明确恢复后先补余下10页/5图及首败分析，不自动重跑。全CV01–24/AC01–22、身体/世界碰撞/受击/枪口及头显仍未完成，工程25%、publicv71/固定入口不变，目标按主人要求暂停。

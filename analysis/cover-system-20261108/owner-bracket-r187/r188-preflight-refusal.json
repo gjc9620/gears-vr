@@ -1,0 +1,13 @@
+{
+  "name": "cover-1111-r188-cloak-bracket",
+  "stage": "runner require_disk before claim",
+  "free_bytes": 4255793152,
+  "minimum_free_bytes": 4294967296,
+  "runner_exit": 1,
+  "game_started": false,
+  "xr_started": false,
+  "worker_started": false,
+  "claim_consumed": false,
+  "first_start_request_created": false,
+  "source": "Observed runner error; attempt files independently absent"
+}

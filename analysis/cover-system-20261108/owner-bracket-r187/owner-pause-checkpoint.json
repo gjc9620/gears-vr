@@ -1,0 +1,17 @@
+{
+  "as_of": "2026-11-11T18:29:27.030315+08:00",
+  "reason": "Owner requests editor access; no new implementation/build/test/start",
+  "source_commit": "7c44638c",
+  "candidate_commit": "9f222092",
+  "run_name": "cover-1111-r189-cloak-bracket",
+  "normal_cleanup_verified": true,
+  "exact_owned_processes_absent": true,
+  "encode_exit": 0,
+  "media_reviewed_pages": 4,
+  "media_total_pages": 14,
+  "media_reviewed_contacts": 0,
+  "media_total_contacts": 5,
+  "query_elapsed_ns": 35845700,
+  "next_on_explicit_resume": "Review remaining 10 overview pages and 5 contacts, analyze exact query first rejection; no automatic rerun.",
+  "goal_complete": false
+}
