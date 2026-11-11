@@ -1,0 +1,35 @@
+{
+  "runtime_delta": [
+    "tools/native-capture/body_source_age_observation.h",
+    "tools/native-capture/body_tick_source_live.inl",
+    "tools/native-capture/cover_physics_c0_live.inl"
+  ],
+  "native_sha256": "0de22cab918329d51091f4e640043ffb43ec0f17586a93affab763d333660e17",
+  "project_dependencies": 411,
+  "outside_worktree_dependencies": 0,
+  "flags_unchanged": true,
+  "body_source_decisions_reconstructed_exactly": true,
+  "c0_control_flow_reconstructed_exactly": true,
+  "existing_clock_calls_unchanged": true,
+  "extra_game_reads": false,
+  "source_or_time_renewal": false,
+  "scope": "Existing private one-shot path query only; key-matched copied first classify/current and first-age rows, bounded four rows",
+  "observer_checks": 26,
+  "parser_checks": 15,
+  "related_checks": [
+    25,
+    135,
+    23,
+    391,
+    51
+  ],
+  "classify_and_current_clocks_distinct": true,
+  "first_check_has_query_offset": true,
+  "missing_observations_unknown": true,
+  "build_only": true,
+  "game_started": false,
+  "source_age_repaired": false,
+  "movement_authorized": false,
+  "world_coverage_verified": false,
+  "public_changed": false
+}

@@ -1,3 +1,4 @@
+#include "body_source_age_observation.h"
 #if defined(GEARS_BODY_MAIN_MOUNT_SOURCE) && GEARS_BODY_MAIN_MOUNT_SOURCE
 namespace body_tick_source_live {
 namespace source=::gears_body_tick_source;namespace wire=::gears_body_main_mount_provider;
@@ -16,6 +17,18 @@ struct RejectedSource {
     uint64_t tick{};unsigned stage{},reason{},verdict{};
 };
 std::array<RejectedSource,64> rejected_sources{};unsigned rejected_source_count{};
+void observe_age(unsigned stage,source::Input const& saved,gears_native_rig_tracking::CoreSnapshot const& original,
+    std::int64_t now,std::int64_t capture,input::Verdict verdict)noexcept{
+    namespace observation=gears_body_source_age_observation;
+    if(!observation::armed())return;
+    auto const& t=saved.observed;observation::Row row{};
+    row.tick=t.tick;row.world=original.world.address;row.pawn=original.pawn.address;row.scene=original.scene_invocation;
+    row.stereo_sequence=t.stereo.sequence;row.controller_sequence=t.controllers.sequence;row.thread=unsigned(t.thread);
+    row.verdict=unsigned(verdict);row.latched=age_burned;row.now=now;row.capture_begin=capture;
+    row.metadata_begin=saved.metadata_begin_ns;row.metadata_end=saved.metadata_end_ns;row.tracking_begin=t.begin_ns;row.tracking_end=t.end_ns;
+    row.stereo_received=t.stereo.received_ns;row.controller_received=t.controllers.received_ns;row.sync=t.controllers.sync_ns;
+    observation::note(stage,row);
+}
 void note_rejected(source::Input const& s,int64_t now,int64_t capture,unsigned stage,unsigned reason,input::Verdict verdict)noexcept {
     if(!rig::metadata_reject_trace||GetCurrentThreadId()!=owner_thread.load()||rejected_source_count>=rejected_sources.size())return;
     auto const& v=s.observed;
@@ -116,6 +129,7 @@ input::Verdict observe(source::Input const& saved,gears_native_rig_tracking::Cor
     rig::TickFailure why{};const bool legacy=rig::current_copy(original,saved.scene_cache_revision,50000000,&why);
     if(!legacy&&why!=rig::TickFailure::source_age_only)return reject(4);
     const auto observed_now=rig::clock_ns();const auto verdict=source::classify(saved,original,observed_now,simulator_operator);
+    observe_age(0,saved,original,observed_now,0,verdict);
     if(verdict!=input::Verdict::okay)note_rejected(saved,observed_now,0,2,5,verdict);
     if(verdict==input::Verdict::hard)return verdict;
     return verdict;
@@ -129,9 +143,11 @@ input::Verdict current(source::Input const& saved,gears_native_rig_tracking::Cor
     const auto now=rig::clock_ns();
     if(capture_begin<0||(capture_begin&&(capture_begin>now||capture_begin<saved.observed.end_ns))){note_rejected(saved,now,capture_begin,3,1,input::Verdict::hard);hard_failed=true;write_valid=false;++hard_rejected;return input::Verdict::hard;}
     if(age_burned||verdict==input::Verdict::source_age_only||(capture_begin&&std::uint64_t(now-capture_begin)>wire::tracking_age_ns)){
+        observe_age(1,saved,original,now,capture_begin,input::Verdict::source_age_only);
         note_rejected(saved,now,capture_begin,3,unsigned(age_burned)|unsigned(verdict==input::Verdict::source_age_only)*2|unsigned(capture_begin&&std::uint64_t(now-capture_begin)>wire::tracking_age_ns)*4,input::Verdict::source_age_only);
         age_burned=true;write_valid=false;++age_rejected;return input::Verdict::source_age_only;
     }
+    observe_age(1,saved,original,now,capture_begin,write_valid?input::Verdict::okay:input::Verdict::hard);
     return write_valid?input::Verdict::okay:input::Verdict::hard;
 }
 bool retained_current(source::Input const& saved,gears_native_rig_tracking::CoreSnapshot const& original,

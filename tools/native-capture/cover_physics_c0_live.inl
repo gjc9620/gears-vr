@@ -1,5 +1,6 @@
 #include "cover_physics_c0_live.h"
 #include "cover_physx_query.h"
+#include "body_source_age_observation.h"
 #if defined(GEARS_COVER_PHYSX_QUERIES) && GEARS_COVER_PHYSX_QUERIES
 #include "cover_physics_query_live.inl"
 #endif
@@ -30,6 +31,7 @@ std::mutex sphere_probe_mutex;SphereObservation sphere_probe;
 struct PathObservation {
     SphereObservation common{};q::Capsule shape{};q::Vector delta{};
     gears_cover_query_timing::Report timing{};
+    gears_body_source_age_observation::Report source_ages{};
     unsigned segments{},hits{},reports{},endpoint_shapes{},endpoint_reports{},self_hits{},endpoint_self{};
 };
 PathObservation path_probe;
@@ -95,6 +97,13 @@ void summary(FILE* f){if(!f)return;
     fprintf(f,"cover_sphere_probe_layout_member_identities=%u cover_sphere_probe_layout_member_capacity=%u ",l.member_identities,unsigned(l.member_capacity));
     PathObservation path_copy{};{std::lock_guard<std::mutex> lock(sphere_probe_mutex);path_copy=path_probe;}
     auto const& p=path_copy.common;
+    auto const& ages=path_copy.source_ages;
+    fprintf(f,"cover_path_probe_age_key=%llu,%llu,%llu,%llu,%u cover_path_probe_age_calls=%u,%u,%u ",
+        ages.key.world,ages.key.pawn,ages.key.scene,ages.key.compose,ages.key.thread,ages.calls[0],ages.calls[1],unsigned(ages.overflow));
+    for(unsigned i=0;i<ages.rows.size();++i){auto const& a=ages.rows[i];
+        fprintf(f,"cover_path_probe_age_%u=%u,%llu,%llu,%llu,%llu,%llu,%llu,%u,%u,%u,%lld,%lld,%lld,%lld,%lld,%lld,%lld,%lld,%lld ",
+            i,unsigned(a.observed),a.tick,a.world,a.pawn,a.scene,a.stereo_sequence,a.controller_sequence,a.thread,a.verdict,unsigned(a.latched),
+            a.now,a.metadata_begin,a.metadata_end,a.tracking_begin,a.tracking_end,a.stereo_received,a.controller_received,a.sync,a.capture_begin);}
     fprintf(f,"cover_path_probe_timing_invalid=%llu cover_path_probe_timing_overflow=%llu ",path_copy.timing.invalid,path_copy.timing.overflow);
     for(unsigned i=0;i<unsigned(gears_cover_query_timing::Stage::count);++i){auto const& bin=path_copy.timing.bins[i];
         fprintf(f,"cover_path_probe_timing_%u=%llu,%llu,%llu,%llu ",i,bin.calls,bin.completed,bin.total_ns,bin.max_ns);}
@@ -245,6 +254,7 @@ void observe_path_once(Entry const& e,Core const& source,q::Vector const& eye)no
         const auto before=session.observation().engine;
         common.original_started_before=before.original_started;common.original_returned_before=before.original_returned;
         gears_cover_query_timing::Scope timing_scope(true,row.timing,+[]()noexcept{return rig_tracking_live::clock_ns();});
+        gears_body_source_age_observation::Scope age_scope(true,{common.world,common.pawn,common.scene,common.compose,common.thread},row.source_ages);
         query_admission=QueryAdmission::admission;query_session_entered=false;
         if(!q::detail::scalar(centimetre)||centimetre<=0||!q::detail::valid(row.shape)||!q::detail::sweep_motion(row.shape,row.delta))common.code=q::Code::request;
         else common.code=sweep_capsule_path(e,source,row.shape,row.delta,
