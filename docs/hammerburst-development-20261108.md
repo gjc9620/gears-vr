@@ -653,3 +653,8 @@ PGb03ad129/Native71f280b0原普通准入完整空仓流程，78条一致射线�
 ## 2026-11-11 实际38380：首次明确原弹匣提取间断
 
 PG5b3d71fb/Native71f280b0完整有限空仓流程，78条一致射线/0/78空仓无射线veto、开盖1→2→3→4通过。原弹匣提取613序号4754深7.76483857mm接受；614序号4759、111.4423ms间隔、深20.643711mm首次被原100ms提取限制拒绝并reset，之后到75.011mm均accepted0/complete0，真UP按未完成提取规则cleanup491。与47240的未证明猜测不同，此次有逐次原observe证据。latch pose-gap与observation WAIT均0，不能从普通开盖通过宣称其因果修补成功。下一步仅用已有producer原中间点分段验证OLD extraction，复用现有new_mag投影/身份/控制/映射，逐点原100ms和速度/对齐检查、trial至完整当前端点后提交；不插值/不扩大间隔/不造Frame或grant，不因本次间断拓展old_mag登记政策。Nativeinput_loss1、agekept28/29另存原记录，非提取根因替代。正常清理全0、无forced，514帧错误空/编码0、3页48对亲阅，贴合仍失败。全部13项保留，完整换弹回射仍不通过。
+
+
+## 2026-11-11 原生产者提取历史候选（尚未game）
+
+私有PGedccad22在old_mag阶段复用现有producer ring/投影/同context与控制检查，按原序号和时戳生成原记录对应的FeedSample（不插值）；原Extraction内部最后已接受sample须与previous逐项匹配，每段序号连续且仍<=原100ms，每点运行原几何/速度/起点/完成规则。试算副本只在全部点和当前真实端点匹配后提交，缺失/畸形历史仍走原直接observe拒绝。原插入advance实现不变，不拓展old_mag登记，不造Frame/lease/动作/新时钟。32项新检查包括38380端点111.4423ms直接拒绝和真实原投影/advance调用块，另原magazine与21项insertion-history通过；中间点/时间为合成夹具，非game历史。完整PG编译通过，Native71f280b0/XR/公共v71不变。下一次原完整空仓流程须记录actual extraction_history gate/used/points与原提取完成；全部13项保留。

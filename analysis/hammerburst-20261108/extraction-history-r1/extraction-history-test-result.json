@@ -1,0 +1,10 @@
+{
+  "passed": true,
+  "cases": 32,
+  "actual_original_extraction_kernel": true,
+  "exact_project_pose_and_advance_caller": true,
+  "existing_magazine_and_insertion_history_tests_passed": true,
+  "source_sha256": "07bf2d5652d46814e3a5c5ac15339e296d5be9bb98e591f03131ced6ed7c6b8e",
+  "game_started": false,
+  "limits": "Actual endpoint sequence/time/depth from38380; intermediate raw history/positions synthetic. Native capture and actual grant/game not exercised."
+}

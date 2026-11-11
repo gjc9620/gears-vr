@@ -1,0 +1,82 @@
+--- a/tools/vr-common/weapon_hammerburst_magazine.h
++++ b/tools/vr-common/weapon_hammerburst_magazine.h
+@@ -11,6 +11,7 @@
+ public:
+     void reset() noexcept {*this={};}
+     bool complete() const noexcept {return complete_;}
++    FeedSample const* previous_sample() const noexcept {return started_?&previous_:nullptr;}
+     bool observe(FeedSample const& s,FeedPortMount const& m) noexcept {
+         if(!m.valid()||!s.weapon||!s.item||!s.world||!s.space_epoch||!s.sequence||
+            s.monotonic_ns<=0||!s.tracked||!s.item_held||
+--- a/tools/playground/weapon_hammerburst_feed_history.inl
++++ b/tools/playground/weapon_hammerburst_feed_history.inl
+@@ -59,6 +59,28 @@
+     if(!gears_hammerburst_feed_history::advance(insertion,prior,current,points.data(),segment.count,feed,result))return false;
+     point_count=segment.count;gate=0;return true;
+ }
++bool advance_extraction(hand::Frame const& f,gears_weapon::FeedSample const& current) noexcept {
++    gate=4;point_count=0;
++    if(stage!=Stage::old_magazine||prior.item!=current.item||
++       !latch_history::same_context(previous,sampled))return false;
++    unsigned control{};
++    if(f.interaction_control==unsigned(gears_vr::LeftInteractionControl::grip))control=gears_vr::control_squeeze;
++    else if(f.interaction_control==unsigned(gears_vr::LeftInteractionControl::pinch))control=gears_vr::control_trigger;
++    else return false;
++    gate=5;relative::Segment segment{};
++    if(!relative::build(previous.raw,sampled.raw,history,control,sampled.mount,sampled.size,segment)||segment.count<3)return false;
++    std::array<gears_weapon::FeedSample,9> points{};points[0]=prior;gate=6;
++    for(unsigned i=1;i<segment.count;++i){const auto sequence=segment.points[i].sequence;
++        input::TrackedInput const* raw=nullptr;
++        for(unsigned n=0;n<history.count;++n)if(history.frames[n].input.sequence==sequence)raw=&history.frames[n];
++        P left{};if(!raw||!project_pose(*raw,sampled,left))return false;
++        points[i]=current;points[i].sequence=sequence;points[i].monotonic_ns=raw->input.sync_ns;points[i].left_grip=left;
++    }
++    gate=7;if(!gears_hammerburst_feed_history::same_sample(points[segment.count-1],current))return false;
++    points[segment.count-1]=current;
++    if(!gears_hammerburst_extraction_history::advance(extraction,prior,current,points.data(),segment.count,feed))return false;
++    point_count=segment.count;gate=0;return true;
++}
+ void remember(gears_weapon::FeedSample const& sample) noexcept {previous=sampled;prior=sample;}
+ void clear() noexcept {previous={};sampled={};prior={};history={};}
+ }
+--- a/tools/playground/weapon_hammerburst_runtime.inl
++++ b/tools/playground/weapon_hammerburst_runtime.inl
+@@ -1,5 +1,6 @@
+ #include "../vr-common/weapon_hammerburst_supply_publication.h"
+ #include "../vr-common/weapon_hammerburst_feed_history.h"
++#include "../vr-common/weapon_hammerburst_extraction_history.h"
+ // One GT consumer, sharing the existing native reload lease, inventory writer,
+ // component restoration and stop/drain boundary with Lancer. No second runner.
+ namespace hammerburst_runtime {
+@@ -378,7 +379,12 @@
+ }
+ void observe_original_extraction(hand::Frame const& f,std::uint64_t item,
+     gears_weapon::FeedSample const& sample,std::int64_t gap,double depth,double lateral,double aligned) noexcept {
+-    const bool accepted=extraction.observe(sample,feed); // Exact original call, once.
++    const bool history_used=gap>feed.maximum_sample_gap_ns&&feed_history::advance_extraction(f,sample);
++    const bool accepted=history_used||extraction.observe(sample,feed); // Original fallback exactly once.
++    if(gap>feed.maximum_sample_gap_ns&&log_file){static unsigned history_rows{};if(history_rows++<16){
++        fwprintf(log_file,L"hammerburst_extraction_history frame=%llu sequence=%llu previous_sequence=%llu used=%u gate=%u points=%u gap_ns=%lld complete=%u action=0\n",
++            f.key.frame,f.controllers.sequence,feed_history::prior.sequence,unsigned(history_used),feed_history::gate,
++            feed_history::point_count,gap,unsigned(extraction.complete()));fflush(log_file);}}
+     static unsigned rows{};
+     if(log_file&&rows<32){++rows;
+         fwprintf(log_file,L"hammerburst_extraction_observed frame=%llu sequence=%llu item=%llu accepted=%u complete=%u gap_ns=%lld depth=%.9g lateral=%.9g aligned=%.9g sync_ns=%lld\n",
+@@ -397,7 +403,7 @@
+     if(f.controllers.sequence<=feed_sequence||f.controllers.sync_ns<=feed_ns){observe_feed_rejection(f,2);return gears_weapon::FeedResult::rejected;}
+     gears_weapon::FeedSample sample{f.weapon.address,item,f.world.address,f.stereo.space_epoch,f.controllers.sequence,
+         f.controllers.sync_ns,{{0,0,0},{0,0,0,1}},left,f.left_tracked!=0,true};
+-    if(stage==Stage::new_magazine)feed_history::capture(f,left);
++    if(stage==Stage::new_magazine||stage==Stage::old_magazine)feed_history::capture(f,left);
+     gears_weapon::FeedResult result=gears_weapon::FeedResult::rejected;
+     const bool gap=sample_gap_ns>feed.maximum_sample_gap_ns;
+     const bool used_history=!first_item_sample&&gap&&feed_history::advance(f,sample,result);
+@@ -426,7 +432,7 @@
+     }
+     if(stage==Stage::old_magazine&&!extraction.complete())observe_original_extraction(f,item,sample,sample_gap_ns,depth,lateral,aligned);
+     if(!used_history)result=insertion.observe(sample,feed);
+-    if(stage==Stage::new_magazine)feed_history::remember(sample);else feed_history::clear();
++    if(stage==Stage::new_magazine||stage==Stage::old_magazine)feed_history::remember(sample);else feed_history::clear();
+     observe_feed_result(f,item,result,sample_gap_ns,rearmed,depth,lateral,aligned);return result;
+ }
+ bool expired_before_latch_dispatch(hand::Frame const& f,std::int64_t begin,std::int64_t end) noexcept {

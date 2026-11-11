@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "scope": "full HB objective; no scope reduction",
-  "current_candidate": "PG5b3d71fb/Native71f280b0 actual38380:78rays/emptyveto/opening1\u21924; first original extraction614111.4423ms gap rejected. New latch pose-gap/WAIT markers0, causal recovery untested. Fullflow/return12s/headset incomplete, all13 retained.",
+  "current_candidate": "Private extraction-history-r1 PGedccad22/Native71f280b0 compiled;32 exact policy/projection/caller checks and existing magazine/insertion-history pass. Actual38380 direct111.4423ms rejection reproduced; intermediate fixtures synthetic. New producer segment must be game observed. All13/fullflow/headset incomplete.",
   "prepared_sha256": "20d8a6cd15b89c89b938aa201086c9d590251a2be74b2bd6d4fa72bd47d27824",
   "requirements": [
     {
