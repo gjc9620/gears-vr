@@ -2951,3 +2951,15 @@ PhysicsAsset成员与body ordinal、原receiver scale、原consumer/stride代码
 扩展夹具首次模板逗号与C宏冲突修复；随后默认Windows测试栈溢出，原汇编证明嵌套suite main栈帧154296+414104+127336+126136+125288字节叠加，再加内部调用越界。将新cases放独立noinline函数，在原suite返回后调用，未提高栈上限，最终通过。夹具追加Actor字段初版覆盖原WorldInfo/Instigator头链导致guard拒绝，改为尾部追加并在构造完成后重新取fixture binding，未削弱生产guard。原失败/汇编栈帧摘录保留。
 
 尚未接完整实时库存/current C0世界闭合/原code分派认证及active PhysX对应，无游戏/原函数调用/完整Native构建；完整身体查询/事务、视图遮挡及全CV/AC/头显仍待完成，工程25%。
+
+## r213：完整authored身体库存采集器及原0x6c packed header修正（2026-11-12）
+
+新增cover_authored_inventory_live.inl，复用r211资产成员/r212缩放/每BodySetup三primitive布局和r206 raw传输，按body/kind/原array ordinal整批采集，保留每组header/count、原raw80及collision-disabled条目，不静默丢弃。aggregate需恰好五字段：三primitive数组、ConvexElems和RenderInfo Pointer8；opaque RenderInfo不读值/不解引用，空Convex仍核inner dimension/stride/目标ScriptStruct/owner/extent及header。非空Convex返回unsupported，超过256形状返回capacity，均不发布部分结果。
+
+调用者heap/TLS工作区保存每body Proof和两完整库存，禁止work/output/input别名与同work重入；持当前binding锁两轮完整body采集，各array仍闭合三类Proof，整轮及最后再闭合所有body Proof，完整两轮raw/header/count/成员/缩放须一致。外层Guard(typed roles Snapshot)只在锁外调用，成功后再次匹配原typed输入才发布。无整套C0/世界许可由此产生，空库存只是观察，不当身体几何/占用通过。
+
+核原r62 3a6c34 consumer确认setup+0x6c交aggregate，完整采集器要求反射AggGeom offset精确0x6c。此前r206把Source.header误套PhysX pointer8 predicate，而该packed TArray头实际4字节对齐。将完整夹具改为原0x6c，编译成功、319检查14失败复现；仅对authored header改为4对齐+原span，payload/PhysX pointer8和身份guard均未放宽。修正后328检查0失败，含新增2个header对齐检查及之前未进入的7个逐行检查；原独立AuthoredArray23回归0。它是离线来源拒绝修正，未声称游戏已修。
+
+完整fixture为synthetic两body/7条三类型形状并保留1条collision-disabled；读取末body时改首body payload由全轮比较拒绝，schema/成员变化、convex存在、inner/RenderInfo/额外aggregate成员、首尾guard拒绝、read/guard异常、alias/重入均保护输出。总256条成功、257条明确拒绝，空数组观察成功。首次两个局部名遮蔽旧fixture全局触发/WX，改名后通过；原编译与packed失败日志保留。
+
+原code分派认证/实时capture接入、active PhysX形状对应、collision-disabled查询参与策略、完整身体几何/路径/占用、同版body/view/hit/muzzle及头显仍待完成。源码/依赖/原consumer SHA/回执authored-inventory-r213，无游戏/原函数调用/完整Native构建；全CV24/AC22保留，工程25%。

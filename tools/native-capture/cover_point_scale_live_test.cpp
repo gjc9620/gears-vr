@@ -63,4 +63,7 @@ __declspec(noinline) static int point_scale_cases(){
  }
  C(VirtualFree(reinterpret_cast<void*>(arena),0,MEM_RELEASE)!=0);printf("PointScale checks=%u failures=%u synthetic source; original route attestation remains external\n",checks,failures);return failures?1:0;
 }
-int main(){if(PriorPointAssetMain())return 1;return point_scale_cases();}
+#ifndef GEARS_POINT_SCALE_TEST_MAIN
+#define GEARS_POINT_SCALE_TEST_MAIN main
+#endif
+int GEARS_POINT_SCALE_TEST_MAIN(){if(PriorPointAssetMain())return 1;return point_scale_cases();}

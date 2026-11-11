@@ -38,7 +38,10 @@ template<class Read> Code pass(Source const& source,Read& read,Snapshot& out){
 template<class Read,class Guard> Code capture(Source const& source,Read read,Guard guard,Workspace& work,Snapshot& output) noexcept {
     static_assert(std::is_invocable_r_v<bool,Guard,Source const&>,"Full typed Source guard required");
     const unsigned expected=source.kind==g::metrics::Kind::sphere?72:source.kind==g::metrics::Kind::box?80:76;
-    if(!s::pointer(source.header,16)||source.body_index>=g::names::max_bodies||source.bone.index<=0||
+    // Authored headers are packed at BodySetup+0x6c (+16 per kind).
+    // Their qword data member is read by copy, not an aligned dereference.
+    // Keep the separate eight-byte data/PhysX pointer rules unchanged.
+    if((source.header&3)||!s::pose::span(source.header,16)||source.body_index>=g::names::max_bodies||source.bone.index<=0||
        unsigned(source.kind)>unsigned(g::metrics::Kind::sphyl)||source.reflected_extent!=expected||
        !source.collision_mask||(source.collision_mask&(source.collision_mask-1)))return Code::request;
     if(!std::isnormal(source.receiver_scale[0])||source.receiver_scale[0]<=0||

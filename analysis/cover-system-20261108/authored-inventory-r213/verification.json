@@ -1,0 +1,24 @@
+{
+  "result": "PrimitiveLayout checks=37 failures=0 actual reflection Proof; synthetic registry, no runtime authority\r\nArrayLayout checks=80 failures=0 reflection association only; synthetic registry\r\nBodySetup checks=135 failures=0 synthetic instances; no C0 permission\r\nasset kind=0 begin\r\nasset kind=1 begin\r\nasset kind=2 begin\r\nAssetSetup checks=219 failures=0 authored membership only; synthetic instances\r\nPointScale checks=292 failures=0 synthetic source; original route attestation remains external\r\nAuthoredInventory checks=328 failures=0 synthetic complete authored arrays; no active/world permission\r\n",
+  "array_regression": "AuthoredArray checks=23 failures=0 synthetic memory/guard only; no native identity/active proof\r\n",
+  "sources": {
+    "tools/native-capture/cover_authored_inventory_live.inl": "147df8122a76140b75812fa43cde98251d4c25a9461f7d91d6055cc4ef2a5ae2",
+    "tools/native-capture/cover_authored_inventory_live_test.cpp": "c79a3a30b1a065ecea8a49439560c2340fa98ba88a3da3ed95e45afa4df8a64f",
+    "tools/native-capture/cover_authored_array.h": "b690d80d60e96cfac3efdbf09f63ef64266738d40cc6983f9e1f46d0085a8d27",
+    "tools/native-capture/cover_point_scale_live_test.cpp": "f30fc6697dfbd84ac593be0e26f229e71af8d503e95facdb9f21f62784e5fc66"
+  },
+  "original_sha256": {
+    "tools/game-playtest/cover_physics_shapes.py": "042d4668157e1bfb9ecbe9e9c82b45988458aeb1e31bf31a782dd59a82cb0947",
+    "analysis/cover-system-20261108/world-component-point-r62/0x1403a6c34-pseudocode.c": "d226c9f59bede63c4bf6d5b0b0f771206434d9bc00c0283ad4527d0ab4db12e8",
+    "analysis/cover-system-20261108/world-component-point-r62/component-route-evidence.json": "6c57091bc40b9b0df3ae91c46aacca463e0d208c7d5dc475567c028ffa82d6eb"
+  },
+  "association": "Two complete body/kind/array-ordinal passes under current metadata/GT binding lock. Reuses asset membership, scale and each BodySetup all3 primitive proofs; exact aggregate5-member schema including opaque RenderInfo Pointer8 and ConvexElems inner StructProperty -> KConvexElem. Retained original point route requires reflected AggGeom offset0x6c.",
+  "completeness": "All declared bodies/kinds; all raw80 and collision-disabled rows preserved. Counts per body/kind and headers retained. Nonempty convex -> unsupported; above256 rows -> capacity; no dropped rows. Empty inventory captured as observation only, never an occupancy/geometry pass.",
+  "closure": "Typed roles guard outside mutex before/after complete two passes. Each array capture closes producer/membership/shape proofs; all body proofs close after each whole pass and finally. Entire passes must agree including raw bytes. Exclusive caller heap/TLS workspace with reentry rejection; failure preserves public output.",
+  "tests": "328 checks0 includes292. Synthetic2 bodies/7 shapes/all3 kinds and1 collision-disabled row. Mutating early payload during late body is caught by full pass comparison. Schema/membership changes, nonempty convex, malformed convex inner/RenderInfo/extra member, rejected guards, thrown guard/read, alias/reentry and exact256/257 capacity, empty arrays covered. No actual process memory or game.",
+  "packed_header_fix": "Authored TArray headers at original BodySetup+0x6c are4-aligned, not8. Separate source.header predicate changed from PhysX pointer8 to header4 plus unchanged numeric span; payload/PhysX pointer8 unchanged. Full native-offset fixture compiled and failed14 before fix; after328 checks0 includes2 added alignment checks and7 per-row checks now reached (before319 checks). This is a source/fixture counterexample, not a game repair claim.",
+  "first_compile_failures": "New local names pointer_type and throw_read shadowed nested legacy fixture globals under /WX; renamed. Logs retained.",
+  "remaining": "No production capture integration/full Native build/current code-dispatch attestation, active PhysX correspondence, world/path/occupancy safety, same-pose body/view/hit/muzzle transaction or headset proof. All original CV24/AC22 remain. Disabled rows retained, query eligibility still consumer work.",
+  "game_started": false,
+  "engineering_percent": 25
+}
