@@ -1,0 +1,7 @@
+cover_asset_setup_live_test.cpp
+J:\codexWorktree\gearsVr\tools\native-capture\cover_asset_setup_live.inl(40): error C2220: 以下警告被视为错误
+J:\codexWorktree\gearsVr\tools\native-capture\cover_asset_setup_live.inl(40): warning C4459: “inner”的声明隐藏了全局声明
+J:\codexWorktree\gearsVr\tools\native-capture\cover_physics_roles_live_test.cpp(14): note: 参见“inner”的声明
+J:\codexWorktree\gearsVr\tools\native-capture\cover_asset_setup_live.inl(48): warning C4459: “base”的声明隐藏了全局声明
+J:\codexWorktree\gearsVr\tools\native-capture\weapon_hand_scene_binding_test.cpp(18): note: 参见“base”的声明
+J:\codexWorktree\gearsVr\tools\native-capture\cover_asset_setup_live_test.cpp(17): error C2397: 从“unsigned int”转换到“int32_t”需要收缩转换

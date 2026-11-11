@@ -2929,3 +2929,13 @@ uniform receiver scale在任何读前验证，空数组也不能绕过来源数�
 合计135检查0失败（含原80）：三类读取、aggregate字段移到0xc0仍成功，错误骨名/number、offset/target/继承/重叠/尾链拒绝；payload中改骨名、AggGeom目标或setup自身身份及外层guard拒绝均不发布。补充夹具首次因lambda遮蔽既有全局denied触发/WX，改名后通过，失败日志保留。全部synthetic注册表/实例，无真实进程读取、游戏/原函数/完整Native构建。
 
 PhysicsAsset成员与body ordinal、原receiver scale、原consumer/stride代码认证、当前C0身份时间/世界及活跃PhysX对应仍需接入；本关联不能授予移动。源码/依赖/回执body-setup-r210，完整CV/AC/头显仍未完成，工程25%。
+
+## r211：当前物理资产BodySetup成员/顺序与形状读取关联已实现（2026-11-12）
+
+新增cover_asset_setup_live.inl，以现有typed roles Snapshot为caller持有的当前上下文，认证当前mesh的PhysicsAsset0x248/PhysicsAssetInstance0x250指向及class引用、PhysicsAsset.BodySetup ArrayProperty16 offset0x68、own inner ObjectProperty dimension1/width8/offset0和准确RB_BodySetup Class。读取完整1–64 setup成员、无重复、各自继承关系及BoneName FName，instance Bodies header/count/指针顺序同时匹配typed roles；全部值与身份纳入Proof闭合。capture桥接要求Source.body_index、setup身份和骨名对应成员，所有raw读取guard边界都闭合membership Proof及caller typed owner guard。它不替代caller当前roles/C0时间闭合。
+
+合计219离线检查0失败（含原135），三类完整读取使用现有roles reader的初始采样及实际反射/Proof/transport实现，注册表/内存均synthetic。payload中改成员、数量、mesh资产或instance成员均拒绝并保持输出；错误ordinal/重复/count/inner宽度目标owner/offset/骨名及默认模板均拒绝。64成员边界通过，其typed body列表明确为构造值，并非64身体roles实采。顺带修正r210 standalone入口拒绝Default__及非正骨名索引。
+
+首次编译全局同名遮蔽/有符号窄化修正；初版64夹具的name-entry区覆盖既有actor/class，导致roles采样失败及后续访问异常，日志保留。改用互不重叠的夹具区域并使初始采样失败立即中止后，最终219项通过；不能把夹具修复称为游戏修复。
+
+完整实时接入、原receiver scale/consumer stride代码证明、活跃PhysX形状对应和同C0世界闭合、全身体查询/事务仍待完成；无游戏/原函数调用/完整Native构建。源码与回执asset-setup-r211，完整CV/AC/头显仍未完成，工程25%。

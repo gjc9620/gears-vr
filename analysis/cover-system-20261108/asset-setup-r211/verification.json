@@ -1,0 +1,16 @@
+{
+  "result": "PrimitiveLayout checks=37 failures=0 actual reflection Proof; synthetic registry, no runtime authority\r\nArrayLayout checks=80 failures=0 reflection association only; synthetic registry\r\nBodySetup checks=135 failures=0 synthetic instances; no C0 permission\r\nasset kind=0 begin\r\nasset kind=1 begin\r\nasset kind=2 begin\r\nAssetSetup checks=219 failures=0 authored membership only; synthetic instances\r\n",
+  "sources": {
+    "tools/native-capture/cover_asset_setup_live.inl": "0450edf5f19292db9966e958f99dc5ef05d6da00fa269573f0a04e7d0c702459",
+    "tools/native-capture/cover_asset_setup_live_test.cpp": "36de9818a3649925273ce2063340b262e6fe9f21398a038ca2e37c78a3ab2f2f",
+    "tools/native-capture/cover_body_setup_live.inl": "4e147d2fab865931806690267fbfbd38cd88f2a969098649dccd4218ee299683",
+    "tools/native-capture/cover_body_setup_live_test.cpp": "a1fdb2f7081e9fe1179933f6e51c958b9b916ffe86730dfa67be318d61725c6c"
+  },
+  "association": "Certified current mesh PhysicsAsset0x248/PhysicsAssetInstance0x250, their exact class references; PhysicsAsset.BodySetup ArrayProperty16 at0x68, own inner ObjectProperty(dim1,width8,offset0) -> RB_BodySetup; instance Bodies header/count/order match supplied typed roles; unique authored setup identities and positive BoneName FNames at0xb4 retained in Proof.",
+  "bridge": "Selected Source body_index/setup identity/bone must match membership. BodySetup->array->raw capture guard closes membership Proof and external typed Source guard at each boundary. Caller still closes current roles/C0 lifetime.",
+  "tests": "219 checks0 including earlier135. All3 actual reflection/raw transfer implementations with synthetic memory and initial real roles-reader sample; mutations during payload: setup member, count, mesh asset, instance body member; bad ordinal/layout/target/owner/duplicate/count/offset/bone/template. Full64 authored-member bound on an explicitly constructed typed body snapshot, not a64-member live roles sample.",
+  "failures_retained": "Initial /WX global-name collisions and signed narrowing fixed. First64 fixture used name-entry regions overlapping actor/class memory: failed roles observation and access violation are retained; moved synthetic name entries to a disjoint arena region and made fixture abort on failed observation. No product acceptance claim from failures.",
+  "remaining": "Production capture integration, same current C0/time/world/roles guard, original receiver scale and native code/stride proof, active PhysX shape mapping and full body queries/transaction. Current module adds no movement authority.",
+  "game_started": false,
+  "engineering_percent": 25
+}

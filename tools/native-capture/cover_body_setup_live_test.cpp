@@ -2,7 +2,10 @@
 #include "cover_array_layout_live_test.cpp"
 #undef GEARS_ARRAY_LAYOUT_TEST_MAIN
 #include "cover_body_setup_live.inl"
-int main(){if(PriorBodyArrayMain())return 1;
+#ifndef GEARS_BODY_SETUP_TEST_MAIN
+#define GEARS_BODY_SETUP_TEST_MAIN main
+#endif
+int GEARS_BODY_SETUP_TEST_MAIN(){if(PriorBodyArrayMain())return 1;
  arena=reinterpret_cast<uintptr_t>(VirtualAlloc(nullptr,saved_arena.size(),MEM_COMMIT|MEM_RESERVE,PAGE_READWRITE));if(!arena)return 99;
  namespace setup=cover_body_setup_live;namespace a=gears_cover_authored_array;
  auto proof=std::make_unique<h::Proof>();auto work=std::make_unique<a::Workspace>();auto output=std::make_unique<a::Snapshot>();

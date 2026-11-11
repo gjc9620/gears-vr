@@ -12,6 +12,7 @@ inline bool prepare(b::Proof& proof,gears_anchor::Identity const& setup,
                     names::Name expected_bone,unsigned kind,Layout& output){
     Layout next{};std::uintptr_t target{};
     if(!b::metadata_current()||!b::certified(proof,setup.address,next.setup)||!b::same(setup,next.setup)||
+       !std::wcsncmp(next.setup.name.data(),L"Default__",9)||
        !cover_physics_roles_live::class_role(proof,setup.cls,L"RB_BodySetup")||
        !cover_physics_roles_live::role_property(proof,setup.cls,L"AggGeom",L"StructProperty",72,nullptr,next.aggregate)||
        next.aggregate.owner.number||!b::named(next.aggregate.owner,L"KMeshProps")||
@@ -20,7 +21,7 @@ inline bool prepare(b::Proof& proof,gears_anchor::Identity const& setup,
     if(!b::certified(proof,target,aggregate)||
        !arrays::prepare(proof,aggregate,next.aggregate.owner,kind,next.array)||
        !cover_physics_roles_live::role_property(proof,setup.cls,L"BoneName",L"NameProperty",8,nullptr,next.bone_field)||
-       next.bone_field.offset!=0xb4||!expected_bone.index||
+       next.bone_field.offset!=0xb4||expected_bone.index<=0||
        !b::source_field(proof,next.bone,setup.address,next.bone_field.offset)||!names::same(next.bone,expected_bone)||
        setup.address>UINTPTR_MAX-next.aggregate.offset)return false;
     // The two reflected values must be disjoint, even for a malformed class.

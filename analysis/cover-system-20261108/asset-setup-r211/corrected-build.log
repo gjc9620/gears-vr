@@ -1,0 +1,4 @@
+cover_asset_setup_live_test.cpp
+J:\codexWorktree\gearsVr\tools\native-capture\cover_asset_setup_live.inl(40): error C2220: 以下警告被视为错误
+J:\codexWorktree\gearsVr\tools\native-capture\cover_asset_setup_live.inl(40): warning C4459: “array_inner”的声明隐藏了全局声明
+J:\codexWorktree\gearsVr\tools\native-capture\cover_array_layout_live_test.cpp(5): note: 参见“array_inner”的声明
