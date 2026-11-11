@@ -1,0 +1,57 @@
+{
+  "results": {
+    "geometry": "ActiveShapeGeometry checks=13840 failures=0 owned PhysX geometry only; no authored correspondence or authority\r\n",
+    "world": "read_budget=222 guard_calls=12\r\nCoverPhysXShapeOwner checks=519 failed=0 original-executed=false game-started=false\r\nparameter_reads=99\r\nShapeParameters checks=687 failed=0 original PE as data; stored fields only, no world/eligibility permit\r\nworld_reads=137\r\nShapeWorld checks=1688 failed=0 original PE as data; original-unit CPU pose only, no query fence\r\n"
+  },
+  "sources": {
+    "tools/native-capture/cover_physx_shape_geometry.h": "c8c55405d81029324217e6d6d8897523a8547abb9de65aa4b41ad7e0c07b7a16",
+    "tools/native-capture/cover_physx_shape_geometry_test.cpp": "a62abd2386d600e8fd26f6103d48a1157efe5b6fa16ee0ceef9bf29059fbae78",
+    "tools/native-capture/cover_physx_shape_parameters.h": "df368f06b249763ed5e3db3e506b12095b4860d1272fd1b2383ac798bcafe752"
+  },
+  "artifact": {
+    "path": "J:\\gearsVr\\Gears.of.War.Reloaded.v1.0.1.3816947-P2P\\Gears of War Reloaded\\Binaries_x64\\PhysXCore.dll",
+    "sha256": "22051aa75312344a824a5f7e29c6375fec3a90df50cbeff6152f0e6c3afddd48",
+    "bytes": 2711552
+  },
+  "evidence": {
+    "path": "analysis\\cover-system-20261108\\shape-geometry-r219\\original-evidence.json",
+    "sha256": "84a3add2d4463f4acd5fd74aa5868a73fe07c1065441219aae107f16dca049b7",
+    "records": 13
+  },
+  "original_semantics": [
+    {
+      "procedure": "0x18000bd10",
+      "claim": "BoxShape initialization negates 1b8/1bc/1c0 to min and keeps positive max, then builds eight corners; values are local half extents.",
+      "evidence_id": "ev_aa5f1bec34e47f1250a9b51096c45ef374e83aabc1c4d9e853c172c7c3a1d397",
+      "start": "0x18000bd10",
+      "end": "0x18000c082",
+      "size": 883,
+      "sha256": "5d4bb7097ebeb8ad6965e3280bd82435ad15368ca589c5d7ca3466ed00e46afb"
+    },
+    {
+      "procedure": "0x1801aaac0",
+      "claim": "Corner helper copies all eight combinations of supplied min/max XYZ, no scaling.",
+      "evidence_id": "ev_217bfe1af0ba65bb7c9aeb8e2cdbb39fa8c0125e62894022d7c13b3da72b9803",
+      "start": "0x1801aaac0",
+      "end": "0x1801aab68",
+      "size": 169,
+      "sha256": "92555393d53aa06a976c000cd76accb99ca4c10855514661d07b0540b9534b0b"
+    },
+    {
+      "procedure": "0x180012780",
+      "claim": "Capsule endpoint getter uses cached matrix column Y (18/24/30) times half_segment1b4, minus/plus centre38/3c/40, radius1b0. It may update cache; never dispatched here.",
+      "evidence_id": "ev_0549d74da31f3d703de8cf07835f04735a178020317f1102ef4d5bb11942f83a",
+      "start": "0x180012780",
+      "end": "0x180012ba3",
+      "size": 1060,
+      "sha256": "cc391904ec07d832137305857a0d5797f43ce62625a6a43f612d008defc9bffc"
+    }
+  ],
+  "implementation": "Pure owned Snapshot interpretation, native PhysX units throughout. Box half extents retained without dividing by2 or multiplying .02. Capsule endpoints use shape_world columnY in double. Sphere centre/radius, zero-segment capsule retained explicitly; unsupported/invalid/alias preserve output. No memory reads or original calls.",
+  "testing": "13840 checks0 across128 rotations about each XYZ axis; independent Rodrigues oracle for every box corner and Y capsule endpoints, symmetry, sphere/reset, zero segment, unsupported shape, invalid/subnormal/nonfinite dimension/radius/half, nonrigid pose and alias. Original world1688/parameter687/owner519 regression0, PE opened as data only.",
+  "remaining": "Authored Z to active Y creation basis and per-shape correspondence unproven. No selection/filter flags, current world fence, query packing or permission. Pure decoder does not attest current module/freshness. Numerical endpoint values describe geometric input, not a bit-identical replay of float32 cache getter; no capsule sweep enabled. Original native OBB query internal convention remains unproven.",
+  "game_started": false,
+  "original_getter_dispatched": false,
+  "full_native_built": false,
+  "engineering_percent": 25
+}

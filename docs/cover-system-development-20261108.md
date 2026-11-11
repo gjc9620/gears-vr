@@ -3017,3 +3017,13 @@ generic primitive_query继续只打包输入同单位值，新增Units::unspecif
 新单位/包络8333检查0失败：单次换算与单位标记、零/小预算拒绝保持输出，128组球/胶囊端点及旋转盒全部角点逆坐标/转置投影包络、FP模式拒绝。受影响回归catalog16、原真实C0底座catalog269、observer124（含原Session110）、完整authored geometry377、generic primitive2134、box27140全0；原9 C0夹具SHA保持。对目录/单行unknown单位的拒绝均在Host query计数增长前。完整依赖SHA当前一致；原换算certificate/反例/源码/回执query-units-r218。
 
 实际authored↔active逐项对应、native内部OBB语义、胶囊创建轴修正、flags/参与规则及current query-visible world闭合仍需完成；没有生产Native构建/安装/游戏/原查询/头显。本次是Source与Host原分派seam验证，完整CV24/AC22、body/view/hit/muzzle同版事务及视图遮挡继续待完成，工程25%。
+
+## r219：原active盒体半尺寸／胶囊Y轴语义与owned几何解释接通（2026-11-12）
+
+原PhysXCore完整SHA22051aa7…ddd48静态核对：BoxShape构造9100把descriptor78/7c/80直接存入1b8/1bc/1c0；bd10取其负值作为min、正值作为max，交1aaac0生成八种XYZ角点组合。因此这三个原getter值是局部半尺寸，不再仅称未知raw dimensions。原胶囊12780使用缓存矩阵18/24/30（矩阵14起始的Y列）乘1b4 half_segment，再减/加38/3c/40 centre，radius1b0；该getter可写缓存，未调用。完整13份REA证据导出并正常关闭，三个关键完整函数体原字节范围/SHA已记录，无目标执行。
+
+新增cover_physx_shape_geometry.h纯owned Snapshot解释层：sphere centre/radius，box half/orientation，capsule Y方向两端点与radius，全部保持原PhysX单位，不再乘0.02、不将半尺寸除2。端点double几何计算，不冒称逐位复刻原float缓存getter；零半段胶囊明确保留两端重合，无自动转球/启用sweep。无内存读取、原函数分派、世界权限或authored匹配。
+
+13840检查0失败：XYZ各轴128组旋转，独立Rodrigues检查全部盒角与胶囊Y端点、端点对称、sphere清空其他字段、零半段、负/非有限/subnormal尺寸、非rigid pose、未知kind和alias，拒绝保持输出。原world1688（含parameter687/owner519）重新编译与PE只读夹具回归0。所有编译依赖SHA在保存时当前一致。
+
+authored胶囊Z轴→activeY轴创建修正和逐shape对应仍未证明；不按actor/member序号猜骨骼。flags/参与规则、current query-visible world闭合、native OBB查询内部矩阵解释及生产接入仍待完成。未运行游戏/XR/原getter、未生产Native构建/安装；body/view/hit/muzzle同版事务、视图遮挡与完整CV24/AC22、头显继续未完成，工程25%。证据shape-geometry-r219。

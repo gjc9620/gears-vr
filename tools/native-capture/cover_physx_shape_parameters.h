@@ -9,7 +9,8 @@ namespace gears_cover_physx_shape_parameters {
 namespace o=gears_cover_physx_shape_owner;namespace s=gears_cover_physx_query_source;namespace raw=s::pose;
 enum class Code {observed,request,alias,busy,guard,module,owner,read,unsupported,value,changed};
 struct Parameters {o::Observation owner{};std::array<float,3> stored_position{};std::array<float,4> stored_quaternion{};
-    // Raw original box getter vector; conversion/unit semantics are downstream.
+    // Original bd10 builds local corners from +/-this vector: half dimensions,
+    // in PhysX units. Retained raw here; shape_geometry interprets owned values.
     std::array<float,3> box_dimensions{};float radius{},half_segment{};unsigned flags{};};
 inline bool same(Parameters const& a,Parameters const& b)noexcept{return o::same(a.owner,b.owner)&&
     !std::memcmp(a.stored_position.data(),b.stored_position.data(),sizeof a.stored_position)&&
