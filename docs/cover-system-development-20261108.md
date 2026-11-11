@@ -2533,3 +2533,13 @@ checks-v2保留了原BoneSpring测试因读取方式改变而错触发的失败�
 五次实际reader复核safe_copy计数：无BodyInstance22855→18375（19.60%），body存在且BodyData空/非空均30025→22255（25.88%）。该计数包含新增动态关闭读取；不是原query毫秒或全链提速，initial sample新增的动态读取开销也需实际测量。Native a41fadcf144fdde43a2573b1e5f52530e43ceca8eef256439ed505d0994b3ce8编译链接0；exact r165冻结树只改cover_collider_roles_live.inl和cover_physics_query_live.inl两运行文件，410项目依赖、外部worktree0、GEARS flags保持。verify核对原调用分支只换collider重查入口、两遍/首尾guard/原关闭均保留；prepare新增--native-r167并认证精确delta/构建状态。源、初失败、最终检查/对照/依赖/构建与核对在collider-recheck-r167。
 
 下一步保存后以新实例验证原CT2与同query分段，确认重复collider实际成本、查询到达位置及画面；不原样重跑r166、不放宽时限、不刷新旧样本。此条仅源码/离线/编译，尚未准备或启动新游戏；完整CV01–24/AC01–22、身体来源年龄/自身遮挡/头显仍未完成，工程25%、publicv71/固定入口保持，目标active。
+
+## r168：同query collider重证候选实跑八轮，仍身体来源年龄拒绝（2026-11-11）
+
+b8389dd3保存后，以新cover-1111-r168-cloak-recheck、Native a41fadcf…b3ce8做一次现有后台path观察。准备/导入0，13项启动来源前后相同，共享两文件SHA仍7e630461/385f5e5a；启动前磁盘47905591296字节。原A进入CT2、五段eye观察及operator0。275投影帧/errors0、编码0；14页全跨度和5实际阶段contact均亲看，候选8/7/7/7/7，五阶段严重自身头肩/躯干遮挡仍FAIL，区间图不冒充同C0/GPU或头显证明。Native/entries/input恢复、XR和launcher正常退出，normal_cleanup true、无强杀，game/owner/XR/worker精确身份独立确认不在；CLOAK719/失败0，前台427/owned_activation false。
+
+path键Scene326/Compose19992/seq4014/world2422112512/pawn95206631040与complete首键逐项相同。engine/source_guard/current，Owner第39次context/source_age_expired/detail6，Session第8次collider_read/guard；原因见证entry14674320/Compose19992/thread38732/stage0/verdict3/causes1，body年龄拒绝、equipment当次未过期。原碰撞started/returned仍0/0；新recheck确实进入实际同步查询并完成前序复核，但未通过整链。离线晚到OwnerComponent变更的拒绝未在游戏主动注入，不称该race实跑通过。
+
+query160968869125600→160968895936700共26.8111ms；计时invalid0/overflow0、所有span闭合。initial physics0.9051ms、collider2.5732ms、components10.5233ms；physics repeat8次共7.2814ms、collider repeat8次共4.8876ms，components repeat0；engine12.3712ms、closing0。engine已包含内部复核，不能再相加。与r166五次collider13.6629ms相比，本次八次4.8876ms是实测观察；入口年龄/调度/Actor上下文未控制，不能认定全部差异来自代码、不能据此称全query修复。新动态字段关闭检查已在正常静态游戏路径消费，完整身体/世界覆盖/移动许可仍false。
+
+头部遮蔽累计head_section_applied623、palettes623、uncomposed426、shoulder_armor623；最终像素仍遮挡，因此不能用累计应用计数替代实际消费或画面验收。原始动作、同query分段/原因、退出及审阅记录在collider-recheck-r167/runtime-r168。下一步核对同query入口各来源已消耗的年龄及重复physics成本，保留原时间与全部动态/身份/关闭检查，不原样重跑、不放宽年龄或刷新旧样本。完整CV01–24/AC01–22仍开放，工程25%、publicv71/固定入口及头显状态不变，目标active。
