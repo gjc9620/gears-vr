@@ -765,4 +765,6 @@ PG325200c3/Nativee4e3155d，护木四态仅到被动跟随检查。未按Grip移
 
 ## 2026-11-11 实际4312：成功C0姿势到达显示消费者，但被动姿势间歇撤回
 
+后续窄Native passive-rejection-r1已完整编译4691fdf213bc7fbbb4421851b5cd0bbaa4ecb7f4133e194c671630c3bbfbb7b8，沿e4e3155d原冻结flags/dependency；仅保存原passive target首64次拒绝，以及原admit_socket_visibility在同一次调用/原mutex中的第一失败谓词、原source/frozen frame/seq/cookie/lifecycle。原短路顺序、每个已有clock/admission调用次数均保留，不重试、不加读/写/权限。精确移除观察可回到父源码；实际Broker全套加原方法差分/9变体/真实新帧提交边界共2479检查零失败。离线证实旧N请求在真实N+1 commit后因same_frame拒绝，但这仍不等于4312实际原因；下次关闭宽render witness，只用窄记录验证原因，保持全部阈值与13项。
+
 完全相同PG325200c3/Nativee4e3155d，本次仅既有render-pose/first-failure witness ON，无base-entry observer。未按Grip不驱动枪通过，左手移动后腕相对枪2.210612raw失败，右手跟随/Grab/释放未到。119份latest-compose相关CPU queued palette的左腕与成功C0最终腕最大差.00004312raw，112份weight1，证明这些成功姿势确实到观察到的显示消费者；不称确切queued来源/硬件/每Draw。失败SpaceBases采样前38.211ms的实际palette也处于偏移位置，后43.6221ms回到正确snap；因此真实间歇撤回仍失败，不能将测试改判为异步误报。窗口163显示行中28行solved_mask0，另有成功C0未使用passive目标/释放混合；具体拒绝原因未证，diagnostic模式可影响时序。下一步只记录原passive target拒绝及原broker source/frozen frame关联，不额外读取/时钟/放宽规则，不重复宽观察。正常清理全0无forced/前台违规，393帧错误空/编码0，3页48对亲阅，近眼大枪/张平分离左手/过渡原动画白几何仍不合格，稀疏采样54.33/61.32/69.74s原样保留。20924完整空仓换弹/回枪六发通过与全部13项保留。

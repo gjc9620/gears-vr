@@ -84,6 +84,8 @@ def main():
     assert not passive_commit or native_mutex,'Passive commit observer retains the exact mutex Native parent'
     passive_palette='--foregrip-palette' in sys.argv
     assert not passive_palette or (passive_commit and '--foregrip-four-state' in sys.argv),'Palette observation is bounded to the same passive C0 four-state candidate'
+    passive_rejection='--native-passive-rejection' in sys.argv
+    assert not passive_rejection or (passive_commit and not passive_palette),'Use the narrow refusal observer without the wide render witness'
     assert not native_mutex or render_age,'Mutex observer retains the exact age-continuity Native parent'
     latch_observation='--latch-observation-wait' in sys.argv
     latch_incumbent='--latch-incumbent-gap' in sys.argv
@@ -171,6 +173,14 @@ def main():
             for key in ('policy_cases','policy_failures'):
                 passive_proof[key]=native_proof[key]
             native_proof=passive_proof
+        if passive_rejection:
+            refusal_check=json.loads((AREA/'native-passive-rejection-r1/socket-observation-test-result.json').read_text())
+            assert refusal_check['passed'] and refusal_check['exact_policy_reversal'] and refusal_check['exact_parent_reference_differential']
+            refusal_proof=json.loads((AREA/'native-passive-rejection-r1/prepared.json').read_text())
+            assert refusal_proof['parent_native']==native_proof['native_sha256']
+            for key in ('policy_cases','policy_failures'):
+                refusal_proof[key]=native_proof[key]
+            native_proof=refusal_proof
         assert native_proof['full_native_compiled'] and native_proof['policy_cases']==17 and native_proof['policy_failures']==0
         assert manifest['native_sha256']==native_proof['frozen_native']
         native_dll=Path(native_proof['dll'])

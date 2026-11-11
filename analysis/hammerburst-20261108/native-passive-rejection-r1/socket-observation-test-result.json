@@ -1,0 +1,13 @@
+{
+  "passed": true,
+  "checks": 2479,
+  "failures": 0,
+  "exact_policy_reversal": true,
+  "actual_broker": true,
+  "exact_parent_reference_differential": true,
+  "mutations": 9,
+  "authentic_next_frame_case": true,
+  "new_clocks_or_queries": false,
+  "game_started": false,
+  "limits": "Production Broker with original callback/clock/module fakes. Cross-frame denial is an offline protocol result, not live cause proof."
+}
