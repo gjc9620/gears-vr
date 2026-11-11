@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "scope": "full HB objective; no scope reduction",
-  "current_candidate": "PG325200c3/Native4691fdf2; narrow refusal observer only/wide OFF.34808 seven-snapshot four-state PASS once. Four original>100ms passive request rejections still captured during action, one actual DOWN; prior intermittent failures preserved. No causal repair or full fit acceptance. Full empty reload20924 PASS preserved; all13 retained.",
+  "current_candidate": "PG5fde320a/Nativef0635832 fresh-passive ABI6.58352 seven-snapshot four-state PASS;275 actual fresh query commits/273 applied/2 weight0. Same-current-sequence fresh applied target while original old world request expired observed. No whole-C0/stability/fit acceptance.20924 full empty reload is preserved parent evidence, not runtime proof for new pair; all13 retained.",
   "prepared_sha256": "20d8a6cd15b89c89b938aa201086c9d590251a2be74b2bd6d4fa72bd47d27824",
   "requirements": [
     {
@@ -179,8 +179,8 @@
     {
       "id": "foregrip_states",
       "requirement": "\u56db\u6001\u62a4\u6728Snap/Grip Grab/\u91ca\u653eSnap/\u9000\u51fa",
-      "status": "current_seven_snapshot_four_state_pass_once_prior_intermittent_failure_and_expired_requests_open",
-      "limit": "34808 current no-drive/follow/Grip steering/release checks pass. Observation-only Native delta cannot certify stability repair; four original100ms target expiries captured and prior4312/58780/53872 failures remain. Visual/all-angle fit incomplete.",
+      "status": "fresh_query_path_exercised_275_current_four_state_pass_273_applied_two_weight0_stability_fit_open",
+      "limit": "New pair58352 all four-state sampled checks pass, new branch exercised. Old expired world request remains rejected; fresh query prepares new relative target. Two weight0 and whole-C0/visible fitting issues remain. Prior failures retained.",
       "evidence": [
         {
           "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-70816-review.json",
@@ -205,6 +205,10 @@
         {
           "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-34808-four-state-pass.json",
           "sha256": "069c880d3686985e7ef4659bbc5b3da3e7b576b68aa3dc9a2a155e6de1da11b1"
+        },
+        {
+          "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-58352-fresh-four-state.json",
+          "sha256": "634e6c4fa243b15d0c0e03c180c64aecb377bee4128b7a5056396fbcfa855b15"
         }
       ]
     },
@@ -547,7 +551,7 @@
   "latest_service_first_failure": "runtime-3112-first-failure-analysis.json",
   "latest_startup_failure": "runtime-49732-startup-failure.json",
   "latest_runtime_failure": "runtime-4312-passive-palette.json",
-  "latest_runtime_result": "runtime-34808-four-state-pass.json",
+  "latest_runtime_result": "runtime-58352-fresh-four-state.json",
   "latest_focused_pass": "runtime-50828-focused-result.json",
   "visual_audit_recording_repair": "Corrected finalizer wrong ID fivepartfitting\u2192part_fitting, attached reviewed22992 evidence also to guides, asserted target IDs exist. No requirement/score/acceptance change and no overwrite of current052600 runtime blocker.",
   "resource_release_evidence": {
@@ -641,5 +645,5 @@
   },
   "latest_phase_cost_evidence": "runtime-21052-first-failure-analysis.json",
   "latest_full_empty_reload_pass": "runtime-20924-full-empty-reload.json",
-  "latest_foregrip_sampled_pass": "runtime-34808-four-state-pass.json"
+  "latest_foregrip_sampled_pass": "runtime-58352-fresh-four-state.json"
 }

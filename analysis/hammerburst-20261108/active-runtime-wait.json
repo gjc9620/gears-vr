@@ -1,13 +1,13 @@
 {
-  "source_checkpoint": "a40c9417",
-  "next": "Implement a fresh-input passive socket path through the existing sole C0 solver: first inspect current BodyMount/hand geometry contract to distinguish reusable certified socket geometry from per-frame requested world pose. Do not extend old Request100ms or replay expired world target; current identity/held attachment/input/contact/no-incumbent checks must certify any newly assembled target. Add regression for valid current input after old world request expiry, real Grip transition and release/cancel/loss. Do not infer all whole-C0 losses fixed or change1cm/2deg thresholds. No unchanged game run.",
-  "candidate": "early-released-refire-r1",
+  "source_checkpoint": "f48a4124",
+  "next": "One full finite empty/reload/return-fire check on this exact new PG/Native ABI6 pair; no unchanged four-state rerun. Keep two weight0/whole-C0/fit issues and all13 requirements open.",
+  "candidate": "fresh-passive-pg-r1",
   "requirements_complete": false,
-  "native_candidate": "native-passive-rejection-r1",
-  "runner_session_id": 65662,
+  "native_candidate": "fresh-passive-native-r1",
+  "runner_session_id": 21173,
   "terminal": true,
   "all13_requirements_retained": true,
-  "instance": "hb-cloak-1111-173534",
-  "runner_last_poll": "65662 terminal0; stop/launcher/Native/PG/XR0; noforced/owned game+children absent; encode0",
-  "game_pid": 34808
+  "instance": "hb-cloak-1111-180416",
+  "runner_last_poll": "21173 terminal0; normal stop/launcher/Native/PG/XR0; noforced/owned game+children absent; encode0",
+  "game_pid": 58352
 }

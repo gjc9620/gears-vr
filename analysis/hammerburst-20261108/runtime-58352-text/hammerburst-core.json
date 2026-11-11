@@ -1,0 +1,122 @@
+{
+  "game": {
+    "pid": 58352,
+    "creation_time": 134388650680510229,
+    "image": "j:\\gearsvr\\gears.of.war.reloaded.v1.0.1.3816947-p2p\\gears of war reloaded\\binaries_x64\\gowde-steam.exe"
+  },
+  "checks": {
+    "actual_shoulder_acquisition": true
+  },
+  "initial": {
+    "label": "before_original_X_pickup",
+    "ns": 176327489086300,
+    "weapon": "0x1628786700",
+    "name": "Weap_LocustAssaultRifle",
+    "cls": "Weap_LocustAssaultRifle",
+    "location": [
+      -3900.0,
+      0.0,
+      583.9485473632812
+    ],
+    "special": 0
+  },
+  "recorded_scope": "HB initial shoulder acquisition and authoritative fire only",
+  "pickup_input": {
+    "up_sent_ns": 176328713229000,
+    "baseline": {
+      "frame": "158",
+      "sequence": "3968",
+      "sync_ns": "176330676505800",
+      "admitted_ns": "176330708483900",
+      "frame_now_ns": "176330693318300",
+      "source": "1",
+      "right_pressed": "0",
+      "right_released": "0",
+      "right_down": "0",
+      "input_status": "quiet",
+      "session": "176277812488700",
+      "space": "1",
+      "input": "2",
+      "profile": "2",
+      "reference": "1",
+      "lifecycle": "3",
+      "world_generation": "1"
+    },
+    "shoulder_endpoint": {
+      "x": 0.23,
+      "y": 1.5850000476837158,
+      "z": -0.17,
+      "yaw": 0.0,
+      "pitch": -0.30000002227634565,
+      "roll": 0.0
+    },
+    "down_sent_ns": 176330755255100,
+    "original_dispatched": {
+      "status": "unholster_pending",
+      "slot": "3",
+      "target": "1628786700",
+      "event": "1",
+      "press": "1",
+      "frame": "160",
+      "source_sequence": "3973",
+      "cookie": "1",
+      "inventory_stage": "ok",
+      "input_status": "event",
+      "input_previous_sync_ns": "176330742682900",
+      "input_sync_ns": "176330793984700",
+      "input_received_ns": "176330794014500",
+      "input_recorded_press_sync_ns": "176330763979400",
+      "input_control": "6"
+    },
+    "completion_path": "direct_event",
+    "held": {
+      "status": "held",
+      "slot": "3",
+      "target": "1628786700",
+      "event": "1",
+      "press": "1",
+      "frame": "161",
+      "source_sequence": "3976",
+      "cookie": "1",
+      "inventory_stage": "ok",
+      "input_status": "event",
+      "input_previous_sync_ns": "176330742682900",
+      "input_sync_ns": "176330793984700",
+      "input_received_ns": "176330794014500",
+      "input_recorded_press_sync_ns": "176330763979400",
+      "input_control": "6"
+    },
+    "held_observed_ns": 176330877414700
+  },
+  "acquisition_receipt": {
+    "status": "held",
+    "slot": "3",
+    "target": "1628786700",
+    "event": "1",
+    "press": "1",
+    "frame": "161",
+    "source_sequence": "3976",
+    "cookie": "1",
+    "inventory_stage": "ok",
+    "input_status": "event",
+    "input_previous_sync_ns": "176330742682900",
+    "input_sync_ns": "176330793984700",
+    "input_received_ns": "176330794014500",
+    "input_recorded_press_sync_ns": "176330763979400",
+    "input_control": "6"
+  },
+  "held": {
+    "label": "HB_actual_shoulder_acquisition",
+    "ns": 176334919041700,
+    "weapon": "0x1628786700",
+    "name": "Weap_LocustAssaultRifle",
+    "cls": "Weap_LocustAssaultRifle",
+    "location": [
+      -3900.0,
+      0.0,
+      583.9485473632812
+    ],
+    "special": 0
+  },
+  "setup_fire_not_attempted": true
+}
