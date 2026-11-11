@@ -8,6 +8,7 @@ namespace setup=cover_body_setup_live;namespace a=gears_cover_authored_array;nam
 enum class Code {captured,request,alias,busy,guard,metadata,layout,array,capacity,unsupported,changed,exception};
 struct Snapshot {asset::Snapshot membership{};scale::Snapshot scaling{};unsigned count{};
     std::array<g::Inventory,64> inventory{};std::array<std::array<roles::pose::ArrayHeader,4>,64> headers{};
+    std::array<std::array<unsigned,3>,64> collision_masks{};
     std::array<a::Row,g::max_primitives> rows{};};
 // Heap/TLS owned by caller; no large inventory/proof arrays on the game stack.
 struct Workspace {bool busy{};unsigned failed_body{~0u},failed_kind{~0u};a::Code array_code{};
@@ -16,7 +17,7 @@ struct Workspace {bool busy{};unsigned failed_body{~0u},failed_kind{~0u};a::Code
     a::Workspace array_work{};a::Snapshot array_result{};Snapshot first{},last{};};
 inline bool same(Snapshot const& x,Snapshot const& y){
     if(x.count>g::max_primitives||!asset::same(x.membership,y.membership)||!scale::same(x.scaling,y.scaling)||x.count!=y.count)return false;
-    for(unsigned n=0;n<64;++n){if(x.inventory[n].count!=y.inventory[n].count)return false;
+    for(unsigned n=0;n<64;++n){if(x.inventory[n].count!=y.inventory[n].count||x.collision_masks[n]!=y.collision_masks[n])return false;
       for(unsigned k=0;k<4;++k)if(!roles::pose::header_equal(x.headers[n][k],y.headers[n][k]))return false;}
     for(unsigned n=0;n<x.count;++n)if(x.rows[n].raw!=y.rows[n].raw||x.rows[n].shape.array_index!=y.rows[n].shape.array_index||
       x.rows[n].shape.authored.body_index!=y.rows[n].shape.authored.body_index||x.rows[n].shape.authored.kind!=y.rows[n].shape.authored.kind)return false;
@@ -72,6 +73,7 @@ template<class Read> Code pass(roles::Snapshot const& typed,Read read,Workspace&
         source.header=layout.aggregate_base+layout.array.field.offset;source.body_index=n;source.bone=member.bone;
         source.kind=static_cast<g::metrics::Kind>(k);source.reflected_extent=layout.array.element.extent;
         source.collision_mask=layout.array.element.collision_mask;source.receiver_scale=out.scaling.value;
+        out.collision_masks[n][k]=source.collision_mask;
         // No external guard under binding::mutex. All source work here is
         // synchronous read-only; the outer typed guard brackets both passes.
         auto current=[&](a::Source const&){return b::metadata_current()&&b::current(proof);};

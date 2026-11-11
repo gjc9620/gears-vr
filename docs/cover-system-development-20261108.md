@@ -2963,3 +2963,13 @@ PhysicsAsset成员与body ordinal、原receiver scale、原consumer/stride代码
 完整fixture为synthetic两body/7条三类型形状并保留1条collision-disabled；读取末body时改首body payload由全轮比较拒绝，schema/成员变化、convex存在、inner/RenderInfo/额外aggregate成员、首尾guard拒绝、read/guard异常、alias/重入均保护输出。总256条成功、257条明确拒绝，空数组观察成功。首次两个局部名遮蔽旧fixture全局触发/WX，改名后通过；原编译与packed失败日志保留。
 
 原code分派认证/实时capture接入、active PhysX形状对应、collision-disabled查询参与策略、完整身体几何/路径/占用、同版body/view/hit/muzzle及头显仍待完成。源码/依赖/原consumer SHA/回执authored-inventory-r213，无游戏/原函数调用/完整Native构建；全CV24/AC22保留，工程25%。
+
+## r214：完整authored库存→真实C0骨映射/世界几何/查询参数连通（2026-11-12）
+
+新增cover_authored_geometry_live.inl纯owned-buffer join，对typed mesh/asset/instance/root与库存对应后，以完整Marcus115 reference和当前C0 Frame重新绑定每个FName index+number。抽出既有authored_array::decode/valid_source供reader和join共同使用，逐条raw80重解码与缓存TM/dimension/kind/ordinal/scale/Bool word/flag精确核对，不信任已改写的缓存字段。库存新增每body/kind已认证Bool mask并纳入整轮比较。通过后复用已有完整body_geometry转换；bNoRBCollision和原word单独附着每行，不隐式决定查询参与或删除形状。任何失败公共输出保持。
+
+377检查0失败（含原328），独立数组23回归0。以原9份SHA完全相同的61492-cover-frame真实reference/C0-local/component为底座，配synthetic2-body/7条原布局内存形状，完整capture后直接进入新join；独立四元数/向量FK核对世界位姿、球半径12、盒半轴6/9/12、胶囊半段9及局部Z端点，验证骨映射11/8与root8。错raw/缓存/flag/count/mask/scale/source拒绝并保留输出；缺失和重复完整FName、非unit atom、alias/convex/empty拒绝。全部7行也经既有catalog.prepare成功转换，明确使用0.002原游戏单位的舍入预算，未执行Native查询或认证其内部OBB解释。
+
+初次复用oracle Fixture默认component来自更旧帧，导致13个姿态/轴/端点检查失败；改由本次真实保存的平面component矩阵构造独立oracle pose，仅修改期望值，不改输入Frame任何字节。另一个负例原写0到已为0的raw字节并未制造变更，改为XOR后实际拒绝。初失败保留，不能称游戏/几何核修复。最终同时核对C0输入字节不变；一致改变bNoRBCollision后全部7行几何不变、flag随之变化，不会静默漏体积。
+
+仍需caller同current C0/roles/库存/code bracket闭合、active PhysX对应、查询参与语义、真实完整world/path/occupancy及body/view/hit/muzzle同版事务；完整capture生产接入、视图遮挡及头显尚未完成。源码/依赖/原9夹具SHA/回执authored-geometry-r214，无游戏/原函数/完整Native构建，CV24/AC22全部保留，工程25%。

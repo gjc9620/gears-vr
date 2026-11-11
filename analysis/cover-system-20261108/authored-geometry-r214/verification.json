@@ -1,0 +1,31 @@
+{
+  "result": "PrimitiveLayout checks=37 failures=0 actual reflection Proof; synthetic registry, no runtime authority\r\nArrayLayout checks=80 failures=0 reflection association only; synthetic registry\r\nBodySetup checks=135 failures=0 synthetic instances; no C0 permission\r\nasset kind=0 begin\r\nasset kind=1 begin\r\nasset kind=2 begin\r\nAssetSetup checks=219 failures=0 authored membership only; synthetic instances\r\nPointScale checks=292 failures=0 synthetic source; original route attestation remains external\r\nAuthoredInventory checks=328 failures=0 synthetic complete authored arrays; no active/world permission\r\nAuthoredGeometry checks=377 failures=0 actual saved C0 + synthetic source shapes; no active physics permission\r\n",
+  "array_regression": "AuthoredArray checks=23 failures=0 synthetic memory/guard only; no native identity/active proof\r\n",
+  "sources": {
+    "tools/native-capture/cover_authored_geometry_live.inl": "51b6555d3a8690c434c5a53f1975139f0307074ac2faffa0b429ee0e906b8e50",
+    "tools/native-capture/cover_authored_geometry_live_test.cpp": "8e28f6721fbea8852e84c5f577785fc4d8413617c4f273ddbe17c8eca735884d",
+    "tools/native-capture/cover_authored_inventory_live.inl": "e695a5eea53ed80cd1effe5f897e840582210b6bb1268cc2e1cbf39de41f1621",
+    "tools/native-capture/cover_authored_inventory_live_test.cpp": "5a28cd7aeb2c4dbb56e105cbf04fd0c04dd98b7b319caa26e88d07c4b6d532b2",
+    "tools/native-capture/cover_authored_array.h": "f775722b81f73a5120e687498e6b9fe02d4c1b06d087b4889982664f32fe7972"
+  },
+  "fixture_sha256": {
+    "C0-component.bin": "ceb2c34e36e442a0cceafde5754c0f320e8fc6ad270d6ee25cb4314731515f09",
+    "C0-local.bin": "4ece225a74b56a5439fca58d72cf4e7332da731455085cb1747a4b8adec68ef2",
+    "C0-metadata.bin": "7c2d16269661af9963535e24261a9c29af04f29212f5d9b4d6c5c2124ccb7357",
+    "C0-space.bin": "a016217704965ad73440b204f349b9de806240d996c3dba6395f1b8559215d9a",
+    "calibrated-neutral.bin": "60660cb5a915f94a509771607ef3f3cb7d9ae5c8d773bb1fc8a6f75528b02dcd",
+    "fitting-goal.bin": "a97f99d9b683349739847658183f7d4fd3fe7ab89c010fd2422eb77c1d756c3f",
+    "pawn-location.bin": "df14dbccdddeac0580c2f7d8433bb5518bfe4504183133ef63f7289b0ff90e39",
+    "reference.bin": "fef334cf78e72a23c1bfd289780652feb12816ba508b92fdc0e052b9c61ed5ce",
+    "source-CT0.bin": "9c0232284ff29c720815459f0fea894c8dcf1429039f45cb8f160aa6ad904d16"
+  },
+  "association": "Owned inventory joins current typed mesh/asset/instance/root and exact FName index+number to retained complete Marcus115 reference/C0 frame. Rebinds physics bones, shared decode of every raw80 row verifies cached TM/dimensions/kind/ordinal/scale/mask-derived flag/word, then full body_geometry conversion. No reads/calls/permission.",
+  "codec": "Extracted original reader decoder into authored_array::decode and shared valid_source predicate; same codec now validates owned geometry input. Inventory stores certified per-body/kind masks and compares them across complete passes.",
+  "flags": "All rows retained, bNoRBCollision/word copied separately into geometry result, no implicit eligibility decision or row removal. Consistent flag change leaves all7 world shapes identical.",
+  "tests": "377 checks0 includes328. Actual saved reference/local/component frame plus SYNTHETIC2-body/7-row native-memory inventory. Independent quaternion/vector FK validates actual world poses, radius12/box6,9,12/capsule half9, localZ endpoints and root mapping11/8. Raw/cache/ordinal/mask/flags/count/scale/source tampering rejected with old output intact; missing/duplicate FName mapping, nonunit atom, alias, unsupported convex/empty result rejected. Existing query catalog consumes all7 with explicit0.002 game-unit rounding budget; not a Native query or internal-OBB proof.",
+  "first_failure": "Reused oracle Fixture default component belonged to an older frame; initial thirteen pose/axis/end-point checks failed. Derive only independent oracle component pose from THIS retained planar matrix, leaving input bytes untouched. Another negative test wrote zero into an already-zero raw byte; changed to an actual XOR mutation. Original initial failure retained, not a game/converter repair claim.",
+  "remaining": "Caller must close this same current C0/roles/inventory/code bracket; active PhysX shape mapping, query eligibility semantics, original queries/full world/path/occupancy, production capture integration, view/body/hit/muzzle transaction and headset acceptance still open.",
+  "game_started": false,
+  "full_native_built": false,
+  "engineering_percent": 25
+}

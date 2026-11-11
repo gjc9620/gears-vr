@@ -93,4 +93,7 @@ __declspec(noinline) static int inventory_cases(){
  C(live::capture(typed,safe_copy,owner,*work,*output)==live::Code::captured&&output->count==0&&output->membership.count==2);
  C(VirtualFree(reinterpret_cast<void*>(arena),0,MEM_RELEASE)!=0);printf("AuthoredInventory checks=%u failures=%u synthetic complete authored arrays; no active/world permission\n",checks,failures);return failures?1:0;
 }
-int main(){if(PriorInventoryScaleMain())return 1;return inventory_cases();}
+#ifndef GEARS_AUTHORED_INVENTORY_TEST_MAIN
+#define GEARS_AUTHORED_INVENTORY_TEST_MAIN main
+#endif
+int GEARS_AUTHORED_INVENTORY_TEST_MAIN(){if(PriorInventoryScaleMain())return 1;return inventory_cases();}

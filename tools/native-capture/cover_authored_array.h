@@ -16,6 +16,28 @@ struct Workspace {Snapshot first{},last{};};
 enum class Code {captured,request,alias,guard,read,capacity,changed,value};
 inline bool same(Source const&a,Source const&b) noexcept {return a.header==b.header&&a.body_index==b.body_index&&
     g::names::same(a.bone,b.bone)&&a.kind==b.kind&&a.reflected_extent==b.reflected_extent&&a.collision_mask==b.collision_mask&&a.receiver_scale==b.receiver_scale;}
+inline bool valid_source(Source const& source) noexcept {
+    const unsigned expected=source.kind==g::metrics::Kind::sphere?72:source.kind==g::metrics::Kind::box?80:76;
+    // Packed authored headers are4-aligned; data/PhysX pointers remain8-aligned.
+    return !(source.header&3)&&s::pose::span(source.header,16)&&source.body_index<g::names::max_bodies&&source.bone.index>0&&
+      unsigned(source.kind)<=unsigned(g::metrics::Kind::sphyl)&&source.reflected_extent==expected&&
+      source.collision_mask&&!(source.collision_mask&(source.collision_mask-1))&&
+      std::isnormal(source.receiver_scale[0])&&source.receiver_scale[0]>0&&
+      source.receiver_scale[1]==source.receiver_scale[0]&&source.receiver_scale[2]==source.receiver_scale[0];
+}
+// Shared owned-byte decoder. No memory read or source certification; the live
+// reader and geometry join use the same codec rather than trusting cached fields.
+inline Code decode(Source const& source,std::array<unsigned char,stride> const& raw,unsigned ordinal,Row& output) noexcept {
+    if(!valid_source(source)||ordinal>=capacity)return Code::request;
+    Row next{};next.raw=raw;next.shape.array_index=ordinal;auto& authored=next.shape.authored;
+    authored.body_index=source.body_index;authored.bone=source.bone;authored.kind=source.kind;authored.receiver_scale=source.receiver_scale;
+    std::memcpy(&authored.tm,raw.data(),64);
+    const unsigned dimensions=source.kind==g::metrics::Kind::sphere?1:source.kind==g::metrics::Kind::box?3:2;
+    std::memcpy(authored.raw_dimensions.data(),raw.data()+64,dimensions*4);
+    std::memcpy(&next.collision_word,raw.data()+64+dimensions*4,4);next.collision_disabled=(next.collision_word&source.collision_mask)!=0;
+    g::world::Input checked{};if(g::world::prepare_authored(authored,checked)!=g::Code::converted)return Code::value;
+    output=next;return Code::captured;
+}
 template<class Read> Code pass(Source const& source,Read& read,Snapshot& out){
     out={};if(!read(&out.header,reinterpret_cast<void const*>(source.header),sizeof out.header))return Code::read;
     const auto h=out.header;
@@ -24,28 +46,17 @@ template<class Read> Code pass(Source const& source,Read& read,Snapshot& out){
     out.count=unsigned(h.count);
     for(unsigned i=0;i<out.count;++i){auto& row=out.rows[i];
       if(!read(row.raw.data(),reinterpret_cast<void const*>(h.data+std::size_t(i)*stride),stride))return Code::read;
-      auto& shape=row.shape;shape.array_index=i;auto& a=shape.authored;
-      a.body_index=source.body_index;a.bone=source.bone;a.kind=source.kind;a.receiver_scale=source.receiver_scale;
-      std::memcpy(&a.tm,row.raw.data(),64);
-      const unsigned dimensions=source.kind==g::metrics::Kind::sphere?1:source.kind==g::metrics::Kind::box?3:2;
-      std::memcpy(a.raw_dimensions.data(),row.raw.data()+64,dimensions*4);
-      std::memcpy(&row.collision_word,row.raw.data()+64+dimensions*4,4);row.collision_disabled=(row.collision_word&source.collision_mask)!=0;
-      g::world::Input checked{};if(g::world::prepare_authored(a,checked)!=g::Code::converted)return Code::value;
+      const auto decoded=decode(source,row.raw,i,row);if(decoded!=Code::captured)return decoded;
     }
     s::pose::ArrayHeader closing{};if(!read(&closing,reinterpret_cast<void const*>(source.header),sizeof closing))return Code::read;
     return s::pose::header_equal(h,closing)?Code::captured:Code::changed;
 }
 template<class Read,class Guard> Code capture(Source const& source,Read read,Guard guard,Workspace& work,Snapshot& output) noexcept {
     static_assert(std::is_invocable_r_v<bool,Guard,Source const&>,"Full typed Source guard required");
-    const unsigned expected=source.kind==g::metrics::Kind::sphere?72:source.kind==g::metrics::Kind::box?80:76;
     // Authored headers are packed at BodySetup+0x6c (+16 per kind).
     // Their qword data member is read by copy, not an aligned dereference.
     // Keep the separate eight-byte data/PhysX pointer rules unchanged.
-    if((source.header&3)||!s::pose::span(source.header,16)||source.body_index>=g::names::max_bodies||source.bone.index<=0||
-       unsigned(source.kind)>unsigned(g::metrics::Kind::sphyl)||source.reflected_extent!=expected||
-       !source.collision_mask||(source.collision_mask&(source.collision_mask-1)))return Code::request;
-    if(!std::isnormal(source.receiver_scale[0])||source.receiver_scale[0]<=0||
-       source.receiver_scale[1]!=source.receiver_scale[0]||source.receiver_scale[2]!=source.receiver_scale[0])return Code::request;
+    if(!valid_source(source))return Code::request;
     const g::body::d::Range ranges[]={g::body::d::range(&source,sizeof source),g::body::d::range(&work,sizeof work),g::body::d::range(&output,sizeof output)};
     if(!g::body::d::disjoint(ranges,3))return Code::alias;
     const auto original=source;
