@@ -2487,3 +2487,13 @@ r162仍在engine/source_begin的physics_read首复核遇到body年龄拒绝。�
 Native50ced042f8d7f9a55fb8c4f3e859fbb6ea75872889d7e1dbb27c754cdad65f79编译链接0。exact r158冻结树仅cover_physics_query_live.inl、cover_physics_c0_live.inl和新cover_query_timing.h三文件delta，410项目依赖、外部worktree0、GEARS flags保持。verify删除计时包装后重建原Session及C0文本逐字相同，实际guard顺序/条件/读值/返回表达式保持。prepare新增--native-r163并认证精确delta及原依赖/flags/构建状态；未准备、启动或运行新实例，不改publicv71。
 
 下一步使用新实例做一次原CT2/同query分段观察，并保留来源年龄及画面实际失败。取得各段时间后再选取保持全部验证的修复；此候选只提供诊断能力，不声称性能提升、年龄修复、碰撞可用或玩法完成。全部CV01–24/AC01–22仍开放，工程25%、固定入口和实体头显状态不变，目标active。源码/测试/构建与文本核对在query-timing-r163。
+
+## r164：同查询分段实测，初始组件目录为最大成本，仍在重复collider复核年龄拒绝（2026-11-11）
+
+4839a96c保存后，以新cover-1111-r164-cloak-timing和Native50ced042…65f79做一次既有后台path观察。准备/操作导入0，13项启动来源前后相同；原A进入CT2、五段eye动作和operator0。265投影帧/errors0，编码0；14页全跨度和5实际阶段contact全部亲看，候选7/7/8/7/7，五阶段严重自身模型遮挡仍FAIL，不声称同C0/GPU或头显通过。正常清理true、无强杀，Native/entries/input恢复、XR及launcher正常退出，独立game/owner/XR/worker精确身份均不在；CLOAK624/失败0，前台393/owned_activation false。
+
+path键Scene396/Compose24443/seq3679/world2310701312/pawn95226069120与complete首键逐项相同；engine/source_repeat/guard，Owner第19次context/source_age_expired/detail6，Session第3次collider_read/guard。实际原因见证entry14674320/Compose24443/thread33292/stage0/verdict3/causes1仍为body年龄拒绝、equipment当次未过期。原碰撞started/returned0/0，diagnostic小胶囊不证明完整身体或安全移动。
+
+本query157934240187800→157934268685300共28.4975ms；计时invalid0/overflow0、所有span闭合。initial physics0.8626ms、collider3.1175ms、components15.5895ms；repeat physics3次共2.2219ms、collider3次共6.1059ms，components repeat0次，engine8.4879ms、closing0次。engine包含内部复核，不能重复相加；闭合不代表成功，计时开销包含在内，不作跨运行提速对照。这次实际测量将最大单段定位为initial component目录，尚未拆分其内部结构查找/动态读取/关闭成本，也不证明它是唯一或全部年龄原因。
+
+源、动作、同query分段、原始退出和画面审阅记录在query-timing-r163/runtime-r164。下一窄点检查component root与schema重复认证，保留两遍动态读取、身份、完整证明及全部年龄门；不原样再跑计时候选。完整CV01–24/AC01–22仍开放，工程25%、publicv71/固定入口和实体头显状态不变，目标active。

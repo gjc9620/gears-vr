@@ -1,0 +1,153 @@
+{
+  "error": null,
+  "operator_exit": 0,
+  "start_exit": 0,
+  "normal_cleanup_verified": true,
+  "normal_cleanup_required": true,
+  "projection_frames": 265,
+  "projection_errors": [],
+  "remaining_owned": {},
+  "anchor_sources_unchanged": true,
+  "cloak_observations": {
+    "samples": 624,
+    "failures": []
+  },
+  "foreground_observations": {
+    "samples": 393,
+    "owned_activation": false
+  },
+  "forced_termination": false,
+  "identities": {
+    "game_identity": {
+      "pid": 20088,
+      "creation_time": 134388466734335549,
+      "image": "j:\\gearsvr\\gears.of.war.reloaded.v1.0.1.3816947-p2p\\gears of war reloaded\\binaries_x64\\gowde-steam.exe"
+    },
+    "owner_identity": {
+      "pid": 34696,
+      "creation_time": 134388466654973031,
+      "image": "c:\\users\\11\\.cache\\codex-runtimes\\codex-primary-runtime\\dependencies\\python\\python.exe"
+    },
+    "xr_identity": {
+      "pid": 51000,
+      "creation_time": 134388466803329532,
+      "image": "c:\\users\\11\\.codex\\worktrees\\6dof-single\\gearsvr\\tools\\openxr-probe\\build-cover-1111-r164-cloak-timing\\openxrposeprobe.exe"
+    },
+    "worker_identity": {
+      "pid": 10588,
+      "creation_time": 134388466654175344,
+      "image": "c:\\users\\11\\.cache\\codex-runtimes\\codex-primary-runtime\\dependencies\\python\\python.exe"
+    }
+  },
+  "exact_owned_processes_absent": true,
+  "native_sha256": "50ced042f8d7f9a55fb8c4f3e859fbb6ea75872889d7e1dbb27c754cdad65f79",
+  "original_low_cover_entered": true,
+  "same_C0_complete_query_key": true,
+  "query_elapsed_ns": 28497500,
+  "timing": [
+    {
+      "stage": "physics_initial",
+      "calls": 1,
+      "closed_spans": 1,
+      "total_ns": 862600,
+      "max_ns": 862600,
+      "operation_success_proven": false
+    },
+    {
+      "stage": "collider_initial",
+      "calls": 1,
+      "closed_spans": 1,
+      "total_ns": 3117500,
+      "max_ns": 3117500,
+      "operation_success_proven": false
+    },
+    {
+      "stage": "components_initial",
+      "calls": 1,
+      "closed_spans": 1,
+      "total_ns": 15589500,
+      "max_ns": 15589500,
+      "operation_success_proven": false
+    },
+    {
+      "stage": "physics_repeat",
+      "calls": 3,
+      "closed_spans": 3,
+      "total_ns": 2221900,
+      "max_ns": 831900,
+      "operation_success_proven": false
+    },
+    {
+      "stage": "collider_repeat",
+      "calls": 3,
+      "closed_spans": 3,
+      "total_ns": 6105900,
+      "max_ns": 2080800,
+      "operation_success_proven": false
+    },
+    {
+      "stage": "components_repeat",
+      "calls": 0,
+      "closed_spans": 0,
+      "total_ns": 0,
+      "max_ns": 0,
+      "operation_success_proven": false
+    },
+    {
+      "stage": "engine",
+      "calls": 1,
+      "closed_spans": 1,
+      "total_ns": 8487900,
+      "max_ns": 8487900,
+      "operation_success_proven": false
+    },
+    {
+      "stage": "closing",
+      "calls": 0,
+      "closed_spans": 0,
+      "total_ns": 0,
+      "max_ns": 0,
+      "operation_success_proven": false
+    }
+  ],
+  "source_age_cause": {
+    "observed": true,
+    "entry": 14674320,
+    "compose": 24443,
+    "thread": 33292,
+    "stage": 0,
+    "verdict": 3,
+    "causes": 1,
+    "body_source_age": true,
+    "equipment_age": false
+  },
+  "owner_guard": {
+    "calls": 19,
+    "failed_call": 19,
+    "stage": 8,
+    "name": "context",
+    "detail": 3,
+    "extra": 6,
+    "context_verdict": "source_age_expired",
+    "context_detail": 6
+  },
+  "session_guard": {
+    "calls": 3,
+    "failed_call": 3,
+    "stage": 4,
+    "name": "collider_read",
+    "detail": 3,
+    "extra": 0
+  },
+  "original_query_started": 0,
+  "original_query_returned": 0,
+  "source_age_repaired": false,
+  "cover_view_accepted": false,
+  "world_coverage_verified": false,
+  "movement_authorized": false,
+  "headset_accepted": false,
+  "public_changed": false,
+  "initial_components_largest_measured_stage": true,
+  "nested_times_must_not_be_added": true,
+  "next": "Inspect component-role root/schema repetition; retain all dynamic reads and closing proofs. No unchanged timing rerun."
+}
