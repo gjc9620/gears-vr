@@ -82,6 +82,8 @@ def main():
     native_mutex='--native-mutex' in sys.argv
     passive_commit='--native-passive-commit' in sys.argv
     assert not passive_commit or native_mutex,'Passive commit observer retains the exact mutex Native parent'
+    passive_palette='--foregrip-palette' in sys.argv
+    assert not passive_palette or (passive_commit and '--foregrip-four-state' in sys.argv),'Palette observation is bounded to the same passive C0 four-state candidate'
     assert not native_mutex or render_age,'Mutex observer retains the exact age-continuity Native parent'
     latch_observation='--latch-observation-wait' in sys.argv
     latch_incumbent='--latch-incumbent-gap' in sys.argv
@@ -191,6 +193,10 @@ def main():
     env.update(GEARSVR_TEST_FINITE_RANGE_AMMO='1',GEARSVR_HAMMERBURST_EMPTY_RELOAD_ONLY=test_mode['empty_only'],
                GEARSVR_HAMMERBURST_RELOAD='1',GEARSVR_HAMMERBURST_REPLACEMENT='1',
                GEARSVR_LANCER_REVIEW_VOLUMES='0',PYTHONIOENCODING='utf-8')
+    if passive_palette:
+        # Existing bounded render-consumer journal, without base-entry observer.
+        # No binary, pose, source, writer or action change.
+        env['GEARSVR_SOLO_WALK_HANDOFF_WITNESS']='1'
     python=[sys.executable,'-E','-s','-B','-X','utf8']
     common=dict(cwd=ROOT,env=env,creationflags=subprocess.CREATE_NO_WINDOW)
     selected=ROOT/'analysis/instances'/name
