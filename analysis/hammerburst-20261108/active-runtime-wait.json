@@ -1,13 +1,13 @@
 {
-  "source_checkpoint": "6eec89be",
-  "next": "Preserve full pass; no unchanged full-flow rerun. Validate requested foregrip4 states in current private fixture and current source, then retained original magazine/perfect-cancel/remaining interruptions/zero-reserve as separate unmet requirements. Inspect actual hand/weapon/part correspondence and visible contact; current images fail fit. Keep original historical failures and public baseline.",
+  "source_checkpoint": "51c8ed86",
+  "next": "At existing same-GT C0 successful passive-support commit, retain a bounded read-only sample of source frame/sequence, requested world socket, current physical hand, existing work.left_visual/applied/blend, and body_work.pose.world[11] solved world wrist plus relevant gun/right pose. Use current state only, no new query/clock/writer/input/gate. Distinguish goal publication, C0 target/solve and later SpaceBases observation before any pose repair. Keep exact source/identity/reach and1cm/2deg test limits. No unchanged run.",
   "candidate": "early-released-refire-r1",
   "requirements_complete": false,
   "native_candidate": "native-mutex-r1",
-  "runner_session_id": 31958,
+  "runner_session_id": 35028,
   "terminal": true,
   "all13_requirements_retained": true,
-  "instance": "hb-cloak-1111-163604",
-  "runner_last_poll": "31958 terminal0; stop/launcher/Native/PG/XR normal0; owned game+children gone; noforced;encode0",
-  "game_pid": 20924
+  "instance": "hb-cloak-1111-164852",
+  "runner_last_poll": "35028 terminal1; stop/launcher/Native/PG/XR normal0; owned game+children gone; noforced;encode0",
+  "game_pid": 53872
 }

@@ -747,3 +747,8 @@ PG325200c3/Nativeb9ab7a82原完整流程单局通过：取枪core6、12组drain6
 ## 2026-11-11 当前候选护木四态私有读取适配
 
 保留已通过20924的PG325200c3/Nativeb9ab7a82，不重建binary。当前私有operator增read_private_skeleton精确owned实例绑定；body115骨及asset/对象/指针一致性bracket保留，weapon观察仅原HB class与Root/MagLatch/Mag3骨，flags只允许hands或weapon单个且输出同目录json。旧foregrip四态实际mesh/wrist检查适配到当前实例与candidate source hash绑定，禁止读正在变化的root握点/手型头文件。新foregrip-four-state仅吸附不驱动/跟枪→Grip接管→松手吸附，无额外fire/reload；完整空仓默认路径保留。适配编译、6flags/output负例、4来源hash/path/DLL负例与原身份约束检查通过，初版fixture仅CRLF/raw text比较不一致，已改为同样raw decode；生产未放宽。尚无当前四态game证据，全部13项保留。
+
+
+## 2026-11-11 实际53872：护木被动不驱动通过，跟随读取失败且需区分C0阶段
+
+PG325200c3/Nativeb9ab7a82只测护木四态，无fire/reload。左手不按Grip移动时枪旋转4.676e-6deg，样本腕相对枪0.000263raw，未控制枪通过；右手带枪实际移动1.237247raw/2.285162deg后，读得腕相对枪1.023027raw/2.285716deg，原1cm/2deg阈值失败，Grab/释放未到达。实际SpaceBases腕世界坐标近乎不动，但该外部读取是mesh+0x26c异步数组，尚未匹配同帧C0目标/求解/上传；Native已提交186次support skin、619手求解，PG kind4 published1持续期间有读样本，仍不能据总数称皮肤跟随通过，也不能仅据异步旧数组断言C0目标没更新。下一步只在已有同GT成功passive commit保留有界原source、socket、physical、left_visual/applied/blend与body_work.pose.world[11]，不新读/续时/改writer/放宽reach或测试阈值。Nativeinputloss0、正常清理全0无forced；447帧错误空/编码0、3页48对亲阅，近眼大枪、护木旁张平/分离掌及过渡重影白几何仍不合格。20924完整换弹通过保留，全部13项继续。
