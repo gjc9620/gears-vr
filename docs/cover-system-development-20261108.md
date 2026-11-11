@@ -2557,3 +2557,15 @@ r168仍在第八轮collider复核body年龄拒绝，但原因位没有细分trac
 Native0de22cab918329d51091f4e640043ffb43ec0f17586a93affab763d333660e17编译链接0。exact r167冻结树仅新观察头、body_tick_source_live.inl和cover_physics_c0_live.inl三文件delta，411项目依赖、外部worktree0、GEARS flags保持。prepare新增--native-r169认证精确delta及原依赖/构建状态。源、检查、解释器、依赖、构建和核对在source-age-detail-r169。本轮收到HB单实例对照临时让行及提前解除通知；无本方游戏/编码、无待登记启动等待，未新增游戏，构建自然完成，不改全局锁或并发保护；不因解除通知额外启动测试。
 
 下一步Git保存后用新实例取得实际年龄细分及同query分段，再选择来源到查询调度或读取成本修复；不原样重跑r168、不放宽年龄或刷新旧样本。本条仅源码/离线/编译，未准备或运行新实例，身体年龄/自身遮挡及完整CV01–24/AC01–22、实体头显仍开放，工程25%、publicv71/固定入口保持，目标active。
+
+## r170：来源年龄首查有效，原查询前owner_links拒绝；录像尾段缺失（2026-11-11）
+
+d921621d保存后，cover-1111-r170-cloak-age使用Native 0de22cab…60e17完成一次现有后台path观察。准备、operator导入及实际五段动作0，原A进入CT2；13项启动来源前后相同。CLOAK710/失败0，前台430/owned_activation false。Native/entries/input恢复、XR和launcher正常结束，normal_cleanup true、无强杀，game/owner/XR/worker精确身份独立确认不在。runner退出1另因录像No complete fresh projection frame，不把正常生命周期与录像错误合并成整轮通过。
+
+同键Scene398/Compose24497/seq3648/world2312601856/Pawn95251267840/thread57812，complete首键逐项一致。查询163050996290000→163051019056500共22.7665ms，code12=owner_links，原碰撞started/returned 0/0；Owner39次、Session8次均没有failed-call，来源年龄cause未观察到，body/equipment年龄原因是unknown而非false。原解释器误把残留engine source_guard/current阶段当首次拒绝，现按code10/11/12归为执行前owner资格失败；13项解释器检查通过，仍不知道asset/collider/components哪一reader及哪条关联失败。
+
+新增年龄见证实际classify/current各39次，只有首次两行，没有first-age行。身体Tick24496与query Compose24497分别保留；身体stereo/controller来源3649与query seq3648也不混同。首次classify在query开始后0.1933ms，tracking age0.7929ms、stereo age16.7353ms、metadata age1.3459ms；stereo距原40ms限制尚23.2647ms。current独立时钟的capture age0.6200ms；本轮没有记录到年龄拒绝，不推广为历史年龄问题已修复，也不刷新时间或放宽期限。
+
+initial physics0.7485ms、collider1.9149ms、components8.2071ms；重复physics8次共6.4971ms、collider8次共4.8254ms、components0次，engine11.5239ms已包含其内部复核，不重复相加。所有span闭合。新下一步是定位owner_links确切reader和已读关系，不再原样跑年龄候选。
+
+230实际投影帧，记录只到25.0188883秒，录像捕获线程已收尾。12页已有跨度概览及4原始阶段图均亲看，中立/转头/恢复/升高仍严重自身模型遮挡；rise_restored区间没有完整捕获帧，保持缺失。仅从实际现存帧生成captured-span，编码0不改变原录像错误、缺尾和画面FAIL，不称全跨度/五阶段视频通过。原始动作、查询、年龄、分段、退出及审阅记录在source-age-detail-r169/runtime-r170。完整CV01–24/AC01–22未完成，工程25%、publicv71/固定入口及头显状态不变，目标active。
