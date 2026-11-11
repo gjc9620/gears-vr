@@ -1,0 +1,26 @@
+{
+  "operator_exit": 0,
+  "normal_cleanup_verified": true,
+  "remaining_owned": {},
+  "projection_frames": 259,
+  "projection_errors": [],
+  "anchor_sources_unchanged": true,
+  "cover_reader_sources_unchanged": true,
+  "cloak_observations": {
+    "samples": 568,
+    "failures": []
+  },
+  "foreground_observations": {
+    "samples": 380,
+    "owned_activation": false
+  },
+  "forced_termination": false,
+  "shape_status": [
+    "cover_shape_snapshot_requested=1 attempted=1 finished=1 code=10 detail=8 bodies=0 actors=0 shapes=0 units=physx movement_permission=0 original_started=0,0 original_returned=0,0 world=2214953216 pawn=95436236544 scene=374 compose=23029 sequence=2730 thread=44648 admission=6 session_entered=1 session_stage=5 session_detail=10 begin_ns=223113408176300 end_ns=223113423105900",
+    "cover_shape_snapshot_owner_guard=47,0,0,0,0 session_guard=22,0,0,0,0 source_cause=0,0,0,0,0,0,0",
+    "cover_shape_snapshot_nested=0,0,8 cover_shape_snapshot_failed=0,0 cover_shape_snapshot_progress=19,0,19,0 cover_shape_snapshot_partial_unpublished=1 cover_shape_snapshot_partial_actor=2214152640,4825592704,95436966656,95437590592,140720218862288,3,1 cover_shape_snapshot_partial_arrays=0,0,0,0,0,0",
+    "cover_shape_snapshot_world_pass=0 cover_shape_snapshot_world_stage=7 cover_shape_snapshot_parameter_code=0 cover_shape_snapshot_pose_unpublished=1 cover_shape_snapshot_body=1,140720218859624 cover_shape_snapshot_stored_p=0.0599999949,-6.82121011e-15,-2.13162816e-16 cover_shape_snapshot_stored_q=0,0.707106769,0.707106769,0 cover_shape_snapshot_body_p=-78.8432846,-3.34397388,11.5933132 cover_shape_snapshot_body_q=0.559741497,-0.394303977,0.607427657,0.402782083",
+    "cover_shape_snapshot_world_pass=1 cover_shape_snapshot_world_stage=0 cover_shape_snapshot_parameter_code=0 cover_shape_snapshot_pose_unpublished=1 cover_shape_snapshot_body=0,0 cover_shape_snapshot_stored_p=0,0,0 cover_shape_snapshot_stored_q=0,0,0,0 cover_shape_snapshot_body_p=0,0,0 cover_shape_snapshot_body_q=0,0,0,0"
+  ],
+  "interpretation": "Actor inventory complete; world first Stage7 Body pose; original raw quaternion norm within3e-5 but its unnormalized original matrix exceeds strict3e-5 rigidity. Need raw original matrix with explicit numerical certificate, no normalization or world permission."
+}

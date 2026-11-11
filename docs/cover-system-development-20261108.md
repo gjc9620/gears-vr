@@ -3167,3 +3167,11 @@ Engine1741累计0（owner531、parameter702、world1706、asset1732），新增r
 新增两处定向检查分别损坏stored与Body的w为2，验证拒绝、正式输出保持、正确阶段以及精确原输入在scratch保留。Engine1743累计0（world1708/asset1734），原owner read_budget228、parameter_reads102、world_reads140保持，OFF65通过；说明诊断没有新增memory reads。完整Native在r231冻结树仅world与C0两个文件overlay，422依赖逐SHA、flags不变、无外部工作树混入，DLL SHA63888223462c41302676357c5303742fc59f205acdd3c92a5e58619a65cf2caa。此版尚无游戏内pose输入证据，下一次明确新版本读取后再判断具体布局/数学问题。
 
 完整CV24/AC22、full self/world fence、active/template、body/view/hit/muzzle、视图遮挡与头显仍未完成，工程25%，publicv71/固定手动入口/Quest不变。证据shape-pose-detail-r233。
+
+## r234：实际world Stage7 Body quaternion；原数据近单位但严格矩阵判定拒绝（2026-11-12）
+
+新cover-1112-r234-cloak-pose-detail使用r233 Native63888223…2caa，准备/操作导入/身份guard14通过，准备702f44e7。actual game25596/creation134389118562337067；原进入掩体与五段eye操作operator0。一次全形状读取14.9296ms，actor0/member0 inventory两pass完成，world first Stage7 Body pose、parameters0成功，原query调用0、owner guard47/session guard22无失败，整批未发布。Body q=.559741497,-.394303977,.607427657,.402782083，p=-78.8432846,-3.34397388,11.5933132；stored q=0,.707106769,.707106769,0，p=.0599999949,-6.82121011e-15,-2.13162816e-16，均为9位round-trip float原值，不是归一化结果。second world pass尚未进入，不把其零值当数据。
+
+原Body q norm平方0.9999879342658389，在已有3e-5 norm范围；按原1209f0逐float算式重建后Gram最大偏差3.289429316311043e-5、Frobenius5.71721064577549e-5、det0.9999596083569477。故现有四元数norm检查通过而严格矩阵3e-5检查拒绝。原getter不归一化。后续用实际数据replay，再以显式原矩阵误差记录区分近旋转读取和严格rigid query权限，不能只提高常量或偷偷归一化。
+
+259实际投影/errors0，13总览已生成、5阶段contact逐张亲看仍双眼自身头肩/躯干遮挡FAIL，未全数亲看overview，编码0。正常清理true、自有remaining为空、无强杀，CLOAK568失败0、前台380无owned激活，anchor/reader前后相同。其他游戏/XR会话未触碰。完整CV24/AC22、active/template/full self/world fence/body/view/hit/muzzle/视图遮挡及头显仍未完成，工程25%，publicv71/固定入口/Quest不变。证据shape-pose-runtime-r234，算式证据另见observed-pose-r235/original-pose-arithmetic.json。
