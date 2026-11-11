@@ -96,8 +96,9 @@ def main():
     parser.add_argument('--native-r187', action='store_true')
     parser.add_argument('--native-r193', action='store_true')
     parser.add_argument('--native-r227', action='store_true')
+    parser.add_argument('--native-r229', action='store_true')
     args = parser.parse_args()
-    if sum((args.native_r106,args.native_r111,args.native_r117,args.native_r122,args.native_r124,args.native_r126,args.native_r131,args.native_r134,args.native_r137,args.native_r139,args.native_r143,args.native_r146,args.native_r149,args.native_r156,args.native_r158,args.native_r163,args.native_r165,args.native_r167,args.native_r169,args.native_r171,args.native_r173,args.native_r175,args.native_r177,args.native_r183,args.native_r187,args.native_r193,args.native_r227))>1:
+    if sum((args.native_r106,args.native_r111,args.native_r117,args.native_r122,args.native_r124,args.native_r126,args.native_r131,args.native_r134,args.native_r137,args.native_r139,args.native_r143,args.native_r146,args.native_r149,args.native_r156,args.native_r158,args.native_r163,args.native_r165,args.native_r167,args.native_r169,args.native_r171,args.native_r173,args.native_r175,args.native_r177,args.native_r183,args.native_r187,args.native_r193,args.native_r227,args.native_r229))>1:
         raise ValueError('Select one frozen Native')
     if not args.name.startswith('cover-'):
         raise ValueError('Cover owns only its cover- prefixed new instance')
@@ -176,14 +177,16 @@ def main():
             raise RuntimeError('Selected frozen Native delta differs')
         expected['native'] = receipt['dll_sha256']
         prepared['builds']['native'] = dict(saved=str(current/'native-build/GearsCapture.dll'), sha256=expected['native'])
-    if args.native_r227:
-        current = HERE.parent / 'probe-entry-r227'
+    if args.native_r227 or args.native_r229:
+        current = HERE.parent / ('shape-read-detail-r229' if args.native_r229 else 'probe-entry-r227')
         receipt = load(current / 'native-build-v2-result.json')
         proof = load(current / 'native-source-v2-manifest.json')
         overlays = {'tools/native-capture/'+p for p in ('cover_physics_c0_live.inl','cover_physics_c0_live.h','cover_physx_transform.h','cover_physx_units.h','cover_probe_geometry.h')}
+        if args.native_r229:
+            overlays = {'tools/native-capture/'+p for p in ('cover_physics_c0_live.inl','cover_physx_actor_shapes.h')}
         if (set(receipt['changed']) != overlays or receipt['external_worktree_dependencies']
                 or not receipt['flags_unchanged'] or not receipt['build_only'] or receipt['staged']):
-            raise RuntimeError('r227 frozen Native differs')
+            raise RuntimeError('Selected shape snapshot frozen Native differs')
         for relative,digest in receipt['project_dependencies'].items():
             if sha(current/'native-source-v2'/relative)!=digest or proof['files'][relative]!=digest:
                 raise RuntimeError('Frozen dependency changed: '+relative)
@@ -255,8 +258,8 @@ def main():
             raise RuntimeError('Shared build output selected')
     write_new(inputs / 'prepared.json', dict(
         instance=str(selected), output=str(output), started=False,
-        shape_snapshot_supported=args.native_r227,
-        path_probe_supported=args.native_r227 or args.native_r134 or args.native_r137 or args.native_r139 or args.native_r143 or args.native_r146 or args.native_r149 or args.native_r156 or args.native_r158 or args.native_r163 or args.native_r165 or args.native_r167 or args.native_r169 or args.native_r171 or args.native_r173 or args.native_r175 or args.native_r177 or args.native_r183 or args.native_r187 or args.native_r193,
+        shape_snapshot_supported=args.native_r229 or args.native_r227,
+        path_probe_supported=args.native_r229 or args.native_r227 or args.native_r134 or args.native_r137 or args.native_r139 or args.native_r143 or args.native_r146 or args.native_r149 or args.native_r156 or args.native_r158 or args.native_r163 or args.native_r165 or args.native_r167 or args.native_r169 or args.native_r171 or args.native_r173 or args.native_r175 or args.native_r177 or args.native_r183 or args.native_r187 or args.native_r193,
         native_sha256=expected['native'], playground_sha256=expected['playground'], xr_sha256=expected['sim_xr'],
         manifest_sha256=sha(selected / 'manifest.json'), config_sha256=sha(selected / 'config.json'),
         input_reader_sha256=sha(output / 'read_private_input.py'),
