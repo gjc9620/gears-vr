@@ -2995,3 +2995,13 @@ PhysicsAsset成员与body ordinal、原receiver scale、原consumer/stride代码
 首次编译因在Windows夹具后引入heavy transform/model触发既有small宏及base/size全局遮蔽，抽出相同namespace/48字节/4字节对齐的Matrix34轻量POD，不改原convert实现，新路径不依赖无关model头。原编译失败保留。新静态会话14完整Evidence导出后关闭，完整getter/composition及constructor事实、跨r215 bundle digest、源码/回执在shape-world-r216。
 
 这仍是原getter语义的CPU形状世界pose观察，不是active scene/query-visible世界闭合。authored逐项对应、尺寸/单位/轴基及参与规则、生产Native接入/完整构建、完整world/path/occupancy和body/view/hit/muzzle同版事务、视图遮挡/游戏/头显仍待完成；未加载/执行原DLL，无游戏/XR/原查询。CV24/AC22保持，工程25%。
+
+## r217：整套已提供PhysicsAsset BodyData→实际Actor成员/world形状采集已实现（2026-11-12）
+
+新增cover_physx_asset_shapes.h，将已有asset_actors、actor_shapes、shape_world组合为完整两轮batch。每个Body到unique Actor的map明确保留；非root BodyData为null记~0u，共享Actor只采集一次形状但保留所有Body引用，不把welded Actor的成员顺序当authored骨骼归属。每Actor单形状/compound实际列表都读全，保留actor_index/member_ordinal/world Snapshot；每组世界参数后再读一次成员、所有组后再读asset，两个完整pass及原code/槽/typed guard、最终scope相同才发布。任何失败保持旧整批输出，exclusive work拒绝重入和别名，总容量256，绝不截断。
+
+1714检查0失败（含原1688），原PE SHA22051aa7作数据、objects synthetic，C0/反射guard为fixture seam。静态singleton+动态三类型compound共4行、canonical顺序/内存不变；读后Actor时改前Actor位姿由完整pass比较拒绝，成员变化/unsupported convex/首尾guard/最终输入scope变化/重入/alias保护输出。共享Actor不重复形状、null Body保留，无成员的Actor与整批全空均显式观察。五Actor共320条拒绝；前四各64且第五空时完整256成功；再加1条为257拒绝并保留此前256结果。
+
+首次比较用int常量与unsigned序号在/WX下失败，修fixture常量；最终boundary负例初版把计数放可复制guard值内，未到目标边界，改为共享计数后实际scope变更被拒绝，未改产品准入/closing逻辑。原失败/最终编译与回执在asset-shapes-r217。
+
+覆盖范围仅本次已提供主PhysicsAsset BodyData，不是整个player collider/components/equipment/self清单，不签发自身排除/世界fence/占用/移动许可。authored逐项对应、尺寸/单位/轴基/参与语义、同current C0/时相/生命周期、生产Native接入/完整构建/游戏/原查询及body/view/hit/muzzle/头显仍待完成，CV24/AC22保留，工程25%。无游戏/XR或原DLL加载执行。

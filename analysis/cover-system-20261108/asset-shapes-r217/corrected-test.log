@@ -1,0 +1,7 @@
+read_budget=222 guard_calls=12
+CoverPhysXShapeOwner checks=519 failed=0 original-executed=false game-started=false
+parameter_reads=99
+ShapeParameters checks=687 failed=0 original PE as data; stored fields only, no world/eligibility permit
+world_reads=137
+ShapeWorld checks=1688 failed=0 original PE as data; original-unit CPU pose only, no query fence
+AssetShapes checks=1707 failed=0 synthetic object groups; complete supplied asset only, no world/self permit

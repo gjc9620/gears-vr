@@ -1,0 +1,3 @@
+cover_physx_asset_shapes_test.cpp
+J:\codexWorktree\gearsVr\tools\native-capture\cover_physx_asset_shapes_test.cpp(41): error C2220: 以下警告被视为错误
+J:\codexWorktree\gearsVr\tools\native-capture\cover_physx_asset_shapes_test.cpp(41): warning C4389: '==': 有符号/无符号不匹配

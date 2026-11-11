@@ -1,0 +1,18 @@
+{
+  "result": "read_budget=222 guard_calls=12\r\nCoverPhysXShapeOwner checks=519 failed=0 original-executed=false game-started=false\r\nparameter_reads=99\r\nShapeParameters checks=687 failed=0 original PE as data; stored fields only, no world/eligibility permit\r\nworld_reads=137\r\nShapeWorld checks=1688 failed=0 original PE as data; original-unit CPU pose only, no query fence\r\nAssetShapes checks=1714 failed=0 synthetic object groups; complete supplied asset only, no world/self permit\r\n",
+  "sources": {
+    "tools/native-capture/cover_physx_asset_shapes.h": "0a25681a7bb37c88e96dc9b1bef27983f208d79596335de7f99fa9099dbea9bf",
+    "tools/native-capture/cover_physx_asset_shapes_test.cpp": "662272dabf40aa192ec8317ae550110b3ed55b006e4ca013dcd4077d302e0261",
+    "tools/native-capture/cover_physx_shape_world_test.cpp": "2a5133f009b118a1b8ca7e0b62fefe5562f4d9bc42f9ef8c08cea1c1458dc8cb"
+  },
+  "artifact_sha256": "22051aa75312344a824a5f7e29c6375fec3a90df50cbeff6152f0e6c3afddd48",
+  "association": "Complete supplied PhysicsAssetInstance.Bodies -> deduplicated BodyData actors -> actual singleton/compound actor members -> original getter-derived world parameters. Body-to-actor map retains null nonroot BodyData and shared actors, while every unique shape is sampled once. No authored shape/bone assignment inferred from actor/member order.",
+  "closure": "Two complete asset/member/world passes. Each actor list is re-read after its world rows; entire asset list re-read after all groups; complete pass equality, original getter code/slots, typed C0/image guard and final input scope closure before publishing. Reentry/alias and partial output forbidden.256 global capacity, no truncation.",
+  "tests": "1714 checks0 includes1688. Original exact PE as data; synthetic current object graphs and C0/layout guard seam. Static singleton+dynamic3-kind compound, canonical actor/member order, full source byte preservation, cross-actor early-row mutation during late actor, member change, shared/null BodyData, unsupported convex, initial/final guard and final source mutation, reentry/alias, empty groups/all-empty groups.5 actors with320 members reject; exact256 plus empty fifth actor succeed;257 rejects and preserves previous256.",
+  "failures_retained": "Initial signed/unsigned fixture literal comparison triggered /WX; unsigned literal fixed. Final-boundary mutation fixture initially stored a counter by value across copied guards, so target boundary was not reached; shared counter fixes the actual injection, production guard/capture logic unchanged.",
+  "remaining": "Only the supplied main asset BodyData set; not entire player collider/components/equipment/self set. Still requires same current C0/time/code/lifetime and query-visible world closure. Authored-to-active row correspondence, units/axes/dimension semantics and eligibility, Native integration/build/runtime, path/occupancy/body/view/hit/muzzle/headset remain open.",
+  "game_started": false,
+  "original_DLL_loaded": false,
+  "full_native_built": false,
+  "engineering_percent": 25
+}

@@ -82,4 +82,7 @@ static int world_cases(char const* path){try{auto work=std::make_unique<world::W
  }catch(...){check(false,"world fixture exception");}
  printf("ShapeWorld checks=%u failed=%u original PE as data; original-unit CPU pose only, no query fence\n",checks,failed);return failed?1:0;
 }
-int main(int argc,char** argv){if(argc!=2)return 2;if(PriorShapeWorldParametersMain(argc,argv))return 1;return world_cases(argv[1]);}
+#ifndef GEARS_SHAPE_WORLD_TEST_MAIN
+#define GEARS_SHAPE_WORLD_TEST_MAIN main
+#endif
+int GEARS_SHAPE_WORLD_TEST_MAIN(int argc,char** argv){if(argc!=2)return 2;if(PriorShapeWorldParametersMain(argc,argv))return 1;return world_cases(argv[1]);}
