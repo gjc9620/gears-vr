@@ -1,0 +1,15 @@
+{
+  "result": "PrimitiveLayout checks=37 failures=0 actual reflection Proof; synthetic registry, no runtime authority\r\nArrayLayout checks=80 failures=0 reflection association only; synthetic registry\r\n",
+  "sources": {
+    "tools/native-capture/cover_array_layout_live.inl": "838d5896e627b84cf367d9848b4ba24eecd554b42304a93c268c3b445c6047b6",
+    "tools/native-capture/cover_array_layout_live_test.cpp": "ddbce823bda7f211e085df4cd5463f75185001cde6ee545c4b4be7d325ea321a",
+    "tools/native-capture/cover_primitive_layout_live_test.cpp": "646581beb53b966017dbbd253937dfa659cced3abc4be0f4aecfdca6d7b0bbcc"
+  },
+  "association": "KMeshProps-owned KAggregateGeom72 selected ArrayProperty16 -> own inner StructProperty(dim1,stride80,offset0) -> exact primitive nested schema",
+  "bridge": "Source header equals caller aggregate base plus certified offset. Source kind/extent/mask match layout. All raw capture typed guard boundaries revalidate full Proof and caller ownership guard.",
+  "tests": "all3 kinds; wrong inner stride/target/dimension/owner/offset and tail cycle; old proof invalidation; all3 array capture paths and mid-payload target mutation; wrong header rejected",
+  "first_compile_failure": "Legacy main macro reuse collided inside nested fixture. Added GEARS_PRIMITIVE_LAYOUT_TEST_MAIN seam, no runtime source change; preserved failure.",
+  "remaining": "Aggregate base/BodySetup/PhysicsAsset/bone/native receiver scale/current C0 and native stride-code attestation remain caller obligations. Synthetic registry and aggregate instance in test.",
+  "game_started": false,
+  "engineering_percent": 25
+}

@@ -1,0 +1,7 @@
+cover_array_layout_live_test.cpp
+J:\codexWorktree\gearsVr\tools\native-capture\cover_physics_roles_live_test.cpp(3): error C2220: 以下警告被视为错误
+J:\codexWorktree\gearsVr\tools\native-capture\cover_physics_roles_live_test.cpp(3): warning C4005: “main”: 宏重定义
+J:\codexWorktree\gearsVr\tools\native-capture\cover_array_layout_live_test.cpp(1): note: 参见“main”的前一个定义
+J:\codexWorktree\gearsVr\tools\native-capture\cover_array_layout_live_test.cpp(13): error C2084: 函数“int main(void)”已有主体
+J:\codexWorktree\gearsVr\tools\native-capture\cover_primitive_layout_live_test.cpp(25): note: 参见“main”的前一个定义
+J:\codexWorktree\gearsVr\tools\native-capture\cover_array_layout_live_test.cpp(13): error C3861: “PriorPrimitiveLayoutMain”: 找不到标识符

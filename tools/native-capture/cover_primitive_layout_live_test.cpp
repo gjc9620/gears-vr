@@ -22,7 +22,10 @@ static void schema_setup(unsigned kind){physics_setup();schema_index=180;schema_
  for(unsigned i=0;i<counts[kind];++i){const auto at=make_field(schema_element,dim[kind][i],schema_float,4,64+i*4);put(previous+0x68,at);previous=at;}
  schema_flag=make_field(schema_element,L"bNoRBCollision",schema_bool,4,64+counts[kind]*4);put(previous+0x68,schema_flag);put(schema_flag+0xd0,1u);
 }
-int main(){arena=reinterpret_cast<uintptr_t>(VirtualAlloc(nullptr,saved_arena.size(),MEM_COMMIT|MEM_RESERVE,PAGE_READWRITE));if(!arena)return 99;
+#ifndef GEARS_PRIMITIVE_LAYOUT_TEST_MAIN
+#define GEARS_PRIMITIVE_LAYOUT_TEST_MAIN main
+#endif
+int GEARS_PRIMITIVE_LAYOUT_TEST_MAIN(){arena=reinterpret_cast<uintptr_t>(VirtualAlloc(nullptr,saved_arena.size(),MEM_COMMIT|MEM_RESERVE,PAGE_READWRITE));if(!arena)return 99;
  namespace layout=cover_primitive_layout_live;auto proof=std::make_unique<h::Proof>();layout::Layout out{};
  for(unsigned kind=0;kind<3;++kind){schema_setup(kind);gears_anchor::Identity element{},owner{};C(h::identity(schema_element,element)&&h::identity(schema_owner,owner));*proof={};
   C(layout::prepare(*proof,element,owner,kind,out)&&out.collision_mask==1&&out.plane.address==schema_plane);

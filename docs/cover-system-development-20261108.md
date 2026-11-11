@@ -2911,3 +2911,13 @@ uniform receiver scale在任何读前验证，空数组也不能绕过来源数�
 三种正常/嵌套Plane事后变更/Matrix extent/Plane offset/Boolean mask/primitive owner/尾链环先31检查0失败；进一步将同一真实Proof接r206数组capture的typed guard，三种payload均能读取并保留碰撞停用标记，payload读取中改Plane布局会在后续guard拒绝且公共输出保持，合计37检查0失败。身份/Proof/数组传输均为生产实现，注册表和header地址关联仍是synthetic fixture许可，不是实际ArrayProperty或游戏C0证明。
 
 尚需aggregate ArrayProperty/inner/目标结构、BodySetup/骨名/当前资产、原scale/C0世界身份关联，不能将此schema结果当移动或活跃物理认证。源码/回执primitive-layout-r208，无完整Native构建或游戏/原函数调用；完整CV/AC/头显未完成，工程25%。
+
+## r209：aggregate ArrayProperty/inner/primitive关联并接读取闭合（2026-11-12）
+
+新增cover_array_layout_live.inl，认证KMeshProps所属KAggregateGeom72的选定SphereElems/BoxElems/SphylElems ArrayProperty16及准确offset，再认证inner自身outer、StructProperty、dimension1、stride80、offset0和目标primitive完整r208嵌套schema；保留occupied extent72/80/76与native stride80的区别，不以等值放宽其他结构。所有字段仍同一Proof闭合。
+
+新增capture桥接把Source.header绑定caller提供的aggregate_base+已认证field.offset，核对kind/extent/mask/stride；r206每个typed guard边界先调用caller当前owner guard，再复核metadata和完整Proof/保留layout关键字段。proof/layout与scratch/output别名拒绝，公共输出只在读取完整成功后覆盖。caller仍须证明该aggregate_base是当前BodySetup.AggGeom，不能因地址可读就调用放行。
+
+保留r208原37检查，ArrayLayout合计80检查0失败：三类schema、错误inner stride/target/dimension/outer/offset、尾链环及proof失效；三类完整数组读取、payload读取中换inner目标、错header关联均拒绝并保持输出。注册表/aggregate实例及BodySetup/C0外层guard是synthetic fixture，不声称实际库存/运行许可。首次复用main宏冲突导致编译失败，增加现有r208 test main seam后修复，原日志保留。
+
+回执array-layout-r209，无游戏/原函数/完整Native构建。下一关联是BodySetup→AggGeom实例、当前PhysicsAsset/骨名/原scale/C0身份时间及原stride代码认证；全CV/AC/头显仍未完成，工程25%。
