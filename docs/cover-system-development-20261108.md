@@ -2811,3 +2811,11 @@ query34.2674ms，code source，engine/source_guard/current；Owner53次context/s
 主人先明确允许掩体离线检查，随后直接要求“请尽情的开发 无任何限制”；本掩体目标后续实现/构建/离线/必要受控游戏验证直接推进，不逐项重复请求。保留存档、身份/来源、原始证据和其他会话保护，不据此扩成无关武器任务。授权原文保存于component-consumer-r193/owner-authorization-20261112.json。本轮只审阅和保存，未新启游戏/测试/构建。
 
 后续必须同时闭合实际查询/几何与第一人称身体/眼点关系，不能只优化到query返回就宣布完成。r194原调用0/0及首次来源过期事实保留，视图遮挡不可归因于组件优化。全CV01–24/AC01–22继续，工程25%、publicv71不变。
+
+## r196：r194冻结源确认掩体身体/视图链未接通（2026-11-12）
+
+实际冻结源body pose_begin在cover只测量后return，read_view要求no_cover，cover_full_goal prepare要求input/camera enabled；实际status cover_camera_enabled0/applied0、body_goal_view_available0。因此r194不是完整掩体身体/视图候选，仍是旧第一人称fallback加测量/查询观察。head_render enabled1/palettes699/rejected0只是聚合通路，不能推翻全画面遮挡FAIL。
+
+保存前初次一致性断言发现当前四模块与实际冻结源均非逐字一致，故停止原保存；随后直接查冻结源确认上述分支。不能声称当前与冻结完全相同，也不能把preview flag猜作唯一原因。双方SHA已保存于r196-cover-view-wiring-analysis.json；后续先审当前差异，再将认证placement与现有cover target接唯一身体事务/同提交视图，保留固定骨长/真实追踪一次/完整碰撞占用，不加第二写者或以隐藏模型替代接线。1单位诊断capsule不是身体安全证明。
+
+本轮源码审阅/证据保存，没有新游戏/测试/产品修改；全CV01–24/AC01–22和头显未完成，工程25%不变。

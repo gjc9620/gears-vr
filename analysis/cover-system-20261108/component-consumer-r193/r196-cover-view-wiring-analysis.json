@@ -1,0 +1,38 @@
+{
+  "sources": {
+    "tools\\native-capture\\body_c0_goal_policy_live.inl": {
+      "compiled_sha256": "5f97cfcb847241775f553617759048a324963fe311dda7aad43f8281b9f735b6",
+      "current_sha256": "6325e8093e5e97a111d01b9080d89d8d4eec3cd05732aeae986c25d696128d7e"
+    },
+    "tools\\native-capture\\cover_full_goal_live.inl": {
+      "compiled_sha256": "a3dddf4e48270a2a6063f29413dde783aa090fc6d1f372bca1960744ba9d91e2",
+      "current_sha256": "8dbec3a6aae62eca221f6af155e2885e9413a077a32585d3a1551d01433055bf"
+    },
+    "tools\\native-capture\\cover_camera_live.inl": {
+      "compiled_sha256": "990435766ec5c48a4501a7233a687f7c9bee06df3f743655dbee658c2608f745",
+      "current_sha256": "abe0201bcd763c9c17c30630ffc1c2b274bee5b7b0c53c1e1fc0b5fbf35d2542"
+    },
+    "tools\\native-capture\\capture.cpp": {
+      "compiled_sha256": "ee07dab27f21b6b838ec4ede2aebf52f4ef0631f805f61aaa2aa07849e9a6a8c",
+      "current_sha256": "c88e5b7b27fa1e01e04548818e7c9671a23c1311db15ee8bfc4971bd0841b30b"
+    }
+  },
+  "compiled_and_current_equal": false,
+  "findings": [
+    "Exact frozen body pose_begin measures cover then returns without body goal",
+    "Exact frozen read_view requires no_cover",
+    "Exact frozen cover_full_goal prepare requires enabled input/camera"
+  ],
+  "facts": {
+    "cover_camera_enabled": "0",
+    "cover_camera_applied": "0",
+    "body_goal_view_available": "0",
+    "first_person_head_render_enabled": "1",
+    "head_render_palettes": "699",
+    "head_render_rejected": "0"
+  },
+  "interpretation": "r194 does not constitute integrated cover body/view output. Head rendering totals are not per-frame hardware proof.",
+  "next": "Compare current module deltas before integrating existing cover target/placement into unique body transaction and same-commit view; retain geometry certification and fixed bones.",
+  "game_started": false,
+  "source_changed": false
+}
