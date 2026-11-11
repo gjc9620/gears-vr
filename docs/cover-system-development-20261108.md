@@ -2849,3 +2849,11 @@ query34.2674ms，code source，engine/source_guard/current；Owner53次context/s
 保留table/scene、typed字段/索引/成员、embedded owner、两遍动态值及closing；未采样/BodyData本身为空行仍须字段全零。null是可选动态Body，不替代Actor类型/世界覆盖证明。第一处编辑锚点在文件中出现两次，断言在修改前拒绝；改用精确后一个typed-owners测试段，没有静默误改其他重载。
 
 原before/after及源码SHA/依赖记录optional-session-r200。编译/运行全部终态0（before期望失败1保留），无游戏/原查询/完整Native构建或移动授权。本轮把两处读取语义修复验证到会话层，不称完整掩体/碰撞/视图通过；全CV/AC/头显仍待完成，工程25%。
+
+## r201：身体单形状到原查询参数转换已实现，精度边界保持未知（2026-11-12）
+
+新增cover_primitive_query.h，把既有世界空间Primitive转换为原query Sphere/Box/Capsule值，携带body_index/bone_index/原骨名；检测索引、有限性、尺寸及原query有效参数，盒体以旋转后局部轴构造矩阵。输出只有全部转换成功才覆盖。首版9检查通过，补齐索引传递和180度盒体旋转后12检查0失败；没有加载PhysX、原调用或游戏。
+
+当前仅支持坐标/旋转系数可精确表示为float的输入；非精确返回precision，不静默缩小或丢形状。此边界是未完成项，不把严格拒绝多数非整旋转当成完整转换；还须实现保守外扩误差界和实际native约定核验。convex/未知类型明确unsupported。单形状数学不能授当前C0/active shape/世界碰撞/移动许可，未接Session。后续连接完整目录逐项转换和原查询消费，任何末项失败也不得报告完整成功，旋转/姿态变化还需完整路径认证。
+
+源码、编译/运行及依赖SHA在primitive-query-r201，无完整Native构建/安装；全CV/AC/头显仍未完成，工程25%。

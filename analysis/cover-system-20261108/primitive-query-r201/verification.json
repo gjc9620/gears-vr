@@ -1,0 +1,19 @@
+{
+  "source_sha256": {
+    "tools/native-capture/cover_primitive_query.h": "6ac464907a1e263484048a6c8ec999ead9a7a4e8a2df254c4f21b2705d7794df",
+    "tools/native-capture/cover_primitive_query_test.cpp": "507871e40d9fb331b7f19416e3ed4fe450f707d2585957a9a0e10eb98ca8bb5a"
+  },
+  "result": "PrimitiveQuery checks=12 failures=0 exact owned conversion only; no query/permission\r\n",
+  "supported": "sphere, box, sphyl owned world primitive to original query parameter records with body/bone association",
+  "precision_policy": "Only exactly representable float coordinates and rotation coefficients. Nonexact returns precision, never truncates/rounds smaller. Conservative outward error handling remains to implement.",
+  "limits": [
+    "not full inventory traversal",
+    "not articulated pose sweep",
+    "not current active geometry authentication",
+    "not world query or movement authorization",
+    "not yet wired into Session"
+  ],
+  "game_started": false,
+  "full_native_built": false,
+  "engineering_percent": 25
+}
