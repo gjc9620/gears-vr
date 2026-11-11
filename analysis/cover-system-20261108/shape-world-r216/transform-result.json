@@ -1,0 +1,17 @@
+{
+  "build_exit": 0,
+  "tests": [
+    {
+      "fixture": "analysis/solo-m1-20261028/observed-backend-fixture/C0-component.bin",
+      "sha256": "6a0656bc322c34465bbc1c517ecfae821ab468ff2b1283221665e5edffc64b63",
+      "exit": 0,
+      "output": "CoverPhysXTransform checks=63 failed=0 original-layout-game-to-physics-only\r\n"
+    },
+    {
+      "fixture": "analysis/cover-system-20261108/61492-cover-frame/C0-component.bin",
+      "sha256": "ceb2c34e36e442a0cceafde5754c0f320e8fc6ad270d6ee25cb4314731515f09",
+      "exit": 0,
+      "output": "CoverPhysXTransform checks=63 failed=0 original-layout-game-to-physics-only\r\n"
+    }
+  ]
+}

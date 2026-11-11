@@ -1,5 +1,6 @@
 #pragma once
 #include "full_body_c0_planner.h"
+#include "cover_physx_matrix.h"
 #include <cfloat>
 #include <cstddef>
 #include <cstdint>
@@ -13,8 +14,6 @@
 // game memory, call PhysX, identify a scene or certify collision/occupancy.
 namespace gears_cover_physx_transform {
 namespace body=gears_full_body_c0;
-struct Matrix34 {float values[12]{};};
-static_assert(sizeof(Matrix34)==48&&alignof(Matrix34)==alignof(float));
 enum class Code {converted,alias,nonfinite,affine,nonrigid,numeric};
 inline constexpr float game_to_physics=.02f;
 namespace detail {

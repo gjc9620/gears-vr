@@ -74,4 +74,7 @@ static int parameter_cases(char const* path){
  }catch(...){check(false,"parameter fixture exception");}
  printf("ShapeParameters checks=%u failed=%u original PE as data; stored fields only, no world/eligibility permit\n",checks,failed);return failed?1:0;
 }
-int main(int argc,char** argv){if(argc!=2)return 2;if(PriorShapeParametersOwnerMain(argc,argv))return 1;return parameter_cases(argv[1]);}
+#ifndef GEARS_SHAPE_PARAMETERS_TEST_MAIN
+#define GEARS_SHAPE_PARAMETERS_TEST_MAIN main
+#endif
+int GEARS_SHAPE_PARAMETERS_TEST_MAIN(int argc,char** argv){if(argc!=2)return 2;if(PriorShapeParametersOwnerMain(argc,argv))return 1;return parameter_cases(argv[1]);}

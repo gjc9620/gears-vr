@@ -2983,3 +2983,15 @@ PhysicsAsset成员与body ordinal、原receiver scale、原consumer/stride代码
 687检查0失败，包含当前原owner519项；实际PE仅作为数据夹具，objects为synthetic。三类使用真正生产owner reader作为typed guard；99个parameter-only读取点逐项故障注入，slot/code/kind/value/owner/link、两轮间变化、三guard拒绝、最终输入attribution变化、重入/alias、静态null dynamic Body、异常和convex均保护输出；DLL保持未加载。异常负例初版constant throw令模板后续代码被/WX判不可达，改为volatile运行时故障条件后通过，未据此改产品逻辑，失败保留。
 
 完整证据/范围/原指令在shape-parameters-r215/rea-evidence.json及focused-facts/getter-certificate/verification。仍缺authored库存逐项对应、当前Actor world pose及单位/轴基转换、原参与/过滤语义及全场景world/path/occupancy闭合，尚未生产Native接入/完整构建/游戏/XR/原查询/头显。完整CV24/AC22、视图遮挡和body/view/hit/muzzle同版事务继续待完成，工程25%。
+
+## r216：原静态/动态形状global-pose getter只读路径与CPU组合已实现（2026-11-12）
+
+原PhysX SHA22051aa7保持。REA按精确Body::vftable名解析226868，原2b40 constructor的LEA226868→MOV[this]证明是主表，另两个secondary表226a00/226a50不混用。主表+8/+10原4e50/4e70读取Body position20c/210/214及quaternion1fc/200/204/208；133fe0的Actor+28进入1209f0、再以+18判断Body分支。既有r215的public Shape+80→13e7e0→178ff0原完整证据证明静态shape直接用stored pose，动态需Actor/Body world组合。静态不读取未用的Actor cache或假造Body；不调用任何原getter/缓存更新。
+
+新增cover_physx_shape_world.h、cover_physx_pose_math.h和生成world_code，保留原float32四元数矩阵及组合分组、原单位，不归一化/缩放修复来源；非有限/非normal非零输入、非单位四元数/非刚性/反射明确拒绝。typed current shape/member/C0 guard、两完整parameter+Body pose观察、最终owner/代码/guard闭合后才发布；失败保护输出并释放工作区。6完整原函数1682bytes及RIP float1.0字节、r215参数210bytes和原actor/shape getter代码/槽逐项闭合。静态Actor world cache不属于本shape分支的消费，不用它加新准入条件。
+
+1688检查0失败（含原687）：三类型各静态/动态，真实PE只作数据、objects synthetic、production owner reader作typed guard；独立非对称四元数点变换及128组不同旋转配对，输入内存不变。静态缺未用cache/Body仍能观察；错误Body主表/槽/原代码/1.0常量/NaN/非单位pose、两轮Body移动、三guard边界、alias/重入及全部137读取点逐项故障注入保护输出。两份原保存component矩阵SHA保持，旧游戏→物理转换各63回归0。
+
+首次编译因在Windows夹具后引入heavy transform/model触发既有small宏及base/size全局遮蔽，抽出相同namespace/48字节/4字节对齐的Matrix34轻量POD，不改原convert实现，新路径不依赖无关model头。原编译失败保留。新静态会话14完整Evidence导出后关闭，完整getter/composition及constructor事实、跨r215 bundle digest、源码/回执在shape-world-r216。
+
+这仍是原getter语义的CPU形状世界pose观察，不是active scene/query-visible世界闭合。authored逐项对应、尺寸/单位/轴基及参与规则、生产Native接入/完整构建、完整world/path/occupancy和body/view/hit/muzzle同版事务、视图遮挡/游戏/头显仍待完成；未加载/执行原DLL，无游戏/XR/原查询。CV24/AC22保持，工程25%。

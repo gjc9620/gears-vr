@@ -1,0 +1,43 @@
+{
+  "result": "read_budget=222 guard_calls=12\r\nCoverPhysXShapeOwner checks=519 failed=0 original-executed=false game-started=false\r\nparameter_reads=99\r\nShapeParameters checks=687 failed=0 original PE as data; stored fields only, no world/eligibility permit\r\nworld_reads=137\r\nShapeWorld checks=1688 failed=0 original PE as data; original-unit CPU pose only, no query fence\r\n",
+  "transform_regression": {
+    "build_exit": 0,
+    "tests": [
+      {
+        "fixture": "analysis/solo-m1-20261028/observed-backend-fixture/C0-component.bin",
+        "sha256": "6a0656bc322c34465bbc1c517ecfae821ab468ff2b1283221665e5edffc64b63",
+        "exit": 0,
+        "output": "CoverPhysXTransform checks=63 failed=0 original-layout-game-to-physics-only\r\n"
+      },
+      {
+        "fixture": "analysis/cover-system-20261108/61492-cover-frame/C0-component.bin",
+        "sha256": "ceb2c34e36e442a0cceafde5754c0f320e8fc6ad270d6ee25cb4314731515f09",
+        "exit": 0,
+        "output": "CoverPhysXTransform checks=63 failed=0 original-layout-game-to-physics-only\r\n"
+      }
+    ]
+  },
+  "sources": {
+    "tools/native-capture/cover_physx_matrix.h": "c243ee0c239387071aeb85947524dc5a40eb540196ae21041a918b37b38a3069",
+    "tools/native-capture/cover_physx_transform.h": "253c0e97937ee72e1bcb0620ca472c3ad7cc173ad4b172fd1685d9a7dda24f2f",
+    "tools/native-capture/cover_physx_pose_math.h": "72546f78145de37467ca19c3140fb8085761ab6c41a24942ce4122fd08b73264",
+    "tools/native-capture/cover_physx_shape_world_code.h": "535d9db23810f8344b2a227375c65cc207f141716da2366e8cce77f025eea1d6",
+    "tools/native-capture/cover_physx_shape_world.h": "2f07cb33a64730aab7af61958e91188495de56d4efc490b78a0fd1a5598c02b4",
+    "tools/native-capture/cover_physx_shape_world_test.cpp": "8c9d5754fdfbdce5415d6de39cfe254569321a8c4d7e4b497b0bc4cff9aec6d0",
+    "tools/native-capture/cover_physx_shape_parameters_test.cpp": "fcac5e037167824f176caa88a8401936b58992eab230c907906abf5153504a8a"
+  },
+  "artifact_sha256": "22051aa75312344a824a5f7e29c6375fec3a90df50cbeff6152f0e6c3afddd48",
+  "rea_records": 14,
+  "rea_bundle_sha256": "a9edc74b6bb6330dc591f6ff144df1dd6bff5097c3babac061d6c21448370871",
+  "original_route": "PublicActor133fe0 -> helper1209f0, dynamic Body vtable primary226868 (constructor2b40 proves exact primary assignment), slots8/10 ->4e50/4e70 read position20c/210/214 and quaternion1fc/200/204/208. Shape public80 ->13e7e0 ->178ff0: static uses stored shape pose; dynamic composes Body world with stored shape pose. No cache-changing getter invoked.",
+  "code": "Six complete getter/composition bodies1682 bytes plus RIP float1.0 bytes, previous210 parameter/stub bytes and actor/shape getter checks; current exact dispatch slots and image bounds preserved. Earlier178ff0 dossier retained in parent r215 bundle, linked by digest.",
+  "math": "Original float32 quaternion matrix and composition grouping, no normalization or scale/unit conversion. Finite/normal inputs and proper rigid transforms only; output remains PhysX units. CPU pose is not query-world fence or physical-headset proof.",
+  "tests": "1688checks0 includes687. All3 kinds static/dynamic with production ownership reader guard and PE bytes as data; independent asymmetric quaternion point oracle,128 varied pairs, source byte preservation, missing static Actor cache/dynamic Body not read, body table/slots/code/constants/NaN/nonunit faults, inter-pass Body position mutation. All137 read points fail-injected; guard boundaries/alias/reentry/output preservation covered. Two retained actual component matrices unchanged, original transform63checks each0.",
+  "first_compile_failure": "Including heavyweight transform/model after the Windows-based fixture exposed existing small macro and global base/size collisions. Split unchanged48-byte Matrix34 POD into lightweight cover_physx_matrix.h, leaving original namespace/layout/convert implementation intact; new pose reader avoids unrelated model dependencies. Original compile log retained and old transform regression passes.",
+  "remaining": "Authored-to-active shape correspondence, dimensions/unit/axis conventions and actual query eligibility, same current C0/geometry/query-visible world, Native capture integration/build, path/occupancy/body/view/hit/muzzle and headset acceptance remain open.",
+  "native_session_closed": true,
+  "game_started": false,
+  "original_DLL_loaded": false,
+  "full_native_built": false,
+  "engineering_percent": 25
+}

@@ -1,0 +1,117 @@
+cover_physx_shape_world_test.cpp
+J:\codexWorktree\gearsVr\tools\native-capture\../vr-common/pose_math.h(77): error C2220: 以下警告被视为错误
+J:\codexWorktree\gearsVr\tools\native-capture\../vr-common/pose_math.h(77): warning C4459: “base”的声明隐藏了全局声明
+J:\codexWorktree\gearsVr\tools\native-capture\cover_physx_query_test.cpp(35): note: 参见“base”的声明
+J:\codexWorktree\gearsVr\tools\native-capture\../vr-common/hand_two_bone_pose.h(60): warning C4459: “size”的声明隐藏了全局声明
+J:\codexWorktree\gearsVr\tools\native-capture\cover_physx_query_test.cpp(36): note: 参见“size”的声明
+J:\codexWorktree\gearsVr\tools\native-capture\../vr-common/hand_two_bone_pose.h(68): error C2628: “gears_vr::Quaternion”后面接“char”是非法的(是否忘记了“;”?)
+J:\codexWorktree\gearsVr\tools\native-capture\../vr-common/hand_two_bone_pose.h(69): warning C4459: “size”的声明隐藏了全局声明
+J:\codexWorktree\gearsVr\tools\native-capture\cover_physx_query_test.cpp(36): note: 参见“size”的声明
+J:\codexWorktree\gearsVr\tools\native-capture\../vr-common/hand_two_bone_pose.h(69): error C2144: 语法错误:“char”的前面应有“)”
+J:\codexWorktree\gearsVr\tools\native-capture\../vr-common/hand_two_bone_pose.h(69): error C2661: “sqrt”: 没有重载函数接受 0 个参数
+E:\vs\VC\Tools\MSVC\14.51.36231\include\cmath(876): note: 可能是“double sqrt(_Ty) noexcept”
+J:\codexWorktree\gearsVr\tools\native-capture\../vr-common/hand_two_bone_pose.h(69): note: “double sqrt(_Ty) noexcept”: 应输入 1 个参数，却提供了 0 个
+J:\codexWorktree\gearsVr\tools\native-capture\../vr-common/hand_two_bone_pose.h(69): note: 尝试匹配参数列表“()”时
+J:\codexWorktree\gearsVr\tools\native-capture\../vr-common/hand_two_bone_pose.h(69): warning C4244: “初始化”: 从“long double”转换到“double”，可能丢失数据
+J:\codexWorktree\gearsVr\tools\native-capture\../vr-common/hand_two_bone_pose.h(69): warning C4244: “初始化”: 从“long double”转换到“const double”，可能丢失数据
+J:\codexWorktree\gearsVr\tools\native-capture\../vr-common/hand_two_bone_pose.h(69): error C2144: 语法错误:“char”的前面应有“;”
+J:\codexWorktree\gearsVr\tools\native-capture\../vr-common/hand_two_bone_pose.h(69): error C2059: 语法错误:“.”
+J:\codexWorktree\gearsVr\tools\native-capture\../vr-common/hand_two_bone_pose.h(69): error C2059: 语法错误:“)”
+J:\codexWorktree\gearsVr\tools\native-capture\../vr-common/hand_two_bone_pose.h(71): error C2062: 意外的类型“char” 
+J:\codexWorktree\gearsVr\tools\native-capture\../vr-common/hand_two_bone_pose.h(71): error C2059: 语法错误:“return”
+J:\codexWorktree\gearsVr\tools\native-capture\../vr-common/hand_two_bone_pose.h(75): error C3861: “cross”: 找不到标识符
+J:\codexWorktree\gearsVr\tools\native-capture\../vr-common/hand_two_bone_pose.h(75): error C3861: “scaled”: 找不到标识符
+J:\codexWorktree\gearsVr\tools\native-capture\../vr-common/hand_two_bone_pose.h(75): error C3861: “cross”: 找不到标识符
+J:\codexWorktree\gearsVr\tools\native-capture\../vr-common/hand_two_bone_pose.h(75): error C3861: “cross”: 找不到标识符
+J:\codexWorktree\gearsVr\tools\native-capture\../vr-common/hand_two_bone_pose.h(75): error C3861: “add”: 找不到标识符
+J:\codexWorktree\gearsVr\tools\native-capture\../vr-common/hand_two_bone_pose.h(75): error C3861: “scaled”: 找不到标识符
+J:\codexWorktree\gearsVr\tools\native-capture\../vr-common/hand_two_bone_pose.h(75): error C3861: “add”: 找不到标识符
+J:\codexWorktree\gearsVr\tools\native-capture\../vr-common/hand_two_bone_pose.h(79): error C3861: “unit”: 找不到标识符
+J:\codexWorktree\gearsVr\tools\native-capture\../vr-common/hand_two_bone_pose.h(80): error C3861: “dot”: 找不到标识符
+J:\codexWorktree\gearsVr\tools\native-capture\../vr-common/hand_two_bone_pose.h(80): error C3861: “scaled”: 找不到标识符
+J:\codexWorktree\gearsVr\tools\native-capture\../vr-common/hand_two_bone_pose.h(80): error C3861: “sub”: 找不到标识符
+J:\codexWorktree\gearsVr\tools\native-capture\../vr-common/hand_two_bone_pose.h(81): error C3861: “length”: 找不到标识符
+J:\codexWorktree\gearsVr\tools\native-capture\../vr-common/hand_two_bone_pose.h(81): error C2065: “epsilon”: 未声明的标识符
+J:\codexWorktree\gearsVr\tools\native-capture\../vr-common/hand_two_bone_pose.h(82): error C3861: “unit”: 找不到标识符
+J:\codexWorktree\gearsVr\tools\native-capture\../vr-common/hand_two_bone_pose.h(92): error C3861: “dot”: 找不到标识符
+J:\codexWorktree\gearsVr\tools\native-capture\../vr-common/hand_two_bone_pose.h(92): error C3861: “scaled”: 找不到标识符
+J:\codexWorktree\gearsVr\tools\native-capture\../vr-common/hand_two_bone_pose.h(92): error C3861: “sub”: 找不到标识符
+J:\codexWorktree\gearsVr\tools\native-capture\../vr-common/hand_two_bone_pose.h(93): error C3861: “dot”: 找不到标识符
+J:\codexWorktree\gearsVr\tools\native-capture\../vr-common/hand_two_bone_pose.h(94): error C2065: “epsilon”: 未声明的标识符
+J:\codexWorktree\gearsVr\tools\native-capture\../vr-common/hand_two_bone_pose.h(96): error C2065: “epsilon”: 未声明的标识符
+J:\codexWorktree\gearsVr\tools\native-capture\../vr-common/hand_two_bone_pose.h(96): error C3861: “unit”: 找不到标识符
+J:\codexWorktree\gearsVr\tools\native-capture\../vr-common/hand_two_bone_pose.h(100): error C3861: “unit”: 找不到标识符
+J:\codexWorktree\gearsVr\tools\native-capture\../vr-common/hand_two_bone_pose.h(100): error C3861: “unit”: 找不到标识符
+J:\codexWorktree\gearsVr\tools\native-capture\../vr-common/hand_two_bone_pose.h(101): error C3861: “dot”: 找不到标识符
+J:\codexWorktree\gearsVr\tools\native-capture\../vr-common/hand_two_bone_pose.h(102): error C3861: “cross”: 找不到标识符
+J:\codexWorktree\gearsVr\tools\native-capture\../vr-common/hand_two_bone_pose.h(102): error C3861: “length”: 找不到标识符
+J:\codexWorktree\gearsVr\tools\native-capture\../vr-common/hand_two_bone_pose.h(103): error C2065: “epsilon”: 未声明的标识符
+J:\codexWorktree\gearsVr\tools\native-capture\../vr-common/hand_two_bone_pose.h(105): error C3861: “scaled”: 找不到标识符
+J:\codexWorktree\gearsVr\tools\native-capture\../vr-common/hand_two_bone_pose.h(106): error C3861: “quaternion”: 找不到标识符
+J:\codexWorktree\gearsVr\tools\native-capture\../vr-common/hand_two_bone_pose.h(114): error C2065: “epsilon”: 未声明的标识符
+J:\codexWorktree\gearsVr\tools\native-capture\../vr-common/hand_two_bone_pose.h(114): error C2672: “std::max”: 未找到匹配的重载函数
+E:\vs\VC\Tools\MSVC\14.51.36231\include\utility(88): note: 可能是“_Ty std::max(std::initializer_list<_Elem>)”
+J:\codexWorktree\gearsVr\tools\native-capture\../vr-common/hand_two_bone_pose.h(114): note: “_Ty std::max(std::initializer_list<_Elem>)”: 应输入 1 个参数，却提供了 2 个
+E:\vs\VC\Tools\MSVC\14.51.36231\include\utility(85): note: 或    “_Ty std::max(std::initializer_list<_Elem>,_Pr)”
+E:\vs\VC\Tools\MSVC\14.51.36231\include\utility(77): note: 或    “const _Ty &std::max(const _Ty &,const _Ty &) noexcept(<expr>)”
+E:\vs\VC\Tools\MSVC\14.51.36231\include\utility(67): note: 或    “const _Ty &std::max(const _Ty &,const _Ty &,_Pr) noexcept(<expr>)”
+J:\codexWorktree\gearsVr\tools\native-capture\../vr-common/hand_two_bone_pose.h(114): note: “const _Ty &std::max(const _Ty &,const _Ty &,_Pr) noexcept(<expr>)”: 应输入 3 个参数，却提供了 2 个
+J:\codexWorktree\gearsVr\tools\native-capture\../vr-common/hand_two_bone_pose.h(114): error C2737: “tolerance”: 必须初始化 const 对象
+J:\codexWorktree\gearsVr\tools\native-capture\../vr-common/hand_two_bone_pose.h(125): error C4430: 缺少类型说明符 - 假定为 int。注意: C++ 不支持默认 int
+J:\codexWorktree\gearsVr\tools\native-capture\../vr-common/hand_two_bone_pose.h(125): error C2146: 语法错误: 缺少“;”(在标识符“solve”的前面)
+J:\codexWorktree\gearsVr\tools\native-capture\../vr-common/hand_two_bone_pose.h(125): error C2143: 语法错误: 缺少“)”(在“const”的前面)
+J:\codexWorktree\gearsVr\tools\native-capture\../vr-common/hand_two_bone_pose.h(125): error C2143: 语法错误: 缺少“;”(在“const”的前面)
+J:\codexWorktree\gearsVr\tools\native-capture\../vr-common/hand_two_bone_pose.h(125): error C4430: 缺少类型说明符 - 假定为 int。注意: C++ 不支持默认 int
+J:\codexWorktree\gearsVr\tools\native-capture\../vr-common/hand_two_bone_pose.h(125): error C4430: 缺少类型说明符 - 假定为 int。注意: C++ 不支持默认 int
+J:\codexWorktree\gearsVr\tools\native-capture\../vr-common/hand_two_bone_pose.h(125): error C2530: “input”: 必须初始化引用
+J:\codexWorktree\gearsVr\tools\native-capture\../vr-common/hand_two_bone_pose.h(125): error C2143: 语法错误: 缺少“;”(在“&”的前面)
+J:\codexWorktree\gearsVr\tools\native-capture\../vr-common/hand_two_bone_pose.h(125): error C2059: 语法错误:“)”
+J:\codexWorktree\gearsVr\tools\native-capture\../vr-common/hand_two_bone_pose.h(125): error C2143: 语法错误: 缺少“;”(在“noexcept”的前面)
+J:\codexWorktree\gearsVr\tools\native-capture\../vr-common/hand_two_bone_pose.h(125): error C4430: 缺少类型说明符 - 假定为 int。注意: C++ 不支持默认 int
+J:\codexWorktree\gearsVr\tools\native-capture\../vr-common/hand_two_bone_pose.h(125): error C2530: “output”: 必须初始化引用
+J:\codexWorktree\gearsVr\tools\native-capture\../vr-common/hand_two_bone_pose.h(125): error C2059: 语法错误:“noexcept”
+J:\codexWorktree\gearsVr\tools\native-capture\../vr-common/hand_two_bone_pose.h(125): error C2143: 语法错误: 缺少“;”(在“{”的前面)
+J:\codexWorktree\gearsVr\tools\native-capture\../vr-common/hand_two_bone_pose.h(125): error C2447: “{”: 缺少函数标题(是否是老式的形式表?)
+J:\codexWorktree\gearsVr\tools\native-capture\../vr-common/hand_two_bone_pose.h(272): error C2059: 语法错误:“}”
+J:\codexWorktree\gearsVr\tools\native-capture\../vr-common/hand_two_bone_pose.h(272): error C2143: 语法错误: 缺少“;”(在“}”的前面)
+J:\codexWorktree\gearsVr\tools\vr-common\hand_wrist_calibration.h(6): error C2143: 语法错误: 缺少“;”(在“{”的前面)
+J:\codexWorktree\gearsVr\tools\vr-common\hand_wrist_calibration.h(6): error C2447: “{”: 缺少函数标题(是否是老式的形式表?)
+J:\codexWorktree\gearsVr\tools\native-capture\../vr-common/hand_authored_mount_profile.h(26): error C2653: “gears_hand_wrist”: 不是类或命名空间名称
+J:\codexWorktree\gearsVr\tools\native-capture\../vr-common/hand_authored_mount_profile.h(26): error C3646: “calibration”: 未知重写说明符
+J:\codexWorktree\gearsVr\tools\native-capture\../vr-common/hand_authored_mount_profile.h(26): error C2059: 语法错误:“{”
+J:\codexWorktree\gearsVr\tools\native-capture\../vr-common/hand_authored_mount_profile.h(26): error C2334: “{”的前面有意外标记；跳过明显的函数体
+J:\codexWorktree\gearsVr\tools\native-capture\../vr-common/hand_authored_mount_profile.h(57): error C2039: "calibration": 不是 "gears_hand_authored_mount::Mount" 的成员
+J:\codexWorktree\gearsVr\tools\native-capture\../vr-common/hand_authored_mount_profile.h(21): note: 参见“gears_hand_authored_mount::Mount”的声明
+J:\codexWorktree\gearsVr\tools\native-capture\full_body_c0_planner.h(89): error C2039: "rotated": 不是 "gears_hand_two_bone::detail" 的成员
+J:\codexWorktree\gearsVr\tools\native-capture\../vr-common/hand_two_bone_pose.h(46): note: 参见“gears_hand_two_bone::detail”的声明
+J:\codexWorktree\gearsVr\tools\native-capture\full_body_c0_planner.h(89): error C3861: “rotated”: 找不到标识符
+J:\codexWorktree\gearsVr\tools\native-capture\full_body_c0_planner.h(151): warning C4459: “output”的声明隐藏了全局声明
+J:\codexWorktree\gearsVr\tools\native-capture\../vr-common/hand_two_bone_pose.h(125): note: 参见“output”的声明
+J:\codexWorktree\gearsVr\tools\native-capture\full_body_c0_planner.h(243): error C2039: "solve": 不是 "gears_hand_two_bone" 的成员
+J:\codexWorktree\gearsVr\tools\native-capture\../vr-common/hand_two_bone_pose.h(7): note: 参见“gears_hand_two_bone”的声明
+J:\codexWorktree\gearsVr\tools\native-capture\full_body_c0_planner.h(243): error C3861: “solve”: 找不到标识符
+J:\codexWorktree\gearsVr\tools\native-capture\full_body_c0_planner.h(244): error C2677: 二进制“!=”: 没有找到接受“gears_hand_two_bone::Status”类型的全局运算符(或没有可接受的转换)
+J:\codexWorktree\gearsVr\tools\native-capture\full_body_c0_planner.h(244): error C2677: 二进制“==”: 没有找到接受“gears_hand_two_bone::Status”类型的全局运算符(或没有可接受的转换)
+J:\codexWorktree\gearsVr\tools\native-capture\full_body_c0_planner.h(282): error C2039: "perpendicular": 不是 "gears_hand_two_bone::detail" 的成员
+J:\codexWorktree\gearsVr\tools\native-capture\../vr-common/hand_two_bone_pose.h(46): note: 参见“gears_hand_two_bone::detail”的声明
+J:\codexWorktree\gearsVr\tools\native-capture\full_body_c0_planner.h(282): error C3861: “perpendicular”: 找不到标识符
+J:\codexWorktree\gearsVr\tools\native-capture\full_body_c0_planner.h(283): error C2039: "frame_perpendicular": 不是 "gears_hand_two_bone::detail" 的成员
+J:\codexWorktree\gearsVr\tools\native-capture\../vr-common/hand_two_bone_pose.h(46): note: 参见“gears_hand_two_bone::detail”的声明
+J:\codexWorktree\gearsVr\tools\native-capture\full_body_c0_planner.h(283): error C3861: “frame_perpendicular”: 找不到标识符
+J:\codexWorktree\gearsVr\tools\native-capture\full_body_c0_planner.h(295): error C2039: "swing": 不是 "gears_hand_two_bone::detail" 的成员
+J:\codexWorktree\gearsVr\tools\native-capture\../vr-common/hand_two_bone_pose.h(46): note: 参见“gears_hand_two_bone::detail”的声明
+J:\codexWorktree\gearsVr\tools\native-capture\full_body_c0_planner.h(295): error C2064: 项不会计算为接受 5 个参数的函数
+J:\codexWorktree\gearsVr\tools\native-capture\full_body_c0_planner.h(311): warning C4459: “output”的声明隐藏了全局声明
+J:\codexWorktree\gearsVr\tools\native-capture\../vr-common/hand_two_bone_pose.h(125): note: 参见“output”的声明
+J:\codexWorktree\gearsVr\tools\native-capture\full_body_c0_planner.h(318): warning C4459: “output”的声明隐藏了全局声明
+J:\codexWorktree\gearsVr\tools\native-capture\../vr-common/hand_two_bone_pose.h(125): note: 参见“output”的声明
+J:\codexWorktree\gearsVr\tools\native-capture\full_body_c0_planner.h(327): warning C4459: “output”的声明隐藏了全局声明
+J:\codexWorktree\gearsVr\tools\native-capture\../vr-common/hand_two_bone_pose.h(125): note: 参见“output”的声明
+J:\codexWorktree\gearsVr\tools\native-capture\full_body_c0_planner.h(345): warning C4459: “output”的声明隐藏了全局声明
+J:\codexWorktree\gearsVr\tools\native-capture\../vr-common/hand_two_bone_pose.h(125): note: 参见“output”的声明
+J:\codexWorktree\gearsVr\tools\native-capture\cover_physx_transform.h(27): warning C4459: “output”的声明隐藏了全局声明
+J:\codexWorktree\gearsVr\tools\native-capture\../vr-common/hand_two_bone_pose.h(125): note: 参见“output”的声明
+J:\codexWorktree\gearsVr\tools\native-capture\cover_physx_pose_math.h(19): warning C4459: “output”的声明隐藏了全局声明
+J:\codexWorktree\gearsVr\tools\native-capture\../vr-common/hand_two_bone_pose.h(125): note: 参见“output”的声明
+J:\codexWorktree\gearsVr\tools\native-capture\cover_physx_pose_math.h(30): warning C4459: “output”的声明隐藏了全局声明
+J:\codexWorktree\gearsVr\tools\native-capture\../vr-common/hand_two_bone_pose.h(125): note: 参见“output”的声明

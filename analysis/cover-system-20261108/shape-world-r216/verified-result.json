@@ -1,0 +1,33 @@
+{
+  "build_exit": 0,
+  "test_exit": 0,
+  "output": "read_budget=222 guard_calls=12\r\nCoverPhysXShapeOwner checks=519 failed=0 original-executed=false game-started=false\r\nparameter_reads=99\r\nShapeParameters checks=687 failed=0 original PE as data; stored fields only, no world/eligibility permit\r\nworld_reads=137\r\nShapeWorld checks=1688 failed=0 original PE as data; original-unit CPU pose only, no query fence\r\n",
+  "source_sha256": {
+    "tools\\native-capture\\cover_physx_shape_parameters_test.cpp": "fcac5e037167824f176caa88a8401936b58992eab230c907906abf5153504a8a",
+    "tools\\native-capture\\cover_physx_shape_owner_test.cpp": "6b2e04b63f605ea3275d651b474cf7eced16d9fd42caf3030c170140297f77bb",
+    "tools\\native-capture\\cover_physx_shape_owner.h": "62fdd9265724f07cae75fe408607c7d52596506018f12618f4766215c4197d09",
+    "tools\\native-capture\\cover_physx_query_source.h": "b363328e6dcc8c24a6d41f4563167f494723d88c15670282f1fd8635db5539c6",
+    "tools\\native-capture\\cover_physx_query_code.h": "476c05b953fd987688baf27f25d8f76bc11be2693fe1c76f785f167e3ac2d296",
+    "tools\\native-capture\\cover_pose_phase.h": "f173e0346bb313e33f4e26f1f9c0b91442009cdf7e903ed4c6a0de67dd7d8f19",
+    "tools\\native-capture\\cover_physx_stream.h": "f551b433233401bdd17dcb46cb2d293a01b7ba1ffd1a6e0228ded63b19950bca",
+    "tools\\native-capture\\cover_physx_actor_shapes.h": "424db26f7d0b99860fc4ce42b29821883b5d21c0975e9cc5417b5286562c9292",
+    "tools\\native-capture\\cover_physx_actor_backlink.h": "700d82a9a43dd4e21d3ed48afa462234bc6fa679df6cf837c3bb12e3f8f4f404",
+    "tools\\native-capture\\cover_physx_shape_tables.h": "0b8e2629b22a2d4adfc5000f49aefc753324c710006e359eac064b6b9dd193b6",
+    "tools\\native-capture\\cover_physx_actor_shape_code.h": "14f03ba4875975cb3092dc49960e6775aa8614de82636266b246fa4c87f95243",
+    "tools\\native-capture\\cover_physx_query_test.cpp": "34add6b43e785462597ec284c763b4cdbb8e88368cbf066ede7aa73895116a6e",
+    "tools\\native-capture\\cover_physx_query.h": "4dd21cd22429bab6b12a41d66b30ca57ae8d605800f692bb1440561c16a22271",
+    "tools\\native-capture\\cover_physx_overlap_stream.h": "6f6bd42e7c3cabc18825cb64cf04ca1abd09050085bb73a2840dd9eda7f8d167",
+    "tools\\native-capture\\cover_physx_overlap_code.h": "a89620febeb5b2ce2ca9b9f47af425909d51ddbc4f2a1cae0cd748d58df37d6d",
+    "tools\\native-capture\\cover_physx_asset_actors.h": "fe3da7be049c7cbd945c474a511e2792d0d3997607a338658588ce981dc5a677",
+    "tools\\native-capture\\cover_owner_link_observation.h": "d9cd14b4ebd21c40beaeb5636315c57e929af207719bec5155b2df086ea1425f",
+    "tools\\native-capture\\cover_physx_collider.h": "e6675962e2ee6eb41934be2e3156832630b2e75372302181e3b56c1d20b9e92c",
+    "tools\\native-capture\\cover_physx_components.h": "48d94f12415795133fb906a07f96900aabfbf7c9effd3b0d8de828d8900863c5",
+    "tools\\native-capture\\cover_physx_self_evidence.h": "7d030fc136ca4074c86277944cca28326e3bff1ca4ea3faba66e454fc0452d20",
+    "tools\\native-capture\\cover_physx_shape_parameters.h": "c883596bc8402ad4946230cf6345fed670465f9172872c4eff7dd8dd90c580c3",
+    "tools\\native-capture\\cover_physx_shape_parameter_code.h": "a29a025630e961b628e139ee8f1233eeef0374971a6a3f9e6725ff3391e4fc20",
+    "tools\\native-capture\\cover_physx_shape_world.h": "2f07cb33a64730aab7af61958e91188495de56d4efc490b78a0fd1a5598c02b4",
+    "tools\\native-capture\\cover_physx_pose_math.h": "72546f78145de37467ca19c3140fb8085761ab6c41a24942ce4122fd08b73264",
+    "tools\\native-capture\\cover_physx_matrix.h": "c243ee0c239387071aeb85947524dc5a40eb540196ae21041a918b37b38a3069",
+    "tools\\native-capture\\cover_physx_shape_world_code.h": "535d9db23810f8344b2a227375c65cc207f141716da2366e8cce77f025eea1d6"
+  }
+}
