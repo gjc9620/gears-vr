@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "scope": "full HB objective; no scope reduction",
-  "current_candidate": "PGedccad22/Native71f280b0 compiled/tested extraction history, actual30496 core6 then first drain event original250ms expiry gate4; new extraction not reached. Need matched phase costs, no timer/source relaxation or unchanged rerun. All13 retained.",
+  "current_candidate": "Private tick-cost-tail-r1 PG0a3540a2 with unchanged Native71f280b0. Passive original-GT128-row ring tested200writes/export128 and exact source-delta reversal; compiled. No input/action/source/deadline changes; original extraction history32checks retained, live coverage pending. All13 incomplete.",
   "prepared_sha256": "20d8a6cd15b89c89b938aa201086c9d590251a2be74b2bd6d4fa72bd47d27824",
   "requirements": [
     {

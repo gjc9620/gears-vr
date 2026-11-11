@@ -663,3 +663,8 @@ PG5b3d71fb/Native71f280b0完整有限空仓流程，78条一致射线/0/78空仓
 ## 2026-11-11 实际30496：原首发事件到期，提取历史未触达
 
 PGedccad22/Native71f280b0核心6条一致射线后，首次drain原ButtonPress362已调用并捕获事件，未产生首发。FIRST service_loss明确gate4（不是report中的service_stage3），捕获165084982066600至拒绝165085244213900为262.1473ms，原250ms事件到期；先前delivery8在137.0426ms时缺新鲜同帧20ms枪口余量，withdrawal363100.8265ms。Nativeinput_loss0。修正初步record_loaded解释把阶段3误当拒绝gate3的错误，以原gate4为准；count6属上一完整cohort。新提取/登记/WAIT均未到，不判新改动回归或修复。下一步仅在原GT路径用现有PlayerTick分段时钟记录有界被动tail，匹配首发等待实际耗时，不归因未匹配的稀疏34.98/47.79ms样本、不延长原期限/补按/原样重跑。正常清理全0、无forced、158帧错误空/编码0、3页48对亲阅，贴合仍失败。全部13项与实际提取历史覆盖仍保留。
+
+
+## 2026-11-11 首发等待耗时tail（尚未game）
+
+为30496原gate4事件到期取得匹配证据，私有PG0a3540a2仅加入原GT最近128条被动tail：现有pre/original/service/equipment阶段时钟、最后input sync/admission、原pending event/captured和当前first_debt/cancel等标量，另末端观察时钟只入记录不参与判定。写入与停止drain后dump均在同一原GT，先dump后publish stopped，worker不读ring，无新hook/engine/source/input调用或动作权限。200次写入/128条环形导出、顺序/分段/空dump检查通过；删除插入文本逐字等于原cpp/R2源，原射击条件和期限不改。完整PG编译通过，Native71f280b0/XR/公共v71不变。原提取历史候选不变且仍待实际覆盖；全部13项保留。

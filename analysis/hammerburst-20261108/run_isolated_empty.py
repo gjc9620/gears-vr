@@ -79,12 +79,15 @@ def main():
     latch_observation='--latch-observation-wait' in sys.argv
     latch_incumbent='--latch-incumbent-gap' in sys.argv
     extraction_history='--extraction-history' in sys.argv
+    tick_cost_tail='--tick-cost-tail' in sys.argv
+    assert not tick_cost_tail or extraction_history,'Passive tail candidate includes the pending extraction policy'
     assert not extraction_history or latch_incumbent,'Extraction candidate includes the tested latch incumbent policy'
     assert not latch_incumbent or latch_observation,'Latch incumbent candidate includes the tested observation wait'
     assert not latch_observation or render_age,'Observation-wait candidate requires the certified Native pair'
     assert not (render_age and '--native-input-loss' in sys.argv),'Select one explicit Native candidate'
     pg_candidate='latch-incumbent-gap-r1' if latch_incumbent else ('latch-observation-wait-r1' if latch_observation else ('render-age-pg-r1' if render_age else 'latch-seek-gap-r1'))
     if extraction_history:pg_candidate='extraction-history-r1'
+    if tick_cost_tail:pg_candidate='tick-cost-tail-r1'
     proof=json.loads((AREA/pg_candidate/'prepared.json').read_text())
     if latch_observation:
         check=json.loads((AREA/'latch-observation-wait-r1/observation-wait-test-result.json').read_text())
@@ -97,13 +100,17 @@ def main():
             kernel='source/tools/vr-common/weapon_hammerburst_latch.h'
             assert (AREA/pg_candidate/kernel).read_bytes()==(AREA/'latch-observation-wait-r1'/kernel).read_bytes()
     if extraction_history:
-        check=json.loads((AREA/pg_candidate/'extraction-history-test-result.json').read_text())
+        check=json.loads((AREA/'extraction-history-r1/extraction-history-test-result.json').read_text())
         assert check['passed'] and check['cases']==32 and check['existing_magazine_and_insertion_history_tests_passed']
         rel='source/tools/playground/weapon_hammerburst_runtime.inl'
         def incumbent_block(text):
             start=text.index('void unavailable_frame(')
             return text[start:text.index('\nbool tick(uptr pc)',start)]
         assert incumbent_block((AREA/pg_candidate/rel).read_text())==incumbent_block((AREA/'latch-incumbent-gap-r1'/rel).read_text())
+        if tick_cost_tail:
+            assert (AREA/pg_candidate/rel).read_bytes()==(AREA/'extraction-history-r1'/rel).read_bytes()
+            check=json.loads((AREA/pg_candidate/'tick-cost-test-result.json').read_text())
+            assert check['passed'] and check['exact_removed_insertions_equal_original'] and check['gt_only_dump_before_stopped']
     assert proof['full_playground_compiled'] and not proof['runtime_exercised']
     dll=Path(proof['dll']);assert hashlib.sha256(dll.read_bytes()).hexdigest()==proof['dll_sha256']
     manifest.update(playground_build=str(dll.parent.relative_to(ROOT)),playground_sha256=proof['dll_sha256'],

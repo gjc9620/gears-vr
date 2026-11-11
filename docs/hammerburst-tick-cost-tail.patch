@@ -1,0 +1,39 @@
+--- a/tools/playground/playground.cpp
++++ b/tools/playground/playground.cpp
+@@ -23,6 +23,7 @@
+ #include <cstdio>
+ #include <cstring>
+ #include <array>
++#include "hb_tick_cost_tail.h"
+ #include <atomic>
+ #include <share.h>
+ #include <string>
+@@ -1762,6 +1763,17 @@
+         weapon_part_assets::drain();
+         snub_part_visibility::drain_on_gt();
+ #endif
++        if(vrfire::mode.load(std::memory_order_acquire)==vrfire::running&&nativelancerfollow::bound_is_hammerburst){
++            // Existing GT timestamps and state scalars only. The final passive
++            // clock is not input/source time and never participates in gates.
++            hb_tick_cost_tail::record({native_tick_work_begin,native_tick_original_begin,native_tick_original_end,
++                equipment_work_begin,equipment_tick_end,weaponhand::clock_ns(nullptr),
++                vrfire::input.last_sync_ns(),vrfire::input.last_observed_ns(),hammerburst_burst_event::event.captured,
++                hammerburst_burst_event::event.serial,unsigned(hammerburst_burst_runtime::first_debt),
++                unsigned(hammerburst_burst_runtime::cancel_requested),hammerburst_burst_runtime::completion.count(),
++                unsigned(vrfire::input.owns_press()),unsigned(weaponhand::client.armed()),
++                unsigned(fire_ticked_early),unsigned(reload_ticked_early),unsigned(pre_reload_ticked)});
++        }
+         static unsigned equipment_work_logs{},equipment_work_observed{};
+         if(log_file&&equipment_work_logs<16&&vrequip::model.hold_generation()){
+             const auto ordinal=equipment_work_observed++;
+--- a/tools/playground/weapon_lancer_r2_native.inl
++++ b/tools/playground/weapon_lancer_r2_native.inl
+@@ -706,7 +706,7 @@
+ #endif
+ #endif
+         if(input.owns_press()||aim_owns())mode.store(fault,std::memory_order_release);
+-        else mode.store(stopped,std::memory_order_release);
++        else {hb_tick_cost_tail::dump(log_file);mode.store(stopped,std::memory_order_release);}
+     }
+ }
+ bool yield_for_native_equipment(wh::Frame const& frame) noexcept {
