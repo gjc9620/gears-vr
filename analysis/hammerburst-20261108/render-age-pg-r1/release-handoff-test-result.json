@@ -1,0 +1,10 @@
+{
+  "passed": true,
+  "added_cases": 21,
+  "added_checks": 122,
+  "total_checks": 457,
+  "actual_adapter": true,
+  "game_execution": false,
+  "source_sha256": "f7166167b9a78eb73f65b4a672b6ee44ab30635312764c4ef0738d496f2662d0",
+  "limits": "Common queue, full retail certificate, source and engine are bounded fakes. Actual Input/delivery production blocks preserved; no game/source/headset acceptance."
+}

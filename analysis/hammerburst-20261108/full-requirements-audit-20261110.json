@@ -1,12 +1,12 @@
 {
   "schema": 1,
   "scope": "full HB objective; no scope reduction",
-  "current_candidate": "latch-seek-gap-r1 PG5bce0862 compiled,12 exact predicate/caller tests; not runtime verified. Optional Native6ff passive classifier.",
+  "current_candidate": "Private render-age pair: Native71f280b0 +PGb7dcb9ec; compiled17 original Gate cases and457 actual-adapter checks; not game tested.",
   "prepared_sha256": "20d8a6cd15b89c89b938aa201086c9d590251a2be74b2bd6d4fa72bd47d27824",
   "requirements": [
     {
       "id": "acquire_stow",
-      "requirement": "取枪与收枪",
+      "requirement": "\u53d6\u67aa\u4e0e\u6536\u67aa",
       "status": "current_full_endpoint_pickup_observed_stow_open",
       "limit": "Actual54720 full original commanded endpoint +freshUP148 +oneGrip +matching held151 before moving away. No source-gap retry. Single run only; stow/restore/full stability remain open.",
       "evidence": [
@@ -74,7 +74,7 @@
     },
     {
       "id": "finite_fire",
-      "requirement": "单手/双手瞄准与原版有限六连发",
+      "requirement": "\u5355\u624b/\u53cc\u624b\u7784\u51c6\u4e0e\u539f\u7248\u6709\u9650\u516d\u8fde\u53d1",
       "status": "current_two_original6_bursts_released_tail_confirmed_partial",
       "limit": "Actual22992 two real original6 bursts; both actualUP handoffs revalidate same pending event then tail.12 consistent rays; full two-hand/continuous-load/empty/zero-reserve acceptance remains open.",
       "evidence": [
@@ -174,9 +174,9 @@
     },
     {
       "id": "foregrip_states",
-      "requirement": "四态护木Snap/Grip Grab/释放Snap/退出",
+      "requirement": "\u56db\u6001\u62a4\u6728Snap/Grip Grab/\u91ca\u653eSnap/\u9000\u51fa",
       "status": "historical_functional_only",
-      "limit": "70816行为证据不等同新PG同构成回归或皮肤贴合",
+      "limit": "70816\u884c\u4e3a\u8bc1\u636e\u4e0d\u7b49\u540c\u65b0PG\u540c\u6784\u6210\u56de\u5f52\u6216\u76ae\u80a4\u8d34\u5408",
       "evidence": [
         {
           "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-70816-review.json",
@@ -190,9 +190,9 @@
     },
     {
       "id": "retained_mag",
-      "requirement": "连续原匣拔出/返座/锁扣关到位、无补弹奖励",
+      "requirement": "\u8fde\u7eed\u539f\u5323\u62d4\u51fa/\u8fd4\u5ea7/\u9501\u6263\u5173\u5230\u4f4d\u3001\u65e0\u8865\u5f39\u5956\u52b1",
       "status": "historical_functional_only",
-      "limit": "7712原匣保持72/78，回射66/78；新PG未复验",
+      "limit": "7712\u539f\u5323\u4fdd\u630172/78\uff0c\u56de\u5c0466/78\uff1b\u65b0PG\u672a\u590d\u9a8c",
       "evidence": [
         {
           "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-7712-review.json",
@@ -202,7 +202,7 @@
     },
     {
       "id": "replacement",
-      "requirement": "肩取新匣、持续持握入槽、普通换弹",
+      "requirement": "\u80a9\u53d6\u65b0\u5323\u3001\u6301\u7eed\u6301\u63e1\u5165\u69fd\u3001\u666e\u901a\u6362\u5f39",
       "status": "current_loaded_replace_and_return_counts_confirmed",
       "limit": "Actual50828 PG5bce/Native6ff typed72/78->78/72->72/72; original extraction accepted10samples/complete49.01mm, newmag/close/return6 passed. Pose-gap/seek-gap repairs not exercised; full empty/retained/fit remain open.",
       "evidence": [
@@ -254,7 +254,7 @@
     },
     {
       "id": "empty_reload",
-      "requirement": "空仓同机械流程、原自动装填被接管、完整回射",
+      "requirement": "\u7a7a\u4ed3\u540c\u673a\u68b0\u6d41\u7a0b\u3001\u539f\u81ea\u52a8\u88c5\u586b\u88ab\u63a5\u7ba1\u3001\u5b8c\u6574\u56de\u5c04",
       "status": "current_full_attempt_external_input_loss_before_empty",
       "limit": "Actual58164 current5bce/6ff stopped after55consistent rays/lastcompletedtyped24R78; no empty/reload. Prior22048 drain78/veto passed butseating failed; old56252 final72R0 missing. Loaded50828 is not full-empty acceptance.",
       "evidence": [
@@ -298,7 +298,7 @@
     },
     {
       "id": "perfect_cancel",
-      "requirement": "完美换弹、取消与重复通知不重复写库存",
+      "requirement": "\u5b8c\u7f8e\u6362\u5f39\u3001\u53d6\u6d88\u4e0e\u91cd\u590d\u901a\u77e5\u4e0d\u91cd\u590d\u5199\u5e93\u5b58",
       "status": "qualification_repair_compiled_live_missing",
       "limit": "Production HB begin omitted qualification capture required by perfect_reward. Repaired opening capture before original begin; rejected attempts publish no stale qualification. Actual helper10 cases/28 checks and full Playground build pass. Actual perfect reward, cancellation and duplicate notifications remain unverified live.",
       "evidence": [
@@ -310,14 +310,14 @@
     },
     {
       "id": "finite_zero_reserve",
-      "requirement": "有限备弹、L>0/R0与L0/R0守恒/单次失败音",
+      "requirement": "\u6709\u9650\u5907\u5f39\u3001L>0/R0\u4e0eL0/R0\u5b88\u6052/\u5355\u6b21\u5931\u8d25\u97f3",
       "status": "deferred_live",
-      "limit": "按主人当前优先普通空仓回射，保留后续要求、不扩展耗尽运行",
+      "limit": "\u6309\u4e3b\u4eba\u5f53\u524d\u4f18\u5148\u666e\u901a\u7a7a\u4ed3\u56de\u5c04\uff0c\u4fdd\u7559\u540e\u7eed\u8981\u6c42\u3001\u4e0d\u6269\u5c55\u8017\u5c3d\u8fd0\u884c",
       "evidence": []
     },
     {
       "id": "interruptions",
-      "requirement": "暂停/失追/切枪/收枪退出、不得重放旧边沿",
+      "requirement": "\u6682\u505c/\u5931\u8ffd/\u5207\u67aa/\u6536\u67aa\u9000\u51fa\u3001\u4e0d\u5f97\u91cd\u653e\u65e7\u8fb9\u6cbf",
       "status": "current_pause_B_resume_only_other_interruptions_open",
       "limit": "Actual22992 pause/B resume passed. Tracking loss, switch, stow restore and all anti-replay interruption chains not covered by this focused batch.",
       "evidence": [
@@ -353,7 +353,7 @@
     },
     {
       "id": "guides",
-      "requirement": "全过程步骤引导与交互件Snap/Grab",
+      "requirement": "\u5168\u8fc7\u7a0b\u6b65\u9aa4\u5f15\u5bfc\u4e0e\u4ea4\u4e92\u4ef6Snap/Grab",
       "status": "unaccepted_visual",
       "limit": "Current22992 sampled frames show guide wire geometry/labels during reload, but small text readability and complete step-by-step/action alignment remain unaccepted. Mechanical success is not visual guide acceptance.",
       "evidence": [
@@ -369,9 +369,9 @@
     },
     {
       "id": "part_fitting",
-      "requirement": "主握/护木/锁扣/旧匣/新匣逐件掌指腕袖口",
+      "requirement": "\u4e3b\u63e1/\u62a4\u6728/\u9501\u6263/\u65e7\u5323/\u65b0\u5323\u9010\u4ef6\u638c\u6307\u8155\u8896\u53e3",
       "status": "unaccepted",
-      "limit": "Current22992 mechanically successful loaded chain still shows near-right-eye oversized gun, ghost/intersection and open/separated offhand.48 paired overview samples+6 contact images reviewed; not full five-part skin/surface/all-angle/headset acceptance. Preserve logic→Snap/Volume→GrabPose order; no finger tuning begun here.",
+      "limit": "Current22992 mechanically successful loaded chain still shows near-right-eye oversized gun, ghost/intersection and open/separated offhand.48 paired overview samples+6 contact images reviewed; not full five-part skin/surface/all-angle/headset acceptance. Preserve logic\u2192Snap/Volume\u2192GrabPose order; no finger tuning begun here.",
       "evidence": [
         {
           "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-54452-first-failure-analysis.json",
@@ -421,9 +421,9 @@
     },
     {
       "id": "bolt",
-      "requirement": "原版若有可操作枪栓则拉栓",
+      "requirement": "\u539f\u7248\u82e5\u6709\u53ef\u64cd\u4f5c\u67aa\u6813\u5219\u62c9\u6813",
       "status": "conditional_resolved",
-      "limit": "原Root/MagLatch/Mag及三原动画无独立外露可拉栓柄，不增虚构拉栓",
+      "limit": "\u539fRoot/MagLatch/Mag\u53ca\u4e09\u539f\u52a8\u753b\u65e0\u72ec\u7acb\u5916\u9732\u53ef\u62c9\u6813\u67c4\uff0c\u4e0d\u589e\u865a\u6784\u62c9\u6813",
       "evidence": [
         {
           "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\hammerburst-bolt-original-audit.json",
@@ -433,9 +433,9 @@
     },
     {
       "id": "delivery_headset",
-      "requirement": "手动候选交付、真实头显舒适度与接受",
+      "requirement": "\u624b\u52a8\u5019\u9009\u4ea4\u4ed8\u3001\u771f\u5b9e\u5934\u663e\u8212\u9002\u5ea6\u4e0e\u63a5\u53d7",
       "status": "not_accepted",
-      "limit": "构建/模拟器均不等于物理头显接受",
+      "limit": "\u6784\u5efa/\u6a21\u62df\u5668\u5747\u4e0d\u7b49\u4e8e\u7269\u7406\u5934\u663e\u63a5\u53d7",
       "evidence": [
         {
           "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-21288-first-failure-analysis.json",
@@ -521,7 +521,7 @@
   "latest_runtime_failure": "runtime-58164-first-failure-analysis.json",
   "latest_runtime_result": "runtime-58164-first-failure-analysis.json",
   "latest_focused_pass": "runtime-50828-focused-result.json",
-  "visual_audit_recording_repair": "Corrected finalizer wrong ID fivepartfitting→part_fitting, attached reviewed22992 evidence also to guides, asserted target IDs exist. No requirement/score/acceptance change and no overwrite of current052600 runtime blocker.",
+  "visual_audit_recording_repair": "Corrected finalizer wrong ID fivepartfitting\u2192part_fitting, attached reviewed22992 evidence also to guides, asserted target IDs exist. No requirement/score/acceptance change and no overwrite of current052600 runtime blocker.",
   "resource_release_evidence": {
     "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\coordinator-multi-20261110\\owner-resource-release-20261111.json",
     "sha256": "e6553e0b37298980777cdfacb30877695399af5777d0ee24d979b7d017a81511",
@@ -546,5 +546,7 @@
     "runtime_exercised": true,
     "policy_changed": false,
     "limit": "Actual22812 ring retained16 external/no-attempt/unknown-clock records; prior prepare/commit failure not reproduced."
-  }
+  },
+  "render_age_pair_checkpoint": "analysis/hammerburst-20261108/render-age-pair-checkpoint.json",
+  "requirements_complete": false
 }

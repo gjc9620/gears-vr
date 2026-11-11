@@ -605,3 +605,8 @@ wrapper97983终止0仅生命周期正常，操作者48544=1。Native/入口/输�
 
 证据analysis/hammerburst-20261108/runtime-56252-first-failure-analysis.json、runtime-56252-evidence/、return-burst-observation-check.json。下一轮只带同一次回射观察修正重新读取最终准确库存，然后继续其余完整需求；不开新枪、不把本次阶段进展缩成全枪完成。
 
+
+
+## 2026-11-11 私有画面时效连续性候选（实测前保存）
+
+58164原Native记录47次stale，其他拒绝类别0；原Gate对同参考系的纯年龄过期保留连续性，外层却无条件撤销手状态。私有Native71f280b0仅在原Gate前后同稳定epoch、无pending、focused且原接收时间确已超过100ms时保留逻辑等待；原画面拒绝与真实失跟踪/身份/时钟错误撤销仍保留。配合PGb7dcb9ec将已验证的真实UP后WAIT接回原回调，原250ms事件截止、100ms来源和20ms派发余量不变。17项原Gate检查与457项实际适配器检查通过，完整Native/PG编译通过；尚无此组合的游戏证据，不宣称修复成功。公共v71与手动入口不变，全部13项要求继续保留。

@@ -1,0 +1,66 @@
+--- a/tools/native-capture/capture.cpp
++++ b/tools/native-capture/capture.cpp
+@@ -1,3 +1,4 @@
++#include "stereo_hand_age_policy.h"
+ #include <windows.h>
+ #include <d3d12.h>
+ #include <dxgi1_4.h>
+@@ -479,6 +480,22 @@
+ std::array<std::atomic<long long>,3> anchor_guard_min{LLONG_MAX,LLONG_MAX,LLONG_MAX},anchor_guard_max{};
+ std::array<gears_outage::Activity,2> outage_draws{}; // Existing frame_hook_mutex only.
+ std::array<unsigned long long,11> stereo_rejections{};
++struct StereoHandLossObservation {
++    unsigned reason{},kept{},focused{};std::uint64_t ordinal{},session{},sequence{},space{};
++    std::int64_t now_ns{},received_ns{};gears_vr::ReferenceContinuity before{},after{};
++};
++std::array<StereoHandLossObservation,32> stereo_hand_losses{};
++std::uint64_t stereo_hand_loss_count{},stereo_hand_age_kept{};
++// Existing stereo_mutex protects both append and print_stereo readback.
++void record_stereo_hand_loss(unsigned reason,bool kept,gears_vr::StereoSample const& sample,
++    std::int64_t stamp,gears_vr::ReferenceContinuity before,gears_vr::ReferenceContinuity after) noexcept {
++    if(stereo_hand_loss_count==UINT64_MAX)return;
++    const auto ordinal=++stereo_hand_loss_count;
++    stereo_hand_losses[(ordinal-1)%stereo_hand_losses.size()]={reason,unsigned(kept),sample.focused,
++        ordinal,sample.session,sample.sequence,sample.space_epoch,stamp,sample.received_ns,before,after};
++    if(kept&&stereo_hand_age_kept!=UINT64_MAX)++stereo_hand_age_kept;
++}
++
+ unsigned long long stereo_accepted{};
+ std::atomic<std::uint64_t> stereo_ticket_counter{0};
+ std::uint64_t stereo_first_ticket{},stereo_last_ticket{};
+@@ -1376,6 +1393,11 @@
+         stereo_units_per_metre,stereo_accepted,stereo_first_qpc,stereo_last_qpc,stereo_first_sample.sequence,stereo_last_sample.sequence,stereo_first_ticket,stereo_last_ticket,stereo_publisher.frames.load(),simulator_operator,simulator_operator?"simulated":"real");
+     const char* reasons[]={"accepted","initial","untracked","inactive","stale","replayed","session_changed","invalid","bridge_read","matrix","heading_unavailable"};
+     for(unsigned i=0;i<stereo_rejections.size();++i)fprintf(file,"stereo_rejection reason=%s count=%llu\n",reasons[i],stereo_rejections[i]);
++    fprintf(file,"stereo_hand_loss_summary total=%llu age_only_kept=%llu retained=%zu\n",stereo_hand_loss_count,stereo_hand_age_kept,(std::min)(stereo_hand_loss_count,std::uint64_t(stereo_hand_losses.size())));
++    const auto loss_first=stereo_hand_loss_count>(stereo_hand_losses.size())?stereo_hand_loss_count-stereo_hand_losses.size():0;
++    for(auto n=loss_first;n<stereo_hand_loss_count;++n){const auto& r=stereo_hand_losses[n%stereo_hand_losses.size()];
++        fprintf(file,"stereo_hand_loss ordinal=%llu reason=%u kept=%u focused=%u session=%llu sequence=%llu space=%llu now_ns=%lld received_ns=%lld before_epoch=%llu before_stable=%u before_pending=%u before_exhausted=%u after_epoch=%llu after_stable=%u after_pending=%u after_exhausted=%u\n",
++            r.ordinal,r.reason,r.kept,r.focused,r.session,r.sequence,r.space,r.now_ns,r.received_ns,r.before.epoch,unsigned(r.before.stable),unsigned(r.before.pending),unsigned(r.before.exhausted),r.after.epoch,unsigned(r.after.stable),unsigned(r.after.pending),unsigned(r.after.exhausted));}
+     fprintf(file,"stereo_recenter policy=local_y_up_heading requests=%llu committed_generation=%llu heading_deferred=%llu reference_events=%llu event_limit=%zu\n",
+         stereo_recenter_requests.load(),stereo_reference_generation.load(),stereo_heading_deferred.load(),stereo_reference_event_count,stereo_reference_events.size());
+     auto print_reference=[&](const char* edge,const StereoReferenceEvent& event){
+@@ -3355,15 +3377,21 @@
+         // use this frozen ticket, never a second live sample.
+         std::lock_guard<decltype(stereo_mutex)> lock(stereo_mutex);gears_vr::StereoSample sample{};
+         poll_stereo_recenter();
+-        if(!stereo_bridge.read(sample)){++stereo_rejections[8];if(weapon_hand_runtime::enabled)cover_shared_input_live::invalidate(gears_weapon_hand::InvalidateReason::input_lost);return false;}
++        if(!stereo_bridge.read(sample)){++stereo_rejections[8];
++            const auto continuity=stereo_gate.continuity();record_stereo_hand_loss(8,false,sample,0,continuity,continuity);
++            if(weapon_hand_runtime::enabled)cover_shared_input_live::invalidate(gears_weapon_hand::InvalidateReason::input_lost);return false;}
+ #if defined(GEARS_RUNTIME_RENDER_SIZE) && GEARS_RUNTIME_RENDER_SIZE
+         if(!gears_native_render_size::matches_session(sample.session)){++stereo_rejections[8];return false;}
+ #endif
+         const auto sample_time=gears_vr::monotonic_ns();
++        const auto continuity_before=stereo_gate.continuity();
+         auto result=stereo_gate.update(sample,sample_time,simulator_operator);
+         if(result.heading_deferred)++stereo_heading_deferred;
+         if(!result){++stereo_rejections[static_cast<unsigned>(result.status)];
+-            if(weapon_hand_runtime::enabled)cover_shared_input_live::invalidate(gears_weapon_hand::InvalidateReason::input_lost);
++            const auto continuity_after=stereo_gate.continuity();
++            const bool age_only=gears_stereo_hand_age::preserve(sample,sample_time,result,continuity_before,continuity_after);
++            record_stereo_hand_loss(unsigned(result.status),age_only,sample,sample_time,continuity_before,continuity_after);
++            if(weapon_hand_runtime::enabled&&!age_only)cover_shared_input_live::invalidate(gears_weapon_hand::InvalidateReason::input_lost);
+             if(continuous_session&&(result.status==gears_vr::StereoStatus::session_changed||result.status==gears_vr::StereoStatus::invalid)){
+                 request_session_stop(SessionStop::proof_failure);service_session_stop_native();}
+             return false;}

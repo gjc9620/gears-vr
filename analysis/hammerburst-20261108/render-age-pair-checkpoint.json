@@ -1,0 +1,50 @@
+{
+  "native": "71f280b05ca87e012e6978371caea5fd83d6b3bc873864a934a1cffd7410a87d",
+  "playground": "b7dcb9ecd53b62b8e4cde7f03c71824b650d181c025ccdc8960944cb7a457209",
+  "policy_cases": 17,
+  "adapter_checks": 457,
+  "prior_native_rejection_counts": {
+    "58164": {
+      "accepted": 0,
+      "initial": 0,
+      "untracked": 0,
+      "inactive": 0,
+      "stale": 47,
+      "replayed": 0,
+      "session_changed": 0,
+      "invalid": 0,
+      "bridge_read": 0,
+      "matrix": 0,
+      "heading_unavailable": 0
+    },
+    "22812": {
+      "accepted": 0,
+      "initial": 0,
+      "untracked": 0,
+      "inactive": 0,
+      "stale": 40,
+      "replayed": 0,
+      "session_changed": 0,
+      "invalid": 0,
+      "bridge_read": 0,
+      "matrix": 0,
+      "heading_unavailable": 0
+    },
+    "50828": {
+      "accepted": 0,
+      "initial": 0,
+      "untracked": 0,
+      "inactive": 0,
+      "stale": 31,
+      "replayed": 0,
+      "session_changed": 0,
+      "invalid": 0,
+      "bridge_read": 1,
+      "matrix": 0,
+      "heading_unavailable": 0
+    }
+  },
+  "runtime_exercised": false,
+  "whole_weapon_accepted": false,
+  "scope": "Private explicit --render-age-continuity only. Reject stale render/pose; keep logical state only when original Gate continuity and clock prove age-only. Existing real-UP debt WAIT retains original250ms and fresh20ms dispatch guards. True loss still cancels. No public/manual change."
+}

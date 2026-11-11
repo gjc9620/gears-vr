@@ -75,12 +75,23 @@ def main():
     name='hb-cloak-'+time.strftime('%m%d-%H%M%S')
     target=AREA/name;target.mkdir()
     manifest=json.loads((AREA/'independent-r1/candidate-manifest.json').read_text())
-    proof=json.loads((AREA/'latch-seek-gap-r1/prepared.json').read_text())
+    render_age='--render-age-continuity' in sys.argv
+    assert not (render_age and '--native-input-loss' in sys.argv),'Select one explicit Native candidate'
+    proof=json.loads((AREA/('render-age-pg-r1' if render_age else 'latch-seek-gap-r1')/'prepared.json').read_text())
     assert proof['full_playground_compiled'] and not proof['runtime_exercised']
     dll=Path(proof['dll']);assert hashlib.sha256(dll.read_bytes()).hexdigest()==proof['dll_sha256']
     manifest.update(playground_build=str(dll.parent.relative_to(ROOT)),playground_sha256=proof['dll_sha256'],
                     lancer_interaction_ranges=False,candidate_validation=proof.get('scope','Private HB candidate')+'; whole weapon acceptance pending')
-    if '--native-input-loss' in sys.argv:
+    if render_age:
+        checks=json.loads((AREA/'render-age-pg-r1/release-handoff-test-result.json').read_text())
+        assert checks['passed'] and checks['total_checks']==457
+        native_proof=json.loads((AREA/'native-render-age-r1/prepared.json').read_text())
+        assert native_proof['full_native_compiled'] and native_proof['policy_cases']==17 and native_proof['policy_failures']==0
+        assert manifest['native_sha256']==native_proof['frozen_native']
+        native_dll=Path(native_proof['dll'])
+        assert hashlib.sha256(native_dll.read_bytes()).hexdigest()==native_proof['native_sha256']
+        manifest.update(native_build=str(native_dll.parent.relative_to(ROOT)),native_sha256=native_proof['native_sha256'])
+    elif '--native-input-loss' in sys.argv:
         native_proof=json.loads((AREA/'native-input-loss-r1/prepared.json').read_text())
         assert native_proof['full_native_compiled'] and native_proof['broker_failures']==0
         assert manifest['native_sha256']==native_proof['parent_native']
