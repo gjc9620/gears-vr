@@ -2671,3 +2671,15 @@ r179首败在原A前候选q.finish，Query已在原读取中保存closing_reject
 实际replacement执行identity/metadata/registry/unknown/success五例全部通过；每例finish一次，四种拒绝保持同一异常对象，成功不多写；原finally继续执行。原来源三处q.finish数量不变，检查原始boundary哈希06f16552…09254。生成器将diagnostic源码SHA纳入operator-prepared回执，AST核对实际变换后来源。仅验证已有差异的保存，不将其称为实际首差异已知、候选选择修复或r177查询实跑通过；没有启动新游戏。r179缺少五阶段，media-review及生成器明确动作跨度不完整，不能因无录制错误就算完整掩体流程。
 
 下一步按资源准入使用新身份执行一次带该确切差异记录的短观察。若原失败重现，针对真实identity/metadata/registry差异修复；若不重现，仅报告未重现，不作原因修复结论。r177性能/40ms、自身模型遮挡、全CV/AC与头显仍待验证，工程25%、publicv71/固定入口不变，目标active。
+
+## r181：组件联合扫描候选实际query仍超40ms；原候选收尾失败未重现（2026-11-11）
+
+带r180具体closing差异记录的新cover-1111-r181-cloak-close使用原r177 Native de07b0c1…01b8f1。prepare/导入/启动0，原A进入CT2、五阶段及operator/runner0；候选严格收尾通过，没有candidate_closing_rejection。r179失败本次未重现，不把记录层当成原因修复。生成器回执绑定50979a3c…41eca。正常cleanup true、remaining_owned空、无强杀；保存时game/owner/XR/worker精确身份独立确认不在。CLOAK607/失败0，前台374/owned_activation false，13启动来源前后相同。启动前另对r179已结束精确身份核验后，将105 PSOCache文件885049318字节校验归档J:/gearsVr/analysis/cover-cache-archive-20261111-r180，只移除该缓存，源码/文本数值/媒体/存档/配置保持。
+
+query键world2224455936/Pawn95203878528/Scene403/Compose24829/seq3512/thread23612与complete首键一致；171869734261500→171869769855500共35.5940ms。code4 source、engine/source_guard/current，Owner78/context/source_age_expired/detail6，Session18/collider_read/guard，body=true/equipment=false，original started/returned0/0，link witness未观察仍未知。
+
+首次classify比query begin晚0.6801ms，body Tick24828、追踪seq3514与query分别保留；首次tracking1.4236ms/stereo5.4775ms/metadata2.0536ms，current capture1.1743ms。首次age时stereo40.3869ms、controller40.3511ms、sync40.3787ms超原40ms；tracking36.3330ms/metadata36.9630ms/capture36.0818ms未超，latched=false。没有续时间或扩大时限。
+
+initial physics1.2492ms/collider2.9179ms/components3.3837ms，重复physics18次12.3993ms/collider18次14.3040ms/components0次；engine27.0113ms含内部复核，不重复相加，全部span闭合无invalid/overflow。首次components比r1769.7828ms低，但输入/调度不同，不把时间差全归因于优化；总query仍35.5940ms，真实超时未修复。下一步审查18次重复身份/目录/完整Proof读取的具体成本，在保持所有原始时间、动态字段和closing语义下减少重复工作；不原样重跑挑一轮。
+
+265投影帧/errors0/编码0，14页全跨度概览及五阶段原始00181/00200/00220/00238/00257全部亲看；中立/转头/恢复/上移/恢复仍严重自身模型遮挡，视图FAIL。区间帧不是同C0/GPU原子证明或头显验收。原始session、动作、projection数值清单、年龄、分段及审阅在query-close-detail-r180/runtime-r181。完整world/body几何、movement、CV01–24/AC01–22和实体头显未完成，工程25%、publicv71/固定入口不变，目标active。
