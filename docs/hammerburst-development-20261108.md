@@ -754,3 +754,8 @@ PG325200c3/Nativeb9ab7a82原完整流程单局通过：取枪core6、12组drain6
 后续私有Native passive-commit-r1（e4e3155de9b86a1e7f8107a4a0c53e162a88009ae80b32199d4af0afec8935f2）已完整编译，沿b9ab原冻结flags/dependency，只在原成功joint commit后保存首512次被动support的原请求source/frame/seq/sync、物理grip、left_visual、原混合状态、调整后target与最终world[11]/world[35]；无新增clock/query/writer/input/gate。逐文件对比仅一个inl改变，精确移除观察后恢复父源码。实际C0几何fixture7842检查零失败，含新增三步移动被动world目标、最终world矩阵与独立FK一致、右腕不受被动目标驱动；输入为明确synthetic seam，不算game/headset通过。下一次只针对同帧跟随定位，仍保留全部13项与20924完整空仓通过，四态/贴合尚未通过。
 
 PG325200c3/Nativeb9ab7a82只测护木四态，无fire/reload。左手不按Grip移动时枪旋转4.676e-6deg，样本腕相对枪0.000263raw，未控制枪通过；右手带枪实际移动1.237247raw/2.285162deg后，读得腕相对枪1.023027raw/2.285716deg，原1cm/2deg阈值失败，Grab/释放未到达。实际SpaceBases腕世界坐标近乎不动，但该外部读取是mesh+0x26c异步数组，尚未匹配同帧C0目标/求解/上传；Native已提交186次support skin、619手求解，PG kind4 published1持续期间有读样本，仍不能据总数称皮肤跟随通过，也不能仅据异步旧数组断言C0目标没更新。下一步只在已有同GT成功passive commit保留有界原source、socket、physical、left_visual/applied/blend与body_work.pose.world[11]，不新读/续时/改writer/放宽reach或测试阈值。Nativeinputloss0、正常清理全0无forced；447帧错误空/编码0、3页48对亲阅，近眼大枪、护木旁张平/分离掌及过渡重影白几何仍不合格。20924完整换弹通过保留，全部13项继续。
+
+
+## 2026-11-11 实际58780：同帧C0目标与求解会移动，最终显示环节待查
+
+PG325200c3/Nativee4e3155d，护木四态仅到被动跟随检查。未按Grip移动左手不驱动枪通过；异步SpaceBases腕跟枪误差1.023891raw/2.285720deg，仍失败，Grab/释放未到。新增127次原成功passive C0 commit全部applied/fitted、106次weight1；请求socket最大移动.904215raw/2.291829deg，最终world[11]也移动，求解target与最终腕最大误差.00020810raw/.00001355deg。这推翻把异步腕近乎不动直接解释为C0目标/求解冻结的假设，但不证明后续skin/palette/upload/每Draw或实际表面贴合。下一步查现有唯一C0 local-atoms到实际皮肤消费者与SpaceBases读取阶段/骨骼映射，不增writer、不放宽阈值、不重复无变化game。正常Native/PG/XR/stop/launcher0、无forced/前台违规，476帧错误空/编码0，3页48对亲阅：近眼大枪、左手张平/分离和过渡重影白几何仍不合格。20924完整空仓换弹/回枪六发通过保留，全13项继续。

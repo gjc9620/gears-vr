@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "scope": "full HB objective; no scope reduction",
-  "current_candidate": "PG325200c3/Nativeb9ab7a82 full empty reload20924 PASS preserved. Current53872 passive no-drive pass; async SpaceBases wrist follow1.023raw/2.286deg fails,186C0support commits not phase matched. Grab/release not reached, no source/pose causal claim; all13 remain.",
+  "current_candidate": "PG325200c3/Nativee4e3155d. Ordinary full empty reload20924 PASS preserved.58780 no-drive PASS, async SpaceBases follow FAIL;127 same successful C0 records show moving goal/solved wrist, target residual .0002081raw/.00001356deg. Final skin/upload and current Grip/release unproved; all13 retained.",
   "prepared_sha256": "20d8a6cd15b89c89b938aa201086c9d590251a2be74b2bd6d4fa72bd47d27824",
   "requirements": [
     {
@@ -179,8 +179,8 @@
     {
       "id": "foregrip_states",
       "requirement": "\u56db\u6001\u62a4\u6728Snap/Grip Grab/\u91ca\u653eSnap/\u9000\u51fa",
-      "status": "current_passive_no_drive_passed_follow_measurement_failed_before_grab",
-      "limit": "Actual53872 no-drive passes; wrist follow sampling fails original tolerance.186 Native C0support commits cannot substitute matched target/solve/palette evidence. Grab/release current test not reached; historical evidence retained.",
+      "status": "current_no_drive_passed_async_follow_failed_C0_goal_solve_moves_render_boundary_open",
+      "limit": "127 successful passive C0 records: all applied/fitted,106 full weight, target/solve residual tiny; async game-array wrist still fails1cm/2deg. Do not claim target frozen or final visible fit proved. Current Grab/release not reached.",
       "evidence": [
         {
           "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-70816-review.json",
@@ -193,6 +193,10 @@
         {
           "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-53872-foregrip-four-state.json",
           "sha256": "1d3010820092718694262c7a64d0e781c87d3dee4a760915be4b299a9666364d"
+        },
+        {
+          "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-58780-passive-commit.json",
+          "sha256": "62f55b989ccfb8580dea32de2af99518382a7cc9dce67c85c3b76bc30ad7b60c"
         }
       ]
     },
@@ -534,8 +538,8 @@
   "restore_verifier_status": "Optional --hammerburst-park-restore input action hook integrated into private reload adapter; five synthetic action/receipt regressions passed. Actual park/redraw/new-grant/native-resume, typed conservation, UI/reward and complete return-fire require game evidence.",
   "latest_service_first_failure": "runtime-3112-first-failure-analysis.json",
   "latest_startup_failure": "runtime-49732-startup-failure.json",
-  "latest_runtime_failure": "runtime-53872-foregrip-four-state.json",
-  "latest_runtime_result": "runtime-53872-foregrip-four-state.json",
+  "latest_runtime_failure": "runtime-58780-passive-commit.json",
+  "latest_runtime_result": "runtime-58780-passive-commit.json",
   "latest_focused_pass": "runtime-50828-focused-result.json",
   "visual_audit_recording_repair": "Corrected finalizer wrong ID fivepartfitting\u2192part_fitting, attached reviewed22992 evidence also to guides, asserted target IDs exist. No requirement/score/acceptance change and no overwrite of current052600 runtime blocker.",
   "resource_release_evidence": {

@@ -1,13 +1,13 @@
 {
-  "source_checkpoint": "51c8ed86",
-  "next": "At existing same-GT C0 successful passive-support commit, retain a bounded read-only sample of source frame/sequence, requested world socket, current physical hand, existing work.left_visual/applied/blend, and body_work.pose.world[11] solved world wrist plus relevant gun/right pose. Use current state only, no new query/clock/writer/input/gate. Distinguish goal publication, C0 target/solve and later SpaceBases observation before any pose repair. Keep exact source/identity/reach and1cm/2deg test limits. No unchanged run.",
+  "source_checkpoint": "3af75649",
+  "next": "Inspect existing sole C0 committed local-atoms -> render skin/palette consumer, original SpaceBases update timing, and matching bones/skin mapping for actual HB left hand. Current127 same-GT committed records prove goal and solved world wrist move; not upload/hardware/everyDraw/visible fit. Establish which existing consumer the async SpaceBases reader observes before changing the four-state verdict or pose. Preserve source freshness, fixed lengths, exact identity, single writer and1cm/2deg thresholds. No unchanged game run.",
   "candidate": "early-released-refire-r1",
   "requirements_complete": false,
-  "native_candidate": "native-mutex-r1",
-  "runner_session_id": 35028,
+  "native_candidate": "native-passive-commit-r1",
+  "runner_session_id": 73697,
   "terminal": true,
   "all13_requirements_retained": true,
-  "instance": "hb-cloak-1111-164852",
-  "runner_last_poll": "35028 terminal1; stop/launcher/Native/PG/XR normal0; owned game+children gone; noforced;encode0",
-  "game_pid": 53872
+  "instance": "hb-cloak-1111-171202",
+  "runner_last_poll": "73697 terminal1; stop/launcher/Native/PG/XR normal0; owned game+children gone; noforced;encode0",
+  "game_pid": 58780
 }
