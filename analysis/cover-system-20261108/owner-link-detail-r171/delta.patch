@@ -1,0 +1,153 @@
+--- r169/cover_physx_asset_actors.h
++++ r171/cover_physx_asset_actors.h
+@@ -5,6 +5,7 @@
+ #include <windows.h>
+ #include <type_traits>
+ #include "cover_physx_query_source.h"
++#include "cover_owner_link_observation.h"
+ 
+ // A read bracket of the named PhysicsAssetInstance.Bodies -> BodyData fields.
+ // The typed guard must certify EVERY reflected body/owner/index/BodyData role.
+@@ -14,6 +15,7 @@
+ namespace gears_cover_physx_asset_actors {
+ namespace source=gears_cover_physx_query_source;
+ namespace raw=source::pose;
++namespace linkobs=gears_cover_owner_link_observation;
+ constexpr unsigned capacity=64;
+ enum class Presence:unsigned {not_sampled,body_data_field_null,actor_observed};
+ struct Body {
+@@ -46,10 +48,14 @@
+         if(!source::pointer(body.actor,0x48)||!raw::field(read,body.table,body.actor,0)||
+            !raw::field(read,body.scene,body.actor,0x38)||!raw::field(read,body.internal,body.actor,0x40))return Code::read;
+         if(body.table!=image_base+0x2330a8)return Code::unsupported;
+-        if(body.scene!=scope.scene||!source::pointer(body.internal,0x18))return Code::links;
++        if(body.scene!=scope.scene||!source::pointer(body.internal,0x18)){
++            linkobs::note({false,linkobs::Reader::asset,{},linkobs::Branch::scene_or_internal,scope.source.thread,
++                body.actor,body.table,scope.scene,body.scene,body.internal,0,false});return Code::links;}
+         std::uintptr_t actor_back{};
+         if(!raw::field(read,actor_back,body.internal,0x10))return Code::read;
+-        if(actor_back!=body.actor)return Code::links;
++        if(actor_back!=body.actor){
++            linkobs::note({false,linkobs::Reader::asset,{},linkobs::Branch::reverse,scope.source.thread,
++                body.actor,body.table,scope.scene,body.scene,body.internal,actor_back,true});return Code::links;}
+         body.presence=Presence::actor_observed;
+         bool duplicate=false;for(unsigned n=0;n<out.actor_count;++n)duplicate=duplicate||out.actors[n]==body.actor;
+         if(!duplicate)out.actors[out.actor_count++]=body.actor;
+--- r169/cover_physx_collider.h
++++ r171/cover_physx_collider.h
+@@ -5,6 +5,7 @@
+ #include <windows.h>
+ #include <type_traits>
+ #include "cover_physx_query_source.h"
++#include "cover_owner_link_observation.h"
+ 
+ // Caller owns the exact Image pin and current C0. Its typed guard certifies
+ // these named Pawn/component/body fields and their full reflected identities.
+@@ -13,6 +14,7 @@
+ namespace gears_cover_physx_collider {
+ namespace source=gears_cover_physx_query_source;
+ namespace raw=source::pose;
++namespace linkobs=gears_cover_owner_link_observation;
+ struct Source {
+     std::uintptr_t pawn{},component{},body{};
+     unsigned body_instance_offset{};
+@@ -45,10 +47,14 @@
+     if(!data){next.presence=Presence::body_data_field_null;output=next;return Code::observed;}
+     if(!raw::field(read,next.actor_table,data,0)||!raw::field(read,next.scene,data,0x38)||!raw::field(read,next.internal,data,0x40))return Code::read;
+     if(next.actor_table!=image_base+0x2330a8)return Code::unsupported;
+-    if(next.scene!=scope.scene||!source::pointer(next.internal,0x18))return Code::links;
++    if(next.scene!=scope.scene||!source::pointer(next.internal,0x18)){
++        linkobs::note({false,linkobs::Reader::collider,{},linkobs::Branch::scene_or_internal,scope.source.thread,
++            data,next.actor_table,scope.scene,next.scene,next.internal,0,false});return Code::links;}
+     std::uintptr_t reverse{};
+     if(!raw::field(read,reverse,next.internal,0x10))return Code::read;
+-    if(reverse!=data)return Code::links;
++    if(reverse!=data){
++        linkobs::note({false,linkobs::Reader::collider,{},linkobs::Branch::reverse,scope.source.thread,
++            data,next.actor_table,scope.scene,next.scene,next.internal,reverse,true});return Code::links;}
+     next.presence=Presence::actor_observed;output=next;return Code::observed;
+ }
+ }
+--- r169/cover_physx_components.h
++++ r171/cover_physx_components.h
+@@ -6,6 +6,7 @@
+ #include <atomic>
+ #include <type_traits>
+ #include "cover_physx_query_source.h"
++#include "cover_owner_link_observation.h"
+ 
+ // Exact Image pin/current C0 and typed full-identity/metadata guard required.
+ // This qualifies only the supplied DECLARED component/body fields. Owners,
+@@ -18,6 +19,7 @@
+ namespace gears_cover_physx_components {
+ namespace source=gears_cover_physx_query_source;
+ namespace raw=source::pose;
++namespace linkobs=gears_cover_owner_link_observation;
+ constexpr unsigned root_capacity=16,list_capacity=64,capacity=128,asset_body_capacity=256,actor_capacity=capacity+asset_body_capacity;
+ constexpr unsigned attachment_capacity=256,attachment_stride_capacity=128;
+ enum class State:unsigned {not_sampled,nonprimitive,body_instance_field_null,body_data_field_null,body_data_nonnull};
+@@ -221,9 +223,13 @@
+     if(!data){value.presence=Presence::body_data_field_null;return Code::observed;}
+     if(!raw::field(read,value.table,data,0)||!raw::field(read,value.scene,data,0x38)||!raw::field(read,value.internal,data,0x40))return Code::read;
+     if(value.table!=image_base+0x2330a8)return Code::unsupported;
+-    if(value.scene!=scope.scene||!source::pointer(value.internal,0x18))return Code::links;
++    if(value.scene!=scope.scene||!source::pointer(value.internal,0x18)){
++        linkobs::note({false,linkobs::Reader::components,{},linkobs::Branch::scene_or_internal,scope.source.thread,
++            data,value.table,scope.scene,value.scene,value.internal,0,false});return Code::links;}
+     std::uintptr_t reverse{};if(!raw::field(read,reverse,value.internal,0x10))return Code::read;
+-    if(reverse!=data)return Code::links;value.presence=Presence::actor_observed;
++    if(reverse!=data){
++        linkobs::note({false,linkobs::Reader::components,{},linkobs::Branch::reverse,scope.source.thread,
++            data,value.table,scope.scene,value.scene,value.internal,reverse,true});return Code::links;}value.presence=Presence::actor_observed;
+     bool duplicate=false;for(unsigned k=0;k<output.actor_count;++k)duplicate=duplicate||output.actors[k]==data;
+     if(!duplicate)output.actors[output.actor_count++]=data;return Code::observed;
+ }
+--- r169/cover_physx_query.h
++++ r171/cover_physx_query.h
+@@ -421,6 +421,7 @@
+                 }
+             } asset_guard{guard,before_};
+             if constexpr(with_owners){
++                gears_cover_owner_link_observation::PhaseScope link_phase(gears_cover_owner_link_observation::Phase::before_dispatch);
+                 const auto code=gears_cover_physx_asset_actors::observe(image_.base(),image_.size(),before_,read,asset_guard,asset_work_,asset_before_);
+                 if(code!=gears_cover_physx_asset_actors::Code::observed)return detail::asset_code(code);
+                 const auto cx=gears_cover_physx_collider::observe(image_.base(),image_.size(),before_,*component_source,read,asset_guard,collider_before_);
+@@ -463,6 +464,7 @@
+             if constexpr(with_owners){
+                 // The active query and Image pin span enumeration AND all
+                 // owner reads. No second query or stream filtering occurs.
++                gears_cover_owner_link_observation::PhaseScope link_phase(gears_cover_owner_link_observation::Phase::after_dispatch);
+                 std::fill(owners_candidate_.begin(),owners_candidate_.end(),gears_cover_physx_shape_owner::Observation{});
+                 auto current_owner=[&](source::Snapshot const& raw){return source::same(before_,raw)&&detail::source_guard(guard,raw);};
+                 for(unsigned i=0;i<result_count();++i){
+--- r169/cover_physics_c0_live.inl
++++ r171/cover_physics_c0_live.inl
+@@ -32,6 +32,7 @@
+     SphereObservation common{};q::Capsule shape{};q::Vector delta{};
+     gears_cover_query_timing::Report timing{};
+     gears_body_source_age_observation::Report source_ages{};
++    gears_cover_owner_link_observation::Report owner_links{};
+     unsigned segments{},hits{},reports{},endpoint_shapes{},endpoint_reports{},self_hits{},endpoint_self{};
+ };
+ PathObservation path_probe;
+@@ -98,6 +99,12 @@
+     PathObservation path_copy{};{std::lock_guard<std::mutex> lock(sphere_probe_mutex);path_copy=path_probe;}
+     auto const& p=path_copy.common;
+     auto const& ages=path_copy.source_ages;
++    auto const& links=path_copy.owner_links;auto const& failed_link=links.first;
++    fprintf(f,"cover_path_probe_link_key=%llu,%llu,%llu,%llu,%u cover_path_probe_link_failure=%u,%u,%u,%u,%u,%llu,%llu,%llu,%llu,%llu,%llu,%u ",
++        links.key.world,links.key.pawn,links.key.scene,links.key.compose,links.key.thread,
++        unsigned(failed_link.observed),unsigned(failed_link.reader),unsigned(failed_link.phase),unsigned(failed_link.branch),failed_link.thread,
++        uint64_t(failed_link.actor),uint64_t(failed_link.table),uint64_t(failed_link.expected_scene),uint64_t(failed_link.observed_scene),
++        uint64_t(failed_link.internal),uint64_t(failed_link.reverse),unsigned(failed_link.reverse_read));
+     fprintf(f,"cover_path_probe_age_key=%llu,%llu,%llu,%llu,%u cover_path_probe_age_calls=%u,%u,%u ",
+         ages.key.world,ages.key.pawn,ages.key.scene,ages.key.compose,ages.key.thread,ages.calls[0],ages.calls[1],unsigned(ages.overflow));
+     for(unsigned i=0;i<ages.rows.size();++i){auto const& a=ages.rows[i];
+@@ -255,6 +262,7 @@
+         common.original_started_before=before.original_started;common.original_returned_before=before.original_returned;
+         gears_cover_query_timing::Scope timing_scope(true,row.timing,+[]()noexcept{return rig_tracking_live::clock_ns();});
+         gears_body_source_age_observation::Scope age_scope(true,{common.world,common.pawn,common.scene,common.compose,common.thread},row.source_ages);
++        gears_cover_owner_link_observation::Scope link_scope(true,{common.world,common.pawn,common.scene,common.compose,common.thread},row.owner_links);
+         query_admission=QueryAdmission::admission;query_session_entered=false;
+         if(!q::detail::scalar(centimetre)||centimetre<=0||!q::detail::valid(row.shape)||!q::detail::sweep_motion(row.shape,row.delta))common.code=q::Code::request;
+         else common.code=sweep_capsule_path(e,source,row.shape,row.delta,

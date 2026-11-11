@@ -1,0 +1,9 @@
+[
+  {
+    "name": "cover_owner_link_observation",
+    "build_exit": 0,
+    "test_exit": 0,
+    "output": "CoverOwnerLinkObservation checks=89 failed=0 actual reader branches; no game\r\n",
+    "outside_worktree_dependencies": []
+  }
+]

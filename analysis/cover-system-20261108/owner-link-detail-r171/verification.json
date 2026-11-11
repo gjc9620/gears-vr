@@ -1,0 +1,47 @@
+{
+  "native_sha256": "a2b53166f37fbed0329d9019c8e97a21962499e3e0786b69872dc52c901c8b95",
+  "changed": [
+    "tools/native-capture/cover_owner_link_observation.h",
+    "tools/native-capture/cover_physics_c0_live.inl",
+    "tools/native-capture/cover_physx_asset_actors.h",
+    "tools/native-capture/cover_physx_collider.h",
+    "tools/native-capture/cover_physx_components.h",
+    "tools/native-capture/cover_physx_query.h"
+  ],
+  "project_dependencies": 412,
+  "outside_worktree_dependencies": 0,
+  "flags_unchanged": true,
+  "original_decisions_reconstructed_exactly": [
+    "cover_physx_asset_actors.h",
+    "cover_physx_collider.h",
+    "cover_physx_components.h",
+    "cover_physx_query.h",
+    "cover_physics_c0_live.inl"
+  ],
+  "observer_checks": 89,
+  "parser_checks": 22,
+  "related_checks": [
+    90,
+    92,
+    108,
+    391,
+    51
+  ],
+  "initial_failures_retained": [
+    "checks-v1 missing test-only bcrypt link library",
+    "checks-v2 new fixture body block too short; uncaught fixture write exception"
+  ],
+  "extra_game_reads": false,
+  "extra_clocks": false,
+  "guard_weakening": false,
+  "original_calls_added": false,
+  "one_shot_path_scope": true,
+  "first_failure_only": true,
+  "missing_is_unknown": true,
+  "build_only": true,
+  "game_started": false,
+  "owner_links_repaired": false,
+  "movement_authorized": false,
+  "world_coverage_verified": false,
+  "public_changed": false
+}

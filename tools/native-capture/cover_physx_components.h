@@ -6,6 +6,7 @@
 #include <atomic>
 #include <type_traits>
 #include "cover_physx_query_source.h"
+#include "cover_owner_link_observation.h"
 
 // Exact Image pin/current C0 and typed full-identity/metadata guard required.
 // This qualifies only the supplied DECLARED component/body fields. Owners,
@@ -18,6 +19,7 @@
 namespace gears_cover_physx_components {
 namespace source=gears_cover_physx_query_source;
 namespace raw=source::pose;
+namespace linkobs=gears_cover_owner_link_observation;
 constexpr unsigned root_capacity=16,list_capacity=64,capacity=128,asset_body_capacity=256,actor_capacity=capacity+asset_body_capacity;
 constexpr unsigned attachment_capacity=256,attachment_stride_capacity=128;
 enum class State:unsigned {not_sampled,nonprimitive,body_instance_field_null,body_data_field_null,body_data_nonnull};
@@ -221,9 +223,13 @@ template<class Read> Code actor(std::uintptr_t image_base,source::Snapshot const
     if(!data){value.presence=Presence::body_data_field_null;return Code::observed;}
     if(!raw::field(read,value.table,data,0)||!raw::field(read,value.scene,data,0x38)||!raw::field(read,value.internal,data,0x40))return Code::read;
     if(value.table!=image_base+0x2330a8)return Code::unsupported;
-    if(value.scene!=scope.scene||!source::pointer(value.internal,0x18))return Code::links;
+    if(value.scene!=scope.scene||!source::pointer(value.internal,0x18)){
+        linkobs::note({false,linkobs::Reader::components,{},linkobs::Branch::scene_or_internal,scope.source.thread,
+            data,value.table,scope.scene,value.scene,value.internal,0,false});return Code::links;}
     std::uintptr_t reverse{};if(!raw::field(read,reverse,value.internal,0x10))return Code::read;
-    if(reverse!=data)return Code::links;value.presence=Presence::actor_observed;
+    if(reverse!=data){
+        linkobs::note({false,linkobs::Reader::components,{},linkobs::Branch::reverse,scope.source.thread,
+            data,value.table,scope.scene,value.scene,value.internal,reverse,true});return Code::links;}value.presence=Presence::actor_observed;
     bool duplicate=false;for(unsigned k=0;k<output.actor_count;++k)duplicate=duplicate||output.actors[k]==data;
     if(!duplicate)output.actors[output.actor_count++]=data;return Code::observed;
 }

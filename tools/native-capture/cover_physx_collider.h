@@ -5,6 +5,7 @@
 #include <windows.h>
 #include <type_traits>
 #include "cover_physx_query_source.h"
+#include "cover_owner_link_observation.h"
 
 // Caller owns the exact Image pin and current C0. Its typed guard certifies
 // these named Pawn/component/body fields and their full reflected identities.
@@ -13,6 +14,7 @@
 namespace gears_cover_physx_collider {
 namespace source=gears_cover_physx_query_source;
 namespace raw=source::pose;
+namespace linkobs=gears_cover_owner_link_observation;
 struct Source {
     std::uintptr_t pawn{},component{},body{};
     unsigned body_instance_offset{};
@@ -45,10 +47,14 @@ template<class Read> Code sample(std::uintptr_t image_base,source::Snapshot cons
     if(!data){next.presence=Presence::body_data_field_null;output=next;return Code::observed;}
     if(!raw::field(read,next.actor_table,data,0)||!raw::field(read,next.scene,data,0x38)||!raw::field(read,next.internal,data,0x40))return Code::read;
     if(next.actor_table!=image_base+0x2330a8)return Code::unsupported;
-    if(next.scene!=scope.scene||!source::pointer(next.internal,0x18))return Code::links;
+    if(next.scene!=scope.scene||!source::pointer(next.internal,0x18)){
+        linkobs::note({false,linkobs::Reader::collider,{},linkobs::Branch::scene_or_internal,scope.source.thread,
+            data,next.actor_table,scope.scene,next.scene,next.internal,0,false});return Code::links;}
     std::uintptr_t reverse{};
     if(!raw::field(read,reverse,next.internal,0x10))return Code::read;
-    if(reverse!=data)return Code::links;
+    if(reverse!=data){
+        linkobs::note({false,linkobs::Reader::collider,{},linkobs::Branch::reverse,scope.source.thread,
+            data,next.actor_table,scope.scene,next.scene,next.internal,reverse,true});return Code::links;}
     next.presence=Presence::actor_observed;output=next;return Code::observed;
 }
 }

@@ -1,0 +1,44 @@
+[
+  {
+    "name": "cover_owner_link_observation",
+    "build_exit": 0,
+    "test_exit": 3221226505,
+    "output": "",
+    "outside_worktree_dependencies": []
+  },
+  {
+    "name": "cover_physx_asset_actors",
+    "build_exit": 0,
+    "test_exit": 0,
+    "output": "CoverPhysXAssetActors checks=90 failed=0 synthetic Bodies/links only; no complete self set or original execution\r\n",
+    "outside_worktree_dependencies": []
+  },
+  {
+    "name": "cover_physx_collider",
+    "build_exit": 0,
+    "test_exit": 0,
+    "output": "CoverPhysXCollider checks=92 failed=0 synthetic source/actor links only; no complete self set or original execution\r\n",
+    "outside_worktree_dependencies": []
+  },
+  {
+    "name": "cover_physx_components",
+    "build_exit": 0,
+    "test_exit": 0,
+    "output": "CoverPhysXComponents checks=108 failed=0 synthetic fields/Scene only; no complete self set, filter or original execution\r\n",
+    "outside_worktree_dependencies": []
+  },
+  {
+    "name": "cover_physics_capsule_path_live",
+    "build_exit": 0,
+    "test_exit": 0,
+    "output": "CoverCapsulePathSession checks=391 failed=0 typed-source/Session real; module/dispatch Host; no game\r\n",
+    "outside_worktree_dependencies": []
+  },
+  {
+    "name": "cover_physics_c0_off",
+    "build_exit": 0,
+    "test_exit": 0,
+    "output": "cover_physics_c0 OFF: 51 checks, 0 failures; no game/module/query\r\n",
+    "outside_worktree_dependencies": []
+  }
+]

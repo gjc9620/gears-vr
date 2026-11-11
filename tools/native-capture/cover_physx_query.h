@@ -421,6 +421,7 @@ private:
                 }
             } asset_guard{guard,before_};
             if constexpr(with_owners){
+                gears_cover_owner_link_observation::PhaseScope link_phase(gears_cover_owner_link_observation::Phase::before_dispatch);
                 const auto code=gears_cover_physx_asset_actors::observe(image_.base(),image_.size(),before_,read,asset_guard,asset_work_,asset_before_);
                 if(code!=gears_cover_physx_asset_actors::Code::observed)return detail::asset_code(code);
                 const auto cx=gears_cover_physx_collider::observe(image_.base(),image_.size(),before_,*component_source,read,asset_guard,collider_before_);
@@ -463,6 +464,7 @@ private:
             if constexpr(with_owners){
                 // The active query and Image pin span enumeration AND all
                 // owner reads. No second query or stream filtering occurs.
+                gears_cover_owner_link_observation::PhaseScope link_phase(gears_cover_owner_link_observation::Phase::after_dispatch);
                 std::fill(owners_candidate_.begin(),owners_candidate_.end(),gears_cover_physx_shape_owner::Observation{});
                 auto current_owner=[&](source::Snapshot const& raw){return source::same(before_,raw)&&detail::source_guard(guard,raw);};
                 for(unsigned i=0;i<result_count();++i){

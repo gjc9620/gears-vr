@@ -32,6 +32,7 @@ struct PathObservation {
     SphereObservation common{};q::Capsule shape{};q::Vector delta{};
     gears_cover_query_timing::Report timing{};
     gears_body_source_age_observation::Report source_ages{};
+    gears_cover_owner_link_observation::Report owner_links{};
     unsigned segments{},hits{},reports{},endpoint_shapes{},endpoint_reports{},self_hits{},endpoint_self{};
 };
 PathObservation path_probe;
@@ -98,6 +99,12 @@ void summary(FILE* f){if(!f)return;
     PathObservation path_copy{};{std::lock_guard<std::mutex> lock(sphere_probe_mutex);path_copy=path_probe;}
     auto const& p=path_copy.common;
     auto const& ages=path_copy.source_ages;
+    auto const& links=path_copy.owner_links;auto const& failed_link=links.first;
+    fprintf(f,"cover_path_probe_link_key=%llu,%llu,%llu,%llu,%u cover_path_probe_link_failure=%u,%u,%u,%u,%u,%llu,%llu,%llu,%llu,%llu,%llu,%u ",
+        links.key.world,links.key.pawn,links.key.scene,links.key.compose,links.key.thread,
+        unsigned(failed_link.observed),unsigned(failed_link.reader),unsigned(failed_link.phase),unsigned(failed_link.branch),failed_link.thread,
+        uint64_t(failed_link.actor),uint64_t(failed_link.table),uint64_t(failed_link.expected_scene),uint64_t(failed_link.observed_scene),
+        uint64_t(failed_link.internal),uint64_t(failed_link.reverse),unsigned(failed_link.reverse_read));
     fprintf(f,"cover_path_probe_age_key=%llu,%llu,%llu,%llu,%u cover_path_probe_age_calls=%u,%u,%u ",
         ages.key.world,ages.key.pawn,ages.key.scene,ages.key.compose,ages.key.thread,ages.calls[0],ages.calls[1],unsigned(ages.overflow));
     for(unsigned i=0;i<ages.rows.size();++i){auto const& a=ages.rows[i];
@@ -255,6 +262,7 @@ void observe_path_once(Entry const& e,Core const& source,q::Vector const& eye)no
         common.original_started_before=before.original_started;common.original_returned_before=before.original_returned;
         gears_cover_query_timing::Scope timing_scope(true,row.timing,+[]()noexcept{return rig_tracking_live::clock_ns();});
         gears_body_source_age_observation::Scope age_scope(true,{common.world,common.pawn,common.scene,common.compose,common.thread},row.source_ages);
+        gears_cover_owner_link_observation::Scope link_scope(true,{common.world,common.pawn,common.scene,common.compose,common.thread},row.owner_links);
         query_admission=QueryAdmission::admission;query_session_entered=false;
         if(!q::detail::scalar(centimetre)||centimetre<=0||!q::detail::valid(row.shape)||!q::detail::sweep_motion(row.shape,row.delta))common.code=q::Code::request;
         else common.code=sweep_capsule_path(e,source,row.shape,row.delta,
