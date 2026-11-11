@@ -50,8 +50,10 @@ int GEARS_COLLIDER_ROLES_TEST_MAIN(){
     {namespace cx=gears_cover_physx_collider;cx::Snapshot raw{};raw.fields=collider::input(result);raw.presence=cx::Presence::actor_observed;
         raw.query_source.actor_table=raw.actor_table=0x1802330a8;raw.query_source.scene=raw.scene=arena+0x8b000;raw.internal=arena+0xb3000;
         C(collider::matches(result,raw));
+        {auto optional=raw;optional.internal=0;C(collider::matches(result,optional));}
+
         for(unsigned bad=0;bad<6;++bad){auto wrong=raw;if(bad==0)wrong.fields.component+=8;if(bad==1)wrong.fields.body_index++;
-            if(bad==2)wrong.fields.body_instance_offset+=8;if(bad==3)wrong.actor_table+=8;if(bad==4)wrong.scene+=8;if(bad==5)wrong.internal=0;
+            if(bad==2)wrong.fields.body_instance_offset+=8;if(bad==3)wrong.actor_table+=8;if(bad==4)wrong.scene+=8;if(bad==5)wrong.internal=9;
             C(!collider::matches(result,wrong));}}
     put(cylinder+0x1a0,uintptr_t{});C(capture(result)==collider::Code::current&&result.presence==collider::Presence::body_instance_field_null&&!result.body.address&&!result.body_data&&!result.bone_spring);
     put(cylinder+0x1a0,single_body);put(single_body+0x88,uintptr_t{});

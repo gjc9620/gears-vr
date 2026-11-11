@@ -168,6 +168,17 @@ int GEARS_QUERY_SESSION_TEST_MAIN(){
         C(all->component_sources.fields.asset_body_count==2&&all->component_sources.asset_observations[0].presence==gears_cover_physx_components::Presence::actor_observed&&
             all->component_sources.fields.assets[3].sampled&&!all->component_sources.fields.assets[3].instance);
         q::Capsule cap{{0,0,0},{0,0,1},.5f};C(owner->sweep_all(actor,physics_expected,cap,delta,q::StreamLimits{},source_read,guard,*all)==q::Code::queried);
+        const std::array<uintptr_t,3> optional_actors{{arena+0x88000,arena+0x89000,arena+0xb0000}};
+        std::array<uintptr_t,3> optional_saved{};
+        for(unsigned i=0;i<3;++i){C(safe_copy(&optional_saved[i],reinterpret_cast<void const*>(optional_actors[i]+0x40),8));put(optional_actors[i]+0x40,uintptr_t{});}
+        // The real asset/collider/component readers must accept optional null
+        // dynamic Body pointers without weakening scene or embedded owners.
+        C(owner->sweep_all(actor,physics_expected,test_box,delta,q::StreamLimits{},source_read,guard,*all)==q::Code::queried&&
+            !all->asset_bodies.bodies[0].internal&&!all->asset_bodies.bodies[1].internal&&!all->collider_source.internal);
+        all->raw.raw_count=99;put(optional_actors[2]+0x40,uintptr_t(9));
+        C(owner->sweep_all(actor,physics_expected,test_box,delta,q::StreamLimits{},source_read,guard,*all)!=q::Code::queried&&all->raw.raw_count==99);
+        for(unsigned i=0;i<3;++i)put(optional_actors[i]+0x40,optional_saved[i]);
+
         put(cylinder+0x1a0,uintptr_t{});
         C(owner->sweep_all(actor,physics_expected,test_box,delta,q::StreamLimits{},source_read,guard,*all)==q::Code::queried&&
             all->collider_source.presence==gears_cover_physx_collider::Presence::body_instance_field_null&&!all->collider_source.fields.body);

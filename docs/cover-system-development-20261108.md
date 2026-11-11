@@ -2841,3 +2841,11 @@ query34.2674ms，code source，engine/source_guard/current；Owner53次context/s
 新增单个/两个optional null正例，原版均失败；修复后实际reader matcher夹具284检查0失败。初次负例用了8，现有pointer仅对齐/span，不把8数值本身拒绝；这是夹具预期错误，改为明确未对齐9，保留before/after失败日志，前后完整suite并非逐字同一负例，不声称严格全套A/B。没有把null字段当Actor本体或免去raw读取的闭合。
 
 本轮只编译/运行离线检查，无完整Native构建/游戏/头显/世界碰撞通过；记录optional-body-r199。该修改为接线前的明确兼容性修复，不等同认证placement已提供。完整CV/AC仍未完成，工程25%。
+
+## r200：可选Body语义通过真实typed Session链，补齐collider matcher（2026-11-12）
+
+沿r199继续检查，组件目录raw已有optional规则，但cover_collider_roles_live::matches在body_data_nonnull时仍要求internal非零。新增Session用例将两PAA Actor和Pawn collider的+40置空，经真实source/asset/collider/component读取器及Session执行；只替代模块/原分派。修复前110检查1失败，合法空值在collider matcher拒绝。改为与raw相同的null允许/非空pointer(0x18)校验后110检查0失败；额外non-null9原始读取拒绝且公共输出sentinel保持。collider局部220检查0失败。
+
+保留table/scene、typed字段/索引/成员、embedded owner、两遍动态值及closing；未采样/BodyData本身为空行仍须字段全零。null是可选动态Body，不替代Actor类型/世界覆盖证明。第一处编辑锚点在文件中出现两次，断言在修改前拒绝；改用精确后一个typed-owners测试段，没有静默误改其他重载。
+
+原before/after及源码SHA/依赖记录optional-session-r200。编译/运行全部终态0（before期望失败1保留），无游戏/原查询/完整Native构建或移动授权。本轮把两处读取语义修复验证到会话层，不称完整掩体/碰撞/视图通过；全CV/AC/头显仍待完成，工程25%。

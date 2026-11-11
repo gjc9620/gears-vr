@@ -1,0 +1,17 @@
+{
+  "session_before": "FAIL 177: owner->sweep_all(actor,physics_expected,test_box,delta,q::StreamLimits{},source_read,guard,*all)==q::Code::queried&& !all->asset_bodies.bodies[0].internal&&!all->asset_bodies.bodies[1].internal&&!all->collider_source.internal reason=ready stage=ready field=Owner\r\ncover_physics_query_live: 110 checks, 1 failures; dispatch/module are Host seams, no original call\r\n",
+  "session_after": "cover_physics_query_live: 110 checks, 0 failures; dispatch/module are Host seams, no original call\r\n",
+  "collider": "CoverColliderRoles checks=220 failures=0 synthetic reflected fields only; no NxActor/complete-self/geometry/movement proof\r\n",
+  "source_sha256": {
+    "tools/native-capture/cover_collider_roles_live.inl": "af70bd1412b5f33ff34d7f347cd19c1d6ad83eddc1bc45adefe5cd5ee9e68fd8",
+    "tools/native-capture/cover_collider_roles_live_test.cpp": "6381683a6bf9a6a70bce43112d921a404444f900adbad52f34b7e2ec3d31d343",
+    "tools/native-capture/cover_physics_query_live_test.cpp": "fe5998d34b237f88e4b5318ecc55974e4d6e036fb8ec48ba9f0901b88025d529"
+  },
+  "scope": "Actual typed Session plus original raw asset/collider/component readers; only module/dispatch Host seams. Optional null accepted, malformed non-null9 rejected with output preserved.",
+  "invariants": "same actor table/scene/body/index/membership, embedded owner and source closing remain",
+  "game_started": false,
+  "original_query_called": false,
+  "full_native_built": false,
+  "geometry_coverage_verified": false,
+  "engineering_percent": 25
+}

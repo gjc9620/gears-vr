@@ -30,7 +30,8 @@ inline bool matches(Snapshot const& typed,gears_cover_physx_collider::Snapshot c
     if(typed.presence==Presence::body_instance_field_null)return value.presence==cx::Presence::body_instance_field_null&&!value.actor_table&&!value.scene&&!value.internal;
     if(typed.presence==Presence::body_data_field_null)return value.presence==cx::Presence::body_data_field_null&&!value.actor_table&&!value.scene&&!value.internal;
     return typed.presence==Presence::body_data_nonnull&&value.presence==cx::Presence::actor_observed&&
-        value.actor_table==value.query_source.actor_table&&value.scene==value.query_source.scene&&value.internal;
+        value.actor_table==value.query_source.actor_table&&value.scene==value.query_source.scene&&
+        (!value.internal||source::pointer(value.internal,0x18));
 }
 #if defined(GEARS_COVER_BODY_PROTOTYPE) && GEARS_COVER_BODY_PROTOTYPE
 struct Workspace {
