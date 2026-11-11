@@ -1,0 +1,34 @@
+from pathlib import Path
+import hashlib,json,re,shutil,statistics
+A=Path(__file__).resolve().parent;R=A.parents[1];I=R/'analysis/instances/hb-cloak-1111-151210';D=I/'actions/menu-firstperson-21052-151230';T=A/'runtime-21052-text'
+def read(p):return json.loads(p.read_text(encoding='utf-8-sig'))
+def write(p,v):p.write_text(json.dumps(v,indent=2),encoding='utf-8')
+def rows(prefix,s):return [dict(re.findall(r'(\w+)=([^\s]+)',l)) for l in s.splitlines() if l.startswith(prefix+' ')]
+p=A/'runtime-21052-first-failure-analysis.json';v=read(p)
+for source in (D/'hammerburst-empty-reload.json',D/'ordinary_empty_replacement/hammerburst-replacement.json',I/'native/capture-status.txt',I/'native/session-status.txt'):
+ target=T/source.name;shutil.copy2(source,target);digest=hashlib.sha256(source.read_bytes()).hexdigest();assert hashlib.sha256(target.read_bytes()).hexdigest()==digest
+ v['verified_archive'].append(dict(source=str(source),archive=str(target),sha256=digest))
+v['empty']=read(D/'hammerburst-empty-reload.json');v['replacement']=read(D/'ordinary_empty_replacement/hammerburst-replacement.json');assert v['actual_trajectory_count']==78 and v['trajectory_consistent'] and v['empty']['checks']['empty_trigger_preserves_L0_R78_no_shot']
+raw=(T/'playground-21052.log').read_bytes();pg=raw.decode('utf-16' if raw[:2]==b'\xff\xfe' else 'utf-8-sig',errors='replace')
+for prefix in ('hammerburst_service_loss','hammerburst_pose_gap_incumbent','hammerburst_latch_seek_unavailable','hammerburst_latch_history','hammerburst_latch_rejected','hammerburst_reload_cleanup','hammerburst_extraction_history','hammerburst_tick_cost_summary','hammerburst_tick_cost'):
+ v[prefix+'_rows']=rows(prefix,pg)
+summary=v['hammerburst_tick_cost_summary_rows'];cost=v['hammerburst_tick_cost_rows'];assert len(summary)==1 and summary[0]['total']=='525' and summary[0]['retained']=='128' and len(cost)==128
+assert [int(r['ordinal']) for r in cost]==list(range(398,526))
+for r in cost:
+ assert all(int(r[k])>=0 for k in ('pre_original_ns','original_ns','service_ns','equipment_ns','follow_ns','total_ns'))
+ assert int(r['total_ns'])==sum(int(r[k]) for k in ('pre_original_ns','original_ns','service_ns','equipment_ns','follow_ns'))
+failure=v['hammerburst_latch_rejected_rows'][0];assert failure['sequence']=='4700' and int(failure['sample_ms'])-int(failure['previous_ms'])==112
+matched=next(r for r in cost if r['last_input_sync_ns']=='166021509753300');assert matched['ordinal']=='417' and matched['total_ns']=='35111500'
+prior=next(r for r in cost if r['ordinal']=='416')
+v['matched_latch_cost']=dict(current=matched,prior=prior,gt_begin_interval_ns=int(matched['begin_ns'])-int(prior['begin_ns']),input_sync_interval_ns=int(matched['last_input_sync_ns'])-int(prior['last_input_sync_ns']))
+v['retained_phase_cost_statistics']={k:dict(minimum=min(a),median=statistics.median(a),maximum=max(a)) for k in ('pre_original_ns','original_ns','service_ns','equipment_ns','follow_ns','total_ns') if (a:=[int(r[k]) for r in cost])}
+v['first_debt_rows_retained']=sum(r['first_debt']=='1' for r in cost);assert v['first_debt_rows_retained']==0
+raw=(T/'capture-status.txt').read_bytes();s=raw.decode('utf-16' if raw[:2]==b'\xff\xfe' else 'utf-8-sig',errors='replace');v['native_age_summary']=rows('stereo_hand_loss_summary',s);v['native_input_loss']=dict(re.findall(r'(weapon_hand_input_loss\w*)=([^\s]+)',s));v['native_sha256']=read(A/'native-render-age-r1/prepared.json')['native_sha256']
+v['interpretation']='Actual passive GT tail exported525/last128 and exact phase sums verified.78 consistent rays/emptyveto passed, no first-event expiry reproduced. Opening frame584 seq4700 original history gate6 build-or-count failure, source interval112ms, latch gapreason5 rejected; no new latch WAIT/incumbent/extraction markers. Matching full GT row417 costs35.1115ms (pre13.0682/original2.253/service.0007/equipment19.7882/follow.0014), GT start interval71.962ms, exact input source interval111.8282ms. Thus112ms is not measured total work time. Tail contains0 first_debt rows (earlier successful fire rotated out); cannot attribute prior30496 expiry from these costs.'
+v['next_bounded_source_question']='At exact latch history gate6, export bounded original previous/current raw samples and history sequence/time/epoch/control fields AFTER original relative::build refusal, without requery/clock or changed predicates. Current data cannot distinguish missing coverage, raw discontinuity, projection or segmentcount<3; do not assume capacity shortage or relax limits. Preserve first-debt cost rows in a separate bounded reservoir so later reloads cannot rotate all successful/failed first attempts out. No unchanged game rerun, no source/dispatch/timer policy change.'
+v['media'].update(encoded=True,encode_exit=0,personally_reviewed_overview=True,reviewed_pairs=48,visual='Oversized near-eye gun, ghost/separated hand and white geometry remain. No dense/all-angle/headset acceptance.');write(p,v)
+p=A/'runtime-21052-media-review/prepared.json';m=read(p);m.update(overview_reviewed=True,reviewed_pairs=48,full_fit_accepted=False,physical_headset_accepted=False,findings=v['media']['visual']);write(p,m)
+p=A/'full-requirements-audit-20261110.json';a=read(p);assert len(a['requirements'])==13;a.update(latest_runtime_failure='runtime-21052-first-failure-analysis.json',latest_runtime_result='runtime-21052-first-failure-analysis.json',requirements_complete=False,current_candidate='PG0a3540a2 passive tail actual21052 exported525/128,78rays/emptyveto then opening historygate6/gap112ms. Matched GT35.1115ms, source interval111.8282ms; no firstexpiry reproduced/retained firstdebt0, extraction not reached. All13 remain.');a['latest_phase_cost_evidence']='runtime-21052-first-failure-analysis.json';write(p,a)
+p=A/'active-runtime-wait.json';a=read(p);a.update(terminal=True,game_pid=21052,runner_last_poll='12164 terminal1; stop/launcher/Native/PG/XR0; own game+children gone, noforced; encode0',next=v['next_bounded_source_question']);write(p,a)
+with (R/'docs/hammerburst-development-20261108.md').open('a',encoding='utf-8') as f:f.write('\n\n## 2026-11-11 实际21052：真实GT耗时导出与独立开盖历史失败\n\nPG0a3540a2/Native71f280b0原完整流程78条一致射线和空仓veto通过；本轮未重现首发事件到期，开盖584/seq4700 historygate6 build或count失败，原112ms gap reason5拒绝。真实tail525/128导出、序号398..525及每条分段和全核。匹配row417完整GT35.1115ms（pre13.0682/original2.253/service0.0007/equipment19.7882/follow0.0014），相邻GT begin71.962ms，输入sync间隔111.8282ms；不能把112ms当该GT处理耗时。尾部first_debt0，成功首发段已旋出，不能据这些reload耗时解释30496 expiry。下一步仅在原relative::build失败后导出有界原previous/current/history时戳序号/epoch/控制，区分缺覆盖/原记录间断/投影/count，不先假定容量不足；另保留有限first-debt样本防旋出，不改判定或重查源。新latch登记/WAIT/提取历史均无命中，整流程失败。正常清理全0、无forced、407帧错误空/编码0、3页48对亲阅，视觉仍失败，全部13项保留。\n')
+print(json.dumps(dict(cost_rows=len(cost),first_debt_retained=0,matched=matched,gap=failure)))

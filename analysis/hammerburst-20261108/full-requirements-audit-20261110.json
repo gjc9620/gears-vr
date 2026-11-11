@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "scope": "full HB objective; no scope reduction",
-  "current_candidate": "Private tick-cost-tail-r1 PG0a3540a2 with unchanged Native71f280b0. Passive original-GT128-row ring tested200writes/export128 and exact source-delta reversal; compiled. No input/action/source/deadline changes; original extraction history32checks retained, live coverage pending. All13 incomplete.",
+  "current_candidate": "PG0a3540a2 passive tail actual21052 exported525/128,78rays/emptyveto then opening historygate6/gap112ms. Matched GT35.1115ms, source interval111.8282ms; no firstexpiry reproduced/retained firstdebt0, extraction not reached. All13 remain.",
   "prepared_sha256": "20d8a6cd15b89c89b938aa201086c9d590251a2be74b2bd6d4fa72bd47d27824",
   "requirements": [
     {
@@ -518,8 +518,8 @@
   "restore_verifier_status": "Optional --hammerburst-park-restore input action hook integrated into private reload adapter; five synthetic action/receipt regressions passed. Actual park/redraw/new-grant/native-resume, typed conservation, UI/reward and complete return-fire require game evidence.",
   "latest_service_first_failure": "runtime-3112-first-failure-analysis.json",
   "latest_startup_failure": "runtime-49732-startup-failure.json",
-  "latest_runtime_failure": "runtime-30496-first-failure-analysis.json",
-  "latest_runtime_result": "runtime-30496-first-failure-analysis.json",
+  "latest_runtime_failure": "runtime-21052-first-failure-analysis.json",
+  "latest_runtime_result": "runtime-21052-first-failure-analysis.json",
   "latest_focused_pass": "runtime-50828-focused-result.json",
   "visual_audit_recording_repair": "Corrected finalizer wrong ID fivepartfitting\u2192part_fitting, attached reviewed22992 evidence also to guides, asserted target IDs exist. No requirement/score/acceptance change and no overwrite of current052600 runtime blocker.",
   "resource_release_evidence": {
@@ -610,5 +610,6 @@
     "event_age_ns": 262147300,
     "original_limit_ns": 250000000,
     "native_input_loss": 0
-  }
+  },
+  "latest_phase_cost_evidence": "runtime-21052-first-failure-analysis.json"
 }

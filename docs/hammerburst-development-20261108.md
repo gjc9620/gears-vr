@@ -668,3 +668,8 @@ PGedccad22/Native71f280b0核心6条一致射线后，首次drain原ButtonPress36
 ## 2026-11-11 首发等待耗时tail（尚未game）
 
 为30496原gate4事件到期取得匹配证据，私有PG0a3540a2仅加入原GT最近128条被动tail：现有pre/original/service/equipment阶段时钟、最后input sync/admission、原pending event/captured和当前first_debt/cancel等标量，另末端观察时钟只入记录不参与判定。写入与停止drain后dump均在同一原GT，先dump后publish stopped，worker不读ring，无新hook/engine/source/input调用或动作权限。200次写入/128条环形导出、顺序/分段/空dump检查通过；删除插入文本逐字等于原cpp/R2源，原射击条件和期限不改。完整PG编译通过，Native71f280b0/XR/公共v71不变。原提取历史候选不变且仍待实际覆盖；全部13项保留。
+
+
+## 2026-11-11 实际21052：真实GT耗时导出与独立开盖历史失败
+
+PG0a3540a2/Native71f280b0原完整流程78条一致射线和空仓veto通过；本轮未重现首发事件到期，开盖584/seq4700 historygate6 build或count失败，原112ms gap reason5拒绝。真实tail525/128导出、序号398..525及每条分段和全核。匹配row417完整GT35.1115ms（pre13.0682/original2.253/service0.0007/equipment19.7882/follow0.0014），相邻GT begin71.962ms，输入sync间隔111.8282ms；不能把112ms当该GT处理耗时。尾部first_debt0，成功首发段已旋出，不能据这些reload耗时解释30496 expiry。下一步仅在原relative::build失败后导出有界原previous/current/history时戳序号/epoch/控制，区分缺覆盖/原记录间断/投影/count，不先假定容量不足；另保留有限first-debt样本防旋出，不改判定或重查源。新latch登记/WAIT/提取历史均无命中，整流程失败。正常清理全0、无forced、407帧错误空/编码0、3页48对亲阅，视觉仍失败，全部13项保留。
