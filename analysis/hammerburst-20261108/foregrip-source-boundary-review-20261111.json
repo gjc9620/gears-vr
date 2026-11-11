@@ -1,0 +1,19 @@
+{
+  "scope": "Static PG source boundary review only; no new Native/game/headset evidence",
+  "source_sha256": {
+    "vr-common/weapon_support_socket_mode.h": "3b83d21da27fcbdfa91d2f8866c830752246e3c878604121f16c8d6f049d934e",
+    "vr-common/weapon_hammerburst_foregrip.h": "45834da29714eafa862d694ecf1fc5fdcc8c13c569bfb2217f3c90d0035d0048",
+    "playground/weapon_lancer_grasp.inl": "646c5ff2dc17410db9238f3593473f29695525e12719901b3a87fd8dd82735cb",
+    "playground/weapon_native_lancer_follow.inl": "ffbf07896fdaa2151aad0b508a4ec7e3b90793f8099fac03bfa1193f8acf9450"
+  },
+  "findings": [
+    "HB passive branch requires neutral snap mode and publishes proximity1, not an active lease.",
+    "Active support branch requires current valid matching support lease and original held control.",
+    "PG fallback two-hand steering requires current snapshot Grip::two; neutral source alone does not enter it.",
+    "HB foregrip surface remains explicitly provisional. No proof of exact Native C0 skin consumer/complete visual contact or current combined four-state test follows from this source review."
+  ],
+  "runtime_tests_rerun": false,
+  "production_changed": false,
+  "grasp_or_finger_tuning_performed": false,
+  "old_visual_evidence_scope": "48 overview paired samples plus6 original contacts previously personally viewed; no new all-angle proof"
+}

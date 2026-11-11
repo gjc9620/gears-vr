@@ -33,8 +33,10 @@ d['media'].update(encoded=True,encode_exit_code=0);p.write_text(json.dumps(d,ind
 p=A/'full-requirements-audit-20261110.json';audit=json.loads(p.read_text())
 audit.update(latest_runtime_result='runtime-22992-focused-result.json',latest_focused_pass='runtime-22992-focused-result.json',candidate_runtime_status='endpoint-baseline-r1 actual22992 focused loaded replacement PASS: two real original6 bursts, realUP pending handoff274/769 revalidated, typed72/78->78/72->72/72; original6-point history bridge live, pause/Bresume. Normal cleanup. Full weapon/empty/retained/fit/headset incomplete.',immediate_next='Save focused result; one fresh FULL empty path (omit --focused-loaded-replacement) using same compiled candidate and stricter9-fixture driver. Verify actual78 drain +zero veto +empty replacement78/0 +return6 with final typed72/0; stop first failure. Then retained original/four-state/two-hand/interruptions and fitting remain. Preserve all13 requirements; no unchanged focused rerun.')
 e=A/'runtime-22992-focused-result.json'
+evidence_ids={'acquire_stow','finite_fire','replacement','interruptions','part_fitting','guides','delivery_headset'}
+assert evidence_ids<={req['id'] for req in audit['requirements']}
 for req in audit['requirements']:
- if req['id'] in ('acquire_stow','finite_fire','replacement','interruptions','fivepartfitting','delivery_headset'):
+ if req['id'] in evidence_ids:
   req['evidence'].append(dict(path=str(e),sha256=hashlib.sha256(e.read_bytes()).hexdigest()))
  if req['id']=='finite_fire':req.update(status='current_two_original6_bursts_released_tail_confirmed_partial',limit='Actual22992 two real original6 bursts; both actualUP handoffs revalidate same pending event then tail.12 consistent rays; full two-hand/continuous-load/empty/zero-reserve acceptance remains open.')
  if req['id']=='replacement':req.update(status='current_loaded_replace_and_return_counts_confirmed',limit='Actual22992 loaded replacement typed72/78->78/72 and return6->72/72 passed, live6-point history/early priority/latch/supply. Empty/retained/all-flow stability and visual surface fit remain unaccepted.')

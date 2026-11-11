@@ -558,3 +558,10 @@ prelaunch-052600-result.json和5份原观察文本保留；cleanup-pending标为
 本方wrapper原样保留done且passed仍须operator0和真正owned_game_absent，因此已兼容这个新类型，无需额外改变或把no-start刷成gameplay pass。prelaunch-rejection-integration-check.json保存源码SHA与审阅，不重复共享测试、不启动runtime。旧53716和旧139未热更新、未回填新sidecar、未停止；本方53716 exact identity再核仍live。
 
 一次只读resource preflight当前明确active=['hb-cloak-1111-052600','lancer-natural-v139-225928']占满两名额。故不是一个会自动释放的普通等待：后续源码修复不能让旧运行代码正常退出；没有新增实例、没有放宽名额/身份、没有伪造game absence。需要单独解决本方旧控制worker的退出权限/资源占位，其他owner139不在本方操作范围。22992 loaded局部通过继续有效，052600完整空仓未执行，全部13项和full goal仍未完成。
+
+
+## 2026-11-11 视觉归档修正与资源恢复
+
+22992 finalizer将不存在的fivepartfitting ID改为真实part_fitting，并断言目标需求存在；把已亲审的48组双路概览及6张原始contact证据关联到手部贴合和引导条目。两项继续未接受，不增加运行或头显通过。PG静态复核只确认被动proximity与有效support lease分支边界，不替代Native/当前四态实测。
+
+协调方按用户明确释放指令强制结束旧052600 Python worker，原失败和异常收尾保留；没有强杀游戏或补造birth/done。证据owner-resource-release-20261111.json。新115143经正式入口准备一次并等待准入，继续完整空仓耗弹、换弹和回射，不复用旧实例。完整13项尚未完成。

@@ -1,0 +1,21 @@
+{
+  "instances": [
+    {
+      "archive": "J:\\gearsVr\\analysis\\hammerburst-archive-20261110\\terminal-shader-caches\\hb-cloak-1111-045812\\PSOCache",
+      "name": "hb-cloak-1111-045812",
+      "files": 105,
+      "bytes": 885049318.0
+    },
+    {
+      "archive": "J:\\gearsVr\\analysis\\hammerburst-archive-20261110\\terminal-shader-caches\\hb-cloak-1111-051514\\PSOCache",
+      "name": "hb-cloak-1111-051514",
+      "files": 105,
+      "bytes": 885049318.0
+    }
+  ],
+  "cache_contents_preserved": true,
+  "game_started": false,
+  "after_free": 4687261696,
+  "source_logs_media_moved": false,
+  "before_free": 2916671488
+}

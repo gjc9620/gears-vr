@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "scope": "full HB objective; no scope reduction",
-  "current_candidate": "endpoint-baseline-r1 full PG compiled,10 observer fixtures and17 driver cases passed, no game yet; full original reach preserved, exact endpoint required, private UP observation5mm only",
+  "current_candidate": "endpoint-baseline-r1 PG63b915a9; actual22992 focused loaded replacement passed; full empty and remaining requirements pending",
   "prepared_sha256": "20d8a6cd15b89c89b938aa201086c9d590251a2be74b2bd6d4fa72bd47d27824",
   "requirements": [
     {
@@ -137,6 +137,10 @@
         {
           "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-70816-review.json",
           "sha256": "695e553c3ae38ad64fe6543d78b1b01dfe13e4e464328f6d12913fb32962574b"
+        },
+        {
+          "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\foregrip-source-boundary-review-20261111.json",
+          "sha256": "45f31d6637cf712aeb553d1d0e6ea879baa71dd6c13e7231fa7953026f691a06"
         }
       ]
     },
@@ -271,14 +275,19 @@
       "id": "guides",
       "requirement": "全过程步骤引导与交互件Snap/Grab",
       "status": "unaccepted_visual",
-      "limit": "需对应当前动作的可见步骤引导，机构成功不能代替画面",
-      "evidence": []
+      "limit": "Current22992 sampled frames show guide wire geometry/labels during reload, but small text readability and complete step-by-step/action alignment remain unaccepted. Mechanical success is not visual guide acceptance.",
+      "evidence": [
+        {
+          "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-22992-focused-result.json",
+          "sha256": "577273e37ba5591facb7696cf50ed9ec1dc29347cce195c09c89b7e67e7eebb3"
+        }
+      ]
     },
     {
       "id": "part_fitting",
       "requirement": "主握/护木/锁扣/旧匣/新匣逐件掌指腕袖口",
       "status": "unaccepted",
-      "limit": "Reviewed54452:48 paired full-span samples+4 originals;20672:48 paired full-span samples. Near-face obstruction/overlap/white geometry persist; no all-angle or five-part surface/contact acceptance. Preserve owner order logic then Snap/Volume then GrabPose.",
+      "limit": "Current22992 mechanically successful loaded chain still shows near-right-eye oversized gun, ghost/intersection and open/separated offhand.48 paired overview samples+6 contact images reviewed; not full five-part skin/surface/all-angle/headset acceptance. Preserve logic→Snap/Volume→GrabPose order; no finger tuning begun here.",
       "evidence": [
         {
           "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-54452-first-failure-analysis.json",
@@ -287,6 +296,10 @@
         {
           "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-20672-first-failure-analysis.json",
           "sha256": "cf56505bfc98802e373195f23b1d61d5fc4d431d2e606912c6b3f7d777b96191"
+        },
+        {
+          "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\hammerburst-20261108\\runtime-22992-focused-result.json",
+          "sha256": "577273e37ba5591facb7696cf50ed9ec1dc29347cce195c09c89b7e67e7eebb3"
         }
       ]
     },
@@ -333,9 +346,9 @@
   ],
   "completion_proven": false,
   "goal_active": true,
-  "immediate_next": "No new runtime while own53716 cleanup unresolved. Existing coordinator owns shared prelaunch diagnostic/empty-worker normal terminal path. Preserve no_birth unknown, do not kill or fabricategame; original PythonCheckOnly now passes but cause unproven. Continue actual empty validation once normal owned terminal established. All13 requirements retained.",
+  "immediate_next": "Fresh hb-cloak-1111-115143 prepared for full finite empty reload/return-fire, waiting through formal resource admission; no reuse of052600. Preserve all13 requirements and inspect actual result before acceptance.",
   "historical_evidence_does_not_certify_current_PG": true,
-  "candidate_runtime_status": "Latest successful focused22992 remains. Full empty request052600 refused Python guard before game/operator; wrapper34409 terminal1, worker53716 exact lifetime still live in no_birth cleanup unknown. No empty action evidence.",
+  "candidate_runtime_status": "Focused22992 passed its loaded chain.052600 refused before game/operator; original wrapper1 and abnormal forced old-worker stop preserved. Fresh115143 has not yet supplied gameplay evidence.",
   "previous_recorded_candidate": {
     "name": "hammerburst-prepared-20261110-unheld-input-r1",
     "prepared_sha256": "76a2ae8cc56e4165b77ca5d17a9e6469ff66323e917be5a8b46da44df4f0bb58"
@@ -359,5 +372,11 @@
   "latest_startup_failure": "runtime-49732-startup-failure.json",
   "latest_runtime_failure": "prelaunch-052600-result.json",
   "latest_runtime_result": "runtime-22992-focused-result.json",
-  "latest_focused_pass": "runtime-22992-focused-result.json"
+  "latest_focused_pass": "runtime-22992-focused-result.json",
+  "visual_audit_recording_repair": "Corrected finalizer wrong ID fivepartfitting→part_fitting, attached reviewed22992 evidence also to guides, asserted target IDs exist. No requirement/score/acceptance change and no overwrite of current052600 runtime blocker.",
+  "resource_release_evidence": {
+    "path": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\coordinator-multi-20261110\\owner-resource-release-20261111.json",
+    "sha256": "e6553e0b37298980777cdfacb30877695399af5777d0ee24d979b7d017a81511",
+    "old_worker_exit": "owner-authorized forced supervisor stop; original failure and unresolved normal cleanup remain preserved"
+  }
 }
