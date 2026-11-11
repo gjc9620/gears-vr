@@ -3071,3 +3071,13 @@ cache条目目前仍是opaque descriptor；尚未读取其shape vector或证明�
 新故障用例找到本轮初版真实缺口：vector header不变，second-pass某成员已读后原地替换该pointer，header-only closure未发现。新增每pass尾部逐member指针回读后再关闭vector header。初版11失败中另有测试sentinel未逐例复位导致连锁误报；先修测试复位后，固定同测试源码原header699检查只1失败；产品补member close后同测试705检查0（新增6处收尾读导致6个额外fault case）。旧header/前后依赖SHA/log都保留，不将测试修正冒称产品修正。
 
 705检查0覆盖空/1/3/256清单、三类字段/flags原样、3条时52个读失败点、9个guard拒绝阶段、shape数据/membership/header/cache中途变化、257越界/错误类型table/NaN/非rigid/错对齐/null成员、reentry busy/alias。只有Mock内存原分派，无原getter/游戏/XR/生产Native构建/安装。active actor确由此cache创建的身份关联、authored逐项匹配、full self set/flags/world fence及生产接入仍未完成；完整CV24/AC22、body/view/hit/muzzle事务、视图遮挡和头显继续待完成，工程25%。证据cached-shapes-r223。
+
+## r224：authored→选中cache template逐项几何对应接通，保留cache来源及requested scale（2026-11-12）
+
+新增cover_authored_cache_match_live.inl纯owned逐BodySetup匹配：先校验完整supplied inventory总数/各body/kind计数、选中body header/mask、原始80字节再次decode及其缓存字段一致；原cache来源必须同setup+cc/dc、同requested scale和有效game source/vector/selection范围。按原sphere/box/sphyl顺序使用selected cached scale重放r220 descriptor规则，NoRBCollision bit0按原创建路径省略但保留disabled行，核对固定.025 margin、box half和胶囊[-X,Z,Y] basis。逐条将cache raw descriptor字节与其decoded字段、expected pose/dimensions三方核对，不只信任可被改过的decoded值；返回global authored index→cache index及同setup/bone标签，不授予当前身份或移动权限。
+
+同时补齐r223 Snapshot后续匹配所需的来源：原game Source、cache Source以及requested scale现在在两pass中保留/比较/发布，避免只有descriptor pointer/index无法追溯到哪个BodySetup和哪个lookup请求。当前requested scale与inventory原point producer数学结果必须一致；selected cache scale逐轴严格在原epsilon内，但实际创建尺寸用selected值，不能用今天requested值替代。外层仍须独立闭合当前setup身份/代码/生命周期，几何相等不是active actor历史创建证据。
+
+Match364累计检查0（含原authored inventory328）：2body/7原形状对应4+2 enabled template，保留disabled第七项；独立硬编码float32 oracle针对current6、cached6.00005（40c00069），scaled3df5c315/radius3e87ae57/box half3e147b24,3e51ebea,3e87ae57/capsule full length3eb85250及负零80000000轴符号，不调用creation converter生成expected fixture。错误source/request/越容差key、raw/decoded/pose/dims/缺项/乱序/convex/mask/bone/scale均拒绝保持输出；把cached scale改成current6仍保留原descriptor会拒绝，证明不是偷偷用当前值。将省略的disabled形状一致地重新启用时缺项拒绝；4个源形状全部disabled时空template匹配仍保留4行disabled。reader709检查0（原705+4来源字段回读断言），依赖SHA均当前。
+
+首次match编译遇既有pose_math参数actor与旧fixture全局actor的/WX shadow，调整测试include顺序使轻量pose数学先于旧fixture解析；未改既有数学/放宽warning。新body/cache匹配仍只使用合成当前元数据与保存原规则的CPU fixture，不称原游戏/实际cache执行。active cache→actor/shape身份、flags/full self/world fence和生产接入、完整CV24/AC22、body/view/hit/muzzle事务与视图遮挡/头显仍未完成，无游戏/XR/原函数/生产Native构建/安装，工程25%。证据authored-cache-r224。

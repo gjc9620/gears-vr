@@ -15,9 +15,9 @@ struct Vector {std::uintptr_t begin{},end{},limit{};};
 inline bool same(Vector const& a,Vector const& b)noexcept{return a.begin==b.begin&&a.end==b.end&&a.limit==b.limit;}
 struct Row {std::uintptr_t address{},table{};unsigned tag{},flags{};math::Matrix local{};
     std::array<float,3> half{};float radius{},full_segment_length{};std::array<unsigned char,144> bytes{};};
-struct Snapshot {cache::Selection selected{};Vector vector{};unsigned count{};std::array<Row,capacity> rows{};};
+struct Snapshot {Source source{};cache::Source cache_source{};std::array<float,3> requested_scale{};cache::Selection selected{};Vector vector{};unsigned count{};std::array<Row,capacity> rows{};};
 inline bool same(Snapshot const& a,Snapshot const& b)noexcept{
-    if(a.selected.index!=b.selected.index||a.selected.row.descriptor!=b.selected.row.descriptor||a.selected.row.scale!=b.selected.row.scale||
+    if(!same(a.source,b.source)||!cache::same(a.cache_source,b.cache_source)||a.requested_scale!=b.requested_scale||a.selected.index!=b.selected.index||a.selected.row.descriptor!=b.selected.row.descriptor||a.selected.row.scale!=b.selected.row.scale||
        !same(a.vector,b.vector)||a.count!=b.count)return false;
     for(unsigned n=0;n<capacity;++n)if(a.rows[n].address!=b.rows[n].address||a.rows[n].bytes!=b.rows[n].bytes)return false;
     return true;
@@ -33,8 +33,8 @@ inline bool vector(Vector const& v,unsigned& count)noexcept{
        (v.limit-v.begin)/8>capacity||!raw::span(v.begin,(std::max)(std::size_t(8),std::size_t(v.limit-v.begin))))return false;
     count=unsigned((v.end-v.begin)/8);return true;
 }
-template<class Read>Code pass(Source const& source,cache::Selection const& selected,Read& read,Snapshot& output){
-    output={};output.selected=selected;
+template<class Read>Code pass(Source const& source,cache::Source const& cache_source,std::array<float,3> const& requested,cache::Selection const& selected,Read& read,Snapshot& output){
+    output={};output.source=source;output.cache_source=cache_source;output.requested_scale=requested;output.selected=selected;
     if(!read(&output.vector,reinterpret_cast<void const*>(selected.row.descriptor+104),sizeof output.vector))return Code::read;
     if(!vector(output.vector,output.count))return Code::vector;
     for(unsigned n=0;n<output.count;++n){auto& row=output.rows[n];
@@ -83,9 +83,9 @@ template<class Read,class Guard>Code observe(Source const& source,cache::Snapsho
         work.cache_code=cache::observe(frozen.source,read,cache_guard,work.cache_work,work.cache_observed);
         return work.cache_code==cache::Code::observed&&cache::same(work.cache_observed,frozen);};
       if(!close_cache())return Code::cache_error;
-      auto code=detail::pass(key,selected,read,work.first);if(code!=Code::observed)return code;
+      auto code=detail::pass(key,frozen.source,scale,selected,read,work.first);if(code!=Code::observed)return code;
       if(!current())return Code::guard;
-      code=detail::pass(key,selected,read,work.last);if(code!=Code::observed)return code;
+      code=detail::pass(key,frozen.source,scale,selected,read,work.last);if(code!=Code::observed)return code;
       if(!same(work.first,work.last))return Code::changed;
       if(!close_cache())return Code::cache_error;
       if(!current())return Code::guard;

@@ -1,0 +1,32 @@
+{
+  "results": {
+    "match": "PrimitiveLayout checks=37 failures=0 actual reflection Proof; synthetic registry, no runtime authority\r\nArrayLayout checks=80 failures=0 reflection association only; synthetic registry\r\nBodySetup checks=135 failures=0 synthetic instances; no C0 permission\r\nasset kind=0 begin\r\nasset kind=1 begin\r\nasset kind=2 begin\r\nAssetSetup checks=219 failures=0 authored membership only; synthetic instances\r\nPointScale checks=292 failures=0 synthetic source; original route attestation remains external\r\nAuthoredInventory checks=328 failures=0 synthetic complete authored arrays; no active/world permission\r\nAuthoredCacheMatch checks=364 failures=0 owned source-to-template geometry only; no active identity\r\n",
+    "reader": "CachedShapes checks=709 failures=0 reads=52 guards=9 original descriptor fields only; no active identity\r\n"
+  },
+  "sources": {
+    "tools/native-capture/cover_authored_cache_match_live.inl": "bafb9bcbd8e1879b3525acd492f74865aba893316ef9cdbc6c605a510daf41bd",
+    "tools/native-capture/cover_authored_cache_match_live_test.cpp": "0a8f6a44a9fb60be435578f666eed16eaa1089fec948eb4ddc2fb7733a656bbf",
+    "tools/native-capture/cover_physx_cached_shapes.h": "8ade0e1d6fb57694bc2e27e8bbe03f9fc5643e56a7d37d51bb5f4c4434b23b83",
+    "tools/native-capture/cover_physx_cached_shapes_test.cpp": "64c53c21582f2923f29d9650c7c0ba8b0ff31f02dc78e192d612665cef044b36"
+  },
+  "original_semantic_evidence_sha256": {
+    "analysis\\cover-system-20261108\\capsule-creation-r220\\original-creation-certificate.json": "45116f09e4ce9ed8bd3f2e5c4b26629af6e9c196a8e72a2787df3f7c21eb6054",
+    "analysis\\cover-system-20261108\\cached-shapes-r223\\original-descriptor-certificate.json": "c63ab68dda106fcb2b33bca75f5ca169791af621e160e187f1f655d22037f3e6",
+    "analysis\\cover-system-20261108\\shape-cache-r222\\original-cache-certificate.json": "21344052d9c6777ee95452996e9a4472337afa0b4e75b52110fdfaddd3ad949a"
+  },
+  "change": "Owned complete per-BodySetup authored-to-selected-cache descriptor correspondence. Validate complete supplied inventory counts/order/raw-decode metadata, source setup/cache headers/module/requested scale; use selected cached scale with original strict tolerance, NoRBCollision bit0 skip, .025 margin/half dimensions/capsule[-X,Z,Y] basis; compare raw descriptor bytes with decoded metadata and generated expected pose/dimensions. Output maps original global authored index to template index and keeps disabled rows. Cached reader now retains original game source, cache source and requested scale through both passes.",
+  "tests": "Match364 checks0 includes authored inventory328. Two bodies with7 raw shapes match4+2 enabled template shapes and retain disabled seventh. Independent hardcoded float32 descriptor bits for cached6.00005/current6, raw dims2/3/4, capsule length3 and negative zero axis signs. Reject wrong source/request/key beyond tolerance, raw/decoded mismatch, missing/order/pose/dimension/convex/mask/bone/scale tampering. Replacing cached scale with current6 rejects. Consistent re-enable of omitted shape rejects; all-disabled four-shape source matches empty template while retaining all source rows. Reader709 checks0 includes prior705 and4 explicit source metadata checks.",
+  "oracle": {
+    "cache_scale_bits": "40c00069",
+    "scaled_axis_bits": "3df5c315",
+    "radius_bits": "3e87ae57",
+    "box_half_x_bits": "3e147b24",
+    "box_half_y_bits": "3e51ebea",
+    "capsule_full_length_bits": "3eb85250",
+    "capsule_negated_zero_bits": "80000000"
+  },
+  "remaining": "Geometric source-to-template association only. BodySetup identity/lifetime current scope remains caller responsibility. Does not establish active actor/cache creation identity, active shape index, flags eligibility, current world fence, production integration/game/headset/full CV24/AC22.",
+  "game_started": false,
+  "full_native_built": false,
+  "engineering_percent": 25
+}

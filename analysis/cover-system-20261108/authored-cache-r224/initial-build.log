@@ -1,0 +1,4 @@
+cover_authored_cache_match_live_test.cpp
+J:\codexWorktree\gearsVr\tools\native-capture\cover_physx_pose_math.h(32): error C2220: 以下警告被视为错误
+J:\codexWorktree\gearsVr\tools\native-capture\cover_physx_pose_math.h(32): warning C4459: “actor”的声明隐藏了全局声明
+J:\codexWorktree\gearsVr\tools\native-capture\cover_physics_roles_live_test.cpp(15): note: 参见“actor”的声明

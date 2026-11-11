@@ -25,6 +25,7 @@ int main(){d::Source source{0x140000000,0x2000000};d::cache::Source cache_source
  Memory m{};auto read=[&](void* dst,void const* at,size_t n){return m.read(dst,at,n);};
  auto prepare=[&](unsigned count){m=fixture(count);CHECK(d::cache::observe(cache_source,read,[](d::cache::Source const&){return true;},*cache_work,inventory)==d::cache::Code::observed);};
  for(unsigned count:{0u,1u,3u,256u}){prepare(count);CHECK(d::observe(source,inventory,requested,read,guard,*work,*output)==d::Code::observed&&output->count==count);
+  CHECK(d::same(output->source,source)&&d::cache::same(output->cache_source,cache_source)&&output->requested_scale==requested);
   for(unsigned n=0;n<count;++n){const auto& row=output->rows[n];CHECK(row.tag==n%3+1&&row.flags==8&&row.local.values[9]==float(n));
    CHECK(row.tag==2?(row.half[0]==2&&row.half[1]==3&&row.half[2]==4):row.radius==2);
    if(row.tag==3)CHECK(row.full_segment_length==3);}
