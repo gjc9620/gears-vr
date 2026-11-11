@@ -85,6 +85,8 @@ def main():
     history_rejection='--history-rejection' in sys.argv
     withdrawal_clock='--withdrawal-clock' in sys.argv
     history_origin='--history-origin' in sys.argv
+    early_refire='--early-released-refire' in sys.argv
+    assert not early_refire or history_origin,'Early refire retains the original history origin observer'
     assert not history_origin or withdrawal_clock,'History origin observer retains the first stale consumer observer'
     assert not withdrawal_clock or history_rejection,'Withdrawal clock observer includes the original history observer'
     assert not history_rejection or tick_cost_tail,'History rejection observer includes the original passive GT tail'
@@ -99,7 +101,11 @@ def main():
     if history_rejection:pg_candidate='history-rejection-r1'
     if withdrawal_clock:pg_candidate='withdrawal-clock-r1'
     if history_origin:pg_candidate='history-origin-r1'
+    if early_refire:pg_candidate='early-released-refire-r1'
     proof=json.loads((AREA/pg_candidate/'prepared.json').read_text())
+    if early_refire:
+        check=json.loads((AREA/pg_candidate/'early-refire-test-result.json').read_text())
+        assert check['passed'] and check['original_policy_unchanged'] and check['added_cases']==24 and not check['new_input_or_event']
     if history_origin:
         check=json.loads((AREA/pg_candidate/'history-origin-test-result.json').read_text())
         assert check['passed'] and check['exact_policy_reversal'] and check['extra_ring_reads']==0 and check['extra_clocks']==0
@@ -110,7 +116,11 @@ def main():
         check=json.loads((AREA/'latch-observation-wait-r1/observation-wait-test-result.json').read_text())
         assert check['passed'] and check['existing_latch_and_history_tests_passed'] and check['original_capacity']==8
         event='source/tools/playground/weapon_hammerburst_burst_event.inl'
-        assert (AREA/pg_candidate/event).read_bytes()==(AREA/'render-age-pg-r1'/event).read_bytes()
+        event_reference=AREA/'history-origin-r1'/event if early_refire else AREA/pg_candidate/event
+        if early_refire:
+            from prepare_early_released_refire import HELPER
+            assert (AREA/pg_candidate/event).read_text().replace(HELPER,'')==event_reference.read_text()
+        assert event_reference.read_bytes()==(AREA/'render-age-pg-r1'/event).read_bytes()
         if latch_incumbent:
             check=json.loads((AREA/'latch-incumbent-gap-r1/pose-gap-test-result.json').read_text())
             assert check['exit_code']==0 and check['actual_legacy_helper_reproduced_loss'] and check['real_up_releases']

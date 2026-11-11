@@ -1,0 +1,2 @@
+hammerburst_early_released_refire_test.cpp
+HB actual event adapter: 427 original-event/scope/UP/expiry/cleanup fake checks passed; common queue, engine and certificate are fakes

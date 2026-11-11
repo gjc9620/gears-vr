@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "scope": "full HB objective; no scope reduction",
-  "current_candidate": "Private PGaa02381d/Nativeb9ab7a82 actual7440:16 consistent rays, third group4/6 pendingevent250ms expiry. First stale copy19.5092ms commit age+81.4094ms later; GT77.1208ms accounts77.1079ms of delay, no Native inputloss. New history-origin branch not reached. All13 retain full scope.",
+  "current_candidate": "Private early-released-refire-r1 compiled 325200c3,427 actual adapter fixture checks/24 new cases pass; earlier existing original refire delivery after certifiedUP only. Original transaction/service/delivery/six/250ms/100ms/20ms unchanged. Not yet game tested; all13 remain.",
   "prepared_sha256": "20d8a6cd15b89c89b938aa201086c9d590251a2be74b2bd6d4fa72bd47d27824",
   "requirements": [
     {

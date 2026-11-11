@@ -1,0 +1,12 @@
+{
+  "passed": true,
+  "added_cases": 24,
+  "added_checks": 92,
+  "actual_event_adapter": true,
+  "exact_original_service_delivery_and_claim": true,
+  "original_policy_unchanged": true,
+  "new_input_or_event": false,
+  "clock_renewal": false,
+  "game_started": false,
+  "limits": "Actual adapter/finite ledger with bounded engine/source/certificate fakes, scheduling comparison synthetic. Does not prove game execution or6-shot full-flow completion."
+}

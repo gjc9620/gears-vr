@@ -722,3 +722,8 @@ PGaa02381d history-origin-r1在原连续性ring读取中保留本地latest/selec
 ## 2026-11-11 实际7440：首次过期读取的执行耗时分解
 
 PGaa02381d/Nativeb9ab7a82实际16条一致射线（core6、drain6、下一组4/6），原servicegate4 pendingevent250ms到期拒绝，未到开盖/新origin观察。首次expired_reader1实录286/4043：commit source19.5092ms，commit→GTbegin4.3015ms，GTbegin→首个stale copy77.1079ms，合100.9186ms；GT完整77.1208ms，首拒绝距GTend12.9us。原R2读取已85.1078ms/preparation_budget0，pendingevent17在最后input admission年龄237.5792ms，下一GTbegin已308.4072ms，原250ms拒绝，不能延长。Nativeinputloss0/Gate27均age-only保留。下一步检查只将已捕获且已有真实UP认证的HB续发交给现有pre-original fresh muzzle阶段，避免等待后段手/视觉/装备观察；首发/新按下/装备仍走原Input次序，必须保留同event/原capture/20ms/100ms/250ms/原六发及一次claim所有身份取消切枪保护，先实际caller+transaction测试，不无变化重跑。4629缺失原因仍开。正常清理全0无forced、182帧错误空/编码0，3页48对亲阅视觉仍失败；13项保留。
+
+
+## 2026-11-11 已认证UP续发提前到原pre-original枪口阶段
+
+Private PG325200c3 early-released-refire-r1完整编译；只对已捕获refire、已有真实UP lifetime、input不持有、非first/cancel且原有限事务count1..5，现有pre-original fresh muzzle准备后调用原service/deliver。原事件/capture/claim/六发/100ms/20ms/250ms、身份切枪tracking与post-Input新按下/首发逻辑保持。24新增case/92check+原335，实际adapter fixture共427通过：早180ms与晚310ms同一原事件对照、22有效/否定变体、重复pre/post不多打。engine/certificate/source为有界fake，不能作game证明。初次fullbuild缺前置接口声明、fixture混合auto和无reset成员导致编译失败，补声明、拆变量并用空事务赋值修正，未放宽生产判定；最终build/check0。Nativeb9ab7a82/XR不变，未运行新候选，13项保留。

@@ -1,0 +1,59 @@
+--- a/tools/playground/weapon_hammerburst_burst_event.inl
++++ b/tools/playground/weapon_hammerburst_burst_event.inl
+@@ -446,4 +446,26 @@
+         }
+     }
+ }
+-}
++// Consume only an EXISTING original continuation after a previously
++// certified real UP. New presses/first events remain in the post-Input path.
++void pre_original_released_refire(hand::Frame const& f) noexcept {
++#if defined(GEARS_PLAYGROUND_HB_STALE_DEBT_WAIT) && GEARS_PLAYGROUND_HB_STALE_DEBT_WAIT
++    if(!released_lifetime.epoch||tx::first_debt||!tx::firing_debt||tx::cancel_requested||
++       vrfire::input.owns_press()||!owns_pending()||event.kind!=common::policy::EventKind::refire||
++       tx::completion.state()!=tx::policy::State::committed||!tx::completion.count()||tx::completion.count()>=6||
++       f.controllers.hands[1].trigger_active!=1||f.controllers.hands[1].trigger>.35f||
++       !targets(f.weapon.address)||!weaponhand::client.existing_action_lifetime_on_gt(released_lifetime))return;
++    const auto serial=event.serial;const auto captured=event.captured;const auto before=tx::completion.count();
++    // Original checks, original event/capture and original once-only claim.
++    // No Input advance, event capture, clock renewal or alternate dispatcher.
++    service(f.controller.address);deliver(f);
++    static unsigned rows{};
++    if(log_file&&rows<12){++rows;
++        fwprintf(log_file,L"hammerburst_pre_original_refire frame=%llu sequence=%llu event=%llu captured_ns=%lld before_count=%u after_count=%u pending_after=%u once_claim=1\n",
++            f.key.frame,f.controllers.sequence,serial,captured,before,tx::completion.count(),unsigned(owns_pending()));fflush(log_file);
++    }
++#else
++    (void)f;
++#endif
++}
++}
+--- a/tools/playground/weapon_hammerburst_burst_runtime.h
++++ b/tools/playground/weapon_hammerburst_burst_runtime.h
+@@ -19,6 +19,7 @@
+ bool defer(std::uint64_t object,std::uint64_t function) noexcept;
+ bool service(std::uint64_t controller) noexcept;
+ void deliver(gears_weapon_hand::Frame const&) noexcept;
++void pre_original_released_refire(gears_weapon_hand::Frame const&) noexcept;
+ bool release_completed(gears_weapon_hand::Frame const* normal_source) noexcept;
+ void after_tick(gears_weapon_hand::Frame const* current_source) noexcept;
+ void after_release(gears_weapon_hand::Frame const&) noexcept;
+--- a/tools/playground/weapon_lancer_r2_native.inl
++++ b/tools/playground/weapon_lancer_r2_native.inl
+@@ -329,9 +329,13 @@
+        !game.known||!game.main_hand_held||game.animation_owns_hands||game.busy){
+         unified_weapon_fire::clear_source();return;
+     }
+-    if(unified_weapon_fire::ready_for(frame,20000000))return;
+-    nativelancerfollow::tick(frame,nativelancerfollow::Phase::prepare_only);
+-    if(!unified_weapon_fire::prepare_current(frame,game))unified_weapon_fire::clear_source();
++    if(!unified_weapon_fire::ready_for(frame,20000000)){
++        nativelancerfollow::tick(frame,nativelancerfollow::Phase::prepare_only);
++        if(!unified_weapon_fire::prepare_current(frame,game))unified_weapon_fire::clear_source();
++    }
++#if defined(GEARS_PLAYGROUND_HB_FINITE_BURST) && GEARS_PLAYGROUND_HB_FINITE_BURST
++    hammerburst_burst_event::pre_original_released_refire(frame);
++#endif
+ }
+ #endif
+ void tick(uptr pc) noexcept {
