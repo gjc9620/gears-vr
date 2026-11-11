@@ -1,0 +1,256 @@
+{
+  "schema": 1,
+  "kind": "repository_vr_launcher",
+  "owner_identity": {
+    "pid": 58648,
+    "creation_time": 134389126493337227,
+    "image": "c:\\users\\11\\.cache\\codex-runtimes\\codex-primary-runtime\\dependencies\\python\\python.exe"
+  },
+  "phase": "finished",
+  "passed": true,
+  "instance_root": "J:\\codexWorktree\\gearsVr\\analysis\\instances\\cover-1112-r236-cloak-observed-pose",
+  "render_size_plan": {
+    "runtime_render_size_plan": true,
+    "recommended": [
+      4096,
+      3288
+    ],
+    "render_scale": 0.4,
+    "eye": [
+      1639,
+      1316
+    ],
+    "source": [
+      3278,
+      1316
+    ],
+    "engine_sbs_limit": 8192,
+    "dimensions_are_plan_not_gpu_proof": true
+  },
+  "original_part_preparation": {
+    "schema": 1,
+    "game_path": "J:\\gearsVr\\Gears.of.War.Reloaded.v1.0.1.3816947-P2P\\Gears of War Reloaded\\Binaries_x64\\GOWDE-Steam.exe",
+    "cache_root": "J:\\codexWorktree\\gearsVr\\analysis\\weapon-part-cache",
+    "stage": "before_game_reservation",
+    "parts": {
+      "magazine": {
+        "prepared": true,
+        "source_sha256": "1f1c5a1405d354f89d352c26547a22a1c4cd791ba769755b6e9317e93ceaecb2"
+      },
+      "lancer_handle": {
+        "prepared": true,
+        "source_sha256": "df356ff3dda45e060f87b5ed94c806d96bbfe36b74b21a0f1d2032596f9dcf4d"
+      },
+      "lancer_magazine": {
+        "prepared": true,
+        "source_sha256": "df356ff3dda45e060f87b5ed94c806d96bbfe36b74b21a0f1d2032596f9dcf4d"
+      }
+    }
+  },
+  "test_audio_guard": {
+    "enabled": true,
+    "game_identity": {
+      "pid": 53596,
+      "creation_time": 134389126567751687
+    },
+    "owner_identity": {
+      "pid": 58648,
+      "creation_time": 134389126493337227
+    },
+    "log": "J:\\codexWorktree\\gearsVr\\analysis\\instances\\cover-1112-r236-cloak-observed-pose\\launcher-session.b2c8090f79ea4df8b8595ea4e5604dfa.audio.jsonl",
+    "restored": true,
+    "startup": {
+      "ready_observed": true,
+      "ready_timeout_seconds": 15.0,
+      "waited_seconds": 0.046000000002095476,
+      "helper_exit_code": null
+    },
+    "exit_code": 0,
+    "event": "guard_cleanup",
+    "reason": "stop",
+    "matched": 1,
+    "muted": 1,
+    "restore_attempted": 1,
+    "restore_pending": 0,
+    "read_failed": 0,
+    "mute_failed": 0,
+    "scans": 239,
+    "endpoint_unavailable": 0,
+    "shared_rejected": 2629,
+    "sessions_restored": 1,
+    "mute_verification": {
+      "event": "mute_verification_summary",
+      "pid": 53596,
+      "initially_muted_sessions": 0,
+      "verified_muted_observations": 239,
+      "verify_failed": 0,
+      "target_shared_rejected": 0,
+      "shared_rejected_is_global_scan_count": true
+    }
+  },
+  "game_identity": {
+    "pid": 53596,
+    "creation_time": 134389126567751687,
+    "image": "j:\\gearsvr\\gears.of.war.reloaded.v1.0.1.3816947-p2p\\gears of war reloaded\\binaries_x64\\gowde-steam.exe"
+  },
+  "reservation": {
+    "game_identity": {
+      "pid": 53596,
+      "creation_time": 134389126567751687,
+      "image": "j:\\gearsvr\\gears.of.war.reloaded.v1.0.1.3816947-p2p\\gears of war reloaded\\binaries_x64\\gowde-steam.exe"
+    },
+    "game_sha256": "bdc6705d18ddb335b767df0b38e256ba5da0f49449c8970b302118bb7a4a8fa4",
+    "pid": 53596,
+    "dll": "J:\\codexWorktree\\gearsVr\\analysis\\instances\\cover-1112-r236-cloak-observed-pose\\native\\GearsCapture.dll",
+    "trampolines_reserved": true,
+    "hooks_enabled": true,
+    "first_view_mask_reserved": true,
+    "native_hooks_enabled": true,
+    "graphics_hooks_enabled": 4,
+    "scene_hooks_enabled": false,
+    "descriptor_hooks_enabled": 3,
+    "independent_entry_checks": [
+      {
+        "rva": "0x15cf08",
+        "matches": true
+      },
+      {
+        "rva": "0x15c968",
+        "matches": true
+      },
+      {
+        "rva": "0x3a148c",
+        "matches": true
+      },
+      {
+        "rva": "0x193d50",
+        "matches": true
+      },
+      {
+        "rva": "0x116250",
+        "matches": true
+      },
+      {
+        "rva": "0x15a80c",
+        "matches": true
+      },
+      {
+        "rva": "0x15a974",
+        "matches": true
+      },
+      {
+        "rva": "0x1fc060",
+        "matches": true
+      },
+      {
+        "rva": "0x13cfcc",
+        "matches": true
+      },
+      {
+        "rva": "0x1af42c",
+        "matches": true
+      },
+      {
+        "rva": "0x2a7e48",
+        "matches": true
+      },
+      {
+        "rva": "0x119bdd",
+        "matches": true
+      },
+      {
+        "rva": "0x33bc70",
+        "matches": true
+      }
+    ],
+    "factory_hooks_enabled": 3,
+    "prime_lifetime": "owner",
+    "prime_owner_pid": 58648,
+    "prime_owner_creation_time": 134389126493337227,
+    "playground_reservation": {
+      "reserved": true,
+      "hook_enabled": false,
+      "entry_restored": true,
+      "dll": "J:\\codexWorktree\\gearsVr\\tools\\playground\\build-cover-1112-r236-cloak-observed-pose\\GearsPlayground6DofUnified3.dll",
+      "sha256": "f8e6f3c2715b244e8250976c3eb1279cb306c2a50576e078f64bf8b23daf4807",
+      "pid": 53596
+    }
+  },
+  "playground": {
+    "enabled": true,
+    "dll": "J:\\codexWorktree\\gearsVr\\tools\\playground\\build-cover-1112-r236-cloak-observed-pose\\GearsPlayground6DofUnified3.dll",
+    "sha256": "f8e6f3c2715b244e8250976c3eb1279cb306c2a50576e078f64bf8b23daf4807",
+    "pid": 53596,
+    "status_file": "J:\\codexWorktree\\gearsVr\\tools\\playground\\build-cover-1112-r236-cloak-observed-pose\\playground-status-53596.json",
+    "menu_label": "happyotaku playground"
+  },
+  "playground_before_xr_startup": true,
+  "session_report": "J:\\codexWorktree\\gearsVr\\analysis\\runtime\\continuous-stereo-53596-20261112-071750-83ddd034.json",
+  "session_id": "83ddd03408cf4edd8fd21fdc03af7d84",
+  "vr_gamepad": {
+    "enabled": true,
+    "before_level_discovery": true,
+    "keyboard_required": false,
+    "source": 1,
+    "virtual_pad_only": true,
+    "focus_gate": {
+      "schema": 1,
+      "identity": {
+        "pid": 53596,
+        "creation_time": 134389126567751687,
+        "image": "j:\\gearsvr\\gears.of.war.reloaded.v1.0.1.3816947-p2p\\gears of war reloaded\\binaries_x64\\gowde-steam.exe"
+      },
+      "module_base": "0x140000000",
+      "executable_sha256": "bdc6705d18ddb335b767df0b38e256ba5da0f49449c8970b302118bb7a4a8fa4",
+      "input_original_sha256": "acab8014abe6fe624b697c25bda4ddcdf2d9ac4be1b90a50a67f950e1a851adb",
+      "state": "enabled",
+      "action": "enable",
+      "patches": [
+        {
+          "rva": "0x19afcd",
+          "original": "75",
+          "enabled": "eb"
+        },
+        {
+          "rva": "0x19aff0",
+          "original": "0f85210d0000",
+          "enabled": "909090909090"
+        }
+      ],
+      "verified": true,
+      "time_unix": 1794439076.020257,
+      "suspended_threads": 47,
+      "ledger": "J:\\codexWorktree\\gearsVr\\analysis\\runtime\\background-input-53596-134389126567751687.json",
+      "startup_thread_exit_retries": []
+    },
+    "gate_lease_owned": true,
+    "focus_gate_attempts": 1
+  },
+  "menu_navigation": {
+    "loading_requested": true,
+    "target": "happyotaku_playground",
+    "controlled_test_entry": true
+  },
+  "level_player": {
+    "pawn": "0x1628e40100",
+    "controller": "0x8e241590",
+    "camera": "0x7d79ece0",
+    "level": "0x976fb140",
+    "timestamp": 3.224400043487549
+  },
+  "control_exit_code": 0,
+  "native_activated": true,
+  "playground_cleanup": {
+    "loaded": true,
+    "shutdown_code": 0,
+    "entry_restored": true,
+    "passed": true
+  },
+  "tiny_output_monitor_cleanup": {
+    "joined": true
+  },
+  "prime_cleanup": {
+    "handed_off": true
+  },
+  "prime_watchdog_pending": false
+}

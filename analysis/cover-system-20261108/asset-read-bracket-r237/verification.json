@@ -1,0 +1,22 @@
+{
+  "results": {
+    "before": "cover_physics_query_live: 110 checks, 0 failures; dispatch/module are Host seams, no original call\r\nAssetReadFullOwner calls=138 repeated_typed_checks=64\r\nAssetShapeSession checks=825 failures=0 actual Session with empty Host packet; original calls0\r\n",
+    "session": "cover_physics_query_live: 110 checks, 0 failures; dispatch/module are Host seams, no original call\r\nAssetReadFullOwner calls=6 repeated_typed_checks=64\r\nAssetShapeSession checks=165 failures=0 actual Session with empty Host packet; original calls0\r\n",
+    "engine": "read_budget=228 guard_calls=12\r\nCoverPhysXShapeOwner checks=531 failed=0 original-executed=false game-started=false\r\nparameter_reads=102\r\nShapeParameters checks=702 failed=0 original PE as data; stored fields only, no world/eligibility permit\r\nworld_reads=140\r\nShapeWorld checks=1708 failed=0 original PE as data; original-unit CPU pose only, no query fence\r\nAssetShapes checks=1734 failed=0 synthetic object groups; complete supplied asset only, no world/self permit\r\nAssetShapesEngine checks=1743 failed=0 actual QueryEngine/HostImage only; no original dispatch\r\n",
+    "off": "cover_physics_c0 OFF: 65 checks, 0 failures; no game/module/query\r\n"
+  },
+  "same_session_fixture": true,
+  "full_owner_calls": {
+    "before": 138,
+    "session": 6
+  },
+  "repeated_typed_sourceguard_checks": 64,
+  "native_sha256": "c5e3d0f2f4d00de93c7db48b6626e36d35f5eaeb085c40801e84f610269e73d8",
+  "dependencies": 423,
+  "flags_unchanged": true,
+  "game_started": false,
+  "installed": false,
+  "change": "Complete no-dispatch asset read uses existing synchronous read_source_group. Every typed SourceGuard recheck/value/metadata proof retained. Full external owner/cover/pose/original freshness checks before/after group and in final closing; all result stays private until close. Original query branches unchanged. No new timestamp or expanded lifetime.",
+  "remaining": "New grouped candidate not yet game-run. r236 reached actor3 then original age expired. Need actual full read within unchanged time, then numerical geometry envelope and full self/world/template/body/view/hit/muzzle/headset.",
+  "engineering_percent": 25
+}

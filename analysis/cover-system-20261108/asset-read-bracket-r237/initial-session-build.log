@@ -1,0 +1,21 @@
+cover_asset_shapes_session_test.cpp
+J:\codexWorktree\gearsVr\tools\native-capture\cover_physics_query_live.inl(147): error C2131: 表达式的计算结果不是常数
+J:\codexWorktree\gearsVr\tools\native-capture\cover_physics_query_live.inl(147): note: 失败是由于读取常量计算期间未知的值而导致的
+J:\codexWorktree\gearsVr\tools\native-capture\cover_physics_query_live.inl(147): note: 模板实例化上下文(最早的实例化上下文)为
+J:\codexWorktree\gearsVr\tools\native-capture\cover_physics_query_live_test.cpp(77): note: 查看对正在编译的函数 模板 实例化“gears_cover_physx_query::Code cover_physics_query_live::Session<HostEngine>::overlap<gears_cover_physx_query::Box,bool(__cdecl *)(void *,const void *,size_t),bool(__cdecl *)(void)>(const weapon_hand_scene_binding::Binding &,const gears_cover_pose_phase::Metadata &,const Shape &,Read,Guard,gears_cover_physx_query::Overlap &) noexcept”的引用
+        with
+        [
+            Shape=gears_cover_physx_query::Box,
+            Read=bool (__cdecl *)(void *,const void *,size_t),
+            Guard=bool (__cdecl *)(void)
+        ]
+J:\codexWorktree\gearsVr\tools\native-capture\cover_physics_query_live_test.cpp(77): note: 请参阅 "nested_query" 中对 "cover_physics_query_live::Session<HostEngine>::overlap" 的第一个引用
+J:\codexWorktree\gearsVr\tools\native-capture\cover_physics_query_live.inl(288): note: 查看对正在编译的函数 模板 实例化“gears_cover_physx_query::Code cover_physics_query_live::Session<HostEngine>::execute<Shape,bool(__cdecl *)(void *,const void *,size_t),bool(__cdecl *)(void),gears_cover_physx_query::Overlap,cover_physics_query_live::Session<HostEngine>::overlap::<lambda_cd3b15d0b5f68b1a483a1e9cfc9539ef>>(const weapon_hand_scene_binding::Binding &,const gears_cover_pose_phase::Metadata &,const Shape &,Read,Guard,Output &,Invoke)”的引用
+        with
+        [
+            Shape=gears_cover_physx_query::Box,
+            Read=bool (__cdecl *)(void *,const void *,size_t),
+            Guard=bool (__cdecl *)(void),
+            Output=gears_cover_physx_query::Overlap,
+            Invoke=cover_physics_query_live::Session<HostEngine>::overlap::<lambda_cd3b15d0b5f68b1a483a1e9cfc9539ef>
+        ]

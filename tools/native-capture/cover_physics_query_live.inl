@@ -143,7 +143,23 @@ template<class Engine=q::Queries> class Session {
             else if constexpr(std::is_same_v<Output,path::RawPath>)return path_result_;
             else if constexpr(std::is_same_v<Output,gears_cover_physx_asset_shapes::Snapshot>)return asset_shapes_result_;else return local;}();
         stage_=Stage::engine;detail_=0;
-        const auto code=timing::measure(timing::Stage::engine,[&](){return invoke(engine_,before_.source,geometry,read,current,result);});detail_=unsigned(code);
+        const auto code=timing::measure(timing::Stage::engine,[&](){
+            if constexpr(std::is_same_v<Output,gears_cover_physx_asset_shapes::Snapshot>){
+                // The complete no-dispatch inventory is one synchronous
+                // READ-ONLY group. Keep every typed SourceGuard recheck and
+                // original first/last value proof. Full owner/cover/pose/time
+                // checks bracket this group, then closing checks them again.
+                // Private result cannot escape an expired/failed group.
+                q::Code observed=q::Code::source;
+                const bool closed=read_source_group(owner,source,guard,[&](auto& read_guard){
+                    using ReadGuard=std::remove_reference_t<decltype(read_guard)>;
+                    SourceGuard<ReadGuard,false> grouped{*this,owner,source,read_guard};
+                    observed=invoke(engine_,before_.source,geometry,read,grouped,result);
+                    return observed==q::Code::queried;
+                });
+                return closed?observed:(observed==q::Code::queried?q::Code::source:observed);
+            }else return invoke(engine_,before_.source,geometry,read,current,result);
+        });detail_=unsigned(code);
         if(code==q::Code::fault_unknown||engine_.uncertain())enabled_=false;
         if(code!=q::Code::queried)return code;
         stage_=Stage::closing;

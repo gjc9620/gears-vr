@@ -1,0 +1,26 @@
+{
+  "operator_exit": 0,
+  "normal_cleanup_verified": true,
+  "remaining_owned": {},
+  "projection_frames": 264,
+  "projection_errors": [],
+  "anchor_sources_unchanged": true,
+  "cover_reader_sources_unchanged": true,
+  "cloak_observations": {
+    "samples": 552,
+    "failures": []
+  },
+  "foreground_observations": {
+    "samples": 372,
+    "owned_activation": false
+  },
+  "forced_termination": false,
+  "shape_status": [
+    "cover_shape_snapshot_requested=1 attempted=1 finished=1 code=10 detail=7 bodies=0 actors=0 shapes=0 units=physx movement_permission=0 original_started=0,0 original_returned=0,0 world=2312995072 pawn=95175311616 scene=413 compose=25406 sequence=2689 thread=34040 admission=6 session_entered=1 session_stage=5 session_detail=10 begin_ns=223912551960100 end_ns=223912586561900",
+    "cover_shape_snapshot_owner_guard=147,147,8,3,6 session_guard=72,72,2,3,0 source_cause=1,14674320,25406,34040,0,3,1",
+    "cover_shape_snapshot_nested=0,2,0 cover_shape_snapshot_failed=3,4294967295 cover_shape_snapshot_progress=19,0,0,4294967295 cover_shape_snapshot_partial_unpublished=1 cover_shape_snapshot_partial_actor=2312313472,4781618048,95177023232,95177216960,140720154309328,3,1 cover_shape_snapshot_partial_arrays=0,0,0,0,0,0",
+    "cover_shape_snapshot_world_pass=0 cover_shape_snapshot_world_stage=9 cover_shape_snapshot_parameter_code=0 cover_shape_snapshot_pose_unpublished=1 cover_shape_snapshot_body=1,140720154306664 cover_shape_snapshot_stored_p=0.520000041,-7.74860265e-09,1.87903638e-07 cover_shape_snapshot_stored_q=-0.500000119,0.5,0.5,0.50000006 cover_shape_snapshot_body_p=-78.6260605,-3.63792419,11.1049986 cover_shape_snapshot_body_q=0.116130456,-0.748628795,-0.434486896,-0.487104833",
+    "cover_shape_snapshot_world_pass=1 cover_shape_snapshot_world_stage=9 cover_shape_snapshot_parameter_code=0 cover_shape_snapshot_pose_unpublished=1 cover_shape_snapshot_body=1,140720154306664 cover_shape_snapshot_stored_p=0.520000041,-7.74860265e-09,1.87903638e-07 cover_shape_snapshot_stored_q=-0.500000119,0.5,0.5,0.50000006 cover_shape_snapshot_body_p=-78.6260605,-3.63792419,11.1049986 cover_shape_snapshot_body_q=0.116130456,-0.748628795,-0.434486896,-0.487104833"
+  ],
+  "interpretation": "Original observed pose passes previous Body-pose rejection; progresses to actor3 then owner guard147 original source age expired after34.6018ms. No output published/no original calls. Need reduce repeated owner work inside same synchronous read-only group while retaining typed checks and full original begin/end owner/freshness checks."
+}
