@@ -81,6 +81,8 @@ def main():
     extraction_history='--extraction-history' in sys.argv
     tick_cost_tail='--tick-cost-tail' in sys.argv
     history_rejection='--history-rejection' in sys.argv
+    withdrawal_clock='--withdrawal-clock' in sys.argv
+    assert not withdrawal_clock or history_rejection,'Withdrawal clock observer includes the original history observer'
     assert not history_rejection or tick_cost_tail,'History rejection observer includes the original passive GT tail'
     assert not tick_cost_tail or extraction_history,'Passive tail candidate includes the pending extraction policy'
     assert not extraction_history or latch_incumbent,'Extraction candidate includes the tested latch incumbent policy'
@@ -91,7 +93,11 @@ def main():
     if extraction_history:pg_candidate='extraction-history-r1'
     if tick_cost_tail:pg_candidate='tick-cost-tail-r1'
     if history_rejection:pg_candidate='history-rejection-r1'
+    if withdrawal_clock:pg_candidate='withdrawal-clock-r1'
     proof=json.loads((AREA/pg_candidate/'prepared.json').read_text())
+    if withdrawal_clock:
+        check=json.loads((AREA/pg_candidate/'withdrawal-clock-test-result.json').read_text())
+        assert check['passed'] and check['exact_policy_reversal'] and check['added_clocks']==0 and check['added_source_reads']==0
     if latch_observation:
         check=json.loads((AREA/'latch-observation-wait-r1/observation-wait-test-result.json').read_text())
         assert check['passed'] and check['existing_latch_and_history_tests_passed'] and check['original_capacity']==8

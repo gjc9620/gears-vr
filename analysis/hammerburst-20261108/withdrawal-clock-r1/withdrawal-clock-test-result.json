@@ -1,0 +1,10 @@
+{
+  "passed": true,
+  "cases": 8,
+  "existing_client_cases_passed": true,
+  "exact_policy_reversal": true,
+  "added_clocks": 0,
+  "added_source_reads": 0,
+  "all_reader_classes": true,
+  "game_started": false
+}

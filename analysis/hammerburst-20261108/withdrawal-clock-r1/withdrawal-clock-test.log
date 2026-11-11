@@ -1,0 +1,11 @@
+withdrawal-clock-test.cpp
+First stale clock: 8 cases, all readers/support modes; no added clock/read, original receipt survives cleared publication
+Publication age observation: 8 cases; original clocks and admission unchanged
+WeaponHandClientTest passed: 15 existing + 49 Frame-copy + 17 source-current cases; local host/adapter only, no equipment/write authority
+Single-hand pending marker: 32 cases; no left grant, fresh repress and strict commit required
+Source-only observer: 17 identical liveness rejection cases; no contact proposals
+Existing original-action lifetime: 12 cases; explicit epoch invalidation, ancestry and no new pose authority
+Source observer routing: 1 case; full Frame/game reads retain candidate observation
+Source game-state output: 8 cases; no publication or grant
+Retained motion ancestry: 3 cases; original clocks, no fresh Frame/game/write authority
+Expired empty-proposal receipt: 3 cases; known contact/pending versus known miss, no renewed permission

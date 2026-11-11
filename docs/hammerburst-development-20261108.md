@@ -690,3 +690,8 @@ PGaf4dac2b/Native71f280b0。339帧UP基线p5/r5；341帧新DOWN p6/r5 deferred10
 原candidate PGaf4dac2b/Native71f280b0不变，测试修正fde58046。core6与五组drain6实际36条一致射线、剩42；下一次p7/r6没有持有或射线。源347/seq3550 stale_before100.1348ms撤回，PG无当前Frame关闭输入；恢复355/3557扳机已按下，BASELINE1未持有，后386 BLOCKED8。符合原防重放，不是29012漏认owned2，也不允许补按重试。tail292/128分段和核对，firstseen0，历史观察未到达；Native inputloss0/Gate76均age-only保留逻辑登记，不等于允许输入。下一步只定位原publication stale-before时刻及源到Native/Native到PG延迟，现有GT耗时不证明全链原因，不改期限/续时/旧按下。正常清理全0、无forced，211帧错误空/编码0，3页48对亲阅，视觉仍失败；13项完整目标保留。
 
 52000源边界核对：stale_before5由Playground WeaponHandClient消费时fresh检查产生，并非Native broker prepare/commit失败；Native inputloss0。后续publication1只带已记录的347撤回，无法还原首个失败copy的commit-age/since-commit或调用方。上次成功输入sync908592400→admission974651900为66.0595ms，不能当作347同一源。下一步定位首个消费copy原观察字段的有界保留，现有数据不足以归责调度或并发；不得把100ms改大或沿用恢复时已按住的输入。
+
+
+## 2026-11-11 首个消费过期观察版本
+
+PG31f7d324 withdrawal-clock-r1在原首个fresh失败调用处保留已有read clock、commit age、since-commit及入口copy1/source2/snapshot3，原撤回函数仍执行一次，未新增clock/source读取或更改时限/输入。实际Client8项覆盖单手/双手和source两种入口，原全部Client检查通过；源码逆变换精确等于原版，Native/XR未重建。仅私有观察版本，尚无游戏证据，不算功能修复或验收。13项保留。两轮已终止实例的shader缓存逐文件SHA核验归档J并映射，原源码/日志/媒体未移动。

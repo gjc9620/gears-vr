@@ -1,0 +1,78 @@
+--- a/tools/vr-common/weapon_hand_client.h
++++ b/tools/vr-common/weapon_hand_client.h
+@@ -53,6 +53,8 @@
+     // Last successful commit's existing freshness-check clock, not a source
+     // stamp or an action permit. Negative values mean unavailable.
+     std::int64_t commit_check_input_age_ns{-1},since_commit_check_ns{-1};
++    std::int64_t expired_read_ns{-1},expired_input_age_ns{-1};
++    unsigned expired_reader{}; // Observation only: copy1, source2, snapshot3.
+ };
+ // Lifetime of an already journalled ORIGINAL action through a normal pose/
+ // animation handoff. This is neither a pose/input Frame nor an action grant.
+@@ -202,6 +204,21 @@
+         committed_={};prepared_game_={};committed_game_={};committed_decision_={};
+         pending_=false;prepared_epoch_=0;published_.store(0,std::memory_order_release);
+     }
++    // Keep the FIRST failing read's existing clock before the original
++    // withdrawal clears committed_. No added clock, source read or decision.
++    void withdraw_expired_pose_gt(unsigned reader,std::int64_t read_ns) noexcept {
++        const auto frame=committed_.key.frame;
++        const auto sync=committed_.controllers.sync_ns;
++        const auto check=committed_check_ns_;
++        withdraw_expired_pose_gt();
++        if(frame&&last_withdrawal_.frame==frame){
++            last_withdrawal_.expired_reader=reader;
++            last_withdrawal_.expired_read_ns=read_ns;
++            last_withdrawal_.expired_input_age_ns=sync>0&&read_ns>=sync?read_ns-sync:-1;
++            last_withdrawal_.commit_check_input_age_ns=sync>0&&check>=sync?check-sync:-1;
++            last_withdrawal_.since_commit_check_ns=check>0&&read_ns>=check?read_ns-check:-1;
++        }
++    }
+     Reply fail_gt(Reply reason) noexcept {clear_gt();return reason;}
+     bool active(std::uint64_t epoch) const noexcept {
+         return phase_.load(std::memory_order_acquire)==ClientPhase::active&&!terminal_.load(std::memory_order_acquire)&&
+@@ -545,7 +562,7 @@
+             observation->candidate=candidate_observation(committed_,committed_game_,committed_decision_);
+         }
+         if(!key_valid(committed_)){clear_gt(FrameReadFailure::key);return fail(FrameReadFailure::key);}
+-        if(!fresh(committed_,now)){withdraw_expired_pose_gt();return fail(FrameReadFailure::stale_before);}
++        if(!fresh(committed_,now)){withdraw_expired_pose_gt(1,now);return fail(FrameReadFailure::stale_before);}
+         if(!adapter_.observe(adapter_.context,committed_,now,current)){clear_gt(FrameReadFailure::observe);return fail(FrameReadFailure::observe);}
+         if(!same_pose_consumer_observation(committed_,committed_decision_,current,committed_game_)){
+             // Classify candidates, actual item incumbents, and remaining
+@@ -574,7 +591,7 @@
+         auto now=adapter_.clock_ns(adapter_.context);GripGameState current{};
+         const auto observe=source_only&&adapter_.observe_source?adapter_.observe_source:adapter_.observe;
+         if(!key_valid(committed_)){clear_gt(FrameReadFailure::key);return false;}
+-        if(!fresh(committed_,now)){withdraw_expired_pose_gt();return false;}
++        if(!fresh(committed_,now)){withdraw_expired_pose_gt(2,now);return false;}
+         if(!observe(adapter_.context,committed_,now,current)||!current.known){clear_gt(FrameReadFailure::observe);return false;}
+         now=adapter_.clock_ns(adapter_.context);
+         if(!active(epoch)||published_.load(std::memory_order_acquire)!=epoch||!fresh(committed_,now))return false;
+@@ -600,7 +617,7 @@
+         if(!active(epoch)||published_.load(std::memory_order_acquire)!=epoch)return false;
+         auto now=adapter_.clock_ns(adapter_.context);GripGameState current{};
+         if(!key_valid(committed_)){clear_gt(FrameReadFailure::key);return false;}
+-        if(!fresh(committed_,now)){withdraw_expired_pose_gt();return false;}
++        if(!fresh(committed_,now)){withdraw_expired_pose_gt(3,now);return false;}
+         if(!adapter_.observe(adapter_.context,committed_,now,current)){clear_gt(FrameReadFailure::observe);return false;}
+         if(!same_pose_consumer_observation(committed_,committed_decision_,current,committed_game_)){
+             clear_gt(FrameReadFailure::game_changed,game_difference(current,committed_game_));return false;}
+--- a/tools/playground/weapon_hammerburst_source_loss_observation.inl
++++ b/tools/playground/weapon_hammerburst_source_loss_observation.inl
+@@ -5,13 +5,13 @@
+     static unsigned source_loss_rows{},idle_source_loss_rows{};
+     const bool record_source_loss=hb_pending_before?source_loss_rows<12:(hb_bound_before&&idle_source_loss_rows<6);
+     if(log_file&&record_source_loss&&(!have_source||!current)){
+-        fwprintf(log_file,L"hammerburst_source_loss pending_before=%u copy_ok=%u current=%u owned_before=%u result=%u copy_failure=%u copy_difference=%u copy_frame=%llu copy_sequence=%llu copy_age_ns=%lld commit_age_ns=%lld since_commit_ns=%lld copy_candidate_flags=%u withdrawal_failure=%u withdrawal_difference=%u withdrawal_frame=%llu withdrawal_sequence=%llu withdrawal_age_ns=%lld withdrawal_left_down=%u withdrawal_candidate_flags=%u withdrawal_lease=%u game_known=%u game_r2=%u admitted_ns=%lld\n",
++        fwprintf(log_file,L"hammerburst_source_loss pending_before=%u copy_ok=%u current=%u owned_before=%u result=%u copy_failure=%u copy_difference=%u copy_frame=%llu copy_sequence=%llu copy_age_ns=%lld commit_age_ns=%lld since_commit_ns=%lld copy_candidate_flags=%u withdrawal_failure=%u withdrawal_difference=%u withdrawal_frame=%llu withdrawal_sequence=%llu withdrawal_age_ns=%lld withdrawal_left_down=%u withdrawal_candidate_flags=%u withdrawal_lease=%u game_known=%u game_r2=%u admitted_ns=%lld expired_reader=%u expired_read_ns=%lld expired_input_age_ns=%lld expired_commit_age_ns=%lld expired_since_commit_ns=%lld\n",
+             unsigned(hb_pending_before),unsigned(have_source),unsigned(current),unsigned(r2_owned_before),unsigned(result),
+             unsigned(copy_observation.failure),copy_observation.game_difference,copy_observation.frame,copy_observation.sequence,
+             copy_observation.input_age_ns,copy_observation.commit_check_input_age_ns,copy_observation.since_commit_check_ns,
+             copy_observation.candidate.flags,unsigned(source_withdrawal.failure),source_withdrawal.game_difference,
+             source_withdrawal.frame,source_withdrawal.sequence,source_withdrawal.input_age_ns,source_withdrawal.left_grip_down,
+-            source_withdrawal.candidate.flags,source_withdrawal.candidate.lease,unsigned(game.known),unsigned(game.r2_held),input_admission_ns);
++            source_withdrawal.candidate.flags,source_withdrawal.candidate.lease,unsigned(game.known),unsigned(game.r2_held),input_admission_ns,source_withdrawal.expired_reader,source_withdrawal.expired_read_ns,source_withdrawal.expired_input_age_ns,source_withdrawal.commit_check_input_age_ns,source_withdrawal.since_commit_check_ns);
+         fflush(log_file);if(hb_pending_before)++source_loss_rows;else ++idle_source_loss_rows;
+     }
+ }

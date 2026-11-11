@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "scope": "full HB objective; no scope reduction",
-  "current_candidate": "PGaf4dac2b/Native71f280b0, helper16 checks.52000 actual36 consistent rays/core6+five drain6; next DOWN after stale-before347/3550 at100.1348ms never owned, held recovery BASELINE then BLOCKED; no empty/reload reached. Distinct from29012 missed owned receipt. All13 remain.",
+  "current_candidate": "Private withdrawal-clock-r1 PG31f7d324 compiled.8 first-stale actual Client cases plus existing suite pass, exact original policy reversal and no extra source/clock calls. No functional freshness repair or runtime acceptance yet; all13 retained.",
   "prepared_sha256": "20d8a6cd15b89c89b938aa201086c9d590251a2be74b2bd6d4fa72bd47d27824",
   "requirements": [
     {
