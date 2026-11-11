@@ -3141,3 +3141,13 @@ Engine1723累计检查0，含owner519/parameters687/world1688/asset1714与实际
 由此针对body比较查保存的原构造：124660以local_1a8作descriptor，descriptor+8来自Actor+18（NpActor+40 optional Body），descriptor+20来自Actor+8（NpActor+30 public-owner backlink）；1336b0将NpActor+28传入Actor创建。b0790拷descriptor+20至Shape+d0、descriptor+8至Shape+148。现有reader错误把Shape+d0和NpActor+40 Body比较。证据沿用r225完整原PE字节认证的三个function，完整pseudocode/assembly及原bundle SHA保存在original-owner-construction.json；这是静态来源推导，当前游戏仅导出失败阶段，没有导出实际d0值，二者明确分开。后续以原构造字段单独replay反例并修正两条归属，不删除比较。
 
 269投影/errors0、14总览、5实际阶段contact逐张亲看仍双眼自身头肩/躯干严重遮挡FAIL；未亲看全部overview，full_span人工验收false。编码0，正常清理true、owned remaining为空、无强杀，CLOAK589失败0，前台386无owned激活；anchor/cover reader前后相同。完整CV24/AC22与同版body/view/hit/muzzle、full self/world fence/头显仍未完成，工程25%，publicv71/Quest/固定入口不变。证据shape-stage-runtime-r230。
+
+## r231：修正Shape公开Actor／optional Body字段混淆，同counter旧6失败→新0（2026-11-12）
+
+按r230实际Stage15与原124660→b0790构造证据，新增独立cover_physx_shape_owner_fields_test.cpp，明确原Shape+d0=public Actor、+148=optional Body、NpActor+40=Body；不从被测reader推expected字段。相同counter源码/实际原DLL仅作为PE数据：旧header9检查6失败，既错误拒绝正确dynamic/static，也错误接受把public owner字段替换成Body。旧两个product header与旧依赖/log保留；修复后同9检查0。
+
+actor_shapes与shape_owner两处同时修正：d0独立等于当前public Actor，148独立等于NpActor+40 optional Body，最小内部shape pointer范围扩至150。保留已有public↔internal shape、actor backlink、scene、type code、membership双pass、owner/source/关闭比较；不是删除Body校验或将错归属当non-self。原Body为空static路径仍受两条分别资格检查。下游world的internal_actor仍指optional Body，语义不改。三个旧synthetic fixture改为原构造字段，counter自身源码不变。
+
+Engine1741累计0（owner531、parameter702、world1706、asset1732），新增read引出额外故障点逐一拒绝；actor inventory79、Session125、OFF65均0。原DLL未加载/未分派query，Session空Host packet仅作owner事务回归。完整Native以r229冻结树仅两个product header overlay，flags不变，422依赖逐SHA无外部混入；DLL SHA3ca85b2f8642d8a3ef9e58f030ca58be18c94df586c24607c71d3ce36b157471。未安装/未游戏运行此修复，下一次新shape模式须验证实际失败能否越过此点，不提前称整批成功。
+
+完整CV24/AC22、active/template身份、static/weld/flags/full self/world fence、body/view/hit/muzzle同版事务、视图遮挡与头显仍未完成，工程25%；publicv71/固定手动入口/Quest不变。证据shape-owner-fields-r231。

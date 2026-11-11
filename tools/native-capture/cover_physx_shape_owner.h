@@ -45,14 +45,15 @@ template<class Read> Code sample(std::uintptr_t image_base,std::uint32_t image_s
     if(!raw::field(read,next.actor,shape,0x38)||!source::pointer(next.actor,0x48)||
        !raw::field(read,next.actor_table,next.actor,0)||!raw::field(read,next.scene,next.actor,0x38))return Code::read;
     if(next.actor_table!=image_base+0x2330a8||next.scene!=scene)return Code::links;
-    if(!raw::field(read,next.internal_shape,shape,0x30)||!source::pointer(next.internal_shape,0xd8)||
+    if(!raw::field(read,next.internal_shape,shape,0x30)||!source::pointer(next.internal_shape,0x150)||
        !raw::field(read,next.internal_shape_table,next.internal_shape,0))return Code::read;
     if(!in_image(image_base,image_size,next.internal_shape_table,0x48)||
        !raw::field(read,method,next.internal_shape_table,0x40))return Code::read;
     if(method!=image_base+0xc4e0)return Code::module;
-    std::uintptr_t public_shape{},shape_actor{},public_actor{};
+    std::uintptr_t public_shape{},shape_actor{},shape_body{},public_actor{};
     if(!raw::field(read,public_shape,next.internal_shape,0xa0)||
        !raw::field(read,shape_actor,next.internal_shape,0xd0)||
+       !raw::field(read,shape_body,next.internal_shape,0x148)||
        !raw::field(read,next.internal_actor,next.actor,0x40))return Code::read;
     if(next.internal_actor&&!source::pointer(next.internal_actor,0x18))return Code::links;
     namespace back=gears_cover_physx_actor_backlink;
@@ -60,7 +61,7 @@ template<class Read> Code sample(std::uintptr_t image_base,std::uint32_t image_s
     if(relation==back::Code::read)return Code::read;
     if(relation==back::Code::unsupported)return Code::module;
     if(relation!=back::Code::current)return Code::links;
-    if(public_shape!=shape||shape_actor!=next.internal_actor||public_actor!=next.actor)return Code::links;
+    if(public_shape!=shape||shape_actor!=next.actor||shape_body!=next.internal_actor||public_actor!=next.actor)return Code::links;
     output=next;return Code::observed;
 }
 template<class Read> bool code_current(std::uintptr_t image_base,Read& read){

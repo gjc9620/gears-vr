@@ -8,7 +8,7 @@ namespace owner=gears_cover_physx_shape_owner;
 constexpr std::uintptr_t shape_at=0x190000,internal_shape_at=0x1a0000,internal_actor_at=0x1b0000,
     other_actor_at=0x1c0000,other_internal_actor_at=0x1d0000;
 static void links(Memory& m,std::uintptr_t actor,std::uintptr_t internal){
-    m.put<std::uintptr_t>(shape_at+0x38,actor);m.put<std::uintptr_t>(internal_shape_at+0xd0,internal);
+    m.put<std::uintptr_t>(shape_at+0x38,actor);m.put<std::uintptr_t>(internal_shape_at+0xd0,actor);m.put<std::uintptr_t>(internal_shape_at+0x148,internal);
 }
 static Memory ownership_fixture(char const* path){
     auto m=fixture();if(!load_code(path,m))throw 3;

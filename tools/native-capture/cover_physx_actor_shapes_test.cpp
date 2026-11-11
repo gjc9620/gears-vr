@@ -10,7 +10,7 @@ int main(int argc,char** argv){
  auto read=[&](void* d,void const* a,std::size_t n){return memory.read(d,a,n);};auto work=std::make_unique<inventory::Workspace>();inventory::Snapshot out{},sentinel{};sentinel.actor=0xdead;
  // The real DLL stays data; the owner/code admission is an explicit seam.
  check(inventory::observe(base,size,0x160000,0x170000,read,[]{return true;},*work,out)==inventory::Code::observed&&out.count==1&&out.body==internal_actor_at,"dynamic single member with reverse body preserved");
- memory.put<std::uintptr_t>(0x160040,0);memory.put<std::uintptr_t>(internal_shape_at+0xd0,0);
+ memory.put<std::uintptr_t>(0x160040,0);memory.put<std::uintptr_t>(internal_shape_at+0xd0,0x160000);memory.put<std::uintptr_t>(internal_shape_at+0x148,0);
  check(inventory::observe(base,size,0x160000,0x170000,read,[]{return true;},*work,out)==inventory::Code::observed&&!out.body&&out.rows[0].public_shape==shape_at,"static single shape membership without fabricated dynamic body");
  memory.block(0x200000,0x1f0);memory.block(0x210000,16);memory.block(0x220000,16);
  memory.put<std::uintptr_t>(0x160048,0x200000);memory.put<std::uintptr_t>(0x200000,base+0x227950);memory.put<unsigned>(0x200168,9);

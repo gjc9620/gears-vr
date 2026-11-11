@@ -1,0 +1,20 @@
+{
+  "results": {
+    "before": "FAIL constructor owner fields qualify dynamic/static shape\r\nFAIL constructor owner fields qualify full actor inventory\r\nFAIL constructor owner fields qualify dynamic/static shape\r\nFAIL constructor owner fields qualify full actor inventory\r\nFAIL Body cannot replace public Actor owner\r\nFAIL inventory rejects wrong public owner\r\nOwnerFields checks=9 failed=6 original constructor fields only; no game/query\r\n",
+    "counter": "OwnerFields checks=9 failed=0 original constructor fields only; no game/query\r\n",
+    "engine": "read_budget=228 guard_calls=12\r\nCoverPhysXShapeOwner checks=531 failed=0 original-executed=false game-started=false\r\nparameter_reads=102\r\nShapeParameters checks=702 failed=0 original PE as data; stored fields only, no world/eligibility permit\r\nworld_reads=140\r\nShapeWorld checks=1706 failed=0 original PE as data; original-unit CPU pose only, no query fence\r\nAssetShapes checks=1732 failed=0 synthetic object groups; complete supplied asset only, no world/self permit\r\nAssetShapesEngine checks=1741 failed=0 actual QueryEngine/HostImage only; no original dispatch\r\n",
+    "actor": "CoverActorShapes checks=79 failed=0 original PE as data; code/owner guard is a seam, no query integration\r\n",
+    "session": "cover_physics_query_live: 110 checks, 0 failures; dispatch/module are Host seams, no original call\r\nAssetShapeSession checks=125 failures=0 actual Session with empty Host packet; original calls0\r\n",
+    "off": "cover_physics_c0 OFF: 65 checks, 0 failures; no game/module/query\r\n"
+  },
+  "same_counter_source": true,
+  "original_static_evidence": "shape-stage-runtime-r230/original-owner-construction.json",
+  "native_sha256": "3ca85b2f8642d8a3ef9e58f030ca58be18c94df586c24607c71d3ce36b157471",
+  "dependencies": 422,
+  "flags_unchanged": true,
+  "game_started": false,
+  "installed": false,
+  "change": "Shape+d0 public Actor must match public actor; Shape+148 optional Body must independently match actor+40. Correct both actor inventory and per-shape ownership readers, preserve all links/source/closure guards. Update older synthetic fixtures to original constructor layout. Same9-counter: before6fail after0; old code also wrongly accepted replacing public actor field with Body pointer.",
+  "remaining": "Actual repaired game read not run yet. Full CV24/AC22, world/self boundary, template-active identity, body/view/hit/muzzle consistency, severe view obstruction and headset acceptance open.",
+  "engineering_percent": 25
+}

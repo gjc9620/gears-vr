@@ -1,0 +1,7 @@
+FAIL constructor owner fields qualify dynamic/static shape
+FAIL constructor owner fields qualify full actor inventory
+FAIL constructor owner fields qualify dynamic/static shape
+FAIL constructor owner fields qualify full actor inventory
+FAIL Body cannot replace public Actor owner
+FAIL inventory rejects wrong public owner
+OwnerFields checks=9 failed=6 original constructor fields only; no game/query

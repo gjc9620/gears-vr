@@ -66,15 +66,15 @@ template<class Read>Code sample(std::uintptr_t image_base,std::uint32_t size,std
     for(unsigned n=0;n<out.count;++n){auto& row=out.rows[n];row.internal=out.root;if(progress)progress->member=n;stage(Stage::member_read);
         if(out.type==9&&(!raw::field(read,row.internal,out.internal_array[0],n*8)||!raw::field(read,row.public_shape,out.public_array[0],n*8)))return Code::read;
     stage(Stage::internal_header);
-        if(!s::pointer(row.internal,0xd8))return Code::links;
-        std::uintptr_t internal_table{},body{},back{};
-        if(!raw::field(read,internal_table,row.internal,0)||!raw::field(read,back,row.internal,0xa0)||!raw::field(read,body,row.internal,0xd0))return Code::read;
+        if(!s::pointer(row.internal,0x150))return Code::links;
+        std::uintptr_t internal_table{},body{},shape_actor{},back{};
+        if(!raw::field(read,internal_table,row.internal,0)||!raw::field(read,back,row.internal,0xa0)||!raw::field(read,shape_actor,row.internal,0xd0)||!raw::field(read,body,row.internal,0x148))return Code::read;
     stage(Stage::internal_slot);
         if(!in_image(image_base,size,internal_table,0x48)||!slot(read,internal_table,0x40,image_base+0xc4e0))return Code::module;
     stage(Stage::parent);
         if(out.type==9){if(back!=row.public_shape||!raw::field(read,row.parent,row.internal,8)||row.parent!=out.root)return Code::links;}else row.public_shape=back;
     stage(Stage::body_link);
-        if(body!=out.body||!s::pointer(row.public_shape,0x40))return Code::links;
+        if(shape_actor!=actor||body!=out.body||!s::pointer(row.public_shape,0x40))return Code::links;
     stage(Stage::public_links);
         if(!raw::field(read,row.table,row.public_shape,0)||!raw::field(read,back,row.public_shape,0x30)||back!=row.internal||
            !raw::field(read,back,row.public_shape,0x38)||back!=actor)return Code::links;

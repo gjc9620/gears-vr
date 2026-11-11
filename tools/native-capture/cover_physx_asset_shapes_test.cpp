@@ -10,7 +10,7 @@ static void batch_shape(Memory& m,std::uintptr_t shape,std::uintptr_t internal,o
  const unsigned public_index=kind==owner::Kind::box?0:kind==owner::Kind::capsule?1:5;
  const unsigned table=kind==owner::Kind::box?0x226c80:kind==owner::Kind::capsule?0x2272d0:0x2303e8;
  m.put<std::uintptr_t>(shape,base+owner::shape_tables[public_index]);m.put<std::uintptr_t>(shape+0x30,internal);m.put<std::uintptr_t>(shape+0x38,actor);
- m.put<std::uintptr_t>(internal,base+table);m.put<std::uintptr_t>(internal+8,parent);m.put<std::uintptr_t>(internal+0xa0,shape);m.put<std::uintptr_t>(internal+0xd0,body);
+ m.put<std::uintptr_t>(internal,base+table);m.put<std::uintptr_t>(internal+8,parent);m.put<std::uintptr_t>(internal+0xa0,shape);m.put<std::uintptr_t>(internal+0xd0,actor);m.put<std::uintptr_t>(internal+0x148,body);
  world_put(m,internal+0x78,internal+0x88,{.4,.1,-.2,.9},{2,-3,4});m.put<unsigned>(internal+0x180,0x13579);
  m.put<float>(internal+0x1b0,2.f);m.put<float>(internal+0x1b4,3.f);
  for(unsigned n=0;n<3;++n)m.put<float>(internal+0x1b8+n*4,float(n+2));
