@@ -1,0 +1,5 @@
+cover_full_goal_live_test.cpp
+J:\codexWorktree\gearsVr\tools\native-capture\cover_full_goal_live_test.cpp(23): error C2653: “camera”: 不是类或命名空间名称
+J:\codexWorktree\gearsVr\tools\native-capture\cover_full_goal_live_test.cpp(23): error C2065: “enabled”: 未声明的标识符
+J:\codexWorktree\gearsVr\tools\native-capture\cover_full_goal_live_test.cpp(28): error C2653: “camera”: 不是类或命名空间名称
+J:\codexWorktree\gearsVr\tools\native-capture\cover_full_goal_live_test.cpp(28): error C2065: “enabled”: 未声明的标识符

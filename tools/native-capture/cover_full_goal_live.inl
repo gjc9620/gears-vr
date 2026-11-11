@@ -7,7 +7,7 @@ uint64_t attempts{},accepted{},rejected{};
 const char* reason="inactive";
 void clear(char const* why){std::lock_guard<std::mutex> lock(mutex);available=false;reason=why;}
 void prepare(gears_anchor::Receipt const* scene_receipt,gears_vr::StereoResult const& selected_stereo){
-    if(!cover_input_live::enabled||!cover_camera_live::enabled)return;
+    if(!cover_input_live::enabled||!cover_camera_live::enabled){clear("disabled");return;}
     ++attempts;
     try{
         auto const& diagnostics=cover_input_live::diagnostics;auto const& result=diagnostics.latest;

@@ -1,0 +1,7 @@
+FAIL 25: !goal::available&&!std::strcmp(goal::reason,"disabled")
+FAIL 27: !goal::read(held_key,gears_vr::monotonic_ns(),value)&&value.observed_ns==123
+FAIL 29: !goal::read(held_key,gears_vr::monotonic_ns(),value)
+FAIL 25: !goal::available&&!std::strcmp(goal::reason,"disabled")
+FAIL 27: !goal::read(held_key,gears_vr::monotonic_ns(),value)&&value.observed_ns==123
+FAIL 29: !goal::read(held_key,gears_vr::monotonic_ns(),value)
+cover_full_goal_live: 35 checks, 6 failures; synthetic provider, no C0/physics permission

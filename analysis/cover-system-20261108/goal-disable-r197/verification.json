@@ -1,0 +1,12 @@
+{
+  "before": "FAIL 25: !goal::available&&!std::strcmp(goal::reason,\"disabled\")\r\nFAIL 27: !goal::read(held_key,gears_vr::monotonic_ns(),value)&&value.observed_ns==123\r\nFAIL 29: !goal::read(held_key,gears_vr::monotonic_ns(),value)\r\nFAIL 25: !goal::available&&!std::strcmp(goal::reason,\"disabled\")\r\nFAIL 27: !goal::read(held_key,gears_vr::monotonic_ns(),value)&&value.observed_ns==123\r\nFAIL 29: !goal::read(held_key,gears_vr::monotonic_ns(),value)\r\ncover_full_goal_live: 35 checks, 6 failures; synthetic provider, no C0/physics permission\r\n",
+  "after": "cover_full_goal_live: 35 checks, 0 failures; synthetic provider, no C0/physics permission\r\n",
+  "initial_compile_failure": "test used nonexistent camera alias; corrected to cover_camera_live; preserved original build log",
+  "product_change": "Inactive input/camera now clears FullGoal store before return",
+  "current_body_publication_preserved": "kernel_serial plus completed_consumer guard retained; do not restore weaker frozen publication",
+  "full_native_built": false,
+  "game_started": false,
+  "headset_accepted": false,
+  "cover_view_fixed": false,
+  "engineering_percent": 25
+}

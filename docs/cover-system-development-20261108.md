@@ -2819,3 +2819,11 @@ query34.2674ms，code source，engine/source_guard/current；Owner53次context/s
 保存前初次一致性断言发现当前四模块与实际冻结源均非逐字一致，故停止原保存；随后直接查冻结源确认上述分支。不能声称当前与冻结完全相同，也不能把preview flag猜作唯一原因。双方SHA已保存于r196-cover-view-wiring-analysis.json；后续先审当前差异，再将认证placement与现有cover target接唯一身体事务/同提交视图，保留固定骨长/真实追踪一次/完整碰撞占用，不加第二写者或以隐藏模型替代接线。1单位诊断capsule不是身体安全证明。
 
 本轮源码审阅/证据保存，没有新游戏/测试/产品修改；全CV01–24/AC01–22和头显未完成，工程25%不变。
+
+## r197：保留当前消费者事务修复，FullGoal停用后旧目标失效已修（2026-11-12）
+
+对r193冻结源与当前四模块做换行归一后的代码差异核对，确为真实变化：当前body publication增加kernel_serial并要求completed_consumer，不能还原冻结版较弱条件；full goal增加同源tracking及独立view绑定；capture还有其他已开发模块/清理接线。保留这些成果，不对current作整文件覆盖或拿旧Native当当前集成版。
+
+接线检查发现当前FullGoal.prepare在input/camera disabled时直接return，已存target仍available。先在实际生产store及原共享消费者夹具加两种disable/re-enable/fresh-prepare用例：旧版35检查6失败，确实仍读旧目标；修复为clear("disabled")后返回，新版35检查0失败。关闭输入或相机均使旧target不可读，重新打开标志本身不复活，只有新合法prepare恢复；拒绝读取保持输出不变。synthetic native/neutral provider仅为CPU seam，不授C0/physics权限。
+
+首次夹具用了不存在camera别名而编译失败，日志保留；改为cover_camera_live后先复现再修生产。实际前后源码SHA/依赖/编译/运行回执在goal-disable-r197。本轮无完整Native构建、无游戏/XR/Quest启动；不称视图遮挡或完整接线修好。后续继续认证placement、唯一身体完成事务及同版视图消费，完整CV01–24/AC01–22/头显未完成，工程25%。

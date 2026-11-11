@@ -16,6 +16,21 @@ int main(){
     C(!value.pose_applied&&!value.collision_verified&&!value.same_pose_epoch_verified&&!value.head_bone_goal_valid);
     C(value.tracking.sample.received_ns==stereo.sample.received_ns);
 
+    // Disabling either provider consumes the stored target. Re-enabling a
+    // flag alone must not resurrect it; a fresh valid prepare is required.
+    for(unsigned disabled=0;disabled<2;++disabled){
+        const auto held_key=value.key;
+        if(disabled==0)input::enabled=false;else cover_camera_live::enabled=false;
+        goal::prepare(nullptr,stereo);
+        C(!goal::available&&!std::strcmp(goal::reason,"disabled"));
+        value.observed_ns=123;
+        C(!goal::read(held_key,gears_vr::monotonic_ns(),value)&&value.observed_ns==123);
+        input::enabled=true;cover_camera_live::enabled=true;
+        C(!goal::read(held_key,gears_vr::monotonic_ns(),value));
+        goal::prepare(&scene,stereo);C(goal::available);
+        C(goal::read(goal::latest.key,gears_vr::monotonic_ns(),value));
+    }
+
     // A matching sequence cannot substitute a different same-sequence pose.
     stereo.sample.head.position.x+=.1;
     for(auto& eye:stereo.sample.eyes)eye.pose.position.x+=.1;
