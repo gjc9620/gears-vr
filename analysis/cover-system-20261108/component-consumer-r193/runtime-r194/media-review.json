@@ -1,0 +1,163 @@
+{
+  "frames": 275,
+  "recording_sha256": "e288c209e20aa437ed33617c7a3a85ceb26bdfc43a7095ce1d0c6ade20a6318e",
+  "pages": [
+    {
+      "file": "J:\\codexWorktree\\gearsVr\\analysis\\cover-system-20261108\\component-consumer-r193\\runtime-r194\\overview-1.jpg",
+      "sha256": "001a0613c5cea5bddb13bf7dcc13bded6be2c9f721ef061318352fd9775969c1"
+    },
+    {
+      "file": "J:\\codexWorktree\\gearsVr\\analysis\\cover-system-20261108\\component-consumer-r193\\runtime-r194\\overview-2.jpg",
+      "sha256": "b00cf878dd1784ff89159a8a55df67c8a65742467c6ee205fe1e12e358f8e1b3"
+    },
+    {
+      "file": "J:\\codexWorktree\\gearsVr\\analysis\\cover-system-20261108\\component-consumer-r193\\runtime-r194\\overview-3.jpg",
+      "sha256": "7f6ba8699881efc5b44ffc3749169be045392ba59a175c1d368ec3fd001949be"
+    },
+    {
+      "file": "J:\\codexWorktree\\gearsVr\\analysis\\cover-system-20261108\\component-consumer-r193\\runtime-r194\\overview-4.jpg",
+      "sha256": "0ded017ad4cfb2792a23aaf2641ad15be14a32213a86a5c79621b8d92337a5e8"
+    },
+    {
+      "file": "J:\\codexWorktree\\gearsVr\\analysis\\cover-system-20261108\\component-consumer-r193\\runtime-r194\\overview-5.jpg",
+      "sha256": "ac0f3eca9f2a4db8d07890af909487908516e3672f0c44bb4dd6b6376f7a3339"
+    },
+    {
+      "file": "J:\\codexWorktree\\gearsVr\\analysis\\cover-system-20261108\\component-consumer-r193\\runtime-r194\\overview-6.jpg",
+      "sha256": "349055fc2d72dcc54185b2358a08ab46802c35ef034613033236979570ed2402"
+    },
+    {
+      "file": "J:\\codexWorktree\\gearsVr\\analysis\\cover-system-20261108\\component-consumer-r193\\runtime-r194\\overview-7.jpg",
+      "sha256": "dd7af6bb838ccc0ec369f9998048919a4d2d7524e04aa63557129cffe57b235c"
+    },
+    {
+      "file": "J:\\codexWorktree\\gearsVr\\analysis\\cover-system-20261108\\component-consumer-r193\\runtime-r194\\overview-8.jpg",
+      "sha256": "f18bf151cf794c63aae08283b050ca147b067ed733d2fb2ab2f68c31b749a004"
+    },
+    {
+      "file": "J:\\codexWorktree\\gearsVr\\analysis\\cover-system-20261108\\component-consumer-r193\\runtime-r194\\overview-9.jpg",
+      "sha256": "06bc0d6b1b8d5047e7ba8f1c117324a7ba4606d0d9e9865ddfe32e3540a139ec"
+    },
+    {
+      "file": "J:\\codexWorktree\\gearsVr\\analysis\\cover-system-20261108\\component-consumer-r193\\runtime-r194\\overview-10.jpg",
+      "sha256": "d34f59b6372b7668025067f49de7fefed1969219cf30b3216bf4dda620de9f3a"
+    },
+    {
+      "file": "J:\\codexWorktree\\gearsVr\\analysis\\cover-system-20261108\\component-consumer-r193\\runtime-r194\\overview-11.jpg",
+      "sha256": "884c9ef62a67ea5b1f3f772feb930cfe74a1d222fbd8b77eec53ce0438f2e4c2"
+    },
+    {
+      "file": "J:\\codexWorktree\\gearsVr\\analysis\\cover-system-20261108\\component-consumer-r193\\runtime-r194\\overview-12.jpg",
+      "sha256": "44836c958779408cd4744cef7d61626d26c7f1920bc62a525fbff1d3e9e13aab"
+    },
+    {
+      "file": "J:\\codexWorktree\\gearsVr\\analysis\\cover-system-20261108\\component-consumer-r193\\runtime-r194\\overview-13.jpg",
+      "sha256": "a97809a74cfba52d28ca7721cb60cca13ae1def730db60e36c150b00f3f71582"
+    },
+    {
+      "file": "J:\\codexWorktree\\gearsVr\\analysis\\cover-system-20261108\\component-consumer-r193\\runtime-r194\\overview-14.jpg",
+      "sha256": "eb643282a8d400356a886b22856158a68229bd01adf012940bee8d7030f813f7"
+    }
+  ],
+  "contacts": [
+    {
+      "label": "cover_eye_neutral",
+      "file": "J:\\codexWorktree\\gearsVr\\analysis\\instances\\cover-1112-r194-cloak-components\\cover-output\\projection\\frame-00190.jpg",
+      "sha256": "ed834214c68a411059c592dc8e630bb6aed2d12bb47a754337853ee3d215310c",
+      "event_wall_ns": 1794420260073369300,
+      "duration_seconds": 0.807232,
+      "eligible_frames": 7,
+      "frame": {
+        "file": "frame-00190.jpg",
+        "time": 20.76460729999235,
+        "requested": 20.739534199994523,
+        "observed_wall_ns": 1794420260506762400,
+        "requested_wall_ns": 1794420260478247900,
+        "width": 960,
+        "height": 540
+      },
+      "same_C0_proven": false
+    },
+    {
+      "label": "cover_eye_turned",
+      "file": "J:\\codexWorktree\\gearsVr\\analysis\\instances\\cover-1112-r194-cloak-components\\cover-output\\projection\\frame-00209.jpg",
+      "sha256": "baa3c9cf59965ed6a59a7173fc391d3e2b1840908d2c458d03ed1ceacc8ec315",
+      "event_wall_ns": 1794420262189805100,
+      "duration_seconds": 0.8067736,
+      "eligible_frames": 7,
+      "frame": {
+        "file": "frame-00209.jpg",
+        "time": 22.835143699980108,
+        "requested": 22.804826799983857,
+        "observed_wall_ns": 1794420262577860400,
+        "requested_wall_ns": 1794420262543289000,
+        "width": 960,
+        "height": 540
+      },
+      "same_C0_proven": false
+    },
+    {
+      "label": "cover_eye_turn_restored",
+      "file": "J:\\codexWorktree\\gearsVr\\analysis\\instances\\cover-1112-r194-cloak-components\\cover-output\\projection\\frame-00229.jpg",
+      "sha256": "c0b5f00a403a34b0f84f0a5aea7fc478499cd511da35736bd944c0994436d73e",
+      "event_wall_ns": 1794420264303224100,
+      "duration_seconds": 0.8061819,
+      "eligible_frames": 7,
+      "frame": {
+        "file": "frame-00229.jpg",
+        "time": 25.02652990000206,
+        "requested": 24.988951099978294,
+        "observed_wall_ns": 1794420264767920400,
+        "requested_wall_ns": 1794420264728309400,
+        "width": 960,
+        "height": 540
+      },
+      "same_C0_proven": false
+    },
+    {
+      "label": "cover_eye_raised",
+      "file": "J:\\codexWorktree\\gearsVr\\analysis\\instances\\cover-1112-r194-cloak-components\\cover-output\\projection\\frame-00248.jpg",
+      "sha256": "fad11c5f89bf616a3b0ce3a26232d0d2ef6fc6d5b93e3712b60a634d131f8419",
+      "event_wall_ns": 1794420266368334600,
+      "duration_seconds": 0.8064445,
+      "eligible_frames": 7,
+      "frame": {
+        "file": "frame-00248.jpg",
+        "time": 27.095058000006247,
+        "requested": 27.059959699981846,
+        "observed_wall_ns": 1794420266837482200,
+        "requested_wall_ns": 1794420266799043500,
+        "width": 960,
+        "height": 540
+      },
+      "same_C0_proven": false
+    },
+    {
+      "label": "cover_eye_rise_restored",
+      "file": "J:\\codexWorktree\\gearsVr\\analysis\\instances\\cover-1112-r194-cloak-components\\cover-output\\projection\\frame-00267.jpg",
+      "sha256": "8746b5e3c053894549c16616202bc5563160d5671f3ee4dbd1b34b45a4a8a800",
+      "event_wall_ns": 1794420268412827800,
+      "duration_seconds": 0.8082515,
+      "eligible_frames": 8,
+      "frame": {
+        "file": "frame-00267.jpg",
+        "time": 29.137213799986057,
+        "requested": 29.12115679998533,
+        "observed_wall_ns": 1794420268880581300,
+        "requested_wall_ns": 1794420268860534200,
+        "width": 960,
+        "height": 540
+      },
+      "same_C0_proven": false
+    }
+  ],
+  "source": "actual private simulator projection",
+  "desktop_capture": false,
+  "full_span_personally_reviewed": false,
+  "headset_accepted": false,
+  "recording_errors": [],
+  "captured_span_complete": true,
+  "missing_contacts": [],
+  "encode_exit": 0,
+  "encoded_sha256": "7070975fca2d09617bc7d359ef778141d8bfd4f607845353b6c889c9a34cf74b"
+}

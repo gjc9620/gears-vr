@@ -2795,3 +2795,11 @@ query共35.8457ms；首次classify在begin后0.2185ms，stereo已4.6037ms，故b
 prepare增加精确r193两文件delta选择；新cover-1112-r194-cloak-components位于J:/codexWorktree/gearsVr，Native c23dbb19…37d1/原PG f8e6f3c2/原XR16840b27，0.4。prepare/operator准备均0、真实import检查通过；生成operator/input reader/adapter均在新实例内，独立确认无start-request/worker/session/done及未消费claim。没有迁移/修改旧实例身份proof，没有启动游戏。collector绑定本次精确Native并强制新增owner_bracket计时槽，准备不等同query通过。
 
 13项anchor重新逐份核对，唯launcher.py较r189变更：预启动无游戏receipt识别、owned-prime且playground_menu时提前启PG、正常stop由owner按序排空不提前signal Native。原shared隔离/receipt哈希未变；保留当前共享启动器，不回滚他人修复。此变化意味着未来r194与r189不是严格单变量性能对照。Quest/公开入口未动，尚无新游戏/视图/碰撞/头显验收。全CV01–24/AC01–22与工程25%不变。准备来源和差异见component-consumer-r193/r194-preparation-review.json。
+
+### r194 实际受控检查：正常结束，原查询前仍过期（2026-11-12）
+
+已按恢复的掩体目标运行新独立实例，启动/操作/runner均0。资源原门槛通过（J盘435722854400字节）；原A进入及既定动作结束、normal_cleanup true、remaining_owned空/无强杀；保存时精确game/owner/XR/worker身份均独立不在。CLOAK602无失败、前台408且未激活本方窗口，原anchor来源清理后未变。
+
+query34.2674ms，code source，engine/source_guard/current；Owner53次context/source_age_expired，Session26次owner_end。原调用started/returned0/0，physics/collider repeat各25次，components repeat0，新组件recheck实际分支未达；不能报告live优化通过或原调用倒退因果。首次classify在begin后0.4579ms，stereo6.5842ms，begin时6.1263ms、距40ms仅33.8737ms；失败classify stereo40.3883ms/controller40.3528ms/sync40.3820ms。52次owner_bracket共15.5095ms，engine24.6388ms含内层，禁止相加。
+
+275投影帧/错误0/编码0，14概览页及5原图已生成，但本轮尚未亲看任何页/原图，保持图像未审阅，不借正常收尾宣称视图通过。原数值/计时/来源/编码回执保存在component-consumer-r193/runtime-r194。下一步先审阅保留图像，再针对完整Owner复核成本定位；不重跑未变候选、不扩40ms或伪造时间。全CV01–24/AC01–22、身体/世界碰撞/受击/枪口/头显仍未完成，工程25%、publicv71和Quest不变。

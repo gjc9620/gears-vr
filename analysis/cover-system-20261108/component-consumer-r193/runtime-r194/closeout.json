@@ -1,0 +1,55 @@
+{
+  "error": null,
+  "operator_exit": 0,
+  "start_exit": 0,
+  "normal_cleanup_verified": true,
+  "normal_cleanup_required": true,
+  "projection_frames": 275,
+  "projection_errors": [],
+  "remaining_owned": {},
+  "anchor_sources_unchanged": true,
+  "cloak_observations": {
+    "samples": 602,
+    "failures": []
+  },
+  "foreground_observations": {
+    "samples": 408,
+    "owned_activation": false
+  },
+  "forced_termination": false,
+  "identities": {
+    "game_identity": {
+      "pid": 55084,
+      "creation_time": 134388937948135066,
+      "image": "j:\\gearsvr\\gears.of.war.reloaded.v1.0.1.3816947-p2p\\gears of war reloaded\\binaries_x64\\gowde-steam.exe"
+    },
+    "owner_identity": {
+      "pid": 35012,
+      "creation_time": 134388937872556247,
+      "image": "c:\\users\\11\\.cache\\codex-runtimes\\codex-primary-runtime\\dependencies\\python\\python.exe"
+    },
+    "xr_identity": {
+      "pid": 50680,
+      "creation_time": 134388938101796509,
+      "image": "j:\\codexworktree\\gearsvr\\tools\\openxr-probe\\build-cover-1112-r194-cloak-components\\openxrposeprobe.exe"
+    },
+    "worker_identity": {
+      "pid": 36064,
+      "creation_time": 134388937871806744,
+      "image": "c:\\users\\11\\.cache\\codex-runtimes\\codex-primary-runtime\\dependencies\\python\\python.exe"
+    }
+  },
+  "exact_owned_processes_absent": true,
+  "runner_exit": 0,
+  "query_elapsed_ns": 34267400,
+  "original_started": 0,
+  "original_returned": 0,
+  "first_rejection": "engine/source_guard/current",
+  "component_recheck_live_exercised": false,
+  "source_age_repaired": false,
+  "media_reviewed_pages": 0,
+  "media_reviewed_contacts": 0,
+  "media_review_complete": false,
+  "engineering_percent": 25,
+  "public_changed": false
+}
