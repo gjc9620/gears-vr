@@ -586,3 +586,8 @@ prelaunch-052600-result.json和5份原观察文本保留；cleanup-pending标为
 22048源码追查确认：tick在copy_frame失败时清空HB held，即使只是publication/stale_before。下一帧propose不再申报同一新匣incumbent，Native owner按规则返回lease_lost12。窄修复只对stage=new_magazine、非零new_item、held=ammo且id相同/lifecycle有效，保留逻辑原持有者；失败当帧不提供Frame、不移动、不入座、不写库存。下一个独立新鲜prepare/commit仍证明全部对象/输入/身份/原lease，原history/间隔/anti-replay不变。其他原因及阶段保持原reset。
 
 实际旧reset与新helper经同一真实HandClient/Native owner fixture对比，旧路径复现lease_lost，新路径仅新鲜后继retained、真实UP released；20新增检查和原client套件通过。完整PG编译成功，SHA b9296d6a6859673e461335efc7caded2bbf1375403d5a667f5d77d6ade096f2d，Native/XR及publicv71未改。最多8条分支记录供后续实际验证，不能以离线fixture称空仓完成。
+
+
+## 2026-11-11 game464：新匣修复未练到，原连发在源失效后按规则取消
+
+pose-gap-incumbent-r1实际core6+6轮耗弹6，42发后typed36/78。下一次first43后真实UP337 handoff validated，339 copy stale_or_changed_after，原release gate1 count1取消；保留43条一致射线，缺失第43发后的最终typed。未到空仓/换弹，新修复分支0条，不能判定通过或失败。正常stop/launcher/Native/PG/XR退出；225帧无capture错误/编码0，3页48组概览亲审，遮挡重影白几何继续未接受。下一步改用短loaded换弹定向练新分支；完整空仓与source339失败仍保留，不缩小13项目标。
