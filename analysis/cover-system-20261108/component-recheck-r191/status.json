@@ -1,0 +1,24 @@
+{
+  "implemented": "query-scoped component schema recheck API",
+  "consumer_switched": false,
+  "compiled_on": true,
+  "compiled_off": true,
+  "linked": false,
+  "tests_executed": false,
+  "game_started": false,
+  "accepted": false,
+  "source_sha256": "e6bd3046ccb054eadd99739f3680a90fe494c03dabdd1477c99c8de04f6a0853",
+  "constraints": [
+    "full prior proofs before each offsets pass",
+    "two fresh dynamic observations each equal initial snapshot",
+    "full closing proofs",
+    "same initial owner/Scene/special move and metadata generation",
+    "failure consumes readiness; next sample rebuilds schema"
+  ],
+  "pending": [
+    "focused actual-reader mutation/recovery checks",
+    "read count comparison with sample",
+    "switch consumer only after verification",
+    "full build and authorized game validation"
+  ]
+}

@@ -2767,3 +2767,11 @@ query共35.8457ms；首次classify在begin后0.2185ms，stereo已4.6037ms，故b
 源码核对发现components_current仍每次调用sample，sample每次clear布局及成员proof再重建并执行两遍实际值。因此下一窄源码候选是同一query内组件schema复核复用：在偏移读取前及双遍实际值后核对全部proof、与初始快照一致、失败消耗ready；不能缓存动态值、跳过完整proof或跨操作复用。该候选尚未实现/编译/验证，仍保留非因果边界。
 
 迁移清理已删除历史图像，r189原14页仅前4页亲看、5张原图均未亲看；余下审阅证据不可用，保持未验收，不用新游戏重造旧证据。分析及来源SHA在owner-bracket-r187/r190-existing-query-analysis.json。全CV01–24/AC01–22、世界/身体几何、视图/受击/枪口及头显仍未完成，工程25%、publicv71/固定入口和Quest0.2.0保留。
+
+## r191：同query组件schema复核接口已实现并编译，尚未接入（2026-11-12）
+
+依据r190剩余开销，在原cover_component_roles_live.inl增加recheck接口及初始sample成功资格。复核绑定初始owner/Scene/special move和metadata代次，在每遍offset读取前检查完整现有proof，重新执行两遍实际动态值并各与初始完整snapshot比较，结束再闭合完整proof；失败消费ready，权限恢复不能重用，新的sample仍clear重建。初始sample失败及clear也撤销资格。OFF接口返回unavailable，未新增身体/输入/引擎调用或改变时钟。
+
+使用精确r187冻结源加这一文件覆盖，实际现有组件夹具include后显式实例化新API，MSVC /O2 /W4 /WX编译ON/OFF均0；仅/c对象编译，没有link或执行夹具/测试/游戏。ON include无外部工作树依赖。源码SHA e6bd3046ccb054eadd99739f3680a90fe494c03dabdd1477c99c8de04f6a0853。编译不证明行为或性能通过。生产Session仍调用原sample，未切消费者；先需实际reader变更/失败恢复检查和读取量对照，再接入并完整构建。
+
+来源/编译回执与未完成项在component-recheck-r191。未动Quest工作台、publicv71或固定入口；无测试/游戏/XR启动。全CV01–24/AC01–22和头显仍未完成，工程25%，目标继续。

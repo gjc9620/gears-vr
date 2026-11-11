@@ -154,7 +154,7 @@ struct Workspace {
     std::array<ComponentLayout,8> layouts{};unsigned layout_count{};
     std::array<AssetLayout,8> assets{};unsigned asset_layout_count{};
     gears_anchor::Identity component_base{};BodyLayouts bodies{};
-    Snapshot first{},last{};
+    Snapshot first{},last{};binding::Binding sample_owner{};bool recheck_ready{};
     std::array<unsigned char,sizeof(gears_anchor::Config)> metadata{};std::uint64_t generation{};
 };
 inline bool separate(unsigned a,unsigned aw,unsigned b,unsigned bw){return a<=b?b-a>=aw:a-b>=bw;}
@@ -499,6 +499,7 @@ inline void clear_proof(binding::Proof& proof){
     proof.attempted=proof.ready=false;proof.fields={};proof.keys={};
 }
 inline void clear(Workspace& work){
+    work.recheck_ready=false;
     work.members.clear();
     for(auto& r:work.roots){clear_proof(r.proof);r.fields={};}
     for(auto& l:work.layouts){clear_proof(l.proof);l.cls={};l.fields={};l.attachment_struct={};l.attachment_fields={};l.attachment_stride=0;l.primitive=l.skeletal=false;}
@@ -511,6 +512,7 @@ template<class Guard> Code sample(binding::Binding const& context,Guard guard,Wo
        (!context.weapon.address&&!gears_anchor::equal_identity(context.weapon,gears_anchor::Identity{}))||
        source::aliases(&work,sizeof work,&output,sizeof output)||source::aliases(&work,sizeof work,&context,sizeof context)||
        source::aliases(&output,sizeof output,&context,sizeof context))return Code::request;
+    work.recheck_ready=false;
     const auto owner=context;
     try{
         if(!guard())return Code::guard;
@@ -525,12 +527,41 @@ template<class Guard> Code sample(binding::Binding const& context,Guard guard,Wo
         }
         if(!guard())return Code::guard;
         if(!binding::same_key(owner,context)||owner.scene_invocation!=context.scene_invocation||owner.special_move!=context.special_move)return Code::changed;
-        output=work.first;return Code::current;
+        output=work.first;work.sample_owner=owner;work.recheck_ready=true;return Code::current;
     }catch(...){return Code::exception;}
 }
+
+// Reuse only the schema of this Session's initial successful sample. Every
+// dynamic observation is fresh; complete proofs precede each offsets pass.
+// Failure consumes readiness even if the external owner later recovers.
+template<class Guard> Code recheck(binding::Binding const& context,Guard guard,Workspace& work,Snapshot& output)noexcept{
+    if(!context.context_valid||!context.world_generation||!context.weapon_known||!context.pawn.address||!context.world.address||!context.mesh.address||
+       (!context.weapon.address&&!gears_anchor::equal_identity(context.weapon,gears_anchor::Identity{}))||
+       source::aliases(&work,sizeof work,&output,sizeof output)||source::aliases(&work,sizeof work,&context,sizeof context)||
+       source::aliases(&output,sizeof output,&context,sizeof context))return Code::request;
+    const auto owner=context;const bool prepared=work.recheck_ready;work.recheck_ready=false;
+    try{
+        if(!guard())return Code::guard;
+        if(!prepared||!binding::same_key(owner,work.sample_owner)||owner.scene_invocation!=work.sample_owner.scene_invocation||
+           owner.special_move!=work.sample_owner.special_move)return Code::changed;
+        {
+            std::unique_lock<std::mutex> lock(binding::mutex,std::try_to_lock);if(!lock.owns_lock())return Code::metadata;
+            if(!binding::context_ready()||context.world_generation!=binding::metadata_generation||!current(work,work.first.root_count))return Code::metadata;
+            auto code=values(work,owner,work.last,true);if(code!=Code::current)return work.members.exhausted?Code::capacity:code;
+            if(!same(work.first,work.last)||!current(work,work.first.root_count))return Code::changed;
+            code=values(work,owner,work.last,true);if(code!=Code::current)return work.members.exhausted?Code::capacity:code;
+            if(!same(work.first,work.last)||!current(work,work.first.root_count))return Code::changed;
+        }
+        if(!guard())return Code::guard;
+        if(!binding::same_key(owner,context)||owner.scene_invocation!=context.scene_invocation||owner.special_move!=context.special_move)return Code::changed;
+        output=work.last;work.recheck_ready=true;return Code::current;
+    }catch(...){return Code::exception;}
+}
+
 #else
 struct Workspace {};
 template<class Guard> Code sample(binding::Binding const&,Guard,Workspace&,Snapshot&)noexcept{return Code::unavailable;}
+template<class Guard> Code recheck(binding::Binding const&,Guard,Workspace&,Snapshot&)noexcept{return Code::unavailable;}
 #endif
 }
 #endif
