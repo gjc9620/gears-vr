@@ -1,0 +1,18 @@
+[
+  {
+    "variant": "before",
+    "name": "cover_component_root_repeat",
+    "build_exit": 0,
+    "test_exit": 1,
+    "output": "CoverComponentRoles checks=207 failures=0 declared Pawn/current Weapon arrays only; no complete self or actor/geometry proof\r\nroot_repeat debug code=0 first_roots=2 last_roots=2\r\nroot_repeat roots=2 reads=24772\r\nroot_repeat debug code=6 first_roots=8 last_roots=2\r\nFAIL 17: observed_code==catalog::Code::current&&result->root_count==root_count reason=ready stage=ready field=RootBodyIndex\r\nroot_repeat roots=8 reads=17743\r\nroot_repeat debug code=6 first_roots=16 last_roots=2\r\nFAIL 17: observed_code==catalog::Code::current&&result->root_count==root_count reason=ready stage=ready field=RootBodyIndex\r\nroot_repeat roots=16 reads=27119\r\nFAIL 37: catalog::sample(actor,guard,catalog_work,*result)!=catalog::Code::current&&catalog::same(*result,*initial) reason=ready stage=ready field=Attached\r\nCoverComponentRootRepeat checks=346 failures=3 includes prior component fixture; no game\r\n",
+    "outside_worktree_dependencies": []
+  },
+  {
+    "variant": "after",
+    "name": "cover_component_root_repeat",
+    "build_exit": 0,
+    "test_exit": 1,
+    "output": "CoverComponentRoles checks=207 failures=0 declared Pawn/current Weapon arrays only; no complete self or actor/geometry proof\r\nroot_repeat debug code=0 first_roots=2 last_roots=2\r\nroot_repeat roots=2 reads=21520\r\nroot_repeat debug code=6 first_roots=8 last_roots=2\r\nFAIL 17: observed_code==catalog::Code::current&&result->root_count==root_count reason=ready stage=ready field=RootBodyIndex\r\nroot_repeat roots=8 reads=17743\r\nroot_repeat debug code=6 first_roots=16 last_roots=2\r\nFAIL 17: observed_code==catalog::Code::current&&result->root_count==root_count reason=ready stage=ready field=RootBodyIndex\r\nroot_repeat roots=16 reads=27119\r\nFAIL 37: catalog::sample(actor,guard,catalog_work,*result)!=catalog::Code::current&&catalog::same(*result,*initial) reason=ready stage=ready field=Owner\r\nCoverComponentRootRepeat checks=346 failures=3 includes prior component fixture; no game\r\n",
+    "outside_worktree_dependencies": []
+  }
+]

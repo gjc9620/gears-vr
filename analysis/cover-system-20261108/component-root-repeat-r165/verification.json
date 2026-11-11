@@ -1,0 +1,47 @@
+{
+  "runtime_delta": [
+    "tools/native-capture/cover_component_roles_live.inl"
+  ],
+  "native_sha256": "3f1d5454286e3991917f462ebab5749f614db22003d31a3810fbd985560be64d",
+  "project_dependencies": 410,
+  "outside_worktree_dependencies": 0,
+  "flags_unchanged": true,
+  "control_flow_reconstructed_exactly": true,
+  "dynamic_root_reads_unchanged": true,
+  "complete_closing_proofs_and_clear_unchanged": true,
+  "reuse_scope": "Second values pass, same actor at same root index; complete first root proof current before any offset; no cross-sample cache",
+  "focused_checks": 346,
+  "focused_includes_existing_component_checks": 207,
+  "existing_consumer_checks": [
+    207,
+    23,
+    105,
+    391,
+    53,
+    51
+  ],
+  "before_after_read_comparison": {
+    "2": {
+      "before": 24772,
+      "after": 21520,
+      "reduction": 0.13127724850637812
+    },
+    "8": {
+      "before": 40488,
+      "after": 32070,
+      "reduction": 0.20791345583876708
+    },
+    "16": {
+      "before": 61440,
+      "after": 46134,
+      "reduction": 0.24912109375000002
+    }
+  },
+  "initial_failures": "v1-v3 focused fixture names for index704 overwrote original body at arena+0x4c000; mutation nth2 was still first dynamic double-read. v4 uses indices1000+ and occurrence3 for the second phase. Runtime delta unchanged.",
+  "build_only": true,
+  "game_started": false,
+  "source_age_repaired": false,
+  "world_coverage_verified": false,
+  "movement_authorized": false,
+  "public_changed": false
+}

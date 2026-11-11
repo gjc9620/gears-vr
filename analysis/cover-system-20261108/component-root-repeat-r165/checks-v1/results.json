@@ -1,0 +1,66 @@
+[
+  {
+    "variant": "before",
+    "name": "cover_component_root_repeat",
+    "build_exit": 0,
+    "test_exit": 1,
+    "output": "CoverComponentRoles checks=207 failures=0 declared Pawn/current Weapon arrays only; no complete self or actor/geometry proof\r\nroot_repeat roots=2 reads=24772\r\nFAIL 15: capture_catalog(*result)==catalog::Code::current&&result->root_count==root_count reason=ready stage=ready field=RootBodyIndex\r\nroot_repeat roots=8 reads=17743\r\nFAIL 15: capture_catalog(*result)==catalog::Code::current&&result->root_count==root_count reason=ready stage=ready field=RootBodyIndex\r\nroot_repeat roots=16 reads=27119\r\nFAIL 35: catalog::sample(actor,guard,catalog_work,*result)!=catalog::Code::current&&catalog::same(*result,*initial) reason=ready stage=ready field=Attached\r\nCoverComponentRootRepeat checks=346 failures=3 includes prior component fixture; no game\r\n",
+    "outside_worktree_dependencies": []
+  },
+  {
+    "variant": "after",
+    "name": "cover_component_root_repeat",
+    "build_exit": 0,
+    "test_exit": 1,
+    "output": "CoverComponentRoles checks=207 failures=0 declared Pawn/current Weapon arrays only; no complete self or actor/geometry proof\r\nroot_repeat roots=2 reads=21520\r\nFAIL 15: capture_catalog(*result)==catalog::Code::current&&result->root_count==root_count reason=ready stage=ready field=RootBodyIndex\r\nroot_repeat roots=8 reads=17743\r\nFAIL 15: capture_catalog(*result)==catalog::Code::current&&result->root_count==root_count reason=ready stage=ready field=RootBodyIndex\r\nroot_repeat roots=16 reads=27119\r\nFAIL 35: catalog::sample(actor,guard,catalog_work,*result)!=catalog::Code::current&&catalog::same(*result,*initial) reason=ready stage=ready field=Owner\r\nCoverComponentRootRepeat checks=346 failures=3 includes prior component fixture; no game\r\n",
+    "outside_worktree_dependencies": []
+  },
+  {
+    "variant": "after",
+    "name": "cover_component_roles_live",
+    "build_exit": 0,
+    "test_exit": 0,
+    "output": "CoverComponentRoles checks=207 failures=0 declared Pawn/current Weapon arrays only; no complete self or actor/geometry proof\r\n",
+    "outside_worktree_dependencies": []
+  },
+  {
+    "variant": "after",
+    "name": "cover_query_guard_live",
+    "build_exit": 0,
+    "test_exit": 0,
+    "output": "CoverQueryGuard checks=23 failed=0 real typed reader/Session; Host dispatch, no game\r\n",
+    "outside_worktree_dependencies": []
+  },
+  {
+    "variant": "after",
+    "name": "cover_physics_query_live",
+    "build_exit": 0,
+    "test_exit": 0,
+    "output": "cover_physics_query_live: 105 checks, 0 failures; dispatch/module are Host seams, no original call\r\n",
+    "outside_worktree_dependencies": []
+  },
+  {
+    "variant": "after",
+    "name": "cover_physics_capsule_path_live",
+    "build_exit": 0,
+    "test_exit": 0,
+    "output": "CoverCapsulePathSession checks=391 failed=0 typed-source/Session real; module/dispatch Host; no game\r\n",
+    "outside_worktree_dependencies": []
+  },
+  {
+    "variant": "after",
+    "name": "cover_physics_overlap_query_live",
+    "build_exit": 0,
+    "test_exit": 0,
+    "output": "CoverOverlapSession checks=53 failed=0 actual typed roles/Session; Host dispatch/owner packets; no game\r\n",
+    "outside_worktree_dependencies": []
+  },
+  {
+    "variant": "after",
+    "name": "cover_physics_c0_off",
+    "build_exit": 0,
+    "test_exit": 0,
+    "output": "cover_physics_c0 OFF: 51 checks, 0 failures; no game/module/query\r\n",
+    "outside_worktree_dependencies": []
+  }
+]

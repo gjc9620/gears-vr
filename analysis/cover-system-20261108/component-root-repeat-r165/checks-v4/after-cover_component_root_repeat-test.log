@@ -1,0 +1,5 @@
+CoverComponentRoles checks=207 failures=0 declared Pawn/current Weapon arrays only; no complete self or actor/geometry proof
+root_repeat roots=2 reads=21520
+root_repeat roots=8 reads=32070
+root_repeat roots=16 reads=46134
+CoverComponentRootRepeat checks=346 failures=0 includes prior component fixture; no game

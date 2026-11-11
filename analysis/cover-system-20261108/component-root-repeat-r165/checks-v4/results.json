@@ -1,0 +1,18 @@
+[
+  {
+    "variant": "before",
+    "name": "cover_component_root_repeat",
+    "build_exit": 0,
+    "test_exit": 0,
+    "output": "CoverComponentRoles checks=207 failures=0 declared Pawn/current Weapon arrays only; no complete self or actor/geometry proof\r\nroot_repeat roots=2 reads=24772\r\nroot_repeat roots=8 reads=40488\r\nroot_repeat roots=16 reads=61440\r\nCoverComponentRootRepeat checks=346 failures=0 includes prior component fixture; no game\r\n",
+    "outside_worktree_dependencies": []
+  },
+  {
+    "variant": "after",
+    "name": "cover_component_root_repeat",
+    "build_exit": 0,
+    "test_exit": 0,
+    "output": "CoverComponentRoles checks=207 failures=0 declared Pawn/current Weapon arrays only; no complete self or actor/geometry proof\r\nroot_repeat roots=2 reads=21520\r\nroot_repeat roots=8 reads=32070\r\nroot_repeat roots=16 reads=46134\r\nCoverComponentRootRepeat checks=346 failures=0 includes prior component fixture; no game\r\n",
+    "outside_worktree_dependencies": []
+  }
+]

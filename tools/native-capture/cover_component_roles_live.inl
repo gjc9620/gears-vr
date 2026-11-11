@@ -174,11 +174,18 @@ inline bool actor_array_schema(binding::Proof& p,binding::Property const& field)
         binding::source_field(p,width,inner_descriptor,0x74)&&width==8&&binding::source_field(p,offset,inner_descriptor,0x94)&&!offset&&
         binding::source_field(p,target,inner_descriptor,0xd0)&&binding::certified(p,target,type)&&binding::kind(p,type,L"Class")&&binding::named(type,L"Actor");
 }
-inline Code root(Workspace& w,unsigned index,std::uintptr_t at,binding::Binding const& context,Root& output){
+inline Code root(Workspace& w,unsigned index,std::uintptr_t at,binding::Binding const& context,Root& output,bool repeat=false){
     Root next{};auto& l=w.roots[index];auto& p=l.proof;const auto seeds=context.weapon.address?2u:1u;
     if(!collider::instance(p,at,next.actor))return Code::read;
     if(index<seeds&&!binding::same(next.actor,index?context.weapon:context.pawn))return Code::changed;
-    if(!roles::class_role(p,next.actor.cls,index<seeds?(index?L"Weapon":L"Pawn"):L"Actor")||
+    // Only the second values pass may reuse this root's selected schema.
+    // Re-read its complete first-pass proof before consuming any offset.
+    // A new/reordered actor node cannot consume another root's cached fields.
+    if(repeat){
+        if(index>=w.first.root_count||!binding::same(next.actor,w.first.roots[index].actor)||
+           !binding::metadata_current()||w.metadata!=binding::metadata_bytes||w.generation!=binding::metadata_generation||
+           !binding::current(p))return Code::changed;
+    }else if(!roles::class_role(p,next.actor.cls,index<seeds?(index?L"Weapon":L"Pawn"):L"Actor")||
        !roles::role_property(p,next.actor.cls,L"WorldInfo",L"ObjectProperty",8,L"WorldInfo",l.fields[0],&w.members)||
        !roles::role_property(p,next.actor.cls,L"Components",L"ArrayProperty",16,nullptr,l.fields[1],&w.members)||
        !roles::role_property(p,next.actor.cls,L"AllComponents",L"ArrayProperty",16,nullptr,l.fields[2],&w.members)||
@@ -193,7 +200,7 @@ inline Code root(Workspace& w,unsigned index,std::uintptr_t at,binding::Binding 
     if(base_actor&&(!collider::instance(p,base_actor,next.base)||!roles::class_role(p,next.base.cls,L"Actor",l.fields[3].reference.address)))return Code::layout;
     for(unsigned n=0;n<2;++n){auto const& field=l.fields[n+1];auto& list=next.lists[n];
         next.offsets[n]=field.offset;
-        if(!array_schema(p,field,w.component_base))return Code::layout;
+        if(!repeat&&!array_schema(p,field,w.component_base))return Code::layout;
         if(!binding::source_field(p,list.data,next.actor.address,field.offset)||
            !binding::source_field(p,list.count,next.actor.address,field.offset+8)||
            !binding::source_field(p,list.capacity,next.actor.address,field.offset+12))return Code::read;
@@ -397,7 +404,7 @@ inline Code component_attachments(Workspace& w,Snapshot& snapshot,Component& row
         const auto code=enqueue_component(queue,queued,value.component);if(code!=Code::current)return code;++snapshot.attachment_count;
     }return Code::current;
 }
-inline Code values(Workspace& w,binding::Binding const& context,Snapshot& output){
+inline Code values(Workspace& w,binding::Binding const& context,Snapshot& output,bool repeat=false){
     // Work candidates are already member-owned; do not put the large catalog
     // on the game stack or publish a partial candidate to the caller.
     auto& next=output;next.seed_count=next.root_count=context.weapon.address?2u:1u;
@@ -408,7 +415,7 @@ inline Code values(Workspace& w,binding::Binding const& context,Snapshot& output
     std::array<std::uintptr_t,root_capacity> actors{};actors[0]=context.pawn.address;if(next.seed_count==2)actors[1]=context.weapon.address;
     // Breadth-first first-occurrence order terminates cycles while preserving
     // every original array row. An attached node is observed, not declared self.
-    for(unsigned i=0;i<next.root_count;++i){const auto code=root(w,i,actors[i],context,next.roots[i]);if(code!=Code::current)return code;
+    for(unsigned i=0;i<next.root_count;++i){const auto code=root(w,i,actors[i],context,next.roots[i],repeat);if(code!=Code::current)return code;
         for(int k=0;k<next.roots[i].attached.count;++k){const auto at=next.roots[i].attached_members[unsigned(k)];if(!at)continue;
             bool duplicate=false;for(unsigned n=0;n<next.root_count;++n)duplicate=duplicate||actors[n]==at;if(duplicate)continue;
             if(next.root_count==root_capacity)return Code::capacity;actors[next.root_count++]=at;}}
@@ -466,7 +473,7 @@ template<class Guard> Code sample(binding::Binding const& context,Guard guard,Wo
             clear(work);
             work.metadata=binding::metadata_bytes;work.generation=binding::metadata_generation;
             auto code=values(work,owner,work.first);if(code!=Code::current)return work.members.exhausted?Code::capacity:code;
-            code=values(work,owner,work.last);if(code!=Code::current)return work.members.exhausted?Code::capacity:code;
+            code=values(work,owner,work.last,true);if(code!=Code::current)return work.members.exhausted?Code::capacity:code;
             if(!same(work.first,work.last)||!current(work,work.first.root_count))return Code::changed;
         }
         if(!guard())return Code::guard;

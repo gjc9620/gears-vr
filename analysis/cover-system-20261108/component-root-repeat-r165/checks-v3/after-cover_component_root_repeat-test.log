@@ -1,0 +1,41 @@
+CoverComponentRoles checks=207 failures=0 declared Pawn/current Weapon arrays only; no complete self or actor/geometry proof
+root_repeat debug code=0 first_roots=2 last_roots=2
+root_debug 0 actor=196608 proof=18/62
+root_debug 1 actor=253952 proof=19/60
+root_debug components=4 assets=2
+root_repeat roots=2 reads=21520
+root_repeat debug code=6 first_roots=8 last_roots=2
+root_debug 0 actor=196608 proof=18/62
+root_debug 1 actor=253952 proof=19/60
+root_debug 2 actor=921600 proof=16/51
+root_debug 3 actor=923648 proof=16/51
+root_debug 4 actor=925696 proof=16/51
+root_debug 5 actor=927744 proof=16/51
+root_debug 6 actor=929792 proof=16/51
+root_debug 7 actor=931840 proof=16/51
+root_debug components=1 assets=0
+FAIL 19: observed_code==catalog::Code::current&&result->root_count==root_count reason=ready stage=ready field=RootBodyIndex
+root_repeat roots=8 reads=17743
+root_repeat debug code=6 first_roots=16 last_roots=2
+root_debug 0 actor=196608 proof=18/62
+root_debug 1 actor=253952 proof=19/60
+root_debug 2 actor=921600 proof=16/51
+root_debug 3 actor=923648 proof=16/51
+root_debug 4 actor=925696 proof=16/51
+root_debug 5 actor=927744 proof=16/51
+root_debug 6 actor=929792 proof=16/51
+root_debug 7 actor=931840 proof=16/51
+root_debug 8 actor=933888 proof=16/51
+root_debug 9 actor=935936 proof=16/51
+root_debug 10 actor=937984 proof=16/51
+root_debug 11 actor=940032 proof=16/51
+root_debug 12 actor=942080 proof=16/51
+root_debug 13 actor=944128 proof=16/51
+root_debug 14 actor=946176 proof=16/51
+root_debug 15 actor=948224 proof=16/51
+root_debug components=1 assets=0
+FAIL 19: observed_code==catalog::Code::current&&result->root_count==root_count reason=ready stage=ready field=RootBodyIndex
+root_repeat roots=16 reads=27119
+late_debug code=0 hit=6 count=1 same=0
+FAIL 41: late_code!=catalog::Code::current&&catalog::same(*result,*initial) reason=ready stage=ready field=Owner
+CoverComponentRootRepeat checks=346 failures=3 includes prior component fixture; no game
