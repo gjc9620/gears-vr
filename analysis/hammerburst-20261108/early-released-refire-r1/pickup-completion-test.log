@@ -1,0 +1,3 @@
+hammerburst_pickup_completion_model_test.cpp
+Actual Runtime delayed original pickup + held baseline outcome: same original event completes once; baseline slot4 target0 coexists with held model and freshly republished binding
+WeaponEquipmentRuntimeTest: 129 cases / 1656 checks passed; actual Runtime + model, controlled synchronous PG backend seam; no Game/XR/Native callback or engine acceptance

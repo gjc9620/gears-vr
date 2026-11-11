@@ -33,6 +33,7 @@ def acquire(c,data,*,shoulder=None,clock=time.perf_counter_ns,sleep=time.sleep):
     gap_before=len(c.records('native_equipment_input_gap'));proof['down_sent_ns']=clock()
     try:
         g.pad(1,wait=0,squeeze=1);deadline=clock()+2_000_000_000
+        dispatched=None;seen=before
         while clock()<deadline:
             assert g.live(),'Owned runtime ended before actual shoulder hold'
             gaps=c.records('native_equipment_input_gap')[gap_before:]
@@ -40,14 +41,34 @@ def acquire(c,data,*,shoulder=None,clock=time.perf_counter_ns,sleep=time.sleep):
             if rejected:
                 proof['first_source_gap']=rejected[0]
                 raise AssertionError('Original shoulder press rejected by source gap; no input retry')
-            for row in c.records('native_equipment')[before:]:
+            available=c.records('native_equipment')
+            for row in available[seen:]:
                 try:target=int(row.get('target','0'),16)
                 except (ValueError,TypeError):continue
-                if (row.get('status')=='held' and target==int(c.initial['weapon'],16) and number(row,'event')>0 and
+                matching=(target==int(c.initial['weapon'],16) and number(row,'event')>0 and
                     number(row,'press')==number(baseline,'right_pressed')+1 and number(row,'frame')>number(baseline,'frame') and
                     number(row,'source_sequence')>number(baseline,'sequence') and number(row,'input_sync_ns')>=proof['down_sent_ns'] and
-                    row.get('input_status')=='event' and number(row,'input_control')==6):
+                    number(row,'input_control')==6)
+                if matching and row.get('status') in ('unholster_pending','switch_requested','switch_pending') and row.get('input_status')=='event':
+                    if dispatched is None:
+                        dispatched=row;proof['original_dispatched']=row
+                same_dispatched=(dispatched is not None and matching and number(dispatched,'cookie')>0 and
+                    number(row,'cookie')==number(dispatched,'cookie') and number(row,'event')==number(dispatched,'event') and
+                    number(row,'frame')>number(dispatched,'frame') and number(row,'source_sequence')>=number(dispatched,'source_sequence') and
+                    number(row,'input_sync_ns')>=number(dispatched,'input_sync_ns'))
+                if dispatched is not None and number(row,'event')==number(dispatched,'event') and row.get('status') in (
+                    'switch_interrupted','switch_timed_out','unholster_failed','hold_failed','identity_mismatch','expired_event'):
+                    proof['completion_rejected']=row
+                    raise AssertionError('Original shoulder completion rejected; no input retry')
+                # Runtime can complete the original dispatched unholster after
+                # independently resetting its input observer. The exact event,
+                # target, press and cookie still identify that original action.
+                immediate=row.get('input_status')=='event' and (dispatched is None or same_dispatched)
+                delayed=row.get('input_status') in ('baseline','quiet') and same_dispatched
+                if row.get('status')=='held' and matching and (immediate or delayed):
+                    proof['completion_path']='same_dispatched_after_input_baseline' if delayed else 'direct_event'
                     proof['held']=row;proof['held_observed_ns']=clock();return row
+            seen=len(available)
             sleep(.01)
         raise TimeoutError('Single shoulder Grip produced no matching actual held receipt; no input retry')
     except BaseException:

@@ -1,0 +1,9 @@
+{
+  "passed": true,
+  "added_cases": 13,
+  "original_driver_cases": 17,
+  "actual44240_rows_replayed": true,
+  "actual_runtime_result": "early-released-refire-r1/pickup-completion-test-result.json",
+  "new_input_or_retry": false,
+  "limits": "Actual Runtime129/1656 with backend fixtures and actual recorded-row reader replay; not a fresh game/held stability proof."
+}

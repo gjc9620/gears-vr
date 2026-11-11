@@ -1,0 +1,8 @@
+{
+  "passed": true,
+  "actual_runtime_and_model": true,
+  "baseline_outcome_not_model_drop": true,
+  "pending_original_completes_after_input_reset": true,
+  "extra_unholster_or_input": false,
+  "game_execution": false
+}

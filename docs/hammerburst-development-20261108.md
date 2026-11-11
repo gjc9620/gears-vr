@@ -732,3 +732,8 @@ Private PG325200c3 early-released-refire-r1完整编译；只对已捕获refire�
 ## 2026-11-11 实际44240：新续发版本未到达射击，原取枪完成与读取关联
 
 PG325200c3/Nativeb9ab7a82正常资源等待80.547s后单次运行。UP156/3406 p0r0、唯一Grip后158 event1/press1 unholster_pending，159 unavailable/rig source_unavailable，161同event1/press1 held但input_status baseline，随后163装备模型baseline target0。测试限定held+input_status event，未接受延迟完成161；因此不能称完全没held记录，也不能只放宽读取忽略163掉持有。0射线/newearlyrefire0，新功能效果未验证，无回归因果证明。下一步核原pending完成跨baseline及163逻辑model/binding，而非重按或无变化重跑。Nativeinputloss0/Gate28age-only。正常清理全0无forced、64帧错误空/编码0、3页48对亲阅，末段近右眼枪与分离重影手仍无稳定接触验收。完整13项及4629 origin问题保留。
+
+
+## 2026-11-11 更正44240默认Outcome与延迟取枪读取
+
+撤回凭163 baseline/slot4/target0认定装备model掉持有的推论。Runtime返回{input_status}本就带默认slot4/target0，与model.held独立；suspend清当前binding及输入基线，不清model，下一fresh tick可严格重新认证并发布后仍返回baseline。实际Runtime+model新增复现pending→suspend→same-event held完成→再次suspend→baseline默认outcome同时modelheld+binding已发布；原suite合129cases/1656checks通过。Body query失败out清零也不证明modelheld=false。测试读取仅允许先观察本次真实pending事件，再同cookie/event/press/target和更新frame/sequence/sync的held baseline/quiet延迟完成；无anchor/错事件/错cookie/错计数/旧源/真实中断拒绝，不重按、不改生产代码。原17+新13 driver checks及实际44240原始rows重放均通过。尚不称44240稳定接触验收或早续发实际成功；下一轮须真正到达原续发分支。13项保留。
