@@ -1,0 +1,32 @@
+{
+  "previous_turn": "progress: r264 actual points and measurement failure altered next action",
+  "native_sha256": "639d3cc0bab84f57285763a50c22e6234178ffdafad1e09176413ef6f8607f8a",
+  "tests": {
+    "input": 85,
+    "full_goal": 52,
+    "verifier_unittest": 28,
+    "exit": 0
+  },
+  "source_basis_evidence": {
+    "camera_forward": [
+      -0.80480377,
+      0.593540977,
+      0
+    ],
+    "old_right": [
+      -0.593540977,
+      -0.80480377,
+      0
+    ],
+    "L2_left_projection": "+0.70m rejected by left<0 rule",
+    "L2_right_projection": "-0.70m rejected by right>0 rule",
+    "repair": "C0 wall/body uses native Pawn basis; preserve independent view basis; FullGoal validates same corrected wall basis"
+  },
+  "restore_verifier_recovery": "af143a87 complete original 2-entry/3-chunk expectations lost in 37de6ef6; restore without trusting live manifest originals",
+  "early_attempts": [
+    "Frozen shared-input snapshot lacks working-tree comment; unique-anchor assertion stopped preparation before compiler; preserved native-source, built native-source-v2",
+    "Restored verifier tests first needed historical invoke helper; full suite exposed stale 88 rather than actual existing 104 inventory boundary; corrected tests only, production cap unchanged"
+  ],
+  "game_started": false,
+  "body_failure_pending": "Added exact measure adapter status, no protection weakened"
+}

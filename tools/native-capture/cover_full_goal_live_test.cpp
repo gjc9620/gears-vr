@@ -21,6 +21,17 @@ int main(){
     C(drag.key.sequence==value.key.sequence&&drag.offset.right==value.virtual_offset.right&&
         drag.offset.up==value.virtual_offset.up&&drag.observed_ns==value.observed_ns);
     C(gears_cover_committed::valid(drag,drag.observed_ns));
+    // C0 wall correction must survive store re-certification without rotating
+    // the continuous view basis. A stale legacy wall must be rejected.
+    gears_cover_pose_role::c0_exclusive=true;
+    goal::prepare(&scene,stereo);C(!goal::available&&!std::strcmp(goal::reason,"input_wall_binding"));
+    const auto legacy_wall=input::diagnostics.latest.wall_anchor;
+    input::diagnostics.latest.wall_anchor=input::wall_anchor(cover_neutral_eye_live::eye);
+    goal::prepare(&scene,stereo);C(goal::read_committed(drag));
+    C(drag.anchor.right_world.x==-drag.view_anchor.right_world.x&&
+        drag.anchor.right_world.y==-drag.view_anchor.right_world.y);
+    input::diagnostics.latest.wall_anchor=legacy_wall;gears_cover_pose_role::c0_exclusive=false;
+    goal::prepare(&scene,stereo);C(goal::available);
     C(goal::set_body_owner(true)&&input::full_body_cover_enabled);
     cover_camera_live::enabled=false;C(!goal::set_body_owner(true)&&!input::full_body_cover_enabled);
     cover_camera_live::enabled=true;C(!goal::set_body_owner(false)&&!input::full_body_cover_enabled);

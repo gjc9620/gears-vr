@@ -32,7 +32,7 @@ void prepare(gears_anchor::Receipt const* scene_receipt,gears_vr::StereoResult c
         key.world=eye.current_world;key.world_generation=eye.world_generation;key.pawn=eye.pawn.address;
         key.mesh=eye.mesh.address;key.link=eye.link.address;key.slot=eye.slot;key.thread=scene_receipt->thread;key.scene=scene_receipt->invocation;
         key.xr_session=selected_stereo.sample.session;key.xr_space=selected_stereo.sample.space_epoch;key.reference=selected_stereo.reference_generation;key.sequence=selected_stereo.sample.sequence;
-        gears_vr::CoverViewAnchor anchor{eye.neutral_eye_world,cover_camera_live::facing.forward,cover_camera_live::facing.right};
+        const auto anchor=cover_input_live::wall_anchor(eye);
         const auto& frozen=result.wall_anchor;
         if(frozen.neutral_eye_world.x!=anchor.neutral_eye_world.x||frozen.neutral_eye_world.y!=anchor.neutral_eye_world.y||
            frozen.neutral_eye_world.z!=anchor.neutral_eye_world.z||frozen.forward_world.x!=anchor.forward_world.x||

@@ -4,6 +4,7 @@ namespace cc=gears_cover_c0_committed;
 namespace cg=gears_cover_committed;
 uint64_t cover_fits{},cover_plans{},cover_applied{},cover_completed{},cover_rejected{};
 unsigned cover_reason{};
+a::Status cover_measure_status{a::Status::okay};
 struct CoverCache {
     cc::Frozen frozen{};gears_cover_neutral_goal::Workspace work{};
     a::marker::Marker marker{};a::marker::Workspace marker_work{};
@@ -71,8 +72,9 @@ template<class Source>bool prepare_cover_source(Entry const& e,Source const& sou
         }
         if(before.action||before.last_action||before.transitioning){cover_reason=7;return false;}
         a::CoverPoseMeasurement measured{};
-        if(a::measure_cover_pose(source,s.model,s.source,cover_cache.marker,policy,
-            cover_cache.work.fitting.body_work,measured)!=a::Status::okay){cover_reason=8;return false;}
+        cover_measure_status=a::measure_cover_pose(source,s.model,s.source,cover_cache.marker,policy,
+            cover_cache.work.fitting.body_work,measured);
+        if(cover_measure_status!=a::Status::okay){cover_reason=8;return false;}
         placement=measured.binding;placement.anchor=drag.anchor;placement.view_anchor=drag.view_anchor;
         for(unsigned i=0;i<2;++i)placement.feet_world[i]=measured.feet[i];
         const auto fitted=cc::freeze(drag,calibrated,placement,source,s.model,s.source,cover_cache.marker,

@@ -27,6 +27,17 @@ bool prepare_grab_points(gears_anchor::Receipt const* scene,neutral::EyeSample c
     if(okay)++grab_reference_ready;else {++grab_reference_rejected;frame.cover.range={};frame.cover.edge={};}
     last_grab_range=frame.cover.range;last_grab_edge=frame.cover.edge;return okay;
 }
+// Legacy camera preview faces opposite the native neutral Pawn. Original L2
+// action3/4 points prove the opposite lateral sign (r264). C0 wall/body uses
+// the Pawn basis; continuous view retains its independently selected basis.
+gears_vr::CoverViewAnchor wall_anchor(neutral::EyeSample const& eye){
+    gears_vr::CoverViewAnchor out{eye.neutral_eye_world,camera::facing.forward,camera::facing.right};
+    if(gears_cover_pose_role::c0_exclusive){
+        out.forward_world={-out.forward_world.x,-out.forward_world.y,-out.forward_world.z};
+        out.right_world={-out.right_world.x,-out.right_world.y,-out.right_world.z};
+    }
+    return out;
+}
 std::array<gears_vr::CoverHeightKey,3> height_curve{{{0,0},{.5,0},{1,0}}};
 gears_vr::CoverEpochs epochs{};
 neutral::EyeSample last_eye{};
@@ -120,7 +131,8 @@ bool prepare(gears_anchor::Receipt const* scene,gears_vr::StereoMatrix& view,gea
     frame.cover.cover_valid=true;frame.cover.interaction_enabled=!eye.special_move;
     frame.cover.right_axis_tracking=axes.right;frame.cover.up_axis_tracking=axes.up;
     frame.anchor={eye.neutral_eye_world,camera::facing.forward,camera::facing.right};
-    frame.view_anchor=frame.anchor; // Legacy preview basis; not a certified continuous C0 view.
+    frame.view_anchor=frame.anchor; // View remains independent of the C0 wall/body basis.
+    frame.anchor=wall_anchor(eye);
     frame.stereo=stereo;frame.controllers=matched&&!interrupted?&input:nullptr;
     frame.height_curve=height_curve.data();frame.height_key_count=unsigned(height_curve.size());
     frame.units_per_metre=stereo_units_per_metre;frame.now_ns=stamp;

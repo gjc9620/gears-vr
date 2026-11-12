@@ -64,6 +64,22 @@ void next(double up,float squeeze=0){
     edges.update(hands);C(producer.publish(hands));
 }
 int main(){
+    {const auto saved=cover_camera_live::facing;cover_neutral_eye_live::EyeSample eye{};
+    eye.neutral_eye_world={-3953.61719,-170.472168,590.09375};
+    cover_camera_live::facing.forward={-.80480377,.593540977,0};
+    cover_camera_live::facing.right={-.593540977,-.80480377,0};
+    gears_cover_pose_role::c0_exclusive=false;const auto legacy=cover_input_live::wall_anchor(eye);
+    gears_cover_pose_role::c0_exclusive=true;const auto wall=cover_input_live::wall_anchor(eye);
+    const gears_vr::Vector neutral{-3927.34058,-178.830322,583};
+    const gears_vr::Vector left{-3968.88843,-235.166595,583},right{-3885.79272,-122.494057,583};
+    const auto dot=[&](gears_vr::Vector p,gears_vr::CoverViewAnchor const& basis){return
+        ((p.x-neutral.x)*basis.right_world.x+(p.y-neutral.y)*basis.right_world.y)/100.;};
+    C(dot(left,legacy)>.69&&dot(right,legacy)<-.69);
+    C(dot(left,wall)<-.69&&dot(right,wall)>.69);
+    C(wall.neutral_eye_world.x==eye.neutral_eye_world.x&&wall.forward_world.x==-legacy.forward_world.x);
+    C(cover_camera_live::facing.forward.x==-.80480377&&cover_camera_live::facing.right.x==-.593540977);
+    cover_camera_live::facing=saved;gears_cover_pose_role::c0_exclusive=false;}
+
     wchar_t temp_folder[MAX_PATH]{},temp_ini[MAX_PATH]{};
     C(GetTempPathW(MAX_PATH,temp_folder)>0&&GetTempFileNameW(temp_folder,L"gcv",0,temp_ini)!=0);
     C(WritePrivateProfileStringW(L"CoverInputPrototype",L"enabled",L"1",temp_ini)!=FALSE);

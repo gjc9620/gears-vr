@@ -229,7 +229,8 @@ bool prepare(gears_anchor::Receipt const* scene,gears_vr::StereoMatrix& view,gea
         frame.cover.cover_valid=cover;frame.cover.interaction_enabled=cover&&!eye.special_move;
         frame.cover.right_axis_tracking=axes.right;frame.cover.up_axis_tracking=axes.up;
         if(cover){frame.anchor={eye.neutral_eye_world,camera::facing.forward,camera::facing.right};
-            frame.view_anchor=frame.anchor; // Legacy preview until continuous C0 basis is certified.
+            frame.view_anchor=frame.anchor; // View remains independent of the C0 wall/body basis.
+            frame.anchor=input::wall_anchor(eye);
             frame.height_curve=input::height_curve.data();frame.height_key_count=unsigned(input::height_curve.size());}
         frame.stereo=stereo;frame.controllers=matched?&hands:nullptr;frame.now_ns=stamp;
         frame.units_per_metre=stereo_units_per_metre;frame.allow_sim=simulator_operator;frame.owner_context_valid=actor.context_valid;

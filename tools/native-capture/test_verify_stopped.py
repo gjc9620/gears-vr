@@ -18,10 +18,10 @@ class VerifyStoppedTests(unittest.TestCase):
     def test_full_owned_inventory_keeps_every_entry_and_rejects_duplicates(self):
         def status(count):
             return ''.join(f'hook_target={0x140000000+i*32:x} create=MH_OK queue=MH_OK\n' for i in range(count))
-        for count in (2, 65, 87):
+        for count in (2, 65, 87, 104):
             self.assertEqual(verify_stopped.hook_targets(status(count)),
                              [0x140000000+i*32 for i in range(count)])
-        for raw in (status(1), status(88), status(65)+status(2)):
+        for raw in (status(1), status(105), status(65)+status(2)):
             with self.assertRaises(RuntimeError):verify_stopped.hook_targets(raw)
 
     # Historical artifact 1 entry bytes, independent of status-file contents.
@@ -50,8 +50,11 @@ class VerifyStoppedTests(unittest.TestCase):
         if stopped:text += 'stopped disable_status=0 active=0\n'
         self.status.write_text(text)
 
-    def invoke(self, loaded=None):
+    def invoke(self, loaded=None, prime_status=None, hook_manifest=None, game_creation_time=None):
         args = ['verify_stopped.py', '--pid', '321', '--status', str(self.status), '--output', str(self.output)]
+        if prime_status is not None:args += ['--prime-status', str(prime_status)]
+        if hook_manifest is not None:args += ['--hook-manifest', str(hook_manifest)]
+        if game_creation_time is not None:args += ['--game-creation-time', str(game_creation_time)]
         with mock.patch.object(sys, 'argv', args), \
                 mock.patch.object(verify_stopped, 'Resolver', return_value=self.resolver) as factory, \
                 mock.patch.object(verify_stopped, 'modules', return_value={} if loaded is None else loaded) as modules, \
@@ -282,7 +285,7 @@ class VerifyStoppedTests(unittest.TestCase):
 
     def test_clean_status_and_inventory_preconditions_remain_required(self):
         cases = [dict(pid=322), dict(stopped=False), dict(rvas=(0x296178,)),
-                 dict(rvas=(0x296178, 0x296178)), dict(rvas=tuple(range(88)))]
+                 dict(rvas=(0x296178, 0x296178)), dict(rvas=tuple(range(105)))]
         for values in cases:
             with self.subTest(values=values):
                 self.write_status(**values)
@@ -438,6 +441,130 @@ class VerifyStoppedTests(unittest.TestCase):
                     with mock.patch.object(verify_stopped, 'NGX_WRAPPER_RANGES', ranges):
                         with self.assertRaises(SystemExit):self.invoke()
                     self.assertFalse(json.loads(self.output.read_text())['all_match'])
+
+
+    def cover_body_fixture(self):
+        ranges, originals = {}, {}
+        for entry, chunks in verify_stopped.COVER_BODY_RESTORE_RANGES.items():
+            ranges[entry] = []
+            for rva, size, _ in chunks:
+                raw = bytes((i + rva) % 251 for i in range(size))
+                self.memory[self.base + rva] = originals[rva] = raw
+                ranges[entry].append((rva, size, hashlib.sha256(raw).hexdigest()))
+            ranges[entry] = tuple(ranges[entry])
+        self.write_status(tuple(ranges))
+        return ranges, originals
+
+
+    def test_cover_body_restore_contract_has_only_two_entries_and_all_three_complete_chunks(self):
+        self.assertEqual(verify_stopped.COVER_BODY_RESTORE_RANGES, {
+            0x2a85a8: (
+                (0x2a85a8, 889, '8c42951597545b095f60d725d81547173b000255dd69e99172a4359163c3f521'),
+                (0x8ed5ca, 79, '73e614ba91365631e33d25d355ec20c22cb4611a48ec97ad611facefa379ca81')),
+            0xfa680: (
+                (0xfa680, 61, 'aee998dc1117d028904e7f2016dcb7b9ea7ca100ec622de4c8dfe3536bacd52f'),),
+        })
+
+
+    def test_cover_body_restore_reads_complete_chunks_with_independent_report_hashes(self):
+        ranges, _ = self.cover_body_fixture()
+        with mock.patch.object(verify_stopped, 'COVER_BODY_RESTORE_RANGES', ranges), \
+                mock.patch.object(verify_stopped.SystemEntryCache, 'expected') as system_expected:
+            self.invoke()
+        system_expected.assert_not_called()
+        report = json.loads(self.output.read_text())
+        self.assertTrue(report['all_match'])
+        self.assertEqual([row['range_rva'] for row in report['checks']], ['0x2a85a8', '0x8ed5ca', '0xfa680'])
+        self.assertEqual([row['bytes_checked'] for row in report['checks']], [889, 79, 61])
+        self.assertEqual([row['target'] for row in report['checks']],
+                         [hex(self.base + 0x2a85a8)] * 2 + [hex(self.base + 0xfa680)])
+        for row in report['checks']:
+            self.assertTrue(row['matches'])
+            self.assertEqual(row['actual_sha256'], row['expected_sha256'])
+            self.assertEqual(row['bytes_checked'], row['expected_size'])
+            self.assertEqual(row['module_base'], hex(self.base))
+            self.assertEqual(row['historical_module_base'], '0x140000000')
+            self.assertEqual(row['source_snapshot_sha256'],
+                             '911ab9bcb24cc078420400369a78ffd3f747d915e42c4935a5c82c2dcecc6ae6')
+            self.assertIn('full known chunks', row['source'])
+            self.read.assert_any_call(self.base + int(row['range_rva'], 16), row['expected_size'])
+        self.closed.assert_called_once()
+
+
+    def test_cover_body_main_cold_or_child_drift_and_short_reads_reject_native_and_manifest_claims(self):
+        ranges, originals = self.cover_body_fixture()
+        manifest = Path(self.directory.name) / 'body-hook-manifest.json'
+        for rva, raw in originals.items():
+            for defect in ('first', 'tail', 'short'):
+                with self.subTest(rva=hex(rva), defect=defect):
+                    self.closed.reset_mock();self.resolver.prepare.reset_mock()
+                    for old_rva, old_raw in originals.items():self.memory[self.base + old_rva] = old_raw
+                    changed = bytearray(raw)
+                    if defect == 'short':changed = changed[:-1]
+                    else:changed[0 if defect == 'first' else -1] ^= 1
+                    self.memory[self.base + rva] = bytes(changed)
+                    # These self-reported originals deliberately agree with the
+                    # possibly damaged entry prefixes. Full historical chunks
+                    # must still decide restoration, including the cold tail.
+                    self.write_status(tuple(ranges))
+                    text = 'continuous_owner_verified=1 owner_pid=123 owner_creation_time=456\n' + self.status.read_text()
+                    entries = []
+                    for entry in ranges:
+                        prefix = self.memory[self.base + entry][:32]
+                        entries.append(dict(target=self.base + entry, original=prefix.hex()))
+                        text += (f'prime_entry target={self.base + entry:016X} before={prefix.hex()}\n'
+                                 f'prime_entry target={self.base + entry:016X} restored=1 before={prefix.hex()}\n')
+                    text += 'entries_restored=1 cover_body_identity match=1\n'
+                    self.status.write_text(text)
+                    manifest.write_text(json.dumps(dict(schema=1, pid=321, game_creation=789, owner_pid=123,
+                                                        owner_creation=456, entries=entries)))
+                    with mock.patch.object(verify_stopped, 'COVER_BODY_RESTORE_RANGES', ranges):
+                        with self.assertRaises(SystemExit) as error:
+                            self.invoke(hook_manifest=manifest, game_creation_time=789)
+                    self.assertEqual(error.exception.code, 1)
+                    report = json.loads(self.output.read_text())
+                    self.assertFalse(report['all_match'])
+                    self.assertEqual([row['range_rva'] for row in report['checks'] if not row['matches']], [hex(rva)])
+                    self.closed.assert_called_once()
+
+
+    def test_cover_body_allowlist_does_not_open_nearby_cold_or_other_game_targets(self):
+        for rva in (0x2a85a9, 0x8ed5ca, 0xfa53c, 0xfa681):
+            with self.subTest(rva=hex(rva)):
+                self.closed.reset_mock();self.resolver.prepare.reset_mock();self.read.reset_mock()
+                self.write_status((rva, 0x15cf08))
+                original = b'X' * 32
+                with self.status.open('a') as stream:
+                    stream.write(f'prime_entry target={self.base + rva:016X} before={original.hex()}\n'
+                                 f'prime_entry target={self.base + rva:016X} restored=1 before={original.hex()}\n'
+                                 'entries_restored=1\n')
+                with mock.patch.object(verify_stopped, 'check_runtime_ranges', wraps=verify_stopped.check_runtime_ranges) as check:
+                    with self.assertRaisesRegex(RuntimeError, 'Target not in an allowed graphics system module'):
+                        self.invoke()
+                check.assert_not_called()
+                self.read.assert_not_called()
+                self.closed.assert_called_once()
+
+
+    def test_cover_body_verification_keeps_prepare_and_preinstall_identity_gates(self):
+        self.cover_body_fixture()
+        self.resolver.prepare.side_effect = RuntimeError('Executable hash differs from validated build')
+        with self.assertRaisesRegex(RuntimeError, 'Executable hash differs'):
+            self.invoke()
+        self.read.assert_not_called()
+        self.closed.assert_called_once()
+        self.resolver.prepare.side_effect = None
+        self.closed.reset_mock()
+        manifest = Path(self.directory.name) / 'wrong-body-owner.json'
+        manifest.write_text(json.dumps(dict(schema=1, pid=321, game_creation=790, owner_pid=123,
+                                            owner_creation=456, entries=[dict(target=self.base + 0x2a85a8,
+                                                                            original=(b'X' * 32).hex())])))
+        self.status.write_text('continuous_owner_verified=1 owner_pid=123 owner_creation_time=456\n' + self.status.read_text())
+        with self.assertRaisesRegex(RuntimeError, 'identity mismatch'):
+            self.invoke(hook_manifest=manifest, game_creation_time=789)
+        self.read.assert_not_called()
+        self.closed.assert_not_called()  # Identity rejection precedes attach.
+
 
 
 if __name__ == '__main__':

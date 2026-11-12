@@ -111,6 +111,17 @@ BODY_HOOK_RANGES = {
 }
 
 
+# Historical af143a87 complete cover entry chunks; do not learn from live status.
+COVER_BODY_RESTORE_RANGES = {
+    0x2a85a8: (
+        (0x2a85a8, 889, '8c42951597545b095f60d725d81547173b000255dd69e99172a4359163c3f521'),
+        (0x8ed5ca, 79, '73e614ba91365631e33d25d355ec20c22cb4611a48ec97ad611facefa379ca81'),
+    ),
+    0xfa680: (
+        (0xfa680, 61, 'aee998dc1117d028904e7f2016dcb7b9ea7ca100ec622de4c8dfe3536bacd52f'),
+    ),
+}
+
 def check_runtime_ranges(read, base, target, ranges, source):
     checks = []
     for rva, size, expected_hash in ranges:
@@ -484,6 +495,17 @@ def main():
                 checks.append(dict(target=hex(target), source='artifact 1 runtime snapshot full known chunks',
                                    bytes_checked=len(current), expected_sha256=expected_hash,
                                    actual_sha256=current_hash, matches=current_hash == expected_hash))
+                continue
+            if rva in COVER_BODY_RESTORE_RANGES:
+                # The ordinary resolver.prepare image hash/context gates above
+                # and all preinstall identity checks remain in force. Read the
+                # stopped process independently across every fixed chunk.
+                values = check_runtime_ranges(resolver.read, resolver.base, target, COVER_BODY_RESTORE_RANGES[rva],
+                              'artifact 1 runtime snapshot cover body full known chunks')
+                for check in values:
+                    check.update(module_base=hex(resolver.base), historical_module_base='0x140000000',
+                                 source_snapshot_sha256='911ab9bcb24cc078420400369a78ffd3f747d915e42c4935a5c82c2dcecc6ae6')
+                checks.extend(values)
                 continue
             if rva in FIRST_PERSON_HEAD_RANGES:
                 checks.extend(check_runtime_ranges(resolver.read, resolver.base, target,
