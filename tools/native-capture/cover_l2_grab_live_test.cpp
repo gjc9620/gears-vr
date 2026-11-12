@@ -27,6 +27,7 @@ int main(){
     using namespace gears_vr;
     CoverInputOwnerFrame f{};f.cover.cover_valid=f.cover.interaction_enabled=true;
     f.cover.epochs={1,1,1,1,1,1,1};f.anchor={{100,0,19},{1,0,0},{0,1,0}};
+    f.view_anchor=f.anchor;
     f.units_per_metre=100;f.stereo.reference.orientation={0,0,0,1};
     ControllerInputFrame hands{};auto& hand=hands.hands[0];hand.grip_active=1;hand.grip_flags=15;
     hand.grip.orientation={0,0,0,1};hand.grip.position={-.7,0,0};f.controllers=&hands;
@@ -47,6 +48,16 @@ int main(){
     cover_geometry_live::source.type=1;hand.grip.position={0,1,0};
     C(cover_l2_grab_live::prepare(&scene,eye,f));C(f.cover.range.max_up==0&&!f.cover.edge.allowed);
     f.controllers=nullptr;C(cover_l2_grab_live::prepare(&scene,eye,f));C(!f.cover.edge.allowed&&f.cover.range.min_right<0);
+    // Looking along the wall must not rotate the original L2 points. Raw
+    // tracking maps through the observation basis, while limits stay in wall axes.
+    f.controllers=&hands;previous={};++f.cover.epochs.cover;
+    f.view_anchor={f.anchor.neutral_eye_world,{0,1,0},{-1,0,0}};
+    hand.grip.position={0,0,.7};
+    C(cover_l2_grab_live::prepare(&scene,eye,f));C(f.cover.edge.id==1&&f.cover.edge.within_acquisition_reach);
+    hand.grip.position={0,0,-.7};
+    C(cover_l2_grab_live::prepare(&scene,eye,f));C(f.cover.edge.id==2&&f.cover.edge.within_acquisition_reach);
+    C(std::abs(f.cover.range.min_right+.7)<1e-9&&std::abs(f.cover.range.max_right-.7)<1e-9);
+    f.view_anchor={};C(cover_l2_grab_live::prepare(&scene,eye,f));C(!f.cover.edge.allowed);
     cover_geometry_live::available=false;C(!cover_l2_grab_live::prepare(&scene,eye,f));
     std::printf("CoverL2GrabLiveTest checks=%u failures=%u\n",checks,failures);return failures?1:0;
 }

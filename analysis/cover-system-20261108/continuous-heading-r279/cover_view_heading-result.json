@@ -1,0 +1,15 @@
+{
+  "build_exit": 0,
+  "test_exit": 0,
+  "output": "CoverViewHeadingTest checks=19 failures=0\r\n",
+  "source_sha256": {
+    "tools\\vr-common\\cover_view_heading.h": "5130b81cfc38046e676cf078f598e55fbe196f54707e1a3baebfa5ecb090a99d",
+    "tools\\vr-common\\cover_view.h": "bde8f7bdddd6032c7be86faeab261a760c947c8cc1043c3361afb696c56fddb5",
+    "tools\\vr-common\\cover_interaction.h": "80c1783842b1b607a2c9de66dbbe162c404b1e4c158d93e4f83d2c53e36d848a",
+    "tools\\vr-common\\pose_math.h": "d89ece54a2a4c77c71ebc4d04104c651ed292d833dc401ede8611bdd89f3c482",
+    "tools\\vr-common\\view_origin.h": "bc5e0c4c398db6e770795249ed8317a5d164bf85befd0ec2db331093c19c116e",
+    "tools\\vr-common\\stereo_frame.h": "bf438b856aeef127a0b68657b604f6d6b6b9b5993ca0f23d576b7437cefafc4c",
+    "tools\\vr-common\\hand_reference_continuity.h": "1c5c154b68238b635ba2c4cd0f1f7104593b0fd432c649662b0f4a4dcabcfa5d",
+    "tools\\native-capture\\cover_view_heading_test.cpp": "43b6496536d38bbeb1b15c02491e8cb9a63bef8e73cf690d99236d8c71bc9c84"
+  }
+}

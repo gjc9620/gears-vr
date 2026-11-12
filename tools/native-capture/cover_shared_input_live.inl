@@ -131,7 +131,7 @@ bool prepare(gears_anchor::Receipt const* scene,gears_vr::StereoMatrix& view,gea
     if(!runtime::enabled){clear_tracking();return input::enabled?input::prepare(scene,view,stereo):camera::prepare(scene,view);}
     ++diagnostics.attempts;if(input::enabled)++input::diagnostics.attempts;bool owned{};
     try{
-        neutral::EyeSample eye{};
+        neutral::EyeSample eye{};const auto incoming_view=view;
         owned=camera::prepare_with(scene,view,[&](auto const* receipt,auto& out){
             if(!neutral::sample(receipt,eye))return false;out=eye;return true;
         });
@@ -229,7 +229,7 @@ bool prepare(gears_anchor::Receipt const* scene,gears_vr::StereoMatrix& view,gea
         frame.cover.cover_valid=cover;frame.cover.interaction_enabled=cover&&!eye.special_move;
         frame.cover.right_axis_tracking=axes.right;frame.cover.up_axis_tracking=axes.up;
         if(cover){frame.anchor={eye.neutral_eye_world,camera::facing.forward,camera::facing.right};
-            frame.view_anchor=frame.anchor; // View remains independent of the C0 wall/body basis.
+            frame.view_anchor=input::view_anchor(scene,eye,stereo,incoming_view);
             frame.anchor=input::wall_anchor(eye);
             frame.height_curve=input::height_curve.data();frame.height_key_count=unsigned(input::height_curve.size());}
         frame.stereo=stereo;frame.controllers=matched?&hands:nullptr;frame.now_ns=stamp;
@@ -311,7 +311,7 @@ bool prepare(gears_anchor::Receipt const* scene,gears_vr::StereoMatrix& view,gea
         if(status<input::diagnostics.controller_status.size())++input::diagnostics.controller_status[status];
         input::diagnostics.hand_world_valid=cover&&matched&&result.view_valid&&
             gears_vr::controller_pose_usable(hands.hands[0].grip,hands.hands[0].grip_flags,hands.hands[0].grip_active)&&
-            gears_vr::cover_tracking_point(frame.anchor,result.view,stereo.reference,hands.hands[0].grip.position,stereo_units_per_metre,input::diagnostics.hand_world);
+            gears_vr::cover_tracking_point(frame.view_anchor,result.view,stereo.reference,hands.hands[0].grip.position,stereo_units_per_metre,input::diagnostics.hand_world);
         if(cover&&result.view_valid){
             // complete(false) can certify the OLD committed offset against
             // this fresh Scene. Physical HMD motion remains independent of PG

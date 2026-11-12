@@ -93,6 +93,7 @@ gears_support::Recorder support_diagnostics;
 #endif
 #include "camera_closer.h"
 #include "../vr-common/cover_view.h"
+#include "../vr-common/cover_view_heading.h"
 #include "../vr-common/cover_input_owner.h"
 #include "../vr-common/cover_body_target.h"
 #include "native_scene_boundary.h"

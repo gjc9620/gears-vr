@@ -18,6 +18,16 @@ gears_vr::LeftHandInteractionOwner left_hand_owner;
 using GrabPointProvider=bool(*)(gears_anchor::Receipt const*,neutral::EyeSample const&,gears_vr::CoverInputOwnerFrame&);
 GrabPointProvider grab_points_provider{};
 void (*grab_point_summary)(FILE*){};
+using ViewAnchorProvider=bool(*)(gears_anchor::Receipt const*,neutral::EyeSample const&,
+    gears_vr::StereoResult const&,double,gears_vr::StereoMatrix const&,gears_vr::CoverViewAnchor&);
+ViewAnchorProvider view_anchor_provider{};
+gears_vr::CoverViewAnchor view_anchor(gears_anchor::Receipt const* scene,neutral::EyeSample const& eye,
+    gears_vr::StereoResult const& stereo,gears_vr::StereoMatrix const& incoming){
+    gears_vr::CoverViewAnchor out{};
+    if(!gears_cover_pose_role::c0_exclusive)return {eye.neutral_eye_world,camera::facing.forward,camera::facing.right};
+    if(!view_anchor_provider||!view_anchor_provider(scene,eye,stereo,stereo_units_per_metre,incoming,out))return {};
+    return out; // Invalid heading withdraws cover only; no legacy Pawn-yaw fallback.
+}
 uint64_t grab_reference_ready{},grab_reference_rejected{};
 uint64_t uncomposed_view_rejected{};
 gears_vr::CoverRange last_grab_range{};gears_vr::CoverEdgeObservation last_grab_edge{};
@@ -107,7 +117,7 @@ bool prepare(gears_anchor::Receipt const* scene,gears_vr::StereoMatrix& view,gea
     if(!enabled)return false;++diagnostics.attempts;
     bool owned=false;
     try{
-    neutral::EyeSample eye{};
+    neutral::EyeSample eye{};const auto incoming_view=view;
     // Let the existing preview retain its diagnostics and sample exactly once.
     owned=camera::prepare_with(scene,view,[&](auto const* receipt,auto& out){
         if(!neutral::sample(receipt,eye))return false;out=eye;return true;
@@ -131,7 +141,7 @@ bool prepare(gears_anchor::Receipt const* scene,gears_vr::StereoMatrix& view,gea
     frame.cover.cover_valid=true;frame.cover.interaction_enabled=!eye.special_move;
     frame.cover.right_axis_tracking=axes.right;frame.cover.up_axis_tracking=axes.up;
     frame.anchor={eye.neutral_eye_world,camera::facing.forward,camera::facing.right};
-    frame.view_anchor=frame.anchor; // View remains independent of the C0 wall/body basis.
+    frame.view_anchor=view_anchor(scene,eye,stereo,incoming_view);
     frame.anchor=wall_anchor(eye);
     frame.stereo=stereo;frame.controllers=matched&&!interrupted?&input:nullptr;
     frame.height_curve=height_curve.data();frame.height_key_count=unsigned(height_curve.size());
@@ -144,7 +154,7 @@ bool prepare(gears_anchor::Receipt const* scene,gears_vr::StereoMatrix& view,gea
     const auto status=unsigned(result.controller_status);if(status<diagnostics.controller_status.size())++diagnostics.controller_status[status];
     diagnostics.sequence=stereo.sample.sequence;diagnostics.reference=stereo.reference_generation;diagnostics.frame=scene->invocation;
     diagnostics.hand_world_valid=matched&&gears_vr::controller_pose_usable(input.hands[0].grip,input.hands[0].grip_flags,input.hands[0].grip_active)&&
-        result.view_valid&&gears_vr::cover_tracking_point(frame.anchor,result.view,stereo.reference,
+        result.view_valid&&gears_vr::cover_tracking_point(frame.view_anchor,result.view,stereo.reference,
         input.hands[0].grip.position,stereo_units_per_metre,diagnostics.hand_world);
     if(result.accepted&&result.view_valid){
         if(!full_body_cover_enabled)view=result.view.base_view;

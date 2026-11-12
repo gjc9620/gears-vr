@@ -123,6 +123,11 @@ struct Publication {Key key{};gears_vr::CoverViewResult render{};b::Matrix64 com
     gears_cover_committed::State cover_drag{};cover_context_live::CurrentKey cover_key{};bool cover{};
     uint64_t version{},tick{},compose{},revision{};int64_t ended_ns{};};
 std::mutex view_mutex;Publication view{};uint64_t publication_sequence{};
+// Geometric observation calibration only. It cannot grant a body write or
+// refresh tracking. Each use independently revalidates Scene/avatar/asset,
+// native session and the current XR reference before rebasing to today's eye.
+struct Heading {Key key{};gears_vr::CoverViewAnchor anchor{};bool valid{};} heading;
+std::atomic<uint64_t> heading_used{},heading_seeded{},heading_rejected{};
 struct Pending {Entry const* entry{};Entry copy{};Publication next{};uint64_t revision{},kernel_serial{};bool committed{};} pending;
 bind::Proof standing_proof{};std::array<unsigned,2> crouch_masks{};
 std::array<unsigned char,sizeof(gears_anchor::Config)> metadata_bytes{};uint64_t metadata_generation{};
@@ -367,6 +372,49 @@ bool current_geometry(Publication const& p,b::Matrix64& component){
         pose::metadata(reader,request,after)&&pose::metadata_equal(before,after)&&bind::metadata_current();
     if(current)std::memcpy(&component,&before.component,sizeof component);return current;
 }
+bool read_cover_heading(gears_anchor::Receipt const* scene,cover_neutral_eye_live::EyeSample const& eye,
+    gears_vr::StereoResult const& stereo,double units,gears_vr::StereoMatrix const& incoming,
+    gears_vr::CoverViewAnchor& output) noexcept {
+    auto deny=[](){++heading_rejected;return false;};
+    try{
+        if(!enabled||!cover_enabled||stopping.load()||!recording.load()||!scene||scene->thread!=GetCurrentThreadId()||
+           scene->invocation!=eye.scene_invocation||!stereo||!gears_vr::stereo_tracking_valid(stereo.sample,simulator_operator)||
+           !gears_vr::stereo_render_active(stereo.sample)||stereo.sample.focused!=1||
+           !rig::source_fresh(stereo.sample.received_ns,rig::clock_ns(),a::maximum_age_ns))return deny();
+        Heading copy{};{std::lock_guard<std::mutex> lock(view_mutex);copy=heading;}
+        auto admit=[&](Key const& k){
+            auto const& s=k.source;auto const session=weapon_hand_runtime::session();
+            bind::Binding actor{};core::rig::NativeReference reference{};uint64_t ref_revision{};
+            Publication geometry{};geometry.key=k;b::Matrix64 component{};
+            return units==k.units&&k.model_scale==1&&
+                s.native.game_thread==scene->thread&&s.world_generation==committed_world_generation.load()&&
+                rig::native_session_current(weapon_hand_runtime::current(),session)&&
+                session.game_pid==s.native.game_pid&&session.game_start==s.native.game_start&&session.native_started_qpc==s.native.native_started_qpc&&
+                rig::reference_snapshot(reference,ref_revision)&&ref_revision==s.native_reference_revision&&
+                reference.epoch==s.native_reference.epoch&&reference.flags==s.native_reference.flags&&
+                stereo.reference_generation==s.reference_generation&&gears_vr::stereo_same_pose(stereo.reference,s.reference)&&
+                stereo.sample.source==s.stereo.source&&stereo.sample.session==s.stereo.session&&stereo.sample.space_epoch==s.stereo.space_epoch&&
+                bind::sample(scene,actor)&&same_neutral_actor(actor,k.actor)&&
+                gears_anchor::equal_identity(actor.pawn,eye.pawn)&&gears_anchor::equal_identity(actor.mesh,eye.mesh)&&
+                actor.world.address==eye.current_world&&actor.world_generation==eye.world_generation&&
+                current_geometry(geometry,component)&&bind::current_actor(actor);
+        };
+        if(!copy.valid||!admit(copy.key)){
+            // Already-in-cover startup/recenter has no previous standing view.
+            // Seed from the current authenticated pre-preview Scene base, with
+            // a separately admitted native geometry key. Never use Pawn+pi.
+            if(!n::state.captured)return deny();Heading seed{};
+            seed.key=cover_current_key();
+            if(!admit(seed.key)||!gears_vr::cover_level_heading(incoming,eye.neutral_eye_world,seed.anchor))return deny();
+            seed.valid=true;copy=seed;
+            {std::lock_guard<std::mutex> lock(view_mutex);if(stopping.load())return deny();heading=seed;}
+            ++heading_seeded;
+        }
+        copy.anchor.neutral_eye_world=eye.neutral_eye_world;
+        if(!gears_vr::cover_view_basis(copy.anchor))return deny();
+        output=copy.anchor;++heading_used;return true;
+    }catch(...){return deny();}
+}
 bool read_view(gears_anchor::Receipt const* scene,gears_vr::StereoResult const& stereo,double units,gears_vr::CoverViewResult& output) noexcept {Call call;
     auto deny=[](bool clear=true){++view_rejected;if(clear)invalidate();return false;};
     try{if(!enabled||stopping.load()||!recording.load()||!scene||scene->thread!=GetCurrentThreadId()||!view_valid.load()||!stereo||
@@ -446,6 +494,7 @@ bool read_view(gears_anchor::Receipt const* scene,gears_vr::StereoResult const& 
         // Only the immutable neutral basis is held. Current Scene/geometry and
         // current Stereo were revalidated above; no old tracking time or body
         // commit is refreshed. This display policy has zero virtual offset.
+        heading={copy.key,moved.eye_anchor,true};
         output=render;++view_used;if(pickup)++pickup_view_used;
         if(lancer_animation)++lancer_animation_view_used;
         if(lancer_animation&&actor.special_move==34)++lancer_execution_eye_used;
@@ -455,9 +504,12 @@ bool read_view(gears_anchor::Receipt const* scene,gears_vr::StereoResult const& 
 bool configure(wchar_t const* ini,FILE* file){wchar_t value[8]{};GetPrivateProfileStringW(L"BodyC0GoalPolicy",L"enabled",L"0",value,8,ini);
     if(wcscmp(value,L"0")&&wcscmp(value,L"1"))return false;enabled=!wcscmp(value,L"1");if(enabled&&!n::enabled)return false;
     cover_enabled=cover_full_goal_live::set_body_owner(enabled);
+    cover_input_live::view_anchor_provider=enabled?read_cover_heading:nullptr;
     if(file)fprintf(file,"body_goal_policy_compiled=1 body_goal_policy_enabled=%u body_goal_cover_enabled=%u body_goal_cover_collision_required=0 body_goal_scene_view_wired=1\n",unsigned(enabled),unsigned(cover_enabled));return true;}
-void request_drain(){stopping=true;invalidate();}unsigned pending_count(){return callbacks.load()+open_ends.load();}
+void request_drain(){stopping=true;invalidate();std::lock_guard<std::mutex> lock(view_mutex);heading={};}unsigned pending_count(){return callbacks.load()+open_ends.load();}
 void summary(FILE* f){if(!f)return;
+    fprintf(f,"body_goal_cover_heading_used=%llu body_goal_cover_heading_seeded=%llu body_goal_cover_heading_rejected=%llu ",
+        heading_used.load(),heading_seeded.load(),heading_rejected.load());
     // First immutable witness per gate; no lock or extra game read.
     for(unsigned i=0;i<cover_probe_rows.size();++i){auto const& slot=cover_probe_rows[i];
         fprintf(f,"cover_pose_probe_count_%u=%llu ",i,slot.count.load());

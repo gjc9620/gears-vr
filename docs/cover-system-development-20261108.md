@@ -3570,3 +3570,12 @@ r278 runner99768终态exit0、operator0，cover applied/consumed234，body_cover
 r278接续补充：L2 provider当前也有独立视角接线缺口：cover_l2_grab_live::prepare用单anchor版本prepare_cover_view(frame.anchor,offset)，再用frame.anchor作cover_tracking_point的tracking/view轴；独立view_anchor引入后必须使用双anchor版本，tracking_point用frame.view_anchor。Input hand_world诊断亦应使用view_anchor。否则观测方向和壁面不同会让实际手的位置/扒点获得错误映射；不要只换相机朝向而保留该错误。现纯L2测试只设置了f.anchor，应显式设置view_anchor并增加90度独立视角的左右获得测试，保持L2原始点、权限、±0.70/0.51位移范围不变。
 
 缺少连续朝向时，不把旧预览朝向当新C0基准；CoverInputOwner现有prepare路径可用无效view_anchor撤回Cover提议和view_valid，同时仍给同一已解码输入的合法武器请求服务。视角provider应在shared/single Input两条路径使用，不能为此新增一个左手仲裁器。若允许从当前认证Scene的进入前原始base view建立首次几何朝向，须在旧preview改写view之前保存，并明确它不是旧身体/追踪/消费凭证。处理已有cover启动及recenter/会话/模型失效，不能让无旧standing缓存永久死锁。
+
+
+### r279 连续观察朝向与原生L2手坐标接入（编译/离线通过，尚未游戏验证）
+
+按owner范围继续：遮挡与碰撞后置，左右参考原生L2 action3/4点，向上仅CT2矮掩体参考popup点，不增加表面/碰撞门。L2点与位移范围保持wall轴，当前左手世界位置改经独立view_anchor换算；single/shared Input诊断同步。90度独立视角左右获取、缺失视角不伪造抓点、CT1不上探均离线通过。
+
+BodyGoal只保存最近已认证standing BASE观察水平轴的几何校准；进入cover重新使用当前neutral eye，不保存或刷新旧眼位/追踪/骨架/写入许可。每次provider独立验证Scene/当前avatar/world/mesh/asset/reference几何、Native进程/会话、XR session/space/reference及当前Stereo新鲜性；失效时撤回Cover视角，shared武器仲裁继续。已在cover启动或参考重绑无有效standing校准时，仅用当前独立认证的pre-preview Scene BASE提取水平轴，拒绝非刚性/反射/垂直/非有限矩阵，绝不退回Pawn+pi。当前HMD仍随后仅应用一次。drain清校准；普通compose视角失效不会破坏进入前几何朝向。
+
+离线五项：heading19、L2抓点22、Input88、shared25、FullGoal52全部0失败。最终r279 Native-v4编译链接通过，430份项目依赖全部位于冻结source-v4，PHYSX_QUERIES仍OFF，其余flags不变；DLL 97335d629a043e0e68a70e25186757b45539dab992aa710d3e5cea620bc1cd4b。v3在最后provider返回值防护补充前已编译通过，仅作为历史，不交付。初次快照准备的非唯一anchor拒绝和初版测试错误均保留，不算运行成功。本节只有源码/离线/编译证据，进掩体连续画面、真实Grip链和实体头显仍待验证。Quest/公版/固定手动包未变。

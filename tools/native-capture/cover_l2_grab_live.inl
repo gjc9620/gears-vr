@@ -52,8 +52,8 @@ bool prepare(gears_anchor::Receipt const* scene,cover_neutral_eye_live::EyeSampl
     if(!frame.controllers){++diagnostics.hand_missing;return true;}
     const auto& hand=frame.controllers->hands[0];gears_vr::CoverViewResult view{};gears_vr::Vector world{};
     if(!gears_vr::controller_pose_usable(hand.grip,hand.grip_flags,hand.grip_active)||
-       !gears_vr::prepare_cover_view(frame.anchor,offset,frame.units_per_metre,view)||
-       !gears_vr::cover_tracking_point(frame.anchor,view,frame.stereo.reference,hand.grip.position,frame.units_per_metre,world)){
+       !gears_vr::prepare_cover_view(frame.anchor,frame.view_anchor,offset,frame.units_per_metre,view)||
+       !gears_vr::cover_tracking_point(frame.view_anchor,view,frame.stereo.reference,hand.grip.position,frame.units_per_metre,world)){
         ++diagnostics.hand_missing;return true;
     }
     frame.cover.edge=gears_vr::cover_l2_select(references,world,frame.units_per_metre,.18,latched?previous.edge_id:0);

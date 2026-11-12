@@ -70,6 +70,17 @@ int main(){
     cover_camera_live::facing.right={-.593540977,-.80480377,0};
     gears_cover_pose_role::c0_exclusive=false;const auto legacy=cover_input_live::wall_anchor(eye);
     gears_cover_pose_role::c0_exclusive=true;const auto wall=cover_input_live::wall_anchor(eye);
+    const auto absent=cover_input_live::view_anchor(nullptr,eye,{},{});
+    C(!gears_vr::cover_view_basis(absent)); // No silent legacy view in C0 role.
+    cover_input_live::view_anchor_provider=[](gears_anchor::Receipt const*,cover_neutral_eye_live::EyeSample const& e,
+        gears_vr::StereoResult const&,double,gears_vr::StereoMatrix const&,gears_vr::CoverViewAnchor& out){
+        out={e.neutral_eye_world,{0,1,0},{-1,0,0}};return false;};
+    C(!gears_vr::cover_view_basis(cover_input_live::view_anchor(nullptr,eye,{},{})));
+    cover_input_live::view_anchor_provider=[](gears_anchor::Receipt const*,cover_neutral_eye_live::EyeSample const& e,
+        gears_vr::StereoResult const&,double,gears_vr::StereoMatrix const&,gears_vr::CoverViewAnchor& out){
+        out={e.neutral_eye_world,{0,1,0},{-1,0,0}};return true;};
+    C(cover_input_live::view_anchor(nullptr,eye,{},{}).forward_world.y==1);
+    cover_input_live::view_anchor_provider=nullptr;
     const gears_vr::Vector neutral{-3927.34058,-178.830322,583};
     const gears_vr::Vector left{-3968.88843,-235.166595,583},right{-3885.79272,-122.494057,583};
     const auto dot=[&](gears_vr::Vector p,gears_vr::CoverViewAnchor const& basis){return

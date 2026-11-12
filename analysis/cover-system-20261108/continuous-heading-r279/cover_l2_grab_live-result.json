@@ -1,0 +1,30 @@
+{
+  "build_exit": 0,
+  "test_exit": 0,
+  "output": "CoverL2GrabLiveTest checks=22 failures=0\r\n",
+  "source_sha256": {
+    "tools\\native-capture\\anchor_observer.h": "f2d8425ba10591c9700937244391f37b5ccf6ec3ffe6685beab34edb51e433fe",
+    "tools\\native-capture\\crosshair_scene_evidence.h": "4030db5fb3ad4d29b5447371f9cc27b6fc22e81eb854b7620bead9662d14bb49",
+    "tools\\native-capture\\crosshair_writer_view.h": "8368f7c112c0357e4b132e8d7d7bfeb1f24ba459678af03d883ebb35607b5927",
+    "tools\\native-capture\\mounted_actor_type.h": "1a9af3c9fcd9e0cd49100503fcfe07a089d59c065ec2f8af83555c1094eefb0a",
+    "tools\\native-capture\\mounted_observer.inl": "fa08e470befaa5c8de28cd5063ffc821e91940714429efdac28fe44f0f91bbb1",
+    "tools\\native-capture\\cover_l2_viewpoint_getter.h": "59f247c1703944ba2740cbc9c745067a9edfe80c5205da6425ed28000fd7f1b7",
+    "tools\\native-capture\\cover_surface_getters.h": "030c660e0ac74d4b73965e81a27328222c6c1f5a21abf2336d5b686a9eeb3b83",
+    "tools\\native-capture\\cover_bone_getters.h": "b4a54fc8834f563dae3b4291936696792d0cb6af0131e4a3c6ec4fd3304f4996",
+    "tools\\vr-common\\cover_l2_grab_points.h": "d988d152916462b75cd5246ed0f55c38caddd3e4d12f154b2e0ed08fba296aec",
+    "tools\\vr-common\\cover_interaction.h": "80c1783842b1b607a2c9de66dbbe162c404b1e4c158d93e4f83d2c53e36d848a",
+    "tools\\vr-common\\pose_math.h": "d89ece54a2a4c77c71ebc4d04104c651ed292d833dc401ede8611bdd89f3c482",
+    "tools\\vr-common\\cover_input_owner.h": "54306fbd617824df26a02a92dbd1315a08d77e3da24f24d60a477c1cf618400b",
+    "tools\\vr-common\\cover_controller_adapter.h": "ae846972920e4ac5db906596dd8f44e90459dd3a80e2c651f12f07f52b063d39",
+    "tools\\vr-common\\controller_input_frame.h": "abde05f3e8017afd8b6248b879558714975c5c624c84234af0bbb62a3036feb2",
+    "tools\\vr-common\\stereo_frame.h": "bf438b856aeef127a0b68657b604f6d6b6b9b5993ca0f23d576b7437cefafc4c",
+    "tools\\vr-common\\hand_reference_continuity.h": "1c5c154b68238b635ba2c4cd0f1f7104593b0fd432c649662b0f4a4dcabcfa5d",
+    "tools\\vr-common\\cover_view.h": "bde8f7bdddd6032c7be86faeab261a760c947c8cc1043c3361afb696c56fddb5",
+    "tools\\vr-common\\view_origin.h": "bc5e0c4c398db6e770795249ed8317a5d164bf85befd0ec2db331093c19c116e",
+    "tools\\vr-common\\left_hand_interaction_owner.h": "5d80088dde53766e996586ed7bd56691f918f9f92eab25d7c9697482c9a4620f",
+    "tools\\vr-common\\left_interaction_control.h": "6c314e6bb9735820ff82c4f35e733f7bd8933d9c743b4dd72fabe1d6ef922940",
+    "tools\\vr-common\\cover_motion.h": "582971d7b74cfcd8fc58d89dfd85953ff39eb930baa56458411eaf24deaa7757",
+    "tools\\native-capture\\cover_l2_grab_live.inl": "2d73722489a61eefc69e6db5dcd1ed3c01d89b1c29cd563e62c3aa61ac462ab0",
+    "tools\\native-capture\\cover_l2_grab_live_test.cpp": "b20ee98b1ed79e67d914e276a60a151f067a4e0b8ded266208e11f024e77a182"
+  }
+}

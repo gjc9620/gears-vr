@@ -1,0 +1,7 @@
+{
+  "phase": "r279 initial snapshot preparation",
+  "result": "unique anchor assertion rejected before compiler/game",
+  "reason": "EyeSample substring also appears in two unrelated struct declarations",
+  "resolution": "use indented local declaration anchor; incomplete native-source-v2 preserved; final v4 build passed",
+  "first_heading_test": "wrong test component index scaled zero instead of right vector; corrected test; 19 checks pass"
+}
