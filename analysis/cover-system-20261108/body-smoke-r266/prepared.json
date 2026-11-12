@@ -1,0 +1,12 @@
+{
+  "name": "cover-1112-r266-cloak-measure",
+  "native_sha256": "639d3cc0bab84f57285763a50c22e6234178ffdafad1e09176413ef6f8607f8a",
+  "entry_sha256": "65c30e3a097400e58dfc626c4959d5b0bbdec86a0d1a97376bf29475eeb73807",
+  "tool_sha256": "e042f75b86f6daa497d50a75faac6ef0281c013c5a90c2a17b7bd23ac1dc533e",
+  "runner_sha256": "92432ea8037944c4272a37de130653efd282e13642a91e000b68bc878c25e7fe",
+  "operator_template_sha256": "c8aed0688a653359253624f80d3cd595245535f7e87f2928f4321af707afa0ec",
+  "prepared_only": true,
+  "game_started": false,
+  "physics_enabled": false,
+  "legacy_height_curve": "0.3/0.7 compatibility values, unused by selected C0 body owner; not measurements"
+}
