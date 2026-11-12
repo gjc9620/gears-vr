@@ -1,0 +1,38 @@
+{
+  "instance": "J:\\codexWorktree\\gearsVr\\analysis\\instances\\cover-1112-r252-cloak-query-headroom",
+  "operator": "J:\\codexWorktree\\gearsVr\\analysis\\instances\\cover-1112-r252-cloak-query-headroom\\cover-output\\cover_action.py",
+  "operator_sha256": "128d7336209ec2e560899a0fcb02178845e40f9369dc9099215582556bba0ae5",
+  "bootstrap_stdlib_passed": true,
+  "source_sha256": {
+    "J:\\codexWorktree\\gearsVr\\analysis\\solo-m1-20261028\\cover_boundary_chain.py": "06f1655206f2a1c2ed61061f453106619f998e2be6cc02d7c485e75450909254",
+    "J:\\codexWorktree\\gearsVr\\analysis\\solo-m1-20261028\\equipment_controller_chain.py": "4feb29a57dcbc1a6616197df8bff90f162909e379d0e54cff1f4b3f9447dc39c",
+    "J:\\codexWorktree\\gearsVr\\analysis\\solo-m1-20261028\\run_menu_firstperson_check.py": "a032e1b3e06a9159aab6090aa3c041db0a44c189dc1e64d7e163e7de440016a8"
+  },
+  "wrapper_source_sha256": "f45f2dad8b17f68bc7f17efa078217829dd9ae7e8c0c1efcb8ba30f996a289d4",
+  "generator_sha256": "30890122dd0b4a719805d1f11ce562d4959d1387f654761629c0c6231b7d423f",
+  "entry_observation_source_sha256": "b148387d9a5214b3074c05407d3aa2a8ae2746896a0d29588698b2019382f0b7",
+  "candidate_closing_source_sha256": "50979a3c824a1a51d87a250fa997de4e417dfc033405454029dc58c006041eca",
+  "cover_reader_source_sha256": {
+    "tools/game-playtest/cover_state.py": "cf16bdd6be07b6d6921e10f0a6d0d98d7672eb1eb008fc5dcc651075781211fe",
+    "tools/game-playtest/world_state.py": "c1d2de0950fb25770cf9520ffa7cf6b0c46940eed9c45e01f5f1c22d4c3cfff0"
+  },
+  "ordinary_approach_source_sha256": "2a22e3d0765ed3d16a722f19a1ba90bd60e9bebe4637f462e027e4fbd3489160",
+  "ordinary_approach_frozen_in_operator": true,
+  "syntax_checked": true,
+  "shared_instance_references": 0,
+  "input_reader": "J:\\codexWorktree\\gearsVr\\analysis\\instances\\cover-1112-r252-cloak-query-headroom\\cover-output\\read_private_input.py",
+  "input_reader_sha256": "3bd38308ed5b15b86786c93f2054c71dc33e3aac49e8d1bfdede62b172a1aac6",
+  "observation_adapter": "J:\\codexWorktree\\gearsVr\\analysis\\instances\\cover-1112-r252-cloak-query-headroom\\cover-output\\cover_private_playground_observation.py",
+  "observation_adapter_sha256": "c5e4f92f95577cfe503caf9a41243ca7db63e88c2a55c6748e8ea0b29e590678",
+  "observation_adapter_source": "J:\\codexWorktree\\gearsVr\\tools\\game-playtest\\cover_playground_observation.py",
+  "observation_adapter_source_sha256": "686dd471f78016ca143628a33ea9ff89c20d3b68cf27bc29c391a66f669b6935",
+  "actual_input_or_recording_started": false,
+  "gameplay_accepted": false,
+  "flags": [
+    "--cover-eye-observation",
+    "--equipment-chain",
+    "--playground-ready",
+    "--dual-output"
+  ],
+  "remaining": "Launch/stop owner and one-shot source-stage environment still require explicit r105 runner."
+}
