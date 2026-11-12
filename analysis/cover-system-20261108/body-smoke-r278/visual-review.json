@@ -1,0 +1,27 @@
+{
+  "all_frames": 266,
+  "overview_pages_personally_reviewed": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6
+  ],
+  "dense_frames_personally_reviewed": [
+    "frame-00182.jpg",
+    "frame-00202.jpg",
+    "frame-00221.jpg",
+    "frame-00240.jpg",
+    "frame-00259.jpg"
+  ],
+  "observed": [
+    "Both submitted projection eyes have visible world; no sustained black interval in reviewed timeline.",
+    "Turn and rise phases visibly change framing, then restore.",
+    "Entry frames169-173 change view heading sharply; current input uses legacy Pawn-yaw-plus-pi view basis.",
+    "Own shoulder/arm intrudes, most strongly in neutral frame182. No complete body/hand fit claim."
+  ],
+  "full_feature_visual_acceptance": false,
+  "collision_and_occlusion_remain_deferred": true,
+  "next": "Preserve independently established view heading across cover entry; do not add collision/occlusion work. Then Grip drag/hold/reverse and per-point GrabPose/arm transition."
+}

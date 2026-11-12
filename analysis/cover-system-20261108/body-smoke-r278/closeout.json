@@ -1,0 +1,143 @@
+{
+  "native_sha256": "566b7e35b4bbbe41509185e1db2f922cf4c28ce356b51ced641b9d62d9f72eb1",
+  "raw_result": "J:\\codexWorktree\\gearsVr\\analysis\\instances\\cover-1112-r278-cloak-view\\cover-output\\run-result.json",
+  "raw_result_sha256": "9cefb2eb30ab1223a3d9e042861927f390858edd35b142412216b9672a424d08",
+  "runner_terminal_exit": 0,
+  "result": {
+    "error": null,
+    "operator_exit": 0,
+    "projection_frames": 266,
+    "projection_error": null,
+    "normal_cleanup_verified": true,
+    "remaining_owned": {},
+    "isolated_done": {
+      "launcher_exit": 0,
+      "owned_game_absent": true,
+      "owned_children": {
+        "recorded": 0,
+        "remaining": []
+      },
+      "forced_termination": false,
+      "worker_error": null,
+      "no_game_started": false
+    }
+  },
+  "session": {
+    "phase": "stopped",
+    "native_cleanup_verified": true,
+    "entry_restore_verified": true,
+    "xr_exit_code": 0
+  },
+  "facts": {
+    "cover_input_l2_range": "-0.699999975,0.699999913,0,0.51",
+    "body_cover_pose_attempts": "234",
+    "body_cover_pose_accepted": "234",
+    "body_cover_pose_rejected": "0",
+    "body_native_pending": "0",
+    "body_goal_cover_enabled": "1",
+    "body_goal_cover_fits": "3",
+    "body_goal_cover_plans": "234",
+    "body_goal_cover_applied": "234",
+    "body_goal_cover_consumed": "234",
+    "body_goal_cover_rejected": "7",
+    "body_goal_cover_reason": "0",
+    "body_goal_cover_view_used": "233",
+    "body_goal_cover_measure_status": "0",
+    "body_goal_cover_measure_bad_bone": "4294967295",
+    "body_goal_cover_measure_bad_scale": "0",
+    "body_goal_cover_measure_atom_status": "0",
+    "body_goal_cover_measure_component_length": "0",
+    "body_goal_cover_bad_atoms": "0,0,0,0"
+  },
+  "phases": [
+    {
+      "label": "cover_eye_neutral",
+      "body_consumption_observed": true,
+      "cover_view_observed": true,
+      "consumed": "18",
+      "view_used": "18",
+      "physical": "0,0,-0",
+      "qpc": [
+        2499913709323,
+        2499921773022
+      ]
+    },
+    {
+      "label": "cover_eye_turned",
+      "body_consumption_observed": true,
+      "cover_view_observed": true,
+      "consumed": "61",
+      "view_used": "61",
+      "physical": "0,0,-0",
+      "qpc": [
+        2499934677202,
+        2499942726170
+      ]
+    },
+    {
+      "label": "cover_eye_turn_restored",
+      "body_consumption_observed": true,
+      "cover_view_observed": true,
+      "consumed": "103",
+      "view_used": "103",
+      "physical": "0,0,-0",
+      "qpc": [
+        2499955620479,
+        2499963685952
+      ]
+    },
+    {
+      "label": "cover_eye_raised",
+      "body_consumption_observed": true,
+      "cover_view_observed": true,
+      "consumed": "145",
+      "view_used": "145",
+      "physical": "0,0.100000024,-0",
+      "qpc": [
+        2499975962458,
+        2499984023169
+      ]
+    },
+    {
+      "label": "cover_eye_rise_restored",
+      "body_consumption_observed": true,
+      "cover_view_observed": true,
+      "consumed": "207",
+      "view_used": "207",
+      "physical": "0,0,-0",
+      "qpc": [
+        2499996327925,
+        2500004383708
+      ]
+    }
+  ],
+  "milestone": "Actual CT2 continuous C0 write/consume/view plus 5 short HMD phases; not Grip actions or complete cover delivery.",
+  "prior_r274_retirement_cause_unproven": true,
+  "visual_review": {
+    "all_frames": 266,
+    "overview_pages_personally_reviewed": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "dense_frames_personally_reviewed": [
+      "frame-00182.jpg",
+      "frame-00202.jpg",
+      "frame-00221.jpg",
+      "frame-00240.jpg",
+      "frame-00259.jpg"
+    ],
+    "observed": [
+      "Both submitted projection eyes have visible world; no sustained black interval in reviewed timeline.",
+      "Turn and rise phases visibly change framing, then restore.",
+      "Entry frames169-173 change view heading sharply; current input uses legacy Pawn-yaw-plus-pi view basis.",
+      "Own shoulder/arm intrudes, most strongly in neutral frame182. No complete body/hand fit claim."
+    ],
+    "full_feature_visual_acceptance": false,
+    "collision_and_occlusion_remain_deferred": true,
+    "next": "Preserve independently established view heading across cover entry; do not add collision/occlusion work. Then Grip drag/hold/reverse and per-point GrabPose/arm transition."
+  }
+}

@@ -3552,3 +3552,16 @@ r276（runner15381终态exit1）实际cover plan/applied235次，消费回读接
 真实数据重放81检查通过：保存原始矩阵/Local逐字节不变、原默认策略拒绝、等效符号反转使左右肩确实被C0写入后拒绝原动画覆盖、头/脚旋转改变拒绝、肩位置改变拒绝、过大W/非零射影列/NaN拒绝、失败不改变输出。旧Backend441检查、完整C0及导出scenario11 70检查通过。新增body_goal_cover_view_used仅在实际cover read_view成功时增长，下一次动作要求每阶段消费与视角都新增，不用站立view计数代替。
 
 r277 Native 566b7e35b4bbbe41509185e1db2f922cf4c28ce356b51ced641b9d62d9f72eb1编译通过，429依赖，冻结r275仅Backend/Native cover调用/Goal视角计数3文件变化，开关不变、碰撞OFF。下一步新识别r278短游戏核对5个HMD阶段的实际消费、实际view和双眼画面；持续抓取/保持/反向/点位GrabPose/过渡/高掩体/模式/实体头显仍未完成。
+
+
+### r278真实连续身体消费与cover视角通过，完整画面检查发现进入时朝向不连续
+
+r278 runner99768终态exit0、operator0，cover applied/consumed234，body_cover_pose accepted234/rejected0，cover_view_used233。五阶段（neutral/转头0.16rad/恢复/抬高0.10m/恢复）各获得新增消费和实际cover view记录，分别consumed/view=18/18、61/61、103/103、145/145、207/207。该检查没有Grip动作，不是左右扒点交互通过。Native/独立入口/XR/launcher/所属进程收尾全部通过，normal_cleanup_verified=true、remaining_owned空、无强制终止。本局未复现r274退休阻塞，但其原因仍未证实，不能宣称该旧失败已修复。
+
+266份实际projection双眼图保存；全部6页全跨度缩略概览及5阶段实际图182/202/221/240/259均亲自查看。两眼世界可见，无持续黑屏，转头/抬高和恢复有可见变化。视角相位配对依据已保存perf/QPC与frame time估算，最近图与阶段中点相差约3..39ms，标记近似，不冒称逐GPU帧绑定。完整body/hand/all-angle与实体头显验收仍未通过。
+
+画面169..173在进入掩体时明显转向；neutral182有较大自身肩/臂侵入，不能只看计数或挑选较清楚的202称全部可用。当前源码cover_camera::initial_facing仍是Pawn yaw+pi旧预览假设，Input/sharedInput把它直接当view_anchor；r265已修正的是wall/body/L2侧向，独立连续view尚未接。下一步保持进入前已实际使用的观察方向，只把新掩体位置/壁面轴用于身体与拖动，当前HMD仍独立应用一次，不重置追踪/伪造时刻，也不把旧位姿当新消费。遮挡和碰撞继续后置，不以肩部画面问题扩展遮挡系统。
+
+推荐接续点：body_c0_goal_policy_live::read_view的standing成功分支已持view_mutex，可保存已经认证的render.base_view世界水平朝向作为几何校准；Input以只读provider取同一avatar/world/native会话的独立朝向，CoverInputOwner frame.view_anchor与wall anchor分开，FullGoal现已支持分离。仅保存朝向，不借用旧眼位/骨架/追踪源或刷新时钟；处理重绑/失效、cover启动无已建立基准及ref变化，保持单写入者。此为接续方向，尚未实现，须测试并实际检查进入前后方向。
+
+通过证据body-smoke-r278/closeout.json、visual-review.json、visual-frame-index.json及实际录制。未动Quest、公版或固定手动候选。后续完整目标仍包括视角连续性、Grip左右/矮掩体上探的抓取拖动/松手保持/反向、每点GrabPose与手臂过渡、高掩体/双模式、正常出掩体恢复及完整真实画面/实体头显交付。

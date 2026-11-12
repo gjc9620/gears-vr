@@ -1,0 +1,62 @@
+{
+  "all_frames": 266,
+  "overview_pages": [
+    "J:\\codexWorktree\\gearsVr\\analysis\\cover-system-20261108\\body-smoke-r278\\visual-review\\overview-1.jpg",
+    "J:\\codexWorktree\\gearsVr\\analysis\\cover-system-20261108\\body-smoke-r278\\visual-review\\overview-2.jpg",
+    "J:\\codexWorktree\\gearsVr\\analysis\\cover-system-20261108\\body-smoke-r278\\visual-review\\overview-3.jpg",
+    "J:\\codexWorktree\\gearsVr\\analysis\\cover-system-20261108\\body-smoke-r278\\visual-review\\overview-4.jpg",
+    "J:\\codexWorktree\\gearsVr\\analysis\\cover-system-20261108\\body-smoke-r278\\visual-review\\overview-5.jpg",
+    "J:\\codexWorktree\\gearsVr\\analysis\\cover-system-20261108\\body-smoke-r278\\visual-review\\overview-6.jpg"
+  ],
+  "phase_frames": [
+    {
+      "phase": "cover_eye_neutral",
+      "file": "J:\\codexWorktree\\gearsVr\\analysis\\instances\\cover-1112-r278-cloak-view\\cover-output\\projection\\frame-00182.jpg",
+      "qpc_midpoint_seconds": 249991.77411725,
+      "frame_estimated_perf": 249991.7371631,
+      "alignment_error_seconds": 0.036954149982193485,
+      "consumed": "18",
+      "view_used": "18"
+    },
+    {
+      "phase": "cover_eye_turned",
+      "file": "J:\\codexWorktree\\gearsVr\\analysis\\instances\\cover-1112-r278-cloak-view\\cover-output\\projection\\frame-00202.jpg",
+      "qpc_midpoint_seconds": 249993.8701686,
+      "frame_estimated_perf": 249993.90901940002,
+      "alignment_error_seconds": 0.03885080001782626,
+      "consumed": "61",
+      "view_used": "61"
+    },
+    {
+      "phase": "cover_eye_turn_restored",
+      "file": "J:\\codexWorktree\\gearsVr\\analysis\\instances\\cover-1112-r278-cloak-view\\cover-output\\projection\\frame-00221.jpg",
+      "qpc_midpoint_seconds": 249995.96532155,
+      "frame_estimated_perf": 249995.96272200003,
+      "alignment_error_seconds": 0.002599549974547699,
+      "consumed": "103",
+      "view_used": "103"
+    },
+    {
+      "phase": "cover_eye_raised",
+      "file": "J:\\codexWorktree\\gearsVr\\analysis\\instances\\cover-1112-r278-cloak-view\\cover-output\\projection\\frame-00240.jpg",
+      "qpc_midpoint_seconds": 249997.99928135,
+      "frame_estimated_perf": 249998.00919430002,
+      "alignment_error_seconds": 0.009912950015859678,
+      "consumed": "145",
+      "view_used": "145"
+    },
+    {
+      "phase": "cover_eye_rise_restored",
+      "file": "J:\\codexWorktree\\gearsVr\\analysis\\instances\\cover-1112-r278-cloak-view\\cover-output\\projection\\frame-00259.jpg",
+      "qpc_midpoint_seconds": 250000.03558165,
+      "frame_estimated_perf": 250000.07471220003,
+      "alignment_error_seconds": 0.039130550023401156,
+      "consumed": "207",
+      "view_used": "207"
+    }
+  ],
+  "start_perf_estimate": 249971.99563220004,
+  "start_perf_spread": 0.0013922999787610024,
+  "alignment_is_approximate": true,
+  "not_hardware_or_headset_acceptance": true
+}
