@@ -1,0 +1,12 @@
+{
+  "name": "cover-1112-r280-heading-view",
+  "native_sha256": "97335d629a043e0e68a70e25186757b45539dab992aa710d3e5cea620bc1cd4b",
+  "entry_sha256": "65c30e3a097400e58dfc626c4959d5b0bbdec86a0d1a97376bf29475eeb73807",
+  "tool_sha256": "a29745df8c7ced7681fc39d0ac034534cd3868080f3e52348314636e05f301ce",
+  "runner_sha256": "35dd1b40289137c4e3d16678eda670fed4e76f4cbcf5621f43ea894270ae9340",
+  "operator_template_sha256": "e0db894b14848077644167249e2494a436cb7a438cc0ed48922906fb298a74df",
+  "prepared_only": true,
+  "game_started": false,
+  "physics_enabled": false,
+  "legacy_height_curve": "0.3/0.7 compatibility values, unused by selected C0 body owner; not measurements"
+}
