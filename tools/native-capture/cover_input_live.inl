@@ -199,6 +199,10 @@ bool configure(const wchar_t* ini,FILE* file){
 bool camera_frame_aligned(){return diagnostics.frame&&camera::diagnostics.last==camera::Reason::applied&&camera::diagnostics.latest_invocation==diagnostics.frame;}
 void summary(FILE* file){
     const auto& r=diagnostics.latest;
+    const auto& interaction=r.interaction;
+    fprintf(file,"cover_input_interaction_phase=%u cover_input_interaction_edge=%llu cover_input_interaction_owns=%u cover_input_interaction_request=%llu cover_input_virtual=%.9g,%.9g cover_input_offset_certified=%u ",
+        unsigned(interaction.phase),static_cast<unsigned long long>(interaction.edge_id),unsigned(interaction.owns_left_hand),
+        static_cast<unsigned long long>(interaction.request_id),interaction.offset.right,interaction.offset.up,unsigned(interaction.offset_certified));
     fprintf(file,"cover_input_enabled=%u cover_input_attempts=%llu cover_input_camera_owned=%llu cover_input_rejected=%llu cover_input_matched=%llu cover_input_missing=%llu cover_input_targets=%llu cover_input_target_rejected=%llu cover_input_sequence=%llu cover_input_reference=%llu cover_input_frame=%llu cover_input_physical=%.9g,%.9g,%.9g cover_input_requested_up=%.9g cover_input_requested_weight=%.9g cover_input_hand_world_valid=%u cover_input_hand_world=%.9g,%.9g,%.9g ",
         unsigned(enabled),diagnostics.attempts,diagnostics.camera_owned,diagnostics.rejected,diagnostics.matched,diagnostics.missing,diagnostics.targets,diagnostics.target_rejected,
         static_cast<unsigned long long>(diagnostics.sequence),static_cast<unsigned long long>(diagnostics.reference),static_cast<unsigned long long>(diagnostics.frame),

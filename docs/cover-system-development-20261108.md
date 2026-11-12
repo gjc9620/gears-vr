@@ -3613,3 +3613,10 @@ r283 runner2602 exit0、operator0；r282 Native只增加观察器，私有entry�
 normal_cleanup_verified=true，Native cleanup/独立entries恢复/XR exit0、所属进程为空、forced_termination=false。271份实际projection双眼图完整6页及近五阶段187/206/225/244/263亲自审阅：世界持续可见，无持续黑，转头/抬高和恢复可见；进入时自身臂/肩与cover期间下半部大面积自身身体仍明显，完整身体/手部拟合不通过，遮挡按owner后置，不扩展新遮挡系统。阶段图按保存wall/perf与QPC近似配对，相差约16..47ms，不称逐GPU帧绑定。Grip尚未测试。
 
 下一步进行左右L2点的实际左Grip获取/拖动/释放保持/再抓反向，持续使用该受保护私有配置；若挂起再现，r282副本会保留实际branch/epoch/coverage。先以无Grip的三轴短手移动从现有hand_world诊断测得raw→world线性映射，直接定位实际L2点，验证新帧/当前消费，避免假定reference yaw为零或回用旧preview轴。需要记录interaction phase/edge/ownership/virtual offset区分输入意图与真正C0应用；每点GrabPose/手臂过渡、高掩体/双模式、出掩体恢复和实体头显交付仍未完成。公版/Quest/固定手动候选未改。
+
+
+### r284 左Grip实际检查准备：生产交互状态可观察，映射纯数学验证通过
+
+仅在既有Input summary输出interaction phase/edge/request/owns/virtual offset/certified，供下一实际Grip检查分清获取/拖动/松手与C0视角；未改交互逻辑或第二仲裁器。r284 Native-v2在r282冻结树只改Input一文件，431依赖与flags/PHYSX OFF不变，DLL c4055b2136e42319e9ed9a1d28ae93155bcc542edaa0c9b6c02eff7f3a036e4d编译通过。
+
+新有界operator沿已有Source1 hand_move/gesture/pad路径，先用释放状态三轴5cm探针和实际hand_world求raw→world映射，检查单位/正交/奇异/回到原位及当前Stereo序列/新增body消费/view；不假定reference朝向零或旧preview轴。纯数学16项正/负例通过，无game/input调用。随后仅当前CT2左右原生L2点：接触/新Grip获取/12cm拖动/释放保持/再抓新request/反向回零/释放，HMD固定，禁碰撞查询，期望phase与owns和virtual/FullGoal共同通过；仍须真实运行及完整图像验证。operator源已解析，尚无Grip运行结果，不将此准备算交互完成。GrabPose/完整手臂拟合及其他需求保持未完成。
