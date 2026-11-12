@@ -1,0 +1,18 @@
+continuous_owner_verified=1 owner_pid=32256 owner_creation_time=134389314646958265
+native_menu_display configured=1 display_only=1 action_authority=0 frozen_per_ticket=1
+hand_personal_calibration_loaded=1 armspan_metres=1.7 hands_below_head_metres=-0.14999999999999999 method=controller_span_model_estimate physical_verification=0 writer=0
+anchor_startup_guard expected_identity=1 admitted=1 attempts=1 elapsed_ms=0 reason=success last_reason=success stage=final_timestamp before_stamp=1085522249 strict_after_stamp=1085522249 final_stamp=1085522249 timestamp_only=0
+cover_body_config enabled=1 experimental=1 pose_profile=top endpoint_child=4 target_source=live live_ttl_ms=100 reflected_lookup=actual_receiver bounded_nodes=4 cover_type=2 special_move=0 positive_incoming_only=1 advance_timeout_ms=10000 stop_drain_ms=5000 native_post_weight_separation=1 mirror_written=0 mirror_write_opt_in=0 side_mirror_trial=0 mirror_fixed_child5_toggle=1 mirror_single_activation=1 mirror_cache_gate=1 mirror_native_switch_certified=0 mirror_pose_concurrency_verified=0 side_direction_acceptance=0 two_dimensional_blend=0 firing_acceptance=0
+cover_pose_phase enabled=1 read_only=1 episodes_max=8 snapshots_max=56 event_arms_next_tick=1 atomic_snapshot_verified=0 final_publish_verified=0
+first_person_head_render compiled=1 enabled=1 palette_only=1 local_bones_unchanged=1 head_and_neck=1
+first_person_head_section enabled=1 section=2 spine_slot=11 new_hooks=0 shared_asset_write=0
+post_weight_scale_enabled=0 groups_max=4 read_only=1 writer=0 v248_observed=0
+future_g_compiled=1 future_g_enabled=0 writer=0 global_invariance_proved=0
+cover_control_enabled=1 read_only=1 rows_max=128 first_pose_episode_only=1 atomic_verified=0 writer=0 arm_alpha_behavior_policy=0
+cover_camera_config enabled=1 experimental=1 neutral_wait_ms=100 virtual_offset_right=0 virtual_offset_up=0 facing_policy=neutral_pawn_yaw_plus_pi mesh_body_facing_verified=0 collision_verified=0 aim_modified=0 automatic_lt_eye=0 hmd_application=stereo_ticket_only entry_transition_acceptance=0 gameplay_acceptance=0
+cover_input_config enabled=1 experimental=1 exact_stereo_controller_v3=1 gt_owner=1 physical_position_drives_top=1 rotation_drives_stance=0 measured_half_metres=0.3 measured_top_metres=0.7 measured_profile_universal_acceptance=0 original_l2_provider=1 collision_required=0 weapon_participants_connected=0
+cover_geometry_observer enabled=0 read_only=1 maximum_samples=16 minimum_interval_ms=100 collision_verified=0 grab_authorized=0 view_modified=0
+weapon_hand_runtime_config enabled=1 requested=1 accepted=1 transport_only=1
+rig_tracking_config enabled=1 data_only=1 native_core_without_registration=1 producer_companion_optional=1 native_reference_mirror=1 setters_granted=0 ghw1_certificate=0
+cover_native_rig_enabled=0 read_only=1 writer=0 capacity=4 first_event_only=1
+rejected: hand goal observer requires data-only Core event support and explicit length policy

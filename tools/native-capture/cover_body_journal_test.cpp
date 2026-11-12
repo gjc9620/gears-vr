@@ -509,6 +509,11 @@ int main(){
  const auto added_checks=checks-legacy_checks;
  const auto before_live=checks;live_target_tests();live_configuration_tests();neutral_target_tests();const auto live_checks=checks-before_live;
  const auto before_mirror=checks;side_mirror_trial_tests();const auto mirror_checks=checks-before_mirror;
+ prepare_live();++live_time.qpc;auto sealed=target(.4f,2);const auto published=b::live_published.load();
+ const auto saved_live=b::live_state;gears_cover_pose_role::c0_exclusive=true;
+ C(!b::publish_target(sealed)&&b::live_published.load()==published);
+ C(!memcmp(&saved_live,&b::live_state,sizeof saved_live));
+ gears_cover_pose_role::c0_exclusive=false;C(b::publish_target(sealed)&&b::live_published.load()==published+1);
  C(VirtualFree(reinterpret_cast<void*>(arena),0,MEM_RELEASE)!=0);
  printf("cover_body_live_journal: legacy_checks=%u side_and_config_checks=%u\n",legacy_checks+1,added_checks);
  printf("cover_body_live_journal: live_target_checks=%u\n",live_checks);

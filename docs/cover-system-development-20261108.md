@@ -3434,3 +3434,14 @@ Host原始处理/身份/收据准入为明确人工边界，真实Backend/CAS128
 Native v1编译通过；最终v2加入L2数据输出，SHA256 d851bbf4bdad17ad5743a4d2f486e9b8445d95dbbb6767013ca33b42ff3d082c，426项目依赖；所有开关保留r259，碰撞OFF。未安装、未启动游戏/XR、未接触Quest。证据c0-live-r260/native-build-v2-result.json、host-source-final-manifest.json、live-cases-final.json、checkpoint.json。
 
 下一步先准备取消物理探针的新私有普通掩体运行，验证当前原版L2点和第一笔实际身体消费/视角，再验证抓取、拖动、松手保持、反向拉回及真实收尾，查看真实双眼画面后交付已识别手动候选。输入意图领先下一C0、可达失败反馈、双视角模式及每点GrabPose/过渡要求仍需实际接续/验收，不能以此次Host和编译称全掩体完成。
+
+
+### r262 游戏激活拒绝与 r263 旧发布器封口修复
+
+r261 在启动游戏前因私有工具背景运行配置路径错误拒绝；r262 修正路径且原环境预检通过，实际私有游戏已启动，但 Native 激活在任何掩体动作前拒绝：hand goal observer requires data-only Core event support and explicit length policy。原因是手部数据通道仍将启用的旧掩体元数据模块视作竞争写入者。没有获得实际L2点、C0身体消费或双眼动作证据。
+
+r262 所属游戏和子进程已退出，无强制终止、无剩余所属进程。Native未启动，其清理验证未通过，XR退出1；不能将本轮称作正常Native/XR收尾通过。原始结果保留 analysis/instances/cover-1112-r262-cloak-body/cover-output/run-result.json，摘要与拒绝状态保存 reader-role-r263/r262-closeout.json、r262-rejected-status.txt。
+
+r263 显式区分C0唯一身体写入角色：仅有效的旧live/top输入配置且同时请求FullBodyC0Native和BodyC0GoalPolicy时选择；旧publish_target入口在该角色下直接拒绝且不改变目标/水位。手部数据通道仅允许这对已封口的元数据模块，仍拒绝部分角色及engine_restore竞争写入。选择发生在手部数据通道配置前，随后C0配置失败仍中止整个启动。
+
+离线通过：角色10、输入配置及输入81、旧身体发布/镜像2693、手部观察配置23检查。第一次观察测试缺失MODE/样本参数退出2，未执行断言；已加入不依赖矩阵样本的configure模式并实际执行配置检查。未降低游戏身份、原始消费、覆写收据或输入保护。正从r260最终冻结源码构建，仅加入本次封口改动；不混入工作区其他武器变化。碰撞和遮挡继续推迟，上方扒点仍仅矮掩体，左右/上方点继续参考原版L2。

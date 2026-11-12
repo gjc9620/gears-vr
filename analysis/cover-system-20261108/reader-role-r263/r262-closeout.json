@@ -1,0 +1,479 @@
+{
+  "error": "RuntimeError(\"Private session error: RuntimeError('Native activation failed; seeking cleanup without retry')\")",
+  "normal_cleanup_verified": false,
+  "remaining_owned": {},
+  "isolated_done": {
+    "launcher_exit": 1,
+    "owned_game_absent": true,
+    "owned_children": {
+      "recorded": 0,
+      "remaining": []
+    },
+    "forced_termination": false,
+    "worker_error": null,
+    "no_game_started": false
+  },
+  "terminal_session": {
+    "schema": 1,
+    "kind": "continuous_strict_stereo",
+    "session_id": "77470a24a2f4441fa7fe84e6d23cacb9",
+    "phase": "incomplete",
+    "passed": false,
+    "source": 1,
+    "operator_motion_requested": true,
+    "simulation_not_physical_tracking": true,
+    "physical_tracking_verified": false,
+    "outage_diagnostics_enabled": true,
+    "anchor_observer_enabled": true,
+    "cinematic_camera_enabled": true,
+    "origin_trial_enabled": false,
+    "image_ticket_diagnostics_enabled": true,
+    "shutdown_diagnostics_enabled": true,
+    "startup_menu_enabled": true,
+    "world_recovery_enabled": true,
+    "menu_recovery_enabled": true,
+    "movie_display_enabled": true,
+    "ui_observer_enabled": true,
+    "ui_hud_plane_enabled": true,
+    "ui_reticle_late_sample_enabled": false,
+    "crosshair_assignment_observer_enabled": true,
+    "controller_input_observer_enabled": true,
+    "armspan_calibration_loaded": false,
+    "hud_horizontal_fov_degrees": 65.0,
+    "camera_closer_metres": 0.0,
+    "gpu_snapshot_requested": false,
+    "owner_identity": {
+      "pid": 32256,
+      "creation_time": 134389314646958265,
+      "image": "c:\\users\\11\\.cache\\codex-runtimes\\codex-primary-runtime\\dependencies\\python\\python.exe"
+    },
+    "game_identity": {
+      "pid": 57220,
+      "creation_time": 134389314720774110,
+      "image": "j:\\gearsvr\\gears.of.war.reloaded.v1.0.1.3816947-p2p\\gears of war reloaded\\binaries_x64\\gowde-steam.exe"
+    },
+    "session_report": "J:\\codexWorktree\\gearsVr\\analysis\\runtime\\continuous-stereo-57220-20261112-123125-77470a24.json",
+    "native_started": false,
+    "limits": "Explicit persistent session lifecycle; exit0 does not assert uninterrupted frame rate or physical headset acceptance.",
+    "hud_element_scale": 1.2,
+    "hud_center_scale": 0.8,
+    "diagnostics_artifacts": {
+      "native_sha256": "d851bbf4bdad17ad5743a4d2f486e9b8445d95dbbb6767013ca33b42ff3d082c",
+      "xr_sha256": "16840b27dc40ebb489f93121758cb7bc0daa2700df046e508babbd50c578a7fc",
+      "game_sha256": "bdc6705d18ddb335b767df0b38e256ba5da0f49449c8970b302118bb7a4a8fa4",
+      "native_build": "native"
+    },
+    "requested_configuration": {
+      "render_scale": 0.4,
+      "stereo_units_per_metre": 100.0,
+      "camera_closer_metres": 0.0,
+      "first_person_preview": true,
+      "right_stick_deadzone_percent": 2.0,
+      "hud_horizontal_fov_degrees": 65.0,
+      "hud_element_scale": 1.2,
+      "hud_center_scale": 0.8
+    },
+    "path_choice_center_enabled": true,
+    "startup_timings": {
+      "xr_preflight": {
+        "elapsed_ms": 3698.214,
+        "since_runner_start_ms": 3748.0595,
+        "evidence": "strict focused source0 CSV and required startup panel",
+        "clock": "Windows QPC / perf_counter_ns",
+        "timing_is_runner_observation": true
+      },
+      "camera_ready": {
+        "elapsed_ms": 23802.3147,
+        "since_runner_start_ms": 27551.7672,
+        "evidence": "before_native_activation callback returned and startup remained live",
+        "clock": "Windows QPC / perf_counter_ns",
+        "timing_is_runner_observation": true
+      }
+    },
+    "diagnostics": {
+      "schema": 1,
+      "enabled": true,
+      "samples": 0,
+      "rotations": 0,
+      "error": null,
+      "interval_seconds": 1.0,
+      "rate_definitions": {
+        "game_present_calls_per_second": "Top-level bound game DXGI Present observations, excluding TEST calls; not engine-update or displayed FPS.",
+        "stereo_pairs_per_second": "New native stereo image publications; separate from repeated XR submissions.",
+        "xr_loop_hz": "CSV frame delta / runtime predicted-display-time delta; not verified projection or physical display FPS.",
+        "missing": "null means unavailable, first sample, stale sample, changed identity or reset; it does not mean zero FPS."
+      }
+    },
+    "menu_state_file": "J:\\codexWorktree\\gearsVr\\analysis\\runtime\\continuous-stereo-57220-20261112-123125-77470a24.menu.bin",
+    "xr_command": [
+      "J:\\codexWorktree\\gearsVr\\tools\\openxr-probe\\build-cover-1112-r262-cloak-body\\OpenXRPoseProbe.exe",
+      "0",
+      "J:\\codexWorktree\\gearsVr\\analysis\\runtime\\continuous-stereo-57220-20261112-123125-77470a24.csv",
+      "--stereo-game-pid",
+      "57220",
+      "--continuous-session",
+      "--owner-pid",
+      "32256",
+      "--owner-creation-time",
+      "134389314646958265",
+      "--controller-input",
+      "--render-scale",
+      "0.4",
+      "--startup-menu-window",
+      "20453738",
+      "57220",
+      "--menu-state-file",
+      "J:\\codexWorktree\\gearsVr\\analysis\\runtime\\continuous-stereo-57220-20261112-123125-77470a24.menu.bin",
+      "--menu-game-creation",
+      "134389314720774110",
+      "--movie-display",
+      "--outage-diagnostics",
+      "--shutdown-diagnostics",
+      "--image-ticket-diagnostics",
+      "--simulator-operator"
+    ],
+    "native_command": [
+      "C:\\Users\\11\\.cache\\codex-runtimes\\codex-primary-runtime\\dependencies\\python\\python.exe",
+      "J:\\codexWorktree\\gearsVr\\analysis\\instances\\cover-1112-r262-cloak-body\\cover-output\\cover_body_entry.py",
+      "native",
+      "--pid",
+      "57220",
+      "--build-dir",
+      "J:\\codexWorktree\\gearsVr\\analysis\\instances\\cover-1112-r262-cloak-body\\native",
+      "--dll-name",
+      "GearsCapture.dll",
+      "--use-reserved",
+      "--continuous-session",
+      "--continuous-owner-pid",
+      "32256",
+      "--continuous-owner-creation-time",
+      "134389314646958265",
+      "--submit-pair",
+      "--submit-background",
+      "--submit-output-bounds",
+      "--viewport-diagnostics",
+      "--color-copy-diagnostics",
+      "--view-union-mask-fix",
+      "--stereo-xr",
+      "--stereo-units-per-metre",
+      "100.0",
+      "--frame-link-diagnostics",
+      "--require-target-prime",
+      "--stereo-gpu-publish",
+      "--first-person-preview",
+      "--sixdof-manual",
+      "--outage-diagnostics",
+      "--anchor-observer",
+      "--cinematic-camera",
+      "--ui-observer",
+      "--menu-display-file",
+      "J:\\codexWorktree\\gearsVr\\analysis\\runtime\\continuous-stereo-57220-20261112-123125-77470a24.menu.bin",
+      "--ui-hud-plane",
+      "--crosshair-assignment-observer",
+      "--controller-input-observer",
+      "--hud-horizontal-fov-degrees",
+      "65.0",
+      "--hud-element-scale",
+      "1.2",
+      "--hud-center-scale",
+      "0.8",
+      "--armspan-metres",
+      "1.7",
+      "--hands-below-head-metres",
+      "-0.15",
+      "--simulator-operator"
+    ],
+    "xr_owned_pid": 40064,
+    "xr_identity": {
+      "pid": 40064,
+      "creation_time": 134389314856918649,
+      "image": "j:\\codexworktree\\gearsvr\\tools\\openxr-probe\\build-cover-1112-r262-cloak-body\\openxrposeprobe.exe"
+    },
+    "preflight_frames": 33,
+    "startup_panel_submitted": true,
+    "error": "RuntimeError('Native activation failed; seeking cleanup without retry')",
+    "exception_traceback": "Traceback (most recent call last):\n  File \"J:\\codexWorktree\\gearsVr\\tools\\native-capture\\run_stereo_continuous.py\", line 666, in run_session\n    if result.returncode:raise RuntimeError('Native activation failed; seeking cleanup without retry')\n                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nRuntimeError: Native activation failed; seeking cleanup without retry\n",
+    "vr_gamepad_cleanup": {
+      "restored": true,
+      "virtual_only_until_restored": true,
+      "restore_attempts": 1
+    },
+    "xr_preflight_diagnostics": {
+      "retained_rows": 33,
+      "window_rows": 20,
+      "required_rows": 30,
+      "required_window_rows": 20,
+      "checks": {
+        "published": true,
+        "focused": true,
+        "render": true,
+        "head_valid": true,
+        "views_valid": true,
+        "source_zero": false,
+        "minimum_rows": true,
+        "panel_ready": true
+      },
+      "passing_rows": {
+        "published": 20,
+        "focused": 20,
+        "render": 20,
+        "head_valid": 20,
+        "views_valid": 20,
+        "source_zero": 0
+      },
+      "last_session_state": "5",
+      "ready": false
+    },
+    "xr_preflight_diagnostic_error": null,
+    "menu_observation_worker": {
+      "background": true,
+      "closed": true,
+      "completed": 25,
+      "total_ms": 13920.999999972992,
+      "maximum_ms": 1843.9999999827705,
+      "last_ms": 0.0,
+      "failure": null
+    },
+    "native_stop_signaled": false,
+    "native_status": null,
+    "native_diagnostics": {
+      "session-status.txt": {
+        "source": "J:\\codexWorktree\\gearsVr\\analysis\\instances\\cover-1112-r262-cloak-body\\native\\session-status.txt",
+        "path": "J:\\codexWorktree\\gearsVr\\analysis\\runtime\\continuous-stereo-57220-20261112-123125-77470a24.session-status.txt",
+        "saved": false,
+        "identity_verified": false,
+        "acceptance_evidence": false,
+        "error": "FileNotFoundError(2, 'No such file or directory')"
+      },
+      "capture-status.txt": {
+        "source": "J:\\codexWorktree\\gearsVr\\analysis\\instances\\cover-1112-r262-cloak-body\\native\\capture-status.txt",
+        "path": "J:\\codexWorktree\\gearsVr\\analysis\\runtime\\continuous-stereo-57220-20261112-123125-77470a24.native-status.txt",
+        "saved": true,
+        "identity_verified": false,
+        "acceptance_evidence": false
+      }
+    },
+    "native_cleanup_verified": false,
+    "native_cleanup_error": "RuntimeError('Native cleanup incomplete or deadline expired')",
+    "xr_cleanup_actions": [
+      "stop_signaled",
+      "wait"
+    ],
+    "xr_forced_cleanup_reason": null,
+    "xr_stop_signaled": true,
+    "xr_exit_code": 1,
+    "render_pattern_summary": {
+      "frames": 5607,
+      "valid_pose_frames": 5607,
+      "tracked_pose_frames": 5607,
+      "should_render_frames": 5607,
+      "focused_frames": 5607,
+      "last_session_state": 8,
+      "submitted_image_layers": 0,
+      "left_checksum": 0,
+      "right_checksum": 0
+    },
+    "stereo_bridge_summary": {
+      "stereo_bridge_session": 242684533379200,
+      "published": 5600,
+      "publish_skipped": 7,
+      "reference_space_changed": false,
+      "game_projection_layer": false
+    },
+    "stereo_game_summary": {
+      "stereo_game_projection_layers": 0,
+      "stereo_game_copies": 0,
+      "matching_render_ticket_required": true
+    },
+    "stereo_projection_rejections": [
+      {
+        "stereo_projection_rejection": "producer_stopped",
+        "count": 0,
+        "first_ns": 0,
+        "last_ns": 0,
+        "expected_stop": true
+      },
+      {
+        "stereo_projection_rejection": "producer_unavailable",
+        "count": 5607,
+        "first_ns": 242687837260600,
+        "last_ns": 242750222916200,
+        "expected_stop": false
+      },
+      {
+        "stereo_projection_rejection": "waiting_image",
+        "count": 0,
+        "first_ns": 0,
+        "last_ns": 0,
+        "expected_stop": false
+      },
+      {
+        "stereo_projection_rejection": "current_inactive",
+        "count": 0,
+        "first_ns": 0,
+        "last_ns": 0,
+        "expected_stop": false
+      },
+      {
+        "stereo_projection_rejection": "current_untracked",
+        "count": 0,
+        "first_ns": 0,
+        "last_ns": 0,
+        "expected_stop": false
+      },
+      {
+        "stereo_projection_rejection": "reference_space_changed",
+        "count": 0,
+        "first_ns": 0,
+        "last_ns": 0,
+        "expected_stop": false
+      },
+      {
+        "stereo_projection_rejection": "empty_ticket",
+        "count": 0,
+        "first_ns": 0,
+        "last_ns": 0,
+        "expected_stop": false
+      },
+      {
+        "stereo_projection_rejection": "session_mismatch",
+        "count": 0,
+        "first_ns": 0,
+        "last_ns": 0,
+        "expected_stop": false
+      },
+      {
+        "stereo_projection_rejection": "ticket_flags",
+        "count": 0,
+        "first_ns": 0,
+        "last_ns": 0,
+        "expected_stop": false
+      },
+      {
+        "stereo_projection_rejection": "ticket_geometry",
+        "count": 0,
+        "first_ns": 0,
+        "last_ns": 0,
+        "expected_stop": false
+      },
+      {
+        "stereo_projection_rejection": "stale_ticket",
+        "count": 0,
+        "first_ns": 0,
+        "last_ns": 0,
+        "expected_stop": false
+      },
+      {
+        "stereo_projection_rejection": "image_rectangle",
+        "count": 0,
+        "first_ns": 0,
+        "last_ns": 0,
+        "expected_stop": false
+      },
+      {
+        "stereo_projection_rejection": "session_lost",
+        "count": 0,
+        "first_ns": 0,
+        "last_ns": 0,
+        "expected_stop": false
+      },
+      {
+        "stereo_projection_rejection": "producer_structure_invalid",
+        "count": 0,
+        "first_ns": 0,
+        "last_ns": 0,
+        "expected_stop": false
+      },
+      {
+        "stereo_projection_rejection": "probe_failure",
+        "count": 0,
+        "first_ns": 0,
+        "last_ns": 0,
+        "expected_stop": false
+      },
+      {
+        "stereo_projection_rejection": "menu_requested",
+        "count": 0,
+        "first_ns": 0,
+        "last_ns": 0,
+        "expected_stop": false
+      },
+      {
+        "stereo_projection_rejection": "menu_recovery_pending",
+        "count": 0,
+        "first_ns": 0,
+        "last_ns": 0,
+        "expected_stop": false
+      },
+      {
+        "stereo_projection_rejection": "reference_epoch_pending",
+        "count": 0,
+        "first_ns": 0,
+        "last_ns": 0,
+        "expected_stop": false
+      },
+      {
+        "stereo_projection_rejection": "source_reconfiguration",
+        "count": 0,
+        "first_ns": 0,
+        "last_ns": 0,
+        "expected_stop": false
+      }
+    ],
+    "startup_menu_evidence": {
+      "startup_menu_evidence": true,
+      "startup_quad_layers": 0,
+      "startup_wait_card_layers": 5607,
+      "stereo_handoff": false,
+      "panel_counts_as_stereo": false
+    },
+    "menu_recovery_evidence": {
+      "menu_recovery_evidence": true,
+      "entries": 0,
+      "quad_layers": 0,
+      "recoveries": 0,
+      "panel_counts_as_stereo": false
+    },
+    "session_exit_evidence": {
+      "session_exit_evidence": true,
+      "last_state": 8,
+      "stopping_observed": false,
+      "end_session_succeeded": false,
+      "terminal_exiting_observed": true,
+      "terminal_exit_without_end": true,
+      "loss_observed": false,
+      "objects_destroyed": true,
+      "shutdown_completed": true
+    },
+    "continuous_owner_evidence": {
+      "continuous_owner_evidence": true,
+      "owner_pid": 32256,
+      "owner_creation_time": 134389314646958265,
+      "owner_lost": false
+    },
+    "continuous_session_evidence": {
+      "continuous_session_evidence": true,
+      "stop_reason": "stop_event",
+      "orderly_stop": true,
+      "structural_failure": false,
+      "submitted_frames": 0,
+      "scene_copies": 0,
+      "span_seconds": 0,
+      "maximum_submission_gap_ms": 0,
+      "shutdown_completed": true,
+      "csv_sampled": true,
+      "physical_tracking_verified": false,
+      "simulation_not_physical_tracking": true
+    },
+    "armspan_calibration_saved": false,
+    "startup_cancelled": false,
+    "support_diagnostics": {
+      "records": 1285,
+      "rotations": 0,
+      "observer_error": null,
+      "thread_wait_samples": 3,
+      "worker_joined": true,
+      "first_failure_available": true
+    }
+  }
+}

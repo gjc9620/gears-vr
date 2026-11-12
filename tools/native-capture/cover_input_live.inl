@@ -2,6 +2,7 @@
 // The caller holds stereo_mutex, its one-use Scene Receipt and admitted Scope.
 // All game reads are recertified through neutral::context. The bridge reads
 // only the current game's authenticated controller-v3 mapping, never input APIs.
+#include "cover_pose_role.h"
 namespace cover_input_live {
 namespace camera=cover_camera_live;
 namespace neutral=cover_neutral_eye_live;
@@ -161,6 +162,13 @@ bool configure(const wchar_t* ini,FILE* file){
        !read_height(ini,L"height_half_metres",height_curve[1].height_metres)||
        !read_height(ini,L"height_top_metres",height_curve[2].height_metres)||
        height_curve[1].height_metres>=height_curve[2].height_metres)return false;
+    wchar_t native_owner[8]{},goal_owner[8]{};
+    GetPrivateProfileStringW(L"FullBodyC0Native",L"enabled",L"0",native_owner,8,ini);
+    GetPrivateProfileStringW(L"BodyC0GoalPolicy",L"enabled",L"0",goal_owner,8,ini);
+    if((wcscmp(native_owner,L"0")&&wcscmp(native_owner,L"1"))||
+       (wcscmp(goal_owner,L"0")&&wcscmp(goal_owner,L"1")))return false;
+    full_body_cover_enabled=!wcscmp(native_owner,L"1")&&!wcscmp(goal_owner,L"1");
+    gears_cover_pose_role::c0_exclusive=full_body_cover_enabled;
     enabled=true;
     fprintf(file,"cover_input_config enabled=1 experimental=1 exact_stereo_controller_v3=1 gt_owner=1 physical_position_drives_top=1 rotation_drives_stance=0 measured_half_metres=%.9g measured_top_metres=%.9g measured_profile_universal_acceptance=0 original_l2_provider=%u collision_required=0 weapon_participants_connected=0\n",
         height_curve[1].height_metres,height_curve[2].height_metres,unsigned(grab_points_provider!=nullptr));return true;

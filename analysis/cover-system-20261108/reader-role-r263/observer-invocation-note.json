@@ -1,0 +1,6 @@
+{
+  "first_invocation_exit": 2,
+  "cause": "Builder omitted required mode and matrix fixture arguments; no assertions executed.",
+  "repair": "Allow configure-only mode without unrelated matrix fixtures; run configure mode plus actual passive role checks.",
+  "game_started": false
+}

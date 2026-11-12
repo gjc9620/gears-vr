@@ -153,6 +153,7 @@ int run(char const* mode){
         bool* gates[]={&native::enabled,&phase::enabled,&controls::enabled,&rig_tracking_live::enabled,&weapon_hand_runtime::enabled,&continuous_session,&stereo_xr,&anchor_observer_enabled};
         for(auto gate:gates){*gate=false;C(!live::configure(ini,nullptr)&&!live::enabled);*gate=true;}
         for(auto writer:{&cover_body_live::enabled,&cover_input_live::enabled,&weapon_hand_runtime::detail::engine_restore_enabled}){*writer=true;C(!live::configure(ini,nullptr)&&!live::enabled);*writer=false;}
+        gears_cover_pose_role::c0_exclusive=true;cover_body_live::enabled=cover_input_live::enabled=true;C(live::passive());weapon_hand_runtime::detail::engine_restore_enabled=true;C(!live::passive());weapon_hand_runtime::detail::engine_restore_enabled=false;
         C(live::configure(ini,nullptr)&&live::length_mode==live::LengthMode::adaptive);C(!live::configure(ini,nullptr));C(DeleteFileW(ini)!=0);return failures?1:0;}
     setup();
     if(!strcmp(mode,"adaptive")){live::length_mode=live::LengthMode::adaptive;for(unsigned s=0;s<2;++s){auto goal=world(observed[s].limb[2],observed[s].component);goal.position.x+=100;grip_for(s,goal);}}
@@ -195,5 +196,5 @@ int run(char const* mode){
 #else
 int run(char const*){wchar_t temp[MAX_PATH]{},ini[MAX_PATH]{};C(GetTempPathW(MAX_PATH,temp)>0);C(GetTempFileNameW(temp,L"hgp",0,ini)>0);C(live::configure(ini,nullptr)&&!live::enabled);write_ini(ini,L"enabled",L"1");C(!live::configure(ini,nullptr));controls::Row x{};live::observe(x,host_source);live::request_drain();C(!live::pending_count());C(DeleteFileW(ini)!=0);return failures?1:0;}
 #endif
-int main(int argc,char** argv){if(argc!=4||!fixtures(argv[2],argv[3])){fprintf(stderr,"usage: test MODE RO3-MATRICES.bin NATIVE-REFERENCE-RO3.bin\n");return 2;}
+int main(int argc,char** argv){if(argc==2&&!strcmp(argv[1],"configure")){const auto result=run(argv[1]);printf("hand_goal_observer configure: %u checks, %u failures\n",checks,failures);return result;}if(argc!=4||!fixtures(argv[2],argv[3])){fprintf(stderr,"usage: test MODE RO3-MATRICES.bin NATIVE-REFERENCE-RO3.bin\n");return 2;}
     const auto result=run(argv[1]);printf("hand_goal_observer %s: %u checks, %u failures; actual RO3 matrices/Ref + real Core/profile/adapter/math; Host owner/IO/scope stubs, no permission\n",argv[1],checks,failures);return result;}

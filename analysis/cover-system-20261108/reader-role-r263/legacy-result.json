@@ -1,0 +1,18 @@
+{
+  "build_exit": 0,
+  "test_exit": 0,
+  "output": "cover_body_live_journal: legacy_checks=705 side_and_config_checks=438\r\ncover_body_live_journal: live_target_checks=574\r\ncover_body_live_journal: side_mirror_trial_checks=965\r\ncover_body_live_journal: 2693 checks, 0 failures\r\n",
+  "source_sha256": {
+    "tools\\native-capture\\anchor_observer.h": "f2d8425ba10591c9700937244391f37b5ccf6ec3ffe6685beab34edb51e433fe",
+    "tools\\native-capture\\crosshair_scene_evidence.h": "4030db5fb3ad4d29b5447371f9cc27b6fc22e81eb854b7620bead9662d14bb49",
+    "tools\\native-capture\\crosshair_writer_view.h": "8368f7c112c0357e4b132e8d7d7bfeb1f24ba459678af03d883ebb35607b5927",
+    "tools\\native-capture\\mounted_actor_type.h": "1a9af3c9fcd9e0cd49100503fcfe07a089d59c065ec2f8af83555c1094eefb0a",
+    "tools\\native-capture\\mounted_observer.inl": "fa08e470befaa5c8de28cd5063ffc821e91940714429efdac28fe44f0f91bbb1",
+    "tools\\native-capture\\world_epoch_gate.h": "b6f053a398566188b0b2ae3486513a7b3f60f85087879759717926c98efefaa4",
+    "tools\\third-party\\minhook\\include\\minhook.h": "c3608e584bd9659aebdbb4c8c82585605989193623f240552d35c43311b3d31a",
+    "tools\\native-capture\\cover_body_live.inl": "6ae44931f326a9cf084988b9796897c95eb04bc63f4860d57d3cebeb982d8b0e",
+    "tools\\native-capture\\cover_pose_role.h": "cae4599c80556b4ac2d8a98c53dc38e18f4a3de72cbe7c5b9c9d1aae82089465",
+    "tools\\native-capture\\cover_body_side_mirror_test.inl": "f908beed0ef19e0ad26fbd9d17e18be48104e82580749182e1fa482fabd12f5f",
+    "tools\\native-capture\\cover_body_journal_test.cpp": "12cbc0a1c8dc6e2753ec8b1543ea14440e64b53fba19d029e07710175d49f1e8"
+  }
+}

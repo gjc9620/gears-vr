@@ -1,6 +1,7 @@
 // Global include hand_core_target_adapter.h first. Include after CoreObserver.
 // Event-only planning from its SAME accepted latch copy, before its record lock.
 // No Game/node/Local/Space/input write, engine call, bridge or additional getter.
+#include "cover_pose_role.h"
 namespace cover_control_observer_live {struct Row;}
 namespace hand_goal_observer_live {
 bool enabled{};
@@ -38,7 +39,8 @@ struct Workspace {
 };
 inline thread_local Workspace workspace{};
 struct Call {Call(){++in_flight;}~Call(){--in_flight;}Call(Call const&)=delete;Call& operator=(Call const&)=delete;};
-bool passive(){return !cover_body_live::enabled&&!cover_input_live::enabled&&!weapon_hand_runtime::detail::engine_restore_enabled;}
+bool passive(){return gears_cover_pose_role::no_competing_writer(cover_body_live::enabled,cover_input_live::enabled,
+    weapon_hand_runtime::detail::engine_restore_enabled);}
 bool current(controls::Row const& row,core::CoreSnapshot const& source){
     auto const& f=native::frame;
     if(stopping.load()||!enabled||!passive()||!native::enabled||native::stopping.load()||!f.active||f.sticky||!f.attempted||!f.lease||!f.lease->world()||

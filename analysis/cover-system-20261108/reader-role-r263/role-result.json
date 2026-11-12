@@ -1,0 +1,9 @@
+{
+  "build_exit": 0,
+  "test_exit": 0,
+  "output": "CoverPoseRoleTest checks=10 failures=0\r\n",
+  "source_sha256": {
+    "tools\\native-capture\\cover_pose_role.h": "cae4599c80556b4ac2d8a98c53dc38e18f4a3de72cbe7c5b9c9d1aae82089465",
+    "tools\\native-capture\\cover_pose_role_test.cpp": "69c50c9a60fc78b611edba8b37fbd6b6097361d63762d63866c5d7a5b807a35a"
+  }
+}

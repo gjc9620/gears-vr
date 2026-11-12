@@ -1,3 +1,4 @@
+#include "cover_pose_role.h"
 // Continuous observation/planning only. Include after Rig/adapter/CCTRL.
 #include "continuous_hand_caller_certificate.h"
 #include "body_c0_arm_alpha_policy.h"
@@ -60,7 +61,8 @@ struct PersonalDiagnostic {bool bound{};personal::Status status{personal::Status
 std::mutex personal_mutex;PersonalDiagnostic personal_diagnostic{};
 std::atomic<uint64_t> personal_binding_attempts{},personal_bindings{},personal_binding_failures{},personal_apply_failures{},personal_applied{};
 struct Call {Call(){++callbacks;}~Call(){--callbacks;}};
-bool passive(){return !cover_body_live::enabled&&!cover_input_live::enabled&&!weapon_hand_runtime::detail::engine_restore_enabled;}
+bool passive(){return gears_cover_pose_role::no_competing_writer(cover_body_live::enabled,cover_input_live::enabled,
+    weapon_hand_runtime::detail::engine_restore_enabled);}
 void reject(Failure why){slot.hard_control_fault=true;slot.sticky=true;if(slot.data.record.failure==Failure::none)slot.data.record.failure=why;++rejected;}
 bool same_model(personal::ModelKey const& a,personal::ModelKey const& b){return a.model==b.model&&a.geometry_signature==b.geometry_signature&&
     a.bone_count==b.bone_count&&a.model_to_world_scale==b.model_to_world_scale&&a.units_per_metre==b.units_per_metre;}

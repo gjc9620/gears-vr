@@ -64,6 +64,20 @@ void next(double up,float squeeze=0){
     edges.update(hands);C(producer.publish(hands));
 }
 int main(){
+    wchar_t temp_folder[MAX_PATH]{},temp_ini[MAX_PATH]{};
+    C(GetTempPathW(MAX_PATH,temp_folder)>0&&GetTempFileNameW(temp_folder,L"gcv",0,temp_ini)!=0);
+    C(WritePrivateProfileStringW(L"CoverInputPrototype",L"enabled",L"1",temp_ini)!=FALSE);
+    C(WritePrivateProfileStringW(L"CoverInputPrototype",L"height_half_metres",L"0.3",temp_ini)!=FALSE);
+    C(WritePrivateProfileStringW(L"CoverInputPrototype",L"height_top_metres",L"0.7",temp_ini)!=FALSE);
+    C(WritePrivateProfileStringW(L"FullBodyC0Native",L"enabled",L"1",temp_ini)!=FALSE);
+    C(WritePrivateProfileStringW(L"BodyC0GoalPolicy",L"enabled",L"1",temp_ini)!=FALSE);
+    FILE* config_log{};C(tmpfile_s(&config_log)==0&&config_log);
+    C(live::configure(temp_ini,config_log)&&live::full_body_cover_enabled&&gears_cover_pose_role::c0_exclusive);
+    live::enabled=false;C(WritePrivateProfileStringW(L"BodyC0GoalPolicy",L"enabled",L"0",temp_ini)!=FALSE);
+    C(live::configure(temp_ini,config_log)&&!live::full_body_cover_enabled&&!gears_cover_pose_role::c0_exclusive);
+    live::enabled=false;C(WritePrivateProfileStringW(L"BodyC0GoalPolicy",L"enabled",L"invalid",temp_ini)!=FALSE);
+    C(!live::configure(temp_ini,config_log)&&!live::enabled&&!gears_cover_pose_role::c0_exclusive);
+    C(fclose(config_log)==0&&DeleteFileW(temp_ini)!=FALSE);
     live::enabled=true;live::height_curve={{{0,0},{.5,.3},{1,.7}}};
     neutral::eye.pawn.address=100;neutral::eye.mesh.address=200;neutral::eye.link.address=300;
     neutral::eye.current_world=400;neutral::eye.world_generation=1;neutral::eye.calibrated_ms=5;neutral::eye.neutral_eye_world={1000,2000,-40};

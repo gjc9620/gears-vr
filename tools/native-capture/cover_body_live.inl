@@ -2,6 +2,7 @@
 // Retail metadata is discovered only along an authenticated hook receiver and
 // the current controlled Pawn's class chains. No registry-wide object scan.
 #include <new>
+#include "cover_pose_role.h"
 namespace cover_body_live {
 enum class TargetSource {advance,live};
 struct LiveTarget {
@@ -214,7 +215,7 @@ bool reject_target(TargetReject reason){++live_rejected;live_last_reject=reason;
 // Publication only stages CPU metadata. An open propagation keeps its own u.
 bool publish_target(LiveTarget const& target){
     try{std::lock_guard<std::mutex> lock(mutex);
-        if(!enabled||!live_source())return reject_target(TargetReject::not_live);
+        if(gears_cover_pose_role::c0_exclusive||!enabled||!live_source())return reject_target(TargetReject::not_live);
         if(stopping.load()||failed.load()||external_change.load()||!recording.load())return reject_target(TargetReject::stopped);
         if(target.thread!=GetCurrentThreadId()||game_thread.load()!=target.thread)return reject_target(TargetReject::thread);
         if(!target.frame||target.frame<=live_state.frame_watermark||target.timestamp_qpc<=live_state.time_watermark)return reject_target(TargetReject::order);
