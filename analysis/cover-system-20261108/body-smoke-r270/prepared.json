@@ -1,0 +1,12 @@
+{
+  "name": "cover-1112-r270-cloak-atom",
+  "native_sha256": "9ace94de722a300c44e1867cc5e56a51fd33feb8bb782dcf8ab1ddfc23ffb604",
+  "entry_sha256": "65c30e3a097400e58dfc626c4959d5b0bbdec86a0d1a97376bf29475eeb73807",
+  "tool_sha256": "1909cb8b26df9047a0fef1cf8dd5e4dd3b5aa6af854844c5450224ad70e4cad8",
+  "runner_sha256": "032d3014e4b31479ff28107ffb0725507f02b48e5e06f083b611220f14e7b634",
+  "operator_template_sha256": "c8aed0688a653359253624f80d3cd595245535f7e87f2928f4321af707afa0ec",
+  "prepared_only": true,
+  "game_started": false,
+  "physics_enabled": false,
+  "legacy_height_curve": "0.3/0.7 compatibility values, unused by selected C0 body owner; not measurements"
+}
