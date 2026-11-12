@@ -1,0 +1,13 @@
+{
+  "diagnostic_record_base_entry": true,
+  "name": "cover-1112-r283-pending-observation",
+  "native_sha256": "c964ba78e59d7950e1a2e3b069ecb4c047b8399aa8333bcd2cf1b7f033159906",
+  "entry_sha256": "42177f5867d1f8a08ade49c8f87d685069db643300fcb4cabc6b3553285eef9c",
+  "tool_sha256": "a9525f63f017788083094afe0a4feb77d0074a9bb33ef10af31ca92f90eea151",
+  "runner_sha256": "205e96ceeee2e9887d47f7c98a1212919902df62626886a5ad0427205819f75e",
+  "operator_template_sha256": "e0db894b14848077644167249e2494a436cb7a438cc0ed48922906fb298a74df",
+  "prepared_only": true,
+  "game_started": false,
+  "physics_enabled": false,
+  "legacy_height_curve": "0.3/0.7 compatibility values, unused by selected C0 body owner; not measurements"
+}
