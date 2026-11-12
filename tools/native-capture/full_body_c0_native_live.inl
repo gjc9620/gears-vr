@@ -1323,7 +1323,9 @@ bool apply_impl(Entry const& e,body::Goal const& goal,gears_native_rig_tracking:
         if(main_mount_policy_enabled()&&!admission_budget()){budget::recorder.mark(budget::Stage::post40_end);budget::recorder.age_rejected();++main_mount_post_admission_rejected;++admission_skipped;++rejected;return false;}
         budget::recorder.mark(budget::Stage::post40_end);
         bool hand_plan{};
-        if(hands_enabled){++hands_attempts;hands::Result hand_result{};
+        // Standing hand composer cannot veto a separately planned cover body.
+        // Cover point GrabPose/arm composition remains a separate requirement.
+        if(hands_enabled&&goal.scope==body::Scope::stationary){++hands_attempts;hands::Result hand_result{};
             state.hand_work.left_visual={};
             if(state.right_mount==hands::adapter::MountKind::held_lancer&&eye&&body_tick_input_live::enabled){
                 auto const& current_input=body_tick_source_live::enabled?

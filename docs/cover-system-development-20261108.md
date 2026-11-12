@@ -3489,3 +3489,14 @@ r267 Native eb29eb8a8295ecd86bdb8f4d3b1d0109d018e6f2436c683bfa8e3ca9a016223e编�
 Native、独立入口、XR收尾通过，normal_cleanup_verified=true；无所属游戏/子进程剩余，无强制终止。实际数据和失败独立保留body-smoke-r268/closeout.json、terminal-native-status.txt；不将正常收尾称为功能通过。碰撞/遮挡仍后置，Quest/公版/固定手动候选未动。
 
 下一步从同一个已准入的当前C0源记录首个失败Atom的索引、四元数与平移，再对照原始Compose所需格式/时机选择修复。不要重复相同DLL，不要未取得原值就归因缩放、拉长骨骼或放宽判定。其后仍须完成实际C0消费、持续保持、Grip拖动/松手保持/反向、每点GrabPose及过渡、两模式和真实双眼/手动交付验证；当前目标仍未完成。
+
+
+### r269/r270 原始Atom只读记录，真实测量通过后暴露站立手部误拦；r271修正调用域
+
+r269只读保留首个真实失败帧的至多8个Atom及总数、tick/Scene、quaternion/translation/scale与校验结果。Native 9ace94de722a300c44e1867cc5e56a51fd33feb8bb782dcf8ab1ddfc23ffb604编译通过，427依赖，仅2诊断文件变化；不改变姿态准入。
+
+r270实际运行没有遇到失败Atom，测量通过、拟合2次、身体计划312次；应用/消费仍0，reason10。Native body plan solved共696次（384站立+312掩体），共享hands status0=384、status4 invalid_body=312，prepare仅384次。源码确认站立手部compose只允许stationary，却在固定掩体身体求解后也被调用，导致明确的invalid_body拒绝。该运行未复现r268 Atom问题，不代表Atom问题已修复；首失败诊断继续保留。r270正常Native/入口/XR/所属进程收尾全部通过，未进入抓取动作，详见body-smoke-r270/closeout.json。
+
+r271把现有站立手部composer调用域明确限制为stationary；固定掩体身体使用现有sole C0/Kernel/消费路径，暂保留原始手部Local（随身体父层运动）。没有新增手部写入者，掩体点位专用GrabPose/手臂过渡仍未完成，不能以此称完整掩体交互。新Host scenario10明确开启hands，修复前复现reason10/committed=false，修复后真实Native/Kernel/原消费回读24检查通过；其余原10场景亦通过，合计11场景207检查。Host身份/收据及原始数学调用仍是人工夹具，不等于游戏。
+
+新Native da2b6fe06e71a4633a615a17342cada201c412fa941b5aa688050933dfc62320编译通过，427依赖，冻结r269仅full_body_c0_native_live.inl的站立手部调用域变更，开关不变、碰撞OFF。下一步新识别短游戏核对实际掩体写入/消费与连续更新；仍保留Atom失败、每点GrabPose/过渡、Grip拖动/保持/反向与双模式/实际双眼/实体头显待完成项。

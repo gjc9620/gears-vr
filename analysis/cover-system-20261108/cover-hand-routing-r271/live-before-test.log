@@ -1,0 +1,2 @@
+FAIL 119 goal::pending.committed&&goal::pending.next.cover&&goal::cover_applied==1
+cover reason=10 apply=0

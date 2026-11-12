@@ -1,0 +1,10 @@
+{
+  "native_sha256": "da2b6fe06e71a4633a615a17342cada201c412fa941b5aa688050933dfc62320",
+  "scenarios": 11,
+  "checks": 207,
+  "failures": 0,
+  "regression_reproduced_before_fix": true,
+  "body_actual_game_pending": true,
+  "cover_hands_pending": true,
+  "legacy_atom_failure_not_claimed_fixed": true
+}

@@ -35,7 +35,7 @@ void finish_throw_inner(Entry const&e){bool called=false;__try{live::before_orig
     __finally{goal::pose_end(e,false,called);}}
 bool finish_throw(Entry const&e){__try{finish_throw_inner(e);return false;}__except(GetExceptionCode()==0xe0424242?EXCEPTION_EXECUTE_HANDLER:EXCEPTION_CONTINUE_SEARCH){return true;}}
 int main(int argc,char** argv){
-    if(argc!=4)return 2;const unsigned scenario=unsigned(std::strtoul(argv[3],nullptr,10));if(scenario>9)return 2;
+    if(argc!=4)return 2;const unsigned scenario=unsigned(std::strtoul(argv[3],nullptr,10));if(scenario>10)return 2;
     const unsigned mode=scenario==8?1:16;const bool cover_case=scenario!=8;
     auto frame=std::make_unique<body::Frame>();C(read_file(std::string(argv[1])+"/reference.bin",frame->reference.data(),sizeof frame->reference));
     C(read_file(std::string(argv[1])+"/C0-local.bin",frame->local.data(),sizeof frame->local));C(read_file(std::string(argv[1])+"/C0-component.bin",&frame->component_to_world,sizeof frame->component_to_world));
@@ -108,6 +108,7 @@ int main(int argc,char** argv){
     if(scenario==2)++drag.pawn.name_index;
     if(scenario==3)cover_context_live::host_change_closing=true;
     if(scenario==9)cover_context_live::host_action=3;
+    if(scenario==10)live::hands_enabled=true; // Actual shared-hand configuration must not veto cover.
     goal::pose_begin(entry);
     C(!std::memcmp(&entry,&entry_before,sizeof entry));
     if((scenario>=1&&scenario<=3)||scenario==9){
