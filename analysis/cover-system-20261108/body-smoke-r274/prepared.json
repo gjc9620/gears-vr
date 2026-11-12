@@ -1,0 +1,12 @@
+{
+  "name": "cover-1112-r274-cloak-passive",
+  "native_sha256": "df48c349e21247543612bc7e2104e57e7bb497dd3d64f06ad50696bfc2e816c2",
+  "entry_sha256": "65c30e3a097400e58dfc626c4959d5b0bbdec86a0d1a97376bf29475eeb73807",
+  "tool_sha256": "bf40a11ad6c8e8daf7d299df5dd3357d24b1f11b8d57eaf6dba2057bdd43cbe9",
+  "runner_sha256": "aa9b879da456b9325abb77f7269ac8cd421dfe19824e0148e38da6e498bf2228",
+  "operator_template_sha256": "c8aed0688a653359253624f80d3cd595245535f7e87f2928f4321af707afa0ec",
+  "prepared_only": true,
+  "game_started": false,
+  "physics_enabled": false,
+  "legacy_height_curve": "0.3/0.7 compatibility values, unused by selected C0 body owner; not measurements"
+}
