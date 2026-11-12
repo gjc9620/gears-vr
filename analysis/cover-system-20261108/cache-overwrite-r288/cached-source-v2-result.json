@@ -1,0 +1,10 @@
+{
+  "build_exit": 0,
+  "test_exit": 0,
+  "output": "CachedPoseSource checks=106 failures=0; data continuity only, no game or write/retirement permission\r\n",
+  "source_sha256": {
+    "tools/native-capture/cached_pose_overwrite_source.h": "8445add07a3d67cb03337840621c3de24965216335e685ff4c717cb896c64ea5",
+    "tools/native-capture/cover_pose_phase.h": "f173e0346bb313e33f4e26f1f9c0b91442009cdf7e903ed4c6a0de67dd7d8f19",
+    "tools/native-capture/cached_pose_overwrite_source_test.cpp": "398841e4fc6a4a71ba7d3903e32ae534122b0922d06c638eb8f83afd3d49368e"
+  }
+}

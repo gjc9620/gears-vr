@@ -1,0 +1,7 @@
+read_copy_import.cpp
+J:\codexWorktree\gearsVr\tools\native-capture\fresh_pose_producer_live.inl(382): error C2065: “PendingBranch”: 未声明的标识符
+J:\codexWorktree\gearsVr\tools\native-capture\fresh_pose_producer_live.inl(382): error C2923: "std::array": "PendingBranch" 不是参数 "_Ty" 的有效 模板 类型参数
+J:\codexWorktree\gearsVr\tools\native-capture\fresh_pose_producer_live.inl(382): note: 参见“PendingBranch”的声明
+J:\codexWorktree\gearsVr\tools\native-capture\fresh_pose_producer_live.inl(382): error C2955: “std::array”: 使用 类 模板 需要 模板 参数列表
+E:\vs\VC\Tools\MSVC\14.51.36231\include\array(402): note: 参见“std::array”的声明
+J:\codexWorktree\gearsVr\tools\native-capture\fresh_pose_producer_live.inl(382): error C2582: 'operator =' 函数在 'std::array' 中不可用

@@ -1,0 +1,27 @@
+cached_pose_overwrite_source_test.cpp
+E:\vs\VC\Tools\MSVC\14.51.36231\include\numeric(570): error C2220: 以下警告被视为错误
+E:\vs\VC\Tools\MSVC\14.51.36231\include\numeric(570): warning C4244: “=”: 从“_Ty”转换到“_Ty”，可能丢失数据
+        with
+        [
+            _Ty=int
+        ]
+        and
+        [
+            _Ty=unsigned char
+        ]
+E:\vs\VC\Tools\MSVC\14.51.36231\include\numeric(570): note: 模板实例化上下文(最早的实例化上下文)为
+J:\codexWorktree\gearsVr\tools\native-capture\cached_pose_overwrite_source_test.cpp(14): note: 查看对正在编译的函数 模板 实例化“void std::iota<std::_Array_iterator<_Ty,115>,int>(_FwdIt,_FwdIt,int)”的引用
+        with
+        [
+            _Ty=unsigned char,
+            _FwdIt=std::_Array_iterator<unsigned char,115>
+        ]
+E:\vs\VC\Tools\MSVC\14.51.36231\include\numeric(578): warning C4244: “=”: 从“_Ty”转换到“_Ty”，可能丢失数据
+        with
+        [
+            _Ty=int
+        ]
+        and
+        [
+            _Ty=unsigned char
+        ]

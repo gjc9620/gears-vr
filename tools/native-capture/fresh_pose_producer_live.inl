@@ -4,6 +4,8 @@
 #include "sequence_pose_overwrite_source.h"
 #include "sequence_set_overwrite_source.h"
 #include "per_bone_overwrite_source.h"
+#include "cached_pose_overwrite_source.h"
+#include "cached_pose_memcpy_certificate.h"
 #include <new>
 namespace fresh_pose_producer_live {
 bool enabled{},per_bone_witness_enabled{};std::array<void*,3> targets{},originals{};bool own_entries();
@@ -46,6 +48,7 @@ std::atomic<uint64_t> sequence_set_started{},sequence_set_finished{};
 std::atomic<uint64_t> per_bone_started{},per_bone_finished{};
 std::array<std::atomic<uint64_t>,6> per_bone_rejections{};
 struct PerBoneWitness {gears_per_bone_overwrite::Source before{};gears_anchor::Identity identity{};};
+struct CachedWitness;
 struct SequenceFailureObservation {unsigned context{},root_snapshot{},root_same{},root_return_epoch{},sequence_snapshot{},sequence_same{},sequence_return{},local_same{},desired_same{};
     uint32_t root_before{},root_after{},mesh{},sequence_before{},sequence_after{},time_before{},time_after{};int32_t node70_before{},node70_after{},cache_before{},cache_after{},link_before{},link_after{};};
 SequenceFailureObservation sequence_failure{};std::atomic<bool> sequence_failure_known{};
@@ -58,6 +61,7 @@ struct Call {Call* previous{};Call const* counter_self{};uint64_t serial{};unsig
     gears_sequence_pose_overwrite::Source sequence_before{};gears_anchor::Identity sequence_identity{};bool sequence_active{};
     gears_sequence_set_overwrite::Source sequence_set_before{};bool sequence_set_active{};
     PerBoneWitness* per_bone{};
+    CachedWitness* cached{};
     alignas(::Scope) unsigned char blend_scope_bytes[sizeof(::Scope)]{};::Scope* blend_scope{};
 #endif
 };
@@ -134,6 +138,7 @@ bool per_bone_code_current(){
             if(chunk.sha256[j*2]!=hex[digest[j]>>4]||chunk.sha256[j*2+1]!=hex[digest[j]&15])return false;
     }return true;
 }
+#include "cached_pose_overwrite_live.inl"
 void per_bone_begin(Call& c,pose::CallPacket const& p){
     const auto mesh=native_atom_overwrite_live::registered_mesh();
     if(!per_bone_witness_enabled||!enabled||c.kind!=2||!mesh||local.depth>32||
@@ -201,6 +206,7 @@ void blend_begin(Call& c,pose::CallPacket const& p,uintptr_t ra){
         if(!lock.owns_lock()||!binding::metadata_current()||!binding::identity(p.gpr[1],c.blend_root,true)){++blend_rejections[5];return;}}
     c.blend_chain=true;
     if(!blend::blend(c.blend_before)){
+        observe_cover_forward(c.blend_before);
         const auto child=blend::full_weight_child(c.blend_before);
         uintptr_t table{},method{};
         if(!child||!read(table,child)||!field(method,table,0x270)){++blend_rejections[8];return;}
@@ -269,6 +275,7 @@ void blend_return(Call& c,bool returned){
 #else
 bool blend_world_current()noexcept{return false;}void blend_begin(Call&,pose::CallPacket const&,uintptr_t){}void blend_return(Call&,bool){}
 void per_bone_begin(Call&,pose::CallPacket const&){}void per_bone_return(Call&,bool){}
+bool cached_begin(Call&,pose::CallPacket const&){return false;}bool cached_return(Call&,bool){return false;}void cached_summary(FILE*){}
 #endif
 bool context(Record const& r){return hand::owner_current()&&hand::same_source()&&hand::slot.tick==r.tick&&
     hand::slot.tick_address==local.tick_address&&r.thread==GetCurrentThreadId()&&phase::same(r.owner,hand::slot.data.owner.key);}
@@ -446,8 +453,8 @@ bool usable(Stage const& s){return s.read_mask==all_reads&&s.stable&&s.entry_ok&
 void reject(Record& r,Reject why){if(r.reject==Reject::waiting||r.reject==Reject::complete)r.reject=why;}
 void begin(pose::CallPacket const& p,unsigned kind,uintptr_t ra,uintptr_t rsp,uintptr_t fifth,Call& c){
     c.previous=local.call;c.serial=serial.fetch_add(1);c.thread=GetCurrentThreadId();c.kind=kind;c.linked=true;local.call=&c;++local.depth;
-    if(kind==2){note_base_entry(p,kind,ra);per_bone_begin(c,p);return;}
-    blend_begin(c,p,ra);
+    if(kind==2){note_base_entry(p,kind,ra);if(!cached_begin(c,p))per_bone_begin(c,p);return;}
+    if(!cached_begin(c,p))blend_begin(c,p,ra);
     note_base_entry(p,kind,ra);
     tree_nested(p,ra,rsp,fifth,c);
     if(!enabled||stopping.load()||kind>1||ra!=base+cert::returns[kind]||!hand::owner_current()||!hand::same_source()){++ignored;return;}
@@ -480,8 +487,10 @@ void begin(pose::CallPacket const& p,unsigned kind,uintptr_t ra,uintptr_t rsp,ui
     if(kind){r.optional_executed=true;if(!r.calls[0].returned||!r.calls[0].end_known||r.stage[1].metadata.pose_epoch!=r.stage[2].metadata.pose_epoch)reject(r,Reject::changed);}
 }
 void finish(Call& c,pose::CallPacket& p,bool returned){
-    if(c.kind==2){per_bone_return(c,returned);return;}
-    blend_return(c,returned);if(c.slot==capacity)return;auto& r=records[c.slot];auto& n=r.calls[c.kind];
+    if(cached_return(c,returned)){if(c.kind==2)return;}
+    else if(c.kind==2){per_bone_return(c,returned);return;}
+    else blend_return(c,returned);
+    if(c.slot==capacity)return;auto& r=records[c.slot];auto& n=r.calls[c.kind];
     if(n.serial!=c.serial||r.closed){debt();return;}n.output=p;n.end_qpc=phase::qpc();n.returned=returned;n.exception=!returned;
     if(!returned)reject(r,Reject::exception);if(stopping.load())reject(r,Reject::stopped);
     if(returned&&!c.kind){if(read(n.motion_after,n.input.gpr[4]))n.argument_mask|=4;if(read(n.flag_after,n.fifth))n.argument_mask|=8;
@@ -500,6 +509,7 @@ void finish(Call& c,pose::CallPacket& p,bool returned){
 void release(Call& c) noexcept {
 #if defined(GEARS_NATIVE_ATOM_OVERWRITE_RECEIPT) && GEARS_NATIVE_ATOM_OVERWRITE_RECEIPT
     delete c.per_bone;c.per_bone=nullptr;
+    delete c.cached;c.cached=nullptr;
     if(c.blend_scope){if(c.blend_scope==reinterpret_cast<::Scope*>(c.blend_scope_bytes)){c.blend_scope->~Scope();c.blend_scope=nullptr;}else debt();}
 #endif
     const bool counted=c.counter_self==&c&&c.counter_owned&&c.counter_thread==GetCurrentThreadId();
@@ -570,7 +580,7 @@ bool configure(wchar_t const* ini,FILE* f){
     if(!wcscmp(b,L"1")){if(enabled||!hand::enabled||!phase::certified)return false;enabled=true;}record_call_tree=!wcscmp(t,L"1");
     if(f)fprintf(f,"fresh_pose_compiled=1 fresh_pose_enabled=%u fresh_pose_record_call_tree=%u writer=0 fresh_certified=0\n",unsigned(enabled),unsigned(record_call_tree));return true;}
 void request_drain(){stopping=true;}
-void summary(FILE* f){if(f){fprintf(f,"per_bone_overwrite_started=%llu per_bone_overwrite_finished=%llu ",per_bone_started.load(),per_bone_finished.load());
+void summary(FILE* f){cached_summary(f);if(f){fprintf(f,"per_bone_overwrite_started=%llu per_bone_overwrite_finished=%llu ",per_bone_started.load(),per_bone_finished.load());
     for(unsigned i=0;i<per_bone_rejections.size();++i)fprintf(f,"per_bone_rejected_%u=%llu ",i,per_bone_rejections[i].load());}
 base_entry_summary(f);if(f&&sequence_failure_known.load(std::memory_order_acquire)){const auto& d=sequence_failure;
     fprintf(f,"sequence_failure_context=%u sequence_failure_root_snapshot=%u sequence_failure_root_same=%u sequence_failure_root_epoch=%u sequence_failure_child_snapshot=%u sequence_failure_child_same=%u sequence_failure_child_return=%u sequence_failure_local_same=%u sequence_failure_desired_same=%u sequence_failure_root_before=%u sequence_failure_root_after=%u sequence_failure_mesh=%u sequence_failure_child_before=%u sequence_failure_child_after=%u sequence_failure_time_before=%u sequence_failure_time_after=%u sequence_failure_node70_before=%d sequence_failure_node70_after=%d sequence_failure_cache_before=%d sequence_failure_cache_after=%d sequence_failure_link_before=%d sequence_failure_link_after=%d ",

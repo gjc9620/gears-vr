@@ -1,0 +1,22 @@
+{
+  "base": "0x180000000",
+  "functions": [
+    {
+      "start": "0x1cb40",
+      "end": "0x1cf51",
+      "sha256": "4708101379d9dc7278cc55998ae180c3f68cec5733ab9c4ce2ee69903c6369d1",
+      "external_code_refs": [
+        "0x1c780",
+        "0x1c7a0"
+      ]
+    },
+    {
+      "start": "0x1db00",
+      "end": "0x1e17d",
+      "sha256": "42811f0db4c339363767d2a71e65abacf7bedac29caf452b4d8eb8300e621829",
+      "external_code_refs": [
+        "0x1daf0"
+      ]
+    }
+  ]
+}

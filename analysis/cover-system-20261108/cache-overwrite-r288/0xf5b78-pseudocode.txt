@@ -1,0 +1,369 @@
+__int64 __fastcall sub_1400F5B78(
+        double a1,
+        double a2,
+        double a3,
+        double a4,
+        double a5,
+        double a6,
+        __m128 _XMM6,
+        __m128 _XMM7,
+        __int64 a9,
+        __int64 a10,
+        __int64 *a11,
+        __int64 a12,
+        int a13,
+        __int64 a14,
+        int a15,
+        int a16,
+        int a17,
+        int a18,
+        _DWORD *a19)
+{
+  __int64 v27; // rbx
+  __int64 result; // rax
+  _DWORD *v31; // rdi
+  unsigned __int64 v32; // rsi
+  __m128 v33; // xmm0
+  __m128 v34; // xmm1
+  __m128 v35; // xmm2
+  __m128 v36; // xmm3
+  __m128 v37; // xmm4
+  __m128 v38; // xmm5
+  __m128 v39; // xmm6
+  __m128 v40; // xmm7
+  __int64 v41; // r14
+  _DWORD *v42; // rdi
+  int v43; // r9d
+  __int64 v44; // rax
+  __int64 v46; // rax
+  int v47; // ecx
+  __int64 *v48; // r12
+  int v49; // eax
+  __int64 v50; // r10
+  __int64 v51; // rdi
+  __int64 v52; // rax
+  __int64 v53; // rcx
+  __int64 v54; // r10
+  __int64 v59; // r11
+  __int64 v111; // rcx
+  __int64 v112; // rax
+  __int64 v113; // rsi
+  int v181; // esi
+  int v182; // r8d
+  int v183; // r9d
+  __int64 v186; // rsi
+  int v199; // [rsp+0h] [rbp-100h]
+  __int64 v200; // [rsp+0h] [rbp-100h]
+  int v201; // [rsp+8h] [rbp-F8h]
+  int v202; // [rsp+10h] [rbp-F0h]
+  __int64 v203; // [rsp+18h] [rbp-E8h]
+  int v204; // [rsp+30h] [rbp-D0h]
+  __int64 v205; // [rsp+30h] [rbp-D0h]
+  int v206; // [rsp+38h] [rbp-C8h]
+  int v207; // [rsp+40h] [rbp-C0h]
+  __int64 v208; // [rsp+48h] [rbp-B8h]
+  __int64 v209; // [rsp+50h] [rbp-B0h]
+  int v210; // [rsp+58h] [rbp-A8h]
+  __int128 v211; // [rsp+70h] [rbp-90h] BYREF
+  __int128 v212; // [rsp+80h] [rbp-80h]
+  _QWORD v215[26]; // [rsp+B0h] [rbp-50h] BYREF
+  char v216; // [rsp+188h] [rbp+88h] BYREF
+  _UNKNOWN *retaddr; // [rsp+1C8h] [rbp+C8h] BYREF
+
+  _RAX = &retaddr;
+  v27 = a14;
+  __asm
+  {
+    vmovaps xmmword ptr [rax-58h], xmm6
+    vmovaps xmmword ptr [rax-68h], xmm7
+    vmovaps xmmword ptr [rax-78h], xmm8
+    vmovaps xmmword ptr [rax-88h], xmm9
+    vmovaps xmmword ptr [rax-98h], xmm10
+    vmovaps xmmword ptr [rax-0A8h], xmm11
+    vmovaps xmmword ptr [rax-0B8h], xmm12
+  }
+  v210 = a14;
+  __asm { vmovaps xmmword ptr [rax-0C8h], xmm13 }
+  __asm { vmovaps xmmword ptr [rax-0D8h], xmm14 }
+  result = sub_1400F6CBC((_DWORD)a19, a13, (_DWORD)a11, a12, a14, (_DWORD)a19);
+  v41 = 0;
+  if ( (_DWORD)result == 0 )
+  {
+    sub_1400F7940(
+      v33,
+      v34,
+      v35,
+      v36,
+      v37,
+      v38,
+      v39,
+      v40,
+      (__int64)v31,
+      v32,
+      a11,
+      a12,
+      v32,
+      v27,
+      v199,
+      v201,
+      v202,
+      v203,
+      v31);
+    v44 = *(_QWORD *)(a12 + 248);
+    if ( v44 != 0 && (*(_BYTE *)(v44 + 272) & 0x40) != 0 )
+    {
+      _RSI = 304;
+      v46 = 272;
+    }
+    else
+    {
+      _RSI = 288;
+      v46 = 256;
+    }
+    v47 = *(_DWORD *)(a12 + _RSI + 8);
+    v208 = v46;
+    v207 = v47;
+    if ( v47 != 0 )
+    {
+      v204 = *(_DWORD *)(a12 + v46 + 8);
+      if ( v204 != 0 )
+      {
+        v48 = (__int64 *)(a12 + 320);
+        v209 = *(_QWORD *)(*(_QWORD *)(a12 + 96) + 536LL);
+        v49 = *(_DWORD *)(v209 + 172);
+        v206 = v49;
+        if ( *(_DWORD *)(a12 + 328) != v49 )
+        {
+          *(_DWORD *)(a12 + 328) = 0;
+          if ( *(_DWORD *)(a12 + 332) != 0 )
+          {
+            *(_DWORD *)(a12 + 332) = 0;
+            sub_1400DD950((_DWORD)v42, _RSI, 64, a12 + 320, 8, v43);
+            v49 = v206;
+          }
+          sub_1401CF460((_DWORD)v42, _RSI, v49, a12 + 320, 64, 8);
+          v47 = v207;
+        }
+        if ( v47 > 0 )
+        {
+          v50 = 0;
+          v51 = v47;
+          do
+          {
+            v52 = *(_QWORD *)(a12 + _RSI);
+            v53 = *a11 + 32LL * *(unsigned __int8 *)(v50 + v52);
+            if ( *(_BYTE *)(v50 + v52) != 0 )
+            {
+              sub_1400F6100(v51, _RSI, &v211, v53);
+              __asm { vmovups xmm6, [rbp+0C0h+var_140] }
+              _R8 = *v48;
+              __asm
+              {
+                vshufps xmm0, xmm6, xmm6, 0FFh
+                vshufps xmm1, xmm6, xmm6, 55h ; 'U'
+              }
+              _RDX = (__int64)*(int *)(68 * v59 + *(_QWORD *)(v209 + 164) + 56) << 6;
+              __asm
+              {
+                vmovups xmm11, xmmword ptr [rdx+r8+10h]
+                vmovups xmm10, xmmword ptr [rdx+r8+30h]
+                vmovups xmm13, xmmword ptr [rdx+r8]
+                vmovups xmm12, xmmword ptr [rdx+r8+20h]
+                vmulps  xmm3, xmm0, xmm10
+                vmulps  xmm2, xmm1, xmm11
+                vaddps  xmm5, xmm3, xmm2
+                vshufps xmm0, xmm6, xmm6, 0AAh
+                vmulps  xmm4, xmm0, xmm12
+                vshufps xmm1, xmm6, xmm6, 0
+                vmovups xmm6, [rbp+0C0h+var_130]
+                vmulps  xmm2, xmm1, xmm13
+                vaddps  xmm0, xmm4, xmm2
+                vaddps  xmm9, xmm5, xmm0
+                vshufps xmm0, xmm6, xmm6, 0FFh
+                vmulps  xmm3, xmm0, xmm10
+                vshufps xmm1, xmm6, xmm6, 55h ; 'U'
+                vmulps  xmm2, xmm1, xmm11
+                vaddps  xmm5, xmm3, xmm2
+                vshufps xmm0, xmm6, xmm6, 0AAh
+                vmulps  xmm4, xmm0, xmm12
+                vshufps xmm1, xmm6, xmm6, 0
+                vmovups xmm6, [rbp+0C0h+var_120]
+                vmulps  xmm2, xmm1, xmm13
+                vaddps  xmm0, xmm4, xmm2
+                vaddps  xmm8, xmm5, xmm0
+                vshufps xmm0, xmm6, xmm6, 0FFh
+                vmulps  xmm3, xmm0, xmm10
+                vshufps xmm1, xmm6, xmm6, 55h ; 'U'
+                vmulps  xmm2, xmm1, xmm11
+                vaddps  xmm5, xmm3, xmm2
+                vshufps xmm0, xmm6, xmm6, 0AAh
+                vmulps  xmm4, xmm0, xmm12
+                vshufps xmm1, xmm6, xmm6, 0
+                vmovups xmm6, [rsp+1C0h+var_150]
+                vmulps  xmm2, xmm1, xmm13
+                vaddps  xmm0, xmm4, xmm2
+                vaddps  xmm7, xmm5, xmm0
+                vshufps xmm0, xmm6, xmm6, 0FFh
+                vmulps  xmm3, xmm0, xmm10
+                vshufps xmm1, xmm6, xmm6, 55h ; 'U'
+                vmulps  xmm2, xmm1, xmm11
+                vshufps xmm0, xmm6, xmm6, 0AAh
+                vaddps  xmm5, xmm3, xmm2
+                vshufps xmm1, xmm6, xmm6, 0
+                vmulps  xmm4, xmm0, xmm12
+                vmulps  xmm2, xmm1, xmm13
+                vaddps  xmm0, xmm4, xmm2
+                vaddps  xmm3, xmm5, xmm0
+                vmovups xmmword ptr [r9+r8], xmm3
+                vmovups xmmword ptr [r9+r8+10h], xmm9
+                vmovups xmmword ptr [r9+r8+20h], xmm8
+                vmovups xmmword ptr [r9+r8+30h], xmm7
+              }
+            }
+            else
+            {
+              sub_1400F6100(v51, _RSI, ((unsigned __int64)*(unsigned __int8 *)(v50 + v52) << 6) + *v48, v53);
+            }
+            v50 = v54 + 1;
+          }
+          while ( v50 < v51 );
+          LODWORD(v27) = v210;
+          v42 = a19;
+        }
+        v111 = v204;
+        v205 = v111;
+        if ( v111 > 0 )
+        {
+          do
+          {
+            v112 = *(_QWORD *)(a12 + v208);
+            if ( *(_DWORD *)(v41 + v112 + 16) != -1 && *(_DWORD *)(v41 + v112 + 20) != -1 )
+            {
+              v113 = *(int *)(v41 + v112 + 20);
+              _RDI = *v48;
+              _RAX = (__int64)*(int *)(v41 + v112 + 16) << 6;
+              _RBX = v113 << 6;
+              __asm
+              {
+                vmovss  xmm0, dword ptr [rax+rdi+34h]
+                vmovss  xmm1, dword ptr [rax+rdi+38h]
+              }
+              *(_DWORD *)(_RBX + _RDI + 48) = *(_DWORD *)(_RAX + *v48 + 48);
+              __asm
+              {
+                vmovss  dword ptr [rbx+rdi+34h], xmm0
+                vmovss  dword ptr [rbx+rdi+38h], xmm1
+              }
+              _RDX = (__int64)*(int *)(68 * v113 + *(_QWORD *)(v209 + 164) + 56) << 6;
+              __asm
+              {
+                vmovups xmm0, xmmword ptr [rdx+rdi]
+                vmovups xmm1, xmmword ptr [rdx+rdi+10h]
+                vmovups xmm2, xmmword ptr [rdx+rdi+20h]
+                vmovups xmm3, xmmword ptr [rdx+rdi+30h]
+              }
+              *(double *)&_XMM0 = sub_140137A60(
+                                    _RDI,
+                                    v113,
+                                    _RDX,
+                                    0,
+                                    *(double *)&_XMM0,
+                                    *(double *)&_XMM1,
+                                    *(double *)&_XMM2);
+              __asm
+              {
+                vmovups xmm5, xmmword ptr [rbx+rdi]
+                vmovups xmm6, xmmword ptr [rbx+rdi+10h]
+                vmovups xmm8, xmmword ptr [rbx+rdi+20h]
+                vmovups xmm10, xmmword ptr [rbx+rdi+30h]
+                vmovups xmm14, xmm0
+                vmovups xmm12, xmm1
+                vmovups xmm13, xmm2
+                vmovups xmm11, xmm3
+                vshufps xmm3, xmm5, xmm5, 0FFh
+                vmulps  xmm2, xmm3, xmm11
+                vshufps xmm1, xmm5, xmm5, 55h ; 'U'
+                vmulps  xmm0, xmm1, xmm12
+                vaddps  xmm4, xmm2, xmm0
+                vshufps xmm2, xmm5, xmm5, 0AAh
+                vmulps  xmm3, xmm2, xmm13
+                vshufps xmm0, xmm5, xmm5, 0
+                vmulps  xmm1, xmm0, xmm14
+                vaddps  xmm2, xmm3, xmm1
+                vaddps  xmm9, xmm4, xmm2
+                vshufps xmm1, xmm6, xmm6, 55h ; 'U'
+                vmulps  xmm2, xmm1, xmm12
+                vshufps xmm0, xmm6, xmm6, 0FFh
+                vmulps  xmm3, xmm0, xmm11
+                vaddps  xmm5, xmm3, xmm2
+                vshufps xmm1, xmm6, xmm6, 0
+                vmulps  xmm2, xmm1, xmm14
+                vshufps xmm0, xmm6, xmm6, 0AAh
+                vmulps  xmm4, xmm0, xmm13
+                vaddps  xmm0, xmm4, xmm2
+                vaddps  xmm7, xmm5, xmm0
+                vshufps xmm0, xmm8, xmm8, 55h ; 'U'
+                vmulps  xmm2, xmm0, xmm12
+                vshufps xmm1, xmm8, xmm8, 0FFh
+                vmulps  xmm3, xmm1, xmm11
+                vaddps  xmm5, xmm3, xmm2
+                vshufps xmm0, xmm8, xmm8, 0
+                vmulps  xmm2, xmm0, xmm14
+                vshufps xmm1, xmm8, xmm8, 0AAh
+                vmulps  xmm4, xmm1, xmm13
+                vaddps  xmm1, xmm4, xmm2
+                vaddps  xmm6, xmm5, xmm1
+                vshufps xmm1, xmm10, xmm10, 55h ; 'U'
+                vmulps  xmm2, xmm1, xmm12
+                vshufps xmm0, xmm10, xmm10, 0FFh
+                vmulps  xmm3, xmm0, xmm11
+                vshufps xmm0, xmm10, xmm10, 0AAh
+                vaddps  xmm5, xmm3, xmm2
+                vshufps xmm1, xmm10, xmm10, 0
+                vmulps  xmm2, xmm1, xmm14
+                vmulps  xmm4, xmm0, xmm13
+                vaddps  xmm0, xmm4, xmm2
+                vaddps  xmm3, xmm5, xmm0
+                vmovups [rbp+0C0h+var_E0], xmm3
+                vmovups [rbp+0C0h+var_110], xmm9
+                vmovups [rbp+0C0h+var_100], xmm7
+                vmovups [rbp+0C0h+var_F0], xmm6
+              }
+              sub_1400F6C78(_RDI, v181, (unsigned int)v215, (unsigned int)&v211, v182, v183, v200);
+              _RAX = *a11;
+              __asm { vmovups xmm0, [rsp+1C0h+var_150] }
+              v111 = v205;
+              _RSI = 32 * v186;
+              __asm { vmovdqu xmmword ptr [rax+rsi], xmm0 }
+              _R10 = *a11;
+              __asm { vmovsd  xmm0, qword ptr [rbp+0C0h+var_140] }
+              LODWORD(_RAX) = DWORD2(v212);
+              __asm { vmovsd  qword ptr [r10+rsi+10h], xmm0 }
+              *(_DWORD *)(_R10 + _RSI + 24) = _RAX;
+            }
+            v41 += 24;
+            v205 = --v111;
+          }
+          while ( v111 != 0 );
+          LODWORD(v27) = v210;
+          v42 = a19;
+        }
+      }
+    }
+    result = sub_1400F6D8C((_DWORD)v42, _RSI, (_DWORD)a11, a12, v27, *v42);
+  }
+  _R11 = &v216;
+  __asm
+  {
+    vmovaps xmm6, xmmword ptr [r11-18h]
+    vmovaps xmm7, xmmword ptr [r11-28h]
+    vmovaps xmm8, xmmword ptr [r11-38h]
+    vmovaps xmm9, xmmword ptr [r11-48h]
+    vmovaps xmm10, xmmword ptr [r11-58h]
+    vmovaps xmm11, xmmword ptr [r11-68h]
+    vmovaps xmm12, xmmword ptr [r11-78h]
+    vmovaps xmm13, xmmword ptr [r11-88h]
+    vmovaps xmm14, xmmword ptr [r11-98h]
+  }
+  return result;
+}

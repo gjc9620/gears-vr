@@ -1,0 +1,20 @@
+{
+  "path": "C:\\Windows\\System32\\VCRUNTIME140.dll",
+  "sha256": "d1f4225df2cd877dbf130d5668a021dce3f94118455ff5ec952061c30afc9ce7",
+  "exports": [
+    {
+      "name": "memcpy",
+      "rva": "0x1f020",
+      "prefix": "e9dbeaffffcccccccccccccccccccccce94bf5ffffcccccccccccccccccccccc"
+    },
+    {
+      "name": "memmove",
+      "rva": "0x1db00",
+      "prefix": "488bc14c8d15f624feff4983f80f0f870c010000666666660f1f840000000000"
+    }
+  ],
+  "recorded_r283_target_rva": "0x1f020",
+  "recorded_prefix": "e91bdbffffcccccccccccccccccccccce94bf5ffffcccccccccccccccccccccc",
+  "execution": false,
+  "matches_recorded_memcpy": false
+}

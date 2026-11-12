@@ -1,0 +1,503 @@
+void *__cdecl memmove(void *_RCX, const void *Src, size_t Size)
+{
+  void *result; // rax
+  int v4; // ecx
+  __int16 v5; // r9
+  char v6; // r10
+  __int16 v7; // cx
+  char v8; // r9
+  __int16 v9; // r8
+  char v10; // r9
+  int v11; // ecx
+  __int16 v12; // r9
+  char v13; // r8
+  int v14; // ecx
+  char v15; // r9
+  __int16 v16; // cx
+  char v17; // cl
+  int v18; // ecx
+  __int16 v19; // r8
+  char v20; // r8
+  __m128i v21; // xmm2
+  char *v22; // r9
+  char *v23; // r9
+  __int64 v26; // r9
+  __m128i v59; // xmm0
+  __m128i v60; // xmm5
+  __int64 v61; // r9
+  __m128i v62; // xmm2
+  __m128i v63; // xmm3
+  __m128i v64; // xmm4
+  __m128i v65; // xmm2
+  __m128i v66; // xmm3
+  __m128i v67; // xmm4
+  size_t v68; // r9
+  __int128 v69; // xmm2
+  signed __int64 v70; // rdx
+  char *v71; // rcx
+  __int128 v72; // xmm0
+  unsigned __int64 v73; // rcx
+  size_t v74; // r8
+  _OWORD *v75; // r9
+  __int128 v76; // xmm1
+  size_t v77; // r9
+  __int128 v78; // xmm0
+  __int128 v79; // xmm1
+  __int128 v80; // xmm1
+  __int128 v81; // xmm1
+  __int128 v82; // xmm0
+  __int128 v83; // xmm1
+  size_t i; // r9
+
+  result = _RCX;
+  switch ( Size )
+  {
+    case 0uLL:
+      return result;
+    case 1uLL:
+      *(_BYTE *)_RCX = *(_BYTE *)Src;
+      return result;
+    case 2uLL:
+      *(_WORD *)_RCX = *(_WORD *)Src;
+      return result;
+    case 3uLL:
+      v13 = *((_BYTE *)Src + 2);
+      *(_WORD *)_RCX = *(_WORD *)Src;
+      *((_BYTE *)_RCX + 2) = v13;
+      return result;
+    case 4uLL:
+      *(_DWORD *)_RCX = *(_DWORD *)Src;
+      return result;
+    case 5uLL:
+      v20 = *((_BYTE *)Src + 4);
+      *(_DWORD *)_RCX = *(_DWORD *)Src;
+      *((_BYTE *)_RCX + 4) = v20;
+      return result;
+    case 6uLL:
+      v19 = *((_WORD *)Src + 2);
+      *(_DWORD *)_RCX = *(_DWORD *)Src;
+      *((_WORD *)_RCX + 2) = v19;
+      return result;
+    case 7uLL:
+      v9 = *((_WORD *)Src + 2);
+      v10 = *((_BYTE *)Src + 6);
+      *(_DWORD *)_RCX = *(_DWORD *)Src;
+      *((_WORD *)_RCX + 2) = v9;
+      *((_BYTE *)_RCX + 6) = v10;
+      return result;
+    case 8uLL:
+      *(_QWORD *)_RCX = *(_QWORD *)Src;
+      return result;
+    case 9uLL:
+      v17 = *((_BYTE *)Src + 8);
+      *(_QWORD *)result = *(_QWORD *)Src;
+      *((_BYTE *)result + 8) = v17;
+      return result;
+    case 0xAuLL:
+      v16 = *((_WORD *)Src + 4);
+      *(_QWORD *)result = *(_QWORD *)Src;
+      *((_WORD *)result + 4) = v16;
+      return result;
+    case 0xBuLL:
+      v7 = *((_WORD *)Src + 4);
+      v8 = *((_BYTE *)Src + 10);
+      *(_QWORD *)result = *(_QWORD *)Src;
+      *((_WORD *)result + 4) = v7;
+      *((_BYTE *)result + 10) = v8;
+      return result;
+    case 0xCuLL:
+      v18 = *((_DWORD *)Src + 2);
+      *(_QWORD *)result = *(_QWORD *)Src;
+      *((_DWORD *)result + 2) = v18;
+      return result;
+    case 0xDuLL:
+      v14 = *((_DWORD *)Src + 2);
+      v15 = *((_BYTE *)Src + 12);
+      *(_QWORD *)result = *(_QWORD *)Src;
+      *((_DWORD *)result + 2) = v14;
+      *((_BYTE *)result + 12) = v15;
+      return result;
+    case 0xEuLL:
+      v11 = *((_DWORD *)Src + 2);
+      v12 = *((_WORD *)Src + 6);
+      *(_QWORD *)result = *(_QWORD *)Src;
+      *((_DWORD *)result + 2) = v11;
+      *((_WORD *)result + 6) = v12;
+      return result;
+    case 0xFuLL:
+      v4 = *((_DWORD *)Src + 2);
+      v5 = *((_WORD *)Src + 6);
+      v6 = *((_BYTE *)Src + 14);
+      *(_QWORD *)result = *(_QWORD *)Src;
+      *((_DWORD *)result + 2) = v4;
+      *((_WORD *)result + 6) = v5;
+      *((_BYTE *)result + 14) = v6;
+      return result;
+    default:
+      if ( Size <= 0x20 )
+      {
+        v21 = _mm_loadu_si128((const __m128i *)((char *)Src + Size - 16));
+        *(__m128i *)_RCX = _mm_loadu_si128((const __m128i *)Src);
+        *(__m128i *)((char *)_RCX + Size - 16) = v21;
+        return result;
+      }
+      v22 = (char *)Src + Size;
+      if ( _RCX <= Src )
+        v22 = (char *)_RCX;
+      if ( _RCX < v22 )
+      {
+        v69 = *(_OWORD *)Src;
+        v70 = (_BYTE *)Src - (_BYTE *)_RCX;
+        v71 = (char *)_RCX + Size;
+        v72 = *(_OWORD *)&v71[v70 - 16];
+        v73 = (unsigned __int64)(v71 - 16);
+        v74 = Size - 16;
+        if ( (v73 & 0xF) != 0 )
+        {
+          v75 = (_OWORD *)v73;
+          v73 &= 0xFFFFFFFFFFFFFFF0uLL;
+          v76 = v72;
+          v72 = *(_OWORD *)(v73 + v70);
+          *v75 = v76;
+          v74 = v73 - (_QWORD)result;
+        }
+        v77 = v74 >> 7;
+        if ( v74 >> 7 != 0 )
+        {
+          for ( *(_OWORD *)v73 = v72; ; *(_OWORD *)v73 = v83 )
+          {
+            v78 = *(_OWORD *)(v73 + v70 - 16);
+            v79 = *(_OWORD *)(v73 + v70 - 32);
+            v73 -= 128LL;
+            *(_OWORD *)(v73 + 112) = v78;
+            *(_OWORD *)(v73 + 96) = v79;
+            v80 = *(_OWORD *)(v73 + v70 + 64);
+            --v77;
+            *(_OWORD *)(v73 + 80) = *(_OWORD *)(v73 + v70 + 80);
+            *(_OWORD *)(v73 + 64) = v80;
+            v81 = *(_OWORD *)(v73 + v70 + 32);
+            *(_OWORD *)(v73 + 48) = *(_OWORD *)(v73 + v70 + 48);
+            *(_OWORD *)(v73 + 32) = v81;
+            v82 = *(_OWORD *)(v73 + v70 + 16);
+            v83 = *(_OWORD *)(v73 + v70);
+            if ( v77 == 0 )
+              break;
+            *(_OWORD *)(v73 + 16) = v82;
+          }
+          *(_OWORD *)(v73 + 16) = v82;
+          v74 &= 0x7Fu;
+          v72 = v83;
+        }
+        for ( i = v74 >> 4; i != 0; --i )
+        {
+          *(_OWORD *)v73 = v72;
+          v73 -= 16LL;
+          v72 = *(_OWORD *)(v73 + v70);
+        }
+        if ( (v74 & 0xF) != 0 )
+          *(_OWORD *)result = v69;
+        *(_OWORD *)v73 = v72;
+        return result;
+      }
+      if ( (unsigned int)_isa_available < 3 )
+      {
+        if ( Size <= 0x800 || (_favor & 2) == 0 )
+        {
+          v59 = _mm_loadu_si128((const __m128i *)Src);
+          v60 = _mm_loadu_si128((const __m128i *)((char *)Src + Size - 16));
+          if ( Size > 0x80 )
+          {
+            v61 = ((unsigned __int8)_RCX & 0xF) - 16LL;
+            _RCX = (char *)_RCX - v61;
+            Src = (char *)Src - v61;
+            Size += v61;
+            if ( Size > 0x80 )
+            {
+              do
+              {
+                v62 = _mm_loadu_si128((const __m128i *)Src + 1);
+                v63 = _mm_loadu_si128((const __m128i *)Src + 2);
+                v64 = _mm_loadu_si128((const __m128i *)Src + 3);
+                *(__m128i *)_RCX = _mm_loadu_si128((const __m128i *)Src);
+                *((__m128i *)_RCX + 1) = v62;
+                *((__m128i *)_RCX + 2) = v63;
+                *((__m128i *)_RCX + 3) = v64;
+                v65 = _mm_loadu_si128((const __m128i *)Src + 5);
+                v66 = _mm_loadu_si128((const __m128i *)Src + 6);
+                v67 = _mm_loadu_si128((const __m128i *)Src + 7);
+                *((__m128i *)_RCX + 4) = _mm_loadu_si128((const __m128i *)Src + 4);
+                *((__m128i *)_RCX + 5) = v65;
+                *((__m128i *)_RCX + 6) = v66;
+                *((__m128i *)_RCX + 7) = v67;
+                _RCX = (char *)_RCX + 128;
+                Src = (char *)Src + 128;
+                Size -= 128LL;
+              }
+              while ( Size >= 0x80 );
+            }
+          }
+          v68 = (Size + 15) & 0xFFFFFFFFFFFFFFF0uLL;
+          switch ( v68 >> 4 )
+          {
+            case 0uLL:
+              goto Mov0XmmBlocks_1;
+            case 1uLL:
+              goto Mov1XmmBlocks_1;
+            case 2uLL:
+              goto Mov2XmmBlocks_1;
+            case 3uLL:
+              goto Mov3XmmBlocks_1;
+            case 4uLL:
+              goto Mov4XmmBlocks_1;
+            case 5uLL:
+              goto Mov5XmmBlocks_1;
+            case 6uLL:
+              goto Mov6XmmBlocks_1;
+            case 7uLL:
+              goto Mov7XmmBlocks_1;
+            case 8uLL:
+              *(__m128i *)((char *)_RCX + v68 - 128) = _mm_loadu_si128((const __m128i *)((char *)Src + v68 - 128));
+Mov7XmmBlocks_1:
+              *(__m128i *)((char *)_RCX + v68 - 112) = _mm_loadu_si128((const __m128i *)((char *)Src + v68 - 112));
+Mov6XmmBlocks_1:
+              *(__m128i *)((char *)_RCX + v68 - 96) = _mm_loadu_si128((const __m128i *)((char *)Src + v68 - 96));
+Mov5XmmBlocks_1:
+              *(__m128i *)((char *)_RCX + v68 - 80) = _mm_loadu_si128((const __m128i *)((char *)Src + v68 - 80));
+Mov4XmmBlocks_1:
+              *(__m128i *)((char *)_RCX + v68 - 64) = _mm_loadu_si128((const __m128i *)((char *)Src + v68 - 64));
+Mov3XmmBlocks_1:
+              *(__m128i *)((char *)_RCX + v68 - 48) = _mm_loadu_si128((const __m128i *)((char *)Src + v68 - 48));
+Mov2XmmBlocks_1:
+              *(__m128i *)((char *)_RCX + v68 - 32) = _mm_loadu_si128((const __m128i *)((char *)Src + v68 - 32));
+Mov1XmmBlocks_1:
+              *(__m128i *)((char *)_RCX + Size - 16) = v60;
+Mov0XmmBlocks_1:
+              *(__m128i *)result = v59;
+              break;
+          }
+          return result;
+        }
+        return memcpy_repmovs();
+      }
+      if ( Size > 0x2000 && Size <= 0x180000 )
+      {
+        v23 = (char *)_RCX + 64;
+        if ( _RCX > Src )
+          v23 = (char *)Src;
+        if ( v23 <= Src && (_favor & 2) != 0 )
+          return memcpy_repmovs();
+      }
+      __asm
+      {
+        vmovdqu ymm0, ymmword ptr [rdx]
+        vmovdqu ymm5, ymmword ptr [rdx+r8-20h]
+      }
+      if ( Size <= 0x100
+        || (v26 = ((unsigned __int8)_RCX & 0x1F) - 32LL,
+            _RCX = (char *)_RCX - v26,
+            Src = (char *)Src - v26,
+            Size += v26,
+            Size <= 0x100) )
+      {
+MovUpTo256WithYMM_2:
+        _R9 = (Size + 31) & 0xFFFFFFFFFFFFFFE0uLL;
+        switch ( _R9 >> 5 )
+        {
+          case 0uLL:
+            goto Mov0YmmBlocks_2;
+          case 1uLL:
+            goto Mov1YmmBlocks_2;
+          case 2uLL:
+            goto Mov2YmmBlocks_2;
+          case 3uLL:
+            goto Mov3YmmBlocks_2;
+          case 4uLL:
+            goto Mov4YmmBlocks_2;
+          case 5uLL:
+            goto Mov5YmmBlocks_2;
+          case 6uLL:
+            goto Mov6YmmBlocks_2;
+          case 7uLL:
+            goto Mov7YmmBlocks_2;
+          case 8uLL:
+            __asm
+            {
+              vmovdqu ymm1, ymmword ptr [rdx+r9-100h]; jumptable 000000018001DD82 case 8
+              vmovdqu ymmword ptr [rcx+r9-100h], ymm1
+            }
+Mov7YmmBlocks_2:
+            __asm
+            {
+              vmovdqu ymm1, ymmword ptr [rdx+r9-0E0h]; jumptable 000000018001DD82 case 7
+              vmovdqu ymmword ptr [rcx+r9-0E0h], ymm1
+            }
+Mov6YmmBlocks_2:
+            __asm
+            {
+              vmovdqu ymm1, ymmword ptr [rdx+r9-0C0h]; jumptable 000000018001DD82 case 6
+              vmovdqu ymmword ptr [rcx+r9-0C0h], ymm1
+            }
+Mov5YmmBlocks_2:
+            __asm
+            {
+              vmovdqu ymm1, ymmword ptr [rdx+r9-0A0h]; jumptable 000000018001DD82 case 5
+              vmovdqu ymmword ptr [rcx+r9-0A0h], ymm1
+            }
+Mov4YmmBlocks_2:
+            __asm
+            {
+              vmovdqu ymm1, ymmword ptr [rdx+r9-80h]; jumptable 000000018001DD82 case 4
+              vmovdqu ymmword ptr [rcx+r9-80h], ymm1
+            }
+Mov3YmmBlocks_2:
+            __asm
+            {
+              vmovdqu ymm1, ymmword ptr [rdx+r9-60h]; jumptable 000000018001DD82 case 3
+              vmovdqu ymmword ptr [rcx+r9-60h], ymm1
+            }
+Mov2YmmBlocks_2:
+            __asm
+            {
+              vmovdqu ymm1, ymmword ptr [rdx+r9-40h]; jumptable 000000018001DD82 case 2
+              vmovdqu ymmword ptr [rcx+r9-40h], ymm1
+            }
+Mov1YmmBlocks_2:
+            __asm { vmovdqu ymmword ptr [rcx+r8-20h], ymm5; jumptable 000000018001DD82 case 1 }
+Mov0YmmBlocks_2:
+            __asm
+            {
+              vmovdqu ymmword ptr [rax], ymm0; jumptable 000000018001DD82 case 0
+              vzeroupper
+            }
+            break;
+        }
+        return result;
+      }
+      if ( Size <= 0x180000 )
+      {
+        do
+        {
+          __asm
+          {
+            vmovdqu ymm1, ymmword ptr [rdx]
+            vmovdqu ymm2, ymmword ptr [rdx+20h]
+            vmovdqu ymm3, ymmword ptr [rdx+40h]
+            vmovdqu ymm4, ymmword ptr [rdx+60h]
+            vmovdqa ymmword ptr [rcx], ymm1
+            vmovdqa ymmword ptr [rcx+20h], ymm2
+            vmovdqa ymmword ptr [rcx+40h], ymm3
+            vmovdqa ymmword ptr [rcx+60h], ymm4
+            vmovdqu ymm1, ymmword ptr [rdx+80h]
+            vmovdqu ymm2, ymmword ptr [rdx+0A0h]
+            vmovdqu ymm3, ymmword ptr [rdx+0C0h]
+            vmovdqu ymm4, ymmword ptr [rdx+0E0h]
+            vmovdqa ymmword ptr [rcx+80h], ymm1
+            vmovdqa ymmword ptr [rcx+0A0h], ymm2
+            vmovdqa ymmword ptr [rcx+0C0h], ymm3
+            vmovdqa ymmword ptr [rcx+0E0h], ymm4
+          }
+          _RCX = (char *)_RCX + 256;
+          Src = (char *)Src + 256;
+          Size -= 256LL;
+        }
+        while ( Size >= 0x100 );
+        goto MovUpTo256WithYMM_2;
+      }
+      do
+      {
+        __asm
+        {
+          vmovdqu ymm1, ymmword ptr [rdx]
+          vmovdqu ymm2, ymmword ptr [rdx+20h]
+          vmovdqu ymm3, ymmword ptr [rdx+40h]
+          vmovdqu ymm4, ymmword ptr [rdx+60h]
+          vmovntdq ymmword ptr [rcx], ymm1
+          vmovntdq ymmword ptr [rcx+20h], ymm2
+          vmovntdq ymmword ptr [rcx+40h], ymm3
+          vmovntdq ymmword ptr [rcx+60h], ymm4
+          vmovdqu ymm1, ymmword ptr [rdx+80h]
+          vmovdqu ymm2, ymmword ptr [rdx+0A0h]
+          vmovdqu ymm3, ymmword ptr [rdx+0C0h]
+          vmovdqu ymm4, ymmword ptr [rdx+0E0h]
+          vmovntdq ymmword ptr [rcx+80h], ymm1
+          vmovntdq ymmword ptr [rcx+0A0h], ymm2
+          vmovntdq ymmword ptr [rcx+0C0h], ymm3
+          vmovntdq ymmword ptr [rcx+0E0h], ymm4
+        }
+        _RCX = (char *)_RCX + 256;
+        Src = (char *)Src + 256;
+        Size -= 256LL;
+      }
+      while ( Size >= 0x100 );
+      _R9 = (Size + 31) & 0xFFFFFFFFFFFFFFE0uLL;
+      switch ( _R9 >> 5 )
+      {
+        case 0uLL:
+          goto Mov0YmmBlocksNT_2;
+        case 1uLL:
+          goto Mov1YmmBlocksNT_2;
+        case 2uLL:
+          goto Mov2YmmBlocksNT_2;
+        case 3uLL:
+          goto Mov3YmmBlocksNT_2;
+        case 4uLL:
+          goto Mov4YmmBlocksNT_2;
+        case 5uLL:
+          goto Mov5YmmBlocksNT_2;
+        case 6uLL:
+          goto Mov6YmmBlocksNT_2;
+        case 7uLL:
+          goto Mov7YmmBlocksNT_2;
+        case 8uLL:
+          __asm
+          {
+            vmovdqu ymm1, ymmword ptr [rdx+r9-100h]; jumptable 000000018001DEB2 case 8
+            vmovntdq ymmword ptr [rcx+r9-100h], ymm1
+          }
+Mov7YmmBlocksNT_2:
+          __asm
+          {
+            vmovdqu ymm1, ymmword ptr [rdx+r9-0E0h]; jumptable 000000018001DEB2 case 7
+            vmovntdq ymmword ptr [rcx+r9-0E0h], ymm1
+          }
+Mov6YmmBlocksNT_2:
+          __asm
+          {
+            vmovdqu ymm1, ymmword ptr [rdx+r9-0C0h]; jumptable 000000018001DEB2 case 6
+            vmovntdq ymmword ptr [rcx+r9-0C0h], ymm1
+          }
+Mov5YmmBlocksNT_2:
+          __asm
+          {
+            vmovdqu ymm1, ymmword ptr [rdx+r9-0A0h]; jumptable 000000018001DEB2 case 5
+            vmovntdq ymmword ptr [rcx+r9-0A0h], ymm1
+          }
+Mov4YmmBlocksNT_2:
+          __asm
+          {
+            vmovdqu ymm1, ymmword ptr [rdx+r9-80h]; jumptable 000000018001DEB2 case 4
+            vmovntdq ymmword ptr [rcx+r9-80h], ymm1
+          }
+Mov3YmmBlocksNT_2:
+          __asm
+          {
+            vmovdqu ymm1, ymmword ptr [rdx+r9-60h]; jumptable 000000018001DEB2 case 3
+            vmovntdq ymmword ptr [rcx+r9-60h], ymm1
+          }
+Mov2YmmBlocksNT_2:
+          __asm
+          {
+            vmovdqu ymm1, ymmword ptr [rdx+r9-40h]; jumptable 000000018001DEB2 case 2
+            vmovntdq ymmword ptr [rcx+r9-40h], ymm1
+          }
+Mov1YmmBlocksNT_2:
+          __asm { vmovdqu ymmword ptr [rcx+r8-20h], ymm5; jumptable 000000018001DEB2 case 1 }
+Mov0YmmBlocksNT_2:
+          __asm { vmovdqu ymmword ptr [rax], ymm0; jumptable 000000018001DEB2 case 0 }
+          _mm_sfence();
+          __asm { vzeroupper }
+          break;
+      }
+      return result;
+  }
+}

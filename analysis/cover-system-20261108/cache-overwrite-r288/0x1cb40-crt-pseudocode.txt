@@ -1,0 +1,338 @@
+__int64 __fastcall memcpy_avx_ermsb_Intel(__m128i *_RCX, const __m128i *_RDX, unsigned __int64 _R8)
+{
+  __int64 result; // rax
+  int v4; // ecx
+  __int16 v5; // r9
+  char v6; // r10
+  __int16 v7; // cx
+  char v8; // r9
+  __int16 v9; // r8
+  char v10; // r9
+  int v11; // ecx
+  __int16 v12; // r9
+  char v13; // r8
+  int v14; // ecx
+  char v15; // r9
+  __int16 v16; // cx
+  char v17; // cl
+  int v18; // ecx
+  __int16 v19; // r8
+  char v20; // r8
+  __m128i v21; // xmm2
+  __m128i *v22; // r9
+  __int64 v25; // r9
+
+  result = (__int64)_RCX;
+  switch ( _R8 )
+  {
+    case 0uLL:
+      return result;
+    case 1uLL:
+      _RCX->m128i_i8[0] = _RDX->m128i_i8[0];
+      return result;
+    case 2uLL:
+      _RCX->m128i_i16[0] = _RDX->m128i_i16[0];
+      return result;
+    case 3uLL:
+      v13 = _RDX->m128i_i8[2];
+      _RCX->m128i_i16[0] = _RDX->m128i_i16[0];
+      _RCX->m128i_i8[2] = v13;
+      return result;
+    case 4uLL:
+      _RCX->m128i_i32[0] = _RDX->m128i_i32[0];
+      return result;
+    case 5uLL:
+      v20 = _RDX->m128i_i8[4];
+      _RCX->m128i_i32[0] = _RDX->m128i_i32[0];
+      _RCX->m128i_i8[4] = v20;
+      return result;
+    case 6uLL:
+      v19 = _RDX->m128i_i16[2];
+      _RCX->m128i_i32[0] = _RDX->m128i_i32[0];
+      _RCX->m128i_i16[2] = v19;
+      return result;
+    case 7uLL:
+      v9 = _RDX->m128i_i16[2];
+      v10 = _RDX->m128i_i8[6];
+      _RCX->m128i_i32[0] = _RDX->m128i_i32[0];
+      _RCX->m128i_i16[2] = v9;
+      _RCX->m128i_i8[6] = v10;
+      return result;
+    case 8uLL:
+      _RCX->m128i_i64[0] = _RDX->m128i_i64[0];
+      return result;
+    case 9uLL:
+      v17 = _RDX->m128i_i8[8];
+      *(_QWORD *)result = _RDX->m128i_i64[0];
+      *(_BYTE *)(result + 8) = v17;
+      return result;
+    case 0xAuLL:
+      v16 = _RDX->m128i_i16[4];
+      *(_QWORD *)result = _RDX->m128i_i64[0];
+      *(_WORD *)(result + 8) = v16;
+      return result;
+    case 0xBuLL:
+      v7 = _RDX->m128i_i16[4];
+      v8 = _RDX->m128i_i8[10];
+      *(_QWORD *)result = _RDX->m128i_i64[0];
+      *(_WORD *)(result + 8) = v7;
+      *(_BYTE *)(result + 10) = v8;
+      return result;
+    case 0xCuLL:
+      v18 = _RDX->m128i_i32[2];
+      *(_QWORD *)result = _RDX->m128i_i64[0];
+      *(_DWORD *)(result + 8) = v18;
+      return result;
+    case 0xDuLL:
+      v14 = _RDX->m128i_i32[2];
+      v15 = _RDX->m128i_i8[12];
+      *(_QWORD *)result = _RDX->m128i_i64[0];
+      *(_DWORD *)(result + 8) = v14;
+      *(_BYTE *)(result + 12) = v15;
+      return result;
+    case 0xEuLL:
+      v11 = _RDX->m128i_i32[2];
+      v12 = _RDX->m128i_i16[6];
+      *(_QWORD *)result = _RDX->m128i_i64[0];
+      *(_DWORD *)(result + 8) = v11;
+      *(_WORD *)(result + 12) = v12;
+      return result;
+    case 0xFuLL:
+      v4 = _RDX->m128i_i32[2];
+      v5 = _RDX->m128i_i16[6];
+      v6 = _RDX->m128i_i8[14];
+      *(_QWORD *)result = _RDX->m128i_i64[0];
+      *(_DWORD *)(result + 8) = v4;
+      *(_WORD *)(result + 12) = v5;
+      *(_BYTE *)(result + 14) = v6;
+      return result;
+    default:
+      if ( _R8 <= 0x20 )
+      {
+        v21 = _mm_loadu_si128((const __m128i *)((char *)_RDX + _R8 - 16));
+        *_RCX = _mm_loadu_si128(_RDX);
+        *(__m128i *)((char *)_RCX + _R8 - 16) = v21;
+        return result;
+      }
+      v22 = (__m128i *)((char *)_RDX + _R8);
+      if ( _RCX <= _RDX )
+        v22 = _RCX;
+      if ( _RCX < v22 )
+        return memcpy_CopyDown_Intel();
+      if ( _R8 < 0x180000 && _R8 >= 0x2000 )
+        return memcpy_repmovs_Intel();
+      __asm
+      {
+        vmovdqu ymm0, ymmword ptr [rdx]
+        vmovdqu ymm5, ymmword ptr [rdx+r8-20h]
+      }
+      if ( _R8 <= 0x100 )
+        goto MovUpTo256WithYMM_1;
+      v25 = ((unsigned __int8)_RCX & 0x1F) - 32LL;
+      _RCX = (__m128i *)((char *)_RCX - v25);
+      _RDX = (const __m128i *)((char *)_RDX - v25);
+      _R8 += v25;
+      if ( _R8 <= 0x100 )
+        goto MovUpTo256WithYMM_1;
+      if ( _R8 > 0x180000 )
+      {
+        do
+        {
+          __asm
+          {
+            vmovdqu ymm1, ymmword ptr [rdx]
+            vmovdqu ymm2, ymmword ptr [rdx+20h]
+            vmovdqu ymm3, ymmword ptr [rdx+40h]
+            vmovdqu ymm4, ymmword ptr [rdx+60h]
+            vmovntdq ymmword ptr [rcx], ymm1
+            vmovntdq ymmword ptr [rcx+20h], ymm2
+            vmovntdq ymmword ptr [rcx+40h], ymm3
+            vmovntdq ymmword ptr [rcx+60h], ymm4
+            vmovdqu ymm1, ymmword ptr [rdx+80h]
+            vmovdqu ymm2, ymmword ptr [rdx+0A0h]
+            vmovdqu ymm3, ymmword ptr [rdx+0C0h]
+            vmovdqu ymm4, ymmword ptr [rdx+0E0h]
+            vmovntdq ymmword ptr [rcx+80h], ymm1
+            vmovntdq ymmword ptr [rcx+0A0h], ymm2
+            vmovntdq ymmword ptr [rcx+0C0h], ymm3
+            vmovntdq ymmword ptr [rcx+0E0h], ymm4
+          }
+          _RCX += 16;
+          _RDX += 16;
+          _R8 -= 256LL;
+        }
+        while ( _R8 >= 0x100 );
+        _R9 = (_R8 + 31) & 0xFFFFFFFFFFFFFFE0uLL;
+        switch ( _R9 >> 5 )
+        {
+          case 0uLL:
+            goto Mov0YmmBlocksNT_1;
+          case 1uLL:
+            goto Mov1YmmBlocksNT_1;
+          case 2uLL:
+            goto Mov2YmmBlocksNT_1;
+          case 3uLL:
+            goto Mov3YmmBlocksNT_1;
+          case 4uLL:
+            goto Mov4YmmBlocksNT_1;
+          case 5uLL:
+            goto Mov5YmmBlocksNT_1;
+          case 6uLL:
+            goto Mov6YmmBlocksNT_1;
+          case 7uLL:
+            goto Mov7YmmBlocksNT_1;
+          case 8uLL:
+            __asm
+            {
+              vmovdqu ymm1, ymmword ptr [rdx+r9-100h]; jumptable 000000018001CEC2 case 8
+              vmovntdq ymmword ptr [rcx+r9-100h], ymm1
+            }
+Mov7YmmBlocksNT_1:
+            __asm
+            {
+              vmovdqu ymm1, ymmword ptr [rdx+r9-0E0h]; jumptable 000000018001CEC2 case 7
+              vmovntdq ymmword ptr [rcx+r9-0E0h], ymm1
+            }
+Mov6YmmBlocksNT_1:
+            __asm
+            {
+              vmovdqu ymm1, ymmword ptr [rdx+r9-0C0h]; jumptable 000000018001CEC2 case 6
+              vmovntdq ymmword ptr [rcx+r9-0C0h], ymm1
+            }
+Mov5YmmBlocksNT_1:
+            __asm
+            {
+              vmovdqu ymm1, ymmword ptr [rdx+r9-0A0h]; jumptable 000000018001CEC2 case 5
+              vmovntdq ymmword ptr [rcx+r9-0A0h], ymm1
+            }
+Mov4YmmBlocksNT_1:
+            __asm
+            {
+              vmovdqu ymm1, ymmword ptr [rdx+r9-80h]; jumptable 000000018001CEC2 case 4
+              vmovntdq ymmword ptr [rcx+r9-80h], ymm1
+            }
+Mov3YmmBlocksNT_1:
+            __asm
+            {
+              vmovdqu ymm1, ymmword ptr [rdx+r9-60h]; jumptable 000000018001CEC2 case 3
+              vmovntdq ymmword ptr [rcx+r9-60h], ymm1
+            }
+Mov2YmmBlocksNT_1:
+            __asm
+            {
+              vmovdqu ymm1, ymmword ptr [rdx+r9-40h]; jumptable 000000018001CEC2 case 2
+              vmovntdq ymmword ptr [rcx+r9-40h], ymm1
+            }
+Mov1YmmBlocksNT_1:
+            __asm { vmovdqu ymmword ptr [rcx+r8-20h], ymm5; jumptable 000000018001CEC2 case 1 }
+Mov0YmmBlocksNT_1:
+            __asm { vmovdqu ymmword ptr [rax], ymm0; jumptable 000000018001CEC2 case 0 }
+            _mm_sfence();
+            __asm { vzeroupper }
+            break;
+        }
+      }
+      else
+      {
+        do
+        {
+          __asm
+          {
+            vmovdqu ymm1, ymmword ptr [rdx]
+            vmovdqu ymm2, ymmword ptr [rdx+20h]
+            vmovdqu ymm3, ymmword ptr [rdx+40h]
+            vmovdqu ymm4, ymmword ptr [rdx+60h]
+            vmovdqa ymmword ptr [rcx], ymm1
+            vmovdqa ymmword ptr [rcx+20h], ymm2
+            vmovdqa ymmword ptr [rcx+40h], ymm3
+            vmovdqa ymmword ptr [rcx+60h], ymm4
+            vmovdqu ymm1, ymmword ptr [rdx+80h]
+            vmovdqu ymm2, ymmword ptr [rdx+0A0h]
+            vmovdqu ymm3, ymmword ptr [rdx+0C0h]
+            vmovdqu ymm4, ymmword ptr [rdx+0E0h]
+            vmovdqa ymmword ptr [rcx+80h], ymm1
+            vmovdqa ymmword ptr [rcx+0A0h], ymm2
+            vmovdqa ymmword ptr [rcx+0C0h], ymm3
+            vmovdqa ymmword ptr [rcx+0E0h], ymm4
+          }
+          _RCX += 16;
+          _RDX += 16;
+          _R8 -= 256LL;
+        }
+        while ( _R8 >= 0x100 );
+MovUpTo256WithYMM_1:
+        _R9 = (_R8 + 31) & 0xFFFFFFFFFFFFFFE0uLL;
+        switch ( _R9 >> 5 )
+        {
+          case 0uLL:
+            goto Mov0YmmBlocks_1;
+          case 1uLL:
+            goto Mov1YmmBlocks_1;
+          case 2uLL:
+            goto Mov2YmmBlocks_1;
+          case 3uLL:
+            goto Mov3YmmBlocks_1;
+          case 4uLL:
+            goto Mov4YmmBlocks_1;
+          case 5uLL:
+            goto Mov5YmmBlocks_1;
+          case 6uLL:
+            goto Mov6YmmBlocks_1;
+          case 7uLL:
+            goto Mov7YmmBlocks_1;
+          case 8uLL:
+            __asm
+            {
+              vmovdqu ymm1, ymmword ptr [rdx+r9-100h]; jumptable 000000018001CD92 case 8
+              vmovdqu ymmword ptr [rcx+r9-100h], ymm1
+            }
+Mov7YmmBlocks_1:
+            __asm
+            {
+              vmovdqu ymm1, ymmword ptr [rdx+r9-0E0h]; jumptable 000000018001CD92 case 7
+              vmovdqu ymmword ptr [rcx+r9-0E0h], ymm1
+            }
+Mov6YmmBlocks_1:
+            __asm
+            {
+              vmovdqu ymm1, ymmword ptr [rdx+r9-0C0h]; jumptable 000000018001CD92 case 6
+              vmovdqu ymmword ptr [rcx+r9-0C0h], ymm1
+            }
+Mov5YmmBlocks_1:
+            __asm
+            {
+              vmovdqu ymm1, ymmword ptr [rdx+r9-0A0h]; jumptable 000000018001CD92 case 5
+              vmovdqu ymmword ptr [rcx+r9-0A0h], ymm1
+            }
+Mov4YmmBlocks_1:
+            __asm
+            {
+              vmovdqu ymm1, ymmword ptr [rdx+r9-80h]; jumptable 000000018001CD92 case 4
+              vmovdqu ymmword ptr [rcx+r9-80h], ymm1
+            }
+Mov3YmmBlocks_1:
+            __asm
+            {
+              vmovdqu ymm1, ymmword ptr [rdx+r9-60h]; jumptable 000000018001CD92 case 3
+              vmovdqu ymmword ptr [rcx+r9-60h], ymm1
+            }
+Mov2YmmBlocks_1:
+            __asm
+            {
+              vmovdqu ymm1, ymmword ptr [rdx+r9-40h]; jumptable 000000018001CD92 case 2
+              vmovdqu ymmword ptr [rcx+r9-40h], ymm1
+            }
+Mov1YmmBlocks_1:
+            __asm { vmovdqu ymmword ptr [rcx+r8-20h], ymm5; jumptable 000000018001CD92 case 1 }
+Mov0YmmBlocks_1:
+            __asm
+            {
+              vmovdqu ymmword ptr [rax], ymm0; jumptable 000000018001CD92 case 0
+              vzeroupper
+            }
+            break;
+        }
+      }
+      return result;
+  }
+}

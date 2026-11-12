@@ -1,0 +1,12 @@
+{
+  "build_exit": 0,
+  "host_source": "J:\\codexWorktree\\gearsVr\\analysis\\cover-system-20261108\\cache-overwrite-r288\\host-source-v4",
+  "test_exit": 0,
+  "output": "CachedPoseSource checks=112 failures=0; data/code continuity only, no game or write/retirement permission\r\n",
+  "source_sha256": {
+    "tools/native-capture/cached_pose_overwrite_source.h": "8445add07a3d67cb03337840621c3de24965216335e685ff4c717cb896c64ea5",
+    "tools/native-capture/cover_pose_phase.h": "61054f7a682b4453f018f426ff598c5bea591ff212c143600172af1bc2e5c7b6",
+    "tools/native-capture/cached_pose_memcpy_certificate.h": "205a28fb076520d3e0c287cd4a1e6b14a4ca600480f77afce4e18b15c9d09013",
+    "tools/native-capture/cached_pose_overwrite_source_test.cpp": "ac7a9f1af235b73e868eee4298be7c83953c175010759423768071bf54c1a7c0"
+  }
+}

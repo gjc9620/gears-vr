@@ -1,0 +1,212 @@
+0x1cb40 mov     rax, rcx
+0x1cb43 lea     r10, cs:180000000h
+0x1cb4a cmp     r8, 0Fh; switch 16 cases
+0x1cb4e ja      MoveAbove15_2; jumptable 000000018001CB6B default case
+0x1cb54 nop     word ptr [rax+rax+00000000h]
+0x1cb60 mov     r9d, ds:(jpt_18001CB6B - 180000000h)[r10+r8*4]
+0x1cb68 add     r9, r10
+0x1cb6b jmp     r9; switch jump
+0x1cb6e retn; jumptable 000000018001CB6B case 0
+0x1cb70 mov     r8, [rdx]; jumptable 000000018001CB6B case 15
+0x1cb73 mov     ecx, [rdx+8]
+0x1cb76 movzx   r9d, word ptr [rdx+0Ch]
+0x1cb7b movzx   r10d, byte ptr [rdx+0Eh]
+0x1cb80 mov     [rax], r8
+0x1cb83 mov     [rax+8], ecx
+0x1cb86 mov     [rax+0Ch], r9w
+0x1cb8b mov     [rax+0Eh], r10b
+0x1cb8f retn
+0x1cb90 mov     r8, [rdx]; jumptable 000000018001CB6B case 11
+0x1cb93 movzx   ecx, word ptr [rdx+8]
+0x1cb97 movzx   r9d, byte ptr [rdx+0Ah]
+0x1cb9c mov     [rax], r8
+0x1cb9f mov     [rax+8], cx
+0x1cba3 mov     [rax+0Ah], r9b
+0x1cba7 retn
+0x1cba8 movzx   ecx, word ptr [rdx]; jumptable 000000018001CB6B case 2
+0x1cbab mov     [rax], cx
+0x1cbae retn
+0x1cbb0 mov     ecx, [rdx]; jumptable 000000018001CB6B case 7
+0x1cbb2 movzx   r8d, word ptr [rdx+4]
+0x1cbb7 movzx   r9d, byte ptr [rdx+6]
+0x1cbbc mov     [rax], ecx
+0x1cbbe mov     [rax+4], r8w
+0x1cbc3 mov     [rax+6], r9b
+0x1cbc7 retn
+0x1cbc8 mov     r8, [rdx]; jumptable 000000018001CB6B case 14
+0x1cbcb mov     ecx, [rdx+8]
+0x1cbce movzx   r9d, word ptr [rdx+0Ch]
+0x1cbd3 mov     [rax], r8
+0x1cbd6 mov     [rax+8], ecx
+0x1cbd9 mov     [rax+0Ch], r9w
+0x1cbde retn
+0x1cbdf movzx   ecx, word ptr [rdx]; jumptable 000000018001CB6B case 3
+0x1cbe2 movzx   r8d, byte ptr [rdx+2]
+0x1cbe7 mov     [rax], cx
+0x1cbea mov     [rax+2], r8b
+0x1cbee retn
+0x1cbf0 mov     r8, [rdx]; jumptable 000000018001CB6B case 13
+0x1cbf3 mov     ecx, [rdx+8]
+0x1cbf6 movzx   r9d, byte ptr [rdx+0Ch]
+0x1cbfb mov     [rax], r8
+0x1cbfe mov     [rax+8], ecx
+0x1cc01 mov     [rax+0Ch], r9b
+0x1cc05 retn
+0x1cc06 mov     r8, [rdx]; jumptable 000000018001CB6B case 10
+0x1cc09 movzx   ecx, word ptr [rdx+8]
+0x1cc0d mov     [rax], r8
+0x1cc10 mov     [rax+8], cx
+0x1cc14 retn
+0x1cc15 mov     r8, [rdx]; jumptable 000000018001CB6B case 9
+0x1cc18 movzx   ecx, byte ptr [rdx+8]
+0x1cc1c mov     [rax], r8
+0x1cc1f mov     [rax+8], cl
+0x1cc22 retn
+0x1cc23 mov     r8, [rdx]; jumptable 000000018001CB6B case 12
+0x1cc26 mov     ecx, [rdx+8]
+0x1cc29 mov     [rax], r8
+0x1cc2c mov     [rax+8], ecx
+0x1cc2f retn
+0x1cc30 mov     ecx, [rdx]; jumptable 000000018001CB6B case 6
+0x1cc32 movzx   r8d, word ptr [rdx+4]
+0x1cc37 mov     [rax], ecx
+0x1cc39 mov     [rax+4], r8w
+0x1cc3e retn
+0x1cc3f mov     ecx, [rdx]; jumptable 000000018001CB6B case 5
+0x1cc41 movzx   r8d, byte ptr [rdx+4]
+0x1cc46 mov     [rax], ecx
+0x1cc48 mov     [rax+4], r8b
+0x1cc4c retn
+0x1cc4d mov     rcx, [rdx]; jumptable 000000018001CB6B case 8
+0x1cc50 mov     [rax], rcx
+0x1cc53 retn
+0x1cc54 movzx   ecx, byte ptr [rdx]; jumptable 000000018001CB6B case 1
+0x1cc57 mov     [rax], cl
+0x1cc59 retn
+0x1cc5a mov     ecx, [rdx]; jumptable 000000018001CB6B case 4
+0x1cc5c mov     [rax], ecx
+0x1cc5e retn
+0x1cc60 cmp     r8, 20h ; ' '; jumptable 000000018001CB6B default case
+0x1cc64 ja      short MoveAbove32_2
+0x1cc66 movdqu  xmm1, xmmword ptr [rdx]
+0x1cc6a movdqu  xmm2, xmmword ptr [rdx+r8-10h]
+0x1cc71 movdqu  xmmword ptr [rcx], xmm1
+0x1cc75 movdqu  xmmword ptr [rcx+r8-10h], xmm2
+0x1cc7c retn
+0x1cc7d lea     r9, [rdx+r8]
+0x1cc81 cmp     rcx, rdx
+0x1cc84 cmovbe  r9, rcx
+0x1cc88 cmp     rcx, r9
+0x1cc8b jb      memcpy_CopyDown_Intel
+0x1cc91 cmp     r8, 180000h
+0x1cc98 jnb     short MoveWithYMM_0
+0x1cc9a cmp     r8, 2000h
+0x1cca1 jnb     memcpy_repmovs_Intel
+0x1cca7 vmovdqu ymm0, ymmword ptr [rdx]
+0x1ccab vmovdqu ymm5, ymmword ptr [rdx+r8-20h]
+0x1ccb2 cmp     r8, 100h
+0x1ccb9 jbe     MovUpTo256WithYMM_1
+0x1ccbf mov     r9, rcx
+0x1ccc2 and     r9, 1Fh
+0x1ccc6 sub     r9, 20h ; ' '
+0x1ccca sub     rcx, r9
+0x1cccd sub     rdx, r9
+0x1ccd0 add     r8, r9
+0x1ccd3 cmp     r8, 100h
+0x1ccda jbe     MovUpTo256WithYMM_1
+0x1cce0 cmp     r8, 180000h
+0x1cce7 ja      YmmLoopNT_0
+0x1cced nop     dword ptr [rax]
+0x1ccf0 vmovdqu ymm1, ymmword ptr [rdx]
+0x1ccf4 vmovdqu ymm2, ymmword ptr [rdx+20h]
+0x1ccf9 vmovdqu ymm3, ymmword ptr [rdx+40h]
+0x1ccfe vmovdqu ymm4, ymmword ptr [rdx+60h]
+0x1cd03 vmovdqa ymmword ptr [rcx], ymm1
+0x1cd07 vmovdqa ymmword ptr [rcx+20h], ymm2
+0x1cd0c vmovdqa ymmword ptr [rcx+40h], ymm3
+0x1cd11 vmovdqa ymmword ptr [rcx+60h], ymm4
+0x1cd16 vmovdqu ymm1, ymmword ptr [rdx+80h]
+0x1cd1e vmovdqu ymm2, ymmword ptr [rdx+0A0h]
+0x1cd26 vmovdqu ymm3, ymmword ptr [rdx+0C0h]
+0x1cd2e vmovdqu ymm4, ymmword ptr [rdx+0E0h]
+0x1cd36 vmovdqa ymmword ptr [rcx+80h], ymm1
+0x1cd3e vmovdqa ymmword ptr [rcx+0A0h], ymm2
+0x1cd46 vmovdqa ymmword ptr [rcx+0C0h], ymm3
+0x1cd4e vmovdqa ymmword ptr [rcx+0E0h], ymm4
+0x1cd56 add     rcx, 100h
+0x1cd5d add     rdx, 100h
+0x1cd64 sub     r8, 100h
+0x1cd6b cmp     r8, 100h
+0x1cd72 jnb     YmmLoop_0
+0x1cd78 lea     r9, [r8+1Fh]
+0x1cd7c and     r9, 0FFFFFFFFFFFFFFE0h
+0x1cd80 mov     r11, r9
+0x1cd83 shr     r11, 5
+0x1cd87 mov     r11d, ds:(jpt_18001CD92 - 180000000h)[r10+r11*4]; switch 9 cases
+0x1cd8f add     r11, r10
+0x1cd92 jmp     r11; switch jump
+0x1cd95 vmovdqu ymm1, ymmword ptr [rdx+r9-100h]; jumptable 000000018001CD92 case 8
+0x1cd9f vmovdqu ymmword ptr [rcx+r9-100h], ymm1
+0x1cda9 vmovdqu ymm1, ymmword ptr [rdx+r9-0E0h]; jumptable 000000018001CD92 case 7
+0x1cdb3 vmovdqu ymmword ptr [rcx+r9-0E0h], ymm1
+0x1cdbd vmovdqu ymm1, ymmword ptr [rdx+r9-0C0h]; jumptable 000000018001CD92 case 6
+0x1cdc7 vmovdqu ymmword ptr [rcx+r9-0C0h], ymm1
+0x1cdd1 vmovdqu ymm1, ymmword ptr [rdx+r9-0A0h]; jumptable 000000018001CD92 case 5
+0x1cddb vmovdqu ymmword ptr [rcx+r9-0A0h], ymm1
+0x1cde5 vmovdqu ymm1, ymmword ptr [rdx+r9-80h]; jumptable 000000018001CD92 case 4
+0x1cdec vmovdqu ymmword ptr [rcx+r9-80h], ymm1
+0x1cdf3 vmovdqu ymm1, ymmword ptr [rdx+r9-60h]; jumptable 000000018001CD92 case 3
+0x1cdfa vmovdqu ymmword ptr [rcx+r9-60h], ymm1
+0x1ce01 vmovdqu ymm1, ymmword ptr [rdx+r9-40h]; jumptable 000000018001CD92 case 2
+0x1ce08 vmovdqu ymmword ptr [rcx+r9-40h], ymm1
+0x1ce0f vmovdqu ymmword ptr [rcx+r8-20h], ymm5; jumptable 000000018001CD92 case 1
+0x1ce16 vmovdqu ymmword ptr [rax], ymm0; jumptable 000000018001CD92 case 0
+0x1ce1a vzeroupper
+0x1ce1d retn
+0x1ce20 vmovdqu ymm1, ymmword ptr [rdx]
+0x1ce24 vmovdqu ymm2, ymmword ptr [rdx+20h]
+0x1ce29 vmovdqu ymm3, ymmword ptr [rdx+40h]
+0x1ce2e vmovdqu ymm4, ymmword ptr [rdx+60h]
+0x1ce33 vmovntdq ymmword ptr [rcx], ymm1
+0x1ce37 vmovntdq ymmword ptr [rcx+20h], ymm2
+0x1ce3c vmovntdq ymmword ptr [rcx+40h], ymm3
+0x1ce41 vmovntdq ymmword ptr [rcx+60h], ymm4
+0x1ce46 vmovdqu ymm1, ymmword ptr [rdx+80h]
+0x1ce4e vmovdqu ymm2, ymmword ptr [rdx+0A0h]
+0x1ce56 vmovdqu ymm3, ymmword ptr [rdx+0C0h]
+0x1ce5e vmovdqu ymm4, ymmword ptr [rdx+0E0h]
+0x1ce66 vmovntdq ymmword ptr [rcx+80h], ymm1
+0x1ce6e vmovntdq ymmword ptr [rcx+0A0h], ymm2
+0x1ce76 vmovntdq ymmword ptr [rcx+0C0h], ymm3
+0x1ce7e vmovntdq ymmword ptr [rcx+0E0h], ymm4
+0x1ce86 add     rcx, 100h
+0x1ce8d add     rdx, 100h
+0x1ce94 sub     r8, 100h
+0x1ce9b cmp     r8, 100h
+0x1cea2 jnb     YmmLoopNT_0
+0x1cea8 lea     r9, [r8+1Fh]
+0x1ceac and     r9, 0FFFFFFFFFFFFFFE0h
+0x1ceb0 mov     r11, r9
+0x1ceb3 shr     r11, 5
+0x1ceb7 mov     r11d, ds:(jpt_18001CEC2 - 180000000h)[r10+r11*4]; switch 9 cases
+0x1cebf add     r11, r10
+0x1cec2 jmp     r11; switch jump
+0x1cec5 vmovdqu ymm1, ymmword ptr [rdx+r9-100h]; jumptable 000000018001CEC2 case 8
+0x1cecf vmovntdq ymmword ptr [rcx+r9-100h], ymm1
+0x1ced9 vmovdqu ymm1, ymmword ptr [rdx+r9-0E0h]; jumptable 000000018001CEC2 case 7
+0x1cee3 vmovntdq ymmword ptr [rcx+r9-0E0h], ymm1
+0x1ceed vmovdqu ymm1, ymmword ptr [rdx+r9-0C0h]; jumptable 000000018001CEC2 case 6
+0x1cef7 vmovntdq ymmword ptr [rcx+r9-0C0h], ymm1
+0x1cf01 vmovdqu ymm1, ymmword ptr [rdx+r9-0A0h]; jumptable 000000018001CEC2 case 5
+0x1cf0b vmovntdq ymmword ptr [rcx+r9-0A0h], ymm1
+0x1cf15 vmovdqu ymm1, ymmword ptr [rdx+r9-80h]; jumptable 000000018001CEC2 case 4
+0x1cf1c vmovntdq ymmword ptr [rcx+r9-80h], ymm1
+0x1cf23 vmovdqu ymm1, ymmword ptr [rdx+r9-60h]; jumptable 000000018001CEC2 case 3
+0x1cf2a vmovntdq ymmword ptr [rcx+r9-60h], ymm1
+0x1cf31 vmovdqu ymm1, ymmword ptr [rdx+r9-40h]; jumptable 000000018001CEC2 case 2
+0x1cf38 vmovntdq ymmword ptr [rcx+r9-40h], ymm1
+0x1cf3f vmovdqu ymmword ptr [rcx+r8-20h], ymm5; jumptable 000000018001CEC2 case 1
+0x1cf46 vmovdqu ymmword ptr [rax], ymm0; jumptable 000000018001CEC2 case 0
+0x1cf4a sfence
+0x1cf4d vzeroupper
+0x1cf50 retn

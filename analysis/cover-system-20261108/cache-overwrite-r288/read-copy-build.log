@@ -1,0 +1,63 @@
+read_copy_import.cpp
+J:\codexWorktree\gearsVr\tools\native-capture\fresh_pose_producer_live.inl(382): error C2065: “PendingBranch”: 未声明的标识符
+J:\codexWorktree\gearsVr\tools\native-capture\fresh_pose_producer_live.inl(382): error C2923: "std::array": "PendingBranch" 不是参数 "_Ty" 的有效 模板 类型参数
+J:\codexWorktree\gearsVr\tools\native-capture\fresh_pose_producer_live.inl(382): note: 参见“PendingBranch”的声明
+J:\codexWorktree\gearsVr\tools\native-capture\fresh_pose_producer_live.inl(382): error C2955: “std::array”: 使用 类 模板 需要 模板 参数列表
+E:\vs\VC\Tools\MSVC\14.51.36231\include\array(402): note: 参见“std::array”的声明
+J:\codexWorktree\gearsVr\tools\native-capture\fresh_pose_producer_live.inl(382): error C2582: 'operator =' 函数在 'std::array' 中不可用
+J:\codexWorktree\gearsVr\analysis\cover-system-20261108\cache-overwrite-r288\read_copy_import.cpp(6): error C2872: “fresh_pose_producer_live”: 不明确的符号
+J:\codexWorktree\gearsVr\tools\native-capture\fresh_pose_producer.h(3): note: 可能是“fresh_pose_producer_live”
+J:\codexWorktree\gearsVr\analysis\cover-system-20261108\cache-overwrite-r288\../../../tools/native-capture/fresh_pose_producer_test.cpp(69): note: 或    “`anonymous-namespace'::fresh_pose_producer_live”
+J:\codexWorktree\gearsVr\analysis\cover-system-20261108\cache-overwrite-r288\read_copy_import.cpp(6): error C2039: "Header": 不是 "fresh_pose_producer_live" 的成员
+J:\codexWorktree\gearsVr\tools\native-capture\fresh_pose_producer.h(3): note: 参见“fresh_pose_producer_live”的声明
+J:\codexWorktree\gearsVr\analysis\cover-system-20261108\cache-overwrite-r288\read_copy_import.cpp(6): error C2065: “Header”: 未声明的标识符
+J:\codexWorktree\gearsVr\analysis\cover-system-20261108\cache-overwrite-r288\read_copy_import.cpp(6): error C2146: 语法错误: 缺少“;”(在标识符“h”的前面)
+J:\codexWorktree\gearsVr\analysis\cover-system-20261108\cache-overwrite-r288\read_copy_import.cpp(6): error C2065: “h”: 未声明的标识符
+J:\codexWorktree\gearsVr\analysis\cover-system-20261108\cache-overwrite-r288\read_copy_import.cpp(7): error C2065: “h”: 未声明的标识符
+J:\codexWorktree\gearsVr\analysis\cover-system-20261108\cache-overwrite-r288\read_copy_import.cpp(7): error C2065: “h”: 未声明的标识符
+J:\codexWorktree\gearsVr\analysis\cover-system-20261108\cache-overwrite-r288\read_copy_import.cpp(7): error C2065: “h”: 未声明的标识符
+J:\codexWorktree\gearsVr\analysis\cover-system-20261108\cache-overwrite-r288\read_copy_import.cpp(7): error C2065: “h”: 未声明的标识符
+J:\codexWorktree\gearsVr\analysis\cover-system-20261108\cache-overwrite-r288\read_copy_import.cpp(7): error C2065: “h”: 未声明的标识符
+J:\codexWorktree\gearsVr\analysis\cover-system-20261108\cache-overwrite-r288\read_copy_import.cpp(7): error C2065: “h”: 未声明的标识符
+J:\codexWorktree\gearsVr\analysis\cover-system-20261108\cache-overwrite-r288\read_copy_import.cpp(8): error C2065: “h”: 未声明的标识符
+J:\codexWorktree\gearsVr\analysis\cover-system-20261108\cache-overwrite-r288\read_copy_import.cpp(8): error C2872: “fresh_pose_producer_live”: 不明确的符号
+J:\codexWorktree\gearsVr\tools\native-capture\fresh_pose_producer.h(3): note: 可能是“fresh_pose_producer_live”
+J:\codexWorktree\gearsVr\analysis\cover-system-20261108\cache-overwrite-r288\../../../tools/native-capture/fresh_pose_producer_test.cpp(69): note: 或    “`anonymous-namespace'::fresh_pose_producer_live”
+J:\codexWorktree\gearsVr\analysis\cover-system-20261108\cache-overwrite-r288\read_copy_import.cpp(8): error C2039: "Record": 不是 "fresh_pose_producer_live" 的成员
+J:\codexWorktree\gearsVr\tools\native-capture\fresh_pose_producer.h(3): note: 参见“fresh_pose_producer_live”的声明
+J:\codexWorktree\gearsVr\analysis\cover-system-20261108\cache-overwrite-r288\read_copy_import.cpp(8): error C2065: “Record”: 未声明的标识符
+J:\codexWorktree\gearsVr\analysis\cover-system-20261108\cache-overwrite-r288\read_copy_import.cpp(8): error C2065: “h”: 未声明的标识符
+J:\codexWorktree\gearsVr\analysis\cover-system-20261108\cache-overwrite-r288\read_copy_import.cpp(9): error C2872: “fresh_pose_producer_live”: 不明确的符号
+J:\codexWorktree\gearsVr\tools\native-capture\fresh_pose_producer.h(3): note: 可能是“fresh_pose_producer_live”
+J:\codexWorktree\gearsVr\analysis\cover-system-20261108\cache-overwrite-r288\../../../tools/native-capture/fresh_pose_producer_test.cpp(69): note: 或    “`anonymous-namespace'::fresh_pose_producer_live”
+J:\codexWorktree\gearsVr\analysis\cover-system-20261108\cache-overwrite-r288\read_copy_import.cpp(9): error C2039: "Record": 不是 "fresh_pose_producer_live" 的成员
+J:\codexWorktree\gearsVr\tools\native-capture\fresh_pose_producer.h(3): note: 参见“fresh_pose_producer_live”的声明
+J:\codexWorktree\gearsVr\analysis\cover-system-20261108\cache-overwrite-r288\read_copy_import.cpp(9): error C2065: “Record”: 未声明的标识符
+J:\codexWorktree\gearsVr\analysis\cover-system-20261108\cache-overwrite-r288\read_copy_import.cpp(9): error C2672: “std::make_unique”: 未找到匹配的重载函数
+E:\vs\VC\Tools\MSVC\14.51.36231\include\memory(3676): note: 可能是“void std::make_unique(_Types ...)”
+J:\codexWorktree\gearsVr\analysis\cover-system-20261108\cache-overwrite-r288\read_copy_import.cpp(9): note: “std::make_unique”:“_Ty”的 模板 参数无效，应为类型
+E:\vs\VC\Tools\MSVC\14.51.36231\include\memory(3670): note: 或    “std::unique_ptr<_Ty,std::default_delete<_Ty>> std::make_unique(const size_t)”
+J:\codexWorktree\gearsVr\analysis\cover-system-20261108\cache-overwrite-r288\read_copy_import.cpp(9): note: “std::make_unique”:“_Ty”的 模板 参数无效，应为类型
+E:\vs\VC\Tools\MSVC\14.51.36231\include\memory(3665): note: 或    “std::unique_ptr<_Ty,std::default_delete<_Ty>> std::make_unique(_Types ...)”
+J:\codexWorktree\gearsVr\analysis\cover-system-20261108\cache-overwrite-r288\read_copy_import.cpp(9): note: “std::make_unique”:“_Ty”的 模板 参数无效，应为类型
+J:\codexWorktree\gearsVr\analysis\cover-system-20261108\cache-overwrite-r288\read_copy_import.cpp(10): error C3536: “record”: 初始化之前无法使用
+J:\codexWorktree\gearsVr\analysis\cover-system-20261108\cache-overwrite-r288\read_copy_import.cpp(10): error C2100: 无法取消引用类型为“<错误>”的操作数
+J:\codexWorktree\gearsVr\analysis\cover-system-20261108\cache-overwrite-r288\read_copy_import.cpp(10): error C2100: 无法取消引用类型为“<错误>”的操作数
+J:\codexWorktree\gearsVr\analysis\cover-system-20261108\cache-overwrite-r288\read_copy_import.cpp(11): error C3531: “item”: 类型包含“auto”的符号必须具有初始值设定项
+J:\codexWorktree\gearsVr\analysis\cover-system-20261108\cache-overwrite-r288\read_copy_import.cpp(11): error C2143: 语法错误: 缺少“;”(在“:”的前面)
+J:\codexWorktree\gearsVr\analysis\cover-system-20261108\cache-overwrite-r288\read_copy_import.cpp(11): error C2143: 语法错误: 缺少“;”(在“{”的前面)
+J:\codexWorktree\gearsVr\analysis\cover-system-20261108\cache-overwrite-r288\read_copy_import.cpp(11): error C2143: 语法错误: 缺少“)”(在“{”的前面)
+J:\codexWorktree\gearsVr\analysis\cover-system-20261108\cache-overwrite-r288\read_copy_import.cpp(11): error C2143: 语法错误: 缺少“;”(在“}”的前面)
+J:\codexWorktree\gearsVr\analysis\cover-system-20261108\cache-overwrite-r288\read_copy_import.cpp(11): error C2059: 语法错误:“)”
+J:\codexWorktree\gearsVr\analysis\cover-system-20261108\cache-overwrite-r288\read_copy_import.cpp(12): error C2065: “item”: 未声明的标识符
+J:\codexWorktree\gearsVr\analysis\cover-system-20261108\cache-overwrite-r288\read_copy_import.cpp(13): error C2065: “item”: 未声明的标识符
+J:\codexWorktree\gearsVr\analysis\cover-system-20261108\cache-overwrite-r288\read_copy_import.cpp(13): error C2065: “item”: 未声明的标识符
+J:\codexWorktree\gearsVr\analysis\cover-system-20261108\cache-overwrite-r288\read_copy_import.cpp(13): error C2065: “item”: 未声明的标识符
+J:\codexWorktree\gearsVr\analysis\cover-system-20261108\cache-overwrite-r288\read_copy_import.cpp(13): error C2065: “item”: 未声明的标识符
+J:\codexWorktree\gearsVr\analysis\cover-system-20261108\cache-overwrite-r288\read_copy_import.cpp(12): warning C4473: “printf”: 没有为格式字符串传递足够的参数
+J:\codexWorktree\gearsVr\analysis\cover-system-20261108\cache-overwrite-r288\read_copy_import.cpp(12): note: 占位符和其参数预计 5 可变参数，但提供的却是 0 参数
+J:\codexWorktree\gearsVr\analysis\cover-system-20261108\cache-overwrite-r288\read_copy_import.cpp(12): note: 缺失的可变参数 1 为格式字符串“%u”所需
+J:\codexWorktree\gearsVr\analysis\cover-system-20261108\cache-overwrite-r288\read_copy_import.cpp(14): error C2065: “item”: 未声明的标识符
+J:\codexWorktree\gearsVr\analysis\cover-system-20261108\cache-overwrite-r288\read_copy_import.cpp(14): error C3531: “b”: 类型包含“auto”的符号必须具有初始值设定项
+J:\codexWorktree\gearsVr\analysis\cover-system-20261108\cache-overwrite-r288\read_copy_import.cpp(14): error C2143: 语法错误: 缺少“;”(在“:”的前面)
+J:\codexWorktree\gearsVr\analysis\cover-system-20261108\cache-overwrite-r288\read_copy_import.cpp(14): error C2143: 语法错误: 缺少“;”(在“)”的前面)

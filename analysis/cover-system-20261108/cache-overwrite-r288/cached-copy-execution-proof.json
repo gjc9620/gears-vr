@@ -1,0 +1,44 @@
+{
+  "dll_sha256": "d1f4225df2cd877dbf130d5668a021dce3f94118455ff5ec952061c30afc9ce7",
+  "recorded_export_rva": "0x1f020",
+  "disk_export_dispatch_differs": true,
+  "recorded_export_jump": "e91bdbffff",
+  "resolved_implementation_rva": "0x1cb40",
+  "function_bytes": 1041,
+  "function_sha256": "4708101379d9dc7278cc55998ae180c3f68cec5733ab9c4ce2ee69903c6369d1",
+  "tail_table_rva": "0x29400",
+  "tail_bytes": 36,
+  "tail_targets": [
+    "0x1ce16",
+    "0x1ce0f",
+    "0x1ce01",
+    "0x1cdf3",
+    "0x1cde5",
+    "0x1cdd1",
+    "0x1cdbd",
+    "0x1cda9",
+    "0x1cd95"
+  ],
+  "fixed_copy_bytes": 3680,
+  "proof_conditions": [
+    "nonoverlapping source/destination",
+    "normal original F7940/FACB0 cached return",
+    "unchanged node/mesh/cache/local/desired",
+    "current export dispatch to attested implementation",
+    "full implementation and reachable normal-tail table match before/after"
+  ],
+  "not_a_fix_claim": true,
+  "authoritative_thunk_bytes": "ff25b34bda00",
+  "authoritative_iat_rva": "0x131ca18",
+  "ida_operand_text": "0x131ca08 (not used; conflicts with raw displacement and actual runtime slot)",
+  "disk_export_name_address_matches_recorded": true,
+  "recorded_export_bytes_differ_from_disk": true,
+  "r283_full_crt_body_not_captured": true,
+  "current_native_v3_checks_full_body_and_tail_before_after": true,
+  "first_native_v2": "compiled address/name binding only; not game-run or selected after stronger full-code guard added",
+  "historical_failures": [
+    "decoder build missing PendingBranch namespace shim; fixed local decoder only",
+    "first source test iota integer narrowing under WX; typed char seed fixed"
+  ],
+  "upstream_ida_unchanged": true
+}

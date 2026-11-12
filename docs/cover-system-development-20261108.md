@@ -3633,3 +3633,14 @@ r287 runner76270 exit1、operator1，实际到达释放手baseline并开始raw X
 16个branch槽含历史节点，不能全称当前。最后样本匹配current epoch的真实路径为depth1 f7940→depth2 f7940→depth3 f5b78→depth4 f7940，后者实际全权重child facb0（child epoch1098）；facb0自身保存项是较早调用，区别保留。下一步检查原始f7940/f5b78/facb0缓存/输出拷贝分支与当前decoder/Blend receipt的精确接入，结合原代码证书和实际输出地址证明真实Local覆写，不以值相等或epoch增长直接清债，不新增骨骼writer或降低身份/时效/恢复检查。在有针对性改动或新观测点前，不再跑相同Grip检查。
 
 r287 normal_cleanup_verified=false、Native entries_restored0，XR exit0、remaining_owned空、forced_termination=false；所属进程终态与内部恢复失败分开保留，未触及owner会话/Quest/公版。已有纯GrabPose基础cover_grab_pose.h、cover_grab_pose_adapter.h、cover_grab_tick_adapter.h继续复用，不能重复实现；当前真实Grip获取/拖动/松手保持/反向、逐点authored姿势/手臂过渡、高掩体/双模式、出掩体/伤害等仍未完成。
+
+
+### r288 原始缓存整数组拷贝的认证路径接入：源码/离线/编译通过，因果待游戏验证
+
+上轮为实际证据进展，本轮未重复相同游戏。用既有离线IDA CLI分析私有DB副本，原始f7940/facb0代码分别2569/4055bytes与已保存原始.text逐字节相符、SHA与原证书一致；f5b78及缓存分支汇编/伪码保留。上游DB hash a87a4802…c9eab0未变，不动原游戏、Quest或owner会话。证实两个原实现有epoch相同且cache.count==out.count时的整数组复制：canonical Local capacity==count115、out header不同于node+0x80时，正常返回前原函数调用copy thunk，随后恢复count115。现有非cached decoder/blend见证明确排除这条路径，但这还不是r287因果证明；镜像/其他forward仍可能需接入。
+
+新增cached_pose_overwrite_source和私有live witness，复用既有F7940/FACB0 hook和原子overwrite Registry BlendTicket，不添hook/骨骼写入者或直接清债。仅当前注册Mesh、canonical Local/Desired全115、cache115且不别名、Local capacity115免重分配、node/mesh epoch一致、当前Node identity/code/world通过时观察。原函数正常返回后独立重读Source/Cache/Local/Desired、全部cache字节稳定且Local等于cache；相等只是附加检查，原始代码/实际调用才是写入证据。Registry仍要求后续epoch严格大于安装epoch、真实完成、原consumer已结束、全mask及原有身份/退休检查。
+
+copy thunk原始6bytes ff25b34bda00权威解析IAT RVA131ca18，实际r283既有生产档案也记录该slot。IDA operand字符串显示131ca08存在冲突，不能据此接入；按raw bytes和实际slot处理。r283档案回读显示System32 VCRUNTIME140.dll memcpy export RVA1f020，内存入口E91BDBFFFF跳至1cb40，与当前磁盘默认dispatch不同，不能仅凭模块名/地址放行。私有CRT离线分析确认该实际实现memcpy_avx_ermsb_Intel，完整1041bytes SHA470810…369d1；固定115*32=3680字节、Source/Dest不重叠，排除CopyDown、>=8192 rep-movs和>=0x180000 NT路径，正常YMM尾表29400的9个目标都在同一已核对函数内。Native-v3额外在调用前后核对当前System32模块/GetProcAddress、实际dispatch5bytes、完整实现1041bytes和尾表36bytes。r283未保存完整CRT函数内存，不能倒推当时已通过本新门；由下一真实运行执行当前字节核对。v2只校验export绑定的编译稿未运行/未选用。
+
+112项纯数据/代码连续性检查0失败，覆盖wrong epochs/arrays/alias/Desired、copy损坏/中途变化、CRT实现/尾表/dispatch改动；这不是game或写入权限证明。首版iota narrowing/WX及局部档案decoder namespace编译失败均保留后修正。最终Native-v3在r284-v2冻结生产树仅改4个文件，434项目依赖全部冻结内，flags不变、PHYSX OFF；DLL71789359a915ec5030fc516313c74cee3a0344c39a128eaadf17d1de4c087573编译链接通过。加入cover forward镜像/FACB0分类计数，仅区分下一真实失败路径。尚无本新版本运行/Grip/头显验收，不称挂起已修复。

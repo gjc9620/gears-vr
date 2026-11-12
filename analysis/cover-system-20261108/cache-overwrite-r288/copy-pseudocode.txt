@@ -1,0 +1,5 @@
+// attributes: thunk
+__int64 sub_140577E5F()
+{
+  return MEMORY[0x14131CA08]();
+}

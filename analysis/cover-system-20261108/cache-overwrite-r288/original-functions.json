@@ -1,0 +1,34 @@
+{
+  "okay": true,
+  "functions": [
+    {
+      "requested": "0x1400f7940",
+      "function_start": "0x1400f7940",
+      "end": "0x1400f8349",
+      "checked_start": "0x1400f7940",
+      "checked_bytes": 2569,
+      "sha256": "418cdc8a350ce1a4b176126345e5c890aef09d4ed9b9599e7f1d7d5a3d6e91b0",
+      "raw_file_matched": true
+    },
+    {
+      "requested": "0x1400facb0",
+      "function_start": "0x1400facb0",
+      "end": "0x1400fbc87",
+      "checked_start": "0x1400facb0",
+      "checked_bytes": 4055,
+      "sha256": "660fe88e7f2237e6aec7f288e2c34ffb69212cf863ce89ce783551ce4e27f7a0",
+      "raw_file_matched": true
+    },
+    {
+      "requested": "0x1400f5b78",
+      "function_start": "0x1400f5b78",
+      "end": "0x1400f60f6",
+      "checked_start": "0x1400f5b78",
+      "checked_bytes": 1406,
+      "sha256": "8c8beb2b6e8708cc60398d11cc5279ad2504fd221090b3c9f225c8584aff28c5",
+      "raw_file_matched": true
+    }
+  ],
+  "raw_section_sha256": "911ab9bcb24cc078420400369a78ffd3f747d915e42c4935a5c82c2dcecc6ae6",
+  "execution": "offline IDA CLI private DB; no game target"
+}

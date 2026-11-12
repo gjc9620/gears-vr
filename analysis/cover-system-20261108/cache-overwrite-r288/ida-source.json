@@ -1,0 +1,7 @@
+{
+  "original": "J:\\gearsVr\\analysis\\ida\\camera-110878-20261014\\section_1000.bin.i64",
+  "sha256": "a87a4802eadec9403a4f3fcbfde330d2f11a087754b25c5ab4cb5d31f2c9eab0",
+  "private_copy": "J:\\codexWorktree\\gearsVr\\analysis\\cover-system-20261108\\cache-overwrite-r288\\owned-ida\\snapshot.i64",
+  "game_started": false,
+  "known_connector_unavailable": "ida_nexus missing; reusing working offline IDA CLI"
+}
