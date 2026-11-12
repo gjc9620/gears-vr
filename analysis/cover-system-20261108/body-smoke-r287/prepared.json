@@ -1,0 +1,13 @@
+{
+  "name": "cover-1112-r287-l2-grip",
+  "native_sha256": "c4055b2136e42319e9ed9a1d28ae93155bcc542edaa0c9b6c02eff7f3a036e4d",
+  "entry_sha256": "42177f5867d1f8a08ade49c8f87d685069db643300fcb4cabc6b3553285eef9c",
+  "tool_sha256": "fa402aaf1982479800a48f8399093510c755129de4fc4794d843c5a7f9d146cb",
+  "runner_sha256": "f40560300b135de846c71655ea054f173a97b4075c67ce2472bced92ea10a8ed",
+  "operator_template_sha256": "a537f8a11a2b35ac515f9d81745e402810a450674f4f2c1fd4384a31399f333e",
+  "prepared_only": true,
+  "game_started": false,
+  "physics_enabled": false,
+  "resumed_after_bootstrap_timeout": true,
+  "preparation_scope": "Original stdlib child timeout was terminal; repeat startup passed in same cwd; generated sources must match existing bytes semantically; no guards removed"
+}

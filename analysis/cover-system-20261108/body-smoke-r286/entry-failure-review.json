@@ -1,0 +1,7 @@
+{
+  "result": "operator failed before Grip helper",
+  "grip_executed": false,
+  "error": "Windows path escape decoded twice inside generated triple-quoted Boundary source; invalid control characters",
+  "normal_cleanup_verified": true,
+  "resolution": "forward-slash source paths; offline emulate nested literal decode and check exact helper file hashes; fresh r287, same production binary"
+}
