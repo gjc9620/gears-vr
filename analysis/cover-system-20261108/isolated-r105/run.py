@@ -83,6 +83,9 @@ def main():
     if args.probe=='shape' and not prepared.get('shape_snapshot_supported'):
         raise RuntimeError('Selected frozen Native has no prepared shape snapshot')
     action = load(HERE / NAME / 'operator-prepared.json')
+    retry_source = action.get('candidate_retry_source_sha256')
+    if retry_source is not None and sha(HERE.parent/'candidate-read-retry-r255/instrument.py') != retry_source:
+        raise RuntimeError('Prepared pre-input fresh candidate reader changed')
     cover_sources = action.get('cover_reader_source_sha256')
     if not isinstance(cover_sources,dict) or set(cover_sources)!={
             'tools/game-playtest/cover_state.py','tools/game-playtest/world_state.py'}:

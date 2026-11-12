@@ -44,6 +44,11 @@ def main():
     closing_module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(closing_module)
     sources['cover_boundary_chain.py'] = closing_module.instrument(sources['cover_boundary_chain.py'])
+    retry_observer = HERE.parent / 'candidate-read-retry-r255/instrument.py'
+    spec = importlib.util.spec_from_file_location('cover_candidate_fresh_read', retry_observer)
+    retry_module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(retry_module)
+    sources['cover_boundary_chain.py'] = retry_module.instrument(sources['cover_boundary_chain.py'])
     equipment = sources['equipment_controller_chain.py']
     menu = sources['run_menu_firstperson_check.py']
     # All cover/weapon observer selections refer to this exact namespace;
@@ -132,6 +137,7 @@ exec(compile(s, str(O / 'run_menu_firstperson_check.py'), 'exec'),""")
         generator_sha256=sha(__file__),
         entry_observation_source_sha256=sha(entry_observer),
         candidate_closing_source_sha256=sha(closing_observer),
+        candidate_retry_source_sha256=sha(retry_observer),
         cover_reader_source_sha256={name:sha(ROOT/name) for name in
             ('tools/game-playtest/cover_state.py','tools/game-playtest/world_state.py')},
         ordinary_approach_source_sha256=sha(approach_source), ordinary_approach_frozen_in_operator=True,
