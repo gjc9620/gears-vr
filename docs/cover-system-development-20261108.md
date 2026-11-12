@@ -3275,3 +3275,11 @@ C0仅在完整observe_asset_shapes返回queried之后，才对owned packet计算
 264实际投影/errors0、14总览生成、5contact逐张亲看：两眼右侧自身肩甲/躯干遮挡，右眼尤其严重，转头/抬头与恢复均仍FAIL；不能把较多环境可见解释为修复。全overview未亲看、图片与此C0未证明同一时刻，头显与拟合均不接受。编码0/operator0，正常清理true、自有remaining为空，CLOAK560失败0/前台379无owned激活，anchor/reader未变。原始run/native文本、可复跑extract.py、actual-bounds-packet.json与每轴Decimal极值保留。
 
 这轮将完整实际形状的数学范围接入原只读路径并验证，不扩大到full self/world fence/原query/同版body-view-hit-muzzle提交。接下来应处理实际场景查询与掩体body goal仍拒绝cover的缺口，不能重复相同读取代替玩法推进。完整CV24/AC22、工程25%、publicv71/固定入口/Quest保持。证据asset-bounds-runtime-r245。
+
+## r246：单位修正后的原版sphere查询实际调用返回，5.3198ms（2026-11-12）
+
+新cover-1112-r246-cloak-sphere-units，准备8b0d2c4b、425冻结依赖/导入/14身份检查通过，r244 Native66a96c12…97f4；actual game44992/creation134389177751536075。这次切换到sphere动作，验证r227单位修正后未实际覆盖的原查询链；不是重跑相同asset读取。C0 query code0、Session stage7 complete、engine stage10 complete、source0/exception0；原始调用started0→1/returned0→1，5.3198ms完整关闭，raw_hit1。sphere native中心[-78.6054764,-3.88316274,12.4197283]、radius.0199999996（游戏1厘米按每米单位与.02原物理比例换算）。半径只诊断调用/ABI，不是头部实际碰撞体。
+
+raw_hit1未区分自身与世界，不能称墙体命中/安全移动/occupancy或世界fence通过。普通query仍执行完整typed/source/owner前后关闭，未使用r241仅限asset无分派读取的借用guard。下一步新实例验证带命中对象列表的capsule path，核对自身归属、路径与终点；不能以sphere布尔结果授权body写入。
+
+264实际投影/errors0、14总览/5contact生成、编码0，但本轮未逐张亲看，personally_reviewed_contacts空、full_span/visual/headset接受均false；不把生成图片当作视觉验证。operator0、正常清理true、自有remaining为空、anchor/reader未变。原始run/native文本、extract.py及closeout保留。CV24/AC22、完整身体碰撞/模板/full self/world fence/body-view-hit-muzzle和已知遮挡仍未完成，工程25%；publicv71/固定入口/Quest保持。证据sphere-units-runtime-r246。

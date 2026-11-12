@@ -1,0 +1,165 @@
+{
+  "frames": 264,
+  "recording_sha256": "d1c72fb8f9c6f28fc0830f66195d996b409f63c53f3b8f9e92972ddec3fc48d6",
+  "pages": [
+    {
+      "file": "J:\\codexWorktree\\gearsVr\\analysis\\cover-system-20261108\\sphere-units-runtime-r246\\runtime-r246\\overview-1.jpg",
+      "sha256": "fb75f3d00574061e8f9f8727765393ac40f4835a21f4878eb17a36e6ee4a54d9"
+    },
+    {
+      "file": "J:\\codexWorktree\\gearsVr\\analysis\\cover-system-20261108\\sphere-units-runtime-r246\\runtime-r246\\overview-2.jpg",
+      "sha256": "066132423a680cc64bc17394b4f9d334ae96be5f186c6d3c2aae05a22684e3cf"
+    },
+    {
+      "file": "J:\\codexWorktree\\gearsVr\\analysis\\cover-system-20261108\\sphere-units-runtime-r246\\runtime-r246\\overview-3.jpg",
+      "sha256": "964bcfef280e13a3d479ed5035b35dfa0e129c4e07fb13e2e56cba4eef572616"
+    },
+    {
+      "file": "J:\\codexWorktree\\gearsVr\\analysis\\cover-system-20261108\\sphere-units-runtime-r246\\runtime-r246\\overview-4.jpg",
+      "sha256": "ae763135f7c2d6eb90d9de38d284d1fbede9f6615f1d42b5554792da347ae18d"
+    },
+    {
+      "file": "J:\\codexWorktree\\gearsVr\\analysis\\cover-system-20261108\\sphere-units-runtime-r246\\runtime-r246\\overview-5.jpg",
+      "sha256": "25029ba713056d6e67a6fb7b2d7b538d8215bc73ca6f4e2ca9f466b5c9f2d658"
+    },
+    {
+      "file": "J:\\codexWorktree\\gearsVr\\analysis\\cover-system-20261108\\sphere-units-runtime-r246\\runtime-r246\\overview-6.jpg",
+      "sha256": "d1107d1ea28a111b34eaf084f103cd88f3247ca8697b8f0c2eb1d7d4299354f4"
+    },
+    {
+      "file": "J:\\codexWorktree\\gearsVr\\analysis\\cover-system-20261108\\sphere-units-runtime-r246\\runtime-r246\\overview-7.jpg",
+      "sha256": "5999479ebcc9b8fe7a64b24c14e4c516900e2a6532004d697473e7a14ff70829"
+    },
+    {
+      "file": "J:\\codexWorktree\\gearsVr\\analysis\\cover-system-20261108\\sphere-units-runtime-r246\\runtime-r246\\overview-8.jpg",
+      "sha256": "0107c34c90bf1f06328ff563203a0ee90ca38afe8ed351962fe41fcac8cd5492"
+    },
+    {
+      "file": "J:\\codexWorktree\\gearsVr\\analysis\\cover-system-20261108\\sphere-units-runtime-r246\\runtime-r246\\overview-9.jpg",
+      "sha256": "e418da7af5bcbb10317a30eed42aca569e0fa48672bdb2d49a3ff981756405f0"
+    },
+    {
+      "file": "J:\\codexWorktree\\gearsVr\\analysis\\cover-system-20261108\\sphere-units-runtime-r246\\runtime-r246\\overview-10.jpg",
+      "sha256": "b2818742b27b941fb18f2d18cf3a3a9706a0b0e80672b4856c5d57cc5f190d89"
+    },
+    {
+      "file": "J:\\codexWorktree\\gearsVr\\analysis\\cover-system-20261108\\sphere-units-runtime-r246\\runtime-r246\\overview-11.jpg",
+      "sha256": "f9f249e97b66225009ee0105f34e960e0cc03c50b12262eb6b1ab5f890b7be58"
+    },
+    {
+      "file": "J:\\codexWorktree\\gearsVr\\analysis\\cover-system-20261108\\sphere-units-runtime-r246\\runtime-r246\\overview-12.jpg",
+      "sha256": "3205f6026a689bec6cad93aa29b5a621c593271119d8aa709422e5b4b615ae3c"
+    },
+    {
+      "file": "J:\\codexWorktree\\gearsVr\\analysis\\cover-system-20261108\\sphere-units-runtime-r246\\runtime-r246\\overview-13.jpg",
+      "sha256": "1ab3ec61213432a35148ab314ea99feb6236c85d655c0f4bdcdd59ad2d1b75e6"
+    },
+    {
+      "file": "J:\\codexWorktree\\gearsVr\\analysis\\cover-system-20261108\\sphere-units-runtime-r246\\runtime-r246\\overview-14.jpg",
+      "sha256": "98a634dcc7bcd7d8fddebde7e4d93c6a1c42c38c716fc299300c0e62ac8c2fcd"
+    }
+  ],
+  "contacts": [
+    {
+      "label": "cover_eye_neutral",
+      "file": "J:\\codexWorktree\\gearsVr\\analysis\\instances\\cover-1112-r246-cloak-sphere-units\\cover-output\\projection\\frame-00181.jpg",
+      "sha256": "c83da38276ee1e6278b30f38f4460e2e124695cd7ea7eb7bd384957bd200e0f3",
+      "event_wall_ns": 1794444232013297100,
+      "duration_seconds": 0.8049604,
+      "eligible_frames": 7,
+      "frame": {
+        "file": "frame-00181.jpg",
+        "time": 19.622707399976207,
+        "requested": 19.59863339998992,
+        "observed_wall_ns": 1794444232410554500,
+        "requested_wall_ns": 1794444232384311200,
+        "width": 960,
+        "height": 540
+      },
+      "same_C0_proven": false
+    },
+    {
+      "label": "cover_eye_turned",
+      "file": "J:\\codexWorktree\\gearsVr\\analysis\\instances\\cover-1112-r246-cloak-sphere-units\\cover-output\\projection\\frame-00200.jpg",
+      "sha256": "52a69df3ad3a869980b5dfc15d9bc1d5c24c95d9e4ccacaae3599f115bc431d3",
+      "event_wall_ns": 1794444234108188200,
+      "duration_seconds": 0.8056027,
+      "eligible_frames": 7,
+      "frame": {
+        "file": "frame-00200.jpg",
+        "time": 21.692968999996083,
+        "requested": 21.663168399973074,
+        "observed_wall_ns": 1794444234481120700,
+        "requested_wall_ns": 1794444234448482700,
+        "width": 960,
+        "height": 540
+      },
+      "same_C0_proven": false
+    },
+    {
+      "label": "cover_eye_turn_restored",
+      "file": "J:\\codexWorktree\\gearsVr\\analysis\\instances\\cover-1112-r246-cloak-sphere-units\\cover-output\\projection\\frame-00220.jpg",
+      "sha256": "11dd86e30281ef2f2d14657cdc3bb78624dbd92ad07cb41d96e5e96fff76b26e",
+      "event_wall_ns": 1794444236192098700,
+      "duration_seconds": 0.805572,
+      "eligible_frames": 7,
+      "frame": {
+        "file": "frame-00220.jpg",
+        "time": 23.859239699988393,
+        "requested": 23.834940000000643,
+        "observed_wall_ns": 1794444236646880300,
+        "requested_wall_ns": 1794444236620374300,
+        "width": 960,
+        "height": 540
+      },
+      "same_C0_proven": false
+    },
+    {
+      "label": "cover_eye_raised",
+      "file": "J:\\codexWorktree\\gearsVr\\analysis\\instances\\cover-1112-r246-cloak-sphere-units\\cover-output\\projection\\frame-00238.jpg",
+      "sha256": "799a8b88923301781f5eb34727a29eeb88babc69e12b6ac5c2669e334fa3e417",
+      "event_wall_ns": 1794444238211593600,
+      "duration_seconds": 0.8059138,
+      "eligible_frames": 7,
+      "frame": {
+        "file": "frame-00238.jpg",
+        "time": 25.828749599982984,
+        "requested": 25.788853799982462,
+        "observed_wall_ns": 1794444238616924700,
+        "requested_wall_ns": 1794444238573938400,
+        "width": 960,
+        "height": 540
+      },
+      "same_C0_proven": false
+    },
+    {
+      "label": "cover_eye_rise_restored",
+      "file": "J:\\codexWorktree\\gearsVr\\analysis\\instances\\cover-1112-r246-cloak-sphere-units\\cover-output\\projection\\frame-00257.jpg",
+      "sha256": "e62659cd082321c55303444f5a9212e01685f16c275735e1e48a1da40e2b88e1",
+      "event_wall_ns": 1794444240231966000,
+      "duration_seconds": 0.805231,
+      "eligible_frames": 7,
+      "frame": {
+        "file": "frame-00257.jpg",
+        "time": 27.8769763999735,
+        "requested": 27.85150929997326,
+        "observed_wall_ns": 1794444240665578600,
+        "requested_wall_ns": 1794444240637318000,
+        "width": 960,
+        "height": 540
+      },
+      "same_C0_proven": false
+    }
+  ],
+  "source": "actual private simulator projection",
+  "desktop_capture": false,
+  "full_span_personally_reviewed": false,
+  "headset_accepted": false,
+  "recording_errors": [],
+  "captured_span_complete": true,
+  "missing_contacts": [],
+  "encode_exit": 0,
+  "encoded_sha256": "7d1a34735051b53f2bf9e03d219c14b9ce1530f727a2bfbcf8c1f12df357a566",
+  "personally_reviewed_contacts": [],
+  "visual_acceptance": false
+}

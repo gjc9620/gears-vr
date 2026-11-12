@@ -1,0 +1,15 @@
+{
+  "actual_original_call_started": 1,
+  "actual_original_call_returned": 1,
+  "complete_query": true,
+  "raw_hit": true,
+  "elapsed_ms": 5.3198,
+  "normal_cleanup_verified": true,
+  "remaining_owned": {},
+  "native_sha256": "66a96c12d55de850daf87dc7a203a29d86d29367ff6619214c5dcf114e5097f4",
+  "world_or_self_distinguished": false,
+  "movement_permission": false,
+  "gameplay_accepted": false,
+  "headset_accepted": false,
+  "engineering_percent": 25
+}
