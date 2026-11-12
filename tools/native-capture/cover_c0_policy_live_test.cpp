@@ -158,6 +158,7 @@ int main(int argc,char** argv){
                     if(fp){C(fread(read.data(),1,read.size(),fp)==read.size()&&fgetc(fp)==EOF);C(fclose(fp)==0);C(!std::memcmp(read.data(),values[i],sizes[i]));}
                     C(DeleteFileW(file));
                 }
+                #include "cover_pending_observation_test.inl"
                 directory[0]=0;C(RemoveDirectoryW(path));
             }
             gears_anchor::Receipt scene{};scene.invocation=999;scene.thread=GetCurrentThreadId();

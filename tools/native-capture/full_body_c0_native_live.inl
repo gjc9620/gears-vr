@@ -166,10 +166,10 @@ struct PendingFrame { int64_t at_ns{}; PendingObservation observed{};
     std::array<fresh_pose_producer_live::PendingBranch,16> branches{};
 };
 std::array<PendingFrame,32> pending_frames{};unsigned pending_frame_count{};
-void note_pending() noexcept {
-    if(!diagnostic_first_failure||GetCurrentThreadId()!=owner_thread.load()||
-       (first_pending_known&&first_pending.failure==unsigned(tx::Failure::hard)))return;
-    auto& p=first_pending;p.tick=state.context.tick;p.compose=state.context.copy.invocation;p.mesh=state.stamp.binding.owner;
+namespace cover_pending_observation {void capture(PendingObservation const&,uint64_t) noexcept;void export_record() noexcept;void summary(FILE*) noexcept;}
+void note_pending(Entry const& entry) noexcept {
+    if(!diagnostic_first_failure||GetCurrentThreadId()!=owner_thread.load())return;
+    PendingObservation observed{};auto& p=observed;p.tick=state.context.tick;p.compose=state.context.copy.invocation;p.mesh=state.stamp.binding.owner;
     p.pending=state.kernel.pending();p.fields=state.kernel.outstanding_fields();p.protocol=state.kernel.protocol_debt();
     p.failure=unsigned(state.kernel.failure());p.consumed=state.kernel.consumed();p.required=state.kernel.outstanding_mask();
     const auto exchange=state.backend.exchange_failure();p.exchange_kind=exchange.kind;p.exchange_stage=exchange.stage;
@@ -187,14 +187,12 @@ void note_pending() noexcept {
         row.qpc=uint64_t(phase::qpc());
         row.branch_count=fresh_pose_producer_live::pending_branches(p.mesh,row.branches);
     }
+    cover_pending_observation::capture(p,entry.invocation);
+    if(!first_pending_known||first_pending.failure!=unsigned(tx::Failure::hard))first_pending=p;
     first_pending_known=true; // Observation only: no permit, retirement or state reset.
 }
-void export_pending() noexcept {
-    if(!diagnostic_first_failure||!first_pending_known||!stopping.load()||callbacks.load()||obligations.load()||
-       GetCurrentThreadId()==owner_thread.load()||pending_file_attempted.exchange(true))return;
-    wchar_t path[MAX_PATH]{};if(!directory[0]||swprintf_s(path,L"%s\\body-c0-pending-%llu.json",directory,uint64_t(session_started_qpc))<=0)return;
-    FILE* out{};if(_wfopen_s(&out,path,L"wb")||!out)return;
-    auto const& p=first_pending;auto const& j=p.journal;
+void write_pending_json(FILE* out,PendingObservation const& p,PendingFrame const* frames,unsigned count) noexcept {
+    auto const& j=p.journal;
     fprintf(out,"{\"tick\":%llu,\"compose\":%llu,\"mesh\":%llu,\"pending\":%u,\"fields\":%u,\"protocol\":%u,\"failure\":%u,\"consumed\":%u,\"storage_current\":%u,\"metadata_current\":%u,\"installed_local\":%llu,\"current_local\":%llu,\"raw_local\":%llu,\"raw_count\":%d,\"raw_desired_count\":%d,\"installed_epoch\":%u,\"current_epoch\":%u,\"journal_known\":%u,\"journal_epoch\":%u,\"coverage_epoch\":%u,\"journal_event\":%llu,\"journal_bound\":%u,\"required\":[%llu,%llu,%llu,%llu],\"covered\":[%llu,%llu,%llu,%llu],",
         p.tick,p.compose,p.mesh,p.pending,p.fields,p.protocol,p.failure,unsigned(p.consumed),unsigned(p.storage_current),unsigned(p.metadata_current),
         uint64_t(p.installed.local.data),uint64_t(p.current.local.data),uint64_t(p.local.data),p.local.count,p.desired.count,
@@ -203,7 +201,7 @@ void export_pending() noexcept {
     // Same diagnostic object; no v1 binary layout changes.
     fprintf(out,"\"exchange_kind\":%u,\"exchange_stage\":%u,\"exchange_verdict\":%u,\"exchange_detail\":%u,\"exchange_address\":%llu,\"pending_frames\":[",
         p.exchange_kind,p.exchange_stage,p.exchange_verdict,p.exchange_detail,p.exchange_address);
-    for(unsigned i=0;i<pending_frame_count;++i){const auto& row=pending_frames[i];const auto& q=row.observed;const auto& journal=q.journal;
+    for(unsigned i=0;i<count;++i){const auto& row=frames[i];const auto& q=row.observed;const auto& journal=q.journal;
         fprintf(out,"%s{\"at_ns\":%lld,\"tick\":%llu,\"compose\":%llu,\"fields\":%u,\"protocol\":%u,\"failure\":%u,\"consumed\":%u,\"storage_current\":%u,\"metadata_current\":%u,\"installed_epoch\":%u,\"current_epoch\":%u,\"coverage_epoch\":%u,\"journal_event\":%llu,\"bound\":%u,\"required\":[%llu,%llu,%llu,%llu],\"covered\":[%llu,%llu,%llu,%llu]",
             i?",":"",row.at_ns,q.tick,q.compose,q.fields,q.protocol,q.failure,unsigned(q.consumed),unsigned(q.storage_current),unsigned(q.metadata_current),q.installed.pose_epoch,q.current.pose_epoch,journal.coverage_epoch,journal.event,unsigned(journal.bound),
             q.required.words[0],q.required.words[1],q.required.words[2],q.required.words[3],journal.covered.words[0],journal.covered.words[1],journal.covered.words[2],journal.covered.words[3]);
@@ -218,8 +216,16 @@ void export_pending() noexcept {
                 v.sequence_weights[0],v.sequence_weights[1],v.sequence_weights[2],v.sequence_weights[3]);
         }fputs("]}",out);
     }
-    fputs("]}\n",out);fclose(out);
+    fputs("]}\n",out);
 }
+void export_pending() noexcept {
+    if(!diagnostic_first_failure||!first_pending_known||!stopping.load()||callbacks.load()||obligations.load()||
+       GetCurrentThreadId()==owner_thread.load()||pending_file_attempted.exchange(true))return;
+    wchar_t path[MAX_PATH]{};if(!directory[0]||swprintf_s(path,L"%s\\body-c0-pending-%llu.json",directory,uint64_t(session_started_qpc))<=0)return;
+    FILE* out{};if(_wfopen_s(&out,path,L"wb")||!out)return;
+    write_pending_json(out,first_pending,pending_frames.data(),pending_frame_count);fclose(out);
+}
+#include "cover_pending_observation.inl"
 // This private callback is installed by Native, never supplied by PG. The
 // broker invokes it outside its mutex with its own callback reservation live.
 // source_parent remains empty until the returned query is accepted, avoiding
@@ -1201,7 +1207,7 @@ void pose_begin(Entry const& e) noexcept {Call call;if(e.kind==0)budget::recorde
     if(e.rcx==endpoint_value.mesh.address)endpoint_valid=false;endpoint_commit_ns=0;
     ready_wrist::begin_unknown(e);
     if(state.captured){note(Begin::already_captured);++rejected;return;}
-    if(state.kernel.pending()){note_pending();note(Begin::kernel_pending);++rejected;return;}
+    if(state.kernel.pending()){note_pending(e);note(Begin::kernel_pending);++rejected;return;}
     try{
         if(state.kernel.settled_source_age()&&!state.recovery.active){auto& old=state.recovery;
             old.actor=state.context.actor;old.asset=state.context.asset;old.source=state.context.source;old.metadata=state.backend.metadata();
@@ -1374,7 +1380,7 @@ bool apply_impl(Entry const& e,body::Goal const& goal,gears_native_rig_tracking:
         held_outcome::recorder.prepared(unsigned(result.code));++failure_counts.prepares[unsigned(result.code)];
         ready_wrist::prepared(e,result);
         if(result.code!=tx::Code::prepared){remember_failure(e,goal,failure::Stage::prepare,unsigned(result.code),timing,&report,&state.output,result.unit);++rejected;return false;}state.prepared=true;
-        result=state.kernel.commit(state.backend,state.lease,state.stamp);if(state.kernel.failed())note_pending();budget::recorder.mark(budget::Stage::commit_end);if(diagnostic_first_failure)timing.commit=uint64_t(phase::qpc());sync();install_atom_receipt();
+        result=state.kernel.commit(state.backend,state.lease,state.stamp);if(state.kernel.failed())note_pending(e);budget::recorder.mark(budget::Stage::commit_end);if(diagnostic_first_failure)timing.commit=uint64_t(phase::qpc());sync();install_atom_receipt();
         held_outcome::recorder.committed(unsigned(result.code));++failure_counts.commits[unsigned(result.code)];
         ready_wrist::committed(e,result);
         if(last_compose_observation.compose==e.invocation){auto& o=last_compose_observation;
@@ -1569,6 +1575,7 @@ void summary(FILE* f){
     if(f)fprintf(f,"body_cover_pose_attempts=%llu body_cover_pose_accepted=%llu body_cover_pose_rejected=%llu ",
         cover_pose_attempts.load(),cover_pose_accepted.load(),cover_pose_rejected.load());
     cover_consumption_observation::summary(f);
+    cover_pending_observation::export_record();cover_pending_observation::summary(f);
     export_pending();ready_wrist::export_records();export_held_outcome();export_failure(first_failure,L"body-c0-first-failure.bin",failure_file_attempted,failure_file_written,failure_file_error);
     if(f)fprintf(f,"body_tick_lancer_state_refreshed=%llu ",binding::tick_lancer_state_refreshes.load());
     if(f){fprintf(f,"body_gun_transform_attempts=%llu body_gun_transform_completed=%llu body_gun_transform_rejected=%llu ",

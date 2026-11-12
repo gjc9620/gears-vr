@@ -3597,3 +3597,10 @@ normal_cleanup_verified=false，Native cleanup deadline expired、entries_restor
 13项为root(0)q/t、3/4/5q、54/55q、91/92/93/95/96/97q；只作实际mask解码，不是放宽退休证据的依据。5份独立首消费二进制已从native目录复制并回读hash/大小，保存在body-smoke-r281/actual-inputs和manifest，不能冒称失败瞬间或后续覆写快照。完整283份真实projection全部6页概览亲自查看：前段世界/approach可见，169后自身臂/大面积身体，192..282双眼黑，画面不通过。
 
 normal_cleanup_verified=false、Native entries_restored0，XR exit0、remaining_owned为空、forced_termination=false，保留内部恢复失败。既有export_pending要求stopping且callbacks/obligations均0，恰在当前13项挂起期间无法导出；metadata_reject_trace默认也未开启，因此不能声称已有后续branch轨迹。下一项是仅为该具体未完成覆写记录做GT有界采样→原子发布不可变副本→外部线程读出，类似r275首消费观测，不让导出依赖债务消失，不允许GT文件I/O/第二写入者/虚假退休。需离线验证不可变/线程边界后再做一次针对性观察，不继续无新增记录的相同游戏运行。掩体完整交付/Grip链/实体头显仍未完成。
+
+
+### r282 挂起覆写的不可变观察记录：离线/编译通过
+
+针对r280/r281记录缺口，新增cover_pending_observation，仅既有diagnostic_first_failure开启、当前GT、持有cover source且确有未完成字段时采样。同一Kernel serial每20ms最多一份、32份后release发布，换serial在未发布期间重开；原始PendingObservation/真实branch cache/实际尝试Compose编号一并保存。发布后不再写，外部collector acquire后导出cover-pending-observation.json，完全不依赖stopping/callbacks/obligations归零；GT不能导出。缺少真实branch记录时保留空，不伪造分支。既有first_pending硬失败保留语义仍在；未改身份/时效/原子写入/退休/恢复规则或单写入者。
+
+真实Host Native/Backend/Kernel/Compose消费后测试187检查0失败，覆盖关闭/异线程/非cover排除、采样间隔、32项边界、发布不变、GT拒绝IO、外部在债务仍在且未stopping时导出/回读，以及Kernel债务/mask不变。Host集成使用冻结r277 BodyGoal作为观察器测试边界，不冒称覆盖r279新朝向。初版测试推进假时钟640ms后导致后续独立view-age断言失败3项，已保持该失败并在观察器测试结束恢复fixture时钟；这不是修改产品时效。r282-v2完整Native在r279-v4冻结生产树上只叠加2文件，431份项目依赖冻结内，全部flags不变/PHYSX_QUERIES=OFF；DLL c964ba78e59d7950e1a2e3b069ecb4c047b8399aa8333bcd2cf1b7f033159906。尚未在游戏取得新记录/修复挂起，不作可玩验收。

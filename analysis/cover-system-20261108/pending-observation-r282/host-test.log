@@ -1,0 +1,4 @@
+FAIL 167 goal::read_view(&scene,stereo,host_core.units_per_metre,view)
+FAIL 168 view.base_view==goal::view.render.base_view
+FAIL 170 goal::read_view(&scene,stereo,host_core.units_per_metre,view)
+CoverGoalLive scenario=11 checks=187 failures=3; actual Native apply/Kernel/consumed-pose; Host admissions and original math; Game=0

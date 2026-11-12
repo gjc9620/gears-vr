@@ -1,0 +1,5 @@
+{
+  "build_exit": 0,
+  "test_exit": 1,
+  "output": "FAIL 167 goal::read_view(&scene,stereo,host_core.units_per_metre,view)\r\nFAIL 168 view.base_view==goal::view.render.base_view\r\nFAIL 170 goal::read_view(&scene,stereo,host_core.units_per_metre,view)\r\nCoverGoalLive scenario=11 checks=187 failures=3; actual Native apply/Kernel/consumed-pose; Host admissions and original math; Game=0\r\n"
+}

@@ -1,0 +1,12 @@
+{
+  "host_checks": 187,
+  "host_failures": 0,
+  "first_host_test": "3 later view-age failures because observer test advanced the synthetic fixture clock; retained failure; restore fixture clock before independent view tests",
+  "runtime_proven": false,
+  "observes_only": true,
+  "does_not_retire_or_restore": true,
+  "game_thread_file_io": false,
+  "first_published_snapshot_immutable": true,
+  "source_baseline": "r279-v4 production; Host BodyGoal uses r277 for observer-only scope",
+  "native_sha256": "c964ba78e59d7950e1a2e3b069ecb4c047b8399aa8333bcd2cf1b7f033159906"
+}
