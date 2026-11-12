@@ -3313,3 +3313,13 @@ QueryReadGroups1046检查0：真实Session+typed/raw asset/collider/component读
 测试初遇OwnedSweep旧夹具仍将Shape+d0写成Body且不填+148，与r231已经由原constructor/实际读取证明的public Actor/+148 optional Body相反。以r244原q头与本轮q头分别编译同一旧夹具，两者均22失败、输出完全一致；只修夹具d0/148后146通过，新分组Engine原2个失败亦随之通过，未为此改产品。原before-owned三源码/初始build与test logs保留。另初次编译W4/WX拒绝lambda名owner_reads与测试global同名，改局部名owner_read_group，保留初始build失败证据。
 
 Native冻结r244最终树仅C0/Session/QueryEngine三文件overlay；425实际依赖逐SHA、flags不变、无外部工作树，DLL SHA78460f418dd097eaf5cb427d73191b0445781ddcdd6558144c47bdb7deae9cf3。仅编译，尚未实际运行或安装。下一步新实例定向复核路径原调用前后全部关闭、原时效与实际recheck计数；不声称已有完整路径/世界fence/body-view-hit-muzzle或遮挡修复。工程25%、CV24/AC22与头显未完成，publicv71/固定入口/Quest保持。证据query-read-groups-r249。
+
+## r250：组内guard实际生效，但入口tracking已老25.9772ms，原调用前关闭仍拒绝（2026-11-12）
+
+新cover-1112-r250-cloak-query-read-groups，准备559c6735，r249 Native78460f41…9cf3；425依赖/导入/14身份检查通过；actual game15760/creation134389194014748405。C0 attempted/finished1、q4 source、Session stage5 engine/detail4、Engine stage4 source_guard。完整physics recheck7、borrowed_read_guards24，owner21/failed21 context/source_age_expired extra6，Session guard33/failed33 physics_read detail3；source_age_cause observed1/verdict3/causes1。15.6646ms后拒绝，原started/returned0/0、正式path/命中/endpoint0均未发布。此轮是在原调用前结束，与r248原调用返回后36.7614ms不是等工作量性能比较，不能声称整条path已提速某倍或通过。
+
+独立按原age witness整数计算：第一次完整guard的最老stereo/controller/sync已经25.9772ms，40ms原tracking预算只余14.0228ms；最后为41.4312ms。原始stereo/controller/sync出生时间在两个witness完全相同，metadata/tracking采集本身较新不代表底层样本新。原拒绝正确，未抬40ms/50ms上限、未续钟/替换source或分派未知调用。组内proof借用在实际读取中出现24次，不作全path完成证明。
+
+253实际投影/errors0、五段ordinary操作operator0，recording及boundary原件保留；本轮未逐张亲看/未编码，不作视觉接受。正常Native/entry/XR/game清理true、自有remaining空，anchor/reader未变。下一步需要在首次真实query尝试前，按原样本出生时间判定是否仍有足够查询工作余量；不够就丢弃本C0候选、等待新的真实来源而非将旧输入续期。必须明确只在attempt/dispatch前等待，单次已尝试/未知原调用绝不自动重试；所有原关闭条件保持。此预算准入尚未实现，不能记作完成。
+
+完整CV24/AC22、world fence/完整身体与active-authored对应/body-view-hit-muzzle/遮挡及头显继续未完成，工程25%，publicv71/固定入口/Quest保持。证据query-groups-runtime-r250。

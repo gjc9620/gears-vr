@@ -1,0 +1,23 @@
+{
+  "native_sha256": "78460f418dd097eaf5cb427d73191b0445781ddcdd6558144c47bdb7deae9cf3",
+  "original_calls": 0,
+  "path_result_published": false,
+  "elapsed_ms": 15.6646,
+  "physics_rechecks": 7,
+  "borrowed_read_guards": 24,
+  "full_owner_calls": 21,
+  "source_ages": {
+    "tracking_budget_ns": 40000000,
+    "initial_oldest_tracking_age_ns": 25977200,
+    "closing_oldest_tracking_age_ns": 41431200,
+    "initial_remaining_ns": 14022800
+  },
+  "comparable_full_path_benchmark": false,
+  "normal_cleanup_verified": true,
+  "remaining_owned": {},
+  "personally_reviewed_frames": false,
+  "gameplay_accepted": false,
+  "headset_accepted": false,
+  "engineering_percent": 25,
+  "next": "Budget admission must use original source birth times and defer before the first attempt if insufficient work headroom, rather than increasing ages, refreshing old samples, or retrying an original call. Final full checks still govern every result."
+}
