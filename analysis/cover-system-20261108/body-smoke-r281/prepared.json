@@ -1,0 +1,12 @@
+{
+  "name": "cover-1112-r281-first-failure",
+  "native_sha256": "97335d629a043e0e68a70e25186757b45539dab992aa710d3e5cea620bc1cd4b",
+  "entry_sha256": "a9823d1c298448b994858ce618f3ac8703d405c4474c9c4552fa71e2c53213bd",
+  "tool_sha256": "6449a56285cee2b703863abb0b5ac5191bbd277c696bb6e111d14e9ea0f2a4bb",
+  "runner_sha256": "a997dbed62284961aa4da6aa02e85351814da3de43ce67aad70783700ec0461c",
+  "operator_template_sha256": "e0db894b14848077644167249e2494a436cb7a438cc0ed48922906fb298a74df",
+  "prepared_only": true,
+  "game_started": false,
+  "physics_enabled": false,
+  "legacy_height_curve": "0.3/0.7 compatibility values, unused by selected C0 body owner; not measurements"
+}

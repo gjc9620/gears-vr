@@ -1,0 +1,18 @@
+{
+  "game_path": "J:\\gearsVr\\Gears.of.War.Reloaded.v1.0.1.3816947-P2P\\Gears of War Reloaded\\Binaries_x64\\GOWDE-Steam.exe",
+  "stereo_units_per_metre": 100,
+  "launcher_language": "zh-CN",
+  "render_scale": 0.3,
+  "first_person_preview": true,
+  "right_stick_deadzone_percent": 2,
+  "camera_closer_metres": 0,
+  "game_path_history": [
+    "J:\\SteamLibrary\\steamapps\\common\\Gears of War Reloaded\\Binaries_x64\\GOWDE-Steam.exe",
+    "J:\\gearsVr\\Gears of War Reloaded\\Binaries_x64\\GOWDE-Steam.exe"
+  ],
+  "hud_horizontal_fov_degrees": 65,
+  "game_settings_paths": {
+    "J:\\SteamLibrary\\steamapps\\common\\Gears of War Reloaded\\Binaries_x64\\GOWDE-Steam.exe": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\solo-m1-1028d\\LocalAppData\\Coalition\\WarGame\\Config\\76561198020107697EngineUserSettings.ini",
+    "J:\\gearsVr\\Gears.of.War.Reloaded.v1.0.1.3816947-P2P\\Gears of War Reloaded\\Binaries_x64\\GOWDE-Steam.exe": "C:\\Users\\11\\.codex\\worktrees\\6dof-single\\gearsVr\\analysis\\instances\\solo-m1-1028d\\LocalAppData\\Coalition\\WarGame\\Config\\76561197960271872EngineUserSettings.ini"
+  }
+}
