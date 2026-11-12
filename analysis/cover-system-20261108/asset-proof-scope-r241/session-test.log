@@ -1,0 +1,3 @@
+cover_physics_query_live: 110 checks, 0 failures; dispatch/module are Host seams, no original call
+AssetReadFullOwner calls=6 repeated_typed_checks=64
+AssetShapeSession checks=202 failures=0 actual Session with supplied actor packet; no shape/world/original calls

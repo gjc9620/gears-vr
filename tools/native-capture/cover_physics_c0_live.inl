@@ -165,6 +165,13 @@ void summary(FILE* f){if(!f)return;
         c.owner_guard.calls,c.owner_guard.failed_call,c.owner_guard.stage,c.owner_guard.detail,c.owner_guard.extra,
         c.progress.guard.calls,c.progress.guard.failed_call,c.progress.guard.stage,c.progress.guard.detail,c.progress.guard.extra,
         unsigned(c.source_cause.observed),uint64_t(c.source_cause.key.entry),c.source_cause.key.compose,c.source_cause.key.thread,c.source_cause.key.stage,c.source_cause.verdict,c.source_cause.causes);
+    fprintf(f,"cover_shape_snapshot_full_rechecks=%u cover_shape_snapshot_borrowed_guards=%u\n",c.progress.physics_rechecks,c.progress.asset_read_guards);
+    if(c.finished&&shape_snapshot_work.detail==gears_cover_physx_asset_shapes::Code::observed){auto const& candidate=shape_snapshot_work.candidate;
+        fprintf(f,"cover_shape_snapshot_candidate_counts=%u,%u,%u cover_shape_snapshot_candidate_requires_close=1\n",candidate.assets.body_count,candidate.assets.actor_count,candidate.count);
+    }
+    if(c.finished&&c.code==q::Code::queried)for(unsigned i=0;i<r.bodies;++i){auto const& b=shape_snapshot_packet.assets.bodies[i];
+        fprintf(f,"cover_shape_snapshot_body_mapping=%u,%u,%u,%llu,%llu,%llu,%llu,%llu\n",i,shape_snapshot_packet.body_actor[i],unsigned(b.presence),uint64_t(b.body),uint64_t(b.actor),uint64_t(b.table),uint64_t(b.scene),uint64_t(b.internal));
+    }
     // Only immutable owned scratch after this one-shot finishes. Partial
     // scratch is diagnostic, never a published inventory or permission.
     if(c.finished){auto const& w=shape_snapshot_work.collection;auto const& sw=w.shape_work;auto const& a=sw.first;

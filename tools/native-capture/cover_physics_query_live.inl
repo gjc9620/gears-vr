@@ -17,7 +17,7 @@ namespace component_roles=cover_component_roles_live;
 namespace path=gears_cover_capsule_path;
 namespace timing=gears_cover_query_timing;
 enum class Stage:unsigned {idle,geometry,physics_roles,collider_roles,component_roles,engine,closing,complete};
-struct Observation {Stage stage{};unsigned detail{};q::QueryProgress engine{};roles::LayoutObservation layout{};gears_cover_query_guard::Witness guard{};};
+struct Observation {Stage stage{};unsigned detail{};q::QueryProgress engine{};roles::LayoutObservation layout{};gears_cover_query_guard::Witness guard{};unsigned physics_rechecks{},asset_read_guards{};};
 #if defined(GEARS_COVER_BODY_PROTOTYPE) && GEARS_COVER_BODY_PROTOTYPE
 template<class Engine=q::Queries> class Session {
     Engine engine_{};roles::Workspace work_{};roles::Snapshot before_{},after_{};
@@ -30,6 +30,7 @@ template<class Engine=q::Queries> class Session {
     gears_cover_physx_asset_shapes::Snapshot asset_shapes_result_{};
     Stage stage_{};unsigned detail_{};
     gears_cover_query_guard::Witness guard_witness_{};
+    unsigned physics_rechecks_{},asset_read_guards_{};
     struct NoLocalResult {};
     struct AssetReadRequest {unsigned version{1};};
     std::atomic<bool> configured_{},enabled_{},stopped_{},busy_{},closed_{true};
@@ -72,6 +73,7 @@ template<class Engine=q::Queries> class Session {
             session.guard_witness_.enter();
             if(session.stopped_.load())return reject(Gate::stopped);
             auto read_sources=[&](auto& read_guard){
+                ++session.physics_rechecks_;
                 const auto code=timing::measure(timing::Stage::physics_repeat,[&](){return roles::recheck(actor,metadata,read_guard,session.work_,session.after_);});
                 if(code!=roles::Code::current)return reject(Gate::physics_read,unsigned(code));
                 if(!roles::same(session.before_,session.after_))return reject(Gate::physics_match);
@@ -105,6 +107,29 @@ template<class Engine=q::Queries> class Session {
             (roles::matches_query_source(session.before_,raw.query_source)||reject(Gate::query_source_match))&&
             (component_roles::matches(session.component_before_,raw)||reject(Gate::component_source_match));}
     };
+    // Borrowed only inside one synchronous NO-DISPATCH asset read group.
+    // Initial roles::sample certifies all selected layouts/dynamic values;
+    // closing SourceGuard repeats full roles proofs before external publish.
+    // Native asset/actor/shape/pose readers still close every original value
+    // and match their snapshots to the initial typed source. No geometry or
+    // query entry accepts this guard; no lease survives this execute.
+    template<class Current> struct AssetReadGuard {
+        Session& session;Current& current;
+        using Gate=gears_cover_query_guard::SessionStage;
+        bool reject(Gate gate,unsigned detail=0){return session.guard_witness_.reject(unsigned(gate),detail);}
+        bool operator()(){
+            ++session.asset_read_guards_;session.guard_witness_.enter();
+            if(session.stopped_.load())return reject(Gate::stopped);
+            if(!session.work_.recheck_ready||!weapon_hand_scene_binding::metadata_current()||
+               session.work_.generation!=weapon_hand_scene_binding::metadata_generation||
+               session.work_.metadata!=weapon_hand_scene_binding::metadata_bytes)return reject(Gate::physics_read,unsigned(roles::Code::metadata));
+            return current()||reject(Gate::physics_read,unsigned(roles::Code::guard));
+        }
+        bool operator()(q::source::Snapshot const& value){return (*this)()&&
+            (roles::matches_query_source(session.before_,value)||reject(Gate::query_source_match));}
+        bool operator()(gears_cover_physx_asset_actors::Snapshot const& value){return (*this)()&&
+            (roles::matches_asset_actors(session.before_,value)||reject(Gate::asset_match));}
+    };
     template<class Shape,class Read,class Guard,class Output,class Invoke> q::Code execute(
         weapon_hand_scene_binding::Binding const& actor,gears_cover_pose_phase::Metadata const& metadata,
         Shape const& shape,Read read,Guard guard,Output& output,Invoke invoke){
@@ -112,7 +137,7 @@ template<class Engine=q::Queries> class Session {
         if(q::source::aliases(&output,sizeof output,this,sizeof *this)||q::source::aliases(&output,sizeof output,&actor,sizeof actor)||
            q::source::aliases(&output,sizeof output,&metadata,sizeof metadata)||q::source::aliases(&output,sizeof output,&shape,sizeof shape))return q::Code::request;
         bool expected=false;if(!busy_.compare_exchange_strong(expected,true))return q::Code::reentrant;Finish finish{busy_};
-        stage_=Stage::geometry;detail_=0;work_.witness={};guard_witness_={};
+        stage_=Stage::geometry;detail_=0;work_.witness={};guard_witness_={};physics_rechecks_=asset_read_guards_=0;
         if(stopped_.load())return q::Code::unavailable;
         const auto owner=actor;const auto source=metadata;const Shape geometry=shape;
         constexpr bool asset_read=std::is_same_v<Output,gears_cover_physx_asset_shapes::Snapshot>;
@@ -146,14 +171,15 @@ template<class Engine=q::Queries> class Session {
         const auto code=timing::measure(timing::Stage::engine,[&](){
             if constexpr(std::is_same_v<Output,gears_cover_physx_asset_shapes::Snapshot>){
                 // The complete no-dispatch inventory is one synchronous
-                // READ-ONLY group. Keep every typed SourceGuard recheck and
-                // original first/last value proof. Full owner/cover/pose/time
+                // READ-ONLY group. Borrow the initial typed layout proof and
+                // keep every native first/last value close. Full typed source
+                // proof is repeated in closing. Full owner/cover/pose/time
                 // checks bracket this group, then closing checks them again.
                 // Private result cannot escape an expired/failed group.
                 q::Code observed=q::Code::source;
                 const bool closed=read_source_group(owner,source,guard,[&](auto& read_guard){
                     using ReadGuard=std::remove_reference_t<decltype(read_guard)>;
-                    SourceGuard<ReadGuard,false> grouped{*this,owner,source,read_guard};
+                    AssetReadGuard<ReadGuard> grouped{*this,read_guard};
                     observed=invoke(engine_,before_.source,geometry,read,grouped,result);
                     return observed==q::Code::queried;
                 });
@@ -281,7 +307,7 @@ public:
     unsigned pending_count()const noexcept{return unsigned(busy_.load()||engine_.pending()||!closed_.load());}
     bool uncertain()const noexcept{return engine_.uncertain();}
     // Same serialized owner only; this is not a cross-thread publication.
-    Observation observation()const noexcept{return {stage_,detail_,engine_.observation(),roles::observation(work_),guard_witness_};}
+    Observation observation()const noexcept{return {stage_,detail_,engine_.observation(),roles::observation(work_),guard_witness_,physics_rechecks_,asset_read_guards_};}
     bool enabled()const noexcept{return enabled_.load()&&!stopped_.load();}
     template<class Shape,class Read,class Guard> q::Code overlap(weapon_hand_scene_binding::Binding const& actor,
         gears_cover_pose_phase::Metadata const& metadata,Shape const& shape,Read read,Guard guard,q::Overlap& output)noexcept{

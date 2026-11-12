@@ -1,0 +1,21 @@
+{
+  "initial_failures": 2,
+  "product_changed_for_these_failures": false,
+  "reason": "Two test mutations wrote unused/reserved fields instead of the actual fixture property fields. Corrected only test offsets from actual property() helper.",
+  "fixes": [
+    {
+      "property": "BodyData",
+      "initial": "props[7]+0x7c",
+      "actual": "props[7]+0x94",
+      "field": "Offset"
+    },
+    {
+      "property": "OwnerComponent",
+      "initial": "props[6]+0x80",
+      "actual": "props[6]+0xd0",
+      "field": "ReferenceClass"
+    }
+  ],
+  "initial_result": "initial-session-result.json",
+  "initial_log": "initial-session-test.log"
+}

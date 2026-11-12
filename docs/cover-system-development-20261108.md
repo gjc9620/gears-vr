@@ -3223,3 +3223,19 @@ observed_pose保留finite/nonzero原q、原float getter矩阵、可表示运算�
 最终完整Native v3在r237冻结树overlay observed_pose/shape_geometry，423依赖逐SHA、flags不变、无外部工作树混入，DLL SHA828e7e2400be8456b1ff7de0450480e9b75b7e4ee2ab2b8164fcfec7601682c6；geometry是否Native实际依赖=False，其严格转换通过独立模块测试，仍不称已接入玩法查询。中间v2构建保留；v3包含追加的可表示范围预检。此版尚未游戏运行，下一步新版本一次读取，检查全asset和原deadline关闭。
 
 完整CV24/AC22、active/template/full self/world fence、非strict数值包络、body/view/hit/muzzle、视图遮挡及头显继续未完成，工程25%，publicv71/固定入口/Quest不变。证据pose-read-contract-r239。
+
+## r240：内部完整清单两遍通过，98.8438ms后全owner关闭因原时效拒绝（2026-11-12）
+
+新cover-1112-r240-cloak-pose-contract使用r239 Native828e7e24…82c6，准备/导入/身份guard14通过，准备fc4d6e25；actual game52092/creation134389146201766454。完整asset observer detail0，failed_actor/member均unset，最后shape/world两pass完成，内部清单及姿态已全部比较一致；但整个事务98.8438ms，原full owner5/failed5 context source_age_expired extra6，Session1172/failed1172 owner_end，q4 source拒绝。原query调用0、正式bodies/actors/shapes0，不能把内部成功称作整批已发布或时效通过。
+
+266实际投影/errors0、14总览生成、5阶段contact逐张亲看仍双眼自身头肩/躯干严重遮挡FAIL；未全数亲看overview，编码0。正常清理true、自有remaining为空、无强杀，精确CLOAK/前台计数见closeout，anchor/reader前后相同。证据pose-contract-runtime-r240。
+
+## r241：同一无分派只读事务借用入口字段证明，完整关闭前重新校验（2026-11-12）
+
+实际r240的1172个SourceGuard重复完整角色字段回读是主要剩余工作量；本轮只对asset Snapshot的同步NO-DISPATCH分组新增AssetReadGuard。初始roles::sample仍两pass证明全部类/字段/引用/数组/body动态值；组内每个guard确认read-ready、当前metadata cache/generation、相同线程/busy/context/key/metadata，并用原matches_query_source/matches_asset_actors核对每个原生来源快照。原生Source/asset/actor/member/shape/pose双pass与全部代码/归属闭合保持。完整typed roles::recheck移到最终SourceGuard关闭（两遍值、初始比较、完整前后Proof）；原full owner/cover/pose/source时间在分组前后和关闭仍执行。只有全部关闭才发布私有结果，没有跨execute的证明借用，也不将此guard用于真实query分派。
+
+Session202检查0：从原空Host packet推进到实际asset actor observer读取合成当前typed内存中的2body/2actor，错误raw actor packet拒绝；原始shape/world/original模块执行仍是Host seam，无这些玩法证据。初始sample之后完整physics_rechecks=1，64重复typed来源匹配、full owner6；每个full拒绝、expired即使私有结果已写仍不发布、root替换/drain以及六种持久修改（BodyIndex/OwnerComponent/BoneSpring、属性offset/width/reference class）均拒绝输出保持。初测两失败是mutation写到fixture未使用位置，依据既有property helper改正确94/d0，仅改测试目标，失败log/result及说明保留，不当成产品修复。Engine1743、OFF65通过。
+
+C0 summary新增完整回读/借用guard计数，候选计数明确requires_close，成功时额外导出Body实例ordinal→唯一Actor index及地址/scene/internal映射；只读取已完成owned scratch，不增加game读。完整Native在r239最终冻结树仅Session/C0两文件overlay，423依赖逐SHA、flags不变、无外部工作树混入，DLL SHA27adaac79c8ea6e5a17303ed1f678b339ff13e5f3247b690f19428c87418d95d。此版尚未游戏运行，下一步新实例检查完整读取、原deadline关闭和真实proof计数。
+
+完整CV24/AC22、active/template/full self/world fence、非strict数值包络、body/view/hit/muzzle、视图遮挡及头显仍未完成，工程25%，publicv71/固定入口/Quest不变。证据asset-proof-scope-r241。

@@ -1,0 +1,16 @@
+{
+  "results": {
+    "session": "cover_physics_query_live: 110 checks, 0 failures; dispatch/module are Host seams, no original call\r\nAssetReadFullOwner calls=6 repeated_typed_checks=64\r\nAssetShapeSession checks=202 failures=0 actual Session with supplied actor packet; no shape/world/original calls\r\n",
+    "engine": "read_budget=228 guard_calls=12\r\nCoverPhysXShapeOwner checks=531 failed=0 original-executed=false game-started=false\r\nparameter_reads=102\r\nShapeParameters checks=702 failed=0 original PE as data; stored fields only, no world/eligibility permit\r\nworld_reads=140\r\nShapeWorld checks=1708 failed=0 original PE as data; original-unit CPU pose only, no query fence\r\nAssetShapes checks=1734 failed=0 synthetic object groups; complete supplied asset only, no world/self permit\r\nAssetShapesEngine checks=1743 failed=0 actual QueryEngine/HostImage only; no original dispatch\r\n",
+    "off": "cover_physics_c0 OFF: 65 checks, 0 failures; no game/module/query\r\n"
+  },
+  "native_sha256": "27adaac79c8ea6e5a17303ed1f678b339ff13e5f3247b690f19428c87418d95d",
+  "dependencies": 423,
+  "flags_unchanged": true,
+  "game_started": false,
+  "installed": false,
+  "change": "Borrow typed layout proof only within synchronous no-dispatch asset read; native Source/asset/actor/shape/world full value closes unchanged. Initial roles sample and final full SourceGuard roles recheck, owner/cover/pose/original freshness checks still required before public output. Metadata cache/generation/read-ready/current context checked by each borrowed guard. Ordinary query branches unchanged.",
+  "tests": "Session202: real supplied2-actor observer packet and cached typed match, one complete physics recheck plus initial sample, every full owner reject, expiry/drain/root replacement, six persistent body/property mutations, wrong actor packet; output stays private on all failure. Host still has no shape/world/original dispatch. Engine1743 separate actual QueryEngine fixture; OFF65.",
+  "remaining": "Need new actual game read within original source deadline; r240 internal observer complete but whole read failed original age after98.8438ms. Full self/world/template/geometry/body/view/hit/muzzle/headset remain open.",
+  "engineering_percent": 25
+}

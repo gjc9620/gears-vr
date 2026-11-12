@@ -1,0 +1,5 @@
+cover_physics_query_live: 110 checks, 0 failures; dispatch/module are Host seams, no original call
+AssetReadFullOwner calls=6 repeated_typed_checks=64
+FAIL 58: owner->observe_asset_shapes(actor,physics_expected,source_read,guard,*scratch,*output)!=q::Code::queried&&output->count==123 reason=ready stage=ready field=BoneSpring
+FAIL 58: owner->observe_asset_shapes(actor,physics_expected,source_read,guard,*scratch,*output)!=q::Code::queried&&output->count==123 reason=ready stage=ready field=BoneSpring
+AssetShapeSession checks=196 failures=2 actual Session with empty Host packet; original calls0
