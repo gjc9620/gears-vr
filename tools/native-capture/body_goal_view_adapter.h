@@ -71,7 +71,7 @@ inline Status measure_cover_pose_math(core::CoreSnapshot const& source,std::int6
     for(unsigned i=0;i<16;++i)work.component.m[i]=frame.component_to_world.values[i];
     if(!similarity(work.component)||std::abs(length(row(work.component,0))-1)>2e-5)return Status::cover_component;
     for(auto const& atom:frame.local)if(!unit_animation_scale(atom.scale))return Status::cover_scale;
-    if(body::ik::detail::validate(frame.local.data(),model.parents.data(),body::bones,work.component)!=body::ik::Status::okay)return Status::cover_atom;
+    if(gears_cover_passive_atoms::validate(frame.local.data(),model.parents.data(),body::bones,work.component,policy.scope==body::Scope::fixed_cover)!=body::ik::Status::okay)return Status::cover_atom;
     std::copy(frame.local.begin(),frame.local.end(),work.pose.local);
     if(!rebuild(model,work))return Status::numerical;
     CoverPoseMeasurement next{};marker::EyeHmdWorld eye{};

@@ -1,0 +1,51 @@
+{
+  "native_sha256": "da2b6fe06e71a4633a615a17342cada201c412fa941b5aa688050933dfc62320",
+  "raw_result": "J:\\codexWorktree\\gearsVr\\analysis\\instances\\cover-1112-r272-cloak-body\\cover-output\\run-result.json",
+  "raw_result_sha256": "44f63ff230e220eeb65970244e7554f55b25a3f140336798ca89c09ef1f24645",
+  "result": {
+    "error": "RuntimeError('Own ordinary cover observation failed; preserve operator log')",
+    "operator_exit": 1,
+    "projection_frames": 171,
+    "normal_cleanup_verified": true,
+    "remaining_owned": {},
+    "isolated_done": {
+      "launcher_exit": 0,
+      "owned_game_absent": true,
+      "owned_children": {
+        "recorded": 0,
+        "remaining": []
+      },
+      "forced_termination": false,
+      "worker_error": null,
+      "no_game_started": false
+    }
+  },
+  "session": {
+    "phase": "stopped",
+    "native_cleanup_verified": true,
+    "entry_restore_verified": true,
+    "xr_exit_code": 0
+  },
+  "facts": {
+    "cover_body_live_published": "0",
+    "cover_input_l2_range": "-0.699999975,0.699999913,0,0.51",
+    "body_goal_cover_enabled": "1",
+    "body_goal_cover_fits": "0",
+    "body_goal_cover_plans": "0",
+    "body_goal_cover_applied": "0",
+    "body_goal_cover_consumed": "0",
+    "body_goal_cover_rejected": "62",
+    "body_goal_cover_reason": "8",
+    "body_goal_cover_measure_status": "13",
+    "body_goal_cover_measure_bad_bone": "4294967295",
+    "body_goal_cover_measure_bad_scale": "0",
+    "body_goal_cover_measure_atom_status": "3",
+    "body_goal_cover_measure_component_length": "1.00000004",
+    "body_goal_cover_bad_atoms": "3,3,24477,397",
+    "body_goal_cover_bad_atom_0": "65,4.74152024e-08,1.05367119e-08,0,0.707106769,-1.5363884,10.8301105,3.67365265,1,0.70710676908493209,0,1",
+    "body_goal_cover_bad_atom_1": "67,4.74152024e-08,1.05367119e-08,0,0.707106769,1.53639221,10.8301086,3.67364502,1,0.70710676908493209,0,1",
+    "body_goal_cover_bad_atom_2": "106,0,0,0,0.707106769,0,9.09494702e-13,0,1,0.70710676908493042,0,1"
+  },
+  "finding": "Original non-unit q in bones65/67/106; raw q converted directly to rigid matrices by saved retail converter. Source/output must preserve these passive atoms, never normalize/write them.",
+  "visual_review_pending": true
+}

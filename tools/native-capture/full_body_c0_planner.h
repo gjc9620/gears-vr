@@ -1,5 +1,6 @@
 #pragma once
 #include "cover_skeleton_ik.h"
+#include "cover_passive_atoms.h"
 #include "../vr-common/hand_two_bone_pose.h"
 #include "../vr-common/hand_authored_mount_profile.h"
 #include <array>
@@ -169,7 +170,7 @@ inline Report plan_impl(Model const& model,Frame const& frame,Goal const& goal,W
        !normalized(goal.absolute.root_orientation.value,absolute_root)))return fail(Status::goal);
     for(unsigned j=0;j<16;++j)work.component.m[j]=frame.component_to_world.values[j];
     if(!similarity(work.component)||std::abs(length(row(work.component,0))-1)>2e-5)return fail(Status::component);
-    const auto checked=validate(frame.local.data(),model.parents.data(),bones,work.component);
+    const auto checked=gears_cover_passive_atoms::validate(frame.local.data(),model.parents.data(),bones,work.component,goal.scope==Scope::fixed_cover);
     if(checked!=ik::Status::okay)return fail(Status::atom);
     for(unsigned i=0;i<bones;++i)if(!unit_animation_scale(frame.local[i].scale))return fail(Status::model_scale,i);
     std::memcpy(work.pose.local,frame.local.data(),sizeof(frame.local));if(!rebuild(model,work))return fail(Status::numerical);
@@ -301,6 +302,10 @@ inline Report plan_impl(Model const& model,Frame const& frame,Goal const& goal,W
         report.max_length_error=(std::max)(report.max_length_error,std::abs(after-before));
         if(std::memcmp(work.pose.local[i].translation,frame.local[i].translation,12)||work.pose.local[i].scale!=frame.local[i].scale)return fail(Status::numerical,i);}
     if(report.head_error>.002||report.foot_error[0]>.002||report.foot_error[1]>.002||report.max_length_error>.002||report.head_angle_error>1e-4||report.foot_angle_error[0]>1e-4||report.foot_angle_error[1]>1e-4){report.status=Status::residual;return report;}
+    if(goal.scope==Scope::fixed_cover)for(unsigned i=0;i<bones;++i){Quat q{};
+        if(!normalized({frame.local[i].q[0],frame.local[i].q[1],frame.local[i].q[2],frame.local[i].q[3]},q)&&
+           std::memcmp(&frame.local[i],&work.pose.local[i],sizeof(Atom)))return fail(Status::numerical,i);
+    }
     work.candidate={};std::copy_n(work.pose.local,bones,work.candidate.local.begin());
     for(unsigned i=0;i<bones;++i)if(std::memcmp(&frame.local[i],&work.pose.local[i],sizeof(Atom)))work.candidate.changed_mask[i/64]|=std::uint64_t(1)<<(i%64);
     work.candidate.root_world=pose(work.pose.world[root]);work.candidate.pelvis_world=pose(work.pose.world[pelvis]);work.candidate.head_world=pose(work.pose.world[head]);

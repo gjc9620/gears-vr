@@ -4,7 +4,8 @@
 // Historical full-chunk certificates only; current bytes must match before hooks.
 namespace gears_cover_pose_certificate {
 struct Chunk {std::uintptr_t rva;unsigned size;const char* sha256;};
-inline constexpr std::array<Chunk,8> chunks{{
+inline constexpr std::array<Chunk,9> chunks{{
+    {0xf6100,302,"088dfc98c8e4fcff101c6f69ed23b43e48c83ebb5bb1ff57a28797a06936b9e9"},
     {0x128920,5018,"4b65c4f0bbd5f12af73bde81a459dc222efd1c554e52ff1754ea7b2ae04c82a1"},
     {0x8a9500,567,"d4a5080e659dc461365cdc0320a04b0d765571e0b2d6095595a05c60e7e3088a"},
     {0xf26d4,1422,"c8b9a07a24f586eab33c7983ca2f19a7f1a3a10e758a7ea0bf84c5bfaf686683"},

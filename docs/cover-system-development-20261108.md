@@ -3500,3 +3500,18 @@ r270实际运行没有遇到失败Atom，测量通过、拟合2次、身体计�
 r271把现有站立手部composer调用域明确限制为stationary；固定掩体身体使用现有sole C0/Kernel/消费路径，暂保留原始手部Local（随身体父层运动）。没有新增手部写入者，掩体点位专用GrabPose/手臂过渡仍未完成，不能以此称完整掩体交互。新Host scenario10明确开启hands，修复前复现reason10/committed=false，修复后真实Native/Kernel/原消费回读24检查通过；其余原10场景亦通过，合计11场景207检查。Host身份/收据及原始数学调用仍是人工夹具，不等于游戏。
 
 新Native da2b6fe06e71a4633a615a17342cada201c412fa941b5aa688050933dfc62320编译通过，427依赖，冻结r269仅full_body_c0_native_live.inl的站立手部调用域变更，开关不变、碰撞OFF。下一步新识别短游戏核对实际掩体写入/消费与连续更新；仍保留Atom失败、每点GrabPose/过渡、Grip拖动/保持/反向与双模式/实际双眼/实体头显待完成项。
+
+
+### r272取得真实辅助Atom原值；r273按原版原始矩阵语义保留辅助骨骼
+
+r272测量再次拒绝，首帧tick24477/Scene397保存3个坏Atom：65/67的q=(4.74152024e-8,1.05367119e-8,0,0.707106769)，106的q=(0,0,0,0.707106769)，各norm约0.707106769，平移有限、scale1。65/67 parent56且无子，106 parent0、仅子107，均不在头/脊柱/腿/手求解链祖先。不是模型拉伸。旧整体unit-quaternion假设把这些原始辅助数据拒绝了。r272没有身体应用，正常Native/入口/XR/所属进程收尾通过，数据保留body-smoke-r272/closeout.json。
+
+原版Compose完整5018+冷段567字节与既有证书匹配；其调用的原始Atom→矩阵转换0xf6100完整302字节SHA256 088dfc98c8e4fcff101c6f69ed23b43e48c83ebb5bb1ff57a28797a06936b9e9，逐块与历史.text快照SHA911ab9bc...一致。代码直接用raw q/translation/scale构建矩阵，不先归一化，和已有ik::atom_matrix相同。该分析是保存的代码，不冒充当前callee验证；本次Native新增302字节证书，下一次激活必须实际匹配。当前三组raw值的矩阵仍是单位尺度刚体。
+
+REA不支持I64，IDA连接器缺ida_nexus而退出；它打开旧owned-metadata1私有分析库后该库时间/哈希发生变化（66d17...→244e9060...），未修改游戏或源码。未全局安装/改配置。改为原有IDA CLI在另一个上游库的独立复制中分析，upstream a87a4802...前后哈希一致，证据ida-source.json。最初原库hash断言失败使准备中止，其后CLI被传入不存在的复制路径而报初始化失败；实际有效私有复制执行两次均exit0，compose/converter结果保存。该工具失败不计功能验收。
+
+r273新增严格的被动辅助表示：仅Marcus115当前模型的65/67(parent56)/106(parent0)，有限非零raw q、有限平移、原单位尺度，且原始转换矩阵保持正向刚体，才可在cover求解中保留；不归一化、不改写raw Atom。头/躯干/四肢仍要求unit q，standing保持原unit q规则。Kernel只允许辅助Atom32字节完全不变，不能借此取得任何辅助写入许可；完整changed mask、DesiredBones、残差、身份/新鲜度及CAS保护保持。原始消费回读还需辅助Atom与原源完全相同，SpaceBases必须与原始矩阵一致。
+
+新增真实三Atom夹具：完整C0/Kernel/消费链scenario11 30检查通过，辅助字节/写mask不变；独立Backend/CAS/Kernel51检查通过，包括归一化/等效矩阵scalar改写/平移/缩放候选拒绝、头部非unit及非刚体矩阵拒绝、回读被动值篡改拒绝且输出不变。原Backend441检查和其余11个C0/standing/拒绝/消费场景207检查通过。早期测试枚举拼写okay→verified编译错误已修正，不计通过。新Native df48c349e21247543612bc7e2104e57e7bb497dd3d64f06ad50696bfc2e816c2编译通过，428项目依赖，冻结r271上6文件改动、开关不变/碰撞OFF，不混入Kernel未提交的其他武器变化。
+
+下一步新私有短运行验证当前转换证书、真实C0持续消费及可视输出，再继续Grip拖动/保持/拉回和点位GrabPose/手臂过渡。当前仅源与离线通过，不能称游戏身体/完整掩体完成；高掩体/两视角模式/完整双眼/实体头显仍待完成。

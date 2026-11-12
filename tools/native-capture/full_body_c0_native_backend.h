@@ -262,7 +262,9 @@ public:
             std::int32_t parent{};std::memcpy(&parent,source_.reference[i].bytes+56,4);
             if((!i&&parent)||(i&&(parent<0||unsigned(parent)>=i)))return ConsumedPoseCode::geometry;
             auto const& atom=next.local[i];body::Quat q{};
-            if(!body::d::normalized({atom.q[0],atom.q[1],atom.q[2],atom.q[3]},q)||!body::d::unit_animation_scale(atom.scale))return ConsumedPoseCode::geometry;
+            const bool ordinary=body::d::normalized({atom.q[0],atom.q[1],atom.q[2],atom.q[3]},q);
+            const bool passive=!std::memcmp(&atom,&source_.local[i],sizeof atom)&&gears_cover_passive_atoms::auxiliary(i,parent,atom);
+            if((!ordinary&&!passive)||!body::d::unit_animation_scale(atom.scale))return ConsumedPoseCode::geometry;
             for(float x:atom.translation)if(!std::isfinite(x))return ConsumedPoseCode::geometry;
             body::ik::Matrix space{},parent_space{};
             for(unsigned j=0;j<16;++j){space.m[j]=next.space[i].values[j];parent_space.m[j]=i?next.space[unsigned(parent)].values[j]:component.m[j];}

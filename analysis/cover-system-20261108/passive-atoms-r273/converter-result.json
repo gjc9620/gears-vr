@@ -1,0 +1,12 @@
+{
+  "chunks": [
+    {
+      "begin": "0x1400f6100",
+      "size": 302,
+      "sha256": "088dfc98c8e4fcff101c6f69ed23b43e48c83ebb5bb1ff57a28797a06936b9e9"
+    }
+  ],
+  "raw_code_sha256": "911ab9bcb24cc078420400369a78ffd3f747d915e42c4935a5c82c2dcecc6ae6",
+  "saved_artifact_only": true,
+  "current_callee_bytes_verified": false
+}

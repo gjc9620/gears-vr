@@ -28,6 +28,7 @@ void observe_sphere_once(gears_continuous_hand_entry::Entry const&,gears_native_
     gears_cover_physx_query::Vector const&)noexcept{}
 }
 #include "body_c0_goal_policy_live.inl"
+#include "cover_observed_passive_atoms_test.inl"
 namespace goal=body_c0_goal_policy_live;namespace neutral=gears_body_c0_neutral;namespace adapter=gears_body_goal_view;
 void finish_return(Entry const&e){bool called=false,returned=false;__try{live::before_original(e);called=true;returned=true;}
     __finally{goal::pose_end(e,returned,called);}}
@@ -35,7 +36,7 @@ void finish_throw_inner(Entry const&e){bool called=false;__try{live::before_orig
     __finally{goal::pose_end(e,false,called);}}
 bool finish_throw(Entry const&e){__try{finish_throw_inner(e);return false;}__except(GetExceptionCode()==0xe0424242?EXCEPTION_EXECUTE_HANDLER:EXCEPTION_CONTINUE_SEARCH){return true;}}
 int main(int argc,char** argv){
-    if(argc!=4)return 2;const unsigned scenario=unsigned(std::strtoul(argv[3],nullptr,10));if(scenario>10)return 2;
+    if(argc!=4)return 2;const unsigned scenario=unsigned(std::strtoul(argv[3],nullptr,10));if(scenario>11)return 2;
     const unsigned mode=scenario==8?1:16;const bool cover_case=scenario!=8;
     auto frame=std::make_unique<body::Frame>();C(read_file(std::string(argv[1])+"/reference.bin",frame->reference.data(),sizeof frame->reference));
     C(read_file(std::string(argv[1])+"/C0-local.bin",frame->local.data(),sizeof frame->local));C(read_file(std::string(argv[1])+"/C0-component.bin",&frame->component_to_world,sizeof frame->component_to_world));
@@ -51,6 +52,8 @@ int main(int argc,char** argv){
     C(gears_native_rig_tracking::core_snapshot_valid(host_core,host_now,50000000,true));
     if(cover_case){host_core.flags|=gears_rig_tracking::cover_key_known;host_core.cover_type=2;
         host_core.cover_link=host_core.world;host_core.cover_slot=0;host_cover=2;}
+    auto standing_frame=std::make_unique<body::Frame>(*frame);
+    if(scenario==11)recorded_passive_atoms(*frame);
     Fixture fixture(*frame);Scope lease;Entry tick{},entry{};tick.thread=GetCurrentThreadId();tick.invocation=10;tick.kind=2;tick.depth=1;tick.tick_depth=tick.selected=true;
     entry.thread=tick.thread;entry.invocation=11;entry.kind=0;entry.depth=1;entry.compose_depth=entry.selected=true;
     entry.ra=base+p::compose_caller;entry.rcx=fixture.mesh.address();entry.rdx=entry.rcx+0x27c;entry.r8=entry.rcx+0x28c;
@@ -88,7 +91,7 @@ int main(int argc,char** argv){
     C(adapter::marker::prepare(current.model,current.source,adapter::marker::Basis::marcus_mesh_face_forward_y,
         marker_work,marker)==adapter::marker::Status::okay);
     auto math_work=std::make_unique<body::Workspace>();neutral::Stored calibration{};adapter::Neutral calibrated{};
-    C(neutral::capture(current.model,current.source,marker,*math_work,calibration));
+    C(neutral::capture(current.model,*standing_frame,marker,*math_work,calibration));
     C(neutral::move(calibration,current.source.component_to_world,calibrated));
     adapter::Policy policy{};policy.now_ns=host_now;policy.allow_sim=true;policy.scope=body::Scope::fixed_cover;
     adapter::CoverPoseMeasurement measured{};
@@ -108,7 +111,11 @@ int main(int argc,char** argv){
     if(scenario==2)++drag.pawn.name_index;
     if(scenario==3)cover_context_live::host_change_closing=true;
     if(scenario==9)cover_context_live::host_action=3;
-    if(scenario==10)live::hands_enabled=true; // Actual shared-hand configuration must not veto cover.
+    if(scenario==11){
+        goal::cover_cache.calibrated=true;goal::cover_cache.calibration=calibration;
+        goal::cover_cache.calibration_key=goal::cover_current_key();
+    }
+    if(scenario==10||scenario==11)live::hands_enabled=true; // Actual shared-hand configuration must not veto cover.
     goal::pose_begin(entry);
     C(!std::memcmp(&entry,&entry_before,sizeof entry));
     if((scenario>=1&&scenario<=3)||scenario==9){
@@ -120,6 +127,10 @@ int main(int argc,char** argv){
         if(!goal::pending.committed){printf("cover reason=%u apply=%llu\n",goal::cover_reason,goal::applied.load());return 1;}
         C(!goal::origin.initialized&&goal::cover_cache.calibrated&&goal::cover_fits==1);
         C(current.cover_plan&&current.kernel.outstanding_fields()>0);
+        if(scenario==11)for(unsigned i:{65u,67u,106u}){
+            C(!std::memcmp(&current.output.local[i],&frame->local[i],sizeof(body::Atom)));
+            C((current.output.changed_mask[i/64]&(uint64_t(1)<<(i%64)))==0);
+        }
         if(scenario!=4){live::before_original(entry);fixture.captured=current.source;fixture.original_space();}
         if(scenario==5)reinterpret_cast<body::Matrix64*>(fixture.space.data)[body::head].values[12]+=1;
         goal::pose_end(entry,scenario!=7,scenario!=4);

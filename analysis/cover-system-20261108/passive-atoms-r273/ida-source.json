@@ -1,0 +1,15 @@
+{
+  "original": "J:\\gearsVr\\analysis\\ida\\camera-110878-20261014\\section_1000.bin.i64",
+  "sha256": "a87a4802eadec9403a4f3fcbfde330d2f11a087754b25c5ab4cb5d31f2c9eab0",
+  "private_copy": "J:\\codexWorktree\\gearsVr\\analysis\\cover-system-20261108\\passive-atoms-r273\\owned-ida\\snapshot.i64",
+  "original_copy_before_cli": true,
+  "connector_failure": "ida_nexus plugin missing; REA I64 unsupported",
+  "previous_connector_target": "J:/gearsVr/analysis/ui-position-runtime/owned-metadata1-ida/snapshot.i64",
+  "previous_target_sha_after_failed_connector": "244e9060a525b81d1a101b5bf3138dd44018bafef15bf5479bc762bd84d963cc",
+  "previous_expected_from_source_json": "66d17edbf21bf81f0fe5cf740111e738a0308ac9228f7576fe39f460baad1813",
+  "previous_target_lastwrite_after_attempt": true,
+  "previous_target_is_historical_private_analysis_copy_not_game": true,
+  "no_original_game_mutation": true,
+  "upstream_source_after_cli_sha256": "a87a4802eadec9403a4f3fcbfde330d2f11a087754b25c5ab4cb5d31f2c9eab0",
+  "upstream_unchanged": true
+}
