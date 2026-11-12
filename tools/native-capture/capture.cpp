@@ -116,6 +116,8 @@ gears_support::Recorder support_diagnostics;
 #include "../vr-common/weapon_lancer_original_handle.h"
 #include "../vr-common/weapon_lancer_handle_morph.h"
 #include "cover_surface_getters.h"
+#include "cover_l2_viewpoint_getter.h"
+#include "../vr-common/cover_l2_grab_points.h"
 #include "../vr-common/weapon_hand_owner_adapter.h"
 #include <new>
 #include "first_person_view.h"
@@ -1436,6 +1438,7 @@ bool read_attested_hook_entry(void* output,void const* source,size_t size);
 #include "cover_geometry_live.inl"
 #include "cover_geometry_observer_live.inl"
 #include "cover_input_live.inl"
+#include "cover_l2_grab_live.inl"
 #include "weapon_hand_runtime.inl"
 #include "weapon_part_visibility_live.inl"
 #include "lancer_original_handle_live.inl"

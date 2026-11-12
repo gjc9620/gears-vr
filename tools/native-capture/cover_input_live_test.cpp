@@ -26,7 +26,7 @@ bool publish_target(LiveTarget const& target){publication_lock_free=mutex.try_lo
 namespace cover_neutral_eye_live {
 struct EyeSample {
     gears_anchor::Identity pawn,mesh,link;uintptr_t current_world{};uint64_t world_generation{};
-    int slot{};uint64_t calibrated_ms{},scene_invocation{};unsigned char special_move{};
+    int slot{};uint64_t calibrated_ms{},scene_invocation{};unsigned char special_move{},native_ct{};
     gears_vr::Vector neutral_eye_world;
 };
 struct Context {struct {gears_anchor::Identity pawn;} binding;gears_anchor::Identity mesh,world;uint64_t generation{};unsigned sm{};};

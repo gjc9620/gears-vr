@@ -1,0 +1,3 @@
+geometry proof: 117 sources, 38 identities; cold=14421/warm=8985 synthetic reads
+geometry legacy candidate checks including final teardown: 655
+cover_geometry_live: 953 checks, 0 failures

@@ -1,0 +1,52 @@
+{
+  "status": "input points wired; C0 body branch still pending",
+  "game_started": false,
+  "headset_accepted": false,
+  "collision_required": false,
+  "occlusion_deferred": true,
+  "native_dll_sha256": "3c94b0a30c4106d520512e474b01db5582d3fa950802db1f7f2191c606b9da58",
+  "native_build": "native-build-v2-result.json",
+  "checks": {
+    "getter": {
+      "result": "getter-result.json",
+      "sha256": "3e4ec873880660ed35d83243644b3aa2238b4f9de2e169886ec9fb916dc79922",
+      "output": "CoverL2ViewpointGetterTest checks=39 failures=0"
+    },
+    "live": {
+      "result": "live-result.json",
+      "sha256": "5542f46d61af6b6ec88f588b979b01905f63989da103c406700c0158ceae8f43",
+      "output": "CoverL2GrabLiveTest checks=15 failures=0"
+    },
+    "geometry": {
+      "result": "geometry-result.json",
+      "sha256": "33e837920dc4198a4a514be777dbc9c4152d58d54fb4b417950b55b7960cea9f",
+      "output": "geometry proof: 117 sources, 38 identities; cold=14421/warm=8985 synthetic reads\r\ngeometry legacy candidate checks including final teardown: 655\r\ncover_geometry_live: 953 checks, 0 failures"
+    },
+    "input": {
+      "result": "input-result.json",
+      "sha256": "64f1bb3fb4cb1764ef22030ec187fcb1c5500288858cada031ac5859afc0e3f6",
+      "output": "cover_input_live: 62 checks, 0 failures"
+    },
+    "shared": {
+      "result": "shared-result.json",
+      "sha256": "a26ea17b22278fdac5c174e812f2fd534ff5fe76535127be80699e80bbb47bbe",
+      "output": "cover_shared_input_live outside: 25 checks, 0 failures"
+    },
+    "neutral": {
+      "result": "neutral-result.json",
+      "sha256": "96207cab60cb0f4f05501587c8e0a6184c33c4489196ff0c67b8254741da962e",
+      "output": "cover_neutral_eye_live: 340 checks, 0 failures"
+    },
+    "camera": {
+      "result": "camera-result.json",
+      "sha256": "ff1389dd7e25e21caa0cd9ce781a44377f0bacacbb48f7005aaa5dd69376446d",
+      "output": "cover_camera_live: 1258 checks, 0 failures"
+    }
+  },
+  "remaining": [
+    "Live current-image match and actual original L2 point output not yet observed",
+    "C0 sole body writer still rejects cover; connect current full target and fitted cover neutral",
+    "Legacy body preview still restricted to low cover; high-cover neutral reading is not high-cover gameplay acceptance",
+    "Short owned game check, paired output review, identified manual candidate and owner headset feedback"
+  ]
+}

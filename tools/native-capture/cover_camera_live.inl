@@ -33,7 +33,7 @@ struct Diagnostics {
 } diagnostics;
 bool same_key(neutral::EyeSample const& a,neutral::EyeSample const& b){return
     gears_anchor::equal_identity(a.pawn,b.pawn)&&gears_anchor::equal_identity(a.mesh,b.mesh)&&gears_anchor::equal_identity(a.link,b.link)&&
-    a.current_world==b.current_world&&a.world_generation==b.world_generation&&a.slot==b.slot&&a.calibrated_ms==b.calibrated_ms&&
+    a.current_world==b.current_world&&a.world_generation==b.world_generation&&a.slot==b.slot&&a.native_ct==b.native_ct&&a.calibrated_ms==b.calibrated_ms&&
     a.head_name==b.head_name&&a.head_index==b.head_index&&a.neutral_offset.x==b.neutral_offset.x&&
     a.neutral_offset.y==b.neutral_offset.y&&a.neutral_offset.z==b.neutral_offset.z;}
 bool reject(Reason reason,gears_anchor::Receipt const* scene){

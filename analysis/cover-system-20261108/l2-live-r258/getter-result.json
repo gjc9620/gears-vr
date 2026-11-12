@@ -1,0 +1,11 @@
+{
+  "build_exit": 0,
+  "test_exit": 0,
+  "output": "CoverL2ViewpointGetterTest checks=39 failures=0\r\n",
+  "source_sha256": {
+    "tools\\native-capture\\cover_l2_viewpoint_getter.h": "59f247c1703944ba2740cbc9c745067a9edfe80c5205da6425ed28000fd7f1b7",
+    "tools\\native-capture\\cover_surface_getters.h": "030c660e0ac74d4b73965e81a27328222c6c1f5a21abf2336d5b686a9eeb3b83",
+    "tools\\native-capture\\cover_bone_getters.h": "b4a54fc8834f563dae3b4291936696792d0cb6af0131e4a3c6ec4fd3304f4996",
+    "tools\\native-capture\\cover_l2_viewpoint_getter_test.cpp": "40449fdc97d080313f7ba1cddcf2b241651488aef205f922409ffc1944f5aa48"
+  }
+}

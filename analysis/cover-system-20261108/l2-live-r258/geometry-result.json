@@ -1,0 +1,21 @@
+{
+  "build_exit": 0,
+  "test_exit": 0,
+  "output": "geometry proof: 117 sources, 38 identities; cold=14421/warm=8985 synthetic reads\r\ngeometry legacy candidate checks including final teardown: 655\r\ncover_geometry_live: 953 checks, 0 failures\r\n",
+  "source_sha256": {
+    "tools\\native-capture\\anchor_observer.h": "f2d8425ba10591c9700937244391f37b5ccf6ec3ffe6685beab34edb51e433fe",
+    "tools\\native-capture\\crosshair_scene_evidence.h": "4030db5fb3ad4d29b5447371f9cc27b6fc22e81eb854b7620bead9662d14bb49",
+    "tools\\native-capture\\crosshair_writer_view.h": "8368f7c112c0357e4b132e8d7d7bfeb1f24ba459678af03d883ebb35607b5927",
+    "tools\\native-capture\\mounted_actor_type.h": "1a9af3c9fcd9e0cd49100503fcfe07a089d59c065ec2f8af83555c1094eefb0a",
+    "tools\\native-capture\\mounted_observer.inl": "fa08e470befaa5c8de28cd5063ffc821e91940714429efdac28fe44f0f91bbb1",
+    "tools\\native-capture\\cover_surface_getters.h": "030c660e0ac74d4b73965e81a27328222c6c1f5a21abf2336d5b686a9eeb3b83",
+    "tools\\native-capture\\cover_bone_getters.h": "b4a54fc8834f563dae3b4291936696792d0cb6af0131e4a3c6ec4fd3304f4996",
+    "tools\\native-capture\\cover_l2_viewpoint_getter.h": "59f247c1703944ba2740cbc9c745067a9edfe80c5205da6425ed28000fd7f1b7",
+    "tools\\vr-common\\pose_math.h": "d89ece54a2a4c77c71ebc4d04104c651ed292d833dc401ede8611bdd89f3c482",
+    "tools\\third-party\\minhook\\include\\minhook.h": "c3608e584bd9659aebdbb4c8c82585605989193623f240552d35c43311b3d31a",
+    "tools\\native-capture\\cover_body_live.inl": "2c593320e3bdb7df960f4f7d12bbee5057b20323e7c8ce31d8de1c30857e05bb",
+    "tools\\native-capture\\cover_neutral_eye_live.inl": "8d1cdd8c2a0ccf232a3fb2480da8f7147a51e279e8f06a4ac75d2b6e41c08a0f",
+    "tools\\native-capture\\cover_geometry_live.inl": "4d451294956863b2e8e3d2d856ddd69af5a61d187b539556217c6675465ea804",
+    "tools\\native-capture\\cover_geometry_live_test.cpp": "cf70e3290647f0a420bbffe103a81cc5b10946888ba6a6ef2eb7bf51ac3a728c"
+  }
+}

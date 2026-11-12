@@ -305,10 +305,53 @@ bool sample_native_with(gears_anchor::Receipt const* scene,EyeSample const& eye,
 bool sample_native_with(gears_anchor::Receipt const* scene,EyeSample const& eye,Geometry& out){
     return sample_native_with(scene,eye,out,NativeQuery{});
 }
+// Owner 2026-11-12: original L2 reference points, no collision prerequisite.
+// The current reflected layout and typed Scene remain checked; only the
+// read-only vector implementation is dispatched, never an input/action setter.
+template<class Query>
+bool sample_l2_with(gears_anchor::Receipt const* scene,EyeSample const& eye,Geometry& out,
+    gears_cover_l2_points::Result& points,Query query){
+    gears_cover_l2_points::Result next{};
+    const bool okay=sample_with_impl(scene,eye,out,[&](neutral::Context const& before,Values const& first,EyeSample const& key,Geometry&){
+        if(!native_layout_matches()||proof.link[4].offset!=0x384||proof.link[5].offset!=0x390||
+           proof.slot[4].offset!=9)return reject(Reason::native_layout);
+        const auto original=*scene;
+        auto guard=[&](){neutral::Context current{};Values observed{};
+            return !std::memcmp(&original,scene,sizeof original)&&scene->thread==GetCurrentThreadId()&&
+                body::game_thread.load()==scene->thread&&neutral::body_ready()&&neutral::proof_current()&&
+                proof_current()&&neutral::context(*scene,current)&&neutral::same_values(before,current)&&
+                matches(current,key)&&matches(current,eye)&&calibration_matches(current,key)&&
+                calibration_matches(current,eye)&&eye.scene_invocation==key.scene_invocation&&
+                values(current,observed)&&same_values(first,observed);
+        };
+        const gears_cover_l2_points::Permissions permission{
+            (first.words[0]&proof.masks[0])!=0,(first.words[1]&proof.masks[1])!=0,
+            (first.words[2]&proof.masks[2])!=0,(first.words[3]&proof.masks[3])!=0};
+        if(!guard())return reject(Reason::changed);
+        if(!query(base,before.link.address,before.slot,scene->thread,key.native_ct,
+            permission,safe_copy,guard,next))return reject(Reason::native_getter);
+        return guard()||reject(Reason::changed);
+    });
+    if(okay)points=next;
+    return okay;
+}
+struct L2Query {
+    template<class Read,class Guard>bool operator()(uintptr_t module,uintptr_t link,int slot,unsigned thread,
+        unsigned char type,gears_cover_l2_points::Permissions permission,Read read,Guard guard,
+        gears_cover_l2_points::Result& out)const{
+        return gears_cover_l2_points::query(module,link,slot,thread,type,permission,read,guard,out);
+    }
+};
+bool sample_l2_with(gears_anchor::Receipt const* scene,EyeSample const& eye,Geometry& out,
+    gears_cover_l2_points::Result& points){return sample_l2_with(scene,eye,out,points,L2Query{});}
 #else
 bool sample_with(gears_anchor::Receipt const*,EyeSample const&,Geometry&){return reject(Reason::body_unavailable);}
 template<class Query>bool sample_native_with(gears_anchor::Receipt const*,EyeSample const&,Geometry&,Query){return reject(Reason::body_unavailable);}
 bool sample_native_with(gears_anchor::Receipt const*,EyeSample const&,Geometry&){return reject(Reason::body_unavailable);}
+template<class Query>bool sample_l2_with(gears_anchor::Receipt const*,EyeSample const&,Geometry&,
+    gears_cover_l2_points::Result&,Query){return reject(Reason::body_unavailable);}
+bool sample_l2_with(gears_anchor::Receipt const*,EyeSample const&,Geometry&,
+    gears_cover_l2_points::Result&){return reject(Reason::body_unavailable);}
 #endif
 bool sample(EyeSample const& eye,Geometry& out){
     if(current_scene&&current_scene->poisoned())return reject(Reason::nested_scene);

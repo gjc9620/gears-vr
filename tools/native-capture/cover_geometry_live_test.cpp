@@ -17,6 +17,7 @@
 #include <limits>
 #include "anchor_observer.h"
 #include "cover_surface_getters.h"
+#include "cover_l2_viewpoint_getter.h"
 #include "../vr-common/pose_math.h"
 #include "MinHook.h"
 uintptr_t base=0x140000000;

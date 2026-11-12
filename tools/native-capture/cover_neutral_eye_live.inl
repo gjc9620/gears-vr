@@ -160,7 +160,7 @@ struct Context {
     uint32_t transition_word{};gears_vr::Vector location{};
 };
 bool same_key(Context const& a,Context const& b){return a.generation==b.generation&&gears_anchor::equal_binding(a.binding,b.binding)&&
-    body::same(a.mesh,b.mesh)&&body::same(a.link,b.link)&&body::same(a.world,b.world)&&body::same(a.world_type,b.world_type)&&a.slot==b.slot;}
+    body::same(a.mesh,b.mesh)&&body::same(a.link,b.link)&&body::same(a.world,b.world)&&body::same(a.world_type,b.world_type)&&a.slot==b.slot&&a.ct==b.ct;}
 bool same_values(Context const& a,Context const& b){return same_key(a,b)&&a.ct==b.ct&&a.ca==b.ca&&a.sm==b.sm&&a.last==b.last&&
     ((a.transition_word^b.transition_word)&proof.mask)==0&&a.location.x==b.location.x&&a.location.y==b.location.y&&a.location.z==b.location.z&&
     body::cohort(a.objects,b.objects)&&body::cohort(a.names,b.names);}
@@ -202,7 +202,7 @@ bool context(gears_anchor::Receipt const& scene,Context& out){
     context_stage="ready";out=c;return true;
 }
 bool neutral(Context const& c){
-    if(c.ct!=2||c.sm||c.ca||c.last||(c.transition_word&proof.mask)||body::stopping.load()||body::rounds_open()||body::transactions.load())return false;
+    if((c.ct!=1&&c.ct!=2)||c.sm||c.ca||c.last||(c.transition_word&proof.mask)||body::stopping.load()||body::rounds_open()||body::transactions.load())return false;
     if(!body::neutral_pose_for(c.binding.pawn.address,c.mesh.address))return false;
     const unsigned s=body::step.load();if(body::injecting&&(s>=body::steps.size()||body::steps[s]!=0))return false;
     // A released global input flag cannot make an old owned driven pose neutral.
@@ -252,7 +252,7 @@ template<class Clock,class Query> bool sample_with(gears_anchor::Receipt const* 
         }
         Context first{};if(!context(*scene,first)){calibration.ready=false;return reject(Reason::link);}
         if(!calibration.have_key||!same_key(calibration.key,first)){clear_binding();calibration.have_key=true;calibration.key=first;}
-        if(first.ct!=2){calibration.ready=false;return reject(Reason::not_low_cover);}
+        if(first.ct!=1&&first.ct!=2){calibration.ready=false;return reject(Reason::not_low_cover);}
         auto guard=[&](){Context current{};return body_ready()&&proof_current()&&context(*scene,current)&&same_values(first,current);};
         if(!guard())return reject(Reason::changed);
         if(!std::isfinite(stereo_units_per_metre)||stereo_units_per_metre<10||stereo_units_per_metre>500)return reject(Reason::range);

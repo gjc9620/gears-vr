@@ -207,6 +207,13 @@ int main(){
  auto& owned=b::journals[0];owned.used=true;owned.pawn=fixture_pawn;owned.mesh=fixture_mesh;owned.owned[0]=true;owned.native_visible[0]=true;owned.target_u=.05f;
  C(!sample(out)&&n::last_reason==n::Reason::neutral_wait&&!queries);owned.owned[0]=false;C(!sample(out));clock_ms=100;C(sample(out)&&queries==1);
  b::target_source=b::TargetSource::advance;b::live_state={};b::enabled=false;
+ // Both original standing and mid-level cover calibrate. Their neutrals must
+ // never be shared when the same slot changes effective cover type.
+ setup();put(fixture_pawn+0x190,static_cast<unsigned char>(1));C(calibrate(out)&&out.native_ct==1);
+ head_offset.z=45;put(fixture_pawn+0x190,static_cast<unsigned char>(2));clock_ms+=100;
+ C(!sample(out)&&n::last_reason==n::Reason::neutral_wait);clock_ms+=100;
+ C(sample(out)&&out.native_ct==2&&out.neutral_offset.z==45&&queries==2);
+ setup();put(fixture_pawn+0x190,static_cast<unsigned char>(3));C(!sample(out)&&!queries);
  unsigned overflow_value{};C(!n::source_field(overflow_value,UINTPTR_MAX-2,4));
  C(VirtualFree(reinterpret_cast<void*>(arena),0,MEM_RELEASE)!=0);printf("cover_neutral_eye_live: %u checks, %u failures\n",checks,failures);return failures?1:0;
 }

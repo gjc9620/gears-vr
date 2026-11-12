@@ -228,15 +228,13 @@ bool prepare(gears_anchor::Receipt const* scene,gears_vr::StereoMatrix& view,gea
         frame.cover.sequence=frame.frame;frame.cover.observed_ns=stamp;frame.cover.epochs=input::epochs;
         frame.cover.cover_valid=cover;frame.cover.interaction_enabled=cover&&!eye.special_move;
         frame.cover.right_axis_tracking=axes.right;frame.cover.up_axis_tracking=axes.up;
-        // Candidate slot planes are NOT reach/collision certificates. Until
-        // native surface queries pass, cover must submit no grab request.
-        frame.cover.range={0,0,0,0};frame.cover.edge={};
         if(cover){frame.anchor={eye.neutral_eye_world,camera::facing.forward,camera::facing.right};
             frame.view_anchor=frame.anchor; // Legacy preview until continuous C0 basis is certified.
             frame.height_curve=input::height_curve.data();frame.height_key_count=unsigned(input::height_curve.size());}
         frame.stereo=stereo;frame.controllers=matched?&hands:nullptr;frame.now_ns=stamp;
         frame.units_per_metre=stereo_units_per_metre;frame.allow_sim=simulator_operator;frame.owner_context_valid=actor.context_valid;
         frame.allow_index_pinch=!cover;
+        if(cover)input::prepare_grab_points(scene,eye,frame);
         const auto decoded=input::participant.begin(frame,input::left_hand_owner);
         if(!decoded.accepted){++diagnostics.rejected;invalidate(wire::InvalidateReason::input_lost);return owned;}
         wire::Frame callback{};wire::Proposal proposal{};Pending pending{};

@@ -11,6 +11,18 @@ gears_vr::CoverInputOwner participant;
 // The sole GT arbiter. Future weapon participants must submit to this instance;
 // a second Playground/render-thread arbiter cannot grant cover's left hand.
 gears_vr::LeftHandInteractionOwner left_hand_owner;
+// Bound once by the native original-L2 collector. Offline consumers may leave
+// it absent; no fabricated reference point is substituted in that case.
+using GrabPointProvider=bool(*)(gears_anchor::Receipt const*,neutral::EyeSample const&,gears_vr::CoverInputOwnerFrame&);
+GrabPointProvider grab_points_provider{};
+uint64_t grab_reference_ready{},grab_reference_rejected{};
+gears_vr::CoverRange last_grab_range{};gears_vr::CoverEdgeObservation last_grab_edge{};
+bool prepare_grab_points(gears_anchor::Receipt const* scene,neutral::EyeSample const& eye,gears_vr::CoverInputOwnerFrame& frame){
+    frame.cover.range={};frame.cover.edge={};
+    const bool okay=grab_points_provider&&grab_points_provider(scene,eye,frame);
+    if(okay)++grab_reference_ready;else {++grab_reference_rejected;frame.cover.range={};frame.cover.edge={};}
+    last_grab_range=frame.cover.range;last_grab_edge=frame.cover.edge;return okay;
+}
 std::array<gears_vr::CoverHeightKey,3> height_curve{{{0,0},{.5,0},{1,0}}};
 gears_vr::CoverEpochs epochs{};
 neutral::EyeSample last_eye{};
@@ -30,7 +42,7 @@ bool increment(std::uint64_t& value){if(value==(std::numeric_limits<std::uint64_
 bool native_key(neutral::EyeSample const& a,neutral::EyeSample const& b){return
     gears_anchor::equal_identity(a.pawn,b.pawn)&&gears_anchor::equal_identity(a.mesh,b.mesh)&&
     gears_anchor::equal_identity(a.link,b.link)&&a.current_world==b.current_world&&
-    a.world_generation==b.world_generation&&a.slot==b.slot&&a.calibrated_ms==b.calibrated_ms;}
+    a.world_generation==b.world_generation&&a.slot==b.slot&&a.native_ct==b.native_ct&&a.calibrated_ms==b.calibrated_ms;}
 bool update_epochs(neutral::EyeSample const& eye,gears_vr::StereoResult const& stereo){
     auto next=epochs;
     const bool first=!next.world;
@@ -102,15 +114,14 @@ bool prepare(gears_anchor::Receipt const* scene,gears_vr::StereoMatrix& view,gea
     frame.cover.sequence=frame.frame;frame.cover.observed_ns=stamp;frame.cover.epochs=epochs;
     frame.cover.cover_valid=true;frame.cover.interaction_enabled=!eye.special_move;
     frame.cover.right_axis_tracking=axes.right;frame.cover.up_axis_tracking=axes.up;
-    // Geometry remains untrusted until native surface/reach queries pass. A
-    // candidate CoverSlot plane MUST NOT silently acquire LGrip ownership.
-    frame.cover.range={0,0,0,0};frame.cover.edge={};
     frame.anchor={eye.neutral_eye_world,camera::facing.forward,camera::facing.right};
     frame.view_anchor=frame.anchor; // Legacy preview basis; not a certified continuous C0 view.
     frame.stereo=stereo;frame.controllers=matched&&!interrupted?&input:nullptr;
     frame.height_curve=height_curve.data();frame.height_key_count=unsigned(height_curve.size());
     frame.units_per_metre=stereo_units_per_metre;frame.now_ns=stamp;
     frame.allow_sim=simulator_operator;frame.owner_context_valid=!eye.special_move;
+    // Owner 2026-11-12: use original L2 points/permissions, no collision gate.
+    prepare_grab_points(scene,eye,frame);
     interrupted=false;
     const auto result=participant.update(frame,left_hand_owner);diagnostics.latest=result;
     const auto status=unsigned(result.controller_status);if(status<diagnostics.controller_status.size())++diagnostics.controller_status[status];
@@ -147,8 +158,8 @@ bool configure(const wchar_t* ini,FILE* file){
        !read_height(ini,L"height_top_metres",height_curve[2].height_metres)||
        height_curve[1].height_metres>=height_curve[2].height_metres)return false;
     enabled=true;
-    fprintf(file,"cover_input_config enabled=1 experimental=1 exact_stereo_controller_v3=1 gt_owner=1 physical_position_drives_top=1 rotation_drives_stance=0 measured_half_metres=%.9g measured_top_metres=%.9g measured_profile_universal_acceptance=0 grip_geometry_ready=0 grip_acquisition_enabled=0 weapon_participants_connected=0\n",
-        height_curve[1].height_metres,height_curve[2].height_metres);return true;
+    fprintf(file,"cover_input_config enabled=1 experimental=1 exact_stereo_controller_v3=1 gt_owner=1 physical_position_drives_top=1 rotation_drives_stance=0 measured_half_metres=%.9g measured_top_metres=%.9g measured_profile_universal_acceptance=0 original_l2_provider=%u collision_required=0 weapon_participants_connected=0\n",
+        height_curve[1].height_metres,height_curve[2].height_metres,unsigned(grab_points_provider!=nullptr));return true;
 #endif
 }
 bool camera_frame_aligned(){return diagnostics.frame&&camera::diagnostics.last==camera::Reason::applied&&camera::diagnostics.latest_invocation==diagnostics.frame;}
@@ -159,6 +170,10 @@ void summary(FILE* file){
         static_cast<unsigned long long>(diagnostics.sequence),static_cast<unsigned long long>(diagnostics.reference),static_cast<unsigned long long>(diagnostics.frame),
         r.physical.right,r.physical.up,r.physical.forward,r.requested_up_metres,r.requested_up_weight,unsigned(diagnostics.hand_world_valid),diagnostics.hand_world.x,diagnostics.hand_world.y,diagnostics.hand_world.z);
     fprintf(file,"cover_input_camera_frame_aligned=%u ",unsigned(camera_frame_aligned()));
+    fprintf(file,"cover_input_l2_provider=%u cover_input_l2_ready=%llu cover_input_l2_rejected=%llu cover_input_l2_range=%.9g,%.9g,%.9g,%.9g cover_input_l2_edge=%llu,%u,%u,%u cover_input_collision_required=0 ",
+        unsigned(grab_points_provider!=nullptr),grab_reference_ready,grab_reference_rejected,
+        last_grab_range.min_right,last_grab_range.max_right,last_grab_range.min_up,last_grab_range.max_up,
+        static_cast<unsigned long long>(last_grab_edge.id),unsigned(last_grab_edge.kind),unsigned(last_grab_edge.allowed),unsigned(last_grab_edge.within_acquisition_reach));
 }
 void progress(FILE* file){std::lock_guard<decltype(stereo_mutex)> lock(stereo_mutex);summary(file);}
 void print(FILE* file){summary(file);fprintf(file,"\n");}

@@ -1,0 +1,159 @@
+{
+  "refs": [
+    {
+      "target": "0x1403b61b0",
+      "refs": [
+        {
+          "at": "0x14032a180",
+          "function": "0x140329d58"
+        },
+        {
+          "at": "0x1403b6012",
+          "function": "0x1403b5fc4"
+        },
+        {
+          "at": "0x1403b618c",
+          "function": "0x1403b60c0"
+        },
+        {
+          "at": "0x14094814f",
+          "function": "0x140947d47"
+        },
+        {
+          "at": "0x14094838f",
+          "function": "0x140947d47"
+        },
+        {
+          "at": "0x14094849f",
+          "function": "0x140948442"
+        },
+        {
+          "at": "0x140afe182",
+          "function": "0x140afe0d4"
+        },
+        {
+          "at": "0x140afe1b2",
+          "function": "0x140afe0d4"
+        },
+        {
+          "at": "0x140afe225",
+          "function": "0x140afe0d4"
+        },
+        {
+          "at": "0x140afe294",
+          "function": "0x140afe0d4"
+        },
+        {
+          "at": "0x140afe3f0",
+          "function": "0x140afe328"
+        },
+        {
+          "at": "0x140b030cf",
+          "function": "0x140b02f38"
+        },
+        {
+          "at": "0x140b031a2",
+          "function": "0x140b02f38"
+        },
+        {
+          "at": "0x140b031f6",
+          "function": "0x140b02f38"
+        },
+        {
+          "at": "0x140d22b96",
+          "function": "0x140d22468"
+        },
+        {
+          "at": "0x140d22bda",
+          "function": "0x140d22468"
+        },
+        {
+          "at": "0x140d22ce9",
+          "function": "0x140d22468"
+        },
+        {
+          "at": "0x140d22ddf",
+          "function": "0x140d22468"
+        },
+        {
+          "at": "0x140d22eab",
+          "function": "0x140d22468"
+        }
+      ]
+    }
+  ],
+  "records": [
+    {
+      "entry": "0x140329d58",
+      "targets": [
+        "0x3b61b0"
+      ],
+      "size": 1450,
+      "file": "0x140329d58-caller.c"
+    },
+    {
+      "entry": "0x1403b5fc4",
+      "targets": [
+        "0x3b61b0"
+      ],
+      "size": 249,
+      "file": "0x1403b5fc4-caller.c"
+    },
+    {
+      "entry": "0x1403b60c0",
+      "targets": [
+        "0x3b61b0"
+      ],
+      "size": 269,
+      "file": "0x1403b60c0-caller.c"
+    },
+    {
+      "entry": "0x140947d47",
+      "targets": [
+        "0x3b61b0"
+      ],
+      "size": 1659,
+      "file": "0x140947d47-caller.c"
+    },
+    {
+      "entry": "0x140948442",
+      "targets": [
+        "0x3b61b0"
+      ],
+      "size": 144,
+      "file": "0x140948442-caller.c"
+    },
+    {
+      "entry": "0x140afe0d4",
+      "targets": [
+        "0x3b61b0"
+      ],
+      "size": 581,
+      "file": "0x140afe0d4-caller.c"
+    },
+    {
+      "entry": "0x140afe328",
+      "targets": [
+        "0x3b61b0"
+      ],
+      "size": 836,
+      "file": "0x140afe328-caller.c"
+    },
+    {
+      "entry": "0x140b02f38",
+      "targets": [
+        "0x3b61b0"
+      ],
+      "size": 1999,
+      "file": "0x140b02f38-caller.c"
+    },
+    {
+      "entry": "0x140d22468",
+      "targets": [
+        "0x3b61b0"
+      ],
+      "size": 2895,
+      "file": "0x140d22468-caller.c"
+    }
+  ]
+}
