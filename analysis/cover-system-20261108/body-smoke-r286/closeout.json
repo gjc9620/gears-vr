@@ -1,0 +1,13 @@
+{
+  "result": "operator helper path failed before any Grip",
+  "operator_exit": 1,
+  "normal_cleanup_verified": true,
+  "remaining_owned": {},
+  "forced_termination": false,
+  "native_entries_restored": "1",
+  "cover_consumed": "266",
+  "cover_view_used": "266",
+  "runtime_report": "J:\\codexWorktree\\gearsVr\\analysis\\runtime\\continuous-stereo-37636-20261112-155426-0f332aa4.json",
+  "grip_executed": false,
+  "visual_review_performed": false
+}

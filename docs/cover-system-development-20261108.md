@@ -3620,3 +3620,16 @@ normal_cleanup_verified=true，Native cleanup/独立entries恢复/XR exit0、所
 仅在既有Input summary输出interaction phase/edge/request/owns/virtual offset/certified，供下一实际Grip检查分清获取/拖动/松手与C0视角；未改交互逻辑或第二仲裁器。r284 Native-v2在r282冻结树只改Input一文件，431依赖与flags/PHYSX OFF不变，DLL c4055b2136e42319e9ed9a1d28ae93155bcc542edaa0c9b6c02eff7f3a036e4d编译通过。
 
 新有界operator沿已有Source1 hand_move/gesture/pad路径，先用释放状态三轴5cm探针和实际hand_world求raw→world映射，检查单位/正交/奇异/回到原位及当前Stereo序列/新增body消费/view；不假定reference朝向零或旧preview轴。纯数学16项正/负例通过，无game/input调用。随后仅当前CT2左右原生L2点：接触/新Grip获取/12cm拖动/释放保持/再抓新request/反向回零/释放，HMD固定，禁碰撞查询，期望phase与owns和virtual/FullGoal共同通过；仍须真实运行及完整图像验证。operator源已解析，尚无Grip运行结果，不将此准备算交互完成。GrabPose/完整手臂拟合及其他需求保持未完成。
+
+
+### r286/r287 首次Grip检查入口修正与真实挂起32帧记录
+
+r285准备在helper字节hash核对时正确拒绝Windows换行转换，游戏未启动；r286用按字节副本准备成功，实际5个HMD阶段通过，但进入Grip helper前二次字符串解码把Windows路径中的\a/\b变控制符，operator OSError22。尚无Grip，normal_cleanup_verified=true；该检查器错误与产品故障分开记录。r287改正为正斜杠路径，离线模拟嵌套literal解码并检查两份helper实际路径/hash；仅保留当前neutral gate，省去重复4个HMD阶段。stdlib自检子进程首次10秒超时已终止，同cwd重复通过；续接仅验证已生成adapter/wrapper内容完全相同，不覆盖既有文件或去掉任何启动/身份/资源/输入保护，导入与路径自检最终通过，旧失败保留。
+
+r287 runner76270 exit1、operator1，实际到达释放手baseline并开始raw X 5cm定位探针，尚未按Grip；下一检查要求新增C0消费/view未达到而有界退出。cover consumed/view只有1；Native captures389/commits382、commit_code12=0、pending13。r282观察器游戏实证成功：cover_pending_ready=1、export_written=1，32份不可变记录在挂起期间导出并独立复制回读hash，存body-smoke-r287/actual-pending-observation.json及pending-archive-readback.json。
+
+具体证据：Kernel serial382已真实消费，13fields、protocol0/failure0/consumed1。安装epoch1067，32样本约1.154秒内current epoch1068→1099逐帧推进，storage_current/metadata_current均1；registry bound1，但coverage_epoch/event始终0、covered四字全0，required仍[1347,87960930222080,4989988387126509568,5]。因此不能把这次挂起解释为动画完全没Tick/只凭画面推断剔除，也没有本局commit拒绝证据。仅证明新原始姿态epoch持续出现，却未被现有decoder/Blend退休路径认证。
+
+16个branch槽含历史节点，不能全称当前。最后样本匹配current epoch的真实路径为depth1 f7940→depth2 f7940→depth3 f5b78→depth4 f7940，后者实际全权重child facb0（child epoch1098）；facb0自身保存项是较早调用，区别保留。下一步检查原始f7940/f5b78/facb0缓存/输出拷贝分支与当前decoder/Blend receipt的精确接入，结合原代码证书和实际输出地址证明真实Local覆写，不以值相等或epoch增长直接清债，不新增骨骼writer或降低身份/时效/恢复检查。在有针对性改动或新观测点前，不再跑相同Grip检查。
+
+r287 normal_cleanup_verified=false、Native entries_restored0，XR exit0、remaining_owned空、forced_termination=false；所属进程终态与内部恢复失败分开保留，未触及owner会话/Quest/公版。已有纯GrabPose基础cover_grab_pose.h、cover_grab_pose_adapter.h、cover_grab_tick_adapter.h继续复用，不能重复实现；当前真实Grip获取/拖动/松手保持/反向、逐点authored姿势/手臂过渡、高掩体/双模式、出掩体/伤害等仍未完成。

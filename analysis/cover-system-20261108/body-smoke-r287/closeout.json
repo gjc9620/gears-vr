@@ -1,0 +1,102 @@
+{
+  "result": "failed; first real immutable pending archive obtained",
+  "runner_exit": 1,
+  "operator_exit": 1,
+  "normal_cleanup_verified": false,
+  "forced_termination": false,
+  "remaining_owned": {},
+  "native_cleanup_verified": false,
+  "entries_restored": "0",
+  "xr_exit": 0,
+  "cover_consumed": "1",
+  "cover_view_used": "1",
+  "native_pending": "13",
+  "grip_executed": false,
+  "phase_reached": "released-hand baseline; 5cm raw X hand probe; no Grip press",
+  "archive_serial": 382,
+  "archive_samples": 32,
+  "sample_span_seconds": 1.1538922,
+  "installed_epoch": 1067,
+  "observed_epochs": [
+    1068,
+    1099
+  ],
+  "coverage_epoch": 0,
+  "journal_event": 0,
+  "required": [
+    1347,
+    87960930222080,
+    4989988387126509568,
+    5
+  ],
+  "covered": [
+    0,
+    0,
+    0,
+    0
+  ],
+  "active_latest_branches": [
+    {
+      "depth": 1,
+      "method_rva": "0xf7940",
+      "mesh_epoch": 1099,
+      "root_epoch": 1098,
+      "children": [
+        {
+          "method_rva": "0xf7940",
+          "epoch": 1098,
+          "cache_count": 0,
+          "weight_bits": 1065353216
+        }
+      ]
+    },
+    {
+      "depth": 2,
+      "method_rva": "0xf7940",
+      "mesh_epoch": 1099,
+      "root_epoch": 1098,
+      "children": [
+        {
+          "method_rva": "0xf5b78",
+          "epoch": 1098,
+          "cache_count": 0,
+          "weight_bits": 1065353216
+        }
+      ]
+    },
+    {
+      "depth": 3,
+      "method_rva": "0xf5b78",
+      "mesh_epoch": 1099,
+      "root_epoch": 1098,
+      "children": [
+        {
+          "method_rva": "0xf7940",
+          "epoch": 1098,
+          "cache_count": 0,
+          "weight_bits": 1065353216
+        }
+      ]
+    },
+    {
+      "depth": 4,
+      "method_rva": "0xf7940",
+      "mesh_epoch": 1099,
+      "root_epoch": 1098,
+      "children": [
+        {
+          "method_rva": "0xfacb0",
+          "epoch": 1098,
+          "cache_count": 0,
+          "weight_bits": 1065353216
+        }
+      ]
+    }
+  ],
+  "cause": "unknown; original pose epoch advances, storage/metadata current, but no decoder overwrite coverage is admitted. Do not equate this with culling/no animation tick or relax retirement.",
+  "runtime_report": "J:\\codexWorktree\\gearsVr\\analysis\\runtime\\continuous-stereo-53384-20261112-160149-0e2b6dc9.json",
+  "runtime_report_sha256": "c1a2fa4bee3fc064f8917ba0382980218a3142e82bcb7071f7f3d89d4ca7bca5",
+  "archive_sha256": "b0b4f84cd015109204d9e8a971cd9ae7ec37624d53553a8c493b5cec4eed2897",
+  "archive_bytes": 388873,
+  "headset_accepted": false
+}

@@ -1,0 +1,66 @@
+{
+  "metadata_continues_to_advance": true,
+  "no_coverage_ever_admitted_in_sample": true,
+  "storage_and_metadata_current_in_all_samples": true,
+  "grip_not_executed": true,
+  "all_16_branches_not_claimed_current": true,
+  "active_latest_branches": [
+    {
+      "depth": 1,
+      "method_rva": "0xf7940",
+      "mesh_epoch": 1099,
+      "root_epoch": 1098,
+      "children": [
+        {
+          "method_rva": "0xf7940",
+          "epoch": 1098,
+          "cache_count": 0,
+          "weight_bits": 1065353216
+        }
+      ]
+    },
+    {
+      "depth": 2,
+      "method_rva": "0xf7940",
+      "mesh_epoch": 1099,
+      "root_epoch": 1098,
+      "children": [
+        {
+          "method_rva": "0xf5b78",
+          "epoch": 1098,
+          "cache_count": 0,
+          "weight_bits": 1065353216
+        }
+      ]
+    },
+    {
+      "depth": 3,
+      "method_rva": "0xf5b78",
+      "mesh_epoch": 1099,
+      "root_epoch": 1098,
+      "children": [
+        {
+          "method_rva": "0xf7940",
+          "epoch": 1098,
+          "cache_count": 0,
+          "weight_bits": 1065353216
+        }
+      ]
+    },
+    {
+      "depth": 4,
+      "method_rva": "0xf7940",
+      "mesh_epoch": 1099,
+      "root_epoch": 1098,
+      "children": [
+        {
+          "method_rva": "0xfacb0",
+          "epoch": 1098,
+          "cache_count": 0,
+          "weight_bits": 1065353216
+        }
+      ]
+    }
+  ],
+  "next_source_question": "Inspect original f7940 -> f5b78 -> f7940 -> facb0 cache/output paths and exact registered decoder/Blend receipt admission; identify current genuine Local overwrite without value-equality or new writer shortcuts"
+}
