@@ -1,0 +1,51 @@
+{
+  "name": "cover-1112-r268-cloak-shape",
+  "native_sha256": "eb29eb8a8295ecd86bdb8f4d3b1d0109d018e6f2436c683bfa8e3ca9a016223e",
+  "raw_result": "J:\\codexWorktree\\gearsVr\\analysis\\instances\\cover-1112-r268-cloak-shape\\cover-output\\run-result.json",
+  "raw_result_sha256": "a3b7be07a3a05bac7a5dad3042d39457293b0c125684ac313d4ad93514647e1d",
+  "result": {
+    "error": "RuntimeError('Own ordinary cover observation failed; preserve operator log')",
+    "operator_exit": 1,
+    "projection_frames": 271,
+    "normal_cleanup_verified": true,
+    "remaining_owned": {},
+    "isolated_done": {
+      "launcher_exit": 0,
+      "owned_game_absent": true,
+      "owned_children": {
+        "recorded": 0,
+        "remaining": []
+      },
+      "forced_termination": false,
+      "worker_error": null,
+      "no_game_started": false
+    }
+  },
+  "session": {
+    "phase": "stopped",
+    "native_started": true,
+    "native_cleanup_verified": true,
+    "entry_restore_verified": true,
+    "xr_exit_code": 0
+  },
+  "facts": {
+    "cover_body_live_published": "0",
+    "cover_input_l2_range": "-0.699999975,0.699999913,0,0.51",
+    "body_goal_cover_enabled": "1",
+    "body_goal_cover_fits": "0",
+    "body_goal_cover_plans": "0",
+    "body_goal_cover_applied": "0",
+    "body_goal_cover_consumed": "0",
+    "body_goal_cover_rejected": "303",
+    "body_goal_cover_reason": "8",
+    "body_goal_cover_measure_status": "13",
+    "body_goal_cover_measure_bad_bone": "4294967295",
+    "body_goal_cover_measure_bad_scale": "0",
+    "body_goal_cover_measure_atom_status": "3",
+    "body_goal_cover_measure_component_length": "1.00000004"
+  },
+  "finding": "Actual measurement Status13 cover_atom, underlying IK Status3 atom; component ~1.00000004 and scale checks passed. Exact offending quaternion/translation still missing; no causal repair claim.",
+  "next": "Capture first actual failing atom values and index under existing admitted C0 source, preserving rejection; compare original Compose expectations before changing solver/source behavior.",
+  "visual_review_pending": true,
+  "grab_actions_reached": false
+}
