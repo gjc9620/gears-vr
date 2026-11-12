@@ -6,6 +6,11 @@ uint64_t cover_fits{},cover_plans{},cover_applied{},cover_completed{},cover_reje
 unsigned cover_reason{};
 a::Status cover_measure_status{a::Status::okay};
 unsigned cover_measure_bad_bone{~0u},cover_measure_atom_status{};float cover_measure_bad_scale{};double cover_measure_component_length{};
+struct CoverAtomFailure {
+    unsigned bone{};b::ik::Atom atom{};double quaternion_length{};bool quaternion_ok{},translation_ok{};
+};
+std::array<CoverAtomFailure,8> cover_bad_atoms{};unsigned cover_bad_atom_count{},cover_bad_atom_total{};
+uint64_t cover_bad_atom_tick{},cover_bad_atom_scene{};bool cover_bad_atom_saved{};
 struct CoverCache {
     cc::Frozen frozen{};gears_cover_neutral_goal::Workspace work{};
     a::marker::Marker marker{};a::marker::Workspace marker_work{};
@@ -82,8 +87,24 @@ template<class Source>bool prepare_cover_source(Entry const& e,Source const& sou
             if(cover_measure_status==a::Status::cover_scale){
                 for(unsigned i=0;i<b::bones;++i)if(!b::d::unit_animation_scale(s.source.local[i].scale)){
                     cover_measure_bad_bone=i;cover_measure_bad_scale=s.source.local[i].scale;break;}
-            }else if(cover_measure_status==a::Status::cover_atom)
+            }else if(cover_measure_status==a::Status::cover_atom){
                 cover_measure_atom_status=unsigned(b::ik::detail::validate(s.source.local.data(),s.model.parents.data(),b::bones,component));
+                // First actual failing frame, immutable even if later rejects
+                // differ. Only reads the already admitted private C0 copy.
+                if(!cover_bad_atom_saved){
+                    cover_bad_atom_saved=true;cover_bad_atom_tick=s.context.tick;
+                    cover_bad_atom_scene=s.context.source.scene_invocation;
+                    for(unsigned i=0;i<b::bones;++i){auto const& atom=s.source.local[i];b::Quat q{};
+                        const bool q_ok=b::ik::detail::normalized({atom.q[0],atom.q[1],atom.q[2],atom.q[3]},q);
+                        const bool t_ok=b::ik::detail::finite_vector({atom.translation[0],atom.translation[1],atom.translation[2]});
+                        if(q_ok&&t_ok&&std::isfinite(atom.scale)&&atom.scale>0)continue;
+                        ++cover_bad_atom_total;if(cover_bad_atom_count>=cover_bad_atoms.size())continue;
+                        auto& bad=cover_bad_atoms[cover_bad_atom_count++];bad.bone=i;bad.atom=atom;
+                        bad.quaternion_length=std::hypot(std::hypot(double(atom.q[0]),double(atom.q[1])),std::hypot(double(atom.q[2]),double(atom.q[3])));
+                        bad.quaternion_ok=q_ok;bad.translation_ok=t_ok;
+                    }
+                }
+            }
             cover_reason=8;return false;
         }
         placement=measured.binding;placement.anchor=drag.anchor;placement.view_anchor=drag.view_anchor;

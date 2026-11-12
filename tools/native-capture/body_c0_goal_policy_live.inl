@@ -475,6 +475,12 @@ void summary(FILE* f){if(!f)return;
         unsigned(cover_enabled),cover_fits,cover_plans,cover_applied,cover_completed,cover_rejected,cover_reason);
     fprintf(f,"body_goal_cover_measure_status=%u body_goal_cover_measure_bad_bone=%u body_goal_cover_measure_bad_scale=%.9g body_goal_cover_measure_atom_status=%u body_goal_cover_measure_component_length=%.9g ",
         unsigned(cover_measure_status),cover_measure_bad_bone,cover_measure_bad_scale,cover_measure_atom_status,cover_measure_component_length);
+    fprintf(f,"body_goal_cover_bad_atoms=%u,%u,%llu,%llu ",cover_bad_atom_count,cover_bad_atom_total,cover_bad_atom_tick,cover_bad_atom_scene);
+    for(unsigned i=0;i<cover_bad_atom_count;++i){auto const& bad=cover_bad_atoms[i];auto const& atom=bad.atom;
+        fprintf(f,"body_goal_cover_bad_atom_%u=%u,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%.17g,%u,%u ",
+            i,bad.bone,atom.q[0],atom.q[1],atom.q[2],atom.q[3],atom.translation[0],atom.translation[1],atom.translation[2],atom.scale,
+            bad.quaternion_length,unsigned(bad.quaternion_ok),unsigned(bad.translation_ok));
+    }
     fprintf(f,"body_goal_absent_epoch=%llu ",static_cast<unsigned long long>(cover_shared_input_live::goal_absent_epoch.load(std::memory_order_acquire)));
     const auto state=first_reject_state.load(std::memory_order_acquire);
     if(state==2){auto const& r=first_reject;
