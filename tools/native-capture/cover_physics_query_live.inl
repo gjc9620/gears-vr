@@ -17,7 +17,7 @@ namespace component_roles=cover_component_roles_live;
 namespace path=gears_cover_capsule_path;
 namespace timing=gears_cover_query_timing;
 enum class Stage:unsigned {idle,geometry,physics_roles,collider_roles,component_roles,engine,closing,complete};
-struct Observation {Stage stage{};unsigned detail{};q::QueryProgress engine{};roles::LayoutObservation layout{};gears_cover_query_guard::Witness guard{};unsigned physics_rechecks{},asset_read_guards{},query_read_guards{};};
+struct Observation {Stage stage{};unsigned detail{};q::QueryProgress engine{};roles::LayoutObservation layout{};gears_cover_query_guard::Witness guard{};unsigned physics_rechecks{},asset_read_guards{},query_read_guards{};gears_cover_proof_pass::Counts component_proofs{};};
 #if defined(GEARS_COVER_BODY_PROTOTYPE) && GEARS_COVER_BODY_PROTOTYPE
 template<class Engine=q::Queries> class Session {
     Engine engine_{};roles::Workspace work_{};roles::Snapshot before_{},after_{};
@@ -31,6 +31,7 @@ template<class Engine=q::Queries> class Session {
     Stage stage_{};unsigned detail_{};
     gears_cover_query_guard::Witness guard_witness_{};
     unsigned physics_rechecks_{},asset_read_guards_{},query_read_guards_{};
+    gears_cover_proof_pass::Counts component_proofs_before_{};
     template<class Current> struct QueryReadGuard;
     struct NoLocalResult {};
     struct AssetReadRequest {unsigned version{1};};
@@ -185,6 +186,7 @@ template<class Engine=q::Queries> class Session {
            q::source::aliases(&output,sizeof output,&metadata,sizeof metadata)||q::source::aliases(&output,sizeof output,&shape,sizeof shape))return q::Code::request;
         bool expected=false;if(!busy_.compare_exchange_strong(expected,true))return q::Code::reentrant;Finish finish{busy_};
         stage_=Stage::geometry;detail_=0;work_.witness={};guard_witness_={};physics_rechecks_=asset_read_guards_=query_read_guards_=0;
+        component_proofs_before_=component_work_.proof_pass.total;
         if(stopped_.load())return q::Code::unavailable;
         const auto owner=actor;const auto source=metadata;const Shape geometry=shape;
         constexpr bool asset_read=std::is_same_v<Output,gears_cover_physx_asset_shapes::Snapshot>;
@@ -354,7 +356,11 @@ public:
     unsigned pending_count()const noexcept{return unsigned(busy_.load()||engine_.pending()||!closed_.load());}
     bool uncertain()const noexcept{return engine_.uncertain();}
     // Same serialized owner only; this is not a cross-thread publication.
-    Observation observation()const noexcept{return {stage_,detail_,engine_.observation(),roles::observation(work_),guard_witness_,physics_rechecks_,asset_read_guards_,query_read_guards_};}
+    Observation observation()const noexcept{
+        auto counts=component_work_.proof_pass.total;auto const& before=component_proofs_before_;
+        counts.passes-=before.passes;counts.identity_visits-=before.identity_visits;counts.identity_reads-=before.identity_reads;
+        counts.field_visits-=before.field_visits;counts.field_reads-=before.field_reads;counts.fallbacks-=before.fallbacks;
+        return {stage_,detail_,engine_.observation(),roles::observation(work_),guard_witness_,physics_rechecks_,asset_read_guards_,query_read_guards_,counts};}
     bool enabled()const noexcept{return enabled_.load()&&!stopped_.load();}
     template<class Shape,class Read,class Guard> q::Code overlap(weapon_hand_scene_binding::Binding const& actor,
         gears_cover_pose_phase::Metadata const& metadata,Shape const& shape,Read read,Guard guard,q::Overlap& output)noexcept{

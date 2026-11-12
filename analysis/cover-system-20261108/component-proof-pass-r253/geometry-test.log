@@ -1,0 +1,2 @@
+ComponentProofInventory proofs=7 members=24 identity_visits=140 unique_identities=64 field_visits=283 unique_fields=207 synthetic typed schema only; no game
+ComponentProofPass fresh_barriers=3 mutation_fields=207 mutation_identities=64 identity_reads=64/140 field_reads=207/283 no cross-pass reuse

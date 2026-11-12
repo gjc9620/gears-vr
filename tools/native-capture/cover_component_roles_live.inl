@@ -2,6 +2,7 @@
 #define GEARS_COVER_COMPONENT_ROLES_LIVE_INCLUDED
 #include "cover_collider_roles_live.inl"
 #include "cover_physx_components.h"
+#include "cover_proof_pass.h"
 #include <algorithm>
 
 // Current Pawn/known Weapon and recursively declared Actor.Attached component
@@ -149,6 +150,9 @@ struct ComponentLayout {
 struct AssetLayout {binding::Proof proof{};gears_anchor::Identity cls{};std::array<binding::Property,3> fields{};};
 struct BodyLayouts {gears_anchor::Identity body_class{};std::array<roles::BodyLayout,8> layouts{};unsigned layout_count{};};
 struct Workspace {
+    // Heap-owned scratch; cold again at EVERY current() barrier, including
+    // the three independent barriers of recheck(). No cross-call proof lease.
+    mutable gears_cover_proof_pass::Cache<gears_anchor::Identity> proof_pass;
     roles::MemberStore members{};
     std::array<RootLayout,root_capacity> roots{};
     std::array<ComponentLayout,8> layouts{};unsigned layout_count{};
@@ -484,12 +488,35 @@ inline Code values(Workspace& w,binding::Binding const& context,Snapshot& output
 }
 inline bool current(Workspace const& w,unsigned roots){
     if(!binding::metadata_current()||w.metadata!=binding::metadata_bytes||w.generation!=binding::metadata_generation)return false;
-    if(!w.members.current())return false;
-    for(unsigned i=0;i<roots;++i)if(!binding::current(w.roots[i].proof))return false;
-    for(unsigned i=0;i<w.layout_count;++i)if(!binding::current(w.layouts[i].proof))return false;
-    for(unsigned i=0;i<w.asset_layout_count;++i)if(!binding::current(w.assets[i].proof))return false;
-    for(unsigned i=0;i<w.bodies.layout_count;++i)if(!binding::current(w.bodies.layouts[i].proof))return false;
-    return true;
+    if(w.members.exhausted||w.members.count>w.members.members.size()||roots>w.roots.size()||
+       w.layout_count>w.layouts.size()||w.asset_layout_count>w.assets.size()||w.bodies.layout_count>w.bodies.layouts.size())return false;
+    auto& pass=w.proof_pass;if(!pass.begin())return false;
+    struct Finish{decltype(pass)& value;~Finish(){value.end();}}finish{pass};
+    auto verify_id=[&](gears_anchor::Identity const& expected){return pass.identity(expected,
+        [](uintptr_t address,gears_anchor::Identity& actual){return binding::identity(address,actual);},
+        [](gears_anchor::Identity const& actual,gears_anchor::Identity const& expected_id){return binding::same(actual,expected_id);});};
+    auto verify_field=[&](uintptr_t address,unsigned size,unsigned char const* expected){return pass.field(address,size,expected,
+        [](void* out,uintptr_t source_address,unsigned count){return safe_copy(out,reinterpret_cast<void const*>(source_address),count);});};
+    // Retain every member identity/next and every complete Proof expectation.
+    // Only EXACT repeated identity addresses or (address,size) windows share
+    // a fresh observation within this one synchronous no-dispatch pass.
+    for(unsigned i=0;i<w.members.count;++i){auto const& member=w.members.members[i];
+        if(!verify_id(member.identity)||member.identity.address>UINTPTR_MAX-0x68)return false;
+        std::array<unsigned char,8> expected{};std::memcpy(expected.data(),&member.next,8);
+        if(!verify_field(member.identity.address+0x68,8,expected.data()))return false;
+    }
+    auto verify_proof=[&](binding::Proof const& proof){
+        if(proof.identity_count>proof.identities.size()||proof.source_count>proof.sources.size())return false;
+        for(unsigned i=0;i<proof.identity_count;++i)if(!verify_id(proof.identities[i]))return false;
+        for(unsigned i=0;i<proof.source_count;++i){auto const& value=proof.sources[i];
+            if(!verify_field(value.address,value.size,value.bytes.data()))return false;}
+        return true;
+    };
+    for(unsigned i=0;i<roots;++i)if(!verify_proof(w.roots[i].proof))return false;
+    for(unsigned i=0;i<w.layout_count;++i)if(!verify_proof(w.layouts[i].proof))return false;
+    for(unsigned i=0;i<w.asset_layout_count;++i)if(!verify_proof(w.assets[i].proof))return false;
+    for(unsigned i=0;i<w.bodies.layout_count;++i)if(!verify_proof(w.bodies.layouts[i].proof))return false;
+    return binding::metadata_current()&&w.metadata==binding::metadata_bytes&&w.generation==binding::metadata_generation;
 }
 inline void clear_proof(binding::Proof& proof){
     // Do not create an aggregate containing all eight large Proof objects on

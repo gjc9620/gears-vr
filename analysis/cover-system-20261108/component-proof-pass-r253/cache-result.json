@@ -1,0 +1,9 @@
+{
+  "build_exit": 0,
+  "test_exit": 0,
+  "output": "ProofPass checks=601 failures=0 fresh distinct observations per pass; duplicates compared to actual, saturation rereads\r\n",
+  "source_sha256": {
+    "tools\\native-capture\\cover_proof_pass.h": "b9e4d841b73ccdb9656ab636f3348fc8e8f7de6a209c6b1431affe507041156f",
+    "tools\\native-capture\\cover_proof_pass_test.cpp": "c3161ced6046fb47cce5bcdc4746928a2767faf9b785dbc9aa19286aa5b916fe"
+  }
+}

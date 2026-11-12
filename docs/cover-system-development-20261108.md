@@ -3343,3 +3343,15 @@ path attempted/finished1、原started0→2/returned0→2：第一段扫掠与终
 实际完整physics recheck27、borrowed_read_guards132。timing：initial physics.4093ms/collider1.6861ms/components2.5410ms；physics repeat27合2.5125ms、collider repeat27合4.1080ms、component repeat4合11.2947ms；engine33.3828ms，owner bracket64合14.0622ms（嵌套值不相加当总耗时）。这次足够新仍无法在40ms内完整关闭，说明30ms reserve不是完成保证，不能靠继续抬reserve或重跑凑成功。下一步检查单个component proof pass内重复的相同schema/identity字段，保留所有独立pass/动态值回读及最终完整证明，禁止跨原调用缓存proof。
 
 264实际投影/errors0、五段ordinary操作operator0；recording/boundary/原run/native文本保留，本轮未亲看/编码，不作视觉接受。正常Native/entry/XR/game清理true、自有remaining空，anchor/reader未变。extract首版误认新budget为行首、随后动态脚本转义丢失正则反斜线；仅修离线解析，重新读取同一不可变文本，无新游戏/输入；最终budget与原文逐字段一致。完整CV24/AC22、full self/world fence/active-authored对应/body-view-hit-muzzle/遮挡与头显仍未完成，工程25%；publicv71/固定入口/Quest保持。证据headroom-runtime-r252。
+
+## r253：component单次proof pass共享相同实际读值，三独立barrier仍全部重新读（2026-11-12）
+
+依据r252组件4次recheck合11.2947ms，先对真实typed合成夹具统计：7份完整Proof+24members，每pass身份期望140次/独立地址64，字段期望283次/独立(address,size)207。此为合成规格，不把它当成实际游戏重复比例或性能结论。
+
+新增cover_proof_pass.h，组件current()每次begin新epoch、结束关闭，不跨另一次current()/动态值pass/原query保留有效缓存。每个独立身份仍执行原binding::identity的完整双观察/registry/name/slot关闭；每个不同字节窗口仍用原safe_copy精确size读取。不合并重叠但size不同窗口，不扩大读区。相同身份/窗口的重复期望与本pass真实读出的完整Identity/bytes逐一比较，不能只比较两份期望或把冲突期望当成命中。缓存原子busy拒绝嵌套、结束后不能读缓存；容量半满或64次hash冲突后直接执行普通新读取，不裁剪/因新容量拒绝原本合法proof。epoch回绕清私有索引；无分配/游戏写/时钟更新或权限。
+
+组件完整current保留EVERY member identity/next、roots/layouts/assets/body layouts的EVERY Proof identity/source期望；只在同一无dispatch检查内部形成共同的读取快照。current入口与出口metadata/generation/cache一致；sample/recheck的所有独立current调用保持，recheck仍prior/after-first/after-second三个完整barrier、两遍动态值与原owner前后关闭。共享binding::current和MemberStore类型及其他消费者未改。组件Workspace堆内私有scratch，Session/C0只新增pass/期望/真实读/fallback计数，以便实际验证。
+
+ProofPass601检查0：重复一致/矛盾期望、每次barrier冷读、失效后旧值不复活、容量1/密集hash冲突fallback、同地址不同size、失读/非法窗口、epoch回绕。真实typed组件夹具实际读64/140身份和207/283字段，三barrier独立；逐项修改全部207独立字段与64身份，下一pass均拒绝、逐项恢复后均重新通过。Component207、QueryReadGroups1046、CapsulePath391、AssetSession202、AssetEngine1744、OFF65通过；游戏原模块只作为固定PE字节数据，全部这些检查不是实际游戏/原query运行。
+
+Native从r251最终v4冻结树仅组件/Session/C0/新头四overlay，427编译依赖逐SHA、flags不变、无外部工作树，DLL SHA631c2cf8391ed08bad667b506eceefdc23f1c3cf48f0fbcb3f985a17a5a61501。尚未游戏运行/安装；下一步新实例定向检查真实读取去重比例、完整路径原调用/关闭与原年龄，不调整30ms准入或40/50ms上限、不重跑旧版凑成功。完整CV24/AC22、active-authored/full self/world fence/body-view-hit-muzzle/遮挡/头显未完成，工程25%，publicv71/固定入口/Quest保持。证据component-proof-pass-r253。
