@@ -3301,3 +3301,15 @@ timing：physics initial.4819ms、collider initial1.7541ms、components initial2
 266实际投影/errors0，记录清单保存但未逐张亲看/未编码，视觉接受false；正常Native/entry/XR/game清理true，自有remaining空，anchor/reader未变。下一步对QueryEngine纯读sources及owner归属的同步分组减少重复完整角色证明；borrow只限无dispatch组内，分组前后完整typed证明与原owner/cover/pose/原时效必须保持，所有原调用边界继续用普通完整guard。不能将r241 asset-only借用guard直接包住原query。优先复用现有组内读取/最终关闭结构及fault/mutation测试，修复后一次新实例定向检查。
 
 CV24/AC22、完整身体几何/full self/world fence/body-view-hit-muzzle/遮挡和头显仍未完成，工程25%；publicv71/固定入口/Quest保持。证据path-fresh-runtime-r248。
+
+## r249：原query之外的同步sources/owner读取分组，完整关闭与调用guard保持（2026-11-12）
+
+针对r248实际36.7614ms/42次physics+collider重复/91次owner的关闭年龄拒绝，QueryEngine collect_all只在两个明确无dispatch的段落新增可选read_group：原调用之前asset/collider/components读取，及返回后shape-owner归属与asset/collider/components关闭读取。普通begin/end、原调用、callback均在分组之外；没有将asset专用借用guard包住query。无此方法的旧caller保留原行为，所有原始raw/typed匹配、原native两遍读取/代码/归属关闭保持。
+
+SourceGuard的组入口与出口均执行完整physics/collider typed recheck和原owner/cover/pose/time，另完整component recheck关闭；内部read_source_group仍由完整owner前后括住。QueryReadGuard只在同步组内匹配入口typed的query-source/asset/collider/components，并每次检查stopped、三workspace read-ready及metadata/generation/cache相同、同线程/Session busy/context/key/special-move/metadata。关闭失败不发布、不会将proof跨越原调用、不续原source时间、不延长deadline。所有派生guard在原调用前已销毁；C0新增完整recheck/借用read guard计数供下一实际运行核对。
+
+QueryReadGroups1046检查0：真实Session+typed/raw asset/collider/component读者，组内64重复匹配，正常Host dispatch1；78个完整owner逐个失败、BodyIndex/OwnerComponent/属性offset、component owner/member、collider Body变化，组内过期/metadata generation变化/drain均保持旧output；组内失败时Host调用0，模拟原调用中root变化仍由普通guard拒绝。ReadGroupEngine44检查0：实际QueryEngine collect_all分别sweep与overlap枚举两read组，Host原调用仅发生在组外；第一/第二组拒绝分别原调用0/1，均无结果发布/重派/悬空owner。原OwnedSweep146、Overlap87、CapsulePathSession391、AssetShapeSession202、AssetEngine1744、OFF65通过。
+
+测试初遇OwnedSweep旧夹具仍将Shape+d0写成Body且不填+148，与r231已经由原constructor/实际读取证明的public Actor/+148 optional Body相反。以r244原q头与本轮q头分别编译同一旧夹具，两者均22失败、输出完全一致；只修夹具d0/148后146通过，新分组Engine原2个失败亦随之通过，未为此改产品。原before-owned三源码/初始build与test logs保留。另初次编译W4/WX拒绝lambda名owner_reads与测试global同名，改局部名owner_read_group，保留初始build失败证据。
+
+Native冻结r244最终树仅C0/Session/QueryEngine三文件overlay；425实际依赖逐SHA、flags不变、无外部工作树，DLL SHA78460f418dd097eaf5cb427d73191b0445781ddcdd6558144c47bdb7deae9cf3。仅编译，尚未实际运行或安装。下一步新实例定向复核路径原调用前后全部关闭、原时效与实际recheck计数；不声称已有完整路径/世界fence/body-view-hit-muzzle或遮挡修复。工程25%、CV24/AC22与头显未完成，publicv71/固定入口/Quest保持。证据query-read-groups-r249。

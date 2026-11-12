@@ -1,0 +1,23 @@
+FAIL same production transaction owns every hit
+FAIL one query retains raw count/order
+FAIL self and foreign actor both retained, no filter
+FAIL declared Bodies preserves null row and root actor, foreign hit not added
+FAIL selected collider shared actor observed on same query Scene
+FAIL all declared actor sources retained including foreign owner, no self filter
+FAIL secondary PAA actor outside the raw hits joins the same transaction
+FAIL recursive actor edge and actual Base join the same owned transaction
+FAIL production closed role snapshots qualify together
+FAIL exact current collider component and mesh asset give positive provenance
+FAIL qualified static actor retains exact typed shape provenance without a dynamic Body
+FAIL all1024 owners including final record
+FAIL capsule path uses same ownership transaction
+FAIL exact cutoff retains the existing capsule ownership transaction
+FAIL whole attributed output unchanged on failure
+FAIL whole attributed output unchanged on failure
+FAIL whole attributed output unchanged on failure
+FAIL whole attributed output unchanged on failure
+FAIL whole attributed output unchanged on failure
+FAIL whole attributed output unchanged on failure
+FAIL whole attributed output unchanged on failure
+FAIL whole attributed output unchanged on failure
+CoverPhysXOwnedSweep checks=146 failed=22 Host image/call seams; actual transaction/source/ownership; no game

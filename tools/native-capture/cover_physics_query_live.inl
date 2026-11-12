@@ -17,7 +17,7 @@ namespace component_roles=cover_component_roles_live;
 namespace path=gears_cover_capsule_path;
 namespace timing=gears_cover_query_timing;
 enum class Stage:unsigned {idle,geometry,physics_roles,collider_roles,component_roles,engine,closing,complete};
-struct Observation {Stage stage{};unsigned detail{};q::QueryProgress engine{};roles::LayoutObservation layout{};gears_cover_query_guard::Witness guard{};unsigned physics_rechecks{},asset_read_guards{};};
+struct Observation {Stage stage{};unsigned detail{};q::QueryProgress engine{};roles::LayoutObservation layout{};gears_cover_query_guard::Witness guard{};unsigned physics_rechecks{},asset_read_guards{},query_read_guards{};};
 #if defined(GEARS_COVER_BODY_PROTOTYPE) && GEARS_COVER_BODY_PROTOTYPE
 template<class Engine=q::Queries> class Session {
     Engine engine_{};roles::Workspace work_{};roles::Snapshot before_{},after_{};
@@ -30,7 +30,8 @@ template<class Engine=q::Queries> class Session {
     gears_cover_physx_asset_shapes::Snapshot asset_shapes_result_{};
     Stage stage_{};unsigned detail_{};
     gears_cover_query_guard::Witness guard_witness_{};
-    unsigned physics_rechecks_{},asset_read_guards_{};
+    unsigned physics_rechecks_{},asset_read_guards_{},query_read_guards_{};
+    template<class Current> struct QueryReadGuard;
     struct NoLocalResult {};
     struct AssetReadRequest {unsigned version{1};};
     std::atomic<bool> configured_{},enabled_{},stopped_{},busy_{},closed_{true};
@@ -106,6 +107,23 @@ template<class Engine=q::Queries> class Session {
         bool operator()(gears_cover_physx_components::Snapshot const& raw){return WithCollider&&(*this)()&&components_current()&&
             (roles::matches_query_source(session.before_,raw.query_source)||reject(Gate::query_source_match))&&
             (component_roles::matches(session.component_before_,raw)||reject(Gate::component_source_match));}
+        template<class Work> q::Code read_group(Work& read){
+            if constexpr(!WithCollider)return read(*this);
+            else{
+                // Only QueryEngine's explicit no-dispatch source/owner read
+                // blocks enter here. Ordinary begin/end/dispatch guards never
+                // receive this borrowed proof, and each group closes fully.
+                if(!(*this)())return q::Code::source;
+                q::Code observed=q::Code::source;
+                const bool closed=session.read_source_group(actor,metadata,owner,[&](auto& current){
+                    QueryReadGuard<std::remove_reference_t<decltype(current)>> grouped{session,current};
+                    observed=read(grouped);return observed==q::Code::queried;
+                });
+                if(!closed)return observed==q::Code::queried?q::Code::source:observed;
+                if(!(*this)()||!components_current())return q::Code::source;
+                return observed;
+            }
+        }
     };
     // Borrowed only inside one synchronous NO-DISPATCH asset read group.
     // Initial roles::sample certifies all selected layouts/dynamic values;
@@ -130,6 +148,35 @@ template<class Engine=q::Queries> class Session {
         bool operator()(gears_cover_physx_asset_actors::Snapshot const& value){return (*this)()&&
             (roles::matches_asset_actors(session.before_,value)||reject(Gate::asset_match));}
     };
+    // No native dispatch or public result can occur in this guard's lifetime.
+    // Initial and closing FULL typed proofs bracket every use. Original raw
+    // source, asset, collider, components and owner readers keep both passes.
+    template<class Current> struct QueryReadGuard {
+        Session& session;Current& current;
+        using Gate=gears_cover_query_guard::SessionStage;
+        bool reject(Gate gate,unsigned detail=0){return session.guard_witness_.reject(unsigned(gate),detail);}
+        bool operator()(){
+            ++session.query_read_guards_;session.guard_witness_.enter();
+            if(session.stopped_.load())return reject(Gate::stopped);
+            if(!session.work_.recheck_ready||!session.collider_work_.recheck_ready||!session.component_work_.recheck_ready||
+               !weapon_hand_scene_binding::metadata_current()||
+               session.work_.generation!=weapon_hand_scene_binding::metadata_generation||session.work_.metadata!=weapon_hand_scene_binding::metadata_bytes||
+               session.collider_work_.generation!=weapon_hand_scene_binding::metadata_generation||session.collider_work_.metadata!=weapon_hand_scene_binding::metadata_bytes||
+               session.component_work_.generation!=weapon_hand_scene_binding::metadata_generation||session.component_work_.metadata!=weapon_hand_scene_binding::metadata_bytes)
+                return reject(Gate::physics_read,unsigned(roles::Code::metadata));
+            return current()||reject(Gate::physics_read,unsigned(roles::Code::guard));
+        }
+        bool operator()(q::source::Snapshot const& value){return (*this)()&&
+            (roles::matches_query_source(session.before_,value)||reject(Gate::query_source_match));}
+        bool operator()(gears_cover_physx_asset_actors::Snapshot const& value){return (*this)()&&
+            (roles::matches_asset_actors(session.before_,value)||reject(Gate::asset_match));}
+        bool operator()(gears_cover_physx_collider::Snapshot const& value){return (*this)()&&
+            (roles::matches_query_source(session.before_,value.query_source)||reject(Gate::query_source_match))&&
+            (collider_roles::matches(session.collider_before_,value)||reject(Gate::collider_source_match));}
+        bool operator()(gears_cover_physx_components::Snapshot const& value){return (*this)()&&
+            (roles::matches_query_source(session.before_,value.query_source)||reject(Gate::query_source_match))&&
+            (component_roles::matches(session.component_before_,value)||reject(Gate::component_source_match));}
+    };
     template<class Shape,class Read,class Guard,class Output,class Invoke> q::Code execute(
         weapon_hand_scene_binding::Binding const& actor,gears_cover_pose_phase::Metadata const& metadata,
         Shape const& shape,Read read,Guard guard,Output& output,Invoke invoke){
@@ -137,7 +184,7 @@ template<class Engine=q::Queries> class Session {
         if(q::source::aliases(&output,sizeof output,this,sizeof *this)||q::source::aliases(&output,sizeof output,&actor,sizeof actor)||
            q::source::aliases(&output,sizeof output,&metadata,sizeof metadata)||q::source::aliases(&output,sizeof output,&shape,sizeof shape))return q::Code::request;
         bool expected=false;if(!busy_.compare_exchange_strong(expected,true))return q::Code::reentrant;Finish finish{busy_};
-        stage_=Stage::geometry;detail_=0;work_.witness={};guard_witness_={};physics_rechecks_=asset_read_guards_=0;
+        stage_=Stage::geometry;detail_=0;work_.witness={};guard_witness_={};physics_rechecks_=asset_read_guards_=query_read_guards_=0;
         if(stopped_.load())return q::Code::unavailable;
         const auto owner=actor;const auto source=metadata;const Shape geometry=shape;
         constexpr bool asset_read=std::is_same_v<Output,gears_cover_physx_asset_shapes::Snapshot>;
@@ -307,7 +354,7 @@ public:
     unsigned pending_count()const noexcept{return unsigned(busy_.load()||engine_.pending()||!closed_.load());}
     bool uncertain()const noexcept{return engine_.uncertain();}
     // Same serialized owner only; this is not a cross-thread publication.
-    Observation observation()const noexcept{return {stage_,detail_,engine_.observation(),roles::observation(work_),guard_witness_,physics_rechecks_,asset_read_guards_};}
+    Observation observation()const noexcept{return {stage_,detail_,engine_.observation(),roles::observation(work_),guard_witness_,physics_rechecks_,asset_read_guards_,query_read_guards_};}
     bool enabled()const noexcept{return enabled_.load()&&!stopped_.load();}
     template<class Shape,class Read,class Guard> q::Code overlap(weapon_hand_scene_binding::Binding const& actor,
         gears_cover_pose_phase::Metadata const& metadata,Shape const& shape,Read read,Guard guard,q::Overlap& output)noexcept{

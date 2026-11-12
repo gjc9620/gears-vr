@@ -1,0 +1,23 @@
+cover_physx_read_group_engine_test.cpp
+J:\codexWorktree\gearsVr\tools\native-capture\cover_physx_query.h(501): error C2220: 以下警告被视为错误
+J:\codexWorktree\gearsVr\tools\native-capture\cover_physx_query.h(501): warning C4459: “owner_reads”的声明隐藏了全局声明
+J:\codexWorktree\gearsVr\tools\native-capture\cover_physx_owned_sweep_test.cpp(16): note: 参见“owner_reads”的声明
+J:\codexWorktree\gearsVr\tools\native-capture\cover_physx_query.h(501): note: 模板实例化上下文(最早的实例化上下文)为
+J:\codexWorktree\gearsVr\tools\native-capture\cover_physx_owned_sweep_test.cpp(116): note: 查看对正在编译的函数 模板 实例化“gears_cover_physx_query::Code gears_cover_physx_query::QueryEngine<HostImage,HostCalls>::sweep_all<gears_cover_physx_query::Box,probe::<lambda_b84ba2438c18637aac25eef3355dc742>,Guard,_Ty>(const gears_cover_physx_query_source::Source &,const Shape &,const gears_cover_physx_query::Vector &,const gears_cover_physx_query::StreamLimits &,Read,Guard,Output &,const gears_cover_physx_collider::Source *,const gears_cover_physx_components::Source *) noexcept”的引用
+        with
+        [
+            _Ty=gears_cover_physx_query::AllSweepOwners,
+            Shape=gears_cover_physx_query::Box,
+            Read=probe::<lambda_b84ba2438c18637aac25eef3355dc742>,
+            Guard=Guard,
+            Output=gears_cover_physx_query::AllSweepOwners
+        ]
+J:\codexWorktree\gearsVr\tools\native-capture\cover_physx_owned_sweep_test.cpp(116): note: 请参阅 "probe" 中对 "gears_cover_physx_query::QueryEngine<HostImage,HostCalls>::sweep_all" 的第一个引用
+J:\codexWorktree\gearsVr\tools\native-capture\cover_physx_query.h(412): note: 查看对正在编译的函数 模板 实例化“gears_cover_physx_query::Code gears_cover_physx_query::QueryEngine<HostImage,HostCalls>::collect_all<false,Shape,Read,Guard,Output>(const gears_cover_physx_query_source::Source &,const Shape &,const gears_cover_physx_query::Vector &,const gears_cover_physx_query::StreamLimits &,Read,Guard,Output &,const gears_cover_physx_collider::Source *,const gears_cover_physx_components::Source *) noexcept”的引用
+        with
+        [
+            Shape=gears_cover_physx_query::Box,
+            Read=probe::<lambda_b84ba2438c18637aac25eef3355dc742>,
+            Guard=Guard,
+            Output=gears_cover_physx_query::AllSweepOwners
+        ]

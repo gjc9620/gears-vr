@@ -1,0 +1,22 @@
+{
+  "native_sha256": "78460f418dd097eaf5cb427d73191b0445781ddcdd6558144c47bdb7deae9cf3",
+  "dependencies": 425,
+  "flags_unchanged": true,
+  "results": {
+    "geometry": "QueryReadGroups checks=1046 failures=0 full_owner=78 Host dispatch only; complete real typed/raw readers\r\n",
+    "groups_engine": "group_case overlap=0 reject=0 code=0 output=2 original=1 groups=2\r\ngroup_case overlap=0 reject=1 code=4 output=777 original=0 groups=1\r\ngroup_case overlap=0 reject=2 code=4 output=777 original=1 groups=2\r\ngroup_case overlap=1 reject=0 code=0 output=2 original=1 groups=2\r\ngroup_case overlap=1 reject=1 code=4 output=777 original=0 groups=1\r\ngroup_case overlap=1 reject=2 code=4 output=777 original=1 groups=2\r\nReadGroupEngine checks=44 failed=0 actual collect_all grouped routing; original calls are Host seams\r\n",
+    "owned": "CoverPhysXOwnedSweep checks=146 failed=0 Host image/call seams; actual transaction/source/ownership; no game\r\n",
+    "overlap": "CoverOverlapQuery checks=87 failed=0 production transaction with Host module/dispatch; original DLL data only\r\n",
+    "path": "CoverCapsulePathSession checks=391 failed=0 typed-source/Session real; module/dispatch Host; no game\r\n",
+    "off": "cover_physics_c0 OFF: 65 checks, 0 failures; no game/module/query\r\n",
+    "session": "cover_physics_query_live: 110 checks, 0 failures; dispatch/module are Host seams, no original call\r\nAssetReadFullOwner calls=6 repeated_typed_checks=64\r\nAssetShapeSession checks=202 failures=0 actual Session with supplied actor packet; no shape/world/original calls\r\n",
+    "engine": "read_budget=228 guard_calls=12\r\nCoverPhysXShapeOwner checks=531 failed=0 original-executed=false game-started=false\r\nparameter_reads=102\r\nShapeParameters checks=702 failed=0 original PE as data; stored fields only, no world/eligibility permit\r\nworld_reads=140\r\nShapeWorld checks=1708 failed=0 original PE as data; original-unit CPU pose only, no query fence\r\nAssetShapes checks=1734 failed=0 synthetic object groups; complete supplied asset only, no world/self permit\r\nAssetShapesEngine checks=1744 failed=0 actual QueryEngine/HostImage only; no original dispatch\r\n"
+  },
+  "fixture_failure_reproduced_before_and_after": true,
+  "scope": "Only explicit synchronous no-dispatch source/owner read groups borrow typed layout proofs. Each group has full source/owner checks before and after; full component proof closes the group. begin/end and all original dispatch/callback boundaries retain full guards. Original timestamps and deadline unchanged. No cross-call proof, partial result or movement permission.",
+  "game_started": false,
+  "installed": false,
+  "gameplay_accepted": false,
+  "headset_accepted": false,
+  "engineering_percent": 25
+}

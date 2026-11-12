@@ -100,7 +100,10 @@ static Memory setup(char const* file){
     m.put<std::uintptr_t>(actor1+0x40,body1);m.put<std::uintptr_t>(body1+0x10,actor1);
     for(unsigned i=0;i<2;++i){const auto shape=i?shape1:shape0,inside=i?inside1:inside0,actor=i?actor1:0x160000,body=i?body1:body0;
         m.put<std::uintptr_t>(shape,base+own::shape_tables[i]);m.put<std::uintptr_t>(shape+0x30,inside);m.put<std::uintptr_t>(shape+0x38,actor);
-        m.put<std::uintptr_t>(inside,base+(i?0x2272d0:0x226c80));m.put<std::uintptr_t>(inside+0xa0,shape);m.put<std::uintptr_t>(inside+0xd0,body);}
+        m.put<std::uintptr_t>(inside,base+(i?0x2272d0:0x226c80));m.put<std::uintptr_t>(inside+0xa0,shape);
+        // Original constructor: +d0 is the public Actor; +148 is optional
+        // dynamic Body. Keep this fixture aligned with the r231 repair.
+        m.put<std::uintptr_t>(inside+0xd0,actor);m.put<std::uintptr_t>(inside+0x148,body);}
     return m;
 }
 struct Guard {

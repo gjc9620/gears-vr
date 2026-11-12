@@ -1,0 +1,7 @@
+group_case overlap=0 reject=0 code=0 output=2 original=1 groups=2
+group_case overlap=0 reject=1 code=4 output=777 original=0 groups=1
+group_case overlap=0 reject=2 code=4 output=777 original=1 groups=2
+group_case overlap=1 reject=0 code=0 output=2 original=1 groups=2
+group_case overlap=1 reject=1 code=4 output=777 original=0 groups=1
+group_case overlap=1 reject=2 code=4 output=777 original=1 groups=2
+ReadGroupEngine checks=44 failed=0 actual collect_all grouped routing; original calls are Host seams

@@ -104,6 +104,28 @@ template<class Guard> bool source_guard(Guard& guard,source::Snapshot const& sna
     if constexpr(std::is_invocable_r_v<bool,Guard&,source::Snapshot const&>)return guard(snapshot);
     else return guard();
 }
+// Optional owner grouping is used ONLY around the explicit synchronous read
+// blocks below. Dispatch, callbacks and begin/end remain on the full caller.
+template<class Guard,class Work> auto read_group(Guard& guard,Work& work,int)->decltype(guard.read_group(work)){
+    return guard.read_group(work);
+}
+template<class Guard,class Work> Code read_group(Guard& guard,Work& work,long){return work(guard);}
+template<class Guard> struct OwnersReadGuard {
+    Guard& caller;source::Snapshot const& scope;
+    bool operator()(){return source_guard(caller,scope);}
+    bool operator()(gears_cover_physx_asset_actors::Snapshot const& value){
+        if constexpr(std::is_invocable_r_v<bool,Guard&,gears_cover_physx_asset_actors::Snapshot const&>)
+            return source::same(scope,value.query_source)&&caller(value);else return false;
+    }
+    bool operator()(gears_cover_physx_collider::Snapshot const& value){
+        if constexpr(std::is_invocable_r_v<bool,Guard&,gears_cover_physx_collider::Snapshot const&>)
+            return source::same(scope,value.query_source)&&caller(value);else return false;
+    }
+    bool operator()(gears_cover_physx_components::Snapshot const& value){
+        if constexpr(std::is_invocable_r_v<bool,Guard&,gears_cover_physx_components::Snapshot const&>)
+            return source::same(scope,value.query_source)&&caller(value);else return false;
+    }
+};
 inline bool valid(Box const& b) noexcept {
     if(!finite(b.centre)||!finite(b.half)||b.half.x<=0||b.half.y<=0||b.half.z<=0)return false;
     for(float v:b.rotation)if(!scalar(v))return false;
@@ -426,33 +448,19 @@ private:
             if constexpr(Enumerate){progress_.stage=QueryStage::code_begin;if(!enumeration_code_current())return Code::code;}
             if(!source::same(request,s)||std::memcmp(&geometry,&shape,sizeof shape)||std::memcmp(&movement,&delta,sizeof delta)||
                std::memcmp(&budget,&limits,sizeof limits))return Code::changed;
-            struct AssetGuard {
-                Guard& caller;source::Snapshot const& scope;
-                bool operator()(){return detail::source_guard(caller,scope);}
-                bool operator()(gears_cover_physx_asset_actors::Snapshot const& actors){
-                    if constexpr(std::is_invocable_r_v<bool,Guard&,gears_cover_physx_asset_actors::Snapshot const&>)
-                        return source::same(scope,actors.query_source)&&caller(actors);
-                    else return false;
-                }
-                bool operator()(gears_cover_physx_collider::Snapshot const& value){
-                    if constexpr(std::is_invocable_r_v<bool,Guard&,gears_cover_physx_collider::Snapshot const&>)
-                        return source::same(scope,value.query_source)&&caller(value);
-                    else return false;
-                }
-                bool operator()(gears_cover_physx_components::Snapshot const& value){
-                    if constexpr(std::is_invocable_r_v<bool,Guard&,gears_cover_physx_components::Snapshot const&>)
-                        return source::same(scope,value.query_source)&&caller(value);
-                    else return false;
-                }
-            } asset_guard{guard,before_};
             if constexpr(with_owners){
                 gears_cover_owner_link_observation::PhaseScope link_phase(gears_cover_owner_link_observation::Phase::before_dispatch);
+                auto source_reads=[&](auto& read_guard){
+                detail::OwnersReadGuard<std::remove_reference_t<decltype(read_guard)>> asset_guard{read_guard,before_};
                 const auto code=gears_cover_physx_asset_actors::observe(image_.base(),image_.size(),before_,read,asset_guard,asset_work_,asset_before_);
                 if(code!=gears_cover_physx_asset_actors::Code::observed)return detail::asset_code(code);
                 const auto cx=gears_cover_physx_collider::observe(image_.base(),image_.size(),before_,*component_source,read,asset_guard,collider_before_);
                 if(cx!=gears_cover_physx_collider::Code::observed)return detail::collider_code(cx);
                 const auto parts=gears_cover_physx_components::observe(image_.base(),image_.size(),before_,*component_catalog,read,asset_guard,component_work_,components_before_);
                 if(parts!=gears_cover_physx_components::Code::observed)return detail::components_code(parts);
+                return Code::queried;
+                };
+                const auto read_code=detail::read_group(guard,source_reads,0);if(read_code!=Code::queried)return read_code;
             }
             if(!source::same(request,s)||std::memcmp(&geometry,&shape,sizeof shape)||std::memcmp(&movement,&delta,sizeof delta)||
                std::memcmp(&budget,&limits,sizeof limits))return Code::changed;
@@ -490,8 +498,10 @@ private:
                 // The active query and Image pin span enumeration AND all
                 // owner reads. No second query or stream filtering occurs.
                 gears_cover_owner_link_observation::PhaseScope link_phase(gears_cover_owner_link_observation::Phase::after_dispatch);
+                auto owner_read_group=[&](auto& read_guard){
+                detail::OwnersReadGuard<std::remove_reference_t<decltype(read_guard)>> asset_guard{read_guard,before_};
                 std::fill(owners_candidate_.begin(),owners_candidate_.end(),gears_cover_physx_shape_owner::Observation{});
-                auto current_owner=[&](source::Snapshot const& raw){return source::same(before_,raw)&&detail::source_guard(guard,raw);};
+                auto current_owner=[&](source::Snapshot const& raw){return source::same(before_,raw)&&detail::source_guard(read_guard,raw);};
                 for(unsigned i=0;i<result_count();++i){
                     const auto owner=[&](){if constexpr(Enumerate)
                         return gears_cover_physx_shape_owner::observe_address(image_.base(),image_.size(),before_,candidate.shapes[i],read,current_owner,owners_candidate_[i]);
@@ -507,6 +517,9 @@ private:
                 const auto parts=gears_cover_physx_components::observe(image_.base(),image_.size(),before_,*component_catalog,read,asset_guard,component_work_,components_after_);
                 if(parts!=gears_cover_physx_components::Code::observed)return detail::components_code(parts);
                 if(!gears_cover_physx_components::same(components_before_,components_after_))return Code::changed;
+                return Code::queried;
+                };
+                const auto read_code=detail::read_group(guard,owner_read_group,0);if(read_code!=Code::queried)return read_code;
                 const auto owner_closed=end(request,read,guard);if(owner_closed!=Code::queried)return owner_closed;
                 if constexpr(Enumerate){progress_.stage=QueryStage::code_end;if(!enumeration_code_current())return Code::code;}
                 if(!source::same(request,s)||std::memcmp(&geometry,&shape,sizeof shape)||std::memcmp(&movement,&delta,sizeof delta)||

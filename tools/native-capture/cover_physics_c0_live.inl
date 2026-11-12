@@ -144,6 +144,7 @@ void summary(FILE* f){if(!f)return;
     fprintf(f,"cover_path_probe_owner_guard=%u,%u,%u,%u,%u cover_path_probe_session_guard=%u,%u,%u,%u,%u ",
         p.owner_guard.calls,p.owner_guard.failed_call,p.owner_guard.stage,p.owner_guard.detail,p.owner_guard.extra,
         p.progress.guard.calls,p.progress.guard.failed_call,p.progress.guard.stage,p.progress.guard.detail,p.progress.guard.extra);
+    fprintf(f,"cover_path_probe_full_rechecks=%u cover_path_probe_borrowed_read_guards=%u ",p.progress.physics_rechecks,p.progress.query_read_guards);
     auto const& cause=p.source_cause;
     fprintf(f,"cover_path_probe_source_age_cause=%u,%llu,%llu,%u,%u,%u,%u ",unsigned(cause.observed),
         uint64_t(cause.key.entry),cause.key.compose,cause.key.thread,cause.key.stage,cause.verdict,cause.causes);
