@@ -1,0 +1,12 @@
+{
+  "verified": true,
+  "source_sha256": "c85d08d6a07ee35c94b649fbb95a93ea7aa77735687db916ddde0d8cf191de1f",
+  "packet_sha256": "0cb972695aee35896c052faa5de0a19a1285537b96531c568664386e0872c445",
+  "bodies": 29,
+  "actors": 29,
+  "shapes": 36,
+  "independent_decimal_gram_certificates": 36,
+  "decoder": "Every exported float round-trips binary32; matrix Gram error independently checked with Decimal120",
+  "scope": "historical closed supplied asset only; no image alignment, whole self/world fence or live permission",
+  "game_started": false
+}

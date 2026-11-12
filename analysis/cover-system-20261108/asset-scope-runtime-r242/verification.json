@@ -1,0 +1,29 @@
+{
+  "successful_closed_read": true,
+  "counts": [
+    29,
+    29,
+    36
+  ],
+  "shape_kinds": {
+    "1": 21,
+    "0": 13,
+    "5": 2
+  },
+  "elapsed_ms": 5.7533,
+  "owner_checks": 7,
+  "borrowed_guards": 1172,
+  "complete_physics_rechecks": 1,
+  "independent_gram_certificates": 36,
+  "max_shape_gram_error": 0.00033565757003262825,
+  "normal_cleanup_verified": true,
+  "remaining_owned": {},
+  "original_query_calls": 0,
+  "native_sha256": "27adaac79c8ea6e5a17303ed1f678b339ff13e5f3247b690f19428c87418d95d",
+  "packet_sha256": "0cb972695aee35896c052faa5de0a19a1285537b96531c568664386e0872c445",
+  "source_status_sha256": "c85d08d6a07ee35c94b649fbb95a93ea7aa77735687db916ddde0d8cf191de1f",
+  "scope": "Complete supplied current PhysicsAsset only; not full player self set/world query fence, no movement/body/view/hit/muzzle or headset acceptance. Historical data cannot authorize live writes. Original timestamps and full closing checks unchanged.",
+  "engineering_percent": 25,
+  "gameplay_accepted": false,
+  "headset_accepted": false
+}

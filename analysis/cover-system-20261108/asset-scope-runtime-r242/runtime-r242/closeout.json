@@ -1,0 +1,35 @@
+{
+  "operator_exit": 0,
+  "normal_cleanup_verified": true,
+  "remaining_owned": {},
+  "projection_frames": 264,
+  "projection_errors": [],
+  "anchor_sources_unchanged": true,
+  "cover_reader_sources_unchanged": true,
+  "cloak_observations": {
+    "samples": 575,
+    "failures": []
+  },
+  "foreground_observations": {
+    "samples": 376,
+    "owned_activation": false
+  },
+  "forced_termination": false,
+  "successful_read": true,
+  "counts": [
+    29,
+    29,
+    36
+  ],
+  "elapsed_ms": 5.7533,
+  "kinds": {
+    "1": 21,
+    "0": 13,
+    "5": 2
+  },
+  "max_shape_gram_error": 0.00033565757003262825,
+  "matrix_certificates_checked": 36,
+  "original_calls": 0,
+  "gameplay_accepted": false,
+  "headset_accepted": false
+}

@@ -3239,3 +3239,13 @@ Session202检查0：从原空Host packet推进到实际asset actor observer读�
 C0 summary新增完整回读/借用guard计数，候选计数明确requires_close，成功时额外导出Body实例ordinal→唯一Actor index及地址/scene/internal映射；只读取已完成owned scratch，不增加game读。完整Native在r239最终冻结树仅Session/C0两文件overlay，423依赖逐SHA、flags不变、无外部工作树混入，DLL SHA27adaac79c8ea6e5a17303ed1f678b339ff13e5f3247b690f19428c87418d95d。此版尚未游戏运行，下一步新实例检查完整读取、原deadline关闭和真实proof计数。
 
 完整CV24/AC22、active/template/full self/world fence、非strict数值包络、body/view/hit/muzzle、视图遮挡及头显仍未完成，工程25%，publicv71/固定入口/Quest不变。证据asset-proof-scope-r241。
+
+## r242：实际完整PhysicsAsset 29刚体／36形状在5.7533ms内关闭并发布（2026-11-12）
+
+新cover-1112-r242-cloak-proof-scope使用r241 Native27adaac7…d95d，准备423冻结依赖/导入/身份guard14通过，准备0faa9723；actual game39160/creation134389157760080182。一次C0读取成功：q0 queried（本接口表示读取事务完成，不是原query调用）、detail0、Session stage7 complete；29 Body instance、29唯一PhysX Actor、36 shape，全部同源完成并导出。5.7533ms，owner7无失败、Session1173无失败，完整physics_rechecks1、borrowed guards1172，source cause未观察到拒绝。原source时间/生命周期/最终typed闭合和时效保持，original started/returned均0；movement_permission0。
+
+导出29个Body ordinal→唯一Actor映射及36完整行；实际21capsule、13box、2sphere。解析后逐项核对原始状态文本、每个float按binary32回读、body/actor/internal归属、唯一shape/internal地址、actor内member ordinal连续、统一scene/module base、数量与源SHA。36个world矩阵以Decimal120独立计算Gram Frobenius与det，均proper且所报G覆盖高精度值；最大shape G=.00033565757003262825（无量纲）。actual-asset-packet.json/packet-verification.json与可复跑verify_packet.py保留。数据仅当前角色supplied PhysicsAsset；不把附属component、full self、flags参与规则、世界fence或同版body/view/hit/muzzle称为已完成，历史数据不能授权实时移动。
+
+264实际投影/errors0、14总览生成、5阶段contact逐张亲看仍双眼自身头肩/躯干严重遮挡FAIL；未全数亲看overview，且image与此C0数据未证明同一时刻，不作手/身体接触拟合接受。编码0，原五段操作operator0，正常清理true、无强杀、自有remaining为空；CLOAK575失败0、前台376无owned激活，anchor/reader前后相同。
+
+这次关闭只读数据链路。下一步将完整原始姿态的数值范围接入几何/场景查询，再接实际仍明确拒绝cover的body goal事务分支；其视图/碰撞/受击/枪口必须按原需求同版提交，不能用读取成功替代。完整CV24/AC22及头显继续未完成，工程25%。publicv71、固定入口与Quest不变。证据asset-scope-runtime-r242。
