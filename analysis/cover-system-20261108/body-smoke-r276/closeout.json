@@ -1,0 +1,67 @@
+{
+  "native_sha256": "4a84c42bc08eabab50d33cc7de30ad13ae89eb6ec81493f6b4ba831b1b49aa7f",
+  "raw_result": "J:\\codexWorktree\\gearsVr\\analysis\\instances\\cover-1112-r276-cloak-consume\\cover-output\\run-result.json",
+  "raw_result_sha256": "4ea4d921b0c4b1fda12d4a7fceaeb40bcbd9aa5b45d2941dfeef2b5f0e965926",
+  "result": {
+    "error": "RuntimeError('Own ordinary cover observation failed; preserve operator log')",
+    "operator_exit": 1,
+    "projection_frames": 271,
+    "normal_cleanup_verified": true,
+    "remaining_owned": {},
+    "isolated_done": {
+      "launcher_exit": 0,
+      "owned_game_absent": true,
+      "owned_children": {
+        "recorded": 0,
+        "remaining": []
+      },
+      "forced_termination": false,
+      "worker_error": null,
+      "no_game_started": false
+    }
+  },
+  "session": {
+    "phase": "stopped",
+    "native_cleanup_verified": true,
+    "entry_restore_verified": true,
+    "xr_exit_code": 0
+  },
+  "facts": {
+    "cover_input_l2_range": "-0.699999975,0.699999913,0,0.51",
+    "body_cover_pose_attempts": "235",
+    "body_cover_pose_accepted": "0",
+    "body_cover_pose_rejected": "235",
+    "cover_consume_observation_ready": "1",
+    "cover_consume_export_written": "1",
+    "cover_consume_export_error": "0",
+    "cover_consume_identity": "24207,24208,342",
+    "cover_consume_times": "247978923593900,247978918741600,247978911489400",
+    "cover_consume_finish": "4",
+    "cover_consume_read": "8",
+    "cover_consume_failure": "0",
+    "cover_consume_pending": "13",
+    "cover_consume_fields": "13",
+    "cover_consume_protocol": "0",
+    "cover_consume_installation_epoch": "1046",
+    "cover_consume_flags": "1,1,1,1,1,1,1",
+    "cover_consume_journal": "1,1,342,0,1046,0,0,1",
+    "cover_consume_required": "1347,87960930222080,4989988387126509568,5",
+    "cover_consume_covered": "0,0,0,0",
+    "cover_consume_bytes": "11592,4184,12192,1864,80",
+    "body_goal_cover_enabled": "1",
+    "body_goal_cover_fits": "5",
+    "body_goal_cover_plans": "235",
+    "body_goal_cover_applied": "235",
+    "body_goal_cover_consumed": "0",
+    "body_goal_cover_rejected": "7",
+    "body_goal_cover_reason": "0",
+    "body_goal_cover_measure_status": "0",
+    "body_goal_cover_measure_bad_bone": "4294967295",
+    "body_goal_cover_measure_bad_scale": "0",
+    "body_goal_cover_measure_atom_status": "0",
+    "body_goal_cover_measure_component_length": "0",
+    "body_goal_cover_bad_atoms": "0,0,0,0"
+  },
+  "finding": "235 cover writes/normal original returns, zero accepted geometry readbacks. First snapshot proves finish scope_closed, consumed, receipt installed epoch1046, no protocol/failure. Current run retired normally; prior r274 retirement failure remains unproven cause.",
+  "visual_review_pending": true
+}

@@ -1,0 +1,10 @@
+recorded actual body defect=0 read=0
+recorded actual body defect=1 read=9
+recorded actual body defect=2 read=9
+recorded actual body defect=3 read=8
+recorded actual body defect=4 read=8
+recorded actual body defect=5 read=8
+recorded actual body defect=6 read=9
+recorded actual body defect=7 read=9
+recorded actual body defect=8 read=8
+CoverRecordedConsumption checks=81 failures=0; real saved geometry, Host identity; Game=0

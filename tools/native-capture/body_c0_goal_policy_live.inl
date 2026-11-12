@@ -20,6 +20,7 @@ bool cover_enabled{};
 std::atomic<uint64_t> attempts{},plans{},applied{},published{},rejected{},view_rejected{},view_used{},revision{1};
 std::atomic<uint64_t> view_held{},pickup_view_used{},lancer_animation_view_used{};
 std::atomic<uint64_t> lancer_execution_eye_used{};
+std::atomic<uint64_t> cover_view_used{};
 std::atomic<uint64_t> neutral_rebind_attempts{},neutral_rebind_deferred{},neutral_rebinds{};
 struct Call {Call(){++callbacks;}~Call(){--callbacks;}};
 struct Key {bind::Binding actor{};gears_anchor::Identity asset{};core::CoreSnapshot source{};
@@ -384,7 +385,7 @@ bool read_view(gears_anchor::Receipt const* scene,gears_vr::StereoResult const& 
            !rig::source_fresh(stereo.sample.received_ns,now,a::maximum_age_ns))return deny(false);
         if(copy.cover){
             if(!read_cover_view(copy,scene,now,output))return deny(false);
-            ++view_used;return true;
+            ++view_used;++cover_view_used;return true;
         }
         // SM53 owns the original pickup animation and may temporarily have no
         // weapon. Keep the SAME established neutral eye, transformed by the
@@ -473,6 +474,7 @@ void summary(FILE* f){if(!f)return;
     fprintf(f,"body_goal_neutral_rebind_attempts=%llu body_goal_neutral_rebind_deferred=%llu body_goal_neutral_rebinds=%llu body_goal_pickup_view_used=%llu body_goal_lancer_animation_view_used=%llu body_goal_lancer_execution_eye_used=%llu ",neutral_rebind_attempts.load(),neutral_rebind_deferred.load(),neutral_rebinds.load(),pickup_view_used.load(),lancer_animation_view_used.load(),lancer_execution_eye_used.load());
     fprintf(f,"body_goal_cover_enabled=%u body_goal_cover_fits=%llu body_goal_cover_plans=%llu body_goal_cover_applied=%llu body_goal_cover_consumed=%llu body_goal_cover_rejected=%llu body_goal_cover_reason=%u ",
         unsigned(cover_enabled),cover_fits,cover_plans,cover_applied,cover_completed,cover_rejected,cover_reason);
+    fprintf(f,"body_goal_cover_view_used=%llu ",cover_view_used.load());
     fprintf(f,"body_goal_cover_measure_status=%u body_goal_cover_measure_bad_bone=%u body_goal_cover_measure_bad_scale=%.9g body_goal_cover_measure_atom_status=%u body_goal_cover_measure_component_length=%.9g ",
         unsigned(cover_measure_status),cover_measure_bad_bone,cover_measure_bad_scale,cover_measure_atom_status,cover_measure_component_length);
     fprintf(f,"body_goal_cover_bad_atoms=%u,%u,%llu,%llu ",cover_bad_atom_count,cover_bad_atom_total,cover_bad_atom_tick,cover_bad_atom_scene);

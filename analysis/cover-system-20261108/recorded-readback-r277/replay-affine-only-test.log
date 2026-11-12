@@ -1,0 +1,3 @@
+recorded actual body read code=9; source=11592 plan=4184 observed=12192
+FAIL 23 code==n::ConsumedPoseCode::verified
+CoverRecordedConsumption checks=10 failures=1; real saved geometry, Host identity; Game=0

@@ -44,6 +44,7 @@ struct CaptureObservation {
 // original consumption. It proves the selected body's rendered skeleton data,
 // not hardware upload, physics/hit use, occupancy or future-frame validity.
 enum class ConsumedPoseCode {verified,unavailable,alias,transaction,context,metadata,unreadable,changed,geometry,target};
+enum class ConsumedPosePolicy {all_planned,cover_unowned_shoulders};
 struct ConsumedPose {
     tx::CompletedPose consumed{};pose::Metadata metadata{};
     std::array<body::Atom,body::bones> local{};
@@ -66,6 +67,14 @@ class Backend final:public tx::Backend {
     ConsumedPose consumed_pose_{};
     std::array<body::Matrix64,body::bones> consumed_space_repeat_{};
     struct ExchangeFailure {unsigned kind{},stage{},verdict{},detail{};std::uintptr_t address{};} first_exchange_failure_{};
+    // Retail post-control SpaceBases has a measured +/-2*float-epsilon W
+    // roundoff (r276). Validate a copy, preserving every observed raw value.
+    // All projective XYZ columns, scale, lengths, basis and target residuals
+    // keep their original checks. This is not a source/planner tolerance.
+    static bool observed_similarity(body::ik::Matrix const& raw)noexcept {
+        if(!std::isfinite(raw.m[15])||std::abs(raw.m[15]-1)>4*0x1p-23)return false;
+        auto affine=raw;affine.m[15]=1;return body::d::similarity(affine);
+    }
     bool read_metadata(pose::Metadata& m) noexcept {
         auto reader=[](void* o,void const* p,std::size_t n){return read_memory(o,reinterpret_cast<std::uintptr_t>(p),n);};
         return pose::metadata(reader,request_,m);
@@ -235,7 +244,8 @@ public:
         return result==tx::Cas::exchanged?result:failed(result==tx::Cas::mismatch?4:3,result);
     }
     ConsumedPoseCode read_consumed_pose(tx::Kernel const& kernel,tx::Stamp const& actual,
-                                       std::uint64_t serial,ConsumedPose& out) noexcept {
+                                       std::uint64_t serial,ConsumedPose& out,ConsumedPosePolicy policy=ConsumedPosePolicy::all_planned) noexcept {
+        if(policy!=ConsumedPosePolicy::all_planned&&policy!=ConsumedPosePolicy::cover_unowned_shoulders)return ConsumedPoseCode::unavailable;
         if(!captured_||!context_||stopped_||GetCurrentThreadId()!=thread_)return ConsumedPoseCode::unavailable;
         const body::d::Range ranges[]={body::d::range(this,sizeof *this),body::d::range(&kernel,sizeof kernel),
             body::d::range(&actual,sizeof actual),body::d::range(&out,sizeof out),
@@ -268,7 +278,7 @@ public:
             for(float x:atom.translation)if(!std::isfinite(x))return ConsumedPoseCode::geometry;
             body::ik::Matrix space{},parent_space{};
             for(unsigned j=0;j<16;++j){space.m[j]=next.space[i].values[j];parent_space.m[j]=i?next.space[unsigned(parent)].values[j]:component.m[j];}
-            if(!body::d::similarity(space)||std::abs(body::d::length(body::d::row(space,0))-1)>2e-5)return ConsumedPoseCode::geometry;
+            if(!observed_similarity(space)||std::abs(body::d::length(body::d::row(space,0))-1)>2e-5)return ConsumedPoseCode::geometry;
             const auto expected=i?body::d::multiply(body::d::atom_matrix(atom),parent_space):body::d::atom_matrix(atom);
             // Matrix translation uses the same0.002 world-unit residual as the
             // planner/transaction. Basis entries retain a separate tight bound.
@@ -286,8 +296,15 @@ public:
             next.world[i]=body::d::pose(body::d::multiply(local,component));
             const auto position=body::d::length(body::d::sub(next.world[i].position,next.consumed.world[i].position));
             const auto angle=body::d::angle(next.world[i].orientation,next.consumed.world[i].orientation);
-            next.max_position_error=(std::max)(next.max_position_error,position);next.max_angle_error=(std::max)(next.max_angle_error,angle);
-            if(position>.002||angle>1e-4)return ConsumedPoseCode::target;
+            const unsigned bone=tx::completed_pose_bones[i];
+            const bool original_shoulder=policy==ConsumedPosePolicy::cover_unowned_shoulders&&
+                (bone==body::shoulders[0]||bone==body::shoulders[1])&&!tx::contains(kernel.outstanding_mask(),bone*2);
+            // Original arm controls own an unmodified shoulder rotation. Keep
+            // its actual pose, full Local/Space consistency and position check.
+            // Any C0-written shoulder rotation remains an exact target.
+            next.max_position_error=(std::max)(next.max_position_error,position);
+            if(!original_shoulder)next.max_angle_error=(std::max)(next.max_angle_error,angle);
+            if(position>.002||(!original_shoulder&&angle>1e-4))return ConsumedPoseCode::target;
         }
         LARGE_INTEGER clock{};
         if(!QueryPerformanceCounter(&clock)||clock.QuadPart<=0)return ConsumedPoseCode::unavailable;

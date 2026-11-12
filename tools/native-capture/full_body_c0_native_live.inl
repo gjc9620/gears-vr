@@ -1448,7 +1448,7 @@ void pose_end(Entry const& e,bool returned,bool original_called) noexcept {Call 
             state.cover_completed_valid=false;++cover_pose_attempts;
             state.cover_completed_code=stopping.load()?native::ConsumedPoseCode::unavailable:
                 result.code==tx::Code::scope_closed&&returned&&original_called&&same_entry(e)?
-                state.backend.read_consumed_pose(state.kernel,state.stamp,state.kernel.serial(),state.cover_completed):
+                state.backend.read_consumed_pose(state.kernel,state.stamp,state.kernel.serial(),state.cover_completed,native::ConsumedPosePolicy::cover_unowned_shoulders):
                 native::ConsumedPoseCode::transaction;
             state.cover_completed_valid=state.cover_completed_code==native::ConsumedPoseCode::verified;
             if(state.cover_completed_valid)++cover_pose_accepted;else ++cover_pose_rejected;

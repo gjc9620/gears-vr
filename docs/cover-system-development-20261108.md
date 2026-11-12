@@ -3537,3 +3537,18 @@ runner27641终态exit1；Native清理未通过（deadline/仍待处理），入�
 Host真实Native/Backend/Kernel/CAS/消费回读scenario11共70检查通过，包括成功路径的快照语义、ready后不可改、GT导出不启动、工作线程五文件保存与逐字节读回、只删除该夹具明确创建的文件/空目录。源身份/原版数学调用仍为Host边界。新Native SHA256 4a84c42bc08eabab50d33cc7de30ad13ae89eb6ec81493f6b4ba831b1b49aa7f编译通过，429项目依赖，冻结r273上三文件只读观察变化，开关不变，碰撞OFF，不混入工作区其他武器变化。
 
 下一步以新识别r276私有短检查取得第一笔真实消费失败的精确边界与原值，再离线复盘定位修复；不将本轮诊断构建当作交互可用。Quest、公版和固定手动候选未改，完整掩体目标仍待完成。
+
+
+### r276真实连续写入/首笔完整记录；r277真实几何重放定位并修正回读域
+
+r276（runner15381终态exit1）实际cover plan/applied235次，消费回读接受0、均因geometry失败。首笔记录tick24207/Compose24208/serial342：finish4 scope_closed、read8 geometry、failure0、protocol0，正常original_called/returned/same_entry/notified/consumed均true；安装epoch1046、atom_installed=true，Registry bound=true/version342。首笔pending13是当时正常待覆盖状态；该局后续连续235写入并正常退休，Native/入口/XR/launcher/所属进程收尾全部通过。不能追认为r274覆盖失败已修复。五份精确数据已从实例复制到recorded-readback-r277/actual-inputs并固定SHA/长度，不当作当前游戏授权。
+
+实际Local在原版调用后仅8/10/11/32/34/35六根原手臂骨骼变化。头/骨盆/root/脚及双肩位置都和计划一致，最大选点位置误差约4.53e-6原单位。36根手指/手臂SpaceBases齐次W为1±2.384185791015625e-7，而XYZ射影列仍精确0；Local→实际父SpaceBases的矩阵比较在原0.002平移/2e-5其他项阈值内全部通过。早期探索脚本统一2e-5平移且用累积父矩阵得19个差异，不是Native残差失败，actual-readback-findings.json已明确，不能当真实不一致。
+
+真实记录通过实际Backend/CAS/Kernel的Host身份复盘：原代码read8；只修正W舍入谓词后read9 target；再限定cover原手臂旋转归属后read0 verified。原版未由C0写入的肩8/32旋转分别变化约5.853/7.149度，属于原版手臂控制。r277对只读SpaceBases的刚体谓词仅允许有限W在1±4*float epsilon内，在临时副本置1做刚体判断，原始矩阵原样保留；XYZ射影列、单位尺度、长度、Local/Space一致性及目标残差不变，Source/planner/写入矩阵规则不改。
+
+新增显式cover_unowned_shoulders回读策略，只有当前Kernel确实没有写入该肩四元数半块，才保留其原版实际旋转，不要求等于旧计划。所有7个位置、Root/骨盆/头/双脚旋转、所有矩阵和骨长仍校验；任何C0实际写入的肩旋转都保持严格目标约束。默认all_planned策略保持7个完整目标要求，实际该帧仍被默认策略拒绝。Native只在cover分支选择新策略；不等于掩体专用GrabPose/手臂已实现，后续实际控制肩旋转会自动受写mask约束。
+
+真实数据重放81检查通过：保存原始矩阵/Local逐字节不变、原默认策略拒绝、等效符号反转使左右肩确实被C0写入后拒绝原动画覆盖、头/脚旋转改变拒绝、肩位置改变拒绝、过大W/非零射影列/NaN拒绝、失败不改变输出。旧Backend441检查、完整C0及导出scenario11 70检查通过。新增body_goal_cover_view_used仅在实际cover read_view成功时增长，下一次动作要求每阶段消费与视角都新增，不用站立view计数代替。
+
+r277 Native 566b7e35b4bbbe41509185e1db2f922cf4c28ce356b51ced641b9d62d9f72eb1编译通过，429依赖，冻结r275仅Backend/Native cover调用/Goal视角计数3文件变化，开关不变、碰撞OFF。下一步新识别r278短游戏核对5个HMD阶段的实际消费、实际view和双眼画面；持续抓取/保持/反向/点位GrabPose/过渡/高掩体/模式/实体头显仍未完成。

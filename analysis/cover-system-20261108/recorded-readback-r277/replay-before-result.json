@@ -1,0 +1,23 @@
+{
+  "build_exit": 0,
+  "test_exit": 1,
+  "output": "recorded actual body read code=8; source=11592 plan=4184 observed=12192\r\nFAIL 23 code==n::ConsumedPoseCode::verified\r\nCoverRecordedConsumption checks=10 failures=1; real saved geometry, Host identity; Game=0\r\n",
+  "source_sha256": {
+    "analysis\\cover-system-20261108\\recorded-readback-r277\\host-source\\tools\\native-capture\\full_body_c0_native_backend_test.cpp": "d95b805e002f0093878d979edd821bb0fd8d77f93ac598ab47ecf8f922ddb0bc",
+    "analysis\\cover-system-20261108\\recorded-readback-r277\\host-source\\tools\\native-capture\\full_body_c0_native_backend.h": "09618dcfea897042d23938fc1b5e80e704a8f156f3318aa917421eb7e951d9ab",
+    "analysis\\cover-system-20261108\\recorded-readback-r277\\host-source\\tools\\native-capture\\full_body_c0_transaction.h": "911d67177badc0ce62c6a5d01116c8f4eff2c9a4c9f7293ec501d779f2978704",
+    "analysis\\cover-system-20261108\\recorded-readback-r277\\host-source\\tools\\native-capture\\full_body_c0_planner.h": "2ab401d2c447db7a7cb2d58ad9cac7ef9b7b81ef397f796f0263ceece12aefa1",
+    "analysis\\cover-system-20261108\\recorded-readback-r277\\host-source\\tools\\native-capture\\cover_skeleton_ik.h": "6c7552302a028de515df48d4befa2a10a28fdc7e4a9f1725827d4d01444b980f",
+    "analysis\\cover-system-20261108\\recorded-readback-r277\\host-source\\tools\\vr-common\\pose_math.h": "c4a0fee9d2c61f18eca3d9fa192773d582b204bf432552ab2e087937caeb88ca",
+    "analysis\\cover-system-20261108\\recorded-readback-r277\\host-source\\tools\\native-capture\\cover_passive_atoms.h": "39cbdbbd07af1cb4c17396429e341ec50509aed4d8dab0df5e9c8ee02af8a480",
+    "analysis\\cover-system-20261108\\recorded-readback-r277\\host-source\\tools\\vr-common\\hand_two_bone_pose.h": "f9306a9829ab25e688a1f0f528e91a81b58ddcb78551279863389147c6c7c654",
+    "analysis\\cover-system-20261108\\recorded-readback-r277\\host-source\\tools\\vr-common\\hand_authored_mount_profile.h": "81fa7c668d726bc207646b209d9ee62c16bbefa41f6a83b3560b9767f6b813a6",
+    "analysis\\cover-system-20261108\\recorded-readback-r277\\host-source\\tools\\vr-common\\hand_wrist_calibration.h": "d73d075c7b854c14addb5fa919292d6301f4116dff0b864987009b32ccdad224",
+    "analysis\\cover-system-20261108\\recorded-readback-r277\\host-source\\tools\\native-capture\\cover_pose_phase.h": "61054f7a682b4453f018f426ff598c5bea591ff212c143600172af1bc2e5c7b6",
+    "analysis\\cover-system-20261108\\recorded-readback-r277\\host-source\\tools\\native-capture\\native_atom_overwrite_receipt.h": "f1898f63f6187e6bab3ec453865831b30d29affb5c8d96746fac6a3b79bf67b2",
+    "analysis\\cover-system-20261108\\recorded-readback-r277\\host-source\\tools\\native-capture\\cover_engine_bone_map.h": "c24dfdf3c111f5f7655d0835c71c95d2886dc673d6fdf4684aaa5b1ea71e1aef",
+    "analysis\\cover-system-20261108\\recorded-readback-r277\\host-source\\tools\\native-capture\\cover_physics_bone_map.h": "dde6ed85bb3475375032ad9a6aa798297a728459f82974aa2e0d4924c32892f6",
+    "analysis\\cover-system-20261108\\recorded-readback-r277\\host-source\\tools\\native-capture\\cover_bone_getters.h": "d5759e6d2478e6b1794e841b74bd03ae1c40e77dd4ea6a07e7fae44a9d8acb6f",
+    "analysis\\cover-system-20261108\\recorded-readback-r277\\host-source\\tools\\native-capture\\cover_recorded_consumption_test.cpp": "771147258d92fd83449caa3b251a9a25a98b175cd385d51e067fc8e50b5dcda6"
+  }
+}

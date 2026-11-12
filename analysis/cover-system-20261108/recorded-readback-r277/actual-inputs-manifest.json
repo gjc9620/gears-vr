@@ -1,0 +1,33 @@
+{
+  "native_sha256": "4a84c42bc08eabab50d33cc7de30ad13ae89eb6ec81493f6b4ba831b1b49aa7f",
+  "instance": "cover-1112-r276-cloak-consume",
+  "files": {
+    "cover-first-consumption-source.bin": {
+      "sha256": "e1a5a48f9a66948d6a75163ed574355ba3bdea6d4e328fb745343c5de8c26ed7",
+      "bytes": 11592,
+      "original": "J:\\codexWorktree\\gearsVr\\analysis\\instances\\cover-1112-r276-cloak-consume\\native\\cover-first-consumption-source.bin"
+    },
+    "cover-first-consumption-output.bin": {
+      "sha256": "aad9eae08970a231c123b63792534c3d7becc8d9a66a0166d7ad0c9480720218",
+      "bytes": 4184,
+      "original": "J:\\codexWorktree\\gearsVr\\analysis\\instances\\cover-1112-r276-cloak-consume\\native\\cover-first-consumption-output.bin"
+    },
+    "cover-first-consumption-observed.bin": {
+      "sha256": "45c54f59984473f656608d6f1f02ea79c31cb8a6555f77730a4c71142c3d48d5",
+      "bytes": 12192,
+      "original": "J:\\codexWorktree\\gearsVr\\analysis\\instances\\cover-1112-r276-cloak-consume\\native\\cover-first-consumption-observed.bin"
+    },
+    "cover-first-consumption-core.bin": {
+      "sha256": "1eb1b8113d50e3d4d06dbfbd604459e63c7c589a14ac6c49e2e602ce476b6cd1",
+      "bytes": 1864,
+      "original": "J:\\codexWorktree\\gearsVr\\analysis\\instances\\cover-1112-r276-cloak-consume\\native\\cover-first-consumption-core.bin"
+    },
+    "cover-first-consumption-stamp.bin": {
+      "sha256": "bed43b05a4b7413acd42a51885451eacc741e30e288f43167786b85e34dddf7b",
+      "bytes": 80,
+      "original": "J:\\codexWorktree\\gearsVr\\analysis\\instances\\cover-1112-r276-cloak-consume\\native\\cover-first-consumption-stamp.bin"
+    }
+  },
+  "observation_is_unvalidated": true,
+  "current_game_permission": false
+}

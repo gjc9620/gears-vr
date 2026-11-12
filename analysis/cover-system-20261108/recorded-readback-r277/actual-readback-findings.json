@@ -1,0 +1,307 @@
+{
+  "native_replay_matrix_consistency_failures": [],
+  "measured_w_roundoff": [
+    {
+      "bone": 11,
+      "w": 1.000000238418579,
+      "absolute_error": 2.384185791015625e-07
+    },
+    {
+      "bone": 12,
+      "w": 1.000000238418579,
+      "absolute_error": 2.384185791015625e-07
+    },
+    {
+      "bone": 13,
+      "w": 1.000000238418579,
+      "absolute_error": 2.384185791015625e-07
+    },
+    {
+      "bone": 14,
+      "w": 1.000000238418579,
+      "absolute_error": 2.384185791015625e-07
+    },
+    {
+      "bone": 15,
+      "w": 1.000000238418579,
+      "absolute_error": 2.384185791015625e-07
+    },
+    {
+      "bone": 16,
+      "w": 1.000000238418579,
+      "absolute_error": 2.384185791015625e-07
+    },
+    {
+      "bone": 17,
+      "w": 1.000000238418579,
+      "absolute_error": 2.384185791015625e-07
+    },
+    {
+      "bone": 18,
+      "w": 1.000000238418579,
+      "absolute_error": 2.384185791015625e-07
+    },
+    {
+      "bone": 19,
+      "w": 1.000000238418579,
+      "absolute_error": 2.384185791015625e-07
+    },
+    {
+      "bone": 20,
+      "w": 1.000000238418579,
+      "absolute_error": 2.384185791015625e-07
+    },
+    {
+      "bone": 21,
+      "w": 1.000000238418579,
+      "absolute_error": 2.384185791015625e-07
+    },
+    {
+      "bone": 22,
+      "w": 1.000000238418579,
+      "absolute_error": 2.384185791015625e-07
+    },
+    {
+      "bone": 23,
+      "w": 1.000000238418579,
+      "absolute_error": 2.384185791015625e-07
+    },
+    {
+      "bone": 24,
+      "w": 1.000000238418579,
+      "absolute_error": 2.384185791015625e-07
+    },
+    {
+      "bone": 25,
+      "w": 1.000000238418579,
+      "absolute_error": 2.384185791015625e-07
+    },
+    {
+      "bone": 26,
+      "w": 1.000000238418579,
+      "absolute_error": 2.384185791015625e-07
+    },
+    {
+      "bone": 27,
+      "w": 1.000000238418579,
+      "absolute_error": 2.384185791015625e-07
+    },
+    {
+      "bone": 28,
+      "w": 1.000000238418579,
+      "absolute_error": 2.384185791015625e-07
+    },
+    {
+      "bone": 35,
+      "w": 0.9999997615814209,
+      "absolute_error": 2.384185791015625e-07
+    },
+    {
+      "bone": 36,
+      "w": 0.9999997615814209,
+      "absolute_error": 2.384185791015625e-07
+    },
+    {
+      "bone": 37,
+      "w": 0.9999997615814209,
+      "absolute_error": 2.384185791015625e-07
+    },
+    {
+      "bone": 38,
+      "w": 0.9999997615814209,
+      "absolute_error": 2.384185791015625e-07
+    },
+    {
+      "bone": 39,
+      "w": 0.9999997615814209,
+      "absolute_error": 2.384185791015625e-07
+    },
+    {
+      "bone": 40,
+      "w": 0.9999997615814209,
+      "absolute_error": 2.384185791015625e-07
+    },
+    {
+      "bone": 41,
+      "w": 0.9999997615814209,
+      "absolute_error": 2.384185791015625e-07
+    },
+    {
+      "bone": 42,
+      "w": 0.9999997615814209,
+      "absolute_error": 2.384185791015625e-07
+    },
+    {
+      "bone": 43,
+      "w": 0.9999997615814209,
+      "absolute_error": 2.384185791015625e-07
+    },
+    {
+      "bone": 44,
+      "w": 0.9999997615814209,
+      "absolute_error": 2.384185791015625e-07
+    },
+    {
+      "bone": 45,
+      "w": 0.9999997615814209,
+      "absolute_error": 2.384185791015625e-07
+    },
+    {
+      "bone": 46,
+      "w": 0.9999997615814209,
+      "absolute_error": 2.384185791015625e-07
+    },
+    {
+      "bone": 47,
+      "w": 0.9999997615814209,
+      "absolute_error": 2.384185791015625e-07
+    },
+    {
+      "bone": 48,
+      "w": 0.9999997615814209,
+      "absolute_error": 2.384185791015625e-07
+    },
+    {
+      "bone": 49,
+      "w": 0.9999997615814209,
+      "absolute_error": 2.384185791015625e-07
+    },
+    {
+      "bone": 50,
+      "w": 0.9999997615814209,
+      "absolute_error": 2.384185791015625e-07
+    },
+    {
+      "bone": 51,
+      "w": 0.9999997615814209,
+      "absolute_error": 2.384185791015625e-07
+    },
+    {
+      "bone": 52,
+      "w": 0.9999997615814209,
+      "absolute_error": 2.384185791015625e-07
+    }
+  ],
+  "w_error_bound_in_readback": 4.76837158203125e-07,
+  "homogeneous_xyz_columns_exact_zero": true,
+  "original_unowned_shoulder_local_rotation_changes": [
+    {
+      "bone": 8,
+      "angle_radians": 0.1021536352755654,
+      "angle_degrees": 5.852972163208624,
+      "c0_rotation_written": false
+    },
+    {
+      "bone": 32,
+      "angle_radians": 0.12478221597421936,
+      "angle_degrees": 7.149494333612691,
+      "c0_rotation_written": false
+    }
+  ],
+  "selected_positions": [
+    {
+      "bone": 0,
+      "target_position": [
+        -3937.623283151829,
+        -171.0804650073732,
+        505.0
+      ],
+      "actual_position": [
+        -3937.623283151829,
+        -171.0804650073732,
+        505.0
+      ],
+      "distance": 0.0
+    },
+    {
+      "bone": 1,
+      "target_position": [
+        -3937.304533424229,
+        -187.29104816958863,
+        551.9205856323242
+      ],
+      "actual_position": [
+        -3937.3045331018493,
+        -187.2910484073431,
+        551.9205856323242
+      ],
+      "distance": 4.00569255433198e-07
+    },
+    {
+      "bone": 55,
+      "target_position": [
+        -3929.5571944147946,
+        -156.5865161041536,
+        584.6074709029201
+      ],
+      "actual_position": [
+        -3929.5571967814003,
+        -156.58651818928791,
+        584.6074676513672
+      ],
+      "distance": 4.5300335748382745e-06
+    },
+    {
+      "bone": 93,
+      "target_position": [
+        -3907.9280252637027,
+        -168.47464355987486,
+        519.3478362903442
+      ],
+      "actual_position": [
+        -3907.928025218852,
+        -168.47463989446283,
+        519.3478355407715
+      ],
+      "distance": 3.741539282551907e-06
+    },
+    {
+      "bone": 97,
+      "target_position": [
+        -3969.4467917580005,
+        -184.63955221032586,
+        520.1827685645723
+      ],
+      "actual_position": [
+        -3969.4467910106687,
+        -184.63955371576026,
+        520.1827697753906
+      ],
+      "distance": 2.0714532725295403e-06
+    },
+    {
+      "bone": 8,
+      "target_position": [
+        -3921.7765417094847,
+        -157.23770798420526,
+        576.0554415447991
+      ],
+      "actual_position": [
+        -3921.776545094655,
+        -157.2377085261404,
+        576.0554428100586
+      ],
+      "distance": 3.654306026823539e-06
+    },
+    {
+      "bone": 32,
+      "target_position": [
+        -3953.506280563304,
+        -168.45565541385488,
+        590.875389145993
+      ],
+      "actual_position": [
+        -3953.5062785530795,
+        -168.45565706299882,
+        590.8753890991211
+      ],
+      "distance": 2.60055272538023e-06
+    }
+  ],
+  "C0_written_q_target_checks_remain_strict": true,
+  "default_all_planned_reader_rejects_this_frame": true,
+  "replay_before_read_code": 8,
+  "replay_affine_only_code": 9,
+  "replay_cover_policy_code": 0,
+  "exploratory_analysis_note": "Earlier space_mismatches used accumulated parents and uniform2e-5 translation epsilon. Not the Native comparison; do not count those19 exploratory differences as Native residual failures. Actual parent-space comparison at native tolerances has zero failures."
+}
