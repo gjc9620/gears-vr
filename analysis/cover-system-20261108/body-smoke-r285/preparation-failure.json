@@ -1,0 +1,6 @@
+{
+  "game_started": false,
+  "phase": "helper source copy byte verification",
+  "reason": "Windows text writer converted LF to CRLF; exact hash comparison correctly rejected it",
+  "resolution": "preserve helper bytes in new fresh r286 preparation; r285 partial inputs retained"
+}

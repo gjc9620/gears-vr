@@ -1,0 +1,13 @@
+{
+  "diagnostic_record_base_entry": true,
+  "name": "cover-1112-r286-l2-grip",
+  "native_sha256": "c4055b2136e42319e9ed9a1d28ae93155bcc542edaa0c9b6c02eff7f3a036e4d",
+  "entry_sha256": "42177f5867d1f8a08ade49c8f87d685069db643300fcb4cabc6b3553285eef9c",
+  "tool_sha256": "22c2ba4b180a22ebfaa84f515cb57b8d975ad4e3516a221a8781df184b7e4cf0",
+  "runner_sha256": "29ae749f79afbe70ab2ef9d2274fe4363489938775ed3673a426c316b192360a",
+  "operator_template_sha256": "4bcdc0e344ce44884061e0973e620ce09a58450e440d9d02b0a12a00984af21a",
+  "prepared_only": true,
+  "game_started": false,
+  "physics_enabled": false,
+  "legacy_height_curve": "0.3/0.7 compatibility values, unused by selected C0 body owner; not measurements"
+}
