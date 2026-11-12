@@ -1,0 +1,73 @@
+{
+  "name": "cover-1112-r264-cloak-reader",
+  "native_sha256": "34dce19b971ed7527955f7498a2cb2171337c1fe0b4b5be2f2bb3d395496dde9",
+  "raw_result": "J:\\codexWorktree\\gearsVr\\analysis\\instances\\cover-1112-r264-cloak-reader\\cover-output\\run-result.json",
+  "raw_result_sha256": "ab9534a009f13a1673971b56039053768059a27a55d2f3a55e8b4976394c7021",
+  "result": {
+    "error": "RuntimeError('Own ordinary cover observation failed; preserve operator log')",
+    "operator_exit": 1,
+    "projection_frames": 267,
+    "projection_error": null,
+    "normal_cleanup_verified": false,
+    "remaining_owned": {},
+    "isolated_done": {
+      "launcher_exit": 1,
+      "owned_game_absent": true,
+      "owned_children": {
+        "recorded": 0,
+        "remaining": []
+      },
+      "forced_termination": false,
+      "worker_error": null,
+      "no_game_started": false
+    }
+  },
+  "session": {
+    "phase": "incomplete",
+    "native_started": true,
+    "native_cleanup_verified": true,
+    "entry_restore_verified": false,
+    "xr_exit_code": 0
+  },
+  "facts": {
+    "cover_body_live_published": "0",
+    "cover_input_c0_owner": "1",
+    "cover_input_l2_provider": "1",
+    "cover_input_l2_ready": "338",
+    "cover_input_l2_rejected": "0",
+    "cover_input_l2_range": "0,0,0,0.51",
+    "cover_input_l2_edge": "0,0,0,0",
+    "cover_l2_reference_calls": "338,338,0,1",
+    "cover_l2_reference_type": "2",
+    "cover_l2_reference_neutral": "-3927.34058,-178.830322,583",
+    "cover_l2_reference_last_sample": "761,244042745807900,1,1,2,2",
+    "cover_l2_reference_point_0": "1,-3968.88843,-235.166595,583",
+    "cover_l2_reference_point_1": "1,-3885.79272,-122.494057,583",
+    "cover_l2_reference_point_2": "1,-3927.34058,-178.830322,634",
+    "body_goal_cover_enabled": "1",
+    "body_goal_cover_fits": "0",
+    "body_goal_cover_plans": "0",
+    "body_goal_cover_applied": "0",
+    "body_goal_cover_consumed": "0",
+    "body_goal_cover_rejected": "320",
+    "body_goal_cover_reason": "8"
+  },
+  "visual_review": {
+    "frames_reviewed": [
+      "frame-00010.jpg",
+      "frame-00230.jpg"
+    ],
+    "observed": [
+      "early actual stereo world and hands visible",
+      "late projection black after unconsumed-cover view rejection"
+    ],
+    "full_span_review": false,
+    "cover_visual_pass": false
+  },
+  "unresolved": [
+    "measure_cover_pose returned non-okay: cover_reason=8; exact adapter Status not yet recorded",
+    "raw L2 side points available but projected side range is zero; basis/sign needs investigation",
+    "entry verifier threw Target not in an allowed graphics system module; no entry restoration pass"
+  ],
+  "owner_scope": "No occlusion or collision prerequisite; original L2 side points and low-cover-only top point; no Quest work"
+}

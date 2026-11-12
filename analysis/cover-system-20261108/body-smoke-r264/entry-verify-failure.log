@@ -1,0 +1,9 @@
+Traceback (most recent call last):
+  File "J:\codexWorktree\gearsVr\tools\native-capture\verify_stopped.py", line 527, in <module>
+    main()
+  File "J:\codexWorktree\gearsVr\tools\native-capture\verify_stopped.py", line 500, in main
+    expected, source = system_entries.expected(loaded, target)
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "J:\codexWorktree\gearsVr\tools\native-capture\verify_stopped.py", line 253, in expected
+    raise RuntimeError('Target not in an allowed graphics system module')
+RuntimeError: Target not in an allowed graphics system module
