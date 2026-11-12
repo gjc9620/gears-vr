@@ -102,8 +102,9 @@ def main():
     parser.add_argument('--native-r235', action='store_true')
     parser.add_argument('--native-r237', action='store_true')
     parser.add_argument('--native-r239', action='store_true')
+    parser.add_argument('--native-r241', action='store_true')
     args = parser.parse_args()
-    if sum((args.native_r106,args.native_r111,args.native_r117,args.native_r122,args.native_r124,args.native_r126,args.native_r131,args.native_r134,args.native_r137,args.native_r139,args.native_r143,args.native_r146,args.native_r149,args.native_r156,args.native_r158,args.native_r163,args.native_r165,args.native_r167,args.native_r169,args.native_r171,args.native_r173,args.native_r175,args.native_r177,args.native_r183,args.native_r187,args.native_r193,args.native_r227,args.native_r229,args.native_r231,args.native_r233,args.native_r235,args.native_r237,args.native_r239))>1:
+    if sum((args.native_r106,args.native_r111,args.native_r117,args.native_r122,args.native_r124,args.native_r126,args.native_r131,args.native_r134,args.native_r137,args.native_r139,args.native_r143,args.native_r146,args.native_r149,args.native_r156,args.native_r158,args.native_r163,args.native_r165,args.native_r167,args.native_r169,args.native_r171,args.native_r173,args.native_r175,args.native_r177,args.native_r183,args.native_r187,args.native_r193,args.native_r227,args.native_r229,args.native_r231,args.native_r233,args.native_r235,args.native_r237,args.native_r239,args.native_r241))>1:
         raise ValueError('Select one frozen Native')
     if not args.name.startswith('cover-'):
         raise ValueError('Cover owns only its cover- prefixed new instance')
@@ -182,9 +183,9 @@ def main():
             raise RuntimeError('Selected frozen Native delta differs')
         expected['native'] = receipt['dll_sha256']
         prepared['builds']['native'] = dict(saved=str(current/'native-build/GearsCapture.dll'), sha256=expected['native'])
-    if args.native_r227 or args.native_r229 or args.native_r231 or args.native_r233 or args.native_r235 or args.native_r237 or args.native_r239:
-        current = HERE.parent / ('pose-read-contract-r239' if args.native_r239 else 'asset-read-bracket-r237' if args.native_r237 else 'observed-pose-r235' if args.native_r235 else 'shape-pose-detail-r233' if args.native_r233 else 'shape-owner-fields-r231' if args.native_r231 else 'shape-read-detail-r229' if args.native_r229 else 'probe-entry-r227')
-        revision='v3' if args.native_r239 else 'v2'
+    if args.native_r227 or args.native_r229 or args.native_r231 or args.native_r233 or args.native_r235 or args.native_r237 or args.native_r239 or args.native_r241:
+        current = HERE.parent / ('asset-proof-scope-r241' if args.native_r241 else 'pose-read-contract-r239' if args.native_r239 else 'asset-read-bracket-r237' if args.native_r237 else 'observed-pose-r235' if args.native_r235 else 'shape-pose-detail-r233' if args.native_r233 else 'shape-owner-fields-r231' if args.native_r231 else 'shape-read-detail-r229' if args.native_r229 else 'probe-entry-r227')
+        revision='v3' if args.native_r239 or args.native_r241 else 'v2'
         receipt = load(current / ('native-build-'+revision+'-result.json'))
         proof = load(current / ('native-source-'+revision+'-manifest.json'))
         overlays = {'tools/native-capture/'+p for p in ('cover_physics_c0_live.inl','cover_physics_c0_live.h','cover_physx_transform.h','cover_physx_units.h','cover_probe_geometry.h')}
@@ -200,6 +201,8 @@ def main():
             overlays = {'tools/native-capture/cover_physics_query_live.inl'}
         if args.native_r239:
             overlays = {'tools/native-capture/'+p for p in ('cover_physx_observed_pose.h','cover_physx_shape_geometry.h')}
+        if args.native_r241:
+            overlays = {'tools/native-capture/'+p for p in ('cover_physics_query_live.inl','cover_physics_c0_live.inl')}
         if (set(receipt['changed']) != overlays or receipt['external_worktree_dependencies']
                 or not receipt['flags_unchanged'] or not receipt['build_only'] or receipt['staged']):
             raise RuntimeError('Selected shape snapshot frozen Native differs')
@@ -274,8 +277,8 @@ def main():
             raise RuntimeError('Shared build output selected')
     write_new(inputs / 'prepared.json', dict(
         instance=str(selected), output=str(output), started=False,
-        shape_snapshot_supported=args.native_r239 or args.native_r237 or args.native_r235 or args.native_r233 or args.native_r231 or args.native_r229 or args.native_r227,
-        path_probe_supported=args.native_r239 or args.native_r237 or args.native_r235 or args.native_r233 or args.native_r231 or args.native_r229 or args.native_r227 or args.native_r134 or args.native_r137 or args.native_r139 or args.native_r143 or args.native_r146 or args.native_r149 or args.native_r156 or args.native_r158 or args.native_r163 or args.native_r165 or args.native_r167 or args.native_r169 or args.native_r171 or args.native_r173 or args.native_r175 or args.native_r177 or args.native_r183 or args.native_r187 or args.native_r193,
+        shape_snapshot_supported=args.native_r241 or args.native_r239 or args.native_r237 or args.native_r235 or args.native_r233 or args.native_r231 or args.native_r229 or args.native_r227,
+        path_probe_supported=args.native_r241 or args.native_r239 or args.native_r237 or args.native_r235 or args.native_r233 or args.native_r231 or args.native_r229 or args.native_r227 or args.native_r134 or args.native_r137 or args.native_r139 or args.native_r143 or args.native_r146 or args.native_r149 or args.native_r156 or args.native_r158 or args.native_r163 or args.native_r165 or args.native_r167 or args.native_r169 or args.native_r171 or args.native_r173 or args.native_r175 or args.native_r177 or args.native_r183 or args.native_r187 or args.native_r193,
         native_sha256=expected['native'], playground_sha256=expected['playground'], xr_sha256=expected['sim_xr'],
         manifest_sha256=sha(selected / 'manifest.json'), config_sha256=sha(selected / 'config.json'),
         input_reader_sha256=sha(output / 'read_private_input.py'),
