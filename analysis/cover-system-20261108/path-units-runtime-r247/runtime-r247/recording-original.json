@@ -1,0 +1,1211 @@
+{
+  "source": "actual private simulator stereo projection",
+  "layer": "projection",
+  "desktop_capture": false,
+  "audio": false,
+  "synchronous_projection_capture": true,
+  "physical_headset_acceptance": false,
+  "started_wall_ns": 1794444396728244700,
+  "clock": "Python perf_counter; wall_ns brackets for independent window recording alignment",
+  "frames": [
+    {
+      "file": "frame-00000.jpg",
+      "time": 0.03524620001553558,
+      "requested": 0.002005499991355464,
+      "observed_wall_ns": 1794444396767726000,
+      "requested_wall_ns": 1794444396729920200,
+      "width": 960,
+      "height": 540
+    },
+    {
+      "file": "frame-00001.jpg",
+      "time": 0.14080100000137463,
+      "requested": 0.10972559999208897,
+      "observed_wall_ns": 1794444396872689600,
+      "requested_wall_ns": 1794444396837955000,
+      "width": 960,
+      "height": 540
+    },
+    {
+      "file": "frame-00002.jpg",
+      "time": 0.24255080000148155,
+      "requested": 0.21744440001202747,
+      "observed_wall_ns": 1794444396974021600,
+      "requested_wall_ns": 1794444396945132700,
+      "width": 960,
+      "height": 540
+    },
+    {
+      "file": "frame-00003.jpg",
+      "time": 0.34023070000694133,
+      "requested": 0.3265094000089448,
+      "observed_wall_ns": 1794444397071317200,
+      "requested_wall_ns": 1794444397053985700,
+      "width": 960,
+      "height": 540
+    },
+    {
+      "file": "frame-00004.jpg",
+      "time": 0.47244330000830814,
+      "requested": 0.435944600001676,
+      "observed_wall_ns": 1794444397203222300,
+      "requested_wall_ns": 1794444397163846400,
+      "width": 960,
+      "height": 540
+    },
+    {
+      "file": "frame-00005.jpg",
+      "time": 0.5699403999897186,
+      "requested": 0.5436995000054594,
+      "observed_wall_ns": 1794444397301796900,
+      "requested_wall_ns": 1794444397271296200,
+      "width": 960,
+      "height": 540
+    },
+    {
+      "file": "frame-00006.jpg",
+      "time": 0.671233500004746,
+      "requested": 0.6512983000138775,
+      "observed_wall_ns": 1794444397402023600,
+      "requested_wall_ns": 1794444397379147800,
+      "width": 960,
+      "height": 540
+    },
+    {
+      "file": "frame-00007.jpg",
+      "time": 0.7955548999889288,
+      "requested": 0.7612805000098888,
+      "observed_wall_ns": 1794444397526301000,
+      "requested_wall_ns": 1794444397489277000,
+      "width": 960,
+      "height": 540
+    },
+    {
+      "file": "frame-00008.jpg",
+      "time": 0.8945333000156097,
+      "requested": 0.8697790000005625,
+      "observed_wall_ns": 1794444397625965700,
+      "requested_wall_ns": 1794444397597754700,
+      "width": 960,
+      "height": 540
+    },
+    {
+      "file": "frame-00009.jpg",
+      "time": 1.0029097000078764,
+      "requested": 0.9791305999970064,
+      "observed_wall_ns": 1794444397733410100,
+      "requested_wall_ns": 1794444397706892600,
+      "width": 960,
+      "height": 540
+    },
+    {
+      "file": "frame-00010.jpg",
+      "time": 1.105889099999331,
+      "requested": 1.0872362999944016,
+      "observed_wall_ns": 1794444397836620100,
+      "requested_wall_ns": 1794444397815178900,
+      "width": 960,
+      "height": 540
+    },
+    {
+      "file": "frame-00011.jpg",
+      "time": 1.226664299989352,
+      "requested": 1.1958750000048894,
+      "observed_wall_ns": 1794444397959281700,
+      "requested_wall_ns": 1794444397923556700,
+      "width": 960,
+      "height": 540
+    },
+    {
+      "file": "frame-00012.jpg",
+      "time": 1.3281436999968719,
+      "requested": 1.3034811000106856,
+      "observed_wall_ns": 1794444398058888300,
+      "requested_wall_ns": 1794444398031004300,
+      "width": 960,
+      "height": 540
+    },
+    {
+      "file": "frame-00013.jpg",
+      "time": 1.4359606000070926,
+      "requested": 1.4111405000148807,
+      "observed_wall_ns": 1794444398167021700,
+      "requested_wall_ns": 1794444398139371600,
+      "width": 960,
+      "height": 540
+    },
+    {
+      "file": "frame-00014.jpg",
+      "time": 1.5400488000013866,
+      "requested": 1.5204585999890696,
+      "observed_wall_ns": 1794444398270885900,
+      "requested_wall_ns": 1794444398248519500,
+      "width": 960,
+      "height": 540
+    },
+    {
+      "file": "frame-00015.jpg",
+      "time": 1.6354974000132643,
+      "requested": 1.627144700003555,
+      "observed_wall_ns": 1794444398366620400,
+      "requested_wall_ns": 1794444398355398800,
+      "width": 960,
+      "height": 540
+    },
+    {
+      "file": "frame-00016.jpg",
+      "time": 1.7610025999892969,
+      "requested": 1.736052499996731,
+      "observed_wall_ns": 1794444398491638200,
+      "requested_wall_ns": 1794444398463590300,
+      "width": 960,
+      "height": 540
+    },
+    {
+      "file": "frame-00017.jpg",
+      "time": 1.8699701000005007,
+      "requested": 1.8449280000058934,
+      "observed_wall_ns": 1794444398601370900,
+      "requested_wall_ns": 1794444398573038500,
+      "width": 960,
+      "height": 540
+    },
+    {
+      "file": "frame-00018.jpg",
+      "time": 1.9944830999884289,
+      "requested": 1.9539015000045765,
+      "observed_wall_ns": 1794444398725051600,
+      "requested_wall_ns": 1794444398682135100,
+      "width": 960,
+      "height": 540
+    },
+    {
+      "file": "frame-00019.jpg",
+      "time": 2.0921236000140198,
+      "requested": 2.0627060999977402,
+      "observed_wall_ns": 1794444398823376700,
+      "requested_wall_ns": 1794444398790703600,
+      "width": 960,
+      "height": 540
+    },
+    {
+      "file": "frame-00020.jpg",
+      "time": 2.1958960999909323,
+      "requested": 2.171280200011097,
+      "observed_wall_ns": 1794444398926764900,
+      "requested_wall_ns": 1794444398899553000,
+      "width": 960,
+      "height": 540
+    },
+    {
+      "file": "frame-00021.jpg",
+      "time": 2.3040922000072896,
+      "requested": 2.279447100008838,
+      "observed_wall_ns": 1794444399034849000,
+      "requested_wall_ns": 1794444399007623400,
+      "width": 960,
+      "height": 540
+    },
+    {
+      "file": "frame-00022.jpg",
+      "time": 2.406804700003704,
+      "requested": 2.3878209000104107,
+      "observed_wall_ns": 1794444399137967800,
+      "requested_wall_ns": 1794444399115656300,
+      "width": 960,
+      "height": 540
+    },
+    {
+      "file": "frame-00023.jpg",
+      "time": 2.527866799995536,
+      "requested": 2.4964920000056736,
+      "observed_wall_ns": 1794444399258783800,
+      "requested_wall_ns": 1794444399224015200,
+      "width": 960,
+      "height": 540
+    },
+    {
+      "file": "frame-00024.jpg",
+      "time": 2.640928500011796,
+      "requested": 2.605276899994351,
+      "observed_wall_ns": 1794444399372154200,
+      "requested_wall_ns": 1794444399333442200,
+      "width": 960,
+      "height": 540
+    },
+    {
+      "file": "frame-00025.jpg",
+      "time": 2.7368028000055347,
+      "requested": 2.7131129000044893,
+      "observed_wall_ns": 1794444399467686000,
+      "requested_wall_ns": 1794444399441025200,
+      "width": 960,
+      "height": 540
+    },
+    {
+      "file": "frame-00026.jpg",
+      "time": 2.840062000002945,
+      "requested": 2.8208834000106435,
+      "observed_wall_ns": 1794444399570948500,
+      "requested_wall_ns": 1794444399548473900,
+      "width": 960,
+      "height": 540
+    },
+    {
+      "file": "frame-00027.jpg",
+      "time": 2.969632399996044,
+      "requested": 2.9294037999934517,
+      "observed_wall_ns": 1794444399700488900,
+      "requested_wall_ns": 1794444399657285800,
+      "width": 960,
+      "height": 540
+    },
+    {
+      "file": "frame-00028.jpg",
+      "time": 3.062331399996765,
+      "requested": 3.038473399996292,
+      "observed_wall_ns": 1794444399793118000,
+      "requested_wall_ns": 1794444399766725800,
+      "width": 960,
+      "height": 540
+    },
+    {
+      "file": "frame-00029.jpg",
+      "time": 3.172672999993665,
+      "requested": 3.1464428000035696,
+      "observed_wall_ns": 1794444399903914900,
+      "requested_wall_ns": 1794444399874022100,
+      "width": 960,
+      "height": 540
+    },
+    {
+      "file": "frame-00030.jpg",
+      "time": 3.2732039999973495,
+      "requested": 3.2545400999952108,
+      "observed_wall_ns": 1794444400004683600,
+      "requested_wall_ns": 1794444399982588100,
+      "width": 960,
+      "height": 540
+    },
+    {
+      "file": "frame-00031.jpg",
+      "time": 3.3935220999992453,
+      "requested": 3.3625887999951374,
+      "observed_wall_ns": 1794444400123967500,
+      "requested_wall_ns": 1794444400090594500,
+      "width": 960,
+      "height": 540
+    },
+    {
+      "file": "frame-00032.jpg",
+      "time": 3.496159800008172,
+      "requested": 3.4710145000135526,
+      "observed_wall_ns": 1794444400228096200,
+      "requested_wall_ns": 1794444400199150400,
+      "width": 960,
+      "height": 540
+    },
+    {
+      "file": "frame-00033.jpg",
+      "time": 3.6049910000001546,
+      "requested": 3.5799360999953933,
+      "observed_wall_ns": 1794444400335926300,
+      "requested_wall_ns": 1794444400307838900,
+      "width": 960,
+      "height": 540
+    },
+    {
+      "file": "frame-00034.jpg",
+      "time": 3.707135600008769,
+      "requested": 3.6886801999935415,
+      "observed_wall_ns": 1794444400437961500,
+      "requested_wall_ns": 1794444400416610700,
+      "width": 960,
+      "height": 540
+    },
+    {
+      "file": "frame-00035.jpg",
+      "time": 3.8285608000005595,
+      "requested": 3.7972700000100303,
+      "observed_wall_ns": 1794444400560358400,
+      "requested_wall_ns": 1794444400525533600,
+      "width": 960,
+      "height": 540
+    },
+    {
+      "file": "frame-00036.jpg",
+      "time": 3.9407160000118893,
+      "requested": 3.905543000000762,
+      "observed_wall_ns": 1794444400671576100,
+      "requested_wall_ns": 1794444400633543700,
+      "width": 960,
+      "height": 540
+    },
+    {
+      "file": "frame-00037.jpg",
+      "time": 4.039333699998679,
+      "requested": 4.0141141999920364,
+      "observed_wall_ns": 1794444400769808200,
+      "requested_wall_ns": 1794444400742272100,
+      "width": 960,
+      "height": 540
+    },
+    {
+      "file": "frame-00038.jpg",
+      "time": 4.141216599993641,
+      "requested": 4.121619500016095,
+      "observed_wall_ns": 1794444400872948600,
+      "requested_wall_ns": 1794444400849294900,
+      "width": 960,
+      "height": 540
+    },
+    {
+      "file": "frame-00039.jpg",
+      "time": 4.259875499992631,
+      "requested": 4.22924710001098,
+      "observed_wall_ns": 1794444400990455300,
+      "requested_wall_ns": 1794444400957167000,
+      "width": 960,
+      "height": 540
+    },
+    {
+      "file": "frame-00040.jpg",
+      "time": 4.3729989000130445,
+      "requested": 4.337401199998567,
+      "observed_wall_ns": 1794444401103696700,
+      "requested_wall_ns": 1794444401065660700,
+      "width": 960,
+      "height": 540
+    },
+    {
+      "file": "frame-00041.jpg",
+      "time": 4.471658199996455,
+      "requested": 4.446033499989426,
+      "observed_wall_ns": 1794444401202774100,
+      "requested_wall_ns": 1794444401173871400,
+      "width": 960,
+      "height": 540
+    },
+    {
+      "file": "frame-00042.jpg",
+      "time": 4.574082700011786,
+      "requested": 4.554332800005795,
+      "observed_wall_ns": 1794444401305144400,
+      "requested_wall_ns": 1794444401282685700,
+      "width": 960,
+      "height": 540
+    },
+    {
+      "file": "frame-00043.jpg",
+      "time": 4.692550100007793,
+      "requested": 4.662127099989448,
+      "observed_wall_ns": 1794444401424186600,
+      "requested_wall_ns": 1794444401389985200,
+      "width": 960,
+      "height": 540
+    },
+    {
+      "file": "frame-00044.jpg",
+      "time": 4.794529300008435,
+      "requested": 4.769764099997701,
+      "observed_wall_ns": 1794444401525556000,
+      "requested_wall_ns": 1794444401497928300,
+      "width": 960,
+      "height": 540
+    },
+    {
+      "file": "frame-00045.jpg",
+      "time": 4.903897500014864,
+      "requested": 4.878685600007884,
+      "observed_wall_ns": 1794444401634882000,
+      "requested_wall_ns": 1794444401606703800,
+      "width": 960,
+      "height": 540
+    },
+    {
+      "file": "frame-00046.jpg",
+      "time": 5.005586200015387,
+      "requested": 4.986154999991413,
+      "observed_wall_ns": 1794444401736653800,
+      "requested_wall_ns": 1794444401713622200,
+      "width": 960,
+      "height": 540
+    },
+    {
+      "file": "frame-00047.jpg",
+      "time": 5.125000500003807,
+      "requested": 5.094661100010853,
+      "observed_wall_ns": 1794444401855972700,
+      "requested_wall_ns": 1794444401822963900,
+      "width": 960,
+      "height": 540
+    },
+    {
+      "file": "frame-00048.jpg",
+      "time": 5.228719900012948,
+      "requested": 5.203002099995501,
+      "observed_wall_ns": 1794444401959648300,
+      "requested_wall_ns": 1794444401931180200,
+      "width": 960,
+      "height": 540
+    },
+    {
+      "file": "frame-00049.jpg",
+      "time": 5.340647500008345,
+      "requested": 5.311029400007101,
+      "observed_wall_ns": 1794444402071918300,
+      "requested_wall_ns": 1794444402038536100,
+      "width": 960,
+      "height": 540
+    },
+    {
+      "file": "frame-00050.jpg",
+      "time": 5.460865300003206,
+      "requested": 5.4193407999991905,
+      "observed_wall_ns": 1794444402191687500,
+      "requested_wall_ns": 1794444402147090100,
+      "width": 960,
+      "height": 540
+    },
+    {
+      "file": "frame-00051.jpg",
+      "time": 5.5647367000055965,
+      "requested": 5.528452200000174,
+      "observed_wall_ns": 1794444402295784100,
+      "requested_wall_ns": 1794444402256471100,
+      "width": 960,
+      "height": 540
+    },
+    {
+      "file": "frame-00052.jpg",
+      "time": 5.671761200006586,
+      "requested": 5.636416800000006,
+      "observed_wall_ns": 1794444402402443200,
+      "requested_wall_ns": 1794444402363997800,
+      "width": 960,
+      "height": 540
+    },
+    {
+      "file": "frame-00053.jpg",
+      "time": 5.770230399997672,
+      "requested": 5.745372300007148,
+      "observed_wall_ns": 1794444402501144700,
+      "requested_wall_ns": 1794444402473702300,
+      "width": 960,
+      "height": 540
+    },
+    {
+      "file": "frame-00054.jpg",
+      "time": 5.874678299995139,
+      "requested": 5.854965000005905,
+      "observed_wall_ns": 1794444402606444700,
+      "requested_wall_ns": 1794444402583313900,
+      "width": 960,
+      "height": 540
+    },
+    {
+      "file": "frame-00055.jpg",
+      "time": 5.992347799998242,
+      "requested": 5.9631878999935,
+      "observed_wall_ns": 1794444402723210000,
+      "requested_wall_ns": 1794444402691488600,
+      "width": 960,
+      "height": 540
+    },
+    {
+      "file": "frame-00056.jpg",
+      "time": 6.102027899993118,
+      "requested": 6.0730268000043,
+      "observed_wall_ns": 1794444402833220700,
+      "requested_wall_ns": 1794444402801167100,
+      "width": 960,
+      "height": 540
+    },
+    {
+      "file": "frame-00057.jpg",
+      "time": 6.204998100001831,
+      "requested": 6.181162299995776,
+      "observed_wall_ns": 1794444402936102800,
+      "requested_wall_ns": 1794444402909411900,
+      "width": 960,
+      "height": 540
+    },
+    {
+      "file": "frame-00058.jpg",
+      "time": 6.30413169998792,
+      "requested": 6.290438099997118,
+      "observed_wall_ns": 1794444403035378800,
+      "requested_wall_ns": 1794444403018777200,
+      "width": 960,
+      "height": 540
+    },
+    {
+      "file": "frame-00059.jpg",
+      "time": 6.429784900014056,
+      "requested": 6.3988407000142615,
+      "observed_wall_ns": 1794444403161647000,
+      "requested_wall_ns": 1794444403126279700,
+      "width": 960,
+      "height": 540
+    },
+    {
+      "file": "frame-00060.jpg",
+      "time": 6.537538400007179,
+      "requested": 6.506940099992789,
+      "observed_wall_ns": 1794444403268472200,
+      "requested_wall_ns": 1794444403235307700,
+      "width": 960,
+      "height": 540
+    },
+    {
+      "file": "frame-00061.jpg",
+      "time": 6.640709200000856,
+      "requested": 6.614744099992095,
+      "observed_wall_ns": 1794444403372522000,
+      "requested_wall_ns": 1794444403343018400,
+      "width": 960,
+      "height": 540
+    },
+    {
+      "file": "frame-00062.jpg",
+      "time": 6.736837400007062,
+      "requested": 6.723548600013601,
+      "observed_wall_ns": 1794444403467921600,
+      "requested_wall_ns": 1794444403451801700,
+      "width": 960,
+      "height": 540
+    },
+    {
+      "file": "frame-00063.jpg",
+      "time": 6.862862700014375,
+      "requested": 6.832215200003702,
+      "observed_wall_ns": 1794444403593686100,
+      "requested_wall_ns": 1794444403560198900,
+      "width": 960,
+      "height": 540
+    },
+    {
+      "file": "frame-00064.jpg",
+      "time": 6.9718552000122145,
+      "requested": 6.941790400014725,
+      "observed_wall_ns": 1794444403702850900,
+      "requested_wall_ns": 1794444403670015000,
+      "width": 960,
+      "height": 540
+    },
+    {
+      "file": "frame-00065.jpg",
+      "time": 7.073804399988148,
+      "requested": 7.04924399999436,
+      "observed_wall_ns": 1794444403805354600,
+      "requested_wall_ns": 1794444403776682700,
+      "width": 960,
+      "height": 540
+    },
+    {
+      "file": "frame-00066.jpg",
+      "time": 7.172044900013134,
+      "requested": 7.1573553000052925,
+      "observed_wall_ns": 1794444403903517300,
+      "requested_wall_ns": 1794444403884951200,
+      "width": 960,
+      "height": 540
+    },
+    {
+      "file": "frame-00067.jpg",
+      "time": 7.296593000006396,
+      "requested": 7.2662513999966905,
+      "observed_wall_ns": 1794444404027955900,
+      "requested_wall_ns": 1794444403994036500,
+      "width": 960,
+      "height": 540
+    },
+    {
+      "file": "frame-00068.jpg",
+      "time": 7.406575000000885,
+      "requested": 7.375366099993698,
+      "observed_wall_ns": 1794444404138143700,
+      "requested_wall_ns": 1794444404103577000,
+      "width": 960,
+      "height": 540
+    },
+    {
+      "file": "frame-00069.jpg",
+      "time": 7.510129000002053,
+      "requested": 7.484749199997168,
+      "observed_wall_ns": 1794444404241555500,
+      "requested_wall_ns": 1794444404212757800,
+      "width": 960,
+      "height": 540
+    },
+    {
+      "file": "frame-00070.jpg",
+      "time": 7.606720700016012,
+      "requested": 7.593132400012109,
+      "observed_wall_ns": 1794444404337683400,
+      "requested_wall_ns": 1794444404321233100,
+      "width": 960,
+      "height": 540
+    },
+    {
+      "file": "frame-00071.jpg",
+      "time": 7.731442599993898,
+      "requested": 7.7013393999950495,
+      "observed_wall_ns": 1794444404463347900,
+      "requested_wall_ns": 1794444404429718200,
+      "width": 960,
+      "height": 540
+    },
+    {
+      "file": "frame-00072.jpg",
+      "time": 7.840502400009427,
+      "requested": 7.8106678999902215,
+      "observed_wall_ns": 1794444404571131400,
+      "requested_wall_ns": 1794444404538988500,
+      "width": 960,
+      "height": 540
+    },
+    {
+      "file": "frame-00073.jpg",
+      "time": 7.9370284999895375,
+      "requested": 7.918296099989675,
+      "observed_wall_ns": 1794444404668522600,
+      "requested_wall_ns": 1794444404646576400,
+      "width": 960,
+      "height": 540
+    },
+    {
+      "file": "frame-00074.jpg",
+      "time": 8.061947300011525,
+      "requested": 8.025857000000542,
+      "observed_wall_ns": 1794444404792317300,
+      "requested_wall_ns": 1794444404753688100,
+      "width": 960,
+      "height": 540
+    },
+    {
+      "file": "frame-00075.jpg",
+      "time": 8.162985300004948,
+      "requested": 8.13368719999562,
+      "observed_wall_ns": 1794444404893748200,
+      "requested_wall_ns": 1794444404861945800,
+      "width": 960,
+      "height": 540
+    },
+    {
+      "file": "frame-00076.jpg",
+      "time": 8.272240399994189,
+      "requested": 8.242190399992978,
+      "observed_wall_ns": 1794444405003240700,
+      "requested_wall_ns": 1794444404970615600,
+      "width": 960,
+      "height": 540
+    },
+    {
+      "file": "frame-00077.jpg",
+      "time": 8.374379000015324,
+      "requested": 8.350496099999873,
+      "observed_wall_ns": 1794444405105976300,
+      "requested_wall_ns": 1794444405078584000,
+      "width": 960,
+      "height": 540
+    },
+    {
+      "file": "frame-00078.jpg",
+      "time": 8.47149840000202,
+      "requested": 8.457821699994383,
+      "observed_wall_ns": 1794444405202665600,
+      "requested_wall_ns": 1794444405186101800,
+      "width": 960,
+      "height": 540
+    },
+    {
+      "file": "frame-00079.jpg",
+      "time": 8.597302700014552,
+      "requested": 8.56621729998733,
+      "observed_wall_ns": 1794444405328358500,
+      "requested_wall_ns": 1794444405293739000,
+      "width": 960,
+      "height": 540
+    },
+    {
+      "file": "frame-00080.jpg",
+      "time": 8.711450000002515,
+      "requested": 8.675407100003213,
+      "observed_wall_ns": 1794444405442109300,
+      "requested_wall_ns": 1794444405403607700,
+      "width": 960,
+      "height": 540
+    },
+    {
+      "file": "frame-00081.jpg",
+      "time": 8.809222999989288,
+      "requested": 8.784322899999097,
+      "observed_wall_ns": 1794444405541294400,
+      "requested_wall_ns": 1794444405512685100,
+      "width": 960,
+      "height": 540
+    },
+    {
+      "file": "frame-00082.jpg",
+      "time": 8.905240899999626,
+      "requested": 8.891935199993895,
+      "observed_wall_ns": 1794444405636185800,
+      "requested_wall_ns": 1794444405620387500,
+      "width": 960,
+      "height": 540
+    },
+    {
+      "file": "frame-00083.jpg",
+      "time": 9.030784200003836,
+      "requested": 9.000190299993847,
+      "observed_wall_ns": 1794444405762388500,
+      "requested_wall_ns": 1794444405728508000,
+      "width": 960,
+      "height": 540
+    },
+    {
+      "file": "frame-00084.jpg",
+      "time": 9.143554300011601,
+      "requested": 9.107676399988122,
+      "observed_wall_ns": 1794444405875158400,
+      "requested_wall_ns": 1794444405836008900,
+      "width": 960,
+      "height": 540
+    },
+    {
+      "file": "frame-00085.jpg",
+      "time": 9.241055599995889,
+      "requested": 9.216463299992029,
+      "observed_wall_ns": 1794444405972578400,
+      "requested_wall_ns": 1794444405944058000,
+      "width": 960,
+      "height": 540
+    },
+    {
+      "file": "frame-00086.jpg",
+      "time": 9.360388300003251,
+      "requested": 9.32461599999806,
+      "observed_wall_ns": 1794444406091085600,
+      "requested_wall_ns": 1794444406052248000,
+      "width": 960,
+      "height": 540
+    },
+    {
+      "file": "frame-00087.jpg",
+      "time": 9.475707300007343,
+      "requested": 9.434205600002315,
+      "observed_wall_ns": 1794444406207312300,
+      "requested_wall_ns": 1794444406161954100,
+      "width": 960,
+      "height": 540
+    },
+    {
+      "file": "frame-00088.jpg",
+      "time": 9.574351999995997,
+      "requested": 9.543032899993705,
+      "observed_wall_ns": 1794444406305554400,
+      "requested_wall_ns": 1794444406271008200,
+      "width": 960,
+      "height": 540
+    },
+    {
+      "file": "frame-00089.jpg",
+      "time": 9.671273200016003,
+      "requested": 9.65142989999731,
+      "observed_wall_ns": 1794444406402917600,
+      "requested_wall_ns": 1794444406379777800,
+      "width": 960,
+      "height": 540
+    },
+    {
+      "file": "frame-00090.jpg",
+      "time": 9.775407100009033,
+      "requested": 9.760744400002295,
+      "observed_wall_ns": 1794444406506863400,
+      "requested_wall_ns": 1794444406489199500,
+      "width": 960,
+      "height": 540
+    },
+    {
+      "file": "frame-00091.jpg",
+      "time": 9.90451409999514,
+      "requested": 9.868744400009746,
+      "observed_wall_ns": 1794444406635410500,
+      "requested_wall_ns": 1794444406597021700,
+      "width": 960,
+      "height": 540
+    },
+    {
+      "file": "frame-00092.jpg",
+      "time": 10.007670499995584,
+      "requested": 9.977668100007577,
+      "observed_wall_ns": 1794444406739297100,
+      "requested_wall_ns": 1794444406706017700,
+      "width": 960,
+      "height": 540
+    },
+    {
+      "file": "frame-00093.jpg",
+      "time": 10.107848799991189,
+      "requested": 10.087365999992471,
+      "observed_wall_ns": 1794444406838936700,
+      "requested_wall_ns": 1794444406814902900,
+      "width": 960,
+      "height": 540
+    },
+    {
+      "file": "frame-00094.jpg",
+      "time": 10.208726100012427,
+      "requested": 10.195122500008438,
+      "observed_wall_ns": 1794444406939852900,
+      "requested_wall_ns": 1794444406922857900,
+      "width": 960,
+      "height": 540
+    },
+    {
+      "file": "frame-00095.jpg",
+      "time": 10.329865500010783,
+      "requested": 10.30335639999248,
+      "observed_wall_ns": 1794444407060863700,
+      "requested_wall_ns": 1794444407030968600,
+      "width": 960,
+      "height": 540
+    },
+    {
+      "file": "frame-00096.jpg",
+      "time": 10.441886100015836,
+      "requested": 10.411256899998989,
+      "observed_wall_ns": 1794444407172888500,
+      "requested_wall_ns": 1794444407138869400,
+      "width": 960,
+      "height": 540
+    },
+    {
+      "file": "frame-00097.jpg",
+      "time": 10.54090819999692,
+      "requested": 10.52082689999952,
+      "observed_wall_ns": 1794444407272034200,
+      "requested_wall_ns": 1794444407249020600,
+      "width": 960,
+      "height": 540
+    },
+    {
+      "file": "frame-00098.jpg",
+      "time": 10.638124099990819,
+      "requested": 10.629116399999475,
+      "observed_wall_ns": 1794444407369377900,
+      "requested_wall_ns": 1794444407357082000,
+      "width": 960,
+      "height": 540
+    },
+    {
+      "file": "frame-00099.jpg",
+      "time": 10.76315089999116,
+      "requested": 10.738175300008152,
+      "observed_wall_ns": 1794444407493717400,
+      "requested_wall_ns": 1794444407466546500,
+      "width": 960,
+      "height": 540
+    },
+    {
+      "file": "frame-00100.jpg",
+      "time": 10.871981300006155,
+      "requested": 10.846767899987753,
+      "observed_wall_ns": 1794444407603754200,
+      "requested_wall_ns": 1794444407575047400,
+      "width": 960,
+      "height": 540
+    },
+    {
+      "file": "frame-00101.jpg",
+      "time": 10.974870400008513,
+      "requested": 10.955881100002443,
+      "observed_wall_ns": 1794444407706900400,
+      "requested_wall_ns": 1794444407683971500,
+      "width": 960,
+      "height": 540
+    },
+    {
+      "file": "frame-00102.jpg",
+      "time": 11.095408499997575,
+      "requested": 11.064335500006564,
+      "observed_wall_ns": 1794444407826638900,
+      "requested_wall_ns": 1794444407792803400,
+      "width": 960,
+      "height": 540
+    },
+    {
+      "file": "frame-00103.jpg",
+      "time": 11.19647840000107,
+      "requested": 11.171391100011533,
+      "observed_wall_ns": 1794444407927685900,
+      "requested_wall_ns": 1794444407899698600,
+      "width": 960,
+      "height": 540
+    },
+    {
+      "file": "frame-00104.jpg",
+      "time": 11.305424799997127,
+      "requested": 11.280268900009105,
+      "observed_wall_ns": 1794444408037350900,
+      "requested_wall_ns": 1794444408008778300,
+      "width": 960,
+      "height": 540
+    },
+    {
+      "file": "frame-00105.jpg",
+      "time": 11.40814970000065,
+      "requested": 11.388881499995477,
+      "observed_wall_ns": 1794444408139710500,
+      "requested_wall_ns": 1794444408116659300,
+      "width": 960,
+      "height": 540
+    },
+    {
+      "file": "frame-00106.jpg",
+      "time": 11.527636999991955,
+      "requested": 11.497674699989147,
+      "observed_wall_ns": 1794444408259925800,
+      "requested_wall_ns": 1794444408226153900,
+      "width": 960,
+      "height": 540
+    },
+    {
+      "file": "frame-00107.jpg",
+      "time": 11.632739799999399,
+      "requested": 11.607400700013386,
+      "observed_wall_ns": 1794444408364075100,
+      "requested_wall_ns": 1794444408335685400,
+      "width": 960,
+      "height": 540
+    },
+    {
+      "file": "frame-00108.jpg",
+      "time": 11.742257700010668,
+      "requested": 11.716396300005727,
+      "observed_wall_ns": 1794444408474024700,
+      "requested_wall_ns": 1794444408444773500,
+      "width": 960,
+      "height": 540
+    },
+    {
+      "file": "frame-00109.jpg",
+      "time": 11.839419199997792,
+      "requested": 11.825435400009155,
+      "observed_wall_ns": 1794444408570951400,
+      "requested_wall_ns": 1794444408553745200,
+      "width": 960,
+      "height": 540
+    },
+    {
+      "file": "frame-00110.jpg",
+      "time": 11.975473500002408,
+      "requested": 11.933970999991288,
+      "observed_wall_ns": 1794444408706859300,
+      "requested_wall_ns": 1794444408662306500,
+      "width": 960,
+      "height": 540
+    },
+    {
+      "file": "frame-00111.jpg",
+      "time": 12.074308200011728,
+      "requested": 12.042864099988947,
+      "observed_wall_ns": 1794444408805758500,
+      "requested_wall_ns": 1794444408770763700,
+      "width": 960,
+      "height": 540
+    },
+    {
+      "file": "frame-00112.jpg",
+      "time": 12.17790629999945,
+      "requested": 12.151044800004456,
+      "observed_wall_ns": 1794444408910316000,
+      "requested_wall_ns": 1794444408878765900,
+      "width": 960,
+      "height": 540
+    },
+    {
+      "file": "frame-00113.jpg",
+      "time": 12.274575699993875,
+      "requested": 12.260696300014388,
+      "observed_wall_ns": 1794444409006294200,
+      "requested_wall_ns": 1794444408988985000,
+      "width": 960,
+      "height": 540
+    },
+    {
+      "file": "frame-00114.jpg",
+      "time": 12.392913699994097,
+      "requested": 12.368472200003453,
+      "observed_wall_ns": 1794444409123995100,
+      "requested_wall_ns": 1794444409096347000,
+      "width": 960,
+      "height": 540
+    },
+    {
+      "file": "frame-00115.jpg",
+      "time": 12.506561599991983,
+      "requested": 12.477061100013088,
+      "observed_wall_ns": 1794444409238339200,
+      "requested_wall_ns": 1794444409205535100,
+      "width": 960,
+      "height": 540
+    },
+    {
+      "file": "frame-00116.jpg",
+      "time": 12.609470399998827,
+      "requested": 12.58455299999332,
+      "observed_wall_ns": 1794444409340757200,
+      "requested_wall_ns": 1794444409312203300,
+      "width": 960,
+      "height": 540
+    },
+    {
+      "file": "frame-00117.jpg",
+      "time": 12.706393300002674,
+      "requested": 12.692768200009596,
+      "observed_wall_ns": 1794444409437225800,
+      "requested_wall_ns": 1794444409420844100,
+      "width": 960,
+      "height": 540
+    },
+    {
+      "file": "frame-00118.jpg",
+      "time": 12.831823699991219,
+      "requested": 12.800691200012807,
+      "observed_wall_ns": 1794444409562745600,
+      "requested_wall_ns": 1794444409529009200,
+      "width": 960,
+      "height": 540
+    },
+    {
+      "file": "frame-00119.jpg",
+      "time": 12.939081499993335,
+      "requested": 12.909444299992174,
+      "observed_wall_ns": 1794444409669940000,
+      "requested_wall_ns": 1794444409637980800,
+      "width": 960,
+      "height": 540
+    },
+    {
+      "file": "frame-00120.jpg",
+      "time": 13.042265199997928,
+      "requested": 13.017386699997587,
+      "observed_wall_ns": 1794444409773006400,
+      "requested_wall_ns": 1794444409745767300,
+      "width": 960,
+      "height": 540
+    },
+    {
+      "file": "frame-00121.jpg",
+      "time": 13.140010400005849,
+      "requested": 13.12548779998906,
+      "observed_wall_ns": 1794444409872687600,
+      "requested_wall_ns": 1794444409853715500,
+      "width": 960,
+      "height": 540
+    },
+    {
+      "file": "frame-00122.jpg",
+      "time": 13.264405399997486,
+      "requested": 13.234056999994209,
+      "observed_wall_ns": 1794444409995639100,
+      "requested_wall_ns": 1794444409962476000,
+      "width": 960,
+      "height": 540
+    },
+    {
+      "file": "frame-00123.jpg",
+      "time": 13.37312179998844,
+      "requested": 13.342327899998054,
+      "observed_wall_ns": 1794444410104255000,
+      "requested_wall_ns": 1794444410070862400,
+      "width": 960,
+      "height": 540
+    },
+    {
+      "file": "frame-00124.jpg",
+      "time": 13.476152599992929,
+      "requested": 13.451239799993346,
+      "observed_wall_ns": 1794444410207677700,
+      "requested_wall_ns": 1794444410179377600,
+      "width": 960,
+      "height": 540
+    },
+    {
+      "file": "frame-00125.jpg",
+      "time": 13.596598000003723,
+      "requested": 13.559284199989634,
+      "observed_wall_ns": 1794444410327835000,
+      "requested_wall_ns": 1794444410287654800,
+      "width": 960,
+      "height": 540
+    },
+    {
+      "file": "frame-00126.jpg",
+      "time": 13.699287099996582,
+      "requested": 13.667937199992593,
+      "observed_wall_ns": 1794444410430397000,
+      "requested_wall_ns": 1794444410396330400,
+      "width": 960,
+      "height": 540
+    },
+    {
+      "file": "frame-00127.jpg",
+      "time": 13.807225800002925,
+      "requested": 13.777309500001138,
+      "observed_wall_ns": 1794444410539082400,
+      "requested_wall_ns": 1794444410505673100,
+      "width": 960,
+      "height": 540
+    },
+    {
+      "file": "frame-00128.jpg",
+      "time": 13.91022150000208,
+      "requested": 13.885841500014067,
+      "observed_wall_ns": 1794444410641481800,
+      "requested_wall_ns": 1794444410614044300,
+      "width": 960,
+      "height": 540
+    },
+    {
+      "file": "frame-00129.jpg",
+      "time": 14.008156600000802,
+      "requested": 13.99482849999913,
+      "observed_wall_ns": 1794444410739712600,
+      "requested_wall_ns": 1794444410723236100,
+      "width": 960,
+      "height": 540
+    },
+    {
+      "file": "frame-00130.jpg",
+      "time": 14.129643699998269,
+      "requested": 14.103608600009466,
+      "observed_wall_ns": 1794444410861044300,
+      "requested_wall_ns": 1794444410831963600,
+      "width": 960,
+      "height": 540
+    },
+    {
+      "file": "frame-00131.jpg",
+      "time": 14.242348400002811,
+      "requested": 14.212031200004276,
+      "observed_wall_ns": 1794444410973776500,
+      "requested_wall_ns": 1794444410940390700,
+      "width": 960,
+      "height": 540
+    },
+    {
+      "file": "frame-00132.jpg",
+      "time": 14.345227699988754,
+      "requested": 14.320186800003285,
+      "observed_wall_ns": 1794444411076789600,
+      "requested_wall_ns": 1794444411048546300,
+      "width": 960,
+      "height": 540
+    }
+  ],
+  "events": [],
+  "errors": []
+}

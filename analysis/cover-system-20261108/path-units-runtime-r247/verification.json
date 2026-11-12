@@ -1,0 +1,35 @@
+{
+  "path_attempted": false,
+  "original_calls": 0,
+  "operator_exit": 1,
+  "normal_cleanup_verified": true,
+  "remaining_owned": {},
+  "candidate_closing_rejection": {
+    "link_address": 2305843840,
+    "stage": "candidate_selection_before_original_A",
+    "difference": {
+      "kind": "registry",
+      "address": 5398218544,
+      "size": 16,
+      "before": "00002f160000000062540300f86f0300",
+      "after": "00002f160000000063540300f86f0300",
+      "before_header": {
+        "data": 372178944,
+        "count": 218210,
+        "capacity": 225272
+      },
+      "after_header": {
+        "data": 372178944,
+        "count": 218211,
+        "capacity": 225272
+      }
+    },
+    "difference_missing_is_unknown": false
+  },
+  "projection_frames": 133,
+  "projection_errors": [],
+  "personally_reviewed_frames": false,
+  "gameplay_accepted": false,
+  "headset_accepted": false,
+  "scope": "Strict pre-input candidate closure rejected one registry append. Not a path-query failure and no retry inside the ended instance."
+}

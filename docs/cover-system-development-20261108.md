@@ -3283,3 +3283,11 @@ C0仅在完整observe_asset_shapes返回queried之后，才对owned packet计算
 raw_hit1未区分自身与世界，不能称墙体命中/安全移动/occupancy或世界fence通过。普通query仍执行完整typed/source/owner前后关闭，未使用r241仅限asset无分派读取的借用guard。下一步新实例验证带命中对象列表的capsule path，核对自身归属、路径与终点；不能以sphere布尔结果授权body写入。
 
 264实际投影/errors0、14总览/5contact生成、编码0，但本轮未逐张亲看，personally_reviewed_contacts空、full_span/visual/headset接受均false；不把生成图片当作视觉验证。operator0、正常清理true、自有remaining为空、anchor/reader未变。原始run/native文本、extract.py及closeout保留。CV24/AC22、完整身体碰撞/模板/full self/world fence/body-view-hit-muzzle和已知遮挡仍未完成，工程25%；publicv71/固定入口/Quest保持。证据sphere-units-runtime-r246。
+
+## r247：路径观察在原A前候选关闭因registry新增一项而拒绝，未到query（2026-11-12）
+
+新cover-1112-r247-cloak-path-units，准备1f3969ef，r244 Native66a96c12…97f4。原ordinary approach在候选CoverLink读取q.finish时触发原严格World-state metadata/registry changed at closing boundary。已有r180拒绝见证保存确切差异：registry地址5398218544，data372178944/capacity225272保持，count218210→218211。不是identity/字段变更，也不把新增一项当作允许旧样本通过；原读取正确拒绝，未调用原A候选操作与物理path。path attempted0、原query0/0，不能记作path query失败或原source时效失败。
+
+operator1、133实际投影/errors0，正常Native/entry/XR/game清理true、自有remaining空；anchor/reader未变。原run/native、候选拒绝JSON、operator traceback、recording清单完整保留；本轮未亲看帧/未编码，不作完整视觉验证。下一步仅一次新实例完整新鲜读取复核该前置阶段，保持所有registry/identity/metadata/值关闭条件，不开启append-only放宽、不复活旧样本或重复未知原调用。若再失败则围绕新确切拒绝处理，禁止无变化循环。
+
+该前置拒绝不撤销r246实际sphere查询通过，也不证明full self/world/body/view。工程25%，CV24/AC22及头显仍未完成。证据path-units-runtime-r247。
