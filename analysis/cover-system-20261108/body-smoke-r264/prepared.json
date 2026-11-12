@@ -1,0 +1,12 @@
+{
+  "name": "cover-1112-r264-cloak-reader",
+  "native_sha256": "34dce19b971ed7527955f7498a2cb2171337c1fe0b4b5be2f2bb3d395496dde9",
+  "entry_sha256": "65c30e3a097400e58dfc626c4959d5b0bbdec86a0d1a97376bf29475eeb73807",
+  "tool_sha256": "e19614757f5ce5b85aaab1cc303fe52853ae48c8de1083ce937c908cd742bda8",
+  "runner_sha256": "07888ce47297e92b7bb1c2e8708b6dc7d3656180ff9120bd7071b375daa2e77a",
+  "operator_template_sha256": "c8aed0688a653359253624f80d3cd595245535f7e87f2928f4321af707afa0ec",
+  "prepared_only": true,
+  "game_started": false,
+  "physics_enabled": false,
+  "legacy_height_curve": "0.3/0.7 compatibility values, unused by selected C0 body owner; not measurements"
+}
