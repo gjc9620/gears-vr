@@ -3249,3 +3249,11 @@ C0 summary新增完整回读/借用guard计数，候选计数明确requires_clos
 264实际投影/errors0、14总览生成、5阶段contact逐张亲看仍双眼自身头肩/躯干严重遮挡FAIL；未全数亲看overview，且image与此C0数据未证明同一时刻，不作手/身体接触拟合接受。编码0，原五段操作operator0，正常清理true、无强杀、自有remaining为空；CLOAK575失败0、前台376无owned激活，anchor/reader前后相同。
 
 这次关闭只读数据链路。下一步将完整原始姿态的数值范围接入几何/场景查询，再接实际仍明确拒绝cover的body goal事务分支；其视图/碰撞/受击/枪口必须按原需求同版提交，不能用读取成功替代。完整CV24/AC22及头显继续未完成，工程25%。publicv71、固定入口与Quest不变。证据asset-scope-runtime-r242。
+
+## r243：原始观测形状的数学保守AABB与36实际行独立核对（2026-11-12）
+
+新增cover_physx_observed_bounds.h，不改变严格rigid转换器，也不归一化原q。box逐行取原始矩阵列与half的绝对乘积和；capsule取原矩阵Y列乘half_segment的线段再加原未缩放半径；sphere保持原半径。double乘积对binary32输入精确，每次累加和最终端点向外nextafter，避免相消导致范围缩小。仅数学几何AABB：不是PhysX窄相位浮点执行误差证明，不提供query姿态、scene fence、freshness或移动许可。
+
+owned Snapshot适配器重新执行stored/body原getter与composition，逐字节匹配world/actor矩阵与各自Gram记录；body存在标记与internal_actor一致，失败不写output。另有明确只接受供给几何的primitive入口用于历史数据，不能认证来源。非法尺寸/非finite/反射或过大Gram/错误rounding/alias拒绝。34004检查0失败，MSVC W4/WX编译0；独立角点/线段端点枚举覆盖不同转轴、近单位q、巨大平移和闭合篡改。MSVC long double与double同精度，不能把该枚举称为高精度证明。
+
+r242原始packet SHA0cb97269…c445，36行全部通过新增C++ primitive后，另用Python Decimal160枚举每个box角点、capsule线段加原半径及sphere极点；全部精确数学极值处于输出上下界内，逐轴slack和原输出SHA保留packet-certificates.json。历史packet缺少每行body原q/p，故该回放只检验primitive入口，未伪称通过owned Snapshot复核。新增头尚未接入Native编译/实时集合，没有新游戏或XR运行，工程25%、CV24/AC22与视图遮挡继续未完成。证据observed-bounds-r243。

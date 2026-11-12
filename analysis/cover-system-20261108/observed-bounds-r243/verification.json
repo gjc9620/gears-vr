@@ -1,0 +1,14 @@
+{
+  "implemented": true,
+  "compiled": true,
+  "native_integrated": false,
+  "checks": 34004,
+  "failures": 0,
+  "actual_packet_rows_verified": 36,
+  "independent_decimal_precision": 160,
+  "native_or_game_run": false,
+  "gameplay_accepted": false,
+  "headset_accepted": false,
+  "engineering_percent": 25,
+  "scope": "Enclosure of mathematical original observed box corners / capsule segment plus unscaled radius / sphere radius. Not a PhysX narrow-phase numerical certificate, authored assignment, full-self set, scene-query fence or movement authority."
+}
