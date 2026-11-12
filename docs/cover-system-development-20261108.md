@@ -3588,3 +3588,12 @@ r280 runner69932 exit1、operator1。heading连续读取314（阶段最后）/36
 完整289份实际projection保存，亲自审阅7页全跨度概览：approach世界可见，175..176自身肩/臂显著，177..195大面积前景自身身体，196..288双眼全黑。此次连续观察画面不通过，不能把heading读取计数当显示成功；Grip/完整手臂尚未测。本次未增加遮挡或碰撞工作。
 
 normal_cleanup_verified=false，Native cleanup deadline expired、entries_restored0，XR exit0；runner终态remaining_owned为空、forced_termination=false。所属进程结束与Native内部恢复验收分开，保留isolated-cleanup-pending.json，不抹除失败或绕过资源保护。runtime continuous-stereo-38916-20261112-151502-b310f0fd、closeout.json、terminal-status-selected.json、visual-review.json为证据。下一步仅启用既有diagnostic_first_failure在受保护私有入口记录首个commit失败/挂起的实际source/单位/上下文，先查清拒绝点，保持原有身份/时效/原子写入/恢复规则；不重新跑同一无首错记录配置。r279源码和离线/编译证据仍成立，尚无合格交付。
+
+
+### r281 既有首错开关的针对性观察：已消费字段等待原始覆写，尚不能证明r280同因
+
+同一r279-v4生产DLL，仅私有入口diagnostic_first_failure从0改1，保留全部原隔离/身份/时效/资源/恢复规则，未重编译、未重装或改手动包。runner38329 exit1、operator1；cover applied/consumed/view仍只有1，heading读取366/seeded0，pending13。关键区别：本局354次apply全部commit成功，commit_code12=0，没有首个commit失败可导出；不能沿用r280的commit拒绝解释本局。首个cover消费finish4/read0/failure0/protocol0，原函数返回、消费注册/安装均真实；13项已消费字段等待后续经认证原始覆写，之后不能建立新capture，原因仍未证实。
+
+13项为root(0)q/t、3/4/5q、54/55q、91/92/93/95/96/97q；只作实际mask解码，不是放宽退休证据的依据。5份独立首消费二进制已从native目录复制并回读hash/大小，保存在body-smoke-r281/actual-inputs和manifest，不能冒称失败瞬间或后续覆写快照。完整283份真实projection全部6页概览亲自查看：前段世界/approach可见，169后自身臂/大面积身体，192..282双眼黑，画面不通过。
+
+normal_cleanup_verified=false、Native entries_restored0，XR exit0、remaining_owned为空、forced_termination=false，保留内部恢复失败。既有export_pending要求stopping且callbacks/obligations均0，恰在当前13项挂起期间无法导出；metadata_reject_trace默认也未开启，因此不能声称已有后续branch轨迹。下一项是仅为该具体未完成覆写记录做GT有界采样→原子发布不可变副本→外部线程读出，类似r275首消费观测，不让导出依赖债务消失，不允许GT文件I/O/第二写入者/虚假退休。需离线验证不可变/线程边界后再做一次针对性观察，不继续无新增记录的相同游戏运行。掩体完整交付/Grip链/实体头显仍未完成。
