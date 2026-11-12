@@ -3579,3 +3579,12 @@ r278接续补充：L2 provider当前也有独立视角接线缺口：cover_l2_gr
 BodyGoal只保存最近已认证standing BASE观察水平轴的几何校准；进入cover重新使用当前neutral eye，不保存或刷新旧眼位/追踪/骨架/写入许可。每次provider独立验证Scene/当前avatar/world/mesh/asset/reference几何、Native进程/会话、XR session/space/reference及当前Stereo新鲜性；失效时撤回Cover视角，shared武器仲裁继续。已在cover启动或参考重绑无有效standing校准时，仅用当前独立认证的pre-preview Scene BASE提取水平轴，拒绝非刚性/反射/垂直/非有限矩阵，绝不退回Pawn+pi。当前HMD仍随后仅应用一次。drain清校准；普通compose视角失效不会破坏进入前几何朝向。
 
 离线五项：heading19、L2抓点22、Input88、shared25、FullGoal52全部0失败。最终r279 Native-v4编译链接通过，430份项目依赖全部位于冻结source-v4，PHYSX_QUERIES仍OFF，其余flags不变；DLL 97335d629a043e0e68a70e25186757b45539dab992aa710d3e5cea620bc1cd4b。v3在最后provider返回值防护补充前已编译通过，仅作为历史，不交付。初次快照准备的非唯一anchor拒绝和初版测试错误均保留，不算运行成功。本节只有源码/离线/编译证据，进掩体连续画面、真实Grip链和实体头显仍待验证。Quest/公版/固定手动包未变。
+
+
+### r280 实际检查失败：一次cover消费后commit保护拒绝/恢复未完成
+
+r280 runner69932 exit1、operator1。heading连续读取314（阶段最后）/362（终态）、seeded0，使用进入前已认证standing朝向，非旧preview fallback。cover applied/consumed/view只有1，后续转头阶段8秒内无新增消费/view，原检查及时报错。Native captures366、commits359、apply360，commit_code12 guard_rejected1、pending13；仅凭这些不能证明source-age、坐标或朝向造成失败。既有first-failure记录当时OFF，无法补造失败中的精确字段。r274也有退休阻塞历史，但不认定两者同因。
+
+完整289份实际projection保存，亲自审阅7页全跨度概览：approach世界可见，175..176自身肩/臂显著，177..195大面积前景自身身体，196..288双眼全黑。此次连续观察画面不通过，不能把heading读取计数当显示成功；Grip/完整手臂尚未测。本次未增加遮挡或碰撞工作。
+
+normal_cleanup_verified=false，Native cleanup deadline expired、entries_restored0，XR exit0；runner终态remaining_owned为空、forced_termination=false。所属进程结束与Native内部恢复验收分开，保留isolated-cleanup-pending.json，不抹除失败或绕过资源保护。runtime continuous-stereo-38916-20261112-151502-b310f0fd、closeout.json、terminal-status-selected.json、visual-review.json为证据。下一步仅启用既有diagnostic_first_failure在受保护私有入口记录首个commit失败/挂起的实际source/单位/上下文，先查清拒绝点，保持原有身份/时效/原子写入/恢复规则；不重新跑同一无首错记录配置。r279源码和离线/编译证据仍成立，尚无合格交付。
