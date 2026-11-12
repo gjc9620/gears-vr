@@ -1,0 +1,37 @@
+{
+  "native_sha256": "631c2cf8391ed08bad667b506eceefdc23f1c3cf48f0fbcb3f985a17a5a61501",
+  "path_attempted": false,
+  "original_calls": 0,
+  "actual_component_cache_exercised": false,
+  "operator_exit": 1,
+  "normal_cleanup_verified": true,
+  "remaining_owned": {},
+  "candidate_closing_rejection": {
+    "link_address": 2308390672,
+    "stage": "candidate_selection_before_original_A",
+    "difference": {
+      "kind": "registry",
+      "address": 5398218544,
+      "size": 16,
+      "before": "00002f160000000061540300f86f0300",
+      "after": "00002f160000000062540300f86f0300",
+      "before_header": {
+        "data": 372178944,
+        "count": 218209,
+        "capacity": 225272
+      },
+      "after_header": {
+        "data": 372178944,
+        "count": 218210,
+        "capacity": 225272
+      }
+    },
+    "difference_missing_is_unknown": false
+  },
+  "projection_frames": 135,
+  "projection_errors": [],
+  "personally_reviewed_frames": false,
+  "gameplay_accepted": false,
+  "headset_accepted": false,
+  "scope": "Strict pre-input candidate closure rejected one GObjects registry append; no performance/path result. Preserve this failure and repair bounded fresh pre-input observation rather than unchanged game reruns."
+}

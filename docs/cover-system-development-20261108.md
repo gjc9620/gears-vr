@@ -3355,3 +3355,11 @@ path attempted/finished1、原started0→2/returned0→2：第一段扫掠与终
 ProofPass601检查0：重复一致/矛盾期望、每次barrier冷读、失效后旧值不复活、容量1/密集hash冲突fallback、同地址不同size、失读/非法窗口、epoch回绕。真实typed组件夹具实际读64/140身份和207/283字段，三barrier独立；逐项修改全部207独立字段与64身份，下一pass均拒绝、逐项恢复后均重新通过。Component207、QueryReadGroups1046、CapsulePath391、AssetSession202、AssetEngine1744、OFF65通过；游戏原模块只作为固定PE字节数据，全部这些检查不是实际游戏/原query运行。
 
 Native从r251最终v4冻结树仅组件/Session/C0/新头四overlay，427编译依赖逐SHA、flags不变、无外部工作树，DLL SHA631c2cf8391ed08bad667b506eceefdc23f1c3cf48f0fbcb3f985a17a5a61501。尚未游戏运行/安装；下一步新实例定向检查真实读取去重比例、完整路径原调用/关闭与原年龄，不调整30ms准入或40/50ms上限、不重跑旧版凑成功。完整CV24/AC22、active-authored/full self/world fence/body-view-hit-muzzle/遮挡/头显未完成，工程25%，publicv71/固定入口/Quest保持。证据component-proof-pass-r253。
+
+## r254：再次在候选原A之前因GObjects新增一项拒绝，未到Native优化路径（2026-11-12）
+
+新cover-1112-r254-cloak-proof-pass，准备f4caa1d6，r253 Native631c2cf8…1501/427依赖与14身份检查通过。第一次准备名称41字符超40限制，在instance创建前拒绝；改短名后正常准备，name-rejection记录保留，无额外运行。实际ordinary candidate q.finish严格拒绝：GObjects header5398218544，data372178944/capacity225272保持，count218209→218210。与r247为同一类前置registry追加，不称Native proof优化失败。path attempted0、budget checks0、原query0/0，实际去重性能仍未覆盖。
+
+operator1、135实际投影/errors0；正常Native/entry/XR/game清理true，自有remaining空，anchor/reader未变。candidate拒绝原JSON、operator traceback、recording清单、run/native文本均保留；未亲看/编码，不作视觉验证。r247曾一次新实例重读后继续到path；此次再次出现后不再用无变化重跑凑通过。下一步只在候选操作/原A/Native path都未开始的阶段，针对已证实同地址/容量且count+1的GObjects拒绝，允许一次完整新鲜候选读取，旧样本仍作废，保持原q.finish所有严格barrier。身份/字段/name registry/重分配/未知差异不作此处理，第二次再拒绝即终止。
+
+修复尚未实现，r253仍仅编译/离线通过；CV24/AC22、实际path/full self/world fence/body-view-hit-muzzle/遮挡/头显继续未完成，工程25%。publicv71/固定入口/Quest保持。证据proof-pass-runtime-r254。
