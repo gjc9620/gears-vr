@@ -1,0 +1,12 @@
+{
+  "name": "cover-1112-r276-cloak-consume",
+  "native_sha256": "4a84c42bc08eabab50d33cc7de30ad13ae89eb6ec81493f6b4ba831b1b49aa7f",
+  "entry_sha256": "65c30e3a097400e58dfc626c4959d5b0bbdec86a0d1a97376bf29475eeb73807",
+  "tool_sha256": "3aa6bcc9545db0ba5e7d88532031fcb72c3362d0d6d21e33100b94a35f0a26b8",
+  "runner_sha256": "f9a00a76991bb481ea473bd5e0b75708ee7b22024592f706b375354c157f8a29",
+  "operator_template_sha256": "c8aed0688a653359253624f80d3cd595245535f7e87f2928f4321af707afa0ec",
+  "prepared_only": true,
+  "game_started": false,
+  "physics_enabled": false,
+  "legacy_height_curve": "0.3/0.7 compatibility values, unused by selected C0 body owner; not measurements"
+}
