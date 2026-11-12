@@ -1,0 +1,41 @@
+{
+  "alignment_is_approximate": true,
+  "wall_perf_offset_spread_seconds": 0.0009586811065673828,
+  "phases": [
+    {
+      "label": "cover_eye_neutral",
+      "file": "frame-00187.jpg",
+      "delta_seconds": 0.04663288628216833,
+      "phase_consumed": "34",
+      "phase_view": "34"
+    },
+    {
+      "label": "cover_eye_turned",
+      "file": "frame-00206.jpg",
+      "delta_seconds": 0.017461263603763655,
+      "phase_consumed": "76",
+      "phase_view": "76"
+    },
+    {
+      "label": "cover_eye_turn_restored",
+      "file": "frame-00225.jpg",
+      "delta_seconds": -0.04099462952581234,
+      "phase_consumed": "118",
+      "phase_view": "118"
+    },
+    {
+      "label": "cover_eye_raised",
+      "file": "frame-00244.jpg",
+      "delta_seconds": -0.027268563891993836,
+      "phase_consumed": "161",
+      "phase_view": "161"
+    },
+    {
+      "label": "cover_eye_rise_restored",
+      "file": "frame-00263.jpg",
+      "delta_seconds": -0.015848864219151437,
+      "phase_consumed": "204",
+      "phase_view": "204"
+    }
+  ]
+}

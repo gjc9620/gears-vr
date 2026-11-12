@@ -3604,3 +3604,12 @@ normal_cleanup_verified=false、Native entries_restored0，XR exit0、remaining_
 针对r280/r281记录缺口，新增cover_pending_observation，仅既有diagnostic_first_failure开启、当前GT、持有cover source且确有未完成字段时采样。同一Kernel serial每20ms最多一份、32份后release发布，换serial在未发布期间重开；原始PendingObservation/真实branch cache/实际尝试Compose编号一并保存。发布后不再写，外部collector acquire后导出cover-pending-observation.json，完全不依赖stopping/callbacks/obligations归零；GT不能导出。缺少真实branch记录时保留空，不伪造分支。既有first_pending硬失败保留语义仍在；未改身份/时效/原子写入/退休/恢复规则或单写入者。
 
 真实Host Native/Backend/Kernel/Compose消费后测试187检查0失败，覆盖关闭/异线程/非cover排除、采样间隔、32项边界、发布不变、GT拒绝IO、外部在债务仍在且未stopping时导出/回读，以及Kernel债务/mask不变。Host集成使用冻结r277 BodyGoal作为观察器测试边界，不冒称覆盖r279新朝向。初版测试推进假时钟640ms后导致后续独立view-age断言失败3项，已保持该失败并在观察器测试结束恢复fixture时钟；这不是修改产品时效。r282-v2完整Native在r279-v4冻结生产树上只叠加2文件，431份项目依赖冻结内，全部flags不变/PHYSX_QUERIES=OFF；DLL c964ba78e59d7950e1a2e3b069ecb4c047b8399aa8333bcd2cf1b7f033159906。尚未在游戏取得新记录/修复挂起，不作可玩验收。
+
+
+### r283 观察记录版本实际连续通过，历史挂起未重现/未证实修复
+
+r283 runner2602 exit0、operator0；r282 Native只增加观察器，私有entry启用既有first_failure和record_base_entry，不变更写入/恢复规则。cover applied/consumed237、body_cover_pose accepted237/rejected0、cover_view_used236、heading读取238/seeded0；五阶段consumed/view为34/34、76/76、118/118、161/161、204/204，均新增。pending终态0，cover_pending_ready0，无不可变挂起档案是本局未连续积累32样本，不是记录器游戏实证通过。不能把一次通过归因为观察器修复了r280/r281；二者失败与内部恢复失败继续保留。
+
+normal_cleanup_verified=true，Native cleanup/独立entries恢复/XR exit0、所属进程为空、forced_termination=false。271份实际projection双眼图完整6页及近五阶段187/206/225/244/263亲自审阅：世界持续可见，无持续黑，转头/抬高和恢复可见；进入时自身臂/肩与cover期间下半部大面积自身身体仍明显，完整身体/手部拟合不通过，遮挡按owner后置，不扩展新遮挡系统。阶段图按保存wall/perf与QPC近似配对，相差约16..47ms，不称逐GPU帧绑定。Grip尚未测试。
+
+下一步进行左右L2点的实际左Grip获取/拖动/释放保持/再抓反向，持续使用该受保护私有配置；若挂起再现，r282副本会保留实际branch/epoch/coverage。先以无Grip的三轴短手移动从现有hand_world诊断测得raw→world线性映射，直接定位实际L2点，验证新帧/当前消费，避免假定reference yaw为零或回用旧preview轴。需要记录interaction phase/edge/ownership/virtual offset区分输入意图与真正C0应用；每点GrabPose/手臂过渡、高掩体/双模式、出掩体恢复和实体头显交付仍未完成。公版/Quest/固定手动候选未改。

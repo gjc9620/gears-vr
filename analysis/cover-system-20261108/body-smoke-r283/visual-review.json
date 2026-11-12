@@ -1,0 +1,27 @@
+{
+  "all_frames": 271,
+  "overview_pages_personally_reviewed": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6
+  ],
+  "dense_frames_personally_reviewed": [
+    187,
+    206,
+    225,
+    244,
+    263
+  ],
+  "observed": [
+    "Both submitted projection eyes remain world-visible throughout the reviewed timeline; no sustained black.",
+    "Turn and 0.10m rise visibly change framing and restoration returns to initial framing.",
+    "Entry still shows own arms/shoulder; large lower foreground body remains throughout cover; complete fit not accepted."
+  ],
+  "full_hand_body_fit_accepted": false,
+  "headset_accepted": false,
+  "grip_tested": false,
+  "historical_stall_fixed": false
+}

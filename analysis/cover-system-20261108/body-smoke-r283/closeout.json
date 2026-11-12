@@ -1,0 +1,49 @@
+{
+  "result": "bounded body/view check passed; historical stall unresolved",
+  "runner_exit": 0,
+  "operator_exit": 0,
+  "normal_cleanup_verified": true,
+  "forced_termination": false,
+  "remaining_owned": {},
+  "native_cleanup_verified": true,
+  "entries_restored": "1",
+  "xr_exit": 0,
+  "cover_consumed": "237",
+  "cover_view_used": "236",
+  "cover_heading_used": "238",
+  "cover_heading_seeded": "0",
+  "native_pending": "0",
+  "cover_pending_ready": "0",
+  "phases": [
+    {
+      "label": "cover_eye_neutral",
+      "consumed": "34",
+      "view": "34"
+    },
+    {
+      "label": "cover_eye_turned",
+      "consumed": "76",
+      "view": "76"
+    },
+    {
+      "label": "cover_eye_turn_restored",
+      "consumed": "118",
+      "view": "118"
+    },
+    {
+      "label": "cover_eye_raised",
+      "consumed": "161",
+      "view": "161"
+    },
+    {
+      "label": "cover_eye_rise_restored",
+      "consumed": "204",
+      "view": "204"
+    }
+  ],
+  "runtime_report": "J:\\codexWorktree\\gearsVr\\analysis\\runtime\\continuous-stereo-45472-20261112-153730-1e7c5a73.json",
+  "runtime_report_sha256": "71f8980361f8b25298921657c7c744aa87ed8469a9f55958c0e791db327ac925",
+  "run_result_sha256": "5d48ef836145c4ae519c8a51c76119e51894821b73ec7a556f5805eba9a9c439",
+  "grip_tested": false,
+  "headset_accepted": false
+}
