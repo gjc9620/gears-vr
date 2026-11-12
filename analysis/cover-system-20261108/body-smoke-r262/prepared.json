@@ -1,0 +1,12 @@
+{
+  "name": "cover-1112-r262-cloak-body",
+  "native_sha256": "d851bbf4bdad17ad5743a4d2f486e9b8445d95dbbb6767013ca33b42ff3d082c",
+  "entry_sha256": "65c30e3a097400e58dfc626c4959d5b0bbdec86a0d1a97376bf29475eeb73807",
+  "tool_sha256": "55af6fb3c3bd74be9e77e99221028e72cf752e6abdbe7c98b537bbaee81c42e9",
+  "runner_sha256": "c3476381d7a1de4808d2ec88eb3fbed3fbdce236770fd4467b900c450c2a8629",
+  "operator_template_sha256": "c8aed0688a653359253624f80d3cd595245535f7e87f2928f4321af707afa0ec",
+  "prepared_only": true,
+  "game_started": false,
+  "physics_enabled": false,
+  "legacy_height_curve": "0.3/0.7 compatibility values, unused by selected C0 body owner; not measurements"
+}

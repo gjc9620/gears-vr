@@ -1,0 +1,86 @@
+{
+  "name": "cover-1112-r261-cloak-body",
+  "memory_before": {
+    "available_commit": 18803994624,
+    "available_physical": 12150325248,
+    "active_instances": []
+  },
+  "disk_before": {
+    "check": "disk_admission",
+    "path": "J:\\codexWorktree\\gearsVr",
+    "free_bytes": 359570026496,
+    "minimum_free_bytes": 4294967296,
+    "admitted": true
+  },
+  "started_at_ns": 1794457601411495500,
+  "source": 1,
+  "probe_mode": "none",
+  "forced_termination": false,
+  "gameplay_accepted": false,
+  "headset_accepted": false,
+  "foreground_observations": {
+    "samples": 0,
+    "owned_activation": false
+  },
+  "cloak_observations": {
+    "samples": 0,
+    "failures": []
+  },
+  "runner_sha256": "3bdfbb25c5a89f2db3b8dfc13e530cdae8b05cfcca9a2b41838557a7c1555354",
+  "admission_wait_seconds": 60,
+  "isolation_source_sha256": "4882acdf3930a018a4e8a1a0fe93d53fa28569fc61b76556438aab05faaad72d",
+  "runtime_receipts_source_sha256": "385f5e5a8989a20e71906dc0f259196045c3648b57fb1e2477510622b5f1eee3",
+  "anchor_source_sha256": {
+    "analysis/solo-m1-20261028/sim_entry.py": "41de185d816683cc020397b56abe62528e1ffdcef925b75059f064fe117d4709",
+    "tools/native-capture/sixdof_manual_profile.py": "9480c2a056bb375b2678ce75fb600092f8e547cdcf8d9cbc11b2aea2d49247e7",
+    "tools/native-capture/anchor_config.py": "fe28f1f84ad26ac91aa6b67dc1431f150a8e707d78e3a7a5c9b396244d7c4592",
+    "tools/native-capture/cinematic_anchor.py": "f3c8b4135c57c1e8697ffe08dfdf59084b6fcb93bb1862979c688eab24ab4a44",
+    "tools/native-capture/world_rebind_runtime.py": "73b6f9606db5961e2890e49ae81a611f198abbef5b307a4d94947adb37052257",
+    "tools/native-capture/native_class_discovery.py": "3fd533c006f3546249d88b75d5a324ab3c4271da5ab0a39554e9d6089506b44d",
+    "tools/package-inspector/resolve_camera.py": "39e3272ffcc850fdfc8c4daf79fe2a7477f855e2f51adb21e67b47831fd376a6",
+    "tools/package-inspector/sample_player_anchor.py": "efbc5b65b4bc21a83001cbdea10c083e50ac20a8deca6dba01e7a65d5ca3c04e",
+    "tools/vr-launcher/playground_loader.py": "1eb3293661dc4ac810bfc4e9315900b6feb2cb7e22b823ac0ac50ff0337310dc",
+    "tools/game-io/background_input.py": "b27ba12d1f3c703babd5ec09ee731edc95742595da7d9887ad513568feab2bf2",
+    "tools/native-capture/launch_reserve.py": "a4c44d9dc20afb11edb84beffe70c5b968ab0b76be7d3958bd2efe04c9899edf",
+    "tools/vr-launcher/launcher.py": "2e410b78e8d82dc5d61ffdbb7bda2e4c3a861547ad6995e0a5c897274b54da9a",
+    "tools/debug-launch/Start-DebugGame.ps1": "b131810bfa1af9cc66c5e3ae7b9d118627bc9e9c0e1d908134a4dbf49d15267c"
+  },
+  "cover_reader_source_sha256": {
+    "tools/game-playtest/cover_state.py": "cf16bdd6be07b6d6921e10f0a6d0d98d7672eb1eb008fc5dcc651075781211fe",
+    "tools/game-playtest/world_state.py": "c1d2de0950fb25770cf9520ffa7cf6b0c46940eed9c45e01f5f1c22d4c3cfff0"
+  },
+  "projection_recorder_sha256": "e8cc69bcd34218ac5cab34b8c7dd098c64bb704c5ec845cb2552686694238ab6",
+  "start_exit": 1,
+  "start_stdout": "",
+  "start_stderr": "Traceback (most recent call last):\r\n  File \"J:\\codexWorktree\\gearsVr\\analysis\\instances\\cover-1112-r261-cloak-body\\cover-output\\cover_isolated_tool.py\", line 272, in <module>\r\n    if __name__=='__main__':main()\r\n                            ^^^^^^\r\n  File \"J:\\codexWorktree\\gearsVr\\analysis\\instances\\cover-1112-r261-cloak-body\\cover-output\\cover_isolated_tool.py\", line 184, in main\r\n    env,slot=environment(selected)\r\n             ^^^^^^^^^^^^^^^^^^^^^\r\n  File \"J:\\codexWorktree\\gearsVr\\analysis\\instances\\cover-1112-r261-cloak-body\\cover-output\\cover_isolated_tool.py\", line 88, in environment\r\n    slot=json.loads((Path(__file__).with_name('background-runtime.json')).read_text())['sim_runtime']\r\n                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\r\n  File \"C:\\Users\\11\\.cache\\codex-runtimes\\codex-primary-runtime\\dependencies\\python\\Lib\\pathlib.py\", line 1027, in read_text\r\n    with self.open(mode='r', encoding=encoding, errors=errors) as f:\r\n         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\r\n  File \"C:\\Users\\11\\.cache\\codex-runtimes\\codex-primary-runtime\\dependencies\\python\\Lib\\pathlib.py\", line 1013, in open\r\n    return io.open(self, mode, buffering, encoding, errors, newline)\r\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\r\nFileNotFoundError: [Errno 2] No such file or directory: 'J:\\\\codexWorktree\\\\gearsVr\\\\analysis\\\\instances\\\\cover-1112-r261-cloak-body\\\\cover-output\\\\background-runtime.json'\r\n",
+  "error": "RuntimeError('Private launcher start refused; retain original output')",
+  "traceback": "Traceback (most recent call last):\n  File \"J:\\codexWorktree\\gearsVr\\analysis\\cover-system-20261108\\body-smoke-r261\\run.py\", line 207, in main\n    raise RuntimeError('Private launcher start refused; retain original output')\nRuntimeError: Private launcher start refused; retain original output\n",
+  "prebirth_resource_refusal": false,
+  "normal_cleanup_required": true,
+  "terminal_state": {},
+  "terminal_session": {},
+  "isolated_done": null,
+  "remaining_owned": {},
+  "normal_cleanup_verified": false,
+  "anchor_sources_after": {
+    "analysis/solo-m1-20261028/sim_entry.py": "41de185d816683cc020397b56abe62528e1ffdcef925b75059f064fe117d4709",
+    "tools/native-capture/sixdof_manual_profile.py": "9480c2a056bb375b2678ce75fb600092f8e547cdcf8d9cbc11b2aea2d49247e7",
+    "tools/native-capture/anchor_config.py": "fe28f1f84ad26ac91aa6b67dc1431f150a8e707d78e3a7a5c9b396244d7c4592",
+    "tools/native-capture/cinematic_anchor.py": "f3c8b4135c57c1e8697ffe08dfdf59084b6fcb93bb1862979c688eab24ab4a44",
+    "tools/native-capture/world_rebind_runtime.py": "73b6f9606db5961e2890e49ae81a611f198abbef5b307a4d94947adb37052257",
+    "tools/native-capture/native_class_discovery.py": "3fd533c006f3546249d88b75d5a324ab3c4271da5ab0a39554e9d6089506b44d",
+    "tools/package-inspector/resolve_camera.py": "39e3272ffcc850fdfc8c4daf79fe2a7477f855e2f51adb21e67b47831fd376a6",
+    "tools/package-inspector/sample_player_anchor.py": "efbc5b65b4bc21a83001cbdea10c083e50ac20a8deca6dba01e7a65d5ca3c04e",
+    "tools/vr-launcher/playground_loader.py": "1eb3293661dc4ac810bfc4e9315900b6feb2cb7e22b823ac0ac50ff0337310dc",
+    "tools/game-io/background_input.py": "b27ba12d1f3c703babd5ec09ee731edc95742595da7d9887ad513568feab2bf2",
+    "tools/native-capture/launch_reserve.py": "a4c44d9dc20afb11edb84beffe70c5b968ab0b76be7d3958bd2efe04c9899edf",
+    "tools/vr-launcher/launcher.py": "2e410b78e8d82dc5d61ffdbb7bda2e4c3a861547ad6995e0a5c897274b54da9a",
+    "tools/debug-launch/Start-DebugGame.ps1": "b131810bfa1af9cc66c5e3ae7b9d118627bc9e9c0e1d908134a4dbf49d15267c"
+  },
+  "anchor_sources_unchanged": true,
+  "cover_reader_sources_after": {
+    "tools/game-playtest/cover_state.py": "cf16bdd6be07b6d6921e10f0a6d0d98d7672eb1eb008fc5dcc651075781211fe",
+    "tools/game-playtest/world_state.py": "c1d2de0950fb25770cf9520ffa7cf6b0c46940eed9c45e01f5f1c22d4c3cfff0"
+  },
+  "cover_reader_sources_unchanged": true
+}
