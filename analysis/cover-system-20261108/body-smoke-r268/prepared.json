@@ -1,0 +1,12 @@
+{
+  "name": "cover-1112-r268-cloak-shape",
+  "native_sha256": "eb29eb8a8295ecd86bdb8f4d3b1d0109d018e6f2436c683bfa8e3ca9a016223e",
+  "entry_sha256": "65c30e3a097400e58dfc626c4959d5b0bbdec86a0d1a97376bf29475eeb73807",
+  "tool_sha256": "1db2cceafa1d0826242764dc09eb86f092da18456ba41ff89c970fb064b4e6fd",
+  "runner_sha256": "a654e4401cc4f919f3bc33f7d57c5e93984e065df44ea02f94eb1b902729061d",
+  "operator_template_sha256": "c8aed0688a653359253624f80d3cd595245535f7e87f2928f4321af707afa0ec",
+  "prepared_only": true,
+  "game_started": false,
+  "physics_enabled": false,
+  "legacy_height_curve": "0.3/0.7 compatibility values, unused by selected C0 body owner; not measurements"
+}
