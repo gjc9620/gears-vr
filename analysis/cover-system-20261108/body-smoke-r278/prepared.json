@@ -1,0 +1,12 @@
+{
+  "name": "cover-1112-r278-cloak-view",
+  "native_sha256": "566b7e35b4bbbe41509185e1db2f922cf4c28ce356b51ced641b9d62d9f72eb1",
+  "entry_sha256": "65c30e3a097400e58dfc626c4959d5b0bbdec86a0d1a97376bf29475eeb73807",
+  "tool_sha256": "8baa507263cc77a18bd194d4219bf19ecdfc19b76157dd89a99230bbe1176c6f",
+  "runner_sha256": "8f9a4ad9da80f69c4c5238ae3a16efb3dd6cb73d8dda183b37bc8234522728e4",
+  "operator_template_sha256": "e0db894b14848077644167249e2494a436cb7a438cc0ed48922906fb298a74df",
+  "prepared_only": true,
+  "game_started": false,
+  "physics_enabled": false,
+  "legacy_height_curve": "0.3/0.7 compatibility values, unused by selected C0 body owner; not measurements"
+}
