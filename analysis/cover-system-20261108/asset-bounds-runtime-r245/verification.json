@@ -1,0 +1,24 @@
+{
+  "native_sha256": "66a96c12d55de850daf87dc7a203a29d86d29367ff6619214c5dcf114e5097f4",
+  "successful_read_and_bounds": true,
+  "counts": [
+    29,
+    29,
+    36
+  ],
+  "elapsed_ms": 5.5001,
+  "derivation_ms": 0.026,
+  "independent_certificates": 36,
+  "normal_cleanup_verified": true,
+  "remaining_owned": {},
+  "actual_packet_sha256": "384fa23fcc4a208a55107161c709e20b1b71ed483ab51376b7b31f6ea98e857e",
+  "raw_status_sha256": "1d4e33ce1ea77b37891f63f10e44d7a43284da425714d85f27a5d392db074d57",
+  "original_calls": 0,
+  "mathematical_only": true,
+  "query_permission": false,
+  "movement_permission": false,
+  "visual_accepted": false,
+  "gameplay_accepted": false,
+  "headset_accepted": false,
+  "engineering_percent": 25
+}

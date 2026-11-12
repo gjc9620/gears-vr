@@ -1,0 +1,70 @@
+{
+  "operator_exit": 0,
+  "normal_cleanup_verified": true,
+  "remaining_owned": {},
+  "projection_frames": 264,
+  "projection_errors": [],
+  "anchor_sources_unchanged": true,
+  "cover_reader_sources_unchanged": true,
+  "cloak_observations": {
+    "samples": 560,
+    "failures": []
+  },
+  "foreground_observations": {
+    "samples": 379,
+    "owned_activation": false
+  },
+  "header": {
+    "cover_shape_snapshot_requested": "1",
+    "attempted": "1",
+    "finished": "1",
+    "code": "0",
+    "detail": "0",
+    "bodies": "29",
+    "actors": "29",
+    "shapes": "36",
+    "units": "physx",
+    "movement_permission": "0",
+    "original_started": "0,0",
+    "original_returned": "0,0",
+    "world": "2321314080",
+    "pawn": "95220138240",
+    "scene": "415",
+    "compose": "25539",
+    "sequence": "2783",
+    "thread": "47972",
+    "admission": "6",
+    "session_entered": "1",
+    "session_stage": "7",
+    "session_detail": "0",
+    "begin_ns": "228718500767600",
+    "end_ns": "228718506267700"
+  },
+  "derived": {
+    "cover_shape_bounds_attempted": "1",
+    "code": "0",
+    "begin_ns": "228718506241600",
+    "end_ns": "228718506267600",
+    "derived_after_close": "1",
+    "mathematical_only": "1",
+    "query_permission": "0",
+    "movement_permission": "0"
+  },
+  "source_sha256": "1d4e33ce1ea77b37891f63f10e44d7a43284da425714d85f27a5d392db074d57",
+  "gameplay_accepted": false,
+  "headset_accepted": false,
+  "successful_read_and_bounds": true,
+  "counts": [
+    29,
+    29,
+    36
+  ],
+  "kinds": {
+    "1": 21,
+    "0": 13,
+    "5": 2
+  },
+  "elapsed_ms": 5.5001,
+  "derivation_ms": 0.026,
+  "independent_certificates": 36
+}

@@ -1,0 +1,191 @@
+{
+  "frames": 264,
+  "recording_sha256": "b8800f06a906107a2ccdb6d80fc460f41cdf4fc3faa99b28e5216770aa99dba3",
+  "pages": [
+    {
+      "file": "J:\\codexWorktree\\gearsVr\\analysis\\cover-system-20261108\\asset-bounds-runtime-r245\\runtime-r245\\overview-1.jpg",
+      "sha256": "d64c9b470b73cc04e08c4284b8c52699db0e4ee21b9096ee4bbb36999191702a"
+    },
+    {
+      "file": "J:\\codexWorktree\\gearsVr\\analysis\\cover-system-20261108\\asset-bounds-runtime-r245\\runtime-r245\\overview-2.jpg",
+      "sha256": "3a472b2e2553c780180fd5b9337a42372c59f92578b986c91534f0a397f65c60"
+    },
+    {
+      "file": "J:\\codexWorktree\\gearsVr\\analysis\\cover-system-20261108\\asset-bounds-runtime-r245\\runtime-r245\\overview-3.jpg",
+      "sha256": "f96d15af4168c8f020eb94754e6c2eb1b2756595321f9fe8b5d74d2b1556807a"
+    },
+    {
+      "file": "J:\\codexWorktree\\gearsVr\\analysis\\cover-system-20261108\\asset-bounds-runtime-r245\\runtime-r245\\overview-4.jpg",
+      "sha256": "a89138799038d214a44caacccf29154cd8456cf7d155c0ec461c28a59b14c34b"
+    },
+    {
+      "file": "J:\\codexWorktree\\gearsVr\\analysis\\cover-system-20261108\\asset-bounds-runtime-r245\\runtime-r245\\overview-5.jpg",
+      "sha256": "e3b848c227dd4b16d99bd7b923a6f00964c1f25cf57c7791691a4e90e02719dd"
+    },
+    {
+      "file": "J:\\codexWorktree\\gearsVr\\analysis\\cover-system-20261108\\asset-bounds-runtime-r245\\runtime-r245\\overview-6.jpg",
+      "sha256": "9409b2958bbcbcd790a6fad8d41adc06cf515bc28a25a0a5e47c8d7b961c4abf"
+    },
+    {
+      "file": "J:\\codexWorktree\\gearsVr\\analysis\\cover-system-20261108\\asset-bounds-runtime-r245\\runtime-r245\\overview-7.jpg",
+      "sha256": "80cbc4c7c4465bb3a0f580d9e8d2884219a9045868688ece31da9537468fec25"
+    },
+    {
+      "file": "J:\\codexWorktree\\gearsVr\\analysis\\cover-system-20261108\\asset-bounds-runtime-r245\\runtime-r245\\overview-8.jpg",
+      "sha256": "d9fc34eb4b0762b9042e9626703f0bfda627f6fc68ac505a67235f8ab45aef1f"
+    },
+    {
+      "file": "J:\\codexWorktree\\gearsVr\\analysis\\cover-system-20261108\\asset-bounds-runtime-r245\\runtime-r245\\overview-9.jpg",
+      "sha256": "4a29cbee968277ef6896a63b098c2088fa71f4afed15e0bb159d4f4aa4268092"
+    },
+    {
+      "file": "J:\\codexWorktree\\gearsVr\\analysis\\cover-system-20261108\\asset-bounds-runtime-r245\\runtime-r245\\overview-10.jpg",
+      "sha256": "251a4f56d871b45097da2ebff8f43e6e0cc7dccdfc0caf285ad5ef83403afa1b"
+    },
+    {
+      "file": "J:\\codexWorktree\\gearsVr\\analysis\\cover-system-20261108\\asset-bounds-runtime-r245\\runtime-r245\\overview-11.jpg",
+      "sha256": "c5c36fbfca419d5357b396f7822bef60cfd1588e34f9fdd33708b28b96e6c361"
+    },
+    {
+      "file": "J:\\codexWorktree\\gearsVr\\analysis\\cover-system-20261108\\asset-bounds-runtime-r245\\runtime-r245\\overview-12.jpg",
+      "sha256": "0e8102ba993f797f251b887f047aaf250df423007536348c4ef15f6583602e19"
+    },
+    {
+      "file": "J:\\codexWorktree\\gearsVr\\analysis\\cover-system-20261108\\asset-bounds-runtime-r245\\runtime-r245\\overview-13.jpg",
+      "sha256": "7d1afb32057337586cf61becea48ed2012c6ae91eec1febf788725cbcf9b34fb"
+    },
+    {
+      "file": "J:\\codexWorktree\\gearsVr\\analysis\\cover-system-20261108\\asset-bounds-runtime-r245\\runtime-r245\\overview-14.jpg",
+      "sha256": "249ed65b8b557aaf6a1304fb1ce107d7748317280b8cbb79093ec5446047edea"
+    }
+  ],
+  "contacts": [
+    {
+      "label": "cover_eye_neutral",
+      "file": "J:\\codexWorktree\\gearsVr\\analysis\\instances\\cover-1112-r245-cloak-asset-bounds\\cover-output\\projection\\frame-00182.jpg",
+      "sha256": "2834fb2b291e83f4f53a2b64f3c2768064aea0d1a82ec050d469edff84b183fc",
+      "event_wall_ns": 1794443920614275400,
+      "duration_seconds": 0.8056872,
+      "eligible_frames": 8,
+      "frame": {
+        "file": "frame-00182.jpg",
+        "time": 19.751846500003012,
+        "requested": 19.726415900018765,
+        "observed_wall_ns": 1794443921075493900,
+        "requested_wall_ns": 1794443921047399700,
+        "width": 960,
+        "height": 540
+      },
+      "same_C0_proven": false
+    },
+    {
+      "label": "cover_eye_turned",
+      "file": "J:\\codexWorktree\\gearsVr\\analysis\\instances\\cover-1112-r245-cloak-asset-bounds\\cover-output\\projection\\frame-00201.jpg",
+      "sha256": "14659898191412de1a8d1df5ea5ab5cf0b42f7e9d18a5d1a5e5038120146942c",
+      "event_wall_ns": 1794443922708530100,
+      "duration_seconds": 0.8063373,
+      "eligible_frames": 7,
+      "frame": {
+        "file": "frame-00201.jpg",
+        "time": 21.817903200018918,
+        "requested": 21.78809420001926,
+        "observed_wall_ns": 1794443923142058100,
+        "requested_wall_ns": 1794443923109163100,
+        "width": 960,
+        "height": 540
+      },
+      "same_C0_proven": false
+    },
+    {
+      "label": "cover_eye_turn_restored",
+      "file": "J:\\codexWorktree\\gearsVr\\analysis\\instances\\cover-1112-r245-cloak-asset-bounds\\cover-output\\projection\\frame-00220.jpg",
+      "sha256": "f3caaf271f6c1ed21a43b93d515e156a99b46cd3a0fcd513b1b0137c7218e5f9",
+      "event_wall_ns": 1794443924795183900,
+      "duration_seconds": 0.8050163,
+      "eligible_frames": 7,
+      "frame": {
+        "file": "frame-00220.jpg",
+        "time": 23.87649720002082,
+        "requested": 23.846460900007514,
+        "observed_wall_ns": 1794443925200822900,
+        "requested_wall_ns": 1794443925167276800,
+        "width": 960,
+        "height": 540
+      },
+      "same_C0_proven": false
+    },
+    {
+      "label": "cover_eye_raised",
+      "file": "J:\\codexWorktree\\gearsVr\\analysis\\instances\\cover-1112-r245-cloak-asset-bounds\\cover-output\\projection\\frame-00239.jpg",
+      "sha256": "82a1fce5bc8687cfcb082cb6271e4b71717ba2fa61f065efbd00c851f9e9f2be",
+      "event_wall_ns": 1794443926823800200,
+      "duration_seconds": 0.8059647,
+      "eligible_frames": 7,
+      "frame": {
+        "file": "frame-00239.jpg",
+        "time": 25.919962700019823,
+        "requested": 25.90563409999595,
+        "observed_wall_ns": 1794443927243938700,
+        "requested_wall_ns": 1794443927226458300,
+        "width": 960,
+        "height": 540
+      },
+      "same_C0_proven": false
+    },
+    {
+      "label": "cover_eye_rise_restored",
+      "file": "J:\\codexWorktree\\gearsVr\\analysis\\instances\\cover-1112-r245-cloak-asset-bounds\\cover-output\\projection\\frame-00258.jpg",
+      "sha256": "f442c58920f10a229600e1806adc7cdebdb77d4edcdabf7f298ef6025c9b8081",
+      "event_wall_ns": 1794443928844749500,
+      "duration_seconds": 0.8047695,
+      "eligible_frames": 8,
+      "frame": {
+        "file": "frame-00258.jpg",
+        "time": 27.9868936999992,
+        "requested": 27.968734900001436,
+        "observed_wall_ns": 1794443929310022300,
+        "requested_wall_ns": 1794443929289935100,
+        "width": 960,
+        "height": 540
+      },
+      "same_C0_proven": false
+    }
+  ],
+  "source": "actual private simulator projection",
+  "desktop_capture": false,
+  "full_span_personally_reviewed": false,
+  "headset_accepted": false,
+  "recording_errors": [],
+  "captured_span_complete": true,
+  "missing_contacts": [],
+  "encode_exit": 0,
+  "encoded_sha256": "e12af5ff36b379859ddf88720ea6e878d1d61cce7224253acce2ac500e18fd2e",
+  "personally_reviewed_contacts": [
+    {
+      "label": "cover_eye_neutral",
+      "sha256": "2834fb2b291e83f4f53a2b64f3c2768064aea0d1a82ec050d469edff84b183fc",
+      "result": "FAIL own shoulder/torso armour obstructs both eyes; severe on right side"
+    },
+    {
+      "label": "cover_eye_turned",
+      "sha256": "14659898191412de1a8d1df5ea5ab5cf0b42f7e9d18a5d1a5e5038120146942c",
+      "result": "FAIL own shoulder/torso armour obstructs both eyes; severe on right side"
+    },
+    {
+      "label": "cover_eye_turn_restored",
+      "sha256": "f3caaf271f6c1ed21a43b93d515e156a99b46cd3a0fcd513b1b0137c7218e5f9",
+      "result": "FAIL own shoulder/torso armour obstructs both eyes; severe on right side"
+    },
+    {
+      "label": "cover_eye_raised",
+      "sha256": "82a1fce5bc8687cfcb082cb6271e4b71717ba2fa61f065efbd00c851f9e9f2be",
+      "result": "FAIL own shoulder/torso armour obstructs both eyes; severe on right side"
+    },
+    {
+      "label": "cover_eye_rise_restored",
+      "sha256": "f442c58920f10a229600e1806adc7cdebdb77d4edcdabf7f298ef6025c9b8081",
+      "result": "FAIL own shoulder/torso armour obstructs both eyes; severe on right side"
+    }
+  ],
+  "visual_acceptance": false
+}

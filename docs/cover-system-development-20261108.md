@@ -3267,3 +3267,11 @@ AssetBounds2391检查0，覆盖64actor/256shape上限、空actor组、共享/nul
 C0仅在完整observe_asset_shapes返回queried之后，才对owned packet计算整组范围；单独记录bounds begin/end与code，明确derived_after_close=1、mathematical_only=1、query/movement_permission=0。失败不输出任意bounds row；成功逐行带actor/member/shape保留映射。此后计算不会续原source时钟、复活借用proof、分派原query或授予移动权限。原关闭guard/借用范围保持。Native基于r241最终冻结树仅C0及两个新头overlay，425编译依赖逐SHA、flags不变、无外部工作树依赖，DLL SHA66a96c12d55de850daf87dc7a203a29d86d29367ff6619214c5dcf114e5097f4。尚未实际游戏运行/安装；下一步新实例验证36实际形状能否整组输出及计算耗时。
 
 数学AABB不是PhysX窄相位浮点误差界，也不是world fence/full player self；模板对应、实时query/body/view/hit/muzzle与自身遮挡仍未完成。CV24/AC22与头显不宣称通过，工程25%。publicv71、固定入口、Quest保持。证据asset-bounds-r244。
+
+## r245：实际36形状范围全组成功，计算0.026ms，视图仍遮挡（2026-11-12）
+
+新cover-1112-r245-cloak-asset-bounds，准备7547f879、425冻结依赖/导入/14身份检查通过，使用r244 Native66a96c12…97f4；actual game3952/creation134389174615272113。完整实际读取29 Body/29唯一Actor/36 shape（21capsule/13box/2sphere）后，owned Snapshot范围集合code0、36行全数输出。C0观察总5.5001ms，其中完整关闭后的数学范围派生0.026ms；owner7/Session1173无失败，完整typed recheck1、组内guard1172，原query started/returned均0。每行actor/member/shape与raw geometry逐一对应；Decimal160再次独立枚举36形状的数学极值，全部被实际模块输出bounds包住。原时间/proof不续期，输出明确derived_after_close=1/mathematical_only=1/query_permission0/movement_permission0，未称世界query或移动通过。
+
+264实际投影/errors0、14总览生成、5contact逐张亲看：两眼右侧自身肩甲/躯干遮挡，右眼尤其严重，转头/抬头与恢复均仍FAIL；不能把较多环境可见解释为修复。全overview未亲看、图片与此C0未证明同一时刻，头显与拟合均不接受。编码0/operator0，正常清理true、自有remaining为空，CLOAK560失败0/前台379无owned激活，anchor/reader未变。原始run/native文本、可复跑extract.py、actual-bounds-packet.json与每轴Decimal极值保留。
+
+这轮将完整实际形状的数学范围接入原只读路径并验证，不扩大到full self/world fence/原query/同版body-view-hit-muzzle提交。接下来应处理实际场景查询与掩体body goal仍拒绝cover的缺口，不能重复相同读取代替玩法推进。完整CV24/AC22、工程25%、publicv71/固定入口/Quest保持。证据asset-bounds-runtime-r245。
