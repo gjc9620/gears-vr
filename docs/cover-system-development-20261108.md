@@ -3565,3 +3565,8 @@ r278 runner99768终态exit0、operator0，cover applied/consumed234，body_cover
 推荐接续点：body_c0_goal_policy_live::read_view的standing成功分支已持view_mutex，可保存已经认证的render.base_view世界水平朝向作为几何校准；Input以只读provider取同一avatar/world/native会话的独立朝向，CoverInputOwner frame.view_anchor与wall anchor分开，FullGoal现已支持分离。仅保存朝向，不借用旧眼位/骨架/追踪源或刷新时钟；处理重绑/失效、cover启动无已建立基准及ref变化，保持单写入者。此为接续方向，尚未实现，须测试并实际检查进入前后方向。
 
 通过证据body-smoke-r278/closeout.json、visual-review.json、visual-frame-index.json及实际录制。未动Quest、公版或固定手动候选。后续完整目标仍包括视角连续性、Grip左右/矮掩体上探的抓取拖动/松手保持/反向、每点GrabPose与手臂过渡、高掩体/双模式、正常出掩体恢复及完整真实画面/实体头显交付。
+
+
+r278接续补充：L2 provider当前也有独立视角接线缺口：cover_l2_grab_live::prepare用单anchor版本prepare_cover_view(frame.anchor,offset)，再用frame.anchor作cover_tracking_point的tracking/view轴；独立view_anchor引入后必须使用双anchor版本，tracking_point用frame.view_anchor。Input hand_world诊断亦应使用view_anchor。否则观测方向和壁面不同会让实际手的位置/扒点获得错误映射；不要只换相机朝向而保留该错误。现纯L2测试只设置了f.anchor，应显式设置view_anchor并增加90度独立视角的左右获得测试，保持L2原始点、权限、±0.70/0.51位移范围不变。
+
+缺少连续朝向时，不把旧预览朝向当新C0基准；CoverInputOwner现有prepare路径可用无效view_anchor撤回Cover提议和view_valid，同时仍给同一已解码输入的合法武器请求服务。视角provider应在shared/single Input两条路径使用，不能为此新增一个左手仲裁器。若允许从当前认证Scene的进入前原始base view建立首次几何朝向，须在旧preview改写view之前保存，并明确它不是旧身体/追踪/消费凭证。处理已有cover启动及recenter/会话/模型失效，不能让无旧standing缓存永久死锁。
