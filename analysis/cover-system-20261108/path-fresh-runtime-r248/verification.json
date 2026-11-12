@@ -1,0 +1,18 @@
+{
+  "original_started": 1,
+  "original_returned": 1,
+  "path_result_published": false,
+  "elapsed_ms": 36.7614,
+  "failure": "Final owner/source age rejection after the first original query returned; not original-query fault or missing owner link.",
+  "physics_repeat_calls": 42,
+  "collider_repeat_calls": 42,
+  "component_repeat_calls": 2,
+  "full_owner_calls": 91,
+  "normal_cleanup_verified": true,
+  "remaining_owned": {},
+  "personally_reviewed_frames": false,
+  "gameplay_accepted": false,
+  "headset_accepted": false,
+  "engineering_percent": 25,
+  "next": "Optimize synchronous no-dispatch source-reading groups with complete typed/full owner checks before dispatch and after close. Never borrow a proof across original calls or renew timestamps."
+}

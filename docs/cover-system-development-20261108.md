@@ -3291,3 +3291,13 @@ raw_hit1未区分自身与世界，不能称墙体命中/安全移动/occupancy�
 operator1、133实际投影/errors0，正常Native/entry/XR/game清理true、自有remaining空；anchor/reader未变。原run/native、候选拒绝JSON、operator traceback、recording清单完整保留；本轮未亲看帧/未编码，不作完整视觉验证。下一步仅一次新实例完整新鲜读取复核该前置阶段，保持所有registry/identity/metadata/值关闭条件，不开启append-only放宽、不复活旧样本或重复未知原调用。若再失败则围绕新确切拒绝处理，禁止无变化循环。
 
 该前置拒绝不撤销r246实际sphere查询通过，也不证明full self/world/body/view。工程25%，CV24/AC22及头显仍未完成。证据path-units-runtime-r247。
+
+## r248：新鲜严格候选通过，path首次原调用返回后在36.7614ms因时效拒绝（2026-11-12）
+
+仅一次新实例cover-1112-r248-cloak-path-fresh复核r247明确的一项registry新增，准备08bc6e36、r244 Native66a96c12…97f4，actual game49776/creation134389182322303407。未修改产品/原reader/任何关闭条件，原候选选择与五段ordinary观察operator0。此时实际到达path：attempted/finished1、q4 source、Session stage5 engine/detail4、engine stage9 guard_end/source_code0/exception0。原调用started0→1/returned0→1；不是原调用故障，也不是r247未尝试状态。36.7614ms后完整owner91/failed91 context source_age_expired extra6，Session guard45/failed45 owner_end，source_age_cause observed1/verdict3/causes1。hits/segments/endpoint均0是未发布，不是无碰撞；原调用一次返回之后不自动重试。
+
+timing：physics initial.4819ms、collider initial1.7541ms、components initial2.4775ms，physics repeat42次合3.4007ms、collider repeat42次合5.7734ms、components repeat2次合4.7551ms；engine31.1325ms；owner brackets86次合17.0784ms（嵌套项目不相加当总耗时）。首次与最后source-age窗口保留原tick/metadata/tracking时间，明确是原年龄过期，不抬deadline或续钟。此前sphere原调用1/1已完成全关闭；现在缺口具体缩到带owner集合的读重复与关闭时效。
+
+266实际投影/errors0，记录清单保存但未逐张亲看/未编码，视觉接受false；正常Native/entry/XR/game清理true，自有remaining空，anchor/reader未变。下一步对QueryEngine纯读sources及owner归属的同步分组减少重复完整角色证明；borrow只限无dispatch组内，分组前后完整typed证明与原owner/cover/pose/原时效必须保持，所有原调用边界继续用普通完整guard。不能将r241 asset-only借用guard直接包住原query。优先复用现有组内读取/最终关闭结构及fault/mutation测试，修复后一次新实例定向检查。
+
+CV24/AC22、完整身体几何/full self/world fence/body-view-hit-muzzle/遮挡和头显仍未完成，工程25%；publicv71/固定入口/Quest保持。证据path-fresh-runtime-r248。
