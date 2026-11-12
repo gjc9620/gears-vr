@@ -5,6 +5,7 @@
 #if defined(GEARS_COVER_PHYSX_QUERIES) && GEARS_COVER_PHYSX_QUERIES
 #include "cover_physics_query_live.inl"
 #include "cover_physx_asset_bounds.h"
+#include "cover_query_headroom.h"
 #endif
 namespace cover_physics_c0_live {
 namespace q=gears_cover_physx_query;
@@ -39,6 +40,12 @@ struct PathObservation {
     unsigned segments{},hits{},reports{},endpoint_shapes{},endpoint_reports{},self_hits{},endpoint_self{};
 };
 PathObservation path_probe;
+namespace headroom=gears_cover_query_headroom;
+// A scheduling reserve, never a new source age or a completion guarantee.
+constexpr uint64_t path_work_reserve_ns=30'000'000;
+struct PathBudgetObservation {uint64_t checks{},deferred{},invalid{};unsigned mode{};
+    headroom::Report first{},last{},admitted{};};
+PathBudgetObservation path_budget;
 // Large raw packet belongs to this one-shot serialized owner, not its stack.
 gears_cover_capsule_path::RawPath path_probe_packet;
 struct ShapeObservation {SphereObservation common{};unsigned bodies{},actors{},shapes{};
@@ -115,7 +122,13 @@ void summary(FILE* f){if(!f)return;
         unsigned(l.step),l.pass,l.body_index,l.mesh_sources,l.mesh_identities,l.instance_sources,l.instance_identities,
         l.mesh_asset_offset,l.mesh_instance_offset,l.owner_offset,l.bodies_offset,l.root_offset);
     fprintf(f,"cover_sphere_probe_layout_member_identities=%u cover_sphere_probe_layout_member_capacity=%u ",l.member_identities,unsigned(l.member_capacity));
-    PathObservation path_copy{};{std::lock_guard<std::mutex> lock(sphere_probe_mutex);path_copy=path_probe;}
+    PathObservation path_copy{};PathBudgetObservation budget_copy{};
+    {std::lock_guard<std::mutex> lock(sphere_probe_mutex);path_copy=path_probe;budget_copy=path_budget;}
+    fprintf(f,"cover_path_budget_checks=%llu deferred=%llu invalid=%llu mode=%u reserve_ns=%llu first=%u,%lld,%llu,%u,%lld last=%u,%lld,%llu,%u,%lld admitted=%u,%lld,%llu,%u,%lld timestamps_renewed=0 work_admission_only=1 query_permission=0 movement_permission=0\n",
+        budget_copy.checks,budget_copy.deferred,budget_copy.invalid,budget_copy.mode,path_work_reserve_ns,
+        unsigned(budget_copy.first.code),budget_copy.first.now_ns,budget_copy.first.remaining_ns,budget_copy.first.limiting,budget_copy.first.limiting_born_ns,
+        unsigned(budget_copy.last.code),budget_copy.last.now_ns,budget_copy.last.remaining_ns,budget_copy.last.limiting,budget_copy.last.limiting_born_ns,
+        unsigned(budget_copy.admitted.code),budget_copy.admitted.now_ns,budget_copy.admitted.remaining_ns,budget_copy.admitted.limiting,budget_copy.admitted.limiting_born_ns);
     auto const& p=path_copy.common;
     auto const& ages=path_copy.source_ages;
     auto const& links=path_copy.owner_links;auto const& failed_link=links.first;
@@ -328,10 +341,40 @@ q::Code overlap_all(Entry const& e,Core const& c,q::Capsule const& shape,q::Stre
 q::Code overlap(Entry const& e,Core const& c,q::Sphere const& s,q::Overlap& out)noexcept{return do_overlap(e,c,s,out);}
 q::Code overlap(Entry const& e,Core const& c,q::Box const& s,q::Overlap& out)noexcept{return do_overlap(e,c,s,out);}
 q::Code overlap(Entry const& e,Core const& c,q::Capsule const& s,q::Overlap& out)noexcept{return do_overlap(e,c,s,out);}
+#if defined(GEARS_COVER_PHYSX_QUERIES) && GEARS_COVER_PHYSX_QUERIES
+bool path_work_admitted(Core const& source){
+    {std::lock_guard<std::mutex> lock(sphere_probe_mutex);if(path_probe.common.attempted)return false;}
+    auto const& context=n::state.context;std::array<headroom::Window,12> windows{};unsigned count{},mode{};
+    auto add=[&](int64_t born,uint64_t age){windows[count++]={born,age};};
+    namespace tick=gears_body_tick_input;
+    auto tracking=[&](tick::Input const& input){
+        add(input.begin_ns,tick::tracking_age_ns);add(input.end_ns,tick::tracking_age_ns);
+        add(input.stereo.received_ns,tick::tracking_age_ns);add(input.controllers.received_ns,tick::tracking_age_ns);add(input.controllers.sync_ns,tick::tracking_age_ns);
+    };
+    if(body_tick_source_live::enabled){mode=2;auto const& input=context.body_source;
+        add(input.metadata_begin_ns,tick::parent_age_ns);tracking(input.observed);
+        if(context.source_parent.query)add(context.source_parent.equipment_begin_ns,n::body_mount::equipment_age_ns);
+    }else{
+        if(body_tick_input_live::enabled){mode=1;tracking(context.body_input);}
+        int64_t scene_ns{};tick::scene_time(source.scene_qpc,source.qpc_frequency,scene_ns);
+        add(source.published_ns<=uint64_t(INT64_MAX)?int64_t(source.published_ns):0,tick::parent_age_ns);add(scene_ns,tick::parent_age_ns);
+        add(source.stereo.received_ns,tick::parent_age_ns);
+        if(source.flags&gears_rig_tracking::controllers_matched){add(source.controllers.received_ns,tick::parent_age_ns);add(source.controllers.sync_ns,tick::parent_age_ns);}
+    }
+    const auto report=headroom::assess(rig_tracking_live::clock_ns(),windows.data(),count,path_work_reserve_ns);
+    std::lock_guard<std::mutex> lock(sphere_probe_mutex);if(path_probe.common.attempted)return false;
+    if(!path_budget.checks)path_budget.first=report;++path_budget.checks;path_budget.last=report;path_budget.mode=mode;
+    if(report.code!=headroom::Code::ready){++path_budget.deferred;path_budget.invalid+=report.code==headroom::Code::invalid;return false;}
+    path_budget.admitted=report;return true;
+}
+#endif
 void observe_path_once(Entry const& e,Core const& source,q::Vector const& eye)noexcept{
 #if defined(GEARS_COVER_PHYSX_QUERIES) && GEARS_COVER_PHYSX_QUERIES
     if(!path_probe_requested||!session.enabled()||GetCurrentThreadId()!=n::owner_thread.load())return;
+    // Defer only BEFORE the one-shot attempt. Each next C0 supplies its own
+    // current source/pose; no old candidate or timestamp is held or renewed.
     try{
+        if(!path_work_admitted(source))return;
         PathObservation row{};auto& common=row.common;
         common.attempted=true;common.world=source.world.address;common.world_generation=source.world_generation;common.pawn=source.pawn.address;
         common.link=source.cover_link.address;common.slot=source.cover_slot;common.scene=source.scene_invocation;

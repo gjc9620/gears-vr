@@ -1,0 +1,18 @@
+{
+  "native_sha256": "35ef90d39c67953e88937df79198dd59ad464fb99e56e2419f1814778419e277",
+  "dependencies": 426,
+  "flags_unchanged": true,
+  "results": {
+    "geometry": "QueryHeadroom checks=2048 failures=0 immutable time arithmetic only; no source/query authority\r\n",
+    "off": "cover_physics_c0 OFF: 65 checks, 0 failures; no game/module/query\r\n"
+  },
+  "reserve_ns": 30000000,
+  "source_times_renewed": false,
+  "original_deadlines_unchanged": true,
+  "scope": "Scheduling preflight before the first diagnostic path attempt only. All original source/identity/cover/metadata/query checks still apply. No frozen candidate, original redispatch, proof lease, result or movement permission is created by admission.",
+  "game_started": false,
+  "installed": false,
+  "gameplay_accepted": false,
+  "headset_accepted": false,
+  "engineering_percent": 25
+}

@@ -1,0 +1,9 @@
+{
+  "build_exit": 0,
+  "test_exit": 0,
+  "output": "QueryHeadroom checks=2048 failures=0 immutable time arithmetic only; no source/query authority\r\n",
+  "source_sha256": {
+    "tools\\native-capture\\cover_query_headroom.h": "74033a4380c87cff634d9ab1e65ff796e01f21e8a3e1b71643ff9005c3e2519c",
+    "tools\\native-capture\\cover_query_headroom_test.cpp": "e6fa2cd00d5c4bfeeb81a9995dc0070a311b03c00eb401d8074008a07eddb784"
+  }
+}

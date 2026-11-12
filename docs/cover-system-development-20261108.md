@@ -3323,3 +3323,13 @@ Native冻结r244最终树仅C0/Session/QueryEngine三文件overlay；425实际�
 253实际投影/errors0、五段ordinary操作operator0，recording及boundary原件保留；本轮未逐张亲看/未编码，不作视觉接受。正常Native/entry/XR/game清理true、自有remaining空，anchor/reader未变。下一步需要在首次真实query尝试前，按原样本出生时间判定是否仍有足够查询工作余量；不够就丢弃本C0候选、等待新的真实来源而非将旧输入续期。必须明确只在attempt/dispatch前等待，单次已尝试/未知原调用绝不自动重试；所有原关闭条件保持。此预算准入尚未实现，不能记作完成。
 
 完整CV24/AC22、world fence/完整身体与active-authored对应/body-view-hit-muzzle/遮挡及头显继续未完成，工程25%，publicv71/固定入口/Quest保持。证据query-groups-runtime-r250。
+
+## r251：仅首次path尝试前按原始时钟预留工作余量，不续期或重派（2026-11-12）
+
+新增cover_query_headroom.h纯整数计算：读取原born/max_age窗口，先拒绝null/空/过多窗口、非正/未来时间、无效reserve；按无溢出的unsigned年龄减法求最少remaining，与工作reserve比较。原生40ms tracking/50ms parent限制保持；Report不改输入、不授予来源或完成lease，ready之后若过期仍由原完整guard拒绝。2048检查0，含r250真实25.9772ms旧样本只余14.0228ms、重复检查不变新、边界相等/一纳秒、过期/未来/缺失、uint64溢出与ready后过期。review补充极大maximum_age且age0时应初始化首个limiting clock诊断，v3中间编译不运行，最终v4完整重编译2048检查通过；不称实际运行故障修复。
+
+C0只对one-shot diagnostic path加首次工作准入：独立BodyTickSource取metadata_begin（原50ms）、tracking begin/end/stereo/controller/sync（原40ms），如有parent equipment同时取原equipment起点与原上限；legacy TickInput另按原parent窗口，Core mode仅取原实际存在的controller窗口。30ms reserve是可调调度初值，尚未证明足够完整path，不是新age上限/保证，也不覆盖所有非时钟身份条件。余量不足返回当前C0，common.attempted仍false；下一次读取的是新C0自身完整current source/pose，绝不保存旧pose/goal或修改时间。首次开始后原attempted闭锁继续，已尝试、返回后拒绝或未知原调用都不自动重试。
+
+准入在owner GT、当前cover measurement之后；原query wrapper所有identity/cover/metadata/完整typed/release/source年龄条件保持。记录checks/deferred/invalid/mode及first/last/admitted原now/remaining/limiting/born；明确timestamps_renewed0、work_admission_only1、query/movement_permission0。summary与GT用现有mutex读写这些标量，不跨原调用持锁。OFF65通过。
+
+最终Native基于r249最终冻结树仅C0与新headroom头overlay，426依赖逐SHA、flags不变、无外部工作树，DLL SHA35ef90d39c67953e88937df79198dd59ad464fb99e56e2419f1814778419e277。候选为native-build-v4，不选中间v3；尚未游戏运行/安装。下一步新实例验证是否等到有足够原始余量、仅一次attempt与实际原查询全部关闭；若仍拒绝按原失败处理，不宣称完整path/碰撞/世界fence通过。完整CV24/AC22与身体-view-hit-muzzle/遮挡/头显继续未完成，工程25%，publicv71/固定入口/Quest保持。证据query-headroom-r251。
