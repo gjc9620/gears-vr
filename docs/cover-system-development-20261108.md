@@ -3333,3 +3333,13 @@ C0只对one-shot diagnostic path加首次工作准入：独立BodyTickSource取m
 准入在owner GT、当前cover measurement之后；原query wrapper所有identity/cover/metadata/完整typed/release/source年龄条件保持。记录checks/deferred/invalid/mode及first/last/admitted原now/remaining/limiting/born；明确timestamps_renewed0、work_admission_only1、query/movement_permission0。summary与GT用现有mutex读写这些标量，不跨原调用持锁。OFF65通过。
 
 最终Native基于r249最终冻结树仅C0与新headroom头overlay，426依赖逐SHA、flags不变、无外部工作树，DLL SHA35ef90d39c67953e88937df79198dd59ad464fb99e56e2419f1814778419e277。候选为native-build-v4，不选中间v3；尚未游戏运行/安装。下一步新实例验证是否等到有足够原始余量、仅一次attempt与实际原查询全部关闭；若仍拒绝按原失败处理，不宣称完整path/碰撞/世界fence通过。完整CV24/AC22与身体-view-hit-muzzle/遮挡/头显继续未完成，工程25%，publicv71/固定入口/Quest保持。证据query-headroom-r251。
+
+## r252：首次准入已有36.8138ms余量，两个原调用返回，38.8218ms完整关闭仍过期（2026-11-12）
+
+新cover-1112-r252-cloak-query-headroom，准备14cf4a53，使用r251最终v4 Native35ef90d3…e277，426冻结依赖/导入/14身份检查通过；actual game35180/creation134389203873066999。budget checks1/deferred0/invalid0/mode2，first/last/admitted完全相同：code3 ready，原now231642720759700、limiting index3/stereo born231642717573500，样本3.1862ms、remaining36.8138ms（大于30ms reserve）。这次首次即可进入，没有实际等待/延后，不能把pure helper测试称为实际defer分支验证；没有调整30ms初值。
+
+path attempted/finished1、原started0→2/returned0→2：第一段扫掠与终点原调用均正常返回，whole q4 source，Session stage5 engine/detail4，Engine stage8 source_end；完整owner73/failed73 context/source_age_expired extra6、Session guard164/failed164 physics_read detail3，source_age_cause observed1/verdict3/causes1。38.8218ms后整体未发布，segments/hits/endpoint0不是无碰撞。初始full guard tracking年龄3.3735ms，最后42.0053ms；两个witness原stereo/controller/sync出生时间完全相同，原40ms约束正确拒绝，既不续钟也不在原调用已发生后自动重试。
+
+实际完整physics recheck27、borrowed_read_guards132。timing：initial physics.4093ms/collider1.6861ms/components2.5410ms；physics repeat27合2.5125ms、collider repeat27合4.1080ms、component repeat4合11.2947ms；engine33.3828ms，owner bracket64合14.0622ms（嵌套值不相加当总耗时）。这次足够新仍无法在40ms内完整关闭，说明30ms reserve不是完成保证，不能靠继续抬reserve或重跑凑成功。下一步检查单个component proof pass内重复的相同schema/identity字段，保留所有独立pass/动态值回读及最终完整证明，禁止跨原调用缓存proof。
+
+264实际投影/errors0、五段ordinary操作operator0；recording/boundary/原run/native文本保留，本轮未亲看/编码，不作视觉接受。正常Native/entry/XR/game清理true、自有remaining空，anchor/reader未变。extract首版误认新budget为行首、随后动态脚本转义丢失正则反斜线；仅修离线解析，重新读取同一不可变文本，无新游戏/输入；最终budget与原文逐字段一致。完整CV24/AC22、full self/world fence/active-authored对应/body-view-hit-muzzle/遮挡与头显仍未完成，工程25%；publicv71/固定入口/Quest保持。证据headroom-runtime-r252。
