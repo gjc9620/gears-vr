@@ -1,6 +1,6 @@
 {
   "document": "J:\\gearsVr\\docs\\cover-system-requirements-20261108.md",
-  "document_sha256": "63458cfba38d5b9cc482db06cf6a26520f280219d9c1d4a379e25f0f37330d0a",
+  "document_sha256": "bd4ad372ca3796985ead37039932583ceb71d5a5bfabe42797413334589e0bfd",
   "source_copy": "J:\\gearsVr\\docs\\cover-specs-20261028",
   "source_sha256": {
     "acceptance.md": "b5585ba3ae5236aff46dcc7e701a941bab9dab381312be931caf0039a918aab6",
@@ -29,13 +29,14 @@
     "bb344e6af1b3cf82c94640c030bc138efc9bfcb34f06509a792eed6ed7608e59",
     "4e62c806ed8877e675639a9595aa1db3da4547bffa4664992167aae0a4159b85",
     "17572c236930ae48d71cbe88654f66ad3a7994a8353150c3d1cd031439d9ef26",
-    "df5dc4dcecf370e59fa24be7222fe5f3f13aa33ec2f22699827e11debf6792e8"
+    "df5dc4dcecf370e59fa24be7222fe5f3f13aa33ec2f22699827e11debf6792e8",
+    "63458cfba38d5b9cc482db06cf6a26520f280219d9c1d4a379e25f0f37330d0a"
   ],
-  "as_of": "2026-11-12T10:11:05.157671+08:00",
+  "as_of": "2026-11-12T10:43:57.824488+08:00",
   "module_interfaces_commit": "7b6effc",
   "development_copy": {
     "path": "J:/gearsVr/docs/cover-system-development-20261108.md",
-    "sha256": "8e35ff81f88cfb2037f2117fee5f8f3ca2a3fd133c7d816183457d0848d4efb2"
+    "sha256": "4083caa96258b1e0608d2514fc64e86851e9bc5419d16ac29a24a96e5b756653"
   },
   "requirements_overview": "Added concise behavior and requirement-group overview; retained all CV-01–24 and AC-01–22 definitions.",
   "requirements_review": "Reconciled cover source specifications; clarified held-position occupancy recovery, same-pose hit/physics evidence, supported skeleton/local authority boundaries, and engineering acceptance. Retained CV-01-24 and AC-01-22.",
@@ -44,5 +45,6 @@
   "requirements_usage_flow": "Added a seven-step player flow from attach and real leaning through edge drag, release/hold, re-grab/retract and exit/recovery; retained all CV-01–24 and AC-01–22 definitions.",
   "requirements_query_coverage": "Clarified CV16 valid-empty-result coverage of participating component/shape kinds, scale branches, bones and early-exit results; retained CV24/AC22 IDs.",
   "requirements_document_review_20261110": "Reconciled existing docs for the requested cover requirements document; distinguished confirmed behavior, consistency requirements, engineering defaults and tuning parameters, and completed per-grab-point pose source index. All CV-01-24 and AC-01-22 retained.",
-  "requirements_navigation_review_20261110": "Reviewed existing cover source requirements; added section navigation and verified CV-01-24, AC-01-22, local source links and document mirrors. No gameplay status changed."
+  "requirements_navigation_review_20261110": "Reviewed existing cover source requirements; added section navigation and verified CV-01-24, AC-01-22, local source links and document mirrors. No gameplay status changed.",
+  "requirements_owner_override_20261112": "Defer occlusion; no collision prerequisite. Reference original L2 side peek points; top only low cover with popup permission. Implement left-grip drag, release hold and regrab retract."
 }

@@ -3373,3 +3373,19 @@ operator1、135实际投影/errors0；正常Native/entry/XR/game清理true，自
 69检查通过：实际源码经过既有r149/r180后仍能唯一定位/AST解析；合成新旧q serial验证旧结果不泄露，先保存拒绝和verify再新读、同link再拒绝、跨link全局上限、身份失效、错误类型/差异/登记表/指针/容量/次数、取消、双instrument拒绝；strict finish不传放宽参数。原始header字节为分类依据，decoded convenience字段不能覆盖原文。均为离线synthetic reader/AST，未启动游戏/输入。prepare_operator纳入此变换并保存独立source SHA，runner在存在该receipt时校验同一源码SHA和既有完整冻结operator SHA；旧准备若未带字段仍由其原operator SHA保护。Native631c2cf8…1501不变，未重编译。
 
 下一步新实例重新完整准备/import/14身份检查后定向验证实际候选与r253去重路径；不等价于已有实际retry或path完成。工程25%、CV24/AC22与所有body/world/view/headset缺口保持，publicv71/固定入口/Quest保持。证据candidate-read-retry-r255。
+
+
+## 2026-11-12 原版 L2 抓点优先，碰撞和遮挡延期（主人覆盖）
+
+主人最新要求撤去碰撞前置，暂缓遮挡：直接参考原版 L2 左右侧探位置定义左右抓点；只在矮掩体且原版许可上探时提供上方抓点。继续左握键拖动、松手保持、反向拉回与独立真实头动。后续不得因原碰撞证据门槛阻塞此功能。
+
+r256 已正常结束，260 个实际投影帧、无投影错误，原始调用 1 次返回 1 次，但路径因源时效拒绝，未发布移动。缓存计数显示本次没有减少实际读取。原始记录见 analysis/cover-system-20261108/proof-fresh-runtime-r256/runtime-r256/closeout.json。此结果不是碰撞通过，也不是抓边可玩证明；遵照主人要求，不再继续缓存/碰撞优化或重跑。
+
+已找到原版 CoverLink.GetSlotViewPoint(SlotIdx, Type, Action) 声明和原版侧探规则：左 action3、右 action4、矮掩体上探 action7；当前声明不是原生函数体证明。当前输入连接仍以零行程/空边禁止抓取，接下来需用原版许可和参考点接通，再接入唯一身体写入点。代码、编译、游戏和头显验收仍分别记录。
+
+
+### r257 L2 抓点选择策略：离线完成，尚未接入游戏
+
+新增 tools/vr-common/cover_l2_grab_points.h：消费当前游戏参考世界点；左右分别要求原版 bLeanLeft/bLeanRight，上方强制 CoverType=2 且 bCanPopUp；高掩体即使意外带上探标志也不提供上抓。近距离唯一点可获得抓取候选，拖动后保持同一抓点，许可撤回立刻终止，不自动跳到另一点。策略不调用 L2、不查询碰撞，也不将参考点声明为已验证的原生 GetSlotViewPoint 返回值。
+
+MSVC /W4 /WX 编译通过，24 项离线检查通过，覆盖左右/上抓、拒绝高掩体顶部、许可撤回、远离后保持同一点、歧义、无效坐标。证据 original-l2-points-r257/grab-points-result.json。当前原生参考点采集及唯一 C0 身体写入连接仍未完成，不称为可玩交付。
