@@ -3,9 +3,13 @@
 namespace cover_full_goal_live {
 std::mutex mutex;
 gears_vr::CoverBodyTarget latest{};bool available{};
+gears_cover_committed::State committed{};bool committed_available{};
 uint64_t attempts{},accepted{},rejected{};
 const char* reason="inactive";
-void clear(char const* why){std::lock_guard<std::mutex> lock(mutex);available=false;reason=why;}
+void clear(char const* why){std::lock_guard<std::mutex> lock(mutex);available=committed_available=false;reason=why;}
+gears_weapon_hand::ObjectIdentity committed_identity(gears_anchor::Identity const& id){
+    return {id.address,id.outer,id.cls,id.index,id.name_index,id.number,1};
+}
 void prepare(gears_anchor::Receipt const* scene_receipt,gears_vr::StereoResult const& selected_stereo){
     if(!cover_input_live::enabled||!cover_camera_live::enabled){clear("disabled");return;}
     ++attempts;
@@ -40,13 +44,29 @@ void prepare(gears_anchor::Receipt const* scene_receipt,gears_vr::StereoResult c
             gears_vr::monotonic_ns(),stereo_units_per_metre,goal,simulator_operator)){
             ++rejected;clear("goal_inputs");return;
         }
-        {std::lock_guard<std::mutex> lock(mutex);latest=goal;available=true;++accepted;reason="ready";}
+        gears_cover_committed::State drag{};drag.key=key;
+        drag.pawn=committed_identity(eye.pawn);drag.mesh=committed_identity(eye.mesh);drag.link=committed_identity(eye.link);
+        drag.anchor=frozen;drag.view_anchor=result.view_anchor;drag.offset=goal.virtual_offset;
+        drag.range=cover_input_live::last_grab_range;drag.reference=tracking.reference;
+        drag.tracking_source=tracking.sample.source;drag.units_per_metre=goal.units_per_metre;
+        drag.type=eye.native_ct;drag.observed_ns=goal.observed_ns;
+        const bool drag_valid=result.interaction.offset_certified&&gears_cover_committed::valid(drag,goal.observed_ns);
+        {std::lock_guard<std::mutex> lock(mutex);latest=goal;available=true;committed=drag;
+            committed_available=drag_valid;++accepted;reason="ready";}
     }catch(...){++rejected;clear("exception");}
 }
 bool read(gears_vr::CoverBodyTargetKey const& key,std::int64_t stamp,gears_vr::CoverBodyTarget& out){
     std::lock_guard<std::mutex> lock(mutex);
     if(!available||!gears_vr::cover_body_target_current(latest,key,stamp))return false;
     out=latest;return true;
+}
+// Copies persistent virtual interaction state only. This does NOT refresh or
+// return any tracking receipt. C0 must admit its own current Core/V3 source.
+bool read_committed(gears_cover_committed::State& out){
+    std::lock_guard<std::mutex> lock(mutex);
+    if(!cover_input_live::enabled||!cover_camera_live::enabled){committed_available=false;return false;}
+    if(!committed_available)return false;
+    out=committed;return true;
 }
 // Entry point for the existing owner with its current C0 source and independently
 // fitted placement. The store lock ends before conversion or any Native call.

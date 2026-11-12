@@ -1,0 +1,29 @@
+{
+  "previous_goal_turn": "progress: 46fb16d2 source/checks/Native compile",
+  "current_status": "persistent virtual drag/current tracking bridge and coherent Native cover interfaces compiled",
+  "native_sha256": "ce34cd22b1881ad80f06dd41b28b1589e454d8b61ac629d3ff7a39cdc8f61155",
+  "checks": {
+    "adapter": {
+      "path": "adapter-result.json",
+      "sha256": "1d8f149fda7ebb1aea1734aeb01fecc084dd434180bac85cdc3a4e120f5deb22",
+      "output": "CoverC0CommittedAdapter checks=62 failures=0; persistent virtual offset with current admitted tracking only"
+    },
+    "store": {
+      "path": "store-result.json",
+      "sha256": "49dfdbd459b977185b52f713b5b1d26ee51e706ecae8382f7525a84a1b145181",
+      "output": "cover_full_goal_live: 45 checks, 0 failures; synthetic provider, no C0/physics permission"
+    }
+  },
+  "game_started": false,
+  "headset_accepted": false,
+  "body_apply_connected": false,
+  "collision_required": false,
+  "occlusion_deferred": true,
+  "remaining": [
+    "Add cover branch to sole body_c0_goal_policy_live writer; original neutral action only for first fit",
+    "Use current Core/V3 tracking and frozen cover neutral/feet; do not relabel old Scene tracking",
+    "Disable legacy body preview under C0 cover owner; retain one writer",
+    "Publish cover view from actual completed C0 transaction, then short owned gameplay and stereo review",
+    "Deliver identified manual candidate; physical acceptance remains separate"
+  ]
+}

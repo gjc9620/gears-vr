@@ -2,6 +2,7 @@
 // and neutral provider. This does not certify C0 lifecycle, collision or writes.
 #include "../vr-common/cover_body_target.h"
 #include "cover_c0_target_adapter.h"
+#include "cover_c0_committed_adapter.h"
 #define main PriorSharedConsumerMain
 #include "cover_shared_input_live_test.cpp"
 #undef main
@@ -15,6 +16,19 @@ int main(){
     C(goal::read(goal::latest.key,gears_vr::monotonic_ns(),value));
     C(!value.pose_applied&&!value.collision_verified&&!value.same_pose_epoch_verified&&!value.head_bone_goal_valid);
     C(value.tracking.sample.received_ns==stereo.sample.received_ns);
+    gears_cover_committed::State drag{};
+    C(goal::read_committed(drag));
+    C(drag.key.sequence==value.key.sequence&&drag.offset.right==value.virtual_offset.right&&
+        drag.offset.up==value.virtual_offset.up&&drag.observed_ns==value.observed_ns);
+    C(gears_cover_committed::valid(drag,drag.observed_ns));
+    // Persistent interaction state may outlive the old target's tracking TTL;
+    // its C0 consumer still has to admit new tracking independently.
+    C(!goal::read(value.key,value.observed_ns+100000001,value));
+    C(goal::read_committed(drag));
+    input::enabled=false;drag.observed_ns=123;
+    C(!goal::read_committed(drag)&&drag.observed_ns==123);
+    input::enabled=true;C(!goal::read_committed(drag));
+    goal::prepare(&scene,stereo);C(goal::read_committed(drag));
 
     // Disabling either provider consumes the stored target. Re-enabling a
     // flag alone must not resurrect it; a fresh valid prepare is required.
@@ -23,6 +37,7 @@ int main(){
         if(disabled==0)input::enabled=false;else cover_camera_live::enabled=false;
         goal::prepare(nullptr,stereo);
         C(!goal::available&&!std::strcmp(goal::reason,"disabled"));
+        C(!goal::read_committed(drag));
         value.observed_ns=123;
         C(!goal::read(held_key,gears_vr::monotonic_ns(),value)&&value.observed_ns==123);
         input::enabled=true;cover_camera_live::enabled=true;
