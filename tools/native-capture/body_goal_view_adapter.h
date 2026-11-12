@@ -30,7 +30,7 @@ struct Output {
     vr::CoverViewResult render{}; // Final pre-HMD base, committed virtual only.
     vr::Pose desired_eye{};      // UE world +X forward,+Y right,+Z up.
 };
-enum class Status {okay,alias,core,units,neutral,policy,view,physical,head_marker,numerical,cover};
+enum class Status {okay,alias,core,units,neutral,policy,view,physical,head_marker,numerical,cover,cover_component,cover_scale,cover_atom};
 inline constexpr std::uint64_t maximum_age_ns=50'000'000;
 // A current, independently supplied cover placement. This is data for the
 // existing planner, not collision/exposure certification or a Native write
@@ -69,9 +69,9 @@ inline Status measure_cover_pose_math(core::CoreSnapshot const& source,std::int6
     if(frame.model_scale!=1||frame.units_per_metre!=source.units_per_metre)return Status::units;
     if(marker::detail::context(model,frame,model.canonical)!=marker::Status::okay)return Status::head_marker;
     for(unsigned i=0;i<16;++i)work.component.m[i]=frame.component_to_world.values[i];
-    if(!similarity(work.component)||std::abs(length(row(work.component,0))-1)>2e-5)return Status::neutral;
-    for(auto const& atom:frame.local)if(!unit_animation_scale(atom.scale))return Status::neutral;
-    if(body::ik::detail::validate(frame.local.data(),model.parents.data(),body::bones,work.component)!=body::ik::Status::okay)return Status::neutral;
+    if(!similarity(work.component)||std::abs(length(row(work.component,0))-1)>2e-5)return Status::cover_component;
+    for(auto const& atom:frame.local)if(!unit_animation_scale(atom.scale))return Status::cover_scale;
+    if(body::ik::detail::validate(frame.local.data(),model.parents.data(),body::bones,work.component)!=body::ik::Status::okay)return Status::cover_atom;
     std::copy(frame.local.begin(),frame.local.end(),work.pose.local);
     if(!rebuild(model,work))return Status::numerical;
     CoverPoseMeasurement next{};marker::EyeHmdWorld eye{};

@@ -1,0 +1,65 @@
+{
+  "name": "cover-1112-r266-cloak-measure",
+  "native_sha256": "639d3cc0bab84f57285763a50c22e6234178ffdafad1e09176413ef6f8607f8a",
+  "raw_result": "J:\\codexWorktree\\gearsVr\\analysis\\instances\\cover-1112-r266-cloak-measure\\cover-output\\run-result.json",
+  "raw_result_sha256": "ccf50ed6540f758e642ba793d33ddd739c23ad2177983248a67a13074971b7f0",
+  "result": {
+    "error": "RuntimeError('Own ordinary cover observation failed; preserve operator log')",
+    "operator_exit": 1,
+    "projection_frames": 260,
+    "projection_error": null,
+    "normal_cleanup_verified": true,
+    "remaining_owned": {},
+    "isolated_done": {
+      "launcher_exit": 0,
+      "owned_game_absent": true,
+      "owned_children": {
+        "recorded": 0,
+        "remaining": []
+      },
+      "forced_termination": false,
+      "worker_error": null,
+      "no_game_started": false
+    }
+  },
+  "session": {
+    "phase": "stopped",
+    "native_started": true,
+    "native_cleanup_verified": true,
+    "entry_restore_verified": true,
+    "xr_exit_code": 0
+  },
+  "facts": {
+    "cover_body_live_published": "0",
+    "cover_input_c0_owner": "1",
+    "cover_input_l2_provider": "1",
+    "cover_input_l2_ready": "339",
+    "cover_input_l2_rejected": "0",
+    "cover_input_l2_range": "-0.699999975,0.699999913,0,0.51",
+    "cover_input_l2_edge": "0,0,0,0",
+    "cover_l2_reference_calls": "339,339,0,0",
+    "cover_l2_reference_type": "2",
+    "cover_l2_reference_neutral": "-3927.34058,-178.830322,583",
+    "cover_l2_reference_last_sample": "750,244740891816000,1,1,2,2",
+    "cover_l2_reference_point_0": "1,-3968.88843,-235.166595,583",
+    "cover_l2_reference_point_1": "1,-3885.79272,-122.494057,583",
+    "cover_l2_reference_point_2": "1,-3927.34058,-178.830322,634",
+    "body_goal_cover_enabled": "1",
+    "body_goal_cover_fits": "0",
+    "body_goal_cover_plans": "0",
+    "body_goal_cover_applied": "0",
+    "body_goal_cover_consumed": "0",
+    "body_goal_cover_rejected": "325",
+    "body_goal_cover_reason": "8",
+    "body_goal_cover_measure_status": "4"
+  },
+  "independent_entry_checks": 108,
+  "entry_all_match": true,
+  "visual_review_pending": true,
+  "body_failure": "measure Status4 neutral; component/local-scale/atom validation must be distinguished, unchanged predicates",
+  "not_accepted": [
+    "body cover consumption remains zero",
+    "no grip-drag/release/retract run",
+    "no current full visual or physical headset acceptance"
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "full_adapter_initial_run": {
+    "build_exit": 0,
+    "test_exit": 1,
+    "checks": 332,
+    "failures": [
+      "2 original feet-vs-calibrated equality assertions at line34",
+      "original plan status spine_unreachable assertion at line125"
+    ]
+  },
+  "scope": "Do not count full adapter suite passed. The current recorded fixture and newer calibration/planner are not reconciled by this diagnostic edit. Existing full assertions retained.",
+  "new_measurement_mode": {
+    "checks": 21,
+    "failures": 0,
+    "scope": "Original source measurement and typed shape refusal/output atomicity only; not full planner fit or gameplay."
+  }
+}

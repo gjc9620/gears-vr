@@ -473,7 +473,8 @@ void summary(FILE* f){if(!f)return;
     fprintf(f,"body_goal_neutral_rebind_attempts=%llu body_goal_neutral_rebind_deferred=%llu body_goal_neutral_rebinds=%llu body_goal_pickup_view_used=%llu body_goal_lancer_animation_view_used=%llu body_goal_lancer_execution_eye_used=%llu ",neutral_rebind_attempts.load(),neutral_rebind_deferred.load(),neutral_rebinds.load(),pickup_view_used.load(),lancer_animation_view_used.load(),lancer_execution_eye_used.load());
     fprintf(f,"body_goal_cover_enabled=%u body_goal_cover_fits=%llu body_goal_cover_plans=%llu body_goal_cover_applied=%llu body_goal_cover_consumed=%llu body_goal_cover_rejected=%llu body_goal_cover_reason=%u ",
         unsigned(cover_enabled),cover_fits,cover_plans,cover_applied,cover_completed,cover_rejected,cover_reason);
-    fprintf(f,"body_goal_cover_measure_status=%u ",unsigned(cover_measure_status));
+    fprintf(f,"body_goal_cover_measure_status=%u body_goal_cover_measure_bad_bone=%u body_goal_cover_measure_bad_scale=%.9g body_goal_cover_measure_atom_status=%u body_goal_cover_measure_component_length=%.9g ",
+        unsigned(cover_measure_status),cover_measure_bad_bone,cover_measure_bad_scale,cover_measure_atom_status,cover_measure_component_length);
     fprintf(f,"body_goal_absent_epoch=%llu ",static_cast<unsigned long long>(cover_shared_input_live::goal_absent_epoch.load(std::memory_order_acquire)));
     const auto state=first_reject_state.load(std::memory_order_acquire);
     if(state==2){auto const& r=first_reject;

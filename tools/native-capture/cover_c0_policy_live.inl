@@ -5,6 +5,7 @@ namespace cg=gears_cover_committed;
 uint64_t cover_fits{},cover_plans{},cover_applied{},cover_completed{},cover_rejected{};
 unsigned cover_reason{};
 a::Status cover_measure_status{a::Status::okay};
+unsigned cover_measure_bad_bone{~0u},cover_measure_atom_status{};float cover_measure_bad_scale{};double cover_measure_component_length{};
 struct CoverCache {
     cc::Frozen frozen{};gears_cover_neutral_goal::Workspace work{};
     a::marker::Marker marker{};a::marker::Workspace marker_work{};
@@ -74,7 +75,17 @@ template<class Source>bool prepare_cover_source(Entry const& e,Source const& sou
         a::CoverPoseMeasurement measured{};
         cover_measure_status=a::measure_cover_pose(source,s.model,s.source,cover_cache.marker,policy,
             cover_cache.work.fitting.body_work,measured);
-        if(cover_measure_status!=a::Status::okay){cover_reason=8;return false;}
+        if(cover_measure_status!=a::Status::okay){
+            cover_measure_bad_bone=~0u;cover_measure_bad_scale=0;cover_measure_atom_status=0;
+            auto& component=cover_cache.work.fitting.body_work.component;
+            cover_measure_component_length=b::d::length(b::d::row(component,0));
+            if(cover_measure_status==a::Status::cover_scale){
+                for(unsigned i=0;i<b::bones;++i)if(!b::d::unit_animation_scale(s.source.local[i].scale)){
+                    cover_measure_bad_bone=i;cover_measure_bad_scale=s.source.local[i].scale;break;}
+            }else if(cover_measure_status==a::Status::cover_atom)
+                cover_measure_atom_status=unsigned(b::ik::detail::validate(s.source.local.data(),s.model.parents.data(),b::bones,component));
+            cover_reason=8;return false;
+        }
         placement=measured.binding;placement.anchor=drag.anchor;placement.view_anchor=drag.view_anchor;
         for(unsigned i=0;i<2;++i)placement.feet_world[i]=measured.feet[i];
         const auto fitted=cc::freeze(drag,calibrated,placement,source,s.model,s.source,cover_cache.marker,

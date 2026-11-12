@@ -1,0 +1,33 @@
+{
+  "build_exit": 0,
+  "test_exit": 0,
+  "output": "body_cover_measurement: 21 checks, 0 failures; recorded retail skeleton, Host Core; Game=0\r\n",
+  "source_sha256": {
+    "tools\\native-capture\\body_goal_view_adapter_test.cpp": "7b205e2c55c7f5b3e1886cdecbca29e33dd815856e4ad8da5c24b22ce25a1407",
+    "tools\\native-capture\\body_goal_view_adapter.h": "76fa7d5fb23e58dc4c34b6c9fd491dd51062b7754c1b832f4f6b97576367c917",
+    "tools\\native-capture\\body_head_authored_mount.h": "5c57d32c7be0efba97af8884c5bf750ef1e1add6968993e6c8ea30972fa2b374",
+    "tools\\native-capture\\full_body_c0_planner.h": "893ca80e89c238150e3198da92559011b88546c138c99ce1cc8f513fae6d7143",
+    "tools\\native-capture\\cover_skeleton_ik.h": "8c1cdce1855dcb3a5e896b4826026b13007dc3474f36648e5dc4ae892bac4995",
+    "tools\\vr-common\\pose_math.h": "d89ece54a2a4c77c71ebc4d04104c651ed292d833dc401ede8611bdd89f3c482",
+    "tools\\vr-common\\hand_two_bone_pose.h": "f59377461baea84419df2497f18cab638420d9ae976287d4621a033dfe0dd153",
+    "tools\\vr-common\\hand_authored_mount_profile.h": "772e6ffe6391b34f443e6d1d217b1f9f35509bbc1c66923acbfd44d8e8bd5f97",
+    "tools\\vr-common\\hand_wrist_calibration.h": "150677d3a467ae8a5aa9028b37fb21a60ecddb5a9d3b11d5c9bb976d89c962e7",
+    "tools\\native-capture\\body_tick_input.h": "1a0ef5a1825736cc1da30819684c3d68afd454f2b1cb3e0ca69bb5477d38e3fc",
+    "tools\\vr-common\\native_rig_tracking_frame.h": "ede2af952edf3dba1b53c39215df4fb068b45cb4d1d0871de3b7cf0febf8eae5",
+    "tools\\vr-common\\rig_tracking_frame.h": "9abc35ffcddc9934c8b4fa893e5156f3bb9817b5bc34263395e6f94aa0748c3e",
+    "tools\\vr-common\\weapon_hand_participant.h": "d14ac694296b8acbcfc2bf1b6c3875618e56a4ef826d9ec5d29527bcb05cbdb3",
+    "tools\\vr-common\\controller_input_frame.h": "abde05f3e8017afd8b6248b879558714975c5c624c84234af0bbb62a3036feb2",
+    "tools\\vr-common\\stereo_frame.h": "bf438b856aeef127a0b68657b604f6d6b6b9b5993ca0f23d576b7437cefafc4c",
+    "tools\\vr-common\\hand_reference_continuity.h": "1c5c154b68238b635ba2c4cd0f1f7104593b0fd432c649662b0f4a4dcabcfa5d",
+    "tools\\vr-common\\left_interaction_control.h": "6c314e6bb9735820ff82c4f35e733f7bd8933d9c743b4dd72fabe1d6ef922940",
+    "tools\\vr-common\\rig_tracking_math.h": "b4a316a6c51ad77484ebf7a2e79457e45d6f3f90bb670e5d58f1b85a114fd69a",
+    "tools\\vr-common\\view_origin.h": "bc5e0c4c398db6e770795249ed8317a5d164bf85befd0ec2db331093c19c116e",
+    "tools\\vr-common\\controller_continuity_frame.h": "1c536ff3715f18c6263b630840a921825c4f46d0fb8c2765f6162ffa009b0b66",
+    "tools\\vr-common\\current_continuity_for_metadata.h": "ff9b163e9278cd087b142be9d71e07e7e784f1d4b5dcc9b001457aca934a6456",
+    "tools\\native-capture\\body_tick_source.h": "6f1c835bd12aa34ffc9e1e14714894cfe9cabfdca8a553112bbdc75d734463ed",
+    "tools\\vr-common\\cover_view.h": "bde8f7bdddd6032c7be86faeab261a760c947c8cc1043c3361afb696c56fddb5",
+    "tools\\vr-common\\cover_interaction.h": "80c1783842b1b607a2c9de66dbbe162c404b1e4c158d93e4f83d2c53e36d848a",
+    "tools\\native-capture\\body_c0_neutral.h": "01b8619a9a416ff09066378a9895366769dbe4b579f7c1ef3046b55726fba6f7",
+    "tools\\native-capture\\body_cover_goal_adapter_test.cpp": "ed1df51caff5d974f764ac36e15e4004a4e3391fc826a63a10dce698f8455a77"
+  }
+}

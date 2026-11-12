@@ -6,7 +6,8 @@
 #include "body_c0_neutral.h"
 namespace neutral=gears_body_c0_neutral;
 int main(int argc,char** argv){
-    const bool marcus=argc==4&&std::string(argv[3])=="--marcus";
+    const bool measurement_only=argc==5&&std::string(argv[4])=="--measurement-only";
+    const bool marcus=(argc==4||measurement_only)&&std::string(argv[3])=="--marcus";
     if(argc!=3&&!marcus)return 2;
     auto frame=std::make_unique<b::Frame>();auto model=std::make_unique<b::Model>();
     auto marker_work=std::make_unique<mount::Workspace>();auto work=std::make_unique<b::Workspace>();
@@ -31,7 +32,7 @@ int main(int argc,char** argv){
     C(bytes(*frame)==frame_before);
     C(measured.binding.publication==source.publication_sequence&&measured.binding.scene==source.scene_invocation&&
       measured.binding.observed_ns==int64_t(source.published_ns));
-    for(unsigned i=0;i<2;++i)C(distance(measured.feet[i].position,calibrated.feet_world[i].position)<1e-8);
+    if(!measurement_only)for(unsigned i=0;i<2;++i)C(distance(measured.feet[i].position,calibrated.feet_world[i].position)<1e-8);
     auto head_changed=source;head_changed.stereo.head.position.x+=.1;head_changed.world_head.position.z+=100;
     a::CoverPoseMeasurement same_pose{};
     C(a::measure_cover_pose(head_changed,*model,*frame,marker,policy,*work,same_pose)==a::Status::okay);
@@ -40,6 +41,20 @@ int main(int argc,char** argv){
     const auto measurement_before=bytes(measured);
     C(a::measure_cover_pose(invalid_source,*model,*frame,marker,policy,*work,measured)!=a::Status::okay);
     C(bytes(measured)==measurement_before);
+    // Keep the same rejection predicates and output atomicity, but expose
+    // which original-pose shape failed in the live measure status.
+    auto broken=std::make_unique<b::Frame>(*frame);
+    broken->component_to_world.values[0]*=2;broken->component_to_world.values[1]*=2;
+    broken->component_to_world.values[2]*=2;
+    C(a::measure_cover_pose(source,*model,*broken,marker,policy,*work,measured)==a::Status::cover_component);
+    C(bytes(measured)==measurement_before);
+    *broken=*frame;broken->local[b::head].scale=1.01f;
+    C(a::measure_cover_pose(source,*model,*broken,marker,policy,*work,measured)==a::Status::cover_scale);
+    C(bytes(measured)==measurement_before);
+    *broken=*frame;broken->local[b::head].q[0]=NAN;
+    C(a::measure_cover_pose(source,*model,*broken,marker,policy,*work,measured)==a::Status::cover_atom);
+    C(bytes(measured)==measurement_before);
+    if(measurement_only){printf("body_cover_measurement: %u checks, %u failures; recorded retail skeleton, Host Core; Game=0\n",checks,failures);return failures?1:0;}
     a::CoverPlacement placement{};placement.world=source.world;placement.pawn=source.pawn;placement.mesh=source.mesh;
     placement.link=source.cover_link;placement.world_generation=source.world_generation;placement.scene=source.scene_invocation;
     placement.publication=source.publication_sequence;placement.reference=source.reference_generation;
