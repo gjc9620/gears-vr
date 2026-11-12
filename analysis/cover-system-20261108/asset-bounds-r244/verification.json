@@ -1,0 +1,17 @@
+{
+  "results": {
+    "geometry": "AssetBounds checks=2391 failures=0 complete supplied mathematical bounds; no live/self/world authority\r\n",
+    "engine": "read_budget=228 guard_calls=12\r\nCoverPhysXShapeOwner checks=531 failed=0 original-executed=false game-started=false\r\nparameter_reads=102\r\nShapeParameters checks=702 failed=0 original PE as data; stored fields only, no world/eligibility permit\r\nworld_reads=140\r\nShapeWorld checks=1708 failed=0 original PE as data; original-unit CPU pose only, no query fence\r\nAssetShapes checks=1734 failed=0 synthetic object groups; complete supplied asset only, no world/self permit\r\nAssetShapesEngine checks=1744 failed=0 actual QueryEngine/HostImage only; no original dispatch\r\n",
+    "off": "cover_physics_c0 OFF: 65 checks, 0 failures; no game/module/query\r\n"
+  },
+  "native_sha256": "66a96c12d55de850daf87dc7a203a29d86d29367ff6619214c5dcf114e5097f4",
+  "dependencies": 425,
+  "flags_unchanged": true,
+  "native_integrated": true,
+  "game_started": false,
+  "installed": false,
+  "scope": "All-or-none mathematical broad-phase bounds derived from a closed owned asset packet. Derivation is after close; source timestamps/proofs are not renewed. No original dispatch, query/movement permission or full-self certificate.",
+  "engineering_percent": 25,
+  "gameplay_accepted": false,
+  "headset_accepted": false
+}

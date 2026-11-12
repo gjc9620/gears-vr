@@ -4,6 +4,7 @@
 #include "body_source_age_observation.h"
 #if defined(GEARS_COVER_PHYSX_QUERIES) && GEARS_COVER_PHYSX_QUERIES
 #include "cover_physics_query_live.inl"
+#include "cover_physx_asset_bounds.h"
 #endif
 namespace cover_physics_c0_live {
 namespace q=gears_cover_physx_query;
@@ -41,10 +42,13 @@ PathObservation path_probe;
 // Large raw packet belongs to this one-shot serialized owner, not its stack.
 gears_cover_capsule_path::RawPath path_probe_packet;
 struct ShapeObservation {SphereObservation common{};unsigned bodies{},actors{},shapes{};
-    gears_cover_physx_asset_shapes::Code detail{gears_cover_physx_asset_shapes::Code::request};};
+    gears_cover_physx_asset_shapes::Code detail{gears_cover_physx_asset_shapes::Code::request};
+    bool bounds_attempted{};gears_cover_physx_asset_bounds::Code bounds_code{gears_cover_physx_asset_bounds::Code::links};
+    int64_t bounds_begin_ns{},bounds_end_ns{};};
 ShapeObservation shape_snapshot;
 q::AssetShapeWorkspace shape_snapshot_work;
 gears_cover_physx_asset_shapes::Snapshot shape_snapshot_packet;
+gears_cover_physx_asset_bounds::Snapshot shape_snapshot_bounds;
 bool configure(wchar_t const* ini,FILE* log){
     wchar_t value[8]{};GetPrivateProfileStringW(L"FullBodyC0Native",L"cover_queries",L"0",value,8,ini);
     if(std::wcscmp(value,L"0")&&std::wcscmp(value,L"1"))return false;
@@ -196,6 +200,16 @@ void summary(FILE* f){if(!f)return;
             double(x.stored_position[0]),double(x.stored_position[1]),double(x.stored_position[2]),double(x.stored_quaternion[0]),double(x.stored_quaternion[1]),double(x.stored_quaternion[2]),double(x.stored_quaternion[3]),
             double(x.box_dimensions[0]),double(x.box_dimensions[1]),double(x.box_dimensions[2]),double(x.radius),double(x.half_segment));
         for(unsigned k=0;k<12;++k)fprintf(f,"%s%.9g",k?",":"",double(g.shape_world.values[k]));fprintf(f," observed_gram_error=%.17g,%.17g rigid_query_permission=0\n",g.actor_gram_error,g.shape_gram_error);
+    }
+    fprintf(f,"cover_shape_bounds_attempted=%u code=%u begin_ns=%lld end_ns=%lld derived_after_close=1 mathematical_only=1 query_permission=0 movement_permission=0\n",
+        unsigned(r.bounds_attempted),unsigned(r.bounds_code),r.bounds_begin_ns,r.bounds_end_ns);
+    if(c.finished&&c.code==q::Code::queried&&r.bounds_attempted&&r.bounds_code==gears_cover_physx_asset_bounds::Code::bounded){
+        auto const& packet=shape_snapshot_bounds;
+        fprintf(f,"cover_shape_bounds_count=%u has_shapes=%u\n",packet.count,unsigned(packet.has_shapes));
+        for(unsigned i=0;i<packet.count;++i){auto const& row=packet.rows[i];
+            fprintf(f,"cover_shape_bounds_row=%u,%u,%u,%llu lower=%.17g,%.17g,%.17g upper=%.17g,%.17g,%.17g\n",i,row.actor,row.member,uint64_t(row.shape),
+                row.bounds.lower[0],row.bounds.lower[1],row.bounds.lower[2],row.bounds.upper[0],row.bounds.upper[1],row.bounds.upper[2]);
+        }
     }
 }
 template<class Shape,class Output,class Invoke> q::Code query(Entry const& entry,Core const& source,Shape const& shape,Output& output,Invoke invoke)noexcept{
@@ -364,7 +378,13 @@ void observe_shapes_once(Entry const& e,Core const& source)noexcept{
         common.code=observe_asset_shapes(e,source,shape_snapshot_work,shape_snapshot_packet);row.detail=shape_snapshot_work.detail;
         common.admission=query_admission;common.session_entered=query_session_entered;common.owner_guard=query_owner_guard;common.source_cause=query_source_cause;
         if(common.session_entered)common.progress=session.observation();else common.progress.engine=before;
-        if(common.code==q::Code::queried){row.bodies=shape_snapshot_packet.assets.body_count;row.actors=shape_snapshot_packet.assets.actor_count;row.shapes=shape_snapshot_packet.count;}
+        if(common.code==q::Code::queried){row.bodies=shape_snapshot_packet.assets.body_count;row.actors=shape_snapshot_packet.assets.actor_count;row.shapes=shape_snapshot_packet.count;
+            // Derive from the fully closed owned packet. No borrowed live proof,
+            // source-clock renewal, original call or permission follows this.
+            row.bounds_attempted=true;row.bounds_begin_ns=rig_tracking_live::clock_ns();
+            row.bounds_code=gears_cover_physx_asset_bounds::convert(shape_snapshot_packet,shape_snapshot_bounds);
+            row.bounds_end_ns=rig_tracking_live::clock_ns();
+        }
         common.end_ns=rig_tracking_live::clock_ns();common.finished=true;{std::lock_guard<std::mutex> lock(sphere_probe_mutex);shape_snapshot=row;}
     }catch(...){/* Preserve attempted, no result, no retry. */}
 #else
