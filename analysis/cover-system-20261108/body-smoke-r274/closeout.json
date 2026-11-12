@@ -1,0 +1,77 @@
+{
+  "native_sha256": "df48c349e21247543612bc7e2104e57e7bb497dd3d64f06ad50696bfc2e816c2",
+  "raw_result": "J:\\codexWorktree\\gearsVr\\analysis\\instances\\cover-1112-r274-cloak-passive\\cover-output\\run-result.json",
+  "raw_result_sha256": "a4ff3c2608d82b6db02e1fd5bedd77528121e8d1b882382367c0f221b23f4310",
+  "result": {
+    "error": "RuntimeError('Own ordinary cover observation failed; preserve operator log')",
+    "operator_exit": 1,
+    "projection_frames": 355,
+    "normal_cleanup_verified": false,
+    "remaining_owned": {},
+    "isolated_done": {
+      "launcher_exit": 1,
+      "owned_game_absent": true,
+      "owned_children": {
+        "recorded": 0,
+        "remaining": []
+      },
+      "forced_termination": false,
+      "worker_error": null,
+      "no_game_started": false
+    }
+  },
+  "session": {
+    "phase": "incomplete",
+    "native_started": true,
+    "native_cleanup_verified": false,
+    "native_cleanup_error": "RuntimeError('Native cleanup incomplete or deadline expired')",
+    "entry_restore_verified": null,
+    "xr_exit_code": 0
+  },
+  "facts": {
+    "cover_input_l2_range": "-0.699999975,0.699999913,0,0.51",
+    "body_cover_pose_attempts": "1",
+    "body_cover_pose_accepted": "0",
+    "body_cover_pose_rejected": "1",
+    "body_native_begin_reason_4": "245",
+    "body_native_pending": "13",
+    "body_goal_cover_enabled": "1",
+    "body_goal_cover_fits": "1",
+    "body_goal_cover_plans": "1",
+    "body_goal_cover_applied": "1",
+    "body_goal_cover_consumed": "0",
+    "body_goal_cover_rejected": "6",
+    "body_goal_cover_reason": "0",
+    "body_goal_cover_measure_status": "0",
+    "body_goal_cover_measure_bad_bone": "4294967295",
+    "body_goal_cover_measure_bad_scale": "0",
+    "body_goal_cover_measure_atom_status": "0",
+    "body_goal_cover_measure_component_length": "0",
+    "body_goal_cover_bad_atoms": "0,0,0,0",
+    "atom_blend_exact_failure": "4",
+    "atom_blend_result_0": "45",
+    "atom_blend_result_1": "514",
+    "atom_blend_result_2": "0",
+    "atom_blend_result_3": "0",
+    "atom_blend_result_4": "0",
+    "atom_blend_result_5": "0",
+    "atom_blend_result_6": "0",
+    "atom_blend_result_7": "0",
+    "atom_blend_result_8": "0",
+    "atom_blend_started": "559",
+    "atom_blend_qualified": "45",
+    "atom_overwrite_enabled": "1",
+    "atom_overwrite_calls": "549502",
+    "atom_overwrite_qualified": "33410",
+    "atom_overwrite_rejected": "0",
+    "atom_overwrite_pending": "0"
+  },
+  "finding": "First actual cover C0 applied, but completed pose readback rejected and 13 outstanding units prevented following captures. No continuous/consumed/body-view pass.",
+  "next": [
+    "Capture exact first cover finish/readback code, epoch/receipt registration, consumed flag and original return identity.",
+    "Preserve raw source/output/readback buffers for offline replay if geometry is the cause.",
+    "Do not weaken retirement/overwrite/identity/freshness or run unchanged binary."
+  ],
+  "visual_review_pending": true,
+  "grab_actions_reached": false
+}

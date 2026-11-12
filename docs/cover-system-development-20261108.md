@@ -3515,3 +3515,14 @@ r273新增严格的被动辅助表示：仅Marcus115当前模型的65/67(parent5
 新增真实三Atom夹具：完整C0/Kernel/消费链scenario11 30检查通过，辅助字节/写mask不变；独立Backend/CAS/Kernel51检查通过，包括归一化/等效矩阵scalar改写/平移/缩放候选拒绝、头部非unit及非刚体矩阵拒绝、回读被动值篡改拒绝且输出不变。原Backend441检查和其余11个C0/standing/拒绝/消费场景207检查通过。早期测试枚举拼写okay→verified编译错误已修正，不计通过。新Native df48c349e21247543612bc7e2104e57e7bb497dd3d64f06ad50696bfc2e816c2编译通过，428项目依赖，冻结r271上6文件改动、开关不变/碰撞OFF，不混入Kernel未提交的其他武器变化。
 
 下一步新私有短运行验证当前转换证书、真实C0持续消费及可视输出，再继续Grip拖动/保持/拉回和点位GrabPose/手臂过渡。当前仅源与离线通过，不能称游戏身体/完整掩体完成；高掩体/两视角模式/完整双眼/实体头显仍待完成。
+
+
+### r274第一笔实际掩体C0写入，消费回读与覆盖退休尚未通过
+
+r274 Native实际激活，新增0xf6100完整302字节当前代码证书通过；真实原版L2范围仍±0.70米/上0.51米。首个cover fit/plan/applied均1，measure_status0，原版非unit辅助表示不再阻断；但body_cover_pose_attempts1/accepted0/rejected1，body_goal_cover_consumed0。后续kernel_pending拒绝245次，body_native_pending13。不能称真实原始消费、连续身体或画面通过。
+
+本局总Native captures568/commits560，apply562、plan solved562、prepare562、commitCode1=560/Code12 guard_rejected=2；站立与覆盖统计不可混成覆盖通过。atom_overwrite_qualified33410、atom_blend_qualified45不能代替当前13个单位的精确覆盖；atom_blend_exact_failure4表示该最后观察中!bound，不足单独证明这笔安装/退休何处失败，不据此归因原始Atom或放宽收据。
+
+runner27641终态exit1；Native清理未通过（deadline/仍待处理），入口验证未执行，XR exit0。所属游戏和子进程均已退出、无强制终止、remaining_owned空，但normal_cleanup_verified=false。完整失败单独保留body-smoke-r274/closeout.json、terminal-native-status.txt；不把进程退出称为全部清理通过。未进入Grip动作，未作当前完整双眼检查。
+
+下一步在首笔cover的finally中一次性保留真实finish_result、cover_completed_code、kernel consumed/protocol/pending、installation_epoch/atom_installed和Registry诊断，并保存原始Frame、Output、失败readback私有工作拷贝及Core，用离线复盘区分原版缓存/SpaceBases、源龄/Context、写入注册/真实覆盖问题。现有code只保存state.cover_completed_code但未输出，不能靠当前汇总猜测。仅只读诊断、外部worker导出，不在游戏线程IO，不授予写入/覆盖/消费权限；不要重跑相同DLL或绕过退休保护。全掩体目标仍未完成。
