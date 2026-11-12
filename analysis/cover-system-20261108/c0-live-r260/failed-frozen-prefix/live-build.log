@@ -1,0 +1,133 @@
+cover_c0_policy_live_test.cpp
+J:\codexWorktree\gearsVr\analysis\cover-system-20261108\c0-live-r260\host-source\tools\native-capture\full_body_c0_native_live.inl(30): error C4430: 缺少类型说明符 - 假定为 int。注意: C++ 不支持默认 int
+J:\codexWorktree\gearsVr\analysis\cover-system-20261108\c0-live-r260\host-source\tools\native-capture\full_body_c0_native_live.inl(30): error C2146: 语法错误: 缺少“;”(在标识符“last_compose_observation”的前面)
+J:\codexWorktree\gearsVr\analysis\cover-system-20261108\c0-live-r260\host-source\tools\native-capture\full_body_c0_native_live.inl(30): error C2143: 语法错误: 缺少“;”(在“{”的前面)
+J:\codexWorktree\gearsVr\analysis\cover-system-20261108\c0-live-r260\host-source\tools\native-capture\full_body_c0_native_live.inl(30): error C2447: “{”: 缺少函数标题(是否是老式的形式表?)
+J:\codexWorktree\gearsVr\analysis\cover-system-20261108\c0-live-r260\host-source\tools\native-capture\full_body_c0_native_live.inl(32): error C2039: "MainMountQueryResult": 不是 "gears_weapon_hand" 的成员
+J:\codexWorktree\gearsVr\analysis\cover-system-20261108\c0-live-r260\host-source\tools\vr-common\weapon_hand_participant.h(11): note: 参见“gears_weapon_hand”的声明
+J:\codexWorktree\gearsVr\analysis\cover-system-20261108\c0-live-r260\host-source\tools\native-capture\full_body_c0_native_live.inl(32): error C2039: "Branch": 不是 "gears_weapon_hand" 的成员
+J:\codexWorktree\gearsVr\analysis\cover-system-20261108\c0-live-r260\host-source\tools\vr-common\weapon_hand_participant.h(11): note: 参见“gears_weapon_hand”的声明
+J:\codexWorktree\gearsVr\analysis\cover-system-20261108\c0-live-r260\host-source\tools\native-capture\full_body_c0_native_live.inl(32): error C3083: “MainMountQueryResult”:“::”左侧的符号必须是一种类型
+J:\codexWorktree\gearsVr\analysis\cover-system-20261108\c0-live-r260\host-source\tools\native-capture\full_body_c0_native_live.inl(32): error C3083: “Branch”:“::”左侧的符号必须是一种类型
+J:\codexWorktree\gearsVr\analysis\cover-system-20261108\c0-live-r260\host-source\tools\native-capture\full_body_c0_native_live.inl(32): error C2039: "count": 不是 "gears_weapon_hand" 的成员
+J:\codexWorktree\gearsVr\analysis\cover-system-20261108\c0-live-r260\host-source\tools\vr-common\weapon_hand_participant.h(11): note: 参见“gears_weapon_hand”的声明
+J:\codexWorktree\gearsVr\analysis\cover-system-20261108\c0-live-r260\host-source\tools\native-capture\full_body_c0_native_live.inl(32): error C2065: “count”: 未声明的标识符
+J:\codexWorktree\gearsVr\analysis\cover-system-20261108\c0-live-r260\host-source\tools\native-capture\full_body_c0_native_live.inl(160): error C2039: "PendingBranch": 不是 "fresh_pose_producer_live" 的成员
+J:\codexWorktree\gearsVr\analysis\cover-system-20261108\c0-live-r260\host-source\tools\native-capture\host_native_live_prefix.inl(52): note: 参见“fresh_pose_producer_live”的声明
+J:\codexWorktree\gearsVr\analysis\cover-system-20261108\c0-live-r260\host-source\tools\native-capture\full_body_c0_native_live.inl(160): error C2065: “PendingBranch”: 未声明的标识符
+J:\codexWorktree\gearsVr\analysis\cover-system-20261108\c0-live-r260\host-source\tools\native-capture\full_body_c0_native_live.inl(160): error C2923: "std::array": "PendingBranch" 不是参数 "_Ty" 的有效 模板 类型参数
+J:\codexWorktree\gearsVr\analysis\cover-system-20261108\c0-live-r260\host-source\tools\native-capture\full_body_c0_native_live.inl(160): note: 参见“PendingBranch”的声明
+J:\codexWorktree\gearsVr\analysis\cover-system-20261108\c0-live-r260\host-source\tools\native-capture\full_body_c0_native_live.inl(160): error C3000: “std::array”: 要使用类模板，需要模板参数列表。非静态数据成员中禁止参数推导
+E:\vs\VC\Tools\MSVC\14.51.36231\include\array(402): note: 参见“std::array”的声明
+J:\codexWorktree\gearsVr\analysis\cover-system-20261108\c0-live-r260\host-source\tools\native-capture\full_body_c0_native_live.inl(173): error C3861: “safe_copy”: 找不到标识符
+J:\codexWorktree\gearsVr\analysis\cover-system-20261108\c0-live-r260\host-source\tools\native-capture\full_body_c0_native_live.inl(174): error C3861: “safe_copy”: 找不到标识符
+J:\codexWorktree\gearsVr\analysis\cover-system-20261108\c0-live-r260\host-source\tools\native-capture\full_body_c0_native_live.inl(179): error C2039: "metadata_reject_trace": 不是 "rig_tracking_live" 的成员
+J:\codexWorktree\gearsVr\analysis\cover-system-20261108\c0-live-r260\host-source\tools\native-capture\full_body_c0_native_live.inl(11): note: 参见“rig_tracking_live”的声明
+J:\codexWorktree\gearsVr\analysis\cover-system-20261108\c0-live-r260\host-source\tools\native-capture\full_body_c0_native_live.inl(179): error C2065: “metadata_reject_trace”: 未声明的标识符
+J:\codexWorktree\gearsVr\analysis\cover-system-20261108\c0-live-r260\host-source\tools\native-capture\full_body_c0_native_live.inl(182): error C2039: "pending_branches": 不是 "fresh_pose_producer_live" 的成员
+J:\codexWorktree\gearsVr\analysis\cover-system-20261108\c0-live-r260\host-source\tools\native-capture\host_native_live_prefix.inl(52): note: 参见“fresh_pose_producer_live”的声明
+J:\codexWorktree\gearsVr\analysis\cover-system-20261108\c0-live-r260\host-source\tools\native-capture\full_body_c0_native_live.inl(182): error C3861: “pending_branches”: 找不到标识符
+J:\codexWorktree\gearsVr\analysis\cover-system-20261108\c0-live-r260\host-source\tools\native-capture\full_body_c0_native_live.inl(205): error C2678: 二进制“[”: 没有找到接受“const std::array”类型的左操作数的运算符(或没有可接受的转换)
+E:\vs\VC\Tools\MSVC\14.51.36231\include\array(531): note: 可能是“const _Ty &std::array<_Ty,_Size>::operator [](std::array<_Ty,_Size>::size_type) noexcept const”
+J:\codexWorktree\gearsVr\analysis\cover-system-20261108\c0-live-r260\host-source\tools\native-capture\full_body_c0_native_live.inl(205): note: “const _Ty &std::array<_Ty,_Size>::operator [](std::array<_Ty,_Size>::size_type) noexcept const”: 不能将“this”指针从“const std::array”转换为“const std::array<_Ty,_Size> &”
+J:\codexWorktree\gearsVr\analysis\cover-system-20261108\c0-live-r260\host-source\tools\native-capture\full_body_c0_native_live.inl(205): note: 原因如下: 无法从“const std::array”转换为“const std::array<_Ty,_Size>”
+J:\codexWorktree\gearsVr\analysis\cover-system-20261108\c0-live-r260\host-source\tools\native-capture\full_body_c0_native_live.inl(205): note: 转换要求第二个用户定义的转换运算符或构造函数
+E:\vs\VC\Tools\MSVC\14.51.36231\include\array(523): note: 或    “_Ty &std::array<_Ty,_Size>::operator [](std::array<_Ty,_Size>::size_type) noexcept”
+J:\codexWorktree\gearsVr\analysis\cover-system-20261108\c0-live-r260\host-source\tools\native-capture\full_body_c0_native_live.inl(205): note: “_Ty &std::array<_Ty,_Size>::operator [](std::array<_Ty,_Size>::size_type) noexcept”: 不能将“this”指针从“const std::array”转换为“std::array<_Ty,_Size> &”
+J:\codexWorktree\gearsVr\analysis\cover-system-20261108\c0-live-r260\host-source\tools\native-capture\full_body_c0_native_live.inl(205): note: 原因如下: 无法从“const std::array”转换为“std::array<_Ty,_Size>”
+J:\codexWorktree\gearsVr\analysis\cover-system-20261108\c0-live-r260\host-source\tools\native-capture\full_body_c0_native_live.inl(205): note: 转换要求第二个用户定义的转换运算符或构造函数
+J:\codexWorktree\gearsVr\analysis\cover-system-20261108\c0-live-r260\host-source\tools\native-capture\full_body_c0_native_live.inl(205): note: 尝试匹配参数列表“(const std::array, unsigned int)”时
+J:\codexWorktree\gearsVr\analysis\cover-system-20261108\c0-live-r260\host-source\tools\native-capture\full_body_c0_native_live.inl(205): error C2530: “v”: 必须初始化引用
+J:\codexWorktree\gearsVr\analysis\cover-system-20261108\c0-live-r260\host-source\tools\native-capture\full_body_c0_native_live.inl(207): error C3536: “v”: 初始化之前无法使用
+J:\codexWorktree\gearsVr\analysis\cover-system-20261108\c0-live-r260\host-source\tools\native-capture\full_body_c0_native_live.inl(206): warning C4473: “fprintf”: 没有为格式字符串传递足够的参数
+J:\codexWorktree\gearsVr\analysis\cover-system-20261108\c0-live-r260\host-source\tools\native-capture\full_body_c0_native_live.inl(206): note: 占位符和其参数预计 18 可变参数，但提供的却是 1 参数
+J:\codexWorktree\gearsVr\analysis\cover-system-20261108\c0-live-r260\host-source\tools\native-capture\full_body_c0_native_live.inl(206): note: 缺失的可变参数 2 为格式字符串“%llu”所需
+J:\codexWorktree\gearsVr\analysis\cover-system-20261108\c0-live-r260\host-source\tools\native-capture\full_body_c0_native_live.inl(208): warning C4473: “fprintf”: 没有为格式字符串传递足够的参数
+J:\codexWorktree\gearsVr\analysis\cover-system-20261108\c0-live-r260\host-source\tools\native-capture\full_body_c0_native_live.inl(208): note: 占位符和其参数预计 6 可变参数，但提供的却是 1 参数
+J:\codexWorktree\gearsVr\analysis\cover-system-20261108\c0-live-r260\host-source\tools\native-capture\full_body_c0_native_live.inl(208): note: 缺失的可变参数 2 为格式字符串“%llu”所需
+J:\codexWorktree\gearsVr\analysis\cover-system-20261108\c0-live-r260\host-source\tools\native-capture\full_body_c0_native_live.inl(210): warning C4473: “fprintf”: 没有为格式字符串传递足够的参数
+J:\codexWorktree\gearsVr\analysis\cover-system-20261108\c0-live-r260\host-source\tools\native-capture\full_body_c0_native_live.inl(210): note: 占位符和其参数预计 11 可变参数，但提供的却是 0 参数
+J:\codexWorktree\gearsVr\analysis\cover-system-20261108\c0-live-r260\host-source\tools\native-capture\full_body_c0_native_live.inl(210): note: 缺失的可变参数 1 为格式字符串“%u”所需
+J:\codexWorktree\gearsVr\analysis\cover-system-20261108\c0-live-r260\host-source\tools\native-capture\full_body_c0_native_live.inl(221): error C3861: “main_mount_policy_enabled”: 找不到标识符
+J:\codexWorktree\gearsVr\analysis\cover-system-20261108\c0-live-r260\host-source\tools\native-capture\full_body_c0_native_live.inl(395): error C2039: "metadata_reject_trace": 不是 "rig_tracking_live" 的成员
+J:\codexWorktree\gearsVr\analysis\cover-system-20261108\c0-live-r260\host-source\tools\native-capture\full_body_c0_native_live.inl(11): note: 参见“rig_tracking_live”的声明
+J:\codexWorktree\gearsVr\analysis\cover-system-20261108\c0-live-r260\host-source\tools\native-capture\full_body_c0_native_live.inl(395): error C2065: “metadata_reject_trace”: 未声明的标识符
+J:\codexWorktree\gearsVr\analysis\cover-system-20261108\c0-live-r260\host-source\tools\native-capture\full_body_c0_native_live.inl(412): error C2039: "metadata_reject_count": 不是 "rig_tracking_live" 的成员
+J:\codexWorktree\gearsVr\analysis\cover-system-20261108\c0-live-r260\host-source\tools\native-capture\full_body_c0_native_live.inl(11): note: 参见“rig_tracking_live”的声明
+J:\codexWorktree\gearsVr\analysis\cover-system-20261108\c0-live-r260\host-source\tools\native-capture\full_body_c0_native_live.inl(412): error C2065: “metadata_reject_count”: 未声明的标识符
+J:\codexWorktree\gearsVr\analysis\cover-system-20261108\c0-live-r260\host-source\tools\native-capture\full_body_c0_native_live.inl(412): error C2737: “count”: 必须初始化 const 对象
+J:\codexWorktree\gearsVr\analysis\cover-system-20261108\c0-live-r260\host-source\tools\native-capture\full_body_c0_native_live.inl(413): error C3536: “count”: 初始化之前无法使用
+J:\codexWorktree\gearsVr\analysis\cover-system-20261108\c0-live-r260\host-source\tools\native-capture\full_body_c0_native_live.inl(413): error C2039: "metadata_rejects": 不是 "rig_tracking_live" 的成员
+J:\codexWorktree\gearsVr\analysis\cover-system-20261108\c0-live-r260\host-source\tools\native-capture\full_body_c0_native_live.inl(11): note: 参见“rig_tracking_live”的声明
+J:\codexWorktree\gearsVr\analysis\cover-system-20261108\c0-live-r260\host-source\tools\native-capture\full_body_c0_native_live.inl(413): error C2065: “metadata_rejects”: 未声明的标识符
+J:\codexWorktree\gearsVr\analysis\cover-system-20261108\c0-live-r260\host-source\tools\native-capture\full_body_c0_native_live.inl(414): error C2039: "metadata_rejects": 不是 "rig_tracking_live" 的成员
+J:\codexWorktree\gearsVr\analysis\cover-system-20261108\c0-live-r260\host-source\tools\native-capture\full_body_c0_native_live.inl(11): note: 参见“rig_tracking_live”的声明
+J:\codexWorktree\gearsVr\analysis\cover-system-20261108\c0-live-r260\host-source\tools\native-capture\full_body_c0_native_live.inl(414): error C2065: “metadata_rejects”: 未声明的标识符
+J:\codexWorktree\gearsVr\analysis\cover-system-20261108\c0-live-r260\host-source\tools\native-capture\full_body_c0_native_live.inl(414): error C2039: "MetadataReject": 不是 "rig_tracking_live" 的成员
+J:\codexWorktree\gearsVr\analysis\cover-system-20261108\c0-live-r260\host-source\tools\native-capture\full_body_c0_native_live.inl(11): note: 参见“rig_tracking_live”的声明
+J:\codexWorktree\gearsVr\analysis\cover-system-20261108\c0-live-r260\host-source\tools\native-capture\full_body_c0_native_live.inl(414): error C2065: “MetadataReject”: 未声明的标识符
+J:\codexWorktree\gearsVr\analysis\cover-system-20261108\c0-live-r260\host-source\tools\native-capture\full_body_c0_native_live.inl(497): error C2878: “gears_committed_hand”: 该名称的命名空间或类不存在
+J:\codexWorktree\gearsVr\analysis\cover-system-20261108\c0-live-r260\host-source\tools\native-capture\full_body_c0_native_live.inl(498): error C2653: “endpoint”: 不是类或命名空间名称
+J:\codexWorktree\gearsVr\analysis\cover-system-20261108\c0-live-r260\host-source\tools\native-capture\full_body_c0_native_live.inl(498): error C4430: 缺少类型说明符 - 假定为 int。注意: C++ 不支持默认 int
+J:\codexWorktree\gearsVr\analysis\cover-system-20261108\c0-live-r260\host-source\tools\native-capture\full_body_c0_native_live.inl(498): error C2146: 语法错误: 缺少“;”(在标识符“endpoint_value”的前面)
+J:\codexWorktree\gearsVr\analysis\cover-system-20261108\c0-live-r260\host-source\tools\native-capture\full_body_c0_native_live.inl(498): error C2143: 语法错误: 缺少“;”(在“{”的前面)
+J:\codexWorktree\gearsVr\analysis\cover-system-20261108\c0-live-r260\host-source\tools\native-capture\full_body_c0_native_live.inl(498): error C2447: “{”: 缺少函数标题(是否是老式的形式表?)
+J:\codexWorktree\gearsVr\analysis\cover-system-20261108\c0-live-r260\host-source\tools\native-capture\full_body_c0_native_live.inl(508): error C2653: “gears_committed_interaction”: 不是类或命名空间名称
+J:\codexWorktree\gearsVr\analysis\cover-system-20261108\c0-live-r260\host-source\tools\native-capture\full_body_c0_native_live.inl(508): error C4430: 缺少类型说明符 - 假定为 int。注意: C++ 不支持默认 int
+J:\codexWorktree\gearsVr\analysis\cover-system-20261108\c0-live-r260\host-source\tools\native-capture\full_body_c0_native_live.inl(508): error C2086: “int full_body_c0_native_live::Frame”: 重定义
+J:\codexWorktree\gearsVr\analysis\cover-system-20261108\c0-live-r260\host-source\tools\native-capture\full_body_c0_native_live.inl(498): note: 参见“full_body_c0_native_live::Frame”的声明
+J:\codexWorktree\gearsVr\analysis\cover-system-20261108\c0-live-r260\host-source\tools\native-capture\full_body_c0_native_live.inl(508): error C2146: 语法错误: 缺少“;”(在标识符“interaction_value”的前面)
+J:\codexWorktree\gearsVr\analysis\cover-system-20261108\c0-live-r260\host-source\tools\native-capture\full_body_c0_native_live.inl(508): error C2143: 语法错误: 缺少“;”(在“{”的前面)
+J:\codexWorktree\gearsVr\analysis\cover-system-20261108\c0-live-r260\host-source\tools\native-capture\full_body_c0_native_live.inl(508): error C2447: “{”: 缺少函数标题(是否是老式的形式表?)
+J:\codexWorktree\gearsVr\analysis\cover-system-20261108\c0-live-r260\host-source\tools\native-capture\full_body_c0_native_live.inl(517): error C2065: “endpoint_value”: 未声明的标识符
+J:\codexWorktree\gearsVr\analysis\cover-system-20261108\c0-live-r260\host-source\tools\native-capture\full_body_c0_native_live.inl(520): error C2065: “endpoint_value”: 未声明的标识符
+J:\codexWorktree\gearsVr\analysis\cover-system-20261108\c0-live-r260\host-source\tools\native-capture\full_body_c0_native_live.inl(545): error C2653: “endpoint”: 不是类或命名空间名称
+J:\codexWorktree\gearsVr\analysis\cover-system-20261108\c0-live-r260\host-source\tools\native-capture\full_body_c0_native_live.inl(545): error C2061: 语法错误: 标识符“Frame”
+J:\codexWorktree\gearsVr\analysis\cover-system-20261108\c0-live-r260\host-source\tools\native-capture\full_body_c0_native_live.inl(547): error C2039: "metadata_reject_trace": 不是 "rig_tracking_live" 的成员
+J:\codexWorktree\gearsVr\analysis\cover-system-20261108\c0-live-r260\host-source\tools\native-capture\full_body_c0_native_live.inl(11): note: 参见“rig_tracking_live”的声明
+J:\codexWorktree\gearsVr\analysis\cover-system-20261108\c0-live-r260\host-source\tools\native-capture\full_body_c0_native_live.inl(547): error C2065: “metadata_reject_trace”: 未声明的标识符
+J:\codexWorktree\gearsVr\analysis\cover-system-20261108\c0-live-r260\host-source\tools\native-capture\full_body_c0_native_live.inl(547): error C2065: “f”: 未声明的标识符
+J:\codexWorktree\gearsVr\analysis\cover-system-20261108\c0-live-r260\host-source\tools\native-capture\full_body_c0_native_live.inl(547): error C2653: “endpoint”: 不是类或命名空间名称
+J:\codexWorktree\gearsVr\analysis\cover-system-20261108\c0-live-r260\host-source\tools\native-capture\full_body_c0_native_live.inl(547): error C2065: “held_lancer”: 未声明的标识符
+J:\codexWorktree\gearsVr\analysis\cover-system-20261108\c0-live-r260\host-source\tools\native-capture\full_body_c0_native_live.inl(552): error C2065: “f”: 未声明的标识符
+J:\codexWorktree\gearsVr\analysis\cover-system-20261108\c0-live-r260\host-source\tools\native-capture\full_body_c0_native_live.inl(552): error C2065: “f”: 未声明的标识符
+J:\codexWorktree\gearsVr\analysis\cover-system-20261108\c0-live-r260\host-source\tools\native-capture\full_body_c0_native_live.inl(552): error C2065: “f”: 未声明的标识符
+J:\codexWorktree\gearsVr\analysis\cover-system-20261108\c0-live-r260\host-source\tools\native-capture\full_body_c0_native_live.inl(553): error C2065: “f”: 未声明的标识符
+J:\codexWorktree\gearsVr\analysis\cover-system-20261108\c0-live-r260\host-source\tools\native-capture\full_body_c0_native_live.inl(553): error C2065: “f”: 未声明的标识符
+J:\codexWorktree\gearsVr\analysis\cover-system-20261108\c0-live-r260\host-source\tools\native-capture\full_body_c0_native_live.inl(553): error C2065: “known”: 未声明的标识符
+J:\codexWorktree\gearsVr\analysis\cover-system-20261108\c0-live-r260\host-source\tools\native-capture\full_body_c0_native_live.inl(554): error C2065: “f”: 未声明的标识符
+J:\codexWorktree\gearsVr\analysis\cover-system-20261108\c0-live-r260\host-source\tools\native-capture\full_body_c0_native_live.inl(554): error C2065: “actual”: 未声明的标识符
+J:\codexWorktree\gearsVr\analysis\cover-system-20261108\c0-live-r260\host-source\tools\native-capture\full_body_c0_native_live.inl(554): error C2065: “selected”: 未声明的标识符
+J:\codexWorktree\gearsVr\analysis\cover-system-20261108\c0-live-r260\host-source\tools\native-capture\full_body_c0_native_live.inl(557): error C2653: “gears_committed_hand_consumer”: 不是类或命名空间名称
+J:\codexWorktree\gearsVr\analysis\cover-system-20261108\c0-live-r260\host-source\tools\native-capture\full_body_c0_native_live.inl(557): error C2065: “Kind”: 未声明的标识符
+J:\codexWorktree\gearsVr\analysis\cover-system-20261108\c0-live-r260\host-source\tools\native-capture\full_body_c0_native_live.inl(557): error C2146: 语法错误: 缺少“)”(在标识符“kind”的前面)
+J:\codexWorktree\gearsVr\analysis\cover-system-20261108\c0-live-r260\host-source\tools\native-capture\full_body_c0_native_live.inl(557): error C2143: 语法错误: 缺少“;”(在“{”的前面)
+J:\codexWorktree\gearsVr\analysis\cover-system-20261108\c0-live-r260\host-source\tools\native-capture\full_body_c0_native_live.inl(557): error C2447: “{”: 缺少函数标题(是否是老式的形式表?)
+J:\codexWorktree\gearsVr\analysis\cover-system-20261108\c0-live-r260\host-source\tools\native-capture\full_body_c0_native_live.inl(577): error C2653: “endpoint”: 不是类或命名空间名称
+J:\codexWorktree\gearsVr\analysis\cover-system-20261108\c0-live-r260\host-source\tools\native-capture\full_body_c0_native_live.inl(577): error C2059: 语法错误:“const”
+J:\codexWorktree\gearsVr\analysis\cover-system-20261108\c0-live-r260\host-source\tools\native-capture\full_body_c0_native_live.inl(577): error C2143: 语法错误: 缺少“;”(在“{”的前面)
+J:\codexWorktree\gearsVr\analysis\cover-system-20261108\c0-live-r260\host-source\tools\native-capture\full_body_c0_native_live.inl(577): error C2447: “{”: 缺少函数标题(是否是老式的形式表?)
+J:\codexWorktree\gearsVr\analysis\cover-system-20261108\c0-live-r260\host-source\tools\native-capture\full_body_c0_native_live.inl(599): error C2653: “gears_weapon_lancer_contact”: 不是类或命名空间名称
+J:\codexWorktree\gearsVr\analysis\cover-system-20261108\c0-live-r260\host-source\tools\native-capture\full_body_c0_native_live.inl(599): error C3861: “palm_marker_in_wrist”: 找不到标识符
+J:\codexWorktree\gearsVr\analysis\cover-system-20261108\c0-live-r260\host-source\tools\native-capture\full_body_c0_native_live.inl(623): error C2065: “endpoint_value”: 未声明的标识符
+J:\codexWorktree\gearsVr\analysis\cover-system-20261108\c0-live-r260\host-source\tools\native-capture\full_body_c0_native_live.inl(624): error C2065: “endpoint_value”: 未声明的标识符
+J:\codexWorktree\gearsVr\analysis\cover-system-20261108\c0-live-r260\host-source\tools\native-capture\full_body_c0_native_live.inl(625): error C2653: “endpoint”: 不是类或命名空间名称
+J:\codexWorktree\gearsVr\analysis\cover-system-20261108\c0-live-r260\host-source\tools\native-capture\full_body_c0_native_live.inl(625): error C2065: “held_lancer”: 未声明的标识符
+J:\codexWorktree\gearsVr\analysis\cover-system-20261108\c0-live-r260\host-source\tools\native-capture\full_body_c0_native_live.inl(625): error C2653: “endpoint”: 不是类或命名空间名称
+J:\codexWorktree\gearsVr\analysis\cover-system-20261108\c0-live-r260\host-source\tools\native-capture\full_body_c0_native_live.inl(625): error C2065: “observed_held_visual”: 未声明的标识符
+J:\codexWorktree\gearsVr\analysis\cover-system-20261108\c0-live-r260\host-source\tools\native-capture\full_body_c0_native_live.inl(626): error C2653: “weapon_hand_runtime”: 不是类或命名空间名称
+J:\codexWorktree\gearsVr\analysis\cover-system-20261108\c0-live-r260\host-source\tools\native-capture\full_body_c0_native_live.inl(626): error C3861: “current”: 找不到标识符
+J:\codexWorktree\gearsVr\analysis\cover-system-20261108\c0-live-r260\host-source\tools\native-capture\full_body_c0_native_live.inl(626): error C3535: 无法推导“auto *”的类型(依据“<错误>”)
+J:\codexWorktree\gearsVr\analysis\cover-system-20261108\c0-live-r260\host-source\tools\native-capture\full_body_c0_native_live.inl(628): error C2039: "reference_snapshot": 不是 "rig_tracking_live" 的成员
+J:\codexWorktree\gearsVr\analysis\cover-system-20261108\c0-live-r260\host-source\tools\native-capture\full_body_c0_native_live.inl(11): note: 参见“rig_tracking_live”的声明
+J:\codexWorktree\gearsVr\analysis\cover-system-20261108\c0-live-r260\host-source\tools\native-capture\full_body_c0_native_live.inl(628): error C3861: “reference_snapshot”: 找不到标识符
+J:\codexWorktree\gearsVr\analysis\cover-system-20261108\c0-live-r260\host-source\tools\native-capture\full_body_c0_native_live.inl(632): error C2653: “endpoint”: 不是类或命名空间名称
+J:\codexWorktree\gearsVr\analysis\cover-system-20261108\c0-live-r260\host-source\tools\native-capture\full_body_c0_native_live.inl(632): error C3861: “fresh”: 找不到标识符
+J:\codexWorktree\gearsVr\analysis\cover-system-20261108\c0-live-r260\host-source\tools\native-capture\full_body_c0_native_live.inl(636): error C2653: “gears_committed_hand_consumer”: 不是类或命名空间名称
+J:\codexWorktree\gearsVr\analysis\cover-system-20261108\c0-live-r260\host-source\tools\native-capture\full_body_c0_native_live.inl(636): error C2065: “revoke”: 未声明的标识符
+J:\codexWorktree\gearsVr\analysis\cover-system-20261108\c0-live-r260\host-source\tools\native-capture\full_body_c0_native_live.inl(636): error C3861: “notify_endpoint”: 找不到标识符
+J:\codexWorktree\gearsVr\analysis\cover-system-20261108\c0-live-r260\host-source\tools\native-capture\full_body_c0_native_live.inl(641): error C2653: “endpoint”: 不是类或命名空间名称
+J:\codexWorktree\gearsVr\analysis\cover-system-20261108\c0-live-r260\host-source\tools\native-capture\full_body_c0_native_live.inl(641): error C2146: 语法错误: 缺少“;”(在标识符“next”的前面)
+J:\codexWorktree\gearsVr\analysis\cover-system-20261108\c0-live-r260\host-source\tools\native-capture\full_body_c0_native_live.inl(641): error C2065: “next”: 未声明的标识符
+J:\codexWorktree\gearsVr\analysis\cover-system-20261108\c0-live-r260\host-source\tools\native-capture\full_body_c0_native_live.inl(642): error C2653: “endpoint”: 不是类或命名空间名称
+J:\codexWorktree\gearsVr\analysis\cover-system-20261108\c0-live-r260\host-source\tools\native-capture\full_body_c0_native_live.inl(642): fatal error C1003: 错误计数超过 100；正在停止编译

@@ -4,6 +4,7 @@ namespace cover_l2_grab_live {
 namespace input=cover_input_live;
 struct Diagnostics {
     uint64_t attempts{},ready{},rejected{},hand_missing{};
+    uint64_t point_frame{};int64_t point_sample_ns{};
     gears_vr::CoverEpochs previous{};
     gears_cover_l2_points::Result points{};
     gears_vr::CoverEdgeObservation selected{};
@@ -46,7 +47,8 @@ bool prepare(gears_anchor::Receipt const* scene,cover_neutral_eye_live::EyeSampl
     const auto offset=same_cover(diagnostics.previous,frame.cover.epochs)?previous.offset:gears_vr::CoverOffset{};
     const bool latched=same_grip(diagnostics.previous,frame.cover.epochs)&&
         (previous.phase==gears_vr::CoverPhase::grabbing||previous.phase==gears_vr::CoverPhase::requesting);
-    diagnostics.previous=frame.cover.epochs;diagnostics.points=points;++diagnostics.ready;
+    diagnostics.previous=frame.cover.epochs;diagnostics.points=points;
+    diagnostics.point_frame=frame.frame;diagnostics.point_sample_ns=frame.now_ns;++diagnostics.ready;
     if(!frame.controllers){++diagnostics.hand_missing;return true;}
     const auto& hand=frame.controllers->hands[0];gears_vr::CoverViewResult view{};gears_vr::Vector world{};
     if(!gears_vr::controller_pose_usable(hand.grip,hand.grip_flags,hand.grip_active)||
@@ -57,5 +59,15 @@ bool prepare(gears_anchor::Receipt const* scene,cover_neutral_eye_live::EyeSampl
     frame.cover.edge=gears_vr::cover_l2_select(references,world,frame.units_per_metre,.18,latched?previous.edge_id:0);
     diagnostics.selected=frame.cover.edge;return true;
 }
-struct Registration {Registration(){input::grab_points_provider=prepare;}} registration;
+void summary(FILE* file){
+    if(!file)return;const auto& p=diagnostics.points;
+    fprintf(file,"cover_l2_reference_calls=%llu,%llu,%llu,%llu cover_l2_reference_type=%u cover_l2_reference_neutral=%.9g,%.9g,%.9g ",
+        diagnostics.attempts,diagnostics.ready,diagnostics.rejected,diagnostics.hand_missing,unsigned(p.type),p.neutral.x,p.neutral.y,p.neutral.z);
+    fprintf(file,"cover_l2_reference_last_sample=%llu,%lld,%llu,%llu,%llu,%llu ",
+        diagnostics.point_frame,diagnostics.point_sample_ns,diagnostics.previous.world,diagnostics.previous.pawn,
+        diagnostics.previous.cover,diagnostics.previous.slot);
+    for(unsigned i=0;i<3;++i)fprintf(file,"cover_l2_reference_point_%u=%u,%.9g,%.9g,%.9g ",i,
+        unsigned(p.available[i]),p.points[i].x,p.points[i].y,p.points[i].z);
+}
+struct Registration {Registration(){input::grab_points_provider=prepare;input::grab_point_summary=summary;}} registration;
 } // namespace cover_l2_grab_live

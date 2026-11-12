@@ -105,6 +105,9 @@ int main(){
     C(live::prepare(&scene,view,stereo));C(body::published==before_throw&&live::interrupted&&live::diagnostics.rejected==own_rejected+1);
     const bool released=body::mutex.try_lock();C(released);if(released)body::mutex.unlock();neutral::throw_context=false;
     next(.2);C(live::prepare(&scene,view,stereo));C(body::published==before_throw+1&&body::publication_lock_free);
+    const auto before_c0=body::published;live::full_body_cover_enabled=true;
+    next(.2);C(live::prepare(&scene,view,stereo));C(body::published==before_c0);
+    live::full_body_cover_enabled=false;next(.2);C(live::prepare(&scene,view,stereo));C(body::published==before_c0+1);
     live::close();producer.close();C(!live::bridge_open);
     std::printf("cover_input_live: %u checks, %u failures\n",checks,failures);return failures?1:0;
 }

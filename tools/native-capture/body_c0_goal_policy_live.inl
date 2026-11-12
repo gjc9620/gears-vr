@@ -2,6 +2,11 @@
 // body_c0_neutral.h is included globally before capture's anonymous namespace.
 #include "first_person_body_visibility.h"
 #include "cover_measurement_core_observation.h"
+#include "cover_c0_committed_adapter.h"
+namespace cover_full_goal_live {
+bool read_committed(gears_cover_committed::State&);
+bool set_body_owner(bool);
+}
 namespace body_c0_goal_policy_live {
 namespace budget=::gears_body_c0_budget;
 namespace n=full_body_c0_native_live;namespace b=gears_full_body_c0;namespace a=gears_body_goal_view;
@@ -11,6 +16,7 @@ using Entry=gears_continuous_hand_entry::Entry;
 bool enabled{};
 #if defined(GEARS_BODY_C0_GOAL_POLICY) && GEARS_BODY_C0_GOAL_POLICY
 std::atomic<bool> stopping{},view_valid{};std::atomic<unsigned> callbacks{},open_ends{};
+bool cover_enabled{};
 std::atomic<uint64_t> attempts{},plans{},applied{},published{},rejected{},view_rejected{},view_used{},revision{1};
 std::atomic<uint64_t> view_held{},pickup_view_used{},lancer_animation_view_used{};
 std::atomic<uint64_t> lancer_execution_eye_used{};
@@ -113,6 +119,7 @@ void note_reject(RejectReason reason,Entry const& e,bool source_available=true,u
 }
 struct Publication {Key key{};gears_vr::CoverViewResult render{};b::Matrix64 component{};
     neutral::Stored stored{};
+    gears_cover_committed::State cover_drag{};cover_context_live::CurrentKey cover_key{};bool cover{};
     uint64_t version{},tick{},compose{},revision{};int64_t ended_ns{};};
 std::mutex view_mutex;Publication view{};uint64_t publication_sequence{};
 struct Pending {Entry const* entry{};Entry copy{};Publication next{};uint64_t revision{},kernel_serial{};bool committed{};} pending;
@@ -256,7 +263,15 @@ void sample_current_cover_pose() noexcept {
            !cover_context_live::sample_current(s.context.actor,after)||!cover_context_live::same(before,after))current_cover_pose_valid=false;
     }catch(...){note_cover_probe(CoverProbeStep::exception);current_cover_pose_valid=false;}
 }
-void pose_begin(Entry const& e) noexcept {Call call;if(e.kind==0)budget::recorder.mark_entry(budget::Stage::goal_entry,reinterpret_cast<uintptr_t>(&e),e.invocation);if(!enabled||e.kind!=0||!e.selected)return;++attempts;
+#include "cover_c0_policy_live.inl"
+void pose_begin(Entry const& e) noexcept {Call call;if(e.kind==0)budget::recorder.mark_entry(budget::Stage::goal_entry,reinterpret_cast<uintptr_t>(&e),e.invocation);
+    // A new Compose may replace the displayed skeleton even when this owner
+    // cannot admit it. Cover displays only a newly completed body result.
+    if(e.kind==0&&GetCurrentThreadId()==n::owner_thread.load()&&view_valid.load()){
+        std::lock_guard<std::mutex> lock(view_mutex);
+        if(view_valid.load()&&view.cover&&e.rcx==view.key.actor.mesh.address)invalidate();
+    }
+    if(!enabled||e.kind!=0||!e.selected)return;++attempts;
     if(first_person_live::body_basis&&!first_person_live::toggle.requested()){invalidate();return;}
     if(GetCurrentThreadId()!=n::owner_thread.load()){note_reject(RejectReason::wrong_thread,e,false);++rejected;return;}
     current_cover_pose_valid=false;
@@ -268,7 +283,8 @@ void pose_begin(Entry const& e) noexcept {Call call;if(e.kind==0)budget::recorde
         if(!n::same_entry(e)){note_reject(RejectReason::same_entry,e);++rejected;return;}
         if(!s.context.current(n::tx::Stage::prepare)){note_reject(RejectReason::current_prepare,e);++rejected;return;}
         if(!no_cover(s.context.source)){
-            sample_current_cover_pose();
+            if(cover_enabled){if(prepare_cover(e))return;++cover_rejected;}
+            else sample_current_cover_pose();
             note_reject(RejectReason::cover,e);++rejected;return;
         }
         if(!standing(s.context.actor)){note_reject(RejectReason::standing,e);++rejected;return;}
@@ -324,10 +340,12 @@ void pose_end(Entry const& e,bool returned,bool original_called) noexcept {Call 
     bool exact{},publish{};try{exact=pending.entry==&e&&!std::memcmp(&pending.copy,&e,sizeof e);
         publish=exact&&pending.committed&&returned&&original_called&&enabled&&!stopping.load()&&pending.revision==revision.load()&&
             n::state.captured&&n::same_entry(e)&&n::state.notified&&n::state.kernel.consumed()&&!n::state.kernel.failed()&&
-            !n::state.kernel.protocol_debt()&&n::state.context.current(n::tx::Stage::scope_end)&&standing(n::state.context.actor)&&same_key(origin.key);
+            !n::state.kernel.protocol_debt()&&n::state.context.current(n::tx::Stage::scope_end)&&
+            (pending.next.cover?cover_publication_current(pending.next):standing(n::state.context.actor)&&same_key(origin.key));
     }catch(...){publish=false;}
     n::pose_end(e,returned,original_called); // Real finally, even OFF or rejected.
-    try{if(exact){if(publish&&n::state.kernel.completed_consumer(n::state.backend,n::state.stamp,pending.kernel_serial)&&
+    try{if(exact){if(publish&&(!pending.next.cover||cover_consumed(e,pending.next))&&
+           n::state.kernel.completed_consumer(n::state.backend,n::state.stamp,pending.kernel_serial)&&
            !stopping.load()&&pending.revision==revision.load()){
             std::lock_guard<std::mutex> lock(view_mutex);if(publication_sequence==UINT64_MAX){stopping=true;invalidate();}
             else if(!stopping.load()&&pending.revision==revision.load()) {pending.next.version=++publication_sequence;pending.next.ended_ns=rig::clock_ns();view=pending.next;view_valid=true;++published;}}
@@ -355,7 +373,7 @@ bool read_view(gears_anchor::Receipt const* scene,gears_vr::StereoResult const& 
         Publication copy{};{std::lock_guard<std::mutex> lock(view_mutex);if(!view_valid.load())return deny();copy=view;}
         auto const& s=copy.key.source;const auto now=rig::clock_ns();core::rig::NativeReference reference{};uint64_t ref_revision{};
         const auto session=weapon_hand_runtime::session();bind::Binding actor{};
-        if(!copy.version||copy.revision!=revision.load()||units!=copy.key.units||copy.key.model_scale!=1||!no_cover(s)||
+        if(!copy.version||copy.revision!=revision.load()||units!=copy.key.units||copy.key.model_scale!=1||(!copy.cover&&!no_cover(s))||
            !rig::native_session_current(weapon_hand_runtime::current(),session)||session.game_pid!=s.native.game_pid||session.game_start!=s.native.game_start||session.native_started_qpc!=s.native.native_started_qpc||
            s.native.game_thread!=scene->thread||s.world_generation!=committed_world_generation.load()||
            !rig::reference_snapshot(reference,ref_revision)||ref_revision!=s.native_reference_revision||reference.epoch!=s.native_reference.epoch||reference.flags!=s.native_reference.flags||
@@ -364,6 +382,10 @@ bool read_view(gears_anchor::Receipt const* scene,gears_vr::StereoResult const& 
         if(
            !gears_vr::stereo_tracking_valid(stereo.sample,simulator_operator)||!gears_vr::stereo_render_active(stereo.sample)||stereo.sample.focused!=1||
            !rig::source_fresh(stereo.sample.received_ns,now,a::maximum_age_ns))return deny(false);
+        if(copy.cover){
+            if(!read_cover_view(copy,scene,now,output))return deny(false);
+            ++view_used;return true;
+        }
         // SM53 owns the original pickup animation and may temporarily have no
         // weapon. Keep the SAME established neutral eye, transformed by the
         // current mesh, rather than following that animation's moving head.
@@ -431,7 +453,8 @@ bool read_view(gears_anchor::Receipt const* scene,gears_vr::StereoResult const& 
 }
 bool configure(wchar_t const* ini,FILE* file){wchar_t value[8]{};GetPrivateProfileStringW(L"BodyC0GoalPolicy",L"enabled",L"0",value,8,ini);
     if(wcscmp(value,L"0")&&wcscmp(value,L"1"))return false;enabled=!wcscmp(value,L"1");if(enabled&&!n::enabled)return false;
-    if(file)fprintf(file,"body_goal_policy_compiled=1 body_goal_policy_enabled=%u body_goal_scope=standing_SM0_or_current_held_Lancer_SM33_CT0_not_crouched body_goal_scene_view_wired=1 body_goal_virtual_offset=0\n",unsigned(enabled));return true;}
+    cover_enabled=cover_full_goal_live::set_body_owner(enabled);
+    if(file)fprintf(file,"body_goal_policy_compiled=1 body_goal_policy_enabled=%u body_goal_cover_enabled=%u body_goal_cover_collision_required=0 body_goal_scene_view_wired=1\n",unsigned(enabled),unsigned(cover_enabled));return true;}
 void request_drain(){stopping=true;invalidate();}unsigned pending_count(){return callbacks.load()+open_ends.load();}
 void summary(FILE* f){if(!f)return;
     // First immutable witness per gate; no lock or extra game read.
@@ -448,6 +471,8 @@ void summary(FILE* f){if(!f)return;
 
     fprintf(f,"body_goal_enabled=%u body_goal_attempts=%llu body_goal_plans=%llu body_goal_applied=%llu body_goal_published=%llu body_goal_rejected=%llu body_goal_view_rejected=%llu body_goal_view_used=%llu body_goal_pending=%u body_goal_view_available=%u body_goal_view_held=%llu ",unsigned(enabled),attempts.load(),plans.load(),applied.load(),published.load(),rejected.load(),view_rejected.load(),view_used.load(),pending_count(),unsigned(view_valid.load()),view_held.load());
     fprintf(f,"body_goal_neutral_rebind_attempts=%llu body_goal_neutral_rebind_deferred=%llu body_goal_neutral_rebinds=%llu body_goal_pickup_view_used=%llu body_goal_lancer_animation_view_used=%llu body_goal_lancer_execution_eye_used=%llu ",neutral_rebind_attempts.load(),neutral_rebind_deferred.load(),neutral_rebinds.load(),pickup_view_used.load(),lancer_animation_view_used.load(),lancer_execution_eye_used.load());
+    fprintf(f,"body_goal_cover_enabled=%u body_goal_cover_fits=%llu body_goal_cover_plans=%llu body_goal_cover_applied=%llu body_goal_cover_consumed=%llu body_goal_cover_rejected=%llu body_goal_cover_reason=%u ",
+        unsigned(cover_enabled),cover_fits,cover_plans,cover_applied,cover_completed,cover_rejected,cover_reason);
     fprintf(f,"body_goal_absent_epoch=%llu ",static_cast<unsigned long long>(cover_shared_input_live::goal_absent_epoch.load(std::memory_order_acquire)));
     const auto state=first_reject_state.load(std::memory_order_acquire);
     if(state==2){auto const& r=first_reject;

@@ -1,0 +1,16 @@
+cover_c0_policy_live_test.cpp
+J:\codexWorktree\gearsVr\tools\native-capture\host_native_live_prefix.inl(7): error C2220: 以下警告被视为错误
+J:\codexWorktree\gearsVr\tools\native-capture\host_native_live_prefix.inl(7): warning C4005: “main”: 宏重定义
+J:\codexWorktree\gearsVr\tools\native-capture\cover_c0_policy_live_test.cpp(4): note: 参见“main”的前一个定义
+J:\codexWorktree\gearsVr\tools\native-capture\cover_query_source_cause.h(18): warning C4459: “enabled”的声明隐藏了全局声明
+J:\codexWorktree\gearsVr\tools\native-capture\full_body_c0_native_live.inl(23): note: 参见“full_body_c0_native_live::enabled”的声明
+J:\codexWorktree\gearsVr\tools\native-capture\full_body_c0_native_live.inl(1442): error C2653: “authored_grasp_live”: 不是类或命名空间名称
+J:\codexWorktree\gearsVr\tools\native-capture\full_body_c0_native_live.inl(1442): error C3861: “target”: 找不到标识符
+J:\codexWorktree\gearsVr\tools\native-capture\full_body_c0_native_live.inl(1470): error C2653: “pose_editor_live”: 不是类或命名空间名称
+J:\codexWorktree\gearsVr\tools\native-capture\full_body_c0_native_live.inl(1470): error C3861: “snapshot”: 找不到标识符
+J:\codexWorktree\gearsVr\tools\native-capture\full_body_c0_native_live.inl(1482): error C2653: “pose_editor_live”: 不是类或命名空间名称
+J:\codexWorktree\gearsVr\tools\native-capture\full_body_c0_native_live.inl(1482): error C3861: “snapshot”: 找不到标识符
+J:\codexWorktree\gearsVr\tools\native-capture\full_body_c0_native_live.inl(1597): error C2653: “pose_editor_live”: 不是类或命名空间名称
+J:\codexWorktree\gearsVr\tools\native-capture\full_body_c0_native_live.inl(1597): error C3861: “receipt”: 找不到标识符
+J:\codexWorktree\gearsVr\tools\native-capture\cover_c0_policy_live_test.cpp(7): error C2084: 函数“int main(int,char **)”已有主体
+J:\codexWorktree\gearsVr\tools\native-capture\body_c0_goal_policy_live_test.cpp(34): note: 参见“main”的前一个定义

@@ -18,6 +18,7 @@ namespace cover_input_live {
 struct {gears_vr::CoverInputOwnerResult latest{};} diagnostics;
 using GrabPointProvider=bool(*)(gears_anchor::Receipt const*,cover_neutral_eye_live::EyeSample const&,gears_vr::CoverInputOwnerFrame&);
 GrabPointProvider grab_points_provider{};
+void (*grab_point_summary)(FILE*){};
 }
 #include "cover_l2_grab_live.inl"
 unsigned checks{},failures{};

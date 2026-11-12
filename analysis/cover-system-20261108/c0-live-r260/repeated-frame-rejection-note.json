@@ -1,0 +1,7 @@
+{
+  "initial_test": "two raw original-Local overwrites without authentic overwrite receipts",
+  "observed": "second Native capture refused because transaction field debt persists; 8 assertions expecting continuation failed",
+  "resolution": "preserve debt/receipt gate; do not fabricate retirement; withdraw continuous-frame proof from Host fixture",
+  "real_fix": "new Compose on the covered mesh invalidates old cover view even if the new C0 cannot be captured",
+  "remaining": "actual continuous holding/retract requires controlled game with real overwrite events"
+}

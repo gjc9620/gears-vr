@@ -1,5 +1,11 @@
 // Shared offline Host boundaries; no game, engine, tracking or overwrite certificate.
 #include "body_c0_neutral.h"
+#include "cover_c0_committed_adapter.h"
+namespace cover_full_goal_live {
+gears_cover_committed::State host_drag{};bool host_available{},host_body_owner{};
+bool read_committed(gears_cover_committed::State& out){if(!host_available)return false;out=host_drag;return true;}
+bool set_body_owner(bool enabled){host_body_owner=enabled;return false;}
+}
 bool simulator_operator=true;
 bool safe_copy(void* out,void const* in,size_t size){return n::read_memory(out,reinterpret_cast<uintptr_t>(in),size);}
 unsigned host_cover{},host_crouched{},host_wants{};bool host_property=true;
@@ -39,13 +45,14 @@ namespace cover_shared_input_live {std::atomic<uint64_t> goal_absent_epoch{};}
 #include "cover_context_live.inl"
 #undef sample_current
 namespace cover_context_live {
-unsigned host_calls{},host_link_delta{},host_slot_delta{};bool host_current=true,host_change_closing=false;void(*host_key_hook)(unsigned){};
+unsigned host_calls{},host_link_delta{},host_slot_delta{},host_action{};bool host_current=true,host_change_closing=false;void(*host_key_hook)(unsigned){};
 bool sample_current(binding::Binding const& actor,CurrentKey& out){
     ++host_calls;if(host_key_hook)host_key_hook(host_calls);if(!host_current||!binding::same_key(actor,host_actor))return false;
     CurrentKey candidate{};auto const& id=host_core.cover_link;
     candidate.link.address=id.address;candidate.link.cls=id.klass;candidate.link.outer=id.outer;
     candidate.link.index=id.registry_index;candidate.link.name_index=id.name_index;candidate.link.number=id.name_number;
     candidate.link.address+=host_link_delta;candidate.slot=host_core.cover_slot+int(host_slot_delta);candidate.type=static_cast<unsigned char>(host_core.cover_type);
+    candidate.action=static_cast<unsigned char>(host_action);
     if(host_change_closing&&host_calls>1)candidate.selected[0]=1;
     out=candidate;return true;
 }}

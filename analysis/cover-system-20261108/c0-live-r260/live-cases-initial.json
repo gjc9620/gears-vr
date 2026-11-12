@@ -1,0 +1,37 @@
+[
+  {
+    "mode": 1,
+    "exit": 0,
+    "output": "CoverGoalLive scenario=1 checks=16 failures=0; actual Native apply/Kernel/consumed-pose; Host admissions and original math; Game=0\r\n"
+  },
+  {
+    "mode": 2,
+    "exit": 0,
+    "output": "CoverGoalLive scenario=2 checks=16 failures=0; actual Native apply/Kernel/consumed-pose; Host admissions and original math; Game=0\r\n"
+  },
+  {
+    "mode": 3,
+    "exit": 0,
+    "output": "CoverGoalLive scenario=3 checks=16 failures=0; actual Native apply/Kernel/consumed-pose; Host admissions and original math; Game=0\r\n"
+  },
+  {
+    "mode": 4,
+    "exit": 0,
+    "output": "CoverGoalLive scenario=4 checks=18 failures=0; actual Native apply/Kernel/consumed-pose; Host admissions and original math; Game=0\r\n"
+  },
+  {
+    "mode": 5,
+    "exit": 0,
+    "output": "CoverGoalLive scenario=5 checks=18 failures=0; actual Native apply/Kernel/consumed-pose; Host admissions and original math; Game=0\r\n"
+  },
+  {
+    "mode": 6,
+    "exit": 0,
+    "output": "CoverGoalLive scenario=6 checks=22 failures=0; actual Native apply/Kernel/consumed-pose; Host admissions and original math; Game=0\r\n"
+  },
+  {
+    "mode": 7,
+    "exit": 0,
+    "output": "CoverGoalLive scenario=7 checks=18 failures=0; actual Native apply/Kernel/consumed-pose; Host admissions and original math; Game=0\r\n"
+  }
+]

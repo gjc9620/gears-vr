@@ -316,7 +316,7 @@ bool prepare(gears_anchor::Receipt const* scene,gears_vr::StereoMatrix& view,gea
             // this fresh Scene. Physical HMD motion remains independent of PG
             // availability; tentative grip motion and its lease never escape.
             if(!result.accepted)++diagnostics.physical_fallback;
-            view=result.view.base_view;
+            if(!input::full_body_cover_enabled)view=result.view.base_view;
             if(result.body_weight_valid&&!eye.special_move&&input::publish(scene,eye,float(result.requested_up_weight)))++input::diagnostics.targets;
             else ++input::diagnostics.target_rejected;
         }

@@ -3417,3 +3417,20 @@ MSVC /W4 /WX 编译通过，24 项离线检查通过，覆盖左右/上抓、拒
 冻结r258已整合当前CoverInputOwner、交互、连续视角、目标、固定中立与求解等相关纯头文件及FullGoal，恢复显式view_anchor接口。Native编译通过，SHA256 ce34cd22b1881ad80f06dd41b28b1589e454d8b61ac629d3ff7a39cdc8f61155，423项目依赖；全部开关保持r258不变，碰撞OFF。未混入其他武器工作区改动，未启动游戏/XR或接触Quest。证据c0-committed-r259/native-build-result.json、checkpoint.json。
 
 下一步接body_c0_goal_policy_live掩体分支，通过既有Backend/Kernel/原始消费闭合后发布视角，并停用旧动画预览以维持单写入者。当前身体应用尚未接通，不是可玩交付；后续短游戏、真实双眼和手动候选验证仍需完成。碰撞、遮挡不作为此前置。
+
+
+### r260 唯一C0身体分支与完成后视角已接通，编译/Host链通过（尚未游戏运行）
+
+上一轮f9d54ff6属于progress。本轮新增cover_c0_policy_live.inl并接入body_c0_goal_policy_live。CT1/CT2当前类型/槽位/完整身份、Scene/Core或V3现有准入仍保留。首次拟合只在原版action0、last0、无过渡建立，后续保留固定中立与脚点；优先复用站立owner不可变校准，否则只允许第一次Native写入前捕获，不从已驱动姿态重新校准。新增绝对掩体目标用plan_cover调整当前髋部到脚/头可达域，不拉长骨骼、不投影头目标；原相对目标及站立路径保留。无碰撞门槛。
+
+已通过既有apply_with_view_marker/Backend/Kernel/原始消费finally写入，原始调用正常返回、真正消费和稳定Local/SpaceBases回读都成功才发布掩体视角。为此整合此前已提交但未进入冻结DLL的completed-consumer模块（Native/Backend/Kernel/骨映射），只取f9d54ff6已提交版本加本轮plan_cover分支，排除当前工作区其他武器/编辑器未提交改动。
+
+Body owner启用时停止旧动画预览发布，也不让输入意图直接推动相机。较新的拖动意图可等下一次C0；相机显示已完成身体的偏移，不能先跳到新意图。新的本地Compose即使被拒绝也使旧掩体视角失效；Scene仍先发布当前Rig/交互信息再拒绝未完成身体的投影，避免阻塞初始身体源采集。L2实际参考点、源帧/时间/epoch已加入数据型状态输出，便于下一次真实点位和抓取验证，不新增原生查询。
+
+Host原始处理/身份/收据准入为明确人工边界，真实Backend/CAS128/Kernel/消费回读与视角链执行：10场景共183检查通过，包括低掩体/高掩体、非中立首次拒绝、收据/身份/closing key拒绝、原始调用跳过/抛错、SpaceBases篡改、站立回归、新意图未完成不能先移动视角、无真实覆写收据时拒绝下一次写入并撤旧视角。另输入68、FullGoal48、L2连接15检查通过。
+
+最初连续两帧夹具直接改写Local而没有真实覆写事件，8条原预期连续通过的断言失败；这是必须保留的债务拒绝，不是可绕开的门槛。已记录repeated-frame-rejection-note.json并修复旧视角失效路径，未伪造退休/覆盖收据。Host因此没有证明真实连续拖动或保持；须在游戏正常覆写事件下验证。早期夹具声明/头文件不齐的编译失败说明见attempt-notes.json，失败日志保留initial/frozen-prefix两组。
+
+Native v1编译通过；最终v2加入L2数据输出，SHA256 d851bbf4bdad17ad5743a4d2f486e9b8445d95dbbb6767013ca33b42ff3d082c，426项目依赖；所有开关保留r259，碰撞OFF。未安装、未启动游戏/XR、未接触Quest。证据c0-live-r260/native-build-v2-result.json、host-source-final-manifest.json、live-cases-final.json、checkpoint.json。
+
+下一步先准备取消物理探针的新私有普通掩体运行，验证当前原版L2点和第一笔实际身体消费/视角，再验证抓取、拖动、松手保持、反向拉回及真实收尾，查看真实双眼画面后交付已识别手动候选。输入意图领先下一C0、可达失败反馈、双视角模式及每点GrabPose/过渡要求仍需实际接续/验收，不能以此次Host和编译称全掩体完成。

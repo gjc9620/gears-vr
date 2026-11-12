@@ -3579,6 +3579,11 @@ bool try_submit_pair(void* destination,void* family,void* canvas,void* transform
                 rig_attempt.kept=rig_tracking_live::publish(anchor,frame.source_view,view,result,policy,rig_reference);
             }
         }
+        // Continue collecting current Rig/interaction data while the cover
+        // body initializes, but project only an actually consumed body view.
+        if(cover_input_live::full_body_cover_enabled&&cover_view_owned&&!body_view_owned){
+            ++cover_input_live::uncomposed_view_rejected;return false;
+        }
         // Require a fresh, actual head mask for this local actor. Hand
         // composition is checked and reported separately: refusing a hand
         // result must not switch the camera or freeze headset output.

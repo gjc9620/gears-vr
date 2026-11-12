@@ -21,6 +21,9 @@ int main(){
     C(drag.key.sequence==value.key.sequence&&drag.offset.right==value.virtual_offset.right&&
         drag.offset.up==value.virtual_offset.up&&drag.observed_ns==value.observed_ns);
     C(gears_cover_committed::valid(drag,drag.observed_ns));
+    C(goal::set_body_owner(true)&&input::full_body_cover_enabled);
+    cover_camera_live::enabled=false;C(!goal::set_body_owner(true)&&!input::full_body_cover_enabled);
+    cover_camera_live::enabled=true;C(!goal::set_body_owner(false)&&!input::full_body_cover_enabled);
     // Persistent interaction state may outlive the old target's tracking TTL;
     // its C0 consumer still has to admit new tracking independently.
     C(!goal::read(value.key,value.observed_ns+100000001,value));

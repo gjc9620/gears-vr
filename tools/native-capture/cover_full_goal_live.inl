@@ -68,6 +68,10 @@ bool read_committed(gears_cover_committed::State& out){
     if(!committed_available)return false;
     out=committed;return true;
 }
+bool set_body_owner(bool active){
+    const bool selected=active&&cover_input_live::enabled&&cover_camera_live::enabled;
+    cover_input_live::full_body_cover_enabled=selected;return selected;
+}
 // Entry point for the existing owner with its current C0 source and independently
 // fitted placement. The store lock ends before conversion or any Native call.
 // A prepared value is not a body commit, collision result or view publication.

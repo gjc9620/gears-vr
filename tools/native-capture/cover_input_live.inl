@@ -6,6 +6,7 @@ namespace cover_input_live {
 namespace camera=cover_camera_live;
 namespace neutral=cover_neutral_eye_live;
 bool enabled{};
+bool full_body_cover_enabled{}; // Set before hooks; suppress the legacy pose writer.
 gears_vr::ControllerInputBridge controllers;
 gears_vr::CoverInputOwner participant;
 // The sole GT arbiter. Future weapon participants must submit to this instance;
@@ -15,7 +16,9 @@ gears_vr::LeftHandInteractionOwner left_hand_owner;
 // it absent; no fabricated reference point is substituted in that case.
 using GrabPointProvider=bool(*)(gears_anchor::Receipt const*,neutral::EyeSample const&,gears_vr::CoverInputOwnerFrame&);
 GrabPointProvider grab_points_provider{};
+void (*grab_point_summary)(FILE*){};
 uint64_t grab_reference_ready{},grab_reference_rejected{};
+uint64_t uncomposed_view_rejected{};
 gears_vr::CoverRange last_grab_range{};gears_vr::CoverEdgeObservation last_grab_edge{};
 bool prepare_grab_points(gears_anchor::Receipt const* scene,neutral::EyeSample const& eye,gears_vr::CoverInputOwnerFrame& frame){
     frame.cover.range={};frame.cover.edge={};
@@ -71,6 +74,7 @@ bool matching_input(gears_vr::StereoResult const& stereo,std::int64_t stamp,gear
 }
 #if defined(GEARS_COVER_BODY_PROTOTYPE) && GEARS_COVER_BODY_PROTOTYPE
 bool publish(gears_anchor::Receipt const* scene,neutral::EyeSample const& eye,float u){
+    if(full_body_cover_enabled)return false;
     cover_body_live::LiveTarget target{};
     {
         std::lock_guard<std::mutex> lock(cover_body_live::mutex);
@@ -130,7 +134,7 @@ bool prepare(gears_anchor::Receipt const* scene,gears_vr::StereoMatrix& view,gea
         result.view_valid&&gears_vr::cover_tracking_point(frame.anchor,result.view,stereo.reference,
         input.hands[0].grip.position,stereo_units_per_metre,diagnostics.hand_world);
     if(result.accepted&&result.view_valid){
-        view=result.view.base_view;
+        if(!full_body_cover_enabled)view=result.view.base_view;
         if(result.body_weight_valid&&!eye.special_move&&publish(scene,eye,float(result.requested_up_weight)))++diagnostics.targets;
         else ++diagnostics.target_rejected;
     }else ++diagnostics.rejected;
@@ -170,10 +174,13 @@ void summary(FILE* file){
         static_cast<unsigned long long>(diagnostics.sequence),static_cast<unsigned long long>(diagnostics.reference),static_cast<unsigned long long>(diagnostics.frame),
         r.physical.right,r.physical.up,r.physical.forward,r.requested_up_metres,r.requested_up_weight,unsigned(diagnostics.hand_world_valid),diagnostics.hand_world.x,diagnostics.hand_world.y,diagnostics.hand_world.z);
     fprintf(file,"cover_input_camera_frame_aligned=%u ",unsigned(camera_frame_aligned()));
+    fprintf(file,"cover_input_c0_owner=%u cover_input_uncomposed_view_rejected=%llu ",
+        unsigned(full_body_cover_enabled),uncomposed_view_rejected);
     fprintf(file,"cover_input_l2_provider=%u cover_input_l2_ready=%llu cover_input_l2_rejected=%llu cover_input_l2_range=%.9g,%.9g,%.9g,%.9g cover_input_l2_edge=%llu,%u,%u,%u cover_input_collision_required=0 ",
         unsigned(grab_points_provider!=nullptr),grab_reference_ready,grab_reference_rejected,
         last_grab_range.min_right,last_grab_range.max_right,last_grab_range.min_up,last_grab_range.max_up,
         static_cast<unsigned long long>(last_grab_edge.id),unsigned(last_grab_edge.kind),unsigned(last_grab_edge.allowed),unsigned(last_grab_edge.within_acquisition_reach));
+    if(grab_point_summary)grab_point_summary(file);
 }
 void progress(FILE* file){std::lock_guard<decltype(stereo_mutex)> lock(stereo_mutex);summary(file);}
 void print(FILE* file){summary(file);fprintf(file,"\n");}

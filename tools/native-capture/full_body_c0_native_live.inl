@@ -1278,7 +1278,8 @@ bool apply_impl(Entry const& e,body::Goal const& goal,gears_native_rig_tracking:
             free_hand_scope&&!(source.flags&gears_rig_tracking::cover_key_known)&&
             !source.cover_type&&!source.cover_link.address&&source.cover_slot==-1;
         double head_projection{};
-        auto report=independent_standing?
+        auto report=goal.scope==body::Scope::fixed_cover&&goal.target_mode==body::BodyTargetMode::world_absolute?
+            body::plan_cover(state.model,state.source,goal,state.workspace,state.output):independent_standing?
             body::plan_with_spine_reach(state.model,state.source,goal,state.workspace,state.output,head_projection):
             body::plan(state.model,state.source,goal,state.workspace,state.output);
         if(report.status==body::Status::solved&&head_projection>0){++hands_spine_projected;

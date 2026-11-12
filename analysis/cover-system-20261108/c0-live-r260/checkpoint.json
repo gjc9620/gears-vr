@@ -1,0 +1,31 @@
+{
+  "previous_goal_turn": "progress: f9d54ff6 current-tracking bridge and coherent build",
+  "status": "cover branch now connected to sole Native writer and completed-body view; compiled, Host checks passed, real game pending",
+  "native_dll_sha256": "d851bbf4bdad17ad5743a4d2f486e9b8445d95dbbb6767013ca33b42ff3d082c",
+  "native_build": "native-build-v2-result.json",
+  "body_apply_connected": true,
+  "body_game_verified": false,
+  "game_started": false,
+  "headset_accepted": false,
+  "collision_required": false,
+  "occlusion_deferred": true,
+  "checks": {
+    "cover_native_host": 183,
+    "legacy_input": 68,
+    "full_goal_store": 48,
+    "l2_points": 15
+  },
+  "host_limit": "actual Backend/Kernel/CAS/consumed-pose; synthetic admission and original Compose math; not real gameplay. Unreceipted next-frame overwrite remains rejected with debt retained.",
+  "remaining": [
+    "Prepare one new private ordinary cover runtime without physics probes; do not run old collision operator unchanged",
+    "Observe CURRENT original L2 getter outputs and first actual cover C0 commit/consumption/view, then controlled drag/hold/regrab/retract",
+    "Verify real continuous overwrite receipts and normal owned cleanup; Host fixture cannot prove multi-frame holding",
+    "Check both physical-HMD-independent motion and body reach failure handling; input still provides an intent before next C0 completion",
+    "First/third-person scope and per-point GrabPose/hand transition requirements remain incomplete/unverified",
+    "Review real stereo output and deliver identified manual candidate; owner physical feedback remains separate"
+  ],
+  "candidate_delivered": false,
+  "reproducible_host_dependencies": 124,
+  "native_final": "native-build-v2-result.json",
+  "runtime_preparation_note": "No automatic-runtime pause file exists. Existing isolated-r105 run only supports sphere/path/shape; prepare a no-physics cover smoke path before launch, do not invoke its old probe workflow unchanged."
+}
