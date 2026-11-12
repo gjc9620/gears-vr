@@ -1,0 +1,14 @@
+{
+  "previous_goal_turn": "progress: actual first C0 cover apply, concrete consumed-readback/pending failure preserved",
+  "native_sha256": "4a84c42bc08eabab50d33cc7de30ad13ae89eb6ec81493f6b4ba831b1b49aa7f",
+  "snapshot": "Immutable first cover finally; raw source/planned/unchecked observed/Core/Stamp; real finish/read/epoch/registry/timing flags; no permission",
+  "tests": {
+    "host_scenario11_checks": 70,
+    "failures": 0,
+    "worker_export_and_exact_readback": true,
+    "gt_file_io_rejected": true,
+    "immutable_record_verified": true
+  },
+  "game_started": false,
+  "physics_enabled": false
+}

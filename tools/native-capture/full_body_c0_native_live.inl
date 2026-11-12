@@ -150,6 +150,7 @@ struct State {
 // One registered GT owner, persistent storage so unknown end never destroys debt.
 State state{};
 std::atomic<uint64_t> cover_pose_attempts{},cover_pose_accepted{},cover_pose_rejected{};
+#include "cover_consumption_observation.inl"
 bool diagnostic_first_failure{};
 struct PendingObservation {
     std::uint64_t tick{},compose{},mesh{};unsigned pending{},fields{},protocol{},failure{};
@@ -1451,6 +1452,7 @@ void pose_end(Entry const& e,bool returned,bool original_called) noexcept {Call 
                 native::ConsumedPoseCode::transaction;
             state.cover_completed_valid=state.cover_completed_code==native::ConsumedPoseCode::verified;
             if(state.cover_completed_valid)++cover_pose_accepted;else ++cover_pose_rejected;
+            cover_consumption_observation::capture(unsigned(result.code),returned,original_called,same_entry(e));
         }
         if(result.code==tx::Code::scope_closed&&returned&&original_called&&same_entry(e)&&
            !state.kernel.failed()&&!state.kernel.protocol_debt()&&!state.kernel.original_exception())publish_endpoint();
@@ -1566,6 +1568,7 @@ void export_held_outcome()noexcept {
 void summary(FILE* f){
     if(f)fprintf(f,"body_cover_pose_attempts=%llu body_cover_pose_accepted=%llu body_cover_pose_rejected=%llu ",
         cover_pose_attempts.load(),cover_pose_accepted.load(),cover_pose_rejected.load());
+    cover_consumption_observation::summary(f);
     export_pending();ready_wrist::export_records();export_held_outcome();export_failure(first_failure,L"body-c0-first-failure.bin",failure_file_attempted,failure_file_written,failure_file_error);
     if(f)fprintf(f,"body_tick_lancer_state_refreshed=%llu ",binding::tick_lancer_state_refreshes.load());
     if(f){fprintf(f,"body_gun_transform_attempts=%llu body_gun_transform_completed=%llu body_gun_transform_rejected=%llu ",

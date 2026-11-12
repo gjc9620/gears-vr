@@ -138,6 +138,28 @@ int main(int argc,char** argv){
         if(scenario==4||scenario==5||scenario==7){C(!goal::view_valid&&goal::published==0&&goal::cover_completed==0);}
         else{
             C(goal::view_valid&&goal::published==1&&goal::cover_completed==1);
+            if(scenario==11){namespace obs=live::cover_consumption_observation;
+                C(obs::ready.load()&&obs::first.read_code==unsigned(n::ConsumedPoseCode::verified));
+                C(obs::first.finish_code==unsigned(tx::Code::scope_closed)&&obs::first.returned&&obs::first.original_called&&obs::first.same_entry);
+                C(obs::first.notified&&obs::first.consumed&&obs::first.atom_installed);
+                const auto code=obs::first.finish_code;obs::capture(99,false,false,false);
+                C(obs::first.finish_code==code&&obs::first.returned); // Immutable first record.
+                obs::export_record();C(!obs::export_attempted.load()); // Never GT file IO.
+                wchar_t temp[MAX_PATH]{},path[MAX_PATH]{};
+                C(GetTempPathW(MAX_PATH,temp)>0&&GetTempFileNameW(temp,L"cco",0,path)>0);
+                C(DeleteFileW(path)&&CreateDirectoryW(path,nullptr));C(wcscpy_s(directory,path)==0);
+                std::thread worker([]{obs::export_record();});worker.join();
+                C(obs::export_written.load()&&!obs::export_error.load());
+                const wchar_t* files[]={L"source",L"output",L"observed",L"core",L"stamp"};
+                const void* values[]={&obs::first.source,&obs::first.planned,&obs::first.observed,&obs::first.core,&obs::first.stamp};
+                const size_t sizes[]={sizeof obs::first.source,sizeof obs::first.planned,sizeof obs::first.observed,sizeof obs::first.core,sizeof obs::first.stamp};
+                for(unsigned i=0;i<5;++i){wchar_t file[MAX_PATH]{};C(swprintf_s(file,L"%s\\cover-first-consumption-%s.bin",path,files[i])>0);
+                    std::vector<unsigned char> read(sizes[i]);FILE* fp{};C(_wfopen_s(&fp,file,L"rb")==0&&fp);
+                    if(fp){C(fread(read.data(),1,read.size(),fp)==read.size()&&fgetc(fp)==EOF);C(fclose(fp)==0);C(!std::memcmp(read.data(),values[i],sizes[i]));}
+                    C(DeleteFileW(file));
+                }
+                directory[0]=0;C(RemoveDirectoryW(path));
+            }
             gears_anchor::Receipt scene{};scene.invocation=999;scene.thread=GetCurrentThreadId();
             gears_vr::StereoResult stereo{};stereo.status=gears_vr::StereoStatus::accepted;
             stereo.sample=host_core.stereo;stereo.reference=host_core.reference;stereo.reference_generation=host_core.reference_generation;

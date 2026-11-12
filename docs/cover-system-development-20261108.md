@@ -3526,3 +3526,14 @@ r274 Native实际激活，新增0xf6100完整302字节当前代码证书通过�
 runner27641终态exit1；Native清理未通过（deadline/仍待处理），入口验证未执行，XR exit0。所属游戏和子进程均已退出、无强制终止、remaining_owned空，但normal_cleanup_verified=false。完整失败单独保留body-smoke-r274/closeout.json、terminal-native-status.txt；不把进程退出称为全部清理通过。未进入Grip动作，未作当前完整双眼检查。
 
 下一步在首笔cover的finally中一次性保留真实finish_result、cover_completed_code、kernel consumed/protocol/pending、installation_epoch/atom_installed和Registry诊断，并保存原始Frame、Output、失败readback私有工作拷贝及Core，用离线复盘区分原版缓存/SpaceBases、源龄/Context、写入注册/真实覆盖问题。现有code只保存state.cover_completed_code但未输出，不能靠当前汇总猜测。仅只读诊断、外部worker导出，不在游戏线程IO，不授予写入/覆盖/消费权限；不要重跑相同DLL或绕过退休保护。全掩体目标仍未完成。
+
+
+### r275 首笔cover finally不可变记录及工作线程导出已编译/离线检查
+
+上轮属于progress：r273修复原版被动辅助表示、r274真实首笔C0应用，同时明确消费回读与覆盖退休失败。本轮新增cover_consumption_observation.inl，在首个cover finally记录真实finish code/read code/consumed/notified/原版调用正常返回/同Entry、kernel failure/pending/fields/protocol、installation_epoch/atom_installed、Registry bound/epoch/event/required/covered及原始源时刻。同步拷贝原始Frame、计划Output、Backend未经验证的readback工作拷贝、Core和Stamp到一次性不可变私有记录；之后不覆盖。
+
+仅外部工作线程导出五份精确二进制（cover-first-consumption-source/output/observed/core/stamp.bin），拒绝GT文件IO、拒绝覆盖已有文件。未经验证的observed文件明确不当作有效姿态或消费证明，不授予write/retirement/epoch权限。现有准入、源时钟、收据、消费校验及pending均不变。诊断不要求债务归零，因此可记录当前待退休失败；仍不能据此卸载或清理模块。
+
+Host真实Native/Backend/Kernel/CAS/消费回读scenario11共70检查通过，包括成功路径的快照语义、ready后不可改、GT导出不启动、工作线程五文件保存与逐字节读回、只删除该夹具明确创建的文件/空目录。源身份/原版数学调用仍为Host边界。新Native SHA256 4a84c42bc08eabab50d33cc7de30ad13ae89eb6ec81493f6b4ba831b1b49aa7f编译通过，429项目依赖，冻结r273上三文件只读观察变化，开关不变，碰撞OFF，不混入工作区其他武器变化。
+
+下一步以新识别r276私有短检查取得第一笔真实消费失败的精确边界与原值，再离线复盘定位修复；不将本轮诊断构建当作交互可用。Quest、公版和固定手动候选未改，完整掩体目标仍待完成。

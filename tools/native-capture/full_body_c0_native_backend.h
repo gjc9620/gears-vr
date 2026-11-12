@@ -301,6 +301,8 @@ public:
         out=next;return ConsumedPoseCode::verified;
     }
     void receipt_source(gears_atom_overwrite::ReceiptSource* p)noexcept{receipts_=p;}
+    // Private diagnostic work, possibly incomplete/invalid. Never a pose permit.
+    ConsumedPose const& unvalidated_consumed_observation()const noexcept{return consumed_pose_;}
     std::uint32_t installation_epoch()const noexcept{return metadata_.pose_epoch;}
     bool retirement_metadata(pose::Metadata& now)noexcept {
         if(!captured_||GetCurrentThreadId()!=thread_||!read_metadata(now))return false;
